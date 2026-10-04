@@ -1,0 +1,38 @@
+{
+  "_comment": "The files a new project needs to generate, rig, animate and ragdoll humanoid characters the way this repository does. Copy with the blender-csg-levels skill's scripts/copy_kit.py; --check proves every path still exists here.",
+  "kit": "blender-humanoid-characters",
+  "source": "RubenTipparach/fps-game-demo (Undercity, Brushfire tech)",
+  "files": [
+    {"path": "tools/deps/fetch_character_tools.py", "why": "fetches the pinned packs into a cache outside the repository, verifies SHA-256, unpacks, and answers which pack a file belongs to (the allowlist)"},
+    {"path": "tools/deps/character_packs.json", "why": "the pins: MPFB2, the MakeHuman CC0 system assets, the Universal Animation Library, with URLs, hashes, sizes and licences"},
+    {"path": "tools/blender/build_npcs.py", "why": "the body build: table row to MPFB human, height fit, proxy, decimation, rigid gear with poke-through tests, atlases, one skinned glb, budget check, --verify"},
+    {"path": "tools/blender/npc_data.py", "why": "the body table's schema, defaults and cross-checks; plain Python"},
+    {"path": "tools/blender/tablekit.py", "why": "the typed-field validator the tables share (unknown keys are errors)"},
+    {"path": "tools/blender/npcs.json", "why": "the reference table: 36 bodies, palette, 30 gear pieces, stress pose"},
+    {"path": "tools/blender/make_skin_roughness.py", "why": "paints the skin roughness map (T-zone, cheeks, body) on MakeHuman's UV layout"},
+    {"path": "tools/blender/npc_skin_roughness.png", "why": "its output, which the body build reads"},
+    {"path": "tools/blender/build_npc_clips.py", "why": "keys extra clips on UAL's rig from a table: aims, rotations, two-bone IK feet, seamless sine loops"},
+    {"path": "tools/blender/npc_clips.json", "why": "the Surrender and Cower clips"},
+    {"path": "tools/blender/studiokit.py", "why": "EEVEE studio for the lineup renders"},
+    {"path": "tools/blender/render_npcs.py", "why": "lineup, faction and stress-pose stills from the committed glbs"},
+    {"path": "tools/godot/setup_npc_import.gd", "why": "writes the bone maps and each glb's retarget import options (Godot's BoneMapper is editor-only)"},
+    {"path": "tools/godot/gen_npc_scenes.gd", "why": "one inherited scene per body: ragdoll capsules and joints, AnimationPlayer with the shared libraries, weapon grip and accessory mounts"},
+    {"path": "tools/godot/gen_character_materials.py", "why": "skin (subsurface) and outfit materials per body, mapped onto the glb's materials at import"},
+    {"path": "tools/godot/test_npc_imports.py", "why": "guards the retarget option keys a second setup run once broke"},
+    {"path": "game/animations/bonemaps", "why": "the committed bone maps: MPFB game_engine and UAL Rigify DEF bones to SkeletonProfileHumanoid"},
+    {"path": "game/data/npc_bodies.json", "why": "state-to-clip map, cross-fade, accessory mounts, ragdoll capsules, masses and settle time"},
+    {"path": "game/scripts/Undercity/Entities/NpcRagdoll.cs", "why": "builds joints at rest, adds neighbour collision exceptions, settles then freezes"},
+    {"path": "game/scripts/Undercity/Checks/RagdollTest.cs", "why": "drops each body off a step and measures speed, joint gaps and rest"},
+    {"path": "game/scenes/undercity/tests/ragdoll_test.tscn", "why": "the ragdoll check's scene"},
+    {"path": ".claude/skills/blender-humanoid-characters", "why": "this skill, so the next project's agent knows the pipeline"}
+  ],
+  "adapt": [
+    "Rename the cache: fetch_character_tools.cache_dir() reads $UNDERCITY_DEPS and defaults to ~/.cache/undercity/deps.",
+    "The UAL pack is fetch: manual (its page serves a newer build now); copy a verified ual_standard.zip into <cache>/packs/ once, or re-pin a build you download and update the clip table's paths.",
+    "Replace npcs.json with your own table (start from the skill's templates/example_table.json); keep budget, palette and stress_pose.",
+    "render_npcs.py imports ROOT from blendkit.py (the level kit), which needs game/materials/materials.json: copy the level kit too, or define ROOT locally.",
+    "gen_npc_scenes.gd names Brushfire's physics layers (WORLD 1, DEBRIS 32), the RightHand grip clip and NpcRagdoll's path: set them to your project's.",
+    "NpcRagdoll.cs is in namespace Undercity.Client and floats bodies through LevelWater (the water-and-swimming change): change the namespace, and copy LevelWater or drop the buoyancy.",
+    "Godot: enable Jolt Physics (Project Settings, physics/3d/physics_engine). GodotPhysics3D exploded every ragdoll in the measurement."
+  ]
+}

@@ -1,0 +1,468 @@
+{
+ "_comment": "An example table for tools/blender/build_npcs.py (the blender-humanoid-characters skill): a named guard with rigid gear, a named vendor and a civilian drawn from its seed. Build it with: blender -b --factory-startup --python tools/blender/build_npcs.py -- --table <this file>. Schema and code defaults: tools/blender/npc_data.py. Assets are MPFB asset names from the pinned packs; colours are sRGB hex by named role.",
+ "out_dir": "build/characters",
+ "rig": "game_engine",
+ "seed": 20260929,
+ "atlas_px": 1024,
+ "texture_format": "webp",
+ "webp_quality": 85,
+ "budget": {
+  "triangles": 16000,
+  "materials": 3,
+  "texture_px": 1024,
+  "textures": 5,
+  "bones": 53
+ },
+ "height_fit": {
+  "tolerance_m": 0.005,
+  "max_iterations": 30
+ },
+ "civilian_range": {
+  "height_m": [
+   1.55,
+   1.95
+  ],
+  "height_mean_m": {
+   "male": 1.76,
+   "female": 1.64
+  },
+  "height_sd_m": 0.07,
+  "age_years": [
+   19.0,
+   74.0
+  ],
+  "age_bands_years": {
+   "young": [
+    19.0,
+    44.0
+   ],
+   "middleage": [
+    45.0,
+    70.0
+   ],
+   "old": [
+    71.0,
+    80.0
+   ]
+  },
+  "race_pin_weight": 0.7,
+  "eyebrows": [
+   "eyebrow001",
+   "eyebrow002",
+   "eyebrow003",
+   "eyebrow004",
+   "eyebrow005",
+   "eyebrow006",
+   "eyebrow007",
+   "eyebrow008",
+   "eyebrow009",
+   "eyebrow010",
+   "eyebrow011",
+   "eyebrow012"
+  ],
+  "eyes": [
+   "blue",
+   "brown",
+   "brownlight",
+   "green",
+   "grey",
+   "lightblue"
+  ]
+ },
+ "proxies": {
+  "male": "male1591",
+  "female": "female1605"
+ },
+ "eyes_model": "low-poly",
+ "decimate": {
+  "shoes03": 0.35,
+  "shoes04": 0.4,
+  "short02": 0.6,
+  "male_worksuit01": 0.8
+ },
+ "tint": {
+  "contrast": 0.85,
+  "split_height_frac": 0.5,
+  "legwear_below_frac": 0.3,
+  "max_ratio": 2.0,
+  "mask_dilate_px": 3
+ },
+ "skin_tone_strength": 1.0,
+ "skin_normal": {
+  "blur_px": 6.0,
+  "strength": 16.0
+ },
+ "skin_roughness": {
+  "t_zone": 0.42,
+  "cheeks": 0.55,
+  "body": 0.62,
+  "blur_px": 6.0
+ },
+ "outfit_roughness": {
+  "cloth": 0.7,
+  "eyes": 0.08
+ },
+ "texture_fixes": {
+  "male_casualsuit06": {
+   "paint_out_uv": [
+    [
+     0.19,
+     0.83,
+     0.3,
+     0.89
+    ],
+    [
+     0.44,
+     0.79,
+     0.63,
+     0.9
+    ],
+    [
+     0.725,
+     0.815,
+     0.76,
+     0.855
+    ]
+   ]
+  }
+ },
+ "gear_style": {
+  "noise": 0.07,
+  "noise_cells": 4,
+  "swatches_per_row": 3,
+  "sample_m": 0.01
+ },
+ "palette": {
+  "armour_greyblue": "#56667c",
+  "cloth_black": "#131316",
+  "cloth_denim_dark": "#1d2536",
+  "cloth_hivis": "#c9dc27",
+  "cloth_navy": "#1b2438",
+  "cloth_raincoat": "#2c5e50",
+  "cloth_white": "#d9d6cf",
+  "hair_black": "#141214",
+  "hair_red": "#8a2c18",
+  "leather_black": "#1b1715",
+  "lens_dark": "#0f1113",
+  "skin_brown": "#7a4c31",
+  "skin_olive": "#b88a5c",
+  "skin_tan": "#a36e4c"
+ },
+ "gear_pieces": {
+  "_comment": "Faction gear (owner, survey H3): rigid shells that wrap the body, each skinned 100 % to one bone. A piece is a grid of angle_deg (around the frame's up axis; 0 = the body's front, +90 = its left) by along_m (a cylinder, metres up the axis) or elevation_deg (a sphere, degrees above the front-left plane), around an origin (a bone's head or tail, the centroid of the body vertices that follow the bone, or the eyes) moved by offset_m [left, front, up]. Each node sits clearance_m outside the farthest point of the fit_bones' body within reach_m, and of the pieces it goes over (on the same bone, worn before it), and the shell is thickness_m thick. A piece may start from another with like.",
+  "chest_plate": {
+   "bone": "spine_03",
+   "shape": "cylinder",
+   "origin": "bone_head",
+   "angle_deg": [
+    -52.0,
+    52.0
+   ],
+   "along_m": [
+    0.05,
+    0.26
+   ],
+   "segments": [
+    8,
+    5
+   ],
+   "clearance_m": 0.012,
+   "thickness_m": 0.014,
+   "reach_m": 0.32,
+   "fit_bones": [
+    "spine_03",
+    "spine_02",
+    "clavicle_l",
+    "clavicle_r"
+   ],
+   "colour": "armour_greyblue",
+   "stripe": {
+    "colour": "cloth_hivis",
+    "v": [
+     0.66,
+     0.78
+    ]
+   }
+  },
+  "back_plate": {
+   "like": "chest_plate",
+   "angle_deg": [
+    132.0,
+    228.0
+   ],
+   "stripe": null
+  },
+  "belt": {
+   "bone": "pelvis",
+   "shape": "cylinder",
+   "origin": "bone_head",
+   "angle_deg": [
+    -180.0,
+    180.0
+   ],
+   "along_m": [
+    0.09,
+    0.135
+   ],
+   "segments": [
+    16,
+    1
+   ],
+   "clearance_m": 0.008,
+   "thickness_m": 0.012,
+   "reach_m": 0.3,
+   "fit_bones": [
+    "pelvis",
+    "spine_01",
+    "thigh_l",
+    "thigh_r"
+   ],
+   "colour": "leather_black"
+  },
+  "helmet_dome": {
+   "bone": "head",
+   "shape": "sphere",
+   "origin": "eyes",
+   "offset_m": [
+    0.0,
+    -0.075,
+    0.0
+   ],
+   "angle_deg": [
+    -180.0,
+    180.0
+   ],
+   "elevation_deg": [
+    14.0,
+    90.0
+   ],
+   "segments": [
+    12,
+    4
+   ],
+   "clearance_m": 0.012,
+   "thickness_m": 0.012,
+   "reach_m": 0.2,
+   "fit_bones": [
+    "head"
+   ],
+   "colour": "armour_greyblue",
+   "stripe": {
+    "colour": "cloth_hivis",
+    "v": [
+     0.1,
+     0.22
+    ]
+   }
+  },
+  "helmet_rear": {
+   "like": "helmet_dome",
+   "angle_deg": [
+    70.0,
+    290.0
+   ],
+   "elevation_deg": [
+    -32.0,
+    16.0
+   ],
+   "segments": [
+    8,
+    3
+   ],
+   "clearance_m": 0.012,
+   "thickness_m": 0.012,
+   "stripe": null,
+   "over": [
+    "helmet_dome"
+   ]
+  },
+  "visor": {
+   "bone": "head",
+   "shape": "sphere",
+   "origin": "eyes",
+   "offset_m": [
+    0.0,
+    -0.075,
+    0.0
+   ],
+   "angle_deg": [
+    -66.0,
+    66.0
+   ],
+   "elevation_deg": [
+    -14.0,
+    16.0
+   ],
+   "segments": [
+    8,
+    2
+   ],
+   "clearance_m": 0.012,
+   "thickness_m": 0.006,
+   "reach_m": 0.2,
+   "fit_bones": [
+    "head"
+   ],
+   "colour": "lens_dark",
+   "over": [
+    "helmet_dome"
+   ]
+  }
+ },
+ "gear_sets": {
+  "guard": [
+   "helmet_dome",
+   "helmet_rear",
+   "visor",
+   "chest_plate",
+   "back_plate",
+   "belt"
+  ]
+ },
+ "stress_pose": {
+  "upperarm_l": {
+   "axis": "Y",
+   "deg": -75.0
+  },
+  "lowerarm_l": {
+   "axis": "Z",
+   "deg": 70.0
+  },
+  "upperarm_r": {
+   "axis": "X",
+   "deg": -80.0
+  },
+  "lowerarm_r": {
+   "axis": "X",
+   "deg": -70.0
+  },
+  "spine_02": {
+   "axis": "Z",
+   "deg": 20.0
+  },
+  "neck_01": {
+   "axis": "Z",
+   "deg": 15.0
+  },
+  "head": {
+   "axis": "X",
+   "deg": 12.0
+  },
+  "thigh_l": {
+   "axis": "X",
+   "deg": -70.0
+  },
+  "calf_l": {
+   "axis": "X",
+   "deg": 95.0
+  },
+  "thigh_r": {
+   "axis": "X",
+   "deg": 20.0
+  },
+  "calf_r": {
+   "axis": "X",
+   "deg": 25.0
+  },
+  "hand_l": {
+   "axis": "X",
+   "deg": 40.0
+  },
+  "index_01_r": {
+   "axis": "X",
+   "deg": 60.0
+  },
+  "middle_01_r": {
+   "axis": "X",
+   "deg": 60.0
+  }
+ },
+ "bodies": [
+  {
+   "id": "guard",
+   "role": "a helmeted guard: navy work suit, plates, helmet and visor",
+   "sex": "male",
+   "age_years": 32,
+   "height_m": 1.82,
+   "muscle": 0.7,
+   "weight": 0.6,
+   "proportions": 0.6,
+   "race": {
+    "african": 0.3,
+    "asian": 0.2,
+    "caucasian": 0.5
+   },
+   "skin": "young_caucasian_male",
+   "skin_tone": "skin_olive",
+   "eyes": "grey",
+   "eyebrows": "eyebrow008",
+   "hair": null,
+   "clothes": [
+    {
+     "asset": "male_worksuit01",
+     "tint": "cloth_navy"
+    },
+    {
+     "asset": "shoes03"
+    }
+   ],
+   "gear": [
+    "guard"
+   ]
+  },
+  {
+   "id": "vendor",
+   "role": "a stall vendor: white tee, dark jeans, short red hair",
+   "sex": "female",
+   "age_years": 48,
+   "height_m": 1.66,
+   "muscle": 0.45,
+   "weight": 0.55,
+   "proportions": 0.55,
+   "race": {
+    "african": 0.5,
+    "asian": 0.1,
+    "caucasian": 0.4
+   },
+   "skin": "middleage_african_female",
+   "skin_tone": "skin_brown",
+   "eyes": "brown",
+   "eyebrows": "eyebrow004",
+   "hair": "short02",
+   "hair_tint": "hair_red",
+   "clothes": [
+    {
+     "asset": "male_casualsuit06",
+     "top": "cloth_white",
+     "bottom": "cloth_denim_dark"
+    },
+    {
+     "asset": "shoes04",
+     "tint": "leather_black"
+    }
+   ],
+   "gear": []
+  },
+  {
+   "id": "passerby",
+   "role": "a civilian drawn from its seed: raincoat",
+   "seed": 4242,
+   "sex": "male",
+   "race": "asian",
+   "skin_tone": "skin_tan",
+   "hair": "short01",
+   "hair_tint": "hair_black",
+   "clothes": [
+    {
+     "asset": "male_casualsuit05",
+     "top": "cloth_raincoat",
+     "bottom": "cloth_black"
+    },
+    {
+     "asset": "shoes04"
+    }
+   ],
+   "gear": []
+  }
+ ]
+}

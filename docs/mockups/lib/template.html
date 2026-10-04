@@ -1,0 +1,104 @@
+<!doctype html>
+<!--
+  Star Crew mockup template. Copy it to docs/mockups/<subject>.html, then run
+  python3 tools/mockups/inline.py to fill the INLINE blocks from the layout and
+  shipkit. Never hand-edit between the INLINE markers. See the threejs-mockups
+  skill for the rules (CLAUDE.md section 11).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tern Mockup Template</title>
+<style>
+  :root { --bg: #05070d; --fg: #e8eef5; --dim: #8a98a8; --panel: rgba(6,9,14,0.82); --line: #2b3540; --accent: #48d6ff; }
+  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --bg: #05070d; } }
+  :root[data-theme="dark"] { --bg: #05070d; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font: 13px/1.4 system-ui, sans-serif; overflow: hidden; }
+  canvas { display: block; }
+  .controls { position: fixed; left: 12px; bottom: 12px; z-index: 20; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; display: flex; gap: 6px; flex-wrap: wrap; max-width: calc(100vw - 260px); }
+  .controls button { background: #18202a; color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 5px 9px; font: inherit; cursor: pointer; }
+  .controls button.on { border-color: var(--accent); color: var(--accent); }
+  @media (max-width: 640px) { .controls { max-width: calc(100vw - 24px); bottom: 120px; } }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+} }
+</script>
+<!-- INLINE layout:tern BEGIN -->
+<!-- INLINE layout:tern END -->
+<!-- INLINE shipkit BEGIN -->
+<!-- INLINE shipkit END -->
+</head>
+<body>
+<div class="controls" id="controls"></div>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const K = window.ShipKit;
+const L = K.layout();
+K.titleBlock({ title: "Template", subtitle: L.ship.name + ", " + L.ship.class, change: "reference-ship-tern" });
+const hud = K.budgetHud();
+window.MOCKUP_BUDGET = () => hud.read();
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(K.PALETTE.space);
+const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 2000);
+camera.position.set(45, 40, 55);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0, 0);
+
+// Lighting state: one ambient plus lamps that belong to the rooms (CLAUDE.md section 11).
+const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+scene.add(ambient);
+const lamps = [];
+function setLighting(key) {
+  const s = K.LIGHTING[key];
+  ambient.color.set(s.ambient); ambient.intensity = s.ambientI * 3;
+  for (const l of lamps) { l.color.set(s.lamp); l.intensity = s.lampI * 8; }
+}
+
+const mat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+for (const c of L.compartments) {
+  const sh = K.roomShell(THREE, L, c);
+  scene.add(new THREE.Mesh(sh.floor, mat));
+  scene.add(new THREE.Mesh(sh.walls, mat));
+  const ctr = K.center(c);
+  const lamp = new THREE.PointLight(0xffffff, 8, 14, 1.5);
+  lamp.position.set(ctr[0], K.bounds(c).y[1] - 0.3, ctr[2]);
+  scene.add(lamp); lamps.push(lamp);
+}
+setLighting("normal");
+
+const ctl = document.getElementById("controls");
+for (const key of Object.keys(K.LIGHTING)) {
+  const b = document.createElement("button");
+  b.textContent = K.LIGHTING[key].label;
+  b.onclick = () => setLighting(key);
+  ctl.appendChild(b);
+}
+
+K.registerShots([
+  { name: "red-alert", setup: () => setLighting("red_alert") },
+]);
+
+addEventListener("resize", () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+let first = true;
+renderer.setAnimationLoop(() => {
+  controls.update();
+  hud.beginFrame(renderer);
+  renderer.render(scene, camera);
+  hud.endFrame(renderer);
+  if (first) { first = false; K.markReady(); }
+});
+</script>
+</body>
+</html>
