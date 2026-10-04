@@ -49,3 +49,4 @@
 ## 7. Mockup (documentation, done with this write-up)
 
 - [x] 7.1 `docs/mockups/exterior.html` shots `broadside`, `missile-launch`, `gunner-view`, `shields-hit`, `chase`.
+- [ ] 7.2 Screenshot those shots (`node tools/mockups/shoot.mjs docs/mockups/exterior.html`) and look at each; the authoring session could not run the tool.

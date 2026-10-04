@@ -59,8 +59,8 @@ change, which are **decided**.
   above 3 m/s injure.
 - **Walk times** computed from the layout: every seat within 28.4 s of a launch bay walking; the
   core four seated from the spawn in about 19 s; the helm to the engineering bay console 33.0 s
-  or 35.4 s by its two routes, which do not exist until `reference-ship-tern`'s patches T1 or T2
-  are applied (the engineering mezzanine is an island as laid out today).
+  or 35.4 s by its two routes (the first through `reference-ship-tern`'s T2 stairs, applied
+  2026-10-04; the second waits on its T1 galleries).
 - **The avatar**: 3,000 triangles with LODs of 1,000 and 300, 30 bones of the 48 allowed, two
   influences, one draw call, about 55 baked clips in locomotion, full-body, upper-body and
   additive layers; first-person arms for the player.

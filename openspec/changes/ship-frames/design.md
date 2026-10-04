@@ -313,7 +313,10 @@ fix" below).
 - **The viewscreen** is a fixture (`viewscreen`, 6.0 x 2.4 m on the bridge's forward wall) whose
   picture is a 1024 x 512 RGBA8 colour texture with a 24-bit depth and 8-bit stencil
   renderbuffer: 2 MB plus 2 MB of GPU memory (engine-stack section 5: one viewscreen target at
-  1024 x 512, at most 30 Hz).
+  1024 x 512, at most 30 Hz). The engine-stack table says "about 3 MB with depth", which is a
+  16-bit depth buffer; a 24-bit depth is stored in 32 bits, so this design counts 4 MB and asks
+  engine-stack's table to say so (or to adopt a 16-bit depth for the viewscreen, which its
+  1 m to 20 km range does not suit).
 - **Its camera** is a virtual camera in the ship frame: mounted at the sensor array
   ([0.0, 1.0, 41.5] m, the bow) looking along +Z by default. Science (or the captain) steers it:
   forward, aft, port, starboard, dorsal, ventral, tracking a contact, or an external chase view
@@ -459,13 +462,21 @@ sits at the bow tip, so frustum culling drops the own ship from its pass (12,000
 held to **90,000 triangles and 50 draw calls** at the content ceilings, leaving at least 110,000
 triangles and 250 calls to the interior, crew and UI.
 
+**Against the 60 fps plan.** engine-stack asks scenes to plan at about half the ceiling (about
+100,000 triangles and 150 calls) for 60 frames a second. The table above is every content item
+at its ceiling at once, which is the busy moment the 200,000 ceiling exists for, not the plan.
+With low-poly content the same frame sits near the plan: the exterior mockup's Tern is 2,026
+triangles at LOD0 in 6 draw calls (against the 12,000 ceiling), its Jackal about 120 and its
+Gannet about 70 (against 1,500 and 200), so a bridge view in a full engagement drawn with the
+mockup's models spends about 25,000 triangles on the exterior passes instead of 90,000.
+
 **Fill.** 3D renders at 1280 x 720 (921,600 pixels). The exterior passes in the bridge view cover
 only the window pixels (two 2.8 x 1.2 m windows: under 10% of the screen from the captain's seat).
 The viewscreen target is 524,288 pixels (57% of a frame) at 30 Hz, so about 28% of a frame's fill
 on average at the 60 fps target; a secondary feed is 131,072 pixels at 15 Hz.
 
-**Memory.** GPU: the viewscreen target 4 MB (colour 2 MB, depth and stencil 2 MB), two feeds 1 MB
-each, instance buffers for attachments and projectiles 128 kB: about 6 MB of the 96 MB texture
+**Memory.** GPU: the viewscreen target 4 MB (colour 2 MB, depth and stencil 2 MB; section 8 on
+engine-stack's "about 3 MB"), two feeds 1 MB each, instance buffers for attachments and projectiles 128 kB: about 6 MB of the 96 MB texture
 budget. CPU: none beyond fixed pools (128 exterior bodies, 1,024 projectiles).
 
 **CPU.** Frame transforms: 128 exterior bodies x one `f64` subtract and a matrix compose, about
@@ -492,7 +503,8 @@ prediction and interpolation, the renderer and the tools:
 `docs/mockups/lib/shipkit.js` `hullGeometry()` winds its side faces outward but both end caps
 inward: the stern cap is built with `flip = false` and its normal points to +Z (inward), the bow
 cap with `flip = true` and its normal points to -Z (inward). The exterior mockup corrects the
-winding locally after building the geometry. The fix in the kit is to swap the two flags:
+winding locally after building the geometry, testing every triangle against the loft's axis: it
+rewinds exactly the 16 cap triangles (8 per cap) and no side face, which confirms the finding. The fix in the kit is to swap the two flags:
 `cap(rings[0], true); cap(rings[rings.length - 1], false);`. The engine's exterior mesh
 generator must test the same property (every face's normal points away from the hull's
 interior), which is a task below.

@@ -1191,7 +1191,7 @@
       const pb = l.b === SPACE ? 0 : P[l.b];
       const dp = Math.abs(P[l.a] - pb) / 1000;
       if (l.b !== SPACE && dp > PK.interlock_max_dp_kpa && !override) return "interlock: " + dp.toFixed(0) + " kPa across";
-      l.target = 1; l.manualHold = !!override || l.kind === "door" || l.kind === "hatch" || l.kind === "ladder";
+      l.target = 1; l.manualHold = !!override; // a crew member passing does not hold it; the board's override does
       return "ok";
     }
     /** Engineering's priority for a load (1 to 3); the vital class 0 is fixed. */

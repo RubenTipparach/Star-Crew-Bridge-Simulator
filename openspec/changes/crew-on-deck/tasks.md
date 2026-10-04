@@ -43,7 +43,7 @@ the write-up.
 
 ## 6. Verification
 
-- [ ] 6.1 The layout check passes every crew portal for the standing, suited and casualty-carrying body; `deck-pipeline`'s walkable check passes once T1 or T2 is applied.
+- [ ] 6.1 The layout check passes every crew portal for the standing, suited and casualty-carrying body; `deck-pipeline`'s walkable check passes (T2 was applied on 2026-10-04).
 - [ ] 6.2 `tools/walk_times.py` reproduces design section 16 and is rerun whenever the layout or the speeds change.
 - [ ] 6.3 Headless captures in `docs/screenshots/`: walking, a ladder, a door refusing across vacuum, a revive, the medbay, zero gravity, a knockdown.
 - [ ] 6.4 Pi 5 probe run with eight skinned bodies on the bridge: triangles, draw calls, posing time (owner, on hardware).

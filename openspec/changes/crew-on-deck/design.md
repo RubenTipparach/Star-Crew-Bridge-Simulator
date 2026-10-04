@@ -603,7 +603,8 @@ What the numbers say:
   muster and the quarters are equally far from the helm.
 - **The two routes from the helm to the engineering bay console are 2.4 s apart** (33.0 s and
   35.4 s walking), so losing either costs little. The aft passage route needs T2 and the hangar
-  route needs T1; today neither exists.
+  route needs T1; T2 was applied to the layout on 2026-10-04, so the aft passage route exists
+  and the hangar route waits on T1.
 - **A casualty from the bridge reaches the medbay in about 32 s**, well inside the 120 s
   stabilize window, so revival by hand on the spot and the medbay afterwards are both open.
 - These replace `reference-ship-tern`'s tables, which used 1.6 m/s walking (its question T5); its
@@ -721,7 +722,8 @@ avatar 3,000 triangles, at most 48 bones; client resident memory 384 MB; 64 kbit
   but can ship after the interior without changing anything else here.
 - **No inverse kinematics** means feet float a little on stairs and ladders line up by timing.
   The low-poly style forgives it; a later change can add two-bone IK if the probe leaves time.
-- **The mezzanine island** blocks two key routes until `reference-ship-tern`'s T1 or T2 lands.
+- **The mezzanine island** blocked two key routes until `reference-ship-tern`'s T2 stairs were
+  applied (2026-10-04); the hangar route still waits on T1.
 
 ## Open questions
 

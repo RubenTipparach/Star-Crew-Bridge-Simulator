@@ -110,6 +110,14 @@ tool):
 | Mean turrets that bear | 2.55 | 2.34 | 2.27 | 2.26 | 2.44 | 2.43 |
 | Fewest turrets that bear | 2 | 2 | 2 | 2 | 2 | 2 |
 
+The exterior mockup bakes the same masks at load with the barrel's pivot at the trunnion, 1.15 m
+out from the mount centre along its facing (pod wall 0.25 m, ring 0.35 m, trunnion 0.55 m), and
+measures 56.7%, 57.6%, 58.7% and 58.5% (dorsal, ventral, port, starboard), 100% covered by two or
+more and 30.7% by three or more. Its dorsal and ventral shares are about 3 points above the
+table's, most likely because the table's scratch test cast from `center_m`; either way the
+conclusion holds, and the arc baker takes the pivot from the mount's data, never from `center_m`
+alone.
+
 So there is no blind spot, and helm can bring a third turret to bear by rolling. The dorsal and
 ventral turrets have a keyhole straight up their facing (yaw rate needed to track a target
 through the zenith is unbounded); the side turrets cover those directions.
@@ -434,7 +442,9 @@ to spare: mission 4 peaks at about 9 ships and craft, 8 missiles and 300 project
 call (2,048 triangles); missile exhaust and explosions as more instances of the same billboard
 buffer; missiles 200 triangles each, instanced per type (one call); the shield flash one ellipsoid
 of about 1,200 triangles with a per-vertex face index and six face opacities as uniforms (one call,
-drawn only while a face is flashing); turret heads and barrels are the Tern's attachments
+drawn only while a face is flashing; the exterior mockup instead picks the face per fragment from
+the unit-sphere coordinate, which is section 11's normalized offset, and gets exact face edges for
+the same triangles on GLES 3.0); turret heads and barrels are the Tern's attachments
 (`ship-frames` section 9). Enemy models: Jackal 1,500 (instanced, one call for all), Hound 6,000.
 A full engagement adds about 30,000 triangles and 6 calls to the exterior near layer.
 

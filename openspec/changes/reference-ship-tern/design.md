@@ -277,7 +277,7 @@ from `[-18.0, -2.0]` to `[-18.0, 0.0]`, and the landing's note:
 Effect: the hangar becomes 1,764.0 m^3 and 378.0 m^2; the helm to the engineering console
 through the hangar drops from 47.2 s to 36.9 s.
 
-**T2. Stairs inside engineering and the hangar.** Append to `fixtures` (a new fixture kind,
+**T2. Stairs inside engineering and the hangar.** *Applied to `layout.json` on 2026-10-04.* Append to `fixtures` (a new fixture kind,
 `stair`: `top_m` and `foot_m` are the centres of the flight's top and bottom edges, `width_m`
 its width; `center_m` is their midpoint):
 
@@ -461,7 +461,7 @@ proceed on the recommendation ("recommendation taken, ask only with screenshots"
 | Id | Question and fact | Options | Recommendation | Mockup shot |
 | --- | --- | --- | --- | --- |
 | T1 | The hangar's galleries meet the landing only at a corner, so deck B's route aft over the launch bays starts in engineering | a. extend the galleries forward 2 m to the landing; b. leave them as engineering's balconies | a: the through-hangar route to engineering drops from 47.2 s to 36.9 s | `deck-plan-deck-B-plan` |
-| T2 | Engineering has no stair between its catwalk, mezzanine and lower floor, so its console cannot be walked to; the hangar's landing stairs have no place that does not block a door | a. the four stairs of section 9 (engineering's along its forward wall, the hangar's at the galleries' aft ends); b. ladders instead (faster to fit, 0.8 m/s, no carrying) | a | `deck-plan-engineering-closeup` |
+| T2 | Engineering has no stair between its catwalk, mezzanine and lower floor, so its console cannot be walked to; the hangar's landing stairs have no place that does not block a door | a. the four stairs of section 9 (engineering's along its forward wall, the hangar's at the galleries' aft ends); b. ladders instead (faster to fit, 0.8 m/s, no carrying) | a. **Applied 2026-10-04** by the coordinator as a fix, since the engineering console could not be walked to (recommendation taken; ask only with screenshots) | `deck-plan-engineering-closeup` |
 | T3 | The bridge has one door | a. the scuttle to damage control; b. a second door to the ready room; c. none | a: it also gives damage control a second exit | `deck-plan-deck-A-plan` |
 | T4 | Systems are points, so nothing checks that a scrubber or a pump stands clear of a door | add `size_m` to systems, values set by each system's change | add it. Recommendation taken (ask only with screenshots) | none |
 | T5 | Walking speeds (1.6 m/s walk, 4.0 m/s run, 0.8 m/s ladders) | `crew-on-deck` decides | take `crew-on-deck`'s; regenerate the tables. Recommendation taken (ask only with screenshots) | none |

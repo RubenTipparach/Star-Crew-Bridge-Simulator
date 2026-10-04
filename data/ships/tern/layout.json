@@ -274,7 +274,15 @@
       "note": "Deck B level landing inside the hangar's forward wall, with stairs down to the floor at both sides." },
     { "id": "eng_mezzanine", "kind": "mezzanine", "compartment": "engineering", "center_m": [0.0, 0.0, -25.0], "size_m": [18.0, 14.0], "ring_inner_radius_m": 3.4,
       "note": "Deck B level ring around the reactor; the lower floor is deck C level, an upper catwalk at deck A level meets the aft passage." },
-    { "id": "eng_catwalk", "kind": "catwalk", "compartment": "engineering", "center_m": [0.0, 3.5, -19.0], "size_m": [4.0, 2.0] }
+    { "id": "eng_catwalk", "kind": "catwalk", "compartment": "engineering", "center_m": [0.0, 3.5, -19.0], "size_m": [4.0, 2.0] },
+    { "id": "eng_stair_upper", "kind": "stair", "compartment": "engineering", "center_m": [4.0, 1.75, -18.6], "top_m": [2.0, 3.5, -18.6], "foot_m": [6.0, 0.0, -18.6], "width_m": 1.2,
+      "note": "From the catwalk (deck A level) down to the mezzanine, along the forward wall to port." },
+    { "id": "eng_stair_lower", "kind": "stair", "compartment": "engineering", "center_m": [-4.0, -1.75, -18.6], "top_m": [-2.0, 0.0, -18.6], "foot_m": [-6.0, -3.5, -18.6], "width_m": 1.2,
+      "note": "From the mezzanine down to the lower floor, along the forward wall to starboard, through a hole in the mezzanine." },
+    { "id": "hangar_stair_p", "kind": "stair", "compartment": "hangar", "center_m": [3.15, -1.75, -17.4], "top_m": [5.0, 0.0, -17.4], "foot_m": [1.3, -3.5, -17.4], "width_m": 1.2,
+      "note": "From the port gallery's aft end down to the hangar floor beside the engineering door." },
+    { "id": "hangar_stair_s", "kind": "stair", "compartment": "hangar", "center_m": [-3.15, -1.75, -17.4], "top_m": [-5.0, 0.0, -17.4], "foot_m": [-1.3, -3.5, -17.4], "width_m": 1.2,
+      "note": "From the starboard gallery's aft end down to the hangar floor beside the engineering door." }
   ],
   "systems": [
     { "id": "reactor", "name": "Fusion reactor", "kind": "power_source", "compartment": "engineering", "center_m": [0.0, 1.5, -25.0], "radius_m": 2.2, "height_m": 10.0 },

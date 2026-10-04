@@ -41,3 +41,4 @@
 ## 6. Mockup (documentation, done with this write-up)
 
 - [x] 6.1 `docs/mockups/exterior.html` shots `fighter-drop`, `fighter-recovery`, `fighter-cockpit`.
+- [ ] 6.2 Screenshot those shots (`node tools/mockups/shoot.mjs docs/mockups/exterior.html`) and look at each; the authoring session could not run the tool.
