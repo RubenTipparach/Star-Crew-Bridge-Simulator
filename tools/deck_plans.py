@@ -131,6 +131,11 @@ class Plan:
         bs = [b for b in comp["boxes"] if min(b["y"][1], hi) - max(b["y"][0], lo) > 0.1]
         return bs or list(comp["boxes"])
 
+    def off_deck(self, b):
+        """True for a box wholly above or below this deck's clear height (a turret pod)."""
+        lo, hi = self.band
+        return b["y"][0] >= hi - 1e-6 or b["y"][1] <= lo + 1e-6
+
     def portal_here(self, p):
         lo, hi = self.band
         y = p["center_m"][1]
@@ -195,6 +200,11 @@ def draw(L, deck, pal, path):
         col = pal["kind"].get(c["kind"], "#555555")
         for b in P.boxes_here(c):
             x, y, w, h = P.rect(b)
+            if P.off_deck(b):
+                # A turret pod above or below this deck, reached by a hatch: drawn dashed.
+                P.add(f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" fill="{col}" fill-opacity="0.45" '
+                      f'stroke="{col}" stroke-width="1.6" stroke-dasharray="4 3"/>')
+                continue
             below = b["y"][0] < P.floor - 0.6
             fill = "url(#below)" if below else col
             P.add(f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" fill="{fill}" fill-opacity="{1 if below else 0.88}" '
@@ -266,7 +276,7 @@ def draw(L, deck, pal, path):
         pts = [(z - hl, x + hs), (nose - hl * 0.6, x + hs), (nose, x), (nose - hl * 0.6, x - hs), (z - hl, x - hs)]
         P.add('<polygon points="' + " ".join(f"{P.X(a):.1f},{P.Y(b):.1f}" for a, b in pts) +
               f'" fill="none" stroke="{pal["hullAccent"]}" stroke-width="1.6"/>')
-        P.add(f'<text x="{P.X(z - hl + 0.4):.1f}" y="{P.Y(x + hs) - 4:.1f}" fill="{pal["hullAccent"]}" font-size="11">{esc(cr["name"])}</text>')
+        P.add(f'<text x="{P.X(z - hl + 0.3):.1f}" y="{P.Y(x + hs - 0.3) + 11:.1f}" fill="{pal["hullAccent"]}" font-size="11" font-weight="700">{esc(cr["name"])}</text>')
 
     # Mounts (turrets, tubes, engines) on the deck nearest their height
     for m in L.get("mounts", []):
@@ -327,7 +337,14 @@ def draw(L, deck, pal, path):
             occupied.append((cr["center_m"][0], cr["center_m"][2] - cr["length_m"] * 0.2, 2.0))
     for p in L["portals"]:
         if p["axis"] == "y" and P.portal_here(p) and any(sd in ids_here for sd in p["between"]):
-            occupied.append((p["center_m"][0], p["center_m"][2], 0.9 + max(p["size_m"]) / 2))
+            # Ladders and hatches are solid symbols; a bay door is only a dashed outline under
+            # its craft, so a badge may sit over it.
+            if p["kind"] != "bay_door":
+                occupied.append((p["center_m"][0], p["center_m"][2], 0.9 + min(max(p["size_m"]) / 2, 1.5)))
+
+    for p in L["portals"]:
+        if p["axis"] != "y" and P.portal_here(p) and any(sd in ids_here for sd in p["between"]):
+            occupied.append((p["center_m"][0], p["center_m"][2], 1.0))
 
     def free(x, z, need=1.7):
         return all(math.hypot(x - ox, z - oz) >= need + orad - 1.3 for ox, oz, orad in occupied)
@@ -349,6 +366,15 @@ def draw(L, deck, pal, path):
                 a = k * math.pi / 4
                 cands.append((cx + r * math.sin(a), cz + r * math.cos(a)))
         pick = next(((x, z) for x, z in cands if inside(b, x, z) and free(x, z)), None)
+        leader = None
+        if pick is None and c["kind"] == "pod" and P.off_deck(b):
+            ring = []
+            for r in (2.6, 3.4, 4.2):
+                for k in (2, 6, 1, 3, 5, 7, 0, 4):
+                    a = k * math.pi / 4
+                    ring.append((cx + r * math.sin(a), cz + r * math.cos(a)))
+            pick = next(((x, z) for x, z in ring if free(x, z)), None)
+            leader = (cx, cz)
         if pick is None:
             # beside the compartment: outboard for side pods, aft for the others
             out = []
@@ -356,8 +382,16 @@ def draw(L, deck, pal, path):
                 out += [(cx + math.copysign(d + (b["x"][1] - b["x"][0]) / 2, cx or 1.0), cz),
                         (cx, b["z"][0] - d + 0.6), (cx, b["z"][1] + d - 0.6)]
             pick = next(((x, z) for x, z in out if free(x, z)), (cx, cz))
+            leader = (cx, cz)
         occupied.append((pick[0], pick[1], 1.3))
         X, Y = P.X(pick[1]), P.Y(pick[0])
+        if leader and math.hypot(pick[0] - leader[0], pick[1] - leader[1]) > 0.5:
+            # The badge sits beside its compartment: a thin line points at it.
+            lx0, ly0 = P.X(leader[1]), P.Y(leader[0])
+            d = math.hypot(X - lx0, Y - ly0)
+            ex, ey = X + (lx0 - X) * 11 / d, Y + (ly0 - Y) * 11 / d
+            P.add(f'<line x1="{ex:.1f}" y1="{ey:.1f}" x2="{lx0:.1f}" y2="{ly0:.1f}" stroke="#e8eef5" stroke-width="1" stroke-opacity="0.8"/>'
+                  f'<circle cx="{lx0:.1f}" cy="{ly0:.1f}" r="2" fill="#e8eef5"/>')
         P.add(f'<circle cx="{X:.1f}" cy="{Y:.1f}" r="11" fill="#05070d" stroke="#e8eef5" stroke-width="1.6"/>')
         P.add(f'<text x="{X:.1f}" y="{Y + 4:.1f}" fill="#e8eef5" font-size="11.5" font-weight="700" text-anchor="middle">{c["poi"]}</text>')
 
@@ -380,6 +414,9 @@ def draw(L, deck, pal, path):
         P.add(f'<rect x="{X}" y="{ky + 8}" width="16" height="12" fill="{col}" stroke="{pal["wall"]}"/><text x="{X + 22}" y="{ky + 18}" fill="#c8d2dc" font-size="11">{k}</text>')
     X = kx + len(pal["kind"]) * 105
     P.add(f'<rect x="{X}" y="{ky + 8}" width="16" height="12" fill="url(#below)" stroke="{pal["wall"]}"/><text x="{X + 22}" y="{ky + 18}" fill="#c8d2dc" font-size="11">open to the deck below</text>')
+    X += 170
+    pc = pal["kind"].get("pod", "#aa5555")
+    P.add(f'<rect x="{X}" y="{ky + 8}" width="16" height="12" fill="{pc}" fill-opacity="0.45" stroke="{pc}" stroke-dasharray="4 3"/><text x="{X + 22}" y="{ky + 18}" fill="#c8d2dc" font-size="11">pod above or below, by hatch</text>')
     ky2 = ky + 40
     P.add(f'<text x="{kx}" y="{ky2}" fill="#8a98a8" font-size="11" font-weight="700">PORTALS</text>')
     for i, (k, role) in enumerate(PORTAL_ROLE.items()):

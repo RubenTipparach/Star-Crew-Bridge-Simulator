@@ -52,7 +52,7 @@
 <rect x="800.0" y="458.0" width="56.0" height="28.0" fill="#b08a3a" fill-opacity="0.88" stroke="#6b7480" stroke-width="1.4"/>
 <rect x="660.0" y="234.0" width="84.0" height="80.5" fill="#5c6b7a" fill-opacity="0.88" stroke="#6b7480" stroke-width="1.4"/>
 <rect x="660.0" y="349.5" width="84.0" height="80.5" fill="#5c6b7a" fill-opacity="0.88" stroke="#6b7480" stroke-width="1.4"/>
-<rect x="684.5" y="314.5" width="35.0" height="35.0" fill="url(#below)" fill-opacity="1" stroke="#6b7480" stroke-width="1.4"/>
+<rect x="684.5" y="314.5" width="35.0" height="35.0" fill="#a05050" fill-opacity="0.45" stroke="#a05050" stroke-width="1.6" stroke-dasharray="4 3"/>
 <circle cx="310.0" cy="332.0" r="30.8" fill="#1d2a36" stroke="#ffb347" stroke-width="2"/>
 <rect x="807.0" y="325.0" width="14.0" height="14.0" fill="none" stroke="#bfe0ff" stroke-width="2"/>
 <line x1="811.7" y1="325.0" x2="811.7" y2="339.0" stroke="#bfe0ff" stroke-width="1"/>
@@ -76,11 +76,11 @@
 <line x1="699.9" y1="325.7" x2="699.9" y2="338.3" stroke="#9aa4b0" stroke-width="1"/>
 <line x1="704.1" y1="325.7" x2="704.1" y2="338.3" stroke="#9aa4b0" stroke-width="1"/>
 <polygon points="471.0,191.3 539.6,191.3 569.0,223.5 539.6,255.7 471.0,255.7" fill="none" stroke="#c9643b" stroke-width="1.6"/>
-<text x="476.6" y="187.3" fill="#c9643b" font-size="11">Swift 1</text>
+<text x="475.2" y="206.5" fill="#c9643b" font-size="11" font-weight="700">Swift 1</text>
 <polygon points="471.0,408.3 539.6,408.3 569.0,440.5 539.6,472.7 471.0,472.7" fill="none" stroke="#c9643b" stroke-width="1.6"/>
-<text x="476.6" y="404.3" fill="#c9643b" font-size="11">Swift 2</text>
+<text x="475.2" y="423.5" fill="#c9643b" font-size="11" font-weight="700">Swift 2</text>
 <polygon points="450.0,300.5 548.0,300.5 590.0,332.0 548.0,363.5 450.0,363.5" fill="none" stroke="#c9643b" stroke-width="1.6"/>
-<text x="455.6" y="296.5" fill="#c9643b" font-size="11">Petrel</text>
+<text x="454.2" y="315.7" fill="#c9643b" font-size="11" font-weight="700">Petrel</text>
 <circle cx="702.0" cy="332.0" r="9" fill="none" stroke="#ff7043" stroke-width="2"/>
 <rect x="303.0" y="325.0" width="14" height="14" rx="2" fill="#0d141c" stroke="#ffb347" stroke-width="1.4"/>
 <text x="310.0" y="336.0" fill="#ffb347" font-size="11" font-weight="700" text-anchor="middle">a</text>
@@ -115,12 +115,12 @@
 <line x1="702.0" y1="332.0" x2="716.0" y2="332.0" stroke="#ff7043" stroke-width="2"/>
 <circle cx="702.0" cy="332.0" r="6" fill="#ff7043" stroke="#05070d" stroke-width="1.5"/>
 <text x="693.6" y="346.0" fill="#ff7043" font-size="9.5" font-weight="700" text-anchor="middle">GUN</text>
-<circle cx="385.6" cy="332.0" r="11" fill="#05070d" stroke="#e8eef5" stroke-width="1.6"/>
-<text x="385.6" y="336.0" fill="#e8eef5" font-size="11.5" font-weight="700" text-anchor="middle">15</text>
-<circle cx="413.6" cy="223.5" r="11" fill="#05070d" stroke="#e8eef5" stroke-width="1.6"/>
-<text x="413.6" y="227.5" fill="#e8eef5" font-size="11.5" font-weight="700" text-anchor="middle">16</text>
-<circle cx="413.6" cy="440.5" r="11" fill="#05070d" stroke="#e8eef5" stroke-width="1.6"/>
-<text x="413.6" y="444.5" fill="#e8eef5" font-size="11.5" font-weight="700" text-anchor="middle">17</text>
+<circle cx="555.0" cy="332.0" r="11" fill="#05070d" stroke="#e8eef5" stroke-width="1.6"/>
+<text x="555.0" y="336.0" fill="#e8eef5" font-size="11.5" font-weight="700" text-anchor="middle">15</text>
+<circle cx="541.0" cy="223.5" r="11" fill="#05070d" stroke="#e8eef5" stroke-width="1.6"/>
+<text x="541.0" y="227.5" fill="#e8eef5" font-size="11.5" font-weight="700" text-anchor="middle">16</text>
+<circle cx="541.0" cy="440.5" r="11" fill="#05070d" stroke="#e8eef5" stroke-width="1.6"/>
+<text x="541.0" y="444.5" fill="#e8eef5" font-size="11.5" font-weight="700" text-anchor="middle">17</text>
 <circle cx="240.0" cy="332.0" r="11" fill="#05070d" stroke="#e8eef5" stroke-width="1.6"/>
 <text x="240.0" y="336.0" fill="#e8eef5" font-size="11.5" font-weight="700" text-anchor="middle">18</text>
 <circle cx="744.0" cy="332.0" r="11" fill="#05070d" stroke="#e8eef5" stroke-width="1.6"/>
@@ -131,14 +131,16 @@
 <text x="842.0" y="264.2" fill="#e8eef5" font-size="11.5" font-weight="700" text-anchor="middle">22</text>
 <circle cx="842.0" cy="403.8" r="11" fill="#05070d" stroke="#e8eef5" stroke-width="1.6"/>
 <text x="842.0" y="407.8" fill="#e8eef5" font-size="11.5" font-weight="700" text-anchor="middle">23</text>
-<circle cx="828.0" cy="472.0" r="11" fill="#05070d" stroke="#e8eef5" stroke-width="1.6"/>
-<text x="828.0" y="476.0" fill="#e8eef5" font-size="11.5" font-weight="700" text-anchor="middle">24</text>
+<line x1="828.0" y1="505.8" x2="828.0" y2="472.0" stroke="#e8eef5" stroke-width="1" stroke-opacity="0.8"/><circle cx="828.0" cy="472.0" r="2" fill="#e8eef5"/>
+<circle cx="828.0" cy="516.8" r="11" fill="#05070d" stroke="#e8eef5" stroke-width="1.6"/>
+<text x="828.0" y="520.8" fill="#e8eef5" font-size="11.5" font-weight="700" text-anchor="middle">24</text>
 <circle cx="723.0" cy="274.2" r="11" fill="#05070d" stroke="#e8eef5" stroke-width="1.6"/>
 <text x="723.0" y="278.2" fill="#e8eef5" font-size="11.5" font-weight="700" text-anchor="middle">25</text>
 <circle cx="702.0" cy="389.8" r="11" fill="#05070d" stroke="#e8eef5" stroke-width="1.6"/>
 <text x="702.0" y="393.8" fill="#e8eef5" font-size="11.5" font-weight="700" text-anchor="middle">26</text>
-<circle cx="662.1" cy="332.0" r="11" fill="#05070d" stroke="#e8eef5" stroke-width="1.6"/>
-<text x="662.1" y="336.0" fill="#e8eef5" font-size="11.5" font-weight="700" text-anchor="middle">28</text>
+<line x1="720.0" y1="314.0" x2="702.0" y2="332.0" stroke="#e8eef5" stroke-width="1" stroke-opacity="0.8"/><circle cx="702.0" cy="332.0" r="2" fill="#e8eef5"/>
+<circle cx="727.7" cy="306.3" r="11" fill="#05070d" stroke="#e8eef5" stroke-width="1.6"/>
+<text x="727.7" y="310.3" fill="#e8eef5" font-size="11.5" font-weight="700" text-anchor="middle">28</text>
 <rect x="50" y="578.0" width="140" height="6" fill="#e8eef5"/><rect x="120" y="578.0" width="70" height="6" fill="#5f6e7d"/>
 <text x="50" y="598.0" fill="#8a98a8" font-size="11">0</text><text x="190" y="598.0" fill="#8a98a8" font-size="11" text-anchor="middle">10 m</text>
 <polygon points="274.0,581.0 262.0,575.0 262.0,587.0" fill="#e8eef5"/><line x1="240.0" y1="581.0" x2="264.0" y2="581.0" stroke="#e8eef5" stroke-width="2"/>
@@ -153,6 +155,7 @@
 <rect x="470" y="626.0" width="16" height="12" fill="#b08a3a" stroke="#6b7480"/><text x="492" y="636.0" fill="#c8d2dc" font-size="11">airlock</text>
 <rect x="575" y="626.0" width="16" height="12" fill="#a05050" stroke="#6b7480"/><text x="597" y="636.0" fill="#c8d2dc" font-size="11">pod</text>
 <rect x="680" y="626.0" width="16" height="12" fill="url(#below)" stroke="#6b7480"/><text x="702" y="636.0" fill="#c8d2dc" font-size="11">open to the deck below</text>
+<rect x="850" y="626.0" width="16" height="12" fill="#a05050" fill-opacity="0.45" stroke="#a05050" stroke-dasharray="4 3"/><text x="872" y="636.0" fill="#c8d2dc" font-size="11">pod above or below, by hatch</text>
 <text x="50" y="658.0" fill="#8a98a8" font-size="11" font-weight="700">PORTALS</text>
 <line x1="50" y1="672.0" x2="68" y2="672.0" stroke="#d0a040" stroke-width="5"/><text x="74" y="676.0" fill="#c8d2dc" font-size="11">door</text>
 <line x1="170" y1="672.0" x2="188" y2="672.0" stroke="#ff8a1c" stroke-width="5"/><text x="194" y="676.0" fill="#c8d2dc" font-size="11">pressure door</text>

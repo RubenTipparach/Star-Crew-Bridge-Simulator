@@ -1,0 +1,99 @@
+{
+  "schema": "starcrew.ship-damage/1",
+  "status": "PROPOSED by openspec/changes/damage-control (2026-10-04). No engine code reads this yet; the systems mockup does. Numbers are tuning proposals, not decisions.",
+  "ship": "tern",
+  "units": {
+    "energy": "MJ (megajoules)",
+    "length": "m",
+    "area": "m^2",
+    "time": "s",
+    "integrity": "percent of a system's full health, 0 to 100",
+    "rate": "percent per second where the key says pct_per_s"
+  },
+  "hull": {
+    "armour_mj": 4.0,
+    "section_mj": 40.0,
+    "faces": ["dorsal", "ventral", "port", "starboard", "bow", "stern"],
+    "note": "A hull section is a span between two of the layout's hull sections times one of six faces (9 spans x 6 faces = 54). A fresh section absorbs up to armour_mj of each hit, scaled by its integrity; each hit takes min(E, armour_mj) / section_mj x 100 points of integrity from it."
+  },
+  "breach": {
+    "m2_per_mj": 0.02,
+    "min_m2": 0.01,
+    "max_m2": 2.0,
+    "note": "A hit whose energy passes the armour opens a breach in the first compartment it enters, sized by the energy left: 1 MJ past the armour makes 0.02 m^2, 50 MJ makes 1 m^2."
+  },
+  "propagation": {
+    "march_step_m": 0.25,
+    "march_max_m": 30.0,
+    "decay_m": 4.0,
+    "bulkhead_mj": 1.5,
+    "radius_m": 1.5,
+    "radius_per_sqrt_mj": 0.3,
+    "note": "Energy past the armour marches along the hit direction, falling as exp(-s / decay_m) and losing bulkhead_mj at each bulkhead it crosses. In each compartment it crosses, it damages what lies within radius_m + radius_per_sqrt_mj x sqrt(E_deposited) of its path."
+  },
+  "systems": {
+    "points_per_mj": 10.0,
+    "nominal_from_pct": 75.0,
+    "disabled_below_pct": 25.0,
+    "note": "Integrity points taken = points_per_mj x E_deposited x (1 - d / r). Capability is 1 at or above nominal_from_pct, integrity / nominal_from_pct between the two thresholds, 0 below disabled_below_pct; 0 integrity is destroyed."
+  },
+  "nodes": {
+    "destroyed_below": 0.25,
+    "note": "A switchboard section, panel or bus loses health as a system does (points / 100); below destroyed_below it carries nothing until rebuilt."
+  },
+  "conduits": {
+    "sever_mj": 1.0,
+    "damage_mj": 0.3,
+    "damaged_capacity": 0.5
+  },
+  "fire": {
+    "chance_per_mj": 0.1,
+    "chance_max": 0.6,
+    "seed_kw_per_mj": 100.0,
+    "note": "Per compartment a hit deposits energy in: ignition chance min(chance_max, chance_per_mj x E) times the room's oxygen factor, decided by a seeded hash of (session seed, hit id, compartment id). The fire starts at fire.seed_kw (atmosphere.json) plus seed_kw_per_mj x E."
+  },
+  "crew": {
+    "hp_per_mj": 15.0,
+    "share": 0.5,
+    "note": "Every crew member in a compartment the hit deposits energy in loses hp_per_mj x E x share hit points (100 is full health)."
+  },
+  "repair": {
+    "kit_pct_per_s": { "player": 1.0, "team_member": 0.6 },
+    "kit_locker": "damage_control",
+    "kits_in_locker": 6,
+    "parts_store": "cargo",
+    "parts_on_board": 24,
+    "parts": { "disabled_system": 1, "destroyed_system": 3, "conduit_splice": 1, "node_rebuild": 4 },
+    "disabled_to_pct": 25.0,
+    "destroyed_rebuild_s": 180.0,
+    "destroyed_rebuild_to_pct": 25.0,
+    "conduit_splice_s": 30.0,
+    "conduit_splice_capacity": 0.5,
+    "node_rebuild_s": 120.0,
+    "node_rebuild_to": 0.5,
+    "hull_section_pct_per_s_eva": 0.5,
+    "two_hands_factor": 1.6
+  },
+  "patch": {
+    "plate_m2": 0.25,
+    "plates_in_locker": 12,
+    "inside_s_per_plate": 15.0,
+    "inside_max_m2": 1.0,
+    "eva_s_per_m2": 60.0,
+    "eva_max_m2": 4.0,
+    "note": "A crew member patches a breach from inside with plates (cabin pressure presses a plate onto the hole), up to inside_max_m2; a larger breach is closed from outside by a suited crew member through the airlock."
+  },
+  "teams": {
+    "count": 2,
+    "members": 2,
+    "home": "damage_control",
+    "walk_m_s": 1.6,
+    "run_m_s": 4.0,
+    "ladder_m_s": 0.8,
+    "suit_up_s": 30.0,
+    "dispatch_delay_s": 5.0,
+    "enter_below_kpa_needs_suit": 50.0,
+    "refuse_fire_above_kw_without_suit": 2000.0,
+    "note": "NPC damage control teams are crew bodies (crew-on-deck): they walk the crew-portal graph, carry a kit, an extinguisher or plates, take the same harm as players, and can die."
+  }
+}

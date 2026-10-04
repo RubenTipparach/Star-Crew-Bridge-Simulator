@@ -6,9 +6,9 @@
  *   openspec/changes/power-grid      (the power solve, reactor, battery, heat and coolant)
  *   openspec/changes/life-support    (the atmosphere step, plant, pumps, crew effects)
  *   openspec/changes/damage-control  (fire, hit resolution, suppression)
- * Every tuning number comes from the proposed data files data/ships/<id>/power.json and
- * atmosphere.json, which the page inlines; this file holds formulas, not numbers
- * (CLAUDE.md 6.5). The tables in the designs were produced by running this file
+ * Every tuning number comes from the proposed data files data/ships/<id>/power.json,
+ * atmosphere.json and damage.json, which the page inlines; this file holds formulas, not
+ * numbers (CLAUDE.md 6.5). The tables in the designs were produced by running this file
  * headless in node, so the design, the data and the mockup cannot disagree.
  *
  * It is a mockup's instrument, not engine code (CLAUDE.md section 4): the engine's core
@@ -92,11 +92,11 @@
   // ======================================================================= create
 
   /**
-   * Build a ship's systems simulation from its layout and the two proposed data files.
+   * Build a ship's systems simulation from its layout and the three proposed data files.
    * opts.dt_s overrides the sub-step (default 1 / power.solve.substep_hz = 0.1 s);
    * opts.seed is the session seed for every random choice.
    */
-  function create(L, PW, AT, opts) {
+  function create(L, PW, AT, DM, opts) {
     opts = opts || {};
     const dt = opts.dt_s || 1 / PW.solve.substep_hz;
     const seed = opts.seed == null ? 1 : opts.seed;
@@ -141,7 +141,8 @@
     const linkById = {};
     function addLink(l) {
       l.open = l.open == null ? 0 : l.open; l.target = l.target == null ? l.open : l.target;
-      l.cd = PK.discharge_coefficient[l.kind]; l.move = PK.move_time_s[l.kind] || 0; l.G = 0; l.F = 0; l.flow = 0;
+      l.cd = PK.discharge_coefficient[l.kind];
+      l.move = (PK.move_time_override_s && PK.move_time_override_s[l.id] != null) ? PK.move_time_override_s[l.id] : (PK.move_time_s[l.kind] || 0); l.G = 0; l.F = 0; l.flow = 0;
       l.mix = ["door", "pressure_door", "hatch", "ladder", "hoist"].indexOf(l.kind) >= 0 && l.b !== SPACE;
       links.push(l); linkById[l.id] = l; return l;
     }
@@ -256,11 +257,12 @@
       battery: { soc_mj: PW.battery.capacity_mj * PW.battery.initial_soc, out_mw: 0, in_mw: 0, health: 1 },
       loop: { T: PW.coolant.initial_k, flow: 1, rad_mw: 0, in_mw: 0, radiatorHealth: 1, branchOpen: {} },
       setpoint: new Float64Array(loads.length).fill(1),
+      priority: Int8Array.from(loads.map((l) => l.priority)),
       activity: {},
       integrity: new Float64Array(loads.length).fill(100),
       breakerOpen: new Uint8Array(loads.length),
       tieClosed: {}, genClosed: {}, conduit: {}, nodeHealth: {},
-      demand: new Float64Array(loads.length), alloc: new Float64Array(loads.length), dropped: new Uint8Array(loads.length),
+      demand: new Float64Array(loads.length), want: new Float64Array(loads.length), alloc: new Float64Array(loads.length), dropped: new Uint8Array(loads.length),
       flows: {}, rxOut: 0, batOut: 0, charge: 0,
       thermal: {}, // per load id: { T }
       fire: [], hull: {}, breaches: [], crew: [], log: [],
@@ -272,6 +274,7 @@
       damperAuto: true,
       damperForced: {},
       pdoorAuto: true,
+      trip: new Float64Array(N), prevRoomP: new Float64Array(N), repress: new Uint8Array(N),
     };
     for (const g of PW.generators) st.genClosed[g.id] = true;
     for (const t of PW.ties) st.tieClosed[t.id] = !!t.closed;
@@ -363,7 +366,7 @@
       for (const pass of passes) {
         const p = pass.p;
         const members = [];
-        for (let i = 0; i < loads.length; i++) if (loads[i].priority === p && demand[i] > EPS && !!pass.reserve === mayUseReserve(i)) members.push(i);
+        for (let i = 0; i < loads.length; i++) if (st.priority[i] === p && demand[i] > EPS && !!pass.reserve === mayUseReserve(i)) members.push(i);
         if (!members.length) continue;
         for (const phase of [0, 1]) {
           grid.eBat.c = phase ? Math.max(grid.eBat.f, pass.reserve ? grid.batAvailAll : grid.batAvail) : Math.min(grid.eBat.c, grid.eBat.f);
@@ -396,7 +399,8 @@
 
     function mayUseReserve(i) {
       const id = loads[i].id;
-      return id === "emergency_lighting" || (id.startsWith("reactor_aux") && st.reactor.state === "igniting");
+      return id === "emergency_lighting" || (id.startsWith("reactor_aux") && st.reactor.state === "igniting") ||
+        (PW.coolant.pumps.indexOf(id) >= 0 && st.reactor.state !== "running");
     }
     /** Demand per load from setpoints, activity, damage and breakers (MW). */
     function computeDemand(setpoints) {
@@ -422,16 +426,21 @@
       }
       return d;
     }
+    /** What a system can do at its integrity (damage-control's states): 1, integrity / nominal, or 0. */
     function capability(i) {
-      const g = st.integrity[i];
-      if (g <= 0) return 0;
-      if (g < 25) return 0;
-      if (g < 75) return g / 75;
+      const g = st.integrity[i], SY = DM.systems;
+      if (g < SY.disabled_below_pct) return 0;
+      if (g < SY.nominal_from_pct) return g / SY.nominal_from_pct;
       return 1;
+    }
+    function damageState(g) {
+      const SY = DM.systems;
+      return g <= 0 ? "destroyed" : g < SY.disabled_below_pct ? "disabled" : g < SY.nominal_from_pct ? "damaged" : "nominal";
     }
     /** Full solve with drop-out: a load below its minimum ratio switches off and the rest re-solve. */
     function solveWithDropout(setpoints) {
       const demand = computeDemand(setpoints);
+      const want = Float64Array.from(demand);
       let res = solveGrid(gridSnapshot(), demand);
       const dropped = new Uint8Array(loads.length);
       for (let pass = 0; pass < PW.solve.dropout_resolves; pass++) {
@@ -442,7 +451,7 @@
         if (!any) break;
         res = solveGrid(gridSnapshot(), demand);
       }
-      res.demand = demand; res.dropped = dropped;
+      res.demand = demand; res.want = want; res.dropped = dropped;
       return res;
     }
     /** Console preview (preview = resolver): what a load would get at a hypothetical setpoint. */
@@ -450,19 +459,22 @@
       const i = loadIdx[loadId];
       const s = Float64Array.from(st.setpoint); s[i] = sp;
       const r = solveWithDropout(s);
-      return { demand_mw: r.demand[i], alloc_mw: r.alloc[i], dropped: !!r.dropped[i], battery_mw: r.batOut, reactor_mw: r.rxOut };
+      return { demand_mw: r.want[i], alloc_mw: r.alloc[i], dropped: !!r.dropped[i], battery_mw: r.batOut, reactor_mw: r.rxOut };
     }
 
     // ======================================================= STEP: power and heat
     function stepPower() {
       const rx = st.reactor, RC = PW.reactor;
-      // Reactor control: automation follows load; a player sets the throttle by hand.
-      const demand0 = computeDemand(st.setpoint);
-      let want = 0; for (let i = 0; i < demand0.length; i++) want += demand0[i];
-      const g0 = gridSnapshot();
-      want += g0.chargeWant;
+      // Reactor control: automation follows the load the grid can take from the reactor (a
+      // probe solve with the reactor at its rated output and the battery held back); a player
+      // sets the throttle by hand, and power the grid cannot take heats the blanket.
       const ratedE = RC.thermal_rated_mw * RC.conversion_efficiency * (rx.integrity / 100);
-      if (rx.mode === "auto") rx.target = clamp(want / Math.max(1e-6, ratedE), RC.throttle_min, 1.0);
+      if (rx.mode === "auto" && rx.state === "running") {
+        const g0 = gridSnapshot();
+        g0.eRx.c = ratedE; g0.batAvail = 0; g0.batAvailAll = 0;
+        const probe = solveGrid(g0, computeDemand(st.setpoint));
+        rx.target = clamp((probe.rxOut + probe.charge) / Math.max(1e-6, ratedE), RC.throttle_min, 1.0);
+      }
       if (rx.state === "running") {
         const d = rx.target - rx.throttle;
         rx.throttle += d > 0 ? Math.min(d, RC.ramp_up_per_s * dt) : Math.max(d, -RC.ramp_down_per_s * dt);
@@ -470,7 +482,7 @@
         rx.P_th = rx.throttle * RC.thermal_rated_mw * MWW * (rx.integrity / 100);
       } else rx.P_th = 0;
       const res = solveWithDropout(st.setpoint);
-      st.demand = res.demand; st.alloc = res.alloc; st.dropped = res.dropped;
+      st.demand = res.demand; st.want = res.want; st.alloc = res.alloc; st.dropped = res.dropped;
       st.rxOut = res.rxOut; st.batOut = res.batOut; st.charge = res.charge;
       st.flows = {}; for (const e of res.edges) st.flows[e.id] = e.f;
       rx.P_e = res.rxOut * MWW;
@@ -540,7 +552,11 @@
       roomHeat[idx[L.systems.find((s) => s.id === PW.battery.system).compartment]] += st.batteryLossW || 0;
       // Radiators.
       const Tb4 = Math.pow(RD.background_k, 4);
-      loop.rad_mw = (RD.rated_mw * loop.radiatorHealth * loop.flow * (Math.pow(loop.T, 4) - Tb4)) / (Math.pow(RD.rated_at_k, 4) - Tb4);
+      // Capacity by the fourth-power law; the bypass valve holds the loop near its nominal
+      // temperature when the heat is low, so the loop does not run cold at cruise.
+      loop.rad_cap_mw = (RD.rated_mw * loop.radiatorHealth * loop.flow * (Math.pow(loop.T, 4) - Tb4)) / (Math.pow(RD.rated_at_k, 4) - Tb4);
+      const open = RD.bypass_band_k > 0 ? clamp((loop.T - (C.nominal_k - RD.bypass_band_k)) / RD.bypass_band_k, 0, 1) : 1;
+      loop.rad_mw = Math.max(0, loop.rad_cap_mw) * open;
       loop.in_mw = toLoop / MWW;
       loop.T += (dt * (toLoop - loop.rad_mw * MWW)) / (C.capacity_mj_per_k * MWW);
     }
@@ -858,23 +874,37 @@
     // ======================================================= automation
     function stepAutomation() {
       derive();
-      // Vent dampers: shut on low pressure, smoke, or no fan; open otherwise, unless forced.
+      // Vent dampers. Each trips shut on excess net flow, more than damper_trip_fraction_per_s
+      // of the room's gas a second (a leak, or a fire's expansion; normal heating is a
+      // hundred times less), and
+      // stays shut until its room has held within damper_reset_kpa of the duct, without
+      // falling, for damper_retry_s; it also shuts on low pressure, smoke, or no fan. A forced
+      // state (venting, isolation, repressurizing) overrides; a forced-open repressurization
+      // ends itself once the room is back to the duct's pressure.
       const fan = fanRatio();
       const ductLow = P[DUCT] / 1000 < VE.duct_low_kpa;
       for (let i = 0; i < N; i++) {
         const v = links[ventOf[i]];
+        const dpk = (P[DUCT] - P[i]) / 1000;
         const forced = st.damperForced[comps[i].id];
-        if (forced != null) { v.target = forced ? 1 : 0; continue; }
+        if (forced === true && st.repress[i] && P[i] / 1000 > AT.plant.makeup.target_kpa - VE.damper_reset_kpa) { delete st.damperForced[comps[i].id]; st.repress[i] = 0; st.trip[i] = 0; }
+        else if (forced != null) { v.target = forced ? 1 : 0; st.prevRoomP[i] = P[i]; continue; }
+        if (Math.abs(v.flow) > VE.damper_trip_fraction_per_s * ntot[i]) st.trip[i] = VE.damper_retry_s;
+        else if (st.trip[i] > 0) {
+          const falling = st.prevRoomP[i] - P[i] > VE.damper_falling_pa_per_s * dt;
+          st.trip[i] = !falling && Math.abs(dpk) < VE.damper_reset_kpa ? st.trip[i] - dt : VE.damper_retry_s;
+        }
+        st.prevRoomP[i] = P[i];
         if (!st.damperAuto) continue;
         const ppm = (n[SMOKE][i] / Math.max(1e-9, ntot[i])) * 1e6;
-        const shut = fan <= 0 || P[i] / 1000 < VE.damper_close_below_kpa || ppm > VE.damper_close_smoke_ppm || ductLow;
+        const shut = fan <= 0 || st.trip[i] > 0 || P[i] / 1000 < VE.damper_close_below_kpa || ppm > VE.damper_close_smoke_ppm || ductLow;
         v.target = shut ? 0 : 1;
       }
-      // Pressure doors close themselves when either side falls below the threshold.
+      // Doors between two compartments close themselves when either side falls below the
+      // threshold, unless the damage control board holds them (a door to space is commanded).
       if (st.pdoorAuto) for (const l of links) {
-        if (l.kind !== "pressure_door" || l.target <= 0) continue;
-        const pb = l.b === SPACE ? 0 : P[l.b];
-        if (Math.min(P[l.a], pb) / 1000 < PK.auto_close_pressure_doors_below_kpa && !l.manualHold) { l.target = 0; log(l.id + " auto-closing (low pressure)"); }
+        if (l.target <= 0 || l.b === SPACE || PK.auto_close_kinds.indexOf(l.kind) < 0 || l.manualHold) continue;
+        if (Math.min(P[l.a], P[l.b]) / 1000 < PK.auto_close_below_kpa && Math.max(P[l.a], P[l.b]) / 1000 >= PK.auto_close_below_kpa) { l.target = 0; log(l.id + " closing itself (pressure alarm)"); }
       }
       // Water mist: automatic discharge on a fire above 1 MW in a protected room.
       for (const id of FI.suppression.water_mist.compartments) {
@@ -949,12 +979,7 @@
     }
 
     // ======================================================= damage: hits
-    const DC = opts.damage || {
-      armour_mj: 4.0, section_mj: 40.0, breach_m2_per_mj: 0.02, breach_min_m2: 0.01, breach_max_m2: 2.0,
-      decay_m: 4.0, bulkhead_mj: 1.5, radius_m: 1.5, radius_per_sqrt_mj: 0.3, points_per_mj: 10.0,
-      sever_mj: 1.0, damage_conduit_mj: 0.3, fire_chance_per_mj: 0.1, fire_chance_max: 0.6, fire_seed_kw_per_mj: 100.0,
-      crew_hp_per_mj: 15.0, march_step_m: 0.25, march_max_m: 30.0,
-    };
+    const HU = DM.hull, BR = DM.breach, PG = DM.propagation;
     let hitCount = 0;
     function compAt(p) { for (let i = 0; i < N; i++) for (const b of comps[i].boxes) if (inBox(b, p)) return i; return SPACE; }
     function hullSection(p, dir) {
@@ -974,38 +999,38 @@
       const out = { id, breach: null, systems: [], conduits: [], fire: [], crew: [], compartments: [] };
       const key = hullSection(point, dir);
       const hs = st.hull[key] || (st.hull[key] = { integrity: 100 });
-      const absorb = Math.min(energy_mj, DC.armour_mj * hs.integrity / 100);
-      hs.integrity = Math.max(0, hs.integrity - (Math.min(energy_mj, DC.armour_mj) * 100) / DC.section_mj);
+      const absorb = Math.min(energy_mj, HU.armour_mj * hs.integrity / 100);
+      hs.integrity = Math.max(0, hs.integrity - (Math.min(energy_mj, HU.armour_mj) * 100) / HU.section_mj);
       let E = energy_mj - absorb;
       out.hull = { section: key, integrity: hs.integrity, absorbed_mj: absorb };
       if (E <= 0) return out;
       // March inward.
       let s = 0, cur = SPACE, enter = null, Ein = E;
       const segs = [];
-      for (; s <= DC.march_max_m && E > 0.05; s += DC.march_step_m) {
+      for (; s <= PG.march_max_m && E > 0.05; s += PG.march_step_m) {
         const p = [point[0] + dir[0] * s, point[1] + dir[1] * s, point[2] + dir[2] * s];
         const c = compAt(p);
         if (c !== cur) {
           if (cur !== SPACE) segs.push({ comp: cur, a: enter, b: p, e: Ein - E });
-          if (c !== SPACE && segs.length > 0) E = Math.max(0, E - DC.bulkhead_mj);
+          if (c !== SPACE && segs.length > 0) E = Math.max(0, E - PG.bulkhead_mj);
           if (c !== SPACE && !out.breach && segs.length === 0) {
-            const area = clamp(DC.breach_m2_per_mj * E, DC.breach_min_m2, DC.breach_max_m2);
+            const area = clamp(BR.m2_per_mj * E, BR.min_m2, BR.max_m2);
             out.breach = { compartment: comps[c].id, area_m2: area };
             breach(comps[c].id, area, p);
           }
           cur = c; enter = p; Ein = E;
         }
-        E *= Math.exp(-DC.march_step_m / DC.decay_m);
+        E *= Math.exp(-PG.march_step_m / PG.decay_m);
       }
       if (cur !== SPACE) segs.push({ comp: cur, a: enter, b: [point[0] + dir[0] * s, point[1] + dir[1] * s, point[2] + dir[2] * s], e: Ein - E });
       for (const sg of segs) {
         if (sg.e <= 0.01) continue;
-        const r = DC.radius_m + DC.radius_per_sqrt_mj * Math.sqrt(sg.e);
+        const r = PG.radius_m + PG.radius_per_sqrt_mj * Math.sqrt(sg.e);
         out.compartments.push({ id: comps[sg.comp].id, mj: sg.e, radius_m: r });
         for (let li = 0; li < loads.length; li++) {
           const d = segSegDist(sg.a, sg.b, loads[li].center, loads[li].center);
           if (d > r) continue;
-          const pts = DC.points_per_mj * sg.e * (1 - d / r);
+          const pts = DM.systems.points_per_mj * sg.e * (1 - d / r);
           st.integrity[li] = Math.max(0, st.integrity[li] - pts);
           out.systems.push({ id: loads[li].id, points: pts, integrity: st.integrity[li] });
         }
@@ -1014,8 +1039,8 @@
           const d = segSegDist(sg.a, sg.b, nd.center_m, nd.center_m);
           if (d > r) continue;
           const h = st.nodeHealth[nd.id] == null ? 1 : st.nodeHealth[nd.id];
-          const left = Math.max(0, h - (DC.points_per_mj * sg.e * (1 - d / r)) / 100);
-          st.nodeHealth[nd.id] = left < 0.25 ? 0 : left;
+          const left = Math.max(0, h - (DM.systems.points_per_mj * sg.e * (1 - d / r)) / 100);
+          st.nodeHealth[nd.id] = left < DM.nodes.destroyed_below ? 0 : left;
           out.nodes = out.nodes || []; out.nodes.push({ id: nd.id, health: st.nodeHealth[nd.id] });
           if (st.nodeHealth[nd.id] === 0) log(nd.name + " destroyed");
         }
@@ -1025,14 +1050,14 @@
           for (let q = 0; q + 1 < k.path_m.length; q++) dmin = Math.min(dmin, segSegDist(sg.a, sg.b, k.path_m[q], k.path_m[q + 1]));
           if (dmin > r) continue;
           const cs = st.conduit[k.id];
-          if (sg.e >= DC.sever_mj) { cs.severed = true; out.conduits.push({ id: k.id, severed: true }); log("Conduit " + k.id + " severed in " + comps[sg.comp].name); }
-          else if (sg.e >= DC.damage_conduit_mj) { cs.health = Math.min(cs.health, 0.5); out.conduits.push({ id: k.id, severed: false, health: 0.5 }); }
+          if (sg.e >= DM.conduits.sever_mj) { cs.severed = true; out.conduits.push({ id: k.id, severed: true }); log("Conduit " + k.id + " severed in " + comps[sg.comp].name); }
+          else if (sg.e >= DM.conduits.damage_mj) { cs.health = Math.min(cs.health, DM.conduits.damaged_capacity); out.conduits.push({ id: k.id, severed: false, health: cs.health }); }
         }
-        const chance = Math.min(DC.fire_chance_max, DC.fire_chance_per_mj * sg.e) * fO2(sg.comp);
-        if (hash32(seed, id, comps[sg.comp].id, "fire") < chance) { ignite(comps[sg.comp].id, FI.seed_kw + DC.fire_seed_kw_per_mj * sg.e); out.fire.push(comps[sg.comp].id); }
+        const chance = Math.min(DM.fire.chance_max, DM.fire.chance_per_mj * sg.e) * fO2(sg.comp);
+        if (hash32(seed, id, comps[sg.comp].id, "fire") < chance) { ignite(comps[sg.comp].id, FI.seed_kw + DM.fire.seed_kw_per_mj * sg.e); out.fire.push(comps[sg.comp].id); }
         for (const c of st.crew) {
           if (c.comp !== sg.comp || c.dead) continue;
-          const hp = DC.crew_hp_per_mj * sg.e * 0.5; c.hp -= hp; out.crew.push({ id: c.id, hp });
+          const hp = DM.crew.hp_per_mj * sg.e * DM.crew.share; c.hp -= hp; out.crew.push({ id: c.id, hp });
         }
       }
       log("Hit " + energy_mj + " MJ at " + key + ": " + out.compartments.map((c) => c.id).join(", "));
@@ -1056,6 +1081,8 @@
       return l;
     }
     function patch(linkId) { const l = linkById[linkId]; if (l) { l.target = 0; l.open = 0; l.area = 0; } }
+    /** Refill a compartment from the duct through its vent (the damage control board's command). */
+    function repressurize(compId) { const i = idx[compId]; st.damperForced[compId] = true; st.repress[i] = 1; st.trip[i] = 0; log("Repressurizing " + comps[i].name + " from the duct"); }
     function setLink(id, target) { const l = typeof id === "number" ? links[id] : linkById[id]; if (l) l.target = target ? 1 : 0; return l; }
     function closeAllDoors() { for (const l of links) if (["door", "hatch", "ladder", "hoist"].indexOf(l.kind) >= 0) l.target = 0; }
     function isolate(compId) { const i = idx[compId]; for (const l of links) if ((l.a === i || l.b === i) && l.kind !== "breach") { l.target = 0; l.open = 0; } st.damperForced[compId] = false; }
@@ -1098,6 +1125,38 @@
       log("Venting " + comps[idx[compId]].name + " overboard through the duct");
     }
     function stopVent() { st.damperForced = {}; setLink(GA.overboard_dump.id, 0); }
+    /**
+     * Open or close a door the way a crew member or the damage control board does: an opening
+     * across more than the interlock's pressure difference is refused unless overridden.
+     */
+    function operateDoor(id, open, override) {
+      const l = linkById[id]; if (!l) return "no such portal";
+      if (!open) { l.target = 0; l.manualHold = false; return "ok"; }
+      const pb = l.b === SPACE ? 0 : P[l.b];
+      const dp = Math.abs(P[l.a] - pb) / 1000;
+      if (l.b !== SPACE && dp > PK.interlock_max_dp_kpa && !override) return "interlock: " + dp.toFixed(0) + " kPa across";
+      l.target = 1; l.manualHold = !!override || l.kind === "door" || l.kind === "hatch" || l.kind === "ladder";
+      return "ok";
+    }
+    /** Engineering's priority for a load (1 to 3); the vital class 0 is fixed. */
+    function setPriority(loadId, p) {
+      const i = loadIdx[loadId]; if (i == null || loads[i].priority === 0) return false;
+      st.priority[i] = clamp(Math.round(p), 1, 3); return true;
+    }
+    /** Apply a named preset from the data: setpoints by group. */
+    function applyPreset(name) {
+      const pr = PW.presets[name]; if (!pr) return false;
+      for (const g of PW.groups) {
+        const v = pr[g.id] != null ? pr[g.id] : 1.0;
+        for (const id of g.loads) st.setpoint[loadIdx[id]] = v;
+      }
+      st.preset = name; log("Preset " + name.toUpperCase());
+      return true;
+    }
+    /** Repairs (damage-control): integrity points to a system, a conduit splice, a node rebuild. */
+    function repairSystem(loadId, pts) { const i = loadIdx[loadId]; st.integrity[i] = clamp(st.integrity[i] + pts, 0, 100); return st.integrity[i]; }
+    function spliceConduit(id) { const c = st.conduit[id]; if (!c) return false; c.severed = false; c.health = Math.max(c.health, DM.repair.conduit_splice_capacity); return true; }
+    function rebuildNode(id) { st.nodeHealth[id] = Math.max(st.nodeHealth[id] == null ? 1 : st.nodeHealth[id], DM.repair.node_rebuild_to); return true; }
     function log(msg) { st.log.push({ t: st.t, msg }); if (st.log.length > 200) st.log.shift(); }
 
     // ======================================================= the sub-step
@@ -1137,10 +1196,11 @@
     }
 
     return {
-      dt, L, PW, AT, st, comps, N, DUCT, idx, vol, floor, extArea, adj, links, linkById, loads, loadIdx, stores, nodes, SPECIES,
+      dt, L, PW, AT, DM, st, comps, N, DUCT, idx, vol, floor, extArea, adj, links, linkById, loads, loadIdx, stores, nodes, SPECIES,
       step, derive, solveGrid, gridSnapshot, computeDemand, solveWithDropout, previewSetpoint, scram, scramReset,
       resolveHit, hullHalfBeam, breach, patch, setLink, closeAllDoors, isolate, ignite, bayPumpdown, bayRepress,
-      dischargeMist, dischargeInert, useExtinguisher, gravityG,
+      dischargeMist, dischargeInert, useExtinguisher, gravityG, capability, damageState, auxRatio,
+      operateDoor, setPriority, applyPreset, repressurize, repairSystem, spliceConduit, rebuildNode, fanRatio,
       airlockCycleOut, airlockCycleIn, ventCompartment, stopVent, addCrew, setActivity, compartmentReadout, lighting,
       receiverKpa, storeMol, fillStandard, log,
       get P() { return P; }, get T() { return T; }, get n() { return n; }, get ntot() { return ntot; },

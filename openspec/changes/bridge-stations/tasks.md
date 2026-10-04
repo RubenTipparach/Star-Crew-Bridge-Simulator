@@ -28,10 +28,10 @@ separate request once the owner approves the mockup (CLAUDE.md 10).
 
 ## 4. Client (`sc-client`, `sc-render`)
 
-- [ ] 4.1 The immediate-mode UI layer: canvas, bands, grid, widgets, guarded controls, focus, scrolling, clipping; at most 4 draw calls.
+- [ ] 4.1 The console layer on egui and `egui_glow` (engine-stack E3): canvas, bands, fixed panel rectangles with their own clip rectangles, the theme, widgets, guarded controls, gamepad focus, scrolling, clipping; at most 16 draw calls and 6,000 triangles.
 - [ ] 4.2 The console layouts and their previews, each calling its resolver.
 - [ ] 4.3 The look band viewport and the look-up mode.
-- [ ] 4.4 The viewscreen render target, feeds and the skip rule (with `ship-frames`).
+- [ ] 4.4 The viewscreen render target (1024 x 512, up to 30 Hz), feeds and the skip rule; the one secondary feed a console may show (512 x 256, up to 15 Hz) (with `ship-frames`).
 - [ ] 4.5 Order chime, klaxon and console sounds.
 
 ## 5. Verification

@@ -35,9 +35,13 @@
   },
   "portals": {
     "discharge_coefficient": { "door": 0.65, "pressure_door": 0.65, "hatch": 0.62, "ladder": 0.62, "hoist": 0.62, "bay_door": 0.7, "window": 0.6, "breach": 0.6, "vent": 0.6, "dump": 0.6, "valve": 0.6 },
-    "default_open": { "door": true, "pressure_door": false, "hatch": true, "ladder": true, "hoist": false, "bay_door": false, "window": false },
-    "move_time_s": { "door": 1.5, "pressure_door": 3.0, "hatch": 1.5, "ladder": 1.5, "hoist": 2.0, "bay_door": 8.0, "window": 0.0, "vent": 2.0, "dump": 2.0 },
-    "auto_close_pressure_doors_below_kpa": 85.0
+    "default_open": { "door": false, "pressure_door": false, "hatch": false, "ladder": false, "hoist": false, "bay_door": false, "window": false },
+    "default_open_note": "Doors, hatches and ladder hatches are closed unless a crew member is passing (they open on approach) or the damage control board holds them open: every compartment is its own pressure boundary.",
+    "move_time_s": { "door": 1.5, "pressure_door": 3.0, "hatch": 1.5, "ladder": 1.5, "hoist": 2.0, "bay_door": 4.0, "window": 0.0, "vent": 2.0, "dump": 2.0, "valve": 1.0 },
+    "move_time_override_s": { "p_hangar_pad": 8.0 },
+    "auto_close_below_kpa": 85.0,
+    "auto_close_kinds": ["door", "pressure_door", "hatch", "ladder", "hoist"],
+    "interlock_max_dp_kpa": 20.0
   },
   "flow": {
     "linear_below_pa": 20.0,
@@ -59,6 +63,10 @@
     "air_changes_per_hour": { "room": 10.0, "corridor": 8.0, "bay": 4.0, "crawlspace": 6.0, "airlock": 4.0, "pod": 20.0 },
     "air_changes_override": { "engineering": 15.0 },
     "damper_close_below_kpa": 85.0,
+    "damper_trip_fraction_per_s": 0.0005,
+    "damper_reset_kpa": 1.0,
+    "damper_retry_s": 30.0,
+    "damper_falling_pa_per_s": 10.0,
     "damper_close_smoke_ppm": 2000.0,
     "duct_low_kpa": 85.0
   },

@@ -187,7 +187,7 @@ player every station is a tab on that player's console, which is how one player 
 | Flight ops | Tactical, Captain, Helm, Science, Engineering, Comms |
 | Damage board | Engineering, Captain, Science, Helm, Tactical |
 | Captain | Not a tab: its command functions appear in the title band of every manned bridge console while no captain is seated |
-| Gunners | No merge: automation, with modes set from Tactical (a remote turret sight would need its own render pass and halves the point of the pods) |
+| Gunners | No merge: automation, with modes set from Tactical. A remote turret sight would fit the budget's secondary view, but it would halve the point of the pods (question B10) |
 
 **Player counts** (proposed recommended seating; any seating works):
 
@@ -321,16 +321,29 @@ Science's feed control shows "held by Captain" meanwhile.
 ### 8. The console UI framework
 
 CLAUDE.md 10: consoles are full-screen 2D when seated, the bridge stays visible behind or beside
-them, panels are a fixed size, and the immediate-mode UI draws them, not render-to-texture.
-`engine-stack` decides the UI is ours (an immediate-mode panel and text layer on one bitmap font
-atlas, section 4 there).
+them, panels are a fixed size, and the engine's immediate-mode UI draws them, not render-to-texture.
+`engine-stack` decides the library (section 4 there, question E3, recommendation taken): **`egui`
+with `egui_glow`, inside our fixed-panel rules**, measured by the Pi 5 probe, with a minimal panel
+layer of our own as the fallback. The rules below are ours and hold whichever library draws them:
+
+- **egui draws; the grid decides.** Each panel is a child `Ui` given a fixed rectangle from the
+  grid (section 8.1) and its own clip rectangle. egui's automatic layout works inside a panel and
+  never sets a panel's size or position; a panel never grows to fit its content.
+- **One logical pixel is one egui point.** egui's `pixels_per_point` is 1.5 on the 1920 x 1080
+  output, so the lp numbers below are the numbers the console code uses.
+- **Text is egui text, clipped.** Labels truncate with an ellipsis at the panel's inner width;
+  lists are `ScrollArea`s inside the panel body that scroll in whole rows.
+- **The theme is ours.** `data/ui/theme.json` (section 8.3) sets egui's `Visuals` and text styles
+  once at startup; no console sets a colour or a font size of its own.
+- **If the probe rejects egui** (question E3), the console data files, the grid, the bands, the
+  widgets and the bindings below do not change: only the layer that draws them does.
 
 #### 8.1 The canvas and its bands
 
 The console is laid out on a **1280 x 720 logical canvas** (logical pixels, lp). The Pi 5 drives a
 1920 x 1080 display with the 3D scene rendered at 1280 x 720 and scaled up (`engine-stack`); the UI
-draws at the output resolution, 1.5 device pixels per lp, from a font atlas baked at that scale, so
-text stays crisp. Every number below is in lp.
+draws at the output resolution, 1.5 device pixels per lp (egui's `pixels_per_point`), from a font
+atlas egui rasterizes at that scale, so text stays crisp. Every number below is in lp.
 
 ```text
  y    0 +--------------------------------------------------------------------------+
@@ -408,8 +421,9 @@ Consoles name colour roles; only the theme (`data/ui/theme.json`, proposed; the 
 Label; value (number and unit); bar (fill for the actual value, a tick for the setpoint, a ghost
 for the preview); slider (a bar you drag); button; guarded button; toggle; list (fixed rows,
 scrolls); plot (a 2D top-down or polar view with a world-to-panel transform); gauge; diagram
-(nodes and edges, for the power buses). Every widget has a stable id (panel id and index) so focus
-and network commands can name it.
+(nodes and edges, for the power buses). Every widget has a stable id (panel id and index, which is
+also its egui `Id`) so focus and network commands can name it. Each is a small function over egui's
+painter and response types, written once and shared by every console.
 
 #### 8.5 Guarded controls
 
@@ -420,7 +434,9 @@ compartment, open a drop door, depressurize a bay, active ping, red alert, distr
 #### 8.6 Input
 
 Every input device drives every console (CLAUDE.md 10): whichever keyboard, mouse or pad the
-player is using. Gamepad names follow SDL's GameController positions (A south, B east, X west,
+player is using. egui takes pointer and keyboard events from SDL; our input layer turns the
+gamepad's D-pad into directional focus moves between widgets and A into activation, so a pad needs
+no mouse emulation. Gamepad names follow SDL's GameController positions (A south, B east, X west,
 Y north). Shared bindings while seated:
 
 | Action | Keyboard and mouse | Gamepad |
@@ -440,12 +456,26 @@ proposed) and can be rebound.
 
 #### 8.7 Cost
 
-One vertex buffer streamed per frame: at most 3,000 quads (6,000 triangles), 12 bytes per vertex
-(position 2 x int16, UV 2 x uint16, colour RGBA8), 144 KB uploaded per frame. Draw calls: one for
-the font-and-panel atlas, one when a panel shows the viewscreen texture (Science), at most two more
-where a scrolling list needs a scissor: **at most 4 draw calls, 6,000 triangles**. Building the
-draw list stays inside `engine-stack`'s UI share of the client main thread (3 ms). The font atlas is
-1024 x 512 single-channel at 1.5x scale: 0.5 MB.
+egui tessellates a frame into meshes, one per run of shapes that share a clip rectangle and a
+texture, and `egui_glow` draws each mesh with one call. Under the fixed-panel rules a panel is one
+clip rectangle, so the calls follow the panel count:
+
+| Part | Draw calls |
+| --- | ---: |
+| Title band and status strip | 2 |
+| Panels (at most 7 per console, a validator rule; Engineering's 6 are the most in section 10) | 7 |
+| A scrolling list inside a panel (its own clip rectangle) | at most 3 |
+| A texture in a panel: Science's viewscreen thumbnail, or one secondary feed (section 11.2) | 1 |
+| Headroom for egui splitting a run when text and shapes interleave | 3 |
+| **Ceiling** | **16** |
+
+Geometry: at most 6,000 triangles (about 3,000 glyph and panel quads, plus egui's anti-aliasing
+feather on lines and rings). egui's vertex is 20 bytes (position 2 x f32, UV 2 x f32, colour RGBA8),
+so the frame streams at most about 240 KB of vertices and 72 KB of 32-bit indices. The font atlas
+holds the three text sizes of section 8.2 at 1.5x: estimated 1024 x 1024 RGBA8, 4 MB of the 96 MB
+texture budget. Building and tessellating a console stays inside `engine-stack`'s UI share of the
+client main thread (2 ms); the probe measures it with 200 panels and 4,000 glyphs, far more than any
+console here, and a console that does not fit is cut down, not the rule.
 
 ### 9. Preview is resolver, console by console
 
@@ -740,6 +770,13 @@ proud of the forward bulkhead (so it never shares the wall's plane), spanning 3.
 - **When it is skipped.** The render target is per client and only presentation. A client skips
   the pass when no local view can see the screen (the player is off the bridge, or seated at a
   side station with the look band and Science's thumbnail both not showing it).
+- **Secondary feeds on consoles.** `engine-stack`'s budget allows up to two more views at 512 x 256
+  and at most 15 Hz. The bridge uses at most one per client, and only while a console shows it:
+  Flight ops' F4 can swap its plot for the tasked craft's camera (CRAFT CAM, a footer toggle), and
+  Bay control's F1 can show the hangar camera. Science's S4 thumbnail is the viewscreen's own
+  texture and costs no pass. Tactical has no turret view (question B10). The second slot is left
+  to `shuttle-bay-and-fighters` (a cockpit's rear view). The mockup does not draw a secondary
+  feed.
 
 #### 11.3 The windows
 
@@ -792,15 +829,22 @@ Low poly stays the style: these are ceilings, and the estimates sit well under t
 | Crew avatars on the bridge, up to 8 | 24,000 | 8 | | `crew-on-deck` |
 | Exterior through the windows (scissored) | 30,000 | 30 | | `ship-frames` |
 | Viewscreen pass, every frame at 30 Hz | 30,000 | 30 | | `ship-frames` |
-| Console UI while seated | 6,000 | 4 | 144 KB per frame streamed; font atlas 0.5 MB | this change |
-| **Worst frame on the bridge** | **116,006 (58 %)** | **79 (26 %)** | | |
+| Secondary feed on a console (Flight ops' craft camera), 15 Hz | 15,000 | 15 | Target 512 x 256 RGBA8 0.5 MB, depth 0.5 MB | `ship-frames` |
+| Console UI while seated (egui) | 6,000 | 16 | About 312 KB per frame streamed; font atlas about 4 MB | this change |
+| **Worst frame on the bridge** | **131,006 (66 %)** | **106 (35 %)** | | |
 
 - **Fill.** Standing, the interior covers the 1280 x 720 3D frame; the windows add about 8 % of it
   scissored; the viewscreen pass is 524,288 pixels (57 % of a 3D frame) every frame at 30 Hz.
-  Seated, the 3D passes draw only the 1280 x 240 look band (33 %), and the console panels are opaque.
+  Seated, the 3D passes draw only the 1280 x 240 look band (33 %), the console panels are opaque,
+  and a secondary feed adds 131,072 pixels (14 %) on the frames it renders at 15 Hz.
+- **The worst frame is a sum of things that do not all happen at once**: the console UI and a
+  secondary feed only while seated, when the look band has already cut the 3D fill by two thirds;
+  the windows' exterior pass only when a window is in view. Against `engine-stack`'s guidance to
+  plan scenes at about half the ceiling, the standing frame (no UI, no feed: 110,006 triangles and
+  75 calls) sits at 55 % and 25 %, and the seated worst case above at 66 % and 35 %.
 - **CPU, server.** Automation for every station steps at 10 Hz inside the systems step; proposed
   ceiling 0.2 ms per systems step on one A76 core (inside `engine-stack`'s 2 ms per ship per tick).
-- **CPU, client.** Console UI build inside the 3 ms UI share.
+- **CPU, client.** Console UI build and tessellation inside the 2 ms UI share (section 8.7).
 - **Network.** The seat table grows by 1 byte per station (section 3); orders are reliable commands
   of about 16 bytes; a seated player's console commands are at most 10 a second of about 12 bytes
   (about 1 kbit/s up, inside 16 kbit/s); the helm's stick rides the input channel at 20 Hz.
@@ -815,7 +859,8 @@ Low poly stays the style: these are ceilings, and the estimates sit well under t
   (CLAUDE.md 6.5).
 - `data/consoles/<console>.json`: panels as `{ id, title, col, row, w, h, widgets }`. A validator
   (in `sc-core`'s tests and `tools/`) checks every panel sits inside the 12 x 4 grid, no two panels
-  overlap, every widget's text band fits its panel, and the grid is filled.
+  overlap, every widget's text band fits its panel, the grid is filled, and a console has at most 7
+  panels (the draw call ceiling of section 8.7).
 - `data/input/bindings.json`: per station and shared, keyboard, mouse and gamepad.
 - `data/ui/theme.json`: the colour roles of section 8.3 and the font sizes.
 
@@ -856,7 +901,7 @@ An excerpt of `data/stations.json`:
 | `ship-frames` | The exterior pose, the viewscreen camera, the window pass and its scissor, the turret sight's pass; `frames::damper_load` | The viewscreen feed selection; brace |
 | `crew-on-deck` | Bodies, the seat snap clip, downed state, braced state, the crew collider | Seat claim, release, relieve and swap rules; NPC posts |
 | `deck-pipeline`, `light-baking` | The compiled bridge mesh in budget; three baked colour sets; per-compartment state uniforms | Fixture positions and furniture sizes (section 11) |
-| `engine-stack` | The Pi 5 budget; the UI layer; the render target; the audio voices | This budget's spend (section 12) |
+| `engine-stack` | The Pi 5 budget; egui and `egui_glow` with the probe's measurement of them (E3); the viewscreen target and the secondary views; the audio voices | This budget's spend (section 12); the console UI's workload for the probe |
 
 ### 15. Lessons from star-crew-64
 
@@ -890,7 +935,10 @@ An excerpt of `data/stations.json`:
 - **The look band costs a third of the console's height.** Side stations would gain two panel rows
   without it. CLAUDE.md 10 asks for the bridge to stay visible, and the band is also a fill saving.
 - **The viewscreen pass at 30 Hz** is 57 % of a 3D frame's pixels. If the Pi 5 probe finds fill
-  binding, it drops to 15 Hz before anything else does.
+  binding, it drops to 15 Hz before anything else does, and the secondary feed goes before it.
+- **egui on an A76** is estimated at a millisecond or two a frame (`engine-stack` E3) and is not
+  measured yet. The console rules are written so that swapping it for our own panel layer changes
+  only the drawing code.
 
 ## Open questions
 
@@ -909,4 +957,4 @@ taken (ask only with screenshots)".
 | B7 | Body swap on by default? | On / off / per session | On, as a session setting (a solo player needs it). Recommendation taken (ask only with screenshots) | none |
 | B8 | Viewscreen refresh: 30 Hz (the budget allows it) or 15 Hz (half the pass)? | 30 Hz / 15 Hz | 30 Hz, dropping to 15 Hz if the probe finds fill binding. Recommendation taken (ask only with screenshots) | none |
 | B9 | Merge every unmanned station to a tab (one player runs everything), or only the vision's three merges? | All, by merge list / only Captain, Comms and Flight ops | All, by merge list. Recommendation taken (ask only with screenshots) | none |
-| B10 | Gunner turrets: no remote gunnery from Tactical? | None / remote sight from Tactical | None: the pods are the reason to leave the bridge. Recommendation taken (ask only with screenshots) | none |
+| B10 | Gunner turrets: no remote gunnery from Tactical? The Pi 5 budget's secondary view (512 x 256 at 15 Hz) could carry a sight, so this is a design choice, not a cost | None / remote sight from Tactical | None: the pods are the reason to leave the bridge. Recommendation taken (ask only with screenshots) | none |

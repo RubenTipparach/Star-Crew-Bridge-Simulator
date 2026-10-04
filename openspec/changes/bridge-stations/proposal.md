@@ -40,14 +40,16 @@ Everything below is **proposed** unless it says it comes from the layout or the 
   holds (netcode-and-sessions).
 - **Command**: the captain's condition (normal, red alert), orders to stations with acknowledge
   and unable, and what red alert changes ship-wide (lighting, automation presets, klaxon).
-- **The console UI framework**: immediate-mode 2D on a 1280 by 720 logical canvas (drawn at
-  1.5 device pixels per logical pixel on the Pi 5's 1920x1080 output), a title band, a look band
+- **The console UI framework**: `egui` (with `egui_glow`) drawing inside our fixed-panel rules,
+  as `engine-stack` decides (question E3), on a 1280 by 720 logical canvas (drawn at 1.5 device
+  pixels per logical pixel on the Pi 5's 1920x1080 output), a title band, a look band
   that keeps the bridge and viewscreen visible above the console, a 12 by 4 panel grid with
   fixed panel sizes, a status strip, colour roles, text bands, guarded controls, and a pixel
   wireframe for every bridge console. Every preview on a console calls the function that
   resolves it.
 - **The bridge as a room**: its dimensions from the layout, sightlines from every seat to the
-  viewscreen, the viewscreen (feeds, who steers it, its 512x256 render target at 15 Hz), the two
+  viewscreen, the viewscreen (feeds, who steers it, its 1024x512 render target at up to 30 Hz),
+  the one secondary feed a console may show (512x256 at up to 15 Hz, of the budget's two), the two
   windows, lamps and strips for normal, red alert and emergency power, sound, and its Pi 5 cost.
 - **A mockup**, `docs/mockups/bridge.html`: the bridge built from the layout with a live
   exterior on the viewscreen and through the windows, three lighting states, walk mode, and every
@@ -70,15 +72,16 @@ None. `openspec/specs/` holds nothing yet.
 - **Core (proposed):** a `crew` module in the simulation core owning stations, operators, seats,
   orders and condition; an `automation` module; the console previews call `power`, `flight`,
   `weapons`, `shields`, `sensors`, `life_support` and `damage` functions those changes own.
-- **Client (proposed):** the immediate-mode UI module (one font atlas, one streamed vertex
-  buffer, at most 4 draw calls), the console layouts, the look band viewport, the viewscreen
-  render target.
+- **Client (proposed):** the console layer on egui (fixed panel rectangles, our theme, gamepad
+  focus; at most 16 draw calls and 6,000 triangles), the console layouts, the look band viewport,
+  the viewscreen render target and the secondary feed.
 - **Other changes:** `power-grid`, `weapons-and-shields`, `flight-and-navigation`,
   `shuttle-bay-and-fighters`, `life-support`, `damage-control`, `netcode-and-sessions`,
   `ship-frames`, `crew-on-deck`, `deck-pipeline`, `engine-stack` (the Pi 5 budget table). The
   interfaces are listed in design.md.
 - **Pi 5 budget:** the bridge's own geometry is about 18,000 triangles in 3 draw calls (60 % of
-  its 30,000 ceiling). With the command passage seen through the aft door, eight crew avatars,
-  the exterior through the windows, the viewscreen pass and the console UI, the worst frame on
-  the bridge is about 116,000 triangles and 79 draw calls: 58 % and 26 % of the provisional
-  Pi 5 budget. The breakdown is in design.md.
+  its 30,000 ceiling). Standing, with the command passage seen through the aft door, eight crew
+  avatars, the exterior through the windows and the 1024x512 viewscreen pass, a frame is about
+  110,000 triangles and 75 draw calls (55 % and 25 % of the provisional Pi 5 budget). Seated, with
+  the console UI and a secondary feed added, the worst frame is about 131,000 triangles and 106
+  draw calls (66 % and 35 %). The breakdown is in design.md section 12.

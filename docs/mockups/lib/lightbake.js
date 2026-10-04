@@ -9,7 +9,11 @@
  *     closed doors (shadow rays to sample points on each lamp);
  *   - emissive surfaces (screens, light strips, the viewscreen) as area lights;
  *   - ambient occlusion on a small ambient term;
- *   - zero, one or two diffuse bounces, gathered from a coarse irradiance cache;
+ *   - zero, one or two diffuse bounces, gathered once on a coarse irradiance
+ *     cache (a uniform 0.5 m grid on every surface, many rays per point) and
+ *     interpolated to vertices and texels: bounce is smooth, so this is both
+ *     quieter and cheaper than gathering at every output sample (after Ward's
+ *     irradiance caching);
  *   - all three lighting states (normal, red alert, emergency power) from one
  *     set of rays, because light is linear in its sources;
  *   - storage as 8-bit gamma-encoded vertex colours (three sets), or as a
@@ -54,7 +58,9 @@
     reference_lux: 100,      // irradiance that shows a surface at exactly its palette colour
     shadow_samples: 12,      // per lamp per receiver; adaptive: 4 first, the rest only in penumbra
     emitter_sample_area_m2: 0.06, // one sample per this much emissive area, 4 to 16 per emitter
-    gather_rays: 48,         // cosine-weighted rays per receiver for bounce
+    gather_rays: 48,         // cosine-weighted rays per sample, where bounce is gathered per sample (probes)
+    cache_gather_rays: 128,  // cosine-weighted rays per irradiance-cache vertex; outputs interpolate the cache
+    bounce_from_cache: true, // false: gather bounce at every output sample (noisier, slower; for comparison)
     ao_rays: 24,             // cosine-weighted rays per receiver for ambient occlusion
     ao_radius_m: 0.8,
     ao: true,
@@ -241,6 +247,7 @@
       st: new Float32Array(b.st), patchOfVertex: new Int32Array(b.pv), patchOfTriangle: new Int32Array(b.tp),
       indices: nv < 65536 ? new Uint16Array(b.idx) : new Uint32Array(b.idx),
       vertexCount: nv, triangleCount: nt, uv2: b.uv2 ? new Float32Array(b.uv2) : null, keys: new Uint32Array(b.keys || []),
+      grids: b.grids || null, // per patch: { base, nu, nv } of its uniform grid (quad patches from tessellate), else null
     };
     for (let i = 0; i < nv; i++) {
       const p = patches[m.patchOfVertex[i]];
@@ -255,12 +262,13 @@
    * filter(p) are included; patch indices refer to the full list.
    */
   function tessellate(patches, spacing, filter) {
-    const b = meshBuilder(); b.keys = [];
+    const b = meshBuilder(); b.keys = []; b.grids = new Array(patches.length).fill(null);
     patches.forEach((p, pi) => {
       if (filter && !filter(p)) return;
       const nu = isFinite(spacing) ? Math.max(1, Math.round(p.lenU / spacing)) : 1;
       const nv = isFinite(spacing) ? Math.max(1, Math.round(p.lenV / spacing)) : 1;
       const base = b.pv.length;
+      if (!p.tri) b.grids[pi] = { base, nu, nv };
       if (!p.tri) {
         for (let j = 0; j <= nv; j++) for (let i = 0; i <= nu; i++) {
           const s = i / nu, t = j / nv;
@@ -480,6 +488,7 @@
     return {
       settings, patches, lights, emitters, ambient, cache, bvh, triAlbedo,
       source: null, // per cache vertex, 9 floats: the light that bounce rays pick up
+      field: null,  // per cache vertex, 9 floats: the bounce irradiance there (bounce_from_cache)
       rays: { shadow: 0, gather: 0, ao: 0 }, buildMs: performance.now() - t0,
     };
   }
@@ -495,7 +504,7 @@
    * normal and a seed key, so every output form agrees by construction.
    * Adds into out[9] (lux per state, RGB) and returns the AO factor.
    */
-  function irradiance(S, px, py, pz, nx, ny, nz, key, what, out) {
+  function irradiance(S, px, py, pz, nx, ny, nz, key, what, out, gatherRays) {
     const set = S.settings, B = S.bvh, seed = set.seed >>> 0;
     const ox = px + nx * set.bias_m, oy = py + ny * set.bias_m, oz = pz + nz * set.bias_m;
     let ao = 1;
@@ -588,7 +597,7 @@
     if ((what & BOUNCE) && S.source && set.bounces > 0) {
       basis(nx, ny, nz, _b);
       const h = hash3(seed, key, 0x4000), r1 = u01(h), r2 = u01(mix32(h));
-      const src = S.source, I = S.cache.indices, alb = S.triAlbedo, n = set.gather_rays;
+      const src = S.source, I = S.cache.indices, alb = S.triAlbedo, n = gatherRays || set.gather_rays;
       let a0 = 0, a1 = 0, a2 = 0, a3 = 0, a4 = 0, a5 = 0, a6 = 0, a7 = 0, a8 = 0;
       for (let k = 0; k < n; k++) {
         const a = frac(r1 + k * R2A), bb = frac(r2 + k * R2B);
@@ -633,40 +642,83 @@
   }
 
   /**
-   * Light the irradiance cache that bounce rays read: direct light at every
-   * cache vertex, then, for two bounces, one gather pass over it. Call once per
-   * scene (and per change of bounce count) before baking outputs.
+   * Light the irradiance cache: direct light at every cache vertex (what
+   * bounce rays pick up), then, for two bounces, one gather pass over it.
+   * With bounce_from_cache, one more gather (cache_gather_rays per vertex)
+   * stores the bounce irradiance itself at every cache vertex, and outputs
+   * interpolate it instead of gathering per sample. Call once per scene (and
+   * per change of bounce count) before baking outputs.
    */
   async function prepare(S, onProgress) {
-    const t0 = performance.now();
+    const t0 = performance.now(), set = S.settings;
     const C = S.cache, nv = C.vertexCount, src = new Float32Array(nv * 9), tmp = new Float32Array(9), p = [0, 0, 0];
     const y = yielder(S, onProgress);
-    S.source = null;
-    if (S.settings.bounces > 0) {
+    const passes = 1 + (set.bounces > 1 ? 1 : 0) + (set.bounce_from_cache ? 1 : 0);
+    let pass = 0;
+    const gatherPass = async (from, rays, salt) => {
+      const out = new Float32Array(nv * 9);
+      S.source = from;
       for (let i = 0; i < nv; i++) {
         const P = S.patches[C.patchOfVertex[i]];
-        pointOn(P, C.st[i * 2], C.st[i * 2 + 1], S.settings.inset_m, p);
+        pointOn(P, C.st[i * 2], C.st[i * 2 + 1], set.inset_m, p);
+        tmp.fill(0);
+        irradiance(S, p[0], p[1], p[2], P.n[0], P.n[1], P.n[2], mix32(C.keys[i] ^ salt), BOUNCE, tmp, rays);
+        out.set(tmp, i * 9);
+        if ((i & 31) === 0) await y((pass + i / nv) / passes);
+      }
+      pass++;
+      return out;
+    };
+    S.source = null; S.field = null;
+    if (set.bounces > 0) {
+      for (let i = 0; i < nv; i++) {
+        const P = S.patches[C.patchOfVertex[i]];
+        pointOn(P, C.st[i * 2], C.st[i * 2 + 1], set.inset_m, p);
         tmp.fill(0);
         irradiance(S, p[0], p[1], p[2], P.n[0], P.n[1], P.n[2], C.keys[i], DIRECT, tmp);
         src.set(tmp, i * 9);
-        if ((i & 63) === 0) await y(0.5 * i / nv);
+        if ((i & 63) === 0) await y(i / nv / passes);
       }
-      S.source = src;
-      if (S.settings.bounces > 1) {
+      pass++;
+      let from = src;
+      if (set.bounces > 1) {
+        const g = await gatherPass(src, set.gather_rays, 0x5bd1e995);
         const second = new Float32Array(nv * 9);
-        for (let i = 0; i < nv; i++) {
-          const P = S.patches[C.patchOfVertex[i]];
-          pointOn(P, C.st[i * 2], C.st[i * 2 + 1], S.settings.inset_m, p);
-          tmp.fill(0);
-          irradiance(S, p[0], p[1], p[2], P.n[0], P.n[1], P.n[2], mix32(C.keys[i] ^ 0x5bd1e995), BOUNCE, tmp);
-          for (let c = 0; c < 9; c++) second[i * 9 + c] = src[i * 9 + c] + tmp[c];
-          if ((i & 31) === 0) await y(0.5 + 0.5 * i / nv);
-        }
-        S.source = second;
+        for (let k = 0; k < second.length; k++) second[k] = src[k] + g[k];
+        from = second;
       }
+      if (set.bounce_from_cache) S.field = await gatherPass(from, set.cache_gather_rays, 0x27d4eb2f);
+      S.source = from;
     }
     S.prepareMs = performance.now() - t0;
     return S;
+  }
+
+  /**
+   * Add the cached bounce at (s, t) on patch pi into out[9], bilinear between
+   * the four cache vertices around it. Returns false when there is no cached
+   * value there (no field, or a triangle patch), and the caller gathers.
+   */
+  function bounceAt(S, pi, s, t, out) {
+    const g = S.field && S.cache.grids ? S.cache.grids[pi] : null;
+    if (!g) return false;
+    const x = Math.min(g.nu, Math.max(0, s * g.nu)), yy = Math.min(g.nv, Math.max(0, t * g.nv));
+    const i = Math.min(g.nu - 1, Math.floor(x)), j = Math.min(g.nv - 1, Math.floor(yy)), fx = x - i, fy = yy - j;
+    const a = (g.base + j * (g.nu + 1) + i) * 9, b = a + 9, c = a + (g.nu + 1) * 9, d = c + 9, F = S.field;
+    const wa = (1 - fx) * (1 - fy), wb = fx * (1 - fy), wc = (1 - fx) * fy, wd = fx * fy;
+    for (let k = 0; k < 9; k++) out[k] += wa * F[a + k] + wb * F[b + k] + wc * F[c + k] + wd * F[d + k];
+    return true;
+  }
+
+  /** All light at a point on patch pi: direct and ambient here, bounce from the cache where it has one. Returns AO. */
+  function receive(S, pi, s, t, pt, key, out) {
+    const P = S.patches[pi];
+    if (S.field && S.cache.grids && S.cache.grids[pi]) {
+      const ao = irradiance(S, pt[0], pt[1], pt[2], P.n[0], P.n[1], P.n[2], key, DIRECT | AMBIENT, out);
+      bounceAt(S, pi, s, t, out);
+      return ao;
+    }
+    return irradiance(S, pt[0], pt[1], pt[2], P.n[0], P.n[1], P.n[2], key, ALL, out);
   }
 
   // ------------------------------------------------------------ encoding
@@ -696,10 +748,10 @@
     const nv = mesh.vertexCount, E = new Float32Array(nv * 9), ao = new Float32Array(nv), tmp = new Float32Array(9), p = [0, 0, 0];
     const y = yielder(S, onProgress);
     for (let i = 0; i < nv; i++) {
-      const P = S.patches[mesh.patchOfVertex[i]];
-      pointOn(P, mesh.st[i * 2], mesh.st[i * 2 + 1], S.settings.inset_m, p);
+      const pi = mesh.patchOfVertex[i], P = S.patches[pi], s = mesh.st[i * 2], t = mesh.st[i * 2 + 1];
+      pointOn(P, s, t, S.settings.inset_m, p);
       tmp.fill(0);
-      ao[i] = irradiance(S, p[0], p[1], p[2], P.n[0], P.n[1], P.n[2], mesh.keys[i], ALL, tmp);
+      ao[i] = receive(S, pi, s, t, p, mesh.keys[i], tmp);
       E.set(tmp, i * 9);
       if ((i & 15) === 0) await y(i / nv);
     }
@@ -868,9 +920,11 @@
       const v = outVerts[n], R = P[mesh.patchOfVertex[n]];
       E.set(v.E, n * 9); ao[n] = v.ao;
       if (S.source && set.bounces > 0) {
-        pointOn(R.p, v.s, v.t, set.inset_m, pp);
         tmp.fill(0);
-        irradiance(S, pp[0], pp[1], pp[2], R.p.n[0], R.p.n[1], R.p.n[2], v.key, BOUNCE, tmp);
+        if (!bounceAt(S, R.pi, v.s, v.t, tmp)) {
+          pointOn(R.p, v.s, v.t, set.inset_m, pp);
+          irradiance(S, pp[0], pp[1], pp[2], R.p.n[0], R.p.n[1], R.p.n[2], v.key, BOUNCE, tmp);
+        }
         for (let c = 0; c < 9; c++) E[n * 9 + c] += tmp[c];
       }
       if ((n & 15) === 0) await y(0.8 + 0.2 * n / outVerts.length);
@@ -918,7 +972,7 @@
         pointOn(p, s, t, set.inset_m, pp);
         tmp.fill(0);
         const key = hash3(r.pi, 0x10000 + i, j);
-        const a = irradiance(S, pp[0], pp[1], pp[2], p.n[0], p.n[1], p.n[2], key, ALL, tmp);
+        const a = receive(S, r.pi, s, t, pp, key, tmp);
         const at = (r.y + 1 + j) * W + (r.x + 1 + i);
         E.set(tmp, at * 9); AO[at] = a; keys[at] = key;
         done++;
@@ -1080,7 +1134,7 @@
   window.LightBake = {
     version: 1, STATES, DEFAULTS, GAMMA, OVERBRIGHT,
     patch, boxPatches, patchesFromGeometry, tessellate, buildBVH, occluded, closest,
-    scene, prepare, irradiance, bakeVertices, bakeAdaptive, bakeLightmap, probeCube, cubeDisplay,
+    scene, prepare, irradiance, bounceAt, bakeVertices, bakeAdaptive, bakeLightmap, probeCube, cubeDisplay,
     encodeLevel, srgbToLinear, hexToSrgb, hexToLinear, hash3, digest,
     toGeometry, vertexMaterial, lightmapTextures, lightmapMaterial, atlasCanvas,
     DIRECT, AMBIENT, BOUNCE, ALL,

@@ -197,7 +197,13 @@ keyboard and mouse or with a gamepad, whichever they are using, with bindings fr
 The bridge viewscreen SHALL show the exterior scene from the selected feed's camera, rendered into
 one 1024 x 512 render target at up to 30 Hz, following the ship's exterior pose, while the bridge
 interior does not move. Science SHALL choose the feed and zoom; the captain SHALL be able to
-override it. A client SHALL skip the pass when none of its views shows the viewscreen.
+override it. A client SHALL skip the pass when none of its views shows the viewscreen. A console
+SHALL show at most one secondary feed, rendered at 512 x 256 at up to 15 Hz, and only while that
+console shows it.
+
+#### Scenario: A craft camera on Flight ops
+- **WHEN** the Flight ops player switches F4 to Swift 1's camera
+- **THEN** that client renders one 512 x 256 view at up to 15 Hz into F4, and stops rendering it when F4 returns to its plot
 
 #### Scenario: The ship turns
 - **WHEN** the ship yaws 30 deg to port
@@ -209,7 +215,7 @@ override it. A client SHALL skip the pass when none of its views shows the views
 
 ### Requirement: The bridge stays within its Pi 5 budget
 The compiled bridge geometry SHALL be at most 30,000 triangles in at most 3 draw calls, and the
-seated console UI at most 6,000 triangles in at most 4 draw calls. The deck build SHALL refuse a
+seated console UI at most 6,000 triangles in at most 16 draw calls. The deck build SHALL refuse a
 bridge over its budget.
 
 #### Scenario: Over budget

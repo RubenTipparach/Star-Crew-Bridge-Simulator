@@ -23,7 +23,7 @@
   :root[data-theme="dark"] { --bg: #05070d; }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font: 13px/1.4 system-ui, sans-serif; overflow: hidden; }
   canvas { display: block; }
-  .controls { position: fixed; left: 12px; bottom: 12px; z-index: 20; background: rgba(6,9,14,0.86); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; display: flex; gap: 4px 5px; flex-wrap: wrap; align-items: center; max-width: calc(100vw - 260px); }
+  .controls { position: fixed; left: 12px; bottom: 12px; z-index: 20; background: rgba(6,9,14,0.86); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; display: flex; gap: 4px 5px; flex-wrap: wrap; align-items: center; max-width: calc(100vw - 370px); }
   .controls .grp { color: var(--dim); font-size: 11px; margin: 0 2px 0 6px; }
   .controls button { background: #18202a; color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 3px 7px; font: 12px system-ui, sans-serif; cursor: pointer; }
   .controls button.on { border-color: var(--accent); color: var(--accent); }
@@ -548,7 +548,7 @@ const titleEl = K.titleBlock({
   subtitle: L.ship.name + ", " + L.ship.class + ": the bridge (POI 1) and the command passage behind its aft door",
   change: "bridge-stations",
 });
-const hud = K.budgetHud({ note: "all passes: viewscreen 1024x512, windows, interior, console" });
+const hud = K.budgetHud({ note: "viewscreen 1024x512, windows, deck, UI" });
 window.MOCKUP_BUDGET = () => hud.read();
 const hex = (c) => "#" + new THREE.Color(c).getHexString();
 
@@ -1016,26 +1016,46 @@ const IFF = { h: "iff-h", n: "iff-n", f: "iff-f", u: "iff-u" };
 const IFFHEX = { h: "#ef5350", n: "#e8c547", f: "#66bb6a", u: "#b0bec5" };
 
 // Contacts (illustrative): T1 is the raider in the exterior scene, its range and bearing live.
+// Every plot places a contact from its range (km) and bearing (deg), so a plot and a table agree.
 const CONTACTS = [
-  { id: "T1", cls: "Raider frigate", iff: "h", r: "0.53", brg: "352", cl: "-12", x: -0.12, y: 0.55 },
-  { id: "T2", cls: "Fighter", iff: "h", r: "0.49", brg: "341", cl: "+48", x: -0.2, y: 0.47 },
-  { id: "T3", cls: "Fighter", iff: "h", r: "0.60", brg: "008", cl: "+31", x: 0.07, y: 0.62 },
-  { id: "T4", cls: "Fighter", iff: "h", r: "0.58", brg: "349", cl: "-6", x: -0.1, y: 0.6 },
-  { id: "N1", cls: "Freighter Kestle Moor", iff: "n", r: "7.8", brg: "061", cl: "-3", x: 0.62, y: 0.38 },
-  { id: "U1", cls: "Unknown", iff: "u", r: "18.4", brg: "212", cl: "+2", x: -0.4, y: -0.75 },
+  { id: "T1", cls: "Raider frigate", iff: "h", r: "0.53", brg: "352", cl: "-12" },
+  { id: "T2", cls: "Fighter", iff: "h", r: "0.92", brg: "331", cl: "+48" },
+  { id: "T3", cls: "Fighter", iff: "h", r: "0.78", brg: "018", cl: "+31" },
+  { id: "T4", cls: "Fighter", iff: "h", r: "1.46", brg: "346", cl: "-6" },
+  { id: "N1", cls: "Freighter Kestle Moor", iff: "n", r: "7.8", brg: "061", cl: "-3" },
+  { id: "U1", cls: "Unknown", iff: "u", r: "18.4", brg: "212", cl: "+2" },
 ];
+/** Plot offset (px, y down) of a contact on a plot drawn at pxPerKm. */
+const contactXY = (c, pxPerKm) => { const a = Number(c.brg) * deg, r = Number(c.r) * pxPerKm; return [r * Math.sin(a), -r * Math.cos(a)]; };
 
 function svgPlot(w, h, inner) { return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block">${inner}</svg>`; }
-function contactsSvg(cx, cy, scale, sel, opts) {
+/**
+ * Contacts at their true range and bearing. One beyond edgePx is drawn as a hollow mark on the
+ * plot's edge with its range; labels that would collide are merged ("T1, T3").
+ */
+function contactsSvg(cx, cy, pxPerKm, sel, opts) {
   opts = opts || {};
-  return CONTACTS.filter((c) => !opts.only || opts.only.includes(c.id)).map((c) => {
-    const x = cx + c.x * scale, y = cy - c.y * scale, col = IFFHEX[c.iff];
-    const mark = c.iff === "u" ? `<rect x="${x - 4}" y="${y - 4}" width="8" height="8" fill="none" stroke="${col}" stroke-width="1.5"/>` : c.iff === "h" ? `<path d="M${x} ${y - 5} L${x + 5} ${y + 4} L${x - 5} ${y + 4} Z" fill="${col}"/>` : `<circle cx="${x}" cy="${y}" r="4" fill="${col}"/>`;
-    return mark + (c.id === sel ? `<rect x="${x - 8}" y="${y - 8}" width="16" height="16" fill="none" stroke="#fff" stroke-dasharray="3 2"/>` : "") + `<text x="${x + 7}" y="${y + 4}" fill="${col}" font-size="10">${c.id}</text>`;
-  }).join("");
+  const edge = opts.edgePx || Infinity, groups = [];
+  let marks = "";
+  for (const c of CONTACTS.filter((c) => !opts.only || opts.only.includes(c.id))) {
+    let [dx, dy] = contactXY(c, pxPerKm);
+    const d = Math.hypot(dx, dy), off = d > edge;
+    if (off) { dx *= edge / d; dy *= edge / d; }
+    const x = cx + dx, y = cy + dy, col = IFFHEX[c.iff];
+    if (off) marks += `<path d="M${x} ${y - 5} L${x + 5} ${y} L${x} ${y + 5} L${x - 5} ${y} Z" fill="none" stroke="${col}" stroke-width="1.5"/>`;
+    else if (c.iff === "u") marks += `<rect x="${x - 4}" y="${y - 4}" width="8" height="8" fill="none" stroke="${col}" stroke-width="1.5"/>`;
+    else if (c.iff === "h") marks += `<path d="M${x} ${y - 5} L${x + 5} ${y + 4} L${x - 5} ${y + 4} Z" fill="${col}"/>`;
+    else marks += `<circle cx="${x}" cy="${y}" r="4" fill="${col}"/>`;
+    if (c.id === sel) marks += `<rect x="${x - 8}" y="${y - 8}" width="16" height="16" fill="none" stroke="#fff" stroke-dasharray="3 2"/>`;
+    const text = off ? `${c.id} ${c.r} km` : c.id;
+    const g = groups.find((g) => Math.abs(g.x - x) < 26 && Math.abs(g.y - y) < 11);
+    if (g) g.ids.push(text); else groups.push({ x, y, col, ids: [text] });
+  }
+  const anchorEnd = (g) => g.x > cx + edge * 0.55 && edge < Infinity;
+  return marks + groups.map((g) => `<text x="${anchorEnd(g) ? g.x - 8 : g.x + 7}" y="${g.y + 4}" fill="${g.col}" font-size="10" text-anchor="${anchorEnd(g) ? "end" : "start"}">${g.ids.join(", ")}</text>`).join("");
 }
 const shipGlyph = (x, y, s) => `<path d="M${x} ${y - 9 * s} L${x + 5 * s} ${y + 7 * s} L${x} ${y + 4 * s} L${x - 5 * s} ${y + 7 * s} Z" fill="#e8eef5"/>`;
-function rings(cx, cy, rs, labels) { return rs.map((r, i) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#2b3540"/>` + (labels ? `<text x="${cx + 3}" y="${cy - r - 2}" fill="#5d6b7a" font-size="9">${labels[i]}</text>` : "")).join(""); }
+function rings(cx, cy, rs, labels) { return rs.map((r, i) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#2b3540"/>` + (labels && labels[i] ? `<text x="${cx + 3}" y="${cy - r - 2}" fill="#5d6b7a" font-size="9">${labels[i]}</text>` : "")).join(""); }
 
 const FACES = ["Bow", "Stern", "Port", "Stbd", "Dorsal", "Ventral"];
 const FACE_SHARE = [30, 10, 15, 25, 10, 10];          // % of capacity (tactical preset BOW, science leaned starboard)
@@ -1052,20 +1072,31 @@ function statusStrip(op) {
     `<span><span class="k">REACTOR</span>41.2 MW</span><span><span class="k">SPEED</span>${live("speed", "182")} m/s</span><span><span class="k">FIRES</span><span class="warn">1</span></span><span><span class="k">BREACHES</span>0</span><span style="margin-left:auto"><span class="k">OPERATOR</span>${op}</span></div>`;
 }
 
+/** The helm's heading tape at heading hdg (deg): ticks every 10 deg, labels every 30, 3.33 lp per deg, and the ordered heading's bug clamped to the tape's ends. */
+const ORDERED_HDG = 45;
+function tapeMarks(hdg) {
+  let s = "";
+  for (let a = Math.ceil((hdg - 60) / 10) * 10; a <= hdg + 60; a += 10) {
+    const x = 198 + (a - hdg) * 3.33, h = ((a % 360) + 360) % 360;
+    s += `<line x1="${x.toFixed(1)}" y1="18" x2="${x.toFixed(1)}" y2="${h % 30 === 0 ? 34 : 26}" stroke="#5d6b7a"/>`;
+    if (h % 30 === 0 && x > 14 && x < 382) s += `<text x="${x.toFixed(1)}" y="47" fill="#8a98a8" font-size="10" text-anchor="middle">${String(h).padStart(3, "0")}</text>`;
+  }
+  const raw = ((ORDERED_HDG - hdg + 540) % 360) - 180, o = Math.max(-56, Math.min(56, raw)), ox = 198 + o * 3.33, right = ox > 260;
+  const txt = `${raw < -56 ? "< " : ""}ORDERED ${String(ORDERED_HDG).padStart(3, "0")}${raw > 56 ? " >" : ""}`;
+  return s + `<path d="M${ox.toFixed(1)} 54 l5 -8 h-10 z" fill="#ffb300"/><text x="${(right ? ox - 8 : ox + 7).toFixed(1)}" y="54" fill="#ffb300" font-size="9" text-anchor="${right ? "end" : "start"}">${txt}</text>`;
+}
+
 const CONSOLES = {
   helm() {
-    const tape = (() => {
-      let s = ""; for (let d = -60; d <= 60; d += 10) { const x = 198 + d * 3.33; s += `<line x1="${x}" y1="18" x2="${x}" y2="${d % 30 === 0 ? 34 : 26}" stroke="#5d6b7a"/>`; if (d % 30 === 0) s += `<text x="${x}" y="47" fill="#8a98a8" font-size="10" text-anchor="middle" data-tape="${d}">${d}</text>`; }
-      return svgPlot(396, 56, `<rect x="0" y="14" width="396" height="40" fill="#0a0f15"/>${s}<path d="M198 12 l6 -8 h-12 z" fill="#4fc3f7"/><path d="M${198 + 45 * 3.33} 54 l5 -8 h-10 z" fill="#ffb300"/><text x="${198 + 45 * 3.33 + 7}" y="54" fill="#ffb300" font-size="9">ORDERED 045</text>`);
-    })();
-    const nav = svgPlot(604, 336, `<rect width="604" height="336" fill="#0a0f15"/>${rings(302, 200, [60, 120, 180], ["5 km", "10 km", "15 km"])}
+    const tape = svgPlot(396, 56, `<rect x="0" y="14" width="396" height="40" fill="#0a0f15"/><g data-tapeg>${tapeMarks(0)}</g><path d="M198 12 l6 -8 h-12 z" fill="#4fc3f7"/>`);
+    const nav = svgPlot(604, 336, `<rect width="604" height="336" fill="#0a0f15"/>${rings(302, 200, [26, 65, 130], ["1 km", "2.5 km", "5 km"])}
       <circle cx="${302 - 520}" cy="${200 - 280}" r="300" fill="#1d4f7a" opacity="0.5"/><text x="8" y="16" fill="#8fb7d8" font-size="10">Halvard (planet) 154 km</text>
       <path d="M302 200 L360 120 L440 64" stroke="#4fc3f7" stroke-dasharray="6 4" fill="none"/><circle cx="360" cy="120" r="4" fill="none" stroke="#4fc3f7"/><text x="368" y="122" fill="#4fc3f7" font-size="10">WP1</text>
       <circle cx="440" cy="64" r="4" fill="none" stroke="#4fc3f7"/><text x="448" y="66" fill="#4fc3f7" font-size="10">WP2 Moor Station</text>
-      ${contactsSvg(302, 200, 120, null)}${shipGlyph(302, 200, 1)}`);
+      ${contactsSvg(302, 200, 26, null, { edgePx: 136 })}${shipGlyph(302, 200, 1)}`);
     return titleBand("helm", ["HELM"], `<span class="from">TACTICAL:</span> Bring the tubes to bear on T1 <span class="ack">ACK</span>`) +
       panel("H1", "Heading", [0, 0, 4, 2], `<div style="display:flex;align-items:baseline;gap:10px"><span class="big">${live("hdg", "000")}</span><span class="unit">deg</span><span style="flex:1"></span>${row("Pitch", live("pitch", "+0.0") + " deg")}</div>${tape}<div style="display:flex;gap:14px">${row("Roll", live("roll", "+0.0") + " deg")}${row("Turn rate", "1.8 deg/s")}</div>`) +
-      panel("H2", "Throttle", [4, 0, 2, 4], `<div style="display:flex;gap:10px;height:300px"><div style="position:relative;width:34px;background:#1a222c;border-radius:2px"><div style="position:absolute;left:0;right:0;bottom:16%;height:56%;background:var(--accent)"></div><div style="position:absolute;left:-4px;right:-4px;bottom:76%;height:2px;background:#fff"></div><div style="position:absolute;left:0;right:0;bottom:16%;height:1px;background:#8a98a8"></div><div class="dim" style="position:absolute;left:38px;bottom:14%;font-size:10px">0</div><div class="dim" style="position:absolute;left:38px;top:-2px;font-size:10px">100</div><div class="dim" style="position:absolute;left:38px;bottom:-2px;font-size:10px">-25</div></div><div style="flex:1"><div class="dim" style="font-size:11px">SPEED</div><div class="big">${live("speed2", "182")}</div><div class="unit" style="margin:0">m/s</div><div style="height:10px"></div>${row("Set", "60 %")}${row("Max", "~310 m/s")}${row("Accel", "~9.8 m/s2")}<div style="height:8px"></div><div class="dim" style="font-size:11px">IMPULSE</div>${row("Deliv.", "12.0 MW")}${row("Req.", "12.0 MW")}<div style="height:8px"></div><div class="dim" style="font-size:11px">DAMPERS</div>${bar(0.46, { cls: "ok" })}<div class="mono" style="text-align:right">46 %</div></div></div>`, btn("ALL STOP", "focus")) +
+      panel("H2", "Throttle", [4, 0, 2, 4], `<div style="display:flex;gap:28px;height:300px"><div style="position:relative;width:34px;background:#1a222c;border-radius:2px"><div style="position:absolute;left:0;right:0;bottom:16%;height:56%;background:var(--accent)"></div><div style="position:absolute;left:-4px;right:-4px;bottom:76%;height:2px;background:#fff"></div><div style="position:absolute;left:0;right:0;bottom:16%;height:1px;background:#8a98a8"></div><div class="dim" style="position:absolute;left:38px;bottom:14%;font-size:10px">0</div><div class="dim" style="position:absolute;left:38px;top:-2px;font-size:10px">100</div><div class="dim" style="position:absolute;left:38px;bottom:-2px;font-size:10px">-25</div></div><div style="flex:1"><div class="dim" style="font-size:11px">SPEED</div><div class="big">${live("speed2", "182")}</div><div class="unit" style="margin:0">m/s</div><div style="height:10px"></div>${row("Set", "60 %")}${row("Max", "~310 m/s")}${row("Accel", "~9.8 m/s2")}<div style="height:8px"></div><div class="dim" style="font-size:11px">IMPULSE</div>${row("Deliv.", "12.0 MW")}${row("Req.", "12.0 MW")}<div style="height:8px"></div><div class="dim" style="font-size:11px">DAMPERS</div>${bar(0.46, { cls: "ok" })}<div class="mono" style="text-align:right">46 %</div></div></div>`, btn("ALL STOP", "focus")) +
       panel("H3", "Navigation", [6, 0, 6, 4], nav, btn("HOLD") + btn("COURSE", "on") + btn("INTERCEPT") + btn("MATCH") + btn("ORBIT") + `<div class="mono dim" style="flex:1.4;line-height:24px;text-align:right">WP1 ETA 02:41</div>`) +
       panel("H4", "Manoeuvre", [0, 2, 4, 2], `${row("To 045 deg", "~7.4 s, peak 2.1 g")}${row("Felt (dampers 78 %)", "0.3 g")}${row("Tubes bear on T1", "~4.1 s")}${row("Evasive pattern", "none")}<div style="height:6px"></div><div style="display:flex;gap:4px">${btn("JINK")}${btn("SPIRAL")}${btn("BREAK PORT")}${btn("BREAK STBD")}</div>`) +
       statusStrip("Ana (player)");
@@ -1073,18 +1104,19 @@ const CONSOLES = {
   tactical() {
     const plot = svgPlot(500, 336, (() => {
       const cx = 250, cy = 180;
-      let s = `<rect width="500" height="336" fill="#0a0f15"/>${rings(cx, cy, [50, 100, 150], ["1 km", "2 km", "3 km"])}`;
+      let s = `<rect width="500" height="336" fill="#0a0f15"/>${rings(cx, cy, [37.5, 75, 112.5, 150], ["", "1 km", "", "2 km"])}`;
       // Turret arcs: port turret covers the port hemisphere (left), starboard the right; dorsal and ventral all round.
       s += `<path d="M${cx} ${cy} L${cx} ${cy - 150} A150 150 0 0 0 ${cx} ${cy + 150} Z" fill="rgba(255,112,67,0.07)" stroke="rgba(255,112,67,0.4)"/>`;
       s += `<path d="M${cx} ${cy} L${cx} ${cy - 150} A150 150 0 0 1 ${cx} ${cy + 150} Z" fill="rgba(255,112,67,0.04)" stroke="rgba(255,112,67,0.25)"/>`;
       s += `<text x="${cx - 145}" y="${cy + 4}" fill="#ff7043" font-size="9">PORT ARC</text><text x="${cx + 98}" y="${cy + 4}" fill="#ff7043" font-size="9">STBD ARC</text>`;
-      s += `<path d="M${cx} ${cy} L${cx - 27} ${cy - 155} L${cx + 27} ${cy - 155} Z" fill="rgba(239,83,80,0.12)" stroke="#ef5350" stroke-dasharray="4 3"/><text x="${cx + 30}" y="${cy - 140}" fill="#ef5350" font-size="9">TUBES 10 deg</text>`;
+      s += `<path d="M${cx} ${cy} L${cx - 14} ${cy - 155} L${cx + 14} ${cy - 155} Z" fill="rgba(239,83,80,0.12)" stroke="#ef5350" stroke-dasharray="4 3"/><text x="${cx + 18}" y="${cy - 146}" fill="#ef5350" font-size="9">TUBES 10 deg</text>`;
       // Shield ring: bow, stern, port, starboard segments by stored energy; dorsal and ventral as two bars.
       const seg = (a0, a1, f, lab) => { const r = 22 + 0, w = 2 + f * 6, p = (a) => [cx + r * Math.sin(a * deg), cy - r * Math.cos(a * deg)]; const [x0, y0] = p(a0), [x1, y1] = p(a1); return `<path d="M${x0} ${y0} A${r} ${r} 0 0 1 ${x1} ${y1}" stroke="${f < 0.6 ? "#ffb300" : "#4fc3f7"}" stroke-width="${w}" fill="none"/>`; };
       s += seg(-40, 40, FACE_FILL[0]) + seg(140, 220, FACE_FILL[1]) + seg(230, 310, FACE_FILL[2]) + seg(50, 130, FACE_FILL[3]);
       s += `<rect x="${cx + 34}" y="${cy - 12}" width="4" height="10" fill="#4fc3f7"/><rect x="${cx + 34}" y="${cy + 2}" width="4" height="10" fill="#4fc3f7"/><text x="${cx + 41}" y="${cy - 4}" fill="#5d6b7a" font-size="8">D</text><text x="${cx + 41}" y="${cy + 10}" fill="#5d6b7a" font-size="8">V</text>`;
-      s += contactsSvg(cx, cy, 260, "T1", { only: ["T1", "T2", "T3", "T4"] });
-      s += `<line x1="${cx - 0.12 * 260}" y1="${cy - 0.55 * 260}" x2="${cx - 0.12 * 260 + 10}" y2="${cy - 0.55 * 260 + 18}" stroke="#ef5350"/>`;
+      s += contactsSvg(cx, cy, 75, "T1", { only: ["T1", "T2", "T3", "T4"], edgePx: 150 });
+      const [t1x, t1y] = contactXY(CONTACTS[0], 75);
+      s += `<line x1="${cx + t1x}" y1="${cy + t1y}" x2="${cx + t1x - 14}" y2="${cy + t1y - 8}" stroke="#ef5350"/>`;
       s += `<path d="M${cx + 70} ${cy - 40} l4 -4" stroke="#ffeb3b" stroke-width="2"/><text x="${cx + 76}" y="${cy - 44}" fill="#ffeb3b" font-size="9">M1 inbound 6 s</text>`;
       return s + shipGlyph(cx, cy, 1);
     })());
@@ -1106,17 +1138,17 @@ const CONSOLES = {
     const alloc = groups.map(([n, p, req, del, pv], i) => `<div style="display:flex;align-items:center;gap:6px;height:29px${i === 1 ? ";background:rgba(255,255,255,0.05);outline:1px solid var(--accent)" : ""}"><span style="width:118px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${n}</span><span class="mono ${p === 1 ? "acc" : "dim"}" style="width:18px">P${p}</span><div style="flex:1">${bar(del / max, { set: req / max, pv: pv !== undefined ? pv / max : undefined, cls: del < req ? "warn" : "" })}</div><span class="mono" style="width:82px;text-align:right;font-size:11.5px">${req.toFixed(1)} / ${del.toFixed(1)}</span></div>`).join("");
     const bus = svgPlot(396, 140, `<rect width="396" height="140" fill="#0a0f15"/>
       <rect x="6" y="52" width="58" height="34" rx="3" fill="none" stroke="#ffb300"/><text x="35" y="66" fill="#ffb300" font-size="10" text-anchor="middle">REACTOR</text><text x="35" y="80" fill="#e8eef5" font-size="10" text-anchor="middle">41.2 MW</text>
-      <line x1="64" y1="69" x2="100" y2="69" stroke="#66bb6a" stroke-width="2"/><rect x="100" y="56" width="50" height="26" rx="2" fill="none" stroke="#8a98a8"/><text x="125" y="72" fill="#8a98a8" font-size="9" text-anchor="middle">MAIN SWBD</text>
-      <path d="M150 64 L180 64 L180 22 L262 22" stroke="#66bb6a" stroke-width="2" fill="none"/><path d="M150 74 L180 74 L180 116 L262 116" stroke="#66bb6a" stroke-width="2" fill="none"/>
+      <line x1="64" y1="69" x2="92" y2="69" stroke="#66bb6a" stroke-width="2"/><rect x="92" y="56" width="62" height="26" rx="2" fill="none" stroke="#8a98a8"/><text x="123" y="72" fill="#8a98a8" font-size="9" text-anchor="middle">MAIN SWBD</text>
+      <path d="M154 64 L180 64 L180 22 L262 22" stroke="#66bb6a" stroke-width="2" fill="none"/><path d="M154 74 L180 74 L180 116 L262 116" stroke="#66bb6a" stroke-width="2" fill="none"/>
       <rect x="196" y="15" width="14" height="14" fill="#66bb6a"/><rect x="196" y="109" width="14" height="14" fill="#66bb6a"/>
       <text x="268" y="25" fill="#e8eef5" font-size="10">PORT MAIN 21.0 MW</text><text x="268" y="119" fill="#e8eef5" font-size="10">STBD MAIN 19.2 MW</text>
-      <line x1="232" y1="22" x2="232" y2="116" stroke="#5d6b7a" stroke-dasharray="3 3"/><rect x="225" y="62" width="14" height="14" fill="none" stroke="#8a98a8"/><text x="243" y="73" fill="#5d6b7a" font-size="9">CROSS-TIE open</text>
-      <rect x="296" y="52" width="94" height="30" rx="2" fill="none" stroke="#ab47bc"/><text x="343" y="65" fill="#ce93d8" font-size="9" text-anchor="middle">EMERGENCY BUS</text><text x="343" y="77" fill="#e8eef5" font-size="9" text-anchor="middle">batt 88 %, 0.9 MW</text>
-      <rect x="196" y="109" width="14" height="14" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="2 2"/><rect x="330" y="96" width="14" height="14" fill="#ef5350"/><text x="348" y="107" fill="#ef5350" font-size="9">B7 TRIPPED</text>`);
+      <line x1="232" y1="22" x2="232" y2="116" stroke="#5d6b7a" stroke-dasharray="3 3"/><rect x="225" y="62" width="14" height="14" fill="none" stroke="#8a98a8"/><text x="243" y="67" fill="#5d6b7a" font-size="9">CROSS-TIE</text><text x="243" y="78" fill="#5d6b7a" font-size="9">open</text>
+      <rect x="300" y="52" width="92" height="30" rx="2" fill="none" stroke="#ab47bc"/><text x="346" y="65" fill="#ce93d8" font-size="9" text-anchor="middle">EMERGENCY BUS</text><text x="346" y="77" fill="#e8eef5" font-size="9" text-anchor="middle">batt 88 %, 0.9 MW</text>
+      <rect x="196" y="109" width="14" height="14" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="2 2"/><rect x="300" y="88" width="12" height="12" fill="#ef5350"/><text x="316" y="98" fill="#ef5350" font-size="9">B7 TRIPPED</text>`);
     return titleBand("engineering", ["ENG", "DMG CTRL"], `<span class="from">CAPTAIN (title band):</span> Divert power to shields <span class="ack">ACK</span>`) +
       panel("E1", "Power allocation", [0, 0, 5, 4], `${alloc}<div style="display:flex;justify-content:space-between;margin-top:3px" class="mono"><span class="dim">REQUESTED / DELIVERED MW</span><span>supply 41.2, demand 41.7</span></div>`, btn("CRUISE") + btn("COMBAT", "on") + btn("SILENT") + btn("EMERG")) +
       panel("E2", "Buses and breakers", [5, 0, 4, 2], bus) +
-      panel("E3", "Reactor", [9, 0, 3, 2], `<div style="display:flex;align-items:baseline;gap:6px"><span class="big">41.2</span><span class="unit">/ 48.0 MW</span></div>${bar(41.2 / 48, { cls: "ok", set: 42 / 48 })}${row("Containment", "1.21e8 K")}${row("Fuel", "312 kg")}${row("Heat in 30 s", "~74 % limit")}`, btn("SET 42 MW") + btn("SCRAM", "guard")) +
+      panel("E3", "Reactor", [9, 0, 3, 2], `<div style="display:flex;align-items:baseline;gap:6px"><span class="big">41.2</span><span class="unit">/ 48.0 MW</span></div>${bar(41.2 / 48, { cls: "ok", set: 42 / 48 })}${row("Containment", "121 MK")}${row("Fuel", "312 kg")}${row("Heat in 30 s", "~74 % limit")}`, btn("SET 42 MW") + btn("SCRAM", "guard")) +
       panel("E4", "Coolant", [5, 2, 3, 2], `${row("Loop in / out", "38 / 61 deg C")}${row("Flow", "84 kg/s")}${row("Pump 1 / Pump 2", "<span class='ok'>RUN</span> / <span class='ok'>RUN</span>")}${row("Radiators", "11.6 MW rejected")}${row("Heat sink", "")}${bar(0.37, { cls: "ok" })}`) +
       panel("E5", "Life support", [8, 2, 2, 2], `${row("O2", "21.1 kPa")}${row("CO2", "0.6 kPa")}${row("Temp", "21 deg C")}<div style="height:6px"></div><div class="dim" style="font-size:11px">WORST</div>${row("Cargo", "<span class='warn'>smoke</span>")}${row("", "O2 19.4 kPa")}`) +
       panel("E6", "Repairs", [10, 2, 2, 2], `${row("B7 breaker", "60 %")}${bar(0.6)}${row("Cargo fire", "team 1")}${bar(0.25, { cls: "warn" })}${row("Port turret", "queued")}${row("Sensor mast", "queued")}`) +
@@ -1125,10 +1157,10 @@ const CONSOLES = {
   science() {
     const sens = svgPlot(500, 336, (() => {
       const cx = 250, cy = 175;
-      let s = `<rect width="500" height="336" fill="#0a0f15"/>${rings(cx, cy, [52, 104, 156], ["8 km", "16 km", "25 km"])}`;
+      let s = `<rect width="500" height="336" fill="#0a0f15"/>${rings(cx, cy, [31.2, 78, 156], ["1 km", "2.5 km", "5 km"])}`;
       s += `<path d="M${cx} ${cy} L${cx - 70} ${cy - 145} A160 160 0 0 1 ${cx + 20} ${cy - 160} Z" fill="rgba(102,187,106,0.1)" stroke="rgba(102,187,106,0.5)"/><text x="${cx - 40}" y="${cy - 150}" fill="#66bb6a" font-size="9">SCAN CONE</text>`;
       for (let a = 0; a < 360; a += 30) s += `<text x="${cx + 168 * Math.sin(a * deg)}" y="${cy - 168 * Math.cos(a * deg) + 3}" fill="#3f4b58" font-size="9" text-anchor="middle">${String(a).padStart(3, "0")}</text>`;
-      return s + contactsSvg(cx, cy, 160 / 1.2, "T1") + shipGlyph(cx, cy, 0.9);
+      return s + contactsSvg(cx, cy, 31.2, "T1", { edgePx: 150 }) + shipGlyph(cx, cy, 0.9);
     })());
     const shields = svgPlot(396, 140, (() => {
       const face = (x, y, w, h, i) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#1a222c"/><rect x="${x}" y="${y}" width="${w * FACE_FILL[i]}" height="${h}" fill="${FACE_FILL[i] < 0.6 ? "#ffb300" : "#4fc3f7"}"/>`;
@@ -1142,7 +1174,7 @@ const CONSOLES = {
       return s + `<text x="262" y="122" fill="#5d6b7a" font-size="9">Set by Tactical (BOW) 4 s ago</text><text x="262" y="134" fill="#5d6b7a" font-size="9">Freq C, recharge 3.2 MW</text>`;
     })());
     return titleBand("science", ["SCI", "COMMS"], `<span class="from">CAPTAIN (title band):</span> Scan T1 for weak points <span class="ack">ACK</span>`) +
-      panel("S1", "Sensors", [0, 0, 5, 4], sens, btn("5 km") + btn("25 km", "on") + btn("100 km") + btn("PASSIVE", "on") + btn("PING", "guard")) +
+      panel("S1", "Sensors", [0, 0, 5, 4], sens, btn("5 km", "on") + btn("25 km") + btn("100 km") + btn("PASSIVE", "on") + btn("PING", "guard")) +
       panel("S2", "Contact", [5, 0, 3, 4], `<div class="acc" style="font-weight:700;font-size:14px">T1 Raider frigate</div>${row("IFF", "<span class='iff-h'>HOSTILE</span>")}${row("Range", live("t1r2", "0.53") + " km")}${row("Bearing", live("t1b2", "352") + " deg")}${row("Hull", "71 %")}<div class="dim" style="margin-top:6px;font-size:11px">SHIELD FACES (SCANNED)</div>${row("Bow", "38 MJ")}${row("Port / Stbd", "22 / 25 MJ")}${row("Stern", "<span class='warn'>9 MJ</span>")}<div class="dim" style="margin-top:6px;font-size:11px">SYSTEMS (FULL SCAN)</div>${row("Drive", "62 %, aft")}${row("Weak point", "<span class='warn'>stern radiators</span>")}<div style="margin-top:8px">${bar(0.68, { cls: "ok" })}</div>${row("Full scan", "68 %, ~1.9 s left at 1.2 MW")}`, btn("SCAN", "on") + btn("NEXT")) +
       panel("S3", "Shields", [8, 0, 4, 2], shields) +
       panel("S4", "Viewscreen", [8, 2, 4, 2], `<div style="position:absolute;left:0;top:0;width:130px;bottom:0;background:var(--panel)">${["FWD", "AFT", "PORT", "STBD", "TARGET", "CHASE"].map((f, i) => `<div class="b ${(feed === "forward" && f === "FWD") || (feed === "target" && f === "TARGET") || (feed === "chase" && f === "CHASE") ? "on" : ""}" style="display:inline-block;width:60px;margin:0 2px 3px 0">${f}</div>`).join("")}<div class="row" style="margin-top:4px"><span class="k">Zoom</span><span class="v">${feed === "target" ? "3.7x" : "1x"}</span></div></div><div style="position:absolute;right:0;top:4px;width:256px;height:128px;outline:1px solid var(--line)"></div>`, "", "hole") +
@@ -1192,7 +1224,7 @@ const CONSOLES = {
       panel("F1", "Bays", [0, 0, 4, 4], bay("Port launch bay (Swift 1)", 62.4, 1.0, "pressure door SEALED, drop door shut", "Hal (pilot, suited) in Swift 1") + bay("Starboard launch bay (Swift 2)", 101.3, 101.3, "pressure door open", "nobody") + bay("Hangar (Petrel)", 101.3, 101.3, "pad door shut", "2 crew, unsuited") + `${row("Bay pumps", "<span class='ok'>RUN</span>, port bay")}${row("Reserve tank", "84 %")}${row("Bay control lockout", "off")}`) +
       panel("F2", "Craft", [4, 0, 4, 2], `<table class="t"><colgroup><col style="width:62px"><col style="width:56px"><col style="width:84px"><col><col></colgroup><tr><th>Craft</th><th>Pilot</th><th>State</th><th>Fuel</th><th>Hull</th></tr><tr class="sel"><td>Swift 1</td><td class="acc">Hal</td><td class="warn">LAUNCHING</td><td class="n">100 %</td><td class="n">100 %</td></tr><tr><td>Swift 2</td><td class="dim">none</td><td>STOWED</td><td class="n">80 %</td><td class="n">92 %</td></tr><tr><td>Petrel</td><td class="dim">none</td><td>STOWED</td><td class="n">65 %</td><td class="n">100 %</td></tr></table>`) +
       panel("F3", "Launch sequence: Swift 1", [4, 2, 4, 2], `${row("1 Bay clear of unsuited crew", "<span class='ok'>done</span>")}${row("2 Pressure door sealed", "<span class='ok'>done</span>")}${row("3 Pump down to 1 kPa", "<span class='warn'>~23 s left</span>")}${row("4 Drop door open", "~6 s")}${row("5 Cradle release", "~2 s")}`, btn("LAUNCH", "guard on") + btn("HOLD") + btn("RECOVER")) +
-      panel("F4", "Tasking", [8, 0, 4, 4], `${svgPlot(396, 230, `<rect width="396" height="230" fill="#0a0f15"/>${rings(198, 130, [40, 80], ["2 km", "4 km"])}${contactsSvg(198, 130, 150, null, { only: ["T1", "T2", "T3", "T4", "N1"] })}${shipGlyph(198, 130, 0.8)}<path d="M198 130 L290 72" stroke="#26c6da" stroke-dasharray="4 3"/><text x="292" y="70" fill="#26c6da" font-size="10">Swift 1: escort N1</text>`)}${row("Swift 1", "escort N1, weapons free")}${row("Swift 2", "stowed")}${row("Petrel", "stowed")}`, btn("ESCORT", "on") + btn("ATTACK") + btn("PATROL") + btn("RETURN")) +
+      panel("F4", "Tasking", [8, 0, 4, 4], `${svgPlot(396, 230, `<rect width="396" height="230" fill="#0a0f15"/>${rings(198, 130, [50, 100], ["5 km", "10 km"])}${contactsSvg(198, 130, 10, null, { only: ["T1", "T2", "T3", "T4", "N1"] })}${shipGlyph(198, 130, 0.8)}<path d="M198 130 L${198 + contactXY(CONTACTS[4], 10)[0]} ${130 + contactXY(CONTACTS[4], 10)[1]}" stroke="#26c6da" stroke-dasharray="4 3"/><text x="${198 + contactXY(CONTACTS[4], 10)[0] + 6}" y="${130 + contactXY(CONTACTS[4], 10)[1] - 12}" fill="#26c6da" font-size="10">Swift 1: escort N1</text>`)}${row("Swift 1", "escort N1, weapons free")}${row("Swift 2", "stowed")}${row("Petrel", "stowed")}`, btn("ESCORT", "on") + btn("ATTACK") + btn("PATROL") + btn("RETURN")) +
       statusStrip("Ivy (player)");
   },
 };
@@ -1216,6 +1248,8 @@ function updateLive() {
     clock: `${String(14 + mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`, clock2: `${String(14 + mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`,
   };
   for (const el of consoleEl.querySelectorAll("[data-live]")) { const v = vals[el.dataset.live]; if (v !== undefined && el.textContent !== v) el.textContent = v; }
+  const tg = consoleEl.querySelector("[data-tapeg]");
+  if (tg && tg.dataset.hdg !== hdg.toFixed(1)) { tg.dataset.hdg = hdg.toFixed(1); tg.innerHTML = tapeMarks(hdg); }
 }
 
 // The Science console's viewscreen thumbnail: the render target drawn into a viewport, no extra pass.
@@ -1380,7 +1414,7 @@ K.registerShots([
   { name: "flight-ops-console", setup: seatShot("flight_ops") },
   { name: "chase-feed", setup: shot(() => { lighting = "normal"; feed = "chase"; setWings(false); setMode("captain"); }) },
   { name: "alt-forward-wings", setup: shot(() => { lighting = "normal"; feed = "forward"; setWings(true); setMode("interior"); }) },
-  { name: "walk-aft", setup: shot(() => { lighting = "normal"; setWings(false); walk.pos.set(-2.6, FLOOR, 27.6); walk.yaw = -0.22; walk.pitch = 0.0; walk.keys = {}; setMode("walk"); placeWalkCamera(); }) },
+  { name: "walk-aft", setup: shot(() => { lighting = "normal"; setWings(false); walk.pos.set(-3.6, FLOOR, 28.6); walk.yaw = -0.33; walk.pitch = 0.0; walk.keys = {}; setMode("walk"); placeWalkCamera(); }) },
 ]);
 renderer.setAnimationLoop(frame);
 </script>
