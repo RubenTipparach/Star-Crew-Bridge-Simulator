@@ -160,7 +160,7 @@ tests pin the systems' behaviour.
 | Server up, 8 clients | 0.46 Mbit/s | (Pi 5 gigabit Ethernet) |
 | Server CPU for networking, 8 clients | under 1 ms per tick (delta encoding of about 2 kB per client) | inside the 4 ms tick |
 | Server memory for history | 300 ms of 64 bodies at 30 Hz, about 40 kB; per-client acknowledged baselines, 8 x 2 kB | inside 64 MB |
-| Client memory | snapshot buffer of 1 s, about 40 kB | inside 256 MB |
+| Client memory | snapshot buffer of 1 s, about 40 kB | inside 384 MB |
 
 ## Open questions
 
