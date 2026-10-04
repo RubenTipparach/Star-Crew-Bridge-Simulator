@@ -18,7 +18,7 @@ how it is kept). Keep editing it rather than starting another.
 | [netcode-and-sessions](../../openspec/changes/netcode-and-sessions/) | Authoritative server, snapshots, prediction, seats, sessions | | |
 | [reference-ship-tern](../../openspec/changes/reference-ship-tern/) | The Tern's floor plan, deck by deck | [deck-plan.html](../mockups/deck-plan.html) | [3YJXPa...](https://claude.ai/artifact/3YJXPa7vZuNtAB3YyWQSPV) |
 | [deck-pipeline](../../openspec/changes/deck-pipeline/) | Brush-built decks, compartments and portals, baked vertex light, portal culling | [deck-plan.html](../mockups/deck-plan.html) | [3YJXPa...](https://claude.ai/artifact/3YJXPa7vZuNtAB3YyWQSPV) |
-| [light-baking](../../openspec/changes/light-baking/) | The static light baker: shadows, bounce, vertex lighting or lightmaps, probes, lighting states | [lighting.html](../mockups/lighting.html) | |
+| [light-baking](../../openspec/changes/light-baking/) | The static light baker: shadows, bounce, vertex lighting or lightmaps, probes, lighting states | [lighting.html](../mockups/lighting.html) | [Txz9NC...](https://claude.ai/artifact/Txz9NCjZ3fpvEYWdmf6B2R) |
 | [bridge-stations](../../openspec/changes/bridge-stations/) | The station roster, automation, console UI, the bridge as a room | [bridge.html](../mockups/bridge.html) | [LfCtvp...](https://claude.ai/artifact/LfCtvpnbofmcTQ667zcczu) |
 | [crew-on-deck](../../openspec/changes/crew-on-deck/) | Walking, ladders, seats, carrying, injury, zero-g | [bridge.html](../mockups/bridge.html) | [LfCtvp...](https://claude.ai/artifact/LfCtvpnbofmcTQ667zcczu) |
 | [power-grid](../../openspec/changes/power-grid/) | Reactor, buses, breakers, batteries, allocation, heat and coolant | [systems.html](../mockups/systems.html) | |
