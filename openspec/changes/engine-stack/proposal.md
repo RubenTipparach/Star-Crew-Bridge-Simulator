@@ -28,6 +28,9 @@ Three facts decide most of it:
 A custom engine is therefore not a preference but what is left. The question is what it is
 built from.
 
+**Decided** (owner, 2026-10-04, on this recommendation): "That's fine..this game doesn't need high end graphics. Your stack sounds like a solid plan". Survey question E1 is
+closed: the engine is Rust with SDL2 and glow on OpenGL ES 2.0.
+
 ## What Changes
 
 - **Language: Rust** (stable, edition 2024), in a Cargo workspace, cross-compiled to the Pi.

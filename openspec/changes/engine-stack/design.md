@@ -1,6 +1,7 @@
 # Design: the engine stack
 
-Status: **proposed** (2026-10-04). Nothing here is built. The budget table in section 5 is
+Status: **proposed** (2026-10-04); the language and stack are **decided** by the owner
+(E1, below). Nothing here is built. The budget table in section 5 is
 provisional until `sc-probe` measures it on a Pi 3 (section 11).
 
 ## 1. The target: Raspberry Pi 3 Model B
@@ -52,7 +53,9 @@ What Rust costs: longer compile times (on the desktop only; the Pi never compile
 cross-compiling SDL2 for the Pi needs a Raspberry Pi OS sysroot (section 10). C with raylib
 would reach first pixels sooner and could even compile on the Pi itself. If the owner prefers
 C, everything else in this design holds: the crate boundaries become library boundaries, and
-the budget, the renderer floor and the probe are unchanged. This is survey question E1.
+the budget, the renderer floor and the probe are unchanged.
+
+**Decided (E1):** Rust + SDL2 + glow. The owner, 2026-10-04: "That's fine..this game doesn't need high end graphics. Your stack sounds like a solid plan".
 
 ## 3. Architecture
 
@@ -289,13 +292,13 @@ do not prove anything about the Pi's speed.
 
 ## Open questions
 
-Per CLAUDE.md section 13, only E1 goes to the owner (it is a fork in the road that changes
-every later change). The others take the recommendation and are recorded as "recommendation
-taken (ask only with screenshots)".
+Per CLAUDE.md section 13, only E1 went to the owner (a fork in the road that changes every
+later change); the owner answered it in chat. The others take the recommendation and are
+recorded as "recommendation taken (ask only with screenshots)".
 
 | # | Question | Options | Recommendation | Status |
 | --- | --- | --- | --- | --- |
-| E1 | The engine's language. Rust matches Pale-Blue-Dot's rules and is memory safe for network code; C with raylib reaches first pixels sooner and matches star-crew-64. Both meet the Pi 3 floor. | Rust + SDL2 + glow / C11 + raylib | Rust + SDL2 + glow | In the survey |
+| E1 | The engine's language. Rust matches Pale-Blue-Dot's rules and is memory safe for network code; C with raylib reaches first pixels sooner and matches star-crew-64. Both meet the Pi 3 floor. | Rust + SDL2 + glow / C11 + raylib | Rust + SDL2 + glow | **Decided 2026-10-04: Rust + SDL2 + glow** (owner: "Your stack sounds like a solid plan") |
 | E2 | 64-bit or 32-bit Raspberry Pi OS. 64-bit has better code generation; 32-bit uses less memory for pointers. | 64-bit / 32-bit | 64-bit, with 32-bit measured by the probe | Recommendation taken (ask only with screenshots) |
 | E3 | Console UI library. Ours costs code; `egui` costs CPU on an A53. | Ours / egui | Ours, with egui measured by the probe | Recommendation taken (ask only with screenshots) |
 | E4 | Which Pi 3 the owner will test on (3B at 1.2 GHz or 3B+ at 1.4 GHz). | 3B / 3B+ | Budget against the 3B | Recommendation taken; the probe reports the model |

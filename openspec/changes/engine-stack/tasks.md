@@ -5,7 +5,7 @@ measurement instrument and comes first.
 
 ## 1. Decide
 
-- [ ] 1.1 Owner answers survey question E1 (Rust or C); fold the answer into this design.
+- [x] 1.1 Owner answers question E1 (Rust or C); fold the answer into this design. Answered 2026-10-04: Rust + SDL2 + glow.
 - [ ] 1.2 Record E2-E4 as "recommendation taken (ask only with screenshots)" in this design.
 
 ## 2. Measure the Pi (the probe)

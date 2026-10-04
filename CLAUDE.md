@@ -60,6 +60,10 @@ From the owner's brief, 2026-10-04. Quotes are the owner's words.
 - **Low poly.** "I'm all for low poly aesthetics."
 - **The hard requirement.** "I want this to run on pi3 1gb ram! So definitely bsp style level
   design would be on the table!" (section 2).
+- **The stack is decided, and the graphics stay modest** (owner, 2026-10-04, on the
+  engine-stack recommendation): "That's fine..this game doesn't need high end graphics. Your stack sounds like a solid plan". The engine is Rust with SDL2 and OpenGL ES 2.0
+  (`openspec/changes/engine-stack`). Spend effort on the simulation, not on rendering
+  features the Pi 3 cannot carry.
 - **Documentation and mockups first.** "First we need to do some extreme documentation and
   mockups in 3js." Mockups are three.js pages (section 11).
 
