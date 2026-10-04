@@ -309,6 +309,11 @@ becomes.
 - **Flat-shaded, vertex-coloured low poly.** No normal maps, no PBR, no per-pixel lighting
   beyond an emissive term. Lighting is baked into vertex colours, with one set per lighting
   state (normal, red alert, emergency power) blended by a per-compartment uniform.
+- **Light is baked offline, from fixtures that are data** (owner, 2026-10-04: "Some sort of
+  tool or skill for light mapping/static light baking would be nice too"). How a bake is
+  computed (shadows, emissive surfaces, bounce, vertex lighting or lightmaps, light probes for
+  moving things) is `openspec/changes/light-baking`; where the result lives in a deck is
+  `deck-pipeline`. The `light-baking` skill says how to bake and judge one.
 - **Few, small textures.** One palette atlas and a small set of decal and screen textures,
   committed as PNG sources. Nearest-neighbour sampling, no mipmapped blur on palette swatches.
 - **Meshes are files built by committed generators** (star-crew-64 and Undercity). A generator

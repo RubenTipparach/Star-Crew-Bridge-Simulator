@@ -8,6 +8,9 @@ current files between them (CLAUDE.md section 11):
 
     <!-- INLINE layout:tern BEGIN -->   ... <!-- INLINE layout:tern END -->
     <!-- INLINE shipkit BEGIN -->       ... <!-- INLINE shipkit END -->
+    <!-- INLINE lib:lightbake BEGIN --> ... <!-- INLINE lib:lightbake END -->
+
+"lib:<name>" copies docs/mockups/lib/<name>.js; "shipkit" is lib:shipkit.
 
 --check rewrites nothing and fails when a page holds a stale copy, and also
 checks that shipkit's PI3_BUDGET matches the budget marker in the engine-stack
@@ -24,17 +27,19 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-SHIPKIT = os.path.join(ROOT, "docs", "mockups", "lib", "shipkit.js")
+LIB = os.path.join(ROOT, "docs", "mockups", "lib")
+SHIPKIT = os.path.join(LIB, "shipkit.js")
 BUDGET_SOURCES = [
     os.path.join(ROOT, "openspec", "specs", "engine-platform", "spec.md"),
     os.path.join(ROOT, "openspec", "changes", "engine-stack", "design.md"),
 ]
-MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|shipkit) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
+MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|shipkit) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
 
 
 def block(kind):
-    if kind == "shipkit":
-        with open(SHIPKIT, encoding="utf-8") as f:
+    if kind == "shipkit" or kind.startswith("lib:"):
+        name = "shipkit" if kind == "shipkit" else kind.split(":", 1)[1]
+        with open(os.path.join(LIB, name + ".js"), encoding="utf-8") as f:
             return "\n<script>\n" + f.read().rstrip() + "\n</script>\n"
     ship = kind.split(":", 1)[1]
     path = os.path.join(ROOT, "data", "ships", ship, "layout.json")
