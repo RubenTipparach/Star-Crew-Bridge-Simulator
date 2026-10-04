@@ -1,0 +1,1388 @@
+<!doctype html>
+<!--
+  bridge.html: the Tern's bridge, its stations and their consoles, presenting
+  openspec/changes/bridge-stations (and crew-on-deck's eye height).
+
+  Built from data/ships/tern/layout.json through shipkit.js (inlined below by
+  tools/mockups/inline.py; never hand-edit between the INLINE markers). The
+  viewscreen shows a live exterior scene rendered to a 1024x512 target, and the
+  windows show the same exterior through a scissored pass from a camera that is
+  the interior camera carried by the ship's exterior pose: the interior never
+  moves while the ship turns (ship-frames). Console overlays follow the
+  wireframes in openspec/changes/bridge-stations/design.md section 10.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tern Bridge Stations</title>
+<style>
+  :root { --bg: #05070d; --fg: #e8eef5; --dim: #8a98a8; --panel: #0c1219; --line: #2b3540; --accent: #48d6ff;
+          --ok: #66bb6a; --warn: #ffb300; --danger: #ef5350; --alert: #ff2a2a; --focus: #48d6ff; }
+  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --bg: #05070d; } }
+  :root[data-theme="dark"] { --bg: #05070d; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font: 13px/1.4 system-ui, sans-serif; overflow: hidden; }
+  canvas { display: block; }
+  .controls { position: fixed; left: 12px; bottom: 12px; z-index: 20; background: rgba(6,9,14,0.86); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; display: flex; gap: 4px 5px; flex-wrap: wrap; align-items: center; max-width: calc(100vw - 260px); }
+  .controls .grp { color: var(--dim); font-size: 11px; margin: 0 2px 0 6px; }
+  .controls button { background: #18202a; color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 3px 7px; font: 12px system-ui, sans-serif; cursor: pointer; }
+  .controls button.on { border-color: var(--accent); color: var(--accent); }
+  .info { position: fixed; right: 12px; top: 12px; z-index: 20; width: 300px; background: rgba(6,9,14,0.86); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font-size: 12px; color: #c9d4df; }
+  .info b { color: var(--fg); }
+  @media (max-width: 640px) { .controls { max-width: calc(100vw - 24px); bottom: 120px; } .info { display: none; } }
+
+  /* Console overlay: a 1280x720 logical canvas, scaled to fit (design.md section 8). */
+  #console { position: fixed; left: 0; top: 0; width: 1280px; height: 720px; transform-origin: 0 0; z-index: 10; display: none; pointer-events: none; color: var(--fg); }
+  #console .tb { position: absolute; left: 0; top: 0; width: 1280px; height: 32px; background: #0a0f15; border-bottom: 1px solid var(--line); display: flex; align-items: center; font-size: 12px; box-sizing: border-box; }
+  #console .tb.red { background: #3a0a0c; border-bottom-color: var(--alert); }
+  #console .tabs { width: 420px; display: flex; gap: 3px; padding-left: 6px; }
+  #console .tab { width: 64px; height: 22px; line-height: 22px; text-align: center; font-weight: 700; font-size: 11px; border: 1px solid var(--line); border-radius: 3px; color: var(--dim); overflow: hidden; white-space: nowrap; }
+  #console .tab.on { color: #05070d; background: var(--accent); border-color: var(--accent); }
+  #console .order { width: 520px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--fg); }
+  #console .order .from { color: var(--dim); }
+  #console .order .ack { color: var(--ok); margin-left: 8px; font-weight: 700; }
+  #console .cond { width: 340px; display: flex; justify-content: flex-end; gap: 8px; padding-right: 8px; }
+  #console .chip { padding: 0 8px; height: 22px; line-height: 22px; border-radius: 3px; font-weight: 700; font-size: 11px; border: 1px solid var(--line); }
+  #console .chip.red { background: var(--alert); border-color: var(--alert); color: #fff; }
+  #console .chip.normal { color: var(--ok); }
+  #console .clock { font-family: ui-monospace, Menlo, Consolas, monospace; color: var(--dim); line-height: 22px; }
+  #console .ss { position: absolute; left: 0; top: 688px; width: 1280px; height: 32px; background: #0a0f15; border-top: 1px solid var(--line); display: flex; align-items: center; gap: 18px; padding: 0 20px; box-sizing: border-box; font-size: 12px; white-space: nowrap; }
+  #console .ss .k { color: var(--dim); margin-right: 4px; }
+  #console .ss .faces { display: inline-flex; gap: 2px; vertical-align: middle; }
+  #console .ss .faces i { display: inline-block; width: 16px; height: 10px; background: #1a222c; position: relative; }
+  #console .ss .faces i b { position: absolute; left: 0; bottom: 0; top: 0; background: #4fc3f7; }
+  .pnl { position: absolute; box-sizing: border-box; background: var(--panel); border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+  .pnl > header { height: 22px; line-height: 21px; padding: 0 6px; font: 700 11.5px system-ui, sans-serif; letter-spacing: 0.04em; text-transform: uppercase; border-bottom: 2px solid var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-sizing: border-box; }
+  .pnl > header .pid { color: var(--accent); margin-right: 6px; }
+  .pnl > .body { position: absolute; top: 26px; left: 6px; right: 6px; bottom: 4px; overflow: hidden; }
+  .pnl > .body.hasf { bottom: 32px; }
+  .pnl > footer { position: absolute; left: 6px; right: 6px; bottom: 4px; height: 24px; display: flex; gap: 4px; }
+  .pnl.hole { background: transparent; }
+  .pnl.hole > header { background: var(--panel); }
+  .row { display: flex; height: 18px; line-height: 18px; font-size: 12.5px; white-space: nowrap; gap: 6px; }
+  .row .k { flex: 1; color: var(--dim); overflow: hidden; text-overflow: ellipsis; }
+  .row .v, .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
+  .row .v { text-align: right; }
+  .row.sel { background: rgba(255,255,255,0.06); outline: 1px solid var(--accent); }
+  .big { font: 600 28px/32px ui-monospace, Menlo, Consolas, monospace; }
+  .unit { font-size: 12px; color: var(--dim); margin-left: 3px; }
+  .dim { color: var(--dim); } .ok { color: var(--ok); } .warn { color: var(--warn); } .danger { color: var(--danger); } .acc { color: var(--accent); }
+  .bar { position: relative; height: 8px; background: #1a222c; border-radius: 2px; }
+  .bar .f { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); border-radius: 2px; }
+  .bar .f.ok { background: var(--ok); } .bar .f.warn { background: var(--warn); } .bar .f.danger { background: var(--danger); }
+  .bar .pv { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(45deg, rgba(255,255,255,0.45) 0 3px, transparent 3px 6px); }
+  .bar .set { position: absolute; top: -3px; bottom: -3px; width: 2px; background: #fff; }
+  .b { flex: 1; min-width: 0; border: 1px solid var(--line); background: #121a23; color: var(--fg); font: 700 10.5px/22px system-ui, sans-serif; text-align: center; border-radius: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .b.on { border-color: var(--accent); color: var(--accent); }
+  .b.guard { border-color: var(--danger); color: #ffb4b0; }
+  .b.guard::before { content: "\25CB  "; }
+  .b.focus { outline: 2px solid var(--focus); outline-offset: -2px; }
+  .b.off { color: #4d5866; border-color: #1e262f; }
+  table.t { border-collapse: collapse; width: 100%; font-size: 12px; table-layout: fixed; }
+  table.t th { color: var(--dim); font-weight: 600; text-align: left; height: 18px; font-size: 11px; }
+  table.t td { height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  table.t td.n { font-family: ui-monospace, Menlo, Consolas, monospace; text-align: right; }
+  table.t tr.sel td { background: rgba(255,255,255,0.07); }
+  .iff-h { color: #ef5350; } .iff-n { color: #e8c547; } .iff-f { color: #66bb6a; } .iff-u { color: #b0bec5; }
+  svg text { font-family: system-ui, sans-serif; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+} }
+</script>
+<!-- INLINE layout:tern BEGIN -->
+<script id="ship-layout" type="application/json">
+{"schema":"starcrew.ship-layout/1","ship":{"id":"tern","name":"SCS Tern","class":"Heron-class frigate","summary":"The reference ship: a 84 m frigate with a crew of four to eight, two fighters and a shuttle.","presented_by":"openspec/changes/reference-ship-tern"},"conventions":{"units":"metres, degrees","axes":"ship-local, right-handed: +X port, +Y dorsal (up), +Z bow (forward)","origin":"on the centreline, on deck B's floor, at the hangar's forward wall","yaw_deg":"rotation about +Y; 0 faces the bow (+Z), +90 faces port (+X)","box":"axis-aligned, [min, max] per axis, inner surfaces (air) of the compartment","portal_size_m":"opening width and height: axis x -> [z, y], axis z -> [x, y], axis y -> [x, z]","portal_center_m":"centre of the opening, on the plane where the two compartments meet","wall_thickness_m":0.25,"deck_slab_m":0.5},"decks":[{"id":"A","name":"Command deck","floor_y_m":3.5,"clear_height_m":3.0},{"id":"B","name":"Main deck","floor_y_m":0.0,"clear_height_m":3.0},{"id":"C","name":"Lower deck","floor_y_m":-3.5,"clear_height_m":3.0}],"hull":{"note":"Octagonal cross-sections lofted linearly along Z. chamfer_m cuts each corner at 45 degrees.","sections":[{"z_m":42.0,"half_beam_m":1.2,"top_m":2.2,"bottom_m":-0.8,"chamfer_m":0.4},{"z_m":37.0,"half_beam_m":4.5,"top_m":4.5,"bottom_m":-2.8,"chamfer_m":1.5},{"z_m":32.0,"half_beam_m":8.6,"top_m":7.9,"bottom_m":-4.6,"chamfer_m":1.8},{"z_m":20.0,"half_beam_m":10.8,"top_m":7.8,"bottom_m":-5.4,"chamfer_m":1.6},{"z_m":8.0,"half_beam_m":12.2,"top_m":7.8,"bottom_m":-5.6,"chamfer_m":1.6},{"z_m":-2.0,"half_beam_m":12.2,"top_m":8.0,"bottom_m":-5.8,"chamfer_m":2.2},{"z_m":-18.0,"half_beam_m":11.6,"top_m":8.2,"bottom_m":-5.8,"chamfer_m":2.2},{"z_m":-32.0,"half_beam_m":10.6,"top_m":8.2,"bottom_m":-5.2,"chamfer_m":2.0},{"z_m":-38.0,"half_beam_m":8.0,"top_m":6.0,"bottom_m":-3.6,"chamfer_m":1.8},{"z_m":-42.0,"half_beam_m":6.5,"top_m":4.6,"bottom_m":-2.6,"chamfer_m":1.4}]},"compartments":[{"id":"bridge","poi":1,"name":"Bridge","decks":["A"],"kind":"room","purpose":"The ship's command centre: seven stations facing the main viewscreen and two forward windows.","boxes":[{"x":[-7.0,7.0],"y":[3.5,6.5],"z":[20.0,31.0]}]},{"id":"ready_room","poi":2,"name":"Captain's ready room","decks":["A"],"kind":"room","purpose":"The captain's office, a briefing table and a private console.","boxes":[{"x":[1.25,6.0],"y":[3.5,6.5],"z":[14.0,20.0]}]},{"id":"computer_core","poi":3,"name":"Computer core","decks":["A"],"kind":"room","purpose":"Processing for sensors, targeting and automation. Automated stations draw on it.","boxes":[{"x":[-6.0,-1.25],"y":[3.5,6.5],"z":[14.0,20.0]}]},{"id":"a_corridor","poi":4,"name":"Command passage","decks":["A"],"kind":"corridor","purpose":"Deck A's spine, from the bridge's aft door to the dorsal turret, with the forward ladder.","boxes":[{"x":[-1.25,1.25],"y":[3.5,6.5],"z":[4.0,20.0]}]},{"id":"dorsal_turret","poi":5,"name":"Dorsal turret access","decks":["A"],"kind":"room","purpose":"The ladder up into the dorsal turret pod.","boxes":[{"x":[-2.0,2.0],"y":[3.5,6.5],"z":[0.0,4.0]}]},{"id":"a_aft_passage","poi":6,"name":"Aft passage","decks":["A"],"kind":"corridor","purpose":"The always-pressurized route from the front of the ship to engineering, above the hangar.","boxes":[{"x":[-1.25,1.25],"y":[3.5,6.5],"z":[-18.0,0.0]}]},{"id":"torpedo_room","poi":7,"name":"Torpedo room","decks":["B"],"kind":"room","purpose":"Two forward missile tubes and their breeches, fed by the hoist from the magazine below.","boxes":[{"x":[-5.0,5.0],"y":[0.0,3.0],"z":[26.0,33.0]}]},{"id":"medbay","poi":8,"name":"Medbay","decks":["B"],"kind":"room","purpose":"Two beds that revive and heal downed crew.","boxes":[{"x":[1.25,7.0],"y":[0.0,3.0],"z":[18.0,26.0]}]},{"id":"damage_control","poi":9,"name":"Damage control","decks":["B"],"kind":"room","purpose":"Repair kits, extinguishers, EVA suits and the damage control board.","boxes":[{"x":[-7.0,-1.25],"y":[0.0,3.0],"z":[18.0,26.0]}]},{"id":"quarters","poi":10,"name":"Crew quarters","decks":["B"],"kind":"room","purpose":"Bunks and lockers; where crew spawn at the start of a mission.","boxes":[{"x":[1.25,9.0],"y":[0.0,3.0],"z":[8.0,18.0]}]},{"id":"mess","poi":11,"name":"Mess","decks":["B"],"kind":"room","purpose":"Galley and tables; the lobby room before a mission.","boxes":[{"x":[-9.0,-1.25],"y":[0.0,3.0],"z":[8.0,18.0]}]},{"id":"port_turret","poi":12,"name":"Port turret access","decks":["B"],"kind":"room","purpose":"The hatch into the port turret pod and the turret's ammunition-free capacitor bank.","boxes":[{"x":[1.25,11.0],"y":[0.0,3.0],"z":[0.0,8.0]}]},{"id":"stbd_turret","poi":13,"name":"Starboard turret access","decks":["B"],"kind":"room","purpose":"The hatch into the starboard turret pod and its capacitor bank.","boxes":[{"x":[-11.0,-1.25],"y":[0.0,3.0],"z":[0.0,8.0]}]},{"id":"b_spine","poi":14,"name":"Main corridor","decks":["B"],"kind":"corridor","purpose":"Deck B's spine, from the torpedo room to the hangar's forward landing.","boxes":[{"x":[-1.25,1.25],"y":[0.0,3.0],"z":[0.0,26.0]}]},{"id":"hangar","poi":15,"name":"Hangar","decks":["C","B"],"kind":"bay","purpose":"Double-height bay: the shuttle on its lift pad, the forward landing, and galleries over the two launch bays.","boxes":[{"x":[-5.0,5.0],"y":[-3.5,3.0],"z":[-18.0,0.0]},{"x":[5.0,10.5],"y":[0.0,3.0],"z":[-18.0,-2.0]},{"x":[-10.5,-5.0],"y":[0.0,3.0],"z":[-18.0,-2.0]}]},{"id":"launch_bay_p","poi":16,"name":"Port launch bay","decks":["C"],"kind":"bay","purpose":"Fighter Swift 1 on its cradle over a ventral drop door. Depressurizes to launch.","boxes":[{"x":[5.0,10.5],"y":[-3.5,0.0],"z":[-16.0,-4.0]}]},{"id":"launch_bay_s","poi":17,"name":"Starboard launch bay","decks":["C"],"kind":"bay","purpose":"Fighter Swift 2 on its cradle over a ventral drop door. Depressurizes to launch.","boxes":[{"x":[-10.5,-5.0],"y":[-3.5,0.0],"z":[-16.0,-4.0]}]},{"id":"engineering","poi":18,"name":"Engineering","decks":["C","B","A"],"kind":"room","purpose":"The reactor through three deck heights, the main switchboard, the coolant pumps and the engineer's console.","boxes":[{"x":[-9.0,9.0],"y":[-3.5,6.5],"z":[-32.0,-18.0]}]},{"id":"drive","poi":19,"name":"Drive section","decks":["B"],"kind":"crawlspace","purpose":"Maintenance space for the impulse drive and the inertial dampers.","boxes":[{"x":[-6.0,6.0],"y":[0.0,3.0],"z":[-40.0,-32.0]}]},{"id":"c_spine","poi":20,"name":"Lower corridor","decks":["C"],"kind":"corridor","purpose":"Deck C's spine, from the magazine to the hangar floor, with the ventral turret hatch.","boxes":[{"x":[-1.25,1.25],"y":[-3.5,-0.5],"z":[0.0,20.0]}]},{"id":"magazine","poi":21,"name":"Magazine","decks":["C"],"kind":"room","purpose":"Missile racks and the hoist up to the torpedo room.","boxes":[{"x":[-4.0,4.0],"y":[-3.5,-0.5],"z":[20.0,30.0]}]},{"id":"life_support","poi":22,"name":"Life support","decks":["C"],"kind":"room","purpose":"Oxygen generator, CO2 scrubbers, the air handler, thermal control and the water tank.","boxes":[{"x":[1.25,9.0],"y":[-3.5,-0.5],"z":[6.0,20.0]}]},{"id":"cargo","poi":23,"name":"Cargo and stores","decks":["C"],"kind":"room","purpose":"Spare parts, reserve gas bottles and the gravity generator.","boxes":[{"x":[-9.0,-1.25],"y":[-3.5,-0.5],"z":[6.0,20.0]}]},{"id":"airlock","poi":24,"name":"Airlock","decks":["C"],"kind":"airlock","purpose":"The crew airlock for EVA hull repair and boarding.","boxes":[{"x":[-11.0,-9.0],"y":[-3.5,-0.5],"z":[10.0,14.0]}]},{"id":"shield_room","poi":25,"name":"Shield generator","decks":["C"],"kind":"room","purpose":"The shield generator and its emitter capacitors.","boxes":[{"x":[1.25,7.0],"y":[-3.5,-0.5],"z":[0.0,6.0]}]},{"id":"switchboard","poi":26,"name":"Forward switchboard","decks":["C"],"kind":"room","purpose":"The battery bank and the forward bus cross-tie.","boxes":[{"x":[-7.0,-1.25],"y":[-3.5,-0.5],"z":[0.0,6.0]}]},{"id":"pod_dorsal","poi":27,"name":"Dorsal turret pod","decks":["A"],"kind":"pod","purpose":"The dorsal gunner's seat inside the turret.","boxes":[{"x":[-1.25,1.25],"y":[6.5,9.0],"z":[0.75,3.25]}]},{"id":"pod_ventral","poi":28,"name":"Ventral turret pod","decks":["C"],"kind":"pod","purpose":"The ventral gunner's seat inside the turret.","boxes":[{"x":[-1.25,1.25],"y":[-7.0,-3.5],"z":[1.75,4.25]}]},{"id":"pod_port","poi":29,"name":"Port turret pod","decks":["B"],"kind":"pod","purpose":"The port gunner's seat inside the turret.","boxes":[{"x":[11.0,13.5],"y":[0.0,2.5],"z":[2.75,5.25]}]},{"id":"pod_stbd","poi":30,"name":"Starboard turret pod","decks":["B"],"kind":"pod","purpose":"The starboard gunner's seat inside the turret.","boxes":[{"x":[-13.5,-11.0],"y":[0.0,2.5],"z":[2.75,5.25]}]}],"portals":[{"id":"p_bridge_aft","kind":"door","between":["bridge","a_corridor"],"axis":"z","center_m":[0.0,4.65,20.0],"size_m":[1.6,2.3]},{"id":"p_ready","kind":"door","between":["ready_room","a_corridor"],"axis":"x","center_m":[1.25,4.6,17.0],"size_m":[1.0,2.2]},{"id":"p_core","kind":"door","between":["computer_core","a_corridor"],"axis":"x","center_m":[-1.25,4.6,17.0],"size_m":[1.0,2.2]},{"id":"p_dorsal_fwd","kind":"door","between":["a_corridor","dorsal_turret"],"axis":"z","center_m":[0.0,4.6,4.0],"size_m":[1.2,2.2]},{"id":"p_dorsal_aft","kind":"door","between":["dorsal_turret","a_aft_passage"],"axis":"z","center_m":[0.0,4.6,0.0],"size_m":[1.2,2.2]},{"id":"p_aft_eng","kind":"door","between":["a_aft_passage","engineering"],"axis":"z","center_m":[0.0,4.6,-18.0],"size_m":[1.2,2.2]},{"id":"p_pod_dorsal","kind":"hatch","between":["dorsal_turret","pod_dorsal"],"axis":"y","center_m":[0.0,6.5,2.0],"size_m":[0.9,0.9]},{"id":"p_ladder_ab","kind":"ladder","between":["a_corridor","b_spine"],"axis":"y","center_m":[0.0,3.0,11.0],"size_m":[1.0,1.0]},{"id":"p_bridge_window_p","kind":"window","between":["bridge","space"],"axis":"z","center_m":[5.0,5.0,31.0],"size_m":[2.8,1.2]},{"id":"p_bridge_window_s","kind":"window","between":["bridge","space"],"axis":"z","center_m":[-5.0,5.0,31.0],"size_m":[2.8,1.2]},{"id":"p_torpedo","kind":"door","between":["b_spine","torpedo_room"],"axis":"z","center_m":[0.0,1.15,26.0],"size_m":[1.6,2.3]},{"id":"p_medbay","kind":"door","between":["medbay","b_spine"],"axis":"x","center_m":[1.25,1.1,22.0],"size_m":[1.2,2.2]},{"id":"p_damage_control","kind":"door","between":["damage_control","b_spine"],"axis":"x","center_m":[-1.25,1.1,22.0],"size_m":[1.2,2.2]},{"id":"p_quarters","kind":"door","between":["quarters","b_spine"],"axis":"x","center_m":[1.25,1.1,14.0],"size_m":[1.0,2.2]},{"id":"p_mess","kind":"door","between":["mess","b_spine"],"axis":"x","center_m":[-1.25,1.15,14.0],"size_m":[1.6,2.3]},{"id":"p_port_turret","kind":"door","between":["port_turret","b_spine"],"axis":"x","center_m":[1.25,1.1,4.0],"size_m":[1.0,2.2]},{"id":"p_stbd_turret","kind":"door","between":["stbd_turret","b_spine"],"axis":"x","center_m":[-1.25,1.1,4.0],"size_m":[1.0,2.2]},{"id":"p_pod_port","kind":"hatch","between":["port_turret","pod_port"],"axis":"x","center_m":[11.0,1.1,4.0],"size_m":[0.9,1.4]},{"id":"p_pod_stbd","kind":"hatch","between":["stbd_turret","pod_stbd"],"axis":"x","center_m":[-11.0,1.1,4.0],"size_m":[0.9,1.4]},{"id":"p_spine_hangar","kind":"door","between":["b_spine","hangar"],"axis":"z","center_m":[0.0,1.15,0.0],"size_m":[1.6,2.3]},{"id":"p_ladder_bc","kind":"ladder","between":["b_spine","c_spine"],"axis":"y","center_m":[0.0,-0.5,11.0],"size_m":[1.0,1.0]},{"id":"p_hoist","kind":"hoist","between":["torpedo_room","magazine"],"axis":"y","center_m":[0.0,-0.5,28.0],"size_m":[1.2,3.0]},{"id":"p_hangar_c","kind":"door","between":["c_spine","hangar"],"axis":"z","center_m":[0.0,-2.25,0.0],"size_m":[2.0,2.5]},{"id":"p_bay_p","kind":"pressure_door","between":["hangar","launch_bay_p"],"axis":"x","center_m":[5.0,-2.4,-5.0],"size_m":[1.0,2.2]},{"id":"p_bay_s","kind":"pressure_door","between":["hangar","launch_bay_s"],"axis":"x","center_m":[-5.0,-2.4,-5.0],"size_m":[1.0,2.2]},{"id":"p_drop_p","kind":"bay_door","between":["launch_bay_p","space"],"axis":"y","center_m":[7.75,-3.5,-10.0],"size_m":[4.8,9.0]},{"id":"p_drop_s","kind":"bay_door","between":["launch_bay_s","space"],"axis":"y","center_m":[-7.75,-3.5,-10.0],"size_m":[4.8,9.0]},{"id":"p_hangar_pad","kind":"bay_door","between":["hangar","space"],"axis":"y","center_m":[0.0,-3.5,-10.0],"size_m":[6.0,12.0]},{"id":"p_hangar_eng","kind":"door","between":["hangar","engineering"],"axis":"z","center_m":[0.0,-2.35,-18.0],"size_m":[1.6,2.3]},{"id":"p_gallery_eng_p","kind":"door","between":["hangar","engineering"],"axis":"z","center_m":[7.75,1.1,-18.0],"size_m":[1.0,2.2]},{"id":"p_gallery_eng_s","kind":"door","between":["hangar","engineering"],"axis":"z","center_m":[-7.75,1.1,-18.0],"size_m":[1.0,2.2]},{"id":"p_drive","kind":"hatch","between":["engineering","drive"],"axis":"z","center_m":[0.0,1.0,-32.0],"size_m":[1.0,2.0]},{"id":"p_magazine","kind":"door","between":["c_spine","magazine"],"axis":"z","center_m":[0.0,-2.35,20.0],"size_m":[1.6,2.3]},{"id":"p_life_support","kind":"door","between":["life_support","c_spine"],"axis":"x","center_m":[1.25,-2.4,15.0],"size_m":[1.2,2.2]},{"id":"p_cargo","kind":"door","between":["cargo","c_spine"],"axis":"x","center_m":[-1.25,-2.35,15.0],"size_m":[2.0,2.3]},{"id":"p_airlock_inner","kind":"pressure_door","between":["cargo","airlock"],"axis":"x","center_m":[-9.0,-2.4,12.0],"size_m":[1.0,2.2]},{"id":"p_airlock_outer","kind":"pressure_door","between":["airlock","space"],"axis":"x","center_m":[-11.0,-2.4,12.0],"size_m":[1.0,2.2]},{"id":"p_shield","kind":"door","between":["shield_room","c_spine"],"axis":"x","center_m":[1.25,-2.4,3.0],"size_m":[1.0,2.2]},{"id":"p_switchboard","kind":"door","between":["switchboard","c_spine"],"axis":"x","center_m":[-1.25,-2.4,3.0],"size_m":[1.0,2.2]},{"id":"p_pod_ventral","kind":"hatch","between":["c_spine","pod_ventral"],"axis":"y","center_m":[0.0,-3.5,3.0],"size_m":[0.9,0.9]}],"stations":[{"id":"captain","name":"Captain","role":"command","compartment":"bridge","seat_m":[0.0,3.8,23.2],"yaw_deg":0,"core":false,"note":"On a 0.3 m dais. Overview, orders and ship-wide alerts. Merged into any console when no captain is playing."},{"id":"helm","name":"Helm","role":"helm","compartment":"bridge","seat_m":[1.8,3.5,27.2],"yaw_deg":0,"core":true,"note":"Flight, navigation and docking."},{"id":"tactical","name":"Tactical","role":"tactical","compartment":"bridge","seat_m":[-1.8,3.5,27.2],"yaw_deg":0,"core":true,"note":"Targeting, turret assignment and automation, missile tubes, shields facing."},{"id":"engineering","name":"Engineering","role":"engineering","compartment":"bridge","seat_m":[5.4,3.5,25.5],"yaw_deg":90,"core":true,"note":"Power allocation, breakers, coolant, life support setpoints, damage control dispatch."},{"id":"science","name":"Science","role":"science","compartment":"bridge","seat_m":[-5.4,3.5,25.5],"yaw_deg":-90,"core":true,"note":"Sensors, scans, shield frequency and face balance, the viewscreen feed."},{"id":"comms","name":"Comms","role":"comms","compartment":"bridge","seat_m":[5.0,3.5,21.6],"yaw_deg":90,"core":false,"note":"Hails, docking clearance, intercepts. Merged into Science when unmanned."},{"id":"flight_ops","name":"Flight operations","role":"flight_ops","compartment":"bridge","seat_m":[-5.0,3.5,21.6],"yaw_deg":-90,"core":false,"note":"Hangar and launch bay pressure, launch and recovery, fighter tasking. Merged into Tactical when unmanned."},{"id":"eng_main","name":"Engineering bay console","role":"engineering","compartment":"engineering","seat_m":[5.5,0.0,-20.5],"yaw_deg":180,"core":false,"note":"The same engineering console, beside the reactor, with hands-on reactor control (scram reset, coolant valves)."},{"id":"damage_board","name":"Damage control board","role":"engineering","compartment":"damage_control","seat_m":[-4.5,0.0,22.0],"yaw_deg":-90,"core":false,"note":"Damage control teams, repair queue and compartment status."},{"id":"bay_control","name":"Bay control","role":"flight_ops","compartment":"hangar","seat_m":[3.5,0.0,-1.2],"yaw_deg":180,"core":false,"note":"Local launch control on the forward landing, overlooking the hangar."},{"id":"gunner_dorsal","name":"Dorsal gunner","role":"gunner","compartment":"pod_dorsal","seat_m":[0.0,7.0,2.0],"yaw_deg":0,"core":false,"mount":"turret_dorsal"},{"id":"gunner_ventral","name":"Ventral gunner","role":"gunner","compartment":"pod_ventral","seat_m":[0.0,-6.5,3.0],"yaw_deg":0,"core":false,"mount":"turret_ventral"},{"id":"gunner_port","name":"Port gunner","role":"gunner","compartment":"pod_port","seat_m":[12.2,0.4,4.0],"yaw_deg":90,"core":false,"mount":"turret_port"},{"id":"gunner_stbd","name":"Starboard gunner","role":"gunner","compartment":"pod_stbd","seat_m":[-12.2,0.4,4.0],"yaw_deg":-90,"core":false,"mount":"turret_stbd"}],"fixtures":[{"id":"viewscreen","kind":"viewscreen","compartment":"bridge","center_m":[0.0,5.0,30.9],"size_m":[6.0,2.4],"facing_yaw_deg":180,"note":"Shows the exterior from a steerable virtual camera, rendered to a texture."},{"id":"captain_dais","kind":"dais","compartment":"bridge","center_m":[0.0,3.5,23.2],"size_m":[3.2,2.4],"height_m":0.3},{"id":"hangar_landing","kind":"landing","compartment":"hangar","center_m":[0.0,0.0,-1.0],"size_m":[10.0,2.0],"note":"Deck B level landing inside the hangar's forward wall, with stairs down to the floor at both sides."},{"id":"eng_mezzanine","kind":"mezzanine","compartment":"engineering","center_m":[0.0,0.0,-25.0],"size_m":[18.0,14.0],"ring_inner_radius_m":3.4,"note":"Deck B level ring around the reactor; the lower floor is deck C level, an upper catwalk at deck A level meets the aft passage."},{"id":"eng_catwalk","kind":"catwalk","compartment":"engineering","center_m":[0.0,3.5,-19.0],"size_m":[4.0,2.0]}],"systems":[{"id":"reactor","name":"Fusion reactor","kind":"power_source","compartment":"engineering","center_m":[0.0,1.5,-25.0],"radius_m":2.2,"height_m":10.0},{"id":"main_switchboard","name":"Main switchboard","kind":"power_distribution","compartment":"engineering","center_m":[7.5,0.0,-21.0]},{"id":"coolant_pumps","name":"Coolant pumps","kind":"thermal","compartment":"engineering","center_m":[-6.5,-3.5,-29.0]},{"id":"radiators","name":"Radiator panels","kind":"thermal","compartment":"space","center_m":[0.0,8.2,-26.0]},{"id":"impulse_drive","name":"Impulse drive","kind":"propulsion","compartment":"drive","center_m":[0.0,1.5,-37.0]},{"id":"inertial_dampers","name":"Inertial dampers","kind":"dampers","compartment":"drive","center_m":[4.0,0.0,-34.0]},{"id":"battery_bank","name":"Battery bank","kind":"power_storage","compartment":"switchboard","center_m":[-4.5,-3.5,1.5]},{"id":"aux_switchboard","name":"Forward switchboard","kind":"power_distribution","compartment":"switchboard","center_m":[-2.2,-3.5,4.8]},{"id":"shield_generator","name":"Shield generator","kind":"shields","compartment":"shield_room","center_m":[4.2,-3.5,3.0]},{"id":"o2_generator","name":"Oxygen generator","kind":"life_support","compartment":"life_support","center_m":[6.5,-3.5,17.0]},{"id":"co2_scrubbers","name":"CO2 scrubbers","kind":"life_support","compartment":"life_support","center_m":[6.5,-3.5,11.0]},{"id":"air_handler","name":"Air handler","kind":"life_support","compartment":"life_support","center_m":[3.0,-3.5,8.0]},{"id":"thermal_control","name":"Thermal control","kind":"life_support","compartment":"life_support","center_m":[3.0,-3.5,18.5]},{"id":"computer","name":"Computer core","kind":"computer","compartment":"computer_core","center_m":[-4.0,3.5,17.0]},{"id":"sensor_array","name":"Sensor array","kind":"sensors","compartment":"space","center_m":[0.0,1.0,41.5]},{"id":"comms_array","name":"Comms array","kind":"comms","compartment":"space","center_m":[0.0,8.0,14.0]},{"id":"gravity_generator","name":"Gravity generator","kind":"gravity","compartment":"cargo","center_m":[-6.5,-3.5,17.5]},{"id":"medbay_beds","name":"Medbay beds","kind":"medical","compartment":"medbay","center_m":[4.5,0.0,22.0]},{"id":"magazine_racks","name":"Missile racks","kind":"magazine","compartment":"magazine","center_m":[0.0,-3.5,25.0]},{"id":"tube_1","name":"Tube 1","kind":"missile_tube","compartment":"torpedo_room","center_m":[2.0,1.5,31.0],"mount":"tube_1"},{"id":"tube_2","name":"Tube 2","kind":"missile_tube","compartment":"torpedo_room","center_m":[-2.0,1.5,31.0],"mount":"tube_2"},{"id":"hangar_pumps","name":"Bay pumps and reserve tank","kind":"life_support","compartment":"hangar","center_m":[-4.0,-3.5,-2.0]},{"id":"cradle_p","name":"Port launch cradle","kind":"launch","compartment":"launch_bay_p","center_m":[7.75,-3.5,-10.0]},{"id":"cradle_s","name":"Starboard launch cradle","kind":"launch","compartment":"launch_bay_s","center_m":[-7.75,-3.5,-10.0]},{"id":"shuttle_pad","name":"Shuttle lift pad","kind":"launch","compartment":"hangar","center_m":[0.0,-3.5,-10.0]}],"mounts":[{"id":"turret_dorsal","kind":"turret","center_m":[0.0,9.0,2.0],"facing":[0,1,0],"weapon":"twin_pulse_cannon","crew_seat":"gunner_dorsal"},{"id":"turret_ventral","kind":"turret","center_m":[0.0,-7.0,3.0],"facing":[0,-1,0],"weapon":"twin_pulse_cannon","crew_seat":"gunner_ventral"},{"id":"turret_port","kind":"turret","center_m":[13.5,1.25,4.0],"facing":[1,0,0],"weapon":"twin_pulse_cannon","crew_seat":"gunner_port"},{"id":"turret_stbd","kind":"turret","center_m":[-13.5,1.25,4.0],"facing":[-1,0,0],"weapon":"twin_pulse_cannon","crew_seat":"gunner_stbd"},{"id":"tube_1","kind":"missile_tube","center_m":[2.0,1.5,37.0],"facing":[0,0,1],"weapon":"gannet_missile"},{"id":"tube_2","kind":"missile_tube","center_m":[-2.0,1.5,37.0],"facing":[0,0,1],"weapon":"gannet_missile"},{"id":"main_engine_p","kind":"engine","center_m":[3.2,1.0,-42.0],"facing":[0,0,-1]},{"id":"main_engine_s","kind":"engine","center_m":[-3.2,1.0,-42.0],"facing":[0,0,-1]}],"craft":[{"id":"swift_1","name":"Swift 1","class":"Swift fighter","bay":"launch_bay_p","cradle":"cradle_p","drop_door":"p_drop_p","center_m":[7.75,-2.6,-10.0],"length_m":7.0,"span_m":4.6,"height_m":1.8,"seats":1},{"id":"swift_2","name":"Swift 2","class":"Swift fighter","bay":"launch_bay_s","cradle":"cradle_s","drop_door":"p_drop_s","center_m":[-7.75,-2.6,-10.0],"length_m":7.0,"span_m":4.6,"height_m":1.8,"seats":1},{"id":"petrel","name":"Petrel","class":"Petrel shuttle","bay":"hangar","cradle":"shuttle_pad","drop_door":"p_hangar_pad","center_m":[0.0,-1.9,-10.0],"length_m":10.0,"span_m":4.5,"height_m":3.2,"seats":4}]}
+</script>
+<!-- INLINE layout:tern END -->
+<!-- INLINE shipkit BEGIN -->
+<script>
+/*
+ * shipkit.js: the one place a mockup turns a ship layout into three.js objects.
+ *
+ * Every Star Crew mockup reads the same layout (data/ships/<id>/layout.json), so
+ * the bridge, the deck plan, the systems view and the exterior cannot disagree
+ * about where a room or a door is (CLAUDE.md sections 8 and 11). This file is
+ * the shared interpretation of that layout: palette, lighting states, the Pi 5
+ * budget meter, room shells with door openings cut, the hull loft and labels.
+ *
+ * It is a classic script, not a module, so a mockup still works when opened
+ * straight from disk. tools/mockups/inline.py copies it into each page between
+ * the "INLINE shipkit" markers; edit it here, never in a page. Functions that
+ * build geometry take THREE as their first argument because the page owns the
+ * three.js import.
+ *
+ * Axes (from the layout): +X port, +Y up, +Z bow, metres.
+ */
+(function () {
+  "use strict";
+
+  /** The layout inlined into the page as <script id="ship-layout" type="application/json">. */
+  function layout() {
+    const el = document.getElementById("ship-layout");
+    if (!el) throw new Error("shipkit: no #ship-layout script in the page (run tools/mockups/inline.py)");
+    return JSON.parse(el.textContent);
+  }
+
+  /**
+   * The Raspberry Pi 5 (1 GB) budget a mockup is measured against. These are
+   * the provisional numbers from openspec/changes/engine-stack/design.md,
+   * "The Pi 5 budget"; that table is the source, and this copy is checked
+   * against its marker by tools/mockups/inline.py --check.
+   */
+  const PI_BUDGET = {
+    board: "Pi 5 (1 GB)",
+    triangles: 200000,       // visible triangles per frame, all passes
+    drawCalls: 300,          // draw calls per frame, all passes
+    textureMB: 96,           // texture memory
+    viewscreenPx: [1024, 512], // render-to-texture size for the main viewscreen
+    frameMs: 16.7,           // 60 frames a second target (33.3 ms floor), 3D at 1280x720
+  };
+
+  /** Named colour roles. Mockups use roles, not hex values (CLAUDE.md section 10). */
+  const PALETTE = {
+    space: 0x05070d,
+    hullLight: 0x8f9aa8,
+    hullDark: 0x4a5462,
+    hullAccent: 0xc9643b,
+    floor: 0x3a404a,
+    floorCorridor: 0x454b55,
+    wall: 0x6b7480,
+    wallDark: 0x525a66,
+    ceiling: 0x2c3138,
+    trim: 0x9aa4b0,
+    console: 0x2a3038,
+    screen: 0x48d6ff,
+    screenWarm: 0xffb347,
+    glass: 0x9fd8ff,
+    door: 0x8a6d3b,
+    doorFrame: 0xd0a040,
+    hazard: 0xe8c547,
+    alert: 0xff2a2a,
+    emergency: 0xff8a1c,
+    lampWarm: 0xffe2b0,
+    lampCool: 0xbfe0ff,
+    // station roles, used for seats, labels and console accents
+    role: {
+      command: 0xf2f2f2,
+      helm: 0x4fc3f7,
+      tactical: 0xef5350,
+      engineering: 0xffb300,
+      science: 0x66bb6a,
+      comms: 0xab47bc,
+      flight_ops: 0x26c6da,
+      gunner: 0xff7043,
+    },
+    // compartment kinds, used by plan views
+    kind: {
+      room: 0x5c6b7a,
+      corridor: 0x7d8792,
+      bay: 0x4a6a8a,
+      crawlspace: 0x6a5a4a,
+      airlock: 0xb08a3a,
+      pod: 0xa05050,
+    },
+  };
+
+  /**
+   * Interior lighting states. Every interior mockup shows at least normal and
+   * red alert (CLAUDE.md section 11). In the engine these are baked vertex
+   * colour sets blended by a per-compartment uniform; here they are light
+   * colours and intensities.
+   */
+  const LIGHTING = {
+    normal: { label: "Normal", ambient: 0x2a3340, ambientI: 0.55, lamp: 0xffe9c8, lampI: 1.0, strip: 0x9fd8ff, stripI: 0.6, fog: 0x0b0e14 },
+    red_alert: { label: "Red alert", ambient: 0x2a0d10, ambientI: 0.45, lamp: 0xff3030, lampI: 0.75, strip: 0xff2020, stripI: 1.0, fog: 0x120406 },
+    emergency: { label: "Emergency power", ambient: 0x120c08, ambientI: 0.3, lamp: 0xff8a1c, lampI: 0.35, strip: 0xff8a1c, stripI: 0.8, fog: 0x060403 },
+  };
+
+  // ---------------------------------------------------------------- lookups
+
+  function byId(list, id) {
+    for (const x of list) if (x.id === id) return x;
+    return null;
+  }
+  function compartment(L, id) { return byId(L.compartments, id); }
+  function portalsOf(L, compId) { return L.portals.filter((p) => p.between.indexOf(compId) >= 0); }
+  function stationsIn(L, compId) { return (L.stations || []).filter((s) => s.compartment === compId); }
+  function systemsIn(L, compId) { return (L.systems || []).filter((s) => s.compartment === compId); }
+  function deckById(L, id) { return byId(L.decks, id); }
+
+  /** Volume in cubic metres and floor area in square metres of a compartment. */
+  function measure(comp) {
+    let v = 0, a = 0;
+    for (const b of comp.boxes) {
+      const dx = b.x[1] - b.x[0], dy = b.y[1] - b.y[0], dz = b.z[1] - b.z[0];
+      v += dx * dy * dz; a += dx * dz;
+    }
+    return { volume_m3: v, floor_m2: a };
+  }
+
+  /** Union bounds of a compartment's boxes. */
+  function bounds(comp) {
+    const r = { x: [Infinity, -Infinity], y: [Infinity, -Infinity], z: [Infinity, -Infinity] };
+    for (const b of comp.boxes) for (const k of "xyz") { r[k][0] = Math.min(r[k][0], b[k][0]); r[k][1] = Math.max(r[k][1], b[k][1]); }
+    return r;
+  }
+  function center(comp) {
+    const b = bounds(comp);
+    return [(b.x[0] + b.x[1]) / 2, (b.y[0] + b.y[1]) / 2, (b.z[0] + b.z[1]) / 2];
+  }
+
+  /** Half extents of a portal's opening on its two in-plane axes. */
+  function portalHalf(p) {
+    const s = p.size_m;
+    if (p.axis === "x") return { z: s[0] / 2, y: s[1] / 2 };
+    if (p.axis === "z") return { x: s[0] / 2, y: s[1] / 2 };
+    return { x: s[0] / 2, z: s[1] / 2 };
+  }
+
+  // ------------------------------------------------------------ room shells
+
+  const EPS = 1e-4;
+
+  // Each face of a box: the axis it is normal to, which end, and its two in-plane axes (u, v).
+  const FACES = [
+    { key: "floor", axis: "y", end: 0, u: "x", v: "z", inward: [0, 1, 0] },
+    { key: "ceiling", axis: "y", end: 1, u: "x", v: "z", inward: [0, -1, 0] },
+    { key: "wall", axis: "x", end: 0, u: "z", v: "y", inward: [1, 0, 0] },
+    { key: "wall", axis: "x", end: 1, u: "z", v: "y", inward: [-1, 0, 0] },
+    { key: "wall", axis: "z", end: 0, u: "x", v: "y", inward: [0, 0, 1] },
+    { key: "wall", axis: "z", end: 1, u: "x", v: "y", inward: [0, 0, -1] },
+  ];
+
+  /**
+   * Rectangle minus holes, as a list of cells. Holes are clipped to the
+   * rectangle. Cells come from the grid of every hole edge, so the result is
+   * exact and has no slivers, at the price of a few extra triangles.
+   */
+  function rectMinusHoles(r, holes) {
+    const hs = holes
+      .map((h) => ({ u0: Math.max(h.u0, r.u0), u1: Math.min(h.u1, r.u1), v0: Math.max(h.v0, r.v0), v1: Math.min(h.v1, r.v1) }))
+      .filter((h) => h.u1 - h.u0 > EPS && h.v1 - h.v0 > EPS);
+    if (!hs.length) return [r];
+    const us = [r.u0, r.u1], vs = [r.v0, r.v1];
+    for (const h of hs) { us.push(h.u0, h.u1); vs.push(h.v0, h.v1); }
+    const su = [...new Set(us.map((x) => +x.toFixed(4)))].sort((a, b) => a - b);
+    const sv = [...new Set(vs.map((x) => +x.toFixed(4)))].sort((a, b) => a - b);
+    const cells = [];
+    for (let i = 0; i + 1 < su.length; i++) {
+      for (let j = 0; j + 1 < sv.length; j++) {
+        const cu = (su[i] + su[i + 1]) / 2, cv = (sv[j] + sv[j + 1]) / 2;
+        if (hs.some((h) => cu > h.u0 && cu < h.u1 && cv > h.v0 && cv < h.v1)) continue;
+        cells.push({ u0: su[i], u1: su[i + 1], v0: sv[j], v1: sv[j + 1] });
+      }
+    }
+    // Merge runs along u in each row to keep the triangle count down.
+    cells.sort((a, b) => a.v0 - b.v0 || a.u0 - b.u0);
+    const merged = [];
+    for (const c of cells) {
+      const last = merged[merged.length - 1];
+      if (last && Math.abs(last.v0 - c.v0) < EPS && Math.abs(last.v1 - c.v1) < EPS && Math.abs(last.u1 - c.u0) < EPS) last.u1 = c.u1;
+      else merged.push({ ...c });
+    }
+    return merged;
+  }
+
+  /** The openings on one face of one box: portals on that plane, and faces shared with the compartment's other boxes. */
+  function faceHoles(L, comp, box, face, opts) {
+    const plane = box[face.axis][face.end];
+    const holes = [];
+    for (const p of portalsOf(L, comp.id)) {
+      if (p.axis !== face.axis) continue;
+      if (opts.skipKinds && opts.skipKinds.indexOf(p.kind) >= 0) continue;
+      const c = { x: p.center_m[0], y: p.center_m[1], z: p.center_m[2] };
+      const slab = face.axis === "y" ? 0.55 : EPS * 10;
+      if (Math.abs(c[face.axis] - plane) > slab) continue;
+      const h = portalHalf(p);
+      holes.push({ u0: c[face.u] - h[face.u], u1: c[face.u] + h[face.u], v0: c[face.v] - h[face.v], v1: c[face.v] + h[face.v], portal: p });
+    }
+    for (const other of comp.boxes) {
+      if (other === box) continue;
+      const oEnd = 1 - face.end;
+      if (Math.abs(other[face.axis][oEnd] - plane) > EPS) continue;
+      holes.push({ u0: other[face.u][0], u1: other[face.u][1], v0: other[face.v][0], v1: other[face.v][1] });
+    }
+    return holes;
+  }
+
+  function pushQuad(pos, nor, col, face, plane, c, color) {
+    const p = (u, v) => {
+      const o = { x: 0, y: 0, z: 0 };
+      o[face.axis] = plane; o[face.u] = u; o[face.v] = v;
+      return [o.x, o.y, o.z];
+    };
+    const a = p(c.u0, c.v0), b = p(c.u1, c.v0), d = p(c.u1, c.v1), e = p(c.u0, c.v1);
+    // Wind so the quad faces inward (into the room).
+    const n = face.inward;
+    const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], ad = [d[0] - a[0], d[1] - a[1], d[2] - a[2]];
+    const cross = [ab[1] * ad[2] - ab[2] * ad[1], ab[2] * ad[0] - ab[0] * ad[2], ab[0] * ad[1] - ab[1] * ad[0]];
+    const flip = cross[0] * n[0] + cross[1] * n[1] + cross[2] * n[2] < 0;
+    const tri = flip ? [a, d, b, a, e, d] : [a, b, d, a, d, e];
+    for (const v of tri) { pos.push(v[0], v[1], v[2]); nor.push(n[0], n[1], n[2]); col.push(color.r, color.g, color.b); }
+  }
+
+  /**
+   * Build a compartment's inside surfaces (floor, ceiling, walls) with every
+   * portal opening cut out. Returns { floor, ceiling, walls } BufferGeometries
+   * with vertex colours, plus the list of openings for door props.
+   *
+   * opts.colors: { floor, ceiling, wall } as hex; opts.skipKinds: portal kinds
+   * not to cut (for example ["window"] to keep a blank wall).
+   */
+  function roomShell(THREE, L, comp, opts) {
+    opts = opts || {};
+    const isCorridor = comp.kind === "corridor";
+    const colors = Object.assign({ floor: isCorridor ? PALETTE.floorCorridor : PALETTE.floor, ceiling: PALETTE.ceiling, wall: PALETTE.wall }, opts.colors || {});
+    const out = { floor: [[], [], []], ceiling: [[], [], []], wall: [[], [], []] };
+    const openings = [];
+    for (const box of comp.boxes) {
+      for (const face of FACES) {
+        const plane = box[face.axis][face.end];
+        const rect = { u0: box[face.u][0], u1: box[face.u][1], v0: box[face.v][0], v1: box[face.v][1] };
+        const holes = faceHoles(L, comp, box, face, opts);
+        for (const h of holes) if (h.portal) openings.push({ portal: h.portal, axis: face.axis, plane, u: face.u, v: face.v, rect: h });
+        const color = new THREE.Color(colors[face.key]);
+        const bucket = out[face.key];
+        for (const c of rectMinusHoles(rect, holes)) pushQuad(bucket[0], bucket[1], bucket[2], face, plane, c, color);
+      }
+    }
+    const make = (b) => {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute("position", new THREE.Float32BufferAttribute(b[0], 3));
+      g.setAttribute("normal", new THREE.Float32BufferAttribute(b[1], 3));
+      g.setAttribute("color", new THREE.Float32BufferAttribute(b[2], 3));
+      return g;
+    };
+    return { floor: make(out.floor), ceiling: make(out.ceiling), walls: make(out.wall), openings };
+  }
+
+  // ------------------------------------------------------------------- hull
+
+  /**
+   * Loft the hull's octagonal sections into one low-poly BufferGeometry
+   * (outward normals, flat shaded). opts.inflate_m grows it, for a shell drawn
+   * around the interior.
+   */
+  function hullGeometry(THREE, L, opts) {
+    opts = opts || {};
+    const inflate = opts.inflate_m || 0;
+    const secs = L.hull.sections.slice().sort((a, b) => a.z_m - b.z_m);
+    const ring = (s) => {
+      const hw = s.half_beam_m + inflate, top = s.top_m + inflate, bot = s.bottom_m - inflate, c = s.chamfer_m;
+      // Eight points, counter-clockwise seen from the bow (+Z), starting at the top port corner.
+      return [
+        [hw - c, top], [-(hw - c), top], [-hw, top - c], [-hw, bot + c],
+        [-(hw - c), bot], [hw - c, bot], [hw, bot + c], [hw, top - c],
+      ].map((p) => [p[0], p[1], s.z_m]);
+    };
+    const rings = secs.map(ring);
+    const pos = [];
+    const tri = (a, b, c) => pos.push(...a, ...b, ...c);
+    for (let i = 0; i + 1 < rings.length; i++) {
+      const r0 = rings[i], r1 = rings[i + 1];
+      for (let k = 0; k < 8; k++) {
+        const k2 = (k + 1) % 8;
+        tri(r0[k], r0[k2], r1[k2]);
+        tri(r0[k], r1[k2], r1[k]);
+      }
+    }
+    // Caps: stern (first ring) and bow (last ring), fanned from the centre.
+    const cap = (r, flip) => {
+      const c = r.reduce((a, p) => [a[0] + p[0] / 8, a[1] + p[1] / 8, a[2] + p[2] / 8], [0, 0, 0]);
+      for (let k = 0; k < 8; k++) {
+        const k2 = (k + 1) % 8;
+        if (flip) tri(c, r[k2], r[k]); else tri(c, r[k], r[k2]);
+      }
+    };
+    cap(rings[0], false);
+    cap(rings[rings.length - 1], true);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    g.computeVertexNormals();
+    // Make sure the winding faces outward: test one triangle against the centroid.
+    return g;
+  }
+
+  // ----------------------------------------------------------------- labels
+
+  /** A camera-facing text sprite. size_m is the label's height in metres. */
+  function label(THREE, text, opts) {
+    opts = opts || {};
+    const px = 64, pad = 16;
+    const cv = document.createElement("canvas");
+    const ctx = cv.getContext("2d");
+    ctx.font = `600 ${px}px system-ui, sans-serif`;
+    const w = Math.ceil(ctx.measureText(text).width) + pad * 2;
+    cv.width = w; cv.height = px + pad * 2;
+    ctx.font = `600 ${px}px system-ui, sans-serif`;
+    ctx.fillStyle = opts.bg || "rgba(8,12,18,0.78)";
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    if (opts.accent !== undefined) {
+      ctx.fillStyle = "#" + new THREE.Color(opts.accent).getHexString();
+      ctx.fillRect(0, 0, 10, cv.height);
+    }
+    ctx.fillStyle = opts.color || "#e8eef5";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, pad + (opts.accent !== undefined ? 6 : 0), cv.height / 2);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const mat = new THREE.SpriteMaterial({ map: tex, depthTest: opts.depthTest !== false, transparent: true });
+    const s = new THREE.Sprite(mat);
+    const h = opts.size_m || 0.5;
+    s.scale.set((h * cv.width) / cv.height, h, 1);
+    s.renderOrder = 10;
+    return s;
+  }
+
+  // ------------------------------------------------------------ budget HUD
+
+  /**
+   * The Pi 5 cost meter every mockup shows (CLAUDE.md section 11). Call
+   * hud.beginFrame(renderer) before the frame's first render and
+   * hud.endFrame(renderer) after its last; it sums every pass (a viewscreen's
+   * render-to-texture included).
+   */
+  function budgetHud(opts) {
+    opts = opts || {};
+    const el = document.createElement("div");
+    el.className = "pi-budget";
+    el.style.cssText = [
+      "position:fixed", "right:12px", "bottom:12px", "z-index:20", "font:12px/1.35 ui-monospace,Menlo,Consolas,monospace",
+      "color:#d8e2ec", "background:rgba(6,9,14,0.82)", "border:1px solid #2b3540", "border-radius:6px", "padding:8px 10px",
+      "min-width:210px", "pointer-events:none",
+    ].join(";");
+    document.body.appendChild(el);
+    let tris = 0, calls = 0, frames = 0, acc = { t: 0, c: 0 }, last = performance.now(), shown = { t: 0, c: 0, fps: 0 };
+    const bar = (v, max) => {
+      const f = Math.min(1, v / max);
+      const color = v > max ? "#ff5252" : v > 0.8 * max ? "#ffb300" : "#66bb6a";
+      return `<div style="height:5px;background:#1c242d;border-radius:3px;margin:2px 0 5px"><div style="height:5px;width:${(f * 100).toFixed(1)}%;background:${color};border-radius:3px"></div></div>`;
+    };
+    function render() {
+      const b = PI_BUDGET;
+      el.innerHTML =
+        `<div style="font-weight:700;margin-bottom:4px">${PI_BUDGET.board} budget (provisional)</div>` +
+        `triangles ${shown.t.toLocaleString()} / ${b.triangles.toLocaleString()}${bar(shown.t, b.triangles)}` +
+        `draw calls ${shown.c} / ${b.drawCalls}${bar(shown.c, b.drawCalls)}` +
+        `<div style="color:#8a98a8">desktop ${shown.fps.toFixed(0)} fps: not a Pi measurement</div>` +
+        (opts.note ? `<div style="color:#8a98a8">${opts.note}</div>` : "");
+    }
+    return {
+      el,
+      beginFrame(renderer) { renderer.info.autoReset = false; renderer.info.reset(); },
+      endFrame(renderer) {
+        tris = renderer.info.render.triangles; calls = renderer.info.render.calls;
+        acc.t += tris; acc.c += calls; frames++;
+        const now = performance.now();
+        if (now - last > 500) {
+          shown = { t: Math.round(acc.t / frames), c: Math.round(acc.c / frames), fps: (frames * 1000) / (now - last) };
+          acc = { t: 0, c: 0 }; frames = 0; last = now;
+          render();
+        }
+      },
+      /** The latest averaged numbers, for screenshots and tests. */
+      read() { return { triangles: shown.t, drawCalls: shown.c }; },
+    };
+  }
+
+  // -------------------------------------------------------- mockup plumbing
+
+  /**
+   * Standard page chrome: title block naming the change the mockup presents,
+   * and the "mockup, not a Pi measurement" disclaimer.
+   */
+  function titleBlock(opts) {
+    const el = document.createElement("div");
+    el.className = "mockup-title";
+    el.style.cssText = "position:fixed;left:12px;top:12px;z-index:20;max-width:min(520px,calc(100vw - 24px));font:13px/1.4 system-ui,sans-serif;color:#e8eef5;background:rgba(6,9,14,0.82);border:1px solid #2b3540;border-radius:6px;padding:10px 12px";
+    el.innerHTML =
+      `<div style="font-weight:700;font-size:15px">${opts.title}</div>` +
+      `<div style="color:#9fb0c0">${opts.subtitle || ""}</div>` +
+      `<div style="color:#7f8fa0;margin-top:4px">Presents <code>${opts.change}</code>. A three.js mockup on a desktop GPU: it shows layout and look, not Pi 5 performance.</div>`;
+    document.body.appendChild(el);
+    return el;
+  }
+
+  /**
+   * Screenshot hooks for tools/mockups/shoot.mjs. A mockup registers named
+   * shots; the tool calls each one's setup, waits for frames, and captures.
+   * window.MOCKUP_READY is set once the scene has rendered its first frame.
+   */
+  function registerShots(shots) {
+    window.MOCKUP_SHOTS = shots;
+  }
+  function markReady() {
+    window.MOCKUP_READY = true;
+  }
+
+  window.ShipKit = {
+    version: 1,
+    layout, PI_BUDGET, PALETTE, LIGHTING,
+    /** Deprecated alias from before the floor moved to the Pi 5; removed once no page uses it. */
+    PI3_BUDGET: PI_BUDGET,
+    byId, compartment, portalsOf, stationsIn, systemsIn, deckById, measure, bounds, center, portalHalf,
+    roomShell, hullGeometry, label, budgetHud, titleBlock, registerShots, markReady,
+    rectMinusHoles,
+  };
+})();
+</script>
+<!-- INLINE shipkit END -->
+</head>
+<body>
+<div id="console"></div>
+<div class="info" id="info"></div>
+<div class="controls" id="controls"></div>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
+
+const K = window.ShipKit;
+const L = K.layout();
+const P = K.PALETTE;
+const titleEl = K.titleBlock({
+  title: "Bridge stations",
+  subtitle: L.ship.name + ", " + L.ship.class + ": the bridge (POI 1) and the command passage behind its aft door",
+  change: "bridge-stations",
+});
+const hud = K.budgetHud({ note: "all passes: viewscreen 1024x512, windows, interior, console" });
+window.MOCKUP_BUDGET = () => hud.read();
+const hex = (c) => "#" + new THREE.Color(c).getHexString();
+
+// ------------------------------------------------------------------ renderer
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.autoClear = false;
+document.body.appendChild(renderer.domElement);
+
+// Two scenes, two frames: the interior is ship-local and never moves; the
+// exterior is the system frame where the ship turns (ship-frames).
+const interior = new THREE.Scene();
+const exterior = new THREE.Scene();
+
+// ------------------------------------------------------------ layout lookups
+const bridge = K.compartment(L, "bridge");
+const corridor = K.compartment(L, "a_corridor");
+const BB = K.bounds(bridge);            // x -7..7, y 3.5..6.5, z 20..31
+const FLOOR = BB.y[0], CEIL = BB.y[1];
+const SEATED_EYE_M = 1.20;              // bridge-stations design 11.1
+const STAND_EYE_M = 1.65;               // crew-on-deck design
+const stations = K.stationsIn(L, "bridge");
+const vsFix = K.byId(L.fixtures, "viewscreen");
+const daisFix = K.byId(L.fixtures, "captain_dais");
+const windows = L.portals.filter((p) => p.kind === "window" && p.between.includes("bridge"));
+const doorAft = K.byId(L.portals, "p_bridge_aft");
+const KEYS = ["helm", "tactical", "engineering", "science", "captain", "comms", "flight_ops"];
+const SHORT = { helm: "HELM", tactical: "TAC", engineering: "ENG", science: "SCI", captain: "CAPT", comms: "COMMS", flight_ops: "FLT OPS" };
+const yawOverride = {};                  // question B1: alternative facings
+
+// ------------------------------------------------------------ geometry kit
+const tmpM = new THREE.Matrix4();
+function colored(g, color) {
+  const c = new THREE.Color(color), n = g.attributes.position.count, a = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b; }
+  g.setAttribute("color", new THREE.BufferAttribute(a, 3));
+  return g;
+}
+/** A box as non-indexed geometry with position, normal and colour, placed by a local matrix then a parent matrix. */
+function box(w, h, d, color, pos, rot, parent) {
+  const g = new THREE.BoxGeometry(w, h, d).toNonIndexed();
+  g.deleteAttribute("uv");
+  const q = new THREE.Quaternion().setFromEuler(new THREE.Euler((rot && rot[0]) || 0, (rot && rot[1]) || 0, (rot && rot[2]) || 0, "YXZ"));
+  g.applyMatrix4(tmpM.compose(new THREE.Vector3(pos[0], pos[1], pos[2]), q, new THREE.Vector3(1, 1, 1)));
+  if (parent) g.applyMatrix4(parent);
+  return colored(g, color);
+}
+function quad(w, h, color, pos, rot, parent) {
+  const g = new THREE.PlaneGeometry(w, h).toNonIndexed();
+  g.deleteAttribute("uv");
+  const q = new THREE.Quaternion().setFromEuler(new THREE.Euler((rot && rot[0]) || 0, (rot && rot[1]) || 0, 0, "YXZ"));
+  g.applyMatrix4(tmpM.compose(new THREE.Vector3(pos[0], pos[1], pos[2]), q, new THREE.Vector3(1, 1, 1)));
+  if (parent) g.applyMatrix4(parent);
+  return colored(g, color);
+}
+const merge = (list) => mergeGeometries(list.filter(Boolean), false);
+const LIT = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+const deg = Math.PI / 180;
+function stationYaw(s) { return (yawOverride[s.id] !== undefined ? yawOverride[s.id] : s.yaw_deg) * deg; }
+function stationMatrix(s) {
+  return new THREE.Matrix4().compose(new THREE.Vector3(s.seat_m[0], s.seat_m[1], s.seat_m[2]),
+    new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), stationYaw(s)), new THREE.Vector3(1, 1, 1));
+}
+/** Seat-local direction (x, z) to ship-local. */
+function local(s, x, y, z) { return new THREE.Vector3(x, y, z).applyMatrix4(stationMatrix(s)); }
+
+// ------------------------------------------------------------ the rooms
+const shellB = K.roomShell(THREE, L, bridge, { colors: { wall: P.wall, floor: P.floor, ceiling: P.ceiling } });
+const shellC = K.roomShell(THREE, L, corridor, { skipKinds: ["ladder"] });
+const roomParts = [shellB.floor, shellB.walls, shellB.ceiling, shellC.floor, shellC.walls, shellC.ceiling];
+
+// Fixed furniture and trims that do not depend on station facings.
+const fixedParts = [];
+// Captain's dais (layout fixture): 3.2 x 2.4 m, 0.3 m high, plus a front step.
+fixedParts.push(box(daisFix.size_m[0], daisFix.height_m, daisFix.size_m[1], P.hullDark, [daisFix.center_m[0], FLOOR + daisFix.height_m / 2, daisFix.center_m[2]]));
+fixedParts.push(box(1.2, 0.15, 0.3, P.hullDark, [0, FLOOR + 0.075, daisFix.center_m[2] + daisFix.size_m[1] / 2 + 0.15]));
+fixedParts.push(box(1.2, 0.15, 0.3, P.hullDark, [0, FLOOR + 0.075, daisFix.center_m[2] - daisFix.size_m[1] / 2 - 0.15]));
+// Viewscreen housing (layout fixture), 0.08 m deep, 0.02 m off the forward bulkhead.
+const vsC = vsFix.center_m, vsW = vsFix.size_m[0], vsH = vsFix.size_m[1];
+fixedParts.push(box(vsW + 0.3, vsH + 0.3, 0.08, P.console, [vsC[0], vsC[1], vsC[2] + 0.04]));
+// Window frames: an inset ring in each window opening's wall plane.
+for (const w of windows) {
+  const [cx, cy, cz] = w.center_m, ww = w.size_m[0], wh = w.size_m[1], t = 0.12, d = 0.2;
+  fixedParts.push(box(ww + 2 * t, t, d, P.trim, [cx, cy + wh / 2 + t / 2, cz - d / 2]));
+  fixedParts.push(box(ww + 2 * t, t, d, P.trim, [cx, cy - wh / 2 - t / 2, cz - d / 2]));
+  fixedParts.push(box(t, wh, d, P.trim, [cx - ww / 2 - t / 2, cy, cz - d / 2]));
+  fixedParts.push(box(t, wh, d, P.trim, [cx + ww / 2 + t / 2, cy, cz - d / 2]));
+}
+// Aft door frame (p_bridge_aft) on the bridge side, inset from the opening.
+{
+  const [cx, cy, cz] = doorAft.center_m, dw = doorAft.size_m[0], dh = doorAft.size_m[1], t = 0.14;
+  fixedParts.push(box(t, dh, 0.16, P.doorFrame, [cx - dw / 2 - t / 2, cy, cz + 0.08]));
+  fixedParts.push(box(t, dh, 0.16, P.doorFrame, [cx + dw / 2 + t / 2, cy, cz + 0.08]));
+  fixedParts.push(box(dw + 2 * t, t, 0.16, P.doorFrame, [cx, cy + dh / 2 + t / 2, cz + 0.08]));
+}
+// Ceiling ribs across the room (trim), 1 cm below the ceiling.
+for (const z of [21.2, 25.25, 29.8]) fixedParts.push(box(13.9, 0.12, 0.25, P.wallDark, [0, CEIL - 0.07, z]));
+// Wall consoles' kick plate along the side walls.
+for (const sx of [1, -1]) fixedParts.push(box(0.1, 0.25, 10.9, P.wallDark, [sx * 6.94, FLOOR + 0.125, 25.5]));
+// Command passage: closed doors at its other openings, and the ladder well's plate.
+for (const p of K.portalsOf(L, "a_corridor")) {
+  if (p.id === "p_bridge_aft") continue;
+  const [cx, cy, cz] = p.center_m;
+  if (p.kind === "ladder") { fixedParts.push(box(p.size_m[0], 0.02, p.size_m[1], P.hazard, [cx, FLOOR + 0.01, cz])); continue; }
+  if (p.axis === "x") fixedParts.push(box(0.06, p.size_m[1], p.size_m[0], P.door, [cx + Math.sign(cx) * 0.03, cy, cz]));
+  else fixedParts.push(box(p.size_m[0], p.size_m[1], 0.06, P.door, [cx, cy, cz - 0.03]));
+}
+
+// Glass (one blended quad per window, the glass pass).
+const glassMat = new THREE.MeshBasicMaterial({ color: P.glass, transparent: true, opacity: 0.1, depthWrite: false, side: THREE.DoubleSide });
+const glass = new THREE.Mesh(merge(windows.map((w) => quad(w.size_m[0], w.size_m[1], 0xffffff, [w.center_m[0], w.center_m[1], w.center_m[2] + 0.05], [0, Math.PI]))), glassMat);
+interior.add(glass);
+
+// Lamps (emissive panels), emergency lamps and floor strips: data for the three lighting states.
+const LAMPS = [];
+for (const z of [22.5, 28.0]) for (const x of [-4.5, 0, 4.5]) LAMPS.push([x, CEIL, z]);
+const EMERG = [[0, CEIL - 0.12, 20.2], [0, CEIL - 0.12, 30.6]];
+const lampMat = new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false });
+const lampMesh = new THREE.Mesh(merge(LAMPS.map((p) => box(1.2, 0.04, 0.4, 0xffffff, [p[0], p[1] - 0.03, p[2]]))), lampMat);
+const emergMat = new THREE.MeshBasicMaterial({ color: 0x222222, toneMapped: false });
+const emergMesh = new THREE.Mesh(merge(EMERG.map((p) => box(0.36, 0.12, 0.14, 0xffffff, p))), emergMat);
+const stripMat = new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false });
+const stripParts = [];
+for (const sx of [1, -1]) stripParts.push(box(0.06, 0.02, 10.4, 0xffffff, [sx * 6.85, FLOOR + 0.011, 25.5]));
+for (const sx of [1, -1]) stripParts.push(box(0.06, 0.02, 1.7, 0xffffff, [sx * 0.9, FLOOR + 0.011, 21.0]));
+for (const sx of [1, -1]) stripParts.push(box(0.06, 0.02, 15.6, 0xffffff, [sx * 1.15, FLOOR + 0.011, 12.0]));
+const stripMesh = new THREE.Mesh(merge(stripParts), stripMat);
+interior.add(lampMesh, emergMesh, stripMesh);
+
+// Point lights at the fixtures: the room is lit by its own lamps (CLAUDE.md 11).
+const ambient = new THREE.AmbientLight(0xffffff, 1);
+interior.add(ambient);
+const lampLights = LAMPS.map((p) => { const l = new THREE.PointLight(0xffffff, 1, 9, 1.4); l.position.set(p[0], CEIL - 0.35, p[2]); interior.add(l); return l; });
+const emergLights = EMERG.map((p) => { const l = new THREE.PointLight(0xffffff, 0, 12, 1.3); l.position.set(p[0], p[1] - 0.3, p[2] - Math.sign(p[2] - 25) * 0.3); interior.add(l); return l; });
+const corridorLights = [8, 16].map((z) => { const l = new THREE.PointLight(0xffffff, 1, 9, 1.4); l.position.set(0, CEIL - 0.4, z); interior.add(l); return l; });
+const screenLights = []; // a soft glow in front of each console, its colour from the station role
+
+// ------------------------------------------------------------ stations
+let furnitureMesh = null, screenMesh = null, screenRanges = {}, stationHits = [], crew = {};
+const crewMat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+const screenMat = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false });
+
+function buildStations() {
+  for (const m of [furnitureMesh, screenMesh, ...Object.values(crew)]) if (m) { interior.remove(m); m.geometry.dispose(); }
+  for (const l of screenLights) interior.remove(l);
+  screenLights.length = 0; stationHits = []; crew = {}; screenRanges = {};
+  const parts = [], screens = [];
+  let vcount = 0;
+  for (const s of stations) {
+    const M = stationMatrix(s), role = P.role[s.role], core = !!s.core, cap = s.id === "captain";
+    // Seat: pedestal, cushion, back (design 11.1: 0.55 x 0.50 m, seat 0.45 m).
+    parts.push(box(0.14, 0.4, 0.14, P.hullDark, [0, 0.2, 0], null, M));
+    parts.push(box(0.55, 0.1, 0.5, cap ? 0x6a4a3a : 0x3c4654, [0, 0.45, 0], null, M));
+    parts.push(box(0.55, 0.6, 0.08, cap ? 0x6a4a3a : 0x3c4654, [0, 0.8, -0.27], [-0.12, 0, 0], M));
+    parts.push(box(0.55, 0.05, 0.08, role, [0, 1.12, -0.31], [-0.12, 0, 0], M));
+    if (cap) {
+      // Armrest panels with small screens.
+      const start = vcount;
+      for (const sx of [1, -1]) {
+        parts.push(box(0.15, 0.12, 0.5, P.console, [sx * 0.37, 0.62, 0.02], null, M));
+        const g = quad(0.11, 0.36, role, [sx * 0.37, 0.685, 0.02], [-Math.PI / 2, 0], M);
+        screens.push(g); vcount += g.attributes.position.count;
+      }
+      screenRanges[s.id] = [start, vcount, new THREE.Color(role)];
+    } else {
+      // Desk 0.65 m ahead of the seat, 0.60 m deep, top at 0.75 m; screen tilted 20 deg, top at 1.10 m.
+      const W = core ? 1.4 : 1.1;
+      parts.push(box(W, 0.71, 0.6, P.console, [0, 0.355, 0.65], null, M));
+      parts.push(box(W + 0.04, 0.04, 0.64, P.trim, [0, 0.73, 0.65], null, M));
+      parts.push(box(W - 0.1, 0.4, 0.06, P.console, [0, 0.93, 0.9], [0.35, 0, 0], M));
+      // Screen surface 4 mm proud of the housing face (normal (0, sin a, -cos a)).
+      const a = 0.35, n = [0, Math.sin(a), -Math.cos(a)], off = 0.034;
+      const c = [0, 0.93 + n[1] * off, 0.9 + n[2] * off];
+      const sw = W - 0.2, sh = 0.32;
+      const start = vcount;
+      const scr = [quad(sw, sh, new THREE.Color(role).multiplyScalar(0.18), c, [a, Math.PI], M)];
+      // A few emissive "panels" on the screen, 5 mm further out.
+      const off2 = off + 0.005, c2 = (dx, dy) => [dx, 0.93 + n[1] * off2 + dy * Math.cos(a), 0.9 + n[2] * off2 + dy * Math.sin(a)];
+      scr.push(quad(sw * 0.42, 0.11, role, c2(-sw * 0.26, 0.08), [a, Math.PI], M));
+      scr.push(quad(sw * 0.42, 0.11, new THREE.Color(role).multiplyScalar(0.55), c2(sw * 0.26, 0.08), [a, Math.PI], M));
+      scr.push(quad(sw * 0.9, 0.08, new THREE.Color(role).multiplyScalar(0.7), c2(0, -0.07), [a, Math.PI], M));
+      for (const g of scr) { screens.push(g); vcount += g.attributes.position.count; }
+      screenRanges[s.id] = [start, vcount, new THREE.Color(role)];
+      const gl = new THREE.PointLight(role, 0.5, 2.2, 1.5);
+      gl.position.copy(local(s, 0, 1.05, 0.55));
+      gl.userData.station = s.id;
+      interior.add(gl); screenLights.push(gl);
+    }
+    // A pick box for clicking the station.
+    const hit = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.5, 1.6), new THREE.MeshBasicMaterial());
+    hit.position.copy(local(s, 0, 0.75, 0.3)); hit.rotation.y = stationYaw(s); hit.updateMatrixWorld(true);
+    hit.userData.station = s.id; stationHits.push(hit);
+    // Seated crew at the core four (question B6): cheap stand-ins, not the 3,000-triangle avatar.
+    if (core) {
+      const shirt = role, skin = 0xc89a78, legs = 0x2a3038, hair = 0x3a2a20;
+      const b = [
+        box(0.38, 0.55, 0.22, shirt, [0, 0.82, -0.05], [-0.08, 0, 0], M),
+        box(0.2, 0.24, 0.22, skin, [0, 1.24, -0.02], null, M),
+        box(0.21, 0.08, 0.23, hair, [0, 1.38, -0.04], null, M),
+        box(0.14, 0.14, 0.45, legs, [0.1, 0.53, 0.2], null, M), box(0.14, 0.14, 0.45, legs, [-0.1, 0.53, 0.2], null, M),
+        box(0.12, 0.45, 0.12, legs, [0.1, 0.27, 0.43], null, M), box(0.12, 0.45, 0.12, legs, [-0.1, 0.27, 0.43], null, M),
+        box(0.1, 0.3, 0.1, shirt, [0.25, 0.86, 0.0], [0.5, 0, 0], M), box(0.1, 0.3, 0.1, shirt, [-0.25, 0.86, 0.0], [0.5, 0, 0], M),
+        box(0.09, 0.09, 0.36, skin, [0.25, 0.75, 0.3], null, M), box(0.09, 0.09, 0.36, skin, [-0.25, 0.75, 0.3], null, M),
+      ];
+      const m = new THREE.Mesh(merge(b), crewMat);
+      crew[s.id] = m; interior.add(m);
+    }
+  }
+  furnitureMesh = new THREE.Mesh(merge([...roomParts.map((g) => g.clone()), ...fixedParts.map((g) => g.clone()), ...parts]), LIT);
+  screenMesh = new THREE.Mesh(merge(screens), screenMat);
+  interior.add(furnitureMesh, screenMesh);
+}
+
+// The viewscreen surface: the render target's texture, 1 cm in front of its housing.
+const rtt = new THREE.WebGLRenderTarget(K.PI_BUDGET.viewscreenPx[0], K.PI_BUDGET.viewscreenPx[1], { depthBuffer: true });
+const vsMat = new THREE.MeshBasicMaterial({ map: rtt.texture, toneMapped: false });
+const vsMesh = new THREE.Mesh(new THREE.PlaneGeometry(vsW, vsH), vsMat);
+vsMesh.position.set(vsC[0], vsC[1], vsC[2] - 0.01);
+vsMesh.rotation.y = Math.PI; // faces aft, into the room (layout: facing_yaw_deg 180)
+interior.add(vsMesh);
+
+// Labels.
+const labels = [];
+function addLabel(text, pos, accent, size) {
+  const s = K.label(THREE, text, { accent, size_m: size || 0.26 });
+  s.position.set(pos[0], pos[1], pos[2]); interior.add(s); labels.push(s); return s;
+}
+stations.forEach((s) => addLabel(`${KEYS.indexOf(s.id) + 1} ${s.name}`, [s.seat_m[0], FLOOR + 2.15, s.seat_m[2]], P.role[s.role]));
+addLabel("Viewscreen 6.0 x 2.4 m", [0, CEIL - 0.12, vsC[2] - 0.6], P.screen, 0.22);
+addLabel("Aft door to command passage (POI 4)", [0, FLOOR + 2.6, 19.6], P.doorFrame, 0.2);
+for (const w of windows) addLabel(w.center_m[0] > 0 ? "Port window" : "Starboard window", [w.center_m[0], w.center_m[1] + 1.0, w.center_m[2] - 0.5], P.glass, 0.2);
+
+// ------------------------------------------------------------ the exterior
+function rng(seed) { return () => { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+{
+  const r = rng(7), n = 2200, pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const u = r() * 2 - 1, th = r() * Math.PI * 2, s = Math.sqrt(1 - u * u), R = 4.0e5;
+    pos.set([R * s * Math.cos(th), R * u, R * s * Math.sin(th)], i * 3);
+    const b = 0.45 + 0.55 * Math.pow(r(), 3), tint = r();
+    col.set([b * (tint > 0.8 ? 1.0 : 0.85), b * 0.9, b * (tint < 0.3 ? 1.0 : 0.85)], i * 3);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  g.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  exterior.add(new THREE.Points(g, new THREE.PointsMaterial({ size: 1.6, sizeAttenuation: false, vertexColors: true })));
+}
+const sun = new THREE.DirectionalLight(0xfff1dc, 3.0);
+sun.position.set(0.85, 0.35, 0.25);
+exterior.add(sun, new THREE.AmbientLight(0x1c2638, 1.2));
+// A planet ahead and to port, low.
+const planetPos = new THREE.Vector3(38000, -16000, 150000);
+{
+  const g0 = new THREE.IcosahedronGeometry(42000, 4), g = g0.index ? g0.toNonIndexed() : g0;
+  const p = g.attributes.position, col = new Float32Array(p.count * 3);
+  const ocean = new THREE.Color(0x1d4f7a), land = new THREE.Color(0x5f7a3a), desert = new THREE.Color(0x9a7a4a), ice = new THREE.Color(0xdfe8f0), c = new THREE.Color();
+  for (let i = 0; i < p.count; i += 3) {
+    const x = (p.getX(i) + p.getX(i + 1) + p.getX(i + 2)) / 3 / 42000, y = (p.getY(i) + p.getY(i + 1) + p.getY(i + 2)) / 3 / 42000, z = (p.getZ(i) + p.getZ(i + 1) + p.getZ(i + 2)) / 3 / 42000;
+    const h = Math.sin(x * 5.1 + Math.sin(z * 3.3)) + Math.cos(y * 4.3 + x * 2.1) * 0.8 + Math.sin(z * 7.7) * 0.35;
+    if (Math.abs(y) > 0.86) c.copy(ice); else if (h > 0.55) c.copy(h > 1.2 ? desert : land); else c.copy(ocean);
+    for (let k = 0; k < 3; k++) col.set([c.r, c.g, c.b], (i + k) * 3);
+  }
+  g.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  const planet = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+  planet.position.copy(planetPos); planet.rotation.set(0.3, 0.8, 0.2);
+  exterior.add(planet);
+  const atmo = new THREE.Mesh(new THREE.IcosahedronGeometry(43800, 3), new THREE.MeshBasicMaterial({ color: 0x5fa8ff, transparent: true, opacity: 0.18, side: THREE.BackSide, depthWrite: false }));
+  atmo.position.copy(planetPos); exterior.add(atmo);
+}
+// The enemy: a low-poly raider frigate and three fighters.
+const hostileMat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+const raider = new THREE.Mesh(merge([
+  box(9, 4, 34, 0x6b5050, [0, 0, 0]), box(26, 1.2, 9, 0x5a4040, [0, -0.5, -6]), box(5, 3.5, 8, 0x7a5a5a, [0, 3.2, -5]),
+  box(2.2, 2.2, 10, 0x3a2a2a, [6, -0.6, -13]), box(2.2, 2.2, 10, 0x3a2a2a, [-6, -0.6, -13]),
+  box(4, 2.4, 8, 0x8a6060, [0, 0, 19], [0, 0, 0.785]), box(0.8, 0.8, 0.8, 0xff5030, [0, 0, -18.5]),
+]), hostileMat);
+exterior.add(raider);
+const fighterGeo = merge([box(1.6, 1.2, 7, 0x8a5050, [0, 0, 0]), box(7, 0.3, 2.4, 0x6a4040, [0, 0, -1]), box(0.3, 1.6, 1.6, 0x6a4040, [0, 0.9, -2.6])]);
+const fighters = [0, 1, 2].map(() => { const m = new THREE.Mesh(fighterGeo, hostileMat); exterior.add(m); return m; });
+// The Tern itself, for the chase feed (layer 1: the window camera sits inside the hull and never sees it).
+const ship = new THREE.Object3D();
+exterior.add(ship);
+const hull = new THREE.Mesh(K.hullGeometry(THREE, L), new THREE.MeshLambertMaterial({ color: P.hullLight, flatShading: true, side: THREE.DoubleSide }));
+hull.layers.set(1); ship.add(hull);
+for (const id of ["main_engine_p", "main_engine_s"]) {
+  const m = K.byId(L.mounts, id);
+  const glow = new THREE.Mesh(new THREE.CircleGeometry(1.4, 10), new THREE.MeshBasicMaterial({ color: 0x9fd8ff, toneMapped: false, side: THREE.DoubleSide }));
+  glow.position.set(m.center_m[0], m.center_m[1], m.center_m[2] - 0.05); glow.layers.set(1); ship.add(glow);
+}
+
+// Simulation time steps a fixed 1/30 s per frame (never wall-clock), so shots are repeatable.
+let simT = 0, paused = false;
+const raiderPos = new THREE.Vector3();
+function stepExterior(t) {
+  // The ship's exterior pose: a slow yaw and pitch weave (the interior never moves).
+  ship.rotation.set(0.05 * Math.sin((2 * Math.PI * t) / 61), 0.22 * Math.sin((2 * Math.PI * t) / 90), 0.03 * Math.sin((2 * Math.PI * t) / 47), "YXZ");
+  ship.position.set(0, 0, 0);
+  ship.updateMatrixWorld(true);
+  raiderPos.set(-70 + 60 * Math.sin(0.05 * t), 28 + 10 * Math.sin(0.07 * t), 520 + 30 * Math.cos(0.05 * t));
+  raider.position.copy(raiderPos);
+  raider.rotation.set(0.1, 2.3 + 0.2 * Math.sin(0.05 * t), 0.15, "YXZ");
+  fighters.forEach((f, i) => {
+    const a = 0.35 * t + (i * 2 * Math.PI) / 3, R = 70 + 12 * i;
+    f.position.set(raiderPos.x + R * Math.cos(a), raiderPos.y + 12 * Math.sin(a * 1.3 + i), raiderPos.z + R * Math.sin(a));
+    f.rotation.set(0, -a, -0.6, "YXZ");
+  });
+}
+
+// ------------------------------------------------------------ cameras
+const cam = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.05, 400);
+const lookCam = new THREE.PerspectiveCamera(25.2, 1280 / 240, 0.05, 400);  // the console's look band
+const winCam = new THREE.PerspectiveCamera(55, 1, 1, 1.0e6);                // exterior through the windows
+winCam.matrixAutoUpdate = false;
+const feedCam = new THREE.PerspectiveCamera(26, vsW / vsH, 1, 1.0e6);       // the viewscreen's feed
+feedCam.matrixAutoUpdate = false;
+const controls = new OrbitControls(cam, renderer.domElement);
+controls.enableDamping = false;
+let feed = "forward";
+const sensor = K.byId(L.systems, "sensor_array").center_m;
+function placeFeed() {
+  const m = new THREE.Matrix4(), from = new THREE.Vector3(), to = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0).applyQuaternion(ship.quaternion);
+  if (feed === "forward") { from.set(sensor[0], sensor[1], sensor[2]).applyMatrix4(ship.matrixWorld); to.set(sensor[0], sensor[1], sensor[2] + 100).applyMatrix4(ship.matrixWorld); feedCam.fov = 26; }
+  else if (feed === "target") { from.set(sensor[0], sensor[1], sensor[2]).applyMatrix4(ship.matrixWorld); to.copy(raiderPos); feedCam.fov = 7; }
+  else { from.set(0, 16, -62).applyMatrix4(ship.matrixWorld); to.set(0, 0, 12).applyMatrix4(ship.matrixWorld); feedCam.fov = 30; }
+  m.lookAt(from, to, up); m.setPosition(from);
+  feedCam.matrix.copy(m); feedCam.matrixWorldNeedsUpdate = true;
+  feedCam.layers.set(0); if (feed === "chase") feedCam.layers.enable(1);
+  feedCam.updateProjectionMatrix();
+}
+function placeWindowCam(ic) {
+  winCam.fov = ic.fov; winCam.aspect = ic.aspect; winCam.updateProjectionMatrix();
+  ic.updateMatrixWorld(true);
+  winCam.matrix.multiplyMatrices(ship.matrixWorld, ic.matrixWorld); winCam.matrixWorldNeedsUpdate = true;
+}
+
+// ------------------------------------------------------------ lighting states
+let lighting = "normal";
+const red = new THREE.Color(P.alert), amber = new THREE.Color(P.emergency), warm = new THREE.Color(P.lampWarm), cool = new THREE.Color(P.lampCool);
+function applyLighting(t) {
+  const s = K.LIGHTING[lighting];
+  ambient.color.set(s.ambient); ambient.intensity = s.ambientI * 2.2;
+  const lampOn = lighting !== "emergency";
+  const lampCol = lighting === "red_alert" ? red : warm;
+  for (const l of lampLights) { l.color.copy(lampCol); l.intensity = lampOn ? s.lampI * 14 : 0; }
+  for (const l of corridorLights) { l.color.copy(lighting === "red_alert" ? red : cool); l.intensity = lampOn ? s.lampI * 10 : 0; }
+  lampMat.color.copy(lampOn ? lampCol : new THREE.Color(0x1a1a1a)).multiplyScalar(lampOn ? 1.0 : 1);
+  const emerg = lighting === "emergency";
+  for (const l of emergLights) { l.color.copy(amber); l.intensity = emerg ? 9 : 0; }
+  emergMat.color.copy(emerg ? amber : new THREE.Color(0x2a2a2a));
+  // Floor strips: cool in normal, red pulsing at 0.5 Hz in red alert, amber steady on emergency power.
+  const pulse = 0.55 + 0.45 * Math.cos(2 * Math.PI * 0.5 * t);
+  if (lighting === "normal") stripMat.color.copy(new THREE.Color(s.strip)).multiplyScalar(s.stripI + 0.3);
+  else if (lighting === "red_alert") stripMat.color.copy(red).multiplyScalar(pulse);
+  else stripMat.color.copy(amber).multiplyScalar(0.9);
+  // Consoles: on emergency power only the core four stay lit (question B4); the viewscreen dims to 60 %.
+  const col = screenMesh.geometry.attributes.color;
+  for (const s of stations) {
+    const r = screenRanges[s.id]; if (!r) continue;
+    const dark = emerg && !s.core;
+    for (let i = r[0]; i < r[1]; i++) {
+      const base = baseScreenColors[i];
+      col.setXYZ(i, dark ? base[0] * 0.04 : base[0], dark ? base[1] * 0.04 : base[1], dark ? base[2] * 0.04 : base[2]);
+    }
+  }
+  col.needsUpdate = true;
+  for (const l of screenLights) { const st = K.byId(stations, l.userData.station); l.intensity = emerg && !st.core ? 0 : 0.6; }
+  vsMat.color.setScalar(emerg ? 0.6 : 1.0);
+}
+let baseScreenColors = [];
+function snapshotScreenColors() {
+  const c = screenMesh.geometry.attributes.color; baseScreenColors = [];
+  for (let i = 0; i < c.count; i++) baseScreenColors.push([c.getX(i), c.getY(i), c.getZ(i)]);
+}
+
+// ------------------------------------------------------------ view modes
+let mode = "overview", seated = null, showLabels = true;
+const walk = { pos: new THREE.Vector3(0, FLOOR, 21.0), yaw: 0, pitch: 0, keys: {} };
+const consoleEl = document.getElementById("console");
+const infoEl = document.getElementById("info");
+const eyeOf = (s) => new THREE.Vector3(s.seat_m[0], s.seat_m[1] + SEATED_EYE_M, s.seat_m[2]);
+const vsCentre = new THREE.Vector3(vsC[0], vsC[1], vsC[2]);
+function sightline(s) {
+  const e = eyeOf(s), d = e.distanceTo(vsCentre);
+  const a1 = Math.atan2(vsC[0] - vsW / 2 - e.x, vsC[2] - e.z), a2 = Math.atan2(vsC[0] + vsW / 2 - e.x, vsC[2] - e.z);
+  return { d, h: Math.abs(a2 - a1) / deg };
+}
+function setMode(m, opts) {
+  mode = m; seated = (opts && opts.station) || null;
+  controls.enabled = m === "overview";
+  consoleEl.style.display = m === "seat" ? "block" : "none";
+  titleEl.style.display = m === "seat" ? "none" : "block";
+  infoEl.style.display = m === "seat" ? "none" : "block";
+  for (const [id, c] of Object.entries(crew)) c.visible = !(seated === id || (m === "captain" && id === "captain"));
+  for (const l of labels) l.visible = showLabels && (m === "overview" || m === "walk");
+  if (m === "overview") {
+    cam.fov = 50; cam.position.set(15.5, 15.0, 9.5); controls.target.set(0, 3.8, 24.2); cam.updateProjectionMatrix(); controls.update();
+    info(`<b>Overview</b>: the bridge, 14.0 x 11.0 x 3.0 m (154 m2, 462 m3), seven stations from the layout, the captain's dais, the viewscreen and two windows. The ceiling is cut away. Click a station or press 1-7 to sit.`);
+  } else if (m === "captain") {
+    const s = K.byId(stations, "captain"), e = eyeOf(s), sl = sightline(s);
+    cam.fov = 60; cam.position.copy(e); cam.lookAt(vsCentre.x, vsCentre.y - 0.15, vsCentre.z); cam.updateProjectionMatrix();
+    info(`<b>Captain's chair</b>: eye ${e.y.toFixed(2)} m on the 0.3 m dais, ${sl.d.toFixed(2)} m from the viewscreen, which spans ${sl.h.toFixed(1)} deg. Helm and tactical sit below its bottom edge. NPC bodies hold the automated core seats (question B6).`);
+  } else if (m === "interior") {
+    cam.fov = 62; cam.position.set(6.3, FLOOR + 2.15, 20.55); cam.lookAt(-2.6, FLOOR + 0.9, 29.2); cam.updateProjectionMatrix();
+    info(`<b>${K.LIGHTING[lighting].label}</b> from the aft port corner: six ceiling lamps, two emergency lamps, floor strips along the walls and the aisle, console glow. ${lighting === "emergency" ? "Only the core four consoles are on the emergency bus; the viewscreen runs at 60 %." : lighting === "red_alert" ? "Lamps red at 75 %, strips pulsing at 0.5 Hz." : ""}`);
+  } else if (m === "walk") {
+    info(`<b>Walk</b>: eye ${STAND_EYE_M.toFixed(2)} m above the deck (crew-on-deck), capsule radius 0.30 m. WASD to move, Shift to run, click to capture the mouse, Esc to release. The aft door is ${doorAft.size_m[0]} x ${doorAft.size_m[1]} m.`);
+  }
+  if (m === "seat") buildConsole(seated);
+  layoutConsole();
+  syncButtons();
+}
+function info(html) { infoEl.innerHTML = html + `<div class="dim" style="margin-top:6px">Console values are illustrative; the systems' changes own the real numbers.</div>`; }
+
+// Console placement: 1280x720 logical, scaled to fit above the controls bar.
+let cScale = 1, cX = 0, cY = 0;
+function layoutConsole() {
+  cScale = Math.min((innerWidth - 16) / 1280, (innerHeight - 140) / 720);
+  cX = Math.round((innerWidth - 1280 * cScale) / 2); cY = 8;
+  consoleEl.style.transform = `translate(${cX}px, ${cY}px) scale(${cScale})`;
+}
+function lookBandRect() { return { x: cX, y: cY + 32 * cScale, w: 1280 * cScale, h: 240 * cScale }; }
+
+function placeSeatCamera() {
+  const s = K.byId(stations, seated), e = eyeOf(s);
+  lookCam.position.copy(e); lookCam.up.set(0, 1, 0);
+  if (s.id === "captain") lookCam.lookAt(vsCentre.x, vsCentre.y - 0.2, vsCentre.z);
+  else lookCam.lookAt(vsCentre.x, vsCentre.y - 0.1, vsCentre.z);
+  lookCam.aspect = 1280 / 240; lookCam.fov = 2 * Math.atan(Math.tan(50 * deg) / lookCam.aspect) / deg; // 100 deg across
+  lookCam.updateProjectionMatrix();
+}
+function placeWalkCamera() {
+  const onDais = Math.abs(walk.pos.x - daisFix.center_m[0]) < daisFix.size_m[0] / 2 && Math.abs(walk.pos.z - daisFix.center_m[2]) < daisFix.size_m[1] / 2;
+  cam.fov = 70; cam.updateProjectionMatrix();
+  cam.position.set(walk.pos.x, FLOOR + (onDais ? daisFix.height_m : 0) + STAND_EYE_M, walk.pos.z);
+  cam.rotation.set(walk.pitch, walk.yaw, 0, "YXZ");
+}
+const R = 0.30; // crew collider radius, crew-on-deck
+function walkStep(dt) {
+  const k = walk.keys, sp = (k.ShiftLeft || k.ShiftRight ? 3.6 : 1.8) * dt;
+  const f = new THREE.Vector3(-Math.sin(walk.yaw), 0, -Math.cos(walk.yaw)), r = new THREE.Vector3(-f.z, 0, f.x);
+  const d = new THREE.Vector3();
+  if (k.KeyW) d.add(f); if (k.KeyS) d.sub(f); if (k.KeyD) d.add(r); if (k.KeyA) d.sub(r);
+  if (d.lengthSq() === 0) return;
+  d.normalize().multiplyScalar(sp);
+  const n = walk.pos.clone().add(d);
+  const inBridge = (p) => p.x > BB.x[0] + R && p.x < BB.x[1] - R && p.z > BB.z[0] + R && p.z < BB.z[1] - R;
+  const CB = K.bounds(corridor), dh = doorAft.size_m[0] / 2 - R;
+  const inCorr = (p) => p.x > CB.x[0] + R && p.x < CB.x[1] - R && p.z > CB.z[0] + R && p.z < CB.z[1] + 0.01;
+  const inDoor = (p) => Math.abs(p.x) < dh && p.z > CB.z[1] - R - 0.01 && p.z < BB.z[0] + R + 0.01;
+  if (inBridge(n) || inCorr(n) || inDoor(n)) walk.pos.copy(n);
+}
+
+// ------------------------------------------------------------ console content
+const GRID = (c, r, w, h) => ({ x: 20 + 104 * c, y: 280 + 102 * r, w: 104 * w - 8, h: 102 * h - 8 });
+function panel(id, title, g, body, footer, cls) {
+  const p = GRID(...g);
+  return `<section class="pnl ${cls || ""}" style="left:${p.x}px;top:${p.y}px;width:${p.w}px;height:${p.h}px"><header><span class="pid">${id}</span>${title}</header><div class="body ${footer ? "hasf" : ""}">${body}</div>${footer ? `<footer>${footer}</footer>` : ""}</section>`;
+}
+const row = (k, v, cls) => `<div class="row ${cls || ""}"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+const bar = (f, o) => { o = o || {}; return `<div class="bar" style="${o.style || ""}"><div class="f ${o.cls || ""}" style="width:${(f * 100).toFixed(1)}%"></div>${o.pv !== undefined ? `<div class="pv" style="left:${(Math.min(f, o.pv) * 100).toFixed(1)}%;width:${(Math.abs(o.pv - f) * 100).toFixed(1)}%"></div>` : ""}${o.set !== undefined ? `<div class="set" style="left:${(o.set * 100).toFixed(1)}%"></div>` : ""}</div>`; };
+const btn = (t, cls) => `<div class="b ${cls || ""}">${t}</div>`;
+const live = (key, v) => `<span data-live="${key}">${v}</span>`;
+const IFF = { h: "iff-h", n: "iff-n", f: "iff-f", u: "iff-u" };
+const IFFHEX = { h: "#ef5350", n: "#e8c547", f: "#66bb6a", u: "#b0bec5" };
+
+// Contacts (illustrative): T1 is the raider in the exterior scene, its range and bearing live.
+const CONTACTS = [
+  { id: "T1", cls: "Raider frigate", iff: "h", r: "0.53", brg: "352", cl: "-12", x: -0.12, y: 0.55 },
+  { id: "T2", cls: "Fighter", iff: "h", r: "0.49", brg: "341", cl: "+48", x: -0.2, y: 0.47 },
+  { id: "T3", cls: "Fighter", iff: "h", r: "0.60", brg: "008", cl: "+31", x: 0.07, y: 0.62 },
+  { id: "T4", cls: "Fighter", iff: "h", r: "0.58", brg: "349", cl: "-6", x: -0.1, y: 0.6 },
+  { id: "N1", cls: "Freighter Kestle Moor", iff: "n", r: "7.8", brg: "061", cl: "-3", x: 0.62, y: 0.38 },
+  { id: "U1", cls: "Unknown", iff: "u", r: "18.4", brg: "212", cl: "+2", x: -0.4, y: -0.75 },
+];
+
+function svgPlot(w, h, inner) { return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block">${inner}</svg>`; }
+function contactsSvg(cx, cy, scale, sel, opts) {
+  opts = opts || {};
+  return CONTACTS.filter((c) => !opts.only || opts.only.includes(c.id)).map((c) => {
+    const x = cx + c.x * scale, y = cy - c.y * scale, col = IFFHEX[c.iff];
+    const mark = c.iff === "u" ? `<rect x="${x - 4}" y="${y - 4}" width="8" height="8" fill="none" stroke="${col}" stroke-width="1.5"/>` : c.iff === "h" ? `<path d="M${x} ${y - 5} L${x + 5} ${y + 4} L${x - 5} ${y + 4} Z" fill="${col}"/>` : `<circle cx="${x}" cy="${y}" r="4" fill="${col}"/>`;
+    return mark + (c.id === sel ? `<rect x="${x - 8}" y="${y - 8}" width="16" height="16" fill="none" stroke="#fff" stroke-dasharray="3 2"/>` : "") + `<text x="${x + 7}" y="${y + 4}" fill="${col}" font-size="10">${c.id}</text>`;
+  }).join("");
+}
+const shipGlyph = (x, y, s) => `<path d="M${x} ${y - 9 * s} L${x + 5 * s} ${y + 7 * s} L${x} ${y + 4 * s} L${x - 5 * s} ${y + 7 * s} Z" fill="#e8eef5"/>`;
+function rings(cx, cy, rs, labels) { return rs.map((r, i) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#2b3540"/>` + (labels ? `<text x="${cx + 3}" y="${cy - r - 2}" fill="#5d6b7a" font-size="9">${labels[i]}</text>` : "")).join(""); }
+
+const FACES = ["Bow", "Stern", "Port", "Stbd", "Dorsal", "Ventral"];
+const FACE_SHARE = [30, 10, 15, 25, 10, 10];          // % of capacity (tactical preset BOW, science leaned starboard)
+const FACE_FILL = [0.82, 1.0, 0.95, 0.55, 1.0, 0.97]; // stored / capacity
+
+function titleBand(id, tabs, order) {
+  const red = lighting === "red_alert";
+  return `<div class="tb ${red ? "red" : ""}"><div class="tabs">${tabs.map((t, i) => `<div class="tab ${i === 0 ? "on" : ""}">${t}</div>`).join("")}</div>` +
+    `<div class="order">${order}</div>` +
+    `<div class="cond"><div class="chip ${red ? "red" : "normal"}">${red ? "RED ALERT" : "NORMAL"}</div><div class="chip">BRACE</div><span class="clock">${live("clock", "00:00")}</span></div></div>`;
+}
+function statusStrip(op) {
+  return `<div class="ss"><span><span class="k">HULL</span>94 %</span><span><span class="k">SHIELDS</span><span class="faces">${FACE_FILL.map((f, i) => `<i title="${FACES[i]}"><b style="width:${f * 100}%"></b></i>`).join("")}</span></span>` +
+    `<span><span class="k">REACTOR</span>41.2 MW</span><span><span class="k">SPEED</span>${live("speed", "182")} m/s</span><span><span class="k">FIRES</span><span class="warn">1</span></span><span><span class="k">BREACHES</span>0</span><span style="margin-left:auto"><span class="k">OPERATOR</span>${op}</span></div>`;
+}
+
+const CONSOLES = {
+  helm() {
+    const tape = (() => {
+      let s = ""; for (let d = -60; d <= 60; d += 10) { const x = 198 + d * 3.33; s += `<line x1="${x}" y1="18" x2="${x}" y2="${d % 30 === 0 ? 34 : 26}" stroke="#5d6b7a"/>`; if (d % 30 === 0) s += `<text x="${x}" y="47" fill="#8a98a8" font-size="10" text-anchor="middle" data-tape="${d}">${d}</text>`; }
+      return svgPlot(396, 56, `<rect x="0" y="14" width="396" height="40" fill="#0a0f15"/>${s}<path d="M198 12 l6 -8 h-12 z" fill="#4fc3f7"/><path d="M${198 + 45 * 3.33} 54 l5 -8 h-10 z" fill="#ffb300"/><text x="${198 + 45 * 3.33 + 7}" y="54" fill="#ffb300" font-size="9">ORDERED 045</text>`);
+    })();
+    const nav = svgPlot(604, 336, `<rect width="604" height="336" fill="#0a0f15"/>${rings(302, 200, [60, 120, 180], ["5 km", "10 km", "15 km"])}
+      <circle cx="${302 - 520}" cy="${200 - 280}" r="300" fill="#1d4f7a" opacity="0.5"/><text x="8" y="16" fill="#8fb7d8" font-size="10">Halvard (planet) 154 km</text>
+      <path d="M302 200 L360 120 L440 64" stroke="#4fc3f7" stroke-dasharray="6 4" fill="none"/><circle cx="360" cy="120" r="4" fill="none" stroke="#4fc3f7"/><text x="368" y="122" fill="#4fc3f7" font-size="10">WP1</text>
+      <circle cx="440" cy="64" r="4" fill="none" stroke="#4fc3f7"/><text x="448" y="66" fill="#4fc3f7" font-size="10">WP2 Moor Station</text>
+      ${contactsSvg(302, 200, 120, null)}${shipGlyph(302, 200, 1)}`);
+    return titleBand("helm", ["HELM"], `<span class="from">TACTICAL:</span> Bring the tubes to bear on T1 <span class="ack">ACK</span>`) +
+      panel("H1", "Heading", [0, 0, 4, 2], `<div style="display:flex;align-items:baseline;gap:10px"><span class="big">${live("hdg", "000")}</span><span class="unit">deg</span><span style="flex:1"></span>${row("Pitch", live("pitch", "+0.0") + " deg")}</div>${tape}<div style="display:flex;gap:14px">${row("Roll", live("roll", "+0.0") + " deg")}${row("Turn rate", "1.8 deg/s")}</div>`) +
+      panel("H2", "Throttle", [4, 0, 2, 4], `<div style="display:flex;gap:10px;height:300px"><div style="position:relative;width:34px;background:#1a222c;border-radius:2px"><div style="position:absolute;left:0;right:0;bottom:16%;height:56%;background:var(--accent)"></div><div style="position:absolute;left:-4px;right:-4px;bottom:76%;height:2px;background:#fff"></div><div style="position:absolute;left:0;right:0;bottom:16%;height:1px;background:#8a98a8"></div><div class="dim" style="position:absolute;left:38px;bottom:14%;font-size:10px">0</div><div class="dim" style="position:absolute;left:38px;top:-2px;font-size:10px">100</div><div class="dim" style="position:absolute;left:38px;bottom:-2px;font-size:10px">-25</div></div><div style="flex:1"><div class="dim" style="font-size:11px">SPEED</div><div class="big">${live("speed2", "182")}</div><div class="unit" style="margin:0">m/s</div><div style="height:10px"></div>${row("Set", "60 %")}${row("Max", "~310 m/s")}${row("Accel", "~9.8 m/s2")}<div style="height:8px"></div><div class="dim" style="font-size:11px">IMPULSE</div>${row("Deliv.", "12.0 MW")}${row("Req.", "12.0 MW")}<div style="height:8px"></div><div class="dim" style="font-size:11px">DAMPERS</div>${bar(0.46, { cls: "ok" })}<div class="mono" style="text-align:right">46 %</div></div></div>`, btn("ALL STOP", "focus")) +
+      panel("H3", "Navigation", [6, 0, 6, 4], nav, btn("HOLD") + btn("COURSE", "on") + btn("INTERCEPT") + btn("MATCH") + btn("ORBIT") + `<div class="mono dim" style="flex:1.4;line-height:24px;text-align:right">WP1 ETA 02:41</div>`) +
+      panel("H4", "Manoeuvre", [0, 2, 4, 2], `${row("To 045 deg", "~7.4 s, peak 2.1 g")}${row("Felt (dampers 78 %)", "0.3 g")}${row("Tubes bear on T1", "~4.1 s")}${row("Evasive pattern", "none")}<div style="height:6px"></div><div style="display:flex;gap:4px">${btn("JINK")}${btn("SPIRAL")}${btn("BREAK PORT")}${btn("BREAK STBD")}</div>`) +
+      statusStrip("Ana (player)");
+  },
+  tactical() {
+    const plot = svgPlot(500, 336, (() => {
+      const cx = 250, cy = 180;
+      let s = `<rect width="500" height="336" fill="#0a0f15"/>${rings(cx, cy, [50, 100, 150], ["1 km", "2 km", "3 km"])}`;
+      // Turret arcs: port turret covers the port hemisphere (left), starboard the right; dorsal and ventral all round.
+      s += `<path d="M${cx} ${cy} L${cx} ${cy - 150} A150 150 0 0 0 ${cx} ${cy + 150} Z" fill="rgba(255,112,67,0.07)" stroke="rgba(255,112,67,0.4)"/>`;
+      s += `<path d="M${cx} ${cy} L${cx} ${cy - 150} A150 150 0 0 1 ${cx} ${cy + 150} Z" fill="rgba(255,112,67,0.04)" stroke="rgba(255,112,67,0.25)"/>`;
+      s += `<text x="${cx - 145}" y="${cy + 4}" fill="#ff7043" font-size="9">PORT ARC</text><text x="${cx + 98}" y="${cy + 4}" fill="#ff7043" font-size="9">STBD ARC</text>`;
+      s += `<path d="M${cx} ${cy} L${cx - 27} ${cy - 155} L${cx + 27} ${cy - 155} Z" fill="rgba(239,83,80,0.12)" stroke="#ef5350" stroke-dasharray="4 3"/><text x="${cx + 30}" y="${cy - 140}" fill="#ef5350" font-size="9">TUBES 10 deg</text>`;
+      // Shield ring: bow, stern, port, starboard segments by stored energy; dorsal and ventral as two bars.
+      const seg = (a0, a1, f, lab) => { const r = 22 + 0, w = 2 + f * 6, p = (a) => [cx + r * Math.sin(a * deg), cy - r * Math.cos(a * deg)]; const [x0, y0] = p(a0), [x1, y1] = p(a1); return `<path d="M${x0} ${y0} A${r} ${r} 0 0 1 ${x1} ${y1}" stroke="${f < 0.6 ? "#ffb300" : "#4fc3f7"}" stroke-width="${w}" fill="none"/>`; };
+      s += seg(-40, 40, FACE_FILL[0]) + seg(140, 220, FACE_FILL[1]) + seg(230, 310, FACE_FILL[2]) + seg(50, 130, FACE_FILL[3]);
+      s += `<rect x="${cx + 34}" y="${cy - 12}" width="4" height="10" fill="#4fc3f7"/><rect x="${cx + 34}" y="${cy + 2}" width="4" height="10" fill="#4fc3f7"/><text x="${cx + 41}" y="${cy - 4}" fill="#5d6b7a" font-size="8">D</text><text x="${cx + 41}" y="${cy + 10}" fill="#5d6b7a" font-size="8">V</text>`;
+      s += contactsSvg(cx, cy, 260, "T1", { only: ["T1", "T2", "T3", "T4"] });
+      s += `<line x1="${cx - 0.12 * 260}" y1="${cy - 0.55 * 260}" x2="${cx - 0.12 * 260 + 10}" y2="${cy - 0.55 * 260 + 18}" stroke="#ef5350"/>`;
+      s += `<path d="M${cx + 70} ${cy - 40} l4 -4" stroke="#ffeb3b" stroke-width="2"/><text x="${cx + 76}" y="${cy - 44}" fill="#ffeb3b" font-size="9">M1 inbound 6 s</text>`;
+      return s + shipGlyph(cx, cy, 1);
+    })());
+    const turret = (n, op, mode, heat, cap, hit, manned) => `<tr><td>${n}</td><td class="${manned ? "acc" : "dim"}">${op}</td><td>${mode}</td><td>${bar(heat, { cls: heat > 0.7 ? "warn" : "ok" })}</td><td>${bar(cap)}</td><td class="n">${hit}</td></tr>`;
+    return titleBand("tactical", ["TAC", "FLT OPS"], `<span class="from">CAPTAIN (title band):</span> Weapons free on hostiles <span class="ack">ACK</span>`) +
+      panel("T1", "Targets", [0, 0, 3, 4], `<table class="t"><colgroup><col style="width:26px"><col><col style="width:44px"><col style="width:34px"><col style="width:38px"></colgroup><tr><th>ID</th><th>Class</th><th>km</th><th>Brg</th><th>m/s</th></tr>${CONTACTS.map((c) => `<tr class="${c.id === "T1" ? "sel" : ""}"><td class="${IFF[c.iff]}">${c.id}</td><td>${c.cls}</td><td class="n">${c.id === "T1" ? live("t1r", c.r) : c.r}</td><td class="n">${c.id === "T1" ? live("t1b", c.brg) : c.brg}</td><td class="n">${c.cl}</td></tr>`).join("")}</table>
+        <div style="margin-top:10px;border-top:1px solid var(--line);padding-top:6px"><div class="acc" style="font-weight:700">T1 Raider frigate</div>${row("Hull", "71 %")}${row("Shield facing us", "Bow, 38 MJ")}${row("Hit: dorsal turret (Ben)", "~64 %")}${row("Hit: port turret (AUTO)", "~31 %")}${row("Hit: Gannet, tube 1", "~72 %")}${row("Threat score", "1.62")}</div>`) +
+      panel("T2", "Tactical plot", [3, 0, 5, 4], plot, ["BAL", "BOW", "STN", "PRT", "STB", "DOR", "VEN"].map((p) => btn(p, p === "BOW" ? "on" : "")).join("")) +
+      panel("T3", "Turrets", [8, 0, 4, 2], `<table class="t"><colgroup><col style="width:52px"><col style="width:60px"><col style="width:66px"><col><col><col style="width:40px"></colgroup><tr><th>Mount</th><th>Operator</th><th>Mode</th><th>Heat</th><th>Cap</th><th>Hit</th></tr>${turret("Dorsal", "Ben", "on T1", 0.62, 0.8, "64 %", true)}${turret("Ventral", "AUTO", "PD", 0.2, 1.0, "28 %")}${turret("Port", "AUTO", "on T2", 0.45, 0.6, "31 %")}${turret("Stbd", "AUTO", "HOLD", 0.05, 1.0, "out of arc")}</table><div style="display:flex;gap:4px;margin-top:8px">${btn("AUTO")}${btn("HOLD")}${btn("PD")}${btn("ASSIGN T1", "on")}${btn("ALL HOLD", "guard")}</div>`) +
+      panel("T4", "Missile tubes", [8, 2, 4, 2], `<table class="t"><colgroup><col style="width:56px"><col style="width:96px"><col></colgroup><tr><th>Tube</th><th>State</th><th></th></tr><tr class="sel"><td>Tube 1</td><td class="ok">READY</td><td>${bar(1, { cls: "ok" })}</td></tr><tr><td>Tube 2</td><td class="warn">LOADING 7.2 s</td><td>${bar(0.4, { cls: "warn" })}</td></tr></table>${row("Gannets in magazine", "6 / 8")}${row("Hoist", "raising to tube 2")}${row("Lock on T1", "yes, in arc")}${row("Tube 1 at T1", "impact ~11.4 s, hit ~72 %")}`, btn("LOAD") + btn("TUBE 1", "on") + btn("TUBE 2") + btn("FIRE", "guard")) +
+      statusStrip("Cas (player)");
+  },
+  engineering() {
+    const groups = [
+      ["Impulse drive", 2, 12.0, 12.0], ["Shields", 1, 9.0, 9.0, 10.5], ["Turrets", 2, 6.0, 6.0], ["Tubes and hoist", 2, 1.5, 1.5], ["Sensors", 2, 3.0, 3.0],
+      ["Comms", 3, 0.8, 0.8], ["Life support", 1, 2.4, 2.4], ["Gravity and dampers", 1, 4.0, 4.0], ["Computer core", 1, 0.4, 0.4], ["Bays and craft", 3, 2.6, 1.1, 0.0],
+    ];
+    const max = 14;
+    const alloc = groups.map(([n, p, req, del, pv], i) => `<div style="display:flex;align-items:center;gap:6px;height:29px${i === 1 ? ";background:rgba(255,255,255,0.05);outline:1px solid var(--accent)" : ""}"><span style="width:118px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${n}</span><span class="mono ${p === 1 ? "acc" : "dim"}" style="width:18px">P${p}</span><div style="flex:1">${bar(del / max, { set: req / max, pv: pv !== undefined ? pv / max : undefined, cls: del < req ? "warn" : "" })}</div><span class="mono" style="width:82px;text-align:right;font-size:11.5px">${req.toFixed(1)} / ${del.toFixed(1)}</span></div>`).join("");
+    const bus = svgPlot(396, 140, `<rect width="396" height="140" fill="#0a0f15"/>
+      <rect x="6" y="52" width="58" height="34" rx="3" fill="none" stroke="#ffb300"/><text x="35" y="66" fill="#ffb300" font-size="10" text-anchor="middle">REACTOR</text><text x="35" y="80" fill="#e8eef5" font-size="10" text-anchor="middle">41.2 MW</text>
+      <line x1="64" y1="69" x2="100" y2="69" stroke="#66bb6a" stroke-width="2"/><rect x="100" y="56" width="50" height="26" rx="2" fill="none" stroke="#8a98a8"/><text x="125" y="72" fill="#8a98a8" font-size="9" text-anchor="middle">MAIN SWBD</text>
+      <path d="M150 64 L180 64 L180 22 L262 22" stroke="#66bb6a" stroke-width="2" fill="none"/><path d="M150 74 L180 74 L180 116 L262 116" stroke="#66bb6a" stroke-width="2" fill="none"/>
+      <rect x="196" y="15" width="14" height="14" fill="#66bb6a"/><rect x="196" y="109" width="14" height="14" fill="#66bb6a"/>
+      <text x="268" y="25" fill="#e8eef5" font-size="10">PORT MAIN 21.0 MW</text><text x="268" y="119" fill="#e8eef5" font-size="10">STBD MAIN 19.2 MW</text>
+      <line x1="232" y1="22" x2="232" y2="116" stroke="#5d6b7a" stroke-dasharray="3 3"/><rect x="225" y="62" width="14" height="14" fill="none" stroke="#8a98a8"/><text x="243" y="73" fill="#5d6b7a" font-size="9">CROSS-TIE open</text>
+      <rect x="296" y="52" width="94" height="30" rx="2" fill="none" stroke="#ab47bc"/><text x="343" y="65" fill="#ce93d8" font-size="9" text-anchor="middle">EMERGENCY BUS</text><text x="343" y="77" fill="#e8eef5" font-size="9" text-anchor="middle">batt 88 %, 0.9 MW</text>
+      <rect x="196" y="109" width="14" height="14" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="2 2"/><rect x="330" y="96" width="14" height="14" fill="#ef5350"/><text x="348" y="107" fill="#ef5350" font-size="9">B7 TRIPPED</text>`);
+    return titleBand("engineering", ["ENG", "DMG CTRL"], `<span class="from">CAPTAIN (title band):</span> Divert power to shields <span class="ack">ACK</span>`) +
+      panel("E1", "Power allocation", [0, 0, 5, 4], `${alloc}<div style="display:flex;justify-content:space-between;margin-top:3px" class="mono"><span class="dim">REQUESTED / DELIVERED MW</span><span>supply 41.2, demand 41.7</span></div>`, btn("CRUISE") + btn("COMBAT", "on") + btn("SILENT") + btn("EMERG")) +
+      panel("E2", "Buses and breakers", [5, 0, 4, 2], bus) +
+      panel("E3", "Reactor", [9, 0, 3, 2], `<div style="display:flex;align-items:baseline;gap:6px"><span class="big">41.2</span><span class="unit">/ 48.0 MW</span></div>${bar(41.2 / 48, { cls: "ok", set: 42 / 48 })}${row("Containment", "1.21e8 K")}${row("Fuel", "312 kg")}${row("Heat in 30 s", "~74 % limit")}`, btn("SET 42 MW") + btn("SCRAM", "guard")) +
+      panel("E4", "Coolant", [5, 2, 3, 2], `${row("Loop in / out", "38 / 61 deg C")}${row("Flow", "84 kg/s")}${row("Pump 1 / Pump 2", "<span class='ok'>RUN</span> / <span class='ok'>RUN</span>")}${row("Radiators", "11.6 MW rejected")}${row("Heat sink", "")}${bar(0.37, { cls: "ok" })}`) +
+      panel("E5", "Life support", [8, 2, 2, 2], `${row("O2", "21.1 kPa")}${row("CO2", "0.6 kPa")}${row("Temp", "21 deg C")}<div style="height:6px"></div><div class="dim" style="font-size:11px">WORST</div>${row("Cargo", "<span class='warn'>smoke</span>")}${row("", "O2 19.4 kPa")}`) +
+      panel("E6", "Repairs", [10, 2, 2, 2], `${row("B7 breaker", "60 %")}${bar(0.6)}${row("Cargo fire", "team 1")}${bar(0.25, { cls: "warn" })}${row("Port turret", "queued")}${row("Sensor mast", "queued")}`) +
+      statusStrip("Dee (player)");
+  },
+  science() {
+    const sens = svgPlot(500, 336, (() => {
+      const cx = 250, cy = 175;
+      let s = `<rect width="500" height="336" fill="#0a0f15"/>${rings(cx, cy, [52, 104, 156], ["8 km", "16 km", "25 km"])}`;
+      s += `<path d="M${cx} ${cy} L${cx - 70} ${cy - 145} A160 160 0 0 1 ${cx + 20} ${cy - 160} Z" fill="rgba(102,187,106,0.1)" stroke="rgba(102,187,106,0.5)"/><text x="${cx - 40}" y="${cy - 150}" fill="#66bb6a" font-size="9">SCAN CONE</text>`;
+      for (let a = 0; a < 360; a += 30) s += `<text x="${cx + 168 * Math.sin(a * deg)}" y="${cy - 168 * Math.cos(a * deg) + 3}" fill="#3f4b58" font-size="9" text-anchor="middle">${String(a).padStart(3, "0")}</text>`;
+      return s + contactsSvg(cx, cy, 160 / 1.2, "T1") + shipGlyph(cx, cy, 0.9);
+    })());
+    const shields = svgPlot(396, 140, (() => {
+      const face = (x, y, w, h, i) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#1a222c"/><rect x="${x}" y="${y}" width="${w * FACE_FILL[i]}" height="${h}" fill="${FACE_FILL[i] < 0.6 ? "#ffb300" : "#4fc3f7"}"/>`;
+      let s = `<rect width="396" height="140" fill="#0a0f15"/>`;
+      // Top view: bow up.
+      s += `<path d="M70 20 L88 50 L88 108 L52 108 L52 50 Z" fill="#2a3038" stroke="#5d6b7a"/>` + face(46, 6, 48, 7, 0) + face(46, 116, 48, 7, 1) + `<g transform="rotate(-90 20 64)">${face(-4, 40, 48, 7, 2)}</g><g transform="rotate(-90 120 64)">${face(96, 89, 48, 7, 3)}</g>`;
+      s += `<text x="70" y="136" fill="#5d6b7a" font-size="9" text-anchor="middle">TOP</text>`;
+      // Side view.
+      s += `<path d="M150 60 L230 52 L246 64 L230 76 L150 70 Z" fill="#2a3038" stroke="#5d6b7a"/>` + face(160, 38, 70, 7, 4) + face(160, 84, 70, 7, 5) + `<text x="196" y="106" fill="#5d6b7a" font-size="9" text-anchor="middle">SIDE</text>`;
+      s += FACES.map((f, i) => `<text x="262" y="${14 + i * 17}" fill="#8a98a8" font-size="10">${f}</text><text x="390" y="${14 + i * 17}" fill="${FACE_FILL[i] < 0.6 ? "#ffb300" : "#e8eef5"}" font-size="10" text-anchor="end" font-family="ui-monospace,monospace">${(FACE_FILL[i] * FACE_SHARE[i] * 1.6).toFixed(0)} MJ ${FACE_SHARE[i]} %</text>`).join("");
+      return s + `<text x="262" y="122" fill="#5d6b7a" font-size="9">Set by Tactical (BOW) 4 s ago</text><text x="262" y="134" fill="#5d6b7a" font-size="9">Freq C, recharge 3.2 MW</text>`;
+    })());
+    return titleBand("science", ["SCI", "COMMS"], `<span class="from">CAPTAIN (title band):</span> Scan T1 for weak points <span class="ack">ACK</span>`) +
+      panel("S1", "Sensors", [0, 0, 5, 4], sens, btn("5 km") + btn("25 km", "on") + btn("100 km") + btn("PASSIVE", "on") + btn("PING", "guard")) +
+      panel("S2", "Contact", [5, 0, 3, 4], `<div class="acc" style="font-weight:700;font-size:14px">T1 Raider frigate</div>${row("IFF", "<span class='iff-h'>HOSTILE</span>")}${row("Range", live("t1r2", "0.53") + " km")}${row("Bearing", live("t1b2", "352") + " deg")}${row("Hull", "71 %")}<div class="dim" style="margin-top:6px;font-size:11px">SHIELD FACES (SCANNED)</div>${row("Bow", "38 MJ")}${row("Port / Stbd", "22 / 25 MJ")}${row("Stern", "<span class='warn'>9 MJ</span>")}<div class="dim" style="margin-top:6px;font-size:11px">SYSTEMS (FULL SCAN)</div>${row("Drive", "62 %, aft")}${row("Weak point", "<span class='warn'>stern radiators</span>")}<div style="margin-top:8px">${bar(0.68, { cls: "ok" })}</div>${row("Full scan", "68 %, ~1.9 s left at 1.2 MW")}`, btn("SCAN", "on") + btn("NEXT")) +
+      panel("S3", "Shields", [8, 0, 4, 2], shields) +
+      panel("S4", "Viewscreen", [8, 2, 4, 2], `<div style="position:absolute;left:0;top:0;width:130px;bottom:0;background:var(--panel)">${["FWD", "AFT", "PORT", "STBD", "TARGET", "CHASE"].map((f, i) => `<div class="b ${(feed === "forward" && f === "FWD") || (feed === "target" && f === "TARGET") || (feed === "chase" && f === "CHASE") ? "on" : ""}" style="display:inline-block;width:60px;margin:0 2px 3px 0">${f}</div>`).join("")}<div class="row" style="margin-top:4px"><span class="k">Zoom</span><span class="v">${feed === "target" ? "3.7x" : "1x"}</span></div></div><div style="position:absolute;right:0;top:4px;width:256px;height:128px;outline:1px solid var(--line)"></div>`, "", "hole") +
+      statusStrip("Eli (player)");
+  },
+  captain() {
+    // The three decks in plan from the layout, compartments coloured by state.
+    const status = { cargo: "#ef5350", switchboard: "#ffb300", bridge: "#4fc3f7", engineering: "#4fc3f7", damage_control: "#4fc3f7" };
+    const decks = ["A", "B", "C"];
+    const sc = 4.3, w0 = 18;
+    let svg = `<rect width="396" height="348" fill="#0a0f15"/>`;
+    decks.forEach((d, di) => {
+      const oy = 6 + di * 116, cy = oy + 58;
+      svg += `<text x="2" y="${oy + 10}" fill="#5d6b7a" font-size="10">${d}</text>`;
+      for (const c of L.compartments) {
+        if (!c.decks.includes(d)) continue;
+        for (const b of c.boxes) {
+          const dy = L.decks.find((x) => x.id === d).floor_y_m;
+          if (b.y[0] > dy + 0.1 || b.y[1] < dy + 0.5) continue;
+          const x = w0 + (b.z[0] + 42) * sc, wdt = (b.z[1] - b.z[0]) * sc, y = cy - b.x[1] * sc, h = (b.x[1] - b.x[0]) * sc;
+          const col = status[c.id] || "#2f3a46";
+          svg += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${wdt.toFixed(1)}" height="${h.toFixed(1)}" fill="${col}" fill-opacity="${status[c.id] ? 0.35 : 0.5}" stroke="#5d6b7a" stroke-width="0.6"/>`;
+        }
+      }
+    });
+    svg += `<text x="${w0 + (8 + 42) * sc}" y="${6 + 2 * 116 + 58 + 6 * sc + 3}" fill="#ef5350" font-size="9">FIRE</text><text x="${w0 + 4}" y="345" fill="#5d6b7a" font-size="9">stern</text><text x="380" y="345" fill="#5d6b7a" font-size="9" text-anchor="end">bow</text>`;
+    const st = [["Helm", "Ana", "ack: course WP1"], ["Tactical", "Cas", "ack: weapons free"], ["Engineering", "Dee", "ack: shields"], ["Science", "Eli", "scanning T1"], ["Comms", "tab on Science", "auto"], ["Flight ops", "tab on Tactical", "auto"], ["Dorsal gunner", "Ben", ""]];
+    return titleBand("captain", ["CAPT"], `<span class="from">YOU:</span> Engineering: divert power to shields <span class="ack">ACK 1.2 s</span>`) +
+      panel("C1", "Ship", [0, 0, 4, 4], svgPlot(396, 348, svg)) +
+      panel("C2", "Stations", [4, 0, 4, 2], `<table class="t"><colgroup><col style="width:96px"><col style="width:118px"><col></colgroup>${st.map(([a, b, c]) => `<tr><td>${a}</td><td class="${b.startsWith("tab") ? "dim" : "acc"}">${b}</td><td class="dim">${c}</td></tr>`).join("")}</table>`) +
+      panel("C3", "Orders", [4, 2, 4, 2], `<div style="display:flex;gap:4px;margin-bottom:6px">${btn("HELM", "on")}${btn("INTERCEPT", "on")}${btn("T1", "on")}${btn("SEND", "focus")}</div>${row("Helm: intercept T1", "<span class='ok'>can do</span>")}${row("Helm: dock with Moor", "<span class='dim'>cannot comply</span>")}${row("Eng: divert to shields", "<span class='ok'>ACK</span>")}${row("Sci: scan T1", "<span class='ok'>ACK</span>")}`) +
+      panel("C4", "Condition", [8, 0, 4, 2], `<div style="display:flex;gap:4px;margin-bottom:8px">${btn("NORMAL", lighting === "red_alert" ? "" : "on")}${btn("RED ALERT", lighting === "red_alert" ? "on guard" : "guard")}${btn("BRACE")}</div>${row("Auto-condition", "on, red at 15 km")}${row("Viewscreen", "held by Science (FWD)")}${row("Emergency lighting", lighting === "emergency" ? "<span class='warn'>bridge</span>" : "none")}`, btn("TAKE VIEWSCREEN")) +
+      panel("C5", "Mission", [8, 2, 4, 2], `${row("Escort Kestle Moor to WP2", "<span class='warn'>in progress</span>")}${row("Destroy raider T1", "open")}${row("Freighter hull", "100 %")}${row("Time", live("clock2", "00:00"))}`) +
+      statusStrip("Fay (player)");
+  },
+  comms() {
+    return titleBand("comms", ["COMMS"], `<span class="from">CAPTAIN:</span> Hail the freighter <span class="ack">ACK</span>`) +
+      panel("M1", "Channels", [0, 0, 4, 4], `<table class="t"><colgroup><col style="width:30px"><col><col style="width:72px"></colgroup><tr><th>ID</th><th>Name</th><th>Channel</th></tr><tr class="sel"><td class="iff-n">N1</td><td>Freighter Kestle Moor</td><td class="ok">OPEN</td></tr><tr><td class="iff-h">T1</td><td>Raider frigate</td><td class="warn">JAMMED</td></tr><tr><td class="iff-f">S1</td><td>Moor Station traffic</td><td class="dim">idle</td></tr><tr><td class="iff-u">U1</td><td>Unknown</td><td class="dim">no reply</td></tr></table>`) +
+      panel("M2", "Conversation: Kestle Moor", [4, 0, 5, 4], `<div style="height:220px;overflow:hidden;font-size:12.5px;line-height:18px"><div class="dim">KESTLE MOOR</div><div>Tern, we have raiders on our tail and a cracked drive coil. Can you cover us to the station?</div><div style="height:6px"></div><div class="acc">TERN</div><div>Kestle Moor, Tern. Hold your heading; we are coming alongside.</div><div style="height:6px"></div><div class="dim">KESTLE MOOR</div><div>Understood. Our drive gives out at 140 m/s.</div></div><div style="border-top:1px solid var(--line);padding-top:4px">${row("1 Match their speed, we escort", "<span class='ok'>helm can</span>")}${row("2 Ask for their cargo manifest", "")}${row("3 Order them to dump cargo", "<span class='dim'>standing too low</span>")}${row("4 End", "")}</div>`, btn("HAIL") + btn("REPLY 1", "focus") + btn("END")) +
+      panel("M3", "Intercepts", [9, 0, 3, 2], `${row("T1 to unknown", "decoding")}${bar(0.42)}${row("Burst, 212 deg", "logged")}`, btn("DECODE")) +
+      panel("M4", "Clearances", [9, 2, 3, 2], `${row("Moor Station", "<span class='ok'>granted</span>")}${row("Lane 3 passage", "pending")}`, btn("DISTRESS", "guard")) +
+      statusStrip("Gil (player)");
+  },
+  flight_ops() {
+    const bay = (n, kpa, pv, doors, who) => `<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between"><span style="font-weight:700">${n}</span><span class="mono">${kpa.toFixed(1)} kPa</span></div>${bar(kpa / 101.3, { cls: kpa < 30 ? "warn" : "ok", pv: pv / 101.3 })}${row("Doors", doors)}${row("Inside", who)}</div>`;
+    return titleBand("flight_ops", ["FLT OPS"], `<span class="from">CAPTAIN:</span> Launch Swift 1, escort the freighter <span class="ack">ACK</span>`) +
+      panel("F1", "Bays", [0, 0, 4, 4], bay("Port launch bay (Swift 1)", 62.4, 1.0, "pressure door SEALED, drop door shut", "Hal (pilot, suited) in Swift 1") + bay("Starboard launch bay (Swift 2)", 101.3, 101.3, "pressure door open", "nobody") + bay("Hangar (Petrel)", 101.3, 101.3, "pad door shut", "2 crew, unsuited") + `${row("Bay pumps", "<span class='ok'>RUN</span>, port bay")}${row("Reserve tank", "84 %")}${row("Bay control lockout", "off")}`) +
+      panel("F2", "Craft", [4, 0, 4, 2], `<table class="t"><colgroup><col style="width:62px"><col style="width:56px"><col style="width:84px"><col><col></colgroup><tr><th>Craft</th><th>Pilot</th><th>State</th><th>Fuel</th><th>Hull</th></tr><tr class="sel"><td>Swift 1</td><td class="acc">Hal</td><td class="warn">LAUNCHING</td><td class="n">100 %</td><td class="n">100 %</td></tr><tr><td>Swift 2</td><td class="dim">none</td><td>STOWED</td><td class="n">80 %</td><td class="n">92 %</td></tr><tr><td>Petrel</td><td class="dim">none</td><td>STOWED</td><td class="n">65 %</td><td class="n">100 %</td></tr></table>`) +
+      panel("F3", "Launch sequence: Swift 1", [4, 2, 4, 2], `${row("1 Bay clear of unsuited crew", "<span class='ok'>done</span>")}${row("2 Pressure door sealed", "<span class='ok'>done</span>")}${row("3 Pump down to 1 kPa", "<span class='warn'>~23 s left</span>")}${row("4 Drop door open", "~6 s")}${row("5 Cradle release", "~2 s")}`, btn("LAUNCH", "guard on") + btn("HOLD") + btn("RECOVER")) +
+      panel("F4", "Tasking", [8, 0, 4, 4], `${svgPlot(396, 230, `<rect width="396" height="230" fill="#0a0f15"/>${rings(198, 130, [40, 80], ["2 km", "4 km"])}${contactsSvg(198, 130, 150, null, { only: ["T1", "T2", "T3", "T4", "N1"] })}${shipGlyph(198, 130, 0.8)}<path d="M198 130 L290 72" stroke="#26c6da" stroke-dasharray="4 3"/><text x="292" y="70" fill="#26c6da" font-size="10">Swift 1: escort N1</text>`)}${row("Swift 1", "escort N1, weapons free")}${row("Swift 2", "stowed")}${row("Petrel", "stowed")}`, btn("ESCORT", "on") + btn("ATTACK") + btn("PATROL") + btn("RETURN")) +
+      statusStrip("Ivy (player)");
+  },
+};
+
+function buildConsole(id) {
+  const s = K.byId(stations, id);
+  consoleEl.style.setProperty("--accent", hex(P.role[s.role]));
+  consoleEl.innerHTML = CONSOLES[id]();
+}
+const sgn = (v) => (v >= 0 ? "+" : "") + v.toFixed(1);
+function updateLive() {
+  if (mode !== "seat") return;
+  const e = new THREE.Euler().setFromQuaternion(ship.quaternion, "YXZ");
+  const hdg = ((-e.y / deg) % 360 + 360) % 360;
+  const rel = raiderPos.clone().applyMatrix4(ship.matrixWorld.clone().invert());
+  const brg = ((Math.atan2(-rel.x, rel.z) / deg) % 360 + 360) % 360;
+  const mm = Math.floor(simT / 60), ss = Math.floor(simT % 60);
+  const vals = {
+    hdg: hdg.toFixed(0).padStart(3, "0"), pitch: sgn(-e.x / deg), roll: sgn(e.z / deg),
+    speed: "182", speed2: "182", t1r: (rel.length() / 1000).toFixed(2), t1b: brg.toFixed(0).padStart(3, "0"), t1r2: (rel.length() / 1000).toFixed(2), t1b2: brg.toFixed(0).padStart(3, "0"),
+    clock: `${String(14 + mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`, clock2: `${String(14 + mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`,
+  };
+  for (const el of consoleEl.querySelectorAll("[data-live]")) { const v = vals[el.dataset.live]; if (v !== undefined && el.textContent !== v) el.textContent = v; }
+}
+
+// The Science console's viewscreen thumbnail: the render target drawn into a viewport, no extra pass.
+const thumbScene = new THREE.Scene();
+thumbScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial({ map: rtt.texture, toneMapped: false })));
+const thumbCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+// ------------------------------------------------------------ window scissor
+const _v = new THREE.Vector3();
+/** The screen rectangle (CSS px, top-left origin) of both windows through camera c drawn into viewport vp; null when neither is in view. */
+function windowRect(c, vp) {
+  if (mode === "overview") return vp;
+  c.updateMatrixWorld(true);
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, any = false;
+  for (const w of windows) {
+    const [cx, cy, cz] = w.center_m, hw = w.size_m[0] / 2, hh = w.size_m[1] / 2;
+    for (const [dx, dy] of [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]]) {
+      _v.set(cx + dx, cy + dy, cz).applyMatrix4(c.matrixWorldInverse);
+      if (_v.z > -c.near) return vp; // a corner behind the camera: draw the whole view (conservative)
+      _v.set(cx + dx, cy + dy, cz).project(c);
+      const sx = vp.x + (_v.x * 0.5 + 0.5) * vp.w, sy = vp.y + (0.5 - _v.y * 0.5) * vp.h;
+      x0 = Math.min(x0, sx); x1 = Math.max(x1, sx); y0 = Math.min(y0, sy); y1 = Math.max(y1, sy); any = true;
+    }
+  }
+  if (!any) return null;
+  x0 = Math.max(vp.x, Math.floor(x0) - 2); y0 = Math.max(vp.y, Math.floor(y0) - 2);
+  x1 = Math.min(vp.x + vp.w, Math.ceil(x1) + 2); y1 = Math.min(vp.y + vp.h, Math.ceil(y1) + 2);
+  if (x1 <= x0 || y1 <= y0) return null;
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+
+// ------------------------------------------------------------ frame
+const consoleBg = new THREE.Color(0x070a10), space = new THREE.Color(P.space);
+let first = true, lastT = performance.now(), liveTick = 0;
+function frame() {
+  const now = performance.now(), dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
+  if (!paused) simT += 1 / 30;
+  stepExterior(simT);
+  applyLighting(simT);
+  if (mode === "walk") { walkStep(dt); placeWalkCamera(); }
+  if (mode === "overview") controls.update();
+  const W = innerWidth, H = innerHeight;
+  const seatedNow = mode === "seat";
+  if (seatedNow) placeSeatCamera();
+  const ic = seatedNow ? lookCam : cam;
+  if (!seatedNow) { cam.aspect = W / H; cam.updateProjectionMatrix(); }
+
+  hud.beginFrame(renderer);
+  // 1. The viewscreen's feed into its render target (30 Hz in the design; every frame here).
+  placeFeed();
+  renderer.setRenderTarget(rtt);
+  renderer.setClearColor(space, 1); renderer.clear();
+  renderer.render(exterior, feedCam);
+  renderer.setRenderTarget(null);
+  // 2. The main view: clear, exterior through the windows (scissored), then the interior.
+  renderer.setScissorTest(true);
+  renderer.setViewport(0, 0, W, H); renderer.setScissor(0, 0, W, H);
+  renderer.setClearColor(seatedNow ? consoleBg : space, 1); renderer.clear();
+  const vp = seatedNow ? lookBandRect() : { x: 0, y: 0, w: W, h: H };
+  const glY = (r) => H - r.y - r.h;
+  renderer.setViewport(vp.x, glY(vp), vp.w, vp.h);
+  renderer.setScissor(vp.x, glY(vp), vp.w, vp.h);
+  renderer.setClearColor(space, 1); renderer.clear();
+  const wr = windowRect(ic, vp);
+  if (wr) {
+    placeWindowCam(ic);
+    winCam.layers.set(0);
+    renderer.setScissor(wr.x, glY(wr), wr.w, wr.h);
+    renderer.render(exterior, winCam);
+  }
+  renderer.setScissor(vp.x, glY(vp), vp.w, vp.h);
+  renderer.clearDepth();
+  renderer.render(interior, ic);
+  // 3. Science's thumbnail of the viewscreen texture (one draw call, no extra pass).
+  if (seatedNow && seated === "science") {
+    const r = { x: cX + (852 + 408 - 1 - 6 - 256) * cScale, y: cY + (484 + 1 + 26 + 4) * cScale, w: 256 * cScale, h: 128 * cScale };
+    renderer.setViewport(r.x, glY(r), r.w, r.h); renderer.setScissor(r.x, glY(r), r.w, r.h);
+    renderer.render(thumbScene, thumbCam);
+  }
+  renderer.setScissorTest(false);
+  hud.endFrame(renderer);
+  if (++liveTick % 8 === 0) updateLive();
+  if (first) { first = false; updateLive(); K.markReady(); }
+}
+
+// ------------------------------------------------------------ controls and input
+const ctl = document.getElementById("controls");
+const buttons = {};
+function group(label) { const s = document.createElement("span"); s.className = "grp"; s.textContent = label; ctl.appendChild(s); }
+function button(key, text, fn) { const b = document.createElement("button"); b.textContent = text; b.onclick = () => { fn(); syncButtons(); }; ctl.appendChild(b); buttons[key] = b; return b; }
+group("View");
+button("overview", "Overview", () => setMode("overview"));
+button("captain", "Captain's chair", () => setMode("captain"));
+button("interior", "Room", () => setMode("interior"));
+button("walk", "Walk", () => { walk.pos.set(0, FLOOR, 21.2); walk.yaw = Math.PI; walk.pitch = 0; setMode("walk"); }); // yaw 0 looks aft (-Z)
+group("Sit");
+KEYS.forEach((id, i) => button("seat:" + id, `${i + 1} ${SHORT[id]}`, () => setMode("seat", { station: id })));
+group("Lighting");
+for (const key of Object.keys(K.LIGHTING)) button("light:" + key, K.LIGHTING[key].label, () => { lighting = key; refreshMode(); });
+group("Viewscreen");
+for (const f of ["forward", "target", "chase"]) button("feed:" + f, f[0].toUpperCase() + f.slice(1), () => { feed = f; refreshMode(); });
+group("B1");
+button("wings", "Side stations face bow", () => { const on = yawOverride.engineering === undefined; setWings(on); refreshMode(); });
+function setWings(on) {
+  if (on) { yawOverride.engineering = 0; yawOverride.science = 0; } else { delete yawOverride.engineering; delete yawOverride.science; }
+  buildStations(); snapshotScreenColors(); setMode(mode, { station: seated });
+}
+function refreshMode() { setMode(mode, { station: seated }); }
+function syncButtons() {
+  for (const [k, b] of Object.entries(buttons)) {
+    let on = false;
+    if (k === mode) on = true;
+    if (k === "seat:" + seated && mode === "seat") on = true;
+    if (k === "light:" + lighting) on = true;
+    if (k === "feed:" + feed) on = true;
+    if (k === "wings") on = yawOverride.engineering !== undefined;
+    b.classList.toggle("on", on);
+  }
+}
+addEventListener("keydown", (e) => {
+  walk.keys[e.code] = true;
+  const n = parseInt(e.key, 10);
+  if (n >= 1 && n <= 7 && mode !== "walk") setMode("seat", { station: KEYS[n - 1] });
+  if (e.key === "Escape" && mode === "seat") setMode("overview");
+});
+addEventListener("keyup", (e) => { walk.keys[e.code] = false; });
+renderer.domElement.addEventListener("click", () => { if (mode === "walk" && renderer.domElement.requestPointerLock) renderer.domElement.requestPointerLock(); });
+addEventListener("mousemove", (e) => {
+  if (mode !== "walk" || document.pointerLockElement !== renderer.domElement) return;
+  walk.yaw -= e.movementX * 0.0022; walk.pitch = Math.max(-1.4, Math.min(1.4, walk.pitch - e.movementY * 0.0022));
+});
+// Click a station to sit (overview, room and walk views).
+const ray = new THREE.Raycaster();
+let downAt = null;
+renderer.domElement.addEventListener("pointerdown", (e) => { downAt = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener("pointerup", (e) => {
+  if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 4 || mode === "seat" || mode === "walk") return;
+  ray.setFromCamera(new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1), cam);
+  const hit = ray.intersectObjects(stationHits, false)[0];
+  if (hit) setMode("seat", { station: hit.object.userData.station });
+});
+addEventListener("resize", () => { renderer.setSize(innerWidth, innerHeight); layoutConsole(); });
+
+// ------------------------------------------------------------ start and shots
+buildStations();
+snapshotScreenColors();
+setMode("overview");
+const shot = (fn) => () => { paused = true; simT = 24.0; fn(); syncButtons(); };
+const seatShot = (id) => shot(() => { lighting = "normal"; feed = "forward"; setWings(false); setMode("seat", { station: id }); });
+K.registerShots([
+  { name: "overview", setup: shot(() => { lighting = "normal"; feed = "forward"; setWings(false); setMode("overview"); }) },
+  { name: "interior", setup: shot(() => { lighting = "normal"; setWings(false); setMode("interior"); }) },
+  { name: "captain-view", setup: shot(() => { lighting = "normal"; feed = "forward"; setWings(false); setMode("captain"); }) },
+  { name: "red-alert", setup: shot(() => { lighting = "red_alert"; setWings(false); setMode("interior"); }) },
+  { name: "emergency", setup: shot(() => { lighting = "emergency"; setWings(false); setMode("interior"); }) },
+  { name: "helm-console", setup: seatShot("helm") },
+  { name: "tactical-console", setup: seatShot("tactical") },
+  { name: "engineering-console", setup: seatShot("engineering") },
+  { name: "science-console", setup: seatShot("science") },
+  { name: "captain-console", setup: shot(() => { lighting = "red_alert"; feed = "target"; setWings(false); setMode("seat", { station: "captain" }); }) },
+  { name: "comms-console", setup: seatShot("comms") },
+  { name: "flight-ops-console", setup: seatShot("flight_ops") },
+  { name: "chase-feed", setup: shot(() => { lighting = "normal"; feed = "chase"; setWings(false); setMode("captain"); }) },
+  { name: "alt-forward-wings", setup: shot(() => { lighting = "normal"; feed = "forward"; setWings(true); setMode("interior"); }) },
+  { name: "walk-aft", setup: shot(() => { lighting = "normal"; setWings(false); walk.pos.set(-2.6, FLOOR, 27.6); walk.yaw = -0.22; walk.pitch = 0.0; walk.keys = {}; setMode("walk"); placeWalkCamera(); }) },
+]);
+renderer.setAnimationLoop(frame);
+</script>
+</body>
+</html>

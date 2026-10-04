@@ -259,7 +259,7 @@
       activity: {},
       integrity: new Float64Array(loads.length).fill(100),
       breakerOpen: new Uint8Array(loads.length),
-      tieClosed: {}, genClosed: {}, conduit: {},
+      tieClosed: {}, genClosed: {}, conduit: {}, nodeHealth: {},
       demand: new Float64Array(loads.length), alloc: new Float64Array(loads.length), dropped: new Uint8Array(loads.length),
       flows: {}, rxOut: 0, batOut: 0, charge: 0,
       thermal: {}, // per load id: { T }
@@ -304,19 +304,25 @@
       const rx = st.reactor;
       const rxAvail = rx.state === "running" ? rx.P_th * PW.reactor.conversion_efficiency / MWW : 0;
       const B = PW.battery;
+      // The restart reserve is spent only by priority 0 (reactor auxiliaries, coolant pumps,
+      // emergency lighting) unless engineering releases it.
       const reserve = rx.releaseReserve ? 0 : B.restart_reserve_mj;
-      const batAvail = Math.max(0, Math.min(B.discharge_max_mw * st.battery.health, ((st.battery.soc_mj - reserve) * B.discharge_efficiency) / dt));
+      const lim = (e) => Math.max(0, Math.min(B.discharge_max_mw * st.battery.health, (e * B.discharge_efficiency) / dt));
+      const batAvail = lim(st.battery.soc_mj - reserve), batAvailAll = lim(st.battery.soc_mj);
+      const nh = (id) => (st.nodeHealth[id] == null ? 1 : st.nodeHealth[id]);
       const eRx = add("reactor", S, RX, rxAvail, true, "source");
       const eBat = add("battery", S, BAT, 0, true, "source");
       add("battery_out", BAT, pIdx[B.node], 1e9, true, "battery");
-      for (const g of PW.generators) add(g.id, RX, pIdx[g.node], st.genClosed[g.id] ? g.capacity_mw : 0, true, "generator");
-      for (const t of PW.ties) add(t.id, pIdx[t.between[0]], pIdx[t.between[1]], st.tieClosed[t.id] ? t.capacity_mw : 0, false, "tie");
+      for (const g of PW.generators) add(g.id, RX, pIdx[g.node], st.genClosed[g.id] && nh(g.node) > 0 ? g.capacity_mw : 0, true, "generator");
+      for (const t of PW.ties) add(t.id, pIdx[t.between[0]], pIdx[t.between[1]], st.tieClosed[t.id] && nh(t.between[0]) > 0 && nh(t.between[1]) > 0 ? t.capacity_mw : 0, false, "tie");
       for (const k of PW.conduits) {
         const s = st.conduit[k.id];
-        add(k.id, pIdx[k.between[0]], pIdx[k.between[1]], s.severed || !s.breaker ? 0 : k.capacity_mw * s.health, false, "conduit");
+        const ok = !s.severed && s.breaker && nh(k.between[0]) > 0 && nh(k.between[1]) > 0;
+        add(k.id, pIdx[k.between[0]], pIdx[k.between[1]], ok ? k.capacity_mw * s.health : 0, false, "conduit");
       }
+      if (nh(B.node) <= 0) edges[2].c = 0;
       const chargeWant = Math.max(0, Math.min(B.charge_max_mw * st.battery.health, (B.capacity_mj - st.battery.soc_mj) / (dt * B.charge_efficiency)));
-      return { edges, adjL, eRx, eBat, batAvail, chargeWant };
+      return { edges, adjL, eRx, eBat, batAvail, batAvailAll, chargeWant };
     }
 
     function residual(e, dir) { return dir > 0 ? e.c - e.f : e.directed ? e.f : e.c + e.f; }
@@ -351,13 +357,16 @@
      */
     function solveGrid(grid, demand) {
       const alloc = new Float64Array(loads.length);
-      const prios = [0, 1, 2, 3];
-      for (const p of prios) {
+      // Passes: the loads that may spend the restart reserve (emergency lighting always, the
+      // reactor auxiliaries while igniting) come first, then priority classes 0 to 3.
+      const passes = [{ p: 0, reserve: true }, { p: 0, reserve: false }, { p: 1 }, { p: 2 }, { p: 3 }];
+      for (const pass of passes) {
+        const p = pass.p;
         const members = [];
-        for (let i = 0; i < loads.length; i++) if (loads[i].priority === p && demand[i] > EPS) members.push(i);
+        for (let i = 0; i < loads.length; i++) if (loads[i].priority === p && demand[i] > EPS && !!pass.reserve === mayUseReserve(i)) members.push(i);
         if (!members.length) continue;
         for (const phase of [0, 1]) {
-          grid.eBat.c = phase ? grid.batAvail : Math.min(grid.eBat.c, grid.eBat.f);
+          grid.eBat.c = phase ? Math.max(grid.eBat.f, pass.reserve ? grid.batAvailAll : grid.batAvail) : Math.min(grid.eBat.c, grid.eBat.f);
           const blocked = new Uint8Array(loads.length);
           for (let round = 0; round < PW.solve.quanta_rounds; round++) {
             let totalRem = 0;
@@ -385,13 +394,17 @@
       return { alloc, rxOut: grid.eRx.f, batOut: grid.eBat.f, charge, edges: grid.edges };
     }
 
+    function mayUseReserve(i) {
+      const id = loads[i].id;
+      return id === "emergency_lighting" || (id.startsWith("reactor_aux") && st.reactor.state === "igniting");
+    }
     /** Demand per load from setpoints, activity, damage and breakers (MW). */
     function computeDemand(setpoints) {
       const d = new Float64Array(loads.length);
       for (let i = 0; i < loads.length; i++) {
         const l = loads[i];
         const sp = Math.min(setpoints[i], l.setpoint_max);
-        if (sp <= 0 || st.breakerOpen[i]) continue;
+        if (sp <= 0 || st.breakerOpen[i] || st.nodeHealth[l.node] === 0) continue;
         const cap = capability(i);
         if (cap <= 0) continue;
         let x;
@@ -476,10 +489,15 @@
         if (rx.ignition >= RC.restart.ignition_s) { rx.state = "running"; rx.throttle = RC.restart.start_throttle; log("Reactor ignited; throttle ramps from " + (RC.restart.start_throttle * 100).toFixed(0) + "%"); }
       }
     }
+    /** Supply of the reactor auxiliaries against what they need now (a dead switchboard counts as none). */
     function auxRatio() {
-      let d = 0, a = 0;
-      for (const id of ["reactor_aux_p", "reactor_aux_s"]) { const i = loadIdx[id]; d += st.demand[i]; a += st.alloc[i]; }
-      return d > 0 ? a / d : 1;
+      let need = 0, a = 0;
+      for (const id of ["reactor_aux_p", "reactor_aux_s"]) {
+        const i = loadIdx[id], l = loads[i];
+        need += st.reactor.state === "igniting" ? PW.reactor.restart.ignition_mw / 2 : st.reactor.state === "running" ? l.nominal_mw : l.standby_mw;
+        a += st.alloc[i];
+      }
+      return need > 0 ? a / need : 1;
     }
     const roomHeat = new Float64Array(NN);
     function stepHeat() {
@@ -634,9 +652,15 @@
     }
     function mixing() {
       const FL = AT.flow;
+      // Door exchange: a small base rate, plus the buoyant two-way flow a hot room drives through
+      // an opening (q = c W H sqrt(g H dT / T)), scaled by the gravity generator's field.
+      const g = FL.gravity_m_s2 * gravityG();
       for (const l of links) {
         if (!l.mix || l.open <= 0) continue;
-        const q = FL.mixing_m3_s_per_m2 * l.area * l.open * dt;
+        const A = l.area * l.open;
+        const H = l.portal && l.portal.axis !== "y" ? l.portal.size_m[1] : Math.sqrt(l.area);
+        const dT = Math.abs(T[l.a] - T[l.b]), Tm = 0.5 * (T[l.a] + T[l.b]);
+        const q = (FL.mixing_m3_s_per_m2 * A + FL.buoyant_exchange_coefficient * A * Math.sqrt((g * H * dT) / Tm)) * dt;
         const mol = Math.min(q * Math.min(ntot[l.a] / vol[l.a], ntot[l.b] / vol[l.b]), FL.mixing_max_fraction * Math.min(ntot[l.a], ntot[l.b]));
         exchange(l.a, l.b, mol);
       }
@@ -656,6 +680,12 @@
       const r = st.alloc[i] / st.demand[i];
       if (r < l.min_ratio) return 0;
       return r * Math.min(st.setpoint[i], l.setpoint_max);
+    }
+    /** The artificial gravity field in g: the generator's delivered fraction of nominal, zero below its minimum. */
+    function gravityG() {
+      const i = loadIdx.gravity_generator;
+      if (st.demand[i] <= 0) return st.t === 0 ? 1 : 0;
+      return st.alloc[i] / loads[i].nominal_mw;
     }
     function supplyRatio(id) { const i = loadIdx[id]; return st.demand[i] > 0 ? st.alloc[i] / st.demand[i] : 0; }
 
@@ -718,7 +748,10 @@
         const i = idx[bay.target];
         const pb = P[i], prc = receiverKpa() * 1000;
         if (bay.mode === "pumpdown") {
-          if (pb / 1000 <= BP_.stop_kpa || prc / 1000 >= stores.bay_receiver.def.max_kpa) { bay.mode = "vent"; setLink("valve_" + bay.target, 1); log("Bay pumps stop at " + (pb / 1000).toFixed(1) + " kPa; venting the rest"); }
+          if (pb / 1000 <= BP_.stop_kpa || prc / 1000 >= stores.bay_receiver.def.max_kpa) {
+            bay.mode = "ready"; bay.t_ready = st.t - bay.t0; setLink("valve_" + bay.target, 1);
+            log("Bay pumps stop at " + (pb / 1000).toFixed(1) + " kPa after " + bay.t_ready.toFixed(0) + " s: launch permitted; the vent valve takes the rest");
+          }
           else {
             const S_ = BP_.displacement_m3_s * Math.min(1, st.setpoint[loadIdx.hangar_pumps]);
             const lnr = Math.log(Math.max(1, prc / Math.max(pb, 1)));
@@ -730,8 +763,8 @@
             bay.moved_mol += g[0] + g[1] + g[2] + g[3];
             bay.energy_mj += (st.alloc[loadIdx.hangar_pumps] * dt);
           }
-        } else if (bay.mode === "vent") {
-          if (pb < 500) { bay.mode = "evacuated"; setLink("valve_" + bay.target, 0); log(bay.target + " evacuated at t=" + (st.t - bay.t0).toFixed(1) + " s"); }
+        } else if (bay.mode === "ready") {
+          if (pb < 100) setLink("valve_" + bay.target, 0);
         } else if (bay.mode === "repress") {
           const rc = stores.bay_receiver; const nt = storeMol(rc);
           const room = prc - pb;
@@ -777,6 +810,7 @@
         const f = st.fire[i];
         // Inert gas flooding: replace room gas with nitrogen until the design O2 fraction.
         if (f.inert > 0) {
+          // Flood and hold: replace room gas with nitrogen (relief overboard) while O2 is above design.
           const x = n[O2][i] / Math.max(1e-9, ntot[i]);
           if (x > INERT.design_o2_fraction) {
             const k = Math.log(SA.mole_fraction.o2 / INERT.design_o2_fraction) / INERT.time_s;
@@ -784,8 +818,10 @@
             const tk = T[i];
             const g = takeMix(i, mol); st.lostOverboard += g[0] + g[1] + g[2] + g[3];
             stores[INERT.store].mol[N2] -= mol; addGas(i, N2, mol, tk);
-          } else f.inert = 0;
+            st.n2Used = (st.n2Used || 0) + mol;
+          }
           f.inert = Math.max(0, f.inert - dt);
+          if (f.inert <= 0) { delete st.damperForced[comps[i].id]; log("Inert gas soak ends in " + comps[i].name); }
         }
         if (f.mist > 0) { f.mist -= dt; U[i] -= MIST.cooling_mw * MWW * dt; }
         derive();
@@ -843,7 +879,9 @@
       // Water mist: automatic discharge on a fire above 1 MW in a protected room.
       for (const id of FI.suppression.water_mist.compartments) {
         const i = idx[id], f = st.fire[i];
-        if (st.autoMist !== false && f.hrr > 1e6 && f.mist <= 0 && f.mistLeft > 0) { f.mist = FI.suppression.water_mist.duration_s; f.mistLeft--; log("Water mist discharging in " + comps[i].name); }
+        const WM = FI.suppression.water_mist;
+        f.detect = f.hrr > WM.auto_above_kw * 1000 ? (f.detect || 0) + dt : 0;
+        if (st.autoMist !== false && f.detect >= WM.confirm_s && f.mist <= 0 && f.mistLeft > 0) dischargeMist(comps[i].id);
       }
       // Portal motion.
       for (const l of links) {
@@ -971,6 +1009,16 @@
           st.integrity[li] = Math.max(0, st.integrity[li] - pts);
           out.systems.push({ id: loads[li].id, points: pts, integrity: st.integrity[li] });
         }
+        for (const nd of PW.nodes) {
+          if (nd.compartment !== comps[sg.comp].id) continue;
+          const d = segSegDist(sg.a, sg.b, nd.center_m, nd.center_m);
+          if (d > r) continue;
+          const h = st.nodeHealth[nd.id] == null ? 1 : st.nodeHealth[nd.id];
+          const left = Math.max(0, h - (DC.points_per_mj * sg.e * (1 - d / r)) / 100);
+          st.nodeHealth[nd.id] = left < 0.25 ? 0 : left;
+          out.nodes = out.nodes || []; out.nodes.push({ id: nd.id, health: st.nodeHealth[nd.id] });
+          if (st.nodeHealth[nd.id] === 0) log(nd.name + " destroyed");
+        }
         for (const k of PW.conduits) {
           if (k.route.indexOf(comps[sg.comp].id) < 0) continue;
           let dmin = Infinity;
@@ -1026,8 +1074,25 @@
     }
     function airlockCycleOut() { setLink(AL.inner, 0); setLink(AL.outer, 0); Object.assign(st.airlock, { mode: "out_pump", t0: st.t }); st.damperForced[AL.compartment] = false; }
     function airlockCycleIn() { setLink(AL.outer, 0); setLink("valve_airlock_eq", 1); Object.assign(st.airlock, { mode: "in_eq", t0: st.t }); }
+    function dischargeMist(compId) {
+      const f = st.fire[idx[compId]], WM = FI.suppression.water_mist;
+      if (WM.compartments.indexOf(compId) < 0 || f.mistLeft <= 0) return false;
+      f.mist = WM.duration_s; f.mistLeft--; log("Water mist discharging in " + comps[idx[compId]].name); return true;
+    }
+    function dischargeInert(compId) {
+      const IG = FI.suppression.inert_gas;
+      if (IG.compartments.indexOf(compId) < 0) return false;
+      // The discharge closes the room's doors and its vent damper first (hold the concentration).
+      const i = idx[compId];
+      for (const l of links) if ((l.a === i || l.b === i) && l.kind !== "breach" && l.kind !== "valve") l.target = 0;
+      st.damperForced[compId] = false;
+      st.fire[i].inert = IG.time_s + IG.soak_s; log("Inert gas flooding " + comps[i].name); return true;
+    }
+    function useExtinguisher(compId) { const f = st.fire[idx[compId]]; f.ext = FI.extinguisher.discharge_s; log("Extinguisher on the fire in " + comps[idx[compId]].name); }
     function ventCompartment(compId) {
-      // Vent through the duct: isolate the duct, open this room's vent and the overboard dump.
+      // Vent through the duct: shut the room's doors, isolate the duct, open this room's vent and the dump.
+      const vi = idx[compId];
+      for (const l of links) if ((l.a === vi || l.b === vi) && ["door", "pressure_door", "hatch", "ladder", "hoist"].indexOf(l.kind) >= 0) l.target = 0;
       for (let i = 0; i < N; i++) st.damperForced[comps[i].id] = comps[i].id === compId;
       setLink(GA.overboard_dump.id, 1);
       log("Venting " + comps[idx[compId]].name + " overboard through the duct");
@@ -1075,6 +1140,7 @@
       dt, L, PW, AT, st, comps, N, DUCT, idx, vol, floor, extArea, adj, links, linkById, loads, loadIdx, stores, nodes, SPECIES,
       step, derive, solveGrid, gridSnapshot, computeDemand, solveWithDropout, previewSetpoint, scram, scramReset,
       resolveHit, hullHalfBeam, breach, patch, setLink, closeAllDoors, isolate, ignite, bayPumpdown, bayRepress,
+      dischargeMist, dischargeInert, useExtinguisher, gravityG,
       airlockCycleOut, airlockCycleIn, ventCompartment, stopVent, addCrew, setActivity, compartmentReadout, lighting,
       receiverKpa, storeMol, fillStandard, log,
       get P() { return P; }, get T() { return T; }, get n() { return n; }, get ntot() { return ntot; },

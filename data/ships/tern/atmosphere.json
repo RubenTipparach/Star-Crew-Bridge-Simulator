@@ -42,6 +42,8 @@
   "flow": {
     "linear_below_pa": 20.0,
     "mixing_m3_s_per_m2": 0.08,
+    "buoyant_exchange_coefficient": 0.22,
+    "gravity_m_s2": 9.81,
     "mixing_max_fraction": 0.25,
     "min_pressure_pa": 1.0
   },
@@ -175,10 +177,10 @@
     "autoignition_k": 573.15,
     "decay_time_s": 10.0,
     "out_below_kw": 5.0,
-    "extinguisher": { "discharge_s": 15.0, "hrr_cut_kw_per_s": 120.0, "locker": "damage_control", "locker_count": 6, "refill_s": 30.0 },
+    "extinguisher": { "discharge_s": 15.0, "hrr_cut_kw_per_s": 60.0, "locker": "damage_control", "locker_count": 6, "refill_s": 30.0 },
     "suppression": {
-      "inert_gas": { "compartments": ["magazine", "switchboard", "computer_core", "shield_room", "life_support"], "design_o2_fraction": 0.125, "time_s": 60.0, "store": "reserve_n2" },
-      "water_mist": { "compartments": ["engineering", "hangar", "drive"], "hrr_cut_kw_per_s": 300.0, "cooling_mw": 1.0, "duration_s": 60.0, "discharges": 2 }
+      "inert_gas": { "compartments": ["magazine", "switchboard", "computer_core", "shield_room", "life_support"], "design_o2_fraction": 0.125, "time_s": 60.0, "soak_s": 600.0, "store": "reserve_n2" },
+      "water_mist": { "compartments": ["engineering", "hangar", "drive"], "hrr_cut_kw_per_s": 100.0, "cooling_mw": 1.0, "duration_s": 60.0, "discharges": 2, "auto_above_kw": 1000.0, "confirm_s": 10.0 }
     }
   }
 }

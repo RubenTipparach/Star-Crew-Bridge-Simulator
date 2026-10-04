@@ -1,0 +1,2318 @@
+<!doctype html>
+<!--
+  Star Crew mockup: light baking. Presents openspec/changes/light-baking.
+  One Tern compartment at a time (the bridge or engineering), lit by its own
+  fixtures and baked in this page by docs/mockups/lib/lightbake.js, a small CPU
+  baker that mirrors the planned engine baker. Modes compare the same scene and
+  camera unlit, with runtime lights, baked into vertex colours at the deck's
+  own mesh density, baked into vertex colours with adaptive subdivision, and
+  baked into a lightmap atlas. All three lighting states are baked up front, so
+  switching state is a uniform change, as in the engine.
+  Run python3 tools/mockups/inline.py after editing the layout, shipkit or
+  lightbake. Never hand-edit between the INLINE markers.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tern Light Baking</title>
+<style>
+  :root { --bg: #05070d; --fg: #e8eef5; --dim: #8a98a8; --panel: rgba(6,9,14,0.86); --line: #2b3540; --accent: #48d6ff; }
+  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --bg: #05070d; } }
+  :root[data-theme="dark"] { --bg: #05070d; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font: 13px/1.4 system-ui, sans-serif; overflow: hidden; }
+  canvas { display: block; }
+  .controls { position: fixed; left: 12px; bottom: 12px; z-index: 20; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; display: flex; flex-direction: column; gap: 5px; max-width: calc(100vw - 270px); }
+  .row { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+  .row .k { color: var(--dim); width: 86px; flex: none; font-size: 12px; }
+  .controls button, .controls select { background: #18202a; color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 3px 8px; font: 12px/1.4 system-ui, sans-serif; cursor: pointer; }
+  .controls button.on { border-color: var(--accent); color: var(--accent); }
+  .info { position: fixed; right: 12px; top: 12px; z-index: 20; width: 340px; max-width: calc(100vw - 24px); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 9px 11px; font: 12px/1.45 ui-monospace, Menlo, Consolas, monospace; color: #d8e2ec; }
+  .info h3 { margin: 0 0 4px; font: 700 13px/1.3 system-ui, sans-serif; color: var(--fg); }
+  .info .d { color: var(--dim); }
+  .info .w { color: #ffb300; }
+  .info table { border-collapse: collapse; width: 100%; }
+  .info td { padding: 0 0 1px; vertical-align: top; }
+  .info td:last-child { text-align: right; white-space: nowrap; }
+  .tag { position: fixed; z-index: 15; top: 120px; font: 700 13px/1.3 system-ui, sans-serif; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; display: none; }
+  .divider { position: fixed; z-index: 14; top: 0; bottom: 0; width: 2px; background: #48d6ff; display: none; }
+  .busy { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 30; background: var(--panel); border: 1px solid var(--accent); border-radius: 6px; padding: 10px 16px; font: 600 14px/1.4 system-ui, sans-serif; display: none; }
+  @media (max-width: 760px) { .controls { max-width: calc(100vw - 24px); bottom: 150px; } .info { top: auto; bottom: 12px; width: auto; left: 12px; font-size: 11px; } }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+} }
+</script>
+<!-- INLINE layout:tern BEGIN -->
+<script id="ship-layout" type="application/json">
+{"schema":"starcrew.ship-layout/1","ship":{"id":"tern","name":"SCS Tern","class":"Heron-class frigate","summary":"The reference ship: a 84 m frigate with a crew of four to eight, two fighters and a shuttle.","presented_by":"openspec/changes/reference-ship-tern"},"conventions":{"units":"metres, degrees","axes":"ship-local, right-handed: +X port, +Y dorsal (up), +Z bow (forward)","origin":"on the centreline, on deck B's floor, at the hangar's forward wall","yaw_deg":"rotation about +Y; 0 faces the bow (+Z), +90 faces port (+X)","box":"axis-aligned, [min, max] per axis, inner surfaces (air) of the compartment","portal_size_m":"opening width and height: axis x -> [z, y], axis z -> [x, y], axis y -> [x, z]","portal_center_m":"centre of the opening, on the plane where the two compartments meet","wall_thickness_m":0.25,"deck_slab_m":0.5},"decks":[{"id":"A","name":"Command deck","floor_y_m":3.5,"clear_height_m":3.0},{"id":"B","name":"Main deck","floor_y_m":0.0,"clear_height_m":3.0},{"id":"C","name":"Lower deck","floor_y_m":-3.5,"clear_height_m":3.0}],"hull":{"note":"Octagonal cross-sections lofted linearly along Z. chamfer_m cuts each corner at 45 degrees.","sections":[{"z_m":42.0,"half_beam_m":1.2,"top_m":2.2,"bottom_m":-0.8,"chamfer_m":0.4},{"z_m":37.0,"half_beam_m":4.5,"top_m":4.5,"bottom_m":-2.8,"chamfer_m":1.5},{"z_m":32.0,"half_beam_m":8.6,"top_m":7.9,"bottom_m":-4.6,"chamfer_m":1.8},{"z_m":20.0,"half_beam_m":10.8,"top_m":7.8,"bottom_m":-5.4,"chamfer_m":1.6},{"z_m":8.0,"half_beam_m":12.2,"top_m":7.8,"bottom_m":-5.6,"chamfer_m":1.6},{"z_m":-2.0,"half_beam_m":12.2,"top_m":8.0,"bottom_m":-5.8,"chamfer_m":2.2},{"z_m":-18.0,"half_beam_m":11.6,"top_m":8.2,"bottom_m":-5.8,"chamfer_m":2.2},{"z_m":-32.0,"half_beam_m":10.6,"top_m":8.2,"bottom_m":-5.2,"chamfer_m":2.0},{"z_m":-38.0,"half_beam_m":8.0,"top_m":6.0,"bottom_m":-3.6,"chamfer_m":1.8},{"z_m":-42.0,"half_beam_m":6.5,"top_m":4.6,"bottom_m":-2.6,"chamfer_m":1.4}]},"compartments":[{"id":"bridge","poi":1,"name":"Bridge","decks":["A"],"kind":"room","purpose":"The ship's command centre: seven stations facing the main viewscreen and two forward windows.","boxes":[{"x":[-7.0,7.0],"y":[3.5,6.5],"z":[20.0,31.0]}]},{"id":"ready_room","poi":2,"name":"Captain's ready room","decks":["A"],"kind":"room","purpose":"The captain's office, a briefing table and a private console.","boxes":[{"x":[1.25,6.0],"y":[3.5,6.5],"z":[14.0,20.0]}]},{"id":"computer_core","poi":3,"name":"Computer core","decks":["A"],"kind":"room","purpose":"Processing for sensors, targeting and automation. Automated stations draw on it.","boxes":[{"x":[-6.0,-1.25],"y":[3.5,6.5],"z":[14.0,20.0]}]},{"id":"a_corridor","poi":4,"name":"Command passage","decks":["A"],"kind":"corridor","purpose":"Deck A's spine, from the bridge's aft door to the dorsal turret, with the forward ladder.","boxes":[{"x":[-1.25,1.25],"y":[3.5,6.5],"z":[4.0,20.0]}]},{"id":"dorsal_turret","poi":5,"name":"Dorsal turret access","decks":["A"],"kind":"room","purpose":"The ladder up into the dorsal turret pod.","boxes":[{"x":[-2.0,2.0],"y":[3.5,6.5],"z":[0.0,4.0]}]},{"id":"a_aft_passage","poi":6,"name":"Aft passage","decks":["A"],"kind":"corridor","purpose":"The always-pressurized route from the front of the ship to engineering, above the hangar.","boxes":[{"x":[-1.25,1.25],"y":[3.5,6.5],"z":[-18.0,0.0]}]},{"id":"torpedo_room","poi":7,"name":"Torpedo room","decks":["B"],"kind":"room","purpose":"Two forward missile tubes and their breeches, fed by the hoist from the magazine below.","boxes":[{"x":[-5.0,5.0],"y":[0.0,3.0],"z":[26.0,33.0]}]},{"id":"medbay","poi":8,"name":"Medbay","decks":["B"],"kind":"room","purpose":"Two beds that revive and heal downed crew.","boxes":[{"x":[1.25,7.0],"y":[0.0,3.0],"z":[18.0,26.0]}]},{"id":"damage_control","poi":9,"name":"Damage control","decks":["B"],"kind":"room","purpose":"Repair kits, extinguishers, EVA suits and the damage control board.","boxes":[{"x":[-7.0,-1.25],"y":[0.0,3.0],"z":[18.0,26.0]}]},{"id":"quarters","poi":10,"name":"Crew quarters","decks":["B"],"kind":"room","purpose":"Bunks and lockers; where crew spawn at the start of a mission.","boxes":[{"x":[1.25,9.0],"y":[0.0,3.0],"z":[8.0,18.0]}]},{"id":"mess","poi":11,"name":"Mess","decks":["B"],"kind":"room","purpose":"Galley and tables; the lobby room before a mission.","boxes":[{"x":[-9.0,-1.25],"y":[0.0,3.0],"z":[8.0,18.0]}]},{"id":"port_turret","poi":12,"name":"Port turret access","decks":["B"],"kind":"room","purpose":"The hatch into the port turret pod and the turret's ammunition-free capacitor bank.","boxes":[{"x":[1.25,11.0],"y":[0.0,3.0],"z":[0.0,8.0]}]},{"id":"stbd_turret","poi":13,"name":"Starboard turret access","decks":["B"],"kind":"room","purpose":"The hatch into the starboard turret pod and its capacitor bank.","boxes":[{"x":[-11.0,-1.25],"y":[0.0,3.0],"z":[0.0,8.0]}]},{"id":"b_spine","poi":14,"name":"Main corridor","decks":["B"],"kind":"corridor","purpose":"Deck B's spine, from the torpedo room to the hangar's forward landing.","boxes":[{"x":[-1.25,1.25],"y":[0.0,3.0],"z":[0.0,26.0]}]},{"id":"hangar","poi":15,"name":"Hangar","decks":["C","B"],"kind":"bay","purpose":"Double-height bay: the shuttle on its lift pad, the forward landing, and galleries over the two launch bays.","boxes":[{"x":[-5.0,5.0],"y":[-3.5,3.0],"z":[-18.0,0.0]},{"x":[5.0,10.5],"y":[0.0,3.0],"z":[-18.0,-2.0]},{"x":[-10.5,-5.0],"y":[0.0,3.0],"z":[-18.0,-2.0]}]},{"id":"launch_bay_p","poi":16,"name":"Port launch bay","decks":["C"],"kind":"bay","purpose":"Fighter Swift 1 on its cradle over a ventral drop door. Depressurizes to launch.","boxes":[{"x":[5.0,10.5],"y":[-3.5,0.0],"z":[-16.0,-4.0]}]},{"id":"launch_bay_s","poi":17,"name":"Starboard launch bay","decks":["C"],"kind":"bay","purpose":"Fighter Swift 2 on its cradle over a ventral drop door. Depressurizes to launch.","boxes":[{"x":[-10.5,-5.0],"y":[-3.5,0.0],"z":[-16.0,-4.0]}]},{"id":"engineering","poi":18,"name":"Engineering","decks":["C","B","A"],"kind":"room","purpose":"The reactor through three deck heights, the main switchboard, the coolant pumps and the engineer's console.","boxes":[{"x":[-9.0,9.0],"y":[-3.5,6.5],"z":[-32.0,-18.0]}]},{"id":"drive","poi":19,"name":"Drive section","decks":["B"],"kind":"crawlspace","purpose":"Maintenance space for the impulse drive and the inertial dampers.","boxes":[{"x":[-6.0,6.0],"y":[0.0,3.0],"z":[-40.0,-32.0]}]},{"id":"c_spine","poi":20,"name":"Lower corridor","decks":["C"],"kind":"corridor","purpose":"Deck C's spine, from the magazine to the hangar floor, with the ventral turret hatch.","boxes":[{"x":[-1.25,1.25],"y":[-3.5,-0.5],"z":[0.0,20.0]}]},{"id":"magazine","poi":21,"name":"Magazine","decks":["C"],"kind":"room","purpose":"Missile racks and the hoist up to the torpedo room.","boxes":[{"x":[-4.0,4.0],"y":[-3.5,-0.5],"z":[20.0,30.0]}]},{"id":"life_support","poi":22,"name":"Life support","decks":["C"],"kind":"room","purpose":"Oxygen generator, CO2 scrubbers, the air handler, thermal control and the water tank.","boxes":[{"x":[1.25,9.0],"y":[-3.5,-0.5],"z":[6.0,20.0]}]},{"id":"cargo","poi":23,"name":"Cargo and stores","decks":["C"],"kind":"room","purpose":"Spare parts, reserve gas bottles and the gravity generator.","boxes":[{"x":[-9.0,-1.25],"y":[-3.5,-0.5],"z":[6.0,20.0]}]},{"id":"airlock","poi":24,"name":"Airlock","decks":["C"],"kind":"airlock","purpose":"The crew airlock for EVA hull repair and boarding.","boxes":[{"x":[-11.0,-9.0],"y":[-3.5,-0.5],"z":[10.0,14.0]}]},{"id":"shield_room","poi":25,"name":"Shield generator","decks":["C"],"kind":"room","purpose":"The shield generator and its emitter capacitors.","boxes":[{"x":[1.25,7.0],"y":[-3.5,-0.5],"z":[0.0,6.0]}]},{"id":"switchboard","poi":26,"name":"Forward switchboard","decks":["C"],"kind":"room","purpose":"The battery bank and the forward bus cross-tie.","boxes":[{"x":[-7.0,-1.25],"y":[-3.5,-0.5],"z":[0.0,6.0]}]},{"id":"pod_dorsal","poi":27,"name":"Dorsal turret pod","decks":["A"],"kind":"pod","purpose":"The dorsal gunner's seat inside the turret.","boxes":[{"x":[-1.25,1.25],"y":[6.5,9.0],"z":[0.75,3.25]}]},{"id":"pod_ventral","poi":28,"name":"Ventral turret pod","decks":["C"],"kind":"pod","purpose":"The ventral gunner's seat inside the turret.","boxes":[{"x":[-1.25,1.25],"y":[-7.0,-3.5],"z":[1.75,4.25]}]},{"id":"pod_port","poi":29,"name":"Port turret pod","decks":["B"],"kind":"pod","purpose":"The port gunner's seat inside the turret.","boxes":[{"x":[11.0,13.5],"y":[0.0,2.5],"z":[2.75,5.25]}]},{"id":"pod_stbd","poi":30,"name":"Starboard turret pod","decks":["B"],"kind":"pod","purpose":"The starboard gunner's seat inside the turret.","boxes":[{"x":[-13.5,-11.0],"y":[0.0,2.5],"z":[2.75,5.25]}]}],"portals":[{"id":"p_bridge_aft","kind":"door","between":["bridge","a_corridor"],"axis":"z","center_m":[0.0,4.65,20.0],"size_m":[1.6,2.3]},{"id":"p_ready","kind":"door","between":["ready_room","a_corridor"],"axis":"x","center_m":[1.25,4.6,17.0],"size_m":[1.0,2.2]},{"id":"p_core","kind":"door","between":["computer_core","a_corridor"],"axis":"x","center_m":[-1.25,4.6,17.0],"size_m":[1.0,2.2]},{"id":"p_dorsal_fwd","kind":"door","between":["a_corridor","dorsal_turret"],"axis":"z","center_m":[0.0,4.6,4.0],"size_m":[1.2,2.2]},{"id":"p_dorsal_aft","kind":"door","between":["dorsal_turret","a_aft_passage"],"axis":"z","center_m":[0.0,4.6,0.0],"size_m":[1.2,2.2]},{"id":"p_aft_eng","kind":"door","between":["a_aft_passage","engineering"],"axis":"z","center_m":[0.0,4.6,-18.0],"size_m":[1.2,2.2]},{"id":"p_pod_dorsal","kind":"hatch","between":["dorsal_turret","pod_dorsal"],"axis":"y","center_m":[0.0,6.5,2.0],"size_m":[0.9,0.9]},{"id":"p_ladder_ab","kind":"ladder","between":["a_corridor","b_spine"],"axis":"y","center_m":[0.0,3.0,11.0],"size_m":[1.0,1.0]},{"id":"p_bridge_window_p","kind":"window","between":["bridge","space"],"axis":"z","center_m":[5.0,5.0,31.0],"size_m":[2.8,1.2]},{"id":"p_bridge_window_s","kind":"window","between":["bridge","space"],"axis":"z","center_m":[-5.0,5.0,31.0],"size_m":[2.8,1.2]},{"id":"p_torpedo","kind":"door","between":["b_spine","torpedo_room"],"axis":"z","center_m":[0.0,1.15,26.0],"size_m":[1.6,2.3]},{"id":"p_medbay","kind":"door","between":["medbay","b_spine"],"axis":"x","center_m":[1.25,1.1,22.0],"size_m":[1.2,2.2]},{"id":"p_damage_control","kind":"door","between":["damage_control","b_spine"],"axis":"x","center_m":[-1.25,1.1,22.0],"size_m":[1.2,2.2]},{"id":"p_quarters","kind":"door","between":["quarters","b_spine"],"axis":"x","center_m":[1.25,1.1,14.0],"size_m":[1.0,2.2]},{"id":"p_mess","kind":"door","between":["mess","b_spine"],"axis":"x","center_m":[-1.25,1.15,14.0],"size_m":[1.6,2.3]},{"id":"p_port_turret","kind":"door","between":["port_turret","b_spine"],"axis":"x","center_m":[1.25,1.1,4.0],"size_m":[1.0,2.2]},{"id":"p_stbd_turret","kind":"door","between":["stbd_turret","b_spine"],"axis":"x","center_m":[-1.25,1.1,4.0],"size_m":[1.0,2.2]},{"id":"p_pod_port","kind":"hatch","between":["port_turret","pod_port"],"axis":"x","center_m":[11.0,1.1,4.0],"size_m":[0.9,1.4]},{"id":"p_pod_stbd","kind":"hatch","between":["stbd_turret","pod_stbd"],"axis":"x","center_m":[-11.0,1.1,4.0],"size_m":[0.9,1.4]},{"id":"p_spine_hangar","kind":"door","between":["b_spine","hangar"],"axis":"z","center_m":[0.0,1.15,0.0],"size_m":[1.6,2.3]},{"id":"p_ladder_bc","kind":"ladder","between":["b_spine","c_spine"],"axis":"y","center_m":[0.0,-0.5,11.0],"size_m":[1.0,1.0]},{"id":"p_hoist","kind":"hoist","between":["torpedo_room","magazine"],"axis":"y","center_m":[0.0,-0.5,28.0],"size_m":[1.2,3.0]},{"id":"p_hangar_c","kind":"door","between":["c_spine","hangar"],"axis":"z","center_m":[0.0,-2.25,0.0],"size_m":[2.0,2.5]},{"id":"p_bay_p","kind":"pressure_door","between":["hangar","launch_bay_p"],"axis":"x","center_m":[5.0,-2.4,-5.0],"size_m":[1.0,2.2]},{"id":"p_bay_s","kind":"pressure_door","between":["hangar","launch_bay_s"],"axis":"x","center_m":[-5.0,-2.4,-5.0],"size_m":[1.0,2.2]},{"id":"p_drop_p","kind":"bay_door","between":["launch_bay_p","space"],"axis":"y","center_m":[7.75,-3.5,-10.0],"size_m":[4.8,9.0]},{"id":"p_drop_s","kind":"bay_door","between":["launch_bay_s","space"],"axis":"y","center_m":[-7.75,-3.5,-10.0],"size_m":[4.8,9.0]},{"id":"p_hangar_pad","kind":"bay_door","between":["hangar","space"],"axis":"y","center_m":[0.0,-3.5,-10.0],"size_m":[6.0,12.0]},{"id":"p_hangar_eng","kind":"door","between":["hangar","engineering"],"axis":"z","center_m":[0.0,-2.35,-18.0],"size_m":[1.6,2.3]},{"id":"p_gallery_eng_p","kind":"door","between":["hangar","engineering"],"axis":"z","center_m":[7.75,1.1,-18.0],"size_m":[1.0,2.2]},{"id":"p_gallery_eng_s","kind":"door","between":["hangar","engineering"],"axis":"z","center_m":[-7.75,1.1,-18.0],"size_m":[1.0,2.2]},{"id":"p_drive","kind":"hatch","between":["engineering","drive"],"axis":"z","center_m":[0.0,1.0,-32.0],"size_m":[1.0,2.0]},{"id":"p_magazine","kind":"door","between":["c_spine","magazine"],"axis":"z","center_m":[0.0,-2.35,20.0],"size_m":[1.6,2.3]},{"id":"p_life_support","kind":"door","between":["life_support","c_spine"],"axis":"x","center_m":[1.25,-2.4,15.0],"size_m":[1.2,2.2]},{"id":"p_cargo","kind":"door","between":["cargo","c_spine"],"axis":"x","center_m":[-1.25,-2.35,15.0],"size_m":[2.0,2.3]},{"id":"p_airlock_inner","kind":"pressure_door","between":["cargo","airlock"],"axis":"x","center_m":[-9.0,-2.4,12.0],"size_m":[1.0,2.2]},{"id":"p_airlock_outer","kind":"pressure_door","between":["airlock","space"],"axis":"x","center_m":[-11.0,-2.4,12.0],"size_m":[1.0,2.2]},{"id":"p_shield","kind":"door","between":["shield_room","c_spine"],"axis":"x","center_m":[1.25,-2.4,3.0],"size_m":[1.0,2.2]},{"id":"p_switchboard","kind":"door","between":["switchboard","c_spine"],"axis":"x","center_m":[-1.25,-2.4,3.0],"size_m":[1.0,2.2]},{"id":"p_pod_ventral","kind":"hatch","between":["c_spine","pod_ventral"],"axis":"y","center_m":[0.0,-3.5,3.0],"size_m":[0.9,0.9]}],"stations":[{"id":"captain","name":"Captain","role":"command","compartment":"bridge","seat_m":[0.0,3.8,23.2],"yaw_deg":0,"core":false,"note":"On a 0.3 m dais. Overview, orders and ship-wide alerts. Merged into any console when no captain is playing."},{"id":"helm","name":"Helm","role":"helm","compartment":"bridge","seat_m":[1.8,3.5,27.2],"yaw_deg":0,"core":true,"note":"Flight, navigation and docking."},{"id":"tactical","name":"Tactical","role":"tactical","compartment":"bridge","seat_m":[-1.8,3.5,27.2],"yaw_deg":0,"core":true,"note":"Targeting, turret assignment and automation, missile tubes, shields facing."},{"id":"engineering","name":"Engineering","role":"engineering","compartment":"bridge","seat_m":[5.4,3.5,25.5],"yaw_deg":90,"core":true,"note":"Power allocation, breakers, coolant, life support setpoints, damage control dispatch."},{"id":"science","name":"Science","role":"science","compartment":"bridge","seat_m":[-5.4,3.5,25.5],"yaw_deg":-90,"core":true,"note":"Sensors, scans, shield frequency and face balance, the viewscreen feed."},{"id":"comms","name":"Comms","role":"comms","compartment":"bridge","seat_m":[5.0,3.5,21.6],"yaw_deg":90,"core":false,"note":"Hails, docking clearance, intercepts. Merged into Science when unmanned."},{"id":"flight_ops","name":"Flight operations","role":"flight_ops","compartment":"bridge","seat_m":[-5.0,3.5,21.6],"yaw_deg":-90,"core":false,"note":"Hangar and launch bay pressure, launch and recovery, fighter tasking. Merged into Tactical when unmanned."},{"id":"eng_main","name":"Engineering bay console","role":"engineering","compartment":"engineering","seat_m":[5.5,0.0,-20.5],"yaw_deg":180,"core":false,"note":"The same engineering console, beside the reactor, with hands-on reactor control (scram reset, coolant valves)."},{"id":"damage_board","name":"Damage control board","role":"engineering","compartment":"damage_control","seat_m":[-4.5,0.0,22.0],"yaw_deg":-90,"core":false,"note":"Damage control teams, repair queue and compartment status."},{"id":"bay_control","name":"Bay control","role":"flight_ops","compartment":"hangar","seat_m":[3.5,0.0,-1.2],"yaw_deg":180,"core":false,"note":"Local launch control on the forward landing, overlooking the hangar."},{"id":"gunner_dorsal","name":"Dorsal gunner","role":"gunner","compartment":"pod_dorsal","seat_m":[0.0,7.0,2.0],"yaw_deg":0,"core":false,"mount":"turret_dorsal"},{"id":"gunner_ventral","name":"Ventral gunner","role":"gunner","compartment":"pod_ventral","seat_m":[0.0,-6.5,3.0],"yaw_deg":0,"core":false,"mount":"turret_ventral"},{"id":"gunner_port","name":"Port gunner","role":"gunner","compartment":"pod_port","seat_m":[12.2,0.4,4.0],"yaw_deg":90,"core":false,"mount":"turret_port"},{"id":"gunner_stbd","name":"Starboard gunner","role":"gunner","compartment":"pod_stbd","seat_m":[-12.2,0.4,4.0],"yaw_deg":-90,"core":false,"mount":"turret_stbd"}],"fixtures":[{"id":"viewscreen","kind":"viewscreen","compartment":"bridge","center_m":[0.0,5.0,30.9],"size_m":[6.0,2.4],"facing_yaw_deg":180,"note":"Shows the exterior from a steerable virtual camera, rendered to a texture."},{"id":"captain_dais","kind":"dais","compartment":"bridge","center_m":[0.0,3.5,23.2],"size_m":[3.2,2.4],"height_m":0.3},{"id":"hangar_landing","kind":"landing","compartment":"hangar","center_m":[0.0,0.0,-1.0],"size_m":[10.0,2.0],"note":"Deck B level landing inside the hangar's forward wall, with stairs down to the floor at both sides."},{"id":"eng_mezzanine","kind":"mezzanine","compartment":"engineering","center_m":[0.0,0.0,-25.0],"size_m":[18.0,14.0],"ring_inner_radius_m":3.4,"note":"Deck B level ring around the reactor; the lower floor is deck C level, an upper catwalk at deck A level meets the aft passage."},{"id":"eng_catwalk","kind":"catwalk","compartment":"engineering","center_m":[0.0,3.5,-19.0],"size_m":[4.0,2.0]}],"systems":[{"id":"reactor","name":"Fusion reactor","kind":"power_source","compartment":"engineering","center_m":[0.0,1.5,-25.0],"radius_m":2.2,"height_m":10.0},{"id":"main_switchboard","name":"Main switchboard","kind":"power_distribution","compartment":"engineering","center_m":[7.5,0.0,-21.0]},{"id":"coolant_pumps","name":"Coolant pumps","kind":"thermal","compartment":"engineering","center_m":[-6.5,-3.5,-29.0]},{"id":"radiators","name":"Radiator panels","kind":"thermal","compartment":"space","center_m":[0.0,8.2,-26.0]},{"id":"impulse_drive","name":"Impulse drive","kind":"propulsion","compartment":"drive","center_m":[0.0,1.5,-37.0]},{"id":"inertial_dampers","name":"Inertial dampers","kind":"dampers","compartment":"drive","center_m":[4.0,0.0,-34.0]},{"id":"battery_bank","name":"Battery bank","kind":"power_storage","compartment":"switchboard","center_m":[-4.5,-3.5,1.5]},{"id":"aux_switchboard","name":"Forward switchboard","kind":"power_distribution","compartment":"switchboard","center_m":[-2.2,-3.5,4.8]},{"id":"shield_generator","name":"Shield generator","kind":"shields","compartment":"shield_room","center_m":[4.2,-3.5,3.0]},{"id":"o2_generator","name":"Oxygen generator","kind":"life_support","compartment":"life_support","center_m":[6.5,-3.5,17.0]},{"id":"co2_scrubbers","name":"CO2 scrubbers","kind":"life_support","compartment":"life_support","center_m":[6.5,-3.5,11.0]},{"id":"air_handler","name":"Air handler","kind":"life_support","compartment":"life_support","center_m":[3.0,-3.5,8.0]},{"id":"thermal_control","name":"Thermal control","kind":"life_support","compartment":"life_support","center_m":[3.0,-3.5,18.5]},{"id":"computer","name":"Computer core","kind":"computer","compartment":"computer_core","center_m":[-4.0,3.5,17.0]},{"id":"sensor_array","name":"Sensor array","kind":"sensors","compartment":"space","center_m":[0.0,1.0,41.5]},{"id":"comms_array","name":"Comms array","kind":"comms","compartment":"space","center_m":[0.0,8.0,14.0]},{"id":"gravity_generator","name":"Gravity generator","kind":"gravity","compartment":"cargo","center_m":[-6.5,-3.5,17.5]},{"id":"medbay_beds","name":"Medbay beds","kind":"medical","compartment":"medbay","center_m":[4.5,0.0,22.0]},{"id":"magazine_racks","name":"Missile racks","kind":"magazine","compartment":"magazine","center_m":[0.0,-3.5,25.0]},{"id":"tube_1","name":"Tube 1","kind":"missile_tube","compartment":"torpedo_room","center_m":[2.0,1.5,31.0],"mount":"tube_1"},{"id":"tube_2","name":"Tube 2","kind":"missile_tube","compartment":"torpedo_room","center_m":[-2.0,1.5,31.0],"mount":"tube_2"},{"id":"hangar_pumps","name":"Bay pumps and reserve tank","kind":"life_support","compartment":"hangar","center_m":[-4.0,-3.5,-2.0]},{"id":"cradle_p","name":"Port launch cradle","kind":"launch","compartment":"launch_bay_p","center_m":[7.75,-3.5,-10.0]},{"id":"cradle_s","name":"Starboard launch cradle","kind":"launch","compartment":"launch_bay_s","center_m":[-7.75,-3.5,-10.0]},{"id":"shuttle_pad","name":"Shuttle lift pad","kind":"launch","compartment":"hangar","center_m":[0.0,-3.5,-10.0]}],"mounts":[{"id":"turret_dorsal","kind":"turret","center_m":[0.0,9.0,2.0],"facing":[0,1,0],"weapon":"twin_pulse_cannon","crew_seat":"gunner_dorsal"},{"id":"turret_ventral","kind":"turret","center_m":[0.0,-7.0,3.0],"facing":[0,-1,0],"weapon":"twin_pulse_cannon","crew_seat":"gunner_ventral"},{"id":"turret_port","kind":"turret","center_m":[13.5,1.25,4.0],"facing":[1,0,0],"weapon":"twin_pulse_cannon","crew_seat":"gunner_port"},{"id":"turret_stbd","kind":"turret","center_m":[-13.5,1.25,4.0],"facing":[-1,0,0],"weapon":"twin_pulse_cannon","crew_seat":"gunner_stbd"},{"id":"tube_1","kind":"missile_tube","center_m":[2.0,1.5,37.0],"facing":[0,0,1],"weapon":"gannet_missile"},{"id":"tube_2","kind":"missile_tube","center_m":[-2.0,1.5,37.0],"facing":[0,0,1],"weapon":"gannet_missile"},{"id":"main_engine_p","kind":"engine","center_m":[3.2,1.0,-42.0],"facing":[0,0,-1]},{"id":"main_engine_s","kind":"engine","center_m":[-3.2,1.0,-42.0],"facing":[0,0,-1]}],"craft":[{"id":"swift_1","name":"Swift 1","class":"Swift fighter","bay":"launch_bay_p","cradle":"cradle_p","drop_door":"p_drop_p","center_m":[7.75,-2.6,-10.0],"length_m":7.0,"span_m":4.6,"height_m":1.8,"seats":1},{"id":"swift_2","name":"Swift 2","class":"Swift fighter","bay":"launch_bay_s","cradle":"cradle_s","drop_door":"p_drop_s","center_m":[-7.75,-2.6,-10.0],"length_m":7.0,"span_m":4.6,"height_m":1.8,"seats":1},{"id":"petrel","name":"Petrel","class":"Petrel shuttle","bay":"hangar","cradle":"shuttle_pad","drop_door":"p_hangar_pad","center_m":[0.0,-1.9,-10.0],"length_m":10.0,"span_m":4.5,"height_m":3.2,"seats":4}]}
+</script>
+<!-- INLINE layout:tern END -->
+<!-- INLINE shipkit BEGIN -->
+<script>
+/*
+ * shipkit.js: the one place a mockup turns a ship layout into three.js objects.
+ *
+ * Every Star Crew mockup reads the same layout (data/ships/<id>/layout.json), so
+ * the bridge, the deck plan, the systems view and the exterior cannot disagree
+ * about where a room or a door is (CLAUDE.md sections 8 and 11). This file is
+ * the shared interpretation of that layout: palette, lighting states, the Pi 5
+ * budget meter, room shells with door openings cut, the hull loft and labels.
+ *
+ * It is a classic script, not a module, so a mockup still works when opened
+ * straight from disk. tools/mockups/inline.py copies it into each page between
+ * the "INLINE shipkit" markers; edit it here, never in a page. Functions that
+ * build geometry take THREE as their first argument because the page owns the
+ * three.js import.
+ *
+ * Axes (from the layout): +X port, +Y up, +Z bow, metres.
+ */
+(function () {
+  "use strict";
+
+  /** The layout inlined into the page as <script id="ship-layout" type="application/json">. */
+  function layout() {
+    const el = document.getElementById("ship-layout");
+    if (!el) throw new Error("shipkit: no #ship-layout script in the page (run tools/mockups/inline.py)");
+    return JSON.parse(el.textContent);
+  }
+
+  /**
+   * The Raspberry Pi 5 (1 GB) budget a mockup is measured against. These are
+   * the provisional numbers from openspec/changes/engine-stack/design.md,
+   * "The Pi 5 budget"; that table is the source, and this copy is checked
+   * against its marker by tools/mockups/inline.py --check.
+   */
+  const PI_BUDGET = {
+    board: "Pi 5 (1 GB)",
+    triangles: 200000,       // visible triangles per frame, all passes
+    drawCalls: 300,          // draw calls per frame, all passes
+    textureMB: 96,           // texture memory
+    viewscreenPx: [1024, 512], // render-to-texture size for the main viewscreen
+    frameMs: 16.7,           // 60 frames a second target (33.3 ms floor), 3D at 1280x720
+  };
+
+  /** Named colour roles. Mockups use roles, not hex values (CLAUDE.md section 10). */
+  const PALETTE = {
+    space: 0x05070d,
+    hullLight: 0x8f9aa8,
+    hullDark: 0x4a5462,
+    hullAccent: 0xc9643b,
+    floor: 0x3a404a,
+    floorCorridor: 0x454b55,
+    wall: 0x6b7480,
+    wallDark: 0x525a66,
+    ceiling: 0x2c3138,
+    trim: 0x9aa4b0,
+    console: 0x2a3038,
+    screen: 0x48d6ff,
+    screenWarm: 0xffb347,
+    glass: 0x9fd8ff,
+    door: 0x8a6d3b,
+    doorFrame: 0xd0a040,
+    hazard: 0xe8c547,
+    alert: 0xff2a2a,
+    emergency: 0xff8a1c,
+    lampWarm: 0xffe2b0,
+    lampCool: 0xbfe0ff,
+    // station roles, used for seats, labels and console accents
+    role: {
+      command: 0xf2f2f2,
+      helm: 0x4fc3f7,
+      tactical: 0xef5350,
+      engineering: 0xffb300,
+      science: 0x66bb6a,
+      comms: 0xab47bc,
+      flight_ops: 0x26c6da,
+      gunner: 0xff7043,
+    },
+    // compartment kinds, used by plan views
+    kind: {
+      room: 0x5c6b7a,
+      corridor: 0x7d8792,
+      bay: 0x4a6a8a,
+      crawlspace: 0x6a5a4a,
+      airlock: 0xb08a3a,
+      pod: 0xa05050,
+    },
+  };
+
+  /**
+   * Interior lighting states. Every interior mockup shows at least normal and
+   * red alert (CLAUDE.md section 11). In the engine these are baked vertex
+   * colour sets blended by a per-compartment uniform; here they are light
+   * colours and intensities.
+   */
+  const LIGHTING = {
+    normal: { label: "Normal", ambient: 0x2a3340, ambientI: 0.55, lamp: 0xffe9c8, lampI: 1.0, strip: 0x9fd8ff, stripI: 0.6, fog: 0x0b0e14 },
+    red_alert: { label: "Red alert", ambient: 0x2a0d10, ambientI: 0.45, lamp: 0xff3030, lampI: 0.75, strip: 0xff2020, stripI: 1.0, fog: 0x120406 },
+    emergency: { label: "Emergency power", ambient: 0x120c08, ambientI: 0.3, lamp: 0xff8a1c, lampI: 0.35, strip: 0xff8a1c, stripI: 0.8, fog: 0x060403 },
+  };
+
+  // ---------------------------------------------------------------- lookups
+
+  function byId(list, id) {
+    for (const x of list) if (x.id === id) return x;
+    return null;
+  }
+  function compartment(L, id) { return byId(L.compartments, id); }
+  function portalsOf(L, compId) { return L.portals.filter((p) => p.between.indexOf(compId) >= 0); }
+  function stationsIn(L, compId) { return (L.stations || []).filter((s) => s.compartment === compId); }
+  function systemsIn(L, compId) { return (L.systems || []).filter((s) => s.compartment === compId); }
+  function deckById(L, id) { return byId(L.decks, id); }
+
+  /** Volume in cubic metres and floor area in square metres of a compartment. */
+  function measure(comp) {
+    let v = 0, a = 0;
+    for (const b of comp.boxes) {
+      const dx = b.x[1] - b.x[0], dy = b.y[1] - b.y[0], dz = b.z[1] - b.z[0];
+      v += dx * dy * dz; a += dx * dz;
+    }
+    return { volume_m3: v, floor_m2: a };
+  }
+
+  /** Union bounds of a compartment's boxes. */
+  function bounds(comp) {
+    const r = { x: [Infinity, -Infinity], y: [Infinity, -Infinity], z: [Infinity, -Infinity] };
+    for (const b of comp.boxes) for (const k of "xyz") { r[k][0] = Math.min(r[k][0], b[k][0]); r[k][1] = Math.max(r[k][1], b[k][1]); }
+    return r;
+  }
+  function center(comp) {
+    const b = bounds(comp);
+    return [(b.x[0] + b.x[1]) / 2, (b.y[0] + b.y[1]) / 2, (b.z[0] + b.z[1]) / 2];
+  }
+
+  /** Half extents of a portal's opening on its two in-plane axes. */
+  function portalHalf(p) {
+    const s = p.size_m;
+    if (p.axis === "x") return { z: s[0] / 2, y: s[1] / 2 };
+    if (p.axis === "z") return { x: s[0] / 2, y: s[1] / 2 };
+    return { x: s[0] / 2, z: s[1] / 2 };
+  }
+
+  // ------------------------------------------------------------ room shells
+
+  const EPS = 1e-4;
+
+  // Each face of a box: the axis it is normal to, which end, and its two in-plane axes (u, v).
+  const FACES = [
+    { key: "floor", axis: "y", end: 0, u: "x", v: "z", inward: [0, 1, 0] },
+    { key: "ceiling", axis: "y", end: 1, u: "x", v: "z", inward: [0, -1, 0] },
+    { key: "wall", axis: "x", end: 0, u: "z", v: "y", inward: [1, 0, 0] },
+    { key: "wall", axis: "x", end: 1, u: "z", v: "y", inward: [-1, 0, 0] },
+    { key: "wall", axis: "z", end: 0, u: "x", v: "y", inward: [0, 0, 1] },
+    { key: "wall", axis: "z", end: 1, u: "x", v: "y", inward: [0, 0, -1] },
+  ];
+
+  /**
+   * Rectangle minus holes, as a list of cells. Holes are clipped to the
+   * rectangle. Cells come from the grid of every hole edge, so the result is
+   * exact and has no slivers, at the price of a few extra triangles.
+   */
+  function rectMinusHoles(r, holes) {
+    const hs = holes
+      .map((h) => ({ u0: Math.max(h.u0, r.u0), u1: Math.min(h.u1, r.u1), v0: Math.max(h.v0, r.v0), v1: Math.min(h.v1, r.v1) }))
+      .filter((h) => h.u1 - h.u0 > EPS && h.v1 - h.v0 > EPS);
+    if (!hs.length) return [r];
+    const us = [r.u0, r.u1], vs = [r.v0, r.v1];
+    for (const h of hs) { us.push(h.u0, h.u1); vs.push(h.v0, h.v1); }
+    const su = [...new Set(us.map((x) => +x.toFixed(4)))].sort((a, b) => a - b);
+    const sv = [...new Set(vs.map((x) => +x.toFixed(4)))].sort((a, b) => a - b);
+    const cells = [];
+    for (let i = 0; i + 1 < su.length; i++) {
+      for (let j = 0; j + 1 < sv.length; j++) {
+        const cu = (su[i] + su[i + 1]) / 2, cv = (sv[j] + sv[j + 1]) / 2;
+        if (hs.some((h) => cu > h.u0 && cu < h.u1 && cv > h.v0 && cv < h.v1)) continue;
+        cells.push({ u0: su[i], u1: su[i + 1], v0: sv[j], v1: sv[j + 1] });
+      }
+    }
+    // Merge runs along u in each row to keep the triangle count down.
+    cells.sort((a, b) => a.v0 - b.v0 || a.u0 - b.u0);
+    const merged = [];
+    for (const c of cells) {
+      const last = merged[merged.length - 1];
+      if (last && Math.abs(last.v0 - c.v0) < EPS && Math.abs(last.v1 - c.v1) < EPS && Math.abs(last.u1 - c.u0) < EPS) last.u1 = c.u1;
+      else merged.push({ ...c });
+    }
+    return merged;
+  }
+
+  /** The openings on one face of one box: portals on that plane, and faces shared with the compartment's other boxes. */
+  function faceHoles(L, comp, box, face, opts) {
+    const plane = box[face.axis][face.end];
+    const holes = [];
+    for (const p of portalsOf(L, comp.id)) {
+      if (p.axis !== face.axis) continue;
+      if (opts.skipKinds && opts.skipKinds.indexOf(p.kind) >= 0) continue;
+      const c = { x: p.center_m[0], y: p.center_m[1], z: p.center_m[2] };
+      const slab = face.axis === "y" ? 0.55 : EPS * 10;
+      if (Math.abs(c[face.axis] - plane) > slab) continue;
+      const h = portalHalf(p);
+      holes.push({ u0: c[face.u] - h[face.u], u1: c[face.u] + h[face.u], v0: c[face.v] - h[face.v], v1: c[face.v] + h[face.v], portal: p });
+    }
+    for (const other of comp.boxes) {
+      if (other === box) continue;
+      const oEnd = 1 - face.end;
+      if (Math.abs(other[face.axis][oEnd] - plane) > EPS) continue;
+      holes.push({ u0: other[face.u][0], u1: other[face.u][1], v0: other[face.v][0], v1: other[face.v][1] });
+    }
+    return holes;
+  }
+
+  function pushQuad(pos, nor, col, face, plane, c, color) {
+    const p = (u, v) => {
+      const o = { x: 0, y: 0, z: 0 };
+      o[face.axis] = plane; o[face.u] = u; o[face.v] = v;
+      return [o.x, o.y, o.z];
+    };
+    const a = p(c.u0, c.v0), b = p(c.u1, c.v0), d = p(c.u1, c.v1), e = p(c.u0, c.v1);
+    // Wind so the quad faces inward (into the room).
+    const n = face.inward;
+    const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], ad = [d[0] - a[0], d[1] - a[1], d[2] - a[2]];
+    const cross = [ab[1] * ad[2] - ab[2] * ad[1], ab[2] * ad[0] - ab[0] * ad[2], ab[0] * ad[1] - ab[1] * ad[0]];
+    const flip = cross[0] * n[0] + cross[1] * n[1] + cross[2] * n[2] < 0;
+    const tri = flip ? [a, d, b, a, e, d] : [a, b, d, a, d, e];
+    for (const v of tri) { pos.push(v[0], v[1], v[2]); nor.push(n[0], n[1], n[2]); col.push(color.r, color.g, color.b); }
+  }
+
+  /**
+   * Build a compartment's inside surfaces (floor, ceiling, walls) with every
+   * portal opening cut out. Returns { floor, ceiling, walls } BufferGeometries
+   * with vertex colours, plus the list of openings for door props.
+   *
+   * opts.colors: { floor, ceiling, wall } as hex; opts.skipKinds: portal kinds
+   * not to cut (for example ["window"] to keep a blank wall).
+   */
+  function roomShell(THREE, L, comp, opts) {
+    opts = opts || {};
+    const isCorridor = comp.kind === "corridor";
+    const colors = Object.assign({ floor: isCorridor ? PALETTE.floorCorridor : PALETTE.floor, ceiling: PALETTE.ceiling, wall: PALETTE.wall }, opts.colors || {});
+    const out = { floor: [[], [], []], ceiling: [[], [], []], wall: [[], [], []] };
+    const openings = [];
+    for (const box of comp.boxes) {
+      for (const face of FACES) {
+        const plane = box[face.axis][face.end];
+        const rect = { u0: box[face.u][0], u1: box[face.u][1], v0: box[face.v][0], v1: box[face.v][1] };
+        const holes = faceHoles(L, comp, box, face, opts);
+        for (const h of holes) if (h.portal) openings.push({ portal: h.portal, axis: face.axis, plane, u: face.u, v: face.v, rect: h });
+        const color = new THREE.Color(colors[face.key]);
+        const bucket = out[face.key];
+        for (const c of rectMinusHoles(rect, holes)) pushQuad(bucket[0], bucket[1], bucket[2], face, plane, c, color);
+      }
+    }
+    const make = (b) => {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute("position", new THREE.Float32BufferAttribute(b[0], 3));
+      g.setAttribute("normal", new THREE.Float32BufferAttribute(b[1], 3));
+      g.setAttribute("color", new THREE.Float32BufferAttribute(b[2], 3));
+      return g;
+    };
+    return { floor: make(out.floor), ceiling: make(out.ceiling), walls: make(out.wall), openings };
+  }
+
+  // ------------------------------------------------------------------- hull
+
+  /**
+   * Loft the hull's octagonal sections into one low-poly BufferGeometry
+   * (outward normals, flat shaded). opts.inflate_m grows it, for a shell drawn
+   * around the interior.
+   */
+  function hullGeometry(THREE, L, opts) {
+    opts = opts || {};
+    const inflate = opts.inflate_m || 0;
+    const secs = L.hull.sections.slice().sort((a, b) => a.z_m - b.z_m);
+    const ring = (s) => {
+      const hw = s.half_beam_m + inflate, top = s.top_m + inflate, bot = s.bottom_m - inflate, c = s.chamfer_m;
+      // Eight points, counter-clockwise seen from the bow (+Z), starting at the top port corner.
+      return [
+        [hw - c, top], [-(hw - c), top], [-hw, top - c], [-hw, bot + c],
+        [-(hw - c), bot], [hw - c, bot], [hw, bot + c], [hw, top - c],
+      ].map((p) => [p[0], p[1], s.z_m]);
+    };
+    const rings = secs.map(ring);
+    const pos = [];
+    const tri = (a, b, c) => pos.push(...a, ...b, ...c);
+    for (let i = 0; i + 1 < rings.length; i++) {
+      const r0 = rings[i], r1 = rings[i + 1];
+      for (let k = 0; k < 8; k++) {
+        const k2 = (k + 1) % 8;
+        tri(r0[k], r0[k2], r1[k2]);
+        tri(r0[k], r1[k2], r1[k]);
+      }
+    }
+    // Caps: stern (first ring) and bow (last ring), fanned from the centre.
+    const cap = (r, flip) => {
+      const c = r.reduce((a, p) => [a[0] + p[0] / 8, a[1] + p[1] / 8, a[2] + p[2] / 8], [0, 0, 0]);
+      for (let k = 0; k < 8; k++) {
+        const k2 = (k + 1) % 8;
+        if (flip) tri(c, r[k2], r[k]); else tri(c, r[k], r[k2]);
+      }
+    };
+    cap(rings[0], false);
+    cap(rings[rings.length - 1], true);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    g.computeVertexNormals();
+    // Make sure the winding faces outward: test one triangle against the centroid.
+    return g;
+  }
+
+  // ----------------------------------------------------------------- labels
+
+  /** A camera-facing text sprite. size_m is the label's height in metres. */
+  function label(THREE, text, opts) {
+    opts = opts || {};
+    const px = 64, pad = 16;
+    const cv = document.createElement("canvas");
+    const ctx = cv.getContext("2d");
+    ctx.font = `600 ${px}px system-ui, sans-serif`;
+    const w = Math.ceil(ctx.measureText(text).width) + pad * 2;
+    cv.width = w; cv.height = px + pad * 2;
+    ctx.font = `600 ${px}px system-ui, sans-serif`;
+    ctx.fillStyle = opts.bg || "rgba(8,12,18,0.78)";
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    if (opts.accent !== undefined) {
+      ctx.fillStyle = "#" + new THREE.Color(opts.accent).getHexString();
+      ctx.fillRect(0, 0, 10, cv.height);
+    }
+    ctx.fillStyle = opts.color || "#e8eef5";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, pad + (opts.accent !== undefined ? 6 : 0), cv.height / 2);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const mat = new THREE.SpriteMaterial({ map: tex, depthTest: opts.depthTest !== false, transparent: true });
+    const s = new THREE.Sprite(mat);
+    const h = opts.size_m || 0.5;
+    s.scale.set((h * cv.width) / cv.height, h, 1);
+    s.renderOrder = 10;
+    return s;
+  }
+
+  // ------------------------------------------------------------ budget HUD
+
+  /**
+   * The Pi 5 cost meter every mockup shows (CLAUDE.md section 11). Call
+   * hud.beginFrame(renderer) before the frame's first render and
+   * hud.endFrame(renderer) after its last; it sums every pass (a viewscreen's
+   * render-to-texture included).
+   */
+  function budgetHud(opts) {
+    opts = opts || {};
+    const el = document.createElement("div");
+    el.className = "pi-budget";
+    el.style.cssText = [
+      "position:fixed", "right:12px", "bottom:12px", "z-index:20", "font:12px/1.35 ui-monospace,Menlo,Consolas,monospace",
+      "color:#d8e2ec", "background:rgba(6,9,14,0.82)", "border:1px solid #2b3540", "border-radius:6px", "padding:8px 10px",
+      "min-width:210px", "pointer-events:none",
+    ].join(";");
+    document.body.appendChild(el);
+    let tris = 0, calls = 0, frames = 0, acc = { t: 0, c: 0 }, last = performance.now(), shown = { t: 0, c: 0, fps: 0 };
+    const bar = (v, max) => {
+      const f = Math.min(1, v / max);
+      const color = v > max ? "#ff5252" : v > 0.8 * max ? "#ffb300" : "#66bb6a";
+      return `<div style="height:5px;background:#1c242d;border-radius:3px;margin:2px 0 5px"><div style="height:5px;width:${(f * 100).toFixed(1)}%;background:${color};border-radius:3px"></div></div>`;
+    };
+    function render() {
+      const b = PI_BUDGET;
+      el.innerHTML =
+        `<div style="font-weight:700;margin-bottom:4px">${PI_BUDGET.board} budget (provisional)</div>` +
+        `triangles ${shown.t.toLocaleString()} / ${b.triangles.toLocaleString()}${bar(shown.t, b.triangles)}` +
+        `draw calls ${shown.c} / ${b.drawCalls}${bar(shown.c, b.drawCalls)}` +
+        `<div style="color:#8a98a8">desktop ${shown.fps.toFixed(0)} fps: not a Pi measurement</div>` +
+        (opts.note ? `<div style="color:#8a98a8">${opts.note}</div>` : "");
+    }
+    return {
+      el,
+      beginFrame(renderer) { renderer.info.autoReset = false; renderer.info.reset(); },
+      endFrame(renderer) {
+        tris = renderer.info.render.triangles; calls = renderer.info.render.calls;
+        acc.t += tris; acc.c += calls; frames++;
+        const now = performance.now();
+        if (now - last > 500) {
+          shown = { t: Math.round(acc.t / frames), c: Math.round(acc.c / frames), fps: (frames * 1000) / (now - last) };
+          acc = { t: 0, c: 0 }; frames = 0; last = now;
+          render();
+        }
+      },
+      /** The latest averaged numbers, for screenshots and tests. */
+      read() { return { triangles: shown.t, drawCalls: shown.c }; },
+    };
+  }
+
+  // -------------------------------------------------------- mockup plumbing
+
+  /**
+   * Standard page chrome: title block naming the change the mockup presents,
+   * and the "mockup, not a Pi measurement" disclaimer.
+   */
+  function titleBlock(opts) {
+    const el = document.createElement("div");
+    el.className = "mockup-title";
+    el.style.cssText = "position:fixed;left:12px;top:12px;z-index:20;max-width:min(520px,calc(100vw - 24px));font:13px/1.4 system-ui,sans-serif;color:#e8eef5;background:rgba(6,9,14,0.82);border:1px solid #2b3540;border-radius:6px;padding:10px 12px";
+    el.innerHTML =
+      `<div style="font-weight:700;font-size:15px">${opts.title}</div>` +
+      `<div style="color:#9fb0c0">${opts.subtitle || ""}</div>` +
+      `<div style="color:#7f8fa0;margin-top:4px">Presents <code>${opts.change}</code>. A three.js mockup on a desktop GPU: it shows layout and look, not Pi 5 performance.</div>`;
+    document.body.appendChild(el);
+    return el;
+  }
+
+  /**
+   * Screenshot hooks for tools/mockups/shoot.mjs. A mockup registers named
+   * shots; the tool calls each one's setup, waits for frames, and captures.
+   * window.MOCKUP_READY is set once the scene has rendered its first frame.
+   */
+  function registerShots(shots) {
+    window.MOCKUP_SHOTS = shots;
+  }
+  function markReady() {
+    window.MOCKUP_READY = true;
+  }
+
+  window.ShipKit = {
+    version: 1,
+    layout, PI_BUDGET, PALETTE, LIGHTING,
+    /** Deprecated alias from before the floor moved to the Pi 5; removed once no page uses it. */
+    PI3_BUDGET: PI_BUDGET,
+    byId, compartment, portalsOf, stationsIn, systemsIn, deckById, measure, bounds, center, portalHalf,
+    roomShell, hullGeometry, label, budgetHud, titleBlock, registerShots, markReady,
+    rectMinusHoles,
+  };
+})();
+</script>
+<!-- INLINE shipkit END -->
+<!-- INLINE lib:lightbake BEGIN -->
+<script>
+/*
+ * lightbake.js: a small CPU light baker for the Star Crew mockups.
+ *
+ * What it owns: turning a compartment's planar patches, its light fixtures and
+ * its emissive surfaces into baked light, by the method that
+ * openspec/changes/light-baking designs for the engine's baker (`sc-tools
+ * bake`, planned, not built):
+ *   - direct light from fixtures, with soft shadows from walls, props and
+ *     closed doors (shadow rays to sample points on each lamp);
+ *   - emissive surfaces (screens, light strips, the viewscreen) as area lights;
+ *   - ambient occlusion on a small ambient term;
+ *   - zero, one or two diffuse bounces, gathered from a coarse irradiance cache;
+ *   - all three lighting states (normal, red alert, emergency power) from one
+ *     set of rays, because light is linear in its sources;
+ *   - storage as 8-bit gamma-encoded vertex colours (three sets), or as a
+ *     lightmap atlas (three textures), for comparison;
+ *   - adaptive subdivision, so vertex lighting can carry shadows and pools;
+ *   - ambient cubes (six colours) at probe points, for things that move.
+ *
+ * Why it lives here: it is documentation tooling (CLAUDE.md section 4), not
+ * engine code. The lighting mockup uses it so the owner sees what each option
+ * looks like and what it costs, measured by a real bake rather than painted.
+ * It mirrors the planned engine baker's method so the pictures are honest; it
+ * is not a reference the engine must match bit for bit.
+ *
+ * Like shipkit.js it is a classic script (pages work from disk), copied into a
+ * page by tools/mockups/inline.py between "INLINE lib:lightbake" markers. Edit
+ * it here, never in a page. Functions that build three.js objects take THREE as
+ * their first argument because the page owns the three.js import.
+ *
+ * Deterministic: no Math.random. Every sample pattern is an R2 quasi-random
+ * sequence rotated by a hash of (bake seed, receiver key, purpose), so the same
+ * inputs and seed give byte-identical output, and digest() proves it.
+ *
+ * Units: metres; candela (cd) for a point light's intensity on its beam axis;
+ * candela per square metre (cd/m^2) for emissive luminance; lux (lx) for
+ * irradiance. State colours are linear RGB multipliers. Stored light is
+ * gamma-encoded (2.2) with 2x overbright headroom: byte 128 shows a surface at
+ * its palette colour, under the reference irradiance settings.reference_lux.
+ */
+(function () {
+  "use strict";
+
+  /** The three lighting states, in colour-set order (CLAUDE.md section 9). */
+  const STATES = ["normal", "red_alert", "emergency"];
+  const NS = 3;
+  const GAMMA = 2.2;
+  const OVERBRIGHT = 2.0;   // stored light 1.0 (byte 255) shows 2x the palette colour
+  const SHOULDER = 1.5;     // display multiplier above which highlights roll off instead of clipping
+
+  /** Defaults for bake(). Every key has a unit; a present zero means zero. */
+  const DEFAULTS = {
+    seed: 1,
+    reference_lux: 100,      // irradiance that shows a surface at exactly its palette colour
+    shadow_samples: 12,      // per lamp per receiver; adaptive: 4 first, the rest only in penumbra
+    emitter_sample_area_m2: 0.06, // one sample per this much emissive area, 4 to 16 per emitter
+    gather_rays: 48,         // cosine-weighted rays per receiver for bounce
+    ao_rays: 24,             // cosine-weighted rays per receiver for ambient occlusion
+    ao_radius_m: 0.8,
+    ao: true,
+    bounces: 1,              // 0, 1 or 2
+    cache_spacing_m: 0.5,    // vertex spacing of the irradiance cache that bounce rays read
+    bias_m: 0.004,           // ray origin offset along the normal (no shadow acne)
+    inset_m: 0.01,           // receivers on a patch edge are sampled this far inside it
+    dither: true,            // +-0.5 LSB seeded dither on the 8-bit output
+    yield_ms: 30,            // async bakes yield to the page this often
+  };
+
+  // ------------------------------------------------------------ hashing
+
+  function mix32(x) {
+    x = x >>> 0;
+    x ^= x >>> 16; x = Math.imul(x, 0x7feb352d);
+    x ^= x >>> 15; x = Math.imul(x, 0x846ca68b);
+    x ^= x >>> 16;
+    return x >>> 0;
+  }
+  function hash3(a, b, c) { return mix32((a >>> 0) ^ mix32((b >>> 0) ^ mix32((c >>> 0) + 0x9e3779b9))); }
+  function u01(h) { return (h >>> 0) / 4294967296; }
+  const R2A = 0.7548776662466927, R2B = 0.5698402909980532; // Roberts' R2 sequence
+  function frac(x) { return x - Math.floor(x); }
+
+  // ------------------------------------------------------------ colour
+
+  function srgbToLinear(c) { return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
+  function hexToSrgb(hex) { return [((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255]; }
+  function hexToLinear(hex) { return hexToSrgb(hex).map(srgbToLinear); }
+
+  /** Irradiance ratio x = E / reference_lux to a display multiplier in [0, OVERBRIGHT]. */
+  function encodeLevel(x) {
+    if (!(x > 0)) return 0;
+    let d = Math.pow(x, 1 / GAMMA);
+    if (d > SHOULDER) d = SHOULDER + (OVERBRIGHT - SHOULDER) * Math.tanh((d - SHOULDER) / (OVERBRIGHT - SHOULDER));
+    return d;
+  }
+  /** Display multiplier to a byte, with an optional dither offset in [0, 1). */
+  function toByte(d, dither) {
+    const v = Math.floor((d / OVERBRIGHT) * 255 + dither);
+    return v < 0 ? 0 : v > 255 ? 255 : v;
+  }
+  /** Display luminance of one state of a 9-float lux record, in 8-bit levels (for error tests). */
+  function level8(E, s, refLux) {
+    const y = (0.2126 * E[s * 3] + 0.7152 * E[s * 3 + 1] + 0.0722 * E[s * 3 + 2]) / refLux;
+    return (encodeLevel(y) / OVERBRIGHT) * 255;
+  }
+
+  // ------------------------------------------------------------ vectors (small, allocation-light)
+
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+  const scale = (a, s) => [a[0] * s, a[1] * s, a[2] * s];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const len = (a) => Math.sqrt(dot(a, a));
+  const norm = (a) => { const l = len(a) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+
+  /** Orthonormal basis around a unit normal (Duff et al. 2017, branchless). */
+  function basis(nx, ny, nz, out) {
+    const sgn = nz >= 0 ? 1 : -1;
+    const a = -1 / (sgn + nz), b = nx * ny * a;
+    out[0] = 1 + sgn * nx * nx * a; out[1] = sgn * b; out[2] = -sgn * nx;
+    out[3] = b; out[4] = sgn + ny * ny * a; out[5] = -ny;
+  }
+
+  // ------------------------------------------------------------ patches
+
+  /**
+   * A patch is a planar parallelogram P(s, t) = o + s u + t v, s, t in [0, 1],
+   * facing n = normalize(u x v); or a triangle (tri: true, s + t <= 1). Patches
+   * are what the baker subdivides and what a lightmap gives texels to.
+   *
+   * opts: albedoHex (palette colour), cast (in the ray scene, default true),
+   * receive (in the outputs, default true), emissive ({ normal, red_alert,
+   * emergency } display colours as [r, g, b] in 0..1, drawn unlit), tag.
+   */
+  function patch(o, u, v, opts) {
+    opts = opts || {};
+    const c = cross(u, v), area = len(c);
+    const hex = opts.albedoHex !== undefined ? opts.albedoHex : 0x808080;
+    return {
+      o: o.slice(), u: u.slice(), v: v.slice(), n: norm(c),
+      area: opts.tri ? area / 2 : area, lenU: len(u), lenV: len(v), tri: !!opts.tri,
+      display: opts.display || hexToSrgb(hex), albedo: opts.albedo || hexToLinear(hex),
+      cast: opts.cast !== false && !opts.emissive, receive: opts.receive !== false && !opts.emissive,
+      emissive: opts.emissive || null, tag: opts.tag || "",
+    };
+  }
+
+  /** The six faces of an axis-aligned box, facing out. opts.skip: ["-y", "+x", ...]. */
+  function boxPatches(min, max, opts) {
+    opts = opts || {};
+    const skip = opts.skip || [];
+    const [x0, y0, z0] = min, [x1, y1, z1] = max;
+    const dx = x1 - x0, dy = y1 - y0, dz = z1 - z0;
+    const out = [];
+    const f = (key, o, u, v) => { if (skip.indexOf(key) < 0 && len(cross(u, v)) > 1e-9) out.push(patch(o, u, v, opts)); };
+    f("+x", [x1, y0, z0], [0, dy, 0], [0, 0, dz]);
+    f("-x", [x0, y0, z0], [0, 0, dz], [0, dy, 0]);
+    f("+y", [x0, y1, z0], [0, 0, dz], [dx, 0, 0]);
+    f("-y", [x0, y0, z0], [dx, 0, 0], [0, 0, dz]);
+    f("+z", [x0, y0, z1], [dx, 0, 0], [0, dy, 0]);
+    f("-z", [x0, y0, z0], [0, dy, 0], [dx, 0, 0]);
+    return out;
+  }
+
+  /**
+   * Recover patches from a triangle BufferGeometry (world space): consecutive
+   * coplanar triangle pairs that share an edge and form a parallelogram become
+   * one quad patch; anything else stays a triangle patch. The geometry's normal
+   * attribute, when present, decides which way a patch faces. ShipKit.roomShell
+   * output comes back as exactly its rectangles. opts as for patch().
+   */
+  function patchesFromGeometry(geometry, opts) {
+    const P = geometry.getAttribute("position"), N = geometry.getAttribute("normal");
+    const idx = geometry.index ? geometry.index.array : null;
+    const count = idx ? idx.length : P.count;
+    const vi = (k) => (idx ? idx[k] : k);
+    const pos = (i) => [P.getX(i), P.getY(i), P.getZ(i)];
+    const out = [];
+    const same = (a, b) => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]) < 1e-6;
+    const facing = (tri, i) => {
+      const fn = cross(sub(tri[1], tri[0]), sub(tri[2], tri[0]));
+      if (!N) return fn;
+      const nn = [N.getX(i), N.getY(i), N.getZ(i)];
+      return dot(fn, nn) < 0 ? scale(nn, 1) : fn;
+    };
+    for (let k = 0; k + 2 < count; k += 3) {
+      const a = [pos(vi(k)), pos(vi(k + 1)), pos(vi(k + 2))];
+      const nA = facing(a, vi(k));
+      let used = false;
+      if (k + 5 < count) {
+        const b = [pos(vi(k + 3)), pos(vi(k + 4)), pos(vi(k + 5))];
+        const shared = a.filter((p) => b.some((q) => same(p, q)));
+        if (shared.length === 2) {
+          const X = a.find((p) => !shared.some((q) => same(p, q)));
+          const D = b.find((p) => !shared.some((q) => same(p, q)));
+          const [S1, S2] = shared;
+          const coplanar = Math.abs(dot(norm(nA), norm(sub(D, X)))) < 1e-5;
+          const parallelogram = same(add(X, D), add(S1, S2));
+          if (coplanar && parallelogram) {
+            let u = sub(S1, X), v = sub(S2, X);
+            if (dot(cross(u, v), nA) < 0) { const t = u; u = v; v = t; }
+            out.push(patch(X, u, v, opts));
+            k += 3; used = true;
+          }
+        }
+      }
+      if (!used) {
+        let u = sub(a[1], a[0]), v = sub(a[2], a[0]);
+        if (dot(cross(u, v), nA) < 0) { const t = u; u = v; v = t; }
+        out.push(patch(a[0], u, v, Object.assign({}, opts, { tri: true })));
+      }
+    }
+    return out;
+  }
+
+  /** A point on a patch, clamped inset_m inside its edges so edge receivers do not sit on a neighbouring wall. */
+  function pointOn(p, s, t, inset, out) {
+    const es = Math.min(0.45, inset / Math.max(p.lenU, 1e-6)), et = Math.min(0.45, inset / Math.max(p.lenV, 1e-6));
+    s = Math.min(1 - es, Math.max(es, s)); t = Math.min(1 - et, Math.max(et, t));
+    if (p.tri && s + t > 1 - es) { const k = (1 - es) / (s + t); s *= k; t *= k; }
+    out[0] = p.o[0] + s * p.u[0] + t * p.v[0];
+    out[1] = p.o[1] + s * p.u[1] + t * p.v[1];
+    out[2] = p.o[2] + s * p.u[2] + t * p.v[2];
+    return out;
+  }
+
+  // ------------------------------------------------------------ meshes
+
+  /**
+   * A mesh here is plain typed arrays: positions, normals, display (sRGB
+   * albedo 0..1), indices, plus per vertex the patch it lies on and its (s, t),
+   * and per triangle its patch. Vertices are shared inside a patch (one normal,
+   * one colour) and never across patches: flat shading.
+   */
+  function meshBuilder() { return { pos: [], st: [], pv: [], idx: [], tp: [] }; }
+  function finishMesh(b, patches) {
+    const nv = b.pv.length, nt = b.idx.length / 3;
+    const m = {
+      positions: new Float32Array(b.pos), normals: new Float32Array(nv * 3), display: new Float32Array(nv * 3),
+      st: new Float32Array(b.st), patchOfVertex: new Int32Array(b.pv), patchOfTriangle: new Int32Array(b.tp),
+      indices: nv < 65536 ? new Uint16Array(b.idx) : new Uint32Array(b.idx),
+      vertexCount: nv, triangleCount: nt, uv2: b.uv2 ? new Float32Array(b.uv2) : null, keys: new Uint32Array(b.keys || []),
+    };
+    for (let i = 0; i < nv; i++) {
+      const p = patches[m.patchOfVertex[i]];
+      m.normals.set(p.n, i * 3); m.display.set(p.display, i * 3);
+    }
+    return m;
+  }
+
+  /**
+   * Tessellate patches into a uniform grid of about spacing_m (Infinity: one
+   * quad or triangle per patch, the deck's own density). Only patches passing
+   * filter(p) are included; patch indices refer to the full list.
+   */
+  function tessellate(patches, spacing, filter) {
+    const b = meshBuilder(); b.keys = [];
+    patches.forEach((p, pi) => {
+      if (filter && !filter(p)) return;
+      const nu = isFinite(spacing) ? Math.max(1, Math.round(p.lenU / spacing)) : 1;
+      const nv = isFinite(spacing) ? Math.max(1, Math.round(p.lenV / spacing)) : 1;
+      const base = b.pv.length;
+      if (!p.tri) {
+        for (let j = 0; j <= nv; j++) for (let i = 0; i <= nu; i++) {
+          const s = i / nu, t = j / nv;
+          b.pos.push(p.o[0] + s * p.u[0] + t * p.v[0], p.o[1] + s * p.u[1] + t * p.v[1], p.o[2] + s * p.u[2] + t * p.v[2]);
+          b.st.push(s, t); b.pv.push(pi); b.keys.push(hash3(pi, i, j));
+        }
+        for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) {
+          const a = base + j * (nu + 1) + i, c = a + nu + 2;
+          b.idx.push(a, a + 1, c, a, c, c - 1); b.tp.push(pi, pi);
+        }
+      } else {
+        const n = Math.max(nu, nv);
+        const row = []; let k = base;
+        for (let j = 0; j <= n; j++) { row.push(k); for (let i = 0; i <= n - j; i++) {
+          const s = i / n, t = j / n;
+          b.pos.push(p.o[0] + s * p.u[0] + t * p.v[0], p.o[1] + s * p.u[1] + t * p.v[1], p.o[2] + s * p.u[2] + t * p.v[2]);
+          b.st.push(s, t); b.pv.push(pi); b.keys.push(hash3(pi, i, j)); k++;
+        } }
+        for (let j = 0; j < n; j++) for (let i = 0; i < n - j; i++) {
+          const a = row[j] + i, c = row[j + 1] + i;
+          b.idx.push(a, a + 1, c); b.tp.push(pi);
+          if (i < n - j - 1) { b.idx.push(a + 1, c + 1, c); b.tp.push(pi); }
+        }
+      }
+    });
+    return finishMesh(b, patches);
+  }
+
+  // ------------------------------------------------------------ BVH ray caster
+
+  /**
+   * A bounding volume hierarchy over a mesh's triangles (median split on the
+   * widest centroid axis, leaves of up to 4). Occlusion is two-sided: the back
+   * of a wall blocks light as well as its front. Closest-hit reports whether
+   * the ray met a back face, which the gather treats as black (a leak guard).
+   */
+  function buildBVH(mesh) {
+    const nt = mesh.triangleCount, P = mesh.positions, I = mesh.indices;
+    const cen = new Float32Array(nt * 3), tb = new Float32Array(nt * 6);
+    for (let t = 0; t < nt; t++) {
+      let mnx = Infinity, mny = Infinity, mnz = Infinity, mxx = -Infinity, mxy = -Infinity, mxz = -Infinity;
+      for (let k = 0; k < 3; k++) {
+        const i = I[t * 3 + k] * 3, x = P[i], y = P[i + 1], z = P[i + 2];
+        if (x < mnx) mnx = x; if (y < mny) mny = y; if (z < mnz) mnz = z;
+        if (x > mxx) mxx = x; if (y > mxy) mxy = y; if (z > mxz) mxz = z;
+      }
+      tb.set([mnx, mny, mnz, mxx, mxy, mxz], t * 6);
+      cen[t * 3] = (mnx + mxx) / 2; cen[t * 3 + 1] = (mny + mxy) / 2; cen[t * 3 + 2] = (mnz + mxz) / 2;
+    }
+    const order = new Int32Array(nt); for (let t = 0; t < nt; t++) order[t] = t;
+    const maxNodes = Math.max(1, 2 * nt);
+    const bb = new Float32Array(maxNodes * 6), nc = new Int32Array(maxNodes * 2);
+    let nodes = 1;
+    const stack = [[0, 0, nt]];
+    while (stack.length) {
+      const [node, start, end] = stack.pop();
+      let mnx = Infinity, mny = Infinity, mnz = Infinity, mxx = -Infinity, mxy = -Infinity, mxz = -Infinity;
+      let cnx = Infinity, cny = Infinity, cnz = Infinity, cxx = -Infinity, cxy = -Infinity, cxz = -Infinity;
+      for (let k = start; k < end; k++) {
+        const t = order[k], o = t * 6;
+        if (tb[o] < mnx) mnx = tb[o]; if (tb[o + 1] < mny) mny = tb[o + 1]; if (tb[o + 2] < mnz) mnz = tb[o + 2];
+        if (tb[o + 3] > mxx) mxx = tb[o + 3]; if (tb[o + 4] > mxy) mxy = tb[o + 4]; if (tb[o + 5] > mxz) mxz = tb[o + 5];
+        const c = t * 3;
+        if (cen[c] < cnx) cnx = cen[c]; if (cen[c + 1] < cny) cny = cen[c + 1]; if (cen[c + 2] < cnz) cnz = cen[c + 2];
+        if (cen[c] > cxx) cxx = cen[c]; if (cen[c + 1] > cxy) cxy = cen[c + 1]; if (cen[c + 2] > cxz) cxz = cen[c + 2];
+      }
+      bb.set([mnx - 1e-5, mny - 1e-5, mnz - 1e-5, mxx + 1e-5, mxy + 1e-5, mxz + 1e-5], node * 6);
+      const count = end - start;
+      const ex = cxx - cnx, ey = cxy - cny, ez = cxz - cnz;
+      if (count <= 4 || Math.max(ex, ey, ez) < 1e-6) { nc[node * 2] = start; nc[node * 2 + 1] = count; continue; }
+      const axis = ex >= ey && ex >= ez ? 0 : ey >= ez ? 1 : 2;
+      const seg = Array.from(order.subarray(start, end)).sort((a, b) => cen[a * 3 + axis] - cen[b * 3 + axis] || a - b);
+      order.set(seg, start);
+      const mid = (start + end) >> 1, left = nodes; nodes += 2;
+      nc[node * 2] = left; nc[node * 2 + 1] = -(axis + 1);
+      stack.push([left + 1, mid, end], [left, start, mid]);
+    }
+    // Triangles in BVH order as v0, e1, e2 for Moller-Trumbore.
+    const tri = new Float32Array(nt * 9), triId = new Int32Array(nt);
+    for (let k = 0; k < nt; k++) {
+      const t = order[k]; triId[k] = t;
+      const a = I[t * 3] * 3, b = I[t * 3 + 1] * 3, c = I[t * 3 + 2] * 3;
+      tri[k * 9] = P[a]; tri[k * 9 + 1] = P[a + 1]; tri[k * 9 + 2] = P[a + 2];
+      tri[k * 9 + 3] = P[b] - P[a]; tri[k * 9 + 4] = P[b + 1] - P[a + 1]; tri[k * 9 + 5] = P[b + 2] - P[a + 2];
+      tri[k * 9 + 6] = P[c] - P[a]; tri[k * 9 + 7] = P[c + 1] - P[a + 1]; tri[k * 9 + 8] = P[c + 2] - P[a + 2];
+    }
+    return { bb: bb.subarray(0, nodes * 6), nc: nc.subarray(0, nodes * 2), tri, triId, nodes, triangles: nt, stack: new Int32Array(128) };
+  }
+
+  const EPS_T = 1e-4;
+
+  /** True when anything lies on the ray within (EPS_T, tmax). */
+  function occluded(B, ox, oy, oz, dx, dy, dz, tmax) {
+    if (B.triangles === 0) return false;
+    const ix = 1 / (dx || 1e-12), iy = 1 / (dy || 1e-12), iz = 1 / (dz || 1e-12);
+    const bb = B.bb, nc = B.nc, T = B.tri, st = B.stack;
+    let sp = 0; st[sp++] = 0;
+    while (sp > 0) {
+      const n = st[--sp], b = n * 6;
+      let t0 = (bb[b] - ox) * ix, t1 = (bb[b + 3] - ox) * ix;
+      let tn = t0 < t1 ? t0 : t1, tf = t0 < t1 ? t1 : t0;
+      t0 = (bb[b + 1] - oy) * iy; t1 = (bb[b + 4] - oy) * iy;
+      if (t0 > t1) { const q = t0; t0 = t1; t1 = q; }
+      if (t0 > tn) tn = t0; if (t1 < tf) tf = t1;
+      t0 = (bb[b + 2] - oz) * iz; t1 = (bb[b + 5] - oz) * iz;
+      if (t0 > t1) { const q = t0; t0 = t1; t1 = q; }
+      if (t0 > tn) tn = t0; if (t1 < tf) tf = t1;
+      if (tf < tn || tf < 0 || tn > tmax) continue;
+      const first = nc[n * 2], cnt = nc[n * 2 + 1];
+      if (cnt > 0) {
+        for (let k = first; k < first + cnt; k++) {
+          const o = k * 9;
+          const e1x = T[o + 3], e1y = T[o + 4], e1z = T[o + 5], e2x = T[o + 6], e2y = T[o + 7], e2z = T[o + 8];
+          const px = dy * e2z - dz * e2y, py = dz * e2x - dx * e2z, pz = dx * e2y - dy * e2x;
+          const det = e1x * px + e1y * py + e1z * pz;
+          if (det > -1e-12 && det < 1e-12) continue;
+          const inv = 1 / det;
+          const tx = ox - T[o], ty = oy - T[o + 1], tz = oz - T[o + 2];
+          const u = (tx * px + ty * py + tz * pz) * inv;
+          if (u < 0 || u > 1) continue;
+          const qx = ty * e1z - tz * e1y, qy = tz * e1x - tx * e1z, qz = tx * e1y - ty * e1x;
+          const v = (dx * qx + dy * qy + dz * qz) * inv;
+          if (v < 0 || u + v > 1) continue;
+          const t = (e2x * qx + e2y * qy + e2z * qz) * inv;
+          if (t > EPS_T && t < tmax) return true;
+        }
+      } else { st[sp++] = first; st[sp++] = first + 1; }
+    }
+    return false;
+  }
+
+  /** Closest hit. Returns false or fills hit = { tri (mesh triangle), t, u, v, back }. */
+  function closest(B, ox, oy, oz, dx, dy, dz, tmax, hit) {
+    if (B.triangles === 0) return false;
+    const ix = 1 / (dx || 1e-12), iy = 1 / (dy || 1e-12), iz = 1 / (dz || 1e-12);
+    const bb = B.bb, nc = B.nc, T = B.tri, st = B.stack;
+    let sp = 0; st[sp++] = 0;
+    let best = tmax, bk = -1, bu = 0, bv = 0, bdet = 0;
+    while (sp > 0) {
+      const n = st[--sp], b = n * 6;
+      let t0 = (bb[b] - ox) * ix, t1 = (bb[b + 3] - ox) * ix;
+      let tn = t0 < t1 ? t0 : t1, tf = t0 < t1 ? t1 : t0;
+      t0 = (bb[b + 1] - oy) * iy; t1 = (bb[b + 4] - oy) * iy;
+      if (t0 > t1) { const q = t0; t0 = t1; t1 = q; }
+      if (t0 > tn) tn = t0; if (t1 < tf) tf = t1;
+      t0 = (bb[b + 2] - oz) * iz; t1 = (bb[b + 5] - oz) * iz;
+      if (t0 > t1) { const q = t0; t0 = t1; t1 = q; }
+      if (t0 > tn) tn = t0; if (t1 < tf) tf = t1;
+      if (tf < tn || tf < 0 || tn > best) continue;
+      const first = nc[n * 2], cnt = nc[n * 2 + 1];
+      if (cnt > 0) {
+        for (let k = first; k < first + cnt; k++) {
+          const o = k * 9;
+          const e1x = T[o + 3], e1y = T[o + 4], e1z = T[o + 5], e2x = T[o + 6], e2y = T[o + 7], e2z = T[o + 8];
+          const px = dy * e2z - dz * e2y, py = dz * e2x - dx * e2z, pz = dx * e2y - dy * e2x;
+          const det = e1x * px + e1y * py + e1z * pz;
+          if (det > -1e-12 && det < 1e-12) continue;
+          const inv = 1 / det;
+          const tx = ox - T[o], ty = oy - T[o + 1], tz = oz - T[o + 2];
+          const u = (tx * px + ty * py + tz * pz) * inv;
+          if (u < 0 || u > 1) continue;
+          const qx = ty * e1z - tz * e1y, qy = tz * e1x - tx * e1z, qz = tx * e1y - ty * e1x;
+          const v = (dx * qx + dy * qy + dz * qz) * inv;
+          if (v < 0 || u + v > 1) continue;
+          const t = (e2x * qx + e2y * qy + e2z * qz) * inv;
+          if (t > EPS_T && t < best) { best = t; bk = k; bu = u; bv = v; bdet = det; }
+        }
+      } else {
+        // Near child first: the split axis is stored as -(axis + 1).
+        const axis = -cnt - 1, dpos = axis === 0 ? dx > 0 : axis === 1 ? dy > 0 : dz > 0;
+        if (dpos) { st[sp++] = first + 1; st[sp++] = first; } else { st[sp++] = first; st[sp++] = first + 1; }
+      }
+    }
+    if (bk < 0) return false;
+    hit.tri = B.triId[bk]; hit.t = best; hit.u = bu; hit.v = bv; hit.back = bdet < 0;
+    return true;
+  }
+
+  // ------------------------------------------------------------ scene and lights
+
+  /**
+   * Prepare a bake. def:
+   *   patches   all patches (receivers, occluders and emissive), world space
+   *   occluders axis-aligned boxes [{ min, max, albedoHex }] that only cast
+   *   lights    point lights: { id, position_m, radius_m, intensity_cd,
+   *             beam: { axis, exponent } or null, range_m, states }
+   *   emitters  area lights: { id, quad: { o, u, v } (emits along u x v),
+   *             luminance_cd_m2, beam_exponent, range_m, states }
+   *   ambient_lux { normal: [r, g, b], ... } lux of fill light, times AO
+   *   settings  see DEFAULTS
+   * states: { normal: [r, g, b], red_alert: [...], emergency: [...] } linear
+   * multipliers of the light's intensity; [0, 0, 0] is off in that state.
+   */
+  function scene(def) {
+    const settings = Object.assign({}, DEFAULTS, def.settings || {});
+    const patches = def.patches.slice();
+    for (const b of def.occluders || []) for (const p of boxPatches(b.min, b.max, { albedoHex: b.albedoHex !== undefined ? b.albedoHex : 0x606060, receive: false, tag: "occluder" })) patches.push(p);
+    const stateVec = (st) => { const v = new Float32Array(9); STATES.forEach((s, i) => { const c = (st && st[s]) || [0, 0, 0]; v[i * 3] = c[0]; v[i * 3 + 1] = c[1]; v[i * 3 + 2] = c[2]; }); return v; };
+    const lights = (def.lights || []).map((l) => ({
+      id: l.id, p: l.position_m.slice(), r: l.radius_m || 0, I: l.intensity_cd,
+      axis: l.beam ? norm(l.beam.axis) : null, exp: l.beam ? l.beam.exponent : 0,
+      range: l.range_m, st: stateVec(l.states),
+    }));
+    const emitters = (def.emitters || []).map((e) => {
+      const q = e.quad, c = cross(q.u, q.v), area = len(c), n = norm(c);
+      const ns = Math.max(4, Math.min(16, Math.ceil(area / settings.emitter_sample_area_m2)));
+      const centre = add(q.o, add(scale(q.u, 0.5), scale(q.v, 0.5)));
+      return { id: e.id, o: q.o.slice(), u: q.u.slice(), v: q.v.slice(), n, area, L: e.luminance_cd_m2, exp: e.beam_exponent || 1,
+        range: e.range_m, st: stateVec(e.states), ns, centre, halfDiag: 0.5 * len(add(q.u, q.v)) };
+    });
+    const ambient = stateVec(def.ambient_lux);
+    const t0 = performance.now();
+    const cache = tessellate(patches, settings.cache_spacing_m, (p) => p.cast);
+    const bvh = buildBVH(cache);
+    const triAlbedo = new Float32Array(cache.triangleCount * 3);
+    for (let t = 0; t < cache.triangleCount; t++) triAlbedo.set(patches[cache.patchOfTriangle[t]].albedo, t * 3);
+    return {
+      settings, patches, lights, emitters, ambient, cache, bvh, triAlbedo,
+      source: null, // per cache vertex, 9 floats: the light that bounce rays pick up
+      rays: { shadow: 0, gather: 0, ao: 0 }, buildMs: performance.now() - t0,
+    };
+  }
+
+  // ------------------------------------------------------------ the receiver function
+
+  const DIRECT = 1, AMBIENT = 2, BOUNCE = 4, ALL = 7;
+  const _b = new Float64Array(6), _q = [0, 0, 0], _hit = { tri: 0, t: 0, u: 0, v: 0, back: false };
+
+  /**
+   * The one irradiance function. Everything baked (cache vertices, output
+   * vertices, lightmap texels, probe faces) is a call to this with a point, a
+   * normal and a seed key, so every output form agrees by construction.
+   * Adds into out[9] (lux per state, RGB) and returns the AO factor.
+   */
+  function irradiance(S, px, py, pz, nx, ny, nz, key, what, out) {
+    const set = S.settings, B = S.bvh, seed = set.seed >>> 0;
+    const ox = px + nx * set.bias_m, oy = py + ny * set.bias_m, oz = pz + nz * set.bias_m;
+    let ao = 1;
+    if (what & DIRECT) {
+      // Point lights with a radius: sample a disc facing the receiver (soft shadows).
+      for (let li = 0; li < S.lights.length; li++) {
+        const L = S.lights[li];
+        const cx = L.p[0] - px, cy = L.p[1] - py, cz = L.p[2] - pz;
+        const cd = Math.sqrt(cx * cx + cy * cy + cz * cz);
+        if (cd - L.r > L.range) continue;
+        if (cx * nx + cy * ny + cz * nz < -L.r) continue;
+        const wx = cx / cd, wy = cy / cd, wz = cz / cd;
+        basis(wx, wy, wz, _b);
+        const h = hash3(seed, key, 0x1000 + li), r1 = u01(h), r2 = u01(mix32(h));
+        const nsMax = L.r > 0 ? set.shadow_samples : 1;
+        let sum = 0, cnt = 0, vis = 0, tested = 0;
+        for (let k = 0; k < nsMax; k++) {
+          if (k === 4 && tested > 0 && (vis === 0 || vis === tested)) break; // umbra or fully lit: done
+          const a = frac(r1 + k * R2A), bb = frac(r2 + k * R2B);
+          const rr = L.r * Math.sqrt(a), ph = 6.283185307179586 * bb;
+          const qx = L.p[0] + rr * (Math.cos(ph) * _b[0] + Math.sin(ph) * _b[3]);
+          const qy = L.p[1] + rr * (Math.cos(ph) * _b[1] + Math.sin(ph) * _b[4]);
+          const qz = L.p[2] + rr * (Math.cos(ph) * _b[2] + Math.sin(ph) * _b[5]);
+          let dx = qx - ox, dy = qy - oy, dz = qz - oz;
+          const d2 = dx * dx + dy * dy + dz * dz, d = Math.sqrt(d2);
+          dx /= d; dy /= d; dz /= d;
+          cnt++;
+          const cosr = dx * nx + dy * ny + dz * nz;
+          if (cosr <= 0) continue;
+          let g = 1;
+          if (L.axis) { const ce = -(dx * L.axis[0] + dy * L.axis[1] + dz * L.axis[2]); if (ce <= 0) continue; g = Math.pow(ce, L.exp); }
+          const x = d / L.range, win = x >= 1 ? 0 : (1 - x * x * x * x) * (1 - x * x * x * x);
+          if (win <= 0) continue;
+          tested++; S.rays.shadow++;
+          if (occluded(B, ox, oy, oz, dx, dy, dz, d - 0.01)) continue;
+          vis++;
+          sum += (L.I * g * cosr * win) / Math.max(d2, 0.04);
+        }
+        if (sum > 0 && cnt > 0) {
+          const e = sum / cnt;
+          for (let c = 0; c < 9; c++) out[c] += e * L.st[c];
+        }
+      }
+      // Area emitters: sample points on the quad, cosine at both ends.
+      for (let ei = 0; ei < S.emitters.length; ei++) {
+        const E = S.emitters[ei];
+        const cx = E.centre[0] - px, cy = E.centre[1] - py, cz = E.centre[2] - pz;
+        const cd = Math.sqrt(cx * cx + cy * cy + cz * cz);
+        if (cd - E.halfDiag > E.range) continue;
+        if (cx * nx + cy * ny + cz * nz < -E.halfDiag) continue;
+        if (-(cx * E.n[0] + cy * E.n[1] + cz * E.n[2]) < -E.halfDiag) continue; // receiver behind the emitter
+        const h = hash3(seed, key, 0x2000 + ei), r1 = u01(h), r2 = u01(mix32(h));
+        const dA = E.area / E.ns;
+        let sum = 0;
+        for (let k = 0; k < E.ns; k++) {
+          const a = frac(r1 + k * R2A), bb = frac(r2 + k * R2B);
+          const qx = E.o[0] + a * E.u[0] + bb * E.v[0] + E.n[0] * 0.01;
+          const qy = E.o[1] + a * E.u[1] + bb * E.v[1] + E.n[1] * 0.01;
+          const qz = E.o[2] + a * E.u[2] + bb * E.v[2] + E.n[2] * 0.01;
+          let dx = qx - ox, dy = qy - oy, dz = qz - oz;
+          const d2 = dx * dx + dy * dy + dz * dz, d = Math.sqrt(d2);
+          dx /= d; dy /= d; dz /= d;
+          const cosr = dx * nx + dy * ny + dz * nz;
+          if (cosr <= 0) continue;
+          const ce = -(dx * E.n[0] + dy * E.n[1] + dz * E.n[2]);
+          if (ce <= 0) continue;
+          const x = d / E.range, win = x >= 1 ? 0 : (1 - x * x * x * x) * (1 - x * x * x * x);
+          if (win <= 0) continue;
+          S.rays.shadow++;
+          if (occluded(B, ox, oy, oz, dx, dy, dz, d - 0.012)) continue;
+          sum += (E.L * (E.exp === 1 ? ce : Math.pow(ce, E.exp)) * cosr * dA * win) / Math.max(d2, dA);
+        }
+        if (sum > 0) for (let c = 0; c < 9; c++) out[c] += sum * E.st[c];
+      }
+    }
+    if ((what & AMBIENT) && set.ao) {
+      basis(nx, ny, nz, _b);
+      const h = hash3(seed, key, 0x3000), r1 = u01(h), r2 = u01(mix32(h));
+      let open = 0;
+      for (let k = 0; k < set.ao_rays; k++) {
+        const a = frac(r1 + k * R2A), bb = frac(r2 + k * R2B);
+        const rr = Math.sqrt(a), ph = 6.283185307179586 * bb, lz = Math.sqrt(1 - a);
+        const lx = rr * Math.cos(ph), ly = rr * Math.sin(ph);
+        S.rays.ao++;
+        if (!occluded(B, ox, oy, oz, lx * _b[0] + ly * _b[3] + lz * nx, lx * _b[1] + ly * _b[4] + lz * ny, lx * _b[2] + ly * _b[5] + lz * nz, set.ao_radius_m)) open++;
+      }
+      ao = open / set.ao_rays;
+    }
+    if (what & AMBIENT) for (let c = 0; c < 9; c++) out[c] += S.ambient[c] * ao;
+    if ((what & BOUNCE) && S.source && set.bounces > 0) {
+      basis(nx, ny, nz, _b);
+      const h = hash3(seed, key, 0x4000), r1 = u01(h), r2 = u01(mix32(h));
+      const src = S.source, I = S.cache.indices, alb = S.triAlbedo, n = set.gather_rays;
+      let a0 = 0, a1 = 0, a2 = 0, a3 = 0, a4 = 0, a5 = 0, a6 = 0, a7 = 0, a8 = 0;
+      for (let k = 0; k < n; k++) {
+        const a = frac(r1 + k * R2A), bb = frac(r2 + k * R2B);
+        const rr = Math.sqrt(a), ph = 6.283185307179586 * bb, lz = Math.sqrt(1 - a);
+        const lx = rr * Math.cos(ph), ly = rr * Math.sin(ph);
+        S.rays.gather++;
+        if (!closest(B, ox, oy, oz, lx * _b[0] + ly * _b[3] + lz * nx, lx * _b[1] + ly * _b[4] + lz * ny, lx * _b[2] + ly * _b[5] + lz * nz, 80, _hit)) continue;
+        if (_hit.back) continue; // the back of a surface is inside a wall or a prop: no light there
+        const t = _hit.tri, w0 = 1 - _hit.u - _hit.v, w1 = _hit.u, w2 = _hit.v;
+        const i0 = I[t * 3] * 9, i1 = I[t * 3 + 1] * 9, i2 = I[t * 3 + 2] * 9;
+        const ar = alb[t * 3], ag = alb[t * 3 + 1], ab = alb[t * 3 + 2];
+        a0 += ar * (w0 * src[i0] + w1 * src[i1] + w2 * src[i2]);
+        a1 += ag * (w0 * src[i0 + 1] + w1 * src[i1 + 1] + w2 * src[i2 + 1]);
+        a2 += ab * (w0 * src[i0 + 2] + w1 * src[i1 + 2] + w2 * src[i2 + 2]);
+        a3 += ar * (w0 * src[i0 + 3] + w1 * src[i1 + 3] + w2 * src[i2 + 3]);
+        a4 += ag * (w0 * src[i0 + 4] + w1 * src[i1 + 4] + w2 * src[i2 + 4]);
+        a5 += ab * (w0 * src[i0 + 5] + w1 * src[i1 + 5] + w2 * src[i2 + 5]);
+        a6 += ar * (w0 * src[i0 + 6] + w1 * src[i1 + 6] + w2 * src[i2 + 6]);
+        a7 += ag * (w0 * src[i0 + 7] + w1 * src[i1 + 7] + w2 * src[i2 + 7]);
+        a8 += ab * (w0 * src[i0 + 8] + w1 * src[i1 + 8] + w2 * src[i2 + 8]);
+      }
+      // Cosine-weighted sampling: E = (1/N) sum of albedo x E(hit). The pi of the
+      // cosine pdf cancels the 1/pi of a diffuse surface's radiance.
+      out[0] += a0 / n; out[1] += a1 / n; out[2] += a2 / n; out[3] += a3 / n; out[4] += a4 / n;
+      out[5] += a5 / n; out[6] += a6 / n; out[7] += a7 / n; out[8] += a8 / n;
+    }
+    return ao;
+  }
+
+  // ------------------------------------------------------------ async plumbing
+
+  function yielder(S, onProgress) {
+    let last = performance.now();
+    return async (frac) => {
+      const now = performance.now();
+      if (now - last >= S.settings.yield_ms) {
+        if (onProgress) onProgress(frac);
+        await new Promise((r) => setTimeout(r, 0));
+        last = performance.now();
+      }
+    };
+  }
+
+  /**
+   * Light the irradiance cache that bounce rays read: direct light at every
+   * cache vertex, then, for two bounces, one gather pass over it. Call once per
+   * scene (and per change of bounce count) before baking outputs.
+   */
+  async function prepare(S, onProgress) {
+    const t0 = performance.now();
+    const C = S.cache, nv = C.vertexCount, src = new Float32Array(nv * 9), tmp = new Float32Array(9), p = [0, 0, 0];
+    const y = yielder(S, onProgress);
+    S.source = null;
+    if (S.settings.bounces > 0) {
+      for (let i = 0; i < nv; i++) {
+        const P = S.patches[C.patchOfVertex[i]];
+        pointOn(P, C.st[i * 2], C.st[i * 2 + 1], S.settings.inset_m, p);
+        tmp.fill(0);
+        irradiance(S, p[0], p[1], p[2], P.n[0], P.n[1], P.n[2], C.keys[i], DIRECT, tmp);
+        src.set(tmp, i * 9);
+        if ((i & 63) === 0) await y(0.5 * i / nv);
+      }
+      S.source = src;
+      if (S.settings.bounces > 1) {
+        const second = new Float32Array(nv * 9);
+        for (let i = 0; i < nv; i++) {
+          const P = S.patches[C.patchOfVertex[i]];
+          pointOn(P, C.st[i * 2], C.st[i * 2 + 1], S.settings.inset_m, p);
+          tmp.fill(0);
+          irradiance(S, p[0], p[1], p[2], P.n[0], P.n[1], P.n[2], mix32(C.keys[i] ^ 0x5bd1e995), BOUNCE, tmp);
+          for (let c = 0; c < 9; c++) second[i * 9 + c] = src[i * 9 + c] + tmp[c];
+          if ((i & 31) === 0) await y(0.5 + 0.5 * i / nv);
+        }
+        S.source = second;
+      }
+    }
+    S.prepareMs = performance.now() - t0;
+    return S;
+  }
+
+  // ------------------------------------------------------------ encoding
+
+  /** Encode 9-float lux records (one per sample) into three RGBA8 sets; alpha holds AO. */
+  function encodeSets(S, E, ao, keys) {
+    const n = ao.length, ref = S.settings.reference_lux, sets = {};
+    STATES.forEach((name, s) => {
+      const out = new Uint8Array(n * 4);
+      for (let i = 0; i < n; i++) {
+        for (let c = 0; c < 3; c++) {
+          const d = S.settings.dither ? u01(hash3(S.settings.seed, keys[i], 0x6000 + s * 3 + c)) : 0.5;
+          out[i * 4 + c] = toByte(encodeLevel(E[i * 9 + s * 3 + c] / ref), d);
+        }
+        out[i * 4 + 3] = toByte(ao[i] * OVERBRIGHT, 0.5);
+      }
+      sets[name] = out;
+    });
+    return sets;
+  }
+
+  // ------------------------------------------------------------ outputs: vertices
+
+  /** Bake every vertex of a mesh (from tessellate). Returns { sets, stats }. */
+  async function bakeVertices(S, mesh, onProgress) {
+    const t0 = performance.now(), r0 = Object.assign({}, S.rays);
+    const nv = mesh.vertexCount, E = new Float32Array(nv * 9), ao = new Float32Array(nv), tmp = new Float32Array(9), p = [0, 0, 0];
+    const y = yielder(S, onProgress);
+    for (let i = 0; i < nv; i++) {
+      const P = S.patches[mesh.patchOfVertex[i]];
+      pointOn(P, mesh.st[i * 2], mesh.st[i * 2 + 1], S.settings.inset_m, p);
+      tmp.fill(0);
+      ao[i] = irradiance(S, p[0], p[1], p[2], P.n[0], P.n[1], P.n[2], mesh.keys[i], ALL, tmp);
+      E.set(tmp, i * 9);
+      if ((i & 15) === 0) await y(i / nv);
+    }
+    return { sets: encodeSets(S, E, ao, mesh.keys), E, ao, stats: stats(S, t0, r0, nv, "vertices") };
+  }
+
+  function stats(S, t0, r0, samples, what) {
+    const r = S.rays;
+    const rays = (r.shadow - r0.shadow) + (r.gather - r0.gather) + (r.ao - r0.ao);
+    const ms = performance.now() - t0;
+    return { ms, samples, what, rays, shadowRays: r.shadow - r0.shadow, gatherRays: r.gather - r0.gather, aoRays: r.ao - r0.ao,
+      raysPerSecond: ms > 0 ? (rays * 1000) / ms : 0 };
+  }
+
+  // ------------------------------------------------------------ outputs: adaptive subdivision
+
+  /**
+   * Adaptive subdivision for vertex lighting. Each quad patch starts as a grid
+   * of about base_m; a cell splits into four (down to min_m) while the light
+   * at its centre or edge midpoints differs from what its corners would
+   * interpolate by more than max_error_levels (8-bit display levels, worst
+   * lighting state), highest error first, until max_added_triangles is spent.
+   * The quadtree is then balanced (neighbours differ by at most one level) and
+   * cells with a finer neighbour are fanned from their centre, so the mesh has
+   * no T-junctions inside a patch. Refinement looks at direct light and AO;
+   * bounce, which is smooth, is added to the final vertices only.
+   *
+   * opts: base_m, min_m, max_error_levels, max_added_triangles.
+   * Returns { mesh, sets, stats: { ..., baseTriangles, triangles, splits, capped, maxResidual } }.
+   */
+  async function bakeAdaptive(S, opts, onProgress) {
+    const t0 = performance.now(), r0 = Object.assign({}, S.rays);
+    const set = S.settings, ref = set.reference_lux, y = yielder(S, onProgress);
+    const LMAX = 4, F = 1 << LMAX;
+    const pts = [], cells = [];
+    const heap = [];
+    const push = (c) => { heap.push(c); let i = heap.length - 1; while (i > 0) { const pa = (i - 1) >> 1; if (heap[pa].err >= heap[i].err) break; [heap[pa], heap[i]] = [heap[i], heap[pa]]; i = pa; } };
+    const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l].err > heap[m].err) m = l; if (r < heap.length && heap[r].err > heap[m].err) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+    const tmp = new Float32Array(9), pp = [0, 0, 0];
+    let evals = 0;
+    // Per patch: a vertex cache keyed by fine-grid coordinates, and the cell tree.
+    const P = S.patches.map((p, pi) => {
+      if (!p.receive) return null;
+      const nu = p.tri ? 1 : Math.max(1, Math.round(p.lenU / opts.base_m)), nv = p.tri ? 1 : Math.max(1, Math.round(p.lenV / opts.base_m));
+      const cell = Math.min(p.lenU / nu, p.lenV / nv);
+      const lmax = p.tri ? 0 : Math.max(0, Math.min(LMAX, Math.floor(Math.log2(cell / opts.min_m) + 1e-9)));
+      return { pi, p, nu, nv, lmax, W: nu * F, H: nv * F, verts: new Map(), split: new Set() };
+    });
+    function vertex(R, gx, gy) {
+      const k = gx + gy * (R.W + 1);
+      let v = R.verts.get(k);
+      if (v) return v;
+      const s = gx / R.W, t = gy / R.H;
+      pointOn(R.p, s, t, set.inset_m, pp);
+      tmp.fill(0);
+      const key = hash3(R.pi, gx, gy);
+      const ao = irradiance(S, pp[0], pp[1], pp[2], R.p.n[0], R.p.n[1], R.p.n[2], key, DIRECT | AMBIENT, tmp);
+      evals++;
+      v = { gx, gy, s, t, key, E: Float32Array.from(tmp), ao, lv: [level8(tmp, 0, ref), level8(tmp, 1, ref), level8(tmp, 2, ref)], out: -1 };
+      R.verts.set(k, v);
+      return v;
+    }
+    function cellError(R, L, i, j) {
+      if (L >= R.lmax) return 0;
+      const k = F >> L, x0 = i * k, y0 = j * k, x1 = x0 + k, y1 = y0 + k, xm = x0 + k / 2, ym = y0 + k / 2;
+      const c00 = vertex(R, x0, y0), c10 = vertex(R, x1, y0), c01 = vertex(R, x0, y1), c11 = vertex(R, x1, y1);
+      const tests = [[vertex(R, xm, ym), [c00, c10, c01, c11]], [vertex(R, xm, y0), [c00, c10]], [vertex(R, xm, y1), [c01, c11]],
+        [vertex(R, x0, ym), [c00, c01]], [vertex(R, x1, ym), [c10, c11]]];
+      let err = 0;
+      for (const [m, cs] of tests) for (let s = 0; s < NS; s++) {
+        let avg = 0; for (const c of cs) avg += c.lv[s]; avg /= cs.length;
+        const e = Math.abs(m.lv[s] - avg); if (e > err) err = e;
+      }
+      return err;
+    }
+    // Base grids.
+    let leaves = 0;
+    for (const R of P) {
+      if (!R) continue;
+      for (let j = 0; j < R.nv; j++) for (let i = 0; i < R.nu; i++) {
+        push({ R, L: 0, i, j, err: cellError(R, 0, i, j) }); leaves++;
+      }
+      await y(0.1);
+    }
+    const baseTriangles = 2 * leaves;
+    let splits = 0, capped = false, maxResidual = 0;
+    const cap = opts.max_added_triangles;
+    while (heap.length) {
+      const c = pop();
+      if (c.err <= opts.max_error_levels) { maxResidual = Math.max(maxResidual, c.err); break; }
+      if (6 * (splits + 1) > cap) { capped = true; maxResidual = Math.max(maxResidual, c.err); break; }
+      c.R.split.add(c.L + "," + c.i + "," + c.j);
+      splits++;
+      for (let dj = 0; dj < 2; dj++) for (let di = 0; di < 2; di++) {
+        const L = c.L + 1, i = c.i * 2 + di, j = c.j * 2 + dj;
+        push({ R: c.R, L, i, j, err: cellError(c.R, L, i, j) });
+      }
+      if ((splits & 7) === 0) await y(0.1 + 0.6 * Math.min(1, (6 * splits) / Math.max(1, cap)));
+    }
+    if (heap.length && !capped) for (const c of heap) maxResidual = Math.max(maxResidual, c.err);
+    // Balance: no leaf may touch a neighbour split two levels finer.
+    const isSplit = (R, L, i, j) => R.split.has(L + "," + i + "," + j);
+    let changed = true, forced = 0;
+    while (changed) {
+      changed = false;
+      for (const R of P) {
+        if (!R) continue;
+        const leafList = [];
+        collectLeaves(R, leafList);
+        for (const [L, i, j] of leafList) {
+          const nb = [[i + 1, j, (a) => [[2 * (i + 1), 2 * j + a]]], [i - 1, j, (a) => [[2 * (i - 1) + 1, 2 * j + a]]],
+            [i, j + 1, (a) => [[2 * i + a, 2 * (j + 1)]]], [i, j - 1, (a) => [[2 * i + a, 2 * (j - 1) + 1]]]];
+          let must = false;
+          for (const [ni, nj, kids] of nb) {
+            if (!isSplit(R, L, ni, nj)) continue;
+            for (let a = 0; a < 2 && !must; a++) { const [[ki, kj]] = kids(a); if (isSplit(R, L + 1, ki, kj)) must = true; }
+            if (must) break;
+          }
+          if (must && L < LMAX) { R.split.add(L + "," + i + "," + j); forced++; changed = true; }
+        }
+      }
+    }
+    function collectLeaves(R, list) {
+      const walk = (L, i, j) => { if (isSplit(R, L, i, j)) { for (let dj = 0; dj < 2; dj++) for (let di = 0; di < 2; di++) walk(L + 1, 2 * i + di, 2 * j + dj); } else list.push([L, i, j]); };
+      for (let j = 0; j < R.nv; j++) for (let i = 0; i < R.nu; i++) walk(0, i, j);
+    }
+    // Triangulate.
+    const b = meshBuilder(); b.keys = [];
+    const outVerts = [];
+    const vid = (R, v) => {
+      if (v.out < 0) { v.out = b.pv.length; const p = R.p; b.pos.push(p.o[0] + v.s * p.u[0] + v.t * p.v[0], p.o[1] + v.s * p.u[1] + v.t * p.v[1], p.o[2] + v.s * p.u[2] + v.t * p.v[2]); b.st.push(v.s, v.t); b.pv.push(R.pi); b.keys.push(v.key); outVerts.push(v); }
+      return v.out;
+    };
+    for (const R of P) {
+      if (!R) continue;
+      if (R.p.tri) {
+        const a = vertex(R, 0, 0), c = vertex(R, R.W, 0), d = vertex(R, 0, R.H);
+        b.idx.push(vid(R, a), vid(R, c), vid(R, d)); b.tp.push(R.pi); continue;
+      }
+      const list = []; collectLeaves(R, list);
+      for (const [L, i, j] of list) {
+        const k = F >> L, x0 = i * k, y0 = j * k, x1 = x0 + k, y1 = y0 + k, h = k / 2;
+        const hang = [isSplit(R, L, i, j - 1), isSplit(R, L, i + 1, j), isSplit(R, L, i, j + 1), isSplit(R, L, i - 1, j)];
+        const c00 = vertex(R, x0, y0), c10 = vertex(R, x1, y0), c11 = vertex(R, x1, y1), c01 = vertex(R, x0, y1);
+        if (!hang.some(Boolean)) {
+          // Split along the diagonal whose ends agree best (fewer zig-zags in gradients).
+          const d1 = Math.abs(c00.lv[0] - c11.lv[0]), d2 = Math.abs(c10.lv[0] - c01.lv[0]);
+          const A = vid(R, c00), B = vid(R, c10), C = vid(R, c11), D = vid(R, c01);
+          if (d1 <= d2) b.idx.push(A, B, C, A, C, D); else b.idx.push(A, B, D, B, C, D);
+          b.tp.push(R.pi, R.pi);
+        } else {
+          const ring = [c00]; if (hang[0]) ring.push(vertex(R, x0 + h, y0));
+          ring.push(c10); if (hang[1]) ring.push(vertex(R, x1, y0 + h));
+          ring.push(c11); if (hang[2]) ring.push(vertex(R, x0 + h, y1));
+          ring.push(c01); if (hang[3]) ring.push(vertex(R, x0, y0 + h));
+          const cc = vid(R, vertex(R, x0 + h, y0 + h));
+          for (let q = 0; q < ring.length; q++) { b.idx.push(cc, vid(R, ring[q]), vid(R, ring[(q + 1) % ring.length])); b.tp.push(R.pi); }
+        }
+      }
+      await y(0.75);
+    }
+    const mesh = finishMesh(b, S.patches);
+    // Final pass: add the bounce to the vertices that made it into the mesh.
+    const E = new Float32Array(mesh.vertexCount * 9), ao = new Float32Array(mesh.vertexCount);
+    for (let n = 0; n < outVerts.length; n++) {
+      const v = outVerts[n], R = P[mesh.patchOfVertex[n]];
+      E.set(v.E, n * 9); ao[n] = v.ao;
+      if (S.source && set.bounces > 0) {
+        pointOn(R.p, v.s, v.t, set.inset_m, pp);
+        tmp.fill(0);
+        irradiance(S, pp[0], pp[1], pp[2], R.p.n[0], R.p.n[1], R.p.n[2], v.key, BOUNCE, tmp);
+        for (let c = 0; c < 9; c++) E[n * 9 + c] += tmp[c];
+      }
+      if ((n & 15) === 0) await y(0.8 + 0.2 * n / outVerts.length);
+    }
+    const st = stats(S, t0, r0, evals, "adaptive");
+    Object.assign(st, { baseTriangles, triangles: mesh.triangleCount, splits, forced, capped, maxResidual, evaluated: evals });
+    return { mesh, sets: encodeSets(S, E, ao, mesh.keys), E, ao, stats: st };
+  }
+
+  // ------------------------------------------------------------ outputs: lightmap atlas
+
+  /**
+   * Bake a lightmap: every receiving patch gets a block of texels of at most
+   * texel_m on a side plus a one-texel gutter (copied from the edge, so
+   * bilinear filtering never reads a neighbour's light), shelf-packed into a
+   * power-of-two-wide atlas. The mesh is the deck density (one quad per patch)
+   * with a second UV set. Returns { mesh, atlas: { width, height, sets }, stats }.
+   */
+  async function bakeLightmap(S, opts, onProgress) {
+    const t0 = performance.now(), r0 = Object.assign({}, S.rays);
+    const texel = opts.texel_m, set = S.settings, y = yielder(S, onProgress);
+    const rects = [];
+    S.patches.forEach((p, pi) => {
+      if (!p.receive) return;
+      const nu = Math.max(1, Math.ceil(p.lenU / texel - 1e-6)), nv = Math.max(1, Math.ceil(p.lenV / texel - 1e-6));
+      rects.push({ pi, p, nu, nv, w: nu + 2, h: nv + 2, x: 0, y: 0 });
+    });
+    let area = 0, widest = 0; for (const r of rects) { area += r.w * r.h; widest = Math.max(widest, r.w); }
+    let W = 64; while (W * W < area * 1.25 || W < widest) W *= 2;
+    const order = rects.slice().sort((a, b) => b.h - a.h || b.w - a.w || a.pi - b.pi);
+    let x = 0, yy = 0, shelf = 0;
+    for (const r of order) {
+      if (x + r.w > W) { x = 0; yy += shelf; shelf = 0; }
+      r.x = x; r.y = yy; x += r.w; shelf = Math.max(shelf, r.h);
+    }
+    const H = yy + shelf;
+    const texels = rects.reduce((n, r) => n + r.nu * r.nv, 0);
+    const E = new Float32Array(W * H * 9), AO = new Float32Array(W * H), keys = new Uint32Array(W * H);
+    const tmp = new Float32Array(9), pp = [0, 0, 0];
+    let done = 0;
+    for (const r of rects) {
+      const p = r.p;
+      for (let j = 0; j < r.nv; j++) for (let i = 0; i < r.nu; i++) {
+        const s = (i + 0.5) / r.nu, t = (j + 0.5) / r.nv;
+        pointOn(p, s, t, set.inset_m, pp);
+        tmp.fill(0);
+        const key = hash3(r.pi, 0x10000 + i, j);
+        const a = irradiance(S, pp[0], pp[1], pp[2], p.n[0], p.n[1], p.n[2], key, ALL, tmp);
+        const at = (r.y + 1 + j) * W + (r.x + 1 + i);
+        E.set(tmp, at * 9); AO[at] = a; keys[at] = key;
+        done++;
+        if ((done & 15) === 0) await y(done / texels);
+      }
+      // Gutter: copy the nearest inner texel (corners included).
+      for (let j = -1; j <= r.nv; j++) for (let i = -1; i <= r.nu; i++) {
+        if (i >= 0 && i < r.nu && j >= 0 && j < r.nv) continue;
+        const ci = Math.min(r.nu - 1, Math.max(0, i)), cj = Math.min(r.nv - 1, Math.max(0, j));
+        const from = (r.y + 1 + cj) * W + (r.x + 1 + ci), to = (r.y + 1 + j) * W + (r.x + 1 + i);
+        for (let c = 0; c < 9; c++) E[to * 9 + c] = E[from * 9 + c];
+        AO[to] = AO[from]; keys[to] = keys[from];
+      }
+    }
+    // Mesh: one quad per receiving patch, second UV set into its block.
+    const b = meshBuilder(); b.keys = []; b.uv2 = [];
+    for (const r of rects) {
+      const p = r.p, base = b.pv.length;
+      const corners = p.tri ? [[0, 0], [1, 0], [0, 1]] : [[0, 0], [1, 0], [1, 1], [0, 1]];
+      for (const [s, t] of corners) {
+        b.pos.push(p.o[0] + s * p.u[0] + t * p.v[0], p.o[1] + s * p.u[1] + t * p.v[1], p.o[2] + s * p.u[2] + t * p.v[2]);
+        b.st.push(s, t); b.pv.push(r.pi); b.keys.push(hash3(r.pi, s * 7, t * 7));
+        b.uv2.push((r.x + 1 + s * r.nu) / W, (r.y + 1 + t * r.nv) / H);
+      }
+      if (p.tri) { b.idx.push(base, base + 1, base + 2); b.tp.push(r.pi); }
+      else { b.idx.push(base, base + 1, base + 2, base, base + 2, base + 3); b.tp.push(r.pi, r.pi); }
+    }
+    const mesh = finishMesh(b, S.patches);
+    const st = stats(S, t0, r0, texels, "lightmap");
+    const bytesRGBA8 = W * H * 4 * NS;
+    Object.assign(st, { texels, width: W, height: H, bytes: bytesRGBA8, fill: texels / (W * H) });
+    return { mesh, atlas: { width: W, height: H, sets: encodeSets(S, E, AO, keys), texel_m: texel }, stats: st };
+  }
+
+  // ------------------------------------------------------------ probes
+
+  const AXES = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+
+  /**
+   * An ambient cube at a point (Half-Life 2's six-colour probe): the
+   * irradiance a surface facing +X, -X, +Y, -Y, +Z and -Z would receive there,
+   * from the same irradiance function as the walls. Returns Float32Array(54):
+   * axis-major, then state, then RGB, in lux.
+   */
+  function probeCube(S, point, key) {
+    const out = new Float32Array(54), tmp = new Float32Array(9);
+    AXES.forEach((a, i) => {
+      tmp.fill(0);
+      irradiance(S, point[0] - a[0] * S.settings.bias_m, point[1] - a[1] * S.settings.bias_m, point[2] - a[2] * S.settings.bias_m,
+        a[0], a[1], a[2], hash3(key >>> 0, 0x7000, i), ALL, tmp);
+      out.set(tmp, i * 9);
+    });
+    return out;
+  }
+
+  /** Encode an ambient cube for one state into six display colours (0..OVERBRIGHT). */
+  function cubeDisplay(S, cube, state) {
+    const s = STATES.indexOf(state), ref = S.settings.reference_lux, out = [];
+    for (let i = 0; i < 6; i++) out.push([0, 1, 2].map((c) => encodeLevel(cube[i * 9 + s * 3 + c] / ref)));
+    return out;
+  }
+
+  // ------------------------------------------------------------ digest
+
+  /** FNV-1a over byte arrays, as 8 hex digits: two bakes with one seed must match. */
+  function digest(arrays) {
+    let h = 0x811c9dc5;
+    for (const a of arrays) for (let i = 0; i < a.length; i++) { h ^= a[i]; h = Math.imul(h, 0x01000193); }
+    return (h >>> 0).toString(16).padStart(8, "0");
+  }
+
+  // ------------------------------------------------------------ three.js adapters
+
+  /** BufferGeometry with position, normal, albedo (sRGB) and, when given, colN/colR/colE (RGBA8, normalized) and lmuv. */
+  function toGeometry(THREE, mesh, sets) {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.BufferAttribute(mesh.positions, 3));
+    g.setAttribute("normal", new THREE.BufferAttribute(mesh.normals, 3));
+    g.setAttribute("albedo", new THREE.BufferAttribute(mesh.display, 3));
+    const lin = new Float32Array(mesh.display.length);
+    for (let i = 0; i < lin.length; i++) lin[i] = srgbToLinear(mesh.display[i]);
+    g.setAttribute("color", new THREE.BufferAttribute(lin, 3)); // for three's own materials (linear)
+    if (sets) {
+      g.setAttribute("colN", new THREE.BufferAttribute(sets.normal, 4, true));
+      g.setAttribute("colR", new THREE.BufferAttribute(sets.red_alert, 4, true));
+      g.setAttribute("colE", new THREE.BufferAttribute(sets.emergency, 4, true));
+    }
+    if (mesh.uv2) g.setAttribute("lmuv", new THREE.BufferAttribute(mesh.uv2, 2));
+    g.setIndex(new THREE.BufferAttribute(mesh.indices, 1));
+    return g;
+  }
+
+  /**
+   * The deck shader the engine plans (engine-stack section 7, program 1),
+   * reduced to what a mockup needs: three baked colour sets blended by a
+   * per-compartment weight uniform, times the palette albedo. One texture-free
+   * path; the output is display sRGB already (light is stored gamma-encoded).
+   */
+  function vertexMaterial(THREE) {
+    return new THREE.ShaderMaterial({
+      uniforms: { stateW: { value: new THREE.Vector3(1, 0, 0) }, aoOnly: { value: 0 } },
+      vertexShader: `
+        attribute vec3 albedo; attribute vec4 colN; attribute vec4 colR; attribute vec4 colE;
+        uniform vec3 stateW; uniform float aoOnly; varying vec3 vCol;
+        void main() {
+          vec4 l = colN * stateW.x + colR * stateW.y + colE * stateW.z;
+          vCol = aoOnly > 0.5 ? vec3(l.a * ${OVERBRIGHT.toFixed(1)} * 0.5) : albedo * l.rgb * ${OVERBRIGHT.toFixed(1)};
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }`,
+      fragmentShader: `varying vec3 vCol; void main() { gl_FragColor = vec4(vCol, 1.0); }`,
+    });
+  }
+
+  /** Three RGBA8 DataTextures (one per state), bilinear, clamped, no mipmaps. */
+  function lightmapTextures(THREE, atlas) {
+    const out = {};
+    for (const s of STATES) {
+      const t = new THREE.DataTexture(atlas.sets[s], atlas.width, atlas.height, THREE.RGBAFormat, THREE.UnsignedByteType);
+      t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearFilter; t.generateMipmaps = false;
+      t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping; t.flipY = false; t.needsUpdate = true;
+      out[s] = t;
+    }
+    return out;
+  }
+
+  /**
+   * The lightmap variant of the deck shader: the same weights, three texture
+   * fetches (a real engine binds one, or two while a state crossfades).
+   * grid > 0 tints alternate texels, the debug view of texel density.
+   */
+  function lightmapMaterial(THREE, tex, atlas) {
+    return new THREE.ShaderMaterial({
+      uniforms: { stateW: { value: new THREE.Vector3(1, 0, 0) }, lmN: { value: tex.normal }, lmR: { value: tex.red_alert }, lmE: { value: tex.emergency },
+        lmSize: { value: new THREE.Vector2(atlas.width, atlas.height) }, grid: { value: 0 }, aoOnly: { value: 0 } },
+      vertexShader: `
+        attribute vec3 albedo; attribute vec2 lmuv; varying vec3 vAlb; varying vec2 vUv;
+        void main() { vAlb = albedo; vUv = lmuv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+      fragmentShader: `
+        uniform sampler2D lmN; uniform sampler2D lmR; uniform sampler2D lmE; uniform vec3 stateW; uniform vec2 lmSize; uniform float grid; uniform float aoOnly;
+        varying vec3 vAlb; varying vec2 vUv;
+        void main() {
+          vec4 l = texture2D(lmN, vUv) * stateW.x + texture2D(lmR, vUv) * stateW.y + texture2D(lmE, vUv) * stateW.z;
+          vec3 c = aoOnly > 0.5 ? vec3(l.a * ${OVERBRIGHT.toFixed(1)} * 0.5) : vAlb * l.rgb * ${OVERBRIGHT.toFixed(1)};
+          if (grid > 0.5) { vec2 cell = floor(vUv * lmSize); float k = mod(cell.x + cell.y, 2.0); c = mix(c, c * vec3(1.35, 0.75, 1.35) + vec3(0.05, 0.0, 0.05), k * 0.6); }
+          gl_FragColor = vec4(c, 1.0);
+        }`,
+    });
+  }
+
+  /** A canvas showing one state of an atlas (for a debug panel). */
+  function atlasCanvas(atlas, state) {
+    const cv = document.createElement("canvas"); cv.width = atlas.width; cv.height = atlas.height;
+    const ctx = cv.getContext("2d"), img = ctx.createImageData(atlas.width, atlas.height), src = atlas.sets[state];
+    for (let i = 0; i < atlas.width * atlas.height; i++) { img.data[i * 4] = src[i * 4]; img.data[i * 4 + 1] = src[i * 4 + 1]; img.data[i * 4 + 2] = src[i * 4 + 2]; img.data[i * 4 + 3] = 255; }
+    ctx.putImageData(img, 0, 0);
+    return cv;
+  }
+
+  window.LightBake = {
+    version: 1, STATES, DEFAULTS, GAMMA, OVERBRIGHT,
+    patch, boxPatches, patchesFromGeometry, tessellate, buildBVH, occluded, closest,
+    scene, prepare, irradiance, bakeVertices, bakeAdaptive, bakeLightmap, probeCube, cubeDisplay,
+    encodeLevel, srgbToLinear, hexToSrgb, hexToLinear, hash3, digest,
+    toGeometry, vertexMaterial, lightmapTextures, lightmapMaterial, atlasCanvas,
+    DIRECT, AMBIENT, BOUNCE, ALL,
+  };
+})();
+</script>
+<!-- INLINE lib:lightbake END -->
+</head>
+<body>
+<div class="controls" id="controls"></div>
+<div class="info" id="info"></div>
+<div class="tag" id="tagL"></div>
+<div class="tag" id="tagR"></div>
+<div class="divider" id="divider"></div>
+<div class="busy" id="busy"></div>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const K = window.ShipKit, LB = window.LightBake;
+const L = K.layout();
+const PAL = K.PALETTE, LS = K.LIGHTING;
+K.titleBlock({
+  title: "Light baking: vertex lighting, subdivision and lightmaps",
+  subtitle: L.ship.name + ": the bridge and engineering, baked on this page's CPU by lightbake.js",
+  change: "light-baking",
+});
+const hud = K.budgetHud({ note: "split view: left half only" });
+window.MOCKUP_BUDGET = () => hud.read();
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.autoClear = false;
+document.body.appendChild(renderer.domElement);
+const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.05, 400);
+const controls = new OrbitControls(camera, renderer.domElement);
+
+// ------------------------------------------------------------------ tuning
+// Fixture types and bake settings. These mirror the proposed data files in
+// openspec/changes/light-baking/design.md section 11 (data/lighting/fixtures.json
+// and data/lighting/bake.json); keys carry their units. State colours come from
+// ShipKit.LIGHTING so this page agrees with every other mockup.
+const lin = (hex, k) => LB.hexToLinear(hex).map((c) => c * k);
+const srgb = (hex, k) => LB.hexToSrgb(hex).map((c) => Math.min(1, c * k));
+const OFF = [0, 0, 0];
+const FIXTURE_TYPES = {
+  ceiling_panel: { intensity_cd: 2600, radius_m: 0.25, beam_exponent: 4, range_m: 9.0, panel_m: 0.6, emergency_scale: 1.6 },
+  cove_strip: { luminance_cd_m2: 1400, width_m: 0.08, range_m: 6.0 },
+  console_screen: { luminance_cd_m2: 160, range_m: 3.5, emergency_scale: 0.6 },
+  viewscreen: { luminance_cd_m2: 45, range_m: 14.0, color: 0x6f8fd0 },
+  reactor_glow: { luminance_cd_m2: 420, range_m: 9.0, color: PAL.screen, emergency_scale: 0.2 },
+  indicator_panel: { luminance_cd_m2: 90, range_m: 2.5, color: PAL.screenWarm },
+};
+const BAKE = {
+  seed: 1, reference_lux: 100, shadow_samples: 12, gather_rays: 48, ao_rays: 24, ao_radius_m: 0.8, cache_spacing_m: 0.5,
+  ambient_scale_lux: 260, // ShipKit.LIGHTING ambient colour x ambientI x this = ambient fill in lux, times AO
+  adaptive: { base_m: 1.0, min_m: 0.25, max_error_levels: 5 },
+  // Triangles adaptive subdivision may add: a quarter of the compartment's
+  // geometry budget (engine-stack, "The Pi 5 budget": bridge 30,000, others about 8,000).
+  max_added_triangles: { bridge: 7500, engineering: 2000 },
+};
+const lampStates = (bus, kType) => ({
+  normal: lin(LS.normal.lamp, LS.normal.lampI),
+  red_alert: lin(LS.red_alert.lamp, LS.red_alert.lampI),
+  emergency: bus === "emergency" ? lin(LS.emergency.lamp, LS.emergency.lampI * (kType.emergency_scale || 1)) : OFF,
+});
+const stripStates = () => ({ normal: lin(LS.normal.strip, LS.normal.stripI), red_alert: lin(LS.red_alert.strip, LS.red_alert.stripI), emergency: lin(LS.emergency.strip, LS.emergency.stripI) });
+const steadyStates = (hex, em) => ({ normal: lin(hex, 1), red_alert: lin(hex, 1), emergency: lin(hex, em) });
+// Display colours (sRGB 0..1) of the fixtures themselves, per state.
+const lampLook = (bus) => ({ normal: srgb(LS.normal.lamp, 1), red_alert: srgb(LS.red_alert.lamp, 0.95), emergency: bus === "emergency" ? srgb(LS.emergency.lamp, 1) : srgb(0x26282c, 1) });
+const stripLook = () => ({ normal: srgb(LS.normal.strip, 1), red_alert: srgb(LS.red_alert.strip, 1), emergency: srgb(LS.emergency.strip, 1) });
+const steadyLook = (hex, em) => ({ normal: srgb(hex, 1), red_alert: srgb(hex, 1), emergency: srgb(hex, Math.max(0.25, em)) });
+
+// ------------------------------------------------------------------ geometry helpers
+
+/** A rectangle on the plane axis = coord, spanning [u0, u1] x [v0, v1] on axes ua, va, facing +1 or -1 along axis. */
+function rect(axis, coord, ua, va, u0, u1, v0, v1, facing, opts) {
+  const P = (u, v) => { const o = { x: 0, y: 0, z: 0 }; o[axis] = coord; o[ua] = u; o[va] = v; return [o.x, o.y, o.z]; };
+  const o = P(u0, v0), a = P(u1, v0), b = P(u0, v1);
+  let U = [a[0] - o[0], a[1] - o[1], a[2] - o[2]], V = [b[0] - o[0], b[1] - o[1], b[2] - o[2]];
+  const c = [U[1] * V[2] - U[2] * V[1], U[2] * V[0] - U[0] * V[2], U[0] * V[1] - U[1] * V[0]];
+  const ax = { x: 0, y: 1, z: 2 }[axis];
+  if (Math.sign(c[ax]) !== facing) { const t = U; U = V; V = t; }
+  return LB.patch(o, U, V, opts);
+}
+const box = (min, max, hex, skip) => LB.boxPatches(min, max, { albedoHex: hex, skip: skip || [] });
+
+/** Station-local box: centre f metres forward and r metres right of the seat, w wide, d deep, from y0 to y1 above the seat's floor. */
+function stationBox(seat, yaw, f, w, d, y0, y1) {
+  const s = Math.round(Math.sin((yaw * Math.PI) / 180)), c = Math.round(Math.cos((yaw * Math.PI) / 180));
+  const cx = seat[0] + s * f, cz = seat[2] + c * f;
+  const hx = s !== 0 ? d / 2 : w / 2, hz = s !== 0 ? w / 2 : d / 2;
+  return { min: [cx - hx, seat[1] + y0, cz - hz], max: [cx + hx, seat[1] + y1, cz + hz] };
+}
+
+// ------------------------------------------------------------------ fixtures derived from the layout
+
+/**
+ * Light fixtures for a compartment, derived from its bounds and fixtures by
+ * the rules in design.md section 11 (ceiling panels on a 4.5 m grid, 6 m in
+ * rooms taller than one deck; cove strips along the port and starboard walls;
+ * the middle column of panels on the emergency bus). The output is the
+ * proposed layout "lights" record format, printed for the layout patch.
+ */
+function deriveLights(comp) {
+  const b = K.bounds(comp), out = [];
+  const tall = b.y[1] - b.y[0] > 4.5;
+  const grid = (y, spacing, prefix, skip) => {
+    const dx = b.x[1] - b.x[0], dz = b.z[1] - b.z[0];
+    const nx = Math.max(1, Math.round(dx / spacing)), nz = Math.max(1, Math.round(dz / spacing));
+    for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
+      const x = +(b.x[0] + ((i + 0.5) * dx) / nx).toFixed(2), z = +(b.z[0] + ((j + 0.5) * dz) / nz).toFixed(2);
+      if (skip && skip(x, z)) continue;
+      out.push({ id: `${comp.id}_${prefix}_${out.length + 1}`, compartment: comp.id, type: "ceiling_panel", center_m: [x, +y.toFixed(2), z],
+        bus: i === Math.floor(nx / 2) ? "emergency" : "main" });
+    }
+  };
+  const strips = (y, prefix) => {
+    for (const side of [1, -1]) {
+      const x = side > 0 ? b.x[1] - 0.01 : b.x[0] + 0.01;
+      out.push({ id: `${comp.id}_${prefix}_${side > 0 ? "p" : "s"}`, compartment: comp.id, type: "cove_strip",
+        from_m: [x, y, b.z[0] + 0.6], to_m: [x, y, b.z[1] - 0.6], facing_yaw_deg: side > 0 ? -90 : 90, bus: "emergency" });
+    }
+  };
+  if (comp.id === "engineering") {
+    const mez = K.byId(L.fixtures, "eng_mezzanine"), r = mez.ring_inner_radius_m, c = mez.center_m;
+    grid(b.y[1] - 0.12, 6.0, "lamp", null);
+    grid(c[1] - 0.45, 4.5, "deck_c_lamp", (x, z) => Math.abs(x - c[0]) < r && Math.abs(z - c[2]) < r);
+    strips(c[1] + 2.6, "strip_b"); strips(b.y[0] + 2.6, "strip_c");
+  } else {
+    grid(b.y[1] - 0.12, tall ? 6.0 : 4.5, "lamp", null);
+    strips(b.y[1] - 0.1, "strip");
+  }
+  return out;
+}
+
+// ------------------------------------------------------------------ compartment builders
+
+/** Room shell, door leaves and reveals, as patches. Closed doors are baked closed (design.md section 7). */
+function shellPatches(comp) {
+  const sh = K.roomShell(THREE, L, comp);
+  const floorHex = comp.kind === "corridor" ? PAL.floorCorridor : PAL.floor;
+  const out = [
+    ...LB.patchesFromGeometry(sh.floor, { albedoHex: floorHex, tag: "floor" }),
+    ...LB.patchesFromGeometry(sh.ceiling, { albedoHex: PAL.ceiling, tag: "ceiling" }),
+    ...LB.patchesFromGeometry(sh.walls, { albedoHex: PAL.wall, tag: "wall" }),
+  ];
+  const b = K.bounds(comp);
+  for (const op of sh.openings) {
+    const p = op.portal, r = op.rect, ax = op.axis;
+    const inward = Math.abs(op.plane - b[ax][0]) < 1e-3 ? 1 : -1;
+    const isWindow = p.kind === "window";
+    const depth = isWindow ? 0.25 : 0.12;
+    const back = op.plane - inward * depth;
+    const lo = Math.min(op.plane, back), hi = Math.max(op.plane, back);
+    const rev = isWindow ? PAL.wallDark : PAL.trim;
+    // Reveals: the four sides of the opening, facing into it.
+    out.push(rect(op.v, r.v0, op.u, ax, r.u0, r.u1, lo, hi, 1, { albedoHex: rev, tag: "reveal" }));
+    out.push(rect(op.v, r.v1, op.u, ax, r.u0, r.u1, lo, hi, -1, { albedoHex: rev, tag: "reveal" }));
+    out.push(rect(op.u, r.u0, op.v, ax, r.v0, r.v1, lo, hi, 1, { albedoHex: rev, tag: "reveal" }));
+    out.push(rect(op.u, r.u1, op.v, ax, r.v0, r.v1, lo, hi, -1, { albedoHex: rev, tag: "reveal" }));
+    if (!isWindow) out.push(rect(ax, back, op.u, op.v, r.u0, r.u1, r.v0, r.v1, inward, { albedoHex: PAL.door, tag: "door" }));
+  }
+  return out;
+}
+
+/** Everything a compartment needs: patches, lights, emitters, emissive look, camera, crew figure spot. */
+function buildCompartment(id) {
+  const comp = K.compartment(L, id);
+  const patches = shellPatches(comp);
+  const emissive = [];   // { patch, look: { normal, red_alert, emergency } }
+  const lights = [], emitters = [];
+  const fixtures = deriveLights(comp);
+  const addEmitter = (quadPatch, type, states, look, idTag) => {
+    const t = FIXTURE_TYPES[type];
+    emitters.push({ id: idTag, quad: { o: quadPatch.o, u: quadPatch.u, v: quadPatch.v }, luminance_cd_m2: t.luminance_cd_m2, beam_exponent: 1, range_m: t.range_m, states });
+    emissive.push({ patch: quadPatch, look });
+  };
+  for (const f of fixtures) {
+    const t = FIXTURE_TYPES[f.type];
+    if (f.type === "ceiling_panel") {
+      lights.push({ id: f.id, position_m: f.center_m, radius_m: t.radius_m, intensity_cd: t.intensity_cd, beam: { axis: [0, -1, 0], exponent: t.beam_exponent }, range_m: t.range_m, states: lampStates(f.bus, t) });
+      const h = t.panel_m / 2, y = f.center_m[1] + 0.105;
+      emissive.push({ patch: rect("y", y, "z", "x", f.center_m[2] - h, f.center_m[2] + h, f.center_m[0] - h, f.center_m[0] + h, -1, {}), look: lampLook(f.bus) });
+    } else if (f.type === "cove_strip") {
+      const w = t.width_m / 2, x = f.from_m[0], facing = f.facing_yaw_deg < 0 ? -1 : 1;
+      const q = rect("x", x, "z", "y", f.from_m[2], f.to_m[2], f.from_m[1] - w, f.from_m[1] + w, facing, {});
+      addEmitter(q, "cove_strip", stripStates(), stripLook(), f.id);
+    }
+  }
+  const props = [];
+  let view, crew;
+  if (id === "bridge") {
+    const dais = K.byId(L.fixtures, "captain_dais");
+    const dh = dais.height_m, dc = dais.center_m, ds = dais.size_m;
+    props.push(...box([dc[0] - ds[0] / 2, dc[1], dc[2] - ds[1] / 2], [dc[0] + ds[0] / 2, dc[1] + dh, dc[2] + ds[1] / 2], PAL.wallDark, ["-y"]));
+    for (const st of K.stationsIn(L, "bridge")) {
+      const seat = st.seat_m, yaw = st.yaw_deg, role = PAL.role[st.role] || PAL.screen;
+      const sb = (f, w, d, y0, y1) => stationBox(seat, yaw, f, w, d, y0, y1);
+      // Seat and backrest.
+      let q = sb(0, 0.5, 0.5, 0, 0.46); props.push(...box(q.min, q.max, PAL.console, ["-y"]));
+      q = sb(-0.27, 0.5, 0.06, 0.46, 1.05); props.push(...box(q.min, q.max, PAL.console, ["-y"]));
+      if (st.role === "command") {
+        // Captain: an armrest panel with a small screen on the right.
+        const side = stationBox([seat[0] - Math.round(Math.cos((yaw * Math.PI) / 180)) * 0.42, seat[1], seat[2] + Math.round(Math.sin((yaw * Math.PI) / 180)) * 0.42], yaw, 0.1, 0.16, 0.5, 0, 0.72);
+        props.push(...box(side.min, side.max, PAL.console, ["-y"]));
+        const sx = (side.min[0] + side.max[0]) / 2;
+        const scr = rect("y", side.max[1] + 0.005, "x", "z", sx - 0.06, sx + 0.06, side.min[2] + 0.06, side.max[2] - 0.06, 1, {});
+        addEmitter(scr, "console_screen", steadyStates(role, FIXTURE_TYPES.console_screen.emergency_scale), steadyLook(role, 0.6), st.id + "_screen");
+        continue;
+      }
+      // Console: pedestal, desk with an overhang, screen panel.
+      q = sb(0.85, 1.0, 0.3, 0, 0.74); props.push(...box(q.min, q.max, PAL.console, ["-y"]));
+      q = sb(0.68, 1.3, 0.66, 0.74, 0.8); props.push(...box(q.min, q.max, PAL.trim));
+      const panel = sb(0.98, 1.2, 0.06, 0.8, 1.38); props.push(...box(panel.min, panel.max, PAL.console, ["-y"]));
+      // Screen on the panel's operator side, 5 mm proud.
+      const s = Math.round(Math.sin((yaw * Math.PI) / 180)), c = Math.round(Math.cos((yaw * Math.PI) / 180));
+      let scr;
+      if (s === 0) { const z = c > 0 ? panel.min[2] - 0.005 : panel.max[2] + 0.005; scr = rect("z", z, "x", "y", panel.min[0] + 0.08, panel.max[0] - 0.08, 0.86 + seat[1], 1.32 + seat[1], -c, {}); }
+      else { const x = s > 0 ? panel.min[0] - 0.005 : panel.max[0] + 0.005; scr = rect("x", x, "z", "y", panel.min[2] + 0.08, panel.max[2] - 0.08, 0.86 + seat[1], 1.32 + seat[1], -s, {}); }
+      addEmitter(scr, "console_screen", steadyStates(role, FIXTURE_TYPES.console_screen.emergency_scale), steadyLook(role, 0.6), st.id + "_screen");
+    }
+    // Viewscreen bezel and the screen as an area light.
+    const vs = K.byId(L.fixtures, "viewscreen"), vc = vs.center_m, vw = vs.size_m[0] / 2, vh = vs.size_m[1] / 2;
+    props.push(...box([vc[0] - vw - 0.12, vc[1] - vh - 0.12, vc[2] - 0.02], [vc[0] + vw + 0.12, vc[1] + vh + 0.12, 31.0], PAL.console, ["+z"]));
+    const vq = rect("z", vc[2] - 0.025, "x", "y", vc[0] - vw, vc[0] + vw, vc[1] - vh, vc[1] + vh, -1, {});
+    const vt = FIXTURE_TYPES.viewscreen;
+    emitters.push({ id: "viewscreen", quad: { o: vq.o, u: vq.u, v: vq.v }, luminance_cd_m2: vt.luminance_cd_m2, beam_exponent: 1, range_m: vt.range_m, states: steadyStates(vt.color, 1) });
+    view = { pos: [-5.7, 5.3, 20.45], target: [0.8, 3.7, 26.4] };
+    crew = { pos: [2.9, 3.5, 23.1], yaw: -120 };
+  } else if (id === "engineering") {
+    const b = K.bounds(comp);
+    const mez = K.byId(L.fixtures, "eng_mezzanine"), mc = mez.center_m, r = mez.ring_inner_radius_m, slab = 0.3;
+    // Mezzanine slab at deck B with a square well around the reactor (convex brushes, no curves).
+    const cells = K.rectMinusHoles({ u0: b.x[0], u1: b.x[1], v0: b.z[0], v1: b.z[1] }, [{ u0: mc[0] - r, u1: mc[0] + r, v0: mc[2] - r, v1: mc[2] + r }]);
+    for (const cl of cells) {
+      props.push(rect("y", mc[1], "x", "z", cl.u0, cl.u1, cl.v0, cl.v1, 1, { albedoHex: PAL.floor, tag: "floor" }));
+      props.push(rect("y", mc[1] - slab, "x", "z", cl.u0, cl.u1, cl.v0, cl.v1, -1, { albedoHex: PAL.ceiling }));
+    }
+    const y0 = mc[1] - slab, y1 = mc[1];
+    props.push(rect("x", mc[0] - r, "z", "y", mc[2] - r, mc[2] + r, y0, y1, -1, { albedoHex: PAL.hazard }));
+    props.push(rect("x", mc[0] + r, "z", "y", mc[2] - r, mc[2] + r, y0, y1, 1, { albedoHex: PAL.hazard }));
+    props.push(rect("z", mc[2] - r, "x", "y", mc[0] - r, mc[0] + r, y0, y1, -1, { albedoHex: PAL.hazard }));
+    props.push(rect("z", mc[2] + r, "x", "y", mc[0] - r, mc[0] + r, y0, y1, 1, { albedoHex: PAL.hazard }));
+    // Parapets round the well, and columns under its corners.
+    const pt = 0.08, ph = 1.0;
+    props.push(...box([mc[0] - r, y1, mc[2] - r], [mc[0] - r + pt, y1 + ph, mc[2] + r], PAL.trim, ["-y"]));
+    props.push(...box([mc[0] + r - pt, y1, mc[2] - r], [mc[0] + r, y1 + ph, mc[2] + r], PAL.trim, ["-y"]));
+    props.push(...box([mc[0] - r + pt, y1, mc[2] - r], [mc[0] + r - pt, y1 + ph, mc[2] - r + pt], PAL.trim, ["-y"]));
+    props.push(...box([mc[0] - r + pt, y1, mc[2] + r - pt], [mc[0] + r - pt, y1 + ph, mc[2] + r], PAL.trim, ["-y"]));
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) props.push(...box([mc[0] + sx * r - 0.15, b.y[0], mc[2] + sz * r - 0.15], [mc[0] + sx * r + 0.15, y0, mc[2] + sz * r + 0.15], PAL.wallDark, ["-y", "+y"]));
+    // Catwalk at deck A by the aft door.
+    const cw = K.byId(L.fixtures, "eng_catwalk"), cc = cw.center_m, cs = cw.size_m;
+    const cx0 = cc[0] - cs[0] / 2, cx1 = cc[0] + cs[0] / 2, cz0 = cc[2] - cs[1] / 2, cz1 = cc[2] + cs[1] / 2;
+    props.push(...box([cx0, cc[1] - 0.25, cz0], [cx1, cc[1], cz1], PAL.floorCorridor, ["+z"]));
+    props.push(...box([cx0, cc[1], cz0], [cx1, cc[1] + 1.0, cz0 + 0.06], PAL.trim, ["-y"]));
+    props.push(...box([cx0, cc[1], cz0 + 0.06], [cx0 + 0.06, cc[1] + 1.0, cz1], PAL.trim, ["-y", "+z"]));
+    props.push(...box([cx1 - 0.06, cc[1], cz0 + 0.06], [cx1, cc[1] + 1.0, cz1], PAL.trim, ["-y", "+z"]));
+    // The reactor: a 12-sided prism through three decks, with glowing bands.
+    const re = K.byId(L.systems, "reactor"), rc = re.center_m, rr = re.radius_m, N = 12;
+    const ry0 = rc[1] - re.height_m / 2, ry1 = rc[1] + re.height_m / 2;
+    for (let k = 0; k < N; k++) {
+      const a0 = (k / N) * Math.PI * 2, a1 = ((k + 1) / N) * Math.PI * 2;
+      const p0 = [rc[0] + rr * Math.cos(a0), ry0, rc[2] + rr * Math.sin(a0)], p1 = [rc[0] + rr * Math.cos(a1), ry0, rc[2] + rr * Math.sin(a1)];
+      let U = [p1[0] - p0[0], 0, p1[2] - p0[2]], V = [0, ry1 - ry0, 0];
+      const out = [Math.cos((a0 + a1) / 2), 0, Math.sin((a0 + a1) / 2)];
+      const cr = [U[1] * V[2] - U[2] * V[1], U[2] * V[0] - U[0] * V[2], U[0] * V[1] - U[1] * V[0]];
+      let o = p0;
+      if (cr[0] * out[0] + cr[2] * out[2] < 0) { o = p1; U = [p0[0] - p1[0], 0, p0[2] - p1[2]]; }
+      props.push(LB.patch(o, U, V, { albedoHex: PAL.hullDark, tag: "reactor" }));
+      const rt = FIXTURE_TYPES.reactor_glow;
+      for (const [gy0, gy1] of [[0.55, 0.95], [3.7, 4.1], [-2.3, -1.9]]) {
+        const off = [out[0] * 0.01, 0, out[2] * 0.01];
+        const go = [o[0] + off[0], gy0, o[2] + off[2]];
+        const gq = LB.patch(go, U, [0, gy1 - gy0, 0], {});
+        addEmitter(gq, "reactor_glow", steadyStates(rt.color, rt.emergency_scale), steadyLook(rt.color, rt.emergency_scale), "reactor_glow");
+      }
+    }
+    // Engineering bay console at its station.
+    for (const st of K.stationsIn(L, "engineering")) {
+      const seat = st.seat_m, yaw = st.yaw_deg, role = PAL.role[st.role];
+      const sb = (f, w, d, y0b, y1b) => stationBox(seat, yaw, f, w, d, y0b, y1b);
+      let q = sb(0, 0.5, 0.5, 0, 0.46); props.push(...box(q.min, q.max, PAL.console, ["-y"]));
+      q = sb(-0.27, 0.5, 0.06, 0.46, 1.05); props.push(...box(q.min, q.max, PAL.console, ["-y"]));
+      q = sb(0.85, 1.0, 0.3, 0, 0.74); props.push(...box(q.min, q.max, PAL.console, ["-y"]));
+      q = sb(0.68, 1.3, 0.66, 0.74, 0.8); props.push(...box(q.min, q.max, PAL.trim));
+      const panel = sb(0.98, 1.2, 0.06, 0.8, 1.38); props.push(...box(panel.min, panel.max, PAL.console, ["-y"]));
+      const c = Math.round(Math.cos((yaw * Math.PI) / 180));
+      const z = c > 0 ? panel.min[2] - 0.005 : panel.max[2] + 0.005;
+      const scr = rect("z", z, "x", "y", panel.min[0] + 0.08, panel.max[0] - 0.08, 0.86 + seat[1], 1.32 + seat[1], -c, {});
+      addEmitter(scr, "console_screen", steadyStates(role, FIXTURE_TYPES.console_screen.emergency_scale), steadyLook(role, 0.6), st.id + "_screen");
+    }
+    // Main switchboard: three cabinets on the port wall with indicator panels.
+    const sw = K.byId(L.systems, "main_switchboard").center_m;
+    for (let k = 0; k < 3; k++) {
+      const z0 = sw[2] - 2.4 + k * 1.6, z1 = z0 + 1.45;
+      props.push(...box([b.x[1] - 0.7, sw[1], z0], [b.x[1], sw[1] + 2.1, z1], PAL.wallDark, ["-y", "+x"]));
+      const ip = rect("x", b.x[1] - 0.705, "z", "y", z0 + 0.25, z1 - 0.25, sw[1] + 1.2, sw[1] + 1.6, -1, {});
+      const it = FIXTURE_TYPES.indicator_panel;
+      addEmitter(ip, "indicator_panel", steadyStates(it.color, 0.8), steadyLook(it.color, 0.8), "switchboard_" + k);
+    }
+    // Coolant pumps on deck C with risers to the slab.
+    const cp = K.byId(L.systems, "coolant_pumps").center_m;
+    for (const dz of [-1.1, 1.1]) {
+      props.push(...box([cp[0] - 0.7, cp[1], cp[2] + dz - 0.55], [cp[0] + 0.7, cp[1] + 1.3, cp[2] + dz + 0.55], PAL.hullAccent, ["-y"]));
+      props.push(...box([cp[0] - 0.15, cp[1] + 1.3, cp[2] + dz - 0.15], [cp[0] + 0.15, y0, cp[2] + dz + 0.15], PAL.trim, ["-y", "+y"]));
+    }
+    view = { pos: [-8.3, 5.35, -18.6], target: [1.2, -0.9, -26.4] };
+    crew = { pos: [4.2, 0.0, -22.2], yaw: 150 };
+  }
+  for (const p of props) patches.push(p);
+  // Ambient fill per state: ShipKit.LIGHTING's ambient colour and weight, in lux.
+  const ambient_lux = {};
+  for (const s of LB.STATES) ambient_lux[s] = lin(LS[s].ambient, LS[s].ambientI * BAKE.ambient_scale_lux);
+  return { comp, patches, lights, emitters, emissive, fixtures, ambient_lux, view, crew };
+}
+
+// ------------------------------------------------------------------ bakes (cached)
+
+const COMP = {};
+const bakeCache = new Map();
+const busyEl = document.getElementById("busy");
+function busy(text) { busyEl.style.display = text ? "block" : "none"; if (text) busyEl.textContent = text; }
+
+function compartmentData(id) { return COMP[id] || (COMP[id] = buildCompartment(id)); }
+
+async function bakeScene(id, bounces, ao) {
+  const key = `scene:${id}:${bounces}:${ao}`;
+  if (!bakeCache.has(key)) bakeCache.set(key, (async () => {
+    const C = compartmentData(id);
+    const S = LB.scene({ patches: C.patches, lights: C.lights, emitters: C.emitters, ambient_lux: C.ambient_lux,
+      settings: Object.assign({}, BAKE, { bounces, ao }) });
+    await LB.prepare(S, (f) => busy(`Baking ${C.comp.name}: irradiance cache ${(f * 100).toFixed(0)}%`));
+    return S;
+  })());
+  return bakeCache.get(key);
+}
+
+async function bakeOutput(id, mode, o) {
+  const key = `out:${id}:${mode}:${o.bounces}:${o.ao}:${mode === "lightmap" ? o.texel : ""}`;
+  if (!bakeCache.has(key)) bakeCache.set(key, (async () => {
+    const C = compartmentData(id);
+    const S = await bakeScene(id, o.bounces, o.ao);
+    const label = (f) => busy(`Baking ${C.comp.name}, ${MODES[mode].short}, all three states: ${(f * 100).toFixed(0)}%`);
+    let res;
+    if (mode === "vertex" || mode === "unlit" || mode === "dynamic") {
+      const mesh = LB.tessellate(C.patches, Infinity, (p) => p.receive);
+      res = mode === "vertex" ? await LB.bakeVertices(S, mesh, label) : { mesh, sets: null, stats: null };
+      res.mesh = mesh;
+    } else if (mode === "adaptive") {
+      res = await LB.bakeAdaptive(S, Object.assign({}, BAKE.adaptive, { max_added_triangles: BAKE.max_added_triangles[id] }), label);
+    } else if (mode === "lightmap") {
+      res = await LB.bakeLightmap(S, { texel_m: o.texel }, label);
+    }
+    res.scene = S;
+    if (res.sets) res.digest = LB.digest([res.sets.normal, res.sets.red_alert, res.sets.emergency]);
+    if (res.atlas) res.digest = LB.digest([res.atlas.sets.normal, res.atlas.sets.red_alert, res.atlas.sets.emergency]);
+    res.object = makeSurface(mode, res);
+    res.wire = makeWire(res.mesh);
+    busy(null);
+    return res;
+  })());
+  return bakeCache.get(key);
+}
+
+// ------------------------------------------------------------------ three.js objects
+
+const scene = new THREE.Scene();
+const overlay = new THREE.Scene();
+const lambert = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+const basic = new THREE.MeshBasicMaterial({ vertexColors: true });
+const stateW = new THREE.Vector3(1, 0, 0);
+const vmats = [];
+function makeSurface(mode, res) {
+  let mat;
+  if (mode === "unlit") mat = basic;
+  else if (mode === "dynamic") mat = lambert;
+  else if (mode === "lightmap") { mat = LB.lightmapMaterial(THREE, LB.lightmapTextures(THREE, res.atlas), res.atlas); res.material = mat; }
+  else { mat = LB.vertexMaterial(THREE); res.material = mat; }
+  if (mat.uniforms) { mat.uniforms.stateW.value = stateW; vmats.push(mat); }
+  const m = new THREE.Mesh(LB.toGeometry(THREE, res.mesh, res.sets), mat);
+  m.visible = false; scene.add(m);
+  return m;
+}
+function makeWire(mesh) {
+  const seen = new Set(), pos = [];
+  const P = mesh.positions, N = mesh.normals, I = mesh.indices;
+  const at = (i) => [P[i * 3] + N[i * 3] * 0.012, P[i * 3 + 1] + N[i * 3 + 1] * 0.012, P[i * 3 + 2] + N[i * 3 + 2] * 0.012];
+  for (let t = 0; t < mesh.triangleCount; t++) for (let e = 0; e < 3; e++) {
+    const a = I[t * 3 + e], b = I[t * 3 + ((e + 1) % 3)], k = a < b ? a * 1e6 + b : b * 1e6 + a;
+    if (seen.has(k)) continue; seen.add(k);
+    pos.push(...at(a), ...at(b));
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  const w = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0x7cf0ff, transparent: true, opacity: 0.55 }));
+  w.visible = false; overlay.add(w);
+  return w;
+}
+
+/** Emissive surfaces (lamps, strips, screens, glow) in one draw call, with a colour set per state. */
+function makeEmissive(C) {
+  const patches = C.emissive.map((e) => Object.assign({}, e.patch, { display: [1, 1, 1], receive: true }));
+  const mesh = LB.tessellate(patches, Infinity, null);
+  const sets = {};
+  for (const s of LB.STATES) {
+    const a = new Uint8Array(mesh.vertexCount * 4);
+    for (let i = 0; i < mesh.vertexCount; i++) {
+      const c = C.emissive[mesh.patchOfVertex[i]].look[s];
+      for (let k = 0; k < 3; k++) a[i * 4 + k] = Math.round((c[k] / LB.OVERBRIGHT) * 255);
+      a[i * 4 + 3] = 255;
+    }
+    sets[s] = a;
+  }
+  const mat = LB.vertexMaterial(THREE); mat.uniforms.stateW.value = stateW; mat.side = THREE.DoubleSide;
+  const m = new THREE.Mesh(LB.toGeometry(THREE, mesh, sets), mat);
+  m.visible = false; scene.add(m);
+  return m;
+}
+
+/** The viewscreen's picture (the exterior feed): a canvas, unlit. */
+function makeViewscreen() {
+  const vs = K.byId(L.fixtures, "viewscreen");
+  const cv = document.createElement("canvas"); cv.width = 512; cv.height = 205;
+  const g = cv.getContext("2d");
+  const grad = g.createLinearGradient(0, 0, 0, cv.height); grad.addColorStop(0, "#050a18"); grad.addColorStop(1, "#0b1530");
+  g.fillStyle = grad; g.fillRect(0, 0, cv.width, cv.height);
+  let h = 7; for (let i = 0; i < 160; i++) { h = LB.hash3(h, i, 3); const x = (h % 512), y = ((h >>> 9) % 205), r = ((h >>> 20) % 3) * 0.4 + 0.4; g.fillStyle = `rgba(220,230,255,${0.4 + ((h >>> 24) % 60) / 100})`; g.fillRect(x, y, r, r); }
+  const pg = g.createRadialGradient(360, 150, 10, 380, 170, 120); pg.addColorStop(0, "#7fb2e6"); pg.addColorStop(0.6, "#3a6aa0"); pg.addColorStop(1, "rgba(20,40,80,0)");
+  g.fillStyle = pg; g.beginPath(); g.arc(380, 175, 110, 0, Math.PI * 2); g.fill();
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(vs.size_m[0], vs.size_m[1]), new THREE.MeshBasicMaterial({ map: tex }));
+  m.position.set(vs.center_m[0], vs.center_m[1], vs.center_m[2] - 0.03); m.rotation.y = Math.PI;
+  m.visible = false; scene.add(m);
+  return m;
+}
+
+/** A crew member, lit by an ambient cube sampled from the bake (design.md section 5). */
+const crewGeo = (() => {
+  const parts = [[[-0.2, 0.0, -0.1], [-0.03, 0.85, 0.1], 0x2c3440], [[0.03, 0.0, -0.1], [0.2, 0.85, 0.1], 0x2c3440],
+    [[-0.24, 0.85, -0.13], [0.24, 1.48, 0.13], 0x3f6f9a], [[-0.36, 0.9, -0.08], [-0.25, 1.45, 0.08], 0x3f6f9a], [[0.25, 0.9, -0.08], [0.36, 1.45, 0.08], 0x3f6f9a],
+    [[-0.11, 1.5, -0.12], [0.11, 1.75, 0.12], 0xc8a07a]];
+  const pos = [], nor = [], col = [];
+  for (const [mn, mx, hex] of parts) for (const p of LB.boxPatches(mn, mx, { albedoHex: hex })) {
+    const c = [p.o, [p.o[0] + p.u[0], p.o[1] + p.u[1], p.o[2] + p.u[2]], [p.o[0] + p.u[0] + p.v[0], p.o[1] + p.u[1] + p.v[1], p.o[2] + p.u[2] + p.v[2]], [p.o[0] + p.v[0], p.o[1] + p.v[1], p.o[2] + p.v[2]]];
+    for (const k of [0, 1, 2, 0, 2, 3]) { pos.push(...c[k]); nor.push(...p.n); col.push(...p.display); }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute("albedo", new THREE.Float32BufferAttribute(col, 3));
+  g.setAttribute("color", new THREE.Float32BufferAttribute(col.map(LB.srgbToLinear), 3));
+  return g;
+})();
+const probeMat = new THREE.ShaderMaterial({
+  uniforms: { cube: { value: Array.from({ length: 6 }, () => new THREE.Vector3()) } },
+  vertexShader: `attribute vec3 albedo; uniform vec3 cube[6]; varying vec3 vCol;
+    void main() {
+      vec3 n = normalize(mat3(modelMatrix) * normal), n2 = n * n;
+      vec3 l = n2.x * (n.x > 0.0 ? cube[0] : cube[1]) + n2.y * (n.y > 0.0 ? cube[2] : cube[3]) + n2.z * (n.z > 0.0 ? cube[4] : cube[5]);
+      vCol = albedo * l; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: `varying vec3 vCol; void main() { gl_FragColor = vec4(vCol, 1.0); }`,
+});
+const crew = new THREE.Mesh(crewGeo, probeMat); crew.visible = false; scene.add(crew);
+const crewProbe = new Map();
+
+// ------------------------------------------------------------------ dynamic (runtime) lights
+
+/** Every fixture as a three.js runtime light, no shadows: the look without a bake (design.md section 2). */
+function makeDynamic(C) {
+  const g = new THREE.Group(); g.visible = false; scene.add(g);
+  const k = Math.PI / BAKE.reference_lux;
+  const lights = [];
+  for (const l of C.lights) {
+    const s = new THREE.SpotLight(0xffffff, l.intensity_cd * k, l.range_m, 1.05, 1.0, 2);
+    s.position.set(...l.position_m); s.target.position.set(l.position_m[0], l.position_m[1] - 1, l.position_m[2]);
+    g.add(s, s.target); lights.push({ obj: s, states: l.states });
+  }
+  for (const e of C.emitters) {
+    const area = Math.hypot(...[e.quad.u[1] * e.quad.v[2] - e.quad.u[2] * e.quad.v[1], e.quad.u[2] * e.quad.v[0] - e.quad.u[0] * e.quad.v[2], e.quad.u[0] * e.quad.v[1] - e.quad.u[1] * e.quad.v[0]]);
+    const len = Math.max(Math.hypot(...e.quad.u), Math.hypot(...e.quad.v));
+    const n = Math.max(1, Math.min(3, Math.round(len / 3)));
+    const nrm = new THREE.Vector3().crossVectors(new THREE.Vector3(...e.quad.u), new THREE.Vector3(...e.quad.v)).normalize();
+    for (let i = 0; i < n; i++) {
+      const f = (i + 0.5) / n, lu = Math.hypot(...e.quad.u) >= Math.hypot(...e.quad.v);
+      const p = new THREE.Vector3(...e.quad.o).addScaledVector(new THREE.Vector3(...e.quad.u), lu ? f : 0.5).addScaledVector(new THREE.Vector3(...e.quad.v), lu ? 0.5 : f).addScaledVector(nrm, 0.25);
+      const pl = new THREE.PointLight(0xffffff, (e.luminance_cd_m2 * area * k) / n, e.range_m, 2);
+      pl.position.copy(p); g.add(pl); lights.push({ obj: pl, states: e.states });
+    }
+  }
+  const amb = new THREE.AmbientLight(0xffffff, 1); g.add(amb);
+  return { group: g, lights, amb, C };
+}
+function setDynamicState(D, w) {
+  for (const l of D.lights) {
+    const c = [0, 1, 2].map((i) => LB.STATES.reduce((a, s, si) => a + w[si] * l.states[s][i], 0));
+    const m = Math.max(c[0], c[1], c[2], 1e-6);
+    l.obj.color.setRGB(c[0] / m, c[1] / m, c[2] / m, THREE.LinearSRGBColorSpace); l.obj.userData.scale = m;
+    if (l.obj.userData.base === undefined) l.obj.userData.base = l.obj.intensity;
+    l.obj.intensity = l.obj.userData.base * m;
+  }
+  const a = [0, 1, 2].map((i) => LB.STATES.reduce((acc, s, si) => acc + w[si] * D.C.ambient_lux[s][i], 0));
+  const m = Math.max(...a, 1e-6);
+  D.amb.color.setRGB(a[0] / m, a[1] / m, a[2] / m, THREE.LinearSRGBColorSpace); D.amb.intensity = m / BAKE.reference_lux;
+}
+
+// ------------------------------------------------------------------ view state
+
+const MODES = {
+  unlit: { label: "Unlit", short: "unlit", desc: "Albedo only: the palette with no light at all." },
+  dynamic: { label: "Dynamic", short: "runtime lights", desc: "Every fixture as a runtime per-pixel light, no shadows: the look without a bake. A Pi 5 affords a few such lights per room, not every fixture, and no shadows from them." },
+  vertex: { label: "Vertex: deck mesh", short: "vertex, deck mesh", desc: "Baked into vertex colours at the deck's own density (one quad per brush face): what vertex lighting gives with no subdivision." },
+  adaptive: { label: "Vertex: adaptive", short: "vertex, adaptive", desc: "Baked into vertex colours after adaptive subdivision: cells split where light changes fast (pools, console shadows), within a triangle cap." },
+  lightmap: { label: "Lightmap", short: "lightmap", desc: "Baked into a lightmap atlas (three textures, one per state) on the deck mesh with a second UV set." },
+};
+const view = { comp: "bridge", mode: "adaptive", split: false, left: "adaptive", right: "lightmap", state: "normal", bounces: 1, ao: true, debug: false, texel: 0.25, crew: true };
+const W = new Float32Array([1, 0, 0]);
+let fade = null;
+const runtime = {};   // per compartment: emissive, dynamic, viewscreen
+const current = {};   // per side: bake result
+
+function weightsFor(state) { return LB.STATES.map((s) => (s === state ? 1 : 0)); }
+function applyWeights(w) {
+  W.set(w); stateW.set(w[0], w[1], w[2]);
+  const R = runtime[view.comp];
+  if (R && R.dynamic) setDynamicState(R.dynamic, w);
+  const cube = crewProbe.get(view.comp + ":" + view.bounces + ":" + view.ao);
+  if (cube) for (let i = 0; i < 6; i++) probeMat.uniforms.cube.value[i].set(...[0, 1, 2].map((c) => LB.STATES.reduce((a, s, si) => a + w[si] * cube[s][i][c], 0)));
+}
+
+async function ensure() {
+  const C = compartmentData(view.comp);
+  if (!runtime[view.comp]) runtime[view.comp] = { emissive: makeEmissive(C), dynamic: makeDynamic(C), screen: view.comp === "bridge" ? makeViewscreen() : null };
+  const o = { bounces: view.bounces, ao: view.ao, texel: view.texel };
+  const modes = view.split ? [view.left, view.right] : [view.mode];
+  const out = [];
+  for (const m of modes) out.push(await bakeOutput(view.comp, m, o));
+  const key = view.comp + ":" + view.bounces + ":" + view.ao;
+  if (!crewProbe.has(key)) {
+    const S = await bakeScene(view.comp, view.bounces, view.ao);
+    const p = C.crew.pos, raw = LB.probeCube(S, [p[0], p[1] + 1.2, p[2]], 77);
+    const cube = {}; for (const s of LB.STATES) cube[s] = LB.cubeDisplay(S, raw, s);
+    crewProbe.set(key, cube);
+  }
+  current.left = out[0]; current.right = out[1] || null;
+  current.leftMode = modes[0]; current.rightMode = modes[1] || null;
+  busy(null);
+}
+
+function setCamera() {
+  const v = compartmentData(view.comp).view;
+  camera.position.set(...v.pos); controls.target.set(...v.target); controls.update();
+}
+
+function showOnly(res, mode) {
+  scene.traverse((o) => { if (o.isMesh || o.isGroup) { if (o !== scene) o.visible = false; } });
+  for (const lo of overlay.children) lo.visible = false;
+  const R = runtime[view.comp];
+  R.emissive.visible = true; if (R.screen) R.screen.visible = true;
+  res.object.visible = true;
+  if (mode === "dynamic") R.dynamic.group.visible = true;
+  if (res.material && res.material.uniforms.grid) res.material.uniforms.grid.value = view.debug ? 1 : 0;
+  if (view.debug && (mode === "vertex" || mode === "adaptive")) res.wire.visible = true;
+  const C = compartmentData(view.comp);
+  crew.visible = view.crew;
+  crew.position.set(...C.crew.pos); crew.rotation.y = (C.crew.yaw * Math.PI) / 180;
+  crew.material = mode === "dynamic" ? lambert : mode === "unlit" ? basic : probeMat;
+}
+
+// ------------------------------------------------------------------ info panel
+
+const infoEl = document.getElementById("info");
+const fmt = (n) => Math.round(n).toLocaleString("en-GB");
+const kb = (b) => (b >= 1048576 ? (b / 1048576).toFixed(2) + " MB" : (b / 1024).toFixed(1) + " kB");
+function describe(mode, res) {
+  const m = res.mesh, rows = [];
+  const vbytes = m.vertexCount * 28, ibytes = m.triangleCount * 3 * (m.vertexCount < 65536 ? 2 : 4);
+  rows.push(["surface triangles", fmt(m.triangleCount) + (res.stats && res.stats.baseTriangles ? ` (base ${fmt(res.stats.baseTriangles)})` : "")]);
+  rows.push(["vertices", fmt(m.vertexCount)]);
+  rows.push(["vertex + index buffer", kb(vbytes + ibytes) + " / 64 MB"]);
+  if (mode === "vertex" || mode === "adaptive") rows.push(["of which baked light", kb(m.vertexCount * 12) + " (3 x RGBA8)"]);
+  if (mode === "lightmap") {
+    rows.push(["lightmap atlas", `${res.atlas.width} x ${res.atlas.height}, ${res.atlas.texel_m} m texels`]);
+    rows.push(["lightmap textures", kb(res.stats.bytes) + " / 96 MB (3 states)"]);
+    rows.push(["atlas fill", (res.stats.fill * 100).toFixed(0) + "%, " + fmt(res.stats.texels) + " texels"]);
+    rows.push(["texture fetches", "palette + 1 (2 in a crossfade)"]);
+  } else rows.push(["lightmap textures", "none"]);
+  if (res.stats) {
+    const S = res.scene;
+    rows.push(["bake, 3 states", `${fmt(res.stats.ms + (S.prepareMs || 0) + S.buildMs)} ms (1 thread)`]);
+    rows.push(["  cache", `${fmt(S.cache.vertexCount)} vertices, ${fmt((S.prepareMs || 0) + S.buildMs)} ms`]);
+    rows.push(["  rays", `${(res.stats.rays / 1e6).toFixed(2)} M, ${(res.stats.raysPerSecond / 1e6).toFixed(2)} M/s`]);
+    if (mode === "adaptive") rows.push(["  max residual", `${res.stats.maxResidual.toFixed(1)} levels${res.stats.capped ? ", cap reached" : ""}`]);
+    rows.push(["digest", res.digest]);
+  }
+  return rows;
+}
+function renderInfo() {
+  const C = compartmentData(view.comp), meas = K.measure(C.comp);
+  const sides = view.split ? [["Left: " + MODES[view.left].label, view.left, current.left], ["Right: " + MODES[view.right].label, view.right, current.right]] : [[MODES[view.mode].label, view.mode, current.left]];
+  let h = `<h3>${C.comp.name} (POI ${C.comp.poi}), ${fmt(meas.floor_m2)} m<sup>2</sup> floor</h3>`;
+  h += `<div class="d">State: ${LS[view.state].label}. Bounces ${view.bounces}, AO ${view.ao ? "on" : "off"}. ${C.lights.length} lamps, ${C.emitters.length} emissive surfaces.</div>`;
+  for (const [title, mode, res] of sides) {
+    if (!res) continue;
+    h += `<div style="margin-top:6px;font-weight:700;color:#48d6ff">${title}</div>`;
+    if (!view.split) h += `<div class="d" style="font-family:system-ui,sans-serif;margin-bottom:3px">${MODES[mode].desc}</div>`;
+    h += "<table>" + describe(mode, res).map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join("") + "</table>";
+  }
+  h += `<div class="d" style="margin-top:5px;font-family:system-ui,sans-serif">Bake times are this cloud machine's CPU in one browser thread, not a Pi 5 and not the engine baker.</div>`;
+  infoEl.innerHTML = h;
+}
+
+// ------------------------------------------------------------------ controls
+
+const ctl = document.getElementById("controls");
+const groups = {};
+function row(label, items, key, onPick) {
+  const r = document.createElement("div"); r.className = "row";
+  const k = document.createElement("span"); k.className = "k"; k.textContent = label; r.appendChild(k);
+  groups[key] = [];
+  for (const [val, text] of items) {
+    const b = document.createElement("button"); b.textContent = text; b.dataset.val = String(val);
+    b.onclick = () => onPick(val); r.appendChild(b); groups[key].push(b);
+  }
+  ctl.appendChild(r); return r;
+}
+function mark() {
+  const on = { comp: view.comp, mode: view.split ? "split" : view.mode, state: view.state, bounces: String(view.bounces), texel: String(view.texel) };
+  for (const [key, val] of Object.entries(on)) for (const b of groups[key]) b.classList.toggle("on", b.dataset.val === val);
+  for (const b of groups.toggles) b.classList.toggle("on", !!view[b.dataset.val]);
+}
+async function update(changes, opts) {
+  Object.assign(view, changes);
+  mark();
+  await ensure();
+  if (opts && opts.camera) setCamera();
+  applyWeights(fade ? W : weightsFor(view.state));
+  renderInfo();
+}
+row("Compartment", [["bridge", "Bridge"], ["engineering", "Engineering"]], "comp", (v) => update({ comp: v }, { camera: true }));
+row("Mode", [["unlit", "Unlit"], ["dynamic", "Dynamic (runtime lights)"], ["vertex", "Baked vertex: deck mesh"], ["adaptive", "Baked vertex: adaptive"], ["lightmap", "Baked lightmap"], ["split", "Split"]], "mode",
+  (v) => update(v === "split" ? { split: true } : { split: false, mode: v }));
+const sr = row("Split", [], "split", () => {});
+for (const side of ["left", "right"]) {
+  const s = document.createElement("select");
+  for (const m of Object.keys(MODES)) { const o = document.createElement("option"); o.value = m; o.textContent = (side === "left" ? "Left: " : "Right: ") + MODES[m].label; s.appendChild(o); }
+  s.value = view[side]; s.onchange = () => update({ [side]: s.value, split: true }); s.id = "split-" + side; sr.appendChild(s);
+}
+row("State", [["normal", "Normal"], ["red_alert", "Red alert"], ["emergency", "Emergency power"]], "state", (v) => { startFade(v); });
+const pl = document.createElement("button"); pl.textContent = "Power loss"; pl.onclick = () => powerLoss(); groups.state[groups.state.length - 1].parentNode.appendChild(pl);
+row("Bounces", [[0, "0"], [1, "1"], [2, "2"]], "bounces", (v) => update({ bounces: v }));
+row("Texel", [[0.5, "0.5 m"], [0.25, "0.25 m"], [0.125, "0.125 m"]], "texel", (v) => update({ texel: v }));
+row("Toggles", [["ao", "AO"], ["debug", "Debug: vertices / texels"], ["crew", "Crew (probe lit)"]], "toggles", (v) => update({ [v]: !view[v] }));
+
+/** Crossfade the per-compartment weights over 0.4 s, as the engine's uniform does. */
+function startFade(state, ms) {
+  const from = Array.from(W), to = weightsFor(state), t0 = performance.now(), dur = ms === undefined ? 400 : ms;
+  view.state = state; mark(); renderInfo();
+  if (dur <= 0) { fade = null; applyWeights(to); return; }
+  fade = (now) => { const f = Math.min(1, (now - t0) / dur); applyWeights(from.map((a, i) => a + (to[i] - a) * f)); if (f >= 1) fade = null; };
+}
+/** Power loss: a seeded flicker, then the emergency set (design.md section 4). */
+function powerLoss() {
+  const t0 = performance.now(), steps = [[0, 0], [90, 1], [160, 0], [260, 0.7], [330, 0], [520, 0.35], [600, 0]];
+  view.state = "emergency"; mark(); renderInfo();
+  fade = (now) => {
+    const t = now - t0;
+    if (t < 600) { let k = 0; for (const [ts, v] of steps) if (t >= ts) k = v; applyWeights([k, 0, 0]); }
+    else { const f = Math.min(1, (t - 600) / 500); applyWeights([0, 0, f]); if (f >= 1) fade = null; }
+  };
+}
+
+// ------------------------------------------------------------------ shots
+
+const tagL = document.getElementById("tagL"), tagR = document.getElementById("tagR"), divider = document.getElementById("divider");
+async function shot(changes) {
+  fade = null;
+  await update(Object.assign({ split: false, debug: false, bounces: 1, ao: true, texel: 0.25, crew: true }, changes), { camera: true });
+  startFade(view.state, 0);
+}
+K.registerShots([
+  { name: "bridge-dynamic", setup: () => shot({ comp: "bridge", mode: "dynamic", state: "normal" }) },
+  { name: "bridge-vertex", setup: () => shot({ comp: "bridge", mode: "vertex", state: "normal" }) },
+  { name: "bridge-vertex-subdivided", setup: () => shot({ comp: "bridge", mode: "adaptive", state: "normal" }) },
+  { name: "bridge-vertex-density", setup: () => shot({ comp: "bridge", mode: "adaptive", state: "normal", debug: true }) },
+  { name: "bridge-vertex-no-bounce", setup: () => shot({ comp: "bridge", mode: "adaptive", state: "normal", bounces: 0 }) },
+  { name: "bridge-vertex-two-bounces", setup: () => shot({ comp: "bridge", mode: "adaptive", state: "normal", bounces: 2 }) },
+  { name: "bridge-lightmap", setup: () => shot({ comp: "bridge", mode: "lightmap", state: "normal" }) },
+  { name: "bridge-lightmap-texels", setup: () => shot({ comp: "bridge", mode: "lightmap", state: "normal", debug: true }) },
+  { name: "bridge-red-alert-baked", setup: () => shot({ comp: "bridge", mode: "adaptive", state: "red_alert" }) },
+  { name: "bridge-emergency-baked", setup: () => shot({ comp: "bridge", mode: "adaptive", state: "emergency" }) },
+  { name: "engineering-vertex-subdivided", setup: () => shot({ comp: "engineering", mode: "adaptive", state: "normal" }) },
+  { name: "engineering-lightmap", setup: () => shot({ comp: "engineering", mode: "lightmap", state: "normal" }) },
+  { name: "engineering-emergency-baked", setup: () => shot({ comp: "engineering", mode: "adaptive", state: "emergency" }) },
+  { name: "split-vertex-vs-lightmap", setup: () => shot({ comp: "bridge", split: true, left: "adaptive", right: "lightmap", state: "normal" }) },
+]);
+
+// ------------------------------------------------------------------ frame loop
+
+addEventListener("resize", () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+const bg = new THREE.Color(PAL.space);
+function draw(res, mode, x, w) {
+  showOnly(res, mode);
+  const h = innerHeight;
+  renderer.setViewport(0, 0, innerWidth, h); renderer.setScissor(x, 0, w, h); renderer.setScissorTest(true);
+  renderer.setClearColor(bg, 1); renderer.clear(true, true, true);
+  renderer.render(scene, camera);
+}
+let ready = false;
+(async () => {
+  busy("Baking the bridge: all three lighting states");
+  await update({}, { camera: true });
+  for (const sel of ["left", "right"]) document.getElementById("split-" + sel).value = view[sel];
+  renderer.setAnimationLoop((now) => {
+    if (fade) fade(now);
+    controls.update();
+    const half = Math.floor(innerWidth / 2);
+    hud.beginFrame(renderer);
+    const split = !!current.right;
+    if (split) draw(current.left, current.leftMode, 0, half); else draw(current.left, current.leftMode, 0, innerWidth);
+    hud.endFrame(renderer);
+    if (split) draw(current.right, current.rightMode, half, innerWidth - half);
+    // Debug overlay (not counted in the budget: it is not part of the game's frame).
+    renderer.setScissorTest(false);
+    if (view.debug) {
+      for (const o of overlay.children) o.visible = false;
+      if (current.left.wire && ["vertex", "adaptive"].includes(current.leftMode)) {
+        renderer.setScissorTest(true); renderer.setScissor(0, 0, split ? half : innerWidth, innerHeight);
+        current.left.wire.visible = true; renderer.render(overlay, camera); current.left.wire.visible = false;
+        renderer.setScissorTest(false);
+      }
+      if (split && ["vertex", "adaptive"].includes(current.rightMode)) {
+        renderer.setScissorTest(true); renderer.setScissor(half, 0, innerWidth - half, innerHeight);
+        current.right.wire.visible = true; renderer.render(overlay, camera); current.right.wire.visible = false;
+        renderer.setScissorTest(false);
+      }
+    }
+    tagL.style.display = tagR.style.display = divider.style.display = split ? "block" : "none";
+    if (split) {
+      tagL.textContent = MODES[current.leftMode].label; tagR.textContent = MODES[current.rightMode].label;
+      tagL.style.left = "12px"; tagR.style.left = half + 12 + "px"; divider.style.left = half - 1 + "px";
+      tagL.style.top = tagR.style.top = "150px";
+    }
+    if (!ready) { ready = true; K.markReady(); }
+  });
+})();
+</script>
+</body>
+</html>

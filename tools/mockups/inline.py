@@ -11,6 +11,9 @@ current files between them (CLAUDE.md section 11):
     <!-- INLINE lib:lightbake BEGIN --> ... <!-- INLINE lib:lightbake END -->
 
 "lib:<name>" copies docs/mockups/lib/<name>.js; "shipkit" is lib:shipkit.
+"data:<ship>/<name>" copies data/ships/<ship>/<name>.json into a
+<script id="ship-data-<name>" type="application/json"> block, for mockups that
+read a ship's other data files (power.json, atmosphere.json).
 
 --check rewrites nothing and fails when a page holds a stale copy, and also
 checks that shipkit's PI_BUDGET matches the budget marker in the engine-stack
@@ -33,7 +36,7 @@ BUDGET_SOURCES = [
     os.path.join(ROOT, "openspec", "specs", "engine-platform", "spec.md"),
     os.path.join(ROOT, "openspec", "changes", "engine-stack", "design.md"),
 ]
-MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|shipkit) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
+MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-9_-]+/[a-z0-9_-]+|shipkit) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
 
 
 def block(kind):
@@ -41,6 +44,12 @@ def block(kind):
         name = "shipkit" if kind == "shipkit" else kind.split(":", 1)[1]
         with open(os.path.join(LIB, name + ".js"), encoding="utf-8") as f:
             return "\n<script>\n" + f.read().rstrip() + "\n</script>\n"
+    if kind.startswith("data:"):
+        ship, name = kind.split(":", 1)[1].split("/", 1)
+        with open(os.path.join(ROOT, "data", "ships", ship, name + ".json"), encoding="utf-8") as f:
+            data = json.load(f)
+        text = json.dumps(data, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
+        return f'\n<script id="ship-data-{name}" type="application/json">\n{text}\n</script>\n'
     ship = kind.split(":", 1)[1]
     path = os.path.join(ROOT, "data", "ships", ship, "layout.json")
     with open(path, encoding="utf-8") as f:
