@@ -19,7 +19,7 @@ What does not apply here:
   engine. Decks compile to `.deck` files with baked vertex lighting (`deck-pipeline`).
 - **Its file paths** (`tools/blender/`, `tools/godot/`, `game/`): those are Undercity's. Use
   `copy_kit.py` and `references/porting.md` if the deck pipeline adopts the kit.
-- **Its budgets**: Star Crew's are the Pi 3 table in `openspec/changes/engine-stack/design.md`.
+- **Its budgets**: Star Crew's are the Pi 5 table in `openspec/changes/engine-stack/design.md`.
 
 What does apply: one layout source (`data/ships/<id>/layout.json` here), brushes and cutters,
 no z-fighting (CLAUDE.md section 8), people stand clear of the level, write it up first.

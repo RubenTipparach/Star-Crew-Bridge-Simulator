@@ -3,8 +3,8 @@
 A starship bridge simulator for a crew of friends online: four players at the core, up to
 eight, one can play alone. Walk a full 3D ship, sit at a station, route power, keep the air
 breathable, repair damage, man or automate the turrets, load the missile tubes, and drop out
-of the hangar in a fighter. Low poly, on a custom engine whose floor is a **Raspberry Pi 3
-with 1 GB of RAM**.
+of the hangar in a fighter. Low poly, on a custom engine whose floor is a **Raspberry Pi 5
+with 1 GB of RAM**, with a 4 GB Pi 5 as the main server.
 
 **Status: design.** There is no engine code yet. The game is being written up first, as
 OpenSpec changes with three.js mockups, and built on request (CLAUDE.md section 4).

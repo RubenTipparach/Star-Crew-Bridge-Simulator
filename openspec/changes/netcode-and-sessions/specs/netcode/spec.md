@@ -31,7 +31,7 @@ function the client used to preview it. A refused command SHALL be answered with
 
 ### Requirement: Snapshots fit the network budget
 Server snapshots SHALL be sent at 20 Hz, delta-compressed against the last snapshot the client
-acknowledged, and SHALL stay within the Pi 3 budget's downstream allocation per client with
+acknowledged, and SHALL stay within the Pi 5 budget's downstream allocation per client with
 eight players aboard.
 
 #### Scenario: A full crew in combat

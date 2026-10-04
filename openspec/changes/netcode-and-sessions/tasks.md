@@ -37,5 +37,5 @@ follows `engine-stack` tasks 2 and 3.
 
 ## 6. Measure and move to specs
 
-- [ ] 6.1 Measure bandwidth and server CPU with eight clients against a Pi 3 listen server on Wi-Fi; record in `docs/benchmarks/`.
+- [ ] 6.1 Measure bandwidth, server CPU and memory with eight clients (some on Wi-Fi) against the 4 GB Pi 5 main server, and how many sessions it holds at once; record in `docs/benchmarks/`.
 - [ ] 6.2 Move each `netcode` requirement into `openspec/specs/netcode/spec.md` with the test that proves it.

@@ -13,7 +13,7 @@ current files between them (CLAUDE.md section 11):
 "lib:<name>" copies docs/mockups/lib/<name>.js; "shipkit" is lib:shipkit.
 
 --check rewrites nothing and fails when a page holds a stale copy, and also
-checks that shipkit's PI3_BUDGET matches the budget marker in the engine-stack
+checks that shipkit's PI_BUDGET matches the budget marker in the engine-stack
 design (the table there is the source). Documentation tooling, standard library
 only.
 
@@ -76,7 +76,7 @@ def process(page, check):
 
 
 def budget_ok():
-    """shipkit's PI3_BUDGET must equal the marker in the budget's source document."""
+    """shipkit's PI_BUDGET must equal the marker in the budget's source document."""
     with open(SHIPKIT, encoding="utf-8") as f:
         kit = f.read()
     kit_vals = {
@@ -88,7 +88,7 @@ def budget_ok():
         if not os.path.exists(src):
             continue
         with open(src, encoding="utf-8") as f:
-            m = re.search(r"<!-- pi3-budget ([^>]*)-->", f.read())
+            m = re.search(r"<!-- pi-budget ([^>]*)-->", f.read())
         if not m:
             continue
         doc = {k: int(v) for k, v in re.findall(r"(\w+)=(\d+)", m.group(1))}
@@ -96,11 +96,11 @@ def budget_ok():
         rel = os.path.relpath(src, ROOT)
         if bad:
             for k, (a, b) in bad.items():
-                print(f"  FAIL shipkit PI3_BUDGET {k}={a} but {rel} says {b}")
+                print(f"  FAIL shipkit PI_BUDGET {k}={a} but {rel} says {b}")
             return False
-        print(f"  shipkit PI3_BUDGET matches {rel}")
+        print(f"  shipkit PI_BUDGET matches {rel}")
         return True
-    print("  FAIL no pi3-budget marker found in " + " or ".join(os.path.relpath(s, ROOT) for s in BUDGET_SOURCES))
+    print("  FAIL no pi-budget marker found in " + " or ".join(os.path.relpath(s, ROOT) for s in BUDGET_SOURCES))
     return False
 
 

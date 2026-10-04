@@ -1,6 +1,6 @@
 ---
 name: threejs-mockups
-description: Build, inline, screenshot and publish a Star Crew three.js mockup the repository's way - one page per subject in docs/mockups, reading the one ship layout through shipkit.js, lit by its own fixtures in normal and red-alert states, showing its Pi 3 triangle and draw-call cost, with named screenshot shots checked by eye before it is shown. Use whenever making or changing a mockup, a 3D view of the ship, a console UI mockup, or anything under docs/mockups ("mock up the bridge", "show the hangar in 3D", "update the deck plan", "screenshot the mockups", "publish the mockup").
+description: Build, inline, screenshot and publish a Star Crew three.js mockup the repository's way - one page per subject in docs/mockups, reading the one ship layout through shipkit.js, lit by its own fixtures in normal and red-alert states, showing its Pi 5 triangle and draw-call cost, with named screenshot shots checked by eye before it is shown. Use whenever making or changing a mockup, a 3D view of the ship, a console UI mockup, or anything under docs/mockups ("mock up the bridge", "show the hangar in 3D", "update the deck plan", "screenshot the mockups", "publish the mockup").
 metadata:
   author: Star Crew (Claude Code)
   version: "1.0"
@@ -17,9 +17,9 @@ is how to follow them.
 | File | What it is |
 | --- | --- |
 | `data/ships/<id>/layout.json` | The one layout source. A mockup never hand-places a room, door, seat or system. |
-| `docs/mockups/lib/shipkit.js` | The shared interpretation of the layout: `layout()`, `PALETTE` (colour roles), `LIGHTING` (normal, red alert, emergency), `PI3_BUDGET`, `roomShell()` (floor, walls and ceiling with door openings cut), `hullGeometry()`, `label()`, `budgetHud()`, `titleBlock()`, `registerShots()`, `markReady()`, lookups (`compartment`, `portalsOf`, `stationsIn`, `systemsIn`, `measure`, `bounds`, `center`). Edit it here, never inside a page. |
+| `docs/mockups/lib/shipkit.js` | The shared interpretation of the layout: `layout()`, `PALETTE` (colour roles), `LIGHTING` (normal, red alert, emergency), `PI_BUDGET`, `roomShell()` (floor, walls and ceiling with door openings cut), `hullGeometry()`, `label()`, `budgetHud()`, `titleBlock()`, `registerShots()`, `markReady()`, lookups (`compartment`, `portalsOf`, `stationsIn`, `systemsIn`, `measure`, `bounds`, `center`). Edit it here, never inside a page. |
 | `docs/mockups/lib/template.html` | The page skeleton: import map (three.js 0.169.0 from jsDelivr), the INLINE markers, a scene, lighting buttons, a budget meter, a shot. Copy it to start. |
-| `tools/mockups/inline.py` | Writes the layout and shipkit between each page's INLINE markers. `--check` fails on a stale page, and checks `PI3_BUDGET` against the `engine-stack` table's marker. |
+| `tools/mockups/inline.py` | Writes the layout and shipkit between each page's INLINE markers. `--check` fails on a stale page, and checks `PI_BUDGET` against the `engine-stack` table's marker. |
 | `tools/mockups/shoot.mjs` | Headless Chromium (SwiftShader) screenshots: the default view, then every registered shot, into `docs/screenshots/mockups/<page>-<shot>.png`. Fails on console errors or a page that never sets `MOCKUP_READY`. |
 
 ## Make one
@@ -61,7 +61,7 @@ is how to follow them.
 
 - **A mockup is not a Pi measurement.** The meter shows the triangles and draw calls the design
   would spend; the frame rate is a desktop's, and the page says so.
-- **No shadow maps, no post-processing** that the Pi 3 renderer will not have; they also fail on
+- **No shadow maps, no post-processing** that the Pi 5 renderer will not have; they also fail on
   SwiftShader.
 - **Screens and consoles** are HTML and CSS overlays in fixed-size panels (CLAUDE.md 10), not
   textures rendered every frame.

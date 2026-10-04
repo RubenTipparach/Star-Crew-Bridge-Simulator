@@ -31,8 +31,10 @@ performance rig with a checked-in baseline, and the owner's most developed worki
 - The `owner-survey` and `obs-record` skills.
 
 **Not adopted:**
-- **Bevy and Avian.** Bevy renders through wgpu, whose OpenGL backend needs OpenGL ES 3.0; the
-  Pi 3's VideoCore IV stops at ES 2.0 (`openspec/changes/engine-stack`).
+- **Bevy and Avian.** On the Pi 5 (Vulkan) Bevy could run, but the owner asked for a custom
+  engine to decouple the ship's interior from its exterior, and a 1 GB client cannot spare a
+  general engine's memory (`openspec/changes/engine-stack`). On the Pi 3 first discussed it could
+  not run at all: wgpu needs OpenGL ES 3.0 or Vulkan.
 - The voxel engine, planets and weather: a different game.
 - The hex-size gold standard: a rule about Tenebris planets, not ships.
 
@@ -60,7 +62,7 @@ character pipeline.
 - The `blender-csg-levels` and `blender-humanoid-characters` skills, as references.
 
 **Not adopted:**
-- **Godot.** Its Compatibility renderer needs OpenGL 3.3 or ES 3.0.
+- **Godot.** It would run on a Pi 5, but for the same reasons as Bevy the engine is custom.
 - The owner's verdict there that Blender beats TrenchBroom and Godot CSG for levels is carried
   into `openspec/changes/deck-pipeline` as evidence, not as a rule: decks are smaller and more
   regular than a city hub, and a generator from the layout may serve better.

@@ -4,7 +4,7 @@
  * Every Star Crew mockup reads the same layout (data/ships/<id>/layout.json), so
  * the bridge, the deck plan, the systems view and the exterior cannot disagree
  * about where a room or a door is (CLAUDE.md sections 8 and 11). This file is
- * the shared interpretation of that layout: palette, lighting states, the Pi 3
+ * the shared interpretation of that layout: palette, lighting states, the Pi 5
  * budget meter, room shells with door openings cut, the hull loft and labels.
  *
  * It is a classic script, not a module, so a mockup still works when opened
@@ -26,17 +26,18 @@
   }
 
   /**
-   * The Pi 3 budget a mockup is measured against. These are the provisional
-   * numbers from openspec/changes/engine-stack/design.md, "The Pi 3 budget";
-   * that table is the source, and this copy is checked against it by
-   * tools/mockups/inline.py --check.
+   * The Raspberry Pi 5 (1 GB) budget a mockup is measured against. These are
+   * the provisional numbers from openspec/changes/engine-stack/design.md,
+   * "The Pi 5 budget"; that table is the source, and this copy is checked
+   * against its marker by tools/mockups/inline.py --check.
    */
-  const PI3_BUDGET = {
-    triangles: 50000,      // visible triangles per frame, all passes
-    drawCalls: 120,        // draw calls per frame, all passes
-    textureMB: 32,         // texture memory
-    viewscreenPx: [512, 256], // render-to-texture size for one viewscreen
-    frameMs: 33.3,         // 30 frames a second at 1280x720
+  const PI_BUDGET = {
+    board: "Pi 5 (1 GB)",
+    triangles: 200000,       // visible triangles per frame, all passes
+    drawCalls: 300,          // draw calls per frame, all passes
+    textureMB: 96,           // texture memory
+    viewscreenPx: [1024, 512], // render-to-texture size for the main viewscreen
+    frameMs: 16.7,           // 60 frames a second target (33.3 ms floor), 3D at 1280x720
   };
 
   /** Named colour roles. Mockups use roles, not hex values (CLAUDE.md section 10). */
@@ -338,7 +339,7 @@
   // ------------------------------------------------------------ budget HUD
 
   /**
-   * The Pi 3 cost meter every mockup shows (CLAUDE.md section 11). Call
+   * The Pi 5 cost meter every mockup shows (CLAUDE.md section 11). Call
    * hud.beginFrame(renderer) before the frame's first render and
    * hud.endFrame(renderer) after its last; it sums every pass (a viewscreen's
    * render-to-texture included).
@@ -346,7 +347,7 @@
   function budgetHud(opts) {
     opts = opts || {};
     const el = document.createElement("div");
-    el.className = "pi3-budget";
+    el.className = "pi-budget";
     el.style.cssText = [
       "position:fixed", "right:12px", "bottom:12px", "z-index:20", "font:12px/1.35 ui-monospace,Menlo,Consolas,monospace",
       "color:#d8e2ec", "background:rgba(6,9,14,0.82)", "border:1px solid #2b3540", "border-radius:6px", "padding:8px 10px",
@@ -360,9 +361,9 @@
       return `<div style="height:5px;background:#1c242d;border-radius:3px;margin:2px 0 5px"><div style="height:5px;width:${(f * 100).toFixed(1)}%;background:${color};border-radius:3px"></div></div>`;
     };
     function render() {
-      const b = PI3_BUDGET;
+      const b = PI_BUDGET;
       el.innerHTML =
-        `<div style="font-weight:700;margin-bottom:4px">Pi 3 budget (provisional)</div>` +
+        `<div style="font-weight:700;margin-bottom:4px">${PI_BUDGET.board} budget (provisional)</div>` +
         `triangles ${shown.t.toLocaleString()} / ${b.triangles.toLocaleString()}${bar(shown.t, b.triangles)}` +
         `draw calls ${shown.c} / ${b.drawCalls}${bar(shown.c, b.drawCalls)}` +
         `<div style="color:#8a98a8">desktop ${shown.fps.toFixed(0)} fps: not a Pi measurement</div>` +
@@ -399,7 +400,7 @@
     el.innerHTML =
       `<div style="font-weight:700;font-size:15px">${opts.title}</div>` +
       `<div style="color:#9fb0c0">${opts.subtitle || ""}</div>` +
-      `<div style="color:#7f8fa0;margin-top:4px">Presents <code>${opts.change}</code>. A three.js mockup on a desktop GPU: it shows layout and look, not Pi 3 performance.</div>`;
+      `<div style="color:#7f8fa0;margin-top:4px">Presents <code>${opts.change}</code>. A three.js mockup on a desktop GPU: it shows layout and look, not Pi 5 performance.</div>`;
     document.body.appendChild(el);
     return el;
   }
@@ -418,7 +419,9 @@
 
   window.ShipKit = {
     version: 1,
-    layout, PI3_BUDGET, PALETTE, LIGHTING,
+    layout, PI_BUDGET, PALETTE, LIGHTING,
+    /** Deprecated alias from before the floor moved to the Pi 5; removed once no page uses it. */
+    PI3_BUDGET: PI_BUDGET,
     byId, compartment, portalsOf, stationsIn, systemsIn, deckById, measure, bounds, center, portalHalf,
     roomShell, hullGeometry, label, budgetHud, titleBlock, registerShots, markReady,
     rectMinusHoles,

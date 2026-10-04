@@ -1,8 +1,9 @@
 # Design: netcode and sessions
 
-Status: **proposed** (2026-10-04). Numbers are estimates sized against the Pi 3 budget in
-`engine-stack` (64 kbit/s down and 16 kbit/s up per client); the first networked build
-measures them.
+Status: **proposed** (2026-10-04). Numbers are estimates sized against the Pi 5 budget in
+`engine-stack` (64 kbit/s down and 16 kbit/s up per client; the main server on a 4 GB Pi 5);
+the first networked build measures them. Re-floored the same day on the owner's correction:
+"I'm sorry we're running on a pi5 1gb-4gb, 4 GB can be used as main server too".
 
 References, cited for shape only: Glenn Fiedler's "Gaffer on Games" articles on UDP
 reliability, snapshot interpolation and snapshot compression; Valve's "Source Multiplayer
@@ -13,20 +14,22 @@ sources before the first networked build.
 ## 1. Topology
 
 ```text
-   client (Pi or PC)  \
-   client (Pi or PC)   >---- UDP ----  sc-server  (inside the host's client, or headless)
-   client (Pi or PC)  /                   |
-                                          +-- sc-core: the one authoritative ship
+   client (Pi 5 or PC)  \
+   client (Pi 5 or PC)   >---- UDP ----  sc-server  (the main server: a 4 GB Pi 5 on Ethernet)
+   client (Pi 5 or PC)  /                   |
+                                            +-- sc-core: the one authoritative ship
 ```
 
 | Mode | Where the server runs | Use |
 | --- | --- | --- |
-| Solo | A thread in the player's client | One player, automation holds the other stations |
-| Listen server | A thread in the host's client | Friends on a LAN or the internet; the host's machine carries the server |
-| Dedicated | `sc-server` on any machine, a Pi 3 included | A crew that wants the host to be a player like the others, or a home server |
+| **Main server** | `sc-server`, headless, on a 4 GB Pi 5 (or any desktop) | **The normal way to play with friends.** Always on at home, on Ethernet, with the Active Cooler; holds the campaign saves; every player is a client like the others |
+| Solo | A thread in the player's client | One player, automation holds the other stations. Fits a 1 GB Pi 5 (64 MB, `engine-stack` section 5) |
+| Listen server | A thread in the host's client | A crew without a main server, from a client with 2 GB or more |
 
-A Pi 3 hosting a listen server for eight players spends one core on the server (at most 4 ms
-per 30 Hz tick, `engine-stack` section 5) and about 0.5 Mbit/s up. Both fit.
+The main server on a 4 GB Pi 5 spends one A76 core on the simulation (at most 2 ms per ship per
+30 Hz tick, `engine-stack` section 5) and about 0.5 Mbit/s up for eight players on gigabit
+Ethernet. Both fit with room to spare; how many sessions one board can hold at once is a
+measurement (task 6.1).
 
 ## 2. Transport
 
@@ -128,9 +131,10 @@ gunner's view time, capped at 200 ms. This is a co-operative game, so it favours
 
 - **The mess is the lobby.** Players spawn there and claim stations; the host starts the
   mission.
-- **Finding a game:** a LAN broadcast every second lists hosts; a host can also be joined by
-  address and UDP port (the host forwards one port on their router). A small rendezvous service
-  for NAT hole punching and session codes is a later change.
+- **Finding a game:** a LAN broadcast every second lists servers; the main server can also be
+  joined from outside by address and UDP port (one port forwarded on the router). Because the
+  main server is always on, it is also the natural home for a small rendezvous service (session
+  codes and NAT hole punching) so friends need no port forwarding: a later change.
 - **Join in progress:** the joining client receives a keyframe over the bulk channel (about 2 kB
   of state plus the ship's id and versions; the client loads its own copy of the compiled ship),
   then deltas. A version mismatch in the protocol, the ship's layout digest or the data digest
@@ -153,7 +157,7 @@ tests pin the systems' behaviour.
 | --- | ---: | ---: |
 | Down per client | 57 kbit/s | 64 kbit/s |
 | Up per client | 11 kbit/s | 16 kbit/s |
-| Server up, 8 clients | 0.46 Mbit/s | (Pi 3 Ethernet 100 Mbit/s) |
+| Server up, 8 clients | 0.46 Mbit/s | (Pi 5 gigabit Ethernet) |
 | Server CPU for networking, 8 clients | under 1 ms per tick (delta encoding of about 2 kB per client) | inside the 4 ms tick |
 | Server memory for history | 300 ms of 64 bodies at 30 Hz, about 40 kB; per-client acknowledged baselines, 8 x 2 kB | inside 64 MB |
 | Client memory | snapshot buffer of 1 s, about 40 kB | inside 256 MB |
@@ -164,6 +168,6 @@ Per CLAUDE.md section 13 these take the recommendation; none has anything to loo
 
 | # | Question | Options | Recommendation | Status |
 | --- | --- | --- | --- | --- |
-| M1 | Internet play without port forwarding needs a rendezvous service someone hosts. | Port forwarding only / a rendezvous service later / a relay | Port forwarding and LAN first; rendezvous as a later change | Recommendation taken (ask only with screenshots) |
+| M1 | Internet play without port forwarding needs a rendezvous service someone hosts. The 4 GB Pi 5 main server is always on. | Port forwarding only / a rendezvous service on the main server later / a relay | Port forwarding and LAN first; a rendezvous service on the main server as a later change | Recommendation taken (ask only with screenshots) |
 | M2 | Our own UDP layer or a crate such as `renet`. | Ours / renet | Ours: about 1,000 lines, and it must match the snapshot design exactly | Recommendation taken (ask only with screenshots) |
 | M3 | Maximum players. Eight seats with work for each exist on the Tern (four core, captain, comms, flight ops, gunners, pilots). | 8 / more | 8 | Recommendation taken (ask only with screenshots) |

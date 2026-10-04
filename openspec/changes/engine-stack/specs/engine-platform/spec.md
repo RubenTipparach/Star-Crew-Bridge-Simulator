@@ -7,31 +7,40 @@ engine's crates, and the budget every other capability spends against.
 
 ## ADDED Requirements
 
-### Requirement: The game runs on a Raspberry Pi 3 within its budget
-The release client SHALL run on a Raspberry Pi 3 Model B with 1 GB of RAM, full screen at
-1280 x 720 without a desktop session, at or above 30 frames a second on the reference ship's
-bridge, within the memory, triangle and draw-call budgets of the Pi 3 budget table, as
-measured by `sc-probe` and the frame log on that hardware.
+### Requirement: The client runs on a 1 GB Raspberry Pi 5 within its budget
+The release client SHALL run on a Raspberry Pi 5 with 1 GB of RAM, full screen at 1920 x 1080
+without a desktop session, at or above 30 frames a second on the reference ship's bridge, within
+the memory, triangle and draw-call budgets of the Pi 5 budget table, as measured by `sc-probe`
+and the frame log on that hardware.
 
 #### Scenario: The bridge at red alert
-- **WHEN** a crew of four is on the Tern's bridge at red alert with two enemy ships on the viewscreen, on a Pi 3
+- **WHEN** a crew of four is on the Tern's bridge at red alert with two enemy ships on the viewscreen, on a 1 GB Pi 5
 - **THEN** the frame time p95 is at most 33.3 ms and the client's resident memory is at most the table's client allocation
 
 #### Scenario: A measurement from a desktop
 - **WHEN** a frame time is reported from a desktop GPU, a cloud session or a three.js mockup
 - **THEN** it is not accepted as evidence for this requirement
 
-### Requirement: The renderer needs nothing above OpenGL ES 2.0
-The renderer SHALL use only OpenGL ES 2.0 core features and GLSL ES 1.00 shaders, and SHALL use
-any extension only behind a fallback path that has been measured on a Pi 3.
+### Requirement: The main server runs on a 4 GB Raspberry Pi 5
+`sc-server` SHALL run headless on a 4 GB Raspberry Pi 5 with no GPU use, ticking at 30 Hz with at
+most 2 ms of simulation per ship per tick on one core and within the table's server memory
+allocation per session.
 
-#### Scenario: Instancing is unavailable
-- **WHEN** the GL context offers no instancing extension
-- **THEN** every pass still draws correctly, by batching into shared buffers
+#### Scenario: A full crew in combat
+- **WHEN** eight clients crew the Tern through a fight with four enemy ships for 10 minutes on a 4 GB Pi 5 server
+- **THEN** the measured tick time p99 is at most 2 ms per ship and the server's resident memory stays within its allocation
+
+### Requirement: The renderer needs nothing above OpenGL ES 3.0
+The renderer SHALL use only OpenGL ES 3.0 core features and GLSL ES 3.00 shaders, and SHALL use
+any extension only behind a fallback path that has been measured on a Pi 5.
+
+#### Scenario: No float render targets
+- **WHEN** the GL context offers no float colour-buffer extension
+- **THEN** every pass still draws correctly with 8-bit targets
 
 #### Scenario: The same shaders on a desktop
-- **WHEN** the client runs on desktop OpenGL 2.1
-- **THEN** it compiles the same shader sources with a define prelude and draws the same frame
+- **WHEN** the client runs on desktop OpenGL 3.3 core
+- **THEN** it compiles the same shader sources with a prelude and draws the same frame
 
 ### Requirement: The simulation core is engine-independent
 Every gameplay rule SHALL live in `sc-core`, which SHALL NOT depend on rendering, windowing,
@@ -47,7 +56,7 @@ GPU.
 - **THEN** it calls the same `sc-core` function the server uses to deliver it
 
 ### Requirement: One budget table
-The Pi 3 budget SHALL be defined in exactly one document, and every tool or page that displays
+The Pi 5 budget SHALL be defined in exactly one document, and every tool or page that displays
 or checks a budget number SHALL be checked against that document's machine-readable marker.
 
 #### Scenario: A drifted mockup meter
@@ -69,8 +78,8 @@ allocation, and SHALL NOT allocate on the heap per frame in steady state.
 
 ### Requirement: Every check runs from one script
 `scripts/check.sh` SHALL run formatting, lints with warnings as errors, workspace tests,
-`openspec validate --all`, the dash check, the layout check and the mockup inline check, in
-that order, stopping at the first failure.
+`openspec validate --all`, the dash check, the layout check and the mockup inline check, in that
+order, stopping at the first failure.
 
 #### Scenario: A failing lint
 - **WHEN** clippy reports a warning

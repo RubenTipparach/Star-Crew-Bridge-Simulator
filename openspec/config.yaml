@@ -5,13 +5,14 @@ schema: spec-driven
 # would be a second copy to keep in step.
 context: |
   Read CLAUDE.md at the repository root first. It is the single source for this
-  project's owner direction, the Raspberry Pi 3 floor, architecture boundaries,
+  project's owner direction, the Raspberry Pi 5 floor, architecture boundaries,
   ship and simulation invariants, deck design and verification rules, and it
   takes precedence over any summary. docs/design/vision.md is the game brief.
 
   Star Crew is a networked starship bridge simulator on a custom engine whose
-  floor is a Raspberry Pi 3 (1 GB RAM, OpenGL ES 2.0). Every design states what
-  it spends against the Pi 3 budget table in the engine-stack change. The ship
+  floor is a Raspberry Pi 5 with 1 GB RAM (OpenGL ES 3.0), with a 4 GB Pi 5 as
+  the main server. Every design states what it spends against the Pi 5 budget
+  table in the engine-stack change. The ship
   simulation lives in an engine-independent core that the server runs and the
   client renders. The one layout source for a ship is data/ships/<id>/layout.json.
 

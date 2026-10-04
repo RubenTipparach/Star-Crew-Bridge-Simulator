@@ -3,8 +3,8 @@
 Star Crew is a starship bridge simulator played online with friends. A core crew of four,
 possibly more, runs one ship: they walk a full 3D bridge and the decks behind it, sit at
 stations, route power, keep the air breathable, repair damage, man or automate turrets, load
-missiles and launch fighters. It runs on a **custom engine** whose floor is a **Raspberry Pi 3
-with 1 GB of RAM**, in a low-poly style.
+missiles and launch fighters. It runs on a **custom engine** whose floor is a **Raspberry Pi 5
+with 1 GB of RAM**, with a 4 GB Pi 5 as the main server, in a low-poly style.
 
 These rules are binding. When a rule here conflicts with a general habit, a design doc or a
 tool's default, this file wins. They were adapted from the owner's other projects
@@ -19,7 +19,7 @@ for the same reason.
 Contents:
 
 1. Owner direction (standing instructions)
-2. The Raspberry Pi 3 floor
+2. The Raspberry Pi 5 floor
 3. Spec-driven work: OpenSpec
 4. Write it up before touching code
 5. Writing style
@@ -59,29 +59,38 @@ From the owner's brief, 2026-10-04. Quotes are the owner's words.
   and internal ship aspects from the exterior of the ship."
 - **Low poly.** "I'm all for low poly aesthetics."
 - **The hard requirement.** "I want this to run on pi3 1gb ram! So definitely bsp style level
-  design would be on the table!" (section 2).
+  design would be on the table!", corrected the same day: **"I'm sorry we're running on a pi5
+  1gb-4gb, 4 GB can be used as main server too"** (section 2). The target is a Raspberry Pi 5:
+  1 GB is the client floor, and a 4 GB Pi 5 can be the main server. Brush-built, portal-culled
+  decks stay the approach.
 - **The stack is decided, and the graphics stay modest** (owner, 2026-10-04, on the
-  engine-stack recommendation): "That's fine..this game doesn't need high end graphics. Your stack sounds like a solid plan". The engine is Rust with SDL2 and OpenGL ES 2.0
+  engine-stack recommendation): "That's fine..this game doesn't need high end graphics. Your
+  stack sounds like a solid plan". The engine is Rust with SDL2 and glow on OpenGL ES 3.0
   (`openspec/changes/engine-stack`). Spend effort on the simulation, not on rendering
-  features the Pi 3 cannot carry.
+  features the game does not need.
 - **Documentation and mockups first.** "First we need to do some extreme documentation and
   mockups in 3js." Mockups are three.js pages (section 11).
 
-## 2. The Raspberry Pi 3 floor
+## 2. The Raspberry Pi 5 floor
 
-**Hard requirement.** The game runs on a Raspberry Pi 3 Model B with 1 GB of RAM: four
-Cortex-A53 cores at 1.2 GHz, 1 GB of LPDDR2 shared between the CPU and the GPU, and a
-VideoCore IV GPU that offers **OpenGL ES 2.0 and nothing newer**. A design that only works on a
-desktop is not a design for this game.
+**Hard requirement** (owner, 2026-10-04: "we're running on a pi5 1gb-4gb, 4 GB can be used as
+main server too"). The client runs on a **Raspberry Pi 5 with 1 GB of RAM**: four Cortex-A76
+cores at 2.4 GHz, LPDDR4X shared between the CPU and the GPU, and a VideoCore VII GPU with
+OpenGL ES 3.1 and Vulkan. A **4 GB Pi 5 can be the main server**, running the authoritative
+simulation headless. A design that only works on a desktop is not a design for this game. (The
+first designs were written for a Pi 3 the same morning; anything still saying "Pi 3" is stale.)
 
-- **The renderer's feature floor is GLES 2.0.** No compute shaders, no instancing, no multiple
-  render targets, no float render targets, no 3D textures and no geometry shaders are assumed.
-  An extension is used only behind a fallback that has been measured on the Pi.
-- **Every change states its Pi 3 budget.** A change that adds geometry, draw calls, memory,
+- **Memory is the hard limit, not speed.** On the 1 GB client the OS, the GPU's allocations and
+  the game share 1 GB. Every process has a fixed allocation in the budget table.
+- **The renderer's feature floor is OpenGL ES 3.0** (GLSL ES 3.00): instancing, vertex array
+  objects, 32-bit indices, multiple render targets, uniform buffers and texture arrays are
+  allowed. Compute, geometry and tessellation shaders and float render targets are not assumed.
+  An extension is used only behind a fallback that has been measured on a Pi 5.
+- **Every change states its Pi 5 budget.** A change that adds geometry, draw calls, memory,
   render targets, simulation work or network traffic says what it spends against the budget
-  table in `openspec/changes/engine-stack/design.md` ("The Pi 3 budget"), and the table is the
+  table in `openspec/changes/engine-stack/design.md` ("The Pi 5 budget"), and the table is the
   one source for those numbers. When the table moves into `openspec/specs/`, the rule follows
-  it.
+  it. The budgets are ceilings: low poly is the style.
 - **The budget is provisional until measured on a Pi.** The numbers start as estimates from
   published figures. The first engine step is a probe that measures them on real hardware, and
   the table is corrected from that measurement, never the other way round.
@@ -104,7 +113,7 @@ point (adopted from Pale-Blue-Dot and Undercity):
   certain the plan is.
 - **`openspec/changes/<name>/` is what is designed but not built.** It holds:
   - `proposal.md`: why, and what changes;
-  - `design.md`: how, with the numbers, the formulas and the Pi 3 budget it spends;
+  - `design.md`: how, with the numbers, the formulas and the Pi 5 budget it spends;
   - `tasks.md`: the checklist;
   - spec deltas under `specs/<capability>/spec.md`, using `## ADDED / MODIFIED / REMOVED
     Requirements`, with `### Requirement:` headings, SHALL statements and `#### Scenario:`
@@ -141,7 +150,7 @@ A change argued in a document can be read, disagreed with and redirected for the
 reading it. The same change argued in a diff has already been made.
 
 **One exception: a measurement instrument**, meaning code whose only job is to produce a number
-the write-up needs (the Pi 3 probe, a layout checker that reports volumes).
+the write-up needs (the Pi 5 probe, a layout checker that reports volumes).
 - Say in the write-up what is measured and why before writing it.
 - Keep it to the instrument. Never let "I needed to measure" carry a behaviour change in with it.
 
@@ -322,7 +331,7 @@ becomes.
   committed as PNG sources. Nearest-neighbour sampling, no mipmapped blur on palette swatches.
 - **Meshes are files built by committed generators** (star-crew-64 and Undercity). A generator
   writes the source mesh deterministically; the build bakes it.
-- **Every asset has a triangle budget** in the Pi 3 table, and the build refuses one over
+- **Every asset has a triangle budget** in the Pi 5 table, and the build refuses one over
   budget.
 
 ## 10. UI work
@@ -333,7 +342,7 @@ Adopted from Undercity section 8 and star-crew-64's UI text rules.
   console or layout. Not needed for bug fixes or text fixes within an approved design.
 - **Consoles are full-screen 2D when seated.** A player seated at a station sees the station's
   console UI; the bridge stays visible behind or beside it. Console UI is drawn by the engine's
-  immediate-mode UI, not rendered into textures on the bridge every frame (a Pi 3 cost).
+  immediate-mode UI, not rendered into textures on the bridge every frame.
 - **Panels are a fixed size, and content never changes it.** Text is clipped with an ellipsis;
   unbounded lists scroll inside their panel. Reserve a band for each text element and verify
   the bands don't overlap.
@@ -355,8 +364,8 @@ Adopted from Undercity section 8 and star-crew-64's UI text rules.
   should have lighting at night"). A ship interior is lit by its own lamps, screens and
   strips, and every mockup of an interior shows at least the normal and the red-alert lighting
   states. Space is dark; the sun is one light.
-- **They show their Pi 3 cost.** Each mockup displays its visible triangles and draw calls
-  against the Pi 3 budget, from `renderer.info`. It says plainly that a desktop frame rate is
+- **They show their Pi 5 cost.** Each mockup displays its visible triangles and draw calls
+  against the Pi 5 budget, from `renderer.info`. It says plainly that a desktop frame rate is
   not a Pi measurement.
 - **They present a change.** Each mockup names the OpenSpec change it presents, and its legend
   numbers match the layout's points of interest.

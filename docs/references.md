@@ -26,13 +26,13 @@ be checked against the source before a design depends on it.
 | Source | Cited for |
 | --- | --- |
 | *Quake* (id Software, 1996) | Brush-built levels compiled offline into a BSP tree with a potentially visible set, and collision against brush planes. |
-| *Quake III Arena* and ioquake3 | Lightmapped brush levels; ioquake3 running on the Raspberry Pi's VideoCore IV is the published reference point for our triangle budget (to verify the figures). |
+| *Quake III Arena* and ioquake3 | Lightmapped brush levels, compiled with a light tool: the generation of game the Raspberry Pi 5 runs comfortably, and a reference point for our triangle budget (to verify the figures). |
 | *Descent* (Parallax, 1995) | Levels of connected cube segments rendered through portals, in a six-degrees-of-freedom game. |
 | The Build engine (*Duke Nukem 3D*) | Sectors joined by portals. |
 | *Thief: The Dark Project* | Portal-based rendering, and sound propagating through rooms and doors: the shape for sound in our compartment graph. |
 | *Doom 3* | Areas and portals, with closed doors cutting visibility at runtime: the shape of our portal culling. |
-| Raspberry Pi documentation | The Pi 3's CPU, memory, GPU and display stack (to verify clocks and CMA defaults when writing the probe). |
-| Mesa `vc4` driver documentation | What OpenGL ES 2.0 and OpenGL 2.1 features the Pi 3 driver exposes. |
+| Raspberry Pi documentation | The Pi 5's CPU, memory, GPU, display stack and cooling (to verify clocks, CMA defaults and throttling when writing the probe). |
+| Mesa `v3d` and `v3dv` driver documentation | What OpenGL ES 3.1 and Vulkan features the Pi 5 exposes. |
 
 ## Flight and networking
 

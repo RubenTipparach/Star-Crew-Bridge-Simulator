@@ -1,4 +1,4 @@
-# star-crew-64: what carries over to the PC and Raspberry Pi 3 bridge simulator
+# star-crew-64: what carries over to the PC and Raspberry Pi 5 bridge simulator
 
 An analysis of `RubenTipparach/star-crew-64` at `b9f9c9a` (2026-10-04), the N64 prototype of
 this game (libdragon and tiny3d, C, four players on one console). Paths are relative to that
@@ -170,7 +170,7 @@ in step by hand, mixed unit scales, and dead code.
   tutorial; missions as a roster.
 - Rooms with a per-cell room id for room-scoped systems (now the compartment graph); the
   generator, baked artefact and browser editor workflow; asset budgets that are trivial for a
-  Pi 3.
+  Pi 5.
 - Off-screen threat arrows; projected HP bars.
 
 **Do not carry over:**

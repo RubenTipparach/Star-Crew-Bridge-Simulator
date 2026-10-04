@@ -12,7 +12,8 @@ crew; up to eight can play, and one can play alone. They walk a full 3D ship in 
 sit at stations, and keep a simulated ship alive: power, air, heat, damage, weapons and craft
 are all real systems with real flows, not health bars. Some players launch as fighter pilots.
 
-It runs on a custom engine whose floor is a Raspberry Pi 3 with 1 GB of RAM, so it is low poly,
+It runs on a custom engine whose floor is a Raspberry Pi 5 with 1 GB of RAM (a 4 GB Pi 5 can be
+the main server), so it is low poly,
 vertex lit, brush built and portal culled, in the tradition of Quake and Descent.
 
 ## Pillars
@@ -30,7 +31,7 @@ vertex lit, brush built and portal culled, in the tradition of Quake and Descent
    problem to solve: helm turns the bow so tactical's tubes bear; engineering's power budget
    decides whether shields or turrets win; flight ops cannot launch until the bay is empty of
    air, and the bay cannot empty while someone stands in it unsuited.
-5. **Runs on a Pi 3.** Every design states its cost against the Pi 3 budget.
+5. **Runs on a 1 GB Pi 5.** Every design states its cost against the Pi 5 budget.
 
 ## A session
 
@@ -97,7 +98,7 @@ a lift pad in the hangar.
 
 | Change | What it designs |
 | --- | --- |
-| `engine-stack` | The custom engine: language, platform layer, renderer floor, crate layout, the Pi 3 budget table. |
+| `engine-stack` | The custom engine: language, platform layer, renderer floor, crate layout, the Pi 5 budget table. |
 | `ship-frames` | Decoupling the interior from the exterior: frames, rendering composition, hand-off of craft. |
 | `deck-pipeline` | Brush-style decks compiled to compartments, portals, collision and baked vertex light. |
 | `light-baking` | The static light baker: shadows, emissive surfaces, bounce, vertex lighting or lightmaps, light probes, the three lighting states. |

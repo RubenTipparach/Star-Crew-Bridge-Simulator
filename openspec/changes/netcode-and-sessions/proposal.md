@@ -16,12 +16,13 @@ Three things make this harder than a shooter:
 - **A lot of slowly changing state.** Thirty compartments of air, twenty-five power loads,
   breakers, doors, valves, damage. Most of it changes slowly and must arrive reliably in the
   end; little of it must arrive at once.
-- **A Pi 3 at either end.** A Pi may be a client, a listen server or both, on 2.4 GHz Wi-Fi.
+- **A Pi 5 at either end.** A 1 GB Pi 5 is the client floor, often on Wi-Fi; a 4 GB Pi 5 is
+  the main server (owner, 2026-10-04: "4 GB can be used as main server too").
 
 ## What Changes
 
-- **Client and server.** `sc-server` is the authority; a host can run it inside their client
-  (a listen server) or as a dedicated headless process on any machine, a Pi 3 included. A solo
+- **Client and server.** `sc-server` is the authority. Normally it runs headless as the main
+  server on a 4 GB Pi 5; a host can also run it inside their client (a listen server). A solo
   game is a listen server with one client.
 - **UDP with channels.** An unreliable sequenced channel for snapshots and input, and a
   reliable ordered channel for commands (open this door, set this allocation, claim this seat),
