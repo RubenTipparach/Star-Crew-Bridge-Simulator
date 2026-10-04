@@ -429,7 +429,7 @@ which no engineer would design.
 
 **The rating is fictional, and stated as such**: a radiator rejecting 40 MW at 330 K with emissivity
 0.9 needs about 33,000 m^2 of two-sided panel (`0.9 x 5.67e-8 x 330^4 = 605 W/m^2` a side), against
-a hull of about 5,000 m^2. The game keeps 40 MW so the loop has the right time constants; question
+a hull of about 6,000 m^2 (an 84 x 24 x 13 m box has 6,840 m^2). The game keeps 40 MW so the loop has the right time constants; question
 P4.
 
 **Numerical stability at 10 Hz.** Explicit Euler on each thermal state. The shortest time constant
@@ -497,7 +497,7 @@ priority 3 dropped.
 
 **Scram in combat.** The battery gives its 30 MW limit against 54.8 MW wanted: priority 2 at 68%,
 priority 3 dropped. It reaches the reserve 18 s later. Reset at once (an engineer already at the
-panel): ignition draws 8.8 MW from the reserve, everything else drops for 20 s, including the
+panel): ignition and the pumps draw 8.8 MW from the reserve, everything else drops for 20 s, including the
 computer core (automation stops) and the shields. Running 25 s after the scram; full output 70 s
 after it. From the bridge, add the run to engineering (23 s).
 
