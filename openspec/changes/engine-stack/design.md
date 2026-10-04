@@ -32,6 +32,7 @@ which is why the budget below starts where it does.
 | C++ + SDL2 + bgfx | Yes, with caveats (to verify) | Yes (SDL2) | Ours to design | Manual | Possible | No | Heavier build, little gain |
 | Rust + miniquad | Yes (GLES2 / WebGL1) | No KMS/DRM backend (to verify) | Ours to design | Memory safe | Yes | No | Would need a desktop session on the Pi |
 | Bevy | **No**: wgpu's GL backend needs ES 3.0 | | Engine scene graph | Memory safe | Yes | Yes (Pale-Blue-Dot) | Cannot run |
+| WebGPU (native wgpu, or a browser) | **No**: needs Vulkan (or ES 3.0 for wgpu's GL fallback); the Pi 3 has neither. Vulkan arrives with the Pi 4 (Mesa `v3dv`) | | | | | | Cannot run on the floor; possible from a Pi 4 up |
 | Godot 4 | **No**: Compatibility renderer needs GL 3.3 / ES 3.0 | | Engine scene graph | | | Yes (Undercity) | Cannot run |
 | Godot 3 (GLES2) | Yes, slowly (to verify) | Community ports only | Fights one scene tree | | | Related | Not custom; 1 GB is tight |
 | three.js in Chromium | WebGL 1, slowly | No | Ours | | | Yes (mockups) | Browser takes too much of 1 GB |
