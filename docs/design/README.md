@@ -16,18 +16,18 @@ how it is kept). Keep editing it rather than starting another.
 | --- | --- | --- | --- |
 | [engine-stack](../../openspec/changes/engine-stack/) | The custom engine (Rust, SDL3, glow), the OpenGL ES 3.0 floor, crates, the Pi 5 budget table, the probe | | |
 | [netcode-and-sessions](../../openspec/changes/netcode-and-sessions/) | Authoritative server, snapshots, prediction, seats, sessions | | |
-| [reference-ship-tern](../../openspec/changes/reference-ship-tern/) | The Tern's floor plan, deck by deck | [deck-plan.html](../mockups/deck-plan.html) | |
-| [deck-pipeline](../../openspec/changes/deck-pipeline/) | Brush-built decks, compartments and portals, baked vertex light, portal culling | [deck-plan.html](../mockups/deck-plan.html) | |
+| [reference-ship-tern](../../openspec/changes/reference-ship-tern/) | The Tern's floor plan, deck by deck | [deck-plan.html](../mockups/deck-plan.html) || [3YJXPa...](https://claude.ai/artifact/3YJXPa7vZuNtAB3YyWQSPV) |
+| [deck-pipeline](../../openspec/changes/deck-pipeline/) | Brush-built decks, compartments and portals, baked vertex light, portal culling | [deck-plan.html](../mockups/deck-plan.html) || [3YJXPa...](https://claude.ai/artifact/3YJXPa7vZuNtAB3YyWQSPV) |
 | [light-baking](../../openspec/changes/light-baking/) | The static light baker: shadows, bounce, vertex lighting or lightmaps, probes, lighting states | [lighting.html](../mockups/lighting.html) | |
-| [bridge-stations](../../openspec/changes/bridge-stations/) | The station roster, automation, console UI, the bridge as a room | [bridge.html](../mockups/bridge.html) | |
-| [crew-on-deck](../../openspec/changes/crew-on-deck/) | Walking, ladders, seats, carrying, injury, zero-g | [bridge.html](../mockups/bridge.html) | |
+| [bridge-stations](../../openspec/changes/bridge-stations/) | The station roster, automation, console UI, the bridge as a room | [bridge.html](../mockups/bridge.html) || [LfCtvp...](https://claude.ai/artifact/LfCtvpnbofmcTQ667zcczu) |
+| [crew-on-deck](../../openspec/changes/crew-on-deck/) | Walking, ladders, seats, carrying, injury, zero-g | [bridge.html](../mockups/bridge.html) || [LfCtvp...](https://claude.ai/artifact/LfCtvpnbofmcTQ667zcczu) |
 | [power-grid](../../openspec/changes/power-grid/) | Reactor, buses, breakers, batteries, allocation, heat and coolant | [systems.html](../mockups/systems.html) | |
 | [life-support](../../openspec/changes/life-support/) | Gases, pressure, flow, breaches, bay pump-down | [systems.html](../mockups/systems.html) | |
 | [damage-control](../../openspec/changes/damage-control/) | Hits, fires, repairs, damage control teams | [systems.html](../mockups/systems.html) | |
-| [ship-frames](../../openspec/changes/ship-frames/) | The interior decoupled from the exterior; craft hand-off; pass composition | [exterior.html](../mockups/exterior.html) | |
-| [weapons-and-shields](../../openspec/changes/weapons-and-shields/) | Turrets manned and automated, missiles, six shield faces | [exterior.html](../mockups/exterior.html) | |
-| [shuttle-bay-and-fighters](../../openspec/changes/shuttle-bay-and-fighters/) | Launch bays, launch and recovery, the Swift and the Petrel | [exterior.html](../mockups/exterior.html) | |
-| [flight-and-navigation](../../openspec/changes/flight-and-navigation/) | The flight model, helm controls, in-system travel | [exterior.html](../mockups/exterior.html) | |
+| [ship-frames](../../openspec/changes/ship-frames/) | The interior decoupled from the exterior; craft hand-off; pass composition | [exterior.html](../mockups/exterior.html) || [7gQwxT...](https://claude.ai/artifact/7gQwxTJF8b1ZFiFU17VxTM) |
+| [weapons-and-shields](../../openspec/changes/weapons-and-shields/) | Turrets manned and automated, missiles, six shield faces | [exterior.html](../mockups/exterior.html) || [7gQwxT...](https://claude.ai/artifact/7gQwxTJF8b1ZFiFU17VxTM) |
+| [shuttle-bay-and-fighters](../../openspec/changes/shuttle-bay-and-fighters/) | Launch bays, launch and recovery, the Swift and the Petrel | [exterior.html](../mockups/exterior.html) || [7gQwxT...](https://claude.ai/artifact/7gQwxTJF8b1ZFiFU17VxTM) |
+| [flight-and-navigation](../../openspec/changes/flight-and-navigation/) | The flight model, helm controls, in-system travel | [exterior.html](../mockups/exterior.html) || [7gQwxT...](https://claude.ai/artifact/7gQwxTJF8b1ZFiFU17VxTM) |
 
 ## Data and tools
 

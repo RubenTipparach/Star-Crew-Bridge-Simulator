@@ -432,7 +432,7 @@
     el.style.cssText = [
       "position:fixed", "right:12px", "bottom:12px", "z-index:20", "font:12px/1.35 ui-monospace,Menlo,Consolas,monospace",
       "color:#d8e2ec", "background:rgba(6,9,14,0.82)", "border:1px solid #2b3540", "border-radius:6px", "padding:8px 10px",
-      "min-width:210px", "pointer-events:none",
+      "min-width:210px", "max-width:260px", "pointer-events:none",
     ].join(";");
     document.body.appendChild(el);
     let tris = 0, calls = 0, frames = 0, acc = { t: 0, c: 0 }, last = performance.now(), shown = { t: 0, c: 0, fps: 0 };

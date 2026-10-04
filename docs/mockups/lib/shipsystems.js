@@ -1048,11 +1048,22 @@
       // that point takes points_per_mj dE (1 - d / r). A bulkhead crossed costs bulkhead_mj;
       // the first compartment entered from outside is breached, sized by the energy left.
       const fall = 1 - Math.exp(-PG.march_step_m / PG.decay_m);
+      // Pre-filter: only targets within the largest radius of the whole ray, and only the
+      // compartments whose boxes the ray's bounding box touches, are tested per step.
+      const end = [point[0] + dir[0] * PG.march_max_m, point[1] + dir[1] * PG.march_max_m, point[2] + dir[2] * PG.march_max_m];
+      const rMax = PG.radius_m + PG.radius_per_sqrt_mj * Math.sqrt(E);
+      const near = (q) => segSegDist(point, end, q, q) < rMax;
+      const candLoads = []; for (let li = 0; li < loads.length; li++) if (near(loads[li].center)) candLoads.push(li);
+      const candNodes = PW.nodes.filter((nd) => near(nd.center_m));
+      const candConduits = PW.conduits.filter((k) => { for (let q = 0; q + 1 < k.path_m.length; q++) if (segSegDist(point, end, k.path_m[q], k.path_m[q + 1]) < rMax) return true; return false; });
+      const lo = [0, 1, 2].map((a) => Math.min(point[a], end[a])), hi = [0, 1, 2].map((a) => Math.max(point[a], end[a]));
+      const candComps = []; for (let c = 0; c < N; c++) if (comps[c].boxes.some((b) => b.x[0] <= hi[0] && b.x[1] >= lo[0] && b.y[0] <= hi[1] && b.y[1] >= lo[1] && b.z[0] <= hi[2] && b.z[1] >= lo[2])) candComps.push(c);
+      const compOn = (p) => { for (const c of candComps) for (const b of comps[c].boxes) if (inBox(b, p)) return c; return SPACE; };
       const sysPts = new Float64Array(loads.length), nodePts = {}, condE = {}, roomE = new Float64Array(N), roomLen = new Float64Array(N), roomR = new Float64Array(N);
       let cur = SPACE, entered = false, s = 0;
       for (; s <= PG.march_max_m && E > 0.05; s += PG.march_step_m) {
         const p = [point[0] + dir[0] * s, point[1] + dir[1] * s, point[2] + dir[2] * s];
-        const c = compAt(p);
+        const c = compOn(p);
         if (c !== cur && c !== SPACE) {
           if (entered) E = Math.max(0, E - PG.bulkhead_mj);
           else {
@@ -1068,16 +1079,16 @@
         if (c === SPACE || dE <= 0) continue;
         const r = PG.radius_m + PG.radius_per_sqrt_mj * Math.sqrt(E + dE);
         roomE[c] += dE; roomLen[c] += PG.march_step_m; roomR[c] = Math.max(roomR[c], r);
-        for (let li = 0; li < loads.length; li++) {
+        for (const li of candLoads) {
           const q = loads[li].center, d = Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]);
           if (d < r) sysPts[li] += DM.systems.points_per_mj * dE * (1 - d / r);
         }
-        for (const nd of PW.nodes) {
+        for (const nd of candNodes) {
           if (nd.compartment !== comps[c].id) continue;
           const q = nd.center_m, d = Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]);
           if (d < r) nodePts[nd.id] = (nodePts[nd.id] || 0) + DM.systems.points_per_mj * dE * (1 - d / r);
         }
-        for (const k of PW.conduits) {
+        for (const k of candConduits) {
           if (k.route.indexOf(comps[c].id) < 0) continue;
           let dmin = Infinity;
           for (let q = 0; q + 1 < k.path_m.length; q++) dmin = Math.min(dmin, segSegDist(p, p, k.path_m[q], k.path_m[q + 1]));

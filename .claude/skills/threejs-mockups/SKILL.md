@@ -52,7 +52,10 @@ is how to follow them.
 ## Publish
 
 - Mockups are self-contained after inlining (three.js comes from jsDelivr), so a page publishes
-  as one artifact file. Load the `artifact-design` skill before the first publish, give it an
+  as one artifact file. The publisher adds its own document wrapper, so publish the copy that
+  `python3 tools/mockups/artifact_copy.py docs/mockups/<page>.html <scratchpad dir>` writes
+  (wrapper removed, title first, dark colour scheme kept), from the same scratchpad path every
+  time so the URL stays the same. Load the `artifact-design` skill before the first publish, give it an
   icon, and keep republishing to the same URL.
 - Record each mockup's artifact URL in `docs/design/README.md` beside the change it presents,
   and end the reply with the links (CLAUDE.md section 13).
