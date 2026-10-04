@@ -11,6 +11,7 @@ Where each skill in this directory came from, so a later copy from the source ca
 | `blender-csg-levels` | fps-game-demo `.claude/skills/blender-csg-levels` (with `kit.json`, `references/`, `scripts/`, `templates/`) | `f6cd25c` | 2026-10-04 | An "In Star Crew" note after the front matter; the rest verbatim. |
 | `blender-humanoid-characters` | fps-game-demo `.claude/skills/blender-humanoid-characters` (with `kit.json`, `references/`, `scripts/`, `templates/`) | `f6cd25c` | 2026-10-04 | An "In Star Crew" note after the front matter; the rest verbatim. |
 | `threejs-mockups` | New in Star Crew | | 2026-10-04 | |
+| `light-baking` | New in Star Crew (the `light-baking` change's how-to) | | 2026-10-04 | |
 
 Not copied: Pale-Blue-Dot's `perf-measure`. Its rules (release build, nothing else running, old
 against new in one sitting, report the spread) are in CLAUDE.md section 12; the skill itself

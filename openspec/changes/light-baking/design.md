@@ -124,7 +124,7 @@ invisible approximation. The **alpha** channel, reserved for this change by `dec
 holds ambient occlusion (0 to 1 in 0 to 255); runtime lights and probes use it
 (sections 6 and 7).
 
-### 2. Into what: four ways to store it, on a Pi 5
+### 2. Into what: the options, on a Pi 5
 
 Measured on the Tern's bridge (154 m^2, 6 lamps, 10 emissive surfaces) and engineering (252 m^2 over
 three decks, 16 lamps, 44 emissive surfaces), one bounce, all three states. Vertex memory uses
@@ -314,8 +314,8 @@ shadow map is on `engine-stack`'s "maybe, after the probe" list and is not part 
   does not light the bridge. Recommendation taken (ask only with screenshots); revisit if a scene
   puts a sun in a window.
 - **T-junctions.** Faces split at portal openings meet unsplit faces; where they do, a pixel-wide
-  crack can show (measured: pinholes along a seam on engineering's aft wall in the mockup, which
-  does not weld). `deckc`'s T-junction pass (`deck-pipeline` section 5) runs after the baker's
+  crack can show (seen: pinholes along a seam on engineering's aft wall in the mockup, which does
+  not weld). `deckc`'s T-junction pass (`deck-pipeline` section 5) runs after the baker's
   subdivision, and a vertex it inserts on an edge takes the colour interpolated along that edge,
   so the weld changes no light.
 
@@ -502,7 +502,7 @@ Against `engine-stack`'s table; estimates from the two measured rooms.
 | Budget | Spends | Notes |
 | --- | --- | --- |
 | Visible triangles per frame (200,000) | About 10,000 to 25,000 more in a busy interior view | Subdivision, capped per compartment; counted by `deckc` after the bake, inside `deck-pipeline`'s proposed 80,000 interior pass |
-| Compartment geometry (bridge 30,000; others about 8,000) | Bridge +2,500 (to 8,100 with the kit's 5,630); others up to their cap | The cap rule of section 3 keeps each under its ceiling |
+| Compartment geometry (bridge 30,000; others about 8,000) | Bridge about +2,500 over the kit's 5,630, far under 30,000; others up to their cap | The cap rule of section 3 keeps each under its ceiling |
 | Draw calls (300) | None | The colours ride in the vertex; runtime lights are uniforms |
 | Texture memory (96 MB) | None on the recommended path (about 3.7 MB if lightmaps were adopted everywhere) | |
 | Vertex and index buffers (64 MB) | About 1 MB more for the Tern | 28-byte vertex, shared inside a face |
