@@ -171,7 +171,7 @@ ceilings, not targets: low poly is the style (owner: "this game doesn't need hig
 | Draw calls per frame, all passes | 300 | Instancing is available for repeated props and projectiles. |
 | Texture memory | 96 MB | Palette atlas, font atlas, decals, screens, lightmaps if `light-baking` adopts them, render targets. |
 | Vertex and index buffers | 64 MB | All decks of one ship resident; 32-bit indices allowed. |
-| Viewscreen render target | 1024 x 512, one, at most 30 Hz | About 3 MB with depth. |
+| Viewscreen render target | 1024 x 512, one, at most 30 Hz | 4 MB: 2 MB of colour and 2 MB of 24-bit depth with stencil (corrected from "about 3 MB", which assumed a 16-bit depth; `ship-frames` section 8). |
 | Secondary views | Up to two at 512 x 256, at most 15 Hz | A turret feed, a fighter's camera on a console. |
 | MSAA | 4x where the probe finds it cheap | Tile-based GPUs resolve MSAA on chip. |
 | Average overdraw | 3x | Glass, particles and UI over the scene. |
