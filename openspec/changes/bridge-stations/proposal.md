@@ -71,7 +71,7 @@ None. `openspec/specs/` holds nothing yet.
   orders and condition; an `automation` module; the console previews call `power`, `flight`,
   `weapons`, `shields`, `sensors`, `life_support` and `damage` functions those changes own.
 - **Client (proposed):** the immediate-mode UI module (one font atlas, one streamed vertex
-  buffer, at most 3 draw calls), the console layouts, the look band viewport, the viewscreen
+  buffer, at most 4 draw calls), the console layouts, the look band viewport, the viewscreen
   render target.
 - **Other changes:** `power-grid`, `weapons-and-shields`, `flight-and-navigation`,
   `shuttle-bay-and-fighters`, `life-support`, `damage-control`, `netcode-and-sessions`,
