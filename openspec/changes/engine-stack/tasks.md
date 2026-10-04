@@ -14,7 +14,7 @@ measurement instrument and comes first.
 - [ ] 2.1 Workspace skeleton: `Cargo.toml` with `sc-core`, `sc-net`, `sc-render`, `sc-client`, `sc-server`, `sc-tools`, `sc-probe`; `rustfmt.toml`; workspace lints with warnings as errors.
 - [ ] 2.2 Cross-compilation: a Raspberry Pi OS (64-bit) sysroot with SDL2, libdrm, GBM and EGL; `cross` or `cargo zigbuild` config for `aarch64-unknown-linux-gnu` with `-C target-cpu=cortex-a76`.
 - [ ] 2.3 `sc-render` minimum: SDL2 window and OpenGL ES 3.0 context (KMS/DRM on the Pi), the deck shader and vertex format (design section 7), a frame timer.
-- [ ] 2.4 `sc-probe` scenes 1-6 (design section 11) with a JSON and Markdown report.
+- [ ] 2.4 `sc-probe` scenes 1-6 and 8 (design section 11; scene 8 draws them through both glow and wgpu) with a JSON and Markdown report.
 - [ ] 2.5 Owner runs the probe on a 1 GB Pi 5; report in `docs/benchmarks/<date>-pi5-probe/`.
 - [ ] 2.6 Correct the budget table (design section 5) and its marker from the report, with `docs/mockups/lib/shipkit.js` `PI_BUDGET` in the same commit.
 

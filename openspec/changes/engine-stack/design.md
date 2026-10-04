@@ -59,7 +59,8 @@ renderer: low-poly, vertex-lit decks, portal culling, a space pass and a viewscr
 What Rust costs: longer compile times, and cross-compiling SDL2 needs a Raspberry Pi OS sysroot
 (section 10). A Pi 5 can compile the game itself, slowly; the desktop cross-compile is faster.
 
-**Why glow on OpenGL ES 3.0 rather than wgpu.** Both work on a Pi 5. ES 3.0 is what a low-poly,
+**Why glow on OpenGL ES 3.0 rather than wgpu, for now.** Both work on a Pi 5, and the probe
+compares them on the real board before the renderer is built (section 11, scene 8). ES 3.0 is what a low-poly,
 vertex-lit game needs; it runs full screen from the console through SDL2's KMS/DRM backend with
 nothing else installed; it uses the least memory and driver surface on the 1 GB board; and it is
 WebGL 2, so a browser client stays possible later through `glow`'s web backend. wgpu would bring
@@ -325,6 +326,11 @@ on a 1 GB Pi 5:
    memory left on a 1 GB board.
 7. **Simulation (once `sc-core` exists):** ticks per second of the Tern's systems on one core,
    on the 4 GB server.
+8. **glow against wgpu (question E2):** scenes 1, 2 and 6 drawn twice, once through glow on
+   OpenGL ES 3.0 and once through wgpu on Vulkan, on the same 1 GB Pi 5. Reports frame time,
+   CPU time per draw call, resident memory and GPU allocations, startup time, and whether each
+   runs full screen with no desktop (wgpu needs a Vulkan display surface or a small kiosk
+   compositor; to verify).
 
 It writes a JSON report and a short Markdown summary to `docs/benchmarks/<date>-pi5-probe/`,
 naming the board, its RAM, OS, clocks, cooling, resolution, build and repeats, with the spread
@@ -371,7 +377,7 @@ change); the owner answered it in chat. The others take the recommendation and a
 | # | Question | Options | Recommendation | Status |
 | --- | --- | --- | --- | --- |
 | E1 | The engine's language. | Rust + SDL2 + glow / C11 + raylib | Rust + SDL2 + glow | **Decided 2026-10-04: Rust + SDL2 + glow** (owner: "Your stack sounds like a solid plan") |
-| E2 | The GPU API now that the Pi 5 has Vulkan. glow on ES 3.0 is the smallest and runs with no desktop; wgpu brings WGSL and Metal at the cost of memory and driver surface. | glow on OpenGL ES 3.0 / wgpu | glow on OpenGL ES 3.0, behind `sc-render`'s own interface | Recommendation taken (ask only with screenshots) |
+| E2 | The GPU API now that the Pi 5 has Vulkan 1.3. glow on ES 3.0 is the smallest and runs with no desktop; wgpu brings WGSL (as in Pale-Blue-Dot), Metal on macOS and compute, at some cost in memory and per-call CPU. The owner asked "So webgpu is good?" (2026-10-04). | glow on OpenGL ES 3.0 / wgpu | Decide by measurement: probe scene 8 draws the same scenes both ways on a 1 GB Pi 5. glow stays the default until then, behind `sc-render`'s own interface so the switch touches nothing else | Open until the probe |
 | E3 | Console UI library. On an A76, egui costs about a millisecond or two; ours costs code. | egui / ours | egui with our fixed-panel rules, measured by the probe | Recommendation taken (ask only with screenshots) |
 | E4 | The client's memory floor. | 1 GB / 2 GB | 1 GB | **Decided 2026-10-04 by the owner** ("pi5 1gb-4gb") |
 | E5 | The main server. | 4 GB Pi 5 / any machine | A 4 GB Pi 5 running `sc-server` on Ethernet with the Active Cooler; any desktop also works | **Decided 2026-10-04 by the owner** ("4 GB can be used as main server too") |
