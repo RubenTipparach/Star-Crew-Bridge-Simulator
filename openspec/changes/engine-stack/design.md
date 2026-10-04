@@ -184,6 +184,35 @@ ceilings, not targets: low poly is the style (owner: "this game doesn't need hig
 | Projectiles | 1,024, instanced | One draw call. |
 | Audio voices | 32 | Mixed on SDL's audio thread. |
 
+**What 60 frames a second buys on a Pi 5.** The owner asked (2026-10-04): "What kind of graphics
+stack can we get with pi5 at 60fps?" The published evidence, gathered that day (sources in
+`docs/references.md`, "Raspberry Pi 5 graphics"):
+
+| Evidence | Number | What it tells us |
+| --- | --- | --- |
+| Raspberry Pi's own benchmarking post (Core Electronics' tests) | glmark2 202 against the Pi 4's 97; OpenArena timedemo 27.05 fps against 8.77 (settings not stated) | About 2-3 times a Pi 4. An old Quake III-engine game with its legacy OpenGL path does not reach 60 at those settings. |
+| Phoronix, Mesa drivers | glmark2 about 4.3 times a Pi 4 at 1080p; YQuake2 above 230 fps against under 90 on a Pi 4 | A Quake II-class renderer has several times the 60 fps headroom. |
+| User reports | Xonotic at about 65 fps on an overclocked Pi 5 (settings not stated); SuperTuxKart struggles at 1080p on maximum settings and runs well on low; Godot users call the GPU weak for 3D | Modern-looking 3D with heavy settings does not hold 60; lean settings do. |
+| Khronos and Mesa | OpenGL ES 3.1 and Vulkan 1.3 conformant (`v3d`, `v3dv`, Mesa 24.3 and later) | The API is not the limit; shader cost, fill rate and bandwidth are. |
+
+So, at 60 frames a second the Pi 5 carries a clean late-1990s to early-2000s look done with
+modern batching: Quake II to Quake III fidelity, which is the low-poly, brush-built, baked-light
+style this game already chose. In practice, provisional until the probe:
+
+| Fits at 60 fps | Maybe, after the probe | Out |
+| --- | --- | --- |
+| 3D at 1280 x 720 scaled to 1080p, UI at full 1080p | 3D at native 1080p on simple decks | PBR materials, normal and specular maps |
+| Flat or vertex-coloured low poly with baked light (`light-baking`), three lighting states | A quarter-resolution bloom pass for screens and engine glow | Many dynamic lights with shadows, deferred lighting |
+| A few dynamic point lights per room, lit per vertex (muzzle flash, sparks, alarm beacons) | One low-resolution shadow map for the sun on the exterior | Screen-space ambient occlusion, reflections, volumetrics |
+| MSAA 4x (cheap on a tile-based GPU), fog, emissive strips | Simple per-pixel lighting on the hero ship exterior | A post-processing stack |
+| Stencil-masked windows into space; one 1024 x 512 viewscreen at 30 Hz | A second live view (turret, fighter) at 15 Hz | High-resolution textures |
+| Instanced projectiles and particles, skinned crew of a few thousand triangles, a starfield and a planet with a rim-light shader | | |
+
+**Plan scenes at about half the triangle ceiling for 60 fps** (about 100,000 triangles and 150
+draw calls, as the worked frame below does); the ceiling is what a busy moment may reach without
+dropping below the 30 fps floor. If the probe says the GPU is weaker than this, the first cuts
+are the native 1080p option, then the second live view, then the triangle ceiling.
+
 A worked frame on the bridge, to show the table is coherent: space pass (stars 1 call, planet 1,
 two enemy ships 2, projectiles 1 instanced: about 30,000 triangles), viewscreen target (the same
 scene from another camera at 1024 x 512, 30 Hz: about 30,000 triangles every other frame), deck

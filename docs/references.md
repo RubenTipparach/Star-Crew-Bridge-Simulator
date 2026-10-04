@@ -34,6 +34,21 @@ be checked against the source before a design depends on it.
 | Raspberry Pi documentation | The Pi 5's CPU, memory, GPU, display stack and cooling (to verify clocks, CMA defaults and throttling when writing the probe). |
 | Mesa `v3d` and `v3dv` driver documentation | What OpenGL ES 3.1 and Vulkan features the Pi 5 exposes. |
 
+## Raspberry Pi 5 graphics
+
+Gathered 2026-10-04 for `engine-stack` ("What 60 frames a second buys on a Pi 5"). Numbers as
+the sources state them; settings are often not stated, so they bound expectations and do not
+replace the probe.
+
+| Source | Cited for |
+| --- | --- |
+| [Raspberry Pi, "Benchmarking Raspberry Pi 5"](https://www.raspberrypi.com/news/benchmarking-raspberry-pi-5/) | glmark2 202 against 97 on a Pi 4; OpenArena timedemo 27.05 fps against 8.77 (Core Electronics' tests). |
+| [Phoronix, Raspberry Pi 5 graphics review](https://www.phoronix.com/review/raspberry-pi-5-graphics/2) | glmark2 about 4.3 times a Pi 4 at 1080p; YQuake2 above 230 fps (from search results; the page refused a direct fetch, to verify). |
+| [Mesa 24.3 adds Vulkan 1.3 conformance for V3DV](https://www.linuxtoday.com/blog/mesa-24-3-open-source-graphics-stack-adds-vulkan-1-3-conformance-for-v3dv/) | Vulkan 1.3 on the Pi 5 through Mesa. |
+| [Xonotic forums, Xonotic on Raspberry Pi](https://forums.xonotic.org/showthread.php?tid=7724) | About 65 fps on an overclocked Pi 5 (user report, settings not stated). |
+| [Jeff Geerling, an external GPU on a Raspberry Pi 5](https://www.jeffgeerling.com/blog/2024/use-external-gpu-on-raspberry-pi-5-4k-gaming/) | SuperTuxKart struggles at 1080p on maximum settings on the Pi 5's own GPU. |
+| [Godot forum, Godot performance on Raspberry Pi](https://forum.godotengine.org/t/how-is-the-performance-of-godot-games-on-raspberry-pi-nowaday/112953) | Users find the Pi 5's GPU weak for 3D with a general engine's defaults. |
+
 ## Flight and networking
 
 | Source | Cited for |
