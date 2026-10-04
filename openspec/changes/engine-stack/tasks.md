@@ -5,15 +5,15 @@ measurement instrument and comes first.
 
 ## 1. Decide
 
-- [x] 1.1 Owner answers question E1 (Rust or C); fold the answer into this design. Answered 2026-10-04: Rust + SDL2 + glow.
+- [x] 1.1 Owner answers question E1 (Rust or C); fold the answer into this design. Answered 2026-10-04: Rust + SDL + glow; SDL3 chosen over SDL2 the same day for the Pi 5's atomic KMS/DRM path.
 - [x] 1.2 Re-floor the design on the owner's hardware correction (2026-10-04): a 1 GB Pi 5 client, a 4 GB Pi 5 main server, OpenGL ES 3.0.
 - [x] 1.3 Record E3 as "recommendation taken (ask only with screenshots)", E4 and E5 as decided by the owner, and E2 (glow or wgpu) as open until probe scene 8.
 
 ## 2. Measure the Pi (the probe)
 
 - [ ] 2.1 Workspace skeleton: `Cargo.toml` with `sc-core`, `sc-net`, `sc-render`, `sc-client`, `sc-server`, `sc-tools`, `sc-probe`; `rustfmt.toml`; workspace lints with warnings as errors.
-- [ ] 2.2 Cross-compilation: a Raspberry Pi OS (64-bit) sysroot with SDL2, libdrm, GBM and EGL; `cross` or `cargo zigbuild` config for `aarch64-unknown-linux-gnu` with `-C target-cpu=cortex-a76`.
-- [ ] 2.3 `sc-render` minimum: SDL2 window and OpenGL ES 3.0 context (KMS/DRM on the Pi), the deck shader and vertex format (design section 7), a frame timer.
+- [ ] 2.2 Cross-compilation: a Raspberry Pi OS (64-bit) sysroot with libdrm, GBM, EGL and SDL3's build dependencies (SDL 3.4+ built from source through `sdl3-src`); `cross` or `cargo zigbuild` config for `aarch64-unknown-linux-gnu` with `-C target-cpu=cortex-a76`.
+- [ ] 2.3 `sc-render` minimum: SDL3 window and OpenGL ES 3.0 context (atomic KMS/DRM on the Pi, `SDL_KMSDRM_ATOMIC=1`), the deck shader and vertex format (design section 7), a frame timer.
 - [ ] 2.4 `sc-probe` scenes 1-6 and 8 (design section 11; scene 8 draws them through both glow and wgpu) with a JSON and Markdown report.
 - [ ] 2.5 Owner runs the probe on a 1 GB Pi 5; report in `docs/benchmarks/<date>-pi5-probe/`.
 - [ ] 2.6 Correct the budget table (design section 5) and its marker from the report, with `docs/mockups/lib/shipkit.js` `PI_BUDGET` in the same commit.

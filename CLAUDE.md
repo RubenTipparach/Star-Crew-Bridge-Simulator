@@ -65,7 +65,7 @@ From the owner's brief, 2026-10-04. Quotes are the owner's words.
   decks stay the approach.
 - **The stack is decided, and the graphics stay modest** (owner, 2026-10-04, on the
   engine-stack recommendation): "That's fine..this game doesn't need high end graphics. Your
-  stack sounds like a solid plan". The engine is Rust with SDL2 and glow on OpenGL ES 3.0
+  stack sounds like a solid plan". The engine is Rust with SDL3 and glow on OpenGL ES 3.0
   (`openspec/changes/engine-stack`). Spend effort on the simulation, not on rendering
   features the game does not need.
 - **Documentation and mockups first.** "First we need to do some extreme documentation and

@@ -8,7 +8,8 @@ measures it on a Pi 5 (section 11).
 same day the owner corrected the target: "I'm sorry we're running on a pi5 1gb-4gb, 4 GB can be
 used as main server too". The floor is now a Pi 5 with 1 GB as the client and a 4 GB Pi 5 as
 the main server; the renderer floor rose from OpenGL ES 2.0 to 3.0, and every budget below was
-re-estimated. The stack the owner approved (Rust, SDL2, glow) is unchanged.
+re-estimated. The stack the owner approved (Rust, SDL, glow) is unchanged; the platform layer
+moved from SDL2 to SDL3 because the Pi 5 needs SDL's atomic KMS/DRM path (section 4).
 
 ## 1. The target: Raspberry Pi 5
 
@@ -33,8 +34,8 @@ inside that class, which is why the budget below starts where it does.
 
 | Option | Draws on a Pi 5? | Runs without a desktop? | Decoupled interior and exterior | Safety for network code | Headless, tested core | Owner has used it | Verdict |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| **Rust + SDL2 + glow (OpenGL ES 3.0)** | Yes | Yes (SDL2 KMS/DRM) | Ours to design | Memory safe | `cargo test`, as Pale-Blue-Dot | Rust (Pale-Blue-Dot) | **Decided** |
-| Rust + SDL2 + wgpu (Vulkan) | Yes, through Mesa `v3dv` (to verify) | Needs a Vulkan display surface without a desktop, or a small kiosk compositor (to verify) | Ours to design | Memory safe | Yes | WGSL and wgpu through Bevy | Possible; more driver surface and memory than a low-poly game needs |
+| **Rust + SDL3 + glow (OpenGL ES 3.0)** | Yes | Yes (SDL 3.4 atomic KMS/DRM) | Ours to design | Memory safe | `cargo test`, as Pale-Blue-Dot | Rust (Pale-Blue-Dot) | **Decided** |
+| Rust + SDL3 + wgpu (Vulkan) | Yes, through Mesa `v3dv` (to verify) | Needs a Vulkan display surface without a desktop, or a small kiosk compositor (to verify) | Ours to design | Memory safe | Yes | WGSL and wgpu through Bevy | Possible; more driver surface and memory than a low-poly game needs |
 | C11 + raylib | Yes (raylib's GLES path) | Yes (raylib's DRM platform) | Ours to design | Manual | By discipline | C (star-crew-64) | Runner-up; the owner chose Rust |
 | Bevy | Yes, through wgpu and Vulkan (memory on 1 GB to verify) | As wgpu | One ECS world and one physics world to split | Memory safe | Yes | Yes (Pale-Blue-Dot) | Not chosen: the owner asked for a custom engine for the decoupling, and 1 GB is tight |
 | Godot 4 | Yes, Compatibility renderer on ES 3 (performance to verify) | Community setups | One scene tree | | | Yes (Undercity) | Not chosen, for the same reasons |
@@ -56,19 +57,19 @@ renderer: low-poly, vertex-lit decks, portal culling, a space pass and a viewscr
 - The ship simulation must be tested headless and replayed deterministically; `cargo test` on
   a plain library crate gives that from the first day.
 
-What Rust costs: longer compile times, and cross-compiling SDL2 needs a Raspberry Pi OS sysroot
+What Rust costs: longer compile times, and cross-compiling needs a Raspberry Pi OS sysroot
 (section 10). A Pi 5 can compile the game itself, slowly; the desktop cross-compile is faster.
 
 **Why glow on OpenGL ES 3.0 rather than wgpu, for now.** Both work on a Pi 5, and the probe
 compares them on the real board before the renderer is built (section 11, scene 8). ES 3.0 is what a low-poly,
-vertex-lit game needs; it runs full screen from the console through SDL2's KMS/DRM backend with
+vertex-lit game needs; it runs full screen from the console through SDL3's KMS/DRM backend with
 nothing else installed; it uses the least memory and driver surface on the 1 GB board; and it is
 WebGL 2, so a browser client stays possible later through `glow`'s web backend. wgpu would bring
 WGSL, Metal on macOS and Vulkan, at the cost of a heavier stack. `sc-render` keeps every GL call
 behind its own interface, so the API can change later without touching the simulation
 (question E2).
 
-**Decided (E1):** Rust + SDL2 + glow. The owner, 2026-10-04: "That's fine..this game doesn't need
+**Decided (E1):** Rust + SDL + glow (SDL3 since the same day, section 4). The owner, 2026-10-04: "That's fine..this game doesn't need
 high end graphics. Your stack sounds like a solid plan".
 
 ## 3. Architecture
@@ -92,7 +93,7 @@ high end graphics. Your stack sounds like a solid plan".
    transport, deltas)       core + net + saves)        passes, decks, culling, UI draw)
         ^                                                   ^
         +---------------------- sc-client -----------------+
-                    (SDL2: window, input, audio; prediction,
+                    (SDL3: window, input, audio; prediction,
                      interpolation, console UIs, the frame loop)
 
    sc-probe: a standalone binary that measures the Pi (section 11)
@@ -109,7 +110,7 @@ thread (a listen server); a solo game is exactly that (CLAUDE.md 6.3). The main 
 | `sc-net` | Message types (one schema for both ends), the UDP transport, reliability, delta compression | Contain gameplay rules |
 | `sc-server` | The authoritative loop, sessions and seats, saves | Render, play audio |
 | `sc-render` | GL state, shaders, vertex formats, passes, portal culling, text and panel drawing | Decide gameplay outcomes |
-| `sc-client` | Platform (SDL2), input mapping, prediction, interpolation, console UI logic, audio mixing | Resolve a gameplay outcome itself (it previews by calling `sc-core`) |
+| `sc-client` | Platform (SDL3), input mapping, prediction, interpolation, console UI logic, audio mixing | Resolve a gameplay outcome itself (it previews by calling `sc-core`) |
 | `sc-tools` | `deckc` (decks), `meshc` (meshes), `bake` (light, `light-baking`), validators | Ship in the game build |
 | `sc-probe` | Measuring the Pi | Share code paths with the game it does not need (it links `sc-render`) |
 
@@ -117,7 +118,7 @@ thread (a listen server); a solo game is exactly that (CLAUDE.md 6.3). The main 
 
 | Need | Choice | Why |
 | --- | --- | --- |
-| Window, GL context, input, gamepads, audio out | SDL2 (`sdl2` crate, system library) | KMS/DRM backend on the Pi with no desktop; X11, Wayland, Windows and macOS on desktops; the GameController database for pads. |
+| Window, GL context, input, gamepads, audio out | SDL3, version 3.4 or later (`sdl3` crate, with SDL built from source through `sdl3-src` so the version does not depend on the OS's package) | KMS/DRM backend on the Pi with no desktop (the atomic path, which the Pi 5 needs); X11, Wayland, Windows and macOS on desktops; the gamepad database. |
 | GL bindings | `glow` | Thin and unopinionated; we own every GL call; also targets WebGL 2. |
 | Maths | `glam` (f32 and f64 types) | Small, SIMD on aarch64 NEON, both precisions for the frames rule. |
 | Data | `serde`, `serde_json` with `deny_unknown_fields` | Validated JSON data with units in keys (CLAUDE.md 6.5). |
@@ -128,8 +129,27 @@ thread (a listen server); a solo game is exactly that (CLAUDE.md 6.3). The main 
 | ECS | **None.** Typed arenas with generational ids | Tens of crew and craft, hundreds of projectiles: plain arrays are fast and easy to reason about. |
 | Physics | **Ours.** Capsule against convex brushes in the interior; spheres, capsules and rays outside | Two small, specific problems. A general physics engine would give us a single world we would then have to split. |
 | Renderer | **Ours**, on OpenGL ES 3.0 | Our pass structure (space, viewscreen, decks through portals, glass, UI) is small and specific. |
-| UI | `egui` with `egui_glow`, inside our fixed-panel layout rules | Immediate mode, fast to build consoles with, affordable on an A76; the probe measures it, and our own panel layer is the fallback (question E3). |
+| UI | `egui` with `egui_glow`, inside our fixed-panel layout rules | Immediate mode, fast to build consoles with, affordable on an A76; the probe measures it, and our own panel layer is the fallback (question E3). Feeding SDL3's events into egui is a small adapter of ours unless a maintained crate exists (to verify). |
 | Networking | **Ours**: UDP with reliable and unreliable channels | See `netcode-and-sessions`. |
+
+**Why SDL3, not SDL2** (the owner asked, 2026-10-04: "What framework is best for this gles on
+the pi with rust?"). Of the Rust options, only SDL gives a mature KMS/DRM backend (full screen
+from the console, no desktop) together with input, gamepads, audio and the desktop platforms. On
+a Pi 5 its KMS/DRM backend needs the atomic mode-setting path: SDL's pull request 11511, merged
+2025-10-19 for SDL 3.4.0, restored it, with the note "Main's kmsdrm backend is totally broken on
+a Raspberry Pi 5, but the atomic version in this PR works", and issue 8579 recorded garbage on
+screen from the non-atomic path on a Pi 5. The Rust `sdl3` crate reached 0.20 in September
+2026, and `sdl3-sys` bundles SDL 3.4.10. So the platform layer is SDL 3.4 or later, built from
+source with the game. Sources are in `docs/references.md`, "Rust platform layer".
+
+| Rust option for windowing and the GL context | KMS/DRM, no desktop | Input, pads, audio | Verdict |
+| --- | --- | --- | --- |
+| **SDL3 (`sdl3` crate) + glow** | Yes, atomic in SDL 3.4+ | All three | **Chosen** |
+| SDL2 (`sdl2` crate) + glow | Non-atomic path broken on a Pi 5 in 2023-2025 (issue 8579; whether SDL 2.30 fixed it is to verify) | All three | Superseded |
+| winit + glutin + glow | No (X11 and Wayland only) | Input only; pads and audio separate | Needs a desktop or kiosk compositor on the Pi |
+| miniquad (macroquad) | No backend for it found (to verify) | Basic | Same; and its renderer abstraction would sit between us and GL |
+| `drm` + `gbm` + `khronos-egl` crates + glow | Yes, our own code | None: evdev, a pad library and an audio crate on top | The fallback if SDL's KMS/DRM path fails the probe |
+| Bevy, Fyrox, three-d | Through winit, so no | Yes | Engines; see section 2 |
 
 ## 5. The Pi 5 budget
 
@@ -293,15 +313,15 @@ then glass, then UI, sorted by program within each pass.
 
 | Target | Rust target | Display | Status |
 | --- | --- | --- | --- |
-| Raspberry Pi 5, 1-4 GB, Raspberry Pi OS Lite 64-bit | `aarch64-unknown-linux-gnu` | SDL2 KMS/DRM, full screen, no desktop | The floor |
+| Raspberry Pi 5, 1-4 GB, Raspberry Pi OS Lite 64-bit | `aarch64-unknown-linux-gnu` | SDL3 KMS/DRM (atomic), full screen, no desktop | The floor |
 | Raspberry Pi 5, 4 GB, as the main server | `aarch64-unknown-linux-gnu` | None (headless `sc-server`) | The main server |
-| Linux desktop | `x86_64-unknown-linux-gnu` | SDL2, OpenGL ES 3.0 through EGL | Development and play |
-| Windows | `x86_64-pc-windows-msvc` | SDL2, OpenGL 3.3 core | Play |
-| macOS | `aarch64-apple-darwin` | SDL2, OpenGL 4.1 core (deprecated by Apple, still working) | Best effort |
+| Linux desktop | `x86_64-unknown-linux-gnu` | SDL3, OpenGL ES 3.0 through EGL | Development and play |
+| Windows | `x86_64-pc-windows-msvc` | SDL3, OpenGL 3.3 core | Play |
+| macOS | `aarch64-apple-darwin` | SDL3, OpenGL 4.1 core (deprecated by Apple, still working) | Best effort |
 | Browser | `wasm32-unknown-unknown` | WebGL 2 through `glow` | Later, out of scope here |
 
-- **Cross-compiling for the Pi** uses a Raspberry Pi OS sysroot with SDL2, libdrm, GBM and EGL
-  development files, through `cross` with a custom image or `cargo zigbuild` with the sysroot.
+- **Cross-compiling for the Pi** uses a Raspberry Pi OS sysroot with libdrm, GBM, EGL and the
+  input and audio development files SDL3 builds against, through `cross` with a custom image or `cargo zigbuild` with the sysroot.
   `-C target-cpu=cortex-a76`. A Pi 5 can also build natively.
 - **On the Pi** the client is a systemd service or an autologin launch on the console with
   `SDL_VIDEODRIVER=kmsdrm` and the user in the `video`, `render`, `input` and `audio` groups.
@@ -360,8 +380,9 @@ compose; they do not prove anything about the Pi's speed.
   design's spend so a cut can be made where it hurts least.
 - **The 1 GB board is the tight one.** Memory, not speed, is the Pi 5's limit for us. Every
   change states its memory, and the client refuses to start rather than swap.
-- **SDL2's KMS/DRM path on the Pi 5** is the platform risk. The probe is its first test; a small
-  kiosk Wayland compositor is the fallback.
+- **SDL3's KMS/DRM path on the Pi 5** is the platform risk. The probe is its first test (with
+  `SDL_KMSDRM_ATOMIC` on); the fallbacks are our own `drm`, `gbm` and EGL setup, then a small kiosk
+  Wayland compositor.
 - **Rust cross-compilation needs a sysroot**, a task rather than a research problem.
 - **Our own renderer and physics** are more code than a library, but small, specific and
   measurable.
@@ -376,7 +397,7 @@ change); the owner answered it in chat. The others take the recommendation and a
 
 | # | Question | Options | Recommendation | Status |
 | --- | --- | --- | --- | --- |
-| E1 | The engine's language. | Rust + SDL2 + glow / C11 + raylib | Rust + SDL2 + glow | **Decided 2026-10-04: Rust + SDL2 + glow** (owner: "Your stack sounds like a solid plan") |
+| E1 | The engine's language. | Rust + SDL + glow / C11 + raylib | Rust + SDL + glow | **Decided 2026-10-04: Rust + SDL + glow** (owner: "Your stack sounds like a solid plan"); SDL3 rather than SDL2 for the Pi 5's KMS/DRM, section 4 |
 | E2 | The GPU API now that the Pi 5 has Vulkan 1.3. glow on ES 3.0 is the smallest and runs with no desktop; wgpu brings WGSL (as in Pale-Blue-Dot), Metal on macOS and compute, at some cost in memory and per-call CPU. The owner asked "So webgpu is good?" (2026-10-04). | glow on OpenGL ES 3.0 / wgpu | Decide by measurement: probe scene 8 draws the same scenes both ways on a 1 GB Pi 5. glow stays the default until then, behind `sc-render`'s own interface so the switch touches nothing else | Open until the probe |
 | E3 | Console UI library. On an A76, egui costs about a millisecond or two; ours costs code. | egui / ours | egui with our fixed-panel rules, measured by the probe | Recommendation taken (ask only with screenshots) |
 | E4 | The client's memory floor. | 1 GB / 2 GB | 1 GB | **Decided 2026-10-04 by the owner** ("pi5 1gb-4gb") |

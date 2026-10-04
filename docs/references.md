@@ -49,6 +49,17 @@ replace the probe.
 | [Jeff Geerling, an external GPU on a Raspberry Pi 5](https://www.jeffgeerling.com/blog/2024/use-external-gpu-on-raspberry-pi-5-4k-gaming/) | SuperTuxKart struggles at 1080p on maximum settings on the Pi 5's own GPU. |
 | [Godot forum, Godot performance on Raspberry Pi](https://forum.godotengine.org/t/how-is-the-performance-of-godot-games-on-raspberry-pi-nowaday/112953) | Users find the Pi 5's GPU weak for 3D with a general engine's defaults. |
 
+## Rust platform layer
+
+Gathered 2026-10-04 for `engine-stack` ("Why SDL3, not SDL2").
+
+| Source | Cited for |
+| --- | --- |
+| [SDL pull request 11511, "kmsdrm: Restore atomic support"](https://github.com/libsdl-org/SDL/pull/11511) | Merged 2025-10-19 for SDL 3.4.0; "Main's kmsdrm backend is totally broken on a Raspberry Pi 5, but the atomic version in this PR works". |
+| [SDL issue 8579](https://github.com/libsdl-org/SDL/issues/8579) | Garbage on screen from the non-atomic KMS/DRM path on a Pi 5 with no X11 or Wayland (2023). |
+| [`sdl3` crate](https://crates.io/crates/sdl3), [`sdl3-sys` docs](https://docs.rs/crate/sdl3-sys/latest) | Rust bindings at 0.20 (September 2026); `sdl3-sys` bundles SDL 3.4.10. |
+| [SDL3 environment variables](https://wiki.libsdl.org/SDL3/EnvironmentVariables) | `SDL_KMSDRM_ATOMIC`, `SDL_KMSDRM_DEVICE_INDEX` and the other KMS/DRM hints. |
+
 ## Flight and networking
 
 | Source | Cited for |

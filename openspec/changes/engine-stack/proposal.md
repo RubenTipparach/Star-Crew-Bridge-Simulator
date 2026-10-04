@@ -28,14 +28,14 @@ owner asked for and what the game needs.
 
 **Decided** (owner, 2026-10-04, on this recommendation): "That's fine..this game doesn't need high
 end graphics. Your stack sounds like a solid plan". Survey question E1 is closed: the engine is
-Rust with SDL2 and glow. The design was first floored on a Pi 3 with OpenGL ES 2.0; the move to
+Rust with SDL and glow (SDL3, for the Pi 5's KMS/DRM path). The design was first floored on a Pi 3 with OpenGL ES 2.0; the move to
 the Pi 5 raised the renderer floor to ES 3.0 and re-estimated every budget, and left the approved
 stack as it was.
 
 ## What Changes
 
 - **Language: Rust** (stable, edition 2024), in a Cargo workspace, cross-compiled to the Pi.
-- **Platform layer: SDL2**, for the window and GL context (its KMS/DRM backend runs full screen
+- **Platform layer: SDL3 (3.4 or later)**, for the window and GL context (its atomic KMS/DRM backend runs full screen
   on a Pi with no desktop), keyboard, mouse, gamepads and audio output.
 - **Renderer: our own, on OpenGL ES 3.0** through the thin `glow` bindings, with GLSL ES 3.00
   shaders. The same sources run on desktop OpenGL 3.3 and, later, WebGL 2. Nothing above ES 3.0

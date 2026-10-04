@@ -14,7 +14,7 @@ how it is kept). Keep editing it rather than starting another.
 
 | Change | Designs | Mockup | Published |
 | --- | --- | --- | --- |
-| [engine-stack](../../openspec/changes/engine-stack/) | The custom engine (Rust, SDL2, glow), the OpenGL ES 3.0 floor, crates, the Pi 5 budget table, the probe | | |
+| [engine-stack](../../openspec/changes/engine-stack/) | The custom engine (Rust, SDL3, glow), the OpenGL ES 3.0 floor, crates, the Pi 5 budget table, the probe | | |
 | [netcode-and-sessions](../../openspec/changes/netcode-and-sessions/) | Authoritative server, snapshots, prediction, seats, sessions | | |
 | [reference-ship-tern](../../openspec/changes/reference-ship-tern/) | The Tern's floor plan, deck by deck | [deck-plan.html](../mockups/deck-plan.html) | |
 | [deck-pipeline](../../openspec/changes/deck-pipeline/) | Brush-built decks, compartments and portals, baked vertex light, portal culling | [deck-plan.html](../mockups/deck-plan.html) | |
