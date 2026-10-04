@@ -21,7 +21,7 @@
 
 ## 3. Tests (they read as sentences, one behaviour each)
 
-- [ ] 3.1 `cruise_needs_about_a_fifth_of_the_reactor`: 21.2 MW at 44% throttle (design section 12).
+- [ ] 3.1 `cruise_needs_less_than_half_the_reactor`: 21.2 MW at 44% throttle (design section 12).
 - [ ] 3.2 `combat_runs_the_battery_to_its_reserve_in_about_two_minutes_then_sheds_the_drive`.
 - [ ] 3.3 `a_cut_port_trunk_loses_nothing`: every load keeps its supply through the starboard trunk and the ties.
 - [ ] 3.4 `both_trunks_cut_starve_the_forward_ship_after_the_battery`.

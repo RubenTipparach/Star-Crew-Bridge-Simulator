@@ -72,7 +72,7 @@ Everything that moves air is a link in the one compartment graph (CLAUDE.md 7):
 | Breaches | as made | `damage-control` sizes them | 0.6 |
 
 The duct, the vents and the valves are proposed additions to the graph
-(`atmosphere.json` `graph_additions`); on acceptance they move into `layout.json` (section 16).
+(`atmosphere.json` `graph_additions`); on acceptance they move into `layout.json` (section 19).
 
 ### 3. Doors keep the ship in compartments
 
@@ -395,6 +395,22 @@ load. A breach adds a link to a fixed pool of 64.
 compartment's pressure, oxygen, CO2, temperature and smoke (2 bytes each, 310 bytes) at 1 Hz, and
 5 Hz for compartments changing faster than 1 kPa/s: about 2.5 kbit/s. Every client needs its own
 compartment's values at 5 Hz for its avatar's effects (10 bytes). Door states are events.
+
+### 19. Layout patches proposed
+
+For `reference-ship-tern` to apply to `layout.json` (this change does not edit it), so the one
+compartment graph holds every link that moves air:
+
+1. A duct node, which is not walkable and has no boxes: a new top-level list
+   `"ducts": [ { "id": "duct", "name": "Air duct trunk and plenum", "volume_m3": 40.0, "center_m": [3.0, -0.8, 9.0] } ]`.
+2. One vent portal per compartment, `{ "id": "vent_<compartment>", "kind": "vent", "between": ["<compartment>", "duct"], "area_m2": <0.0006 x volume, 0.02-0.6> }`
+   (the bridge's is 0.277 m^2, each pod's 0.02 m^2, engineering's and the hangar's 0.6 m^2), and
+   `{ "id": "duct_dump", "kind": "dump", "between": ["duct", "space"], "area_m2": 0.5 }`.
+3. The bay vent valves `valve_hangar`, `valve_launch_bay_p`, `valve_launch_bay_s` (kind `valve`,
+   bay to space, 0.1 m^2) and `valve_airlock_eq` (cargo to airlock, 0.02 m^2).
+4. The reserve bottles in `fixtures`:
+   `{ "id": "reserve_bottles", "kind": "rack", "compartment": "cargo", "center_m": [-8.0, -3.5, 8.8], "size_m": [1.4, 3.6], "facing_yaw_deg": -90, "note": "Reserve nitrogen 75,000 mol and oxygen 20,000 mol (life-support)." }`.
+   The bay receiver is part of the existing `hangar_pumps` system ("Bay pumps and reserve tank").
 
 ## Risks / Trade-offs
 

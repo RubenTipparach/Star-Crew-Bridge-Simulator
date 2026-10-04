@@ -15,6 +15,11 @@
  * crate implements the same formulas in Rust when the changes are built, and its tests
  * pin the same table values.
  *
+ * Designed but not implemented here (the designs say so): the magazine's cook-off, door
+ * jams, remote control lost with the computer core, crew positions (crew are per
+ * compartment, and a hit hurts them by the expected share of the room), damage control
+ * teams, and the time-to-pressure and repair-time previews.
+ *
  * Classic script, no DOM: works in a page (window.ShipSystems) and in node (globalThis).
  * Units: SI. Pressure in Pa inside, kPa at the edges. Power in W inside, MW at the edges.
  */
@@ -887,6 +892,17 @@
       }
       derive();
     }
+    /** Hot air damages what is in the room: systems, switchboards and (more slowly) the reactor. */
+    function stepFireDamage() {
+      for (let i = 0; i < N; i++) {
+        const over = T[i] - FI.system_damage_above_k;
+        if (over <= 0) continue;
+        const pts = FI.system_damage_pct_per_s_per_k * over * dt;
+        for (let li = 0; li < loads.length; li++) if (loads[li].compartment === comps[i].id) st.integrity[li] = Math.max(0, st.integrity[li] - pts);
+        for (const nd of PW.nodes) if (nd.compartment === comps[i].id) { const h = st.nodeHealth[nd.id] == null ? 1 : st.nodeHealth[nd.id]; const left = h - pts / 100; st.nodeHealth[nd.id] = left < DM.nodes.destroyed_below ? 0 : left; }
+        if (comps[i].id === L.systems.find((x) => x.id === PW.reactor.system).compartment) st.reactor.integrity = Math.max(0, st.reactor.integrity - pts * FI.reactor_damage_factor);
+      }
+    }
     function ignite(compId, kw) {
       const i = idx[compId], f = st.fire[i];
       if (f.fuel <= 0) return false;
@@ -1236,6 +1252,7 @@
       stepPlant();
       stepPumps();
       stepFire();
+      stepFireDamage();
       stepCrew();
       stepRoomHeat();
       flowSolve();

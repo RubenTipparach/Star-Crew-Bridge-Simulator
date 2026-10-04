@@ -3,7 +3,7 @@
 ## 1. Data and layout
 
 - [ ] 1.1 Accept `data/ships/tern/atmosphere.json` (proposed here) and its schema `starcrew.ship-atmosphere/1`.
-- [ ] 1.2 Move the duct node and the thirty vent portals, the overboard dump, the bay vent valves and the airlock equalizing valve from `graph_additions` into the one compartment graph in `layout.json` (with `reference-ship-tern`), and add the reserve bottles and bay receiver fixtures (design section 2 and the final report's patch).
+- [ ] 1.2 Move the duct node and the thirty vent portals, the overboard dump, the bay vent valves and the airlock equalizing valve from `graph_additions` into the one compartment graph in `layout.json` (with `reference-ship-tern`), and add the reserve bottles fixture (design section 19).
 - [ ] 1.3 A data check: every compartment has a vent; every store and pump names a compartment that exists; crew effect tables are sorted and finite.
 
 ## 2. Core (`sc-core::atmosphere`, `sc-core::plant`, `sc-core::crew_effects`)

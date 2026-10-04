@@ -57,8 +57,7 @@ None.
   readouts on the engineering, flight ops, bay control and damage control consoles.
 - **Data**: `data/ships/tern/atmosphere.json` (proposed here; its `fire` block is `damage-control`'s).
 - **Layout** (`reference-ship-tern`): the duct node and thirty vent portals move into the one
-  compartment graph on acceptance, plus fixtures for the reserve bottles and the bay receiver
-  (design section 16).
+  compartment graph on acceptance, plus a fixture for the reserve bottles (design section 19).
 - **Other changes**:
   - `shuttle-bay-and-fighters`: its assumed times are replaced by computed ones (launch bay
     pump-down 28.6 s to 5 kPa, hangar 208 s, repressurization 15.7 s); proposes launching at the

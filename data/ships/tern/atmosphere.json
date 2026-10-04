@@ -187,6 +187,9 @@
     "autoignition_k": 573.15,
     "decay_time_s": 10.0,
     "out_below_kw": 5.0,
+    "system_damage_above_k": 423.15,
+    "system_damage_pct_per_s_per_k": 0.01,
+    "reactor_damage_factor": 0.2,
     "extinguisher": { "discharge_s": 15.0, "hrr_cut_kw_per_s": 60.0, "locker": "damage_control", "locker_count": 6, "refill_s": 30.0 },
     "suppression": {
       "inert_gas": { "compartments": ["magazine", "switchboard", "computer_core", "shield_room", "life_support"], "design_o2_fraction": 0.125, "time_s": 60.0, "soak_s": 600.0, "store": "reserve_n2" },
