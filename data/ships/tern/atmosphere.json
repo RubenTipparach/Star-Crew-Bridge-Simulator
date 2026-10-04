@@ -1,0 +1,184 @@
+{
+  "schema": "starcrew.ship-atmosphere/1",
+  "status": "PROPOSED by openspec/changes/life-support, with the fire block proposed by openspec/changes/damage-control (2026-10-04). No engine code reads this yet; the systems mockup does. Numbers are tuning proposals, not decisions.",
+  "ship": "tern",
+  "units": {
+    "amount": "mol",
+    "pressure": "kPa unless the key says Pa",
+    "temperature": "K (kelvin)",
+    "volume": "m^3",
+    "area": "m^2",
+    "flow": "m^3/s for volume flow, mol/s for amount flow",
+    "power": "MW, or kW/W where the key says so",
+    "energy": "MJ, or J where the key says so"
+  },
+  "gas": {
+    "gas_constant_j_per_mol_k": 8.314,
+    "cv_j_per_mol_k": 20.79,
+    "cp_j_per_mol_k": 29.10,
+    "gamma": 1.4,
+    "species": ["o2", "n2", "co2", "smoke"],
+    "molar_mass_kg_per_mol": { "o2": 0.032, "n2": 0.028, "co2": 0.044, "smoke": 0.029 }
+  },
+  "standard_air": {
+    "pressure_kpa": 101.3,
+    "temperature_k": 294.15,
+    "mole_fraction": { "o2": 0.209, "n2": 0.7906, "co2": 0.0004, "smoke": 0.0 }
+  },
+  "graph_additions": {
+    "note": "Proposed additions to the one compartment graph. On acceptance they move into layout.json (a duct node and vent portals); until then the atmosphere step reads them from here.",
+    "duct": { "id": "duct", "name": "Air duct trunk and plenum", "volume_m3": 40.0, "center_m": [3.0, -0.8, 9.0] },
+    "vent_area_m2_per_m3": 0.0006,
+    "vent_area_min_m2": 0.02,
+    "vent_area_max_m2": 0.6,
+    "overboard_dump": { "id": "duct_dump", "area_m2": 0.5, "open": false }
+  },
+  "portals": {
+    "discharge_coefficient": { "door": 0.65, "pressure_door": 0.65, "hatch": 0.62, "ladder": 0.62, "hoist": 0.62, "bay_door": 0.7, "window": 0.6, "breach": 0.6, "vent": 0.6, "dump": 0.6, "valve": 0.6 },
+    "default_open": { "door": true, "pressure_door": false, "hatch": true, "ladder": true, "hoist": false, "bay_door": false, "window": false },
+    "move_time_s": { "door": 1.5, "pressure_door": 3.0, "hatch": 1.5, "ladder": 1.5, "hoist": 2.0, "bay_door": 8.0, "window": 0.0, "vent": 2.0, "dump": 2.0 },
+    "auto_close_pressure_doors_below_kpa": 85.0
+  },
+  "flow": {
+    "linear_below_pa": 20.0,
+    "mixing_m3_s_per_m2": 0.08,
+    "mixing_max_fraction": 0.25,
+    "min_pressure_pa": 1.0
+  },
+  "thermal": {
+    "fittings_j_per_k_m3": 4000.0,
+    "hull_u_w_per_m2_k": 0.4,
+    "hull_skin_k": 250.0,
+    "bulkhead_u_w_per_m2_k": 5.0,
+    "adjacency_gap_m": 0.6,
+    "initial_k": 294.15
+  },
+  "ventilation": {
+    "air_changes_per_hour": { "room": 10.0, "corridor": 8.0, "bay": 4.0, "crawlspace": 6.0, "airlock": 4.0, "pod": 20.0 },
+    "air_changes_override": { "engineering": 15.0 },
+    "damper_close_below_kpa": 85.0,
+    "damper_close_smoke_ppm": 2000.0,
+    "duct_low_kpa": 85.0
+  },
+  "plant": {
+    "o2_generator": {
+      "max_mol_s": 1.25,
+      "energy_mj_per_mol": 0.8,
+      "water_kg_per_mol": 0.036,
+      "target_po2_kpa": 21.2,
+      "band_kpa": 1.0
+    },
+    "co2_scrubbers": {
+      "throughput_m3_s": 4.0,
+      "co2_efficiency": 0.8,
+      "smoke_efficiency": 0.9,
+      "max_mol_s": 0.6
+    },
+    "thermal_control": {
+      "supply_setpoint_k": 293.15,
+      "cooling_max_mw": 1.2,
+      "heating_max_mw": 0.6,
+      "pump_mw": 0.15
+    },
+    "makeup": {
+      "target_kpa": 101.3,
+      "start_below_kpa": 100.3,
+      "max_mol_s": 40.0,
+      "stop_if_duct_below_kpa": 60.0
+    }
+  },
+  "stores": [
+    { "id": "reserve_n2", "name": "Reserve nitrogen bottles", "compartment": "cargo", "species": "n2", "mol": 75000.0, "max_mol": 75000.0 },
+    { "id": "reserve_o2", "name": "Reserve oxygen bottles", "compartment": "cargo", "species": "o2", "mol": 20000.0, "max_mol": 20000.0 },
+    { "id": "bay_receiver", "name": "Bay air receiver", "compartment": "hangar", "volume_m3": 60.0, "max_kpa": 3000.0, "temperature_k": 294.15, "initial_kpa": 101.3 }
+  ],
+  "bay_pumps": {
+    "system": "hangar_pumps",
+    "serves": ["hangar", "launch_bay_p", "launch_bay_s"],
+    "displacement_m3_s": 24.0,
+    "efficiency": 0.6,
+    "base_mw": 0.1,
+    "stop_kpa": 5.0,
+    "vent_valve_m2": 0.1,
+    "repress_max_mol_s": 600.0,
+    "interlock_unsuited_crew": true
+  },
+  "airlock": {
+    "compartment": "airlock",
+    "inner": "p_airlock_inner",
+    "outer": "p_airlock_outer",
+    "pump_m3_s": 2.0,
+    "pump_into": "cargo",
+    "efficiency": 0.6,
+    "stop_kpa": 5.0,
+    "equalize_valve_m2": 0.02
+  },
+  "metabolism": {
+    "o2_mol_s_rest": 0.000304,
+    "co2_mol_s_rest": 0.000264,
+    "work_multiplier": 2.5,
+    "heat_w_rest": 100.0,
+    "heat_w_work": 300.0
+  },
+  "crew_effects": {
+    "hypoxia": {
+      "impaired_below_po2_kpa": 16.0,
+      "tuc_table_po2_kpa_s": [[14.6, 0.0], [12.0, 1800.0], [10.6, 1200.0], [8.9, 300.0], [7.9, 180.0], [6.9, 150.0], [6.3, 60.0], [5.0, 30.0], [3.9, 15.0], [3.4, 9.0], [0.0, 9.0]],
+      "recover_per_s": 0.0333,
+      "death_below_po2_kpa": 10.6,
+      "death_after_unconscious_s": 240.0
+    },
+    "hypercapnia": {
+      "impaired_above_pco2_kpa": 3.0,
+      "tuc_table_pco2_kpa_s": [[5.0, 1800.0], [7.0, 300.0], [10.0, 60.0], [15.0, 20.0]],
+      "recover_per_s": 0.0167,
+      "death_above_pco2_kpa": 10.0,
+      "death_after_unconscious_s": 300.0
+    },
+    "smoke": {
+      "incapacitating_ppm_min": 30000.0,
+      "lethal_fed": 2.5,
+      "visibility_k_per_mole_fraction": 2000.0
+    },
+    "heat": {
+      "impaired_above_k": 318.15,
+      "harm_above_k": 333.15,
+      "harm_hp_per_s_per_k": 0.05,
+      "cold_impaired_below_k": 278.15,
+      "cold_harm_below_k": 253.15,
+      "cold_harm_hp_per_s": 0.2
+    },
+    "pressure": {
+      "impaired_below_kpa": 50.0,
+      "armstrong_kpa": 6.3,
+      "vacuum_death_s": 90.0,
+      "knockdown_drop_kpa_in_1s": 50.0,
+      "knockdown_hp": 10.0
+    }
+  },
+  "fire": {
+    "owned_by": "openspec/changes/damage-control",
+    "mj_per_mol_o2": 0.419,
+    "co2_mol_per_mol_o2": 0.67,
+    "smoke_mol_per_mol_o2_ventilated": 0.02,
+    "smoke_mol_per_mol_o2_starved": 0.17,
+    "starved_below_o2_fraction": 0.15,
+    "growth_alpha_kw_per_s2": 0.047,
+    "hrr_max_kw_per_m2": 250.0,
+    "fuel_mj_per_m2_default": 150.0,
+    "fuel_mj_per_m2": { "magazine": 400.0, "cargo": 300.0, "quarters": 250.0, "mess": 250.0, "engineering": 120.0, "hangar": 100.0, "drive": 120.0, "switchboard": 200.0, "computer_core": 200.0 },
+    "extinct_o2_fraction": 0.13,
+    "full_o2_fraction": 0.18,
+    "extinct_kpa": 20.0,
+    "full_kpa": 60.0,
+    "seed_kw": 50.0,
+    "autoignition_k": 573.15,
+    "decay_time_s": 10.0,
+    "out_below_kw": 5.0,
+    "extinguisher": { "discharge_s": 15.0, "hrr_cut_kw_per_s": 120.0, "locker": "damage_control", "locker_count": 6, "refill_s": 30.0 },
+    "suppression": {
+      "inert_gas": { "compartments": ["magazine", "switchboard", "computer_core", "shield_room", "life_support"], "design_o2_fraction": 0.125, "time_s": 60.0, "store": "reserve_n2" },
+      "water_mist": { "compartments": ["engineering", "hangar", "drive"], "hrr_cut_kw_per_s": 300.0, "cooling_mw": 1.0, "duration_s": 60.0, "discharges": 2 }
+    }
+  }
+}

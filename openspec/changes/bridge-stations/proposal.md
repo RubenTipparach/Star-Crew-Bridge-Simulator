@@ -40,13 +40,15 @@ Everything below is **proposed** unless it says it comes from the layout or the 
   holds (netcode-and-sessions).
 - **Command**: the captain's condition (normal, red alert), orders to stations with acknowledge
   and unable, and what red alert changes ship-wide (lighting, automation presets, klaxon).
-- **The console UI framework**: immediate-mode 2D at 1280x720, a title band, a look band that
-  keeps the bridge and viewscreen visible above the console, a 12 by 4 panel grid with fixed
-  panel sizes, a status strip, colour roles, text bands, guarded controls, and a pixel wireframe
-  for every bridge console. Every preview on a console calls the function that resolves it.
+- **The console UI framework**: immediate-mode 2D on a 1280 by 720 logical canvas (drawn at
+  1.5 device pixels per logical pixel on the Pi 5's 1920x1080 output), a title band, a look band
+  that keeps the bridge and viewscreen visible above the console, a 12 by 4 panel grid with
+  fixed panel sizes, a status strip, colour roles, text bands, guarded controls, and a pixel
+  wireframe for every bridge console. Every preview on a console calls the function that
+  resolves it.
 - **The bridge as a room**: its dimensions from the layout, sightlines from every seat to the
   viewscreen, the viewscreen (feeds, who steers it, its 512x256 render target at 15 Hz), the two
-  windows, lamps and strips for normal, red alert and emergency power, sound, and its Pi 3 cost.
+  windows, lamps and strips for normal, red alert and emergency power, sound, and its Pi 5 cost.
 - **A mockup**, `docs/mockups/bridge.html`: the bridge built from the layout with a live
   exterior on the viewscreen and through the windows, three lighting states, walk mode, and every
   bridge console as an HTML overlay matching the wireframes.
@@ -73,8 +75,10 @@ None. `openspec/specs/` holds nothing yet.
   render target.
 - **Other changes:** `power-grid`, `weapons-and-shields`, `flight-and-navigation`,
   `shuttle-bay-and-fighters`, `life-support`, `damage-control`, `netcode-and-sessions`,
-  `ship-frames`, `crew-on-deck`, `deck-pipeline`, `engine-stack` (the Pi 3 budget table). The
+  `ship-frames`, `crew-on-deck`, `deck-pipeline`, `engine-stack` (the Pi 5 budget table). The
   interfaces are listed in design.md.
-- **Pi 3 budget:** the bridge spends at most 7,650 triangles and 5 draw calls of geometry,
-  plus avatars, two exterior passes and the console UI: 31,450 triangles and 48 draw calls in the
-  worst frame (63 % and 40 % of the provisional budget). The breakdown is in design.md.
+- **Pi 5 budget:** the bridge's own geometry is about 18,000 triangles in 3 draw calls (60 % of
+  its 30,000 ceiling). With the command passage seen through the aft door, eight crew avatars,
+  the exterior through the windows, the viewscreen pass and the console UI, the worst frame on
+  the bridge is about 116,000 triangles and 79 draw calls: 58 % and 26 % of the provisional
+  Pi 5 budget. The breakdown is in design.md.
