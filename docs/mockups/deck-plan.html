@@ -160,6 +160,17 @@
       flight_ops: 0x26c6da,
       gunner: 0xff7043,
     },
+    // portal kinds, used by plan views and door markers (one table for the mockups and
+    // tools/deck_plans.py, which parses it from here)
+    portal: {
+      door: 0xd0a040,
+      pressure_door: 0xff8a1c,
+      hatch: 0x9aa4b0,
+      ladder: 0xbfe0ff,
+      hoist: 0xffb347,
+      window: 0x9fd8ff,
+      bay_door: 0xff2a2a,
+    },
     // compartment kinds, used by plan views
     kind: {
       room: 0x5c6b7a,
@@ -544,7 +555,6 @@ const fmt = (v, d = 1) => v.toLocaleString("en-GB", { minimumFractionDigits: d, 
 // Walking assumptions from reference-ship-tern design section 6, for crew-on-deck to confirm (T5).
 const SPEED = { walk_m_s: 1.6, ladder_m_s: 0.8, ladder_on_off_s: 1.0, side_hatch_s: 1.5, pressure_door_s: 2.0, stair_factor: 0.7 };
 // Portal kinds to colour roles: the same mapping tools/deck_plans.py draws the SVG plans with.
-const PORTAL_ROLE = { door: "doorFrame", pressure_door: "emergency", hatch: "trim", ladder: "lampCool", hoist: "screenWarm", window: "glass", bay_door: "alert" };
 const PORTAL_LABEL = { door: "door", pressure_door: "pressure door", hatch: "hatch", ladder: "ladder", hoist: "hoist", window: "window", bay_door: "bay door" };
 const CREW_KINDS = ["door", "pressure_door", "hatch", "ladder"];
 const ROLE_LABEL = { command: "command", helm: "helm", tactical: "tactical", engineering: "engineering", science: "science", comms: "comms", flight_ops: "flight ops", gunner: "gunner" };
@@ -847,7 +857,7 @@ for (const cr of L.craft || []) {
 }
 
 // ------------------------------------------------------------------ build: portal markers by kind
-const portalTris = (p) => flat(P[PORTAL_ROLE[p.kind]]);
+const portalTris = (p) => flat(P.portal[p.kind]);
 for (const p of L.portals) {
   const [x, y, z] = p.center_m, spec = portalTris(p);
   if (p.axis === "y") {
@@ -1311,7 +1321,7 @@ const legend = document.getElementById("legend");
   }
   const k = (col, txt, dot) => `<span><i class="${dot ? "dot" : ""}" style="background:${hex(col)}"></i>${txt}</span>`;
   html += `<h3>Key</h3><div class="key">` +
-    Object.entries(PORTAL_ROLE).map(([kind, role]) => k(P[role], PORTAL_LABEL[kind])).join("") +
+    Object.entries(P.portal).map(([kind, col]) => k(col, PORTAL_LABEL[kind])).join("") +
     k(P.screenWarm, "system") + k(P.hullAccent, "craft") + k(P.lampWarm, "lamp") + k(0x9be7ff, "proposed") +
     `</div><h3>Stations by role</h3><div class="key">` + Object.entries(P.role).map(([r, c]) => k(c, ROLE_LABEL[r] || r, true)).join("") + `</div>`;
   legend.innerHTML = html;
@@ -1326,7 +1336,7 @@ function select(cid) {
   const ports = K.portalsOf(L, c.id).map((p) => {
     const other = p.between.find((s) => s !== c.id), oc = other === "space" ? null : K.compartment(L, other);
     const dims = `${fmt(p.size_m[0])} x ${fmt(p.size_m[1])} m`;
-    return `<div class="li" title="${p.id}"><i style="background:${hex(P[PORTAL_ROLE[p.kind]])}"></i>${PORTAL_LABEL[p.kind]} to ${oc ? oc.poi + " " + oc.name : "space"}, ${dims}</div>`;
+    return `<div class="li" title="${p.id}"><i style="background:${hex(P.portal[p.kind])}"></i>${PORTAL_LABEL[p.kind]} to ${oc ? oc.poi + " " + oc.name : "space"}, ${dims}</div>`;
   }).join("");
   const sts = K.stationsIn(L, c.id).map((s) => `<div class="li"><i style="background:${hex(P.role[s.role])};border-radius:50%"></i>${s.name}${s.core ? " (core)" : ""}</div>`).join("") || `<div class="li dim">None.</div>`;
   const sys = K.systemsIn(L, c.id).map((s) => `<div class="li"><i style="background:${hex(P.screenWarm)}"></i>${s.name}</div>`).join("") || `<div class="li dim">None.</div>`;

@@ -11,6 +11,9 @@
  * Rendering is software (SwiftShader) in a cloud session: the shots show what a
  * mockup looks like, never how fast it runs.
  *
+ * CDN requests (three.js from jsDelivr) are served from tools/mockups/.cache, which is filled on
+ * first use with curl (it honours the session's proxy); a flaky CDN then cannot fail a run.
+ *
  * Usage: node tools/mockups/shoot.mjs [page.html ...] [--out docs/screenshots/mockups]
  *        [--size 1440x900] [--only shotName]
  */
@@ -43,6 +46,21 @@ let browser;
 try { browser = await chromium.launch(launchOpts); }
 catch (_) { browser = await chromium.launch({ ...launchOpts, executablePath: "/opt/pw-browsers/chromium" }); }
 
+const CACHE = path.join(ROOT, "tools", "mockups", ".cache");
+async function serveCdnFromCache(page) {
+  await page.route("https://cdn.jsdelivr.net/npm/**", async (route) => {
+    const url = route.request().url();
+    const rel = url.replace("https://cdn.jsdelivr.net/npm/", "").split("?")[0];
+    const file = path.join(CACHE, rel);
+    if (!fs.existsSync(file)) {
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      try { execSync(`curl -sSfL --retry 4 -o ${JSON.stringify(file)} ${JSON.stringify(url)}`); }
+      catch (_) { return route.continue(); }
+    }
+    const type = file.endsWith(".js") ? "text/javascript" : "application/octet-stream";
+    return route.fulfill({ status: 200, contentType: type, headers: { "access-control-allow-origin": "*" }, body: fs.readFileSync(file) });
+  });
+}
 const frames = (page, n) => page.evaluate((n) => new Promise((r) => { let i = 0; const f = () => (++i >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); }), n);
 let failed = false;
 for (const file of pages) {
@@ -50,6 +68,7 @@ for (const file of pages) {
   // A cloud session reaches the CDN through a TLS-inspecting proxy whose CA Chromium does not carry.
   const page = await browser.newPage({ viewport: { width: W, height: H }, ignoreHTTPSErrors: true });
   const errors = [];
+  await serveCdnFromCache(page);
   page.on("pageerror", (e) => errors.push(String(e)));
   page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
   await page.goto(pathToFileURL(file).href);

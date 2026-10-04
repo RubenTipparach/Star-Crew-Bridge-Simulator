@@ -36,11 +36,7 @@ KEY_H = 118       # symbol key band under the plan
 LEGEND_W = 430    # legend column at the right
 GRID_M = 5        # grid spacing, metres
 
-# Portal kinds to shipkit colour roles. The same mapping is used by docs/mockups/deck-plan.html.
-PORTAL_ROLE = {
-    "door": "doorFrame", "pressure_door": "emergency", "hatch": "trim", "ladder": "lampCool",
-    "hoist": "screenWarm", "window": "glass", "bay_door": "alert",
-}
+# Portal kind colours come from shipkit's PALETTE.portal, the one table the mockups also read.
 ROLE_CODE = {
     "command": "CPT", "helm": "HLM", "tactical": "TAC", "engineering": "ENG", "science": "SCI",
     "comms": "COM", "flight_ops": "FLT", "gunner": "GUN",
@@ -48,15 +44,15 @@ ROLE_CODE = {
 
 
 def palette():
-    """Parse PALETTE out of shipkit.js: named roles plus the role and kind tables, as #rrggbb."""
+    """Parse PALETTE out of shipkit.js: named roles plus the role, portal and kind tables, as #rrggbb."""
     with open(SHIPKIT, encoding="utf-8") as f:
         src = f.read()
     m = re.search(r"const PALETTE = \{(.*?)\n  \};", src, re.S)
     if not m:
         raise SystemExit("deck_plans: no PALETTE in " + SHIPKIT)
     body = m.group(1)
-    out = {"role": {}, "kind": {}}
-    for table in ("role", "kind"):
+    out = {"role": {}, "portal": {}, "kind": {}}
+    for table in ("role", "portal", "kind"):
         t = re.search(table + r":\s*\{(.*?)\}", body, re.S)
         for k, v in re.findall(r"(\w+):\s*0x([0-9a-fA-F]{6})", t.group(1)):
             out[table][k] = "#" + v.lower()
@@ -247,7 +243,7 @@ def draw(L, deck, pal, path):
             continue
         if not any(s in [c["id"] for c in comps] for s in p["between"]):
             continue
-        col = pal[PORTAL_ROLE[p["kind"]]]
+        col = pal["portal"][p["kind"]]
         x, y, z = p["center_m"]
         a, b = p["size_m"]
         if p["axis"] == "x":
@@ -419,10 +415,10 @@ def draw(L, deck, pal, path):
     P.add(f'<rect x="{X}" y="{ky + 8}" width="16" height="12" fill="{pc}" fill-opacity="0.45" stroke="{pc}" stroke-dasharray="4 3"/><text x="{X + 22}" y="{ky + 18}" fill="#c8d2dc" font-size="11">pod above or below, by hatch</text>')
     ky2 = ky + 40
     P.add(f'<text x="{kx}" y="{ky2}" fill="#8a98a8" font-size="11" font-weight="700">PORTALS</text>')
-    for i, (k, role) in enumerate(PORTAL_ROLE.items()):
+    for i, (k, col) in enumerate(pal["portal"].items()):
         X = kx + i * 120
-        P.add(f'<line x1="{X}" y1="{ky2 + 14}" x2="{X + 18}" y2="{ky2 + 14}" stroke="{pal[role]}" stroke-width="5"/><text x="{X + 24}" y="{ky2 + 18}" fill="#c8d2dc" font-size="11">{k.replace("_", " ")}</text>')
-    X = kx + len(PORTAL_ROLE) * 120
+        P.add(f'<line x1="{X}" y1="{ky2 + 14}" x2="{X + 18}" y2="{ky2 + 14}" stroke="{col}" stroke-width="5"/><text x="{X + 24}" y="{ky2 + 18}" fill="#c8d2dc" font-size="11">{k.replace("_", " ")}</text>')
+    X = kx + len(pal["portal"]) * 120
     P.add(f'<polyline points="{X},{ky2 + 18} {X + 9},{ky2 + 8} {X + 18},{ky2 + 18}" fill="none" stroke="{pal["hullAccent"]}" stroke-width="1.6"/><text x="{X + 24}" y="{ky2 + 18}" fill="#c8d2dc" font-size="11">craft</text>')
 
     # Legend column

@@ -1154,10 +1154,12 @@
     function isolate(compId) { const i = idx[compId]; for (const l of links) if ((l.a === i || l.b === i) && l.kind !== "breach") { l.target = 0; l.open = 0; } st.damperForced[compId] = false; }
     function bayPumpdown(bayId) {
       const i = idx[bayId];
+      if (BP.interlock_unsuited_crew && st.crew.some((c) => c.comp === i && !c.suited && !c.dead)) { log("Pump-down of " + comps[i].name + " refused: unsuited crew inside"); return false; }
       for (const l of links) if ((l.a === i || l.b === i) && l.kind !== "breach" && l.kind !== "valve") l.target = 0;
       st.damperForced[bayId] = false;
       Object.assign(st.bay, { target: bayId, mode: "pumpdown", moved_mol: 0, energy_mj: 0, t0: st.t });
       log("Pump-down of " + comps[i].name + " started");
+      return true;
     }
     function bayRepress(bayId) {
       const i = idx[bayId];

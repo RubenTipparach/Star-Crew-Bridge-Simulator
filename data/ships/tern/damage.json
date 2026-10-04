@@ -81,7 +81,26 @@
     "inside_max_m2": 1.0,
     "eva_s_per_m2": 60.0,
     "eva_max_m2": 4.0,
-    "note": "A crew member patches a breach from inside with plates (cabin pressure presses a plate onto the hole), up to inside_max_m2; a larger breach is closed from outside by a suited crew member through the airlock."
+    "group_holes_by_hull_section": true,
+    "note": "A crew member patches a breach from inside with plates (cabin pressure presses a plate onto the hole), up to inside_max_m2; a larger breach is closed from outside by a suited crew member through the airlock. Holes through one hull section into one compartment are patched together: one plate per plate_m2 of their total area."
+  },
+  "doors": {
+    "jam_points": 25.0,
+    "repair_s": 30.0,
+    "note": "A portal within a hit's reach that takes jam_points (as a system would) jams where it is: it neither opens nor closes until a crew member with a kit frees it (repair_s), or a drop door is cranked by hand (shuttle-bay-and-fighters)."
+  },
+  "cook_off": {
+    "compartment": "magazine",
+    "air_above_k": 473.15,
+    "hold_s": 60.0,
+    "hit_mj_within_m": [10.0, 2.0],
+    "warhead_mj": 60.0,
+    "next_check_s": 30.0,
+    "note": "A missile in the racks cooks off when the magazine's air has been above air_above_k for hold_s, or a hit deposits hit_mj_within_m[0] MJ within hit_mj_within_m[1] m of the racks; it is resolved as a hit of warhead_mj from inside at the racks, and the next missile checks again next_check_s later. Not in the mockup's library."
+  },
+  "remote_control": {
+    "needs_computer_ratio": 0.5,
+    "note": "Breakers, dampers, doors and suppression are operated from the bridge and the damage control board only while the computer core has at least this supply ratio; otherwise only at the switchboards, the doors and the system itself."
   },
   "teams": {
     "count": 2,
