@@ -7,7 +7,7 @@ measurement instrument and comes first.
 
 - [x] 1.1 Owner answers question E1 (Rust or C); fold the answer into this design. Answered 2026-10-04: Rust + SDL2 + glow.
 - [x] 1.2 Re-floor the design on the owner's hardware correction (2026-10-04): a 1 GB Pi 5 client, a 4 GB Pi 5 main server, OpenGL ES 3.0.
-- [x] 1.3 Record E2 and E3 as "recommendation taken (ask only with screenshots)"; E4 and E5 as decided by the owner.
+- [x] 1.3 Record E3 as "recommendation taken (ask only with screenshots)", E4 and E5 as decided by the owner, and E2 (glow or wgpu) as open until probe scene 8.
 
 ## 2. Measure the Pi (the probe)
 
