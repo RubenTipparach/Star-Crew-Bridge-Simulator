@@ -11,9 +11,9 @@
  *   - ambient occlusion on a small ambient term;
  *   - zero, one or two diffuse bounces, gathered once on a coarse irradiance
  *     cache (a uniform 0.5 m grid on every surface, many rays per point) and
- *     interpolated to vertices and texels: bounce is smooth, so this is both
- *     quieter and cheaper than gathering at every output sample (after Ward's
- *     irradiance caching);
+ *     interpolated to vertices and texels: bounce is smooth, so this is
+ *     quieter than gathering at every output sample, at about the same cost
+ *     in a big room (after Ward's irradiance caching);
  *   - all three lighting states (normal, red alert, emergency power) from one
  *     set of rays, because light is linear in its sources;
  *   - storage as 8-bit gamma-encoded vertex colours (three sets), or as a

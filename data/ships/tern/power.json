@@ -301,7 +301,9 @@
     "initial_k": 325.0,
     "warn_k": 360.0,
     "pumps": ["coolant_pump_a", "coolant_pump_b"],
-    "flow_per_pump": 0.5
+    "flow_per_pump": 0.5,
+    "design_flow_kg_s": 740.0,
+    "design_flow_note": "40 MW at a 15 K rise in water and glycol (3.6 kJ/kg K); the console shows flow as this times the flow fraction"
   },
   "radiators": {
     "system": "radiators",
