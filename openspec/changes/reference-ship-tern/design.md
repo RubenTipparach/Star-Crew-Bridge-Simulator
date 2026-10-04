@@ -389,7 +389,48 @@ axis), `weapon`, `crew_seat` (the station that mans it).
 **`craft[]`**: `id`, `name`, `class`, `bay` (its compartment), `cradle` (a system), `drop_door`
 (a portal), `center_m`, `length_m`, `span_m`, `height_m`, `seats`.
 
-### 11. The Pi 5 cost of this plan
+### 11. The maps and the mockup
+
+**Deck plans** (`python3 tools/deck_plans.py`, standard library only, rendered and checked by
+eye):
+
+| File | Shows |
+| --- | --- |
+| `docs/design/maps/tern-deck-A.svg` | Deck A: POI 1-6, 18 (the catwalk level, open below) and 27 (dorsal pod above, dashed); 8 seats; systems a-b |
+| `docs/design/maps/tern-deck-B.svg` | Deck B: POI 7-14, 19, 29, 30, the hangar's landing and galleries over the open bay (15) and engineering's mezzanine ring (18); systems a-g |
+| `docs/design/maps/tern-deck-C.svg` | Deck C: POI 15-18, 20-26 and 28 (ventral pod below, dashed); the craft on their cradles; systems a-o |
+
+A badge that cannot sit inside its compartment (a pod, the airlock) sits beside it with a
+leader line; a bay door is drawn as a dashed outline under its craft.
+
+**The 3D mockup**, `docs/mockups/deck-plan.html`: every compartment by `ShipKit.roomShell`
+with its ceiling off, inside an x-ray hull, coloured by kind; numbered POI badges and a legend
+by deck; deck filters, an exploded view, a plan view per deck, an info card per compartment,
+door markers by portal kind, ladders, seats in role colours, systems as nominal blocks (T4),
+craft; normal, red-alert and emergency lighting from lamp fixtures placed by the kit rule; the
+proposed patches T1-T3 as ghosts; and a route tool. Shots, in `docs/screenshots/mockups/`:
+
+| Shot | Shows | Open question |
+| --- | --- | --- |
+| `deck-plan-overview` | The whole interior at once, with the Pi 5 meter | K2 |
+| `deck-plan-exploded` | The three decks pulled apart, ladders as dashed links | |
+| `deck-plan-deck-A-plan` | Deck A from above; the bridge's one door and the proposed scuttle | T3 |
+| `deck-plan-deck-B-plan` | Deck B from above; partitions as single lines; the proposed gallery extension and hangar stairs | K1, T1 |
+| `deck-plan-deck-C-plan` | Deck C from above; pressure doors in orange, bay doors in red, craft | K4 |
+| `deck-plan-route-bridge-to-engineering` | The route tool, helm to the engineering bay console | T2, T5 |
+| `deck-plan-red-alert` | The forward half in red alert | |
+| `deck-plan-engineering-closeup` | Engineering's three levels, the proposed stairs, the info card | K3, T2 |
+
+**The route tool reproduces section 6.** It is a fastest-path search over crew portals (a
+breadth-first search weighted by time) with the assumptions of section 6, on the layout as it
+stands. Measured from the page: quarters to helm 20.2 s (27.2 m), to captain 17.5 s; helm to
+the dorsal pod 20.6 s, to the ventral pod 31.4 s; quarters to the port pod's hatch 16.3 s.
+Helm to the engineering bay console is 34.6 s (52.4 m) by the aft passage, and the page flags
+the 3.5 m drop from the catwalk to the mezzanine with no stair in the layout, costing it as a
+stair at 70 % of walking speed (with the T2 stair along the wall, section 6 gives 35.7 s).
+Helm to engineering's catwalk door is 28.4 s.
+
+### 12. The Pi 5 cost of this plan
 
 The plan spends nothing by itself; `deck-pipeline` measures its geometry: 58,573 triangles and
 91 draw calls for the whole ship at the proposed kit density, every compartment under its

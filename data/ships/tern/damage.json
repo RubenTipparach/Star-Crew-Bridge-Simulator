@@ -18,7 +18,7 @@
   },
   "breach": {
     "m2_per_mj": 0.02,
-    "min_m2": 0.01,
+    "min_m2": 0.002,
     "max_m2": 2.0,
     "note": "A hit whose energy passes the armour opens a breach in the first compartment it enters, sized by the energy left: 1 MJ past the armour makes 0.02 m^2, 50 MJ makes 1 m^2."
   },
@@ -29,13 +29,13 @@
     "bulkhead_mj": 1.5,
     "radius_m": 1.5,
     "radius_per_sqrt_mj": 0.3,
-    "note": "Energy past the armour marches along the hit direction, falling as exp(-s / decay_m) and losing bulkhead_mj at each bulkhead it crosses. In each compartment it crosses, it damages what lies within radius_m + radius_per_sqrt_mj x sqrt(E_deposited) of its path."
+    "note": "Energy past the armour marches along the hit direction in steps of march_step_m. Each step deposits dE = E (1 - exp(-step / decay_m)) at its point; a target within r = radius_m + radius_per_sqrt_mj x sqrt(E) of that point takes points_per_mj x dE x (1 - d / r). Each bulkhead crossed costs bulkhead_mj."
   },
   "systems": {
     "points_per_mj": 10.0,
     "nominal_from_pct": 75.0,
     "disabled_below_pct": 25.0,
-    "note": "Integrity points taken = points_per_mj x E_deposited x (1 - d / r). Capability is 1 at or above nominal_from_pct, integrity / nominal_from_pct between the two thresholds, 0 below disabled_below_pct; 0 integrity is destroyed."
+    "note": "Integrity points taken are summed over the march steps (see propagation). Capability is 1 at or above nominal_from_pct, integrity / nominal_from_pct between the two thresholds, 0 below disabled_below_pct; 0 integrity is destroyed."
   },
   "nodes": {
     "destroyed_below": 0.25,
@@ -54,8 +54,8 @@
   },
   "crew": {
     "hp_per_mj": 15.0,
-    "share": 0.5,
-    "note": "Every crew member in a compartment the hit deposits energy in loses hp_per_mj x E x share hit points (100 is full health)."
+    "share": 0.3,
+    "note": "A crew member near the path loses hp_per_mj x share x the energy deposited near them, with the systems falloff (100 hit points is full health). Without crew positions (the mockup), each crew member in the room takes the room total times the fraction of its floor within r of the path."
   },
   "repair": {
     "kit_pct_per_s": { "player": 1.0, "team_member": 0.6 },

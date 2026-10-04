@@ -319,6 +319,21 @@ it is stored and how it is blended.
   ship's alert level; emergency is the compartment's lighting bus running on the emergency bus
   or batteries. A dark compartment (bus dead) has `dimmer = 0`, leaving only emissive faces
   and dynamic lights.
+- **If `light-baking` stores some light another way.** The vertex keeps its three colour sets
+  (CLAUDE.md 9 makes baked vertex colour the default). Whatever else the baker produces travels
+  in optional chunks of the `.deck` file (section 8), so a deck baked without them loads
+  unchanged: `UV2` and `LMAP` (a second texture coordinate stream and one lightmap atlas per
+  lighting state, only for the compartments `light-baking` lightmaps) and `PROB` (light probes:
+  an ambient cube of six colours per state at each probe point, for crew, craft and props that
+  move). Which compartments use them, the texel size and the probe spacing are `light-baking`'s
+  decisions; their memory comes out of the 96 MB texture budget, and `deckc --report` prints
+  it per compartment.
+- **The mockup draws this way.** `docs/mockups/deck-plan.html` puts every static surface of
+  the Tern through one shader of this shape (three colour sets per vertex, a weight vector and
+  a dimmer per compartment in a uniform array, one draw per deck slice), with lamp fixtures
+  placed by the kit rule (272) and a direct-light stand-in for the bake (no shadows or bounce;
+  `light-baking`'s `lighting.html` shows the real method). Its normal, red-alert and emergency
+  buttons change only the weights, never the geometry.
 
 ### 8. The `.deck` file
 
@@ -360,6 +375,9 @@ chunks).
 | `MOVR` | client | Movers: hinge or slide axis, open offset, open time, the portal or system that drives them | 4 KB |
 | `LGHT` | client | Fixture records for dynamic relighting and the debug view | 17 KB |
 | `TBSP` | client | Glass BSP nodes per compartment that needs one | under 1 KB |
+| `UV2` | client, optional | Lightmap coordinates (2 x `u16`, normalized) for the vertices of lightmapped compartments, a parallel stream so the 28-byte vertex never changes | 0 (none planned) |
+| `LMAP` | client, optional | Lightmap atlases, one per lighting state, if `light-baking` adopts them for a compartment | 0 (none planned) |
+| `PROB` | client, optional | Light probes: position and a six-colour ambient cube per state (`RGBA8`) | about 11 KB at one probe per 16 m^2 of floor (estimate; the spacing is `light-baking`'s) |
 | | | **Total** | **about 2.5 MB** |
 
 The compartment graph itself is built by `sc-core` from the layout; `CMPT` and `PRTL` carry
@@ -537,7 +555,7 @@ Questions go to the owner only with something to look at (CLAUDE.md 13). Rows ma
 | Id | Question and fact | Options | Recommendation | Mockup shot |
 | --- | --- | --- | --- | --- |
 | K1 | How thick are walls between compartments? The layout's air boxes touch (1,667 m^2 of shared wall, counting each side); insetting costs 208 m^3 (2.4 %) and 11 % of each corridor. The launch bays' 3.5 m ceilings drop to 3.0 m under the gallery slab | a. zero-thickness partitions with proud door frames; b. inset half a wall; c. move the boxes apart | a; keep the core's volumes as the layout's boxes | `deck-plan-deck-B-plan` (partitions drawn as single lines) |
-| K2 | The interior pass ceiling per frame | 60,000 / 80,000 / 100,000 triangles (120 draws) | 80,000 and 120 draws: the Tern's crudest bound is 53,184 | `deck-plan-overview` (the meter shows the whole ship at once) |
+| K2 | The interior pass ceiling per frame | 60,000 / 80,000 / 100,000 triangles (120 draws) | 80,000 and 120 draws: the Tern's crudest bound is 53,184 | `deck-plan-overview` (the meter shows the whole ship at once: about 47,800 triangles in 43 draw calls in the mockup, labels included, without the kit's trims, ribs and beams) |
 | K3 | Hero detail authoring | a. Blender places convex detail, props and lights, exported to a detail file; b. TrenchBroom `.map` for detail only; c. generator only | a | `deck-plan-engineering-closeup` |
 | K4 | Do closed pressure doors keep a viewport (0.3 x 0.4 m) that visibility and the crew can see through? | yes / no | yes: flight operations can see into a launch bay before opening it | `deck-plan-deck-C-plan` (pressure doors in amber) |
 | K5 | `deckc` in Rust in `sc-tools`, sharing the format module with the loader, or in Python beside the other tools | Rust / Python | Rust: the writer and the reader share one definition of the file. Recommendation taken (ask only with screenshots) | none |

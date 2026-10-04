@@ -274,7 +274,8 @@
       damperAuto: true,
       damperForced: {},
       pdoorAuto: true,
-      trip: new Float64Array(N), prevRoomP: new Float64Array(N), repress: new Uint8Array(N),
+      batteryBreaker: true,
+      trip: new Float64Array(N), repress: new Uint8Array(N), hold: new Uint8Array(N), fall: new Float64Array(NN), pHist: new Float64Array(NN),
     };
     for (const g of PW.generators) st.genClosed[g.id] = true;
     for (const t of PW.ties) st.tieClosed[t.id] = !!t.closed;
@@ -315,7 +316,7 @@
       const nh = (id) => (st.nodeHealth[id] == null ? 1 : st.nodeHealth[id]);
       const eRx = add("reactor", S, RX, rxAvail, true, "source");
       const eBat = add("battery", S, BAT, 0, true, "source");
-      add("battery_out", BAT, pIdx[B.node], 1e9, true, "battery");
+      add("battery_out", BAT, pIdx[B.node], st.batteryBreaker ? 1e9 : 0, true, "battery");
       for (const g of PW.generators) add(g.id, RX, pIdx[g.node], st.genClosed[g.id] && nh(g.node) > 0 ? g.capacity_mw : 0, true, "generator");
       for (const t of PW.ties) add(t.id, pIdx[t.between[0]], pIdx[t.between[1]], st.tieClosed[t.id] && nh(t.between[0]) > 0 && nh(t.between[1]) > 0 ? t.capacity_mw : 0, false, "tie");
       for (const k of PW.conduits) {
@@ -455,6 +456,19 @@
       return res;
     }
     /** Console preview (preview = resolver): what a load would get at a hypothetical setpoint. */
+    /**
+     * Console preview for a load group (engineering's allocation row): delivered MW of every
+     * load in the group, and the whole ship's totals, if the group's setpoint were sp.
+     */
+    function previewGroup(groupId, sp) {
+      const g = PW.groups.find((x) => x.id === groupId);
+      const s = Float64Array.from(st.setpoint);
+      for (const id of g.loads) s[loadIdx[id]] = sp;
+      const r = solveWithDropout(s);
+      let want = 0, got = 0;
+      for (const id of g.loads) { want += r.want[loadIdx[id]]; got += r.alloc[loadIdx[id]]; }
+      return { want_mw: want, alloc_mw: got, battery_mw: r.batOut, reactor_mw: r.rxOut };
+    }
     function previewSetpoint(loadId, sp) {
       const i = loadIdx[loadId];
       const s = Float64Array.from(st.setpoint); s[i] = sp;
@@ -496,20 +510,24 @@
       if (rx.state === "running" && rx.throttle > 1) rx.integrity = Math.max(0, rx.integrity - (RC.overdrive_wear_pct_per_min_at_max / 60) * dt * ((rx.throttle - 1) / (RC.throttle_max - 1)));
       // Ignition sequence after a reset.
       if (rx.state === "igniting") {
-        const aux = auxRatio();
-        if (aux >= 0.95) rx.ignition += dt;
+        rx.ignition += dt * ignitionRate();
         if (rx.ignition >= RC.restart.ignition_s) { rx.state = "running"; rx.throttle = RC.restart.start_throttle; log("Reactor ignited; throttle ramps from " + (RC.restart.start_throttle * 100).toFixed(0) + "%"); }
       }
     }
-    /** Supply of the reactor auxiliaries against what they need now (a dead switchboard counts as none). */
+    /**
+     * The reactor auxiliaries are two full trains, port and starboard: the reactor keeps running
+     * while either train has its supply. Returns the better train's supply / need (a dead
+     * switchboard counts as none); ignitionRate() is the pace both trains together allow.
+     */
+    function auxNeed(l) { return st.reactor.state === "igniting" ? PW.reactor.restart.ignition_mw / 2 : st.reactor.state === "running" ? l.nominal_mw : l.standby_mw; }
     function auxRatio() {
-      let need = 0, a = 0;
-      for (const id of ["reactor_aux_p", "reactor_aux_s"]) {
-        const i = loadIdx[id], l = loads[i];
-        need += st.reactor.state === "igniting" ? PW.reactor.restart.ignition_mw / 2 : st.reactor.state === "running" ? l.nominal_mw : l.standby_mw;
-        a += st.alloc[i];
-      }
-      return need > 0 ? a / need : 1;
+      let best = 0;
+      for (const id of ["reactor_aux_p", "reactor_aux_s"]) { const i = loadIdx[id]; best = Math.max(best, st.alloc[i] / Math.max(1e-9, auxNeed(loads[i]))); }
+      return Math.min(1, best);
+    }
+    function ignitionRate() {
+      let a = 0; for (const id of ["reactor_aux_p", "reactor_aux_s"]) a += st.alloc[loadIdx[id]];
+      return clamp(a / PW.reactor.restart.ignition_mw, 0, 1);
     }
     const roomHeat = new Float64Array(NN);
     function stepHeat() {
@@ -549,7 +567,9 @@
       const qRxRoom = RH.room_w_per_k * (rx.T - T[eng]);
       rx.T += (dt * (waste - qRxLoop - qRxRoom)) / (RH.capacity_mj_per_k * MWW);
       toLoop += qRxLoop; roomHeat[eng] += qRxRoom;
-      roomHeat[idx[L.systems.find((s) => s.id === PW.battery.system).compartment]] += st.batteryLossW || 0;
+      // Battery losses: liquid-cooled cells reject to the loop (power.json battery.heat_to).
+      if (PW.battery.heat_to === "loop") toLoop += st.batteryLossW || 0;
+      else roomHeat[idx[L.systems.find((s) => s.id === PW.battery.system).compartment]] += st.batteryLossW || 0;
       // Radiators.
       const Tb4 = Math.pow(RD.background_k, 4);
       // Capacity by the fourth-power law; the bypass valve holds the loop near its nominal
@@ -692,6 +712,7 @@
     }
     function fanRatio() {
       const i = loadIdx.air_handler, l = loads[i];
+      if (st.t === 0) return 1; // before the first power solve the fans are taken as running
       if (st.demand[i] <= 0) return 0;
       const r = st.alloc[i] / st.demand[i];
       if (r < l.min_ratio) return 0;
@@ -727,7 +748,10 @@
       // Make-up from the reserve bottles keeps the supply pressure.
       const mk = PL.makeup; derive();
       let mkRate = 0;
-      if (st.makeupOn && P[D] / 1000 < mk.start_below_kpa && P[D] / 1000 > mk.stop_if_duct_below_kpa) {
+      // Make-up stops if the duct itself is falling below stop_if_duct_below_kpa (a leak the
+      // reserves would only feed), except while the board is refilling a sealed compartment.
+      const refilling = st.repress.some((x) => x > 0);
+      if (st.makeupOn && P[D] / 1000 < mk.start_below_kpa && (P[D] / 1000 > mk.stop_if_duct_below_kpa || refilling)) {
         mkRate = mk.max_mol_s * clamp((mk.target_kpa - P[D] / 1000) / 1.0, 0, 1);
         const rn = stores.reserve_n2, ro = stores.reserve_o2;
         const qn = Math.min(mkRate * dt * SA.mole_fraction.n2, rn.mol[N2]), qo = Math.min(mkRate * dt * SA.mole_fraction.o2, ro.mol[O2]);
@@ -784,7 +808,7 @@
         } else if (bay.mode === "repress") {
           const rc = stores.bay_receiver; const nt = storeMol(rc);
           const room = prc - pb;
-          if (room < 1000 || pb / 1000 >= SA.pressure_kpa - 0.5) { bay.mode = "idle"; setLink(ventOf[i], 1); log(bay.target + " repressurized from the receiver"); bay.target = null; }
+          if (room < 1000 || pb / 1000 >= SA.pressure_kpa - 0.5) { bay.mode = "idle"; log(comps[i].name + " repressurized from the receiver to " + (pb / 1000).toFixed(1) + " kPa"); repressurize(bay.target); bay.target = null; }
           else {
             const mol = Math.min(BP_.repress_max_mol_s * dt, nt * 0.5, (room * vol[i]) / (R * T[i]) * 0.5);
             for (let k = 0; k < 4; k++) addGas(i, k, (rc.mol[k] * mol) / nt, rc.def.temperature_k);
@@ -848,7 +872,7 @@
         }
         const max = FI.hrr_max_kw_per_m2 * 1000 * floor[i] * fO2(i) * (f.fuel > 0 ? 1 : 0);
         let cut = 0;
-        if (f.ext > 0) { cut += FI.extinguisher.hrr_cut_kw_per_s * 1000; f.ext -= dt; }
+        if (f.ext > 0) { cut += FI.extinguisher.hrr_cut_kw_per_s * 1000 * (f.extN || 1); f.ext -= dt; }
         if (f.mist > 0) cut += MIST.hrr_cut_kw_per_s * 1000;
         if (cut > 0) f.hrr -= cut * dt;
         else if (f.hrr < max) f.hrr = Math.min(max, f.hrr + dt * 2 * Math.sqrt(alpha * f.hrr));
@@ -874,37 +898,51 @@
     // ======================================================= automation
     function stepAutomation() {
       derive();
-      // Vent dampers. Each trips shut on excess net flow, more than damper_trip_fraction_per_s
-      // of the room's gas a second (a leak, or a fire's expansion; normal heating is a
-      // hundred times less), and
-      // stays shut until its room has held within damper_reset_kpa of the duct, without
-      // falling, for damper_retry_s; it also shuts on low pressure, smoke, or no fan. A forced
-      // state (venting, isolation, repressurizing) overrides; a forced-open repressurization
-      // ends itself once the room is back to the duct's pressure.
+      // Rate of pressure fall of every node since the last sub-step (Pa/s, positive falling).
+      for (let i = 0; i < NN; i++) { st.fall[i] = st.t > 0 ? (st.pHist[i] - P[i]) / dt : 0; st.pHist[i] = P[i]; }
+      // Vent dampers (life-support, "Ventilation"). A damper trips shut on excess net flow
+      // (more than damper_trip_fraction_per_s of its room's gas a second: a leak or a fire's
+      // expansion; ordinary heating is about a hundred times less), unless the flow is a refill
+      // of a rising room. A tripped damper waits until its room has stopped falling for
+      // damper_retry_s, then reopens if the room is near the duct's pressure, or refills it
+      // (repressurize) if the room is above auto_repress_above_kpa; a room below that stays
+      // isolated for the damage control board. Dampers also shut on low pressure, smoke, a
+      // low duct, or no fan. A forced state (venting, isolation) overrides; a refill ends at
+      // the make-up threshold, and is abandoned if the room falls while it runs (still leaking).
       const fan = fanRatio();
       const ductLow = P[DUCT] / 1000 < VE.duct_low_kpa;
       for (let i = 0; i < N; i++) {
-        const v = links[ventOf[i]];
-        const dpk = (P[DUCT] - P[i]) / 1000;
-        const forced = st.damperForced[comps[i].id];
-        if (forced === true && st.repress[i] && P[i] / 1000 > AT.plant.makeup.target_kpa - VE.damper_reset_kpa) { delete st.damperForced[comps[i].id]; st.repress[i] = 0; st.trip[i] = 0; }
-        else if (forced != null) { v.target = forced ? 1 : 0; st.prevRoomP[i] = P[i]; continue; }
-        if (Math.abs(v.flow) > VE.damper_trip_fraction_per_s * ntot[i]) st.trip[i] = VE.damper_retry_s;
-        else if (st.trip[i] > 0) {
-          const falling = st.prevRoomP[i] - P[i] > VE.damper_falling_pa_per_s * dt;
-          st.trip[i] = !falling && Math.abs(dpk) < VE.damper_reset_kpa ? st.trip[i] - dt : VE.damper_retry_s;
+        const v = links[ventOf[i]], id = comps[i].id;
+        if (st.repress[i]) {
+          if (P[i] / 1000 >= AT.plant.makeup.start_below_kpa) { delete st.damperForced[id]; st.repress[i] = 0; st.trip[i] = 0; log(comps[i].name + " back to " + (P[i] / 1000).toFixed(1) + " kPa"); }
+          else if (st.fall[i] > VE.damper_falling_pa_per_s && v.open >= 1) { delete st.damperForced[id]; st.repress[i] = 0; st.trip[i] = VE.damper_retry_s; st.hold[i] = 1; log("Refill of " + comps[i].name + " stopped: it is still leaking"); }
+          else { v.target = 1; continue; }
         }
-        st.prevRoomP[i] = P[i];
+        const forced = st.damperForced[id];
+        if (forced != null) { v.target = forced ? 1 : 0; continue; }
+        const refill = v.flow < 0 && st.fall[i] < 0;
+        if (Math.abs(v.flow) > VE.damper_trip_fraction_per_s * ntot[i] && !refill) st.trip[i] = VE.damper_retry_s;
+        else if (st.trip[i] > 0) {
+          if (st.fall[i] > VE.damper_falling_pa_per_s) st.trip[i] = VE.damper_retry_s;
+          else if ((st.trip[i] -= dt) <= 0) {
+            const dpk = (P[DUCT] - P[i]) / 1000;
+            if (Math.abs(dpk) < VE.damper_reset_kpa) st.trip[i] = 0;
+            else if (P[i] / 1000 > VE.auto_repress_above_kpa && !st.hold[i]) { st.trip[i] = 0; repressurize(id); continue; }
+            else st.trip[i] = dt; // isolated until the board acts
+          }
+        }
         if (!st.damperAuto) continue;
         const ppm = (n[SMOKE][i] / Math.max(1e-9, ntot[i])) * 1e6;
         const shut = fan <= 0 || st.trip[i] > 0 || P[i] / 1000 < VE.damper_close_below_kpa || ppm > VE.damper_close_smoke_ppm || ductLow;
         v.target = shut ? 0 : 1;
       }
-      // Doors between two compartments close themselves when either side falls below the
-      // threshold, unless the damage control board holds them (a door to space is commanded).
+      // Doors between two compartments close themselves on a pressure alarm: either side below
+      // auto_close_below_kpa and falling faster than auto_close_fall_kpa_per_s, unless the
+      // damage control board holds them. Doors to space are commanded, never automatic.
       if (st.pdoorAuto) for (const l of links) {
         if (l.target <= 0 || l.b === SPACE || PK.auto_close_kinds.indexOf(l.kind) < 0 || l.manualHold) continue;
-        if (Math.min(P[l.a], P[l.b]) / 1000 < PK.auto_close_below_kpa && Math.max(P[l.a], P[l.b]) / 1000 >= PK.auto_close_below_kpa) { l.target = 0; log(l.id + " closing itself (pressure alarm)"); }
+        const alarm = (k) => P[k] / 1000 < PK.auto_close_below_kpa && st.fall[k] / 1000 > PK.auto_close_fall_kpa_per_s;
+        if (alarm(l.a) || alarm(l.b)) { l.target = 0; log(l.id + " closing itself (pressure alarm)"); }
       }
       // Water mist: automatic discharge on a fire above 1 MW in a protected room.
       for (const id of FI.suppression.water_mist.compartments) {
@@ -1004,60 +1042,77 @@
       let E = energy_mj - absorb;
       out.hull = { section: key, integrity: hs.integrity, absorbed_mj: absorb };
       if (E <= 0) return out;
-      // March inward.
-      let s = 0, cur = SPACE, enter = null, Ein = E;
-      const segs = [];
+      // March inward in steps of march_step_m. Each step in a compartment deposits the energy
+      // the step takes, dE = E (1 - exp(-step / decay_m)), at its point; a target (a load, a
+      // power node, a conduit segment) within r = radius_m + radius_per_sqrt_mj sqrt(E) of
+      // that point takes points_per_mj dE (1 - d / r). A bulkhead crossed costs bulkhead_mj;
+      // the first compartment entered from outside is breached, sized by the energy left.
+      const fall = 1 - Math.exp(-PG.march_step_m / PG.decay_m);
+      const sysPts = new Float64Array(loads.length), nodePts = {}, condE = {}, roomE = new Float64Array(N), roomLen = new Float64Array(N), roomR = new Float64Array(N);
+      let cur = SPACE, entered = false, s = 0;
       for (; s <= PG.march_max_m && E > 0.05; s += PG.march_step_m) {
         const p = [point[0] + dir[0] * s, point[1] + dir[1] * s, point[2] + dir[2] * s];
         const c = compAt(p);
-        if (c !== cur) {
-          if (cur !== SPACE) segs.push({ comp: cur, a: enter, b: p, e: Ein - E });
-          if (c !== SPACE && segs.length > 0) E = Math.max(0, E - PG.bulkhead_mj);
-          if (c !== SPACE && !out.breach && segs.length === 0) {
+        if (c !== cur && c !== SPACE) {
+          if (entered) E = Math.max(0, E - PG.bulkhead_mj);
+          else {
+            entered = true;
             const area = clamp(BR.m2_per_mj * E, BR.min_m2, BR.max_m2);
             out.breach = { compartment: comps[c].id, area_m2: area };
             breach(comps[c].id, area, p);
           }
-          cur = c; enter = p; Ein = E;
         }
-        E *= Math.exp(-PG.march_step_m / PG.decay_m);
-      }
-      if (cur !== SPACE) segs.push({ comp: cur, a: enter, b: [point[0] + dir[0] * s, point[1] + dir[1] * s, point[2] + dir[2] * s], e: Ein - E });
-      for (const sg of segs) {
-        if (sg.e <= 0.01) continue;
-        const r = PG.radius_m + PG.radius_per_sqrt_mj * Math.sqrt(sg.e);
-        out.compartments.push({ id: comps[sg.comp].id, mj: sg.e, radius_m: r });
+        cur = c;
+        const dE = E * fall;
+        E -= dE;
+        if (c === SPACE || dE <= 0) continue;
+        const r = PG.radius_m + PG.radius_per_sqrt_mj * Math.sqrt(E + dE);
+        roomE[c] += dE; roomLen[c] += PG.march_step_m; roomR[c] = Math.max(roomR[c], r);
         for (let li = 0; li < loads.length; li++) {
-          const d = segSegDist(sg.a, sg.b, loads[li].center, loads[li].center);
-          if (d > r) continue;
-          const pts = DM.systems.points_per_mj * sg.e * (1 - d / r);
-          st.integrity[li] = Math.max(0, st.integrity[li] - pts);
-          out.systems.push({ id: loads[li].id, points: pts, integrity: st.integrity[li] });
+          const q = loads[li].center, d = Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]);
+          if (d < r) sysPts[li] += DM.systems.points_per_mj * dE * (1 - d / r);
         }
         for (const nd of PW.nodes) {
-          if (nd.compartment !== comps[sg.comp].id) continue;
-          const d = segSegDist(sg.a, sg.b, nd.center_m, nd.center_m);
-          if (d > r) continue;
-          const h = st.nodeHealth[nd.id] == null ? 1 : st.nodeHealth[nd.id];
-          const left = Math.max(0, h - (DM.systems.points_per_mj * sg.e * (1 - d / r)) / 100);
-          st.nodeHealth[nd.id] = left < DM.nodes.destroyed_below ? 0 : left;
-          out.nodes = out.nodes || []; out.nodes.push({ id: nd.id, health: st.nodeHealth[nd.id] });
-          if (st.nodeHealth[nd.id] === 0) log(nd.name + " destroyed");
+          if (nd.compartment !== comps[c].id) continue;
+          const q = nd.center_m, d = Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]);
+          if (d < r) nodePts[nd.id] = (nodePts[nd.id] || 0) + DM.systems.points_per_mj * dE * (1 - d / r);
         }
         for (const k of PW.conduits) {
-          if (k.route.indexOf(comps[sg.comp].id) < 0) continue;
+          if (k.route.indexOf(comps[c].id) < 0) continue;
           let dmin = Infinity;
-          for (let q = 0; q + 1 < k.path_m.length; q++) dmin = Math.min(dmin, segSegDist(sg.a, sg.b, k.path_m[q], k.path_m[q + 1]));
-          if (dmin > r) continue;
-          const cs = st.conduit[k.id];
-          if (sg.e >= DM.conduits.sever_mj) { cs.severed = true; out.conduits.push({ id: k.id, severed: true }); log("Conduit " + k.id + " severed in " + comps[sg.comp].name); }
-          else if (sg.e >= DM.conduits.damage_mj) { cs.health = Math.min(cs.health, DM.conduits.damaged_capacity); out.conduits.push({ id: k.id, severed: false, health: cs.health }); }
+          for (let q = 0; q + 1 < k.path_m.length; q++) dmin = Math.min(dmin, segSegDist(p, p, k.path_m[q], k.path_m[q + 1]));
+          if (dmin < r) condE[k.id] = (condE[k.id] || 0) + dE * (1 - dmin / r);
         }
-        const chance = Math.min(DM.fire.chance_max, DM.fire.chance_per_mj * sg.e) * fO2(sg.comp);
-        if (hash32(seed, id, comps[sg.comp].id, "fire") < chance) { ignite(comps[sg.comp].id, FI.seed_kw + DM.fire.seed_kw_per_mj * sg.e); out.fire.push(comps[sg.comp].id); }
-        for (const c of st.crew) {
-          if (c.comp !== sg.comp || c.dead) continue;
-          const hp = DM.crew.hp_per_mj * sg.e * DM.crew.share; c.hp -= hp; out.crew.push({ id: c.id, hp });
+      }
+      for (let li = 0; li < loads.length; li++) if (sysPts[li] > 0.05) {
+        st.integrity[li] = Math.max(0, st.integrity[li] - sysPts[li]);
+        out.systems.push({ id: loads[li].id, points: sysPts[li], integrity: st.integrity[li] });
+      }
+      for (const nd of PW.nodes) if (nodePts[nd.id] > 0.05) {
+        const h = st.nodeHealth[nd.id] == null ? 1 : st.nodeHealth[nd.id];
+        const left = Math.max(0, h - nodePts[nd.id] / 100);
+        st.nodeHealth[nd.id] = left < DM.nodes.destroyed_below ? 0 : left;
+        out.nodes = out.nodes || []; out.nodes.push({ id: nd.id, health: st.nodeHealth[nd.id] });
+        if (st.nodeHealth[nd.id] === 0) log(nd.name + " destroyed");
+      }
+      for (const k of PW.conduits) {
+        const e = condE[k.id]; if (!e) continue;
+        const cs = st.conduit[k.id];
+        if (e >= DM.conduits.sever_mj) { cs.severed = true; out.conduits.push({ id: k.id, severed: true }); log("Conduit " + k.id + " severed"); }
+        else if (e >= DM.conduits.damage_mj) { cs.health = Math.min(cs.health, DM.conduits.damaged_capacity); out.conduits.push({ id: k.id, severed: false, health: cs.health }); }
+      }
+      for (let c = 0; c < N; c++) {
+        const e = roomE[c]; if (e <= 0.01) continue;
+        out.compartments.push({ id: comps[c].id, mj: e, radius_m: roomR[c] });
+        const chance = Math.min(DM.fire.chance_max, DM.fire.chance_per_mj * e) * fO2(c);
+        if (hash32(seed, id, comps[c].id, "fire") < chance) { ignite(comps[c].id, FI.seed_kw + DM.fire.seed_kw_per_mj * e); out.fire.push(comps[c].id); }
+        // Crew: the engine knows where each crew member stands (crew-on-deck) and applies the
+        // same falloff as systems; this mockup has no positions, so every crew member in the
+        // room takes the expected share: the fraction of the floor within r of the path.
+        const cover = Math.min(1, (2 * roomR[c] * roomLen[c]) / Math.max(1, floor[c]));
+        for (const cr of st.crew) {
+          if (cr.comp !== c || cr.dead) continue;
+          const hp = DM.crew.hp_per_mj * e * DM.crew.share * cover; cr.hp -= hp; out.crew.push({ id: cr.id, hp });
         }
       }
       log("Hit " + energy_mj + " MJ at " + key + ": " + out.compartments.map((c) => c.id).join(", "));
@@ -1077,12 +1132,12 @@
     function breach(compId, area, at) {
       breachCount++;
       const l = addLink({ id: "breach_" + breachCount, kind: "breach", a: idx[compId], b: SPACE, area, open: 1, center: at || null });
-      st.breaches.push(l); log("Breach " + area.toFixed(2) + " m^2 in " + comps[idx[compId]].name);
+      st.breaches.push(l); log("Breach " + (area < 0.1 ? area.toFixed(3) : area.toFixed(2)) + " m^2 in " + comps[idx[compId]].name);
       return l;
     }
-    function patch(linkId) { const l = linkById[linkId]; if (l) { l.target = 0; l.open = 0; l.area = 0; } }
+    function patch(linkId) { const l = linkById[linkId]; if (l) { l.target = 0; l.open = 0; l.area = 0; if (l.a >= 0 && l.a < N) st.hold[l.a] = 0; log("Breach " + linkId + " patched"); } }
     /** Refill a compartment from the duct through its vent (the damage control board's command). */
-    function repressurize(compId) { const i = idx[compId]; st.damperForced[compId] = true; st.repress[i] = 1; st.trip[i] = 0; log("Repressurizing " + comps[i].name + " from the duct"); }
+    function repressurize(compId) { const i = idx[compId]; st.damperForced[compId] = true; st.repress[i] = 1; st.trip[i] = 0; st.hold[i] = 0; log("Refilling " + comps[i].name + " from the duct"); }
     function setLink(id, target) { const l = typeof id === "number" ? links[id] : linkById[id]; if (l) l.target = target ? 1 : 0; return l; }
     function closeAllDoors() { for (const l of links) if (["door", "hatch", "ladder", "hoist"].indexOf(l.kind) >= 0) l.target = 0; }
     function isolate(compId) { const i = idx[compId]; for (const l of links) if ((l.a === i || l.b === i) && l.kind !== "breach") { l.target = 0; l.open = 0; } st.damperForced[compId] = false; }
@@ -1115,7 +1170,8 @@
       st.damperForced[compId] = false;
       st.fire[i].inert = IG.time_s + IG.soak_s; log("Inert gas flooding " + comps[i].name); return true;
     }
-    function useExtinguisher(compId) { const f = st.fire[idx[compId]]; f.ext = FI.extinguisher.discharge_s; log("Extinguisher on the fire in " + comps[idx[compId]].name); }
+    /** count crew discharging extinguishers at the same fire together (their cuts add). */
+    function useExtinguisher(compId, count) { const f = st.fire[idx[compId]]; f.ext = FI.extinguisher.discharge_s; f.extN = count || 1; log((count > 1 ? count + " extinguishers" : "Extinguisher") + " on the fire in " + comps[idx[compId]].name); }
     function ventCompartment(compId) {
       // Vent through the duct: shut the room's doors, isolate the duct, open this room's vent and the dump.
       const vi = idx[compId];
@@ -1197,9 +1253,9 @@
 
     return {
       dt, L, PW, AT, DM, st, comps, N, DUCT, idx, vol, floor, extArea, adj, links, linkById, loads, loadIdx, stores, nodes, SPECIES,
-      step, derive, solveGrid, gridSnapshot, computeDemand, solveWithDropout, previewSetpoint, scram, scramReset,
+      step, derive, solveGrid, gridSnapshot, computeDemand, solveWithDropout, previewSetpoint, previewGroup, scram, scramReset,
       resolveHit, hullHalfBeam, breach, patch, setLink, closeAllDoors, isolate, ignite, bayPumpdown, bayRepress,
-      dischargeMist, dischargeInert, useExtinguisher, gravityG, capability, damageState, auxRatio,
+      dischargeMist, dischargeInert, useExtinguisher, gravityG, capability, damageState, auxRatio, ignitionRate,
       operateDoor, setPriority, applyPreset, repressurize, repairSystem, spliceConduit, rebuildNode, fanRatio,
       airlockCycleOut, airlockCycleIn, ventCompartment, stopVent, addCrew, setActivity, compartmentReadout, lighting,
       receiverKpa, storeMol, fillStandard, log,

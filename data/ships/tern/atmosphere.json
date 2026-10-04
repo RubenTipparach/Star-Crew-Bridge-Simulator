@@ -40,6 +40,7 @@
     "move_time_s": { "door": 1.5, "pressure_door": 3.0, "hatch": 1.5, "ladder": 1.5, "hoist": 2.0, "bay_door": 4.0, "window": 0.0, "vent": 2.0, "dump": 2.0, "valve": 1.0 },
     "move_time_override_s": { "p_hangar_pad": 8.0 },
     "auto_close_below_kpa": 85.0,
+    "auto_close_fall_kpa_per_s": 1.0,
     "auto_close_kinds": ["door", "pressure_door", "hatch", "ladder", "hoist"],
     "interlock_max_dp_kpa": 20.0
   },
@@ -63,10 +64,11 @@
     "air_changes_per_hour": { "room": 10.0, "corridor": 8.0, "bay": 4.0, "crawlspace": 6.0, "airlock": 4.0, "pod": 20.0 },
     "air_changes_override": { "engineering": 15.0 },
     "damper_close_below_kpa": 85.0,
-    "damper_trip_fraction_per_s": 0.0005,
-    "damper_reset_kpa": 1.0,
+    "damper_trip_fraction_per_s": 0.0002,
+    "damper_reset_kpa": 3.0,
     "damper_retry_s": 30.0,
     "damper_falling_pa_per_s": 10.0,
+    "auto_repress_above_kpa": 10.0,
     "damper_close_smoke_ppm": 2000.0,
     "duct_low_kpa": 85.0
   },

@@ -61,6 +61,8 @@
     gather_rays: 48,         // cosine-weighted rays per sample, where bounce is gathered per sample (probes)
     cache_gather_rays: 128,  // cosine-weighted rays per irradiance-cache vertex; outputs interpolate the cache
     bounce_from_cache: true, // false: gather bounce at every output sample (noisier, slower; for comparison)
+    cache_filter: 1,         // passes of a 3 x 3 tent filter over each patch's cached bounce (0: none); bounce is smooth
+    emitter_sample_spacing_m: 0.25, // at least one sample per this much of an emitter's longest edge (long strips)
     ao_rays: 24,             // cosine-weighted rays per receiver for ambient occlusion
     ao_radius_m: 0.8,
     ao: true,
@@ -474,7 +476,8 @@
     }));
     const emitters = (def.emitters || []).map((e) => {
       const q = e.quad, c = cross(q.u, q.v), area = len(c), n = norm(c);
-      const ns = Math.max(4, Math.min(16, Math.ceil(area / settings.emitter_sample_area_m2)));
+      const longest = Math.max(len(q.u), len(q.v));
+      const ns = Math.max(4, Math.min(64, Math.max(Math.ceil(area / settings.emitter_sample_area_m2), Math.ceil(longest / settings.emitter_sample_spacing_m))));
       const centre = add(q.o, add(scale(q.u, 0.5), scale(q.v, 0.5)));
       return { id: e.id, o: q.o.slice(), u: q.u.slice(), v: q.v.slice(), n, area, L: e.luminance_cd_m2, exp: e.beam_exponent || 1,
         range: e.range_m, st: stateVec(e.states), ns, centre, halfDiag: 0.5 * len(add(q.u, q.v)) };
@@ -687,11 +690,40 @@
         for (let k = 0; k < second.length; k++) second[k] = src[k] + g[k];
         from = second;
       }
-      if (set.bounce_from_cache) S.field = await gatherPass(from, set.cache_gather_rays, 0x27d4eb2f);
+      if (set.bounce_from_cache) {
+        S.field = await gatherPass(from, set.cache_gather_rays, 0x27d4eb2f);
+        for (let k = 0; k < set.cache_filter; k++) filterField(C, S.field);
+      }
       S.source = from;
     }
     S.prepareMs = performance.now() - t0;
     return S;
+  }
+
+  /**
+   * One pass of a 3 x 3 tent filter (weights 1 2 1) over each quad patch's
+   * cache grid, never across patches, so bounce does not leak round a corner.
+   * A few bright pools seen by a few gather rays make a splotchy field (the
+   * classic irradiance-cache artefact); this trades it for softness that
+   * bounce light has anyway.
+   */
+  function filterField(C, F) {
+    for (const g of C.grids || []) {
+      if (!g) continue;
+      const W = g.nu + 1, H = g.nv + 1, src = F.slice(g.base * 9, (g.base + W * H) * 9);
+      for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+        const acc = new Float64Array(9); let wsum = 0;
+        for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+          const x = i + di, y = j + dj;
+          if (x < 0 || y < 0 || x >= W || y >= H) continue;
+          const w = (2 - Math.abs(di)) * (2 - Math.abs(dj)), o = (y * W + x) * 9;
+          for (let k = 0; k < 9; k++) acc[k] += w * src[o + k];
+          wsum += w;
+        }
+        const o = (g.base + j * W + i) * 9;
+        for (let k = 0; k < 9; k++) F[o + k] = acc[k] / wsum;
+      }
+    }
   }
 
   /**

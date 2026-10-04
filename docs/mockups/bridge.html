@@ -988,7 +988,7 @@ function placeWalkCamera() {
 }
 const R = 0.30; // crew collider radius, crew-on-deck
 function walkStep(dt) {
-  const k = walk.keys, sp = (k.ShiftLeft || k.ShiftRight ? 3.6 : 1.8) * dt;
+  const k = walk.keys, sp = (k.ShiftLeft || k.ShiftRight ? 4.0 : 1.8) * dt; // crew-on-deck: walk 1.8 m/s, run 4.0 m/s
   const f = new THREE.Vector3(-Math.sin(walk.yaw), 0, -Math.cos(walk.yaw)), r = new THREE.Vector3(-f.z, 0, f.x);
   const d = new THREE.Vector3();
   if (k.KeyW) d.add(f); if (k.KeyS) d.sub(f); if (k.KeyD) d.add(r); if (k.KeyA) d.sub(r);
@@ -1055,7 +1055,8 @@ function contactsSvg(cx, cy, pxPerKm, sel, opts) {
   return marks + groups.map((g) => `<text x="${anchorEnd(g) ? g.x - 8 : g.x + 7}" y="${g.y + 4}" fill="${g.col}" font-size="10" text-anchor="${anchorEnd(g) ? "end" : "start"}">${g.ids.join(", ")}</text>`).join("");
 }
 const shipGlyph = (x, y, s) => `<path d="M${x} ${y - 9 * s} L${x + 5 * s} ${y + 7 * s} L${x} ${y + 4 * s} L${x - 5 * s} ${y + 7 * s} Z" fill="#e8eef5"/>`;
-function rings(cx, cy, rs, labels) { return rs.map((r, i) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#2b3540"/>` + (labels && labels[i] ? `<text x="${cx + 3}" y="${cy - r - 2}" fill="#5d6b7a" font-size="9">${labels[i]}</text>` : "")).join(""); }
+/** Range rings; labels sit at bearing 135 deg, clear of the bow where contacts gather. */
+function rings(cx, cy, rs, labels) { return rs.map((r, i) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#2b3540"/>` + (labels && labels[i] ? `<text x="${(cx + r * 0.707 + 3).toFixed(1)}" y="${(cy + r * 0.707 + 9).toFixed(1)}" fill="#5d6b7a" font-size="9">${labels[i]}</text>` : "")).join(""); }
 
 const FACES = ["Bow", "Stern", "Port", "Stbd", "Dorsal", "Ventral"];
 const FACE_SHARE = [30, 10, 15, 25, 10, 10];          // % of capacity (tactical preset BOW, science leaned starboard)
@@ -1083,12 +1084,12 @@ function tapeMarks(hdg) {
   }
   const raw = ((ORDERED_HDG - hdg + 540) % 360) - 180, o = Math.max(-56, Math.min(56, raw)), ox = 198 + o * 3.33, right = ox > 260;
   const txt = `${raw < -56 ? "< " : ""}ORDERED ${String(ORDERED_HDG).padStart(3, "0")}${raw > 56 ? " >" : ""}`;
-  return s + `<path d="M${ox.toFixed(1)} 54 l5 -8 h-10 z" fill="#ffb300"/><text x="${(right ? ox - 8 : ox + 7).toFixed(1)}" y="54" fill="#ffb300" font-size="9" text-anchor="${right ? "end" : "start"}">${txt}</text>`;
+  return s + `<path d="M${ox.toFixed(1)} 54 l5 -8 h-10 z" fill="#ffb300"/><text x="${(right ? ox + 5 : ox - 5).toFixed(1)}" y="64" fill="#ffb300" font-size="9" text-anchor="${right ? "end" : "start"}">${txt}</text>`;
 }
 
 const CONSOLES = {
   helm() {
-    const tape = svgPlot(396, 56, `<rect x="0" y="14" width="396" height="40" fill="#0a0f15"/><g data-tapeg>${tapeMarks(0)}</g><path d="M198 12 l6 -8 h-12 z" fill="#4fc3f7"/>`);
+    const tape = svgPlot(396, 66, `<rect x="0" y="14" width="396" height="40" fill="#0a0f15"/><g data-tapeg>${tapeMarks(0)}</g><path d="M198 12 l6 -8 h-12 z" fill="#4fc3f7"/>`);
     const nav = svgPlot(604, 336, `<rect width="604" height="336" fill="#0a0f15"/>${rings(302, 200, [26, 65, 130], ["1 km", "2.5 km", "5 km"])}
       <circle cx="${302 - 520}" cy="${200 - 280}" r="300" fill="#1d4f7a" opacity="0.5"/><text x="8" y="16" fill="#8fb7d8" font-size="10">Halvard (planet) 154 km</text>
       <path d="M302 200 L360 120 L440 64" stroke="#4fc3f7" stroke-dasharray="6 4" fill="none"/><circle cx="360" cy="120" r="4" fill="none" stroke="#4fc3f7"/><text x="368" y="122" fill="#4fc3f7" font-size="10">WP1</text>
@@ -1232,6 +1233,10 @@ const CONSOLES = {
 function buildConsole(id) {
   const s = K.byId(stations, id);
   consoleEl.style.setProperty("--accent", hex(P.role[s.role]));
+  // T1 is the raider in the exterior scene: its plot position starts where the live table says.
+  const rel = raiderPos.clone().applyMatrix4(ship.matrixWorld.clone().invert());
+  CONTACTS[0].r = (rel.length() / 1000).toFixed(2);
+  CONTACTS[0].brg = (((Math.atan2(-rel.x, rel.z) / deg) % 360 + 360) % 360).toFixed(0).padStart(3, "0");
   consoleEl.innerHTML = CONSOLES[id]();
 }
 const sgn = (v) => (v >= 0 ? "+" : "") + v.toFixed(1);
@@ -1414,7 +1419,7 @@ K.registerShots([
   { name: "flight-ops-console", setup: seatShot("flight_ops") },
   { name: "chase-feed", setup: shot(() => { lighting = "normal"; feed = "chase"; setWings(false); setMode("captain"); }) },
   { name: "alt-forward-wings", setup: shot(() => { lighting = "normal"; feed = "forward"; setWings(true); setMode("interior"); }) },
-  { name: "walk-aft", setup: shot(() => { lighting = "normal"; setWings(false); walk.pos.set(-3.6, FLOOR, 28.6); walk.yaw = -0.33; walk.pitch = 0.0; walk.keys = {}; setMode("walk"); placeWalkCamera(); }) },
+  { name: "walk-aft", setup: shot(() => { lighting = "normal"; setWings(false); walk.pos.set(0.0, FLOOR, 30.2); walk.yaw = 0.0; walk.pitch = 0.0; walk.keys = {}; setMode("walk"); placeWalkCamera(); }) },
 ]);
 renderer.setAnimationLoop(frame);
 </script>

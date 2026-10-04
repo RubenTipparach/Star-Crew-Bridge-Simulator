@@ -293,7 +293,8 @@ red alert in that compartment, and the condition chip still reads RED ALERT.
 
 **Brace** (proposed): a captain's (or title band) control that announces "brace" ship-wide with
 a 3 s countdown. Standing crew who are braced (`crew-on-deck`) are not knocked down by a lurch
-under 12 m/s2 of excess acceleration. It costs nothing to call and makes helm and command talk.
+under three times grip (17.7 m/s2 of residual). It costs nothing to call and makes helm and
+command talk.
 
 **Orders.** An order is `{ to: station, verb, object, issued_at }`, sent as a reliable command. The
 verbs per station are data (`data/stations.json`):
@@ -434,10 +435,11 @@ compartment, open a drop door, depressurize a bay, active ping, red alert, distr
 #### 8.6 Input
 
 Every input device drives every console (CLAUDE.md 10): whichever keyboard, mouse or pad the
-player is using. egui takes pointer and keyboard events from SDL; our input layer turns the
-gamepad's D-pad into directional focus moves between widgets and A into activation, so a pad needs
-no mouse emulation. Gamepad names follow SDL's GameController positions (A south, B east, X west,
-Y north). Shared bindings while seated:
+player is using. egui takes pointer and keyboard events from SDL3 (the platform layer,
+`engine-stack` section 4); our input layer turns the gamepad's D-pad into directional focus moves
+between widgets and A into activation, so a pad needs no mouse emulation. Gamepad names follow
+SDL3's gamepad API positions (A south, B east, X west, Y north: `SDL_GAMEPAD_BUTTON_SOUTH` and so
+on), so a layout reads the same on any pad. Shared bindings while seated:
 
 | Action | Keyboard and mouse | Gamepad |
 | --- | --- | --- |

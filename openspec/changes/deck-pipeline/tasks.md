@@ -47,3 +47,4 @@
 - [ ] 6.2 `sc-probe` on a Pi 5 (1 GB): portal traversal time, the Tern's worst view, the whole Tern drawn without culling; record in `docs/validation/`.
 - [ ] 6.3 Captures in `docs/screenshots/deck-pipeline/`: each refusal's message, the Tern from the helm, the main corridor with doors open and closed, red alert, emergency power.
 - [ ] 6.4 Owner review of the open questions K1-K4 with the `deck-plan` mockup shots.
+- [x] 6.5 `docs/mockups/deck-plan.html` presents this change: lamp fixtures by the kit rule, three colour sets blended per compartment by one shader, partitions as single lines; shots in `docs/screenshots/mockups/deck-plan-*.png` (documentation tooling, not engine code).

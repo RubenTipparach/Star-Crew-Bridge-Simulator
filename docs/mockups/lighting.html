@@ -548,6 +548,8 @@
     gather_rays: 48,         // cosine-weighted rays per sample, where bounce is gathered per sample (probes)
     cache_gather_rays: 128,  // cosine-weighted rays per irradiance-cache vertex; outputs interpolate the cache
     bounce_from_cache: true, // false: gather bounce at every output sample (noisier, slower; for comparison)
+    cache_filter: 1,         // passes of a 3 x 3 tent filter over each patch's cached bounce (0: none); bounce is smooth
+    emitter_sample_spacing_m: 0.25, // at least one sample per this much of an emitter's longest edge (long strips)
     ao_rays: 24,             // cosine-weighted rays per receiver for ambient occlusion
     ao_radius_m: 0.8,
     ao: true,
@@ -961,7 +963,8 @@
     }));
     const emitters = (def.emitters || []).map((e) => {
       const q = e.quad, c = cross(q.u, q.v), area = len(c), n = norm(c);
-      const ns = Math.max(4, Math.min(16, Math.ceil(area / settings.emitter_sample_area_m2)));
+      const longest = Math.max(len(q.u), len(q.v));
+      const ns = Math.max(4, Math.min(64, Math.max(Math.ceil(area / settings.emitter_sample_area_m2), Math.ceil(longest / settings.emitter_sample_spacing_m))));
       const centre = add(q.o, add(scale(q.u, 0.5), scale(q.v, 0.5)));
       return { id: e.id, o: q.o.slice(), u: q.u.slice(), v: q.v.slice(), n, area, L: e.luminance_cd_m2, exp: e.beam_exponent || 1,
         range: e.range_m, st: stateVec(e.states), ns, centre, halfDiag: 0.5 * len(add(q.u, q.v)) };
@@ -1174,11 +1177,40 @@
         for (let k = 0; k < second.length; k++) second[k] = src[k] + g[k];
         from = second;
       }
-      if (set.bounce_from_cache) S.field = await gatherPass(from, set.cache_gather_rays, 0x27d4eb2f);
+      if (set.bounce_from_cache) {
+        S.field = await gatherPass(from, set.cache_gather_rays, 0x27d4eb2f);
+        for (let k = 0; k < set.cache_filter; k++) filterField(C, S.field);
+      }
       S.source = from;
     }
     S.prepareMs = performance.now() - t0;
     return S;
+  }
+
+  /**
+   * One pass of a 3 x 3 tent filter (weights 1 2 1) over each quad patch's
+   * cache grid, never across patches, so bounce does not leak round a corner.
+   * A few bright pools seen by a few gather rays make a splotchy field (the
+   * classic irradiance-cache artefact); this trades it for softness that
+   * bounce light has anyway.
+   */
+  function filterField(C, F) {
+    for (const g of C.grids || []) {
+      if (!g) continue;
+      const W = g.nu + 1, H = g.nv + 1, src = F.slice(g.base * 9, (g.base + W * H) * 9);
+      for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+        const acc = new Float64Array(9); let wsum = 0;
+        for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+          const x = i + di, y = j + dj;
+          if (x < 0 || y < 0 || x >= W || y >= H) continue;
+          const w = (2 - Math.abs(di)) * (2 - Math.abs(dj)), o = (y * W + x) * 9;
+          for (let k = 0; k < 9; k++) acc[k] += w * src[o + k];
+          wsum += w;
+        }
+        const o = (g.base + j * W + i) * 9;
+        for (let k = 0; k < 9; k++) F[o + k] = acc[k] / wsum;
+      }
+    }
   }
 
   /**
@@ -1682,10 +1714,12 @@ const FIXTURE_TYPES = {
 const BAKE = {
   seed: 1, reference_lux: 100, shadow_samples: 12, gather_rays: 48, ao_rays: 24, ao_radius_m: 0.8, cache_spacing_m: 0.5,
   ambient_scale_lux: 260, // ShipKit.LIGHTING ambient colour x ambientI x this = ambient fill in lux, times AO
-  adaptive: { base_m: 1.0, min_m: 0.25, max_error_levels: 5 },
+  // Measured in this page: a 2 m base grid reaches the same error as 1 m with half the bridge's triangles.
+  adaptive: { base_m: 2.0, min_m: 0.25, max_error_levels: 5 },
   // Triangles adaptive subdivision may add: a quarter of the compartment's
   // geometry budget (engine-stack, "The Pi 5 budget": bridge 30,000, others about 8,000).
   max_added_triangles: { bridge: 7500, engineering: 2000 },
+  uncapped_triangles: 60000, // the "no cap" mode: what the error target alone would spend
 };
 const lampStates = (bus, kType) => ({
   normal: lin(LS.normal.lamp, LS.normal.lampI),
@@ -1988,8 +2022,9 @@ async function bakeOutput(id, mode, o) {
       const mesh = LB.tessellate(C.patches, Infinity, (p) => p.receive);
       res = mode === "vertex" ? await LB.bakeVertices(S, mesh, label) : { mesh, sets: null, stats: null };
       res.mesh = mesh;
-    } else if (mode === "adaptive") {
-      res = await LB.bakeAdaptive(S, Object.assign({}, BAKE.adaptive, { max_added_triangles: BAKE.max_added_triangles[id] }), label);
+    } else if (mode === "adaptive" || mode === "adaptive_full") {
+      const cap = mode === "adaptive" ? BAKE.max_added_triangles[id] : BAKE.uncapped_triangles;
+      res = await LB.bakeAdaptive(S, Object.assign({}, BAKE.adaptive, { max_added_triangles: cap }), label);
     } else if (mode === "lightmap") {
       res = await LB.bakeLightmap(S, { texel_m: o.texel }, label);
     }
@@ -2150,8 +2185,10 @@ const MODES = {
   dynamic: { label: "Dynamic", short: "runtime lights", desc: "Every fixture as a runtime per-pixel light, no shadows: the look without a bake. A Pi 5 affords a few such lights per room, not every fixture, and no shadows from them." },
   vertex: { label: "Vertex: deck mesh", short: "vertex, deck mesh", desc: "Baked into vertex colours at the deck's own density (one quad per brush face): what vertex lighting gives with no subdivision." },
   adaptive: { label: "Vertex: adaptive", short: "vertex, adaptive", desc: "Baked into vertex colours after adaptive subdivision: cells split where light changes fast (pools, console shadows), within a triangle cap." },
+  adaptive_full: { label: "Vertex: adaptive, no cap", short: "vertex, adaptive, no cap", desc: "Adaptive subdivision run to its error target with no triangle cap: what the room would spend for every pool and shadow edge." },
   lightmap: { label: "Lightmap", short: "lightmap", desc: "Baked into a lightmap atlas (three textures, one per state) on the deck mesh with a second UV set." },
 };
+const isVertexMode = (m) => m === "vertex" || m.startsWith("adaptive");
 const view = { comp: "bridge", cam: "cutaway", mode: "adaptive", split: false, left: "adaptive", right: "lightmap", state: "normal", bounces: 1, ao: true, debug: false, texel: 0.25, crew: true };
 const W = new Float32Array([1, 0, 0]);
 let fade = null;
@@ -2202,7 +2239,7 @@ function showOnly(res, mode) {
   res.object.visible = true;
   if (mode === "dynamic") R.dynamic.group.visible = true;
   if (res.material && res.material.uniforms.grid) res.material.uniforms.grid.value = view.debug ? 1 : 0;
-  if (view.debug && (mode === "vertex" || mode === "adaptive")) res.wire.visible = true;
+  if (view.debug && isVertexMode(mode)) res.wire.visible = true;
   const C = compartmentData(view.comp);
   crew.visible = view.crew;
   crew.position.set(...C.crew.pos); crew.rotation.y = (C.crew.yaw * Math.PI) / 180;
@@ -2220,7 +2257,7 @@ function describe(mode, res) {
   rows.push(["surface triangles", fmt(m.triangleCount) + (res.stats && res.stats.baseTriangles ? ` (base ${fmt(res.stats.baseTriangles)})` : "")]);
   rows.push(["vertices", fmt(m.vertexCount)]);
   rows.push(["vertex + index buffer", kb(vbytes + ibytes) + " / 64 MB"]);
-  if (mode === "vertex" || mode === "adaptive") rows.push(["of which baked light", kb(m.vertexCount * 12) + " (3 x RGBA8)"]);
+  if (isVertexMode(mode)) rows.push(["of which baked light", kb(m.vertexCount * 12) + " (3 x RGBA8)"]);
   if (mode === "lightmap") {
     rows.push(["lightmap atlas", `${res.atlas.width} x ${res.atlas.height}, ${res.atlas.texel_m} m texels`]);
     rows.push(["lightmap textures", kb(res.stats.bytes) + " / 96 MB (3 states)"]);
@@ -2232,7 +2269,7 @@ function describe(mode, res) {
     rows.push(["bake, 3 states", `${fmt(res.stats.ms + (S.prepareMs || 0) + S.buildMs)} ms (1 thread)`]);
     rows.push(["  cache", `${fmt(S.cache.vertexCount)} vertices, ${fmt((S.prepareMs || 0) + S.buildMs)} ms`]);
     rows.push(["  rays", `${(res.stats.rays / 1e6).toFixed(2)} M, ${(res.stats.raysPerSecond / 1e6).toFixed(2)} M/s`]);
-    if (mode === "adaptive") rows.push(["  max residual", `${res.stats.maxResidual.toFixed(1)} levels${res.stats.capped ? ", cap reached" : ""}`]);
+    if (mode.startsWith("adaptive")) rows.push(["  max residual", `${res.stats.maxResidual.toFixed(1)} levels${res.stats.capped ? ", cap reached" : ""}`]);
     rows.push(["digest", res.digest]);
   }
   return rows;
@@ -2270,6 +2307,7 @@ function mark() {
   const on = { comp: view.comp, cam: view.cam, mode: view.split ? "split" : view.mode, state: view.state, bounces: String(view.bounces), texel: String(view.texel) };
   for (const [key, val] of Object.entries(on)) for (const b of groups[key]) b.classList.toggle("on", b.dataset.val === val);
   for (const b of groups.toggles) b.classList.toggle("on", !!view[b.dataset.val]);
+  for (const side of ["left", "right"]) { const sel = document.getElementById("split-" + side); if (sel) sel.value = view[side]; }
 }
 async function update(changes, opts) {
   Object.assign(view, changes);
@@ -2281,7 +2319,7 @@ async function update(changes, opts) {
 }
 row("Compartment", [["bridge", "Bridge"], ["engineering", "Engineering"]], "comp", (v) => update({ comp: v }, { camera: true }));
 row("Camera", [["cutaway", "Cutaway"], ["centre", "Cutaway, centred"], ["close", "Close"], ["eye", "Eye level"]], "cam", (v) => update({ cam: v }, { camera: true }));
-row("Mode", [["unlit", "Unlit"], ["dynamic", "Dynamic (runtime lights)"], ["vertex", "Baked vertex: deck mesh"], ["adaptive", "Baked vertex: adaptive"], ["lightmap", "Baked lightmap"], ["split", "Split"]], "mode",
+row("Mode", [["unlit", "Unlit"], ["dynamic", "Dynamic (runtime lights)"], ["vertex", "Baked vertex: deck mesh"], ["adaptive", "Baked vertex: adaptive"], ["adaptive_full", "Adaptive, no cap"], ["lightmap", "Baked lightmap"], ["split", "Split"]], "mode",
   (v) => update(v === "split" ? { split: true } : { split: false, mode: v }));
 const sr = row("Split", [], "split", () => {});
 for (const side of ["left", "right"]) {
@@ -2337,6 +2375,7 @@ K.registerShots([
   { name: "engineering-vertex-subdivided", setup: () => shot({ comp: "engineering", mode: "adaptive", state: "normal" }) },
   { name: "engineering-lightmap", setup: () => shot({ comp: "engineering", mode: "lightmap", state: "normal" }) },
   { name: "engineering-emergency-baked", setup: () => shot({ comp: "engineering", mode: "adaptive", state: "emergency" }) },
+  { name: "engineering-cap-vs-no-cap", setup: () => shot({ comp: "engineering", split: true, cam: "centre", left: "adaptive", right: "adaptive_full", state: "normal" }) },
   { name: "engineering-eye-level", setup: () => shot({ comp: "engineering", cam: "eye", mode: "adaptive", state: "normal" }) },
   { name: "split-vertex-vs-lightmap", setup: () => shot({ comp: "bridge", cam: "close", split: true, left: "adaptive", right: "lightmap", state: "normal" }) },
   { name: "split-vertex-vs-lightmap-room", setup: () => shot({ comp: "bridge", cam: "centre", split: true, left: "adaptive", right: "lightmap", state: "normal" }) },
@@ -2372,12 +2411,12 @@ let ready = false;
     renderer.setScissorTest(false);
     if (view.debug) {
       for (const o of overlay.children) o.visible = false;
-      if (current.left.wire && ["vertex", "adaptive"].includes(current.leftMode)) {
+      if (current.left.wire && isVertexMode(current.leftMode)) {
         renderer.setScissorTest(true); renderer.setScissor(0, 0, split ? half : innerWidth, innerHeight);
         current.left.wire.visible = true; renderer.render(overlay, camera); current.left.wire.visible = false;
         renderer.setScissorTest(false);
       }
-      if (split && ["vertex", "adaptive"].includes(current.rightMode)) {
+      if (split && isVertexMode(current.rightMode)) {
         renderer.setScissorTest(true); renderer.setScissor(half, 0, innerWidth - half, innerHeight);
         current.right.wire.visible = true; renderer.render(overlay, camera); current.right.wire.visible = false;
         renderer.setScissorTest(false);

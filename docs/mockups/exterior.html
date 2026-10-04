@@ -1,0 +1,2137 @@
+<!doctype html>
+<!--
+  exterior.html: the SCS Tern from outside, presenting four changes at once:
+  ship-frames (the interior held level while the hull rolls, the far and near
+  exterior layers, attachments posed in the ship frame, hand-off at a tick),
+  weapons-and-shields (turrets, arcs baked from the hull, the lead solver and
+  hit chance, point defence, the Gannet, six shield faces), shuttle-bay-and-fighters
+  (a Swift dropped from the port bay and another recovered into the starboard
+  bay) and flight-and-navigation (the assisted Newtonian ship, the recovery and
+  launch holds, the dampers' demand).
+
+  Built from data/ships/tern/layout.json through shipkit.js (inlined below by
+  tools/mockups/inline.py; never hand-edit between the INLINE markers). The
+  simulation steps a fixed 1/30 s tick and is seeded, so every shot is the same
+  every run. Numbers come from the four designs; where the mockup simplifies a
+  rule (fighters steer kinematically, the ship's inertia is a rate limit) the
+  info panel says so.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tern Exterior Combat</title>
+<style>
+  :root { --bg: #05070d; --fg: #e8eef5; --dim: #8a98a8; --panel: rgba(6,9,14,0.86); --line: #2b3540; --accent: #48d6ff;
+          --ok: #66bb6a; --warn: #ffb300; --danger: #ef5350; --friend: #4fc3f7; --hostile: #ff6a5a; --missile: #ffc04d; }
+  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --bg: #05070d; } }
+  :root[data-theme="dark"] { --bg: #05070d; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font: 13px/1.4 system-ui, sans-serif; overflow: hidden; }
+  canvas { display: block; }
+  .controls { position: fixed; left: 12px; bottom: 12px; z-index: 20; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; display: flex; gap: 4px 5px; flex-wrap: wrap; align-items: center; max-width: calc(100vw - 300px); box-sizing: border-box; }
+  .controls .grp { color: var(--dim); font-size: 11px; margin: 0 2px 0 6px; }
+  .controls button { background: #18202a; color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 3px 7px; font: 12px system-ui, sans-serif; cursor: pointer; }
+  .controls button.on { border-color: var(--accent); color: var(--accent); }
+  .info { position: fixed; right: 12px; top: 12px; z-index: 20; width: 318px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font-size: 11.5px; color: #c9d4df; box-sizing: border-box; max-height: calc(100vh - 150px); overflow: hidden; }
+  .info b { color: var(--fg); }
+  .info h4 { margin: 6px 0 2px; font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; }
+  .info table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+  .info td { padding: 0 2px; height: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; }
+  .info td.k { font-family: system-ui, sans-serif; color: var(--dim); }
+  .info .bar { display: inline-block; width: 100%; height: 6px; background: #1a222c; border-radius: 2px; position: relative; vertical-align: middle; }
+  .info .bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; }
+  .info .ev { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 10.5px; color: #b6c2ce; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; height: 14px; }
+  .info .note { color: #7f8fa0; font-size: 10.5px; margin-top: 4px; }
+  #ov { position: fixed; inset: 0; z-index: 5; pointer-events: none; overflow: hidden; }
+  .tag { position: absolute; font: 600 10.5px/1.2 ui-monospace, Menlo, Consolas, monospace; white-space: nowrap; }
+  .tag .bx { position: absolute; border: 1.5px solid currentColor; box-sizing: border-box; }
+  .tag .tx { position: absolute; left: 0; top: 0; padding: 1px 4px; background: rgba(4,7,12,0.7); border-radius: 2px; }
+  .cap { position: absolute; background: rgba(6,9,14,0.86); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; font-size: 12px; color: #d8e2ec; box-sizing: border-box; }
+  .cap b { color: #fff; }
+  .cap .big { font: 600 15px/1.3 system-ui, sans-serif; }
+  .mono { font-family: ui-monospace, Menlo, Consolas, monospace; }
+  .sight { position: absolute; color: #9ff0c0; font: 600 12px/1.3 ui-monospace, Menlo, Consolas, monospace; }
+  .hudbar { display: inline-block; width: 120px; height: 7px; background: rgba(20,40,30,0.8); border: 1px solid #3c6a50; position: relative; vertical-align: middle; margin-left: 6px; }
+  .hudbar i { position: absolute; left: 0; top: 0; bottom: 0; background: #9ff0c0; }
+  @media (max-width: 640px) { .controls { max-width: calc(100vw - 24px); bottom: 120px; } .info { display: none; } }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+} }
+</script>
+<!-- INLINE layout:tern BEGIN -->
+<script id="ship-layout" type="application/json">
+{"schema":"starcrew.ship-layout/1","ship":{"id":"tern","name":"SCS Tern","class":"Heron-class frigate","summary":"The reference ship: a 84 m frigate with a crew of four to eight, two fighters and a shuttle.","presented_by":"openspec/changes/reference-ship-tern"},"conventions":{"units":"metres, degrees","axes":"ship-local, right-handed: +X port, +Y dorsal (up), +Z bow (forward)","origin":"on the centreline, on deck B's floor, at the hangar's forward wall","yaw_deg":"rotation about +Y; 0 faces the bow (+Z), +90 faces port (+X)","box":"axis-aligned, [min, max] per axis, inner surfaces (air) of the compartment","portal_size_m":"opening width and height: axis x -> [z, y], axis z -> [x, y], axis y -> [x, z]","portal_center_m":"centre of the opening, on the plane where the two compartments meet","wall_thickness_m":0.25,"deck_slab_m":0.5},"decks":[{"id":"A","name":"Command deck","floor_y_m":3.5,"clear_height_m":3.0},{"id":"B","name":"Main deck","floor_y_m":0.0,"clear_height_m":3.0},{"id":"C","name":"Lower deck","floor_y_m":-3.5,"clear_height_m":3.0}],"hull":{"note":"Octagonal cross-sections lofted linearly along Z. chamfer_m cuts each corner at 45 degrees.","sections":[{"z_m":42.0,"half_beam_m":1.2,"top_m":2.2,"bottom_m":-0.8,"chamfer_m":0.4},{"z_m":37.0,"half_beam_m":4.5,"top_m":4.5,"bottom_m":-2.8,"chamfer_m":1.5},{"z_m":32.0,"half_beam_m":8.6,"top_m":7.9,"bottom_m":-4.6,"chamfer_m":1.8},{"z_m":20.0,"half_beam_m":10.8,"top_m":7.8,"bottom_m":-5.4,"chamfer_m":1.6},{"z_m":8.0,"half_beam_m":12.2,"top_m":7.8,"bottom_m":-5.6,"chamfer_m":1.6},{"z_m":-2.0,"half_beam_m":12.2,"top_m":8.0,"bottom_m":-5.8,"chamfer_m":2.2},{"z_m":-18.0,"half_beam_m":11.6,"top_m":8.2,"bottom_m":-5.8,"chamfer_m":2.2},{"z_m":-32.0,"half_beam_m":10.6,"top_m":8.2,"bottom_m":-5.2,"chamfer_m":2.0},{"z_m":-38.0,"half_beam_m":8.0,"top_m":6.0,"bottom_m":-3.6,"chamfer_m":1.8},{"z_m":-42.0,"half_beam_m":6.5,"top_m":4.6,"bottom_m":-2.6,"chamfer_m":1.4}]},"compartments":[{"id":"bridge","poi":1,"name":"Bridge","decks":["A"],"kind":"room","purpose":"The ship's command centre: seven stations facing the main viewscreen and two forward windows.","boxes":[{"x":[-7.0,7.0],"y":[3.5,6.5],"z":[20.0,31.0]}]},{"id":"ready_room","poi":2,"name":"Captain's ready room","decks":["A"],"kind":"room","purpose":"The captain's office, a briefing table and a private console.","boxes":[{"x":[1.25,6.0],"y":[3.5,6.5],"z":[14.0,20.0]}]},{"id":"computer_core","poi":3,"name":"Computer core","decks":["A"],"kind":"room","purpose":"Processing for sensors, targeting and automation. Automated stations draw on it.","boxes":[{"x":[-6.0,-1.25],"y":[3.5,6.5],"z":[14.0,20.0]}]},{"id":"a_corridor","poi":4,"name":"Command passage","decks":["A"],"kind":"corridor","purpose":"Deck A's spine, from the bridge's aft door to the dorsal turret, with the forward ladder.","boxes":[{"x":[-1.25,1.25],"y":[3.5,6.5],"z":[4.0,20.0]}]},{"id":"dorsal_turret","poi":5,"name":"Dorsal turret access","decks":["A"],"kind":"room","purpose":"The ladder up into the dorsal turret pod.","boxes":[{"x":[-2.0,2.0],"y":[3.5,6.5],"z":[0.0,4.0]}]},{"id":"a_aft_passage","poi":6,"name":"Aft passage","decks":["A"],"kind":"corridor","purpose":"The always-pressurized route from the front of the ship to engineering, above the hangar.","boxes":[{"x":[-1.25,1.25],"y":[3.5,6.5],"z":[-18.0,0.0]}]},{"id":"torpedo_room","poi":7,"name":"Torpedo room","decks":["B"],"kind":"room","purpose":"Two forward missile tubes and their breeches, fed by the hoist from the magazine below.","boxes":[{"x":[-5.0,5.0],"y":[0.0,3.0],"z":[26.0,33.0]}]},{"id":"medbay","poi":8,"name":"Medbay","decks":["B"],"kind":"room","purpose":"Two beds that revive and heal downed crew.","boxes":[{"x":[1.25,7.0],"y":[0.0,3.0],"z":[18.0,26.0]}]},{"id":"damage_control","poi":9,"name":"Damage control","decks":["B"],"kind":"room","purpose":"Repair kits, extinguishers, EVA suits and the damage control board.","boxes":[{"x":[-7.0,-1.25],"y":[0.0,3.0],"z":[18.0,26.0]}]},{"id":"quarters","poi":10,"name":"Crew quarters","decks":["B"],"kind":"room","purpose":"Bunks and lockers; where crew spawn at the start of a mission.","boxes":[{"x":[1.25,9.0],"y":[0.0,3.0],"z":[8.0,18.0]}]},{"id":"mess","poi":11,"name":"Mess","decks":["B"],"kind":"room","purpose":"Galley and tables; the lobby room before a mission.","boxes":[{"x":[-9.0,-1.25],"y":[0.0,3.0],"z":[8.0,18.0]}]},{"id":"port_turret","poi":12,"name":"Port turret access","decks":["B"],"kind":"room","purpose":"The hatch into the port turret pod and the turret's ammunition-free capacitor bank.","boxes":[{"x":[1.25,11.0],"y":[0.0,3.0],"z":[0.0,8.0]}]},{"id":"stbd_turret","poi":13,"name":"Starboard turret access","decks":["B"],"kind":"room","purpose":"The hatch into the starboard turret pod and its capacitor bank.","boxes":[{"x":[-11.0,-1.25],"y":[0.0,3.0],"z":[0.0,8.0]}]},{"id":"b_spine","poi":14,"name":"Main corridor","decks":["B"],"kind":"corridor","purpose":"Deck B's spine, from the torpedo room to the hangar's forward landing.","boxes":[{"x":[-1.25,1.25],"y":[0.0,3.0],"z":[0.0,26.0]}]},{"id":"hangar","poi":15,"name":"Hangar","decks":["C","B"],"kind":"bay","purpose":"Double-height bay: the shuttle on its lift pad, the forward landing, and galleries over the two launch bays.","boxes":[{"x":[-5.0,5.0],"y":[-3.5,3.0],"z":[-18.0,0.0]},{"x":[5.0,10.5],"y":[0.0,3.0],"z":[-18.0,-2.0]},{"x":[-10.5,-5.0],"y":[0.0,3.0],"z":[-18.0,-2.0]}]},{"id":"launch_bay_p","poi":16,"name":"Port launch bay","decks":["C"],"kind":"bay","purpose":"Fighter Swift 1 on its cradle over a ventral drop door. Depressurizes to launch.","boxes":[{"x":[5.0,10.5],"y":[-3.5,0.0],"z":[-16.0,-4.0]}]},{"id":"launch_bay_s","poi":17,"name":"Starboard launch bay","decks":["C"],"kind":"bay","purpose":"Fighter Swift 2 on its cradle over a ventral drop door. Depressurizes to launch.","boxes":[{"x":[-10.5,-5.0],"y":[-3.5,0.0],"z":[-16.0,-4.0]}]},{"id":"engineering","poi":18,"name":"Engineering","decks":["C","B","A"],"kind":"room","purpose":"The reactor through three deck heights, the main switchboard, the coolant pumps and the engineer's console.","boxes":[{"x":[-9.0,9.0],"y":[-3.5,6.5],"z":[-32.0,-18.0]}]},{"id":"drive","poi":19,"name":"Drive section","decks":["B"],"kind":"crawlspace","purpose":"Maintenance space for the impulse drive and the inertial dampers.","boxes":[{"x":[-6.0,6.0],"y":[0.0,3.0],"z":[-40.0,-32.0]}]},{"id":"c_spine","poi":20,"name":"Lower corridor","decks":["C"],"kind":"corridor","purpose":"Deck C's spine, from the magazine to the hangar floor, with the ventral turret hatch.","boxes":[{"x":[-1.25,1.25],"y":[-3.5,-0.5],"z":[0.0,20.0]}]},{"id":"magazine","poi":21,"name":"Magazine","decks":["C"],"kind":"room","purpose":"Missile racks and the hoist up to the torpedo room.","boxes":[{"x":[-4.0,4.0],"y":[-3.5,-0.5],"z":[20.0,30.0]}]},{"id":"life_support","poi":22,"name":"Life support","decks":["C"],"kind":"room","purpose":"Oxygen generator, CO2 scrubbers, the air handler, thermal control and the water tank.","boxes":[{"x":[1.25,9.0],"y":[-3.5,-0.5],"z":[6.0,20.0]}]},{"id":"cargo","poi":23,"name":"Cargo and stores","decks":["C"],"kind":"room","purpose":"Spare parts, reserve gas bottles and the gravity generator.","boxes":[{"x":[-9.0,-1.25],"y":[-3.5,-0.5],"z":[6.0,20.0]}]},{"id":"airlock","poi":24,"name":"Airlock","decks":["C"],"kind":"airlock","purpose":"The crew airlock for EVA hull repair and boarding.","boxes":[{"x":[-11.0,-9.0],"y":[-3.5,-0.5],"z":[10.0,14.0]}]},{"id":"shield_room","poi":25,"name":"Shield generator","decks":["C"],"kind":"room","purpose":"The shield generator and its emitter capacitors.","boxes":[{"x":[1.25,7.0],"y":[-3.5,-0.5],"z":[0.0,6.0]}]},{"id":"switchboard","poi":26,"name":"Forward switchboard","decks":["C"],"kind":"room","purpose":"The battery bank and the forward bus cross-tie.","boxes":[{"x":[-7.0,-1.25],"y":[-3.5,-0.5],"z":[0.0,6.0]}]},{"id":"pod_dorsal","poi":27,"name":"Dorsal turret pod","decks":["A"],"kind":"pod","purpose":"The dorsal gunner's seat inside the turret.","boxes":[{"x":[-1.25,1.25],"y":[6.5,9.0],"z":[0.75,3.25]}]},{"id":"pod_ventral","poi":28,"name":"Ventral turret pod","decks":["C"],"kind":"pod","purpose":"The ventral gunner's seat inside the turret.","boxes":[{"x":[-1.25,1.25],"y":[-7.0,-3.5],"z":[1.75,4.25]}]},{"id":"pod_port","poi":29,"name":"Port turret pod","decks":["B"],"kind":"pod","purpose":"The port gunner's seat inside the turret.","boxes":[{"x":[11.0,13.5],"y":[0.0,2.5],"z":[2.75,5.25]}]},{"id":"pod_stbd","poi":30,"name":"Starboard turret pod","decks":["B"],"kind":"pod","purpose":"The starboard gunner's seat inside the turret.","boxes":[{"x":[-13.5,-11.0],"y":[0.0,2.5],"z":[2.75,5.25]}]}],"portals":[{"id":"p_bridge_aft","kind":"door","between":["bridge","a_corridor"],"axis":"z","center_m":[0.0,4.65,20.0],"size_m":[1.6,2.3]},{"id":"p_ready","kind":"door","between":["ready_room","a_corridor"],"axis":"x","center_m":[1.25,4.6,17.0],"size_m":[1.0,2.2]},{"id":"p_core","kind":"door","between":["computer_core","a_corridor"],"axis":"x","center_m":[-1.25,4.6,17.0],"size_m":[1.0,2.2]},{"id":"p_dorsal_fwd","kind":"door","between":["a_corridor","dorsal_turret"],"axis":"z","center_m":[0.0,4.6,4.0],"size_m":[1.2,2.2]},{"id":"p_dorsal_aft","kind":"door","between":["dorsal_turret","a_aft_passage"],"axis":"z","center_m":[0.0,4.6,0.0],"size_m":[1.2,2.2]},{"id":"p_aft_eng","kind":"door","between":["a_aft_passage","engineering"],"axis":"z","center_m":[0.0,4.6,-18.0],"size_m":[1.2,2.2]},{"id":"p_pod_dorsal","kind":"hatch","between":["dorsal_turret","pod_dorsal"],"axis":"y","center_m":[0.0,6.5,2.0],"size_m":[0.9,0.9]},{"id":"p_ladder_ab","kind":"ladder","between":["a_corridor","b_spine"],"axis":"y","center_m":[0.0,3.0,11.0],"size_m":[1.0,1.0]},{"id":"p_bridge_window_p","kind":"window","between":["bridge","space"],"axis":"z","center_m":[5.0,5.0,31.0],"size_m":[2.8,1.2]},{"id":"p_bridge_window_s","kind":"window","between":["bridge","space"],"axis":"z","center_m":[-5.0,5.0,31.0],"size_m":[2.8,1.2]},{"id":"p_torpedo","kind":"door","between":["b_spine","torpedo_room"],"axis":"z","center_m":[0.0,1.15,26.0],"size_m":[1.6,2.3]},{"id":"p_medbay","kind":"door","between":["medbay","b_spine"],"axis":"x","center_m":[1.25,1.1,22.0],"size_m":[1.2,2.2]},{"id":"p_damage_control","kind":"door","between":["damage_control","b_spine"],"axis":"x","center_m":[-1.25,1.1,22.0],"size_m":[1.2,2.2]},{"id":"p_quarters","kind":"door","between":["quarters","b_spine"],"axis":"x","center_m":[1.25,1.1,14.0],"size_m":[1.0,2.2]},{"id":"p_mess","kind":"door","between":["mess","b_spine"],"axis":"x","center_m":[-1.25,1.15,14.0],"size_m":[1.6,2.3]},{"id":"p_port_turret","kind":"door","between":["port_turret","b_spine"],"axis":"x","center_m":[1.25,1.1,4.0],"size_m":[1.0,2.2]},{"id":"p_stbd_turret","kind":"door","between":["stbd_turret","b_spine"],"axis":"x","center_m":[-1.25,1.1,4.0],"size_m":[1.0,2.2]},{"id":"p_pod_port","kind":"hatch","between":["port_turret","pod_port"],"axis":"x","center_m":[11.0,1.1,4.0],"size_m":[0.9,1.4]},{"id":"p_pod_stbd","kind":"hatch","between":["stbd_turret","pod_stbd"],"axis":"x","center_m":[-11.0,1.1,4.0],"size_m":[0.9,1.4]},{"id":"p_spine_hangar","kind":"door","between":["b_spine","hangar"],"axis":"z","center_m":[0.0,1.15,0.0],"size_m":[1.6,2.3]},{"id":"p_ladder_bc","kind":"ladder","between":["b_spine","c_spine"],"axis":"y","center_m":[0.0,-0.5,11.0],"size_m":[1.0,1.0]},{"id":"p_hoist","kind":"hoist","between":["torpedo_room","magazine"],"axis":"y","center_m":[0.0,-0.5,28.0],"size_m":[1.2,3.0]},{"id":"p_hangar_c","kind":"door","between":["c_spine","hangar"],"axis":"z","center_m":[0.0,-2.25,0.0],"size_m":[2.0,2.5]},{"id":"p_bay_p","kind":"pressure_door","between":["hangar","launch_bay_p"],"axis":"x","center_m":[5.0,-2.4,-5.0],"size_m":[1.0,2.2]},{"id":"p_bay_s","kind":"pressure_door","between":["hangar","launch_bay_s"],"axis":"x","center_m":[-5.0,-2.4,-5.0],"size_m":[1.0,2.2]},{"id":"p_drop_p","kind":"bay_door","between":["launch_bay_p","space"],"axis":"y","center_m":[7.75,-3.5,-10.0],"size_m":[4.8,9.0]},{"id":"p_drop_s","kind":"bay_door","between":["launch_bay_s","space"],"axis":"y","center_m":[-7.75,-3.5,-10.0],"size_m":[4.8,9.0]},{"id":"p_hangar_pad","kind":"bay_door","between":["hangar","space"],"axis":"y","center_m":[0.0,-3.5,-10.0],"size_m":[6.0,12.0]},{"id":"p_hangar_eng","kind":"door","between":["hangar","engineering"],"axis":"z","center_m":[0.0,-2.35,-18.0],"size_m":[1.6,2.3]},{"id":"p_gallery_eng_p","kind":"door","between":["hangar","engineering"],"axis":"z","center_m":[7.75,1.1,-18.0],"size_m":[1.0,2.2]},{"id":"p_gallery_eng_s","kind":"door","between":["hangar","engineering"],"axis":"z","center_m":[-7.75,1.1,-18.0],"size_m":[1.0,2.2]},{"id":"p_drive","kind":"hatch","between":["engineering","drive"],"axis":"z","center_m":[0.0,1.0,-32.0],"size_m":[1.0,2.0]},{"id":"p_magazine","kind":"door","between":["c_spine","magazine"],"axis":"z","center_m":[0.0,-2.35,20.0],"size_m":[1.6,2.3]},{"id":"p_life_support","kind":"door","between":["life_support","c_spine"],"axis":"x","center_m":[1.25,-2.4,15.0],"size_m":[1.2,2.2]},{"id":"p_cargo","kind":"door","between":["cargo","c_spine"],"axis":"x","center_m":[-1.25,-2.35,15.0],"size_m":[2.0,2.3]},{"id":"p_airlock_inner","kind":"pressure_door","between":["cargo","airlock"],"axis":"x","center_m":[-9.0,-2.4,12.0],"size_m":[1.0,2.2]},{"id":"p_airlock_outer","kind":"pressure_door","between":["airlock","space"],"axis":"x","center_m":[-11.0,-2.4,12.0],"size_m":[1.0,2.2]},{"id":"p_shield","kind":"door","between":["shield_room","c_spine"],"axis":"x","center_m":[1.25,-2.4,3.0],"size_m":[1.0,2.2]},{"id":"p_switchboard","kind":"door","between":["switchboard","c_spine"],"axis":"x","center_m":[-1.25,-2.4,3.0],"size_m":[1.0,2.2]},{"id":"p_pod_ventral","kind":"hatch","between":["c_spine","pod_ventral"],"axis":"y","center_m":[0.0,-3.5,3.0],"size_m":[0.9,0.9]}],"stations":[{"id":"captain","name":"Captain","role":"command","compartment":"bridge","seat_m":[0.0,3.8,23.2],"yaw_deg":0,"core":false,"note":"On a 0.3 m dais. Overview, orders and ship-wide alerts. Merged into any console when no captain is playing."},{"id":"helm","name":"Helm","role":"helm","compartment":"bridge","seat_m":[1.8,3.5,27.2],"yaw_deg":0,"core":true,"note":"Flight, navigation and docking."},{"id":"tactical","name":"Tactical","role":"tactical","compartment":"bridge","seat_m":[-1.8,3.5,27.2],"yaw_deg":0,"core":true,"note":"Targeting, turret assignment and automation, missile tubes, shields facing."},{"id":"engineering","name":"Engineering","role":"engineering","compartment":"bridge","seat_m":[5.4,3.5,25.5],"yaw_deg":90,"core":true,"note":"Power allocation, breakers, coolant, life support setpoints, damage control dispatch."},{"id":"science","name":"Science","role":"science","compartment":"bridge","seat_m":[-5.4,3.5,25.5],"yaw_deg":-90,"core":true,"note":"Sensors, scans, shield frequency and face balance, the viewscreen feed."},{"id":"comms","name":"Comms","role":"comms","compartment":"bridge","seat_m":[5.0,3.5,21.6],"yaw_deg":90,"core":false,"note":"Hails, docking clearance, intercepts. Merged into Science when unmanned."},{"id":"flight_ops","name":"Flight operations","role":"flight_ops","compartment":"bridge","seat_m":[-5.0,3.5,21.6],"yaw_deg":-90,"core":false,"note":"Hangar and launch bay pressure, launch and recovery, fighter tasking. Merged into Tactical when unmanned."},{"id":"eng_main","name":"Engineering bay console","role":"engineering","compartment":"engineering","seat_m":[5.5,0.0,-20.5],"yaw_deg":180,"core":false,"note":"The same engineering console, beside the reactor, with hands-on reactor control (scram reset, coolant valves)."},{"id":"damage_board","name":"Damage control board","role":"engineering","compartment":"damage_control","seat_m":[-4.5,0.0,22.0],"yaw_deg":-90,"core":false,"note":"Damage control teams, repair queue and compartment status."},{"id":"bay_control","name":"Bay control","role":"flight_ops","compartment":"hangar","seat_m":[3.5,0.0,-1.2],"yaw_deg":180,"core":false,"note":"Local launch control on the forward landing, overlooking the hangar."},{"id":"gunner_dorsal","name":"Dorsal gunner","role":"gunner","compartment":"pod_dorsal","seat_m":[0.0,7.0,2.0],"yaw_deg":0,"core":false,"mount":"turret_dorsal"},{"id":"gunner_ventral","name":"Ventral gunner","role":"gunner","compartment":"pod_ventral","seat_m":[0.0,-6.5,3.0],"yaw_deg":0,"core":false,"mount":"turret_ventral"},{"id":"gunner_port","name":"Port gunner","role":"gunner","compartment":"pod_port","seat_m":[12.2,0.4,4.0],"yaw_deg":90,"core":false,"mount":"turret_port"},{"id":"gunner_stbd","name":"Starboard gunner","role":"gunner","compartment":"pod_stbd","seat_m":[-12.2,0.4,4.0],"yaw_deg":-90,"core":false,"mount":"turret_stbd"}],"fixtures":[{"id":"viewscreen","kind":"viewscreen","compartment":"bridge","center_m":[0.0,5.0,30.9],"size_m":[6.0,2.4],"facing_yaw_deg":180,"note":"Shows the exterior from a steerable virtual camera, rendered to a texture."},{"id":"captain_dais","kind":"dais","compartment":"bridge","center_m":[0.0,3.5,23.2],"size_m":[3.2,2.4],"height_m":0.3},{"id":"hangar_landing","kind":"landing","compartment":"hangar","center_m":[0.0,0.0,-1.0],"size_m":[10.0,2.0],"note":"Deck B level landing inside the hangar's forward wall, with stairs down to the floor at both sides."},{"id":"eng_mezzanine","kind":"mezzanine","compartment":"engineering","center_m":[0.0,0.0,-25.0],"size_m":[18.0,14.0],"ring_inner_radius_m":3.4,"note":"Deck B level ring around the reactor; the lower floor is deck C level, an upper catwalk at deck A level meets the aft passage."},{"id":"eng_catwalk","kind":"catwalk","compartment":"engineering","center_m":[0.0,3.5,-19.0],"size_m":[4.0,2.0]}],"systems":[{"id":"reactor","name":"Fusion reactor","kind":"power_source","compartment":"engineering","center_m":[0.0,1.5,-25.0],"radius_m":2.2,"height_m":10.0},{"id":"main_switchboard","name":"Main switchboard","kind":"power_distribution","compartment":"engineering","center_m":[7.5,0.0,-21.0]},{"id":"coolant_pumps","name":"Coolant pumps","kind":"thermal","compartment":"engineering","center_m":[-6.5,-3.5,-29.0]},{"id":"radiators","name":"Radiator panels","kind":"thermal","compartment":"space","center_m":[0.0,8.2,-26.0]},{"id":"impulse_drive","name":"Impulse drive","kind":"propulsion","compartment":"drive","center_m":[0.0,1.5,-37.0]},{"id":"inertial_dampers","name":"Inertial dampers","kind":"dampers","compartment":"drive","center_m":[4.0,0.0,-34.0]},{"id":"battery_bank","name":"Battery bank","kind":"power_storage","compartment":"switchboard","center_m":[-4.5,-3.5,1.5]},{"id":"aux_switchboard","name":"Forward switchboard","kind":"power_distribution","compartment":"switchboard","center_m":[-2.2,-3.5,4.8]},{"id":"shield_generator","name":"Shield generator","kind":"shields","compartment":"shield_room","center_m":[4.2,-3.5,3.0]},{"id":"o2_generator","name":"Oxygen generator","kind":"life_support","compartment":"life_support","center_m":[6.5,-3.5,17.0]},{"id":"co2_scrubbers","name":"CO2 scrubbers","kind":"life_support","compartment":"life_support","center_m":[6.5,-3.5,11.0]},{"id":"air_handler","name":"Air handler","kind":"life_support","compartment":"life_support","center_m":[3.0,-3.5,8.0]},{"id":"thermal_control","name":"Thermal control","kind":"life_support","compartment":"life_support","center_m":[3.0,-3.5,18.5]},{"id":"computer","name":"Computer core","kind":"computer","compartment":"computer_core","center_m":[-4.0,3.5,17.0]},{"id":"sensor_array","name":"Sensor array","kind":"sensors","compartment":"space","center_m":[0.0,1.0,41.5]},{"id":"comms_array","name":"Comms array","kind":"comms","compartment":"space","center_m":[0.0,8.0,14.0]},{"id":"gravity_generator","name":"Gravity generator","kind":"gravity","compartment":"cargo","center_m":[-6.5,-3.5,17.5]},{"id":"medbay_beds","name":"Medbay beds","kind":"medical","compartment":"medbay","center_m":[4.5,0.0,22.0]},{"id":"magazine_racks","name":"Missile racks","kind":"magazine","compartment":"magazine","center_m":[0.0,-3.5,25.0]},{"id":"tube_1","name":"Tube 1","kind":"missile_tube","compartment":"torpedo_room","center_m":[2.0,1.5,31.0],"mount":"tube_1"},{"id":"tube_2","name":"Tube 2","kind":"missile_tube","compartment":"torpedo_room","center_m":[-2.0,1.5,31.0],"mount":"tube_2"},{"id":"hangar_pumps","name":"Bay pumps and reserve tank","kind":"life_support","compartment":"hangar","center_m":[-4.0,-3.5,-2.0]},{"id":"cradle_p","name":"Port launch cradle","kind":"launch","compartment":"launch_bay_p","center_m":[7.75,-3.5,-10.0]},{"id":"cradle_s","name":"Starboard launch cradle","kind":"launch","compartment":"launch_bay_s","center_m":[-7.75,-3.5,-10.0]},{"id":"shuttle_pad","name":"Shuttle lift pad","kind":"launch","compartment":"hangar","center_m":[0.0,-3.5,-10.0]}],"mounts":[{"id":"turret_dorsal","kind":"turret","center_m":[0.0,9.0,2.0],"facing":[0,1,0],"weapon":"twin_pulse_cannon","crew_seat":"gunner_dorsal"},{"id":"turret_ventral","kind":"turret","center_m":[0.0,-7.0,3.0],"facing":[0,-1,0],"weapon":"twin_pulse_cannon","crew_seat":"gunner_ventral"},{"id":"turret_port","kind":"turret","center_m":[13.5,1.25,4.0],"facing":[1,0,0],"weapon":"twin_pulse_cannon","crew_seat":"gunner_port"},{"id":"turret_stbd","kind":"turret","center_m":[-13.5,1.25,4.0],"facing":[-1,0,0],"weapon":"twin_pulse_cannon","crew_seat":"gunner_stbd"},{"id":"tube_1","kind":"missile_tube","center_m":[2.0,1.5,37.0],"facing":[0,0,1],"weapon":"gannet_missile"},{"id":"tube_2","kind":"missile_tube","center_m":[-2.0,1.5,37.0],"facing":[0,0,1],"weapon":"gannet_missile"},{"id":"main_engine_p","kind":"engine","center_m":[3.2,1.0,-42.0],"facing":[0,0,-1]},{"id":"main_engine_s","kind":"engine","center_m":[-3.2,1.0,-42.0],"facing":[0,0,-1]}],"craft":[{"id":"swift_1","name":"Swift 1","class":"Swift fighter","bay":"launch_bay_p","cradle":"cradle_p","drop_door":"p_drop_p","center_m":[7.75,-2.6,-10.0],"length_m":7.0,"span_m":4.6,"height_m":1.8,"seats":1},{"id":"swift_2","name":"Swift 2","class":"Swift fighter","bay":"launch_bay_s","cradle":"cradle_s","drop_door":"p_drop_s","center_m":[-7.75,-2.6,-10.0],"length_m":7.0,"span_m":4.6,"height_m":1.8,"seats":1},{"id":"petrel","name":"Petrel","class":"Petrel shuttle","bay":"hangar","cradle":"shuttle_pad","drop_door":"p_hangar_pad","center_m":[0.0,-1.9,-10.0],"length_m":10.0,"span_m":4.5,"height_m":3.2,"seats":4}]}
+</script>
+<!-- INLINE layout:tern END -->
+<!-- INLINE shipkit BEGIN -->
+<script>
+/*
+ * shipkit.js: the one place a mockup turns a ship layout into three.js objects.
+ *
+ * Every Star Crew mockup reads the same layout (data/ships/<id>/layout.json), so
+ * the bridge, the deck plan, the systems view and the exterior cannot disagree
+ * about where a room or a door is (CLAUDE.md sections 8 and 11). This file is
+ * the shared interpretation of that layout: palette, lighting states, the Pi 5
+ * budget meter, room shells with door openings cut, the hull loft and labels.
+ *
+ * It is a classic script, not a module, so a mockup still works when opened
+ * straight from disk. tools/mockups/inline.py copies it into each page between
+ * the "INLINE shipkit" markers; edit it here, never in a page. Functions that
+ * build geometry take THREE as their first argument because the page owns the
+ * three.js import.
+ *
+ * Axes (from the layout): +X port, +Y up, +Z bow, metres.
+ */
+(function () {
+  "use strict";
+
+  /** The layout inlined into the page as <script id="ship-layout" type="application/json">. */
+  function layout() {
+    const el = document.getElementById("ship-layout");
+    if (!el) throw new Error("shipkit: no #ship-layout script in the page (run tools/mockups/inline.py)");
+    return JSON.parse(el.textContent);
+  }
+
+  /**
+   * The Raspberry Pi 5 (1 GB) budget a mockup is measured against. These are
+   * the provisional numbers from openspec/changes/engine-stack/design.md,
+   * "The Pi 5 budget"; that table is the source, and this copy is checked
+   * against its marker by tools/mockups/inline.py --check.
+   */
+  const PI_BUDGET = {
+    board: "Pi 5 (1 GB)",
+    triangles: 200000,       // visible triangles per frame, all passes
+    drawCalls: 300,          // draw calls per frame, all passes
+    textureMB: 96,           // texture memory
+    viewscreenPx: [1024, 512], // render-to-texture size for the main viewscreen
+    frameMs: 16.7,           // 60 frames a second target (33.3 ms floor), 3D at 1280x720
+  };
+
+  /** Named colour roles. Mockups use roles, not hex values (CLAUDE.md section 10). */
+  const PALETTE = {
+    space: 0x05070d,
+    hullLight: 0x8f9aa8,
+    hullDark: 0x4a5462,
+    hullAccent: 0xc9643b,
+    floor: 0x3a404a,
+    floorCorridor: 0x454b55,
+    wall: 0x6b7480,
+    wallDark: 0x525a66,
+    ceiling: 0x2c3138,
+    trim: 0x9aa4b0,
+    console: 0x2a3038,
+    screen: 0x48d6ff,
+    screenWarm: 0xffb347,
+    glass: 0x9fd8ff,
+    door: 0x8a6d3b,
+    doorFrame: 0xd0a040,
+    hazard: 0xe8c547,
+    alert: 0xff2a2a,
+    emergency: 0xff8a1c,
+    lampWarm: 0xffe2b0,
+    lampCool: 0xbfe0ff,
+    // station roles, used for seats, labels and console accents
+    role: {
+      command: 0xf2f2f2,
+      helm: 0x4fc3f7,
+      tactical: 0xef5350,
+      engineering: 0xffb300,
+      science: 0x66bb6a,
+      comms: 0xab47bc,
+      flight_ops: 0x26c6da,
+      gunner: 0xff7043,
+    },
+    // compartment kinds, used by plan views
+    kind: {
+      room: 0x5c6b7a,
+      corridor: 0x7d8792,
+      bay: 0x4a6a8a,
+      crawlspace: 0x6a5a4a,
+      airlock: 0xb08a3a,
+      pod: 0xa05050,
+    },
+  };
+
+  /**
+   * Interior lighting states. Every interior mockup shows at least normal and
+   * red alert (CLAUDE.md section 11). In the engine these are baked vertex
+   * colour sets blended by a per-compartment uniform; here they are light
+   * colours and intensities.
+   */
+  const LIGHTING = {
+    normal: { label: "Normal", ambient: 0x2a3340, ambientI: 0.55, lamp: 0xffe9c8, lampI: 1.0, strip: 0x9fd8ff, stripI: 0.6, fog: 0x0b0e14 },
+    red_alert: { label: "Red alert", ambient: 0x2a0d10, ambientI: 0.45, lamp: 0xff3030, lampI: 0.75, strip: 0xff2020, stripI: 1.0, fog: 0x120406 },
+    emergency: { label: "Emergency power", ambient: 0x120c08, ambientI: 0.3, lamp: 0xff8a1c, lampI: 0.35, strip: 0xff8a1c, stripI: 0.8, fog: 0x060403 },
+  };
+
+  // ---------------------------------------------------------------- lookups
+
+  function byId(list, id) {
+    for (const x of list) if (x.id === id) return x;
+    return null;
+  }
+  function compartment(L, id) { return byId(L.compartments, id); }
+  function portalsOf(L, compId) { return L.portals.filter((p) => p.between.indexOf(compId) >= 0); }
+  function stationsIn(L, compId) { return (L.stations || []).filter((s) => s.compartment === compId); }
+  function systemsIn(L, compId) { return (L.systems || []).filter((s) => s.compartment === compId); }
+  function deckById(L, id) { return byId(L.decks, id); }
+
+  /** Volume in cubic metres and floor area in square metres of a compartment. */
+  function measure(comp) {
+    let v = 0, a = 0;
+    for (const b of comp.boxes) {
+      const dx = b.x[1] - b.x[0], dy = b.y[1] - b.y[0], dz = b.z[1] - b.z[0];
+      v += dx * dy * dz; a += dx * dz;
+    }
+    return { volume_m3: v, floor_m2: a };
+  }
+
+  /** Union bounds of a compartment's boxes. */
+  function bounds(comp) {
+    const r = { x: [Infinity, -Infinity], y: [Infinity, -Infinity], z: [Infinity, -Infinity] };
+    for (const b of comp.boxes) for (const k of "xyz") { r[k][0] = Math.min(r[k][0], b[k][0]); r[k][1] = Math.max(r[k][1], b[k][1]); }
+    return r;
+  }
+  function center(comp) {
+    const b = bounds(comp);
+    return [(b.x[0] + b.x[1]) / 2, (b.y[0] + b.y[1]) / 2, (b.z[0] + b.z[1]) / 2];
+  }
+
+  /** Half extents of a portal's opening on its two in-plane axes. */
+  function portalHalf(p) {
+    const s = p.size_m;
+    if (p.axis === "x") return { z: s[0] / 2, y: s[1] / 2 };
+    if (p.axis === "z") return { x: s[0] / 2, y: s[1] / 2 };
+    return { x: s[0] / 2, z: s[1] / 2 };
+  }
+
+  // ------------------------------------------------------------ room shells
+
+  const EPS = 1e-4;
+
+  // Each face of a box: the axis it is normal to, which end, and its two in-plane axes (u, v).
+  const FACES = [
+    { key: "floor", axis: "y", end: 0, u: "x", v: "z", inward: [0, 1, 0] },
+    { key: "ceiling", axis: "y", end: 1, u: "x", v: "z", inward: [0, -1, 0] },
+    { key: "wall", axis: "x", end: 0, u: "z", v: "y", inward: [1, 0, 0] },
+    { key: "wall", axis: "x", end: 1, u: "z", v: "y", inward: [-1, 0, 0] },
+    { key: "wall", axis: "z", end: 0, u: "x", v: "y", inward: [0, 0, 1] },
+    { key: "wall", axis: "z", end: 1, u: "x", v: "y", inward: [0, 0, -1] },
+  ];
+
+  /**
+   * Rectangle minus holes, as a list of cells. Holes are clipped to the
+   * rectangle. Cells come from the grid of every hole edge, so the result is
+   * exact and has no slivers, at the price of a few extra triangles.
+   */
+  function rectMinusHoles(r, holes) {
+    const hs = holes
+      .map((h) => ({ u0: Math.max(h.u0, r.u0), u1: Math.min(h.u1, r.u1), v0: Math.max(h.v0, r.v0), v1: Math.min(h.v1, r.v1) }))
+      .filter((h) => h.u1 - h.u0 > EPS && h.v1 - h.v0 > EPS);
+    if (!hs.length) return [r];
+    const us = [r.u0, r.u1], vs = [r.v0, r.v1];
+    for (const h of hs) { us.push(h.u0, h.u1); vs.push(h.v0, h.v1); }
+    const su = [...new Set(us.map((x) => +x.toFixed(4)))].sort((a, b) => a - b);
+    const sv = [...new Set(vs.map((x) => +x.toFixed(4)))].sort((a, b) => a - b);
+    const cells = [];
+    for (let i = 0; i + 1 < su.length; i++) {
+      for (let j = 0; j + 1 < sv.length; j++) {
+        const cu = (su[i] + su[i + 1]) / 2, cv = (sv[j] + sv[j + 1]) / 2;
+        if (hs.some((h) => cu > h.u0 && cu < h.u1 && cv > h.v0 && cv < h.v1)) continue;
+        cells.push({ u0: su[i], u1: su[i + 1], v0: sv[j], v1: sv[j + 1] });
+      }
+    }
+    // Merge runs along u in each row to keep the triangle count down.
+    cells.sort((a, b) => a.v0 - b.v0 || a.u0 - b.u0);
+    const merged = [];
+    for (const c of cells) {
+      const last = merged[merged.length - 1];
+      if (last && Math.abs(last.v0 - c.v0) < EPS && Math.abs(last.v1 - c.v1) < EPS && Math.abs(last.u1 - c.u0) < EPS) last.u1 = c.u1;
+      else merged.push({ ...c });
+    }
+    return merged;
+  }
+
+  /** The openings on one face of one box: portals on that plane, and faces shared with the compartment's other boxes. */
+  function faceHoles(L, comp, box, face, opts) {
+    const plane = box[face.axis][face.end];
+    const holes = [];
+    for (const p of portalsOf(L, comp.id)) {
+      if (p.axis !== face.axis) continue;
+      if (opts.skipKinds && opts.skipKinds.indexOf(p.kind) >= 0) continue;
+      const c = { x: p.center_m[0], y: p.center_m[1], z: p.center_m[2] };
+      const slab = face.axis === "y" ? 0.55 : EPS * 10;
+      if (Math.abs(c[face.axis] - plane) > slab) continue;
+      const h = portalHalf(p);
+      holes.push({ u0: c[face.u] - h[face.u], u1: c[face.u] + h[face.u], v0: c[face.v] - h[face.v], v1: c[face.v] + h[face.v], portal: p });
+    }
+    for (const other of comp.boxes) {
+      if (other === box) continue;
+      const oEnd = 1 - face.end;
+      if (Math.abs(other[face.axis][oEnd] - plane) > EPS) continue;
+      holes.push({ u0: other[face.u][0], u1: other[face.u][1], v0: other[face.v][0], v1: other[face.v][1] });
+    }
+    return holes;
+  }
+
+  function pushQuad(pos, nor, col, face, plane, c, color) {
+    const p = (u, v) => {
+      const o = { x: 0, y: 0, z: 0 };
+      o[face.axis] = plane; o[face.u] = u; o[face.v] = v;
+      return [o.x, o.y, o.z];
+    };
+    const a = p(c.u0, c.v0), b = p(c.u1, c.v0), d = p(c.u1, c.v1), e = p(c.u0, c.v1);
+    // Wind so the quad faces inward (into the room).
+    const n = face.inward;
+    const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], ad = [d[0] - a[0], d[1] - a[1], d[2] - a[2]];
+    const cross = [ab[1] * ad[2] - ab[2] * ad[1], ab[2] * ad[0] - ab[0] * ad[2], ab[0] * ad[1] - ab[1] * ad[0]];
+    const flip = cross[0] * n[0] + cross[1] * n[1] + cross[2] * n[2] < 0;
+    const tri = flip ? [a, d, b, a, e, d] : [a, b, d, a, d, e];
+    for (const v of tri) { pos.push(v[0], v[1], v[2]); nor.push(n[0], n[1], n[2]); col.push(color.r, color.g, color.b); }
+  }
+
+  /**
+   * Build a compartment's inside surfaces (floor, ceiling, walls) with every
+   * portal opening cut out. Returns { floor, ceiling, walls } BufferGeometries
+   * with vertex colours, plus the list of openings for door props.
+   *
+   * opts.colors: { floor, ceiling, wall } as hex; opts.skipKinds: portal kinds
+   * not to cut (for example ["window"] to keep a blank wall).
+   */
+  function roomShell(THREE, L, comp, opts) {
+    opts = opts || {};
+    const isCorridor = comp.kind === "corridor";
+    const colors = Object.assign({ floor: isCorridor ? PALETTE.floorCorridor : PALETTE.floor, ceiling: PALETTE.ceiling, wall: PALETTE.wall }, opts.colors || {});
+    const out = { floor: [[], [], []], ceiling: [[], [], []], wall: [[], [], []] };
+    const openings = [];
+    for (const box of comp.boxes) {
+      for (const face of FACES) {
+        const plane = box[face.axis][face.end];
+        const rect = { u0: box[face.u][0], u1: box[face.u][1], v0: box[face.v][0], v1: box[face.v][1] };
+        const holes = faceHoles(L, comp, box, face, opts);
+        for (const h of holes) if (h.portal) openings.push({ portal: h.portal, axis: face.axis, plane, u: face.u, v: face.v, rect: h });
+        const color = new THREE.Color(colors[face.key]);
+        const bucket = out[face.key];
+        for (const c of rectMinusHoles(rect, holes)) pushQuad(bucket[0], bucket[1], bucket[2], face, plane, c, color);
+      }
+    }
+    const make = (b) => {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute("position", new THREE.Float32BufferAttribute(b[0], 3));
+      g.setAttribute("normal", new THREE.Float32BufferAttribute(b[1], 3));
+      g.setAttribute("color", new THREE.Float32BufferAttribute(b[2], 3));
+      return g;
+    };
+    return { floor: make(out.floor), ceiling: make(out.ceiling), walls: make(out.wall), openings };
+  }
+
+  // ------------------------------------------------------------------- hull
+
+  /**
+   * Loft the hull's octagonal sections into one low-poly BufferGeometry
+   * (outward normals, flat shaded). opts.inflate_m grows it, for a shell drawn
+   * around the interior.
+   */
+  function hullGeometry(THREE, L, opts) {
+    opts = opts || {};
+    const inflate = opts.inflate_m || 0;
+    const secs = L.hull.sections.slice().sort((a, b) => a.z_m - b.z_m);
+    const ring = (s) => {
+      const hw = s.half_beam_m + inflate, top = s.top_m + inflate, bot = s.bottom_m - inflate, c = s.chamfer_m;
+      // Eight points, counter-clockwise seen from the bow (+Z), starting at the top port corner.
+      return [
+        [hw - c, top], [-(hw - c), top], [-hw, top - c], [-hw, bot + c],
+        [-(hw - c), bot], [hw - c, bot], [hw, bot + c], [hw, top - c],
+      ].map((p) => [p[0], p[1], s.z_m]);
+    };
+    const rings = secs.map(ring);
+    const pos = [];
+    const tri = (a, b, c) => pos.push(...a, ...b, ...c);
+    for (let i = 0; i + 1 < rings.length; i++) {
+      const r0 = rings[i], r1 = rings[i + 1];
+      for (let k = 0; k < 8; k++) {
+        const k2 = (k + 1) % 8;
+        tri(r0[k], r0[k2], r1[k2]);
+        tri(r0[k], r1[k2], r1[k]);
+      }
+    }
+    // Caps: stern (first ring) and bow (last ring), fanned from the centre.
+    const cap = (r, flip) => {
+      const c = r.reduce((a, p) => [a[0] + p[0] / 8, a[1] + p[1] / 8, a[2] + p[2] / 8], [0, 0, 0]);
+      for (let k = 0; k < 8; k++) {
+        const k2 = (k + 1) % 8;
+        if (flip) tri(c, r[k2], r[k]); else tri(c, r[k], r[k2]);
+      }
+    };
+    cap(rings[0], false);
+    cap(rings[rings.length - 1], true);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    g.computeVertexNormals();
+    // Make sure the winding faces outward: test one triangle against the centroid.
+    return g;
+  }
+
+  // ----------------------------------------------------------------- labels
+
+  /** A camera-facing text sprite. size_m is the label's height in metres. */
+  function label(THREE, text, opts) {
+    opts = opts || {};
+    const px = 64, pad = 16;
+    const cv = document.createElement("canvas");
+    const ctx = cv.getContext("2d");
+    ctx.font = `600 ${px}px system-ui, sans-serif`;
+    const w = Math.ceil(ctx.measureText(text).width) + pad * 2;
+    cv.width = w; cv.height = px + pad * 2;
+    ctx.font = `600 ${px}px system-ui, sans-serif`;
+    ctx.fillStyle = opts.bg || "rgba(8,12,18,0.78)";
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    if (opts.accent !== undefined) {
+      ctx.fillStyle = "#" + new THREE.Color(opts.accent).getHexString();
+      ctx.fillRect(0, 0, 10, cv.height);
+    }
+    ctx.fillStyle = opts.color || "#e8eef5";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, pad + (opts.accent !== undefined ? 6 : 0), cv.height / 2);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const mat = new THREE.SpriteMaterial({ map: tex, depthTest: opts.depthTest !== false, transparent: true });
+    const s = new THREE.Sprite(mat);
+    const h = opts.size_m || 0.5;
+    s.scale.set((h * cv.width) / cv.height, h, 1);
+    s.renderOrder = 10;
+    return s;
+  }
+
+  // ------------------------------------------------------------ budget HUD
+
+  /**
+   * The Pi 5 cost meter every mockup shows (CLAUDE.md section 11). Call
+   * hud.beginFrame(renderer) before the frame's first render and
+   * hud.endFrame(renderer) after its last; it sums every pass (a viewscreen's
+   * render-to-texture included).
+   */
+  function budgetHud(opts) {
+    opts = opts || {};
+    const el = document.createElement("div");
+    el.className = "pi-budget";
+    el.style.cssText = [
+      "position:fixed", "right:12px", "bottom:12px", "z-index:20", "font:12px/1.35 ui-monospace,Menlo,Consolas,monospace",
+      "color:#d8e2ec", "background:rgba(6,9,14,0.82)", "border:1px solid #2b3540", "border-radius:6px", "padding:8px 10px",
+      "min-width:210px", "pointer-events:none",
+    ].join(";");
+    document.body.appendChild(el);
+    let tris = 0, calls = 0, frames = 0, acc = { t: 0, c: 0 }, last = performance.now(), shown = { t: 0, c: 0, fps: 0 };
+    const bar = (v, max) => {
+      const f = Math.min(1, v / max);
+      const color = v > max ? "#ff5252" : v > 0.8 * max ? "#ffb300" : "#66bb6a";
+      return `<div style="height:5px;background:#1c242d;border-radius:3px;margin:2px 0 5px"><div style="height:5px;width:${(f * 100).toFixed(1)}%;background:${color};border-radius:3px"></div></div>`;
+    };
+    function render() {
+      const b = PI_BUDGET;
+      el.innerHTML =
+        `<div style="font-weight:700;margin-bottom:4px">${PI_BUDGET.board} budget (provisional)</div>` +
+        `triangles ${shown.t.toLocaleString()} / ${b.triangles.toLocaleString()}${bar(shown.t, b.triangles)}` +
+        `draw calls ${shown.c} / ${b.drawCalls}${bar(shown.c, b.drawCalls)}` +
+        `<div style="color:#8a98a8">desktop ${shown.fps.toFixed(0)} fps: not a Pi measurement</div>` +
+        (opts.note ? `<div style="color:#8a98a8">${opts.note}</div>` : "");
+    }
+    return {
+      el,
+      beginFrame(renderer) { renderer.info.autoReset = false; renderer.info.reset(); },
+      endFrame(renderer) {
+        tris = renderer.info.render.triangles; calls = renderer.info.render.calls;
+        acc.t += tris; acc.c += calls; frames++;
+        const now = performance.now();
+        if (now - last > 500) {
+          shown = { t: Math.round(acc.t / frames), c: Math.round(acc.c / frames), fps: (frames * 1000) / (now - last) };
+          acc = { t: 0, c: 0 }; frames = 0; last = now;
+          render();
+        }
+      },
+      /** The latest averaged numbers, for screenshots and tests. */
+      read() { return { triangles: shown.t, drawCalls: shown.c }; },
+    };
+  }
+
+  // -------------------------------------------------------- mockup plumbing
+
+  /**
+   * Standard page chrome: title block naming the change the mockup presents,
+   * and the "mockup, not a Pi measurement" disclaimer.
+   */
+  function titleBlock(opts) {
+    const el = document.createElement("div");
+    el.className = "mockup-title";
+    el.style.cssText = "position:fixed;left:12px;top:12px;z-index:20;max-width:min(520px,calc(100vw - 24px));font:13px/1.4 system-ui,sans-serif;color:#e8eef5;background:rgba(6,9,14,0.82);border:1px solid #2b3540;border-radius:6px;padding:10px 12px";
+    el.innerHTML =
+      `<div style="font-weight:700;font-size:15px">${opts.title}</div>` +
+      `<div style="color:#9fb0c0">${opts.subtitle || ""}</div>` +
+      `<div style="color:#7f8fa0;margin-top:4px">Presents <code>${opts.change}</code>. A three.js mockup on a desktop GPU: it shows layout and look, not Pi 5 performance.</div>`;
+    document.body.appendChild(el);
+    return el;
+  }
+
+  /**
+   * Screenshot hooks for tools/mockups/shoot.mjs. A mockup registers named
+   * shots; the tool calls each one's setup, waits for frames, and captures.
+   * window.MOCKUP_READY is set once the scene has rendered its first frame.
+   */
+  function registerShots(shots) {
+    window.MOCKUP_SHOTS = shots;
+  }
+  function markReady() {
+    window.MOCKUP_READY = true;
+  }
+
+  window.ShipKit = {
+    version: 1,
+    layout, PI_BUDGET, PALETTE, LIGHTING,
+    /** Deprecated alias from before the floor moved to the Pi 5; removed once no page uses it. */
+    PI3_BUDGET: PI_BUDGET,
+    byId, compartment, portalsOf, stationsIn, systemsIn, deckById, measure, bounds, center, portalHalf,
+    roomShell, hullGeometry, label, budgetHud, titleBlock, registerShots, markReady,
+    rectMinusHoles,
+  };
+})();
+</script>
+<!-- INLINE shipkit END -->
+</head>
+<body>
+<div id="ov"></div>
+<div class="info" id="info"></div>
+<div class="controls" id="controls"></div>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
+
+const K = window.ShipKit;
+const L = K.layout();
+const P = K.PALETTE;
+K.titleBlock({
+  title: "Exterior, weapons and flight",
+  subtitle: L.ship.name + ", " + L.ship.class + ": the hull, its mounts and bays, a fight outside, and the bridge held level inside",
+  change: "ship-frames, weapons-and-shields, shuttle-bay-and-fighters, flight-and-navigation",
+});
+const hud = K.budgetHud({ note: "all passes: far layer, near layer, viewscreen, interior, cockpit" });
+window.MOCKUP_BUDGET = () => hud.read();
+
+const V3 = THREE.Vector3, Q = THREE.Quaternion, M4 = THREE.Matrix4;
+const DEG = Math.PI / 180, DT = 1 / 30;
+const v3 = (a) => new V3(a[0], a[1], a[2]);
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const fmt = (x, d = 0) => (Math.abs(x) < 0.5 * Math.pow(10, -d) ? 0 : x).toFixed(d);
+const hexCss = (c) => "#" + new THREE.Color(c).getHexString();
+function rng(seed) { return () => { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function gauss(r) { let u = 0; while (u === 0) u = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * r()); }
+function clampLen(v, m) { const l = v.length(); if (l > m && l > 0) v.multiplyScalar(m / l); return v; }
+
+// ------------------------------------------------------------ numbers from the designs
+// Every value here is quoted from a design table; the section is named beside it.
+const D = {
+  tern: { com: new V3(0.09, 1.02, -8.74),                                  // flight-and-navigation 1
+          fwd: 15, rev: 5, lat: 4,                                          // flight-and-navigation 2, m/s^2
+          angAcc: new V3(12 * DEG, 12 * DEG, 30 * DEG),                     // pitch, yaw, roll, rad/s^2
+          rate: new V3(18 * DEG, 18 * DEG, 36 * DEG),                       // assist rate limits, flight-and-navigation 4
+          tauV: 1.0, tauW: 0.25, mainSlew: 30 },                            // controller constants, engine slew m/s^3
+  dampers: { rated: 25, lag: 0.05, felt: 0.3 },                             // ship-frames 4
+  shake: { ref: 20, falloff: 15, decay: 1.5, angle: 2.5 * DEG, offset: 0.04 }, // ship-frames 5
+  cannon: { interval: 0.25, speed: 1500, life: 1.6, drawn: 1.5, delivered: 1.2, heat: 0.3, cap: 24, charge: 4,
+            sink: 9, dissipate: 0.6, resume: 0.6, yawRate: 60 * DEG, elRate: 45 * DEG, elMin: -10 * DEG, elMax: 90 * DEG,
+            range: 2400, reaction: 0.5, discipline: 0.04, pdFuse: 1.0, pdSigma: 0.12 * DEG, pdRange: 1200 }, // weapons-and-shields 2, 7, 9
+  shield: { semi: new V3(17.0, 13.0, 54.0), centre: new V3(0.0, 1.5, -2.0), face: 40, regen: 3, flash: 0.4 }, // weapons-and-shields 11, 12
+  gannet: { eject: 30, ignite: 0.5, boost: 120, boostT: 6, sustain: 40, sustainT: 20, N: 4, lat: 150, warhead: 60, falloff: 30, prox: 5, life: 60, vmax: 0 }, // weapons-and-shields 10
+  lance: { eject: 30, ignite: 0.5, boost: 120, boostT: 6, sustain: 40, sustainT: 20, N: 4, lat: 150, warhead: 40, falloff: 30, prox: 5, life: 60, vmax: 900 }, // weapons-and-shields 13
+  jackal: { orbitR: 800, orbitV: 180, runV: 250, accel: 60, jink: 30, gunInterval: 0.25, gunSpeed: 1200, gunE: 1.0, gunRange: 1200,
+            sigma: 0.6 * DEG, shield: 4, regen: 0.4, regenDelay: 4, hull: 3, bubble: 3.5 },                     // weapons-and-shields 13
+  hound: { orbitR: 1800, orbitV: 80, burstEvery: 3, burstN: 4, burstInterval: 1 / 3, boltSpeed: 1400, boltE: 1.0, range: 2000,
+           lanceEvery: 30, firstLance: 14, radius: 24, shields: 300, hull: 150 },                             // weapons-and-shields 13
+  swift: { accel: 60, rcs: 15, eject: 4, ignite: 15, clear: 30 },                                             // shuttle-bay-and-fighters 3, 7
+  bay: { door: 4, cradle: 3.5, clamps: 0.5, travel: 4.6, holdRate: 10 * DEG, holdAccel: 5 },                 // shuttle-bay-and-fighters 1, 3
+  recovery: { capture: 0.6, captureV: 1.0, dwell: 1.0, holdRate: 3 * DEG, holdAccel: 2, holdRange: 50 },      // shuttle-bay-and-fighters 4
+};
+const FACE_NAMES = ["Bow", "Stern", "Port", "Starboard", "Dorsal", "Ventral"]; // weapons-and-shields 11, star-crew-64's order
+
+// ------------------------------------------------------------ the hull loft, read from the layout
+const SECS = L.hull.sections.slice().sort((a, b) => a.z_m - b.z_m);
+function sectionAt(z) {
+  if (z < SECS[0].z_m || z > SECS[SECS.length - 1].z_m) return null;
+  for (let i = 0; i + 1 < SECS.length; i++) {
+    const a = SECS[i], b = SECS[i + 1];
+    if (z <= b.z_m) {
+      const f = (z - a.z_m) / (b.z_m - a.z_m);
+      return { hw: a.half_beam_m + f * (b.half_beam_m - a.half_beam_m), top: a.top_m + f * (b.top_m - a.top_m), bot: a.bottom_m + f * (b.bottom_m - a.bottom_m), c: a.chamfer_m + f * (b.chamfer_m - a.chamfer_m) };
+    }
+  }
+  return null;
+}
+function insideHull(x, y, z) {
+  const s = sectionAt(z); if (!s) return false;
+  const ax = Math.abs(x);
+  return ax <= s.hw && y <= s.top && y >= s.bot && ax + y <= s.hw + s.top - s.c && ax - y <= s.hw - s.bot - s.c;
+}
+const WALL = L.conventions.wall_thickness_m;
+
+// ------------------------------------------------------------ geometry helpers
+function colorize(g, color) {
+  const c = new THREE.Color(color), n = g.attributes.position.count, a = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b; }
+  g.setAttribute("color", new THREE.BufferAttribute(a, 3));
+  return g;
+}
+function prep(g, color, m) {
+  g = g.index ? g.toNonIndexed() : g;
+  for (const k of Object.keys(g.attributes)) if (k !== "position") g.deleteAttribute(k);
+  if (m) g.applyMatrix4(m);
+  colorize(g, color); g.computeVertexNormals();
+  return g;
+}
+const TRS = (p, q, s) => new M4().compose(p || new V3(), q || new Q(), s || new V3(1, 1, 1));
+const qE = (x, y, z, o) => new Q().setFromEuler(new THREE.Euler(x, y, z, o || "XYZ"));
+const box = (w, h, d, color, m) => prep(new THREE.BoxGeometry(w, h, d), color, m);
+const cyl = (rt, rb, h, seg, color, m, open) => prep(new THREE.CylinderGeometry(rt, rb, h, seg, 1, !!open), color, m);
+const merge = (list) => mergeGeometries(list, false);
+/** Reverse every triangle (inside surfaces). */
+function flipGeo(g) {
+  const p = g.attributes.position.array, c = g.attributes.color.array;
+  for (let i = 0; i < p.length; i += 9) for (let k = 0; k < 3; k++) { const t = p[i + 3 + k]; p[i + 3 + k] = p[i + 6 + k]; p[i + 6 + k] = t; const u = c[i + 3 + k]; c[i + 3 + k] = c[i + 6 + k]; c[i + 6 + k] = u; }
+  g.computeVertexNormals(); return g;
+}
+/** Explicit triangles with per-triangle colour; quadOut flips a quad that does not face outDir. */
+class Tris {
+  constructor() { this.p = []; this.c = []; }
+  tri(a, b, c, color) { const k = new THREE.Color(color); for (const v of [a, b, c]) { this.p.push(v.x, v.y, v.z); this.c.push(k.r, k.g, k.b); } }
+  triOut(a, b, c, color, out) { const n = new V3().subVectors(b, a).cross(new V3().subVectors(c, a)); if (out && n.dot(out) < 0) this.tri(a, c, b, color); else this.tri(a, b, c, color); }
+  quadOut(a, b, c, d, color, out) {
+    const n = new V3().subVectors(b, a).cross(new V3().subVectors(c, a));
+    if (out && n.dot(out) < 0) { this.tri(a, c, b, color); this.tri(a, d, c, color); }
+    else { this.tri(a, b, c, color); this.tri(a, c, d, color); }
+  }
+  geo() {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(this.p, 3));
+    g.setAttribute("color", new THREE.Float32BufferAttribute(this.c, 3));
+    g.computeVertexNormals(); return g;
+  }
+}
+const tris = (g) => (g.index ? g.index.count : g.attributes.position.count) / 3;
+
+// ------------------------------------------------------------ the hull: kit loft, keel cut for the drop doors, winding checked
+// shipkit's hullGeometry() winds its sides outward but its two end caps inward (ship-frames, "Proposed kit
+// fix"). Every triangle is tested against the loft's axis and flipped if it faces in; the count is reported.
+const DROP = ["p_drop_p", "p_drop_s"].map((id) => K.byId(L.portals, id));
+const holeOf = (p) => ({ u0: p.center_m[0] - p.size_m[0] / 2, u1: p.center_m[0] + p.size_m[0] / 2, v0: p.center_m[2] - p.size_m[1] / 2, v1: p.center_m[2] + p.size_m[1] / 2 });
+const HOLES = DROP.map(holeOf);
+const KEEL_Y = sectionAt(DROP[0].center_m[2]).bot;
+function buildHull() {
+  const src = K.hullGeometry(THREE, L).attributes.position.array;
+  const out = [];
+  let removed = 0;
+  for (let i = 0; i < src.length; i += 9) {
+    const t = Array.from(src.slice(i, i + 9));
+    if (Math.abs(t[1] - KEEL_Y) < 1e-6 && Math.abs(t[4] - KEEL_Y) < 1e-6 && Math.abs(t[7] - KEEL_Y) < 1e-6) { removed++; continue; }
+    out.push(t);
+  }
+  // The keel flat that holds the drop doors, rebuilt with the two openings cut (ShipKit.rectMinusHoles).
+  let kz0 = 0, kz1 = 0;
+  for (let i = 0; i + 1 < SECS.length; i++) if (SECS[i].bottom_m === KEEL_Y && SECS[i + 1].bottom_m === KEEL_Y) { kz0 = SECS[i].z_m; kz1 = SECS[i + 1].z_m; }
+  const flatX = (z) => { const s = sectionAt(z); return s.hw - s.c; };
+  const xin = Math.min(flatX(kz0), flatX(kz1));
+  const ft = (x0, z0, x1, z1, x2, z2) => [x0, KEEL_Y, z0, x1, KEEL_Y, z1, x2, KEEL_Y, z2];
+  for (const c of K.rectMinusHoles({ u0: -xin, u1: xin, v0: kz0, v1: kz1 }, HOLES)) {
+    out.push(ft(c.u0, c.v0, c.u1, c.v0, c.u1, c.v1), ft(c.u0, c.v0, c.u1, c.v1, c.u0, c.v1));
+  }
+  const zs = [...new Set([kz0, kz1, ...HOLES.flatMap((h) => [h.v0, h.v1])])].filter((z) => z >= kz0 && z <= kz1).sort((a, b) => a - b);
+  for (const sx of [1, -1]) for (let i = 0; i + 1 < zs.length; i++) {
+    const za = zs[i], zb = zs[i + 1], zm = (za + zb) / 2;
+    const covered = HOLES.some((h) => zm > h.v0 && zm < h.v1 && (sx > 0 ? h.u1 >= flatX(zm) && h.u0 <= xin : h.u0 <= -flatX(zm) && h.u1 >= -xin));
+    if (covered) continue;
+    const xa = flatX(za), xb = flatX(zb);
+    if (xb - xin > 1e-6) out.push(ft(sx * xin, za, sx * xb, zb, sx * xin, zb));
+    if (xa - xin > 1e-6) out.push(ft(sx * xin, za, sx * xa, za, sx * xb, zb));
+  }
+  // Winding: every face must point away from the loft's axis.
+  let flipped = 0;
+  const a = new V3(), b = new V3(), c = new V3(), n = new V3(), ctr = new V3(), ref = new V3();
+  for (const t of out) {
+    a.fromArray(t, 0); b.fromArray(t, 3); c.fromArray(t, 6);
+    n.subVectors(b, a).cross(new V3().subVectors(c, a));
+    if (n.lengthSq() < 1e-12) continue;
+    ctr.copy(a).add(b).add(c).multiplyScalar(1 / 3);
+    ref.set(0, 1, clamp(ctr.z, -30, 30));
+    if (n.dot(ctr.sub(ref)) < 0) { for (let k = 0; k < 3; k++) { const s = t[3 + k]; t[3 + k] = t[6 + k]; t[6 + k] = s; } flipped++; }
+  }
+  // Colour by facing: light dorsal, darker sides and keel, a slight change every loft segment.
+  const pos = [], col = [];
+  const light = new THREE.Color(P.hullLight), dark = new THREE.Color(P.hullDark), k = new THREE.Color();
+  for (const t of out) {
+    a.fromArray(t, 0); b.fromArray(t, 3); c.fromArray(t, 6);
+    n.subVectors(b, a).cross(new V3().subVectors(c, a)).normalize();
+    const zc = (t[2] + t[5] + t[8]) / 3;
+    let seg = 0; for (let i = 0; i < SECS.length; i++) if (zc > SECS[i].z_m) seg = i;
+    if (n.y > 0.7) k.copy(light);
+    else if (n.y > 0.2) k.copy(light).multiplyScalar(0.93);
+    else if (n.y > -0.2) k.copy(light).lerp(dark, 0.35);
+    else if (n.y > -0.7) k.copy(dark).multiplyScalar(1.12);
+    else k.copy(dark);
+    k.multiplyScalar(seg % 2 ? 1.0 : 0.94);
+    for (let v = 0; v < 3; v++) { pos.push(t[v * 3], t[v * 3 + 1], t[v * 3 + 2]); col.push(k.r, k.g, k.b); }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+  g.computeVertexNormals();
+  return { g, flipped, removed, xin };
+}
+const HULL = buildHull();
+// A double-sided copy for ray tests against the hull surface (window and tube exits).
+const rayMesh = new THREE.Mesh(HULL.g, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+rayMesh.updateMatrixWorld(true);
+const raycaster = new THREE.Raycaster();
+function hullExit(origin, dir) {
+  raycaster.set(origin, dir.clone().normalize()); raycaster.far = 120;
+  const h = raycaster.intersectObject(rayMesh, false)[0];
+  return h ? { p: h.point.clone(), n: h.face.normal.clone() } : null;
+}
+
+// ------------------------------------------------------------ turrets: frames, pods and baked arcs
+const TURRET_IDS = ["turret_dorsal", "turret_ventral", "turret_port", "turret_stbd"];
+const T_RING = 0.35, T_TRUN = 0.55, T_BARREL_GAP = 0.45, T_BARREL = 3.35;
+const turrets = TURRET_IDS.map((id) => {
+  const m = K.byId(L.mounts, id);
+  const u = v3(m.facing).normalize();
+  const f0 = new V3(0, 0, 1).addScaledVector(u, -u.z).normalize();   // bow, projected into the mount plane
+  const s0 = new V3().crossVectors(u, f0);
+  const st = L.stations.find((s) => s.mount === id);
+  const pod = K.compartment(L, st.compartment);
+  const pb = K.bounds(pod);
+  const podBox = { x: [pb.x[0] - WALL, pb.x[1] + WALL], y: [pb.y[0] - WALL, pb.y[1] + WALL], z: [pb.z[0] - WALL, pb.z[1] + WALL] };
+  const ringTop = v3(m.center_m).addScaledVector(u, WALL + T_RING);
+  const pivot = ringTop.clone().addScaledVector(u, T_TRUN);
+  return { id, name: { turret_dorsal: "Dorsal", turret_ventral: "Ventral", turret_port: "Port", turret_stbd: "Starboard" }[id],
+    mount: m, station: st, u, f0, s0, basis: new M4().makeBasis(s0, u, f0), podBox, ringTop, pivot };
+});
+function barrelDir(T, psi, el, out) {
+  const c = Math.cos(el);
+  return out.copy(T.f0).multiplyScalar(c * Math.cos(psi)).addScaledVector(T.s0, c * Math.sin(psi)).addScaledVector(T.u, Math.sin(el));
+}
+function dirToAngles(T, d) { const x = d.dot(T.s0), y = d.dot(T.u), z = d.dot(T.f0); return { psi: Math.atan2(x, z), el: Math.atan2(y, Math.hypot(x, z)) }; }
+const inBox = (b, p) => p.x >= b.x[0] && p.x <= b.x[1] && p.y >= b.y[0] && p.y <= b.y[1] && p.z >= b.z[0] && p.z <= b.z[1];
+const _rp = new V3();
+/** A ray from the pivot clears the hull loft and the other mounts for 200 m (weapons-and-shields 3). */
+function rayClear(T, d) {
+  for (let s = 1.2; s <= 200; s += (s < 100 ? 0.35 : 2)) {
+    _rp.copy(T.pivot).addScaledVector(d, s);
+    if (Math.abs(_rp.z) > 44 || Math.abs(_rp.x) > 16 || _rp.y > 12 || _rp.y < -10) { if (s > 100) break; continue; }
+    if (insideHull(_rp.x, _rp.y, _rp.z)) return false;
+    for (const o of turrets) { if (o === T) continue; if (inBox(o.podBox, _rp) || _rp.distanceTo(o.pivot) < 1.7) return false; }
+  }
+  return true;
+}
+// Bake each turret's 5 degree mask (72 in yaw x 20 in elevation), as the sc-tools arc baker will.
+const _d = new V3();
+for (const T of turrets) {
+  T.mask = new Uint8Array(72 * 20);
+  for (let yi = 0; yi < 72; yi++) for (let ei = 0; ei < 20; ei++) {
+    barrelDir(T, (-180 + (yi + 0.5) * 5) * DEG, (-10 + (ei + 0.5) * 5) * DEG, _d);
+    T.mask[yi * 20 + ei] = rayClear(T, _d) ? 1 : 0;
+  }
+}
+function arcOK(T, psi, el) {
+  if (el < D.cannon.elMin - 1e-6 || el > D.cannon.elMax + 1e-6) return false;
+  let p = psi / DEG; p = ((p + 180) % 360 + 360) % 360;
+  const yi = Math.min(71, Math.floor(p / 5)), ei = clamp(Math.floor((el / DEG + 10) / 5), 0, 19);
+  return T.mask[yi * 20 + ei] === 1;
+}
+// Coverage measured over 2,000 evenly spread directions (the design's table came from the same test).
+const COVER = (() => {
+  const n = 2000, share = turrets.map(() => 0), by = [0, 0, 0, 0, 0];
+  for (let i = 0; i < n; i++) {
+    const y = 1 - (2 * (i + 0.5)) / n, r = Math.sqrt(1 - y * y), th = i * Math.PI * (3 - Math.sqrt(5));
+    const d = new V3(r * Math.cos(th), y, r * Math.sin(th));
+    let k = 0;
+    turrets.forEach((T, j) => { const a = dirToAngles(T, d); if (a.el >= D.cannon.elMin && a.el <= D.cannon.elMax && rayClear(T, d)) { share[j]++; k++; } });
+    by[k]++;
+  }
+  return { share: share.map((s) => (100 * s) / n), atLeast1: (100 * (n - by[0])) / n, atLeast2: (100 * (n - by[0] - by[1])) / n, atLeast3: (100 * (by[3] + by[4])) / n };
+})();
+
+// ------------------------------------------------------------ scenes, renderer, lights
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.autoClear = false;
+document.body.appendChild(renderer.domElement);
+
+const farScene = new THREE.Scene();      // ship-frames pass 2: stars, sun, planet proxy; drawn with the eye's rotation only
+const nearScene = new THREE.Scene();     // ship-frames pass 3: the system frame within 20 km, origin at the eye
+const interior = new THREE.Scene();      // ship-frames pass 5: the bridge in int:tern
+const cockpitScene = new THREE.Scene();  // the Swift's cockpit in craft:swift_1
+
+const SUN_DIR = new V3(-0.75, 0.5, 0.3).normalize();
+const sun = new THREE.DirectionalLight(0xfff1dc, 3.2); sun.position.copy(SUN_DIR);
+nearScene.add(sun, new THREE.HemisphereLight(0x101626, 0x1d3550, 1.1)); // the sun, and a dim planetshine fill from below
+const farSun = new THREE.DirectionalLight(0xfff1dc, 3.0); farSun.position.copy(SUN_DIR);
+farScene.add(farSun, new THREE.AmbientLight(0x101826, 0.6));
+
+// ------------------------------------------------------------ the far layer
+{
+  const r = rng(7), n = 3000, pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const u = r() * 2 - 1, th = r() * Math.PI * 2, s = Math.sqrt(1 - u * u), R = 3000;
+    pos.set([R * s * Math.cos(th), R * u, R * s * Math.sin(th)], i * 3);
+    const b = 0.4 + 0.6 * Math.pow(r(), 3), tint = r();
+    col.set([b * (tint > 0.8 ? 1.0 : 0.85), b * 0.9, b * (tint < 0.3 ? 1.0 : 0.85)], i * 3);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  g.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  farScene.add(new THREE.Points(g, new THREE.PointsMaterial({ size: 1.6, sizeAttenuation: false, vertexColors: true })));
+  // The sun: one billboard.
+  const cv = document.createElement("canvas"); cv.width = cv.height = 128;
+  const cx = cv.getContext("2d"), gr = cx.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gr.addColorStop(0, "rgba(255,255,245,1)"); gr.addColorStop(0.18, "rgba(255,244,214,0.95)"); gr.addColorStop(0.4, "rgba(255,210,150,0.25)"); gr.addColorStop(1, "rgba(255,200,140,0)");
+  cx.fillStyle = gr; cx.fillRect(0, 0, 128, 128);
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+  sp.position.copy(SUN_DIR).multiplyScalar(2000); sp.scale.setScalar(190); farScene.add(sp);
+  // A planet proxy: true direction and angular size, drawn at 1,000 m (ship-frames 7).
+  const dir = new V3(0.32, -0.40, 0.86).normalize(), R = 1000 * Math.sin(15 * DEG);
+  const g0 = new THREE.IcosahedronGeometry(R, 7), pg = g0.index ? g0.toNonIndexed() : g0;
+  const pp = pg.attributes.position, pc = new Float32Array(pp.count * 3);
+  const ocean = new THREE.Color(0x1d4f7a), shelf = new THREE.Color(0x2a6a8e), land = new THREE.Color(0x5f7a3a), desert = new THREE.Color(0x9a7a4a), ice = new THREE.Color(0xdfe8f0), cloud = new THREE.Color(0xe8eef4), c = new THREE.Color();
+  for (let i = 0; i < pp.count; i += 3) {
+    const x = (pp.getX(i) + pp.getX(i + 1) + pp.getX(i + 2)) / 3 / R, y = (pp.getY(i) + pp.getY(i + 1) + pp.getY(i + 2)) / 3 / R, z = (pp.getZ(i) + pp.getZ(i + 1) + pp.getZ(i + 2)) / 3 / R;
+    const h = Math.sin(x * 5.1 + Math.sin(z * 3.3)) + Math.cos(y * 4.3 + x * 2.1) * 0.8 + Math.sin(z * 7.7) * 0.35;
+    const cl = Math.sin(x * 11 + y * 3) * Math.cos(z * 9 - x * 2) + Math.sin(y * 17) * 0.4;
+    if (Math.abs(y) > 0.86) c.copy(ice); else if (cl > 0.75) c.copy(cloud); else if (h > 0.55) c.copy(h > 1.2 ? desert : land); else if (h > 0.35) c.copy(shelf); else c.copy(ocean);
+    for (let k = 0; k < 3; k++) pc.set([c.r, c.g, c.b], (i + k) * 3);
+  }
+  pg.setAttribute("color", new THREE.BufferAttribute(pc, 3)); pg.deleteAttribute("uv"); pg.deleteAttribute("normal"); pg.computeVertexNormals();
+  const planet = new THREE.Mesh(pg, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+  planet.position.copy(dir).multiplyScalar(1000); planet.rotation.set(0.3, 0.8, 0.2); farScene.add(planet);
+  const atmo = new THREE.Mesh(new THREE.IcosahedronGeometry(R * 1.035, 4), new THREE.MeshBasicMaterial({ color: 0x5fa8ff, transparent: true, opacity: 0.2, side: THREE.BackSide, depthWrite: false }));
+  atmo.position.copy(planet.position); farScene.add(atmo);
+}
+
+// ------------------------------------------------------------ the Tern's exterior model (ship frame)
+const ship = new THREE.Group();          // posed each frame at P_s = P_cm - R c, orientation q (ship-frames 2)
+nearScene.add(ship);
+const lambert = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+const basic = new THREE.MeshBasicMaterial({ vertexColors: true });
+const staticParts = [HULL.g];
+const glowParts = [];                    // emissive and baked: window glass, nav lights, the lit bays seen through open doors
+const tb = new Tris(), gb = new Tris();
+const H = (z) => sectionAt(z);
+// Accent stripes on both sides (1 cm or more off the hull: no shared planes, CLAUDE.md 8).
+{
+  const zs = [-32, -18, -2, 8, 20, 32];
+  for (const sx of [1, -1]) for (let i = 0; i + 1 < zs.length; i++) {
+    const a = H(zs[i]), b = H(zs[i + 1]);
+    for (const [y0, y1, col] of [[4.25, 4.95, P.hullAccent], [3.95, 4.1, P.hullAccent]]) {
+      const pa0 = new V3(sx * (a.hw + 0.03), y0, zs[i]), pb0 = new V3(sx * (b.hw + 0.03), y0, zs[i + 1]);
+      const pb1 = new V3(sx * (b.hw + 0.03), y1, zs[i + 1]), pa1 = new V3(sx * (a.hw + 0.03), y1, zs[i]);
+      tb.quadOut(pa0, pb0, pb1, pa1, col, new V3(sx, 0, 0));
+    }
+  }
+  // Dorsal stripes forward of the dorsal pod, toward the bridge.
+  for (const sx of [1, -1]) {
+    const za = 5, zb = 31, ya = H(za).top + 0.03, yb = H(zb).top + 0.03;
+    tb.quadOut(new V3(sx * 1.0, ya, za), new V3(sx * 1.45, ya, za), new V3(sx * 1.45, yb, zb), new V3(sx * 1.0, yb, zb), P.hullAccent, new V3(0, 1, 0));
+  }
+}
+// Dorsal spine plating and a ventral strake (proud of the hull, never coplanar).
+staticParts.push(box(4.4, 0.5, 15, P.hullDark, TRS(new V3(0, H(-10).top, -10))));
+// Turret pods (layout pod boxes plus wall), rings.
+for (const T of turrets) {
+  const b = T.podBox;
+  staticParts.push(box(b.x[1] - b.x[0], b.y[1] - b.y[0], b.z[1] - b.z[0], P.hullDark, TRS(new V3((b.x[0] + b.x[1]) / 2, (b.y[0] + b.y[1]) / 2, (b.z[0] + b.z[1]) / 2))));
+  const ringC = v3(T.mount.center_m).addScaledVector(T.u, WALL + T_RING / 2);
+  staticParts.push(cyl(1.35, 1.5, T_RING, 10, P.trim, new M4().multiplyMatrices(TRS(ringC), T.basis)));
+}
+// Engines: bells (outside and inside), a collar on the stern cap.
+const ENGINES = ["main_engine_p", "main_engine_s"].map((id) => K.byId(L.mounts, id));
+for (const m of ENGINES) {
+  const c = v3(m.center_m);
+  const mb = TRS(new V3(c.x, c.y, c.z - 1.3), qE(-Math.PI / 2, 0, 0));
+  staticParts.push(cyl(2.0, 1.5, 2.6, 12, 0x5a636e, mb, true));
+  staticParts.push(flipGeo(cyl(1.92, 1.42, 2.6, 12, 0x2a2f36, mb, true)));
+  staticParts.push(cyl(1.45, 1.45, 0.2, 12, 0x1a1d22, TRS(new V3(c.x, c.y, c.z - 0.2), qE(-Math.PI / 2, 0, 0))));
+}
+staticParts.push(box(13.6, 4.4, 0.8, P.hullDark, TRS(new V3(0, 1.0, SECS[0].z_m - 0.35))));
+// Sensor dome on the bow (system sensor_array) and the comms mast (comms_array).
+{
+  const s = K.byId(L.systems, "sensor_array").center_m, bow = SECS[SECS.length - 1];
+  staticParts.push(prep(new THREE.IcosahedronGeometry(1.0, 1), 0x2b3d52, TRS(new V3(0, (bow.top_m + bow.bottom_m) / 2, bow.z_m + 0.1), null, new V3(1.15, 1.25, 1.5))));
+  staticParts.push(cyl(1.25, 1.3, 0.35, 10, P.trim, TRS(new V3(0, (bow.top_m + bow.bottom_m) / 2, bow.z_m - 0.05), qE(Math.PI / 2, 0, 0))));
+  void s;
+  const cm = K.byId(L.systems, "comms_array").center_m, top = H(cm[2]).top;
+  staticParts.push(box(0.3, 1.6, 0.3, P.trim, TRS(new V3(cm[0], top + 0.8, cm[2]))));
+  staticParts.push(cyl(1.3, 0.15, 0.55, 10, 0xb8c2cc, TRS(new V3(cm[0], top + 1.85, cm[2]), qE(-0.5, 0, 0))));
+}
+// Radiator panels on the dorsal aft (system radiators), ribbed, with a dull heat glow.
+{
+  const rc = K.byId(L.systems, "radiators").center_m, top = H(rc[2]).top;
+  for (const sx of [1, -1]) {
+    const tilt = qE(0, 0, sx * 12 * DEG), base = new V3(sx * 2.2, top + 0.25, rc[2]);
+    const panel = (dx, w, h, d, col, dy) => new M4().multiplyMatrices(TRS(base, tilt), TRS(new V3(sx * dx, dy || 0, 0))).multiply(TRS(null, null, new V3(w, h, d)));
+    staticParts.push(prep(new THREE.BoxGeometry(1, 1, 1), 0x3a4048, panel(3.2, 6.4, 0.14, 12)));
+    for (let i = 0; i < 6; i++) staticParts.push(prep(new THREE.BoxGeometry(1, 1, 1), P.hullDark, new M4().multiplyMatrices(TRS(base, tilt), TRS(new V3(sx * 3.2, 0.1, -5.5 + i * 2.2), null, new V3(6.4, 0.08, 0.18)))));
+    for (let i = 0; i < 5; i++) {
+      const m = new M4().multiplyMatrices(TRS(base, tilt), TRS(new V3(sx * 3.2, 0.09, -4.4 + i * 2.2)));
+      const corners = [[-3.0, -0.8], [3.0, -0.8], [3.0, 0.8], [-3.0, 0.8]].map(([x, z]) => new V3(x, 0, z).applyMatrix4(m));
+      gb.quadOut(corners[0], corners[1], corners[2], corners[3], 0x5a1c10, new V3(0, 1, 0));
+    }
+    staticParts.push(box(0.5, 0.5, 12.4, P.trim, TRS(new V3(sx * 2.2, top + 0.2, rc[2]))));
+  }
+}
+// The bridge windows, where their sight lines leave the hull (ship-frames 7: the hull is culled from inside).
+const WINDOWS = L.portals.filter((p) => p.kind === "window" && p.between.includes("bridge"));
+for (const w of WINDOWS) {
+  const [cx, cy, cz] = w.center_m, hw = w.size_m[0] / 2, hh = w.size_m[1] / 2;
+  const ring = (gw, gh, off) => [[-gw, -gh], [gw, -gh], [gw, gh], [-gw, gh]].map(([dx, dy]) => { const e = hullExit(new V3(cx + dx, cy + dy, cz), new V3(0, 0, 1)); return e.p.addScaledVector(e.n, off); });
+  const outer = ring(hw + 0.25, hh + 0.2, 0.02), glass = ring(hw, hh, 0.045), hint = new V3(Math.sign(cx) * 0.5, 0.6, 0.6);
+  tb.quadOut(outer[0], outer[1], outer[2], outer[3], 0x2a3038, hint);
+  gb.quadOut(glass[0], glass[1], glass[2], glass[3], 0xffd9a0, hint);
+}
+// Missile tube mouths on the bow, where each tube's axis leaves the hull.
+const TUBES = ["tube_1", "tube_2"].map((id) => {
+  const m = K.byId(L.mounts, id), e = hullExit(v3(m.center_m), v3(m.facing));
+  const z = e.n.clone(), y = new V3(0, 1, 0).addScaledVector(z, -z.y).normalize(), x = new V3().crossVectors(y, z);
+  const basis = new M4().makeBasis(x, y, z);
+  const mouth = new THREE.CylinderGeometry(0.42, 0.42, 0.06, 8);
+  staticParts.push(prep(mouth, 0x14181e, new M4().multiplyMatrices(TRS(e.p.clone().addScaledVector(z, 0.03)), basis).multiply(TRS(null, qE(Math.PI / 2, 0, 0)))));
+  return { id, mount: m, exit: e.p, n: z, x, y, basis, hingeSign: Math.sign(m.center_m[0]) };
+});
+// Navigation lights, the airlock's outer door.
+{
+  const s = H(4);
+  gb.quadOut(new V3(s.hw + 0.05, 2.2, 6.0), new V3(s.hw + 0.05, 2.2, 6.6), new V3(s.hw + 0.05, 2.8, 6.6), new V3(s.hw + 0.05, 2.8, 6.0), 0xff3030, new V3(1, 0, 0));
+  gb.quadOut(new V3(-s.hw - 0.05, 2.2, 6.0), new V3(-s.hw - 0.05, 2.2, 6.6), new V3(-s.hw - 0.05, 2.8, 6.6), new V3(-s.hw - 0.05, 2.8, 6.0), 0x30ff60, new V3(-1, 0, 0));
+  const al = K.byId(L.portals, "p_airlock_outer"), az = al.center_m[2], ahw = H(az).hw;
+  staticParts.push(box(0.1, al.size_m[1] + 0.5, al.size_m[0] + 0.5, P.hazard, TRS(new V3(-ahw - 0.03, al.center_m[1], az))));
+  staticParts.push(box(0.1, al.size_m[1], al.size_m[0], P.door, TRS(new V3(-ahw - 0.07, al.center_m[1], az))));
+}
+// Trunks under the drop doors, and the launch bays seen through them, with baked light.
+function bakeShell(comp, scale) {
+  const sh = K.roomShell(THREE, L, comp);
+  const out = [];
+  for (const [g, f] of [[sh.floor, 0.9], [sh.ceiling, 1.6], [sh.walls, 1.05]]) {
+    const c = g.attributes.color.array;
+    for (let i = 0; i < c.length; i += 3) { c[i] = Math.min(1, c[i] * f * scale + 0.05); c[i + 1] = Math.min(1, c[i + 1] * f * scale + 0.045); c[i + 2] = Math.min(1, c[i + 2] * f * scale + 0.03); }
+    out.push(g);
+  }
+  return out;
+}
+for (const id of ["launch_bay_p", "launch_bay_s"]) glowParts.push(...bakeShell(K.compartment(L, id), 1.25));
+for (const h of HOLES) {
+  const y0 = KEEL_Y, y1 = DROP[0].center_m[1];
+  const wall = (a, b, c, d, out, col) => gb.quadOut(a, b, c, d, col, out);
+  const cs = [[h.u0, h.v0], [h.u1, h.v0], [h.u1, h.v1], [h.u0, h.v1]];
+  for (let i = 0; i < 4; i++) {
+    const [xa, za] = cs[i], [xb, zb] = cs[(i + 1) % 4];
+    const inward = new V3((h.u0 + h.u1) / 2 - (xa + xb) / 2, 0, (h.v0 + h.v1) / 2 - (za + zb) / 2);
+    wall(new V3(xa, y0, za), new V3(xb, y0, zb), new V3(xb, y1, zb), new V3(xa, y1, za), inward, 0x2a2f36);
+    const d = inward.clone().normalize().multiplyScalar(0.02);
+    wall(new V3(xa, y0 + 0.25, za).add(d), new V3(xb, y0 + 0.25, zb).add(d), new V3(xb, y0 + 0.55, zb).add(d), new V3(xa, y0 + 0.55, za).add(d), inward, 0x8a7428);
+  }
+}
+staticParts.push(tb.geo());
+glowParts.push(gb.geo());
+const shipStatic = new THREE.Mesh(merge(staticParts), lambert);
+const shipGlow = new THREE.Mesh(merge(glowParts), basic);
+ship.add(shipStatic, shipGlow);
+
+// Moving attachments, instanced by part (ship-frames 9): turret heads, barrels, and a unit box for door
+// leaves, tube doors and cradle parts. Their matrices are ship-frame poses; the group carries the ship pose.
+const headGeo = (() => {
+  const g = new THREE.BoxGeometry(2.3, 1.0, 2.4).toNonIndexed();
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) { let y = p.getY(i) + 0.5, z = p.getZ(i) - 0.15; if (y > 0.9 && z > 0.9) z -= 0.6; p.setXYZ(i, p.getX(i), y, z); }
+  return merge([prep(g, 0x7d8894), box(0.5, 0.3, 0.5, 0x1b2a3a, TRS(new V3(0.75, 1.15, 0.0)))]);
+})();
+const barrelGeo = merge([
+  box(0.36, 0.36, 0.5, 0x3a4048, TRS(new V3(0, 0, 0.25))),
+  cyl(0.13, 0.13, 3.0, 6, 0x4a525c, TRS(new V3(0, 0, 1.6), qE(Math.PI / 2, 0, 0))),
+  cyl(0.19, 0.19, 0.35, 6, 0x2a2f36, TRS(new V3(0, 0, 3.18), qE(Math.PI / 2, 0, 0))),
+]);
+const heads = new THREE.InstancedMesh(headGeo, lambert, 4);
+const barrels = new THREE.InstancedMesh(barrelGeo, lambert, 8);
+const UNIT = 6 + 2 + 9;
+const unitBoxes = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ flatShading: true }), UNIT);
+for (const m of [heads, barrels, unitBoxes]) { m.frustumCulled = false; ship.add(m); }
+for (let i = 0; i < UNIT; i++) unitBoxes.setColorAt(i, new THREE.Color(i < 6 ? P.hullDark : i < 8 ? 0x5a636e : (i - 8) % 3 === 0 ? P.hazard : 0x3a4048));
+// Engine glow and plumes: one additive mesh, its z scale is the plume length.
+const glowMesh = (() => {
+  const parts = [];
+  for (const m of ENGINES) {
+    const c = m.center_m;
+    parts.push(prep(new THREE.CircleGeometry(1.45, 12), 0xbfe6ff, TRS(new V3(c[0], c[1], 0), qE(0, Math.PI, 0))));
+    const cone = prep(new THREE.CylinderGeometry(0.0, 1.35, 1, 12, 1, true), 0x5aa0ff, TRS(new V3(c[0], c[1], -0.5), qE(-Math.PI / 2, 0, 0)));
+    const p = cone.attributes.position, col = cone.attributes.color;
+    for (let i = 0; i < p.count; i++) { const f = 1 + p.getZ(i); col.setXYZ(i, col.getX(i) * f, col.getY(i) * f, col.getZ(i) * f); }
+    parts.push(cone);
+  }
+  const mesh = new THREE.Mesh(merge(parts), new THREE.MeshBasicMaterial({ vertexColors: true, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }));
+  mesh.position.z = SECS[0].z_m - 2.4;
+  return mesh;
+})();
+ship.add(glowMesh);
+
+// The shield: one ellipsoid (weapons-and-shields 11, 12), six faces by the normalized dominant axis,
+// worked out per fragment from the unit-sphere coordinate; six face opacities and colours as uniforms.
+const shieldMat = new THREE.ShaderMaterial({
+  uniforms: { uAlpha: { value: [0, 0, 0, 0, 0, 0] }, uColor: { value: [0, 1, 2, 3, 4, 5].map(() => new THREE.Color(0x4fc3f7)) }, uBase: { value: 0 } },
+  vertexShader: `
+    varying vec3 vU; varying vec3 vN; varying vec3 vV;
+    void main() {
+      vU = position;
+      vec4 mv = modelViewMatrix * vec4(position, 1.0);
+      vV = -mv.xyz; vN = normalize(normalMatrix * normal);
+      gl_Position = projectionMatrix * mv;
+    }`,
+  fragmentShader: `
+    uniform float uAlpha[6]; uniform vec3 uColor[6]; uniform float uBase;
+    varying vec3 vU; varying vec3 vN; varying vec3 vV;
+    void main() {
+      vec3 a = abs(vU);
+      int f; float m1; float m2;
+      if (a.z >= a.x && a.z >= a.y) { f = vU.z >= 0.0 ? 0 : 1; m1 = a.z; m2 = max(a.x, a.y); }
+      else if (a.x >= a.y) { f = vU.x >= 0.0 ? 2 : 3; m1 = a.x; m2 = max(a.y, a.z); }
+      else { f = vU.y >= 0.0 ? 4 : 5; m1 = a.y; m2 = max(a.x, a.z); }
+      float fres = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 2.0);
+      float edge = 1.0 - smoothstep(0.0, 0.03, m1 - m2);
+      float al = uAlpha[f] * (0.45 + 0.55 * fres) + uBase * (0.3 + 0.7 * fres + 3.0 * edge);
+      gl_FragColor = vec4(uColor[f] * (1.0 + 0.6 * edge), clamp(al, 0.0, 0.85));
+    }`,
+  transparent: true, depthWrite: false, side: THREE.DoubleSide,
+});
+const shieldMesh = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 20), shieldMat);
+shieldMesh.position.copy(D.shield.centre); shieldMesh.scale.copy(D.shield.semi);
+ship.add(shieldMesh);
+const TERN_TRIS = tris(shipStatic.geometry) + tris(shipGlow.geometry) + 4 * tris(headGeo) + 8 * tris(barrelGeo) + UNIT * 12 + tris(glowMesh.geometry);
+const TERN_CALLS = 6;
+
+// ------------------------------------------------------------ craft and enemy models (built to their triangle ceilings or far under)
+/** A lofted fuselage: sections {z, w, h}, n sides, along +Z (nose). */
+function loft(secs, n, color) {
+  const t = new Tris(), rings = secs.map((s) => Array.from({ length: n }, (_, k) => { const a = (k / n) * Math.PI * 2 + Math.PI / n; return new V3(s.w * Math.cos(a), (s.y || 0) + s.h * Math.sin(a), s.z); }));
+  for (let i = 0; i + 1 < rings.length; i++) for (let k = 0; k < n; k++) {
+    const a = rings[i][k], b = rings[i][(k + 1) % n], c = rings[i + 1][(k + 1) % n], d = rings[i + 1][k];
+    const out = new V3().addVectors(a, c).multiplyScalar(0.5).sub(new V3(0, secs[i].y || 0, a.z)).setZ(0);
+    t.quadOut(a, b, c, d, color, out.lengthSq() > 1e-6 ? out : new V3(0, 0, 1));
+  }
+  for (const [ri, dz] of [[0, -1], [rings.length - 1, 1]]) {
+    const r = rings[ri], c = r.reduce((s, p) => s.add(p), new V3()).multiplyScalar(1 / n);
+    for (let k = 0; k < n; k++) { const a = r[k], b = r[(k + 1) % n]; const nn = new V3().subVectors(a, c).cross(new V3().subVectors(b, c)); if (nn.z * dz < 0) t.tri(c, b, a, color); else t.tri(c, a, b, color); }
+  }
+  return t.geo();
+}
+/** A flat plate from an outline in x,z, thickness th, as a closed prism. */
+function plate(outline, th, color, m) {
+  const t = new Tris(), top = outline.map(([x, z]) => new V3(x, th / 2, z)), bot = outline.map(([x, z]) => new V3(x, -th / 2, z));
+  for (let i = 1; i + 1 < outline.length; i++) { t.triOut(top[0], top[i], top[i + 1], color, new V3(0, 1, 0)); t.triOut(bot[0], bot[i], bot[i + 1], color, new V3(0, -1, 0)); }
+  const ctr = top.reduce((s, p) => s.add(p), new V3()).multiplyScalar(1 / top.length);
+  for (let i = 0; i < outline.length; i++) { const j = (i + 1) % outline.length; t.quadOut(bot[i], bot[j], top[j], top[i], color, new V3().subVectors(top[i], ctr).setY(0)); }
+  const g = t.geo(); if (m) { g.applyMatrix4(m); g.computeVertexNormals(); } return g;
+}
+const swiftData = K.byId(L.craft, "swift_1");
+const swiftGeo = (() => {
+  const lz = swiftData.length_m / 2, sp = swiftData.span_m / 2, hh = swiftData.height_m / 2;
+  const body = loft([{ z: -lz, w: 0.5, h: 0.45 }, { z: -2.2, w: 0.85, h: 0.6 }, { z: 0.2, w: 0.9, h: 0.62 }, { z: 2.1, w: 0.6, h: 0.42 }, { z: lz, w: 0.08, h: 0.08 }], 6, 0xc4ccd5);
+  const wingL = plate([[0.5, 0.9], [sp, -1.7], [sp, -2.5], [0.5, -2.7]], 0.14, 0xaab4bf);
+  const wingR = plate([[-0.5, 0.9], [-0.5, -2.7], [-sp, -2.5], [-sp, -1.7]], 0.14, 0xaab4bf);
+  const stripe = plate([[1.4, -0.4], [2.0, -1.4], [2.0, -1.75], [1.4, -0.9]], 0.16, P.role.flight_ops);
+  const stripeR = plate([[-1.4, -0.4], [-1.4, -0.9], [-2.0, -1.75], [-2.0, -1.4]], 0.16, P.role.flight_ops);
+  const fin = (sx) => plate([[0, -1.9], [0.0, -3.4], [hh + 0.4, -3.5], [hh + 0.25, -2.7]], 0.12, 0x9aa4b0, new M4().multiplyMatrices(TRS(new V3(sx * 0.55, 0.3, 0)), new M4().makeRotationZ(Math.PI / 2 + sx * 0.25)));
+  const canopy = loft([{ z: 0.4, w: 0.42, h: 0.18, y: 0.55 }, { z: 1.2, w: 0.45, h: 0.24, y: 0.62 }, { z: 2.0, w: 0.3, h: 0.12, y: 0.5 }], 6, 0x1b2a3a);
+  const nozzle = cyl(0.42, 0.34, 0.5, 8, 0x3a4048, TRS(new V3(0, 0, -lz - 0.2), qE(Math.PI / 2, 0, 0)), true);
+  return merge([body, wingL, wingR, stripe, stripeR, fin(1), fin(-1), canopy, nozzle]);
+})();
+const jackalGeo = (() => {
+  const body = loft([{ z: -3.5, w: 0.7, h: 0.55 }, { z: -1.0, w: 1.0, h: 0.75 }, { z: 1.6, w: 0.7, h: 0.5 }, { z: 3.5, w: 0.06, h: 0.06 }], 4, 0x8a5050);
+  const wl = plate([[0.6, -2.4], [3.4, -0.2], [3.4, -0.9], [0.6, -3.2]], 0.16, 0x6a4040);
+  const wr = plate([[-0.6, -2.4], [-0.6, -3.2], [-3.4, -0.9], [-3.4, -0.2]], 0.16, 0x6a4040);
+  const pods = [1, -1].map((s) => cyl(0.35, 0.35, 2.2, 6, 0x4a3030, TRS(new V3(s * 1.3, -0.1, -2.6), qE(Math.PI / 2, 0, 0))));
+  const can = loft([{ z: 0.2, w: 0.35, h: 0.15, y: 0.5 }, { z: 1.3, w: 0.3, h: 0.12, y: 0.42 }], 4, 0x2a1418);
+  return merge([body, wl, wr, ...pods, can]);
+})();
+const houndGeo = merge([
+  box(10, 6, 38, 0x6b5050, TRS(new V3(0, 0, 0))), box(7, 4.4, 8, 0x7a5a5a, TRS(new V3(0, 0, 22), qE(0, 0, Math.PI / 4), new V3(0.75, 0.75, 1))),
+  box(26, 1.4, 10, 0x5a4040, TRS(new V3(0, -0.6, -6))), box(5, 4, 9, 0x7a5a5a, TRS(new V3(0, 4.6, -5))),
+  box(2.6, 2.6, 11, 0x3a2a2a, TRS(new V3(7, -0.8, -15))), box(2.6, 2.6, 11, 0x3a2a2a, TRS(new V3(-7, -0.8, -15))),
+  box(2.4, 1.4, 2.4, 0x4a3434, TRS(new V3(0, 3.8, 9))), box(2.4, 1.4, 2.4, 0x4a3434, TRS(new V3(0, -3.8, 9))),
+  box(0.9, 0.9, 0.9, 0xff5030, TRS(new V3(0, 0, -19.3))),
+]);
+const missileGeo = merge([
+  cyl(0.25, 0.25, 3.6, 6, 0xffffff, TRS(new V3(0, 0, -0.3), qE(Math.PI / 2, 0, 0))),
+  cyl(0.0, 0.25, 0.6, 6, 0xd0d0d0, TRS(new V3(0, 0, 1.8), qE(Math.PI / 2, 0, 0))),
+  box(1.0, 0.04, 0.5, 0x9a9a9a, TRS(new V3(0, 0, -1.8))), box(0.04, 1.0, 0.5, 0x9a9a9a, TRS(new V3(0, 0, -1.8))),
+]);
+const swifts = new THREE.InstancedMesh(swiftGeo, lambert, 2);
+const jackals = new THREE.InstancedMesh(jackalGeo, lambert, 8);
+const missiles = new THREE.InstancedMesh(missileGeo, lambert, 16);
+const houndMesh = new THREE.Mesh(houndGeo, lambert);
+for (const m of [swifts, jackals, missiles]) { m.frustumCulled = false; nearScene.add(m); }
+nearScene.add(houndMesh);
+for (let i = 0; i < 16; i++) missiles.setColorAt(i, new THREE.Color(0xffffff));
+
+// ------------------------------------------------------------ billboards: bolts, exhaust, blasts (one instanced call)
+const BB_MAX = 1536;
+const bbGeo = new THREE.InstancedBufferGeometry();
+bbGeo.setAttribute("position", new THREE.Float32BufferAttribute([-0.5, -1, 0, 0.5, -1, 0, 0.5, 1, 0, -0.5, -1, 0, 0.5, 1, 0, -0.5, 1, 0], 3));
+const bbPos = new THREE.InstancedBufferAttribute(new Float32Array(BB_MAX * 3), 3), bbDir = new THREE.InstancedBufferAttribute(new Float32Array(BB_MAX * 3), 3);
+const bbCol = new THREE.InstancedBufferAttribute(new Float32Array(BB_MAX * 4), 4), bbSize = new THREE.InstancedBufferAttribute(new Float32Array(BB_MAX * 3), 3);
+for (const a of [bbPos, bbDir, bbCol, bbSize]) a.setUsage(THREE.DynamicDrawUsage);
+bbGeo.setAttribute("iPos", bbPos); bbGeo.setAttribute("iDir", bbDir); bbGeo.setAttribute("iCol", bbCol); bbGeo.setAttribute("iSize", bbSize);
+bbGeo.instanceCount = 0;
+const bbMesh = new THREE.Mesh(bbGeo, new THREE.ShaderMaterial({
+  vertexShader: `
+    attribute vec3 iPos; attribute vec3 iDir; attribute vec4 iCol; attribute vec3 iSize;
+    varying vec2 vC; varying vec4 vCol; varying float vRound;
+    void main() {
+      vec4 cv = modelViewMatrix * vec4(iPos, 1.0);
+      vec3 dv = (modelViewMatrix * vec4(iDir, 0.0)).xyz;
+      vec3 along = vec3(0.0, 1.0, 0.0), side = vec3(1.0, 0.0, 0.0);
+      float len = iSize.x, wid = iSize.y; vRound = iSize.z;
+      if (iSize.z < 0.5 && dot(dv, dv) > 1e-8) {
+        vec3 a = normalize(dv); vec3 s = cross(a, normalize(cv.xyz)); float sl = length(s);
+        if (sl > 1e-3) { along = a; side = s / sl; } else { len = wid * 2.0; vRound = 1.0; }
+      } else { len = wid * 2.0; }
+      vec3 p = cv.xyz + along * position.x * len + side * position.y * wid;
+      vC = position.xy; vCol = iCol;
+      gl_Position = projectionMatrix * vec4(p, 1.0);
+    }`,
+  fragmentShader: `
+    varying vec2 vC; varying vec4 vCol; varying float vRound;
+    void main() {
+      float a;
+      if (vRound > 0.5) { float r = length(vec2(vC.x * 2.0, vC.y)); a = clamp(1.0 - r, 0.0, 1.0); a *= a; }
+      else { float u = abs(vC.x * 2.0); a = (1.0 - vC.y * vC.y) * (1.0 - u * u * u * u); }
+      gl_FragColor = vec4(vCol.rgb * a * vCol.a, 1.0);
+    }`,
+  blending: THREE.AdditiveBlending, transparent: true, depthWrite: false,
+}));
+bbMesh.frustumCulled = false;
+nearScene.add(bbMesh);
+let bbN = 0;
+function bb(pos, dir, len, wid, r, g, b, a, round) {
+  if (bbN >= BB_MAX) return;
+  const i = bbN++;
+  bbPos.setXYZ(i, pos.x, pos.y, pos.z);
+  if (dir) bbDir.setXYZ(i, dir.x, dir.y, dir.z); else bbDir.setXYZ(i, 0, 0, 0);
+  bbCol.setXYZW(i, r, g, b, a); bbSize.setXYZ(i, len, wid, round ? 1 : 0);
+}
+
+// ------------------------------------------------------------ the bridge interior (int:tern), for the decoupling view
+const bridge = K.compartment(L, "bridge");
+const BB_ = K.bounds(bridge);
+const interiorParts = [], interiorGlow = [];
+{
+  const sh = K.roomShell(THREE, L, bridge);
+  interiorParts.push(sh.floor, sh.ceiling, sh.walls);
+  const dais = K.byId(L.fixtures, "captain_dais");
+  interiorParts.push(box(dais.size_m[0], dais.height_m, dais.size_m[1], P.floorCorridor, TRS(new V3(dais.center_m[0], dais.center_m[1] + dais.height_m / 2, dais.center_m[2]))));
+  for (const s of K.stationsIn(L, "bridge")) {
+    const yaw = s.yaw_deg * DEG, f = new V3(Math.sin(yaw), 0, Math.cos(yaw)), base = v3(s.seat_m), q = qE(0, yaw, 0), rc = P.role[s.role];
+    interiorParts.push(box(0.6, 0.12, 0.6, rc, TRS(base.clone().add(new V3(0, 0.48, 0)), q)));
+    interiorParts.push(box(0.6, 0.75, 0.12, rc, TRS(base.clone().add(new V3(0, 0.9, 0)).addScaledVector(f, -0.32), q)));
+    interiorParts.push(box(0.16, 0.42, 0.16, 0x2a3038, TRS(base.clone().add(new V3(0, 0.21, 0)), q)));
+    interiorParts.push(box(1.3, 0.85, 0.55, P.console, TRS(base.clone().add(new V3(0, 0.43, 0)).addScaledVector(f, 0.9), q)));
+    interiorGlow.push(box(1.15, 0.05, 0.42, rc, TRS(base.clone().add(new V3(0, 0.88, 0)).addScaledVector(f, 0.9), new Q().multiplyQuaternions(q, qE(-0.35, 0, 0)))));
+  }
+  for (const w of WINDOWS) {
+    const [cx, cy] = w.center_m, hw = w.size_m[0] / 2, hh = w.size_m[1] / 2, z = BB_.z[1] - 0.05;
+    for (const [x, y, sw, shh] of [[cx, cy + hh + 0.04, w.size_m[0] + 0.3, 0.14], [cx, cy - hh - 0.04, w.size_m[0] + 0.3, 0.14], [cx + hw + 0.04, cy, 0.14, w.size_m[1]], [cx - hw - 0.04, cy, 0.14, w.size_m[1]]])
+      interiorParts.push(box(sw, shh, 0.1, P.trim, TRS(new V3(x, y, z))));
+  }
+  const vs = K.byId(L.fixtures, "viewscreen");
+  interiorParts.push(box(vs.size_m[0] + 0.3, vs.size_m[1] + 0.3, 0.08, 0x1a1e24, TRS(new V3(vs.center_m[0], vs.center_m[1], BB_.z[1] - 0.04))));
+  for (const lz of [22.0, 25.5, 29.0]) interiorGlow.push(box(2.4, 0.04, 0.5, 0xffffff, TRS(new V3(0, BB_.y[1] - 0.03, lz))));
+}
+const interiorMesh = new THREE.Mesh(merge(interiorParts), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+const interiorGlowMat = new THREE.MeshBasicMaterial({ vertexColors: true });
+const interiorGlowMesh = new THREE.Mesh(merge(interiorGlow), interiorGlowMat);
+interior.add(interiorMesh, interiorGlowMesh);
+const vsFix = K.byId(L.fixtures, "viewscreen");
+const rtt = new THREE.WebGLRenderTarget(1024, 512, { depthBuffer: true });
+const vsMat = new THREE.MeshBasicMaterial({ map: rtt.texture });
+const vsMesh = new THREE.Mesh(new THREE.PlaneGeometry(vsFix.size_m[0], vsFix.size_m[1]), vsMat);
+vsMesh.position.set(vsFix.center_m[0], vsFix.center_m[1], vsFix.center_m[2]); vsMesh.rotation.y = Math.PI;
+interior.add(vsMesh);
+const iAmbient = new THREE.AmbientLight(0xffffff, 1);
+interior.add(iAmbient);
+const iLamps = [22.0, 25.5, 29.0].map((z) => { const l = new THREE.PointLight(0xffffff, 10, 14, 1.4); l.position.set(0, BB_.y[1] - 0.35, z); interior.add(l); return l; });
+let lighting = "red_alert";
+function applyLighting() {
+  const s = K.LIGHTING[lighting];
+  iAmbient.color.set(s.ambient); iAmbient.intensity = s.ambientI * 2.4;
+  for (const l of iLamps) { l.color.set(s.lamp); l.intensity = s.lampI * 14; }
+  interiorGlowMat.color.set(lighting === "red_alert" ? 0xff9a9a : 0xffffff);
+}
+
+// ------------------------------------------------------------ the Swift's cockpit (craft frame)
+{
+  const parts = [
+    box(1.5, 0.32, 0.5, 0x22282f, TRS(new V3(0, 0.22, 1.65), qE(-0.3, 0, 0))),
+    box(0.08, 0.08, 1.4, 0x3a4048, TRS(new V3(0.42, 0.95, 1.35), qE(0.32, 0, 0.35))),
+    box(0.08, 0.08, 1.4, 0x3a4048, TRS(new V3(-0.42, 0.95, 1.35), qE(0.32, 0, -0.35))),
+    box(0.9, 0.06, 0.06, 0x3a4048, TRS(new V3(0, 1.08, 1.0))),
+    box(0.2, 0.5, 1.8, 0x2a3038, TRS(new V3(0.62, 0.15, 0.6))), box(0.2, 0.5, 1.8, 0x2a3038, TRS(new V3(-0.62, 0.15, 0.6))),
+  ];
+  const glow = [box(0.42, 0.02, 0.24, P.role.flight_ops, TRS(new V3(-0.38, 0.39, 1.62), qE(-0.3, 0, 0))), box(0.42, 0.02, 0.24, P.screenWarm, TRS(new V3(0.38, 0.39, 1.62), qE(-0.3, 0, 0)))];
+  cockpitScene.add(new THREE.Mesh(merge(parts), lambert), new THREE.Mesh(merge(glow), basic), new THREE.AmbientLight(0x8090a0, 1.4));
+  const cl = new THREE.DirectionalLight(0xfff1dc, 1.2); cl.position.set(-0.5, 1, 0.3); cockpitScene.add(cl);
+}
+
+// ------------------------------------------------------------ the simulation (fixed 30 Hz tick, seeded)
+let S = null;
+let dampSupply = 1.0;
+const R3 = new THREE.Matrix3();
+function shipR() { return R3.setFromMatrix4(new M4().makeRotationFromQuaternion(S.ship.q)); }
+/** interior -> system: P = P_cm + R (p - c) (ship-frames 2, one transform). */
+function toWorld(pL, out) { return out.copy(pL).sub(D.tern.com).applyQuaternion(S.ship.q).add(S.ship.pos); }
+/** system -> interior: p = R^T (P - P_cm) + c. */
+const _qi = new Q();
+function toShip(P_, out) { return out.copy(P_).sub(S.ship.pos).applyQuaternion(_qi.copy(S.ship.q).invert()).add(D.tern.com); }
+/** Velocity of an interior point in the system frame: V_cm + R (w x (p - c)). */
+function pointVel(pL, out) { return out.copy(S.ship.w).cross(new V3().subVectors(pL, D.tern.com)).applyQuaternion(S.ship.q).add(S.ship.vel); }
+const dirWorld = (dL, out) => out.copy(dL).applyQuaternion(S.ship.q);
+
+function log(text, kind, extra) { S.events.push(Object.assign({ t: S.t, tick: S.tick, text, kind }, extra || {})); }
+const lastEvent = (kind) => { for (let i = S.events.length - 1; i >= 0; i--) if (S.events[i].kind === kind) return S.events[i]; return null; };
+
+function reset(seed, opts) {
+  opts = opts || {};
+  const r = rng(seed);
+  S = { t: 0, tick: 0, r, seed, events: [], bolts: [], fx: [], missiles: [], designated: null, opts, lanceN: 0 };
+  S.ship = { pos: new V3(0, 0, 0), vel: new V3(0, 0, 80), q: new Q(), w: new V3(), aP: new V3(), alpha: new V3(), aMain: 0, hold: "", vSet: 80, trauma: 0 };
+  S.damp = L.compartments.map((c) => ({ id: c.id, r: v3(K.center(c)), A: new V3(), D: new V3(), E: new V3() }));
+  S.head = { o: new V3(), v: new V3() };
+  S.shield = { charge: [0, 1, 2, 3, 4, 5].map(() => D.shield.face), flash: [0, 0, 0, 0, 0, 0], flashT: [0, 0, 0, 0, 0, 0], hull: 0 };
+  S.tur = turrets.map((T, i) => ({ T, psi: 0, el: 20 * DEG, psiCmd: 0, elCmd: 20 * DEG, cap: D.cannon.cap, heat: 0, lock: false, cd: i * 0.07, barrel: 0, target: null, acq: 0,
+    err: new V3(), errTarget: new V3(), errT: 0, dirL: barrelDir(T, 0, 20 * DEG, new V3()), inArc: true, hit: 0, range: 0, sol: null, cmdL: null,
+    manned: T.id === "turret_dorsal", mode: opts.turretMode || "automatic", rms: 0, shots: 0 }));
+  S.tubes = [{ id: "tube_1", state: "armed", door: 0, timer: 0 }, { id: "tube_2", state: "loaded", door: 0, timer: 0 }];
+  S.magazine = { racks: 2, stock: 10 };
+  // Jackals: star-crew-64's state machine in seconds and metres, seeded phases so a group never moves in lockstep.
+  S.jackals = [];
+  for (let i = 0; i < 4; i++) S.jackals.push(spawnJackal({ id: "J" + (i + 1), r: rng(seed * 100 + i + 1) }, 900 + 120 * i, true));
+  S.wave = 1;
+  // The Hound: an 1,800 m orbit at 80 m/s, broadside to the Tern, Lances every 30 s.
+  S.hound = { alive: true, phi: 0.55, pos: new V3(), vel: new V3(), fwd: new V3(), shields: D.hound.shields, hull: D.hound.hull, burst: [0, 1.5], burstLeft: [0, 0], burstCd: [0, 0], lanceT: D.hound.firstLance, pdCd: 0, r: rng(seed * 7 + 3) };
+  S.designated = S.hound;
+  // Bays and craft (shuttle-bay-and-fighters): Swift 1 on its cradle at ready 1; Swift 2 in flight, escorting.
+  S.bays = { p: { door: 0, cradle: 0, step: "ready 1", timer: 0, craft: null, hold: false }, s: { door: 0, cradle: 0, step: "vacuum, door shut", timer: 0, craft: null } };
+  const sw1 = K.byId(L.craft, "swift_1"), sw2 = K.byId(L.craft, "swift_2");
+  S.swifts = [
+    { id: "swift_1", name: "Swift 1", data: sw1, bay: "p", phase: "cradle", local: v3(sw1.center_m), pos: new V3(), vel: new V3(), q: new Q(), thrust: 0, station: new V3(34, 8, -100), t: 0 },
+    { id: "swift_2", name: "Swift 2", data: sw2, bay: "s", phase: "flying", mode: "escort", local: v3(sw2.center_m), pos: new V3(), vel: new V3(), q: new Q(), thrust: 0, station: new V3(-46, -26, -210), t: 0, wp: 0, dwell: 0 },
+  ];
+  const s2 = S.swifts[1];
+  toWorld(s2.station, s2.pos); pointVel(s2.station, s2.vel); s2.q.copy(S.ship.q);
+  S.sched = opts.noScript ? [] : [
+    { t: 4, fn: () => launchCraft("p") },
+    { t: 20, fn: () => fireTube(0) },
+    { t: 26, fn: () => recoverCraft("s") },
+  ];
+  updateHound(0);
+}
+
+function spawnJackal(j, dist, first) {
+  const r = j.r, t = S.ship;
+  const u = r() * 2 - 1, th = r() * Math.PI * 2, s = Math.sqrt(1 - u * u * 0.5);
+  const dir = new V3(s * Math.cos(th), u * 0.5, s * Math.sin(th)).normalize();
+  Object.assign(j, { alive: true, pos: t.pos.clone().addScaledVector(dir, dist), vel: t.vel.clone(), state: "orbit", timer: 3 + 2 * r(),
+    n: new V3(0, 1, 0).add(new V3(r() - 0.5, 0, r() - 0.5)).normalize(), s: r() < 0.5 ? 1 : -1, shield: D.jackal.shield, hull: D.jackal.hull, lastHit: -99,
+    jink: new V3(), jinkT: 0, gunCd: r() * 0.25, fwd: new V3(0, 0, 1), q: new Q(), aM2: 0, passDir: new V3(), respawn: 0, kills: 0 });
+  if (!first) log(`${j.id} arrives at ${fmt(dist)} m`, "spawn");
+  return j;
+}
+
+// ---- the lead solver and the hit-chance estimate (weapons-and-shields 5 and 8: one implementation each)
+function lead(m, Vm, s, p, v) {
+  const r = new V3().subVectors(p, m), u = new V3().subVectors(v, Vm);
+  const a = u.dot(u) - s * s, b = 2 * r.dot(u), c = r.dot(r);
+  let t;
+  if (Math.abs(a) < 1e-9) t = b < 0 ? -c / b : -1;
+  else { const disc = b * b - 4 * a * c; if (disc < 0) return null; const sq = Math.sqrt(disc), t1 = (-b - sq) / (2 * a), t2 = (-b + sq) / (2 * a); t = Math.min(t1, t2) > 0 ? Math.min(t1, t2) : Math.max(t1, t2); }
+  if (!(t > 0)) return null;
+  const aim = r.addScaledVector(u, t);
+  return { t, dir: aim.clone().normalize(), point: p.clone().addScaledVector(v, t) };
+}
+function hitChance(R, d, tf, sigmaAim, aM) {
+  const st = 0.5 + 0.002 * d;
+  const s2 = Math.pow(sigmaAim * d, 2) + Math.pow(0.5 * aM * tf * tf, 2) + st * st;
+  return 1 - Math.exp(-(R * R) / (2 * s2));
+}
+function shieldFace(o) {
+  const nx = o.x / D.shield.semi.x, ny = o.y / D.shield.semi.y, nz = o.z / D.shield.semi.z, ax = Math.abs(nx), ay = Math.abs(ny), az = Math.abs(nz);
+  if (az >= ax && az >= ay) return nz >= 0 ? 0 : 1;
+  if (ax >= ay) return nx >= 0 ? 2 : 3;
+  return ny >= 0 ? 4 : 5;
+}
+const sphereHit = (a, b, c, r) => { const ab = new V3().subVectors(b, a), t = clamp(new V3().subVectors(c, a).dot(ab) / Math.max(1e-9, ab.lengthSq()), 0, 1); return a.clone().addScaledVector(ab, t).distanceTo(c) <= r ? a.clone().addScaledVector(ab, t) : null; };
+/** A segment (world) against the Tern's shield ellipsoid inflated by pad metres; returns the ship-frame entry point. */
+function ellipsoidHit(a, b, pad) {
+  const sa = toShip(a, new V3()).sub(D.shield.centre), sb = toShip(b, new V3()).sub(D.shield.centre);
+  const k = new V3(1 / (D.shield.semi.x + pad), 1 / (D.shield.semi.y + pad), 1 / (D.shield.semi.z + pad));
+  const ua = sa.clone().multiply(k), ub = sb.clone().multiply(k), d = ub.clone().sub(ua);
+  const A = d.dot(d), B = 2 * ua.dot(d), C = ua.dot(ua) - 1;
+  if (C < 0) return null;
+  const disc = B * B - 4 * A * C; if (disc < 0 || A < 1e-12) return null;
+  const t = (-B - Math.sqrt(disc)) / (2 * A);
+  if (t < 0 || t > 1) return null;
+  return sa.clone().lerp(sb, t).add(D.shield.centre);
+}
+
+// ---- the damage resolution (weapons-and-shields 12: one function for every ship and craft)
+function resolveHit(target, E, pointW, kind, source) {
+  if (target === "tern") {
+    const pL = toShip(pointW, new V3()), f = shieldFace(pL.clone().sub(D.shield.centre)), sh = S.shield;
+    let absorbed = Math.min(sh.charge[f], E), hull = E - absorbed;
+    sh.charge[f] -= absorbed;
+    sh.flash[f] = Math.max(sh.flashT[f] > 0 ? sh.flash[f] : 0, 0.5 * Math.min(1, E / 5)); sh.flashT[f] = D.shield.flash;
+    const dB = pL.distanceTo(S.damp[0].r);
+    S.ship.trauma = Math.min(1, S.ship.trauma + Math.min(1, (0.25 * absorbed + hull) / D.shake.ref) / (1 + dB / D.shake.falloff));
+    fx(pointW, S.ship.vel, 0.35, 0.6, 3 + Math.min(10, E), [0.45, 0.8, 1.0], 1.4);
+    if (hull > 0) { sh.hull += hull; fx(pointW, S.ship.vel, 0.6, 1, 5, [1, 0.6, 0.3], 2); log(`hull hit ${fmt(hull, 1)} MJ through the ${FACE_NAMES[f].toLowerCase()} face`, "hull-hit"); }
+    if (E >= 10) log(`${source} hits the ${FACE_NAMES[f].toLowerCase()} face: ${fmt(E)} MJ, face ${fmt(sh.charge[f])} MJ left`, "shield-hit", { face: f, E });
+    return;
+  }
+  if (target.kind === "missile") { target.alive = false; fx(target.pos, target.vel, 0.5, 1.5, 9, [1, 0.85, 0.4], 2.4); log(`${target.name} destroyed by ${source}`, source === "point defence" ? "pd-kill" : "missile-kill", { pos: target.pos.clone() }); return; }
+  if (target === S.hound) {
+    const a = Math.min(S.hound.shields, E); S.hound.shields -= a; S.hound.hull -= E - a;
+    fx(pointW, S.hound.vel, 0.3, 1, 4, [1, 0.5, 0.35], 1.2);
+    if (S.hound.hull <= 0 && S.hound.alive) { S.hound.alive = false; fx(S.hound.pos, S.hound.vel, 2.0, 6, 70, [1, 0.7, 0.35], 3); log("the Hound breaks up", "kill"); }
+    return;
+  }
+  // a Jackal: one bubble, then hull
+  const j = target, a = Math.min(j.shield, E);
+  j.shield -= a; j.hull -= E - a; j.lastHit = S.t;
+  fx(pointW, j.vel, 0.25, 0.6, 3, a > 0 ? [1, 0.45, 0.35] : [1, 0.7, 0.4], 1.2);
+  if (j.hull <= 0 && j.alive) { j.alive = false; j.respawn = 14; fx(j.pos, j.vel, 1.2, 2, 22, [1, 0.7, 0.35], 3); log(`${j.id} destroyed by ${source}`, "kill"); }
+}
+function fx(pos, vel, life, s0, s1, col, a) { S.fx.push({ pos: pos.clone(), vel: vel.clone(), t: 0, life, s0, s1, col, a }); }
+
+// ---- missiles (weapons-and-shields 10: one implementation; the Gannet's and the Lance's data)
+function launchMissile(spec, name, pos, vel, fwd, target, owner) {
+  const m = { kind: "missile", spec, name, pos: pos.clone(), vel: vel.clone(), v0: vel.clone(), fwd: fwd.clone(), target, owner, t: 0, alive: true, thrust: 0 };
+  S.missiles.push(m); return m;
+}
+function stepMissile(m) {
+  const sp = m.spec; m.t += DT;
+  if (m.t > sp.life) { m.alive = false; return; }
+  let thrust = 0;
+  if (m.t >= sp.ignite) { const tb = m.t - sp.ignite; thrust = tb < sp.boostT ? sp.boost : tb < sp.boostT + sp.sustainT ? sp.sustain : 0; }
+  if (sp.vmax && m.vel.distanceTo(m.v0) >= sp.vmax) thrust = 0;
+  const a = new V3();
+  const tgt = m.target === "tern" ? { pos: S.ship.pos, vel: S.ship.vel } : m.target && m.target.alive ? m.target : null;
+  if (m.t >= sp.ignite) {
+    // Proportional navigation, a = N Vc dLOS/dt (lateral, limited), plus the motor's thrust along the line of sight.
+    if (tgt) {
+      const r = new V3().subVectors(tgt.pos, m.pos), vr = new V3().subVectors(tgt.vel, m.vel), rr = r.lengthSq();
+      const om = r.clone().cross(vr).multiplyScalar(1 / rr), rh = r.clone().normalize(), vc = -rh.dot(vr);
+      a.copy(om).cross(rh).multiplyScalar(sp.N * Math.max(vc, 50));
+      a.addScaledVector(rh, -a.dot(rh)); clampLen(a, sp.lat);
+      a.addScaledVector(rh, thrust);
+    } else a.addScaledVector(m.fwd, thrust);
+    if (a.lengthSq() > 1) { const q0 = new Q().setFromUnitVectors(new V3(0, 0, 1), m.fwd), q1 = new Q().setFromUnitVectors(new V3(0, 0, 1), a.clone().normalize()); q0.rotateTowards(q1, 240 * DEG * DT); m.fwd.set(0, 0, 1).applyQuaternion(q0); }
+  }
+  m.thrust = thrust;
+  const prev = m.pos.clone();
+  m.vel.addScaledVector(a, DT); m.pos.addScaledVector(m.vel, DT);
+  // fuse: contact or proximity within 5 m of the target's hit volume
+  if (m.target === "tern") {
+    const hp = ellipsoidHit(prev, m.pos, sp.prox);
+    if (hp) { m.alive = false; const pw = toWorld(hp, new V3()); fx(pw, S.ship.vel, 0.8, 3, 26, [1, 0.75, 0.4], 3); resolveHit("tern", sp.warhead * (1 - 0 / sp.falloff), pw, "blast", m.name); }
+  } else if (tgt) {
+    const R = m.target === S.hound ? D.hound.radius : 3.5;
+    const hp = sphereHit(prev, m.pos, tgt.pos, R + sp.prox);
+    if (hp) { m.alive = false; const d = Math.max(0, hp.distanceTo(tgt.pos) - R); fx(hp, tgt.vel, 0.9, 3, 30, [1, 0.75, 0.4], 3); log(`${m.name} detonates on the Hound: ${fmt(sp.warhead * (1 - d / sp.falloff))} MJ`, "gannet-hit"); resolveHit(m.target, sp.warhead * (1 - d / sp.falloff), hp, "blast", m.name); }
+  }
+}
+
+// ---- the Tern: assisted Newtonian flight (flight-and-navigation 3, 4), helm's stick programme
+const _w = new V3(), _tmp = new V3();
+function helmRates(t, out) {
+  out.set(3 * DEG * Math.sin((2 * Math.PI * t) / 23), 8 * DEG * Math.sin((2 * Math.PI * t) / 36), 7 * DEG * Math.cos((2 * Math.PI * t) / 36 + 0.3));
+  return out;
+}
+function speedSet(t) { return t >= 30 && t < 34 ? 125 : 80; }
+function stepShip() {
+  const sh = S.ship, t = S.t;
+  // Recovery hold: a craft inside 50 m of its capture point holds the ship steady (shuttle-bay-and-fighters 4).
+  const rec = S.swifts.find((c) => c.phase === "approach" && c.capDist !== undefined && c.capDist < D.recovery.holdRange);
+  sh.hold = rec ? "recovery hold" : "";
+  const ws = helmRates(t, _w);
+  if (rec) clampLen(ws, D.recovery.holdRate);
+  const launching = S.bays.p.step === "clamps" || S.bays.s.step === "clamps";
+  if (launching) { ws.set(0, 0, 0); if (!sh.steadied) { sh.steadied = true; log("helm steadies the ship for the launch", "helm"); } } else sh.steadied = false;
+  const alpha = new V3();
+  for (const k of ["x", "y", "z"]) { alpha[k] = clamp((ws[k] - sh.w[k]) / D.tern.tauW, -D.tern.angAcc[k], D.tern.angAcc[k]); }
+  sh.w.addScaledVector(alpha, DT);
+  for (const k of ["x", "y", "z"]) sh.w[k] = clamp(sh.w[k], -D.tern.rate[k], D.tern.rate[k]);
+  const wl = sh.w.length();
+  if (wl > 1e-9) sh.q.multiply(new Q().setFromAxisAngle(_tmp.copy(sh.w).multiplyScalar(1 / wl), wl * DT)).normalize();
+  sh.alpha.copy(alpha);
+  // Full assist: velocity set point along the nose, per-axis thrust limits.
+  sh.vSet = speedSet(t);
+  const vT = new V3(0, 0, sh.vSet).applyQuaternion(sh.q);
+  const err = vT.sub(sh.vel).multiplyScalar(1 / D.tern.tauV).applyQuaternion(_qi.copy(sh.q).invert());
+  err.x = clamp(err.x, -D.tern.lat, D.tern.lat); err.y = clamp(err.y, -D.tern.lat, D.tern.lat); err.z = clamp(err.z, -D.tern.rev, D.tern.fwd);
+  if (rec || launching) clampLen(err, launching ? 2 : D.recovery.holdAccel);
+  const mainCmd = Math.max(0, err.z);
+  sh.aMain += clamp(mainCmd - sh.aMain, -D.tern.mainSlew * DT, D.tern.mainSlew * DT);
+  if (err.z > 0) err.z = sh.aMain;
+  sh.aP.copy(err);
+  sh.vel.addScaledVector(err.clone().applyQuaternion(sh.q), DT);
+  sh.pos.addScaledVector(sh.vel, DT);
+  // Dampers, per compartment (ship-frames 4).
+  const C = D.dampers.rated * dampSupply, k = 1 - Math.exp(-DT / D.dampers.lag);
+  for (const c of S.damp) {
+    const r = _tmp.subVectors(c.r, D.tern.com);
+    c.D.copy(sh.aP).add(alpha.clone().cross(r)).add(sh.w.clone().cross(sh.w.clone().cross(r)));
+    c.A.add(c.D.clone().sub(c.A).multiplyScalar(k)); clampLen(c.A, C);
+    c.E.subVectors(c.D, c.A);
+  }
+  // The felt residual pushes the bridge camera through the head spring; hits add trauma that decays.
+  const br = S.damp.find((c) => c.id === "bridge"), F = br.E.length() >= D.dampers.felt ? br.E : new V3();
+  const kh = Math.pow(2 * Math.PI * 1.5, 2), ch = 2 * 0.7 * Math.sqrt(kh);
+  const acc = F.clone().multiplyScalar(-1).addScaledVector(S.head.o, -kh).addScaledVector(S.head.v, -ch);
+  S.head.v.addScaledVector(acc, DT); S.head.o.addScaledVector(S.head.v, DT); clampLen(S.head.o, 0.12);
+  sh.trauma = Math.max(0, sh.trauma - D.shake.decay * DT);
+}
+function shipEuler() {
+  const up = new V3(0, 1, 0).applyQuaternion(S.ship.q), port = new V3(1, 0, 0).applyQuaternion(S.ship.q), fwd = new V3(0, 0, 1).applyQuaternion(S.ship.q);
+  return { bank: Math.atan2(port.y, up.y) / DEG, heading: Math.atan2(fwd.x, fwd.z) / DEG, pitch: Math.asin(clamp(fwd.y, -1, 1)) / DEG };
+}
+
+// ---- turrets (weapons-and-shields 2-9)
+const tmpA = new V3(), tmpB = new V3();
+function targetsFor(st) {
+  const T = st.T, list = [], pw = toWorld(T.pivot, new V3());
+  const consider = (body, prio, R, pd) => {
+    const d = body.pos.distanceTo(pw); if (d > D.cannon.range) return;
+    const dirL = toShip(body.pos, new V3()).sub(T.pivot).normalize(), a = dirToAngles(T, dirL);
+    if (!arcOK(T, a.psi, clamp(a.el, D.cannon.elMin, D.cannon.elMax)) || a.el < D.cannon.elMin) return;
+    list.push({ body, prio, d, R, pd });
+  };
+  if (st.mode !== "hold") {
+    if (!st.manned && (st.mode === "automatic" || st.mode === "point defence"))
+      for (const m of S.missiles) if (m.alive && m.target === "tern" && m.pos.distanceTo(pw) < D.cannon.pdRange) consider(m, 1, D.cannon.pdFuse, true);
+    if (st.mode !== "point defence") {
+      for (const j of S.jackals) if (j.alive) { const side = toShip(j.pos, new V3()).sub(T.pivot).dot(T.u) > 0; consider(j, (j.state === "run" || j.state === "fire") && side ? 2 : 4, D.jackal.bubble, false); }
+      if (S.hound.alive && st.mode !== "fighters only") consider(S.hound, S.designated === S.hound ? 3 : 4, D.hound.radius, false);
+    }
+  }
+  list.sort((a, b) => a.prio - b.prio || a.d - b.d);
+  if (st.manned) { const j = list.find((x) => x.body.state !== undefined); return j || list[0] || null; }
+  return list[0] || null;
+}
+function stepTurret(st) {
+  const C = D.cannon, T = st.T;
+  st.cap = Math.min(C.cap, st.cap + C.charge * DT);
+  st.heat = Math.max(0, st.heat - C.dissipate * DT);
+  if (st.lock && st.heat <= C.sink * C.resume) st.lock = false;
+  st.cd -= DT;
+  const pick = targetsFor(st);
+  if ((pick && pick.body) !== (st.target && st.target.body)) { st.target = pick; st.acq = st.manned ? 0.3 : C.reaction; }
+  else st.target = pick;
+  st.acq -= DT;
+  st.sol = null; st.cmdL = null; st.hit = 0;
+  const pw = toWorld(T.pivot, new V3()), vw = pointVel(T.pivot, new V3());
+  if (st.target && st.acq <= 0) {
+    const b = st.target.body, sol = lead(pw, vw, C.speed, b.pos, b.vel);
+    if (sol) {
+      const rel = new V3().subVectors(b.pos, pw), d = rel.length();
+      const omega = rel.clone().cross(new V3().subVectors(b.vel, vw)).length() / (d * d);
+      const sigma = st.target.pd ? C.pdSigma : st.manned ? 0.18 * DEG : 0.15 * DEG + 0.02 * (omega / DEG) * DEG;
+      st.errT -= DT;
+      if (st.errT <= 0) { st.errT = 0.5; st.errTarget.set(gauss(S.r) * sigma, gauss(S.r) * sigma, 0); }
+      st.err.lerp(st.errTarget, 0.2);
+      const right = new V3().crossVectors(sol.dir, Math.abs(sol.dir.y) < 0.95 ? new V3(0, 1, 0) : new V3(1, 0, 0)).normalize(), up = new V3().crossVectors(right, sol.dir);
+      const cmdW = sol.dir.clone().addScaledVector(right, st.err.x).addScaledVector(up, st.err.y).normalize();
+      st.cmdL = cmdW.applyQuaternion(_qi.copy(S.ship.q).invert());
+      st.sol = sol; st.range = d;
+      const aM = b.aM2 !== undefined ? Math.sqrt(b.aM2) : 0;
+      st.hit = hitChance(st.target.R, d, sol.t, sigma, aM);
+      const a = dirToAngles(T, st.cmdL); st.psiCmd = a.psi; st.elCmd = clamp(a.el, C.elMin, C.elMax);
+    }
+  }
+  let dp = ((st.psiCmd - st.psi + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI;
+  st.psi += clamp(dp, -C.yawRate * DT, C.yawRate * DT);
+  st.el += clamp(st.elCmd - st.el, -C.elRate * DT, C.elRate * DT);
+  barrelDir(T, st.psi, st.el, st.dirL);
+  st.inArc = arcOK(T, st.psi, st.el);
+  if (st.sol) { const solL = st.sol.dir.clone().applyQuaternion(_qi.copy(S.ship.q).invert()); const e = st.dirL.angleTo(solL); st.rms = Math.sqrt(0.9 * st.rms * st.rms + 0.1 * e * e); }
+  const onAim = st.cmdL && st.dirL.angleTo(st.cmdL) < 1.2 * DEG;
+  const discipline = st.manned ? st.hit >= 0.06 : st.hit >= C.discipline;
+  if (onAim && discipline && st.cd <= 0 && st.cap >= C.drawn && !st.lock && st.inArc) {
+    const side = st.barrel ? T_BARREL_GAP : -T_BARREL_GAP; st.barrel ^= 1;
+    const hx = new V3().copy(T.s0).multiplyScalar(Math.cos(st.psi)).addScaledVector(T.f0, -Math.sin(st.psi));
+    const hz = new V3().copy(T.f0).multiplyScalar(Math.cos(st.psi)).addScaledVector(T.s0, Math.sin(st.psi));
+    const muzL = T.pivot.clone().addScaledVector(hx, side).addScaledVector(hz, 0.55).addScaledVector(st.dirL, T_BARREL);
+    const pos = toWorld(muzL, new V3()), vel = pointVel(muzL, new V3()).addScaledVector(dirWorld(st.dirL, new V3()), C.speed);
+    S.bolts.push({ pos, prev: pos.clone(), vel, life: C.life, owner: st.target.pd ? "pd" : "tern", E: C.delivered, src: T.name + " turret" });
+    st.cap -= C.drawn; st.heat += C.heat; if (st.heat >= C.sink) { st.lock = true; log(`${T.name} turret heat lockout`, "heat"); }
+    st.cd = C.interval; st.shots++;
+    fx(pos, pointVel(muzL, new V3()), 0.07, 0.6, 1.6, [0.8, 0.95, 1.0], 1.4);
+  }
+}
+
+// ---- Jackals and the Hound (weapons-and-shields 13)
+function stepJackal(j) {
+  if (!j.alive) { j.respawn -= DT; if (j.respawn <= 0) { S.wave++; spawnJackal(j, 2200, false); } return; }
+  const J = D.jackal, t = S.ship, r = new V3().subVectors(j.pos, t.pos), dist = r.length(), rh = r.clone().normalize();
+  j.timer -= DT; j.jinkT -= DT;
+  if (j.jinkT <= 0) { j.jinkT = 0.6 + 0.8 * j.r(); j.jink.set(j.r() - 0.5, j.r() - 0.5, j.r() - 0.5).normalize().multiplyScalar(J.jink); }
+  const vRel = new V3(), aEx = new V3();
+  if (j.hull <= 0.25 * J.hull && j.state !== "leave") { j.state = "leave"; log(`${j.id} breaks off for good`, "jackal"); }
+  if (j.state === "orbit") {
+    const tan = new V3().crossVectors(j.n, rh).normalize().multiplyScalar(j.s * J.orbitV);
+    vRel.copy(tan).addScaledVector(rh, clamp(-0.25 * (dist - J.orbitR), -60, 60));
+    if (j.timer <= 0) { j.state = "run"; j.timer = 6; }
+  } else if (j.state === "run") {
+    vRel.copy(rh).multiplyScalar(-J.runV); aEx.copy(j.jink);
+    if (dist < 400 || j.timer <= 0) {
+      j.state = "fire"; j.timer = 2.0;
+      const side = new V3().crossVectors(rh, j.n).normalize();
+      j.passDir.copy(rh).multiplyScalar(-1).addScaledVector(side, 0.55 * j.s).normalize();
+    }
+  } else if (j.state === "fire") {
+    vRel.copy(j.passDir).multiplyScalar(220);
+    j.gunCd -= DT;
+    const muz = j.pos.clone().addScaledVector(j.fwd, 3.6), sol = lead(muz, j.vel, J.gunSpeed, t.pos, t.vel);
+    if (sol) {
+      j.aim = sol.dir;
+      if (j.gunCd <= 0 && dist < J.gunRange) {
+        j.gunCd = J.gunInterval;
+        const right = new V3().crossVectors(sol.dir, new V3(0, 1, 0)).normalize(), up = new V3().crossVectors(right, sol.dir);
+        const d = sol.dir.clone().addScaledVector(right, gauss(j.r) * J.sigma).addScaledVector(up, gauss(j.r) * J.sigma).normalize();
+        S.bolts.push({ pos: muz.clone(), prev: muz.clone(), vel: j.vel.clone().addScaledVector(d, J.gunSpeed), life: J.gunRange / J.gunSpeed + 0.1, owner: "enemy", E: J.gunE, src: j.id });
+      }
+    }
+    if (j.timer <= 0) { j.state = "retreat"; j.timer = 8; j.aim = null; }
+  } else if (j.state === "retreat") {
+    vRel.copy(rh).multiplyScalar(dist < 1500 ? J.runV : 60).addScaledVector(new V3().crossVectors(j.n, rh).normalize(), j.s * 120); aEx.copy(j.jink);
+    if (j.timer <= 0) { j.state = "orbit"; j.timer = 3 + 2 * j.r(); }
+  } else if (j.state === "leave") { vRel.copy(rh).multiplyScalar(J.runV); if (dist > 4000) { j.alive = false; j.respawn = 10; } }
+  const vDes = vRel.add(t.vel);
+  const a = vDes.sub(j.vel).add(aEx); clampLen(a, J.accel);
+  j.aM2 += (a.lengthSq() - j.aM2) * (DT / 2);
+  j.vel.addScaledVector(a, DT); j.pos.addScaledVector(j.vel, DT);
+  // Jackal shield regenerates after 4 s without a hit.
+  if (S.t - j.lastHit > J.regenDelay) j.shield = Math.min(J.shield, j.shield + J.regen * DT);
+  const want = j.state === "fire" && j.aim ? j.aim.clone() : j.vel.clone().sub(t.vel).normalize();
+  j.fwd.lerp(want, 0.25).normalize();
+  const up = j.n.clone().addScaledVector(j.fwd, -j.n.dot(j.fwd)).normalize();
+  j.q.setFromRotationMatrix(new M4().makeBasis(new V3().crossVectors(up, j.fwd), up, j.fwd));
+}
+function updateHound(dt) {
+  const h = S.hound, H_ = D.hound;
+  h.phi += (H_.orbitV / H_.orbitR) * dt;
+  const e1 = new V3(1, 0, 0), e2 = new V3(0, 0, 1);
+  h.pos.copy(S.ship.pos).addScaledVector(e1, H_.orbitR * Math.cos(h.phi)).addScaledVector(e2, H_.orbitR * Math.sin(h.phi)).add(new V3(0, 260, 0));
+  h.fwd.copy(e1).multiplyScalar(-Math.sin(h.phi)).addScaledVector(e2, Math.cos(h.phi)).normalize();
+  h.vel.copy(S.ship.vel).addScaledVector(h.fwd, H_.orbitV);
+}
+function stepHound() {
+  const h = S.hound, H_ = D.hound; if (!h.alive) return;
+  updateHound(DT);
+  const toT = new V3().subVectors(S.ship.pos, h.pos), dist = toT.length();
+  for (let k = 0; k < 2; k++) {
+    h.burst[k] -= DT;
+    if (h.burst[k] <= 0) { h.burst[k] = H_.burstEvery; h.burstLeft[k] = H_.burstN; h.burstCd[k] = 0; }
+    h.burstCd[k] -= DT;
+    if (h.burstLeft[k] > 0 && h.burstCd[k] <= 0 && dist < H_.range) {
+      h.burstLeft[k]--; h.burstCd[k] = H_.burstInterval;
+      const muz = h.pos.clone().add(new V3(0, k ? -4 : 4, 0)), sol = lead(muz, h.vel, H_.boltSpeed, S.ship.pos, S.ship.vel);
+      if (sol) { const right = new V3().crossVectors(sol.dir, new V3(0, 1, 0)).normalize(), up = new V3().crossVectors(right, sol.dir); const s = 0.3 * DEG; const d = sol.dir.clone().addScaledVector(right, gauss(h.r) * s).addScaledVector(up, gauss(h.r) * s).normalize(); S.bolts.push({ pos: muz, prev: muz.clone(), vel: h.vel.clone().addScaledVector(d, H_.boltSpeed), life: H_.range / H_.boltSpeed + 0.1, owner: "enemy", E: H_.boltE, src: "Hound" }); }
+    }
+  }
+  h.lanceT -= DT;
+  if (h.lanceT <= 0) {
+    h.lanceT = H_.lanceEvery;
+    const p = h.pos.clone().addScaledVector(toT.clone().normalize(), 26);
+    launchMissile(D.lance, "Lance " + (++S.lanceN), p, h.vel.clone().addScaledVector(toT.clone().normalize(), D.lance.eject), toT.clone().normalize(), "tern", "hound");
+    log("the Hound launches a Lance at 1.8 km", "lance");
+  }
+  // The Hound's point-defence turret against Gannets inside 1,200 m.
+  h.pdCd -= DT;
+  for (const m of S.missiles) if (m.alive && m.owner === "tern" && m.pos.distanceTo(h.pos) < 1200 && h.pdCd <= 0) {
+    h.pdCd = 0.25;
+    const sol = lead(h.pos, h.vel, 1400, m.pos, m.vel);
+    if (sol) { const right = new V3().crossVectors(sol.dir, new V3(0, 1, 0)).normalize(), up = new V3().crossVectors(right, sol.dir); const s = 0.12 * DEG; const d = sol.dir.clone().addScaledVector(right, gauss(h.r) * s).addScaledVector(up, gauss(h.r) * s).normalize(); S.bolts.push({ pos: h.pos.clone(), prev: h.pos.clone(), vel: h.vel.clone().addScaledVector(d, 1400), life: 1.0, owner: "hound-pd", E: 1, src: "the Hound's point defence" }); }
+  }
+}
+
+// ---- bolts: swept spheres (weapons-and-shields 4)
+function stepBolts() {
+  const keep = [];
+  for (const b of S.bolts) {
+    b.prev.copy(b.pos); b.pos.addScaledVector(b.vel, DT); b.life -= DT;
+    let hit = false;
+    if (b.owner === "tern" || b.owner === "pd") {
+      for (const m of S.missiles) if (!hit && m.alive && m.owner === "hound") { const p = sphereHit(b.prev, b.pos, m.pos, (b.owner === "pd" ? D.cannon.pdFuse : 0) + 0.6); if (p) { hit = true; resolveHit(m, 0.4, p, "pulse", b.owner === "pd" ? "point defence" : b.src); } }
+      for (const j of S.jackals) if (!hit && j.alive) { const p = sphereHit(b.prev, b.pos, j.pos, (j.shield > 0 ? D.jackal.bubble : 1.5) + 0.3); if (p) { hit = true; resolveHit(j, b.E, p, "pulse", b.src); } }
+      if (!hit && S.hound.alive) { const p = sphereHit(b.prev, b.pos, S.hound.pos, D.hound.radius); if (p) { hit = true; resolveHit(S.hound, b.E, p, "pulse", b.src); } }
+    } else if (b.owner === "enemy") {
+      const hp = ellipsoidHit(b.prev, b.pos, 0);
+      if (hp) { hit = true; resolveHit("tern", b.E, toWorld(hp, new V3()), "pulse", b.src); }
+    } else if (b.owner === "hound-pd") {
+      for (const m of S.missiles) if (!hit && m.alive && m.owner === "tern") { const p = sphereHit(b.prev, b.pos, m.pos, 1.3); if (p) { hit = true; resolveHit(m, 0.4, p, "pulse", b.src); } }
+    }
+    if (!hit && b.life > 0) keep.push(b);
+  }
+  S.bolts = keep.slice(-1024);  // the fixed pool (engine-stack: 1,024)
+}
+
+// ---- tubes (weapons-and-shields 10)
+function fireTube(i) {
+  const tu = S.tubes[i];
+  if (tu.state !== "armed") { log(`${tu.id}: not armed (${tu.state})`, "tube"); return; }
+  tu.state = "fired: door opening"; tu.timer = 1.0;
+  log(`tactical fires ${tu.id} at the Hound`, "tube");
+}
+function stepTubes() {
+  S.tubes.forEach((tu, i) => {
+    const T = TUBES[i];
+    if (tu.state === "fired: door opening") {
+      tu.door = Math.min(1, tu.door + DT / 1.0); tu.timer -= DT;
+      if (tu.timer <= 0) {
+        // Hand-off: interior -> system at this tick, with the tube's point velocity plus 30 m/s along the tube.
+        const pL = T.exit.clone().addScaledVector(v3(T.mount.facing), 0.4);
+        const pos = toWorld(pL, new V3()), fwd = dirWorld(v3(T.mount.facing), new V3());
+        const vel = pointVel(pL, new V3()).addScaledVector(fwd, D.gannet.eject);
+        const m = launchMissile(D.gannet, "Gannet 1", pos, vel, fwd, S.hound, "tern");
+        tu.state = "fired"; tu.timer = 1.5; tu.missile = m;
+        log(`Gannet 1 leaves ${tu.id}: int:tern -> sys at tick ${S.tick}, |V| ${fmt(vel.length(), 1)} m/s`, "gannet-launch");
+      }
+    } else if (tu.state === "fired") { tu.timer -= DT; if (tu.timer <= 0) { tu.state = "empty"; } }
+    else tu.door = Math.max(0, tu.door - DT / 1.0);
+  });
+}
+
+// ---- bays and craft (shuttle-bay-and-fighters 1-4)
+function launchCraft(bayKey) {
+  const bay = S.bays[bayKey], c = S.swifts.find((x) => x.bay === bayKey);
+  if (c.phase !== "cradle") return;
+  bay.step = "drop door opening"; bay.craft = c;
+  log(`flight ops launches ${c.name} from ready 1`, "launch");
+}
+function recoverCraft(bayKey) {
+  const bay = S.bays[bayKey], c = S.swifts.find((x) => x.bay === bayKey);
+  if (c.phase !== "flying") return;
+  bay.step = "recovery: door opening"; bay.craft = c; c.phase = "approach"; c.wp = 0; c.dwell = 0;
+  log(`${c.name} requests recovery; the starboard bay is in vacuum`, "recovery");
+}
+function capturePoint(c) { const d = c.data; return new V3(d.center_m[0], d.center_m[1] - D.bay.travel, d.center_m[2]); }
+function stepBays() {
+  for (const key of ["p", "s"]) {
+    const bay = S.bays[key], c = bay.craft, B = D.bay;
+    switch (bay.step) {
+      case "drop door opening": bay.door = Math.min(1, bay.door + DT / B.door); if (bay.door >= 1) bay.step = "cradle lowering"; break;
+      case "cradle lowering": bay.cradle = Math.min(1, bay.cradle + DT / B.cradle); if (bay.cradle >= 1) { bay.step = "clamps"; bay.timer = B.clamps; } break;
+      case "clamps": {
+        const turning = S.ship.w.length() > B.holdRate, accel = S.ship.aP.length() > B.holdAccel;
+        if (turning || accel) { if (!bay.hold) log("launch hold: steady the ship", "hold"); bay.hold = true; break; }
+        bay.hold = false; bay.timer -= DT;
+        if (bay.timer <= 0) releaseCraft(c, bay);
+        break;
+      }
+      case "clear": { const yL = toShip(c.pos, new V3()).y; if (yL < KEEL_Y - D.swift.clear) { bay.step = "cradle rising"; log(`${c.name} clear at 30 m`, "clear"); } break; }
+      case "cradle rising": bay.cradle = Math.max(0, bay.cradle - DT / B.cradle); if (bay.cradle <= 0) bay.step = "drop door closing"; break;
+      case "drop door closing": bay.door = Math.max(0, bay.door - DT / B.door); if (bay.door <= 0) bay.step = key === "p" ? "vacuum, ready for recovery" : "repressurizing (25 s, assumed)"; break;
+      case "recovery: door opening": bay.door = Math.min(1, bay.door + DT / B.door); if (bay.door >= 1) bay.step = "recovery: cradle lowering"; break;
+      case "recovery: cradle lowering": bay.cradle = Math.min(1, bay.cradle + DT / B.cradle); if (bay.cradle >= 1) bay.step = "recovery: waiting for capture"; break;
+      case "stowing": bay.cradle = Math.max(0, bay.cradle - DT / B.cradle); if (bay.cradle <= 0) bay.step = "drop door closing"; break;
+    }
+  }
+}
+function releaseCraft(c, bay) {
+  // Hand-off at one tick (ship-frames 10): P = P_s + R p, V = V_cm + R (w x (p - c)) + R v_int.
+  const pL = c.local.clone().setY(c.data.center_m[1] - D.bay.travel * bay.cradle);
+  toWorld(pL, c.pos);
+  pointVel(pL, c.vel).add(dirWorld(new V3(0, -D.swift.eject, 0), new V3()));
+  c.q.copy(S.ship.q); c.phase = "released"; c.t = S.t;
+  bay.step = "clear";
+  log(`${c.name} released: int:tern -> sys at tick ${S.tick}, |V| ${fmt(c.vel.length(), 1)} m/s`, "release");
+}
+function stepCraft(c) {
+  const sh = S.ship;
+  if (c.phase === "cradle" || c.phase === "captured") return;
+  let aW = new V3(), fwdWant = null;
+  if (c.phase === "released") {
+    const yL = toShip(c.pos, new V3()).y;
+    if (yL < KEEL_Y - D.swift.ignite) { c.phase = "flying"; c.mode = "escort"; log(`${c.name} main engine on, 15 m below the keel`, "ignite"); }
+  } else if (c.phase === "flying") {
+    const P_ = toWorld(c.station, new V3()), V_ = pointVel(c.station, new V3());
+    const vDes = V_.add(clampLen(P_.sub(c.pos).multiplyScalar(0.5), 140));
+    aW = clampLen(vDes.sub(c.vel).multiplyScalar(1 / 0.8), D.swift.accel);
+    const rel = c.vel.clone().sub(sh.vel); fwdWant = rel.length() > 25 ? rel.normalize() : new V3(0, 0, 1).applyQuaternion(sh.q);
+  } else if (c.phase === "approach") {
+    // The corridor under the starboard bay, from astern (shuttle-bay-and-fighters 4), flown in the ship frame.
+    const cap = capturePoint(c), pL = toShip(c.pos, new V3());
+    const vRelL = c.vel.clone().sub(sh.vel).applyQuaternion(_qi.copy(sh.q).invert()).sub(sh.w.clone().cross(pL.clone().sub(D.tern.com)));
+    const wps = [new V3(cap.x, -24, -200), new V3(cap.x, cap.y - 5.8, cap.z), cap];
+    const bayReady = S.bays[c.bay].step === "recovery: waiting for capture";
+    if (c.wp < 2 && pL.distanceTo(wps[c.wp]) < (c.wp === 0 ? 8 : 0.6) && (c.wp === 0 || bayReady)) c.wp++;
+    const wp = wps[c.wp], toW = wp.clone().sub(pL), dW = toW.length();
+    c.capDist = pL.distanceTo(cap);
+    const lim = c.capDist > 200 ? 45 : c.capDist > 50 ? 20 : c.capDist > 10 ? 5 : 1;
+    const spd = Math.min(lim, 0.8 * Math.sqrt(2 * 3 * dW));
+    const vDesL = dW > 1e-6 ? toW.multiplyScalar(spd / dW) : new V3();
+    const vDesW = pointVel(pL, new V3()).add(vDesL.applyQuaternion(sh.q));
+    const rC = pL.clone().sub(D.tern.com), aFrame = sh.aP.clone().add(sh.alpha.clone().cross(rC)).add(sh.w.clone().cross(sh.w.clone().cross(rC))).applyQuaternion(sh.q);
+    aW = clampLen(vDesW.sub(c.vel).multiplyScalar(1 / 0.35).add(aFrame), D.swift.rcs + 10);
+    fwdWant = new V3(0, 0, 1).applyQuaternion(sh.q);
+    c.relV = vRelL.length();
+    if (c.wp === 2 && c.capDist < D.recovery.capture && c.relV < D.recovery.captureV && bayReady) {
+      c.dwell += DT;
+      if (c.dwell >= D.recovery.dwell) {
+        // Capture (ship-frames 10): p = R^T (P - P_s); the relative velocity is absorbed as an impulse.
+        c.phase = "captured"; c.local.copy(cap); S.bays[c.bay].step = "stowing";
+        log(`${c.name} captured: sys -> int:tern at tick ${S.tick}, ${fmt(c.relV, 2)} m/s absorbed`, "capture");
+        return;
+      }
+    } else c.dwell = 0;
+  }
+  c.thrust = aW.length();
+  c.vel.addScaledVector(aW, DT); c.pos.addScaledVector(c.vel, DT);
+  if (fwdWant) {
+    const up = new V3(0, 1, 0).applyQuaternion(sh.q), f = fwdWant.normalize(), x = new V3().crossVectors(up, f).normalize(), y = new V3().crossVectors(f, x);
+    const qt = new Q().setFromRotationMatrix(new M4().makeBasis(x, y, f));
+    c.q.rotateTowards(qt, 120 * DEG * DT);
+  }
+}
+
+function step() {
+  for (const e of S.sched) if (!e.done && S.t >= e.t) { e.done = true; e.fn(); }
+  stepShip();
+  updateHound(0);
+  for (const st of S.tur) stepTurret(st);
+  for (const j of S.jackals) stepJackal(j);
+  stepHound();
+  for (const m of S.missiles) if (m.alive) stepMissile(m);
+  S.missiles = S.missiles.filter((m) => m.alive);
+  stepBolts();
+  stepTubes(); stepBays();
+  for (const c of S.swifts) stepCraft(c);
+  // Shields: 3 MJ/s shared by deficit; flashes fade over 0.4 s.
+  const sh = S.shield, def = sh.charge.map((c) => D.shield.face - c), tot = def.reduce((a, b) => a + b, 0);
+  if (tot > 0) sh.charge = sh.charge.map((c, i) => Math.min(D.shield.face, c + (D.shield.regen * DT * def[i]) / tot));
+  for (let i = 0; i < 6; i++) { sh.flashT[i] = Math.max(0, sh.flashT[i] - DT); if (sh.flashT[i] <= 0) sh.flash[i] = 0; }
+  for (const f of S.fx) { f.t += DT; f.pos.addScaledVector(f.vel, DT); }
+  S.fx = S.fx.filter((f) => f.t < f.life);
+  S.t += DT; S.tick++;
+}
+function runUntil(pred, tMax) { while (S.t < tMax) { step(); if (pred()) return true; } return false; }
+
+// ------------------------------------------------------------ syncing the scene from the simulation
+const _m = new M4(), _m2 = new M4(), _q = new Q(), _p = new V3(), _s = new V3(1, 1, 1), ONE = new V3(1, 1, 1);
+function syncScene(view) {
+  const sh = S.ship;
+  ship.position.copy(toWorld(new V3(0, 0, 0), new V3())); ship.quaternion.copy(sh.q); ship.updateMatrixWorld(true);
+  // turrets
+  S.tur.forEach((st, i) => {
+    const T = st.T, hm = new M4().multiplyMatrices(TRS(T.ringTop), T.basis).multiply(new M4().makeRotationY(st.psi));
+    heads.setMatrixAt(i, hm);
+    for (let k = 0; k < 2; k++) barrels.setMatrixAt(i * 2 + k, hm.clone().multiply(TRS(new V3(k ? T_BARREL_GAP : -T_BARREL_GAP, T_TRUN, 0.55))).multiply(new M4().makeRotationX(-st.el)));
+  });
+  heads.instanceMatrix.needsUpdate = true; barrels.instanceMatrix.needsUpdate = true;
+  // door leaves: port drop (2), starboard drop (2), pad (2, shut)
+  let n = 0;
+  const leaf = (hingeX, cz, w, d, sign, open) => {
+    const ang = open * 95 * DEG * sign;
+    unitBoxes.setMatrixAt(n++, TRS(new V3(hingeX, KEEL_Y - 0.02, cz)).multiply(new M4().makeRotationZ(ang)).multiply(TRS(new V3(-sign * w / 2, -0.075, 0), null, new V3(w, 0.15, d))));
+  };
+  HOLES.forEach((h, i) => {
+    const open = S.bays[i ? "s" : "p"].door, wHalf = (h.u1 - h.u0) / 2, cz = (h.v0 + h.v1) / 2, d = h.v1 - h.v0;
+    leaf(h.u1, cz, wHalf, d, 1, open); leaf(h.u0, cz, wHalf, d, -1, open);
+  });
+  const pad = holeOf(K.byId(L.portals, "p_hangar_pad"));
+  leaf(pad.u1, (pad.v0 + pad.v1) / 2, (pad.u1 - pad.u0) / 2, pad.v1 - pad.v0, 1, 0); leaf(pad.u0, (pad.v0 + pad.v1) / 2, (pad.u1 - pad.u0) / 2, pad.v1 - pad.v0, -1, 0);
+  // tube doors: hinged on their outboard edge
+  S.tubes.forEach((tu, i) => {
+    const T = TUBES[i], hingeL = new V3(0.48 * T.hingeSign, 0, 0);
+    const m = new M4().multiplyMatrices(TRS(T.exit.clone().addScaledVector(T.n, 0.07)), T.basis).multiply(TRS(hingeL)).multiply(new M4().makeRotationY(T.hingeSign * tu.door * 110 * DEG)).multiply(TRS(hingeL.clone().negate(), null, new V3(0.95, 0.95, 0.08)));
+    unitBoxes.setMatrixAt(n++, m);
+  });
+  // cradles: platform plus two columns from the bay ceiling, for port, starboard and the pad
+  const cradle = (cx, cz, yTop, w, d) => {
+    unitBoxes.setMatrixAt(n++, TRS(new V3(cx, yTop + 0.15, cz), null, new V3(w, 0.3, d)));
+    const len = Math.max(0.05, 0 - (yTop + 0.3));
+    for (const dx of [-1.4, 1.4]) unitBoxes.setMatrixAt(n++, TRS(new V3(cx + dx, yTop + 0.3 + len / 2, cz), null, new V3(0.35, len, 0.35)));
+  };
+  for (const c of S.swifts) { const bay = S.bays[c.bay]; const y = c.data.center_m[1] - D.bay.travel * bay.cradle + c.data.height_m / 2; cradle(c.data.center_m[0], c.data.center_m[2], y, 3.6, 5.5); }
+  const pt = K.byId(L.craft, "petrel"); cradle(0, pt.center_m[2], pt.center_m[1] - pt.height_m / 2 - 0.6, 5.5, 11);
+  unitBoxes.instanceMatrix.needsUpdate = true;
+  // engine plume follows main thrust (a standby glow when coasting)
+  glowMesh.scale.set(1, 1, 2.5 + 11 * (sh.aMain / D.tern.fwd));
+  // craft
+  S.swifts.forEach((c, i) => {
+    if (view === "cockpit" && i === 0) { swifts.setMatrixAt(i, TRS(c.pos, null, new V3(1e-4, 1e-4, 1e-4))); return; }
+    if (c.phase === "cradle" || c.phase === "captured") {
+      const bay = S.bays[c.bay], yL = c.data.center_m[1] - D.bay.travel * bay.cradle;
+      swifts.setMatrixAt(i, new M4().multiplyMatrices(ship.matrixWorld, TRS(new V3(c.local.x, yL, c.local.z))));
+    } else swifts.setMatrixAt(i, TRS(c.pos, c.q));
+  });
+  swifts.instanceMatrix.needsUpdate = true;
+  let nj = 0;
+  for (const j of S.jackals) if (j.alive) jackals.setMatrixAt(nj++, TRS(j.pos, j.q));
+  jackals.count = nj; jackals.instanceMatrix.needsUpdate = true;
+  houndMesh.visible = S.hound.alive;
+  if (S.hound.alive) { const f = S.hound.fwd, up = new V3(0, 1, 0), x = new V3().crossVectors(up, f).normalize(); houndMesh.position.copy(S.hound.pos); houndMesh.quaternion.setFromRotationMatrix(new M4().makeBasis(x, new V3().crossVectors(f, x), f)); }
+  let nm = 0;
+  for (const m of S.missiles) if (m.alive) {
+    const f = m.fwd, up = Math.abs(f.y) < 0.95 ? new V3(0, 1, 0) : new V3(1, 0, 0), x = new V3().crossVectors(up, f).normalize();
+    missiles.setMatrixAt(nm, TRS(m.pos, new Q().setFromRotationMatrix(new M4().makeBasis(x, new V3().crossVectors(f, x), f))));
+    missiles.setColorAt(nm, new THREE.Color(m.owner === "tern" ? 0xe4e8ec : 0xd08048)); nm++;
+  }
+  missiles.count = nm; missiles.instanceMatrix.needsUpdate = true; if (missiles.instanceColor) missiles.instanceColor.needsUpdate = true;
+  // billboards
+  bbN = 0;
+  for (const b of S.bolts) {
+    const d = b.vel.clone().normalize();
+    if (b.owner === "tern") bb(b.pos, d, 16, 0.55, 0.55, 0.9, 1.0, 1.8);
+    else if (b.owner === "pd") bb(b.pos, d, 14, 0.5, 1.0, 0.85, 0.4, 1.8);
+    else bb(b.pos, d, 14, 0.55, 1.0, 0.36, 0.26, 1.8);
+  }
+  for (const m of S.missiles) if (m.alive && m.thrust > 0) {
+    const back = m.fwd.clone().multiplyScalar(-1);
+    bb(m.pos.clone().addScaledVector(back, 2.4 + 4.5), back, 9, 0.9, 1.0, 0.72, 0.42, 1.6);
+    bb(m.pos.clone().addScaledVector(back, 2.2), null, 0, 0.9, 1.0, 0.95, 0.85, 2.2, true);
+  }
+  for (const c of S.swifts) if ((c.phase === "flying" || c.phase === "approach") && c.thrust > 3) {
+    const back = new V3(0, 0, -1).applyQuaternion(c.q);
+    bb(c.pos.clone().addScaledVector(back, 3.9), null, 0, 0.5 + 0.9 * Math.min(1, c.thrust / 30), 0.55, 0.85, 1.0, 2, true);
+  }
+  for (const j of S.jackals) if (j.alive) { const back = j.fwd.clone().multiplyScalar(-1); for (const sx of [1, -1]) bb(j.pos.clone().addScaledVector(back, 3.8).add(new V3(sx * 1.3, -0.1, 0).applyQuaternion(j.q)), null, 0, 0.6, 1.0, 0.5, 0.3, 1.8, true); }
+  for (const f of S.fx) { const k = f.t / f.life, s = f.s0 + (f.s1 - f.s0) * Math.sqrt(k); bb(f.pos, null, 0, s, f.col[0], f.col[1], f.col[2], f.a * (1 - k), true); }
+  bbGeo.instanceCount = bbN;
+  for (const a of [bbPos, bbDir, bbCol, bbSize]) { a.needsUpdate = true; a.clearUpdateRanges(); a.addUpdateRange(0, bbN * a.itemSize); }
+  // shield faces: flash opacity 0.5 x min(1, E / 5 MJ), colour by charge
+  const sh2 = S.shield;
+  let any = showShield;
+  for (let i = 0; i < 6; i++) {
+    shieldMat.uniforms.uAlpha.value[i] = sh2.flash[i] * (sh2.flashT[i] / D.shield.flash);
+    const f = sh2.charge[i] / D.shield.face;
+    shieldMat.uniforms.uColor.value[i].set(f < 0.2 ? 0xff5252 : f < 0.5 ? 0xffb300 : 0x4fc3f7);
+    if (shieldMat.uniforms.uAlpha.value[i] > 0.002) any = true;
+  }
+  shieldMat.uniforms.uBase.value = showShield ? 0.05 : 0;
+  shieldMesh.visible = any;
+}
+
+// ------------------------------------------------------------ cameras and views
+const cam = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.5, 20000);
+const farCam = new THREE.PerspectiveCamera(50, 1, 1, 5000);
+const winCam = new THREE.PerspectiveCamera(60, 1, 0.5, 20000); winCam.matrixAutoUpdate = false;
+const icam = new THREE.PerspectiveCamera(72, 1, 0.05, 120);
+const feedCam = new THREE.PerspectiveCamera(30, 2, 0.5, 20000);
+const pitCam = new THREE.PerspectiveCamera(70, 1, 0.05, 50);
+const controls = new OrbitControls(cam, renderer.domElement);
+controls.enableDamping = false; controls.enabled = false;
+let view = "chase", paused = false, showShield = false, shotCam = null;
+const orbitState = { last: new V3() };
+function placeShipCam(c, eyeL, lookL, upL) {
+  c.position.copy(toWorld(eyeL, new V3())); c.up.copy(upL || new V3(0, 1, 0)).applyQuaternion(S.ship.q);
+  c.lookAt(toWorld(lookL, new V3())); c.updateMatrixWorld(true);
+}
+function placeGunner(c, st) {
+  const T = st.T, eyeL = T.pivot.clone().addScaledVector(T.u, 0.95).addScaledVector(st.dirL, -0.4);
+  c.position.copy(toWorld(eyeL, new V3())); c.up.copy(T.u).applyQuaternion(S.ship.q);
+  c.lookAt(c.position.clone().add(dirWorld(st.dirL, new V3()))); c.updateMatrixWorld(true);
+}
+function placeCockpit(c, out) {
+  const s1 = S.swifts[0], eye = new V3(0, 0.62, 0.9).applyQuaternion(s1.q).add(s1.pos);
+  out.position.copy(eye); out.quaternion.copy(s1.q).multiply(qE(0, Math.PI, 0)); out.updateMatrixWorld(true);
+  pitCam.position.set(0, 0.62, 0.9); pitCam.quaternion.copy(qE(0, Math.PI, 0)); pitCam.updateMatrixWorld(true);
+  void c;
+}
+function placeCamera(W, H) {
+  cam.aspect = W / H; cam.fov = 50; cam.near = 0.5;
+  if (view === "chase") placeShipCam(cam, new V3(0, 17, -92), new V3(0, 2, 14));
+  else if (view === "orbit") {
+    const c = S.ship.pos; cam.position.add(new V3().subVectors(c, orbitState.last)); orbitState.last.copy(c); controls.target.copy(c); controls.update();
+  } else if (view === "gunner") { cam.fov = 60; placeGunner(cam, S.tur[0]); }
+  else if (view === "cockpit") { cam.fov = 70; cam.near = 0.3; placeCockpit(cam, cam); }
+  else if (view === "shot" && shotCam) shotCam(cam);
+  cam.updateProjectionMatrix(); cam.updateMatrixWorld(true);
+}
+
+// One exterior view: the far layer with the eye's rotation only, a depth clear, then the near layer (ship-frames 7).
+const _eyeP = new V3(), _eyeQ = new Q(), _eyeS = new V3();
+function renderExterior(c, target) {
+  c.updateMatrixWorld(true);
+  c.matrixWorld.decompose(_eyeP, _eyeQ, _eyeS);
+  farCam.fov = c.fov; farCam.aspect = c.aspect; farCam.updateProjectionMatrix();
+  farCam.position.set(0, 0, 0); farCam.quaternion.copy(_eyeQ); farCam.updateMatrixWorld(true);
+  renderer.render(farScene, farCam);
+  renderer.clearDepth();
+  renderer.render(nearScene, c);
+  void target;
+}
+const _v = new V3();
+function windowRect(c, vp) {
+  c.updateMatrixWorld(true);
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const w of WINDOWS) {
+    const [cx, cy, cz] = w.center_m, hw = w.size_m[0] / 2, hh = w.size_m[1] / 2;
+    for (const [dx, dy] of [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]]) {
+      _v.set(cx + dx, cy + dy, cz).applyMatrix4(c.matrixWorldInverse);
+      if (_v.z > -c.near) return vp;
+      _v.set(cx + dx, cy + dy, cz).project(c);
+      const sx = vp.x + (_v.x * 0.5 + 0.5) * vp.w, sy = vp.y + (0.5 - _v.y * 0.5) * vp.h;
+      x0 = Math.min(x0, sx); x1 = Math.max(x1, sx); y0 = Math.min(y0, sy); y1 = Math.max(y1, sy);
+    }
+  }
+  x0 = Math.max(vp.x, Math.floor(x0) - 2); y0 = Math.max(vp.y, Math.floor(y0) - 2);
+  x1 = Math.min(vp.x + vp.w, Math.ceil(x1) + 2); y1 = Math.min(vp.y + vp.h, Math.ceil(y1) + 2);
+  return x1 > x0 && y1 > y0 ? { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } : null;
+}
+let frameNo = 0;
+const SPLIT = 0.44;
+function placeInteriorCam() {
+  // Standing at the bridge's aft wall, eye 1.65 m; the residual lurch and the hit shake are added on top.
+  const eye = new V3(0, BB_.y[0] + 1.65, BB_.z[0] + 0.45).add(S.head.o);
+  const T2 = S.ship.trauma * S.ship.trauma, nx = Math.sin(S.t * 2 * Math.PI * 15 + 1.3), ny = Math.sin(S.t * 2 * Math.PI * 11.7 + 0.4);
+  icam.position.copy(eye).add(new V3(nx, ny, 0).multiplyScalar(D.shake.offset * T2));
+  icam.up.set(0, 1, 0); icam.lookAt(0, 4.75, 31); icam.rotateZ(D.shake.angle * T2 * nx);
+  icam.updateMatrixWorld(true);
+}
+function render() {
+  const W = innerWidth, Hh = innerHeight, glY = (r) => Hh - r.y - r.h;
+  renderer.setScissorTest(true);
+  renderer.setViewport(0, 0, W, Hh); renderer.setScissor(0, 0, W, Hh);
+  renderer.setClearColor(P.space, 1); renderer.clear();
+  if (view !== "split") {
+    placeCamera(W, Hh);
+    renderExterior(cam);
+    if (view === "cockpit") {
+      renderer.clearDepth();
+      pitCam.fov = cam.fov; pitCam.aspect = cam.aspect; pitCam.updateProjectionMatrix();
+      renderer.render(cockpitScene, pitCam);
+    }
+    renderer.setScissorTest(false);
+    return;
+  }
+  // Split: left, the exterior from a camera that follows the ship's position but not its rotation.
+  const lv = { x: 0, y: 0, w: Math.round(W * SPLIT), h: Hh }, rv = { x: lv.w + 2, y: 0, w: W - lv.w - 2, h: Hh };
+  cam.aspect = lv.w / lv.h; cam.fov = 40; cam.near = 0.5; cam.updateProjectionMatrix();
+  cam.position.copy(S.ship.pos).add(new V3(-70, 34, -112)); cam.up.set(0, 1, 0); cam.lookAt(S.ship.pos.clone().add(new V3(0, 2, 6))); cam.updateMatrixWorld(true);
+  renderer.setViewport(lv.x, glY(lv), lv.w, lv.h); renderer.setScissor(lv.x, glY(lv), lv.w, lv.h);
+  renderExterior(cam);
+  // Right: 1. the viewscreen's feed into its 1024 x 512 target at 30 Hz (every other frame).
+  if (frameNo % 2 === 0) {
+    placeShipCam(feedCam, v3(K.byId(L.systems, "sensor_array").center_m).add(new V3(0, 0, 0.6)), new V3(0, 1.0, 400));
+    feedCam.aspect = 2; feedCam.updateProjectionMatrix();
+    renderer.setScissorTest(false);
+    renderer.setRenderTarget(rtt); renderer.setClearColor(P.space, 1); renderer.clear();
+    renderExterior(feedCam);
+    renderer.setRenderTarget(null); renderer.setScissorTest(true);
+  }
+  // 2. the windows: the exterior from the interior eye carried by the ship pose, scissored to the openings.
+  placeInteriorCam();
+  icam.aspect = rv.w / rv.h; icam.fov = 72; icam.updateProjectionMatrix();
+  renderer.setViewport(rv.x, glY(rv), rv.w, rv.h); renderer.setScissor(rv.x, glY(rv), rv.w, rv.h);
+  renderer.setClearColor(0x000000, 1); renderer.clear();
+  const wr = windowRect(icam, rv);
+  if (wr) {
+    winCam.fov = icam.fov; winCam.aspect = icam.aspect; winCam.near = 0.5; winCam.far = 20000; winCam.updateProjectionMatrix();
+    winCam.matrix.multiplyMatrices(ship.matrixWorld, icam.matrixWorld); winCam.matrixWorldNeedsUpdate = true; winCam.updateMatrixWorld(true);
+    renderer.setScissor(wr.x, glY(wr), wr.w, wr.h);
+    renderExterior(winCam);
+    renderer.setScissor(rv.x, glY(rv), rv.w, rv.h);
+  }
+  // 3. depth clear, then the interior: it never moves with the ship.
+  renderer.clearDepth();
+  renderer.render(interior, icam);
+  renderer.setScissorTest(false);
+}
+
+// ------------------------------------------------------------ overlay: contact tags, the gunner's sight, the cockpit HUD, split captions
+const ov = document.getElementById("ov");
+const pool = []; let used = 0;
+function el(html, x, y, cls, style) {
+  let d = pool[used];
+  if (!d) { d = document.createElement("div"); ov.appendChild(d); pool.push(d); }
+  used++;
+  d.className = cls || "tag"; d.style.cssText = `left:${x}px;top:${y}px;` + (style || ""); d.style.display = "block";
+  if (d._h !== html) { d.innerHTML = html; d._h = html; }
+  return d;
+}
+function project(p, c, vp) {
+  _v.copy(p).applyMatrix4(c.matrixWorldInverse); if (_v.z > -c.near) return null;
+  _v.copy(p).project(c);
+  return { x: vp.x + (_v.x * 0.5 + 0.5) * vp.w, y: vp.y + (0.5 - _v.y * 0.5) * vp.h };
+}
+function tagBody(p, radius, text, color, c, vp) {
+  const s = project(p, c, vp); if (!s || s.x < vp.x - 40 || s.x > vp.x + vp.w + 40 || s.y < -40 || s.y > vp.h + 40) return;
+  const d = p.distanceTo(c.position), px = Math.max(12, Math.min(160, (radius / d) * (vp.h / 2) / Math.tan((c.fov * DEG) / 2) * 2.2));
+  el(`<div class="bx" style="left:${-px / 2}px;top:${-px / 2}px;width:${px}px;height:${px}px"></div><div class="tx" style="left:${px / 2 + 3}px;top:${-px / 2 - 2}px">${text}</div>`, s.x, s.y, "tag", `color:${color}`);
+}
+const JSTATE = { orbit: "orbit", run: "attack run", fire: "firing", retreat: "retreat", leave: "leaving" };
+function overlay() {
+  used = 0;
+  const W = innerWidth, Hh = innerHeight;
+  if (view === "split") {
+    const lw = Math.round(W * SPLIT), e = shipEuler(), sh = S.ship, br = S.damp.find((c) => c.id === "bridge");
+    const worst = S.damp.reduce((a, c) => (c.D.length() > a.D.length() ? c : a));
+    const C = D.dampers.rated * dampSupply, felt = br.E.length() >= D.dampers.felt;
+    el(`<div class="big">Exterior: the system frame</div>The Tern banks <b>${fmt(Math.abs(e.bank))} deg</b> to ${e.bank > 0 ? "starboard" : "port"}, heading ${fmt(e.heading)} deg, pitch ${fmt(e.pitch)} deg<br>rates: pitch ${fmt(sh.w.x / DEG, 1)}, yaw ${fmt(sh.w.y / DEG, 1)}, roll ${fmt(sh.w.z / DEG, 1)} deg/s; ${fmt(sh.vel.length())} m/s${sh.hold ? "; " + sh.hold : ""}`,
+      12, Hh - 196, "cap", `width:${lw - 24}px`);
+    el(`<div class="big">Interior: int:tern, held level</div>Bridge dampers: demand <b>${fmt(br.D.length(), 1)}</b> m/s^2, capacity <b>${fmt(C, 1)}</b>, residual <b>${fmt(br.E.length(), 2)}</b>: ${felt ? "<span style='color:#ffb300'>felt, the camera lurches</span>" : "nothing felt"}<br>worst compartment: ${worst.id}, ${fmt(worst.D.length(), 1)} m/s^2. The windows and the viewscreen turn; the room does not.`,
+      lw + 14, 12, "cap", `width:${Math.min(560, W - lw - 360)}px`);
+    el("", lw, 0, "cap", `width:2px;height:${Hh}px;padding:0;border:0;border-radius:0;background:#2b3540`);
+  } else if (view === "gunner") {
+    const st = S.tur[0], vp = { x: 0, y: 0, w: W, h: Hh }, cx = W / 2, cy = Hh / 2;
+    el(`<svg width="120" height="120" viewBox="-60 -60 120 120" style="overflow:visible"><circle r="26" fill="none" stroke="#9ff0c0" stroke-width="1.5"/><path d="M-50 0H-32M32 0H50M0 -50V-32M0 32V50" stroke="#9ff0c0" stroke-width="1.5"/><circle r="2" fill="#9ff0c0"/></svg>`, cx - 60, cy - 60, "sight");
+    if (st.target && st.target.body.alive !== false) {
+      const b = st.target.body, sol = st.sol;
+      if (sol) {
+        const pipW = toWorld(st.T.pivot, new V3()).addScaledVector(sol.dir, 1000), s = project(pipW, cam, vp);
+        if (s) el(`<svg width="30" height="30" viewBox="-15 -15 30 30"><path d="M0 -11L11 0L0 11L-11 0Z" fill="none" stroke="#ffe066" stroke-width="2"/></svg><div style="position:absolute;left:18px;top:-6px;color:#ffe066">LEAD ${fmt(st.hit * 100)}%</div>`, s.x - 15, s.y - 15, "sight");
+      }
+      const name = b === S.hound ? "Hound" : b.id || b.name;
+      tagBody(b.pos, b === S.hound ? D.hound.radius : 4, name, "#ff8a7a", cam, vp);
+      const closing = -new V3().subVectors(b.pos, cam.position).normalize().dot(new V3().subVectors(b.vel, S.ship.vel));
+      el(`TGT ${name}${b.state ? " (" + JSTATE[b.state] + ")" : ""}<br>RANGE ${fmt(st.range)} m &nbsp; CLOSING ${fmt(closing)} m/s<br>HIT ${fmt(st.hit * 100)}% &nbsp; AIM ERR ${fmt(st.rms / DEG, 2)} deg rms`, cx + 70, cy + 70, "sight");
+    } else el("NO TARGET IN ARC", cx + 70, cy + 70, "sight");
+    el(`DORSAL TURRET, MANNED &nbsp; ZOOM 60 deg<br>CAP <span class="hudbar"><i style="width:${(100 * st.cap) / D.cannon.cap}%"></i></span> ${fmt(st.cap, 1)} MJ<br>HEAT<span class="hudbar"><i style="width:${(100 * st.heat) / D.cannon.sink}%;background:${st.lock ? "#ff5252" : "#9ff0c0"}"></i></span> ${fmt(st.heat, 1)} MJ${st.lock ? " LOCKOUT" : ""}<br>${st.inArc ? "ARC CLEAR" : "<span style='color:#ff8a7a'>HULL IN ARC: HOLD</span>"}`, 24, Hh - 230, "sight");
+    // off-screen arrows to other threats (star-crew-64's arrows)
+    for (const j of S.jackals) if (j.alive && (!st.target || j !== st.target.body)) {
+      const s = project(j.pos, cam, vp); if (s && s.x > 0 && s.x < W && s.y > 0 && s.y < Hh) { tagBody(j.pos, 4, j.id, "#ff8a7a", cam, vp); continue; }
+      const dL = j.pos.clone().applyMatrix4(cam.matrixWorldInverse), a = Math.atan2(-dL.y, dL.x), r = Math.min(W, Hh) * 0.42;
+      el(`<svg width="20" height="20" viewBox="-10 -10 20 20" style="transform:rotate(${a}rad)"><path d="M8 0L-6 -6L-3 0L-6 6Z" fill="#ff8a7a"/></svg>`, cx + Math.cos(a) * r - 10, cy + Math.sin(a) * r - 10, "sight");
+    }
+  } else if (view === "cockpit") {
+    const s1 = S.swifts[0], vp = { x: 0, y: 0, w: W, h: Hh }, rel = s1.vel.clone().sub(S.ship.vel);
+    el(`<svg width="60" height="60" viewBox="-30 -30 60 60"><path d="M-22 0H-8M8 0H22M0 -8V-22" stroke="#9ff0c0" stroke-width="1.5" fill="none"/></svg>`, W / 2 - 30, Hh / 2 - 30, "sight");
+    tagBody(S.ship.pos, 40, `SCS Tern ${fmt(S.ship.pos.distanceTo(s1.pos))} m`, "#7fd8ff", cam, vp);
+    for (const j of S.jackals) if (j.alive && j.pos.distanceTo(s1.pos) < 2500) tagBody(j.pos, 4, `${j.id} ${fmt(j.pos.distanceTo(s1.pos))} m`, "#ff8a7a", cam, vp);
+    el(`SWIFT 1 (drone pilot in this mockup) &nbsp; ASSIST FULL<br>SPEED ${fmt(rel.length())} m/s REL TERN &nbsp; ${fmt(s1.vel.length())} m/s SYS<br>PROP <span class="hudbar"><i style="width:86%"></i></span> &nbsp; CAP <span class="hudbar"><i style="width:100%"></i></span><br>SHIELD 8.0 MJ &nbsp; HULL 6.0 MJ &nbsp; DARTS 2 &nbsp; ${s1.phase.toUpperCase()}`, W / 2 - 230, Hh - 210, "sight", "width:470px");
+  } else {
+    const vp = { x: 0, y: 0, w: W, h: Hh };
+    for (const j of S.jackals) if (j.alive && j.pos.distanceTo(cam.position) < 3500) tagBody(j.pos, 4, `${j.id} ${JSTATE[j.state]} ${fmt(j.pos.distanceTo(S.ship.pos))} m`, "#ff8a7a", cam, vp);
+    if (S.hound.alive) tagBody(S.hound.pos, 26, `Hound ${fmt(S.hound.pos.distanceTo(S.ship.pos) / 1000, 2)} km`, "#ff8a7a", cam, vp);
+    for (const m of S.missiles) if (m.alive) tagBody(m.pos, 3, `${m.name} ${fmt(m.pos.distanceTo(m.owner === "tern" ? S.hound.pos : S.ship.pos))} m to go`, "#ffc04d", cam, vp);
+    for (const c of S.swifts) if (c.phase !== "cradle" && c.phase !== "captured") tagBody(c.pos, 4, `${c.name} ${c.phase === "approach" ? "recovery " + fmt(c.capDist || 0) + " m" : c.phase}`, "#7fd8ff", cam, vp);
+  }
+  for (let i = used; i < pool.length; i++) pool[i].style.display = "none";
+}
+
+// ------------------------------------------------------------ the info panel
+const info = document.getElementById("info");
+function bar(f, col) { return `<span class="bar"><i style="width:${clamp(f, 0, 1) * 100}%;background:${col}"></i></span>`; }
+function updateInfo() {
+  if (view === "split" || view === "gunner" || view === "cockpit") { info.style.display = "none"; return; }
+  info.style.display = "";
+  const sh = S.ship, e = shipEuler(), br = S.damp.find((c) => c.id === "bridge");
+  let h = `<b>t ${fmt(S.t, 1)} s</b>, tick ${S.tick} at 30 Hz, seed ${S.seed}${paused ? ", paused" : ""}<br>`;
+  h += `Tern ${fmt(sh.vel.length())} m/s, bank ${fmt(e.bank)} deg, yaw ${fmt(sh.w.y / DEG, 1)} deg/s, main ${fmt(sh.aMain, 1)} m/s^2${sh.hold ? ", <b>" + sh.hold + "</b>" : ""}<br>`;
+  h += `bridge dampers ${fmt(br.D.length(), 1)} / ${fmt(D.dampers.rated * dampSupply)} m/s^2, residual ${fmt(br.E.length(), 2)}`;
+  h += `<h4>Turrets (arcs baked from the hull)</h4><table><col style="width:62px"><col style="width:74px"><col style="width:40px"><col><col>`;
+  for (const st of S.tur) {
+    const tg = st.target ? (st.target.body === S.hound ? "Hound" : st.target.body.id || st.target.body.name) : "none";
+    h += `<tr><td class="k">${st.T.name}${st.manned ? "*" : ""}</td><td>${tg}${st.target && st.target.pd ? " PD" : ""}</td><td>${st.sol ? fmt(st.hit * 100) + "%" : ""}</td><td>${bar(st.cap / D.cannon.cap, "#4fc3f7")}</td><td>${bar(st.heat / D.cannon.sink, st.lock ? "#ff5252" : "#ffb300")}</td></tr>`;
+  }
+  h += `</table><div class="note">hit chance, capacitor, heat; * manned (scripted gunner). Coverage: ${COVER.share.map((s) => fmt(s, 1) + "%").join(", ")}; every direction by 2 or more: ${fmt(COVER.atLeast2, 1)}%</div>`;
+  h += `<h4>Shield faces (MJ)</h4><table>`;
+  for (let i = 0; i < 6; i += 2) h += `<tr>${[i, i + 1].map((k) => `<td class="k" style="width:58px">${FACE_NAMES[k]}</td><td style="width:26px">${fmt(S.shield.charge[k])}</td><td>${bar(S.shield.charge[k] / D.shield.face, S.shield.charge[k] / D.shield.face < 0.2 ? "#ff5252" : S.shield.charge[k] / D.shield.face < 0.5 ? "#ffb300" : "#4fc3f7")}</td>`).join("")}</tr>`;
+  h += `</table><h4>Tubes and bays</h4>`;
+  h += `<div class="ev">tube 1 ${S.tubes[0].state}; tube 2 ${S.tubes[1].state}; racks ${S.magazine.racks}</div>`;
+  h += `<div class="ev">port bay: ${S.bays.p.step}${S.bays.p.hold ? " (hold)" : ""}</div><div class="ev">starboard bay: ${S.bays.s.step}</div>`;
+  h += `<h4>Events</h4>` + S.events.slice(-6).map((ev) => `<div class="ev">${fmt(ev.t, 1)} s: ${ev.text}</div>`).join("");
+  h += `<div class="note">Tern LOD0 ${TERN_TRIS.toLocaleString()} triangles of 12,000, ${TERN_CALLS} calls (+1 shield); kit hull caps rewound: ${HULL.flipped} triangles. Fighters steer kinematically here.</div>`;
+  info.innerHTML = h;
+}
+
+// ------------------------------------------------------------ controls
+const ctl = document.getElementById("controls");
+const buttons = {};
+function group(label) { const s = document.createElement("span"); s.className = "grp"; s.textContent = label; ctl.appendChild(s); }
+function button(key, text, fn) { const b = document.createElement("button"); b.textContent = text; b.onclick = () => { fn(); sync(); }; ctl.appendChild(b); buttons[key] = b; return b; }
+function setView(v) {
+  view = v; controls.enabled = v === "orbit";
+  if (v === "orbit") { orbitState.last.copy(S.ship.pos); cam.position.copy(S.ship.pos).add(new V3(90, 45, -110)); controls.target.copy(S.ship.pos); }
+}
+group("View");
+for (const [k, t] of [["chase", "Chase"], ["orbit", "Free orbit"], ["gunner", "Dorsal gunner"], ["cockpit", "Swift cockpit"], ["split", "Split: decoupling"]]) button("view:" + k, t, () => setView(k));
+group("Orders");
+button("launch", "Launch Swift 1", () => launchCraft("p"));
+button("recover", "Recover Swift 2", () => recoverCraft("s"));
+button("fire", "Fire tube 1", () => fireTube(0));
+button("shield", "Shield shape", () => { showShield = !showShield; });
+group("Dampers");
+for (const f of [1, 0.5, 0.25, 0]) button("damp:" + f, `${f * 100}%`, () => { dampSupply = f; });
+group("Bridge");
+for (const k of ["normal", "red_alert"]) button("light:" + k, K.LIGHTING[k].label, () => { lighting = k; applyLighting(); });
+group("Sim");
+button("pause", "Pause", () => { paused = !paused; });
+button("restart", "Restart", () => { reset(1); paused = false; });
+function sync() {
+  for (const [k, b] of Object.entries(buttons)) {
+    let on = k === "view:" + view || k === "light:" + lighting || k === "damp:" + dampSupply;
+    if (k === "shield") on = showShield; if (k === "pause") on = paused;
+    b.classList.toggle("on", on);
+  }
+}
+addEventListener("resize", () => renderer.setSize(innerWidth, innerHeight));
+
+// ------------------------------------------------------------ shots (seeded; time stepped inside each setup)
+function shot(fn) { return () => { shotCam = null; dampSupply = 1; showShield = false; lighting = "red_alert"; applyLighting(); fn(); paused = true; frameNo = 0; sync(); }; }
+const fixedCam = (eyeL, lookL, fov) => (c) => { c.fov = fov || 50; placeShipCam(c, eyeL, lookL); };
+K.registerShots([
+  { name: "chase", setup: shot(() => { reset(1); runUntil(() => S.t >= 32.0, 40); setView("chase"); }) },
+  { name: "broadside", setup: shot(() => {
+    reset(1); runUntil(() => { const e = lastEvent("pd-kill"); return e && S.t - e.t >= 0.2; }, 60);
+    const e = lastEvent("pd-kill"); const at = e ? e.pos.clone().addScaledVector(S.ship.vel, S.t - e.t) : S.hound.pos.clone();
+    setView("shot");
+    shotCam = (c) => { c.fov = 45; const sp = S.ship.pos, d = at.clone().sub(sp).normalize(), side = new V3().crossVectors(d, new V3(0, 1, 0)).normalize();
+      c.position.copy(sp).addScaledVector(d, -105).addScaledVector(side, 38).add(new V3(0, 26, 0)); c.up.set(0, 1, 0); c.lookAt(sp.clone().addScaledVector(d, 210)); c.updateMatrixWorld(true); };
+  }) },
+  { name: "missile-launch", setup: shot(() => { reset(1); runUntil(() => { const e = lastEvent("gannet-launch"); return e && S.t - e.t >= 0.8; }, 40); setView("shot"); shotCam = fixedCam(new V3(15, 9, 30), new V3(1, 1.5, 55), 48); }) },
+  { name: "fighter-drop", setup: shot(() => { lighting = "normal"; reset(1); runUntil(() => { const e = lastEvent("release"); return e && S.t - e.t >= 1.1; }, 40); setView("shot"); shotCam = fixedCam(new V3(30, -25, -36), new V3(7.75, -9, -9), 50); }) },
+  { name: "fighter-recovery", setup: shot(() => { reset(1); runUntil(() => { const e = lastEvent("capture"); return e && S.t - e.t >= 1.6; }, 110); setView("shot"); shotCam = fixedCam(new V3(-30, -23, -38), new V3(-7.75, -7.5, -9), 50); }) },
+  { name: "fighter-cockpit", setup: shot(() => { reset(1); runUntil(() => S.t > 30 && S.swifts[0].phase === "flying" && S.swifts[0].pos.distanceTo(toWorld(S.swifts[0].station, new V3())) < 12, 70); setView("cockpit"); }) },
+  { name: "gunner-view", setup: shot(() => { reset(1); runUntil(() => { const st = S.tur[0]; return S.t > 6 && st.target && st.target.body.state && st.sol && st.range < 1000 && st.hit > 0.05 && st.shots > 2; }, 60); setView("gunner"); }) },
+  { name: "decoupling-split", setup: shot(() => { lighting = "red_alert"; applyLighting(); reset(1); runUntil(() => S.t > 15 && shipEuler().bank < -38 && Math.abs(S.ship.w.y) > 4 * DEG, 60); setView("split"); }) },
+  { name: "decoupling-normal", setup: shot(() => { lighting = "normal"; applyLighting(); reset(1); runUntil(() => S.t > 36 && shipEuler().bank > 12 && Math.abs(S.ship.w.y) > 3 * DEG, 80); setView("split"); }) },
+  { name: "shields-hit", setup: shot(() => {
+    reset(1, { turretMode: "fighters only" });
+    runUntil(() => { const e = lastEvent("shield-hit"); return e && e.E >= 20 && S.t - e.t >= 0.06; }, 60);
+    const e = lastEvent("shield-hit"), f = e ? e.face : 2, n = [new V3(0, 0, 1), new V3(0, 0, -1), new V3(1, 0, 0), new V3(-1, 0, 0), new V3(0, 1, 0), new V3(0, -1, 0)][f];
+    setView("shot");
+    shotCam = (c) => { c.fov = 50; placeShipCam(c, D.shield.centre.clone().addScaledVector(n, 120).add(new V3(n.z !== 0 ? 50 : 0, 38, n.z === 0 ? -55 : 0)), D.shield.centre.clone()); };
+  }) },
+]);
+window.EXT_DEBUG = { reset, runUntil, get S() { return S; }, step, lastEvent, COVER, TERN_TRIS, HULL };
+
+// ------------------------------------------------------------ start
+reset(1);
+applyLighting();
+if (navigator.webdriver) { runUntil(() => S.t >= 32.0, 40); paused = true; }
+else runUntil(() => S.t >= 2.0, 10);
+setView(navigator.webdriver ? "orbit" : "chase"); sync();
+let first = true, lastT = performance.now(), acc = 0;
+renderer.setAnimationLoop(() => {
+  const now = performance.now(), dt = Math.min(0.25, (now - lastT) / 1000); lastT = now;
+  if (!paused) { acc += dt; let n = 0; while (acc >= DT && n < 8) { step(); acc -= DT; n++; } if (n >= 8) acc = 0; }
+  syncScene(view);
+  hud.beginFrame(renderer);
+  render();
+  hud.endFrame(renderer);
+  overlay();
+  if (frameNo % 6 === 0 || first) updateInfo();
+  frameNo++;
+  if (first) { first = false; K.markReady(); }
+});
+</script>
+</body>
+</html>

@@ -34,24 +34,25 @@
   :root[data-theme="dark"] { --bg: #05070d; }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font: 13px/1.4 system-ui, sans-serif; overflow: hidden; }
   canvas { display: block; }
-  .controls { position: fixed; left: 12px; bottom: 12px; z-index: 20; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; display: flex; gap: 4px 5px; flex-wrap: wrap; align-items: center; max-width: calc(100vw - 270px); box-sizing: border-box; }
+  .controls { position: fixed; left: 12px; bottom: 12px; z-index: 20; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; display: flex; gap: 4px 5px; flex-wrap: wrap; align-items: center; max-width: calc(100vw - 316px); box-sizing: border-box; }
   .controls .grp { color: var(--dim); font-size: 11px; margin: 0 2px 0 6px; }
   .controls button { background: #18202a; color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 3px 7px; font: 12px system-ui, sans-serif; cursor: pointer; }
   .controls button.on { border-color: var(--accent); color: var(--accent); }
   .controls select { background: #18202a; color: var(--fg); border: 1px solid var(--line); border-radius: 4px; font: 12px system-ui, sans-serif; padding: 2px 4px; width: 170px; }
   .legend { position: fixed; right: 12px; top: 12px; z-index: 20; width: 288px; max-height: calc(100vh - 150px); overflow: auto; box-sizing: border-box; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font-size: 12px; }
   .legend .ttl { font-weight: 700; letter-spacing: 0.06em; font-size: 12px; }
-  .legend h3 { margin: 7px 0 2px; font-size: 10.5px; letter-spacing: 0.07em; color: var(--dim); text-transform: uppercase; font-weight: 700; }
-  .legend .row { display: flex; align-items: center; gap: 6px; height: 18px; cursor: pointer; white-space: nowrap; border-radius: 3px; }
-  .legend .row .n { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid #e8eef5; background: #05070d; font: 700 9.5px/15px system-ui, sans-serif; text-align: center; box-sizing: border-box; flex: none; }
+  .legend h3 { margin: 5px 0 1px; font-size: 10.5px; letter-spacing: 0.07em; color: var(--dim); text-transform: uppercase; font-weight: 700; }
+  .legend .row { display: flex; align-items: center; gap: 6px; height: 15px; cursor: pointer; white-space: nowrap; border-radius: 3px; }
+  .legend .row .n { width: 15px; height: 15px; border-radius: 50%; border: 1.5px solid #e8eef5; background: #05070d; font: 700 8.5px/12px system-ui, sans-serif; text-align: center; box-sizing: border-box; flex: none; }
   .legend .row .sw { width: 6px; height: 12px; flex: none; }
   .legend .row .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; }
   .legend .row .dk { color: var(--dim); font-size: 11px; width: 40px; text-align: right; }
   .legend .row.off { opacity: 0.32; }
   .legend .row.sel { outline: 1px solid var(--accent); background: rgba(72,214,255,0.08); }
-  .legend .key { display: grid; grid-template-columns: 1fr 1fr; gap: 0 8px; font-size: 11px; color: #c8d2dc; }
-  .legend .key span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; height: 16px; }
-  .legend .key i { display: inline-block; width: 13px; height: 5px; vertical-align: middle; margin-right: 5px; border-radius: 1px; }
+  .legend .key { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 6px; font-size: 10.5px; color: #c8d2dc; }
+  .legend .key.k4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .legend .key span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; height: 15px; }
+  .legend .key i { display: inline-block; width: 10px; height: 5px; vertical-align: middle; margin-right: 4px; border-radius: 1px; }
   .legend .key i.dot { width: 8px; height: 8px; border-radius: 50%; margin: 0 5px 0 3px; }
   .info { position: fixed; left: 12px; top: 130px; z-index: 20; width: 330px; height: 400px; overflow: auto; box-sizing: border-box; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font-size: 12px; color: #c9d4df; display: none; }
   .info .hd { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; color: var(--fg); }
@@ -63,10 +64,10 @@
   .info .kv .v { font-family: ui-monospace, Menlo, Consolas, monospace; text-align: right; color: var(--fg); }
   .info .li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; height: 17px; }
   .info .li i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 5px; }
-  .route { position: fixed; left: 12px; bottom: 96px; z-index: 20; width: 600px; height: 66px; overflow: hidden; box-sizing: border-box; background: var(--panel); border: 1px solid var(--accent); border-radius: 6px; padding: 6px 10px; font-size: 12px; color: #c9d4df; display: none; }
+  .route { position: fixed; left: 12px; bottom: 96px; z-index: 20; width: 640px; height: 86px; overflow: hidden; box-sizing: border-box; background: var(--panel); border: 1px solid var(--accent); border-radius: 6px; padding: 6px 10px; font-size: 12px; color: #c9d4df; display: none; }
   .route b { color: var(--fg); }
   .route .t { color: var(--accent); font: 700 15px ui-monospace, Menlo, Consolas, monospace; }
-  .route .warn { color: #ffb300; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .route .warn { color: #ffb300; height: 34px; overflow: hidden; }
   .route .ln { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; height: 17px; }
   @media (max-width: 640px) { .controls { max-width: calc(100vw - 24px); bottom: 120px; } .legend, .info, .route { display: none !important; } }
 </style>
@@ -523,16 +524,18 @@
 <script type="module">
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 const K = window.ShipKit;
 const L = K.layout();
 const P = K.PALETTE;
 const titleEl = K.titleBlock({
   title: "Deck plan: the whole Tern",
-  subtitle: `${L.ship.name}, ${L.ship.class}: ${L.compartments.length} compartments and ${L.portals.length} portals on ${L.decks.length} decks, ceilings off. Click a room.`,
+  subtitle: `${L.ship.name}, ${L.ship.class}: ${L.compartments.length} compartments and ${L.portals.length} portals on ${L.decks.length} decks, ceilings off. Lamps by the kit rule; systems are nominal blocks until T4. Click a room.`,
   change: "reference-ship-tern, deck-pipeline",
 });
-const hud = K.budgetHud({ note: "whole interior at once, no portal culling; mockup labels included" });
+const hud = K.budgetHud({ note: "whole ship at once, labels included" });
+hud.el.style.width = "288px"; hud.el.style.boxSizing = "border-box";
 window.MOCKUP_BUDGET = () => hud.read();
 const hex = (c) => "#" + new THREE.Color(c).getHexString();
 const fmt = (v, d = 1) => v.toLocaleString("en-GB", { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -683,8 +686,11 @@ function irradiance(cid, x, y, z, n) {
   return s;
 }
 // Normalize so the floor under the mess's lamps shows its palette colour (deterministic: no random).
-const MESS = comps[cidOf.get("mess")], MB = MESS.boxes[0];
-const I_NORM = 0.85 / irradiance(cidOf.get("mess"), (MB.x[0] + MB.x[1]) / 2, MB.y[0], (MB.z[0] + MB.z[1]) / 2, [0, 1, 0])[0];
+const MESS = cidOf.get("mess"), MB = comps[MESS].boxes[0];
+let I_NORM = 0;
+{ let sum = 0, n = 0;
+  for (let x = MB.x[0] + 0.25; x < MB.x[1]; x += 0.5) for (let z = MB.z[0] + 0.25; z < MB.z[1]; z += 0.5) { sum += irradiance(MESS, x, MB.y[0], z, [0, 1, 0])[0]; n++; }
+  I_NORM = 1.0 / (sum / n); }
 const shoulder = (e) => (e <= 1 ? e : 1 + 0.6 * (1 - Math.exp(-(e - 1) / 0.6)));
 function bakeVertex(t, x, y, z, out) {
   if (t.mode === "flat") { for (let k = 0; k < 3; k++) out[k].copy(t.base); return; }
@@ -736,10 +742,10 @@ for (const c of comps) {
   const tall = c.boxes.some((b) => b.y[1] - b.y[0] > 3.6);
   const grid = tall ? GRID_M.tall : GRID_M.normal;
   const sh = K.roomShell(THREE, L, c, { skipKinds: ["bay_door"] });
-  addGeom(sh.floor, null, lit(cid, kc.clone().multiplyScalar(0.85), grid));
+  addGeom(sh.floor, null, lit(cid, kc, grid));
   addGeom(sh.walls, null, lit(cid, kc.clone().lerp(new THREE.Color(P.wall), 0.45), grid));
   // Lamp fixtures: an emissive lens each, coloured per state (emergency-bus lamps stay lit on emergency power).
-  for (const l of lamps[cid]) addBox(0.5, 0.05, 0.5, l.p, emit(cid, LENS[0], LENS[1], l.emergency ? LENS[2] : LENS_OFF));
+  for (const l of lamps[cid]) addBox(0.42, 0.05, 0.42, l.p, Object.assign(emit(cid, LENS[0], LENS[1], l.emergency ? LENS[2] : LENS_OFF), { lens: true }));
 }
 
 // ------------------------------------------------------------------ build: fixtures (floors, dais, viewscreen)
@@ -768,7 +774,7 @@ function stairGeom(f, spec, sink) {
   for (let i = 0; i < n; i++) {
     const s0 = i / n, s1 = (i + 1) / n, h = rise * s1;
     const cx = foot[0] + dx * (s0 + s1) / 2, cz = foot[2] + dz * (s0 + s1) / 2;
-    (sink || addBox)(f.width_m, h, run / n, [cx, foot[1] + h / 2, cz], spec, { yaw });
+    (sink || addBox)(f.width_m, h, run / n, [cx, foot[1] + h / 2, cz], spec, { yaw, deck: deckAt(top[1] + 0.01) });
   }
 }
 
@@ -780,6 +786,12 @@ for (const s of L.systems || []) {
     const g = new THREE.CylinderGeometry(s.radius_m, s.radius_m, s.height_m, 12, 4);
     g.translate(s.center_m[0], s.center_m[1], s.center_m[2]);
     addGeom(g, null, lit(cid, P.hullDark, 2.0));
+    // Caps where the deck slices cut it, so a plan view shows the reactor on every deck.
+    const y0 = s.center_m[1] - s.height_m / 2, y1 = s.center_m[1] + s.height_m / 2;
+    for (const yc of [...CUTS.filter((c) => c > y0 && c < y1).map((c) => c - 0.02), y1]) {
+      const cap = new THREE.CircleGeometry(s.radius_m, 12); cap.rotateX(-Math.PI / 2); cap.translate(s.center_m[0], yc, s.center_m[2]);
+      addGeom(cap, null, lit(cid, 0x5a6878));
+    }
     for (const yy of [-2.0, 1.5, 5.0]) {   // glowing bands where the core shows through
       const band = new THREE.CylinderGeometry(s.radius_m + 0.05, s.radius_m + 0.05, 0.35, 12, 1, true);
       band.translate(s.center_m[0], s.center_m[1] + yy, s.center_m[2]);
@@ -899,7 +911,8 @@ for (const t0 of TRIS) {
     const sub = []; subdivide(t, sub);
     for (const s of sub) {
       const cy = (s.v[1] + s.v[4] + s.v[7]) / 3;
-      BUCKETS[s.cid === EXT ? "ext" : deckAt(cy)].push(s);
+      const key = s.cid === EXT ? "ext" : deckAt(cy) + (s.lens ? ":lens" : "");
+      (BUCKETS[key] = BUCKETS[key] || []).push(s);
     }
   }
 }
@@ -963,10 +976,11 @@ const ctl3 = new OrbitControls(persp, renderer.domElement);
 const ctlP = new OrbitControls(ortho, renderer.domElement);
 ctlP.enableRotate = false; ctlP.screenSpacePanning = true; ctlP.enabled = false;
 
-const groups = {}, deckMeshes = {};
+const groups = {}, deckMeshes = {}, lensMeshes = {};
 for (const id of DECK_IDS) {
   const g = new THREE.Group(); g.name = "deck-" + id; scene.add(g); groups[id] = g;
   deckMeshes[id] = buildMesh(BUCKETS[id]); g.add(deckMeshes[id]);
+  lensMeshes[id] = buildMesh(BUCKETS[id + ":lens"] || []); g.add(lensMeshes[id]);
 }
 const extGroup = new THREE.Group(); scene.add(extGroup);
 extGroup.add(buildMesh(BUCKETS.ext));
@@ -1027,7 +1041,7 @@ const PROPOSED = {
   ],
   T3: { id: "p_bridge_scuttle", kind: "hatch", between: ["bridge", "damage_control"], axis: "y", center_m: [-6.2, 3.0, 20.8], size_m: [0.9, 0.9] },
 };
-const ghostMat = new THREE.MeshBasicMaterial({ color: 0x9be7ff, transparent: true, opacity: 0.32, depthWrite: false });
+const ghostMat = new THREE.MeshBasicMaterial({ color: 0x9be7ff, transparent: true, opacity: 0.45, depthWrite: false });
 const ghostEdgeMat = new THREE.LineBasicMaterial({ color: 0x9be7ff, transparent: true, opacity: 0.95 });
 const ghosts = Object.fromEntries(DECK_IDS.map((id) => [id, new THREE.Group()]));
 for (const id of DECK_IDS) { ghosts[id].visible = false; groups[id].add(ghosts[id]); }
@@ -1035,23 +1049,25 @@ function ghostBox(w, h, d, pos, _spec, opts) {
   const g = new THREE.BoxGeometry(w, h, d);
   const m = new THREE.Matrix4().compose(new THREE.Vector3(...pos), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), (opts && opts.yaw) || 0), ONE);
   g.applyMatrix4(m);
-  const id = deckAt(pos[1] + h / 2 - 0.01);
-  ghosts[id].add(new THREE.Mesh(g, ghostMat), new THREE.LineSegments(new THREE.EdgesGeometry(g), ghostEdgeMat));
+  const id = (opts && opts.deck) || deckAt(pos[1] + h / 2 + 0.01);
+  (ghostParts[id] = ghostParts[id] || []).push(g);
 }
-const ghostTags = [];
-function ghostTag(text, pos) { ghostTags.push({ text, pos }); }
+const ghostParts = {}, ghostTags = [];
+function ghostTag(text, pos, deck) {
+  if (!ghostTags.some((t) => t.text === text && deck === t.deck && Math.hypot(t.pos[0] - pos[0], t.pos[2] - pos[2]) < 9)) ghostTags.push({ text, pos, deck });
+}
 {
   const hangar = K.compartment(L, "hangar");
   PROPOSED.T1.forEach((nb, i) => {
     const cur = hangar.boxes[i + 1];
     if (!cur || cur.z[1] >= nb.z[1] - 1e-3) return;   // the layout already holds it
     ghostBox(nb.x[1] - nb.x[0], 0.12, nb.z[1] - cur.z[1], [(nb.x[0] + nb.x[1]) / 2, nb.y[0] - 0.06, (cur.z[1] + nb.z[1]) / 2]);
-    if (i === 0) ghostTag("T1", [(nb.x[0] + nb.x[1]) / 2, nb.y[0] + 0.6, (cur.z[1] + nb.z[1]) / 2]);
+    if (i === 0) ghostTag("T1", [(nb.x[0] + nb.x[1]) / 2, nb.y[0] + 0.6, (cur.z[1] + nb.z[1]) / 2], deckAt(nb.y[0] + 0.01));
   });
   for (const f of PROPOSED.T2) {
     if ((L.fixtures || []).some((x) => x.id === f.id)) continue;
     stairGeom(f, null, ghostBox);
-    ghostTag("T2", [f.top_m[0], f.top_m[1] + 0.7, f.top_m[2]]);
+    ghostTag("T2", [f.top_m[0], f.top_m[1] + 0.7, f.top_m[2]], deckAt(f.top_m[1] + 0.01));
   }
   const s = PROPOSED.T3;
   if (!L.portals.some((p) => p.id === s.id)) {
@@ -1059,7 +1075,7 @@ function ghostTag(text, pos) { ghostTags.push({ text, pos }); }
     ghostBox(w + 0.2, 0.06, w + 0.2, [x, up + 0.03, z]);
     for (const sx of [-0.24, 0.24]) ghostBox(0.06, up + 1.0 - lo, 0.06, [x + sx, (lo + up + 1.0) / 2 - 0.01, z]);
     for (let r = lo + 0.3; r < up; r += 0.3) ghostBox(0.48, 0.05, 0.05, [x, r, z]);
-    ghostTag("T3", [x, up + 0.8, z]);
+    ghostTag("T3", [x, up + 0.8, z], deckAt(up + 0.01));
   }
 }
 
@@ -1074,13 +1090,13 @@ function badgeSprite(text, ring) {
   g.fillText(text, s / 2, s / 2 + 3);
   const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true, sizeAttenuation: false }));
-  sp.renderOrder = 30; sp.userData.aspect = 1; sp.userData.px = 23;
+  sp.renderOrder = 30; sp.userData.aspect = 1; sp.userData.px = 23; sp.userData.rank = 0;
   sprites.push(sp); return sp;
 }
 function textSprite(text, accent, px) {
   const sp = K.label(THREE, text, { accent, size_m: 1 });
   sp.material.sizeAttenuation = false; sp.material.depthTest = false; sp.renderOrder = 25;
-  sp.userData.aspect = sp.scale.x / sp.scale.y; sp.userData.px = px || 15;
+  sp.userData.aspect = sp.scale.x / sp.scale.y; sp.userData.px = px || 15; sp.userData.rank = 1;
   sprites.push(sp); return sp;
 }
 // POI badges: one per compartment per deck it spans, placed on a free spot (the rule tools/deck_plans.py uses).
@@ -1093,7 +1109,7 @@ const badges = [];
     for (const s of L.stations || []) if (deckAt(s.seat_m[1]) === id) occ.push([s.seat_m[0], s.seat_m[2], 1.3]);
     for (const s of L.systems || []) if (s.compartment !== "space" && (s.radius_m || deckAt(s.center_m[1]) === id)) occ.push([s.center_m[0], s.center_m[2], s.radius_m ? s.radius_m + 0.6 : 1.0]);
     for (const p of L.portals) if (p.kind !== "bay_door" && deckAt(p.axis === "y" ? p.center_m[1] : p.center_m[1] - p.size_m[1] / 2) === id) occ.push([p.center_m[0], p.center_m[2], p.axis === "y" ? 1.2 : 1.0]);
-    for (const cr of L.craft || []) if (deckAt(cr.center_m[1]) === id) occ.push([cr.center_m[0], cr.center_m[2] - cr.length_m * 0.2, 2.0]);
+    for (const cr of L.craft || []) if (deckAt(cr.center_m[1]) === id) occ.push([cr.center_m[0], cr.center_m[2], cr.length_m / 2 + 0.6]);
     occupiedBy[id] = occ;
   }
   const free = (occ, x, z) => occ.every(([ox, oz, r]) => Math.hypot(x - ox, z - oz) >= 1.7 + r - 1.3);
@@ -1101,8 +1117,9 @@ const badges = [];
   for (const c of order) {
     for (const id of DECK_IDS) {
       const d = deckRec(id), i = deckIndex(id), lo = d.floor_y_m, hi = i + 1 < DECKS.length ? DECKS[i + 1].floor_y_m : Infinity;
-      const bs = c.boxes.filter((b) => b.y[1] > lo + 0.1 && b.y[0] < hi - 0.1);
-      if (!bs.length || (c.kind === "pod" ? deckAt(c.boxes[0].y[0] + 0.01) !== id && !(c.decks.includes(id)) : !c.decks.includes(id))) continue;
+      if (!c.decks.includes(id)) continue;
+      const inBand = c.boxes.filter((b) => b.y[1] > lo + 0.1 && b.y[0] < hi - 0.1);
+      const bs = inBand.length ? inBand : c.boxes;   // a pod above or below its deck
       const b = bs.reduce((m, x) => ((x.x[1] - x.x[0]) * (x.z[1] - x.z[0]) > (m.x[1] - m.x[0]) * (m.z[1] - m.z[0]) ? x : m));
       let cx = (b.x[0] + b.x[1]) / 2, cz = (b.z[0] + b.z[1]) / 2;
       if (c.id === "engineering") { cx = 0; cz = b.z[0] + 2.0; }
@@ -1110,7 +1127,7 @@ const badges = [];
       const occ = occupiedBy[id];
       let pick = null;
       if (c.kind !== "pod") {
-        for (const r of [0, 1.5, 2.5, 3.5, 4.5]) {
+        for (const r of [0, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5]) {
           for (let k = 0; k < (r ? 8 : 1) && !pick; k++) {
             const a = (k * Math.PI) / 4, x = cx + r * Math.sin(a), z = cz + r * Math.cos(a);
             if (x >= b.x[0] + 0.8 && x <= b.x[1] - 0.8 && z >= b.z[0] + 0.8 && z <= b.z[1] - 0.8 && free(occ, x, z)) pick = [x, z];
@@ -1120,7 +1137,7 @@ const badges = [];
       }
       if (!pick) pick = [cx, cz];
       occ.push([pick[0], pick[1], 1.3]);
-      const top = Math.min(b.y[1], hi);
+      const top = inBand.length ? Math.min(b.y[1], hi) : Math.max(lo + 3.0, Math.min(b.y[1], hi));
       const sp = badgeSprite(String(c.poi));
       sp.position.set(pick[0], top + 0.4, pick[1]);
       sp.userData.cid = cidOf.get(c.id); sp.userData.deck = id;
@@ -1139,7 +1156,11 @@ for (const s of L.systems || []) {
   (s.radius_m ? groups[DECKS[DECKS.length - 1].id] : groups[deckAt(s.center_m[1])]).add(sp);
   sysLabels.push(sp);
 }
-for (const g of ghostTags) { const sp = textSprite(g.text + " proposed", 0x9be7ff, 14); sp.position.set(...g.pos); ghosts[deckAt(g.pos[1] - 0.7)].add(sp); }
+for (const [id, list] of Object.entries(ghostParts)) {
+  const g = mergeGeometries(list, false);
+  ghosts[id].add(new THREE.Mesh(g, ghostMat), new THREE.LineSegments(new THREE.EdgesGeometry(g), ghostEdgeMat));
+}
+for (const g of ghostTags) { const sp = textSprite(g.text + " proposed", 0x9be7ff, 14); sp.userData.base = [0.62, -1.1]; sp.position.set(...g.pos); ghosts[g.deck].add(sp); }
 
 // ------------------------------------------------------------------ route tool
 // Fastest path over crew portals (Dijkstra; a BFS weighted by walk time). Legs are straight lines
@@ -1213,7 +1234,11 @@ function findRoute(fromKey, toKey) {
 const routeMat = new THREE.MeshBasicMaterial({ color: P.screen, transparent: true, opacity: 0.95, depthTest: false });
 let route = null, routeObj = null;
 function drawRoute() {
-  if (routeObj) { scene.remove(routeObj); routeObj.traverse((o) => o.geometry && o.geometry.dispose()); routeObj = null; }
+  if (routeObj) {
+    scene.remove(routeObj);
+    routeObj.traverse((o) => { if (o.geometry) o.geometry.dispose(); const i = sprites.indexOf(o); if (i >= 0) sprites.splice(i, 1); });
+    routeObj = null;
+  }
   if (!route) return;
   routeObj = new THREE.Group();
   const lift = (p) => new THREE.Vector3(p[0], p[1] + 0.45 + offsets[deckAt(p[1] + 0.01)], p[2]);
@@ -1243,11 +1268,12 @@ function showRoute(fromKey, toKey) {
     ? route.flags.map((f) => `Level change of ${fmt(f.dy)} m inside ${K.compartment(L, f.comp).name} with no stair in the layout: costed as a stair at 70 % (T2).`).join(" ")
     : "";
   el.innerHTML =
-    `<div class="ln"><b>${route.from.name}</b> to <b>${route.to.name}</b>: <span class="t">${fmt(route.t)} s</span> walking, ${fmt(route.metres)} m, ${route.ladders} ladder${route.ladders === 1 ? "" : "s"}; through ${pois}</div>` +
-    `<div class="ln dim" style="color:#8a98a8">Walk ${SPEED.walk_m_s} m/s, ladders ${SPEED.ladder_m_s} m/s plus ${SPEED.ladder_on_off_s} s on and off (reference-ship-tern section 6, T5).</div>` +
+    `<div class="ln"><b>${route.from.name}</b> to <b>${route.to.name}</b>: <span class="t">${fmt(route.t)} s</span> walking, ${fmt(route.metres)} m, ${route.ladders} ladder${route.ladders === 1 ? "" : "s"}</div>` +
+    `<div class="ln">Through POI ${pois}. Assumed (T5): walk ${SPEED.walk_m_s} m/s, ladders ${SPEED.ladder_m_s} m/s plus ${SPEED.ladder_on_off_s} s.</div>` +
     (warn ? `<div class="warn">${warn}</div>` : "");
   drawRoute();
 }
+window.MOCKUP_ROUTE = (a, b) => { const r = findRoute(a, b); return r && { t: +r.t.toFixed(2), m: +r.metres.toFixed(2), through: r.through, flags: r.flags.length }; };
 function clearRoute() { route = null; drawRoute(); document.getElementById("route").style.display = "none"; }
 
 // ------------------------------------------------------------------ exploded connectors
@@ -1268,7 +1294,7 @@ function drawConnectors() {
 }
 
 // ------------------------------------------------------------------ UI: legend, info card, controls
-const state = { deck: "all", view: "3d", exploded: false, light: "normal", labels: false, proposed: false, sel: -1 };
+const state = { deck: "all", view: "3d", exploded: false, light: "normal", labels: false, proposed: false, exterior: true, sel: -1 };
 const offsets = Object.fromEntries(DECK_IDS.map((id) => [id, 0]));
 const legend = document.getElementById("legend");
 {
@@ -1286,8 +1312,8 @@ const legend = document.getElementById("legend");
   const k = (col, txt, dot) => `<span><i class="${dot ? "dot" : ""}" style="background:${hex(col)}"></i>${txt}</span>`;
   html += `<h3>Key</h3><div class="key">` +
     Object.entries(PORTAL_ROLE).map(([kind, role]) => k(P[role], PORTAL_LABEL[kind])).join("") +
-    k(P.screenWarm, "system (nominal size)") + k(P.hullAccent, "craft") + k(P.lampWarm, `lamp (${LAMP_TOTAL}, kit rule)`) + k(0x9be7ff, "proposed (T1-T3)") +
-    `</div><h3>Stations</h3><div class="key">` + Object.entries(P.role).map(([r, c]) => k(c, ROLE_LABEL[r] || r, true)).join("") + `</div>`;
+    k(P.screenWarm, "system") + k(P.hullAccent, "craft") + k(P.lampWarm, "lamp") + k(0x9be7ff, "proposed") +
+    `</div><h3>Stations by role</h3><div class="key">` + Object.entries(P.role).map(([r, c]) => k(c, ROLE_LABEL[r] || r, true)).join("") + `</div>`;
   legend.innerHTML = html;
   legend.addEventListener("click", (e) => { const r = e.target.closest(".row"); if (r) select(+r.dataset.cid); });
 }
@@ -1331,6 +1357,7 @@ for (const k of STATES) button("light:" + k, K.LIGHTING[k].label, () => setLight
 group("Show");
 button("labels", "System labels", () => setLabels(!state.labels));
 button("proposed", "Proposed T1-T3", () => setProposed(!state.proposed));
+button("exterior", "Hull", () => { state.exterior = !state.exterior; applyVisibility(); });
 group("Route");
 const selFrom = document.createElement("select"), selTo = document.createElement("select");
 const opts = [...(L.stations || []).map((s) => [`s:${s.id}`, `Seat: ${s.name}`]), ...comps.slice().sort((a, b) => a.poi - b.poi).map((c) => [`c:${c.id}`, `${c.poi} ${c.name}`])];
@@ -1344,6 +1371,7 @@ function sync() {
     if (k === "exploded") on = state.exploded;
     if (k === "labels") on = state.labels;
     if (k === "proposed") on = state.proposed;
+    if (k === "exterior") on = state.exterior;
     b.classList.toggle("on", on);
   }
   for (const r of legend.querySelectorAll(".row")) {
@@ -1362,8 +1390,9 @@ function applyVisibility() {
     groups[id].position.y = offsets[id];
     planExtras[id].visible = plan && (state.deck === id || (state.deck === "all" && id === "B"));
     ghosts[id].visible = state.proposed;
+    lensMeshes[id].visible = !plan;
   }
-  extGroup.visible = !plan && !state.exploded;
+  extGroup.visible = !plan && !state.exploded && state.exterior;
   for (const b of badges) {
     const c = comps[b.userData.cid];
     const topDeck = DECK_IDS.filter((id) => badges.some((x) => x.userData.cid === b.userData.cid && x.userData.deck === id)).pop();
@@ -1391,7 +1420,7 @@ function setProposed(on) { state.proposed = on; applyVisibility(); }
 function freeArea() {
   const W = innerWidth, H = innerHeight;
   const left = info.style.display === "block" ? 354 : 12, right = W - 312;
-  const top = titleEl.getBoundingClientRect().bottom + 8, bottom = ctl.getBoundingClientRect().top - (route ? 84 : 8);
+  const top = titleEl.getBoundingClientRect().bottom + 8, bottom = ctl.getBoundingClientRect().top - (route ? 100 : 8);
   return { left, right, top, bottom, cx: (left + right) / 2, cy: (top + bottom) / 2, w: right - left, h: bottom - top };
 }
 let camPose = null;
@@ -1428,6 +1457,34 @@ renderer.domElement.addEventListener("pointerup", (e) => {
 });
 addEventListener("resize", () => { renderer.setSize(innerWidth, innerHeight); frameView(); });
 
+// Labels that would overlap on screen step aside: badges first (nearest keeps its place), then text.
+const tmpP = new THREE.Vector3();
+const STEPS = [[0, 0], [0, -1], [0, 1], [1, 0], [-1, 0], [1, -1], [-1, -1], [1, 1], [-1, 1], [0, -2], [0, 2], [2, 0], [-2, 0]];
+function visibleUp(o) { for (let x = o; x; x = x.parent) if (!x.visible) return false; return true; }
+function declutter(cam) {
+  const vis = sprites.filter(visibleUp);
+  for (const b of vis) {
+    b.getWorldPosition(tmpP).project(cam);
+    const u = b.userData; u.sx = ((tmpP.x + 1) / 2) * innerWidth; u.sy = ((1 - tmpP.y) / 2) * innerHeight; u.d = tmpP.z;
+    u.h = u.px + 2; u.w = u.px * u.aspect + 2;
+  }
+  vis.sort((a, b) => a.userData.rank - b.userData.rank || a.userData.d - b.userData.d);
+  const placed = [];
+  for (const b of vis) {
+    const u = b.userData;
+    const base = u.base || [0, 0];
+    b.center.set(0.5 - base[0], 0.5 + base[1]);
+    if (u.d > 1) continue;   // behind the camera
+    for (const [sx, sy] of STEPS) {
+      const dx = sx + base[0], dy = sy + base[1];
+      const x = u.sx + dx * u.w, y = u.sy + dy * u.h;
+      if (placed.every((p) => Math.abs(p.x - x) >= (p.w + u.w) / 2 || Math.abs(p.y - y) >= (p.h + u.h) / 2)) {
+        placed.push({ x, y, w: u.w, h: u.h }); b.center.set(0.5 - dx, 0.5 + dy); break;
+      }
+    }
+  }
+}
+
 // ------------------------------------------------------------------ frame loop
 const tmpV = new THREE.Vector4();
 function frame() {
@@ -1436,6 +1493,7 @@ function frame() {
   (state.view === "plan" ? ctlP : ctl3).update();
   const k = 2 / (cam.projectionMatrix.elements[5] * innerHeight);
   for (const s of sprites) { const h = s.userData.px * k; s.scale.set(h * s.userData.aspect, h, 1); }
+  declutter(cam);
   hud.beginFrame(renderer);
   renderer.render(scene, cam);
   hud.endFrame(renderer);
@@ -1446,7 +1504,7 @@ function frame() {
 function reset(o) {
   clearRoute(); select(-1);
   state.deck = o.deck || "all"; state.view = o.view || "3d"; state.labels = !!o.labels; state.proposed = !!o.proposed;
-  state.exploded = !!o.exploded;
+  state.exploded = !!o.exploded; state.exterior = o.exterior !== false;
   for (const id of DECK_IDS) offsets[id] = state.exploded ? (deckIndex(id) - 1) * EXPLODE_M : 0;
   ctl3.enabled = state.view === "3d"; ctlP.enabled = state.view === "plan";
   setLight(o.light || "normal", true);
@@ -1456,18 +1514,18 @@ function reset(o) {
   if (o.select) select(cidOf.get(o.select)); else frameView();
   sync();
 }
-const OVERVIEW = { pos: [52, 50, 46], target: [0, -0.5, -1] };
+const OVERVIEW = { pos: [-50, 60, -32], target: [0, -1, -2] };
 reset(OVERVIEW);
 const shot = (o) => () => reset(o);
 K.registerShots([
   { name: "overview", setup: shot(OVERVIEW) },
-  { name: "exploded", setup: shot({ exploded: true, pos: [58, 44, 40], target: [0, 0, -1] }) },
+  { name: "exploded", setup: shot({ exploded: true, pos: [-58, 50, -38], target: [0, 0, -2] }) },
   { name: "deck-A-plan", setup: shot({ view: "plan", deck: "A", proposed: true }) },
   { name: "deck-B-plan", setup: shot({ view: "plan", deck: "B", proposed: true }) },
   { name: "deck-C-plan", setup: shot({ view: "plan", deck: "C" }) },
-  { name: "route-bridge-to-engineering", setup: shot({ route: ["s:helm", "s:eng_main"], pos: [40, 46, 30], target: [0, 1, 0] }) },
-  { name: "red-alert", setup: shot({ light: "red_alert", pos: [30, 26, 44], target: [0, 0, 14] }) },
-  { name: "engineering-closeup", setup: shot({ labels: true, proposed: true, select: "engineering", pos: [17, 17, -6], target: [0, -0.5, -24] }) },
+  { name: "route-bridge-to-engineering", setup: shot({ route: ["s:helm", "s:eng_main"], pos: [-40, 50, -16], target: [0, 1, 1] }) },
+  { name: "red-alert", setup: shot({ light: "red_alert", pos: [-30, 30, -2], target: [0, 0, 16] }) },
+  { name: "engineering-closeup", setup: shot({ labels: true, proposed: true, exterior: false, select: "engineering", pos: [-17, 17, -7], target: [0, -1, -25] }) },
 ]);
 renderer.setAnimationLoop(frame);
 </script>
