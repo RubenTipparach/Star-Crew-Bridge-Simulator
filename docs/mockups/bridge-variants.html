@@ -1928,8 +1928,10 @@ async function loadProps() {
   return out;
 }
 const PROPS = await loadProps();
-/** A placed prop's base model: a station's variant (props.json variant_of) is its base with that station's hand controls. */
-const baseOf = (kind) => (PROPS && PROPS[kind] && PROPS[kind].rec.variant_of) || kind;
+/** A placed prop's base model: a station's variant (props.json variant_of) is its base with that station's hand controls.
+ * Without the models in the page, a variant's name starts with its base's. */
+const baseOf = (kind) => (PROPS && PROPS[kind] && PROPS[kind].rec.variant_of)
+  || ["wall_bank_double", "wall_bank_core", "wall_bank", "free_console"].find((k) => kind.startsWith(k)) || kind;
 /** The prop for a station where base would stand: its own variant when the manifest has one (the rule of tools/bridge_variants.py prop_for). */
 function propFor(base, station) {
   if (!PROPS) return base;
@@ -2039,7 +2041,7 @@ function standIn(kind) {
     box("screen", [0, 1.5, 0.06], wide / 2 - 0.08, 0.45, 0.04);
     box("trim", [-wide / 2 - 0.06, 1.05, 0.33], 0.06, 1.05, 0.33);
     box("trim", [wide / 2 + 0.06, 1.05, 0.33], 0.06, 1.05, 0.33);
-  } else if (kind === "free_console" || kind === "helm_arc") {
+  } else if (baseOf(kind) === "free_console" || kind === "helm_arc") {
     const w = kind === "helm_arc" ? 1.2 : 0.7;
     box("machinery", [0, 0.37, 0.35], w, 0.37, 0.3);
     box("screen", [0, 0.95, 0.15], w - 0.1, 0.2, 0.03);

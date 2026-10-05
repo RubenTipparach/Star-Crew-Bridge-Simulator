@@ -16,7 +16,7 @@ separate request once the owner approves the mockup (CLAUDE.md 10).
   - [x] 1.7.1 Bake each station's console to a main and an upper 256 x 128 px screen image (`tools/mockups/console_screens.py`, `assets/textures/screens/`), reusing the wall panels' generic screen and key images.
   - [x] 1.7.2 Keyboard wells in the wall banks; levers, stick, guarded buttons, breakers and faders as station variants of the props (`tools/blender/build_bridge_props.py`), within budget; the variants file takes a station's variant.
   - [x] 1.7.3 Draw the screens and key panels in `bridge-variants.html` (one atlas, one draw), with close-up shots at helm's desk and engineering's bank.
-  - [ ] 1.7.4 Ask B12 in the survey with the shots.
+  - [x] 1.7.4 Ask B12 in the survey with the shots (asked 2026-10-05 with the helm, engineering and stations shots; the answer is open).
 
 ## 2. Data
 
