@@ -9,7 +9,11 @@ weapons, the shuttle bay, crew on deck) needs one concrete ship to put numbers o
 reactor is, how far the engineer walks, which compartment vents when a fighter launches.
 
 The Tern's layout already exists as data (`data/ships/tern/layout.json`, schema
-`starcrew.ship-layout/1`) and passes `tools/layout_check.py`. What does not exist is the
+`starcrew.ship-layout/2` since 2026-10-05) and passes `tools/layout_check.py`.
+
+The owner, 2026-10-05, on the first plan's boxes: "the floor plan shouldnt consist of square
+rooms, confirm better to ship shape". The plan was redrawn so its rooms follow the hull (design
+section 1a), with the schema changed from boxes to convex prism brushes. What does not exist is the
 design document that presents it: every compartment with its purpose, contents, numbers and
 reason for being where it is; the routes the crew walk and how long they take; the reasoning
 behind the big decisions; the single points of failure; the schema, field by field; and deck
@@ -24,6 +28,12 @@ coordinator to apply.
 
 ## What Changes
 
+- **Rooms that follow the hull** (2026-10-05, design section 1a): schema v2, where a
+  compartment is one or more convex prisms and a portal carries its wall's normal; the bridge a
+  wedge at the bow with windows in its raked forward walls; side rooms with outer walls raked
+  with the hull; engineering an octagon; the bow and stern rooms tapered; every outboard room
+  within 1.6 m of the hull's skin and never closer than its 0.5 m clearance. Same ids, graph,
+  portals, systems and craft; the ship's air rises to 9,824.8 m^3.
 - **The Tern's floor plan as a design document** (`design.md`): the ship at a glance; per deck,
   every compartment by POI number with purpose, contents, volume, floor area, doors and why it
   is there; the hangar, launch bays and engineering across decks.
@@ -51,7 +61,7 @@ coordinator to apply.
 
 ### New Capabilities
 
-- `ship-layout`: the one layout source per ship (schema `starcrew.ship-layout/1`), the rules
+- `ship-layout`: the one layout source per ship (schema `starcrew.ship-layout/2`), the rules
   the layout checker enforces, the deck plans drawn from it, and the reference ship's
   properties that other changes depend on (routes, pressure boundaries, reachability).
 
@@ -62,8 +72,9 @@ None.
 ## Impact
 
 - **Data**: `data/ships/tern/layout.json` gains the proposed patches when the coordinator
-  applies them (design, section 9): the ship's air becomes 8,924.8 m^3 (from 8,858.8 m^3), its
-  floor area 2,157.0 m^2, its portals 41.
+  applies them (design, section 9): the ship's air becomes 9,889.6 m^3 (from 9,824.8 m^3), its
+  floor area 2,467.1 m^2, its portals 41 (v2 figures, 2026-10-05; on the v1 boxes they were
+  8,924.8 m^3 from 8,858.8 m^3).
 - **Tools**: `tools/deck_plans.py` (new); `tools/layout_check.py` gains the walk checks of
   section 8 when the coordinator takes them (it is not edited here).
 - **Docs**: `docs/design/maps/tern-deck-{A,B,C}.svg`; `docs/mockups/deck-plan.html` and its

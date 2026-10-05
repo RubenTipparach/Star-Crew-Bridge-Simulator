@@ -8,7 +8,8 @@
 | --- | --- |
 | One layout source per ship, `data/ships/<id>/layout.json`, validated by `tools/layout_check.py` | CLAUDE.md section 8 |
 | Decks are convex brushes compiled offline; visibility is portal culling through the compartment graph; no z-fighting; people stand clear; every compartment states its numbers | CLAUDE.md section 8 |
-| Flat-shaded, vertex-coloured low poly; light baked into vertex colours, one set per lighting state (normal, red alert, emergency power), blended per compartment | CLAUDE.md section 9 |
+| Low poly, lit by light baked into vertex colours (one set per lighting state: normal, red alert, emergency power, blended per compartment) that multiply a Material Maker texture from one texture array (owner, 2026-10-05) | CLAUDE.md section 9; `surface-materials` |
+| Compartments are convex prism brushes that follow the hull (layout schema v2, 2026-10-05) | `reference-ship-tern` sections 1a and 10 |
 | How a bake is computed (shadow rays, emissive surfaces, occlusion, bounce, subdivision for lighting detail, probes for moving things, determinism, bake time) | `light-baking` (this change only calls it) |
 | Rust; `sc-core` (simulation, no I/O), `sc-render` (GL, portal culling), `sc-tools` (`deckc`, `meshc`), `sc-server`, `sc-client` | `engine-stack`, sections 2-3 |
 | Pi 5 floor: 1 GB client, 4 GB Pi 5 may host the server; OpenGL ES 3.0 floor (32-bit indices, instancing, VAOs, uniform buffers allowed; no compute or geometry shaders); 3D at 1280 x 720, 60 fps target, 30 fps floor | `engine-stack`, section 5 (provisional, owner 2026-10-04) |
@@ -91,7 +92,7 @@ screenshots; see K3).
   prop for every station, system and fixture the layout names.
 - **Hero detail is a detail file.** `data/ships/<id>/detail/<compartment>.json` lists extra
   convex brushes, prop placements and light fixtures in ship metres. A Blender script loads the
-  layout and draws the compartment's air boxes and portals as locked reference, the artist
+  layout and draws the compartment's air brushes and portals as locked reference, the artist
   places detail objects (each must be convex: the export compares each object's volume with its
   convex hull's and refuses a difference over 1 %), `PROP_<mesh>_<n>` empties and
   `LIGHT_<kind>_<n>` empties (Undercity's ENT_ convention), and the export writes the JSON with
@@ -103,8 +104,9 @@ screenshots; see K3).
 ### 2. The pipeline end to end
 
 ```
-data/ships/tern/layout.json ----+                       data/decks/kit.json
-  (the plan: one source)        |                         (pieces, sizes, triangle costs)
+data/ships/tern/layout.json ----+                       data/ships/tern/detailing.json
+  (the plan: one source)        |                         (detail rules, sizes, finishes)
+data/materials/materials.json --+  (texture layers; surface-materials)
                                 v                                 |
                          deckgen (sc-tools) <---------------------+
                                 | brushes, props, fixtures, entities per compartment
@@ -135,10 +137,10 @@ of the rules never live side by side (task 1.3).
 
 ### 3. Partitions: walls between compartments have no thickness in the layout
 
-**Finding.** The layout's boxes are the air of each compartment, and neighbouring compartments
+**Finding.** The layout's brushes are the air of each compartment, and neighbouring compartments
 touch: the ready room's port wall and the command passage's starboard wall are the same plane,
 `x = 1.25`. The convention's `wall_thickness_m` (0.25) is used only against the hull. Counting
-each side, 1,667 m^2 of wall is shared between compartments, and two horizontal faces are
+each side, 1,667 m^2 of wall is shared (measured on the v1 boxes; v2's rooms grew outboard, so their athwartship partitions are longer: to re-measure with `deckc --report`) between compartments, and two horizontal faces are
 shared with no slab: the hangar's galleries sit directly on the launch bays (66 m^2 each, at
 `y = 0`), and the pods on their access spaces.
 
@@ -146,7 +148,7 @@ shared with no slab: the hangar's galleries sit directly on the launch bays (66 
 | --- | --- | --- |
 | **a. Zero-thickness partitions** | A shared face is drawn back to back, once from each side, and each side's collision slab lies outside its own air. A door's depth comes from its frame, which stands 0.1 m proud on each side. | No layout number moves. A sliding leaf needs a jamb casing to slide behind. |
 | b. Inset at shared faces | The compiler shrinks each compartment by half a wall (0.125 m) at every shared face. | 208 m^3 of air (2.4 % of the ship), and 11 % of each 2.5 m corridor's volume; the simulated volumes and the drawn rooms would disagree unless the layout is re-measured. |
-| c. Gaps in the layout | Move every box apart by 0.25 m. | Every portal plane and most boxes move; every other change's numbers move with them. |
+| c. Gaps in the layout | Move every brush apart by 0.25 m. | Every portal plane and most brushes move; every other change's numbers move with them. |
 
 **Recommended: a** (K1). It is how sector and segment engines treat walls (the Build engine's
 walls are sector boundaries; Descent's segment sides likewise, to verify), it keeps every
@@ -154,8 +156,8 @@ volume the life-support design quotes, and back-to-back faces are not z-fighting
 face opposite ways (Undercity 7.2: "Faces pressed back to back are fine"). Collision is per
 compartment (section 4), so a slab that reaches into the neighbour's air is never tested from
 the neighbour. For a horizontal shared face (gallery over launch bay), the slab lies below the
-upper floor, inside the bay: the bay's ceiling is drawn 0.5 m lower than its box (3.0 m
-clear, not 3.5 m), and its volume in the core keeps the box's number (K1 asks whether to
+upper floor, inside the bay: the bay's ceiling is drawn 0.5 m lower than its brush (3.0 m
+clear, not 3.5 m), and its volume in the core keeps the brush's number (K1 asks whether to
 re-measure).
 
 ### 4. Brushes and collision
@@ -203,12 +205,16 @@ Cortex-A76 core (estimate, to measure with `sc-probe`). Collision data on the se
 
 ### 5. The kit and the render meshes
 
-**The kit**, `data/decks/kit.json` (units in keys, validated, CLAUDE.md 6.5). Proposed values,
-which the estimate in section 11 uses:
+**The kit** is now concrete: `data/ships/<id>/detailing.json` (units in keys, validated,
+CLAUDE.md 6.5), one per ship because the detail is a ship's style, and its rules are section 5a
+(2026-10-05; this replaces the proposed `data/decks/kit.json`). The table below is the first
+estimate the section 11 numbers were measured with, kept for the record; section 5a's rules and
+`tools/mockups/kit_report.mjs`'s counts supersede it for the shell and detail (props, stations,
+systems and fixtures are still the table's):
 
 | Piece | Rule | Triangles |
 | --- | --- | --- |
-| Shell faces | Every air-box face not shared with the same compartment's other boxes, minus the portal openings | 2 per cell of the lighting grid (section 7) |
+| Shell faces | Every brush face not shared with the same compartment's other brushes, minus the portal openings | 2 per cell of the lighting grid (section 7) |
 | Baseboard and cornice | Along every metre of wall at the floor and the ceiling | 4 + 4 per metre |
 | Wall rib | Every 2.0 m along walls, 0.2 m wide, 0.08 m proud | 12 each |
 | Ceiling beam | Across the short span every 2.0 m | 6 per metre of beam (3 per m^2 of ceiling) |
@@ -223,11 +229,12 @@ which the estimate in section 11 uses:
 | Fixtures | Viewscreen 24, dais 48, landing 160, mezzanine ring 960, catwalk 120, stair 140 | per kind |
 
 **Frames fit their openings** (Undercity 7.2). The layout's portal size is the clear opening
-crew pass through and air flows through. The wall is opened at the clear size plus a 0.1 m
-reveal at each jamb and the head; the frame's casing adds 0.1 m beyond that and stands 0.1 m
-proud. Measured on the Tern, every door frame fits its wall with at least 0.05 m to spare
-(the 2.0 m deck C hangar door in the 2.5 m lower corridor is the tightest). Sills above the
-floor are deliberate where a door opens onto a mezzanine, a landing or a pod coaming.
+crew pass through and air flows through. The wall is opened at the clear size plus the frame:
+a jamb each side (0.16 m; a pressure door's 0.26 m) and a lintel (0.22 m), and the frame fills
+that ring, standing proud of the wall on each side (0.06 m; a pressure door 0.12 m), so the
+clear opening is never narrowed (section 5a, revised 2026-10-05 from a 0.1 m reveal plus 0.1 m
+casing). Measured on the Tern, every frame fits its wall below the cove. Sills above the floor
+are deliberate where a door opens onto a mezzanine, a landing or a pod coaming.
 
 **From brushes to faces.** Each brush's faces are clipped against the compartment's other
 brushes, and a face (or part of one) that lies inside another brush or against a face pointing
@@ -242,30 +249,86 @@ compartment is at most four draws:
 
 | Pass | Holds | Shader |
 | --- | --- | --- |
-| Opaque | Shell, detail, props: everything static | Three colour sets blended by the compartment's uniforms |
-| Emissive | Lamp lenses, screens, status lights, strips | Palette colour times the state's emissive tint; not dimmed by the baked light |
+| Opaque | Shell, detail, props: everything static | The vertex's texture layer, times three colour sets blended by the compartment's uniforms |
+| Emissive | Lamp lenses, screens, status lights, strips | The texel (its alpha is the emission mask) times the state's emissive tint; not dimmed by the baked light |
 | Movers | Door leaves, hatch lids, valve wheels, breaker handles | Opaque, each vertex moved by its mover's transform from a uniform buffer |
 | Transparent | Window panes, glass partitions | Back to front (section 9), alpha blended |
 
-Static geometry is not instanced, because baked colours are unique per vertex; instancing is
+Merging per compartment works because every material is a layer of one texture array: one
+draw holds a room's floor, walls, trims and lamps whatever their materials (the mockups draw
+each compartment in one call for the same reason). Static geometry is not instanced, because
+baked colours are unique per vertex; instancing is
 for crew, craft and projectiles (`engine-stack`).
 
-**The vertex** (28 bytes; OpenGL ES 3.0 formats):
+**The vertex** (28 bytes; OpenGL ES 3.0 formats; revised 2026-10-05 for the texture array of
+`surface-materials`, the palette coordinate and the unused flags byte giving way to a texture
+coordinate and a layer index):
 
 | Attribute | Format | Bytes | Why |
 | --- | --- | ---: | --- |
 | Position | 3 x `i16`, compartment-local, 1/1024 m (range +/-32 m, step about 1 mm) | 6 | Every Tern compartment is under 32 m across (the hangar is 21 x 18 m) |
-| Mover index, flags | 2 x `u8` | 2 | 0 is static |
+| Mover index, texture layer | 2 x `u8` | 2 | Mover 0 is static; the layer indexes the one texture array (`surface-materials`, at most 256 layers) |
 | Normal | `INT_2_10_10_10_REV`, normalized | 4 | Dynamic lights (fire glow, muzzle flash) and light probes |
 | Colour, normal state | `RGBA8` | 4 | Alpha reserved for `light-baking` |
 | Colour, red alert | `RGBA8` | 4 | |
 | Colour, emergency | `RGBA8` | 4 | |
-| Palette coordinate | 2 x `u16`, normalized | 4 | Into the one palette atlas, nearest sampling (CLAUDE.md 9) |
+| Texture coordinate | 2 x `i16`, 1/1024 of a layer's span | 4 | World-projected (section 5a), so texel density is the same on every surface of a space; +/-32 spans of 2 m is +/-64 m, more than any compartment |
 
 Indices are 16-bit wherever a compartment's draw holds at most 65,535 vertices (every Tern
 compartment: the largest, engineering, is about 8,400 vertices) and 32-bit otherwise, chosen
 per draw range by `deckc`. OpenGL ES 3.0 allows both; 16-bit halves index memory. One vertex
 array object per compartment binds its ranges.
+
+### 5a. Generated detail (2026-10-05)
+
+The owner, 2026-10-05: "look at our fps thing to design better levels, add more geometry to make
+things more interesting looking". The fps project, Undercity (`/home/user/fps-game-demo`), does
+not dress its rooms by hand: `tools/godot/detailing.py` generates baseboards, cornices, hazard
+bands, pilasters and girders from each room's walls and openings, against a written style
+checklist (`docs/ut99_reference.md` section 2(e): trim at every floor-wall edge, thick framed
+doorways inset from the wall, a structural ceiling never a flat plane, 45 degree chamfers,
+oversized pipes and hazard stripes, visible light fixtures). Star Crew takes the shape: **the
+detail is a function of the layout**, so a ship of one class reads alike room to room, a moved
+wall moves its trims, and nobody models a room twice. Where Undercity's rooms are boxes, ours
+are hull-following prisms, so the rules work on any wall direction.
+
+**The rules** (sizes in `data/ships/<id>/detailing.json`; implemented today by
+`docs/mockups/lib/shipkit.js` `buildCompartment`, by `deckc` once it is built, and the two must
+agree, which `deckc`'s tests check against the same data file):
+
+| Piece | Rule | Tern size | Lineage |
+| --- | --- | --- | --- |
+| Frames | Ship frames every `spacing_m` along the keel (frame k at z = 2k m). A wall running fore and aft carries a rib at every frame; an athwartship wall carries stiffeners between frames' x positions; a rib that would cross an opening is dropped | 2.0 m; ribs 0.24 x 0.12 m, 0.22 m deep in tall rooms | UT99 pilasters, Undercity's `detailing` pilasters; naval frame numbering |
+| Beams | Under the ceiling at every frame across the room, butting the coves, split round a ceiling hatch's collar and a tall system (the reactor) | 0.24 x 0.18 m; 0.38 m deep in rooms over 3.6 m | "the ceiling is structural, never a flat plane" (UT99 checklist 9); Undercity's girders lined up with the pilasters, so wall and ceiling read as one frame |
+| Coves | A 45 degree panel between every solid wall and the ceiling; none along an edge open to another brush of the room or where an opening reaches it | 0.35 m; 0.6 m in rooms over 3.6 m | The hull's own chamfered octagon, echoed inside; UT99 "low-poly 45 degree chamfers" |
+| Baseboards | Along every solid wall at the floor, cut at ribs and doors (trims stop at the faces they meet) | 0.14 m high, 0.03 m proud; hazard striped in working spaces | UT99 checklist 1, Undercity 7.2 |
+| Door frames | Jambs and lintel round every door, wall hatch and pressure door, filling a ring cut round the clear opening, proud on both sides; a glowing status strip on each lintel; pressure doors heavier and hazard striped | section 5 above | UT99 checklist 2 ("thick framed jamb and a lintel, inset from the wall"); Undercity's doorway kit and its status light bar |
+| Window frames | Frame and sill round every window | 0.14 m, 0.08 m proud | UT99 "few, small, heavily framed" windows |
+| Floor openings | A hazard rim on the floor round every hatch, ladder well, hoist and bay door; a collar under the ceiling round it; rails and rungs up through every ladder well | rim 0.15 m wide, 0.012 m raised | UT99 hazard stripes; Undercity's railed pit |
+| Railings | Along every edge where a brush opens onto a lower floor of the same room (the hangar's galleries) | 1.05 m, posts every 1.5 m, kick plate | Undercity's catwalks |
+| Corridors | Two conduits along the top of each fore-and-aft wall, clear of the ribs; a deck plate runner down the middle | radii 0.06 and 0.04 m, 8 sides; runner 0.9 m | UT99 "pipes, vents and ducts wrapping the room", "8-16 sided cylinders" |
+| Lamps | In the bays between frames, never on a beam: round(bay area / 8 m^2) across each bay, at least one per corridor bay, one per pod (beside its hatch if the hatch is central); every third on the emergency bus; high-bay lamps hanging 0.4 m in rooms over 3.6 m | panels 0.9 x 0.45 m, corridors 0.7 x 0.35 m | UT99 checklist 4 ("light fixtures are recessed or bracketed"); Undercity 7.3 ("every light has a visible fixture", lights in the bays between girders); this change's lamp rule, kept at one per 8 m^2 |
+| Finishes | Each compartment's `finish` (`crew` or `working`) picks the material of every generated surface (`finishes` in detailing.json): crew spaces tiled floors and steel trims, working spaces diamond plate, machinery ceilings and hazard baseboards | | UT99 "one warm key colour, one cool fill colour, at most one saturated accent" |
+
+**No z-fighting by construction.** Every detail face is either pressed back to back against a
+wall, floor or ceiling and not drawn (a rib's back, a beam's top, a lamp housing's top), or
+stands at least 1 cm clear of any parallel face (raised plates are 1.2 cm up; status strips
+1 cm proud of their lintel). Trims stop at the faces they meet: baseboards are cut at ribs and
+doors, runners at floor openings, beams at collars. `deckc`'s z-fighting check (section 6) is
+still the authority; the mockups only follow the same construction.
+
+**UVs are world-projected**: a floor or ceiling takes (x, z), every other face its horizontal
+tangent and y, divided by the material's span, so a texture runs continuously across segments
+of one wall and texel density is the same on every surface of a space (64 px per metre inside,
+`surface-materials`).
+
+**What it costs**, measured on the Tern by `node tools/mockups/kit_report.mjs` (2026-10-05;
+props not counted): the shell of all 30 compartments is 1,232 triangles before the light
+baker's subdivision, the generated detail 15,688, together 16,920, with 306 lamps (110 on the
+emergency bus). The busiest compartments are the hangar (1,828), the main corridor (1,236) and
+engineering (1,072); baseboards (4,888, cut at every rib), ribs (3,016) and lamp housings
+(2,440) are most of it. Against section 11's ceilings every compartment keeps more than 85 % of
+its budget for props and the bake's subdivision.
 
 ### 6. Checks: what `deckc` refuses
 
@@ -275,7 +338,7 @@ Each refusal names the compartment, the ids and the coordinates, and writes noth
 | --- | --- | --- |
 | Layout | Every rule of `ship-layout` (ids, overlaps, portals on shared faces, hull, reachability, points inside) | `reference-ship-tern` spec |
 | Brushes | Convex and closed: every vertex of a brush lies on or behind every plane within 0.1 mm; at least 4 planes; finite numbers | Quake brush rule |
-| Inside the air | Every detail brush, prop bound and fixture lies inside its compartment's air boxes (1 mm tolerance) and outside every portal's clear opening | CLAUDE.md 8 |
+| Inside the air | Every detail brush, prop bound and fixture lies inside its compartment's air brushes (1 mm tolerance) and outside every portal's clear opening | CLAUDE.md 8 |
 | No z-fighting | Two faces whose planes are within 5 mm of each other, facing the same way (normals within 0.5 degrees), overlapping by more than 1 mm^2, in one compartment: refused. Deliberately parallel surfaces are at least 1 cm apart. Back-to-back faces are allowed. Faces are bucketed by quantized plane, so the check is close to linear in faces | Undercity 7.2 and `detailing.py` (`PLANE_TOL` 5 mm); CLAUDE.md 8 (1 cm) |
 | Frames fit | A frame's casing stays at least 1 cm inside the face it is on, or the face is all frame | Undercity 7.2 |
 | People stand clear | The crew capsule (radius and height from `crew-on-deck`; until then 0.30 m and 1.80 m standing, 1.30 m seated) placed at every seat, spawn, ladder top and bottom, stair head and foot, and 0.5 m either side of every door threshold, intersects no colliding brush except its own seat's proxy | Undercity 7.4; CLAUDE.md 8 |
@@ -388,7 +451,7 @@ id against the graph. Nothing keeps a second room list (CLAUDE.md 7).
 
 ```
 start = the compartment holding the eye (tracked as crew-on-deck moves the avatar;
-        a box lookup on load or teleport)
+        a brush lookup on load or teleport)
 visit(start, full screen rectangle, depth 0)
 
 visit(c, rect, depth):
@@ -554,7 +617,7 @@ Questions go to the owner only with something to look at (CLAUDE.md 13). Rows ma
 
 | Id | Question and fact | Options | Recommendation | Mockup shot |
 | --- | --- | --- | --- | --- |
-| K1 | How thick are walls between compartments? The layout's air boxes touch (1,667 m^2 of shared wall, counting each side); insetting costs 208 m^3 (2.4 %) and 11 % of each corridor. The launch bays' 3.5 m ceilings drop to 3.0 m under the gallery slab | a. zero-thickness partitions with proud door frames; b. inset half a wall; c. move the boxes apart | a; keep the core's volumes as the layout's boxes | `deck-plan-deck-B-plan` (partitions drawn as single lines) |
+| K1 | How thick are walls between compartments? The layout's air brushes touch (1,667 m^2 of shared wall, counting each side); insetting costs 208 m^3 (2.4 %) and 11 % of each corridor. The launch bays' 3.5 m ceilings drop to 3.0 m under the gallery slab | a. zero-thickness partitions with proud door frames; b. inset half a wall; c. move the brushes apart | a; keep the core's volumes as the layout's brushes | `deck-plan-deck-B-plan` (partitions drawn as single lines) |
 | K2 | The interior pass ceiling per frame | 60,000 / 80,000 / 100,000 triangles (120 draws) | 80,000 and 120 draws: the Tern's crudest bound is 53,184 | `deck-plan-overview` (the meter shows the whole ship at once: about 47,800 triangles in 43 draw calls in the mockup, labels included, without the kit's trims, ribs and beams) |
 | K3 | Hero detail authoring | a. Blender places convex detail, props and lights, exported to a detail file; b. TrenchBroom `.map` for detail only; c. generator only | a | `deck-plan-engineering-closeup` |
 | K4 | Do closed pressure doors keep a viewport (0.3 x 0.4 m) that visibility and the crew can see through? | yes / no | yes: flight operations can see into a launch bay before opening it | `deck-plan-deck-C-plan` (pressure doors in amber) |

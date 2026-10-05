@@ -9,8 +9,9 @@ run time through the compartment graph, within the Pi 5 budget.
 ## ADDED Requirements
 
 ### Requirement: Decks compile from the one layout source
-A ship's deck SHALL be compiled by `deckc` from `data/ships/<id>/layout.json`, the kit
-(`data/decks/kit.json`) and the ship's detail files, and from nothing else that describes
+A ship's deck SHALL be compiled by `deckc` from `data/ships/<id>/layout.json`, the ship's
+detailing rules (`data/ships/<id>/detailing.json`), the materials
+(`data/materials/materials.json`) and the ship's hero detail files, and from nothing else that describes
 compartments or portals. The `.deck` file SHALL record the SHA-256 of the layout's canonical
 JSON, and the loader SHALL refuse a deck whose hash differs from the layout the server runs.
 
@@ -19,13 +20,34 @@ JSON, and the loader SHALL refuse a deck whose hash differs from the layout the 
 - **THEN** the load fails naming the deck file and both hashes, and nothing is drawn from it
 
 #### Scenario: A compartment is regenerated from the layout
-- **WHEN** a compartment's box grows by 1 m in the layout and `deckc` runs
-- **THEN** its shell brushes, trims, lamps and collision follow the new box with no hand edit
+- **WHEN** a compartment's outer wall moves 1 m outboard in the layout and `deckc` runs
+- **THEN** its shell brushes, frames, coves, trims, lamps and collision follow the new wall with no hand edit
+
+### Requirement: Detail is generated from the layout by the ship's rules
+Every compartment's frames, beams, coves, baseboards, door and window frames, floor-opening
+rims and collars, ladders, railings, corridor conduits and runners, and lamp fixtures SHALL be
+generated from its brushes and portals by the rules and sizes in
+`data/ships/<id>/detailing.json`, and its surfaces SHALL take the materials its `finish` names
+there. Nothing generated SHALL narrow a portal's clear opening, and every generated face SHALL
+either be pressed against a wall, floor or ceiling and not drawn, or stand at least 1 cm clear
+of any parallel face.
+
+#### Scenario: Ribs at the frames
+- **WHEN** the Tern's command passage (z 4 to 20 m) is built
+- **THEN** each of its two fore-and-aft walls carries a rib at every 2 m frame from z 6 to z 18 except where a door opening is, and a beam spans the ceiling at each of those frames
+
+#### Scenario: A door keeps its opening
+- **WHEN** the mess door (1.6 x 2.3 m) is framed
+- **THEN** the wall is opened 1.92 x 2.52 m, the jambs and lintel fill the ring, and the clear opening crew walk through is still 1.6 x 2.3 m
+
+#### Scenario: Lamps in the bays
+- **WHEN** the lamps of any Tern compartment are placed
+- **THEN** none lies under a beam, every corridor bay of at least 1 m has one, every pod has one, and every third is on the emergency bus
 
 ### Requirement: Brushes are convex and stay inside their compartment
 Every brush SHALL be convex and closed: at least four planes, and every vertex on or behind
 every plane within 0.1 mm. Every detail brush, prop bound and light fixture SHALL lie inside
-its compartment's air boxes within 1 mm and outside every portal's clear opening. `deckc`
+its compartment's air brushes within 1 mm and outside every portal's clear opening. `deckc`
 SHALL refuse a deck that breaks either rule, naming the brush and compartment.
 
 #### Scenario: A non-convex detail object

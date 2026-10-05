@@ -169,7 +169,7 @@ ceilings, not targets: low poly is the style (owner: "this game doesn't need hig
 | Frame time | 16.7 ms target, 33.3 ms floor | 60 frames a second where it fits, never below 30. |
 | Visible triangles per frame, all passes | 200,000 | The number most likely to move after the probe. |
 | Draw calls per frame, all passes | 300 | Instancing is available for repeated props and projectiles. |
-| Texture memory | 96 MB | Palette atlas, font atlas, decals, screens, lightmaps if `light-baking` adopts them, render targets. |
+| Texture memory | 96 MB | The material texture array (11 layers of 128 x 128 RGBA8 with mipmaps: 0.92 MB, `surface-materials`), font atlas, decals, screens, lightmaps if `light-baking` adopts them, render targets. |
 | Vertex and index buffers | 64 MB | All decks of one ship resident; 32-bit indices allowed. |
 | Viewscreen render target | 1024 x 512, one, at most 30 Hz | 4 MB: 2 MB of colour and 2 MB of 24-bit depth with stencil (corrected from "about 3 MB", which assumed a 16-bit depth; `ship-frames` section 8). |
 | Secondary views | Up to two at 512 x 256, at most 15 Hz | A turret feed, a fighter's camera on a console. |
@@ -273,20 +273,24 @@ sources; a future browser client would use WebGL 2, which is ES 3.0.
 
 **Shaders (about six programs):**
 1. Deck: position, three baked vertex colour sets blended by per-compartment uniforms (normal,
-   red alert, emergency), palette atlas lookup, an optional lightmap (`light-baking`), fog.
+   red alert, emergency), a texture array lookup (one layer per Material Maker material,
+   nearest on magnification; `surface-materials`, 2026-10-05, in place of a palette atlas), an
+   optional lightmap (`light-baking`), fog.
 2. Exterior lit: per-vertex or per-pixel Lambert from the sun plus ambient, flat-shaded.
 3. Unlit and emissive: screens, engine glow, lamps.
 4. Instanced billboards: projectiles, sparks, markers.
 5. Stars: points.
 6. UI: textured quads for text and panels.
 
-**Deck vertex format, 28 bytes:** position 3 x int16 in centimetres (plus padding), normal
-3 x int8, three colour sets 3 x RGBA8, atlas UV 2 x uint16. Compact on purpose: the 1 GB board
+**Deck vertex format, 28 bytes:** `deck-pipeline` section 5 owns it: position 3 x int16
+(1/1024 m, compartment-local), mover index and texture layer 2 x uint8, normal 2_10_10_10, three
+colour sets 3 x RGBA8, texture coordinate 2 x int16 (revised 2026-10-05: the layer and texture
+coordinate replace an atlas UV, for `surface-materials`). Compact on purpose: the 1 GB board
 still makes memory the budget to respect. Flat shading means unshared vertices: 200,000
 triangles cost about 17 MB.
 
-**Keeping draw calls down:** static geometry is merged per compartment per material at compile
-time; repeated props (seats, lockers, racks) and projectiles are instanced; doors and other
+**Keeping draw calls down:** static geometry is merged per compartment at compile time, one
+draw whatever its materials, because every material is a layer of one texture array; repeated props (seats, lockers, racks) and projectiles are instanced; doors and other
 moving parts are separate; UI is batched by texture. The frame is drawn space first, then decks,
 then glass, then UI, sorted by program within each pass.
 
@@ -338,8 +342,8 @@ on a 1 GB Pi 5:
    1,000,000 in steps, in 50 calls. Frame time p50, p95 and p99 at each step.
 2. **Draw-call curve:** 100,000 triangles split into 50 to 2,000 calls; the same with
    instancing.
-3. **Fill rate:** full-screen quads, overdraw 1x to 8x, with the deck shader, with an added
-   lightmap fetch, and with MSAA 4x.
+3. **Fill rate:** full-screen quads, overdraw 1x to 8x, with the deck shader (with and without
+   its texture array fetch, `surface-materials`), with an added lightmap fetch, and with MSAA 4x.
 4. **Render to texture:** viewscreen targets at 512 x 256, 1024 x 512 and 2048 x 1024.
 5. **UI:** 200 panels and 4,000 glyphs with egui, and with a minimal panel layer of our own.
 6. **Memory:** resident size and GPU allocations with the Tern's compiled decks loaded; free

@@ -5,7 +5,17 @@
  * the bridge, the deck plan, the systems view and the exterior cannot disagree
  * about where a room or a door is (CLAUDE.md sections 8 and 11). This file is
  * the shared interpretation of that layout: palette, lighting states, the Pi 5
- * budget meter, room shells with door openings cut, the hull loft and labels.
+ * budget meter, room shells with door openings cut, the generated detail (frames,
+ * coves, trims, door frames, conduits, lamps), the Material Maker texture array,
+ * the hull loft and labels.
+ *
+ * Layout schema starcrew.ship-layout/2: a compartment's air is the union of
+ * convex prisms ("brushes"), a footprint polygon in plan and a floor and ceiling
+ * height, so rooms follow the hull (openspec/changes/reference-ship-tern). The
+ * detail rules and their sizes are data/ships/<id>/detailing.json
+ * (openspec/changes/deck-pipeline, section 5a); the materials are
+ * data/materials/materials.json (openspec/changes/surface-materials). This kit is
+ * the mockups' implementation of those rules; deckc will be the engine's.
  *
  * It is a classic script, not a module, so a mockup still works when opened
  * straight from disk. tools/mockups/inline.py copies it into each page between
@@ -13,7 +23,7 @@
  * build geometry take THREE as their first argument because the page owns the
  * three.js import.
  *
- * Axes (from the layout): +X port, +Y up, +Z bow, metres.
+ * Axes (from the layout): +X port, +Y up, +Z bow, metres. Plan points are [x, z].
  */
 (function () {
   "use strict";
@@ -22,6 +32,15 @@
   function layout() {
     const el = document.getElementById("ship-layout");
     if (!el) throw new Error("shipkit: no #ship-layout script in the page (run tools/mockups/inline.py)");
+    const L = JSON.parse(el.textContent);
+    if (L.schema !== "starcrew.ship-layout/2") throw new Error("shipkit: layout schema " + L.schema + ", expected starcrew.ship-layout/2");
+    return L;
+  }
+
+  /** A ship data file inlined as <script id="ship-data-<name>">, e.g. "detailing", "power". */
+  function shipData(name) {
+    const el = document.getElementById("ship-data-" + name);
+    if (!el) throw new Error(`shipkit: no #ship-data-${name} script in the page (add <!-- INLINE data:<ship>/${name} --> markers and run tools/mockups/inline.py)`);
     return JSON.parse(el.textContent);
   }
 
@@ -63,6 +82,7 @@
     emergency: 0xff8a1c,
     lampWarm: 0xffe2b0,
     lampCool: 0xbfe0ff,
+    statusOk: 0x5ee08a,
     // station roles, used for seats, labels and console accents
     role: {
       command: 0xf2f2f2,
@@ -100,12 +120,12 @@
    * Interior lighting states. Every interior mockup shows at least normal and
    * red alert (CLAUDE.md section 11). In the engine these are baked vertex
    * colour sets blended by a per-compartment uniform; here they are light
-   * colours and intensities.
+   * colours and intensities. status is the door status strips' colour.
    */
   const LIGHTING = {
-    normal: { label: "Normal", ambient: 0x2a3340, ambientI: 0.55, lamp: 0xffe9c8, lampI: 1.0, strip: 0x9fd8ff, stripI: 0.6, fog: 0x0b0e14 },
-    red_alert: { label: "Red alert", ambient: 0x2a0d10, ambientI: 0.45, lamp: 0xff3030, lampI: 0.75, strip: 0xff2020, stripI: 1.0, fog: 0x120406 },
-    emergency: { label: "Emergency power", ambient: 0x120c08, ambientI: 0.3, lamp: 0xff8a1c, lampI: 0.35, strip: 0xff8a1c, stripI: 0.8, fog: 0x060403 },
+    normal: { label: "Normal", ambient: 0x2a3340, ambientI: 0.55, lamp: 0xffe9c8, lampI: 1.0, strip: 0x9fd8ff, stripI: 0.6, fog: 0x0b0e14, status: 0x5ee08a },
+    red_alert: { label: "Red alert", ambient: 0x2a0d10, ambientI: 0.45, lamp: 0xff3030, lampI: 0.75, strip: 0xff2020, stripI: 1.0, fog: 0x120406, status: 0xff2a2a },
+    emergency: { label: "Emergency power", ambient: 0x120c08, ambientI: 0.3, lamp: 0xff8a1c, lampI: 0.35, strip: 0xff8a1c, stripI: 0.8, fog: 0x060403, status: 0xff8a1c },
   };
 
   // ---------------------------------------------------------------- lookups
@@ -120,48 +140,187 @@
   function systemsIn(L, compId) { return (L.systems || []).filter((s) => s.compartment === compId); }
   function deckById(L, id) { return byId(L.decks, id); }
 
-  /** Volume in cubic metres and floor area in square metres of a compartment. */
-  function measure(comp) {
-    let v = 0, a = 0;
-    for (const b of comp.boxes) {
-      const dx = b.x[1] - b.x[0], dy = b.y[1] - b.y[0], dz = b.z[1] - b.z[0];
-      v += dx * dy * dz; a += dx * dz;
-    }
-    return { volume_m3: v, floor_m2: a };
-  }
-
-  /** Union bounds of a compartment's boxes. */
-  function bounds(comp) {
-    const r = { x: [Infinity, -Infinity], y: [Infinity, -Infinity], z: [Infinity, -Infinity] };
-    for (const b of comp.boxes) for (const k of "xyz") { r[k][0] = Math.min(r[k][0], b[k][0]); r[k][1] = Math.max(r[k][1], b[k][1]); }
-    return r;
-  }
-  function center(comp) {
-    const b = bounds(comp);
-    return [(b.x[0] + b.x[1]) / 2, (b.y[0] + b.y[1]) / 2, (b.z[0] + b.z[1]) / 2];
-  }
-
-  /** Half extents of a portal's opening on its two in-plane axes. */
-  function portalHalf(p) {
-    const s = p.size_m;
-    if (p.axis === "x") return { z: s[0] / 2, y: s[1] / 2 };
-    if (p.axis === "z") return { x: s[0] / 2, y: s[1] / 2 };
-    return { x: s[0] / 2, z: s[1] / 2 };
-  }
-
-  // ------------------------------------------------------------ room shells
+  // ------------------------------------------------------- plan geometry [x, z]
 
   const EPS = 1e-4;
 
-  // Each face of a box: the axis it is normal to, which end, and its two in-plane axes (u, v).
-  const FACES = [
-    { key: "floor", axis: "y", end: 0, u: "x", v: "z", inward: [0, 1, 0] },
-    { key: "ceiling", axis: "y", end: 1, u: "x", v: "z", inward: [0, -1, 0] },
-    { key: "wall", axis: "x", end: 0, u: "z", v: "y", inward: [1, 0, 0] },
-    { key: "wall", axis: "x", end: 1, u: "z", v: "y", inward: [-1, 0, 0] },
-    { key: "wall", axis: "z", end: 0, u: "x", v: "y", inward: [0, 0, 1] },
-    { key: "wall", axis: "z", end: 1, u: "x", v: "y", inward: [0, 0, -1] },
-  ];
+  /** Signed area in square metres; the layout winds every brush positive. */
+  function signedArea(poly) {
+    let s = 0;
+    for (let i = 0; i < poly.length; i++) {
+      const a = poly[i], b = poly[(i + 1) % poly.length];
+      s += a[0] * b[1] - b[0] * a[1];
+    }
+    return s / 2;
+  }
+  /** Unit outward normal [x, z] of edge a->b of a positively wound polygon. */
+  function outwardNormal(a, b) {
+    const dx = b[0] - a[0], dz = b[1] - a[1], l = Math.hypot(dx, dz);
+    return [dz / l, -dx / l];
+  }
+  /** Point inside a convex, positively wound polygon (the boundary counts). */
+  function insidePoly(poly, x, z, tol) {
+    tol = tol === undefined ? 1e-3 : tol;
+    for (let i = 0; i < poly.length; i++) {
+      const a = poly[i], n = outwardNormal(a, poly[(i + 1) % poly.length]);
+      if ((x - a[0]) * n[0] + (z - a[1]) * n[1] > tol) return false;
+    }
+    return true;
+  }
+  /** Where the line x = v (axis 0) or z = v (axis 1) crosses a convex polygon: [lo, hi] of the other coordinate, or null. */
+  function chord(poly, axis, v) {
+    const o = 1 - axis, hits = [];
+    for (let i = 0; i < poly.length; i++) {
+      const a = poly[i], b = poly[(i + 1) % poly.length];
+      const da = a[axis] - v, db = b[axis] - v;
+      if (Math.abs(da) < EPS) hits.push(a[o]);
+      if ((da < -EPS && db > EPS) || (da > EPS && db < -EPS)) hits.push(a[o] + (b[o] - a[o]) * (da / (da - db)));
+    }
+    if (hits.length < 2) return null;
+    return [Math.min(...hits), Math.max(...hits)];
+  }
+  /** A convex polygon with edge i moved inward by d[i] metres (d may be one number for every edge). */
+  function insetPoly(poly, d) {
+    const n = poly.length, lines = [];
+    for (let i = 0; i < n; i++) {
+      const a = poly[i], b = poly[(i + 1) % n], on = outwardNormal(a, b), di = Array.isArray(d) ? d[i] : d;
+      lines.push({ p: [a[0] - on[0] * di, a[1] - on[1] * di], t: [b[0] - a[0], b[1] - a[1]] });
+    }
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const l1 = lines[(i + n - 1) % n], l2 = lines[i];
+      const den = l1.t[0] * l2.t[1] - l1.t[1] * l2.t[0];
+      if (Math.abs(den) < 1e-9) { out.push(l2.p.slice()); continue; }
+      const s = ((l2.p[0] - l1.p[0]) * l2.t[1] - (l2.p[1] - l1.p[1]) * l2.t[0]) / den;
+      out.push([l1.p[0] + l1.t[0] * s, l1.p[1] + l1.t[1] * s]);
+    }
+    return out;
+  }
+  /** Area-weighted centroid of a polygon. */
+  function polyCentroid(poly) {
+    let cx = 0, cz = 0, a = 0;
+    for (let i = 0; i < poly.length; i++) {
+      const p = poly[i], q = poly[(i + 1) % poly.length], k = p[0] * q[1] - q[0] * p[1];
+      a += k; cx += (p[0] + q[0]) * k; cz += (p[1] + q[1]) * k;
+    }
+    return [cx / (3 * a), cz / (3 * a)];
+  }
+
+  // ---------------------------------------------------- compartment geometry
+
+  /** Volume in cubic metres and floor area in square metres of a compartment (brush air; detail is not air). */
+  function measure(comp) {
+    let v = 0, a = 0;
+    for (const b of comp.brushes) {
+      const ar = signedArea(b.poly);
+      v += ar * (b.y[1] - b.y[0]); a += ar;
+    }
+    return { volume_m3: v, floor_m2: a };
+  }
+  /** Union bounds of a compartment's brushes: { x: [lo, hi], y: [lo, hi], z: [lo, hi] }. */
+  function bounds(comp) {
+    const r = { x: [Infinity, -Infinity], y: [Infinity, -Infinity], z: [Infinity, -Infinity] };
+    for (const b of comp.brushes) {
+      for (const p of b.poly) {
+        r.x[0] = Math.min(r.x[0], p[0]); r.x[1] = Math.max(r.x[1], p[0]);
+        r.z[0] = Math.min(r.z[0], p[1]); r.z[1] = Math.max(r.z[1], p[1]);
+      }
+      r.y[0] = Math.min(r.y[0], b.y[0]); r.y[1] = Math.max(r.y[1], b.y[1]);
+    }
+    return r;
+  }
+  /** A point well inside the compartment: the centroid of its largest brush, at mid height. */
+  function center(comp) {
+    let best = null;
+    for (const b of comp.brushes) { const a = signedArea(b.poly); if (!best || a > best.a) best = { a, b }; }
+    const c = polyCentroid(best.b.poly);
+    return [c[0], (best.b.y[0] + best.b.y[1]) / 2, c[1]];
+  }
+  /** The brush of comp containing (x, y, z), with yTol of slack below its floor, or null. */
+  function brushAt(comp, x, y, z, yTol) {
+    yTol = yTol || 0;
+    for (const b of comp.brushes) if (insidePoly(b.poly, x, z) && y >= b.y[0] - yTol - EPS && y <= b.y[1] + EPS) return b;
+    return null;
+  }
+  /** The floor height under (x, z) in comp nearest to y (a gallery or a ladder well picks the right level). */
+  function floorAt(comp, x, z, y) {
+    let best = null;
+    for (const b of comp.brushes) {
+      if (!insidePoly(b.poly, x, z, 0.01)) continue;
+      const d = Math.min(Math.abs(b.y[0] - y), Math.abs(b.y[1] - y));
+      if (!best || d < best.d) best = { d, y0: b.y[0] };
+    }
+    return best ? best.y0 : y;
+  }
+
+  // ------------------------------------------------------------------ portals
+
+  /**
+   * A portal's opening in a form that is easy to draw. A wall portal: { floor: false,
+   * c, n, t (unit along the wall), w, h }; a floor portal: { floor: true, c, n, sx, sz }.
+   * n points from between[0] into between[1].
+   */
+  function portalFrame(p) {
+    const n = p.normal, c = p.center_m;
+    if (Math.abs(n[1]) > 0.5) return { floor: true, c, n, sx: p.size_m[0], sz: p.size_m[1] };
+    return { floor: false, c, n, t: [-n[2], 0, n[0]], w: p.size_m[0], h: p.size_m[1] };
+  }
+  /** The portal's normal pointing out of compartment cid. */
+  function portalOut(p, cid) { return p.between[0] === cid ? p.normal : p.normal.map((v) => -v); }
+  /** The point a walker stands on at a portal, on the side of compartment cid (a floor portal: that side's floor). */
+  function portalPoint(L, p, cid) {
+    const f = portalFrame(p), x = f.c[0], y = f.c[1], z = f.c[2];
+    if (!f.floor) return [x, y - f.h / 2, z];
+    const comp = compartment(L, cid);
+    return comp ? [x, floorAt(comp, x, z, y), z] : [x, y, z];
+  }
+
+  /**
+   * Every wall of a compartment, with what is cut out of it. One entry per brush edge:
+   * { brush, bi, i, a, b (plan ends), t, n (outward, plan), len, y0, y1, holes } where a hole
+   * is { u0, u1, v0, v1, portal?, sibling?, siblingFloor? } in metres along the wall from a (u) and
+   * height (v); siblingFloor is the floor height of the brush a sibling opening leads into.
+   * opts.skipKinds: portal kinds not to cut (for example ["window"]).
+   */
+  function wallsOf(L, comp, opts) {
+    opts = opts || {};
+    const skip = opts.skipKinds || [];
+    const ports = portalsOf(L, comp.id).filter((p) => Math.abs(p.normal[1]) < 0.5 && skip.indexOf(p.kind) < 0);
+    const out = [];
+    comp.brushes.forEach((br, bi) => {
+      const poly = br.poly;
+      for (let i = 0; i < poly.length; i++) {
+        const a = poly[i], b = poly[(i + 1) % poly.length];
+        const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        const t = [(b[0] - a[0]) / len, (b[1] - a[1]) / len], n = outwardNormal(a, b);
+        const w = { brush: br, bi, i, a, b, t, n, len, y0: br.y[0], y1: br.y[1], holes: [] };
+        for (const p of ports) {
+          const o = portalOut(p, comp.id), c = p.center_m;
+          if (o[0] * n[0] + o[2] * n[1] < 0.999) continue;
+          if (Math.abs((c[0] - a[0]) * n[0] + (c[2] - a[1]) * n[1]) > 0.01) continue;
+          const u = (c[0] - a[0]) * t[0] + (c[2] - a[1]) * t[1];
+          if (u < -0.01 || u > len + 0.01) continue;
+          const v0 = c[1] - p.size_m[1] / 2, v1 = c[1] + p.size_m[1] / 2;
+          if (v1 < br.y[0] + 0.01 || v0 > br.y[1] - 0.01) continue;
+          w.holes.push({ u0: u - p.size_m[0] / 2, u1: u + p.size_m[0] / 2, v0, v1, portal: p });
+        }
+        comp.brushes.forEach((ob, oi) => {
+          if (oi === bi) return;
+          for (let j = 0; j < ob.poly.length; j++) {
+            const oa = ob.poly[j], oe = ob.poly[(j + 1) % ob.poly.length], on = outwardNormal(oa, oe);
+            if (on[0] * n[0] + on[1] * n[1] > -0.999) continue;
+            if (Math.abs((oa[0] - a[0]) * n[0] + (oa[1] - a[1]) * n[1]) > 0.01) continue;
+            const ua = (oa[0] - a[0]) * t[0] + (oa[1] - a[1]) * t[1], ue = (oe[0] - a[0]) * t[0] + (oe[1] - a[1]) * t[1];
+            const u0 = Math.max(0, Math.min(ua, ue)), u1 = Math.min(len, Math.max(ua, ue));
+            const v0 = Math.max(br.y[0], ob.y[0]), v1 = Math.min(br.y[1], ob.y[1]);
+            if (u1 - u0 > EPS && v1 - v0 > EPS) w.holes.push({ u0, u1, v0, v1, sibling: true, siblingFloor: ob.y[0] });
+          }
+        });
+        out.push(w);
+      }
+    });
+    return out;
+  }
 
   /**
    * Rectangle minus holes, as a list of cells. Holes are clipped to the
@@ -185,88 +344,625 @@
         cells.push({ u0: su[i], u1: su[i + 1], v0: sv[j], v1: sv[j + 1] });
       }
     }
-    // Merge runs along u in each row to keep the triangle count down.
     cells.sort((a, b) => a.v0 - b.v0 || a.u0 - b.u0);
     const merged = [];
     for (const c of cells) {
       const last = merged[merged.length - 1];
       if (last && Math.abs(last.v0 - c.v0) < EPS && Math.abs(last.v1 - c.v1) < EPS && Math.abs(last.u1 - c.u0) < EPS) last.u1 = c.u1;
-      else merged.push({ ...c });
+      else merged.push(Object.assign({}, c));
     }
     return merged;
   }
-
-  /** The openings on one face of one box: portals on that plane, and faces shared with the compartment's other boxes. */
-  function faceHoles(L, comp, box, face, opts) {
-    const plane = box[face.axis][face.end];
-    const holes = [];
-    for (const p of portalsOf(L, comp.id)) {
-      if (p.axis !== face.axis) continue;
-      if (opts.skipKinds && opts.skipKinds.indexOf(p.kind) >= 0) continue;
-      const c = { x: p.center_m[0], y: p.center_m[1], z: p.center_m[2] };
-      const slab = face.axis === "y" ? 0.55 : EPS * 10;
-      if (Math.abs(c[face.axis] - plane) > slab) continue;
-      const h = portalHalf(p);
-      holes.push({ u0: c[face.u] - h[face.u], u1: c[face.u] + h[face.u], v0: c[face.v] - h[face.v], v1: c[face.v] + h[face.v], portal: p });
+  /** An interval [lo, hi] minus intervals, as the pieces left. */
+  function intervalMinus(lo, hi, cuts) {
+    let pieces = [[lo, hi]];
+    for (const c of cuts) {
+      const next = [];
+      for (const [a, b] of pieces) {
+        if (c[1] <= a || c[0] >= b) { next.push([a, b]); continue; }
+        if (c[0] > a) next.push([a, c[0]]);
+        if (c[1] < b) next.push([c[1], b]);
+      }
+      pieces = next;
     }
-    for (const other of comp.boxes) {
-      if (other === box) continue;
-      const oEnd = 1 - face.end;
-      if (Math.abs(other[face.axis][oEnd] - plane) > EPS) continue;
-      holes.push({ u0: other[face.u][0], u1: other[face.u][1], v0: other[face.v][0], v1: other[face.v][1] });
-    }
-    return holes;
+    return pieces;
   }
 
-  function pushQuad(pos, nor, col, face, plane, c, color) {
-    const p = (u, v) => {
-      const o = { x: 0, y: 0, z: 0 };
-      o[face.axis] = plane; o[face.u] = u; o[face.v] = v;
-      return [o.x, o.y, o.z];
-    };
-    const a = p(c.u0, c.v0), b = p(c.u1, c.v0), d = p(c.u1, c.v1), e = p(c.u0, c.v1);
-    // Wind so the quad faces inward (into the room).
-    const n = face.inward;
-    const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], ad = [d[0] - a[0], d[1] - a[1], d[2] - a[2]];
-    const cross = [ab[1] * ad[2] - ab[2] * ad[1], ab[2] * ad[0] - ab[0] * ad[2], ab[0] * ad[1] - ab[1] * ad[0]];
-    const flip = cross[0] * n[0] + cross[1] * n[1] + cross[2] * n[2] < 0;
-    const tri = flip ? [a, d, b, a, e, d] : [a, b, d, a, d, e];
-    for (const v of tri) { pos.push(v[0], v[1], v[2]); nor.push(n[0], n[1], n[2]); col.push(color.r, color.g, color.b); }
+  // -------------------------------------------------------- surface builder
+
+  /** World-anchored planar UV in metres: x, z on floors and ceilings; along the face's horizontal tangent and y otherwise. */
+  function worldUv(p, n) {
+    if (Math.abs(n[1]) > 0.75) return [p[0], p[2]];
+    const l = Math.hypot(n[0], n[2]) || 1, tx = -n[2] / l, tz = n[0] / l;
+    return [p[0] * tx + p[2] * tz, p[1]];
   }
 
   /**
-   * Build a compartment's inside surfaces (floor, ceiling, walls) with every
-   * portal opening cut out. Returns { floor, ceiling, walls } BufferGeometries
-   * with vertex colours, plus the list of openings for door props.
-   *
-   * opts.colors: { floor, ceiling, wall } as hex; opts.skipKinds: portal kinds
-   * not to cut (for example ["window"] to keep a blank wall).
+   * Accumulates triangles by role. Every vertex gets a world-anchored planar UV in metres
+   * (deck-pipeline section 5a), divided later by its material's span.
    */
-  function roomShell(THREE, L, comp, opts) {
-    opts = opts || {};
-    const isCorridor = comp.kind === "corridor";
-    const colors = Object.assign({ floor: isCorridor ? PALETTE.floorCorridor : PALETTE.floor, ceiling: PALETTE.ceiling, wall: PALETTE.wall }, opts.colors || {});
-    const out = { floor: [[], [], []], ceiling: [[], [], []], wall: [[], [], []] };
-    const openings = [];
-    for (const box of comp.boxes) {
-      for (const face of FACES) {
-        const plane = box[face.axis][face.end];
-        const rect = { u0: box[face.u][0], u1: box[face.u][1], v0: box[face.v][0], v1: box[face.v][1] };
-        const holes = faceHoles(L, comp, box, face, opts);
-        for (const h of holes) if (h.portal) openings.push({ portal: h.portal, axis: face.axis, plane, u: face.u, v: face.v, rect: h });
-        const color = new THREE.Color(colors[face.key]);
-        const bucket = out[face.key];
-        for (const c of rectMinusHoles(rect, holes)) pushQuad(bucket[0], bucket[1], bucket[2], face, plane, c, color);
+  function Builder() {
+    this.parts = {};
+  }
+  Builder.prototype.part = function (role) {
+    return this.parts[role] || (this.parts[role] = { position: [], normal: [], uvm: [] });
+  };
+  Builder.prototype.tri = function (role, a, b, c, n) {
+    const P = this.part(role);
+    // Wind so the face looks along n.
+    const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], ac = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+    const cr = [ab[1] * ac[2] - ab[2] * ac[1], ab[2] * ac[0] - ab[0] * ac[2], ab[0] * ac[1] - ab[1] * ac[0]];
+    const pts = cr[0] * n[0] + cr[1] * n[1] + cr[2] * n[2] < 0 ? [a, c, b] : [a, b, c];
+    for (const p of pts) {
+      P.position.push(p[0], p[1], p[2]);
+      P.normal.push(n[0], n[1], n[2]);
+      const uv = worldUv(p, n);
+      P.uvm.push(uv[0], uv[1]);
+    }
+  };
+  Builder.prototype.quad = function (role, a, b, c, d, n) { this.tri(role, a, b, c, n); this.tri(role, a, c, d, n); };
+  /** A polygon with holes on the horizontal plane y, facing up (dir 1) or down (-1). */
+  Builder.prototype.flat = function (THREE, role, contour, holes, y, dir) {
+    const v2 = (p) => new THREE.Vector2(p[0], p[1]);
+    const faces = THREE.ShapeUtils.triangulateShape(contour.map(v2), holes.map((h) => h.map(v2)));
+    const all = contour.concat(...holes);
+    for (const f of faces) {
+      const p = f.map((k) => [all[k][0], y, all[k][1]]);
+      this.tri(role, p[0], p[1], p[2], [0, dir, 0]);
+    }
+  };
+  /**
+   * An oriented box: centre c, unit axes u, v, w with half sizes hu, hv, hw. faces lists the
+   * faces to draw ("+u", "-u", "+v", "-v", "+w", "-w"); faces pressed against a wall, floor
+   * or ceiling are left out (CLAUDE.md section 8: no coplanar faces facing the same way).
+   * roles maps a face to a role other than the box's own (a lamp's lens is its "-v" face).
+   */
+  Builder.prototype.box = function (role, c, u, v, w, hu, hv, hw, faces, roles) {
+    const P = (su, sv, sw) => [0, 1, 2].map((k) => c[k] + u[k] * su * hu + v[k] * sv * hv + w[k] * sw * hw);
+    const neg = (x) => x.map((y) => -y);
+    const F = {
+      "+u": [[1, -1, -1], [1, 1, -1], [1, 1, 1], [1, -1, 1], u],
+      "-u": [[-1, -1, -1], [-1, -1, 1], [-1, 1, 1], [-1, 1, -1], neg(u)],
+      "+v": [[-1, 1, -1], [-1, 1, 1], [1, 1, 1], [1, 1, -1], v],
+      "-v": [[-1, -1, -1], [1, -1, -1], [1, -1, 1], [-1, -1, 1], neg(v)],
+      "+w": [[-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1], w],
+      "-w": [[-1, -1, -1], [-1, 1, -1], [1, 1, -1], [1, -1, -1], neg(w)],
+    };
+    for (const f of faces) {
+      const q = F[f], r = (roles && roles[f]) || role;
+      this.quad(r, P(...q[0]), P(...q[1]), P(...q[2]), P(...q[3]), q[4]);
+    }
+  };
+  /** An n-sided prism (a pipe) from a to b with radius r; no end caps. */
+  Builder.prototype.pipe = function (role, a, b, r, sides) {
+    const d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], l = Math.hypot(d[0], d[1], d[2]), ax = d.map((x) => x / l);
+    const ref = Math.abs(ax[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
+    let e1 = [ax[1] * ref[2] - ax[2] * ref[1], ax[2] * ref[0] - ax[0] * ref[2], ax[0] * ref[1] - ax[1] * ref[0]];
+    const l1 = Math.hypot(e1[0], e1[1], e1[2]); e1 = e1.map((x) => x / l1);
+    const e2 = [ax[1] * e1[2] - ax[2] * e1[1], ax[2] * e1[0] - ax[0] * e1[2], ax[0] * e1[1] - ax[1] * e1[0]];
+    const o = (t) => [0, 1, 2].map((k) => (e1[k] * Math.cos(t) + e2[k] * Math.sin(t)) * r);
+    for (let k = 0; k < sides; k++) {
+      const t0 = (2 * Math.PI * k) / sides, t1 = (2 * Math.PI * (k + 1)) / sides;
+      const o0 = o(t0), o1 = o(t1), n = o((t0 + t1) / 2).map((x) => x / r);
+      const add = (p, q) => [p[0] + q[0], p[1] + q[1], p[2] + q[2]];
+      this.quad(role, add(a, o0), add(b, o0), add(b, o1), add(a, o1), n);
+    }
+  };
+
+  // ------------------------------------------------------------ the detail rules
+
+  /** Frame stations (z, metres) between z0 and z1, at least clear from either end. */
+  function frameStations(D, z0, z1, clear) {
+    const s = D.frames.spacing_m, o = D.frames.origin_z_m, out = [];
+    for (let k = Math.ceil((z0 + clear - o) / s - EPS); o + k * s <= z1 - clear + EPS; k++) out.push(o + k * s);
+    return out;
+  }
+
+  /** Floor portals (hatch, ladder, hoist, bay door) in this compartment's ceilings, as frames. */
+  function ceilingPortals(L, comp) {
+    const out = [];
+    for (const p of portalsOf(L, comp.id)) {
+      const f = portalFrame(p);
+      if (f.floor && portalOut(p, comp.id)[1] > 0) out.push(f);
+    }
+    return out;
+  }
+
+  /**
+   * Lamps by the kit rule (detailing.json lamps; deck-pipeline section 5): in the bays
+   * between frames, round(bay area / area_per_lamp_m2) across the bay's width (a
+   * corridor bay at least one, a pod one), every emergency_every-th lamp on the emergency
+   * bus. Returns [{ p: [x, y, z] (the lens), R, I, emergency, size: [x, z], tall }].
+   */
+  function lampsFor(L, comp, D) {
+    D = D || shipData("detailing");
+    const R = D.lamps, out = [];
+    const holes = ceilingPortals(L, comp);
+    const keep = systemsIn(L, comp.id).filter((s) => s.radius_m).map((s) => ({ x: s.center_m[0], z: s.center_m[2], r: s.radius_m + R.keep_out_m }));
+    for (const br of comp.brushes) {
+      const h = br.y[1] - br.y[0], tall = h > R.tall_room_m + EPS, scale = tall ? h / 3.0 : 1.0;
+      const size = (comp.kind === "corridor" ? R.corridor_panel_m : R.panel_m).map((v) => v * (tall ? Math.min(scale, 1.6) : 1));
+      const y = br.y[1] - (tall ? R.hang_m : 0) - R.housing_m;
+      const pts = [];
+      if (comp.kind === "pod") {
+        // One lamp, at the centre or, when a hatch is there, beside it.
+        const c = polyCentroid(br.poly);
+        const clash = (x, z) => holes.some((f) => Math.abs(x - f.c[0]) < f.sx / 2 + size[0] / 2 && Math.abs(z - f.c[2]) < f.sz / 2 + size[1] / 2);
+        const tries = [[0, 0]].concat(holes.map((f) => [0, f.sz / 2 + size[1] / 2 + 0.05]), holes.map((f) => [0, -(f.sz / 2 + size[1] / 2 + 0.05)]));
+        const ok = tries.map(([dx, dz]) => [c[0] + dx, c[1] + dz]).find(([x, z]) => !clash(x, z) && insidePoly(br.poly, x - size[0] / 2, z - size[1] / 2) && insidePoly(br.poly, x + size[0] / 2, z + size[1] / 2));
+        if (ok) pts.push(ok);
+      } else {
+        const zs = br.poly.map((p) => p[1]), z0 = Math.min(...zs), z1 = Math.max(...zs);
+        const cuts = [z0].concat(frameStations(D, z0, z1, 0.01)).concat([z1]);
+        for (let i = 0; i + 1 < cuts.length; i++) {
+          const za = cuts[i], zb = cuts[i + 1];
+          if (zb - za < R.min_bay_m) continue;
+          const zm = (za + zb) / 2, ch = chord(br.poly, 1, zm);
+          if (!ch) continue;
+          const x0 = ch[0] + R.wall_clear_m, x1 = ch[1] - R.wall_clear_m;
+          if (x1 <= x0) continue;
+          let n = Math.round(((ch[1] - ch[0]) * (zb - za)) / R.area_per_lamp_m2);
+          if (comp.kind === "corridor") n = Math.max(1, n);
+          for (let k = 0; k < n; k++) pts.push([x0 + ((k + 0.5) * (x1 - x0)) / n, zm]);
+        }
+      }
+      for (const [x, z] of pts) {
+        if (keep.some((k) => Math.hypot(x - k.x, z - k.z) < k.r)) continue;
+        if (holes.some((f) => Math.abs(x - f.c[0]) < f.sx / 2 + size[0] / 2 && Math.abs(z - f.c[2]) < f.sz / 2 + size[1] / 2)) continue;
+        out.push({ p: [x, y, z], R: R.radius_m * scale, I: 1 / (scale * scale), emergency: false, size, tall });
       }
     }
-    const make = (b) => {
-      const g = new THREE.BufferGeometry();
-      g.setAttribute("position", new THREE.Float32BufferAttribute(b[0], 3));
-      g.setAttribute("normal", new THREE.Float32BufferAttribute(b[1], 3));
-      g.setAttribute("color", new THREE.Float32BufferAttribute(b[2], 3));
-      return g;
+    out.forEach((l, i) => { l.emergency = i % R.emergency_every === 0; });
+    return out;
+  }
+
+  /**
+   * Build one compartment's surfaces: the shell (floors, walls, coves, ceilings with every
+   * portal opening cut) and, unless opts.detail === false, the generated detail
+   * (deck-pipeline section 5a). Returns { parts: { role: { position, normal, uvm } }, lamps,
+   * walls, openings }. Roles: floor, wall, ceiling, cove, rib, beam, baseboard, frame,
+   * frame_hazard, status, window_frame, rim, collar, ladder, runner, pipe, railing, kickplate,
+   * lamp_housing, lamp.
+   * opts.skipKinds: portal kinds not to cut (["bay_door"] keeps a closed bay door's floor).
+   */
+  function buildCompartment(THREE, L, comp, opts) {
+    opts = opts || {};
+    const D = opts.detailing || shipData("detailing");
+    const detail = opts.detail !== false;
+    const B = new Builder();
+    const walls = wallsOf(L, comp, opts);
+    const skip = opts.skipKinds || [];
+    const openings = [];
+    const FR = D.door_frame, WF = D.window_frame, FP = D.floor_portal, F = D.frames;
+    const tallBrush = (br) => br.y[1] - br.y[0] > D.cove.tall_room_m + EPS;
+
+    // Per brush: cove size by edge (0 where the edge opens to a sibling, a portal reaches the cove, or in a pod).
+    const coveOf = new Map();
+    for (const br of comp.brushes) coveOf.set(br, br.poly.map(() => 0));
+    for (const w of walls) {
+      const c = tallBrush(w.brush) ? D.cove.tall_size_m : D.cove.size_m;
+      const blocked = w.holes.some((h) => h.v1 > w.y1 - c - EPS);
+      coveOf.get(w.brush)[w.i] = comp.kind === "pod" || blocked ? 0 : c;
+    }
+
+    // A framed portal's wall hole is wider than its clear opening by the frame, which fills it.
+    const frameOf = (p) => {
+      if (p.kind === "window") return { side: WF.frame_m, top: WF.frame_m, bottom: WF.frame_m, proud: WF.proud_m, role: "window_frame" };
+      if (p.kind === "pressure_door") return { side: FR.pressure_jamb_m, top: FR.lintel_m, bottom: 0, proud: FR.pressure_proud_m, role: "frame_hazard" };
+      if (p.kind === "door" || p.kind === "hatch") return { side: FR.jamb_m, top: FR.lintel_m, bottom: 0, proud: FR.proud_m, role: "frame" };
+      return null;
     };
-    return { floor: make(out.floor), ceiling: make(out.ceiling), walls: make(out.wall), openings };
+
+    // ---- walls, and the detail that stands on them
+    for (const w of walls) {
+      const cv = coveOf.get(w.brush)[w.i];
+      const top = w.y1 - cv;
+      const P3 = (u, y, inward) => [w.a[0] + w.t[0] * u - w.n[0] * (inward || 0), y, w.a[1] + w.t[1] * u - w.n[1] * (inward || 0)];
+      const nIn = [-w.n[0], 0, -w.n[1]], ax = [w.t[0], 0, w.t[1]], up = [0, 1, 0];
+      const holes = w.holes.map((h) => {
+        const f = h.portal && frameOf(h.portal);
+        if (!f) return h;
+        const v0 = h.v0 - f.bottom > w.y0 + 0.01 ? h.v0 - f.bottom : h.v0;
+        return Object.assign({}, h, { u0: h.u0 - f.side, u1: h.u1 + f.side, v0, v1: Math.min(top, h.v1 + f.top), framed: f });
+      });
+      for (const c of rectMinusHoles({ u0: 0, u1: w.len, v0: w.y0, v1: top }, holes)) {
+        B.quad("wall", P3(c.u0, c.v0), P3(c.u1, c.v0), P3(c.u1, c.v1), P3(c.u0, c.v1), nIn);
+      }
+      for (const h of holes) if (h.portal) openings.push({ portal: h.portal, wall: w, hole: h });
+      if (!detail) continue;
+
+      // Ribs on fore-and-aft walls at the frames; stiffeners on athwartship walls between them.
+      const ribs = [];
+      if (comp.kind !== "pod") {
+        const along = Math.abs(w.t[1]) >= Math.SQRT1_2;
+        let stations;
+        if (along) {
+          stations = frameStations(D, Math.min(w.a[1], w.b[1]), Math.max(w.a[1], w.b[1]), 0).map((z) => (z - w.a[1]) / w.t[1]);
+        } else {
+          const s = F.spacing_m, x0 = Math.min(w.a[0], w.b[0]), x1 = Math.max(w.a[0], w.b[0]);
+          stations = [];
+          for (let k = Math.ceil((x0 - s / 2) / s); k * s + s / 2 <= x1; k++) stations.push((k * s + s / 2 - w.a[0]) / w.t[0]);
+        }
+        const depth = tallBrush(w.brush) ? F.tall_rib_depth_m : F.rib_depth_m;
+        for (const u of stations) {
+          if (u < F.end_clear_m || u > w.len - F.end_clear_m) continue;
+          const lo = u - F.rib_width_m / 2 - F.portal_clear_m, hi = u + F.rib_width_m / 2 + F.portal_clear_m;
+          if (holes.some((h) => h.u1 > lo && h.u0 < hi)) continue;
+          ribs.push(u);
+          B.box("rib", P3(u, (w.y0 + top) / 2, depth / 2), ax, up, nIn, F.rib_width_m / 2, (top - w.y0) / 2, depth / 2, ["+u", "-u", "+v", "+w"]);
+        }
+      }
+      // Baseboard between ribs and doors.
+      const BB = D.baseboard;
+      const cuts = holes.filter((h) => h.v0 < w.y0 + BB.height_m).map((h) => [h.u0, h.u1]).concat(ribs.map((u) => [u - F.rib_width_m / 2, u + F.rib_width_m / 2]));
+      for (const [u0, u1] of intervalMinus(0, w.len, cuts)) {
+        if (u1 - u0 < 0.05) continue;
+        B.box("baseboard", P3((u0 + u1) / 2, w.y0 + BB.height_m / 2, BB.depth_m / 2), ax, up, nIn, (u1 - u0) / 2, BB.height_m / 2, BB.depth_m / 2, ["+v", "+w", "+u", "-u"]);
+      }
+      // Door and window frames on this side: jambs, lintel, sill, and a status strip.
+      for (const h of holes) {
+        if (!h.framed) continue;
+        const f = h.framed, p = h.portal;
+        const pv0 = p.center_m[1] - p.size_m[1] / 2, pv1 = Math.min(p.center_m[1] + p.size_m[1] / 2, h.v1);
+        const pu0 = h.u0 + f.side, pu1 = h.u1 - f.side, jv0 = h.v0, jv1 = h.v1;
+        const inner = { "+u": "frame", "-u": "frame" };
+        B.box(f.role, P3(pu0 - f.side / 2, (jv0 + jv1) / 2, f.proud / 2), ax, up, nIn, f.side / 2, (jv1 - jv0) / 2, f.proud / 2, ["+u", "-u", "+w", "+v"], inner);
+        B.box(f.role, P3(pu1 + f.side / 2, (jv0 + jv1) / 2, f.proud / 2), ax, up, nIn, f.side / 2, (jv1 - jv0) / 2, f.proud / 2, ["+u", "-u", "+w", "+v"], inner);
+        const lintelRole = f.role === "frame_hazard" ? "frame" : f.role;
+        if (jv1 - pv1 > EPS) B.box(lintelRole, P3((pu0 + pu1) / 2, (pv1 + jv1) / 2, f.proud / 2), ax, up, nIn, (pu1 - pu0) / 2, (jv1 - pv1) / 2, f.proud / 2, ["-v", "+w", "+v"]);
+        if (pv0 - jv0 > EPS) B.box(f.role, P3((pu0 + pu1) / 2, (jv0 + pv0) / 2, WF.sill_depth_m / 2), ax, up, nIn, (pu1 - pu0) / 2, (pv0 - jv0) / 2, WF.sill_depth_m / 2, ["+v", "+w", "-v"]);
+        if (p.kind !== "window" && jv1 - pv1 > FR.status_strip_m[1]) {
+          const sw = Math.min(FR.status_strip_m[0], pu1 - pu0) / 2;
+          B.box("status", P3((pu0 + pu1) / 2, (pv1 + jv1) / 2, f.proud + 0.01), ax, up, nIn, sw, FR.status_strip_m[1] / 2, 0.01, ["+w", "-v", "+v", "+u", "-u"]);
+        }
+      }
+      // A railing along an edge that opens onto a lower floor of the same compartment (a gallery's edge).
+      const RL = D.railing;
+      for (const h of w.holes) {
+        if (!h.sibling || h.siblingFloor > w.y0 - RL.min_drop_m) continue;
+        const u0 = h.u0 + RL.post_m, u1 = h.u1 - RL.post_m, inset = RL.inset_m + RL.post_m / 2, hp = RL.post_m / 2;
+        if (u1 - u0 < 0.3) continue;
+        for (const y of [w.y0 + RL.height_m, w.y0 + RL.height_m / 2]) {
+          B.box("railing", P3((u0 + u1) / 2, y, inset), ax, up, nIn, (u1 - u0) / 2, hp, hp, ["+v", "-v", "+w", "-w", "+u", "-u"]);
+        }
+        B.box("kickplate", P3((u0 + u1) / 2, w.y0 + RL.kick_m / 2, inset), ax, up, nIn, (u1 - u0) / 2, RL.kick_m / 2, 0.01, ["+v", "+w", "-w", "+u", "-u"]);
+        const n = Math.max(1, Math.round((u1 - u0) / RL.post_spacing_m));
+        for (let k = 0; k <= n; k++) {
+          const u = u0 + ((u1 - u0) * k) / n;
+          B.box("railing", P3(u, w.y0 + RL.height_m / 2, inset), ax, up, nIn, hp, RL.height_m / 2, hp, ["+u", "-u", "+w", "-w"]);
+        }
+      }
+      // Conduits along fore-and-aft corridor walls.
+      if (comp.kind === "corridor" && Math.abs(w.t[1]) > 0.9) {
+        const C = D.conduits;
+        let y = top - C.drop_m;
+        for (const r of C.radii_m) {
+          y -= r;
+          const inset = F.rib_depth_m + C.gap_m + r;
+          B.pipe("pipe", P3(0.02, y, inset), P3(w.len - 0.02, y, inset), r, C.sides);
+          y -= r + C.gap_m;
+        }
+      }
+    }
+
+    // ---- per brush: coves, floor, ceiling, and the detail on them
+    for (const br of comp.brushes) {
+      const cvs = coveOf.get(br), inner = insetPoly(br.poly, cvs), npts = br.poly.length;
+      for (let i = 0; i < npts; i++) {
+        if (!cvs[i]) continue;
+        const a = br.poly[i], b = br.poly[(i + 1) % npts], ia = inner[i], ib = inner[(i + 1) % npts];
+        const on = outwardNormal(a, b), n = [-on[0] * Math.SQRT1_2, -Math.SQRT1_2, -on[1] * Math.SQRT1_2], y = br.y[1];
+        B.quad("cove", [a[0], y - cvs[i], a[1]], [b[0], y - cvs[i], b[1]], [ib[0], y, ib[1]], [ia[0], y, ia[1]], n);
+      }
+      // Floor portals that open in this brush's floor or ceiling.
+      const fHoles = [], cHoles = [];
+      for (const p of portalsOf(L, comp.id)) {
+        const f = portalFrame(p);
+        if (!f.floor || skip.indexOf(p.kind) >= 0 || !insidePoly(br.poly, f.c[0], f.c[2])) continue;
+        const o = portalOut(p, comp.id);
+        const rect = [[f.c[0] - f.sx / 2, f.c[2] - f.sz / 2], [f.c[0] + f.sx / 2, f.c[2] - f.sz / 2], [f.c[0] + f.sx / 2, f.c[2] + f.sz / 2], [f.c[0] - f.sx / 2, f.c[2] + f.sz / 2]];
+        if (o[1] < 0 && Math.abs(br.y[0] - f.c[1]) < 0.6) fHoles.push({ rect, f, p });
+        if (o[1] > 0 && Math.abs(br.y[1] - f.c[1]) < 0.6) cHoles.push({ rect, f, p });
+      }
+      B.flat(THREE, "floor", br.poly, fHoles.map((h) => h.rect), br.y[0], 1);
+      B.flat(THREE, "ceiling", inner, cHoles.map((h) => h.rect), br.y[1], -1);
+      for (const h of fHoles.concat(cHoles)) openings.push({ portal: h.p, floor: true, frame: h.f, brush: br });
+      if (!detail) continue;
+
+      const zs = br.poly.map((p) => p[1]), z0 = Math.min(...zs), z1 = Math.max(...zs);
+      const SIDES = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+      // Hazard rims round floor holes.
+      for (const h of fHoles) {
+        const f = h.f, W = FP.rim_width_m, y = br.y[0] + FP.raise_m / 2;
+        for (const [sx, sz] of SIDES) {
+          const along = sx === 0, hu = along ? f.sx / 2 + W : W / 2, hw = along ? W / 2 : f.sz / 2;
+          B.box("rim", [f.c[0] + sx * (f.sx / 2 + W / 2), y, f.c[2] + sz * (f.sz / 2 + W / 2)], [1, 0, 0], [0, 1, 0], [0, 0, 1], hu, FP.raise_m / 2, hw, ["+v", "+u", "-u", "+w", "-w"]);
+        }
+      }
+      // Collars round ceiling holes, and ladders up through them.
+      for (const h of cHoles) {
+        const f = h.f, W = FP.collar_width_m, y = br.y[1] - FP.collar_depth_m / 2;
+        for (const [sx, sz] of SIDES) {
+          const along = sx === 0, hu = along ? f.sx / 2 + W : W / 2, hw = along ? W / 2 : f.sz / 2;
+          B.box("collar", [f.c[0] + sx * (f.sx / 2 + W / 2), y, f.c[2] + sz * (f.sz / 2 + W / 2)], [1, 0, 0], [0, 1, 0], [0, 0, 1], hu, FP.collar_depth_m / 2, hw, ["-v", "+u", "-u", "+w", "-w"]);
+        }
+        if (h.p.kind === "ladder") {
+          const topY = br.y[1] + 0.5 + FP.ladder_above_m, bot = br.y[0], zl = f.c[2] - f.sz / 2 + FP.ladder_rail_m, hr = FP.ladder_rail_m / 2;
+          for (const s of [-1, 1]) {
+            B.box("ladder", [f.c[0] + (s * FP.ladder_width_m) / 2, (topY + bot) / 2, zl], [1, 0, 0], [0, 1, 0], [0, 0, 1], hr, (topY - bot) / 2, hr, ["+u", "-u", "+w", "-w", "+v"]);
+          }
+          for (let y = bot + FP.rung_spacing_m; y < topY - 0.05; y += FP.rung_spacing_m) {
+            B.box("ladder", [f.c[0], y, zl], [1, 0, 0], [0, 1, 0], [0, 0, 1], FP.ladder_width_m / 2, hr * 0.7, hr * 0.7, ["+v", "-v", "+w", "-w"]);
+          }
+        }
+      }
+      // A runner down a corridor.
+      if (comp.kind === "corridor") {
+        const R = D.runner, xs = br.poly.map((p) => p[0]), x0 = Math.min(...xs), x1 = Math.max(...xs);
+        const alongZ = z1 - z0 >= x1 - x0;
+        const lo = (alongZ ? z0 : x0) + R.end_clear_m, hi = (alongZ ? z1 : x1) - R.end_clear_m, mid = alongZ ? (x0 + x1) / 2 : (z0 + z1) / 2;
+        const rc = fHoles.map((h) => alongZ ? [h.f.c[2] - h.f.sz / 2 - FP.rim_width_m, h.f.c[2] + h.f.sz / 2 + FP.rim_width_m] : [h.f.c[0] - h.f.sx / 2 - FP.rim_width_m, h.f.c[0] + h.f.sx / 2 + FP.rim_width_m]);
+        for (const [a, b] of intervalMinus(lo, hi, rc)) {
+          if (b - a < 0.1) continue;
+          const c = alongZ ? [mid, br.y[0] + R.raise_m / 2, (a + b) / 2] : [(a + b) / 2, br.y[0] + R.raise_m / 2, mid];
+          B.box("runner", c, alongZ ? [1, 0, 0] : [0, 0, 1], [0, 1, 0], alongZ ? [0, 0, 1] : [1, 0, 0], R.width_m / 2, R.raise_m / 2, (b - a) / 2, ["+v", "+u", "-u", "+w", "-w"]);
+        }
+      }
+      // Beams under the ceiling at the frames, butting the coves, split round tall systems and ceiling holes.
+      if (comp.kind !== "pod") {
+        const keep = systemsIn(L, comp.id).filter((s) => s.radius_m);
+        for (const z of frameStations(D, z0, z1, F.end_clear_m + 0.05)) {
+          const ch = chord(inner, 1, z);
+          if (!ch) continue;
+          const d = tallBrush(br) ? F.deep_beam_depth_m : F.beam_depth_m;
+          const bc = [];
+          for (const s of keep) {
+            const dz = Math.abs(z - s.center_m[2]), r = s.radius_m + 0.1;
+            if (dz < r + F.beam_width_m) { const hx = Math.sqrt(Math.max(0, r * r - Math.min(dz, r) ** 2)) + F.beam_width_m; bc.push([s.center_m[0] - hx, s.center_m[0] + hx]); }
+          }
+          for (const h of cHoles) if (Math.abs(z - h.f.c[2]) < h.f.sz / 2 + F.beam_width_m) bc.push([h.f.c[0] - h.f.sx / 2 - FP.collar_width_m, h.f.c[0] + h.f.sx / 2 + FP.collar_width_m]);
+          for (const [a, b] of intervalMinus(ch[0], ch[1], bc)) {
+            if (b - a < 0.2) continue;
+            B.box("beam", [(a + b) / 2, br.y[1] - d / 2, z], [1, 0, 0], [0, 1, 0], [0, 0, 1], (b - a) / 2, d / 2, F.beam_width_m / 2, ["-v", "+w", "-w", "+u", "-u"]);
+          }
+        }
+      }
+    }
+
+    // ---- lamp fixtures: a housing at the ceiling whose underside is the lens
+    const lamps = lampsFor(L, comp, D);
+    if (detail) {
+      const hh = D.lamps.housing_m / 2;
+      for (const l of lamps) {
+        B.box("lamp_housing", [l.p[0], l.p[1] + hh, l.p[2]], [1, 0, 0], [0, 1, 0], [0, 0, 1], l.size[0] / 2, hh, l.size[1] / 2, ["-v", "+u", "-u", "+w", "-w"], { "-v": "lamp" });
+      }
+    }
+    return { parts: B.parts, lamps, walls, openings };
+  }
+
+  // ------------------------------------------------------------- materials
+
+  /** The materials inlined as <script id="ship-materials">: { manifest, layers: { name: "data:image/png;base64,..." } }. */
+  function materialsData() {
+    const el = document.getElementById("ship-materials");
+    if (!el) throw new Error("shipkit: no #ship-materials script in the page (add <!-- INLINE materials --> markers and run tools/mockups/inline.py)");
+    return JSON.parse(el.textContent);
+  }
+
+  /**
+   * Decode a PNG data URI to straight (not premultiplied) RGBA bytes. A canvas would
+   * premultiply, and Star Crew layers carry the emission mask in alpha, so a texel with
+   * alpha 0 would lose its colour (surface-materials design).
+   */
+  async function decodePng(uri) {
+    const bin = Uint8Array.from(atob(uri.slice(uri.indexOf(",") + 1)), (ch) => ch.charCodeAt(0));
+    const dv = new DataView(bin.buffer);
+    let pos = 8, w = 0, h = 0, depth = 0, ctype = 0, plte = null, trns = null;
+    const idat = [];
+    while (pos < bin.length) {
+      const len = dv.getUint32(pos), type = String.fromCharCode(bin[pos + 4], bin[pos + 5], bin[pos + 6], bin[pos + 7]);
+      const data = bin.subarray(pos + 8, pos + 8 + len);
+      if (type === "IHDR") { w = dv.getUint32(pos + 8); h = dv.getUint32(pos + 12); depth = bin[pos + 16]; ctype = bin[pos + 17]; if (bin[pos + 20]) throw new Error("shipkit: interlaced PNG"); }
+      else if (type === "PLTE") plte = data;
+      else if (type === "tRNS") trns = data;
+      else if (type === "IDAT") idat.push(data);
+      else if (type === "IEND") break;
+      pos += 12 + len;
+    }
+    if (depth !== 8) throw new Error("shipkit: PNG bit depth " + depth + " (8 expected)");
+    const bpp = { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 }[ctype];
+    const raw = new Uint8Array(await new Response(new Blob(idat).stream().pipeThrough(new DecompressionStream("deflate"))).arrayBuffer());
+    const stride = w * bpp, out = new Uint8Array(w * h * 4);
+    let prev = new Uint8Array(stride), cur = new Uint8Array(stride), p = 0;
+    for (let y = 0; y < h; y++) {
+      const f = raw[p++];
+      for (let x = 0; x < stride; x++) {
+        const a = x >= bpp ? cur[x - bpp] : 0, b = prev[x], c = x >= bpp ? prev[x - bpp] : 0;
+        let v = raw[p++];
+        if (f === 1) v += a; else if (f === 2) v += b; else if (f === 3) v += (a + b) >> 1;
+        else if (f === 4) { const pa = Math.abs(b - c), pb = Math.abs(a - c), pc = Math.abs(a + b - 2 * c); v += pa <= pb && pa <= pc ? a : pb <= pc ? b : c; }
+        cur[x] = v & 255;
+      }
+      for (let x = 0; x < w; x++) {
+        const o = (y * w + x) * 4;
+        if (ctype === 6) { out[o] = cur[x * 4]; out[o + 1] = cur[x * 4 + 1]; out[o + 2] = cur[x * 4 + 2]; out[o + 3] = cur[x * 4 + 3]; }
+        else if (ctype === 2) { out[o] = cur[x * 3]; out[o + 1] = cur[x * 3 + 1]; out[o + 2] = cur[x * 3 + 2]; out[o + 3] = 255; }
+        else if (ctype === 3) { const i = cur[x]; out[o] = plte[i * 3]; out[o + 1] = plte[i * 3 + 1]; out[o + 2] = plte[i * 3 + 2]; out[o + 3] = trns && i < trns.length ? trns[i] : 255; }
+        else if (ctype === 0) { out[o] = out[o + 1] = out[o + 2] = cur[x]; out[o + 3] = 255; }
+        else { out[o] = out[o + 1] = out[o + 2] = cur[x * 2]; out[o + 3] = cur[x * 2 + 1]; }
+      }
+      const t = prev; prev = cur; cur = t;
+    }
+    return { w, h, rgba: out };
+  }
+
+  /**
+   * Load the Material Maker layers into one texture array, the way the engine will
+   * (surface-materials): nearest on magnification, mipmapped on minification, sRGB.
+   * Resolves to { texture, names, layer: { name: index }, span: { name: metres }, manifest, bytes }.
+   */
+  async function loadMaterials(THREE) {
+    const d = materialsData(), man = d.manifest;
+    const names = Object.keys(man.materials).sort((a, b) => man.materials[a].layer - man.materials[b].layer);
+    names.forEach((n, i) => { if (man.materials[n].layer !== i) throw new Error("shipkit: material layers are not numbered 0.." + (names.length - 1)); });
+    const px = man.layers.px, data = new Uint8Array(px * px * 4 * names.length);
+    for (let i = 0; i < names.length; i++) {
+      const img = await decodePng(d.layers[names[i]]);
+      if (img.w !== px || img.h !== px) throw new Error(`shipkit: layer ${names[i]} is ${img.w}x${img.h}, expected ${px}`);
+      // Flip rows so v = 0 is the image's bottom: a wall's texture stands the right way up.
+      for (let y = 0; y < px; y++) data.set(img.rgba.subarray((px - 1 - y) * px * 4, (px - y) * px * 4), (i * px + y) * px * 4);
+    }
+    const tex = new THREE.DataArrayTexture(data, px, px, names.length);
+    tex.format = THREE.RGBAFormat; tex.type = THREE.UnsignedByteType; tex.colorSpace = THREE.SRGBColorSpace;
+    tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.generateMipmaps = true;
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.needsUpdate = true;
+    const layer = {}, span = {};
+    names.forEach((n, i) => { layer[n] = i; span[n] = man.materials[n].span_m; });
+    return { texture: tex, names, layer, span, manifest: man, bytes: Math.round((data.length * 4) / 3) };
+  }
+
+  /**
+   * The one surface material every textured mesh uses: the vertex's layer, times the vertex
+   * colour. opts.lit true (default): Lambert, lit by the scene's lights; texels glow where the
+   * vertex's surfGlow is set (lamp lenses, status strips), tinted by material.userData.emissive
+   * (a THREE.Color the page sets per lighting state). opts.lit false: unlit, the vertex colour
+   * is the baked light (the engine's way).
+   */
+  function surfaceMaterial(THREE, mats, opts) {
+    opts = opts || {};
+    const lit = opts.lit !== false;
+    const m = lit ? new THREE.MeshLambertMaterial({ vertexColors: true }) : new THREE.MeshBasicMaterial({ vertexColors: true });
+    if (opts.side !== undefined) m.side = opts.side;
+    if (opts.transparent) { m.transparent = true; m.opacity = opts.opacity === undefined ? 1 : opts.opacity; m.depthWrite = opts.depthWrite !== false; }
+    m.userData.emissive = new THREE.Color(opts.emissive === undefined ? 0xffe9c8 : opts.emissive);
+    m.userData.glowGain = { value: opts.glowGain === undefined ? 1.0 : opts.glowGain };
+    m.onBeforeCompile = (sh) => {
+      sh.uniforms.uLayers = { value: mats.texture };
+      sh.uniforms.uGlowTint = { value: m.userData.emissive };
+      sh.uniforms.uGlowGain = m.userData.glowGain;
+      sh.vertexShader = sh.vertexShader
+        .replace("#include <common>", "#include <common>\nattribute vec2 surfUv;\nattribute float surfLayer;\nattribute float surfGlow;\nvarying vec3 vSurf;\nvarying float vGlow;")
+        .replace("#include <begin_vertex>", "#include <begin_vertex>\nvSurf = vec3(surfUv, surfLayer);\nvGlow = surfGlow;");
+      sh.fragmentShader = sh.fragmentShader
+        .replace("#include <common>", "#include <common>\nprecision highp sampler2DArray;\nuniform sampler2DArray uLayers;\nuniform vec3 uGlowTint;\nuniform float uGlowGain;\nvarying vec3 vSurf;\nvarying float vGlow;")
+        .replace("#include <map_fragment>", "vec4 surfTex = texture(uLayers, vec3(vSurf.xy, floor(vSurf.z + 0.5)));\ndiffuseColor.rgb *= surfTex.rgb;");
+      if (lit) sh.fragmentShader = sh.fragmentShader.replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\ntotalEmissiveRadiance += surfTex.rgb * vGlow * uGlowTint * uGlowGain;");
+    };
+    m.customProgramCacheKey = () => "shipkit-surface-" + (lit ? "lit" : "baked");
+    return m;
+  }
+
+  /**
+   * Merge parts into one BufferGeometry: position, normal, color (white), surfUv (metres
+   * over the material's span), surfLayer, surfGlow. finish maps role to material name
+   * (detailing.json finishes[comp.finish]); with no mats every vertex gets layer 0.
+   * geometry.userData.roles = { role: [firstVertex, count] } for recolouring.
+   */
+  function geometryOf(THREE, parts, mats, finish) {
+    let n = 0;
+    for (const r in parts) n += parts[r].position.length / 3;
+    const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3).fill(1);
+    const uv = new Float32Array(n * 2), lay = new Float32Array(n), glow = new Float32Array(n);
+    const roles = {};
+    let k = 0;
+    for (const r of Object.keys(parts).sort()) {
+      const P = parts[r], cnt = P.position.length / 3;
+      let li = 0, span = 1;
+      if (mats) {
+        const name = finish && finish[r];
+        if (!name || !(name in mats.layer)) throw new Error(`shipkit: no material for role ${r} (detailing.json finishes)`);
+        li = mats.layer[name]; span = mats.span[name];
+      }
+      const g = r === "lamp" || r === "status" ? 1 : 0;
+      pos.set(P.position, k * 3); nor.set(P.normal, k * 3);
+      for (let i = 0; i < cnt; i++) { uv[(k + i) * 2] = P.uvm[i * 2] / span; uv[(k + i) * 2 + 1] = P.uvm[i * 2 + 1] / span; lay[k + i] = li; glow[k + i] = g; }
+      roles[r] = [k, cnt];
+      k += cnt;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute("normal", new THREE.BufferAttribute(nor, 3));
+    geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
+    geo.setAttribute("surfUv", new THREE.BufferAttribute(uv, 2));
+    geo.setAttribute("surfLayer", new THREE.BufferAttribute(lay, 1));
+    geo.setAttribute("surfGlow", new THREE.BufferAttribute(glow, 1));
+    geo.userData.roles = roles;
+    return geo;
+  }
+
+  /** The finish table for a compartment: { role: material name }. */
+  function finishOf(comp, D) {
+    D = D || shipData("detailing");
+    const f = D.finishes[comp.finish];
+    if (!f) throw new Error(`shipkit: compartment ${comp.id} has finish ${comp.finish}, not in detailing.json finishes`);
+    return f;
+  }
+
+  /**
+   * The shell only (no detail): { floor, ceiling, walls, coves } as BufferGeometries with
+   * a white colour attribute and no material layers, plus the openings and the lamps.
+   */
+  function roomShell(THREE, L, comp, opts) {
+    const r = buildCompartment(THREE, L, comp, Object.assign({}, opts, { detail: false }));
+    const g = (role) => geometryOf(THREE, r.parts[role] ? { [role]: r.parts[role] } : {}, null);
+    return { floor: g("floor"), ceiling: g("ceiling"), walls: g("wall"), coves: g("cove"), openings: r.openings, lamps: r.lamps };
+  }
+
+  /**
+   * One compartment as one textured mesh (one draw call, as the engine draws it with a
+   * texture array): shell plus detail. Returns { mesh, built }. opts as buildCompartment,
+   * plus opts.material (default: one lit surfaceMaterial shared by every call with these mats).
+   */
+  function compartmentMesh(THREE, L, comp, mats, opts) {
+    opts = opts || {};
+    const D = opts.detailing || shipData("detailing");
+    const built = buildCompartment(THREE, L, comp, Object.assign({ detailing: D }, opts));
+    const geo = geometryOf(THREE, built.parts, mats, finishOf(comp, D));
+    const mat = opts.material || mats._lit || (mats._lit = surfaceMaterial(THREE, mats, { lit: true }));
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.name = comp.id;
+    mesh.userData.compartment = comp.id;
+    return { mesh, built };
+  }
+
+  /** Paint every vertex of a role in a merged geometry (lamp lenses per lighting state, for example). */
+  function paintRole(geo, role, color) {
+    const r = geo.userData.roles[role];
+    if (!r) return;
+    const c = geo.attributes.color;
+    for (let i = r[0]; i < r[0] + r[1]; i++) c.setXYZ(i, color.r, color.g, color.b);
+    c.needsUpdate = true;
+  }
+
+  /**
+   * The stand-in bake (deck-pipeline section 7 until sc-tools bake exists): direct light
+   * from the compartment's lamps (lampsFor), no shadows or bounce, into the vertex colours
+   * of a merged geometry, for one lighting state; the emergency state lights only the
+   * emergency-bus lamps. Lamp lenses and status strips are painted the state's colours.
+   * Use it with surfaceMaterial({ lit: false }). The light-baking mockup has the real
+   * baker (lightbake.js); this is for pages that only need rooms to read as lit.
+   * opts.gain (default 0.55) scales lamp light; opts.cap (1.6) clamps a vertex.
+   */
+  function bakeDirect(THREE, geo, lamps, key, opts) {
+    opts = opts || {};
+    const s = LIGHTING[key], gain = opts.gain === undefined ? 0.55 : opts.gain, cap = opts.cap || 1.6;
+    const amb = new THREE.Color(s.ambient).multiplyScalar(s.ambientI * 2.2), lamp = new THREE.Color(s.lamp).multiplyScalar(s.lampI);
+    const P = geo.attributes.position.array, N = geo.attributes.normal.array, C = geo.attributes.color;
+    const on = lamps.filter((l) => key !== "emergency" || l.emergency);
+    for (let i = 0; i < P.length / 3; i++) {
+      let e = 0;
+      for (const l of on) {
+        const dx = l.p[0] - P[i * 3], dy = l.p[1] - P[i * 3 + 1], dz = l.p[2] - P[i * 3 + 2], d2 = dx * dx + dy * dy + dz * dz, d = Math.sqrt(d2) || 1e-6;
+        const cos = (N[i * 3] * dx + N[i * 3 + 1] * dy + N[i * 3 + 2] * dz) / d;
+        if (cos > 0) e += (l.I * cos) / (1 + d2 / (l.R * l.R));
+      }
+      e *= gain;
+      C.setXYZ(i, Math.min(cap, amb.r + lamp.r * e), Math.min(cap, amb.g + lamp.g * e), Math.min(cap, amb.b + lamp.b * e));
+    }
+    const lens = key === "normal" ? PALETTE.lampWarm : key === "red_alert" ? PALETTE.alert : PALETTE.emergency;
+    paintRole(geo, "lamp", new THREE.Color(lens).multiplyScalar(1.4));
+    paintRole(geo, "status", new THREE.Color(s.status).multiplyScalar(1.4));
+    C.needsUpdate = true;
   }
 
   // ------------------------------------------------------------------- hull
@@ -274,7 +970,8 @@
   /**
    * Loft the hull's octagonal sections into one low-poly BufferGeometry
    * (outward normals, flat shaded). opts.inflate_m grows it, for a shell drawn
-   * around the interior.
+   * around the interior. With opts.mats it also carries color, surfUv, surfLayer and
+   * surfGlow for a surfaceMaterial, in the "hull" material (opts.material names another).
    */
   function hullGeometry(THREE, L, opts) {
     opts = opts || {};
@@ -314,7 +1011,45 @@
     g.computeVertexNormals();
     // Every face winds outward: the stern cap (first ring) is flipped, the bow cap is not
     // (checked by the exterior mockup, which counts any triangle facing the loft axis).
+    if (opts.mats) {
+      const name = opts.material || "hull", li = opts.mats.layer[name], span = opts.mats.span[name];
+      const n = pos.length / 3, uv = new Float32Array(n * 2);
+      for (let i = 0; i < n; i += 3) {
+        // One projection per face, from the face normal, so a face's texels do not shear.
+        const a = pos.slice(i * 3, i * 3 + 3), b = pos.slice(i * 3 + 3, i * 3 + 6), c = pos.slice(i * 3 + 6, i * 3 + 9);
+        const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], ac = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+        const fn = [ab[1] * ac[2] - ab[2] * ac[1], ab[2] * ac[0] - ab[0] * ac[2], ab[0] * ac[1] - ab[1] * ac[0]];
+        const ax = Math.abs(fn[0]), ay = Math.abs(fn[1]), az = Math.abs(fn[2]);
+        for (let k = 0; k < 3; k++) {
+          const p = pos.slice((i + k) * 3, (i + k) * 3 + 3);
+          const q = ax >= ay && ax >= az ? [p[2], p[1]] : ay >= az ? [p[0], p[2]] : [p[0], p[1]];
+          uv[(i + k) * 2] = q[0] / span; uv[(i + k) * 2 + 1] = q[1] / span;
+        }
+      }
+      g.setAttribute("color", new THREE.BufferAttribute(new Float32Array(n * 3).fill(1), 3));
+      g.setAttribute("surfUv", new THREE.BufferAttribute(uv, 2));
+      g.setAttribute("surfLayer", new THREE.BufferAttribute(new Float32Array(n).fill(li), 1));
+      g.setAttribute("surfGlow", new THREE.BufferAttribute(new Float32Array(n), 1));
+    }
     return g;
+  }
+
+  /** Half-width of the hull at height y and station z (the octagon's x extent there), or 0 outside it. */
+  function hullHalfWidth(L, y, z) {
+    const secs = L.hull.sections.slice().sort((a, b) => a.z_m - b.z_m);
+    if (z < secs[0].z_m || z > secs[secs.length - 1].z_m) return 0;
+    let s = secs[0];
+    for (let i = 0; i + 1 < secs.length; i++) {
+      const a = secs[i], b = secs[i + 1];
+      if (z >= a.z_m && z <= b.z_m) {
+        const t = (z - a.z_m) / (b.z_m - a.z_m || 1);
+        s = {};
+        for (const k of ["half_beam_m", "top_m", "bottom_m", "chamfer_m"]) s[k] = a[k] + (b[k] - a[k]) * t;
+        break;
+      }
+    }
+    if (y > s.top_m || y < s.bottom_m) return 0;
+    return Math.max(0, Math.min(s.half_beam_m, s.half_beam_m - s.chamfer_m + (s.top_m - y), s.half_beam_m - s.chamfer_m + (y - s.bottom_m)));
   }
 
   // ----------------------------------------------------------------- labels
@@ -354,7 +1089,8 @@
    * The Pi 5 cost meter every mockup shows (CLAUDE.md section 11). Call
    * hud.beginFrame(renderer) before the frame's first render and
    * hud.endFrame(renderer) after its last; it sums every pass (a viewscreen's
-   * render-to-texture included).
+   * render-to-texture included). Set hud.textureBytes (loadMaterials' bytes) to
+   * add the texture memory line.
    */
   function budgetHud(opts) {
     opts = opts || {};
@@ -366,27 +1102,17 @@
       "min-width:210px", "max-width:260px", "pointer-events:none",
     ].join(";");
     document.body.appendChild(el);
-    let tris = 0, calls = 0, frames = 0, acc = { t: 0, c: 0 }, last = performance.now(), shown = { t: 0, c: 0, fps: 0 };
+    let frames = 0, acc = { t: 0, c: 0 }, last = performance.now(), shown = { t: 0, c: 0, fps: 0 };
     const bar = (v, max) => {
       const f = Math.min(1, v / max);
       const color = v > max ? "#ff5252" : v > 0.8 * max ? "#ffb300" : "#66bb6a";
       return `<div style="height:5px;background:#1c242d;border-radius:3px;margin:2px 0 5px"><div style="height:5px;width:${(f * 100).toFixed(1)}%;background:${color};border-radius:3px"></div></div>`;
     };
-    function render() {
-      const b = PI_BUDGET;
-      el.innerHTML =
-        `<div style="font-weight:700;margin-bottom:4px">${PI_BUDGET.board} budget (provisional)</div>` +
-        `triangles ${shown.t.toLocaleString()} / ${b.triangles.toLocaleString()}${bar(shown.t, b.triangles)}` +
-        `draw calls ${shown.c} / ${b.drawCalls}${bar(shown.c, b.drawCalls)}` +
-        `<div style="color:#8a98a8">desktop ${shown.fps.toFixed(0)} fps: not a Pi measurement</div>` +
-        (opts.note ? `<div style="color:#8a98a8">${opts.note}</div>` : "");
-    }
-    return {
-      el,
+    const hud = {
+      el, textureBytes: opts.textureBytes || 0,
       beginFrame(renderer) { renderer.info.autoReset = false; renderer.info.reset(); },
       endFrame(renderer) {
-        tris = renderer.info.render.triangles; calls = renderer.info.render.calls;
-        acc.t += tris; acc.c += calls; frames++;
+        acc.t += renderer.info.render.triangles; acc.c += renderer.info.render.calls; frames++;
         const now = performance.now();
         if (now - last > 500) {
           shown = { t: Math.round(acc.t / frames), c: Math.round(acc.c / frames), fps: (frames * 1000) / (now - last) };
@@ -395,8 +1121,19 @@
         }
       },
       /** The latest averaged numbers, for screenshots and tests. */
-      read() { return { triangles: shown.t, drawCalls: shown.c }; },
+      read() { return { triangles: shown.t, drawCalls: shown.c, textureMB: hud.textureBytes / 1048576 }; },
     };
+    function render() {
+      const b = PI_BUDGET, mb = hud.textureBytes / 1048576;
+      el.innerHTML =
+        `<div style="font-weight:700;margin-bottom:4px">${PI_BUDGET.board} budget (provisional)</div>` +
+        `triangles ${shown.t.toLocaleString()} / ${b.triangles.toLocaleString()}${bar(shown.t, b.triangles)}` +
+        `draw calls ${shown.c} / ${b.drawCalls}${bar(shown.c, b.drawCalls)}` +
+        (mb ? `textures ${mb.toFixed(2)} / ${b.textureMB} MB${bar(mb, b.textureMB)}` : "") +
+        `<div style="color:#8a98a8">desktop ${shown.fps.toFixed(0)} fps: not a Pi measurement</div>` +
+        (opts.note ? `<div style="color:#8a98a8">${opts.note}</div>` : "");
+    }
+    return hud;
   }
 
   // -------------------------------------------------------- mockup plumbing
@@ -430,12 +1167,17 @@
   }
 
   window.ShipKit = {
-    version: 1,
-    layout, PI_BUDGET, PALETTE, LIGHTING,
-    /** Deprecated alias from before the floor moved to the Pi 5; removed once no page uses it. */
-    PI3_BUDGET: PI_BUDGET,
-    byId, compartment, portalsOf, stationsIn, systemsIn, deckById, measure, bounds, center, portalHalf,
-    roomShell, hullGeometry, label, budgetHud, titleBlock, registerShots, markReady,
-    rectMinusHoles,
+    version: 2,
+    layout, shipData, PI_BUDGET, PALETTE, LIGHTING,
+    byId, compartment, portalsOf, stationsIn, systemsIn, deckById,
+    // plan geometry
+    signedArea, outwardNormal, insidePoly, chord, insetPoly, polyCentroid,
+    // compartments and portals
+    measure, bounds, center, brushAt, floorAt, portalFrame, portalOut, portalPoint, wallsOf,
+    // shells, detail, lamps, materials
+    buildCompartment, roomShell, lampsFor, frameStations, loadMaterials, surfaceMaterial, geometryOf, finishOf, compartmentMesh, paintRole, bakeDirect,
+    // hull, labels, chrome
+    hullGeometry, hullHalfWidth, label, budgetHud, titleBlock, registerShots, markReady,
+    rectMinusHoles, intervalMinus, worldUv,
   };
 })();

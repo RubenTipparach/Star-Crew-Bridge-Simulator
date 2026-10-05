@@ -29,6 +29,10 @@
 </script>
 <!-- INLINE layout:tern BEGIN -->
 <!-- INLINE layout:tern END -->
+<!-- INLINE data:tern/detailing BEGIN -->
+<!-- INLINE data:tern/detailing END -->
+<!-- INLINE materials BEGIN -->
+<!-- INLINE materials END -->
 <!-- INLINE shipkit BEGIN -->
 <!-- INLINE shipkit END -->
 </head>
@@ -41,7 +45,9 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 const K = window.ShipKit;
 const L = K.layout();
 K.titleBlock({ title: "Template", subtitle: L.ship.name + ", " + L.ship.class, change: "reference-ship-tern" });
-const hud = K.budgetHud();
+// The Material Maker layers, as the one texture array the engine will use (surface-materials).
+const mats = await K.loadMaterials(THREE);
+const hud = K.budgetHud({ textureBytes: mats.bytes });
 window.MOCKUP_BUDGET = () => hud.read();
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -56,25 +62,18 @@ camera.position.set(45, 40, 55);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(0, 0, 0);
 
-// Lighting state: one ambient plus lamps that belong to the rooms (CLAUDE.md section 11).
-const ambient = new THREE.AmbientLight(0xffffff, 0.5);
-scene.add(ambient);
-const lamps = [];
+// Every compartment is one textured mesh (one draw call): shell, frames, coves, trims, door
+// frames, conduits and lamp fixtures, all generated from the layout by shipkit (deck-pipeline
+// section 5a). Ceilings face down, so from above a room is seen into. The light is baked into
+// vertex colours from each room's own lamps (the engine's way), one lighting state at a time.
+const baked = K.surfaceMaterial(THREE, mats, { lit: false });
+const rooms = L.compartments.map((c) => {
+  const { mesh, built } = K.compartmentMesh(THREE, L, c, mats, { material: baked, skipKinds: ["bay_door"] });
+  scene.add(mesh);
+  return { mesh, lamps: built.lamps };
+});
 function setLighting(key) {
-  const s = K.LIGHTING[key];
-  ambient.color.set(s.ambient); ambient.intensity = s.ambientI * 3;
-  for (const l of lamps) { l.color.set(s.lamp); l.intensity = s.lampI * 8; }
-}
-
-const mat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
-for (const c of L.compartments) {
-  const sh = K.roomShell(THREE, L, c);
-  scene.add(new THREE.Mesh(sh.floor, mat));
-  scene.add(new THREE.Mesh(sh.walls, mat));
-  const ctr = K.center(c);
-  const lamp = new THREE.PointLight(0xffffff, 8, 14, 1.5);
-  lamp.position.set(ctr[0], K.bounds(c).y[1] - 0.3, ctr[2]);
-  scene.add(lamp); lamps.push(lamp);
+  for (const r of rooms) K.bakeDirect(THREE, r.mesh.geometry, r.lamps, key);
 }
 setLighting("normal");
 

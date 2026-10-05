@@ -13,7 +13,11 @@ current files between them (CLAUDE.md section 11):
 "lib:<name>" copies docs/mockups/lib/<name>.js; "shipkit" is lib:shipkit.
 "data:<ship>/<name>" copies data/ships/<ship>/<name>.json into a
 <script id="ship-data-<name>" type="application/json"> block, for mockups that
-read a ship's other data files (power.json, atmosphere.json).
+read a ship's other data files (power.json, atmosphere.json, detailing.json).
+"materials" copies data/materials/materials.json and every layer it names
+(assets/textures/<name>.png, as a base64 data URI) into a
+<script id="ship-materials" type="application/json"> block, which shipkit's
+loadMaterials() decodes into one texture array (surface-materials).
 
 --check rewrites nothing and fails when a page holds a stale copy, and also
 checks that shipkit's PI_BUDGET matches the budget marker in the engine-stack
@@ -23,6 +27,7 @@ only.
 Usage: python3 tools/mockups/inline.py [--check] [page.html ...]
 """
 
+import base64
 import glob
 import json
 import os
@@ -36,10 +41,21 @@ BUDGET_SOURCES = [
     os.path.join(ROOT, "openspec", "specs", "engine-platform", "spec.md"),
     os.path.join(ROOT, "openspec", "changes", "engine-stack", "design.md"),
 ]
-MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-9_-]+/[a-z0-9_-]+|shipkit) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
+MATERIALS = os.path.join(ROOT, "data", "materials", "materials.json")
+TEXTURES = os.path.join(ROOT, "assets", "textures")
+MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-9_-]+/[a-z0-9_-]+|shipkit|materials) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
 
 
 def block(kind):
+    if kind == "materials":
+        with open(MATERIALS, encoding="utf-8") as f:
+            manifest = json.load(f)
+        layers = {}
+        for name in sorted(manifest["materials"], key=lambda n: manifest["materials"][n]["layer"]):
+            with open(os.path.join(TEXTURES, name + ".png"), "rb") as f:
+                layers[name] = "data:image/png;base64," + base64.b64encode(f.read()).decode("ascii")
+        text = json.dumps({"manifest": manifest, "layers": layers}, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
+        return f'\n<script id="ship-materials" type="application/json">\n{text}\n</script>\n'
     if kind == "shipkit" or kind.startswith("lib:"):
         name = "shipkit" if kind == "shipkit" else kind.split(":", 1)[1]
         with open(os.path.join(LIB, name + ".js"), encoding="utf-8") as f:

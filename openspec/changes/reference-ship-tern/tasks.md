@@ -10,7 +10,7 @@
 
 ## 2. Patches (coordinator)
 
-- [ ] 2.1 Apply T1 (galleries to z = 0), T2 (four stairs), T3 (the bridge scuttle) to `data/ships/tern/layout.json` in one commit; re-run `layout_check.py`, `deck_plans.py`, `inline.py` and the shots; update the totals quoted by `vision.md` and the system changes (8,924.8 m^3, 41 portals).
+- [ ] 2.1 Apply T1 (galleries to z = 0) and T3 (the bridge scuttle), re-expressed for schema v2 in design section 9, to `data/ships/tern/layout.json` in one commit (T2 was applied 2026-10-04); re-run `layout_check.py`, `deck_plans.py`, `inline.py` and the shots; update the totals quoted by `vision.md` and the system changes (9,889.6 m^3, 41 portals).
 - [ ] 2.2 Add `size_m` to the systems schema (T4), with values from each system's change.
 
 ## 3. Checker (documentation tooling, coordinator)
@@ -18,6 +18,14 @@
 - [ ] 3.1 Teach `layout_check.py` walkable levels inside multi-level compartments and the `stair` fixture; fail when a station, door sill or system cannot be walked to (the "Every station and level is walkable" requirement).
 - [ ] 3.2 Check system boxes (T4) inside their compartment and clear of door openings.
 - [ ] 3.3 Check door frames fit their walls (design section 8, item 3).
+
+## 5. Rooms follow the hull (owner, 2026-10-05)
+
+- [x] 5.1 Schema `starcrew.ship-layout/2`: brushes (convex prisms) instead of boxes, portal normals instead of axes, `hull.clearance_m`, each compartment's `finish`; `tools/layout_check.py` rewritten for it (convexity, winding, overlaps by separating axes, walls matched by normal, clearance segment by segment, finishes against `detailing.json` and `materials.json`).
+- [x] 5.2 The Tern redrawn to follow the hull (design section 1a); same ids, graph, portals, systems and craft; seats and lockers moved where their walls moved.
+- [x] 5.3 `tools/deck_plans.py` and `tools/walk_times.py` ported (shared geometry imported from `layout_check.py`; `walk_times.py` gained a route check that every leg stays in the air and crosses walls only at portals); maps regenerated.
+- [x] 5.4 T1 and T3 re-expressed for v2 and checked on a scratch copy (9,889.6 m^3, 41 portals, ok).
+- [ ] 5.5 Owner review of the new plan (survey T6) with the before and after shots.
 
 ## 4. Keep it current
 

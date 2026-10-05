@@ -18,6 +18,7 @@ how it is kept). Keep editing it rather than starting another.
 | [netcode-and-sessions](../../openspec/changes/netcode-and-sessions/) | Authoritative server, snapshots, prediction, seats, sessions | | |
 | [reference-ship-tern](../../openspec/changes/reference-ship-tern/) | The Tern's floor plan, deck by deck | [deck-plan.html](../mockups/deck-plan.html) | [3YJXPa...](https://claude.ai/artifact/3YJXPa7vZuNtAB3YyWQSPV) |
 | [deck-pipeline](../../openspec/changes/deck-pipeline/) | Brush-built decks, compartments and portals, baked vertex light, portal culling | [deck-plan.html](../mockups/deck-plan.html) | [3YJXPa...](https://claude.ai/artifact/3YJXPa7vZuNtAB3YyWQSPV) |
+| [surface-materials](../../openspec/changes/surface-materials/) | Material Maker graphs to 128 px layers of one texture array: texel density, relief baked into colour, emission alpha | [contact sheet](../screenshots/materials/contact-sheet.png); every mockup is textured | |
 | [light-baking](../../openspec/changes/light-baking/) | The static light baker: shadows, bounce, vertex lighting or lightmaps, probes, lighting states | [lighting.html](../mockups/lighting.html) | [Txz9NC...](https://claude.ai/artifact/Txz9NCjZ3fpvEYWdmf6B2R) |
 | [bridge-stations](../../openspec/changes/bridge-stations/) | The station roster, automation, console UI, the bridge as a room | [bridge.html](../mockups/bridge.html) | [LfCtvp...](https://claude.ai/artifact/LfCtvpnbofmcTQ667zcczu) |
 | [crew-on-deck](../../openspec/changes/crew-on-deck/) | Walking, ladders, seats, carrying, injury, zero-g | [bridge.html](../mockups/bridge.html) | [LfCtvp...](https://claude.ai/artifact/LfCtvpnbofmcTQ667zcczu) |
@@ -34,7 +35,10 @@ how it is kept). Keep editing it rather than starting another.
 | | |
 | --- | --- |
 | [data/ships/tern/layout.json](../../data/ships/tern/layout.json) | The one layout source for the Tern. |
-| [tools/layout_check.py](../../tools/layout_check.py) | Validates every ship layout and prints compartment volumes. |
+| [tools/layout_check.py](../../tools/layout_check.py) | Validates every ship layout (schema v2: hull-following brushes) and prints compartment volumes. |
+| [data/ships/tern/detailing.json](../../data/ships/tern/detailing.json) | The generated detail's rules and the finish table (`deck-pipeline` section 5a). |
+| [data/materials/materials.json](../../data/materials/materials.json) | The surface materials (`surface-materials`); tools in [tools/materials/](../../tools/materials/). |
+| [tools/mockups/kit_report.mjs](../../tools/mockups/kit_report.mjs) | Counts the kit's shell and detail triangles per compartment. |
 | [docs/mockups/lib/shipkit.js](../mockups/lib/shipkit.js) | The shared mockup kit. |
 | [tools/mockups/](../../tools/mockups/) | `inline.py` (copy the layout into the pages) and `shoot.mjs` (screenshots). |
 | [docs/screenshots/mockups/](../screenshots/mockups/) | The latest screenshots of every mockup. |

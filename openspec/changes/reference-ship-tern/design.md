@@ -2,8 +2,8 @@
 
 ## Context
 
-- **The one source** is `data/ships/tern/layout.json` (schema `starcrew.ship-layout/1`,
-  section 10). Every number in this document comes from it, through `tools/layout_check.py`
+- **The one source** is `data/ships/tern/layout.json` (schema `starcrew.ship-layout/2`,
+  section 10; v1 was boxes, v2 is convex prism brushes that follow the hull, section 1a). Every number in this document comes from it, through `tools/layout_check.py`
   (volumes, floor areas, hull margins) or a scratch measurement over the same file (routes,
   shared walls, articulation points). Nothing here is hand-placed (CLAUDE.md section 8).
 - **The maps** are `docs/design/maps/tern-deck-A.svg`, `tern-deck-B.svg` and `tern-deck-C.svg`,
@@ -48,12 +48,13 @@
 | Decks | A command +3.5 m, B main 0.0 m, C lower -3.5 m; 3.0 m clear, 0.5 m slabs | `decks` |
 | Compartments | 30: 17 rooms, 4 corridors, 3 bays, a crawlspace, an airlock and 4 turret pods | `compartments` |
 | Portals | 40 (by kind below) | `portals` |
-| Air | 8,858.8 m^3; 2,135.0 m^2 of floor | `layout_check.py` |
+| Air | 9,824.8 m^3; 2,445.5 m^2 of floor (v1, boxes: 8,858.8 m^3, 2,135.0 m^2) | `layout_check.py` |
 | Stations | 14 seats: 7 on the bridge (4 core), 3 elsewhere, 4 gunners | `stations` |
 | Systems | 25 placed systems (3 outside the hull: radiators, sensor and comms arrays) | `systems` |
 | Mounts | 4 twin pulse cannon turrets, 2 missile tubes, 2 main engines | `mounts` |
 | Craft | 2 Swift fighters, 1 Petrel shuttle | `craft` |
-| Tightest hull margin | 0.08 m (the airlock, 24); next 0.25 m (engineering, 18) | `layout_check.py` |
+| Hull clearance | 0.5 m from any air to the hull skin (`hull.clearance_m`); tightest the bridge, 0.63 m, then the airlock, 0.70 m | `layout_check.py` |
+| Brushes | 34: one per compartment, three in the hangar (floor and two galleries), three in cargo (around the airlock) | `compartments` |
 
 Portals by kind: door 23, pressure door 4 (two launch bays, two airlock doors), hatch 5 (four
 pods and the drive), ladder 2 (one trunk at z = 11 through three decks), hoist 1, window 2, bay
@@ -62,6 +63,60 @@ door 3 (two drop doors, the shuttle pad).
 The plan in one sentence: **a fore-and-aft spine on every deck, crossed by one ladder trunk
 forward, ending aft at a double-height hangar and a three-deck engineering space, with the
 bridge on top at the bow and the magazine at the bottom at the bow.**
+
+### 1a. Rooms follow the hull (2026-10-05)
+
+The owner, 2026-10-05: "the floor plan shouldnt consist of square rooms, confirm better to ship
+shape, look at our fps thing to design better levels, add more geometry to make things more
+interesting looking". The first plan (schema v1) was axis-aligned boxes standing well inside an
+octagonal hull: the deck maps showed a spine of rectangles in a ship-shaped outline, and most of
+the hull's width was empty.
+
+**Decided** (owner's direction; the shapes below are recommendations taken, ask only with
+screenshots: the before and after shots are in the survey, question T6):
+
+- **A compartment is one or more convex prisms** ("brushes", section 10): a footprint polygon in
+  plan and a floor and ceiling height. Convex because the deck compiler's collision, portal and
+  bake steps want convex brushes (`deck-pipeline` section 4); a room that is not convex is two
+  brushes that share an open face (cargo is three, around the airlock).
+- **Outer walls follow the hull's line** at a steady distance: the air keeps `hull.clearance_m`
+  (0.5 m: plating, frames, insulation) from the skin everywhere, and every room on the ship's
+  side, top or bottom comes within 1.6 m of it (the spec's "rooms follow the hull"). Most outer
+  walls stand about 1.3 m from the skin, which leaves a 0.8 m service band for ducts, cable and
+  tanks behind them; the bridge's forward corners come closest (0.63 m) and the drive section's
+  stern furthest (1.58 m).
+- **The shapes that changed**, all measured by `tools/layout_check.py`:
+  - the **bridge** is a wedge at the bow: a 6.8 m forward wall for the viewscreen, the two windows
+    in the angled walls either side of it looking forward and out, side walls raked with the
+    hull, chamfered aft corners, and a 3.5 m ceiling (the hull is tall enough there); its side
+    stations face the raked walls (yaw 77 degrees);
+  - **side rooms** on decks A, B and C (ready room, computer core, medbay, damage control,
+    quarters, mess, turret access, life support, cargo, shield room, forward switchboard) keep
+    their inner walls on the spine and take an outer wall raked with the hull's taper, chamfered
+    where they meet it;
+  - the **torpedo room** and the **magazine** fill the bow's taper; the **drive section** the
+    stern's;
+  - **engineering** is an elongated octagon round the reactor, its mezzanine the same octagon;
+  - the **launch bays** and the hangar's **galleries** have chamfered outer corners, and the
+    galleries' open edges carry railings;
+  - **cargo** wraps the **airlock**, which juts to the clearance line so its outer door is in the
+    hull;
+  - the **turret pods** are octagons, like the turret rings above them.
+- **What did not change**: every id, the compartment graph, every portal's place on its wall
+  (only the airlock's two doors moved, with the airlock, and the bridge windows, onto the angled
+  walls), the stations' roles, the systems, mounts and craft. Seats moved where a wall moved: the
+  bridge's forward group 1 m forward, its side stations onto the raked walls, the damage control
+  board and the EVA lockers onto damage control's new outer wall.
+- **Volumes moved**: the ship's air rose 10.9 % (to 9,824.8 m^3) and its floor 14.5 % (to
+  2,445.5 m^2). The side rooms grew most (the magazine doubled, to 501.1 m^3); the launch bays
+  lost 17.7 % to their chamfers (231.0 to 190.1 m^3); the hangar (1,698.0 to 1,682.4 m^3) and
+  engineering (2,520.0 to 2,538.0 m^3) barely moved. Every change that quotes a volume quotes
+  the new one, with a dated note.
+- **The look is generated, not modelled**: frames, coves, beams, trims, door frames, conduits,
+  railings and lamps are produced from these brushes by the detail rules of `deck-pipeline`
+  section 5a (after Undercity's detailing and its UT99 checklist), and every surface takes a
+  Material Maker texture (`surface-materials`). The layout holds only the air and each
+  compartment's `finish` (`crew` or `working`), which picks its materials.
 
 ### 2. Deck A, Command (floor +3.5 m)
 
@@ -269,12 +324,13 @@ documentation tooling, CLAUDE.md section 4):
 Each patch was applied to a scratch copy and passes `tools/layout_check.py` (all together: 30
 compartments, 41 portals, 8,924.8 m^3, ok).
 
-**T1. Galleries meet the landing.** In `compartments`, `hangar`, change boxes 2 and 3's `z`
-from `[-18.0, -2.0]` to `[-18.0, 0.0]`, and the landing's note:
+**T1. Galleries meet the landing.** In `compartments`, `hangar`, move each gallery brush's two
+forward corners 2 m forward (re-expressed for schema v2 on 2026-10-05; the chamfer is kept), and
+the landing's note:
 
 ```json
-{ "x": [5.0, 10.5], "y": [0.0, 3.0], "z": [-18.0, 0.0] },
-{ "x": [-10.5, -5.0], "y": [0.0, 3.0], "z": [-18.0, 0.0] }
+{ "y": [0.0, 3.0], "poly": [[5.0, -18.0], [9.4, -18.0], [10.4, -17.0], [10.4, -1.0], [9.4, 0.0], [5.0, 0.0]] },
+{ "y": [0.0, 3.0], "poly": [[-5.0, 0.0], [-9.4, 0.0], [-10.4, -1.0], [-10.4, -17.0], [-9.4, -18.0], [-5.0, -18.0]] }
 ```
 
 ```json
@@ -282,7 +338,9 @@ from `[-18.0, -2.0]` to `[-18.0, 0.0]`, and the landing's note:
   "note": "Deck B level landing inside the hangar's forward wall. It runs onto both galleries; stairs at the galleries' aft ends go down to the floor." }
 ```
 
-Effect: the hangar becomes 1,764.0 m^3 and 378.0 m^2; the helm to the engineering console
+Effect (v2): the hangar becomes 1,747.2 m^3 and 372.4 m^2, and with T3 the ship 9,889.6 m^3,
+2,467.1 m^2 and 41 portals (checked on a scratch copy, 2026-10-05; v1 figures were 1,764.0 m^3 and
+378.0 m^2); the helm to the engineering console
 through the hangar drops from 41.7 s to 35.4 s at `crew-on-deck`'s speeds (section 6; first
 measured as 47.2 s to 36.9 s at the assumed 1.6 m/s).
 
@@ -311,11 +369,12 @@ door; the aft position avoids both.
 **T3. The bridge scuttle.** Append to `portals`:
 
 ```json
-{ "id": "p_bridge_scuttle", "kind": "hatch", "between": ["bridge", "damage_control"], "axis": "y", "center_m": [-6.2, 3.0, 20.8], "size_m": [0.9, 0.9] }
+{ "id": "p_bridge_scuttle", "kind": "hatch", "between": ["bridge", "damage_control"], "center_m": [-6.2, 3.0, 20.8], "normal": [0.0, -1.0, 0.0], "size_m": [0.9, 0.9] }
 ```
 
-It sits in the bridge's aft starboard corner, 1.44 m from the flight operations seat, and comes
-down in damage control 2.08 m from the damage control board.
+It sits in the bridge's aft starboard corner, near the flight operations seat, and comes down in
+damage control's aft inboard quarter (v2 seats: 1.7 m from flight operations, 2.0 m from the
+damage control board).
 
 **T4. Sizes for systems.** Add `size_m: [x, y, z]` (metres, the system's bounding box, centred
 on `center_m` in x and z and standing on it in y) to every system except those with
@@ -324,7 +383,7 @@ on `center_m` in x and z and standing on it in y) to every system except those w
 to the schema first; the layout checker then tests each box inside its compartment and clear
 of door openings.
 
-### 10. The layout file, field by field (`starcrew.ship-layout/1`)
+### 10. The layout file, field by field (`starcrew.ship-layout/2`)
 
 Units are SI; lengths in metres, angles in degrees. Every id is unique within its list and
 lower snake case. The checker's rules are in the spec.
@@ -333,11 +392,11 @@ lower snake case. The checker's rules are in the spec.
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| `schema` | string | `"starcrew.ship-layout/1"`. A loader refuses another value |
+| `schema` | string | `"starcrew.ship-layout/2"`. A loader refuses another value (v1, boxes, was retired on 2026-10-05; no saved game holds a layout) |
 | `ship` | object | Identity: `id` (the directory name), `name`, `class`, `summary`, `presented_by` (the change that presents it) |
-| `conventions` | object | Human-readable statement of units, axes (+X port, +Y up, +Z bow), origin, yaw, box and portal conventions; `wall_thickness_m` (0.25) and `deck_slab_m` (0.5) are numbers the checker uses for hull margins |
+| `conventions` | object | Human-readable statement of units, axes (+X port, +Y up, +Z bow), origin, yaw, finish, brush and portal conventions; `deck_slab_m` (0.5) is the most a floor portal may cross; `wall_thickness_m` (0.25) is the nominal partition, which the layout does not model (partitions have no thickness, `deck-pipeline` section 3) |
 | `decks` | list | Deck records |
-| `hull` | object | The hull's sections |
+| `hull` | object | The hull's sections and `clearance_m`, the least distance from any air (pods excepted) to the hull's skin |
 | `compartments` | list | The compartments: the nodes of the compartment graph |
 | `portals` | list | The openings between compartments, or to `space`: the edges |
 | `stations` | list | Seats where a crew member operates a console |
@@ -351,7 +410,9 @@ lower snake case. The checker's rules are in the spec.
 
 **`hull.sections[]`**: octagonal cross-sections lofted linearly along Z. `z_m` (station along
 the ship), `half_beam_m`, `top_m`, `bottom_m`, `chamfer_m` (each corner cut at 45 degrees by this
-much). The hull is closed at the first and last section.
+much). The hull is closed at the first and last section. Between two sections the hull is
+convex (the sections share their edge directions), which is what lets the checker test a brush's
+clearance at its corners, segment by segment.
 
 **`compartments[]`**
 
@@ -361,9 +422,10 @@ much). The hull is closed at the first and last section.
 | `poi` | integer | Point-of-interest number on every map and mockup, unique |
 | `name` | string | Display name |
 | `decks` | list of deck ids | Every deck the compartment spans |
-| `kind` | string | `room`, `corridor`, `bay`, `crawlspace`, `airlock` or `pod` (pods are exempt from the hull check) |
+| `kind` | string | `room`, `corridor`, `bay`, `crawlspace`, `airlock` or `pod` (pods are exempt from the hull check). The detail rules read it: corridors get conduits and a runner, pods no frames |
+| `finish` | string | `crew` or `working`: which materials its generated surfaces take (`data/ships/<id>/detailing.json`, `finishes`) |
 | `purpose` | string | One sentence, from the player's side |
-| `boxes` | list | Axis-aligned air boxes `{x: [min, max], y: [...], z: [...]}`: the inner surfaces. Boxes of one compartment that touch are open to each other |
+| `brushes` | list | The air, as convex prisms `{y: [floor, ceiling], poly: [[x, z], ...]}`: the footprint's corners in order with positive signed area (sum of x_i z_(i+1) - x_(i+1) z_i), no straight corners. Brushes of one compartment that share a face are open to each other there; no two brushes overlap |
 
 **`portals[]`**
 
@@ -372,9 +434,9 @@ much). The hull is closed at the first and last section.
 | `id` | string | Stable id |
 | `kind` | string | `door`, `pressure_door`, `hatch`, `ladder`, `hoist`, `window`, `bay_door`. Crew pass through doors, pressure doors, hatches and ladders; a hoist moves cargo; windows never open; bay doors open to space |
 | `between` | two ids | The two compartments, or one and `space` |
-| `axis` | `x`, `y` or `z` | The axis the opening's plane is normal to (`y` for floor and ceiling openings) |
-| `center_m` | [x, y, z] | The opening's centre, on the plane where the two sides meet (a vertical opening may sit anywhere within the deck slab between them) |
-| `size_m` | [a, b] | The clear opening: for axis `x` [z, y], for `z` [x, y], for `y` [x, z] |
+| `center_m` | [x, y, z] | The opening's centre, on the wall or floor where the two sides meet (a floor opening may sit anywhere within the deck slab between them) |
+| `normal` | [x, y, z] | Unit vector from `between[0]` into `between[1]`: horizontal for a wall portal (the wall's outward normal, which may be angled, like the bridge windows), [0, 1, 0] or [0, -1, 0] for a floor portal (hatch, ladder, hoist, bay door) |
+| `size_m` | [a, b] | The clear opening crew pass through: a wall portal [width along the wall, height]; a floor portal [x, z]. Door frames are generated round it, not inside it (`deck-pipeline` section 5a) |
 
 **`stations[]`**: `id`, `name`, `role` (`command`, `helm`, `tactical`, `engineering`,
 `science`, `comms`, `flight_ops`, `gunner`), `compartment`, `seat_m` (the seat's floor point),
@@ -382,9 +444,10 @@ much). The hull is closed at the first and last section.
 gunner's turret), `note`.
 
 **`fixtures[]`**: `id`, `kind`, `compartment`, `center_m`, `size_m` ([x, z] footprint, or
-[width, height] for a viewscreen), and by kind `facing_yaw_deg`, `height_m` (a dais),
-`ring_inner_radius_m` (a mezzanine around the reactor), `note`; proposed for `stair`: `top_m`,
-`foot_m`, `width_m`.
+[width, height] for a viewscreen), or `poly` (a footprint polygon, for a mezzanine that fills
+its compartment), and by kind `facing_yaw_deg` (the way its front faces), `height_m` (a dais),
+`ring_inner_radius_m` (a mezzanine around the reactor), `note`; for `stair`: `top_m`, `foot_m`,
+`width_m`.
 
 **`systems[]`**: `id`, `name`, `kind` (`power_source`, `power_distribution`, `power_storage`,
 `thermal`, `propulsion`, `dampers`, `shields`, `life_support`, `computer`, `sensors`, `comms`,
@@ -460,8 +523,16 @@ stairs at about 140 each, the gallery extension and the scuttle's frame).
 - **One door per room** keeps pressure boundaries simple and makes the corridors single points
   of failure. Accepted, with two exits per corridor and the scuttle; a fire in a corridor is
   meant to be a crisis.
-- **The bay sizes are tight.** The Swift's 4.6 m span in a 5.5 m bay leaves 0.45 m a side; the
-  airlock's hull margin is 0.08 m. Both are deliberate and both are checked.
+- **The bay sizes are tight.** The Swift's 4.6 m span in a 5.4 m bay leaves 0.4 m a side, and the
+  bays' chamfered corners clear its wingtips by 0.4 m; the airlock juts to 0.70 m from the skin.
+  Both are deliberate and both are checked.
+- **Hull-following rooms cost triangles and a little volume accuracy.** An angled wall is no
+  dearer than a straight one, but every room now carries generated detail (`deck-pipeline`
+  section 5a); the per-compartment budgets were measured again on the new plan. Detail is not
+  air, so the air model's volumes overstate a room's free air by the coves, frames and beams:
+  the bridge's 0.35 m coves along 50.9 m of wall take 3.1 m^3 of its 608.6 m^3 (0.5 %); the
+  command passage loses about 4.1 m^3 of 120 m^3 (3.4 %) to coves, ribs and beams. Accepted:
+  `life-support` quotes brush volumes, and the difference is inside its other uncertainties.
 - **Patches move numbers other changes quote** (the hangar's volume, the total air). Mitigation:
   they are proposed here with the new numbers and applied once, by the coordinator, in one
   commit with the changes that quote them.

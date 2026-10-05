@@ -1,2 +1,7 @@
 # Downloaded CDN files the screenshot tool serves locally (tools/mockups/shoot.mjs)
 tools/mockups/.cache/
+# Raw Material Maker renders (tools/materials/export_materials.sh); the built layers are assets/textures/
+tools/materials/raw/
+# Python byte code
+__pycache__/
+*.pyc

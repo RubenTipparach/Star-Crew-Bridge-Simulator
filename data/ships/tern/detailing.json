@@ -1,0 +1,97 @@
+{
+  "schema": "starcrew.detailing/1",
+  "status": "Proposed (2026-10-05) by openspec/changes/deck-pipeline, section 5a. Read by docs/mockups/lib/shipkit.js today and by deckc once it is built; the sizes are first choices judged on mockup screenshots, not measurements.",
+  "_rules": [
+    "The detail a ship's decks are dressed with is generated from its layout by one rule set, so every room of a class reads alike and no room is decorated by hand (deck-pipeline section 5a; adapted from Undercity's tools/godot/detailing.py and its UT99 checklist, fps-game-demo f6cd25c).",
+    "Detail is not air: coves, ribs, beams and trims stand inside a compartment's brushes and the air model ignores them (life-support quotes brush volumes).",
+    "No z-fighting: every detail face is either pressed back to back against a wall, floor or ceiling (and not drawn), or stands at least 1 cm clear of any parallel face (CLAUDE.md section 8). Raised floor plates are raise_m above the floor for that reason.",
+    "Lengths in metres. A detail that would cross a portal opening is cut back to clear it; one that would be shorter than min_piece_m is dropped."
+  ],
+  "frames": {
+    "_doc": "Ship frames: ribs on the walls and beams under the ceiling at fixed stations along the keel, frame k at z = origin_z_m + k * spacing_m. Walls that run fore and aft carry ribs at the frames; walls that run athwartships carry stiffeners at x = (k + 1/2) * spacing_m. A room taller than the cove's tall_room_m gets the deep beams and ribs.",
+    "spacing_m": 2.0,
+    "origin_z_m": 0.0,
+    "end_clear_m": 0.35,
+    "rib_width_m": 0.24,
+    "rib_depth_m": 0.12,
+    "tall_rib_depth_m": 0.22,
+    "beam_width_m": 0.24,
+    "beam_depth_m": 0.18,
+    "deep_beam_depth_m": 0.38,
+    "portal_clear_m": 0.1
+  },
+  "cove": {
+    "_doc": "A 45 degree panel between every solid wall and the ceiling: the hull's octagonal section, echoed inside. Not drawn along an edge open to another brush of the same compartment.",
+    "size_m": 0.35,
+    "tall_size_m": 0.6,
+    "tall_room_m": 3.6
+  },
+  "baseboard": { "height_m": 0.14, "depth_m": 0.03 },
+  "door_frame": {
+    "_doc": "Every door, wall hatch and pressure door is framed: jambs and a lintel fill a ring cut around the clear opening (size_m stays the clear opening crew pass through), proud of the wall on each side. Pressure doors are heavier and hazard-striped. A status strip glows on the lintel.",
+    "jamb_m": 0.16,
+    "lintel_m": 0.22,
+    "proud_m": 0.06,
+    "pressure_jamb_m": 0.26,
+    "pressure_proud_m": 0.12,
+    "status_strip_m": [0.5, 0.05]
+  },
+  "window_frame": { "frame_m": 0.14, "proud_m": 0.08, "sill_depth_m": 0.16 },
+  "floor_portal": {
+    "_doc": "A hazard rim on the floor around every hatch, ladder well, hoist and bay door, and a trim collar under the ceiling around it. Ladders get rails and rungs from the lower floor to ladder_above_m over the upper one.",
+    "rim_width_m": 0.15,
+    "raise_m": 0.012,
+    "collar_width_m": 0.1,
+    "collar_depth_m": 0.1,
+    "ladder_rail_m": 0.05,
+    "ladder_width_m": 0.5,
+    "rung_spacing_m": 0.3,
+    "ladder_above_m": 1.0
+  },
+  "railing": {
+    "_doc": "Along an edge where a brush opens onto a lower floor of the same compartment (a hangar gallery over the hangar floor): two rails, posts and a kick plate.",
+    "min_drop_m": 0.5,
+    "height_m": 1.05,
+    "post_m": 0.06,
+    "post_spacing_m": 1.5,
+    "inset_m": 0.05,
+    "kick_m": 0.12
+  },
+  "runner": { "_doc": "A deck plate strip down the middle of every corridor.", "width_m": 0.9, "raise_m": 0.012, "end_clear_m": 0.05 },
+  "conduits": {
+    "_doc": "Two pipes along the top of every fore-and-aft corridor wall, below the cove and clear of the ribs.",
+    "radii_m": [0.06, 0.04],
+    "gap_m": 0.06,
+    "drop_m": 0.1,
+    "sides": 8
+  },
+  "lamps": {
+    "_doc": "The lamp rule (deck-pipeline section 5): lamps sit in the bays between frames, never on a beam. A bay gets round(area / area_per_lamp_m2) lamps across its width, a corridor bay at least one, a pod one. Every emergency_every-th lamp of a compartment is on the emergency bus. A room taller than tall_room_m gets high-bay lamps: radius and size scale with its height over 3 m, and they hang hang_m below the ceiling.",
+    "area_per_lamp_m2": 8.0,
+    "min_bay_m": 1.0,
+    "wall_clear_m": 0.6,
+    "emergency_every": 3,
+    "panel_m": [0.9, 0.45],
+    "corridor_panel_m": [0.7, 0.35],
+    "housing_m": 0.06,
+    "radius_m": 3.0,
+    "tall_room_m": 3.6,
+    "hang_m": 0.4,
+    "keep_out_m": 0.5
+  },
+  "finishes": {
+    "_doc": "Which material (data/materials/materials.json) each generated surface takes, by the compartment's finish in the layout.",
+    "crew": {
+      "floor": "deck_tiles", "wall": "bulkhead", "ceiling": "ceiling", "cove": "trim", "rib": "trim", "beam": "trim",
+      "baseboard": "trim", "frame": "trim", "frame_hazard": "hazard", "status": "light_panel", "window_frame": "trim",
+      "rim": "hazard", "collar": "trim", "ladder": "trim", "runner": "deck_plate", "pipe": "machinery",
+      "railing": "trim", "kickplate": "hazard", "lamp_housing": "trim", "lamp": "light_panel"
+    },
+    "working": {
+      "floor": "deck_plate", "wall": "bulkhead", "ceiling": "machinery", "cove": "trim", "rib": "machinery", "beam": "machinery",
+      "baseboard": "hazard", "frame": "trim", "frame_hazard": "hazard", "status": "light_panel", "window_frame": "trim",
+      "rim": "hazard", "collar": "machinery", "ladder": "trim", "runner": "deck_tiles", "pipe": "machinery",
+      "railing": "trim", "kickplate": "hazard", "lamp_housing": "machinery", "lamp": "light_panel"
+    }
+  }
+}

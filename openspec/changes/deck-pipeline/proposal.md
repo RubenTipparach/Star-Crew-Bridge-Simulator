@@ -74,8 +74,14 @@ None.
 
 - **New tools** (in `sc-tools`, not yet built): `deckgen` and `deckc`, plus `deckc --report`,
   which prints the per-compartment table this design estimates and replaces the estimate.
-- **New data**: `data/decks/kit.json` (kit pieces and their triangle costs), per-ship
+- **New data**: `data/ships/<id>/detailing.json` (the generated detail's rules, sizes and
+  finishes; written 2026-10-05, replacing the proposed `data/decks/kit.json`), per-ship
   `data/ships/<id>/detail/<compartment>.json` for hero detail and hand-placed fixtures.
+- **Generated detail** (2026-10-05, owner: "look at our fps thing to design better levels, add
+  more geometry"): frames, beams, coves, baseboards, door and window frames, rims, ladders,
+  railings, conduits, runners and lamps generated from the layout by rules adapted from
+  Undercity's `detailing.py` and its UT99 checklist (design section 5a), drawn today by the
+  mockups' `shipkit.js` and measured by `tools/mockups/kit_report.mjs`.
 - **Engine**: a format module shared by `deckc`, `sc-server` and `sc-render` (one definition of
   the file); portal traversal and draw submission in `sc-render`; brush collision in `sc-core`
   (crew movement is simulation, server authoritative).

@@ -2,12 +2,15 @@
 
 ## 1. Data and the shared rules
 
-- [ ] 1.1 `data/decks/kit.json` (schema `starcrew.deck-kit/1`): every kit piece of design section 5 with sizes in metres and triangle costs, validated on load (unknown key is an error).
+- [x] 1.0 The detail rules as data: `data/ships/tern/detailing.json` (schema `starcrew.detailing/1`, design section 5a), drawn by the mockups' `shipkit.js` and counted by `tools/mockups/kit_report.mjs` (documentation tooling, 2026-10-05).
+- [ ] 1.1 Load and validate `detailing.json` in `sc-core` (unknown key is an error; every finish role names a material), with the prop triangle costs of design section 5 beside it.
 - [ ] 1.2 The detail file schema (`starcrew.deck-detail/1`): brushes as plane lists, props with mesh ids and poses, light fixtures with three state colours; a validator.
 - [ ] 1.3 Move the layout rules into `sc-core`'s layout module with tests that read as sentences (one per `ship-layout` requirement); in the same commit, make `tools/layout_check.py` call `deckc --check-layout` or retire it, so the rules exist once.
 - [ ] 1.4 The `.deck` format module (header, chunk table, CRC-32, every chunk's record types) shared by `deckc`, `sc-server` and `sc-render`, with round-trip and corruption tests.
 
 ## 2. Generator
+
+- [ ] 2.0 `deckgen` generates design section 5a's detail from the brushes with the same rules as `shipkit.js` `buildCompartment`; a test compares its per-compartment counts by role with `kit_report.mjs --json` for the Tern, so the two implementations cannot drift apart unnoticed.
 
 - [ ] 2.1 `deckgen`: shell slabs per compartment outside its own air, split at portal openings (zero-thickness partitions, design section 3, pending K1).
 - [ ] 2.2 Door, pressure door, hatch, ladder, hoist, window and bay door frames from the portal's kind and clear size (reveal 0.1 m, casing 0.1 m, proud 0.1 m).

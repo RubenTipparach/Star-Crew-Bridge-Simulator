@@ -304,6 +304,18 @@ becomes.
   system placements, mounts, craft) lives in one data file, `data/ships/<id>/layout.json`. The
   mockups, the design maps, the deck build and the simulation all read it, so they cannot
   disagree (Undercity's rule 7.1). `tools/layout_check.py` validates it.
+- **Rooms follow the ship's shape** (owner, 2026-10-05: "the floor plan shouldnt consist of
+  square rooms, confirm better to ship shape"). A compartment is one or more convex prisms in
+  the layout, and a room on the ship's side, top or bottom takes the hull's line, keeping the
+  hull clearance (`hull.clearance_m`) and no more than a service band (1.6 m on the Tern)
+  between its air and the skin. A plan of boxes standing inside the hull is not a ship's plan.
+- **Detail is generated, by rules, from the layout** (owner, 2026-10-05: "look at our fps thing
+  to design better levels, add more geometry to make things more interesting looking"). Frames,
+  beams, coves, trims, door frames, railings, conduits and lamps come from
+  `data/ships/<id>/detailing.json` by the rules of `deck-pipeline` section 5a (after Undercity's
+  `detailing.py` and its UT99 checklist): a structural ceiling, framed doors, trim at every
+  edge, visible light fixtures. Hand-placed hero detail is a detail file, never a hand-edited
+  room.
 - **Brush-style, compiled offline.** Decks are authored as convex brushes and compiled into
   compartments, portals, collision brushes and baked vertex lighting. Runtime visibility is
   portal culling through the compartment graph. Nothing about a deck is computed at runtime
@@ -319,16 +331,24 @@ becomes.
 
 ## 9. Art: low poly
 
-- **Flat-shaded, vertex-coloured low poly.** No normal maps, no PBR, no per-pixel lighting
+- **Low poly, textured, lit by the bake.** No normal maps, no PBR, no per-pixel lighting
   beyond an emissive term. Lighting is baked into vertex colours, with one set per lighting
-  state (normal, red alert, emergency power) blended by a per-compartment uniform.
+  state (normal, red alert, emergency power) blended by a per-compartment uniform, and it
+  multiplies the surface's texture.
 - **Light is baked offline, from fixtures that are data** (owner, 2026-10-04: "Some sort of
   tool or skill for light mapping/static light baking would be nice too"). How a bake is
   computed (shadows, emissive surfaces, bounce, vertex lighting or lightmaps, light probes for
   moving things) is `openspec/changes/light-baking`; where the result lives in a deck is
   `deck-pipeline`. The `light-baking` skill says how to bake and judge one.
-- **Few, small textures.** One palette atlas and a small set of decal and screen textures,
-  committed as PNG sources. Nearest-neighbour sampling, no mipmapped blur on palette swatches.
+- **Surfaces take Material Maker textures** (owner, 2026-10-05: "apply textures from our
+  material maker skills"). Every material is a Material Maker graph, rendered and
+  post-processed into a small layer of one texture array: 128 x 128 px, 64 px per metre
+  inside and 32 on the hull, relief baked into the colour because the Pi 5 does no per-pixel
+  lighting, nearest sampling up close and mipmaps at a distance, the emission mask in alpha.
+  `data/materials/materials.json` is the one source; `openspec/changes/surface-materials` the
+  design; the `material-maker` skill says how to make one and judge it on the contact sheet.
+  Never write a procedural image generator that imitates a graph. Decals and screens are a
+  small set of further textures, committed as PNG sources.
 - **Meshes are files built by committed generators** (star-crew-64 and Undercity). A generator
   writes the source mesh deterministically; the build bakes it.
 - **Every asset has a triangle budget** in the Pi 5 table, and the build refuses one over
@@ -430,6 +450,7 @@ Before claiming anything is done, run what applies:
 | `owner-survey` | Questions for the owner (section 13). |
 | `threejs-mockups` | Building, inlining, screenshotting and publishing a mockup (section 11). |
 | `light-baking` | Placing lamps, baking and judging static light, the three lighting states (section 9). |
+| `material-maker` | Making, recolouring and judging surface materials: Material Maker graphs to 128 px texture layers, texel density, the contact sheet (section 9). |
 | `obs-record` | Recording a window with OBS on the owner's machine, for videos of the running game. |
 | `blender-csg-levels` | Undercity's scripted Blender CSG level kit, kept as the reference for the deck pipeline. Its Godot export does not apply here; see its "In Star Crew" note. |
 | `blender-humanoid-characters` | Undercity's character kit, kept as the reference for crew bodies. Its budgets are a desktop's, not a Pi's; see its "In Star Crew" note. |

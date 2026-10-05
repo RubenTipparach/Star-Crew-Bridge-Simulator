@@ -1,0 +1,550 @@
+{
+ "connections": [
+  {
+   "from": "sdroundedbox_0",
+   "from_port": 0,
+   "to": "sdshow_0",
+   "to_port": 0
+  },
+  {
+   "from": "bricks_0",
+   "from_port": 0,
+   "to": "tonality_0",
+   "to_port": 0
+  },
+  {
+   "from": "tonality_0",
+   "from_port": 0,
+   "to": "math_0",
+   "to_port": 0
+  },
+  {
+   "from": "sdshow_0",
+   "from_port": 0,
+   "to": "math_0",
+   "to_port": 1
+  },
+  {
+   "from": "sdshow_0",
+   "from_port": 0,
+   "to": "math_1",
+   "to_port": 0
+  },
+  {
+   "from": "math_0",
+   "from_port": 0,
+   "to": "math_1",
+   "to_port": 1
+  },
+  {
+   "from": "fbm2_0",
+   "from_port": 0,
+   "to": "colorize_0",
+   "to_port": 0
+  },
+  {
+   "from": "uniform_0",
+   "from_port": 0,
+   "to": "blend_0",
+   "to_port": 0
+  },
+  {
+   "from": "colorize_0",
+   "from_port": 0,
+   "to": "blend_0",
+   "to_port": 1
+  },
+  {
+   "from": "math_1",
+   "from_port": 0,
+   "to": "blend_0",
+   "to_port": 2
+  },
+  {
+   "from": "uniform_0",
+   "from_port": 0,
+   "to": "blend_1",
+   "to_port": 0
+  },
+  {
+   "from": "uniform_1",
+   "from_port": 0,
+   "to": "blend_1",
+   "to_port": 1
+  },
+  {
+   "from": "math_1",
+   "from_port": 0,
+   "to": "blend_1",
+   "to_port": 2
+  },
+  {
+   "from": "sdshow_0",
+   "from_port": 0,
+   "to": "math_2",
+   "to_port": 0
+  },
+  {
+   "from": "math_2",
+   "from_port": 0,
+   "to": "math_3",
+   "to_port": 0
+  },
+  {
+   "from": "math_0",
+   "from_port": 0,
+   "to": "math_4",
+   "to_port": 0
+  },
+  {
+   "from": "math_3",
+   "from_port": 0,
+   "to": "math_5",
+   "to_port": 0
+  },
+  {
+   "from": "math_4",
+   "from_port": 0,
+   "to": "math_5",
+   "to_port": 1
+  },
+  {
+   "from": "sdshow_0",
+   "from_port": 0,
+   "to": "math_6",
+   "to_port": 0
+  },
+  {
+   "from": "math_6",
+   "from_port": 0,
+   "to": "math_7",
+   "to_port": 0
+  },
+  {
+   "from": "sdshow_0",
+   "from_port": 0,
+   "to": "math_8",
+   "to_port": 0
+  },
+  {
+   "from": "math_8",
+   "from_port": 0,
+   "to": "math_9",
+   "to_port": 0
+  },
+  {
+   "from": "math_5",
+   "from_port": 0,
+   "to": "normal_map_0",
+   "to_port": 0
+  },
+  {
+   "from": "blend_0",
+   "from_port": 0,
+   "to": "Material",
+   "to_port": 0
+  },
+  {
+   "from": "math_7",
+   "from_port": 0,
+   "to": "Material",
+   "to_port": 1
+  },
+  {
+   "from": "math_9",
+   "from_port": 0,
+   "to": "Material",
+   "to_port": 2
+  },
+  {
+   "from": "blend_1",
+   "from_port": 0,
+   "to": "Material",
+   "to_port": 3
+  },
+  {
+   "from": "normal_map_0",
+   "from_port": 0,
+   "to": "Material",
+   "to_port": 4
+  }
+ ],
+ "label": "Light Panel",
+ "name": "Material",
+ "node_position": {
+  "x": 0,
+  "y": 0
+ },
+ "nodes": [
+  {
+   "name": "sdroundedbox_0",
+   "node_position": {
+    "x": 220,
+    "y": 0
+   },
+   "parameters": {
+    "bottom_left": 0.04,
+    "bottom_right": 0.04,
+    "center_x": 0,
+    "center_y": 0,
+    "height": 0.42,
+    "top_left": 0.04,
+    "top_right": 0.04,
+    "width": 0.42
+   },
+   "type": "sdroundedbox"
+  },
+  {
+   "name": "sdshow_0",
+   "node_position": {
+    "x": 440,
+    "y": 0
+   },
+   "parameters": {
+    "base": 0.0,
+    "bevel": 0.01
+   },
+   "type": "sdshow"
+  },
+  {
+   "name": "bricks_0",
+   "node_position": {
+    "x": 660,
+    "y": 0
+   },
+   "parameters": {
+    "bevel": 0.01,
+    "columns": 4,
+    "corner": 0.0,
+    "mortar": 0.035,
+    "pattern": 0,
+    "repeat": 1,
+    "round": 0.0,
+    "row_offset": 0.0,
+    "rows": 4
+   },
+   "type": "bricks"
+  },
+  {
+   "name": "tonality_0",
+   "node_position": {
+    "x": 880,
+    "y": 0
+   },
+   "parameters": {
+    "curve": {
+     "points": [
+      {
+       "ls": 0.0,
+       "rs": -5.0,
+       "x": 0,
+       "y": 1
+      },
+      {
+       "ls": -5.0,
+       "rs": 0.0,
+       "x": 0.2,
+       "y": 0
+      },
+      {
+       "ls": 0.0,
+       "rs": 0.0,
+       "x": 1,
+       "y": 0
+      }
+     ],
+     "type": "Curve"
+    }
+   },
+   "type": "tonality"
+  },
+  {
+   "name": "math_0",
+   "node_position": {
+    "x": 1100,
+    "y": 0
+   },
+   "parameters": {
+    "clamp": false,
+    "default_in1": 0.0,
+    "default_in2": 0.0,
+    "op": 2
+   },
+   "type": "math"
+  },
+  {
+   "name": "math_1",
+   "node_position": {
+    "x": 1320,
+    "y": 0
+   },
+   "parameters": {
+    "clamp": true,
+    "default_in1": 0.0,
+    "default_in2": 0.0,
+    "op": 1
+   },
+   "type": "math"
+  },
+  {
+   "name": "fbm2_0",
+   "node_position": {
+    "x": 1540,
+    "y": 0
+   },
+   "parameters": {
+    "folds": 0,
+    "iterations": 5,
+    "noise": 2,
+    "offset": 0.8,
+    "persistence": 0.6,
+    "scale_x": 6,
+    "scale_y": 6
+   },
+   "type": "fbm2"
+  },
+  {
+   "name": "colorize_0",
+   "node_position": {
+    "x": 0,
+    "y": 160
+   },
+   "parameters": {
+    "gradient": {
+     "interpolation": 1,
+     "points": [
+      {
+       "a": 1,
+       "b": 0.25882352941176473,
+       "g": 0.24705882352941178,
+       "pos": 0,
+       "r": 0.23921568627450981
+      },
+      {
+       "a": 1,
+       "b": 0.38823529411764707,
+       "g": 0.37254901960784315,
+       "pos": 1,
+       "r": 0.3607843137254902
+      }
+     ],
+     "type": "Gradient"
+    }
+   },
+   "type": "colorize"
+  },
+  {
+   "name": "uniform_0",
+   "node_position": {
+    "x": 220,
+    "y": 160
+   },
+   "parameters": {
+    "color": {
+     "a": 1.0,
+     "b": 0.8627450980392157,
+     "g": 0.9568627450980393,
+     "r": 1.0,
+     "type": "Color"
+    }
+   },
+   "type": "uniform"
+  },
+  {
+   "name": "blend_0",
+   "node_position": {
+    "x": 440,
+    "y": 160
+   },
+   "parameters": {
+    "amount": 1.0,
+    "blend_type": 0
+   },
+   "type": "blend"
+  },
+  {
+   "name": "uniform_1",
+   "node_position": {
+    "x": 660,
+    "y": 160
+   },
+   "parameters": {
+    "color": {
+     "a": 1.0,
+     "b": 0.0,
+     "g": 0.0,
+     "r": 0.0,
+     "type": "Color"
+    }
+   },
+   "type": "uniform"
+  },
+  {
+   "name": "blend_1",
+   "node_position": {
+    "x": 880,
+    "y": 160
+   },
+   "parameters": {
+    "amount": 1.0,
+    "blend_type": 0
+   },
+   "type": "blend"
+  },
+  {
+   "name": "math_2",
+   "node_position": {
+    "x": 1100,
+    "y": 160
+   },
+   "parameters": {
+    "clamp": false,
+    "default_in1": 0.0,
+    "default_in2": -0.4,
+    "op": 2
+   },
+   "type": "math"
+  },
+  {
+   "name": "math_3",
+   "node_position": {
+    "x": 1320,
+    "y": 160
+   },
+   "parameters": {
+    "clamp": false,
+    "default_in1": 0.0,
+    "default_in2": 0.6,
+    "op": 0
+   },
+   "type": "math"
+  },
+  {
+   "name": "math_4",
+   "node_position": {
+    "x": 1540,
+    "y": 160
+   },
+   "parameters": {
+    "clamp": false,
+    "default_in1": 0.0,
+    "default_in2": 0.3,
+    "op": 2
+   },
+   "type": "math"
+  },
+  {
+   "name": "math_5",
+   "node_position": {
+    "x": 0,
+    "y": 320
+   },
+   "parameters": {
+    "clamp": false,
+    "default_in1": 0.0,
+    "default_in2": 0.0,
+    "op": 0
+   },
+   "type": "math"
+  },
+  {
+   "name": "math_6",
+   "node_position": {
+    "x": 220,
+    "y": 320
+   },
+   "parameters": {
+    "clamp": false,
+    "default_in1": 0.0,
+    "default_in2": -1.0,
+    "op": 2
+   },
+   "type": "math"
+  },
+  {
+   "name": "math_7",
+   "node_position": {
+    "x": 440,
+    "y": 320
+   },
+   "parameters": {
+    "clamp": false,
+    "default_in1": 0.0,
+    "default_in2": 1.0,
+    "op": 0
+   },
+   "type": "math"
+  },
+  {
+   "name": "math_8",
+   "node_position": {
+    "x": 660,
+    "y": 320
+   },
+   "parameters": {
+    "clamp": false,
+    "default_in1": 0.0,
+    "default_in2": -0.2,
+    "op": 2
+   },
+   "type": "math"
+  },
+  {
+   "name": "math_9",
+   "node_position": {
+    "x": 880,
+    "y": 320
+   },
+   "parameters": {
+    "clamp": false,
+    "default_in1": 0.0,
+    "default_in2": 0.5,
+    "op": 0
+   },
+   "type": "math"
+  },
+  {
+   "name": "normal_map_0",
+   "node_position": {
+    "x": 1100,
+    "y": 320
+   },
+   "parameters": {
+    "param0": 11,
+    "param1": 1.0,
+    "param2": 0,
+    "param4": 1
+   },
+   "type": "normal_map"
+  },
+  {
+   "export_paths": {},
+   "name": "Material",
+   "node_position": {
+    "x": 1320,
+    "y": 320
+   },
+   "parameters": {
+    "albedo_color": {
+     "a": 1.0,
+     "b": 1,
+     "g": 1,
+     "r": 1,
+     "type": "Color"
+    },
+    "ao": 1.0,
+    "depth_scale": 0.0,
+    "emission_energy": 1.0,
+    "flags_transparent": false,
+    "metallic": 1.0,
+    "normal": 1.0,
+    "roughness": 1.0,
+    "size": 11,
+    "sss": 0.0
+   },
+   "type": "material"
+  }
+ ],
+ "parameters": {},
+ "type": "graph"
+}

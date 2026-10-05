@@ -3,7 +3,7 @@ name: threejs-mockups
 description: Build, inline, screenshot and publish a Star Crew three.js mockup the repository's way - one page per subject in docs/mockups, reading the one ship layout through shipkit.js, lit by its own fixtures in normal and red-alert states, showing its Pi 5 triangle and draw-call cost, with named screenshot shots checked by eye before it is shown. Use whenever making or changing a mockup, a 3D view of the ship, a console UI mockup, or anything under docs/mockups ("mock up the bridge", "show the hangar in 3D", "update the deck plan", "screenshot the mockups", "publish the mockup").
 metadata:
   author: Star Crew (Claude Code)
-  version: "1.0"
+  version: "2.0"
 ---
 
 # three.js mockups
@@ -17,9 +17,11 @@ is how to follow them.
 | File | What it is |
 | --- | --- |
 | `data/ships/<id>/layout.json` | The one layout source. A mockup never hand-places a room, door, seat or system. |
-| `docs/mockups/lib/shipkit.js` | The shared interpretation of the layout: `layout()`, `PALETTE` (colour roles), `LIGHTING` (normal, red alert, emergency), `PI_BUDGET`, `roomShell()` (floor, walls and ceiling with door openings cut), `hullGeometry()`, `label()`, `budgetHud()`, `titleBlock()`, `registerShots()`, `markReady()`, lookups (`compartment`, `portalsOf`, `stationsIn`, `systemsIn`, `measure`, `bounds`, `center`). Edit it here, never inside a page. |
+| `docs/mockups/lib/shipkit.js` | The shared interpretation of the layout (schema `starcrew.ship-layout/2`: rooms are convex prism brushes that follow the hull; portals carry a normal). `compartmentMesh()` builds a room as one textured mesh: the shell with every opening cut, plus the generated detail (frames, coves, beams, baseboards, door and window frames, conduits, railings, ladders, rims, lamp fixtures) from `data/ships/<id>/detailing.json`. `loadMaterials()` decodes the Material Maker layers into one texture array, `surfaceMaterial()` draws with it (lit, or `lit: false` for baked vertex light), `bakeDirect()` is the stand-in bake, `lampsFor()` the lamp rule. Also `PALETTE` (colour roles), `LIGHTING` (normal, red alert, emergency), `PI_BUDGET`, `hullGeometry()` (textured with `{ mats }`), `label()`, `budgetHud()`, `titleBlock()`, `registerShots()`, `markReady()`, and lookups and geometry (`compartment`, `portalsOf`, `portalFrame`, `portalPoint`, `wallsOf`, `measure`, `bounds`, `center`, `brushAt`, `floorAt`, `insidePoly`, `chord`). Edit it here, never inside a page. |
+| `data/ships/<id>/detailing.json` | The detail rules' sizes and the finish table (which material each generated surface takes). Inlined by `<!-- INLINE data:<ship>/detailing -->`. |
+| `data/materials/materials.json`, `assets/textures/` | The surface materials (the `material-maker` skill). Inlined by `<!-- INLINE materials -->`. |
 | `docs/mockups/lib/template.html` | The page skeleton: import map (three.js 0.169.0 from jsDelivr), the INLINE markers, a scene, lighting buttons, a budget meter, a shot. Copy it to start. |
-| `tools/mockups/inline.py` | Writes the layout and shipkit between each page's INLINE markers. `--check` fails on a stale page, and checks `PI_BUDGET` against the `engine-stack` table's marker. |
+| `tools/mockups/inline.py` | Writes the layout, data files, materials and shipkit between each page's INLINE markers. `--check` fails on a stale page, and checks `PI_BUDGET` against the `engine-stack` table's marker. |
 | `tools/mockups/shoot.mjs` | Headless Chromium (SwiftShader) screenshots: the default view, then every registered shot, into `docs/screenshots/mockups/<page>-<shot>.png`. Fails on console errors or a page that never sets `MOCKUP_READY`. |
 
 ## Make one
@@ -28,17 +30,19 @@ is how to follow them.
    names it in `ShipKit.titleBlock({ change })`.
 2. `cp docs/mockups/lib/template.html docs/mockups/<subject>.html`, set the `<title>` (two to
    four words) and the title block.
-3. Build from the layout: `ShipKit.roomShell(THREE, L, compartment)` for rooms, the layout's
-   `stations`, `fixtures`, `systems`, `mounts` and `craft` for everything placed in them.
-   Colours come from `ShipKit.PALETTE` roles.
+3. Build from the layout: `const mats = await ShipKit.loadMaterials(THREE)`, then
+   `ShipKit.compartmentMesh(THREE, L, compartment, mats, { material })` for rooms (one draw call
+   each, textured and detailed), the layout's `stations`, `fixtures`, `systems`, `mounts` and
+   `craft` for everything placed in them. Rooms are polygons: use `bounds`, `center`,
+   `insidePoly`, `floorAt` and `portalFrame`, never a box. Props may be flat colours from
+   `ShipKit.PALETTE` roles, or textured with `geometryOf` and a finish.
 4. **Light it with its own fixtures**: lamps where the ceiling fixtures are, strips, console
    glow. Provide at least normal and red alert (`ShipKit.LIGHTING`); emergency power where power
    matters. Space is dark and the sun is one light.
-5. **Show the cost.** `const hud = ShipKit.budgetHud(); window.MOCKUP_BUDGET = () => hud.read();`
+5. **Show the cost.** `const hud = ShipKit.budgetHud({ textureBytes: mats.bytes }); window.MOCKUP_BUDGET = () => hud.read();`
    and wrap every frame's renders (render-to-texture passes included) in
-   `hud.beginFrame(renderer)` and `hud.endFrame(renderer)`. Merge static geometry and use
-   `MeshLambertMaterial({ vertexColors: true, flatShading: true })` so the meter says something
-   true about draw calls.
+   `hud.beginFrame(renderer)` and `hud.endFrame(renderer)`. Merge static geometry (one mesh per
+   compartment, as the engine draws it) so the meter says something true about draw calls.
 6. **Register shots**: `ShipKit.registerShots([{ name, setup }])`, where `setup` puts the camera,
    lighting and any simulation into a known state. Step simulations a fixed number of times in
    `setup`, never by wall-clock time, so a shot is the same every run. Call `ShipKit.markReady()`
