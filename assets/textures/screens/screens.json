@@ -1,0 +1,572 @@
+{
+ "schema": "starcrew.screens/1",
+ "status": "Built (2026-10-05) by tools/mockups/console_screens.py from the bridge mockup's console shots, for openspec/changes/bridge-stations design 11.6 (task 1.7). docs/mockups/bridge-variants.html draws them on the Blender consoles (tools/mockups/inline.py screens copies them in); no engine code loads them yet.",
+ "_rules": [
+  "Written by tools/mockups/console_screens.py; never edit it or the images by hand. Re-shoot docs/mockups/bridge.html and rerun the tool.",
+  "Every image is 256 x 128 px RGBA. content_px is [x, y, w, h] of the part that is not letterbox, from the image's top left; a screen shows its content fitted whole, and the rest of the screen is dark glass.",
+  "Alpha is the emission mask: 255 is display, unshaded by the room. Station images are display all over. keys_crew.png marks only its lit keys; its other texels are lit by the room like any surface.",
+  "A prop's screens row (assets/models/bridge/props.json) says what it shows: console (the station's main image), upper (half 0 or 1 of its upper image) or keys (a key panel of keys_crew blocks at their size_m, and a trackpad from pad_px).",
+  "A station's images are its own; a board without a console of its own shows the station named in boards (its id without _p or _s), and generic means the wall panels' ui_screen_crew.png."
+ ],
+ "source": {
+  "page": "docs/mockups/bridge.html",
+  "shots": "docs/screenshots/mockups/bridge-<shot>-console.png",
+  "canvas": "derived from bridge.html layoutConsole() (its numbers read from the page), confirmed on each shot (the gap at y 272-280 lp and the margins at x 0-20 and 1260-1280 lp are plain background), resampled to 1 px per lp by area averaging",
+  "hud": "the budget HUD's corner is found in each shot and rebuilt from the panel grid (hud_masked_from_lp: x, y)"
+ },
+ "image_px": [
+  256,
+  128
+ ],
+ "palette_colours": 64,
+ "stations": {
+  "helm": {
+   "shot": "docs/screenshots/mockups/bridge-helm-console.png",
+   "hud_masked_from_lp": [
+    1043,
+    665
+   ],
+   "main": {
+    "file": "helm.png",
+    "content_px": [
+     0,
+     16,
+     256,
+     96
+    ],
+    "crop_lp": [
+     [
+      0,
+      0,
+      1280,
+      32
+     ],
+     [
+      0,
+      272,
+      1280,
+      448
+     ]
+    ],
+    "bytes": 10660,
+    "sha256": "8cd77aaeed4e53416b190dff58d6d48cdd197036ef49a19c26926bf7fcf9ed56"
+   },
+   "upper": {
+    "file": "helm_upper.png",
+    "halves": [
+     {
+      "panel": "H3",
+      "title": "Navigation",
+      "crop_lp": [
+       640,
+       276,
+       624,
+       408
+      ],
+      "content_px": [
+       0,
+       22,
+       128,
+       84
+      ]
+     },
+     {
+      "panel": "H1",
+      "title": "Heading",
+      "crop_lp": [
+       16,
+       276,
+       416,
+       204
+      ],
+      "content_px": [
+       128,
+       32,
+       128,
+       63
+      ]
+     }
+    ],
+    "bytes": 6701,
+    "sha256": "da7d1dc3ace09461d2c20785cf15cdaa1d07680e3c3bc14e696ca9c644f2e5b0"
+   }
+  },
+  "tactical": {
+   "shot": "docs/screenshots/mockups/bridge-tactical-console.png",
+   "hud_masked_from_lp": [
+    1043,
+    667
+   ],
+   "main": {
+    "file": "tactical.png",
+    "content_px": [
+     0,
+     16,
+     256,
+     96
+    ],
+    "crop_lp": [
+     [
+      0,
+      0,
+      1280,
+      32
+     ],
+     [
+      0,
+      272,
+      1280,
+      448
+     ]
+    ],
+    "bytes": 14335,
+    "sha256": "0056b944b8eee44957b3290aa84383ca6a29cf942c99fdd56da25107dd77ef5d"
+   },
+   "upper": {
+    "file": "tactical_upper.png",
+    "halves": [
+     {
+      "panel": "T2",
+      "title": "Tactical plot",
+      "crop_lp": [
+       328,
+       276,
+       520,
+       408
+      ],
+      "content_px": [
+       0,
+       14,
+       128,
+       100
+      ]
+     },
+     {
+      "panel": "T3",
+      "title": "Turrets",
+      "crop_lp": [
+       848,
+       276,
+       416,
+       204
+      ],
+      "content_px": [
+       128,
+       32,
+       128,
+       63
+      ]
+     }
+    ],
+    "bytes": 9942,
+    "sha256": "c70f40f93031307363c9ea7dc02a101a925d9f244d4d5d591967deaac56b31e7"
+   }
+  },
+  "engineering": {
+   "shot": "docs/screenshots/mockups/bridge-engineering-console.png",
+   "hud_masked_from_lp": [
+    1043,
+    652
+   ],
+   "main": {
+    "file": "engineering.png",
+    "content_px": [
+     0,
+     16,
+     256,
+     96
+    ],
+    "crop_lp": [
+     [
+      0,
+      0,
+      1280,
+      32
+     ],
+     [
+      0,
+      272,
+      1280,
+      448
+     ]
+    ],
+    "bytes": 14303,
+    "sha256": "251a3f77f57af98df0484738dfaca468996f23b03e44ce17781d61495909bcbb"
+   },
+   "upper": {
+    "file": "engineering_upper.png",
+    "halves": [
+     {
+      "panel": "E2",
+      "title": "Buses and breakers",
+      "crop_lp": [
+       536,
+       276,
+       416,
+       204
+      ],
+      "content_px": [
+       0,
+       32,
+       128,
+       63
+      ]
+     },
+     {
+      "panel": "E3",
+      "title": "Reactor",
+      "crop_lp": [
+       952,
+       276,
+       312,
+       204
+      ],
+      "content_px": [
+       128,
+       22,
+       128,
+       84
+      ]
+     }
+    ],
+    "bytes": 9662,
+    "sha256": "fb7bcf6c55f937a04400ee8bee3616e1a9bc05fc8628c1d0eea060e679d791d7"
+   }
+  },
+  "science": {
+   "shot": "docs/screenshots/mockups/bridge-science-console.png",
+   "hud_masked_from_lp": [
+    1043,
+    667
+   ],
+   "main": {
+    "file": "science.png",
+    "content_px": [
+     0,
+     16,
+     256,
+     96
+    ],
+    "crop_lp": [
+     [
+      0,
+      0,
+      1280,
+      32
+     ],
+     [
+      0,
+      272,
+      1280,
+      448
+     ]
+    ],
+    "bytes": 12252,
+    "sha256": "ff51720e55556a964bbfa7c5f27277b452f8a592ab55bb635790c967ec858e78"
+   },
+   "upper": {
+    "file": "science_upper.png",
+    "halves": [
+     {
+      "panel": "S1",
+      "title": "Sensors",
+      "crop_lp": [
+       16,
+       276,
+       520,
+       408
+      ],
+      "content_px": [
+       0,
+       14,
+       128,
+       100
+      ]
+     },
+     {
+      "panel": "S3",
+      "title": "Shields",
+      "crop_lp": [
+       848,
+       276,
+       416,
+       204
+      ],
+      "content_px": [
+       128,
+       32,
+       128,
+       63
+      ]
+     }
+    ],
+    "bytes": 8452,
+    "sha256": "e3029545bc2bb40ab27f67ba7383728cbf23e09f81ae4a8bbd98853887f5cd06"
+   }
+  },
+  "captain": {
+   "shot": "docs/screenshots/mockups/bridge-captain-console.png",
+   "hud_masked_from_lp": [
+    1043,
+    667
+   ],
+   "main": {
+    "file": "captain.png",
+    "content_px": [
+     0,
+     16,
+     256,
+     96
+    ],
+    "crop_lp": [
+     [
+      0,
+      0,
+      1280,
+      32
+     ],
+     [
+      0,
+      272,
+      1280,
+      448
+     ]
+    ],
+    "bytes": 11962,
+    "sha256": "ff84ff4510e496bef8213a80e7fc7bf2fa61e4ebb13c3f05fd628a5a86b61e87"
+   },
+   "upper": {
+    "file": "captain_upper.png",
+    "halves": [
+     {
+      "panel": "C1",
+      "title": "Ship",
+      "crop_lp": [
+       16,
+       276,
+       416,
+       408
+      ],
+      "content_px": [
+       0,
+       1,
+       128,
+       126
+      ]
+     },
+     {
+      "panel": "C2",
+      "title": "Stations",
+      "crop_lp": [
+       432,
+       276,
+       416,
+       204
+      ],
+      "content_px": [
+       128,
+       32,
+       128,
+       63
+      ]
+     }
+    ],
+    "bytes": 9919,
+    "sha256": "58e4b887c0c3189debdff744e7571bf1f869cf63cc5d5ffc76fae6e92565eece"
+   }
+  },
+  "comms": {
+   "shot": "docs/screenshots/mockups/bridge-comms-console.png",
+   "hud_masked_from_lp": [
+    1043,
+    667
+   ],
+   "main": {
+    "file": "comms.png",
+    "content_px": [
+     0,
+     16,
+     256,
+     96
+    ],
+    "crop_lp": [
+     [
+      0,
+      0,
+      1280,
+      32
+     ],
+     [
+      0,
+      272,
+      1280,
+      448
+     ]
+    ],
+    "bytes": 9354,
+    "sha256": "8f92c492403ac34f03f61a840b7a273aa0eaa37d87feea5386745660af2ed55a"
+   },
+   "upper": {
+    "file": "comms_upper.png",
+    "halves": [
+     {
+      "panel": "M1",
+      "title": "Channels",
+      "crop_lp": [
+       16,
+       276,
+       416,
+       408
+      ],
+      "content_px": [
+       0,
+       1,
+       128,
+       126
+      ]
+     },
+     {
+      "panel": "M3",
+      "title": "Intercepts",
+      "crop_lp": [
+       952,
+       276,
+       312,
+       204
+      ],
+      "content_px": [
+       128,
+       22,
+       128,
+       84
+      ]
+     }
+    ],
+    "bytes": 5632,
+    "sha256": "408533b622b384043afee19653e13cb26cc8b4d89456f2ca0c7ddb21e3adcd74"
+   }
+  },
+  "flight_ops": {
+   "shot": "docs/screenshots/mockups/bridge-flight-ops-console.png",
+   "hud_masked_from_lp": [
+    1043,
+    665
+   ],
+   "main": {
+    "file": "flight_ops.png",
+    "content_px": [
+     0,
+     16,
+     256,
+     96
+    ],
+    "crop_lp": [
+     [
+      0,
+      0,
+      1280,
+      32
+     ],
+     [
+      0,
+      272,
+      1280,
+      448
+     ]
+    ],
+    "bytes": 11410,
+    "sha256": "1f032fa184e14566082640b9de9eada53e6347a3c895822fa95fb84eac67ed7c"
+   },
+   "upper": {
+    "file": "flight_ops_upper.png",
+    "halves": [
+     {
+      "panel": "F4",
+      "title": "Tasking",
+      "crop_lp": [
+       848,
+       276,
+       416,
+       408
+      ],
+      "content_px": [
+       0,
+       1,
+       128,
+       126
+      ]
+     },
+     {
+      "panel": "F1",
+      "title": "Bays",
+      "crop_lp": [
+       16,
+       276,
+       416,
+       408
+      ],
+      "content_px": [
+       128,
+       1,
+       128,
+       126
+      ]
+     }
+    ],
+    "bytes": 12725,
+    "sha256": "86ec0dd788ba1698a80998c8a0757f856e520970c4852f45137936870a6272c9"
+   }
+  }
+ },
+ "boards": {
+  "status": "captain",
+  "helm_tactical": "tactical",
+  "repeater": "generic",
+  "spare": "generic"
+ },
+ "shared": {
+  "generic": {
+   "file": "assets/textures/panels/ui_screen_crew.png",
+   "size_m": [
+    1.0,
+    0.625
+   ],
+   "content_px": [
+    0,
+    0,
+    256,
+    160
+   ],
+   "bytes": 10519,
+   "sha256": "cfb139d0112584cdecc988f6a21abb761e19a1b374a9fc3032bed053b6b97e84"
+  },
+  "keys": {
+   "file": "assets/textures/panels/keys_crew.png",
+   "size_m": [
+    0.5,
+    0.125
+   ],
+   "content_px": [
+    0,
+    0,
+    256,
+    64
+   ],
+   "bytes": 8230,
+   "sha256": "98a073433dc47f75c079adf9ad1959dc03c9a5e7cb1cbb117e50128e3a834dbc",
+   "pad_px": [
+    66.13,
+    23.47,
+    17.07,
+    17.07
+   ]
+  }
+ },
+ "cost": {
+  "images": 16,
+  "texture_layers_256": 9,
+  "texture_bytes": 2359296,
+  "texture_bytes_with_mips": 3145728,
+  "note": "Two 256 x 128 images to a 256 x 256 RGBA8 layer of the texture array (the keys take half a layer, the 160-row generic screen a whole one)."
+ }
+}

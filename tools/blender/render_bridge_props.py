@@ -31,8 +31,9 @@ SHOTS = os.path.join(ROOT, "docs", "screenshots", "props")
 VIEW = Vector((1.0, -1.35, 0.95)).normalized()      # from the prop toward the camera: front right, above
 FLOOR_RGB = (0.025, 0.028, 0.034)   # linear
 WALL_RGB = (0.06, 0.066, 0.078)
-SHEET_ROWS = [["wall_bank_core", "wall_bank", "wall_bank_double"],
-              ["captain_chair", "free_console", "helm_arc", "standup_console", "crew_chair"]]
+SHEET_ROWS = [["wall_bank_core", "wall_bank_core_engineering", "wall_bank", "wall_bank_comms", "wall_bank_double"],
+              ["free_console", "free_console_helm", "free_console_tactical", "helm_arc", "standup_console"],
+              ["captain_chair", "crew_chair"]]
 
 
 def parse_args():
@@ -267,7 +268,7 @@ def sheet(rows, samples):
             plane("Wall", (40, 6), (0, 0.002, 3), (math.radians(90), 0, 0), plain("wall", WALL_RGB))
         y -= max(rows[n]["dimensions_m"][2] for n in names) + gap_y
     plane("Floor", (40, 40), (0, -5, 0), (0, 0, 0), plain("floor", FLOOR_RGB))
-    camera(placed, (1280, 900), margin=1.05)
+    camera(placed, (1600, 1100), margin=1.05)
     render(os.path.join(SHOTS, "contact-sheet.png"))
 
 

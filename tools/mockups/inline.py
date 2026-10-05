@@ -26,6 +26,11 @@ type="application/json"> block, which shipkit's loadPanels() adds to the texture
 "models:<set>" copies assets/models/<set>/props.json and every .glb it lists (as base64
 data URIs) into a <script id="ship-models-<set>" type="application/json"> block, for pages
 that place the Blender-built props (tools/blender, the blender-hard-surface skill).
+"screens" copies assets/textures/screens/screens.json and every image it names (each
+station's <station>.png and <station>_upper.png, and the shared ui_screen_crew.png and
+keys_crew.png of the wall panels) into a <script id="ship-screens" type="application/json">
+block, { manifest, images: { <file as the manifest names it>: data URI } }, for pages that
+draw console faces on the props (tools/mockups/console_screens.py; bridge-stations 11.6).
 
 --check rewrites nothing and fails when a page holds a stale copy, and also
 checks that shipkit's PI_BUDGET matches the budget marker in the engine-stack
@@ -52,7 +57,8 @@ BUDGET_SOURCES = [
 MATERIALS = os.path.join(ROOT, "data", "materials", "materials.json")
 TEXTURES = os.path.join(ROOT, "assets", "textures")
 PANELS = os.path.join(ROOT, "data", "materials", "panels.json")
-MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-9_-]+/[a-z0-9_-]+|shipkit|materials|panels|models:[a-z0-9_-]+) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
+SCREENS = os.path.join(ROOT, "assets", "textures", "screens", "screens.json")
+MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-9_-]+/[a-z0-9_-]+|shipkit|materials|panels|screens|models:[a-z0-9_-]+) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
 
 
 def png_uri(path):
@@ -61,6 +67,19 @@ def png_uri(path):
 
 
 def block(kind):
+    if kind == "screens":
+        with open(SCREENS, encoding="utf-8") as f:
+            manifest = json.load(f)
+        base = os.path.dirname(SCREENS)
+        images = {}
+        for rec in manifest["stations"].values():
+            for part in ("main", "upper"):
+                images[rec[part]["file"]] = png_uri(os.path.join(base, rec[part]["file"]))
+        for rec in manifest["shared"].values():
+            images[rec["file"]] = png_uri(os.path.join(ROOT, rec["file"]))
+        text = json.dumps({"manifest": manifest, "images": dict(sorted(images.items()))}, separators=(",", ":"),
+                          ensure_ascii=False).replace("</", "<\\/")
+        return f'\n<script id="ship-screens" type="application/json">\n{text}\n</script>\n'
     if kind.startswith("models:"):
         name = kind.split(":", 1)[1]
         base = os.path.join(ROOT, "assets", "models", name)

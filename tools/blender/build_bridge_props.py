@@ -65,11 +65,17 @@ GENERATOR = "tools/blender/build_bridge_props.py"
 
 # Triangles per prop: the budgets these props were briefed with (2026-10-05), inside
 # bridge-stations section 12's allowance of 700 for a desk with its screen and 300 for a seat.
+# A station's variant (the same body with its own hand controls, bridge-stations 11.6) keeps its
+# base's budget.
 BUDGETS = {
     "wall_bank_core": 420,
+    "wall_bank_core_engineering": 420,
     "wall_bank": 420,
+    "wall_bank_comms": 420,
     "wall_bank_double": 700,
     "free_console": 420,
+    "free_console_helm": 420,
+    "free_console_tactical": 420,
     "helm_arc": 600,
     "captain_chair": 300,
     "crew_chair": 160,
@@ -82,6 +88,7 @@ ROLES = ("machinery", "trim", "bulkhead", "hazard", "light_panel", "screen", "ac
 PAGE_COLOURED = {"screen": "screen", "accent": "engineering"}   # role -> shipkit PALETTE key for previews
 EMISSIVE = {"light_panel", "screen"}
 
+SHOWS = ("console", "upper", "keys")   # what a recorded screen shows (bridge-stations 11.6)
 WELD_M = 1e-4          # merge by distance: 0.1 mm, as deckc welds (deck-pipeline section 5)
 FLAT_DEG = 1.0         # limited dissolve: faces within 1 degree are one face
 CLEAR_M = 0.01         # parallel faces facing the same way stand at least 1 cm apart (CLAUDE.md 8)
@@ -300,6 +307,9 @@ class Prop:
         self.seat = None        # a chair's sitting point, top of the cushion
         self.screens = []
         self.steps = []         # the CSG history, for the manifest and the skill
+        self.variant_of = None  # a variant's base prop: the same body with a station's own controls
+        self.stations = []      # the stations a variant is for (bridge_variants.json station ids)
+        self.controls = []      # the hand controls modelled on it, in words, for the manifest
 
     def _operands(self, label, objs):
         c = bpy.data.collections.new(f"{self.name}.{label}")
@@ -372,18 +382,28 @@ class Prop:
         self.steps.append(f"chamfer {label} ({count} edges, {width * 1000:.0f} mm)")
         return ob
 
-    def recess(self, coll_objs, label, m, w, h, depth, wall_role="machinery", floor_role="screen", record=True):
+    def recess(self, coll_objs, label, m, w, h, depth, wall_role="machinery", floor_role="screen", record=True,
+               shows=None, half=None):
         """A recess cutter: a box in frame m whose back face, `depth` behind the panel, becomes
         the recess floor (a screen, unless floor_role says otherwise) and whose sides become its
-        walls. It reaches 5 cm out of the panel so no cutter face lies on the panel's plane."""
+        walls. It reaches 5 cm out of the panel so no cutter face lies on the panel's plane.
+        A recorded screen says what it shows (bridge-stations 11.6, assets/textures/screens/
+        screens.json): "console" (its station's main image), "upper" (half `half` of the upper
+        image) or "keys" (a key panel); up is the in-plane direction of its height."""
         ob = obox(self.coll, f"{self.name}.{label}", (-w / 2, -h / 2, -depth), (w / 2, h / 2, 0.05), m,
                   {"-z": floor_role, "*": wall_role})
         coll_objs.append(ob)
         if record:
+            if shows not in SHOWS:
+                raise SystemExit(f"[props] {self.name}: screen {label} shows {shows!r}, not one of {SHOWS}")
             c = m @ Vector((0, 0, -depth))
             n = (m.to_3x3() @ Vector((0, 0, 1))).normalized()
-            self.screens.append({"label": label, "centre_m": r3(c), "normal": r3(n), "width_m": round(w, 4),
-                                 "height_m": round(h, 4)})
+            up = (m.to_3x3() @ Vector((0, 1, 0))).normalized()
+            row = {"label": label, "shows": shows, "centre_m": r3(c), "normal": r3(n), "up": r3(up),
+                   "width_m": round(w, 4), "height_m": round(h, 4)}
+            if half is not None:
+                row["half"] = half
+            self.screens.append(row)
         return ob
 
 
@@ -617,6 +637,77 @@ def verify_glb(path, prop):
             "materials": [m["name"] for m in js["materials"]], "uv_error_m": worst_uv}
 
 
+# ----------------------------------------------------------------------------- hand controls
+# Keys are texture; levers are geometry (bridge-stations 11.6): the controls a player's hand reaches
+# for are small solids unioned onto a desk, each built in a desk frame m (frame(): local +Z the
+# desk's normal, +Y up the desk away from the operator, +X their right). Every piece reaches 1-2 cm
+# into what it stands on, and pieces that meet keep parallel faces at least 1 cm apart, so the
+# union leaves no coplanar faces (CLAUDE.md 8). Sizes are a hand's: a grip 7 cm across, a guard
+# 7 cm square, a toggle 4 cm tall.
+
+def _local(m, pts):
+    return [tuple(m @ Vector(q)) for q in pts]
+
+
+def throttle(p, m, tag):
+    """A throttle lever: a quadrant housing on the desk, a lever pushed forward of centre and a
+    grip across its top in the station's colour."""
+    base = obox(p.coll, f"{p.name}.{tag}_quadrant", (-0.04, -0.09, -0.02), (0.04, 0.09, 0.035), m,
+                {"*": "machinery", "+z": "bulkhead"})
+    lever = hull(p.coll, f"{p.name}.{tag}_lever", _local(m, [(sx * 0.008, y, 0.02) for sx in (-1, 1) for y in (-0.012, 0.012)]
+                                                         + [(sx * 0.007, 0.035 + y, 0.125) for sx in (-1, 1) for y in (-0.008, 0.008)]), "trim")
+    grip = obox(p.coll, f"{p.name}.{tag}_grip", (-0.035, 0.021, 0.115), (0.035, 0.049, 0.145), m, {"*": "accent"})
+    return [base, lever, grip]
+
+
+def stick(p, m, tag):
+    """A flight stick: a square boot, a shaft leaning a little toward the operator and a grip in
+    the station's colour."""
+    boot = hull(p.coll, f"{p.name}.{tag}_boot", _local(m, [(sx * 0.04, sy * 0.04, -0.02) for sx in (-1, 1) for sy in (-1, 1)]
+                                                       + [(sx * 0.026, sy * 0.026, 0.03) for sx in (-1, 1) for sy in (-1, 1)]), "machinery")
+    shaft = hull(p.coll, f"{p.name}.{tag}_shaft", _local(m, [(sx * 0.005, sy * 0.005, 0.02) for sx in (-1, 1) for sy in (-1, 1)]
+                                                         + [(sx * 0.005, sy * 0.005 - 0.01, 0.13) for sx in (-1, 1) for sy in (-1, 1)]), "trim")
+    grip = obox(p.coll, f"{p.name}.{tag}_grip", (-0.016, -0.034, 0.115), (0.016, 0.012, 0.195), m, {"*": "accent"})
+    return [boot, shaft, grip]
+
+
+def guarded_button(p, m, tag):
+    """A guarded fire button (design 8.5's guarded controls, as hardware): a housing with hazard
+    sides, the button in the station's colour, and its flip cover open, hinged at the back and
+    leaning away from the operator."""
+    housing = obox(p.coll, f"{p.name}.{tag}_housing", (-0.035, -0.035, -0.02), (0.035, 0.035, 0.022), m,
+                   {"*": "hazard", "+z": "machinery"})
+    button = obox(p.coll, f"{p.name}.{tag}_button", (-0.016, -0.016, 0.012), (0.016, 0.016, 0.036), m, {"*": "accent"})
+    hinge = m @ Matrix.Translation((0.0, 0.03, 0.022)) @ Matrix.Rotation(math.radians(-15.0), 4, "X")
+    cover = obox(p.coll, f"{p.name}.{tag}_cover", (-0.025, -0.006, -0.012), (0.025, 0.0, 0.07), hinge, {"*": "trim"})
+    return [housing, button, cover]
+
+
+def toggle(p, m, tag, up):
+    """A breaker toggle: a three-sided handle 6 cm tall that widens into a paddle, thrown up
+    (away from the operator) and dark when the breaker is closed, down and in the station's
+    colour when it has tripped. Larger than life, so it reads from across the room."""
+    lean = 0.02 if up else -0.02
+    return hull(p.coll, f"{p.name}.{tag}", _local(m, [(-0.011, -0.008, -0.012), (0.011, -0.008, -0.012), (0.0, 0.012, -0.012),
+                                                      (-0.014, -0.004 + lean, 0.06), (0.014, -0.004 + lean, 0.06),
+                                                      (0.0, 0.006 + lean, 0.06)]), "machinery" if up else "accent")
+
+
+def slider_bank(p, m, tag, levels):
+    """A bank of faders: a block 3 cm high on the desk and a cap per fader in the station's
+    colour, each at its own level along the block. Larger than life, so it reads from across
+    the room."""
+    block = obox(p.coll, f"{p.name}.{tag}_block", (-0.15, -0.035, -0.02), (0.15, 0.035, 0.03), m,
+                 {"*": "machinery", "+z": "bulkhead"})
+    caps = []
+    for i, lv in enumerate(levels):
+        x = -0.11 + i * 0.22 / (len(levels) - 1)
+        y = -0.015 + 0.03 * lv
+        caps.append(obox(p.coll, f"{p.name}.{tag}_cap_{i}", (x - 0.014, y - 0.01, 0.02), (x + 0.014, y + 0.01, 0.06), m,
+                         {"*": "accent"}))
+    return [block] + caps
+
+
 # ----------------------------------------------------------------------------- the props
 
 def triangle_inset(tri, d):
@@ -646,7 +737,7 @@ def clip_polygon(poly, a, b, c):
     return out
 
 
-def wall_bank(name, bay_w, seats, presents):
+def wall_bank(name, bay_w, seats, presents, controls=None):
     """A console bank built into a wall, in a bay between two structural fins.
 
     Profile (z toward the room, y up): a recessed toe kick, the cabinet front, a desk top
@@ -654,7 +745,11 @@ def wall_bank(name, bay_w, seats, presents):
     leaning back 20 degrees, a vertical display wall up to 2.03 m and a lit chamfer under the
     2.10 m top; an access panel let into the cabinet front. The fins stand 6 cm proud of the
     desk (so no face of theirs shares its front's plane) and 12 cm above the top, their
-    front edges raked at the screen panel's 20 degrees, pierced by a truss of triangular holes."""
+    front edges raked at the screen panel's 20 degrees, pierced by a truss of triangular holes.
+    A keyboard well 15 cm deep is let into the desk in front of each seat (its key panel is
+    texture), and controls adds a station's own hand controls on the desk behind it:
+    "breakers" (engineering: a row of five breaker toggles, one tripped) or "sliders" (comms: a
+    bank of four faders)."""
     p = Prop(name, presents, "floor, centre of the back, on the wall plane")
     p.wall = True
     hw = bay_w / 2
@@ -727,7 +822,23 @@ def wall_bank(name, bay_w, seats, presents):
         fins.append(fin)
     p.union(body, "fins", fins)
 
-    # 5. Screens, cut last so no bevel or union touches their edges.
+    # 5. A station's hand controls on the desk, behind the keyboard well (desk_at: a point s
+    #    metres up the desk from its front edge).
+    slope = math.atan2(desk_back[1] - desk_front[1], desk_front[0] - desk_back[0])
+    desk_tilt = 90.0 - math.degrees(slope)
+    desk_at = lambda x, s: (x, desk_front[1] + s * math.sin(slope), desk_front[0] - s * math.cos(slope))
+    if controls == "breakers":
+        pieces = [toggle(p, frame(desk_at(-0.30 + 0.15 * i, 0.235), desk_tilt), f"breaker_{i}", up)
+                  for i, up in enumerate((True, True, False, True, True))]
+        p.union(body, "breakers", pieces)
+        p.controls.append("five breaker toggles behind the keyboard, the third tripped")
+    elif controls == "sliders":
+        p.union(body, "sliders", slider_bank(p, frame(desk_at(0.25, 0.2375), desk_tilt), "faders", (0.8, 0.45, 0.65, 0.15)))
+        p.controls.append("a bank of four faders behind the keyboard, to the operator's right")
+    elif controls is not None:
+        raise SystemExit(f"[props] {name}: unknown controls {controls!r}")
+
+    # 6. Screens, cut last so no bevel or union touches their edges.
     screens = []
     t = math.hypot(band_top[0] - z_wall, panel_top_y - band_top[1])
     pc = (0.0, (band_top[1] + panel_top_y) / 2, (band_top[0] + z_wall) / 2)
@@ -738,13 +849,17 @@ def wall_bank(name, bay_w, seats, presents):
         main = [(-bay_w / 4, bay_w / 2 - 0.20), (bay_w / 4, bay_w / 2 - 0.20)]
     assert main_h <= t - 0.06, "main screen taller than its panel"
     for i, (cx, w) in enumerate(main):
-        p.recess(screens, f"screen_main_{i}", frame((cx, pc[1], pc[2]), 20.0), w, main_h, 0.02)
+        p.recess(screens, f"screen_main_{i}", frame((cx, pc[1], pc[2]), 20.0), w, main_h, 0.02, shows="console")
     n_up = 2 * seats
     w_up = (bay_w - 0.16 - (n_up - 1) * 0.08) / n_up
     yc = (panel_top_y + strip[1]) / 2
     for i in range(n_up):
         cx = -bay_w / 2 + 0.08 + w_up / 2 + i * (w_up + 0.08)
-        p.recess(screens, f"screen_upper_{i}", frame((cx, yc, z_wall)), w_up, 0.40, 0.02)
+        p.recess(screens, f"screen_upper_{i}", frame((cx, yc, z_wall)), w_up, 0.40, 0.02, shows="upper", half=i % 2)
+    # a keyboard well per seat, 12 mm deep, from 3.5 cm behind the desk's front edge
+    for i, cx in enumerate([0.0] if seats == 1 else [-bay_w / 4, bay_w / 4]):
+        kw = 1.20 if bay_w >= 1.4 and seats == 1 else 0.86
+        p.recess(screens, f"keys_{i}", frame(desk_at(cx, 0.11), desk_tilt), kw, 0.15, 0.012, shows="keys")
     # an access panel per seat in the cabinet front, 12 mm deep (parallel faces stay 1 cm apart)
     for i, cx in enumerate([0.0] if seats == 1 else [-bay_w / 4, bay_w / 4]):
         w = (bay_w if seats == 1 else bay_w / 2) - 0.20
@@ -759,10 +874,12 @@ def wall_bank(name, bay_w, seats, presents):
     return p
 
 
-def free_console(name, presents):
+def free_console(name, presents, controls=None):
     """A free-standing helm or tactical desk: a sloped top on an angled pedestal over a plinth,
     a touch panel and a button band let into the top and a small upright screen at its back
-    edge."""
+    edge. controls adds a station's own hand controls in the strips either side of the touch
+    panel: "helm" (a throttle lever to the operator's left, a stick to their right) or
+    "tactical" (two guarded fire buttons to their right)."""
     p = Prop(name, presents, "floor, centre of the pedestal's back")
     p.wall = False
     hw, zb, zf = 0.70, -0.04, 0.56          # desk half width, back and front edges (z)
@@ -796,10 +913,20 @@ def free_console(name, presents):
     p.chamfer(housing, "housing_edges", 0.015, lambda m, d, n1, n2: m.y > top(0.0) + 0.05)
     p.union(desk, "pedestal_plinth_housing", [ped, plinth, housing])
 
+    on_top = lambda x, z: frame((x, top(z), z), 78.0)      # the desk top slopes 12 degrees
+    if controls == "helm":
+        p.union(desk, "helm_controls", throttle(p, on_top(-0.625, 0.33), "throttle") + stick(p, on_top(0.625, 0.33), "stick"))
+        p.controls += ["a throttle lever to the operator's left", "a stick to their right"]
+    elif controls == "tactical":
+        p.union(desk, "fire_buttons", guarded_button(p, on_top(0.62, 0.26), "fire_0") + guarded_button(p, on_top(0.62, 0.40), "fire_1"))
+        p.controls.append("two guarded fire buttons to the operator's right")
+    elif controls is not None:
+        raise SystemExit(f"[props] {name}: unknown controls {controls!r}")
+
     screens = []
-    p.recess(screens, "screen_upright", m_h @ Matrix.Translation((0, 0.20, 0)), 0.80, 0.30, 0.015)
+    p.recess(screens, "screen_upright", m_h @ Matrix.Translation((0, 0.20, 0)), 0.80, 0.30, 0.015, shows="console")
     zt = 0.36
-    p.recess(screens, "touch_panel", frame((0.0, top(zt), zt), 78.0), 1.10, 0.24, 0.012)
+    p.recess(screens, "touch_panel", on_top(0.0, zt), 1.10, 0.24, 0.012, shows="keys")
     zb_ = 0.205                             # a button band in the station's colour behind the touch panel
     p.recess(screens, "button_band", frame((0.0, top(zb_), zb_), 78.0), 1.10, 0.05, 0.012, floor_role="accent",
              record=False)
@@ -812,7 +939,10 @@ def free_console(name, presents):
 def helm_arc(name, presents):
     """A curved two-seat console in the first series' style: a lathe of one profile (toe kicks
     front and back, a sloped top, a raised rim with a button band) over an arc 2.4 m long at
-    mid depth, a hooded viewer between the two seats and a panel let into the top at each."""
+    mid depth, a hooded viewer between the two seats and a key panel let into the top at each.
+    Seat 0 (to port of the centre, the operator's left) is helm's, with a throttle lever left of
+    its panel and a stick between the panel and the viewer; seat 1 is tactical's, with two
+    guarded fire buttons right of its panel. Each control stands on one facet of the lathe."""
     p = Prop(name, presents, "floor, centre of the back of the arc")
     p.wall = False
     depth, r_mid, arc = 0.60, 2.90, 2.40
@@ -822,7 +952,8 @@ def helm_arc(name, presents):
                (0.0, 0.90), (0.0, 0.10), (0.08, 0.10)]
     roles = ["machinery", "light_panel", "machinery", "bulkhead", "machinery", "accent", "trim", "bulkhead",
              "machinery", "machinery"]
-    body = lathe(p.coll, f"{name}.body", profile, roles, r_back, r_back, -half, half, 8, "trim")
+    steps = 8
+    body = lathe(p.coll, f"{name}.body", profile, roles, r_back, r_back, -half, half, steps, "trim")
     p.chamfer(body, "front_edge", 0.02,
               lambda m, d, n1, n2: abs(math.hypot(m.x, m.z - r_back) - (r_back - 0.60)) < 0.01 and abs(m.y - 0.75) < 0.01)
     # the hooded viewer: a trapezoid prism, its front face toward the seats
@@ -830,20 +961,36 @@ def helm_arc(name, presents):
                                          for d, y in ((0.44, 0.76), (0.32, 1.02), (0.06, 1.02), (0.06, 0.82))], "bulkhead")
     p.chamfer(hood, "hood_edges", 0.012, lambda m, d, n1, n2: m.y > 1.0)
     p.union(body, "hood", [hood])
-    screens = []
     slope = math.degrees(math.atan2(0.10, 0.46))
+    facet = 2 * half / steps
+
+    def on_top(phi, d):
+        """A desk frame on the facet of the lathe's top that holds angle phi, at depth d in from
+        the back: the point on the facet's chord, the facet's own yaw and the top's slope."""
+        k = min(steps - 1, max(0, int((phi + half) / facet)))
+        a = -half + k * facet
+        y = 0.75 + (0.60 - d) / 0.46 * 0.10
+        pa = Vector((math.sin(a) * (r_back - d), y, r_back - math.cos(a) * (r_back - d)))
+        pb = Vector((math.sin(a + facet) * (r_back - d), y, r_back - math.cos(a + facet) * (r_back - d)))
+        return frame(tuple(pa.lerp(pb, (phi - a) / facet)), 90.0 - slope, -math.degrees(a + facet / 2))
+    p.union(body, "controls", throttle(p, on_top(-0.362, 0.37), "throttle") + stick(p, on_top(-0.0855, 0.42), "stick")
+            + guarded_button(p, on_top(0.3355, 0.36), "fire_0") + guarded_button(p, on_top(0.3885, 0.36), "fire_1"))
+    p.controls += ["helm (seat 0): a throttle lever left of its panel, a stick right of it",
+                   "tactical (seat 1): two guarded fire buttons right of its panel"]
+    screens = []
     for i, s in enumerate((-1, 1)):
         phi = s * 0.6 / r_mid
         d = 0.36
         y = 0.75 + (0.60 - d) / 0.46 * 0.10
         c = (math.sin(phi) * (r_back - d), y, r_back - math.cos(phi) * (r_back - d))
-        p.recess(screens, f"panel_{i}", frame(c, 90.0 - slope, -math.degrees(phi)), 0.66, 0.24, 0.02)
+        p.recess(screens, f"panel_{i}", frame(c, 90.0 - slope, -math.degrees(phi)), 0.56, 0.24, 0.02, shows="keys")
         r_op = r_mid - 0.65
         p.operators.append([round(math.sin(phi) * r_op, 4), 0.0, round(r_back - math.cos(phi) * r_op, 4)])
     # the viewer's screen on the hood's sloped face, which runs from (z 0.44, y 0.76) to (0.32, 1.02)
     hood_tilt = math.degrees(math.atan2(0.12, 0.26))
     yv = 0.92
-    p.recess(screens, "viewer", frame((0.0, yv, 0.44 - 0.12 * (yv - 0.76) / 0.26), hood_tilt), 0.22, 0.12, 0.015)
+    p.recess(screens, "viewer", frame((0.0, yv, 0.44 - 0.12 * (yv - 0.76) / 0.26), hood_tilt), 0.22, 0.12, 0.015,
+             shows="upper", half=0)
     p.cut(body, "screens", screens)
     p.body = body
     return p
@@ -892,7 +1039,7 @@ def chair(name, presents, captain):
             tilt = 90.0 - math.degrees(math.atan2(0.04, zf - zr))
             ymid = 0.62 + 0.04 * 0.5
             p.recess(screens, f"arm_panel_{s:+d}", frame((s * (seat_w / 2 + 0.055), ymid, (zr + zf) / 2), tilt),
-                     0.10, 0.30, 0.012)
+                     0.10, 0.30, 0.012, shows="keys")
     p.union(foot, "chair", parts[1:])
     if screens:
         p.cut(foot, "screens", screens)
@@ -926,20 +1073,37 @@ def standup_console(name, presents):
     zt = (zb + zf) / 2 + 0.02
     slope = math.degrees(math.atan2(yb - yf, zf - zb))
     screens = []
-    p.recess(screens, "screen", frame((0.0, top(zt), zt), 90.0 - slope), 0.50, 0.30, 0.015)
+    p.recess(screens, "screen", frame((0.0, top(zt), zt), 90.0 - slope), 0.50, 0.30, 0.015, shows="console")
     p.cut(head, "screens", screens)
     p.body = head
     p.operators.append([0.0, 0.0, round(zf + 0.35, 4)])
     return p
 
 
+def variant(p, base, stations):
+    """Mark a prop as a station's variant of base: the variants file (tools/bridge_variants.py)
+    and the mockup place it wherever base would stand at one of these stations."""
+    p.variant_of, p.stations = base, list(stations)
+    return p
+
+
 PROPS = {
     "wall_bank_core": lambda: wall_bank("wall_bank_core", 1.40, 1,
                                         "A core station built into a wall (bridge-stations 11.1: desk 1.40 m)"),
+    "wall_bank_core_engineering": lambda: variant(wall_bank("wall_bank_core_engineering", 1.40, 1,
+                                                            "Engineering's core bank, with its breaker toggles", "breakers"),
+                                                  "wall_bank_core", ["engineering"]),
     "wall_bank": lambda: wall_bank("wall_bank", 1.10, 1,
                                    "A station built into a wall (bridge-stations 11.1: desk 1.10 m)"),
+    "wall_bank_comms": lambda: variant(wall_bank("wall_bank_comms", 1.10, 1, "Comms' bank, with its slider bank", "sliders"),
+                                       "wall_bank", ["comms"]),
     "wall_bank_double": lambda: wall_bank("wall_bank_double", 2.40, 2, "Two seats in one wall bay"),
     "free_console": lambda: free_console("free_console", "The free-standing helm or tactical desk (desk 1.40 m)"),
+    "free_console_helm": lambda: variant(free_console("free_console_helm", "Helm's free-standing desk, with its throttle and stick",
+                                                      "helm"), "free_console", ["helm"]),
+    "free_console_tactical": lambda: variant(free_console("free_console_tactical",
+                                                          "Tactical's free-standing desk, with its guarded fire buttons", "tactical"),
+                                             "free_console", ["tactical"]),
     "helm_arc": lambda: helm_arc("helm_arc", "A curved two-seat helm, the first series' style"),
     "captain_chair": lambda: chair("captain_chair", "The captain's chair on the dais", True),
     "crew_chair": lambda: chair("crew_chair", "A station's swivel chair", False),
@@ -1001,6 +1165,8 @@ def manifest_text(rows):
             "The origin is on the floor at the centre of the prop's back: the wall plane for a wall bank, the back of the pedestal otherwise.",
             "Placing props at a layout station (seat_m on the floor, yaw_deg, the seat facing +Z at yaw 0): operators_m are floor points, so the layout's seat_m lands on one. A chair turns by yaw_deg (its operators_m is the floor under its seat); a console faces the seat, so it turns by yaw_deg + 180. seat_m in a chair's row is the sitting point on the cushion, 0.45 m up.",
             "Materials are roles: machinery, trim, bulkhead, hazard and light_panel are data/materials/materials.json layers; screen is emissive and coloured by the page (its console UI); accent is the station's role colour.",
+            "screens are the recess floors a page draws on: centre_m on the floor, normal out of it, up the in-plane direction of height_m (width_m runs along up x normal). shows says what: console (the station's main screen image), upper (half 0 or 1 of its upper image) or keys (a key panel); the images and how to fit them are assets/textures/screens/screens.json (bridge-stations 11.6).",
+            "A row with variant_of is that prop with a station's own hand controls (controls says which): it stands wherever variant_of would at one of its stations, with the same operators_m.",
             "UV0 is in metres, projected per face as shipkit.js worldUv does (x, z where |n.y| > 0.75, else the face's horizontal tangent and y); divide by the material's span_m.",
             "Flat shaded (one normal per face), triangulated, one closed manifold solid per prop; faces against the floor or the wall are kept for the deck compiler to drop.",
             "triangles is counted in the .glb; the build refuses a prop over budget_triangles. sha256 is the .glb's, from the Blender and exporter versions in generator: a second build with them writes the same bytes.",
@@ -1056,10 +1222,17 @@ def main():
             row = {
                 "file": n + ".glb",
                 "presents": p.presents,
+            }
+            if p.variant_of:
+                row["variant_of"] = p.variant_of
+                row["stations"] = p.stations
+            if p.controls:
+                row["controls"] = p.controls
+            row.update({
                 "anchor": p.anchor,
                 "dimensions_m": facts["dimensions_m"],
                 "bounds_m": facts["bounds_m"],
-            }
+            })
             if p.seat:
                 row["seat_m"] = p.seat
             row["operators_m"] = p.operators

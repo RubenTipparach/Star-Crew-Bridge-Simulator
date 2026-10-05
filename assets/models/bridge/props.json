@@ -7,6 +7,8 @@
     "The origin is on the floor at the centre of the prop's back: the wall plane for a wall bank, the back of the pedestal otherwise.",
     "Placing props at a layout station (seat_m on the floor, yaw_deg, the seat facing +Z at yaw 0): operators_m are floor points, so the layout's seat_m lands on one. A chair turns by yaw_deg (its operators_m is the floor under its seat); a console faces the seat, so it turns by yaw_deg + 180. seat_m in a chair's row is the sitting point on the cushion, 0.45 m up.",
     "Materials are roles: machinery, trim, bulkhead, hazard and light_panel are data/materials/materials.json layers; screen is emissive and coloured by the page (its console UI); accent is the station's role colour.",
+    "screens are the recess floors a page draws on: centre_m on the floor, normal out of it, up the in-plane direction of height_m (width_m runs along up x normal). shows says what: console (the station's main screen image), upper (half 0 or 1 of its upper image) or keys (a key panel); the images and how to fit them are assets/textures/screens/screens.json (bridge-stations 11.6).",
+    "A row with variant_of is that prop with a station's own hand controls (controls says which): it stands wherever variant_of would at one of its stations, with the same operators_m.",
     "UV0 is in metres, projected per face as shipkit.js worldUv does (x, z where |n.y| > 0.75, else the face's horizontal tangent and y); divide by the material's span_m.",
     "Flat shaded (one normal per face), triangulated, one closed manifold solid per prop; faces against the floor or the wall are kept for the deck compiler to drop.",
     "triangles is counted in the .glb; the build refuses a prop over budget_triangles. sha256 is the .glb's, from the Blender and exporter versions in generator: a second build with them writes the same bytes."
@@ -48,6 +50,7 @@
       "screens": [
         {
           "label": "screen_main_0",
+          "shows": "console",
           "centre_m": [
             0.0,
             1.1432,
@@ -58,11 +61,17 @@
             0.342,
             0.9397
           ],
+          "up": [
+            0.0,
+            0.9397,
+            -0.342
+          ],
           "width_m": 1.2,
           "height_m": 0.5
         },
         {
           "label": "screen_upper_0",
+          "shows": "upper",
           "centre_m": [
             -0.33,
             1.72,
@@ -73,11 +82,18 @@
             0.0,
             1.0
           ],
+          "up": [
+            0.0,
+            1.0,
+            0.0
+          ],
           "width_m": 0.58,
-          "height_m": 0.4
+          "height_m": 0.4,
+          "half": 0
         },
         {
           "label": "screen_upper_1",
+          "shows": "upper",
           "centre_m": [
             0.33,
             1.72,
@@ -88,11 +104,38 @@
             0.0,
             1.0
           ],
+          "up": [
+            0.0,
+            1.0,
+            0.0
+          ],
           "width_m": 0.58,
-          "height_m": 0.4
+          "height_m": 0.4,
+          "half": 1
+        },
+        {
+          "label": "keys_0",
+          "shows": "keys",
+          "centre_m": [
+            0.0,
+            0.765,
+            0.4904
+          ],
+          "normal": [
+            0.0,
+            0.9701,
+            0.2425
+          ],
+          "up": [
+            0.0,
+            0.2425,
+            -0.9701
+          ],
+          "width_m": 1.2,
+          "height_m": 0.15
         }
       ],
-      "triangles": 304,
+      "triangles": 320,
       "budget_triangles": 420,
       "materials": [
         "machinery",
@@ -110,9 +153,155 @@
         "chamfer fin_r_edges (7 edges, 15 mm)",
         "difference fin_r_holes (3)",
         "union fins (2)",
-        "difference screens (4)"
+        "difference screens (5)"
       ],
-      "sha256": "f9ff1e13dfad399d09177207a394b27374bdb30f7d81b3e4ac92dfcdf85c7a3d"
+      "sha256": "3bb89464f99255c2e801ea47c9449fcc740cd0166c65325823479b398e752945"
+    },
+    "wall_bank_core_engineering": {
+      "file": "wall_bank_core_engineering.glb",
+      "presents": "Engineering's core bank, with its breaker toggles",
+      "variant_of": "wall_bank_core",
+      "stations": [
+        "engineering"
+      ],
+      "controls": [
+        "five breaker toggles behind the keyboard, the third tripped"
+      ],
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        1.64,
+        2.22,
+        0.66
+      ],
+      "bounds_m": {
+        "min": [
+          -0.82,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.82,
+          2.22,
+          0.66
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          0.95
+        ]
+      ],
+      "screens": [
+        {
+          "label": "screen_main_0",
+          "shows": "console",
+          "centre_m": [
+            0.0,
+            1.1432,
+            0.1729
+          ],
+          "normal": [
+            0.0,
+            0.342,
+            0.9397
+          ],
+          "up": [
+            0.0,
+            0.9397,
+            -0.342
+          ],
+          "width_m": 1.2,
+          "height_m": 0.5
+        },
+        {
+          "label": "screen_upper_0",
+          "shows": "upper",
+          "centre_m": [
+            -0.33,
+            1.72,
+            0.0735
+          ],
+          "normal": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "up": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "width_m": 0.58,
+          "height_m": 0.4,
+          "half": 0
+        },
+        {
+          "label": "screen_upper_1",
+          "shows": "upper",
+          "centre_m": [
+            0.33,
+            1.72,
+            0.0735
+          ],
+          "normal": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "up": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "width_m": 0.58,
+          "height_m": 0.4,
+          "half": 1
+        },
+        {
+          "label": "keys_0",
+          "shows": "keys",
+          "centre_m": [
+            0.0,
+            0.765,
+            0.4904
+          ],
+          "normal": [
+            0.0,
+            0.9701,
+            0.2425
+          ],
+          "up": [
+            0.0,
+            0.2425,
+            -0.9701
+          ],
+          "width_m": 1.2,
+          "height_m": 0.15
+        }
+      ],
+      "triangles": 404,
+      "budget_triangles": 420,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "light_panel",
+        "screen",
+        "accent"
+      ],
+      "csg": [
+        "difference carve (3)",
+        "chamfer desk_edge (1 edges, 20 mm)",
+        "chamfer fin_l_edges (7 edges, 15 mm)",
+        "difference fin_l_holes (3)",
+        "chamfer fin_r_edges (7 edges, 15 mm)",
+        "difference fin_r_holes (3)",
+        "union fins (2)",
+        "union breakers (5)",
+        "difference screens (5)"
+      ],
+      "sha256": "89c781774a380b955fd00a5e43a7ee2a85cad15e924d3ad0ea0d6a9aab98c432"
     },
     "wall_bank": {
       "file": "wall_bank.glb",
@@ -145,6 +334,7 @@
       "screens": [
         {
           "label": "screen_main_0",
+          "shows": "console",
           "centre_m": [
             0.0,
             1.1432,
@@ -155,11 +345,17 @@
             0.342,
             0.9397
           ],
+          "up": [
+            0.0,
+            0.9397,
+            -0.342
+          ],
           "width_m": 0.9,
           "height_m": 0.45
         },
         {
           "label": "screen_upper_0",
+          "shows": "upper",
           "centre_m": [
             -0.255,
             1.72,
@@ -170,11 +366,18 @@
             0.0,
             1.0
           ],
+          "up": [
+            0.0,
+            1.0,
+            0.0
+          ],
           "width_m": 0.43,
-          "height_m": 0.4
+          "height_m": 0.4,
+          "half": 0
         },
         {
           "label": "screen_upper_1",
+          "shows": "upper",
           "centre_m": [
             0.255,
             1.72,
@@ -185,11 +388,38 @@
             0.0,
             1.0
           ],
+          "up": [
+            0.0,
+            1.0,
+            0.0
+          ],
           "width_m": 0.43,
-          "height_m": 0.4
+          "height_m": 0.4,
+          "half": 1
+        },
+        {
+          "label": "keys_0",
+          "shows": "keys",
+          "centre_m": [
+            0.0,
+            0.765,
+            0.4904
+          ],
+          "normal": [
+            0.0,
+            0.9701,
+            0.2425
+          ],
+          "up": [
+            0.0,
+            0.2425,
+            -0.9701
+          ],
+          "width_m": 0.86,
+          "height_m": 0.15
         }
       ],
-      "triangles": 304,
+      "triangles": 320,
       "budget_triangles": 420,
       "materials": [
         "machinery",
@@ -207,9 +437,155 @@
         "chamfer fin_r_edges (7 edges, 15 mm)",
         "difference fin_r_holes (3)",
         "union fins (2)",
-        "difference screens (4)"
+        "difference screens (5)"
       ],
-      "sha256": "8bda9a420bba9df16a925fee74a77bae98a79a9bb50a023e62198b3fc9ff0607"
+      "sha256": "cd6d78567b4d2762813215672964c49572c2c20bc3d310f938702ae148033e7c"
+    },
+    "wall_bank_comms": {
+      "file": "wall_bank_comms.glb",
+      "presents": "Comms' bank, with its slider bank",
+      "variant_of": "wall_bank",
+      "stations": [
+        "comms"
+      ],
+      "controls": [
+        "a bank of four faders behind the keyboard, to the operator's right"
+      ],
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        1.34,
+        2.22,
+        0.66
+      ],
+      "bounds_m": {
+        "min": [
+          -0.67,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.67,
+          2.22,
+          0.66
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          0.95
+        ]
+      ],
+      "screens": [
+        {
+          "label": "screen_main_0",
+          "shows": "console",
+          "centre_m": [
+            0.0,
+            1.1432,
+            0.1729
+          ],
+          "normal": [
+            0.0,
+            0.342,
+            0.9397
+          ],
+          "up": [
+            0.0,
+            0.9397,
+            -0.342
+          ],
+          "width_m": 0.9,
+          "height_m": 0.45
+        },
+        {
+          "label": "screen_upper_0",
+          "shows": "upper",
+          "centre_m": [
+            -0.255,
+            1.72,
+            0.0735
+          ],
+          "normal": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "up": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "width_m": 0.43,
+          "height_m": 0.4,
+          "half": 0
+        },
+        {
+          "label": "screen_upper_1",
+          "shows": "upper",
+          "centre_m": [
+            0.255,
+            1.72,
+            0.0735
+          ],
+          "normal": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "up": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "width_m": 0.43,
+          "height_m": 0.4,
+          "half": 1
+        },
+        {
+          "label": "keys_0",
+          "shows": "keys",
+          "centre_m": [
+            0.0,
+            0.765,
+            0.4904
+          ],
+          "normal": [
+            0.0,
+            0.9701,
+            0.2425
+          ],
+          "up": [
+            0.0,
+            0.2425,
+            -0.9701
+          ],
+          "width_m": 0.86,
+          "height_m": 0.15
+        }
+      ],
+      "triangles": 408,
+      "budget_triangles": 420,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "light_panel",
+        "screen",
+        "accent"
+      ],
+      "csg": [
+        "difference carve (3)",
+        "chamfer desk_edge (1 edges, 20 mm)",
+        "chamfer fin_l_edges (7 edges, 15 mm)",
+        "difference fin_l_holes (3)",
+        "chamfer fin_r_edges (7 edges, 15 mm)",
+        "difference fin_r_holes (3)",
+        "union fins (2)",
+        "union sliders (5)",
+        "difference screens (5)"
+      ],
+      "sha256": "9bb511b888ecb9f0b6d3072277a6b268ae5696c5138d613a1e74a03037120bad"
     },
     "wall_bank_double": {
       "file": "wall_bank_double.glb",
@@ -247,6 +623,7 @@
       "screens": [
         {
           "label": "screen_main_0",
+          "shows": "console",
           "centre_m": [
             -0.6,
             1.1432,
@@ -257,11 +634,17 @@
             0.342,
             0.9397
           ],
+          "up": [
+            0.0,
+            0.9397,
+            -0.342
+          ],
           "width_m": 1.0,
           "height_m": 0.5
         },
         {
           "label": "screen_main_1",
+          "shows": "console",
           "centre_m": [
             0.6,
             1.1432,
@@ -272,11 +655,17 @@
             0.342,
             0.9397
           ],
+          "up": [
+            0.0,
+            0.9397,
+            -0.342
+          ],
           "width_m": 1.0,
           "height_m": 0.5
         },
         {
           "label": "screen_upper_0",
+          "shows": "upper",
           "centre_m": [
             -0.87,
             1.72,
@@ -287,11 +676,18 @@
             0.0,
             1.0
           ],
+          "up": [
+            0.0,
+            1.0,
+            0.0
+          ],
           "width_m": 0.5,
-          "height_m": 0.4
+          "height_m": 0.4,
+          "half": 0
         },
         {
           "label": "screen_upper_1",
+          "shows": "upper",
           "centre_m": [
             -0.29,
             1.72,
@@ -302,11 +698,18 @@
             0.0,
             1.0
           ],
+          "up": [
+            0.0,
+            1.0,
+            0.0
+          ],
           "width_m": 0.5,
-          "height_m": 0.4
+          "height_m": 0.4,
+          "half": 1
         },
         {
           "label": "screen_upper_2",
+          "shows": "upper",
           "centre_m": [
             0.29,
             1.72,
@@ -317,11 +720,18 @@
             0.0,
             1.0
           ],
+          "up": [
+            0.0,
+            1.0,
+            0.0
+          ],
           "width_m": 0.5,
-          "height_m": 0.4
+          "height_m": 0.4,
+          "half": 0
         },
         {
           "label": "screen_upper_3",
+          "shows": "upper",
           "centre_m": [
             0.87,
             1.72,
@@ -332,11 +742,59 @@
             0.0,
             1.0
           ],
+          "up": [
+            0.0,
+            1.0,
+            0.0
+          ],
           "width_m": 0.5,
-          "height_m": 0.4
+          "height_m": 0.4,
+          "half": 1
+        },
+        {
+          "label": "keys_0",
+          "shows": "keys",
+          "centre_m": [
+            -0.6,
+            0.765,
+            0.4904
+          ],
+          "normal": [
+            0.0,
+            0.9701,
+            0.2425
+          ],
+          "up": [
+            0.0,
+            0.2425,
+            -0.9701
+          ],
+          "width_m": 0.86,
+          "height_m": 0.15
+        },
+        {
+          "label": "keys_1",
+          "shows": "keys",
+          "centre_m": [
+            0.6,
+            0.765,
+            0.4904
+          ],
+          "normal": [
+            0.0,
+            0.9701,
+            0.2425
+          ],
+          "up": [
+            0.0,
+            0.2425,
+            -0.9701
+          ],
+          "width_m": 0.86,
+          "height_m": 0.15
         }
       ],
-      "triangles": 368,
+      "triangles": 400,
       "budget_triangles": 700,
       "materials": [
         "machinery",
@@ -354,9 +812,9 @@
         "chamfer fin_r_edges (7 edges, 15 mm)",
         "difference fin_r_holes (3)",
         "union fins (2)",
-        "difference screens (8)"
+        "difference screens (10)"
       ],
-      "sha256": "ca8225bc09abeb4ae2f9cec6c5fc90d86a5afa273cc04398d9b8b02469ea6c02"
+      "sha256": "a1e540f2dd30865799f597644caa4cf5040cb0d60e5b724730ffc956ea9d9ae7"
     },
     "free_console": {
       "file": "free_console.glb",
@@ -389,6 +847,7 @@
       "screens": [
         {
           "label": "screen_upright",
+          "shows": "console",
           "centre_m": [
             0.0,
             1.02,
@@ -399,11 +858,17 @@
             0.342,
             0.9397
           ],
+          "up": [
+            0.0,
+            0.9397,
+            -0.342
+          ],
           "width_m": 0.8,
           "height_m": 0.3
         },
         {
           "label": "touch_panel",
+          "shows": "keys",
           "centre_m": [
             0.0,
             0.7808,
@@ -413,6 +878,11 @@
             0.0,
             0.9781,
             0.2079
+          ],
+          "up": [
+            0.0,
+            0.2079,
+            -0.9781
           ],
           "width_m": 1.1,
           "height_m": 0.24
@@ -437,9 +907,213 @@
       ],
       "sha256": "774666dea561dcf3a015cc22707d13e7fe485ef27535c204a8f6348a5edcae1f"
     },
+    "free_console_helm": {
+      "file": "free_console_helm.glb",
+      "presents": "Helm's free-standing desk, with its throttle and stick",
+      "variant_of": "free_console",
+      "stations": [
+        "helm"
+      ],
+      "controls": [
+        "a throttle lever to the operator's left",
+        "a stick to their right"
+      ],
+      "anchor": "floor, centre of the pedestal's back",
+      "dimensions_m": [
+        1.4,
+        1.2267,
+        0.64
+      ],
+      "bounds_m": {
+        "min": [
+          -0.7,
+          0.0,
+          -0.08
+        ],
+        "max": [
+          0.7,
+          1.2267,
+          0.56
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          0.91
+        ]
+      ],
+      "screens": [
+        {
+          "label": "screen_upright",
+          "shows": "console",
+          "centre_m": [
+            0.0,
+            1.02,
+            0.0675
+          ],
+          "normal": [
+            0.0,
+            0.342,
+            0.9397
+          ],
+          "up": [
+            0.0,
+            0.9397,
+            -0.342
+          ],
+          "width_m": 0.8,
+          "height_m": 0.3
+        },
+        {
+          "label": "touch_panel",
+          "shows": "keys",
+          "centre_m": [
+            0.0,
+            0.7808,
+            0.3575
+          ],
+          "normal": [
+            0.0,
+            0.9781,
+            0.2079
+          ],
+          "up": [
+            0.0,
+            0.2079,
+            -0.9781
+          ],
+          "width_m": 1.1,
+          "height_m": 0.24
+        }
+      ],
+      "triangles": 284,
+      "budget_triangles": 420,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "screen",
+        "accent"
+      ],
+      "csg": [
+        "difference carve (4)",
+        "chamfer top_edges (6 edges, 20 mm)",
+        "chamfer plinth_edges (4 edges, 20 mm)",
+        "chamfer housing_edges (8 edges, 15 mm)",
+        "union pedestal_plinth_housing (3)",
+        "union helm_controls (6)",
+        "difference screens (3)"
+      ],
+      "sha256": "d0d42a8334a5ee322274950263ee234414afe88f2b067f17ac4b2be499854773"
+    },
+    "free_console_tactical": {
+      "file": "free_console_tactical.glb",
+      "presents": "Tactical's free-standing desk, with its guarded fire buttons",
+      "variant_of": "free_console",
+      "stations": [
+        "tactical"
+      ],
+      "controls": [
+        "two guarded fire buttons to the operator's right"
+      ],
+      "anchor": "floor, centre of the pedestal's back",
+      "dimensions_m": [
+        1.4,
+        1.2267,
+        0.64
+      ],
+      "bounds_m": {
+        "min": [
+          -0.7,
+          0.0,
+          -0.08
+        ],
+        "max": [
+          0.7,
+          1.2267,
+          0.56
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          0.91
+        ]
+      ],
+      "screens": [
+        {
+          "label": "screen_upright",
+          "shows": "console",
+          "centre_m": [
+            0.0,
+            1.02,
+            0.0675
+          ],
+          "normal": [
+            0.0,
+            0.342,
+            0.9397
+          ],
+          "up": [
+            0.0,
+            0.9397,
+            -0.342
+          ],
+          "width_m": 0.8,
+          "height_m": 0.3
+        },
+        {
+          "label": "touch_panel",
+          "shows": "keys",
+          "centre_m": [
+            0.0,
+            0.7808,
+            0.3575
+          ],
+          "normal": [
+            0.0,
+            0.9781,
+            0.2079
+          ],
+          "up": [
+            0.0,
+            0.2079,
+            -0.9781
+          ],
+          "width_m": 1.1,
+          "height_m": 0.24
+        }
+      ],
+      "triangles": 272,
+      "budget_triangles": 420,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard",
+        "screen",
+        "accent"
+      ],
+      "csg": [
+        "difference carve (4)",
+        "chamfer top_edges (6 edges, 20 mm)",
+        "chamfer plinth_edges (4 edges, 20 mm)",
+        "chamfer housing_edges (8 edges, 15 mm)",
+        "union pedestal_plinth_housing (3)",
+        "union fire_buttons (6)",
+        "difference screens (3)"
+      ],
+      "sha256": "1df94758454c316b463ada29d7bb501cce64c99ce271e357f2ae9305df547bd5"
+    },
     "helm_arc": {
       "file": "helm_arc.glb",
       "presents": "A curved two-seat helm, the first series' style",
+      "controls": [
+        "helm (seat 0): a throttle lever left of its panel, a stick right of it",
+        "tactical (seat 1): two guarded fire buttons right of its panel"
+      ],
       "anchor": "floor, centre of the back of the arc",
       "dimensions_m": [
         2.5733,
@@ -473,6 +1147,7 @@
       "screens": [
         {
           "label": "panel_0",
+          "shows": "keys",
           "centre_m": [
             -0.5843,
             0.7826,
@@ -483,11 +1158,17 @@
             0.9772,
             0.2079
           ],
-          "width_m": 0.66,
+          "up": [
+            -0.2007,
+            0.2124,
+            -0.9563
+          ],
+          "width_m": 0.56,
           "height_m": 0.24
         },
         {
           "label": "panel_1",
+          "shows": "keys",
           "centre_m": [
             0.5843,
             0.7826,
@@ -498,11 +1179,17 @@
             0.9772,
             0.2079
           ],
-          "width_m": 0.66,
+          "up": [
+            0.2007,
+            0.2124,
+            -0.9563
+          ],
+          "width_m": 0.56,
           "height_m": 0.24
         },
         {
           "label": "viewer",
+          "shows": "upper",
           "centre_m": [
             0.0,
             0.9137,
@@ -513,16 +1200,23 @@
             0.4191,
             0.908
           ],
+          "up": [
+            0.0,
+            0.908,
+            -0.4191
+          ],
           "width_m": 0.22,
-          "height_m": 0.12
+          "height_m": 0.12,
+          "half": 0
         }
       ],
-      "triangles": 296,
+      "triangles": 478,
       "budget_triangles": 600,
       "materials": [
         "machinery",
         "trim",
         "bulkhead",
+        "hazard",
         "light_panel",
         "screen",
         "accent"
@@ -531,9 +1225,10 @@
         "chamfer front_edge (8 edges, 20 mm)",
         "chamfer hood_edges (4 edges, 12 mm)",
         "union hood (1)",
+        "union controls (12)",
         "difference screens (3)"
       ],
-      "sha256": "1985d3960cf5d2c0033987b1a5b1a28c34dcfe198639234d3674b50935293f46"
+      "sha256": "950b1606636daca7fc7ae1f09be72ca4ca91b1e70b20c64cb53da26b89570c88"
     },
     "captain_chair": {
       "file": "captain_chair.glb",
@@ -571,6 +1266,7 @@
       "screens": [
         {
           "label": "arm_panel_-1",
+          "shows": "keys",
           "centre_m": [
             -0.355,
             0.628,
@@ -581,11 +1277,17 @@
             0.9968,
             0.0797
           ],
+          "up": [
+            0.0,
+            0.0797,
+            -0.9968
+          ],
           "width_m": 0.1,
           "height_m": 0.3
         },
         {
           "label": "arm_panel_+1",
+          "shows": "keys",
           "centre_m": [
             0.355,
             0.628,
@@ -595,6 +1297,11 @@
             0.0,
             0.9968,
             0.0797
+          ],
+          "up": [
+            0.0,
+            0.0797,
+            -0.9968
           ],
           "width_m": 0.1,
           "height_m": 0.3
@@ -697,6 +1404,7 @@
       "screens": [
         {
           "label": "screen",
+          "shows": "console",
           "centre_m": [
             0.0,
             1.0803,
@@ -706,6 +1414,11 @@
             0.0,
             0.9676,
             0.2524
+          ],
+          "up": [
+            0.0,
+            0.2524,
+            -0.9676
           ],
           "width_m": 0.5,
           "height_m": 0.3

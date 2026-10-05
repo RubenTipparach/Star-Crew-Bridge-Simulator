@@ -61,6 +61,25 @@ def operator(prop, i=0):
     return x, z
 
 
+def prop_for(base, station):
+    """The prop that stands at a station where base would: a station's own variant of base (the
+    same body with that station's hand controls, bridge-stations 11.6) when the manifest has one
+    (variant_of and stations), else base itself. The one rule; the mockup reads the same fields."""
+    for name, rec in PROPS.items():
+        if rec.get("variant_of") == base and station in rec.get("stations", []):
+            if rec["operators_m"] != PROPS[base]["operators_m"]:
+                raise SystemExit(f"{name}: its operators_m differ from {base}'s, so its seats would not land")
+            return name
+    return base
+
+
+def dress(props):
+    """Swap every prop for its station's variant (prop_for), in place; returns the list."""
+    for p in props:
+        p["prop"] = prop_for(p["prop"], p["station"])
+    return props
+
+
 SEAT_FROM_WALL = operator("wall_bank")[1]       # a wall bank's seat, out from the wall (0.95 m)
 assert SEAT_FROM_WALL == operator("wall_bank_core")[1]
 DESK_FROM_SEAT = operator("free_console")[1]    # a free console's back, ahead of its seat (0.91 m)
@@ -210,7 +229,7 @@ def variant_a():
         "id": "A", "name": "Wedge, tiered",
         "after": "R5 and R6 (the ship-shaped bridge), with the owner's levels from R1 and R2",
         "summary": "The ship-shaped wedge kept. Work rings two steps up along the raked side walls carry the wall-built consoles; the walkway between them runs from the aft door to the viewscreen; the captain sits three steps up on an octagonal platform; helm and tactical one step up on a sub-platform in front.",
-        "brushes": BRIDGE["brushes"], "platforms": platforms, "stairs": stairs, "props": props, "seats": seats,
+        "brushes": BRIDGE["brushes"], "platforms": platforms, "stairs": stairs, "props": dress(props), "seats": seats,
     }
 
 
@@ -367,7 +386,7 @@ def variant_b():
         "after": "R1, R3 and R8 (the circular bridge with a ring), R2 (the captain's dais and a helm well)",
         "summary": "A sixteen-sided room, 12.4 m across, with a flat bow for the viewscreen. A ring two steps up runs round both sides with a console built into every wall segment and a rail along its edge; the aisle from the aft door leads into the well; the captain's round dais is at ring height; helm and tactical share one curved console a step up in front.",
         "brushes": [{"y": [FLOOR, CEIL], "poly": room}], "portals": portals, "fixtures": fixtures,
-        "platforms": platforms, "stairs": st, "props": props, "seats": seats,
+        "platforms": platforms, "stairs": st, "props": dress(props), "seats": seats,
     }
 
 
@@ -412,7 +431,7 @@ def variant_c():
         "id": "C", "name": "Split level",
         "after": "R9 (the two-level bridge split by a riser), R2 (the sunken helm well)",
         "summary": "The wedge split across by a two-step riser. The upper level at the back holds the aft door's landing, comms and flight operations built into the walls, two stand-up repeaters and the captain at the riser's edge; the lower front holds helm and tactical facing the viewscreen and engineering and science built into the forward walls.",
-        "brushes": BRIDGE["brushes"], "platforms": platforms, "stairs": stairs, "props": props, "seats": seats,
+        "brushes": BRIDGE["brushes"], "platforms": platforms, "stairs": stairs, "props": dress(props), "seats": seats,
     }
 
 
@@ -542,7 +561,7 @@ def main(argv):
             "Each variant replaces the bridge's brushes (and, for B, its windows and viewscreen) and its seats; every other part of the layout is unchanged.",
             "Platforms are solid (like the dais), not air: the bridge stays one brush, so its volume is the brush's. top_m is the platform's top. edges[i] is the kind of the edge from poly[i] to poly[i+1]: wall (against the room's wall), riser (a step face), rail (a step face with a railing), step (a riser with a stair at it).",
             "Steps rise 0.225 m: the walkway is the floor (3.5 m), the helm and tactical sub-platform one step up, the work ring two, the captain's platform three (A) or two (B, C).",
-            "A prop is placed by its back at floor level (back_m) and the way its front faces (yaw_deg, 0 the bow, +90 port): a wall bank's back is on the wall and its front faces into the room; a free console's or stand-up console's front faces its operator, so its back is the side away from them; a chair faces the way its occupant looks. Props are the Blender-built models of assets/models/bridge/props.json. A seat is a station's seat point and the way its occupant faces.",
+            "A prop is placed by its back at floor level (back_m) and the way its front faces (yaw_deg, 0 the bow, +90 port): a wall bank's back is on the wall and its front faces into the room; a free console's or stand-up console's front faces its operator, so its back is the side away from them; a chair faces the way its occupant looks. Props are the Blender-built models of assets/models/bridge/props.json; where the manifest has a station's own variant of a prop (variant_of, stations: the same body with that station's hand controls), the station gets the variant. A seat is a station's seat point and the way its occupant faces.",
             "Stairs use the layout's stair convention: top_m and foot_m are the centres of the flight's top and bottom edges; width_m its width.",
         ],
         "variants": variants,

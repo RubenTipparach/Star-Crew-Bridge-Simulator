@@ -5,7 +5,7 @@
   "Each variant replaces the bridge's brushes (and, for B, its windows and viewscreen) and its seats; every other part of the layout is unchanged.",
   "Platforms are solid (like the dais), not air: the bridge stays one brush, so its volume is the brush's. top_m is the platform's top. edges[i] is the kind of the edge from poly[i] to poly[i+1]: wall (against the room's wall), riser (a step face), rail (a step face with a railing), step (a riser with a stair at it).",
   "Steps rise 0.225 m: the walkway is the floor (3.5 m), the helm and tactical sub-platform one step up, the work ring two, the captain's platform three (A) or two (B, C).",
-  "A prop is placed by its back at floor level (back_m) and the way its front faces (yaw_deg, 0 the bow, +90 port): a wall bank's back is on the wall and its front faces into the room; a free console's or stand-up console's front faces its operator, so its back is the side away from them; a chair faces the way its occupant looks. Props are the Blender-built models of assets/models/bridge/props.json. A seat is a station's seat point and the way its occupant faces.",
+  "A prop is placed by its back at floor level (back_m) and the way its front faces (yaw_deg, 0 the bow, +90 port): a wall bank's back is on the wall and its front faces into the room; a free console's or stand-up console's front faces its operator, so its back is the side away from them; a chair faces the way its occupant looks. Props are the Blender-built models of assets/models/bridge/props.json; where the manifest has a station's own variant of a prop (variant_of, stations: the same body with that station's hand controls), the station gets the variant. A seat is a station's seat point and the way its occupant faces.",
   "Stairs use the layout's stair convention: top_m and foot_m are the centres of the flight's top and bottom edges; width_m its width."
  ],
  "variants": [
@@ -312,7 +312,7 @@
    ],
    "props": [
     {
-     "prop": "wall_bank",
+     "prop": "wall_bank_comms",
      "station": "comms",
      "back_m": [
       8.09,
@@ -322,7 +322,7 @@
      "yaw_deg": -103.4
     },
     {
-     "prop": "wall_bank_core",
+     "prop": "wall_bank_core_engineering",
      "station": "engineering",
      "back_m": [
       7.303,
@@ -372,7 +372,7 @@
      "yaw_deg": -0.0
     },
     {
-     "prop": "free_console",
+     "prop": "free_console_helm",
      "station": "helm",
      "back_m": [
       1.8,
@@ -382,7 +382,7 @@
      "yaw_deg": 180.0
     },
     {
-     "prop": "free_console",
+     "prop": "free_console_tactical",
      "station": "tactical",
      "back_m": [
       -1.8,
@@ -926,7 +926,7 @@
      "yaw_deg": -22.5
     },
     {
-     "prop": "wall_bank",
+     "prop": "wall_bank_comms",
      "station": "comms",
      "back_m": [
       4.384,
@@ -946,7 +946,7 @@
      "yaw_deg": -67.5
     },
     {
-     "prop": "wall_bank_core",
+     "prop": "wall_bank_core_engineering",
      "station": "engineering",
      "back_m": [
       6.2,
@@ -1271,7 +1271,7 @@
    ],
    "props": [
     {
-     "prop": "wall_bank",
+     "prop": "wall_bank_comms",
      "station": "comms",
      "back_m": [
       8.114,
@@ -1281,7 +1281,7 @@
      "yaw_deg": -103.4
     },
     {
-     "prop": "wall_bank_core",
+     "prop": "wall_bank_core_engineering",
      "station": "engineering",
      "back_m": [
       7.025,
@@ -1331,7 +1331,7 @@
      "yaw_deg": -0.0
     },
     {
-     "prop": "free_console",
+     "prop": "free_console_helm",
      "station": "helm",
      "back_m": [
       1.8,
@@ -1341,7 +1341,7 @@
      "yaw_deg": 180.0
     },
     {
-     "prop": "free_console",
+     "prop": "free_console_tactical",
      "station": "tactical",
      "back_m": [
       -1.8,
