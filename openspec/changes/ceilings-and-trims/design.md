@@ -37,7 +37,7 @@ footprints, 2026-10-05).
 - One draw per compartment. The texture budget is stated.
 
 **Non-Goals:**
-- **Floors.** Framed grates with a solid walkway (X1, X2) are next, after the owner sees this.
+- **Floors.** They are `floor-panels` (owner, 2026-10-05: "Floors and ceilings in mean"), built with this change.
 - **New geometry.** Members keep their sizes. Only their textures and texture coordinates change.
 - **Railings, ladders, rims, collars and lamp housings.** They keep their materials. They are
   small, and their current look fits.
@@ -85,7 +85,7 @@ face within the strip's row of the trim layer.
 
 | Strip | Height in the layer | Content |
 | --- | --- | --- |
-| `rib` | 0.25 m | An I-beam flange: a raised centre web, rivet lines at both edges, lightening holes every 0.5 m |
+| `rib` | 0.25 m | An I-beam flange: a raised centre web, rivet lines at both edges, lightening holes every 0.5 m. Ribs are the wall's pillars (owner, 2026-10-05: "some wall pillars might need retouching up too"), so a rib's front face is split into a 0.3 m **base**, the tiling shaft and a 0.3 m **capital** under the cove, each with its own row (`rib_base`, `rib_capital`), after Undercity's "Pillars always have a base and a capital" (+4 triangles a rib) |
 | `beam` | 0.25 m | As `rib`, with a hazard edge in the working set |
 | `cove` | 0.375 m | A cable tray with two cable runs and hangers |
 | `baseboard` | 0.15 m | A kick plate with bolts and a slot vent every 1 m |
@@ -149,4 +149,4 @@ Measured numbers replace these estimates when the build lands.
 | Id | Question | Options | Recommendation | Shots |
 | --- | --- | --- | --- | --- |
 | U1 | Do the ceilings and trims now sit with the panel walls? | as built / with changes (say which) | As built | `wall-panels-*-after.png` once this lands, with before shots |
-| U2 | Floors next: framed grates with a solid walkway (X1, X2)? | yes / keep today's tiles | Yes, with screenshots before it is asked. Recommendation taken (ask only with screenshots) | none yet |
+| U2 | Floors next: framed grates with a solid walkway (X1, X2)? | yes / keep today's tiles | **Answered 2026-10-05** (owner: "Floors and ceilings in mean"): yes, now, as `floor-panels` | none |
