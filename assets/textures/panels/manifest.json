@@ -1,0 +1,323 @@
+{
+ "_doc": "Written by tools/blender/build_wall_panels.py, never by hand: every panel layer and UI image it built, with its sha256, and what the panel layers cost. data/materials/panels.json is the source.",
+ "blender": "4.5.14 LTS",
+ "files": {
+  "128/crew_flank.png": {
+   "bytes": 10849,
+   "sha256": "e2e2f9fc3856f6ae6f882be5d42c822d3e74da7a33ed4bf441664ce231befe7e"
+  },
+  "128/crew_hatch.png": {
+   "bytes": 10715,
+   "sha256": "7590d5b4bb64549901462b4368c9bdece376ca7e64a231048eaa9eb5348d078a"
+  },
+  "128/crew_junction.png": {
+   "bytes": 12051,
+   "sha256": "597028e7ddb56ff884fa291d2ec1746d28dd3f84b76351bb70881bde4528d942"
+  },
+  "128/crew_light.png": {
+   "bytes": 9829,
+   "sha256": "a8c7139c30ca1506b8f5568e03f8e901479a4668e37f0f7b69729a142756eabf"
+  },
+  "128/crew_narrow.png": {
+   "bytes": 9179,
+   "sha256": "da70e2b7d362e2a4c10e53d0b07e510f51f5968682daccac15eebf1c56f9ea22"
+  },
+  "128/crew_pipes.png": {
+   "bytes": 11693,
+   "sha256": "0e10383565535803124addec40743f70e206152799771514f91a605169e3802c"
+  },
+  "128/crew_plate.png": {
+   "bytes": 9906,
+   "sha256": "c4a8e46f0f793279186cb390013e7565cc3d430c3e2364e984257806dafc6c40"
+  },
+  "128/crew_ribbed.png": {
+   "bytes": 11593,
+   "sha256": "9ed0596ceda65c6caaf3dc6fd2922bcb2dccf23bcba87e41983cdc7bbaa5ad3b"
+  },
+  "128/crew_screen.png": {
+   "bytes": 10956,
+   "sha256": "05c212e55bfd9ae83acf928db833db28dc4eb1763478e6a529b6f4543f94e7b0"
+  },
+  "128/crew_strips.png": {
+   "bytes": 8606,
+   "sha256": "96dad917ab95281e47cf4056b05694857e9485924e6753d5887107554bb0efb5"
+  },
+  "128/crew_vent.png": {
+   "bytes": 8889,
+   "sha256": "979296ea7e0550bac3186937d0a4aea099eaaa7366888af6c6b0163286820c69"
+  },
+  "128/working_flank.png": {
+   "bytes": 13123,
+   "sha256": "0bb9efd68e8aada850c4ae213267c285d618aac24ec3d9cab780d149ca34d835"
+  },
+  "128/working_hatch.png": {
+   "bytes": 14869,
+   "sha256": "69cf92f2b8a95f2ed6071181f8ed952f2cdb8f824a21a15e22aab262d7d86417"
+  },
+  "128/working_junction.png": {
+   "bytes": 14110,
+   "sha256": "b0b822e68569ba376535fa040c68a939e0182f09e8010747cef71a82b0762b7a"
+  },
+  "128/working_light.png": {
+   "bytes": 12325,
+   "sha256": "fccf6c9621bc414f6f9000e266a2f4c3b79bd07f4e65a2c82e9aba88f00fe779"
+  },
+  "128/working_narrow.png": {
+   "bytes": 11517,
+   "sha256": "e1fd88b5588870b4415fa358c1bb2d14995534d11868a599a00d11f6f4d97194"
+  },
+  "128/working_pipes.png": {
+   "bytes": 13719,
+   "sha256": "ca208b656e6c90f8df5778bdafad4fad8b6c3e2c9fe58dcd7ab37dc84ed77238"
+  },
+  "128/working_plate.png": {
+   "bytes": 12944,
+   "sha256": "c3efc47ec6e8651feabfad491cf6248eb6f8977a9db695d44fd859d2bfb26aef"
+  },
+  "128/working_ribbed.png": {
+   "bytes": 14163,
+   "sha256": "221fccafd15d4cad356e7c3eb2b2050db25a137656ad18f4a3f7e8c78a31be6a"
+  },
+  "128/working_screen.png": {
+   "bytes": 13205,
+   "sha256": "23ba7606b645282893637de5dbcb6730f719d9700b32b9fa4d3ced18228ea7b5"
+  },
+  "128/working_strips.png": {
+   "bytes": 12633,
+   "sha256": "3d4ed7bdc962e97c0b66b218aaf8163af6a0975281736b3a8ba5c487b5c7ff0d"
+  },
+  "128/working_vent.png": {
+   "bytes": 16040,
+   "sha256": "7cb921a2d2320f468d541dd8f94b6f93b1fd7b9ddc33945fbfdfb24b927c9486"
+  },
+  "256/crew_flank.png": {
+   "bytes": 31578,
+   "sha256": "3bbfa99c896eb4b11db39efc06a84c4cca324c1dce111c28697bc6d9d6f7d8c2"
+  },
+  "256/crew_hatch.png": {
+   "bytes": 27884,
+   "sha256": "c66ce4411c5cf49912a8026bcbda35e134442269348d0b46a00d7c213eddf78e"
+  },
+  "256/crew_junction.png": {
+   "bytes": 35343,
+   "sha256": "3ef0fc3b4d9cf390828375ea8d6d3f122b9da52dd1479ed1dd577bf695250abf"
+  },
+  "256/crew_light.png": {
+   "bytes": 28378,
+   "sha256": "f1ecf8c52dad1379b5476be3cf10c173064f2193a8001273563bb5d0010e8f81"
+  },
+  "256/crew_narrow.png": {
+   "bytes": 26531,
+   "sha256": "cf881cb6a90f9288ddd15f296859d5077128ed9707e4396182f479f68e3a8e15"
+  },
+  "256/crew_pipes.png": {
+   "bytes": 34311,
+   "sha256": "ef430484cbab4fafcc16d0791c2c6123978b73f487c07b1005134a6d470e20d2"
+  },
+  "256/crew_plate.png": {
+   "bytes": 28258,
+   "sha256": "60c74bddde17d7dd8ba656494bf1d855934be8e343d43b76759e80b835ecca2c"
+  },
+  "256/crew_ribbed.png": {
+   "bytes": 33722,
+   "sha256": "cbdb379c7a133514a7462c7479fdffc8b0c0e98bfe13f0f84ebb433e32da5f7a"
+  },
+  "256/crew_screen.png": {
+   "bytes": 30198,
+   "sha256": "74d6ab180c78c112d510d4b7ad867405e1ccbf3e745398a2ed7590f2118b2545"
+  },
+  "256/crew_strips.png": {
+   "bytes": 25902,
+   "sha256": "9b97ee79552575e0f142e2c3a4882cc89acfcbf8a4f7773f84dab59d414e31ce"
+  },
+  "256/crew_vent.png": {
+   "bytes": 26733,
+   "sha256": "384761e5a2607c58c33e0f9fb90fbb945294360a35dffb2cc3d10e8bd0a4f13d"
+  },
+  "256/working_flank.png": {
+   "bytes": 37752,
+   "sha256": "b8132fd2ab8c8d76a4712da00e83c473a20bccde9781061735677df5d8cc5c96"
+  },
+  "256/working_hatch.png": {
+   "bytes": 39475,
+   "sha256": "05a8e6c1919dc3872d5c07b686de694af10e908dc8857d5c1feaa8c8c923add0"
+  },
+  "256/working_junction.png": {
+   "bytes": 39375,
+   "sha256": "ca7ca2dc0a80222233f9ecda4d2438839afa0757a9f1cd35b967f0cb1848a7f5"
+  },
+  "256/working_light.png": {
+   "bytes": 36163,
+   "sha256": "53b00e736a4bf093ead53cc3258d02abdfd42508ebc311ba965dd68f8ddf00b3"
+  },
+  "256/working_narrow.png": {
+   "bytes": 33396,
+   "sha256": "c622bcd206219904fe2b40985abf2e1f16551fc407c5855c7639479c7621c748"
+  },
+  "256/working_pipes.png": {
+   "bytes": 38981,
+   "sha256": "7ddc9d711778994b5ca717c535f61bc97604cb91ec333d6a62d8087485d48510"
+  },
+  "256/working_plate.png": {
+   "bytes": 36127,
+   "sha256": "1175a0d1fb3aacc05a37e8d1e6b75884dc4b3585b2642f466e0e014b36e2724d"
+  },
+  "256/working_ribbed.png": {
+   "bytes": 39866,
+   "sha256": "0a1db7fe1807a1506d5dbaf6ed6597e611b11cd3b08420f4b11387150a6ead7b"
+  },
+  "256/working_screen.png": {
+   "bytes": 36329,
+   "sha256": "63d21859f8f3b1999acd1e2cd1e5fc98770aaf2bbe86863b8a6e2f440d469397"
+  },
+  "256/working_strips.png": {
+   "bytes": 36303,
+   "sha256": "df115eb01e33224b405dc25dd1c5502e9cfd77a2c58bdebe04262d6581561427"
+  },
+  "256/working_vent.png": {
+   "bytes": 43029,
+   "sha256": "12c27ecf4edd73617629c1a79e80bdd33ac5713b85bc12064b44be61950a8b2c"
+  },
+  "keys_crew.png": {
+   "bytes": 8230,
+   "sha256": "98a073433dc47f75c079adf9ad1959dc03c9a5e7cb1cbb117e50128e3a834dbc"
+  },
+  "keys_working.png": {
+   "bytes": 8285,
+   "sha256": "0da9c0a090f2a4e9add0239fd4b83a8d415eb9713e40c34edec9ff9dcabbd56f"
+  },
+  "ui_screen_crew.png": {
+   "bytes": 10519,
+   "sha256": "cfb139d0112584cdecc988f6a21abb761e19a1b374a9fc3032bed053b6b97e84"
+  },
+  "ui_screen_working.png": {
+   "bytes": 10485,
+   "sha256": "2afd0a19d6473a0cfb7775d7d04d4f4b7f72a57f6e0dbbfbec09f7b0fa1eebea"
+  }
+ },
+ "generator": "tools/blender/build_wall_panels.py",
+ "generator_version": 1,
+ "gpu_bytes_panel_layers": {
+  "128": 1922360,
+  "256": 7689528
+ },
+ "gpu_bytes_with_materials": {
+  "128": 2883540,
+  "256": 11534292
+ },
+ "layers": {
+  "crew_flank": {
+   "glow_fraction": 0.0436,
+   "layer": 19,
+   "seam_ratio_x": null
+  },
+  "crew_hatch": {
+   "glow_fraction": 0.0011,
+   "layer": 14,
+   "seam_ratio_x": null
+  },
+  "crew_junction": {
+   "glow_fraction": 0.0016,
+   "layer": 15,
+   "seam_ratio_x": null
+  },
+  "crew_light": {
+   "glow_fraction": 0.053,
+   "layer": 16,
+   "seam_ratio_x": null
+  },
+  "crew_narrow": {
+   "glow_fraction": 0.0085,
+   "layer": 20,
+   "seam_ratio_x": null
+  },
+  "crew_pipes": {
+   "glow_fraction": 0.0004,
+   "layer": 13,
+   "seam_ratio_x": null
+  },
+  "crew_plate": {
+   "glow_fraction": 0.0,
+   "layer": 11,
+   "seam_ratio_x": null
+  },
+  "crew_ribbed": {
+   "glow_fraction": 0.0,
+   "layer": 17,
+   "seam_ratio_x": null
+  },
+  "crew_screen": {
+   "glow_fraction": 0.1579,
+   "layer": 18,
+   "seam_ratio_x": null
+  },
+  "crew_strips": {
+   "glow_fraction": 0.0,
+   "layer": 21,
+   "seam_ratio_x": 2.149
+  },
+  "crew_vent": {
+   "glow_fraction": 0.0,
+   "layer": 12,
+   "seam_ratio_x": null
+  },
+  "working_flank": {
+   "glow_fraction": 0.0436,
+   "layer": 30,
+   "seam_ratio_x": null
+  },
+  "working_hatch": {
+   "glow_fraction": 0.0011,
+   "layer": 25,
+   "seam_ratio_x": null
+  },
+  "working_junction": {
+   "glow_fraction": 0.0016,
+   "layer": 26,
+   "seam_ratio_x": null
+  },
+  "working_light": {
+   "glow_fraction": 0.053,
+   "layer": 27,
+   "seam_ratio_x": null
+  },
+  "working_narrow": {
+   "glow_fraction": 0.0085,
+   "layer": 31,
+   "seam_ratio_x": null
+  },
+  "working_pipes": {
+   "glow_fraction": 0.0004,
+   "layer": 24,
+   "seam_ratio_x": null
+  },
+  "working_plate": {
+   "glow_fraction": 0.0,
+   "layer": 22,
+   "seam_ratio_x": null
+  },
+  "working_ribbed": {
+   "glow_fraction": 0.0,
+   "layer": 28,
+   "seam_ratio_x": null
+  },
+  "working_screen": {
+   "glow_fraction": 0.1579,
+   "layer": 29,
+   "seam_ratio_x": null
+  },
+  "working_strips": {
+   "glow_fraction": 0.0,
+   "layer": 32,
+   "seam_ratio_x": 1.79
+  },
+  "working_vent": {
+   "glow_fraction": 0.0,
+   "layer": 23,
+   "seam_ratio_x": null
+  }
+ },
+ "numpy": "1.26.4",
+ "pillow": "12.3.0",
+ "schema": "starcrew.panel-layers/1"
+}

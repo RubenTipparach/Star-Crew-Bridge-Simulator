@@ -1,0 +1,145 @@
+{
+  "schema": "starcrew.panels/1",
+  "status": "Proposed (2026-10-05) by openspec/changes/wall-panels. Built as a prototype by tools/blender/build_wall_panels.py into assets/textures/panels/ and drawn by docs/mockups/wall-panels.html (shipkit's opt-in wall dressing). No other page and no engine code reads it. The colours, wear and module designs are first choices made by eye on the contact sheet (docs/screenshots/materials/panels-contact-sheet.png), not decisions: the owner judges them (survey V1, V2, S1).",
+  "_rules": [
+    "This file is the one source for the wall panels: the bay and band sizes, which module a bay may take and how often, the glow per lighting state, each finish's colours and wear, and how the modules are rendered. The build (tools/blender/build_wall_panels.py), the mockup kit (docs/mockups/lib/shipkit.js) and later deckc read it; nothing keeps a second list.",
+    "A panel module is a designed 2 m x 2 m panel (layers.span_m) with layers.margin_m of plain plate down each side. It does not tile: a bay shows it once, centred, with u = 0.5 at the bay's centre and v from 0 to 1 over its band (wall-panels design section 5). A strip is 0.5 m tall (bands.strip_m) and tiles along the wall with a 2 m period; the four strips of a finish share one layer, one quarter each (strips.rows, counted from the bottom of the layer, v = 0), each with guard_m of plain plate at its top and bottom so mipmaps do not bleed one strip into the next.",
+    "Panel layers are layers of the same texture array as the materials (data/materials/materials.json), after them: layers.first_layer is the number of materials, and the modules and strips take the layers numbered in 'layer'. At 64 px per metre every layer is 128 px; at 128 px per metre every layer, the materials' included (scaled up by nearest neighbour), is 256 px (layers.sizes_px; survey S1).",
+    "Like the materials, relief is baked into the colour (no per-pixel lighting on the Pi 5) and alpha is the emission mask: 255 shows the texel at full brightness whatever the light, 0 lights it only by the baked vertex light. Panel lights glow but are not light sources; the bake's emitters stay the fixtures. glow is how much they glow in each lighting state, 0-1 (wall-panels design section 5).",
+    "Bays (design section 1): a bay 1.6-2.4 m wide (bays.full_min_m, full_max_m) takes a full module, 0.6-1.6 m (narrow_min_m) the narrow module, under 0.6 m plate; a bay over 2.4 m is split evenly into sub-bays of at most 2.4 m.",
+    "Bands (design section 2): from the floor up, a base strip of bands.base_m, a module band of bands.module_m, then for each further whole base_m + module_m of flat wall the between strip and another module band, and the top strip filling the rest to the cove in strip_m quads, the last cropped.",
+    "The rule (design section 4), in order: a bay holding a window, a wall fixture, a portal's frame or an opening takes plate; a bay touching a door's frame takes flank, mirrored so its light strip is on the door's side; a narrow bay takes narrow; otherwise a module is drawn by weight, excluding the module of the bay before it on the same wall face and the one below it. The draw is the FNV-1a 32-bit hash of the key 'seed|compartment|brush|edge|bay|level' (rule.seed, until the layout carries a ship seed), divided by 2^32 and mapped onto the cumulative weights of the modules left. Modules placed by a rule have weight 0 and say which rule in 'placed'. Rule 3 (a vent portal takes vent) waits for life-support to put vents in the layout.",
+    "wear, per finish, is procedural and baked with the render: grime (0-1) darkens soft blotches about 1 / grime_scale_per_m metres across; crevice (0-1) darkens what ambient occlusion within crevice_m reaches; edge (0-1) wears paint to bare metal on chamfered edges; streaks (0-1) are dark grime streaks running down the wall; rust (0-1) is rust streaks and specks. Strips use noise that repeats every 2 m so they still tile.",
+    "Colours are sRGB components in 0-1, set on the Blender materials at the source, so the post-process does not recolour (no ramp). The post-process area-averages the render in linear light, encodes sRGB, reduces each layer to layers.colours colours by median cut without dithering, and writes the emission mask into alpha.",
+    "Units: metres (_m), pixels (_px), degrees (_deg), sRGB colour components in 0-1 (_srgb), fractions 0-1 (glow, wear). An unknown key or a missing one stops the build with its path; a present zero is zero."
+  ],
+  "layers": {
+    "first_layer": 11,
+    "span_m": 2.0,
+    "margin_m": 0.2,
+    "sizes_px": [128, 256],
+    "colours": 48,
+    "dir": "assets/textures/panels"
+  },
+  "bands": {
+    "base_m": 0.5,
+    "module_m": 2.0,
+    "strip_m": 0.5,
+    "base": "base",
+    "between": "louvre",
+    "top": "top"
+  },
+  "bays": {
+    "full_min_m": 1.6,
+    "full_max_m": 2.4,
+    "narrow_min_m": 0.6,
+    "narrow_feature_m": 0.6
+  },
+  "rule": {
+    "seed": 1,
+    "hash": "fnv1a32",
+    "key": "seed|compartment|brush|edge|bay|level",
+    "door_kinds": ["door", "pressure_door", "hatch"]
+  },
+  "glow": { "normal": 1.0, "red_alert": 1.0, "emergency": 0.3 },
+  "render": {
+    "_doc": "How tools/blender/build_wall_panels.py bakes a module (design section 6, option B): orthographic and face-on, Cycles on the CPU, a fixed key light from the upper left (key_light_tangent: x right, y up, z out of the wall) of angular size key_angle_deg, and a uniform ambient of ambient, scaled so that a flat, unoccluded face renders at exactly its colour; occlusion and one or two bounces come from the path tracing. Rendered at px_per_m with samples per pixel and no denoiser, then area-averaged to the layer sizes. The emission mask is a second render in which emissive materials glow white and everything else is black.",
+    "px_per_m": 512,
+    "samples": 16,
+    "mask_samples": 8,
+    "key_light_tangent": [-0.45, 0.8, 0.6],
+    "key_angle_deg": 4.0,
+    "ambient": 0.45,
+    "bounces": 2
+  },
+  "ui": {
+    "_doc": "Screen and key images, reusable by console props (owner, 2026-10-05: 'better UI place holders, keyboards etc'). The screen is a UI placeholder modelled as emissive shapes (a header band, bar graphs, a line plot over a grid, a schematic, rows of text-like ticks; no real text) and rendered face-on; the screen module shows it in its display. The keys are a strip of raised keys, a few lit, baked like the modules. Both are written per finish as <dir>/ui_screen_<finish>.png and <dir>/keys_<finish>.png.",
+    "screen_m": [1.0, 0.625],
+    "screen_px": [256, 160],
+    "keys_m": [0.5, 0.125],
+    "keys_px": [256, 64]
+  },
+  "finishes": {
+    "crew": {
+      "_doc": "Crew spaces: warm mid grey, clean, white and amber light.",
+      "colours_srgb": {
+        "plate": [0.40, 0.38, 0.35],
+        "paint2": [0.31, 0.30, 0.285],
+        "dark": [0.10, 0.10, 0.105],
+        "metal": [0.60, 0.58, 0.54],
+        "hazard_a": [0.82, 0.63, 0.14],
+        "hazard_b": [0.07, 0.07, 0.07],
+        "safety": [0.80, 0.60, 0.13],
+        "rubber": [0.05, 0.05, 0.055],
+        "stencil": [0.85, 0.83, 0.77],
+        "light": [1.0, 0.95, 0.86],
+        "amber": [1.0, 0.62, 0.17],
+        "status": [0.45, 0.95, 0.60],
+        "rust": [0.36, 0.20, 0.10],
+        "ui_bg": [0.02, 0.07, 0.08],
+        "ui_dim": [0.08, 0.32, 0.34],
+        "ui_fg": [0.30, 0.85, 0.80],
+        "ui_hi": [0.85, 1.0, 0.97],
+        "ui_alert": [1.0, 0.65, 0.20]
+      },
+      "wear": { "grime": 0.16, "grime_scale_per_m": 2.0, "crevice": 0.5, "crevice_m": 0.05, "edge": 0.40, "streaks": 0.14, "rust": 0.0 },
+      "modules": {
+        "plate": { "layer": 11, "weight": 3, "placed": "draw", "emissive": false, "mirrored": false },
+        "vent": { "layer": 12, "weight": 1, "placed": "draw", "emissive": false, "mirrored": false, "variant": "louvre" },
+        "pipes": { "layer": 13, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
+        "hatch": { "layer": 14, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
+        "junction": { "layer": 15, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
+        "light": { "layer": 16, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
+        "ribbed": { "layer": 17, "weight": 1, "placed": "draw", "emissive": false, "mirrored": false },
+        "screen": { "layer": 18, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
+        "flank": { "layer": 19, "weight": 0, "placed": "rule:door", "emissive": true, "mirrored": true },
+        "narrow": { "layer": 20, "weight": 0, "placed": "rule:narrow", "emissive": true, "mirrored": false }
+      },
+      "strips": { "layer": 21, "guard_m": 0.025, "rows": { "base": 0, "louvre": 1, "spare": 2, "top": 3 } }
+    },
+    "working": {
+      "_doc": "Working spaces: darker grey-brown, rust streaks, hazard borders, amber light.",
+      "colours_srgb": {
+        "plate": [0.27, 0.245, 0.215],
+        "paint2": [0.20, 0.185, 0.165],
+        "dark": [0.075, 0.07, 0.065],
+        "metal": [0.50, 0.46, 0.40],
+        "hazard_a": [0.82, 0.60, 0.11],
+        "hazard_b": [0.06, 0.055, 0.05],
+        "safety": [0.78, 0.52, 0.11],
+        "rubber": [0.045, 0.04, 0.04],
+        "stencil": [0.82, 0.68, 0.24],
+        "light": [1.0, 0.82, 0.55],
+        "amber": [1.0, 0.56, 0.12],
+        "status": [0.55, 0.95, 0.35],
+        "rust": [0.38, 0.17, 0.07],
+        "ui_bg": [0.05, 0.035, 0.01],
+        "ui_dim": [0.30, 0.20, 0.05],
+        "ui_fg": [1.0, 0.68, 0.22],
+        "ui_hi": [1.0, 0.93, 0.70],
+        "ui_alert": [0.55, 0.95, 0.35]
+      },
+      "wear": { "grime": 0.28, "grime_scale_per_m": 2.5, "crevice": 0.6, "crevice_m": 0.06, "edge": 0.5, "streaks": 0.35, "rust": 0.7 },
+      "modules": {
+        "plate": { "layer": 22, "weight": 3, "placed": "draw", "emissive": false, "mirrored": false },
+        "vent": { "layer": 23, "weight": 1, "placed": "draw", "emissive": false, "mirrored": false, "variant": "octagons" },
+        "pipes": { "layer": 24, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
+        "hatch": { "layer": 25, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
+        "junction": { "layer": 26, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
+        "light": { "layer": 27, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
+        "ribbed": { "layer": 28, "weight": 1, "placed": "draw", "emissive": false, "mirrored": false },
+        "screen": { "layer": 29, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
+        "flank": { "layer": 30, "weight": 0, "placed": "rule:door", "emissive": true, "mirrored": true },
+        "narrow": { "layer": 31, "weight": 0, "placed": "rule:narrow", "emissive": true, "mirrored": false }
+      },
+      "strips": { "layer": 32, "guard_m": 0.025, "rows": { "base": 0, "louvre": 1, "spare": 2, "top": 3 } }
+    }
+  },
+  "source": {
+    "tool": "blender",
+    "generator": "tools/blender/build_wall_panels.py",
+    "generator_version": 1,
+    "blender": "4.5 LTS (the bpy module, 4.5.14)",
+    "note": "Question V2 picks how panels are made from now on: these Blender bakes (option B), Material Maker graphs (A) or Blender shapes with Material Maker wear (C)."
+  }
+}

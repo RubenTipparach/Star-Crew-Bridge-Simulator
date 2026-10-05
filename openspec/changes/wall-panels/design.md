@@ -33,8 +33,10 @@ What exists:
 **Non-Goals:**
 - **New wall geometry**, such as recessed door surrounds, pipe runs that stand proud, or pillars
   (X1's forms). That is a later step for `deck-pipeline` 5a, once the textures are agreed.
-- **Floors and ceilings.** Framed grates with a solid path (X1, X2) is the next look question
-  after walls.
+- **Floors, ceilings and trims.** Framed grates with a solid path (X1, X2) is the next look
+  question after walls. So are the trims: the ribs, coves, beams and frames still wear the old
+  `trim` layer (the same tiled `tech_panel` squares), which now reads pale against the panels
+  (`wall-panels-*-after.png`). A matching trim set is the next step once V1 is answered.
 - **Decals** (stencils, signage, wear marks placed by hand). They are in `surface-materials`'
   decal set.
 
@@ -69,7 +71,10 @@ From the floor up:
 A crew room 3.0 m high has 2.65 m of flat wall under its 0.35 m cove: a base, a module and a
 0.15 m top band. The bridge (3.5 m, 3.15 m of flat wall) has a 0.65 m top band. Strips are 0.5 m
 tall and tile with a 2 m period. The four strips of a set (base, top, a louvre band and a spare)
-share one layer, stacked with guard rows so mipmaps do not bleed between them.
+share one layer, stacked with guard rows so mipmaps do not bleed between them. The louvre band is the
+0.5 m between two stacked module bands (X2's waist-height louvres), which is why a further module
+takes a further 2.5 m; the spare (a dark ribbed band) is in the layer but no rule places it yet. Each
+strip's guard rows are its own top and bottom 2.5 cm of plain plate, inside its 0.5 m quarter.
 
 ### 3. The module catalogue
 
@@ -79,17 +84,26 @@ Each set has ten modules, all designed as 2 m x 2 m panels with plain margins:
 | --- | --- | ---: | --- |
 | `plate` | Two plates with a seam, rivets and a stencilled label: the rest panel | 3 | no |
 | `vent` | A framed louvre grille, or stacked octagonal grilles (X2) | 1 | no |
-| `pipes` | A vertical pipe pair with clamps and a valve wheel (X3) | 1 | no |
-| `hatch` | A square access hatch, a handle, a hazard border | 1 | no |
-| `junction` | A conduit box with cables in and out | 1 | a status pill |
+| `pipes` | A vertical pipe pair with clamps and a valve wheel (X3), a wired sensor box | 1 | the sensor's lamp |
+| `hatch` | A square access hatch, a handle, a hazard border, an access keypad beside it | 1 | lit keys |
+| `junction` | A conduit box with cables in and out, a small button block | 1 | a status pill, lit keys |
 | `light` | A recessed vertical light column (X3's pills) | 1 | yes |
 | `ribbed` | Horizontal ribbed sheet (X1's stacked blocks, flattened) | 1 | no |
-| `screen` | A small inset status screen with buttons | 1 | yes |
+| `screen` | An inset status screen over two rows of keys | 1 | yes |
 | `flank` | Plate with a vertical amber light strip, beside doors (X2) | rule | yes |
 | `narrow` | A 0.6 m pipe-and-light column for narrow bays | rule | yes |
 
 The **crew** set is a warm mid grey, clean, with white and amber light. The **working** set is a
 darker grey-brown with rust streaks, hazard borders and amber light.
+
+**Screens and keys** (owner, 2026-10-05: "you should come up with better UI place holders, keyboards
+etc ... for the panel textures I mean"). The `screen` module's display is a UI placeholder: a framed
+readout with a status header band, bar graphs, a line plot over a grid, a small schematic and rows of
+text-like ticks, emissive, made of shapes (no real text, and no interface copied from a show or a
+game: CLAUDE.md 15). Keypads of square keys, a few lit, sit under the display, beside the hatch and
+on the junction box. The display and a key strip are also written as their own images per set
+(`assets/textures/panels/ui_screen_<finish>.png` 256 x 160 px, `keys_<finish>.png` 256 x 64 px), so
+console props can use the same ones.
 
 ### 4. The rule: which bay takes which module
 
@@ -159,15 +173,38 @@ changes until the owner picks.
 - **A contact sheet** of both sets.
 - **Each shot named**, before and after, into `docs/screenshots/mockups/wall-panels-*.png`.
 
+**How the prototype reads this design** (built 2026-10-05: `tools/blender/build_wall_panels.py`,
+`data/materials/panels.json`, shipkit's opt-in `opts.panels`, the page). Where the text above left a
+choice, the prototype made the nearest one that works, and says so here:
+
+- **Rule 1 holds cell by cell.** A bay's cell (a bay in one band) that an opening or a wall fixture
+  reaches into takes `plate`. So in a tall wall the band above a door, and the wall under a
+  gallery's opening, still draw modules; a door's own bay is plate only where the door is.
+- **A narrow flank is anchored at its door.** A flank in a bay narrower than 1.6 m would lose its
+  light strip if centred, so its door-side edge sits 0.1 m behind the frame (half its margin) and
+  the far side is cropped. Mirroring is a flip of u, so a mirrored flank's baked key light comes
+  from the upper right.
+- **Strips run to the viewer's right.** A strip's u is the world position along the wall to the
+  right as one faces it (still continuous between walls in line), so the strips' baked light stays
+  upper left; shipkit's `worldUv` runs the other way and would mirror them.
+- **Bands start at the brush floor.** Engineering's mezzanine and the hangar's landing are fixtures,
+  which the rule does not see, so a module band can pass behind a mezzanine's floor. Restarting the
+  bands at a mezzanine is a question for `deck-pipeline` 5a once such floors are brushes or rules.
+- **The seed** is `panels.json` `rule.seed` until the layout carries a ship seed. **Rule 3** (vents)
+  waits for vents in the layout.
+- **Panel glow** in the baked shader mixes a panel texel toward its own colour by alpha times the
+  state's glow, the materials' meaning of the emission mask, so at 30 % on emergency power a light
+  strip keeps 30 % of its colour over whatever the dimmed lamps give it.
+
 ### 8. The Pi 5 budget this change spends
 
 | Item | Cost | Budget |
 | --- | --- | --- |
-| Texture memory | 22 layers: 1.92 MB at 128 px (64 px per metre); 7.69 MB at 256 px (128 px per metre), with the other 11 layers at 256 px as well, 11.5 MB in all | 96 MB (2-12 %) |
-| Triangles | At most +4 per bay for the band splits, plus 2 per extra 0.5 m of top band: about +2,600 on the Tern at most, before the bake's subdivision, which splits walls at 2 m anyway | Each compartment keeps more than 75 % of its ceiling (`deck-pipeline` 5a) |
+| Texture memory | 22 layers: 1,922,360 bytes (1.92 MB, 1.83 MiB) at 128 px (64 px per metre); 7,689,528 bytes (7.69 MB, 7.33 MiB) at 256 px (128 px per metre), with the other 11 layers at 256 px as well, 11,534,292 bytes (11.5 MB, 11.0 MiB) in all. Measured in the mockup (`loadPanels`) and by the build's manifest | 96 MB (2-12 %) |
+| Triangles | Measured in the mockup kit (`node tools/mockups/kit_report.mjs --panels`): the Tern's flat walls go from 616 triangles to 2,604, **+1,988**, over 839 bay cells (bays times module bands), before the bake's subdivision, which splits walls at about 1 m anyway. The largest rise is engineering's 10 m walls, 38 to 390 (+352); a crew compartment adds 42-96 (the bridge most). Strips are one quad per wall per band, so only module cells add triangles | Each compartment keeps more than 75 % of its ceiling (`deck-pipeline` 5a) |
 | Draw calls | None | |
 | Fragment work | None: same fetch, same emission term | |
-| Disk | Estimated 0.3-1 MB of PNG for 22 layers | |
+| Disk | Measured: 22 layers are 262,914 bytes of PNG at 128 px and 745,634 bytes at 256 px; the screen and key images 37,519 bytes more (48 colours per layer, `assets/textures/panels/manifest.json`) | |
 
 ### 9. Data
 
@@ -200,4 +237,4 @@ Per CLAUDE.md 13, a question goes to the owner only with something to look at.
 | --- | --- | --- | --- | --- |
 | V1 | Do the panel walls read as the industrial, lived-in ship the references show? | panels as prototyped / panels, with changes (say which) / today's tiles | Panels as prototyped | `wall-panels-*-before.png` and `-after.png` |
 | V2 | How are panels made from now on? | A. Material Maker graphs / B. Blender modelled and baked / C. Blender shapes with Material Maker wear | B now, C when Material Maker runs | The prototype's contact sheet |
-| V3 | Panel lights on emergency power | 30 % / off / full | 30 %: the room dims but stays readable. Recommendation taken (ask only with screenshots) | none |
+| V3 | Panel lights on emergency power | 30 % / off / full | 30 %: the room dims but stays readable. Recommendation taken (ask only with screenshots) | `wall-panels-engineering-emergency.png` (in the survey as a recommendation taken) |

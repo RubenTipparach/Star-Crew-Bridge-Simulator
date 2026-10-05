@@ -18,6 +18,11 @@ read a ship's other data files (power.json, atmosphere.json, detailing.json).
 (assets/textures/<name>.png, as a base64 data URI) into a
 <script id="ship-materials" type="application/json"> block, which shipkit's
 loadMaterials() decodes into one texture array (surface-materials).
+"panels" copies data/materials/panels.json, every panel layer it names at every size
+(assets/textures/panels/<px>/<finish>_<module>.png and <finish>_strips.png) and the UI images
+(ui_screen_<finish>.png, keys_<finish>.png) into a <script id="ship-panels"
+type="application/json"> block, which shipkit's loadPanels() adds to the texture array
+(wall-panels).
 "models:<set>" copies assets/models/<set>/props.json and every .glb it lists (as base64
 data URIs) into a <script id="ship-models-<set>" type="application/json"> block, for pages
 that place the Blender-built props (tools/blender, the blender-hard-surface skill).
@@ -46,7 +51,13 @@ BUDGET_SOURCES = [
 ]
 MATERIALS = os.path.join(ROOT, "data", "materials", "materials.json")
 TEXTURES = os.path.join(ROOT, "assets", "textures")
-MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-9_-]+/[a-z0-9_-]+|shipkit|materials|models:[a-z0-9_-]+) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
+PANELS = os.path.join(ROOT, "data", "materials", "panels.json")
+MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-9_-]+/[a-z0-9_-]+|shipkit|materials|panels|models:[a-z0-9_-]+) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
+
+
+def png_uri(path):
+    with open(path, "rb") as f:
+        return "data:image/png;base64," + base64.b64encode(f.read()).decode("ascii")
 
 
 def block(kind):
@@ -61,6 +72,22 @@ def block(kind):
                 models[key] = "data:model/gltf-binary;base64," + base64.b64encode(f.read()).decode("ascii")
         text = json.dumps({"manifest": manifest, "models": models}, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
         return f'\n<script id="ship-models-{name}" type="application/json">\n{text}\n</script>\n'
+    if kind == "panels":
+        with open(PANELS, encoding="utf-8") as f:
+            manifest = json.load(f)
+        base = os.path.join(ROOT, manifest["layers"]["dir"])
+        stems = []
+        for fn, fin in manifest["finishes"].items():
+            stems += sorted(((m["layer"], f"{fn}_{name}") for name, m in fin["modules"].items()))
+            stems.append((fin["strips"]["layer"], f"{fn}_strips"))
+        layers = {str(px): {stem: png_uri(os.path.join(base, str(px), stem + ".png")) for _, stem in sorted(stems)}
+                  for px in manifest["layers"]["sizes_px"]}
+        ui = {}
+        for fn in manifest["finishes"]:
+            for stem in (f"ui_screen_{fn}", f"keys_{fn}"):
+                ui[stem] = png_uri(os.path.join(base, stem + ".png"))
+        text = json.dumps({"manifest": manifest, "layers": layers, "ui": ui}, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
+        return f'\n<script id="ship-panels" type="application/json">\n{text}\n</script>\n'
     if kind == "materials":
         with open(MATERIALS, encoding="utf-8") as f:
             manifest = json.load(f)

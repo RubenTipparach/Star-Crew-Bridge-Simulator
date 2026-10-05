@@ -3,10 +3,11 @@
 ## 1. Write-up and prototype
 
 - [x] 1.1 The references described (`docs/analysis/texture-references.md`); proposal, design and spec deltas for `wall-panels`.
-- [ ] 1.2 `tools/blender/build_wall_panels.py`: the ten modules and the strip layer for each finish, modelled with boolean cutters and baked (design section 6, option B), at 128 px per metre and reduced to 64; a contact sheet in `docs/screenshots/materials/`.
-- [ ] 1.3 `data/materials/panels.json` (proposed) and the kit's opt-in wall dressing in `docs/mockups/lib/shipkit.js` (bays, bands, the rule), leaving every other page unchanged.
-- [ ] 1.4 `docs/mockups/wall-panels.html`: today's walls against the panels in five rooms, both texel densities, three lighting states; screenshots looked at.
-- [ ] 1.5 Survey V1 and V2 (and S1 with the new shots); fold the answers back. If B or C is picked, amend CLAUDE.md section 9 in the same commit.
+- [x] 1.2 `tools/blender/build_wall_panels.py`: the ten modules and the strip layer for each finish, modelled with boolean cutters and baked (design section 6, option B), at 128 px per metre and reduced to 64; a contact sheet in `docs/screenshots/materials/`. Built 2026-10-05 with the screen's UI placeholder, keypads and the reusable `ui_screen_<finish>.png` and `keys_<finish>.png` (owner, 2026-10-05); digests in `assets/textures/panels/manifest.json`.
+- [x] 1.3 `data/materials/panels.json` (proposed) and the kit's opt-in wall dressing in `docs/mockups/lib/shipkit.js` (bays, bands, the rule), leaving every other page unchanged. Checked: `node tools/mockups/kit_report.mjs` prints the same numbers before and after, and `--panels` measures the dressing.
+- [x] 1.4 `docs/mockups/wall-panels.html`: today's walls against the panels in five rooms, both texel densities, three lighting states; screenshots looked at (`docs/screenshots/mockups/wall-panels-*.png`).
+- [ ] 1.5 Survey V1 and V2 (and S1 with the new shots): asked 2026-10-05 with the prototype's shots; fold the answers back. If B or C is picked, amend CLAUDE.md section 9 in the same commit.
+- [ ] 1.6 A trim set to match (ribs, coves, beams, frames), and floors and ceilings after it (Non-Goals), once V1 is answered.
 
 ## 2. Data and tools
 

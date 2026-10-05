@@ -9,7 +9,11 @@
  * (stations, systems, fixtures, craft) are drawn by the mockups and are not counted here. It
  * changes nothing. When deckc exists, its --report replaces this.
  *
- * Usage: node tools/mockups/kit_report.mjs [ship id] [--json]
+ * With --panels it measures the opt-in wall dressing instead (openspec/changes/wall-panels): for
+ * each compartment the triangles of its flat walls as one tiled surface and as panelled bays and
+ * bands (data/materials/panels.json), its bays, and the modules the rule gives them.
+ *
+ * Usage: node tools/mockups/kit_report.mjs [ship id] [--json] [--panels]
  * three.js comes from tools/mockups/.cache (filled by shoot.mjs) or the global npm install.
  */
 import fs from "node:fs";
@@ -20,6 +24,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const args = process.argv.slice(2);
 const json = args.includes("--json");
+const panels = args.includes("--panels");
 const ship = args.find((a) => !a.startsWith("--")) || "tern";
 const cached = path.join(ROOT, "tools/mockups/.cache/three@0.169.0/build/three.module.js");
 if (!fs.existsSync(cached)) { console.error(`missing ${cached}: run node tools/mockups/shoot.mjs once to fill the cache`); process.exit(2); }
@@ -30,10 +35,35 @@ const scripts = {
   "ship-layout": read(`data/ships/${ship}/layout.json`),
   "ship-data-detailing": read(`data/ships/${ship}/detailing.json`),
 };
+if (panels) scripts["ship-panels"] = JSON.stringify({ manifest: JSON.parse(read("data/materials/panels.json")) });
 const sandbox = { window: {}, document: { getElementById: (id) => (id in scripts ? { textContent: scripts[id] } : null) }, Math, JSON, Map, Set, Array, Object, Number, Error };
 vm.runInNewContext(read("docs/mockups/lib/shipkit.js"), sandbox);
 const K = sandbox.window.ShipKit;
 const L = K.layout();
+
+if (panels) {
+  // Wall triangles: the tiled "wall" role today against the "panel" role, before any bake subdivision.
+  const out = [], mods = {};
+  let w0 = 0, w1 = 0, bays = 0;
+  for (const c of L.compartments) {
+    const a = K.buildCompartment(THREE, L, c, {}), b = K.buildCompartment(THREE, L, c, { panels: true });
+    const t0 = (a.parts.wall ? a.parts.wall.position.length : 0) / 9, t1 = (b.parts.panel ? b.parts.panel.position.length : 0) / 9;
+    const m = mods[c.finish] || (mods[c.finish] = {});
+    for (const [k, n] of Object.entries(b.panels.modules)) m[k] = (m[k] || 0) + n;
+    out.push({ poi: c.poi, id: c.id, finish: c.finish, wall: t0, panel: t1, bays: b.panels.bays });
+    w0 += t0; w1 += t1; bays += b.panels.bays;
+  }
+  out.sort((a, b) => a.poi - b.poi);
+  if (json) { console.log(JSON.stringify({ ship, rows: out, modules: mods, total: { wall: w0, panel: w1, bays } }, null, 1)); process.exit(0); }
+  const pad = (s, n) => String(s).padStart(n);
+  console.log(`${L.ship.name}: flat-wall triangles, tiled today and dressed with panels (before bake subdivision)`);
+  console.log(`  poi  ${"compartment".padEnd(16)} ${"finish".padEnd(8)} ${pad("today", 6)} ${pad("panels", 7)} ${pad("added", 6)} ${pad("bays", 5)}`);
+  for (const r of out) console.log(`  ${pad(r.poi, 3)}  ${r.id.padEnd(16)} ${r.finish.padEnd(8)} ${pad(r.wall, 6)} ${pad(r.panel, 7)} ${pad(r.panel - r.wall, 6)} ${pad(r.bays, 5)}`);
+  console.log(`       ${"total".padEnd(16)} ${"".padEnd(8)} ${pad(w0, 6)} ${pad(w1, 7)} ${pad(w1 - w0, 6)} ${pad(bays, 5)}`);
+  console.log("  bays are counted per module band (a tall wall's second band counts again)");
+  for (const [f, m] of Object.entries(mods)) console.log(`  ${f}: ` + Object.entries(m).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${n}`).join(", "));
+  process.exit(0);
+}
 
 const rows = [];
 const total = {};

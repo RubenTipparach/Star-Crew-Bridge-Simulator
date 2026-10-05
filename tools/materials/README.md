@@ -22,6 +22,12 @@ python3 tools/materials/postprocess.py                                  # rebuil
 
 Needs Python 3 with numpy and Pillow (`pip install numpy pillow`).
 
+**Wall panels** (`openspec/changes/wall-panels`, a prototype) are not Material Maker graphs: they are
+modelled and baked in Blender by `tools/blender/build_wall_panels.py` from
+`data/materials/panels.json`, which renders into `raw/panels/` and reuses this directory's
+`postprocess.py` for palette reduction and sizes. How panels are made from now on is the owner's
+question V2.
+
 ## How the 2026-10-05 layers were made
 
 Material Maker could not run in the Claude Code cloud session that built the first set (it needs
