@@ -214,7 +214,7 @@ quarters, and the engineering bay console within 40 s of the helm by each of two
 
 #### Scenario: With the patches
 - **WHEN** T1 and T2 are applied
-- **THEN** the helm reaches the engineering bay console in 33.0 s by the aft passage and 35.4 s through the hangar
+- **THEN** the helm reaches the engineering bay console in 33.5 s by the aft passage and 35.9 s through the hangar (layout v2, 2026-10-05; 33.0 s and 35.4 s on the v1 boxes)
 
 ### Requirement: The avatar fits the Pi 5 budget
 A crew body SHALL be at most 3,000 triangles at its nearest level of detail with at most 48

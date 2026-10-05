@@ -697,43 +697,65 @@ weapon's spread (`weapons-and-shields`). star-crew-64 had no aim reticle at all
 
 #### 11.1 Dimensions and arrangement (decided by the layout)
 
-The bridge is one box: x -7.0 to 7.0 m, y 3.5 to 6.5 m, z 20.0 to 31.0 m. That is 14.0 m across,
-11.0 m deep and 3.0 m high: 154.0 m2 of floor and 462.0 m3 of air, 0.42 m inside the hull at its
-tightest (`tools/layout_check.py`). Its portals: the aft door into the command passage
-(`p_bridge_aft`, 1.6 x 2.3 m at z 20.0) and two windows in the forward bulkhead.
+The bridge is a wedge at the bow (layout schema v2, 2026-10-05; it was one box, x -7.0 to 7.0 m,
+y 3.5 to 6.5 m, z 20.0 to 31.0 m). It is 12.4 m deep, from the aft wall at z 20.0 m to the forward
+wall at z 32.4 m; 15.2 m across the aft wall and 17.2 m at its widest, just forward of the
+chamfered aft corners; the side walls rake in with the hull to 13.2 m across at z 29.4 m, and two
+angled walls close it to the 6.8 m forward wall. It stands 3.5 m high (y 3.5 to 7.0 m): 173.9 m2
+of floor and 608.6 m3 of air, 0.63 m inside the hull at its tightest, the forward corners
+(`tools/layout_check.py`; the box was 14.0 x 11.0 m and 3.0 m high, 154.0 m2, 462.0 m3 and
+0.42 m). Its portals: the aft door into the command passage (`p_bridge_aft`, 1.6 x 2.3 m at
+z 20.0) and two windows, one in each angled wall.
 
 ```text
-                      bow (+Z)                 z 31.0: forward bulkhead
-        +-------[ port window ]---[====== VIEWSCREEN 6.0 m ======]---[ stbd window ]-------+
-        |                                                                                  |
-        |                        [helm]  (1.8, 27.2)     [tactical] (-1.8, 27.2)           |
-  port  | [engineering] (5.4, 25.5) faces port                [science] (-5.4, 25.5)       | stbd
-  (+X)  |                                                       faces starboard            | (-X)
-        |                         +--------- dais 3.2 x 2.4 m ---------+                   |
-        | [comms] (5.0, 21.6)     |        [captain] (0.0, 23.2)       |  [flight ops]     |
-        |  faces port             +------------------------------------+  (-5.0, 21.6)     |
-        |                                                                faces starboard   |
-        +--------------------------------[ aft door 1.6 m ]--------------------------------+
-                                                                       z 20.0: aft bulkhead
+                                              bow (+Z)
+                                 z 32.4: forward wall, 6.8 m across
+                              +-----[==== VIEWSCREEN 6.0 m ====]-----+
+        [port window]      /                                            \      [stbd window]
+                        /   angled walls either side, facing 43 deg out    \
+          z 29.4     +                                                        +
+                    /      [helm] (1.8, 28.2)     [tactical] (-1.8, 28.2)      \
+  port             /                                                            \             stbd
+  (+X)            /  [engineering] (6.1, 26.2)           [science] (-6.1, 26.2)  \            (-X)
+                 /   faces the raked wall                  faces the raked wall   \
+                /                 +------ dais 3.2 x 2.4 m ------+                 \
+               /                  |    [captain] (0.0, 24.2)     |                  \
+              /                   +------------------------------+                   \
+             /  [comms] (6.9, 22.4)                        [flight ops] (-6.9, 22.4)  \
+            /   faces the raked wall                            faces the raked wall   \
+  z 21.0   +                                                                            +
+             \                                                                        /
+  z 20.0       +-------------------------[ aft door 1.6 m ]-------------------------+
+                     aft wall, 15.2 m across, its corners chamfered (not to scale)
 ```
 
-Sightlines from each seated eye (seat point plus 1.20 m) to the viewscreen's centre (0.0, 5.0,
-30.9), measured from the layout:
+Sightlines from each seated eye (seat point plus 1.20 m) to the viewscreen's centre (0.0, 5.2,
+32.3), measured from the layout (v2 plan, 2026-10-05, by a scratch instrument that gives the v1
+table to within 0.1 deg; on the v1 box the screen's centre was (0.0, 5.0, 30.9), and the seats
+were the captain (0.0, 23.2), helm and tactical (+/-1.8, 27.2), engineering and science
+(+/-5.4, 25.5) and comms and flight ops (+/-5.0, 21.6), the side four facing straight out at
+90 deg):
 
 | Station | Seat (x, z) m | Facing | Distance m | Screen subtends (h x v) | Head turn to screen |
 | --- | --- | --- | ---: | --- | ---: |
-| Captain | 0.0, 23.2 (dais, eye 5.00 m) | bow | 7.70 | 42.6 x 17.7 deg | 0 deg |
-| Helm | 1.8, 27.2 | bow | 4.13 | 70.3 x 32.4 deg | 26 deg right |
-| Tactical | -1.8, 27.2 | bow | 4.13 | 70.3 x 32.4 deg | 26 deg left |
-| Engineering | 5.4, 25.5 | port | 7.64 | 33.3 x 17.8 deg | 135 deg right |
-| Science | -5.4, 25.5 | starboard | 7.64 | 33.3 x 17.8 deg | 135 deg left |
-| Comms | 5.0, 21.6 | port | 10.56 | 28.6 x 13.0 deg | 118 deg right |
-| Flight ops | -5.0, 21.6 | starboard | 10.56 | 28.6 x 13.0 deg | 118 deg left |
+| Captain | 0.0, 24.2 (dais, eye 5.00 m) | bow | 8.10 | 40.6 x 16.8 deg | 0 deg |
+| Helm | 1.8, 28.2 | bow | 4.51 | 65.5 x 29.7 deg | 24 deg right |
+| Tactical | -1.8, 28.2 | bow | 4.51 | 65.5 x 29.7 deg | 24 deg left |
+| Engineering | 6.1, 26.2 | the port raked wall (yaw 77 deg) | 8.64 | 29.2 x 15.8 deg | 122 deg right |
+| Science | -6.1, 26.2 | the starboard raked wall (yaw -77 deg) | 8.64 | 29.2 x 15.8 deg | 122 deg left |
+| Comms | 6.9, 22.4 | the port raked wall (yaw 77 deg) | 12.08 | 23.5 x 11.3 deg | 112 deg right |
+| Flight ops | -6.9, 22.4 | the starboard raked wall (yaw -77 deg) | 12.08 | 23.5 x 11.3 deg | 112 deg left |
 
-The captain's chair has the classic view: the whole screen at 43 deg, both windows beside it, and
+On the v1 box these were 7.70 m and 42.6 x 17.7 deg (captain), 4.13 m, 70.3 x 32.4 deg and 26 deg
+(helm, tactical), 7.64 m, 33.3 x 17.8 deg and 135 deg (engineering, science), and 10.56 m,
+28.6 x 13.0 deg and 118 deg (comms, flight ops): the screen moved 1.4 m forward with the forward
+wall, further than the seats, so every seat sees it a little smaller.
+
+The captain's chair has the classic view: the whole screen at 41 deg, both windows beside it, and
 helm and tactical in front, below the screen's bottom edge (their seated heads reach about 4.7 m;
-the screen's bottom is at 3.8 m, so they cover only its lower 0.9 m from the captain's eye height;
-the dais exists for this). Helm and tactical sit close, so the screen fills 70 deg of their view.
+the screen's bottom is at 4.0 m, so they cover only its lower 0.7 m from the captain's eye height;
+the dais exists for this). Helm and tactical sit close, so the screen fills 66 deg of their view
+(v2 plan; was 43 deg, a 3.8 m bottom edge, 0.9 m and 70 deg).
 The side stations face the walls with their backs to the room, which gives the captain a view of
 every console over its operator's shoulder, and puts the viewscreen behind them: their look band
 swivels (section 8.1, question B1).
@@ -747,15 +769,18 @@ Proposed furniture (the deck pipeline builds it; the mockup draws it):
 | Console screen | 1.20 x 0.50 m (core) or 0.90 x 0.45 m, tilted 20 deg back, top at 1.30 m | On the desk's far edge |
 | Captain's chair | as a seat, with armrest panels 0.15 m wide | On the dais (layout fixture, decided: 3.2 x 2.4 m, 0.3 m high) |
 
-Clearances these give: 2.2 m between the helm and tactical desks; 3.5 m between the dais and the
-side seats; 1.6 m behind the aft stations to the aft bulkhead; 0.65 m between the side desks and
-the walls. Every seat and the route to it is checked against the crew collider
+Clearances these give: 2.2 m between the helm and tactical desks; 4.6 m between the dais and the
+nearest side seat; 2.2 m from the aft stations to the aft wall's chamfered corner; 0.27 m between
+the engineering and science desks and their raked walls, 0.38 m for comms and flight operations
+(v2 plan, 2026-10-05: the side seats sit on the raked walls and face them; were 3.5 m, 1.6 m to
+the aft bulkhead and 0.65 m). Every seat and the route to it is checked against the crew collider
 (`crew-on-deck`: radius 0.30 m) by the deck compiler (CLAUDE.md 8).
 
 #### 11.2 The viewscreen
 
-The layout places it (decided): 6.0 x 2.4 m, centred at (0.0, 5.0, 30.9), facing aft, 0.10 m
-proud of the forward bulkhead (so it never shares the wall's plane), spanning 3.8-6.2 m in height.
+The layout places it (decided): 6.0 x 2.4 m, centred at (0.0, 5.2, 32.3), facing aft, 0.10 m
+proud of the 6.8 m forward wall (so it never shares the wall's plane), spanning 4.0-6.4 m in height
+(v2 plan, 2026-10-05; was centred at (0.0, 5.0, 30.9), spanning 3.8-6.2 m).
 
 - **What it shows** (proposed feeds): FORWARD from the sensor array at the bow (layout system
   `sensor_array`, (0.0, 1.0, 41.5)), AFT, PORT and STARBOARD from hull points, TARGET (the forward
@@ -782,10 +807,13 @@ proud of the forward bulkhead (so it never shares the wall's plane), spanning 3.
 
 #### 11.3 The windows
 
-Two windows in the forward bulkhead (layout portals `p_bridge_window_p` and `_s`, decided): 2.8 x
-1.2 m each, centred at x +/-5.0 m, 5.0 m high (sill 4.4 m, head 5.6 m), 0.6 m outboard of the
-viewscreen's edges. They show the real exterior: `ship-frames` draws the exterior pass first,
-scissored to the windows' screen rectangle, from the interior camera transformed by the ship's
+Two windows, one in each angled wall either side of the forward wall (layout portals
+`p_bridge_window_p` and `_s`, decided): 2.8 x 1.2 m each, centred at (+/-5.0, 5.0, 30.9) in the
+middle of its 4.4 m wall and facing 43 deg out from the bow, 5.0 m high (sill 4.4 m, head 5.6 m),
+their inner edges 1.1 m round the corner from the viewscreen's (v2 plan, 2026-10-05; were in the
+forward bulkhead at z 31.0, facing the bow, 0.6 m outboard of the viewscreen's edges). They show
+the real exterior: `ship-frames` draws the exterior pass first, scissored to the windows' screen
+rectangle, from the interior camera transformed by the ship's
 exterior pose, then the interior on top. The glass is one blended quad per window in the glass
 pass. A window costs nothing when it is off screen.
 
@@ -796,10 +824,17 @@ Proposed fixtures; `light-baking` bakes them into the three vertex colour sets (
 | Fixture | Count | Where | Normal | Red alert | Emergency power |
 | --- | ---: | --- | --- | --- | --- |
 | Ceiling lamp panel, 1.2 x 0.4 m | 6 | x -4.5, 0.0, 4.5 m at z 22.5 and 28.0 m, on the ceiling | Warm white, full | Red, 75 % | Off |
-| Emergency lamp | 2 | Over the aft door (0.0, 6.3, 20.2) and front centre (0.0, 6.3, 30.6) | Off | Off | Amber, 35 %, on the emergency bus |
-| Floor strip | 4 runs | Along both side walls (x +/-6.85 m) and both sides of the aisle from the aft door to the dais | Cool blue, 60 % | Red, pulsing at 0.5 Hz | Amber, steady: the way out |
+| Emergency lamp | 2 | Over the aft door (0.0, 6.8, 20.2) and front centre (0.0, 6.8, 32.0) | Off | Off | Amber, 35 %, on the emergency bus |
+| Floor strip | 4 runs | Along both raked side walls, 0.15 m in, and both sides of the aisle from the aft door to the dais | Cool blue, 60 % | Red, pulsing at 0.5 Hz | Amber, steady: the way out |
 | Console screens | 7 | Each desk | Role colour glow | Same; title bands in the alert colour | Core four only (on the emergency bus); captain, comms and flight ops dark |
 | Viewscreen | 1 | | Full | Full | 60 % |
+
+Positions follow the v2 wedge (2026-10-05): the emergency lamps hang 0.2 m under the 7.0 m ceiling
+and the front one 0.4 m from the forward wall, as they did under the v1 box's 6.5 m ceiling and
+its forward bulkhead at z 31.0 (were at y 6.3 and z 30.6); the side strips keep 0.15 m from the
+raked walls (were at x +/-6.85 m). The ceiling panels stand where they were. `deck-pipeline`'s kit
+rule now generates 21 lamps on this bridge, 7 of them on the emergency bus (`kit_report.mjs`);
+which set the bake uses is `light-baking`'s question G5.
 
 Which state a compartment shows: emergency when its lighting load is unpowered and the emergency
 bus is up (`power-grid`), else red alert when the condition is red, else normal.

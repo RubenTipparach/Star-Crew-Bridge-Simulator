@@ -34,8 +34,9 @@ every number a console shows computed by the same solve that delivers it (CLAUDE
   panels, and fifteen conduits routed through named compartments (`data/ships/tern/power.json`), so
   a hit that crosses a conduit's route can cut it.
 - **Forty loads**, each with nominal, standby and maximum draw, a priority, a minimum supply below
-  which it switches off, a heat route and its under- and over-power effects: 81.35 MW nominal in
-  all, 12.92 MW standing by, 116.12 MW at every overdrive limit.
+  which it switches off, a heat route and its under- and over-power effects: 81.36 MW nominal in
+  all, 12.93 MW standing by, 116.12 MW at every overdrive limit (v2 plan, 2026-10-05: lighting at
+  12 W/m^2 over 2,445.5 m^2 of floor is 29.3 kW; was 81.35 MW and 12.92 MW over 2,135 m^2).
 - **Allocation**: engineering sets each load group's setpoint (0-150%) and priority (1-3); four
   presets (cruise, combat, silent, emergency); overdrive above 100% costs heat and wear.
 - **The one solve** at 10 Hz: priority classes in order, the reactor before the battery,

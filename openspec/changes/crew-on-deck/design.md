@@ -584,19 +584,28 @@ stair down. `reference-ship-tern` found this and proposes the patches **T1** (th
 the landing) and **T2** (stairs in engineering and the hangar); `deck-pipeline`'s walkable check
 would refuse the deck without them. Routes that need a patch say so.
 
+**Regenerated on the v2 plan, 2026-10-05** (`python3 tools/walk_times.py` on the layout whose rooms
+follow the hull, `reference-ship-tern` section 1a). Only route ends moved: the bridge's forward
+seats and the captain's dais 1.0 m forward, its side seats onto the raked walls, the damage
+control board and the EVA lockers onto damage control's outer wall. Every portal a route uses
+kept its centre, and the script's route check passes on v2 with no new waypoint. So routes from
+those seats are 0.5-1.9 s longer at a walk and every other route is the same (v1 figures: quarters
+to the helm 18.9 s; the helm to the engineering bay console 33.0 s and 35.4 s; the damage control
+board to the forward switchboard 19.0 s; any bridge seat to a launch bay 25.7-28.2 s).
+
 | Route | Needs | Path m | Walk s | Run s |
 | --- | --- | ---: | ---: | ---: |
-| Helm to the engineering bay console, by the aft passage | T2 | 54.8 | 33.0 | 15.6 |
-| Helm to the engineering bay console, through the hangar | T1 | 56.7 | 35.4 | 19.1 |
-| Helm to the reactor's lower floor (by the trunk and the hangar floor) | today | 56.0 | 36.1 | 21.2 |
-| Quarters (spawn) to the helm | today | 27.1 | 18.9 | 11.7 |
-| Mess (muster) to the helm | today | 27.1 | 18.9 | 11.7 |
+| Helm to the engineering bay console, by the aft passage | T2 | 55.8 | 33.5 | 15.8 |
+| Helm to the engineering bay console, through the hangar | T1 | 57.7 | 35.9 | 19.3 |
+| Helm to the reactor's lower floor (by the trunk and the hangar floor) | today | 57.0 | 36.7 | 21.4 |
+| Quarters (spawn) to the helm | today | 28.1 | 19.5 | 11.9 |
+| Mess (muster) to the helm | today | 28.1 | 19.5 | 11.9 |
 | Quarters to bay control on the hangar landing | today | 21.7 | 12.5 | 5.8 |
 | Quarters to the hangar floor beside the Petrel | today | 32.1 | 20.4 | 11.7 |
-| Damage control board to the forward switchboard | today | 28.0 | 19.0 | 11.5 |
-| Damage control board to the battery bank | today | 29.5 | 19.8 | 11.9 |
-| Damage control board to the main switchboard, through the hangar | T1 | 50.7 | 29.1 | 13.6 |
-| Damage control board to the main switchboard, by the aft passage | T2 | 57.1 | 37.3 | 20.2 |
+| Damage control board to the forward switchboard | today | 31.3 | 20.8 | 12.3 |
+| Damage control board to the battery bank | today | 32.8 | 21.7 | 12.7 |
+| Damage control board to the main switchboard, through the hangar | T1 | 54.0 | 30.9 | 14.4 |
+| Damage control board to the main switchboard, by the aft passage | T2 | 60.4 | 39.1 | 21.1 |
 | Magazine racks to tube 1's breech, on foot (the hoist takes 20 s per missile) | today | 37.2 | 24.1 | 13.8 |
 
 **Carrying a casualty** (1.2 m/s, ladders at half speed): from the middle of the bridge to a
@@ -608,12 +617,12 @@ are symmetric to within 0.6 s); boarding from there is `shuttle-bay-and-fighters
 
 | From | Needs | Walk s | Run s |
 | --- | --- | ---: | ---: |
-| Captain | today | 25.7 | 16.5 |
-| Helm, tactical | today | 28.1 | 17.5 |
-| Engineering, science (bridge) | today | 28.2 | 17.6 |
-| Comms, flight operations | today | 26.9 | 17.0 |
+| Captain | today | 26.3 | 16.7 |
+| Helm, tactical | today | 28.6 | 17.8 |
+| Engineering, science (bridge) | today | 28.8 | 17.8 |
+| Comms, flight operations | today | 28.0 | 17.5 |
 | Engineering bay console | T2 | 15.6 | 7.5 |
-| Damage control board | today | 23.4 | 13.5 |
+| Damage control board | today | 25.2 | 14.3 |
 | Bay control (by the ladder trunk today; by the gallery stair with T1 and T2) | today; T1, T2 | 23.6; 22.1 | 13.6; 10.5 |
 | Dorsal gunner | today | 28.4 | 20.2 |
 | Ventral gunner | today | 11.2 | 8.2 |
@@ -621,13 +630,13 @@ are symmetric to within 0.6 s); boarding from there is `shuttle-bay-and-fighters
 | Quarters (spawn) | today | 18.6 | 10.8 |
 
 What the numbers say:
-- **Every seat on the ship is within 28.4 s of a launch bay at walking pace** and 20.2 s running
+- **Every seat on the ship is within 28.8 s of a launch bay at walking pace** and 20.2 s running
   (the engineering bay console once T2 gives it a route): a player who decides to fly is in a
   fighter within about half a minute.
-- **The core four reach their seats from the spawn in 18.9-19.1 s** (the captain in 16.6 s). The
+- **The core four reach their seats from the spawn in 19.5-19.6 s** (the captain in 17.1 s). The
   muster and the quarters are equally far from the helm.
-- **The two routes from the helm to the engineering bay console are 2.4 s apart** (33.0 s and
-  35.4 s walking), so losing either costs little. The aft passage route needs T2 and the hangar
+- **The two routes from the helm to the engineering bay console are 2.4 s apart** (33.5 s and
+  35.9 s walking), so losing either costs little. The aft passage route needs T2 and the hangar
   route needs T1; T2 was applied to the layout on 2026-10-04, so the aft passage route exists
   and the hangar route waits on T1.
 - **A casualty from the bridge reaches the medbay in about 32 s**, well inside the 120 s

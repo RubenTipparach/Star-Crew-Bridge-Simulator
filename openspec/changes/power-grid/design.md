@@ -118,8 +118,9 @@ says which. Then:
 2. **Running** at 10%, ramping at 2%/s: full output 45 s after ignition.
 
 From the helm to the reactor panel by the aft passage (`reference-ship-tern` section 6, at
-`crew-on-deck`'s speeds): 35.2 s walking or 16.3 s running. A scram in combat therefore costs about
-16 + 3 + 20 + 45 = 84 s before the reactor is back at full output, if the engineer runs at once.
+`crew-on-deck`'s speeds): 35.7 s walking or 16.6 s running. A scram in combat therefore costs about
+17 + 3 + 20 + 45 = 85 s before the reactor is back at full output, if the engineer runs at once
+(v2 plan, 2026-10-05, the helm's seat 1 m further forward; was 35.2 s, 16.3 s and 84 s).
 Corrected 2026-10-04 to crew-on-deck's speeds and to the panel itself: this read 41.6 s walking,
 23.1 s running and 91 s, from the first route table's walk to the reactor's lower floor at an
 assumed 1.6 m/s (the panel is on the mezzanine, reached since the T2 stairs).
@@ -149,8 +150,16 @@ is discharging.
 | Running | Draw | Endurance |
 | --- | ---: | ---: |
 | Essentials only (priorities 0 and 1; everything else off) | 3.5 MW | 5.8 min |
-| Silent preset, the ship idle | 12.4 MW | 1.6 min |
-| Emergency preset, shields holding, two turrets firing | 24.0 MW wanted, 12.7 MW at the battery's share | 0.8 min |
+| Silent preset, the ship idle | 12.5 MW | 1.6 min |
+| Emergency preset, shields holding, two turrets firing | 24.0 MW, all from the battery | 0.8 min |
+
+Re-run on the v2 plan, 2026-10-05, with its lighting (29.3 kW normal, 4.9 kW emergency): the draws
+rose by about 4 kW (3.452, 12.453 and 24.013 MW, against 3.448, 12.449 and 24.009 MW), which moves
+the silent preset's printed draw from 12.4 to 12.5 MW and no endurance. The emergency row read
+"24.0 MW wanted, 12.7 MW at the battery's share": 12.7 MW was the part of the last sub-step, the
+one that reaches the reserve, not the draw. The battery gives the whole 24.0 MW until then, which
+is what 0.8 min means (1,206 MJ delivered at 95 % from 1,620 MJ to 350 MJ, in 50 s). Corrected
+2026-10-05.
 
 The battery bridges a gap: a reactor ramp, a scram, a combat deficit. It does not run the ship. A
 reactor that cannot be restarted ends the ship's fighting within minutes, by design (question P8).
@@ -225,7 +234,7 @@ ratio under which the load switches off rather than run weakly (section 9).
 | `reactor_aux_s` Reactor auxiliaries, starboard | `msb_s` | 0 | 1 | 0.3 | 1 | 1 | never | loop 100% |
 | `coolant_pump_a` Coolant pump A | `msb_p` | 0 | 0.4 | 0.4 | 1 | 0.4 | never | loop 100% |
 | `coolant_pump_b` Coolant pump B | `msb_s` | 0 | 0.4 | 0.4 | 1 | 0.4 | never | loop 100% |
-| `emergency_lighting` Emergency lighting | `eb` | 0 | 0.0043 | 0.0043 | 1 | 0.0043 | never | none |
+| `emergency_lighting` Emergency lighting | `eb` | 0 | 0.0049 | 0.0049 | 1 | 0.0049 | never | none |
 | `computer` Computer core | `dp_a` | 1 | 1.5 | 1.5 | 1.5 | 2.25 | 50% | own mass 4.3 MJ/K, 95%, 47.5 kW/K to loop |
 | `bridge_consoles` Bridge consoles | `dp_a` | 1 | 0.007 | 0.007 | 1 | 0.007 | 50% | the bridge |
 | `o2_generator` Oxygen generator | `dp_ls` | 1 | 1 | 0.005 | 1.5 | 1.5 | never | own mass 0.9 MJ/K, 30%, 10 kW/K to loop |
@@ -251,12 +260,16 @@ ratio under which the load switches off rather than run weakly (section 9).
 | `cradle_p` Port launch cradle | `dp_hangar_p` | 3 | 0.6 | 0.05 | 1.5 | 0.9 | 20% | loop 30% |
 | `cradle_s` Starboard launch cradle | `dp_hangar_s` | 3 | 0.6 | 0.05 | 1.5 | 0.9 | 20% | loop 30% |
 | `shuttle_pad` Shuttle lift pad | `dp_hangar_p` | 3 | 0.05 | 0 | 1 | 0.05 | 20% | the hangar |
-| Lighting, 10 panels | one per panel | 1 | 0.0256 in all | same | 1 | same | never | the rooms lit |
+| Lighting, 10 panels | one per panel | 1 | 0.0293 in all | same | 1 | same | never | the rooms lit |
 
-**Totals**: 81.35 MW nominal, 12.92 MW standing by, 116.12 MW with every setpoint at its maximum.
+**Totals**: 81.36 MW nominal, 12.93 MW standing by, 116.12 MW with every setpoint at its maximum.
 By priority, nominal: 2.80 MW (0, vital), 3.62 MW (1, crew), 43.00 MW (2, fighting), 31.93 MW (3,
-moving and support). Normal lighting is 12 W/m^2 over 2,135 m^2 (25.6 kW); emergency lighting
-2 W/m^2 (4.3 kW) on the emergency bus.
+moving and support). Normal lighting is 12 W/m^2 over 2,445.5 m^2 (29.3 kW); emergency lighting
+2 W/m^2 (4.9 kW) on the emergency bus. (v2 plan, 2026-10-05: the rooms that follow the hull have
+14.5 % more floor; was 2,135 m^2, 25.6 kW and 4.3 kW, and the totals 81.35 MW and 12.92 MW. The
+library computes each panel's normal lighting from the layout's floor areas, so it already uses
+the new areas; `power.json`'s emergency load went from 0.0043 MW to 0.0049 MW in the same
+commit.)
 
 **What a load does with its supply** (the effects other changes implement, from `power.json`):
 
@@ -461,9 +474,11 @@ and 18.00 MW delivered, and the next sub-step delivered 18.00 MW.
 
 ### 12. Walkthroughs, from the simulation
 
-All start from a ship warmed up at cruise for 300 s (battery full at 1,800 MJ). Combat means the
-combat preset with helm at 75% thrust, the dampers at 60% load, RCS at 50%, the shields
-regenerating, three turrets firing, an active scan.
+All start from a ship warmed up at cruise for 300 s (battery full at 1,800 MJ). Re-run on the v2
+plan, 2026-10-05 (the library on the brushes, 29.3 kW of normal lighting and the emergency load at
+4.9 kW): every figure below is the same at its printed precision except the RCS share in combat.
+Combat means the combat preset with helm at 75% thrust, the dampers at 60% load, RCS at 50%, the
+shields regenerating, three turrets firing, an active scan.
 
 **Cruise.** 21.2 MW wanted and delivered; reactor at 44% (35.3 MW thermal); loop 328 K; radiators
 24.4 of 39.1 MW; blanket 456 K.
@@ -471,9 +486,11 @@ regenerating, three turrets firing, an active scan.
 **Combat.** 56.2 MW wanted against 48 MW. The reactor ramps from 44% to 100% in 28 s; the battery
 covers up to 25.4 MW meanwhile, then 8.2 MW. It reaches the reserve 124 s after combat starts.
 Then priority 3 is shed: the drive gets 3.1 of the 9.05 MW it wants (34% of the thrust helm asked
-for), the RCS blocks 0.54 of 1.55 MW. The radiators saturate: the loop climbs to 344 K at 300 s and
-353 K at 600 s (warning 360 K). The shield generator and turret nodes sit at 381-397 K, between
-warning and damage. With every setpoint left at 100% instead of the preset, combat wants 58.1 MW.
+for), the RCS blocks 0.53 of 1.55 MW (v2 plan, 2026-10-05: 3.7 kW more lighting leaves priority 3
+that much less; 0.535 MW either way, printed 0.54 before). The radiators saturate: the loop climbs
+to 344 K at 300 s and 353 K at 600 s (warning 360 K). The shield generator and turret nodes sit at
+381-397 K, between warning and damage. With every setpoint left at 100% instead of the preset,
+combat wants 58.1 MW.
 
 **All out** (every activity at 1, setpoints 100%): 73.6 MW wanted. Priority 2 takes 43 MW, priority
 3 would get 0.2 MW and drops out entirely: the drive stops. This is the moment engineering's
@@ -502,8 +519,8 @@ priority 3 dropped.
 priority 3 dropped. It reaches the reserve 18 s later. Reset at once (an engineer already at the
 panel): ignition and the pumps draw 8.8 MW from the reserve, everything else drops for 20 s, including the
 computer core (automation stops) and the shields. Running 25 s after the scram; full output 70 s
-after it. From the bridge, add the run to the reactor panel (16 s; corrected 2026-10-04 from 23 s,
-section 3).
+after it. From the bridge, add the run to the reactor panel (17 s on the v2 plan, 2026-10-05, was
+16 s; corrected 2026-10-04 from 23 s, section 3).
 
 **Scram from loop over-temperature** (overdrive with radiators at 60% health): scram after 248 s;
 the reset is refused ("loop too hot") for 170 s while the pumps cool the loop on the reserve

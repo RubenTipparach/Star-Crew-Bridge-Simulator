@@ -14,9 +14,9 @@ From `data/ships/tern/layout.json`:
 
 | Thing | Where | Numbers |
 | --- | --- | --- |
-| Port launch bay (`launch_bay_p`, POI 16) | Deck C, x 5.0 to 10.5, z -16 to -4 | 231 m^3, 66 m^2 floor |
-| Starboard launch bay (`launch_bay_s`, POI 17) | Mirror of port | 231 m^3 |
-| Hangar (`hangar`, POI 15) | Decks C and B: the double-height floor plus galleries over both launch bays | 1,698 m^3 |
+| Port launch bay (`launch_bay_p`, POI 16) | Deck C, x 5.0 to 10.4, z -16 to -4, 3.0 m tall (y -3.5 to -0.5), its outer corners chamfered | 190.1 m^3, 63.4 m^2 floor |
+| Starboard launch bay (`launch_bay_s`, POI 17) | Mirror of port | 190.1 m^3 |
+| Hangar (`hangar`, POI 15) | Decks C and B: the double-height floor plus galleries over both launch bays, a 0.5 m slab between | 1,682.4 m^3 |
 | Drop doors (`p_drop_p`, `p_drop_s`) | In each bay's floor, centre [+/-7.75, -3.5, -10.0] | 4.8 x 9.0 m |
 | Pad door (`p_hangar_pad`) | In the hangar floor, centre [0.0, -3.5, -10.0] | 6.0 x 12.0 m |
 | Bay pressure doors (`p_bay_p`, `p_bay_s`) | Hangar floor to each bay, [+/-5.0, -2.4, -5.0] | 1.0 x 2.2 m |
@@ -25,6 +25,11 @@ From `data/ships/tern/layout.json`:
 | Bay control (`bay_control`) | The hangar's forward landing, [3.5, 0.0, -1.2], facing aft | |
 | Swift 1, Swift 2 | On the cradles, centre y -2.6 | 7.0 x 4.6 x 1.8 m, 1 seat |
 | Petrel | On the pad, centre y -1.9 | 10.0 x 4.5 x 3.2 m, 4 seats |
+
+Volumes are the v2 plan's, whose rooms follow the hull (`reference-ship-tern` section 1a,
+2026-10-05; on the v1 boxes each bay was x 5.0 to 10.5 and 3.5 m tall, 231 m^3 and 66 m^2, and the
+hangar 1,698 m^3). The pump-down, vent and refill times below are `life-support`'s, computed on the
+v1 volumes; they move when it recomputes them.
 
 The keel (the hull's bottom) is at -5.8 m under all three doors, so each door opens into a 2.3 m
 trunk through the lower hull with an outer fairing door flush with the keel.

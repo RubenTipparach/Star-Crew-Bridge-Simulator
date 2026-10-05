@@ -18,10 +18,11 @@ come straight here (`flight-and-navigation`). A Gannet carries 60 MJ, a Lance 40
 
 The Tern's layout puts systems in rooms (`systems[].compartment`) and `power-grid` routes its
 conduits through named compartments with polylines, so a hit can find what lies near its path. Its
-damage control room (POI 9) is on deck B forward, 19.0 s walking from the forward switchboard and
-37.3 s from the main switchboard by the aft passage, 29.1 s through the hangar once T1 is applied
-(`reference-ship-tern` section 6 at `crew-on-deck`'s speeds; corrected 2026-10-04 from 20.7 s and
-29.9 s at an assumed 1.6 m/s). The
+damage control room (POI 9) is on deck B forward, its board 20.8 s walking from the forward
+switchboard and 39.1 s from the main switchboard by the aft passage, 30.9 s through the hangar
+once T1 is applied (`reference-ship-tern` section 6 at `crew-on-deck`'s speeds; v2 plan,
+2026-10-05, the board on the room's new outer wall, was 19.0 s, 37.3 s and 29.1 s; corrected
+2026-10-04 from 20.7 s and 29.9 s at an assumed 1.6 m/s). The
 engineering bay console (`eng_main`) and the damage control board (`damage_board`) are the two seats
 this change works through (`bridge-stations` sections 10.8 and 10.9).
 
@@ -131,7 +132,8 @@ for 900 s (the corridor stayed below 300 C). Vent dampers shut on smoke above 2,
 fire's expansion, so the duct does not carry it.
 
 **Fires, from the simulation** (seeded at 50 kW unless stated, the room's door shut, one unsuited
-crew member inside; times in seconds from ignition):
+crew member inside; times in seconds from ignition; simulated on the v1 boxes' volumes, and to be
+re-run on the v2 plan, whose rooms are larger, noted 2026-10-05):
 
 | Case | 1 MW | Air 60 C | Air 300 C | Smoke 2,000 ppm | Crew impaired / unconscious / dead | Out | Peak MW | Peak air C | Peak kPa | Oxygen at end % |
 | --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: |
@@ -208,7 +210,7 @@ calls each sub-step. Examples:
 | --- | --- | --- |
 | The port cradle at 34% (W2) to 100% | A player with a kit / a team of two | 66 s / 69 s, plus the walk |
 | A destroyed turret | A player | 180 s rebuild, then 75 s: 255 s |
-| The port main switchboard section (W1) | A team, suited | 20 s suits, 44 s walk suited, 120 s rebuild: power back about 3.2 minutes (189 s) after the hit (corrected 2026-10-04 from a 30 s walk and 3 minutes; reconciled 2026-10-05: crew-on-deck owns this, suits 20 s, was 30 s and 199 s) |
+| The port main switchboard section (W1) | A team, suited | 20 s suits, 46 s walk suited, 120 s rebuild: power back about 3.2 minutes (191 s) after the hit (v2 plan, 2026-10-05: the suit lockers on damage control's new outer wall, was a 44 s walk and 189 s; corrected 2026-10-04 from a 30 s walk and 3 minutes; reconciled 2026-10-05: crew-on-deck owns this, suits 20 s, was 30 s and 199 s) |
 
 ### 7. Damage control teams
 
@@ -246,7 +248,8 @@ bridge and the damage control board through the computer core; below half its su
 `remote_control`, proposed; not in the mockup's library) they can only be worked locally: at the
 switchboard sections, at each door, at each system. A lost computer core sends people to engineering.
 
-**A reactor-room fire** is the worst fire aboard: engineering's 2,520 m^3 and 120 MJ/m^2 make a 16 MW
+**A reactor-room fire** is the worst fire aboard: engineering's 2,538 m^3 (v2 plan, 2026-10-05; was
+2,520 m^3) and 120 MJ/m^2 make a 16 MW
 fire possible. The water mist ends a 1 MW fire in 22 s; with the mist disabled, the fire put the
 reactor's auxiliaries and both switchboard sections below 75% by 394 s and scrammed the reactor at
 414 s. Venting engineering takes 82 s and its air cannot be replaced from the reserves (`life-support`
@@ -267,23 +270,30 @@ side at deck B height, toward the main switchboard's port section.
 | 10 s | Engineering 76 kPa; the engineer, still inside, is impaired | The simulation |
 | 30 s | Battery at its reserve: priority 3 drops (the drive stops), priority 2 at 68%; engineering 42 kPa | The simulation |
 | 60 s | Engineering 18 kPa | The simulation |
-| 69 s | Both teams arrive, suited (5 s + 20 s suits + 44 s walk at the suited 1.5 m/s by the aft passage) | Section 7 |
-| 69-114 s | Team 1 patches the breach from inside: three plates, 45 s | Section 6 |
-| 69-189 s | Team 2 rebuilds the port switchboard section: 4 parts, 120 s | Section 6 |
-| 189 s | Section rebuilt at 50%: 31 MW (the severed trunk still isolates it) | The simulation |
-| 219 s | The port trunk aft spliced: the reactor back to 100%, 48 MW; priority 3 back to its combat share | The simulation |
-| 249 s | The port drive feeder spliced | The simulation |
+| 71 s | Both teams arrive, suited (5 s + 20 s suits + 46 s walk at the suited 1.5 m/s by the aft passage) | Section 7 |
+| 71-116 s | Team 1 patches the breach from inside: three plates, 45 s | Section 6 |
+| 71-191 s | Team 2 rebuilds the port switchboard section: 4 parts, 120 s | Section 6 |
+| 191 s | Section rebuilt at 50%: 31 MW (the severed trunk still isolates it) | The simulation |
+| 221 s | The port trunk aft spliced: the reactor back to 100%, 48 MW; priority 3 back to its combat share | The simulation |
+| 251 s | The port drive feeder spliced | The simulation |
 | 188 s | If nobody pulled the engineer out: dead (90 s below Armstrong's limit) | The simulation |
 
 Corrected 2026-10-04 to `crew-on-deck`'s speeds: the teams' walk was 30 s (the first route table's
 29.9 s at 1.6 m/s, through the hangar with T1). Suited, at 1.5 m/s with no running, by the aft
-passage (the route as laid out today; `tools/walk_times.py` prints 59.7 m and 44.3 s from the suit
-lockers), it is 44 s, so every team event moved 14 s later. The events were
+passage (the route as laid out then; `tools/walk_times.py` printed 59.7 m and 44.3 s from the suit
+lockers on the v1 boxes), it is 44 s, so every team event moved 14 s later. The events were
 shifted, not re-run in the library (which does not walk teams); the power at each event is the
 same. Reconciled 2026-10-05: crew-on-deck owns this. Its suit donning time is 20 s, not the 30 s
 this table first used, so every team event moves 10 s earlier again (arrival 79 s to 69 s, the
 section back at 189 s instead of 199 s, the last splice at 249 s instead of 259 s), shifted the
 same way. The engineer's 188 s does not move: it is the air's, not the teams'.
+
+Re-measured on the v2 plan, 2026-10-05: the suit lockers stand on damage control's new raked outer
+wall (x -9.09, was -6.6), so `tools/walk_times.py` prints 62.0 m and 45.9 s for the suited walk
+(was 59.7 m and 44.3 s) and every team event moves 2 s later, shifted the same way (arrival 69 s to
+71 s, the section back at 191 s instead of 189 s, the last splice at 251 s instead of 249 s). The
+air, the breach and the engineer's rows are the simulation's and are not re-run here (`life-support`
+recomputes the plan's air).
 
 Engineering lost 3,043 kg of air; the reserves cannot refill it, so it stays in vacuum and the
 engineering bay is worked suited for the rest of the mission (`life-support` question L5). The
@@ -294,7 +304,9 @@ scrammed the reactor 1.9 s later.
 ### 10. Walkthrough W2: a Lance under the port launch bay
 
 Combat; Swift 1's pilot sealed in the cockpit, suited, in the pressurized port launch bay; a deck
-hand in the hangar. A 40 MJ Lance strikes the keel under the bay, travelling up.
+hand in the hangar. A 40 MJ Lance strikes the keel under the bay, travelling up. (Simulated on the
+v1 boxes, where the bay was 231 m^3; to be re-run on the v2 plan's 190.1 m^3 bay, noted
+2026-10-05.)
 
 | Time | What happens |
 | --- | --- |
@@ -313,7 +325,9 @@ bay is repressurized, which the receiver then does in 16 s.
 ### 11. Walkthrough W3: pulse fire raking the forward switchboard
 
 Combat with the starboard shield face down; a Hound's turrets put 40 bolts of 1.2 MJ into one hull
-section (4:starboard, deck C, abreast the forward switchboard) at 4 a second.
+section (4:starboard, deck C, abreast the forward switchboard) at 4 a second. (Simulated on the v1
+boxes; the v2 room runs out to 1.28 m from the skin, so the bolts reach it with more energy; to be
+re-run, noted 2026-10-05.)
 
 | Bolt | What happens |
 | --- | --- |
@@ -378,12 +392,14 @@ compartment values.
 ### 15. Layout patches proposed
 
 For `reference-ship-tern` to apply to `layout.json`, beside `power-grid`'s reactor panel and coolant
-valves:
+valves. The layout holds all three; on the v2 plan (2026-10-05) both lockers stand on damage
+control's raked outer wall, facing in, and the positions below are the layout's (was
+[-6.6, 0.0, 24.0] and [-6.6, 0.0, 19.6], facing -90 degrees, on the v1 box's wall):
 
 ```json
-{ "id": "dc_lockers", "kind": "locker", "compartment": "damage_control", "center_m": [-6.6, 0.0, 24.0], "size_m": [0.6, 2.4], "facing_yaw_deg": -90,
+{ "id": "dc_lockers", "kind": "locker", "compartment": "damage_control", "center_m": [-8.38, 0.0, 24.0], "size_m": [0.6, 2.4], "facing_yaw_deg": 99,
   "note": "Six extinguishers, six repair kits, twelve breach plates (damage-control)." },
-{ "id": "eva_suits", "kind": "locker", "compartment": "damage_control", "center_m": [-6.6, 0.0, 19.6], "size_m": [0.6, 2.4], "facing_yaw_deg": -90,
+{ "id": "eva_suits", "kind": "locker", "compartment": "damage_control", "center_m": [-9.09, 0.0, 19.6], "size_m": [0.6, 2.4], "facing_yaw_deg": 99,
   "note": "Four EVA suits; suiting takes 20 s (crew-on-deck)." },
 { "id": "spare_parts", "kind": "rack", "compartment": "cargo", "center_m": [-4.0, -3.5, 7.5], "size_m": [3.0, 1.0], "facing_yaw_deg": 0,
   "note": "24 spare parts (damage-control)." }

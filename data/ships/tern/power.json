@@ -148,7 +148,7 @@
       "heat": { "to": "loop", "fraction": 1.0 },
       "under": "As pump A.", "over": "Not adjustable." },
     { "id": "emergency_lighting", "name": "Emergency lighting", "system": null, "node": "eb", "priority": 0,
-      "nominal_mw": 0.0043, "standby_mw": 0.0043, "setpoint_max": 1.0, "min_ratio": 0.0, "center_m": [-4.5, -1.0, 2.6],
+      "nominal_mw": 0.0049, "standby_mw": 0.0049, "setpoint_max": 1.0, "min_ratio": 0.0, "center_m": [-4.5, -1.0, 2.6],
       "heat": { "to": "none", "fraction": 0.0 },
       "under": "Below 50%: compartments with no normal lighting go dark.", "over": "Not adjustable." },
 

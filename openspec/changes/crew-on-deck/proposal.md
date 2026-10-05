@@ -59,10 +59,12 @@ change, which are **decided**.
 - **The lurch**: `ship-frames`' residual table adopted as the body's response, with bracing (up to
   three times grip, 17.7 m/s^2) and ladders added; knockdowns drop what is held; walls struck
   above 3 m/s injure.
-- **Walk times** computed from the layout: every seat within 28.4 s of a launch bay walking; the
-  core four seated from the spawn in about 19 s; the helm to the engineering bay console 33.0 s
-  or 35.4 s by its two routes (the first through `reference-ship-tern`'s T2 stairs, applied
-  2026-10-04; the second waits on its T1 galleries).
+- **Walk times** computed from the layout: every seat within 28.8 s of a launch bay walking; the
+  core four seated from the spawn in under 20 s; the helm to the engineering bay console 33.5 s
+  or 35.9 s by its two routes (the first through `reference-ship-tern`'s T2 stairs, applied
+  2026-10-04; the second waits on its T1 galleries). These are the v2 plan's (2026-10-05), where
+  the bridge seats moved with the hull-following walls; on the v1 boxes they were 28.4 s, about
+  19 s, 33.0 s and 35.4 s.
 - **The avatar**: 3,000 triangles with LODs of 1,000 and 300, 30 bones of the 48 allowed, two
   influences, one draw call, about 55 baked clips in locomotion, full-body, upper-body and
   additive layers; first-person arms for the player.

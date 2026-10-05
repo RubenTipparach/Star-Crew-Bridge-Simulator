@@ -140,14 +140,17 @@ of the rules never live side by side (task 1.3).
 **Finding.** The layout's brushes are the air of each compartment, and neighbouring compartments
 touch: the ready room's port wall and the command passage's starboard wall are the same plane,
 `x = 1.25`. The convention's `wall_thickness_m` (0.25) is used only against the hull. Counting
-each side, 1,667 m^2 of wall is shared (measured on the v1 boxes; v2's rooms grew outboard, so their athwartship partitions are longer: to re-measure with `deckc --report`) between compartments, and two horizontal faces are
-shared with no slab: the hangar's galleries sit directly on the launch bays (66 m^2 each, at
-`y = 0`), and the pods on their access spaces.
+each side, 1,849.9 m^2 of wall is shared between compartments (v2 plan, measured 2026-10-05 by a
+scratch instrument over the brushes that gives the v1 boxes' 1,667 m^2 exactly; v2's rooms grew
+outboard, so their athwartship partitions are longer). Two horizontal faces are shared with no
+slab: the dorsal and ventral pods sit directly on their access spaces (5.2 m^2 each). On the v1
+boxes the hangar's galleries also sat directly on the launch bays (66 m^2 each, at `y = 0`); v2
+stops the bays' brushes at `y = -0.5`, so that slab is in the layout.
 
 | Option | What it means | Cost |
 | --- | --- | --- |
 | **a. Zero-thickness partitions** | A shared face is drawn back to back, once from each side, and each side's collision slab lies outside its own air. A door's depth comes from its frame, which stands 0.1 m proud on each side. | No layout number moves. A sliding leaf needs a jamb casing to slide behind. |
-| b. Inset at shared faces | The compiler shrinks each compartment by half a wall (0.125 m) at every shared face. | 208 m^3 of air (2.4 % of the ship), and 11 % of each 2.5 m corridor's volume; the simulated volumes and the drawn rooms would disagree unless the layout is re-measured. |
+| b. Inset at shared faces | The compiler shrinks each compartment by half a wall (0.125 m) at every shared face. | 231 m^3 of air (2.4 % of the ship; v2 plan, 2026-10-05, was 208 m^3), and 11 % of each 2.5 m corridor's volume; the simulated volumes and the drawn rooms would disagree unless the layout is re-measured. |
 | c. Gaps in the layout | Move every brush apart by 0.25 m. | Every portal plane and most brushes move; every other change's numbers move with them. |
 
 **Recommended: a** (K1). It is how sector and segment engines treat walls (the Build engine's
@@ -155,10 +158,12 @@ walls are sector boundaries; Descent's segment sides likewise, to verify), it ke
 volume the life-support design quotes, and back-to-back faces are not z-fighting because they
 face opposite ways (Undercity 7.2: "Faces pressed back to back are fine"). Collision is per
 compartment (section 4), so a slab that reaches into the neighbour's air is never tested from
-the neighbour. For a horizontal shared face (gallery over launch bay), the slab lies below the
-upper floor, inside the bay: the bay's ceiling is drawn 0.5 m lower than its brush (3.0 m
-clear, not 3.5 m), and its volume in the core keeps the brush's number (K1 asks whether to
-re-measure).
+the neighbour. For a horizontal shared face, the slab lies below the upper floor, inside the
+lower compartment, which is drawn that much lower than its brush while its volume in the core
+keeps the brush's number. On the v1 boxes that was the launch bays under the galleries (drawn
+3.0 m clear, not 3.5 m; K1 asked whether to re-measure). Since v2 (2026-10-05) the layout
+carries that slab itself: the bays' brushes are 3.0 m tall and their volumes are the drawn ones,
+and only the pods' hatch faces remain.
 
 ### 4. Brushes and collision
 
@@ -275,7 +280,8 @@ coordinate and a layer index):
 | Texture coordinate | 2 x `i16`, 1/1024 of a layer's span | 4 | World-projected (section 5a), so texel density is the same on every surface of a space; +/-32 spans of 2 m is +/-64 m, more than any compartment |
 
 Indices are 16-bit wherever a compartment's draw holds at most 65,535 vertices (every Tern
-compartment: the largest, engineering, is about 8,400 vertices) and 32-bit otherwise, chosen
+compartment: the largest, engineering, is about 8,400 vertices on the first estimate with its
+lighting grid) and 32-bit otherwise, chosen
 per draw range by `deckc`. OpenGL ES 3.0 allows both; 16-bit halves index memory. One vertex
 array object per compartment binds its ranges.
 
@@ -327,8 +333,10 @@ props not counted): the shell of all 30 compartments is 1,232 triangles before t
 baker's subdivision, the generated detail 15,688, together 16,920, with 306 lamps (110 on the
 emergency bus). The busiest compartments are the hangar (1,828), the main corridor (1,236) and
 engineering (1,072); baseboards (4,888, cut at every rib), ribs (3,016) and lamp housings
-(2,440) are most of it. Against section 11's ceilings every compartment keeps more than 85 % of
-its budget for props and the bake's subdivision.
+(2,448) are most of it. Against section 11's ceilings every compartment keeps more than three
+quarters of its budget for props and the bake's subdivision: the hangar, the busiest, keeps 77 %,
+every other compartment at least 84 % (corrected 2026-10-05 from "more than 85 %", which the
+hangar and the main corridor do not meet).
 
 ### 6. Checks: what `deckc` refuses
 
@@ -353,7 +361,9 @@ through a sequence of open portals (a conservative portal-flow pass in the shape
 `vis`, run offline over about 30 compartments and 40 portals) and sums their triangles. A
 PVS is computed but not shipped: it is a budget check, not a culling structure (section 9).
 Its upper bound on the Tern (every neighbour and every neighbour's neighbour drawn whole, no
-narrowing) peaks at 53,184 triangles from the main corridor, under the 80,000 ceiling.
+narrowing) peaks at 31,838 triangles from the main corridor on the v2 plan before the bake's
+subdivision (section 11, 2026-10-05; 53,184 on the first estimate, whose lighting grid stood in
+for the subdivision), under the 80,000 ceiling.
 
 ### 7. Light: fixtures as data, the bake as a step
 
@@ -363,8 +373,9 @@ it is stored and how it is blended.
 - **Fixtures are entities.** A light fixture has a position, a kind (ceiling panel, strip,
   wall lamp, console glow, emergency lamp), a colour and intensity for each of the three
   states, a flag saying it is on the emergency bus, its compartment, and the fixture brush or
-  prop that shows it. `deckgen` places one per the kit rule (272 on the Tern); a detail file
-  adds or replaces fixtures in hero rooms. The layout holds no lights: it is the plan.
+  prop that shows it. `deckgen` places one per the kit rule (306 on the Tern's v2 plan, 110 of
+  them on the emergency bus, by `kit_report.mjs` on 2026-10-05; 272 on the v1 boxes); a detail
+  file adds or replaces fixtures in hero rooms. The layout holds no lights: it is the plan.
 - **The bake is step 4 of the compile.** `deckc` hands `light-baking` each compartment's faces,
   its colliding and detail brushes (occluders), its fixtures and emissive faces, and the three
   states; it gets back the tessellated faces and three `RGBA8` colours per vertex. Triangle
@@ -394,9 +405,9 @@ it is stored and how it is blended.
 - **The mockup draws this way.** `docs/mockups/deck-plan.html` puts every static surface of
   the Tern through one shader of this shape (three colour sets per vertex, a weight vector and
   a dimmer per compartment in a uniform array, one draw per deck slice), with lamp fixtures
-  placed by the kit rule (272) and a direct-light stand-in for the bake (no shadows or bounce;
-  `light-baking`'s `lighting.html` shows the real method). Its normal, red-alert and emergency
-  buttons change only the weights, never the geometry.
+  placed by the kit rule (306 on the v2 plan; 272 on the v1 boxes) and a direct-light stand-in
+  for the bake (no shadows or bounce; `light-baking`'s `lighting.html` shows the real method).
+  Its normal, red-alert and emergency buttons change only the weights, never the geometry.
 
 ### 8. The `.deck` file
 
@@ -432,7 +443,7 @@ chunks).
 | `BRSH`, `PLNS` | both | Colliding brushes (bounds, plane range, contents) and their planes (`f32` x 4) | 115 KB |
 | `BKDT` | both | k-d tree nodes and leaf brush lists | 2 KB |
 | `ENTS` | both | Seats, spawns, ladders, stairs, door movers, light fixtures, system anchors, with poses and the layout ids they belong to | 20 KB |
-| `VBUF` | client | Vertices, 28 bytes each (about 70,300 for the Tern) | 1.97 MB |
+| `VBUF` | client | Vertices, 28 bytes each (about 70,300 for the Tern, sized on section 11's first estimate, whose lighting grid stands in for the bake's subdivision) | 1.97 MB |
 | `IBUF` | client | Indices, 16-bit where allowed (about 175,700) | 0.35 MB |
 | `DRAW` | client | Per draw: compartment, pass, index format, vertex offset, index range, bounds | 3 KB |
 | `MOVR` | client | Movers: hinge or slide axis, open offset, open time, the portal or system that drives them | 4 KB |
@@ -498,8 +509,10 @@ is the shape here. `deckc` still computes a visible set offline, as a budget che
 
 The depth buffer handles opaque geometry; there is no BSP over a compartment's opaque faces.
 
-**Honest note on the Pi 5.** The whole Tern at this density is 58,573 triangles in 91 draws,
-which a Pi 5 could likely draw every frame without culling (to measure with `sc-probe`).
+**Honest note on the Pi 5.** The whole Tern is 35,180 triangles in 91 draws before the bake's
+subdivision on the v2 plan, and was 58,573 on the first estimate with its lighting grid (section
+11, 2026-10-05), which a Pi 5 could likely draw every frame without culling (to measure with
+`sc-probe`).
 Portal culling stays because it is nearly free, the graph exists for the simulation anyway,
 and it bounds overdraw at 1280 x 720, leaves headroom for crew, craft, the exterior and the
 viewscreen, and scales to bigger ships and to two ships docked.
@@ -514,69 +527,97 @@ viewscreen, and scales to bigger ships and to two ships docked.
 ### 11. Budgets: every Tern compartment
 
 The ceilings are `engine-stack`'s: the bridge 30,000 triangles; every other compartment 8,000.
-Estimates use the kit of section 5 and the lighting grid of section 7. "Shell" is the
-tessellated floor, walls and ceiling; "Detail" is trims, ribs, beams and lamps; "Props" is
-stations, systems, fixtures, frames, ladders and the proposed stairs (`reference-ship-tern`,
-T2). Draws are the passes of section 5 a compartment needs.
 
-| POI | Compartment | Decks | Volume m3 | Floor m2 | Wall m2 | Portals | Shell | Detail | Props | Estimate | Ceiling | Use | Draws |
+**Re-stated on the v2 plan, 2026-10-05** (the rooms follow the hull, `reference-ship-tern`
+section 1a). Volume and floor are `layout_check.py`'s; "Wall" is the solid wall net of every
+opening, measured over the brushes by the scratch instrument of section 3 (it gives the first
+estimate's 3,485.2 m^2 on the v1 boxes exactly). **Shell and Detail are measured**, by
+`node tools/mockups/kit_report.mjs` from the brushes and section 5a's rules: "Shell" is the
+floor, walls and ceiling before the light baker's subdivision; "Detail" is ribs, beams, coves,
+baseboards, door and window frames, railings, conduits, ladders and lamps. **Props are the first
+estimate's, unchanged**: stations, systems, fixtures, frames, ladders and the stairs at section
+5's costs. They still count door frames and ladders, which the kit now generates too (1,618 of
+its detail triangles: `frame`, `frame_hazard`, `window_frame` and `ladder` in its report), so
+those are counted twice, on the safe side. Draws are the passes of section 5 a compartment
+needs. The first estimate (v1 boxes, 2026-10-04) tessellated the shell to the lighting grid of
+section 7 as a stand-in for the baker's subdivision; its totals are kept below for comparison,
+and its per-compartment volumes and floors are `reference-ship-tern` sections 2-4's "was"
+figures.
+
+| POI | Compartment | Decks | Volume m3 | Floor m2 | Wall m2 | Portals | Shell (kit_report) | Detail (kit_report) | Props (first estimate) | Total | Ceiling | Use | Draws |
 | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Bridge | A | 462.0 | 154.0 | 139.6 | 3 | 1,124 | 1,390 | 3,116 | 5,630 | 30,000 | 19 % | 4 |
-| 2 | Captain's ready room | A | 85.5 | 28.5 | 62.3 | 1 | 316 | 434 | 36 | 786 | 8,000 | 10 % | 3 |
-| 3 | Computer core | A | 85.5 | 28.5 | 62.3 | 1 | 316 | 434 | 456 | 1,206 | 8,000 | 15 % | 3 |
-| 4 | Command passage | A | 120.0 | 40.0 | 100.3 | 5 | 768 | 698 | 184 | 1,650 | 8,000 | 21 % | 3 |
-| 5 | Dorsal turret access | A | 48.0 | 16.0 | 42.7 | 3 | 256 | 294 | 112 | 662 | 8,000 | 8 % | 3 |
-| 6 | Aft passage | A | 135.0 | 45.0 | 117.7 | 2 | 672 | 781 | 72 | 1,525 | 8,000 | 19 % | 3 |
-| 7 | Torpedo room | B | 210.0 | 70.0 | 98.3 | 2 | 568 | 794 | 596 | 1,958 | 8,000 | 24 % | 3 |
-| 8 | Medbay | B | 138.0 | 46.0 | 79.9 | 1 | 380 | 595 | 316 | 1,291 | 8,000 | 16 % | 3 |
-| 9 | Damage control | B | 138.0 | 46.0 | 79.9 | 1 | 380 | 595 | 296 | 1,271 | 8,000 | 16 % | 3 |
-| 10 | Crew quarters | B | 232.5 | 77.5 | 104.3 | 1 | 560 | 850 | 36 | 1,446 | 8,000 | 18 % | 3 |
-| 11 | Mess | B | 232.5 | 77.5 | 102.8 | 1 | 560 | 850 | 36 | 1,446 | 8,000 | 18 % | 3 |
-| 12 | Port turret access | B | 234.0 | 78.0 | 103.0 | 2 | 600 | 851 | 76 | 1,527 | 8,000 | 19 % | 3 |
-| 13 | Starboard turret access | B | 234.0 | 78.0 | 103.0 | 2 | 600 | 851 | 76 | 1,527 | 8,000 | 19 % | 3 |
-| 14 | Main corridor | B | 195.0 | 65.0 | 148.1 | 10 | 1,228 | 1,098 | 368 | 2,694 | 8,000 | 34 % | 3 |
-| 15 | Hangar | C+B | 1,698.0 | 356.0 | 408.8 | 8 | 912 | 3,136 | 1,412 | 5,460 | 8,000 | 68 % | 3 |
-| 16 | Port launch bay | C | 231.0 | 66.0 | 120.3 | 2 | 568 | 784 | 284 | 1,636 | 8,000 | 20 % | 3 |
-| 17 | Starboard launch bay | C | 231.0 | 66.0 | 120.3 | 2 | 568 | 784 | 284 | 1,636 | 8,000 | 20 % | 3 |
-| 18 | Engineering | C+B+A | 2,520.0 | 252.0 | 627.3 | 5 | 908 | 2,036 | 4,084 | 7,028 | 8,000 | 88 % | 3 |
-| 19 | Drive section | B | 288.0 | 96.0 | 118.0 | 1 | 628 | 992 | 1,240 | 2,860 | 8,000 | 36 % | 3 |
-| 20 | Lower corridor | C | 150.0 | 50.0 | 114.7 | 8 | 1,032 | 861 | 296 | 2,189 | 8,000 | 27 % | 3 |
-| 21 | Magazine | C | 240.0 | 80.0 | 104.3 | 2 | 696 | 853 | 676 | 2,225 | 8,000 | 28 % | 3 |
-| 22 | Life support | C | 325.5 | 108.5 | 127.9 | 1 | 836 | 1,102 | 1,136 | 3,074 | 8,000 | 38 % | 3 |
-| 23 | Cargo and stores | C | 325.5 | 108.5 | 123.7 | 2 | 852 | 1,102 | 504 | 2,458 | 8,000 | 31 % | 3 |
-| 24 | Airlock | C | 24.0 | 8.0 | 31.6 | 2 | 160 | 204 | 136 | 500 | 8,000 | 6 % | 3 |
-| 25 | Shield generator | C | 103.5 | 34.5 | 68.3 | 1 | 356 | 480 | 636 | 1,472 | 8,000 | 18 % | 3 |
-| 26 | Forward switchboard | C | 103.5 | 34.5 | 68.3 | 1 | 356 | 480 | 596 | 1,432 | 8,000 | 18 % | 3 |
-| 27 | Dorsal turret pod | A | 15.6 | 6.2 | 25.0 | 1 | 192 | 12 | 300 | 504 | 8,000 | 6 % | 3 |
-| 28 | Ventral turret pod | C | 21.9 | 6.2 | 35.0 | 1 | 224 | 12 | 300 | 536 | 8,000 | 7 % | 3 |
-| 29 | Port turret pod | B | 15.6 | 6.2 | 23.7 | 1 | 160 | 12 | 300 | 472 | 8,000 | 6 % | 3 |
-| 30 | Starboard turret pod | B | 15.6 | 6.2 | 23.7 | 1 | 160 | 12 | 300 | 472 | 8,000 | 6 % | 3 |
-| | **Tern** | | 8,858.8 | 2,135.0 | 3,485.2 | 80 sides | 16,936 | 23,377 | 18,260 | **58,573** | 262,000 | 22 % | 91 |
+| 1 | Bridge | A | 608.6 | 173.9 | 167.6 | 3 | 60 | 718 | 3,116 | 3,894 | 30,000 | 13 % | 4 |
+| 2 | Captain's ready room | A | 143.9 | 48.0 | 80.5 | 1 | 30 | 320 | 36 | 386 | 8,000 | 5 % | 3 |
+| 3 | Computer core | A | 143.9 | 48.0 | 80.5 | 1 | 30 | 320 | 456 | 806 | 8,000 | 10 % | 3 |
+| 4 | Command passage | A | 120.0 | 40.0 | 100.3 | 5 | 42 | 690 | 184 | 916 | 8,000 | 11 % | 3 |
+| 5 | Dorsal turret access | A | 45.8 | 15.3 | 38.5 | 3 | 58 | 320 | 112 | 490 | 8,000 | 6 % | 3 |
+| 6 | Aft passage | A | 135.0 | 45.0 | 117.7 | 2 | 28 | 612 | 72 | 712 | 8,000 | 9 % | 3 |
+| 7 | Torpedo room | B | 354.6 | 118.2 | 131.9 | 2 | 42 | 596 | 596 | 1,234 | 8,000 | 15 % | 3 |
+| 8 | Medbay | B | 187.2 | 62.4 | 92.5 | 1 | 24 | 374 | 316 | 714 | 8,000 | 9 % | 3 |
+| 9 | Damage control | B | 187.2 | 62.4 | 92.5 | 1 | 24 | 374 | 296 | 694 | 8,000 | 9 % | 3 |
+| 10 | Crew quarters | B | 271.5 | 90.5 | 112.3 | 1 | 24 | 452 | 36 | 512 | 8,000 | 6 % | 3 |
+| 11 | Mess | B | 271.5 | 90.5 | 110.8 | 1 | 24 | 452 | 36 | 512 | 8,000 | 6 % | 3 |
+| 12 | Port turret access | B | 233.0 | 77.7 | 101.6 | 2 | 36 | 414 | 76 | 526 | 8,000 | 7 % | 3 |
+| 13 | Starboard turret access | B | 233.0 | 77.7 | 101.6 | 2 | 36 | 414 | 76 | 526 | 8,000 | 7 % | 3 |
+| 14 | Main corridor | B | 195.0 | 65.0 | 148.1 | 10 | 60 | 1,176 | 368 | 1,604 | 8,000 | 20 % | 3 |
+| 15 | Hangar | C+B | 1,682.4 | 350.8 | 400.6 | 8 | 110 | 1,718 | 1,412 | 3,240 | 8,000 | 41 % | 3 |
+| 16 | Port launch bay | C | 190.1 | 63.4 | 98.0 | 2 | 42 | 430 | 284 | 756 | 8,000 | 9 % | 3 |
+| 17 | Starboard launch bay | C | 190.1 | 63.4 | 98.0 | 2 | 42 | 430 | 284 | 756 | 8,000 | 9 % | 3 |
+| 18 | Engineering | C+B+A | 2,538.0 | 253.8 | 601.9 | 5 | 66 | 1,006 | 4,084 | 5,156 | 8,000 | 64 % | 3 |
+| 19 | Drive section | B | 307.2 | 102.4 | 120.9 | 1 | 36 | 568 | 1,240 | 1,844 | 8,000 | 23 % | 3 |
+| 20 | Lower corridor | C | 150.0 | 50.0 | 114.7 | 8 | 54 | 1,004 | 296 | 1,354 | 8,000 | 17 % | 3 |
+| 21 | Magazine | C | 501.1 | 167.0 | 147.1 | 2 | 42 | 718 | 676 | 1,436 | 8,000 | 18 % | 3 |
+| 22 | Life support | C | 367.8 | 122.6 | 132.3 | 1 | 36 | 592 | 1,136 | 1,764 | 8,000 | 22 % | 3 |
+| 23 | Cargo and stores | C | 349.1 | 116.4 | 137.5 | 2 | 70 | 672 | 504 | 1,246 | 8,000 | 16 % | 3 |
+| 24 | Airlock | C | 26.4 | 8.8 | 32.8 | 2 | 28 | 174 | 136 | 338 | 8,000 | 4 % | 3 |
+| 25 | Shield generator | C | 167.8 | 55.9 | 88.8 | 1 | 30 | 352 | 636 | 1,018 | 8,000 | 13 % | 3 |
+| 26 | Forward switchboard | C | 167.8 | 55.9 | 88.8 | 1 | 30 | 352 | 596 | 978 | 8,000 | 12 % | 3 |
+| 27 | Dorsal turret pod | A | 12.9 | 5.2 | 20.7 | 1 | 34 | 114 | 300 | 448 | 8,000 | 6 % | 3 |
+| 28 | Ventral turret pod | C | 18.1 | 5.2 | 29.0 | 1 | 34 | 114 | 300 | 448 | 8,000 | 6 % | 3 |
+| 29 | Port turret pod | B | 12.9 | 5.2 | 19.5 | 1 | 30 | 106 | 300 | 436 | 8,000 | 5 % | 3 |
+| 30 | Starboard turret pod | B | 12.9 | 5.2 | 19.5 | 1 | 30 | 106 | 300 | 436 | 8,000 | 5 % | 3 |
+| | **Tern** | | 9,824.8 | 2,445.5 | 3,626.6 | 80 sides | 1,232 | 15,688 | 18,260 | **35,180** | 262,000 | 13 % | 91 |
+
+First estimate on the v1 boxes, for comparison: 8,858.8 m^3, 2,135.0 m^2 of floor, 3,485.2 m^2 of
+wall; shell 16,936 (tessellated to the lighting grid), detail 23,377 (estimated densities), props
+18,260: 58,573 triangles, 22 % of 262,000, 91 draws.
 
 **What the table says.**
 
-- **Every compartment is under its ceiling**, the busiest at 88 % (engineering, 7,028: the
-  reactor, the mezzanine ring and the stairs) and the bridge at 19 % of its 30,000 (5,630
-  from the kit, leaving 24,370 for hand detail it will not need at this style).
-- **The whole ship is 58,573 triangles, 91 draws**: about 70,300 vertices, 1.97 MB of
-  vertices and 0.35 MB of indices (2.3 MB of the 64 MB budget).
+- **Every compartment is under its ceiling; none is exceeded.** The busiest is engineering at
+  64 % (5,156: the reactor, the mezzanine and the stairs are most of its props), then the hangar
+  at 41 %; the bridge is at 13 % of its 30,000 (3,894, leaving 26,106 for the subdivision and for
+  hand detail it will not need at this style).
+- **The whole ship is 35,180 triangles in 91 draws before the bake's subdivision.** That is not a
+  saving on the first estimate's 58,573: the first estimate drew every surface at a 1 m lighting
+  grid (2 m in the hangar and engineering), 16,936 triangles of shell, where the kit counts the
+  shell untessellated (1,232); and its detail was a density guess (23,377), where section 5a's
+  rules measure 15,688. The subdivision `light-baking` adopts is paid from the headroom: at least
+  2,844 triangles in every compartment (engineering's; its grid shell in the first estimate was
+  908).
+- **Memory**: section 8's vertex and index sizes (1.97 MB and 0.35 MB, 2.3 MB of the 64 MB
+  budget) were sized on the first estimate and stay the conservative figure until
+  `deckc --report` prints the compiled truth.
 - **The interior pass ceiling is 80,000 triangles and 120 draws per frame** (proposed, K2):
   40 % of the 200,000-triangle and 300-draw frame, leaving the rest for the exterior layers,
   the viewscreen, crew, craft, glass and UI (their owners' budgets).
 
-**Worst visible sets** (upper bounds with every door open and no narrowing):
+**Worst visible sets** (upper bounds with every door open and no narrowing; v2 plan, before the
+bake's subdivision, by the same neighbour sums that give the first estimate's figures):
 
 | From | Itself | With its neighbours | With neighbours' neighbours | Draws (depth 2) |
 | --- | ---: | ---: | ---: | ---: |
-| Main corridor (14) | 2,694 | 22,459 | 53,184 | 79 |
-| Hangar (15) | 5,460 | 20,643 | 48,341 | 66 |
-| Lower corridor (20) | 2,189 | 21,540 | 44,456 | 63 |
-| Command passage (4) | 1,650 | 12,628 | 32,772 | 52 |
-| Engineering (18) | 7,028 | 16,873 | 25,690 | 27 |
-| Bridge (1) | 5,630 | 7,280 | 12,628 | 19 |
+| Main corridor (14) | 1,604 | 11,832 | 31,838 | 79 |
+| Hangar (15) | 3,240 | 12,866 | 27,946 | 66 |
+| Lower corridor (20) | 1,354 | 13,088 | 25,728 | 63 |
+| Command passage (4) | 916 | 8,096 | 18,568 | 52 |
+| Engineering (18) | 5,156 | 10,952 | 15,912 | 27 |
+| Bridge (1) | 3,894 | 4,810 | 8,096 | 19 |
 
-Even the crudest bound fits the interior ceiling; in play, closed doors and narrowing cut it
-to the compartment and the one or two seen through open doors.
+Even the crudest bound fits the interior ceiling, with 48,162 triangles to spare for the
+subdivision in the worst set (the first estimate, with its lighting grid, put the main
+corridor's bound at 53,184 and the bridge's at 12,628); in play, closed doors and narrowing cut
+it to the compartment and the one or two seen through open doors.
 
 ### 12. What measuring the Tern taught
 
@@ -590,8 +631,10 @@ to the compartment and the one or two seen through open doors.
    people-stand-clear and inside-air checks cannot test a scrubber or a pump.
    `reference-ship-tern` proposes a `size_m` per system (T4); until then `deckc` takes each
    system prop's bounds from its mesh.
-4. **Lighting dominates the shell.** At a 1 m grid the shell is 29 % of the ship's triangles;
-   `light-baking`'s adaptive subdivision can cut it where light is even.
+4. **Lighting dominates the shell.** At a 1 m grid the shell was 29 % of the ship's triangles
+   (first estimate, v1 boxes); untessellated, the v2 shell is 1,232 triangles, 3.5 % of the
+   35,180 (section 11, 2026-10-05), so nearly all of a shell's cost is the bake's subdivision.
+   `light-baking`'s adaptive subdivision can keep it low where light is even.
 
 ## Risks / Trade-offs
 
@@ -617,8 +660,8 @@ Questions go to the owner only with something to look at (CLAUDE.md 13). Rows ma
 
 | Id | Question and fact | Options | Recommendation | Mockup shot |
 | --- | --- | --- | --- | --- |
-| K1 | How thick are walls between compartments? The layout's air brushes touch (1,667 m^2 of shared wall, counting each side); insetting costs 208 m^3 (2.4 %) and 11 % of each corridor. The launch bays' 3.5 m ceilings drop to 3.0 m under the gallery slab | a. zero-thickness partitions with proud door frames; b. inset half a wall; c. move the brushes apart | a; keep the core's volumes as the layout's brushes | `deck-plan-deck-B-plan` (partitions drawn as single lines) |
-| K2 | The interior pass ceiling per frame | 60,000 / 80,000 / 100,000 triangles (120 draws) | 80,000 and 120 draws: the Tern's crudest bound is 53,184 | `deck-plan-overview` (the meter shows the whole ship at once: about 47,800 triangles in 43 draw calls in the mockup, labels included, without the kit's trims, ribs and beams) |
+| K1 | How thick are walls between compartments? The layout's air brushes touch (1,849.9 m^2 of shared wall, counting each side); insetting costs 231 m^3 (2.4 %) and 11 % of each corridor (v2 plan, 2026-10-05; was 1,667 m^2 and 208 m^3). The launch bays' ceilings, which dropped from 3.5 m to 3.0 m under the gallery slab on the v1 boxes, are 3.0 m in the layout since v2 | a. zero-thickness partitions with proud door frames; b. inset half a wall; c. move the brushes apart | a; keep the core's volumes as the layout's brushes | `deck-plan-deck-B-plan` (partitions drawn as single lines) |
+| K2 | The interior pass ceiling per frame | 60,000 / 80,000 / 100,000 triangles (120 draws) | 80,000 and 120 draws: the Tern's crudest bound is 31,838 before the bake's subdivision on the v2 plan (53,184 on the first estimate with its lighting grid; section 11, 2026-10-05) | `deck-plan-overview` (the meter shows the whole ship at once: about 47,800 triangles in 43 draw calls in the v1 page, labels included, without the kit's trims, ribs and beams; re-measured when the deck-plan mockup is ported to v2) |
 | K3 | Hero detail authoring | a. Blender places convex detail, props and lights, exported to a detail file; b. TrenchBroom `.map` for detail only; c. generator only | a | `deck-plan-engineering-closeup` |
 | K4 | Do closed pressure doors keep a viewport (0.3 x 0.4 m) that visibility and the crew can see through? | yes / no | yes: flight operations can see into a launch bay before opening it | `deck-plan-deck-C-plan` (pressure doors in amber) |
 | K5 | `deckc` in Rust in `sc-tools`, sharing the format module with the loader, or in Python beside the other tools | Rust / Python | Rust: the writer and the reader share one definition of the file. Recommendation taken (ask only with screenshots) | none |

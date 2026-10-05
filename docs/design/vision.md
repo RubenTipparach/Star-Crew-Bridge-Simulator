@@ -75,7 +75,8 @@ by `openspec/changes/reference-ship-tern` and the mockups.
 | B and C | | Hangar (double height, with galleries), port and starboard launch bays |
 | A, B and C | | Engineering (the reactor through three deck heights) |
 
-30 compartments (4 of them turret pods), 40 portals, about 8,860 cubic metres of air. Four
+30 compartments (4 of them turret pods) whose rooms follow the hull, 40 portals, about 9,825
+cubic metres of air (the v2 plan, 2026-10-05; about 8,860 on the first plan's boxes). Four
 twin pulse cannon turrets (dorsal, ventral, port, starboard), two forward missile tubes fed
 from a magazine, two Swift fighters that drop through ventral doors, and a Petrel shuttle on
 a lift pad in the hangar.

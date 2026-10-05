@@ -50,7 +50,7 @@
 | Portals | 40 (by kind below) | `portals` |
 | Air | 9,824.8 m^3; 2,445.5 m^2 of floor (v1, boxes: 8,858.8 m^3, 2,135.0 m^2) | `layout_check.py` |
 | Stations | 14 seats: 7 on the bridge (4 core), 3 elsewhere, 4 gunners | `stations` |
-| Systems | 25 placed systems (3 outside the hull: radiators, sensor and comms arrays) | `systems` |
+| Systems | 26 placed systems, the main switchboard counted as its two sections (3 outside the hull: radiators, sensor and comms arrays) | `systems` |
 | Mounts | 4 twin pulse cannon turrets, 2 missile tubes, 2 main engines | `mounts` |
 | Craft | 2 Swift fighters, 1 Petrel shuttle | `craft` |
 | Hull clearance | 0.5 m from any air to the hull skin (`hull.clearance_m`); tightest the bridge, 0.63 m, then the airlock, 0.70 m | `layout_check.py` |
@@ -121,17 +121,18 @@ screenshots: the before and after shots are in the survey, question T6):
 ### 2. Deck A, Command (floor +3.5 m)
 
 Map: `docs/design/maps/tern-deck-A.svg`. Doors are named by their portal id; "to" is the POI on
-the other side.
+the other side. Volumes and floor areas in sections 2-4 are the v2 plan's (`layout_check.py`,
+2026-10-05); "was" gives the v1 boxes' figure wherever one moved.
 
 | POI | Compartment | Purpose and contents | Volume m^3 | Floor m^2 | Doors | Why here |
 | ---: | --- | --- | ---: | ---: | --- | --- |
-| 1 | Bridge | The command centre. Seven stations facing the bow: captain on a 0.3 m dais (3.2 x 2.4 m) at the centre; helm and tactical forward; engineering and science on the port and starboard walls; comms and flight operations aft at the sides. The 6.0 x 2.4 m viewscreen on the forward wall, between two 2.8 x 1.2 m windows | 462.0 | 154.0 | `p_bridge_aft` (1.6 x 2.3 m) to 4 | Top deck, at the bow: windows over the bow and a forward wall for the viewscreen; as far as the ship allows from the reactor and the hangar, its two biggest hazards; straight down the command passage to engineering |
-| 2 | Captain's ready room | Office, briefing table, private console | 85.5 | 28.5 | `p_ready` to 4 | Off the passage, 6 m from the bridge door: the captain is one door from the bridge, never in its traffic |
-| 3 | Computer core | Processing for sensors, targeting and automation (system `computer`); automated stations draw on it | 85.5 | 28.5 | `p_core` to 4 | Inside the hull's upper middle, beside the bridge it serves; a hit that reaches it has already crossed the hull and the passage |
+| 1 | Bridge | The command centre, a wedge at the bow: 12.4 m deep (z 20.0 to 32.4), 17.2 m across at its widest, 3.5 m to the ceiling (v2 plan, 2026-10-05; was a 14.0 x 11.0 m box, 3.0 m tall). Seven stations: captain on a 0.3 m dais (3.2 x 2.4 m) at the centre; helm and tactical forward, facing the bow; engineering and science on the port and starboard raked walls, comms and flight operations aft of them, each facing its wall (yaw 77 degrees). The 6.0 x 2.4 m viewscreen on the 6.8 m forward wall, between two 2.8 x 1.2 m windows in the angled walls either side of it | 608.6 (was 462.0) | 173.9 (was 154.0) | `p_bridge_aft` (1.6 x 2.3 m) to 4 | Top deck, at the bow: windows over the bow and a forward wall for the viewscreen; as far as the ship allows from the reactor and the hangar, its two biggest hazards; straight down the command passage to engineering |
+| 2 | Captain's ready room | Office, briefing table, private console; its outer wall raked with the hull | 143.9 (was 85.5) | 48.0 (was 28.5) | `p_ready` to 4 | Off the passage, 6 m from the bridge door: the captain is one door from the bridge, never in its traffic |
+| 3 | Computer core | Processing for sensors, targeting and automation (system `computer`); automated stations draw on it; its outer wall raked with the hull | 143.9 (was 85.5) | 48.0 (was 28.5) | `p_core` to 4 | Inside the hull's upper middle, beside the bridge it serves; a hit that reaches it has already crossed the hull and the passage |
 | 4 | Command passage | Deck A's spine, z 4-20, with the ladder trunk down to B and C at z = 11 | 120.0 | 40.0 | `p_bridge_aft` to 1, `p_ready` to 2, `p_core` to 3, `p_dorsal_fwd` to 5, ladder `p_ladder_ab` to 14 | The bridge's only way out joins every other route here |
-| 5 | Dorsal turret access | The hatch up into the dorsal pod | 48.0 | 16.0 | `p_dorsal_fwd` to 4, `p_dorsal_aft` to 6, hatch `p_pod_dorsal` up to 27 | On the spine, so the dorsal gunner is 20.6 s from the helm |
+| 5 | Dorsal turret access | The hatch up into the dorsal pod | 45.8 (was 48.0) | 15.3 (was 16.0) | `p_dorsal_fwd` to 4, `p_dorsal_aft` to 6, hatch `p_pod_dorsal` up to 27 | On the spine, so the dorsal gunner is 21.3 s from the helm (v2 plan, 2026-10-05; was 20.6 s) |
 | 6 | Aft passage | The always-pressurized route aft, z -18 to 0, over the hangar's ceiling | 135.0 | 45.0 | `p_dorsal_aft` to 5, `p_aft_eng` to 18 (onto the catwalk) | Section 5.2 |
-| 27 | Dorsal turret pod | The dorsal gunner's seat under the turret head (mount at y 9.0) | 15.6 | 6.2 | hatch `p_pod_dorsal` (0.9 x 0.9 m) down to 5 | Section 5.3 |
+| 27 | Dorsal turret pod | The dorsal gunner's seat under the turret head (mount at y 9.0); an octagon | 12.9 (was 15.6) | 5.2 (was 6.2) | hatch `p_pod_dorsal` (0.9 x 0.9 m) down to 5 | Section 5.3 |
 | 18 | Engineering, upper level | The catwalk (4.0 x 2.0 m) at deck A level inside engineering's forward wall, where the aft passage enters | (see 18) | | `p_aft_eng` | Section 4 |
 
 ### 3. Deck B, Main (floor 0.0 m)
@@ -140,17 +141,17 @@ Map: `docs/design/maps/tern-deck-B.svg`.
 
 | POI | Compartment | Purpose and contents | Volume m^3 | Floor m^2 | Doors | Why here |
 | ---: | --- | --- | ---: | ---: | --- | --- |
-| 7 | Torpedo room | Two forward missile tubes and their breeches (systems `tube_1`, `tube_2` at z = 31; mounts at z = 37), the ready racks, the hoist from the magazine below (`p_hoist`, 1.2 x 3.0 m) | 210.0 | 70.0 | `p_torpedo` (1.6 x 2.3 m) to 14; hoist to 21 | The tubes fire along the keel, so the breeches are at the bow; the magazine is directly below, so the hoist is a straight lift (20 s a missile, `weapons-and-shields`) |
-| 8 | Medbay | Two beds that revive and heal (`medbay_beds`) | 138.0 | 46.0 | `p_medbay` (1.2 x 2.2 m) to 14 | Forward on the main corridor, 8.5 s from the quarters, and on the same corridor as the ladder trunk, so a casualty from the bridge comes down one ladder |
-| 9 | Damage control | Repair kits, extinguishers, EVA suits; the damage control board (station `damage_board`) | 138.0 | 46.0 | `p_damage_control` (1.2 x 2.2 m) to 14 | Mid-ship forward, beside the trunk: 19.0 s to the forward switchboard, 37.3 s to the main switchboard by the aft passage today (29.1 s through the hangar once T1 is applied) |
-| 10 | Crew quarters | Bunks and lockers; the mission spawn | 232.5 | 77.5 | `p_quarters` (1.0 x 2.2 m) to 14 | Port, in the protected middle of deck B; 18.9 s to the helm |
-| 11 | Mess | Galley and tables; the lobby before a mission | 232.5 | 77.5 | `p_mess` (1.6 x 2.3 m, wide for muster) to 14 | Opposite the quarters; the crew muster here and walk to stations |
-| 12 | Port turret access | The hatch into the port pod and the turret's capacitor bank (no ammunition: pulse cannons) | 234.0 | 78.0 | `p_port_turret` to 14, hatch `p_pod_port` (0.9 x 1.4 m) to 29 | The widest point of the hull (12.2 m half beam) puts the pod furthest out for its arc |
-| 13 | Starboard turret access | Mirror of 12 | 234.0 | 78.0 | `p_stbd_turret` to 14, hatch `p_pod_stbd` to 30 | Mirror of 12 |
+| 7 | Torpedo room | Two forward missile tubes and their breeches (systems `tube_1`, `tube_2` at z = 31; mounts at z = 37), the ready racks, the hoist from the magazine below (`p_hoist`, 1.2 x 3.0 m); the room fills the bow's taper | 354.6 (was 210.0) | 118.2 (was 70.0) | `p_torpedo` (1.6 x 2.3 m) to 14; hoist to 21 | The tubes fire along the keel, so the breeches are at the bow; the magazine is directly below, so the hoist is a straight lift (20 s a missile, `weapons-and-shields`) |
+| 8 | Medbay | Two beds that revive and heal (`medbay_beds`) | 187.2 (was 138.0) | 62.4 (was 46.0) | `p_medbay` (1.2 x 2.2 m) to 14 | Forward on the main corridor, 8.5 s from the quarters, and on the same corridor as the ladder trunk, so a casualty from the bridge comes down one ladder |
+| 9 | Damage control | Repair kits, extinguishers, EVA suits; the damage control board (station `damage_board`); the board and the lockers stand on the raked outer wall | 187.2 (was 138.0) | 62.4 (was 46.0) | `p_damage_control` (1.2 x 2.2 m) to 14 | Mid-ship forward, beside the trunk: 20.8 s to the forward switchboard, 39.1 s to the main switchboard by the aft passage today (30.9 s through the hangar once T1 is applied; v2 plan, 2026-10-05: the board moved 3.3 m outboard; was 19.0, 37.3 and 29.1 s) |
+| 10 | Crew quarters | Bunks and lockers; the mission spawn | 271.5 (was 232.5) | 90.5 (was 77.5) | `p_quarters` (1.0 x 2.2 m) to 14 | Port, in the protected middle of deck B; 19.5 s to the helm (v2 plan, 2026-10-05: the helm's seat moved 1 m forward; was 18.9 s) |
+| 11 | Mess | Galley and tables; the lobby before a mission | 271.5 (was 232.5) | 90.5 (was 77.5) | `p_mess` (1.6 x 2.3 m, wide for muster) to 14 | Opposite the quarters; the crew muster here and walk to stations |
+| 12 | Port turret access | The hatch into the port pod and the turret's capacitor bank (no ammunition: pulse cannons) | 233.0 (was 234.0) | 77.7 (was 78.0) | `p_port_turret` to 14, hatch `p_pod_port` (0.9 x 1.4 m) to 29 | The widest point of the hull (12.2 m half beam) puts the pod furthest out for its arc |
+| 13 | Starboard turret access | Mirror of 12 | 233.0 (was 234.0) | 77.7 (was 78.0) | `p_stbd_turret` to 14, hatch `p_pod_stbd` to 30 | Mirror of 12 |
 | 14 | Main corridor | Deck B's spine, z 0-26, ten portals: the trunk at z = 11 up and down | 195.0 | 65.0 | `p_torpedo`, `p_medbay`, `p_damage_control`, `p_quarters`, `p_mess`, `p_port_turret`, `p_stbd_turret`, `p_spine_hangar` (to 15's landing), ladders `p_ladder_ab` up and `p_ladder_bc` down | Every forward room on deck B opens onto it (section 7) |
-| 19 | Drive section | Crawlspace for the impulse drive and the inertial dampers | 288.0 | 96.0 | hatch `p_drive` (1.0 x 2.0 m) to 18's mezzanine | Behind the reactor, in front of the engines; maintenance only, so one hatch |
-| 29 | Port turret pod | The port gunner's seat (mount at x 13.5) | 15.6 | 6.2 | hatch `p_pod_port` to 12 | Section 5.3 |
-| 30 | Starboard turret pod | Mirror of 29 | 15.6 | 6.2 | hatch `p_pod_stbd` to 13 | Section 5.3 |
+| 19 | Drive section | Crawlspace for the impulse drive and the inertial dampers; it fills the stern's taper | 307.2 (was 288.0) | 102.4 (was 96.0) | hatch `p_drive` (1.0 x 2.0 m) to 18's mezzanine | Behind the reactor, in front of the engines; maintenance only, so one hatch |
+| 29 | Port turret pod | The port gunner's seat (mount at x 13.5); an octagon | 12.9 (was 15.6) | 5.2 (was 6.2) | hatch `p_pod_port` to 12 | Section 5.3 |
+| 30 | Starboard turret pod | Mirror of 29 | 12.9 (was 15.6) | 5.2 (was 6.2) | hatch `p_pod_stbd` to 13 | Section 5.3 |
 | 15 | Hangar, upper level | The landing (10.0 x 2.0 m) inside the forward wall with bay control (station `bay_control`) overlooking the floor; the galleries over the launch bays | (see 15) | | `p_spine_hangar` onto the landing; `p_gallery_eng_p`, `p_gallery_eng_s` from the galleries to 18 | Section 4 |
 | 18 | Engineering, mezzanine | A ring at deck B level around the reactor (inner radius 3.4 m): the engineering bay console (`eng_main`) and the main switchboard | (see 18) | | `p_gallery_eng_p`, `p_gallery_eng_s`, hatch `p_drive` | Section 4 |
 
@@ -158,17 +159,18 @@ Map: `docs/design/maps/tern-deck-B.svg`.
 
 | POI | Compartment | Decks | Purpose and contents | Volume m^3 | Floor m^2 | Doors |
 | ---: | --- | --- | --- | ---: | ---: | --- |
-| 15 | Hangar | C+B | A 10 x 18 m bay 6.5 m tall (y -3.5 to +3.0) with the Petrel shuttle on its lift pad over the ventral pad door (6.0 x 12.0 m); the bay pumps and reserve tank; the landing and bay control at deck B level; two galleries (5.5 x 16 m each) at deck B level over the launch bays | 1,698.0 | 356.0 | `p_hangar_c` (2.0 x 2.5 m) from 20 onto the floor; `p_spine_hangar` from 14 onto the landing; pressure doors `p_bay_p`, `p_bay_s` to 16 and 17; `p_hangar_eng` to 18's lower floor; `p_gallery_eng_p`, `p_gallery_eng_s` to 18's mezzanine; bay door `p_hangar_pad` |
-| 16 | Port launch bay | C | Swift 1 on its cradle over a 4.8 x 9.0 m ventral drop door | 231.0 | 66.0 | pressure door `p_bay_p` (1.0 x 2.2 m) to 15; bay door `p_drop_p` |
-| 17 | Starboard launch bay | C | Swift 2, mirror of 16 | 231.0 | 66.0 | `p_bay_s`, `p_drop_s` |
-| 18 | Engineering | C+B+A | 18 x 14 m and 10 m tall (y -3.5 to +6.5): the fusion reactor (radius 2.2 m) through all three levels; the lower floor (deck C) with the coolant pumps; the mezzanine ring (deck B) with the engineering bay console and the main switchboard; the catwalk (deck A) where the aft passage enters; the radiators outside above (y 8.2) | 2,520.0 | 252.0 | `p_aft_eng` (deck A, catwalk), `p_gallery_eng_p` and `_s` (deck B, mezzanine), `p_hangar_eng` (deck C, floor), hatch `p_drive` (deck B) |
+| 15 | Hangar | C+B | A 10 x 18 m bay 6.5 m tall (y -3.5 to +3.0) with the Petrel shuttle on its lift pad over the ventral pad door (6.0 x 12.0 m); the bay pumps and reserve tank; the landing and bay control at deck B level; two galleries (5.4 x 16 m each, their outer corners chamfered and their open edges railed; v2 plan, 2026-10-05, was 5.5 x 16 m) at deck B level over the launch bays, a 0.5 m slab between | 1,682.4 (was 1,698.0) | 350.8 (was 356.0) | `p_hangar_c` (2.0 x 2.5 m) from 20 onto the floor; `p_spine_hangar` from 14 onto the landing; pressure doors `p_bay_p`, `p_bay_s` to 16 and 17; `p_hangar_eng` to 18's lower floor; `p_gallery_eng_p`, `p_gallery_eng_s` to 18's mezzanine; bay door `p_hangar_pad` |
+| 16 | Port launch bay | C | Swift 1 on its cradle over a 4.8 x 9.0 m ventral drop door, in a bay 5.4 x 12.0 m and 3.0 m tall with chamfered outer corners (v2 plan, 2026-10-05; was 5.5 m wide and 3.5 m tall, its ceiling the gallery floor) | 190.1 (was 231.0) | 63.4 (was 66.0) | pressure door `p_bay_p` (1.0 x 2.2 m) to 15; bay door `p_drop_p` |
+| 17 | Starboard launch bay | C | Swift 2, mirror of 16 | 190.1 (was 231.0) | 63.4 (was 66.0) | `p_bay_s`, `p_drop_s` |
+| 18 | Engineering | C+B+A | An elongated octagon 19.2 m across at its widest and 14.0 m long (z -18 to -32), 10 m tall (y -3.5 to +6.5; v2 plan, 2026-10-05, was an 18 x 14 m box): the fusion reactor (radius 2.2 m) through all three levels; the lower floor (deck C) with the coolant pumps; the mezzanine ring (deck B) with the engineering bay console and the main switchboard; the catwalk (deck A) where the aft passage enters; the radiators outside above (y 8.2) | 2,538.0 (was 2,520.0) | 253.8 (was 252.0) | `p_aft_eng` (deck A, catwalk), `p_gallery_eng_p` and `_s` (deck B, mezzanine), `p_hangar_eng` (deck C, floor), hatch `p_drive` (deck B) |
 
 **Why engineering is one tall space.** The reactor is 10 m tall; one compartment around it
 means one atmosphere, one fire, one set of lights for everything that keeps it running, and
 three entrances on three decks, so the engineer arrives from the bridge (deck A), the hangar's
 galleries (deck B) or the hangar floor (deck C) without changing deck outside. It is also the
-ship's largest air volume (2,520 m^3, 28 % of the ship), which slows a fire's oxygen use and a
-breach's pressure drop there (numbers are `life-support`'s).
+ship's largest air volume (2,538 m^3, 26 % of the ship; v2 plan, 2026-10-05, was 2,520 m^3 and
+28 %), which slows a fire's oxygen use and a breach's pressure drop there (numbers are
+`life-support`'s).
 
 ### 5. Design reasoning
 
@@ -183,10 +185,12 @@ breach's pressure drop there (numbers are `life-support`'s).
 - **The galleries carry deck B aft.** They run over the launch bays to the engineering
   mezzanine, so deck B has a route aft that does not touch the hangar floor (and, with the
   patch of section 9, starts at the landing).
-- **Small launch bays, big hangar.** A fighter launches from a 231 m^3 bay, not the 1,698 m^3
-  hangar: a seventh of the air to move per launch (pump-down to 5 kPa 28.6 s against 208.4 s for
-  the hangar, `life-support` section 13; corrected 2026-10-04 from an assumed 30 s and 120 s).
-  Fighters can launch while crew work in the hangar.
+- **Small launch bays, big hangar.** A fighter launches from a 190.1 m^3 bay, not the 1,682.4 m^3
+  hangar: about a ninth of the air to move per launch (v2 plan, 2026-10-05; was 231 m^3 against
+  1,698 m^3, a seventh). Pump-down to 5 kPa took 28.6 s against 208.4 s for the hangar
+  (`life-support` section 13, on the v1 volumes; corrected 2026-10-04 from an assumed 30 s and
+  120 s); `life-support` recomputes both for v2. Fighters can launch while crew work in the
+  hangar.
 
 #### 5.2 The aft passage on deck A stays pressurized
 
@@ -195,9 +199,10 @@ engineering crossed it, a shuttle launch would cut the ship in two. The aft pass
 over the hangar's ceiling, on deck A, with a 0.5 m slab between them (y 3.0 to 3.5); its two
 doors open onto the dorsal turret access (5) and engineering's catwalk (18), and neither of
 those ever vents in normal operation. So the route from the helm to the engineering bay console by
-the aft passage is 33.0 s walking (15.6 s running) whatever the hangar's pressure; through the
-hangar it is 35.4 s (with T1) when the hangar is at pressure and closed when it is not (section 6,
-`crew-on-deck`'s speeds). The two routes together are the ship's
+the aft passage is 33.5 s walking (15.8 s running) whatever the hangar's pressure; through the
+hangar it is 35.9 s (with T1) when the hangar is at pressure and closed when it is not (section 6,
+`crew-on-deck`'s speeds; v2 plan, 2026-10-05, the helm's seat 1 m further forward: was 33.0 s,
+15.6 s and 35.4 s). The two routes together are the ship's
 main loop (section 7).
 
 #### 5.3 Turrets are manned from pods
@@ -205,20 +210,23 @@ main loop (section 7).
 - **The gun head sits outside the hull** for its arc: dorsal at y 9.0, ventral at y -7.0, port
   and starboard at x +/-13.5 (`mounts`). The pods are the only compartments outside the hull
   check, because that is their point.
-- **A pod is its own pressure volume** (15.6-21.9 m^3) behind a hatch. A hit on the turret vents
+- **A pod is its own pressure volume** (12.9-18.1 m^3, an octagon like its turret ring; v2 plan,
+  2026-10-05, was 15.6-21.9 m^3) behind a hatch. A hit on the turret vents
   the pod, not the access room; the hatch shuts and the access room stays at pressure.
 - **Access rooms hold the capacitor banks.** Pulse cannons need no ammunition; the access room
   is where the turret's power is stored and where damage control repairs it without entering
   the pod.
 - **The walk is short.** Quarters to the port or starboard gunner's seat 15.7-15.9 s; the helm to
-  the dorsal seat 20.8 s, to the ventral seat 26.9 s (section 6).
+  the dorsal seat 21.3 s, to the ventral seat 27.4 s (section 6; v2 plan, 2026-10-05, was 20.8 s
+  and 26.9 s).
 
 #### 5.4 The launch bays drop ventrally
 
 - **Gravity does the first metre.** The interior's artificial gravity points along -Y
   (`ship-frames`); a fighter released from its cradle falls out of a floor door with no
   catapult, then lights its engine clear of the hull.
-- **No room to turn.** A launch bay is 5.5 m wide and the Swift spans 4.6 m. A ventral door
+- **No room to turn.** A launch bay is 5.4 m wide (v2 plan, 2026-10-05; was 5.5 m) and the Swift
+  spans 4.6 m. A ventral door
   needs no taxiing and no turn, and the bay can be the size of the fighter.
 - **Clear of everything that fires.** The drop doors are in the bottom hull at z -10: away from
   the dorsal turret, the radiators on top, the missile tubes at the bow and the engines' plume
@@ -238,18 +246,27 @@ so real times are a little longer. Every number below is printed by `python3 too
 assumed 1.6 m/s walk with ladders at 0.8 m/s both ways and 1.0 s on and off. T2 (the stairs) was
 applied on 2026-10-04; T1 (the galleries) was not, so routes that need it are marked.
 
+**Regenerated on the v2 plan, 2026-10-05.** Only route ends moved: the bridge's forward seats and
+the captain's dais 1.0 m forward, its side seats onto the raked walls, the damage control board
+and the EVA lockers onto damage control's outer wall. Every portal a route uses kept its centre,
+and the script's route check (every leg in the air, through portals, over a floor) passes on v2
+with no new waypoint. So a route that starts or ends at one of those seats is 0.5-1.9 s longer at
+a walk and nothing else moved (v1 figures: quarters to the helm 18.9 s; the helm to the
+engineering console 33.0 s and 35.4 s; the damage control board to the forward switchboard
+19.0 s; the comms and flight operations seats to a launch bay 26.9 s).
+
 | Route | Path m | Walk s | Run s | Through (POI) | As laid out today |
 | --- | ---: | ---: | ---: | --- | --- |
-| Quarters (spawn) to helm | 27.1 | 18.9 | 11.7 | 10, 14, ladder, 4, 1 | Same |
-| Quarters to captain | 22.9 | 16.6 | 10.6 | 10, 14, ladder, 4, 1 | Same |
-| Helm to engineering console, by the aft passage | 54.8 | 33.0 | 15.6 | 1, 4, 5, 6, 18 (catwalk, stair down) | Same (T2 applied) |
-| Helm to engineering console, through the hangar | 56.7 | 35.4 | 19.1 | 1, 4, ladder, 14, 15 (landing, gallery), 18 | **No route** until T1; with T2 alone, 41.7 s by the hangar floor and the gallery stair |
-| Helm to the reactor's lower floor | 56.0 | 36.1 | 21.2 | 1, 4, ladder, 14, ladder, 20, 15 (floor), 18 | Same |
-| Helm to the reactor panel (scram reset), by the aft passage | 59.4 | 35.2 | 16.3 | 1, 4, 5, 6, 18 (catwalk, stair down) | Same (T2 applied) |
-| Damage control board to forward switchboard | 28.0 | 19.0 | 11.5 | 9, 14, ladder, 20, 26 | Same |
-| Damage control board to battery bank | 29.5 | 19.8 | 11.9 | 9, 14, ladder, 20, 26 | Same |
-| Damage control board to main switchboard, through the hangar | 50.7 | 29.1 | 13.6 | 9, 14, 15 (landing, gallery), 18 | **No route** until T1 |
-| Damage control board to main switchboard, by the aft passage | 57.1 | 37.3 | 20.2 | 9, 14, ladder, 4, 5, 6, 18 | Same (T2 applied) |
+| Quarters (spawn) to helm | 28.1 | 19.5 | 11.9 | 10, 14, ladder, 4, 1 | Same |
+| Quarters to captain | 23.9 | 17.1 | 10.9 | 10, 14, ladder, 4, 1 | Same |
+| Helm to engineering console, by the aft passage | 55.8 | 33.5 | 15.8 | 1, 4, 5, 6, 18 (catwalk, stair down) | Same (T2 applied) |
+| Helm to engineering console, through the hangar | 57.7 | 35.9 | 19.3 | 1, 4, ladder, 14, 15 (landing, gallery), 18 | **No route** until T1; with T2 alone, 42.2 s by the hangar floor and the gallery stair |
+| Helm to the reactor's lower floor | 57.0 | 36.7 | 21.4 | 1, 4, ladder, 14, ladder, 20, 15 (floor), 18 | Same |
+| Helm to the reactor panel (scram reset), by the aft passage | 60.4 | 35.7 | 16.6 | 1, 4, 5, 6, 18 (catwalk, stair down) | Same (T2 applied) |
+| Damage control board to forward switchboard | 31.3 | 20.8 | 12.3 | 9, 14, ladder, 20, 26 | Same |
+| Damage control board to battery bank | 32.8 | 21.7 | 12.7 | 9, 14, ladder, 20, 26 | Same |
+| Damage control board to main switchboard, through the hangar | 54.0 | 30.9 | 14.4 | 9, 14, 15 (landing, gallery), 18 | **No route** until T1 |
+| Damage control board to main switchboard, by the aft passage | 60.4 | 39.1 | 21.1 | 9, 14, ladder, 4, 5, 6, 18 | Same (T2 applied) |
 | Magazine racks to torpedo tube 1, on foot | 37.2 | 24.1 | 13.8 | 21, 20, ladder, 14, 7 | Same (missiles ride the hoist: 20 s each) |
 | Quarters to a medbay bed | 15.2 | 8.5 | 3.8 | 10, 14, 8 | Same |
 
@@ -258,12 +275,12 @@ are symmetric to within 0.6 s; boarding from there is `shuttle-bay-and-fighters`
 
 | From | Walk s | Run s |
 | --- | ---: | ---: |
-| Captain | 25.7 | 16.5 |
-| Helm, tactical | 28.1 | 17.5 |
-| Engineering, science (bridge) | 28.2 | 17.6 |
-| Comms, flight operations | 26.9 | 17.0 |
+| Captain | 26.3 | 16.7 |
+| Helm, tactical | 28.6 | 17.8 |
+| Engineering, science (bridge) | 28.8 | 17.8 |
+| Comms, flight operations | 28.0 | 17.5 |
 | Engineering bay console | 15.6 | 7.5 |
-| Damage control board | 23.4 | 13.5 |
+| Damage control board | 25.2 | 14.3 |
 | Bay control (by the ladder trunk today; by the gallery stair once T1 is applied) | 23.6; 22.1 | 13.6; 10.5 |
 | Dorsal gunner | 28.4 | 20.2 |
 | Ventral gunner | 11.2 | 8.2 |
@@ -271,12 +288,12 @@ are symmetric to within 0.6 s; boarding from there is `shuttle-bay-and-fighters`
 | Quarters (spawn) | 18.6 | 10.8 |
 
 **Gunners to their seats**: from the quarters 15.7 s (port), 15.9 s (starboard), 20.2 s (dorsal),
-17.4 s (ventral); from the helm 20.8 s (dorsal), 26.5 s (port, starboard), 26.9 s (ventral).
+17.4 s (ventral); from the helm 21.3 s (dorsal), 27.0 s (port, starboard), 27.4 s (ventral).
 
-What the numbers say: every bridge station is within 28.2 s of a launch bay's pressure door at
-walking pace (17.6 s running), well inside the 40 s the requirement allows; the core four reach
-their seats from the spawn in 18.9-19.1 s; and the two routes from the helm to the engineering
-console are 2.4 s apart (33.0 s and 35.4 s), so losing either costs little once T1 gives the
+What the numbers say: every bridge station is within 28.8 s of a launch bay's pressure door at
+walking pace (17.8 s running), well inside the 40 s the requirement allows; the core four reach
+their seats from the spawn in 19.5-19.6 s; and the two routes from the helm to the engineering
+console are 2.4 s apart (33.5 s and 35.9 s), so losing either costs little once T1 gives the
 hangar route.
 
 ### 7. Single points of failure
@@ -300,7 +317,7 @@ portal whose loss cuts some compartments off from the bridge.
 | Compartment lost | Systems in it | What remains |
 | --- | --- | --- |
 | Engineering (18) | Reactor, main switchboard, coolant pumps | Battery bank and forward switchboard in 26, at the opposite end of the ship, with the emergency bus (`power-grid`) |
-| Life support (22) | Oxygen generator, scrubbers, air handler, thermal control | 8,859 m^3 of air in the ship; reserve gas bottles in cargo (23); the bay pumps' reserve tank in the hangar; EVA suits in damage control (`life-support` owns the endurance numbers) |
+| Life support (22) | Oxygen generator, scrubbers, air handler, thermal control | 9,825 m^3 of air in the ship (v2 plan, 2026-10-05; was 8,859 m^3); reserve gas bottles in cargo (23); the bay pumps' reserve tank in the hangar; EVA suits in damage control (`life-support` owns the endurance numbers) |
 | Forward switchboard (26) | Battery bank, the bus cross-tie | The main switchboard in engineering |
 | Shield generator (25) | The shield generator | None: shields are lost (`weapons-and-shields`) |
 | Computer core (3) | Processing for automation | Manned stations keep working; automated ones degrade (`bridge-stations`) |
@@ -322,7 +339,8 @@ documentation tooling, CLAUDE.md section 4):
 ### 9. Proposed layout patches (exact JSON for the coordinator)
 
 Each patch was applied to a scratch copy and passes `tools/layout_check.py` (all together: 30
-compartments, 41 portals, 8,924.8 m^3, ok).
+compartments, 41 portals, 9,889.6 m^3, ok; v2 plan, 2026-10-05, was 8,924.8 m^3 on the v1
+boxes).
 
 **T1. Galleries meet the landing.** In `compartments`, `hangar`, move each gallery brush's two
 forward corners 2 m forward (re-expressed for schema v2 on 2026-10-05; the chamfer is kept), and
@@ -341,8 +359,8 @@ the landing's note:
 Effect (v2): the hangar becomes 1,747.2 m^3 and 372.4 m^2, and with T3 the ship 9,889.6 m^3,
 2,467.1 m^2 and 41 portals (checked on a scratch copy, 2026-10-05; v1 figures were 1,764.0 m^3 and
 378.0 m^2); the helm to the engineering console
-through the hangar drops from 41.7 s to 35.4 s at `crew-on-deck`'s speeds (section 6; first
-measured as 47.2 s to 36.9 s at the assumed 1.6 m/s).
+through the hangar drops from 42.2 s to 35.9 s at `crew-on-deck`'s speeds (section 6; v2 plan,
+2026-10-05, was 41.7 s to 35.4 s; first measured as 47.2 s to 36.9 s at the assumed 1.6 m/s).
 
 **T2. Stairs inside engineering and the hangar.** *Applied to `layout.json` on 2026-10-04.* Append to `fixtures` (a new fixture kind,
 `stair`: `top_m` and `foot_m` are the centres of the flight's top and bottom edges, `width_m`
@@ -469,7 +487,7 @@ eye):
 | File | Shows |
 | --- | --- |
 | `docs/design/maps/tern-deck-A.svg` | Deck A: POI 1-6, 18 (the catwalk level, open below) and 27 (dorsal pod above, dashed); 8 seats; systems a-b |
-| `docs/design/maps/tern-deck-B.svg` | Deck B: POI 7-14, 19, 29, 30, the hangar's landing and galleries over the open bay (15) and engineering's mezzanine ring (18); systems a-g |
+| `docs/design/maps/tern-deck-B.svg` | Deck B: POI 7-14, 19, 29, 30, the hangar's landing and galleries over the open bay (15) and engineering's mezzanine ring (18); systems a-h (the main switchboard's port and starboard sections are two letters; regenerated 2026-10-05, was a-g) |
 | `docs/design/maps/tern-deck-C.svg` | Deck C: POI 15-18, 20-26 and 28 (ventral pod below, dashed); the craft on their cradles; systems a-o |
 
 A badge that cannot sit inside its compartment (a pod, the airlock) sits beside it with a
@@ -504,16 +522,26 @@ direction and the seat's stand and sit included. Measured from the page: quarter
 gunner's seat 15.8 s. Helm to the engineering bay console is 32.1 s (52.4 m) by the aft passage:
 the page costs the 3.5 m drop from the catwalk to the mezzanine in a straight line at the stairs'
 70 %, where section 6 follows the T2 stair along the wall (33.0 s, 54.8 m). Helm to engineering's
-catwalk door is 26.1 s.
+catwalk door is 26.1 s. These page figures were measured on the v1 boxes (2026-10-04) and are
+re-measured when the deck-plan mockup is ported to the v2 plan (noted 2026-10-05); section 6's own
+figures moved with the seats, by up to 1.9 s (the comparison above is now 33.5 s and 55.8 m, the
+catwalk door 26.7 s).
 
 ### 12. The Pi 5 cost of this plan
 
-The plan spends nothing by itself; `deck-pipeline` measures its geometry: 58,573 triangles and
-91 draw calls for the whole ship at the proposed kit density, every compartment under its
-ceiling (the bridge 5,630 of 30,000; engineering, the busiest, 7,028 of 8,000), and a worst
-visible set of 53,184 triangles (the main corridor with every door open, a crude upper bound)
-against an 80,000-triangle interior pass. The proposed patches add about 700 triangles (four
-stairs at about 140 each, the gallery extension and the scuttle's frame).
+The plan spends nothing by itself; `deck-pipeline` measures its geometry (its section 11,
+re-stated on the v2 plan on 2026-10-05). The generated shell and detail are counted by
+`node tools/mockups/kit_report.mjs` from the brushes and `deck-pipeline` section 5a's rules:
+1,232 shell triangles before the light baker's subdivision and 15,688 of detail, 16,920
+together, with 306 lamps (110 on the emergency bus). With the first estimate's props (18,260)
+the whole ship is 35,180 triangles and 91 draw calls, every compartment under its ceiling (the
+bridge 3,894 of 30,000; engineering, the busiest, 5,156 of 8,000), and a worst visible set of
+31,838 triangles (the main corridor with every door open, a crude upper bound) against an
+80,000-triangle interior pass. These figures leave out the baker's subdivision, which the first
+estimate stood in for with a lighting grid on the v1 boxes (58,573 triangles for the ship, the
+bridge 5,630, engineering 7,028, a worst set of 53,184); the headroom under each ceiling is what
+pays for it. The proposed patches add about 700 triangles (four stairs at about 140 each, the
+gallery extension and the scuttle's frame).
 
 ## Risks / Trade-offs
 
@@ -544,7 +572,7 @@ proceed on the recommendation ("recommendation taken, ask only with screenshots"
 
 | Id | Question and fact | Options | Recommendation | Mockup shot |
 | --- | --- | --- | --- | --- |
-| T1 | The hangar's galleries meet the landing only at a corner, so deck B's route aft over the launch bays starts in engineering | a. extend the galleries forward 2 m to the landing; b. leave them as engineering's balconies | a: the through-hangar route from the helm to the engineering console drops from 41.7 s to 35.4 s (`crew-on-deck`'s speeds; corrected 2026-10-04 from 47.2 s to 36.9 s at the first assumed speeds) | `deck-plan-deck-B-plan` |
+| T1 | The hangar's galleries meet the landing only at a corner, so deck B's route aft over the launch bays starts in engineering | a. extend the galleries forward 2 m to the landing; b. leave them as engineering's balconies | a: the through-hangar route from the helm to the engineering console drops from 42.2 s to 35.9 s (`crew-on-deck`'s speeds on the v2 plan, 2026-10-05, was 41.7 s to 35.4 s; corrected 2026-10-04 from 47.2 s to 36.9 s at the first assumed speeds) | `deck-plan-deck-B-plan` |
 | T2 | Engineering has no stair between its catwalk, mezzanine and lower floor, so its console cannot be walked to; the hangar's landing stairs have no place that does not block a door | a. the four stairs of section 9 (engineering's along its forward wall, the hangar's at the galleries' aft ends); b. ladders instead (faster to fit, 0.8 m/s, no carrying) | a. **Applied 2026-10-04** by the coordinator as a fix, since the engineering console could not be walked to (recommendation taken; ask only with screenshots) | `deck-plan-engineering-closeup` |
 | T3 | The bridge has one door | a. the scuttle to damage control; b. a second door to the ready room; c. none | a: it also gives damage control a second exit | `deck-plan-deck-A-plan` |
 | T4 | Systems are points, so nothing checks that a scrubber or a pump stands clear of a door | add `size_m` to systems, values set by each system's change | add it. Recommendation taken (ask only with screenshots) | none |

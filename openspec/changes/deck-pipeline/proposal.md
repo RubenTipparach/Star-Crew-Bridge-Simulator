@@ -53,8 +53,11 @@ pipeline and puts a number on every compartment of the reference ship.
   windows and open bay doors handed to `ship-frames`' exterior layers as scissor rectangles;
   capsule collision against brush planes. No precomputed PVS; small BSP trees only where they
   pay (collision in the two big compartments, back-to-front glass).
-- **Budgets per compartment for the Tern**, measured from the layout: 58,573 triangles for the
-  whole ship at the proposed kit density. Every compartment is under the `engine-stack`
+- **Budgets per compartment for the Tern**, measured from the layout: on the v2 plan
+  (2026-10-05), 35,180 triangles for the whole ship before the light baker's subdivision (the
+  kit's generated shell and detail, measured, plus the first estimate's props), where the first
+  estimate on the v1 boxes, with a lighting grid standing in for the subdivision, was 58,573.
+  Every compartment is under the `engine-stack`
   ceilings (bridge 30,000, others 8,000); the interior pass is capped at 80,000 triangles and
   120 draw calls a frame. The ceilings are not targets.
 

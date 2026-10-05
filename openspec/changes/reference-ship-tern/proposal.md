@@ -39,10 +39,12 @@ coordinator to apply.
   is there; the hangar, launch bays and engineering across decks.
 - **Routes and walk times** at `crew-on-deck`'s speeds (walk 1.8 m/s, run 4.0 m/s, ladders
   0.8 m/s up and 1.0 m/s down; adopted 2026-10-04 in place of the first assumed 1.6 m/s, question
-  T5), printed by `tools/walk_times.py`: quarters to the helm 18.9 s; the helm to the engineering
-  console 33.0 s by the aft passage and 35.4 s through the hangar (with T1); damage control to the
-  forward switchboard 19.0 s; any bridge station to a launch bay's pressure door 25.7-28.2 s; the
-  magazine to the torpedo room 24.1 s on foot.
+  T5), printed by `tools/walk_times.py` on the v2 plan (2026-10-05, where the bridge seats and the
+  damage control board moved with their walls): quarters to the helm 19.5 s; the helm to the
+  engineering console 33.5 s by the aft passage and 35.9 s through the hangar (with T1); damage
+  control to the forward switchboard 20.8 s; any bridge station to a launch bay's pressure door
+  26.3-28.8 s; the magazine to the torpedo room 24.1 s on foot (on the v1 boxes: 18.9 s, 33.0 s,
+  35.4 s, 19.0 s and 25.7-28.2 s).
 - **Design reasoning**: the double-height hangar with galleries, the always-pressurized aft
   passage, turrets manned from pods, ventral launch bays, and a single-point-of-failure table
   with mitigations.
@@ -83,5 +85,7 @@ None.
   `crew-on-deck` owns the walking speeds; `deck-pipeline` measures the per-compartment budgets
   on this plan; `life-support` the volumes; `shuttle-bay-and-fighters` the bays.
 - **Pi 5 budget**: the floor plan itself spends nothing; its geometry is `deck-pipeline`'s
-  table (58,573 triangles for the whole ship at the proposed kit density, every compartment
-  under its ceiling).
+  table (on the v2 plan, 2026-10-05: 35,180 triangles for the whole ship before the light baker's
+  subdivision, the generated shell and detail measured and the props estimated, every compartment
+  under its ceiling; the v1 estimate, with a lighting grid standing in for the subdivision, was
+  58,573).
