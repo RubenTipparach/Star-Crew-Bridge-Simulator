@@ -22,7 +22,7 @@ the write-up.
 
 - [ ] 3.1 `crew::step`: capsule movement against `deck-pipeline`'s query, slide and step-up, speeds, grip-limited acceleration, stairs, crouch, falling; test `a_body_reaches_walking_speed_in_a_third_of_a_second`.
 - [ ] 3.2 Ladders: volumes, getting on and off, speeds, one body per 1.8 m, hands rules; test `a_trolley_cannot_be_taken_onto_a_ladder`.
-- [ ] 3.3 Doors, hatches and pressure doors: approach sensing, times, never closing on a body, locks, the interlock and its override limits; tests `a_door_will_not_open_into_vacuum` and `a_closing_door_waits_for_the_body_in_it`.
+- [ ] 3.3 Doors, hatches and pressure doors: approach sensing, times, never closing on a body, locks, `life-support`'s interlock (20 kPa) and the override hold; tests `a_door_will_not_open_into_vacuum` and `a_closing_door_waits_for_the_body_in_it`.
 - [ ] 3.4 Use: reach, line of sight, posture and hands checks; items as interior objects; pick up and drop; the trolley's push, brake and room limits.
 - [ ] 3.5 Health: `crew::injure`, wounded, downed, the stabilize window, critical, revive by hand, field recovery, every body down; tests `a_revived_body_gets_up_at_twenty_five_hp` and `damage_while_down_shortens_the_window`.
 - [ ] 3.6 Medbay beds; air effects from `life-support`'s values; suits, oxygen and punctures.

@@ -53,7 +53,7 @@ falling faster than 1 kPa/s, unless held. Doors to space SHALL open and close on
 
 #### Scenario: A breach while someone is in the doorway
 - **WHEN** a 1 m^2 breach opens in the quarters while their door to the main corridor is open
-- **THEN** the door closes itself within 3 s and the corridor keeps most of its air
+- **THEN** the door closes itself within 2 s and the corridor keeps most of its air
 
 #### Scenario: Pulling someone out
 - **WHEN** a crew member tries to open the medbay's door with the medbay at vacuum
@@ -121,7 +121,7 @@ by shutting its outer door and equalizing through its valve before opening the i
 
 #### Scenario: Going outside
 - **WHEN** a suited crew member cycles out
-- **THEN** the airlock reaches 5 kPa in about 36 s and the outer door opens 3 s later
+- **THEN** the airlock reaches 5 kPa in about 36 s and the outer door is open 2 s later
 
 ### Requirement: Readouts and previews come from the model
 Every life support readout SHALL be the state of the last sub-step, and every preview (time to a

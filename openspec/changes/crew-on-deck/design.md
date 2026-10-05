@@ -41,9 +41,10 @@ Other changes have already fixed the frame of this work:
   0.6 units a frame (about 3.6 m/s at 60 frames a second, with 1 unit = 0.1 m), revive only at
   full health after 13 presses, extinguishers that no level placed (section 20).
 
-The changes that will own the air (`life-support`), fire and repair (`damage-control`) and power
-(`power-grid`) are not written yet. This change names the values it reads from them and states
-what a body does with each, so they can be written against it.
+The changes that own the air (`life-support`), fire and repair (`damage-control`) and power
+(`power-grid`) were written after this change's first draft. This change names the values it reads
+from them and states how a body presents each to its player; where one of them owns a number (the
+air's effects on a body and the door interlock are `life-support`'s), this change cites it.
 
 ## Goals / Non-Goals
 
@@ -65,8 +66,9 @@ what a body does with each, so they can be written against it.
   the body).
 - What fire, a breach or a damaged system is and how fast work fixes it: `damage-control`. This
   change gives the hands (reach, posture, tools, carrying) and takes the rates.
-- The air: `life-support` computes pressure, gases, temperature, smoke and flow; this change says
-  what a body does at each value.
+- The air: `life-support` computes pressure, gases, temperature, smoke and flow, and owns what
+  they do to a body (its `crew_effects` thresholds and rates); this change says how the player
+  experiences each (section 9).
 - Fighter cockpits and the launch sequence: `shuttle-bay-and-fighters`.
 - The deck's geometry and its checks: `deck-pipeline` (this change gives it the capsule and the
   walking rules it checks).
@@ -187,8 +189,10 @@ their hatches.
 ### 5. Doors, hatches and pressure
 
 The layout decides each portal's kind and size; this change decides how a body works it.
-Opening and closing times are proposed (`deck-pipeline` builds the movers, `power-grid` feeds
-the door motors, `life-support` supplies the pressures).
+Opening and closing times are proposed here and owned here: `life-support`'s atmosphere step uses
+the same times (`atmosphere.json` `portals`, reconciled 2026-10-05: crew-on-deck owns this).
+`deck-pipeline` builds the movers, `power-grid` feeds the door motors, `life-support` supplies
+the pressures and owns the interlock.
 
 | Kind (layout) | How it opens | Open, close | Unpowered |
 | --- | --- | ---: | --- |
@@ -209,17 +213,22 @@ board's lock takes 3.0 s and is logged on the board ("forward switchboard door u
 `damage-control` locks doors to contain fire and vacuum (its automation already does,
 `bridge-stations` section 4); this is how a body meets that decision.
 
-**The pressure interlock** (proposed values; the pressures are `life-support`'s):
+**The pressure interlock** is `life-support`'s (its section 3 and question L6: 20 kPa, with an
+override that costs air; `atmosphere.json` `portals.interlock_max_dp_kpa`). Reconciled 2026-10-05:
+life-support owns this; this change first proposed 5 kPa, with an override only up to 30 kPa. What
+a body does at it is this change's:
 
 | Pressure difference across the portal | `door`, `hatch`, ladder hatch | `pressure_door` |
 | --- | --- | --- |
-| Up to 5 kPa | Opens normally | Opens on Use |
-| 5-30 kPa | Refuses; the panel shows both pressures. **Override**: hold Use 3.0 s at the panel (a guarded act, logged on the damage board); the opening then equalizes at the flow `life-support` computes, and the pull of section 9 applies | Refuses. No override: it opens only in its own cycle (an airlock or a bay sequence, `shuttle-bay-and-fighters`) |
-| Over 30 kPa | Refuses; no override (the leaf's seal load is beyond its motor and a person) | Refuses |
+| Up to 20 kPa | Opens normally | Opens on Use |
+| Over 20 kPa | Refuses; the panel shows both pressures. **Override**: hold Use 3.0 s at the panel (a guarded act, logged on the damage board); the opening then equalizes at the flow `life-support` computes, and the pull of section 9 applies | Refuses. No override by hand at the door: it opens only in its own cycle (an airlock or a bay sequence, `shuttle-bay-and-fighters`) or by the board's override (`life-support` section 3) |
 
 So a body standing at a closed door with vacuum on the other side meets a red panel reading "0.4
-kPa beyond: will not open", and the only ways through are a suit and the airlock, or
-`damage-control`'s repair and `life-support`'s repressurization.
+kPa beyond: interlocked". Holding Use for 3.0 s opens it anyway, and the near compartment's air
+rushes through, pulling at anyone by the door (section 9): that is how a crew member is pulled out
+of a breached room, at the cost of the air (`life-support` L6), not a way to walk on. The ways to
+walk on are a suit and the airlock, or `damage-control`'s repair and `life-support`'s
+repressurization.
 
 **Hatches.** The side hatches into the port and starboard pods (0.9 x 1.4 m with a 0.40 m sill)
 are passed by a 1.5 s climb-through clip: the body crouches, steps over the sill and comes out
@@ -287,8 +296,9 @@ done in a hazard. Here revival is quick and leaves the body hurt, and the medbay
 | Critical | 0, after its stabilize window ran out | As downed; it cannot be revived by hand, only on a medbay bed. |
 
 - **The stabilize window.** A body that goes down has **120 s** to be revived by hand. Damage it
-  keeps taking while down (it still lies in the smoke or the vacuum) takes 1 s from the window per
-  HP. When the window runs out the body is critical.
+  keeps taking while down (it still lies in the heat or the fire) takes 1 s from the window per
+  HP. When the window runs out the body is critical. Bad air (smoke, vacuum, no oxygen) makes it
+  critical at `life-support`'s death condition if that comes first (section 9).
 - **Revive by hand.** A body with empty hands within 1.2 m holds Use for **5.0 s** (it kneels; the
   hold breaks if either body moves, is knocked down, or the helper's hands fill). The downed body
   gets up at **25 HP** in 1.2 s: wounded, and able to walk to the medbay. The helper is exposed to
@@ -310,7 +320,7 @@ done in a hazard. Here revival is quick and leaves the body hurt, and the medbay
 
 | Cause | Owner | Proposed default |
 | --- | --- | --- |
-| Air: hypoxia, carbon dioxide, smoke, cold, heat, vacuum | `life-support` values, this change's rates | Section 9 |
+| Air: hypoxia, carbon dioxide, smoke, cold, heat, vacuum | `life-support`: its thresholds, doses and rates (`atmosphere.json` `crew_effects`; reconciled 2026-10-05: life-support owns this) | Section 9 |
 | Fire: standing in a fire's burning volume | `damage-control` | 8 HP/s (suited 4 HP/s) |
 | A hull hit reaching a compartment | `damage-control` | Up to 40 HP at the hit point, falling linearly to 0 at 4 m |
 | A console struck while seated at it | `damage-control` (star-crew-64 passed station damage to its occupant) | 10 HP to the operator |
@@ -337,23 +347,34 @@ two beds at the system, 2.0 x 0.9 m each.
 
 ### 9. What the air does to a body
 
-`life-support` owns every value in the middle column (per compartment, sent at 5 Hz by
-`netcode-and-sessions`: pressure, O2, CO2, temperature, and a smoke density to add); this change
-owns the right-hand columns. Rates add when effects stack. Thresholds and rates are proposed, in
-`data/crew.json`.
+`life-support` owns what the air does to a body: every threshold, dose and rate in the middle
+column is its `atmosphere.json` `crew_effects` (its design section 12), read per compartment
+(sent at 5 Hz by `netcode-and-sessions`: pressure, O2, CO2, temperature and smoke). This change
+owns the right-hand column: what the player sees and how the body moves. Reconciled 2026-10-05:
+life-support owns this; this change first proposed its own thresholds and HP rates for the air
+(hypoxia under 16, 12 and 8 kPa at 0.5 and 3 HP/s, carbon dioxide over 2, 5 and 8 kPa, smoke by a
+0-1 density, cold under 10, 0 and -20 deg C, heat over 45, 60 and 80 deg C, vacuum 10 HP/s), and
+those are withdrawn.
 
-| Effect | Read from | Mild | Serious | Severe |
-| --- | --- | --- | --- | --- |
-| **Hypoxia** | O2 partial pressure | under 16 kPa: no running | under 12 kPa: walk at 75 %, grey vision edges, 0.5 HP/s | under 8 kPa: tunnel vision, 3 HP/s |
-| **Hypercapnia** (carbon dioxide) | CO2 partial pressure | over 2 kPa: no running | over 5 kPa: swaying vision, 1 HP/s | over 8 kPa: 3 HP/s |
-| **Smoke** | smoke density `s`, 0-1 | over 0.2: visibility `20 m x (1 - s)^2` | over 0.3: coughing (an additive clip), no running, `3 x s` HP/s | |
-| **Cold** | air temperature | under 10 deg C: tool work 15 % slower, shivering clip | under 0 deg C: 0.5 HP/s | under -20 deg C: 2 HP/s |
-| **Heat** | air temperature | over 45 deg C: no running | over 60 deg C: 1 HP/s | over 80 deg C: 4 HP/s |
-| **Low pressure, vacuum** | total pressure | under 50 kPa: no running | | under 6.3 kPa (the Armstrong limit): **vacuum exposure**, 10 HP/s, on top of hypoxia: a healthy body is down in under 10 s |
-| **The pull of a breach** | the flow toward a breach (`life-support`) | a body within 4 m of a breach in a venting compartment is pushed along the flow at up to 3 m/s | | |
+| Effect | `life-support`'s threshold and rate | What the player experiences (this change) |
+| --- | --- | --- |
+| **Hypoxia** | Impaired below 16 kPa of O2. Toward unconsciousness, a dose of `dt / TUC` with the time of useful consciousness by O2 partial pressure (30 min at 12 kPa, 20 min at 10.6, 5 min at 8.9, 1 min at 6.3, 9 s below 3.4); unconscious at 1. Dead after 240 s unconscious below 10.6 kPa | Impaired: no running, grey vision edges. As the dose climbs the edges close in (tunnel vision past half) and the hypoxic sway clip plays; at 1 the body is downed (section 7) |
+| **Hypercapnia** (carbon dioxide) | Impaired above 3 kPa of CO2. A dose by 30 min at 5 kPa, 5 min at 7, 1 min at 10, 20 s at 15; unconscious at 1. Dead after 300 s unconscious above 10 kPa | Impaired: no running, swaying vision. The dose as hypoxia's: downed at 1 |
+| **Smoke** | No impairment threshold. Purser's fractional effective dose, `sum(ppm x dt) / 60 / 30,000 ppm min`: unconscious at 1, dead at 2.5. Extinction coefficient `K` = 2,000 per metre times the smoke's mole fraction (`smoke.visibility_k_per_mole_fraction`) | A fog that limits sight to `3 / K` m (3 m at 500 ppm); coughing (an additive clip) while the dose rises; downed at 1 |
+| **Cold** | Impaired below 5 deg C (278.15 K). Harm below -20 deg C: 0.2 HP/s | Impaired: shivering clip, tool work 15 % slower. Harm through `crew::injure` (section 7) |
+| **Heat** | Impaired above 45 deg C (318.15 K). Harm above 60 deg C: 0.05 HP/s per kelvin over (1 HP/s at 80 deg C) | Impaired: no running. Harm through `crew::injure` |
+| **Low pressure, vacuum** | Impaired below 50 kPa. Armstrong's limit 6.3 kPa: dead after 90 s below it. A fall faster than 50 kPa in 1 s knocks a standing body down and costs 10 HP | Impaired: no running. Below 6.3 kPa the hypoxia dose climbs at its fastest (9 s), so an unsuited body is downed in under 10 s; the knockdown is section 12's (1.5 s on the floor, a 1.0 s get-up, what it held dropped) |
+| **The pull of a breach** | The flow toward a breach (`life-support`) | A body within 4 m of a breach in a venting compartment is pushed along the flow at up to 3 m/s (this change's rule: it is a body's motion, not an air effect) |
 
-- **Reference values** (normal air, `life-support` to confirm): 101 kPa total, 21 kPa O2, under
-  0.5 kPa CO2, 21 deg C, no smoke. A healthy body in normal air takes no damage.
+- **Downed and critical.** `life-support`'s "unconscious" is this change's **downed** (section 7),
+  and its "dead" is **critical**: no permanent death (question C3). A body down in bad air turns
+  critical at whichever comes first, the stabilize window running out or `life-support`'s death
+  condition (240 s of hypoxia, 300 s of carbon dioxide, a smoke dose of 2.5, 90 s below 6.3 kPa).
+- **Recovery** is `life-support`'s too: in good air the hypoxia dose falls 3.3 % a second and the
+  carbon dioxide dose 1.7 %, and the screen effects fade with them.
+- **Reference values** (`life-support` section 7, at cruise with eight crew working): 101.2 kPa,
+  O2 21.16 kPa, CO2 0.02-0.03 kPa, air 16-27 deg C, no smoke. A healthy body in normal air takes no
+  harm and is not impaired.
 - **Holding on beats the pull.** A body holding a handhold or braced against a console (section
   12) is not pushed. The person who holds the doorway while others get out is a choice the game
   wants to offer.
@@ -513,12 +534,14 @@ Up, nothing changes: the input frame is the one netcode already sizes.
 ### 15. Data (proposed)
 
 - `data/crew.json`: capsule and eye per posture (section 2); speeds, acceleration cap, grip `mu`,
-  step height, turn rates (section 3); ladder speeds and clip times (section 4); door, hatch and
-  interlock times and thresholds (section 5); item masses, hands and actions (section 6); trolley
+  step height, turn rates (section 3); ladder speeds and clip times (section 4); door and hatch
+  times and the override hold (section 5; the interlock's 20 kPa is `life-support`'s
+  `portals.interlock_max_dp_kpa`); item masses, hands and actions (section 6); trolley
   forces and limits (6.1); HP thresholds, stabilize window, revive time and HP, field recovery
-  (section 7); bed rates (section 8); every air effect's thresholds and rates (section 9); suit
-  values (section 10); zero-gravity values (section 11); the lurch thresholds as multiples of
-  grip (section 12). Units in the keys (`walk_m_s`, `revive_hold_s`, `hypoxia_serious_kpa`).
+  (section 7); bed rates (section 8); the breach pull and the smoke fog's visibility constant
+  (section 9; the air's thresholds and rates are `life-support`'s `crew_effects`, reconciled
+  2026-10-05); suit values (section 10); zero-gravity values (section 11); the lurch thresholds
+  as multiples of grip (section 12). Units in the keys (`walk_m_s`, `revive_hold_s`, `pull_m_s`).
   Unknown keys and non-finite values stop startup (CLAUDE.md 6.5).
 - `data/ships/tern/kit.json`: where items and lockers are, by compartment and bracket position:
   24 extinguisher brackets (two on the bridge, two in the main corridor, two in damage control,
@@ -538,11 +561,10 @@ An excerpt of `data/crew.json`:
             "accel_cap_m_s2": 6.0, "grip_mu": 0.6, "step_m": 0.35, "stick_yaw_deg_s": 200.0, "stick_pitch_deg_s": 140.0 },
   "ladder": { "up_m_s": 0.8, "down_m_s": 1.0, "mount_s": 0.5, "dismount_s": 0.5, "casualty_scale": 0.5 },
   "doors": { "sensor_m": 3.0, "door_open_s": 0.6, "door_close_s": 0.8, "close_delay_s": 2.0,
-             "pressure_door_s": 2.0, "hatch_s": 1.0, "interlock_kpa": 5.0, "override_max_kpa": 30.0, "override_hold_s": 3.0 },
+             "pressure_door_s": 2.0, "hatch_s": 1.0, "override_hold_s": 3.0 },
   "health": { "max_hp": 100, "wounded_below_hp": 50, "stabilize_s": 120.0, "revive_hold_s": 5.0, "revive_hp": 25,
               "recover_hp_s": 0.2, "recover_to_hp": 50, "recover_after_s": 30.0, "bed_hp_s": 2.0, "bed_unpowered_hp_s": 0.5 },
-  "air": { "hypoxia_mild_kpa": 16.0, "hypoxia_serious_kpa": 12.0, "hypoxia_severe_kpa": 8.0, "vacuum_kpa": 6.3,
-           "vacuum_hp_s": 10.0 }
+  "air": { "pull_radius_m": 4.0, "pull_m_s": 3.0, "smoke_sight_constant": 3.0 }
 }
 ```
 
@@ -684,7 +706,7 @@ avatar 3,000 triangles, at most 48 bones; client resident memory 384 MB; 64 kbit
 | --- | --- | --- |
 | `ship-frames` | `F_k` and `T_k` per compartment; `g_art`; the interior frame; the camera lurch spring; the EVA view composed like a turret sight | The body's response to the residual and the shake (section 12), adopting its table; bodies and items as interior objects |
 | `deck-pipeline` | The capsule query, ladder volumes, door and hatch movers, the walkable and clear-width checks | The capsule per posture (section 2), step height, stair speed; handhold rails for the kit (section 11); a deck hatch at each end of a ladder trunk (section 5); the hull's outer surface as an EVA walk surface (section 10) |
-| `life-support` | Per compartment: total pressure, O2 and CO2 partial pressures, temperature, smoke density; the flow toward a breach; the airlock cycle; door and hatch states as openings | What each value does to a body (section 9); the interlock thresholds (section 5) |
+| `life-support` | Per compartment: total pressure, O2 and CO2 partial pressures, temperature, smoke; what each does to a body (`crew_effects`: thresholds, doses, rates); the door interlock (20 kPa, with its override); the flow toward a breach; the airlock cycle; door and hatch states as openings | How the player experiences each effect (section 9); door and hatch times and the override hold (section 5), which its atmosphere step uses. Reconciled 2026-10-05: life-support owns the air's effects and the interlock, this change the door times |
 | `damage-control` | Fire volumes, hull hits, `damage::extinguish`, `damage::repair_time`, breach patching rates, door locks; whether damage control teams are bodies | Hands (reach, posture, tools), `crew::injure`, the kit list (section 15) |
 | `power-grid` | The gravity generator's output; door motors; the medbay beds' load | Nothing it computes; it decides what loses power |
 | `weapons-and-shields` | When the trolley path applies (hoist down) and the hoist's hand winch; the breech actions | Pushing a trolley (section 6.1); the body at the breech |

@@ -37,8 +37,8 @@ setpoint the player set. A downed body SHALL leave the seat, so that a seat is n
 downed body.
 
 #### Scenario: Downed at the engineering console
-- **WHEN** the player at engineering is downed by smoke with the shields' power request raised to 9 MW
-- **THEN** the body falls beside the seat, the seat is empty, engineering's automation takes over at the next tick, and the shields' request stays 9 MW
+- **WHEN** the player at engineering is downed by smoke with the shields' setpoint raised to 150 %
+- **THEN** the body falls beside the seat, the seat is empty, engineering's automation takes over at the next tick, and the shields' setpoint stays 150 %
 
 #### Scenario: Reconnecting
 - **WHEN** a seated player disconnects and reconnects 60 s later
@@ -70,8 +70,8 @@ set, and a manual setpoint SHALL win until a player or a change of condition rep
 - **THEN** it acquires after 0.8 s, tracks at half the mount's slew rate, and aims with a 4 mrad (1 sigma) error
 
 #### Scenario: A manual setpoint survives automation
-- **WHEN** the helm player opens the merged Engineering tab and raises the turrets' power request, and Engineering's automation then steps
-- **THEN** the turrets' request stays where the player set it
+- **WHEN** the helm player opens the merged Engineering tab and raises the turrets' setpoint, and Engineering's automation then steps
+- **THEN** the turrets' setpoint stays where the player set it
 
 ### Requirement: Automation refuses the crew's decisions
 Automation SHALL NOT fire missiles without a "missiles free" order or an order naming the target,
@@ -166,7 +166,7 @@ ellipsis and lists SHALL scroll inside their panel. A validator SHALL check ever
 - **THEN** it is clipped with an ellipsis and the panel keeps its size
 
 ### Requirement: A console's preview is computed by the resolver
-Every preview a console shows (a power request's delivered MW, a turn's time, a turret's hit
+Every preview a console shows (a power setpoint's delivered MW, a turn's time, a turret's hit
 chance, a scan's time, a pump-down time, a repair time, whether an order can be executed) SHALL be
 computed by the same `sc-core` function the server uses to resolve that action, applied to the
 client's replicated state.
@@ -191,7 +191,7 @@ keyboard and mouse or with a gamepad, whichever they are using, with bindings fr
 
 #### Scenario: Engineering on a gamepad
 - **WHEN** the engineer uses a gamepad
-- **THEN** the D-pad selects load groups and breakers, left and right change a request by 0.5 MW, and holding A for 0.6 s opens a guarded breaker
+- **THEN** the D-pad selects load groups and breakers, left and right change the group's setpoint by 5 %, and holding A for 0.6 s opens a guarded breaker
 
 ### Requirement: The viewscreen shows the exterior from the ship's pose
 The bridge viewscreen SHALL show the exterior scene from the selected feed's camera, rendered into

@@ -80,17 +80,18 @@ pressure door SHALL open only on use, in 2.0 s.
 - **THEN** the door stays open until the doorway is clear, and then closes
 
 ### Requirement: Nothing opens across a pressure difference
-A door, hatch or pressure door SHALL refuse to open while more than 5 kPa lies across it. A body
-at an ordinary door or hatch SHALL be able to override the refusal by holding use for 3.0 s when
-the difference is at most 30 kPa, and the override SHALL be logged on the damage control board. A
-pressure door SHALL have no override and SHALL open only in its own cycle.
+A door, hatch or pressure door SHALL refuse to open while more than `life-support`'s interlock
+difference (20 kPa) lies across it. A body at an ordinary door or hatch SHALL be able to override
+the refusal by holding use for 3.0 s, and the override SHALL be logged on the damage control board.
+A pressure door SHALL have no override by hand at the door and SHALL open only in its own cycle or
+by the board's override.
 
 #### Scenario: Vacuum beyond the door
 - **WHEN** a body uses the forward switchboard's door with 101 kPa on its side and 0.4 kPa beyond
-- **THEN** the door stays shut, the panel shows both pressures, and no override is offered
+- **THEN** the door stays shut, the panel shows both pressures, and it opens only if the body holds use for 3.0 s, letting the air through as `life-support` computes
 
 #### Scenario: Equalizing a smoky compartment
-- **WHEN** a body holds use for 3.0 s at a door with 12 kPa across it
+- **WHEN** a body holds use for 3.0 s at a door with 30 kPa across it
 - **THEN** the door opens, the air flows as `life-support` computes, and the damage board logs the override
 
 ### Requirement: Use is checked by the server within reach
@@ -131,8 +132,8 @@ only on a medbay bed. A downed body SHALL NOT block a doorway or a corridor.
 - **WHEN** a teammate holds use for 5.0 s beside a body downed 30 s earlier in clean air
 - **THEN** the body gets up at 25 HP and can walk but not run
 
-#### Scenario: Down in the smoke
-- **WHEN** a downed body lies in smoke that costs it 1.5 HP/s
+#### Scenario: Down in the heat
+- **WHEN** a downed body lies in 90 deg C air, which costs it 1.5 HP/s (`life-support`'s 0.05 HP/s per kelvin over 60 deg C)
 - **THEN** its stabilize window runs out after 48 s, and it becomes critical
 
 ### Requirement: Every body down ends the mission
@@ -155,14 +156,16 @@ body placed on a bed SHALL be revived at 25 HP after 20 s.
 
 ### Requirement: The air acts on a body by name
 A body SHALL suffer hypoxia, hypercapnia, smoke, cold, heat, low pressure and vacuum exposure at
-the thresholds and rates in `data/crew.json`, reading the values `life-support` computes for the
-compartment it is in, and a body within 4 m of a breach in a venting compartment SHALL be pushed
+`life-support`'s thresholds, doses and rates (`atmosphere.json` `crew_effects`), reading the values
+it computes for the compartment the body is in; a body SHALL be downed when one of its doses
+reaches unconsciousness and SHALL turn critical at `life-support`'s death condition or when its
+stabilize window runs out. A body within 4 m of a breach in a venting compartment SHALL be pushed
 along the flow at up to 3 m/s unless it holds a handhold or is braced. Rates SHALL add when
 effects stack, and the client SHALL name each active effect.
 
 #### Scenario: Thin air
 - **WHEN** a body stands in a compartment whose O2 partial pressure is 10 kPa
-- **THEN** it cannot run, walks at 75 % speed, loses 0.5 HP/s, and its status line reads "Hypoxia"
+- **THEN** it cannot run, its status line reads "Hypoxia", and it is downed after about 880 s there (`life-support`'s time of useful consciousness at 10 kPa)
 
 #### Scenario: Vacuum without a suit
 - **WHEN** a healthy unsuited body is in a compartment at 0.5 kPa

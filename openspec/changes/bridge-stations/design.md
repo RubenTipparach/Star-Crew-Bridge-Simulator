@@ -58,7 +58,7 @@ The genre has answers worth taking the shape of (CLAUDE.md 15, `docs/references.
 | **Station** | One entry in the layout's `stations` list: a seat with a console, in a compartment, with a role. Fourteen on the Tern (decided). |
 | **Seat** | The chair of a station. It has an **occupant**: a body or nobody. |
 | **Operator** | Who drives a station: a **player**, **automation**, or nobody because the station is **merged** onto a manned console as a tab and automation runs it underneath. |
-| **Setpoint** | A value the crew asks for (a heading, a power request, a turret mode). Automation and control loops maintain setpoints; players change them. |
+| **Setpoint** | A value the crew asks for (a heading, a load group's power setpoint in percent, a turret mode). Automation and control loops maintain setpoints; players change them. |
 | **Body** | A crew avatar in the interior (`crew-on-deck`). A player drives one body. A body nobody drives is an **NPC body**. |
 | **Condition** | The ship's alert state set by command: normal or red alert. |
 
@@ -71,7 +71,7 @@ flag. Purpose, merge host and automation are proposed here.
 | --- | --- | --- | --- | --- | --- |
 | `helm` | helm | Bridge, front left (port), faces bow | yes | Fly the ship: attitude, throttle, course, evasive patterns, docking. | Automation holds course and speed and obeys orders; tab on the first manned of Tactical, Captain, Science, Engineering. |
 | `tactical` | tactical | Bridge, front right (starboard), faces bow | yes | Targets, turret modes and assignments, missile tubes, shield preset. | Automation fights turrets and point defence, never fires missiles unordered; tab on Helm, Captain, Science, Engineering. |
-| `engineering` | engineering | Bridge, port wall, faces port | yes | Power requests and priorities, breakers, reactor, coolant, life support setpoints, repair priorities. | Automation applies presets and resets breakers; tab on Science, Captain, Helm, Tactical. Manned if `eng_main` is manned. |
+| `engineering` | engineering | Bridge, port wall, faces port | yes | Power setpoints and priorities per load group, breakers, reactor, coolant, life support setpoints, repair priorities. | Automation applies presets and resets breakers; tab on Science, Captain, Helm, Tactical. Manned if `eng_main` is manned. |
 | `science` | science | Bridge, starboard wall, faces starboard | yes | Sensors and scans, shield face balance and frequency, the viewscreen feed. | Automation scans passively and leans shields toward fire; tab on Engineering, Captain, Helm, Tactical. |
 | `captain` | command | Bridge, centre dais (0.3 m), faces bow | no | Overview, condition (red alert), orders, viewscreen override, brace. | No automation of judgement; auto-condition only. Command functions appear in every manned bridge console's title band. |
 | `comms` | comms | Bridge, port aft, faces port | no | Hails, replies, clearances, intercepts, distress. | Automation answers routine hails only; tab on Science, Captain, Engineering, Helm, Tactical. |
@@ -122,7 +122,7 @@ validation (`netcode-and-sessions` section 6). There is no automation-only path 
 if a console cannot do it, automation cannot.
 
 **It works on setpoints.** Players change setpoints; automation and the systems' control loops
-maintain them. A player who opens a merged Engineering tab and raises the shields' power request
+maintain them. A player who opens a merged Engineering tab and raises the shields' power setpoint
 has set a setpoint; automation keeps it and stops applying its preset to that load until the
 condition changes or a player picks a preset. The rule: **a manual setpoint wins until a player
 or a condition change replaces it.**
@@ -143,7 +143,7 @@ limits):
 | Helm | 1.5 s | Holds heading within 2 deg and speed within 2 % of maximum; turns at 70 % of the maximum turn rate | Holds course and speed; follows the plotted course; obeys orders: come to heading, intercept, match speed, keep station, orbit, all stop; turns the bow so the tubes bear on Tactical's target when Tactical asks | Fly evasive patterns; ram; enter a hazard (atmosphere, debris, a star's corona); dock; choose a destination; exceed the dampers' capacity |
 | Tactical | 2.0 s | Target choice by threat score (below) | Raises shields at red alert; assigns each turret to the highest-threat hostile in its arc; sets point defence against inbound missiles; applies the shield preset facing the nearest threat | Fire missiles without a "missiles free" order or a direct order naming the target; fire on a contact not identified hostile; fire on a contact that has surrendered or is disabled |
 | Turret (automated) | 0.8 s to acquire | Tracks at 50 % of the mount's slew rate; leads for constant velocity only; aim error 4 mrad (1 sigma) | Engages its assigned target, else the nearest hostile in arc | Fire within 50 m of a friendly craft's line of fire; fire beyond 3 km |
-| Engineering | 3.0 s | | Applies the condition's preset; resets a tripped breaker 10 s after its fault clears; sheds load by priority when supply falls short; keeps the reactor under 90 % of its thermal limit | Scram the reactor (the reactor's own interlock does that, it is physics, not a decision); vent; close a breaker a player locked open; shed life support or the computer core |
+| Engineering | 3.0 s | | Applies the condition's preset; resets a tripped breaker 10 s after its fault clears; sheds load by priority when supply falls short; leaves the reactor in `power-grid`'s automatic mode, which follows the load the grid can take at 10-100 % of rated and never overdrives (reconciled 2026-10-05: power-grid owns this; it read "keeps the reactor under 90 % of its thermal limit") | Scram the reactor (the reactor's own interlock does that, it is physics, not a decision); vent; close a breaker a player locked open; shed life support or the computer core |
 | Science | 2.5 s | Scans take 1.5 times as long as a manned scan | Passive-scans new contacts nearest first; moves shield allocation toward the face taking fire at 5 % of capacity per second; keeps the viewscreen on the forward feed unless the captain overrides | Ping actively (it reveals the ship); change shield frequency |
 | Comms | 5.0 s | | Answers routine hails with standard replies; requests clearances on order; logs intercepts | Negotiate; offer or accept surrender; send a distress call unordered; decode intercepts |
 | Flight ops | 4.0 s per sequence step | Standard step times | Runs launch and recovery sequences on order; keeps empty bays pressurized; recovers returning craft | Launch without an order; depressurize a bay with an unsuited person in it (a hardware interlock refuses this anyway); open a drop door on an unsecured craft |
@@ -491,7 +491,7 @@ leading `~`) because replicated state is up to 100 ms old (`netcode-and-sessions
 | Helm | Maximum speed and acceleration at the impulse drive's current power | `flight::performance(power)` |
 | Tactical | Hit chance of each turret and tube on the selected target | `weapons::hit_chance` (`weapons-and-shields`) |
 | Tactical | Time for the tubes to bear (a helm turn) and a missile's time to impact | `flight::plan_turn`, `weapons::missile_intercept` |
-| Engineering | Delivered MW for every load if a request, priority or breaker changes | `power::solve` (`power-grid`) |
+| Engineering | Delivered MW for every load if a setpoint, priority or breaker changes | `power::solve` (`power-grid`) |
 | Engineering | Reactor heat in 30 s at the proposed output | `heat::project` (`power-grid`) |
 | Science | Time to scan a contact at the sensors' current power | `sensors::scan_time` (`weapons-and-shields` or a sensors section there) |
 | Science, Tactical | Each face's capacity in MJ after a rebalance or preset | `shields::allocate` (`weapons-and-shields`) |
@@ -559,24 +559,24 @@ it and when ("set by Science 4 s ago"). Question B5 asks whether Tactical should
 
 #### 10.3 Engineering
 
-**Purpose.** Decide where the reactor's power goes and keep the plant alive: power requests and
+**Purpose.** Decide where the reactor's power goes and keep the plant alive: power setpoints and
 priorities per load group, breakers, the reactor's output, coolant, life support setpoints and the
 order of repairs. Engineering's power budget decides whether shields or turrets win (vision,
 pillar 4).
 
 | Panel | Grid | lp | Contents |
 | --- | --- | --- | --- |
-| E1 Power allocation | (0,0,5,4) | 20, 280, 512 x 400 | One row per load group (30 lp each): name, priority 1-3, a bar with requested (tick), delivered (fill) and preview (ghost), MW requested and delivered. Groups: impulse drive, shields, turrets, tubes and hoist, sensors, comms, life support, gravity and dampers, computer core, bays and craft charging. Footer: CRUISE, COMBAT, SILENT, EMERG presets; supply and demand MW |
+| E1 Power allocation | (0,0,5,4) | 20, 280, 512 x 400 | One row per load group (28 lp each), the eleven groups of `power-grid`'s `power.json`: impulse drive and RCS, shields, turrets, tubes and hoist, sensors, comms, life support, gravity and dampers, computer core, bays and craft charging, medbay. Each row: name, priority 1-3, the setpoint in percent (0-150 % in 5 % steps; 0 is off, above 100 % overdrive), a bar with wanted MW (tick), delivered MW (fill) and the preview (ghost), and wanted / delivered MW beside it. Footer: CRUISE, COMBAT, SILENT, EMERG presets; supply and demand MW. Reconciled 2026-10-05: power-grid owns this (it read ten groups with requests in MW) |
 | E2 Buses | (5,0,4,2) | 540, 280, 408 x 196 | One-line diagram: reactor to the main switchboard, the port and starboard main buses, the battery bank through the forward switchboard to the emergency bus, the cross-tie; breakers as boxes coloured closed, open, tripped or locked; MW on each line |
-| E3 Reactor | (9,0,3,2) | 956, 280, 304 x 196 | Output MW / rated MW; containment temperature K; fuel kg; output setpoint; SCRAM (guarded) |
+| E3 Reactor | (9,0,3,2) | 956, 280, 304 x 196 | `power-grid`'s reactor readout: state (and a scram's cause), mode (AUTO, following the load, or MANUAL), throttle and target in percent of rated, electric and thermal MW, blanket K, fuel kg, integrity; the blanket in 30 s at the proposed throttle (`heat::project`); AUTO, MANUAL, SCRAM (guarded). Reconciled 2026-10-05: power-grid owns this (it read an output setpoint in MW and a containment temperature) |
 | E4 Coolant | (5,2,3,2) | 540, 484, 304 x 196 | Loop temperature in and out deg C; flow kg/s; pumps 1 and 2; radiator rejection MW; heat sink % |
 | E5 Life support | (8,2,2,2) | 852, 484, 200 x 196 | Ship O2 kPa, CO2 kPa, temperature deg C against their setpoints; the worst compartment |
 | E6 Repairs | (10,2,2,2) | 1060, 484, 200 x 196 | The repair queue's top four with progress; teams |
 
 | Action | Keyboard and mouse | Gamepad |
 | --- | --- | --- |
-| Select a load group | Click; 1-0 | D-pad up and down in E1 |
-| Raise, lower its request (0.5 MW; Shift 2.5 MW) | W, S or the wheel; drag the bar | D-pad left and right; hold RT for 2.5 MW steps |
+| Select a load group | Click; 1-0 and the minus key (eleven groups) | D-pad up and down in E1 |
+| Raise, lower its setpoint (`power-grid`'s 5 % step; Shift 25 %) | W, S or the wheel; drag the bar | D-pad left and right; hold RT for 25 % steps |
 | Cycle its priority | P | X |
 | Preset | Shift+1-4 | Hold Y, pick with the D-pad |
 | Toggle the focused breaker (main bus breakers guarded) | Click, hold 0.6 s for a guarded one | A, hold 0.6 s for a guarded one |
@@ -893,7 +893,7 @@ An excerpt of `data/stations.json`:
 
 | Change | This change needs | This change gives |
 | --- | --- | --- |
-| `power-grid` | `power::solve` for previews; load groups and priorities; which buses feed which consoles and lamps; the computer core load | The engineering consoles' commands: requests, priorities, presets, breakers, reactor output, scram |
+| `power-grid` | `power::solve` for previews; load groups and priorities; which buses feed which consoles and lamps; the computer core load | The engineering consoles' commands: setpoints, priorities, presets, breakers, the reactor's mode and throttle, scram |
 | `weapons-and-shields` | `weapons::hit_chance`, `intercept_point`, `missile_intercept`; `shields::allocate`; turret slew rates and arcs; tube load times; sensors and scans if they live there | Tactical's commands (targets, modes, assignments, tubes, presets); Science's shield allocation and frequency; the automated turret's operator parameters |
 | `flight-and-navigation` | `flight::plan_turn`, `flight::performance`; the control loop that holds heading and speed | Helm's commands and setpoints; the helm automation's orders |
 | `shuttle-bay-and-fighters` | Bay sequences and `bays::sequence_time`; craft states; the cockpit | Flight ops and bay control commands; the lockout |

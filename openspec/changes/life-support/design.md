@@ -83,21 +83,26 @@ breach empties one room, not the ship. Pressure doors (launch bays, airlock) nev
 they open on a command.
 
 **Interlock.** A door does not open on approach, or on an ordinary command, across more than 20 kPa
-of difference. The board, or a crew member holding the door's override for 2 s (`crew-on-deck`), can
-open it anyway: that is how a crew member is pulled out of a breached room, at the cost of the air
-that follows.
+of difference. The board, or a crew member holding the door's override for 3.0 s (`crew-on-deck`'s
+hold), can open it anyway: that is how a crew member is pulled out of a breached room, at the cost
+of the air that follows. Reconciled 2026-10-05: life-support owns the interlock (`crew-on-deck`
+cites the 20 kPa in place of its first 5 kPa and 30 kPa); crew-on-deck owns the hold (was 2 s
+here).
 
 **Self-closing.** A door between two compartments closes itself when either side is below 85 kPa and
 falling faster than 1 kPa/s, unless the board holds it. Doors to space are commanded, never
-automatic. Travel times: doors and hatches 1.5 s, pressure doors 3 s, the hoist 2 s, drop doors 4 s,
-the pad door 8 s.
+automatic. Travel times: doors open in 0.6 s and close in 0.8 s, pressure doors 2.0 s, hatches and
+ladder hatches 1.0 s (`crew-on-deck` section 5), the hoist 2 s, drop doors 4 s, the pad door 8 s.
+Reconciled 2026-10-05: crew-on-deck owns the door, pressure door and hatch times (they were 1.5 s
+and 3 s here); `atmosphere.json` carries them until `data/crew.json` exists.
 
 The first rule written was "close when one side is below 85 kPa and the other above": with a door
 open, a breach drops both sides together and the rule never fired. Falling, not lopsided, is the
 alarm. Measured on a 1 m^2 breach in the quarters with its door open (a crew member passing): the
-door shut itself 2.4 s later with the main corridor at 62.9 kPa; the corridor's damper then refilled
-it from the duct; 399 kg of air was lost. With the door held open by the board, the corridor emptied
-too and 548 kg was lost.
+door shut itself 1.6 s later with the main corridor at 73.7 kPa; the corridor's damper then refilled
+it from the duct; 374 kg of air was lost. With the door held open by the board, the corridor emptied
+too and 548 kg was lost. (Rerun 2026-10-05 with `crew-on-deck`'s door times; with the first 1.5 s
+door it read 2.4 s, 62.9 kPa and 399 kg.)
 
 ### 4. Flow through openings
 
@@ -285,11 +290,14 @@ crew work it suited (question L5).
 ### 12. Crew effects
 
 From the crew member's room, each sub-step (`atmosphere.json` `crew_effects`; `crew-on-deck` shows
-them):
+them). Reconciled 2026-10-05: life-support owns these thresholds and rates, and `crew-on-deck`
+section 9 cites them in place of its own; it presents each to the player (screen effects, no
+running, slower tools), maps "unconscious" to its downed state and "dead" to its critical state
+(no permanent death, its question C3).
 
 | Effect | Impaired | Toward unconsciousness | Death |
 | --- | --- | --- | --- |
-| Hypoxia | pO2 below 16 kPa | Time of useful consciousness by pO2: 30 min at 12 kPa, 20 min at 10.6, 5 min at 8.9, 3 min at 7.9, 1 min at 6.3, 15 s at 3.9, 9 s below 3.4 (a dose accumulating `dt / TUC`) | Unconscious for 240 s with pO2 below 10.6 kPa |
+| Hypoxia | pO2 below 16 kPa | Time of useful consciousness by pO2: 60 min at 14.6 kPa (the onset; corrected 2026-10-05 from a 0 s row that the interpolation read as instant), 30 min at 12 kPa, 20 min at 10.6, 5 min at 8.9, 3 min at 7.9, 1 min at 6.3, 15 s at 3.9, 9 s below 3.4 (a dose accumulating `dt / TUC`) | Unconscious for 240 s with pO2 below 10.6 kPa |
 | Hypercapnia | pCO2 above 3 kPa | 30 min at 5 kPa, 5 min at 7, 1 min at 10, 20 s at 15 | Unconscious for 300 s with pCO2 above 10 kPa |
 | Smoke | | Fractional effective dose (Purser): `sum(ppm x dt) / 60 / 30,000 ppm min` reaching 1 | Dose 2.5 |
 | Heat, cold | Air above 45 C or below 5 C | 0.05 HP/s per kelvin above 60 C; 0.2 HP/s below -20 C | 0 HP is unconscious; -50 HP dead |
@@ -328,8 +336,10 @@ vision pillar 4.
 ### 14. The airlock
 
 Cycle out: both doors shut, the airlock pump (2 m^3/s into cargo, 0.15 MW) pumps to 5 kPa in 35.7 s
-using 3.5 MJ, then the outer door opens in 3 s, venting 1.5 kg. Cycle in: the outer door shuts (3 s),
-the 0.02 m^2 equalizing valve fills the airlock from cargo in 13.9 s, the inner door opens.
+using 3.5 MJ, then the outer door opens in 2.0 s, venting 1.5 kg. Cycle in: the outer door shuts
+(2.0 s), the 0.02 m^2 equalizing valve fills the airlock from cargo in 13.0 s, the inner door opens.
+(Rerun 2026-10-05 with `crew-on-deck`'s 2.0 s pressure door; with the first 3 s door the fill took
+13.9 s, because air left through the closing door. The pump-down does not depend on it.)
 
 ### 15. Reconciling `shuttle-bay-and-fighters`
 
@@ -366,7 +376,7 @@ steps, well under a millisecond.
 | `gas` | Gas constant, `c_v`, `c_p`, `gamma`, species and their molar masses |
 | `standard_air` | Pressure kPa, temperature K, mole fractions |
 | `graph_additions` | The duct (volume, centre), vent sizing (m^2 per m^3, minimum, maximum), the overboard dump |
-| `portals` | Discharge coefficient and default state per kind, travel times (and per-portal overrides), self-closing threshold and fall rate, the kinds that self-close, the interlock kPa |
+| `portals` | Discharge coefficient and default state per kind, opening and closing times (and per-portal overrides; the door, pressure door and hatch times are `crew-on-deck`'s), self-closing threshold and fall rate, the kinds that self-close, the interlock kPa |
 | `flow` | Linear band Pa, door mixing, buoyant coefficient, gravity, mixing cap, minimum pressure |
 | `thermal` | Fittings J/(K m^3), hull and bulkhead U values, hull skin K, adjacency gap, initial K |
 | `ventilation` | Air changes per hour by kind and overrides; damper thresholds: low pressure, smoke, duct low, trip fraction, reset kPa, retry s, falling rate, automatic refill floor |

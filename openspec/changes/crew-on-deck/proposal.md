@@ -34,8 +34,9 @@ change, which are **decided**.
   no jump. Ladders at 0.8 m/s up and 1.0 m/s down with 0.5 s on and off.
 - **Doors and hatches**: doors open on approach in 0.6 s and never close on a body; pressure
   doors open on Use in 2.0 s; hatches by hand in 1.0 s; locking from the damage board or the
-  door's panel. **The pressure interlock**: nothing opens across more than 5 kPa; an ordinary
-  door or hatch can be overridden by hand up to 30 kPa (3 s, logged); a pressure door never.
+  door's panel. **The pressure interlock** is `life-support`'s: nothing opens across more than
+  20 kPa; an ordinary door or hatch can be overridden by holding Use 3 s (logged), at the cost of
+  the air; a pressure door never by hand (reconciled 2026-10-05: life-support owns this).
 - **Hands**: Use within 1.5 m with a clear line; one held thing: an extinguisher (15 s of agent,
   3 m reach), a repair kit, a patch kit (two-handed), a casualty over the shoulder (1.2 m/s, half
   speed on ladders), or a Gannet on the magazine trolley (300 N push, at most 0.8 m/s, a dead-man
@@ -47,8 +48,9 @@ change, which are **decided**.
 - **The medbay**: two beds, 2.0 HP/s powered and 0.5 HP/s unpowered; a downed or critical body
   revived on a bed after 20 s.
 - **The air on a body, by name**: hypoxia, hypercapnia, smoke, cold, heat, low pressure and
-  vacuum, and the pull of a breach, each with thresholds and rates against the values
-  `life-support` will own.
+  vacuum at `life-support`'s thresholds and rates (its `crew_effects`), presented to the player
+  with screen effects and movement limits; and the pull of a breach (reconciled 2026-10-05:
+  life-support owns the air's effects).
 - **EVA suits**: eight in three lockers, 20 s to don, 1,800 s of oxygen, 1.5 m/s, magnetic boots,
   punctures; outside the hull a tethered magnetic-boot walk that feels the ship's full
   acceleration.

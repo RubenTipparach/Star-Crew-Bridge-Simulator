@@ -417,18 +417,20 @@ with its ceiling off, inside an x-ray hull, coloured by kind; numbered POI badge
 by deck; deck filters, an exploded view, a plan view per deck, an info card per compartment,
 door markers by portal kind, ladders, seats in role colours, systems as nominal blocks (T4),
 craft; normal, red-alert and emergency lighting from lamp fixtures placed by the kit rule; the
-proposed patches T1-T3 as ghosts; and a route tool. Shots, in `docs/screenshots/mockups/`:
+patches the layout does not hold yet as ghosts (T1 and T3; T2's stairs are in the layout and drawn
+solid, and the button names only the patches still drawn; reconciled 2026-10-05); and a route
+tool. Shots, in `docs/screenshots/mockups/`:
 
 | Shot | Shows | Open question |
 | --- | --- | --- |
 | `deck-plan-overview` | The whole interior at once, with the Pi 5 meter | K2 |
 | `deck-plan-exploded` | The three decks pulled apart, ladders as dashed links | |
 | `deck-plan-deck-A-plan` | Deck A from above; the bridge's one door and the proposed scuttle | T3 |
-| `deck-plan-deck-B-plan` | Deck B from above; partitions as single lines; the proposed gallery extension and hangar stairs | K1, T1 |
+| `deck-plan-deck-B-plan` | Deck B from above; partitions as single lines; the proposed gallery extension (T1, a ghost) | K1, T1 |
 | `deck-plan-deck-C-plan` | Deck C from above; pressure doors in orange, bay doors in red, craft | K4 |
 | `deck-plan-route-bridge-to-engineering` | The route tool, helm to the engineering bay console | T2, T5 |
 | `deck-plan-red-alert` | The forward half in red alert | |
-| `deck-plan-engineering-closeup` | Engineering's three levels, the proposed stairs, the info card | K3, T2 |
+| `deck-plan-engineering-closeup` | Engineering's three levels, the T2 stairs as applied to the layout (solid, no longer a ghost), the info card | K3, T2 |
 
 **The route tool reproduces section 6** to within 1.5 s. It is a fastest-path search over crew
 portals (a search weighted by time) with `crew-on-deck`'s speeds of section 6, on the layout as it

@@ -106,13 +106,15 @@
     "count": 2,
     "members": 2,
     "home": "damage_control",
-    "walk_m_s": 1.6,
+    "walk_m_s": 1.8,
     "run_m_s": 4.0,
-    "ladder_m_s": 0.8,
-    "suit_up_s": 30.0,
+    "suited_m_s": 1.5,
+    "ladder_up_m_s": 0.8,
+    "ladder_down_m_s": 1.0,
+    "suit_up_s": 20.0,
     "dispatch_delay_s": 5.0,
     "enter_below_kpa_needs_suit": 50.0,
     "refuse_fire_above_kw_without_suit": 2000.0,
-    "note": "NPC damage control teams are crew bodies (crew-on-deck): they walk the crew-portal graph, carry a kit, an extinguisher or plates, take the same harm as players, and can die."
+    "note": "NPC damage control teams are crew bodies (crew-on-deck): they walk the crew-portal graph, carry a kit, an extinguisher or plates, take the same harm as players, and can die. Their speeds (walk, run, suited, ladders up and down) and suit donning time are crew-on-deck's (design sections 3, 4 and 10), repeated here until data/crew.json exists and teams read it. Reconciled 2026-10-05: crew-on-deck owns this (was walk 1.6 m/s, ladders 0.8 m/s both ways, suit-up 30 s)."
   }
 }

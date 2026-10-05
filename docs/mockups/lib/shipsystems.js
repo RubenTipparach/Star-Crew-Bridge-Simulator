@@ -148,6 +148,7 @@
       l.open = l.open == null ? 0 : l.open; l.target = l.target == null ? l.open : l.target;
       l.cd = PK.discharge_coefficient[l.kind];
       l.move = (PK.move_time_override_s && PK.move_time_override_s[l.id] != null) ? PK.move_time_override_s[l.id] : (PK.move_time_s[l.kind] || 0); l.G = 0; l.F = 0; l.flow = 0;
+      l.moveClose = PK.close_time_s && PK.close_time_s[l.kind] != null ? PK.close_time_s[l.kind] : l.move; // closing time where the data gives one apart from opening
       l.mix = ["door", "pressure_door", "hatch", "ladder", "hoist"].indexOf(l.kind) >= 0 && l.b !== SPACE;
       links.push(l); linkById[l.id] = l; return l;
     }
@@ -970,8 +971,9 @@
       // Portal motion.
       for (const l of links) {
         if (l.open === l.target) continue;
-        const rate = l.move > 0 ? dt / l.move : 1;
-        l.open = l.open < l.target ? Math.min(l.target, l.open + rate) : Math.max(l.target, l.open - rate);
+        const opening = l.open < l.target, time = opening ? l.move : l.moveClose;
+        const rate = time > 0 ? dt / time : 1;
+        l.open = opening ? Math.min(l.target, l.open + rate) : Math.max(l.target, l.open - rate);
       }
     }
 

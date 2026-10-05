@@ -208,7 +208,7 @@ calls each sub-step. Examples:
 | --- | --- | --- |
 | The port cradle at 34% (W2) to 100% | A player with a kit / a team of two | 66 s / 69 s, plus the walk |
 | A destroyed turret | A player | 180 s rebuild, then 75 s: 255 s |
-| The port main switchboard section (W1) | A team, suited | 30 s suits, 44 s walk suited, 120 s rebuild: power back about 3.3 minutes (199 s) after the hit (corrected 2026-10-04 from a 30 s walk and 3 minutes) |
+| The port main switchboard section (W1) | A team, suited | 20 s suits, 44 s walk suited, 120 s rebuild: power back about 3.2 minutes (189 s) after the hit (corrected 2026-10-04 from a 30 s walk and 3 minutes; reconciled 2026-10-05: crew-on-deck owns this, suits 20 s, was 30 s and 199 s) |
 
 ### 7. Damage control teams
 
@@ -218,8 +218,8 @@ Two teams of two NPC crew bodies (`crew-on-deck`), at home in damage control. Pr
 | Quantity | Value |
 | --- | --- |
 | Dispatch delay | 5 s after the board (or its automation) assigns a job |
-| Speed | `crew-on-deck`'s: walk 1.8 m/s; run 4.0 m/s to a fire or to a breach with crew in it; suited 1.5 m/s with no running; ladders 0.8 m/s up and 1.0 m/s down (corrected 2026-10-04 from walk 1.6 m/s and ladders 0.8 m/s; `damage.json` `teams` still holds the old values and needs the same correction) |
-| Suit | 30 s, at the damage control lockers, before entering a room below 50 kPa or a fire over 2 MW |
+| Speed | `crew-on-deck`'s: walk 1.8 m/s; run 4.0 m/s to a fire or to a breach with crew in it; suited 1.5 m/s with no running; ladders 0.8 m/s up and 1.0 m/s down (corrected 2026-10-04 from walk 1.6 m/s and ladders 0.8 m/s). Reconciled 2026-10-05: crew-on-deck owns this; `damage.json` `teams` now holds the same values |
+| Suit | `crew-on-deck`'s donning time, 20 s, at the damage control lockers, before entering a room below 50 kPa or a fire over 2 MW. Reconciled 2026-10-05: crew-on-deck owns this (was 30 s) |
 | Repair rate | 0.6% a second each with a kit (a player's is 1%) |
 | Risk | The same air, heat, smoke and blast as players; they can be hurt, fall unconscious and die, and must be carried out |
 
@@ -267,20 +267,23 @@ side at deck B height, toward the main switchboard's port section.
 | 10 s | Engineering 76 kPa; the engineer, still inside, is impaired | The simulation |
 | 30 s | Battery at its reserve: priority 3 drops (the drive stops), priority 2 at 68%; engineering 42 kPa | The simulation |
 | 60 s | Engineering 18 kPa | The simulation |
-| 79 s | Both teams arrive, suited (5 s + 30 s suits + 44 s walk at the suited 1.5 m/s by the aft passage) | Section 7 |
-| 79-124 s | Team 1 patches the breach from inside: three plates, 45 s | Section 6 |
-| 79-199 s | Team 2 rebuilds the port switchboard section: 4 parts, 120 s | Section 6 |
-| 199 s | Section rebuilt at 50%: 31 MW (the severed trunk still isolates it) | The simulation |
-| 229 s | The port trunk aft spliced: the reactor back to 100%, 48 MW; priority 3 back to its combat share | The simulation |
-| 259 s | The port drive feeder spliced | The simulation |
+| 69 s | Both teams arrive, suited (5 s + 20 s suits + 44 s walk at the suited 1.5 m/s by the aft passage) | Section 7 |
+| 69-114 s | Team 1 patches the breach from inside: three plates, 45 s | Section 6 |
+| 69-189 s | Team 2 rebuilds the port switchboard section: 4 parts, 120 s | Section 6 |
+| 189 s | Section rebuilt at 50%: 31 MW (the severed trunk still isolates it) | The simulation |
+| 219 s | The port trunk aft spliced: the reactor back to 100%, 48 MW; priority 3 back to its combat share | The simulation |
+| 249 s | The port drive feeder spliced | The simulation |
 | 188 s | If nobody pulled the engineer out: dead (90 s below Armstrong's limit) | The simulation |
 
 Corrected 2026-10-04 to `crew-on-deck`'s speeds: the teams' walk was 30 s (the first route table's
 29.9 s at 1.6 m/s, through the hangar with T1). Suited, at 1.5 m/s with no running, by the aft
 passage (the route as laid out today; `tools/walk_times.py` prints 59.7 m and 44.3 s from the suit
-lockers), it is 44 s, so every team event moves 14 s later. The events were
+lockers), it is 44 s, so every team event moved 14 s later. The events were
 shifted, not re-run in the library (which does not walk teams); the power at each event is the
-same.
+same. Reconciled 2026-10-05: crew-on-deck owns this. Its suit donning time is 20 s, not the 30 s
+this table first used, so every team event moves 10 s earlier again (arrival 79 s to 69 s, the
+section back at 189 s instead of 199 s, the last splice at 249 s instead of 259 s), shifted the
+same way. The engineer's 188 s does not move: it is the air's, not the teams'.
 
 Engineering lost 3,043 kg of air; the reserves cannot refill it, so it stays in vacuum and the
 engineering bay is worked suited for the rest of the mission (`life-support` question L5). The
@@ -381,7 +384,7 @@ valves:
 { "id": "dc_lockers", "kind": "locker", "compartment": "damage_control", "center_m": [-6.6, 0.0, 24.0], "size_m": [0.6, 2.4], "facing_yaw_deg": -90,
   "note": "Six extinguishers, six repair kits, twelve breach plates (damage-control)." },
 { "id": "eva_suits", "kind": "locker", "compartment": "damage_control", "center_m": [-6.6, 0.0, 19.6], "size_m": [0.6, 2.4], "facing_yaw_deg": -90,
-  "note": "Four EVA suits; suiting takes 30 s (damage-control, crew-on-deck)." },
+  "note": "Four EVA suits; suiting takes 20 s (crew-on-deck)." },
 { "id": "spare_parts", "kind": "rack", "compartment": "cargo", "center_m": [-4.0, -3.5, 7.5], "size_m": [3.0, 1.0], "facing_yaw_deg": 0,
   "note": "24 spare parts (damage-control)." }
 ```

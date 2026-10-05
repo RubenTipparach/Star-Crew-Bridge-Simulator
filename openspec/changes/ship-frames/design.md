@@ -508,6 +508,8 @@ rewinds exactly the 16 cap triangles (8 per cap) and no side face, which confirm
 generator must test the same property (every face's normal points away from the hull's
 interior), which is a task below.
 
+**Fixed in the kit 2026-10-05:** `shipkit.js` now flips the stern cap and not the bow cap; the exterior mockup's check counts 0 inward triangles.
+
 ## Risks / Trade-offs
 
 - **The residual is a design, not physics.** Real dampers do not exist; the numbers are tuned

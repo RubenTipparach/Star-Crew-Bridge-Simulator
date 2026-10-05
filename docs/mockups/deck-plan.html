@@ -21,7 +21,10 @@
 
   The ghosts drawn by "Proposed" are reference-ship-tern's layout patches T1-T3
   (design section 9), copied here as review material for the owner; each is
-  skipped as soon as the layout itself holds it.
+  skipped as soon as the layout itself holds it, and the button names only the
+  patches still drawn. T2 (the four stairs) is in the layout since 2026-10-04, so
+  its stairs are drawn as solid fixtures and only T1 and T3 remain ghosts
+  (reconciled 2026-10-05).
 -->
 <html lang="en">
 <head>
@@ -393,12 +396,13 @@
         if (flip) tri(c, r[k2], r[k]); else tri(c, r[k], r[k2]);
       }
     };
-    cap(rings[0], false);
-    cap(rings[rings.length - 1], true);
+    cap(rings[0], true);
+    cap(rings[rings.length - 1], false);
     const g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
     g.computeVertexNormals();
-    // Make sure the winding faces outward: test one triangle against the centroid.
+    // Every face winds outward: the stern cap (first ring) is flipped, the bow cap is not
+    // (checked by the exterior mockup, which counts any triangle facing the loft axis).
     return g;
   }
 
@@ -779,7 +783,7 @@ for (const f of L.fixtures || []) {
     addBox(f.size_m[0], f.size_m[1], 0.02, [x, y, z - 0.01], emit(cid, new THREE.Color(P.screen).multiplyScalar(0.7), new THREE.Color(P.screen).multiplyScalar(0.5), new THREE.Color(P.screen).multiplyScalar(0.35)), { yaw });
   } else if (f.kind === "stair") stairGeom(f, lit(cid, P.floorCorridor));
 }
-/** A flight of stairs from foot_m up to top_m, width_m wide, as solid steps (a proposed T2 fixture kind). */
+/** A flight of stairs from foot_m up to top_m, width_m wide, as solid steps (the fixture kind T2 added to the layout). */
 function stairGeom(f, spec, sink) {
   const top = f.top_m, foot = f.foot_m, rise = top[1] - foot[1], n = Math.max(2, Math.round(Math.abs(rise) / 0.2));
   const dx = top[0] - foot[0], dz = top[2] - foot[2], run = Math.hypot(dx, dz), yaw = Math.atan2(dx, dz);
@@ -1090,6 +1094,8 @@ function ghostTag(text, pos, deck) {
     ghostTag("T3", [x, up + 0.8, z], deckAt(up + 0.01));
   }
 }
+/** The patches still drawn as ghosts (those the layout does not hold yet), for the button's label. */
+const PENDING_PATCHES = [...new Set(ghostTags.map((t) => t.text))].sort();
 
 // ------------------------------------------------------------------ labels
 const sprites = [];   // every sprite keeps a constant size on screen: userData.px is its height in pixels
@@ -1372,7 +1378,7 @@ group("Light");
 for (const k of STATES) button("light:" + k, K.LIGHTING[k].label, () => setLight(k, false));
 group("Show");
 button("labels", "System labels", () => setLabels(!state.labels));
-button("proposed", "Proposed T1-T3", () => setProposed(!state.proposed));
+button("proposed", PENDING_PATCHES.length ? "Proposed " + PENDING_PATCHES.join(", ") : "Proposed (none left)", () => setProposed(!state.proposed));
 button("exterior", "Hull", () => { state.exterior = !state.exterior; applyVisibility(); });
 group("Route");
 const selFrom = document.createElement("select"), selTo = document.createElement("select");

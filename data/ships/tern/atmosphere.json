@@ -37,8 +37,10 @@
     "discharge_coefficient": { "door": 0.65, "pressure_door": 0.65, "hatch": 0.62, "ladder": 0.62, "hoist": 0.62, "bay_door": 0.7, "window": 0.6, "breach": 0.6, "vent": 0.6, "dump": 0.6, "valve": 0.6 },
     "default_open": { "door": false, "pressure_door": false, "hatch": false, "ladder": false, "hoist": false, "bay_door": false, "window": false },
     "default_open_note": "Doors, hatches and ladder hatches are closed unless a crew member is passing (they open on approach) or the damage control board holds them open: every compartment is its own pressure boundary.",
-    "move_time_s": { "door": 1.5, "pressure_door": 3.0, "hatch": 1.5, "ladder": 1.5, "hoist": 2.0, "bay_door": 4.0, "window": 0.0, "vent": 2.0, "dump": 2.0, "valve": 1.0 },
+    "move_time_s": { "door": 0.6, "pressure_door": 2.0, "hatch": 1.0, "ladder": 1.0, "hoist": 2.0, "bay_door": 4.0, "window": 0.0, "vent": 2.0, "dump": 2.0, "valve": 1.0 },
     "move_time_override_s": { "p_hangar_pad": 8.0 },
+    "close_time_s": { "door": 0.8 },
+    "move_time_note": "Opening times; closing takes close_time_s where it is given, else the same time. Door, pressure door, hatch and ladder hatch times are crew-on-deck's (design section 5: doors 0.6 s open and 0.8 s close, pressure doors 2.0 s, hatches 1.0 s); the hoist, bay doors, vents, dump and valves are this file's. Reconciled 2026-10-05: crew-on-deck owns this.",
     "auto_close_below_kpa": 85.0,
     "auto_close_fall_kpa_per_s": 1.0,
     "auto_close_kinds": ["door", "pressure_door", "hatch", "ladder", "hoist"],
@@ -135,7 +137,7 @@
   "crew_effects": {
     "hypoxia": {
       "impaired_below_po2_kpa": 16.0,
-      "tuc_table_po2_kpa_s": [[14.6, 0.0], [12.0, 1800.0], [10.6, 1200.0], [8.9, 300.0], [7.9, 180.0], [6.9, 150.0], [6.3, 60.0], [5.0, 30.0], [3.9, 15.0], [3.4, 9.0], [0.0, 9.0]],
+      "tuc_table_po2_kpa_s": [[14.6, 3600.0], [12.0, 1800.0], [10.6, 1200.0], [8.9, 300.0], [7.9, 180.0], [6.9, 150.0], [6.3, 60.0], [5.0, 30.0], [3.9, 15.0], [3.4, 9.0], [0.0, 9.0]],
       "recover_per_s": 0.0333,
       "death_below_po2_kpa": 10.6,
       "death_after_unconscious_s": 240.0
