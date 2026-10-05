@@ -13,7 +13,8 @@ Where the console canvas is in a shot: DERIVED from bridge.html's layoutConsole(
 this tool reads out of the page (scale = min((width - 16) / 1280, (height - 140) / 720), the canvas
 centred across and 8 px from the top), then CONFIRMED on every shot: the gap between the look band
 and the panel grid (y 272-280 lp) and the margins either side of it (x 0-20 and 1260-1280 lp) must
-be the plain console background. A page that moved its console fails here instead of giving a shifted crop.
+be the plain console background. A page that moved its console fails here instead of giving a
+shifted crop.
 The canvas is first resampled to one pixel per logical pixel (lp, design section 8.1) by area
 averaging, so every crop below is in the design's own units.
 
@@ -30,7 +31,7 @@ What it writes, all 256 x 128 px RGBA (design 11.6: 2:1, two to a 256 px layer):
                                                area-averaged to 256 x 96 and letterboxed with the
                                                console background
   assets/textures/screens/<station>_upper.png  the upper pair: two 128 x 128 halves, each one of
-                                               the station's own panels (UPPER below) with half
+                                               the station's own panels (STATIONS below), with half
                                                its gutter, fitted whole and letterboxed; a wall
                                                bank's first upper screen shows the left half, its
                                                second the right

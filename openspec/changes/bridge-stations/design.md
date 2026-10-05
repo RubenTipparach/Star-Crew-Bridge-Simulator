@@ -884,13 +884,66 @@ coloured box.
   (`wall-panels`) use the same screen and key images.
 
 **Format:** a screen is 256 x 128 px (2:1), two to a 256 px layer of the texture array, with the
-emission mask in alpha. There are seven stations, each with a main screen and an upper pair, so
-about 14 screen images in 7 layers: 2.4 MB at 256 px. The key panels add two layers. The deck
-stays one draw per compartment.
+emission mask in alpha. Measured on the mockup's set (task 1.7, `assets/textures/screens/screens.json`):
+
+| Images | Size | Layers of 256 x 256 RGBA8 |
+| --- | --- | ---: |
+| Seven main screens, one per station | 256 x 128 px each | 3.5 |
+| Seven upper images, one per station: the upper pair, a 128 x 128 half for each screen | 256 x 128 px each | 3.5 |
+| The generic screen, for boards without a console (the wall panels' `ui_screen_crew.png`) | 256 x 160 px | 1 |
+| The key panel (the wall panels' `keys_crew.png`: 12 x 3 keys, 0.50 x 0.125 m) | 256 x 64 px | 0.5 |
+| **All** | | **9 (8.5 used)** |
+
+That is 2,359,296 bytes (2.25 MB), 3,145,728 bytes (3.0 MB) with mipmaps, of the 96 MB texture
+budget. The 14 station images are 147,309 bytes of PNG source (64 colours each, 5.6-14.6 KB).
+The key panel is one image reused at its real size on every desk, not two layers. In the engine
+the faces are layers of the room's own array, so the deck stays one draw per compartment; the
+mockup keeps its screens in a separate atlas, so its faces are one more draw (52 triangles on
+today's bridge, 104 on A, 118 on B, 108 on C).
+
+**Built in the mockup (2026-10-05, task 1.7).** `tools/mockups/console_screens.py` crops each
+station's console from its shot of `docs/mockups/bridge.html` (the canvas found from
+`layoutConsole()` and confirmed on the shot; the budget HUD's corner rebuilt from the panel grid):
+
+- **Main screen:** the title band (y 0-32 lp) over the panel grid band (y 272-720 lp), 1280 x 480 lp
+  area-averaged to 256 x 96 px and letterboxed.
+- **Upper pair:** two of the station's own panels, fitted whole into the two halves: helm's
+  navigation plot and heading, tactical's plot and turrets, engineering's buses and reactor,
+  science's sensors and shields, the captain's ship and stations, comms' channels and intercepts,
+  flight operations' tasking plot and bays.
+- **Boards without a console:** the status boards show the captain's images; the curved helm's
+  hooded viewer shows tactical's plot; repeaters and spares show the generic screen.
+- **Placement:** each prop's screens row in `props.json` says what it shows (`console`, `upper`
+  with its half, or `keys`) and which way is up. The page fits the image whole inside the
+  recess, 1 cm proud of its floor, and leaves the rest of the recess as black glass.
+- **Key panels:** blocks of keys at their real size, as many as fit across, with a trackpad below
+  or beside them. They sit in the free console's touch panel, the curved helm's two panels, the
+  captain's arm panels (laid along the arm) and a keyboard well 15 cm deep let into every wall
+  bank's desk (1.20 m wide on a core bank, 0.86 m on the others).
+- **Hand controls:** geometry, as a station's own variant of the shared prop (`variant_of` and
+  `stations` in `props.json`). `tools/bridge_variants.py` and the page put a station's variant
+  wherever the base prop would stand (triangles against each prop's budget):
+
+  | Prop | Controls | Triangles |
+  | --- | --- | ---: |
+  | `free_console_helm` | Throttle lever (operator's left) and stick (right) | 284 / 420 |
+  | `free_console_tactical` | Two guarded fire buttons: hazard housing, button, open flip cover | 272 / 420 |
+  | `wall_bank_core_engineering` | Five breaker toggles behind the keyboard, the third tripped | 404 / 420 |
+  | `wall_bank_comms` | A bank of four faders behind the keyboard | 408 / 420 |
+  | `helm_arc` | All of helm's and tactical's (one prop seats both) | 478 / 600 |
+
+  The controls are larger than life (a toggle 6 cm tall, a fader cap 2.8 cm) so they read from
+  across the room. The keyboard wells took the plain wall banks from 304 to 320 triangles, and the
+  double bank from 368 to 400 / 700.
+
+**Not yet:** the status pills do not blink, since the images are static. The lit keys are the key
+image's own green, amber and cream, not the role colour.
 
 **Question B12 (with the prototype's shots):** do screens show the station's own console, or
 generic placeholder UI shared by all? Recommendation: the station's own, because then the room
-previews the game.
+previews the game. The shots: `bridge-variants-{A,B,C}-helm.png` and
+`bridge-variants-{A,B,C}-engineering.png` (up close), `bridge-variants-{A,B,C}-ring.png` (across
+the room).
 
 #### 11a. Three ways to build the bridge (proposed 2026-10-05, for the owner to choose)
 
@@ -1009,12 +1062,14 @@ them; the sightlines from `tools/bridge_variants.py --sightlines`; a seated eye 
 | Helm and tactical: distance; the screen's width seen; turn to it | 4.51 m; 65.5 deg; 24 deg | 4.67 m; 63.6 deg; 23 deg | 3.64 m; 78.9 deg; 7 deg | 4.69 m; 63.4 deg; 23 deg |
 | Engineering and science: distance; turn to the screen | 8.64 m; 122 deg | 8.81 m; 123 deg | 7.46 m; 135 deg | 7.84 m; 128 deg |
 | Comms and flight operations: distance; turn to the screen | 12.08 m; 112 deg | 11.80 m; 114 deg | 9.75 m; 157 deg | 11.90 m; 114 deg |
-| Room mesh with consoles and crew, one draw | 9,014 | 11,750 | 10,184 | 11,464 |
+| Room mesh with consoles and crew, one draw | 9,202 | 12,238 | 10,698 | 11,952 |
 
 The room mesh is what the mockup draws: the room, its generated detail and platforms, the
 Blender consoles and chairs and the crew figures, cut to 0.9 m for the mockup's stand-in bake.
-Against the bridge's ceiling of 30,000 triangles (`deck-pipeline` 11) that is 30-39 %, and A
-costs 2,736 more than today. Every variant stays one draw call.
+Against the bridge's ceiling of 30,000 triangles (`deck-pipeline` 11) that is 31-41 %, and A
+costs 3,036 more than today. Every variant stays one draw call. (With the console faces of 11.6,
+2026-10-05: the keyboard wells and hand controls are in these counts; the faces' own quads are
+52-118 more triangles.)
 
 **What each one trades:**
 
@@ -1209,3 +1264,4 @@ taken (ask only with screenshots)".
 | B9 | Merge every unmanned station to a tab (one player runs everything), or only the vision's three merges? | All, by merge list / only Captain, Comms and Flight ops | All, by merge list. Recommendation taken (ask only with screenshots) | none |
 | B10 | Gunner turrets: no remote gunnery from Tactical? The Pi 5 budget's secondary view (512 x 256 at 15 Hz) could carry a sight, so this is a design choice, not a cost | None / remote sight from Tactical | None: the pods are the reason to leave the bridge. Recommendation taken (ask only with screenshots) | none |
 | B11 | Which bridge: the wedge with three levels, the round room with a ring, or the wedge split front and back (section 11a)? All three put the side consoles in the walls, raise the captain and keep the 3.5 m room; they differ in shape, levels and what the captain sees | A. Wedge, tiered / B. Round / C. Split level / today's flat bridge | A: the owner's levels exactly, the ship's shape, all the air, nothing hides the screen | `bridge-variants-{today,A,B,C}-cutaway.png`, `bridge-variants-{A,B,C}-captain.png`, `bridge-variants-{A,B,C}-door.png` |
+| B12 | Console screens in the room (section 11.6): each shows its own station's console, or all show one generic placeholder UI? | Own console / generic | Own console: the room previews the game a player gets when they sit | `bridge-variants-{A,B,C}-helm.png`, `bridge-variants-{A,B,C}-engineering.png`, `bridge-variants-{A,B,C}-ring.png` |

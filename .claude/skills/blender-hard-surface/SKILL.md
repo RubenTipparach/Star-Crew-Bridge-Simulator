@@ -146,14 +146,26 @@ budget, naming it and its count, and writes nothing at all.
 
 | Prop | Size (x, y, z) m | Triangles | Budget |
 | --- | --- | ---: | ---: |
-| `wall_bank_core` | 1.64 x 2.22 x 0.66 (desk 1.40) | 304 | 420 |
-| `wall_bank` | 1.34 x 2.22 x 0.66 (desk 1.10) | 304 | 420 |
-| `wall_bank_double` | 2.64 x 2.22 x 0.66 (desk 2.40, two seats) | 368 | 700 |
+| `wall_bank_core` | 1.64 x 2.22 x 0.66 (desk 1.40) | 320 | 420 |
+| `wall_bank_core_engineering` | the same, with five breaker toggles | 404 | 420 |
+| `wall_bank` | 1.34 x 2.22 x 0.66 (desk 1.10) | 320 | 420 |
+| `wall_bank_comms` | the same, with a bank of four faders | 408 | 420 |
+| `wall_bank_double` | 2.64 x 2.22 x 0.66 (desk 2.40, two seats) | 400 | 700 |
 | `free_console` | 1.40 x 1.23 x 0.64 | 184 | 420 |
-| `helm_arc` | 2.57 x 1.02 x 0.82 (2.4 m arc at mid depth) | 296 | 600 |
+| `free_console_helm` | the same, with a throttle lever and a stick | 284 | 420 |
+| `free_console_tactical` | the same, with two guarded fire buttons | 272 | 420 |
+| `helm_arc` | 2.57 x 1.02 x 0.82 (2.4 m arc at mid depth), helm's and tactical's controls | 478 | 600 |
 | `captain_chair` | 0.86 x 1.18 x 0.78 | 258 | 300 |
 | `crew_chair` | 0.55 x 1.04 x 0.67 | 154 | 160 |
 | `standup_console` | 0.64 x 1.16 x 0.52 | 80 | 160 |
+
+**A station's variant** (bridge-stations 11.6) is the shared prop with that station's hand
+controls unioned on (the `throttle`, `stick`, `guarded_button`, `toggle` and `slider_bank`
+helpers, each built in a desk frame and reaching 1-2 cm into the desk): the manifest row says
+`variant_of` and `stations`, keeps its base's `operators_m` and budget, and
+`tools/bridge_variants.py` (`prop_for`) and the variants page place it wherever the base would
+stand at those stations. A small solid unioned onto a face costs its visible faces plus the hole
+it makes: a box 16 triangles, a three-sided toggle about 17.
 
 Where the triangles go, and what to do about it:
 
@@ -182,8 +194,8 @@ Where the triangles go, and what to do about it:
 | Back faces | `use_backface_culling` on every material, so the glb says `doubleSided: false`. Blender's default exports `true`, which forbids culling on a solid that never shows its inside |
 | Export options | GLB, selection only, +Y up, UVs and normals on, tangents, vertex colours, attributes, extras, cameras, lights, animation, skins and morphs off, images none |
 
-**Determinism.** Two builds in separate processes write identical bytes (sha256 compared on all
-eight glbs and props.json). Nothing in the file varies: the exporter writes no images, no extras
+**Determinism.** Two builds in separate processes write identical bytes (sha256 compared on every
+glb and props.json). Nothing in the file varies: the exporter writes no images, no extras
 and no timestamps, and its one free-text field is `asset.generator`, "Khronos glTF Blender I/O
 v4.5.51", fixed per version. Everything that orders output is stable: prop order is the `PROPS`
 table's, material slots are `ROLES` order, bmesh operators are deterministic. The manifest records
@@ -203,15 +215,19 @@ fails on the stale copy. No engine code loads them yet.
    turns by `yaw_deg + 180`. A wall bank goes on the wall plane with its +Z into the room. The
    variants page reads `operators_m[0][2]` for consoles and chairs alike: keep the field on
    every row.
-2. **Texture it** the way `shipkit.js` `geometryOf` does the room's own geometry: a primitive's
+2. **Draw its faces.** Every recorded screen row says what it `shows` (`console`, `upper` with its
+   `half`, or `keys`) and which way is `up`; the images and how to fit them are
+   `assets/textures/screens/screens.json` (`tools/mockups/console_screens.py`). The variants page
+   draws them 1 cm proud of the recess floor, one draw for the room.
+3. **Texture it** the way `shipkit.js` `geometryOf` does the room's own geometry: a primitive's
    material name gives the layer (`materials.json` `layer`) and the span (`span_m`), the surface
    UV is UV0 over the span, and the vertex colour is the bake. `screen` and `accent` are not
    layers: the page colours them. The variants page (`loadProps`, `placeProp`) takes UV0 as
    metres as it is, draws `screen` faces on the `light_panel` layer tinted by the station's role
    colour, and tints `accent` faces with it.
-3. **Merge it** into its compartment's one draw, as the bridge mockup's `Props` do (one draw per
+4. **Merge it** into its compartment's one draw, as the bridge mockup's `Props` do (one draw per
    compartment, deck-pipeline section 5); its triangles count against the compartment.
-4. **Light it**: `deckc` and the mockup baker light its vertices like any other surface; the
+5. **Light it**: `deckc` and the mockup baker light its vertices like any other surface; the
    screens and light strips are emissive.
 
 The main bridge mockup still builds its own box furniture (`stationProps` in
