@@ -21,6 +21,14 @@
  *   - adaptive subdivision, so vertex lighting can carry shadows and pools;
  *   - ambient cubes (six colours) at probe points, for things that move.
  *
+ * Surfaces are patches: parallelograms, or convex polygons (a hull-following
+ * floor, a mitred cove) held as a polygon inside their bounding rectangle, so
+ * every face of a brush-built room subdivides and takes texels the same way.
+ * patchesFromTriangles() turns ShipKit's generated triangles (shell and detail)
+ * into patches. bakedSurfaceMaterial() draws the result the engine's way: the
+ * three baked sets, blended by a uniform, multiply a ShipKit surface material's
+ * Material Maker texel.
+ *
  * Why it lives here: it is documentation tooling (CLAUDE.md section 4), not
  * engine code. The lighting mockup uses it so the owner sees what each option
  * looks like and what it costs, measured by a real bake rather than painted.
@@ -134,24 +142,200 @@
 
   /**
    * A patch is a planar parallelogram P(s, t) = o + s u + t v, s, t in [0, 1],
-   * facing n = normalize(u x v); or a triangle (tri: true, s + t <= 1). Patches
-   * are what the baker subdivides and what a lightmap gives texels to.
+   * facing n = normalize(u x v); or a triangle (tri: true, s + t <= 1); or a
+   * convex polygon inside the rectangle (polyM, below). Patches are what the
+   * baker subdivides and what a lightmap gives texels to.
    *
-   * opts: albedoHex (palette colour), cast (in the ray scene, default true),
-   * receive (in the outputs, default true), emissive ({ normal, red_alert,
-   * emergency } display colours as [r, g, b] in 0..1, drawn unlit), tag.
+   * opts: albedoHex (palette colour) or albedo (linear RGB) and display (sRGB),
+   * cast (in the ray scene, default true), receive (in the outputs, default
+   * true), emissive ({ normal, red_alert, emergency } display colours as
+   * [r, g, b] in 0..1, drawn unlit), tag, material (a name the page uses to
+   * texture the patch), polyM (a convex polygon, [[x, y], ...] in metres along
+   * u and v from o, any winding; u and v must then be perpendicular).
    */
   function patch(o, u, v, opts) {
     opts = opts || {};
     const c = cross(u, v), area = len(c);
     const hex = opts.albedoHex !== undefined ? opts.albedoHex : 0x808080;
-    return {
+    const p = {
       o: o.slice(), u: u.slice(), v: v.slice(), n: norm(c),
       area: opts.tri ? area / 2 : area, lenU: len(u), lenV: len(v), tri: !!opts.tri,
       display: opts.display || hexToSrgb(hex), albedo: opts.albedo || hexToLinear(hex),
       cast: opts.cast !== false && !opts.emissive, receive: opts.receive !== false && !opts.emissive,
-      emissive: opts.emissive || null, tag: opts.tag || "",
+      emissive: opts.emissive || null, tag: opts.tag || "", material: opts.material || null, poly: null,
     };
+    if (opts.polyM) setPolygon(p, opts.polyM);
+    return p;
+  }
+
+  /**
+   * Give a patch a convex polygon: poly ([s, t] corners, counter-clockwise about
+   * n), polyM (the same in metres), edges (each edge's start and inward unit
+   * normal, in metres) and insetMax (a limit on the sample inset for a slim
+   * polygon). Its area becomes the polygon's.
+   */
+  function setPolygon(p, polyM) {
+    let pts = polyM.map((q) => [q[0], q[1]]);
+    // Drop repeated corners.
+    pts = pts.filter((q, i) => { const r = pts[(i + 1) % pts.length]; return Math.abs(q[0] - r[0]) + Math.abs(q[1] - r[1]) > 1e-9; });
+    if (signedArea2(pts) < 0) pts.reverse();
+    const area = signedArea2(pts);
+    let perim = 0;
+    const edges = pts.map((a, i) => {
+      const b = pts[(i + 1) % pts.length], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1;
+      perim += l;
+      return { ax: a[0], ay: a[1], nx: -dy / l, ny: dx / l };
+    });
+    p.polyM = pts; p.edges = edges; p.area = area;
+    p.poly = pts.map((q) => [q[0] / (p.lenU || 1), q[1] / (p.lenV || 1)]);
+    p.insetMax = perim > 0 ? (0.45 * 2 * area) / perim : 0;
+  }
+  function signedArea2(pts) {
+    let s = 0;
+    for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; s += a[0] * b[1] - b[0] * a[1]; }
+    return s / 2;
+  }
+  /** True when (x, y), in metres, is inside a polygon patch (its boundary counts). */
+  function insidePolygon(p, x, y) {
+    for (const e of p.edges) if ((x - e.ax) * e.nx + (y - e.ay) * e.ny < -1e-7) return false;
+    return true;
+  }
+  /** A convex polygon [[x, y], ...] clipped to a polygon patch (Sutherland-Hodgman), in metres; may be empty. */
+  function clipToPolygon(p, subject) {
+    let out = subject;
+    for (const e of p.edges) {
+      const inp = out; out = [];
+      if (!inp.length) break;
+      for (let i = 0; i < inp.length; i++) {
+        const P = inp[i], Q = inp[(i + 1) % inp.length];
+        const dp = (P[0] - e.ax) * e.nx + (P[1] - e.ay) * e.ny, dq = (Q[0] - e.ax) * e.nx + (Q[1] - e.ay) * e.ny;
+        const pin = dp >= -1e-9, qin = dq >= -1e-9;
+        if (pin) out.push(P);
+        if (pin !== qin) { const t = dp / (dp - dq); out.push([P[0] + (Q[0] - P[0]) * t, P[1] + (Q[1] - P[1]) * t]); }
+      }
+      // Remove repeated corners a tangent cut can leave.
+      out = out.filter((q, i) => { const r = out[(i + 1) % out.length]; return Math.abs(q[0] - r[0]) + Math.abs(q[1] - r[1]) > 1e-9; });
+    }
+    return out.length >= 3 && signedArea2(out) > 1e-10 ? out : [];
+  }
+
+  /**
+   * A convex planar polygon (3D corners in order, either winding) facing n, as a
+   * patch: a parallelogram when it is one, else a polygon patch whose rectangle
+   * runs along its longest edge (so a hull-following floor's grid lines up with
+   * its walls). opts as for patch().
+   */
+  function polygonPatch(pts, n, opts) {
+    n = norm(n);
+    if (pts.length === 4) {
+      const s0 = add(pts[0], pts[2]), s1 = add(pts[1], pts[3]);
+      if (len(sub(s0, s1)) < 1e-6) {
+        let u = sub(pts[1], pts[0]), v = sub(pts[3], pts[0]);
+        if (dot(cross(u, v), n) < 0) { const t = u; u = v; v = t; }
+        return patch(pts[0], u, v, opts);
+      }
+    }
+    let best = -1, ud = null;
+    for (let i = 0; i < pts.length; i++) {
+      const e = sub(pts[(i + 1) % pts.length], pts[i]), l = len(e);
+      if (l > best + 1e-9) { best = l; ud = e; }
+    }
+    ud = norm(sub(ud, scale(n, dot(ud, n))));
+    const vd = cross(n, ud); // u x v = n
+    const q = pts.map((p) => [dot(sub(p, pts[0]), ud), dot(sub(p, pts[0]), vd)]);
+    const mnU = Math.min(...q.map((a) => a[0])), mxU = Math.max(...q.map((a) => a[0]));
+    const mnV = Math.min(...q.map((a) => a[1])), mxV = Math.max(...q.map((a) => a[1]));
+    const o = add(pts[0], add(scale(ud, mnU), scale(vd, mnV)));
+    const polyM = q.map((a) => [a[0] - mnU, a[1] - mnV]);
+    return patch(o, scale(ud, mxU - mnU), scale(vd, mxV - mnV), Object.assign({}, opts, { polyM }));
+  }
+
+  /** A patch's corners in 3D, counter-clockwise about its normal. */
+  function patchCorners(p) {
+    const at = (s, t) => [p.o[0] + s * p.u[0] + t * p.v[0], p.o[1] + s * p.u[1] + t * p.v[1], p.o[2] + s * p.u[2] + t * p.v[2]];
+    if (p.poly) return p.poly.map((q) => at(q[0], q[1]));
+    if (p.tri) return [at(0, 0), at(1, 0), at(0, 1)];
+    return [at(0, 0), at(1, 0), at(1, 1), at(0, 1)];
+  }
+
+  /**
+   * Patches from a flat triangle list (ShipKit's buildCompartment parts: position
+   * and normal, 9 numbers per triangle). Coplanar triangles whose union is one
+   * convex polygon (a floor, a ceiling, a wall cell, a mitred cove) become one
+   * patch; otherwise consecutive pairs that make a parallelogram (ShipKit's
+   * quads) become one, and a lone triangle is a polygon patch of three corners.
+   * The normal array decides which way a patch faces. opts as for patch().
+   */
+  function patchesFromTriangles(P, N, opts) {
+    const groups = new Map(), order = [];
+    for (let t = 0; t + 8 < P.length; t += 9) {
+      const a = [P[t], P[t + 1], P[t + 2]], b = [P[t + 3], P[t + 4], P[t + 5]], c = [P[t + 6], P[t + 7], P[t + 8]];
+      const cr = cross(sub(b, a), sub(c, a)), area = len(cr) / 2;
+      if (area < 1e-10) continue;
+      let n = norm(cr);
+      if (N && dot(n, [N[t], N[t + 1], N[t + 2]]) < 0) n = scale(n, -1);
+      const key = [n[0], n[1], n[2], dot(n, a)].map((x) => Math.round(x * 1000)).join(",");
+      let g = groups.get(key);
+      if (!g) { g = { n, tris: [], area: 0 }; groups.set(key, g); order.push(g); }
+      g.tris.push([a, b, c]); g.area += area;
+    }
+    const out = [];
+    const same = (p, q) => Math.abs(p[0] - q[0]) + Math.abs(p[1] - q[1]) + Math.abs(p[2] - q[2]) < 1e-6;
+    for (const g of order) {
+      // The convex hull of the group's corners, in the plane (Andrew's monotone chain).
+      const e1 = norm(Math.abs(g.n[1]) < 0.9 ? cross([0, 1, 0], g.n) : cross([1, 0, 0], g.n)), e2 = cross(g.n, e1);
+      const pts = [];
+      for (const tr of g.tris) for (const p of tr) if (!pts.some((q) => same(p, q))) pts.push(p);
+      const xy = pts.map((p, i) => ({ x: dot(p, e1), y: dot(p, e2), i })).sort((a, b) => a.x - b.x || a.y - b.y);
+      const turn = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+      const lower = [], upper = [];
+      for (const p of xy) { while (lower.length >= 2 && turn(lower[lower.length - 2], lower[lower.length - 1], p) <= 1e-12) lower.pop(); lower.push(p); }
+      for (let k = xy.length - 1; k >= 0; k--) { const p = xy[k]; while (upper.length >= 2 && turn(upper[upper.length - 2], upper[upper.length - 1], p) <= 1e-12) upper.pop(); upper.push(p); }
+      const hull = lower.slice(0, -1).concat(upper.slice(0, -1));
+      let ha = 0;
+      for (let k = 0; k < hull.length; k++) { const a = hull[k], b = hull[(k + 1) % hull.length]; ha += a.x * b.y - b.x * a.y; }
+      ha /= 2;
+      if (hull.length >= 3 && Math.abs(ha - g.area) <= 1e-6 + 1e-5 * g.area) {
+        out.push(polygonPatch(hull.map((h) => pts[h.i]), g.n, opts));
+        continue;
+      }
+      // Not one convex piece: pair ShipKit's quads, keep lone triangles.
+      for (let k = 0; k < g.tris.length; k++) {
+        const A = g.tris[k], B = g.tris[k + 1];
+        if (B) {
+          const shared = A.filter((p) => B.some((q) => same(p, q)));
+          if (shared.length === 2) {
+            const X = A.find((p) => !shared.some((q) => same(p, q))), Y = B.find((p) => !shared.some((q) => same(p, q)));
+            if (len(sub(add(X, Y), add(shared[0], shared[1]))) < 1e-6) {
+              out.push(polygonPatch([X, shared[0], Y, shared[1]], g.n, opts));
+              k++; continue;
+            }
+          }
+        }
+        out.push(polygonPatch(A, g.n, opts));
+      }
+    }
+    return out;
+  }
+
+  /**
+   * The faces of an oriented box: centre c, unit axes u, v, w, half sizes hu, hv,
+   * hw. faces lists the faces to make ("+u", "-u", "+v", "-v", "+w", "-w"; all
+   * when omitted), as ShipKit's Builder.box names them. opts as for patch().
+   */
+  function orientedBoxPatches(c, u, v, w, hu, hv, hw, faces, opts) {
+    const ax = { u: [u, hu], v: [v, hv], w: [w, hw] }, out = [];
+    for (const f of faces || ["+u", "-u", "+v", "-v", "+w", "-w"]) {
+      const sgn = f[0] === "+" ? 1 : -1, k = f[1], others = ["u", "v", "w"].filter((x) => x !== k);
+      const [a, ha] = ax[others[0]], [b, hb] = ax[others[1]], [n, hn] = ax[k];
+      const out3 = scale(n, sgn);
+      const fc = add(c, scale(out3, hn));
+      const o = sub(sub(fc, scale(a, ha)), scale(b, hb));
+      let U = scale(a, 2 * ha), V = scale(b, 2 * hb), O = o;
+      if (dot(cross(U, V), out3) < 0) { const t = U; U = V; V = t; }
+      if (len(cross(U, V)) > 1e-12) out.push(patch(O, U, V, opts));
+    }
+    return out;
   }
 
   /** The six faces of an axis-aligned box, facing out. opts.skip: ["-y", "+x", ...]. */
@@ -222,8 +406,27 @@
     return out;
   }
 
-  /** A point on a patch, clamped inset_m inside its edges so edge receivers do not sit on a neighbouring wall. */
+  /**
+   * A point on a patch, clamped inset_m inside its edges so edge receivers do not sit on a
+   * neighbouring wall. On a polygon patch, a point outside the polygon (a grid point of its
+   * rectangle beyond an angled wall) is moved inside it, so it reads the light at the edge.
+   */
   function pointOn(p, s, t, inset, out) {
+    if (p.poly) {
+      let x = s * p.lenU, y = t * p.lenV;
+      const d = Math.min(inset, p.insetMax);
+      for (let it = 0; it < 2; it++) {
+        for (const e of p.edges) {
+          const k = (x - e.ax) * e.nx + (y - e.ay) * e.ny;
+          if (k < d) { x += e.nx * (d - k); y += e.ny * (d - k); }
+        }
+      }
+      s = x / (p.lenU || 1); t = y / (p.lenV || 1);
+      out[0] = p.o[0] + s * p.u[0] + t * p.v[0];
+      out[1] = p.o[1] + s * p.u[1] + t * p.v[1];
+      out[2] = p.o[2] + s * p.u[2] + t * p.v[2];
+      return out;
+    }
     const es = Math.min(0.45, inset / Math.max(p.lenU, 1e-6)), et = Math.min(0.45, inset / Math.max(p.lenV, 1e-6));
     s = Math.min(1 - es, Math.max(es, s)); t = Math.min(1 - et, Math.max(et, t));
     if (p.tri && s + t > 1 - es) { const k = (1 - es) / (s + t); s *= k; t *= k; }
@@ -260,8 +463,11 @@
 
   /**
    * Tessellate patches into a uniform grid of about spacing_m (Infinity: one
-   * quad or triangle per patch, the deck's own density). Only patches passing
-   * filter(p) are included; patch indices refer to the full list.
+   * quad, triangle or polygon fan per patch, the deck's own density). Only
+   * patches passing filter(p) are included; patch indices refer to the full
+   * list. A polygon patch keeps its rectangle's whole vertex grid (so bounce
+   * can be read bilinearly anywhere on it) and draws only the cells inside its
+   * polygon, cutting the cells its edges cross.
    */
   function tessellate(patches, spacing, filter) {
     const b = meshBuilder(); b.keys = []; b.grids = new Array(patches.length).fill(null);
@@ -270,7 +476,49 @@
       const nu = isFinite(spacing) ? Math.max(1, Math.round(p.lenU / spacing)) : 1;
       const nv = isFinite(spacing) ? Math.max(1, Math.round(p.lenV / spacing)) : 1;
       const base = b.pv.length;
+      if (p.poly && !isFinite(spacing)) {
+        // The deck's own density: the polygon itself, fanned.
+        p.poly.forEach((q, k) => {
+          b.pos.push(p.o[0] + q[0] * p.u[0] + q[1] * p.v[0], p.o[1] + q[0] * p.u[1] + q[1] * p.v[1], p.o[2] + q[0] * p.u[2] + q[1] * p.v[2]);
+          b.st.push(q[0], q[1]); b.pv.push(pi); b.keys.push(hash3(pi, 0x9000 + k, 0));
+        });
+        for (let k = 1; k + 1 < p.poly.length; k++) { b.idx.push(base, base + k, base + k + 1); b.tp.push(pi); }
+        return;
+      }
       if (!p.tri) b.grids[pi] = { base, nu, nv };
+      if (p.poly) {
+        for (let j = 0; j <= nv; j++) for (let i = 0; i <= nu; i++) {
+          const s = i / nu, t = j / nv;
+          b.pos.push(p.o[0] + s * p.u[0] + t * p.v[0], p.o[1] + s * p.u[1] + t * p.v[1], p.o[2] + s * p.u[2] + t * p.v[2]);
+          b.st.push(s, t); b.pv.push(pi); b.keys.push(hash3(pi, i, j));
+        }
+        const cw = p.lenU / nu, ch = p.lenV / nv, extra = new Map();
+        const vtx = (x, y) => {
+          const gi = Math.round(x / cw), gj = Math.round(y / ch);
+          if (Math.abs(x - gi * cw) < 1e-7 && Math.abs(y - gj * ch) < 1e-7 && gi >= 0 && gi <= nu && gj >= 0 && gj <= nv) return base + gj * (nu + 1) + gi;
+          const qx = Math.round(x * 1e5), qy = Math.round(y * 1e5), k = qx * 1e7 + qy;
+          let id = extra.get(k);
+          if (id === undefined) {
+            const s = x / p.lenU, t = y / p.lenV;
+            id = b.pv.length; extra.set(k, id);
+            b.pos.push(p.o[0] + s * p.u[0] + t * p.v[0], p.o[1] + s * p.u[1] + t * p.v[1], p.o[2] + s * p.u[2] + t * p.v[2]);
+            b.st.push(s, t); b.pv.push(pi); b.keys.push(hash3(pi, 0x40000000 + (qx & 0xfffffff), qy));
+          }
+          return id;
+        };
+        for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) {
+          const x0 = i * cw, x1 = (i + 1) * cw, y0 = j * ch, y1 = (j + 1) * ch;
+          const a = base + j * (nu + 1) + i, c = a + nu + 2;
+          if (insidePolygon(p, x0, y0) && insidePolygon(p, x1, y0) && insidePolygon(p, x1, y1) && insidePolygon(p, x0, y1)) {
+            b.idx.push(a, a + 1, c, a, c, c - 1); b.tp.push(pi, pi);
+            continue;
+          }
+          const cut = clipToPolygon(p, [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]);
+          const ids = cut.map((q) => vtx(q[0], q[1]));
+          for (let k = 1; k + 1 < ids.length; k++) { b.idx.push(ids[0], ids[k], ids[k + 1]); b.tp.push(pi); }
+        }
+        return;
+      }
       if (!p.tri) {
         for (let j = 0; j <= nv; j++) for (let i = 0; i <= nu; i++) {
           const s = i / nu, t = j / nv;
@@ -830,24 +1078,48 @@
       const nu = p.tri ? 1 : Math.max(1, Math.round(p.lenU / opts.base_m)), nv = p.tri ? 1 : Math.max(1, Math.round(p.lenV / opts.base_m));
       const cell = Math.min(p.lenU / nu, p.lenV / nv);
       const lmax = p.tri ? 0 : Math.max(0, Math.min(LMAX, Math.floor(Math.log2(cell / opts.min_m) + 1e-9)));
-      return { pi, p, nu, nv, lmax, W: nu * F, H: nv * F, verts: new Map(), split: new Set() };
+      return { pi, p, nu, nv, lmax, W: nu * F, H: nv * F, verts: new Map(), split: new Set(), cls: new Map(), extra: new Map() };
     });
+    function evalVertex(R, s, t, key, base) {
+      pointOn(R.p, s, t, set.inset_m, pp);
+      tmp.fill(0);
+      const ao = irradiance(S, pp[0], pp[1], pp[2], R.p.n[0], R.p.n[1], R.p.n[2], key, DIRECT | AMBIENT, tmp);
+      evals++;
+      return Object.assign(base, { s, t, key, E: Float32Array.from(tmp), ao, lv: [level8(tmp, 0, ref), level8(tmp, 1, ref), level8(tmp, 2, ref)], out: -1 });
+    }
     function vertex(R, gx, gy) {
       const k = gx + gy * (R.W + 1);
       let v = R.verts.get(k);
       if (v) return v;
-      const s = gx / R.W, t = gy / R.H;
-      pointOn(R.p, s, t, set.inset_m, pp);
-      tmp.fill(0);
-      const key = hash3(R.pi, gx, gy);
-      const ao = irradiance(S, pp[0], pp[1], pp[2], R.p.n[0], R.p.n[1], R.p.n[2], key, DIRECT | AMBIENT, tmp);
-      evals++;
-      v = { gx, gy, s, t, key, E: Float32Array.from(tmp), ao, lv: [level8(tmp, 0, ref), level8(tmp, 1, ref), level8(tmp, 2, ref)], out: -1 };
+      v = evalVertex(R, gx / R.W, gy / R.H, hash3(R.pi, gx, gy), { gx, gy });
       R.verts.set(k, v);
+      return v;
+    }
+    // A polygon patch: where a cell lies against its polygon ("in", "out" or "part"), and the
+    // vertices its edges cut into cells (metres along u and v).
+    function classify(R, L, i, j) {
+      if (!R.p.poly) return "in";
+      const id = L + "," + i + "," + j;
+      let c = R.cls.get(id);
+      if (c) return c;
+      const k = F >> L, fw = R.p.lenU / R.W, fh = R.p.lenV / R.H;
+      const x0 = i * k * fw, x1 = (i + 1) * k * fw, y0 = j * k * fh, y1 = (j + 1) * k * fh;
+      if (insidePolygon(R.p, x0, y0) && insidePolygon(R.p, x1, y0) && insidePolygon(R.p, x1, y1) && insidePolygon(R.p, x0, y1)) c = "in";
+      else c = clipToPolygon(R.p, [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]).length ? "part" : "out";
+      R.cls.set(id, c);
+      return c;
+    }
+    function pointVertex(R, x, y) {
+      const fw = R.p.lenU / R.W, fh = R.p.lenV / R.H, gx = Math.round(x / fw), gy = Math.round(y / fh);
+      if (Math.abs(x - gx * fw) < 1e-6 && Math.abs(y - gy * fh) < 1e-6 && gx >= 0 && gx <= R.W && gy >= 0 && gy <= R.H) return vertex(R, gx, gy);
+      const qx = Math.round(x * 1e5), qy = Math.round(y * 1e5), k = qx * 1e7 + qy;
+      let v = R.extra.get(k);
+      if (!v) { v = evalVertex(R, x / R.p.lenU, y / R.p.lenV, hash3(R.pi, 0x40000000 + (qx & 0xfffffff), qy), {}); R.extra.set(k, v); }
       return v;
     }
     function cellError(R, L, i, j) {
       if (L >= R.lmax) return 0;
+      if (classify(R, L, i, j) === "out") return 0;
       const k = F >> L, x0 = i * k, y0 = j * k, x1 = x0 + k, y1 = y0 + k, xm = x0 + k / 2, ym = y0 + k / 2;
       const c00 = vertex(R, x0, y0), c10 = vertex(R, x1, y0), c01 = vertex(R, x0, y1), c11 = vertex(R, x1, y1);
       const tests = [[vertex(R, xm, ym), [c00, c10, c01, c11]], [vertex(R, xm, y0), [c00, c10]], [vertex(R, xm, y1), [c01, c11]],
@@ -864,6 +1136,7 @@
     for (const R of P) {
       if (!R) continue;
       for (let j = 0; j < R.nv; j++) for (let i = 0; i < R.nu; i++) {
+        if (classify(R, 0, i, j) === "out") continue;
         push({ R, L: 0, i, j, err: cellError(R, 0, i, j) }); leaves++;
       }
       await y(0.1);
@@ -924,23 +1197,33 @@
         b.idx.push(vid(R, a), vid(R, c), vid(R, d)); b.tp.push(R.pi); continue;
       }
       const list = []; collectLeaves(R, list);
+      // A triangle of vertex objects into the mesh; on a polygon patch's edge cell, cut to the polygon first.
+      const emit = (cls, a, c, d) => {
+        if (cls === "in") { b.idx.push(vid(R, a), vid(R, c), vid(R, d)); b.tp.push(R.pi); return; }
+        const cut = clipToPolygon(R.p, [a, c, d].map((v) => [v.s * R.p.lenU, v.t * R.p.lenV]));
+        const vs = cut.map((q) => pointVertex(R, q[0], q[1]));
+        for (let q = 1; q + 1 < vs.length; q++) {
+          if (vs[0] === vs[q] || vs[q] === vs[q + 1] || vs[0] === vs[q + 1]) continue;
+          b.idx.push(vid(R, vs[0]), vid(R, vs[q]), vid(R, vs[q + 1])); b.tp.push(R.pi);
+        }
+      };
       for (const [L, i, j] of list) {
+        const cls = classify(R, L, i, j);
+        if (cls === "out") continue;
         const k = F >> L, x0 = i * k, y0 = j * k, x1 = x0 + k, y1 = y0 + k, h = k / 2;
         const hang = [isSplit(R, L, i, j - 1), isSplit(R, L, i + 1, j), isSplit(R, L, i, j + 1), isSplit(R, L, i - 1, j)];
         const c00 = vertex(R, x0, y0), c10 = vertex(R, x1, y0), c11 = vertex(R, x1, y1), c01 = vertex(R, x0, y1);
         if (!hang.some(Boolean)) {
           // Split along the diagonal whose ends agree best (fewer zig-zags in gradients).
           const d1 = Math.abs(c00.lv[0] - c11.lv[0]), d2 = Math.abs(c10.lv[0] - c01.lv[0]);
-          const A = vid(R, c00), B = vid(R, c10), C = vid(R, c11), D = vid(R, c01);
-          if (d1 <= d2) b.idx.push(A, B, C, A, C, D); else b.idx.push(A, B, D, B, C, D);
-          b.tp.push(R.pi, R.pi);
+          if (d1 <= d2) { emit(cls, c00, c10, c11); emit(cls, c00, c11, c01); } else { emit(cls, c00, c10, c01); emit(cls, c10, c11, c01); }
         } else {
           const ring = [c00]; if (hang[0]) ring.push(vertex(R, x0 + h, y0));
           ring.push(c10); if (hang[1]) ring.push(vertex(R, x1, y0 + h));
           ring.push(c11); if (hang[2]) ring.push(vertex(R, x0 + h, y1));
           ring.push(c01); if (hang[3]) ring.push(vertex(R, x0, y0 + h));
-          const cc = vid(R, vertex(R, x0 + h, y0 + h));
-          for (let q = 0; q < ring.length; q++) { b.idx.push(cc, vid(R, ring[q]), vid(R, ring[(q + 1) % ring.length])); b.tp.push(R.pi); }
+          const cc = vertex(R, x0 + h, y0 + h);
+          for (let q = 0; q < ring.length; q++) emit(cls, cc, ring[q], ring[(q + 1) % ring.length]);
         }
       }
       await y(0.75);
@@ -1023,14 +1306,15 @@
     const b = meshBuilder(); b.keys = []; b.uv2 = [];
     for (const r of rects) {
       const p = r.p, base = b.pv.length;
-      const corners = p.tri ? [[0, 0], [1, 0], [0, 1]] : [[0, 0], [1, 0], [1, 1], [0, 1]];
-      for (const [s, t] of corners) {
+      // A polygon patch draws its polygon (fanned) over its rectangle's block; texels outside
+      // the polygon read the light at its edge (pointOn), so they serve as its gutter.
+      const corners = p.poly ? p.poly : p.tri ? [[0, 0], [1, 0], [0, 1]] : [[0, 0], [1, 0], [1, 1], [0, 1]];
+      corners.forEach(([s, t], k) => {
         b.pos.push(p.o[0] + s * p.u[0] + t * p.v[0], p.o[1] + s * p.u[1] + t * p.v[1], p.o[2] + s * p.u[2] + t * p.v[2]);
-        b.st.push(s, t); b.pv.push(r.pi); b.keys.push(hash3(r.pi, s * 7, t * 7));
+        b.st.push(s, t); b.pv.push(r.pi); b.keys.push(p.poly ? hash3(r.pi, 0x9000 + k, 7) : hash3(r.pi, s * 7, t * 7));
         b.uv2.push((r.x + 1 + s * r.nu) / W, (r.y + 1 + t * r.nv) / H);
-      }
-      if (p.tri) { b.idx.push(base, base + 1, base + 2); b.tp.push(r.pi); }
-      else { b.idx.push(base, base + 1, base + 2, base, base + 2, base + 3); b.tp.push(r.pi, r.pi); }
+      });
+      for (let k = 1; k + 1 < corners.length; k++) { b.idx.push(base, base + k, base + k + 1); b.tp.push(r.pi); }
     }
     const mesh = finishMesh(b, S.patches);
     const st = stats(S, t0, r0, texels, "lightmap");
@@ -1154,6 +1438,66 @@
     });
   }
 
+  /**
+   * The deck shader as the engine plans it, on a textured surface: extends a ShipKit
+   * surface material (ShipKit.surfaceMaterial(THREE, mats, { lit: false }), the kit's
+   * Material Maker texture array times the vertex colour) so the vertex colour is the
+   * three baked sets blended by a per-compartment weight uniform (or, where a vertex's
+   * lmw is 1, the light from a lightmap atlas). base is modified and returned.
+   *
+   * Geometry attributes: colN, colR, colE (RGBA8, normalized: light, occlusion in alpha),
+   * lmuv (atlas UV), lmw (1 lightmapped, 0 vertex light), plus the kit's own. Stored
+   * light is display-space (gamma 2.2, 2x overbright), so the shader decodes it to the
+   * linear multiplier three.js works in: (2 c)^2.2.
+   * U holds uniform objects shared by every material made with it: stateW (Vector3),
+   * aoOnly (occlusion as grey), flat (0: textured; else a flat linear albedo instead of
+   * the texel, for views where the light itself is the point), grid (lightmap texel
+   * checker). lightmap: { textures, atlas } from lightmapTextures and bakeLightmap.
+   */
+  function bakedSurfaceMaterial(THREE, base, U, lightmap) {
+    const kitHook = base.onBeforeCompile;
+    const G = GAMMA.toFixed(1), OB = OVERBRIGHT.toFixed(1);
+    const lm = lightmap ? { lmN: { value: lightmap.textures.normal }, lmR: { value: lightmap.textures.red_alert }, lmE: { value: lightmap.textures.emergency },
+      lmSize: { value: new THREE.Vector2(lightmap.atlas.width, lightmap.atlas.height) } } : null;
+    const need = (src, s) => { if (src.indexOf(s) < 0) throw new Error("lightbake: shader text not found (ShipKit surfaceMaterial changed?): " + s); };
+    base.onBeforeCompile = (sh, renderer) => {
+      kitHook(sh, renderer);
+      Object.assign(sh.uniforms, { stateW: U.stateW, aoOnly: U.aoOnly, flatAlbedo: U.flat, lmGrid: U.grid }, lm || {});
+      need(sh.vertexShader, "#include <color_vertex>");
+      need(sh.fragmentShader, "diffuseColor.rgb *= surfTex.rgb;");
+      need(sh.fragmentShader, "#include <color_fragment>");
+      sh.vertexShader = sh.vertexShader
+        .replace("#include <common>", "#include <common>\nattribute vec4 colN;\nattribute vec4 colR;\nattribute vec4 colE;\nattribute vec2 lmuv;\nattribute float lmw;\nuniform vec3 stateW;\nuniform float aoOnly;\nvarying vec2 vLm;\nvarying float vLmw;")
+        .replace("#include <color_vertex>", `#include <color_vertex>
+          {
+            vec4 l = colN * stateW.x + colR * stateW.y + colE * stateW.z;
+            vec3 c = aoOnly > 0.5 ? vec3(l.a) : ${OB} * l.rgb;
+            vColor = mix(pow(c, vec3(${G})), vec3(1.0), lmw);
+            vLm = lmuv; vLmw = lmw;
+          }`);
+      let frag = sh.fragmentShader
+        .replace("#include <common>", "#include <common>\nuniform float flatAlbedo;\nuniform float aoOnly;\nuniform float lmGrid;\nvarying vec2 vLm;\nvarying float vLmw;" +
+          (lm ? "\nuniform sampler2D lmN;\nuniform sampler2D lmR;\nuniform sampler2D lmE;\nuniform vec2 lmSize;\nuniform vec3 stateW;" : ""))
+        .replace("diffuseColor.rgb *= surfTex.rgb;", "diffuseColor.rgb *= flatAlbedo > 0.0 ? vec3(flatAlbedo) : surfTex.rgb;");
+      if (lm) {
+        frag = frag.replace("#include <color_fragment>", `#include <color_fragment>
+          {
+            vec4 l = texture(lmN, vLm) * stateW.x + texture(lmR, vLm) * stateW.y + texture(lmE, vLm) * stateW.z;
+            vec3 c = aoOnly > 0.5 ? vec3(l.a) : ${OB} * l.rgb;
+            diffuseColor.rgb *= mix(vec3(1.0), pow(c, vec3(${G})), vLmw);
+            if (lmGrid > 0.5 && vLmw > 0.5) {
+              vec2 cell = floor(vLm * lmSize);
+              float k = mod(cell.x + cell.y, 2.0);
+              diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(2.4, 0.3, 2.4) + vec3(0.03, 0.0, 0.03), k * 0.8);
+            }
+          }`);
+      }
+      sh.fragmentShader = frag;
+    };
+    base.customProgramCacheKey = () => "lightbake-" + (lightmap ? "lightmap" : "vertex");
+    return base;
+  }
+
   /** A canvas showing one state of an atlas (for a debug panel). */
   function atlasCanvas(atlas, state) {
     const cv = document.createElement("canvas"); cv.width = atlas.width; cv.height = atlas.height;
@@ -1164,11 +1508,12 @@
   }
 
   window.LightBake = {
-    version: 1, STATES, DEFAULTS, GAMMA, OVERBRIGHT,
-    patch, boxPatches, patchesFromGeometry, tessellate, buildBVH, occluded, closest,
+    version: 2, STATES, DEFAULTS, GAMMA, OVERBRIGHT,
+    patch, boxPatches, orientedBoxPatches, polygonPatch, patchCorners, patchesFromGeometry, patchesFromTriangles,
+    tessellate, buildBVH, occluded, closest,
     scene, prepare, irradiance, bounceAt, bakeVertices, bakeAdaptive, bakeLightmap, probeCube, cubeDisplay,
     encodeLevel, srgbToLinear, hexToSrgb, hexToLinear, hash3, digest,
-    toGeometry, vertexMaterial, lightmapTextures, lightmapMaterial, atlasCanvas,
+    toGeometry, vertexMaterial, lightmapTextures, lightmapMaterial, bakedSurfaceMaterial, atlasCanvas,
     DIRECT, AMBIENT, BOUNCE, ALL,
   };
 })();

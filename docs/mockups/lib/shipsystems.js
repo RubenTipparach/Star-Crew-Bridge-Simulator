@@ -20,6 +20,12 @@
  * compartment, and a hit hurts them by the expected share of the room), damage control
  * teams, and the time-to-pressure and repair-time previews.
  *
+ * Geometry comes from the layout's brushes (starcrew.ship-layout/2: a compartment's air is the
+ * union of convex prisms) through shipkit.js, the mockups' one reading of the layout: volumes,
+ * floor areas, which compartment a point is in, portal frames. Shipkit must be loaded first:
+ * in a page it is inlined before this file; in node, set globalThis.window = globalThis and
+ * run shipkit.js, which touches no DOM until a page function is called.
+ *
  * Classic script, no DOM: works in a page (window.ShipSystems) and in node (globalThis).
  * Units: SI. Pressure in Pa inside, kPa at the edges. Power in W inside, MW at the edges.
  */
@@ -53,24 +59,73 @@
     h ^= h >>> 16;
     return (h >>> 0) / 4294967296;
   }
-  function measure(c) {
-    let v = 0, a = 0;
-    for (const b of c.boxes) { const dx = b.x[1] - b.x[0], dy = b.y[1] - b.y[0], dz = b.z[1] - b.z[0]; v += dx * dy * dz; a += dx * dz; }
-    return { volume_m3: v, floor_m2: a };
+  /** The ship kit (shipkit.js, version 2): the one reading of the layout's brushes. */
+  function kit() {
+    const K = root.ShipKit;
+    if (!K || !(K.version >= 2)) throw new Error("shipsystems: load shipkit.js (version 2) first; compartments are brushes (starcrew.ship-layout/2)");
+    return K;
   }
-  function boxSurface(b) { const dx = b.x[1] - b.x[0], dy = b.y[1] - b.y[0], dz = b.z[1] - b.z[0]; return 2 * (dx * dy + dy * dz + dx * dz); }
-  /** Area of faces of box a and box b that face each other across a gap of at most gap_m. */
+  /** Volume (m^3) and floor area (m^2) of a compartment: its brushes' air, as the kit measures it. */
+  function measure(c) { return kit().measure(c); }
+  /** Surface of one brush (a convex prism), m^2: floor and ceiling plus its walls. */
+  function brushSurface(b) {
+    const K = kit();
+    let per = 0;
+    for (let i = 0; i < b.poly.length; i++) { const p = b.poly[i], q = b.poly[(i + 1) % b.poly.length]; per += Math.hypot(q[0] - p[0], q[1] - p[1]); }
+    return 2 * K.signedArea(b.poly) + per * (b.y[1] - b.y[0]);
+  }
+  /**
+   * The intersection of two convex plan polygons wound positive (Sutherland-Hodgman: a clipped
+   * by each edge of b). TODO kit: a plan-polygon intersection belongs in shipkit beside
+   * insidePoly and insetPoly.
+   */
+  function clipConvex(a, b) {
+    const K = kit();
+    let out = a;
+    for (let i = 0; i < b.length && out.length; i++) {
+      const p = b[i], n = K.outwardNormal(p, b[(i + 1) % b.length]);
+      const side = (v) => (v[0] - p[0]) * n[0] + (v[1] - p[1]) * n[1]; // above zero: outside this edge
+      const next = [];
+      for (let j = 0; j < out.length; j++) {
+        const u = out[j], v = out[(j + 1) % out.length], su = side(u), sv = side(v);
+        if (su <= 0) next.push(u);
+        if ((su < 0 && sv > 0) || (su > 0 && sv < 0)) { const t = su / (su - sv); next.push([u[0] + (v[0] - u[0]) * t, u[1] + (v[1] - u[1]) * t]); }
+      }
+      out = next;
+    }
+    return out;
+  }
+  /**
+   * Area of the faces of brush a and brush b that face each other across a gap of at most gap_m:
+   * a floor under a ceiling (over the overlap of their footprints), and two walls whose outward
+   * normals are opposite (over the overlap of their lengths and heights). Walls may be angled.
+   */
   function facingArea(a, b, gap) {
+    const K = kit();
     let area = 0;
-    for (const k of ["x", "y", "z"]) {
-      const o = ["x", "y", "z"].filter((q) => q !== k);
-      const ov = (q) => Math.max(0, Math.min(a[q][1], b[q][1]) - Math.max(a[q][0], b[q][0]));
-      const g1 = b[k][0] - a[k][1], g2 = a[k][0] - b[k][1];
-      if ((g1 >= -1e-6 && g1 <= gap) || (g2 >= -1e-6 && g2 <= gap)) area += ov(o[0]) * ov(o[1]);
+    const g1 = b.y[0] - a.y[1], g2 = a.y[0] - b.y[1];
+    if ((g1 >= -1e-6 && g1 <= gap) || (g2 >= -1e-6 && g2 <= gap)) {
+      const p = clipConvex(a.poly, b.poly);
+      if (p.length >= 3) area += Math.abs(K.signedArea(p));
+    }
+    const yov = Math.min(a.y[1], b.y[1]) - Math.max(a.y[0], b.y[0]);
+    if (yov <= 0) return area;
+    for (let i = 0; i < a.poly.length; i++) {
+      const pa = a.poly[i], qa = a.poly[(i + 1) % a.poly.length], na = K.outwardNormal(pa, qa);
+      const len = Math.hypot(qa[0] - pa[0], qa[1] - pa[1]), t = [(qa[0] - pa[0]) / len, (qa[1] - pa[1]) / len];
+      for (let j = 0; j < b.poly.length; j++) {
+        const pb = b.poly[j], qb = b.poly[(j + 1) % b.poly.length], nb = K.outwardNormal(pb, qb);
+        if (na[0] * nb[0] + na[1] * nb[1] > -0.999) continue;
+        const sep = (pb[0] - pa[0]) * na[0] + (pb[1] - pa[1]) * na[1];
+        if (sep < -1e-6 || sep > gap) continue;
+        const u0 = (pb[0] - pa[0]) * t[0] + (pb[1] - pa[1]) * t[1], u1 = (qb[0] - pa[0]) * t[0] + (qb[1] - pa[1]) * t[1];
+        area += Math.max(0, Math.min(len, Math.max(u0, u1)) - Math.max(0, Math.min(u0, u1))) * yov;
+      }
     }
     return area;
   }
-  function inBox(b, p) { return p[0] >= b.x[0] && p[0] <= b.x[1] && p[1] >= b.y[0] && p[1] <= b.y[1] && p[2] >= b.z[0] && p[2] <= b.z[1]; }
+  /** Whether point p (ship metres) is in compartment c's air: inside one of its brushes. */
+  function inComp(c, p) { return kit().brushAt(c, p[0], p[1], p[2]) !== null; }
   function segSegDist(p1, q1, p2, q2) {
     // Closest distance between segments p1q1 and p2q2 (Ericson, Real-Time Collision Detection 5.1.9).
     const d1 = [q1[0] - p1[0], q1[1] - p1[1], q1[2] - p1[2]], d2 = [q2[0] - p2[0], q2[1] - p2[1], q2[2] - p2[2]];
@@ -123,18 +178,18 @@
     vol[DUCT] = AT.graph_additions.duct.volume_m3;
     for (let i = 0; i < NN; i++) cfit[i] = TH.fittings_j_per_k_m3 * vol[i];
 
-    // Adjacency (shared bulkhead area) and exterior area, derived from the layout boxes.
+    // Adjacency (shared bulkhead area) and exterior area, derived from the layout brushes.
     // The deck compiler will bake these; here they are computed once at start.
     const adj = [];
     for (let i = 0; i < N; i++) {
       let surf = 0, inner = 0;
-      for (const b of comps[i].boxes) surf += boxSurface(b);
-      for (const b1 of comps[i].boxes) for (const b2 of comps[i].boxes) if (b1 !== b2) inner += facingArea(b1, b2, 1e-4);
+      for (const b of comps[i].brushes) surf += brushSurface(b);
+      for (const b1 of comps[i].brushes) for (const b2 of comps[i].brushes) if (b1 !== b2) inner += facingArea(b1, b2, 1e-4);
       let shared = 0;
       for (let j = 0; j < N; j++) {
         if (j === i) continue;
         let a = 0;
-        for (const b1 of comps[i].boxes) for (const b2 of comps[j].boxes) a += facingArea(b1, b2, TH.adjacency_gap_m);
+        for (const b1 of comps[i].brushes) for (const b2 of comps[j].brushes) a += facingArea(b1, b2, TH.adjacency_gap_m);
         if (a > 0) { shared += a; if (j > i) adj.push({ a: i, b: j, area: a }); }
       }
       extArea[i] = Math.max(0, surf - inner - shared);
@@ -150,6 +205,8 @@
       l.move = (PK.move_time_override_s && PK.move_time_override_s[l.id] != null) ? PK.move_time_override_s[l.id] : (PK.move_time_s[l.kind] || 0); l.G = 0; l.F = 0; l.flow = 0;
       l.moveClose = PK.close_time_s && PK.close_time_s[l.kind] != null ? PK.close_time_s[l.kind] : l.move; // closing time where the data gives one apart from opening
       l.mix = ["door", "pressure_door", "hatch", "ladder", "hoist"].indexOf(l.kind) >= 0 && l.b !== SPACE;
+      // The height a buoyant exchange stands on: a wall opening's height; a floor opening's square root of area.
+      if (l.mix) { const f = l.portal ? kit().portalFrame(l.portal) : null; l.mixH = f && !f.floor ? f.h : Math.sqrt(l.area); }
       links.push(l); linkById[l.id] = l; return l;
     }
     for (const p of L.portals) {
@@ -700,7 +757,7 @@
       for (const l of links) {
         if (!l.mix || l.open <= 0) continue;
         const A = l.area * l.open;
-        const H = l.portal && l.portal.axis !== "y" ? l.portal.size_m[1] : Math.sqrt(l.area);
+        const H = l.mixH;
         const dT = Math.abs(T[l.a] - T[l.b]), Tm = 0.5 * (T[l.a] + T[l.b]);
         const q = (FL.mixing_m3_s_per_m2 * A + FL.buoyant_exchange_coefficient * A * Math.sqrt((g * H * dT) / Tm)) * dt;
         const mol = Math.min(q * Math.min(ntot[l.a] / vol[l.a], ntot[l.b] / vol[l.b]), FL.mixing_max_fraction * Math.min(ntot[l.a], ntot[l.b]));
@@ -1037,7 +1094,7 @@
     // ======================================================= damage: hits
     const HU = DM.hull, BR = DM.breach, PG = DM.propagation;
     let hitCount = 0;
-    function compAt(p) { for (let i = 0; i < N; i++) for (const b of comps[i].boxes) if (inBox(b, p)) return i; return SPACE; }
+    function compAt(p) { for (let i = 0; i < N; i++) if (inComp(comps[i], p)) return i; return SPACE; }
     function hullSection(p, dir) {
       const secs = L.hull.sections.map((s) => s.z_m).sort((a, b) => a - b);
       let span = 0; while (span + 1 < secs.length - 1 && p[2] > secs[span + 1]) span++;
@@ -1067,7 +1124,7 @@
       // the first compartment entered from outside is breached, sized by the energy left.
       const fall = 1 - Math.exp(-PG.march_step_m / PG.decay_m);
       // Pre-filter: only targets within the largest radius of the whole ray, and only the
-      // compartments whose boxes the ray's bounding box touches, are tested per step.
+      // compartments whose brushes' bounds the ray's bounding box touches, are tested per step.
       const end = [point[0] + dir[0] * PG.march_max_m, point[1] + dir[1] * PG.march_max_m, point[2] + dir[2] * PG.march_max_m];
       const rMax = PG.radius_m + PG.radius_per_sqrt_mj * Math.sqrt(E);
       const near = (q) => segSegDist(point, end, q, q) < rMax;
@@ -1075,8 +1132,8 @@
       const candNodes = PW.nodes.filter((nd) => near(nd.center_m));
       const candConduits = PW.conduits.filter((k) => { for (let q = 0; q + 1 < k.path_m.length; q++) if (segSegDist(point, end, k.path_m[q], k.path_m[q + 1]) < rMax) return true; return false; });
       const lo = [0, 1, 2].map((a) => Math.min(point[a], end[a])), hi = [0, 1, 2].map((a) => Math.max(point[a], end[a]));
-      const candComps = []; for (let c = 0; c < N; c++) if (comps[c].boxes.some((b) => b.x[0] <= hi[0] && b.x[1] >= lo[0] && b.y[0] <= hi[1] && b.y[1] >= lo[1] && b.z[0] <= hi[2] && b.z[1] >= lo[2])) candComps.push(c);
-      const compOn = (p) => { for (const c of candComps) for (const b of comps[c].boxes) if (inBox(b, p)) return c; return SPACE; };
+      const candComps = []; for (let c = 0; c < N; c++) { const b = kit().bounds(comps[c]); if (b.x[0] <= hi[0] && b.x[1] >= lo[0] && b.y[0] <= hi[1] && b.y[1] >= lo[1] && b.z[0] <= hi[2] && b.z[1] >= lo[2]) candComps.push(c); }
+      const compOn = (p) => { for (const c of candComps) if (inComp(comps[c], p)) return c; return SPACE; };
       const sysPts = new Float64Array(loads.length), nodePts = {}, condE = {}, roomE = new Float64Array(N), roomLen = new Float64Array(N), roomR = new Float64Array(N);
       let cur = SPACE, entered = false, s = 0;
       for (; s <= PG.march_max_m && E > 0.05; s += PG.march_step_m) {
@@ -1295,5 +1352,5 @@
     };
   }
 
-  root.ShipSystems = { version: 1, create, measure, hash32 };
+  root.ShipSystems = { version: 2, create, measure, hash32 };
 })(typeof window !== "undefined" ? window : globalThis);
