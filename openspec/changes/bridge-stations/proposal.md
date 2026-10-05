@@ -54,6 +54,11 @@ Everything below is **proposed** unless it says it comes from the layout or the 
 - **A mockup**, `docs/mockups/bridge.html`: the bridge built from the layout with a live
   exterior on the viewscreen and through the windows, three lighting states, walk mode, and every
   bridge console as an HTML overlay matching the wireframes.
+- **Three ways to build the bridge** (owner, 2026-10-05, on Star Trek references: levels, consoles
+  built into the walls, a round or ship-shaped room): a tiered wedge, a round room with a ring and
+  a split-level wedge, as data checked against the layout rules, drawn side by side by
+  `docs/mockups/bridge-variants.html` with Blender-built consoles, for the owner to pick from
+  (design section 11a, question B11). The layout keeps today's bridge until then.
 
 ## Capabilities
 

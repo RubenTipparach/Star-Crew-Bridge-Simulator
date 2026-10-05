@@ -18,6 +18,9 @@ read a ship's other data files (power.json, atmosphere.json, detailing.json).
 (assets/textures/<name>.png, as a base64 data URI) into a
 <script id="ship-materials" type="application/json"> block, which shipkit's
 loadMaterials() decodes into one texture array (surface-materials).
+"models:<set>" copies assets/models/<set>/props.json and every .glb it lists (as base64
+data URIs) into a <script id="ship-models-<set>" type="application/json"> block, for pages
+that place the Blender-built props (tools/blender, the blender-hard-surface skill).
 
 --check rewrites nothing and fails when a page holds a stale copy, and also
 checks that shipkit's PI_BUDGET matches the budget marker in the engine-stack
@@ -43,10 +46,21 @@ BUDGET_SOURCES = [
 ]
 MATERIALS = os.path.join(ROOT, "data", "materials", "materials.json")
 TEXTURES = os.path.join(ROOT, "assets", "textures")
-MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-9_-]+/[a-z0-9_-]+|shipkit|materials) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
+MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-9_-]+/[a-z0-9_-]+|shipkit|materials|models:[a-z0-9_-]+) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
 
 
 def block(kind):
+    if kind.startswith("models:"):
+        name = kind.split(":", 1)[1]
+        base = os.path.join(ROOT, "assets", "models", name)
+        with open(os.path.join(base, "props.json"), encoding="utf-8") as f:
+            manifest = json.load(f)
+        models = {}
+        for key, rec in sorted(manifest.get("props", {}).items()):
+            with open(os.path.join(base, rec["file"]), "rb") as f:
+                models[key] = "data:model/gltf-binary;base64," + base64.b64encode(f.read()).decode("ascii")
+        text = json.dumps({"manifest": manifest, "models": models}, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
+        return f'\n<script id="ship-models-{name}" type="application/json">\n{text}\n</script>\n'
     if kind == "materials":
         with open(MATERIALS, encoding="utf-8") as f:
             manifest = json.load(f)

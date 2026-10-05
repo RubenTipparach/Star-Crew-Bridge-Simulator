@@ -6,11 +6,15 @@ Status: **proposed** (2026-10-04). Nothing here is built. The data file
 running the proposed library `docs/mockups/lib/shipsystems.js` headless in node 22 on the proposed
 data (scratch scripts, not committed): they are results of the design's formulas, not engine
 measurements. Power draws are `power-grid`'s; budgets are against `engine-stack` section 5.
+**Rerun on layout v2 (2026-10-05)**, the plan whose rooms follow the hull: the same harness and
+rules, unchanged, on the new volumes, floor and hull areas. Every number below that depends on the
+plan is from that run; the same harness on the v1 plan converted to brushes reproduces the v1
+tables exactly, so every difference is the new plan.
 
 ## Context
 
-The Tern holds 8,858.8 m^3 of air in 30 compartments (`python3 tools/layout_check.py`), from the
-15.6 m^3 turret pods to engineering's 2,520 m^3 and the hangar's 1,698 m^3. Its 40 portals are 23
+The Tern holds 9,824.8 m^3 of air in 30 compartments (`python3 tools/layout_check.py`), from the
+12.9 m^3 turret pods to engineering's 2,538 m^3 and the hangar's 1,682.4 m^3. Its 40 portals are 23
 doors, 4 pressure doors (the two launch bays, the two airlock doors), 5 hatches, 2 ladders, a hoist,
 3 bay doors to space and 2 bridge windows. The plant sits in life support (POI 22, deck C): oxygen
 generator, CO2 scrubbers, air handler, thermal control. Reserve gas is in cargo (23), the bay pumps
@@ -28,7 +32,7 @@ previews "time to pump a bay down to 1 kPa or up to 101 kPa" through `life_suppo
   through openings of known size.
 - Numbers a crew can act on: how long until a room is unbreathable, how long a pump-down takes, how
   much reserve a refill costs.
-- Stable at 10 Hz for every case, including a 2.2 m^2 hole in a 15.6 m^3 pod.
+- Stable at 10 Hz for every case, including a 2.2 m^2 hole in a 12.9 m^3 pod.
 - One model for every compartment, bay and airlock (CLAUDE.md 6.1).
 
 **Non-Goals:**
@@ -53,7 +57,7 @@ P      = n R T / V                                           Pa, R = 8.314 J/(mo
 
 `c_v` is 20.79 J/(mol K), `c_p` 29.10 J/(mol K), `gamma` 1.4 (diatomic air; CO2 and smoke are a
 small fraction). Standard air is 101.3 kPa at 294.15 K, 20.9% oxygen, 79.06% nitrogen, 0.04% CO2:
-the ship holds about 368,000 mol (10.7 t) of air. The fittings' 4,000 J/K per m^3 (decks, consoles,
+the ship holds about 408,600 mol (11.8 t) of air. The fittings' 4,000 J/K per m^3 (decks, consoles,
 bulkheads) is why decompression cools a room only to about -1 C rather than far below.
 
 ### 2. One compartment graph
@@ -99,10 +103,11 @@ and 3 s here); `atmosphere.json` carries them until `data/crew.json` exists.
 The first rule written was "close when one side is below 85 kPa and the other above": with a door
 open, a breach drops both sides together and the rule never fired. Falling, not lopsided, is the
 alarm. Measured on a 1 m^2 breach in the quarters with its door open (a crew member passing): the
-door shut itself 1.6 s later with the main corridor at 73.7 kPa; the corridor's damper then refilled
-it from the duct; 374 kg of air was lost. With the door held open by the board, the corridor emptied
-too and 548 kg was lost. (Rerun 2026-10-05 with `crew-on-deck`'s door times; with the first 1.5 s
-door it read 2.4 s, 62.9 kPa and 399 kg.)
+door shut itself 1.7 s later with the main corridor at 73.9 kPa; the corridor's damper then refilled
+it from the duct; 422 kg of air was lost. With the door held open by the board, the corridor emptied
+too and 597 kg was lost. (Rerun 2026-10-05 with `crew-on-deck`'s door times, and again on layout v2:
+on v1 it read 1.6 s, 73.7 kPa, 374 kg and 548 kg, and with the first 1.5 s door 2.4 s, 62.9 kPa and
+399 kg.)
 
 ### 4. Flow through openings
 
@@ -119,8 +124,9 @@ n_dot    = C_d A P_u psi(r) / sqrt(M_u R T_u)                                   
 Below 20 Pa of difference the flow is taken as linear in the difference, so the equation has no
 singular slope at zero. A choked 1 m^2 hole at 101.3 kPa passes about 4,900 mol/s (142 kg/s).
 
-**The step is implicit.** A 2.2 m^2 hole in a 15.6 m^3 pod empties it with a time constant of about
-0.06 s, shorter than the 0.1 s sub-step: an explicit step would remove more gas than the pod holds.
+**The step is implicit.** A 2.2 m^2 hole in a turret pod empties it with a time constant shorter
+than the 0.1 s sub-step (about 0.06 s for the v1 plan's 15.6 m^3 pod; the v2 pod is 12.9 m^3, so
+shorter still): an explicit step would remove more gas than the pod holds.
 So each sub-step:
 
 1. Computes every open link's secant conductance `G = n_dot / delta_P` from the start-of-step state
@@ -140,14 +146,14 @@ fittings), and accurate to the sub-step. Against a 1 kHz reference (1 ms steps, 
 
 | Case | 10 Hz: 16 kPa O2 / 50 kPa / 6.3 kPa, s | 1 kHz, s | Coldest air, 10 Hz / 1 kHz |
 | --- | --- | --- | --- |
-| Hangar, 1 m^2 | 4.1 / 10.0 / 40 | 4.0 / 9.8 / 40 | -0.6 / -0.6 C |
-| Port launch bay, 1 m^2 | 0.7 / 1.6 / 5.7 | 0.6 / 1.4 / 5.5 | -0.9 / -0.8 C |
-| Medbay, 0.1 m^2 | 3.5 / 8.3 / 33 | 3.4 / 8.2 / 32 | 0.8 / 0.8 C |
-| Bridge, 2.2 m^2 | 0.6 / 1.4 / 5.3 | 0.5 / 1.3 / 5.0 | -0.9 / -0.8 C |
-| Port turret pod, 2.2 m^2 | 0.1 / 0.1 / 0.4 | 0.0 / 0.0 / 0.2 | -2.8 / -0.6 C |
+| Hangar, 1 m^2 | 4.1 / 9.9 / 40 | 4.0 / 9.8 / 39 | -0.6 / -0.6 C |
+| Port launch bay, 1 m^2 | 0.6 / 1.3 / 4.8 | 0.5 / 1.2 / 4.6 | -0.9 / -0.8 C |
+| Medbay, 0.1 m^2 | 4.7 / 11 / 44 | 4.5 / 11 / 44 | 1.2 / 1.2 C |
+| Bridge, 2.2 m^2 | 0.8 / 1.9 / 6.8 | 0.7 / 1.7 / 6.6 | -0.8 / -0.8 C |
+| Port turret pod, 2.2 m^2 | 0.1 / 0.1 / 0.3 | 0.0 / 0.0 / 0.1 | -3.5 / -0.6 C |
 
-The sub-step is within 0.3 s of the reference everywhere; the pod's coldest air differs because a
-0.4 s event is four sub-steps. A crew member's fate in a pod blown open is decided by pressure
+The sub-step is within 0.3 s of the reference everywhere (the largest gap on layout v2 is 0.2 s);
+the pod's coldest air differs because a 0.3 s event is three sub-steps. A crew member's fate in a pod blown open is decided by pressure
 (Armstrong's limit in under half a second), not temperature.
 
 ### 5. Mixing and ventilation
@@ -161,7 +167,7 @@ equal moles both ways (pressure unchanged):
   Capped at 25% of the smaller room's gas per sub-step.
 - **Ventilation**: every room trades air with the duct at its design air changes times the fans'
   supply ratio. Air changes per hour: rooms 10, corridors 8, bays 4, crawlspaces 6, the airlock 4,
-  pods 20, engineering 15 (its heat). The bridge's 462 m^3 at 10 an hour is 1.28 m^3/s.
+  pods 20, engineering 15 (its heat). The bridge's 608.6 m^3 at 10 an hour is 1.69 m^3/s.
 
 ### 6. Dampers
 
@@ -181,7 +187,8 @@ because a room at vacuum may still have its hole.
 This was the hardest rule to get right, and the simulation showed why. With dampers that shut only
 below 85 kPa, a 0.1 m^2 breach in the hangar was fed through its 0.6 m^2 vent by the whole ship:
 1,900 kg lost and the duct drawn down to 91 kPa. With a rule on the difference to the duct, the
-bridge's 0.28 m^2 vent kept its breached room within 2.5 kPa of the duct, below any sensible
+bridge's 0.28 m^2 vent (the v1 plan's; it is 0.365 m^2 on v2, and these replaced rules were not
+rerun) kept its breached room within 2.5 kPa of the duct, below any sensible
 threshold. Excess flow, scaled to the room, catches both; it shuts every breached room's damper
 within 2 s, from 0.01 m^2 in engineering to 2.2 m^2 in a pod, and never trips in 20 minutes of cruise
 or combat.
@@ -201,10 +208,10 @@ receiver, a 60 m^3 tank in the hangar rated to 3,000 kPa. Make-up stops if the d
 below 60 kPa (a leak the reserves would only feed), except while a compartment is being refilled.
 
 **At cruise with eight crew working** (30 minutes): every room at 101.2 kPa, oxygen 21.16 kPa, CO2
-0.02-0.03%; air 16-27 C (the launch bays coolest, with four air changes an hour and much hull; the
-medbay warmest, from its beds' 8 kW). The generator makes 0.041 mol/s of oxygen (32.6 kW) and uses
-2.2 kg of water in 30 minutes; the scrubbers take 0.028 mol/s of CO2; thermal control removes
-110 kW.
+0.02-0.03%; air 18-25 C (the aft passage coolest at 17.8 C, then the launch bays at 18.8 C, with
+four air changes an hour and much hull; the medbay warmest at 25.4 C, from its beds' 8 kW). The
+generator makes 0.042 mol/s of oxygen (33.5 kW) and uses 2.3 kg of water in 30 minutes; the
+scrubbers take 0.030 mol/s of CO2; thermal control removes 112 kW.
 
 ### 8. Metabolism
 
@@ -215,16 +222,16 @@ Per crew member at rest: 0.304 mmol/s of oxygen (0.84 kg a day), 0.264 mmol/s of
 
 Each room gains the heat of its loads, lights and crew (`power-grid` section 10), exchanges heat with
 its neighbours through shared bulkheads (5 W/(m^2 K) over the facing area computed from the layout's
-boxes, within 0.6 m) and loses heat through the hull to a 250 K skin (0.4 W/(m^2 K) over the
-exterior area: the bridge has 288 m^2, engineering 1,012 m^2). The supply air arrives at 20 C.
+brushes, within 0.6 m) and loses heat through the hull to a 250 K skin (0.4 W/(m^2 K) over the
+exterior area: the bridge has 306 m^2, engineering 989 m^2). The supply air arrives at 20 C.
 
 ### 10. What the plant's loss costs, from the simulation
 
 | Lost | With eight crew working | When it matters |
 | --- | --- | --- |
-| Oxygen generator and scrubbers, fans running | Bridge CO2 0.050 kPa after 1 h, 0.065 kPa after 4 h; oxygen 21.08 kPa after 4 h | Days: 368,000 mol of air dilutes eight people's breath |
-| The whole plant, fans too (rooms isolated) | Bridge (four crew) CO2 0.093 kPa after 1 h, 0.251 kPa after 4 h; 32 C after 4 h | Many hours: heat first, CO2 much later |
-| Thermal control only, in combat | Turret pods reach 30 C in 8 min; after 1 h the magazine is at 46 C, the pods 41-43 C, the medbay 42 C | Within a mission: 45 C impairs (section 12) |
+| Oxygen generator and scrubbers, fans running | Bridge CO2 0.048 kPa after 1 h, 0.062 kPa after 4 h; oxygen 21.09 kPa after 4 h | Days: 408,600 mol of air dilutes eight people's breath |
+| The whole plant, fans too (rooms isolated) | Bridge (four crew) CO2 0.080 kPa after 1 h, 0.199 kPa after 4 h; 29 C after 4 h (the hottest room engineering, 36 C) | Many hours: heat first, CO2 much later |
+| Thermal control only, in combat | Turret pods reach 30 C in 6 min; after 1 h the magazine is at 38 C, the pods 39-45 C, the medbay 39 C, engineering 39 C | Within a mission: 45 C impairs (section 12) |
 
 Real metabolism makes a dead plant a slow problem. The fast killers are breaches, fire and smoke,
 and heat from equipment without thermal control; question L4 asks whether to accelerate metabolism
@@ -233,7 +240,7 @@ for play.
 ### 11. Breaches and decompression
 
 A breach is a link to space of the area `damage-control` gives it. Every compartment, alone with its
-door shut (the default), from 101.3 kPa:
+door shut (the default), from 101.3 kPa (layout v2, rerun 2026-10-05):
 
 - **16 kPa O2**: oxygen partial pressure below 16 kPa (hypoxia impairment begins).
 - **50 kPa**: crew impaired by pressure.
@@ -243,49 +250,50 @@ door shut (the default), from 101.3 kPa:
 
 | POI | Compartment | Volume m^3 | 0.1 m^2: 16 kPa O2 / 50 kPa / 6.3 kPa, s | 1 m^2: same, s | 2.2 m^2 (a door-sized hole): 50 / 6.3 kPa, s | Own door to space | Crew at 1 m^2: unconscious / dead, s | Coldest air at 1 m^2, C |
 | ---: | --- | ---: | --- | --- | --- | --- | --- | ---: |
-| 1 | Bridge | 462.0 | 11 / 27 / 108 | 1.3 / 3.0 / 11 | 1.4 / 5.3 | none | 15 / 101 | -1 |
-| 2 | Captain's ready room | 85.5 | 2.3 / 5.3 / 20 | 0.3 / 0.6 / 2.3 | 0.3 / 1.2 | none | 10 / 92 | -1 |
-| 3 | Computer core | 85.5 | 2.3 / 5.3 / 20 | 0.3 / 0.6 / 2.3 | 0.3 / 1.2 | none | 10 / 92 | -1 |
+| 1 | Bridge | 608.6 | 14 / 35 / 142 | 1.7 / 3.8 / 15 | 1.9 / 6.8 | none | 17 / 105 | -1 |
+| 2 | Captain's ready room | 143.9 | 3.7 / 8.7 / 34 | 0.4 / 1.0 / 3.7 | 0.5 / 1.9 | none | 11 / 94 | -1 |
+| 3 | Computer core | 143.9 | 3.7 / 8.7 / 34 | 0.4 / 1.0 / 3.7 | 0.5 / 1.9 | none | 11 / 94 | -1 |
 | 4 | Command passage | 120.0 | 3.1 / 7.3 / 28 | 0.4 / 0.8 / 3.1 | 0.4 / 1.6 | none | 11 / 93 | -1 |
-| 5 | Dorsal turret access | 48.0 | 1.3 / 3.1 / 12 | 0.2 / 0.4 / 1.4 | 0.2 / 0.7 | none | 9.8 / 91 | -1 |
+| 5 | Dorsal turret access | 45.8 | 1.3 / 2.9 / 11 | 0.2 / 0.4 / 1.4 | 0.2 / 0.7 | none | 9.8 / 91 | -1 |
 | 6 | Aft passage | 135.0 | 3.5 / 8.1 / 32 | 0.4 / 0.9 / 3.5 | 0.5 / 1.8 | none | 11 / 94 | -1 |
-| 7 | Torpedo room | 210.0 | 5.2 / 12 / 49 | 0.6 / 1.4 / 5.3 | 0.7 / 2.6 | none | 12 / 95 | -1 |
-| 8 | Medbay | 138.0 | 3.5 / 8.3 / 33 | 0.4 / 1.0 / 3.6 | 0.5 / 1.8 | none | 11 / 94 | -1 |
-| 9 | Damage control | 138.0 | 3.5 / 8.3 / 33 | 0.4 / 1.0 / 3.6 | 0.5 / 1.8 | none | 11 / 94 | -1 |
-| 10 | Crew quarters | 232.5 | 5.7 / 14 / 55 | 0.7 / 1.6 / 5.8 | 0.8 / 2.8 | none | 12 / 96 | -1 |
-| 11 | Mess | 232.5 | 5.7 / 14 / 55 | 0.7 / 1.6 / 5.8 | 0.8 / 2.8 | none | 12 / 96 | -1 |
-| 12 | Port turret access | 234.0 | 5.8 / 14 / 55 | 0.7 / 1.6 / 5.8 | 0.8 / 2.8 | none | 12 / 96 | -1 |
-| 13 | Starboard turret access | 234.0 | 5.8 / 14 / 55 | 0.7 / 1.6 / 5.8 | 0.8 / 2.8 | none | 12 / 96 | -1 |
+| 7 | Torpedo room | 354.6 | 8.5 / 21 / 83 | 1.0 / 2.3 / 8.6 | 1.1 / 4.1 | none | 14 / 99 | -1 |
+| 8 | Medbay | 187.2 | 4.7 / 11 / 44 | 0.5 / 1.3 / 4.7 | 0.6 / 2.3 | none | 12 / 95 | -1 |
+| 9 | Damage control | 187.2 | 4.7 / 11 / 44 | 0.5 / 1.3 / 4.7 | 0.6 / 2.3 | none | 12 / 95 | -1 |
+| 10 | Crew quarters | 271.5 | 6.6 / 16 / 64 | 0.8 / 1.8 / 6.7 | 0.9 / 3.2 | none | 13 / 97 | -1 |
+| 11 | Mess | 271.5 | 6.6 / 16 / 64 | 0.8 / 1.8 / 6.7 | 0.9 / 3.2 | none | 13 / 97 | -1 |
+| 12 | Port turret access | 233.0 | 5.7 / 14 / 55 | 0.7 / 1.6 / 5.8 | 0.8 / 2.8 | none | 12 / 96 | -1 |
+| 13 | Starboard turret access | 233.0 | 5.7 / 14 / 55 | 0.7 / 1.6 / 5.8 | 0.8 / 2.8 | none | 12 / 96 | -1 |
 | 14 | Main corridor | 195.0 | 4.9 / 12 / 46 | 0.6 / 1.3 / 4.9 | 0.6 / 2.4 | none | 12 / 95 | -1 |
-| 15 | Hangar | 1698.0 | 38 / 97 / 395 | 4.1 / 10.0 / 40 | 4.6 / 18 | `p_hangar_pad` 72.0 m^2: 0.2 / 0.7 | 31 / 130 | -1 |
-| 16 | Port launch bay | 231.0 | 5.7 / 14 / 54 | 0.7 / 1.6 / 5.7 | 0.8 / 2.8 | `p_drop_p` 43.2 m^2: 0.1 / 0.3 | 12 / 96 | -1 |
-| 17 | Starboard launch bay | 231.0 | 5.7 / 14 / 54 | 0.7 / 1.6 / 5.7 | 0.8 / 2.8 | `p_drop_s` 43.2 m^2: 0.1 / 0.3 | 12 / 96 | -1 |
-| 18 | Engineering | 2520.0 | 57 / 143 / 586 | 5.9 / 15 / 59 | 6.7 / 27 | none | 41 / 149 | 0 |
-| 19 | Drive section | 288.0 | 7.0 / 17 / 68 | 0.8 / 1.9 / 7.1 | 0.9 / 3.4 | none | 13 / 97 | -1 |
+| 15 | Hangar | 1682.4 | 38 / 96 / 391 | 4.1 / 9.9 / 40 | 4.6 / 18 | `p_hangar_pad` 72.0 m^2: 0.2 / 0.7 | 31 / 130 | -1 |
+| 16 | Port launch bay | 190.1 | 4.7 / 11 / 45 | 0.6 / 1.3 / 4.8 | 0.6 / 2.4 | `p_drop_p` 43.2 m^2: 0.1 / 0.3 | 12 / 95 | -1 |
+| 17 | Starboard launch bay | 190.1 | 4.7 / 11 / 45 | 0.6 / 1.3 / 4.8 | 0.6 / 2.4 | `p_drop_s` 43.2 m^2: 0.1 / 0.3 | 12 / 95 | -1 |
+| 18 | Engineering | 2538.0 | 57 / 145 / 590 | 5.9 / 15 / 59 | 6.8 / 27 | none | 42 / 149 | 0 |
+| 19 | Drive section | 307.2 | 7.4 / 18 / 72 | 0.9 / 2.1 / 7.5 | 1.0 / 3.6 | none | 13 / 98 | -1 |
 | 20 | Lower corridor | 150.0 | 3.8 / 9.0 / 35 | 0.4 / 1.0 / 3.8 | 0.5 / 1.9 | none | 11 / 94 | -1 |
-| 21 | Magazine | 240.0 | 5.9 / 14 / 56 | 0.7 / 1.6 / 6.0 | 0.8 / 2.9 | none | 12 / 96 | -1 |
-| 22 | Life support | 325.5 | 7.8 / 19 / 76 | 0.9 / 2.2 / 8.0 | 1.0 / 3.8 | none | 13 / 98 | -1 |
-| 23 | Cargo and stores | 325.5 | 7.8 / 19 / 76 | 0.9 / 2.2 / 8.0 | 1.0 / 3.8 | none | 13 / 98 | -1 |
-| 24 | Airlock | 24.0 | 0.7 / 1.7 / 6.0 | 0.1 / 0.2 / 0.8 | 0.2 / 0.5 | `p_airlock_outer` 2.2 m^2: 0.2 / 0.4 | 9.5 / 91 | -1 |
-| 25 | Shield generator | 103.5 | 2.7 / 6.3 / 25 | 0.3 / 0.7 / 2.8 | 0.4 / 1.4 | none | 11 / 93 | -1 |
-| 26 | Forward switchboard | 103.5 | 2.7 / 6.3 / 25 | 0.3 / 0.7 / 2.8 | 0.4 / 1.4 | none | 11 / 93 | -1 |
-| 27 | Dorsal turret pod | 15.6 | 0.5 / 1.2 / 4.2 | 0.1 / 0.2 / 0.6 | 0.1 / 0.4 | none | 9.4 / 91 | -1 |
-| 28 | Ventral turret pod | 21.9 | 0.7 / 1.6 / 5.6 | 0.1 / 0.2 / 0.8 | 0.2 / 0.4 | none | 9.5 / 91 | -1 |
-| 29 | Port turret pod | 15.6 | 0.5 / 1.2 / 4.2 | 0.1 / 0.2 / 0.6 | 0.1 / 0.4 | none | 9.4 / 91 | -1 |
-| 30 | Starboard turret pod | 15.6 | 0.5 / 1.2 / 4.2 | 0.1 / 0.2 / 0.6 | 0.1 / 0.4 | none | 9.4 / 91 | -1 |
+| 21 | Magazine | 501.1 | 12 / 29 / 117 | 1.4 / 3.2 / 12 | 1.6 / 5.7 | none | 16 / 102 | -1 |
+| 22 | Life support | 367.8 | 8.8 / 22 / 86 | 1.0 / 2.4 / 9.0 | 1.2 / 4.2 | none | 14 / 99 | -1 |
+| 23 | Cargo and stores | 349.1 | 8.4 / 20 / 82 | 1.0 / 2.3 / 8.5 | 1.1 / 4.0 | none | 14 / 99 | -1 |
+| 24 | Airlock | 26.4 | 0.8 / 1.8 / 6.6 | 0.1 / 0.3 / 0.9 | 0.2 / 0.5 | `p_airlock_outer` 2.2 m^2: 0.2 / 0.5 | 9.6 / 91 | -1 |
+| 25 | Shield generator | 167.8 | 4.2 / 10.0 / 40 | 0.5 / 1.2 / 4.3 | 0.6 / 2.1 | none | 11 / 94 | -1 |
+| 26 | Forward switchboard | 167.8 | 4.2 / 10.0 / 40 | 0.5 / 1.2 / 4.3 | 0.6 / 2.1 | none | 11 / 94 | -1 |
+| 27 | Dorsal turret pod | 12.9 | 0.5 / 1.1 / 3.6 | 0.1 / 0.2 / 0.6 | 0.1 / 0.3 | none | 9.4 / 91 | -2 |
+| 28 | Ventral turret pod | 18.1 | 0.6 / 1.4 / 4.7 | 0.1 / 0.2 / 0.7 | 0.2 / 0.4 | none | 9.4 / 91 | -1 |
+| 29 | Port turret pod | 12.9 | 0.5 / 1.1 / 3.6 | 0.1 / 0.2 / 0.6 | 0.1 / 0.3 | none | 9.4 / 91 | -2 |
+| 30 | Starboard turret pod | 12.9 | 0.5 / 1.1 / 3.6 | 0.1 / 0.2 / 0.6 | 0.1 / 0.3 | none | 9.4 / 91 | -2 |
 
 Times scale with volume over area: the hangar takes 40 s to reach Armstrong's limit through 1 m^2,
-a pod 0.6 s. A crew member caught unsuited in a breached room is unconscious in 9-15 s in every room
-but the two largest (31 s in the hangar, 41 s in engineering) and dead 90 s after Armstrong's limit.
+a pod 0.6 s. A crew member caught unsuited in a breached room is unconscious in 9.4-17 s in every
+room but the two largest (31 s in the hangar, 42 s in engineering; the slowest of the rest are the
+bridge, 17 s, and the magazine, 16 s) and dead 90 s after Armstrong's limit.
 
 **Venting deliberately** through the duct (`damage-control`'s fire tool): the board shuts the
 room's doors, forces every other damper shut and opens the overboard dump; any room reaches 20 kPa
 in 24 s (vents are sized in proportion to volume), engineering in 82 s.
 
-**Refilling** a sealed room from vacuum through its vent: the medbay in 125 s for 142 kg of reserve
-gas, the quarters or a launch bay in 213 s for 244 kg. **Engineering cannot be refilled**: it holds
-3,040 kg and the reserves 2,740 kg; after a large breach it stays in vacuum until resupply, and the
-crew work it suited (question L5).
+**Refilling** a sealed room from vacuum through its vent: the medbay in 170 s for 193 kg of reserve
+gas, the quarters in 248 s for 283 kg, a launch bay in 174 s for 197 kg. **Engineering cannot be
+refilled**: it holds 3,032 kg and the reserves 2,740 kg; after a large breach it stays in vacuum
+until resupply, and the crew work it suited (question L5).
 
 ### 12. Crew effects
 
@@ -313,47 +321,50 @@ Recovery: hypoxia dose falls 3.3% a second in good air, hypercapnia 1.7%.
 **Pump-down.** The bay pumps (in the hangar, `hangar_pumps`, 6 MW at most) move bay air into the
 receiver: displacement 24 m^3/s, power by isothermal compression `P = S p ln(p_receiver / p) / 0.6 +
 0.1 MW`. They stop at 5 kPa (or a full receiver), when the bay's 0.1 m^2 vent valve opens and the
-launch is permitted; the valve takes the rest.
+launch is permitted; the valve takes the rest. On layout v2 (rerun 2026-10-05; a launch bay was
+231 m^3 and 28.6 s to launch on v1, the hangar 1,698 m^3 and 208.4 s):
 
-| | Port launch bay (231 m^3, 277 kg) | Hangar (1,698 m^3, 2,038 kg) |
+| | Port launch bay (190.1 m^3, 228 kg) | Hangar (1,682.4 m^3, 2,019 kg) |
 | --- | ---: | ---: |
-| To 50 kPa | 6.8 s | 47.9 s |
-| To 10 kPa | 21.9 s | 159.5 s |
-| **Pumps stop at 5 kPa: launch permitted** | **28.6 s** | **208.4 s** |
-| To 1 kPa (vent valve) | 61.4 s | 445.6 s |
-| Pump energy, peak power | 68 MJ, 3.71 MW | 835 MJ, 6.00 MW |
-| Air kept in the receiver | 97.4% (receiver at 481 kPa) | 95.3% (receiver at 2,832 kPa) |
-| Air vented | 14 kg | 106 kg |
-| **Repressurize from the receiver** | **15.7 s** | **105.8 s** (plus make-up through the duct) |
+| To 50 kPa | 5.7 s | 47.5 s |
+| To 10 kPa | 18.1 s | 158.0 s |
+| **Pumps stop at 5 kPa: launch permitted** | **23.6 s** | **206.5 s** |
+| To 1 kPa (vent valve) | 50.6 s | 441.5 s |
+| Pump energy, peak power | 53 MJ, 3.46 MW | 826 MJ, 6.00 MW |
+| Air kept in the receiver | 97.7% (receiver at 415 kPa) | 95.3% (receiver at 2,808 kPa) |
+| Air vented | 12 kg | 105 kg |
+| **Repressurize from the receiver** | **13.0 s** | **104.6 s** (plus make-up through the duct) |
 
 **Emergency vent** instead (the drop door or pad door opened with the bay full): the launch bay
-passes Armstrong's limit 1.0 s after its door starts to open and loses 277 kg; the hangar 2.8 s and
-2,038 kg, 74% of the ship's reserve gas. Through its vent valve alone a launch bay takes 54 s.
+passes Armstrong's limit 0.9 s after its door starts to open and loses 228 kg; the hangar 2.8 s and
+2,019 kg, 74% of the ship's reserve gas. Through its vent valve alone a launch bay takes 45 s.
 
 The pumps refuse to start while an unsuited crew member is in the bay (`bay_pumps.interlock_unsuited_crew`),
 vision pillar 4.
 
 ### 14. The airlock
 
-Cycle out: both doors shut, the airlock pump (2 m^3/s into cargo, 0.15 MW) pumps to 5 kPa in 35.7 s
-using 3.5 MJ, then the outer door opens in 2.0 s, venting 1.5 kg. Cycle in: the outer door shuts
-(2.0 s), the 0.02 m^2 equalizing valve fills the airlock from cargo in 13.0 s, the inner door opens.
-(Rerun 2026-10-05 with `crew-on-deck`'s 2.0 s pressure door; with the first 3 s door the fill took
-13.9 s, because air left through the closing door. The pump-down does not depend on it.)
+Cycle out: both doors shut, the airlock pump (2 m^3/s into cargo, 0.15 MW) pumps to 5 kPa in 39.3 s
+using 3.8 MJ, then the outer door opens in 2.0 s, venting 1.7 kg. Cycle in: the outer door shuts
+(2.0 s), the 0.02 m^2 equalizing valve fills the airlock from cargo in 14.1 s, the inner door opens.
+(Rerun 2026-10-05 with `crew-on-deck`'s 2.0 s pressure door, and again on layout v2, whose airlock
+is 26.4 m^3: on v1's 24.0 m^3 it was 35.7 s, 3.5 MJ, 1.5 kg and 13.0 s, and with the first 3 s door
+the fill took 13.9 s, because air left through the closing door. The pump-down does not depend on
+the door.)
 
 ### 15. Reconciling `shuttle-bay-and-fighters`
 
 | Its assumption | Computed here | Proposal |
 | --- | --- | --- |
-| Pump-down to 1 kPa in 30 s | 28.6 s to 5 kPa, 61.4 s to 1 kPa | Launch permitted at 5 kPa, the pumps' stop: the drop door vents the last 14 kg. Its sequence time stands (question L2) |
-| Repressurize in 25 s | 15.7 s | Shorter |
-| Emergency vent in 6 s, 277 kg | Armstrong at 1.0 s after the door starts to open (4 s travel), 277 kg | Aligned |
-| Hangar pump-down 120 s; vent 20 s, 2,040 kg | 208 s; Armstrong at 2.8 s, 2,038 kg | The Petrel launch takes 88 s longer (question L3) |
+| Pump-down to 1 kPa in 30 s | 23.6 s to 5 kPa, 50.6 s to 1 kPa | Launch permitted at 5 kPa, the pumps' stop: the drop door vents the last 12 kg. Its sequence takes the 23.6 s (question L2) |
+| Repressurize in 25 s | 13.0 s | Shorter |
+| Emergency vent in 6 s, 277 kg | Armstrong at 0.9 s after the door starts to open (4 s travel), 228 kg | Aligned (a launch bay holds 228 kg on layout v2) |
+| Hangar pump-down 120 s; vent 20 s, 2,040 kg | 207 s; Armstrong at 2.8 s, 2,019 kg | The Petrel launch takes 86.5 s longer (question L3) |
 | Hangar doors to the corridors, engineering and galleries close for a Petrel launch | Every door is closed by default and interlocked | No layout change needed |
 
-`bridge-stations` F3 listed the pump-down at "~38 s"; it should read 29 s to launch (corrected
-there 2026-10-04, as were `shuttle-bay-and-fighters`' sequence times: 42.6 s cold, 36.6 s from
-ready 5).
+`bridge-stations` F3 listed the pump-down at "~38 s"; it should read 24 s to launch (corrected
+there 2026-10-04 to 29 s, and 2026-10-05 to 24 s on layout v2, as were `shuttle-bay-and-fighters`'
+sequence times: 37.6 s cold, 31.6 s from ready 5).
 
 ### 16. Console readouts and previews (preview = resolver)
 
@@ -416,7 +427,7 @@ compartment graph holds every link that moves air:
 1. A duct node, which is not walkable and has no boxes: a new top-level list
    `"ducts": [ { "id": "duct", "name": "Air duct trunk and plenum", "volume_m3": 40.0, "center_m": [3.0, -0.8, 9.0] } ]`.
 2. One vent portal per compartment, `{ "id": "vent_<compartment>", "kind": "vent", "between": ["<compartment>", "duct"], "area_m2": <0.0006 x volume, 0.02-0.6> }`
-   (the bridge's is 0.277 m^2, each pod's 0.02 m^2, engineering's and the hangar's 0.6 m^2), and
+   (the bridge's is 0.365 m^2, each pod's 0.02 m^2, engineering's and the hangar's 0.6 m^2), and
    `{ "id": "duct_dump", "kind": "dump", "between": ["duct", "space"], "area_m2": 0.5 }`.
 3. The bay vent valves `valve_hangar`, `valve_launch_bay_p`, `valve_launch_bay_s` (kind `valve`,
    bay to space, 0.1 m^2) and `valve_airlock_eq` (cargo to airlock, 0.02 m^2).
@@ -441,8 +452,8 @@ compartment graph holds every link that moves air:
 | Shot | Shows |
 | --- | --- |
 | `atmosphere-normal` | Cruise: every room at 101 kPa, two doors open with crew passing, the plant's rates and the table of every compartment |
-| `breach-launch-bay` | A 40 MJ hit from below into the port launch bay, 4 s later: a 0.46 m^2 breach, the bay at 41 kPa and falling, a fire dying for want of oxygen, red alert |
-| `hangar-pumpdown` | The hangar 100 s into its pump-down: 23 kPa, the air at 4.5 C from expansion, the receiver at 2,284 kPa, the pumps drawing 4.4 MW |
+| `breach-launch-bay` | A 40 MJ hit from below into the port launch bay, 4 s later: a 0.46 m^2 breach, the bay at 33.9 kPa and falling, a fire (1.34 MW) dying for want of oxygen, red alert |
+| `hangar-pumpdown` | The hangar 100 s into its pump-down: 23.1 kPa, the air at 4.4 C from expansion, the receiver at 2,274 kPa, the pumps drawing 4.4 MW |
 
 ## Open questions
 
@@ -451,9 +462,9 @@ rest are recommendations taken (ask only with screenshots, CLAUDE.md 13).
 
 | Id | Question and the fact it turns on | Options | Recommendation | Shot |
 | --- | --- | --- | --- | --- |
-| L1 | Are doors shut by default? Shut, a breach costs one room; open, a 1 m^2 breach anywhere would take the whole ship's air (368,000 mol, time constant 74 s) to Armstrong's limit in about 3.5 minutes. | (a) Shut unless someone passes or the board holds them, open on approach. (b) Open, closing on an alarm only. | (a). | `atmosphere-normal` |
-| L2 | When may a fighter drop? The pumps stop at 5 kPa after 28.6 s; 1 kPa takes 61 s. | (a) At 5 kPa, venting the last 14 kg. (b) At 1 kPa. | (a): keeps `shuttle-bay-and-fighters`' sequence (42.6 s cold, from its earlier 44 s at an assumed 30 s pump-down). | `hangar-pumpdown` |
-| L3 | The hangar takes 208 s to pump down at 6 MW. | (a) Accept: the Petrel is not a combat launch. (b) Pumps twice the size (12 MW, about 105 s). (c) Vent it (2,038 kg, 74% of the reserve). | (a). | `hangar-pumpdown` |
+| L1 | Are doors shut by default? Shut, a breach costs one room; open, a 1 m^2 breach anywhere would take the whole ship's air (408,600 mol, time constant about 82 s, the v1 run's 74 s scaled by the air aboard) to Armstrong's limit in about 3.9 minutes. | (a) Shut unless someone passes or the board holds them, open on approach. (b) Open, closing on an alarm only. | (a). | `atmosphere-normal` |
+| L2 | When may a fighter drop? The pumps stop at 5 kPa after 23.6 s; 1 kPa takes 51 s. | (a) At 5 kPa, venting the last 12 kg. (b) At 1 kPa. | (a): keeps `shuttle-bay-and-fighters`' sequence (37.6 s cold, from its earlier 44 s at an assumed 30 s pump-down). | `hangar-pumpdown` |
+| L3 | The hangar takes 207 s to pump down at 6 MW. | (a) Accept: the Petrel is not a combat launch. (b) Pumps twice the size (12 MW, about 103 s). (c) Vent it (2,019 kg, 74% of the reserve). | (a). | `hangar-pumpdown` |
 | L4 | Real metabolism makes a dead plant harmless for hours. | (a) Real rates: life support is about breaches, fire, smoke and heat. (b) Metabolism accelerated 20 times so a dead plant matters within a mission. | (a). | none: recommendation taken (ask only with screenshots) |
-| L5 | The reserves (2,740 kg) cannot refill engineering (3,040 kg). | (a) As designed: a breached engineering stays in vacuum until resupply. (b) Reserves of 4,000 kg. | (a): the suited engineer is a strong scene, and the debrief resupplies. | none: recommendation taken (ask only with screenshots) |
+| L5 | The reserves (2,740 kg) cannot refill engineering (3,032 kg). | (a) As designed: a breached engineering stays in vacuum until resupply. (b) Reserves of 4,000 kg. | (a): the suited engineer is a strong scene, and the debrief resupplies. | none: recommendation taken (ask only with screenshots) |
 | L6 | The door interlock: 20 kPa, with an override that costs air. | (a) As designed. (b) No override: a breached room is sealed until repaired. | (a): rescue at a cost is the better choice to give players. | `breach-launch-bay` |

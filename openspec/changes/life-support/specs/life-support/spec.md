@@ -26,8 +26,8 @@ implicitly over all links at once and SHALL move gas upwind in order of falling 
 node holds negative gas and a draining room's pressure never rises above 1 Pa.
 
 #### Scenario: A pod blown open
-- **WHEN** a 2.2 m^2 breach opens in a 15.6 m^3 turret pod
-- **THEN** the pod passes 6.3 kPa within 0.4 s and no species in any node goes below zero
+- **WHEN** a 2.2 m^2 breach opens in a 12.9 m^3 turret pod
+- **THEN** the pod passes 6.3 kPa within 0.3 s and no species in any node goes below zero
 
 #### Scenario: Accuracy at 10 Hz
 - **WHEN** a 1 m^2 breach empties the hangar at 10 Hz and at 1 kHz
@@ -38,12 +38,12 @@ With its doors shut, a compartment breached to space SHALL lose pressure by the 
 giving the times of the design's decompression table within 5%.
 
 #### Scenario: The bridge holed
-- **WHEN** a 1 m^2 breach opens in the bridge (462 m^3)
-- **THEN** it falls below 50 kPa in about 3 s and below 6.3 kPa in about 11 s
+- **WHEN** a 1 m^2 breach opens in the bridge (608.6 m^3)
+- **THEN** it falls below 50 kPa in about 3.8 s and below 6.3 kPa in about 15 s
 
 #### Scenario: A small leak in the hangar
-- **WHEN** a 0.1 m^2 breach opens in the hangar (1,698 m^3)
-- **THEN** it takes about 97 s to fall below 50 kPa and about 395 s to fall below 6.3 kPa
+- **WHEN** a 0.1 m^2 breach opens in the hangar (1,682.4 m^3)
+- **THEN** it takes about 96 s to fall below 50 kPa and about 391 s to fall below 6.3 kPa
 
 ### Requirement: Doors keep each compartment its own pressure boundary
 Doors, hatches and ladder hatches SHALL be shut unless a crew member is passing or the damage
@@ -84,7 +84,7 @@ deliver in proportion to the supply `power-grid` gives it.
 
 #### Scenario: Thermal control lost in combat
 - **WHEN** thermal control loses its power during combat
-- **THEN** the turret pods pass 30 C within about 8 minutes
+- **THEN** the turret pods pass 30 C within about 6 minutes
 
 ### Requirement: Crew are affected by the air they breathe
 Each unsuited crew member SHALL consume oxygen and produce CO2 and heat (0.304 and 0.264 mmol/s and
@@ -94,7 +94,7 @@ tables give, including death after 90 s below 6.3 kPa.
 
 #### Scenario: Caught in a breached bay
 - **WHEN** an unsuited crew member is in the port launch bay when a 1 m^2 breach opens
-- **THEN** they are unconscious within about 12 s and dead within about 96 s unless pulled out
+- **THEN** they are unconscious within about 12 s and dead within about 95 s unless pulled out
 
 ### Requirement: Bays pump down into a receiver and launch at the pumps' stop
 The bay pumps SHALL move a bay's air into the receiver at 24 m^3/s of displacement with power by
@@ -104,16 +104,16 @@ receiver's air and finish from the duct.
 
 #### Scenario: Pumping down a launch bay
 - **WHEN** flight ops pumps down the port launch bay
-- **THEN** launch is permitted after about 29 s, about 97% of the bay's air is in the receiver, and
-  the pumps drew at most about 3.7 MW
+- **THEN** launch is permitted after about 24 s, about 98% of the bay's air is in the receiver, and
+  the pumps drew at most about 3.5 MW
 
 #### Scenario: Pumping down the hangar
 - **WHEN** the hangar is pumped down for the shuttle
-- **THEN** the pumps stop at 5 kPa after about 208 s, having used about 835 MJ
+- **THEN** the pumps stop at 5 kPa after about 207 s, having used about 826 MJ
 
 #### Scenario: Emergency vent
 - **WHEN** a launch bay's drop door is opened with the bay full
-- **THEN** the bay passes 6.3 kPa about 1 s later and loses about 277 kg of air
+- **THEN** the bay passes 6.3 kPa about 1 s later and loses about 228 kg of air
 
 ### Requirement: The airlock cycles in under a minute
 The airlock SHALL cycle out by pumping into cargo to 5 kPa and opening its outer door, and cycle in
@@ -121,7 +121,7 @@ by shutting its outer door and equalizing through its valve before opening the i
 
 #### Scenario: Going outside
 - **WHEN** a suited crew member cycles out
-- **THEN** the airlock reaches 5 kPa in about 36 s and the outer door is open 2 s later
+- **THEN** the airlock reaches 5 kPa in about 39 s and the outer door is open 2 s later
 
 ### Requirement: Readouts and previews come from the model
 Every life support readout SHALL be the state of the last sub-step, and every preview (time to a
@@ -129,8 +129,8 @@ pressure, a refill's time and gas cost, time to Armstrong's limit) SHALL step th
 a copy of the compartment, its pump and its store.
 
 #### Scenario: A pump-down preview
-- **WHEN** flight ops sees "launch in 29 s" for the port launch bay and starts the pump-down
-- **THEN** launch is permitted within one sub-step of 29 s later
+- **WHEN** flight ops sees "launch in 24 s" for the port launch bay and starts the pump-down
+- **THEN** launch is permitted within one sub-step of 24 s later
 
 ### Requirement: Atmosphere data is validated at startup
 `data/ships/<ship>/atmosphere.json` SHALL be validated at startup with the rules of

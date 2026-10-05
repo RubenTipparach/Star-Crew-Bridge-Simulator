@@ -89,8 +89,9 @@ ship and by the mockup:
 
 **What passes the armour**, with the hull at full integrity: a pulse bolt (1.2 MJ) never does until
 its section's armour is worn below 30%; a Lance (40 MJ) passes 36 MJ; a Gannet (60 MJ) 56 MJ. Of that,
-the void between the hull and the first room takes its share by distance: in walkthrough W1, 30.7 MJ
-reached engineering's skin 2.4 m in.
+the void between the hull and the first room takes its share by distance: in walkthrough W1, 34.0 MJ
+reached engineering's skin 2.0 m in (a replica of the march, rerun on layout v2 2026-10-05; on v1,
+30.7 MJ, 2.4 m in).
 
 ### 2. System states
 
@@ -132,41 +133,42 @@ for 900 s (the corridor stayed below 300 C). Vent dampers shut on smoke above 2,
 fire's expansion, so the duct does not carry it.
 
 **Fires, from the simulation** (seeded at 50 kW unless stated, the room's door shut, one unsuited
-crew member inside; times in seconds from ignition; simulated on the v1 boxes' volumes, and to be
-re-run on the v2 plan, whose rooms are larger, noted 2026-10-05):
+crew member inside; times in seconds from ignition; rerun on layout v2 2026-10-05, whose rooms are
+larger, with the harness unchanged):
 
 | Case | 1 MW | Air 60 C | Air 300 C | Smoke 2,000 ppm | Crew impaired / unconscious / dead | Out | Peak MW | Peak air C | Peak kPa | Oxygen at end % |
 | --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: |
-| Quarters, door shut (default) | 113 | 110 | 247 | 225 | 89 / 171 / 183 | 305 | 3.33 | 309 | 196 | 12.6 |
-| Quarters, door held open | 113 | 113 | 252 | 234 | 91 / 174 / 187 | burning at 900 | 3.58 | 338 | 166 | 13.0 |
+| Quarters, door shut (default) | 113 | 118 | 262 | 238 | 96 / 181 / 193 | 321 | 3.71 | 307 | 195 | 12.6 |
+| Quarters, door held open | 113 | 120 | 267 | 246 | 97 / 184 / 196 | burning at 900 | 3.95 | 327 | 167 | 13.0 |
 | Quarters, one extinguisher at 30 s | | | | | | 33 | 0.18 | 24 | 102 | 20.8 |
-| Quarters, one extinguisher at 60 s | | | | | | 67 | 0.40 | 32 | 105 | 20.6 |
-| Quarters, one extinguisher at 90 s | | | | | 89 / - / - | 102 | 0.71 | 49 | 110 | 20.1 |
-| Quarters, one extinguisher at 120 s | 113 | 110 | 341 | 308 | 89 / 203 / 223 | 390 | 2.89 | 302 | 193 | 12.6 |
-| Quarters, two extinguishers at 120 s | 113 | 110 | | | 89 / - / - | 129 | 1.10 | 73 | 118 | 19.5 |
-| Quarters, two extinguishers at 180 s | 113 | 110 | | 303 | 89 / 171 / 183 | 392 | 2.12 | 293 | 190 | 12.7 |
-| Quarters, three extinguishers at 180 s | 113 | 110 | | | 89 / 171 / 183 | 192 | 2.12 | 159 | 147 | 17.1 |
-| Quarters, vented at 60 s | | | | | 65 / 91 / - | 132 | 0.63 | 32 | 105 | 18.2 |
-| Medbay, door shut | 113 | 86 | 202 | 184 | 69 / 142 / 153 | 257 | 2.32 | 312 | 197 | 12.5 |
-| Forward switchboard, inert gas at 30 s | | 77 | | | 61 / - / - | 123 | 0.55 | 69 | 117 | 12.3 |
-| Magazine, no action | 113 | 111 | 246 | 227 | 90 / 172 / 184 | 308 | 3.41 | 315 | 198 | 12.6 |
-| Magazine, inert gas at 30 s | | | | | 65 / - / - | 129 | 0.60 | 44 | 109 | 12.4 |
+| Quarters, one extinguisher at 60 s | | | | | | 67 | 0.40 | 31 | 104 | 20.6 |
+| Quarters, one extinguisher at 90 s | | | | | | 102 | 0.71 | 45 | 109 | 20.3 |
+| Quarters, one extinguisher at 120 s | 113 | 118 | 364 | 324 | 96 / 225 / 244 | 407 | 3.29 | 300 | 193 | 12.6 |
+| Quarters, two extinguishers at 120 s | 113 | 118 | | | 96 / - / - | 129 | 1.10 | 65 | 116 | 19.7 |
+| Quarters, two extinguishers at 180 s | 113 | 118 | | 327 | 96 / 181 / 193 | 415 | 2.55 | 291 | 190 | 12.7 |
+| Quarters, three extinguishers at 180 s | 113 | 118 | | | 96 / 181 / - | 192 | 2.12 | 139 | 140 | 17.6 |
+| Quarters, vented at 60 s | | | | | 66 / 92 / - | 132 | 0.63 | 30 | 104 | 18.7 |
+| Medbay, door shut | 113 | 99 | 228 | 207 | 79 / 158 / 170 | 284 | 2.87 | 308 | 195 | 12.5 |
+| Forward switchboard, inert gas at 30 s | | | | | 66 / - / - | 127 | 0.58 | 53 | 112 | 12.4 |
+| Magazine, no action | 113 | 151 | 325 | 300 | 124 / 222 / 235 | 390 | 5.64 | 310 | 196 | 12.7 |
+| Magazine, inert gas at 30 s | | | | | 63 / - / - | 131 | 0.63 | 33 | 105 | 12.5 |
 | Engineering, 1 MW seed, water mist automatic | at once | | | | | 22 | 1.20 | 22 | 102 | 20.9 |
-| Engineering, 1 MW seed, mist disabled | at once | 173 | 466 | 423 | 130 / 264 / 283 | 575 | 15.89 | 310 | 196 | 13.0 |
+| Engineering, 1 MW seed, mist disabled | at once | 173 | 467 | 425 | 130 / 265 / 283 | 576 | 15.97 | 310 | 196 | 13.0 |
 | Hangar, 300 kW seed, mist automatic | 66 | | | | | 87 | 1.14 | 27 | 103 | 20.7 |
 
 What the table says:
 - **A fire caught in the first 90 s is one extinguisher's work; by 120 s it needs two, by 180 s
   three.** That is the damage control race: the board's dispatch, the walk, the locker.
-- **A sealed room starves its own fire** in about five minutes (oxygen down to 12.6%), but the crew
-  inside are dead in three, and the room's air reaches 196 kPa: the doors' interlock then keeps it
-  shut, which protects the corridor and traps anyone inside.
+- **A sealed room starves its own fire** in about 5.4 minutes (321 s, oxygen down to 12.6%), but the
+  crew inside are dead in 3.2 (193 s), and the room's air reaches 195 kPa: the doors' interlock then
+  keeps it shut, which protects the corridor and traps anyone inside.
 - **Unattended, a fire destroys what is in its room**: with the fire damage rule, the forward
-  switchboard's two sections and the emergency bus were destroyed 172 s after a 50 kW fire started;
-  an engineering fire with its mist disabled took the reactor's auxiliaries, pumps and both main
-  switchboard sections below 75% at 394 s and scrammed the reactor at 414 s.
-- **The magazine's air passes 200 C at 207 s** (the cook-off rule, section 5, would set off its first
-  missile at about 267 s); inert gas at 30 s ends the fire at 129 s with the air never above 44 C.
+  switchboard's two sections and the emergency bus were destroyed 238 s after a 50 kW fire started
+  (the first draft's 172 s did not reproduce: the same harness gives 204 s on the v1 plan, and the
+  v2 room is larger); an engineering fire with its mist disabled took the reactor's auxiliaries,
+  pumps and both main switchboard sections below 75% at 395 s and scrammed the reactor at 415 s.
+- **The magazine's air passes 200 C at 274 s** (the cook-off rule, section 5, would set off its first
+  missile at about 334 s); inert gas at 30 s ends the fire at 131 s with the air never above 33 C.
 
 ### 4. Suppression
 
@@ -183,8 +185,8 @@ What the table says:
 A Gannet in the racks cooks off when the magazine's air has been above 200 C for 60 s, or when a hit
 deposits 10 MJ within 2 m of the racks. It is resolved as a 60 MJ hit from inside, at the racks, by the
 same hit resolution (no armour; the march goes downward through the deck to the hull); the next
-missile checks again 30 s later. An unattended magazine fire reaches 200 C at 207 s, so its first
-missile would cook off near 267 s. The magazine has inert gas for this reason.
+missile checks again 30 s later. An unattended magazine fire reaches 200 C at 274 s, so its first
+missile would cook off near 334 s. The magazine has inert gas for this reason.
 
 ### 6. Repair
 
@@ -251,8 +253,8 @@ switchboard sections, at each door, at each system. A lost computer core sends p
 **A reactor-room fire** is the worst fire aboard: engineering's 2,538 m^3 (v2 plan, 2026-10-05; was
 2,520 m^3) and 120 MJ/m^2 make a 16 MW
 fire possible. The water mist ends a 1 MW fire in 22 s; with the mist disabled, the fire put the
-reactor's auxiliaries and both switchboard sections below 75% by 394 s and scrammed the reactor at
-414 s. Venting engineering takes 82 s and its air cannot be replaced from the reserves (`life-support`
+reactor's auxiliaries and both switchboard sections below 75% by 395 s and scrammed the reactor at
+415 s. Venting engineering takes 82 s and its air cannot be replaced from the reserves (`life-support`
 section 11).
 
 ### 9. Walkthrough W1: a Gannet into the main switchboard
@@ -262,21 +264,21 @@ side at deck B height, toward the main switchboard's port section.
 
 | Time | What happens | From |
 | --- | --- | --- |
-| 0 s | Hull section 2:port absorbs 4 MJ (left at 90%). A 0.60 m^2 breach in engineering. 29.6 MJ deposited in engineering, blast radius 3.1 m. The port switchboard section is destroyed (the starboard section, 15 m away, keeps 98%). The port drive feeder and the port main trunk aft are severed. The engineer on the mezzanine takes 60 HP. No fire (the seeded roll). | The simulation |
+| 0 s | Hull section 2:port absorbs 4 MJ (left at 90%). A 0.68 m^2 breach in engineering. 33.7 MJ deposited in engineering, blast radius 3.2 m. The port switchboard section is destroyed (the starboard section, 15 m away, keeps 98%). The port drive feeder and the port main trunk aft are severed. The engineer on the mezzanine takes 74 HP. No fire (the seeded roll). | The simulation |
 | 0 s | The reactor carries on through the starboard auxiliary train and generator: 30 MW, 63% throttle. The battery gives 24.8 MW. Engineering at 101 kPa | The simulation |
 | 2 s | Engineering's doors and damper are shut (the default and the trip); 96 kPa | The simulation |
-| 0-8 s | The engineer can still leave: below 20 kPa of difference the door opens on approach. After that it needs the override | `life-support` section 3 |
-| 5 s | The board (or its automation) dispatches both teams: they must suit (engineering will be below 50 kPa within 30 s) | Section 7 |
-| 10 s | Engineering 76 kPa; the engineer, still inside, is impaired | The simulation |
-| 30 s | Battery at its reserve: priority 3 drops (the drive stops), priority 2 at 68%; engineering 42 kPa | The simulation |
-| 60 s | Engineering 18 kPa | The simulation |
+| 0-6.9 s | The engineer can still leave: below 20 kPa of difference the door opens on approach. After that it needs the override | `life-support` section 3 |
+| 5 s | The board (or its automation) dispatches both teams: they must suit (engineering will be below 50 kPa at 21.5 s) | Section 7 |
+| 10 s | Engineering 73 kPa; the engineer, still inside, is impaired | The simulation |
+| 30 s | Battery at its reserve: priority 3 drops (the drive stops), priority 2 at 68%; engineering 38 kPa | The simulation |
+| 60 s | Engineering 15 kPa; the engineer unconscious (26 HP left) | The simulation |
 | 71 s | Both teams arrive, suited (5 s + 20 s suits + 46 s walk at the suited 1.5 m/s by the aft passage) | Section 7 |
 | 71-116 s | Team 1 patches the breach from inside: three plates, 45 s | Section 6 |
 | 71-191 s | Team 2 rebuilds the port switchboard section: 4 parts, 120 s | Section 6 |
 | 191 s | Section rebuilt at 50%: 31 MW (the severed trunk still isolates it) | The simulation |
 | 221 s | The port trunk aft spliced: the reactor back to 100%, 48 MW; priority 3 back to its combat share | The simulation |
 | 251 s | The port drive feeder spliced | The simulation |
-| 188 s | If nobody pulled the engineer out: dead (90 s below Armstrong's limit) | The simulation |
+| 177 s | If nobody pulled the engineer out: dead (90 s below Armstrong's limit) | The simulation |
 
 Corrected 2026-10-04 to `crew-on-deck`'s speeds: the teams' walk was 30 s (the first route table's
 29.9 s at 1.6 m/s, through the hangar with T1). Suited, at 1.5 m/s with no running, by the aft
@@ -286,16 +288,18 @@ shifted, not re-run in the library (which does not walk teams); the power at eac
 same. Reconciled 2026-10-05: crew-on-deck owns this. Its suit donning time is 20 s, not the 30 s
 this table first used, so every team event moves 10 s earlier again (arrival 79 s to 69 s, the
 section back at 189 s instead of 199 s, the last splice at 249 s instead of 259 s), shifted the
-same way. The engineer's 188 s does not move: it is the air's, not the teams'.
+same way. The engineer's time (188 s then) does not move with the teams: it is the air's.
 
 Re-measured on the v2 plan, 2026-10-05: the suit lockers stand on damage control's new raked outer
 wall (x -9.09, was -6.6), so `tools/walk_times.py` prints 62.0 m and 45.9 s for the suited walk
 (was 59.7 m and 44.3 s) and every team event moves 2 s later, shifted the same way (arrival 69 s to
 71 s, the section back at 191 s instead of 189 s, the last splice at 251 s instead of 249 s). The
-air, the breach and the engineer's rows are the simulation's and are not re-run here (`life-support`
-recomputes the plan's air).
+air, the breach, the energy and the engineer's rows were rerun in the library on layout v2 the same
+day, the harness unchanged: on v1 the breach was 0.60 m^2, 29.6 MJ deposited (blast radius 3.1 m),
+60 HP to the engineer, engineering at 76, 42 and 18 kPa at 10, 30 and 60 s, the door passable until
+7.8 s, below 50 kPa at 24.1 s, the engineer impaired at 60 s and dead at 188 s, and 3,043 kg lost.
 
-Engineering lost 3,043 kg of air; the reserves cannot refill it, so it stays in vacuum and the
+Engineering lost 3,069 kg of air; the reserves cannot refill it, so it stays in vacuum and the
 engineering bay is worked suited for the rest of the mission (`life-support` question L5). The
 reactor never scrammed: separated switchboard sections and two auxiliary trains (`power-grid`
 sections 3 and 5) are why. In the first draft, before both, this hit destroyed both sections and
@@ -304,43 +308,44 @@ scrammed the reactor 1.9 s later.
 ### 10. Walkthrough W2: a Lance under the port launch bay
 
 Combat; Swift 1's pilot sealed in the cockpit, suited, in the pressurized port launch bay; a deck
-hand in the hangar. A 40 MJ Lance strikes the keel under the bay, travelling up. (Simulated on the
-v1 boxes, where the bay was 231 m^3; to be re-run on the v2 plan's 190.1 m^3 bay, noted
-2026-10-05.)
+hand in the hangar. A 40 MJ Lance strikes the keel under the bay, travelling up. (Rerun on layout
+v2, 2026-10-05, whose bay is 190.1 m^3, was 231 m^3: on v1, 13.6 MJ in the bay, a 1.4 MW fire, the
+pilot 19 HP, the bay at 41 kPa at 4 s, the fire out at 28 s and 294 kg lost.)
 
 | Time | What happens |
 | --- | --- |
-| 0 s | Hull section 3:ventral absorbs 4 MJ. A 0.46 m^2 breach in the port launch bay. 13.6 MJ in the bay, 4.3 MJ in the hangar's port gallery above (through the deck, less a bulkhead's 1.5 MJ). The port cradle falls to 34% (damaged: capability 45%, its release charge takes 2.2 times as long). The port main trunk aft is severed in the gallery: the hangar's port panel is now fed from forward through the midships trunk, and nothing is lost. A 1.4 MW fire starts in the bay. The pilot takes 19 HP, the deck hand 1 |
-| 2 s | The bay at 66.6 kPa (its pressure door was shut, as pressure doors are); the fire at 1.44 MW |
-| 4 s | 41 kPa (the `breach-launch-bay` shot) |
-| 10 s | 10 kPa; the fire at 1.09 MW and failing for oxygen |
-| 28 s | The fire out; the bay at vacuum, 294 kg of air lost |
+| 0 s | Hull section 3:ventral absorbs 4 MJ. A 0.46 m^2 breach in the port launch bay. 12.3 MJ in the bay, 4.3 MJ in the hangar's port gallery above (through the deck, less a bulkhead's 1.5 MJ). The port cradle falls to 34% (damaged: capability 45%, its release charge takes 2.2 times as long). The port main trunk aft is severed in the gallery: the hangar's port panel is now fed from forward through the midships trunk, and nothing is lost. A 1.3 MW fire starts in the bay. The pilot takes 15 HP, the deck hand 1 |
+| 2 s | The bay at 60.5 kPa (its pressure door was shut, as pressure doors are); the fire at 1.31 MW |
+| 4 s | 33.9 kPa (the `breach-launch-bay` shot) |
+| 10 s | 6.2 kPa; the fire at 0.88 MW and failing for oxygen |
+| 23 s | The fire out; the bay at vacuum, 244 kg of air lost |
 
 What the crew do: flight ops can still launch Swift 1 (the bay is in vacuum: no pump-down), with the
 damaged cradle's slower release, if the drop door was not jammed (doors within reach that take 25
 points jam: section 1). A player with a kit brings the cradle to 100% in 66 s, suited. The splice can
 wait: the forward feed carries the panel. The breach (2 plates, 30 s, suited) is patched before the
-bay is repressurized, which the receiver then does in 16 s.
+bay is repressurized, which the receiver then does in 13 s.
 
 ### 11. Walkthrough W3: pulse fire raking the forward switchboard
 
 Combat with the starboard shield face down; a Hound's turrets put 40 bolts of 1.2 MJ into one hull
-section (4:starboard, deck C, abreast the forward switchboard) at 4 a second. (Simulated on the v1
-boxes; the v2 room runs out to 1.28 m from the skin, so the bolts reach it with more energy; to be
-re-run, noted 2026-10-05.)
+section (4:starboard, deck C, abreast the forward switchboard) at 4 a second. (Rerun on layout v2,
+2026-10-05: the room now runs out to 1.28 m from the skin, was 1.63 m, so the bolts reach it with
+more energy. On v1, bolt 25 did not reach the room, bolts 26-40 made 15 holes of 0.074 m^2 together,
+the fire was 69 kW and the room at 6.8 kPa at 44 s.)
 
 | Bolt | What happens |
 | --- | --- |
 | 1-24 | Each absorbed by the armour; the section loses 3 points each, to 28% |
-| 25 | The armour now holds less than a bolt: 0.1 MJ passes, too little to reach the room |
-| 26-40 | Every bolt holes the forward switchboard: 15 holes of 0.002-0.006 m^2, 0.074 m^2 together. At bolt 32 a 69 kW fire starts |
-| 44 s after the first bolt (30 s after the last) | The room at 6.8 kPa; the crew member inside unconscious; the emergency bus at 99.6%, the battery untouched; the section at 0% armour |
+| 25 | The armour now holds less than a bolt: 0.1 MJ passes, enough to hole the forward switchboard (0.002 m^2) |
+| 26-40 | Every bolt holes the forward switchboard: with bolt 25's, 16 holes of 0.002-0.016 m^2, 0.185 m^2 together. At bolt 32 a 107 kW fire starts |
+| 44 s after the first bolt (30 s after the last) | The room at 1.5 kPa; the crew member inside unconscious; the emergency bus at 99.6%, the battery untouched; the section at 0% armour |
 
 The danger is the next burst: the section is stripped, and bolts now carry most of their energy into
 a room that holds both forward switchboard sections, the emergency bus and the battery bank. What the
 crew do: helm turns a fresh face toward the Hound and science rebalances the shields
 (`weapons-and-shields`); a suited team patches the holes together (one plate, 15 s, by the grouping
-rule); the hull section's armour waits for an EVA (200 s from 0% at 0.5% a second) or the dock.
+rule: 0.185 m^2 is under a plate's 0.25 m^2); the hull section's armour waits for an EVA (200 s from 0% at 0.5% a second) or the dock.
 
 ### 12. Console readouts and previews
 
@@ -410,7 +415,7 @@ control's raked outer wall, facing in, and the positions below are the layout's 
 - **Fires do not spread through shut doors.** Realistic for a steel ship over a mission, but it makes
   spread rare. Spread still happens through held or jammed doors and to rooms whose air passes 300 C;
   if play wants more, the bulkhead U value and autoignition are data.
-- **A switchboard fire is lethal to the switchboard in three minutes.** That is why it has inert gas;
+- **A switchboard fire is lethal to the switchboard in four minutes** (238 s). That is why it has inert gas;
   the board must see protected rooms' systems' state.
 - **Crew hurt by expected share in the mockup** is not the engine's rule; positions decide there.
 - **Teams as bodies** cost path finding and animation (`crew-on-deck`), and can die; that is the point
@@ -424,7 +429,7 @@ control's raked outer wall, facing in, and the positions below are the layout's 
 | Shot | Shows |
 | --- | --- |
 | `fire-in-engineering` | A 300 kW fire in engineering 70 s later at 1.06 MW, the water mist about to discharge (it needs 10 s over 1 MW), the damage overlay |
-| `breach-launch-bay` | Walkthrough W2, 4 s after the hit: the breach ring, the fire, the bay at 41 kPa |
+| `breach-launch-bay` | Walkthrough W2, 4 s after the hit: the breach ring, the fire, the bay at 33.9 kPa |
 | `power-severed` | The port trunk cut: what a severed conduit looks like on the board |
 
 ## Open questions
@@ -435,8 +440,8 @@ the rest are recommendations taken (ask only with screenshots, CLAUDE.md 13).
 | Id | Question and the fact it turns on | Options | Recommendation | Shot |
 | --- | --- | --- | --- | --- |
 | D1 | Are damage control teams crew bodies? `bridge-stations` left it here. | (a) Two teams of two NPC bodies that walk, suit, work and can die. (b) Abstract teams: a timer per job. | (a): the ship is a place and the danger is real for everyone. | none: recommendation taken (ask only with screenshots) |
-| D2 | Does the water mist fire itself? It ends a 1 MW engineering fire in 22 s; without it the reactor scrams at 414 s. | (a) Automatic above 1 MW for 10 s, inhibitable from the board. (b) Manual only. | (a). | `fire-in-engineering` |
+| D2 | Does the water mist fire itself? It ends a 1 MW engineering fire in 22 s; without it the reactor scrams at 415 s. | (a) Automatic above 1 MW for 10 s, inhibitable from the board. (b) Manual only. | (a). | `fire-in-engineering` |
 | D3 | Who may vent a room with crew inside? Venting kills unsuited crew in about 90 s. | (a) The board and engineering, a guarded hold, the crew inside named. (b) Only with the captain's authorization. | (a): fast, and the warning makes it a choice. | none: recommendation taken (ask only with screenshots) |
-| D4 | Should pulse bolts ever penetrate? Twenty-five on one section strip its armour; then they hole the room. | (a) As designed. (b) Bolts never pass armour; only missiles breach. | (a): focused fire on a weakened face is a tactic for both sides. | none: recommendation taken (ask only with screenshots) |
+| D4 | Should pulse bolts ever penetrate? Twenty-four on one section wear its armour through; from the twenty-fifth they hole the room. | (a) As designed. (b) Bolts never pass armour; only missiles breach. | (a): focused fire on a weakened face is a tactic for both sides. | none: recommendation taken (ask only with screenshots) |
 | D5 | The magazine cook-off. | (a) As designed: 200 C for 60 s, or 10 MJ near the racks. (b) No cook-off. | (a). | none: recommendation taken (ask only with screenshots) |
 | D6 | How a breach looks on the board and the deck plan. | (a) A red ring sized by area, the room tinted by pressure. (b) Text only. | (a). | `breach-launch-bay` |

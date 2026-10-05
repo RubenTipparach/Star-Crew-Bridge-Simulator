@@ -21,8 +21,9 @@ is how to follow them.
 | `data/ships/<id>/detailing.json` | The detail rules' sizes and the finish table (which material each generated surface takes). Inlined by `<!-- INLINE data:<ship>/detailing -->`. |
 | `data/materials/materials.json`, `assets/textures/` | The surface materials (the `material-maker` skill). Inlined by `<!-- INLINE materials -->`. |
 | `docs/mockups/lib/template.html` | The page skeleton: import map (three.js 0.169.0 from jsDelivr), the INLINE markers, a scene, lighting buttons, a budget meter, a shot. Copy it to start. |
-| `tools/mockups/inline.py` | Writes the layout, data files, materials and shipkit between each page's INLINE markers. `--check` fails on a stale page, and checks `PI_BUDGET` against the `engine-stack` table's marker. |
+| `tools/mockups/inline.py` | Writes the layout, data files, materials, shipkit and Blender-built props (`<!-- INLINE models:<set> -->`: `assets/models/<set>/props.json` and its `.glb` files, read by the page with three.js's `GLTFLoader`) between each page's INLINE markers. `--check` fails on a stale page, and checks `PI_BUDGET` against the `engine-stack` table's marker. |
 | `tools/mockups/shoot.mjs` | Headless Chromium (SwiftShader) screenshots: the default view, then every registered shot, into `docs/screenshots/mockups/<page>-<shot>.png`. Fails on console errors or a page that never sets `MOCKUP_READY`. |
+| `tools/mockups/shrink_png.py` | Re-saves screenshots as dithered 256-colour PNGs, about a quarter of the size; run it on `docs/screenshots` before committing shots. Leaves shots already shrunk alone. |
 
 ## Make one
 
@@ -52,6 +53,7 @@ is how to follow them.
 9. **Look at every shot** (Read the PNGs). Black frames, a camera inside a wall, labels in a
    heap, a panel off screen, a missing viewscreen picture: fix and reshoot. A shot you have not
    looked at is not done.
+10. Shrink the shots before committing them: `python3 tools/mockups/shrink_png.py`.
 
 ## Publish
 

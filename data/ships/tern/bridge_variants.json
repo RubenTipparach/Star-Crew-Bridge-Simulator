@@ -1,0 +1,1452 @@
+{
+ "schema": "starcrew.bridge-variants/1",
+ "status": "Proposed (2026-10-05) for the owner to choose from: openspec/changes/bridge-stations design section 11a, docs/mockups/bridge-variants.html. Written by tools/bridge_variants.py; edit the script, not this file. None is in the layout until the owner picks one.",
+ "_rules": [
+  "Each variant replaces the bridge's brushes (and, for B, its windows and viewscreen) and its seats; every other part of the layout is unchanged.",
+  "Platforms are solid (like the dais), not air: the bridge stays one brush, so its volume is the brush's. top_m is the platform's top. edges[i] is the kind of the edge from poly[i] to poly[i+1]: wall (against the room's wall), riser (a step face), rail (a step face with a railing), step (a riser with a stair at it).",
+  "Steps rise 0.225 m: the walkway is the floor (3.5 m), the helm and tactical sub-platform one step up, the work ring two, the captain's platform three (A) or two (B, C).",
+  "A prop is placed by its back at floor level (back_m) and the way its front faces (yaw_deg, 0 the bow, +90 port): a wall bank's back is on the wall and its front faces into the room; a free console's or stand-up console's front faces its operator, so its back is the side away from them; a chair faces the way its occupant looks. Props are the Blender-built models of assets/models/bridge/props.json. A seat is a station's seat point and the way its occupant faces.",
+  "Stairs use the layout's stair convention: top_m and foot_m are the centres of the flight's top and bottom edges; width_m its width."
+ ],
+ "variants": [
+  {
+   "id": "A",
+   "name": "Wedge, tiered",
+   "after": "R5 and R6 (the ship-shaped bridge), with the owner's levels from R1 and R2",
+   "summary": "The ship-shaped wedge kept. Work rings two steps up along the raked side walls carry the wall-built consoles; the walkway between them runs from the aft door to the viewscreen; the captain sits three steps up on an octagonal platform; helm and tactical one step up on a sub-platform in front.",
+   "brushes": [
+    {
+     "y": [
+      3.5,
+      7.0
+     ],
+     "poly": [
+      [
+       -6.6,
+       29.4
+      ],
+      [
+       -8.6,
+       21.0
+      ],
+      [
+       -7.6,
+       20.0
+      ],
+      [
+       7.6,
+       20.0
+      ],
+      [
+       8.6,
+       21.0
+      ],
+      [
+       6.6,
+       29.4
+      ],
+      [
+       3.4,
+       32.4
+      ],
+      [
+       -3.4,
+       32.4
+      ]
+     ]
+    }
+   ],
+   "platforms": [
+    {
+     "id": "ring_p",
+     "name": "Port work ring",
+     "poly": [
+      [
+       2.4,
+       20.0
+      ],
+      [
+       7.6,
+       20.0
+      ],
+      [
+       8.6,
+       21.0
+      ],
+      [
+       6.6,
+       29.4
+      ],
+      [
+       4.654,
+       28.937
+      ],
+      [
+       6.306,
+       22.0
+      ],
+      [
+       2.4,
+       22.0
+      ]
+     ],
+     "top_m": 3.95,
+     "edges": [
+      "wall",
+      "wall",
+      "wall",
+      "step",
+      "rail",
+      "rail",
+      "step"
+     ]
+    },
+    {
+     "id": "ring_s",
+     "name": "Starboard work ring",
+     "poly": [
+      [
+       -2.4,
+       22.0
+      ],
+      [
+       -6.306,
+       22.0
+      ],
+      [
+       -4.654,
+       28.937
+      ],
+      [
+       -6.6,
+       29.4
+      ],
+      [
+       -8.6,
+       21.0
+      ],
+      [
+       -7.6,
+       20.0
+      ],
+      [
+       -2.4,
+       20.0
+      ]
+     ],
+     "top_m": 3.95,
+     "edges": [
+      "rail",
+      "rail",
+      "step",
+      "wall",
+      "wall",
+      "wall",
+      "step"
+     ]
+    },
+    {
+     "id": "sub",
+     "name": "Helm and tactical sub-platform",
+     "poly": [
+      [
+       -3.4,
+       25.5
+      ],
+      [
+       3.4,
+       25.5
+      ],
+      [
+       3.4,
+       29.6
+      ],
+      [
+       -3.4,
+       29.6
+      ]
+     ],
+     "top_m": 3.725,
+     "edges": [
+      "riser",
+      "riser",
+      "riser",
+      "riser"
+     ]
+    },
+    {
+     "id": "command",
+     "name": "Captain's platform",
+     "poly": [
+      [
+       0.621,
+       22.5
+      ],
+      [
+       1.5,
+       23.379
+      ],
+      [
+       1.5,
+       24.621
+      ],
+      [
+       0.621,
+       25.5
+      ],
+      [
+       -0.621,
+       25.5
+      ],
+      [
+       -1.5,
+       24.621
+      ],
+      [
+       -1.5,
+       23.379
+      ],
+      [
+       -0.621,
+       22.5
+      ]
+     ],
+     "top_m": 4.175,
+     "edges": [
+      "rail",
+      "rail",
+      "rail",
+      "step",
+      "rail",
+      "rail",
+      "rail",
+      "step"
+     ]
+    }
+   ],
+   "stairs": [
+    {
+     "top_m": [
+      2.4,
+      3.95,
+      21.0
+     ],
+     "foot_m": [
+      1.4,
+      3.5,
+      21.0
+     ],
+     "width_m": 1.6,
+     "note": "Port ring down to the door aisle."
+    },
+    {
+     "top_m": [
+      5.627,
+      3.95,
+      29.168
+     ],
+     "foot_m": [
+      5.511,
+      3.5,
+      29.655
+     ],
+     "width_m": 1.6,
+     "note": "Port ring down to the walkway by the window."
+    },
+    {
+     "top_m": [
+      0.0,
+      4.175,
+      22.5
+     ],
+     "foot_m": [
+      0.0,
+      3.5,
+      21.75
+     ],
+     "width_m": 1.2,
+     "note": "Captain's platform down to the door aisle."
+    },
+    {
+     "top_m": [
+      0.0,
+      4.175,
+      25.5
+     ],
+     "foot_m": [
+      0.0,
+      3.725,
+      26.0
+     ],
+     "width_m": 1.2,
+     "note": "Captain's platform down to the sub-platform."
+    },
+    {
+     "top_m": [
+      -2.4,
+      3.95,
+      21.0
+     ],
+     "foot_m": [
+      -1.4,
+      3.5,
+      21.0
+     ],
+     "width_m": 1.6,
+     "note": "Starboard ring down to the door aisle."
+    },
+    {
+     "top_m": [
+      -5.627,
+      3.95,
+      29.168
+     ],
+     "foot_m": [
+      -5.511,
+      3.5,
+      29.655
+     ],
+     "width_m": 1.6,
+     "note": "Starboard ring down to the walkway by the window."
+    }
+   ],
+   "props": [
+    {
+     "prop": "wall_bank",
+     "station": "comms",
+     "back_m": [
+      8.09,
+      3.95,
+      23.14
+     ],
+     "yaw_deg": -103.4
+    },
+    {
+     "prop": "wall_bank_core",
+     "station": "engineering",
+     "back_m": [
+      7.303,
+      3.95,
+      26.448
+     ],
+     "yaw_deg": -103.4
+    },
+    {
+     "prop": "wall_bank_double",
+     "station": "status_p",
+     "back_m": [
+      5.0,
+      3.95,
+      20.0
+     ],
+     "yaw_deg": 0.0
+    },
+    {
+     "prop": "wall_bank",
+     "station": "flight_ops",
+     "back_m": [
+      -8.09,
+      3.95,
+      23.14
+     ],
+     "yaw_deg": 103.4
+    },
+    {
+     "prop": "wall_bank_core",
+     "station": "science",
+     "back_m": [
+      -7.303,
+      3.95,
+      26.448
+     ],
+     "yaw_deg": 103.4
+    },
+    {
+     "prop": "wall_bank_double",
+     "station": "status_s",
+     "back_m": [
+      -5.0,
+      3.95,
+      20.0
+     ],
+     "yaw_deg": -0.0
+    },
+    {
+     "prop": "free_console",
+     "station": "helm",
+     "back_m": [
+      1.8,
+      3.725,
+      28.91
+     ],
+     "yaw_deg": 180.0
+    },
+    {
+     "prop": "free_console",
+     "station": "tactical",
+     "back_m": [
+      -1.8,
+      3.725,
+      28.91
+     ],
+     "yaw_deg": 180.0
+    },
+    {
+     "prop": "captain_chair",
+     "station": "captain",
+     "back_m": [
+      0.0,
+      4.175,
+      23.939
+     ],
+     "yaw_deg": 0.0
+    }
+   ],
+   "seats": [
+    {
+     "station": "comms",
+     "seat_m": [
+      7.166,
+      3.95,
+      22.92
+     ],
+     "yaw_deg": 76.6
+    },
+    {
+     "station": "engineering",
+     "seat_m": [
+      6.379,
+      3.95,
+      26.228
+     ],
+     "yaw_deg": 76.6
+    },
+    {
+     "station": "flight_ops",
+     "seat_m": [
+      -7.166,
+      3.95,
+      22.92
+     ],
+     "yaw_deg": -76.6
+    },
+    {
+     "station": "science",
+     "seat_m": [
+      -6.379,
+      3.95,
+      26.228
+     ],
+     "yaw_deg": -76.6
+    },
+    {
+     "station": "helm",
+     "seat_m": [
+      1.8,
+      3.725,
+      28.0
+     ],
+     "yaw_deg": 0.0
+    },
+    {
+     "station": "tactical",
+     "seat_m": [
+      -1.8,
+      3.725,
+      28.0
+     ],
+     "yaw_deg": 0.0
+    },
+    {
+     "station": "captain",
+     "seat_m": [
+      0.0,
+      4.175,
+      24.0
+     ],
+     "yaw_deg": 0.0
+    }
+   ],
+   "air_m3": 608.6
+  },
+  {
+   "id": "B",
+   "name": "Round",
+   "after": "R1, R3 and R8 (the circular bridge with a ring), R2 (the captain's dais and a helm well)",
+   "summary": "A sixteen-sided room, 12.4 m across, with a flat bow for the viewscreen. A ring two steps up runs round both sides with a console built into every wall segment and a rail along its edge; the aisle from the aft door leads into the well; the captain's round dais is at ring height; helm and tactical share one curved console a step up in front.",
+   "brushes": [
+    {
+     "y": [
+      3.5,
+      7.0
+     ],
+     "poly": [
+      [
+       1.233,
+       20.0
+      ],
+      [
+       3.512,
+       20.944
+      ],
+      [
+       5.256,
+       22.688
+      ],
+      [
+       6.2,
+       24.967
+      ],
+      [
+       6.2,
+       27.433
+      ],
+      [
+       5.256,
+       29.712
+      ],
+      [
+       3.512,
+       31.456
+      ],
+      [
+       3.165,
+       31.6
+      ],
+      [
+       -3.165,
+       31.6
+      ],
+      [
+       -3.512,
+       31.456
+      ],
+      [
+       -5.256,
+       29.712
+      ],
+      [
+       -6.2,
+       27.433
+      ],
+      [
+       -6.2,
+       24.967
+      ],
+      [
+       -5.256,
+       22.688
+      ],
+      [
+       -3.512,
+       20.944
+      ],
+      [
+       -1.233,
+       20.0
+      ]
+     ]
+    }
+   ],
+   "portals": [
+    {
+     "id": "p_bridge_window_p",
+     "center_m": [
+      4.384,
+      5.0,
+      30.584
+     ],
+     "normal": [
+      0.7071,
+      0.0,
+      0.7071
+     ],
+     "size_m": [
+      2.0,
+      1.2
+     ]
+    },
+    {
+     "id": "p_bridge_window_s",
+     "center_m": [
+      -4.384,
+      5.0,
+      30.584
+     ],
+     "normal": [
+      -0.7071,
+      0.0,
+      0.7071
+     ],
+     "size_m": [
+      2.0,
+      1.2
+     ]
+    }
+   ],
+   "fixtures": [
+    {
+     "id": "viewscreen",
+     "center_m": [
+      0.0,
+      5.2,
+      31.5
+     ]
+    }
+   ],
+   "platforms": [
+    {
+     "id": "ring_p",
+     "name": "Port ring",
+     "poly": [
+      [
+       1.311,
+       20.032
+      ],
+      [
+       3.512,
+       20.944
+      ],
+      [
+       5.256,
+       22.688
+      ],
+      [
+       6.2,
+       24.967
+      ],
+      [
+       6.2,
+       27.433
+      ],
+      [
+       5.256,
+       29.712
+      ],
+      [
+       4.768,
+       30.2
+      ],
+      [
+       3.217,
+       28.9
+      ],
+      [
+       3.938,
+       27.659
+      ],
+      [
+       4.2,
+       26.249
+      ],
+      [
+       3.971,
+       24.833
+      ],
+      [
+       3.279,
+       23.576
+      ],
+      [
+       2.205,
+       22.625
+      ],
+      [
+       0.873,
+       22.092
+      ]
+     ],
+     "top_m": 3.95,
+     "edges": [
+      "wall",
+      "wall",
+      "wall",
+      "wall",
+      "wall",
+      "wall",
+      "step",
+      "rail",
+      "rail",
+      "rail",
+      "rail",
+      "rail",
+      "rail",
+      "step"
+     ]
+    },
+    {
+     "id": "ring_s",
+     "name": "Starboard ring",
+     "poly": [
+      [
+       -0.873,
+       22.092
+      ],
+      [
+       -2.205,
+       22.625
+      ],
+      [
+       -3.279,
+       23.576
+      ],
+      [
+       -3.971,
+       24.833
+      ],
+      [
+       -4.2,
+       26.249
+      ],
+      [
+       -3.938,
+       27.659
+      ],
+      [
+       -3.217,
+       28.9
+      ],
+      [
+       -4.768,
+       30.2
+      ],
+      [
+       -5.256,
+       29.712
+      ],
+      [
+       -6.2,
+       27.433
+      ],
+      [
+       -6.2,
+       24.967
+      ],
+      [
+       -5.256,
+       22.688
+      ],
+      [
+       -3.512,
+       20.944
+      ],
+      [
+       -1.311,
+       20.032
+      ]
+     ],
+     "top_m": 3.95,
+     "edges": [
+      "rail",
+      "rail",
+      "rail",
+      "rail",
+      "rail",
+      "rail",
+      "step",
+      "wall",
+      "wall",
+      "wall",
+      "wall",
+      "wall",
+      "wall",
+      "step"
+     ]
+    },
+    {
+     "id": "sub",
+     "name": "Helm and tactical sub-platform",
+     "poly": [
+      [
+       -2.6,
+       26.6
+      ],
+      [
+       2.6,
+       26.6
+      ],
+      [
+       3.0,
+       27.2
+      ],
+      [
+       3.0,
+       29.2
+      ],
+      [
+       -3.0,
+       29.2
+      ],
+      [
+       -3.0,
+       27.2
+      ]
+     ],
+     "top_m": 3.725,
+     "edges": [
+      "riser",
+      "riser",
+      "riser",
+      "riser",
+      "riser",
+      "riser"
+     ]
+    },
+    {
+     "id": "command",
+     "name": "Captain's dais",
+     "poly": [
+      [
+       0.456,
+       23.9
+      ],
+      [
+       1.1,
+       24.544
+      ],
+      [
+       1.1,
+       25.456
+      ],
+      [
+       0.456,
+       26.1
+      ],
+      [
+       -0.456,
+       26.1
+      ],
+      [
+       -1.1,
+       25.456
+      ],
+      [
+       -1.1,
+       24.544
+      ],
+      [
+       -0.456,
+       23.9
+      ]
+     ],
+     "top_m": 3.95,
+     "edges": [
+      "rail",
+      "rail",
+      "rail",
+      "riser",
+      "rail",
+      "rail",
+      "rail",
+      "step"
+     ]
+    }
+   ],
+   "stairs": [
+    {
+     "top_m": [
+      1.081,
+      3.95,
+      21.114
+     ],
+     "foot_m": [
+      0.592,
+      3.5,
+      21.01
+     ],
+     "width_m": 1.6,
+     "note": "Port ring down to the door aisle."
+    },
+    {
+     "top_m": [
+      3.983,
+      3.95,
+      29.542
+     ],
+     "foot_m": [
+      3.662,
+      3.5,
+      29.926
+     ],
+     "width_m": 1.6,
+     "note": "Port ring down to the forward walkway."
+    },
+    {
+     "top_m": [
+      -1.081,
+      3.95,
+      21.114
+     ],
+     "foot_m": [
+      -0.592,
+      3.5,
+      21.01
+     ],
+     "width_m": 1.6,
+     "note": "Starboard ring down to the door aisle."
+    },
+    {
+     "top_m": [
+      -3.983,
+      3.95,
+      29.542
+     ],
+     "foot_m": [
+      -3.662,
+      3.5,
+      29.926
+     ],
+     "width_m": 1.6,
+     "note": "Starboard ring down to the forward walkway."
+    },
+    {
+     "top_m": [
+      0.0,
+      3.95,
+      23.9
+     ],
+     "foot_m": [
+      0.0,
+      3.5,
+      23.4
+     ],
+     "width_m": 1.0,
+     "note": "Captain's dais down to the aisle."
+    }
+   ],
+   "props": [
+    {
+     "prop": "wall_bank",
+     "station": "status_p",
+     "back_m": [
+      2.373,
+      3.95,
+      20.472
+     ],
+     "yaw_deg": -22.5
+    },
+    {
+     "prop": "wall_bank",
+     "station": "comms",
+     "back_m": [
+      4.384,
+      3.95,
+      21.816
+     ],
+     "yaw_deg": -45.0
+    },
+    {
+     "prop": "wall_bank",
+     "station": "spare_p",
+     "back_m": [
+      5.728,
+      3.95,
+      23.828
+     ],
+     "yaw_deg": -67.5
+    },
+    {
+     "prop": "wall_bank_core",
+     "station": "engineering",
+     "back_m": [
+      6.2,
+      3.95,
+      26.2
+     ],
+     "yaw_deg": -90.0
+    },
+    {
+     "prop": "wall_bank",
+     "station": "repeater_p",
+     "back_m": [
+      5.728,
+      3.95,
+      28.572
+     ],
+     "yaw_deg": -112.5
+    },
+    {
+     "prop": "wall_bank",
+     "station": "status_s",
+     "back_m": [
+      -2.373,
+      3.95,
+      20.472
+     ],
+     "yaw_deg": 22.5
+    },
+    {
+     "prop": "wall_bank",
+     "station": "flight_ops",
+     "back_m": [
+      -4.384,
+      3.95,
+      21.816
+     ],
+     "yaw_deg": 45.0
+    },
+    {
+     "prop": "wall_bank",
+     "station": "spare_s",
+     "back_m": [
+      -5.728,
+      3.95,
+      23.828
+     ],
+     "yaw_deg": 67.5
+    },
+    {
+     "prop": "wall_bank_core",
+     "station": "science",
+     "back_m": [
+      -6.2,
+      3.95,
+      26.2
+     ],
+     "yaw_deg": 90.0
+    },
+    {
+     "prop": "wall_bank",
+     "station": "repeater_s",
+     "back_m": [
+      -5.728,
+      3.95,
+      28.572
+     ],
+     "yaw_deg": 112.5
+    },
+    {
+     "prop": "helm_arc",
+     "station": "helm_tactical",
+     "back_m": [
+      0.0,
+      3.725,
+      28.9
+     ],
+     "yaw_deg": 180.0
+    },
+    {
+     "prop": "captain_chair",
+     "station": "captain",
+     "back_m": [
+      0.0,
+      3.95,
+      24.939
+     ],
+     "yaw_deg": 0.0
+    }
+   ],
+   "seats": [
+    {
+     "station": "comms",
+     "seat_m": [
+      3.712,
+      3.95,
+      22.488
+     ],
+     "yaw_deg": 135.0
+    },
+    {
+     "station": "engineering",
+     "seat_m": [
+      5.25,
+      3.95,
+      26.2
+     ],
+     "yaw_deg": 90.0
+    },
+    {
+     "station": "flight_ops",
+     "seat_m": [
+      -3.712,
+      3.95,
+      22.488
+     ],
+     "yaw_deg": -135.0
+    },
+    {
+     "station": "science",
+     "seat_m": [
+      -5.25,
+      3.95,
+      26.2
+     ],
+     "yaw_deg": -90.0
+    },
+    {
+     "station": "helm",
+     "seat_m": [
+      0.462,
+      3.725,
+      27.902
+     ],
+     "yaw_deg": 0.0
+    },
+    {
+     "station": "tactical",
+     "seat_m": [
+      -0.462,
+      3.725,
+      27.902
+     ],
+     "yaw_deg": 0.0
+    },
+    {
+     "station": "captain",
+     "seat_m": [
+      0.0,
+      3.95,
+      25.0
+     ],
+     "yaw_deg": 0.0
+    }
+   ],
+   "air_m3": 415.9
+  },
+  {
+   "id": "C",
+   "name": "Split level",
+   "after": "R9 (the two-level bridge split by a riser), R2 (the sunken helm well)",
+   "summary": "The wedge split across by a two-step riser. The upper level at the back holds the aft door's landing, comms and flight operations built into the walls, two stand-up repeaters and the captain at the riser's edge; the lower front holds helm and tactical facing the viewscreen and engineering and science built into the forward walls.",
+   "brushes": [
+    {
+     "y": [
+      3.5,
+      7.0
+     ],
+     "poly": [
+      [
+       -6.6,
+       29.4
+      ],
+      [
+       -8.6,
+       21.0
+      ],
+      [
+       -7.6,
+       20.0
+      ],
+      [
+       7.6,
+       20.0
+      ],
+      [
+       8.6,
+       21.0
+      ],
+      [
+       6.6,
+       29.4
+      ],
+      [
+       3.4,
+       32.4
+      ],
+      [
+       -3.4,
+       32.4
+      ]
+     ]
+    }
+   ],
+   "platforms": [
+    {
+     "id": "upper",
+     "name": "Upper level",
+     "poly": [
+      [
+       1.1,
+       20.0
+      ],
+      [
+       7.6,
+       20.0
+      ],
+      [
+       8.6,
+       21.0
+      ],
+      [
+       7.505,
+       25.6
+      ],
+      [
+       -7.505,
+       25.6
+      ],
+      [
+       -8.6,
+       21.0
+      ],
+      [
+       -7.6,
+       20.0
+      ],
+      [
+       -1.1,
+       20.0
+      ],
+      [
+       -1.1,
+       21.1
+      ],
+      [
+       1.1,
+       21.1
+      ]
+     ],
+     "top_m": 3.95,
+     "edges": [
+      "wall",
+      "wall",
+      "wall",
+      "rail",
+      "wall",
+      "wall",
+      "wall",
+      "riser",
+      "step",
+      "riser"
+     ],
+     "rail_gaps_m": [
+      [
+       -4.6,
+       -3.4
+      ],
+      [
+       -0.9,
+       0.9
+      ],
+      [
+       3.4,
+       4.6
+      ]
+     ]
+    }
+   ],
+   "stairs": [
+    {
+     "top_m": [
+      0.0,
+      3.95,
+      21.1
+     ],
+     "foot_m": [
+      0.0,
+      3.5,
+      20.6
+     ],
+     "width_m": 2.2,
+     "note": "From the aft door's landing up to the upper level."
+    },
+    {
+     "top_m": [
+      4.0,
+      3.95,
+      25.6
+     ],
+     "foot_m": [
+      4.0,
+      3.5,
+      26.1
+     ],
+     "width_m": 1.2,
+     "note": "Port stair down to the lower level."
+    },
+    {
+     "top_m": [
+      -4.0,
+      3.95,
+      25.6
+     ],
+     "foot_m": [
+      -4.0,
+      3.5,
+      26.1
+     ],
+     "width_m": 1.2,
+     "note": "Starboard stair down to the lower level."
+    }
+   ],
+   "props": [
+    {
+     "prop": "wall_bank",
+     "station": "comms",
+     "back_m": [
+      8.114,
+      3.95,
+      23.043
+     ],
+     "yaw_deg": -103.4
+    },
+    {
+     "prop": "wall_bank_core",
+     "station": "engineering",
+     "back_m": [
+      7.025,
+      3.5,
+      27.615
+     ],
+     "yaw_deg": -103.4
+    },
+    {
+     "prop": "wall_bank_double",
+     "station": "status_p",
+     "back_m": [
+      4.4,
+      3.95,
+      20.0
+     ],
+     "yaw_deg": 0.0
+    },
+    {
+     "prop": "wall_bank",
+     "station": "flight_ops",
+     "back_m": [
+      -8.114,
+      3.95,
+      23.043
+     ],
+     "yaw_deg": 103.4
+    },
+    {
+     "prop": "wall_bank_core",
+     "station": "science",
+     "back_m": [
+      -7.025,
+      3.5,
+      27.615
+     ],
+     "yaw_deg": 103.4
+    },
+    {
+     "prop": "wall_bank_double",
+     "station": "status_s",
+     "back_m": [
+      -4.4,
+      3.95,
+      20.0
+     ],
+     "yaw_deg": -0.0
+    },
+    {
+     "prop": "free_console",
+     "station": "helm",
+     "back_m": [
+      1.8,
+      3.5,
+      28.91
+     ],
+     "yaw_deg": 180.0
+    },
+    {
+     "prop": "free_console",
+     "station": "tactical",
+     "back_m": [
+      -1.8,
+      3.5,
+      28.91
+     ],
+     "yaw_deg": 180.0
+    },
+    {
+     "prop": "captain_chair",
+     "station": "captain",
+     "back_m": [
+      0.0,
+      3.95,
+      24.839
+     ],
+     "yaw_deg": 0.0
+    },
+    {
+     "prop": "standup_console",
+     "station": "repeater_p",
+     "back_m": [
+      6.3,
+      3.95,
+      25.3
+     ],
+     "yaw_deg": 180.0
+    },
+    {
+     "prop": "standup_console",
+     "station": "repeater_s",
+     "back_m": [
+      -6.3,
+      3.95,
+      25.3
+     ],
+     "yaw_deg": 180.0
+    }
+   ],
+   "seats": [
+    {
+     "station": "comms",
+     "seat_m": [
+      7.189,
+      3.95,
+      22.823
+     ],
+     "yaw_deg": 76.6
+    },
+    {
+     "station": "engineering",
+     "seat_m": [
+      6.101,
+      3.5,
+      27.395
+     ],
+     "yaw_deg": 76.6
+    },
+    {
+     "station": "flight_ops",
+     "seat_m": [
+      -7.189,
+      3.95,
+      22.823
+     ],
+     "yaw_deg": -76.6
+    },
+    {
+     "station": "science",
+     "seat_m": [
+      -6.101,
+      3.5,
+      27.395
+     ],
+     "yaw_deg": -76.6
+    },
+    {
+     "station": "helm",
+     "seat_m": [
+      1.8,
+      3.5,
+      28.0
+     ],
+     "yaw_deg": 0.0
+    },
+    {
+     "station": "tactical",
+     "seat_m": [
+      -1.8,
+      3.5,
+      28.0
+     ],
+     "yaw_deg": 0.0
+    },
+    {
+     "station": "captain",
+     "seat_m": [
+      0.0,
+      3.95,
+      24.9
+     ],
+     "yaw_deg": 0.0
+    }
+   ],
+   "air_m3": 608.6
+  }
+ ]
+}

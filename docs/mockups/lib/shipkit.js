@@ -523,7 +523,8 @@
    * walls, openings }. Roles: floor, wall, ceiling, cove, rib, beam, baseboard, frame,
    * frame_hazard, status, window_frame, rim, collar, ladder, runner, pipe, railing, kickplate,
    * lamp_housing, lamp.
-   * opts.skipKinds: portal kinds not to cut (["bay_door"] keeps a closed bay door's floor).
+   * opts.skipKinds: portal kinds not to cut (["bay_door"] keeps a closed bay door's floor);
+   * opts.wallFixtures: things on a wall that ribs and baseboards must clear (see below).
    */
   function buildCompartment(THREE, L, comp, opts) {
     opts = opts || {};
@@ -570,6 +571,16 @@
       }
       for (const h of holes) if (h.portal) openings.push({ portal: h.portal, wall: w, hole: h });
       if (!detail) continue;
+      // Fixtures on this wall (a viewscreen, a console built into it) keep ribs and trims clear
+      // without cutting the wall: opts.wallFixtures [{ center: [x, y, z], normal (into the room), width }].
+      const clear = holes.slice();
+      for (const f of opts.wallFixtures || []) {
+        if (f.normal[0] * nIn[0] + f.normal[2] * nIn[2] < 0.99) continue;
+        if (Math.abs((f.center[0] - w.a[0]) * w.n[0] + (f.center[2] - w.a[1]) * w.n[1]) > 0.05) continue;
+        const u = (f.center[0] - w.a[0]) * w.t[0] + (f.center[2] - w.a[1]) * w.t[1];
+        if (u + f.width / 2 < 0 || u - f.width / 2 > w.len) continue;
+        clear.push({ u0: u - f.width / 2, u1: u + f.width / 2, v0: w.y0, v1: top });
+      }
 
       // Ribs on fore-and-aft walls at the frames; stiffeners on athwartship walls between them.
       const ribs = [];
@@ -587,14 +598,14 @@
         for (const u of stations) {
           if (u < F.end_clear_m || u > w.len - F.end_clear_m) continue;
           const lo = u - F.rib_width_m / 2 - F.portal_clear_m, hi = u + F.rib_width_m / 2 + F.portal_clear_m;
-          if (holes.some((h) => h.u1 > lo && h.u0 < hi)) continue;
+          if (clear.some((h) => h.u1 > lo && h.u0 < hi)) continue;
           ribs.push(u);
           B.box("rib", P3(u, (w.y0 + top) / 2, depth / 2), ax, up, nIn, F.rib_width_m / 2, (top - w.y0) / 2, depth / 2, ["+u", "-u", "+v", "+w"]);
         }
       }
       // Baseboard between ribs and doors.
       const BB = D.baseboard;
-      const cuts = holes.filter((h) => h.v0 < w.y0 + BB.height_m).map((h) => [h.u0, h.u1]).concat(ribs.map((u) => [u - F.rib_width_m / 2, u + F.rib_width_m / 2]));
+      const cuts = clear.filter((h) => h.v0 < w.y0 + BB.height_m).map((h) => [h.u0, h.u1]).concat(ribs.map((u) => [u - F.rib_width_m / 2, u + F.rib_width_m / 2]));
       for (const [u0, u1] of intervalMinus(0, w.len, cuts)) {
         if (u1 - u0 < 0.05) continue;
         B.box("baseboard", P3((u0 + u1) / 2, w.y0 + BB.height_m / 2, BB.depth_m / 2), ax, up, nIn, (u1 - u0) / 2, BB.height_m / 2, BB.depth_m / 2, ["+v", "+w", "+u", "-u"]);
@@ -856,26 +867,32 @@
    * Merge parts into one BufferGeometry: position, normal, color (white), surfUv (metres
    * over the material's span), surfLayer, surfGlow. finish maps role to material name
    * (detailing.json finishes[comp.finish]); with no mats every vertex gets layer 0.
-   * geometry.userData.roles = { role: [firstVertex, count] } for recolouring.
+   * geometry.userData.roles = { role: [firstVertex, count] } for recolouring. A part may
+   * carry tint (an r, g, b per vertex: an albedo tint the bake keeps) and glow (one per
+   * vertex). Roles lamp, status and screen glow by default. finish may also name a role's
+   * material through parts[role].material.
    */
   function geometryOf(THREE, parts, mats, finish) {
     let n = 0;
     for (const r in parts) n += parts[r].position.length / 3;
     const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3).fill(1);
     const uv = new Float32Array(n * 2), lay = new Float32Array(n), glow = new Float32Array(n);
+    const anyTint = Object.values(parts).some((P) => P.tint);
+    const tint = anyTint ? new Float32Array(n * 3).fill(1) : null;
     const roles = {};
     let k = 0;
     for (const r of Object.keys(parts).sort()) {
       const P = parts[r], cnt = P.position.length / 3;
       let li = 0, span = 1;
       if (mats) {
-        const name = finish && finish[r];
+        const name = P.material || (finish && finish[r]);
         if (!name || !(name in mats.layer)) throw new Error(`shipkit: no material for role ${r} (detailing.json finishes)`);
         li = mats.layer[name]; span = mats.span[name];
       }
-      const g = r === "lamp" || r === "status" ? 1 : 0;
+      const g = r === "lamp" || r === "status" || r === "screen" ? 1 : 0;
       pos.set(P.position, k * 3); nor.set(P.normal, k * 3);
-      for (let i = 0; i < cnt; i++) { uv[(k + i) * 2] = P.uvm[i * 2] / span; uv[(k + i) * 2 + 1] = P.uvm[i * 2 + 1] / span; lay[k + i] = li; glow[k + i] = g; }
+      for (let i = 0; i < cnt; i++) { uv[(k + i) * 2] = P.uvm[i * 2] / span; uv[(k + i) * 2 + 1] = P.uvm[i * 2 + 1] / span; lay[k + i] = li; glow[k + i] = P.glow ? P.glow[i] : g; }
+      if (P.tint) { tint.set(P.tint, k * 3); col.set(P.tint, k * 3); }
       roles[r] = [k, cnt];
       k += cnt;
     }
@@ -886,6 +903,7 @@
     geo.setAttribute("surfUv", new THREE.BufferAttribute(uv, 2));
     geo.setAttribute("surfLayer", new THREE.BufferAttribute(lay, 1));
     geo.setAttribute("surfGlow", new THREE.BufferAttribute(glow, 1));
+    if (tint) geo.setAttribute("tint", new THREE.BufferAttribute(tint, 3));
     geo.userData.roles = roles;
     return geo;
   }
@@ -938,31 +956,162 @@
    * The stand-in bake (deck-pipeline section 7 until sc-tools bake exists): direct light
    * from the compartment's lamps (lampsFor), no shadows or bounce, into the vertex colours
    * of a merged geometry, for one lighting state; the emergency state lights only the
-   * emergency-bus lamps. Lamp lenses and status strips are painted the state's colours.
-   * Use it with surfaceMaterial({ lit: false }). The light-baking mockup has the real
-   * baker (lightbake.js); this is for pages that only need rooms to read as lit.
-   * opts.gain (default 0.55) scales lamp light; opts.cap (1.6) clamps a vertex.
+   * emergency-bus lamps. A lamp may carry color ([r, g, b], times the state's lamp colour)
+   * or, with fixed: true, a colour of its own in every state (a console's glow, a strip).
+   * A vertex's tint (geometryOf) multiplies its light. Lamp lenses are painted lit or dark
+   * lamp by lamp (the lamps that are not fixed, in order, one lens each); status strips the
+   * state's colour; screens keep their tint, brightened. Use with surfaceMaterial({ lit: false }).
+   * The light-baking mockup has the real baker (lightbake.js); this is for pages that only
+   * need rooms to read as lit. opts.gain (default 0.55) scales lamp light; opts.cap (1.6)
+   * clamps a vertex.
    */
   function bakeDirect(THREE, geo, lamps, key, opts) {
     opts = opts || {};
     const s = LIGHTING[key], gain = opts.gain === undefined ? 0.55 : opts.gain, cap = opts.cap || 1.6;
-    const amb = new THREE.Color(s.ambient).multiplyScalar(s.ambientI * 2.2), lamp = new THREE.Color(s.lamp).multiplyScalar(s.lampI);
+    const amb = new THREE.Color(s.ambient).multiplyScalar(s.ambientI * 2.2), lampC = new THREE.Color(s.lamp).multiplyScalar(s.lampI);
     const P = geo.attributes.position.array, N = geo.attributes.normal.array, C = geo.attributes.color;
-    const on = lamps.filter((l) => key !== "emergency" || l.emergency);
+    const T = geo.attributes.tint ? geo.attributes.tint.array : null;
+    const on = lamps.filter((l) => l.fixed || key !== "emergency" || l.emergency).map((l) => {
+      const c = l.fixed ? (l.color || [1, 1, 1]) : [lampC.r * (l.color ? l.color[0] : 1), lampC.g * (l.color ? l.color[1] : 1), lampC.b * (l.color ? l.color[2] : 1)];
+      return { l, c };
+    });
     for (let i = 0; i < P.length / 3; i++) {
-      let e = 0;
-      for (const l of on) {
+      let er = 0, eg = 0, eb = 0;
+      for (const { l, c } of on) {
         const dx = l.p[0] - P[i * 3], dy = l.p[1] - P[i * 3 + 1], dz = l.p[2] - P[i * 3 + 2], d2 = dx * dx + dy * dy + dz * dz, d = Math.sqrt(d2) || 1e-6;
         const cos = (N[i * 3] * dx + N[i * 3 + 1] * dy + N[i * 3 + 2] * dz) / d;
-        if (cos > 0) e += (l.I * cos) / (1 + d2 / (l.R * l.R));
+        if (cos > 0) { const f = (l.I * cos) / (1 + d2 / (l.R * l.R)); er += f * c[0]; eg += f * c[1]; eb += f * c[2]; }
       }
-      e *= gain;
-      C.setXYZ(i, Math.min(cap, amb.r + lamp.r * e), Math.min(cap, amb.g + lamp.g * e), Math.min(cap, amb.b + lamp.b * e));
+      const t = T ? [T[i * 3], T[i * 3 + 1], T[i * 3 + 2]] : [1, 1, 1];
+      C.setXYZ(i, Math.min(cap, (amb.r + er * gain) * t[0]), Math.min(cap, (amb.g + eg * gain) * t[1]), Math.min(cap, (amb.b + eb * gain) * t[2]));
     }
-    const lens = key === "normal" ? PALETTE.lampWarm : key === "red_alert" ? PALETTE.alert : PALETTE.emergency;
-    paintRole(geo, "lamp", new THREE.Color(lens).multiplyScalar(1.4));
+    // Lenses lamp by lamp: lit when the lamp is on in this state, dark otherwise.
+    const lens = new THREE.Color(key === "normal" ? PALETTE.lampWarm : key === "red_alert" ? PALETTE.alert : PALETTE.emergency).multiplyScalar(1.4);
+    const dark = new THREE.Color(0x1a1d22);
+    const lr = geo.userData.roles.lamp;
+    if (lr) {
+      const real = lamps.filter((l) => !l.fixed);
+      for (let j = 0; j < real.length && (j + 1) * 6 <= lr[1]; j++) {
+        const c = key !== "emergency" || real[j].emergency ? lens : dark;
+        for (let v = 0; v < 6; v++) C.setXYZ(lr[0] + j * 6 + v, c.r, c.g, c.b);
+      }
+    }
     paintRole(geo, "status", new THREE.Color(s.status).multiplyScalar(1.4));
+    const sr = geo.userData.roles.screen;
+    if (sr) for (let i = sr[0]; i < sr[0] + sr[1]; i++) C.setXYZ(i, (T ? T[i * 3] : 1) * 1.25, (T ? T[i * 3 + 1] : 1) * 1.25, (T ? T[i * 3 + 2] : 1) * 1.25);
     C.needsUpdate = true;
+  }
+
+  /**
+   * Split the triangles of the given roles until no edge is longer than maxEdge metres
+   * (longest-edge bisection), so a vertex bake shows pools of light on a floor or a wall.
+   * Works on buildCompartment's parts in place; returns them.
+   */
+  function subdivideParts(parts, maxEdge, roles) {
+    const m2 = maxEdge * maxEdge;
+    for (const r of roles) {
+      const P = parts[r];
+      if (!P) continue;
+      const out = { position: [], normal: [], uvm: [] };
+      for (let t = 0; t < P.position.length / 9; t++) {
+        const stack = [[0, 1, 2].map((k) => ({ p: P.position.slice((t * 3 + k) * 3, (t * 3 + k) * 3 + 3), n: P.normal.slice((t * 3 + k) * 3, (t * 3 + k) * 3 + 3), u: P.uvm.slice((t * 3 + k) * 2, (t * 3 + k) * 2 + 2) }))];
+        while (stack.length) {
+          const tri = stack.pop();
+          const e = [0, 1, 2].map((k) => { const a = tri[k].p, b = tri[(k + 1) % 3].p; return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2; });
+          const k = e[0] >= e[1] && e[0] >= e[2] ? 0 : e[1] >= e[2] ? 1 : 2;
+          if (e[k] <= m2) {
+            for (const v of tri) { out.position.push(...v.p); out.normal.push(...v.n); out.uvm.push(...v.u); }
+            continue;
+          }
+          const a = tri[k], b = tri[(k + 1) % 3], c = tri[(k + 2) % 3];
+          const mid = { p: a.p.map((x, i) => (x + b.p[i]) / 2), n: a.n, u: a.u.map((x, i) => (x + b.u[i]) / 2) };
+          stack.push([a, mid, c], [mid, b, c]);
+        }
+      }
+      parts[r] = Object.assign({}, P, out);
+    }
+    return parts;
+  }
+
+  /**
+   * Platforms and stairs (bridge-stations section 11a): raised floors that are solid, like a
+   * dais, not air. A platform { poly, top_m, edges[], rail_gaps_m? } stands on floorY; edges[i]
+   * is the kind of the edge from poly[i] to poly[i + 1]: "wall" (against the room's wall:
+   * nothing drawn), "riser" (a step face and a hazard nosing), "rail" (the same and a
+   * railing), "step" (a riser where a stair meets it). Rails leave gaps at rail_gaps_m (x or z
+   * intervals, along the edge's main axis) and wherever a stair's top edge lands. A stair
+   * { top_m, foot_m, width_m } (the layout's stair convention) gets treads of
+   * detailing.platforms.tread_rise_m with nosings. Adds roles platform, riser, nosing,
+   * railing and stair to the builder.
+   */
+  function buildPlatforms(THREE, B, platforms, stairs, floorY, D) {
+    D = D || shipData("detailing");
+    const Q = D.platforms;
+    stairs = stairs || [];
+    for (const pf of platforms) {
+      let poly = pf.poly.map((p) => p.slice()), edges = pf.edges.slice();
+      if (signedArea(poly) < 0) { poly = poly.reverse(); edges = edges.slice(0, -1).reverse().concat(edges.slice(-1)); }
+      const top = pf.top_m, h = top - floorY, n = poly.length;
+      B.flat(THREE, "platform", poly, [], top, 1);
+      for (let i = 0; i < n; i++) {
+        const kind = edges[i];
+        if (kind === "wall") continue;
+        const a = poly[i], b = poly[(i + 1) % n], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        const t = [(b[0] - a[0]) / len, 0, (b[1] - a[1]) / len], on = outwardNormal(a, b), out = [on[0], 0, on[1]];
+        B.quad("riser", [a[0], floorY, a[1]], [b[0], floorY, b[1]], [b[0], top, b[1]], [a[0], top, a[1]], out);
+        // The nosing: a hazard strip on the top's edge, raised clear of the platform's face.
+        const nm = Q.nosing_m, nr = Q.nosing_raise_m;
+        const c = [(a[0] + b[0]) / 2 - on[0] * nm / 2, top + nr / 2, (a[1] + b[1]) / 2 - on[1] * nm / 2];
+        B.box("nosing", c, t, [0, 1, 0], out, len / 2, nr / 2, nm / 2, ["+v", "+w", "+u", "-u"]);
+        if (kind !== "rail") continue;
+        // The railing, inset from the edge, with gaps.
+        const along = Math.abs(t[0]) >= Math.abs(t[2]) ? 0 : 2;
+        const proj = (u) => along === 0 ? a[0] + t[0] * u : a[1] + t[2] * u;
+        const gaps = [];
+        for (const g of pf.rail_gaps_m || []) {
+          const u0 = along === 0 ? (g[0] - a[0]) / t[0] : (g[0] - a[1]) / t[2], u1 = along === 0 ? (g[1] - a[0]) / t[0] : (g[1] - a[1]) / t[2];
+          gaps.push([Math.min(u0, u1), Math.max(u0, u1)]);
+        }
+        for (const st of stairs) {
+          const tp = st.top_m;
+          if (Math.abs((tp[0] - a[0]) * on[0] + (tp[2] - a[1]) * on[1]) > 0.15) continue;
+          const u = (tp[0] - a[0]) * t[0] + (tp[2] - a[1]) * t[2];
+          if (u > -st.width_m / 2 && u < len + st.width_m / 2) gaps.push([u - st.width_m / 2 - 0.1, u + st.width_m / 2 + 0.1]);
+        }
+        void proj;
+        const inset = Q.rail_inset_m, rm = Q.rail_m / 2;
+        const P3 = (u, y) => [a[0] + t[0] * u - on[0] * inset, y, a[1] + t[2] * u - on[1] * inset];
+        for (const [u0, u1] of intervalMinus(Q.rail_end_m, len - Q.rail_end_m, gaps)) {
+          if (u1 - u0 < 0.3) continue;
+          for (const y of [top + Q.rail_height_m, top + Q.rail_mid_m]) {
+            B.box("railing", P3((u0 + u1) / 2, y), t, [0, 1, 0], out, (u1 - u0) / 2, rm, rm, ["+v", "-v", "+w", "-w", "+u", "-u"]);
+          }
+          const k = Math.max(1, Math.round((u1 - u0) / Q.rail_post_spacing_m));
+          for (let j = 0; j <= k; j++) {
+            B.box("railing", P3(u0 + ((u1 - u0) * j) / k, top + Q.rail_height_m / 2), t, [0, 1, 0], out, rm, Q.rail_height_m / 2, rm, ["+u", "-u", "+w", "-w"]);
+          }
+        }
+      }
+    }
+    for (const st of stairs) {
+      const tp = st.top_m, ft = st.foot_m, rise = tp[1] - ft[1];
+      const n = Math.max(1, Math.round(rise / Q.tread_rise_m)), r = rise / n;
+      if (n < 2) continue;
+      const dx = tp[0] - ft[0], dz = tp[2] - ft[2], run = Math.hypot(dx, dz), w = [dx / run, 0, dz / run], u = [w[2], 0, -w[0]];
+      const depth = run / (n - 1);
+      for (let k = 0; k < n - 1; k++) {
+        const hh = (k + 1) * r, s0 = k * depth, cz = s0 + depth / 2;
+        const c = [ft[0] + w[0] * cz, ft[1] + hh / 2, ft[2] + w[2] * cz];
+        // Each tread runs from its own front edge back to the top, so the steps are solid.
+        const back = run - s0;
+        const cb = [ft[0] + w[0] * (s0 + back / 2), ft[1] + hh / 2, ft[2] + w[2] * (s0 + back / 2)];
+        void c;
+        B.box("stair", cb, u, [0, 1, 0], w, st.width_m / 2, hh / 2, back / 2, ["+v", "-w", "+u", "-u"]);
+        const nm = Q.nosing_m;
+        B.box("nosing", [ft[0] + w[0] * (s0 + nm / 2), ft[1] + hh + Q.nosing_raise_m / 2, ft[2] + w[2] * (s0 + nm / 2)], u, [0, 1, 0], w, st.width_m / 2, Q.nosing_raise_m / 2, nm / 2, ["+v", "-w", "+u", "-u"]);
+      }
+    }
+    return B;
   }
 
   // ------------------------------------------------------------------- hull
@@ -1176,6 +1325,7 @@
     measure, bounds, center, brushAt, floorAt, portalFrame, portalOut, portalPoint, wallsOf,
     // shells, detail, lamps, materials
     buildCompartment, roomShell, lampsFor, frameStations, loadMaterials, surfaceMaterial, geometryOf, finishOf, compartmentMesh, paintRole, bakeDirect,
+    Builder, subdivideParts, buildPlatforms,
     // hull, labels, chrome
     hullGeometry, hullHalfWidth, label, budgetHud, titleBlock, registerShots, markReady,
     rectMinusHoles, intervalMinus, worldUv,

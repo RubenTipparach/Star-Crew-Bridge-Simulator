@@ -57,6 +57,18 @@
     "inset_m": 0.05,
     "kick_m": 0.12
   },
+  "platforms": {
+    "_doc": "Raised floors that are solid, not air (a dais, a work ring, a sub-platform; bridge-stations section 11a): a riser and a hazard nosing on every edge that is not against a wall, a railing on rail edges with gaps at stairs, treads of tread_rise_m.",
+    "tread_rise_m": 0.225,
+    "nosing_m": 0.05,
+    "nosing_raise_m": 0.012,
+    "rail_height_m": 1.0,
+    "rail_mid_m": 0.5,
+    "rail_m": 0.05,
+    "rail_inset_m": 0.08,
+    "rail_end_m": 0.1,
+    "rail_post_spacing_m": 1.2
+  },
   "runner": { "_doc": "A deck plate strip down the middle of every corridor.", "width_m": 0.9, "raise_m": 0.012, "end_clear_m": 0.05 },
   "conduits": {
     "_doc": "Two pipes along the top of every fore-and-aft corridor wall, below the cove and clear of the ribs.",
@@ -85,13 +97,15 @@
       "floor": "deck_tiles", "wall": "bulkhead", "ceiling": "ceiling", "cove": "trim", "rib": "trim", "beam": "trim",
       "baseboard": "trim", "frame": "trim", "frame_hazard": "hazard", "status": "light_panel", "window_frame": "trim",
       "rim": "hazard", "collar": "trim", "ladder": "trim", "runner": "deck_plate", "pipe": "machinery",
-      "railing": "trim", "kickplate": "hazard", "lamp_housing": "trim", "lamp": "light_panel"
+      "railing": "trim", "kickplate": "hazard", "lamp_housing": "trim", "lamp": "light_panel",
+      "platform": "deck_tiles", "riser": "trim", "nosing": "hazard", "stair": "deck_plate"
     },
     "working": {
       "floor": "deck_plate", "wall": "bulkhead", "ceiling": "machinery", "cove": "trim", "rib": "machinery", "beam": "machinery",
       "baseboard": "hazard", "frame": "trim", "frame_hazard": "hazard", "status": "light_panel", "window_frame": "trim",
       "rim": "hazard", "collar": "machinery", "ladder": "trim", "runner": "deck_tiles", "pipe": "machinery",
-      "railing": "trim", "kickplate": "hazard", "lamp_housing": "machinery", "lamp": "light_panel"
+      "railing": "trim", "kickplate": "hazard", "lamp_housing": "machinery", "lamp": "light_panel",
+      "platform": "deck_plate", "riser": "machinery", "nosing": "hazard", "stair": "deck_plate"
     }
   }
 }

@@ -187,9 +187,9 @@ ship's largest air volume (2,538 m^3, 26 % of the ship; v2 plan, 2026-10-05, was
   patch of section 9, starts at the landing).
 - **Small launch bays, big hangar.** A fighter launches from a 190.1 m^3 bay, not the 1,682.4 m^3
   hangar: about a ninth of the air to move per launch (v2 plan, 2026-10-05; was 231 m^3 against
-  1,698 m^3, a seventh). Pump-down to 5 kPa took 28.6 s against 208.4 s for the hangar
-  (`life-support` section 13, on the v1 volumes; corrected 2026-10-04 from an assumed 30 s and
-  120 s); `life-support` recomputes both for v2. Fighters can launch while crew work in the
+  1,698 m^3, a seventh). Pump-down to 5 kPa takes 23.6 s against 206.5 s for the hangar
+  (`life-support` section 13, rerun on the v2 volumes 2026-10-05; was 28.6 s and 208.4 s on v1,
+  corrected 2026-10-04 from an assumed 30 s and 120 s). Fighters can launch while crew work in the
   hangar.
 
 #### 5.2 The aft passage on deck A stays pressurized
@@ -577,3 +577,4 @@ proceed on the recommendation ("recommendation taken, ask only with screenshots"
 | T3 | The bridge has one door | a. the scuttle to damage control; b. a second door to the ready room; c. none | a: it also gives damage control a second exit | `deck-plan-deck-A-plan` |
 | T4 | Systems are points, so nothing checks that a scrubber or a pump stands clear of a door | add `size_m` to systems, values set by each system's change | add it. Recommendation taken (ask only with screenshots) | none |
 | T5 | Walking speeds (first assumed: 1.6 m/s walk, 4.0 m/s run, 0.8 m/s ladders) | `crew-on-deck` decides | take `crew-on-deck`'s; regenerate the tables. Recommendation taken (ask only with screenshots). **Done 2026-10-04**: walk 1.8 m/s, run 4.0 m/s, ladders 0.8 m/s up and 1.0 m/s down, stairs at 70 %; section 6 regenerated with `tools/walk_times.py`, and the mockup's route tool uses the same speeds | none |
+| T6 | The plan follows the hull (section 1a, owner 2026-10-05: "the floor plan shouldnt consist of square rooms, confirm better to ship shape"): every room on the hull's side, top or bottom takes its line, 0.5-1.6 m inside the skin; the air grew from 8,858.8 to 9,824.8 m^3 and the floor from 2,135.0 to 2,445.5 m^2 | keep it / follow the hull more tightly (a thinner service band than 1.6 m) / back to boxes | keep it: the rooms read as the ship's, and the band still carries conduits and ducts | `deck-plan-deck-B-plan` and `deck-plan-exploded`, before (layout v1) and after |

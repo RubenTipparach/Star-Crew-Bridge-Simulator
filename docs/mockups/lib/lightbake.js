@@ -1454,6 +1454,8 @@
    * the texel, for views where the light itself is the point), grid (lightmap texel
    * checker). lightmap: { textures, atlas } from lightmapTextures and bakeLightmap.
    */
+  // TODO kit: ShipKit.surfaceMaterial could take the three baked sets and the weight uniform itself (it is
+  // the engine's deck shader); until then this extends its shader text, and throws if that text moves.
   function bakedSurfaceMaterial(THREE, base, U, lightmap) {
     const kitHook = base.onBeforeCompile;
     const G = GAMMA.toFixed(1), OB = OVERBRIGHT.toFixed(1);

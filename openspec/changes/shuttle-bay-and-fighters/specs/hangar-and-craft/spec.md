@@ -17,8 +17,8 @@ below 5 kPa, where life-support's pumps stop and launch is permitted (or vented)
 and accelerating under 5 m/s^2 for the release. A held step SHALL show its reason on flight ops.
 
 #### Scenario: A cold launch
-- **WHEN** a pilot enters the port launch bay with the bay stowed and life-support's pump-down to 5 kPa at 28.6 s
-- **THEN** Swift 1 is released 42.6 s later, and it becomes an exterior body at the tick of release
+- **WHEN** a pilot enters the port launch bay with the bay stowed and life-support's pump-down to 5 kPa at 23.6 s
+- **THEN** Swift 1 is released 37.6 s later, and it becomes an exterior body at the tick of release
 
 #### Scenario: Someone unsuited in the bay
 - **WHEN** flight ops starts the pump-down while an unsuited crew member stands in the port bay
@@ -30,8 +30,8 @@ and accelerating under 5 m/s^2 for the release. A held step SHALL show its reaso
 
 ### Requirement: Postures trade readiness for cost
 A bay SHALL be in one of the postures stowed, ready 5, ready 1 or hot, and the time from "launch" to
-release SHALL follow from the remaining steps: 36.6 s from ready 5, 8 s from ready 1 and 0.5 s from
-hot at life-support's 28.6 s pump-down. A bay in ready 1 or hot SHALL be in vacuum and its pressure door SHALL stay
+release SHALL follow from the remaining steps: 31.6 s from ready 5, 8 s from ready 1 and 0.5 s from
+hot at life-support's 23.6 s pump-down. A bay in ready 1 or hot SHALL be in vacuum and its pressure door SHALL stay
 locked to unsuited crew.
 
 #### Scenario: A pilot on ready 1

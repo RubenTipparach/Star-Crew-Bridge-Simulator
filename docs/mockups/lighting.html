@@ -56,7 +56,7 @@
 <!-- INLINE layout:tern END -->
 <!-- INLINE data:tern/detailing BEGIN -->
 <script id="ship-data-detailing" type="application/json">
-{"schema":"starcrew.detailing/1","status":"Proposed (2026-10-05) by openspec/changes/deck-pipeline, section 5a. Read by docs/mockups/lib/shipkit.js today and by deckc once it is built; the sizes are first choices judged on mockup screenshots, not measurements.","_rules":["The detail a ship's decks are dressed with is generated from its layout by one rule set, so every room of a class reads alike and no room is decorated by hand (deck-pipeline section 5a; adapted from Undercity's tools/godot/detailing.py and its UT99 checklist, fps-game-demo f6cd25c).","Detail is not air: coves, ribs, beams and trims stand inside a compartment's brushes and the air model ignores them (life-support quotes brush volumes).","No z-fighting: every detail face is either pressed back to back against a wall, floor or ceiling (and not drawn), or stands at least 1 cm clear of any parallel face (CLAUDE.md section 8). Raised floor plates are raise_m above the floor for that reason.","Lengths in metres. A detail that would cross a portal opening is cut back to clear it; one that would be shorter than min_piece_m is dropped."],"frames":{"_doc":"Ship frames: ribs on the walls and beams under the ceiling at fixed stations along the keel, frame k at z = origin_z_m + k * spacing_m. Walls that run fore and aft carry ribs at the frames; walls that run athwartships carry stiffeners at x = (k + 1/2) * spacing_m. A room taller than the cove's tall_room_m gets the deep beams and ribs.","spacing_m":2.0,"origin_z_m":0.0,"end_clear_m":0.35,"rib_width_m":0.24,"rib_depth_m":0.12,"tall_rib_depth_m":0.22,"beam_width_m":0.24,"beam_depth_m":0.18,"deep_beam_depth_m":0.38,"portal_clear_m":0.1},"cove":{"_doc":"A 45 degree panel between every solid wall and the ceiling: the hull's octagonal section, echoed inside. Not drawn along an edge open to another brush of the same compartment.","size_m":0.35,"tall_size_m":0.6,"tall_room_m":3.6},"baseboard":{"height_m":0.14,"depth_m":0.03},"door_frame":{"_doc":"Every door, wall hatch and pressure door is framed: jambs and a lintel fill a ring cut around the clear opening (size_m stays the clear opening crew pass through), proud of the wall on each side. Pressure doors are heavier and hazard-striped. A status strip glows on the lintel.","jamb_m":0.16,"lintel_m":0.22,"proud_m":0.06,"pressure_jamb_m":0.26,"pressure_proud_m":0.12,"status_strip_m":[0.5,0.05]},"window_frame":{"frame_m":0.14,"proud_m":0.08,"sill_depth_m":0.16},"floor_portal":{"_doc":"A hazard rim on the floor around every hatch, ladder well, hoist and bay door, and a trim collar under the ceiling around it. Ladders get rails and rungs from the lower floor to ladder_above_m over the upper one.","rim_width_m":0.15,"raise_m":0.012,"collar_width_m":0.1,"collar_depth_m":0.1,"ladder_rail_m":0.05,"ladder_width_m":0.5,"rung_spacing_m":0.3,"ladder_above_m":1.0},"railing":{"_doc":"Along an edge where a brush opens onto a lower floor of the same compartment (a hangar gallery over the hangar floor): two rails, posts and a kick plate.","min_drop_m":0.5,"height_m":1.05,"post_m":0.06,"post_spacing_m":1.5,"inset_m":0.05,"kick_m":0.12},"runner":{"_doc":"A deck plate strip down the middle of every corridor.","width_m":0.9,"raise_m":0.012,"end_clear_m":0.05},"conduits":{"_doc":"Two pipes along the top of every fore-and-aft corridor wall, below the cove and clear of the ribs.","radii_m":[0.06,0.04],"gap_m":0.06,"drop_m":0.1,"sides":8},"lamps":{"_doc":"The lamp rule (deck-pipeline section 5): lamps sit in the bays between frames, never on a beam. A bay gets round(area / area_per_lamp_m2) lamps across its width, a corridor bay at least one, a pod one. Every emergency_every-th lamp of a compartment is on the emergency bus. A room taller than tall_room_m gets high-bay lamps: radius and size scale with its height over 3 m, and they hang hang_m below the ceiling.","area_per_lamp_m2":8.0,"min_bay_m":1.0,"wall_clear_m":0.6,"emergency_every":3,"panel_m":[0.9,0.45],"corridor_panel_m":[0.7,0.35],"housing_m":0.06,"radius_m":3.0,"tall_room_m":3.6,"hang_m":0.4,"keep_out_m":0.5},"finishes":{"_doc":"Which material (data/materials/materials.json) each generated surface takes, by the compartment's finish in the layout.","crew":{"floor":"deck_tiles","wall":"bulkhead","ceiling":"ceiling","cove":"trim","rib":"trim","beam":"trim","baseboard":"trim","frame":"trim","frame_hazard":"hazard","status":"light_panel","window_frame":"trim","rim":"hazard","collar":"trim","ladder":"trim","runner":"deck_plate","pipe":"machinery","railing":"trim","kickplate":"hazard","lamp_housing":"trim","lamp":"light_panel"},"working":{"floor":"deck_plate","wall":"bulkhead","ceiling":"machinery","cove":"trim","rib":"machinery","beam":"machinery","baseboard":"hazard","frame":"trim","frame_hazard":"hazard","status":"light_panel","window_frame":"trim","rim":"hazard","collar":"machinery","ladder":"trim","runner":"deck_tiles","pipe":"machinery","railing":"trim","kickplate":"hazard","lamp_housing":"machinery","lamp":"light_panel"}}}
+{"schema":"starcrew.detailing/1","status":"Proposed (2026-10-05) by openspec/changes/deck-pipeline, section 5a. Read by docs/mockups/lib/shipkit.js today and by deckc once it is built; the sizes are first choices judged on mockup screenshots, not measurements.","_rules":["The detail a ship's decks are dressed with is generated from its layout by one rule set, so every room of a class reads alike and no room is decorated by hand (deck-pipeline section 5a; adapted from Undercity's tools/godot/detailing.py and its UT99 checklist, fps-game-demo f6cd25c).","Detail is not air: coves, ribs, beams and trims stand inside a compartment's brushes and the air model ignores them (life-support quotes brush volumes).","No z-fighting: every detail face is either pressed back to back against a wall, floor or ceiling (and not drawn), or stands at least 1 cm clear of any parallel face (CLAUDE.md section 8). Raised floor plates are raise_m above the floor for that reason.","Lengths in metres. A detail that would cross a portal opening is cut back to clear it; one that would be shorter than min_piece_m is dropped."],"frames":{"_doc":"Ship frames: ribs on the walls and beams under the ceiling at fixed stations along the keel, frame k at z = origin_z_m + k * spacing_m. Walls that run fore and aft carry ribs at the frames; walls that run athwartships carry stiffeners at x = (k + 1/2) * spacing_m. A room taller than the cove's tall_room_m gets the deep beams and ribs.","spacing_m":2.0,"origin_z_m":0.0,"end_clear_m":0.35,"rib_width_m":0.24,"rib_depth_m":0.12,"tall_rib_depth_m":0.22,"beam_width_m":0.24,"beam_depth_m":0.18,"deep_beam_depth_m":0.38,"portal_clear_m":0.1},"cove":{"_doc":"A 45 degree panel between every solid wall and the ceiling: the hull's octagonal section, echoed inside. Not drawn along an edge open to another brush of the same compartment.","size_m":0.35,"tall_size_m":0.6,"tall_room_m":3.6},"baseboard":{"height_m":0.14,"depth_m":0.03},"door_frame":{"_doc":"Every door, wall hatch and pressure door is framed: jambs and a lintel fill a ring cut around the clear opening (size_m stays the clear opening crew pass through), proud of the wall on each side. Pressure doors are heavier and hazard-striped. A status strip glows on the lintel.","jamb_m":0.16,"lintel_m":0.22,"proud_m":0.06,"pressure_jamb_m":0.26,"pressure_proud_m":0.12,"status_strip_m":[0.5,0.05]},"window_frame":{"frame_m":0.14,"proud_m":0.08,"sill_depth_m":0.16},"floor_portal":{"_doc":"A hazard rim on the floor around every hatch, ladder well, hoist and bay door, and a trim collar under the ceiling around it. Ladders get rails and rungs from the lower floor to ladder_above_m over the upper one.","rim_width_m":0.15,"raise_m":0.012,"collar_width_m":0.1,"collar_depth_m":0.1,"ladder_rail_m":0.05,"ladder_width_m":0.5,"rung_spacing_m":0.3,"ladder_above_m":1.0},"railing":{"_doc":"Along an edge where a brush opens onto a lower floor of the same compartment (a hangar gallery over the hangar floor): two rails, posts and a kick plate.","min_drop_m":0.5,"height_m":1.05,"post_m":0.06,"post_spacing_m":1.5,"inset_m":0.05,"kick_m":0.12},"platforms":{"_doc":"Raised floors that are solid, not air (a dais, a work ring, a sub-platform; bridge-stations section 11a): a riser and a hazard nosing on every edge that is not against a wall, a railing on rail edges with gaps at stairs, treads of tread_rise_m.","tread_rise_m":0.225,"nosing_m":0.05,"nosing_raise_m":0.012,"rail_height_m":1.0,"rail_mid_m":0.5,"rail_m":0.05,"rail_inset_m":0.08,"rail_end_m":0.1,"rail_post_spacing_m":1.2},"runner":{"_doc":"A deck plate strip down the middle of every corridor.","width_m":0.9,"raise_m":0.012,"end_clear_m":0.05},"conduits":{"_doc":"Two pipes along the top of every fore-and-aft corridor wall, below the cove and clear of the ribs.","radii_m":[0.06,0.04],"gap_m":0.06,"drop_m":0.1,"sides":8},"lamps":{"_doc":"The lamp rule (deck-pipeline section 5): lamps sit in the bays between frames, never on a beam. A bay gets round(area / area_per_lamp_m2) lamps across its width, a corridor bay at least one, a pod one. Every emergency_every-th lamp of a compartment is on the emergency bus. A room taller than tall_room_m gets high-bay lamps: radius and size scale with its height over 3 m, and they hang hang_m below the ceiling.","area_per_lamp_m2":8.0,"min_bay_m":1.0,"wall_clear_m":0.6,"emergency_every":3,"panel_m":[0.9,0.45],"corridor_panel_m":[0.7,0.35],"housing_m":0.06,"radius_m":3.0,"tall_room_m":3.6,"hang_m":0.4,"keep_out_m":0.5},"finishes":{"_doc":"Which material (data/materials/materials.json) each generated surface takes, by the compartment's finish in the layout.","crew":{"floor":"deck_tiles","wall":"bulkhead","ceiling":"ceiling","cove":"trim","rib":"trim","beam":"trim","baseboard":"trim","frame":"trim","frame_hazard":"hazard","status":"light_panel","window_frame":"trim","rim":"hazard","collar":"trim","ladder":"trim","runner":"deck_plate","pipe":"machinery","railing":"trim","kickplate":"hazard","lamp_housing":"trim","lamp":"light_panel","platform":"deck_tiles","riser":"trim","nosing":"hazard","stair":"deck_plate"},"working":{"floor":"deck_plate","wall":"bulkhead","ceiling":"machinery","cove":"trim","rib":"machinery","beam":"machinery","baseboard":"hazard","frame":"trim","frame_hazard":"hazard","status":"light_panel","window_frame":"trim","rim":"hazard","collar":"machinery","ladder":"trim","runner":"deck_tiles","pipe":"machinery","railing":"trim","kickplate":"hazard","lamp_housing":"machinery","lamp":"light_panel","platform":"deck_plate","riser":"machinery","nosing":"hazard","stair":"deck_plate"}}}
 </script>
 <!-- INLINE data:tern/detailing END -->
 <!-- INLINE materials BEGIN -->
@@ -591,7 +591,8 @@
    * walls, openings }. Roles: floor, wall, ceiling, cove, rib, beam, baseboard, frame,
    * frame_hazard, status, window_frame, rim, collar, ladder, runner, pipe, railing, kickplate,
    * lamp_housing, lamp.
-   * opts.skipKinds: portal kinds not to cut (["bay_door"] keeps a closed bay door's floor).
+   * opts.skipKinds: portal kinds not to cut (["bay_door"] keeps a closed bay door's floor);
+   * opts.wallFixtures: things on a wall that ribs and baseboards must clear (see below).
    */
   function buildCompartment(THREE, L, comp, opts) {
     opts = opts || {};
@@ -638,6 +639,16 @@
       }
       for (const h of holes) if (h.portal) openings.push({ portal: h.portal, wall: w, hole: h });
       if (!detail) continue;
+      // Fixtures on this wall (a viewscreen, a console built into it) keep ribs and trims clear
+      // without cutting the wall: opts.wallFixtures [{ center: [x, y, z], normal (into the room), width }].
+      const clear = holes.slice();
+      for (const f of opts.wallFixtures || []) {
+        if (f.normal[0] * nIn[0] + f.normal[2] * nIn[2] < 0.99) continue;
+        if (Math.abs((f.center[0] - w.a[0]) * w.n[0] + (f.center[2] - w.a[1]) * w.n[1]) > 0.05) continue;
+        const u = (f.center[0] - w.a[0]) * w.t[0] + (f.center[2] - w.a[1]) * w.t[1];
+        if (u + f.width / 2 < 0 || u - f.width / 2 > w.len) continue;
+        clear.push({ u0: u - f.width / 2, u1: u + f.width / 2, v0: w.y0, v1: top });
+      }
 
       // Ribs on fore-and-aft walls at the frames; stiffeners on athwartship walls between them.
       const ribs = [];
@@ -655,14 +666,14 @@
         for (const u of stations) {
           if (u < F.end_clear_m || u > w.len - F.end_clear_m) continue;
           const lo = u - F.rib_width_m / 2 - F.portal_clear_m, hi = u + F.rib_width_m / 2 + F.portal_clear_m;
-          if (holes.some((h) => h.u1 > lo && h.u0 < hi)) continue;
+          if (clear.some((h) => h.u1 > lo && h.u0 < hi)) continue;
           ribs.push(u);
           B.box("rib", P3(u, (w.y0 + top) / 2, depth / 2), ax, up, nIn, F.rib_width_m / 2, (top - w.y0) / 2, depth / 2, ["+u", "-u", "+v", "+w"]);
         }
       }
       // Baseboard between ribs and doors.
       const BB = D.baseboard;
-      const cuts = holes.filter((h) => h.v0 < w.y0 + BB.height_m).map((h) => [h.u0, h.u1]).concat(ribs.map((u) => [u - F.rib_width_m / 2, u + F.rib_width_m / 2]));
+      const cuts = clear.filter((h) => h.v0 < w.y0 + BB.height_m).map((h) => [h.u0, h.u1]).concat(ribs.map((u) => [u - F.rib_width_m / 2, u + F.rib_width_m / 2]));
       for (const [u0, u1] of intervalMinus(0, w.len, cuts)) {
         if (u1 - u0 < 0.05) continue;
         B.box("baseboard", P3((u0 + u1) / 2, w.y0 + BB.height_m / 2, BB.depth_m / 2), ax, up, nIn, (u1 - u0) / 2, BB.height_m / 2, BB.depth_m / 2, ["+v", "+w", "+u", "-u"]);
@@ -924,26 +935,32 @@
    * Merge parts into one BufferGeometry: position, normal, color (white), surfUv (metres
    * over the material's span), surfLayer, surfGlow. finish maps role to material name
    * (detailing.json finishes[comp.finish]); with no mats every vertex gets layer 0.
-   * geometry.userData.roles = { role: [firstVertex, count] } for recolouring.
+   * geometry.userData.roles = { role: [firstVertex, count] } for recolouring. A part may
+   * carry tint (an r, g, b per vertex: an albedo tint the bake keeps) and glow (one per
+   * vertex). Roles lamp, status and screen glow by default. finish may also name a role's
+   * material through parts[role].material.
    */
   function geometryOf(THREE, parts, mats, finish) {
     let n = 0;
     for (const r in parts) n += parts[r].position.length / 3;
     const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3).fill(1);
     const uv = new Float32Array(n * 2), lay = new Float32Array(n), glow = new Float32Array(n);
+    const anyTint = Object.values(parts).some((P) => P.tint);
+    const tint = anyTint ? new Float32Array(n * 3).fill(1) : null;
     const roles = {};
     let k = 0;
     for (const r of Object.keys(parts).sort()) {
       const P = parts[r], cnt = P.position.length / 3;
       let li = 0, span = 1;
       if (mats) {
-        const name = finish && finish[r];
+        const name = P.material || (finish && finish[r]);
         if (!name || !(name in mats.layer)) throw new Error(`shipkit: no material for role ${r} (detailing.json finishes)`);
         li = mats.layer[name]; span = mats.span[name];
       }
-      const g = r === "lamp" || r === "status" ? 1 : 0;
+      const g = r === "lamp" || r === "status" || r === "screen" ? 1 : 0;
       pos.set(P.position, k * 3); nor.set(P.normal, k * 3);
-      for (let i = 0; i < cnt; i++) { uv[(k + i) * 2] = P.uvm[i * 2] / span; uv[(k + i) * 2 + 1] = P.uvm[i * 2 + 1] / span; lay[k + i] = li; glow[k + i] = g; }
+      for (let i = 0; i < cnt; i++) { uv[(k + i) * 2] = P.uvm[i * 2] / span; uv[(k + i) * 2 + 1] = P.uvm[i * 2 + 1] / span; lay[k + i] = li; glow[k + i] = P.glow ? P.glow[i] : g; }
+      if (P.tint) { tint.set(P.tint, k * 3); col.set(P.tint, k * 3); }
       roles[r] = [k, cnt];
       k += cnt;
     }
@@ -954,6 +971,7 @@
     geo.setAttribute("surfUv", new THREE.BufferAttribute(uv, 2));
     geo.setAttribute("surfLayer", new THREE.BufferAttribute(lay, 1));
     geo.setAttribute("surfGlow", new THREE.BufferAttribute(glow, 1));
+    if (tint) geo.setAttribute("tint", new THREE.BufferAttribute(tint, 3));
     geo.userData.roles = roles;
     return geo;
   }
@@ -1006,31 +1024,162 @@
    * The stand-in bake (deck-pipeline section 7 until sc-tools bake exists): direct light
    * from the compartment's lamps (lampsFor), no shadows or bounce, into the vertex colours
    * of a merged geometry, for one lighting state; the emergency state lights only the
-   * emergency-bus lamps. Lamp lenses and status strips are painted the state's colours.
-   * Use it with surfaceMaterial({ lit: false }). The light-baking mockup has the real
-   * baker (lightbake.js); this is for pages that only need rooms to read as lit.
-   * opts.gain (default 0.55) scales lamp light; opts.cap (1.6) clamps a vertex.
+   * emergency-bus lamps. A lamp may carry color ([r, g, b], times the state's lamp colour)
+   * or, with fixed: true, a colour of its own in every state (a console's glow, a strip).
+   * A vertex's tint (geometryOf) multiplies its light. Lamp lenses are painted lit or dark
+   * lamp by lamp (the lamps that are not fixed, in order, one lens each); status strips the
+   * state's colour; screens keep their tint, brightened. Use with surfaceMaterial({ lit: false }).
+   * The light-baking mockup has the real baker (lightbake.js); this is for pages that only
+   * need rooms to read as lit. opts.gain (default 0.55) scales lamp light; opts.cap (1.6)
+   * clamps a vertex.
    */
   function bakeDirect(THREE, geo, lamps, key, opts) {
     opts = opts || {};
     const s = LIGHTING[key], gain = opts.gain === undefined ? 0.55 : opts.gain, cap = opts.cap || 1.6;
-    const amb = new THREE.Color(s.ambient).multiplyScalar(s.ambientI * 2.2), lamp = new THREE.Color(s.lamp).multiplyScalar(s.lampI);
+    const amb = new THREE.Color(s.ambient).multiplyScalar(s.ambientI * 2.2), lampC = new THREE.Color(s.lamp).multiplyScalar(s.lampI);
     const P = geo.attributes.position.array, N = geo.attributes.normal.array, C = geo.attributes.color;
-    const on = lamps.filter((l) => key !== "emergency" || l.emergency);
+    const T = geo.attributes.tint ? geo.attributes.tint.array : null;
+    const on = lamps.filter((l) => l.fixed || key !== "emergency" || l.emergency).map((l) => {
+      const c = l.fixed ? (l.color || [1, 1, 1]) : [lampC.r * (l.color ? l.color[0] : 1), lampC.g * (l.color ? l.color[1] : 1), lampC.b * (l.color ? l.color[2] : 1)];
+      return { l, c };
+    });
     for (let i = 0; i < P.length / 3; i++) {
-      let e = 0;
-      for (const l of on) {
+      let er = 0, eg = 0, eb = 0;
+      for (const { l, c } of on) {
         const dx = l.p[0] - P[i * 3], dy = l.p[1] - P[i * 3 + 1], dz = l.p[2] - P[i * 3 + 2], d2 = dx * dx + dy * dy + dz * dz, d = Math.sqrt(d2) || 1e-6;
         const cos = (N[i * 3] * dx + N[i * 3 + 1] * dy + N[i * 3 + 2] * dz) / d;
-        if (cos > 0) e += (l.I * cos) / (1 + d2 / (l.R * l.R));
+        if (cos > 0) { const f = (l.I * cos) / (1 + d2 / (l.R * l.R)); er += f * c[0]; eg += f * c[1]; eb += f * c[2]; }
       }
-      e *= gain;
-      C.setXYZ(i, Math.min(cap, amb.r + lamp.r * e), Math.min(cap, amb.g + lamp.g * e), Math.min(cap, amb.b + lamp.b * e));
+      const t = T ? [T[i * 3], T[i * 3 + 1], T[i * 3 + 2]] : [1, 1, 1];
+      C.setXYZ(i, Math.min(cap, (amb.r + er * gain) * t[0]), Math.min(cap, (amb.g + eg * gain) * t[1]), Math.min(cap, (amb.b + eb * gain) * t[2]));
     }
-    const lens = key === "normal" ? PALETTE.lampWarm : key === "red_alert" ? PALETTE.alert : PALETTE.emergency;
-    paintRole(geo, "lamp", new THREE.Color(lens).multiplyScalar(1.4));
+    // Lenses lamp by lamp: lit when the lamp is on in this state, dark otherwise.
+    const lens = new THREE.Color(key === "normal" ? PALETTE.lampWarm : key === "red_alert" ? PALETTE.alert : PALETTE.emergency).multiplyScalar(1.4);
+    const dark = new THREE.Color(0x1a1d22);
+    const lr = geo.userData.roles.lamp;
+    if (lr) {
+      const real = lamps.filter((l) => !l.fixed);
+      for (let j = 0; j < real.length && (j + 1) * 6 <= lr[1]; j++) {
+        const c = key !== "emergency" || real[j].emergency ? lens : dark;
+        for (let v = 0; v < 6; v++) C.setXYZ(lr[0] + j * 6 + v, c.r, c.g, c.b);
+      }
+    }
     paintRole(geo, "status", new THREE.Color(s.status).multiplyScalar(1.4));
+    const sr = geo.userData.roles.screen;
+    if (sr) for (let i = sr[0]; i < sr[0] + sr[1]; i++) C.setXYZ(i, (T ? T[i * 3] : 1) * 1.25, (T ? T[i * 3 + 1] : 1) * 1.25, (T ? T[i * 3 + 2] : 1) * 1.25);
     C.needsUpdate = true;
+  }
+
+  /**
+   * Split the triangles of the given roles until no edge is longer than maxEdge metres
+   * (longest-edge bisection), so a vertex bake shows pools of light on a floor or a wall.
+   * Works on buildCompartment's parts in place; returns them.
+   */
+  function subdivideParts(parts, maxEdge, roles) {
+    const m2 = maxEdge * maxEdge;
+    for (const r of roles) {
+      const P = parts[r];
+      if (!P) continue;
+      const out = { position: [], normal: [], uvm: [] };
+      for (let t = 0; t < P.position.length / 9; t++) {
+        const stack = [[0, 1, 2].map((k) => ({ p: P.position.slice((t * 3 + k) * 3, (t * 3 + k) * 3 + 3), n: P.normal.slice((t * 3 + k) * 3, (t * 3 + k) * 3 + 3), u: P.uvm.slice((t * 3 + k) * 2, (t * 3 + k) * 2 + 2) }))];
+        while (stack.length) {
+          const tri = stack.pop();
+          const e = [0, 1, 2].map((k) => { const a = tri[k].p, b = tri[(k + 1) % 3].p; return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2; });
+          const k = e[0] >= e[1] && e[0] >= e[2] ? 0 : e[1] >= e[2] ? 1 : 2;
+          if (e[k] <= m2) {
+            for (const v of tri) { out.position.push(...v.p); out.normal.push(...v.n); out.uvm.push(...v.u); }
+            continue;
+          }
+          const a = tri[k], b = tri[(k + 1) % 3], c = tri[(k + 2) % 3];
+          const mid = { p: a.p.map((x, i) => (x + b.p[i]) / 2), n: a.n, u: a.u.map((x, i) => (x + b.u[i]) / 2) };
+          stack.push([a, mid, c], [mid, b, c]);
+        }
+      }
+      parts[r] = Object.assign({}, P, out);
+    }
+    return parts;
+  }
+
+  /**
+   * Platforms and stairs (bridge-stations section 11a): raised floors that are solid, like a
+   * dais, not air. A platform { poly, top_m, edges[], rail_gaps_m? } stands on floorY; edges[i]
+   * is the kind of the edge from poly[i] to poly[i + 1]: "wall" (against the room's wall:
+   * nothing drawn), "riser" (a step face and a hazard nosing), "rail" (the same and a
+   * railing), "step" (a riser where a stair meets it). Rails leave gaps at rail_gaps_m (x or z
+   * intervals, along the edge's main axis) and wherever a stair's top edge lands. A stair
+   * { top_m, foot_m, width_m } (the layout's stair convention) gets treads of
+   * detailing.platforms.tread_rise_m with nosings. Adds roles platform, riser, nosing,
+   * railing and stair to the builder.
+   */
+  function buildPlatforms(THREE, B, platforms, stairs, floorY, D) {
+    D = D || shipData("detailing");
+    const Q = D.platforms;
+    stairs = stairs || [];
+    for (const pf of platforms) {
+      let poly = pf.poly.map((p) => p.slice()), edges = pf.edges.slice();
+      if (signedArea(poly) < 0) { poly = poly.reverse(); edges = edges.slice(0, -1).reverse().concat(edges.slice(-1)); }
+      const top = pf.top_m, h = top - floorY, n = poly.length;
+      B.flat(THREE, "platform", poly, [], top, 1);
+      for (let i = 0; i < n; i++) {
+        const kind = edges[i];
+        if (kind === "wall") continue;
+        const a = poly[i], b = poly[(i + 1) % n], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        const t = [(b[0] - a[0]) / len, 0, (b[1] - a[1]) / len], on = outwardNormal(a, b), out = [on[0], 0, on[1]];
+        B.quad("riser", [a[0], floorY, a[1]], [b[0], floorY, b[1]], [b[0], top, b[1]], [a[0], top, a[1]], out);
+        // The nosing: a hazard strip on the top's edge, raised clear of the platform's face.
+        const nm = Q.nosing_m, nr = Q.nosing_raise_m;
+        const c = [(a[0] + b[0]) / 2 - on[0] * nm / 2, top + nr / 2, (a[1] + b[1]) / 2 - on[1] * nm / 2];
+        B.box("nosing", c, t, [0, 1, 0], out, len / 2, nr / 2, nm / 2, ["+v", "+w", "+u", "-u"]);
+        if (kind !== "rail") continue;
+        // The railing, inset from the edge, with gaps.
+        const along = Math.abs(t[0]) >= Math.abs(t[2]) ? 0 : 2;
+        const proj = (u) => along === 0 ? a[0] + t[0] * u : a[1] + t[2] * u;
+        const gaps = [];
+        for (const g of pf.rail_gaps_m || []) {
+          const u0 = along === 0 ? (g[0] - a[0]) / t[0] : (g[0] - a[1]) / t[2], u1 = along === 0 ? (g[1] - a[0]) / t[0] : (g[1] - a[1]) / t[2];
+          gaps.push([Math.min(u0, u1), Math.max(u0, u1)]);
+        }
+        for (const st of stairs) {
+          const tp = st.top_m;
+          if (Math.abs((tp[0] - a[0]) * on[0] + (tp[2] - a[1]) * on[1]) > 0.15) continue;
+          const u = (tp[0] - a[0]) * t[0] + (tp[2] - a[1]) * t[2];
+          if (u > -st.width_m / 2 && u < len + st.width_m / 2) gaps.push([u - st.width_m / 2 - 0.1, u + st.width_m / 2 + 0.1]);
+        }
+        void proj;
+        const inset = Q.rail_inset_m, rm = Q.rail_m / 2;
+        const P3 = (u, y) => [a[0] + t[0] * u - on[0] * inset, y, a[1] + t[2] * u - on[1] * inset];
+        for (const [u0, u1] of intervalMinus(Q.rail_end_m, len - Q.rail_end_m, gaps)) {
+          if (u1 - u0 < 0.3) continue;
+          for (const y of [top + Q.rail_height_m, top + Q.rail_mid_m]) {
+            B.box("railing", P3((u0 + u1) / 2, y), t, [0, 1, 0], out, (u1 - u0) / 2, rm, rm, ["+v", "-v", "+w", "-w", "+u", "-u"]);
+          }
+          const k = Math.max(1, Math.round((u1 - u0) / Q.rail_post_spacing_m));
+          for (let j = 0; j <= k; j++) {
+            B.box("railing", P3(u0 + ((u1 - u0) * j) / k, top + Q.rail_height_m / 2), t, [0, 1, 0], out, rm, Q.rail_height_m / 2, rm, ["+u", "-u", "+w", "-w"]);
+          }
+        }
+      }
+    }
+    for (const st of stairs) {
+      const tp = st.top_m, ft = st.foot_m, rise = tp[1] - ft[1];
+      const n = Math.max(1, Math.round(rise / Q.tread_rise_m)), r = rise / n;
+      if (n < 2) continue;
+      const dx = tp[0] - ft[0], dz = tp[2] - ft[2], run = Math.hypot(dx, dz), w = [dx / run, 0, dz / run], u = [w[2], 0, -w[0]];
+      const depth = run / (n - 1);
+      for (let k = 0; k < n - 1; k++) {
+        const hh = (k + 1) * r, s0 = k * depth, cz = s0 + depth / 2;
+        const c = [ft[0] + w[0] * cz, ft[1] + hh / 2, ft[2] + w[2] * cz];
+        // Each tread runs from its own front edge back to the top, so the steps are solid.
+        const back = run - s0;
+        const cb = [ft[0] + w[0] * (s0 + back / 2), ft[1] + hh / 2, ft[2] + w[2] * (s0 + back / 2)];
+        void c;
+        B.box("stair", cb, u, [0, 1, 0], w, st.width_m / 2, hh / 2, back / 2, ["+v", "-w", "+u", "-u"]);
+        const nm = Q.nosing_m;
+        B.box("nosing", [ft[0] + w[0] * (s0 + nm / 2), ft[1] + hh + Q.nosing_raise_m / 2, ft[2] + w[2] * (s0 + nm / 2)], u, [0, 1, 0], w, st.width_m / 2, Q.nosing_raise_m / 2, nm / 2, ["+v", "-w", "+u", "-u"]);
+      }
+    }
+    return B;
   }
 
   // ------------------------------------------------------------------- hull
@@ -1244,6 +1393,7 @@
     measure, bounds, center, brushAt, floorAt, portalFrame, portalOut, portalPoint, wallsOf,
     // shells, detail, lamps, materials
     buildCompartment, roomShell, lampsFor, frameStations, loadMaterials, surfaceMaterial, geometryOf, finishOf, compartmentMesh, paintRole, bakeDirect,
+    Builder, subdivideParts, buildPlatforms,
     // hull, labels, chrome
     hullGeometry, hullHalfWidth, label, budgetHud, titleBlock, registerShots, markReady,
     rectMinusHoles, intervalMinus, worldUv,
@@ -2709,6 +2859,8 @@
    * the texel, for views where the light itself is the point), grid (lightmap texel
    * checker). lightmap: { textures, atlas } from lightmapTextures and bakeLightmap.
    */
+  // TODO kit: ShipKit.surfaceMaterial could take the three baked sets and the weight uniform itself (it is
+  // the engine's deck shader); until then this extends its shader text, and throws if that text moves.
   function bakedSurfaceMaterial(THREE, base, U, lightmap) {
     const kitHook = base.onBeforeCompile;
     const G = GAMMA.toFixed(1), OB = OVERBRIGHT.toFixed(1);
@@ -2804,7 +2956,8 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.autoClear = false;
 document.body.appendChild(renderer.domElement);
-const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.05, 400);
+// Near plane 0.1 m: a 1 cm offset (a screen on its bezel) must stay resolvable across a 15 m room.
+const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 400);
 const controls = new OrbitControls(camera, renderer.domElement);
 
 // ------------------------------------------------------------------ materials
@@ -2940,9 +3093,8 @@ function compartmentScene(id) {
   for (const role of Object.keys(built.parts).sort()) {
     if (role === "lamp" || role === "status") continue;
     const P = built.parts[role];
-    C.patches.push(...LB.patchesFromTriangles(P.position, P.normal, surf(finish[role], role)));
+    for (const p of LB.patchesFromTriangles(P.position, P.normal, surf(finish[role], role))) { p.kit = true; C.patches.push(p); }
   }
-  const nKit = C.patches.length;
   addLamps(C, built.lamps, built.parts, finish);
   // Door status strips glow in the state's status colour (display only: they light nothing).
   if (built.parts.status) for (const p of LB.patchesFromTriangles(built.parts.status.position, built.parts.status.normal, Object.assign(surf(finish.status, "status"), { cast: false, receive: false }))) {
@@ -2952,7 +3104,7 @@ function compartmentScene(id) {
   for (const cove of C.patches.filter((p) => p.tag === "cove")) coveStrip(C, cove);
   doorLeaves(C);
   if (id === "bridge") bridgeProps(C); else if (id === "engineering") engineeringProps(C);
-  C.propTriangles = LB.tessellate(C.patches.slice(nKit), Infinity, null).triangleCount; // props, door leaves, the page's own lamp housings
+  C.propTriangles = LB.tessellate(C.patches.filter((p) => !p.kit), Infinity, null).triangleCount; // props, door leaves, the page's own lamp housings
   // Ambient fill per state: ShipKit.LIGHTING's ambient colour and weight, in lux.
   C.ambient_lux = {};
   for (const s of LB.STATES) C.ambient_lux[s] = lin(LS[s].ambient, LS[s].ambientI * BAKE.ambient_scale_lux);
@@ -3025,6 +3177,8 @@ function addEmitter(C, p, type, states, lookOrNull, id, group) {
 }
 
 /** Closed door leaves, 5 cm beyond the wall plane in the kit's framed openings, with their reveals. */
+// TODO kit: buildCompartment cuts and frames door openings but draws no leaf; a bake needs doors closed
+// (light-baking design section 9), so the page adds a leaf and four reveals per door, hatch and pressure door.
 function doorLeaves(C) {
   const MATS = { door: "trim", hatch: "machinery", pressure_door: "hazard" };
   for (const op of C.built.openings) {
@@ -3077,6 +3231,34 @@ function wallBehind(C, p) {
   return best;
 }
 
+/**
+ * Cut the kit's ribs where a wall fixture's box covers them (they cannot be seen there, and their
+ * edge-on side faces showed through the viewscreen in a software render). base: the fixture's
+ * foot on the wall; t along the wall, nIn into the room; halfAlong, [y0, y1] and depth its box.
+ */
+function cutRibsBehind(C, base, t, nIn, halfAlong, ys, depth) {
+  const local = (q) => { const d = sub(q, base); return [dot(d, t), dot(d, nIn)]; };
+  const out = [];
+  for (const p of C.patches) {
+    if (p.tag !== "rib" || p.poly) { out.push(p); continue; }
+    const cs = LB.patchCorners(p).map(local);
+    const inside = cs.every(([a, n]) => Math.abs(a) <= halfAlong + 1e-3 && n >= -1e-3 && n <= depth + 1e-3);
+    const vert = Math.abs(p.u[1]) > 0.99 * Math.hypot(...p.u) ? "u" : Math.abs(p.v[1]) > 0.99 * Math.hypot(...p.v) ? "v" : null;
+    if (!inside || !vert) { out.push(p); continue; }
+    // A vertical face: keep the parts below and above the fixture's box.
+    const V = vert === "u" ? p.u : p.v, H = vert === "u" ? p.v : p.u, up = V[1] > 0;
+    const o = up ? p.o : add(p.o, V), Vup = up ? V : mul(V, -1), y0 = o[1], y1 = o[1] + Vup[1];
+    for (const [a, b] of [[y0, Math.min(y1, ys[0])], [Math.max(y0, ys[1]), y1]]) {
+      if (b - a < 0.01) continue;
+      const oo = [o[0], a, o[2]], VV = [0, b - a, 0];
+      const q = dot(cross(H, VV), p.n) >= 0 ? LB.patch(oo, H, VV, p) : LB.patch(oo, VV, H, p);
+      q.kit = p.kit;
+      out.push(q);
+    }
+  }
+  C.patches = out;
+}
+
 function bridgeProps(C) {
   const dais = K.byId(L.fixtures, "captain_dais"), dc = dais.center_m, ds = dais.size_m, dh = dais.height_m;
   const dmin = [dc[0] - ds[0] / 2, dc[1], dc[2] - ds[1] / 2], dmax = [dc[0] + ds[0] / 2, dc[1] + dh, dc[2] + ds[1] / 2];
@@ -3084,19 +3266,24 @@ function bridgeProps(C) {
   C.patches.push(...abox(dmin, dmax, "trim", ["-y", "+y"]));
   for (const st of K.stationsIn(L, "bridge")) stationProps(C, st);
   // The viewscreen: a bezel on the forward wall, standing proud of the kit's ribs, and its screen as an area light.
+  // TODO kit: the layout puts the viewscreen 0.1 m off the wall, inside the kit's 0.12 m ribs (four stiffeners
+  // run behind it); the page brings the screen out to the measured rib depth + 4 cm. The kit could skip ribs
+  // behind a wall fixture.
   const vs = K.byId(L.fixtures, "viewscreen"), wb = wallBehind(C, vs.center_m), w = wb.w;
   const nIn = [-w.n[0], 0, -w.n[1]], t = [w.t[0], 0, w.t[1]];
   const depth = Math.max(wb.d, C.ribDepth + 0.04);
   const base = [w.a[0] + w.t[0] * wb.u, vs.center_m[1], w.a[1] + w.t[1] * wb.u];
   const hw = vs.size_m[0] / 2, hh = vs.size_m[1] / 2;
   C.patches.push(...obox(add(base, mul(nIn, depth / 2)), t, UP, nIn, hw + 0.12, hh + 0.12, depth / 2, "machinery", ["+u", "-u", "+v", "-v", "+w"]));
-  C.viewscreen = { centre: add(base, mul(nIn, depth + 0.01)), facing: nIn, along: t, size: vs.size_m };
+  cutRibsBehind(C, base, t, nIn, hw + 0.12, [vs.center_m[1] - hh - 0.12, vs.center_m[1] + hh + 0.12], depth);
+  // The picture stands 3 cm proud of the bezel: closer, the bezel's edges show through it at a distance.
+  C.viewscreen = { centre: add(base, mul(nIn, depth + 0.03)), facing: nIn, along: t, size: vs.size_m };
   const vq = quadPatch(add(base, mul(nIn, depth + 0.005)), t, UP, hw, hh, nIn, Object.assign(surf("light_panel", "screen"), { cast: false, receive: false }));
   addEmitter(C, vq, "viewscreen", steadyStates(FIXTURE_TYPES.viewscreen.color, 1), null, "viewscreen");
   C.view = {
     // Cutaway: outside the aft-starboard corner, above the ceiling. Back faces are culled and the ceiling's
     // detail is clipped away above clipY, so the floor's baked light is readable.
-    cutaway: { pos: [-11.0, 13.6, 13.4], target: [0.6, 3.5, 26.2], fov: 50 },
+    cutaway: { pos: [-11.9, 13.6, 14.2], target: [-0.3, 2.6, 27.0], fov: 50 },
     centre: { pos: [0.0, 15.6, 12.4], target: [0.0, 3.5, 26.0], fov: 54 },
     eye: { pos: [-6.4, 5.2, 21.0], target: [1.0, 4.5, 28.8], fov: 64 },
     // Close: above the captain's chair, down onto helm (left of centre) and tactical (right), which mirror each other.
@@ -3480,7 +3667,7 @@ function setDynamicState(Dy, w) {
 const MODES = {
   unlit: { label: "Unlit", short: "unlit", desc: "The textures with no light at all: each Material Maker layer as authored." },
   dynamic: { label: "Dynamic", short: "runtime lights", desc: "Every fixture as a runtime per-pixel light on the textured surfaces, no shadows: the look without a bake. A Pi 5 affords a few such lights per room, not every fixture, and no shadows from them." },
-  vertex: { label: "Vertex: deck mesh", short: "vertex, deck mesh", desc: "Baked into vertex colours at the kit's own density (one quad or polygon per face): what vertex lighting gives with no subdivision." },
+  vertex: { label: "Vertex: deck mesh", short: "vertex, deck mesh", desc: "Baked into vertex colours at the kit's own density (one quad or polygon per face): what vertex lighting gives with no subdivision. A hull-following floor is one polygon whose corners all sit in the room's dark corners, so it reads dark." },
   adaptive: { label: "Vertex: adaptive", short: "vertex, adaptive", desc: "Baked into vertex colours after adaptive subdivision: cells split where light changes fast (pools, console shadows), within a triangle cap. The colours multiply the texture." },
   adaptive_full: { label: "Vertex: adaptive, no cap", short: "vertex, adaptive, no cap", desc: "Adaptive subdivision run to its error target with no triangle cap: what the room would spend for every pool and shadow edge." },
   lightmap: { label: "Lightmap", short: "lightmap", desc: "Baked into a lightmap atlas (three textures, one per state) on the kit's mesh with a second UV set; the texel multiplies the texture." },
@@ -3697,7 +3884,7 @@ K.registerShots([
   { name: "bridge-vertex-density", setup: () => shot({ comp: "bridge", mode: "adaptive", state: "normal", debug: true, tex: false }) },
   { name: "bridge-vertex-no-bounce", setup: () => shot({ comp: "bridge", mode: "adaptive", state: "normal", bounces: 0 }) },
   { name: "bridge-vertex-two-bounces", setup: () => shot({ comp: "bridge", mode: "adaptive", state: "normal", bounces: 2 }) },
-  { name: "bridge-occlusion-only", setup: () => shot({ comp: "bridge", mode: "adaptive", state: "normal", aoview: true }) },
+  { name: "bridge-occlusion-only", setup: () => shot({ comp: "bridge", mode: "adaptive", state: "normal", aoview: true, tex: false }) },
   { name: "bridge-lightmap", setup: () => shot({ comp: "bridge", mode: "lightmap", state: "normal" }) },
   { name: "bridge-lightmap-texels", setup: () => shot({ comp: "bridge", mode: "lightmap", state: "normal", debug: true, tex: false }) },
   { name: "bridge-red-alert-baked", setup: () => shot({ comp: "bridge", mode: "adaptive", state: "red_alert" }) },

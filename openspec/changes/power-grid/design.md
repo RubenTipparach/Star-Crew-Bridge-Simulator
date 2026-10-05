@@ -157,7 +157,8 @@ Re-run on the v2 plan, 2026-10-05, with its lighting (29.3 kW normal, 4.9 kW eme
 rose by about 4 kW (3.452, 12.453 and 24.013 MW, against 3.448, 12.449 and 24.009 MW), which moves
 the silent preset's printed draw from 12.4 to 12.5 MW and no endurance. The emergency row read
 "24.0 MW wanted, 12.7 MW at the battery's share": 12.7 MW was the part of the last sub-step, the
-one that reaches the reserve, not the draw. The battery gives the whole 24.0 MW until then, which
+one that reaches the reserve, not the draw (on the v2 plan that sub-step reads 10.6 MW: a sampling
+point, not a result). The battery gives the whole 24.0 MW on average until then, which
 is what 0.8 min means (1,206 MJ delivered at 95 % from 1,620 MJ to 350 MJ, in 50 s). Corrected
 2026-10-05.
 

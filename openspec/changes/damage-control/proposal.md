@@ -23,8 +23,8 @@ direction and an energy in megajoules; this change decides what it does.
   hit), the rest opens a breach sized by its energy and marches inward along the hit's direction,
   losing energy with distance and at each bulkhead, depositing it step by step; systems, switchboard
   sections, conduits, doors and crew near each step take damage with distance; fire may start.
-- **Hull sections** (9 spans by 6 faces) with armour that wears: 25 pulse bolts strip one, then
-  bolts hole it.
+- **Hull sections** (9 spans by 6 faces) with armour that wears: 24 pulse bolts wear one through,
+  then bolts hole the room behind it.
 - **System damage states** (nominal, damaged, disabled, destroyed) with the capability `power-grid`
   reads, and damage from heat and overdrive.
 - **Fire** from energy, fuel and oxygen: t-squared growth, a ceiling set by floor area and oxygen,

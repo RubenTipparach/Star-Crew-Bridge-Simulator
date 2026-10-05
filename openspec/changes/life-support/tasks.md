@@ -23,8 +23,8 @@
 
 ## 3. Tests
 
-- [ ] 3.1 `a_launch_bay_pumps_down_to_five_kilopascals_in_under_thirty_seconds` (28.6 s) and `the_hangar_takes_about_three_and_a_half_minutes` (208 s).
-- [ ] 3.2 `a_one_square_metre_breach_takes_the_bridge_to_armstrongs_limit_in_eleven_seconds`, and the whole decompression table of section 11 within 5%.
+- [ ] 3.1 `a_launch_bay_pumps_down_to_five_kilopascals_in_under_thirty_seconds` (23.6 s) and `the_hangar_takes_about_three_and_a_half_minutes` (207 s).
+- [ ] 3.2 `a_one_square_metre_breach_takes_the_bridge_to_armstrongs_limit_in_fifteen_seconds`, and the whole decompression table of section 11 within 5%.
 - [ ] 3.3 `decompression_at_ten_hertz_matches_one_kilohertz_within_a_third_of_a_second`.
 - [ ] 3.4 `no_node_ever_holds_negative_gas` and `a_draining_room_never_gains_pressure_above_one_pascal` over every compartment and breach size.
 - [ ] 3.5 `gas_is_conserved`: with the oxygen generator, scrubbers, metabolism and fire off, moles in the ship, the stores, the receiver and those lost overboard sum to the start within 0.01% over an hour of breaches, pumps and refills.
@@ -46,5 +46,5 @@
 ## 6. Cross-change follow-ups
 
 - [ ] 6.1 `shuttle-bay-and-fighters`: replace its assumed times with section 13's, the launch permission at 5 kPa (L2), the Petrel's longer pump-down (L3).
-- [ ] 6.2 `bridge-stations`: F3's pump-down time (29 s).
+- [ ] 6.2 `bridge-stations`: F3's pump-down time (24 s).
 - [ ] 6.3 `docs/references.md`: the time-of-useful-consciousness, hypercapnia and Purser sources cited in section 12.

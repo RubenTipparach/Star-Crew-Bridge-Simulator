@@ -31,8 +31,8 @@ open portals. A readout on a console shows the simulated value."
 - **Crew**: metabolism, and effects from oxygen partial pressure, CO2, smoke dose, heat, cold and
   pressure, with times of useful consciousness from published tables.
 - **Breaches, bays and the airlock**: decompression times for every compartment; launch bay
-  pump-down in 28.6 s and hangar pump-down in 208 s into a receiver that returns the air; emergency
-  venting; a 36 s airlock cycle.
+  pump-down in 23.6 s and hangar pump-down in 207 s into a receiver that returns the air; emergency
+  venting; a 39 s airlock cycle (layout v2, 2026-10-05).
 - **Previews from the model**: time to pump down or refill, time to Armstrong's limit, a refill's
   gas cost.
 - **Proposed data**: `data/ships/tern/atmosphere.json`; the live mockup
@@ -60,7 +60,7 @@ None.
   compartment graph on acceptance, plus a fixture for the reserve bottles (design section 19).
 - **Other changes**:
   - `shuttle-bay-and-fighters`: its assumed times are replaced by computed ones (launch bay
-    pump-down 28.6 s to 5 kPa, hangar 208 s, repressurization 15.7 s); proposes launching at the
+    pump-down 23.6 s to 5 kPa, hangar 207 s, repressurization 13.0 s); proposes launching at the
     pumps' 5 kPa stop rather than 1 kPa (design section 15).
   - `power-grid`: the plant's loads and the bay pumps' power.
   - `damage-control`: breaches, fire chemistry and suppression gas, venting a compartment.

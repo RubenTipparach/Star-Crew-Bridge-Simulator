@@ -651,7 +651,7 @@ D-pad and A for replies. Merged into Science when unmanned (vision, decided).
 | --- | --- | --- | --- |
 | F1 Bays | (0,0,4,4) | 20, 280, 408 x 400 | Hangar, port and starboard launch bays: pressure kPa with the pump-down preview, pressure door and drop door states, who is inside and whether they are suited, pumps, lockout state |
 | F2 Craft | (4,0,4,2) | 436, 280, 408 x 196 | Swift 1, Swift 2, Petrel: pilot, state (stowed, ready, launched, returning), fuel %, ammunition, hull % |
-| F3 Sequence | (4,2,4,2) | 436, 484, 408 x 196 | The selected craft's launch steps: bay clear, pressure door sealed, pump down (~29 s, life-support's 28.6 s to 5 kPa; corrected 2026-10-04 from ~38 s), drop door open, cradle released; each with a tick and its time; LAUNCH (guarded), RECOVER |
+| F3 Sequence | (4,2,4,2) | 436, 484, 408 x 196 | The selected craft's launch steps: bay clear, pressure door sealed, pump down (~24 s, life-support's 23.6 s to 5 kPa on layout v2; corrected 2026-10-04 from ~38 s and 2026-10-05 from ~29 s), drop door open, cradle released; each with a tick and its time; LAUNCH (guarded), RECOVER |
 | F4 Tasking | (8,0,4,4) | 852, 280, 408 x 400 | Orders to launched craft (escort, attack T, patrol, return) on a small plot |
 
 Bindings: 1-3 select a craft, hold L 1.0 s launch, R recover, hold P 0.6 s pump down or up, hold
@@ -752,9 +752,12 @@ On the v1 box these were 7.70 m and 42.6 x 17.7 deg (captain), 4.13 m, 70.3 x 32
 wall, further than the seats, so every seat sees it a little smaller.
 
 The captain's chair has the classic view: the whole screen at 41 deg, both windows beside it, and
-helm and tactical in front, below the screen's bottom edge (their seated heads reach about 4.7 m;
-the screen's bottom is at 4.0 m, so they cover only its lower 0.7 m from the captain's eye height;
-the dais exists for this). Helm and tactical sit close, so the screen fills 66 deg of their view
+helm and tactical in front. From the captain's eye (5.00 m) the tops of their heads (seat plus
+1.32 m, 4.82 m) fall on the screen's plane 4.64 m up but 3.42-3.87 m either side of the
+centreline, just past the screen's edges at 3.0 m, so they hide none of it
+(`tools/bridge_variants.py --sightlines`, 2026-10-05; this said "they cover only its lower 0.7 m",
+which took their height and forgot that they sit to either side). The dais is what keeps them
+below the captain's line. Helm and tactical sit close, so the screen fills 66 deg of their view
 (v2 plan; was 43 deg, a 3.8 m bottom edge, 0.9 m and 70 deg).
 The side stations face the walls with their backs to the room, which gives the captain a view of
 every console over its operator's shoulder, and puts the viewscreen behind them: their look band
@@ -844,6 +847,167 @@ bus is up (`power-grid`), else red alert when the condition is red, else normal.
 Proposed (mixed on `engine-stack`'s 32 voices): the bridge ambience (air handler hum, 1 voice);
 console ticks and confirmations positioned at each seat (at most 4 at once); the klaxon (1); the
 order chime for its recipient only (1); hull hits (1). At most 8 voices on the bridge.
+
+#### 11a. Three ways to build the bridge (proposed 2026-10-05, for the owner to choose)
+
+The owner, 2026-10-05, on nine Star Trek bridge references: "notice how elevation is dynamic? the
+upper deck is for work, the lower one is walk way to move aorund, and the captains chair is
+raised on a platform, with two consoles for helms and tactical a sub platform. notice how majority
+of bridge consoles are buit into walls? notice the shape of the bridge, usualy this eiter confirms
+to the bridge shape which is circular on star trek ships or the ship shape liket he one found on
+the defiant", then "make a few variations, and I'll give you my feed back on whats the best".
+The references, and what they have in common, are described in `docs/analysis/star-trek-bridges.md`
+(R1-R9). Against them, today's bridge (11.1) already has a ship's shape (R5, R6), but it is one
+flat floor with a 0.3 m dais, and its seven stations are desks standing in the room.
+
+Three variants apply the lessons. Each one is data in `data/ships/tern/bridge_variants.json`,
+written by `tools/bridge_variants.py`. The tool also checks each variant against the layout's
+rules: a copy of the layout patched with it passes `tools/layout_check.py`, and every platform,
+stair and console stands inside the room. Its `--sightlines` mode measures the tables below the
+same way as 11.1's (it reproduces 11.1's table to the printed digit). `docs/mockups/bridge-variants.html`
+draws all three beside today's bridge, from a cutaway, the captain's chair, the aft door and the
+stations, with the generated detail, the Blender-built consoles (`assets/models/bridge`) and the
+baked light in the three lighting states. **The layout does not change until the owner picks one**
+(question B11). The pick becomes a layout patch in its own commit, and 11.1 is rewritten from it.
+
+**What the three share:**
+
+- **Unchanged:** the bridge stays at the bow, with its aft door to the command passage, its seven
+  stations and its 3.5 m height (y 3.5 to 7.0 m).
+- **Levels are platforms.** A level is a raised floor that is solid, like today's dais, not air,
+  so the room stays one brush and its air is the brush's. Steps rise 0.225 m, and the levels are:
+  - the **walkway**: the floor;
+  - the **sub-platform** for helm and tactical: one step up (+0.225 m);
+  - the **work level**: two steps up (+0.45 m);
+  - the **captain**: two or three steps up.
+
+  The platforms' risers, nosings, rails and stairs come from `deck-pipeline` 5a's platform rule.
+- **Rails mark the drops.** A drop of two steps or more has a railing, 1.0 m high, with a gap at
+  each stair (R1, R2, R8). A single step has a hazard nosing only.
+- **Side stations are built into the walls.** Each side station is a **wall bank** (R1, R5, R9):
+  a desk with its displays set into the wall between two frames. The generated ribs, coves and
+  baseboards stay clear of it: a wall fixture keeps them off its width plus 0.25 m either side.
+  Engineering and science have core banks 1.4 m wide; comms, flight operations and the extra
+  boards have banks 1.1 m wide. The double bank (2.4 m) is an unseated status board, one either
+  side of the aft door, in A and C.
+- **Only a few consoles stand free:** the helm group, and the captain's chair.
+- **Every console is a Blender model** built with boolean cutters (the `blender-hard-surface` skill).
+
+**A. Wedge, tiered** (after R5 and R6, with the levels of R1 and R2). This keeps today's wedge.
+
+- **Work rings:** two of them, two steps up and about 2.0 m deep, run along the raked side walls
+  from the aft corners to the windows. Each ring carries two wall banks: comms and engineering to
+  port, flight operations and science to starboard. Their operators sit 0.95 m from the wall
+  (where the bank's model puts its operator), with their backs to the room, as today. That leaves
+  0.55 m between a chair's back and the ring's rail, less than the crew collider's 0.60 m: the
+  ring is for work and the walkway for moving around, as the owner put it.
+- **Walkway:** runs between the rings, from the aft door to the viewscreen.
+- **Captain:** on an octagonal platform 3.0 m across, three steps up, railed round. Its stairs
+  go aft to the door aisle and forward to the sub-platform.
+- **Helm and tactical:** on a sub-platform one step up (6.8 x 4.1 m), at free consoles facing the
+  screen.
+- **Stairs:** each ring has one by the door and one by its window.
+
+**B. Round** (after R1, R3 and R8, with R2's dais and helm well).
+
+- **Room:** sixteen-sided, 12.4 m across, centred 6.2 m forward of the aft wall. Its bow segment
+  is flattened to 6.3 m to take the viewscreen, which moves 0.8 m aft to z 31.5. The windows
+  shrink to 2.0 m wide to fit the segments either side of the bow.
+- **Ring:** two steps up and 2.0 m deep, running round both sides with a wall bank in every
+  segment, ten in all (R1's unbroken ring of wall stations):
+  - engineering and science;
+  - comms and flight operations;
+  - two status boards by the door;
+  - two repeaters by the windows;
+  - two spares.
+
+  A rail runs along the ring's inner edge, with gaps at four stairs.
+- **Captain:** the aisle from the aft door leads into the well. The captain's dais, an octagon
+  2.2 m across, is at ring height, railed behind.
+- **Helm and tactical:** share one curved console (R1's single helm console) on a sub-platform
+  one step up in front, seated 0.46 m either side of the centreline, where the console's model
+  puts its two operators.
+- **Cost:** the round room gives up 192.7 m3, 32 % of today's bridge air. The corners between it
+  and the hull become service space, which the layout does not use yet: ducts, the computer
+  core's cable runs, or a larger ready room.
+
+**C. Split level** (after R9, with R2's sunken helm). The wedge is split across by a two-step
+riser 5.6 m forward of the aft wall (z 25.6).
+
+- **Upper level, at the back:** the aft door opens at walkway height onto a flight 2.2 m wide up
+  to it. It holds:
+  - comms and flight operations in the walls;
+  - the status boards on the aft wall;
+  - two stand-up repeaters at the riser's ends (R9's pedestal consoles);
+  - the captain, at the centre of the riser's edge, with rails either side.
+- **Lower front:** holds:
+  - helm and tactical on the floor, at free consoles facing the screen;
+  - engineering and science, in the forward raked walls.
+- **Stairs:** two flights at the riser's sides lead down.
+- **Simplest to build:** one platform, three flights and 15.0 m of rail.
+
+**The numbers** (the room's from `K.measure` and the variants file, as the mockup's panel shows
+them; the sightlines from `tools/bridge_variants.py --sightlines`; a seated eye is the seat plus
+1.20 m, a head's top the seat plus 1.32 m):
+
+| | Today | A. Wedge, tiered | B. Round | C. Split level |
+| --- | --- | --- | --- | --- |
+| Plan | wedge | wedge | sixteen sides, a flat bow | wedge |
+| Air / floor | 608.6 m3 / 173.9 m2 | 608.6 m3 / 173.9 m2 | 415.9 m3 / 118.8 m2 | 608.6 m3 / 173.9 m2 |
+| Levels above the walkway | +0.30 m (dais) | +0.225, +0.45, +0.675 m | +0.225, +0.45 m | +0.45 m |
+| Raised floor | 7.7 m2 | 88.4 m2 | 64.0 m2 | 87.9 m2 |
+| Railing | none | 29.5 m | 22.7 m | 15.0 m |
+| Stair treads | none | 7 | 5 | 3 |
+| Consoles in the walls / standing free | 0 / 6 | 6 / 2 | 10 / 1 | 6 / 2, and 2 stand-up repeaters |
+| Captain's eye over helm's | +0.30 m | +0.45 m | +0.23 m | +0.45 m |
+| Captain to the screen; the screen's width seen | 8.10 m; 40.6 deg | 8.30 m; 39.7 deg | 6.50 m; 49.5 deg | 7.40 m; 44.1 deg |
+| Screen hidden from the captain by heads | none | none | 0.90 m2, 6.3 % (helm's and tactical's heads: its lower 0.9 m, 0.8-1.3 m either side of the centre) | none |
+| Helm and tactical: distance; the screen's width seen; turn to it | 4.51 m; 65.5 deg; 24 deg | 4.67 m; 63.6 deg; 23 deg | 3.64 m; 78.9 deg; 7 deg | 4.69 m; 63.4 deg; 23 deg |
+| Engineering and science: distance; turn to the screen | 8.64 m; 122 deg | 8.81 m; 123 deg | 7.46 m; 135 deg | 7.84 m; 128 deg |
+| Comms and flight operations: distance; turn to the screen | 12.08 m; 112 deg | 11.80 m; 114 deg | 9.75 m; 157 deg | 11.90 m; 114 deg |
+| Room mesh with consoles and crew, one draw | {TRIS_NOW} | {TRIS_A} | {TRIS_B} | {TRIS_C} |
+
+**What each one trades:**
+
+- **A** is the owner's description as it stands:
+  - a work level up the walls;
+  - a walkway down the middle;
+  - the captain raised over everyone;
+  - helm and tactical on a sub-platform;
+  - consoles in the walls;
+  - the ship's own shape (R5, R6, the owner's "like the one found on the defiant").
+
+  It keeps all the air, and nothing hides the screen from the captain, whose eye is 0.45 m over
+  the helm's. It costs the most rail (29.5 m) and stairs (seven treads), and the captain climbs
+  three steps. The side stations still turn 114-123 deg to see the screen. Their look band
+  answers that (B1).
+- **B** is the iconic round bridge, with the most consoles in the walls and the screen closest
+  to the captain. It costs:
+  - a third of the room's air;
+  - side operators 135-157 deg from the screen;
+  - a captain only 0.23 m over the helm, so the helm group's heads hide 6.3 % of the screen;
+  - smaller windows;
+  - corners the layout must find a use for.
+- **C** is the simplest to build and the clearest front and back (R9). It is two of the owner's
+  four levels, though: no captain's platform of its own, and no sub-platform.
+
+**Recommendation: A**, with R7's inlaid floor stripes down the walkway (a decal, added when it is
+built). If the owner prefers the round room, B needs one fix first: helm and tactical move from
+0.46 m (where the curved console's model seats them) to 1.5 m either side of the centreline, at
+a wider curved console. Their heads then fall
+past the screen's edges from the captain's eye, as they do today. Raising the dais does not
+help: it takes a captain 1.2 m over the walkway to clear them where they sit.
+
+What a pick changes elsewhere, in its own commit:
+
+- **The layout:** the bridge's brush (B), its stations' seats and yaws, the dais fixture
+  (replaced by the platforms, a new layout field the checker learns), and for B the windows and
+  the viewscreen.
+- **11.1:** rewritten from the pick.
+- **`crew-on-deck`'s routes to bridge seats:** rerun, with the stairs' climbing time.
+- **`deck-pipeline` 11:** the bridge's budget row.
+- **The mockups that draw the bridge:** they take the platforms from the layout.
+- **This change's open questions:** B1 (look band) still stands for every variant.
 
 ### 12. The Pi 5 budget this change spends
 
@@ -995,3 +1159,4 @@ taken (ask only with screenshots)".
 | B8 | Viewscreen refresh: 30 Hz (the budget allows it) or 15 Hz (half the pass)? | 30 Hz / 15 Hz | 30 Hz, dropping to 15 Hz if the probe finds fill binding. Recommendation taken (ask only with screenshots) | none |
 | B9 | Merge every unmanned station to a tab (one player runs everything), or only the vision's three merges? | All, by merge list / only Captain, Comms and Flight ops | All, by merge list. Recommendation taken (ask only with screenshots) | none |
 | B10 | Gunner turrets: no remote gunnery from Tactical? The Pi 5 budget's secondary view (512 x 256 at 15 Hz) could carry a sight, so this is a design choice, not a cost | None / remote sight from Tactical | None: the pods are the reason to leave the bridge. Recommendation taken (ask only with screenshots) | none |
+| B11 | Which bridge: the wedge with three levels, the round room with a ring, or the wedge split front and back (section 11a)? All three put the side consoles in the walls, raise the captain and keep the 3.5 m room; they differ in shape, levels and what the captain sees | A. Wedge, tiered / B. Round / C. Split level / today's flat bridge | A: the owner's levels exactly, the ship's shape, all the air, nothing hides the screen | `bridge-variants-{today,A,B,C}-cutaway.png`, `bridge-variants-{A,B,C}-captain.png`, `bridge-variants-{A,B,C}-door.png` |

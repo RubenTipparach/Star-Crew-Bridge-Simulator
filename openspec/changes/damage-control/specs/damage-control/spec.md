@@ -20,7 +20,7 @@ r)`. The same function SHALL serve the Tern, enemy ships and craft with their ow
 
 #### Scenario: A Gannet on the main switchboard
 - **WHEN** a 60 MJ hit strikes engineering's port side at deck B height toward the main switchboard
-- **THEN** the hull section keeps 90%, engineering is breached by about 0.6 m^2, the port switchboard
+- **THEN** the hull section keeps 90%, engineering is breached by about 0.7 m^2, the port switchboard
   section is destroyed, the starboard section 15 m away keeps about 98%, and the port drive feeder
   and port main trunk are severed
 
@@ -62,12 +62,12 @@ that.
 #### Scenario: A sealed room's fire
 - **WHEN** a fire starts in the medbay with its door shut and nobody acts
 - **THEN** it peaks above 2 MW, the air passes 300 C, a crew member inside dies within about
-  2.5 minutes, and the fire goes out for want of oxygen within about 4.5 minutes
+  3 minutes, and the fire goes out for want of oxygen within about 5 minutes
 
 #### Scenario: An unattended switchboard fire
 - **WHEN** a fire starts in the forward switchboard and nobody acts
 - **THEN** both forward switchboard sections and the emergency bus are destroyed within about
-  3 minutes
+  4 minutes
 
 ### Requirement: Suppression has stated effects
 An extinguisher SHALL cut a fire's heat release by 60 kW a second for 15 s (two together, 120 kW a
@@ -91,7 +91,7 @@ inside at the racks by the one hit resolution; the next missile SHALL check agai
 
 #### Scenario: A magazine fire left alone
 - **WHEN** a fire burns in the magazine with nobody acting
-- **THEN** the air passes 200 C at about 207 s and the first missile cooks off about 60 s later
+- **THEN** the air passes 200 C at about 274 s and the first missile cooks off about 60 s later
 
 ### Requirement: Repairs need people, tools and time
 Repairs SHALL be done at the damage: a kit restores 1% of integrity a second for a player and 0.6%
@@ -115,8 +115,8 @@ each, and SHALL suffer the same harm as players. Automation SHALL never vent a r
 and never open a door across its interlock.
 
 #### Scenario: A team sent into vacuum
-- **WHEN** the board sends a team to engineering at 18 kPa
-- **THEN** the team suits up before entering, arriving about 69 s after the job is assigned
+- **WHEN** the board sends a team to engineering at 15 kPa
+- **THEN** the team suits up before entering, arriving about 71 s after the job is assigned
 
 ### Requirement: The engineering bay is worked by hand
 Scram reset, the manual throttle and the coolant branch valves SHALL be worked at the reactor panel

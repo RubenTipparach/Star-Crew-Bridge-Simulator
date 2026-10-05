@@ -1,0 +1,287 @@
+"""Stills of the bridge props, for looking at them before anyone else does (CLAUDE.md 12).
+
+It owns nothing the game loads. It imports the exported .glb files listed in
+assets/models/bridge/props.json, not the build's scene (CLAUDE.md 6.6, validate the real
+artifact), so the pictures show the geometry, normals and materials as the page will get
+them. It writes:
+  docs/screenshots/props/<name>.png       one prop, isometric, on a floor (and a wall for a wall bank)
+  docs/screenshots/props/contact-sheet.png every prop laid out together, labelled with its triangles
+Flat colours come from the glb's own materials (the build takes them from each Material Maker
+layer's mean colour, and from shipkit.js for screen and accent); screens and light strips glow.
+Edges are drawn with Freestyle so the chamfers and cuts read, the cutaway look. Cycles on the CPU
+with few samples: it runs headless, without a GPU (Workbench and EEVEE need an OpenGL context
+that a cloud session does not have).
+
+Run (from anywhere):
+  <python with the bpy module> tools/blender/render_bridge_props.py [--only a,b] [--samples 24] [--no-sheet]
+  blender -b --factory-startup -P tools/blender/render_bridge_props.py -- [same options]
+"""
+import json
+import math
+import os
+import sys
+
+import bpy  # first: with the pip bpy module, mathutils exists only once bpy is imported
+from mathutils import Vector  # noqa: E402
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(os.path.dirname(HERE))
+PROPS_DIR = os.path.join(ROOT, "assets", "models", "bridge")
+SHOTS = os.path.join(ROOT, "docs", "screenshots", "props")
+VIEW = Vector((1.0, -1.35, 0.95)).normalized()      # from the prop toward the camera: front right, above
+FLOOR_RGB = (0.025, 0.028, 0.034)   # linear
+WALL_RGB = (0.06, 0.066, 0.078)
+SHEET_ROWS = [["wall_bank_core", "wall_bank", "wall_bank_double"],
+              ["captain_chair", "free_console", "helm_arc", "standup_console", "crew_chair"]]
+
+
+def parse_args():
+    args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else (
+        [] if os.path.basename(sys.argv[0]).startswith("blender") else sys.argv[1:])
+    opts = {"only": None, "samples": 24, "sheet": True}
+    i = 0
+    while i < len(args):
+        if args[i] == "--only":
+            opts["only"] = args[i + 1].split(",")
+            i += 1
+        elif args[i] == "--samples":
+            opts["samples"] = int(args[i + 1])
+            i += 1
+        elif args[i] == "--no-sheet":
+            opts["sheet"] = False
+        else:
+            raise SystemExit(f"[render] unknown argument {args[i]!r}\n{__doc__}")
+        i += 1
+    return opts
+
+
+def reset(samples):
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    sc = bpy.context.scene
+    sc.render.engine = "CYCLES"
+    sc.cycles.device = "CPU"
+    sc.cycles.samples = samples
+    sc.cycles.use_denoising = True
+    sc.cycles.max_bounces = 4
+    sc.view_settings.view_transform = "Standard"
+    sc.view_settings.look = "None"
+    sc.render.use_freestyle = True
+    sc.render.line_thickness_mode = "ABSOLUTE"
+    sc.render.line_thickness = 1.1
+    vl = sc.view_layers[0]
+    vl.use_freestyle = True
+    fs = vl.freestyle_settings
+    fs.crease_angle = math.radians(140.0)
+    ls = fs.linesets[0] if fs.linesets else fs.linesets.new("Lines")
+    ls.select_by_visibility = True
+    ls.select_by_edge_types = True
+    ls.select_silhouette = ls.select_border = ls.select_crease = True
+    ls.select_by_collection = True
+    if ls.linestyle is None:     # an empty factory scene has a line set without a style
+        ls.linestyle = bpy.data.linestyles.new("Ink")
+    ls.linestyle.color = (0.02, 0.025, 0.03)
+    world = bpy.data.worlds.new("World")
+    world.use_nodes = True
+    bg = world.node_tree.nodes["Background"]
+    bg.inputs["Color"].default_value = (0.055, 0.065, 0.085, 1.0)
+    bg.inputs["Strength"].default_value = 1.0
+    sc.world = world
+    for name, energy, rot in (("Key", 3.2, (math.radians(50), 0, math.radians(-35))),
+                              ("Fill", 0.9, (math.radians(65), 0, math.radians(120)))):
+        ld = bpy.data.lights.new(name, "SUN")
+        ld.energy = energy
+        ld.angle = math.radians(8)
+        ob = bpy.data.objects.new(name, ld)
+        ob.rotation_euler = rot
+        sc.collection.objects.link(ob)
+    # an ambient term for the parts the suns miss, so a face never goes black
+    world.node_tree.nodes["Background"].inputs["Color"].default_value = (0.11, 0.12, 0.15, 1.0)
+    props = bpy.data.collections.new("Props")
+    sc.collection.children.link(props)
+    ls.collection = props
+    return props
+
+
+def flat_material(mat):
+    """Rebuild an imported glTF material as a flat colour: diffuse, or emission for a screen or a lamp."""
+    nt = mat.node_tree
+    bsdf = next((n for n in nt.nodes if n.type == "BSDF_PRINCIPLED"), None)
+    if bsdf is None:
+        return
+    rgba = tuple(bsdf.inputs["Base Color"].default_value)
+    glow = tuple(bsdf.inputs["Emission Color"].default_value)[:3]
+    strength = bsdf.inputs["Emission Strength"].default_value
+    emissive = strength > 0 and max(glow) > 0
+    for n in list(nt.nodes):
+        nt.nodes.remove(n)
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    if emissive:
+        sh = nt.nodes.new("ShaderNodeEmission")
+        sh.inputs["Color"].default_value = rgba
+        sh.inputs["Strength"].default_value = 1.0
+    else:
+        sh = nt.nodes.new("ShaderNodeBsdfDiffuse")
+        sh.inputs["Color"].default_value = rgba
+    nt.links.new(sh.outputs[0], out.inputs["Surface"])
+
+
+def plain(name, rgb):
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    nt = m.node_tree
+    nt.nodes["Principled BSDF"].inputs["Base Color"].default_value = (*rgb, 1.0)
+    nt.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.9
+    return m
+
+
+def plane(name, size, loc, rot, mat):
+    bpy.ops.mesh.primitive_plane_add(size=1.0)
+    ob = bpy.context.active_object
+    ob.name = name
+    ob.scale = (size[0], size[1], 1.0)
+    ob.location = loc
+    ob.rotation_euler = rot
+    ob.data.materials.append(mat)
+    return ob
+
+
+def import_prop(path, coll, offset):
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=path)
+    new = [o for o in bpy.data.objects if o not in before]
+    for o in new:
+        for c in list(o.users_collection):
+            c.objects.unlink(o)
+        coll.objects.link(o)
+        o.location += offset
+        if o.type == "MESH":
+            for slot in o.material_slots:
+                if slot.material and not slot.material.get("_flat"):
+                    flat_material(slot.material)
+                    slot.material["_flat"] = True
+    return [o for o in new if o.type == "MESH"]
+
+
+def points(objs):
+    """World-space vertices of meshes (bounding box corners for anything else): the camera fits
+    these, not a box round them, which in an isometric view is much wider than the props."""
+    out = []
+    for o in objs:
+        if o.type == "MESH":
+            out += [o.matrix_world @ v.co for v in o.data.vertices]
+        else:
+            out += [o.matrix_world @ Vector(c) for c in o.bound_box]
+    return out
+
+
+def bounds(objs):
+    pts = points(objs)
+    return (Vector((min(p.x for p in pts), min(p.y for p in pts), min(p.z for p in pts))),
+            Vector((max(p.x for p in pts), max(p.y for p in pts), max(p.z for p in pts))))
+
+
+def camera(objs, res, margin=1.12):
+    lo, hi = bounds(objs)
+    sc = bpy.context.scene
+    sc.render.resolution_x, sc.render.resolution_y = res
+    c = (lo + hi) / 2
+    rot = (-VIEW).to_track_quat("-Z", "Y")
+    cd = bpy.data.cameras.new("Cam")
+    cd.type = "ORTHO"
+    cd.clip_end = 200.0
+    cam = bpy.data.objects.new("Cam", cd)
+    cam.rotation_euler = rot.to_euler()
+    cam.location = c + VIEW * 30.0
+    sc.collection.objects.link(cam)
+    sc.camera = cam
+    right, up = rot @ Vector((1, 0, 0)), rot @ Vector((0, 1, 0))
+    pts = points(objs)
+    us = [(p - c).dot(right) for p in pts]
+    vs = [(p - c).dot(up) for p in pts]
+    aspect = res[0] / res[1]
+    w = max(max(us) - min(us), (max(vs) - min(vs)) * aspect) * margin
+    cd.ortho_scale = w
+    cd.shift_x = (max(us) + min(us)) / 2 / w
+    cd.shift_y = (max(vs) + min(vs)) / 2 / w
+    return cam
+
+
+def label(text, loc, size, coll, mat):
+    cu = bpy.data.curves.new("Label", "FONT")
+    cu.body = text
+    cu.size = size
+    cu.align_x = "CENTER"
+    cu.align_y = "TOP"
+    ob = bpy.data.objects.new("Label", cu)
+    ob.location = loc
+    ob.data.materials.append(mat)
+    coll.objects.link(ob)
+    return ob
+
+
+def render(path):
+    bpy.context.scene.render.filepath = path
+    bpy.ops.render.render(write_still=True)
+    print("[render] wrote", path)
+
+
+def one(name, row, samples):
+    props = reset(samples)
+    objs = import_prop(os.path.join(PROPS_DIR, row["file"]), props, Vector())
+    plane("Floor", (12, 12), (0, 0, 0), (0, 0, 0), plain("floor", FLOOR_RGB))
+    if name.startswith("wall_bank"):
+        # the wall the bank is built into, 2 mm behind its back face (prop z = 0 is Blender y = 0)
+        plane("Wall", (12, 6), (0, 0.002, 3), (math.radians(90), 0, 0), plain("wall", WALL_RGB))
+    camera(objs, (1024, 768))
+    render(os.path.join(SHOTS, name + ".png"))
+
+
+def sheet(rows, samples):
+    """Every prop on one floor: the wall banks against a wall, the free-standing consoles in front
+    of them, the chairs in front of those, each labelled with its triangles and budget."""
+    props = reset(samples)
+    text_mat = plain("label", (0.75, 0.78, 0.82))
+    labels = bpy.data.collections.new("Labels")
+    bpy.context.scene.collection.children.link(labels)
+    gap_x, gap_y = 0.8, 2.6
+    y = 0.0                                                 # Blender y of the row's back line
+    placed = []
+    for r, names in enumerate(SHEET_ROWS):
+        names = [n for n in names if n in rows]
+        if not names:
+            continue
+        widths = [rows[n]["dimensions_m"][0] for n in names]
+        # a row nearer the camera moves right, so on screen the rows stack instead of drifting left
+        x = -(sum(widths) + gap_x * (len(names) - 1)) / 2 - y * VIEW.x / -VIEW.y
+        for n, w in zip(names, widths):
+            b = rows[n]["bounds_m"]
+            # prop z (toward the operator) is Blender -y: put the prop's back on the row's line
+            off = Vector((x - b["min"][0], y + b["min"][2], 0.0))
+            objs = import_prop(os.path.join(PROPS_DIR, rows[n]["file"]), props, off)
+            placed += objs
+            front_y = y - (b["max"][2] - b["min"][2])
+            placed.append(label(f"{n}\n{rows[n]['triangles']} / {rows[n]['budget_triangles']} triangles",
+                                Vector((x + w / 2, front_y - 0.12, 0.003)), 0.13, labels, text_mat))
+            x += w + gap_x
+        if r == 0:
+            plane("Wall", (40, 6), (0, 0.002, 3), (math.radians(90), 0, 0), plain("wall", WALL_RGB))
+        y -= max(rows[n]["dimensions_m"][2] for n in names) + gap_y
+    plane("Floor", (40, 40), (0, -5, 0), (0, 0, 0), plain("floor", FLOOR_RGB))
+    camera(placed, (1280, 900), margin=1.05)
+    render(os.path.join(SHOTS, "contact-sheet.png"))
+
+
+def main():
+    opts = parse_args()
+    rows = json.load(open(os.path.join(PROPS_DIR, "props.json"), encoding="utf-8"))["props"]
+    os.makedirs(SHOTS, exist_ok=True)
+    for n in opts["only"] or list(rows):
+        if n not in rows:
+            raise SystemExit(f"[render] {n!r} is not in props.json")
+        one(n, rows[n], opts["samples"])
+    if opts["sheet"]:
+        sheet(rows, opts["samples"])
+
+
+if __name__ == "__main__":
+    main()
