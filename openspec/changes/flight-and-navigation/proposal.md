@@ -33,9 +33,9 @@ that choice (a jump or a cruise drive) shapes navigation, engineering and the fr
 - **The damper-safe limit**: on by default, the assist scales helm's commands so the dampers'
   predicted demand stays inside their capacity; helm can switch it off for emergency manoeuvres.
 - **Helm controls** for keyboard and mouse, gamepad and HOTAS, all driving the same commands.
-- **In-system travel by jump drive** (recommended over a cruise drive): 800 MJ spooled in 20 s at
-  full allocation, mass lock, alignment, a 1.5 km field that carries craft in formation, arrival at
-  a point of interest.
+- **In-system travel by jump drive** (recommended over a cruise drive): 800 MJ spooled in 40 s at
+  the full 20 MW allocation (sized 2026-10-04 to fit `power-grid`'s 48 MW reactor), mass lock,
+  alignment, a 1.5 km field that carries craft in formation, arrival at a point of interest.
 - **Navigation**: a system map and a local plot; autopilot modes (hold station, approach, orbit,
   point bow, follow course, dock, evade); docking corridors and limits.
 - **Collisions** between ships, craft, missiles and bodies: convex shapes, impulse response, kinetic
@@ -60,7 +60,9 @@ None.
 - Data: `data/ships/tern/flight.json`, `data/ships/tern/jump.json`, `data/systems/<id>.json`.
 - `ship-frames`: the frames these bodies live in; the dampers' demand that the damper-safe limit
   predicts; the jump as a rebase at a tick boundary.
-- `power-grid`: drive, RCS and jump draws (assumed here, see power-grid).
+- `power-grid`: the drive (16 MW nominal, 24 MW at overdrive) and RCS (two 4 MW blocks) draws are
+  its; the jump spool's 20 MW is proposed here to fit its reactor, as a priority 3 load on the drive
+  panel.
 - `weapons-and-shields`: tubes need the bow; collisions feed the damage resolution as kinetic hits.
 - `shuttle-bay-and-fighters`: craft fly this model; the recovery hold; auto recovery uses docking.
 - `bridge-stations`: the helm console and navigation map; `netcode-and-sessions`: helm inputs.

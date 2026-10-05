@@ -341,7 +341,9 @@ the 0.02 m^2 equalizing valve fills the airlock from cargo in 13.9 s, the inner 
 | Hangar pump-down 120 s; vent 20 s, 2,040 kg | 208 s; Armstrong at 2.8 s, 2,038 kg | The Petrel launch takes 88 s longer (question L3) |
 | Hangar doors to the corridors, engineering and galleries close for a Petrel launch | Every door is closed by default and interlocked | No layout change needed |
 
-`bridge-stations` F3 lists the pump-down at "~38 s"; it should read 29 s to launch.
+`bridge-stations` F3 listed the pump-down at "~38 s"; it should read 29 s to launch (corrected
+there 2026-10-04, as were `shuttle-bay-and-fighters`' sequence times: 42.6 s cold, 36.6 s from
+ready 5).
 
 ### 16. Console readouts and previews (preview = resolver)
 
@@ -440,7 +442,7 @@ rest are recommendations taken (ask only with screenshots, CLAUDE.md 13).
 | Id | Question and the fact it turns on | Options | Recommendation | Shot |
 | --- | --- | --- | --- | --- |
 | L1 | Are doors shut by default? Shut, a breach costs one room; open, a 1 m^2 breach anywhere would take the whole ship's air (368,000 mol, time constant 74 s) to Armstrong's limit in about 3.5 minutes. | (a) Shut unless someone passes or the board holds them, open on approach. (b) Open, closing on an alarm only. | (a). | `atmosphere-normal` |
-| L2 | When may a fighter drop? The pumps stop at 5 kPa after 28.6 s; 1 kPa takes 61 s. | (a) At 5 kPa, venting the last 14 kg. (b) At 1 kPa. | (a): keeps `shuttle-bay-and-fighters`' 44 s sequence. | `hangar-pumpdown` |
+| L2 | When may a fighter drop? The pumps stop at 5 kPa after 28.6 s; 1 kPa takes 61 s. | (a) At 5 kPa, venting the last 14 kg. (b) At 1 kPa. | (a): keeps `shuttle-bay-and-fighters`' sequence (42.6 s cold, from its earlier 44 s at an assumed 30 s pump-down). | `hangar-pumpdown` |
 | L3 | The hangar takes 208 s to pump down at 6 MW. | (a) Accept: the Petrel is not a combat launch. (b) Pumps twice the size (12 MW, about 105 s). (c) Vent it (2,038 kg, 74% of the reserve). | (a). | `hangar-pumpdown` |
 | L4 | Real metabolism makes a dead plant harmless for hours. | (a) Real rates: life support is about breaches, fire, smoke and heat. (b) Metabolism accelerated 20 times so a dead plant matters within a mission. | (a). | none: recommendation taken (ask only with screenshots) |
 | L5 | The reserves (2,740 kg) cannot refill engineering (3,040 kg). | (a) As designed: a breached engineering stays in vacuum until resupply. (b) Reserves of 4,000 kg. | (a): the suited engineer is a strong scene, and the debrief resupplies. | none: recommendation taken (ask only with screenshots) |

@@ -2,9 +2,10 @@
 """Walk times between key places on the Tern, from data/ships/tern/layout.json.
 
 A measurement instrument for openspec/changes/crew-on-deck (CLAUDE.md section 4): it prints the
-walk-time table that change's design quotes (task 1.3). Every waypoint is a layout point (a seat,
-a portal centre at floor height, a system, a fixture) or a stated detour point, and the speeds are
-the design's proposed values. Standard library only.
+walk-time table that change's design quotes (task 1.3), then the further routes that
+openspec/changes/reference-ship-tern section 6 and damage-control's walkthrough W1 quote. Every
+waypoint is a layout point (a seat, a portal centre at floor height, a system, a fixture) or a
+stated detour point, and the speeds are the design's proposed values. Standard library only.
 
 Usage: python3 tools/walk_times.py
 """
@@ -136,3 +137,30 @@ print()
 for st in ['helm','tactical','engineering','science','captain']:
     v = route([('pt', Q), pt('p_quarters'), ('pt', TRUNK_B), ('ladder', 3.5), pt('p_bridge_aft'), pt(st)], False, True)
     print('quarters to', st, round(v['walk'],1), round(v['run'],1))
+
+print()
+# Routes reference-ship-tern section 6 quotes beyond crew-on-deck's table (added 2026-10-04 when
+# reference-ship-tern adopted these speeds, its question T5). Same waypoints and rules as above.
+RP = fx['reactor_panel']['center_m']
+E = {}
+E['Quarters to captain (today)'] = route([('pt', Q), pt('p_quarters'), ('pt', TRUNK_B), ('ladder', 3.5), pt('p_bridge_aft'), pt('captain')], False, True)
+E['Quarters to a medbay bed (today)'] = route([('pt', Q), pt('p_quarters'), pt('p_medbay'), pt('medbay_beds')], False, False)
+E['Helm to the reactor panel, by the aft passage (T2)'] = route([pt('helm'), pt('p_bridge_aft'), pt('p_dorsal_fwd'), pt('p_dorsal_aft'), pt('p_aft_eng'), S('eng_stair_upper'), ('pt', RP)], True, False)
+E["Helm to engineering's catwalk door (today)"] = route([pt('helm'), pt('p_bridge_aft'), pt('p_dorsal_fwd'), pt('p_dorsal_aft'), pt('p_aft_eng')], True, False)
+E['Helm to engineering bay console by the hangar floor and gallery stair (T2)'] = route(bridge_to_trunk('helm') + [('ladder', -7.0), pt('p_hangar_c'), S('hangar_stair_p'), pt('p_gallery_eng_p'), pt('eng_main')], True, True)
+E['Quarters to the port pod seat (today)'] = route([('pt', Q), pt('p_quarters'), pt('p_port_turret'), pt('p_pod_port'), ('fixed', HATCH_SIDE, 'hatch'), pt('gunner_port')], False, True)
+E['Quarters to the starboard pod seat (today)'] = route([('pt', Q), pt('p_quarters'), pt('p_stbd_turret'), pt('p_pod_stbd'), ('fixed', HATCH_SIDE, 'hatch'), pt('gunner_stbd')], False, True)
+E['Quarters to the dorsal pod seat (today)'] = route([('pt', Q), pt('p_quarters'), ('pt', TRUNK_B), ('ladder', 3.5), pt('p_dorsal_fwd'), xyz(0, 3.5, 2.0), ('ladder', 3.5), pt('gunner_dorsal')], False, True)
+E['Quarters to the ventral pod seat (today)'] = route([('pt', Q), pt('p_quarters'), ('pt', TRUNK_B), ('ladder', -3.5), xyz(0, -3.5, 3.0), ('ladder', -3.0), pt('gunner_ventral')], False, True)
+E['Helm to the dorsal pod seat (today)'] = route([pt('helm'), pt('p_bridge_aft'), pt('p_dorsal_fwd'), xyz(0, 3.5, 2.0), ('ladder', 3.5), pt('gunner_dorsal')], True, True)
+E['Helm to the port or starboard pod seat (today)'] = route(bridge_to_trunk('helm') + [('ladder', -3.5), pt('p_port_turret'), pt('p_pod_port'), ('fixed', HATCH_SIDE, 'hatch'), pt('gunner_port')], True, True)
+E['Helm to the ventral pod seat (today)'] = route(bridge_to_trunk('helm') + [('ladder', -7.0), xyz(0, -3.5, 3.0), ('ladder', -3.0), pt('gunner_ventral')], True, True)
+for k, v in E.items():
+    print(f"{k:75s} path {v['path']:5.1f} m  walk {v['walk']:5.1f} s  run {v['run']:5.1f} s")
+# A suited damage control team (crew-on-deck section 10: 1.5 m/s, no running) from the suit lockers to
+# the port main switchboard section by the aft passage: damage-control's walkthrough W1.
+SUITED = 1.5
+_walk, WALK = WALK, SUITED
+v = route([('pt', fx['eva_suits']['center_m']), pt('p_damage_control'), ('pt', TRUNK_B), ('ladder', 3.5), pt('p_dorsal_fwd'), pt('p_dorsal_aft'), pt('p_aft_eng'), S('eng_stair_upper'), pt('main_switchboard')], False, False)
+WALK = _walk
+print(f"{'Suited team, suit lockers to the port main switchboard, aft passage (T2)':75s} path {v['path']:5.1f} m  suited {v['walk']:5.1f} s")

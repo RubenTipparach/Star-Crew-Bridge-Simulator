@@ -63,26 +63,42 @@ measurement (task 6.1).
 ## 4. What a snapshot holds, and what it costs
 
 State is split by frame and by how fast it changes. Rates are maximums; a delta that holds no
-change for an item costs one bit.
+change for an item costs one bit. A console's own group goes only to a client whose seat shows
+that console (`power-grid` section 14, `life-support` section 18). Rows marked as another change's
+quote its figures (added or corrected 2026-10-04).
 
 | Group | Frame | Items | Encoding | Rate | Bytes per send (changed) |
 | --- | --- | --- | --- | ---: | ---: |
 | Crew avatars | Interior | up to 8 | id 1 B; position 3 x int16 in cm (+/-327 m); yaw, pitch 2 x 8 bit; posture and animation 1 B | 20 Hz | 80 |
+| Crew status (`crew-on-deck` section 14) | Interior | up to 8 | HP 8 bit, effects bitset 8 bit, held thing 8 bit, suit oxygen 8 bit | on change, at most 2 Hz | 32 (at most 64 B/s, 0.5 kbit/s) |
+| Felt residual (`crew-on-deck` section 14) | Interior | 1, the compartment the client's own body is in | `F_k` as 3 x int8 in 0.2 m/s^2 steps; the client's prediction reads it | 20 Hz | 3 (60 B/s, 0.5 kbit/s) |
 | Own ship pose | System | 1 | position 3 x f64 relative to the session's origin body; orientation smallest-three quaternion 32 bit; velocity 3 x f32; angular velocity 3 x int16 | 20 Hz | 48 |
 | Other bodies near the ship | System, relative to own ship | up to 64 | id 2 B; position 3 x f32 relative to own ship; orientation 32 bit; velocity 3 x int16 | 20 Hz near, 5 Hz far | 20 each |
-| Projectiles | System | | Not sent: spawned by a reliable "fired" event (shooter, time, direction) and simulated on the client | | 0 |
+| Projectiles | System | | Not sent: spawned by a reliable "fired" event (shooter, time, direction) and simulated on the client | | 0; the fired and hit events cost about 4.5 kbit/s in a full engagement (`weapons-and-shields` section 15) |
 | Doors, hatches, breakers, valves | Interior | about 120 | 1-2 bits each, as a bitset | on change | about 30 |
-| Compartment air | Interior | 30 | pressure, O2 fraction, CO2, temperature: 4 x 8 bit quantized | 5 Hz | 120 |
-| Power loads and buses | | about 30 | supply ratio 8 bit, draw 8 bit | 5 Hz | 60 |
+| Compartment air (`life-support` section 18) | Interior | 30, and the duct | pressure, oxygen, CO2, temperature, smoke: 5 x 2 B | the client's own compartment at 5 Hz to every client; every compartment to a client showing a compartment panel (damage control, engineering E5) at 1 Hz, and 5 Hz for those changing faster than 1 kPa/s | 10; 310 (about 2.5 kbit/s) |
+| Lighting state (`power-grid` section 14) | Interior | 30 | 2 bits each (normal, red alert, emergency, dark) | on change | 8 |
+| Power loads and buses (`power-grid` section 14) | | 40 loads, 24 edges, 14 nodes | each load's wanted and delivered share 2 x 8 bit, each edge's flow share 8 bit, reactor, battery and loop about 24 B, node health 8 bit; to a client showing an engineering console | 2 Hz | 142 (2.3 kbit/s) |
 | Systems damage, fires, heat | | about 40 | 8 bit each | 2 Hz | 40 |
-| Seats and stations | | 14 | occupant 1 B | on change | 14 |
+| Seats and stations | | 14 | operator 1 B (`bridge-stations` section 3: player slot, `AUTO` or `MERGED`), occupant 1 B | on change | 28 |
 
-**Budget check.** A full keyframe is about 1.9 kB, sent only on join and when acknowledgement
-is lost for 1 s. A typical delta, with eight avatars moving, a dozen bodies near and the systems
-groups on their slower rates, is about 330 bytes plus 28 bytes of header: 358 B x 20 Hz = 7.2
-kB/s = **57 kbit/s down**, inside the 64 kbit/s budget. Input up: 4 repeated input frames of 12
-bytes plus header at 30 Hz is 2.3 kB/s = **18 kbit/s**, just over the 16 kbit/s budget, so input
-is sent at 20 Hz with 3 repeats (**11 kbit/s**). The first networked build measures both.
+**Budget check** (redone 2026-10-04 with the crew status and felt residual of `crew-on-deck`, the
+operator byte of `bridge-stations`, the air and power groups at `life-support`'s and `power-grid`'s
+own figures, and `weapons-and-shields`' events; it read 57 kbit/s down without them). A full
+keyframe is about 2.2 kB, sent only on join and when acknowledgement is lost for 1 s. A typical
+delta, with eight avatars moving, a dozen bodies near and the systems groups on their slower rates,
+was about 330 bytes. For the busiest client, one seated at an engineering console, the air and
+power groups now average 32 B a snapshot (against 45 B for the first table's 5 Hz groups), and
+crew status and the felt residual add 6 B: about 324 bytes plus 28 bytes of header, 352 B x 20 Hz
+= 7.0 kB/s = **56 kbit/s down**. In a full engagement the fired and hit events add about
+4.5 kbit/s: **about 61 kbit/s**, inside the 64 kbit/s budget with about 3 kbit/s (5%) to spare. A
+client away from the engineering and damage control consoles takes about 5 kbit/s less. The margin
+is thin, so the first networked build measures it (task 2.3); if it runs over, the bodies group
+gives first, being about half of the delta, by sending far bodies less often. Input up: 4 repeated
+input frames of 12 bytes plus header at 30 Hz is 2.3 kB/s = **18 kbit/s**, just over the 16 kbit/s
+budget, so input is sent at 20 Hz with 3 repeats (**11 kbit/s**); a seated player's console
+commands add about 1 kbit/s (`bridge-stations` section 12): **12 kbit/s up**. The first networked
+build measures both.
 
 ## 5. Prediction, interpolation and correction
 
@@ -135,7 +151,7 @@ gunner's view time, capped at 200 ms. This is a co-operative game, so it favours
   joined from outside by address and UDP port (one port forwarded on the router). Because the
   main server is always on, it is also the natural home for a small rendezvous service (session
   codes and NAT hole punching) so friends need no port forwarding: a later change.
-- **Join in progress:** the joining client receives a keyframe over the bulk channel (about 2 kB
+- **Join in progress:** the joining client receives a keyframe over the bulk channel (about 2.2 kB
   of state plus the ship's id and versions; the client loads its own copy of the compiled ship),
   then deltas. A version mismatch in the protocol, the ship's layout digest or the data digest
   refuses the join with a message naming which.
@@ -155,10 +171,10 @@ tests pin the systems' behaviour.
 
 | Cost | Estimate | Budget |
 | --- | ---: | ---: |
-| Down per client | 57 kbit/s | 64 kbit/s |
-| Up per client | 11 kbit/s | 16 kbit/s |
-| Server up, 8 clients | 0.46 Mbit/s | (Pi 5 gigabit Ethernet) |
-| Server CPU for networking, 8 clients | under 1 ms per tick (delta encoding of about 2 kB per client) | inside the 4 ms tick |
+| Down per client | 56 kbit/s typical, about 61 kbit/s in a full engagement (corrected 2026-10-04 from 57 kbit/s, section 4) | 64 kbit/s |
+| Up per client | 12 kbit/s (inputs 11, console commands 1) | 16 kbit/s |
+| Server up, 8 clients | about 0.49 Mbit/s in a full engagement | (Pi 5 gigabit Ethernet) |
+| Server CPU for networking, 8 clients | under 1 ms per tick (delta encoding of about 2 kB per client) | beside the simulation's 2 ms per ship, in the 33 ms tick (`engine-stack` section 5; corrected 2026-10-04 from "the 4 ms tick", which that table does not have) |
 | Server memory for history | 300 ms of 64 bodies at 30 Hz, about 40 kB; per-client acknowledged baselines, 8 x 2 kB | inside 64 MB |
 | Client memory | snapshot buffer of 1 s, about 40 kB | inside 384 MB |
 

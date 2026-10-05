@@ -18,7 +18,7 @@
 
 ## 3. Tests
 
-- [ ] 3.1 `a_cold_launch_takes_forty_four_seconds_at_a_thirty_second_pump_down`.
+- [ ] 3.1 `a_cold_launch_releases_the_swift_42_6_s_after_the_pilot_boards`.
 - [ ] 3.2 `the_bay_will_not_pump_down_around_an_unsuited_crewman`.
 - [ ] 3.3 `release_holds_while_the_ship_turns_over_ten_degrees_a_second`.
 - [ ] 3.4 `capture_needs_point_six_metres_and_one_metre_a_second`.

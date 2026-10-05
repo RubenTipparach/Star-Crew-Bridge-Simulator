@@ -12,13 +12,13 @@ themselves, flown by players or as drones.
 A Swift launch SHALL run the steps board (6 s), preflight (8 s, overlapping the pump-down),
 pump-down (life-support's time), drop door open (4 s), cradle down 4.6 m (3.5 s) and release with a
 4 m/s ejection along -Y. Each step SHALL wait for its interlock: the bay pressurized for an unsuited
-pilot to board; nobody unsuited in the bay outside a sealed cockpit for the pump-down; the bay below
-1 kPa (or vented) for the door; the door fully open for the cradle; the ship turning under 10 deg/s
+pilot to board; nobody unsuited in the bay outside a sealed cockpit for the pump-down; the bay at or
+below 5 kPa, where life-support's pumps stop and launch is permitted (or vented), for the door; the door fully open for the cradle; the ship turning under 10 deg/s
 and accelerating under 5 m/s^2 for the release. A held step SHALL show its reason on flight ops.
 
 #### Scenario: A cold launch
-- **WHEN** a pilot enters the port launch bay with the bay stowed and life-support's pump-down at 30 s
-- **THEN** Swift 1 is released 44 s later, and it becomes an exterior body at the tick of release
+- **WHEN** a pilot enters the port launch bay with the bay stowed and life-support's pump-down to 5 kPa at 28.6 s
+- **THEN** Swift 1 is released 42.6 s later, and it becomes an exterior body at the tick of release
 
 #### Scenario: Someone unsuited in the bay
 - **WHEN** flight ops starts the pump-down while an unsuited crew member stands in the port bay
@@ -30,8 +30,8 @@ and accelerating under 5 m/s^2 for the release. A held step SHALL show its reaso
 
 ### Requirement: Postures trade readiness for cost
 A bay SHALL be in one of the postures stowed, ready 5, ready 1 or hot, and the time from "launch" to
-release SHALL follow from the remaining steps: 38 s from ready 5, 8 s from ready 1 and 0.5 s from
-hot at a 30 s pump-down. A bay in ready 1 or hot SHALL be in vacuum and its pressure door SHALL stay
+release SHALL follow from the remaining steps: 36.6 s from ready 5, 8 s from ready 1 and 0.5 s from
+hot at life-support's 28.6 s pump-down. A bay in ready 1 or hot SHALL be in vacuum and its pressure door SHALL stay
 locked to unsuited crew.
 
 #### Scenario: A pilot on ready 1
@@ -80,7 +80,7 @@ two Darts, an 8 MJ shield bubble and a 6 MJ hull. Its mass SHALL fall as propell
   250 s of full thrust
 
 ### Requirement: The Petrel needs the hangar emptied
-The Petrel SHALL launch only through the pad door with the whole hangar below 1 kPa, every hangar
+The Petrel SHALL launch only through the pad door with the whole hangar at or below 5 kPa, every hangar
 pressure door shut, and nobody unsuited in the hangar or its galleries; the pad SHALL lower it 6.0 m in
 12 s. It SHALL carry four people and 2,500 kg of cargo, dock through its collar, and SHALL have no
 weapons.
@@ -105,7 +105,7 @@ propellant, and load the computer core by 10%.
 
 ### Requirement: Craft rearm and refuel on the cradle
 A craft on its cradle SHALL refuel at 20 kg/s from the Tern's craft propellant store, recharge its gun
-capacitor at 6 MW, and reload Darts in 15 s each automatically or 8 s each by crew, pressurized or not.
+capacitor from its own reactor at 3 MW, and reload Darts in 15 s each automatically or 8 s each by crew, pressurized or not.
 The propellant drawn SHALL leave the Tern's store, which persists between missions.
 
 #### Scenario: Turnaround

@@ -96,9 +96,9 @@ The server's seat table (owned by `netcode-and-sessions`, section 7 there) holds
 | operator | player slot 0-7, `AUTO`, `MERGED` | 1 |
 | occupant | body id or none | 1 |
 
-This is one byte more per station than `netcode-and-sessions` lists today ("occupant 1 B"):
-14 B more on a keyframe, and a change only when someone sits or stands. It is a proposed patch to
-that change.
+This is one byte more per station than `netcode-and-sessions` first listed ("occupant 1 B"):
+14 B more on a keyframe, and a change only when someone sits or stands. That change's seat table
+carries it since 2026-10-04 (its section 4).
 
 **The rule that fixes star-crew-64's locked seat:** the operator is never a body. A body in a chair
 is what other players see; what drives the station is the operator field. star-crew-64 kept
@@ -495,7 +495,7 @@ leading `~`) because replicated state is up to 100 ms old (`netcode-and-sessions
 | Engineering | Reactor heat in 30 s at the proposed output | `heat::project` (`power-grid`) |
 | Science | Time to scan a contact at the sensors' current power | `sensors::scan_time` (`weapons-and-shields` or a sensors section there) |
 | Science, Tactical | Each face's capacity in MJ after a rebalance or preset | `shields::allocate` (`weapons-and-shields`) |
-| Flight ops, Bay control | Time to pump a bay down to 1 kPa or up to 101 kPa | `life_support::time_to_pressure` (`life-support`) |
+| Flight ops, Bay control | Time to pump a bay down to 5 kPa (launch permitted, where the pumps stop) or up to 101 kPa | `life_support::time_to_pressure` (`life-support`; corrected 2026-10-04 from 1 kPa) |
 | Flight ops | Total launch sequence time | `bays::sequence_time` (`shuttle-bay-and-fighters`) |
 | Damage board | Time for a team to repair a system | `damage::repair_time` (`damage-control`) |
 | Captain | Whether a station can execute an order (greys it out before sending) | `automation::can_execute` (this change) |
@@ -651,7 +651,7 @@ D-pad and A for replies. Merged into Science when unmanned (vision, decided).
 | --- | --- | --- | --- |
 | F1 Bays | (0,0,4,4) | 20, 280, 408 x 400 | Hangar, port and starboard launch bays: pressure kPa with the pump-down preview, pressure door and drop door states, who is inside and whether they are suited, pumps, lockout state |
 | F2 Craft | (4,0,4,2) | 436, 280, 408 x 196 | Swift 1, Swift 2, Petrel: pilot, state (stowed, ready, launched, returning), fuel %, ammunition, hull % |
-| F3 Sequence | (4,2,4,2) | 436, 484, 408 x 196 | The selected craft's launch steps: bay clear, pressure door sealed, pump down (~38 s), drop door open, cradle released; each with a tick and its time; LAUNCH (guarded), RECOVER |
+| F3 Sequence | (4,2,4,2) | 436, 484, 408 x 196 | The selected craft's launch steps: bay clear, pressure door sealed, pump down (~29 s, life-support's 28.6 s to 5 kPa; corrected 2026-10-04 from ~38 s), drop door open, cradle released; each with a tick and its time; LAUNCH (guarded), RECOVER |
 | F4 Tasking | (8,0,4,4) | 852, 280, 408 x 400 | Orders to launched craft (escort, attack T, patrol, return) on a small plot |
 
 Bindings: 1-3 select a craft, hold L 1.0 s launch, R recover, hold P 0.6 s pump down or up, hold

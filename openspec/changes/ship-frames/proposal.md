@@ -88,7 +88,8 @@ None.
   netcode states their encoding.
 - `crew-on-deck`: consumes the per-compartment residual and shake (how a body stumbles, falls
   or floats is its rule).
-- `power-grid`: the dampers' draw and supply ratio (assumed here, see power-grid).
+- `power-grid`: the dampers' draw (its `inertial_dampers` load: 8 MW nominal, 2 MW standing by)
+  and supply ratio.
 - `damage-control`: the dampers' health; hull hits feed the shake.
 - `shuttle-bay-and-fighters`, `weapons-and-shields`, `flight-and-navigation`: use the hand-off,
   the attachments and the dampers coupling defined here.

@@ -1,9 +1,11 @@
 # Design: flight and navigation
 
-Status: **proposed** (2026-10-04). Nothing here is built. Power draws are `power-grid`'s (marked "see
-power-grid"); this design's thrusts scale with the supply ratio it delivers, so a change there
-rescales nothing here. Budget numbers are against `openspec/changes/engine-stack/design.md` section 5
-(the Pi 5 table, the one source).
+Status: **proposed** (2026-10-04). Nothing here is built. Power draws are `power-grid`'s
+(`data/ships/tern/power.json`); this design's thrusts scale with the supply ratio it delivers, so a
+change there rescales nothing here. Corrected 2026-10-04 to power-grid's figures: the impulse drive
+draws 16 MW nominal (24 MW at overdrive), not 60 MW, and the jump spool is resized to fit a 48 MW
+reactor (section 7, question N6). Budget numbers are against
+`openspec/changes/engine-stack/design.md` section 5 (the Pi 5 table, the one source).
 
 ## Context
 
@@ -70,19 +72,21 @@ centre of mass and inertia at that tick (`ship-frames` section 10).
 
 ### 2. Propulsion from power
 
-| Thruster | Force or torque | Acceleration | Rated draw (see power-grid) |
+| Thruster | Force or torque | Acceleration | Rated draw (`power-grid`) |
 | --- | ---: | ---: | ---: |
-| Main engines (2) | 2 x 22.5 MN along +Z | 15 m/s^2 (1.5 g) | 60 MW at full thrust, 2 MW standing by |
+| Main engines (2) | 2 x 22.5 MN along +Z | 15 m/s^2 (1.5 g) | The impulse drive: 16 MW at full thrust, 24 MW at a 150% setpoint, 0.2 MW standing by (corrected 2026-10-04 from an assumed 60 MW) |
 | Reverse thrusters (bow) | 15 MN along -Z | 5 m/s^2 | Part of RCS |
 | RCS translation | 12 MN along +/-X and +/-Y | 4 m/s^2 | Part of RCS |
 | RCS torque, pitch | 2.9e8 N m | 12 deg/s^2 | Part of RCS |
 | RCS torque, yaw | 3.0e8 N m | 12 deg/s^2 | Part of RCS |
 | RCS torque, roll | 5.8e7 N m | 30 deg/s^2 | Part of RCS |
-| RCS | | | 8 MW at full use |
+| RCS | | | Two blocks of 4 MW (aft on the drive panel, forward on the main deck's forward panel), 8 MW at full use; 6 MW each at 150% |
 
 **Thrust follows power.** Each thruster group's available force is `F_rated x s`, where `s` is the
-supply ratio power-grid delivers to it (1 at nominal; above 1 only if power-grid allows
-over-allocation, with its heat). Its draw follows use: `P = P_standby + P_rated x |F_used| / F_rated`.
+supply ratio power-grid delivers to it (1 at nominal; up to 1.5 at power-grid's overdrive
+setpoints, with their heat and wear). Its draw follows use, by power-grid's demand rule (its
+section 7) with the activity `a = |F_used| / F_rated`: `P = P_standby + (P_rated - P_standby) x a`,
+so a full burn draws the drive's 16 MW.
 So a ship at rest draws little, a full burn shows on engineering's console, and an engineer who cuts
 the drive's breaker leaves helm with RCS only.
 
@@ -209,7 +213,7 @@ released).
 | Quantity | Value |
 | --- | ---: |
 | Energy to spool | 800 MJ |
-| Spool draw | 40 MW at full allocation (assumed, see power-grid): 20 s; longer with less power (`t = 800 MJ / P_delivered`) |
+| Spool draw | 20 MW at full allocation, a priority 3 load on the drive panel (`dp_drive`): 40 s; longer with less power (`t = 800 MJ / P_delivered`). Corrected 2026-10-04 from 40 MW for 20 s to fit `power-grid`'s reactor (below, question N6) |
 | Alignment | The bow within 5 degrees of the jump vector and turning under 2 deg/s for the last 3 s of the spool |
 | Mass lock | No spool or jump within 3 radii of a planet or moon's centre, 5 km of a ship over 500 t (the Hound locks the Tern), or 2 km of a station |
 | Range | Any point of interest in the system |
@@ -219,12 +223,29 @@ released).
 | Jump field | Own craft in formation within 1.5 km jump with the ship, keeping their offsets; anything else stays behind and persists |
 | Transit | Instant, at one tick boundary: the ship's `f64` position is moved (`ship-frames`: attachments and the interior are untouched); a one-tick 5 m/s^2 jolt through the dampers is the jump's signature |
 
+**Why the spool draws 20 MW** (reconciled with `power-grid` sections 2, 4, 12 and 15). The reactor
+gives 48 MW electric (57.6 MW at its 120% overdrive) and the battery 1,800 MJ at no more than
+30 MW. The 40 MW spool first assumed here would be 83% of the reactor: at cruise (21.2 MW wanted)
+it would need 61 MW, so everything else at standby for 20 s or the battery at its limit, and the
+drive panel's two 20 MW feeders, which also carry the drive, the aft RCS and the dampers, would
+need raising. Three ways were weighed:
+
+| Option | At cruise | In combat | Cost |
+| --- | --- | --- | --- |
+| **20 MW for 40 s** (chosen) | 21.2 + 20 = 41.2 MW of 48 MW: nothing is shed; the reactor ramps from 44% to about 86% in about 21 s and the battery covers the ramp (about 220 MJ of its 1,800 MJ) | Combat already wants 56.2 MW of 48 MW, so the spool, at priority 3, gets only what engineering frees: the crew job a jump is meant to be | A 40 s spool; fits the drive panel's 40 MW of feeders beside the dampers and an idle or cruising drive |
+| 40 MW for 20 s | 61.2 MW: shed to standby, or draw the battery at its 30 MW limit | Impossible without dropping shields or turrets wholesale | The drive panel's feeders raised; a jump that blacks out the ship |
+| 30 MW for 27 s, from the battery | The battery's whole output for 27 s: about 840 MJ of its 1,800 MJ at 95% efficiency, so a second jump before it recharges (about 74 s at 12 MW) dips into the 350 MJ restart reserve | Takes the battery the ship fights on | Jumps rationed by charge |
+
+20 MW keeps the jump a decision in a fight and free at cruise, which is what the comparison below
+asks of it. A full burn while spooling (the drive 16 MW, aft RCS 4 MW, dampers up to 8 MW) shares
+the drive panel's feeders with the spool and stretches it, which helm sees as the spool's time.
+
 **Why a jump and not a cruise drive**:
 
 | | Jump drive (recommended) | Cruise drive (speed up to 0.01 c) |
 | --- | --- | --- |
-| Crew work | Engineering finds 40 MW (from weapons or shields), helm aligns and holds, flight ops recalls craft, captain picks the destination: everyone has a job for 20 s | Helm steers for minutes; others wait |
-| Mission time | 20 s plus the spool | Minutes per AU at the edge of playability |
+| Crew work | Engineering finds 20 MW (spare at cruise; from weapons or shields in a fight), helm aligns and holds, flight ops recalls craft, captain picks the destination: everyone has a job for the 40 s spool | Helm steers for minutes; others wait |
+| Mission time | The 40 s spool, then an instant transit | Minutes per AU at the edge of playability |
 | Frames | One rebase at a tick; nothing moves fast near anything | Very high speeds near bodies; constant far-layer motion; collisions at 3,000 km/s |
 | Escape and pursuit | Mass lock makes "drive the corvette off before you can jump" a goal | Interdiction rules needed |
 | Network | One event | A pose that changes by thousands of km per tick |
@@ -368,3 +389,4 @@ Ids N (navigation). Questions with a shot go to the owner's survey; the rest are
 | N3 | Is the damper-safe limit on by default? With it on, helm cannot throw the crew without choosing to. | (a) On, helm can switch it off. (b) Off by default. | (a) | `decoupling-split` |
 | N4 | What is the Tern's assist speed cap? | (a) 400 m/s. (b) 250 m/s (fighters always faster). (c) None. | (a): the Tern can disengage from fighters' guns (1,200 m range) but not outrun a missile | none: recommendation taken (ask only with screenshots) |
 | N5 | Does the assist flip the ship to brake? The main engines are three times the reverse thrusters. | (a) Yes, unless helm locks the heading. (b) Never. | (a) | none: recommendation taken (ask only with screenshots) |
+| N6 | How hard does the jump spool pull on the reactor? `power-grid`'s reactor gives 48 MW electric and its battery at most 30 MW; a 40 MW spool would be 83% of the reactor. (Added 2026-10-04 in the consistency pass.) | (a) 20 MW for 40 s, a priority 3 load: free at cruise, a decision in combat. (b) 40 MW for 20 s, everything else at standby. (c) 30 MW for 27 s from the battery. | (a): it fits the reactor and the drive panel's feeders without shedding anything at cruise, and keeps engineering's choice in a fight (section 7) | none: recommendation taken (ask only with screenshots) |

@@ -21,9 +21,9 @@ cradles; life support owns the air that leaves.
   lift pad over the pad door, bay control on the forward landing. The doors sit at the bay floors;
   a 2.3 m trunk reaches the keel.
 - **A launch sequence with times**: board 6 s, preflight 8 s (overlapping the pump-down), bay
-  pump-down 30 s (life-support's number, assumed here), drop door 4 s, cradle 3.5 s, release with a
-  4 m/s ejection, clear. 44 s from a pilot in the bay to release when cold; 8 s from the "ready 1"
-  posture; 0.5 s hot.
+  pump-down to 5 kPa 28.6 s (life-support's number), drop door 4 s, cradle 3.5 s, release with a
+  4 m/s ejection, clear. 42.6 s from a pilot in the bay to release when cold; 8 s from the "ready 1"
+  posture; 0.5 s hot. (Corrected 2026-10-04 from an assumed 30 s pump-down and 44 s.)
 - **Recovery**: an approach corridor under the keel with speed limits, a recovery hold on the helm,
   capture within 0.6 m and 1.0 m/s, the hand-off back into the interior, raise, close, repressurize.
 - **Flight ops and bay control**: what they see (pressures, doors, cradles, craft, interlocks with
@@ -56,7 +56,8 @@ None.
 - `sc-core::hangar` (bay sequences, interlocks, cradles, doors, postures), `sc-core::craft` (Swift,
   Petrel, drones; flight through `flight-and-navigation`'s one model).
 - Data: `data/ships/tern/bays.json`, `data/craft/swift.json`, `data/craft/petrel.json`.
-- `life-support`: bay pump-down, venting and repressurization times and air lost (assumed here).
+- `life-support`: bay pump-down, venting and repressurization times and air lost (quoted from its
+  section 13).
 - `power-grid`: pumps, cradles, doors, the lift pad, refuelling and charging (assumed here).
 - `ship-frames`: release and capture hand-off, attachments, the cockpit view.
 - `weapons-and-shields`: the Swift's guns and Darts, its shield bubble, the damage resolution.

@@ -117,9 +117,12 @@ says which. Then:
    trains' supply allows (one train alone takes 40 s).
 2. **Running** at 10%, ramping at 2%/s: full output 45 s after ignition.
 
-From the bridge (`reference-ship-tern` section 6): 41.6 s walking or 23.1 s running to the
-reactor's lower floor. A scram in combat therefore costs about 23 + 3 + 20 + 45 = 91 s before the
-reactor is back at full output, if the engineer runs at once.
+From the helm to the reactor panel by the aft passage (`reference-ship-tern` section 6, at
+`crew-on-deck`'s speeds): 35.2 s walking or 16.3 s running. A scram in combat therefore costs about
+16 + 3 + 20 + 45 = 84 s before the reactor is back at full output, if the engineer runs at once.
+Corrected 2026-10-04 to crew-on-deck's speeds and to the panel itself: this read 41.6 s walking,
+23.1 s running and 91 s, from the first route table's walk to the reactor's lower floor at an
+assumed 1.6 m/s (the panel is on the mezzanine, reached since the T2 stairs).
 
 ### 4. The battery bank
 
@@ -499,7 +502,8 @@ priority 3 dropped.
 priority 3 dropped. It reaches the reserve 18 s later. Reset at once (an engineer already at the
 panel): ignition and the pumps draw 8.8 MW from the reserve, everything else drops for 20 s, including the
 computer core (automation stops) and the shields. Running 25 s after the scram; full output 70 s
-after it. From the bridge, add the run to engineering (23 s).
+after it. From the bridge, add the run to the reactor panel (16 s; corrected 2026-10-04 from 23 s,
+section 3).
 
 **Scram from loop over-temperature** (overdrive with radiators at 60% health): scram after 248 s;
 the reset is refused ("loop too hot") for 170 s while the pumps cool the loop on the reserve
@@ -579,10 +583,10 @@ their formulas.
 | --- | --- | --- | --- |
 | `weapons-and-shields` | Turret charge 4 MW | 4 MW nominal, 6 MW at 150% | Aligned; 150% now matches sustained fire |
 | `weapons-and-shields` | Shield generator 12 MW | 12 MW | Aligned |
-| `weapons-and-shields` | Hoist 1.5 MW moving; loader 2 MW loading | 0.03 MW for the hoist and loaders together | Reloading is a crew and time decision, not a power one (question P5); its table should say so |
-| `flight-and-navigation` | Main engines 60 MW at full thrust, 2 MW standing by | Impulse drive 16 MW nominal, 24 MW at overdrive, 0.2 MW standing by | Thrust is still `F_rated x s`; its power column should read 16 MW (question P6) |
+| `weapons-and-shields` | Hoist 1.5 MW moving; loader 2 MW loading | 0.03 MW for the hoist and loaders together | Reloading is a crew and time decision, not a power one (question P5); its table says so since 2026-10-04 |
+| `flight-and-navigation` | Main engines 60 MW at full thrust, 2 MW standing by | Impulse drive 16 MW nominal, 24 MW at overdrive, 0.2 MW standing by | Thrust is still `F_rated x s`; its power column reads 16 MW since 2026-10-04 (question P6) |
 | `flight-and-navigation` | RCS 8 MW at full use | Two blocks of 4 MW | Aligned |
-| `flight-and-navigation` | Jump spool 40 MW for 20 s (800 MJ) | Not a load yet | A 40 MW spool is 83% of the reactor: a jump means everything else at standby for 20 s, or 27 s of battery. If the jump drive is accepted, it joins `loads` at priority 3 on `dp_drive`, whose feeders (40 MW together) would need raising |
+| `flight-and-navigation` | Jump spool 40 MW for 20 s (800 MJ) | Not a load yet | A 40 MW spool is 83% of the reactor: a jump means everything else at standby for 20 s, or 27 s of battery. Reconciled 2026-10-04: `flight-and-navigation` now spools at 20 MW for 40 s (its question N6), which fits beside cruise (41.2 of 48 MW) and inside `dp_drive`'s 40 MW of feeders. If the jump drive is accepted, it joins `loads` at priority 3 on `dp_drive` at 20 MW |
 | `ship-frames` | Dampers 2 MW standing by plus up to 6 MW | 8 MW nominal, 2 MW standby | Aligned |
 | `bridge-stations` | Scram reset held 3 s; priorities 1-3; presets CRUISE, COMBAT, SILENT, EMERG; coolant flow in kg/s | As there | Aligned |
 | `shuttle-bay-and-fighters` | Cradle and pad draws, gun capacitors | Cradles 0.6 MW, pad 0.05 MW; a craft's own capacitors are the craft's | Aligned |
@@ -635,6 +639,6 @@ are recommendations taken (ask only with screenshots, CLAUDE.md 13).
 | P3 | Can engineering change priorities? `bridge-stations` E1 has a priority button per group. | (a) Groups 1-3 editable, the vital class fixed. (b) Fixed by the data. | (a). | `power-overview` |
 | P4 | The radiators' 40 MW at 330 K is fictional (33,000 m^2 of real panel). | (a) Keep it, stated in the data and the console. (b) A hotter loop with plausible area. (c) Saturating heat sinks. | (a): the loop's time constants are what play needs. | none: recommendation taken (ask only with screenshots) |
 | P5 | Hoist and loader draw: physics says tens of kW; `weapons-and-shields` assumed 1.5 MW and 2 MW. | (a) 0.03 MW: reloading is about crew and time. (b) Megawatts, to make reloading a power choice. | (a). | none: recommendation taken (ask only with screenshots) |
-| P6 | The impulse drive's draw: 16 MW nominal here, 60 MW in `flight-and-navigation`'s table. | (a) 16 MW (24 MW at overdrive). (b) 60 MW and a 100 MW reactor. | (a): thrust scales with the supply ratio either way; a full burn should not need the whole reactor. | none: recommendation taken (ask only with screenshots) |
+| P6 | The impulse drive's draw: 16 MW nominal here, 60 MW in `flight-and-navigation`'s table (which reads 16 MW since 2026-10-04). | (a) 16 MW (24 MW at overdrive). (b) 60 MW and a 100 MW reactor. | (a): thrust scales with the supply ratio either way; a full burn should not need the whole reactor. | none: recommendation taken (ask only with screenshots) |
 | P7 | Is restart hands-on only? | (a) Only at the reactor panel, as `bridge-stations` has it. (b) Remote after a delay. | (a): it is why the engineering bay is a place. | none: recommendation taken (ask only with screenshots) |
 | P8 | Battery size: essentials run 5.8 min on it; a dead reactor ends the fighting. | (a) 1,800 MJ as designed. (b) 5,000 MJ, so a dead reactor still leaves a fight. | (a): the reactor is the ship's heart, and the battery buys the time to restart it. | none: recommendation taken (ask only with screenshots) |

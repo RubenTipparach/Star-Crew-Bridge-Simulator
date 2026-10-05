@@ -552,8 +552,10 @@ const hex = (c) => "#" + new THREE.Color(c).getHexString();
 const fmt = (v, d = 1) => v.toLocaleString("en-GB", { minimumFractionDigits: d, maximumFractionDigits: d });
 
 // ------------------------------------------------------------------ constants
-// Walking assumptions from reference-ship-tern design section 6, for crew-on-deck to confirm (T5).
-const SPEED = { walk_m_s: 1.6, ladder_m_s: 0.8, ladder_on_off_s: 1.0, side_hatch_s: 1.5, pressure_door_s: 2.0, stair_factor: 0.7 };
+// Walking speeds from openspec/changes/crew-on-deck (sections 3-5, 16), the same values tools/walk_times.py
+// uses for reference-ship-tern section 6 (T5, adopted 2026-10-04): ladders by direction, 0.5 s on and 0.5 s off,
+// standing up from a seat 0.9 s and sitting 0.4 s.
+const SPEED = { walk_m_s: 1.8, ladder_up_m_s: 0.8, ladder_down_m_s: 1.0, ladder_on_s: 0.5, ladder_off_s: 0.5, side_hatch_s: 1.5, pressure_door_s: 2.0, stair_factor: 0.7, stand_s: 0.9, sit_s: 0.4 };
 // Portal kinds to colour roles: the same mapping tools/deck_plans.py draws the SVG plans with.
 const PORTAL_LABEL = { door: "door", pressure_door: "pressure door", hatch: "hatch", ladder: "ladder", hoist: "hoist", window: "window", bay_door: "bay door" };
 const CREW_KINDS = ["door", "pressure_door", "hatch", "ladder"];
@@ -1176,8 +1178,11 @@ for (const g of ghostTags) { const sp = textSprite(g.text + " proposed", 0x9be7f
 // Fastest path over crew portals (Dijkstra; a BFS weighted by walk time). Legs are straight lines
 // from portal to portal at floor height, ignoring furniture, as reference-ship-tern section 6 does.
 const crewPortals = L.portals.filter((p) => CREW_KINDS.includes(p.kind) && !p.between.includes("space"));
-function crossCost(p) {
-  if (p.axis === "y") { const e = verticalEnds(p); return { t: Math.abs(e[1].floor - e[0].floor) / SPEED.ladder_m_s + SPEED.ladder_on_off_s, climb: Math.abs(e[1].floor - e[0].floor) }; }
+function crossCost(p, from) {
+  if (p.axis === "y") {
+    const e = verticalEnds(p), climb = Math.abs(e[1].floor - e[0].floor), up = from === e[0].id;
+    return { t: climb / (up ? SPEED.ladder_up_m_s : SPEED.ladder_down_m_s) + SPEED.ladder_on_s + SPEED.ladder_off_s, climb };
+  }
   if (p.kind === "pressure_door") return { t: SPEED.pressure_door_s, climb: 0 };
   if (p.kind === "hatch") return { t: SPEED.side_hatch_s, climb: 0 };
   return { t: 0, climb: 0 };
@@ -1199,15 +1204,16 @@ function findRoute(fromKey, toKey) {
   const dist = new Map(), prev = new Map(), done = new Set(), q = [];
   const push = (k, t, pr) => { if (!dist.has(k) || t < dist.get(k) - 1e-9) { dist.set(k, t); prev.set(k, pr); q.push(k); } };
   const nodePt = (k) => { const [pid, side] = k.split("|"); return portalPoint(K.byId(L.portals, pid), side); };
-  for (const p of crewPortals) if (p.between.includes(A.comp)) push(key(p, A.comp), legCost(A.comp, A.pt, portalPoint(p, A.comp)).t, "start");
+  const standT = A.station ? SPEED.stand_s : 0, sitT = B.station ? SPEED.sit_s : 0;
+  for (const p of crewPortals) if (p.between.includes(A.comp)) push(key(p, A.comp), standT + legCost(A.comp, A.pt, portalPoint(p, A.comp)).t, "start");
   let best = null;
   const finish = (k, t) => {
     const side = k.split("|")[1];
     if (side !== B.comp) return;
-    const extra = B.station ? legCost(B.comp, nodePt(k), B.pt).t : 0;
+    const extra = B.station ? legCost(B.comp, nodePt(k), B.pt).t + sitT : 0;
     if (!best || t + extra < best.t) best = { k, t: t + extra };
   };
-  if (A.comp === B.comp) best = { k: "start", t: legCost(A.comp, A.pt, B.pt).t };
+  if (A.comp === B.comp) best = { k: "start", t: standT + legCost(A.comp, A.pt, B.pt).t + sitT };
   while (q.length) {
     q.sort((a, b) => dist.get(a) - dist.get(b));
     const k = q.shift();
@@ -1218,7 +1224,7 @@ function findRoute(fromKey, toKey) {
     // cross the portal
     const other = p.between.find((s) => s !== side);
     const crossed = key(p, other);
-    if (!done.has(crossed)) push(crossed, t + crossCost(p).t, k);
+    if (!done.has(crossed)) push(crossed, t + crossCost(p, side).t, k);
     // walk to another portal of the same compartment
     for (const p2 of crewPortals) {
       if (p2 === p || !p2.between.includes(side)) continue;
@@ -1236,7 +1242,7 @@ function findRoute(fromKey, toKey) {
   for (const k of chain) {
     const [pid, side] = k.split("|"), p = K.byId(L.portals, pid), pt = portalPoint(p, side);
     if (side === cur) { const lc = legCost(cur, last, pt); metres += lc.m; if (lc.flag) flags.push(lc.flag); pts.push(pt); last = pt; }
-    else { const c = crossCost(p); metres += c.climb; if (p.kind === "ladder" || (p.kind === "hatch" && p.axis === "y")) ladders++; pts.push(pt); last = pt; cur = side; through.push(side); }
+    else { const c = crossCost(p, cur); metres += c.climb; if (p.kind === "ladder" || (p.kind === "hatch" && p.axis === "y")) ladders++; pts.push(pt); last = pt; cur = side; through.push(side); }
   }
   if (B.station) { const lc = legCost(cur, last, B.pt); metres += lc.m; if (lc.flag) flags.push(lc.flag); pts.push(B.pt.slice()); }
   return { from: A, to: B, t: best.t, metres, ladders, pts, through, flags };
@@ -1275,11 +1281,11 @@ function showRoute(fromKey, toKey) {
   if (!route) { el.innerHTML = `<b>No route</b> through crew portals.`; drawRoute(); return; }
   const pois = route.through.map((id) => K.compartment(L, id).poi).join(", ");
   const warn = route.flags.length
-    ? route.flags.map((f) => `Level change of ${fmt(f.dy)} m inside ${K.compartment(L, f.comp).name} with no stair in the layout: costed as a stair at 70 % (T2).`).join(" ")
+    ? route.flags.map((f) => `Level change of ${fmt(f.dy)} m inside ${K.compartment(L, f.comp).name}: costed in a straight line at the stairs' ${fmt(100 * SPEED.stair_factor, 0)} % of walking speed.`).join(" ")
     : "";
   el.innerHTML =
     `<div class="ln"><b>${route.from.name}</b> to <b>${route.to.name}</b>: <span class="t">${fmt(route.t)} s</span> walking, ${fmt(route.metres)} m, ${route.ladders} ladder${route.ladders === 1 ? "" : "s"}</div>` +
-    `<div class="ln">Through POI ${pois}. Assumed (T5): walk ${SPEED.walk_m_s} m/s, ladders ${SPEED.ladder_m_s} m/s plus ${SPEED.ladder_on_off_s} s.</div>` +
+    `<div class="ln">Through POI ${pois}. crew-on-deck: walk ${SPEED.walk_m_s} m/s, ladders ${SPEED.ladder_up_m_s} up, ${SPEED.ladder_down_m_s} down m/s.</div>` +
     (warn ? `<div class="warn">${warn}</div>` : "");
   drawRoute();
 }

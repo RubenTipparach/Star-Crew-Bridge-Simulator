@@ -325,8 +325,9 @@ two beds at the system, 2.0 x 0.9 m each.
 
 - **Onto a bed.** A body uses a free bed (0.8 s to lie down), or a carrier puts a casualty on it
   (Use on the bed while carrying).
-- **Healing.** 2.0 HP/s while the `medbay_beds` load is powered (its draw is `power-grid`'s;
-  proposed 0.3 MW), 0.5 HP/s unpowered. From a revive's 25 HP to full: 37.5 s.
+- **Healing.** 2.0 HP/s while the `medbay_beds` load is powered (its draw is `power-grid`'s:
+  8 kW nominal, 2 kW standing by; corrected 2026-10-04 from a proposed 0.3 MW), 0.5 HP/s
+  unpowered. From a revive's 25 HP to full: 37.5 s.
 - **Downed or critical on a bed.** Revived after 20 s at 25 HP, then healed as above. The bed is
   the only cure for a critical body.
 - **The bed also clears the air's effects**: oxygen mask and warming, so hypoxia, carbon dioxide
@@ -504,7 +505,9 @@ standing up is that change's hold (E for 0.5 s, gamepad B for 0.6 s).
 | Felt residual, own compartment | `F_k` as 3 x int8 in 0.2 m/s^2 steps (+/-25.4 m/s^2), to each client for the compartment its body is in | 20 Hz | 60 B/s (0.5 kbit/s) |
 | Commands: use, pick up, drop, revive start and cancel, don, doff, override | reliable, about 8 B each | on action | negligible |
 
-That adds about 1 kbit/s to netcode's 57 kbit/s typical delta, inside the 64 kbit/s budget.
+That adds about 1 kbit/s to netcode's typical delta. `netcode-and-sessions` carries both groups
+since 2026-10-04; its redone check is 56 kbit/s typical and about 61 kbit/s in a full engagement,
+inside the 64 kbit/s budget.
 Up, nothing changes: the input frame is the one netcode already sizes.
 
 ### 15. Data (proposed)

@@ -1,9 +1,12 @@
 # Design: shuttle bay and fighters
 
 Status: **proposed** (2026-10-04). Nothing here is built. Pressures, pump-down, venting and
-repressurization times are `life-support`'s; the values here are assumptions marked "assumed, see
-life-support". Power draws are `power-grid`'s, marked "see power-grid". Budget numbers are against
-`openspec/changes/engine-stack/design.md` section 5 (the Pi 5 table, the one source).
+repressurization times are `life-support`'s (its section 13, computed from
+`data/ships/tern/atmosphere.json`). Power draws are `power-grid`'s. Budget numbers are against
+`openspec/changes/engine-stack/design.md` section 5 (the Pi 5 table, the one source). Corrected
+2026-10-04 to life-support's figures: launch is permitted at 5 kPa after a 28.6 s pump-down (not
+1 kPa after an assumed 30 s), a bay refills in 15.7 s (not 25 s), the hangar pumps down in 208.4 s
+(not 120 s); the timelines below are recomputed from their steps.
 
 ## Context
 
@@ -60,9 +63,9 @@ request):
 
 | Posture | State | From "launch" to release |
 | --- | --- | ---: |
-| Stowed | Pressurized; no pilot; preflight not done | Pilot's walk, then 44 s |
-| Ready 5 | Pilot aboard, canopy sealed, preflight done; bay pressurized | 38 s |
-| Ready 1 | As ready 5, bay pumped down, drop door shut | 8 s |
+| Stowed | Pressurized; no pilot; preflight not done | Pilot's walk, then 42.6 s |
+| Ready 5 | Pilot aboard, canopy sealed, preflight done; bay pressurized | 36.6 s (28.6 + 4 + 3.5 + 0.5) |
+| Ready 1 | As ready 5, bay pumped down, drop door shut | 8 s (4 + 3.5 + 0.5) |
 | Hot | Ready 1 with the door open and the cradle lowered | 0.5 s |
 
 What the postures cost: a pilot waiting in a cockpit holds no other station; a bay in vacuum
@@ -76,39 +79,45 @@ strike the craft, `damage-control`), and while any door is open the ship's shiel
 | --- | --- | ---: | --- | --- |
 | 1 | The pilot enters the bay through its pressure door and climbs in; canopy seals | 6 s | Pilot | Bay pressurized (or the pilot is suited) |
 | 2 | Preflight: propellant, capacitor, Darts, systems | 8 s, during step 3 | Automatic | Skipped if done in the last 10 minutes |
-| 3 | Pump-down: the bay pressure door closes and seals; the bay pumps to 1 kPa into the reserve tank | 30 s (assumed, see life-support) | Flight ops or bay control | Nobody in the bay outside a sealed cockpit unless suited |
-| 4 | Drop door and fairing open | 4 s | Flight ops | Bay below 1 kPa, or emergency vented |
+| 3 | Pump-down: the bay pressure door closes and seals; the bay pumps move the bay's air into the reserve tank (life-support's bay receiver) and stop at 5 kPa, where launch is permitted and the bay's 0.1 m^2 vent valve takes the rest | 28.6 s (life-support section 13) | Flight ops or bay control | Nobody in the bay outside a sealed cockpit unless suited |
+| 4 | Drop door and fairing open; the last 14 kg of air leaves through it | 4 s | Flight ops | Bay at or below 5 kPa (launch permitted), or emergency vented |
 | 5 | Cradle lowers to the release point | 3.5 s | Automatic | Door fully open |
 | 6 | Release: clamps open, a 4 m/s ejection along -Y; `ship-frames` hands the craft to the system frame at this tick | 0.5 s | The pilot or flight ops | Ship turning under 10 deg/s and accelerating under 5 m/s^2 (proper), or overridden |
 | 7 | Clear: main engine allowed 15 m from the keel; "clear" at 30 m | 2-7.5 s | Pilot | |
 | 8 | Cradle rises; door closes | 3.5 s + 4 s | Automatic | Craft clear |
-| 9 | Repressurize, if wanted (a bay left in vacuum is ready for a recovery) | 25 s (assumed, see life-support) | Flight ops | |
+| 9 | Repressurize from the receiver, if wanted (a bay left in vacuum is ready for a recovery) | 15.7 s (life-support section 13) | Flight ops | |
 
-From the pilot entering the bay to release: 6 + 30 + 4 + 3.5 + 0.5 = **44 s** (preflight overlaps
-the pump-down). **Emergency vent** instead of the pump-down: the bay dumps its air to space in 6 s,
-losing about 277 kg of air (231 m^3 at 101 kPa, assumed, see life-support): release 14 s after the
-canopy seals.
+From the pilot entering the bay to release: 6 + 28.6 + 4 + 3.5 + 0.5 = **42.6 s** (preflight
+overlaps the pump-down; corrected 2026-10-04 from 44 s at an assumed 30 s pump-down).
+**Emergency vent** instead of the pump-down: the drop door opens with the bay full, and its opening
+is the vent. The bay passes Armstrong's limit 1.0 s after the door starts to open, losing all
+277 kg of its air (life-support section 13), and is below 1 kPa at 1.4 s, well inside the door's
+4 s travel (`docs/mockups/lib/shipsystems.js` run headless on the proposed data): release 4 + 3.5 + 0.5 =
+**8 s** after the vent starts (corrected 2026-10-04 from 14 s, which assumed a separate 6 s vent
+before the door).
 
 **The Petrel**: the whole hangar must be emptied: its pressure doors to the main corridor, the lower
 corridor, engineering and the two galleries close, and everyone in the hangar and galleries must be
 suited or out (bay control is on the forward landing, inside the hangar: its operator suits up or
-hands control to flight ops). Pump-down 120 s (assumed, see life-support; emergency vent 20 s,
-losing about 2,040 kg of air); pad door 8 s; pad 12 s; release at 1 m/s. About **145 s** from the
-seats being filled: the Petrel is not a combat launch.
+hands control to flight ops). Pump-down to 5 kPa 208.4 s at the pumps' full 6 MW (life-support
+section 13; the emergency vent instead passes Armstrong's limit 2.8 s after the pad door starts to
+open and loses 2,038 kg of air, 74% of the ship's reserve gas); pad door 8 s; pad 12 s; release at
+1 m/s. About **233 s** from the seats being filled (corrected 2026-10-04 from 145 s at an assumed
+120 s pump-down; life-support question L3): the Petrel is not a combat launch.
 
 ### 4. Recovery
 
 | Step | Detail | Time |
 | --- | --- | ---: |
 | Request | The pilot requests recovery; flight ops assigns a bay (its own, or the other if free; the pad when the hangar is in vacuum) | |
-| Prepare | The bay pumps down, the door opens, the cradle lowers to the capture point | 30 + 4 + 3.5 s, unless already hot |
+| Prepare | The bay pumps down, the door opens, the cradle lowers to the capture point | 28.6 + 4 + 3.5 = 36.1 s, unless already hot |
 | Approach | From astern, inside the recovery corridor: a box under the bay, 3 m either side of the capture point, from 2 m below the keel to 40 m below it, from the capture point to 200 m aft | |
 | Speed limits, relative to the ship | Under 20 m/s inside 200 m; 5 m/s inside 50 m; 1 m/s inside 10 m | |
 | Recovery hold | While a craft is inside 50 m, helm's flight assist holds the ship under 3 deg/s and 2 m/s^2 (helm sees "recovery: hold steady" and may override) | |
 | Capture | The craft's centre within 0.6 m of the capture point, relative speed under 1.0 m/s, attitude within 5 degrees of the cradle's, for 1 s; the clamps close | 1 s |
 | Hand-off | `ship-frames` capture: the relative velocity is absorbed as an impulse | One tick |
 | Stow | Cradle rises 3.5 s; door closes 4 s | 7.5 s |
-| Repressurize | (assumed, see life-support) | 25 s |
+| Repressurize | From the receiver (life-support section 13) | 15.7 s |
 | Pilot exits | Canopy opens, climbs down | 4 s |
 
 **Auto recovery**: inside 200 m the pilot (or a drone) can hand the last leg to the craft's
@@ -250,7 +259,7 @@ On the cradle, through the cradle's umbilical, pressurized or not:
 | Item | Time | How |
 | --- | ---: | --- |
 | Propellant, 800 kg at 20 kg/s | 40 s | From the Tern's craft propellant store (a campaign consumable) |
-| Gun capacitor, 18 MJ at 6 MW | 3 s | From the bus (see power-grid) |
+| Gun capacitor, 18 MJ at 3 MW | 6 s | By the craft's own reactor (section 7): `power-grid` carries no ship load for it ("a craft's own capacitors are the craft's", its section 15; the cradle's 0.6 MW is its release charge). Corrected 2026-10-04 from 6 MW from the bus |
 | Darts, two | 15 s each, automatic from the bay rack (4 spares a bay); 8 s each by crew | |
 | Shield | 10 s | It regenerates on the cradle |
 | Hull | Damage-control's repair | Crew with a repair kit |
@@ -296,8 +305,9 @@ compartment air group). **Memory**: fixed slots for three craft and two pods.
 
 ## Risks / Trade-offs
 
-- **A 44 s cold launch may feel long.** Mitigation: the ready postures (8 s from ready 1), the
-  emergency vent (14 s), and the sequence overlapping preflight with the pump-down. Question H2.
+- **A 42.6 s cold launch may feel long.** Mitigation: the ready postures (8 s from ready 1), the
+  emergency vent (8 s, at the cost of 277 kg of air), and the sequence overlapping preflight with
+  the pump-down. Question H2.
 - **Recovery by hand may be too hard.** Mitigation: auto recovery inside 200 m; the limits are data.
 - **Drones may make players feel redundant.** Mitigation: drones are worse shots and slower to react,
   escort by default and only launch on an order.
@@ -320,7 +330,7 @@ Ids H (hangar). Questions with a shot go to the owner's survey; the rest are rec
 | Id | Question and the fact behind it | Options | Recommendation | Shot |
 | --- | --- | --- | --- | --- |
 | H1 | What do fighters do with no pilot? | (a) Fly as drones at reduced competence, launched only on an order. (b) Stay docked. (c) Launch themselves in combat. | (a) | `fighter-drop` |
-| H2 | How fast is a cold launch? 44 s from the pilot in the bay to release, 8 s from ready 1. | (a) As designed, with the postures. (b) Faster pumps (a 15 s pump-down, life-support's call). | (a): the wait is a crew decision (keep a pilot on ready 1), not a delay to remove. | `fighter-drop` |
+| H2 | How fast is a cold launch? 42.6 s from the pilot in the bay to release (life-support's 28.6 s pump-down to 5 kPa; corrected 2026-10-04 from 44 s), 8 s from ready 1. | (a) As designed, with the postures. (b) Faster pumps (a 15 s pump-down, life-support's call). | (a): the wait is a crew decision (keep a pilot on ready 1), not a delay to remove. | `fighter-drop` |
 | H3 | What happens to a pilot who ejects? | (a) The pod persists and can be recovered; the player respawns in the medbay after 45 s. (b) The player waits in the pod until picked up. | (a): nobody sits out a mission; rescue still matters for the campaign. | none: recommendation taken (ask only with screenshots) |
 | H4 | Can a Swift be recovered through the pad door? | (a) Yes, when the hangar is in vacuum. (b) Launch bays only. | (a) | none: recommendation taken (ask only with screenshots) |
 | H5 | May flight ops override the launch hold? | (a) Yes, a combat drop with a predicted clearance shown first. (b) Never. | (a) | none: recommendation taken (ask only with screenshots) |

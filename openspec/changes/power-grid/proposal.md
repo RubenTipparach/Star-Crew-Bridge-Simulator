@@ -71,10 +71,11 @@ None.
 - **Data**: `data/ships/tern/power.json` (proposed here; the mockup reads it today).
 - **Other changes**:
   - `weapons-and-shields`: turret charging is aligned at 4 MW nominal; this change proposes the
-    hoist and loaders at 0.03 MW, not the 1.5 MW and 2 MW it assumed (design section 15).
+    hoist and loaders at 0.03 MW, not the 1.5 MW and 2 MW it assumed (design section 15; adopted
+    there 2026-10-04).
   - `flight-and-navigation`: the impulse drive is 16 MW nominal and 24 MW at overdrive, not the
     60 MW it assumed; RCS is aligned at 8 MW; a 40 MW jump spool would take 83% of the reactor
-    (section 15).
+    (section 15). Adopted there 2026-10-04, with the spool resized to 20 MW for 40 s.
   - `ship-frames`: the dampers are aligned at 2 MW standing by plus up to 6 MW.
   - `bridge-stations`: the engineering console's panels E1-E4 and the bay console's reactor tab
     show this change's readouts; scram reset is held 3 s, as there.

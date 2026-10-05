@@ -135,8 +135,8 @@ felt        F_k = E_k if |E_k| >= 0.3 m/s^2, else 0
 
 A crew member in compartment `k` is pushed by `-F_k` (thrown opposite to the ship's
 acceleration). The dampers draw 2 MW standing by plus up to 6 MW in proportion to
-`max_k |A_k| / C_rated` (assumed, see power-grid), so a hard manoeuvre shows on engineering's
-console as a draw spike.
+`max_k |A_k| / C_rated` (`power-grid`'s `inertial_dampers` load: 8 MW nominal, 12 MW at a 150%
+setpoint), so a hard manoeuvre shows on engineering's console as a draw spike.
 
 **What the residual does** (the body response is crew-on-deck's; these are the values this
 change proposes to it):
@@ -313,10 +313,9 @@ fix" below).
 - **The viewscreen** is a fixture (`viewscreen`, 6.0 x 2.4 m on the bridge's forward wall) whose
   picture is a 1024 x 512 RGBA8 colour texture with a 24-bit depth and 8-bit stencil
   renderbuffer: 2 MB plus 2 MB of GPU memory (engine-stack section 5: one viewscreen target at
-  1024 x 512, at most 30 Hz). The engine-stack table says "about 3 MB with depth", which is a
-  16-bit depth buffer; a 24-bit depth is stored in 32 bits, so this design counts 4 MB and asks
-  engine-stack's table to say so (or to adopt a 16-bit depth for the viewscreen, which its
-  1 m to 20 km range does not suit).
+  1024 x 512, at most 30 Hz). The engine-stack table first said "about 3 MB with depth", which is
+  a 16-bit depth buffer; a 24-bit depth is stored in 32 bits, so this design counts 4 MB, and the
+  table now says 4 MB too (a 16-bit depth would not suit the viewscreen's 1 m to 20 km range).
 - **Its camera** is a virtual camera in the ship frame: mounted at the sensor array
   ([0.0, 1.0, 41.5] m, the bow) looking along +Z by default. Science (or the captain) steers it:
   forward, aft, port, starboard, dorsal, ventral, tracking a contact, or an external chase view
@@ -475,8 +474,8 @@ only the window pixels (two 2.8 x 1.2 m windows: under 10% of the screen from th
 The viewscreen target is 524,288 pixels (57% of a frame) at 30 Hz, so about 28% of a frame's fill
 on average at the 60 fps target; a secondary feed is 131,072 pixels at 15 Hz.
 
-**Memory.** GPU: the viewscreen target 4 MB (colour 2 MB, depth and stencil 2 MB; section 8 on
-engine-stack's "about 3 MB"), two feeds 1 MB each, instance buffers for attachments and projectiles 128 kB: about 6 MB of the 96 MB texture
+**Memory.** GPU: the viewscreen target 4 MB (colour 2 MB, depth and stencil 2 MB; engine-stack's
+table agrees, section 8), two feeds 1 MB each, instance buffers for attachments and projectiles 128 kB: about 6 MB of the 96 MB texture
 budget. CPU: none beyond fixed pools (128 exterior bodies, 1,024 projectiles).
 
 **CPU.** Frame transforms: 128 exterior bodies x one `f64` subtract and a matrix compose, about

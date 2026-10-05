@@ -26,12 +26,12 @@ hull and the mass table, never typed in.
 
 ### Requirement: Thrust follows the power delivered
 Each thruster group's available force or torque SHALL be its rated value times the supply ratio
-power-grid delivers to it, and its draw SHALL be its standby draw plus its rated draw times the fraction
-of rated force used. The main engines SHALL ramp to full in 0.5 s and RCS in 0.1 s.
+power-grid delivers to it, and its draw SHALL be its standby draw plus the rest of its rated draw (rated
+less standby) times the fraction of rated force used, as power-grid's demand rule. The main engines SHALL ramp to full in 0.5 s and RCS in 0.1 s.
 
 #### Scenario: Half power to the drive
 - **WHEN** the drive's supply ratio is 0.5 and helm demands a full burn
-- **THEN** the Tern accelerates at 7.5 m/s^2 and the drive draws about half its rated 60 MW
+- **THEN** the Tern accelerates at 7.5 m/s^2 and the drive draws half its rated 16 MW, 8 MW
 
 ### Requirement: Flight assist has three modes
 Full assist SHALL hold the commanded rotation rates and the commanded velocity relative to the
@@ -81,7 +81,7 @@ smoothstep from 1 at half that body's influence radius to 0 at it.
 - **THEN** that planet's pull on it has fallen smoothly to zero, with no step in acceleration
 
 ### Requirement: The jump drive crosses a system at a tick
-A jump SHALL need 800 MJ spooled at the power delivered (20 s at the 40 MW full allocation), the bow
+A jump SHALL need 800 MJ spooled at the power delivered (40 s at the 20 MW full allocation), the bow
 within 5 degrees of the jump vector and turning under 2 deg/s for the last 3 s, and no mass lock (3 radii
 of a planet or moon, 5 km of a ship over 500 t, 2 km of a station). It SHALL move the ship at one tick to
 the destination's arrival point within a seeded 1.5 km, keep its velocity relative to the reference,

@@ -46,5 +46,5 @@
 
 ## 6. Cross-change follow-ups
 
-- [ ] 6.1 `weapons-and-shields`: hoist and loader draws (P5).
-- [ ] 6.2 `flight-and-navigation`: the drive's draw column (P6) and the jump spool as a load if the jump drive is accepted.
+- [x] 6.1 `weapons-and-shields`: hoist and loader draws (P5). Done 2026-10-04 in its design, section 10.
+- [ ] 6.2 `flight-and-navigation`: the drive's draw column (P6, done 2026-10-04) and the jump spool as a load if the jump drive is accepted (20 MW at priority 3 on `dp_drive`, its question N6).

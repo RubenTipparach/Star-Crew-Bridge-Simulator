@@ -27,11 +27,12 @@ coordinator to apply.
 - **The Tern's floor plan as a design document** (`design.md`): the ship at a glance; per deck,
   every compartment by POI number with purpose, contents, volume, floor area, doors and why it
   is there; the hangar, launch bays and engineering across decks.
-- **Routes and walk times** at assumed speeds (1.6 m/s walk, 4.0 m/s run, 0.8 m/s on ladders,
-  for `crew-on-deck` to confirm): quarters to the bridge 20.2 s; the bridge to the engineering
-  console 35.7 s by the aft passage and 36.9 s through the hangar; damage control to the
-  forward switchboard 20.7 s; any bridge station to a launch bay 35-38 s; the magazine to the
-  torpedo room 26.9 s on foot.
+- **Routes and walk times** at `crew-on-deck`'s speeds (walk 1.8 m/s, run 4.0 m/s, ladders
+  0.8 m/s up and 1.0 m/s down; adopted 2026-10-04 in place of the first assumed 1.6 m/s, question
+  T5), printed by `tools/walk_times.py`: quarters to the helm 18.9 s; the helm to the engineering
+  console 33.0 s by the aft passage and 35.4 s through the hangar (with T1); damage control to the
+  forward switchboard 19.0 s; any bridge station to a launch bay's pressure door 25.7-28.2 s; the
+  magazine to the torpedo room 24.1 s on foot.
 - **Design reasoning**: the double-height hangar with galleries, the always-pressurized aft
   passage, turrets manned from pods, ventral launch bays, and a single-point-of-failure table
   with mitigations.

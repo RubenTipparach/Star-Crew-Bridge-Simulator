@@ -33,8 +33,8 @@
 - System behaviour (power, air, weapons, craft): their changes own it; this plan places them.
 - Geometry budgets and the deck build: `deck-pipeline` (it measures its per-compartment table
   on this plan).
-- Walking speeds and ladder rules: `crew-on-deck` owns them; this document assumes values and
-  says so.
+- Walking speeds and ladder rules: `crew-on-deck` owns them; this document first assumed values
+  and now quotes its speeds (T5, done 2026-10-04).
 
 ## Decisions
 
@@ -86,9 +86,9 @@ Map: `docs/design/maps/tern-deck-B.svg`.
 | POI | Compartment | Purpose and contents | Volume m^3 | Floor m^2 | Doors | Why here |
 | ---: | --- | --- | ---: | ---: | --- | --- |
 | 7 | Torpedo room | Two forward missile tubes and their breeches (systems `tube_1`, `tube_2` at z = 31; mounts at z = 37), the ready racks, the hoist from the magazine below (`p_hoist`, 1.2 x 3.0 m) | 210.0 | 70.0 | `p_torpedo` (1.6 x 2.3 m) to 14; hoist to 21 | The tubes fire along the keel, so the breeches are at the bow; the magazine is directly below, so the hoist is a straight lift (20 s a missile, `weapons-and-shields`) |
-| 8 | Medbay | Two beds that revive and heal (`medbay_beds`) | 138.0 | 46.0 | `p_medbay` (1.2 x 2.2 m) to 14 | Forward on the main corridor, 9.3 s from the quarters, and on the same corridor as the ladder trunk, so a casualty from the bridge comes down one ladder |
-| 9 | Damage control | Repair kits, extinguishers, EVA suits; the damage control board (station `damage_board`) | 138.0 | 46.0 | `p_damage_control` (1.2 x 2.2 m) to 14 | Mid-ship forward, beside the trunk: 20.7 s to the forward switchboard, 29.9 s to the main switchboard (with the patches of section 9) |
-| 10 | Crew quarters | Bunks and lockers; the mission spawn | 232.5 | 77.5 | `p_quarters` (1.0 x 2.2 m) to 14 | Port, in the protected middle of deck B; 20.2 s to the helm |
+| 8 | Medbay | Two beds that revive and heal (`medbay_beds`) | 138.0 | 46.0 | `p_medbay` (1.2 x 2.2 m) to 14 | Forward on the main corridor, 8.5 s from the quarters, and on the same corridor as the ladder trunk, so a casualty from the bridge comes down one ladder |
+| 9 | Damage control | Repair kits, extinguishers, EVA suits; the damage control board (station `damage_board`) | 138.0 | 46.0 | `p_damage_control` (1.2 x 2.2 m) to 14 | Mid-ship forward, beside the trunk: 19.0 s to the forward switchboard, 37.3 s to the main switchboard by the aft passage today (29.1 s through the hangar once T1 is applied) |
+| 10 | Crew quarters | Bunks and lockers; the mission spawn | 232.5 | 77.5 | `p_quarters` (1.0 x 2.2 m) to 14 | Port, in the protected middle of deck B; 18.9 s to the helm |
 | 11 | Mess | Galley and tables; the lobby before a mission | 232.5 | 77.5 | `p_mess` (1.6 x 2.3 m, wide for muster) to 14 | Opposite the quarters; the crew muster here and walk to stations |
 | 12 | Port turret access | The hatch into the port pod and the turret's capacitor bank (no ammunition: pulse cannons) | 234.0 | 78.0 | `p_port_turret` to 14, hatch `p_pod_port` (0.9 x 1.4 m) to 29 | The widest point of the hull (12.2 m half beam) puts the pod furthest out for its arc |
 | 13 | Starboard turret access | Mirror of 12 | 234.0 | 78.0 | `p_stbd_turret` to 14, hatch `p_pod_stbd` to 30 | Mirror of 12 |
@@ -129,8 +129,9 @@ breach's pressure drop there (numbers are `life-support`'s).
   mezzanine, so deck B has a route aft that does not touch the hangar floor (and, with the
   patch of section 9, starts at the landing).
 - **Small launch bays, big hangar.** A fighter launches from a 231 m^3 bay, not the 1,698 m^3
-  hangar: a seventh of the air to move per launch (pump-down 30 s against 120 s for the hangar,
-  `shuttle-bay-and-fighters`, assumed there). Fighters can launch while crew work in the hangar.
+  hangar: a seventh of the air to move per launch (pump-down to 5 kPa 28.6 s against 208.4 s for
+  the hangar, `life-support` section 13; corrected 2026-10-04 from an assumed 30 s and 120 s).
+  Fighters can launch while crew work in the hangar.
 
 #### 5.2 The aft passage on deck A stays pressurized
 
@@ -138,9 +139,10 @@ The hangar vents for every shuttle launch (`p_hangar_pad`). If the only way from
 engineering crossed it, a shuttle launch would cut the ship in two. The aft passage (6) runs
 over the hangar's ceiling, on deck A, with a 0.5 m slab between them (y 3.0 to 3.5); its two
 doors open onto the dorsal turret access (5) and engineering's catwalk (18), and neither of
-those ever vents in normal operation. So the route bridge to engineering by the aft passage is
-35.7 s on foot (14.3 s running) whatever the hangar's pressure; through the hangar it is 36.9 s
-when the hangar is at pressure and closed when it is not. The two routes together are the ship's
+those ever vents in normal operation. So the route from the helm to the engineering bay console by
+the aft passage is 33.0 s walking (15.6 s running) whatever the hangar's pressure; through the
+hangar it is 35.4 s (with T1) when the hangar is at pressure and closed when it is not (section 6,
+`crew-on-deck`'s speeds). The two routes together are the ship's
 main loop (section 7).
 
 #### 5.3 Turrets are manned from pods
@@ -153,8 +155,8 @@ main loop (section 7).
 - **Access rooms hold the capacitor banks.** Pulse cannons need no ammunition; the access room
   is where the turret's power is stored and where damage control repairs it without entering
   the pod.
-- **The walk is short.** Quarters to the port or starboard pod 17.1-17.3 s; the helm to the
-  dorsal pod 20.6 s, to the ventral pod 31.4 s (section 6).
+- **The walk is short.** Quarters to the port or starboard gunner's seat 15.7-15.9 s; the helm to
+  the dorsal seat 20.8 s, to the ventral seat 26.9 s (section 6).
 
 #### 5.4 The launch bays drop ventrally
 
@@ -171,50 +173,56 @@ main loop (section 7).
 
 ### 6. Routes and walk times
 
-**Assumptions** (for `crew-on-deck` to confirm; every time below changes with them): walk
-1.6 m/s, run 4.0 m/s; ladders 0.8 m/s vertical plus 1.0 s to get on and off; a side hatch into
-a pod 1.5 s; a pressure door between two pressurized compartments 2.0 s; ordinary doors open on
-approach (0 s); stairs walked along their slope at 70 % of walking or running speed. Paths are
-straight lines from portal to portal at floor height, ignoring furniture, so real times are a
-little longer. Times assume the patches of section 9 (stairs, galleries); routes that fail
-without them are marked.
+**Speeds are `crew-on-deck`'s** (its sections 3-5 and 16; question T5, done 2026-10-04): walk
+1.8 m/s, run 4.0 m/s; stairs along their slope at 70 % of walking or running speed; ladders
+0.8 m/s up and 1.0 m/s down, plus 0.5 s to get on and 0.5 s to get off; a side hatch into a pod
+1.5 s; ordinary doors open on approach (0 s); standing up from a seat 0.9 s and sitting down 0.4 s
+are included. Paths are straight lines from portal to portal at floor height, ignoring furniture,
+so real times are a little longer. Every number below is printed by `python3 tools/walk_times.py`
+(`crew-on-deck`'s instrument, which reads the layout); it replaces the first table, made at an
+assumed 1.6 m/s walk with ladders at 0.8 m/s both ways and 1.0 s on and off. T2 (the stairs) was
+applied on 2026-10-04; T1 (the galleries) was not, so routes that need it are marked.
 
 | Route | Path m | Walk s | Run s | Through (POI) | As laid out today |
 | --- | ---: | ---: | ---: | --- | --- |
-| Quarters (spawn) to helm | 27.2 | 20.2 | 11.3 | 10, 14, ladder, 4, 1 | Same |
-| Quarters to captain | 23.0 | 17.5 | 10.2 | 10, 14, ladder, 4, 1 | Same |
-| Helm to engineering console, by the aft passage | 54.8 | 35.7 | 14.3 | 1, 4, 5, 6, 18 (catwalk, stair down) | **No route**: no stair from the catwalk to the mezzanine |
-| Helm to engineering console, through the hangar | 53.9 | 36.9 | 18.0 | 1, 4, ladder, 14, 15 (landing, gallery), 18 | **No route**; with the stairs but not the gallery patch, 47.2 s by the hangar floor |
-| Bridge engineering seat to the reactor's lower floor | 56.3 | 41.6 | 23.1 | 1, 4, 14, 20, 15 (floor), 18 | Same |
-| Damage control board to forward switchboard | 28.0 | 20.7 | 11.5 | 9, 14, ladder, 20, 26 | Same |
-| Damage control board to battery bank | 29.5 | 21.6 | 11.9 | 9, 14, ladder, 20, 26 | Same |
-| Damage control board to main switchboard | 47.9 | 29.9 | 12.0 | 9, 14, 15 (landing, gallery), 18 | **No route**; with the stairs only, 40.3 s by the aft passage |
-| Magazine racks to torpedo tube 1, on foot | 37.9 | 26.9 | 14.0 | 21, 20, ladder, 14, 7 | Same (missiles ride the hoist: 20 s each) |
-| Quarters to medbay | 14.9 | 9.3 | 3.7 | 10, 14, 8 | Same |
+| Quarters (spawn) to helm | 27.1 | 18.9 | 11.7 | 10, 14, ladder, 4, 1 | Same |
+| Quarters to captain | 22.9 | 16.6 | 10.6 | 10, 14, ladder, 4, 1 | Same |
+| Helm to engineering console, by the aft passage | 54.8 | 33.0 | 15.6 | 1, 4, 5, 6, 18 (catwalk, stair down) | Same (T2 applied) |
+| Helm to engineering console, through the hangar | 56.7 | 35.4 | 19.1 | 1, 4, ladder, 14, 15 (landing, gallery), 18 | **No route** until T1; with T2 alone, 41.7 s by the hangar floor and the gallery stair |
+| Helm to the reactor's lower floor | 56.0 | 36.1 | 21.2 | 1, 4, ladder, 14, ladder, 20, 15 (floor), 18 | Same |
+| Helm to the reactor panel (scram reset), by the aft passage | 59.4 | 35.2 | 16.3 | 1, 4, 5, 6, 18 (catwalk, stair down) | Same (T2 applied) |
+| Damage control board to forward switchboard | 28.0 | 19.0 | 11.5 | 9, 14, ladder, 20, 26 | Same |
+| Damage control board to battery bank | 29.5 | 19.8 | 11.9 | 9, 14, ladder, 20, 26 | Same |
+| Damage control board to main switchboard, through the hangar | 50.7 | 29.1 | 13.6 | 9, 14, 15 (landing, gallery), 18 | **No route** until T1 |
+| Damage control board to main switchboard, by the aft passage | 57.1 | 37.3 | 20.2 | 9, 14, ladder, 4, 5, 6, 18 | Same (T2 applied) |
+| Magazine racks to torpedo tube 1, on foot | 37.2 | 24.1 | 13.8 | 21, 20, ladder, 14, 7 | Same (missiles ride the hoist: 20 s each) |
+| Quarters to a medbay bed | 15.2 | 8.5 | 3.8 | 10, 14, 8 | Same |
 
-**Any station to the launch bays** (to the fighter on its cradle; both bays are symmetric to
-within 0.6 s):
+**Any station to the launch bays**, to the hangar side of the nearer bay's pressure door (both bays
+are symmetric to within 0.6 s; boarding from there is `shuttle-bay-and-fighters`' step 1, 6 s):
 
 | From | Walk s | Run s |
 | --- | ---: | ---: |
-| Captain | 35.2 | 21.7 |
-| Helm, tactical | 37.9 | 22.8 |
-| Engineering, science (bridge) | 38.1 | 22.9 |
-| Comms, flight operations | 36.5 | 22.3 |
-| Engineering bay console | 22.1 | 10.0 |
-| Damage control board | 31.2 | 16.9 |
-| Bay control | 28.4 | 12.5 |
-| Dorsal gunner | 38.0 | 25.7 |
-| Ventral gunner | 17.2 | 11.3 |
-| Port or starboard gunner | 35.0 | 19.3 |
-| Quarters (spawn) | 26.8 | 15.1 |
+| Captain | 25.7 | 16.5 |
+| Helm, tactical | 28.1 | 17.5 |
+| Engineering, science (bridge) | 28.2 | 17.6 |
+| Comms, flight operations | 26.9 | 17.0 |
+| Engineering bay console | 15.6 | 7.5 |
+| Damage control board | 23.4 | 13.5 |
+| Bay control (by the ladder trunk today; by the gallery stair once T1 is applied) | 23.6; 22.1 | 13.6; 10.5 |
+| Dorsal gunner | 28.4 | 20.2 |
+| Ventral gunner | 11.2 | 8.2 |
+| Port or starboard gunner | 27.0 | 15.9 |
+| Quarters (spawn) | 18.6 | 10.8 |
 
-**Gunners to their pods**: from the quarters 17.1 s (port), 17.3 s (starboard), 20.3 s (dorsal
-and ventral); from the helm 20.6 s (dorsal), 28.4 s (port, starboard), 31.4 s (ventral).
+**Gunners to their seats**: from the quarters 15.7 s (port), 15.9 s (starboard), 20.2 s (dorsal),
+17.4 s (ventral); from the helm 20.8 s (dorsal), 26.5 s (port, starboard), 26.9 s (ventral).
 
-What the numbers say: every bridge station is under 40 s from a fighter, the core four reach
-their seats from the spawn in about 20 s, and the two routes to engineering are within 1.2 s of
-each other, so losing either costs almost nothing.
+What the numbers say: every bridge station is within 28.2 s of a launch bay's pressure door at
+walking pace (17.6 s running), well inside the 40 s the requirement allows; the core four reach
+their seats from the spawn in 18.9-19.1 s; and the two routes from the helm to the engineering
+console are 2.4 s apart (33.0 s and 35.4 s), so losing either costs little once T1 gives the
+hangar route.
 
 ### 7. Single points of failure
 
@@ -275,7 +283,8 @@ from `[-18.0, -2.0]` to `[-18.0, 0.0]`, and the landing's note:
 ```
 
 Effect: the hangar becomes 1,764.0 m^3 and 378.0 m^2; the helm to the engineering console
-through the hangar drops from 47.2 s to 36.9 s.
+through the hangar drops from 41.7 s to 35.4 s at `crew-on-deck`'s speeds (section 6; first
+measured as 47.2 s to 36.9 s at the assumed 1.6 m/s).
 
 **T2. Stairs inside engineering and the hangar.** *Applied to `layout.json` on 2026-10-04.* Append to `fixtures` (a new fixture kind,
 `stair`: `top_m` and `foot_m` are the centres of the flight's top and bottom edges, `width_m`
@@ -421,14 +430,16 @@ proposed patches T1-T3 as ghosts; and a route tool. Shots, in `docs/screenshots/
 | `deck-plan-red-alert` | The forward half in red alert | |
 | `deck-plan-engineering-closeup` | Engineering's three levels, the proposed stairs, the info card | K3, T2 |
 
-**The route tool reproduces section 6.** It is a fastest-path search over crew portals (a
-breadth-first search weighted by time) with the assumptions of section 6, on the layout as it
-stands. Measured from the page: quarters to helm 20.2 s (27.2 m), to captain 17.5 s; helm to
-the dorsal pod 20.6 s, to the ventral pod 31.4 s; quarters to the port pod's hatch 16.3 s.
-Helm to the engineering bay console is 34.6 s (52.4 m) by the aft passage, and the page flags
-the 3.5 m drop from the catwalk to the mezzanine with no stair in the layout, costing it as a
-stair at 70 % of walking speed (with the T2 stair along the wall, section 6 gives 35.7 s).
-Helm to engineering's catwalk door is 28.4 s.
+**The route tool reproduces section 6** to within 1.5 s. It is a fastest-path search over crew
+portals (a search weighted by time) with `crew-on-deck`'s speeds of section 6, on the layout as it
+stands; its `SPEED` constants were set to `tools/walk_times.py`'s on 2026-10-04 (T5), ladders by
+direction and the seat's stand and sit included. Measured from the page: quarters to helm 18.9 s
+(27.2 m), to captain 16.6 s; helm to the dorsal gunner's seat 20.2 s, to the ventral seat 28.4 s
+(the page counts the trunk's two ladders as two climbs, 1.5 s over the table); quarters to the port
+gunner's seat 15.8 s. Helm to the engineering bay console is 32.1 s (52.4 m) by the aft passage:
+the page costs the 3.5 m drop from the catwalk to the mezzanine in a straight line at the stairs'
+70 %, where section 6 follows the T2 stair along the wall (33.0 s, 54.8 m). Helm to engineering's
+catwalk door is 26.1 s.
 
 ### 12. The Pi 5 cost of this plan
 
@@ -441,9 +452,9 @@ stairs at about 140 each, the gallery extension and the scuttle's frame).
 
 ## Risks / Trade-offs
 
-- **Walk times rest on assumed speeds.** Mitigation: the table is regenerated when
-  `crew-on-deck` fixes them; the requirements quote limits with margin (under 40 s), not the
-  exact times.
+- **Walk times rest on `crew-on-deck`'s proposed speeds**, which playtests may move. Mitigation:
+  `tools/walk_times.py` regenerates every table from the layout and those speeds; the requirements
+  quote limits with margin (under 40 s), not the exact times.
 - **One door per room** keeps pressure boundaries simple and makes the corridors single points
   of failure. Accepted, with two exits per corridor and the scuttle; a fire in a corridor is
   meant to be a crisis.
@@ -460,8 +471,8 @@ proceed on the recommendation ("recommendation taken, ask only with screenshots"
 
 | Id | Question and fact | Options | Recommendation | Mockup shot |
 | --- | --- | --- | --- | --- |
-| T1 | The hangar's galleries meet the landing only at a corner, so deck B's route aft over the launch bays starts in engineering | a. extend the galleries forward 2 m to the landing; b. leave them as engineering's balconies | a: the through-hangar route to engineering drops from 47.2 s to 36.9 s | `deck-plan-deck-B-plan` |
+| T1 | The hangar's galleries meet the landing only at a corner, so deck B's route aft over the launch bays starts in engineering | a. extend the galleries forward 2 m to the landing; b. leave them as engineering's balconies | a: the through-hangar route from the helm to the engineering console drops from 41.7 s to 35.4 s (`crew-on-deck`'s speeds; corrected 2026-10-04 from 47.2 s to 36.9 s at the first assumed speeds) | `deck-plan-deck-B-plan` |
 | T2 | Engineering has no stair between its catwalk, mezzanine and lower floor, so its console cannot be walked to; the hangar's landing stairs have no place that does not block a door | a. the four stairs of section 9 (engineering's along its forward wall, the hangar's at the galleries' aft ends); b. ladders instead (faster to fit, 0.8 m/s, no carrying) | a. **Applied 2026-10-04** by the coordinator as a fix, since the engineering console could not be walked to (recommendation taken; ask only with screenshots) | `deck-plan-engineering-closeup` |
 | T3 | The bridge has one door | a. the scuttle to damage control; b. a second door to the ready room; c. none | a: it also gives damage control a second exit | `deck-plan-deck-A-plan` |
 | T4 | Systems are points, so nothing checks that a scrubber or a pump stands clear of a door | add `size_m` to systems, values set by each system's change | add it. Recommendation taken (ask only with screenshots) | none |
-| T5 | Walking speeds (1.6 m/s walk, 4.0 m/s run, 0.8 m/s ladders) | `crew-on-deck` decides | take `crew-on-deck`'s; regenerate the tables. Recommendation taken (ask only with screenshots) | none |
+| T5 | Walking speeds (first assumed: 1.6 m/s walk, 4.0 m/s run, 0.8 m/s ladders) | `crew-on-deck` decides | take `crew-on-deck`'s; regenerate the tables. Recommendation taken (ask only with screenshots). **Done 2026-10-04**: walk 1.8 m/s, run 4.0 m/s, ladders 0.8 m/s up and 1.0 m/s down, stairs at 70 %; section 6 regenerated with `tools/walk_times.py`, and the mockup's route tool uses the same speeds | none |

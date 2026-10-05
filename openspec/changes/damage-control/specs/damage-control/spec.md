@@ -108,14 +108,15 @@ SHALL be computed by the repair's own rates plus the walk and any suiting.
 
 ### Requirement: Damage control teams are crew bodies
 Two teams of two NPC crew bodies SHALL take jobs from the damage control board or its automation,
-dispatching after 5 s, walking at 1.6 m/s (running at 4.0 m/s to a fire or a breach with crew in it),
+dispatching after 5 s, moving at `crew-on-deck`'s speeds (walking 1.8 m/s, running 4.0 m/s to a fire
+or a breach with crew in it, 1.5 m/s with no running when suited),
 suiting for 30 s before entering a room below 50 kPa or a fire over 2 MW, repairing at 0.6% a second
 each, and SHALL suffer the same harm as players. Automation SHALL never vent a room with crew inside
 and never open a door across its interlock.
 
 #### Scenario: A team sent into vacuum
 - **WHEN** the board sends a team to engineering at 18 kPa
-- **THEN** the team suits up before entering, arriving about 65 s after the job is assigned
+- **THEN** the team suits up before entering, arriving about 79 s after the job is assigned
 
 ### Requirement: The engineering bay is worked by hand
 Scram reset, the manual throttle and the coolant branch valves SHALL be worked at the reactor panel

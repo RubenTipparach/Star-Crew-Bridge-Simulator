@@ -140,7 +140,7 @@ inside the opening. A compartment with more than 32 colliding brushes SHALL be s
 through a compiled k-d tree.
 
 #### Scenario: Walking into a wall
-- **WHEN** a crew capsule of radius 0.3 m walks at a wall at 1.6 m/s
+- **WHEN** a crew capsule of radius 0.3 m walks at a wall at 1.8 m/s (`crew-on-deck`'s walking speed)
 - **THEN** it stops 0.3 m from the wall's face and slides along it
 
 #### Scenario: Walking through a door

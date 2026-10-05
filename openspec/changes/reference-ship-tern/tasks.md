@@ -21,5 +21,5 @@
 
 ## 4. Keep it current
 
-- [ ] 4.1 Regenerate the route tables when `crew-on-deck` fixes walking, running and ladder speeds (T5).
+- [x] 4.1 Regenerate the route tables when `crew-on-deck` fixes walking, running and ladder speeds (T5). Done 2026-10-04: design section 6 from `tools/walk_times.py`, and the `SPEED` constants of `docs/mockups/deck-plan.html`'s route tool.
 - [ ] 4.2 When `sc-core`'s layout module lands (`deck-pipeline` task 1.3), move these requirements' checks there with tests that read as sentences, and retire or wrap the Python checker.

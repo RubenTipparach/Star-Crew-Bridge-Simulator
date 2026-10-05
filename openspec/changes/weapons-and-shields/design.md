@@ -1,10 +1,11 @@
 # Design: weapons and shields
 
-Status: **proposed** (2026-10-04). Nothing here is built. Power draws are assumptions marked
-"see power-grid": `power-grid` owns every draw and the heat loop, and this design's formulas take
-the supply ratio it delivers (0 to 1, or above 1 where it allows over-allocation) so a change
-there rescales nothing here. Budget numbers are against `openspec/changes/engine-stack/design.md`
-section 5 (the Pi 5 table, the one source).
+Status: **proposed** (2026-10-04). Nothing here is built. Power draws are `power-grid`'s
+(`data/ships/tern/power.json`): it owns every draw and the heat loop, and this design's formulas
+take the supply ratio it delivers (0 to 1, or up to 1.5 at its overdrive setpoints) so a change
+there rescales nothing here. Corrected 2026-10-04 to power-grid's figures: the hoist and loaders
+draw 0.03 MW together, not 1.5 MW and 2 MW (section 10). Budget numbers are against
+`openspec/changes/engine-stack/design.md` section 5 (the Pi 5 table, the one source).
 
 ## Context
 
@@ -60,8 +61,8 @@ the reactor to a bolt to a face.
 | Energy delivered on a hit | 1.2 MJ | 80% |
 | Waste heat into the turret's sink | 0.3 MJ per bolt | |
 | Capacitor | 24 MJ | One bank per turret, in the turret access room |
-| Charging | 4 MW nominal | Assumed, see power-grid; times the supply ratio |
-| Heat sink | 9 MJ | Dissipates 0.6 MW into the coolant loop while coolant flows (see power-grid) |
+| Charging | 4 MW nominal, 6 MW at a 150% setpoint | `power-grid`'s turret load; times the supply ratio |
+| Heat sink | 9 MJ | Dissipates 0.6 MW into the coolant loop while coolant flows (`power-grid`) |
 | Heat lockout | At 100% (9 MJ); resumes at 60% | |
 | Yaw | Unlimited (slip ring), 60 deg/s, 240 deg/s^2 | |
 | Elevation | -10 to +90 deg from the mount plane, 45 deg/s, 180 deg/s^2 | |
@@ -71,8 +72,9 @@ the reactor to a bolt to a face.
 full capacitor gives 12 s of full-rate fire, after which the rate falls to what the charge
 sustains (2.67 bolts/s). Heat rises at 1.2 MW against 0.6 MW of dissipation, so the sink locks the
 turret after 15 s of full-rate fire from cold, and never at the charge-limited rate (0.8 MW in).
-Engineering can raise the charge (more power), and lose it to a breaker trip (`power-grid`); a
-damaged coolant loop removes the dissipation and makes heat the limit.
+Engineering can raise the charge (at a 150% setpoint, 6 MW, it matches sustained fire, with
+`power-grid`'s overdrive heat and wear), and lose it to a breaker trip (`power-grid`); a damaged
+coolant loop removes the dissipation and makes heat the limit.
 
 ### 3. Mount frames and arcs
 
@@ -273,8 +275,8 @@ at fighters inside 400 m when no missile is inbound.
 
 | Step | Who | Time | Notes |
 | --- | --- | ---: | --- |
-| Magazine to a ready rack | The hoist (automatic) | 20 s per missile | One hoist, one missile at a time; 1.5 MW while moving (see power-grid) |
-| Ready rack to the tube, autoloader | Automatic | 18 s | Breech open 3 s, ram 8 s, seal 4 s, umbilical 3 s; 2 MW while loading (see power-grid) |
+| Magazine to a ready rack | The hoist (automatic) | 20 s per missile | One hoist, one missile at a time; the hoist and loaders draw 0.03 MW together (`power-grid`'s `missile_hoist` load; corrected 2026-10-04 from an assumed 1.5 MW) |
+| Ready rack to the tube, autoloader | Automatic | 18 s | Breech open 3 s, ram 8 s, seal 4 s, umbilical 3 s; on the same 0.03 MW load (corrected 2026-10-04 from an assumed 2 MW) |
 | Ready rack to the tube, crew hands-on | A crew member at the breech | 10 s | Three actions at the breech panel; crew halve the jam chance |
 | Ready rack to the tube, no power | A crew member with the hand crank | 40 s | |
 | Arm | Tactical | 3 s | Warhead arm, seeker spin-up, track hand-off |
@@ -284,6 +286,12 @@ at fighters inside 400 m when no missile is inbound.
 
 Sustained rate: two tubes share one hoist, so after the first pair (two missiles staged on the
 ready racks at the start of a mission) the hoist is the limit: one missile every 20 s.
+
+**Reloading is a crew and time decision, not a power one** (`power-grid` question P5): at 0.03 MW
+the hoist and loaders are under 0.1% of the reactor's 48 MW, so engineering never trades them
+against shields or turrets. Their supply ratio still matters: reload time grows as 1 / supply, a
+load that browns out below 0.8 raises the jam chance (below), and with no power at all the crew
+load by hand crank.
 
 **Tube states:**
 
@@ -318,7 +326,7 @@ otherwise. A hit that bleeds into the magazine is damage-control's (cook-off is 
 | Shape | Ellipsoid, semi-axes 17.0 x 13.0 x 54.0 m, centred at [0.0, 1.5, -2.0] | The smallest axis-aligned ellipsoid that holds the hull loft, the mounts and the pods with 1 m to spare (computed from the layout) |
 | Faces | Bow +Z, stern -Z, port +X, starboard -X, dorsal +Y, ventral -Y | star-crew-64's order |
 | Total capacity | 240 MJ x generator health | 40 MJ per face when balanced |
-| Generator draw | 12 MW nominal | Assumed, see power-grid |
+| Generator draw | 12 MW nominal, 18 MW at a 150% setpoint | `power-grid`'s shield generator load |
 | Regeneration | `0.25 x P_delivered` = 3 MJ/s at nominal | Shared across faces (below) |
 | Holding | Below 15% of nominal supply the faces cannot hold and each decays at 2 MJ/s | |
 | Shunt rate | 10 MJ/s between faces, 20% lost | When balance changes |

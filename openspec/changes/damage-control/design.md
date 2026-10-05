@@ -18,8 +18,10 @@ come straight here (`flight-and-navigation`). A Gannet carries 60 MJ, a Lance 40
 
 The Tern's layout puts systems in rooms (`systems[].compartment`) and `power-grid` routes its
 conduits through named compartments with polylines, so a hit can find what lies near its path. Its
-damage control room (POI 9) is on deck B forward, 20.7 s walking from the forward switchboard and
-29.9 s from the main switchboard (`reference-ship-tern` section 6, with the stairs patch). The
+damage control room (POI 9) is on deck B forward, 19.0 s walking from the forward switchboard and
+37.3 s from the main switchboard by the aft passage, 29.1 s through the hangar once T1 is applied
+(`reference-ship-tern` section 6 at `crew-on-deck`'s speeds; corrected 2026-10-04 from 20.7 s and
+29.9 s at an assumed 1.6 m/s). The
 engineering bay console (`eng_main`) and the damage control board (`damage_board`) are the two seats
 this change works through (`bridge-stations` sections 10.8 and 10.9).
 
@@ -206,7 +208,7 @@ calls each sub-step. Examples:
 | --- | --- | --- |
 | The port cradle at 34% (W2) to 100% | A player with a kit / a team of two | 66 s / 69 s, plus the walk |
 | A destroyed turret | A player | 180 s rebuild, then 75 s: 255 s |
-| The port main switchboard section (W1) | A team, suited | 30 s suits, 30 s walk, 120 s rebuild: power back 3 minutes after the hit |
+| The port main switchboard section (W1) | A team, suited | 30 s suits, 44 s walk suited, 120 s rebuild: power back about 3.3 minutes (199 s) after the hit (corrected 2026-10-04 from a 30 s walk and 3 minutes) |
 
 ### 7. Damage control teams
 
@@ -216,7 +218,7 @@ Two teams of two NPC crew bodies (`crew-on-deck`), at home in damage control. Pr
 | Quantity | Value |
 | --- | --- |
 | Dispatch delay | 5 s after the board (or its automation) assigns a job |
-| Speed | Walk 1.6 m/s; run 4.0 m/s to a fire or to a breach with crew in it; ladders 0.8 m/s |
+| Speed | `crew-on-deck`'s: walk 1.8 m/s; run 4.0 m/s to a fire or to a breach with crew in it; suited 1.5 m/s with no running; ladders 0.8 m/s up and 1.0 m/s down (corrected 2026-10-04 from walk 1.6 m/s and ladders 0.8 m/s; `damage.json` `teams` still holds the old values and needs the same correction) |
 | Suit | 30 s, at the damage control lockers, before entering a room below 50 kPa or a fire over 2 MW |
 | Repair rate | 0.6% a second each with a kit (a player's is 1%) |
 | Risk | The same air, heat, smoke and blast as players; they can be hurt, fall unconscious and die, and must be carried out |
@@ -265,13 +267,20 @@ side at deck B height, toward the main switchboard's port section.
 | 10 s | Engineering 76 kPa; the engineer, still inside, is impaired | The simulation |
 | 30 s | Battery at its reserve: priority 3 drops (the drive stops), priority 2 at 68%; engineering 42 kPa | The simulation |
 | 60 s | Engineering 18 kPa | The simulation |
-| 65 s | Both teams arrive, suited (5 s + 30 s suits + 30 s walk) | Section 7 |
-| 65-110 s | Team 1 patches the breach from inside: three plates, 45 s | Section 6 |
-| 65-185 s | Team 2 rebuilds the port switchboard section: 4 parts, 120 s | Section 6 |
-| 185 s | Section rebuilt at 50%: 31 MW (the severed trunk still isolates it) | The simulation |
-| 215 s | The port trunk aft spliced: the reactor back to 100%, 48 MW; priority 3 back to its combat share | The simulation |
-| 245 s | The port drive feeder spliced | The simulation |
+| 79 s | Both teams arrive, suited (5 s + 30 s suits + 44 s walk at the suited 1.5 m/s by the aft passage) | Section 7 |
+| 79-124 s | Team 1 patches the breach from inside: three plates, 45 s | Section 6 |
+| 79-199 s | Team 2 rebuilds the port switchboard section: 4 parts, 120 s | Section 6 |
+| 199 s | Section rebuilt at 50%: 31 MW (the severed trunk still isolates it) | The simulation |
+| 229 s | The port trunk aft spliced: the reactor back to 100%, 48 MW; priority 3 back to its combat share | The simulation |
+| 259 s | The port drive feeder spliced | The simulation |
 | 188 s | If nobody pulled the engineer out: dead (90 s below Armstrong's limit) | The simulation |
+
+Corrected 2026-10-04 to `crew-on-deck`'s speeds: the teams' walk was 30 s (the first route table's
+29.9 s at 1.6 m/s, through the hangar with T1). Suited, at 1.5 m/s with no running, by the aft
+passage (the route as laid out today; `tools/walk_times.py` prints 59.7 m and 44.3 s from the suit
+lockers), it is 44 s, so every team event moves 14 s later. The events were
+shifted, not re-run in the library (which does not walk teams); the power at each event is the
+same.
 
 Engineering lost 3,043 kg of air; the reserves cannot refill it, so it stays in vacuum and the
 engineering bay is worked suited for the rest of the mission (`life-support` question L5). The

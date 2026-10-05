@@ -38,7 +38,7 @@ seconds, ranges in metres, power drawn from the grid.
   damaged), proportional navigation, 60 MJ warheads, interception by point defence.
 - **Six shield faces** on an ellipsoid around the hull, chosen by star-crew-64's dominant axis in
   coordinates normalized by the ellipsoid; 240 MJ in total, regenerating at 3 MJ/s from 12 MW
-  (see power-grid); face balance and frequency set by science; only overflow reaches the hull,
+  (`power-grid`); face balance and frequency set by science; only overflow reaches the hull,
   as a hull hit (point, direction, energy, kind) that `damage-control` resolves.
 - **One damage resolution** for every ship and craft: the Tern, the raider corvette and a single
   bubble on a fighter use the same code with different data.
@@ -64,13 +64,14 @@ None.
   and `sc-core::damage` (the one damage resolution), `sc-core::ai` (enemy behaviour).
 - Data: `data/weapons.json`, `data/ships/tern/shields.json`, `data/ships/tern/magazine.json`,
   `data/enemies.json`, `data/missions/*.json` rosters.
-- `power-grid`: turret capacitor charging, shield generator, loader and hoist draws (assumed
-  here, see power-grid); heat inputs to the coolant loop.
+- `power-grid`: turret capacitor charging (4 MW), shield generator (12 MW), hoist and loaders
+  (0.03 MW together; corrected 2026-10-04 from an assumed 1.5 MW and 2 MW), all its draws; heat
+  inputs to the coolant loop.
 - `damage-control`: receives hull hits; supplies the health of the shield generator, the
   torpedo room, the tubes and the turrets.
 - `bridge-stations`: tactical's and science's console controls; the computer core's load.
 - `ship-frames`: muzzle velocities, the missile hand-off, hit shake.
-- `netcode-and-sessions`: fire and hit events (about 4 kbit/s in a full engagement, to add to its
+- `netcode-and-sessions`: fire and hit events (about 4.5 kbit/s in a full engagement, to add to its
   table).
 - Mockup: `docs/mockups/exterior.html` shots `broadside`, `missile-launch`, `gunner-view`,
   `shields-hit`.
