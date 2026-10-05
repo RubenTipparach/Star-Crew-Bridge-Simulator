@@ -451,6 +451,7 @@ Before claiming anything is done, run what applies:
 | `threejs-mockups` | Building, inlining, screenshotting and publishing a mockup (section 11). |
 | `light-baking` | Placing lamps, baking and judging static light, the three lighting states (section 9). |
 | `material-maker` | Making, recolouring and judging surface materials: Material Maker graphs to 128 px texture layers, texel density, the contact sheet (section 9). |
+| `blender-hard-surface` | Modelling low-poly props in Blender with booleans and CSG: cutters, chamfers, cleaning, triangle budgets, the glb and manifest conventions, headless renders (sections 8 and 9). |
 | `obs-record` | Recording a window with OBS on the owner's machine, for videos of the running game. |
 | `blender-csg-levels` | Undercity's scripted Blender CSG level kit, kept as the reference for the deck pipeline. Its Godot export does not apply here; see its "In Star Crew" note. |
 | `blender-humanoid-characters` | Undercity's character kit, kept as the reference for crew bodies. Its budgets are a desktop's, not a Pi's; see its "In Star Crew" note. |

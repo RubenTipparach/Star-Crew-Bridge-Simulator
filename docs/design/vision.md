@@ -103,6 +103,8 @@ a lift pad in the hangar.
 | `ship-frames` | Decoupling the interior from the exterior: frames, rendering composition, hand-off of craft. |
 | `deck-pipeline` | Brush-style decks compiled to compartments, portals, collision and baked vertex light. |
 | `light-baking` | The static light baker: shadows, emissive surfaces, bounce, vertex lighting or lightmaps, light probes, the three lighting states. |
+| `surface-materials` | What a surface is made of: Material Maker graphs as small layers of one texture array, texel density, relief baked into colour. |
+| `wall-panels` | Walls dressed bay by bay with varied panel modules and bands, not one tiled square (proposed after the owner's texture references, 2026-10-05). |
 | `reference-ship-tern` | The Tern's floor plan, compartment by compartment. |
 | `bridge-stations` | The station roster, automation, console UI and the bridge as a room. |
 | `crew-on-deck` | Walking, ladders, seats, carrying, injury and revival in the interior. |

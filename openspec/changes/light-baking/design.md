@@ -126,8 +126,10 @@ holds ambient occlusion (0 to 1 in 0 to 255); runtime lights and probes use it
 
 ### 2. Into what: the options, on a Pi 5
 
-Measured on the Tern's bridge (154 m^2, 6 lamps, 10 emissive surfaces) and engineering (252 m^2 over
-three decks, 16 lamps, 44 emissive surfaces), one bounce, all three states. Vertex memory uses
+Measured on the v1 boxes, before the page took the kit's geometry and lamps: the Tern's bridge
+(154 m^2, 6 lamps, 10 emissive surfaces) and engineering (252 m^2 over three decks, 16 lamps, 44
+emissive surfaces), one bounce, all three states. What the page prints on the v2 plan is in
+section 13; the rest of this table and those of sections 3 and 4 are not rerun. Vertex memory uses
 `deck-pipeline`'s 28-byte vertex and 16-bit indices; a lightmap adds a second UV (4 bytes).
 
 | | a. Vertex, deck mesh | **b. Vertex, adaptive (recommended)** | c. Lightmap 0.25 m everywhere | d. Hybrid: b, plus c in named large rooms | e. Runtime lights only |
@@ -180,7 +182,7 @@ at direct light and occlusion; bounce, which is smooth, is added to the final ve
 
 Vertices are shared inside a face (one normal, one colour each) and never across faces, which
 keeps the flat-shaded look and lets the index buffer reuse vertices: the bridge's 3,160 triangles
-use 2,479 vertices (measured).
+use 2,479 vertices (measured on the v1 boxes; 6,070 and 5,404 on the v2 plan, section 13).
 
 | Measured | Base 1 m, 5 levels | **Base 2 m, 5 levels** | Base 2 m, 3 levels | Base 2 m, 8 levels | Uniform 0.25 m grid |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -195,9 +197,21 @@ its ceiling in the `engine-stack` table and what its kit geometry leaves under t
 (`deck-pipeline` section 11), set in `data/lighting/bake.json`. With it, the bridge converges
 (2,472 added of 7,500; 4.9 levels residual) and engineering stops at its 2,000 with a residual of
 20 levels in places that are hard to find by eye (`lighting-engineering-cap-vs-no-cap.png`: left
-capped at 5,193 triangles, right converged at 12,776). The bake report prints the residual and
-whether the cap was reached; `deckc`'s budget check counts triangles after subdivision
+capped at 5,193 triangles, right converged at 12,776; v1 boxes). On the v2 plan, with the kit's
+detail and lamps, the bridge still converges (6,070 triangles, 5.0 levels) and engineering stops
+at its cap with a residual of 36.8 levels (7,514 triangles); the uncapped figure and the
+comparison shot are not rerun. The bake report prints the residual and whether the cap was reached; `deckc`'s budget check counts triangles after subdivision
 (`deck-pipeline` section 7). Question G2 asks whether engineering keeps its cap.
+
+**The cap is not yet a ceiling** (found 2026-10-05). The mockup baker (`lightbake.js`
+`bakeAdaptive`) counts only the splits it chooses by error against `max_added_triangles`. The
+balancing pass and the fans beside finer cells come after, and the cap does not see them. On the
+v2 plan engineering's base grid is 3,718 triangles and its bake 7,514: 3,796 added against a cap
+of 2,000, of which 1,998 are error-driven splits (333 splits of 6 triangles) and 1,798 come from
+balancing and fans. The bake `deckc` runs SHALL count every triangle it adds, balancing and fans
+included, and stop splitting while the total still fits: a split is taken only if it and the
+balancing it forces fit what is left. Until then the mockup's "cap reached" means the
+error-driven share is spent, not the total.
 
 ### 4. The lightmap alternative
 
@@ -247,8 +261,9 @@ They are lit by **ambient cubes** (Half-Life 2): six irradiance values per point
 surface facing each of +X, -X, +Y, -Y, +Z, -Z, computed by the same irradiance function as the
 walls (direct, occlusion, bounce), for all three states.
 
-- **Grid:** every 1.0 m on all three axes inside each compartment's air boxes, offset 0.5 m from
-  the walls. The Tern's 8,859 m^3 of air gives about 8,900 probes (estimate).
+- **Grid:** every 1.0 m on all three axes inside each compartment's air brushes, offset 0.5 m from
+  the walls. The v1 plan's 8,859 m^3 of air gave about 8,900 probes (estimate); the v2 plan's
+  9,824.8 m^3 is 10.9 % more air, and the probe count, storage and time below are not re-estimated.
 - **Storage:** 6 directions x 3 states x RGB8 = 54 bytes per probe; about 0.48 MB for the Tern in a
   `PROB` chunk of the `.deck` (proposed to `deck-pipeline`), client only.
 - **Invalid probes:** a probe whose gather rays hit back faces more than half the time is inside a
@@ -359,8 +374,8 @@ unchanged compartments.
 
 **Speed, estimate.** The mockup baker traces 0.4 to 0.65 million rays per second in one browser
 thread (measured) and bakes about 5 ms per square metre of lit surface at the final settings with
-one bounce (measured: bridge 2.2 s, engineering 6.0 s). The Tern has about 8,100 m^2 of shell
-(measured from the layout) and perhaps 10,500 m^2 with props: about 1 minute in the mockup baker,
+one bounce (measured: bridge 2.2 s, engineering 6.0 s). The Tern had about 8,100 m^2 of shell
+(measured from the v1 layout; not re-measured on v2) and perhaps 10,500 m^2 with props: about 1 minute in the mockup baker,
 plus about 35 s of probes. A Rust BVH tracer is usually 10 to 30 times faster per thread than this
 JavaScript one (to verify with the first build), so a full Tern bake should take a few seconds on
 an 8-thread desktop and well under a minute on a Pi 5's four cores. A single compartment, the
@@ -379,7 +394,7 @@ non-finite number stops the load with its path and field.
   "schema": "starcrew.fixtures/1",
   "types": {
     "ceiling_panel": {
-      "kind": "point", "intensity_cd": 2600, "radius_m": 0.25, "beam_exponent": 8, "range_m": 9.0,
+      "kind": "point", "intensity_cd": 850, "radius_m": 0.25, "beam_exponent": 8, "range_m": 9.0,
       "lens_size_m": [0.6, 0.6], "emergency_scale": 1.6,
       "states": {
         "normal": { "color_srgb": "#ffe9c8", "scale": 1.0 },
@@ -388,7 +403,7 @@ non-finite number stops the load with its path and field.
       }
     },
     "high_bay": {
-      "kind": "point", "intensity_cd": 11000, "radius_m": 0.3, "beam_exponent": 10, "range_m": 14.0,
+      "kind": "point", "intensity_cd": 2200, "radius_m": 0.3, "beam_exponent": 10, "range_m": 14.0,
       "lens_size_m": [0.7, 0.7], "emergency_scale": 1.6, "states": "same as ceiling_panel"
     },
     "cove_strip": {
@@ -449,14 +464,18 @@ layout holds no lights; `deck-pipeline` section 7):
 { "id": "bridge_strip_p", "compartment": "bridge", "type": "cove_strip", "from_m": [6.99, 6.4, 20.6], "to_m": [6.99, 6.4, 30.4], "facing_yaw_deg": -90, "emergency_bus": true }
 ```
 
-**Placement.** The mockup places ceiling panels on a 4.5 m grid (about 1.5 times their 2.9 m height
-above the bridge floor, which lighting practice gives for an even floor between pools; to verify),
-high-bay lamps on a 6 m grid in rooms taller than one deck, and cove strips along the port and
-starboard walls, with the middle column on the emergency bus: 6 lamps on the bridge, 16 in
-engineering. `deck-pipeline`'s kit rule (one lamp per 8 m^2 of floor, 19 on the bridge) counts
-geometry; the baker lights whatever is placed, and `intensity_cd` is what makes either density
-right. Recommendation taken (ask only with screenshots): offer `deck-pipeline` the spacing rule
-"no wider than 1.5 times the mounting height" for downlights.
+**Placement.** The mockup lights the kit's lamps (2026-10-05): `deck-pipeline`'s rule
+(`ShipKit.lampsFor`, `detailing.json` `lamps`) puts a panel in every frame bay, one per 8 m^2 of
+floor, a high-bay lamp in a room taller than 3.6 m, and every third lamp on the emergency bus;
+cove strips run along every cove the kit builds. On the v2 plan that is 21 lamps on the bridge (7
+on the emergency bus) and 56 in engineering (20; the page applies the rule to the level under the
+mezzanine too), against 6 and 16 when the page placed ceiling panels on its own 4.5 m grid (about
+1.5 times their 2.9 m height above the v1 bridge floor, which lighting practice gives for an even
+floor between pools; to verify) and high-bay lamps on a 6 m grid. The kit's density is about 2.5
+times the grid's, so each lamp is that much dimmer: a ceiling panel 850 cd (was 2,600), a high-bay
+lamp 2,200 cd (was 11,000). The baker lights whatever is placed, and `intensity_cd` is what makes
+either density right. Recommendation taken (ask only with screenshots): offer `deck-pipeline` the
+spacing rule "no wider than 1.5 times the mounting height" for downlights.
 
 ### 12. Quality controls and debug views
 
@@ -495,6 +514,14 @@ bounce, three states, this cloud machine, one browser thread:
 | One ambient-cube probe | 3.6 ms | 4.4 ms |
 | Determinism | Same digest in separate sessions; seed 2 differs | same |
 
+The table is the v1 boxes, with the page's own 4.5 m lamp grid. **On the v2 plan** (2026-10-05)
+the page bakes the kit's shell, detail and lamps, and its panel prints, for the bridge: 173.9 m^2,
+21 lamps (7 on the emergency bus), 16 emissive surfaces; adaptive 6,070 triangles (base 1,698),
+5,404 vertices, 63.3 KB of light, residual 5.0 levels. For engineering: 253.8 m^2, 56 lamps (20),
+55 emissive surfaces; adaptive 7,514 triangles (base 3,718), 7,993 vertices, 93.7 KB of light,
+residual 36.8 levels, cap reached. The other rows and every bake time are not rerun (the cloud
+machine was shared when the panel was read, so its times are not a result).
+
 ### 14. The Pi 5 budget this change spends
 
 Against `engine-stack`'s table; estimates from the two measured rooms.
@@ -502,7 +529,7 @@ Against `engine-stack`'s table; estimates from the two measured rooms.
 | Budget | Spends | Notes |
 | --- | --- | --- |
 | Visible triangles per frame (200,000) | About 10,000 to 25,000 more in a busy interior view | Subdivision, capped per compartment; counted by `deckc` after the bake, inside `deck-pipeline`'s proposed 80,000 interior pass |
-| Compartment geometry (bridge 30,000; others about 8,000) | Bridge about +2,500 over the kit's 5,630, far under 30,000; others up to their cap | The cap rule of section 3 keeps each under its ceiling |
+| Compartment geometry (bridge 30,000; others about 8,000) | Bridge about +4,400 over the kit's 3,894 on the v2 plan (the page's adaptive bake, 1,698 to 6,070; on the v1 boxes +2,500 over 5,630), far under 30,000; others up to their cap | The cap rule of section 3 keeps each under its ceiling |
 | Draw calls (300) | None | The colours ride in the vertex; runtime lights are uniforms |
 | Texture memory (96 MB) | None on the recommended path (about 3.7 MB if lightmaps were adopted everywhere) | |
 | Vertex and index buffers (64 MB) | About 1 MB more for the Tern | 28-byte vertex, shared inside a face |
@@ -537,11 +564,11 @@ Questions go to the owner only with something to look at (CLAUDE.md 13); the sho
 
 | Id | Question, and the fact it turns on | Options | Recommendation | Shot |
 | --- | --- | --- | --- | --- |
-| G1 | How is baked light stored? Adaptive vertex light and a 0.25 m lightmap look the same at playing distance; vertex light costs triangles (bridge +2,500), a lightmap costs a texture fetch per pixel, a second UV and an atlas (bridge 252 KB) | a. vertex colours on the deck mesh; b. vertex colours with adaptive subdivision; c. lightmaps everywhere; d. hybrid: b, with lightmaps in named large rooms | **b**, as CLAUDE.md 9 already says; c and d stay measured fallbacks | `lighting-split-vertex-vs-lightmap.png`, `lighting-split-vertex-vs-lightmap-room.png`, `lighting-split-deck-mesh-vs-adaptive.png`, `lighting-bridge-vertex.png`, `lighting-bridge-lightmap.png` |
+| G1 | How is baked light stored? Adaptive vertex light and a 0.25 m lightmap look the same at playing distance; vertex light costs triangles (bridge +2,500 on the v1 boxes, about +4,400 on the v2 plan), a lightmap costs a texture fetch per pixel, a second UV and an atlas (bridge 252 KB) | a. vertex colours on the deck mesh; b. vertex colours with adaptive subdivision; c. lightmaps everywhere; d. hybrid: b, with lightmaps in named large rooms | **b**, as CLAUDE.md 9 already says; c and d stay measured fallbacks | `lighting-split-vertex-vs-lightmap.png`, `lighting-split-vertex-vs-lightmap-room.png`, `lighting-split-deck-mesh-vs-adaptive.png`, `lighting-bridge-vertex.png`, `lighting-bridge-lightmap.png` |
 | G2 | Engineering converges at 12,776 triangles of light alone, over its 8,000 ceiling; capped at 2,000 added it is 5,193 with a residual hard to see | a. keep the cap; b. raise engineering's ceiling (`engine-stack` table) to about 16,000; c. lightmap engineering (hybrid) | **a** | `lighting-engineering-cap-vs-no-cap.png` |
 | G3 | Light pools: narrow downlights (beam exponent 8) draw pools with darker floor between, as in the shots; a wide beam lights the floor evenly and flatter | Pools / even wash | **Pools**: they give a low-poly room depth for free | `lighting-bridge-vertex-subdivided.png`, `lighting-bridge-eye-level.png`, `lighting-engineering-eye-level.png` |
 | G4 | Bounces: none is harsher, two is not visibly different from one and costs 25 % to 40 % more bake time | 0 / 1 / 2 | **1** | `lighting-bridge-vertex-no-bounce.png`, `lighting-bridge-vertex-subdivided.png`, `lighting-bridge-vertex-two-bounces.png` |
-| G5 | Lamp spacing rule for `deck-pipeline`'s kit: one per 8 m^2 (19 on the bridge) or no wider than 1.5 times the mounting height (6) | Kit rule / spacing rule | Spacing rule, offered to `deck-pipeline`. Recommendation taken (ask only with screenshots) | none of the 19-lamp layout |
+| G5 | Lamp spacing rule for `deck-pipeline`'s kit: one per 8 m^2 (21 on the v2 bridge, which the lighting page now bakes; 19 on the v1 boxes) or no wider than 1.5 times the mounting height (6 on the v1 bridge) | Kit rule / spacing rule | Spacing rule, offered to `deck-pipeline`. Recommendation taken (ask only with screenshots) | none of the 19-lamp layout |
 | G6 | Open doors: a runtime spill light from the neighbour's bake, or nothing | Spill light / nothing | Spill light. Recommendation taken (ask only with screenshots) | none |
 | G7 | Sunlight through windows | None baked / runtime window light | None. Recommendation taken (ask only with screenshots) | none |
 | G8 | Probe grid spacing | 0.5 m / 1 m / 2 m | 1 m (0.48 MB for the Tern). Recommendation taken (ask only with screenshots) | none |

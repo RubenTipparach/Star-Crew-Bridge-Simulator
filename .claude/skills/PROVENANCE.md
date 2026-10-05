@@ -13,6 +13,7 @@ Where each skill in this directory came from, so a later copy from the source ca
 | `threejs-mockups` | New in Star Crew | | 2026-10-04 | |
 | `light-baking` | New in Star Crew (the `light-baking` change's how-to) | | 2026-10-04 | |
 | `material-maker` | New in Star Crew, pipeline adapted from fps-game-demo `tools/material_maker` (which has no skill); per-file provenance in `tools/materials/README.md` | `f6cd25c` | 2026-10-05 | |
+| `blender-hard-surface` | New in Star Crew (the how-to of `tools/blender/build_bridge_props.py`, written from scratch); its cutter rules adapted from `blender-csg-levels` and fps-game-demo `tools/blender/build_props.py` (bevelled parts joined into one prop), no code copied | `f6cd25c` | 2026-10-05 | |
 
 Not copied: Pale-Blue-Dot's `perf-measure`. Its rules (release build, nothing else running, old
 against new in one sitting, report the spread) are in CLAUDE.md section 12; the skill itself

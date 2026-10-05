@@ -28,8 +28,10 @@ other code SHALL generate a material's pixels.
 - **THEN** it rebuilds every layer in `assets/textures/` and the contact sheet, and prints a digest that is the same on a second run
 
 ### Requirement: Every layer is the same size and tiles
-Every layer SHALL be 128 x 128 px RGBA8 (sRGB colour, alpha the emission mask), and SHALL tile
-seamlessly: a graph smaller than the span is repeated a whole number of times inside the layer.
+Every layer SHALL be 128 x 128 px RGBA8 (sRGB colour, alpha the emission mask), and every
+material's layer SHALL tile seamlessly: a graph smaller than the span is repeated a whole number
+of times inside the layer. Panel modules (`wall-panels`) share the array but are placed per bay,
+so they do not tile.
 
 #### Scenario: The hazard layer
 - **WHEN** the hazard material (1 m stripes) is built for a 2 m span

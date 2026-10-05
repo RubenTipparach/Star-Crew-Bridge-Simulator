@@ -345,7 +345,8 @@ The danger is the next burst: the section is stripped, and bolts now carry most 
 a room that holds both forward switchboard sections, the emergency bus and the battery bank. What the
 crew do: helm turns a fresh face toward the Hound and science rebalances the shields
 (`weapons-and-shields`); a suited team patches the holes together (one plate, 15 s, by the grouping
-rule: 0.185 m^2 is under a plate's 0.25 m^2); the hull section's armour waits for an EVA (200 s from 0% at 0.5% a second) or the dock.
+rule: 0.185 m^2 is under a plate's 0.25 m^2); the hull section's armour waits for an EVA (200 s
+from 0% at 0.5% a second) or the dock.
 
 ### 12. Console readouts and previews
 

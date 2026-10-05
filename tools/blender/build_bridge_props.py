@@ -26,8 +26,8 @@ dissolve) and triangulated.
 Conventions (written into props.json too):
   * Metres. Prop space is the exported glTF frame: +Y up, +Z toward the operator (out of the
     console's working face; for a chair, the way the sitter faces), +X the operator's right as
-    they face the prop. Blender is Z-up; B() maps prop space to Blender and the glTF export
-    (export_yup) maps it back.
+    they face the prop. Blender is Z-up: PROP_TO_BLENDER turns every primitive into Blender's
+    frame as it is made (x, y, z to x, -z, y), and the glTF export (export_yup) turns it back.
   * The origin is on the floor at the centre of the prop's back: the wall plane for a wall bank,
     the back of the pedestal for everything else.
   * One material per role, named for a Star Crew material (data/materials/materials.json:
@@ -63,8 +63,8 @@ TEXTURES = os.path.join(ROOT, "assets", "textures")
 SHIPKIT = os.path.join(ROOT, "docs", "mockups", "lib", "shipkit.js")
 GENERATOR = "tools/blender/build_bridge_props.py"
 
-# Triangles per prop (the owner's brief, 2026-10-05; bridge-stations section 12 allows a desk
-# with its screen 700 and a seat 300).
+# Triangles per prop: the budgets these props were briefed with (2026-10-05), inside
+# bridge-stations section 12's allowance of 700 for a desk with its screen and 300 for a seat.
 BUDGETS = {
     "wall_bank_core": 420,
     "wall_bank": 420,
@@ -89,10 +89,6 @@ TAN20 = math.tan(math.radians(20.0))
 
 # Prop space (x right, y up, z toward the operator) to Blender (x right, y away, z up).
 PROP_TO_BLENDER = Matrix(((1, 0, 0, 0), (0, 0, -1, 0), (0, 1, 0, 0), (0, 0, 0, 1)))
-
-
-def B(x, y, z):
-    return Vector((x, -z, y))
 
 
 def P(v):
@@ -300,8 +296,8 @@ class Prop:
         self.coll.children.link(self.cutters)
         self.cutters.hide_render = True
         self.body = None
-        self.operators = []     # floor points where an operator sits or stands
-        self.seat = None        # a chair's sitting point
+        self.operators = []     # floor points where operators sit or stand (a chair's: under its seat)
+        self.seat = None        # a chair's sitting point, top of the cushion
         self.screens = []
         self.steps = []         # the CSG history, for the manifest and the skill
 
@@ -600,6 +596,20 @@ def verify_glb(path, prop):
                 worst_uv = max(worst_uv, abs(m["uv"][k][0] - u), abs(m["uv"][k][1] - v))
     if worst_uv > 1e-4:
         problems.append(f"UV0 differs from worldUv by up to {worst_uv:.5f} m")
+    # Screens face the operator (+Z) or up: a flipped axis on export would turn them away. And
+    # every screen the manifest records lies on a screen face of the file, facing its way.
+    planes = []
+    m = prims.get("screen", {"idx": [], "pos": []})
+    for t in range(0, len(m["idx"]), 3):
+        a, b, c = (Vector(m["pos"][k]) for k in m["idx"][t:t + 3])
+        fn = (b - a).cross(c - a).normalized()
+        planes.append((fn, fn.dot(a)))
+        if fn.z < -0.01:
+            problems.append(f"a screen faces away from the operator (normal {r3(fn)})")
+    for sc in prop.screens:
+        c, n = Vector(sc["centre_m"]), Vector(sc["normal"])
+        if not any(fn.dot(n) > 0.999 and abs(fn.dot(c) - d) < 1e-3 for fn, d in planes):
+            problems.append(f"screen {sc['label']} is not on a screen face of the file")
     if problems:
         raise SystemExit(f"[props] {path}: " + "; ".join(sorted(set(problems))))
     return {"triangles": tris, "bounds_m": {"min": r3(lo), "max": r3(hi)},
@@ -858,7 +868,7 @@ def chair(name, presents, captain):
     shell = obox(p.coll, f"{name}.seat_shell", (-seat_w / 2, 0.35, z0), (seat_w / 2, 0.40, z1), Matrix(), {"*": "trim"})
     cushion = obox(p.coll, f"{name}.seat_cushion", (-seat_w / 2 + 0.025, 0.39, z0 + 0.02), (seat_w / 2 - 0.025, 0.45, z1 - 0.015),
                    Matrix(), {"*": "machinery"})
-    p.chamfer(cushion, "cushion_edges", 0.02, lambda m, d, n1, n2: m.y > 0.44 and m.z > z0 + 0.03)
+    p.chamfer(cushion, "cushion_edge", 0.02, lambda m, d, n1, n2: m.y > 0.44 and m.z > z1 - 0.03 and abs(d.x) > 0.9)
     # the back: a trim shell leaning back, a cushion 25 mm proud of it, the headrest band on top
     back_h = 0.78 if captain else 0.64
     m_b = frame((0.0, 0.40, z0 + 0.03), 12.0 if captain else 10.0)
@@ -888,7 +898,7 @@ def chair(name, presents, captain):
         p.cut(foot, "screens", screens)
     p.body = foot
     p.seat = [0.0, 0.45, round(az, 4)]
-    p.operators.append([0.0, 0.0, round(az, 4)])
+    p.operators.append([0.0, 0.0, round(az, 4)])      # the floor under the seat
     return p
 
 
@@ -983,12 +993,13 @@ def manifest_text(rows):
     doc = {
         "schema": "starcrew.props/1",
         "status": "Built (2026-10-05) by " + GENERATOR + ". Proposed furniture for the bridge "
-                  "(bridge-stations section 11.1, deck-pipeline section 5): no mockup or engine code loads these files yet.",
+                  "(bridge-stations section 11.1, deck-pipeline section 5). docs/mockups/bridge-variants.html shows them "
+                  "(tools/mockups/inline.py models:bridge copies them in); no engine code loads them yet.",
         "_rules": [
             "This file is written by " + GENERATOR + "; never edit it by hand. Rebuild, and the .glb files and this file change together.",
             "Metres. Prop space is the glTF frame: +Y up, +Z toward the operator (out of a console's working face; for a chair, the way the sitter faces), +X the operator's right as they face the prop.",
             "The origin is on the floor at the centre of the prop's back: the wall plane for a wall bank, the back of the pedestal otherwise.",
-            "Placing a prop at a layout station (seat_m, yaw_deg, where the seat faces +Z at yaw 0): a chair turns by yaw_deg; a console faces the seat, so it turns by yaw_deg + 180 and its operators_m point lands on seat_m.",
+            "Placing props at a layout station (seat_m on the floor, yaw_deg, the seat facing +Z at yaw 0): operators_m are floor points, so the layout's seat_m lands on one. A chair turns by yaw_deg (its operators_m is the floor under its seat); a console faces the seat, so it turns by yaw_deg + 180. seat_m in a chair's row is the sitting point on the cushion, 0.45 m up.",
             "Materials are roles: machinery, trim, bulkhead, hazard and light_panel are data/materials/materials.json layers; screen is emissive and coloured by the page (its console UI); accent is the station's role colour.",
             "UV0 is in metres, projected per face as shipkit.js worldUv does (x, z where |n.y| > 0.75, else the face's horizontal tangent and y); divide by the material's span_m.",
             "Flat shaded (one normal per face), triangulated, one closed manifold solid per prop; faces against the floor or the wall are kept for the deck compiler to drop.",

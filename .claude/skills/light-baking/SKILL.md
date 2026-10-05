@@ -65,10 +65,15 @@ uses it on the Tern's bridge and engineering. It is documentation tooling, not e
    Texel size; Toggles (AO in the bake on or off, Debug: occlusion only, Debug: vertex wireframe
    or lightmap texel checker, the probe-lit crew figure). The panel on the right gives triangles, vertices, bytes, atlas size, bake time,
    rays, residual and digest; the meter gives the Pi 5 budget.
-3. **Place or tune a lamp** in the page: fixture types and their photometry are `FIXTURE_TYPES`;
-   placement rules are `deriveLights()` (ceiling panels on a 4.5 m grid, high-bay lamps on 6 m in
-   rooms taller than one deck, cove strips on the side walls, the middle column on the emergency
-   bus); quality and caps are `BAKE`. Props and emissive faces are built in `buildCompartment()`.
+3. **Place or tune a lamp** in the page: fixture types and their photometry are `FIXTURE_TYPES`
+   (a ceiling panel 850 cd, a high-bay lamp 2,200 cd); placement is the kit's lamp rule
+   (`ShipKit.lampsFor`, from `data/ships/tern/detailing.json` `lamps`: a panel in every frame bay,
+   one per 8 m^2 of floor, high-bay lamps in rooms taller than 3.6 m, every third lamp on the
+   emergency bus), turned into lights by `addLamps()`, with cove strips along every cove the kit
+   builds (`coveStrip()`): 21 lamps on the bridge and 56 in engineering (the level under its
+   mezzanine included) on layout v2. Quality and caps are `BAKE`. The shell and detail are the
+   kit's `buildCompartment()`; props and emissive faces are added in `compartmentScene()`,
+   `bridgeProps()` and `engineeringProps()`.
 4. **Change the baker** only in `docs/mockups/lib/lightbake.js`, then
    `python3 tools/mockups/inline.py docs/mockups/lighting.html`. Never edit between the INLINE
    markers.

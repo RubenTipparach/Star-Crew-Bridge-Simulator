@@ -848,6 +848,50 @@ Proposed (mixed on `engine-stack`'s 32 voices): the bridge ambience (air handler
 console ticks and confirmations positioned at each seat (at most 4 at once); the klaxon (1); the
 order chime for its recipient only (1); hull hits (1). At most 8 voices on the bridge.
 
+#### 11.6 Console faces: screens and keys (proposed 2026-10-05)
+
+The owner, 2026-10-05, on the variants' consoles: "you should come up with better UI place
+holders, keyboards etc ... for the panel textures I mean". Today the Blender consoles'
+screens are flat role colour and their desks are blank, so from the room a console reads as a
+coloured box.
+
+- **A screen shows its own station.** Each console screen in the room shows a baked image of
+  its station's console (section 8): the panel grid band (y 272-720 lp of the canvas), with its
+  header band in the role colour and each panel's widgets drawn as they are laid out:
+  - helm's heading tape and course plot;
+  - tactical's polar plot;
+  - engineering's bus diagram and bars;
+  - science's scan trace;
+  - comms' channel list;
+  - flight operations' bay boards.
+
+  It is rendered offline from the console definitions (`data/consoles/<role>.json`, task 2.2;
+  until they exist, from the mockup's console overlays in `docs/mockups/bridge.html`). So a
+  screen in the room previews the console a player gets when they sit, from the same source.
+- **No live content.** Consoles are not rendered into textures on the bridge every frame
+  (CLAUDE.md 10). A screen is a static image. A few status pills blink by the emission mask
+  and one time uniform, which costs no per-pixel lighting.
+- **The upper screens** of a wall bank show the station's secondary displays: the ship
+  schematic, a system status page or a sensor plot.
+- **Keys are texture; levers are geometry.** A desk's working face carries a key panel: two or
+  three blocks of square keys, a few lit in the role colour, and a trackpad. The controls a
+  player's hand reaches for are low-poly geometry on the prop, within its triangle budget:
+  - helm's throttle lever and stick;
+  - tactical's guarded fire buttons;
+  - engineering's row of breaker toggles;
+  - comms' slider bank.
+- **One set of images for consoles and walls.** The `screen` and keypad wall panels
+  (`wall-panels`) use the same screen and key images.
+
+**Format:** a screen is 256 x 128 px (2:1), two to a 256 px layer of the texture array, with the
+emission mask in alpha. There are seven stations, each with a main screen and an upper pair, so
+about 14 screen images in 7 layers: 2.4 MB at 256 px. The key panels add two layers. The deck
+stays one draw per compartment.
+
+**Question B12 (with the prototype's shots):** do screens show the station's own console, or
+generic placeholder UI shared by all? Recommendation: the station's own, because then the room
+previews the game.
+
 #### 11a. Three ways to build the bridge (proposed 2026-10-05, for the owner to choose)
 
 The owner, 2026-10-05, on nine Star Trek bridge references: "notice how elevation is dynamic? the
@@ -965,7 +1009,12 @@ them; the sightlines from `tools/bridge_variants.py --sightlines`; a seated eye 
 | Helm and tactical: distance; the screen's width seen; turn to it | 4.51 m; 65.5 deg; 24 deg | 4.67 m; 63.6 deg; 23 deg | 3.64 m; 78.9 deg; 7 deg | 4.69 m; 63.4 deg; 23 deg |
 | Engineering and science: distance; turn to the screen | 8.64 m; 122 deg | 8.81 m; 123 deg | 7.46 m; 135 deg | 7.84 m; 128 deg |
 | Comms and flight operations: distance; turn to the screen | 12.08 m; 112 deg | 11.80 m; 114 deg | 9.75 m; 157 deg | 11.90 m; 114 deg |
-| Room mesh with consoles and crew, one draw | {TRIS_NOW} | {TRIS_A} | {TRIS_B} | {TRIS_C} |
+| Room mesh with consoles and crew, one draw | 9,014 | 11,750 | 10,184 | 11,464 |
+
+The room mesh is what the mockup draws: the room, its generated detail and platforms, the
+Blender consoles and chairs and the crew figures, cut to 0.9 m for the mockup's stand-in bake.
+Against the bridge's ceiling of 30,000 triangles (`deck-pipeline` 11) that is 30-39 %, and A
+costs 2,736 more than today. Every variant stays one draw call.
 
 **What each one trades:**
 

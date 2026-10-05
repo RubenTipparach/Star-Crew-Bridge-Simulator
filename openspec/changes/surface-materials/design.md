@@ -57,7 +57,7 @@ every wall, floor and frame of a space has the same texel size, a texture runs c
 across the segments of one wall, and nobody unwraps UVs. `tile_m` is one repeat of the graph: a
 graph smaller than the span is tiled k x k inside the layer (hazard stripes, the light panel and
 the crate are 1 m, so 2 x 2); a larger one gives the layer its top-left 1/k (trim takes one 2 m
-panel of the 4 m `tech_panel`). The ratio must be whole, so the layer tiles.
+panel of the 4 m `tech_panel`). The ratio must be whole, so the layer tiles. (Wall panel modules, proposed in `wall-panels` after the owner's "notice how they dont have square panels on the walls?", share the array but are placed per wall bay with bay-local coordinates; they replace `bulkhead` on interior walls if the owner approves.)
 
 ### 3. Relief baked into the colour
 

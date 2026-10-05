@@ -41,7 +41,8 @@ estimate.
   face starts as a 2 m grid and splits down to 0.25 m only where light changes faster than the
   vertex colours can follow (5 of 255 display levels), within a per-compartment triangle cap. The
   bridge goes from 412 to 3,160 triangles and gains its light pools and console shadows
-  (measured). A 0.25 m lightmap atlas gives the same picture at playing distance for 252 KB of
+  (measured on the v1 boxes; on the v2 plan, with the kit's detail and 21 lamps, from 1,698 to
+  6,070). A 0.25 m lightmap atlas gives the same picture at playing distance for 252 KB of
   texture and one texture fetch per pixel (measured on the bridge); it stays a measured fallback,
   not the plan.
 - **What each step up costs and buys**, in a table: deck-mesh vertex light, adaptive vertex light,
@@ -102,7 +103,8 @@ None. `openspec/specs/` holds nothing yet.
   lightmap fetch), `bridge-stations` (question B3 decides the red-alert look this bakes),
   `power-grid` (the lighting bus voltage behind the dimmer), `ship-frames` (the exterior sun).
 - **Pi 5 budget (estimates from measured rooms):** no extra draw calls and no texture memory on
-  the recommended path. Adaptive subdivision adds about 2,500 triangles to the bridge (measured)
+  the recommended path. Adaptive subdivision adds about 2,500 triangles to the bridge (measured on the v1 boxes;
+  about 4,400 on the v2 plan)
   and about 6 triangles per square metre of lit surface elsewhere, capped per compartment; with the
   caps, about 30,000 to 50,000 triangles across the Tern and 10,000 to 25,000 in a frame's visible
   set, inside `deck-pipeline`'s proposed 80,000-triangle interior pass. About 1 MB more vertex

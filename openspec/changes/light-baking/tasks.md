@@ -24,7 +24,7 @@ on is engine work, taken on a separate request once the owner has answered G1 to
 - [ ] 3.1 Scene: faces, occluders and door leaves from `deckc`; BVH (median split, leaves of 4); two-sided occlusion; closest hit with back-face flag; tests against hand-built boxes.
 - [ ] 3.2 The irradiance function: point fixtures with radius and beam, area emitters, ambient times occlusion, bounce from the cache; R2 sampling keyed by stable ids; nine values per sample (three states); test `three_states_cost_the_rays_of_one`.
 - [ ] 3.3 The irradiance cache: uniform grid per face, direct pass, gather pass, per-face tent filter, bilinear lookup; up to two bounces.
-- [ ] 3.4 Adaptive subdivision: base grid, error in display levels over three states, priority order with stable ties, cap, balance, crack-free fans, diagonal choice, level-synchronous for threads; test `the_bridge_converges_inside_its_cap`.
+- [ ] 3.4 Adaptive subdivision: base grid, error in display levels over three states, priority order with stable ties, cap, balance, crack-free fans, diagonal choice, level-synchronous for threads; test `the_bridge_converges_inside_its_cap`; the cap counts every added triangle, balancing and fans included (design section 3, "The cap is not yet a ceiling"); test `balancing_never_carries_a_bake_past_its_cap`.
 - [ ] 3.5 Encoding: gamma 2.2, 2x overbright with shoulder, seeded dither, occlusion in alpha; test `reference_irradiance_shows_the_palette_colour`.
 - [ ] 3.6 Probes: grid in the air boxes, ambient cubes, invalid flag; spill records per portal side.
 - [ ] 3.7 Lightmap output for comparison (atlas, gutters, three layers).

@@ -1,11 +1,11 @@
 {
   "schema": "starcrew.props/1",
-  "status": "Built (2026-10-05) by tools/blender/build_bridge_props.py. Proposed furniture for the bridge (bridge-stations section 11.1, deck-pipeline section 5): no mockup or engine code loads these files yet.",
+  "status": "Built (2026-10-05) by tools/blender/build_bridge_props.py. Proposed furniture for the bridge (bridge-stations section 11.1, deck-pipeline section 5). docs/mockups/bridge-variants.html shows them (tools/mockups/inline.py models:bridge copies them in); no engine code loads them yet.",
   "_rules": [
     "This file is written by tools/blender/build_bridge_props.py; never edit it by hand. Rebuild, and the .glb files and this file change together.",
     "Metres. Prop space is the glTF frame: +Y up, +Z toward the operator (out of a console's working face; for a chair, the way the sitter faces), +X the operator's right as they face the prop.",
     "The origin is on the floor at the centre of the prop's back: the wall plane for a wall bank, the back of the pedestal otherwise.",
-    "Placing a prop at a layout station (seat_m, yaw_deg, where the seat faces +Z at yaw 0): a chair turns by yaw_deg; a console faces the seat, so it turns by yaw_deg + 180 and its operators_m point lands on seat_m.",
+    "Placing props at a layout station (seat_m on the floor, yaw_deg, the seat facing +Z at yaw 0): operators_m are floor points, so the layout's seat_m lands on one. A chair turns by yaw_deg (its operators_m is the floor under its seat); a console faces the seat, so it turns by yaw_deg + 180. seat_m in a chair's row is the sitting point on the cushion, 0.45 m up.",
     "Materials are roles: machinery, trim, bulkhead, hazard and light_panel are data/materials/materials.json layers; screen is emissive and coloured by the page (its console UI); accent is the station's role colour.",
     "UV0 is in metres, projected per face as shipkit.js worldUv does (x, z where |n.y| > 0.75, else the face's horizontal tangent and y); divide by the material's span_m.",
     "Flat shaded (one normal per face), triangulated, one closed manifold solid per prop; faces against the floor or the wall are kept for the deck compiler to drop.",
@@ -418,13 +418,14 @@
           "height_m": 0.24
         }
       ],
-      "triangles": 164,
+      "triangles": 184,
       "budget_triangles": 420,
       "materials": [
         "machinery",
         "trim",
         "bulkhead",
-        "screen"
+        "screen",
+        "accent"
       ],
       "csg": [
         "difference carve (4)",
@@ -432,9 +433,9 @@
         "chamfer plinth_edges (4 edges, 20 mm)",
         "chamfer housing_edges (8 edges, 15 mm)",
         "union pedestal_plinth_housing (3)",
-        "difference screens (2)"
+        "difference screens (3)"
       ],
-      "sha256": "7365e48b0ce5210e3d0c0f6ab810f421f2ae7449dcf725b3f0d82fe0b3a24ca8"
+      "sha256": "774666dea561dcf3a015cc22707d13e7fe485ef27535c204a8f6348a5edcae1f"
     },
     "helm_arc": {
       "file": "helm_arc.glb",
@@ -599,7 +600,7 @@
           "height_m": 0.3
         }
       ],
-      "triangles": 228,
+      "triangles": 258,
       "budget_triangles": 300,
       "materials": [
         "machinery",
@@ -609,14 +610,13 @@
       ],
       "csg": [
         "chamfer foot_edges (6 edges, 20 mm)",
-        "chamfer seat_edges (3 edges, 25 mm)",
-        "chamfer back_edges (4 edges, 20 mm)",
+        "chamfer cushion_edge (1 edges, 20 mm)",
         "chamfer arm_-1_edges (2 edges, 15 mm)",
         "chamfer arm_+1_edges (2 edges, 15 mm)",
-        "union chair (6)",
+        "union chair (8)",
         "difference screens (2)"
       ],
-      "sha256": "cc30b0d1b009f2375414e52df614caf85177f0090f0add8b394276590eee6602"
+      "sha256": "f3e59ab6dd020069b1c0283aaf3094ba53cca3b8db0055a0df577e27856e97ee"
     },
     "crew_chair": {
       "file": "crew_chair.glb",
@@ -652,7 +652,7 @@
         ]
       ],
       "screens": [],
-      "triangles": 120,
+      "triangles": 154,
       "budget_triangles": 160,
       "materials": [
         "machinery",
@@ -661,11 +661,10 @@
       ],
       "csg": [
         "chamfer foot_edges (6 edges, 20 mm)",
-        "chamfer seat_edges (3 edges, 25 mm)",
-        "chamfer back_edges (4 edges, 20 mm)",
-        "union chair (4)"
+        "chamfer cushion_edge (1 edges, 20 mm)",
+        "union chair (6)"
       ],
-      "sha256": "9b0f1d32488306032a7d1c839765ff74ee6b4d65afc83d92e3326047f00e943c"
+      "sha256": "36054ea0bfb985d34ad0331b03df9448b34d2e4b475df391b7ee7b524b9eb14e"
     },
     "standup_console": {
       "file": "standup_console.glb",

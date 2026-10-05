@@ -15,7 +15,7 @@
  * first use with curl (it honours the session's proxy); a flaky CDN then cannot fail a run.
  *
  * Usage: node tools/mockups/shoot.mjs [page.html ...] [--out docs/screenshots/mockups]
- *        [--size 1440x900] [--only shotName]
+ *        [--size 1440x900] [--only shotName] [--wait seconds]
  */
 import { createRequire } from "node:module";
 import { execSync } from "node:child_process";
@@ -37,6 +37,8 @@ const opt = (name, dflt) => { const i = args.indexOf(name); return i >= 0 ? args
 const outDir = path.resolve(ROOT, opt("--out", "docs/screenshots/mockups"));
 const [W, H] = opt("--size", "1440x900").split("x").map(Number);
 const only = opt("--only", null);
+// Seconds to wait for a page to set MOCKUP_READY: a page that bakes several rooms on a shared CPU needs more.
+const readyS = Number(opt("--wait", "60"));
 let pages = args.length ? args.map((p) => path.resolve(p)) :
   fs.readdirSync(path.join(ROOT, "docs/mockups")).filter((f) => f.endsWith(".html")).map((f) => path.join(ROOT, "docs/mockups", f));
 
@@ -72,7 +74,7 @@ for (const file of pages) {
   page.on("pageerror", (e) => errors.push(String(e)));
   page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
   await page.goto(pathToFileURL(file).href);
-  try { await page.waitForFunction(() => window.MOCKUP_READY === true, null, { timeout: 60000 }); }
+  try { await page.waitForFunction(() => window.MOCKUP_READY === true, null, { timeout: readyS * 1000 }); }
   catch (_) { errors.push("MOCKUP_READY was never set"); }
   await frames(page, 20);
   const shots = await page.evaluate(() => (window.MOCKUP_SHOTS || []).map((s) => s.name));

@@ -12,6 +12,7 @@ separate request once the owner approves the mockup (CLAUDE.md 10).
 - [ ] 1.4 Put questions B1-B6 in the owner survey with their shots; fold the answers back into this change.
 - [x] 1.5 The owner's Star Trek references described (`docs/analysis/star-trek-bridges.md`); three bridge variants as data (`tools/bridge_variants.py`, `data/ships/tern/bridge_variants.json`), drawn by `docs/mockups/bridge-variants.html` with Blender-built consoles; design section 11a.
 - [ ] 1.6 Put B11 (which bridge) in the survey with the variant shots; when the owner picks, patch the layout with the variant (platforms as a layout field the checker validates), rewrite 11.1 from it and rerun `crew-on-deck`'s bridge routes.
+- [ ] 1.7 Console faces (design 11.6): bake each station's console grid band to a 256 x 128 px screen image and a key panel layer; levers and guarded buttons on the props; draw them in `bridge-variants.html`; ask B12 with the shots.
 
 ## 2. Data
 
