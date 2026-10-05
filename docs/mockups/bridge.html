@@ -1798,13 +1798,10 @@ interior.add(vsMesh);
 
 // Window glass: one blended quad per window, just outside the opening the kit cut (the glass pass).
 const glassMat = new THREE.MeshBasicMaterial({ color: P.glass, transparent: true, opacity: 0.08, depthWrite: false, side: THREE.DoubleSide });
-for (const w of windows) {
+interior.add(new THREE.Mesh(merge(windows.map((w) => {
   const f = K.portalFrame(w), o = K.portalOut(w, "bridge");
-  const g = new THREE.Mesh(new THREE.PlaneGeometry(f.w, f.h), glassMat);
-  g.position.set(f.c[0] + o[0] * 0.03, f.c[1], f.c[2] + o[2] * 0.03);
-  g.rotation.y = Math.atan2(o[0], o[2]);
-  interior.add(g);
-}
+  return quad(f.w, f.h, 0xffffff, [f.c[0] + o[0] * 0.03, f.c[1], f.c[2] + o[2] * 0.03], [0, Math.atan2(o[0], o[2])]);
+})), glassMat));
 
 // Labels.
 const labels = [];

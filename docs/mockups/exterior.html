@@ -3008,13 +3008,15 @@ K.registerShots([
     shotCam = (c) => { c.fov = 50; placeShipCam(c, D.shield.centre.clone().addScaledVector(n, 120).add(new V3(n.z !== 0 ? 50 : 0, 38, n.z === 0 ? -55 : 0)), D.shield.centre.clone()); };
   }) },
   // Close-ups of the textured hull: the bow's plating, chamfers and window glass; the dorsal turret on its octagonal
-  // pod; and up through the open port drop door into the empty launch bay after the drop, its cradle stowed (the
-  // kit's bay mesh, baked from its lamps).
-  { name: "hull-closeup", setup: shot(() => { reset(1); runUntil(() => S.t >= 32.0, 40); setView("shot"); shotCam = fixedCam(new V3(-14, 11, 46), new V3(-3, 3.5, 31), 50); }) },
+  // pod; and straight up through the open port drop door into the launch bay as the cradle starts down with Swift 1
+  // (the kit's bay mesh and the door's trunk, baked from the bay's lamps).
+  { name: "hull-closeup", setup: shot(() => { lighting = "normal"; applyLighting(); reset(1); runUntil(() => S.t >= 32.0, 40); setView("shot"); shotCam = fixedCam(new V3(-14, 11, 46), new V3(-3, 3.5, 31), 50); }) },
   { name: "turret-closeup", setup: shot(() => { reset(1); runUntil(() => S.t >= 32.0, 40); setView("shot"); shotCam = fixedCam(new V3(-8.5, 14, 11), new V3(0, 9.6, 1.5), 50); }) },
-  { name: "bay-closeup", setup: shot(() => { lighting = "normal"; applyLighting(); reset(1); runUntil(() => S.bays.p.step === "drop door closing", 40); setView("shot"); shotCam = fixedCam(new V3(9.5, -13, -1.5), new V3(7.75, -1.0, -11), 55); }) },
+  { name: "bay-closeup", setup: shot(() => { lighting = "normal"; applyLighting(); reset(1); runUntil(() => S.bays.p.step === "cradle lowering", 40); setView("shot"); shotCam = fixedCam(new V3(9.0, -14, -4), new V3(7.75, -1.2, -10), 55); }) },
 ]);
-window.EXT_DEBUG = { reset, runUntil, get S() { return S; }, step, lastEvent, COVER, TERN, HULL, BRIDGE, BAYS, heads, ship, sun, litTex };
+window.EXT_DEBUG = { reset, runUntil, get S() { return S; }, step, lastEvent, COVER, TERN, HULL, BRIDGE, BAYS,
+  /** Frame the paused scene from a ship-frame eye and target, for trying a shot. */
+  look(eye, at, fov, light) { if (light) { lighting = light; applyLighting(); } setView("shot"); shotCam = fixedCam(v3(eye), v3(at), fov || 50); paused = true; sync(); } };
 
 // ------------------------------------------------------------ start
 reset(1);

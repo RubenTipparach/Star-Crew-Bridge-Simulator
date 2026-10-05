@@ -1439,13 +1439,18 @@ function glow(mat, a, b, c) {
 }
 const dim = (c, k) => new THREE.Color(c).multiplyScalar(k);
 
-/** The slab of a fixture floor: top, underside and the edges that face air (an edge against a wall is left out). */
+/**
+ * True when a fixture face looks into its compartment's air: 3 cm out from the face's centre along its normal lies in a
+ * brush. A face pressed against a wall, a floor or the void under a gallery is left out (CLAUDE.md section 8: it would
+ * share a plane with the wall face of the compartment next door, facing the same way).
+ */
+const facesAir = (comp, ctr, n) => !!K.brushAt(comp, ctr[0] + n[0] * 0.03, ctr[1] + n[1] * 0.03, ctr[2] + n[2] * 0.03);
+/** The slab of a fixture floor: top, underside and the edges that face air. */
 function slabPart(parts, comp, contour, holes, yTop) {
   flatPart(parts, "floor", contour, holes, yTop, 1);
   flatPart(parts, "ceiling", contour, holes, yTop - SLAB_M, -1);
-  const air = (x, z) => comp.brushes.some((b) => K.insidePoly(b.poly, x, z, -0.01));
   const edge = (a, b, n) => {
-    if (!air((a[0] + b[0]) / 2 + n[0] * 0.03, (a[1] + b[1]) / 2 + n[1] * 0.03)) return;
+    if (!facesAir(comp, [(a[0] + b[0]) / 2, yTop - SLAB_M / 2, (a[1] + b[1]) / 2], [n[0], 0, n[1]])) return;
     const A = [a[0], yTop, a[1]], B = [b[0], yTop, b[1]], C = [b[0], yTop - SLAB_M, b[1]], D = [a[0], yTop - SLAB_M, a[1]], n3 = [n[0], 0, n[1]];
     triPart(parts, "beam", A, B, C, n3); triPart(parts, "beam", A, C, D, n3);
   };
@@ -1508,7 +1513,7 @@ function fixtureParts(parts, c) {
       const dx = top[0] - foot[0], dz = top[2] - foot[2], run = Math.hypot(dx, dz), yaw = Math.atan2(dx, dz);
       for (let i = 0; i < n; i++) {
         const s0 = i / n, s1 = (i + 1) / n, h = rise * s1;
-        addParts(parts, (nn) => (nn[1] > 0.5 ? "floor" : nn[1] < -0.5 ? null : "beam"), BOX(f.width_m, h, run / n),
+        addParts(parts, (nn, ctr) => (nn[1] > 0.5 ? "floor" : nn[1] < -0.5 || !facesAir(c, ctr, nn) ? null : "beam"), BOX(f.width_m, h, run / n),
           place([foot[0] + (dx * (s0 + s1)) / 2, foot[1] + h / 2, foot[2] + (dz * (s0 + s1)) / 2], yaw));
       }
     } else if (f.kind === "viewscreen") {
@@ -2455,7 +2460,7 @@ K.registerShots([
   { name: "red-alert", setup: shot({ light: "red_alert", pos: [-30, 30, -2], target: [0, 0, 16] }) },
   { name: "engineering-closeup", setup: shot({ labels: true, proposed: true, exterior: false, lamps: false, select: "engineering", pos: [-17, 17, -7], target: [0, -1, -25] }) },
   { name: "bridge-closeup", setup: shot({ deck: "A", exterior: false, lamps: false, pos: [-7, 17, 11.5], target: [0, 3.8, 26] }) },
-  { name: "hangar-closeup", setup: shot({ exterior: false, lamps: false, pos: [0.6, 2.5, -0.5], target: [0, -2.3, -15] }) },
+  { name: "hangar-closeup", setup: shot({ exterior: false, lamps: false, pos: [-3.4, 1.75, -0.7], target: [1.2, -2.2, -14.5] }) },
   { name: "deck-B-closeup", setup: shot({ deck: "B", exterior: false, lamps: false, pos: [-17, 13, 4], target: [0, 0, 16] }) },
 ]);
 renderer.setAnimationLoop(frame);
