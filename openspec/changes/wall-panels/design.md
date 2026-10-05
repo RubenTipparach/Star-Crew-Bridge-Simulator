@@ -235,6 +235,6 @@ Per CLAUDE.md 13, a question goes to the owner only with something to look at.
 
 | Id | Question | Options | Recommendation | Shots |
 | --- | --- | --- | --- | --- |
-| V1 | Do the panel walls read as the industrial, lived-in ship the references show? | panels as prototyped / panels, with changes (say which) / today's tiles | Panels as prototyped | `wall-panels-*-before.png` and `-after.png` |
-| V2 | How are panels made from now on? | A. Material Maker graphs / B. Blender modelled and baked / C. Blender shapes with Material Maker wear | B now, C when Material Maker runs | The prototype's contact sheet |
+| V1 | Do the panel walls read as the industrial, lived-in ship the references show? | panels as prototyped / panels, with changes (say which) / today's tiles | Panels as prototyped. **Answered 2026-10-05** (owner, in chat): "Ooh now that is good": panels as prototyped | `wall-panels-*-before.png` and `-after.png` |
+| V2 | How are panels made from now on? | A. Material Maker graphs / B. Blender modelled and baked / C. Blender shapes with Material Maker wear | B now, C when Material Maker runs. **Answered 2026-10-05** (owner, in chat): "update those as well using your new textures skill": B, Blender; CLAUDE.md section 9 amended | The prototype's contact sheet |
 | V3 | Panel lights on emergency power | 30 % / off / full | 30 %: the room dims but stays readable. Recommendation taken (ask only with screenshots) | `wall-panels-engineering-emergency.png` (in the survey as a recommendation taken) |

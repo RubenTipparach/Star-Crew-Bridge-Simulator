@@ -349,6 +349,16 @@ becomes.
   design; the `material-maker` skill says how to make one and judge it on the contact sheet.
   Never write a procedural image generator that imitates a graph. Decals and screens are a
   small set of further textures, committed as PNG sources.
+- **Walls, ceilings and trims are panels, modelled and baked in Blender** (owner, 2026-10-05,
+  on the wall panel prototype: "Ooh now that is good. Walls and ceilings still look awkward
+  update those as well using your new textures skill"). Never a grid of one tiled square: each
+  bay between frames takes a designed panel (vents, pipes, hatches, screens, keypads, light
+  columns), chosen by a stable rule so neighbours differ, in bands from floor to ceiling. Panels
+  are modelled with boolean cutters (the `blender-hard-surface` kit) and baked under a fixed
+  light into layers of the same texture array (`tools/blender/build_wall_panels.py`,
+  `data/materials/panels.json`). The designs are `openspec/changes/wall-panels` and
+  `ceilings-and-trims`. Material Maker stays the source of tiling materials (floors, the hull),
+  and of wear layered on top once it can run.
 - **Meshes are files built by committed generators** (star-crew-64 and Undercity). A generator
   writes the source mesh deterministically; the build bakes it.
 - **Every asset has a triangle budget** in the Pi 5 table, and the build refuses one over
