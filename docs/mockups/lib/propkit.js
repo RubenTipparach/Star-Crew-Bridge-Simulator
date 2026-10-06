@@ -16,7 +16,8 @@
  *
  * Use: const P = await window.PropKit.create(THREE, ShipKit, GLTFLoader, mats, { sets: ["bridge", "suite"] });
  * then P.placeProp(parts, kind, back_m, yaw_deg, station), P.addFaces(F, kind, back_m, yaw_deg, station),
- * P.placeCrew(parts, seat_m, yaw_deg, station), P.faceMat for the faces' mesh, P.bytes for the HUD.
+ * P.placeCrew(parts, seat_m, yaw_deg, station), P.faceMat for the faces' mesh, P.bytes for the HUD, and
+ * P.spaceViews(layout, opts) for the starfield on the viewscreens and in the windows.
  */
 (function () {
   const ROLE_OF = { captain: "command", helm: "helm", tactical: "tactical", engineering: "engineering", science: "science", comms: "comms", flight_ops: "flight_ops" };
@@ -219,6 +220,9 @@
         const role = screen ? "screen" : `prop_${STAR_MATS.has(mname) ? mname : "trim"}${accent ? "_accent" : ""}`;
         const dst = parts[role] || (parts[role] = { position: [], normal: [], uvm: [], tint: [], material: screen ? "light_panel" : (STAR_MATS.has(mname) ? mname : "trim") });
         dst.tint = dst.tint || [];
+        // A light panel strip on a prop glows, as the rooms' lamps and status strips do (its texels' alpha is the emission mask).
+        const lit = mname === "light_panel";
+        if (lit) dst.glow = dst.glow || [];
         for (let i = 0; i < P.position.length / 3; i++) {
           const x = P.position[i * 3], y = P.position[i * 3 + 1], z = P.position[i * 3 + 2];
           dst.position.push(back[0] + x * c + z * s, back[1] + y, back[2] - x * s + z * c);
@@ -227,6 +231,7 @@
           dst.uvm.push(P.uvm[i * 2], P.uvm[i * 2 + 1]);
           const t = glass ? [0.03, 0.035, 0.045] : screen ? [tint.r * 0.9, tint.g * 0.9, tint.b * 0.9] : accent ? [tint.r, tint.g, tint.b] : [1, 1, 1];
           dst.tint.push(...t);
+          if (lit) dst.glow.push(1);
         }
       }
     }
@@ -249,6 +254,48 @@
       }
     }
 
+    // ---------------------------------------------------------------- space outside
+    /** A starfield with a planet: what the viewscreens and the windows show. */
+    function spaceTexture() {
+      const cv = document.createElement("canvas"); cv.width = 512; cv.height = 256;
+      const x = cv.getContext("2d");
+      x.fillStyle = "#02040a"; x.fillRect(0, 0, 512, 256);
+      let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      for (let i = 0; i < 260; i++) { x.fillStyle = `rgba(255,255,255,${0.3 + rnd() * 0.7})`; x.fillRect(rnd() * 512, rnd() * 256, 1.2, 1.2); }
+      const g = x.createRadialGradient(330, 300, 40, 330, 300, 220);
+      g.addColorStop(0, "#2a6fb0"); g.addColorStop(0.75, "#173c66"); g.addColorStop(1, "rgba(10,25,50,0)");
+      x.fillStyle = g; x.beginPath(); x.arc(330, 300, 200, 0, Math.PI * 2); x.fill();
+      const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
+      return t;
+    }
+    let SPACE = null;
+    /**
+     * Space seen from inside: the starfield on each viewscreen (a pane o.screenOffset metres, default 0.2, in front of
+     * its centre, facing the way it faces) and in each window (a pane in the window's plane, facing into the room).
+     * o.planes clips them; o.keep(fixture or portal) chooses which. Returns a THREE.Group.
+     */
+    function spaceViews(L, o) {
+      o = o || {};
+      SPACE = SPACE || spaceTexture();
+      const grp = new THREE.Group(), keep = o.keep || (() => true), off = o.screenOffset === undefined ? 0.2 : o.screenOffset;
+      const m = new THREE.MeshBasicMaterial({ map: SPACE, clippingPlanes: o.planes || null });
+      for (const vs of (L.fixtures || []).filter((f) => f.kind === "viewscreen" && keep(f))) {
+        const th = ((vs.facing_yaw_deg || 0) * Math.PI) / 180;
+        const sc = new THREE.Mesh(new THREE.PlaneGeometry(vs.size_m[0], vs.size_m[1]), m);
+        sc.position.set(vs.center_m[0] + Math.sin(th) * off, vs.center_m[1], vs.center_m[2] + Math.cos(th) * off);
+        sc.rotation.y = th;
+        grp.add(sc);
+      }
+      const glass = new THREE.MeshBasicMaterial({ map: SPACE, color: 0x9fb8d8, clippingPlanes: o.planes || null });
+      for (const p of (L.portals || []).filter((q) => q.kind === "window" && keep(q))) {
+        const f = K.portalFrame(p), q = new THREE.Mesh(new THREE.PlaneGeometry(f.w, f.h), glass);
+        q.position.set(f.c[0], f.c[1], f.c[2]);
+        q.lookAt(f.c[0] - f.n[0], f.c[1], f.c[2] - f.n[2]);
+        grp.add(q);
+      }
+      return grp;
+    }
+
     function mergeParts(dst, src) {
       for (const [r, P] of Object.entries(src)) {
         const d = dst[r];
@@ -259,7 +306,7 @@
 
     return {
       PROPS, SCREENS, baseOf, propFor, imagesOf, addFaces, faceMat, standIn, propOf, operatorZ,
-      placeProp, placeCrew, mergeParts, roleColor, bytes: SCREENS ? SCREENS.bytes : 0,
+      placeProp, placeCrew, mergeParts, roleColor, spaceViews, bytes: SCREENS ? SCREENS.bytes : 0,
     };
   }
 

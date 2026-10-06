@@ -519,6 +519,22 @@
       P.vlayer.push(layer);
     }
   };
+  /**
+   * A triangle with its own texture coordinates in metres (uvm, divided by the material's span like any
+   * other), for a surface that shows a whole picture rather than a window onto a world-projected tile: a
+   * lamp's lens shows two whole light panels, centred. Wound to face n like tri.
+   */
+  Builder.prototype.triUvm = function (role, a, b, c, ua, ub, uc, n) {
+    const P = this.part(role);
+    const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], ac = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+    const cr = [ab[1] * ac[2] - ab[2] * ac[1], ab[2] * ac[0] - ab[0] * ac[2], ab[0] * ac[1] - ab[1] * ac[0]];
+    const pts = cr[0] * n[0] + cr[1] * n[1] + cr[2] * n[2] < 0 ? [[a, ua], [c, uc], [b, ub]] : [[a, ua], [b, ub], [c, uc]];
+    for (const [p, uv] of pts) {
+      P.position.push(p[0], p[1], p[2]);
+      P.normal.push(n[0], n[1], n[2]);
+      P.uvm.push(uv[0], uv[1]);
+    }
+  };
   /** A polygon with holes on the horizontal plane y, facing up (dir 1) or down (-1). */
   Builder.prototype.flat = function (THREE, role, contour, holes, y, dir) {
     const v2 = (p) => new THREE.Vector2(p[0], p[1]);
@@ -1309,8 +1325,12 @@
           const along = sx === 0, hu = along ? f.sx / 2 + W : W / 2, hw = along ? W / 2 : f.sz / 2;
           B.box("collar", [f.c[0] + sx * (f.sx / 2 + W / 2), y, f.c[2] + sz * (f.sz / 2 + W / 2)], [1, 0, 0], [0, 1, 0], [0, 0, 1], hu, FP.collar_depth_m / 2, hw, ["-v", "+u", "-u", "+w", "-w"]);
         }
-        if (h.p.kind === "ladder") {
-          const topY = br.y[1] + 0.5 + FP.ladder_above_m, bot = br.y[0], zl = f.c[2] - f.sz / 2 + FP.ladder_rail_m, hr = FP.ladder_rail_m / 2;
+        // A ladder up through a ladder well, and through a floor hatch (a scuttle, a turret pod's hatch: deck-access),
+        // from this floor to the floor above, and its handholds past it.
+        if (h.p.kind === "ladder" || h.p.kind === "hatch") {
+          const above = h.p.between.find((id) => id !== comp.id), up = above && compartment(L, above);
+          const top = up ? floorAt(up, f.c[0], f.c[2], br.y[1] + 0.3) : br.y[1] + 0.5;
+          const topY = top + FP.ladder_above_m, bot = br.y[0], zl = f.c[2] - f.sz / 2 + FP.ladder_rail_m, hr = FP.ladder_rail_m / 2;
           for (const s of [-1, 1]) {
             B.box("ladder", [f.c[0] + (s * FP.ladder_width_m) / 2, (topY + bot) / 2, zl], [1, 0, 0], [0, 1, 0], [0, 0, 1], hr, (topY - bot) / 2, hr, ["+u", "-u", "+w", "-w", "+v"]);
           }
@@ -1356,8 +1376,15 @@
     const lamps = lampList;
     if (detail) {
       const hh = D.lamps.housing_m / 2;
+      // The lens shows two whole light panels side by side, centred on the lamp (owner, 2026-10-06: "UV them correctly.
+      // They look off centered"): a lens is 2:1 (detailing.json panel_m and corridor_panel_m), and the light_panel
+      // layer's span holds two panels across and two down, so the lens takes the layer's top half exactly.
+      const LENS_U_M = 2.0, LENS_V_M = 1.0;   // the light_panel layer's span is 2 m: u over all of it, v over half
       for (const l of lamps) {
-        B.box("lamp_housing", [l.p[0], l.p[1] + hh, l.p[2]], [1, 0, 0], [0, 1, 0], [0, 0, 1], l.size[0] / 2, hh, l.size[1] / 2, ["-v", "+u", "-u", "+w", "-w"], { "-v": "lamp" });
+        B.box("lamp_housing", [l.p[0], l.p[1] + hh, l.p[2]], [1, 0, 0], [0, 1, 0], [0, 0, 1], l.size[0] / 2, hh, l.size[1] / 2, ["+u", "-u", "+w", "-w"]);
+        const x0 = l.p[0] - l.size[0] / 2, x1 = l.p[0] + l.size[0] / 2, z0 = l.p[2] - l.size[1] / 2, z1 = l.p[2] + l.size[1] / 2, y = l.p[1], dn = [0, -1, 0];
+        B.triUvm("lamp", [x0, y, z0], [x1, y, z0], [x1, y, z1], [0, 0], [LENS_U_M, 0], [LENS_U_M, LENS_V_M], dn);
+        B.triUvm("lamp", [x0, y, z0], [x1, y, z1], [x0, y, z1], [0, 0], [LENS_U_M, LENS_V_M], [0, LENS_V_M], dn);
       }
     }
     return panelsOn ? { parts: B.parts, lamps, walls, openings, panels: panelsOn.stats } : { parts: B.parts, lamps, walls, openings };
@@ -1853,17 +1880,19 @@
   /**
    * A lift car (fixture kind "lift", openspec/changes/deck-access) into builder B, standing at its
    * center_m: car_m is its size along x, up and along z; its open side faces facing_yaw_deg (+90: +x).
-   * Roles: platform (floor), riser (walls and roof), railing (the handrail). f.roof false leaves the roof
-   * off, for a page that draws its rooms without ceilings.
+   * Roles: lift_floor (deck plate), lift_wall (walls and roof, bulkhead), lift_rail (the handrail, trim); each
+   * part names its material, so no finish needs them. f.roof false leaves the roof off, for a page that draws
+   * its rooms without ceilings.
    */
   function buildLiftCar(B, f) {
     const [x, y, z] = f.center_m, [w, h, d] = f.car_m, X = [1, 0, 0], Y = [0, 1, 0], Z = [0, 0, 1], t = 0.05;
     const all = ["+u", "-u", "+v", "-v", "+w", "-w"], open = Math.round(Math.sin((f.facing_yaw_deg * Math.PI) / 180));
-    B.box("platform", [x, y + t / 2, z], X, Y, Z, w / 2, t / 2, d / 2, all);
-    if (f.roof !== false) B.box("riser", [x, y + h - t / 2, z], X, Y, Z, w / 2, t / 2, d / 2, all);
-    B.box("riser", [x - open * (w / 2 - t / 2), y + h / 2, z], X, Y, Z, t / 2, h / 2, d / 2, all);
-    for (const sz of [1, -1]) B.box("riser", [x, y + h / 2, z + sz * (d / 2 - t / 2)], X, Y, Z, w / 2, h / 2, t / 2, all);
-    B.box("railing", [x - open * (w / 2 - 0.08), y + 0.95, z], X, Y, Z, 0.025, 0.025, d / 2 - 0.15, all);
+    B.box("lift_floor", [x, y + t / 2, z], X, Y, Z, w / 2, t / 2, d / 2, all);
+    if (f.roof !== false) B.box("lift_wall", [x, y + h - t / 2, z], X, Y, Z, w / 2, t / 2, d / 2, all);
+    B.box("lift_wall", [x - open * (w / 2 - t / 2), y + h / 2, z], X, Y, Z, t / 2, h / 2, d / 2, all);
+    for (const sz of [1, -1]) B.box("lift_wall", [x, y + h / 2, z + sz * (d / 2 - t / 2)], X, Y, Z, w / 2, h / 2, t / 2, all);
+    B.box("lift_rail", [x - open * (w / 2 - 0.08), y + 0.95, z], X, Y, Z, 0.025, 0.025, d / 2 - 0.15, all);
+    B.parts.lift_floor.material = "deck_plate"; B.parts.lift_wall.material = "bulkhead"; B.parts.lift_rail.material = "trim";
   }
 
   function hullGeometry(THREE, L, opts) {
@@ -2338,7 +2367,8 @@
  *
  * Use: const P = await window.PropKit.create(THREE, ShipKit, GLTFLoader, mats, { sets: ["bridge", "suite"] });
  * then P.placeProp(parts, kind, back_m, yaw_deg, station), P.addFaces(F, kind, back_m, yaw_deg, station),
- * P.placeCrew(parts, seat_m, yaw_deg, station), P.faceMat for the faces' mesh, P.bytes for the HUD.
+ * P.placeCrew(parts, seat_m, yaw_deg, station), P.faceMat for the faces' mesh, P.bytes for the HUD, and
+ * P.spaceViews(layout, opts) for the starfield on the viewscreens and in the windows.
  */
 (function () {
   const ROLE_OF = { captain: "command", helm: "helm", tactical: "tactical", engineering: "engineering", science: "science", comms: "comms", flight_ops: "flight_ops" };
@@ -2541,6 +2571,9 @@
         const role = screen ? "screen" : `prop_${STAR_MATS.has(mname) ? mname : "trim"}${accent ? "_accent" : ""}`;
         const dst = parts[role] || (parts[role] = { position: [], normal: [], uvm: [], tint: [], material: screen ? "light_panel" : (STAR_MATS.has(mname) ? mname : "trim") });
         dst.tint = dst.tint || [];
+        // A light panel strip on a prop glows, as the rooms' lamps and status strips do (its texels' alpha is the emission mask).
+        const lit = mname === "light_panel";
+        if (lit) dst.glow = dst.glow || [];
         for (let i = 0; i < P.position.length / 3; i++) {
           const x = P.position[i * 3], y = P.position[i * 3 + 1], z = P.position[i * 3 + 2];
           dst.position.push(back[0] + x * c + z * s, back[1] + y, back[2] - x * s + z * c);
@@ -2549,6 +2582,7 @@
           dst.uvm.push(P.uvm[i * 2], P.uvm[i * 2 + 1]);
           const t = glass ? [0.03, 0.035, 0.045] : screen ? [tint.r * 0.9, tint.g * 0.9, tint.b * 0.9] : accent ? [tint.r, tint.g, tint.b] : [1, 1, 1];
           dst.tint.push(...t);
+          if (lit) dst.glow.push(1);
         }
       }
     }
@@ -2571,6 +2605,48 @@
       }
     }
 
+    // ---------------------------------------------------------------- space outside
+    /** A starfield with a planet: what the viewscreens and the windows show. */
+    function spaceTexture() {
+      const cv = document.createElement("canvas"); cv.width = 512; cv.height = 256;
+      const x = cv.getContext("2d");
+      x.fillStyle = "#02040a"; x.fillRect(0, 0, 512, 256);
+      let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      for (let i = 0; i < 260; i++) { x.fillStyle = `rgba(255,255,255,${0.3 + rnd() * 0.7})`; x.fillRect(rnd() * 512, rnd() * 256, 1.2, 1.2); }
+      const g = x.createRadialGradient(330, 300, 40, 330, 300, 220);
+      g.addColorStop(0, "#2a6fb0"); g.addColorStop(0.75, "#173c66"); g.addColorStop(1, "rgba(10,25,50,0)");
+      x.fillStyle = g; x.beginPath(); x.arc(330, 300, 200, 0, Math.PI * 2); x.fill();
+      const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
+      return t;
+    }
+    let SPACE = null;
+    /**
+     * Space seen from inside: the starfield on each viewscreen (a pane o.screenOffset metres, default 0.2, in front of
+     * its centre, facing the way it faces) and in each window (a pane in the window's plane, facing into the room).
+     * o.planes clips them; o.keep(fixture or portal) chooses which. Returns a THREE.Group.
+     */
+    function spaceViews(L, o) {
+      o = o || {};
+      SPACE = SPACE || spaceTexture();
+      const grp = new THREE.Group(), keep = o.keep || (() => true), off = o.screenOffset === undefined ? 0.2 : o.screenOffset;
+      const m = new THREE.MeshBasicMaterial({ map: SPACE, clippingPlanes: o.planes || null });
+      for (const vs of (L.fixtures || []).filter((f) => f.kind === "viewscreen" && keep(f))) {
+        const th = ((vs.facing_yaw_deg || 0) * Math.PI) / 180;
+        const sc = new THREE.Mesh(new THREE.PlaneGeometry(vs.size_m[0], vs.size_m[1]), m);
+        sc.position.set(vs.center_m[0] + Math.sin(th) * off, vs.center_m[1], vs.center_m[2] + Math.cos(th) * off);
+        sc.rotation.y = th;
+        grp.add(sc);
+      }
+      const glass = new THREE.MeshBasicMaterial({ map: SPACE, color: 0x9fb8d8, clippingPlanes: o.planes || null });
+      for (const p of (L.portals || []).filter((q) => q.kind === "window" && keep(q))) {
+        const f = K.portalFrame(p), q = new THREE.Mesh(new THREE.PlaneGeometry(f.w, f.h), glass);
+        q.position.set(f.c[0], f.c[1], f.c[2]);
+        q.lookAt(f.c[0] - f.n[0], f.c[1], f.c[2] - f.n[2]);
+        grp.add(q);
+      }
+      return grp;
+    }
+
     function mergeParts(dst, src) {
       for (const [r, P] of Object.entries(src)) {
         const d = dst[r];
@@ -2581,7 +2657,7 @@
 
     return {
       PROPS, SCREENS, baseOf, propFor, imagesOf, addFaces, faceMat, standIn, propOf, operatorZ,
-      placeProp, placeCrew, mergeParts, roleColor, bytes: SCREENS ? SCREENS.bytes : 0,
+      placeProp, placeCrew, mergeParts, roleColor, spaceViews, bytes: SCREENS ? SCREENS.bytes : 0,
     };
   }
 

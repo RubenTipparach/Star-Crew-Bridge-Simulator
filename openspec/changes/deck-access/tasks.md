@@ -9,6 +9,8 @@
 - [x] 1.5 Shots of the towers, the lift and the deck plans, looked at; survey Y1 with them, Y2 and Y3 recorded as recommendations taken; T3 answered.
   The first shots showed the towers' lower flights near black: the kit's lamp rule gave a 10 m shaft one lamp at its top. A trunk now takes a lamp a deck (design section 2, "Light"); the costs in section 6 are remeasured with it.
 
+- [x] 1.6 Walk it (the deck plan's walk mode) and fix what is found. The lift stood 0.6 m behind the briefing room's door from the bridge: it moves to z 17.1-19.0 m, between that room's two doors, and the tool checks that no trunk stands in any door's zone (design section 3).
+
 ## 2. Apply the patch (with `command-suite`'s task 2)
 
 - [ ] 2.1 `layout.json` takes the patch; `layout_check.py` learns the `trunk` kind and the `spiral_stair` and `lift` fixtures.

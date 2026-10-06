@@ -56,9 +56,12 @@ SPIRAL_R, COLUMN_R = 1.2, 0.15
 SWEEP_DEG = 240.0         # the treads' sweep per deck; the landing takes the rest, over the aft
 RISERS = 18               # per deck: 3.5 m in 18 risers of 0.194 m
 WALK_LINE_R = 0.85        # where a person walks a spiral stair
-# The lift: starboard, forward, its door on the passage 1.2 m aft of the bridge door.
-LIFT = {"x": (-3.25, -1.25), "z": (17.6, 20.0)}
-LIFT_CAR = [1.6, 2.2, 2.1]   # width (x), height, depth (z) in metres: a stretcher fits lengthwise
+# The lift: starboard, forward, its door on the passage. It stands between the briefing room's two doors, clear
+# of both their zones: its passage door aft (z 16.4) and its door from the bridge forward (2026-10-06: the first
+# lift, at z 17.6-20.0, stood 0.6 m behind that one; the trunk check below now catches it). Its outboard wall
+# meets the backs of the briefing table's inboard chairs, at x -3.3.
+LIFT = {"x": (-3.3, -1.25), "z": (17.1, 19.0)}
+LIFT_CAR = [1.9, 2.2, 1.6]   # depth from its door (x), height, width (z) in metres: a 1.9 m stretcher fits lengthwise
 LIFT_SPEED_M_S = 1.5         # assumed (design section 3)
 LIFT_DOOR_S = 2.0            # to open, and again to close (assumed)
 # The scuttles: a hatch and ladder from each side room by the bridge down to the room below.
@@ -397,6 +400,13 @@ def checks(L):
         for t in trunks:
             if lc.inside_poly(t["brushes"][0]["poly"], x, z, tol=-0.01):
                 problems.append(f"{s['id']} stands inside {t['id']}")
+    # No trunk stands in a door's clear zone (a trunk spans every deck, so on any deck), unless the door is its own:
+    # the first lift stood 0.6 m behind the briefing room's door from the bridge (found walking it, 2026-10-06).
+    by_id = {p["id"]: p for p in L["portals"]}
+    for pid, cid, zone in CS.door_zones(L):
+        for t in trunks:
+            if t["id"] not in by_id[pid]["between"] and lc.polys_overlap(t["brushes"][0]["poly"], zone):
+                problems.append(f"{t['id']} stands in the clear zone of {pid} on the {cid} side")
     return ok and not problems, problems
 
 

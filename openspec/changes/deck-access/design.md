@@ -120,13 +120,17 @@ Recommendation taken (ask only with screenshots), Y2: spiral.
 
 ### 3. The lift
 
-**Where.** Starboard, x -3.25 to -1.25 m, z 17.6-20.0 m, its door on the passage 1.2 m aft of the
-bridge door: the bridge's lift, as R1's turbolift is the bridge's (`docs/analysis/star-trek-bridges.md`).
-On deck B its door is 3 m from the medbay's, and on deck C it is beside the magazine.
+**Where.** Starboard, x -3.3 to -1.25 m, z 17.1-19.0 m, its door on the passage 2 m aft of the bridge
+door: the bridge's lift, as R1's turbolift is the bridge's (`docs/analysis/star-trek-bridges.md`). It
+stands between the briefing room's two doors, clear of both their zones, and its outboard wall meets the
+backs of the briefing table's inboard chairs. The first lift, at z 17.6-20.0 m, stood 0.6 m behind the
+briefing room's door from the bridge: walking the deck plan found it (2026-10-06), and the tool now checks
+that no trunk stands in any door's clear zone, on any deck.
+On deck B its door is 4.7 m from the medbay's, and on deck C it is near the magazine's.
 
 **What it is.**
-- **Trunk:** kind `trunk`, 2.0 x 2.4 m, 48.0 m^3.
-- **Car:** fixture kind `lift`, 1.6 x 2.2 x 2.1 m, long enough for a stretcher.
+- **Trunk:** kind `trunk`, 2.05 x 1.9 m, 38.9 m^3.
+- **Car:** fixture kind `lift`, 1.9 m deep from its door, 2.2 m high and 1.6 m wide: a 1.9 m stretcher fits lengthwise.
 - **Doors:** 1.2 x 2.2 m onto each deck's spine corridor.
 - **Movement (assumed until `power-grid` and `crew-on-deck` set them):** 1.5 m/s, and 2.0 s for its
   doors to open and again to close.
@@ -175,15 +179,15 @@ windows on it, stay whole:
 | --- | --- | --- | --- |
 | Captain's quarters (A) | 131.9 / 111.6 | 44.0 / 37.2 | 1 to 2 |
 | Computer core (A) | 131.9 / 111.6 | 44.0 / 37.2 | 1 to 2 |
-| Briefing room (A) | 201.3 / 186.9 | 67.1 / 62.3 | 4 to 5 |
+| Briefing room (A) | 201.3 / 189.7 | 67.1 / 63.2 | 4 to 6 |
 | Crew quarters (B) | 271.5 / 251.2 | 90.5 / 83.7 | 1 to 3 |
-| Mess (B) | 271.5 / 248.8 | 90.5 / 82.9 | 1 to 4 |
-| Damage control (B) | 187.2 / 175.2 | 62.4 / 58.4 | 1 to 2 |
+| Mess (B) | 271.5 / 245.7 | 90.5 / 81.9 | 1 to 4 |
+| Damage control (B) | 187.2 / 181.1 | 62.4 / 60.4 | 1 to 2 |
 | Life support (C) | 367.8 / 347.5 | 122.6 / 115.8 | 1 to 3 |
-| Cargo (C) | 349.1 / 314.4 | 116.4 / 104.8 | 3 to 6 |
+| Cargo (C) | 349.1 / 317.1 | 116.4 / 105.7 | 3 to 7 |
 
-The ship's air goes from 10,284.7 m^3 (with the suite) to 10,303.0 m^3. The trunks add the deck
-slabs they pass through, 18.3 m^3.
+The ship's air goes from 10,284.7 m^3 (with the suite) to 10,302.1 m^3. The trunks add the deck
+slabs they pass through, 17.4 m^3.
 
 Four suite pieces moved to stay clear, in `tools/command_suite.py`:
 - the wardrobe;

@@ -1,0 +1,153 @@
+{
+ "schema": "starcrew.furnishings/1",
+ "status": "Proposed (2026-10-06): the crew rooms furnished for the mockups (openspec/changes/ship-props). Written by tools/crew_rooms.py; edit the script, not this file.",
+ "_rules": [
+  "back_m: the piece's origin on the floor (a wall piece: the centre of its back on the wall plane; a free one: the centre of its footprint). yaw_deg: the way its front faces, 0 the bow, +90 port. set: the prop set that models it."
+ ],
+ "furnishings": [
+  {
+   "room": "quarters",
+   "prop": "bunk",
+   "set": "machinery",
+   "back_m": [
+    5.0,
+    0.0,
+    18.0
+   ],
+   "yaw_deg": 180.0,
+   "note": "two berths on the forward wall"
+  },
+  {
+   "room": "quarters",
+   "prop": "bunk",
+   "set": "machinery",
+   "back_m": [
+    7.3,
+    0.0,
+    18.0
+   ],
+   "yaw_deg": 180.0,
+   "note": "two berths on the forward wall"
+  },
+  {
+   "room": "quarters",
+   "prop": "bunk",
+   "set": "machinery",
+   "back_m": [
+    8.0,
+    0.0,
+    8.0
+   ],
+   "yaw_deg": 0.0,
+   "note": "two berths on the aft wall, clear of the door from the turret room"
+  },
+  {
+   "room": "quarters",
+   "prop": "bunk",
+   "set": "machinery",
+   "back_m": [
+    1.25,
+    0.0,
+    16.4
+   ],
+   "yaw_deg": 90.0,
+   "note": "two berths on the corridor wall, forward of the door"
+  },
+  {
+   "room": "quarters",
+   "prop": "locker_bank",
+   "set": "suite",
+   "back_m": [
+    10.396,
+    0.0,
+    12.2
+   ],
+   "yaw_deg": -96.84,
+   "note": "lockers on the hull side"
+  },
+  {
+   "room": "quarters",
+   "prop": "locker_bank",
+   "set": "suite",
+   "back_m": [
+    10.084,
+    0.0,
+    14.8
+   ],
+   "yaw_deg": -96.84,
+   "note": "lockers on the hull side"
+  },
+  {
+   "room": "mess",
+   "prop": "galley_counter",
+   "set": "machinery",
+   "back_m": [
+    -6.5,
+    0.0,
+    18.0
+   ],
+   "yaw_deg": 180.0,
+   "note": "the galley, on the forward wall"
+  },
+  {
+   "room": "mess",
+   "prop": "mess_table",
+   "set": "machinery",
+   "back_m": [
+    -6.0,
+    0.0,
+    12.0
+   ],
+   "yaw_deg": 0.0,
+   "note": "a table for four"
+  },
+  {
+   "room": "mess",
+   "prop": "mess_table",
+   "set": "machinery",
+   "back_m": [
+    -6.0,
+    0.0,
+    14.6
+   ],
+   "yaw_deg": 0.0,
+   "note": "a table for four"
+  },
+  {
+   "room": "damage_control",
+   "prop": "workbench",
+   "set": "suite",
+   "back_m": [
+    -5.0,
+    0.0,
+    18.0
+   ],
+   "yaw_deg": 0.0,
+   "note": "repair kits, on the aft wall"
+  },
+  {
+   "room": "damage_control",
+   "prop": "locker_bank",
+   "set": "suite",
+   "back_m": [
+    -7.0,
+    0.0,
+    26.0
+   ],
+   "yaw_deg": 180.0,
+   "note": "EVA suits, on the forward wall"
+  },
+  {
+   "room": "damage_control",
+   "prop": "locker_bank",
+   "set": "suite",
+   "back_m": [
+    -2.55,
+    0.0,
+    26.0
+   ],
+   "yaw_deg": 180.0,
+   "note": "extinguishers, on the forward wall"
+  }
+ ]
+}

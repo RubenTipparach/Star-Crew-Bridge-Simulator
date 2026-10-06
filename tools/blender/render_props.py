@@ -1,4 +1,4 @@
-"""Stills of a prop set (the bridge props or the suite props), for looking at them before anyone
+"""Stills of a prop set (the bridge, suite or machinery props), for looking at them before anyone
 else does (CLAUDE.md 12).
 
 It owns nothing the game loads. It imports the exported .glb files listed in the set's
@@ -7,7 +7,8 @@ real artifact), so the pictures show the geometry, normals and materials as the 
 them. It writes, into docs/screenshots/props/ (or --shots):
   <name>.png            one prop, isometric, on a floor (and a wall when its anchor is on the wall plane)
   the set's sheet       every prop laid out together, labelled with its triangles: contact-sheet.png
-                        for the bridge set, suite-props.png for the suite set
+                        for the bridge set, suite-props.png for the suite set, machinery-props.png
+                        for the machinery set
 Flat colours come from the glb's own materials (the build takes them from each Material Maker
 layer's mean colour, and from shipkit.js for screen and accent); screens and light strips glow.
 Edges are drawn with Freestyle so the chamfers and cuts read, the cutaway look. Cycles on the CPU
@@ -15,10 +16,10 @@ with few samples: it runs headless, without a GPU (Workbench and EEVEE need an O
 that a cloud session does not have).
 
 Run (from anywhere):
-  <python with the bpy module> tools/blender/render_props.py [--set bridge|suite] [--only a,b] [--samples 24]
+  <python with the bpy module> tools/blender/render_props.py [--set bridge|suite|machinery] [--only a,b] [--samples 24]
       [--no-sheet] [--no-stills] [--shots DIR]
   blender -b --factory-startup -P tools/blender/render_props.py -- [same options]
-  --set        which prop set (default bridge)
+  --set        which prop set: bridge (the default), suite or machinery
   --only       render the stills of only these props (the sheet still shows the whole set)
   --no-sheet   skip the contact sheet; --no-stills skip the stills
   --shots      write into DIR instead of docs/screenshots/props
@@ -60,6 +61,19 @@ SETS = {
         "gap_y": 3.8,     # the suite's pod and stalls are tall: a 2.3 m prop hides 3.3 m of floor behind it
         "gap_x": 1.0,
         "label_m": 0.17,  # a wider scene than the bridge's, so larger labels to stay legible
+    },
+    "machinery": {
+        "dir": os.path.join(ROOT, "assets", "models", "machinery"),
+        # the reactor (10 m tall) stands at the left end of the back row, where it hides nothing
+        "rows": [["reactor_core", "switchboard", "battery_bank", "ls_tanks", "ls_scrubbers", "ls_air_handler", "bunk",
+                  "galley_counter"],
+                 ["coolant_pumps", "inertial_dampers", "shield_generator", "gravity_generator", "med_bed", "mess_table",
+                  "missile_tube"],
+                 ["impulse_drive", "magazine_rack", "launch_cradle", "swift_fighter", "petrel_shuttle"]],
+        "sheet": "machinery-props.png",
+        "gap_y": 3.4,
+        "gap_x": 1.0,
+        "label_m": 0.24,  # the widest scene of the three
     },
 }
 

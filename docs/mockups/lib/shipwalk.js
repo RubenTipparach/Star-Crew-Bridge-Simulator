@@ -396,7 +396,7 @@
       on = true; action = null; vx = vz = vy = 0; grounded = true; stairT = 0;
       for (const k of Object.keys(keys)) keys[k] = false;
       pos.set(p.x, p.y, p.z);
-      const g = groundAt(p.x, p.z, p.y + 0.5, 2.0);
+      const g = groundAt(p.x, p.z, p.y, 1.0);   // the floor at about p.y, not the top of a chair beside it
       if (g !== null) pos.y = g;
       yaw = p.face ? Math.atan2(-p.face[0], -p.face[1]) : p.yaw || 0;
       pitch = ((p.pitch_deg || 0) * Math.PI) / 180;
@@ -438,6 +438,15 @@
       active: () => on,
       /** Where the body stands and looks: { x, y (feet), z, yaw, pitch, grounded, climbing }. */
       pose: () => ({ x: pos.x, y: pos.y, z: pos.z, yaw, pitch, grounded, climbing: !!action }),
+      /** True when a body can stand at (x, z) on a floor within a step of feet: nothing on top of the floor there
+       * (a table, a machine) and no wall in its way. */
+      canStand: (x, z, feet) => {
+        ray.origin.set(x, feet + 2.9, z);   // above a machine's top (2.7 m at most), under the ceiling (3.0 m)
+        const hit = octree.rayIntersect(ray);
+        if (!hit || Math.abs(hit.position.y - feet) > BODY.step_m) return false;
+        const [px, pz] = pushOut(x, z, hit.position.y);
+        return Math.hypot(px, pz) < 0.02;
+      },
       /** Turn the body to face [x, z]. */
       face: (f) => { yaw = Math.atan2(-f[0], -f[1]); },
       refreshButtons: () => hud && hud.refresh(),

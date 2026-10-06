@@ -1,0 +1,194 @@
+{
+  "schema": "starcrew.props/1",
+  "status": "Built (2026-10-06) by tools/blender/build_machinery_props.py. Proposed machinery, craft and crew-room furniture for the Tern (data/ships/tern/layout.json systems and craft; deck-pipeline section 5), to replace the deck plan mockup's grey boxes; no page or engine code loads them yet.",
+  "_rules": [
+    "This file is written by tools/blender/build_machinery_props.py; never edit it by hand. Rebuild, and the .glb files and this file change together.",
+    "Metres. Prop space is the glTF frame: +Y up, +Z toward the user (the prop's front: the side it is worked from; a craft's nose), +X the user's right as they face the prop.",
+    "anchor says where the origin is. 'floor, centre of the back, on the wall plane' (a WALL prop): on the floor at the centre of its back, the back flat on a wall at z = 0. 'floor, centre of the footprint' (a FREE prop): on the floor at the centre of its footprint. 'floor, centre of the footprint, nose toward +Z' (a CRAFT): the same, its nose toward +Z.",
+    "Placing props: the layout's system or craft centre_m (on the floor) is the anchor for a FREE prop or a CRAFT; a WALL prop's anchor goes on the wall plane with its +Z into the room. operators_m are floor points where a crew member stands or sits to work it, in prop space.",
+    "Materials are roles: machinery, trim, bulkhead, hazard and light_panel are data/materials/materials.json layers (light_panel is emissive: lamps, glowing bands, vents, nozzles and canopies); screen is emissive and coloured by the page; accent (blankets, valve wheels, bus bars, coil windings, tripped breakers) is tinted by the page.",
+    "screens are the recess floors a page draws on: centre_m on the floor, normal out of it, up the in-plane direction of height_m (width_m runs along up x normal). shows says what: console (a main screen image, assets/textures/screens/screens.json), upper (half of an upper image) or keys (a key panel).",
+    "UV0 is in metres, projected per face as shipkit.js worldUv does (x, z where |n.y| > 0.75, else the face's horizontal tangent and y); divide by the material's span_m.",
+    "Flat shaded (one normal per face), triangulated, one closed manifold solid per prop; faces against the floor or the wall are kept for the deck compiler to drop.",
+    "triangles is counted in the .glb; the build refuses a prop over budget_triangles. sha256 is the .glb's, from the Blender and exporter versions in generator: a second build with them writes the same bytes."
+  ],
+  "generator": {
+    "script": "tools/blender/build_machinery_props.py",
+    "blender": "4.5.14 LTS",
+    "gltf_exporter": "4.5.51"
+  },
+  "props": {
+    "switchboard": {
+      "file": "switchboard.glb",
+      "presents": "The main switchboard: breaker cabinets that route the reactor's and the battery's power to every bus (power grid)",
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        2.4,
+        2.0,
+        0.755
+      ],
+      "bounds_m": {
+        "min": [
+          -1.2,
+          0.0,
+          0.0
+        ],
+        "max": [
+          1.2,
+          2.0,
+          0.755
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          1.35
+        ]
+      ],
+      "screens": [
+        {
+          "label": "status",
+          "shows": "console",
+          "centre_m": [
+            0.0,
+            1.43,
+            0.705
+          ],
+          "normal": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "up": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "width_m": 0.62,
+          "height_m": 0.34
+        }
+      ],
+      "triangles": 584,
+      "budget_triangles": 600,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard",
+        "light_panel",
+        "screen",
+        "accent"
+      ],
+      "csg": [
+        "difference cabinet_and_door_splits (3)",
+        "chamfer trunking_edge (1 edges, 20 mm)",
+        "union trunking (4)",
+        "difference panels (5)",
+        "union toggles_and_pulls (21)"
+      ],
+      "sha256": "c845f2be54384aa4bbf583786cf909f5cc7538b11ca78e0fd3cdbb74acfd9221"
+    },
+    "battery_bank": {
+      "file": "battery_bank.glb",
+      "presents": "The battery bank: racked cell modules that store the grid's reserve (power grid)",
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        2.0,
+        1.6,
+        1.185
+      ],
+      "bounds_m": {
+        "min": [
+          -1.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          1.0,
+          1.6,
+          1.185
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          1.6
+        ]
+      ],
+      "screens": [],
+      "triangles": 450,
+      "budget_triangles": 500,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard",
+        "light_panel",
+        "accent"
+      ],
+      "csg": [
+        "difference bays (9)",
+        "chamfer module_0_0_lamp (1 edges, 30 mm)",
+        "chamfer module_1_0_lamp (1 edges, 30 mm)",
+        "chamfer module_2_0_lamp (1 edges, 30 mm)",
+        "chamfer module_0_1_lamp (1 edges, 30 mm)",
+        "chamfer module_1_1_lamp (1 edges, 30 mm)",
+        "chamfer module_2_1_lamp (1 edges, 30 mm)",
+        "chamfer module_0_2_lamp (1 edges, 30 mm)",
+        "chamfer module_1_2_lamp (1 edges, 30 mm)",
+        "chamfer module_2_2_lamp (1 edges, 30 mm)",
+        "union modules (9)",
+        "union bus_bars (4)"
+      ],
+      "sha256": "1e35a7fce6dd5556c63cb179cae8aed9da288aa0898358b932e8253c033de995"
+    },
+    "coolant_pumps": {
+      "file": "coolant_pumps.glb",
+      "presents": "The reactor's coolant pumps: two pumps on a skid that drive the coolant loop (power grid, thermal)",
+      "anchor": "floor, centre of the footprint",
+      "dimensions_m": [
+        1.96,
+        1.4066,
+        1.57
+      ],
+      "bounds_m": {
+        "min": [
+          -0.98,
+          0.0,
+          -0.78
+        ],
+        "max": [
+          0.98,
+          1.4066,
+          0.79
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          1.2
+        ]
+      ],
+      "screens": [],
+      "triangles": 576,
+      "budget_triangles": 600,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard",
+        "light_panel",
+        "accent"
+      ],
+      "csg": [
+        "chamfer skid_edges (4 edges, 20 mm)",
+        "chamfer starter_lamp (1 edges, 30 mm)",
+        "union pumps_and_pipes (12)"
+      ],
+      "sha256": "863e45c9d2542c5aad24fd6b2afccfb40f1818d48858668c35370a897a0bb5ff"
+    }
+  }
+}

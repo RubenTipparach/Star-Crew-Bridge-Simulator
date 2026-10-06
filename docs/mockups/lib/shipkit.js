@@ -439,6 +439,22 @@
       P.vlayer.push(layer);
     }
   };
+  /**
+   * A triangle with its own texture coordinates in metres (uvm, divided by the material's span like any
+   * other), for a surface that shows a whole picture rather than a window onto a world-projected tile: a
+   * lamp's lens shows two whole light panels, centred. Wound to face n like tri.
+   */
+  Builder.prototype.triUvm = function (role, a, b, c, ua, ub, uc, n) {
+    const P = this.part(role);
+    const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], ac = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+    const cr = [ab[1] * ac[2] - ab[2] * ac[1], ab[2] * ac[0] - ab[0] * ac[2], ab[0] * ac[1] - ab[1] * ac[0]];
+    const pts = cr[0] * n[0] + cr[1] * n[1] + cr[2] * n[2] < 0 ? [[a, ua], [c, uc], [b, ub]] : [[a, ua], [b, ub], [c, uc]];
+    for (const [p, uv] of pts) {
+      P.position.push(p[0], p[1], p[2]);
+      P.normal.push(n[0], n[1], n[2]);
+      P.uvm.push(uv[0], uv[1]);
+    }
+  };
   /** A polygon with holes on the horizontal plane y, facing up (dir 1) or down (-1). */
   Builder.prototype.flat = function (THREE, role, contour, holes, y, dir) {
     const v2 = (p) => new THREE.Vector2(p[0], p[1]);
@@ -1229,8 +1245,12 @@
           const along = sx === 0, hu = along ? f.sx / 2 + W : W / 2, hw = along ? W / 2 : f.sz / 2;
           B.box("collar", [f.c[0] + sx * (f.sx / 2 + W / 2), y, f.c[2] + sz * (f.sz / 2 + W / 2)], [1, 0, 0], [0, 1, 0], [0, 0, 1], hu, FP.collar_depth_m / 2, hw, ["-v", "+u", "-u", "+w", "-w"]);
         }
-        if (h.p.kind === "ladder") {
-          const topY = br.y[1] + 0.5 + FP.ladder_above_m, bot = br.y[0], zl = f.c[2] - f.sz / 2 + FP.ladder_rail_m, hr = FP.ladder_rail_m / 2;
+        // A ladder up through a ladder well, and through a floor hatch (a scuttle, a turret pod's hatch: deck-access),
+        // from this floor to the floor above, and its handholds past it.
+        if (h.p.kind === "ladder" || h.p.kind === "hatch") {
+          const above = h.p.between.find((id) => id !== comp.id), up = above && compartment(L, above);
+          const top = up ? floorAt(up, f.c[0], f.c[2], br.y[1] + 0.3) : br.y[1] + 0.5;
+          const topY = top + FP.ladder_above_m, bot = br.y[0], zl = f.c[2] - f.sz / 2 + FP.ladder_rail_m, hr = FP.ladder_rail_m / 2;
           for (const s of [-1, 1]) {
             B.box("ladder", [f.c[0] + (s * FP.ladder_width_m) / 2, (topY + bot) / 2, zl], [1, 0, 0], [0, 1, 0], [0, 0, 1], hr, (topY - bot) / 2, hr, ["+u", "-u", "+w", "-w", "+v"]);
           }
@@ -1276,8 +1296,15 @@
     const lamps = lampList;
     if (detail) {
       const hh = D.lamps.housing_m / 2;
+      // The lens shows two whole light panels side by side, centred on the lamp (owner, 2026-10-06: "UV them correctly.
+      // They look off centered"): a lens is 2:1 (detailing.json panel_m and corridor_panel_m), and the light_panel
+      // layer's span holds two panels across and two down, so the lens takes the layer's top half exactly.
+      const LENS_U_M = 2.0, LENS_V_M = 1.0;   // the light_panel layer's span is 2 m: u over all of it, v over half
       for (const l of lamps) {
-        B.box("lamp_housing", [l.p[0], l.p[1] + hh, l.p[2]], [1, 0, 0], [0, 1, 0], [0, 0, 1], l.size[0] / 2, hh, l.size[1] / 2, ["-v", "+u", "-u", "+w", "-w"], { "-v": "lamp" });
+        B.box("lamp_housing", [l.p[0], l.p[1] + hh, l.p[2]], [1, 0, 0], [0, 1, 0], [0, 0, 1], l.size[0] / 2, hh, l.size[1] / 2, ["+u", "-u", "+w", "-w"]);
+        const x0 = l.p[0] - l.size[0] / 2, x1 = l.p[0] + l.size[0] / 2, z0 = l.p[2] - l.size[1] / 2, z1 = l.p[2] + l.size[1] / 2, y = l.p[1], dn = [0, -1, 0];
+        B.triUvm("lamp", [x0, y, z0], [x1, y, z0], [x1, y, z1], [0, 0], [LENS_U_M, 0], [LENS_U_M, LENS_V_M], dn);
+        B.triUvm("lamp", [x0, y, z0], [x1, y, z1], [x0, y, z1], [0, 0], [LENS_U_M, LENS_V_M], [0, LENS_V_M], dn);
       }
     }
     return panelsOn ? { parts: B.parts, lamps, walls, openings, panels: panelsOn.stats } : { parts: B.parts, lamps, walls, openings };
@@ -1773,17 +1800,19 @@
   /**
    * A lift car (fixture kind "lift", openspec/changes/deck-access) into builder B, standing at its
    * center_m: car_m is its size along x, up and along z; its open side faces facing_yaw_deg (+90: +x).
-   * Roles: platform (floor), riser (walls and roof), railing (the handrail). f.roof false leaves the roof
-   * off, for a page that draws its rooms without ceilings.
+   * Roles: lift_floor (deck plate), lift_wall (walls and roof, bulkhead), lift_rail (the handrail, trim); each
+   * part names its material, so no finish needs them. f.roof false leaves the roof off, for a page that draws
+   * its rooms without ceilings.
    */
   function buildLiftCar(B, f) {
     const [x, y, z] = f.center_m, [w, h, d] = f.car_m, X = [1, 0, 0], Y = [0, 1, 0], Z = [0, 0, 1], t = 0.05;
     const all = ["+u", "-u", "+v", "-v", "+w", "-w"], open = Math.round(Math.sin((f.facing_yaw_deg * Math.PI) / 180));
-    B.box("platform", [x, y + t / 2, z], X, Y, Z, w / 2, t / 2, d / 2, all);
-    if (f.roof !== false) B.box("riser", [x, y + h - t / 2, z], X, Y, Z, w / 2, t / 2, d / 2, all);
-    B.box("riser", [x - open * (w / 2 - t / 2), y + h / 2, z], X, Y, Z, t / 2, h / 2, d / 2, all);
-    for (const sz of [1, -1]) B.box("riser", [x, y + h / 2, z + sz * (d / 2 - t / 2)], X, Y, Z, w / 2, h / 2, t / 2, all);
-    B.box("railing", [x - open * (w / 2 - 0.08), y + 0.95, z], X, Y, Z, 0.025, 0.025, d / 2 - 0.15, all);
+    B.box("lift_floor", [x, y + t / 2, z], X, Y, Z, w / 2, t / 2, d / 2, all);
+    if (f.roof !== false) B.box("lift_wall", [x, y + h - t / 2, z], X, Y, Z, w / 2, t / 2, d / 2, all);
+    B.box("lift_wall", [x - open * (w / 2 - t / 2), y + h / 2, z], X, Y, Z, t / 2, h / 2, d / 2, all);
+    for (const sz of [1, -1]) B.box("lift_wall", [x, y + h / 2, z + sz * (d / 2 - t / 2)], X, Y, Z, w / 2, h / 2, t / 2, all);
+    B.box("lift_rail", [x - open * (w / 2 - 0.08), y + 0.95, z], X, Y, Z, 0.025, 0.025, d / 2 - 0.15, all);
+    B.parts.lift_floor.material = "deck_plate"; B.parts.lift_wall.material = "bulkhead"; B.parts.lift_rail.material = "trim";
   }
 
   function hullGeometry(THREE, L, opts) {
