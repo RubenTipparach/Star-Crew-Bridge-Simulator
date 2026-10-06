@@ -1762,15 +1762,38 @@
    * detailing.platforms.tread_rise_m with nosings. Adds roles platform, riser, nosing,
    * railing and stair to the builder.
    */
-  function buildPlatforms(THREE, B, platforms, stairs, floorY, D) {
+  /**
+   * A platform's top in one floor panel module (opts.topLayer of buildPlatforms, a panelLayerName), cell by cell on
+   * panels.json's cell grid as the room floors are dressed, so it matches them and a plain module (the walkway's
+   * tread) reads seamless. The owner, 2026-10-06, on the bridge's platforms in the gridded deck_tiles: "I don't like
+   * the gridded floor please use something else that's more pleasing to look at".
+   */
+  function tileTop(THREE, B, role, poly, y, layer) {
+    const S = panelsData().manifest, cs = S.cells.size_m, span = S.layers.span_m, ox = S.cells.origin_x_m;
+    const xs = poly.map((p) => p[0]), zs = poly.map((p) => p[1]), up = [0, 1, 0];
+    const v2 = (p) => new THREE.Vector2(p[0], p[1]);
+    for (let k = Math.floor((Math.min(...xs) - ox) / cs - 0.5); ox + (k - 0.5) * cs < Math.max(...xs); k++) {
+      for (let j = Math.floor(Math.min(...zs) / cs - 0.5); (j - 0.5) * cs < Math.max(...zs); j++) {
+        const cx = ox + k * cs, cz = j * cs, pg = clipPolyRect(poly, cx - cs / 2, cx + cs / 2, cz - cs / 2, cz + cs / 2);
+        if (pg.length < 3) continue;
+        for (const f of THREE.ShapeUtils.triangulateShape(pg.map(v2), [])) {
+          const p = f.map((i) => [pg[i][0], y, pg[i][1]]), uv = p.map((q) => [0.5 + (q[0] - cx) / span, 0.5 + (q[2] - cz) / span]);
+          B.triUv(role, p[0], p[1], p[2], uv[0], uv[1], uv[2], up, layer);
+        }
+      }
+    }
+  }
+  function buildPlatforms(THREE, B, platforms, stairs, floorY, D, opts) {
     D = D || shipData("detailing");
+    opts = opts || {};
     const Q = D.platforms;
     stairs = stairs || [];
     for (const pf of platforms) {
       let poly = pf.poly.map((p) => p.slice()), edges = pf.edges.slice();
       if (signedArea(poly) < 0) { poly = poly.reverse(); edges = edges.slice(0, -1).reverse().concat(edges.slice(-1)); }
       const top = pf.top_m, h = top - floorY, n = poly.length;
-      B.flat(THREE, "platform", poly, [], top, 1);
+      if (opts.topLayer) tileTop(THREE, B, "platform_top", poly, top, opts.topLayer);
+      else B.flat(THREE, "platform", poly, [], top, 1);
       for (let i = 0; i < n; i++) {
         const kind = edges[i];
         if (kind === "wall") continue;
