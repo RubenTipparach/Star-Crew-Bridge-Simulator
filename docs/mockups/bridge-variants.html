@@ -217,6 +217,24 @@
     return null;
   }
   function compartment(L, id) { return byId(L.compartments, id); }
+  /**
+   * A copy of layout L with a layout patch applied (schema starcrew.layout-patch/1, e.g.
+   * data/ships/tern/command_suite.json): compartments and portals replace the record of the same id
+   * or are added; stations move the named station's seat; fixtures update field by field or are
+   * added; fixtures_removed are dropped; systems update field by field. The same rule as
+   * tools/command_suite.py patch_layout, which writes and checks the patch; L itself is never changed.
+   */
+  function applyPatch(L, patch) {
+    const out = JSON.parse(JSON.stringify(L)), copy = (x) => JSON.parse(JSON.stringify(x));
+    const put = (list, rec) => { const i = list.findIndex((x) => x.id === rec.id); if (i >= 0) list[i] = copy(rec); else list.push(copy(rec)); };
+    for (const c of patch.compartments || []) put(out.compartments, c);
+    for (const p of patch.portals || []) put(out.portals, p);
+    for (const s of patch.stations || []) { const st = byId(out.stations, s.station); st.seat_m = s.seat_m; st.yaw_deg = s.yaw_deg; }
+    out.fixtures = out.fixtures.filter((f) => (patch.fixtures_removed || []).indexOf(f.id) < 0);
+    for (const f of patch.fixtures || []) { const o = byId(out.fixtures, f.id); if (o) Object.assign(o, copy(f)); else out.fixtures.push(copy(f)); }
+    for (const s of patch.systems || []) Object.assign(byId(out.systems, s.id), copy(s));
+    return out;
+  }
   function portalsOf(L, compId) { return L.portals.filter((p) => p.between.indexOf(compId) >= 0); }
   function stationsIn(L, compId) { return (L.stations || []).filter((s) => s.compartment === compId); }
   function systemsIn(L, compId) { return (L.systems || []).filter((s) => s.compartment === compId); }
@@ -1965,13 +1983,83 @@
     window.MOCKUP_SHOTS = shots;
   }
   function markReady() {
+    panelChrome();
     window.MOCKUP_READY = true;
+  }
+
+  // ------------------------------------------------------------ panel chrome
+
+  /**
+   * A small close button on each of a page's floating panels, so a viewer on a phone can clear the
+   * view (owner, 2026-10-06: "There's lots of popups, cluttered on my phone. Add little x marks so I
+   * can close some of these and get a better view"). The panels are the title block, the Pi 5 meter
+   * and, by convention, any element of class controls, info, legend or route, id side, or with a
+   * data-closable attribute (CLOSABLE). A closed panel is hidden, never removed, and a "Show panels"
+   * pill at the top brings them all back; which ones a viewer closed is remembered in their own
+   * browser when it lets the page store it. On a phone the page opens with only its controls showing. The buttons are a layer of their own, kept on each
+   * panel's top right corner every frame, so a page that rewrites a panel's contents (the meter, an
+   * info panel) never loses its button. markReady() calls it once, after the page has built its panels.
+   */
+  const CLOSABLE = ".mockup-title, .pi-budget, .controls, .info, .legend, .route, #side, [data-closable]";
+  const PHONE_PX = 760;   // the pages' own narrow-screen breakpoint
+  function panelChrome() {
+    if (panelChrome.done || typeof document === "undefined") return;
+    panelChrome.done = true;
+    const css = document.createElement("style");
+    css.textContent =
+      ".mk-closed{display:none!important}" +
+      ".mk-x{position:fixed;z-index:40;width:30px;height:30px;margin:0;padding:0;border:0;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}" +
+      ".mk-x span{display:block;width:20px;height:20px;box-sizing:border-box;border-radius:50%;background:#141a22;border:1px solid #3a4654;color:#c8d4e0;font:600 14px/18px system-ui,sans-serif;text-align:center}" +
+      ".mk-x:hover span,.mk-x:focus-visible span{border-color:#48d6ff;color:#48d6ff}" +
+      ".mk-x:focus{outline:none}" +
+      ".mk-show{position:fixed;z-index:40;left:50%;top:10px;transform:translateX(-50%);background:#141a22;color:#c8d4e0;border:1px solid #3a4654;border-radius:14px;padding:4px 12px;font:12px/1.3 system-ui,sans-serif;cursor:pointer}" +
+      ".mk-show:hover,.mk-show:focus-visible{border-color:#48d6ff;color:#48d6ff}";
+    document.head.appendChild(css);
+    const panels = Array.from(document.querySelectorAll(CLOSABLE));
+    const key = "mk-closed:" + location.pathname.split("/").pop() + ":" + document.title;
+    // A viewer's own choice, when their browser kept it; otherwise a phone (narrower than PHONE_PX) opens with
+    // only the controls, since the panels cover the view there, and a desktop with every panel.
+    let closed = null;
+    try { closed = JSON.parse(localStorage.getItem(key) || "null"); } catch (_) { closed = null; }
+    if (!Array.isArray(closed)) closed = innerWidth < PHONE_PX ? panels.map((p, i) => (p.matches(".controls") ? -1 : i)).filter((i) => i >= 0) : [];
+    const save = () => {
+      try { localStorage.setItem(key, JSON.stringify(panels.map((p, i) => (p.classList.contains("mk-closed") ? i : -1)).filter((i) => i >= 0))); } catch (_) { /* storage blocked: closing still works for this visit */ }
+    };
+    const show = document.createElement("button");
+    show.type = "button"; show.className = "mk-show"; show.hidden = true;
+    show.addEventListener("click", () => { for (const p of panels) p.classList.remove("mk-closed"); save(); });
+    document.body.appendChild(show);
+    const buttons = panels.map((p, i) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "mk-x"; b.setAttribute("aria-label", "Close this panel");
+      b.innerHTML = "<span>&times;</span>";
+      b.addEventListener("click", (e) => { e.stopPropagation(); p.classList.add("mk-closed"); save(); });
+      if (closed.indexOf(i) >= 0) p.classList.add("mk-closed");
+      document.body.appendChild(b);
+      return b;
+    });
+    function place() {
+      let n = 0;
+      panels.forEach((p, i) => {
+        const b = buttons[i], r = p.getBoundingClientRect();
+        if (p.classList.contains("mk-closed")) n++;
+        if (r.width < 1 || r.height < 1) { b.style.display = "none"; return; }
+        // The button straddles the panel's top right corner, so it covers none of the panel's text.
+        b.style.display = "flex";
+        b.style.left = Math.min(innerWidth - 30, r.right - 18) + "px";
+        b.style.top = Math.max(0, r.top - 12) + "px";
+      });
+      show.hidden = n === 0;
+      show.textContent = n === 1 ? "Show the closed panel" : `Show ${n} closed panels`;
+      requestAnimationFrame(place);
+    }
+    place();
   }
 
   window.ShipKit = {
     version: 2,
     layout, shipData, PI_BUDGET, PALETTE, LIGHTING,
-    byId, compartment, portalsOf, stationsIn, systemsIn, deckById,
+    byId, compartment, applyPatch, portalsOf, stationsIn, systemsIn, deckById,
     // plan geometry
     signedArea, outwardNormal, insidePoly, chord, insetPoly, polyCentroid,
     // compartments and portals
@@ -1982,7 +2070,7 @@
     loadPanels, panelsData, panelBands, panelBays, fnv1a, decodePng, panelLayerList, panelLayerName, walkwayPaths,
     Builder, subdivideParts, buildPlatforms,
     // hull, labels, chrome
-    hullGeometry, hullHalfWidth, label, budgetHud, titleBlock, registerShots, markReady,
+    hullGeometry, hullHalfWidth, label, budgetHud, titleBlock, registerShots, markReady, panelChrome,
     rectMinusHoles, intervalMinus, worldUv,
   };
 })();

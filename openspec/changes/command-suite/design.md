@@ -290,6 +290,10 @@ patched with the suite (the same fields, applied the same way as `patch_layout`)
 - draws the Blender consoles and furniture and the console faces of `bridge-stations` 11.6;
 - has the free camera (`lib/freecam.js`).
 
+The whole-ship deck plan (`deck-plan.html`) shows the suite too, by default, applied to its copy of the layout by
+the same `ShipKit.applyPatch`. Its Bridge buttons switch between the suite and today's layout, which the page
+reads as `#today` in its address, and the furniture there is blocks of each piece's brief size.
+
 Views: a cutaway of the whole suite, the captain's chair, the aft walkway with its three doors,
 and inside each room. The prop-placing code it shares with `bridge-variants.html` moves into one
 library (`lib/propkit.js`), so the two pages place, face and light props the same way.
