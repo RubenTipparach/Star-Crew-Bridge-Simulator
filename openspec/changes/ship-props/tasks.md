@@ -7,7 +7,7 @@
 - [x] 1.3 Furnish the crew rooms (`tools/crew_rooms.py`, `data/ships/tern/crew_rooms.json`), checked on the layout, the suite and deck access.
 - [x] 1.4 The deck plan places the bridge's and the suite's props, every station's console and chair, every system's machine and the craft; a block only where no set models it.
 - [x] 1.5 The kit: lamp lenses centred, ladders through floor hatches, the lift car's materials; propkit's glowing strips and shared space views.
-- [ ] 1.6 Tour again, look, fix what is found; the Pi 5 budget table (design section 5) from the deck plan's counts.
+- [x] 1.6 Tour again, look, fix what is found; the Pi 5 budget table (design section 5) from the deck plan's counts.
 
 ## 2. When the layout takes the patches
 

@@ -41,8 +41,10 @@ The after tour, with every set placed, found and fixed:
   the start rule did not count as a door, so it fell back to the bay's middle, where the Swift stands. A walk now
   starts by a door or a pressure door, never one to space;
 - **a walk could start face to a wall.** The briefing room's door from the bridge opens on a 1.0 m strip beside the
-  lift shaft, and the start faced the shaft 0.5 m off. A start now faces the room's middle when the view that way
-  runs 1.2 m or more on three sight lines (ahead and 25 degrees either side), else the longest of the ways in;
+  lift shaft, and the start faced the shaft 0.5 m off. A start now faces what the room holds (its props' middle,
+  weighted by footprint: the fighter, the shield generator, the briefing table) when that view runs 0.5 m or more on
+  three sight lines (ahead and 25 degrees either side); else straight in when that runs 3 m; else the longest of the
+  ways in, to the room's middle and along the door's wall;
 - **a prop's glowing faces showed the ceiling lamps' lens grid**: the Petrel's canopy and the reactor's window band
   read as lamp panels. They now glow evenly (`propkit`, one lit cell of the lamp layer).
 
@@ -134,10 +136,10 @@ lavapipe; these are triangle counts, not frame times, and say nothing about the 
 | `launch_cradle` | 260 | 400 | 3.20 x 0.50 x 6.40 |
 | `swift_fighter` | 886 | 1,000 | 4.59 x 1.80 x 7.00 |
 | `petrel_shuttle` | 1,918 | 2,000 | 4.52 x 3.20 x 10.00 |
-| `bunk` | 262 | 300 | 2.10 x 2.00 x 0.95 |
+| `bunk` | 264 | 300 | 2.10 x 2.00 x 0.95 |
 | `mess_table` | 240 | 300 | 2.00 x 0.80 x 1.90 |
 | `galley_counter` | 330 | 450 | 2.40 x 2.20 x 0.70 |
-| **20 props** | **11,614** | **13,250** | |
+| **20 props** | **11,616** | **13,250** | |
 
 **Per compartment.** The ceilings are `engine-stack`'s (the bridge 30,000, every other compartment 8,000). Every
 compartment stays inside its ceiling; engineering, with the reactor, the drive and its consoles, is the fullest at
@@ -149,7 +151,7 @@ compartment stays inside its ceiling; engineering, with the reactor, the drive a
 | Engineering | 2,692 | 5,528 | 2,836 | 8,000 | 69 % |
 | Hangar | 2,936 | 5,394 | 2,458 | 8,000 | 67 % |
 | Briefing room | 1,006 | 2,496 | 1,490 | 8,000 | 31 % |
-| Crew quarters | 934 | 2,242 | 1,308 | 8,000 | 28 % |
+| Crew quarters | 934 | 2,250 | 1,316 | 8,000 | 28 % |
 | Drive section | 928 | 2,184 | 1,256 | 8,000 | 27 % |
 | Captain's ready room | 952 | 2,078 | 1,126 | 8,000 | 26 % |
 | Life support | 1,283 | 1,943 | 660 | 8,000 | 24 % |
@@ -182,7 +184,7 @@ compartment stays inside its ceiling; engineering, with the reactor, the drive a
 | Port turret pod | 184 | 398 | 214 | 8,000 | 5 % |
 | Starboard turret pod | 184 | 398 | 214 | 8,000 | 5 % |
 | Airlock | 254 | 254 | 0 | 8,000 | 3 % |
-| **All 37** | **33,686** | **62,266** | **28,580** | | |
+| **All 37** | **33,686** | **62,274** | **28,588** | | |
 
 **What else it spends.**
 
@@ -191,9 +193,9 @@ compartment stays inside its ceiling; engineering, with the reactor, the drive a
   (`deck-pipeline` section 5).
 - **Texture memory: none added.** Props take the material array's existing layers (machinery, trim, bulkhead,
   hazard, light panel) and the screens' existing images; `accent` is a tint, not a texture.
-- **Vertex memory: about 3.4 MB more, estimated.** 28,580 triangles at three vertices of about 40 bytes (position,
+- **Vertex memory: about 3.4 MB more, estimated.** 28,588 triangles at three vertices of about 40 bytes (position,
   packed normal, UV, layer and the three lighting states' colours), unindexed, against the 64 MB of vertex and
-  index buffers. The whole ship's 62,266 triangles come to about 7.5 MB the same way. Indexing and the baker's
+  index buffers. The whole ship's 62,274 triangles come to about 7.5 MB the same way. Indexing and the baker's
   subdivision both move this; the compiler's count (task 2.2) replaces the estimate.
 - **Visible triangles per frame.** A crew member sees one compartment and what its portals show. Counting a
   compartment and every room its portals open on, whole, the most is the hangar's 17,276 (with both spines, both
@@ -212,4 +214,5 @@ compartment stays inside its ceiling; engineering, with the reactor, the drive a
 
 ## Open questions
 
-- Y2 in the survey: the captain's dais rails (section 1), with the after tour's bridge shots.
+- A5 in the survey (`command-suite`'s open questions): the captain's dais rails (section 1), shot three ways
+  (`docs/screenshots/mockups/dais-rails-*.png`).

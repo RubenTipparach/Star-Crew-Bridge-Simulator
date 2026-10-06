@@ -4523,14 +4523,28 @@ function clearAhead(x, feet, z, f) {
     return hit ? hit.distance : 30;
   }));
 }
-/** Which way a walk starting at (x, feet, z) faces: toward the room's middle if that view runs 1.2 m or more, else into the
- * room (dir) if that one does, else whichever of those and the two ways along the door's wall runs furthest (a door into a narrow vestibule, the
- * briefing room's beside the lift, must not start a walk face to a wall). */
+/** The middle of what a room holds, [x, z]: its placed props' footprint centres, weighted by footprint (the fighter
+ * outweighs its cradle's console, the racks average to their aisle), or null when nothing is placed. */
+function propsMiddle(cid) {
+  let sx = 0, sz = 0, sw = 0;
+  for (const it of PLACED[cid] || []) {
+    if (!hasProp(it.prop)) continue;
+    const b = PK.PROPS[it.prop].rec.bounds_m, th = rad(it.yaw), c = Math.cos(th), s = Math.sin(th);
+    const lx = (b.min[0] + b.max[0]) / 2, lz = (b.min[2] + b.max[2]) / 2, w = (b.max[0] - b.min[0]) * (b.max[2] - b.min[2]);
+    sx += (it.back[0] + lx * c + lz * s) * w; sz += (it.back[2] - lx * s + lz * c) * w; sw += w;
+  }
+  return sw > 0 ? [sx / sw, sz / sw] : null;
+}
+/** Which way a walk starting at (x, feet, z) faces: toward what the room holds if that view runs 0.5 m or more on three
+ * sight lines (the fighter in a launch bay, the shield generator, the briefing table), else into the room (dir) if that
+ * view runs 3 m or more, else whichever of those, the way to the room's middle and the two ways along the door's wall
+ * runs furthest (a door into a narrow vestibule, the briefing room's beside the lift, must not start a walk face to a wall). */
 function startFacing(room, x, feet, z, dir) {
-  const [cx, cz] = K.polyCentroid(mainBrush(room).b.poly), mid = [cx - x, cz - z];
-  if (Math.hypot(mid[0], mid[1]) > 2 && clearAhead(x, feet, z, mid) >= 1.2) return mid;   // a machine or a craft 1.2 m off is what to look at
+  const pm = propsMiddle(room.id), held = pm && [pm[0] - x, pm[1] - z];
+  if (held && Math.hypot(held[0], held[1]) > 1 && clearAhead(x, feet, z, held) >= 0.5) return held;   // the machine itself may be that near
   if (clearAhead(x, feet, z, dir) >= 3) return dir;
-  const ways = [dir, mid, [-dir[1], dir[0]], [dir[1], -dir[0]]].filter((f) => Math.hypot(f[0], f[1]) > 0.1);
+  const [cx, cz] = K.polyCentroid(mainBrush(room).b.poly);
+  const ways = [dir, [cx - x, cz - z], [-dir[1], dir[0]], [dir[1], -dir[0]]].filter((f) => Math.hypot(f[0], f[1]) > 0.1);
   return ways.reduce((m, f) => (clearAhead(x, feet, z, f) > clearAhead(x, feet, z, m) ? f : m));
 }
 function walker() {
