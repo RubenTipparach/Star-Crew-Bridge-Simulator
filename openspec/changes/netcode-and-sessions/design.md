@@ -52,6 +52,36 @@ measurement (task 6.1).
 - **Validation:** every field is range-checked on arrival and non-finite numbers are rejected
   (CLAUDE.md 6.6). A malformed packet is dropped and counted, never trusted.
 
+### 2a. WebRTC, considered (2026-10-06)
+
+The owner asked, 2026-10-06: "is webrtc any good?". WebRTC's data channels carry game traffic over
+SCTP inside DTLS inside UDP (RFC 8831), and a channel can be unordered with no retransmission,
+so both kinds of channel above fit it. Its connection setup, ICE (RFC 8445), finds a path through
+home routers with STUN, and falls back to a TURN relay (RFC 8656) when no direct path exists. It
+also encrypts every packet.
+
+What it would cost here:
+- **A signalling service** to exchange connection offers, so it needs something hosted anyway.
+  That is M1's rendezvous service, plus STUN, plus a TURN relay for the routers no path gets through.
+- **A large protocol stack** in a 1 GB client and in `sc-core`'s server, against the plain UDP
+  layer of this section, about 1,000 lines (M2).
+- **More overhead per packet** than this section's 14-byte header, from the DTLS and SCTP headers.
+
+What it buys:
+- **Browser clients.** A browser can only send game datagrams through WebRTC (or WebTransport).
+- **No port forwarding,** through ICE and TURN.
+- **Encryption.**
+
+The topology needs little of that. Clients always connect out to the main server, so only the
+server must be reachable: one forwarded port, or a port the server opens itself through the
+router's UPnP or NAT-PMP. Players behind carrier-grade NAT need a relay whichever protocol is used.
+
+**Recommendation taken (ask only with screenshots), M4:** keep plain UDP. Reach the main server
+through LAN broadcast, a forwarded port, then UPnP or NAT-PMP (a later change), and then M1's
+rendezvous and a relay. Choose WebRTC if browser clients become a goal. This section's
+channels, at most 1,200-byte payloads with reliable and unreliable delivery, map onto WebRTC data
+channels one to one, so that choice stays open.
+
 ## 3. Time and ticks
 
 - The server ticks at 30 Hz and numbers its ticks. Ship systems step every third tick (10 Hz).
@@ -186,4 +216,5 @@ Per CLAUDE.md section 13 these take the recommendation; none has anything to loo
 | --- | --- | --- | --- | --- |
 | M1 | Internet play without port forwarding needs a rendezvous service someone hosts. The 4 GB Pi 5 main server is always on. | Port forwarding only / a rendezvous service on the main server later / a relay | Port forwarding and LAN first; a rendezvous service on the main server as a later change | Recommendation taken (ask only with screenshots) |
 | M2 | Our own UDP layer or a crate such as `renet`. | Ours / renet | Ours: about 1,000 lines, and it must match the snapshot design exactly | Recommendation taken (ask only with screenshots) |
+| M4 | Plain UDP or WebRTC data channels (section 2a; the owner asked "is webrtc any good?", 2026-10-06). | UDP / WebRTC / both, WebRTC for browsers | UDP, with WebRTC only if browser clients become a goal: the main server is the one host that must be reachable, and UPnP or a forwarded port reaches it | Recommendation taken (ask only with screenshots) |
 | M3 | Maximum players. Eight seats with work for each exist on the Tern (four core, captain, comms, flight ops, gunners, pilots). | 8 / more | 8 | Recommendation taken (ask only with screenshots) |

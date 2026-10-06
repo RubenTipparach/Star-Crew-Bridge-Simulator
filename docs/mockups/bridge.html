@@ -626,17 +626,37 @@
     return out;
   }
 
+  /** A stair landing's slab thickness, metres (deck-access design section 2): buildSpiralStair draws it, lampsFor hangs a trunk's lamps under it. */
+  const LANDING_SLAB_M = 0.2;
+
   /**
    * Lamps by the kit rule (detailing.json lamps; deck-pipeline section 5): in the bays
    * between frames, round(bay area / area_per_lamp_m2) across the bay's width (a
    * corridor bay at least one, a pod one), every emergency_every-th lamp on the emergency
-   * bus. Returns [{ p: [x, y, z] (the lens), R, I, emergency, size: [x, z], tall }].
+   * bus. A trunk instead gets one lamp a deck (deck-access). Returns [{ p: [x, y, z] (the lens), R, I,
+   * emergency, size: [x, z], tall }].
    */
   function lampsFor(L, comp, D) {
     D = D || shipData("detailing");
     const R = D.lamps, out = [];
     const holes = ceilingPortals(L, comp);
     const keep = systemsIn(L, comp.id).filter((s) => s.radius_m).map((s) => ({ x: s.center_m[0], z: s.center_m[2], r: s.radius_m + R.keep_out_m }));
+    if (comp.kind === "trunk") {
+      // A trunk (deck-access design section 2) is lit at every deck it serves, not once at its top: one
+      // lamp a deck, over the stair's landing when it has one, else at the shaft's centre. It hangs under
+      // the landing of the deck above (lighting the flight that climbs to it), or at the top deck's ceiling.
+      const st = (L.fixtures || []).find((f) => f.compartment === comp.id && f.landing_poly);
+      for (const br of comp.brushes) {
+        const [x, z] = polyCentroid(st ? st.landing_poly : br.poly);
+        const floors = L.decks.map((d) => d.floor_y_m).filter((y) => y > br.y[0] - EPS && y < br.y[1] - EPS).sort((a, b) => a - b);
+        floors.forEach((y0, k) => {
+          const y = (k + 1 < floors.length ? floors[k + 1] - LANDING_SLAB_M : br.y[1]) - R.housing_m;
+          out.push({ p: [x, y, z], R: R.radius_m, I: 1, emergency: false, size: R.panel_m, tall: false });
+        });
+      }
+      out.forEach((l, i) => { l.emergency = i % R.emergency_every === 0; });
+      return out;
+    }
     for (const br of comp.brushes) {
       const h = br.y[1] - br.y[0], tall = h > R.tall_room_m + EPS, scale = tall ? h / 3.0 : 1.0;
       const size = (comp.kind === "corridor" ? R.corridor_panel_m : R.panel_m).map((v) => v * (tall ? Math.min(scale, 1.6) : 1));
@@ -1833,6 +1853,59 @@
    * around the interior. With opts.mats it also carries color, surfUv, surfLayer and
    * surfGlow for a surfaceMaterial, in the "hull" material (opts.material names another).
    */
+  /**
+   * A spiral stair fixture (kind "spiral_stair", openspec/changes/deck-access) into builder B: a centre
+   * column, and for each deck from floors_y_m[k] to floors_y_m[k + 1] risers_per_deck - 1 treads (the last
+   * riser lands on the landing above) sweeping sweep_deg from start_yaw_deg (yaw: 0 the bow, +90 port), and
+   * a landing slab (landing_poly) at every deck above the lowest, whose floor is the tower's own.
+   * Roles: railing (the column, steel; not rib, whose faces the trims texture by layer), stair (treads),
+   * nosing (tread edges), platform and riser (landings).
+   */
+  function buildSpiralStair(THREE, B, f) {
+    const [cx, , cz] = f.center_m, R = f.radius_m, r0 = f.column_radius_m, fl = f.floors_y_m, n = f.risers_per_deck;
+    const rad = (deg) => (deg * Math.PI) / 180;
+    const P = (deg, r, y) => [cx + Math.sin(rad(deg)) * r, y, cz + Math.cos(rad(deg)) * r];
+    const tan = (deg) => [Math.cos(rad(deg)), 0, -Math.sin(rad(deg))];   // the direction of increasing yaw
+    const T = 0.06, S = LANDING_SLAB_M, treads = n - 1, step = f.sweep_deg / treads, sg = Math.sign(step), up = [0, 1, 0], down = [0, -1, 0];
+    B.pipe("railing", [cx, fl[0], cz], [cx, fl[fl.length - 1] + 2.4, cz], r0, 8);
+    for (let k = 0; k + 1 < fl.length; k++) {
+      const rise = (fl[k + 1] - fl[k]) / n;
+      for (let i = 0; i < treads; i++) {
+        const a0 = f.start_yaw_deg + step * i, a1 = a0 + step, y = fl[k] + rise * (i + 1), m = a0 + step / 2;
+        const o = [Math.sin(rad(m)), 0, Math.cos(rad(m))];
+        B.quad("stair", P(a0, r0, y), P(a1, r0, y), P(a1, R, y), P(a0, R, y), up);
+        B.quad("stair", P(a0, r0, y - T), P(a1, r0, y - T), P(a1, R, y - T), P(a0, R, y - T), down);
+        B.quad("nosing", P(a0, R, y - T), P(a1, R, y - T), P(a1, R, y), P(a0, R, y), o);
+        const t0 = tan(a0).map((v) => -v * sg), t1 = tan(a1).map((v) => v * sg);
+        B.quad("nosing", P(a0, r0, y - T), P(a0, R, y - T), P(a0, R, y), P(a0, r0, y), t0);
+        B.quad("nosing", P(a1, r0, y - T), P(a1, R, y - T), P(a1, R, y), P(a1, r0, y), t1);
+      }
+      const y = fl[k + 1], poly = f.landing_poly;
+      B.flat(THREE, "platform", poly, [], y, 1);
+      B.flat(THREE, "platform", poly, [], y - S, -1);
+      for (let i = 0; i < poly.length; i++) {
+        const a = poly[i], b = poly[(i + 1) % poly.length], nrm = outwardNormal(a, b);
+        B.quad("riser", [a[0], y - S, a[1]], [b[0], y - S, b[1]], [b[0], y, b[1]], [a[0], y, a[1]], [nrm[0], 0, nrm[1]]);
+      }
+    }
+  }
+
+  /**
+   * A lift car (fixture kind "lift", openspec/changes/deck-access) into builder B, standing at its
+   * center_m: car_m is its size along x, up and along z; its open side faces facing_yaw_deg (+90: +x).
+   * Roles: platform (floor), riser (walls and roof), railing (the handrail). f.roof false leaves the roof
+   * off, for a page that draws its rooms without ceilings.
+   */
+  function buildLiftCar(B, f) {
+    const [x, y, z] = f.center_m, [w, h, d] = f.car_m, X = [1, 0, 0], Y = [0, 1, 0], Z = [0, 0, 1], t = 0.05;
+    const all = ["+u", "-u", "+v", "-v", "+w", "-w"], open = Math.round(Math.sin((f.facing_yaw_deg * Math.PI) / 180));
+    B.box("platform", [x, y + t / 2, z], X, Y, Z, w / 2, t / 2, d / 2, all);
+    if (f.roof !== false) B.box("riser", [x, y + h - t / 2, z], X, Y, Z, w / 2, t / 2, d / 2, all);
+    B.box("riser", [x - open * (w / 2 - t / 2), y + h / 2, z], X, Y, Z, t / 2, h / 2, d / 2, all);
+    for (const sz of [1, -1]) B.box("riser", [x, y + h / 2, z + sz * (d / 2 - t / 2)], X, Y, Z, w / 2, h / 2, t / 2, all);
+    B.box("railing", [x - open * (w / 2 - 0.08), y + 0.95, z], X, Y, Z, 0.025, 0.025, d / 2 - 0.15, all);
+  }
+
   function hullGeometry(THREE, L, opts) {
     opts = opts || {};
     const inflate = opts.inflate_m || 0;
@@ -2108,7 +2181,7 @@
     buildCompartment, roomShell, lampsFor, frameStations, loadMaterials, surfaceMaterial, geometryOf, finishOf, compartmentMesh, paintRole, bakeDirect,
     // wall panels (openspec/changes/wall-panels)
     loadPanels, panelsData, panelBands, panelBays, fnv1a, decodePng, panelLayerList, panelLayerName, walkwayPaths,
-    Builder, subdivideParts, buildPlatforms,
+    Builder, subdivideParts, buildPlatforms, buildSpiralStair, buildLiftCar,
     // hull, labels, chrome
     hullGeometry, hullHalfWidth, label, budgetHud, titleBlock, registerShots, markReady, panelChrome,
     rectMinusHoles, intervalMinus, worldUv,

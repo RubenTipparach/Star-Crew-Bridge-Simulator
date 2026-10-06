@@ -1031,7 +1031,7 @@
    "center_m": [
     -1.25,
     4.6,
-    17.0
+    16.4
    ],
    "normal": [
     1.0,
@@ -1321,7 +1321,7 @@
    "kind": "locker",
    "compartment": "bridge_locker",
    "center_m": [
-    -3.9,
+    -5.0,
     3.5,
     8.725
    ],
@@ -1636,7 +1636,7 @@
    "prop": "wardrobe",
    "set": "suite",
    "back_m": [
-    4.4,
+    8.7,
     3.5,
     9.0
    ],
@@ -1741,7 +1741,7 @@
    "prop": "locker_bank",
    "set": "suite",
    "back_m": [
-    3.9,
+    5.0,
     3.5,
     9.0
    ],
@@ -1752,7 +1752,7 @@
    "prop": "locker_bank",
    "set": "suite",
    "back_m": [
-    -3.9,
+    -5.0,
     3.5,
     9.0
    ],
@@ -1764,7 +1764,7 @@
    "prop": "locker_bank",
    "set": "suite",
    "back_m": [
-    -6.5,
+    -7.6,
     3.5,
     9.0
    ],
@@ -1810,7 +1810,7 @@
    "prop": "server_rack",
    "set": "suite",
    "back_m": [
-    -3.4,
+    -4.4,
     3.5,
     11.6
    ],
@@ -1821,7 +1821,7 @@
    "prop": "server_rack",
    "set": "suite",
    "back_m": [
-    -3.4,
+    -4.4,
     3.5,
     11.8
    ],
@@ -1832,7 +1832,7 @@
    "prop": "server_rack",
    "set": "suite",
    "back_m": [
-    -4.2,
+    -5.2,
     3.5,
     11.6
    ],
@@ -1843,7 +1843,7 @@
    "prop": "server_rack",
    "set": "suite",
    "back_m": [
-    -4.2,
+    -5.2,
     3.5,
     11.8
    ],
@@ -1854,7 +1854,7 @@
    "prop": "server_rack",
    "set": "suite",
    "back_m": [
-    -5.0,
+    -6.0,
     3.5,
     11.6
    ],
@@ -1865,7 +1865,7 @@
    "prop": "server_rack",
    "set": "suite",
    "back_m": [
-    -5.0,
+    -6.0,
     3.5,
     11.8
    ],
@@ -1876,7 +1876,7 @@
    "prop": "server_rack",
    "set": "suite",
    "back_m": [
-    -5.8,
+    -6.8,
     3.5,
     11.6
    ],
@@ -1887,7 +1887,7 @@
    "prop": "server_rack",
    "set": "suite",
    "back_m": [
-    -5.8,
+    -6.8,
     3.5,
     11.8
    ],
@@ -1898,7 +1898,7 @@
    "prop": "server_rack",
    "set": "suite",
    "back_m": [
-    -6.6,
+    -7.6,
     3.5,
     11.6
    ],
@@ -1909,7 +1909,7 @@
    "prop": "server_rack",
    "set": "suite",
    "back_m": [
-    -6.6,
+    -7.6,
     3.5,
     11.8
    ],
@@ -2150,8 +2150,8 @@
     "s": 11.2
    },
    "helm's seat to the bridge locker's suits": {
-    "m": 25.5,
-    "s": 14.2
+    "m": 26.5,
+    "s": 14.7
    },
    "helm's seat to damage control's suits, today": {
     "m": 40.1,

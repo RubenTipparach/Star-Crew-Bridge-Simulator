@@ -197,7 +197,8 @@ def portals(bridge, aft):
     p.append(twin)
     side = lambda pid, between, x, z, w=1.0: {"id": pid, "kind": "door", "between": between,
                                               "center_m": [x, r3(DOOR_Y), z], "normal": [1.0 if x < 0 else -1.0, 0.0, 0.0], "size_m": [w, 2.2]}
-    p.append(side("p_briefing", ["briefing_room", "a_corridor"], -1.25, 17.0, 1.2))
+    # 16.4, not centred on the room: the lift of deck-access stands forward of it, beside the bridge door.
+    p.append(side("p_briefing", ["briefing_room", "a_corridor"], -1.25, 16.4, 1.2))
     p.append(side("p_core", ["computer_core", "a_corridor"], -1.25, 12.5))
     p.append(side("p_captains_quarters", ["captains_quarters", "a_corridor"], 1.25, 12.5))
     p.append(side("p_head", ["head", "a_corridor"], 1.25, 6.5))
@@ -269,7 +270,7 @@ def furnishings():
     F.append(furnish("briefing_room", "shelf", -7.13, 24.95, 180, "at the end of the corner"))
     # Captain's quarters (port, z 9-14).
     F.append(furnish("captains_quarters", "bed", 7.0, 9.0, 0, "its head on the aft wall"))
-    F.append(furnish("captains_quarters", "wardrobe", 4.4, 9.0, 0))
+    F.append(furnish("captains_quarters", "wardrobe", 8.7, 9.0, 0))   # outboard, clear of deck-access's port stair tower and its door
     F.append(furnish("captains_quarters", "desk", 3.2, 14.0, 180))
     F.append(chair_at("captains_quarters", 3.2, 12.9, 0))
     F.append(furnish("captains_quarters", "wet_cell", 8.3, 14.0, 180, "the en-suite"))
@@ -279,15 +280,15 @@ def furnishings():
     F.append(furnish("head", "toilet_stall", 8.0, 4.0, 0))
     F.append(furnish("head", "shower_stall", 7.7, 9.0, 180))
     F.append(furnish("head", "shower_stall", 8.8, 9.0, 180))
-    F.append(furnish("head", "locker_bank", 3.9, 9.0, 180))
+    F.append(furnish("head", "locker_bank", 5.0, 9.0, 180))
     # Bridge locker (starboard, z 4-9).
-    F.append(furnish("bridge_locker", "locker_bank", -3.9, 9.0, 180, "EVA suits for the bridge crew (fixture eva_suits_a)"))
-    F.append(furnish("bridge_locker", "locker_bank", -6.5, 9.0, 180, "fire and first-aid kits, breathing sets"))
+    F.append(furnish("bridge_locker", "locker_bank", -5.0, 9.0, 180, "EVA suits for the bridge crew (fixture eva_suits_a)"))
+    F.append(furnish("bridge_locker", "locker_bank", -7.6, 9.0, 180, "fire and first-aid kits, breathing sets"))
     F.append(furnish("bridge_locker", "workbench", -5.0, 4.0, 0, "spare console boards"))
     F.append(furnish("bridge_locker", "shelf", -2.4, 4.0, 0))
     F.append(furnish("bridge_locker", "shelf", -7.6, 4.0, 0))
     # Computer core (starboard, z 9-14): two rows of five racks back to back, aisles in front of each.
-    for x in (-3.4, -4.2, -5.0, -5.8, -6.6):
+    for x in (-4.4, -5.2, -6.0, -6.8, -7.6):   # outboard of deck-access's starboard stair tower
         F.append(furnish("computer_core", "server_rack", x, 11.6, 180))
         F.append(furnish("computer_core", "server_rack", x, 11.8, 0))
     return F
@@ -484,7 +485,7 @@ def build():
         "portals": portals(bridge, aft),
         "stations": [s for s in bridge["seats"] if any(st["id"] == s["station"] for st in L0["stations"])],
         "fixtures": [dict(f, **{"compartment": "bridge"}) for f in bridge.get("fixtures", [])] + [
-            {"id": "eva_suits_a", "kind": "locker", "compartment": "bridge_locker", "center_m": [-3.9, FLOOR, 8.725],
+            {"id": "eva_suits_a", "kind": "locker", "compartment": "bridge_locker", "center_m": [-5.0, FLOOR, 8.725],
              "size_m": [2.4, 0.55], "facing_yaw_deg": 180,
              "note": "EVA suits for the bridge crew, beside the bridge (crew-on-deck, damage-control: a second suit locker, proposed)."},
         ],
@@ -523,7 +524,7 @@ def measure(L_after, F):
     walks["captain's chair to the briefing table's head"] = walk([seat["captain"], ("stair", dais_top, dais_foot), door_floor(L_after, "p_briefing_bridge"), (-4.3, 19.9)])
     walks["captain's bed to the captain's chair, through the ready room"] = walk([(6.3, 10.4), door_floor(L_after, "p_quarters_ready"), (4.4, 19.2), door_floor(L_after, "p_ready_bridge"), ("stair", dais_foot, dais_top), seat["captain"]])
     walks["captain's bed to the captain's chair, by the passage"] = walk([(6.3, 10.4), (3.0, 12.5), door_floor(L_after, "p_captains_quarters"), (0.0, 12.5), (0.0, 19.6), door_floor(L_after, "p_bridge_aft"), ("stair", dais_foot, dais_top), seat["captain"]])
-    walks["helm's seat to the bridge locker's suits"] = walk([seat["helm"], (1.5, 26.4), (2.0, 25.0), (0.8, 22.0), door_floor(L_after, "p_bridge_aft"), (0.0, 7.5), door_floor(L_after, "p_bridge_locker"), (-3.9, 7.9)])
+    walks["helm's seat to the bridge locker's suits"] = walk([seat["helm"], (1.5, 26.4), (2.0, 25.0), (0.8, 22.0), door_floor(L_after, "p_bridge_aft"), (0.0, 7.5), door_floor(L_after, "p_bridge_locker"), (-5.0, 7.9)])
     # Today, for comparison: helm to damage control's suit locker on deck B, down the ladder trunk.
     seat0 = {s["id"]: (s["seat_m"][0], s["seat_m"][2]) for s in L0["stations"]}
     walks["helm's seat to damage control's suits, today"] = walk([seat0["helm"], (2.4, 24.2), door_floor(L0, "p_bridge_aft"), (0.0, 11.5),

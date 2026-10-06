@@ -14,7 +14,8 @@
  * floors and trims today and dressed (data/materials/panels.json), the corridor runner the walkway
  * retires, its bays and cells, and the modules the rules give them.
  *
- * Usage: node tools/mockups/kit_report.mjs [ship id] [--json] [--panels]
+ * Usage: node tools/mockups/kit_report.mjs [ship id] [--json] [--panels] [--layout path]
+ * --layout measures another layout file of the ship, such as one with a proposed patch applied.
  * three.js comes from tools/mockups/.cache (filled by shoot.mjs) or the global npm install.
  */
 import fs from "node:fs";
@@ -26,6 +27,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", ".
 const args = process.argv.slice(2);
 const json = args.includes("--json");
 const panels = args.includes("--panels");
+const layoutAt = args.indexOf("--layout") >= 0 ? args.splice(args.indexOf("--layout"), 2)[1] : null;
 const ship = args.find((a) => !a.startsWith("--")) || "tern";
 const cached = path.join(ROOT, "tools/mockups/.cache/three@0.169.0/build/three.module.js");
 if (!fs.existsSync(cached)) { console.error(`missing ${cached}: run node tools/mockups/shoot.mjs once to fill the cache`); process.exit(2); }
@@ -33,7 +35,7 @@ const THREE = await import(pathToFileURL(cached).href);
 
 const read = (p) => fs.readFileSync(path.join(ROOT, p), "utf8");
 const scripts = {
-  "ship-layout": read(`data/ships/${ship}/layout.json`),
+  "ship-layout": layoutAt ? fs.readFileSync(path.resolve(layoutAt), "utf8") : read(`data/ships/${ship}/layout.json`),
   "ship-data-detailing": read(`data/ships/${ship}/detailing.json`),
 };
 if (panels) scripts["ship-panels"] = JSON.stringify({ manifest: JSON.parse(read("data/materials/panels.json")) });
