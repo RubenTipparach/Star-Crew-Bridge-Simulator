@@ -2159,6 +2159,8 @@
  * Speeds are crew-on-deck's (walk 1.8 m/s, run 4.0 m/s), so a walk takes as long as the game's.
  * A page's fixed views stay: a view button puts the camera back, and the viewer takes over again.
  *
+ * A walk that changes decks (stairs, ladders, a lift, collision with the rooms as drawn) is shipwalk.js; this
+ * walk keeps one floor, for the one-floor pages, until they move onto that one.
  * Why a lib of its own: the bridge page's walk mode and each page's orbit did this on their own;
  * this is the one copy (CLAUDE.md 6.1), inlined by tools/mockups/inline.py between the
  * "INLINE lib:freecam" markers. Edit it here, never inside a page.

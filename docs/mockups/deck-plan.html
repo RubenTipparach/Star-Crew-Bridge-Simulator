@@ -2196,6 +2196,458 @@
 })();
 </script>
 <!-- INLINE shipkit END -->
+<!-- INLINE lib:shipwalk BEGIN -->
+<script>
+/*
+ * shipwalk.js: walking a whole ship in first person, deck to deck, for the Star Crew mockups.
+ *
+ * What it owns: a crew member's body on the decks the way openspec/changes/crew-on-deck designs it, so the
+ * owner can run round a ship (owner, 2026-10-06: "do you have fps mode in deck plan for me to run arond?").
+ *   - The body is crew-on-deck's standing capsule (section 2): 0.30 m radius, 1.80 m tall, the eye at 1.65 m.
+ *   - It moves at crew-on-deck's speeds (section 3): walk 1.8 m/s, run 4.0 m/s, 70 % of that backwards and
+ *     on stairs, never faster to change than 6 m/s2. It steps up and down 0.35 m, so stairs and spiral
+ *     stairs are walked, not animated, and it falls where there is no floor (no jumping: C5).
+ *   - Ladders and floor hatches are climbed at 0.8 m/s up and 1.0 m/s down, 0.5 s on and 0.5 s off
+ *     (section 4); a hatch in a wall with a sill too high to step over takes 1.5 s; a lift rides at its
+ *     fixture's speed and door time, and comes when the body walks up to one of its doors.
+ *   - It collides with the rooms as they are drawn: the page builds an Octree from every room's mesh (and
+ *     covers over the openings a body must not fall or walk through), so what blocks is what is seen.
+ * Input: W A S D or the arrows, the mouse (click to capture it, or drag), Shift to run, E to use (climb, go
+ * through a hatch, take the lift up), Q to take the lift down, Esc to stop. On a touch screen: a stick on the
+ * left, drag on the right to look, and buttons.
+ *
+ * Why a lib of its own: every interior page can walk with it (CLAUDE.md 6.1). freecam.js's walk keeps the
+ * eye over one floor and stays for the one-floor pages until they move onto this. Inlined by
+ * tools/mockups/inline.py between the "INLINE lib:shipwalk" markers. Edit it here, never inside a page.
+ */
+(function () {
+  "use strict";
+  // crew-on-deck's proposed data/crew.json (design section 15): capsule, move and ladder.
+  const BODY = { radius_m: 0.30, height_m: 1.80, eye_m: 1.65, step_m: 0.35 };
+  const MOVE = { walk_m_s: 1.8, run_m_s: 4.0, back_scale: 0.7, stair_scale: 0.7, accel_m_s2: 6.0 };
+  const LADDER = { up_m_s: 0.8, down_m_s: 1.0, mount_s: 0.5, dismount_s: 0.5 };
+  const SIDE_HATCH_S = 1.5;          // a hatch in a wall (the deck plan's route tool, side_hatch_s)
+  const GRAVITY_M_S2 = 9.81, FALL_MAX_M_S = 20;
+  const DROP_M = 0.4;                // how far below the feet a walking body still finds its floor (a stair down)
+  const REACH_M = 0.9;               // how near a ladder's or hatch's centre the body stands to use it
+  const CALL_M = 1.8;                // how near a lift door calls the car
+  const SUBSTEP_S = 1 / 120;
+  const LOOK_RAD_PX = 0.0022, TOUCH_LOOK_RAD_PX = 0.005, PITCH_MAX = 1.45, STICK_PX = 48;
+
+  /** True when (x, z) is inside a polygon of [x, z] corners. */
+  function inPoly(poly, x, z) {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const [xi, zi] = poly[i], [xj, zj] = poly[j];
+      if ((zi > z) !== (zj > z) && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside;
+    }
+    return inside;
+  }
+  /** Distance from (x, z) to a polygon's edges. */
+  function polyDist(poly, x, z) {
+    let d = Infinity;
+    for (let i = 0; i < poly.length; i++) {
+      const [ax, az] = poly[i], [bx, bz] = poly[(i + 1) % poly.length], ex = bx - ax, ez = bz - az;
+      const t = Math.max(0, Math.min(1, ((x - ax) * ex + (z - az) * ez) / (ex * ex + ez * ez || 1)));
+      d = Math.min(d, Math.hypot(x - ax - ex * t, z - az - ez * t));
+    }
+    return d;
+  }
+
+  /**
+   * An Octree of triangles for the body to collide with: each entry of soups is a flat array of triangle
+   * corners (x, y, z, nine numbers a triangle, world coordinates), and extra holds triangles [[x, y, z] x 3]
+   * (covers). A cover meant to be stood on faces up: the body finds its floor with a ray that sees only faces
+   * turned towards it.
+   */
+  function octreeOf(THREE, Octree, soups, extra) {
+    const oc = new Octree(), V = (a, i) => new THREE.Vector3(a[i], a[i + 1], a[i + 2]);
+    const add = (a, b, c) => {
+      const t = new THREE.Triangle(a, b, c);
+      if (t.getArea() > 1e-8) oc.addTriangle(t);
+    };
+    for (const a of soups) for (let i = 0; i + 8 < a.length; i += 9) add(V(a, i), V(a, i + 3), V(a, i + 6));
+    for (const t of extra || []) add(...t.map((p) => new THREE.Vector3(p[0], p[1], p[2])));
+    return oc.build();
+  }
+
+  /**
+   * A walking body for camera on canvas dom. o:
+   *   octree: from octreeOf;
+   *   ladders: [{ x, z, lo, hi, name }]: floor openings climbed from floor lo to floor hi (metres);
+   *   hatches: [{ x, z, n: [x, z], sill, name }]: wall hatches (n the wall's normal); those whose sill is
+   *     more than a step above the floor on a side are gone through with E, the rest are walked through;
+   *   lifts: [{ poly, stops, carY, speed_m_s, door_s, doors: [{ x, z, y }], onMove(y), name }]: a shaft's
+   *     footprint, its stop heights, the car's floor now, and its doors (y their floor);
+   *   where(x, feet, z) -> text: where the body is, for the HUD;
+   *   buttons: [{ label() -> text, onClick() }]: the page's own buttons beside Stop;
+   *   onExit(): the body was put away (Stop or Esc).
+   * Returns { enter(pose), exit(), update(dt_s), active(), pose(), keys, use(dir), lifts }.
+   */
+  function create(THREE, lib, o) {
+    const { Capsule } = lib;
+    const camera = o.camera, dom = o.dom, octree = o.octree;
+    const ladders = o.ladders || [], lifts = (o.lifts || []).map((l) => Object.assign({ phase: "idle", t: 0, target: l.carY }, l));
+    const pos = new THREE.Vector3(), cap = new Capsule(new THREE.Vector3(), new THREE.Vector3(), BODY.radius_m);
+    const ray = new THREE.Ray(new THREE.Vector3(), new THREE.Vector3(0, -1, 0));
+    const keys = {}, stick = { x: 0, y: 0 };
+    let yaw = 0, pitch = 0, vx = 0, vz = 0, vy = 0, grounded = true, stairT = 0, action = null, on = false, runToggle = false;
+
+    // ---------------------------------------------------------------- ground and walls
+    /** The floor under (x, z) seen from `from` downwards, or null: a lift's car inside its shaft, else the octree. */
+    function floorBelow(x, z, from) {
+      for (const l of lifts) if (inPoly(l.poly, x, z)) return l.carY <= from + 1e-6 ? l.carY : null;
+      ray.origin.set(x, from, z);
+      const hit = octree.rayIntersect(ray);
+      return hit ? hit.position.y : null;
+    }
+    /** The highest floor the body can stand on round (x, z): in [feet - down, feet + step], sampled under its centre and four points of its rim. */
+    function groundAt(x, z, feet, down) {
+      const r = BODY.radius_m * 0.8, top = feet + BODY.step_m + 0.02;
+      let best = null;
+      for (const [dx, dz] of [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]]) {
+        const y = floorBelow(x + dx, z + dz, top);
+        if (y !== null && y >= feet - down && (best === null || y > best)) best = y;
+      }
+      return best;
+    }
+    /** Push (x, z) out of the walls at the body's height above the step it may climb; returns the push. */
+    function pushOut(x, z, feet) {
+      let px = 0, pz = 0;
+      for (let k = 0; k < 4; k++) {
+        cap.start.set(x + px, feet + BODY.step_m + BODY.radius_m, z + pz);
+        cap.end.set(x + px, feet + BODY.height_m - BODY.radius_m, z + pz);
+        const r = octree.capsuleIntersect(cap);
+        if (!r) break;
+        const dx = r.normal.x * r.depth, dz = r.normal.z * r.depth;
+        if (Math.abs(dx) + Math.abs(dz) < 1e-7) break;
+        px += dx; pz += dz;
+      }
+      return [px, pz];
+    }
+
+    // ---------------------------------------------------------------- lifts
+    const liftIn = (x, z) => lifts.find((l) => inPoly(l.poly, x, z)) || null;
+    const boardable = (l) => l.phase === "idle" && Math.abs(l.carY - pos.y) < 0.05;
+    function request(l, y) {
+      if (l.phase !== "idle" || Math.abs(l.carY - y) < 1e-3) return;
+      l.target = y; l.phase = "closing"; l.t = 0;
+    }
+    function liftTick(l, h) {
+      if (l.phase === "idle") return;
+      l.t += h;
+      if (l.phase === "closing" && l.t >= l.door_s) { l.phase = "moving"; l.t = 0; }
+      else if (l.phase === "moving") {
+        const d = l.target - l.carY, s = l.speed_m_s * h;
+        l.carY = Math.abs(d) <= s ? l.target : l.carY + Math.sign(d) * s;
+        if (l.carY === l.target) { l.phase = "opening"; l.t = 0; }
+        if (l.onMove) l.onMove(l.carY);
+      } else if (l.phase === "opening" && l.t >= l.door_s) { l.phase = "idle"; l.t = 0; }
+    }
+    function liftCalls() {
+      if (liftIn(pos.x, pos.z)) return;
+      for (const l of lifts) for (const d of l.doors) {
+        if (Math.abs(d.y - pos.y) < 0.5 && Math.hypot(d.x - pos.x, d.z - pos.z) < CALL_M) request(l, d.y);
+      }
+    }
+    /** Inside a car, keep the body clear of the open side before it moves. */
+    function keepInside(l) {
+      const xs = l.poly.map((p) => p[0]), zs = l.poly.map((p) => p[1]), m = BODY.radius_m + 0.02;
+      pos.x = Math.min(Math.max(pos.x, Math.min(...xs) + m), Math.max(...xs) - m);
+      pos.z = Math.min(Math.max(pos.z, Math.min(...zs) + m), Math.max(...zs) - m);
+    }
+
+    // ---------------------------------------------------------------- climbing and hatches (moves the body along set points)
+    function run(segs) { action = { segs, i: 0, t: 0, from: pos.clone() }; vx = vz = vy = 0; }
+    function actionTick(h) {
+      const a = action, s = a.segs[a.i];
+      a.t += h;
+      const k = Math.min(1, a.t / s.dur);
+      pos.lerpVectors(a.from, s.to, k);
+      if (k < 1) return;
+      a.i++; a.t = 0; a.from = pos.clone();
+      if (a.i < a.segs.length) return;
+      action = null; grounded = true; vy = 0;
+      const [px, pz] = pushOut(pos.x, pos.z, pos.y);
+      pos.x += px; pos.z += pz;
+    }
+    const P = (x, y, z) => new THREE.Vector3(x, y, z);
+    function climb(l, up) {
+      const a = up ? l.lo : l.hi, b = up ? l.hi : l.lo, speed = up ? LADDER.up_m_s : LADDER.down_m_s;
+      run([
+        { dur: LADDER.mount_s, to: P(l.x, a, l.z) },
+        { dur: Math.abs(b - a) / speed, to: P(l.x, b, l.z) },
+        { dur: LADDER.dismount_s, to: P(l.x, b, l.z) },
+      ]);
+    }
+    // A wall hatch's two sides: 0.7 m out from its centre each way, and the floor there (found once, from the octree).
+    const hatches = (o.hatches || []).map((h) => {
+      const side = (s) => {
+        const x = h.x + h.n[0] * 0.7 * s, z = h.z + h.n[1] * 0.7 * s;
+        ray.origin.set(x, h.sill + 0.3, z);
+        const hit = octree.rayIntersect(ray);
+        return { x, z, y: hit ? hit.position.y : null };
+      };
+      const sides = [side(-1), side(1)];
+      return Object.assign({ sides, needsUse: sides.some((s) => s.y === null || h.sill - s.y > BODY.step_m) }, h);
+    }).filter((h) => h.needsUse && h.sides.every((s) => s.y !== null));
+    function through(h, from) {
+      const to = h.sides[1 - from];
+      run([{ dur: SIDE_HATCH_S, to: P(to.x, to.y, to.z) }]);
+    }
+    /** What E does here, or null: { label, go }. */
+    function choice() {
+      if (action) return null;
+      const l = liftIn(pos.x, pos.z);
+      if (l) return null;   // a car has its own buttons
+      for (const d of ladders) {
+        if (Math.hypot(d.x - pos.x, d.z - pos.z) > REACH_M) continue;
+        if (Math.abs(pos.y - d.lo) < 0.4) return { label: "Climb up" + (d.name ? " to " + d.name.up : ""), go: () => climb(d, true) };
+        if (Math.abs(pos.y - d.hi) < 0.4) return { label: "Climb down" + (d.name ? " to " + d.name.down : ""), go: () => climb(d, false) };
+      }
+      for (const h of hatches) {
+        if (Math.hypot(h.x - pos.x, h.z - pos.z) > REACH_M + 0.2) continue;
+        const s = (pos.x - h.x) * h.n[0] + (pos.z - h.z) * h.n[1] < 0 ? 0 : 1;
+        if (Math.abs(pos.y - h.sides[s].y) < 0.5) return { label: "Through the hatch" + (h.name ? " to " + h.name[1 - s] : ""), go: () => through(h, s) };
+      }
+      return null;
+    }
+    /** E (dir 1) or Q (dir -1): in a car, up or down a stop; elsewhere E climbs or goes through. */
+    function use(dir) {
+      if (!on || action) return;
+      const l = liftIn(pos.x, pos.z);
+      if (l) {
+        if (l.phase !== "idle") return;
+        const i = l.stops.reduce((b, y, k) => (Math.abs(y - l.carY) < Math.abs(l.stops[b] - l.carY) ? k : b), 0);
+        const j = i + dir;
+        if (j < 0 || j >= l.stops.length) return;
+        keepInside(l); request(l, l.stops[j]);
+        return;
+      }
+      if (dir > 0) { const c = choice(); if (c) c.go(); }
+    }
+
+    // ---------------------------------------------------------------- the step
+    function step(h) {
+      for (const l of lifts) liftTick(l, h);
+      if (action) { actionTick(h); return; }
+      liftCalls();
+      let f = 0, s = 0;
+      if (keys.KeyW || keys.ArrowUp) f += 1;
+      if (keys.KeyS || keys.ArrowDown) f -= 1;
+      if (keys.KeyD || keys.ArrowRight) s += 1;
+      if (keys.KeyA || keys.ArrowLeft) s -= 1;
+      f -= stick.y; s += stick.x;
+      const mag = Math.hypot(f, s);
+      if (mag > 1) { f /= mag; s /= mag; }
+      let speed = keys.ShiftLeft || keys.ShiftRight || runToggle ? MOVE.run_m_s : MOVE.walk_m_s;
+      if (f < -0.1) speed *= MOVE.back_scale;
+      if (stairT > 0) speed *= MOVE.stair_scale;
+      const fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
+      const tx = (fx * f + rx * s) * speed, tz = (fz * f + rz * s) * speed;
+      if (grounded) {
+        let dx = tx - vx, dz = tz - vz;
+        const dl = Math.hypot(dx, dz), capV = MOVE.accel_m_s2 * h;
+        if (dl > capV) { dx *= capV / dl; dz *= capV / dl; }
+        vx += dx; vz += dz;
+      }
+      let nx = pos.x + vx * h, nz = pos.z + vz * h;
+      // A lift's doors: closed unless its car stands here, open.
+      const inCar = liftIn(pos.x, pos.z);
+      for (const l of lifts) {
+        const near = inPoly(l.poly, nx, nz) || polyDist(l.poly, nx, nz) < BODY.radius_m * 0.6;
+        if (l !== inCar && near && !boardable(l)) { nx = pos.x; nz = pos.z; vx = vz = 0; }
+        if (l === inCar && !boardable(l) && !inPoly(l.poly, nx, nz)) { nx = pos.x; nz = pos.z; vx = vz = 0; }
+      }
+      const [px, pz] = pushOut(nx, nz, pos.y);
+      if (px || pz) {
+        nx += px; nz += pz;
+        const pl = Math.hypot(px, pz), ux = px / pl, uz = pz / pl, vn = vx * ux + vz * uz;
+        if (vn < 0) { vx -= vn * ux; vz -= vn * uz; }   // slide along the wall
+      }
+      if (grounded) {
+        const g = groundAt(nx, nz, pos.y, DROP_M);
+        if (g !== null) {
+          if (Math.abs(g - pos.y) > 0.02 && !liftIn(nx, nz)) stairT = 0.35;
+          pos.y = g; vy = 0;
+        } else grounded = false;
+      }
+      if (!grounded) {
+        vy = Math.max(vy - GRAVITY_M_S2 * h, -FALL_MAX_M_S);
+        const ny = pos.y + vy * h, g = groundAt(nx, nz, pos.y, pos.y - ny + 0.02);
+        if (g !== null && g >= ny) { pos.y = g; vy = 0; grounded = true; } else pos.y = ny;
+      }
+      stairT = Math.max(0, stairT - h);
+      pos.x = nx; pos.z = nz;
+    }
+
+    // ---------------------------------------------------------------- HUD and input
+    let hud = null, hudT = 0;
+    const touch = matchMedia("(pointer: coarse)").matches || "ontouchstart" in window;
+    function el(tag, cls, parent, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; (parent || document.body).appendChild(e); return e; }
+    function buildHud() {
+      if (!document.getElementById("shipwalk-css")) {
+        const css = el("style"); css.id = "shipwalk-css";
+        css.textContent =
+          ".sw-hud{position:fixed;inset:0;pointer-events:none;z-index:60;font:13px/1.35 system-ui,sans-serif;color:#e8eef5}" +
+          ".sw-where{position:absolute;left:12px;top:10px;background:rgba(8,11,16,.72);border:1px solid #2a3542;border-radius:6px;padding:5px 10px}" +
+          ".sw-where b{color:#48d6ff;font-weight:600}" +
+          ".sw-btns{position:absolute;right:12px;top:10px;display:flex;gap:6px;pointer-events:auto}" +
+          ".sw-btns button,.sw-act button{background:#141a22;color:#e8eef5;border:1px solid #3a4654;border-radius:6px;padding:7px 12px;font:600 13px system-ui,sans-serif;cursor:pointer}" +
+          ".sw-btns button:hover,.sw-act button:hover{border-color:#48d6ff;color:#48d6ff}" +
+          ".sw-btns button.on,.sw-act button.on{border-color:#48d6ff;color:#48d6ff}" +
+          ".sw-cross{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:rgba(232,238,245,.8);box-shadow:0 0 0 1px rgba(0,0,0,.6)}" +
+          ".sw-prompt{position:absolute;left:50%;bottom:26%;transform:translateX(-50%);background:rgba(8,11,16,.8);border:1px solid #48d6ff;border-radius:6px;padding:6px 12px;color:#48d6ff;white-space:nowrap}" +
+          ".sw-keys{position:absolute;left:12px;bottom:10px;color:#8a98a8;font-size:12px;background:rgba(8,11,16,.6);border-radius:6px;padding:4px 8px}" +
+          ".sw-act{position:absolute;right:14px;bottom:18px;display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:auto}" +
+          ".sw-act button{min-width:84px;padding:12px 14px;font-size:14px;border-radius:10px;touch-action:none}" +
+          ".sw-stick{position:absolute;left:28px;bottom:28px;width:112px;height:112px;border-radius:50%;border:2px solid rgba(232,238,245,.35);background:rgba(8,11,16,.35)}" +
+          ".sw-knob{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;background:rgba(232,238,245,.55)}";
+      }
+      const root = el("div", "sw-hud");
+      const where = el("div", "sw-where", root);
+      const btns = el("div", "sw-btns", root);
+      const pageBtns = (o.buttons || []).map((b) => { const e = el("button", "", btns); e.type = "button"; e.onclick = () => { b.onClick(); refresh(); }; return { b, e }; });
+      const stop = el("button", "", btns, "Stop walking"); stop.type = "button"; stop.onclick = () => exit();
+      el("div", "sw-cross", root);
+      const prompt = el("div", "sw-prompt", root); prompt.hidden = true;
+      let act = null, stickEl = null, knob = null, runB = null, useB = null, upB = null, downB = null;
+      if (touch) {
+        stickEl = el("div", "sw-stick", root); knob = el("div", "sw-knob", stickEl);
+        act = el("div", "sw-act", root);
+        upB = el("button", "", act, "Lift up"); downB = el("button", "", act, "Lift down");
+        useB = el("button", "", act, "Use"); runB = el("button", "", act, "Run");
+        for (const b of [upB, downB, useB, runB]) b.type = "button";
+        upB.onclick = () => use(1); downB.onclick = () => use(-1); useB.onclick = () => use(1);
+        runB.onclick = () => { runToggle = !runToggle; runB.classList.toggle("on", runToggle); };
+      } else el("div", "sw-keys", root, "W A S D move, mouse looks (click to capture), Shift run, E use, Q lift down, Esc stop");
+      function refresh() { for (const { b, e } of pageBtns) e.textContent = b.label(); }
+      refresh();
+      return { root, where, prompt, upB, downB, useB, knob, refresh };
+    }
+    function hudTick(dt) {
+      if (!hud) return;
+      hudT -= dt;
+      if (hudT <= 0) {
+        hudT = 0.2;
+        const w = o.where ? o.where(pos.x, pos.y, pos.z) : "";
+        hud.where.innerHTML = w;
+      }
+      const l = liftIn(pos.x, pos.z), c = choice();
+      let text = c ? (touch ? c.label : "E: " + c.label) : "";
+      const busy = lifts.find((x) => x.phase !== "idle");
+      if (busy) {
+        const what = { closing: "doors closing", moving: "moving", opening: "doors opening" }[busy.phase];
+        text = `${busy.name || "Lift"}: ${what}`;
+      } else if (l) text = touch ? "" : "E: lift up, Q: lift down";
+      hud.prompt.hidden = !text; hud.prompt.textContent = text;
+      if (hud.useB) {
+        hud.useB.hidden = !c; if (c) hud.useB.textContent = c.label;
+        hud.upB.hidden = hud.downB.hidden = !(l && l.phase === "idle");
+      }
+    }
+    function onKey(e, down) {
+      if (!on) return;
+      if (/^(Arrow|Space)/.test(e.code)) e.preventDefault();
+      keys[e.code] = down;
+      if (!down) return;
+      if (e.code === "KeyE") use(1);
+      if (e.code === "KeyQ") use(-1);
+      if (e.code === "Escape" && document.pointerLockElement !== dom) exit();
+    }
+    const kd = (e) => onKey(e, true), ku = (e) => onKey(e, false), blur = () => { for (const k of Object.keys(keys)) keys[k] = false; };
+    const look = (dx, dy, k) => { yaw -= dx * k; pitch = Math.max(-PITCH_MAX, Math.min(PITCH_MAX, pitch - dy * k)); };
+    const mm = (e) => { if (on && document.pointerLockElement === dom) look(e.movementX, e.movementY, LOOK_RAD_PX); };
+    const ptr = new Map();   // pointerId -> { kind: "look" | "stick", x, y, x0, y0 }
+    function pd(e) {
+      if (!on) return;
+      if (e.pointerType === "mouse") {
+        if (document.pointerLockElement !== dom && dom.requestPointerLock) { try { const r = dom.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (_) { /* drag to look instead */ } }
+        ptr.set(e.pointerId, { kind: "look", x: e.clientX, y: e.clientY });
+        return;
+      }
+      const isStick = e.clientX < innerWidth * 0.45 && e.clientY > innerHeight * 0.35 && ![...ptr.values()].some((p) => p.kind === "stick");
+      ptr.set(e.pointerId, { kind: isStick ? "stick" : "look", x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY });
+      try { dom.setPointerCapture(e.pointerId); } catch (_) { /* not every pointer can be captured */ }
+    }
+    function pm(e) {
+      const p = ptr.get(e.pointerId);
+      if (!on || !p) return;
+      if (p.kind === "look") {
+        if (document.pointerLockElement !== dom) look(e.clientX - p.x, e.clientY - p.y, e.pointerType === "mouse" ? LOOK_RAD_PX * 1.6 : TOUCH_LOOK_RAD_PX);
+        p.x = e.clientX; p.y = e.clientY;
+      } else {
+        let dx = (e.clientX - p.x0) / STICK_PX, dy = (e.clientY - p.y0) / STICK_PX;
+        const m = Math.hypot(dx, dy);
+        if (m > 1) { dx /= m; dy /= m; }
+        stick.x = dx; stick.y = dy;
+        if (hud && hud.knob) hud.knob.style.transform = `translate(${dx * 34}px, ${dy * 34}px)`;
+      }
+    }
+    function pu(e) {
+      const p = ptr.get(e.pointerId);
+      ptr.delete(e.pointerId);
+      if (p && p.kind === "stick") { stick.x = stick.y = 0; if (hud && hud.knob) hud.knob.style.transform = ""; }
+    }
+
+    // ---------------------------------------------------------------- the public face
+    /** Put the body at { x, y (its floor, roughly), z } facing face [x, z] (or yaw), pitch_deg up. */
+    function enter(p) {
+      on = true; action = null; vx = vz = vy = 0; grounded = true; stairT = 0;
+      for (const k of Object.keys(keys)) keys[k] = false;
+      pos.set(p.x, p.y, p.z);
+      const g = groundAt(p.x, p.z, p.y + 0.5, 2.0);
+      if (g !== null) pos.y = g;
+      yaw = p.face ? Math.atan2(-p.face[0], -p.face[1]) : p.yaw || 0;
+      pitch = ((p.pitch_deg || 0) * Math.PI) / 180;
+      if (!hud) hud = buildHud();
+      addEventListener("keydown", kd); addEventListener("keyup", ku); addEventListener("blur", blur);
+      document.addEventListener("mousemove", mm);
+      dom.addEventListener("pointerdown", pd); dom.addEventListener("pointermove", pm);
+      dom.addEventListener("pointerup", pu); dom.addEventListener("pointercancel", pu);
+      dom.style.touchAction = "none";
+      place();
+    }
+    function exit() {
+      if (!on) return;
+      on = false;
+      removeEventListener("keydown", kd); removeEventListener("keyup", ku); removeEventListener("blur", blur);
+      document.removeEventListener("mousemove", mm);
+      dom.removeEventListener("pointerdown", pd); dom.removeEventListener("pointermove", pm);
+      dom.removeEventListener("pointerup", pu); dom.removeEventListener("pointercancel", pu);
+      ptr.clear(); stick.x = stick.y = 0;
+      if (document.pointerLockElement === dom && document.exitPointerLock) document.exitPointerLock();
+      if (hud) { hud.root.remove(); hud = null; }
+      if (o.onExit) o.onExit();
+    }
+    function place() {
+      camera.position.set(pos.x, pos.y + BODY.eye_m, pos.z);
+      camera.rotation.set(pitch, yaw, 0, "YXZ");
+    }
+    /** Advance dt_s seconds (in steps of 1/120 s) and place the camera at the eye. */
+    function update(dt) {
+      if (!on) return;
+      dt = Math.min(dt, 0.1);
+      const n = Math.max(1, Math.ceil(dt / SUBSTEP_S));
+      for (let i = 0; i < n; i++) step(dt / n);
+      place();
+      hudTick(dt);
+    }
+    return {
+      enter, exit, update, use, keys, lifts,
+      active: () => on,
+      /** Where the body stands and looks: { x, y (feet), z, yaw, pitch, grounded, climbing }. */
+      pose: () => ({ x: pos.x, y: pos.y, z: pos.z, yaw, pitch, grounded, climbing: !!action }),
+      /** Turn the body to face [x, z]. */
+      face: (f) => { yaw = Math.atan2(-f[0], -f[1]); },
+      refreshButtons: () => hud && hud.refresh(),
+    };
+  }
+
+  window.ShipWalk = { create, octreeOf, BODY, MOVE, LADDER, inPoly };
+})();
+</script>
+<!-- INLINE lib:shipwalk END -->
 </head>
 <body>
 <div class="legend" id="legend"></div>
@@ -2206,6 +2658,8 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
+import { Octree } from "three/addons/math/Octree.js";
+import { Capsule } from "three/addons/math/Capsule.js";
 
 const K = window.ShipKit;
 // Which ship the page shows, applied to a copy of the layout by ShipKit.applyPatch (proposals until their
@@ -2508,13 +2962,13 @@ function propParts(parts, c) {
 
 /** With the command suite shown: the round bridge's ring, platforms and stairs, and each side room's furniture as a
  * block of its brief's size (command_suite.json prop_brief_m; the command deck page draws the Blender models). */
-function suiteParts(parts, c) {
+function suiteParts(parts, c, noCar) {
   const B = new K.Builder();
   if (c.id === "bridge") K.buildPlatforms(THREE, B, SUITE_PATCH.bridge.platforms, SUITE_PATCH.bridge.stairs, K.deckById(L, "A").floor_y_m, DET);
   // deck-access's stair towers and lift car (fixtures the layout gains with that patch).
   for (const f of (L.fixtures || []).filter((x) => x.compartment === c.id)) {
     if (f.kind === "spiral_stair") K.buildSpiralStair(THREE, B, f);
-    else if (f.kind === "lift") K.buildLiftCar(B, Object.assign({}, f, { roof: false }));   // ceilings off, as every room here
+    else if (f.kind === "lift" && !noCar) K.buildLiftCar(B, Object.assign({}, f, { roof: false }));   // ceilings off, as every room here
   }
   for (const [r, P] of Object.entries(B.parts)) {
     const d = parts[r];
@@ -2531,25 +2985,16 @@ function suiteParts(parts, c) {
 
 // ------------------------------------------------------------------ build: one mesh per compartment, baked three ways
 // The bay doors are drawn closed (skipKinds), as the template does: the bay floors stay whole.
-const rooms = comps.map((c) => {
-  const built = K.buildCompartment(THREE, L, c, { detailing: DET, skipKinds: ["bay_door"], panels: true });
-  const parts = built.parts;
-  fixtureParts(parts, c);
-  propParts(parts, c);
-  if (SUITE) suiteParts(parts, c);
-  const finish = Object.assign({}, K.finishOf(c, DET));
-  for (const r of Object.keys(parts)) if (PROPS[r]) finish[r] = PROPS[r].mat;
-  for (const r of Object.keys(parts)) if (r.startsWith("fx_")) finish[r] = finish[r.slice(3)];
-  const geo = K.geometryOf(THREE, parts, pmats, finish);
-  geo.computeBoundingSphere();
-  const n = geo.attributes.position.count, states = [];
+/** Bake a mesh's light in the three states into its c0, c1 and c2 sets (lamps from the kit rule), lamp lenses and prop tints included. */
+function bakeStates(geo, lamps) {
+  const states = [];
   for (const key of STATES) {
-    K.bakeDirect(THREE, geo, built.lamps, key);
+    K.bakeDirect(THREE, geo, lamps, key);
     const col = geo.attributes.color;
     // TODO kit: bakeDirect paints every lens the emergency colour; only the emergency bus is lit on emergency power.
     const lr = geo.userData.roles.lamp;
-    if (key === "emergency" && lr && lr[1] === built.lamps.length * 6) {
-      built.lamps.forEach((l, i) => { if (!l.emergency) for (let v = lr[0] + i * 6; v < lr[0] + i * 6 + 6; v++) col.setXYZ(v, 0.05, 0.055, 0.065); });
+    if (key === "emergency" && lr && lr[1] === lamps.length * 6) {
+      lamps.forEach((l, i) => { if (!l.emergency) for (let v = lr[0] + i * 6; v < lr[0] + i * 6 + 6; v++) col.setXYZ(v, 0.05, 0.055, 0.065); });
     }
     const k = STATES.indexOf(key);
     for (const [role, range] of Object.entries(geo.userData.roles)) {
@@ -2563,7 +3008,28 @@ const rooms = comps.map((c) => {
     states.push(new Float32Array(col.array));
   }
   states.forEach((a, k) => geo.setAttribute("c" + k, new THREE.BufferAttribute(a, 3)));
-  return { comp: c, geo, lamps: built.lamps, tris: n / 3 };
+}
+/** One compartment's mesh: the kit's shell and detail, the fixtures, props and suite; noCar leaves a lift's car out. */
+function roomGeo(c, noCar) {
+  const built = K.buildCompartment(THREE, L, c, { detailing: DET, skipKinds: ["bay_door"], panels: true });
+  const parts = built.parts;
+  fixtureParts(parts, c);
+  propParts(parts, c);
+  if (SUITE) suiteParts(parts, c, noCar);
+  const finish = Object.assign({}, K.finishOf(c, DET));
+  for (const r of Object.keys(parts)) if (PROPS[r]) finish[r] = PROPS[r].mat;
+  for (const r of Object.keys(parts)) if (r.startsWith("fx_")) finish[r] = finish[r.slice(3)];
+  const geo = K.geometryOf(THREE, parts, pmats, finish);
+  geo.computeBoundingSphere();
+  bakeStates(geo, built.lamps);
+  return { geo, lamps: built.lamps, tris: geo.attributes.position.count / 3 };
+}
+// A lift's room also gets a copy without its car, for the walk: there the car is a mesh of its own, and moves.
+const LIFT = (L.fixtures || []).find((f) => f.kind === "lift") || null;
+const rooms = comps.map((c) => {
+  const r = Object.assign({ comp: c }, roomGeo(c, false));
+  if (LIFT && LIFT.compartment === c.id) r.walkGeo = roomGeo(c, true).geo;
+  return r;
 });
 const LAMP_TOTAL = rooms.reduce((a, r) => a + r.lamps.length, 0);
 const ROOM_TRIS = rooms.reduce((a, r) => a + r.tris, 0);
@@ -3153,7 +3619,7 @@ function drawSelection(cid) {
 // ------------------------------------------------------------------ UI: legend, info card, controls
 // badgesOf: null shows every POI badge; a list of compartment ids shows only theirs (an interior shot, where the
 // badges of the rest of the ship would show through the walls).
-const state = { deck: "all", view: "3d", exploded: false, light: "normal", labels: false, lamps: true, proposed: false, exterior: true, sel: -1, badgesOf: null };
+const state = { deck: "all", view: "3d", exploded: false, light: "normal", labels: false, lamps: true, proposed: false, exterior: true, sel: -1, badgesOf: null, walk: false };
 const legend = document.getElementById("legend");
 {
   const groupsOf = [
@@ -3219,6 +3685,7 @@ group("View");
 button("view:3d", "3D", () => setView("3d"));
 button("view:plan", "Plan", () => setView("plan"));
 button("exploded", "Exploded", () => setExploded(!state.exploded));
+button("walk", "Walk", () => startWalk());
 group("Light");
 for (const k of STATES) button("light:" + k, K.LIGHTING[k].label, () => setLight(k, false));
 group("Show");
@@ -3276,6 +3743,12 @@ function applyVisibility() {
     if (state.badgesOf && !state.badgesOf.includes(c.id)) b.visible = false;
   }
   for (const s of sysLabels) s.visible = state.labels;
+  if (state.walk) {   // first person: the rooms only, no diagram marks above them
+    extGroup.visible = false;
+    for (const b of badges) b.visible = false;
+    for (const s of sysLabels) s.visible = false;
+    for (const id of DECK_IDS) { ghosts[id].visible = false; planExtras[id].visible = false; lensMeshes[id].visible = false; }
+  }
   drawSelection(state.sel);
 }
 function setDeck(d) { state.deck = d; applyVisibility(); frameView(); }
@@ -3335,9 +3808,9 @@ function pose(pos, target) { camPose = { pos, target }; }
 // Click a room (or anything in it) for its card; click empty space to clear. A slice's hit counts only inside its clip.
 const ray = new THREE.Raycaster();
 let downAt = null;
-renderer.domElement.addEventListener("pointerdown", (e) => { downAt = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener("pointerdown", (e) => { downAt = state.walk ? null : [e.clientX, e.clientY]; });
 renderer.domElement.addEventListener("pointerup", (e) => {
-  if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 4) return;
+  if (state.walk || !downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 4) return;
   const cam = state.view === "plan" ? ortho : persp;
   ray.setFromCamera(new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1), cam);
   const shown = pickables.filter((m) => visibleUp(m));
@@ -3362,7 +3835,10 @@ function openWellAt() {
   }
   return -1;
 }
-addEventListener("resize", () => { renderer.setSize(innerWidth, innerHeight); frameView(); });
+addEventListener("resize", () => {
+  renderer.setSize(innerWidth, innerHeight);
+  if (state.walk) { persp.aspect = innerWidth / innerHeight; persp.updateProjectionMatrix(); } else frameView();
+});
 
 // Labels that would overlap on screen step aside: badges first (nearest keeps its place), then text.
 const tmpP = new THREE.Vector3();
@@ -3392,12 +3868,180 @@ function declutter(cam) {
   }
 }
 
+// ------------------------------------------------------------------ walk: first person, deck to deck (lib/shipwalk.js)
+// The owner, 2026-10-06: "do you have fps mode in deck plan for me to run arond?". A crew member's body (crew-on-deck)
+// walks the rooms as they are drawn: an Octree of every room's mesh, with covers over the floor openings (climbed with
+// E, never fallen through) and over the windows and the doors to space. It takes the stairs and the stair towers on
+// foot, climbs the ladders and hatches, and rides the lift, whose car is a mesh of its own here because it moves.
+let car = null;
+if (LIFT) {
+  const B = new K.Builder();
+  K.buildLiftCar(B, LIFT);
+  const lr = rooms[cidOf.get(LIFT.compartment)];
+  const geo = K.geometryOf(THREE, B.parts, pmats, K.finishOf(lr.comp, DET));
+  bakeStates(geo, lr.lamps);
+  car = new THREE.Mesh(geo, MAT.whole[0]); car.visible = false; scene.add(car);
+}
+const nameOf = (id) => (id === "space" ? "space" : K.compartment(L, id).name);
+/** Triangles the body collides with besides the rooms: a floor over each opening in a floor, a pane over each window and door to space. */
+function walkCovers() {
+  const tris = [], quad = (a, b, c, d) => { tris.push([a, b, c], [a, c, d]); };
+  for (const p of L.portals) {
+    if (p.kind === "bay_door") continue;   // drawn closed, its floor whole
+    const [x, y, z] = p.center_m;
+    if (isFloorPortal(p)) {
+      const e = verticalEnds(p), hi = e.length ? e[e.length - 1].floor : y, hx = p.size_m[0] / 2 + 0.05, hz = p.size_m[1] / 2 + 0.05, yy = hi + 0.002;
+      quad([x - hx, yy, z - hz], [x - hx, yy, z + hz], [x + hx, yy, z + hz], [x + hx, yy, z - hz]);   // faces up: stood on
+    } else if (p.kind === "window" || p.between.includes("space")) {
+      const t = [-p.normal[2], p.normal[0]], hw = p.size_m[0] / 2, hh = p.size_m[1] / 2;
+      const Q = (u, v) => [x + t[0] * u, y + v, z + t[1] * u];
+      quad(Q(-hw, -hh), Q(hw, -hh), Q(hw, hh), Q(-hw, hh));
+    }
+  }
+  return tris;
+}
+const walkLadders = L.portals.filter((p) => isFloorPortal(p) && (p.kind === "ladder" || p.kind === "hatch") && !p.between.includes("space")).map((p) => {
+  const e = verticalEnds(p);
+  return e.length < 2 ? null : { x: p.center_m[0], z: p.center_m[2], lo: e[0].floor, hi: e[1].floor, name: { up: nameOf(e[1].id), down: nameOf(e[0].id) } };
+}).filter(Boolean);
+const walkHatches = L.portals.filter((p) => !isFloorPortal(p) && p.kind === "hatch" && !p.between.includes("space")).map((p) => (
+  { x: p.center_m[0], z: p.center_m[2], n: [p.normal[0], p.normal[2]], sill: p.center_m[1] - p.size_m[1] / 2, name: p.between.map(nameOf) }));
+const walkLifts = LIFT ? [{
+  name: "Lift", poly: K.compartment(L, LIFT.compartment).brushes[0].poly, stops: LIFT.stops_y_m.slice(), carY: LIFT.center_m[1],
+  speed_m_s: LIFT.speed_m_s, door_s: LIFT.door_s,
+  doors: K.portalsOf(L, LIFT.compartment).map((p) => ({ x: p.center_m[0], z: p.center_m[2], y: p.center_m[1] - p.size_m[1] / 2 })),
+  onMove: (y) => { car.position.y = y - LIFT.center_m[1]; },
+}] : [];
+function whereText(x, feet, z) {
+  const c = comps.find((q) => K.brushAt(q, x, feet + 0.9, z));
+  return `<b>Deck ${deckAt(feet + 0.05)}</b>&nbsp; ${c ? c.poi + " " + c.name : ""}`;
+}
+const WALK_STATS = { octree_ms: 0, triangles: 0 };
+// What a body never touches stays out of the collision: everything at the ceiling, lamps, the strips and skirting
+// a few centimetres proud of a wall (the wall behind them stops it).
+const NO_COLLIDE = new Set(["ceiling", "fx_ceiling", "cove", "beam", "collar", "lamp", "lamp_housing", "status", "baseboard"]);
+function collisionSoups(geo) {
+  const a = geo.attributes.position.array, out = [];
+  for (const [role, [k, n]] of Object.entries(geo.userData.roles)) if (!NO_COLLIDE.has(role)) out.push(a.subarray(k * 3, (k + n) * 3));
+  return out;
+}
+let WALK = null, beforeWalk = null;
+function walker() {
+  if (WALK) return WALK;
+  const t0 = performance.now();
+  const soups = rooms.flatMap((r) => collisionSoups(r.walkGeo || r.geo));
+  const octree = ShipWalk.octreeOf(THREE, Octree, soups, walkCovers());
+  WALK_STATS.octree_ms = Math.round(performance.now() - t0);
+  WALK_STATS.triangles = soups.reduce((a, x) => a + x.length / 9, 0);
+  WALK = ShipWalk.create(THREE, { Capsule }, {
+    camera: persp, dom: renderer.domElement, octree, ladders: walkLadders, hatches: walkHatches, lifts: walkLifts, where: whereText,
+    buttons: [{ label: () => K.LIGHTING[state.light].label, onClick: () => setLight(STATES[(STATES.indexOf(state.light) + 1) % STATES.length], false) }],
+    onExit: leaveWalk,
+  });
+  const css = document.createElement("style");
+  css.textContent = "body.walking .legend,body.walking .info,body.walking .route,body.walking .controls,body.walking .mockup-title," +
+    "body.walking .pi-budget,body.walking .mk-x,body.walking .mk-show{display:none!important}";
+  document.head.appendChild(css);
+  return WALK;
+}
+/** Where a walk starts: inside the selected room by its first door, or on the bridge. */
+function walkStart() {
+  const room = state.sel >= 0 ? comps[state.sel] : K.compartment(L, "bridge");
+  const p = K.portalsOf(L, room.id).find((q) => !isFloorPortal(q) && q.kind === "door" && !q.between.includes("space"));
+  if (!p) { const { b } = mainBrush(room), [x, z] = K.polyCentroid(b.poly); return { x, y: b.y[0], z, yaw: 0 }; }
+  const n = p.normal, s = p.between[0] === room.id ? -1 : 1, [x, y, z] = p.center_m;
+  return { x: x + n[0] * s * 1.2, y: y - p.size_m[1] / 2, z: z + n[2] * s * 1.2, face: [n[0] * s, n[2] * s] };
+}
+function enterWalk(at) {
+  const w = walker(), start = at || walkStart();
+  if (!state.walk) beforeWalk = { pos: persp.position.toArray(), target: ctl3.target.toArray(), deck: state.deck, view: state.view, exploded: state.exploded };
+  clearRoute(); select(-1);
+  state.walk = true; state.deck = "all"; state.view = "3d"; state.exploded = false;
+  for (const id of DECK_IDS) offsets[id] = 0;
+  ctl3.enabled = false; ctlP.enabled = false;
+  persp.clearViewOffset(); persp.fov = 72; persp.near = 0.05; persp.aspect = innerWidth / innerHeight; persp.updateProjectionMatrix();
+  const lr = LIFT && rooms[cidOf.get(LIFT.compartment)];
+  if (lr) for (const m of lr.meshes) m.geometry = lr.walkGeo;
+  if (car) car.visible = true;
+  document.body.classList.add("walking");
+  applyVisibility(); drawConnectors();
+  w.enter(start);
+}
+/** The Walk button: the first walk builds the collision (a second or two), so say so before the page stops to do it. */
+function startWalk() {
+  if (WALK) { enterWalk(); return; }
+  const note = document.createElement("div");
+  note.textContent = "Getting the walk ready";
+  note.style.cssText = "position:fixed;left:50%;top:45%;transform:translate(-50%,-50%);z-index:70;background:rgba(8,11,16,.85);" +
+    "border:1px solid #48d6ff;border-radius:8px;padding:10px 16px;color:#48d6ff;font:600 14px system-ui,sans-serif";
+  document.body.appendChild(note);
+  requestAnimationFrame(() => setTimeout(() => { enterWalk(); note.remove(); }, 30));
+}
+/** The walk's Stop (or Esc): back to the view it left. */
+function leaveWalk() {
+  if (!state.walk) return;
+  state.walk = false;
+  const lr = LIFT && rooms[cidOf.get(LIFT.compartment)];
+  if (lr) for (const m of lr.meshes) m.geometry = lr.geo;
+  if (car) car.visible = false;
+  document.body.classList.remove("walking");
+  persp.fov = 50; persp.near = 0.1; persp.updateProjectionMatrix();
+  const b = beforeWalk || {};
+  state.deck = b.deck || "all"; state.view = b.view || "3d"; state.exploded = !!b.exploded;
+  for (const id of DECK_IDS) offsets[id] = state.exploded ? (deckIndex(id) - 1) * EXPLODE_M : 0;
+  ctl3.enabled = state.view === "3d"; ctlP.enabled = state.view === "plan";
+  applyVisibility(); drawConnectors();
+  if (b.pos) pose(b.pos, b.target);
+  frameView(); sync();
+}
+// For checks run headless (a measurement instrument, CLAUDE.md 4): walk, climb and ride without a screen.
+window.MOCKUP_WALK = {
+  enter: (p) => { enterWalk(p); return WALK.pose(); },
+  /** Hold keys ({ KeyW: true, ShiftLeft: true }) for seconds, facing face [x, z] if given; returns the pose. */
+  hold: (keys, seconds, face) => {
+    if (face) WALK.face(face);
+    Object.assign(WALK.keys, keys);
+    for (let t = 0; t < seconds; t += 1 / 60) WALK.update(1 / 60);
+    for (const k of Object.keys(keys)) WALK.keys[k] = false;
+    return WALK.pose();
+  },
+  /** Walk (or run) to [x, z], steering at it every 1/60 s, for at most seconds; returns the pose and the time taken. */
+  walkTo: (to, seconds, runIt) => {
+    let t = 0;
+    WALK.keys.KeyW = true; WALK.keys.ShiftLeft = !!runIt;
+    for (; t < seconds; t += 1 / 60) {
+      const p = WALK.pose(), dx = to[0] - p.x, dz = to[1] - p.z;
+      if (Math.hypot(dx, dz) < 0.12) break;
+      WALK.face([dx, dz]); WALK.update(1 / 60);
+    }
+    WALK.keys.KeyW = false; WALK.keys.ShiftLeft = false;
+    for (let k = 0; k < 60; k++) WALK.update(1 / 60);   // come to rest
+    return Object.assign(WALK.pose(), { t: +t.toFixed(2) });
+  },
+  use: (dir) => { WALK.use(dir); return WALK.pose(); },
+  wait: (seconds) => { for (let t = 0; t < seconds; t += 1 / 60) WALK.update(1 / 60); return WALK.pose(); },
+  pose: () => WALK.pose(),
+  lift: () => WALK.lifts.map((l) => ({ carY: +l.carY.toFixed(3), phase: l.phase })),
+  stats: () => Object.assign({ ladders: walkLadders.length, hatches: walkHatches.length, lifts: walkLifts.length }, WALK_STATS),
+};
+
 // ------------------------------------------------------------------ frame loop
 const tmpW = new THREE.Vector3();
+let lastFrame = performance.now();
 function frame() {
+  const now = performance.now(), dt = Math.min(0.1, (now - lastFrame) / 1000);
+  lastFrame = now;
   tmpW.copy(WT).sub(W);
   if (tmpW.lengthSq() > 1e-6) { W.addScaledVector(tmpW, 0.15); applyLight(); }
   else if (!W.equals(WT)) { W.copy(WT); applyLight(); }
+  if (state.walk) {
+    WALK.update(dt);
+    hud.beginFrame(renderer);
+    renderer.render(scene, persp);
+    hud.endFrame(renderer);
+    if (!window.MOCKUP_READY) K.markReady();
+    return;
+  }
   const cam = state.view === "plan" ? ortho : persp;
   (state.view === "plan" ? ctlP : ctl3).update();
   const k = 2 / (cam.projectionMatrix.elements[5] * innerHeight);
@@ -3411,6 +4055,7 @@ function frame() {
 
 // ------------------------------------------------------------------ start and shots
 function reset(o) {
+  if (state.walk) WALK.exit();
   clearRoute(); select(-1);
   state.deck = o.deck || "all"; state.view = o.view || "3d"; state.labels = !!o.labels; state.proposed = !!o.proposed;
   state.exploded = !!o.exploded; state.exterior = o.exterior !== false; state.lamps = o.lamps !== false; state.badgesOf = o.badgesOf || null;
@@ -3422,6 +4067,7 @@ function reset(o) {
   if (o.route) showRoute(o.route[0], o.route[1]);
   if (o.select) select(cidOf.get(o.select)); else frameView();
   sync();
+  if (o.walk) enterWalk(o.walk === true ? null : o.walk);
 }
 const OVERVIEW = { pos: [-50, 60, -32], target: [0, -1, -2] };
 reset(OVERVIEW);
@@ -3445,6 +4091,11 @@ K.registerShots([
     { name: "access-towers-deck-C", setup: shot({ deck: "C", exterior: false, lamps: false, pos: [0, 7.5, 3.5], target: [0, -3.0, 10.8] }) },
     { name: "access-lift", setup: shot({ deck: "A", exterior: false, lamps: false, select: "lift", pos: [0.2, 10.0, 22.8], target: [-2.25, 3.6, 18.8] }) },
     { name: "access-deck-B-plan", setup: shot({ view: "plan", deck: "B" }) },
+    // Walking (first person): the bridge where a walk starts, a stair tower's landing, the lift's door, deck B's corridor.
+    { name: "walk-bridge", setup: shot({ walk: true }) },
+    { name: "walk-port-tower", setup: shot({ walk: { x: 2.0, y: 0, z: 9.55, face: [0.35, 1], pitch_deg: 28 } }) },
+    { name: "walk-lift", setup: shot({ walk: { x: 0.7, y: 3.5, z: 18.8, face: [-1, 0], pitch_deg: -6 } }) },
+    { name: "walk-corridor-B", setup: shot({ walk: { x: 0, y: 0, z: 15, face: [0, -1], pitch_deg: -4 } }) },
     { name: "access-deck-C-plan", setup: shot({ view: "plan", deck: "C" }) },
   ] : []),
 ]);

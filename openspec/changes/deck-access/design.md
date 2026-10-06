@@ -102,6 +102,11 @@ port tower from the crew quarters' door to the bridge door is 14.0 s. The ladder
 because the quarters' door is beside the ladder. From deck C's corridor to the bridge door, a tower
 takes 15.3 s and the ladder 15.9 s.
 
+Walked in the deck plan's walk mode (`docs/mockups/lib/shipwalk.js`: crew-on-deck's capsule, its 0.35 m
+step and its speeds, colliding with the treads as drawn), the port tower from deck B's landing round the
+walk line to deck A's takes 3.34 s, against the 3.4 s estimated here. That checks the estimate in a mockup,
+not in the game.
+
 ### 2a. Why spiral
 
 | | Spiral, 2.6 x 2.6 m | Straight flights, about 2.6 x 5 m a deck |
