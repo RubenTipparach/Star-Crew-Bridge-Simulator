@@ -947,6 +947,20 @@ the room).
 
 #### 11a. Three ways to build the bridge (proposed 2026-10-05, for the owner to choose)
 
+**Answered 2026-10-06** (owner, in chat, question B11): "can we do the more circular bridge? but
+have like side rooms for meetings, captains quarters and stuff?". That is **B, the round bridge**,
+with rooms around it. The change `command-suite` takes it from here:
+- B's room, with the ring starting a segment further forward so a door in each aft diagonal wall
+  opens from the walkway;
+- helm and tactical at two desks 1.5 m apart (the fix given for B below), so their heads hide none
+  of the screen;
+- the captain's ready room and a briefing room opening onto the bridge;
+- the captain's quarters, a head and a bridge locker behind them, and the computer core moved aft.
+
+`tools/bridge_variants.py`'s `variant_b` takes those as parameters, and its own output below is
+unchanged. The section stays as the record of the choice. 11.1 is rewritten from the suite when
+`command-suite` applies its patch to the layout (its task 2).
+
 The owner, 2026-10-05, on nine Star Trek bridge references: "notice how elevation is dynamic? the
 upper deck is for work, the lower one is walk way to move aorund, and the captains chair is
 raised on a platform, with two consoles for helms and tactical a sub platform. notice how majority
@@ -1266,5 +1280,5 @@ taken (ask only with screenshots)".
 | B8 | Viewscreen refresh: 30 Hz (the budget allows it) or 15 Hz (half the pass)? | 30 Hz / 15 Hz | 30 Hz, dropping to 15 Hz if the probe finds fill binding. Recommendation taken (ask only with screenshots) | none |
 | B9 | Merge every unmanned station to a tab (one player runs everything), or only the vision's three merges? | All, by merge list / only Captain, Comms and Flight ops | All, by merge list. Recommendation taken (ask only with screenshots) | none |
 | B10 | Gunner turrets: no remote gunnery from Tactical? The Pi 5 budget's secondary view (512 x 256 at 15 Hz) could carry a sight, so this is a design choice, not a cost | None / remote sight from Tactical | None: the pods are the reason to leave the bridge. Recommendation taken (ask only with screenshots) | none |
-| B11 | Which bridge: the wedge with three levels, the round room with a ring, or the wedge split front and back (section 11a)? All three put the side consoles in the walls, raise the captain and keep the 3.5 m room; they differ in shape, levels and what the captain sees | A. Wedge, tiered / B. Round / C. Split level / today's flat bridge | A: the owner's levels exactly, the ship's shape, all the air, nothing hides the screen | `bridge-variants-{today,A,B,C}-cutaway.png`, `bridge-variants-{A,B,C}-captain.png`, `bridge-variants-{A,B,C}-door.png` |
+| B11 | Which bridge: the wedge with three levels, the round room with a ring, or the wedge split front and back (section 11a)? All three put the side consoles in the walls, raise the captain and keep the 3.5 m room; they differ in shape, levels and what the captain sees | A. Wedge, tiered / B. Round / C. Split level / today's flat bridge | A: the owner's levels exactly, the ship's shape, all the air, nothing hides the screen. **Answered 2026-10-06** (owner, in chat): "can we do the more circular bridge? but have like side rooms for meetings, captains quarters and stuff?": B, with side rooms; taken up by `command-suite` | `bridge-variants-{today,A,B,C}-cutaway.png`, `bridge-variants-{A,B,C}-captain.png`, `bridge-variants-{A,B,C}-door.png` |
 | B12 | Console screens in the room (section 11.6): each shows its own station's console, or all show one generic placeholder UI? | Own console / generic | Own console: the room previews the game a player gets when they sit | `bridge-variants-{A,B,C}-helm.png`, `bridge-variants-{A,B,C}-engineering.png`, `bridge-variants-{A,B,C}-ring.png` |

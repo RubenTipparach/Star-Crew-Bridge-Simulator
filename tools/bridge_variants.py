@@ -273,7 +273,10 @@ def arc_ring(R_out_pts, cz, r_in, ang0, ang1, steps):
             if s > 0 and -1e-9 <= u <= 1 + 1e-9:
                 best = (dx * s, cz + dz * s)
         return best
-    outer = [on_wall(ang0)] + outer + [on_wall(ang1)]
+    ends = [on_wall(ang0), on_wall(ang1)]
+    # A ring that ends on one of the room's corners takes that corner once.
+    outer = [p for p in outer if all(math.hypot(p[0] - e[0], p[1] - e[1]) > 1e-3 for e in ends)]
+    outer = [ends[0]] + outer + [ends[1]]
     inner = [(r_in * math.cos(math.radians(a)), cz + r_in * math.sin(math.radians(a))) for a in [ang0 + (ang1 - ang0) * k / steps for k in range(steps + 1)]]
     poly = outer + list(reversed(inner))
     if layout_check.signed_area(poly) < 0:
@@ -281,11 +284,30 @@ def arc_ring(R_out_pts, cz, r_in, ang0, ang1, steps):
     return [pt(p) for p in poly], len(outer), len(inner)
 
 
-def variant_b():
-    """Round: a ring two steps up all round the sides, a well, the captain on a round dais, helm and tactical at one curved console."""
+# B's wall banks on the port ring: (the wall segment's angle from the room's centre, degrees with 0
+# to port and 90 the bow; the station; the prop; whether it has a seat). Starboard mirrors them.
+B_BANKS = ((-67.5, "status_p", "wall_bank", False), (-45.0, "comms", "wall_bank", True),
+           (-22.5, "spare_p", "wall_bank", False), (0.0, "engineering", "wall_bank_core", True),
+           (22.5, "repeater_p", "wall_bank", False))
+MIRROR = {"comms": "flight_ops", "engineering": "science"}
+
+
+def mirror_station(st):
+    """The starboard twin of a port station: its named pair, or the same name ending _s."""
+    return MIRROR.get(st) or st[:-2] + "_s"
+
+
+def variant_b(ring_from=-78.0, banks=B_BANKS, helm="arc", helm_x=1.5):
+    """Round: a ring two steps up all round the sides, a well, the captain on a round dais, helm and tactical at one curved console.
+
+    The same room serves the command suite (tools/command_suite.py), with its own parameters:
+    ring_from: the angle where the port ring starts aft (the starboard ring mirrors it), so a door
+    in the wall aft of it opens at walkway level; banks: the port ring's wall banks (B_BANKS);
+    helm: "arc" seats helm and tactical at the one curved console, "pair" at two free consoles
+    helm_x either side of the centreline (design 11a's fix, so their heads clear the screen)."""
     room, cz, R, apothem = ngon_room()
     r_in = apothem - 2.0
-    ring_p, n_out, n_in = arc_ring(room, cz, r_in, -78.0, 40.0, 6)
+    ring_p, n_out, n_in = arc_ring(room, cz, r_in, ring_from, 40.0, 6)
     # Edges: the outer run is wall; the closing edges and the inner arc are risers, rails, steps.
     edges = []
     for i in range(len(ring_p)):
@@ -328,7 +350,7 @@ def variant_b():
         foot = (c[0] + tdir[0] * 0.5 * inward, c[1] + tdir[1] * 0.5 * inward)
         return c, foot
     st = []
-    c, foot = ring_end(-78.0, -1)
+    c, foot = ring_end(ring_from, -1)
     st.append(stair(c, foot, 1.6, RING, FLOOR, "Port ring down to the door aisle."))
     c, foot = ring_end(40.0, 1)
     st.append(stair(c, foot, 1.6, RING, FLOOR, "Port ring down to the forward walkway."))
@@ -349,28 +371,36 @@ def variant_b():
         a, b = w[1], w[2]
         ln = math.hypot(b[0] - a[0], b[1] - a[1])
         return wall_bank(station, prop, a, b, ln / 2, RING, seat)
-    for deg, station, prop, seat in ((-67.5, "status_p", "wall_bank", False), (-45.0, "comms", "wall_bank", True),
-                                     (-22.5, "spare_p", "wall_bank", False), (0.0, "engineering", "wall_bank_core", True),
-                                     (22.5, "repeater_p", "wall_bank", False)):
+    for deg, station, prop, seat in banks:
         pr, se = bank_at(deg, station, prop, seat)
         props.append(pr)
         if se:
             seats.append(se)
-    pairs = (("status_p", "status_s"), ("comms", "flight_ops"), ("spare_p", "spare_s"), ("engineering", "science"), ("repeater_p", "repeater_s"))
-    for st_p, st_s in pairs:
+    for st_p in [b[1] for b in banks]:
+        st_s = mirror_station(st_p)
         props += [mirror_rec(p, st_s) for p in props if p["station"] == st_p]
         seats += [mirror_rec(s, st_s) for s in seats if s["station"] == st_p]
-    props += [
-        {"prop": "helm_arc", "station": "helm_tactical", "back_m": [0.0, r3(SUB), 28.9], "yaw_deg": 180.0},
-        {"prop": "captain_chair", "station": "captain", "back_m": [0.0, r3(RING), r3(25.0 - CHAIR_SEAT)], "yaw_deg": 0.0},
-    ]
     # The curved helm's two operators, turned to face the bow (yaw 180 sends its +x to -X): helm to port.
     (hx, hz), (tx, tz) = operator("helm_arc", 0), operator("helm_arc", 1)
-    seats += [
-        {"station": "helm", "seat_m": [r3(-hx), r3(SUB), r3(28.9 - hz)], "yaw_deg": 0.0},
-        {"station": "tactical", "seat_m": [r3(-tx), r3(SUB), r3(28.9 - tz)], "yaw_deg": 0.0},
-        {"station": "captain", "seat_m": [0.0, r3(RING), 25.0], "yaw_deg": 0.0},
-    ]
+    if helm == "arc":
+        props.append({"prop": "helm_arc", "station": "helm_tactical", "back_m": [0.0, r3(SUB), 28.9], "yaw_deg": 180.0})
+        helm_seats = [
+            {"station": "helm", "seat_m": [r3(-hx), r3(SUB), r3(28.9 - hz)], "yaw_deg": 0.0},
+            {"station": "tactical", "seat_m": [r3(-tx), r3(SUB), r3(28.9 - tz)], "yaw_deg": 0.0},
+        ]
+    else:
+        # Two free desks where the arc's operators would sit fore and aft, helm_x either side.
+        z = r3(28.9 - hz)
+        props += [
+            {"prop": "free_console", "station": "helm", "back_m": [r3(helm_x), r3(SUB), r3(z + DESK_FROM_SEAT)], "yaw_deg": 180.0},
+            {"prop": "free_console", "station": "tactical", "back_m": [r3(-helm_x), r3(SUB), r3(z + DESK_FROM_SEAT)], "yaw_deg": 180.0},
+        ]
+        helm_seats = [
+            {"station": "helm", "seat_m": [r3(helm_x), r3(SUB), z], "yaw_deg": 0.0},
+            {"station": "tactical", "seat_m": [r3(-helm_x), r3(SUB), z], "yaw_deg": 0.0},
+        ]
+    props.append({"prop": "captain_chair", "station": "captain", "back_m": [0.0, r3(RING), r3(25.0 - CHAIR_SEAT)], "yaw_deg": 0.0})
+    seats += helm_seats + [{"station": "captain", "seat_m": [0.0, r3(RING), 25.0], "yaw_deg": 0.0}]
     # B moves the walls, so the windows and the viewscreen move with them.
     win = [w for w in walls if 41.0 < w[0] < 50.0][0]
     a, b = win[1], win[2]
