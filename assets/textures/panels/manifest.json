@@ -151,12 +151,12 @@
    "sha256": "381f2b2c4217beb633f856050ca906f71cfa54a3e81df747b75005ca11a3dc48"
   },
   "128/working_floor_drain.png": {
-   "bytes": 22419,
-   "sha256": "a9c1b15f53cb5051e95d922d4b941558dcda0e0271422226234ad4232c132572"
+   "bytes": 21193,
+   "sha256": "4478b240cce67a5f8d5e1f750a9eac78f3ca2014e3c382469611c66c2afe9aec"
   },
   "128/working_floor_grate.png": {
-   "bytes": 28225,
-   "sha256": "dae2e51185c3411a373b3d20fd65bdb65328beee450a0006ab2e0a3caf9f4aa1"
+   "bytes": 17718,
+   "sha256": "39efbf126eaccaa6bf00779a1ed78b6bc9f466d6b7c57755135cb3d0f27af969"
   },
   "128/working_floor_hazard.png": {
    "bytes": 20046,
@@ -171,8 +171,8 @@
    "sha256": "2131f7b48c44471348fcea66717d9f8a798d7ca455e63d4b58feb530a261dd78"
   },
   "128/working_floor_vent.png": {
-   "bytes": 19518,
-   "sha256": "58c64d2191a3005cbe72d135a6e93929f62e28c8a0c5d5c1fb133090ffccf3ca"
+   "bytes": 18947,
+   "sha256": "4fab5b1af9508cbb862805c4a8012367b78ebb27b1a9ee1c1466493b2d554c29"
   },
   "128/working_floor_walkway.png": {
    "bytes": 15309,
@@ -371,12 +371,12 @@
    "sha256": "19243c15b4c8e2b5252b5f8394d22251492a7d652fa23c87f03bea3e37962a54"
   },
   "256/working_floor_drain.png": {
-   "bytes": 81332,
-   "sha256": "6b3cce36917302825bce9c65ca3788a511500a39b27a533adefd9f3acbab2e5f"
+   "bytes": 76802,
+   "sha256": "33e0a14111289713be42c3d9a01aa11ecfa490057cd33ddda8bf6c636d554ff5"
   },
   "256/working_floor_grate.png": {
-   "bytes": 96070,
-   "sha256": "8e9b03fc9458b7d69bc5af0a33535f9f70c147f39e865b9189f3bc237ac5fca2"
+   "bytes": 57646,
+   "sha256": "7448bc36aea8782dadb87dadcbcbadeb93c3c157df3b7187364c35c38ae8231f"
   },
   "256/working_floor_hazard.png": {
    "bytes": 61790,
@@ -391,8 +391,8 @@
    "sha256": "dfc68d9c880b5d470e3ac0f800ef20dc0202443b05b8bfa5dc09ab71615fe599"
   },
   "256/working_floor_vent.png": {
-   "bytes": 71957,
-   "sha256": "a78f0c6ac98c61583cb8fef82333192daccc5befc72c8394aca3b7737a6f6dc8"
+   "bytes": 67744,
+   "sha256": "313383d8d22d7ea07a31bacb19e9076f99deaf0aad95df2e31150d860909a844"
   },
   "256/working_floor_walkway.png": {
    "bytes": 51198,
