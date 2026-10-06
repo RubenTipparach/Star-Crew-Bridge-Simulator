@@ -2721,7 +2721,7 @@ function info() {
     `<tr><td>Captain to viewscreen</td><td class="v">${fmt(Math.hypot(vs[0] - capt[0], vs[2] - capt[2]))} m</td></tr>` +
     `<tr><td>Room mesh</td><td class="v">${b.tris.toLocaleString("en-GB")} triangles, 1 draw</td></tr>` +
     (b.faces ? `<tr><td>Console faces (screens, keys)</td><td class="v">${b.faceTris.toLocaleString("en-GB")} triangles, 1 draw</td></tr>` : "") +
-    `</table><div class="note">Props are ${PROPS ? "the Blender-built models (assets/models/bridge), with helm's throttle and stick, tactical's guarded fire buttons, engineering's breakers and comms' faders" : "plain stand-ins until the Blender props are in the page"}.${SCREENS ? " Each screen shows its own station's console (bridge.html's, baked by tools/mockups/console_screens.py); desks carry key panels." : ""} Light: the kit's lamps and each console's glow, baked. A proposal: the layout holds today's bridge until the owner picks one (survey B11).</div>`;
+    `</table><div class="note">Props are ${PROPS ? "the Blender-built models (assets/models/bridge), with helm's throttle and stick, tactical's guarded fire buttons, engineering's breakers and comms' faders" : "plain stand-ins until the Blender props are in the page"}.${SCREENS ? " Each screen shows its own station's console (bridge.html's, baked by tools/mockups/console_screens.py); desks carry key panels." : ""} Light: the kit's lamps and each console's glow, baked. The owner picked B, with side rooms (2026-10-06, survey B11): command-deck.html draws it; the layout holds today's bridge until command-suite applies its patch.</div>`;
 }
 
 // ------------------------------------------------------------------ controls

@@ -9,8 +9,8 @@ It owns the panel layers (assets/textures/panels/<px>/<finish>_<module>.png, <fi
 (docs/screenshots/materials/panels-contact-sheet.png). It lives in tools/blender because the
 panels are modelled, not painted: every module is low relief carved with boolean cutters,
 chamfered and baked under one fixed light, the way the bridge props are built
-(tools/blender/build_bridge_props.py, whose primitives and Prop class it imports rather than
-copies; the blender-hard-surface skill). data/materials/panels.json is the one source for what
+(the hard-surface kit, tools/blender/hs_kit.py, whose primitives and Prop class it imports rather
+than copies; the blender-hard-surface skill). data/materials/panels.json is the one source for what
 is built: sizes, colours, wear, layers and render settings.
 
 Why Blender and not Material Maker (CLAUDE.md section 9 asks for graphs): Material Maker cannot run
@@ -70,7 +70,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(ROOT, "tools", "materials"))
-import build_bridge_props as kit  # noqa: E402  the hard-surface kit: prism, obox, ngon, frame, Prop, apply_modifiers
+import hs_kit as kit  # noqa: E402  the hard-surface kit: prism, obox, ngon, frame, Prop, apply_modifiers
 import postprocess as mm  # noqa: E402  the materials' post-process: reduce_palette, to_u8, gpu_bytes, save_png
 
 PANELS_JSON = os.path.join(ROOT, "data", "materials", "panels.json")
