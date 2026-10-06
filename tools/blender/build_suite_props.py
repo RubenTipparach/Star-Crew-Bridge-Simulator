@@ -75,7 +75,6 @@ BUDGETS = {
 SUITE_SHOWS = SHOWS + ("strip",)
 
 WALL = "floor, centre of the back, on the wall plane"
-OK = Matrix()
 
 
 def prop(name, presents, anchor=WALL):
@@ -171,9 +170,10 @@ def sofa():
     """A three-seat sofa: one profile for the base and the leaning back, arms at each end, three
     seat cushions (top at 0.45 m) and three back cushions in the page's accent."""
     p = prop("sofa", "The ready room's sofa, three seats")
-    lean = math.atan2(0.06, 0.46)
+    top = 0.85
+    lean = math.atan2(0.06, top - 0.36)
     body = p.prism("body", [(0.0, 0.0), (0.70, 0.0), (0.70, 0.07), (0.78, 0.10), (0.78, 0.36), (0.24, 0.36),
-                            (0.18, 0.82), (0.0, 0.82)], "x", -0.86, 0.86,
+                            (0.18, top), (0.0, top)], "x", -0.86, 0.86,
                    ["machinery", "machinery", "machinery", "bulkhead", "bulkhead", "bulkhead", "trim", "bulkhead"],
                    cap="bulkhead")
     arms = []
@@ -191,7 +191,7 @@ def sofa():
         cushions.append(seat)
         m = frame((0.0, 0.44, 0.24 - (0.44 - 0.36) * math.tan(lean)), math.degrees(lean))
         bx0, bx1 = x0 + (0.01 if i > 0 else 0.0), x1 - (0.01 if i < 2 else 0.0)   # the outer ends reach into the arms
-        cushions.append(p.box(f"back_{i}", (bx0, -0.03, -0.01), (bx1, 0.34, 0.10), "accent", m=m))
+        cushions.append(p.box(f"back_{i}", (bx0, -0.03, -0.01), (bx1, 0.37, 0.10), "accent", m=m))
     p.union(body, "arms_and_cushions", arms + cushions)
     p.body = body
     return p
@@ -212,21 +212,23 @@ def low_table():
 
 
 def shelf():
-    """Open wall shelving: a carcass with four bays carved out of it (four shelves, a toe kick
-    below), and boxes and binders standing on the shelves."""
+    """Open wall shelving: a carcass with four bays carved out of it (four shelves over a plinth),
+    and boxes and binders standing on the shelves."""
     p = prop("shelf", "Open shelving (the ready room, the briefing room and the bridge locker)")
     W, H, D = 1.2, 2.0, 0.4
     body = p.box("carcass", (-W / 2, 0.0, 0.0), (W / 2, H, D), "trim")
     shelves = (0.12, 0.58, 1.04, 1.50)
     bays = [p.box(f"bay_{i}", (-W / 2 + 0.03, y, 0.02), (W / 2 - 0.03, (shelves + (H,))[i + 1] - 0.03, D + 0.05),
                   {"-z": "bulkhead", "*": "machinery"}) for i, y in enumerate(shelves)]
-    bays.append(p.box("toe_kick", (-W / 2 - 0.05, -0.05, D - 0.04), (W / 2 + 0.05, 0.09, D + 0.05), "machinery"))
     p.cut(body, "bays", bays)
+    # Items stand on a shelf (1 cm into it) and, all but the top one, against a side of their bay
+    # (1 cm into it): a notch in two faces costs fewer triangles than a hole in one.
+    side = W / 2 - 0.02
     items = [
-        p.box("crate_0", (-0.50, shelves[0] - 0.01, 0.05), (-0.08, shelves[0] + 0.28, 0.35), "bulkhead"),
-        p.box("binders_1", (-0.47, shelves[1] - 0.01, 0.06), (-0.17, shelves[1] + 0.31, 0.33), "accent"),
-        p.box("box_1", (0.12, shelves[1] - 0.01, 0.08), (0.44, shelves[1] + 0.17, 0.34), "trim"),
-        p.box("binders_2", (0.08, shelves[2] - 0.01, 0.06), (0.30, shelves[2] + 0.31, 0.33), "accent"),
+        p.box("crate_0", (-side, shelves[0] - 0.01, 0.05), (-0.12, shelves[0] + 0.28, 0.35), "bulkhead"),
+        p.box("binders_1", (-side, shelves[1] - 0.01, 0.06), (-0.28, shelves[1] + 0.31, 0.33), "accent"),
+        p.box("box_1", (0.16, shelves[1] - 0.01, 0.08), (side, shelves[1] + 0.17, 0.34), "trim"),
+        p.box("binders_2", (0.30, shelves[2] - 0.01, 0.06), (side, shelves[2] + 0.31, 0.33), "accent"),
         p.box("crate_3", (-0.30, shelves[3] - 0.01, 0.06), (0.16, shelves[3] + 0.22, 0.34), "bulkhead"),
     ]
     p.union(body, "items", items)
@@ -236,21 +238,20 @@ def shelf():
 
 def bed():
     """The captain's bed: a headboard flat on the wall with a reading light, a base with two
-    drawers a side over a toe kick, a mattress (top at 0.55 m), a pillow, and a blanket in the
-    page's accent with the sheet turned down over it."""
+    drawers a side, a mattress (top at 0.55 m), a pillow, and a blanket in the page's accent
+    with the sheet turned down over it."""
     p = prop("bed", "The captain's bed, its head on the wall")
     head = p.box("headboard", (-0.70, 0.0, 0.0), (0.70, 1.0, 0.08), {"+z": "bulkhead", "*": "trim"})
     p.chamfer(head, "headboard_edge", 0.02, edge("x", {"y": 1.0, "z": 0.08}), role="trim")
-    plinth = p.box("plinth", (-0.62, 0.0, 0.07), (0.62, 0.06, 2.03), "machinery")
-    base = p.box("base", (-0.68, 0.05, 0.07), (0.68, 0.38, 2.10), "machinery")
+    base = p.box("base", (-0.68, 0.0, 0.07), (0.68, 0.38, 2.10), "machinery")
     p.chamfer(base, "base_edge", 0.015, edge("x", {"y": 0.38, "z": 2.10}))
     mattress = p.box("mattress", (-0.65, 0.37, 0.07), (0.65, 0.55, 2.07), "trim")
-    blanket = p.box("blanket", (-0.665, 0.40, 0.86), (0.665, 0.57, 2.085), "accent")
+    blanket = p.box("blanket", (-0.665, 0.37, 0.86), (0.665, 0.57, 2.085), "accent")
     p.chamfer(blanket, "blanket_edge", 0.02, edge("x", {"y": 0.57, "z": 2.085}))
-    sheet = p.box("sheet", (-0.68, 0.40, 0.78), (0.68, 0.585, 0.88), "trim")
+    sheet = p.box("sheet", (-0.675, 0.37, 0.78), (0.675, 0.585, 0.88), "trim")
     pillow = p.box("pillow", (-0.42, 0.54, 0.12), (0.42, 0.66, 0.46), "trim")
     p.chamfer(pillow, "pillow_edges", 0.02, lambda m, d, n1, n2: m.y > 0.65)
-    p.union(head, "bed", [plinth, base, mattress, blanket, sheet, pillow])
+    p.union(head, "bed", [base, mattress, blanket, sheet, pillow])
     recesses = []
     for s in (-1, 1):
         for i, zc in enumerate((0.55, 1.55)):
@@ -270,7 +271,7 @@ def wardrobe():
                             (0.0, 2.10)], "x", -0.6, 0.6,
                    ["machinery", "machinery", "machinery", "bulkhead", "machinery", "bulkhead", "trim", "bulkhead"],
                    cap="bulkhead")
-    handles = [p.prism(f"handle_{s:+d}", [(s * 0.035 - 0.012, 0.59), (s * 0.035 + 0.012, 0.59), (s * 0.035, 0.625)],
+    handles = [p.prism(f"handle_{s:+d}", [(s * 0.035 - 0.012, 0.59), (s * 0.035 + 0.012, 0.59), (s * 0.035, 0.615)],
                        "y", 0.92, 1.28, "trim") for s in (-1, 1)]
     p.union(body, "handles", handles)
     p.cut(body, "door_split", [p.box("door_split", (-0.006, 0.16, 0.588), (0.006, 1.91, 0.65), "machinery")])
@@ -283,17 +284,17 @@ def wet_cell():
     a chamfered roof edge, a closed sliding door let into the front with its handle and the rail
     it slides on, a vent let into the roof."""
     p = prop("wet_cell", "The captain's en-suite pod, shower and toilet", "floor, centre of the back")
-    W, H, D, c = 1.8, 2.3, 1.8, 0.12
+    W, H, D, c = 1.8, 2.3, 1.79, 0.12          # the rail and handle stand 2 cm proud: 1.81 m deep overall
     body = p.prism("body", [(-W / 2 + c, 0.0), (W / 2 - c, 0.0), (W / 2, c), (W / 2, D - c), (W / 2 - c, D),
                             (-W / 2 + c, D), (-W / 2, D - c), (-W / 2, c)], "y", 0.0, H, "bulkhead", cap="trim")
     p.chamfer(body, "roof_edge", 0.03, lambda m, d, n1, n2: m.y > H - 0.005, role="trim")
-    rail = p.box("rail", (-0.66, 2.10, D - 0.01), (0.66, 2.15, D + 0.03), "trim")
+    rail = p.box("rail", (-0.66, 2.10, D - 0.01), (0.66, 2.15, D + 0.02), "trim")
     p.union(body, "rail", [rail])
     recesses = []
     p.recess(recesses, "door", frame((-0.25, 1.07, D)), 0.80, 1.98, 0.015, floor_role="trim", record=False)
     p.recess(recesses, "vent", frame((0.45, H, 0.45), 90.0), 0.40, 0.40, 0.03, floor_role="machinery", record=False)
     p.cut(body, "recesses", recesses)
-    p.union(body, "handle", [p.box("handle", (0.05, 0.90, D - 0.025), (0.08, 1.30, D + 0.02), "machinery")])
+    p.union(body, "handle", [p.box("handle", (0.05, 0.90, D - 0.025), (0.08, 1.30, D + 0.015), "machinery")])
     p.body = body
     return p
 
@@ -301,17 +302,22 @@ def wet_cell():
 # ----------------------------------------------------------------------------- the head
 
 def toilet_stall():
-    """A toilet cubicle as one solid: partitions standing 0.15 m off the floor, two pilasters to
-    the floor at the front with the closed door set 4 cm back between them, a handle and an
-    occupied light on the door."""
+    """A toilet cubicle: partitions 3 cm thick standing 0.15 m off the floor, open at the top and
+    to the floor (one closed solid all the same, a tube), two pilasters to the floor at the front
+    with the closed door set 4 cm back between them, a handle and an occupied light on the door,
+    and the toilet inside on the back wall, seen from above in a cutaway."""
     p = prop("toilet_stall", "A toilet cubicle, door closed")
     shell = p.box("partitions", (-0.48, 0.15, 0.0), (0.48, 1.98, 1.46), {"+z": "trim", "+y": "trim", "*": "bulkhead"})
-    p.chamfer(shell, "partition_tops", 0.012, lambda m, d, n1, n2: m.y > 1.97 and abs(d.z) > 0.9)
     posts = [p.box(f"pilaster_{s:+d}", (min(s * 0.40, s * 0.50), 0.0, 1.40), (max(s * 0.40, s * 0.50), 2.0, 1.50), "machinery")
              for s in (-1, 1)]
     for s, post in zip((-1, 1), posts):
         p.chamfer(post, f"pilaster_{s:+d}_edges", 0.012, lambda m, d, n1, n2: m.z > 1.49 and abs(d.y) > 0.9)
     p.union(shell, "pilasters", posts)
+    p.cut(shell, "inside", [p.box("inside", (-0.45, 0.05, 0.03), (0.45, 2.1, 1.39), "bulkhead")])
+    cistern = p.box("cistern", (-0.20, 0.40, 0.02), (0.20, 0.80, 0.19), "trim")
+    bowl = p.hull("bowl", [(sx * 0.13, 0.0, z) for sx in (-1, 1) for z in (0.17, 0.52)]
+                  + [(sx * 0.19, 0.42, z) for sx in (-1, 1) for z in (0.12, 0.66)], "trim")
+    p.union(shell, "toilet", [cistern, bowl])
     recesses = []
     p.recess(recesses, "door_panel", frame((0.0, 1.07, 1.46)), 0.62, 1.60, 0.012, floor_role="trim",
              wall_role="bulkhead", record=False)
@@ -357,7 +363,7 @@ def wash_counter():
 def shower_stall():
     """A shower: a box carved open at the front and top into a tray, two side walls and a back,
     the tray's floor sunk 5 cm, a rail across the top of the open front, a shower head on an arm
-    and a mixer on the back wall under a light strip."""
+    from the back wall and a light strip along its top."""
     p = prop("shower_stall", "A shower stall, open front")
     W, H, D = 1.0, 2.2, 1.0
     body = p.box("shell", (-W / 2, 0.0, 0.0), (W / 2, H, D), {"+y": "trim", "*": "bulkhead"})
@@ -367,8 +373,7 @@ def shower_stall():
     rail = p.box("rail", (-0.47, 2.08, D - 0.08), (0.47, 2.12, D - 0.05), "machinery")
     arm = p.box("arm", (-0.015, 1.90, 0.03), (0.015, 1.93, 0.29), "machinery")
     head = p.prism("head", ngon(0.0, 0.30, 0.08, 6), "y", 1.86, 1.91, "machinery")
-    mixer = p.box("mixer", (-0.07, 1.10, 0.03), (0.07, 1.24, 0.08), "machinery")
-    p.union(body, "fittings", [rail, arm, head, mixer])
+    p.union(body, "fittings", [rail, arm, head])
     lights = []
     p.recess(lights, "light", frame((0.0, 2.05, 0.04)), 0.80, 0.05, 0.012, floor_role="light_panel", record=False)
     p.cut(body, "light", lights)
@@ -378,18 +383,20 @@ def shower_stall():
 
 def locker_bank():
     """Four tall lockers for suits and gear: one profile with a hazard-striped plinth and a
-    chamfered top, the doors split by grooves, a window (the suit behind it in the page's accent)
-    and a vent on each door."""
+    chamfered top, the doors split by V-grooves, a window (the suit behind it in the page's
+    accent) and a vent slot on each door."""
     p = prop("locker_bank", "A bank of four tall lockers (EVA suits in the bridge locker, gear in the head)")
     W, D = 2.4, 0.55
     body = p.prism("body", [(0.0, 0.0), (0.50, 0.0), (0.50, 0.12), (D, 0.12), (D, 2.04), (0.51, 2.10), (0.0, 2.10)], "x",
                    -W / 2, W / 2, ["machinery", "hazard", "machinery", "bulkhead", "trim", "machinery", "bulkhead"],
                    cap="bulkhead")
-    cuts = [p.box(f"door_split_{i}", (x - 0.006, 0.14, D - 0.012), (x + 0.006, 2.02, D + 0.05), "machinery")
-            for i, x in enumerate((-0.6, 0.0, 0.6))]
+    # The doors are split by V-grooves 12 mm wide and deep at the face (a V is four faces, a
+    # box groove five), and each door has a window and a vent slot whose top shades it (a wedge).
+    cuts = [p.prism(f"door_split_{i}", [(x - 0.031, D + 0.05), (x + 0.031, D + 0.05), (x, D - 0.012)], "y", 0.14, 2.02,
+                    "machinery") for i, x in enumerate((-0.6, 0.0, 0.6))]
     for i, x in enumerate((-0.9, -0.3, 0.3, 0.9)):
-        cuts.append(p.box(f"window_{i}", (x - 0.11, 1.38, D - 0.015), (x + 0.11, 1.72, D + 0.05), {"-z": "accent", "*": "machinery"}))
-        cuts.append(p.prism(f"vent_{i}", [(D + 0.05, 0.30), (D + 0.05, 0.40), (D - 0.03, 0.40)], "x", x - 0.16, x + 0.16,
+        cuts.append(p.box(f"window_{i}", (x - 0.11, 1.30, D - 0.015), (x + 0.11, 1.64, D + 0.05), {"-z": "accent", "*": "machinery"}))
+        cuts.append(p.prism(f"vent_{i}", [(D + 0.05, 0.24), (D + 0.05, 0.38), (D - 0.04, 0.38)], "x", x - 0.18, x + 0.18,
                             "machinery"))
     p.cut(body, "doors", cuts)
     p.body = body
@@ -412,14 +419,14 @@ def workbench():
     board = p.box("pegboard", (-W / 2 + 0.02, H - 0.01, 0.0), (W / 2 - 0.02, 1.75, 0.03), "bulkhead")
     lamp = p.box("lamp", (-0.80, 1.66, 0.02), (0.80, 1.72, 0.10), {"-y": "light_panel", "*": "machinery"})
     tools = [
-        p.box("wrench", (-0.70, 1.08, 0.02), (-0.66, 1.42, 0.045), "trim"),
+        p.box("wrench", (-0.02, -0.17, 0.02), (0.02, 0.17, 0.045), "trim",
+              m=Matrix.Translation((-0.68, 1.25, 0.0)) @ Matrix.Rotation(math.radians(-20.0), 4, "Z")),
         p.box("hammer_handle", (-0.52, 1.06, 0.02), (-0.49, 1.38, 0.05), "accent"),
         p.box("hammer_head", (-0.58, 1.36, 0.02), (-0.43, 1.41, 0.06), "trim"),
         p.box("driver_rack", (-0.25, 1.30, 0.02), (0.15, 1.36, 0.08), "accent"),
-        p.prism("cable_coil", ngon(0.50, 1.25, 0.13, 6, flat_back=False), "z", 0.02, 0.06, "machinery"),
+        p.prism("cable_coil", ngon(0.50, 1.25, 0.13, 5, flat_back=False), "z", 0.02, 0.06, "machinery"),
     ]
     vice = p.box("vice", (-0.78, H - 0.01, D - 0.22), (-0.58, H + 0.10, D - 0.02), "machinery")
-    p.chamfer(vice, "vice_edges", 0.012, lambda m, d, n1, n2: m.y > H + 0.09)
     p.union(top, "bench", frames + [shelf, board, lamp, vice] + tools)
     p.body = top
     return p
@@ -427,7 +434,7 @@ def workbench():
 
 def server_rack():
     """A computer core rack: a cabinet with its front corners cut, one lit as a vertical strip, a
-    toe kick, a front grille of louvre slots, and a cable tray along its top."""
+    toe kick, a front grille of six louvre slots, and a cable tray along its top."""
     p = prop("server_rack", "A computer core rack, its front at z = 1.1", "floor, centre of the back (the side away from the front)")
     W, H, D = 0.8, 2.0, 1.1
     body = p.prism("cabinet", [(-W / 2, 0.0), (W / 2, 0.0), (W / 2, D - 0.04), (W / 2 - 0.04, D), (-W / 2 + 0.04, D),
@@ -435,15 +442,14 @@ def server_rack():
                    ["machinery", "machinery", "light_panel", "bulkhead", "machinery", "machinery"], cap="trim")
     cuts = [p.prism("toe_kick", [(D - 0.06, -0.05), (D + 0.05, -0.05), (D + 0.05, 0.08), (D - 0.06, 0.08)], "x",
                     -W / 2 - 0.05, W / 2 + 0.05, "machinery")]
-    for i in range(7):
-        y0 = 0.28 + i * 0.22
+    for i in range(6):
+        y0 = 0.30 + i * 0.25
         cuts.append(p.prism(f"slot_{i}", [(D + 0.05, y0), (D + 0.05, y0 + 0.09), (D - 0.04, y0 + 0.045)], "x", -0.27, 0.27,
                             "machinery"))
     p.cut(body, "grille", cuts)
     tray = p.box("tray", (-0.16, H - 0.01, 0.06), (0.16, 2.10, D - 0.06), "trim")
     p.cut(tray, "tray_channel", [p.box("tray_channel", (-0.13, H + 0.03, 0.0), (0.13, 2.2, D), "machinery")])
-    cables = p.box("cables", (-0.09, H + 0.025, 0.04), (0.09, H + 0.075, D - 0.04), "machinery")
-    p.union(body, "tray", [tray, cables])
+    p.union(body, "tray", [tray])
     p.body = body
     return p
 

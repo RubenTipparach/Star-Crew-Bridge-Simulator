@@ -1,11 +1,13 @@
-"""Stills of the bridge props, for looking at them before anyone else does (CLAUDE.md 12).
+"""Stills of a prop set (the bridge props or the suite props), for looking at them before anyone
+else does (CLAUDE.md 12).
 
-It owns nothing the game loads. It imports the exported .glb files listed in
-assets/models/bridge/props.json, not the build's scene (CLAUDE.md 6.6, validate the real
-artifact), so the pictures show the geometry, normals and materials as the page will get
-them. It writes:
-  docs/screenshots/props/<name>.png       one prop, isometric, on a floor (and a wall for a wall bank)
-  docs/screenshots/props/contact-sheet.png every prop laid out together, labelled with its triangles
+It owns nothing the game loads. It imports the exported .glb files listed in the set's
+props.json (assets/models/<set>/props.json), not the build's scene (CLAUDE.md 6.6, validate the
+real artifact), so the pictures show the geometry, normals and materials as the page will get
+them. It writes, into docs/screenshots/props/ (or --shots):
+  <name>.png            one prop, isometric, on a floor (and a wall when its anchor is on the wall plane)
+  the set's sheet       every prop laid out together, labelled with its triangles: contact-sheet.png
+                        for the bridge set, suite-props.png for the suite set
 Flat colours come from the glb's own materials (the build takes them from each Material Maker
 layer's mean colour, and from shipkit.js for screen and accent); screens and light strips glow.
 Edges are drawn with Freestyle so the chamfers and cuts read, the cutaway look. Cycles on the CPU
@@ -13,8 +15,13 @@ with few samples: it runs headless, without a GPU (Workbench and EEVEE need an O
 that a cloud session does not have).
 
 Run (from anywhere):
-  <python with the bpy module> tools/blender/render_bridge_props.py [--only a,b] [--samples 24] [--no-sheet]
-  blender -b --factory-startup -P tools/blender/render_bridge_props.py -- [same options]
+  <python with the bpy module> tools/blender/render_props.py [--set bridge|suite] [--only a,b] [--samples 24]
+      [--no-sheet] [--no-stills] [--shots DIR]
+  blender -b --factory-startup -P tools/blender/render_props.py -- [same options]
+  --set        which prop set (default bridge)
+  --only       render the stills of only these props (the sheet still shows the whole set)
+  --no-sheet   skip the contact sheet; --no-stills skip the stills
+  --shots      write into DIR instead of docs/screenshots/props
 """
 import json
 import math
@@ -26,23 +33,59 @@ from mathutils import Vector  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
-PROPS_DIR = os.path.join(ROOT, "assets", "models", "bridge")
 SHOTS = os.path.join(ROOT, "docs", "screenshots", "props")
 VIEW = Vector((1.0, -1.35, 0.95)).normalized()      # from the prop toward the camera: front right, above
 FLOOR_RGB = (0.025, 0.028, 0.034)   # linear
 WALL_RGB = (0.06, 0.066, 0.078)
-SHEET_ROWS = [["wall_bank_core", "wall_bank_core_engineering", "wall_bank", "wall_bank_comms", "wall_bank_double"],
-              ["free_console", "free_console_helm", "free_console_tactical", "helm_arc", "standup_console"],
-              ["captain_chair", "crew_chair"]]
+# Per set: its folder, the sheet's rows (the first row stands against a wall), the sheet's file, the
+# gaps between its rows (wide enough that a tall prop does not hide the labels of the row behind) and
+# its props, and the labels' size.
+SETS = {
+    "bridge": {
+        "dir": os.path.join(ROOT, "assets", "models", "bridge"),
+        "rows": [["wall_bank_core", "wall_bank_core_engineering", "wall_bank", "wall_bank_comms", "wall_bank_double"],
+                 ["free_console", "free_console_helm", "free_console_tactical", "helm_arc", "standup_console"],
+                 ["captain_chair", "crew_chair"]],
+        "sheet": "contact-sheet.png",
+        "gap_y": 2.6,     # metres between rows, front of one to back of the next
+        "gap_x": 0.8,     # metres between props in a row
+        "label_m": 0.13,  # the labels' letter height
+    },
+    "suite": {
+        "dir": os.path.join(ROOT, "assets", "models", "suite"),
+        "rows": [["wall_screen", "shelf", "wardrobe", "locker_bank", "wash_counter"],
+                 ["workbench", "sofa", "bed", "toilet_stall", "shower_stall"],
+                 ["briefing_table", "desk", "low_table", "wet_cell", "server_rack"]],
+        "sheet": "suite-props.png",
+        "gap_y": 3.8,     # the suite's pod and stalls are tall: a 2.3 m prop hides 3.3 m of floor behind it
+        "gap_x": 1.0,
+        "label_m": 0.17,  # a wider scene than the bridge's, so larger labels to stay legible
+    },
+}
+
+
+def on_wall(row):
+    """A prop whose back stands on a wall (its anchor says so): its stills draw the wall."""
+    return "wall plane" in row["anchor"]
 
 
 def parse_args():
     args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else (
         [] if os.path.basename(sys.argv[0]).startswith("blender") else sys.argv[1:])
-    opts = {"only": None, "samples": 24, "sheet": True}
+    opts = {"set": "bridge", "only": None, "samples": 24, "sheet": True, "stills": True, "shots": SHOTS}
     i = 0
     while i < len(args):
-        if args[i] == "--only":
+        if args[i] == "--set":
+            opts["set"] = args[i + 1]
+            i += 1
+            if opts["set"] not in SETS:
+                raise SystemExit(f"[render] no prop set {opts['set']!r}; the sets are {', '.join(SETS)}")
+        elif args[i] == "--shots":
+            opts["shots"] = os.path.abspath(args[i + 1])
+            i += 1
+        elif args[i] == "--no-stills":
+            opts["stills"] = False
+        elif args[i] == "--only":
             opts["only"] = args[i + 1].split(",")
             i += 1
         elif args[i] == "--samples":
@@ -226,28 +269,28 @@ def render(path):
     print("[render] wrote", path)
 
 
-def one(name, row, samples):
+def one(props_dir, shots, name, row, samples):
     props = reset(samples)
-    objs = import_prop(os.path.join(PROPS_DIR, row["file"]), props, Vector())
+    objs = import_prop(os.path.join(props_dir, row["file"]), props, Vector())
     plane("Floor", (12, 12), (0, 0, 0), (0, 0, 0), plain("floor", FLOOR_RGB))
-    if name.startswith("wall_bank"):
-        # the wall the bank is built into, 2 mm behind its back face (prop z = 0 is Blender y = 0)
+    if on_wall(row):
+        # the wall the prop stands on, 2 mm behind its back face (prop z = 0 is Blender y = 0)
         plane("Wall", (12, 6), (0, 0.002, 3), (math.radians(90), 0, 0), plain("wall", WALL_RGB))
     camera(objs, (1024, 768))
-    render(os.path.join(SHOTS, name + ".png"))
+    render(os.path.join(shots, name + ".png"))
 
 
-def sheet(rows, samples):
+def sheet(ps, out, rows, samples):
     """Every prop on one floor: the wall banks against a wall, the free-standing consoles in front
     of them, the chairs in front of those, each labelled with its triangles and budget."""
     props = reset(samples)
     text_mat = plain("label", (0.75, 0.78, 0.82))
     labels = bpy.data.collections.new("Labels")
     bpy.context.scene.collection.children.link(labels)
-    gap_x, gap_y = 0.8, 2.6
+    gap_x, gap_y = ps["gap_x"], ps["gap_y"]
     y = 0.0                                                 # Blender y of the row's back line
     placed = []
-    for r, names in enumerate(SHEET_ROWS):
+    for r, names in enumerate(ps["rows"]):
         names = [n for n in names if n in rows]
         if not names:
             continue
@@ -258,30 +301,32 @@ def sheet(rows, samples):
             b = rows[n]["bounds_m"]
             # prop z (toward the operator) is Blender -y: put the prop's back on the row's line
             off = Vector((x - b["min"][0], y + b["min"][2], 0.0))
-            objs = import_prop(os.path.join(PROPS_DIR, rows[n]["file"]), props, off)
+            objs = import_prop(os.path.join(ps["dir"], rows[n]["file"]), props, off)
             placed += objs
             front_y = y - (b["max"][2] - b["min"][2])
             placed.append(label(f"{n}\n{rows[n]['triangles']} / {rows[n]['budget_triangles']} triangles",
-                                Vector((x + w / 2, front_y - 0.12, 0.003)), 0.13, labels, text_mat))
+                                Vector((x + w / 2, front_y - 0.12, 0.003)), ps["label_m"], labels, text_mat))
             x += w + gap_x
         if r == 0:
             plane("Wall", (40, 6), (0, 0.002, 3), (math.radians(90), 0, 0), plain("wall", WALL_RGB))
         y -= max(rows[n]["dimensions_m"][2] for n in names) + gap_y
     plane("Floor", (40, 40), (0, -5, 0), (0, 0, 0), plain("floor", FLOOR_RGB))
     camera(placed, (1600, 1100), margin=1.05)
-    render(os.path.join(SHOTS, "contact-sheet.png"))
+    render(out)
 
 
 def main():
     opts = parse_args()
-    rows = json.load(open(os.path.join(PROPS_DIR, "props.json"), encoding="utf-8"))["props"]
-    os.makedirs(SHOTS, exist_ok=True)
-    for n in opts["only"] or list(rows):
-        if n not in rows:
-            raise SystemExit(f"[render] {n!r} is not in props.json")
-        one(n, rows[n], opts["samples"])
+    ps = SETS[opts["set"]]
+    rows = json.load(open(os.path.join(ps["dir"], "props.json"), encoding="utf-8"))["props"]
+    os.makedirs(opts["shots"], exist_ok=True)
+    if opts["stills"]:
+        for n in opts["only"] or list(rows):
+            if n not in rows:
+                raise SystemExit(f"[render] {n!r} is not in props.json")
+            one(ps["dir"], opts["shots"], n, rows[n], opts["samples"])
     if opts["sheet"]:
-        sheet(rows, opts["samples"])
+        sheet(ps, os.path.join(opts["shots"], ps["sheet"]), rows, opts["samples"])
 
 
 if __name__ == "__main__":

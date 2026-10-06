@@ -9,7 +9,7 @@ separate request once the owner approves the mockup (CLAUDE.md 10).
 - [x] 1.1 Proposal, design and spec deltas for `bridge-stations`.
 - [x] 1.2 `docs/mockups/bridge.html`: the bridge from the layout, live viewscreen and windows, three lighting states, walk mode, every bridge console as an overlay matching the wireframes.
 - [x] 1.3 Screenshots in `docs/screenshots/mockups/bridge-*.png`, looked at.
-- [ ] 1.4 Put questions B1-B6 in the owner survey with their shots; fold the answers back into this change.
+- [ ] 1.4 Put questions B1-B6 in the owner survey with their shots; fold the answers back into this change. B1, B2 and B3 answered 2026-10-06 and folded into the design's open questions; B4-B6 open.
 - [x] 1.5 The owner's Star Trek references described (`docs/analysis/star-trek-bridges.md`); three bridge variants as data (`tools/bridge_variants.py`, `data/ships/tern/bridge_variants.json`), drawn by `docs/mockups/bridge-variants.html` with Blender-built consoles; design section 11a.
 - [ ] 1.6 Put B11 (which bridge) in the survey with the variant shots; when the owner picks, patch the layout with the variant (platforms as a layout field the checker validates), rewrite 11.1 from it and rerun `crew-on-deck`'s bridge routes. B11 answered 2026-10-06 (B, with side rooms); the patch, 11.1 and the routes are `command-suite`'s task 2.
 - [ ] 1.7 Console faces (design 11.6):

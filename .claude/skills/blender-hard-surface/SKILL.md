@@ -1,6 +1,6 @@
 ---
 name: blender-hard-surface
-description: Model Star Crew's low-poly hard-surface props in Blender the CSG way, scripted and headless. Block out from primitives (boxes, extruded profiles, convex hulls, a lathe), carve with named cutter objects through Boolean modifiers (Exact solver, materials transferred from the cutters), union the pieces, chamfer only the edges that catch light with a 1-segment Bevel, then clean (weld, degenerate and limited dissolve), triangulate, project UVs in metres the way shipkit's worldUv does, check (manifold, no coplanar overlaps, triangle budget) and export a byte-reproducible glb with a manifest. Use whenever making or changing a Blender prop or a console, desk, chair, panel or fixture model (tools/blender/build_bridge_props.py), or asking about hard surface modelling, booleans, CSG, cutters, bevels and chamfers, low poly props, triangle budgets, cleaning a boolean result, glb export or running Blender headless ("hard surface", "boolean", "CSG", "Blender prop", "console model", "chair model", "cutter", "bevel", "low poly prop", "glb export").
+description: Model Star Crew's low-poly hard-surface props in Blender the CSG way, scripted and headless. Block out from primitives (boxes, extruded profiles, convex hulls, a lathe), carve with named cutter objects through Boolean modifiers (Exact solver, materials transferred from the cutters), union the pieces, chamfer only the edges that catch light with a 1-segment Bevel, then clean (weld, degenerate and limited dissolve), triangulate, project UVs in metres the way shipkit's worldUv does, check (manifold, no coplanar overlaps, triangle budget) and export a byte-reproducible glb with a manifest. Use whenever making or changing a Blender prop or a console, desk, chair, table, bed, locker, rack, panel or fixture model (tools/blender/build_bridge_props.py, build_suite_props.py and their shared kit hs_kit.py), or asking about hard surface modelling, booleans, CSG, cutters, bevels and chamfers, low poly props, triangle budgets, cleaning a boolean result, glb export or running Blender headless ("hard surface", "boolean", "CSG", "Blender prop", "console model", "chair model", "cutter", "bevel", "low poly prop", "glb export").
 metadata:
   author: Star Crew (Claude Code)
   version: "1.0"
@@ -10,7 +10,8 @@ metadata:
 
 The owner, 2026-10-05, sharing Star Trek bridge cutaways: "look at how to do hard surface
 modeling in blender with booleans and CSG". This skill is how a Star Crew prop is made that way:
-the bridge furniture in `assets/models/bridge/` is its worked example. CLAUDE.md section 9 has the
+the bridge furniture in `assets/models/bridge/` and the command suite's furniture in
+`assets/models/suite/` are its worked examples. CLAUDE.md section 9 has the
 art rules it serves (low poly, textured, lit by the bake, meshes built by committed generators,
 every asset under a triangle budget that the build enforces) and section 8 the no-z-fighting
 rule. Rooms and levels are a different job: see "Props here, rooms in blender-csg-levels" below.
@@ -19,11 +20,13 @@ rule. Rooms and levels are a different job: see "Props here, rooms in blender-cs
 
 | File | What it is |
 | --- | --- |
-| `tools/blender/build_bridge_props.py` | The generator and the kit: primitives, the `Prop` class (`cut`, `union`, `chamfer`, `recess`), `clean`, `check`, the glb export and its read-back. The script is the source; nothing else is. |
-| `tools/blender/render_bridge_props.py` | Stills of the exported glbs (not the build's scene), one per prop plus a contact sheet. |
-| `assets/models/bridge/<name>.glb` | One prop per file. |
-| `assets/models/bridge/props.json` | The manifest (`starcrew.props/1`): per prop its file, dimensions, bounds, anchor, operator or seat points, screens, triangles against budget, materials, its CSG steps and the glb's sha256; the generator and Blender versions. Written by the build, never by hand. |
-| `docs/screenshots/props/` | `<name>.png` and `contact-sheet.png`. Look at them before anyone else does. |
+| `tools/blender/hs_kit.py` | The kit every prop set shares: materials (`ROLES`), primitives (`prism`, `obox`, `hull`, `ngon`, `lathe`, `frame`, `in_frame`, `clip_polygon`, `triangle_inset`), the `Prop` class (`cut`, `union`, `chamfer`, `recess`, and the named `box`, `prism`, `hull`), `clean`, `finish`, `check`, the glb export and its read-back (`read_glb`, `verify_glb`), the manifest writer and the command line (`PropSet`, `run`). `build_wall_panels.py` imports it too. Never copy it into a builder. |
+| `tools/blender/build_bridge_props.py` | The bridge set: its props, their hand controls (`throttle`, `stick`, `guarded_button`, `toggle`, `slider_bank`), budgets, manifest status and rules. The script is the source; nothing else is. |
+| `tools/blender/build_suite_props.py` | The command suite's set (see "Suite props"), the same way. |
+| `tools/blender/render_props.py` | Stills of a set's exported glbs (not the build's scene), one per prop plus the set's contact sheet: `--set bridge` (the default) or `--set suite`. |
+| `assets/models/<set>/<name>.glb` | One prop per file. |
+| `assets/models/<set>/props.json` | The manifest (`starcrew.props/1`): per prop its file, dimensions, bounds, anchor, operator or seat points (and, for the suite, `operators_yaw_deg`), screens, triangles against budget, materials, its CSG steps and the glb's sha256; the generator and Blender versions. Written by the build, never by hand. |
+| `docs/screenshots/props/` | `<name>.png`, the bridge's `contact-sheet.png` and the suite's `suite-props.png`. Look at them before anyone else does. |
 
 ## Running it headless
 
@@ -32,7 +35,8 @@ Two ways, the same script:
 ```sh
 # Blender as a Python module (pip install bpy; matches Blender 4.5 LTS):
 python tools/blender/build_bridge_props.py [--check] [--only a,b] [--blend out.blend]
-python tools/blender/render_bridge_props.py [--only a,b] [--samples 24] [--no-sheet]
+python tools/blender/build_suite_props.py [--check] [--only a,b] [--blend out.blend]
+python tools/blender/render_props.py [--set bridge|suite] [--only a,b] [--samples 24] [--no-sheet] [--no-stills] [--shots DIR]
 # The Blender binary:
 blender -b --factory-startup -P tools/blender/build_bridge_props.py -- [same options]
 ```
@@ -40,7 +44,7 @@ blender -b --factory-startup -P tools/blender/build_bridge_props.py -- [same opt
 - **`import bpy` first.** With the pip module, `bmesh` and `mathutils` do not exist until `bpy`
   is imported; `import bmesh` on line one fails with ModuleNotFoundError.
 - **Arguments.** Under the binary, the script's options follow `--`; as a module they are plain
-  `sys.argv`. Both scripts accept both.
+  `sys.argv`. Every script accepts both (the builders through `hs_kit.run`).
 - **Start empty.** `bpy.ops.wm.read_factory_settings(use_empty=True)`, so no user preference or
   startup file changes the result.
 - **Rendering needs no GPU, but only Cycles works.** Workbench and EEVEE need an OpenGL context
@@ -134,15 +138,17 @@ Rules that keep the Exact solver's result clean (they are the level kit's, at pr
 Then `check(prop)` refuses the prop when it finds: an edge without exactly two faces or a
 non-manifold vertex, a degenerate triangle, two triangles facing the same way within 1 cm of each
 other's plane that overlap (coplanar z-fighting, CLAUDE.md 8), an upward face within 1 cm of the
-floor, or (a wall bank) a face toward the room within 1 cm of the wall plane. The check is pinned:
+floor, or (a wall-standing prop, `Prop(..., wall=True)`) a face toward the room within 1 cm of the
+wall plane. The check is pinned:
 a join of two overlapping boxes is caught (coplanar overlaps), an open box is caught (4
 non-manifold edges), and the same boxes through an Exact union pass with 12 triangles.
 
 ## Triangle budgets
 
-The budgets came with the props' brief (2026-10-05), inside bridge-stations section 12's
-allowance (700 for a desk with its screen, 300 for a seat). The build refuses a prop over its
-budget, naming it and its count, and writes nothing at all.
+The bridge set's budgets came with the props' brief (2026-10-05), inside bridge-stations section
+12's allowance (700 for a desk with its screen, 300 for a seat); the suite set's are under "Suite
+props". The build refuses a prop over its budget, naming it and its count, and writes nothing at
+all.
 
 | Prop | Size (x, y, z) m | Triangles | Budget |
 | --- | --- | ---: | ---: |
@@ -179,6 +185,37 @@ Where the triangles go, and what to do about it:
   per-plane tally show which faces are expensive.
 - **Cut the cheapest detail first**: side chamfers before front chamfers, a chamfer before a
   cushion. The crew chair kept its cushions and lost the cushion's side chamfers (158 to 154).
+- **A notch is no cheaper than a hole.** Standing the shelf's items against the sides of their
+  bays (each then notched the shelf and the side instead of holing the shelf) left the shelf at
+  168. Running the locker bank's door splits off both ends of its front (splitting the face, not
+  holing it) took the front from 82 to 69 triangles, but notched the plinth's underside and the
+  top chamfer by 12 each: 212 to 210.
+- **Bury undersides, and groove with a V.** The bed's blanket and turned-down sheet hung 2 cm
+  above the base, and their undersides cost 16 triangles; sunk 1 cm into the base they cost
+  nothing (226 to 210). A V-groove (a triangular prism cutter, four faces) costs 6 triangles where
+  a box groove costs 10 or more: the locker bank's door splits as Vs took it from 210 to 190. A
+  louvre band cut across all four doors and crossed by the splits cost 270.
+
+## Suite props
+
+The command suite's rooms off the round bridge (the ready room, briefing room, captain's quarters,
+head, bridge locker and computer core; `openspec/changes/command-suite` design section 5) are
+furnished by a second set of fifteen props, built by `tools/blender/build_suite_props.py` into
+`assets/models/suite/` with its own `props.json`: `briefing_table` 140 of 400 triangles,
+`wall_screen` 76/120, `desk` 212/300, `sofa` 192/200, `low_table` 52/60, `shelf` 156/160, `bed`
+194/200, `wardrobe` 72/80, `wet_cell` 110/140, `toilet_stall` 194/200, `wash_counter` 212/220,
+`shower_stall` 144/160, `locker_bank` 190/200, `server_rack` 138/140, `workbench` 218/220. Its
+conventions are the bridge set's, with +Z toward the user (a desk's sitter, a bed's foot, a door's
+outside), every back at z = 0 (flat on the wall plane where the anchor says so; the read-back
+checks it through `Prop(..., wall=True)` or `back_at_z0=True`), `accent` for upholstery, blankets,
+binders and the suits behind the locker windows, a screen kind `strip` for the briefing table's
+display, and `operators_yaw_deg` beside `operators_m` (the table's eight seats face +Z or -Z). The
+toilet stall is one closed solid shaped as a tube, partitions open at the top and to the floor, so
+a cutaway from above sees the toilet inside. Both builders hold only their own props and import
+everything else from the shared module `tools/blender/hs_kit.py` (a `PropSet` handed to `run`), so
+a fix to the kit reaches both; after one, every builder's `--check` must pass, and the bridge set
+stays byte for byte the same. The set's contact sheet is `docs/screenshots/props/suite-props.png`
+(`render_props.py --set suite`).
 
 ## The export conventions
 
@@ -198,7 +235,7 @@ Where the triangles go, and what to do about it:
 glb and props.json). Nothing in the file varies: the exporter writes no images, no extras
 and no timestamps, and its one free-text field is `asset.generator`, "Khronos glTF Blender I/O
 v4.5.51", fixed per version. Everything that orders output is stable: prop order is the `PROPS`
-table's, material slots are `ROLES` order, bmesh operators are deterministic. The manifest records
+table's (each builder's), material slots are `ROLES` order (the kit's), bmesh operators are deterministic. The manifest records
 each glb's sha256 with the Blender and exporter versions; `--check` rebuilds in memory and fails
 on any difference (so run it with the version the manifest names).
 
@@ -256,10 +293,10 @@ The main bridge mockup still builds its own box furniture (`stationProps` in
 
 | Check | How |
 | --- | --- |
-| Builds, inside its budget, manifold, no overlaps | `build_bridge_props.py` (it refuses otherwise, and writes nothing) |
+| Builds, inside its budget, manifold, no overlaps | `build_bridge_props.py` or `build_suite_props.py` (it refuses otherwise, and writes nothing) |
 | The file is what it says | The build's read-back: floor at y 0, back at z 0, flat normals, UV0 equals `worldUv`, screens face +Z, every manifest screen on a screen face |
-| Reproducible | `build_bridge_props.py --check` |
-| It reads | `render_bridge_props.py`, then look at `<name>.png` and the contact sheet yourself: crisp, chamfered, purposeful, in the cutaway references' style |
+| Reproducible | The builder's `--check`; after a change to `hs_kit.py`, every builder's (the bridge set must stay byte for byte the same) |
+| It reads | `render_props.py --set <set>`, then look at `<name>.png` and the contact sheet yourself: crisp, chamfered, purposeful, in the cutaway references' style |
 | Dashes | CLAUDE.md 5 grep |
 | On the Pi | Not from here: a cloud render is not a Pi measurement (CLAUDE.md 2) |
 

@@ -1,0 +1,747 @@
+{
+  "schema": "starcrew.props/1",
+  "status": "Built (2026-10-06) by tools/blender/build_suite_props.py. Proposed furniture for the command suite's rooms (openspec/changes/command-suite design section 5, deck-pipeline section 5); no page or engine code loads them yet.",
+  "_rules": [
+    "This file is written by tools/blender/build_suite_props.py; never edit it by hand. Rebuild, and the .glb files and this file change together.",
+    "Metres. Prop space is the glTF frame: +Y up, +Z toward the user (the prop's front: the side it is used or sat at, a bed's foot, a door's outside), +X the user's right as they face the prop.",
+    "The origin is on the floor at the centre of the prop's back (z = 0). An anchor 'on the wall plane' means the back stands flat on a wall there; the briefing table's and the low table's back is one long edge.",
+    "Placing props (command_suite.json furnishings): back_m is the anchor and yaw_deg the way the prop's +Z faces. operators_m are floor points where a user sits or stands, and operators_yaw_deg (where given) the way each one faces in prop space, 0 toward +Z and 180 toward -Z.",
+    "Materials are roles: machinery, trim, bulkhead, hazard and light_panel are data/materials/materials.json layers; screen is emissive and coloured by the page; accent (upholstery, blankets, binders, a suit behind a locker window) is tinted by the page.",
+    "screens are the recess floors a page draws on: centre_m on the floor, normal out of it, up the in-plane direction of height_m (width_m runs along up x normal). shows says what: console (a main screen image, assets/textures/screens/screens.json), keys (a key panel) or strip (a long table display the page fills with a generic display).",
+    "UV0 is in metres, projected per face as shipkit.js worldUv does (x, z where |n.y| > 0.75, else the face's horizontal tangent and y); divide by the material's span_m.",
+    "Flat shaded (one normal per face), triangulated, one closed manifold solid per prop; faces against the floor or the wall are kept for the deck compiler to drop.",
+    "triangles is counted in the .glb; the build refuses a prop over budget_triangles. sha256 is the .glb's, from the Blender and exporter versions in generator: a second build with them writes the same bytes."
+  ],
+  "generator": {
+    "script": "tools/blender/build_suite_props.py",
+    "blender": "4.5.14 LTS",
+    "gltf_exporter": "4.5.51"
+  },
+  "props": {
+    "briefing_table": {
+      "file": "briefing_table.glb",
+      "presents": "The briefing room's table, for eight, with a display strip down its middle",
+      "anchor": "floor, centre of the long back edge (z = 0 is one long side, z = 1.4 the other)",
+      "dimensions_m": [
+        4.0,
+        0.75,
+        1.4
+      ],
+      "bounds_m": {
+        "min": [
+          -2.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          2.0,
+          0.75,
+          1.4
+        ]
+      },
+      "operators_m": [
+        [
+          -1.5,
+          0.0,
+          -0.55
+        ],
+        [
+          -0.5,
+          0.0,
+          -0.55
+        ],
+        [
+          0.5,
+          0.0,
+          -0.55
+        ],
+        [
+          1.5,
+          0.0,
+          -0.55
+        ],
+        [
+          -1.5,
+          0.0,
+          1.95
+        ],
+        [
+          -0.5,
+          0.0,
+          1.95
+        ],
+        [
+          0.5,
+          0.0,
+          1.95
+        ],
+        [
+          1.5,
+          0.0,
+          1.95
+        ]
+      ],
+      "operators_yaw_deg": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        180.0,
+        180.0,
+        180.0,
+        180.0
+      ],
+      "screens": [
+        {
+          "label": "strip",
+          "shows": "strip",
+          "centre_m": [
+            0.0,
+            0.735,
+            0.7
+          ],
+          "normal": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "up": [
+            0.0,
+            0.0,
+            -1.0
+          ],
+          "width_m": 3.0,
+          "height_m": 0.3
+        }
+      ],
+      "triangles": 140,
+      "budget_triangles": 400,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "screen"
+      ],
+      "csg": [
+        "chamfer top_edge (8 edges, 20 mm)",
+        "chamfer plinth_0_edges (4 edges, 15 mm)",
+        "chamfer plinth_1_edges (4 edges, 15 mm)",
+        "union pedestals (4)",
+        "difference screens (1)"
+      ],
+      "sha256": "14ef9a2875f39406966a2beffdfdcd661c92a1a7da97e591126aa1fd1eaa1a2b"
+    },
+    "wall_screen": {
+      "file": "wall_screen.glb",
+      "presents": "The briefing room's wall screen, 3.0 x 1.6 m, on the aft wall",
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        3.0,
+        2.6,
+        0.1
+      ],
+      "bounds_m": {
+        "min": [
+          -1.5,
+          0.0,
+          0.0
+        ],
+        "max": [
+          1.5,
+          2.6,
+          0.1
+        ]
+      },
+      "operators_m": [],
+      "screens": [
+        {
+          "label": "screen",
+          "shows": "console",
+          "centre_m": [
+            0.0,
+            1.79,
+            0.08
+          ],
+          "normal": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "up": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "width_m": 2.88,
+          "height_m": 1.5
+        }
+      ],
+      "triangles": 76,
+      "budget_triangles": 120,
+      "materials": [
+        "machinery",
+        "bulkhead",
+        "light_panel",
+        "screen"
+      ],
+      "csg": [
+        "chamfer bezel_edges (3 edges, 15 mm)",
+        "difference screens (3)"
+      ],
+      "sha256": "2226ec07d1ac9a4fbe1b02feb18ec7509e508db439411317d4e6da834430a122"
+    },
+    "desk": {
+      "file": "desk.glb",
+      "presents": "A desk with its monitor (the ready room's and the quarters')",
+      "anchor": "floor, centre of the back edge",
+      "dimensions_m": [
+        1.6,
+        1.25,
+        0.75
+      ],
+      "bounds_m": {
+        "min": [
+          -0.8,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.8,
+          1.25,
+          0.75
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          0.95
+        ]
+      ],
+      "screens": [
+        {
+          "label": "monitor",
+          "shows": "console",
+          "centre_m": [
+            0.0,
+            1.04,
+            0.158
+          ],
+          "normal": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "up": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "width_m": 0.74,
+          "height_m": 0.36
+        },
+        {
+          "label": "keys",
+          "shows": "keys",
+          "centre_m": [
+            0.0,
+            0.738,
+            0.47
+          ],
+          "normal": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "up": [
+            0.0,
+            0.0,
+            -1.0
+          ],
+          "width_m": 0.6,
+          "height_m": 0.2
+        }
+      ],
+      "triangles": 212,
+      "budget_triangles": 300,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "screen"
+      ],
+      "csg": [
+        "chamfer front_edge (1 edges, 20 mm)",
+        "chamfer stand_foot_edges (4 edges, 8 mm)",
+        "union frame_and_monitor (6)",
+        "difference recesses (5)"
+      ],
+      "sha256": "9e08ea2808efbc9f5b4cb09b5d378d39d073cd3e4948d187b483d1d8d623441a"
+    },
+    "sofa": {
+      "file": "sofa.glb",
+      "presents": "The ready room's sofa, three seats",
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        2.0,
+        0.85,
+        0.85
+      ],
+      "bounds_m": {
+        "min": [
+          -1.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          1.0,
+          0.85,
+          0.85
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 192,
+      "budget_triangles": 200,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "accent"
+      ],
+      "csg": [
+        "chamfer arm_-1_edge (1 edges, 15 mm)",
+        "chamfer arm_+1_edge (1 edges, 15 mm)",
+        "chamfer seat_0_edge (1 edges, 20 mm)",
+        "chamfer seat_1_edge (1 edges, 20 mm)",
+        "chamfer seat_2_edge (1 edges, 20 mm)",
+        "union arms_and_cushions (8)"
+      ],
+      "sha256": "5490e2542f1136e85bf2e2e63ab8148b6189863c27372d7288c1a1093d078bdb"
+    },
+    "low_table": {
+      "file": "low_table.glb",
+      "presents": "The ready room's low table",
+      "anchor": "floor, centre of the back long edge",
+      "dimensions_m": [
+        1.1,
+        0.42,
+        0.6
+      ],
+      "bounds_m": {
+        "min": [
+          -0.55,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.55,
+          0.42,
+          0.6
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 52,
+      "budget_triangles": 60,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead"
+      ],
+      "csg": [
+        "chamfer top_edges (2 edges, 15 mm)"
+      ],
+      "sha256": "8ca8659203cfb1a9ad9929bfe8a8688b1e230293d87a515ace352a7e47cc8d9c"
+    },
+    "shelf": {
+      "file": "shelf.glb",
+      "presents": "Open shelving (the ready room, the briefing room and the bridge locker)",
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        1.2,
+        2.0,
+        0.4
+      ],
+      "bounds_m": {
+        "min": [
+          -0.6,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.6,
+          2.0,
+          0.4
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 156,
+      "budget_triangles": 160,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "accent"
+      ],
+      "csg": [
+        "difference bays (4)",
+        "union items (5)"
+      ],
+      "sha256": "69c72f2af41ac141e86d7992a95847fcfe608a29ec8ebcaa33e7258657e6d1e4"
+    },
+    "bed": {
+      "file": "bed.glb",
+      "presents": "The captain's bed, its head on the wall",
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        1.4,
+        1.0,
+        2.1
+      ],
+      "bounds_m": {
+        "min": [
+          -0.7,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.7,
+          1.0,
+          2.1
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 194,
+      "budget_triangles": 200,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "light_panel",
+        "accent"
+      ],
+      "csg": [
+        "chamfer headboard_edge (1 edges, 20 mm)",
+        "chamfer base_edge (1 edges, 15 mm)",
+        "chamfer blanket_edge (1 edges, 20 mm)",
+        "chamfer pillow_edges (4 edges, 20 mm)",
+        "union bed (5)",
+        "difference recesses (5)"
+      ],
+      "sha256": "2cb4d07071e189680850c888a5c79775ebbef0f08d19fd644892925f4377ef88"
+    },
+    "wardrobe": {
+      "file": "wardrobe.glb",
+      "presents": "The captain's wardrobe, two doors",
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        1.2,
+        2.1,
+        0.615
+      ],
+      "bounds_m": {
+        "min": [
+          -0.6,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.6,
+          2.1,
+          0.615
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 72,
+      "budget_triangles": 80,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead"
+      ],
+      "csg": [
+        "union handles (2)",
+        "difference door_split (1)"
+      ],
+      "sha256": "2a79b36281976d9af6bcf3083ce0da895ea5f10b991a35955fb9f5a1451cdf50"
+    },
+    "wet_cell": {
+      "file": "wet_cell.glb",
+      "presents": "The captain's en-suite pod, shower and toilet",
+      "anchor": "floor, centre of the back",
+      "dimensions_m": [
+        1.8,
+        2.3,
+        1.81
+      ],
+      "bounds_m": {
+        "min": [
+          -0.9,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.9,
+          2.3,
+          1.81
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 110,
+      "budget_triangles": 140,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead"
+      ],
+      "csg": [
+        "chamfer roof_edge (8 edges, 30 mm)",
+        "union rail (1)",
+        "difference recesses (2)",
+        "union handle (1)"
+      ],
+      "sha256": "c67812ed84534cb6b233115c63532781334aaeb6e0dfc9f8a41fb24176d284e9"
+    },
+    "toilet_stall": {
+      "file": "toilet_stall.glb",
+      "presents": "A toilet cubicle, door closed",
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        1.0,
+        2.0,
+        1.5
+      ],
+      "bounds_m": {
+        "min": [
+          -0.5,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          2.0,
+          1.5
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 194,
+      "budget_triangles": 200,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "accent"
+      ],
+      "csg": [
+        "chamfer pilaster_-1_edges (2 edges, 12 mm)",
+        "chamfer pilaster_+1_edges (2 edges, 12 mm)",
+        "union pilasters (2)",
+        "difference inside (1)",
+        "union toilet (2)",
+        "difference recesses (2)",
+        "union handle (1)"
+      ],
+      "sha256": "c41035b50a31a6ccdc8e170b70e1d22aa723f81d79a5a7feef60005fad6e9e65"
+    },
+    "wash_counter": {
+      "file": "wash_counter.glb",
+      "presents": "The head's wash counter, two basins and a mirror",
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        2.4,
+        2.0,
+        0.6
+      ],
+      "bounds_m": {
+        "min": [
+          -1.2,
+          0.0,
+          0.0
+        ],
+        "max": [
+          1.2,
+          2.0,
+          0.6
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 212,
+      "budget_triangles": 220,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "light_panel"
+      ],
+      "csg": [
+        "chamfer top_edge (1 edges, 20 mm)",
+        "chamfer mirror_glow (4 edges, 20 mm)",
+        "union top_and_mirror (3)",
+        "difference basins (2)",
+        "union taps (2)",
+        "difference doors (2)"
+      ],
+      "sha256": "19b00ca08d8cb18ecd978ae57176dd3ef148941606efee23f7288099e696af64"
+    },
+    "shower_stall": {
+      "file": "shower_stall.glb",
+      "presents": "A shower stall, open front",
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        1.0,
+        2.2,
+        1.0
+      ],
+      "bounds_m": {
+        "min": [
+          -0.5,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          2.2,
+          1.0
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 144,
+      "budget_triangles": 160,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "light_panel"
+      ],
+      "csg": [
+        "chamfer front_edges (2 edges, 15 mm)",
+        "difference stall (1)",
+        "difference tray (1)",
+        "union fittings (3)",
+        "difference light (1)"
+      ],
+      "sha256": "e8b5997162d104d91bfb6c7c5ee8936be532797a2c4665ef75b0799993e399b8"
+    },
+    "locker_bank": {
+      "file": "locker_bank.glb",
+      "presents": "A bank of four tall lockers (EVA suits in the bridge locker, gear in the head)",
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        2.4,
+        2.1,
+        0.55
+      ],
+      "bounds_m": {
+        "min": [
+          -1.2,
+          0.0,
+          0.0
+        ],
+        "max": [
+          1.2,
+          2.1,
+          0.55
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 190,
+      "budget_triangles": 200,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard",
+        "accent"
+      ],
+      "csg": [
+        "difference doors (11)"
+      ],
+      "sha256": "6957f7a35276af173fe47829299096d8a7f998b58dfafd7400c5c594f4b6452c"
+    },
+    "server_rack": {
+      "file": "server_rack.glb",
+      "presents": "A computer core rack, its front at z = 1.1",
+      "anchor": "floor, centre of the back (the side away from the front)",
+      "dimensions_m": [
+        0.8,
+        2.1,
+        1.1
+      ],
+      "bounds_m": {
+        "min": [
+          -0.4,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.4,
+          2.1,
+          1.1
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 138,
+      "budget_triangles": 140,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "light_panel"
+      ],
+      "csg": [
+        "difference grille (7)",
+        "difference tray_channel (1)",
+        "union tray (1)"
+      ],
+      "sha256": "54429c8501de443050481105946d3cbba0031136236ebdef99e1735b38752803"
+    },
+    "workbench": {
+      "file": "workbench.glb",
+      "presents": "The bridge locker's workbench, for spare console boards",
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        1.8,
+        1.75,
+        0.75
+      ],
+      "bounds_m": {
+        "min": [
+          -0.9,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.9,
+          1.75,
+          0.75
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 218,
+      "budget_triangles": 220,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "light_panel",
+        "accent"
+      ],
+      "csg": [
+        "chamfer front_edge (1 edges, 15 mm)",
+        "union bench (11)"
+      ],
+      "sha256": "561546ce847543bcd24940846ec84e3c38be3435c4f298b540a28d3c81debd13"
+    }
+  }
+}

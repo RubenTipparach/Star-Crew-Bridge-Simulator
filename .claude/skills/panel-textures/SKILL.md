@@ -29,7 +29,7 @@ Read the change before changing what it decides. This skill is the how-to: it ne
 | --- | --- |
 | `data/materials/panels.json` | The one source: sizes, rules, colours, wear, render light, every module's layer, weight and placement, the trim rows and members. Its `_rules` say what each field means; units are in the keys |
 | `tools/blender/build_wall_panels.py` | The build: models every module, strip and trim row with the hard-surface kit, bakes them in Cycles, post-processes them into layers, writes the manifest and the contact sheet. Validates `panels.json` first and stops on any unknown or missing key |
-| `tools/blender/build_bridge_props.py` | The hard-surface kit the build imports (`prism`, `obox`, `Prop.cut`, `Prop.union`, `apply_modifiers`): never copy it |
+| `tools/blender/hs_kit.py` | The hard-surface kit the build imports (`prism`, `obox`, `Prop.cut`, `Prop.union`, `apply_modifiers`), shared with the bridge and suite props' builds: never copy it |
 | `tools/materials/postprocess.py` | The materials' post-process, whose `reduce_palette`, `gpu_bytes`, `seam_ratio` and `save_png` the build imports |
 | `assets/textures/panels/<px>/<stem>.png` | The layers, at 256 px (128 px per metre over 2 m) and 128 px (64 px per metre). Stems: `<finish>_<module>`, `<finish>_strips`, `<finish>_ceiling_<module>`, `<finish>_floor_<module>`, `<finish>_trims` |
 | `assets/textures/panels/manifest.json` | Written by the build, never by hand: every file's sha256 and bytes, the layers' glow and seam ratios, GPU bytes, Blender, Pillow and numpy versions |

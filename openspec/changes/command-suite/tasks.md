@@ -5,10 +5,10 @@
 - [x] 1.1 Proposal, design and spec deltas, from the owner's "can we do the more circular bridge? but have like side rooms for meetings, captains quarters and stuff?" (2026-10-06).
 - [x] 1.2 `tools/bridge_variants.py`: `variant_b` takes the ring's start, the banks and the helm layout; `bridge_variants.json` unchanged (`--check`).
 - [x] 1.3 `tools/command_suite.py` writes `data/ships/tern/command_suite.json` and checks it: the layout rules on a patched copy, platforms and consoles inside the bridge, furniture inside its room, apart, and clear of every door's zone, and the bridge's stairs clear of its doors; `--sightlines`.
-- [ ] 1.4 The suite props in Blender (`tools/blender/build_suite_props.py`, `assets/models/suite`), sharing one module with the bridge props' build (whose output stays byte for byte the same); contact sheet looked at.
-- [ ] 1.5 `docs/mockups/command-deck.html`: deck A's bridge, side rooms and passage from the patched layout, with panels, the Blender consoles and furniture, console faces, the three lighting states and the free camera; the props code shared with `bridge-variants.html` in `lib/propkit.js`.
-- [ ] 1.6 Shots of every view, looked at; the Pi 5 numbers of design section 9 measured on the page and filled in.
-- [ ] 1.7 Survey: B11 answered (the owner's words), A1 asked with the shots; A2-A4 recorded as recommendations taken.
+- [x] 1.4 The suite props in Blender (`tools/blender/build_suite_props.py`, `assets/models/suite`), sharing one module with the bridge props' build (whose output stays byte for byte the same); contact sheet looked at. Built 2026-10-06: fifteen props, 52-218 triangles each, every one within its budget; `tools/blender/hs_kit.py` is the shared module (the wall panel build imports it too); both builds rewrite the same bytes (`--check`); `docs/screenshots/props/suite-props.png`.
+- [x] 1.5 `docs/mockups/command-deck.html`: deck A's bridge, side rooms and passage from the patched layout, with panels, the Blender consoles and furniture, console faces, the three lighting states and the free camera; the props code shared with `bridge-variants.html` in `lib/propkit.js`.
+- [x] 1.6 Shots of every view, looked at; the Pi 5 numbers of design section 9 measured on the page and filled in.
+- [x] 1.7 Survey: B11 answered (the owner's words), A1 asked with the shots; A2-A4 recorded as recommendations taken. Done 2026-10-06 (survey rev 97), with B1-B3, answered the same day, moved to Already decided.
 
 ## 2. Apply the patch (its own commit)
 

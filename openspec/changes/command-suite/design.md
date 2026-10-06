@@ -85,9 +85,7 @@ Sightlines (`python3 tools/command_suite.py --sightlines`, measured as 11.1's ar
 | Captain to the screen; width seen | 6.50 m; 49.5 deg | 6.50 m; 49.5 deg |
 | Engineering and science; comms and flight ops: turn to the screen | 135 deg; 157 deg | 135 deg; 157 deg |
 
-Helm's 23 deg turn to the screen's centre is the same as variant A's. The side stations still
-face their walls, so `bridge-stations` B1 (the look band that swivels toward the screen) still
-stands.
+Helm's 23 deg turn to the screen's centre is the same as variant A's. The side stations still face their walls, built into them, as the owner answered for `bridge-stations` B1 (2026-10-06: "yup, they have to integrate as part of the wall."); the look band of their consoles (B2, answered the same day) keeps the screen in view.
 
 Unchanged from B: 415.9 m^3 of air and 118.8 m^2 of floor, 0.80 m from the hull at its closest.
 The viewscreen is 6.0 x 2.4 m at z 31.5, and the windows are 2.0 x 1.2 m in the two segments
@@ -338,22 +336,39 @@ made it, and every quote moves with a dated note, as layout v2's did:
 
 ### 9. The Pi 5 budget this change spends
 
-To be measured on the mockup with the furniture in, and filled in by task 1.6. The ceilings it
-is measured against are `deck-pipeline` section 11's: 30,000 triangles for the bridge and 8,000
-for a side room.
+Measured on the mockup (`docs/mockups/command-deck.html`, 2026-10-06), with the panels, the
+generated detail, the Blender consoles and furniture, and the crew figures. Each room's mesh
+counts its console faces. The ceilings are `deck-pipeline` section 11's: 30,000 triangles for the
+bridge and 8,000 for a side room.
 
-- **Draw calls:** one per compartment and one for the console faces, as today. The suite adds
-  four compartments, so four draws where all are in view (the portal culling of `deck-pipeline`
-  keeps most out of view).
-- **Textures:** none new. The furniture uses the materials already in the array.
-- **Memory:** geometry only, about 32 bytes a vertex.
+| Room | Triangles | Ceiling | Use | Draws |
+| --- | ---: | ---: | ---: | ---: |
+| Bridge | 9,764 | 30,000 | 33 % | 2 (room, console faces) |
+| Captain's ready room | 3,398 | 8,000 | 42 % | 2 |
+| Briefing room | 3,696 | 8,000 | 46 % | 2 |
+| Captain's quarters | 2,478 | 8,000 | 31 % | 1 |
+| Computer core | 3,268 | 8,000 | 41 % | 1 |
+| Head | 2,740 | 8,000 | 34 % | 1 |
+| Bridge locker | 2,604 | 8,000 | 33 % | 1 |
+| Command passage | 3,536 | 8,000 | 44 % | 1 |
+| All eight | 31,484 | | | 12 |
+
+- **Draw calls:** one per room, plus one for a room's console faces where it has screens: twelve
+  for all eight rooms in the cutaway. From a seat on the bridge, portal culling (`deck-pipeline`)
+  draws the bridge and what its open doors show.
+- **Textures:** none new. The furniture takes the materials already in the array (`trim`,
+  `machinery`, `bulkhead`, `hazard`, `light_panel`), and its upholstery is a tint (`PALETTE.furniture`).
+- **Geometry memory:** about 31,500 triangles of non-indexed vertices at about 32 bytes each is
+  3.0 MB for the whole suite on the desktop mockup. Indexed and baked by the deck compiler, it
+  will be less.
+- **Not measured on a Pi.** A cloud session renders on SwiftShader; these are counts, not times.
 
 ## Risks / Trade-offs
 
 - **B's costs stay.**
   - The bridge has a third less air, so its endurance on a breach or a dead plant is about a
     third shorter (`life-support` reruns it).
-  - The side stations turn 135-157 deg to see the screen (B1's look band answers that).
+  - The side stations turn 135-157 deg to see the screen (the look band of B2 answers that).
   - The windows are smaller.
 - **More doors to manage.** Ten new portals are ten more things for `damage-control` to seal,
   jam and repair. The two windows are two more breach points.

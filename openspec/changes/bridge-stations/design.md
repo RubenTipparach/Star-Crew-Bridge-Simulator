@@ -1128,7 +1128,7 @@ What a pick changes elsewhere, in its own commit:
 - **`crew-on-deck`'s routes to bridge seats:** rerun, with the stairs' climbing time.
 - **`deck-pipeline` 11:** the bridge's budget row.
 - **The mockups that draw the bridge:** they take the platforms from the layout.
-- **This change's open questions:** B1 (look band) still stands for every variant.
+- **This change's open questions:** B1 and B2 are answered (2026-10-06): the side stations stay built into the walls, with the look band.
 
 ### 12. The Pi 5 budget this change spends
 
@@ -1270,9 +1270,9 @@ taken (ask only with screenshots)".
 
 | Id | Question, and the fact it turns on | Options | Recommendation | Shot |
 | --- | --- | --- | --- | --- |
-| B1 | The side stations (engineering, science, comms, flight ops) face the walls, so the viewscreen is 118-135 deg behind them. Keep the layout and swivel their look band toward the screen, or turn engineering and science to face the bow (yaw 0) so the screen is 45 deg to one side? | Keep wall-facing with a swivelled look band / turn engineering and science forward | Keep wall-facing: the captain sees every console over its operator's shoulder, the centre stays open, and the look band already shows the screen | `bridge-engineering-console.png`, `bridge-alt-forward-wings.png` |
-| B2 | Should a seated console keep a 3D look band above the panels (the bridge stays visible; 33 % fill while seated), or fill the screen with panels (two more rows)? | Look band / full-screen panels | Look band | `bridge-helm-console.png`, `bridge-science-console.png` |
-| B3 | Red alert lighting: lamps turn red at 75 % with pulsing red strips, or lamps stay white and only strips and beacons go red (easier to read consoles and faces)? | Red lamps and strips / white lamps, red strips | Red lamps and strips: the room should feel different at a glance | `bridge-red-alert.png` |
+| B1 | The side stations (engineering, science, comms, flight ops) face the walls, so the viewscreen is 118-135 deg behind them. Keep the layout and swivel their look band toward the screen, or turn engineering and science to face the bow (yaw 0) so the screen is 45 deg to one side? | Keep wall-facing with a swivelled look band / turn engineering and science forward | Keep wall-facing: the captain sees every console over its operator's shoulder, the centre stays open, and the look band already shows the screen. **Answered 2026-10-06** (owner, in the survey): "yup, they have to integrate as part of the wall.": wall-facing, each side station built into the wall (11a's wall banks, kept by `command-suite`) | `bridge-engineering-console.png`, `bridge-alt-forward-wings.png` |
+| B2 | Should a seated console keep a 3D look band above the panels (the bridge stays visible; 33 % fill while seated), or fill the screen with panels (two more rows)? | Look band / full-screen panels | Look band. **Answered 2026-10-06** (owner, in the survey): "recommended": the look band | `bridge-helm-console.png`, `bridge-science-console.png` |
+| B3 | Red alert lighting: lamps turn red at 75 % with pulsing red strips, or lamps stay white and only strips and beacons go red (easier to read consoles and faces)? | Red lamps and strips / white lamps, red strips | Red lamps and strips: the room should feel different at a glance. **Answered 2026-10-06** (owner, in the survey): "good, solid": red lamps and strips | `bridge-red-alert.png` |
 | B4 | Emergency power: which consoles stay lit on the emergency bus? | Core four and the viewscreen / every console / none (consoles dark until power returns) | Core four and the viewscreen at 60 % | `bridge-emergency.png` |
 | B5 | Shield allocation is written by both Tactical (presets) and Science (fine balance), last command wins. Keep both, or give it to Science alone? | Both / Science only | Both, with attribution on each console | `bridge-tactical-console.png`, `bridge-science-console.png` |
 | B6 | Should NPC bodies sit at automated core stations (the room never looks empty, and body swap has someone to swap into), or should automated seats stay empty with an AUTO console? | NPC bodies / empty seats | NPC bodies | `bridge-captain-view.png` |
