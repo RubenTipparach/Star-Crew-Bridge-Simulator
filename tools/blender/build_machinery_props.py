@@ -8,12 +8,15 @@ table, a galley counter). They replace the plain grey boxes the deck plan mockup
 It owns the machinery props' geometry (assets/models/machinery/<name>.glb) and their manifest
 (assets/models/machinery/props.json). It lives in tools/blender because meshes are files built by a
 committed generator (CLAUDE.md section 9): this script is the source, the .glb files are its output,
-and a second run writes the same bytes. It holds only these props and one primitive of their own
-(revolve, a solid of revolution with a stepped profile, for tanks, pipes, coils, nozzles and the
-reactor); the machinery every prop set shares (materials, primitives, the Prop class and its CSG
-steps, clean, check, the glb export and read-back, the manifest and the command line) is the
-hard-surface kit, tools/blender/hs_kit.py, which tools/blender/build_bridge_props.py and
-build_suite_props.py use too. How to work this way is the blender-hard-surface skill
+and a second run writes the same bytes. It holds only these props and the primitives that only they
+use so far: revolve (a solid of revolution with a stepped profile: tanks, coils, nozzles, the
+reactor) and rod, pipe (a run of pipe with mitred elbows, one solid), loft (a hull through
+cross-sections: the craft), pane (a window that follows a lofted face), groove and vgroove (V-groove
+panel lines), facet and around (recess frames on slanted and revolved faces), wheel and fan. The
+machinery every prop set shares (materials, the kit's primitives, the Prop class and its CSG steps,
+clean, check, the glb export and read-back, the manifest and the command line) is the hard-surface
+kit, tools/blender/hs_kit.py, which tools/blender/build_bridge_props.py and build_suite_props.py
+use too; a primitive here moves into the kit when a second set needs it. How to work this way is the blender-hard-surface skill
 (.claude/skills/blender-hard-surface).
 
 Run (from anywhere):
@@ -25,7 +28,7 @@ Run (from anywhere):
             (a debugging view, not a source: it is not reproducible and is not committed)
 
 The method is the bridge and suite props' (the skill's "cutter workflow"): block out from boxes,
-extruded profiles, convex hulls and solids of revolution; carve with named cutters (Exact solver,
+extruded profiles, convex hulls, solids of revolution, pipes and lofts; carve with named cutters (Exact solver,
 materials transferred from the cutters' faces); union the pieces; chamfer the edges that catch light
 with a 1-segment Bevel; cut the recesses (screens, doors, vents, dials) last; clean, triangulate and
 check.
@@ -56,7 +59,8 @@ from hs_kit import ROLES, ROOT, Prop, PropSet, _object, frame, ngon, run  # noqa
 OUT = os.path.join(ROOT, "assets", "models", "machinery")
 GENERATOR = "tools/blender/build_machinery_props.py"
 
-# Triangles per prop: the budgets these props were briefed with (2026-10-06).
+# Triangles per prop: the budgets these props were briefed with (2026-10-06), the Petrel's raised to
+# 2000 the same day when the owner asked for it to read as a real small spacecraft in the hangar.
 BUDGETS = {
     "switchboard": 600,
     "battery_bank": 500,
@@ -74,7 +78,7 @@ BUDGETS = {
     "reactor_core": 1200,
     "launch_cradle": 400,
     "swift_fighter": 1000,
-    "petrel_shuttle": 1400,
+    "petrel_shuttle": 2000,
     "bunk": 300,
     "mess_table": 300,
     "galley_counter": 450,
@@ -202,7 +206,122 @@ def vgroove(p, what, axis, at, lo, hi, face, w=0.03):
     return p.prism(what, [(face + 0.05, at - w), (face + 0.05, at + w), (face - 0.6 * w, at)], "x", lo, hi, "machinery")
 
 
+def facet(centre, normal, along):
+    """A recess frame on any face: local +Z the face's outward normal, local +Y the in-plane
+    direction nearest `along` (a recess's height runs that way), local +X their cross (its width)."""
+    n = Vector(normal).normalized()
+    y = Vector(along)
+    y = (y - n * y.dot(n)).normalized()
+    x = y.cross(n)
+    return Matrix(((x.x, y.x, n.x, centre[0]), (x.y, y.y, n.y, centre[1]), (x.z, y.z, n.z, centre[2]), (0.0, 0.0, 0.0, 1.0)))
+
+
+def around(axis, c, r, a, t):
+    """A point on a revolve's facet and its outward normal: apothem r, angle a (radians; a facet
+    of an n-sided revolve faces a = 2 pi k / n, 0 being -z for axis y and the floor for axes z
+    and x), at t along the axis (see revolve for axis and c)."""
+    s, co = math.sin(a), math.cos(a)
+    if axis == "y":
+        return (c[0] + r * s, t, c[1] - r * co), (s, 0.0, -co)
+    if axis == "z":
+        return (c[0] + r * s, c[1] - r * co, t), (s, -co, 0.0)
+    return (t, c[0] - r * co, c[1] + r * s), (0.0, -co, s)
+
+
+def loft(p, what, sections, roles, caps):
+    """A hull lofted through cross-sections along Z: sections are (z, profile) pairs whose
+    profiles have the same number of (x, y) points, counter-clockwise seen from +Z. Band i
+    (section i to i + 1) joins edge k of one profile (point k to k + 1) to edge k of the next and
+    takes roles[i][k], or roles[k] in every band. A band's face is one planar quad where its two
+    edges are parallel (keep them so where a pane or a window will be cut), else two triangles
+    folded outward. caps are the roles of the first and last sections' faces."""
+    n = len(sections[0][1])
+    bm = bmesh.new()
+    rings = [[bm.verts.new(Vector((x, y, z))) for x, y in prof] for z, prof in sections]
+    for i in range(len(rings) - 1):
+        band = roles[i] if isinstance(roles[0], (list, tuple)) else roles
+        cx = sum(v.co.x for v in rings[i]) / n
+        cy = sum(v.co.y for v in rings[i]) / n
+        for k in range(n):
+            j = (k + 1) % n
+            a, b, c, d = rings[i][k], rings[i][j], rings[i + 1][j], rings[i + 1][k]
+            out = Vector(((a.co.x + b.co.x) / 2 - cx, (a.co.y + b.co.y) / 2 - cy, 0.0))
+            nrm = (b.co - a.co).cross(c.co - a.co).normalized()
+            if nrm.dot(out) < 0:
+                nrm = -nrm
+            off = (d.co - a.co).dot(nrm)
+            if abs(off) < 1e-5:
+                faces = [(a, b, c, d)]
+            elif off < 0:
+                faces = [(a, b, c), (a, c, d)]
+            else:
+                faces = [(a, b, d), (b, c, d)]
+            for fv in faces:
+                f = bm.faces.new(fv)
+                f.material_index = ROLES.index(band[k])
+    for ring, role in ((rings[0], caps[0]), (rings[-1], caps[1])):
+        f = bm.faces.new(ring)
+        f.material_index = ROLES.index(role)
+    return _object(bm, f"{p.name}.{what}", p.coll)
+
+
+def pane(p, what, quad, hint, margin, depth, wall="trim", floor="light_panel"):
+    """A pane that follows its face: a planar quad (four prop-space corners in order round a face,
+    a loft band's face kept planar for it) inset `margin` at every edge and cut `depth` into the
+    face. Its floor takes `floor` (the glass) and its walls `wall`; the hull left round it is its
+    frame. hint points out of the face."""
+    q = [Vector(c) for c in quad]
+    n = (q[1] - q[0]).cross(q[3] - q[0]).normalized()
+    if n.dot(Vector(hint)) < 0:
+        n = -n
+    centre = sum(q, Vector()) / len(q)
+    lines = []
+    for i in range(len(q)):
+        a, d = q[i], (q[(i + 1) % len(q)] - q[i]).normalized()
+        inward = n.cross(d)
+        if inward.dot(centre - a) < 0:
+            inward = -inward
+        lines.append((a + inward * margin, d))
+    pts = []
+    for i in range(len(q)):
+        (p1, d1), (p2, d2) = lines[i - 1], lines[i]
+        c = d1.cross(d2)
+        pts.append(p1 + d1 * ((p2 - p1).cross(d2).dot(c) / c.length_squared))
+    bm = bmesh.new()
+    lo = [bm.verts.new(v - n * depth) for v in pts]
+    hi = [bm.verts.new(v + n * 0.05) for v in pts]
+    for i in range(len(pts)):
+        j = (i + 1) % len(pts)
+        bm.faces.new((lo[i], lo[j], hi[j], hi[i])).material_index = ROLES.index(wall)
+    bm.faces.new(lo).material_index = ROLES.index(floor)
+    bm.faces.new(hi).material_index = ROLES.index(wall)
+    return _object(bm, f"{p.name}.{what}", p.coll)
+
+
+def groove(p, what, a, b, n, w=0.03):
+    """A V-groove cutter (a panel line) along the segment a-b on a face whose outward normal is
+    n: vgroove's section (1.6 cm wide and 1.8 cm deep at the face) on any face, one hull."""
+    a, b, n = Vector(a), Vector(b), Vector(n).normalized()
+    s = (b - a).normalized().cross(n)
+    pts = []
+    for q in (a, b):
+        pts += [tuple(q + n * 0.05 + s * w), tuple(q + n * 0.05 - s * w), tuple(q - n * 0.6 * w)]
+    return p.hull(what, pts, "machinery")
+
+
+def fan(p, what, c, z, r, blades, pitch_deg=20.0):
+    """A fan's hub and blades standing on a recess floor at z (facing +z), centred at c = (x, y):
+    a hexagonal hub and `blades` flat blades reaching to r, each 1 cm into the floor."""
+    hub = rod(p, f"{what}_hub", "z", c, z - 0.01, z + 0.06, 0.06 + r * 0.08, "trim")
+    parts = [hub]
+    for k in range(blades):
+        m = (Matrix.Translation((c[0], c[1], z)) @ Matrix.Rotation(math.radians(pitch_deg + 360.0 * k / blades), 4, "Z"))
+        parts.append(p.box(f"{what}_blade_{k}", (-r * 0.17, r * 0.15, -0.01), (r * 0.17, r * 0.92, 0.03), "machinery", m=m))
+    return parts
+
+
 def near(v, target, tol=0.005):
+    """A chamfer predicate's helper: v is within tol (metres) of target."""
     return abs(v - target) < tol
 
 
@@ -266,9 +385,9 @@ def switchboard():
 
 def battery_bank():
     """The battery bank: a rack of nine cell modules in three columns and three tiers, each module
-    set back in its bay with a lit status chamfer along its top, two copper bus bars across the
-    front on the rails between the tiers, each ending in a terminal block, a hazard-striped plinth and a
-    chamfered top."""
+    set back in its bay with a lit status chamfer along its top, two copper bus bars (in the page's
+    colour) across the front on the rails between the tiers, each ending in a terminal block, a
+    hazard-striped plinth and a chamfered top."""
     p = prop("battery_bank", "The battery bank: racked cell modules that store the grid's reserve (power grid)", WALL)
     W, H, D = 2.0, 1.6, 1.12
     body = p.prism("rack", [(0.0, 0.0), (D - 0.03, 0.0), (D - 0.03, 0.13), (D, 0.13), (D, H - 0.03), (D - 0.03, H), (0.0, H)],
@@ -328,39 +447,6 @@ def coolant_pumps():
     p.body = skid
     p.operators.append([0.0, 0.0, 1.2])
     return p
-
-
-def facet(centre, normal, along):
-    """A recess frame on any face: local +Z the face's outward normal, local +Y the in-plane
-    direction nearest `along` (a recess's height runs that way), local +X their cross (its width)."""
-    n = Vector(normal).normalized()
-    y = Vector(along)
-    y = (y - n * y.dot(n)).normalized()
-    x = y.cross(n)
-    return Matrix(((x.x, y.x, n.x, centre[0]), (x.y, y.y, n.y, centre[1]), (x.z, y.z, n.z, centre[2]), (0.0, 0.0, 0.0, 1.0)))
-
-
-def around(axis, c, r, a, t):
-    """A point on a revolve's facet and its outward normal: apothem r, angle a (radians; a facet
-    of an n-sided revolve faces a = 2 pi k / n, 0 being -z for axis y and the floor for axes z
-    and x), at t along the axis (see revolve for axis and c)."""
-    s, co = math.sin(a), math.cos(a)
-    if axis == "y":
-        return (c[0] + r * s, t, c[1] - r * co), (s, 0.0, -co)
-    if axis == "z":
-        return (c[0] + r * s, c[1] - r * co, t), (s, -co, 0.0)
-    return (t, c[0] - r * co, c[1] + r * s), (0.0, -co, s)
-
-
-def fan(p, what, c, z, r, blades, pitch_deg=20.0):
-    """A fan's hub and blades standing on a recess floor at z (facing +z), centred at c = (x, y):
-    a hexagonal hub and `blades` flat blades reaching to r, each 1 cm into the floor."""
-    hub = rod(p, f"{what}_hub", "z", c, z - 0.01, z + 0.06, 0.06 + r * 0.08, "trim")
-    parts = [hub]
-    for k in range(blades):
-        m = (Matrix.Translation((c[0], c[1], z)) @ Matrix.Rotation(math.radians(pitch_deg + 360.0 * k / blades), 4, "Z"))
-        parts.append(p.box(f"{what}_blade_{k}", (-r * 0.17, r * 0.15, -0.01), (r * 0.17, r * 0.92, 0.03), "machinery", m=m))
-    return parts
 
 
 # ----------------------------------------------------------------------------- propulsion
@@ -433,11 +519,11 @@ def shield_generator():
     roles = ["hazard", "trim", "machinery", "trim", "machinery"]
     y = 0.50
     for i, r in enumerate((0.80, 0.74, 0.68, 0.62)):
-        core = 0.36 - 0.02 * i
-        prof += [(r, y), (r, y + 0.16), (core, y + 0.16), (core, y + 0.36)]
+        core = 0.47 - 0.03 * i
+        prof += [(r, y), (r, y + 0.12), (core, y + 0.12), (core, y + 0.36)]
         roles += ["machinery", "accent", "machinery", "light_panel"]
         y += 0.36
-    prof[-1] = (prof[-1][0], y - 0.20 + 0.12)      # the last glow is the column's top, 12 cm above the top coil
+    prof[-1] = (prof[-1][0], y - 0.24 + 0.16)      # the last glow is the column's top, 16 cm above the top coil
     roles[-1] = "trim"
     prof += [(0.16, 2.12), (0.07, 2.20)]
     roles += ["machinery", "light_panel"]
@@ -580,27 +666,29 @@ def gravity_generator():
 
 def med_bed():
     """A medical bed lying along Z, its head at -Z: a chamfered frame on a tapered column over a
-    base plate, a padded mattress and a pillow, a scanner arch across it lit on its inner faces,
-    and a monitor on a post at its head facing the foot."""
+    base plate, a padded mattress, a pillow and a blanket over the lower half (in the page's
+    colour), a scanner arch across it lit on its inner faces, and a monitor on a post at its head
+    facing the foot."""
     p = prop("med_bed", "A sick bay bed with its scanner arch and monitor (medical)", FREE)
     base = p.box("base", (-0.36, 0.0, -0.80), (0.36, 0.06, 0.72), "trim")
     p.chamfer(base, "base_edges", 0.02, lambda m, d, n1, n2: near(m.y, 0.06))
     column = p.hull("column", [(sx * 0.24, 0.05, sz) for sx in (-1, 1) for sz in (-0.56, 0.46)]
                     + [(sx * 0.32, 0.56, sz) for sx in (-1, 1) for sz in (-0.78, 0.68)], "machinery")
-    bed = p.box("frame", (-0.45, 0.55, -1.04), (0.45, 0.68, 1.12), "trim")
+    bed = p.box("frame", (-0.45, 0.55, -1.09), (0.45, 0.68, 1.12), "trim")
     p.chamfer(bed, "frame_edges", 0.02, lambda m, d, n1, n2: near(m.y, 0.68) and abs(d.z) > 0.9)
     pad = p.box("pad", (-0.41, 0.67, -0.97), (0.41, 0.78, 1.08), "bulkhead")
     p.chamfer(pad, "pad_edges", 0.025, lambda m, d, n1, n2: near(m.y, 0.78))
     pillow = p.box("pillow", (-0.30, 0.77, -0.94), (0.30, 0.85, -0.64), "trim")
+    blanket = p.box("blanket", (-0.42, 0.70, 0.02), (0.42, 0.80, 1.09), "accent")
     arch = p.prism("arch", [(-0.50, 0.58), (-0.44, 0.58), (-0.44, 1.08), (0.44, 1.08), (0.44, 0.58), (0.50, 0.58), (0.50, 1.14),
                             (0.44, 1.20), (-0.44, 1.20), (-0.50, 1.14)], "z", 0.10, 0.34,
-                   ["machinery", "light_panel", "light_panel", "light_panel", "machinery", "machinery", "trim", "machinery",
-                    "trim", "machinery"], cap="machinery")
-    post = p.box("post", (-0.03, 0.66, -1.03), (0.03, 0.95, -0.98), "machinery")
-    monitor = p.box("monitor", (-0.28, 0.86, -1.05), (0.28, 1.20, -0.975), "machinery")
-    p.union(bed, "bed", [base, column, pad, pillow, arch, post, monitor])
+                   ["machinery", "light_panel", "light_panel", "light_panel", "machinery", "trim", "bulkhead", "trim",
+                    "bulkhead", "trim"], cap="bulkhead")
+    post = p.box("post", (-0.03, 0.66, -1.08), (0.03, 0.95, -1.05), "machinery")
+    monitor = p.box("monitor", (-0.28, 0.86, -1.12), (0.28, 1.20, -1.045), "machinery")
+    p.union(bed, "bed", [base, column, pad, pillow, blanket, arch, post, monitor])
     screens = []
-    p.recess(screens, "monitor", frame((0.0, 1.03, -0.975)), 0.48, 0.28, 0.012, shows="console")
+    p.recess(screens, "monitor", frame((0.0, 1.03, -1.045)), 0.48, 0.28, 0.012, shows="console")
     p.cut(bed, "screens", screens)
     p.body = bed
     p.operators.append([0.75, 0.0, 0.0])
@@ -646,7 +734,7 @@ def missile_tube():
     top."""
     p = prop("missile_tube", "A missile launch tube, its breech toward the torpedo room (weapons)", FREE)
     cy = 1.5
-    prof = [(0.27, -1.40), (0.27, -1.50), (0.36, -1.50), (0.36, -0.95), (0.40, -0.95), (0.40, -0.80), (0.36, -0.80),
+    prof = [(0.27, -1.44), (0.27, -1.54), (0.36, -1.54), (0.36, -0.95), (0.40, -0.95), (0.40, -0.80), (0.36, -0.80),
             (0.36, 0.20), (0.40, 0.20), (0.40, 0.35), (0.36, 0.35), (0.36, 1.05), (0.45, 1.05), (0.45, 1.50)]
     roles = ["machinery", "trim", "bulkhead", "trim", "trim", "trim", "bulkhead", "trim", "trim", "trim", "bulkhead", "hazard",
              "hazard"]
@@ -734,82 +822,163 @@ def launch_cradle():
     return p
 
 
+def gear_leg(p, what, x, z, hull_y, brace_dz=None, scale=1.0):
+    """A landing leg on the vertical line (x, z): a foot pad with a chamfered top on the floor and
+    a strut up into the hull bottom (at hull_y); with brace_dz, also an oleo collar and a brace
+    from the collar back up into the hull brace_dz along Z (the shuttle's), else six-sided and
+    light (the fighter's). scale sizes the pad and strut."""
+    sides = 8 if brace_dz is not None else 6
+    pad = revolve(p, f"{what}_pad", [(0.20 * scale, 0.0), (0.20 * scale, 0.04), (0.14 * scale, 0.08)], ["trim", "trim"], "y", (x, z),
+                  sides=sides, caps=("machinery", "machinery"))
+    strut = rod(p, f"{what}_strut", "y", (x, z), 0.06, hull_y + 0.10, 0.055 * scale, "trim")
+    if brace_dz is None:
+        return [pad, strut]
+    collar = rod(p, f"{what}_oleo", "y", (x, z), 0.28, 0.42, 0.085, "machinery")
+    brace = pipe(p, f"{what}_brace", [(x, 0.36, z), (x, hull_y + 0.06, z + brace_dz)], 0.035, "machinery", sides=4)
+    return [pad, strut, collar, brace]
+
+
 def swift_fighter():
-    """The Swift fighter, nose toward +Z, gear down: a dart fuselage (one hull of four octagonal
-    stations), a glowing canopy, swept wings with gun pods at their tips (in the page's colour), a
-    raked fin, two engine nacelles whose nozzles glow, twin cannon under the nose and three gear
-    legs on pads."""
+    """The Swift fighter, nose toward +Z, gear down: a dart fuselage lofted through five sections
+    with a chine along its flanks, a glowing canopy split by a frame over a dorsal spine, swept
+    wings tapering to the tips with a livery stripe (in the page's colour), a gun pod on each tip
+    (its tail a running light), a raked fin, two engine nacelles along the rear fuselage with
+    recessed intakes and glowing recessed nozzles, and three light gear legs on pads."""
     p = prop("swift_fighter", "The Swift: a single-seat fighter, gear down (shuttle bay, fighters)", CRAFT)
 
-    def station(z, hw, y0, y1, c):
-        return [(-hw + c, y0, z), (hw - c, y0, z), (hw, y0 + c, z), (hw, y1 - c, z), (hw - c, y1, z), (-hw + c, y1, z),
-                (-hw, y1 - c, z), (-hw, y0 + c, z)]
-    fus = p.hull("fuselage", station(3.5, 0.07, 0.80, 0.90, 0.02) + station(1.8, 0.42, 0.58, 1.16, 0.12)
-                 + station(-1.6, 0.55, 0.56, 1.12, 0.14) + station(-3.1, 0.44, 0.62, 1.04, 0.10), "bulkhead")
-    canopy = p.hull("canopy", [(sx * 0.28, 1.08, z) for sx in (-1, 1) for z in (0.40, 2.00)]
-                    + [(sx * 0.15, 1.40, z) for sx in (-1, 1) for z in (0.80, 1.40)] + [(0.0, 1.12, 2.45)], "light_panel")
-    parts = [canopy]
+    def sect(b, hw, s, t, y0, ym, y1, y2):
+        return [(b, y0), (hw, ym), (s, y1), (t, y2), (-t, y2), (-s, y1), (-hw, ym), (-b, y0)]
+    fus = loft(p, "fuselage", [(-3.0, sect(0.20, 0.46, 0.30, 0.13, 0.62, 0.80, 1.02, 1.08)),
+                               (-1.2, sect(0.22, 0.56, 0.36, 0.16, 0.56, 0.80, 1.08, 1.16)),
+                               (1.0, sect(0.20, 0.50, 0.32, 0.15, 0.56, 0.80, 1.10, 1.18)),
+                               (2.4, sect(0.14, 0.32, 0.21, 0.10, 0.64, 0.82, 1.01, 1.05)),
+                               (3.5, sect(0.03, 0.06, 0.04, 0.02, 0.81, 0.85, 0.89, 0.91))],
+               ["machinery", "trim", "bulkhead", "bulkhead", "bulkhead", "trim", "machinery", "machinery"], ("machinery", "trim"))
+    canopy = p.hull("canopy", [(sx * 0.27, 1.10, 0.55) for sx in (-1, 1)] + [(sx * 0.21, 1.06, 2.15) for sx in (-1, 1)]
+                    + [(0.0, 1.03, 2.70)] + [(sx * 0.16, 1.42, z) for sx in (-1, 1) for z in (0.85, 1.65)], "light_panel")
+    frame_bar = p.box("canopy_frame", (-0.25, 1.06, 1.42), (0.25, 1.45, 1.50), "trim")
+    spine = p.hull("spine", [(sx * 0.15, 1.10, 0.75) for sx in (-1, 1)] + [(sx * 0.12, 1.28, 0.60) for sx in (-1, 1)]
+                   + [(sx * 0.10, 1.20, -2.70) for sx in (-1, 1)] + [(sx * 0.12, 1.04, -2.70) for sx in (-1, 1)], "bulkhead")
+    fin = p.hull("fin", [(sx * 0.045, 1.12, z) for sx in (-1, 1) for z in (-1.30, -2.95)]
+                 + [(sx * 0.02, 1.80, z) for sx in (-1, 1) for z in (-2.55, -3.05)], "trim")
+    parts = [canopy, frame_bar, spine, fin]
     for s in (-1, 1):
-        parts.append(p.prism(f"wing_{s:+d}", [(s * 0.40, 1.0), (s * 2.22, -1.50), (s * 2.22, -2.20), (s * 0.40, -2.10)], "y", 0.72, 0.80,
-                             ["trim", "machinery", "trim", "machinery"], cap="bulkhead"))
-        parts.append(revolve(p, f"pod_{s:+d}", [(0.04, 0.0), (0.075, -0.20), (0.075, -2.40)], ["trim", "accent"], "z", (s * 2.24, 0.76),
-                             sides=6, caps=("trim", "machinery")))
-        parts.append(revolve(p, f"nacelle_{s:+d}", [(0.24, -1.0), (0.24, -3.10), (0.28, -3.22), (0.28, -3.50), (0.19, -3.50),
-                                                    (0.19, -3.36)], ["machinery", "trim", "machinery", "trim", "machinery"], "z",
-                             (s * 0.40, 0.80), caps=("machinery", "light_panel")))
-        parts.append(rod(p, f"cannon_{s:+d}", "z", (s * 0.22, 0.66), 1.4, 2.9, 0.035, "trim"))
-        parts.append(p.box(f"gear_{s:+d}", (s * 1.0 - 0.035, 0.02, -1.44), (s * 1.0 + 0.035, 0.74, -1.36), "machinery"))
-        parts.append(p.box(f"pad_{s:+d}", (s * 1.0 - 0.08, 0.0, -1.52), (s * 1.0 + 0.08, 0.04, -1.28), "trim"))
-    parts.append(p.prism("fin", [(-1.5, 1.05), (-2.9, 1.80), (-3.35, 1.80), (-3.05, 1.05)], "x", -0.04, 0.04, "trim"))
-    parts.append(p.box("nose_gear", (-0.035, 0.02, 1.96), (0.035, 0.62, 2.04), "machinery"))
-    parts.append(p.box("nose_pad", (-0.08, 0.0, 1.88), (0.08, 0.04, 2.12), "trim"))
+        parts.append(p.hull(f"wing_{s:+d}", [(s * 0.40, y, z) for y in (0.74, 0.86) for z in (0.90, -2.15)]
+                            + [(s * 2.18, y, z) for y in (0.78, 0.83) for z in (-1.55, -2.25)], "trim"))
+        parts.append(revolve(p, f"pod_{s:+d}", [(0.045, -2.40), (0.075, -2.30), (0.075, -0.40), (0.035, 0.0)],
+                             ["trim", "accent", "trim"], "z", (s * 2.21, 0.805), sides=6, caps=("light_panel", "machinery")))
+        parts.append(rod(p, f"barrel_{s:+d}", "z", (s * 2.21, 0.805), -0.05, 0.60, 0.018, "machinery", sides=4))
+        parts.append(revolve(p, f"nacelle_{s:+d}", [(0.12, -0.55), (0.12, -0.45), (0.20, -0.45), (0.235, -0.65), (0.235, -3.50),
+                                                    (0.18, -3.50), (0.18, -3.38)],
+                             ["machinery", "trim", "trim", "machinery", "trim", "machinery"], "z",
+                             (s * 0.50, 0.82), caps=("machinery", "light_panel")))
+        parts += gear_leg(p, f"gear_{s:+d}", s * 1.0, -1.45, 0.72, scale=0.7)
+    parts += gear_leg(p, "gear_nose", 0.0, 1.85, 0.60, scale=0.7)
     p.union(fus, "craft", parts)
+    stripes = []
+    for s in (-1, 1):
+        a, b = Vector((s * 0.40, 0.86, 0.90)), Vector((s * 2.18, 0.83, -1.55))
+        c = Vector((s * 2.18, 0.83, -2.25))
+        n = (b - a).cross(c - a).normalized()
+        n = n if n.y > 0 else -n
+        mid = Vector((s * 1.55, 0.0, -1.62))
+        mid.y = 0.86 - 0.03 * (abs(mid.x) - 0.40) / 1.78
+        stripes.append(p.recess([], f"stripe_{s:+d}", facet(tuple(mid), n, (0.0, 0.0, 1.0)), 0.22, 0.55, 0.008,
+                                floor_role="accent", record=False))
+    p.cut(fus, "livery", stripes)
     p.body = fus
     p.operators.append([1.0, 0.0, 1.5])
     return p
 
 
 def petrel_shuttle():
-    """The Petrel shuttle, nose toward +Z: an octagonal hull with a tapered nose and a glowing
-    windscreen, three windows a side and a crew door, a lit hold behind its lowered rear ramp, two
-    engine pods on pylons with glowing nozzles, a sensor dome and a light strip on the roof, and
-    two landing skids on struts."""
+    """The Petrel shuttle, nose toward +Z, on three gear legs with its hull 0.5 m off the floor.
+    One loft carries the hull from a chamfered stern through a cabin whose body steps out at the
+    shoulders (a livery stripe in the page's colour along the step) to a wraparound canopy (five
+    glowing panes, the hull left between them as frames) and a tapered, chamfered nose. A dorsal
+    spine runs along the roof with a glowing sensor dome and a blade antenna; two engine pods on
+    swept pylons have grilled intakes, a livery band, glowing recessed nozzle rings and running
+    lights. Panel lines, side windows, hatches and a crew door with a small window are cut into the
+    hull, stern lights flank the hold, and the rear ramp is down at 22 degrees, its edges
+    hazard-striped, in front of the hold, lit along its ceiling and far wall."""
     p = prop("petrel_shuttle", "The Petrel: a four-seat shuttle, its rear ramp down (shuttle bay)", CRAFT)
-    sect = [(-1.15, 0.75), (1.15, 0.75), (1.45, 1.05), (1.45, 2.60), (1.05, 3.05), (-1.05, 3.05), (-1.45, 2.60), (-1.45, 1.05)]
-    hull_ = p.prism("hull", sect, "z", -4.2, 2.6, ["machinery", "machinery", "bulkhead", "trim", "bulkhead", "trim", "bulkhead",
-                                                    "machinery"], cap="bulkhead")
-    nose = p.hull("nose", [(x, y, 2.55) for x, y in sect]
-                  + [(sx * 0.85, 0.95, 4.75) for sx in (-1, 1)] + [(sx * 1.05, 1.15, 4.75) for sx in (-1, 1)]
-                  + [(sx * 1.05, 1.75, 4.75) for sx in (-1, 1)] + [(sx * 0.75, 2.05, 4.75) for sx in (-1, 1)], "bulkhead")
-    parts = [nose]
+
+    def section(a, b, c, d, dm, e, f):
+        """A cross-section from its right half (x, y), mirrored: keel corner, lower chamfer, lower
+        side top, shoulder, stripe top, upper side top, roof corner."""
+        right = [a, b, c, d, dm, e, f]
+        return right + [(-x, y) for x, y in reversed(right)]
+    base = section((0.75, 0.50), (1.15, 0.80), (1.15, 0.98), (1.42, 1.14), (1.42, 1.30), (1.42, 2.36), (0.98, 2.80))
+    stern = [(x * 0.94, 1.65 + (y - 1.65) * 0.94) for x, y in base]
+    s2 = section((0.73, 0.52), (1.12, 0.81), (1.12, 0.98), (1.38, 1.14), (1.38, 1.30), (1.38, 2.30), (0.95, 2.72))
+    k = (0.82 - 0.42) / 0.43                     # S3's roof chamfer parallel to S2's: the canopy panes are planar
+    s3 = section((0.45, 0.70), (0.70, 0.86), (0.70, 1.00), (0.82, 1.10), (0.82, 1.24), (0.82, 1.86 - 0.42 * k), (0.42, 1.86))
+    s4 = section((0.36, 0.76), (0.54, 0.86), (0.54, 0.96), (0.62, 1.04), (0.62, 1.16), (0.62, 1.34), (0.30, 1.56))
+    s5 = section((0.16, 0.82), (0.26, 0.88), (0.26, 0.95), (0.30, 1.00), (0.30, 1.08), (0.30, 1.16), (0.14, 1.28))
+    sections = [(-3.80, stern), (-3.62, base), (1.10, base), (2.30, s2), (4.05, s3), (4.65, s4), (5.0, s5)]
+    edge_roles = ["machinery", "trim", "machinery", "accent", "bulkhead", "trim", "bulkhead", "trim", "bulkhead", "accent",
+                  "machinery", "trim", "machinery", "machinery"]
+    body = loft(p, "hull", sections, edge_roles, ("trim", "trim"))
+    # The canopy: a pane in each upper face of the S2-S3 band (upper sides, roof chamfers, roof),
+    # each following its face, the hull left between them as the frames.
+    cuts = []
+    for e in (4, 5, 6, 7, 8):
+        a0, a1 = s2[e], s2[(e + 1) % 14]
+        b0, b1 = s3[e], s3[(e + 1) % 14]
+        hint = ((a0[0] + a1[0]) / 2, (a0[1] + a1[1]) / 2 - 1.6, 0.3)
+        cuts.append(pane(p, f"canopy_{e}", [(a0[0], a0[1], 2.30), (a1[0], a1[1], 2.30), (b1[0], b1[1], 4.05), (b0[0], b0[1], 4.05)],
+                         hint, 0.055, 0.03))
+    # The hold behind the ramp, lit at its far end; panel lines; windows, hatches and the crew door.
+    cuts.append(p.box("hold", (-0.66, 0.60, -4.0), (0.66, 2.40, -2.50),
+                      {"+z": "light_panel", "+y": "light_panel", "-y": "machinery", "*": "bulkhead"}))
     for s in (-1, 1):
-        parts.append(revolve(p, f"pod_{s:+d}", [(0.24, 0.95), (0.36, 0.75), (0.36, -3.60), (0.40, -3.70), (0.40, -4.40), (0.28, -4.40),
-                                                (0.28, -4.25)], ["trim", "machinery", "trim", "machinery", "trim", "machinery"], "z",
-                             (s * 1.86, 1.85), sides=12, caps=("machinery", "light_panel")))
-        parts.append(p.box(f"pylon_{s:+d}", (min(s * 1.40, s * 1.62), 1.72, -3.4), (max(s * 1.40, s * 1.62), 1.98, 0.2), "trim"))
-        x = s * 1.05
-        parts.append(p.box(f"skid_{s:+d}", (x - 0.09, 0.0, -3.2), (x + 0.09, 0.12, 2.6), {"+y": "hazard", "*": "machinery"}))
-        for z in (-2.4, 1.6):
-            parts.append(p.box(f"strut_{s:+d}_{z:+.1f}", (x - 0.05, 0.10, z - 0.06), (x + 0.05, 0.80, z + 0.06), "machinery"))
-    parts.append(revolve(p, "dome", [(0.30, 3.00), (0.30, 3.10), (0.14, 3.20)], ["trim", "machinery"], "y", (0.0, -0.6),
-                         caps=("trim", "light_panel")))
-    ramp = p.hull("ramp", [(sx * 1.0, y, z) for sx in (-1, 1) for y, z in ((0.94, -4.10), (0.86, -4.10), (0.06, -5.0), (0.0, -4.93))],
-                  "trim")
+        for i, z in enumerate((-2.75, -0.55, 0.92)):
+            cuts.append(groove(p, f"line_{s:+d}_{i}", (s * 1.42, 1.34, z), (s * 1.42, 2.32, z), (s, 0.0, 0.0)))
+        for i, z in enumerate((-2.15, -1.35)):
+            p.recess(cuts, f"window_{s:+d}_{i}", frame((s * 1.42, 2.14, z), 0.0, s * 90.0), 0.40, 0.24, 0.02,
+                     wall_role="trim", floor_role="light_panel", record=False)
+        p.recess(cuts, f"hatch_{s:+d}", frame((s * 1.42, 1.82, -3.20), 0.0, s * 90.0), 0.45, 0.50, 0.012, floor_role="trim",
+                 record=False)
+    for i, z in enumerate((-2.75, -0.55, 0.92)):
+        cuts.append(groove(p, f"roof_line_{i}", (-0.90, 2.80, z), (0.90, 2.80, z), (0.0, 1.0, 0.0)))
+    p.recess(cuts, "door", frame((1.42, 1.74, 0.25), 0.0, 90.0), 0.80, 1.08, 0.015, floor_role="trim", record=False)
+    p.recess(cuts, "roof_hatch", frame((0.62, 2.80, -1.9), 90.0), 0.40, 0.70, 0.012, floor_role="trim", record=False)
+    p.cut(body, "canopy_hold_lines", cuts)
+    p.cut(body, "door_window", [p.recess([], "door_window", frame((1.405, 1.98, 0.25), 0.0, 90.0), 0.22, 0.16, 0.012,
+                                         wall_role="trim", floor_role="light_panel", record=False)])
+    # Spine, sensor dome, antenna; pods on pylons with grilles and running lights; ramp; gear.
+    parts = [p.hull("spine", [(sx * 0.30, y, -3.30) for sx in (-1, 1) for y in (2.78, 2.98)]
+                    + [(sx * 0.38, y, 0.70) for sx in (-1, 1) for y in (2.78, 3.00)] + [(sx * 0.16, 2.70, 2.05) for sx in (-1, 1)],
+                    "trim"),
+             revolve(p, "sensor_dome", [(0.26, 2.96), (0.26, 3.03), (0.14, 3.11)], ["bulkhead", "trim"], "y", (0.0, 0.45),
+                     caps=("trim", "light_panel")),
+             p.prism("antenna", [(-2.30, 2.96), (-2.72, 3.20), (-2.88, 3.20), (-2.70, 2.96)], "x", -0.015, 0.015, "machinery")]
+    for s in (-1, 1):
+        x = s * 1.88
+        parts.append(revolve(p, f"pod_{s:+d}", [(0.17, 0.92), (0.17, 1.04), (0.29, 1.04), (0.35, 0.84), (0.35, 0.40), (0.375, 0.40),
+                                                (0.375, 0.10), (0.35, 0.10), (0.35, -3.30), (0.38, -3.40), (0.38, -3.92), (0.30, -3.92),
+                                                (0.30, -3.80), (0.15, -3.80), (0.08, -3.90)],
+                             ["machinery", "trim", "trim", "bulkhead", "accent", "accent", "accent", "bulkhead", "trim", "machinery",
+                              "trim", "light_panel", "light_panel", "machinery"], "z", (x, 1.72), caps=("machinery", "machinery")))
+        for i, dy in enumerate((-0.085, 0.0, 0.085)):
+            half = 0.18 if dy == 0.0 else 0.165
+            parts.append(p.box(f"grille_{s:+d}_{i}", (x - half, 1.72 + dy - 0.015, 0.91), (x + half, 1.72 + dy + 0.015, 1.02), "trim"))
+        parts.append(p.hull(f"pylon_{s:+d}", [(s * 1.36, y, z) for y in (1.50, 1.86) for z in (-3.10, -0.30)]
+                            + [(s * 1.62, y, z) for y in (1.60, 1.80) for z in (-2.90, -1.00)], "trim"))
+        parts.append(p.box(f"running_light_{s:+d}", (min(x + s * 0.33, x + s * 0.375), 1.66, 0.48),
+                           (max(x + s * 0.33, x + s * 0.375), 1.78, 0.80), "light_panel"))
+        parts.append(p.box(f"stern_light_{s:+d}", (min(s * 0.70, s * 0.90), 2.50, -3.86), (max(s * 0.70, s * 0.90), 2.60, -3.74),
+                           "light_panel"))
+    ramp = p.prism("ramp", [(-3.70, 0.59), (-5.0, 0.06), (-5.0, 0.0), (-3.70, 0.52)], "x", -0.62, 0.62,
+                   ["machinery", "hazard", "machinery", "machinery"], cap="trim")
+    p.chamfer(ramp, "ramp_edges", 0.12, lambda m, d, n1, n2: abs(m.x) > 0.6 and max(n1.y, n2.y) > 0.8, role="hazard")
     parts.append(ramp)
-    p.union(hull_, "nose_pods_skids", parts)
-    cuts = [p.box("hold", (-1.10, 0.95, -4.4), (1.10, 2.75, -2.6), {"+z": "light_panel", "-y": "machinery", "*": "bulkhead"})]
-    slope = (0.0, 2.2, 1.0)
-    p.recess(cuts, "windscreen", facet((0.0, 2.55, 3.65), slope, (0.0, 1.0, 0.0)), 1.40, 0.70, 0.03, floor_role="light_panel",
-             record=False)
+    parts += gear_leg(p, "gear_nose", 0.0, 3.30, 0.62, -0.50)
     for s in (-1, 1):
-        for i, z in enumerate((1.7, 0.6, -0.5)):
-            p.recess(cuts, f"window_{s:+d}_{i}", frame((s * 1.45, 2.10, z), 0.0, s * 90.0), 0.55, 0.42, 0.02,
-                     floor_role="light_panel", record=False)
-    p.recess(cuts, "door", frame((1.45, 1.80, -1.75), 0.0, 90.0), 0.90, 1.40, 0.015, floor_role="trim", record=False)
-    p.recess(cuts, "roof_light", frame((0.0, 3.05, -1.5), 90.0), 0.10, 3.6, 0.012, floor_role="light_panel", record=False)
-    p.cut(hull_, "hold_and_windows", cuts)
-    p.body = hull_
-    p.operators.append([2.6, 0.0, -1.75])
+        parts += gear_leg(p, f"gear_{s:+d}", s * 1.0, -2.30, 0.69, 0.50)
+    p.union(body, "spine_pods_ramp_gear", parts)
+    p.body = body
+    p.operators.append([2.6, 0.0, 0.25])
     return p
 
 
@@ -817,29 +986,31 @@ def petrel_shuttle():
 
 def bunk():
     """A two-tier crew bunk along the wall: a carcass on a toe kick with two berths carved out of
-    it, each with a lit reading strip where its ceiling meets its back, a mattress, a blanket in
-    the page's colour and a pillow; a lip along the upper berth and a two-rung ladder at the right
-    end."""
+    it, each with a lit reading slot along the top of its back wall, a mattress, a blanket in the
+    page's colour and a pillow; a lip along the upper berth and a two-rung ladder at the right end,
+    its rails standing clear of the front and bent back into it above the upper berth."""
     p = prop("bunk", "A two-tier crew bunk (crew quarters)", WALL)
     D = 0.90
     body = p.prism("carcass", [(0.0, 0.0), (D - 0.06, 0.0), (D - 0.06, 0.10), (D, 0.12), (D, 1.98), (D - 0.02, 2.0), (0.0, 2.0)],
                    "x", -1.05, 1.05, ["machinery", "machinery", "machinery", "trim", "trim", "trim", "machinery"], cap="trim")
-    berths = []
-    for i, (y0, y1) in enumerate(((0.36, 1.02), (1.18, 1.88))):
-        b = p.box(f"berth_{i}", (-0.98, y0, 0.05), (0.98, y1, D + 0.05), {"-z": "bulkhead", "*": "trim"})
-        p.chamfer(b, f"berth_{i}_light", 0.05, lambda m, d, n1, n2, y1=y1: near(m.y, y1) and near(m.z, 0.05), role="light_panel")
-        berths.append(b)
-    p.cut(body, "berths", berths)
+    p.cut(body, "berths", [p.box(f"berth_{i}", (-0.98, y0, 0.05), (0.98, y1, D + 0.05), {"-z": "bulkhead", "*": "trim"})
+                           for i, (y0, y1) in enumerate(((0.36, 1.02), (1.18, 1.88)))])
+    lights = []
+    for i, y1 in enumerate((1.02, 1.88)):
+        p.recess(lights, f"reading_light_{i}", frame((-0.10, y1 - 0.07, 0.05)), 1.60, 0.05, 0.025, floor_role="light_panel",
+                 record=False)
+    p.cut(body, "reading_lights", lights)
     parts = []
     for i, y0 in enumerate((0.36, 1.18)):
         parts.append(p.box(f"mattress_{i}", (-0.99, y0 - 0.01, 0.04), (0.99, y0 + 0.14, 0.84), "trim"))
         parts.append(p.box(f"blanket_{i}", (-0.50, y0 - 0.01, 0.035), (0.99, y0 + 0.17, 0.855), "accent"))
         parts.append(p.box(f"pillow_{i}", (-0.95, y0 + 0.12, 0.12), (-0.62, y0 + 0.22, 0.62), "bulkhead"))
     parts.append(p.box("lip", (-0.99, 1.17, 0.83), (0.70, 1.32, 0.88), "trim"))
-    for i, x in enumerate((0.76, 0.98)):
-        parts.append(p.box(f"ladder_rail_{i}", (x - 0.02, 0.0, D - 0.01), (x + 0.02, 1.95, D + 0.05), "machinery"))
+    for i, x in enumerate((0.76, 0.98)):         # 1 cm clear of the front, bent back into it above the upper berth
+        parts.append(pipe(p, f"ladder_rail_{i}", [(x, 0.0, D + 0.03), (x, 1.93, D + 0.03), (x, 1.93, D - 0.04)], 0.02, "machinery",
+                          sides=4))
     for i, y in enumerate((0.62, 1.10)):
-        parts.append(p.box(f"rung_{i}", (0.77, y - 0.015, D + 0.01), (0.97, y + 0.015, D + 0.04), "trim"))
+        parts.append(p.box(f"rung_{i}", (0.77, y - 0.015, D + 0.015), (0.97, y + 0.015, D + 0.045), "trim"))
     p.union(body, "bedding_and_ladder", parts)
     p.body = body
     p.operators.append([0.0, 0.0, 1.4])

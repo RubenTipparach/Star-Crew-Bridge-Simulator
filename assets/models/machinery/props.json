@@ -320,7 +320,7 @@
       "csg": [
         "difference vents (4)"
       ],
-      "sha256": "faeb14d10e7feb63e86e3755c547d411b7e813b212cf24c16f281381e65140b2"
+      "sha256": "e588d1aac24743087a7d7f45dfcd7efb365834ab445ae3644ff4a1e5302e81e0"
     },
     "ls_tanks": {
       "file": "ls_tanks.glb",
@@ -559,13 +559,13 @@
       "dimensions_m": [
         1.0,
         1.2,
-        2.17
+        2.24
       ],
       "bounds_m": {
         "min": [
           -0.5,
           0.0,
-          -1.05
+          -1.12
         ],
         "max": [
           0.5,
@@ -587,7 +587,7 @@
           "centre_m": [
             0.0,
             1.03,
-            -0.987
+            -1.057
           ],
           "normal": [
             0.0,
@@ -603,23 +603,24 @@
           "height_m": 0.28
         }
       ],
-      "triangles": 212,
+      "triangles": 236,
       "budget_triangles": 400,
       "materials": [
         "machinery",
         "trim",
         "bulkhead",
         "light_panel",
-        "screen"
+        "screen",
+        "accent"
       ],
       "csg": [
         "chamfer base_edges (4 edges, 20 mm)",
         "chamfer frame_edges (2 edges, 20 mm)",
         "chamfer pad_edges (4 edges, 25 mm)",
-        "union bed (7)",
+        "union bed (8)",
         "difference screens (1)"
       ],
-      "sha256": "cb4d2d6e66a41bbb08f6f456946735bc7fce018f64208d31defc427482a4a6b8"
+      "sha256": "acd9f12938b03e5e125d05f853725c2912b0483bd806dda8f84395efd7dce50b"
     },
     "magazine_rack": {
       "file": "magazine_rack.glb",
@@ -673,13 +674,13 @@
       "dimensions_m": [
         0.9,
         2.0,
-        3.04
+        3.08
       ],
       "bounds_m": {
         "min": [
           -0.45,
           0.0,
-          -1.5
+          -1.54
         ],
         "max": [
           0.45,
@@ -709,7 +710,7 @@
         "difference door (1)",
         "union door_fittings (3)"
       ],
-      "sha256": "3f87e96993f0b7d9ce31d2d92f289734104f19d37e40c7db57d5cc4d13465b87"
+      "sha256": "9d85858c66acf1288f0ce0519c1487ce4b99bad2b00d399eef0d5f72ff7f5f19"
     },
     "reactor_core": {
       "file": "reactor_core.glb",
@@ -811,18 +812,18 @@
       "presents": "The Swift: a single-seat fighter, gear down (shuttle bay, fighters)",
       "anchor": "floor, centre of the footprint, nose toward +Z",
       "dimensions_m": [
-        4.6532,
+        4.5932,
         1.8,
         7.0
       ],
       "bounds_m": {
         "min": [
-          -2.3266,
+          -2.2966,
           0.0,
           -3.5
         ],
         "max": [
-          2.3266,
+          2.2966,
           1.8,
           3.5
         ]
@@ -835,7 +836,7 @@
         ]
       ],
       "screens": [],
-      "triangles": 578,
+      "triangles": 886,
       "budget_triangles": 1000,
       "materials": [
         "machinery",
@@ -845,9 +846,10 @@
         "accent"
       ],
       "csg": [
-        "union craft (16)"
+        "union craft (18)",
+        "difference livery (2)"
       ],
-      "sha256": "a039c09be409654877e780b9a642dd5c7a4831253a9a70f76911c52b36c4cd0a"
+      "sha256": "693ccce42d7da8a7032b14291f39fb3e9664a59c1327e12026d0ca392d141220"
     },
     "petrel_shuttle": {
       "file": "petrel_shuttle.glb",
@@ -856,7 +858,7 @@
       "dimensions_m": [
         4.52,
         3.2,
-        9.75
+        10.0
       ],
       "bounds_m": {
         "min": [
@@ -867,31 +869,34 @@
         "max": [
           2.26,
           3.2,
-          4.75
+          5.0
         ]
       },
       "operators_m": [
         [
           2.6,
           0.0,
-          -1.75
+          0.25
         ]
       ],
       "screens": [],
-      "triangles": 848,
-      "budget_triangles": 1400,
+      "triangles": 1918,
+      "budget_triangles": 2000,
       "materials": [
         "machinery",
         "trim",
         "bulkhead",
         "hazard",
-        "light_panel"
+        "light_panel",
+        "accent"
       ],
       "csg": [
-        "union nose_pods_skids (13)",
-        "difference hold_and_windows (10)"
+        "difference canopy_hold_lines (23)",
+        "difference door_window (1)",
+        "chamfer ramp_edges (2 edges, 120 mm)",
+        "union spine_pods_ramp_gear (30)"
       ],
-      "sha256": "5326ba737ab5f789982a9833ab1c062d1665d5c46ed61fdabbffea751377a11e"
+      "sha256": "36c28b0c30634908061ffa0eb1ac938662c1308f7901490fe0d9fe1b30c94fe6"
     },
     "bunk": {
       "file": "bunk.glb",
@@ -922,7 +927,7 @@
         ]
       ],
       "screens": [],
-      "triangles": 300,
+      "triangles": 262,
       "budget_triangles": 300,
       "materials": [
         "machinery",
@@ -932,12 +937,11 @@
         "accent"
       ],
       "csg": [
-        "chamfer berth_0_light (1 edges, 50 mm)",
-        "chamfer berth_1_light (1 edges, 50 mm)",
         "difference berths (2)",
+        "difference reading_lights (2)",
         "union bedding_and_ladder (11)"
       ],
-      "sha256": "c7cb1f34e89563bde43cea0326f868ecf72256641bf3803d7bc8bc39e1113d81"
+      "sha256": "d65ada538fb0ff7f91088d07aeb604dfeae62f13020ccfcb1ca4aeba31f377da"
     },
     "mess_table": {
       "file": "mess_table.glb",

@@ -40,7 +40,8 @@ FLOOR_RGB = (0.025, 0.028, 0.034)   # linear
 WALL_RGB = (0.06, 0.066, 0.078)
 # Per set: its folder, the sheet's rows (the first row stands against a wall), the sheet's file, the
 # gaps between its rows (wide enough that a tall prop does not hide the labels of the row behind) and
-# its props, and the labels' size.
+# its props, and the labels' size; optionally the sheet's pixel size (res, default 1600 x 1100) and
+# the floor's size in metres (floor_m, default 40 x 40) for a set too large for those.
 SETS = {
     "bridge": {
         "dir": os.path.join(ROOT, "assets", "models", "bridge"),
@@ -73,7 +74,9 @@ SETS = {
         "sheet": "machinery-props.png",
         "gap_y": 3.4,
         "gap_x": 1.0,
-        "label_m": 0.24,  # the widest scene of the three
+        "label_m": 0.36,  # the widest scene of the three
+        "res": (2400, 1650),   # the reactor is 10 m tall: the rest of the set needs the pixels
+        "floor_m": (90, 90),   # the rows nearer the camera shift right past a 40 m floor
     },
 }
 
@@ -324,8 +327,8 @@ def sheet(ps, out, rows, samples):
         if r == 0:
             plane("Wall", (40, 6), (0, 0.002, 3), (math.radians(90), 0, 0), plain("wall", WALL_RGB))
         y -= max(rows[n]["dimensions_m"][2] for n in names) + gap_y
-    plane("Floor", (40, 40), (0, -5, 0), (0, 0, 0), plain("floor", FLOOR_RGB))
-    camera(placed, (1600, 1100), margin=1.05)
+    plane("Floor", ps.get("floor_m", (40, 40)), (0, -5, 0), (0, 0, 0), plain("floor", FLOOR_RGB))
+    camera(placed, ps.get("res", (1600, 1100)), margin=1.05)
     render(out)
 
 
