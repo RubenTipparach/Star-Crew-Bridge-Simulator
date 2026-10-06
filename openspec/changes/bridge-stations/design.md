@@ -1062,14 +1062,17 @@ them; the sightlines from `tools/bridge_variants.py --sightlines`; a seated eye 
 | Helm and tactical: distance; the screen's width seen; turn to it | 4.51 m; 65.5 deg; 24 deg | 4.67 m; 63.6 deg; 23 deg | 3.64 m; 78.9 deg; 7 deg | 4.69 m; 63.4 deg; 23 deg |
 | Engineering and science: distance; turn to the screen | 8.64 m; 122 deg | 8.81 m; 123 deg | 7.46 m; 135 deg | 7.84 m; 128 deg |
 | Comms and flight operations: distance; turn to the screen | 12.08 m; 112 deg | 11.80 m; 114 deg | 9.75 m; 157 deg | 11.90 m; 114 deg |
-| Room mesh with consoles and crew, one draw | 9,202 | 12,238 | 10,698 | 11,952 |
+| Room mesh with consoles and crew, one draw | 7,654 | 10,682 | 10,176 | 10,384 |
 
 The room mesh is what the mockup draws: the room, its generated detail and platforms, the
-Blender consoles and chairs and the crew figures, cut to 0.9 m for the mockup's stand-in bake.
-Against the bridge's ceiling of 30,000 triangles (`deck-pipeline` 11) that is 31-41 %, and A
-costs 3,036 more than today. Every variant stays one draw call. (With the console faces of 11.6,
-2026-10-05: the keyboard wells and hand controls are in these counts; the faces' own quads are
-52-118 more triangles.)
+Blender consoles and chairs and the crew figures, with walls, ceilings, floors and trims dressed
+as panels (`wall-panels`, `ceilings-and-trims`, `floor-panels`; measured 2026-10-06; the platforms
+keep their own tiles until a variant is picked). Against the bridge's ceiling of 30,000 triangles
+(`deck-pipeline` 11) that is 26-36 %, and A costs 3,028 more than today. Every variant stays one
+draw call. The keyboard wells and hand controls of 11.6 are in these counts; the console faces'
+own quads are 52-118 more triangles. (The counts fell from 9,202-12,238 when the panels came in:
+dressed walls, ceilings and floors are cut into their bays and cells, so the mockup's 0.9 m
+stand-in subdivision has less left to split.)
 
 **What each one trades:**
 
