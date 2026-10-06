@@ -1280,9 +1280,19 @@ def lozenge(cx, cy, length, width, angle_deg):
     return [(cx + x * ca - y * sa, cy + x * sa + y * ca) for x, y in local]
 
 
-def tread(x0, x1, y0, y1, pitch=0.05, length=0.075, width=0.02, z1=0.0045):
+def tread(x0, x1, y0, y1, pitch=0.05, length=0.075, width=0.02, z1=0.0045, keep_out=()):
     """Diamond plate: lugs on a square lattice at pitch, alternating +-45 degrees, kept whole inside
-    the rectangle. Periodic: a lattice pitch that divides 2 m repeats exactly from cell to cell."""
+    the rectangle and off the openings keep_out lists (("rect", x0, y0, x1, y1) or ("circle", cx, cy,
+    r): a lug must not float over a grate's pit or a drain). Periodic: a lattice pitch that divides
+    2 m repeats exactly from cell to cell."""
+    def blocked(cx, cy):
+        m = length / 2
+        for k in keep_out:
+            if k[0] == "rect" and k[1] - m < cx < k[3] + m and k[2] - m < cy < k[4] + m:
+                return True
+            if k[0] == "circle" and math.hypot(cx - k[1], cy - k[2]) < k[3] + m:
+                return True
+        return False
     items = []
     i0, i1 = math.floor(x0 / pitch), math.ceil(x1 / pitch)
     j0, j1 = math.floor(y0 / pitch), math.ceil(y1 / pitch)
@@ -1290,6 +1300,8 @@ def tread(x0, x1, y0, y1, pitch=0.05, length=0.075, width=0.02, z1=0.0045):
         for j in range(j0, j1 + 1):
             cx, cy = (i + 0.5) * pitch, (j + 0.5) * pitch
             if not (x0 + length / 2 <= cx <= x1 - length / 2 and y0 + length / 2 <= cy <= y1 - length / 2):
+                continue
+            if blocked(cx, cy):
                 continue
             items.append((lozenge(cx, cy, length, width, 45.0 if (i + j) % 2 == 0 else -45.0), -0.004, z1))
     return items
@@ -1566,11 +1578,12 @@ def f_walkway(P, F, spec):
         P.cyl("bolt", "z", (x, y), 0.013, -0.01, 0.007, "trim", sides=8, bevel=0.004)
 
 
-def deck_plate(P, F):
-    """The deck a floor module is cut into: plain plate in crew spaces, diamond plate in working ones."""
+def deck_plate(P, F, keep_out=()):
+    """The deck a floor module is cut into: plain plate in crew spaces, diamond plate in working ones,
+    its lugs kept off the module's openings (keep_out, as tread takes it)."""
     plate = plate_slab(P)
     if rusty(F):
-        studs(P, "tread", tread(-1.02, 1.02, -0.02, 2.02), "bulkhead", top=0.55)
+        studs(P, "tread", tread(-1.02, 1.02, -0.02, 2.02, keep_out=keep_out), "bulkhead", top=0.55)
     return plate
 
 
@@ -1589,9 +1602,9 @@ def f_plate(P, F, spec):
 
 def f_grate(P, F, spec):
     """Four square grates, each in its own raised frame (X2), over a dark pit."""
-    plate = deck_plate(P, F)
     cs = [(sx * 0.46, 1 + sy * 0.46) for sx in (-1, 1) for sy in (-1, 1)]
     a = 0.33
+    plate = deck_plate(P, F, [("rect", cx - a - 0.06, cy - a - 0.06, cx + a + 0.06, cy + a + 0.06) for cx, cy in cs])
     P.cut(plate, "pits", cell_seams(P) + [P.recess(cx - a, cy - a, cx + a, cy + a, 0.22) for cx, cy in cs])
     for cx, cy in cs:
         frame_ring(P, "frame", cx - a - 0.06, cy - a - 0.06, cx + a + 0.06, cy + a + 0.06, 0.06, -0.02, 0.018, "trim", bevel=0.006)
@@ -1649,8 +1662,8 @@ def f_trench(P, F, spec):
 def f_drain(P, F, spec):
     """A round drain grille in the deck: a collar, ring and spoke bars over a dark sump, and two
     shallow channels leading to it."""
-    plate = deck_plate(P, F)
     R = 0.28
+    plate = deck_plate(P, F, [("circle", 0.0, 1.0, R + 0.07), ("rect", -0.78, 0.97, 0.78, 1.03)])
     cuts = cell_seams(P) + [P.cyl("sump", "z", (0.0, 1.0), R, -0.2, 0.05, "machinery", sides=40, smooth=False)]
     for sx in (-1, 1):
         xa, xb = sorted((sx * (R + 0.02), sx * 0.78))
@@ -1669,7 +1682,7 @@ def f_drain(P, F, spec):
 
 def f_vent(P, F, spec):
     """Two raised floor vents (X2): slatted boxes on the deck with bolted feet."""
-    plate = deck_plate(P, F)
+    plate = deck_plate(P, F, [("rect", cx - 0.31, 0.56, cx + 0.31, 1.44) for cx in (-0.36, 0.36)])
     P.cut(plate, "seams", cell_seams(P))
     for cx in (-0.36, 0.36):
         x0, x1, y0, y1 = cx - 0.27, cx + 0.27, 0.62, 1.38

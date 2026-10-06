@@ -3,68 +3,68 @@
  "blender": "4.5.14 LTS",
  "files": {
   "128/crew_ceiling_cable_tray.png": {
-   "bytes": 10195,
-   "sha256": "3e6cc9430c6d0bb4e22b2e22ade1bff83111e49a44108c887fa653da56056210"
+   "bytes": 8992,
+   "sha256": "91858b458ef3fa764e093486c8b9b09456abb7207a8a8f903038dc122d586f0f"
   },
   "128/crew_ceiling_fan.png": {
-   "bytes": 13638,
-   "sha256": "5348e2d0d69d1fea5edb1c79e50f3e590b410c4e712b935cdda16ff051a7b8ec"
+   "bytes": 12995,
+   "sha256": "7cd0bd67e66beb7fee750697d07f31bcde1848b6ac6feb609dbadf5d1958637a"
   },
   "128/crew_ceiling_grille.png": {
-   "bytes": 8382,
-   "sha256": "88521b95d64366f3a445caced0369a1570bb994d514c3a1c0479eedad2a6eb14"
+   "bytes": 7870,
+   "sha256": "4c081c3d249a350c310c166cfaddccf38454c1a1b0e567ec8265d78d2cb4349c"
   },
   "128/crew_ceiling_hatch.png": {
-   "bytes": 7659,
-   "sha256": "494cc8d6c7657be72f1312a2570c4229d95faea3384ab3107587ee3741f60fb6"
+   "bytes": 7505,
+   "sha256": "d26994c726afd4a9425d4a1e7208f3eec37fc74f9911f835aa5965deb2a296d2"
   },
   "128/crew_ceiling_lamp_surround.png": {
-   "bytes": 6771,
-   "sha256": "9e70694e50af3be36ad9435202c8fff492bcae81a975413e6388e07b69fcb9e5"
+   "bytes": 6231,
+   "sha256": "e5c2ba7314027ae8b560e33fffefee4902c80cde77011d965a13792f40b297f0"
   },
   "128/crew_ceiling_pipes.png": {
-   "bytes": 9264,
-   "sha256": "0f50ecde61b3c0904cdcd9608b9efefef455056e45144e13fca833b6ae894a65"
+   "bytes": 7727,
+   "sha256": "1e0cbeccdf1b96e677cd7bac28c9dc75931b88bc101363c269f3f36fdf5ed0c2"
   },
   "128/crew_ceiling_plate.png": {
-   "bytes": 7883,
-   "sha256": "6c5ae3a8c0c5d466afb3fbccd2205040d5e2c62bc42b603086bf68f826bdf02c"
+   "bytes": 7451,
+   "sha256": "c2b273b13739f6aa2b2abe3682ea53915a50be45f844fc244df84033ea06b17e"
   },
   "128/crew_ceiling_ribbed.png": {
-   "bytes": 8884,
-   "sha256": "ffffad35ce4564a53f0687af3682f5b9c4fc04bac3c56392d163666b13a83a09"
+   "bytes": 7785,
+   "sha256": "56c8b208bd529b8c43a26e99f21fff6bc7ec3c105931da27e3ae73d4c42873f1"
   },
   "128/crew_flank.png": {
    "bytes": 10849,
    "sha256": "e2e2f9fc3856f6ae6f882be5d42c822d3e74da7a33ed4bf441664ce231befe7e"
   },
   "128/crew_floor_access.png": {
-   "bytes": 9464,
-   "sha256": "54cf85dbb00b76ed6f1409a6040e261e398dde43a74da84b71d2f1a11fb66ef5"
+   "bytes": 9365,
+   "sha256": "1cd90dad6636ea710441004de2a06f0292d27be1ed062cb2c3c272d328c88c01"
   },
   "128/crew_floor_drain.png": {
-   "bytes": 12323,
-   "sha256": "05f078bbc38dfd442bf97c6d0f16ad657c8271556e0a4d007258512380f274b3"
+   "bytes": 12147,
+   "sha256": "128330e11662abd31d7766fd53fb2886b71cd20ab9b398d47d735389f1048d52"
   },
   "128/crew_floor_grate.png": {
-   "bytes": 11899,
-   "sha256": "819b554627ff5ff9d41531c5c723ac4d81d466a8a8592caeae70196d6bfff61c"
+   "bytes": 11604,
+   "sha256": "4bbbc65315c2164c56eed4e24b9ad44dd9eb1dd6b93dd5b2b5748c09dc08435d"
   },
   "128/crew_floor_plate.png": {
-   "bytes": 9669,
-   "sha256": "16fcbad0c5a2612262e5004cf914c512f3d85413008ac77772b0a60f02680617"
+   "bytes": 9578,
+   "sha256": "da2b94556d11cccc003105d2ac41091ffa399d8b3fb27bf18e0a4b09d6a2fc90"
   },
   "128/crew_floor_trench.png": {
-   "bytes": 9554,
-   "sha256": "2bad2ce3e5d27e59eb3f7d75231938f3eb8e9583bd9bf91ea4a11720d17371b8"
+   "bytes": 9296,
+   "sha256": "8478b07a64ef6d6bce432d300719bc41b704fd449f773ede4e58d28bcfa0cc02"
   },
   "128/crew_floor_vent.png": {
-   "bytes": 10427,
-   "sha256": "6ae79569ad91e394849b2db49df415c65e3078cded55ccaf739fac7f09fa1774"
+   "bytes": 10272,
+   "sha256": "dd99871cbccfc6e007e50ca7a2c69acffe32269da5d13d1ecef8bc01109d44b1"
   },
   "128/crew_floor_walkway.png": {
-   "bytes": 15706,
-   "sha256": "87d47b40e9f136c59b609d3b7437c133dc6fa552d3c6ff5b8a343c5d8411282d"
+   "bytes": 15378,
+   "sha256": "5e4b05afd1ebab0e0f379228ee2be37f1332305e25205c8a7fde50bb20c98312"
   },
   "128/crew_hatch.png": {
    "bytes": 10715,
@@ -103,80 +103,80 @@
    "sha256": "96dad917ab95281e47cf4056b05694857e9485924e6753d5887107554bb0efb5"
   },
   "128/crew_trims.png": {
-   "bytes": 11561,
-   "sha256": "10832da8037e23354e0c605f99b3dbe0b989bb298b8567955cc45df30a7898b1"
+   "bytes": 11003,
+   "sha256": "5e548debe47a26ef3ec73f2cf82afefe67beb48641845ebb9dcec03b3e5d0faa"
   },
   "128/crew_vent.png": {
    "bytes": 8889,
    "sha256": "979296ea7e0550bac3186937d0a4aea099eaaa7366888af6c6b0163286820c69"
   },
   "128/working_ceiling_cable_tray.png": {
-   "bytes": 13032,
-   "sha256": "93559e9ed22452cfc41b14d64bab5992cd89e574c0bd19142ccf69354eed3ec8"
+   "bytes": 12584,
+   "sha256": "2121a915d213107aba553d7efde1d6115fbfe691cabd49fadc07cf08e3a80648"
   },
   "128/working_ceiling_fan.png": {
-   "bytes": 16688,
-   "sha256": "81bdf83c68a2ac92feaf8a6755b7a2745e2fdf22487aea064499ef112eed62ab"
+   "bytes": 16627,
+   "sha256": "7d6b5cb4129b436a0359e5c0a8be0f11bf3f448f1f0e19b93b833d89d5b246ba"
   },
   "128/working_ceiling_grille.png": {
-   "bytes": 12264,
-   "sha256": "ff0fda629c03d141f6c18045c2dfcc4a0e002148810c76b3c7216f1ad3de6d97"
+   "bytes": 12149,
+   "sha256": "42eb5379dc59800ca13cd479625d08290e7ca8d122d1a7652b119c6bc96c5365"
   },
   "128/working_ceiling_hatch.png": {
-   "bytes": 13462,
-   "sha256": "a3284f9ec4238df5256a5e1faf9a862b7eb1f692469a3232c1957064ffe72c9f"
+   "bytes": 13220,
+   "sha256": "db96ddc24481ceb7a82f85a15a823ded4f676e9fe3490740350725b1cc550864"
   },
   "128/working_ceiling_lamp_surround.png": {
-   "bytes": 10823,
-   "sha256": "be27eb14252b518d363751f06515379f9c026c561506a8e8a733ac01ea7846b3"
+   "bytes": 10597,
+   "sha256": "97cab0a8d1fa9a1b9691cb3617c04a9e3b0795a6991f5554aaf6a2694e21a510"
   },
   "128/working_ceiling_pipes.png": {
-   "bytes": 11249,
-   "sha256": "2ad74b1c0b0a7d161f0e89d6df789c3d7447ea2ec533eff9f840c687d34ca5c6"
+   "bytes": 10824,
+   "sha256": "262d444ae902f90eebcaee26839c7e2171b6514f388b7e2ec507f1534829fbff"
   },
   "128/working_ceiling_plate.png": {
-   "bytes": 12951,
-   "sha256": "643bc02959795a78112958d7646cce3ccdf915383638eb2af5f0cea66ce18b92"
+   "bytes": 12818,
+   "sha256": "31047a706a0ac0c23067790395eb97d1b4f7d45d1174c2956272c07ba5314a4b"
   },
   "128/working_ceiling_ribbed.png": {
-   "bytes": 11535,
-   "sha256": "51c8b4b018094e02b31a16d37aec0f3da6cfc2904d817495d37132dbc5796fd5"
+   "bytes": 11188,
+   "sha256": "6d44d07ebdd01713ff77c962099a4ed0e1435ab7132dc5fb2733770dd64183ee"
   },
   "128/working_flank.png": {
    "bytes": 13123,
    "sha256": "0bb9efd68e8aada850c4ae213267c285d618aac24ec3d9cab780d149ca34d835"
   },
   "128/working_floor_access.png": {
-   "bytes": 23118,
-   "sha256": "66786fa0d7234fc65fe90ddb20900e278d13674f2fc4e89960816d09e76bc78f"
+   "bytes": 22546,
+   "sha256": "381f2b2c4217beb633f856050ca906f71cfa54a3e81df747b75005ca11a3dc48"
   },
   "128/working_floor_drain.png": {
-   "bytes": 22185,
-   "sha256": "86ee18f3ba7d27491156e6676cf548926f2212927f34e961d2727590e9b4cce4"
+   "bytes": 22419,
+   "sha256": "a9c1b15f53cb5051e95d922d4b941558dcda0e0271422226234ad4232c132572"
   },
   "128/working_floor_grate.png": {
-   "bytes": 28688,
-   "sha256": "48492e7d1ff0358613f7f1acc4065cbb531335ba26071e17238492f4fc4fa5e1"
+   "bytes": 28225,
+   "sha256": "dae2e51185c3411a373b3d20fd65bdb65328beee450a0006ab2e0a3caf9f4aa1"
   },
   "128/working_floor_hazard.png": {
-   "bytes": 19752,
-   "sha256": "9a99fbdb50e27fb0f620b6ed055692c0a20d447df4275be36c5e7fec9f547a44"
+   "bytes": 20046,
+   "sha256": "452737458241316e1bd5e27f61b1c8da65be41c3ad9cc8078a4b3648f9e6f79c"
   },
   "128/working_floor_plate.png": {
-   "bytes": 20790,
-   "sha256": "7cd11ce8e450093d376ddbc7d5472651ebdcaa9eef1ed019b23e562cab73e080"
+   "bytes": 20639,
+   "sha256": "d5f9faa651eec809e939bf5bd4febc1304e339b1d44eb4d48dc70e18b8caee3f"
   },
   "128/working_floor_trench.png": {
-   "bytes": 23295,
-   "sha256": "8cd613000c1f09a6af65808e06b61b8f218936afc24b89d6927791f2a790fe96"
+   "bytes": 23385,
+   "sha256": "2131f7b48c44471348fcea66717d9f8a798d7ca455e63d4b58feb530a261dd78"
   },
   "128/working_floor_vent.png": {
-   "bytes": 19937,
-   "sha256": "508e49961fd9c768bb8a10e0db720a0ef1471c898fbe462abd9b9a17765812df"
+   "bytes": 19518,
+   "sha256": "58c64d2191a3005cbe72d135a6e93929f62e28c8a0c5d5c1fb133090ffccf3ca"
   },
   "128/working_floor_walkway.png": {
-   "bytes": 15792,
-   "sha256": "d657d266271e48af9cc2b264fbf48a94dde2169d0bee6c25717fbb48acbb0389"
+   "bytes": 15309,
+   "sha256": "79e15cab796ffd5aad2a55e9e012a4efa9a4d09f5b878d25905f1c4e02453b30"
   },
   "128/working_hatch.png": {
    "bytes": 14869,
@@ -215,76 +215,76 @@
    "sha256": "3d4ed7bdc962e97c0b66b218aaf8163af6a0975281736b3a8ba5c487b5c7ff0d"
   },
   "128/working_trims.png": {
-   "bytes": 16317,
-   "sha256": "d29439922d8f94d95ec104cca309945e6b1425fb3cb798439db8174ad95e8403"
+   "bytes": 15034,
+   "sha256": "991408110d814e044edff71ec9f106d82306fc2f6a7ec6076a638300a8ac4286"
   },
   "128/working_vent.png": {
    "bytes": 16040,
    "sha256": "7cb921a2d2320f468d541dd8f94b6f93b1fd7b9ddc33945fbfdfb24b927c9486"
   },
   "256/crew_ceiling_cable_tray.png": {
-   "bytes": 40377,
-   "sha256": "c28a49c859cb2743d875603984f52aaa08e4512d71fdcd5d018d98493bd90671"
+   "bytes": 30254,
+   "sha256": "2b06082c91f7fc85944603b63ea993a8a6c4b5fc6538b10af2015fceb5ffe4fd"
   },
   "256/crew_ceiling_fan.png": {
-   "bytes": 40035,
-   "sha256": "9655a73e35c0989a74b8acbb32d44661f3f699ef3e9b8cb317121f1337e64a9e"
+   "bytes": 35589,
+   "sha256": "c46ebf747ba34d16051767482eb119b8b2831a4d25431c304a3fb36d9aa6528c"
   },
   "256/crew_ceiling_grille.png": {
-   "bytes": 29735,
-   "sha256": "c90802ec36b46325dfecba11c830b976ff310d97e08700c0666a13e34e0be582"
+   "bytes": 23426,
+   "sha256": "47c410475103b5517799a0f67fa3b92d786fc2b22752ea572545faf662272cd8"
   },
   "256/crew_ceiling_hatch.png": {
-   "bytes": 26325,
-   "sha256": "0d8535583ef56a45d0a73f618c152bc03fb9adb51c728e792c383ad1a19a48c8"
+   "bytes": 21677,
+   "sha256": "bad092de646b512a22493ad335afdbb4b06e05a6d00a1353b6cc4cd6a401cb83"
   },
   "256/crew_ceiling_lamp_surround.png": {
-   "bytes": 27386,
-   "sha256": "30ecbfdde5fb516db939e4fc05cb23446588b7beba24c1af5a2c1a1ab92f4fa0"
+   "bytes": 20568,
+   "sha256": "a28091b73481a4c33925ccc348100fdd7252807d4389cfa3549e6488225b3eef"
   },
   "256/crew_ceiling_pipes.png": {
-   "bytes": 37533,
-   "sha256": "f63d82bb223f40c8e6c9b265c2a0371bbb48763b9b0794ad0c696ee06852b7f7"
+   "bytes": 28056,
+   "sha256": "a1fac3f3e618aec50ff07d84bf0bf9a953f6856495fde41b229e3a07b11f580b"
   },
   "256/crew_ceiling_plate.png": {
-   "bytes": 27802,
-   "sha256": "6b682371879e18c788206714020a2b8c65dc93f8a60c9539ac7973eaa4ff2c95"
+   "bytes": 23359,
+   "sha256": "662a1569ac7d72d5028bc07dd96d4bab672aad246289aab400ab7e07d1cc7b3e"
   },
   "256/crew_ceiling_ribbed.png": {
-   "bytes": 40466,
-   "sha256": "f402e775431a47fa17828cce6a896d9da6c9018852610478106f1387527c8f0f"
+   "bytes": 29956,
+   "sha256": "cf6a60cc88dfa7d9397529774d829766455ac02a9ed7b4bf02ce9067a9cdc23d"
   },
   "256/crew_flank.png": {
    "bytes": 31578,
    "sha256": "3bbfa99c896eb4b11db39efc06a84c4cca324c1dce111c28697bc6d9d6f7d8c2"
   },
   "256/crew_floor_access.png": {
-   "bytes": 26864,
-   "sha256": "717a9329674c9c680047db843dcb616e44bc924b0efb586013e2aae3d2353801"
+   "bytes": 25993,
+   "sha256": "f76be0bf5a19ff1e70c4ec298f7cefdd47c4f967d462cdec1f88f2c65624a934"
   },
   "256/crew_floor_drain.png": {
-   "bytes": 33612,
-   "sha256": "4a2ace47aff3ccfefcf0852eef0ebba56138143658b825d679d741cb0b4f5bc8"
+   "bytes": 32875,
+   "sha256": "bfdfa25d72ee5cd85780513435970e70ebf7b6a932a9f88ee776ea8269c179f5"
   },
   "256/crew_floor_grate.png": {
-   "bytes": 40107,
-   "sha256": "934c9b031d25cb2e1b65a2f3c60ee141c956773388b579ca7b52f4b5f2d4bfdd"
+   "bytes": 34594,
+   "sha256": "a85435e825a609772465b0640d44541d16269a70b1852b78428d2d9cf398173b"
   },
   "256/crew_floor_plate.png": {
-   "bytes": 28228,
-   "sha256": "8ff190c6232c567256924eba517fb3322fdf50af94d54b93310609f93e6a33f9"
+   "bytes": 27393,
+   "sha256": "8596155f8b4010b8a4a1fd7a867a66195664f70d9fba2667b3ae2944d60a99fe"
   },
   "256/crew_floor_trench.png": {
-   "bytes": 29719,
-   "sha256": "671f5e5be73c787330c18be87e1f860a60ecd0140f2c9f5c49c418f9b875fb35"
+   "bytes": 27038,
+   "sha256": "6c35e6832951493c0efde72a540b3aa97784352d565569bad19a873fa9099558"
   },
   "256/crew_floor_vent.png": {
-   "bytes": 34347,
-   "sha256": "c883d1c329306c6af1cf471bf2e87afc37d597451417501296b3be944688a709"
+   "bytes": 29125,
+   "sha256": "9c2cdcbd620ca4f44d1f39dce7839b19f2f09e6e3df83f37db49dd985b5989c0"
   },
   "256/crew_floor_walkway.png": {
-   "bytes": 56955,
-   "sha256": "a7c72a19fbe9eb151071352559c5530b8e3f0fb79afebb6e64f57ac92371be35"
+   "bytes": 52028,
+   "sha256": "926933d6682aa3ef7e0504a217defa8ff36a903187e2cc3b76b3759967f83ac0"
   },
   "256/crew_hatch.png": {
    "bytes": 27884,
@@ -323,80 +323,80 @@
    "sha256": "9b97ee79552575e0f142e2c3a4882cc89acfcbf8a4f7773f84dab59d414e31ce"
   },
   "256/crew_trims.png": {
-   "bytes": 35788,
-   "sha256": "1d24d1ca9db120615f9931ad60dbdad78559a1ed45e15e32634eb54471d20451"
+   "bytes": 30683,
+   "sha256": "5e15aaf1dea008fd30bc2ecbffd0c1a3cea2b150dc237ceb8b5c66f93f36a080"
   },
   "256/crew_vent.png": {
    "bytes": 26733,
    "sha256": "384761e5a2607c58c33e0f9fb90fbb945294360a35dffb2cc3d10e8bd0a4f13d"
   },
   "256/working_ceiling_cable_tray.png": {
-   "bytes": 42547,
-   "sha256": "070c353d424c1a837235a72acf4be23c1a427ccb50e7fcdaa87c7fa37186ee33"
+   "bytes": 36321,
+   "sha256": "5eaeb06d03948389ffdbe392c1c0fe0f3b82d7c9c6cc5ebe82db6d2a6c1d520b"
   },
   "256/working_ceiling_fan.png": {
-   "bytes": 48843,
-   "sha256": "7f8584495903b74e0038ae5db66e6e8cf15a8e9168e11ac8288fb4435889c944"
+   "bytes": 46199,
+   "sha256": "0a5ebcc9220e5ee29f3a907be0670f023d92d62030f1d68abc671bd032889aa3"
   },
   "256/working_ceiling_grille.png": {
-   "bytes": 37656,
-   "sha256": "4ba4853f33e9d1dcd9cb095e593fcfe7278df535bfda3ccea8b3fa554c2495e0"
+   "bytes": 34158,
+   "sha256": "ea9610b327eb85b108de4551d9a6ddbb483532f0d86952fb6664d7259221269f"
   },
   "256/working_ceiling_hatch.png": {
-   "bytes": 38796,
-   "sha256": "8f2943372c1ed5f5342ea981ff11656214e4b6e283b13573216dd726e5533b1a"
+   "bytes": 36337,
+   "sha256": "bf2c08aaed029bb070cb59d5e90de45244b9e64500849cd0155921665dc5a2f6"
   },
   "256/working_ceiling_lamp_surround.png": {
-   "bytes": 33338,
-   "sha256": "34e5ca4c5ec247867613fedc5c364c00eb4b3228a9d1e6897dc1d5e769c3be3d"
+   "bytes": 29866,
+   "sha256": "6aea8233b4ca48f262336eaca4127105e9f9eea7b485b997c07184e989724786"
   },
   "256/working_ceiling_pipes.png": {
-   "bytes": 39301,
-   "sha256": "065e482492e5b79619e49cc2658930b5f168a236180e599bfc6a1f5ee607759a"
+   "bytes": 33327,
+   "sha256": "649424f89bc173465f1a7a6377b2b851aa407cadc80ed695c9153b5f5b3424b1"
   },
   "256/working_ceiling_plate.png": {
-   "bytes": 39962,
-   "sha256": "4b69b8a51a37bbdd863a1d097715c77f5a4091467aa151408e587adb937a1268"
+   "bytes": 37292,
+   "sha256": "e0f23ba22cc005fb6f29ba45d8d9700ac93f55adedac7274b9b75af7537c07be"
   },
   "256/working_ceiling_ribbed.png": {
-   "bytes": 42076,
-   "sha256": "46a82c85735d0bb04089f76bf03a705aca1230d020741f6fa1a0a627fa41cfad"
+   "bytes": 36111,
+   "sha256": "e3452dc26c891cc1d9652f4be3f714451799383071d0a7ca6c330b26e853cd03"
   },
   "256/working_flank.png": {
    "bytes": 37752,
    "sha256": "b8132fd2ab8c8d76a4712da00e83c473a20bccde9781061735677df5d8cc5c96"
   },
   "256/working_floor_access.png": {
-   "bytes": 83298,
-   "sha256": "fdf00adcce4fbfd408fd68c9f93a695578870996448201c93e001c2463892191"
+   "bytes": 81553,
+   "sha256": "19243c15b4c8e2b5252b5f8394d22251492a7d652fa23c87f03bea3e37962a54"
   },
   "256/working_floor_drain.png": {
-   "bytes": 83980,
-   "sha256": "5d6c60c14d18b4a2775ee87b2dee1fbdd22ebac2809ccbc7bab3a426a897e9c3"
+   "bytes": 81332,
+   "sha256": "6b3cce36917302825bce9c65ca3788a511500a39b27a533adefd9f3acbab2e5f"
   },
   "256/working_floor_grate.png": {
-   "bytes": 97476,
-   "sha256": "e3c0d89aa20766f54c62efab2bce2938222ec8a1eabd8b41737946c6546287e5"
+   "bytes": 96070,
+   "sha256": "8e9b03fc9458b7d69bc5af0a33535f9f70c147f39e865b9189f3bc237ac5fca2"
   },
   "256/working_floor_hazard.png": {
-   "bytes": 63420,
-   "sha256": "d9898ea51e929da2399b580fa18b724367f4890daafc0e899cacf69a7ae194a0"
+   "bytes": 61790,
+   "sha256": "bc2c26b3d2e8a40e8b1aaa08024bb27e9c51df3370f00c644e1dffcc5f7219ef"
   },
   "256/working_floor_plate.png": {
-   "bytes": 79811,
-   "sha256": "c804cf7c65cd62595a666c3ab1639985566fdad6cf3b66b08add0374c856168d"
+   "bytes": 78277,
+   "sha256": "5bb54d1cc1c9743f57921ec11b3604648a9cb9983dbb6a3bf1e37f20bda911d2"
   },
   "256/working_floor_trench.png": {
-   "bytes": 84460,
-   "sha256": "a7e872d35216f555b53734cf51e1be2d26c52add728e45700f299b20f2d03a1b"
+   "bytes": 82655,
+   "sha256": "dfc68d9c880b5d470e3ac0f800ef20dc0202443b05b8bfa5dc09ab71615fe599"
   },
   "256/working_floor_vent.png": {
-   "bytes": 74207,
-   "sha256": "9544d57e39d8add13b1fe40690dce289a687827ce7dcc95052d96b44a0e1098a"
+   "bytes": 71957,
+   "sha256": "a78f0c6ac98c61583cb8fef82333192daccc5befc72c8394aca3b7737a6f6dc8"
   },
   "256/working_floor_walkway.png": {
-   "bytes": 56593,
-   "sha256": "ef0975e258ab69094ab15f52a4491eb765cb206204e6e5fbcec303c1f3438f2b"
+   "bytes": 51198,
+   "sha256": "87af29aa8583be4044186a5f957a014b1261a002b9870934fb10ab5104065807"
   },
   "256/working_hatch.png": {
    "bytes": 39475,
@@ -435,8 +435,8 @@
    "sha256": "df115eb01e33224b405dc25dd1c5502e9cfd77a2c58bdebe04262d6581561427"
   },
   "256/working_trims.png": {
-   "bytes": 44608,
-   "sha256": "4842ec52494afff3e4a7344b89fcafe7313ef8b4bee1b2967b9a2175af3fab5a"
+   "bytes": 40260,
+   "sha256": "33957bc7452ab735fc1734ee5ab45950756f261b562e88a44813669383c561b5"
   },
   "256/working_vent.png": {
    "bytes": 43029,
@@ -460,7 +460,7 @@
   }
  },
  "generator": "tools/blender/build_wall_panels.py",
- "generator_version": 1,
+ "generator_version": 2,
  "gpu_bytes_panel_layers": {
   "128": 4805900,
   "256": 19223820
@@ -548,8 +548,8 @@
   "crew_floor_walkway": {
    "glow_fraction": 0.0,
    "layer": 41,
-   "seam_ratio_x": 0.448,
-   "seam_ratio_y": 1.692
+   "seam_ratio_x": 0.275,
+   "seam_ratio_y": 1.719
   },
   "crew_hatch": {
    "glow_fraction": 0.0011,
@@ -599,7 +599,7 @@
   "crew_trims": {
    "glow_fraction": 0.0,
    "layer": 48,
-   "seam_ratio_x": 0.901
+   "seam_ratio_x": 0.964
   },
   "crew_vent": {
    "glow_fraction": 0.0,
@@ -689,8 +689,8 @@
   "working_floor_walkway": {
    "glow_fraction": 0.0,
    "layer": 57,
-   "seam_ratio_x": 0.231,
-   "seam_ratio_y": 0.227
+   "seam_ratio_x": 0.26,
+   "seam_ratio_y": 0.224
   },
   "working_hatch": {
    "glow_fraction": 0.0011,
@@ -740,7 +740,7 @@
   "working_trims": {
    "glow_fraction": 0.0,
    "layer": 65,
-   "seam_ratio_x": 0.403
+   "seam_ratio_x": 0.524
   },
   "working_vent": {
    "glow_fraction": 0.0,
