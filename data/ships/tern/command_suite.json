@@ -1,0 +1,2162 @@
+{
+ "schema": "starcrew.layout-patch/1",
+ "status": "Proposed (2026-10-06): openspec/changes/command-suite, docs/mockups/command-deck.html. Written by tools/command_suite.py; edit the script, not this file. The layout does not hold it yet: applying it is the change's task 2.",
+ "_rules": [
+  "compartments and portals replace the layout's record of the same id, or are added; stations move the named station's seat; fixtures update the layout's fixture of the same id field by field, or are added; fixtures_removed are dropped; systems update field by field.",
+  "bridge holds the round bridge's platforms, stairs, consoles and seats, as a variant of data/ships/tern/bridge_variants.json does.",
+  "furnishings are the side rooms' furniture, placed as the bridge props are: back_m is the back of the piece at floor level and yaw_deg the way its front faces (0 the bow, +90 port); set names the prop set (assets/models/<set>); a chair's seat_m is its sitter's seat point. They become the deck's detail file when the patch is applied."
+ ],
+ "bridge": {
+  "id": "suite",
+  "name": "Round, with side rooms",
+  "after": "R2 (a round bridge with a briefing room on one side) and the owner's pick of B, 2026-10-06",
+  "summary": "Variant B's sixteen-sided room. The ring starts a segment further forward, so a door in each aft diagonal wall opens from the walkway: the ready room to port, the briefing room to starboard. Helm and tactical sit at two desks 1.5 m either side of the centreline, so their heads clear the screen from the captain's eye (11a's fix).",
+  "platforms": [
+   {
+    "id": "ring_p",
+    "name": "Port ring",
+    "poly": [
+     [
+      3.512,
+      20.944
+     ],
+     [
+      5.256,
+      22.688
+     ],
+     [
+      6.2,
+      24.967
+     ],
+     [
+      6.2,
+      27.433
+     ],
+     [
+      5.256,
+      29.712
+     ],
+     [
+      4.768,
+      30.2
+     ],
+     [
+      3.217,
+      28.9
+     ],
+     [
+      3.838,
+      27.906
+     ],
+     [
+      4.16,
+      26.778
+     ],
+     [
+      4.158,
+      25.606
+     ],
+     [
+      3.832,
+      24.481
+     ],
+     [
+      3.208,
+      23.489
+     ],
+     [
+      2.333,
+      22.708
+     ]
+    ],
+    "top_m": 3.95,
+    "edges": [
+     "wall",
+     "wall",
+     "wall",
+     "wall",
+     "wall",
+     "step",
+     "rail",
+     "rail",
+     "rail",
+     "rail",
+     "rail",
+     "rail",
+     "step"
+    ]
+   },
+   {
+    "id": "ring_s",
+    "name": "Starboard ring",
+    "poly": [
+     [
+      -2.333,
+      22.708
+     ],
+     [
+      -3.208,
+      23.489
+     ],
+     [
+      -3.832,
+      24.481
+     ],
+     [
+      -4.158,
+      25.606
+     ],
+     [
+      -4.16,
+      26.778
+     ],
+     [
+      -3.838,
+      27.906
+     ],
+     [
+      -3.217,
+      28.9
+     ],
+     [
+      -4.768,
+      30.2
+     ],
+     [
+      -5.256,
+      29.712
+     ],
+     [
+      -6.2,
+      27.433
+     ],
+     [
+      -6.2,
+      24.967
+     ],
+     [
+      -5.256,
+      22.688
+     ],
+     [
+      -3.512,
+      20.944
+     ]
+    ],
+    "top_m": 3.95,
+    "edges": [
+     "rail",
+     "rail",
+     "rail",
+     "rail",
+     "rail",
+     "rail",
+     "step",
+     "wall",
+     "wall",
+     "wall",
+     "wall",
+     "wall",
+     "step"
+    ]
+   },
+   {
+    "id": "sub",
+    "name": "Helm and tactical sub-platform",
+    "poly": [
+     [
+      -2.6,
+      26.6
+     ],
+     [
+      2.6,
+      26.6
+     ],
+     [
+      3.0,
+      27.2
+     ],
+     [
+      3.0,
+      29.2
+     ],
+     [
+      -3.0,
+      29.2
+     ],
+     [
+      -3.0,
+      27.2
+     ]
+    ],
+    "top_m": 3.725,
+    "edges": [
+     "riser",
+     "riser",
+     "riser",
+     "riser",
+     "riser",
+     "riser"
+    ]
+   },
+   {
+    "id": "command",
+    "name": "Captain's dais",
+    "poly": [
+     [
+      0.456,
+      23.9
+     ],
+     [
+      1.1,
+      24.544
+     ],
+     [
+      1.1,
+      25.456
+     ],
+     [
+      0.456,
+      26.1
+     ],
+     [
+      -0.456,
+      26.1
+     ],
+     [
+      -1.1,
+      25.456
+     ],
+     [
+      -1.1,
+      24.544
+     ],
+     [
+      -0.456,
+      23.9
+     ]
+    ],
+    "top_m": 3.95,
+    "edges": [
+     "rail",
+     "rail",
+     "rail",
+     "riser",
+     "rail",
+     "rail",
+     "rail",
+     "step"
+    ]
+   }
+  ],
+  "stairs": [
+   {
+    "top_m": [
+     2.889,
+     3.95,
+     21.876
+    ],
+    "foot_m": [
+     2.473,
+     3.5,
+     21.599
+    ],
+    "width_m": 1.6,
+    "note": "Port ring down to the door aisle."
+   },
+   {
+    "top_m": [
+     3.983,
+     3.95,
+     29.542
+    ],
+    "foot_m": [
+     3.662,
+     3.5,
+     29.926
+    ],
+    "width_m": 1.6,
+    "note": "Port ring down to the forward walkway."
+   },
+   {
+    "top_m": [
+     -2.889,
+     3.95,
+     21.876
+    ],
+    "foot_m": [
+     -2.473,
+     3.5,
+     21.599
+    ],
+    "width_m": 1.6,
+    "note": "Starboard ring down to the door aisle."
+   },
+   {
+    "top_m": [
+     -3.983,
+     3.95,
+     29.542
+    ],
+    "foot_m": [
+     -3.662,
+     3.5,
+     29.926
+    ],
+    "width_m": 1.6,
+    "note": "Starboard ring down to the forward walkway."
+   },
+   {
+    "top_m": [
+     0.0,
+     3.95,
+     23.9
+    ],
+    "foot_m": [
+     0.0,
+     3.5,
+     23.4
+    ],
+    "width_m": 1.0,
+    "note": "Captain's dais down to the aisle."
+   }
+  ],
+  "props": [
+   {
+    "prop": "wall_bank_comms",
+    "station": "comms",
+    "back_m": [
+     4.384,
+     3.95,
+     21.816
+    ],
+    "yaw_deg": -45.0
+   },
+   {
+    "prop": "wall_bank",
+    "station": "status_p",
+    "back_m": [
+     5.728,
+     3.95,
+     23.828
+    ],
+    "yaw_deg": -67.5
+   },
+   {
+    "prop": "wall_bank_core_engineering",
+    "station": "engineering",
+    "back_m": [
+     6.2,
+     3.95,
+     26.2
+    ],
+    "yaw_deg": -90.0
+   },
+   {
+    "prop": "wall_bank",
+    "station": "repeater_p",
+    "back_m": [
+     5.728,
+     3.95,
+     28.572
+    ],
+    "yaw_deg": -112.5
+   },
+   {
+    "prop": "wall_bank",
+    "station": "flight_ops",
+    "back_m": [
+     -4.384,
+     3.95,
+     21.816
+    ],
+    "yaw_deg": 45.0
+   },
+   {
+    "prop": "wall_bank",
+    "station": "status_s",
+    "back_m": [
+     -5.728,
+     3.95,
+     23.828
+    ],
+    "yaw_deg": 67.5
+   },
+   {
+    "prop": "wall_bank_core",
+    "station": "science",
+    "back_m": [
+     -6.2,
+     3.95,
+     26.2
+    ],
+    "yaw_deg": 90.0
+   },
+   {
+    "prop": "wall_bank",
+    "station": "repeater_s",
+    "back_m": [
+     -5.728,
+     3.95,
+     28.572
+    ],
+    "yaw_deg": 112.5
+   },
+   {
+    "prop": "free_console_helm",
+    "station": "helm",
+    "back_m": [
+     1.5,
+     3.725,
+     28.812
+    ],
+    "yaw_deg": 180.0
+   },
+   {
+    "prop": "free_console_tactical",
+    "station": "tactical",
+    "back_m": [
+     -1.5,
+     3.725,
+     28.812
+    ],
+    "yaw_deg": 180.0
+   },
+   {
+    "prop": "captain_chair",
+    "station": "captain",
+    "back_m": [
+     0.0,
+     3.95,
+     24.939
+    ],
+    "yaw_deg": 0.0
+   }
+  ],
+  "seats": [
+   {
+    "station": "comms",
+    "seat_m": [
+     3.712,
+     3.95,
+     22.488
+    ],
+    "yaw_deg": 135.0
+   },
+   {
+    "station": "engineering",
+    "seat_m": [
+     5.25,
+     3.95,
+     26.2
+    ],
+    "yaw_deg": 90.0
+   },
+   {
+    "station": "flight_ops",
+    "seat_m": [
+     -3.712,
+     3.95,
+     22.488
+    ],
+    "yaw_deg": -135.0
+   },
+   {
+    "station": "science",
+    "seat_m": [
+     -5.25,
+     3.95,
+     26.2
+    ],
+    "yaw_deg": -90.0
+   },
+   {
+    "station": "helm",
+    "seat_m": [
+     1.5,
+     3.725,
+     27.902
+    ],
+    "yaw_deg": 0.0
+   },
+   {
+    "station": "tactical",
+    "seat_m": [
+     -1.5,
+     3.725,
+     27.902
+    ],
+    "yaw_deg": 0.0
+   },
+   {
+    "station": "captain",
+    "seat_m": [
+     0.0,
+     3.95,
+     25.0
+    ],
+    "yaw_deg": 0.0
+   }
+  ]
+ },
+ "compartments": [
+  {
+   "id": "bridge",
+   "poi": 1,
+   "name": "Bridge",
+   "decks": [
+    "A"
+   ],
+   "kind": "room",
+   "finish": "crew",
+   "purpose": "The ship's command centre, round (bridge-stations 11a, variant B): seven stations and the ring's wall banks facing the main viewscreen and two forward windows; doors to the command passage, the ready room and the briefing room.",
+   "brushes": [
+    {
+     "y": [
+      3.5,
+      7.0
+     ],
+     "poly": [
+      [
+       1.233,
+       20.0
+      ],
+      [
+       3.512,
+       20.944
+      ],
+      [
+       5.256,
+       22.688
+      ],
+      [
+       6.2,
+       24.967
+      ],
+      [
+       6.2,
+       27.433
+      ],
+      [
+       5.256,
+       29.712
+      ],
+      [
+       3.512,
+       31.456
+      ],
+      [
+       3.165,
+       31.6
+      ],
+      [
+       -3.165,
+       31.6
+      ],
+      [
+       -3.512,
+       31.456
+      ],
+      [
+       -5.256,
+       29.712
+      ],
+      [
+       -6.2,
+       27.433
+      ],
+      [
+       -6.2,
+       24.967
+      ],
+      [
+       -5.256,
+       22.688
+      ],
+      [
+       -3.512,
+       20.944
+      ],
+      [
+       -1.233,
+       20.0
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ready_room",
+   "poi": 2,
+   "name": "Captain's ready room",
+   "decks": [
+    "A"
+   ],
+   "kind": "room",
+   "finish": "crew",
+   "purpose": "The captain's office: a desk with the captain's private console, a sofa, and a window. Its door opens onto the bridge's walkway; a second door to the command passage, a third to the captain's quarters.",
+   "brushes": [
+    {
+     "y": [
+      3.5,
+      6.5
+     ],
+     "poly": [
+      [
+       1.25,
+       14.0
+      ],
+      [
+       8.8,
+       14.0
+      ],
+      [
+       9.6,
+       14.8
+      ],
+      [
+       8.9,
+       20.0
+      ],
+      [
+       1.25,
+       20.0
+      ]
+     ]
+    },
+    {
+     "y": [
+      3.5,
+      6.5
+     ],
+     "poly": [
+      [
+       1.233,
+       20.0
+      ],
+      [
+       8.9,
+       20.0
+      ],
+      [
+       8.738,
+       20.944
+      ],
+      [
+       3.512,
+       20.944
+      ]
+     ]
+    },
+    {
+     "y": [
+      3.5,
+      6.5
+     ],
+     "poly": [
+      [
+       3.512,
+       20.944
+      ],
+      [
+       8.738,
+       20.944
+      ],
+      [
+       8.44,
+       22.688
+      ],
+      [
+       5.256,
+       22.688
+      ]
+     ]
+    },
+    {
+     "y": [
+      3.5,
+      6.5
+     ],
+     "poly": [
+      [
+       5.256,
+       22.688
+      ],
+      [
+       8.44,
+       22.688
+      ],
+      [
+       8.05,
+       24.967
+      ],
+      [
+       6.2,
+       24.967
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "briefing_room",
+   "poi": 31,
+   "name": "Briefing room",
+   "decks": [
+    "A"
+   ],
+   "kind": "room",
+   "finish": "crew",
+   "purpose": "Meetings and mission briefings: a table for eight facing a wall screen, a window. Its door opens onto the bridge's walkway; a second door to the command passage.",
+   "brushes": [
+    {
+     "y": [
+      3.5,
+      6.5
+     ],
+     "poly": [
+      [
+       -1.25,
+       20.0
+      ],
+      [
+       -8.9,
+       20.0
+      ],
+      [
+       -9.6,
+       14.8
+      ],
+      [
+       -8.8,
+       14.0
+      ],
+      [
+       -1.25,
+       14.0
+      ]
+     ]
+    },
+    {
+     "y": [
+      3.5,
+      6.5
+     ],
+     "poly": [
+      [
+       -3.512,
+       20.944
+      ],
+      [
+       -8.738,
+       20.944
+      ],
+      [
+       -8.9,
+       20.0
+      ],
+      [
+       -1.233,
+       20.0
+      ]
+     ]
+    },
+    {
+     "y": [
+      3.5,
+      6.5
+     ],
+     "poly": [
+      [
+       -5.256,
+       22.688
+      ],
+      [
+       -8.44,
+       22.688
+      ],
+      [
+       -8.738,
+       20.944
+      ],
+      [
+       -3.512,
+       20.944
+      ]
+     ]
+    },
+    {
+     "y": [
+      3.5,
+      6.5
+     ],
+     "poly": [
+      [
+       -6.2,
+       24.967
+      ],
+      [
+       -8.05,
+       24.967
+      ],
+      [
+       -8.44,
+       22.688
+      ],
+      [
+       -5.256,
+       22.688
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "computer_core",
+   "poi": 3,
+   "name": "Computer core",
+   "decks": [
+    "A"
+   ],
+   "kind": "room",
+   "finish": "working",
+   "purpose": "Processing for sensors, targeting and automation. Automated stations draw on it. Two rows of racks; moved aft of the briefing room (command-suite).",
+   "brushes": [
+    {
+     "y": [
+      3.5,
+      6.5
+     ],
+     "poly": [
+      [
+       -1.25,
+       14.0
+      ],
+      [
+       -9.708,
+       14.0
+      ],
+      [
+       -10.381,
+       9.0
+      ],
+      [
+       -1.25,
+       9.0
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "captains_quarters",
+   "poi": 32,
+   "name": "Captain's quarters",
+   "decks": [
+    "A"
+   ],
+   "kind": "room",
+   "finish": "crew",
+   "purpose": "The captain's cabin: a bed, a wardrobe, a desk and an en-suite. Doors to the command passage and the ready room.",
+   "brushes": [
+    {
+     "y": [
+      3.5,
+      6.5
+     ],
+     "poly": [
+      [
+       1.25,
+       9.0
+      ],
+      [
+       10.381,
+       9.0
+      ],
+      [
+       9.708,
+       14.0
+      ],
+      [
+       1.25,
+       14.0
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "head",
+   "poi": 33,
+   "name": "Head",
+   "decks": [
+    "A"
+   ],
+   "kind": "room",
+   "finish": "crew",
+   "purpose": "The command deck's washroom: two toilets, two showers, a wash counter and lockers.",
+   "brushes": [
+    {
+     "y": [
+      3.5,
+      6.5
+     ],
+     "poly": [
+      [
+       1.25,
+       4.0
+      ],
+      [
+       9.587,
+       4.0
+      ],
+      [
+       10.387,
+       4.8
+      ],
+      [
+       10.515,
+       8.0
+      ],
+      [
+       10.381,
+       9.0
+      ],
+      [
+       1.25,
+       9.0
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bridge_locker",
+   "poi": 34,
+   "name": "Bridge locker",
+   "decks": [
+    "A"
+   ],
+   "kind": "room",
+   "finish": "working",
+   "purpose": "The bridge crew's EVA suits and emergency kit, spare console boards and a workbench.",
+   "brushes": [
+    {
+     "y": [
+      3.5,
+      6.5
+     ],
+     "poly": [
+      [
+       -1.25,
+       9.0
+      ],
+      [
+       -10.381,
+       9.0
+      ],
+      [
+       -10.515,
+       8.0
+      ],
+      [
+       -10.387,
+       4.8
+      ],
+      [
+       -9.587,
+       4.0
+      ],
+      [
+       -1.25,
+       4.0
+      ]
+     ]
+    }
+   ]
+  }
+ ],
+ "portals": [
+  {
+   "id": "p_ready_bridge",
+   "kind": "door",
+   "between": [
+    "bridge",
+    "ready_room"
+   ],
+   "center_m": [
+    2.018,
+    4.6,
+    20.325
+   ],
+   "normal": [
+    0.3827,
+    0.0,
+    -0.9239
+   ],
+   "size_m": [
+    1.2,
+    2.2
+   ]
+  },
+  {
+   "id": "p_briefing_bridge",
+   "kind": "door",
+   "between": [
+    "bridge",
+    "briefing_room"
+   ],
+   "center_m": [
+    -2.018,
+    4.6,
+    20.325
+   ],
+   "normal": [
+    -0.3827,
+    0.0,
+    -0.9239
+   ],
+   "size_m": [
+    1.2,
+    2.2
+   ]
+  },
+  {
+   "id": "p_briefing",
+   "kind": "door",
+   "between": [
+    "briefing_room",
+    "a_corridor"
+   ],
+   "center_m": [
+    -1.25,
+    4.6,
+    17.0
+   ],
+   "normal": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "size_m": [
+    1.2,
+    2.2
+   ]
+  },
+  {
+   "id": "p_core",
+   "kind": "door",
+   "between": [
+    "computer_core",
+    "a_corridor"
+   ],
+   "center_m": [
+    -1.25,
+    4.6,
+    12.5
+   ],
+   "normal": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "size_m": [
+    1.0,
+    2.2
+   ]
+  },
+  {
+   "id": "p_captains_quarters",
+   "kind": "door",
+   "between": [
+    "captains_quarters",
+    "a_corridor"
+   ],
+   "center_m": [
+    1.25,
+    4.6,
+    12.5
+   ],
+   "normal": [
+    -1.0,
+    0.0,
+    0.0
+   ],
+   "size_m": [
+    1.0,
+    2.2
+   ]
+  },
+  {
+   "id": "p_head",
+   "kind": "door",
+   "between": [
+    "head",
+    "a_corridor"
+   ],
+   "center_m": [
+    1.25,
+    4.6,
+    6.5
+   ],
+   "normal": [
+    -1.0,
+    0.0,
+    0.0
+   ],
+   "size_m": [
+    1.0,
+    2.2
+   ]
+  },
+  {
+   "id": "p_bridge_locker",
+   "kind": "door",
+   "between": [
+    "bridge_locker",
+    "a_corridor"
+   ],
+   "center_m": [
+    -1.25,
+    4.6,
+    6.5
+   ],
+   "normal": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "size_m": [
+    1.0,
+    2.2
+   ]
+  },
+  {
+   "id": "p_quarters_ready",
+   "kind": "door",
+   "between": [
+    "captains_quarters",
+    "ready_room"
+   ],
+   "center_m": [
+    5.6,
+    4.6,
+    14.0
+   ],
+   "normal": [
+    0.0,
+    0.0,
+    1.0
+   ],
+   "size_m": [
+    1.0,
+    2.2
+   ]
+  },
+  {
+   "id": "p_ready_window",
+   "kind": "window",
+   "between": [
+    "ready_room",
+    "space"
+   ],
+   "center_m": [
+    9.25,
+    5.0,
+    17.4
+   ],
+   "normal": [
+    0.9911,
+    0.0,
+    0.1334
+   ],
+   "size_m": [
+    2.0,
+    1.0
+   ]
+  },
+  {
+   "id": "p_briefing_window",
+   "kind": "window",
+   "between": [
+    "briefing_room",
+    "space"
+   ],
+   "center_m": [
+    -9.25,
+    5.0,
+    17.4
+   ],
+   "normal": [
+    -0.9911,
+    0.0,
+    0.1334
+   ],
+   "size_m": [
+    2.0,
+    1.0
+   ]
+  },
+  {
+   "id": "p_bridge_window_p",
+   "kind": "window",
+   "between": [
+    "bridge",
+    "space"
+   ],
+   "center_m": [
+    4.384,
+    5.0,
+    30.584
+   ],
+   "normal": [
+    0.7071,
+    0.0,
+    0.7071
+   ],
+   "size_m": [
+    2.0,
+    1.2
+   ]
+  },
+  {
+   "id": "p_bridge_window_s",
+   "kind": "window",
+   "between": [
+    "bridge",
+    "space"
+   ],
+   "center_m": [
+    -4.384,
+    5.0,
+    30.584
+   ],
+   "normal": [
+    -0.7071,
+    0.0,
+    0.7071
+   ],
+   "size_m": [
+    2.0,
+    1.2
+   ]
+  }
+ ],
+ "stations": [
+  {
+   "station": "comms",
+   "seat_m": [
+    3.712,
+    3.95,
+    22.488
+   ],
+   "yaw_deg": 135.0
+  },
+  {
+   "station": "engineering",
+   "seat_m": [
+    5.25,
+    3.95,
+    26.2
+   ],
+   "yaw_deg": 90.0
+  },
+  {
+   "station": "flight_ops",
+   "seat_m": [
+    -3.712,
+    3.95,
+    22.488
+   ],
+   "yaw_deg": -135.0
+  },
+  {
+   "station": "science",
+   "seat_m": [
+    -5.25,
+    3.95,
+    26.2
+   ],
+   "yaw_deg": -90.0
+  },
+  {
+   "station": "helm",
+   "seat_m": [
+    1.5,
+    3.725,
+    27.902
+   ],
+   "yaw_deg": 0.0
+  },
+  {
+   "station": "tactical",
+   "seat_m": [
+    -1.5,
+    3.725,
+    27.902
+   ],
+   "yaw_deg": 0.0
+  },
+  {
+   "station": "captain",
+   "seat_m": [
+    0.0,
+    3.95,
+    25.0
+   ],
+   "yaw_deg": 0.0
+  }
+ ],
+ "fixtures": [
+  {
+   "id": "viewscreen",
+   "center_m": [
+    0.0,
+    5.2,
+    31.5
+   ]
+  },
+  {
+   "id": "eva_suits_a",
+   "kind": "locker",
+   "compartment": "bridge_locker",
+   "center_m": [
+    -3.9,
+    3.5,
+    8.725
+   ],
+   "size_m": [
+    2.4,
+    0.55
+   ],
+   "facing_yaw_deg": 180,
+   "note": "EVA suits for the bridge crew, beside the bridge (crew-on-deck, damage-control: a second suit locker, proposed)."
+  }
+ ],
+ "fixtures_removed": [
+  "captain_dais"
+ ],
+ "systems": [
+  {
+   "id": "computer",
+   "center_m": [
+    -5.0,
+    3.5,
+    11.7
+   ]
+  }
+ ],
+ "furnishings": [
+  {
+   "room": "ready_room",
+   "prop": "desk",
+   "set": "suite",
+   "back_m": [
+    6.95,
+    3.5,
+    17.4
+   ],
+   "yaw_deg": 90.0,
+   "note": "the captain's desk and private console, its back to the room"
+  },
+  {
+   "room": "ready_room",
+   "prop": "crew_chair",
+   "set": "bridge",
+   "back_m": [
+    7.948,
+    3.5,
+    17.4
+   ],
+   "yaw_deg": -90.0,
+   "note": "the captain, facing the room with the window behind",
+   "seat_m": [
+    7.9,
+    3.5,
+    17.4
+   ]
+  },
+  {
+   "room": "ready_room",
+   "prop": "crew_chair",
+   "set": "bridge",
+   "back_m": [
+    5.502,
+    3.5,
+    16.85
+   ],
+   "yaw_deg": 90.0,
+   "note": "a visitor",
+   "seat_m": [
+    5.55,
+    3.5,
+    16.85
+   ]
+  },
+  {
+   "room": "ready_room",
+   "prop": "crew_chair",
+   "set": "bridge",
+   "back_m": [
+    5.502,
+    3.5,
+    17.95
+   ],
+   "yaw_deg": 90.0,
+   "note": "a visitor",
+   "seat_m": [
+    5.55,
+    3.5,
+    17.95
+   ]
+  },
+  {
+   "room": "ready_room",
+   "prop": "sofa",
+   "set": "suite",
+   "back_m": [
+    3.0,
+    3.5,
+    14.0
+   ],
+   "yaw_deg": 0.0
+  },
+  {
+   "room": "ready_room",
+   "prop": "low_table",
+   "set": "suite",
+   "back_m": [
+    3.0,
+    3.5,
+    15.25
+   ],
+   "yaw_deg": 0.0
+  },
+  {
+   "room": "ready_room",
+   "prop": "shelf",
+   "set": "suite",
+   "back_m": [
+    7.7,
+    3.5,
+    14.0
+   ],
+   "yaw_deg": 0.0
+  },
+  {
+   "room": "ready_room",
+   "prop": "shelf",
+   "set": "suite",
+   "back_m": [
+    7.13,
+    3.5,
+    24.95
+   ],
+   "yaw_deg": 180.0,
+   "note": "at the end of the corner"
+  },
+  {
+   "room": "briefing_room",
+   "prop": "briefing_table",
+   "set": "suite",
+   "back_m": [
+    -4.3,
+    3.5,
+    17.0
+   ],
+   "yaw_deg": -90.0,
+   "note": "its length fore and aft"
+  },
+  {
+   "room": "briefing_room",
+   "prop": "crew_chair",
+   "set": "bridge",
+   "back_m": [
+    -3.702,
+    3.5,
+    15.5
+   ],
+   "yaw_deg": -90.0,
+   "seat_m": [
+    -3.75,
+    3.5,
+    15.5
+   ]
+  },
+  {
+   "room": "briefing_room",
+   "prop": "crew_chair",
+   "set": "bridge",
+   "back_m": [
+    -6.298,
+    3.5,
+    15.5
+   ],
+   "yaw_deg": 90.0,
+   "seat_m": [
+    -6.25,
+    3.5,
+    15.5
+   ]
+  },
+  {
+   "room": "briefing_room",
+   "prop": "crew_chair",
+   "set": "bridge",
+   "back_m": [
+    -3.702,
+    3.5,
+    16.5
+   ],
+   "yaw_deg": -90.0,
+   "seat_m": [
+    -3.75,
+    3.5,
+    16.5
+   ]
+  },
+  {
+   "room": "briefing_room",
+   "prop": "crew_chair",
+   "set": "bridge",
+   "back_m": [
+    -6.298,
+    3.5,
+    16.5
+   ],
+   "yaw_deg": 90.0,
+   "seat_m": [
+    -6.25,
+    3.5,
+    16.5
+   ]
+  },
+  {
+   "room": "briefing_room",
+   "prop": "crew_chair",
+   "set": "bridge",
+   "back_m": [
+    -3.702,
+    3.5,
+    17.5
+   ],
+   "yaw_deg": -90.0,
+   "seat_m": [
+    -3.75,
+    3.5,
+    17.5
+   ]
+  },
+  {
+   "room": "briefing_room",
+   "prop": "crew_chair",
+   "set": "bridge",
+   "back_m": [
+    -6.298,
+    3.5,
+    17.5
+   ],
+   "yaw_deg": 90.0,
+   "seat_m": [
+    -6.25,
+    3.5,
+    17.5
+   ]
+  },
+  {
+   "room": "briefing_room",
+   "prop": "crew_chair",
+   "set": "bridge",
+   "back_m": [
+    -3.702,
+    3.5,
+    18.5
+   ],
+   "yaw_deg": -90.0,
+   "seat_m": [
+    -3.75,
+    3.5,
+    18.5
+   ]
+  },
+  {
+   "room": "briefing_room",
+   "prop": "crew_chair",
+   "set": "bridge",
+   "back_m": [
+    -6.298,
+    3.5,
+    18.5
+   ],
+   "yaw_deg": 90.0,
+   "seat_m": [
+    -6.25,
+    3.5,
+    18.5
+   ]
+  },
+  {
+   "room": "briefing_room",
+   "prop": "wall_screen",
+   "set": "suite",
+   "back_m": [
+    -5.0,
+    3.5,
+    14.0
+   ],
+   "yaw_deg": 0.0,
+   "note": "the briefing screen, down the table"
+  },
+  {
+   "room": "briefing_room",
+   "prop": "shelf",
+   "set": "suite",
+   "back_m": [
+    -7.13,
+    3.5,
+    24.95
+   ],
+   "yaw_deg": 180.0,
+   "note": "at the end of the corner"
+  },
+  {
+   "room": "captains_quarters",
+   "prop": "bed",
+   "set": "suite",
+   "back_m": [
+    7.0,
+    3.5,
+    9.0
+   ],
+   "yaw_deg": 0.0,
+   "note": "its head on the aft wall"
+  },
+  {
+   "room": "captains_quarters",
+   "prop": "wardrobe",
+   "set": "suite",
+   "back_m": [
+    4.4,
+    3.5,
+    9.0
+   ],
+   "yaw_deg": 0.0
+  },
+  {
+   "room": "captains_quarters",
+   "prop": "desk",
+   "set": "suite",
+   "back_m": [
+    3.2,
+    3.5,
+    14.0
+   ],
+   "yaw_deg": 180.0
+  },
+  {
+   "room": "captains_quarters",
+   "prop": "crew_chair",
+   "set": "bridge",
+   "back_m": [
+    3.2,
+    3.5,
+    12.852
+   ],
+   "yaw_deg": 0.0,
+   "seat_m": [
+    3.2,
+    3.5,
+    12.9
+   ]
+  },
+  {
+   "room": "captains_quarters",
+   "prop": "wet_cell",
+   "set": "suite",
+   "back_m": [
+    8.3,
+    3.5,
+    14.0
+   ],
+   "yaw_deg": 180.0,
+   "note": "the en-suite"
+  },
+  {
+   "room": "head",
+   "prop": "wash_counter",
+   "set": "suite",
+   "back_m": [
+    4.0,
+    3.5,
+    4.0
+   ],
+   "yaw_deg": 0.0
+  },
+  {
+   "room": "head",
+   "prop": "toilet_stall",
+   "set": "suite",
+   "back_m": [
+    6.9,
+    3.5,
+    4.0
+   ],
+   "yaw_deg": 0.0
+  },
+  {
+   "room": "head",
+   "prop": "toilet_stall",
+   "set": "suite",
+   "back_m": [
+    8.0,
+    3.5,
+    4.0
+   ],
+   "yaw_deg": 0.0
+  },
+  {
+   "room": "head",
+   "prop": "shower_stall",
+   "set": "suite",
+   "back_m": [
+    7.7,
+    3.5,
+    9.0
+   ],
+   "yaw_deg": 180.0
+  },
+  {
+   "room": "head",
+   "prop": "shower_stall",
+   "set": "suite",
+   "back_m": [
+    8.8,
+    3.5,
+    9.0
+   ],
+   "yaw_deg": 180.0
+  },
+  {
+   "room": "head",
+   "prop": "locker_bank",
+   "set": "suite",
+   "back_m": [
+    3.9,
+    3.5,
+    9.0
+   ],
+   "yaw_deg": 180.0
+  },
+  {
+   "room": "bridge_locker",
+   "prop": "locker_bank",
+   "set": "suite",
+   "back_m": [
+    -3.9,
+    3.5,
+    9.0
+   ],
+   "yaw_deg": 180.0,
+   "note": "EVA suits for the bridge crew (fixture eva_suits_a)"
+  },
+  {
+   "room": "bridge_locker",
+   "prop": "locker_bank",
+   "set": "suite",
+   "back_m": [
+    -6.5,
+    3.5,
+    9.0
+   ],
+   "yaw_deg": 180.0,
+   "note": "fire and first-aid kits, breathing sets"
+  },
+  {
+   "room": "bridge_locker",
+   "prop": "workbench",
+   "set": "suite",
+   "back_m": [
+    -5.0,
+    3.5,
+    4.0
+   ],
+   "yaw_deg": 0.0,
+   "note": "spare console boards"
+  },
+  {
+   "room": "bridge_locker",
+   "prop": "shelf",
+   "set": "suite",
+   "back_m": [
+    -2.4,
+    3.5,
+    4.0
+   ],
+   "yaw_deg": 0.0
+  },
+  {
+   "room": "bridge_locker",
+   "prop": "shelf",
+   "set": "suite",
+   "back_m": [
+    -7.6,
+    3.5,
+    4.0
+   ],
+   "yaw_deg": 0.0
+  },
+  {
+   "room": "computer_core",
+   "prop": "server_rack",
+   "set": "suite",
+   "back_m": [
+    -3.4,
+    3.5,
+    11.6
+   ],
+   "yaw_deg": 180.0
+  },
+  {
+   "room": "computer_core",
+   "prop": "server_rack",
+   "set": "suite",
+   "back_m": [
+    -3.4,
+    3.5,
+    11.8
+   ],
+   "yaw_deg": 0.0
+  },
+  {
+   "room": "computer_core",
+   "prop": "server_rack",
+   "set": "suite",
+   "back_m": [
+    -4.2,
+    3.5,
+    11.6
+   ],
+   "yaw_deg": 180.0
+  },
+  {
+   "room": "computer_core",
+   "prop": "server_rack",
+   "set": "suite",
+   "back_m": [
+    -4.2,
+    3.5,
+    11.8
+   ],
+   "yaw_deg": 0.0
+  },
+  {
+   "room": "computer_core",
+   "prop": "server_rack",
+   "set": "suite",
+   "back_m": [
+    -5.0,
+    3.5,
+    11.6
+   ],
+   "yaw_deg": 180.0
+  },
+  {
+   "room": "computer_core",
+   "prop": "server_rack",
+   "set": "suite",
+   "back_m": [
+    -5.0,
+    3.5,
+    11.8
+   ],
+   "yaw_deg": 0.0
+  },
+  {
+   "room": "computer_core",
+   "prop": "server_rack",
+   "set": "suite",
+   "back_m": [
+    -5.8,
+    3.5,
+    11.6
+   ],
+   "yaw_deg": 180.0
+  },
+  {
+   "room": "computer_core",
+   "prop": "server_rack",
+   "set": "suite",
+   "back_m": [
+    -5.8,
+    3.5,
+    11.8
+   ],
+   "yaw_deg": 0.0
+  },
+  {
+   "room": "computer_core",
+   "prop": "server_rack",
+   "set": "suite",
+   "back_m": [
+    -6.6,
+    3.5,
+    11.6
+   ],
+   "yaw_deg": 180.0
+  },
+  {
+   "room": "computer_core",
+   "prop": "server_rack",
+   "set": "suite",
+   "back_m": [
+    -6.6,
+    3.5,
+    11.8
+   ],
+   "yaw_deg": 0.0
+  }
+ ],
+ "prop_brief_m": {
+  "briefing_table": [
+   4.0,
+   0.75,
+   1.4
+  ],
+  "wall_screen": [
+   3.0,
+   2.6,
+   0.1
+  ],
+  "desk": [
+   1.6,
+   1.25,
+   0.75
+  ],
+  "sofa": [
+   2.0,
+   0.85,
+   0.85
+  ],
+  "low_table": [
+   1.1,
+   0.42,
+   0.6
+  ],
+  "shelf": [
+   1.2,
+   2.0,
+   0.4
+  ],
+  "bed": [
+   1.4,
+   1.0,
+   2.1
+  ],
+  "wardrobe": [
+   1.2,
+   2.1,
+   0.6
+  ],
+  "wet_cell": [
+   1.8,
+   2.3,
+   1.8
+  ],
+  "toilet_stall": [
+   1.0,
+   2.0,
+   1.5
+  ],
+  "wash_counter": [
+   2.4,
+   2.0,
+   0.6
+  ],
+  "shower_stall": [
+   1.0,
+   2.2,
+   1.0
+  ],
+  "locker_bank": [
+   2.4,
+   2.1,
+   0.55
+  ],
+  "server_rack": [
+   0.8,
+   2.1,
+   1.1
+  ],
+  "workbench": [
+   1.8,
+   1.75,
+   0.75
+  ]
+ },
+ "numbers": {
+  "rooms": [
+   {
+    "id": "bridge",
+    "name": "Bridge",
+    "brushes": 1,
+    "air_m3": 415.9,
+    "floor_m2": 118.8,
+    "was_air_m3": 608.6,
+    "hull_margin_m": 0.8,
+    "doors": [
+     "p_bridge_aft",
+     "p_briefing_bridge",
+     "p_ready_bridge"
+    ],
+    "windows": [
+     "p_bridge_window_p",
+     "p_bridge_window_s"
+    ],
+    "furniture": 0
+   },
+   {
+    "id": "ready_room",
+    "name": "Captain's ready room",
+    "brushes": 4,
+    "air_m3": 201.3,
+    "floor_m2": 67.1,
+    "was_air_m3": 143.9,
+    "hull_margin_m": 1.06,
+    "doors": [
+     "p_quarters_ready",
+     "p_ready",
+     "p_ready_bridge"
+    ],
+    "windows": [
+     "p_ready_window"
+    ],
+    "furniture": 8
+   },
+   {
+    "id": "briefing_room",
+    "name": "Briefing room",
+    "brushes": 4,
+    "air_m3": 201.3,
+    "floor_m2": 67.1,
+    "was_air_m3": null,
+    "hull_margin_m": 1.06,
+    "doors": [
+     "p_briefing",
+     "p_briefing_bridge"
+    ],
+    "windows": [
+     "p_briefing_window"
+    ],
+    "furniture": 11
+   },
+   {
+    "id": "captains_quarters",
+    "name": "Captain's quarters",
+    "brushes": 1,
+    "air_m3": 131.9,
+    "floor_m2": 44.0,
+    "was_air_m3": null,
+    "hull_margin_m": 0.99,
+    "doors": [
+     "p_captains_quarters",
+     "p_quarters_ready"
+    ],
+    "windows": [],
+    "furniture": 5
+   },
+   {
+    "id": "computer_core",
+    "name": "Computer core",
+    "brushes": 1,
+    "air_m3": 131.9,
+    "floor_m2": 44.0,
+    "was_air_m3": 143.9,
+    "hull_margin_m": 0.99,
+    "doors": [
+     "p_core"
+    ],
+    "windows": [],
+    "furniture": 10
+   },
+   {
+    "id": "head",
+    "name": "Head",
+    "brushes": 1,
+    "air_m3": 136.9,
+    "floor_m2": 45.6,
+    "was_air_m3": null,
+    "hull_margin_m": 0.98,
+    "doors": [
+     "p_head"
+    ],
+    "windows": [],
+    "furniture": 6
+   },
+   {
+    "id": "bridge_locker",
+    "name": "Bridge locker",
+    "brushes": 1,
+    "air_m3": 136.9,
+    "floor_m2": 45.6,
+    "was_air_m3": null,
+    "hull_margin_m": 0.98,
+    "doors": [
+     "p_bridge_locker"
+    ],
+    "windows": [],
+    "furniture": 5
+   },
+   {
+    "id": "a_corridor",
+    "name": "Command passage",
+    "brushes": 1,
+    "air_m3": 120.0,
+    "floor_m2": 40.0,
+    "was_air_m3": 120.0,
+    "hull_margin_m": 1.3,
+    "doors": [
+     "p_bridge_aft",
+     "p_bridge_locker",
+     "p_briefing",
+     "p_captains_quarters",
+     "p_core",
+     "p_dorsal_fwd",
+     "p_head",
+     "p_ready"
+    ],
+    "windows": [],
+    "furniture": 0
+   }
+  ],
+  "ship_air_m3": {
+   "before": 9824.8,
+   "after": 10284.7
+  },
+  "walks": {
+   "captain's chair to the ready room desk": {
+    "m": 11.8,
+    "s": 7.0
+   },
+   "captain's chair to the briefing table's head": {
+    "m": 7.6,
+    "s": 4.7
+   },
+   "captain's bed to the captain's chair, through the ready room": {
+    "m": 16.9,
+    "s": 9.8
+   },
+   "captain's bed to the captain's chair, by the passage": {
+    "m": 19.4,
+    "s": 11.2
+   },
+   "helm's seat to the bridge locker's suits": {
+    "m": 25.5,
+    "s": 14.2
+   },
+   "helm's seat to damage control's suits, today": {
+    "m": 40.1,
+    "s": 24.8
+   }
+  }
+ }
+}

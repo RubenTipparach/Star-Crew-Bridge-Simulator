@@ -1,0 +1,28 @@
+{
+  "_comment": "The files a new project needs to build CSG-in-Blender levels the way this repository does. scripts/copy_kit.py copies them with their provenance; --check proves every path still exists here.",
+  "kit": "blender-csg-levels",
+  "source": "RubenTipparach/fps-game-demo (Undercity, Brushfire tech)",
+  "files": [
+    {"path": "tools/blender/blendkit.py", "why": "Godot-to-Blender axes, preview materials, box and cylinder brushes with per-face materials, world-aligned UVs (live Geometry Nodes and baked), export_level(), save_reproducible()"},
+    {"path": "tools/blender/build_cistern.py", "why": "the Level class (room, vault, block, column, pipe, arch_ring, ent) and a complete reference level"},
+    {"path": "tools/blender/export_level.py", "why": "re-export an edited level .blend without rebuilding it"},
+    {"path": "tools/godot/detailing.py", "why": "UT99 trims (baseboards, cornices, pilasters, girders), door frame sizes (FRAMES, frame_solids) and the z-fighting check; pure Python"},
+    {"path": "tools/godot/tscn.py", "why": "writes .tscn files from Python"},
+    {"path": "tools/godot/level_common.py", "why": "level scene pieces: environment, LightmapGI, probes, reflection probes, zone ambient, navigation"},
+    {"path": "tools/godot/gen_level_blender.py", "why": "the scene that hosts the level glb, its lighting and probes"},
+    {"path": "tools/godot/import_presets.py", "why": "glb import presets: material remap onto res://materials, static lightmaps with UV2, post-import scripts"},
+    {"path": "game/addons/brushfire_tools/blender_level_import.gd", "why": "post-import: ENT_ empties become scenes, lights, triggers or markers; render extras become GeometryInstance3D settings"},
+    {"path": "game/addons/brushfire_tools/plugin.gd", "why": "editor menu and BRUSHFIRE_BATCH headless nav and lightmap bakes"},
+    {"path": "game/addons/brushfire_tools/plugin.cfg", "why": "the editor plugin's manifest"},
+    {"path": ".claude/skills/blender-csg-levels", "why": "this skill, so the next project's agent knows the pipeline"}
+  ],
+  "adapt": [
+    "Write game/materials/materials.json: one entry per material name with tile_m (metres per texture repeat). blendkit reads it at import and fails without it.",
+    "Put each material's textures at game/textures/<name>.png, <name>_orm.png and <name>_normal.png (optional: _emission.png) so the .blend previews them; a missing albedo gives a plain material.",
+    "Edit the SCENES and UNDERCITY maps in blender_level_import.gd to your own entity scenes; an unknown kind becomes a Marker3D in the group ent_<kind>.",
+    "Edit detailing.STYLES to your material names, and detailing.FRAMES to your door and arch props.",
+    "Edit LEVEL_MATS and the per-level entries in import_presets.py; delete the functions for assets you did not copy.",
+    "plugin.gd preloads bake_csg.gd for the CSG reference level: copy it too, or drop the csg step from the plugin.",
+    "Change the level's name, paths and lights in gen_level_blender.py, or write one generator per level from it."
+  ]
+}

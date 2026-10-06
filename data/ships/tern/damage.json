@@ -1,0 +1,120 @@
+{
+  "schema": "starcrew.ship-damage/1",
+  "status": "PROPOSED by openspec/changes/damage-control (2026-10-04). No engine code reads this yet; the systems mockup does. Numbers are tuning proposals, not decisions.",
+  "ship": "tern",
+  "units": {
+    "energy": "MJ (megajoules)",
+    "length": "m",
+    "area": "m^2",
+    "time": "s",
+    "integrity": "percent of a system's full health, 0 to 100",
+    "rate": "percent per second where the key says pct_per_s"
+  },
+  "hull": {
+    "armour_mj": 4.0,
+    "section_mj": 40.0,
+    "faces": ["dorsal", "ventral", "port", "starboard", "bow", "stern"],
+    "note": "A hull section is a span between two of the layout's hull sections times one of six faces (9 spans x 6 faces = 54). A fresh section absorbs up to armour_mj of each hit, scaled by its integrity; each hit takes min(E, armour_mj) / section_mj x 100 points of integrity from it."
+  },
+  "breach": {
+    "m2_per_mj": 0.02,
+    "min_m2": 0.002,
+    "max_m2": 2.0,
+    "note": "A hit whose energy passes the armour opens a breach in the first compartment it enters, sized by the energy left: 1 MJ past the armour makes 0.02 m^2, 50 MJ makes 1 m^2."
+  },
+  "propagation": {
+    "march_step_m": 0.25,
+    "march_max_m": 30.0,
+    "decay_m": 4.0,
+    "bulkhead_mj": 1.5,
+    "radius_m": 1.5,
+    "radius_per_sqrt_mj": 0.3,
+    "note": "Energy past the armour marches along the hit direction in steps of march_step_m. Each step deposits dE = E (1 - exp(-step / decay_m)) at its point; a target within r = radius_m + radius_per_sqrt_mj x sqrt(E) of that point takes points_per_mj x dE x (1 - d / r). Each bulkhead crossed costs bulkhead_mj."
+  },
+  "systems": {
+    "points_per_mj": 10.0,
+    "nominal_from_pct": 75.0,
+    "disabled_below_pct": 25.0,
+    "note": "Integrity points taken are summed over the march steps (see propagation). Capability is 1 at or above nominal_from_pct, integrity / nominal_from_pct between the two thresholds, 0 below disabled_below_pct; 0 integrity is destroyed."
+  },
+  "nodes": {
+    "destroyed_below": 0.25,
+    "note": "A switchboard section, panel or bus loses health as a system does (points / 100); below destroyed_below it carries nothing until rebuilt."
+  },
+  "conduits": {
+    "sever_mj": 1.0,
+    "damage_mj": 0.3,
+    "damaged_capacity": 0.5
+  },
+  "fire": {
+    "chance_per_mj": 0.1,
+    "chance_max": 0.6,
+    "seed_kw_per_mj": 100.0,
+    "note": "Per compartment a hit deposits energy in: ignition chance min(chance_max, chance_per_mj x E) times the room's oxygen factor, decided by a seeded hash of (session seed, hit id, compartment id). The fire starts at fire.seed_kw (atmosphere.json) plus seed_kw_per_mj x E."
+  },
+  "crew": {
+    "hp_per_mj": 15.0,
+    "share": 0.3,
+    "note": "A crew member near the path loses hp_per_mj x share x the energy deposited near them, with the systems falloff (100 hit points is full health). Without crew positions (the mockup), each crew member in the room takes the room total times the fraction of its floor within r of the path."
+  },
+  "repair": {
+    "kit_pct_per_s": { "player": 1.0, "team_member": 0.6 },
+    "kit_locker": "damage_control",
+    "kits_in_locker": 6,
+    "parts_store": "cargo",
+    "parts_on_board": 24,
+    "parts": { "disabled_system": 1, "destroyed_system": 3, "conduit_splice": 1, "node_rebuild": 4 },
+    "disabled_to_pct": 25.0,
+    "destroyed_rebuild_s": 180.0,
+    "destroyed_rebuild_to_pct": 25.0,
+    "conduit_splice_s": 30.0,
+    "conduit_splice_capacity": 0.5,
+    "node_rebuild_s": 120.0,
+    "node_rebuild_to": 0.5,
+    "hull_section_pct_per_s_eva": 0.5,
+    "two_hands_factor": 1.6
+  },
+  "patch": {
+    "plate_m2": 0.25,
+    "plates_in_locker": 12,
+    "inside_s_per_plate": 15.0,
+    "inside_max_m2": 1.0,
+    "eva_s_per_m2": 60.0,
+    "eva_max_m2": 4.0,
+    "group_holes_by_hull_section": true,
+    "note": "A crew member patches a breach from inside with plates (cabin pressure presses a plate onto the hole), up to inside_max_m2; a larger breach is closed from outside by a suited crew member through the airlock. Holes through one hull section into one compartment are patched together: one plate per plate_m2 of their total area."
+  },
+  "doors": {
+    "jam_points": 25.0,
+    "repair_s": 30.0,
+    "note": "A portal within a hit's reach that takes jam_points (as a system would) jams where it is: it neither opens nor closes until a crew member with a kit frees it (repair_s), or a drop door is cranked by hand (shuttle-bay-and-fighters)."
+  },
+  "cook_off": {
+    "compartment": "magazine",
+    "air_above_k": 473.15,
+    "hold_s": 60.0,
+    "hit_mj_within_m": [10.0, 2.0],
+    "warhead_mj": 60.0,
+    "next_check_s": 30.0,
+    "note": "A missile in the racks cooks off when the magazine's air has been above air_above_k for hold_s, or a hit deposits hit_mj_within_m[0] MJ within hit_mj_within_m[1] m of the racks; it is resolved as a hit of warhead_mj from inside at the racks, and the next missile checks again next_check_s later. Not in the mockup's library."
+  },
+  "remote_control": {
+    "needs_computer_ratio": 0.5,
+    "note": "Breakers, dampers, doors and suppression are operated from the bridge and the damage control board only while the computer core has at least this supply ratio; otherwise only at the switchboards, the doors and the system itself."
+  },
+  "teams": {
+    "count": 2,
+    "members": 2,
+    "home": "damage_control",
+    "walk_m_s": 1.8,
+    "run_m_s": 4.0,
+    "suited_m_s": 1.5,
+    "ladder_up_m_s": 0.8,
+    "ladder_down_m_s": 1.0,
+    "suit_up_s": 20.0,
+    "dispatch_delay_s": 5.0,
+    "enter_below_kpa_needs_suit": 50.0,
+    "refuse_fire_above_kw_without_suit": 2000.0,
+    "note": "NPC damage control teams are crew bodies (crew-on-deck): they walk the crew-portal graph, carry a kit, an extinguisher or plates, take the same harm as players, and can die. Their speeds (walk, run, suited, ladders up and down) and suit donning time are crew-on-deck's (design sections 3, 4 and 10), repeated here until data/crew.json exists and teams read it. Reconciled 2026-10-05: crew-on-deck owns this (was walk 1.6 m/s, ladders 0.8 m/s both ways, suit-up 30 s)."
+  }
+}

@@ -1,0 +1,211 @@
+#!/usr/bin/env python3
+"""Copy the one layout source and the shared mockup kit into every mockup page.
+
+Mockups must work when opened straight from disk and when published as a single
+claude.ai artifact, so they cannot fetch data/ships/<id>/layout.json at run
+time. Instead each page carries marker comments and this tool writes the
+current files between them (CLAUDE.md section 11):
+
+    <!-- INLINE layout:tern BEGIN -->   ... <!-- INLINE layout:tern END -->
+    <!-- INLINE shipkit BEGIN -->       ... <!-- INLINE shipkit END -->
+    <!-- INLINE lib:lightbake BEGIN --> ... <!-- INLINE lib:lightbake END -->
+
+"lib:<name>" copies docs/mockups/lib/<name>.js; "shipkit" is lib:shipkit.
+"data:<ship>/<name>" copies data/ships/<ship>/<name>.json into a
+<script id="ship-data-<name>" type="application/json"> block, for mockups that
+read a ship's other data files (power.json, atmosphere.json, detailing.json).
+"materials" copies data/materials/materials.json and every layer it names
+(assets/textures/<name>.png, as a base64 data URI) into a
+<script id="ship-materials" type="application/json"> block, which shipkit's
+loadMaterials() decodes into one texture array (surface-materials).
+"panels" copies data/materials/panels.json, every panel layer it names at every size
+(assets/textures/panels/<px>/<finish>_<module>.png, <finish>_strips.png, and the ceilings,
+floors and trims: <finish>_ceiling_<module>.png, <finish>_floor_<module>.png, <finish>_trims.png)
+and the UI images
+(ui_screen_<finish>.png, keys_<finish>.png) into a <script id="ship-panels"
+type="application/json"> block, which shipkit's loadPanels() adds to the texture array
+(wall-panels, ceilings-and-trims, floor-panels).
+"models:<set>" copies assets/models/<set>/props.json and every .glb it lists (as base64
+data URIs) into a <script id="ship-models-<set>" type="application/json"> block, for pages
+that place the Blender-built props (tools/blender, the blender-hard-surface skill).
+"screens" copies assets/textures/screens/screens.json and every image it names (each
+station's <station>.png and <station>_upper.png, and the shared ui_screen_crew.png and
+keys_crew.png of the wall panels) into a <script id="ship-screens" type="application/json">
+block, { manifest, images: { <file as the manifest names it>: data URI } }, for pages that
+draw console faces on the props (tools/mockups/console_screens.py; bridge-stations 11.6).
+
+--check rewrites nothing and fails when a page holds a stale copy, and also
+checks that shipkit's PI_BUDGET matches the budget marker in the engine-stack
+design (the table there is the source). Documentation tooling, standard library
+only.
+
+Usage: python3 tools/mockups/inline.py [--check] [page.html ...]
+"""
+
+import base64
+import glob
+import json
+import os
+import re
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+LIB = os.path.join(ROOT, "docs", "mockups", "lib")
+SHIPKIT = os.path.join(LIB, "shipkit.js")
+BUDGET_SOURCES = [
+    os.path.join(ROOT, "openspec", "specs", "engine-platform", "spec.md"),
+    os.path.join(ROOT, "openspec", "changes", "engine-stack", "design.md"),
+]
+MATERIALS = os.path.join(ROOT, "data", "materials", "materials.json")
+TEXTURES = os.path.join(ROOT, "assets", "textures")
+PANELS = os.path.join(ROOT, "data", "materials", "panels.json")
+SCREENS = os.path.join(ROOT, "assets", "textures", "screens", "screens.json")
+MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-9_-]+/[a-z0-9_-]+|shipkit|materials|panels|screens|models:[a-z0-9_-]+) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
+
+
+def png_uri(path):
+    with open(path, "rb") as f:
+        return "data:image/png;base64," + base64.b64encode(f.read()).decode("ascii")
+
+
+def block(kind):
+    if kind == "screens":
+        with open(SCREENS, encoding="utf-8") as f:
+            manifest = json.load(f)
+        base = os.path.dirname(SCREENS)
+        images = {}
+        for rec in manifest["stations"].values():
+            for part in ("main", "upper"):
+                images[rec[part]["file"]] = png_uri(os.path.join(base, rec[part]["file"]))
+        for rec in manifest["shared"].values():
+            images[rec["file"]] = png_uri(os.path.join(ROOT, rec["file"]))
+        text = json.dumps({"manifest": manifest, "images": dict(sorted(images.items()))}, separators=(",", ":"),
+                          ensure_ascii=False).replace("</", "<\\/")
+        return f'\n<script id="ship-screens" type="application/json">\n{text}\n</script>\n'
+    if kind.startswith("models:"):
+        name = kind.split(":", 1)[1]
+        base = os.path.join(ROOT, "assets", "models", name)
+        with open(os.path.join(base, "props.json"), encoding="utf-8") as f:
+            manifest = json.load(f)
+        models = {}
+        for key, rec in sorted(manifest.get("props", {}).items()):
+            with open(os.path.join(base, rec["file"]), "rb") as f:
+                models[key] = "data:model/gltf-binary;base64," + base64.b64encode(f.read()).decode("ascii")
+        text = json.dumps({"manifest": manifest, "models": models}, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
+        return f'\n<script id="ship-models-{name}" type="application/json">\n{text}\n</script>\n'
+    if kind == "panels":
+        with open(PANELS, encoding="utf-8") as f:
+            manifest = json.load(f)
+        base = os.path.join(ROOT, manifest["layers"]["dir"])
+        stems = []
+        for fn, fin in manifest["finishes"].items():
+            stems += sorted(((m["layer"], f"{fn}_{name}") for name, m in fin["modules"].items()))
+            stems.append((fin["strips"]["layer"], f"{fn}_strips"))
+            for kind in ("ceiling", "floor"):
+                if kind in fin:
+                    stems += sorted(((m["layer"], f"{fn}_{kind}_{name}") for name, m in fin[kind]["modules"].items()
+                                     if not name.startswith("_")))
+            if "trims" in fin:
+                stems.append((fin["trims"]["layer"], f"{fn}_trims"))
+        layers = {str(px): {stem: png_uri(os.path.join(base, str(px), stem + ".png")) for _, stem in sorted(stems)}
+                  for px in manifest["layers"]["sizes_px"]}
+        ui = {}
+        for fn in manifest["finishes"]:
+            for stem in (f"ui_screen_{fn}", f"keys_{fn}"):
+                ui[stem] = png_uri(os.path.join(base, stem + ".png"))
+        text = json.dumps({"manifest": manifest, "layers": layers, "ui": ui}, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
+        return f'\n<script id="ship-panels" type="application/json">\n{text}\n</script>\n'
+    if kind == "materials":
+        with open(MATERIALS, encoding="utf-8") as f:
+            manifest = json.load(f)
+        layers = {}
+        for name in sorted(manifest["materials"], key=lambda n: manifest["materials"][n]["layer"]):
+            with open(os.path.join(TEXTURES, name + ".png"), "rb") as f:
+                layers[name] = "data:image/png;base64," + base64.b64encode(f.read()).decode("ascii")
+        text = json.dumps({"manifest": manifest, "layers": layers}, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
+        return f'\n<script id="ship-materials" type="application/json">\n{text}\n</script>\n'
+    if kind == "shipkit" or kind.startswith("lib:"):
+        name = "shipkit" if kind == "shipkit" else kind.split(":", 1)[1]
+        with open(os.path.join(LIB, name + ".js"), encoding="utf-8") as f:
+            return "\n<script>\n" + f.read().rstrip() + "\n</script>\n"
+    if kind.startswith("data:"):
+        ship, name = kind.split(":", 1)[1].split("/", 1)
+        with open(os.path.join(ROOT, "data", "ships", ship, name + ".json"), encoding="utf-8") as f:
+            data = json.load(f)
+        text = json.dumps(data, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
+        return f'\n<script id="ship-data-{name}" type="application/json">\n{text}\n</script>\n'
+    ship = kind.split(":", 1)[1]
+    path = os.path.join(ROOT, "data", "ships", ship, "layout.json")
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    text = json.dumps(data, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
+    return f'\n<script id="ship-layout" type="application/json">\n{text}\n</script>\n'
+
+
+def process(page, check):
+    with open(page, encoding="utf-8") as f:
+        src = f.read()
+    found = []
+
+    def sub(m):
+        found.append(m.group(2))
+        return m.group(1) + block(m.group(2)) + m.group(4)
+
+    out = MARK.sub(sub, src)
+    rel = os.path.relpath(page, ROOT)
+    if not found:
+        print(f"  {rel}: no INLINE markers (skipped)")
+        return True
+    if out == src:
+        print(f"  {rel}: current ({', '.join(found)})")
+        return True
+    if check:
+        print(f"  FAIL {rel}: stale copy of {', '.join(found)}; run python3 tools/mockups/inline.py")
+        return False
+    with open(page, "w", encoding="utf-8") as f:
+        f.write(out)
+    print(f"  {rel}: updated ({', '.join(found)})")
+    return True
+
+
+def budget_ok():
+    """shipkit's PI_BUDGET must equal the marker in the budget's source document."""
+    with open(SHIPKIT, encoding="utf-8") as f:
+        kit = f.read()
+    kit_vals = {
+        "triangles": int(re.search(r"triangles:\s*(\d+)", kit).group(1)),
+        "draw_calls": int(re.search(r"drawCalls:\s*(\d+)", kit).group(1)),
+        "texture_mb": int(re.search(r"textureMB:\s*(\d+)", kit).group(1)),
+    }
+    for src in BUDGET_SOURCES:
+        if not os.path.exists(src):
+            continue
+        with open(src, encoding="utf-8") as f:
+            m = re.search(r"<!-- pi-budget ([^>]*)-->", f.read())
+        if not m:
+            continue
+        doc = {k: int(v) for k, v in re.findall(r"(\w+)=(\d+)", m.group(1))}
+        bad = {k: (kit_vals[k], doc.get(k)) for k in kit_vals if doc.get(k) != kit_vals[k]}
+        rel = os.path.relpath(src, ROOT)
+        if bad:
+            for k, (a, b) in bad.items():
+                print(f"  FAIL shipkit PI_BUDGET {k}={a} but {rel} says {b}")
+            return False
+        print(f"  shipkit PI_BUDGET matches {rel}")
+        return True
+    print("  FAIL no pi-budget marker found in " + " or ".join(os.path.relpath(s, ROOT) for s in BUDGET_SOURCES))
+    return False
+
+
+def main(argv):
+    check = "--check" in argv
+    pages = [a for a in argv if not a.startswith("--")]
+    if not pages:
+        pages = sorted(glob.glob(os.path.join(ROOT, "docs", "mockups", "*.html")))
+    ok = all([process(p, check) for p in pages])
+    ok = budget_ok() and ok
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

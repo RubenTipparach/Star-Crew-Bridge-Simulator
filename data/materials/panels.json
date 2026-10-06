@@ -1,0 +1,259 @@
+{
+  "schema": "starcrew.panels/1",
+  "status": "Proposed (2026-10-05) by openspec/changes/wall-panels, extended (2026-10-06) by ceilings-and-trims and floor-panels. Built by tools/blender/build_wall_panels.py into assets/textures/panels/ and drawn by shipkit's opts.panels (docs/mockups/lib/shipkit.js) in the bridge, deck plan, light baking and comparison (wall-panels.html) mockups. No engine code reads it yet. The colours, wear, weights and module designs are first choices made by eye on the contact sheet (docs/screenshots/materials/panels-contact-sheet.png) and the shots, not decisions: the owner judges them (survey S1, U1, R1).",
+  "_rules": [
+    "This file is the one source for the wall panels: the bay and band sizes, which module a bay may take and how often, the glow per lighting state, each finish's colours and wear, and how the modules are rendered. The build (tools/blender/build_wall_panels.py), the mockup kit (docs/mockups/lib/shipkit.js) and later deckc read it; nothing keeps a second list.",
+    "A panel module is a designed 2 m x 2 m panel (layers.span_m) with layers.margin_m of plain plate down each side. It does not tile: a bay shows it once, centred, with u = 0.5 at the bay's centre and v from 0 to 1 over its band (wall-panels design section 5). A strip is 0.5 m tall (bands.strip_m) and tiles along the wall with a 2 m period; the four strips of a finish share one layer, one quarter each (strips.rows, counted from the bottom of the layer, v = 0), each with guard_m of plain plate at its top and bottom so mipmaps do not bleed one strip into the next.",
+    "Panel layers are layers of the same texture array as the materials (data/materials/materials.json), after them: layers.first_layer is the number of materials, and the modules and strips take the layers numbered in 'layer'. At 64 px per metre every layer is 128 px; at 128 px per metre every layer, the materials' included (scaled up by nearest neighbour), is 256 px (layers.sizes_px; survey S1).",
+    "Like the materials, relief is baked into the colour (no per-pixel lighting on the Pi 5) and alpha is the emission mask: 255 shows the texel at full brightness whatever the light, 0 lights it only by the baked vertex light. Panel lights glow but are not light sources; the bake's emitters stay the fixtures. glow is how much they glow in each lighting state, 0-1 (wall-panels design section 5).",
+    "Bays (design section 1): a bay 1.6-2.4 m wide (bays.full_min_m, full_max_m) takes a full module, 0.6-1.6 m (narrow_min_m) the narrow module, under 0.6 m plate; a bay over 2.4 m is split evenly into sub-bays of at most 2.4 m.",
+    "Bands (design section 2): from the floor up, a base strip of bands.base_m, a module band of bands.module_m, then for each further whole base_m + module_m of flat wall the between strip and another module band, and the top strip filling the rest to the cove in strip_m quads, the last cropped.",
+    "The rule (design section 4), in order: a bay holding a window, a wall fixture, a portal's frame or an opening takes plate; a bay touching a door's frame takes flank, mirrored so its light strip is on the door's side; a narrow bay takes narrow; otherwise a module is drawn by weight, excluding the module of the bay before it on the same wall face and the one below it. The draw is the FNV-1a 32-bit hash of the key 'seed|compartment|brush|edge|bay|level' (rule.seed, until the layout carries a ship seed), divided by 2^32 and mapped onto the cumulative weights of the modules left. Modules placed by a rule have weight 0 and say which rule in 'placed'. Rule 3 (a vent portal takes vent) waits for life-support to put vents in the layout.",
+    "wear, per finish, is procedural and baked with the render: grime (0-1) darkens soft blotches about 1 / grime_scale_per_m metres across; crevice (0-1) darkens what ambient occlusion within crevice_m reaches; edge (0-1) wears paint to bare metal on chamfered edges; streaks (0-1) are dark grime streaks running down the wall; rust (0-1) is rust streaks and specks. Strips use noise that repeats every 2 m so they still tile.",
+    "Colours are sRGB components in 0-1, set on the Blender materials at the source, so the post-process does not recolour (no ramp). The post-process area-averages the render in linear light, encodes sRGB, reduces each layer to layers.colours colours by median cut without dithering, and writes the emission mask into alpha.",
+    "Units: metres (_m), pixels (_px), degrees (_deg), sRGB colour components in 0-1 (_srgb), fractions 0-1 (glow, wear). An unknown key or a missing one stops the build with its path; a present zero is zero.",
+    "Ceilings and floors (ceilings-and-trims design section 1, floor-panels design section 1): a bay is the strip between two adjacent frames (detailing.json frames, 2 m), and each bay is cut into cells cells.size_m across, centred on x = cells.origin_x_m + k * size_m (so the middle cell of a room on the centreline is centred on it). Each cell takes one module of its finish's 'ceiling' or 'floor' set, with cell-local texture coordinates (u 0-1 across the cell along +x, v 0-1 along +z), so a cut only crops it. Placed by rule, in order: a ceiling cell a lamp housing spans takes lamp_surround, a light channel across the cell's width with v centred on the lamp, so the housing sits in it wherever the lamp rule put it along the bay; a cell holding a floor portal (its hole and its collar or rim) takes plate; a floor cell on the walkway takes walkway; a cell whose core (cells.core_m either side of its centre) the room's outline or a hole cuts takes plate; otherwise a module is drawn by weight with the wall rule's hash, over the key 'seed|compartment|brush|ceiling|bay|cell' (or floor), bay and cell being the frame and cell indices, excluding the module of the cell before it in the bay and of the cell in the same place in the bay before.",
+    "The walkway (floor-panels design section 1): a floor cell is walkway when a band walkway.width_m wide, from one of the room's doors (a wall portal of rule.door_kinds) to the centroid of the brushes on that door's floor, overlaps it by at least walkway.min_overlap_m; in a corridor the band runs down the corridor's long axis through its centroid, and each door joins it square to the axis. The walkway module tiles in both directions, so a walkway reads as one path across cells.",
+    "Trims (ceilings-and-trims design sections 3-4): ribs, beams, coves, baseboards, door and window frames take rows of their finish's trim layer. A row (trims.rows) is a band of the layer v0_m to v0_m + h_m from its bottom, whole texels at 64 px per metre (multiples of 1/64 m), tiling along u with a 2 m period; the gaps between rows are filled by repeating each row's edge so mipmaps do not bleed one row into the next. A member's front face takes the row its member names (trims.members: face), its long side faces the 'sides' row, its end faces 'side'. u runs along the member, world-projected (a long beam tiles without a seam); v runs across the face within the row, stretched by at most trims.stretch_max (a deeper face is split into whole repeats). A rib is the wall's pillar: its front face is a base, the shaft and a capital (trims.pillar), the base and capital taking the pieces trims.pieces names, which do not tile: a piece of length_m centred at centre_m in its row is mapped onto the member's base_m or capital_m (tall_ in rooms over detailing.json cove.tall_room_m).",
+    "Each finish's ceiling, floor and trims may override any of its colours_srgb (colours_srgb under that kind) and carry their own wear and render light (render.ceiling, render.floor, render.trims): a ceiling and a floor are lit from the room, so the key light is nearly square to them; a trim strip is lit square on so it reads the same whichever way its member runs. A finish lists the modules it has: crew floors have no hazard module (crew takes plate for it, floor-panels design section 2)."
+  ],
+  "layers": {
+    "first_layer": 11,
+    "span_m": 2.0,
+    "margin_m": 0.2,
+    "sizes_px": [128, 256],
+    "colours": 48,
+    "dir": "assets/textures/panels"
+  },
+  "bands": {
+    "base_m": 0.5,
+    "module_m": 2.0,
+    "strip_m": 0.5,
+    "base": "base",
+    "between": "louvre",
+    "top": "top"
+  },
+  "bays": {
+    "full_min_m": 1.6,
+    "full_max_m": 2.4,
+    "narrow_min_m": 0.6,
+    "narrow_feature_m": 0.6
+  },
+  "rule": {
+    "seed": 1,
+    "hash": "fnv1a32",
+    "key": "seed|compartment|brush|edge|bay|level",
+    "door_kinds": ["door", "pressure_door", "hatch"]
+  },
+  "cells": {
+    "_doc": "Ceiling and floor cells (ceilings-and-trims design section 1): cells size_m across, centred on x = origin_x_m + k * size_m, in bays at the frames; a module's features stay margin_m clear of its cell's edges, and its main feature within core_m of its centre: a cell whose outline or a hole cuts that core is cropped and takes plate (a cove cutting 0.35 m off a cell against a wall only crops its margin).",
+    "size_m": 2.0,
+    "origin_x_m": 0.0,
+    "margin_m": 0.2,
+    "core_m": 0.6
+  },
+  "walkway": { "width_m": 0.9, "min_overlap_m": 0.1 },
+  "trims": {
+    "_doc": "The rows of a finish's trim layer, from its bottom (v0_m, h_m in metres of the 2 m layer), the members that take them, and the rib's base and capital pieces (ceilings-and-trims design sections 3-4).",
+    "stretch_max": 1.6,
+    "rows": {
+      "side": { "v0_m": 0.03125, "h_m": 0.125 },
+      "baseboard": { "v0_m": 0.203125, "h_m": 0.15625 },
+      "rib": { "v0_m": 0.40625, "h_m": 0.25 },
+      "rib_ends": { "v0_m": 0.703125, "h_m": 0.25 },
+      "beam": { "v0_m": 1.0, "h_m": 0.25 },
+      "frame": { "v0_m": 1.296875, "h_m": 0.25 },
+      "cove": { "v0_m": 1.59375, "h_m": 0.375 }
+    },
+    "pieces": {
+      "rib_base": { "row": "rib_ends", "centre_m": -0.5, "length_m": 0.45 },
+      "rib_capital": { "row": "rib_ends", "centre_m": 0.5, "length_m": 0.45 }
+    },
+    "pillar": { "base_m": 0.3, "capital_m": 0.3, "tall_base_m": 0.6, "tall_capital_m": 0.6, "min_shaft_m": 0.4 },
+    "members": {
+      "rib": { "face": "rib", "sides": "side" },
+      "beam": { "face": "beam", "sides": "beam" },
+      "baseboard": { "face": "baseboard", "sides": "side" },
+      "frame": { "face": "frame", "sides": "side" },
+      "window_frame": { "face": "frame", "sides": "side" },
+      "cove": { "face": "cove", "sides": "cove" }
+    }
+  },
+  "glow": { "normal": 1.0, "red_alert": 1.0, "emergency": 0.3 },
+  "render": {
+    "_doc": "How tools/blender/build_wall_panels.py bakes a module (design section 6, option B): orthographic and face-on, Cycles on the CPU, a fixed key light from the upper left (key_light_tangent: x right, y up, z out of the wall) of angular size key_angle_deg, and a uniform ambient of ambient, scaled so that a flat, unoccluded face renders at exactly its colour; occlusion and one or two bounces come from the path tracing. Rendered at px_per_m with samples per pixel and no denoiser, then area-averaged to the layer sizes. The emission mask is a second render in which emissive materials glow white and everything else is black.",
+    "px_per_m": 512,
+    "samples": 16,
+    "mask_samples": 8,
+    "key_light_tangent": [-0.45, 0.8, 0.6],
+    "key_angle_deg": 4.0,
+    "ambient": 0.45,
+    "bounces": 2,
+    "ceiling": { "key_light_tangent": [0.2, 0.3, 0.93], "key_angle_deg": 25.0, "ambient": 0.5 },
+    "floor": { "key_light_tangent": [-0.3, 0.45, 0.84], "key_angle_deg": 15.0, "ambient": 0.45 },
+    "trims": { "key_light_tangent": [0.5, 0.2, 0.84], "key_angle_deg": 10.0, "ambient": 0.42 }
+  },
+  "ui": {
+    "_doc": "Screen and key images, reusable by console props (owner, 2026-10-05: 'better UI place holders, keyboards etc'). The screen is a UI placeholder modelled as emissive shapes (a header band, bar graphs, a line plot over a grid, a schematic, rows of text-like ticks; no real text) and rendered face-on; the screen module shows it in its display. The keys are a strip of raised keys, a few lit, baked like the modules. Both are written per finish as <dir>/ui_screen_<finish>.png and <dir>/keys_<finish>.png.",
+    "screen_m": [1.0, 0.625],
+    "screen_px": [256, 160],
+    "keys_m": [0.5, 0.125],
+    "keys_px": [256, 64]
+  },
+  "finishes": {
+    "crew": {
+      "_doc": "Crew spaces: warm mid grey, clean, white and amber light.",
+      "colours_srgb": {
+        "plate": [0.40, 0.38, 0.35],
+        "paint2": [0.31, 0.30, 0.285],
+        "dark": [0.10, 0.10, 0.105],
+        "metal": [0.60, 0.58, 0.54],
+        "hazard_a": [0.82, 0.63, 0.14],
+        "hazard_b": [0.07, 0.07, 0.07],
+        "safety": [0.80, 0.60, 0.13],
+        "rubber": [0.05, 0.05, 0.055],
+        "stencil": [0.85, 0.83, 0.77],
+        "light": [1.0, 0.95, 0.86],
+        "amber": [1.0, 0.62, 0.17],
+        "status": [0.45, 0.95, 0.60],
+        "rust": [0.36, 0.20, 0.10],
+        "ui_bg": [0.02, 0.07, 0.08],
+        "ui_dim": [0.08, 0.32, 0.34],
+        "ui_fg": [0.30, 0.85, 0.80],
+        "ui_hi": [0.85, 1.0, 0.97],
+        "ui_alert": [1.0, 0.65, 0.20],
+        "walk": [0.46, 0.45, 0.42]
+      },
+      "wear": { "grime": 0.16, "grime_scale_per_m": 2.0, "crevice": 0.5, "crevice_m": 0.05, "edge": 0.40, "streaks": 0.14, "rust": 0.0 },
+      "ceiling": {
+        "_doc": "Crew ceilings: lighter and quieter than the crew walls, so the room does not close in (ceilings-and-trims design section 2).",
+        "colours_srgb": { "plate": [0.50, 0.49, 0.46], "paint2": [0.43, 0.42, 0.40], "metal": [0.64, 0.63, 0.60], "dark": [0.12, 0.12, 0.125] },
+        "wear": { "grime": 0.08, "grime_scale_per_m": 1.5, "crevice": 0.45, "crevice_m": 0.05, "edge": 0.25, "streaks": 0.0, "rust": 0.0 },
+        "modules": {
+          "plate": { "layer": 33, "weight": 3, "placed": "draw", "emissive": false },
+          "grille": { "layer": 34, "weight": 1, "placed": "draw", "emissive": false },
+          "fan": { "layer": 35, "weight": 1, "placed": "draw", "emissive": false },
+          "cable_tray": { "layer": 36, "weight": 1, "placed": "draw", "emissive": false },
+          "pipes": { "layer": 37, "weight": 1, "placed": "draw", "emissive": false },
+          "hatch": { "layer": 38, "weight": 1, "placed": "draw", "emissive": true },
+          "ribbed": { "layer": 39, "weight": 1, "placed": "draw", "emissive": false },
+          "lamp_surround": { "layer": 40, "weight": 0, "placed": "rule:lamp", "emissive": false }
+        }
+      },
+      "floor": {
+        "_doc": "Crew floors: mid grey and clean, the walkway lighter than the grates so the path reads; no hazard module (floor-panels design section 2).",
+        "colours_srgb": { "plate": [0.34, 0.335, 0.32], "paint2": [0.28, 0.275, 0.265], "dark": [0.07, 0.07, 0.075], "metal": [0.55, 0.54, 0.51] },
+        "wear": { "grime": 0.22, "grime_scale_per_m": 1.8, "crevice": 0.55, "crevice_m": 0.05, "edge": 0.35, "streaks": 0.0, "rust": 0.0 },
+        "modules": {
+          "walkway": { "layer": 41, "weight": 0, "placed": "rule:walkway", "emissive": false },
+          "plate": { "layer": 42, "weight": 4, "placed": "draw", "emissive": false },
+          "grate": { "layer": 43, "weight": 1, "placed": "draw", "emissive": false },
+          "access": { "layer": 44, "weight": 1, "placed": "draw", "emissive": false },
+          "trench": { "layer": 45, "weight": 1, "placed": "draw", "emissive": false },
+          "drain": { "layer": 46, "weight": 1, "placed": "draw", "emissive": false },
+          "vent": { "layer": 47, "weight": 1, "placed": "draw", "emissive": false }
+        }
+      },
+      "trims": {
+        "_doc": "Crew trims: dark gunmetal steel with bright worn edges, darker than the crew walls, so the structure frames the plating instead of fading into it (the pale trim the proposal names).",
+        "layer": 48,
+        "colours_srgb": { "plate": [0.31, 0.31, 0.30], "paint2": [0.23, 0.23, 0.225], "metal": [0.66, 0.65, 0.62], "dark": [0.07, 0.07, 0.075] },
+        "wear": { "grime": 0.14, "grime_scale_per_m": 2.0, "crevice": 0.6, "crevice_m": 0.03, "edge": 0.65, "streaks": 0.10, "rust": 0.0 }
+      },
+      "modules": {
+        "plate": { "layer": 11, "weight": 3, "placed": "draw", "emissive": false, "mirrored": false },
+        "vent": { "layer": 12, "weight": 1, "placed": "draw", "emissive": false, "mirrored": false, "variant": "louvre" },
+        "pipes": { "layer": 13, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
+        "hatch": { "layer": 14, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
+        "junction": { "layer": 15, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
+        "light": { "layer": 16, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
+        "ribbed": { "layer": 17, "weight": 1, "placed": "draw", "emissive": false, "mirrored": false },
+        "screen": { "layer": 18, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
+        "flank": { "layer": 19, "weight": 0, "placed": "rule:door", "emissive": true, "mirrored": true },
+        "narrow": { "layer": 20, "weight": 0, "placed": "rule:narrow", "emissive": true, "mirrored": false }
+      },
+      "strips": { "layer": 21, "guard_m": 0.025, "rows": { "base": 0, "louvre": 1, "spare": 2, "top": 3 } }
+    },
+    "working": {
+      "_doc": "Working spaces: darker grey-brown, rust streaks, hazard borders, amber light.",
+      "colours_srgb": {
+        "plate": [0.27, 0.245, 0.215],
+        "paint2": [0.20, 0.185, 0.165],
+        "dark": [0.075, 0.07, 0.065],
+        "metal": [0.50, 0.46, 0.40],
+        "hazard_a": [0.82, 0.60, 0.11],
+        "hazard_b": [0.06, 0.055, 0.05],
+        "safety": [0.78, 0.52, 0.11],
+        "rubber": [0.045, 0.04, 0.04],
+        "stencil": [0.82, 0.68, 0.24],
+        "light": [1.0, 0.82, 0.55],
+        "amber": [1.0, 0.56, 0.12],
+        "status": [0.55, 0.95, 0.35],
+        "rust": [0.38, 0.17, 0.07],
+        "ui_bg": [0.05, 0.035, 0.01],
+        "ui_dim": [0.30, 0.20, 0.05],
+        "ui_fg": [1.0, 0.68, 0.22],
+        "ui_hi": [1.0, 0.93, 0.70],
+        "ui_alert": [0.55, 0.95, 0.35],
+        "walk": [0.36, 0.34, 0.31]
+      },
+      "wear": { "grime": 0.28, "grime_scale_per_m": 2.5, "crevice": 0.6, "crevice_m": 0.06, "edge": 0.5, "streaks": 0.35, "rust": 0.7 },
+      "ceiling": {
+        "_doc": "Working ceilings: dark, with rust and hazard borders, matching the working walls (ceilings-and-trims design section 2).",
+        "colours_srgb": { "plate": [0.25, 0.235, 0.21], "paint2": [0.19, 0.18, 0.16] },
+        "wear": { "grime": 0.26, "grime_scale_per_m": 2.0, "crevice": 0.6, "crevice_m": 0.06, "edge": 0.4, "streaks": 0.0, "rust": 0.45 },
+        "modules": {
+          "plate": { "layer": 49, "weight": 3, "placed": "draw", "emissive": false },
+          "grille": { "layer": 50, "weight": 1, "placed": "draw", "emissive": false },
+          "fan": { "layer": 51, "weight": 1, "placed": "draw", "emissive": false },
+          "cable_tray": { "layer": 52, "weight": 1, "placed": "draw", "emissive": false },
+          "pipes": { "layer": 53, "weight": 1, "placed": "draw", "emissive": false },
+          "hatch": { "layer": 54, "weight": 1, "placed": "draw", "emissive": true },
+          "ribbed": { "layer": 55, "weight": 1, "placed": "draw", "emissive": false },
+          "lamp_surround": { "layer": 56, "weight": 0, "placed": "rule:lamp", "emissive": false }
+        }
+      },
+      "floor": {
+        "_doc": "Working floors: diamond plate and grates with rust and wear, hazard borders (floor-panels design section 2).",
+        "colours_srgb": { "plate": [0.27, 0.255, 0.235], "paint2": [0.21, 0.195, 0.175], "metal": [0.48, 0.45, 0.40] },
+        "wear": { "grime": 0.34, "grime_scale_per_m": 2.2, "crevice": 0.65, "crevice_m": 0.05, "edge": 0.5, "streaks": 0.0, "rust": 0.45 },
+        "modules": {
+          "walkway": { "layer": 57, "weight": 0, "placed": "rule:walkway", "emissive": false },
+          "plate": { "layer": 58, "weight": 3, "placed": "draw", "emissive": false },
+          "grate": { "layer": 59, "weight": 2, "placed": "draw", "emissive": false },
+          "access": { "layer": 60, "weight": 1, "placed": "draw", "emissive": false },
+          "trench": { "layer": 61, "weight": 1, "placed": "draw", "emissive": false },
+          "drain": { "layer": 62, "weight": 1, "placed": "draw", "emissive": false },
+          "vent": { "layer": 63, "weight": 1, "placed": "draw", "emissive": false },
+          "hazard": { "layer": 64, "weight": 1, "placed": "draw", "emissive": false }
+        }
+      },
+      "trims": {
+        "_doc": "Working trims: dark brown steel with rust, hazard edges on beams, frames and pillar bases, hazard kick plates.",
+        "layer": 65,
+        "colours_srgb": { "plate": [0.24, 0.225, 0.20], "paint2": [0.18, 0.17, 0.15], "metal": [0.54, 0.50, 0.44] },
+        "wear": { "grime": 0.26, "grime_scale_per_m": 2.5, "crevice": 0.6, "crevice_m": 0.04, "edge": 0.6, "streaks": 0.25, "rust": 0.5 }
+      },
+      "modules": {
+        "plate": { "layer": 22, "weight": 3, "placed": "draw", "emissive": false, "mirrored": false },
+        "vent": { "layer": 23, "weight": 1, "placed": "draw", "emissive": false, "mirrored": false, "variant": "octagons" },
+        "pipes": { "layer": 24, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
+        "hatch": { "layer": 25, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
+        "junction": { "layer": 26, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
+        "light": { "layer": 27, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
+        "ribbed": { "layer": 28, "weight": 1, "placed": "draw", "emissive": false, "mirrored": false },
+        "screen": { "layer": 29, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
+        "flank": { "layer": 30, "weight": 0, "placed": "rule:door", "emissive": true, "mirrored": true },
+        "narrow": { "layer": 31, "weight": 0, "placed": "rule:narrow", "emissive": true, "mirrored": false }
+      },
+      "strips": { "layer": 32, "guard_m": 0.025, "rows": { "base": 0, "louvre": 1, "spare": 2, "top": 3 } }
+    }
+  },
+  "source": {
+    "tool": "blender",
+    "generator": "tools/blender/build_wall_panels.py",
+    "generator_version": 2,
+    "blender": "4.5 LTS (the bpy module, 4.5.14)",
+    "note": "Question V2 is answered (owner, 2026-10-05): panels are modelled and baked in Blender (option B; CLAUDE.md section 9). Version 2 adds the ceiling and floor modules and the trim rows; the wall layers it writes are byte for byte version 1's."
+  }
+}

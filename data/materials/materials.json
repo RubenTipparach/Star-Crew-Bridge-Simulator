@@ -1,0 +1,149 @@
+{
+  "schema": "starcrew.materials/1",
+  "status": "Built (2026-10-05) by tools/materials/postprocess.py into assets/textures/<name>.png; see the material-maker skill. No engine code reads these layers yet. The ramps are first choices made by eye on the contact sheet (docs/screenshots/materials/contact-sheet.png), not decisions.",
+  "_rules": [
+    "This file is the one source for Star Crew's surface materials: which Material Maker graph each comes from, its size in the world, and how its render is post-processed. The deck build, the mockups and the engine read it; nothing keeps a second list.",
+    "Every material is one layer of one texture array. Every layer is 128 x 128 px (layers.px), RGBA8, whatever the material.",
+    "Interior layers span 2.0 m, so 64 px per metre; exterior layers span 4.0 m, so 32 px per metre (layers.*_span_m). A surface's UVs are its world position divided by its material's span_m, so texel density never changes between materials of the same space.",
+    "tile_m is the world size of one repeat of the graph. A graph smaller than the span is tiled k x k inside the layer; a graph larger than the span gives the layer its top-left 1/k. Either way span_m / tile_m (or its inverse) is whole, so the layer tiles seamlessly.",
+    "Sampling: nearest on magnification, mipmapped on minification (layers.mag_filter, layers.min_filter), so a wall up close shows crisp texels and a far one does not shimmer.",
+    "The baked vertex light multiplies the texel. There is no per-pixel lighting on the Pi 5, so a graph's normal map and occlusion are baked into the albedo under one fixed key light from the top of the layer (bake.key_light_tangent), by relief.",
+    "Alpha is the emission mask: 255 shows the texel at full brightness whatever the light, 0 lights it only by the baked vertex light; in between blends the two. Non-emissive layers have alpha 0 everywhere, so an image viewer shows them as transparent; their colour is intact. Never premultiply alpha or let a tool strip colour under zero alpha.",
+    "Knobs, with postprocess.py DEFAULTS for any left out: ramp [[r, g, b] dark, [r, g, b] light] in 0-1 sRGB recolours by luminance, stretched so the material's darkest texels (bake.ramp_stretch_percentiles low) take the dark colour and its lightest the light one (default none); ramp_mix 0-1 blends the ramp over the original (default 1); relief 0-1 blends the albedo toward albedo * shade (default 1); relief_ambient 0-1 is the shade of a face turned away from the key light (default 0.45); colours 2-256 is a median-cut palette per layer, null for none (default 32); emissive true takes the alpha from the graph's emission map (default false).",
+    "layer is the material's index in the array. It is stable: a compiled deck names materials by it. Add a material at the end; never renumber.",
+    "Units: metres (_m), pixels (px), sRGB colour components in 0-1."
+  ],
+  "layers": {
+    "px": 128,
+    "interior_span_m": 2.0,
+    "exterior_span_m": 4.0,
+    "format": "RGBA8: sRGB colour, linear alpha (the emission mask)",
+    "mag_filter": "NEAREST",
+    "min_filter": "LINEAR_MIPMAP_LINEAR"
+  },
+  "bake": {
+    "key_light_tangent": [0.0, 1.0, 1.0],
+    "luminance_weights": [0.2126, 0.7152, 0.0722],
+    "ramp_stretch_percentiles": [1.0, 99.0]
+  },
+  "materials": {
+    "bulkhead": {
+      "layer": 0,
+      "role": "Walls of every compartment.",
+      "source": { "graph": "tech_panel", "provenance": "fps-game-demo f6cd25c tools/material_maker/ptex/tech_panel.ptex, authored by its build_ptex.py" },
+      "tile_m": 2.0,
+      "span_m": 2.0,
+      "ramp": [[0.12, 0.15, 0.19], [0.60, 0.65, 0.70]],
+      "ramp_mix": 0.9,
+      "relief": 1.0,
+      "colours": 32
+    },
+    "deck_tiles": {
+      "layer": 1,
+      "role": "Floors in crew spaces: bridge, corridors, quarters, mess, medbay.",
+      "source": { "graph": "floor_tiles", "provenance": "fps-game-demo f6cd25c tools/material_maker/ptex/floor_tiles.ptex, authored by its build_ptex.py" },
+      "tile_m": 2.0,
+      "span_m": 2.0,
+      "ramp": [[0.05, 0.06, 0.08], [0.40, 0.44, 0.50]],
+      "ramp_mix": 0.9,
+      "relief": 1.0,
+      "colours": 32
+    },
+    "deck_plate": {
+      "layer": 2,
+      "role": "Floors in working spaces: engineering, hangar, bays, cargo, magazine, torpedo room, drive.",
+      "source": { "graph": "diamond_plate", "provenance": "fps-game-demo f6cd25c tools/material_maker/ptex/diamond_plate.ptex: Material Maker example metal_pattern (MIT, Rodolphe Suescun and contributors) with fps's metallic patch" },
+      "tile_m": 2.0,
+      "span_m": 2.0,
+      "ramp": [[0.14, 0.15, 0.17], [0.41, 0.44, 0.48]],
+      "ramp_mix": 0.9,
+      "relief": 1.0,
+      "colours": 32
+    },
+    "ceiling": {
+      "layer": 3,
+      "role": "Ceilings of every compartment.",
+      "source": { "graph": "ceiling_tiles", "provenance": "fps-game-demo f6cd25c tools/material_maker/ptex/ceiling_tiles.ptex, authored by its build_ptex.py" },
+      "tile_m": 2.0,
+      "span_m": 2.0,
+      "ramp": [[0.12, 0.13, 0.15], [0.55, 0.57, 0.60]],
+      "ramp_mix": 0.9,
+      "relief": 1.0,
+      "colours": 32
+    },
+    "trim": {
+      "layer": 4,
+      "role": "Frames, ribs, baseboards, door frames and beams.",
+      "source": { "graph": "tech_panel", "provenance": "fps-game-demo f6cd25c tools/material_maker/ptex/tech_panel.ptex, authored by its build_ptex.py" },
+      "tile_m": 4.0,
+      "span_m": 2.0,
+      "ramp": [[0.22, 0.24, 0.27], [0.80, 0.82, 0.85]],
+      "ramp_mix": 0.9,
+      "relief": 1.0,
+      "colours": 32
+    },
+    "hazard": {
+      "layer": 5,
+      "role": "Bay edges, stair nosings and hatch rims.",
+      "source": { "graph": "hazard_stripes", "provenance": "fps-game-demo f6cd25c tools/material_maker/ptex/hazard_stripes.ptex, authored by its build_ptex.py" },
+      "tile_m": 1.0,
+      "span_m": 2.0,
+      "relief": 1.0,
+      "colours": 32
+    },
+    "light_panel": {
+      "layer": 6,
+      "role": "Lamp fixtures: ceiling panels and strips. Emissive.",
+      "source": { "graph": "light_panel", "provenance": "fps-game-demo f6cd25c tools/material_maker/ptex/light_panel.ptex, authored by its build_ptex.py" },
+      "tile_m": 1.0,
+      "span_m": 2.0,
+      "relief": 1.0,
+      "colours": 32,
+      "emissive": true
+    },
+    "machinery": {
+      "layer": 7,
+      "role": "System housings, the reactor, pipes and console bodies.",
+      "source": { "graph": "rust_metal", "provenance": "fps-game-demo f6cd25c tools/material_maker/ptex/rust_metal.ptex, authored by its build_ptex.py" },
+      "tile_m": 2.0,
+      "span_m": 2.0,
+      "ramp": [[0.10, 0.105, 0.115], [0.38, 0.385, 0.38]],
+      "ramp_mix": 0.95,
+      "relief": 1.0,
+      "colours": 32
+    },
+    "crate": {
+      "layer": 8,
+      "role": "Cargo crates.",
+      "source": { "graph": "crate", "provenance": "fps-game-demo f6cd25c tools/material_maker/ptex/crate.ptex, authored by its build_ptex.py" },
+      "tile_m": 1.0,
+      "span_m": 2.0,
+      "ramp": [[0.08, 0.09, 0.06], [0.50, 0.52, 0.36]],
+      "ramp_mix": 0.9,
+      "relief": 1.0,
+      "colours": 32
+    },
+    "hull": {
+      "layer": 9,
+      "role": "Exterior hull plating.",
+      "source": { "graph": "tech_panel", "provenance": "fps-game-demo f6cd25c tools/material_maker/ptex/tech_panel.ptex, authored by its build_ptex.py" },
+      "tile_m": 4.0,
+      "span_m": 4.0,
+      "ramp": [[0.30, 0.32, 0.35], [0.86, 0.87, 0.89]],
+      "ramp_mix": 0.9,
+      "relief": 1.0,
+      "colours": 32
+    },
+    "hull_dark": {
+      "layer": 10,
+      "role": "Exterior accent plating: bands, the spine, around ports and bays.",
+      "source": { "graph": "tech_panel", "provenance": "fps-game-demo f6cd25c tools/material_maker/ptex/tech_panel.ptex, authored by its build_ptex.py" },
+      "tile_m": 2.0,
+      "span_m": 4.0,
+      "ramp": [[0.06, 0.07, 0.08], [0.36, 0.38, 0.41]],
+      "ramp_mix": 0.9,
+      "relief": 1.0,
+      "colours": 32
+    }
+  }
+}

@@ -1,0 +1,189 @@
+# Design: netcode and sessions
+
+Status: **proposed** (2026-10-04). Numbers are estimates sized against the Pi 5 budget in
+`engine-stack` (64 kbit/s down and 16 kbit/s up per client; the main server on a 4 GB Pi 5);
+the first networked build measures them. Re-floored the same day on the owner's correction:
+"I'm sorry we're running on a pi5 1gb-4gb, 4 GB can be used as main server too".
+
+References, cited for shape only: Glenn Fiedler's "Gaffer on Games" articles on UDP
+reliability, snapshot interpolation and snapshot compression; Valve's "Source Multiplayer
+Networking" article on interpolation delay, prediction and lag compensation; the Quake 3
+network model (delta snapshots against the last acknowledged state). To verify against the
+sources before the first networked build.
+
+## 1. Topology
+
+```text
+   client (Pi 5 or PC)  \
+   client (Pi 5 or PC)   >---- UDP ----  sc-server  (the main server: a 4 GB Pi 5 on Ethernet)
+   client (Pi 5 or PC)  /                   |
+                                            +-- sc-core: the one authoritative ship
+```
+
+| Mode | Where the server runs | Use |
+| --- | --- | --- |
+| **Main server** | `sc-server`, headless, on a 4 GB Pi 5 (or any desktop) | **The normal way to play with friends.** Always on at home, on Ethernet, with the Active Cooler; holds the campaign saves; every player is a client like the others |
+| Solo | A thread in the player's client | One player, automation holds the other stations. Fits a 1 GB Pi 5 (64 MB, `engine-stack` section 5) |
+| Listen server | A thread in the host's client | A crew without a main server, from a client with 2 GB or more |
+
+The main server on a 4 GB Pi 5 spends one A76 core on the simulation (at most 2 ms per ship per
+30 Hz tick, `engine-stack` section 5) and about 0.5 Mbit/s up for eight players on gigabit
+Ethernet. Both fit with room to spare; how many sessions one board can hold at once is a
+measurement (task 6.1).
+
+## 2. Transport
+
+- **UDP**, one socket per process. Payloads at most 1,200 bytes so a packet never fragments on
+  the internet's common paths.
+- **Every packet** carries: protocol id and version (4 bytes), session token (4), sequence
+  number (2), latest received remote sequence (2) and a 32-bit acknowledgement bitfield, then
+  messages.
+- **Channels:**
+
+| Channel | Delivery | Carries |
+| --- | --- | --- |
+| Input | Unreliable, newest wins; each packet repeats the last 4 input frames | Avatar movement, fighter flight controls, turret aim |
+| Snapshot | Unreliable, sequenced | Server state deltas |
+| Command | Reliable, ordered, resent until acknowledged | Console actions, seat claims, door use, chat |
+| Bulk | Reliable, fragmented and reassembled | Join-in-progress state, the save at session end |
+
+- **Connection:** a challenge and response with the protocol version and a session token
+  (cheap protection against spoofed packets); keep-alives at 4 Hz when idle; a timeout of 5 s.
+- **Validation:** every field is range-checked on arrival and non-finite numbers are rejected
+  (CLAUDE.md 6.6). A malformed packet is dropped and counted, never trusted.
+
+## 3. Time and ticks
+
+- The server ticks at 30 Hz and numbers its ticks. Ship systems step every third tick (10 Hz).
+- Snapshots go out at 20 Hz. Each names its server tick.
+- The client estimates the server's tick from snapshot arrival times, smoothed, and renders
+  remote entities at `server tick - 100 ms` (two snapshot intervals), interpolating between
+  the two snapshots around that time.
+
+## 4. What a snapshot holds, and what it costs
+
+State is split by frame and by how fast it changes. Rates are maximums; a delta that holds no
+change for an item costs one bit. A console's own group goes only to a client whose seat shows
+that console (`power-grid` section 14, `life-support` section 18). Rows marked as another change's
+quote its figures (added or corrected 2026-10-04).
+
+| Group | Frame | Items | Encoding | Rate | Bytes per send (changed) |
+| --- | --- | --- | --- | ---: | ---: |
+| Crew avatars | Interior | up to 8 | id 1 B; position 3 x int16 in cm (+/-327 m); yaw, pitch 2 x 8 bit; posture and animation 1 B | 20 Hz | 80 |
+| Crew status (`crew-on-deck` section 14) | Interior | up to 8 | HP 8 bit, effects bitset 8 bit, held thing 8 bit, suit oxygen 8 bit | on change, at most 2 Hz | 32 (at most 64 B/s, 0.5 kbit/s) |
+| Felt residual (`crew-on-deck` section 14) | Interior | 1, the compartment the client's own body is in | `F_k` as 3 x int8 in 0.2 m/s^2 steps; the client's prediction reads it | 20 Hz | 3 (60 B/s, 0.5 kbit/s) |
+| Own ship pose | System | 1 | position 3 x f64 relative to the session's origin body; orientation smallest-three quaternion 32 bit; velocity 3 x f32; angular velocity 3 x int16 | 20 Hz | 48 |
+| Other bodies near the ship | System, relative to own ship | up to 64 | id 2 B; position 3 x f32 relative to own ship; orientation 32 bit; velocity 3 x int16 | 20 Hz near, 5 Hz far | 20 each |
+| Projectiles | System | | Not sent: spawned by a reliable "fired" event (shooter, time, direction) and simulated on the client | | 0; the fired and hit events cost about 4.5 kbit/s in a full engagement (`weapons-and-shields` section 15) |
+| Doors, hatches, breakers, valves | Interior | about 120 | 1-2 bits each, as a bitset | on change | about 30 |
+| Compartment air (`life-support` section 18) | Interior | 30, and the duct | pressure, oxygen, CO2, temperature, smoke: 5 x 2 B | the client's own compartment at 5 Hz to every client; every compartment to a client showing a compartment panel (damage control, engineering E5) at 1 Hz, and 5 Hz for those changing faster than 1 kPa/s | 10; 310 (about 2.5 kbit/s) |
+| Lighting state (`power-grid` section 14) | Interior | 30 | 2 bits each (normal, red alert, emergency, dark) | on change | 8 |
+| Power loads and buses (`power-grid` section 14) | | 40 loads, 24 edges, 14 nodes | each load's wanted and delivered share 2 x 8 bit, each edge's flow share 8 bit, reactor, battery and loop about 24 B, node health 8 bit; to a client showing an engineering console | 2 Hz | 142 (2.3 kbit/s) |
+| Systems damage, fires, heat | | about 40 | 8 bit each | 2 Hz | 40 |
+| Seats and stations | | 14 | operator 1 B (`bridge-stations` section 3: player slot, `AUTO` or `MERGED`), occupant 1 B | on change | 28 |
+
+**Budget check** (redone 2026-10-04 with the crew status and felt residual of `crew-on-deck`, the
+operator byte of `bridge-stations`, the air and power groups at `life-support`'s and `power-grid`'s
+own figures, and `weapons-and-shields`' events; it read 57 kbit/s down without them). A full
+keyframe is about 2.2 kB, sent only on join and when acknowledgement is lost for 1 s. A typical
+delta, with eight avatars moving, a dozen bodies near and the systems groups on their slower rates,
+was about 330 bytes. For the busiest client, one seated at an engineering console, the air and
+power groups now average 32 B a snapshot (against 45 B for the first table's 5 Hz groups), and
+crew status and the felt residual add 6 B: about 324 bytes plus 28 bytes of header, 352 B x 20 Hz
+= 7.0 kB/s = **56 kbit/s down**. In a full engagement the fired and hit events add about
+4.5 kbit/s: **about 61 kbit/s**, inside the 64 kbit/s budget with about 3 kbit/s (5%) to spare. A
+client away from the engineering and damage control consoles takes about 5 kbit/s less. The margin
+is thin, so the first networked build measures it (task 2.3); if it runs over, the bodies group
+gives first, being about half of the delta, by sending far bodies less often. Input up: 4 repeated
+input frames of 12 bytes plus header at 30 Hz is 2.3 kB/s = **18 kbit/s**, just over the 16 kbit/s
+budget, so input is sent at 20 Hz with 3 repeats (**11 kbit/s**); a seated player's console
+commands add about 1 kbit/s (`bridge-stations` section 12): **12 kbit/s up**. The first networked
+build measures both.
+
+## 5. Prediction, interpolation and correction
+
+| Thing | Who renders it how |
+| --- | --- |
+| My avatar | Predicted from my unacknowledged inputs through `sc-core`'s movement function; corrected by replaying inputs from the server's last acknowledged position. A correction under 5 cm is blended over 100 ms; above that it snaps. |
+| My fighter | The same, with `sc-core`'s craft flight function. |
+| Other avatars, ships, craft, missiles | Interpolated 100 ms in the past between snapshots. If a snapshot is late, extrapolate up to 100 ms, then hold. |
+| Doors, breakers, consoles | Shown as the server says. A console shows a pending state ("closing") the moment the player acts, from the same preview function the server will apply. |
+| Ship systems readouts | Interpolated between their 5 Hz values, so bars move smoothly. |
+
+The interior frame makes avatars cheap: the decks do not move, so avatar positions are small
+integers, and a ship's violent manoeuvre does not make crew rubber-band.
+
+## 6. Commands
+
+Every console action is a command: `{ seat, kind, target id, value, client tick }`.
+
+1. The client previews it with the `sc-core` function that will resolve it (CLAUDE.md 6.1) and
+   shows the pending result.
+2. The server receives it on the reliable channel, checks the seat holds the station that may
+   issue it, clamps the value to its legal range, and applies it at the start of the next tick.
+3. The result appears in the next snapshot that covers the item. A refused command comes back
+   as a reliable "refused" message with a reason the console shows.
+
+Commands from different players are applied in a stable order each tick: by seat id, then by
+arrival (CLAUDE.md 6.4).
+
+**Lag compensation for gunners.** A manned turret's shot is judged against the target where the
+gunner saw it: the server keeps 300 ms of history for exterior bodies and rewinds to the
+gunner's view time, capped at 200 ms. This is a co-operative game, so it favours the shooter.
+
+## 7. Seats and automation
+
+- The server holds the seat table: station id to player id or automation.
+- **Claim:** a player walks to a seat and uses it, or picks a station from the mess console. The
+  server grants it if the seat is free or held by automation, and hands automation's state over
+  (for example the current turret target).
+- **Release:** standing up, choosing another station, or disconnecting returns the seat to
+  automation on the next tick. The avatar of a disconnected player stays where it was, as an
+  NPC, and keeps its injuries.
+- **Merged stations** (a station folded into another console when nobody holds it) are rules in
+  `bridge-stations`; the seat table records them.
+
+## 8. Sessions
+
+- **The mess is the lobby.** Players spawn there and claim stations; the host starts the
+  mission.
+- **Finding a game:** a LAN broadcast every second lists servers; the main server can also be
+  joined from outside by address and UDP port (one port forwarded on the router). Because the
+  main server is always on, it is also the natural home for a small rendezvous service (session
+  codes and NAT hole punching) so friends need no port forwarding: a later change.
+- **Join in progress:** the joining client receives a keyframe over the bulk channel (about 2.2 kB
+  of state plus the ship's id and versions; the client loads its own copy of the compiled ship),
+  then deltas. A version mismatch in the protocol, the ship's layout digest or the data digest
+  refuses the join with a message naming which.
+- **Players:** up to 8; the four core stations are offered first.
+- **Saves:** the server writes the campaign state (ship damage, consumables, crew injuries) at
+  mission end and on host request, versioned, through a temporary file and a rename (CLAUDE.md
+  7, "A ship persists").
+
+## 9. Determinism and replays
+
+The game is not lockstep: clients render snapshots, not their own simulation. But `sc-core` is
+deterministic for a given seed and command stream, so the server can record commands and
+replay a mission to the same state hash. That is how simulation bugs are reproduced and how
+tests pin the systems' behaviour.
+
+## 10. Costs
+
+| Cost | Estimate | Budget |
+| --- | ---: | ---: |
+| Down per client | 56 kbit/s typical, about 61 kbit/s in a full engagement (corrected 2026-10-04 from 57 kbit/s, section 4) | 64 kbit/s |
+| Up per client | 12 kbit/s (inputs 11, console commands 1) | 16 kbit/s |
+| Server up, 8 clients | about 0.49 Mbit/s in a full engagement | (Pi 5 gigabit Ethernet) |
+| Server CPU for networking, 8 clients | under 1 ms per tick (delta encoding of about 2 kB per client) | beside the simulation's 2 ms per ship, in the 33 ms tick (`engine-stack` section 5; corrected 2026-10-04 from "the 4 ms tick", which that table does not have) |
+| Server memory for history | 300 ms of 64 bodies at 30 Hz, about 40 kB; per-client acknowledged baselines, 8 x 2 kB | inside 64 MB |
+| Client memory | snapshot buffer of 1 s, about 40 kB | inside 384 MB |
+
+## Open questions
+
+Per CLAUDE.md section 13 these take the recommendation; none has anything to look at yet.
+
+| # | Question | Options | Recommendation | Status |
+| --- | --- | --- | --- | --- |
+| M1 | Internet play without port forwarding needs a rendezvous service someone hosts. The 4 GB Pi 5 main server is always on. | Port forwarding only / a rendezvous service on the main server later / a relay | Port forwarding and LAN first; a rendezvous service on the main server as a later change | Recommendation taken (ask only with screenshots) |
+| M2 | Our own UDP layer or a crate such as `renet`. | Ours / renet | Ours: about 1,000 lines, and it must match the snapshot design exactly | Recommendation taken (ask only with screenshots) |
+| M3 | Maximum players. Eight seats with work for each exist on the Tern (four core, captain, comms, flight ops, gunners, pilots). | 8 / more | 8 | Recommendation taken (ask only with screenshots) |

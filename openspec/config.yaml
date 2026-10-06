@@ -1,0 +1,26 @@
+schema: spec-driven
+
+# Read CLAUDE.md before planning anything. It is the only copy of this project's
+# rules, and this field points at it rather than restating it: a summary here
+# would be a second copy to keep in step.
+context: |
+  Read CLAUDE.md at the repository root first. It is the single source for this
+  project's owner direction, the Raspberry Pi 5 floor, architecture boundaries,
+  ship and simulation invariants, deck design and verification rules, and it
+  takes precedence over any summary. docs/design/vision.md is the game brief.
+
+  Star Crew is a networked starship bridge simulator on a custom engine whose
+  floor is a Raspberry Pi 5 with 1 GB RAM (OpenGL ES 3.0), with a 4 GB Pi 5 as
+  the main server. Every design states what it spends against the Pi 5 budget
+  table in the engine-stack change. The ship
+  simulation lives in an engine-independent core that the server runs and the
+  client renders. The one layout source for a ship is data/ships/<id>/layout.json.
+
+  openspec/specs holds what the game actually does today, and every requirement
+  in it is pinned by a passing check. Work that is designed but not built
+  belongs in openspec/changes, never in specs.
+
+  No em or en dashes in any artifact. Numbers carry SI units. Tuning values live
+  in validated data files, not code. Before claiming anything is done:
+  openspec validate --all, python3 tools/layout_check.py,
+  python3 tools/mockups/inline.py --check, and screenshots the owner can check.
