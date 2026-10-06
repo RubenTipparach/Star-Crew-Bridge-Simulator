@@ -26,6 +26,7 @@ is how to follow them.
 | `docs/mockups/lib/template.html` | The page skeleton: import map (three.js 0.169.0 from jsDelivr), the INLINE markers, a scene, lighting buttons, a budget meter, a shot. Copy it to start. |
 | `tools/mockups/inline.py` | Writes the layout, data files, materials, shipkit and Blender-built props (`<!-- INLINE models:<set> -->`: `assets/models/<set>/props.json` and its `.glb` files, read by the page with three.js's `GLTFLoader`) between each page's INLINE markers. `--check` fails on a stale page, and checks `PI_BUDGET` against the `engine-stack` table's marker. |
 | `tools/mockups/shoot.mjs` | Headless Chromium (SwiftShader) screenshots: the default view, then every registered shot, into `docs/screenshots/mockups/<page>-<shot>.png`. Fails on console errors or a page that never sets `MOCKUP_READY`. |
+| `tools/mockups/zfight.mjs` | The z-fighting check (CLAUDE.md section 8): every triangle a page draws (`window.MOCKUP_SCENE`, which every page sets), pairs on one plane facing the same way and overlapping, summed by surface. Fails above 0.1 m^2 a page. Run it after any change to the kit, propkit or a page's geometry. |
 | `tools/mockups/shrink_png.py` | Re-saves screenshots as dithered 256-colour PNGs, about a quarter of the size; run it on `docs/screenshots` before committing shots. Leaves shots already shrunk alone. |
 
 ## Panels a viewer can close
@@ -62,7 +63,7 @@ of their own, so a page may rewrite a panel's contents freely.
    `setup`, never by wall-clock time, so a shot is the same every run. Call `ShipKit.markReady()`
    after the first rendered frame.
 7. Inline: `python3 tools/mockups/inline.py docs/mockups/<subject>.html`.
-8. Shoot: `node tools/mockups/shoot.mjs docs/mockups/<subject>.html`.
+8. Shoot: `node tools/mockups/shoot.mjs docs/mockups/<subject>.html`; check for z-fighting: `node tools/mockups/zfight.mjs docs/mockups/<subject>.html` (the page sets `window.MOCKUP_SCENE = scene`).
 9. **Look at every shot** (Read the PNGs). Black frames, a camera inside a wall, labels in a
    heap, a panel off screen, a missing viewscreen picture: fix and reshoot. A shot you have not
    looked at is not done.

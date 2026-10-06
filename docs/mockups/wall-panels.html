@@ -1216,9 +1216,14 @@
       // Baseboard between ribs and doors.
       const BB = D.baseboard;
       const cuts = clear.filter((h) => h.v0 < w.y0 + BB.height_m).map((h) => [h.u0, h.u1]).concat(ribs.map((u) => [u - F.rib_width_m / 2, u + F.rib_width_m / 2]));
-      for (const [u0, u1] of intervalMinus(0, w.len, cuts)) {
+      // Inside corners are owned by the walls running athwartships: a fore-and-aft wall's baseboard stops at the
+      // other's face, so two never overlap in the corner. An end on a wall plane has no cap: the cap is pressed to that
+      // wall, and from the room behind it would fight that room's wall (CLAUDE.md section 8).
+      const owns = Math.abs(w.t[0]) >= Math.abs(w.t[1]), e0 = owns ? 0 : BB.depth_m, e1 = owns ? w.len : w.len - BB.depth_m;
+      for (const [u0, u1] of intervalMinus(e0, e1, cuts)) {
         if (u1 - u0 < 0.05) continue;
-        tbox("baseboard", P3((u0 + u1) / 2, w.y0 + BB.height_m / 2, BB.depth_m / 2), ax, up, nIn, (u1 - u0) / 2, BB.height_m / 2, BB.depth_m / 2, ["+v", "+w", "+u", "-u"], null, "+w");
+        const caps = ["+v", "+w"].concat(u0 > 1e-6 ? ["-u"] : [], u1 < w.len - 1e-6 ? ["+u"] : []);
+        tbox("baseboard", P3((u0 + u1) / 2, w.y0 + BB.height_m / 2, BB.depth_m / 2), ax, up, nIn, (u1 - u0) / 2, BB.height_m / 2, BB.depth_m / 2, caps, null, "+w");
       }
       // Door and window frames on this side: jambs, lintel, sill, and a status strip.
       for (const h of holes) {
@@ -1250,7 +1255,8 @@
         const n = Math.max(1, Math.round((u1 - u0) / RL.post_spacing_m));
         for (let k = 0; k <= n; k++) {
           const u = u0 + ((u1 - u0) * k) / n;
-          B.box("railing", P3(u, w.y0 + RL.height_m / 2, inset), ax, up, nIn, hp, RL.height_m / 2, hp, ["+u", "-u", "+w", "-w"]);
+          // A post a little thinner than the rails it crosses, so their faces never share a plane (CLAUDE.md section 8).
+          B.box("railing", P3(u, w.y0 + RL.height_m / 2, inset), ax, up, nIn, hp * 0.8, RL.height_m / 2, hp * 0.8, ["+u", "-u", "+w", "-w"]);
         }
       }
       // Conduits along fore-and-aft corridor walls.
@@ -1322,7 +1328,11 @@
         if (h.p.kind === "ladder" || h.p.kind === "hatch") {
           const above = h.p.between.find((id) => id !== comp.id), up = above && compartment(L, above);
           const top = up ? floorAt(up, f.c[0], f.c[2], br.y[1] + 0.3) : br.y[1] + 0.5;
-          const topY = top + FP.ladder_above_m, bot = br.y[0], zl = f.c[2] - f.sz / 2 + FP.ladder_rail_m, hr = FP.ladder_rail_m / 2;
+          // Its handholds past the floor above only where the ladder ends there: where the room above has its own
+          // ladder up from the same well, that one carries on, and two would overlap rail on rail.
+          const goesOn = up && portalsOf(L, up.id).some((q) => q !== h.p && (q.kind === "ladder" || q.kind === "hatch") &&
+            Math.abs(q.center_m[0] - f.c[0]) < 0.3 && Math.abs(q.center_m[2] - f.c[2]) < 0.3 && q.center_m[1] > f.c[1] + 0.5);
+          const topY = top + (goesOn ? 0 : FP.ladder_above_m), bot = br.y[0], zl = f.c[2] - f.sz / 2 + FP.ladder_rail_m, hr = FP.ladder_rail_m / 2;
           for (const s of [-1, 1]) {
             B.box("ladder", [f.c[0] + (s * FP.ladder_width_m) / 2, (topY + bot) / 2, zl], [1, 0, 0], [0, 1, 0], [0, 0, 1], hr, (topY - bot) / 2, hr, ["+u", "-u", "+w", "-w", "+v"]);
           }
@@ -1358,7 +1368,10 @@
           for (const h of cHoles) if (Math.abs(z - h.f.c[2]) < h.f.sz / 2 + F.beam_width_m) bc.push([h.f.c[0] - h.f.sx / 2 - FP.collar_width_m, h.f.c[0] + h.f.sx / 2 + FP.collar_width_m]);
           for (const [a, b] of intervalMinus(ch[0], ch[1], bc)) {
             if (b - a < 0.2) continue;
-            tbox("beam", [(a + b) / 2, br.y[1] - d / 2, z], [1, 0, 0], [0, 1, 0], [0, 0, 1], (b - a) / 2, d / 2, F.beam_width_m / 2, ["-v", "+w", "-w", "+u", "-u"], null, "-v");
+            // No cap where the beam meets a wall: it is pressed there, and would fight the room behind's wall.
+            const caps = ["-v", "+w", "-w"].concat(b < ch[1] - 1e-6 ? ["+u"] : [], a > ch[0] + 1e-6 ? ["-u"] : []);
+            // 1 cm narrower each side than the ribs it meets at the frame, so their sides never share a plane.
+            tbox("beam", [(a + b) / 2, br.y[1] - d / 2, z], [1, 0, 0], [0, 1, 0], [0, 0, 1], (b - a) / 2, d / 2, F.beam_width_m / 2 - 0.01, caps, null, "-v");
           }
         }
       }
@@ -1793,9 +1806,11 @@
         const t = [(b[0] - a[0]) / len, 0, (b[1] - a[1]) / len], on = outwardNormal(a, b), out = [on[0], 0, on[1]];
         B.quad("riser", [a[0], floorY, a[1]], [b[0], floorY, b[1]], [b[0], top, b[1]], [a[0], top, a[1]], out);
         // The nosing: a hazard strip on the top's edge, raised clear of the platform's face.
-        const nm = Q.nosing_m, nr = Q.nosing_raise_m;
-        const c = [(a[0] + b[0]) / 2 - on[0] * nm / 2, top + nr / 2, (a[1] + b[1]) / 2 - on[1] * nm / 2];
-        B.box("nosing", c, t, [0, 1, 0], out, len / 2, nr / 2, nm / 2, ["+v", "+w", "+u", "-u"]);
+        // Where the edge before is nosed too, this one starts a nosing's width in, so the two never overlap at the
+        // corner (CLAUDE.md section 8): the corner is the edge before's.
+        const nm = Q.nosing_m, nr = Q.nosing_raise_m, s0 = edges[(i + n - 1) % n] !== "wall" ? nm : 0;
+        const c = [(a[0] + b[0]) / 2 + t[0] * s0 / 2 - on[0] * nm / 2, top + nr / 2, (a[1] + b[1]) / 2 + t[2] * s0 / 2 - on[1] * nm / 2];
+        B.box("nosing", c, t, [0, 1, 0], out, (len - s0) / 2, nr / 2, nm / 2, ["+v", "+w", "+u", "-u"]);
         if (kind !== "rail") continue;
         // The railing, inset from the edge, with gaps.
         const along = Math.abs(t[0]) >= Math.abs(t[2]) ? 0 : 2;
@@ -1821,7 +1836,7 @@
           }
           const k = Math.max(1, Math.round((u1 - u0) / Q.rail_post_spacing_m));
           for (let j = 0; j <= k; j++) {
-            B.box("railing", P3(u0 + ((u1 - u0) * j) / k, top + Q.rail_height_m / 2), t, [0, 1, 0], out, rm, Q.rail_height_m / 2, rm, ["+u", "-u", "+w", "-w"]);
+            B.box("railing", P3(u0 + ((u1 - u0) * j) / k, top + Q.rail_height_m / 2), t, [0, 1, 0], out, rm * 0.8, Q.rail_height_m / 2, rm * 0.8, ["+u", "-u", "+w", "-w"]);   // posts thinner than the rails
           }
         }
       }
@@ -1835,11 +1850,12 @@
       for (let k = 0; k < n - 1; k++) {
         const hh = (k + 1) * r, s0 = k * depth, cz = s0 + depth / 2;
         const c = [ft[0] + w[0] * cz, ft[1] + hh / 2, ft[2] + w[2] * cz];
-        // Each tread runs from its own front edge back to the top, so the steps are solid.
+        // Each step is a layer one rise high, from its own front edge back to the top, so the steps are solid and
+        // no two steps' sides share a plane where they overlap (CLAUDE.md section 8).
         const back = run - s0;
-        const cb = [ft[0] + w[0] * (s0 + back / 2), ft[1] + hh / 2, ft[2] + w[2] * (s0 + back / 2)];
+        const cb = [ft[0] + w[0] * (s0 + back / 2), ft[1] + k * r + r / 2, ft[2] + w[2] * (s0 + back / 2)];
         void c;
-        B.box("stair", cb, u, [0, 1, 0], w, st.width_m / 2, hh / 2, back / 2, ["+v", "-w", "+u", "-u"]);
+        B.box("stair", cb, u, [0, 1, 0], w, st.width_m / 2, r / 2, back / 2, ["+v", "-w", "+u", "-u"]);
         const nm = Q.nosing_m;
         B.box("nosing", [ft[0] + w[0] * (s0 + nm / 2), ft[1] + hh + Q.nosing_raise_m / 2, ft[2] + w[2] * (s0 + nm / 2)], u, [0, 1, 0], w, st.width_m / 2, Q.nosing_raise_m / 2, nm / 2, ["+v", "-w", "+u", "-u"]);
       }
@@ -1902,10 +1918,13 @@
   function buildLiftCar(B, f) {
     const [x, y, z] = f.center_m, [w, h, d] = f.car_m, X = [1, 0, 0], Y = [0, 1, 0], Z = [0, 0, 1], t = 0.05;
     const all = ["+u", "-u", "+v", "-v", "+w", "-w"], open = Math.round(Math.sin((f.facing_yaw_deg * Math.PI) / 180));
+    // The walls stand on the floor and under the roof, and the back wall between the side walls: no two parts
+    // overlap, so none shares a plane with another where both face the same way (CLAUDE.md section 8).
+    const wh = h - (f.roof !== false ? 2 * t : t), wy = y + t + wh / 2;
     B.box("lift_floor", [x, y + t / 2, z], X, Y, Z, w / 2, t / 2, d / 2, all);
     if (f.roof !== false) B.box("lift_wall", [x, y + h - t / 2, z], X, Y, Z, w / 2, t / 2, d / 2, all);
-    B.box("lift_wall", [x - open * (w / 2 - t / 2), y + h / 2, z], X, Y, Z, t / 2, h / 2, d / 2, all);
-    for (const sz of [1, -1]) B.box("lift_wall", [x, y + h / 2, z + sz * (d / 2 - t / 2)], X, Y, Z, w / 2, h / 2, t / 2, all);
+    B.box("lift_wall", [x - open * (w / 2 - t / 2), wy, z], X, Y, Z, t / 2, wh / 2, d / 2 - t, all);
+    for (const sz of [1, -1]) B.box("lift_wall", [x, wy, z + sz * (d / 2 - t / 2)], X, Y, Z, w / 2, wh / 2, t / 2, all);
     B.box("lift_rail", [x - open * (w / 2 - 0.08), y + 0.95, z], X, Y, Z, 0.025, 0.025, d / 2 - 0.15, all);
     B.parts.lift_floor.material = "deck_plate"; B.parts.lift_wall.material = "bulkhead"; B.parts.lift_rail.material = "trim";
   }
@@ -2396,6 +2415,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
 document.body.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
+window.MOCKUP_SCENE = scene;   // for tools/mockups/zfight.mjs (a measurement instrument, CLAUDE.md 4)
 scene.background = new THREE.Color(K.PALETTE.space);
 const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 400);
 // The viewer's own camera (lib/freecam.js): look around and move from each room's eye point, or orbit.

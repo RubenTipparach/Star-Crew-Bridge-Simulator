@@ -583,6 +583,11 @@ First estimate on the v1 boxes, for comparison: 8,858.8 m^3, 2,135.0 m^2 of floo
 wall; shell 16,936 (tessellated to the lighting grid), detail 23,377 (estimated densities), props
 18,260: 58,573 triangles, 22 % of 262,000, 91 draws.
 
+**Detail re-measured, 2026-10-06** (`ship-props` section 4a). The kit now leaves out the end caps that skirting
+and beams pressed into a wall (they fought the next room's wall), so `kit_report` gives 14,996 detail triangles
+on today's layout where this table was made at 15,688. The table's Detail and Total columns stay as an upper
+bound until it is re-measured whole; no compartment's use rises.
+
 **What the table says.**
 
 - **Every compartment is under its ceiling; none is exceeded.** The busiest is engineering at

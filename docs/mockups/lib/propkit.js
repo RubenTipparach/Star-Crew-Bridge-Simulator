@@ -23,6 +23,7 @@
   const ROLE_OF = { captain: "command", helm: "helm", tactical: "tactical", engineering: "engineering", science: "science", comms: "comms", flight_ops: "flight_ops" };
   // A point, in metres of the 2 m light panel layer, inside one lit lens cell (and inside one when v is flipped).
   const GLOW_UV_M = [0.367, 0.32];
+  const WALL_GAP_M = 0.01;   // a prop's back off the wall it stands on (offWall)
   const LIFT_M = 0.01, BEZEL_M = 0.012;   // faces stand 1 cm proud of their recess floor (CLAUDE.md 8); a 12 mm black-glass bezel
   const v3 = { add: (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]], mul: (a, k) => [a[0] * k, a[1] * k, a[2] * k],
     cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]] };
@@ -121,11 +122,19 @@
       return SCREENS.main[s] ? s : (SCREENS.boards[s] || "generic");
     }
 
+    /** A prop placed by its back stands WALL_GAP_M forward of that point (CLAUDE.md 8: parallel surfaces at least 1 cm
+     * apart). Against a wall, its back on the wall plane would otherwise fight the wall of the room behind, which shares
+     * that plane and faces the same way (a locker's or a desk's back seen through the next room's wall); in the open the
+     * centimetre does nothing. A prop placed by its footprint's centre is not moved. s, c: the sine and cosine of its yaw. */
+    function offWall(pr, back, s, c) {
+      return pr && pr.rec && /back/.test(String(pr.rec.anchor || "")) ? [back[0] + s * WALL_GAP_M, back[1], back[2] + c * WALL_GAP_M] : back;
+    }
     /** Append a placed prop's console faces to F ({ position, normal, uv }): turned by yaw and moved to back_m as placeProp does. */
     function addFaces(F, kind, back, yawDeg, station) {
       const pr = PROPS && PROPS[kind];
       if (!pr || !SCREENS || !pr.rec.screens) return;
       const th = (yawDeg * Math.PI) / 180, c = Math.cos(th), s = Math.sin(th);
+      back = offWall(pr, back, s, c);
       const world = (p) => [back[0] + p[0] * c + p[2] * s, back[1] + p[1], back[2] - p[0] * s + p[2] * c];
       const turn = (d) => [d[0] * c + d[2] * s, d[1], -d[0] * s + d[2] * c];
       const who = imagesOf(station);
@@ -214,6 +223,8 @@
      * Its accent takes the station's role colour, or o.accent (a THREE.Color) when given. */
     function placeProp(parts, kind, back, yawDeg, station, o) {
       const pr = propOf(kind), th = (yawDeg * Math.PI) / 180, c = Math.cos(th), s = Math.sin(th);
+      back = offWall(pr, back, s, c);
+      const onWall = !!(pr.rec && String(pr.rec.anchor || "").includes("wall"));
       const tint = (o && o.accent) || roleColor(station);
       for (const [mname, P] of Object.entries(pr.parts)) {
         const screen = mname === "screen", accent = mname === "accent";
@@ -228,6 +239,12 @@
         const lit = mname === "light_panel";
         if (lit) dst.glow = dst.glow || [];
         for (let i = 0; i < P.position.length / 3; i++) {
+          // An underside pressed to the floor, or a wall prop's back pressed to its wall, is never seen from the prop's
+          // room; from below, or from the room behind the wall, it fights that room's floor or wall, which shares its
+          // plane (two rooms' walls can lie a centimetre apart) and faces the same way. The whole triangle is left out
+          // (CLAUDE.md section 8).
+          if (i % 3 === 0 && [0, 1, 2].every((k) => P.position[(i + k) * 3 + 1] < 0.005 && P.normal[(i + k) * 3 + 1] < -0.9)) { i += 2; continue; }
+          if (i % 3 === 0 && onWall && [0, 1, 2].every((k) => P.position[(i + k) * 3 + 2] < 0.005 && P.normal[(i + k) * 3 + 2] < -0.9)) { i += 2; continue; }
           const x = P.position[i * 3], y = P.position[i * 3 + 1], z = P.position[i * 3 + 2];
           dst.position.push(back[0] + x * c + z * s, back[1] + y, back[2] - x * s + z * c);
           const nx = P.normal[i * 3], ny = P.normal[i * 3 + 1], nz = P.normal[i * 3 + 2];
@@ -248,7 +265,7 @@
       const all = ["+u", "-u", "+v", "-v", "+w", "-w"];
       B.box("body", at(-0.05, 0.85, 0), r, up, f, 0.2, 0.3, 0.13, all);
       B.box("legs", at(0.2, 0.5, 0), r, up, f, 0.18, 0.08, 0.25, all);
-      B.box("legs", at(0.42, 0.25, 0), r, up, f, 0.16, 0.25, 0.07, all);
+      B.box("legs", at(0.4, 0.25, 0), r, up, f, 0.16, 0.25, 0.07, all);   // shins 2 cm short of a console's cabinet face (CLAUDE.md 8)
       B.box("head", at(-0.02, 1.32, 0), r, up, f, 0.11, 0.13, 0.11, all);
       for (const [role, P] of Object.entries(B.parts)) {
         const dst = parts.crew || (parts.crew = { position: [], normal: [], uvm: [], tint: [], material: "trim" });

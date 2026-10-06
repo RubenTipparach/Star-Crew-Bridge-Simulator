@@ -46,7 +46,13 @@ The after tour, with every set placed, found and fixed:
   three sight lines (ahead and 25 degrees either side); else straight in when that runs 3 m; else the longest of the
   ways in, to the room's middle and along the door's wall;
 - **a prop's glowing faces showed the ceiling lamps' lens grid**: the Petrel's canopy and the reactor's window band
-  read as lamp panels. They now glow evenly (`propkit`, one lit cell of the lamp layer).
+  read as lamp panels. They now glow evenly (`propkit`, one lit cell of the lamp layer);
+- **life support still showed two plain blocks**: the oxygen generator's and the CO2 scrubbers' points (from the v1
+  boxes) stand 3 m and more from the hull room's walls, and the wall rule looked only 2 m out, so the page drew their
+  nominal blocks. The rule now looks 4.5 m out, keeps a machine's whole width in the room and 1 cm off a side wall,
+  keeps it off every door's opening, and slides it up to 1.5 m along a wall when none takes it where it stands. That
+  also moved the forward switchboard off the strip beside its door (it stood within 0.1 m of the opening) to the
+  forward wall.
 
 And left for the owner, with its screenshot in the survey: the captain's dais is railed on six of its eight edges
 in `bridge_variants.py`'s B, where `bridge-stations` says "railed behind"; seated, the captain looks out through
@@ -109,10 +115,47 @@ Recommendation taken (ask only with screenshots): eight berths, the most crew th
 - **Space outside.** The command deck's starfield on the viewscreen and in the windows moves into `propkit`
   (`spaceViews`), and the deck plan uses it.
 
+### 4a. No z-fighting
+
+The owner, 2026-10-06, on a deck plan screenshot of a wall with a dark panel flickering through it: "fix z fighting".
+CLAUDE.md section 8 says two surfaces never share a plane while overlapping and facing the same way, but the mockups
+had no check for it.
+
+**The instrument.** `tools/mockups/zfight.mjs` (new) loads a page headless, takes every triangle its scene draws
+(`window.MOCKUP_SCENE`, a hook each mockup now sets), and reports the pairs that lie on one plane (each centre within
+5 mm of the other's plane), face the same way and overlap by more than 1 cm^2, summed by the two surfaces. It leaves
+out what cannot fight: a faint x-ray overlay (opacity under 0.2), an overlay that does not write depth, and a plan's
+own marks overlapping in one colour. It fails above 0.1 m^2 a page.
+
+**What it found on the deck plan: 96 m^2 of surfaces fighting**, nearly all of it one cause:
+
+| Cause | Area | Fix |
+| --- | ---: | --- |
+| A wall prop's back on the wall plane, which the room behind shares and faces the same way (the owner's screenshot: a locker's back seen through the next room's wall) | 83.8 m^2 | Every prop placed by its back stands 1 cm forward of it (`propkit` `offWall`), and a wall prop's back faces, pressed to the wall, are left out. The wall rule finds the wall plane exactly, not in 2.5 cm steps that put some machines past it |
+| The turrets' bases and bodies on the turret pods' ceiling, floor and wall planes | 6.2 m^2 | The turret sits on the pod's skin, a wall's thickness out and 1 cm more |
+| The lift car's walls, floor and roof overlapping | 1.3 m^2 | The walls stand on the floor, under the roof, and the back wall between the side walls |
+| Skirting and beam end caps pressed into a wall the next room shares; two skirtings overlapping in an inside corner | 0.9 m^2 | No cap where a run ends on a wall; inside corners belong to the walls running athwartships (Undercity's rule 7.2) |
+| Beams as wide as the ribs they meet; railing posts as thick as their rails; platform nosings overlapping at corners | 0.5 m^2 | Beams 2 cm narrower; posts 20 % thinner; a nosing starts a nosing's width in where the edge before is nosed |
+| The centre ladder drawn by deck C and deck B in the slab between | 0.4 m^2 | The lower ladder's handholds stop where the upper ladder carries on |
+| Prop undersides on the floor (the launch cradle's plate and its hazard edge) | 0.4 m^2 | Left out: never seen |
+| The plan's wall-top bands 4 mm over the floor where a pod lies under a corridor | 1.0 m^2 | 1 cm |
+
+Left: 0.07 m^2, slivers of a few cm^2 where the bridge ring's short railing segments meet and where skirtings meet at
+a slanted corner, one material each. The command deck had the seated crew's shins on the console cabinets' face (now
+2 cm short) and is at 0.05 m^2. The other mockups share the kit: `systems.html` drew the turret pods' floors on their
+access rooms' floors in its plan (now 2 cm up) and its markers on one plane (now an overlay), and `bridge-variants.html`
+built stairs of three steps or more from blocks whose sides overlapped (now one layer a step) and two rooms' wall caps
+as two meshes; all are under 0.1 m^2. `bridge.html`, `lighting.html`, `wall-panels.html` and `exterior.html` show none.
+
+**What it changes in the kit's counts.** No end caps in walls, so `kit_report` gives 14,996 detail triangles on today's
+layout where it gave 15,944 (`deck-pipeline` section 11's table was made at 15,688 and stays an upper bound). Props
+lose their undersides and wall backs (section 5's table is measured after this).
+
 ### 5. The Pi 5 budget this change spends
 
 Measured on the deck plan, 2026-10-06: `MOCKUP_STATS` per compartment, which counts the compartment's mesh and its
-screen faces, before the props (the page as it stood after `deck-access`) and after them. A cloud session renders on
+screen faces, before the props (the page as it stood after `deck-access`) and after them. "After" is also after
+section 4a, whose kit leaves out the caps pressed into walls and the props' hidden undersides and backs. A cloud session renders on
 lavapipe; these are triangle counts, not frame times, and say nothing about the Pi's speed (CLAUDE.md section 2).
 
 **The machinery set**, as built (`assets/models/machinery/props.json`; the build refuses a prop over its budget):
@@ -143,48 +186,48 @@ lavapipe; these are triangle counts, not frame times, and say nothing about the 
 
 **Per compartment.** The ceilings are `engine-stack`'s (the bridge 30,000, every other compartment 8,000). Every
 compartment stays inside its ceiling; engineering, with the reactor, the drive and its consoles, is the fullest at
-69 %, and the hangar with the Petrel, its cradle and the pumps next at 67 %.
+69 %, and the hangar with the Petrel, its cradle and the pumps next at 65 %.
 
 | Compartment | Before | After | Added | Ceiling | Use |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Bridge | 2,576 | 6,856 | 4,280 | 30,000 | 23 % |
-| Engineering | 2,692 | 5,528 | 2,836 | 8,000 | 69 % |
-| Hangar | 2,936 | 5,394 | 2,458 | 8,000 | 67 % |
-| Briefing room | 1,006 | 2,496 | 1,490 | 8,000 | 31 % |
-| Crew quarters | 934 | 2,250 | 1,316 | 8,000 | 28 % |
-| Drive section | 928 | 2,184 | 1,256 | 8,000 | 27 % |
-| Captain's ready room | 952 | 2,078 | 1,126 | 8,000 | 26 % |
-| Life support | 1,283 | 1,943 | 660 | 8,000 | 24 % |
-| Computer core | 678 | 1,940 | 1,262 | 8,000 | 24 % |
-| Damage control | 676 | 1,920 | 1,244 | 8,000 | 24 % |
-| Magazine | 1,164 | 1,914 | 750 | 8,000 | 24 % |
-| Cargo and stores | 1,321 | 1,835 | 514 | 8,000 | 23 % |
-| Torpedo room | 976 | 1,776 | 800 | 8,000 | 22 % |
-| Mess | 974 | 1,756 | 782 | 8,000 | 22 % |
-| Port launch bay | 666 | 1,742 | 1,076 | 8,000 | 22 % |
-| Starboard launch bay | 666 | 1,742 | 1,076 | 8,000 | 22 % |
-| Forward switchboard | 598 | 1,576 | 978 | 8,000 | 20 % |
-| Main corridor | 1,546 | 1,546 | 0 | 8,000 | 19 % |
-| Head | 585 | 1,531 | 946 | 8,000 | 19 % |
-| Bridge locker | 575 | 1,359 | 784 | 8,000 | 17 % |
-| Lower corridor | 1,324 | 1,324 | 0 | 8,000 | 17 % |
-| Captain's quarters | 634 | 1,252 | 618 | 8,000 | 16 % |
-| Medbay | 618 | 1,208 | 590 | 8,000 | 15 % |
-| Shield generator | 580 | 1,198 | 618 | 8,000 | 15 % |
-| Command passage | 1,036 | 1,036 | 0 | 8,000 | 13 % |
-| Port stair tower | 856 | 856 | 0 | 8,000 | 11 % |
-| Starboard stair tower | 856 | 856 | 0 | 8,000 | 11 % |
-| Aft passage | 822 | 822 | 0 | 8,000 | 10 % |
-| Port turret access | 652 | 652 | 0 | 8,000 | 8 % |
-| Starboard turret access | 652 | 652 | 0 | 8,000 | 8 % |
-| Dorsal turret access | 472 | 596 | 124 | 8,000 | 7 % |
-| Ventral turret pod | 234 | 580 | 346 | 8,000 | 7 % |
-| Dorsal turret pod | 208 | 422 | 214 | 8,000 | 5 % |
-| Lift | 388 | 404 | 16 | 8,000 | 5 % |
-| Port turret pod | 184 | 398 | 214 | 8,000 | 5 % |
-| Starboard turret pod | 184 | 398 | 214 | 8,000 | 5 % |
-| Airlock | 254 | 254 | 0 | 8,000 | 3 % |
-| **All 37** | **33,686** | **62,274** | **28,588** | | |
+| Bridge | 2,576 | 6,492 | 3,916 | 30,000 | 22 % |
+| Engineering | 2,692 | 5,486 | 2,794 | 8,000 | 69 % |
+| Hangar | 2,936 | 5,204 | 2,268 | 8,000 | 65 % |
+| Life support | 1,283 | 2,701 | 1,418 | 8,000 | 34 % |
+| Briefing room | 1,006 | 2,408 | 1,402 | 8,000 | 30 % |
+| Crew quarters | 934 | 2,162 | 1,228 | 8,000 | 27 % |
+| Drive section | 928 | 2,130 | 1,202 | 8,000 | 27 % |
+| Captain's ready room | 952 | 2,004 | 1,052 | 8,000 | 25 % |
+| Computer core | 678 | 1,892 | 1,214 | 8,000 | 24 % |
+| Magazine | 1,164 | 1,882 | 718 | 8,000 | 24 % |
+| Damage control | 676 | 1,834 | 1,158 | 8,000 | 23 % |
+| Torpedo room | 976 | 1,748 | 772 | 8,000 | 22 % |
+| Cargo and stores | 1,321 | 1,701 | 380 | 8,000 | 21 % |
+| Port launch bay | 666 | 1,692 | 1,026 | 8,000 | 21 % |
+| Starboard launch bay | 666 | 1,692 | 1,026 | 8,000 | 21 % |
+| Mess | 974 | 1,652 | 678 | 8,000 | 21 % |
+| Forward switchboard | 598 | 1,562 | 964 | 8,000 | 20 % |
+| Main corridor | 1,546 | 1,490 | -56 | 8,000 | 19 % |
+| Head | 585 | 1,455 | 870 | 8,000 | 18 % |
+| Bridge locker | 575 | 1,313 | 738 | 8,000 | 16 % |
+| Lower corridor | 1,324 | 1,256 | -68 | 8,000 | 16 % |
+| Captain's quarters | 634 | 1,202 | 568 | 8,000 | 15 % |
+| Medbay | 618 | 1,184 | 566 | 8,000 | 15 % |
+| Shield generator | 580 | 1,172 | 592 | 8,000 | 15 % |
+| Command passage | 1,036 | 1,000 | -36 | 8,000 | 12 % |
+| Port stair tower | 856 | 840 | -16 | 8,000 | 10 % |
+| Starboard stair tower | 856 | 840 | -16 | 8,000 | 10 % |
+| Aft passage | 822 | 782 | -40 | 8,000 | 10 % |
+| Port turret access | 652 | 628 | -24 | 8,000 | 8 % |
+| Starboard turret access | 652 | 628 | -24 | 8,000 | 8 % |
+| Dorsal turret access | 472 | 568 | 96 | 8,000 | 7 % |
+| Ventral turret pod | 234 | 566 | 332 | 8,000 | 7 % |
+| Dorsal turret pod | 208 | 400 | 192 | 8,000 | 5 % |
+| Lift | 388 | 388 | 0 | 8,000 | 5 % |
+| Port turret pod | 184 | 384 | 200 | 8,000 | 5 % |
+| Starboard turret pod | 184 | 384 | 200 | 8,000 | 5 % |
+| Airlock | 254 | 242 | -12 | 8,000 | 3 % |
+| **All 37** | **33,686** | **60,964** | **27,278** | | |
 
 **What else it spends.**
 
@@ -193,13 +236,14 @@ compartment stays inside its ceiling; engineering, with the reactor, the drive a
   (`deck-pipeline` section 5).
 - **Texture memory: none added.** Props take the material array's existing layers (machinery, trim, bulkhead,
   hazard, light panel) and the screens' existing images; `accent` is a tint, not a texture.
-- **Vertex memory: about 3.4 MB more, estimated.** 28,588 triangles at three vertices of about 40 bytes (position,
+- **Vertex memory: about 3.3 MB more, estimated.** 27,278 triangles at three vertices of about 40 bytes (position,
   packed normal, UV, layer and the three lighting states' colours), unindexed, against the 64 MB of vertex and
-  index buffers. The whole ship's 62,274 triangles come to about 7.5 MB the same way. Indexing and the baker's
+  index buffers. The whole ship's 60,964 triangles come to about 7.3 MB the same way. Indexing and the baker's
   subdivision both move this; the compiler's count (task 2.2) replaces the estimate.
 - **Visible triangles per frame.** A crew member sees one compartment and what its portals show. Counting a
-  compartment and every room its portals open on, whole, the most is the hangar's 17,276 (with both spines, both
-  launch bays and engineering, on `layout.json`'s portals), under a tenth of the 200,000 a frame.
+  compartment and every room its portals open on, whole, the most is deck B's main corridor's 18,786 (with the nine
+  rooms off it and the corridors above and below, on `layout.json`'s portals; the hangar's is 16,820), under a tenth
+  of the 200,000 a frame.
 - **Install size.** The machinery glbs are 0.79 MB; the build bakes them into the deck files, so they are source,
   not shipped as they are.
 

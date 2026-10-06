@@ -414,6 +414,7 @@ Before claiming anything is done, run what applies:
 | Ship layouts | `python3 tools/layout_check.py` |
 | Mockups hold the current layout | `python3 tools/mockups/inline.py --check` |
 | Mockup screenshots | `node tools/mockups/shoot.mjs` |
+| No z-fighting in the mockups | `node tools/mockups/zfight.mjs docs/mockups/*.html` |
 | Engine (once it exists) | the format, lint and test commands `engine-stack` defines |
 
 - **Know what is proven.** Distinguish implemented, validated and proposed work in docs, PRs

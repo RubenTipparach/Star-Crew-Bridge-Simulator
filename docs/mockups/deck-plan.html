@@ -1296,9 +1296,14 @@
       // Baseboard between ribs and doors.
       const BB = D.baseboard;
       const cuts = clear.filter((h) => h.v0 < w.y0 + BB.height_m).map((h) => [h.u0, h.u1]).concat(ribs.map((u) => [u - F.rib_width_m / 2, u + F.rib_width_m / 2]));
-      for (const [u0, u1] of intervalMinus(0, w.len, cuts)) {
+      // Inside corners are owned by the walls running athwartships: a fore-and-aft wall's baseboard stops at the
+      // other's face, so two never overlap in the corner. An end on a wall plane has no cap: the cap is pressed to that
+      // wall, and from the room behind it would fight that room's wall (CLAUDE.md section 8).
+      const owns = Math.abs(w.t[0]) >= Math.abs(w.t[1]), e0 = owns ? 0 : BB.depth_m, e1 = owns ? w.len : w.len - BB.depth_m;
+      for (const [u0, u1] of intervalMinus(e0, e1, cuts)) {
         if (u1 - u0 < 0.05) continue;
-        tbox("baseboard", P3((u0 + u1) / 2, w.y0 + BB.height_m / 2, BB.depth_m / 2), ax, up, nIn, (u1 - u0) / 2, BB.height_m / 2, BB.depth_m / 2, ["+v", "+w", "+u", "-u"], null, "+w");
+        const caps = ["+v", "+w"].concat(u0 > 1e-6 ? ["-u"] : [], u1 < w.len - 1e-6 ? ["+u"] : []);
+        tbox("baseboard", P3((u0 + u1) / 2, w.y0 + BB.height_m / 2, BB.depth_m / 2), ax, up, nIn, (u1 - u0) / 2, BB.height_m / 2, BB.depth_m / 2, caps, null, "+w");
       }
       // Door and window frames on this side: jambs, lintel, sill, and a status strip.
       for (const h of holes) {
@@ -1330,7 +1335,8 @@
         const n = Math.max(1, Math.round((u1 - u0) / RL.post_spacing_m));
         for (let k = 0; k <= n; k++) {
           const u = u0 + ((u1 - u0) * k) / n;
-          B.box("railing", P3(u, w.y0 + RL.height_m / 2, inset), ax, up, nIn, hp, RL.height_m / 2, hp, ["+u", "-u", "+w", "-w"]);
+          // A post a little thinner than the rails it crosses, so their faces never share a plane (CLAUDE.md section 8).
+          B.box("railing", P3(u, w.y0 + RL.height_m / 2, inset), ax, up, nIn, hp * 0.8, RL.height_m / 2, hp * 0.8, ["+u", "-u", "+w", "-w"]);
         }
       }
       // Conduits along fore-and-aft corridor walls.
@@ -1402,7 +1408,11 @@
         if (h.p.kind === "ladder" || h.p.kind === "hatch") {
           const above = h.p.between.find((id) => id !== comp.id), up = above && compartment(L, above);
           const top = up ? floorAt(up, f.c[0], f.c[2], br.y[1] + 0.3) : br.y[1] + 0.5;
-          const topY = top + FP.ladder_above_m, bot = br.y[0], zl = f.c[2] - f.sz / 2 + FP.ladder_rail_m, hr = FP.ladder_rail_m / 2;
+          // Its handholds past the floor above only where the ladder ends there: where the room above has its own
+          // ladder up from the same well, that one carries on, and two would overlap rail on rail.
+          const goesOn = up && portalsOf(L, up.id).some((q) => q !== h.p && (q.kind === "ladder" || q.kind === "hatch") &&
+            Math.abs(q.center_m[0] - f.c[0]) < 0.3 && Math.abs(q.center_m[2] - f.c[2]) < 0.3 && q.center_m[1] > f.c[1] + 0.5);
+          const topY = top + (goesOn ? 0 : FP.ladder_above_m), bot = br.y[0], zl = f.c[2] - f.sz / 2 + FP.ladder_rail_m, hr = FP.ladder_rail_m / 2;
           for (const s of [-1, 1]) {
             B.box("ladder", [f.c[0] + (s * FP.ladder_width_m) / 2, (topY + bot) / 2, zl], [1, 0, 0], [0, 1, 0], [0, 0, 1], hr, (topY - bot) / 2, hr, ["+u", "-u", "+w", "-w", "+v"]);
           }
@@ -1438,7 +1448,10 @@
           for (const h of cHoles) if (Math.abs(z - h.f.c[2]) < h.f.sz / 2 + F.beam_width_m) bc.push([h.f.c[0] - h.f.sx / 2 - FP.collar_width_m, h.f.c[0] + h.f.sx / 2 + FP.collar_width_m]);
           for (const [a, b] of intervalMinus(ch[0], ch[1], bc)) {
             if (b - a < 0.2) continue;
-            tbox("beam", [(a + b) / 2, br.y[1] - d / 2, z], [1, 0, 0], [0, 1, 0], [0, 0, 1], (b - a) / 2, d / 2, F.beam_width_m / 2, ["-v", "+w", "-w", "+u", "-u"], null, "-v");
+            // No cap where the beam meets a wall: it is pressed there, and would fight the room behind's wall.
+            const caps = ["-v", "+w", "-w"].concat(b < ch[1] - 1e-6 ? ["+u"] : [], a > ch[0] + 1e-6 ? ["-u"] : []);
+            // 1 cm narrower each side than the ribs it meets at the frame, so their sides never share a plane.
+            tbox("beam", [(a + b) / 2, br.y[1] - d / 2, z], [1, 0, 0], [0, 1, 0], [0, 0, 1], (b - a) / 2, d / 2, F.beam_width_m / 2 - 0.01, caps, null, "-v");
           }
         }
       }
@@ -1873,9 +1886,11 @@
         const t = [(b[0] - a[0]) / len, 0, (b[1] - a[1]) / len], on = outwardNormal(a, b), out = [on[0], 0, on[1]];
         B.quad("riser", [a[0], floorY, a[1]], [b[0], floorY, b[1]], [b[0], top, b[1]], [a[0], top, a[1]], out);
         // The nosing: a hazard strip on the top's edge, raised clear of the platform's face.
-        const nm = Q.nosing_m, nr = Q.nosing_raise_m;
-        const c = [(a[0] + b[0]) / 2 - on[0] * nm / 2, top + nr / 2, (a[1] + b[1]) / 2 - on[1] * nm / 2];
-        B.box("nosing", c, t, [0, 1, 0], out, len / 2, nr / 2, nm / 2, ["+v", "+w", "+u", "-u"]);
+        // Where the edge before is nosed too, this one starts a nosing's width in, so the two never overlap at the
+        // corner (CLAUDE.md section 8): the corner is the edge before's.
+        const nm = Q.nosing_m, nr = Q.nosing_raise_m, s0 = edges[(i + n - 1) % n] !== "wall" ? nm : 0;
+        const c = [(a[0] + b[0]) / 2 + t[0] * s0 / 2 - on[0] * nm / 2, top + nr / 2, (a[1] + b[1]) / 2 + t[2] * s0 / 2 - on[1] * nm / 2];
+        B.box("nosing", c, t, [0, 1, 0], out, (len - s0) / 2, nr / 2, nm / 2, ["+v", "+w", "+u", "-u"]);
         if (kind !== "rail") continue;
         // The railing, inset from the edge, with gaps.
         const along = Math.abs(t[0]) >= Math.abs(t[2]) ? 0 : 2;
@@ -1901,7 +1916,7 @@
           }
           const k = Math.max(1, Math.round((u1 - u0) / Q.rail_post_spacing_m));
           for (let j = 0; j <= k; j++) {
-            B.box("railing", P3(u0 + ((u1 - u0) * j) / k, top + Q.rail_height_m / 2), t, [0, 1, 0], out, rm, Q.rail_height_m / 2, rm, ["+u", "-u", "+w", "-w"]);
+            B.box("railing", P3(u0 + ((u1 - u0) * j) / k, top + Q.rail_height_m / 2), t, [0, 1, 0], out, rm * 0.8, Q.rail_height_m / 2, rm * 0.8, ["+u", "-u", "+w", "-w"]);   // posts thinner than the rails
           }
         }
       }
@@ -1915,11 +1930,12 @@
       for (let k = 0; k < n - 1; k++) {
         const hh = (k + 1) * r, s0 = k * depth, cz = s0 + depth / 2;
         const c = [ft[0] + w[0] * cz, ft[1] + hh / 2, ft[2] + w[2] * cz];
-        // Each tread runs from its own front edge back to the top, so the steps are solid.
+        // Each step is a layer one rise high, from its own front edge back to the top, so the steps are solid and
+        // no two steps' sides share a plane where they overlap (CLAUDE.md section 8).
         const back = run - s0;
-        const cb = [ft[0] + w[0] * (s0 + back / 2), ft[1] + hh / 2, ft[2] + w[2] * (s0 + back / 2)];
+        const cb = [ft[0] + w[0] * (s0 + back / 2), ft[1] + k * r + r / 2, ft[2] + w[2] * (s0 + back / 2)];
         void c;
-        B.box("stair", cb, u, [0, 1, 0], w, st.width_m / 2, hh / 2, back / 2, ["+v", "-w", "+u", "-u"]);
+        B.box("stair", cb, u, [0, 1, 0], w, st.width_m / 2, r / 2, back / 2, ["+v", "-w", "+u", "-u"]);
         const nm = Q.nosing_m;
         B.box("nosing", [ft[0] + w[0] * (s0 + nm / 2), ft[1] + hh + Q.nosing_raise_m / 2, ft[2] + w[2] * (s0 + nm / 2)], u, [0, 1, 0], w, st.width_m / 2, Q.nosing_raise_m / 2, nm / 2, ["+v", "-w", "+u", "-u"]);
       }
@@ -1982,10 +1998,13 @@
   function buildLiftCar(B, f) {
     const [x, y, z] = f.center_m, [w, h, d] = f.car_m, X = [1, 0, 0], Y = [0, 1, 0], Z = [0, 0, 1], t = 0.05;
     const all = ["+u", "-u", "+v", "-v", "+w", "-w"], open = Math.round(Math.sin((f.facing_yaw_deg * Math.PI) / 180));
+    // The walls stand on the floor and under the roof, and the back wall between the side walls: no two parts
+    // overlap, so none shares a plane with another where both face the same way (CLAUDE.md section 8).
+    const wh = h - (f.roof !== false ? 2 * t : t), wy = y + t + wh / 2;
     B.box("lift_floor", [x, y + t / 2, z], X, Y, Z, w / 2, t / 2, d / 2, all);
     if (f.roof !== false) B.box("lift_wall", [x, y + h - t / 2, z], X, Y, Z, w / 2, t / 2, d / 2, all);
-    B.box("lift_wall", [x - open * (w / 2 - t / 2), y + h / 2, z], X, Y, Z, t / 2, h / 2, d / 2, all);
-    for (const sz of [1, -1]) B.box("lift_wall", [x, y + h / 2, z + sz * (d / 2 - t / 2)], X, Y, Z, w / 2, h / 2, t / 2, all);
+    B.box("lift_wall", [x - open * (w / 2 - t / 2), wy, z], X, Y, Z, t / 2, wh / 2, d / 2 - t, all);
+    for (const sz of [1, -1]) B.box("lift_wall", [x, wy, z + sz * (d / 2 - t / 2)], X, Y, Z, w / 2, wh / 2, t / 2, all);
     B.box("lift_rail", [x - open * (w / 2 - 0.08), y + 0.95, z], X, Y, Z, 0.025, 0.025, d / 2 - 0.15, all);
     B.parts.lift_floor.material = "deck_plate"; B.parts.lift_wall.material = "bulkhead"; B.parts.lift_rail.material = "trim";
   }
@@ -2761,6 +2780,7 @@
   const ROLE_OF = { captain: "command", helm: "helm", tactical: "tactical", engineering: "engineering", science: "science", comms: "comms", flight_ops: "flight_ops" };
   // A point, in metres of the 2 m light panel layer, inside one lit lens cell (and inside one when v is flipped).
   const GLOW_UV_M = [0.367, 0.32];
+  const WALL_GAP_M = 0.01;   // a prop's back off the wall it stands on (offWall)
   const LIFT_M = 0.01, BEZEL_M = 0.012;   // faces stand 1 cm proud of their recess floor (CLAUDE.md 8); a 12 mm black-glass bezel
   const v3 = { add: (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]], mul: (a, k) => [a[0] * k, a[1] * k, a[2] * k],
     cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]] };
@@ -2859,11 +2879,19 @@
       return SCREENS.main[s] ? s : (SCREENS.boards[s] || "generic");
     }
 
+    /** A prop placed by its back stands WALL_GAP_M forward of that point (CLAUDE.md 8: parallel surfaces at least 1 cm
+     * apart). Against a wall, its back on the wall plane would otherwise fight the wall of the room behind, which shares
+     * that plane and faces the same way (a locker's or a desk's back seen through the next room's wall); in the open the
+     * centimetre does nothing. A prop placed by its footprint's centre is not moved. s, c: the sine and cosine of its yaw. */
+    function offWall(pr, back, s, c) {
+      return pr && pr.rec && /back/.test(String(pr.rec.anchor || "")) ? [back[0] + s * WALL_GAP_M, back[1], back[2] + c * WALL_GAP_M] : back;
+    }
     /** Append a placed prop's console faces to F ({ position, normal, uv }): turned by yaw and moved to back_m as placeProp does. */
     function addFaces(F, kind, back, yawDeg, station) {
       const pr = PROPS && PROPS[kind];
       if (!pr || !SCREENS || !pr.rec.screens) return;
       const th = (yawDeg * Math.PI) / 180, c = Math.cos(th), s = Math.sin(th);
+      back = offWall(pr, back, s, c);
       const world = (p) => [back[0] + p[0] * c + p[2] * s, back[1] + p[1], back[2] - p[0] * s + p[2] * c];
       const turn = (d) => [d[0] * c + d[2] * s, d[1], -d[0] * s + d[2] * c];
       const who = imagesOf(station);
@@ -2952,6 +2980,8 @@
      * Its accent takes the station's role colour, or o.accent (a THREE.Color) when given. */
     function placeProp(parts, kind, back, yawDeg, station, o) {
       const pr = propOf(kind), th = (yawDeg * Math.PI) / 180, c = Math.cos(th), s = Math.sin(th);
+      back = offWall(pr, back, s, c);
+      const onWall = !!(pr.rec && String(pr.rec.anchor || "").includes("wall"));
       const tint = (o && o.accent) || roleColor(station);
       for (const [mname, P] of Object.entries(pr.parts)) {
         const screen = mname === "screen", accent = mname === "accent";
@@ -2966,6 +2996,12 @@
         const lit = mname === "light_panel";
         if (lit) dst.glow = dst.glow || [];
         for (let i = 0; i < P.position.length / 3; i++) {
+          // An underside pressed to the floor, or a wall prop's back pressed to its wall, is never seen from the prop's
+          // room; from below, or from the room behind the wall, it fights that room's floor or wall, which shares its
+          // plane (two rooms' walls can lie a centimetre apart) and faces the same way. The whole triangle is left out
+          // (CLAUDE.md section 8).
+          if (i % 3 === 0 && [0, 1, 2].every((k) => P.position[(i + k) * 3 + 1] < 0.005 && P.normal[(i + k) * 3 + 1] < -0.9)) { i += 2; continue; }
+          if (i % 3 === 0 && onWall && [0, 1, 2].every((k) => P.position[(i + k) * 3 + 2] < 0.005 && P.normal[(i + k) * 3 + 2] < -0.9)) { i += 2; continue; }
           const x = P.position[i * 3], y = P.position[i * 3 + 1], z = P.position[i * 3 + 2];
           dst.position.push(back[0] + x * c + z * s, back[1] + y, back[2] - x * s + z * c);
           const nx = P.normal[i * 3], ny = P.normal[i * 3 + 1], nz = P.normal[i * 3 + 2];
@@ -2986,7 +3022,7 @@
       const all = ["+u", "-u", "+v", "-v", "+w", "-w"];
       B.box("body", at(-0.05, 0.85, 0), r, up, f, 0.2, 0.3, 0.13, all);
       B.box("legs", at(0.2, 0.5, 0), r, up, f, 0.18, 0.08, 0.25, all);
-      B.box("legs", at(0.42, 0.25, 0), r, up, f, 0.16, 0.25, 0.07, all);
+      B.box("legs", at(0.4, 0.25, 0), r, up, f, 0.16, 0.25, 0.07, all);   // shins 2 cm short of a console's cabinet face (CLAUDE.md 8)
       B.box("head", at(-0.02, 1.32, 0), r, up, f, 0.11, 0.13, 0.11, all);
       for (const [role, P] of Object.entries(B.parts)) {
         const dst = parts.crew || (parts.crew = { position: [], normal: [], uvm: [], tint: [], material: "trim" });
@@ -3422,9 +3458,53 @@ const rad = (d) => (d * Math.PI) / 180;
 const UPHOLSTERY = { ready_room: "captain", captains_quarters: "captain" };
 const accentOf = (room) => new THREE.Color(P.furniture[UPHOLSTERY[room] || "crew"]);
 /** How far ahead of (x, z) along (dx, dz) a compartment's air ends (its wall), at a body's height over floor y; Infinity past 2 m. */
-function wallAhead(c, x, y, z, dx, dz) {
-  for (let d = 0.025; d < 2.0; d += 0.025) if (!K.brushAt(c, x + dx * d, y + 1.0, z + dz * d)) return d - 0.0125;
+function wallAhead(c, x, y, z, dx, dz, max = 2.0) {
+  const inside = (d) => K.brushAt(c, x + dx * d, y + 1.0, z + dz * d);
+  for (let d = 0.025; d < max; d += 0.025) {
+    if (inside(d)) continue;
+    // Found between two steps: halve to the wall plane, to 0.01 mm, so a prop's back lands on it and not up to 1.25 cm
+    // past it (where the room behind sees it through its own wall).
+    let lo = d - 0.025, hi = d;
+    for (let k = 0; k < 12; k++) { const m = (lo + hi) / 2; if (inside(m)) lo = m; else hi = m; }
+    return lo;
+  }
   return Infinity;
+}
+/** Where a wall-standing machine w metres wide goes from its system point, as { x, z, dx, dz } (its back's centre and the
+ * way out to the wall), or null: its back on a wall straight out along an axis, within 4.5 m (the life-support machines'
+ * points, from the v1 boxes, stand 3 m and more from the hull rooms' walls); set back so both its edges clear a slanted
+ * wall; its whole width in the room and clear of every door (the machine's half width, the door's and a body's 0.3 m).
+ * Of the walls that take it, the nearest; when none does where it stands, slid along a wall up to 1.5 m, the wall that
+ * moves it least. */
+function wallFor(c, x, floor, z, w) {
+  const doors = K.portalsOf(L, c.id).filter((p) => !isFloorPortal(p) && Math.abs(p.center_m[1] - p.size_m[1] / 2 - floor) < 0.5);
+  const inRoom = (px, pz) => K.brushAt(c, px, floor + 1.0, pz);
+  // Straight out first; slid only when no wall takes it where it stands.
+  for (const slides of [[0], [0.25, -0.25, 0.5, -0.5, 0.75, -0.75, 1, -1, 1.5, -1.5]]) {
+    const best = onWall(slides);
+    if (best) return best;
+  }
+  return null;
+  function onWall(slides) {
+  let best = null;
+  for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    const tx = -dz, tz = dx;
+    for (const sh of slides) {
+      const px = x + tx * sh, pz = z + tz * sh;
+      if (!inRoom(px, pz)) continue;
+      const d = Math.min(...[0, -w / 2, w / 2].map((o) => wallAhead(c, px + tx * o, floor, pz + tz * o, dx, dz, 4.5)));
+      if (!isFinite(d)) continue;
+      const bx = px + dx * d, bz = pz + dz * d;
+      if (![-w / 2 - 0.01, w / 2 + 0.01].every((o) => inRoom(bx + tx * o - dx * 0.05, bz + tz * o - dz * 0.05))) continue;   // 1 cm off a side wall
+      if (doors.some((p) => Math.abs((p.center_m[0] - bx) * dx + (p.center_m[2] - bz) * dz) < 0.4 &&
+        Math.abs((p.center_m[0] - bx) * tx + (p.center_m[2] - bz) * tz) < w / 2 + p.size_m[0] / 2 + 0.3)) continue;
+      const cost = d + Math.abs(sh);
+      if (!best || cost < best.cost) best = { cost, x: bx, z: bz, dx, dz };
+      break;   // the least slide on this wall
+    }
+  }
+  return best;
+  }
 }
 /** The floor of a compartment's brush under (x, z) at or below y. */
 function brushFloor(c, x, y, z) {
@@ -3476,10 +3556,9 @@ function systemItems(s) {
   if (!prop || !hasProp(prop)) return null;
   const floor = s.radius_m ? y - s.height_m / 2 : brushFloor(c, x, y + 0.01, z);
   if (PK.PROPS[prop].rec.anchor.includes("wall")) {   // its back on the nearest wall, facing the room
-    let best = { d: Infinity };
-    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const d = wallAhead(c, x, floor, z, dx, dz); if (d < best.d) best = { d, dx, dz }; }
-    if (!isFinite(best.d)) return null;
-    return [{ prop, back: [x + best.dx * best.d, floor, z + best.dz * best.d], yaw: Math.atan2(-best.dx, -best.dz) * 180 / Math.PI, station: "machinery", wall: true }];
+    const best = wallFor(c, x, floor, z, PK.PROPS[prop].rec.dimensions_m[0]);
+    if (!best) return null;
+    return [{ prop, back: [best.x, floor, best.z], yaw: Math.atan2(-best.dx, -best.dz) * 180 / Math.PI, station: "machinery", wall: true }];
   }
   if (prop === "med_bed") return [-0.7, 0.7].map((o) => ({ prop, back: [x + o, floor, z], yaw: 0, station: "machinery" }));
   return [{ prop, back: [x, floor, z], yaw: SYS_YAW[prop] || 0, station: "machinery" }];
@@ -3601,6 +3680,7 @@ renderer.setSize(innerWidth, innerHeight);
 renderer.localClippingEnabled = true;
 document.body.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
+window.MOCKUP_SCENE = scene;   // for tools/mockups/zfight.mjs (a measurement instrument, CLAUDE.md 4)
 scene.background = new THREE.Color(P.space);
 const persp = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 1000);
 const ortho = new THREE.OrthographicCamera(-50, 50, 30, -30, 0.1, 400);
@@ -3732,7 +3812,7 @@ for (const c of comps) {
       const top = Math.min(w.y1, hi), bottom = Math.max(w.y0, lo), dst = top < w.y1 - 1e-3 ? MARK[id].slice : MARK[id].all;
       // A face open to the compartment's own brush is cut where it reaches the band's height; a portal where it opens in the slice.
       const cuts = w.holes.filter((h) => h.v0 < top - 0.05 && (h.sibling ? h.v1 > top - 0.05 : h.v1 > bottom + 0.05)).map((h) => [h.u0, h.u1]);
-      const y = top + 0.004;
+      const y = top + 0.01;   // 1 cm over the wall's top (CLAUDE.md 8): a pod's band lies on the corridor floor above it
       for (const [u0, u1] of K.intervalMinus(0, w.len, cuts)) {
         if (u1 - u0 < 0.02) continue;
         const p = (u, d) => [w.a[0] + w.t[0] * u - w.n[0] * d, y, w.a[1] + w.t[1] * u - w.n[1] * d];
@@ -3823,10 +3903,13 @@ extGroup.add(new THREE.Mesh(hullG, xray), new THREE.LineSegments(new THREE.Edges
   for (const m of L.mounts || []) {
     const [x, y, z] = m.center_m, f = new THREE.Vector3(...m.facing).normalize();
     if (m.kind === "turret") {
-      const M = new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromUnitVectors(Y_AXIS, f), ONE);
-      addParts(parts, solid("hull_dark", 0xffffff), BOX(1.6, 0.5, 1.6), place([0, -0.25, 0], 0, M));
-      addParts(parts, solid("hull", P.role.gunner), BOX(1.2, 0.6, 1.4), place([0, 0.3, 0], 0, M));
-      for (const sx of [-0.28, 0.28]) addParts(parts, solid("hull", P.hullLight), BOX(0.14, 0.14, 2.0), place([sx, 0.35, 1.5], 0, M));
+      // The mount point is on the pod's air boundary; the turret sits on the pod's skin (a wall's thickness out, and 1 cm
+      // more), so its base and body never share a plane with the pod's ceiling, floor or wall (CLAUDE.md section 8).
+      const out = L.conventions.wall_thickness_m + 0.01;
+      const M = new THREE.Matrix4().compose(new THREE.Vector3(x + f.x * out, y + f.y * out, z + f.z * out), new THREE.Quaternion().setFromUnitVectors(Y_AXIS, f), ONE);
+      addParts(parts, solid("hull_dark", 0xffffff), BOX(1.6, 0.5, 1.6), place([0, 0.25, 0], 0, M));
+      addParts(parts, solid("hull", P.role.gunner), BOX(1.2, 0.6, 1.4), place([0, 0.8, 0], 0, M));
+      for (const sx of [-0.28, 0.28]) addParts(parts, solid("hull", P.hullLight), BOX(0.14, 0.14, 2.0), place([sx, 0.85, 1.5], 0, M));
     } else if (m.kind === "missile_tube") addParts(parts, solid("hull", P.role.tactical), BOX(0.9, 0.9, 0.3), place([x, y, z - 0.15]));
     else if (m.kind === "engine") {
       const g = new THREE.CylinderGeometry(1.3, 1.5, 1.6, 10); g.rotateX(Math.PI / 2);
