@@ -6,7 +6,7 @@
 - [x] 1.2 The panel build gains the eight floor modules per finish; contact sheet; byte-reproducible. Built 2026-10-06: eight working modules, seven crew (no hazard, design 2); the walkway tiles both ways; a second build wrote the same bytes.
 - [x] 1.3 `panels.json` gains `floor`; the kit dresses floors by cell with the walkway rule; the corridor runner retires where floors are dressed.
 - [x] 1.4 Floors on in the bridge, the deck plan, light baking and the comparison page with the walls and ceilings; shots before and after, looked at (`docs/screenshots/mockups/`).
-- [ ] 1.5 The bridge variants with floors (the main session), and survey R1 with the shots.
+- [x] 1.5 The bridge variants with floors (2026-10-06), and survey R1 asked with the shots (the answer is open).
 
 ## 2. The deck build (`deckc`)
 

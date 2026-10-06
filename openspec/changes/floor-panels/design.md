@@ -74,6 +74,7 @@ Measured 2026-10-06 in the mockup: texture bytes by the build's manifest
 | --- | --- | --- |
 | Texture memory | 15 layers (8 working, 7 crew: crew has no hazard module): 5,242,860 bytes with mips at 128 px per metre (256 px layers; 5.24 MB), 1,310,700 at 64. With the materials, walls, ceilings and trims, the array is 23,068,584 bytes (23.1 MB) at 128 px per metre | 96 MB (24 %) |
 | Triangles | Floors 168 to 1,650 on the Tern (+1,482) over 795 cells, 2 a whole cell and up to 6 a cell the outline or a hole cuts; the corridors' runners give back 70: +1,412 | Under each compartment's ceiling; with walls, ceilings and trims dressed engineering is the fullest, 6,074 of 8,000 (`ceilings-and-trims` design 7) |
+| Disk | 15 PNG layers, palette-reduced to 48 colours: 786,711 bytes at 128 px per metre, 237,423 at 64 | |
 | Draw calls | None | |
 
 ### 5. How the prototype reads this design

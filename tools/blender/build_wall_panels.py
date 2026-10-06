@@ -2471,9 +2471,9 @@ def trims_image(D, fn, layers, font):
     img = Image.new("RGB", (Wd, max(H, sum(h.shape[0] + 34 for h, _ in horiz) + 10)), bg)
     dr = ImageDraw.Draw(img)
     x = 10
-    for face, label in ((crew, "crew pillar 2.65 m"), (tall, "engineering 9.4 m, 1/2"), (jamb, "door jamb")):
+    for face, label in ((crew, "crew"), (tall, "eng. 1/2"), (jamb, "jamb")):
         img.paste(Image.fromarray(np.ascontiguousarray(face)), (x, 24))
-        dr.text((x, 4), label.split(" ")[0], fill=(200, 204, 210), font=font)
+        dr.text((x, 4), label, fill=(200, 204, 210), font=font)
         x += 70
     yy = 24
     x0 = x + 20

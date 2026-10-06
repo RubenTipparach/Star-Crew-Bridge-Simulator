@@ -125,7 +125,9 @@ in `build_wall_panels.py`:
   `P.box`, `P.cyl`, `P.torus`, `P.cable`, `P.text`, `cplate` (a plate with chamfered corners),
   `frame_ring`, `ring`, `bolts`, `rivet_row`, `slats`, `keypad`, `octagon_grille` build the pieces.
 - `studs(P, what, items, role)` makes hundreds of small raised bumps as one mesh without booleans
-  (tread plate, anti-slip dashes); `tread(...)` lays a diamond-plate lattice that repeats every 2 m.
+  (tread plate, anti-slip dashes); `tread(..., keep_out)` lays a diamond-plate lattice that repeats
+  every 2 m, kept off the openings listed; `deck_plate(P, F, keep_out)` is the floor modules' deck
+  (diamond plate in working spaces).
 - Chamfer raised pieces (`bevel=` or `bevel_ob`): triangles do not matter in a texture, edges catching
   light do.
 - A cutter reaches 5 cm out of the face it cuts (`P.recess` does it for you); never let a cutter face
@@ -240,6 +242,9 @@ ceiling too busy.
 | `could not broadcast input array` in the sheet | An illustration tiled a strip too few times | Tile to the image width |
 | An edited module not in the layers | The build loads the script once: an edit during a run is not in that run's renders | Re-render the target |
 | A page throws "no texture layer undefined" | Triangles without a layer added to a dressed role | A role of the page's own |
+| Diamond-plate lugs floating over a grate's pit or a drain, reading as a mesh | The tread was laid over the whole cell, openings included | `deck_plate(P, F, keep_out)`: list every opening the module cuts |
+| Black ceilings in the comparison shots | The stand-in bake has no bounce and the lamps sit at the ceiling | The comparison page's floor-bounce stand-in; judge ceilings on the light-baking page too |
+| A floor cell full of grates in one crew room | The hash, not the weight: the bridge drew 9 grates in 33 drawn cells at weight 1 | Weights are data; judge the whole ship (`kit_report.mjs --panels`), not one room |
 
 ## Checks before calling it done
 

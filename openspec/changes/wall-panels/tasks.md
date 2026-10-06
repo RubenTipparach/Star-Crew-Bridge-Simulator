@@ -9,7 +9,7 @@
 - [x] 1.5 Survey V1 and V2 (and S1 with the new shots): asked 2026-10-05 with the prototype's shots. V1 and V2 answered the same day (panels as prototyped; B, Blender), folded back, CLAUDE.md section 9 amended. S1 stays open.
 - [x] 1.7 Turn the panels on in every interior mockup (V1 answered), at 128 px per metre provisionally (S1 open). Done 2026-10-06 in the bridge, the deck plan and light baking, with ceilings, floors and trims; the bridge variants are 1.8.
 - [x] 1.6 A trim set to match (ribs, coves, beams, frames), and floors and ceilings after it (Non-Goals), once V1 is answered. Built 2026-10-06 as `ceilings-and-trims` and `floor-panels`.
-- [ ] 1.8 The bridge variants with panels (the main session).
+- [x] 1.8 The bridge variants with panels (2026-10-06).
 
 ## 2. Data and tools
 

@@ -134,7 +134,7 @@ Measured 2026-10-06 in the mockup: texture bytes by the build's manifest
 | Item | Cost | Budget |
 | --- | --- | --- |
 | Texture memory | 18 layers (16 ceiling, 2 trim): 6,291,432 bytes with mips at 128 px per metre (256 px layers; 6.29 MB), 1,572,840 at 64. The whole array with the 11 materials and the 22 wall layers is 17,825,724 bytes (17.8 MB) at 128 px per metre; with `floor-panels`' 15 layers as well, 23,068,584 (23.1 MB) | 96 MB (24 % with floors) |
-| Disk | 18 PNG layers, palette-reduced to 48 colours: in `manifest.json` per file | |
+| Disk | 18 PNG layers, palette-reduced to 48 colours: 573,439 bytes at 128 px per metre (ceilings 502,496, trims 70,943), 192,600 at 64 | |
 | Triangles, ceilings | 150 to 1,462 on the Tern (+1,312) over 688 cells: 2 a whole cell, up to 6 a cell the outline or a hole cuts | |
 | Triangles, trims | 10,910 to 12,802 (+1,892): 1,508 for the 377 ribs' bases and capitals (4 a rib) and 384 where a face deeper than 1.6 rows repeats its row (a tall room's 0.6 m cove, a 0.22 m rib side) | |
 | Per compartment | With walls, ceilings, floors and trims dressed, against `deck-pipeline` section 11's totals: engineering 5,156 to 6,074 of its 8,000 (64 % to 76 %, the fullest, on that table's first-estimate props, which count its door frames and ladders twice), the hangar 3,240 to 3,934 (49 %), every other compartment under 30 % | Each compartment under its ceiling |
