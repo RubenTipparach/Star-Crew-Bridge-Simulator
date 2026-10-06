@@ -986,7 +986,7 @@ def petrel_shuttle():
 
 def bunk():
     """A two-tier crew bunk along the wall: a carcass on a toe kick with two berths carved out of
-    it, each with a lit reading slot along the top of its back wall, a mattress, a blanket in the
+    it, each with a light strip let into the frame above its opening, a mattress, a blanket in the
     page's colour and a pillow; a lip along the upper berth and a two-rung ladder at the right end,
     its rails standing clear of the front and bent back into it above the upper berth."""
     p = prop("bunk", "A two-tier crew bunk (crew quarters)", WALL)
@@ -995,11 +995,11 @@ def bunk():
                    "x", -1.05, 1.05, ["machinery", "machinery", "machinery", "trim", "trim", "trim", "machinery"], cap="trim")
     p.cut(body, "berths", [p.box(f"berth_{i}", (-0.98, y0, 0.05), (0.98, y1, D + 0.05), {"-z": "bulkhead", "*": "trim"})
                            for i, (y0, y1) in enumerate(((0.36, 1.02), (1.18, 1.88)))])
-    lights = []
+    lights = []                                  # on the front frame over each berth, seen from anywhere in front
     for i, y1 in enumerate((1.02, 1.88)):
-        p.recess(lights, f"reading_light_{i}", frame((-0.10, y1 - 0.07, 0.05)), 1.60, 0.05, 0.025, floor_role="light_panel",
+        p.recess(lights, f"berth_light_{i}", frame((-0.10, y1 + 0.06, D)), 1.60, 0.04, 0.015, floor_role="light_panel",
                  record=False)
-    p.cut(body, "reading_lights", lights)
+    p.cut(body, "berth_lights", lights)
     parts = []
     for i, y0 in enumerate((0.36, 1.18)):
         parts.append(p.box(f"mattress_{i}", (-0.99, y0 - 0.01, 0.04), (0.99, y0 + 0.14, 0.84), "trim"))

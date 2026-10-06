@@ -2395,6 +2395,8 @@
  */
 (function () {
   const ROLE_OF = { captain: "command", helm: "helm", tactical: "tactical", engineering: "engineering", science: "science", comms: "comms", flight_ops: "flight_ops" };
+  // A point, in metres of the 2 m light panel layer, inside one lit lens cell (and inside one when v is flipped).
+  const GLOW_UV_M = [0.367, 0.32];
   const LIFT_M = 0.01, BEZEL_M = 0.012;   // faces stand 1 cm proud of their recess floor (CLAUDE.md 8); a 12 mm black-glass bezel
   const v3 = { add: (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]], mul: (a, k) => [a[0] * k, a[1] * k, a[2] * k],
     cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]] };
@@ -2595,6 +2597,8 @@
         const dst = parts[role] || (parts[role] = { position: [], normal: [], uvm: [], tint: [], material: screen ? "light_panel" : (STAR_MATS.has(mname) ? mname : "trim") });
         dst.tint = dst.tint || [];
         // A light panel strip on a prop glows, as the rooms' lamps and status strips do (its texels' alpha is the emission mask).
+        // It glows evenly: its UVs sit on one lit cell of the lamp layer, so a canopy, a reactor's window band or a
+        // drive's nozzle does not show the ceiling lamps' lens grid (the after tour, ship-props section 1).
         const lit = mname === "light_panel";
         if (lit) dst.glow = dst.glow || [];
         for (let i = 0; i < P.position.length / 3; i++) {
@@ -2602,7 +2606,7 @@
           dst.position.push(back[0] + x * c + z * s, back[1] + y, back[2] - x * s + z * c);
           const nx = P.normal[i * 3], ny = P.normal[i * 3 + 1], nz = P.normal[i * 3 + 2];
           dst.normal.push(nx * c + nz * s, ny, -nx * s + nz * c);
-          dst.uvm.push(P.uvm[i * 2], P.uvm[i * 2 + 1]);
+          if (lit) dst.uvm.push(GLOW_UV_M[0], GLOW_UV_M[1]); else dst.uvm.push(P.uvm[i * 2], P.uvm[i * 2 + 1]);
           const t = glass ? [0.03, 0.035, 0.045] : screen ? [tint.r * 0.9, tint.g * 0.9, tint.b * 0.9] : accent ? [tint.r, tint.g, tint.b] : [1, 1, 1];
           dst.tint.push(...t);
           if (lit) dst.glow.push(1);

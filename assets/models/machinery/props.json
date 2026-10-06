@@ -927,7 +927,7 @@
         ]
       ],
       "screens": [],
-      "triangles": 262,
+      "triangles": 264,
       "budget_triangles": 300,
       "materials": [
         "machinery",
@@ -938,10 +938,10 @@
       ],
       "csg": [
         "difference berths (2)",
-        "difference reading_lights (2)",
+        "difference berth_lights (2)",
         "union bedding_and_ladder (11)"
       ],
-      "sha256": "d65ada538fb0ff7f91088d07aeb604dfeae62f13020ccfcb1ca4aeba31f377da"
+      "sha256": "d65d1fdc50a2b6ee316d820f721e651c8eb0125dfb22e8681ebc0dadf6830e06"
     },
     "mess_table": {
       "file": "mess_table.glb",
