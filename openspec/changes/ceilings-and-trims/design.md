@@ -127,14 +127,64 @@ be compared.
 
 ### 7. The Pi 5 budget this change spends
 
+Measured 2026-10-06 in the mockup: texture bytes by the build's manifest
+(`assets/textures/panels/manifest.json`) and `loadPanels`, triangles by
+`node tools/mockups/kit_report.mjs --panels` (before the bake's subdivision). Not measured on a Pi.
+
 | Item | Cost | Budget |
 | --- | --- | --- |
-| Texture memory | 18 layers: 6.29 MB at 128 px per metre (1.57 MB at 64). The whole array with the 11 materials and the 22 wall layers is 17.8 MB at 128 px per metre | 96 MB (19 %) |
-| Triangles | About 2 a ceiling cell, about 1,200 on the Tern before the bake's subdivision (which already splits ceilings at 2 m); trims none | Each compartment keeps more than 75 % of its ceiling |
-| Draw calls | None | |
-| Fragment work | None | |
+| Texture memory | 18 layers (16 ceiling, 2 trim): 6,291,432 bytes with mips at 128 px per metre (256 px layers; 6.29 MB), 1,572,840 at 64. The whole array with the 11 materials and the 22 wall layers is 17,825,724 bytes (17.8 MB) at 128 px per metre; with `floor-panels`' 15 layers as well, 23,068,584 (23.1 MB) | 96 MB (24 % with floors) |
+| Disk | 18 PNG layers, palette-reduced to 48 colours: in `manifest.json` per file | |
+| Triangles, ceilings | 150 to 1,462 on the Tern (+1,312) over 688 cells: 2 a whole cell, up to 6 a cell the outline or a hole cuts | |
+| Triangles, trims | 10,910 to 12,802 (+1,892): 1,508 for the 377 ribs' bases and capitals (4 a rib) and 384 where a face deeper than 1.6 rows repeats its row (a tall room's 0.6 m cove, a 0.22 m rib side) | |
+| Per compartment | With walls, ceilings, floors and trims dressed, against `deck-pipeline` section 11's totals: engineering 5,156 to 6,074 of its 8,000 (64 % to 76 %, the fullest, on that table's first-estimate props, which count its door frames and ladders twice), the hangar 3,240 to 3,934 (49 %), every other compartment under 30 % | Each compartment under its ceiling |
+| Draw calls | None: every layer is in the one array | |
+| Fragment work | None: same fetch, same emission term | |
 
-Measured numbers replace these estimates when the build lands.
+### 8. How the prototype reads this design
+
+Built 2026-10-06: `tools/blender/build_wall_panels.py` (the ceiling modules and trim rows),
+`data/materials/panels.json` (`cells`, `trims`, and per finish `ceiling` and `trims`), shipkit's
+`opts.panels` (`dressFlat`, `stripBox`, `coveStrip`), and every interior page but the bridge
+variants. Where the text above left a choice, the prototype made the nearest one that works:
+
+- **Cells are centred on the centreline** (x = 0, 2, 4 m, so their edges fall at odd metres). A
+  single lamp in a room on the centreline sits there, so its cell is whole.
+- **A lamp's cell is every cell its housing spans**, and `lamp_surround` is a light channel that runs
+  the cell's whole width between bolted rails, with v centred on the lamp. The lamp rule puts lamps
+  anywhere across a bay, so a surround centred on its cell would leave most housings off its frame,
+  and a 2 m cell centred on each lamp cropped every neighbour to plate. Two lamp cells side by side
+  join into one channel.
+- **A cut cell takes plate when its core is cut**: the outline or a hole crossing within
+  `cells.core_m` (0.6 m) of its centre. A cove crops 0.35 m off a cell against a wall, which only
+  takes its margin. Measured on the Tern: 400 lamp cells, 186 cropped, 4 at a collar, 98 drawn.
+  The lamp rule's density (one lamp a 8 m^2) makes lamp channels the commonest ceiling module.
+- **The key** is (seed, compartment, brush index, "ceiling", frame index, cell index), the indices
+  being the world's, so an edit to one brush moves no other brush's cells.
+- **Seven trim rows in one 2 m layer** (`trims.rows`, from the bottom): `side`, `baseboard`, `rib`,
+  `rib_ends`, `beam`, `frame`, `cove`, each a whole number of texels at 64 px per metre (the
+  baseboard's 0.15 m is 0.15625 m), two to three texels of guard between them filled with each
+  row's own edge. Eight rows of section 3's heights would leave under a texel of guard, so the
+  base and the capital share `rib_ends`, as two 0.45 m pieces at -0.5 m and +0.5 m
+  (`trims.pieces`).
+- **Pillars**: base and capital are 0.3 m (0.6 m in a room over 3.6 m, engineering's and the
+  hangar's), each piece mapped onto it; a rib shorter than both plus 0.4 m keeps a plain shaft.
+  Bases are hazard-striped in working spaces.
+- **Which face takes which row**: a member's front face its own row; its long sides `sides` (a
+  beam's sides `beam`, everything else `side`); its ends `side`. A face deeper than 1.6 rows
+  repeats the row whole: a tall room's 0.6 m cove is two trays.
+- **Pressure doors keep their hazard jambs** (`frame_hazard`); their reveals and lintels take the
+  frame row. Window frames and sills take the frame row too.
+- **Light**: a ceiling module is lit nearly square on from below (`render.ceiling`); a trim row
+  along +x, which is up a pillar, so a base's top chamfer catches the light and a capital's
+  underside is shaded. Ceilings and trims take grime, edge wear and rust in patches, not streaks.
+- **Colours**: crew ceilings a light warm grey (0.50, 0.49, 0.46 sRGB), working ceilings dark with
+  rust; crew trims dark gunmetal (0.31, 0.31, 0.30) with bright worn edges, darker than the walls
+  they frame, working trims dark brown steel with hazard edges.
+- **The comparison page** adds a stand-in for the floor's bounce to its stand-in bake (each lamp
+  also lights the room from the floor under it at 30 % of its strength), for "today" and the
+  panels alike: with the lamps at the ceiling and no bounce, every ceiling was black. The light
+  baking page bakes real bounce.
 
 ## Risks / Trade-offs
 

@@ -14,6 +14,7 @@ Where each skill in this directory came from, so a later copy from the source ca
 | `light-baking` | New in Star Crew (the `light-baking` change's how-to) | | 2026-10-04 | |
 | `material-maker` | New in Star Crew, pipeline adapted from fps-game-demo `tools/material_maker` (which has no skill); per-file provenance in `tools/materials/README.md` | `f6cd25c` | 2026-10-05 | |
 | `blender-hard-surface` | New in Star Crew (the how-to of `tools/blender/build_bridge_props.py`, written from scratch); its cutter rules adapted from `blender-csg-levels` and fps-game-demo `tools/blender/build_props.py` (bevelled parts joined into one prop), no code copied | `f6cd25c` | 2026-10-05 | |
+| `panel-textures` | New in Star Crew (the how-to of `tools/blender/build_wall_panels.py` and shipkit's `opts.panels`, written from scratch for `wall-panels`, `ceilings-and-trims` and `floor-panels`); the pillar base and capital rule after fps-game-demo `docs/ut99_reference.md` ("Pillars always have a base and a capital", as CLAUDE.md of fps-game-demo section 7.3 states it), no code copied | `f6cd25c` | 2026-10-06 | |
 
 Not copied: Pale-Blue-Dot's `perf-measure`. Its rules (release build, nothing else running, old
 against new in one sitting, report the spread) are in CLAUDE.md section 12; the skill itself

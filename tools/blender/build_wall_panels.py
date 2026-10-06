@@ -1,8 +1,9 @@
-"""Star Crew's wall panel modules and strips, modelled in Blender the hard-surface CSG way and baked
-to texture layers (openspec/changes/wall-panels, design section 6, option B: the prototype).
+"""Star Crew's panel textures: the wall modules and strips, the ceiling and floor modules and the trim
+strips, modelled in Blender the hard-surface CSG way and baked to texture layers
+(openspec/changes/wall-panels, design section 6, option B; ceilings-and-trims; floor-panels).
 
-It owns the panel layers (assets/textures/panels/<px>/<finish>_<module>.png and
-<finish>_strips.png at 256 and 128 px), the reusable screen and key images
+It owns the panel layers (assets/textures/panels/<px>/<finish>_<module>.png, <finish>_strips.png,
+<finish>_ceiling_<module>.png, <finish>_floor_<module>.png and <finish>_trims.png at 256 and 128 px), the reusable screen and key images
 (assets/textures/panels/ui_screen_<finish>.png, keys_<finish>.png), their manifest
 (assets/textures/panels/manifest.json) and the contact sheet
 (docs/screenshots/materials/panels-contact-sheet.png). It lives in tools/blender because the
@@ -19,7 +20,8 @@ in the wall-panels design asks the owner which way panels are made from now on.
 Run (from anywhere), with Pillow installed beside bpy (pip install bpy pillow):
   <python with the bpy module> tools/blender/build_wall_panels.py [--only crew_plate,working_strips,...]
       [--samples N] [--post-only] [--no-sheet]
-  --only       render only these targets (<finish>_<module>, <finish>_strips, <finish>_ui, <finish>_keys);
+  --only       render only these targets (<finish>_<module>, <finish>_strips, <finish>_ui, <finish>_keys,
+               <finish>_ceiling_<module>, <finish>_floor_<module>, <finish>_trims);
                the post-process still writes every layer from the raw renders it finds
   --samples    override render.samples (a quick look; the committed layers use panels.json's)
   --post-only  skip rendering; rebuild the layers and the sheet from tools/materials/raw/panels
@@ -38,7 +40,12 @@ metres; the module spans x -1..1, y 0..2):
      sizes): area-average in linear light to 256 and 128 px, encode sRGB, palette-reduce, write the
      mask into alpha.
 Strips are rendered 2 m wide with copies of their geometry 2 m to each side and with wear noise
-that is periodic in x, so the layer tiles along a wall.
+that is periodic in x, so the layer tiles along a wall. Ceiling and floor modules are 2 m cells
+seen from the room (panel x is world +x, panel y world +z, the bow), lit nearly square on as a room's
+lamps light them (render.ceiling, render.floor). The walkway tiles both ways: its pattern repeats
+every 2 m and its wear noise lies on a 4D torus, so it is periodic in x and in y. Trim rows are
+rendered like strips, one render a row, and stacked into one 2 m layer per finish at the rows'
+places (trims.rows), the gaps between them filled by repeating each row's edge.
 
 Determinism: Cycles on the CPU with a fixed seed and no denoiser renders the same pixels on a second
 run (each pixel's random sequence depends only on its position and sample index), and the
@@ -76,6 +83,18 @@ SCHEMA = "starcrew.panels/1"
 MODULES = ("plate", "vent", "pipes", "hatch", "junction", "light", "ribbed", "screen", "flank", "narrow")
 STRIPS = ("base", "louvre", "spare", "top")
 FINISHES = ("crew", "working")
+# Ceilings and floors (ceilings-and-trims design section 2, floor-panels design section 2): the
+# catalogue a finish picks from. A ceiling set has all eight; a floor set has walkway and plate and
+# any of the rest (crew floors have no hazard module).
+CEILING_MODULES = ("plate", "grille", "fan", "cable_tray", "pipes", "hatch", "ribbed", "lamp_surround")
+FLOOR_MODULES = ("walkway", "plate", "grate", "access", "trench", "drain", "vent", "hazard")
+KIND_MODULES = {"ceiling": CEILING_MODULES, "floor": FLOOR_MODULES}
+KIND_REQUIRED = {"ceiling": set(CEILING_MODULES), "floor": {"walkway", "plate"}}
+# Trim rows (ceilings-and-trims design section 3), bottom to top in the layer, and what uses them.
+TRIM_ROWS = ("side", "baseboard", "rib", "rib_ends", "beam", "frame", "cove")
+TRIM_PIECES = ("rib_base", "rib_capital")
+TRIM_MEMBERS = ("rib", "beam", "baseboard", "frame", "window_frame", "cove")
+TEXEL_64 = 1.0 / 64.0     # a row lands on whole texels at 64 px per metre, so at 128 too
 
 # Material roles. The first seven are the props kit's slot order (kit.ROLES); a panel uses them
 # with these meanings, plus its own. kit.ROLES is extended at build time (set_roles), so the kit's
@@ -93,13 +112,15 @@ ROLE_COLOUR = {
     "stencil": "stencil",     # stencilled marks
     "amber": "amber",         # amber light (emissive)
     "safety": "safety",       # solid safety yellow (a valve wheel)
+    "walk": "walk",           # walkway plate (floor-panels), lighter than the deck around it
 }
-EXTRA_ROLES = ("paint2", "rubber", "stencil", "amber", "safety")
+EXTRA_ROLES = ("paint2", "rubber", "stencil", "amber", "safety", "walk")
 EMISSIVE = {"light_panel", "screen", "accent", "amber"}
-WORN = {"bulkhead", "paint2", "machinery", "trim", "hazard", "safety"}   # take edge wear and rust
+WORN = {"bulkhead", "paint2", "machinery", "trim", "hazard", "safety", "walk"}   # take edge wear and rust
 UI_ROLES = ("ui_bg", "ui_dim", "ui_fg", "ui_hi", "ui_alert")
 
 I4 = Matrix.Identity(4)
+DATA = None   # panels.json once load_panels has read it (the trim rows' builders read their pieces)
 
 
 # ----------------------------------------------------------------------------- data
@@ -131,13 +152,57 @@ def num(v, where, lo=None, hi=None):
     return float(v)
 
 
+def colours_ok(C, where, keys, exact=True):
+    if exact:
+        keys_exact(C, keys, where)
+    else:
+        extra = sorted(k for k in C if k not in keys and not k.startswith("_"))
+        if extra:
+            fail(f"{where}: unknown colour {', '.join(extra)}")
+    for k, c in C.items():
+        if k.startswith("_"):
+            continue
+        if not (isinstance(c, list) and len(c) == 3):
+            fail(f"{where}.{k} must be [r, g, b]")
+        for v in c:
+            num(v, f"{where}.{k}", 0, 1)
+
+
+def wear_ok(W, where):
+    keys_exact(W, {"grime", "grime_scale_per_m", "crevice", "crevice_m", "edge", "streaks", "rust"}, where)
+    for k, v in W.items():
+        if not k.startswith("_"):
+            num(v, f"{where}.{k}", 0, 100)
+
+
+def light_ok(r, where):
+    keys_exact(r, {"key_light_tangent", "key_angle_deg", "ambient"}, where)
+    num(r["ambient"], where + ".ambient", 0, 0.95)
+    num(r["key_angle_deg"], where + ".key_angle_deg", 0, 90)
+    if len(r["key_light_tangent"]) != 3 or r["key_light_tangent"][2] <= 0:
+        fail(f"{where}.key_light_tangent must be [x, y, z] with z above 0 (out of the surface)")
+
+
+def on_texel(v, where):
+    if abs(v / TEXEL_64 - round(v / TEXEL_64)) > 1e-9:
+        fail(f"{where} must be a whole number of 1/64 m (a texel at 64 px per metre), got {v}")
+
+
+def module_ok(M, where, drawn_ok=True):
+    keys_exact(M, {"layer", "weight", "placed", "emissive"}, where)
+    num(M["weight"], where + ".weight", 0)
+    if (M["placed"] == "draw") != (M["weight"] > 0):
+        fail(f"{where}: a drawn module has a positive weight, a module placed by a rule has weight 0")
+
+
 def load_panels():
     """Read and validate panels.json. Every key the build uses is checked; unknown keys stop it."""
     with open(PANELS_JSON, encoding="utf-8") as f:
         d = json.load(f)
     if d.get("schema") != SCHEMA:
         fail(f"schema must be {SCHEMA!r}")
-    keys_exact(d, {"schema", "status", "layers", "bands", "bays", "rule", "glow", "render", "ui", "finishes", "source"}, "top level")
+    keys_exact(d, {"schema", "status", "layers", "bands", "bays", "rule", "glow", "render", "ui", "finishes", "source",
+                   "cells", "walkway", "trims"}, "top level")
     keys_exact(d["layers"], {"first_layer", "span_m", "margin_m", "sizes_px", "colours", "dir"}, "layers")
     with open(MATERIALS_JSON, encoding="utf-8") as f:
         n_mats = len(json.load(f)["materials"])
@@ -145,6 +210,7 @@ def load_panels():
         fail(f"layers.first_layer is {d['layers']['first_layer']}, but materials.json has {n_mats} materials")
     if sorted(d["layers"]["sizes_px"]) != [128, 256]:
         fail("layers.sizes_px must be [128, 256] (64 and 128 px per metre over 2 m)")
+    span = d["layers"]["span_m"]
     keys_exact(d["bands"], {"base_m", "module_m", "strip_m", "base", "between", "top"}, "bands")
     keys_exact(d["bays"], {"full_min_m", "full_max_m", "narrow_min_m", "narrow_feature_m"}, "bays")
     keys_exact(d["rule"], {"seed", "hash", "key", "door_kinds"}, "rule")
@@ -152,28 +218,71 @@ def load_panels():
     for k, v in d["glow"].items():
         num(v, f"glow.{k}", 0, 1)
     r = d["render"]
-    keys_exact(r, {"px_per_m", "samples", "mask_samples", "key_light_tangent", "key_angle_deg", "ambient", "bounces"}, "render")
+    keys_exact(r, {"px_per_m", "samples", "mask_samples", "key_light_tangent", "key_angle_deg", "ambient", "bounces",
+                   "ceiling", "floor", "trims"}, "render")
     num(r["ambient"], "render.ambient", 0, 0.95)
     if len(r["key_light_tangent"]) != 3 or r["key_light_tangent"][2] <= 0:
         fail("render.key_light_tangent must be [x, y, z] with z above 0 (out of the wall)")
+    for k in ("ceiling", "floor", "trims"):
+        light_ok(r[k], f"render.{k}")
     keys_exact(d["ui"], {"screen_m", "screen_px", "keys_m", "keys_px"}, "ui")
+    # cells, walkway, trims (ceilings-and-trims, floor-panels)
+    keys_exact(d["cells"], {"size_m", "origin_x_m", "margin_m", "core_m"}, "cells")
+    num(d["cells"]["core_m"], "cells.core_m", 0, span / 2)
+    if num(d["cells"]["size_m"], "cells.size_m", 0) != span:
+        fail(f"cells.size_m must equal layers.span_m ({span}): a cell shows one module once")
+    num(d["cells"]["margin_m"], "cells.margin_m", 0, span / 2)
+    num(d["cells"]["origin_x_m"], "cells.origin_x_m")
+    keys_exact(d["walkway"], {"width_m", "min_overlap_m"}, "walkway")
+    num(d["walkway"]["width_m"], "walkway.width_m", 0.1, span)
+    num(d["walkway"]["min_overlap_m"], "walkway.min_overlap_m", 0, d["walkway"]["width_m"])
+    T = d["trims"]
+    keys_exact(T, {"stretch_max", "rows", "pieces", "pillar", "members"}, "trims")
+    num(T["stretch_max"], "trims.stretch_max", 1.0, 4.0)
+    keys_exact(T["rows"], set(TRIM_ROWS), "trims.rows")
+    spans = []
+    for name in TRIM_ROWS:
+        R = T["rows"][name]
+        w = f"trims.rows.{name}"
+        keys_exact(R, {"v0_m", "h_m"}, w)
+        num(R["v0_m"], w + ".v0_m", 0, span)
+        num(R["h_m"], w + ".h_m", TEXEL_64, span)
+        on_texel(R["v0_m"], w + ".v0_m")
+        on_texel(R["h_m"], w + ".h_m")
+        spans.append((R["v0_m"], R["v0_m"] + R["h_m"], name))
+    spans.sort()
+    if spans[0][0] < TEXEL_64 or spans[-1][1] > span - TEXEL_64:
+        fail("trims.rows must leave at least one texel (1/64 m) of guard at the layer's top and bottom")
+    for (a0, a1, an), (b0, b1, bn) in zip(spans, spans[1:]):
+        if b0 < a1 + 2 * TEXEL_64 - 1e-9:
+            fail(f"trims.rows {an} and {bn} need at least two texels (2/64 m) of guard between them")
+    keys_exact(T["pieces"], set(TRIM_PIECES), "trims.pieces")
+    for name, Pc in T["pieces"].items():
+        w = f"trims.pieces.{name}"
+        keys_exact(Pc, {"row", "centre_m", "length_m"}, w)
+        if Pc["row"] not in T["rows"]:
+            fail(f"{w}.row names no row: {Pc['row']}")
+        if abs(num(Pc["centre_m"], w + ".centre_m", -span / 2, span / 2)) + num(Pc["length_m"], w + ".length_m", 0.05, span) / 2 > span / 2:
+            fail(f"{w} must lie inside its row's 2 m")
+    keys_exact(T["pillar"], {"base_m", "capital_m", "tall_base_m", "tall_capital_m", "min_shaft_m"}, "trims.pillar")
+    for k, v in T["pillar"].items():
+        num(v, f"trims.pillar.{k}", 0)
+    keys_exact(T["members"], set(TRIM_MEMBERS), "trims.members")
+    for name, M in T["members"].items():
+        keys_exact(M, {"face", "sides"}, f"trims.members.{name}")
+        for k in ("face", "sides"):
+            if M[k] not in T["rows"]:
+                fail(f"trims.members.{name}.{k} names no row: {M[k]}")
     keys_exact(d["finishes"], set(FINISHES), "finishes")
     layers_seen = []
     colour_keys = {"plate", "paint2", "dark", "metal", "hazard_a", "hazard_b", "safety", "rubber", "stencil", "light",
-                   "amber", "status", "rust"} | set(UI_ROLES)
+                   "amber", "status", "rust", "walk"} | set(UI_ROLES)
     for fn in FINISHES:
         F = d["finishes"][fn]
         w = f"finishes.{fn}"
-        keys_exact(F, {"colours_srgb", "wear", "modules", "strips"}, w)
-        keys_exact(F["colours_srgb"], colour_keys, w + ".colours_srgb")
-        for k, c in F["colours_srgb"].items():
-            if not (isinstance(c, list) and len(c) == 3):
-                fail(f"{w}.colours_srgb.{k} must be [r, g, b]")
-            for v in c:
-                num(v, f"{w}.colours_srgb.{k}", 0, 1)
-        keys_exact(F["wear"], {"grime", "grime_scale_per_m", "crevice", "crevice_m", "edge", "streaks", "rust"}, w + ".wear")
-        for k, v in F["wear"].items():
-            num(v, f"{w}.wear.{k}", 0, 100)
+        keys_exact(F, {"colours_srgb", "wear", "modules", "strips", "ceiling", "floor", "trims"}, w)
+        colours_ok(F["colours_srgb"], w + ".colours_srgb", colour_keys)
+        wear_ok(F["wear"], w + ".wear")
         keys_exact(F["modules"], set(MODULES), w + ".modules")
         for m in MODULES:
             M = F["modules"][m]
@@ -188,10 +297,51 @@ def load_panels():
         if sorted(F["strips"]["rows"].values()) != [0, 1, 2, 3]:
             fail(f"{w}.strips.rows must number the four strips 0-3")
         layers_seen.append(F["strips"]["layer"])
+        for kind in ("ceiling", "floor"):
+            K = F[kind]
+            wk = f"{w}.{kind}"
+            keys_exact(K, {"colours_srgb", "wear", "modules"}, wk)
+            colours_ok(K["colours_srgb"], wk + ".colours_srgb", colour_keys, exact=False)
+            wear_ok(K["wear"], wk + ".wear")
+            mods = [m for m in K["modules"] if not m.startswith("_")]
+            unknown = sorted(set(mods) - set(KIND_MODULES[kind]))
+            if unknown:
+                fail(f"{wk}.modules: unknown module {', '.join(unknown)} (the catalogue is {', '.join(KIND_MODULES[kind])})")
+            missing = sorted(KIND_REQUIRED[kind] - set(mods))
+            if missing:
+                fail(f"{wk}.modules: missing {', '.join(missing)}")
+            for m in mods:
+                module_ok(K["modules"][m], f"{wk}.modules.{m}")
+                layers_seen.append(K["modules"][m]["layer"])
+            if not any(K["modules"][m]["placed"] == "draw" for m in mods):
+                fail(f"{wk}.modules: at least one module must be drawn")
+        Tf = F["trims"]
+        keys_exact(Tf, {"layer", "colours_srgb", "wear"}, w + ".trims")
+        colours_ok(Tf["colours_srgb"], w + ".trims.colours_srgb", colour_keys, exact=False)
+        wear_ok(Tf["wear"], w + ".trims.wear")
+        layers_seen.append(Tf["layer"])
     first = d["layers"]["first_layer"]
     if sorted(layers_seen) != list(range(first, first + len(layers_seen))):
         fail(f"panel layers must be numbered {first}-{first + len(layers_seen) - 1} once each, got {sorted(layers_seen)}")
+    global DATA
+    DATA = d
     return d
+
+
+def kind_finish(F, kind):
+    """A finish as one kind of surface sees it: its colours with the kind's overrides and the kind's
+    wear (walls are the finish itself)."""
+    if kind in ("module", "strip", "keys", "ui"):
+        return F
+    K = F[kind]
+    C = dict(F["colours_srgb"])
+    C.update({k: v for k, v in K["colours_srgb"].items() if not k.startswith("_")})
+    return {"colours_srgb": C, "wear": K["wear"], "modules": K.get("modules", {})}
+
+
+def module_ids(F, kind):
+    """The modules a finish has for a ceiling or a floor, in catalogue order."""
+    return [m for m in KIND_MODULES[kind] if m in F[kind]["modules"]]
 
 
 # ----------------------------------------------------------------------------- scene
@@ -320,8 +470,14 @@ class Nodes:
         return n.outputs[0]
 
     def noise(self, vec, scale, detail=4.0, rough=0.55):
-        n = self.new("ShaderNodeTexNoise", noise_dimensions="3D")
-        self.feed(n.inputs["Vector"], vec)
+        """Fractal noise at vec: a socket (3D noise) or (socket, w) for 4D noise on a torus."""
+        if isinstance(vec, tuple):
+            n = self.new("ShaderNodeTexNoise", noise_dimensions="4D")
+            self.feed(n.inputs["Vector"], vec[0])
+            self.feed(n.inputs["W"], vec[1])
+        else:
+            n = self.new("ShaderNodeTexNoise", noise_dimensions="3D")
+            self.feed(n.inputs["Vector"], vec)
         n.inputs["Scale"].default_value = scale
         n.inputs["Detail"].default_value = detail
         n.inputs["Roughness"].default_value = rough
@@ -340,24 +496,36 @@ class Nodes:
 
 def coords(N, periodic):
     """Panel-space position for wear noise: (x, y, depth). Periodic in x with a 2 m period for
-    strips: x is wrapped onto a circle of circumference 2 m, so the noise repeats exactly."""
+    strips: x is wrapped onto a circle of circumference 2 m, so the noise repeats exactly. With
+    periodic "xy" (a walkway, which tiles both ways) x and y are each wrapped onto a circle of
+    circumference 2 m, which puts the point on a flat torus in 4D: the noise is 4D and periodic in
+    both, with no mirror and no stretch."""
     geo = N.new("ShaderNodeNewGeometry")
     sep = N.new("ShaderNodeSeparateXYZ")
     N.nt.links.new(geo.outputs["Position"], sep.inputs[0])
     X, Yb, Z = sep.outputs[0], sep.outputs[1], sep.outputs[2]   # Blender: y is -depth, z is up
     if not periodic:
         return N.xyz(X, Z, Yb), X, Z
+    if periodic == "xy":
+        r = 1.0 / math.pi
+        tx, ty = N.math("MULTIPLY", X, math.pi), N.math("MULTIPLY", Z, math.pi)
+        vec = N.xyz(N.math("MULTIPLY", N.math("COSINE", tx), r), N.math("MULTIPLY", N.math("SINE", tx), r),
+                    N.math("MULTIPLY", N.math("COSINE", ty), r))
+        return (vec, N.math("ADD", N.math("MULTIPLY", N.math("SINE", ty), r), N.math("MULTIPLY", Yb, 0.5))), X, Z
     th = N.math("MULTIPLY", X, math.pi)
     r = 1.0 / math.pi
     return N.xyz(N.math("MULTIPLY", N.math("COSINE", th), r), N.math("MULTIPLY", N.math("SINE", th), r),
                  N.math("ADD", Z, N.math("MULTIPLY", Yb, 0.5))), X, Z
 
 
-def worn(N, base, F, role, periodic):
+def worn(N, base, F, role, periodic, streaky=True):
     """Base colour (a socket or an RGBA) under grime, crevice occlusion, edge wear and, for a
-    working finish, rust streaks. Returns a colour socket."""
+    working finish, rust streaks. Returns a colour socket. streaky False (ceilings, floors, trims,
+    which do not hang like a wall) turns the streaks and the rust into blotches with no direction."""
     W, C = F["wear"], F["colours_srgb"]
     v, X, Z = coords(N, periodic)
+    if not streaky:
+        return worn_blotchy(N, base, F, role, v)
     s = W["grime_scale_per_m"]
     col = base
     # grime: soft, large blotches
@@ -406,6 +574,38 @@ def worn(N, base, F, role, periodic):
     return col
 
 
+def worn_blotchy(N, base, F, role, v):
+    """worn() for surfaces that do not hang: the same grime, crevices and edge wear, with grime
+    blotches in place of streaks and rust in patches and specks."""
+    W, C = F["wear"], F["colours_srgb"]
+    s = W["grime_scale_per_m"]
+    col = N.mix(N.math("MULTIPLY", N.ramp(N.noise(v, s, 6.0, 0.6), 0.38, 0.78), W["grime"]), base, (0.0, 0.0, 0.0, 1.0))
+    ao = N.new("ShaderNodeAmbientOcclusion", samples=8, only_local=False)
+    ao.inputs["Distance"].default_value = W["crevice_m"]
+    col = N.mix(N.math("MULTIPLY", N.math("SUBTRACT", 1.0, ao.outputs["AO"]), W["crevice"]), col, (0.0, 0.0, 0.0, 1.0))
+    if role in WORN and W["edge"] > 0:
+        bev = N.new("ShaderNodeBevel", samples=8)
+        bev.inputs["Radius"].default_value = 0.006
+        geo = N.new("ShaderNodeNewGeometry")
+        dot = N.new("ShaderNodeVectorMath", operation="DOT_PRODUCT")
+        N.nt.links.new(bev.outputs["Normal"], dot.inputs[0])
+        N.nt.links.new(geo.outputs["Normal"], dot.inputs[1])
+        edge = N.ramp(dot.outputs["Value"], 0.97, 0.80)
+        chips = N.ramp(N.noise(v, 9.0, 3.0, 0.7), 0.42, 0.62)
+        worn_c = lin([min(1.0, c * 1.25 + 0.06) for c in C["metal"]]) + (1.0,)
+        col = N.mix(N.math("MULTIPLY", N.math("MULTIPLY", edge, chips), W["edge"]), col, worn_c)
+    if role in WORN and W["streaks"] > 0:
+        # scuffs and dirt: small, sharp blotches
+        blot = N.ramp(N.noise(v, 6.0, 3.0, 0.6), 0.60, 0.74)
+        col = N.mix(N.math("MULTIPLY", blot, W["streaks"]), col, (0.0, 0.0, 0.0, 1.0))
+    if role in WORN and W["rust"] > 0:
+        patch = N.ramp(N.noise(v, 2.2, 4.0, 0.62), 0.56, 0.74)
+        col = N.mix(N.math("MULTIPLY", patch, W["rust"]), col, lin(C["rust"]) + (1.0,))
+        speck = N.ramp(N.noise(v, 22.0, 2.0, 0.6), 0.66, 0.74)
+        col = N.mix(N.math("MULTIPLY", speck, W["rust"] * 0.6), col, lin(C["rust"]) + (1.0,))
+    return col
+
+
 def diffuse(N, col):
     d = N.new("ShaderNodeBsdfDiffuse")
     N.feed(d.inputs["Color"], col)
@@ -420,9 +620,9 @@ def emission(N, col, strength=1.0):
     N.out(e.outputs[0])
 
 
-def make_materials(F, periodic, ui_image=None, ui_rect=None):
+def make_materials(F, periodic, ui_image=None, ui_rect=None, streaky=True):
     """One material per role for a finish. ui_image (a loaded bpy image) is shown on `screen`
-    faces, mapped onto ui_rect (x0, y0, x1, y1 in panel space)."""
+    faces, mapped onto ui_rect (x0, y0, x1, y1 in panel space). streaky: see worn()."""
     C = F["colours_srgb"]
     for role in kit.ROLES:
         m = bpy.data.materials.new(role)
@@ -454,7 +654,7 @@ def make_materials(F, periodic, ui_image=None, ui_rect=None):
             base = N.mix(band, lin(C["hazard_a"]) + (1.0,), lin(C["hazard_b"]) + (1.0,))
         else:
             base = lin(C[ROLE_COLOUR[role]]) + (1.0,)
-        diffuse(N, worn(N, base, F, role, periodic))
+        diffuse(N, worn(N, base, F, role, periodic, streaky))
         m["emissive"] = False
 
 
@@ -689,10 +889,10 @@ def slats(P, x0, x1, y0, y1, n, z, tilt, role="paint2", thick=0.006):
 # Panel space: x right, y up, z out of the wall, metres. A module spans x -1..1, y 0..2; its
 # features stay inside x -0.8..0.8 (0.2 m plain margins, design section 1).
 
-def plate_slab(P, strip=False):
+def plate_slab(P, strip=False, role="bulkhead"):
     if strip:
-        return P.box("plate", (-3.7, -0.4, -0.25), (3.7, 0.9, 0.0), "bulkhead")
-    return P.box("plate", (-1.7, -0.6, -0.25), (1.7, 2.6, 0.0), "bulkhead")
+        return P.box("plate", (-3.7, -0.4, -0.25), (3.7, 0.9, 0.0), role)
+    return P.box("plate", (-1.7, -0.6, -0.25), (1.7, 2.6, 0.0), role)
 
 
 def m_plate(P, F, spec):
@@ -1038,6 +1238,608 @@ MODULE_BUILDERS = {"plate": m_plate, "vent": m_vent, "pipes": m_pipes, "hatch": 
                    "light": m_light, "ribbed": m_ribbed, "screen": m_screen, "flank": m_flank, "narrow": m_narrow}
 
 
+# ----------------------------------------------------------------------------- ceilings and floors
+# A cell (ceilings-and-trims design section 1, floor-panels design section 1): panel space as for a
+# wall module, x -1..1 and y 0..2, seen from the room: panel x is world +x, panel y world +z (the
+# bow), z points into the room. Features stay inside x and y 0.2 m from the cell's edges (cells.margin_m),
+# except runs that cross the cell from beam to beam (cable trays, pipes), whose ends the beams hide.
+
+def cell_seams(P, w=0.016, d=0.012):
+    """Cutters for the joints on a cell's right and top edges: each joint between two cells is then
+    one groove, cut by the cell on its left or below."""
+    return [P.box("seam", (1.0 - w, -0.7, -d), (1.2, 2.7, 0.05), "machinery"),
+            P.box("seam", (-1.7, 2.0 - w, -d), (1.7, 2.2, 0.05), "machinery")]
+
+
+def studs(P, what, items, role, top=0.55):
+    """Many small raised bumps as one mesh, without booleans: items are (profile, z0, z1), a convex
+    profile [(x, y), ...] extruded from z0 to z1 with its top shrunk to `top` of its size about its
+    centre, so each bump has sloped sides that catch the light (tread plate, anti-slip studs)."""
+    bm = bmesh.new()
+    ri = kit.ROLES.index(role)
+    for pts, z0, z1 in items:
+        cx = sum(p[0] for p in pts) / len(pts)
+        cy = sum(p[1] for p in pts) / len(pts)
+        bot = [bm.verts.new(Vector((x, y, z0))) for x, y in pts]
+        tp = [bm.verts.new(Vector((cx + (x - cx) * top, cy + (y - cy) * top, z1))) for x, y in pts]
+        n = len(pts)
+        for i in range(n):
+            j = (i + 1) % n
+            bm.faces.new((bot[i], bot[j], tp[j], tp[i])).material_index = ri
+        bm.faces.new(tp).material_index = ri
+        bm.faces.new(list(reversed(bot))).material_index = ri
+    return kit._object(bm, P._name(what), P.coll)
+
+
+def lozenge(cx, cy, length, width, angle_deg):
+    """An elongated hexagon (a diamond-plate lug) centred on (cx, cy), its long axis at angle_deg."""
+    a = math.radians(angle_deg)
+    ca, sa = math.cos(a), math.sin(a)
+    hl, hw = length / 2, width / 2
+    local = [(-hl, 0.0), (-hl + hw, -hw), (hl - hw, -hw), (hl, 0.0), (hl - hw, hw), (-hl + hw, hw)]
+    return [(cx + x * ca - y * sa, cy + x * sa + y * ca) for x, y in local]
+
+
+def tread(x0, x1, y0, y1, pitch=0.05, length=0.075, width=0.02, z1=0.0045):
+    """Diamond plate: lugs on a square lattice at pitch, alternating +-45 degrees, kept whole inside
+    the rectangle. Periodic: a lattice pitch that divides 2 m repeats exactly from cell to cell."""
+    items = []
+    i0, i1 = math.floor(x0 / pitch), math.ceil(x1 / pitch)
+    j0, j1 = math.floor(y0 / pitch), math.ceil(y1 / pitch)
+    for i in range(i0, i1 + 1):
+        for j in range(j0, j1 + 1):
+            cx, cy = (i + 0.5) * pitch, (j + 0.5) * pitch
+            if not (x0 + length / 2 <= cx <= x1 - length / 2 and y0 + length / 2 <= cy <= y1 - length / 2):
+                continue
+            items.append((lozenge(cx, cy, length, width, 45.0 if (i + j) % 2 == 0 else -45.0), -0.004, z1))
+    return items
+
+
+def ring(P, what, cx, cy, r_out, r_in, z0, z1, role, sides=40, bevel=0.0):
+    """A flat round ring facing the viewer (an annulus extruded along z)."""
+    ob = P.cyl(what, "z", (cx, cy), r_out, z0, z1, role, sides=sides, smooth=False)
+    P.cut(ob, what + "_hole", [P.cyl(what + "_cut", "z", (cx, cy), r_in, z0 - 0.1, z1 + 0.1, "machinery", sides=sides, smooth=False)])
+    if bevel:
+        bevel_ob(ob, bevel)
+    return ob
+
+
+def frame_ring(P, what, x0, y0, x1, y1, w, z0, z1, role, bevel=0.0):
+    """A rectangular frame: the box x0..x1, y0..y1 less its inside, w wide."""
+    fr = P.box(what, (x0, y0, z0), (x1, y1, z1), role)
+    P.cut(fr, what + "_open", [P.box(what + "_cut", (x0 + w, y0 + w, z0 - 0.1), (x1 - w, y1 - w, z1 + 0.1), "machinery")])
+    if bevel:
+        bevel_ob(fr, bevel)
+    return fr
+
+
+def rivet_row(P, x0, y0, x1, y1, n, r=0.011, z=0.0, role="trim"):
+    pts = [(x0 + (x1 - x0) * k / (n - 1), y0 + (y1 - y0) * k / (n - 1)) for k in range(n)] if n > 1 else [(x0, y0)]
+    return [P.cyl("rivet", "z", (x, y), r, z - 0.01, z + 0.008, role, sides=10, bevel=min(0.004, r * 0.4)) for x, y in pts]
+
+
+def rusty(F):
+    return F["wear"]["rust"] > 0
+
+
+def c_plate(P, F, spec):
+    """The rest panel: two plates side by side with a seam between and rivet rows down their edges,
+    and a small inspection cover."""
+    plate = plate_slab(P)
+    P.cut(plate, "seams", cell_seams(P))
+    for x0, x1, corners in ((-0.86, -0.025, "tl,bl"), (0.025, 0.86, "tr,br")):
+        cplate(P, "plate", x0, 0.12, x1, 1.88, 0.09, -0.04, 0.007, "bulkhead", corners=corners, bevel=0.004)
+        for x in (x0 + 0.045, x1 - 0.045):
+            rivet_row(P, x, 0.24, x, 1.76, 9, z=0.007)
+    cplate(P, "cover", 0.30, 1.30, 0.66, 1.58, 0.03, -0.01, 0.017, "paint2", bevel=0.004)
+    bolts(P, [(x, y) for x in (0.33, 0.63) for y in (1.33, 1.55)], r=0.009, z0=0.0, z1=0.024)
+    cplate(P, "doubler", -0.70, 0.38, -0.30, 0.62, 0.03, -0.01, 0.014, "bulkhead", bevel=0.004)
+    rivet_row(P, -0.67, 0.41, -0.33, 0.41, 5, r=0.008, z=0.014)
+    rivet_row(P, -0.67, 0.59, -0.33, 0.59, 5, r=0.008, z=0.014)
+    if rusty(F):
+        P.box("tag", (0.36, 0.26, -0.01), (0.62, 0.34, 0.009), "hazard", bevel=0.002)
+
+
+def c_grille(P, F, spec):
+    """A framed ventilation grille: an egg-crate of bars in a square opening, a frame and a surround."""
+    plate = plate_slab(P)
+    g = 0.46
+    P.cut(plate, "opening", cell_seams(P) + [P.recess(-g, 1 - g, g, 1 + g, 0.16)])
+    sur = cplate(P, "surround", -0.70, 0.30, 0.70, 1.70, 0.12, -0.04, 0.010, "paint2", bevel=0.005)
+    P.cut(sur, "surround_open", [P.box("sur_cut", (-g, 1 - g, -0.1), (g, 1 + g, 0.1), "machinery")])
+    frame_ring(P, "frame", -g - 0.06, 1 - g - 0.06, g + 0.06, 1 + g + 0.06, 0.06, -0.02, 0.03, "trim", bevel=0.008)
+    n = 9
+    for k in range(1, n):
+        t = -g + 2 * g * k / n
+        P.box("bar", (t - 0.007, 1 - g - 0.01, -0.10), (t + 0.007, 1 + g + 0.01, -0.012), "trim")
+        P.box("bar", (-g - 0.01, 1 + t - 0.007, -0.09), (g + 0.01, 1 + t + 0.007, -0.02), "paint2")
+    P.box("filter", (-g, 1 - g, -0.155), (g, 1 + g, -0.14), "machinery")
+    bolts(P, [(sx * (g + 0.03), 1 + sy * (g + 0.03)) for sx in (-1, 1) for sy in (-1, 1)], z0=0.0, z1=0.042)
+    if rusty(F):
+        for sx in (-1, 1):
+            P.box("tab", (sx * 0.62 - 0.05, 0.34, -0.01), (sx * 0.62 + 0.05, 0.44, 0.012), "hazard", bevel=0.002)
+
+
+def c_fan(P, F, spec):
+    """A round fan in a square frame: hub and pitched blades in a well, a guard of rings and spokes."""
+    plate = plate_slab(P)
+    R = 0.50
+    P.cut(plate, "fan_well", cell_seams(P) + [P.cyl("well", "z", (0.0, 1.0), R, -0.18, 0.05, "machinery", sides=48, smooth=False)])
+    fr = cplate(P, "frame", -0.66, 0.34, 0.66, 1.66, 0.12, -0.03, 0.016, "paint2", bevel=0.005)
+    P.cut(fr, "frame_open", [P.cyl("frame_cut", "z", (0.0, 1.0), R, -0.1, 0.1, "machinery", sides=48, smooth=False)])
+    ring(P, "collar", 0.0, 1.0, R + 0.05, R, -0.02, 0.03, "trim", sides=48, bevel=0.008)
+    P.cyl("hub", "z", (0.0, 1.0), 0.10, -0.15, -0.07, "trim", sides=24, bevel=0.012, seg=2)
+    for k in range(7):
+        a = 360.0 * k / 7
+        m = (Matrix.Translation(Vector((0.0, 1.0, -0.115))) @ Matrix.Rotation(math.radians(a), 4, "Z")
+             @ Matrix.Rotation(math.radians(28.0), 4, "Y"))
+        P.box("blade", (-0.05, 0.09, -0.006), (0.05, 0.45, 0.006), "paint2", bevel=0.003, m=m)
+    for r in (0.17, 0.29, 0.41):
+        P.torus("guard", (0.0, 1.0, -0.03), r, 0.007, "trim", segs=48, ring=6)
+    for a in (0.0, 45.0, 90.0, 135.0):
+        P.box("spoke", (-R - 0.01, -0.008, -0.04), (R + 0.01, 0.008, -0.022), "trim",
+              m=Matrix.Translation(Vector((0.0, 1.0, 0.0))) @ Matrix.Rotation(math.radians(a), 4, "Z"))
+    bolts(P, [(sx * 0.58, 1 + sy * 0.58) for sx in (-1, 1) for sy in (-1, 1)], z0=0.0, z1=0.03)
+    if rusty(F):
+        P.box("tag", (0.30, 0.38, -0.01), (0.56, 0.44, 0.022), "hazard", bevel=0.002)
+
+
+def c_cable_tray(P, F, spec):
+    """Two cable runs in an open ladder tray, hung from rods, beam to beam, and a conduit beside it."""
+    plate = plate_slab(P)
+    P.cut(plate, "seams", cell_seams(P))
+    x0, x1 = -0.58, 0.22
+    for x in (x0, x1):
+        P.box("rail", (x - 0.022, -0.3, 0.02), (x + 0.022, 2.3, 0.15), "trim", bevel=0.004)
+    for k in range(9):
+        y = 0.12 + 0.22 * k
+        P.box("rung", (x0, y - 0.022, 0.13), (x1, y + 0.022, 0.152), "paint2", bevel=0.003)
+    for x, r, role in ((-0.49, 0.034, "rubber"), (-0.415, 0.03, "rubber"), (-0.345, 0.026, "safety"), (-0.28, 0.022, "rubber"),
+                       (-0.13, 0.05, "machinery"), (-0.02, 0.034, "rubber"), (0.09, 0.03, "stencil"), (0.165, 0.024, "rubber")):
+        P.cyl("cable", "y", (x, 0.128 - r), r, -0.3, 2.3, role, sides=14)
+    for y in (0.34, 1.66):
+        for x in (x0 - 0.05, x1 + 0.05):
+            P.cyl("rod", "z", (x, y), 0.009, -0.01, 0.17, "trim", sides=8)
+        P.box("strut", (x0 - 0.08, y - 0.025, 0.15), (x1 + 0.08, y + 0.025, 0.175), "machinery", bevel=0.004)
+        for x in (-0.38, -0.07, 0.12):
+            P.box("tie", (x - 0.09, y - 0.008, 0.06), (x + 0.09, y + 0.008, 0.135), "rubber")
+    P.cyl("conduit", "y", (0.52, 0.045), 0.032, -0.3, 2.3, "paint2", sides=14)
+    for y in (0.5, 1.5):
+        P.box("clip", (0.47, y - 0.016, -0.01), (0.57, y + 0.016, 0.086), "trim", bevel=0.003)
+    P.box("pull_box", (0.43, 0.86, -0.01), (0.63, 1.14, 0.11), "paint2", bevel=0.008)
+    bolts(P, [(x, y) for x in (0.46, 0.60) for y in (0.89, 1.11)], r=0.008, z0=0.10, z1=0.118)
+    if rusty(F):
+        P.cyl("band", "y", (0.52, 0.045), 0.034, 1.25, 1.31, "hazard", sides=14)
+
+
+def c_pipes(P, F, spec):
+    """Three pipes crossing the cell on hangers, with flanges, collars, a marker band and a valve."""
+    plate = plate_slab(P)
+    P.cut(plate, "seams", cell_seams(P))
+    pipes = ((-0.44, 0.085, "trim"), (-0.12, 0.06, "paint2"), (0.18, 0.045, "machinery"))
+    zc = {}
+    for x, r, role in pipes:
+        z = 0.07 + r
+        zc[x] = z
+        P.cyl("pipe", "y", (x, z), r, -0.3, 2.3, role, sides=20)
+    bot = max(zc[x] + r for x, r, _ in pipes)
+    for y in (0.42, 1.58):
+        P.box("strut", (-0.62, y - 0.03, bot), (0.34, y + 0.03, bot + 0.025), "machinery", bevel=0.004)
+        for x in (-0.60, 0.32):
+            P.cyl("rod", "z", (x, y), 0.01, -0.01, bot + 0.01, "trim", sides=8)
+        for x, r, _ in pipes:
+            P.cyl("collar", "y", (x, zc[x]), r + 0.012, y - 0.022, y + 0.022, "paint2", sides=20, bevel=0.004)
+    x0, r0 = pipes[0][0], pipes[0][1]
+    for y in (0.98, 1.06):
+        P.cyl("flange", "y", (x0, zc[x0]), r0 + 0.028, y - 0.018, y + 0.018, "trim", sides=20, bevel=0.006)
+    x1, r1 = pipes[1][0], pipes[1][1]
+    P.cyl("marker", "y", (x1, zc[x1]), r1 + 0.003, 0.70, 0.78, "hazard", sides=20)
+    P.cyl("marker", "y", (x0, zc[x0]), r0 + 0.003, 1.30, 1.36, "stencil", sides=20)
+    x2, r2 = pipes[2][0], pipes[2][1]
+    P.cyl("valve", "y", (x2, zc[x2]), r2 + 0.03, 1.12, 1.24, "paint2", sides=12, bevel=0.008)
+    P.cyl("stem", "z", (x2, 1.18), 0.016, zc[x2], zc[x2] + r2 + 0.12, "trim", sides=10)
+    P.torus("wheel", (x2, 1.18, zc[x2] + r2 + 0.12), 0.075, 0.011, "safety")
+    for a in (0.0, 60.0, 120.0):
+        P.box("spoke", (-0.072, -0.006, -0.005), (0.072, 0.006, 0.005), "safety",
+              m=Matrix.Translation(Vector((x2, 1.18, zc[x2] + r2 + 0.12))) @ Matrix.Rotation(math.radians(a), 4, "Z"))
+    P.cyl("hub", "z", (x2, 1.18), 0.022, zc[x2] + r2 + 0.10, zc[x2] + r2 + 0.135, "trim", sides=10)
+    P.box("tag", (0.42, 0.62, -0.01), (0.66, 0.74, 0.008), "trim", bevel=0.003)
+    bolts(P, [(0.45, 0.68), (0.63, 0.68)], r=0.007, z0=0.0, z1=0.013)
+
+
+def c_hatch(P, F, spec):
+    """A square access hatch in a hazard border, with hinges, a handle and a status pill."""
+    plate = plate_slab(P)
+    bw = 0.09 if rusty(F) else 0.05
+    hx0, hy0, hx1, hy1, g = -0.40, 0.60, 0.40, 1.40, 0.02
+    P.cut(plate, "hatch_gap", cell_seams(P) + [P.recess(hx0 - g, hy0 - g, hx1 + g, hy1 + g, 0.04)])
+    sur = cplate(P, "surround", -0.66, 0.34, 0.66, 1.66, 0.12, -0.04, 0.009, "bulkhead", bevel=0.004)
+    P.cut(sur, "surround_open", [P.box("sur_cut", (hx0 - g - bw, hy0 - g - bw, -0.1), (hx1 + g + bw, hy1 + g + bw, 0.1), "machinery")])
+    frame_ring(P, "hazard_ring", hx0 - g - bw, hy0 - g - bw, hx1 + g + bw, hy1 + g + bw, bw, -0.03, 0.004, "hazard", bevel=0.003)
+    hatch = P.box("hatch", (hx0, hy0, -0.06), (hx1, hy1, 0.014), "paint2")
+    P.cut(hatch, "handle_pocket", [P.box("pocket", (0.18, 0.94, -0.016), (0.32, 1.06, 0.1), "machinery")])
+    bevel_ob(hatch, 0.007)
+    P.box("handle", (0.195, 0.98, -0.01), (0.305, 1.02, 0.012), "trim", bevel=0.004)
+    for y in (0.74, 1.26):
+        P.box("hinge", (hx0 - 0.05, y - 0.06, -0.01), (hx0 + 0.04, y + 0.06, 0.03), "trim", bevel=0.005)
+    for x0, x1 in ((hx0 + 0.08, hx1 - 0.08),):
+        P.box("rib", (x0, hy0 + 0.08, 0.0), (x1, hy0 + 0.11, 0.019), "paint2", bevel=0.003)
+        P.box("rib", (x0, hy1 - 0.11, 0.0), (x1, hy1 - 0.08, 0.019), "paint2", bevel=0.003)
+    bolts(P, [(x, y) for x in (hx0 + 0.05, hx1 - 0.05) for y in (hy0 + 0.05, hy1 - 0.05)], z0=0.0, z1=0.024)
+    P.box("pill_seat", (0.44, 0.40, -0.01), (0.62, 0.47, 0.012), "machinery", bevel=0.004)
+    P.box("status_pill", (0.46, 0.415, 0.0), (0.60, 0.455, 0.02), "accent", bevel=0.008, seg=2)
+
+
+def c_ribbed(P, F, spec):
+    """Corrugated sheet spanning beam to beam between riveted edge plates, with a cross strap."""
+    plate = plate_slab(P)
+    P.cut(plate, "seams", cell_seams(P))
+    P.box("sheet", (-0.78, -0.3, -0.03), (0.78, 2.3, 0.002), "paint2")
+    pitch = 0.13
+    n = int(1.52 / pitch)
+    x = -0.76 + (1.52 - n * pitch) / 2
+    for k in range(n):
+        xc = x + pitch * (k + 0.5)
+        ob = kit.prism(P.coll, P._name("ridge"), [(xc - 0.048, -0.01), (xc + 0.048, -0.01), (xc + 0.026, 0.036), (xc - 0.026, 0.036)],
+                       "y", -0.3, 2.3, "bulkhead")
+        bevel_ob(ob, 0.004)
+    for sx in (-1, 1):
+        xa, xb = sorted((sx * 0.78, sx * 0.90))
+        P.box("edge_plate", (xa, -0.3, -0.02), (xb, 2.3, 0.012), "bulkhead", bevel=0.004)
+        rivet_row(P, (xa + xb) / 2, 0.15, (xa + xb) / 2, 1.85, 8, z=0.012)
+    P.box("strap", (-0.80, 0.96, 0.02), (0.80, 1.04, 0.046), "trim", bevel=0.004)
+    for k in range(7):
+        P.cyl("rivet", "z", (-0.70 + k * 0.233, 1.0), 0.009, 0.036, 0.054, "trim", sides=8, bevel=0.003)
+
+
+def c_lamp_surround(P, F, spec):
+    """The cells a lamp housing spans: a light channel across the whole cell between bolted rails,
+    a mounting plate and the feed cable inside it, splice plates at the cell's edges. It runs edge to
+    edge so a housing sits in it wherever the lamp rule put it, and two lamp cells side by side join
+    into one channel."""
+    plate = plate_slab(P)
+    y0, y1 = 0.60, 1.40
+    P.cut(plate, "channel", cell_seams(P) + [P.recess(-1.2, y0, 1.2, y1, 0.07)])
+    for ya, yb in ((y0 - 0.07, y0 + 0.01), (y1 - 0.01, y1 + 0.07)):
+        P.box("rail", (-1.2, ya, -0.02), (1.2, yb, 0.024), "trim", bevel=0.006)
+    for k in range(8):
+        x = -0.875 + 0.25 * k
+        for y in (y0 - 0.03, y1 + 0.03):
+            P.cyl("bolt", "z", (x, y), 0.011, 0.0, 0.034, "trim", sides=8, bevel=0.004)
+    mp = P.box("mount", (-1.2, y0 + 0.06, -0.08), (1.2, y1 - 0.06, -0.035), "paint2")
+    P.cut(mp, "slots", [P.box("slot", (x - 0.06, y - 0.012, -0.06), (x + 0.06, y + 0.012, 0.1), "machinery")
+                        for x in (-0.75, -0.25, 0.25, 0.75) for y in (y0 + 0.11, y1 - 0.11)])
+    P.cyl("feed", "x", (y0 + 0.15, -0.03), 0.018, -1.2, 1.2, "rubber", sides=12)
+    P.cyl("feed", "x", (y1 - 0.16, -0.028), 0.014, -1.2, 1.2, "safety" if rusty(F) else "rubber", sides=12)
+    for x in (-1.0, 1.0):
+        P.box("splice", (x - 0.06, y0 - 0.09, -0.01), (x + 0.06, y1 + 0.09, 0.032), "paint2", bevel=0.006)
+        bolts(P, [(x + sx * 0.03, y) for sx in (-1, 1) for y in (y0 - 0.05, y1 + 0.05)], r=0.009, z0=0.02, z1=0.042)
+    cplate(P, "doubler", -0.70, 0.18, -0.30, 0.42, 0.03, -0.01, 0.012, "paint2", bevel=0.004)
+    cplate(P, "doubler", 0.30, 1.58, 0.70, 1.82, 0.03, -0.01, 0.012, "paint2", bevel=0.004)
+    if rusty(F):
+        for x in (-0.5, 0.5):
+            P.box("tag", (x - 0.08, y0 - 0.16, -0.01), (x + 0.08, y0 - 0.10, 0.01), "hazard", bevel=0.002)
+
+
+def f_walkway(P, F, spec):
+    """Walkway plate, lighter than the deck: a non-slip pattern and bolt rows, repeating every 2 m in
+    both directions (rendered periodic in x and y), so a run of walkway cells reads as one path."""
+    P.box("plate", (-3.2, -1.2, -0.25), (3.2, 3.2, 0.0), "walk")
+    lo_x, hi_x, lo_y, hi_y = -1.35, 1.35, -0.35, 2.35
+    if rusty(F):
+        # working: heavy five-bar tread, bars alternating across and along in 0.25 m squares
+        items = []
+        for i in range(-6, 6):
+            for j in range(-2, 10):
+                x0, y0 = 0.25 * i, 0.25 * j
+                if not (lo_x <= x0 and x0 + 0.25 <= hi_x and lo_y <= y0 and y0 + 0.25 <= hi_y):
+                    continue
+                for k in range(4):
+                    t = 0.04 + 0.057 * k
+                    if (i + j) % 2 == 0:
+                        pts = [(x0 + 0.03, y0 + t), (x0 + 0.22, y0 + t), (x0 + 0.22, y0 + t + 0.022), (x0 + 0.03, y0 + t + 0.022)]
+                    else:
+                        pts = [(x0 + t, y0 + 0.03), (x0 + t + 0.022, y0 + 0.03), (x0 + t + 0.022, y0 + 0.22), (x0 + t, y0 + 0.22)]
+                    items.append((pts, -0.004, 0.006))
+        studs(P, "tread", items, "walk", top=0.7)
+    else:
+        # crew: raised dashes in staggered rows (0.1 m along, 2/30 m between rows), big enough to
+        # read at 64 px per metre
+        items = []
+        for j in range(-6, 36):
+            cy = j * 2.0 / 30.0
+            for i in range(-14, 15):
+                cx = 0.1 * i + (0.05 if j % 2 else 0.0)
+                if lo_x <= cx <= hi_x and lo_y <= cy <= hi_y:
+                    items.append((lozenge(cx, cy, 0.072, 0.026, 0.0), -0.003, 0.0065))
+        studs(P, "studs", items, "walk", top=0.5)
+    # bolt rows 0.08 m in from each edge of the 2 m repeat, all the way round
+    pts = []
+    for ox in (-2.0, 0.0, 2.0):
+        for oy in (-2.0, 0.0, 2.0):
+            for k in range(8):
+                t = -0.875 + 0.25 * k
+                for x, y in ((ox - 0.92, 1 + oy + t), (ox + 0.92, 1 + oy + t), (ox + t, oy + 0.08), (ox + t, oy + 1.92)):
+                    if lo_x - 0.05 <= x <= hi_x + 0.05 and lo_y - 0.05 <= y <= hi_y + 0.05:
+                        pts.append((round(x, 4), round(y, 4)))
+    for x, y in sorted(set(pts)):
+        P.cyl("bolt", "z", (x, y), 0.013, -0.01, 0.007, "trim", sides=8, bevel=0.004)
+
+
+def deck_plate(P, F):
+    """The deck a floor module is cut into: plain plate in crew spaces, diamond plate in working ones."""
+    plate = plate_slab(P)
+    if rusty(F):
+        studs(P, "tread", tread(-1.02, 1.02, -0.02, 2.02), "bulkhead", top=0.55)
+    return plate
+
+
+def f_plate(P, F, spec):
+    """Deck plate: two plates with a seam across the middle, countersunk bolts at their corners and
+    edges, a lifting point; diamond plate in working spaces."""
+    plate = deck_plate(P, F)
+    P.cut(plate, "seams", cell_seams(P) + [P.box("seam", (-1.7, 0.994, -0.012), (1.7, 1.006, 0.05), "machinery")])
+    pts = [(x, y) for x in (-0.94, -0.47, 0.0, 0.47, 0.94) for y in (0.06, 0.94, 1.06, 1.94)]
+    for x, y in pts:
+        P.cyl("bolt", "z", (x, y), 0.014, -0.01, 0.008, "trim", sides=8, bevel=0.004)
+    for y in (0.42, 1.58):
+        P.cyl("lift_ring", "z", (0.62, y), 0.03, -0.01, 0.006, "paint2", sides=16, bevel=0.004)
+        P.cyl("lift_pin", "z", (0.62, y), 0.012, -0.01, 0.009, "machinery", sides=10)
+
+
+def f_grate(P, F, spec):
+    """Four square grates, each in its own raised frame (X2), over a dark pit."""
+    plate = deck_plate(P, F)
+    cs = [(sx * 0.46, 1 + sy * 0.46) for sx in (-1, 1) for sy in (-1, 1)]
+    a = 0.33
+    P.cut(plate, "pits", cell_seams(P) + [P.recess(cx - a, cy - a, cx + a, cy + a, 0.22) for cx, cy in cs])
+    for cx, cy in cs:
+        frame_ring(P, "frame", cx - a - 0.06, cy - a - 0.06, cx + a + 0.06, cy + a + 0.06, 0.06, -0.02, 0.018, "trim", bevel=0.006)
+        for k in range(12):
+            x = cx - a + 2 * a * (k + 0.5) / 12
+            P.box("bar", (x - 0.009, cy - a - 0.01, -0.04), (x + 0.009, cy + a + 0.01, -0.006), "paint2")
+        for k in range(1, 4):
+            y = cy - a + 2 * a * k / 4
+            P.box("cross", (cx - a - 0.01, y - 0.008, -0.07), (cx + a + 0.01, y + 0.008, -0.03), "machinery")
+        P.box("pit_floor", (cx - a, cy - a, -0.215), (cx + a, cy + a, -0.2), "machinery")
+        bolts(P, [(cx + sx * (a + 0.03), cy + sy * (a + 0.03)) for sx in (-1, 1) for sy in (-1, 1)], r=0.01, z0=0.0, z1=0.026)
+
+
+def f_access(P, F, spec):
+    """A bolted access plate with a recessed handle, flush in the deck."""
+    plate = deck_plate(P, F)
+    x0, y0, x1, y1, g = -0.52, 0.48, 0.52, 1.52, 0.014
+    P.cut(plate, "gap", cell_seams(P) + [P.recess(x0 - g, y0 - g, x1 + g, y1 + g, 0.05)])
+    cov = P.box("cover", (x0, y0, -0.06), (x1, y1, 0.004), "paint2")
+    P.cut(cov, "handle_pocket", [P.box("pocket", (-0.12, 0.62, -0.03), (0.12, 0.74, 0.1), "machinery"),
+                                 P.box("pocket", (-0.12, 1.26, -0.03), (0.12, 1.38, 0.1), "machinery")])
+    bevel_ob(cov, 0.004)
+    for y in (0.68, 1.32):
+        P.box("handle", (-0.10, y - 0.012, -0.03), (0.10, y + 0.012, -0.012), "trim", bevel=0.003)
+    pts = [(x0 + 0.05 + (x1 - x0 - 0.1) * k / 4, y) for k in range(5) for y in (y0 + 0.05, y1 - 0.05)]
+    pts += [(x, y0 + 0.05 + (y1 - y0 - 0.1) * k / 4) for k in (1, 2, 3) for x in (x0 + 0.05, x1 - 0.05)]
+    for x, y in pts:
+        P.cyl("bolt", "z", (x, y), 0.014, -0.01, 0.012, "trim", sides=6, bevel=0.004)
+    for sx in (-1, 1):
+        P.box("tick", (sx * 0.36 - 0.05, 0.56, -0.01), (sx * 0.36 + 0.05, 0.585, 0.0065), "hazard", bevel=0.002)
+
+
+def f_trench(P, F, spec):
+    """A cable trench cover: a long plate down the cell between rails, with finger slots and bolts."""
+    plate = deck_plate(P, F)
+    x0, x1, y0, y1, g = -0.30, 0.30, 0.10, 1.90, 0.014
+    P.cut(plate, "gap", cell_seams(P) + [P.recess(x0 - g, y0 - g, x1 + g, y1 + g, 0.06)])
+    cov = P.box("cover", (x0, y0, -0.06), (x1, y1, 0.004), "paint2")
+    slots = []
+    for y in (0.24, 1.76):
+        for x in (-0.13, 0.13):
+            slots.append(P.box("slot", (x - 0.05, y - 0.016, -0.03), (x + 0.05, y + 0.016, 0.1), "machinery"))
+            for sx in (-1, 1):
+                slots.append(P.cyl("slot_end", "z", (x + sx * 0.05, y), 0.016, -0.03, 0.1, "machinery", sides=12, smooth=False))
+    P.cut(cov, "finger_slots", slots)
+    bevel_ob(cov, 0.004)
+    for x in (x0 - g - 0.03, x1 + g + 0.03):
+        P.box("rail", (x - 0.016, y0 - 0.04, -0.01), (x + 0.016, y1 + 0.04, 0.012), "trim", bevel=0.004)
+    for k in range(7):
+        y = 0.40 + 0.2 * k
+        for x in (x0 + 0.04, x1 - 0.04):
+            P.cyl("bolt", "z", (x, y), 0.012, -0.01, 0.012, "trim", sides=6, bevel=0.004)
+
+
+def f_drain(P, F, spec):
+    """A round drain grille in the deck: a collar, ring and spoke bars over a dark sump, and two
+    shallow channels leading to it."""
+    plate = deck_plate(P, F)
+    R = 0.28
+    cuts = cell_seams(P) + [P.cyl("sump", "z", (0.0, 1.0), R, -0.2, 0.05, "machinery", sides=40, smooth=False)]
+    for sx in (-1, 1):
+        xa, xb = sorted((sx * (R + 0.02), sx * 0.78))
+        cuts.append(P.box("channel", (xa, 0.97, -0.01), (xb, 1.03, 0.05), "machinery"))
+    P.cut(plate, "drain", cuts)
+    ring(P, "collar", 0.0, 1.0, R + 0.07, R, -0.02, 0.012, "trim", sides=40, bevel=0.006)
+    for r in (0.09, 0.17, 0.25):
+        ring(P, "grid_ring", 0.0, 1.0, r + 0.012, r - 0.012, -0.05, -0.012, "paint2", sides=32)
+    for a in (0.0, 45.0, 90.0, 135.0):
+        P.box("bar", (-R - 0.01, -0.012, -0.06), (R + 0.01, 0.012, -0.02), "paint2",
+              m=Matrix.Translation(Vector((0.0, 1.0, 0.0))) @ Matrix.Rotation(math.radians(a), 4, "Z"))
+    P.box("sump_floor", (-R, 1 - R, -0.195), (R, 1 + R, -0.18), "machinery")
+    bolts(P, [(math.cos(math.radians(30 + 60 * k)) * (R + 0.035), 1 + math.sin(math.radians(30 + 60 * k)) * (R + 0.035)) for k in range(6)],
+          r=0.011, z0=0.0, z1=0.02)
+
+
+def f_vent(P, F, spec):
+    """Two raised floor vents (X2): slatted boxes on the deck with bolted feet."""
+    plate = deck_plate(P, F)
+    P.cut(plate, "seams", cell_seams(P))
+    for cx in (-0.36, 0.36):
+        x0, x1, y0, y1 = cx - 0.27, cx + 0.27, 0.62, 1.38
+        box = P.box("housing", (x0, y0, -0.02), (x1, y1, 0.05), "paint2")
+        P.cut(box, "opening", [P.box("open", (x0 + 0.04, y0 + 0.04, 0.0), (x1 - 0.04, y1 - 0.04, 0.2), "machinery")])
+        bevel_ob(box, 0.006)
+        P.box("pit", (x0 + 0.04, y0 + 0.04, -0.02), (x1 - 0.04, y1 - 0.04, 0.002), "machinery")
+        n = 9
+        pitch = (y1 - y0 - 0.08) / n
+        for k in range(n):
+            yc = y0 + 0.04 + pitch * (k + 0.5)
+            P.tilted("slat", (cx, yc, 0.028), (0.23, pitch * 0.55, 0.004), 40.0, "trim", bevel=0.002)
+        for sx in (-1, 1):
+            P.box("foot", (cx + sx * 0.27 - 0.04, y0 - 0.06, -0.01), (cx + sx * 0.27 + 0.04, y0 + 0.02, 0.014), "trim", bevel=0.004)
+            P.box("foot", (cx + sx * 0.27 - 0.04, y1 - 0.02, -0.01), (cx + sx * 0.27 + 0.04, y1 + 0.06, 0.014), "trim", bevel=0.004)
+        bolts(P, [(cx + sx * 0.27, y) for sx in (-1, 1) for y in (y0 - 0.03, y1 + 0.03)], r=0.01, z0=0.0, z1=0.022)
+
+
+def f_hazard(P, F, spec):
+    """Plate with a hazard-striped border (working spaces): keep clear of the plate it frames."""
+    plate = deck_plate(P, F)
+    P.cut(plate, "seams", cell_seams(P))
+    frame_ring(P, "border", -0.78, 0.22, 0.78, 1.78, 0.14, -0.02, 0.008, "hazard", bevel=0.003)
+    cov = cplate(P, "cover", -0.58, 0.42, 0.58, 1.58, 0.08, -0.02, 0.012, "paint2", bevel=0.005)
+    P.cut(cov, "pocket", [P.box("pocket", (-0.10, 0.50, -0.01), (0.10, 0.60, 0.1), "machinery")])
+    P.box("handle", (-0.08, 0.53, -0.01), (0.08, 0.57, 0.004), "trim", bevel=0.003)
+    bolts(P, [(sx * 0.71, 1 + sy * 0.71) for sx in (-1, 1) for sy in (-1, 1)], r=0.014, z0=0.0, z1=0.024)
+    bolts(P, [(sx * 0.52, 1 + sy * 0.52) for sx in (-1, 1) for sy in (-1, 1)], r=0.011, z0=0.0, z1=0.026)
+
+
+CEILING_BUILDERS = {"plate": c_plate, "grille": c_grille, "fan": c_fan, "cable_tray": c_cable_tray, "pipes": c_pipes,
+                    "hatch": c_hatch, "ribbed": c_ribbed, "lamp_surround": c_lamp_surround}
+FLOOR_BUILDERS = {"walkway": f_walkway, "plate": f_plate, "grate": f_grate, "access": f_access, "trench": f_trench,
+                  "drain": f_drain, "vent": f_vent, "hazard": f_hazard}
+
+
+# ----------------------------------------------------------------------------- trims
+# A trim row: panel x along the member (one 2 m period at x offset ox, built at ox -2, 0 and 2 so the
+# render tiles), panel y across the face from 0 to the row's height h, z out of the face. A row
+# builder returns the cutters for the slab behind it.
+
+def flange_shaft(P, ox, h, F, holes="stadium", hazard=False, splice=True):
+    """An I-beam's face: riveted edge bands, a raised web plate pierced by lightening holes every
+    0.5 m, and once a period a bolted splice plate. hazard stripes the lower band."""
+    e = 0.042
+    cuts = []
+    for k, (y0, y1) in enumerate(((-0.02, e), (h - e, h + 0.02))):
+        # hazard: the lower flange only (on a beam's side, the edge a head meets)
+        P.box("flange", (ox - 1.05, y0, -0.01), (ox + 1.05, y1, 0.008), "hazard" if hazard and k == 0 else "bulkhead", bevel=0.003)
+    web = P.box("web", (ox - 1.05, e + 0.008, -0.01), (ox + 1.05, h - e - 0.008, 0.016), "bulkhead")
+    hc = []
+    hy, hr = h / 2, (h - 2 * e) * 0.26
+    for dx in (-0.75, -0.25, 0.25, 0.75):
+        x = ox + dx
+        if holes == "stadium":
+            hc.append(P.box("hole", (x - 0.07, hy - hr, -0.05), (x + 0.07, hy + hr, 0.1), "machinery"))
+            for sx in (-1, 1):
+                hc.append(P.cyl("hole_end", "z", (x + sx * 0.07, hy), hr, -0.05, 0.1, "machinery", sides=16, smooth=False))
+        else:
+            hc.append(P.cyl("hole", "z", (x, hy), hr * 1.25, -0.05, 0.1, "machinery", sides=20, smooth=False))
+        cuts.append(P.box("pocket", (x - 0.13, hy - hr * 1.3, -0.04), (x + 0.13, hy + hr * 1.3, 0.05), "machinery"))
+    P.cut(web, "lightening_holes", hc)
+    bevel_ob(web, 0.004)
+    for k in range(20):
+        x = ox - 0.95 + 0.1 * k
+        if splice and abs(x - ox) < 0.12:
+            continue
+        for y in (e / 2, h - e / 2):
+            P.cyl("rivet", "z", (x, y), 0.0085, 0.0, 0.016, "trim", sides=8, bevel=0.003)
+    if splice:
+        P.box("splice", (ox - 0.09, -0.02, -0.01), (ox + 0.09, h + 0.02, 0.03), "paint2", bevel=0.006)
+        bolts(P, [(ox + sx * 0.05, y) for sx in (-1, 1) for y in (0.05, h - 0.05)], r=0.011, z0=0.02, z1=0.042)
+    return cuts
+
+
+def t_side(P, ox, h, F):
+    cuts = [P.box("groove", (ox - 1.1, y - 0.004, -0.006), (ox + 1.1, y + 0.004, 0.05), "machinery") for y in (0.016, h - 0.016)]
+    for dx in (-0.75, -0.25, 0.25, 0.75):
+        P.cyl("rivet", "z", (ox + dx, h / 2), 0.009, -0.005, 0.007, "trim", sides=8, bevel=0.003)
+    return cuts
+
+
+def t_baseboard(P, ox, h, F):
+    """A kick plate: a top lip, slot vents every 1 m and bolts between; hazard-striped in working spaces."""
+    P.box("lip", (ox - 1.05, h - 0.034, -0.01), (ox + 1.05, h + 0.02, 0.012), "trim", bevel=0.004)
+    P.box("toe", (ox - 1.05, -0.02, -0.01), (ox + 1.05, 0.014, 0.006), "machinery")
+    cuts = []
+    for cx in (ox - 0.5, ox + 0.5):
+        for k in range(4):
+            x = cx - 0.105 + 0.07 * k
+            cuts.append(P.box("slot", (x - 0.022, 0.034, -0.03), (x + 0.022, h - 0.052, 0.05), "machinery"))
+        P.box("slot_floor", (cx - 0.14, 0.03, -0.03), (cx + 0.14, h - 0.048, -0.018), "machinery")
+    for dx in (-1.0, 0.0):   # every 1 m, between the vents (the copies at ox +-2 give the rest)
+        P.cyl("bolt", "z", (ox + dx, (0.024 + h - 0.04) / 2), 0.013, -0.005, 0.011, "trim", sides=6, bevel=0.004)
+    return cuts
+
+
+def t_rib(P, ox, h, F):
+    return flange_shaft(P, ox, h, F, holes="stadium")
+
+
+def t_rib_ends(P, ox, h, F):
+    """The pillar's base (centred at ox - 0.5) and capital (at ox + 0.5), each 0.45 m of the row,
+    rising to +x: prouder than the shaft (7 cm against its 1.6), stepped and chamfered, with a shadow
+    line where they meet it and heavy hex bolts; a working base is hazard-striped. The trims' key
+    light runs along +x, so a pillar is lit from above: a base's top chamfer catches it and a
+    capital's underside is in shadow, which is what makes them read as structure."""
+    T = DATA["trims"]["pieces"]
+    for name in ("rib_base", "rib_capital"):
+        c = ox + T[name]["centre_m"]
+        L = T[name]["length_m"]
+        x0, x1 = c - L / 2, c + L / 2
+        if name == "rib_base":   # foot at x0, rising to the shaft at x1
+            foot = P.box("foot", (x0 - 0.03, -0.02, -0.01), (x0 + 0.24, h + 0.02, 0.07), "hazard" if rusty(F) else "paint2")
+            bevel_ob(foot, 0.02)
+            P.box("step", (x0 + 0.20, -0.02, -0.01), (x0 + 0.33, h + 0.02, 0.042), "bulkhead", bevel=0.012)
+            P.box("band", (x0 + 0.31, -0.02, -0.01), (x1 + 0.03, h + 0.02, 0.022), "bulkhead", bevel=0.005)
+            P.box("shadow", (x0 + 0.325, -0.02, -0.01), (x0 + 0.34, h + 0.02, 0.0235), "machinery")
+            bolts(P, [(x0 + 0.11, y) for y in (0.065, h - 0.065)], r=0.024, z0=0.06, z1=0.088, role="trim")
+            P.box("weld", (x0 + 0.02, h / 2 - 0.008, 0.06), (x0 + 0.20, h / 2 + 0.008, 0.074), "trim", bevel=0.003)
+        else:                    # from the shaft at x0, flaring to the head at x1
+            P.box("band", (x0 - 0.03, -0.02, -0.01), (x0 + 0.11, h + 0.02, 0.022), "bulkhead", bevel=0.005)
+            P.box("shadow", (x0 + 0.095, -0.02, -0.01), (x0 + 0.11, h + 0.02, 0.0235), "machinery")
+            P.box("step", (x0 + 0.11, -0.02, -0.01), (x0 + 0.22, h + 0.02, 0.042), "bulkhead", bevel=0.012)
+            head = P.box("head", (x0 + 0.20, -0.02, -0.01), (x1 + 0.03, h + 0.02, 0.07), "paint2")
+            P.cut(head, "gussets", [P.box("gusset_cut", (x0 + 0.26, y0, 0.055), (x1 - 0.02, y1, 0.1), "machinery")
+                                    for y0, y1 in ((0.05, 0.085), (h - 0.085, h - 0.05))])
+            bevel_ob(head, 0.02)
+            bolts(P, [(x0 + 0.34, y) for y in (0.065, h - 0.065)], r=0.024, z0=0.06, z1=0.088, role="trim")
+    return []
+
+
+def t_beam(P, ox, h, F):
+    return flange_shaft(P, ox, h, F, holes="round", hazard=rusty(F))
+
+
+def t_frame(P, ox, h, F):
+    """A door frame's face: symmetric steps up to a raised centre band, bolts along it; the outer
+    steps hazard-striped in working spaces."""
+    P.box("outer", (ox - 1.05, -0.02, -0.01), (ox + 1.05, h + 0.02, 0.006), "hazard" if rusty(F) else "paint2")
+    P.box("step", (ox - 1.05, 0.045, -0.01), (ox + 1.05, h - 0.045, 0.024), "bulkhead", bevel=0.01)
+    P.box("centre", (ox - 1.05, 0.085, -0.01), (ox + 1.05, h - 0.085, 0.044), "paint2", bevel=0.014)
+    bolts(P, [(ox + dx, h / 2) for dx in (-0.8, -0.4, 0.0, 0.4, 0.8)], r=0.014, z0=0.03, z1=0.056)
+    return [P.box("groove", (ox - 1.1, y - 0.004, -0.008), (ox + 1.1, y + 0.004, 0.05), "machinery") for y in (0.04, h - 0.04)]
+
+
+def t_cove(P, ox, h, F):
+    """The cove: an open cable tray with two runs on hangers, slots in its floor."""
+    for y0, y1 in ((-0.02, 0.034), (h - 0.034, h + 0.02)):
+        P.box("rail", (ox - 1.05, y0, -0.01), (ox + 1.05, y1, 0.06), "trim", bevel=0.004)
+    for y, r, role in ((0.075, 0.021, "rubber"), (0.118, 0.019, "safety"), (0.162, 0.024, "rubber"), (0.205, 0.017, "rubber")):
+        P.cyl("cable", "x", (y, r + 0.002), r, ox - 1.05, ox + 1.05, role, sides=12)
+    P.cyl("conduit", "x", (0.285, 0.036), 0.034, ox - 1.05, ox + 1.05, "paint2", sides=14)
+    P.cyl("conduit", "x", (0.338, 0.016), 0.013, ox - 1.05, ox + 1.05, "trim", sides=10)
+    for dx in (-0.75, -0.25, 0.25, 0.75):
+        P.box("hanger", (ox + dx - 0.016, -0.02, 0.054), (ox + dx + 0.016, h + 0.02, 0.066), "trim", bevel=0.003)
+        P.box("tie", (ox + dx + 0.03, 0.05, 0.0), (ox + dx + 0.045, 0.23, 0.05), "rubber")
+    cuts = []
+    for k in range(20):
+        x = ox - 0.95 + 0.1 * k
+        if min(abs(x - (ox + dx)) for dx in (-0.75, -0.25, 0.25, 0.75)) < 0.04:
+            continue
+        cuts.append(P.box("slot", (x - 0.025, 0.245, -0.012), (x + 0.025, 0.262, 0.05), "machinery"))
+    return cuts
+
+
+TRIM_BUILDERS = {"side": t_side, "baseboard": t_baseboard, "rib": t_rib, "rib_ends": t_rib_ends, "beam": t_beam,
+                 "frame": t_frame, "cove": t_cove}
+
+
 # ----------------------------------------------------------------------------- the UI images
 
 def ui_rect(coll, name, x0, y0, x1, y1, z, mat):
@@ -1187,33 +1989,57 @@ def render_ui(D, fn, samples):
 
 
 def render_target(D, fn, kind, item, samples):
-    """One module, the strips of a finish (item 'strips': four renders), or the keys image."""
+    """One wall module, the strips of a finish (item 'strips': four renders), the keys image, a
+    ceiling or floor module (kind 'ceiling' or 'floor'), or the trim rows of a finish (kind
+    'trims': one render a row)."""
     R = D["render"]
     F = D["finishes"][fn]
     set_roles()
     ppm = R["px_per_m"]
+    cfg = dict(R, **R[kind]) if kind in ("ceiling", "floor", "trims") else R
+    FK = kind_finish(F, kind)
+    streaky = kind in ("module", "strip", "keys")
     if kind == "strip":
         jobs = [(s, (int(2 * ppm), int(0.5 * ppm)), 2.0, 0.25, True) for s in STRIPS]
+    elif kind == "trims":
+        jobs = [(r, (int(2 * ppm), int(round(D["trims"]["rows"][r]["h_m"] * ppm))), 2.0, D["trims"]["rows"][r]["h_m"] / 2, True)
+                for r in TRIM_ROWS]
     elif kind == "keys":
         kw, kh = D["ui"]["keys_m"]
         res = (D["ui"]["keys_px"][0] * 4, D["ui"]["keys_px"][1] * 4)
         jobs = [("keys", res, kw, kh / 2, False)]
     else:
-        jobs = [(item, (int(2 * ppm), int(2 * ppm)), 2.0, 1.0, False)]
+        periodic = "xy" if (kind == "floor" and item == "walkway") else False
+        jobs = [(item, (int(2 * ppm), int(2 * ppm)), 2.0, 1.0, periodic)]
     for sub, res, width, cy, periodic in jobs:
-        name = f"{fn}_{sub}" if kind != "module" else f"{fn}_{item}"
+        if kind == "module":
+            name = f"{fn}_{item}"
+        elif kind in ("ceiling", "floor"):
+            name = f"{fn}_{kind}_{item}"
+        elif kind == "trims":
+            name = f"{fn}_trim_{sub}"
+        else:
+            name = f"{fn}_{sub}"
         for mask in (False, True):
-            reset(R, R["mask_samples"] if mask else samples, res, mask=mask)
+            reset(cfg, R["mask_samples"] if mask else samples, res, mask=mask)
             ui_img = None
             if kind == "module" and item == "screen":
                 ui_img = bpy.data.images.load(raw_path(f"{fn}_ui"), check_existing=False)
-            make_materials(F, periodic, ui_img, (-0.50, 0.94, 0.50, 1.565))
+            make_materials(FK, periodic, ui_img, (-0.50, 0.94, 0.50, 1.565), streaky=streaky)
             P = Panel(name)
             if kind == "strip":
                 cuts = []
                 for ox in (-2.0, 0.0, 2.0):
                     cuts += STRIP_BUILDERS[sub](P, ox)
                 plate = plate_slab(P, strip=True)
+                if cuts:
+                    P.cut(plate, "cuts", cuts)
+            elif kind == "trims":
+                h = D["trims"]["rows"][sub]["h_m"]
+                cuts = []
+                for ox in (-2.0, 0.0, 2.0):
+                    cuts += TRIM_BUILDERS[sub](P, ox, h, FK)
+                plate = plate_slab(P, strip=True, role="paint2" if sub in ("rib", "beam") else "bulkhead")
                 if cuts:
                     P.cut(plate, "cuts", cuts)
             elif kind == "keys":
@@ -1227,6 +2053,10 @@ def render_target(D, fn, kind, item, samples):
                         y0 = r * kh / 3 + kh / 3 * 0.1
                         P.box("key", (x0, y0, -0.02), (x0 + pitch * 0.8, y0 + kh / 3 * 0.8, 0.008),
                               lit.get((c, r), "trim"), bevel=0.0035, seg=2)
+            elif kind == "ceiling":
+                CEILING_BUILDERS[item](P, FK, F["ceiling"]["modules"][item])
+            elif kind == "floor":
+                FLOOR_BUILDERS[item](P, FK, F["floor"]["modules"][item])
             else:
                 MODULE_BUILDERS[item](P, F, F["modules"][item])
             camera(0.0, cy, width, res)
@@ -1286,7 +2116,44 @@ def layer_sources(D, fn):
         bs.append(read_exr(b))
         ks.append(read_exr(k))
     out.append((f"{fn}_strips", np.concatenate(bs, axis=0), np.concatenate(ks, axis=0)))
+    F = D["finishes"][fn]
+    for kind in ("ceiling", "floor"):
+        for m in module_ids(F, kind):
+            b, k = raw_path(f"{fn}_{kind}_{m}"), raw_path(f"{fn}_{kind}_{m}", "mask")
+            if not (os.path.exists(b) and os.path.exists(k)):
+                raise SystemExit(f"[panels] missing raw render {os.path.relpath(b, ROOT)}: render it first")
+            out.append((f"{fn}_{kind}_{m}", read_exr(b), read_exr(k)))
+    out.append((f"{fn}_trims",) + trim_layer(D, fn))
     return out
+
+
+def trim_layer(D, fn):
+    """The trim rows of a finish stacked into one square layer at render size: each row at its
+    place (trims.rows, v0_m from the layer's bottom), and every gap filled by repeating the nearest
+    row's edge, so a mip blends a row only with its own edge colour (ceilings-and-trims section 3)."""
+    ppm = D["render"]["px_per_m"]
+    size = int(round(D["layers"]["span_m"] * ppm))
+    out = []
+    for kind in ("beauty", "mask"):
+        canvas = np.zeros((size, size, 3), np.float32)
+        owner = np.full(size, -1, np.int64)
+        for r in TRIM_ROWS:
+            path = raw_path(f"{fn}_trim_{r}", kind)
+            if not os.path.exists(path):
+                raise SystemExit(f"[panels] missing raw render {os.path.relpath(path, ROOT)}: render it first")
+            img = read_exr(path)
+            R = D["trims"]["rows"][r]
+            top = int(round((D["layers"]["span_m"] - R["v0_m"] - R["h_m"]) * ppm))   # image rows run top down
+            if img.shape[0] != int(round(R["h_m"] * ppm)) or img.shape[1] != size:
+                raise SystemExit(f"[panels] {os.path.relpath(path, ROOT)} is {img.shape[1]}x{img.shape[0]}, expected {size}x{int(round(R['h_m'] * ppm))}")
+            canvas[top:top + img.shape[0]] = img
+            owner[top:top + img.shape[0]] = np.arange(top, top + img.shape[0])
+        covered = np.nonzero(owner >= 0)[0]
+        for y in range(size):
+            if owner[y] < 0:
+                canvas[y] = canvas[covered[np.argmin(np.abs(covered - y))]]
+        out.append(canvas)
+    return out[0], out[1]
 
 
 def sha256(path):
@@ -1329,26 +2196,48 @@ def glow_fraction(img):
     return float(np.count_nonzero(img[..., 3] >= 128)) / img[..., 3].size
 
 
+def all_layers(D):
+    """Every panel layer: (finish, stem, layer number, declared emissive or None for strips and trims)."""
+    out = []
+    for fn in FINISHES:
+        F = D["finishes"][fn]
+        for m in MODULES:
+            out.append((fn, f"{fn}_{m}", F["modules"][m]["layer"], F["modules"][m]["emissive"]))
+        out.append((fn, f"{fn}_strips", F["strips"]["layer"], None))
+        for kind in ("ceiling", "floor"):
+            for m in module_ids(F, kind):
+                M = F[kind]["modules"][m]
+                out.append((fn, f"{fn}_{kind}_{m}", M["layer"], M["emissive"]))
+        out.append((fn, f"{fn}_trims", F["trims"]["layer"], None))
+    return out
+
+
 def report(D, layers, files, out_dir):
-    n_layers = 2 * (len(MODULES) + 1)
+    every = all_layers(D)
+    n_layers = len(every)
     gpu = {px: n_layers * mm.gpu_bytes(px) for px in D["layers"]["sizes_px"]}
     mats = D["layers"]["first_layer"]
     total = {px: (n_layers + mats) * mm.gpu_bytes(px) for px in D["layers"]["sizes_px"]}
     rows = {}
-    for fn in FINISHES:
-        F = D["finishes"][fn]
-        for m in MODULES + ("strips",):
-            stem = f"{fn}_{m}"
-            img = layers[(stem, 256)]
-            layer = F["strips"]["layer"] if m == "strips" else F["modules"][m]["layer"]
-            emissive = bool(np.any(img[..., 3] > 0))
-            declared = True if m == "strips" else F["modules"][m]["emissive"]
-            if m != "strips" and emissive != declared:
-                raise SystemExit(f"[panels] {stem}: panels.json says emissive {declared}, the render glows on {glow_fraction(img):.1%}")
-            seam = mm.seam_ratio(img[..., :3], 1) if m == "strips" else None
-            rows[stem] = {"layer": layer, "glow_fraction": round(glow_fraction(img), 4),
-                          "seam_ratio_x": None if seam is None else round(seam, 3)}
-            print(f"  {layer:>3}  {stem:<18} glows on {glow_fraction(img):6.1%}" + (f"  seam x {seam:.2f}" if seam is not None else ""))
+    by_kind = {}
+    for fn, stem, layer, declared in every:
+        img = layers[(stem, 256)]
+        emissive = bool(np.any(img[..., 3] > 0))
+        if declared is not None and emissive != declared:
+            raise SystemExit(f"[panels] {stem}: panels.json says emissive {declared}, the render glows on {glow_fraction(img):.1%}")
+        tiles = stem.endswith("_strips") or stem.endswith("_trims") or stem.endswith("_floor_walkway")
+        seam = mm.seam_ratio(img[..., :3], 1) if tiles else None
+        seam_y = mm.seam_ratio(img[..., :3], 0) if stem.endswith("_floor_walkway") else None
+        rows[stem] = {"layer": layer, "glow_fraction": round(glow_fraction(img), 4),
+                      "seam_ratio_x": None if seam is None else round(seam, 3)}
+        if seam_y is not None:
+            rows[stem]["seam_ratio_y"] = round(seam_y, 3)
+        kind = "trims" if stem.endswith("_trims") else "ceiling" if "_ceiling_" in stem else "floor" if "_floor_" in stem else "walls"
+        by_kind[kind] = by_kind.get(kind, 0) + 1
+        print(f"  {layer:>3}  {stem:<26} glows on {glow_fraction(img):6.1%}" + (f"  seam x {seam:.2f}" if seam is not None else "")
+              + (f"  seam y {seam_y:.2f}" if seam_y is not None else ""))
+    print("layers by kind: " + ", ".join(f"{k} {n}" for k, n in sorted(by_kind.items()))
+          + "; GPU bytes with mips per kind at 256 px: " + ", ".join(f"{k} {n * mm.gpu_bytes(256):,}" for k, n in sorted(by_kind.items())))
     print(f"panel layers: {n_layers}; GPU bytes with mips: {gpu[128]:,} at 128 px (64 px/m), {gpu[256]:,} at 256 px (128 px/m)")
     print(f"whole array with the {mats} materials: {total[128]:,} at 128 px, {total[256]:,} at 256 px")
     man = {
@@ -1361,6 +2250,7 @@ def report(D, layers, files, out_dir):
         "numpy": np.__version__,
         "gpu_bytes_panel_layers": {str(k): v for k, v in gpu.items()},
         "gpu_bytes_with_materials": {str(k): v for k, v in total.items()},
+        "layers_by_kind": by_kind,
         "layers": rows,
         "files": files,
     }
@@ -1374,37 +2264,45 @@ def report(D, layers, files, out_dir):
 
 
 def contact_sheet(D, layers):
-    """Both finishes: every module and the strip layer at 256 px with its name and layer, the UI
-    images, and an illustrative 12 m wall of each finish at 64 px per metre (base strip, a run of
-    modules between ribs, the top strip) so the composition can be judged, not only the tiles."""
+    """Both finishes: every wall module and the strip layer at 256 px with its name and layer, the UI
+    images and an illustrative 12 m wall at 64 px per metre (base strip, a run of modules between
+    ribs, the top strip); then the ceiling and floor modules and the trim layer, an illustrative
+    ceiling (cells between beams, lamps in their surrounds) and floor (a walkway down the middle), and
+    the trims as members: a crew pillar, engineering's tall pillar, a beam, a cove, a baseboard and a
+    door jamb. The illustrations use fixed sequences, not the rule: they judge composition."""
     tile, gap, lab = 256, 14, 40
     cols = 6
     font = ImageFont.load_default(size=17)
     small = ImageFont.load_default(size=13)
     head = ImageFont.load_default(size=22)
-    wall_w = 12 * 64
     W = gap + cols * (tile + gap)
-    per_finish = 36 + 2 * (lab + tile + gap) + (lab + 210 + gap) + (lab + 300 + gap)
-    sheet = Image.new("RGB", (W, gap + 2 * per_finish), (22, 24, 28))
+    sheet = Image.new("RGB", (W, 12000), (22, 24, 28))
     dr = ImageDraw.Draw(sheet)
     y = gap
+
+    def tiles(fn, items, y):
+        for i, (stem, title, sub) in enumerate(items):
+            r, c = divmod(i, cols)
+            x0, y0 = gap + c * (tile + gap), y + r * (lab + tile + gap)
+            img = layers[(stem, 256)]
+            dr.text((x0, y0), title, fill=(232, 234, 238), font=font)
+            lit = float(np.count_nonzero(img[..., 3])) / img[..., 3].size
+            dr.text((x0, y0 + 20), sub + (f", glows {lit:.1%}" if lit else ""), fill=(150, 156, 166), font=small)
+            sheet.paste(Image.fromarray(np.ascontiguousarray(img[..., :3]), "RGB"), (x0, y0 + lab))
+        return y + ((len(items) + cols - 1) // cols) * (lab + tile + gap)
+
+    def sub_of(spec):
+        return f"weight {spec['weight']:g}" if spec["weight"] else spec["placed"]
+
     for fn in FINISHES:
         F = D["finishes"][fn]
         dr.text((gap, y), f"{fn} finish", fill=(236, 238, 242), font=head)
         y += 36
-        items = list(MODULES) + ["strips"]
-        for i, m in enumerate(items):
-            r, c = divmod(i, cols)
-            x0, y0 = gap + c * (tile + gap), y + r * (lab + tile + gap)
-            img = layers[(f"{fn}_{m}", 256)]
-            layer = F["strips"]["layer"] if m == "strips" else F["modules"][m]["layer"]
-            spec = F["modules"].get(m, {})
-            sub = "4 strips, 2 m period" if m == "strips" else (f"weight {spec['weight']:g}" if spec["weight"] else spec["placed"])
-            dr.text((x0, y0), f"{layer}  {m}", fill=(232, 234, 238), font=font)
-            lit = float(np.count_nonzero(img[..., 3])) / img[..., 3].size
-            dr.text((x0, y0 + 20), f"{sub}" + (f", glows {lit:.1%}" if lit else ""), fill=(150, 156, 166), font=small)
-            sheet.paste(Image.fromarray(np.ascontiguousarray(img[..., :3]), "RGB"), (x0, y0 + lab))
-        y += 2 * (lab + tile + gap)
+        dr.text((gap, y), "walls", fill=(200, 204, 210), font=font)
+        y += 26
+        items = [(f"{fn}_{m}", f"{F['modules'][m]['layer']}  {m}", sub_of(F["modules"][m])) for m in MODULES]
+        items.append((f"{fn}_strips", f"{F['strips']['layer']}  strips", "4 strips, 2 m period"))
+        y = tiles(fn, items, y)
         # the UI images
         ui = layers[(f"ui_screen_{fn}", D["ui"]["screen_px"][0])]
         keys = layers[(f"keys_{fn}", D["ui"]["keys_px"][0])]
@@ -1421,8 +2319,156 @@ def contact_sheet(D, layers):
         wall = wall_image(D, fn, seq, layers)
         sheet.paste(wall, (gap, y + lab))
         y += lab + 300 + gap
+        # ceilings, floors, trims
+        for kind in ("ceiling", "floor"):
+            dr.text((gap, y), f"{kind} modules (2 m cells, seen from the room; panel up is the bow)", fill=(200, 204, 210), font=font)
+            y += 26
+            items = [(f"{fn}_{kind}_{m}", f"{F[kind]['modules'][m]['layer']}  {m}", sub_of(F[kind]["modules"][m])) for m in module_ids(F, kind)]
+            if kind == "floor":
+                items.append((f"{fn}_trims", f"{F['trims']['layer']}  trims", "7 rows, 2 m period"))
+            y = tiles(fn, items, y)
+        dr.text((gap, y), "illustrative ceiling and floor at 64 px/m, 6 m x 8 m (fixed sequences, not the rule); the trims as members at 128 px/m",
+                fill=(232, 234, 238), font=font)
+        y += lab
+        ceil = ceiling_image(D, fn, layers)
+        floor = floor_image(D, fn, layers)
+        sheet.paste(ceil, (gap, y))
+        sheet.paste(floor, (gap + ceil.width + gap, y))
+        trims = trims_image(D, fn, layers, small)
+        sheet.paste(trims, (gap + ceil.width + floor.width + 2 * gap, y))
+        y += max(ceil.height, floor.height, trims.height) + 2 * gap
+    sheet = sheet.crop((0, 0, W, y))
     mm.save_png(sheet, SHEET)
     print("contact sheet:", os.path.relpath(SHEET, ROOT))
+
+
+def row_image(D, fn, layers, row, px=256):
+    """One trim row of a finish's layer at `px` (rows of the image: top = high v)."""
+    img = layers[(f"{fn}_trims", px)][..., :3]
+    R = D["trims"]["rows"][row]
+    k = px / D["layers"]["span_m"]
+    top = int(round((D["layers"]["span_m"] - R["v0_m"] - R["h_m"]) * k))
+    return img[top:top + int(round(R["h_m"] * k))]
+
+
+def ceiling_image(D, fn, layers):
+    """A 6 m x 8 m ceiling seen from below at 64 px/m: three cells across, four bays, the beams
+    (their undersides, the beam row) at the bay joints, a lamp housing in the middle cells."""
+    seq = ["grille", "plate", "pipes", "ribbed", "cable_tray", "plate", "fan", "hatch"]
+    ppm, cell = 64, 128
+    img = np.zeros((4 * cell, 3 * cell, 3), np.uint8)
+    k = 0
+    for b in range(4):
+        for c in range(3):
+            m = "lamp_surround" if c == 1 else seq[k % len(seq)]
+            if c != 1:
+                k += 1
+            img[(3 - b) * cell:(4 - b) * cell, c * cell:(c + 1) * cell] = layers[(f"{fn}_ceiling_{m}", 128)][..., :3]
+            if c == 1:
+                lw, lh = int(0.9 * ppm), int(0.45 * ppm)
+                cx, cy = cell + cell // 2, (3 - b) * cell + cell // 2
+                img[cy - lh // 2:cy + lh // 2, cx - lw // 2:cx + lw // 2] = (70, 72, 76)
+                img[cy - lh // 2 + 3:cy + lh // 2 - 3, cx - lw // 2 + 3:cx + lw // 2 - 3] = (250, 238, 210)
+    beam = row_image(D, fn, layers, "beam", 128)
+    bw = int(round(0.24 * ppm))
+    beam = np.asarray(Image.fromarray(np.ascontiguousarray(beam)).resize((beam.shape[1], bw), Image.NEAREST))
+    for b in range(1, 4):
+        y = b * cell
+        strip = np.tile(beam, (1, 4, 1))[:, :img.shape[1]]
+        img[y - bw // 2:y - bw // 2 + bw] = strip
+    return Image.fromarray(img, "RGB")
+
+
+def floor_image(D, fn, layers):
+    """A 6 m x 8 m floor seen from above at 64 px/m: the walkway down the middle column, other cells
+    from a fixed sequence."""
+    mods = module_ids(D["finishes"][fn], "floor")
+    seq = [m for m in ("grate", "plate", "access", "trench", "plate", "drain", "vent", "hazard", "grate", "plate") if m in mods]
+    cell = 128
+    img = np.zeros((4 * cell, 3 * cell, 3), np.uint8)
+    k = 0
+    for b in range(4):
+        for c in range(3):
+            m = "walkway" if c == 1 else seq[k % len(seq)]
+            if c != 1:
+                k += 1
+            img[(3 - b) * cell:(4 - b) * cell, c * cell:(c + 1) * cell] = layers[(f"{fn}_floor_{m}", 128)][..., :3]
+    return Image.fromarray(img, "RGB")
+
+
+def member_face(D, fn, layers, length_m, ppm, tall=False, pillar=True, row="rib"):
+    """A rib's front face (or any member's, pillar False) as the kit maps it: u up the member, v
+    across it; with pillar, the base and capital pieces at its ends. Returns an image, top = up."""
+    T = D["trims"]
+    lay = layers[(f"{fn}_trims", 256)][..., :3]
+    k256 = 256 / D["layers"]["span_m"]
+
+    def vertical(rowimg):
+        return np.transpose(rowimg[::-1], (1, 0, 2))[::-1]   # u up the image, v left to right
+
+    def take(row_name, u0_m, u1_m, out_px):
+        r = row_image(D, fn, layers, row_name, 256)
+        a, b = int(round(u0_m * k256)), int(round(u1_m * k256))
+        seg = r[:, a:b] if b <= r.shape[1] else np.concatenate([r[:, a:], r[:, :b - r.shape[1]]], axis=1)
+        v = vertical(seg)
+        w = int(round(T["rows"][row_name]["h_m"] * ppm * 0.96))
+        return np.asarray(Image.fromarray(np.ascontiguousarray(v)).resize((w, max(1, out_px)), Image.NEAREST))
+
+    del lay
+    parts = []
+    if pillar:
+        pl = T["pillar"]
+        bm, cm = (pl["tall_base_m"], pl["tall_capital_m"]) if tall else (pl["base_m"], pl["capital_m"])
+        pc, pb = T["pieces"]["rib_capital"], T["pieces"]["rib_base"]
+        span = D["layers"]["span_m"]
+        parts.append(take("rib_ends", span / 2 + pc["centre_m"] - pc["length_m"] / 2, span / 2 + pc["centre_m"] + pc["length_m"] / 2, int(cm * ppm)))
+        shaft = length_m - bm - cm
+    else:
+        shaft = length_m
+    n = int(round(shaft * ppm))
+    reps = []
+    left = n
+    while left > 0:
+        seg = take(row, 0.0, D["layers"]["span_m"], int(D["layers"]["span_m"] * ppm))
+        reps.append(seg[:left] if left < seg.shape[0] else seg)
+        left -= seg.shape[0]
+    parts.append(np.concatenate(reps, axis=0))
+    if pillar:
+        parts.append(take("rib_ends", span / 2 + pb["centre_m"] - pb["length_m"] / 2, span / 2 + pb["centre_m"] + pb["length_m"] / 2, int(bm * ppm)))
+    w = min(p.shape[1] for p in parts)
+    return np.concatenate([p[:, :w] for p in parts], axis=0)
+
+
+def trims_image(D, fn, layers, font):
+    """The trims as members, at 128 px/m: a 2.65 m crew pillar and engineering's 9.4 m pillar (at
+    half scale), a beam's side, a cove, a baseboard and a door jamb's face."""
+    ppm = 128
+    bg = (40, 42, 46)
+    crew = member_face(D, fn, layers, 2.65, ppm)
+    tall = member_face(D, fn, layers, 9.4, ppm // 2, tall=True)
+    jamb = member_face(D, fn, layers, 2.2, ppm, pillar=False, row="frame")
+    H = max(crew.shape[0], tall.shape[0], jamb.shape[0]) + 30
+    horiz = []
+    for row, length, label in (("beam", 4.0, "beam side, 4 m"), ("cove", 4.0, "cove, 4 m"), ("baseboard", 4.0, "baseboard, 4 m"),
+                               ("side", 4.0, "side faces, 4 m")):
+        r = row_image(D, fn, layers, row, 256)
+        n = int(length * ppm)
+        horiz.append((np.tile(r, (1, n // r.shape[1] + 1, 1))[:, :n], label))
+    Wd = 3 * 70 + int(4.0 * ppm) + 60
+    img = Image.new("RGB", (Wd, max(H, sum(h.shape[0] + 34 for h, _ in horiz) + 10)), bg)
+    dr = ImageDraw.Draw(img)
+    x = 10
+    for face, label in ((crew, "crew pillar 2.65 m"), (tall, "engineering 9.4 m, 1/2"), (jamb, "door jamb")):
+        img.paste(Image.fromarray(np.ascontiguousarray(face)), (x, 24))
+        dr.text((x, 4), label.split(" ")[0], fill=(200, 204, 210), font=font)
+        x += 70
+    yy = 24
+    x0 = x + 20
+    for h, label in horiz:
+        dr.text((x0, yy - 18), label, fill=(200, 204, 210), font=font)
+        img.paste(Image.fromarray(np.ascontiguousarray(h)), (x0, yy))
+        yy += h.shape[0] + 34
+    return img
 
 
 def wall_image(D, fn, seq, layers):
@@ -1466,14 +2512,19 @@ def parse_args():
     return ap.parse_args(argv)
 
 
-def targets():
+def targets(D):
+    """(finish, kind, item, target name) for everything the build renders, in a fixed order."""
     out = []
     for fn in FINISHES:
-        out.append((fn, "ui", "ui"))
+        out.append((fn, "ui", "ui", f"{fn}_ui"))
         for m in MODULES:
-            out.append((fn, "module", m))
-        out.append((fn, "strip", "strips"))
-        out.append((fn, "keys", "keys"))
+            out.append((fn, "module", m, f"{fn}_{m}"))
+        out.append((fn, "strip", "strips", f"{fn}_strips"))
+        out.append((fn, "keys", "keys", f"{fn}_keys"))
+        for kind in ("ceiling", "floor"):
+            for m in module_ids(D["finishes"][fn], kind):
+                out.append((fn, kind, m, f"{fn}_{kind}_{m}"))
+        out.append((fn, "trims", "trims", f"{fn}_trims"))
     return out
 
 
@@ -1483,8 +2534,10 @@ def main():
     if not args.post_only:
         only = set(args.only.split(",")) if args.only else None
         samples = args.samples or D["render"]["samples"]
-        for fn, kind, item in targets():
-            name = f"{fn}_{item}"
+        names = {t[3] for t in targets(D)}
+        if only and only - names:
+            raise SystemExit(f"[panels] --only names no target: {', '.join(sorted(only - names))}")
+        for fn, kind, item, name in targets(D):
             if only and name not in only:
                 continue
             print(f"[panels] rendering {name}", flush=True)

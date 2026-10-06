@@ -19,10 +19,12 @@ read a ship's other data files (power.json, atmosphere.json, detailing.json).
 <script id="ship-materials" type="application/json"> block, which shipkit's
 loadMaterials() decodes into one texture array (surface-materials).
 "panels" copies data/materials/panels.json, every panel layer it names at every size
-(assets/textures/panels/<px>/<finish>_<module>.png and <finish>_strips.png) and the UI images
+(assets/textures/panels/<px>/<finish>_<module>.png, <finish>_strips.png, and the ceilings,
+floors and trims: <finish>_ceiling_<module>.png, <finish>_floor_<module>.png, <finish>_trims.png)
+and the UI images
 (ui_screen_<finish>.png, keys_<finish>.png) into a <script id="ship-panels"
 type="application/json"> block, which shipkit's loadPanels() adds to the texture array
-(wall-panels).
+(wall-panels, ceilings-and-trims, floor-panels).
 "models:<set>" copies assets/models/<set>/props.json and every .glb it lists (as base64
 data URIs) into a <script id="ship-models-<set>" type="application/json"> block, for pages
 that place the Blender-built props (tools/blender, the blender-hard-surface skill).
@@ -99,6 +101,12 @@ def block(kind):
         for fn, fin in manifest["finishes"].items():
             stems += sorted(((m["layer"], f"{fn}_{name}") for name, m in fin["modules"].items()))
             stems.append((fin["strips"]["layer"], f"{fn}_strips"))
+            for kind in ("ceiling", "floor"):
+                if kind in fin:
+                    stems += sorted(((m["layer"], f"{fn}_{kind}_{name}") for name, m in fin[kind]["modules"].items()
+                                     if not name.startswith("_")))
+            if "trims" in fin:
+                stems.append((fin["trims"]["layer"], f"{fn}_trims"))
         layers = {str(px): {stem: png_uri(os.path.join(base, str(px), stem + ".png")) for _, stem in sorted(stems)}
                   for px in manifest["layers"]["sizes_px"]}
         ui = {}

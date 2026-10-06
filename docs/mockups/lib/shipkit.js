@@ -543,8 +543,32 @@
     return JSON.parse(el.textContent);
   }
 
-  /** The layer name a panel module or a finish's strips take in the texture array (loadPanels). */
-  function panelLayerName(finish, module) { return `panel:${finish}:${module}`; }
+  /**
+   * The layer name a panel module or a finish's strips take in the texture array (loadPanels). A
+   * ceiling or floor module (kind "ceiling", "floor") is panel:<finish>:<kind>:<module>; a finish's
+   * trim layer is panel:<finish>:trims.
+   */
+  function panelLayerName(finish, module, kind) { return kind ? `panel:${finish}:${kind}:${module}` : `panel:${finish}:${module}`; }
+
+  /**
+   * Every panel layer panels.json numbers, as [{ name (panelLayerName), stem (the file's name in
+   * assets/textures/panels/<px>/, without .png), layer }]: wall modules and strips (wall-panels),
+   * ceiling and floor modules and the trim layer (ceilings-and-trims, floor-panels).
+   */
+  function panelLayerList(S) {
+    const out = [];
+    for (const fn of Object.keys(S.finishes)) {
+      const F = S.finishes[fn];
+      for (const m of Object.keys(F.modules)) if (m[0] !== "_") out.push({ name: panelLayerName(fn, m), stem: `${fn}_${m}`, layer: F.modules[m].layer });
+      out.push({ name: panelLayerName(fn, "strips"), stem: `${fn}_strips`, layer: F.strips.layer });
+      for (const kind of ["ceiling", "floor"]) {
+        if (!F[kind]) continue;
+        for (const m of Object.keys(F[kind].modules)) if (m[0] !== "_") out.push({ name: panelLayerName(fn, m, kind), stem: `${fn}_${kind}_${m}`, layer: F[kind].modules[m].layer });
+      }
+      if (F.trims) out.push({ name: panelLayerName(fn, "trims"), stem: `${fn}_trims`, layer: F.trims.layer });
+    }
+    return out;
+  }
 
   /** FNV-1a, 32 bits, over a string's UTF-16 code units: the wall rule's draw (wall-panels design section 4). */
   function fnv1a(str) {
@@ -557,7 +581,92 @@
   function panelSetup(src) {
     const S = src === true ? panelsData().manifest : src.schema ? src : src.manifest;
     if (S.schema !== "starcrew.panels/1") throw new Error("shipkit: panels schema " + S.schema + ", expected starcrew.panels/1");
-    return { S, stats: { bays: 0, cells: 0, modules: {} } };
+    return {
+      S,
+      stats: { bays: 0, cells: 0, modules: {}, ceiling: { cells: 0, modules: {}, rules: {} }, floor: { cells: 0, modules: {}, walkway: 0, rules: {} }, trims: { faces: 0, pillars: 0 } },
+    };
+  }
+
+  // ------------------------------------------------- trims (ceilings-and-trims)
+
+  /**
+   * One trim face as quads on a row of its finish's trim layer (ceilings-and-trims design sections
+   * 3-4). The face is o + A * a + C * c for a in [a0, a1] (along the member, metres) and c in
+   * [-hc, hc] (across it); n is its normal. u is world-projected along A (dot(p, A) / span, so a
+   * long member tiles with the layer's 2 m period without a seam); v runs across the face within
+   * the row, which is repeated whole when the face is deeper than stretch_max rows. segs splits
+   * the length: [{ a0, a1, piece? }], a piece being a non-tiling part of a row (a pillar's base or
+   * capital) mapped onto [a0, a1].
+   */
+  function stripFace(B, role, T, o, A, C, hc, n, rowName, segs) {
+    const row = T.rows[rowName], span = T.span;
+    if (!row) throw new Error(`shipkit: no trim row ${rowName} (panels.json trims.rows)`);
+    const reps = Math.max(1, Math.ceil((2 * hc) / (T.stretch * row.h_m) - 1e-6));
+    const oA = o[0] * A[0] + o[1] * A[1] + o[2] * A[2];
+    const P = (a, c) => [o[0] + A[0] * a + C[0] * c, o[1] + A[1] * a + C[1] * c, o[2] + A[2] * a + C[2] * c];
+    for (const s of segs) {
+      const pc = s.piece;
+      const r = pc ? T.rows[pc.row] : row;
+      const uOf = pc
+        ? (a) => (span / 2 + pc.centre_m + ((a - s.a0) / (s.a1 - s.a0) - 0.5) * pc.length_m) / span
+        : (a) => (oA + a) / span;
+      const nr = pc ? Math.max(1, Math.ceil((2 * hc) / (T.stretch * r.h_m) - 1e-6)) : reps;
+      for (let k = 0; k < nr; k++) {
+        const c0 = -hc + (2 * hc * k) / nr, c1 = -hc + (2 * hc * (k + 1)) / nr;
+        const v0 = r.v0_m / span, v1 = (r.v0_m + r.h_m) / span;
+        const q = [[s.a0, c0, v0], [s.a1, c0, v0], [s.a1, c1, v1], [s.a0, c1, v1]];
+        const pts = q.map(([a, c]) => P(a, c)), uvs = q.map(([a, , v]) => [uOf(a), v]);
+        B.triUv(role, pts[0], pts[1], pts[2], uvs[0], uvs[1], uvs[2], n, T.layer);
+        B.triUv(role, pts[0], pts[2], pts[3], uvs[0], uvs[2], uvs[3], n, T.layer);
+      }
+    }
+    T.stats.faces++;
+  }
+
+  /** The trim mapping of a compartment: its finish's trim layer, the rows, members and pillar pieces. */
+  function trimContext(ctx, comp) {
+    const S = ctx.S, fin = S.finishes[comp.finish];
+    if (!fin || !fin.trims) throw new Error(`shipkit: compartment ${comp.id} has finish ${comp.finish}, with no trims in panels.json`);
+    const Tr = S.trims;
+    return { S, layer: panelLayerName(comp.finish, "trims"), rows: Tr.rows, members: Tr.members, pieces: Tr.pieces, pillar: Tr.pillar, span: S.layers.span_m, stretch: Tr.stretch_max, stats: ctx.stats.trims };
+  }
+
+  /**
+   * A box like Builder.box, its faces on trim strips: the front face takes its member's row, the long
+   * side faces its "sides" row, the end faces "side". A face whose role is not a trim member (a
+   * pressure door's hazard jamb) is drawn as box would. pillar { base_m, capital_m } splits the front
+   * face into base, shaft and capital (a rib, ceilings-and-trims design section 3).
+   */
+  function stripBox(B, T, role, c, u, v, w, hu, hv, hw, faces, roles, front, pillar) {
+    const ax = [u, v, w], hs = [hu, hv, hw], names = ["u", "v", "w"];
+    const long = hs[0] >= hs[1] && hs[0] >= hs[2] ? 0 : hs[1] >= hs[2] ? 1 : 2;
+    for (const f of faces) {
+      const r = (roles && roles[f]) || role, M = T.members[r];
+      const a = names.indexOf(f[1]), s = f[0] === "+" ? 1 : -1;
+      if (!M) {
+        const sub = {};
+        sub[f] = r;
+        B.box(r, c, u, v, w, hu, hv, hw, [f], sub);
+        continue;
+      }
+      const others = [0, 1, 2].filter((k) => k !== a);
+      const al = others.indexOf(long) >= 0 ? long : (hs[others[0]] >= hs[others[1]] ? others[0] : others[1]);
+      const ac = others.find((k) => k !== al);
+      const isEnd = others.indexOf(long) < 0;
+      const rowName = isEnd ? "side" : f === front ? M.face : M.sides;
+      const o = [0, 1, 2].map((k) => c[k] + ax[a][k] * s * hs[a]);
+      const n = ax[a].map((x) => x * s);
+      const L = hs[al];
+      let segs = [{ a0: -L, a1: L }];
+      if (pillar && f === front && !isEnd) {
+        const b = pillar.base_m, t = pillar.capital_m;
+        if (2 * L - b - t >= T.pillar.min_shaft_m) {
+          segs = [{ a0: -L, a1: -L + b, piece: T.pieces.rib_base }, { a0: -L + b, a1: L - t }, { a0: L - t, a1: L, piece: T.pieces.rib_capital }];
+          T.stats.pillars++;
+        }
+      }
+      stripFace(B, r, T, o, ax[al], ax[ac], hs[ac], n, rowName, segs);
+    }
   }
 
   /**
@@ -707,6 +816,171 @@
   }
 
   /**
+   * A cove (the 45 degree panel between a wall and the ceiling) on its strip: corners a, b along the
+   * wall's top and ib, ia along the ceiling's edge. u runs along the wall to the viewer's right, as
+   * the wall's strips do; v from the wall (0) to the ceiling (1), the row repeated whole when the
+   * slope is deeper than stretch_max rows (a tall room's 0.6 m cove).
+   */
+  function coveStrip(B, T, a, b, ib, ia, n) {
+    const M = T.members.cove, row = T.rows[M.face], span = T.span;
+    const len = Math.hypot(b[0] - a[0], b[2] - a[2]), t = [(b[0] - a[0]) / len, 0, (b[2] - a[2]) / len];
+    const slope = Math.hypot(ia[0] - a[0], ia[1] - a[1], ia[2] - a[2]);
+    const reps = Math.max(1, Math.ceil(slope / (T.stretch * row.h_m) - 1e-6));
+    const lerp = (p, q, s) => [p[0] + (q[0] - p[0]) * s, p[1] + (q[1] - p[1]) * s, p[2] + (q[2] - p[2]) * s];
+    const v0 = row.v0_m / span, v1 = (row.v0_m + row.h_m) / span;
+    for (let k = 0; k < reps; k++) {
+      const s0 = k / reps, s1 = (k + 1) / reps;
+      const pts = [lerp(a, ia, s0), lerp(b, ib, s0), lerp(b, ib, s1), lerp(a, ia, s1)];
+      const uvs = pts.map((p, i) => [(p[0] * t[0] + p[2] * t[2]) / span, i < 2 ? v0 : v1]);
+      B.triUv("cove", pts[0], pts[1], pts[2], uvs[0], uvs[1], uvs[2], n, T.layer);
+      B.triUv("cove", pts[0], pts[2], pts[3], uvs[0], uvs[2], uvs[3], n, T.layer);
+    }
+    T.stats.faces++;
+  }
+
+  // ------------------------------------- ceilings and floors (ceilings-and-trims, floor-panels)
+
+  /** A convex polygon [[x, z], ...] clipped to the rectangle x0..x1, z0..z1 (Sutherland-Hodgman). */
+  function clipPolyRect(poly, x0, x1, z0, z1) {
+    let out = poly;
+    const edges = [[0, x0, 1], [0, x1, -1], [1, z0, 1], [1, z1, -1]];
+    for (const [k, v, sgn] of edges) {
+      const inp = out;
+      out = [];
+      for (let i = 0; i < inp.length; i++) {
+        const a = inp[i], b = inp[(i + 1) % inp.length];
+        const da = (a[k] - v) * sgn, db = (b[k] - v) * sgn;
+        if (da >= 0) out.push(a);
+        if ((da >= 0) !== (db >= 0)) {
+          const t = da / (da - db);
+          out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+        }
+      }
+      if (out.length < 3) return [];
+    }
+    return Math.abs(signedArea(out)) > 1e-6 ? out : [];
+  }
+
+  /**
+   * The walkway's bands in a compartment (floor-panels design section 1): [{ a, b ([x, z]), y (the
+   * floor they lie on) }]. A room: from each door (a wall portal of rule.door_kinds) to the centroid
+   * of the brushes on that door's floor. A corridor: down each brush's long axis through its
+   * centroid, and from each door square onto that axis.
+   */
+  function walkwayPaths(L, comp, S) {
+    const out = [];
+    const doors = portalsOf(L, comp.id).filter((p) => Math.abs(p.normal[1]) < 0.5 && S.rule.door_kinds.indexOf(p.kind) >= 0)
+      .map((p) => ({ x: p.center_m[0], z: p.center_m[2], y: p.center_m[1] - p.size_m[1] / 2 }));
+    const onFloor = (y) => comp.brushes.filter((br) => Math.abs(br.y[0] - y) < 0.3);
+    if (comp.kind === "corridor") {
+      for (const br of comp.brushes) {
+        const xs = br.poly.map((p) => p[0]), zs = br.poly.map((p) => p[1]), c = polyCentroid(br.poly);
+        const alongZ = Math.max(...zs) - Math.min(...zs) >= Math.max(...xs) - Math.min(...xs);
+        const a = alongZ ? [c[0], Math.min(...zs)] : [Math.min(...xs), c[1]], b = alongZ ? [c[0], Math.max(...zs)] : [Math.max(...xs), c[1]];
+        out.push({ a, b, y: br.y[0] });
+        for (const d of doors) {
+          if (Math.abs(d.y - br.y[0]) > 0.3 || !insidePoly(br.poly, d.x, d.z, 0.05)) continue;
+          out.push({ a: [d.x, d.z], b: alongZ ? [c[0], d.z] : [d.x, c[1]], y: br.y[0] });
+        }
+      }
+      return out;
+    }
+    for (const d of doors) {
+      const brs = onFloor(d.y);
+      if (!brs.length) continue;
+      let ax = 0, az = 0, aa = 0;
+      for (const br of brs) { const ar = signedArea(br.poly), c = polyCentroid(br.poly); ax += c[0] * ar; az += c[1] * ar; aa += ar; }
+      out.push({ a: [d.x, d.z], b: [ax / aa, az / aa], y: brs[0].y[0] });
+    }
+    return out;
+  }
+
+  /** The shortest distance from the segment a-b to the rectangle x0..x1, z0..z1 (0 when they meet). */
+  function segRectDistance(a, b, x0, x1, z0, z1) {
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(1, Math.ceil(len / 0.02));
+    let best = Infinity;
+    for (let i = 0; i <= n; i++) {
+      const x = a[0] + ((b[0] - a[0]) * i) / n, z = a[1] + ((b[1] - a[1]) * i) / n;
+      const dx = Math.max(0, x0 - x, x - x1), dz = Math.max(0, z0 - z, z - z1);
+      best = Math.min(best, Math.hypot(dx, dz));
+      if (best === 0) break;
+    }
+    return best;
+  }
+
+  /**
+   * Dress one brush's ceiling (kind "ceiling", dir -1) or floor ("floor", dir 1) cell by cell
+   * (ceilings-and-trims design sections 1 and 4, floor-panels design section 1): bays at the frames,
+   * cells.size_m cells centred on x = origin_x_m + k * size_m, each cell a module of its finish's
+   * set with cell-local texture coordinates, drawn into role kind with a layer per vertex. poly is
+   * the surface's outline (a ceiling's is inset by its coves); holes are the floor portals cut in
+   * it ({ rect, f }), zone their collar or rim width; lamps (a ceiling) are the lamps under it,
+   * whose housings make the cells they span lamp_surround; paths (a floor) the walkway bands. A cell
+   * is cropped (and takes plate) when its outline or a hole cuts its central core (cells.core_m
+   * either side of its centre).
+   */
+  function dressFlat(B, comp, br, bi, kind, poly, holes, zone, y, dir, lamps, paths, ctx, D) {
+    const S = ctx.S, set = S.finishes[comp.finish][kind], st = ctx.stats[kind];
+    if (!set) throw new Error(`shipkit: finish ${comp.finish} has no ${kind} in panels.json`);
+    const span = S.layers.span_m, cs = S.cells.size_m, ox = S.cells.origin_x_m, mg = S.cells.margin_m;
+    const fs = D.frames.spacing_m, fo = D.frames.origin_z_m, n = [0, dir, 0], W = S.walkway;
+    const xs = poly.map((p) => p[0]), zs = poly.map((p) => p[1]);
+    const X0 = Math.min(...xs), X1 = Math.max(...xs), Z0 = Math.min(...zs), Z1 = Math.max(...zs);
+    const cut = holes.map((h) => { const r = h.rect; return { u0: r[0][0], u1: r[2][0], v0: r[0][1], v1: r[2][1] }; });
+    const zones = cut.map((h) => ({ u0: h.u0 - zone, u1: h.u1 + zone, v0: h.v0 - zone, v1: h.v1 + zone }));
+    const meets = (h, x0, x1, z0, z1) => h.u0 < x1 - EPS && h.u1 > x0 + EPS && h.v0 < z1 - EPS && h.v1 > z0 + EPS;
+    const myPaths = (paths || []).filter((p) => Math.abs(p.y - br.y[0]) < 0.3);
+    const emit = (x0, x1, z0, z1, cu, cz, layer) => {
+      for (const r of rectMinusHoles({ u0: x0, u1: x1, v0: z0, v1: z1 }, cut)) {
+        const pg = clipPolyRect(poly, r.u0, r.u1, r.v0, r.v1);
+        for (let i = 1; i + 1 < pg.length; i++) {
+          const p = [pg[0], pg[i], pg[i + 1]].map((q) => [q[0], y, q[1]]);
+          const uv = p.map((q) => [0.5 + (q[0] - cu) / span, 0.5 + (q[2] - cz) / span]);
+          B.triUv(kind, p[0], p[1], p[2], uv[0], uv[1], uv[2], n, layer);
+        }
+      }
+    };
+    const count = (m) => { st.cells++; st.modules[m] = (st.modules[m] || 0) + 1; };
+    const shown = new Map();
+    const j0 = Math.floor((Z0 - fo) / fs + EPS), j1 = Math.ceil((Z1 - fo) / fs - EPS) - 1;
+    const k0 = Math.floor((X0 - ox) / cs + 0.5 + EPS), k1 = Math.ceil((X1 - ox) / cs - 0.5 - EPS);
+    const core = S.cells.core_m;
+    for (let j = j0; j <= j1; j++) {
+      const z0 = fo + j * fs, z1 = z0 + fs, zc = (z0 + z1) / 2;
+      // A lamp's cells: every cell its housing spans takes lamp_surround, a light channel that runs
+      // the cell's width, with v centred on the lamp so the housing sits in the channel.
+      const lit = new Map();
+      for (const l of lamps || []) {
+        const lz = l.p[2], hx = l.size[0] / 2 + 0.05;
+        if (lz < z0 - EPS || lz >= z1 - EPS) continue;
+        for (let k = k0; k <= k1; k++) {
+          const cx = ox + k * cs;
+          if (cx + cs / 2 > l.p[0] - hx && cx - cs / 2 < l.p[0] + hx && !lit.has(k)) lit.set(k, lz);
+        }
+      }
+      for (let k = k0; k <= k1; k++) {
+        const cx = ox + k * cs, x0 = cx - cs / 2, x1 = cx + cs / 2;
+        if (!clipPolyRect(poly, x0, x1, z0, z1).length) continue;
+        const fx0 = cx - core, fx1 = cx + core, fz0 = zc - core, fz1 = zc + core;
+        const whole = [[fx0, fz0], [fx1, fz0], [fx1, fz1], [fx0, fz1]].every(([x, z]) => insidePoly(poly, x, z)) && !cut.some((h) => meets(h, fx0, fx1, fz0, fz1));
+        let m, vz = zc, why = "draw";
+        if (lit.has(k)) { m = "lamp_surround"; vz = lit.get(k); why = "lamp"; }
+        else if (zones.some((h) => meets(h, x0, x1, z0, z1))) { m = "plate"; why = "portal"; }
+        else if (kind === "floor" && myPaths.some((p) => segRectDistance(p.a, p.b, x0, x1, z0, z1) <= W.width_m / 2 - W.min_overlap_m + EPS)) { m = "walkway"; st.walkway++; why = "walkway"; }
+        else if (!whole) { m = "plate"; why = "cropped"; }
+        else {
+          const key = `${S.rule.seed}|${comp.id}|${bi}|${kind}|${j}|${k}`;
+          m = drawPanelModule(set, key, [shown.get(`${j}|${k - 1}`), shown.get(`${j - 1}|${k}`)].filter(Boolean));
+        }
+        shown.set(`${j}|${k}`, m);
+        count(m);
+        st.rules[why] = (st.rules[why] || 0) + 1;
+        emit(x0, x1, z0, z1, cx, vz, panelLayerName(comp.finish, m, kind));
+      }
+    }
+  }
+
+  /**
    * Build one compartment's surfaces: the shell (floors, walls, coves, ceilings with every
    * portal opening cut) and, unless opts.detail === false, the generated detail
    * (deck-pipeline section 5a). Returns { parts: { role: { position, normal, uvm } }, lamps,
@@ -715,6 +989,10 @@
    * lamp_housing, lamp.
    * opts.skipKinds: portal kinds not to cut (["bay_door"] keeps a closed bay door's floor);
    * opts.wallFixtures: things on a wall that ribs and baseboards must clear (see below).
+   * opts.panels (true, or panels.json): the panel dressing (wall-panels, ceilings-and-trims,
+   * floor-panels). Flat walls become role "panel"; floor, ceiling, rib, beam, cove, baseboard,
+   * frame and window_frame carry a layer name per vertex (vlayer) and coordinates in layer units;
+   * no runner is drawn; the result gains panels: the counts of bays, cells, modules and pillars.
    */
   function buildCompartment(THREE, L, comp, opts) {
     opts = opts || {};
@@ -727,8 +1005,15 @@
     const FR = D.door_frame, WF = D.window_frame, FP = D.floor_portal, F = D.frames;
     const tallBrush = (br) => br.y[1] - br.y[0] > D.cove.tall_room_m + EPS;
     // Wall panels (openspec/changes/wall-panels), opt-in: opts.panels true (or the panels.json
-    // data) dresses every flat wall bay by bay instead of one tiled "wall" surface.
+    // data) dresses every flat wall bay by bay instead of one tiled "wall" surface, and with it the
+    // ceilings and floors cell by cell and the trims on their strips (ceilings-and-trims,
+    // floor-panels). A page without the option gets exactly the geometry it always had.
     const panelsOn = opts.panels && detail ? panelSetup(opts.panels) : null;
+    const T = panelsOn ? trimContext(panelsOn, comp) : null;
+    // A trim member's box: on its strips with panels, the plain box without.
+    const tbox = (role, c, u, v, w, hu, hv, hw, faces, roles, front, pillar) =>
+      T ? stripBox(B, T, role, c, u, v, w, hu, hv, hw, faces, roles, front, pillar) : B.box(role, c, u, v, w, hu, hv, hw, faces, roles);
+    const lampList = lampsFor(L, comp, D);
 
     // Per brush: cove size by edge (0 where the edge opens to a sibling, a portal reaches the cove, or in a pod).
     const coveOf = new Map();
@@ -796,7 +1081,8 @@
           const lo = u - F.rib_width_m / 2 - F.portal_clear_m, hi = u + F.rib_width_m / 2 + F.portal_clear_m;
           if (clear.some((h) => h.u1 > lo && h.u0 < hi)) continue;
           ribs.push(u);
-          B.box("rib", P3(u, (w.y0 + top) / 2, depth / 2), ax, up, nIn, F.rib_width_m / 2, (top - w.y0) / 2, depth / 2, ["+u", "-u", "+v", "+w"]);
+          const pl = T && (tallBrush(w.brush) ? { base_m: T.pillar.tall_base_m, capital_m: T.pillar.tall_capital_m } : { base_m: T.pillar.base_m, capital_m: T.pillar.capital_m });
+          tbox("rib", P3(u, (w.y0 + top) / 2, depth / 2), ax, up, nIn, F.rib_width_m / 2, (top - w.y0) / 2, depth / 2, ["+u", "-u", "+v", "+w"], null, "+w", pl);
         }
       }
       // Baseboard between ribs and doors.
@@ -804,7 +1090,7 @@
       const cuts = clear.filter((h) => h.v0 < w.y0 + BB.height_m).map((h) => [h.u0, h.u1]).concat(ribs.map((u) => [u - F.rib_width_m / 2, u + F.rib_width_m / 2]));
       for (const [u0, u1] of intervalMinus(0, w.len, cuts)) {
         if (u1 - u0 < 0.05) continue;
-        B.box("baseboard", P3((u0 + u1) / 2, w.y0 + BB.height_m / 2, BB.depth_m / 2), ax, up, nIn, (u1 - u0) / 2, BB.height_m / 2, BB.depth_m / 2, ["+v", "+w", "+u", "-u"]);
+        tbox("baseboard", P3((u0 + u1) / 2, w.y0 + BB.height_m / 2, BB.depth_m / 2), ax, up, nIn, (u1 - u0) / 2, BB.height_m / 2, BB.depth_m / 2, ["+v", "+w", "+u", "-u"], null, "+w");
       }
       // Door and window frames on this side: jambs, lintel, sill, and a status strip.
       for (const h of holes) {
@@ -813,11 +1099,11 @@
         const pv0 = p.center_m[1] - p.size_m[1] / 2, pv1 = Math.min(p.center_m[1] + p.size_m[1] / 2, h.v1);
         const pu0 = h.u0 + f.side, pu1 = h.u1 - f.side, jv0 = h.v0, jv1 = h.v1;
         const inner = { "+u": "frame", "-u": "frame" };
-        B.box(f.role, P3(pu0 - f.side / 2, (jv0 + jv1) / 2, f.proud / 2), ax, up, nIn, f.side / 2, (jv1 - jv0) / 2, f.proud / 2, ["+u", "-u", "+w", "+v"], inner);
-        B.box(f.role, P3(pu1 + f.side / 2, (jv0 + jv1) / 2, f.proud / 2), ax, up, nIn, f.side / 2, (jv1 - jv0) / 2, f.proud / 2, ["+u", "-u", "+w", "+v"], inner);
+        tbox(f.role, P3(pu0 - f.side / 2, (jv0 + jv1) / 2, f.proud / 2), ax, up, nIn, f.side / 2, (jv1 - jv0) / 2, f.proud / 2, ["+u", "-u", "+w", "+v"], inner, "+w");
+        tbox(f.role, P3(pu1 + f.side / 2, (jv0 + jv1) / 2, f.proud / 2), ax, up, nIn, f.side / 2, (jv1 - jv0) / 2, f.proud / 2, ["+u", "-u", "+w", "+v"], inner, "+w");
         const lintelRole = f.role === "frame_hazard" ? "frame" : f.role;
-        if (jv1 - pv1 > EPS) B.box(lintelRole, P3((pu0 + pu1) / 2, (pv1 + jv1) / 2, f.proud / 2), ax, up, nIn, (pu1 - pu0) / 2, (jv1 - pv1) / 2, f.proud / 2, ["-v", "+w", "+v"]);
-        if (pv0 - jv0 > EPS) B.box(f.role, P3((pu0 + pu1) / 2, (jv0 + pv0) / 2, WF.sill_depth_m / 2), ax, up, nIn, (pu1 - pu0) / 2, (pv0 - jv0) / 2, WF.sill_depth_m / 2, ["+v", "+w", "-v"]);
+        if (jv1 - pv1 > EPS) tbox(lintelRole, P3((pu0 + pu1) / 2, (pv1 + jv1) / 2, f.proud / 2), ax, up, nIn, (pu1 - pu0) / 2, (jv1 - pv1) / 2, f.proud / 2, ["-v", "+w", "+v"], null, "+w");
+        if (pv0 - jv0 > EPS) tbox(f.role, P3((pu0 + pu1) / 2, (jv0 + pv0) / 2, WF.sill_depth_m / 2), ax, up, nIn, (pu1 - pu0) / 2, (pv0 - jv0) / 2, WF.sill_depth_m / 2, ["+v", "+w", "-v"], null, "+w");
         if (p.kind !== "window" && jv1 - pv1 > FR.status_strip_m[1]) {
           const sw = Math.min(FR.status_strip_m[0], pu1 - pu0) / 2;
           B.box("status", P3((pu0 + pu1) / 2, (pv1 + jv1) / 2, f.proud + 0.01), ax, up, nIn, sw, FR.status_strip_m[1] / 2, 0.01, ["+w", "-v", "+v", "+u", "-u"]);
@@ -854,13 +1140,15 @@
     }
 
     // ---- per brush: coves, floor, ceiling, and the detail on them
+    const walkPaths = panelsOn ? walkwayPaths(L, comp, panelsOn.S) : null;
     for (const br of comp.brushes) {
       const cvs = coveOf.get(br), inner = insetPoly(br.poly, cvs), npts = br.poly.length;
       for (let i = 0; i < npts; i++) {
         if (!cvs[i]) continue;
         const a = br.poly[i], b = br.poly[(i + 1) % npts], ia = inner[i], ib = inner[(i + 1) % npts];
         const on = outwardNormal(a, b), n = [-on[0] * Math.SQRT1_2, -Math.SQRT1_2, -on[1] * Math.SQRT1_2], y = br.y[1];
-        B.quad("cove", [a[0], y - cvs[i], a[1]], [b[0], y - cvs[i], b[1]], [ib[0], y, ib[1]], [ia[0], y, ia[1]], n);
+        if (T) coveStrip(B, T, [a[0], y - cvs[i], a[1]], [b[0], y - cvs[i], b[1]], [ib[0], y, ib[1]], [ia[0], y, ia[1]], n);
+        else B.quad("cove", [a[0], y - cvs[i], a[1]], [b[0], y - cvs[i], b[1]], [ib[0], y, ib[1]], [ia[0], y, ia[1]], n);
       }
       // Floor portals that open in this brush's floor or ceiling.
       const fHoles = [], cHoles = [];
@@ -872,8 +1160,15 @@
         if (o[1] < 0 && Math.abs(br.y[0] - f.c[1]) < 0.6) fHoles.push({ rect, f, p });
         if (o[1] > 0 && Math.abs(br.y[1] - f.c[1]) < 0.6) cHoles.push({ rect, f, p });
       }
-      B.flat(THREE, "floor", br.poly, fHoles.map((h) => h.rect), br.y[0], 1);
-      B.flat(THREE, "ceiling", inner, cHoles.map((h) => h.rect), br.y[1], -1);
+      if (panelsOn) {
+        const bi = comp.brushes.indexOf(br);
+        const under = lampList.filter((l) => insidePoly(br.poly, l.p[0], l.p[2]) && l.p[1] > br.y[0] && l.p[1] < br.y[1] + EPS);
+        dressFlat(B, comp, br, bi, "floor", br.poly, fHoles, FP.rim_width_m, br.y[0], 1, null, walkPaths, panelsOn, D);
+        dressFlat(B, comp, br, bi, "ceiling", inner, cHoles, FP.collar_width_m, br.y[1], -1, under, null, panelsOn, D);
+      } else {
+        B.flat(THREE, "floor", br.poly, fHoles.map((h) => h.rect), br.y[0], 1);
+        B.flat(THREE, "ceiling", inner, cHoles.map((h) => h.rect), br.y[1], -1);
+      }
       for (const h of fHoles.concat(cHoles)) openings.push({ portal: h.p, floor: true, frame: h.f, brush: br });
       if (!detail) continue;
 
@@ -904,8 +1199,8 @@
           }
         }
       }
-      // A runner down a corridor.
-      if (comp.kind === "corridor") {
+      // A runner down a corridor, unless the floor is dressed: its walkway does the runner's job (floor-panels).
+      if (comp.kind === "corridor" && !panelsOn) {
         const R = D.runner, xs = br.poly.map((p) => p[0]), x0 = Math.min(...xs), x1 = Math.max(...xs);
         const alongZ = z1 - z0 >= x1 - x0;
         const lo = (alongZ ? z0 : x0) + R.end_clear_m, hi = (alongZ ? z1 : x1) - R.end_clear_m, mid = alongZ ? (x0 + x1) / 2 : (z0 + z1) / 2;
@@ -931,14 +1226,14 @@
           for (const h of cHoles) if (Math.abs(z - h.f.c[2]) < h.f.sz / 2 + F.beam_width_m) bc.push([h.f.c[0] - h.f.sx / 2 - FP.collar_width_m, h.f.c[0] + h.f.sx / 2 + FP.collar_width_m]);
           for (const [a, b] of intervalMinus(ch[0], ch[1], bc)) {
             if (b - a < 0.2) continue;
-            B.box("beam", [(a + b) / 2, br.y[1] - d / 2, z], [1, 0, 0], [0, 1, 0], [0, 0, 1], (b - a) / 2, d / 2, F.beam_width_m / 2, ["-v", "+w", "-w", "+u", "-u"]);
+            tbox("beam", [(a + b) / 2, br.y[1] - d / 2, z], [1, 0, 0], [0, 1, 0], [0, 0, 1], (b - a) / 2, d / 2, F.beam_width_m / 2, ["-v", "+w", "-w", "+u", "-u"], null, "-v");
           }
         }
       }
     }
 
     // ---- lamp fixtures: a housing at the ceiling whose underside is the lens
-    const lamps = lampsFor(L, comp, D);
+    const lamps = lampList;
     if (detail) {
       const hh = D.lamps.housing_m / 2;
       for (const l of lamps) {
@@ -1053,8 +1348,9 @@
   }
 
   /**
-   * The materials and the wall panels in one texture array (wall-panels design section 5): the
-   * materials' layers first, then every panel layer in panels.json's numbering, all opts.px wide
+   * The materials and the panels in one texture array (wall-panels design section 5): the
+   * materials' layers first, then every panel layer in panels.json's numbering (walls, strips,
+   * ceilings, floors and trims; panelLayerList), all opts.px wide
    * (128: 64 px per metre; 256: 128 px per metre, with the materials scaled up by nearest
    * neighbour). Resolves to loadMaterials' shape plus panels: { manifest, first, px }. Panel layers
    * have span 1 (their texture coordinates are already in layer units), and surfaceMaterial makes
@@ -1067,11 +1363,7 @@
     const files = d.layers[String(px)];
     if (!files) throw new Error(`shipkit: no ${px} px panel layers in the page (layers.sizes_px)`);
     const pnames = [];
-    for (const fn of Object.keys(S.finishes)) {
-      const F = S.finishes[fn];
-      for (const m of Object.keys(F.modules)) pnames[F.modules[m].layer - first] = [panelLayerName(fn, m), `${fn}_${m}`];
-      pnames[F.strips.layer - first] = [panelLayerName(fn, "strips"), `${fn}_strips`];
-    }
+    for (const r of panelLayerList(S)) pnames[r.layer - first] = [r.name, r.stem];
     const n = first + pnames.length, data = new Uint8Array(px * px * 4 * n);
     for (let i = 0; i < first; i++) putLayer(data, i, px, scaleNearest(await decodePng(md.layers[mats.names[i]]), px));
     for (let j = 0; j < pnames.length; j++) {
@@ -1605,7 +1897,7 @@
     // shells, detail, lamps, materials
     buildCompartment, roomShell, lampsFor, frameStations, loadMaterials, surfaceMaterial, geometryOf, finishOf, compartmentMesh, paintRole, bakeDirect,
     // wall panels (openspec/changes/wall-panels)
-    loadPanels, panelsData, panelBands, panelBays, fnv1a, decodePng,
+    loadPanels, panelsData, panelBands, panelBays, fnv1a, decodePng, panelLayerList, panelLayerName, walkwayPaths,
     Builder, subdivideParts, buildPlatforms,
     // hull, labels, chrome
     hullGeometry, hullHalfWidth, label, budgetHud, titleBlock, registerShots, markReady,

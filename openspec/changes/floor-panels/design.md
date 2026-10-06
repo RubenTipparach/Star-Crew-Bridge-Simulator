@@ -66,13 +66,40 @@ side margins are walkway plate, not a seam.
 
 ### 4. The Pi 5 budget this change spends
 
+Measured 2026-10-06 in the mockup: texture bytes by the build's manifest
+(`assets/textures/panels/manifest.json`), triangles by
+`node tools/mockups/kit_report.mjs --panels` (before the bake's subdivision). Not measured on a Pi.
+
 | Item | Cost | Budget |
 | --- | --- | --- |
-| Texture memory | 16 layers: 5.59 MB at 128 px per metre (1.40 MB at 64). With the materials, walls, ceilings and trims, the array is 23.4 MB at 128 px per metre | 96 MB (24 %) |
-| Triangles | About 2 a floor cell, about 1,200 on the Tern, less the corridors' runners | Each compartment keeps more than 75 % of its ceiling |
+| Texture memory | 15 layers (8 working, 7 crew: crew has no hazard module): 5,242,860 bytes with mips at 128 px per metre (256 px layers; 5.24 MB), 1,310,700 at 64. With the materials, walls, ceilings and trims, the array is 23,068,584 bytes (23.1 MB) at 128 px per metre | 96 MB (24 %) |
+| Triangles | Floors 168 to 1,650 on the Tern (+1,482) over 795 cells, 2 a whole cell and up to 6 a cell the outline or a hole cuts; the corridors' runners give back 70: +1,412 | Under each compartment's ceiling; with walls, ceilings and trims dressed engineering is the fullest, 6,074 of 8,000 (`ceilings-and-trims` design 7) |
 | Draw calls | None | |
 
-Measured numbers replace these when the build lands.
+### 5. How the prototype reads this design
+
+Built 2026-10-06 with `ceilings-and-trims` (the same build, data file and kit option):
+
+- **Cells** are the ceiling's: centred on x = 0, in the bays at the frames, cell-local coordinates.
+  The rule order is: a portal's cell (its hole and its rim) plate; walkway; a cell whose core (0.6 m
+  either side of its centre) the outline or a hole cuts, plate; otherwise drawn. Measured on the
+  Tern: 139 walkway cells, 83 at a portal, 212 cropped, 361 drawn.
+- **The walkway** is a band 0.9 m wide that overlaps a cell by at least 0.1 m (`walkway`). In a room
+  it runs from each door (a wall portal of `rule.door_kinds`) to the area-weighted centroid of the
+  brushes on that door's floor. In a corridor it runs down each brush's long axis through its
+  centroid, and each door joins it square to the axis, so a side door does not draw a diagonal down
+  the corridor.
+- **The walkway module tiles in both directions**: its pattern repeats every 2 m and its wear noise is
+  periodic in x and y (4D noise on a torus), so walkway cells read as one path. It is lighter than
+  the deck (`walk` colour). Crew walkways have raised dashes, working ones five-bar tread plate.
+- **Working plate is diamond plate**, a lattice of lugs that repeats every 2 m; crew plate is plain
+  with countersunk bolts. Every module but the walkway cuts one seam groove on its right and top
+  edges, so each joint between two cells is one groove.
+- **Crew grates weigh 1, not 2**: at 2 the bridge's floor read as a field of grates in the first
+  shots. Weights are data (Risks). Crew plate weighs 4, taking the hazard module's share.
+- **The runner** is not drawn where floors are dressed; pages without the option keep it.
+- **Fixtures keep their own floors**: a dais, a mezzanine or a catwalk a page adds keeps its tiled
+  material (the deck plan draws them in roles of their own), platforms being a non-goal.
 
 ## Risks / Trade-offs
 
