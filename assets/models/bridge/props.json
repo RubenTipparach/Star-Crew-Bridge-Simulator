@@ -156,16 +156,16 @@
         "union fins (2)",
         "difference screens (5)"
       ],
-      "sha256": "996249c75e41728f4d32547ce4d89cd1f808e509fb2e845c6e06711feaa8a856",
+      "sha256": "97083022c75dbba868dda3bec768f9088b5b291405f4794934b7e99b3d542c91",
       "atlas": {
         "file": "atlas/wall_bank_core.png",
         "px": 256,
-        "px_per_m": 67.38,
-        "charts": 19,
-        "cover": 0.541,
-        "glow": 0.026,
-        "sha256": "4fe16afc2af2cbf1592ebd3c23d8b59cb4ab8cdc9f916271e19fcd3b3a1e4990",
-        "bytes": 21081
+        "px_per_m": 65.77,
+        "charts": 22,
+        "cover": 0.515,
+        "glow": 0.0424,
+        "sha256": "5da5a5afa3f4debed5d68bfc7cd6fe538d1e83bf3a960c6703778cf74ca2749e",
+        "bytes": 19615
       }
     },
     "wall_bank_core_engineering": {
@@ -312,16 +312,16 @@
         "union breakers (5)",
         "difference screens (5)"
       ],
-      "sha256": "c560b8fbd837d771c37303351124c987f6ff425dde7ae11c8e207d17f2235123",
+      "sha256": "74318b7a064c204217b00edcd277dea3faa7e782710ad499adea30247764dfb5",
       "atlas": {
         "file": "atlas/wall_bank_core_engineering.png",
         "px": 256,
-        "px_per_m": 67.39,
-        "charts": 24,
-        "cover": 0.542,
-        "glow": 0.0252,
-        "sha256": "8e802a388720ad114f5bb6070b84af618122171cae05e8a59ec367237aa87ff0",
-        "bytes": 21034
+        "px_per_m": 66.23,
+        "charts": 27,
+        "cover": 0.524,
+        "glow": 0.0412,
+        "sha256": "bed12319f288dc4fbd1b82003554ab060ffad764b10b52555b93832f85fd7abf",
+        "bytes": 13631
       }
     },
     "wall_bank_core_science": {
@@ -468,16 +468,16 @@
         "union dials (4)",
         "difference screens (5)"
       ],
-      "sha256": "12dbb6fe582e0d8b5b50fbafac31ef0c39796c95b5cff0d84dd823b5fae1fa49",
+      "sha256": "378eb4627ad0ea380961b42180ff7063b97a86cdaf8677d0cf4bf193422b2eae",
       "atlas": {
         "file": "atlas/wall_bank_core_science.png",
         "px": 256,
-        "px_per_m": 67.23,
-        "charts": 23,
-        "cover": 0.541,
-        "glow": 0.0259,
-        "sha256": "28aa4ca38ceecc11a52441c95d2c2d24e4b5a3477dcd657e3bb80933c23b96f0",
-        "bytes": 19430
+        "px_per_m": 65.71,
+        "charts": 27,
+        "cover": 0.517,
+        "glow": 0.0383,
+        "sha256": "281cccb07c2f15cec26f8ea3ea51e8f7c546dcbf104bae96d0372eb0bc996681",
+        "bytes": 17760
       }
     },
     "wall_bank": {
@@ -616,16 +616,16 @@
         "union fins (2)",
         "difference screens (5)"
       ],
-      "sha256": "8ee1100b8a3ed9ae8b777e0d5c799b6147817fbb885201992586aeae4b478fd8",
+      "sha256": "6d66a083bd807ed4e9b5fec7e142672f6624ce65c1fc34f1018285c4f2dd5981",
       "atlas": {
         "file": "atlas/wall_bank.png",
         "px": 256,
         "px_per_m": 70.6,
-        "charts": 19,
+        "charts": 21,
         "cover": 0.534,
-        "glow": 0.0264,
-        "sha256": "64834417e8b188670dc9e4c576bf091ec99c345f49d4ddb118f47d3ab21cfe6c",
-        "bytes": 17158
+        "glow": 0.0382,
+        "sha256": "dddfa4a50f4721c8f70d8d1cc4144cae3afd5bcdd85b5fc5e66ca6b95cc96bbe",
+        "bytes": 16629
       }
     },
     "wall_bank_comms": {
@@ -772,16 +772,16 @@
         "union sliders (5)",
         "difference screens (5)"
       ],
-      "sha256": "df1d1da9be7f40dcf280baf8cec53250fd020dc72bb8dbcf935f387b3a16d2dd",
+      "sha256": "36437f646601ae3245bba2b074da2c9ca9e0d222d892bad823a6fbb6c881ea82",
       "atlas": {
         "file": "atlas/wall_bank_comms.png",
         "px": 256,
         "px_per_m": 70.24,
-        "charts": 24,
+        "charts": 26,
         "cover": 0.531,
-        "glow": 0.0255,
-        "sha256": "94cdef4ad8c9c4d16e407a4290c9f046903ac2f228ab4b81016a3bef5add6c05",
-        "bytes": 16635
+        "glow": 0.033,
+        "sha256": "898fca47e562b22b5b9e437534f73b31691667b1a9c419152aee6010d02a64de",
+        "bytes": 17334
       }
     },
     "wall_bank_flight_ops": {
@@ -929,16 +929,16 @@
         "union levers (5)",
         "difference screens (5)"
       ],
-      "sha256": "d1a1546208f486d9ad78fb97f22ce2f7b702809737ab1384bd337ae0ed3931ac",
+      "sha256": "4b1b915e2c6c5a54328a74f03fc709a7e39d499377325948e8db8851c9b27456",
       "atlas": {
         "file": "atlas/wall_bank_flight_ops.png",
         "px": 256,
         "px_per_m": 70.43,
-        "charts": 24,
+        "charts": 26,
         "cover": 0.534,
-        "glow": 0.0249,
-        "sha256": "b2016891d7ad698e0c4cd7d333fd6c3465f68cf087dd44cc9d2b9dc2f6f445b4",
-        "bytes": 11715
+        "glow": 0.0362,
+        "sha256": "710efc005f6134a817c9419908c3540527e581cb41d8c3cf96f95c2adb87c57c",
+        "bytes": 11325
       }
     },
     "wall_bank_double": {
@@ -1168,16 +1168,16 @@
         "union fins (2)",
         "difference screens (10)"
       ],
-      "sha256": "6c9012d0c2145c320451e25b9330a658d48f2e627c3861f303fb0c468733eb5c",
+      "sha256": "ac3c369076571afb19cc09dd0b6b181b7f0fa0f0f21d5b1ae3cfd87b8e7cbfdc",
       "atlas": {
         "file": "atlas/wall_bank_double.png",
         "px": 256,
-        "px_per_m": 56.82,
-        "charts": 24,
-        "cover": 0.515,
-        "glow": 0.0378,
-        "sha256": "7402702b26a918f5315e393fd2aaaeecaf9debb4a426a0da66124d4ed7f156a4",
-        "bytes": 18497
+        "px_per_m": 54.19,
+        "charts": 27,
+        "cover": 0.469,
+        "glow": 0.05,
+        "sha256": "18dc1e9f1173360a10f7ef9c649250eff87b0444784ed9bd0b2542e53001bdb1",
+        "bytes": 22266
       }
     },
     "free_console": {
@@ -1622,16 +1622,16 @@
         "union controls (12)",
         "difference screens (3)"
       ],
-      "sha256": "ca7a9c73615383f643a5c1137a7aae3fe21070452770b9061d2dfcdb19e08848",
+      "sha256": "a89c8342cd945584978214458d7890bdd8cb425c7ab01e95e0478e32920ee6e9",
       "atlas": {
         "file": "atlas/helm_arc.png",
         "px": 256,
-        "px_per_m": 74.86,
-        "charts": 27,
-        "cover": 0.626,
-        "glow": 0.0426,
-        "sha256": "9c6f771ecf4c33a7949d8789e4f85d4192900d05d9ac26250fc9287bf344dd73",
-        "bytes": 12810
+        "px_per_m": 75.51,
+        "charts": 34,
+        "cover": 0.637,
+        "glow": 0.0506,
+        "sha256": "64ee1198631f4166ab913230ae63f330737a23ff98220692253c83f92903227b",
+        "bytes": 17050
       }
     },
     "captain_chair": {

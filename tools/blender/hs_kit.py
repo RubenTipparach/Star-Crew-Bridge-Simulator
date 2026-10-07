@@ -972,7 +972,7 @@ def _unfold(groups, bm, max_len):
         if len(e.link_faces) != 2:
             continue
         a, b = owner[e.link_faces[0].index], owner[e.link_faces[1].index]
-        if a == b or groups[a]["fixed"] is not None or groups[b]["fixed"] is not None:
+        if a == b or groups[a]["fixed"] is not None or groups[b]["fixed"] is not None or groups[a]["lamp"] or groups[b]["lamp"]:
             continue
         cand.append((-round(e.calc_length(), 6), min(a, b), max(a, b), e.verts[0].index, e.verts[1].index))
     cand.sort()
@@ -988,8 +988,8 @@ def _unfold(groups, bm, max_len):
 
     def tri_area(t):
         return abs((t[1][0] - t[0][0]) * (t[2][1] - t[0][1]) - (t[1][1] - t[0][1]) * (t[2][0] - t[0][0])) / 2
-    charts = {i: {"faces": list(g["faces"]), "pos": dict(g["pos"]), "tris": [list(t) for t in g["tris"]], "fixed": g["fixed"]}
-              for i, g in enumerate(groups)}
+    charts = {i: {"faces": list(g["faces"]), "pos": dict(g["pos"]), "tris": [list(t) for t in g["tris"]], "fixed": g["fixed"],
+                  "lamp": g["lamp"]} for i, g in enumerate(groups)}
     for ch in charts.values():
         ch["rect"] = rect(ch["pos"])
         ch["area"] = sum(tri_area(t) for t in ch["tris"])
@@ -1045,8 +1045,8 @@ def atlas_uv_at(p, A, side):
     """Add the atlas UV map (ATLAS_UV, exported as TEXCOORD_1) to a finished prop: each planar chart
     laid flat in its smallest rectangle's frame, rasterized at a trial texel density with margin_px
     round it and packed by its shape (_raster_pack), at the highest density up to max_px_per_m that
-    fits atlas.px. A chart nobody sees (faces down on the floor, or a wall prop's back on the wall: the
-    deck compiler drops them) gets 2 px. Returns the facts the manifest records: px_per_m, charts and
+    fits the square. A chart nobody sees (faces down on the floor, or a wall prop's back on the wall: the
+    deck compiler drops them) gets 2 px; a lamp's chart (light_panel faces) at least 5 px across. Returns the facts the manifest records: px_per_m, charts and
     the share of the atlas the charts' faces cover."""
     margin, top = int(A["atlas"]["margin_px"]), float(A["atlas"]["max_px_per_m"])
     ob = p.body
@@ -1068,7 +1068,7 @@ def atlas_uv_at(p, A, side):
         unseen = ((n.y < -0.999 and max(v.y for v in q) < 0.001)
                   or (p.wall and n.z < -0.999 and max(v.z for v in q) < 0.001))
         groups.append({"faces": [f.index for f in faces], "pos": pts, "tris": [[pts[v.index] for v in f.verts] for f in faces],
-                       "fixed": unseen})
+                       "fixed": unseen, "lamp": all(ROLES[f.material_index] == "light_panel" for f in faces)})
     for g in groups:
         g["fixed"] = True if g["fixed"] else None
     charts = []
@@ -1080,12 +1080,20 @@ def atlas_uv_at(p, A, side):
         charts.append({"faces": g["faces"], "loc": loc,
                        "area": sum(bm.faces[fi].calc_area() for fi in g["faces"]),
                        "tris": [[loc[v.index] for v in bm.faces[fi].verts] for fi in g["faces"]],
-                       "fixed": 2.0 / max(w, h, 1e-6) if g["fixed"] else None})
+                       "fixed": 2.0 / max(w, h, 1e-6) if g["fixed"] else None,
+                       "short": min(w, h) if g["lamp"] else None, "long": max(w, h)})
     bm.free()
     area = sum(ch["area"] for ch in charts if ch["fixed"] is None)
 
     def scale(ch, ppm):
-        return ch["fixed"] if ch["fixed"] is not None else ppm
+        """A chart's texel density: unseen faces 2 px; a lamp (its faces all light_panel) at least
+        5 px across its short side, so a thin lamp strip still glows, but no longer than 0.45 of the
+        square; the rest ppm."""
+        if ch["fixed"] is not None:
+            return ch["fixed"]
+        if ch["short"] is not None:
+            return max(ppm, min(8.0 * ppm, 5.0 / max(ch["short"], 1e-4), 0.45 * side / max(ch["long"], 1e-4)))
+        return ppm
 
     def attempt(ppm):
         return _raster_pack([_chart_mask(ch["tris"], scale(ch, ppm), margin) for ch in charts], side)

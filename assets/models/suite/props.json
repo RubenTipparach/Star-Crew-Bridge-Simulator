@@ -199,16 +199,16 @@
         "chamfer bezel_edges (3 edges, 15 mm)",
         "difference screens (3)"
       ],
-      "sha256": "bf6731fe1c68e479b1b32591089b86e0e594b75c8bd783a8fcbae0e0521fc4d5",
+      "sha256": "0eeae8c23dff8baacc4ca59b76fabcd7afec883d352f266e43afa293c804e940",
       "atlas": {
         "file": "atlas/wall_screen.png",
         "px": 256,
-        "px_per_m": 58.52,
-        "charts": 10,
-        "cover": 0.458,
-        "glow": 0.0191,
-        "sha256": "2d7cb047c0283ae9139555e21d663690c5731b920d7c84fd7d9aa01b11fa4497",
-        "bytes": 10285
+        "px_per_m": 59.28,
+        "charts": 11,
+        "cover": 0.47,
+        "glow": 0.0302,
+        "sha256": "72fb0f233ab4b647ec02b94dc109b7e3d6e058875cfe41282311859efab55e49",
+        "bytes": 10038
       }
     },
     "desk": {
@@ -492,16 +492,16 @@
         "union bed (5)",
         "difference recesses (5)"
       ],
-      "sha256": "9c17762ae3d5922978637f17f1e416312b8a1df601c34b198e44619fa1b7b0ce",
+      "sha256": "1dd623c669e827b9fb9553f3d322b49fae59639eb53defd7986862a54a1d9b5f",
       "atlas": {
         "file": "atlas/bed.png",
         "px": 256,
         "px_per_m": 80.12,
-        "charts": 12,
+        "charts": 14,
         "cover": 0.697,
-        "glow": 0.0136,
-        "sha256": "6d74c1ac379675f5e5bcbb04e79359fa0b7163d71a666967800b787957e01dfa",
-        "bytes": 17217
+        "glow": 0.0193,
+        "sha256": "3a71bfe0287d02b48260c70b18e9d8ac862e8054fcbdaa037b2f5815f22e17cd",
+        "bytes": 17286
       }
     },
     "wardrobe": {
@@ -689,16 +689,16 @@
         "union taps (2)",
         "difference doors (2)"
       ],
-      "sha256": "312f2153a2c91d783d0e671f76af9408bdf0b03c222b43dd8faf8d2c2d15effe",
+      "sha256": "ab2c1f1c370773fbee7d186a2ffdd92c16af6a6861c506784b37353bbc783ab4",
       "atlas": {
         "file": "atlas/wash_counter.png",
         "px": 256,
-        "px_per_m": 73.13,
-        "charts": 20,
-        "cover": 0.643,
-        "glow": 0.0477,
-        "sha256": "06c32e6e8c2ea79114ce92cef364535407a15b3c60e43369fa740baebc320b41",
-        "bytes": 14817
+        "px_per_m": 70.72,
+        "charts": 27,
+        "cover": 0.601,
+        "glow": 0.0983,
+        "sha256": "bcda4f868ee42417211dea6af09c51037fbba746dcb77250a3de5a10982e1094",
+        "bytes": 15015
       }
     },
     "shower_stall": {
@@ -739,16 +739,16 @@
         "union fittings (3)",
         "difference light (1)"
       ],
-      "sha256": "ddc2b5a46e07f7095c1231469d80731017ef0190bd716a86a7d06e2e6b1ee013",
+      "sha256": "01128a94d549588b3bbe5f2ee0974c695e6c1934e6f8ee69c680b75432e3fcc4",
       "atlas": {
         "file": "atlas/shower_stall.png",
         "px": 256,
         "px_per_m": 42.23,
-        "charts": 9,
+        "charts": 11,
         "cover": 0.325,
-        "glow": 0.0013,
-        "sha256": "7d35d649771b61d6669ebfa3bd9e0487ae386b7a9abac3d9a40ae65277123ee7",
-        "bytes": 10936
+        "glow": 0.0166,
+        "sha256": "e06409d1f8383985875acab2480f9716281425b47c0e8081945ffafef407d4a6",
+        "bytes": 13498
       }
     },
     "locker_bank": {
@@ -834,16 +834,16 @@
         "difference tray_channel (1)",
         "union tray (1)"
       ],
-      "sha256": "d7e25e8b1e11295a78f5ca5799ed3c1b9faced63b9d028d74db5efc5b8f2f4ab",
+      "sha256": "1ec779e296af23ca28566d71ff61d940b3b052372fbc3aec384f557f5e544b48",
       "atlas": {
         "file": "atlas/server_rack.png",
         "px": 256,
-        "px_per_m": 71.17,
-        "charts": 12,
-        "cover": 0.692,
-        "glow": 0.0154,
-        "sha256": "13a7c35e9083d01b623c04261c2df6eebcbffc3af355d7904f8cca5c32b8cd56",
-        "bytes": 11140
+        "px_per_m": 70.67,
+        "charts": 13,
+        "cover": 0.683,
+        "glow": 0.0211,
+        "sha256": "d6b0ed3e41ff11cf0754e0b8707c458625ba12c4dc976efca0d823e2e64136cd",
+        "bytes": 9736
       }
     },
     "workbench": {
@@ -882,16 +882,16 @@
         "chamfer front_edge (1 edges, 15 mm)",
         "union bench (11)"
       ],
-      "sha256": "2dbda160f75a73432a5eb50ddbf180bf7aaa4c1589eb52f3cb3f4e6048798864",
+      "sha256": "1a772b4a1cdfe4cc611f81bf0bd09e790bfcbeb0ca41506193640c50507f8fbc",
       "atlas": {
         "file": "atlas/workbench.png",
         "px": 256,
         "px_per_m": 75.75,
-        "charts": 18,
+        "charts": 19,
         "cover": 0.816,
-        "glow": 0.017,
-        "sha256": "7720ce980a15d776dd83b9a698aa57fcd6b0c1eacd7fa058dc26a44abe6a1865",
-        "bytes": 14960
+        "glow": 0.0213,
+        "sha256": "39a7543e456614dc8d98a836bd5c486d4909c85043e9ec2dfd61150ba1ab8ac0",
+        "bytes": 14321
       }
     }
   }

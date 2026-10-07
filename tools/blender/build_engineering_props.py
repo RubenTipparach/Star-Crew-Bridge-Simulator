@@ -186,6 +186,14 @@ def port(p, name, point, d, dia, body=0.25, role="trim", body_role=None, sides=8
     return [nozzle, flange(p, name, point, d, dia, rim, t, role, sides)]
 
 
+def nozzle_port(p, name, point, d, dia, body, role="trim", body_role="bulkhead"):
+    """port with a six-sided nozzle (apothem dia / 2) inside the eight-sided flange: where a nozzle meets a
+    flange's back and a vessel's flat it costs fewer triangles than an eight-sided one, and reads the same."""
+    M = at(point, d)
+    nozzle = turned(p, f"{name}_nozzle", M, [(dia / 2, -body), (dia / 2, -0.012)], body_role, 6)
+    return [nozzle, flange(p, name, point, d, dia, role=role)]
+
+
 def lift(objs, dy):
     """Raise pieces by dy (the crane and the valves are designed about their own datum, then stood on
     the floor)."""
@@ -372,7 +380,7 @@ def plain(D, where):
 def heat_exchanger():
     """The coolant loop's heat exchanger, after a reactor pool's steam generators: a vertical vessel
     1.5 m across in silver lagging on a skirt with four gussets and a hazard-striped base ring, a
-    domed top with a lifting lug, out of which a gooseneck 0.45 m across rises, crests at 4.64 m and
+    domed top with a lifting lug, out of which a gooseneck 0.45 m across rises, crests near 4.65 m and
     comes down to its flange (hot_in, toward +Z). The cold leg leaves the lower shell at the back
     (cold_out), the secondary loop to the hull radiators the sides (sec_in low on -X, sec_out high on
     +X). Two bolted manways on the front, instrument taps with gauges front right, and a caged ladder
@@ -381,68 +389,61 @@ def heat_exchanger():
                                "the secondary loop to the hull radiators at the sides (thermal)", FREE)
     p.finish_of = {"bulkhead": "lagging"}
     base = p.box("base_ring", (-0.92, 0.0, -0.92), (0.92, 0.12, 0.92), {"+y": "machinery", "*": "hazard"})
-    p.cut(base, "base_well", [p.box("base_well_cut", (-0.72, -0.05, -0.72), (0.72, 0.17, 0.72), "machinery")])
-    p.chamfer(base, "base_edges", 0.015, lambda m, d, n1, n2: near(m.y, 0.12) and max(abs(m.x), abs(m.z)) > 0.9)
-    parts = [revolve(p, "skirt", [(0.56, 0.0), (0.56, 0.60)], "machinery", "y", (0.0, 0.0), sides=12),
-             revolve(p, "vessel", [(0.40, 0.45), (0.75, 0.68), (0.75, 3.40), (0.63, 3.68), (0.34, 3.84)], "bulkhead", "y",
-                     (0.0, 0.0), sides=12, caps=("machinery", "machinery"))]
+    parts = [revolve(p, "skirt", [(0.42, 0.0), (0.42, 0.50)], "machinery", "y", (0.0, 0.0), sides=12),
+             revolve(p, "vessel", [(0.40, 0.45), (0.75, 0.68), (0.75, 3.40), (0.20, 3.86)], "bulkhead", "y", (0.0, 0.0), sides=12,
+                     caps=("machinery", "machinery"))]
     for k, a in enumerate((0, 90, 180, 270)):
         m = frame((0.0, 0.0, 0.0), 0.0, a)
         parts.append(p.hull(f"gusset_{k}", in_frame(m, [(s, y, r) for s in (-0.04, 0.04) for r, y in
-                                                        ((0.50, 0.10), (0.86, 0.10), (0.86, 0.18), (0.60, 0.52), (0.50, 0.52))]),
+                                                        ((0.36, 0.10), (0.86, 0.10), (0.36, 0.48))]),
                             "machinery"))
-    parts.append(pipe(p, "gooseneck", [(0.0, 3.80, 0.0), (0.0, 4.18, 0.0), (0.0, 4.40, 0.22), (0.0, 4.40, 0.40),
-                                       (0.0, 4.25, 0.66), (0.0, 4.25, 1.02)], 0.225, "bulkhead", sides=8))
+    parts.append(pipe(p, "gooseneck", [(0.0, 3.80, 0.0), (0.0, 4.20, 0.0), (0.0, 4.40, 0.20), (0.0, 4.25, 0.55), (0.0, 4.25, 1.02)],
+                      0.225, "bulkhead", sides=8))
     parts.append(flange(p, "hot_in", (0.0, 4.25, 1.05), (0, 0, 1), 0.45))
-    parts += port(p, "cold_out", (0.0, 0.75, -0.95), (0, 0, -1), 0.45, body=0.60, body_role="bulkhead")
-    parts += port(p, "sec_out", (0.95, 3.2, 0.0), (1, 0, 0), 0.30, body=0.40, body_role="bulkhead")
-    parts += port(p, "sec_in", (-0.95, 1.6, 0.0), (-1, 0, 0), 0.30, body=0.40, body_role="bulkhead")
+    parts += nozzle_port(p, "cold_out", (0.0, 0.75, -0.95), (0, 0, -1), 0.45, 0.60)
+    parts += nozzle_port(p, "sec_out", (0.95, 3.2, 0.0), (1, 0, 0), 0.30, 0.40)
+    parts += nozzle_port(p, "sec_in", (-0.95, 1.6, 0.0), (-1, 0, 0), 0.30, 0.40)
     for i, y in enumerate((1.25, 2.75)):
-        parts.append(rod(p, f"manway_{i}", "z", (0.0, y), 0.60, 0.86, 0.27, "machinery", sides=8))
-    mt = frame((0.0, 0.0, 0.0), 0.0, 60.0)
-    for i, y in enumerate((1.00, 2.45)):
-        parts.append(p.box(f"tap_{i}", (-0.02, y - 0.02, 0.70), (0.02, y + 0.02, 0.84), "trim", m=mt))
-        parts.append(p.box(f"tap_gauge_{i}", (-0.065, y - 0.065, 0.83), (0.065, y + 0.065, 0.87), "trim", m=mt))
-    parts.append(p.box("lifting_lug", (-0.31, 3.80, -0.07), (-0.27, 3.97, 0.07), "machinery"))
+        parts.append(rod(p, f"manway_{i}", "z", (0.0, y), 0.60, 0.86, 0.26, "machinery", sides=6))
+    parts.append(p.box("lifting_lug", (-0.03, 3.50, -0.66), (0.03, 3.72, -0.40), "machinery"))
     # the caged ladder, in a frame on the front-left diagonal (local z out from the axis)
     ml = frame((0.0, 0.0, 0.0), 0.0, 315.0)
     for s in (-1, 1):
         parts.append(p.box(f"rail_{s:+d}", (s * 0.19 - 0.02, 0.05, 0.84), (s * 0.19 + 0.02, 3.62, 0.88), "trim", m=ml))
-        for j, y in enumerate((1.85, 3.50)):
-            parts.append(p.box(f"standoff_{s:+d}_{j}", (s * 0.19 - 0.018, y, 0.62), (s * 0.19 + 0.018, y + 0.06, 0.86), "trim", m=ml))
-    for i in range(9):
-        y = 0.40 + 0.35 * i
+        parts.append(p.box(f"standoff_{s:+d}", (s * 0.19 - 0.018, 3.50, 0.62), (s * 0.19 + 0.018, 3.56, 0.86), "trim", m=ml))
+    for i in range(6):
+        y = 0.45 + 0.52 * i
         parts.append(p.hull(f"rung_{i}", in_frame(ml, [(x, yy, z) for x in (-0.18, 0.18)
                                                       for yy, z in ((y - 0.016, 0.850), (y + 0.016, 0.850), (y, 0.874))]), "trim"))
-    for i, y in enumerate((2.30, 2.95, 3.58)):
-        parts.append(pipe(p, f"cage_hoop_{i}", in_frame(ml, [(-0.19, y, 0.86), (-0.25, y, 1.05), (0.25, y, 1.05), (0.19, y, 0.86)]),
-                          0.012, "trim", sides=4))
-    for i, x in enumerate((-0.21, 0.0, 0.21)):
-        parts.append(p.box(f"cage_strap_{i}", (x - 0.01, 2.28, 1.03), (x + 0.01, 3.60, 1.07), "trim", m=ml))
+    for i, y in enumerate((2.40, 3.40)):
+        parts.append(pipe(p, f"cage_hoop_{i}", in_frame(ml, [(-0.19, y, 0.86), (-0.24, y, 1.03), (0.24, y, 1.03), (0.19, y, 0.86)]),
+                          0.016, "trim", sides=3))
     p.union(base, "vessel_nozzles_ladder", parts)
     p.body = base
     p.operators.append([0.0, 0.0, 1.35])
 
     def decor(D):
-        skip = [(0, 0.95, 1.55), (0, 2.45, 3.05), (90, 2.95, 3.45), (270, 1.35, 1.85), (180, 0.45, 1.05), (60, 0.92, 1.08),
-                (60, 2.37, 2.53), (300, 1.80, 1.96), (330, 1.80, 1.96)]
-        lagging(D, 12, 0.75, 0.68, 3.40, bands=(0.95, 2.05, 3.22), laps=(1.50, 2.62), skip=skip)
+        skip = [(0, 0.95, 1.55), (0, 2.45, 3.05), (90, 2.95, 3.45), (270, 1.35, 1.85), (180, 0.45, 1.05), (60, 1.88, 2.12)]
+        lagging(D, 12, 0.75, 0.68, 3.40, bands=(0.95, 2.20, 3.22), laps=(1.50, 2.62), skip=skip)
         f30 = facets(12, 0.75)[1][1]
         label(D, f30, 0.0, 2.42, "HX-1", 0.085)
         label(D, f30, 0.0, 2.30, "PRIMARY", 0.032)
         f0 = facets(12, 0.75)[0][1]
         for i, y in enumerate((1.25, 2.75)):
             mc = at((0.0, y, 0.86))
-            bolt_ring(D, mc, 0.235, 10, size=0.013)
+            bolt_ring(D, mc, 0.20, 10, size=0.013)
             D.box(mc, -0.10, -0.03, 0.10, 0.03, -0.002, 0.012, "steel", inset=0.006)      # the cover's lifting handle
             D.text(mc, "MANWAY" if i == 0 else "MANWAY 2", 0.0, -0.13, 0.03, "stencil_dark")
         label(D, f0, 0.0, 2.10, "HOT LEG ABOVE", 0.028)
-        for y in (1.00, 2.45):
-            gauge(D, frame((0.0, 0.0, 0.0), 0.0, 60.0) @ Matrix.Translation((0.0, y, 0.87)), 0.0, 0.0, 0.055, needle_deg=20 + 30 * y)
+        mg = facets(12, 0.75)[2][1]
+        D.box(mg, -0.07, 1.93, 0.07, 2.07, -0.002, 0.012, "steel", inset=0.004)
+        gauge(D, mg @ Matrix.Translation((0.0, 0.0, 0.012)), 0.0, 2.0, 0.055, needle_deg=40)
         flange_bolts(D, p)
         for sx in (-1, 1):
             for sz in (-1, 1):
                 D.disc(frame((sx * 0.82, 0.12, sz * 0.82), 90.0), 0.0, 0.0, 0.022, -0.002, 0.012, "bolt", sides=6, inset=0.004)
+        mtop = frame((0.0, 0.12, 0.0), 90.0)
+        D.box(mtop, -0.88, 0.80, 0.88, 0.88, -0.002, 0.003, "dark", reserve=False)
     p.decor.append(decor)
     return p
 
@@ -455,23 +456,22 @@ def pressurizer():
     p = prop("pressurizer", "The coolant loop's pressurizer: a steam bubble over the coolant holds the loop's pressure "
                             "(thermal)", FREE)
     p.finish_of = {"bulkhead": "lagging"}
-    skirt = revolve(p, "skirt", [(0.40, 0.0), (0.40, 0.72)], "machinery", "y", (0.0, 0.0), sides=12)
+    skirt = revolve(p, "skirt", [(0.40, 0.0), (0.40, 0.82)], "machinery", "y", (0.0, 0.0), sides=12)
     p.cut(skirt, "heater_openings", [p.box(f"opening_{s:+d}", (min(s * 0.22, s * 0.50), 0.10, -0.15),
                                            (max(s * 0.22, s * 0.50), 0.50, 0.15), "machinery") for s in (-1, 1)])
     parts = [rod(p, f"heater_{s:+d}_{i}", "y", (s * 0.31, z), 0.24, 0.52, 0.016, "trim", sides=4)
-             for s in (-1, 1) for i, z in enumerate((-0.08, 0.0, 0.08))]
-    parts.append(revolve(p, "vessel", [(0.20, 0.64), (0.42, 0.70), (0.50, 0.90), (0.50, 3.62), (0.42, 3.82), (0.20, 3.90)],
-                         "bulkhead", "y", (0.0, 0.0), sides=12))
+             for s in (-1, 1) for i, z in enumerate((-0.06, 0.06))]
+    parts.append(revolve(p, "vessel", [(0.25, 0.64), (0.50, 0.90), (0.50, 3.62), (0.25, 3.88)], "bulkhead", "y", (0.0, 0.0), sides=12))
     for s in (-1, 1):
         x = s * 0.17
-        parts.append(rod(p, f"relief_riser_{s:+d}", "y", (x, -0.06), 3.80, 3.98, 0.045, "trim", sides=6))
+        parts.append(rod(p, f"relief_riser_{s:+d}", "y", (x, -0.06), 3.80, 3.98, 0.04, "trim", sides=4))
         parts.append(p.box(f"relief_body_{s:+d}", (x - 0.065, 3.96, -0.12), (x + 0.065, 4.12, 0.0), "accent"))
         parts.append(p.hull(f"relief_bonnet_{s:+d}", [(x + a * 0.04, 4.11, -0.06 + b * 0.04) for a in (-1, 1) for b in (-1, 1)]
                             + [(x + a * 0.022, 4.22, -0.06 + b * 0.022) for a in (-1, 1) for b in (-1, 1)], "accent"))
         parts.append(pipe(p, f"relief_tail_{s:+d}", [(x + s * 0.03, 4.04, -0.06), (x + s * 0.20, 4.04, -0.06),
                                                      (x + s * 0.20, 4.20, -0.06)], 0.03, "trim", sides=4))
     parts.append(rod(p, "spray_nozzle", "y", (0.0, 0.24), 3.80, 3.98, 0.05, "trim", sides=6))
-    parts.append(revolve(p, "spray_flange", [(0.085, 3.955), (0.085, 4.00)], "trim", "y", (0.0, 0.24), sides=8))
+    parts.append(revolve(p, "spray_flange", [(0.085, 3.955), (0.085, 4.00)], "trim", "y", (0.0, 0.24), sides=6))
     mg = frame((0.0, 0.0, 0.0), 0.0, 45.0)
     parts.append(pipe(p, "level_column", in_frame(mg, [(0.0, 1.10, 0.40), (0.0, 1.10, 0.64), (0.0, 3.30, 0.64), (0.0, 3.30, 0.40)]),
                       0.03, "trim", sides=4))
@@ -512,24 +512,18 @@ def coolant_pump():
     plate = p.box("base_plate", (-0.80, 0.0, -0.62), (0.80, 0.10, 0.62), {"+y": "machinery", "*": "hazard"})
     p.chamfer(plate, "plate_edges", 0.015, lambda m, d, n1, n2: near(m.y, 0.10))
     parts = [revolve(p, "casing", [(0.40, 0.08), (0.50, 0.22), (0.50, 0.92), (0.30, 1.08)], "machinery", "y", (0.0, 0.0),
-                     sides=12, caps=("machinery", "trim"))]
+                     sides=10, caps=("machinery", "trim"))]
     parts += port(p, "suction", (0.0, 0.70, -0.80), (0, 0, -1), 0.45, body=0.55)
     parts += port(p, "discharge", (0.0, 0.70, 0.80), (0, 0, 1), 0.45, body=0.55)
-    parts.append(revolve(p, "stand_ring", [(0.36, 1.05), (0.36, 1.12)], "trim", "y", (0.0, 0.0), sides=12))
-    for k in range(4):
-        u = azim(45.0 + 90.0 * k)
-        c = (0.30 * u.x, 0.30 * u.z)
-        parts.append(p.box(f"stand_post_{k}", (c[0] - 0.045, 1.10, c[1] - 0.045), (c[0] + 0.045, 1.52, c[1] + 0.045), "trim"))
-    parts.append(revolve(p, "coupling_guard", [(0.13, 1.10), (0.13, 1.52)], "accent", "y", (0.0, 0.0), sides=8))
-    parts.append(revolve(p, "motor", [(0.36, 1.50), (0.45, 1.56), (0.45, 2.40), (0.40, 2.46)], ["trim", "bulkhead", "trim"], "y",
-                         (0.0, 0.0), sides=12, caps=("trim", "trim")))
-    parts.append(revolve(p, "fan_cowl", [(0.38, 2.44), (0.38, 2.60), (0.22, 2.72)], "machinery", "y", (0.0, 0.0), sides=12,
-                         caps=("machinery", "trim")))
+    for k, s_ in enumerate((-1, 1)):
+        parts.append(p.box(f"stand_post_{k}", (s_ * 0.27 - 0.05, 1.02, -0.07), (s_ * 0.27 + 0.05, 1.52, 0.07), "trim"))
+    parts.append(revolve(p, "coupling_guard", [(0.13, 1.05), (0.13, 1.52)], "accent", "y", (0.0, 0.0), sides=6))
+    parts.append(revolve(p, "motor", [(0.45, 1.50), (0.45, 2.40), (0.38, 2.46), (0.38, 2.60), (0.22, 2.72)],
+                         ["bulkhead", "trim", "machinery", "machinery"], "y", (0.0, 0.0), sides=12, caps=("trim", "trim")))
     for s in (-1, 1):
         parts.append(p.box(f"lifting_lug_{s:+d}", (s * 0.24 - 0.02, 2.58, -0.06), (s * 0.24 + 0.02, 2.75, 0.06), "trim"))
     parts.append(p.box("junction_box", (0.42, 1.80, -0.16), (0.58, 2.12, 0.16), {"+x": "bulkhead", "*": "machinery"}))
-    parts.append(pipe(p, "conduit", [(0.50, 1.81, 0.0), (0.50, 1.40, 0.0), (0.66, 1.20, 0.0), (0.66, 0.08, 0.0)], 0.03, "trim", sides=6))
-    parts.append(p.box("oil_glass", (-0.48, 1.62, -0.05), (-0.42, 1.86, 0.05), "trim"))
+    parts.append(pipe(p, "conduit", [(0.50, 1.82, 0.0), (0.66, 1.62, 0.0), (0.66, 0.08, 0.0)], 0.03, "trim", sides=4))
     p.union(plate, "casing_stand_motor", parts)
     p.body = plate
     p.operators.append([1.20, 0.0, 0.0])
@@ -543,17 +537,17 @@ def coolant_pump():
             D.reserve(m, -w / 2, 1.56, w / 2, 2.40)
         mf = facets(12, 0.45)[0][1]
         D.plate(mf, 0.0, 2.33, 0.20, 0.06, "RCP-1", size=0.032)
-        for a, m, w in facets(12, 0.50):
+        for a, m, w in facets(10, 0.50):
             if a in (0.0, 180.0):
                 continue
             hazard_band(D, m, -w / 2 + 0.004, 0.30, w / 2 - 0.004, 0.36)
-        mc = facets(12, 0.50)[3][1]
+        mc = facets(10, 0.50)[2][1]
         label(D, mc, 0.0, 0.62, "COOLANT", 0.045)
         label(D, mc, 0.0, 0.54, "PUMP 1", 0.045)
         mj = frame((0.58, 1.96, 0.0), 0.0, 90.0)
         placard(D, mj, 0.0, 0.06, 0.24, 0.07, "6.6 kV")
         D.leds(mj, -0.06, -0.06, 3, 0.06, ("led_green", "led_amber", "led_white"), r=0.01)
-        mo = frame((-0.48, 1.74, 0.0), 0.0, -90.0)
+        mo = frame((-0.45, 1.74, 0.0), 0.0, -90.0)
         D.box(mo, -0.03, -0.09, 0.03, 0.09, -0.002, 0.004, "glass")
         D.box(mo, -0.026, -0.085, 0.026, 0.0, -0.002, 0.005, "led_amber", reserve=False)
         D.box(mo, -0.04, -0.002, 0.04, 0.002, 0.0, 0.006, "red", reserve=False)
@@ -573,17 +567,17 @@ def coolant_tank():
     the bottom to the front through a hand valve."""
     p = prop("coolant_tank", "The coolant drain and makeup tank: buffers the loop's coolant (thermal)", FREE)
     cy = 0.95
-    tank = revolve(p, "tank", [(0.30, -1.50), (0.55, -1.44), (0.65, -1.28), (0.65, 1.28), (0.55, 1.44), (0.30, 1.50)],
-                   "bulkhead", "x", (cy, 0.0), sides=12, caps=("machinery", "machinery"))
+    tank = revolve(p, "tank", [(0.38, -1.50), (0.65, -1.30), (0.65, 1.30), (0.38, 1.50)], "bulkhead", "x", (cy, 0.0), sides=12,
+                   caps=("machinery", "machinery"))
     parts = []
     for i, x in enumerate((-0.95, 0.95)):
         parts.append(p.box(f"saddle_{i}", (x - 0.10, 0.03, -0.48), (x + 0.10, 0.55, 0.48), "machinery"))
         parts.append(p.box(f"saddle_plate_{i}", (x - 0.16, 0.0, -0.56), (x + 0.16, 0.05, 0.56), {"+y": "trim", "*": "hazard"}))
     parts.append(rod(p, "manway", "y", (-0.55, 0.0), 1.45, 1.68, 0.27, "machinery", sides=8))
-    parts.append(pipe(p, "vent", [(0.75, 1.50, 0.0), (0.75, 1.80, 0.0), (0.92, 1.80, 0.0), (0.92, 1.70, 0.0)], 0.04, "trim", sides=6))
+    parts.append(pipe(p, "vent", [(0.75, 1.50, 0.0), (0.75, 1.80, 0.0), (0.92, 1.80, 0.0), (0.92, 1.70, 0.0)], 0.04, "trim", sides=4))
     parts.append(pipe(p, "sight_glass", [(0.45, 0.62, 0.40), (0.45, 0.62, 0.745), (0.45, 1.30, 0.745), (0.45, 1.30, 0.40)],
                       0.025, "trim", sides=4))
-    for i, y in enumerate((0.78, 1.12, 1.42)):
+    for i, y in enumerate((0.85, 1.30)):
         zin = math.sqrt(max(0.0, 0.65 ** 2 - (y - cy) ** 2)) - 0.06
         parts.append(pipe(p, f"rung_{i}", [(-1.10, y, zin), (-1.10, y, 0.80), (-0.78, y, 0.80), (-0.78, y, zin)], 0.014, "trim", sides=4))
     parts.append(p.box("sump", (0.90, 0.20, -0.12), (1.10, 0.42, 0.12), "machinery"))
@@ -625,25 +619,22 @@ def fuel_dewar():
     posts; the fuel line leaving the bottom of the shell to the front."""
     p = prop("fuel_dewar", "A deuterium dewar: stores the reactor's deuterium fuel as a cryogenic liquid (fuel)", FREE)
     p.finish_of = {"bulkhead": "white"}
-    tank = revolve(p, "tank", [(0.32, 0.22), (0.55, 0.30), (0.60, 0.42), (0.60, 2.08), (0.55, 2.20), (0.32, 2.28)], "bulkhead",
-                   "y", (0.0, 0.0), sides=12, caps=("machinery", "machinery"))
+    tank = revolve(p, "tank", [(0.35, 0.24), (0.60, 0.42), (0.60, 2.08), (0.35, 2.26)], "bulkhead", "y", (0.0, 0.0), sides=10,
+                   caps=("machinery", "machinery"))
     parts = []
-    for k in range(4):
-        u = azim(45.0 + 90.0 * k)
+    for k in range(3):
+        u = azim(60.0 + 120.0 * k)
         c = (0.40 * u.x, 0.40 * u.z)
         parts.append(p.box(f"leg_{k}", (c[0] - 0.05, 0.0, c[1] - 0.05), (c[0] + 0.05, 0.40, c[1] + 0.05), "machinery"))
-    parts.append(rod(p, "riser", "y", (0.0, 0.0), 2.20, 2.50, 0.06, "trim", sides=6))
-    parts.append(rod(p, "header", "x", (2.48, 0.0), -0.30, 0.30, 0.045, "trim", sides=6))
+    parts.append(pipe(p, "header", [(-0.28, 2.18, 0.0), (-0.28, 2.42, 0.0), (0.28, 2.42, 0.0), (0.28, 2.18, 0.0)], 0.045, "trim", sides=6))
     for s in (-1, 1):
-        parts.append(p.box(f"valve_{s:+d}", (s * 0.22 - 0.05, 2.42, -0.05), (s * 0.22 + 0.05, 2.55, 0.05), "machinery"))
-        parts += wheel(p, f"wheel_{s:+d}", (s * 0.22, 0.0), 2.62, 0.08)
-        parts.append(rod(p, f"drop_{s:+d}", "y", (s * 0.30, 0.0), 2.20, 2.50, 0.04, "trim", sides=6))
-    parts.append(p.box("gauge", (-0.05, 2.32, 0.05), (0.05, 2.42, 0.10), "trim"))
-    parts.append(rod(p, "vent_stack", "y", (0.0, -0.18), 2.20, 2.72, 0.04, "bulkhead", sides=6))
-    parts.append(hoop(p, "guard_rail", Matrix.Translation((0.0, 2.55, 0.0)), 0.50, 0.035, 0.035, 8, "accent", phase_deg=0.0))
-    for k in range(4):
-        u = azim(45.0 + 90.0 * k)
-        parts.append(p.box(f"rail_post_{k}", (0.50 * u.x - 0.016, 2.17, 0.50 * u.z - 0.016),
+        parts += wheel(p, f"wheel_{s:+d}", (s * 0.15, 0.0), 2.53, 0.075)
+    parts.append(p.box("gauge", (-0.05, 2.38, 0.04), (0.05, 2.48, 0.09), "trim"))
+    parts.append(rod(p, "vent_stack", "y", (0.0, -0.18), 2.20, 2.72, 0.04, "bulkhead", sides=4))
+    parts.append(hoop(p, "guard_rail", Matrix.Translation((0.0, 2.55, 0.0)), 0.50, 0.035, 0.035, 6, "accent", phase_deg=30.0))
+    for k in range(3):
+        u = azim(30.0 + 120.0 * k)
+        parts.append(p.box(f"rail_post_{k}", (0.50 * u.x - 0.016, 2.04, 0.50 * u.z - 0.016),
                            (0.50 * u.x + 0.016, 2.56, 0.50 * u.z + 0.016), "trim"))
     parts += port(p, "fuel_out", (0.0, 0.45, 0.65), (0, 0, 1), 0.10, body=0.35, sides=6)
     p.union(tank, "legs_tree_rail", parts)
@@ -651,24 +642,24 @@ def fuel_dewar():
     p.operators.append([0.0, 0.0, 1.1])
 
     def decor(D):
-        for a, m, w in facets(12, 0.60):
+        for a, m, w in facets(10, 0.60):
             D.box(m, -w / 2 + 0.004, 1.52, w / 2 - 0.004, 1.76, -0.002, 0.004, "fuel_orange", reserve=False)
             D.box(m, -w / 2 + 0.004, 1.49, w / 2 - 0.004, 1.51, -0.002, 0.003, "stencil_dark", reserve=False)
             D.box(m, -w / 2 + 0.004, 1.77, w / 2 - 0.004, 1.79, -0.002, 0.003, "stencil_dark", reserve=False)
-            if a in (0.0, 120.0, 240.0):
+            if a in (0.0, 144.0, 216.0):
                 D.text(m, "D2", 0.0, 1.64, 0.13, "stencil_dark", z=0.006)
-            if a in (60.0, 180.0, 300.0):
+            if a in (72.0, 180.0, 288.0):
                 diamond(D, m, 0.0, 1.20, 0.085, "red", "2")
             D.reserve(m, -w / 2, 0.42, w / 2, 2.08)
-        m0 = facets(12, 0.60)[0][1]
+        m0 = facets(10, 0.60)[0][1]
         label(D, m0, 0.0, 1.08, "DEUTERIUM", 0.036)
         label(D, m0, 0.0, 1.02, "CRYOGENIC   -250 C", 0.022)
         D.plate(m0, 0.0, 0.80, 0.24, 0.07, "DW-1", size=0.035)
-        gauge(D, at((0.0, 2.37, 0.10)), 0.0, 0.0, 0.042, needle_deg=-25)
+        gauge(D, at((0.0, 2.43, 0.09)), 0.0, 0.0, 0.042, needle_deg=-25)
         for R in regions(D, in_box((-0.08, 2.40, -0.26), (0.08, 2.80, -0.10))):
             whole(D, R, "frost")
-        for R in regions(D, lambda R: R.role == "trim" and R.origin.y > 2.20 and abs(R.origin.x) > 0.25):
-            strip(D, R, (0, 1, 0), 2.20, 2.34, "frost", reserve=False)
+        for R in regions(D, lambda R: R.role == "trim" and R.origin.y > 2.20 and abs(R.origin.x) > 0.22):
+            strip(D, R, (0, 1, 0), 2.20, 2.32, "frost", reserve=False)
         flange_bolts(D, p)
     p.decor.append(decor)
     return p
@@ -680,21 +671,16 @@ def helium3_rack():
     its row's header; the headers run into the regulator cabinet at the right end, which carries two
     gauges on its front and sends the fuel line out of its right side."""
     p = prop("helium3_rack", "The helium-3 store: racked gas cylinders feeding the fuel processor through a regulator (fuel)", WALL)
-    back = p.box("back_plate", (-1.20, 0.03, 0.0), (1.20, 2.0, 0.04), "machinery")
-    parts = [p.box("base", (-1.20, 0.0, 0.03), (1.20, 0.06, 0.70), {"+y": "trim", "*": "hazard"}),
-             p.box("upright_l", (-1.20, 0.04, 0.02), (-1.14, 1.99, 0.70), "trim"),
-             p.box("upright_r", (0.34, 0.04, 0.02), (0.40, 1.99, 0.70), "trim")]
+    back = p.box("back_plate", (-1.20, 0.0, 0.0), (1.20, 2.0, 0.04), "machinery")
+    parts = [p.box("upright_l", (-1.20, 0.0, 0.02), (-1.14, 1.99, 0.70), "trim")]
     xs = (-0.98, -0.66, -0.34, -0.02)
     for row, z in enumerate((0.20, 0.52)):
         for i, x in enumerate(xs):
-            parts.append(revolve(p, f"cylinder_{row}_{i}", [(0.14, 0.04), (0.14, 1.46), (0.045, 1.62), (0.045, 1.80)],
+            parts.append(revolve(p, f"cylinder_{row}_{i}", [(0.14, 0.0), (0.14, 1.46), (0.02, 1.62), (0.02, 1.80)],
                                  ["bulkhead", "bulkhead", "trim"], "y", (x, z), sides=6))
         parts.append(rod(p, f"header_{row}", "x", (1.80, z), -1.15, 0.45, 0.045, "trim", sides=6))
-    for i, y in enumerate((0.55, 1.20)):
-        parts.append(p.box(f"restraint_{i}", (-1.15, y - 0.03, 0.665), (0.35, y + 0.03, 0.70), "accent"))
-    parts.append(p.box("regulator", (0.39, 1.10, 0.04), (1.10, 1.95, 0.62), {"+z": "bulkhead", "*": "machinery"}))
-    for i, x in enumerate((0.58, 0.92)):
-        parts.append(rod(p, f"gauge_{i}", "z", (x, 1.68), 0.60, 0.66, 0.07, "trim", sides=8))
+    parts.append(p.box("restraint", (-1.15, 1.17, 0.665), (0.40, 1.23, 0.70), "accent"))
+    parts.append(p.box("regulator", (0.39, 0.0, 0.03), (1.10, 1.95, 0.68), {"+z": "bulkhead", "*": "machinery"}))
     parts += port(p, "fuel_out", (1.15, 1.85, 0.50), (1, 0, 0), 0.08, body=0.10, sides=6)
     p.union(back, "frame_cylinders_regulator", parts)
     p.body = back
@@ -708,16 +694,18 @@ def helium3_rack():
                     if a == 0.0:
                         D.text(m, "He3", 0.0, 0.95, 0.045, "stencil_dark")
                         D.text(m, f"{row * 4 + i + 1:02d}", 0.0, 0.85, 0.035, "stencil_dark")
-                    D.reserve(m, -w / 2, 0.04, w / 2, 1.46)
-        mreg = at((0.745, 1.525, 0.62))
-        gauge(D, at((0.58, 1.68, 0.66)), 0.0, 0.0, 0.062, needle_deg=10)
-        gauge(D, at((0.92, 1.68, 0.66)), 0.0, 0.0, 0.062, needle_deg=-40)
+                    D.reserve(m, -w / 2, 0.0, w / 2, 1.46)
+        mreg = at((0.745, 1.525, 0.68))
+        gauge(D, at((0.58, 1.68, 0.68)), 0.0, 0.0, 0.065, needle_deg=10)
+        gauge(D, at((0.92, 1.68, 0.68)), 0.0, 0.0, 0.065, needle_deg=-40)
         label(D, mreg, -0.17, 0.0, "SUPPLY", 0.026)
         label(D, mreg, 0.17, 0.0, "LINE", 0.026)
         D.plate(mreg, 0.0, -0.20, 0.42, 0.08, "HELIUM-3 REGULATOR", size=0.026)
         D.leds(mreg, -0.10, -0.32, 3, 0.10, ("led_green", "led_amber", "led_green"), r=0.011)
+        D.grille(mreg, -0.26, -1.30, 0.26, -0.80, pitch=0.035)
+        hazard_band(D, mreg, -0.35, -1.52, 0.35, -1.42)
         mb = at((0.0, 0.0, 0.70))
-        for y in (0.55, 1.20):
+        for y in (1.20,):
             for x in (-0.95, -0.40, 0.15):
                 D.disc(mb, x, y, 0.012, -0.002, 0.008, "bolt", sides=8, reserve=False)
         mback = at((0.0, 0.0, 0.04))
@@ -860,29 +848,24 @@ def cryoplant():
 
 def vacuum_pump():
     """The reaction chamber's exhaust pump, standing against a port on the reactor (its wall plane): a
-    turbomolecular pump lying along Z on two side frames and two cradle bars, its inlet flange and gate
-    valve on the back plane (the inlet port), a backing pump box under it fed by the foreline, the
-    exhaust leaving the box's front, and a coiled cooling hose off the pump's side."""
+    turbomolecular pump lying along Z on two open side frames and a cradle bar, its inlet flange and gate
+    valve on the back plane (the inlet port), a backing pump box on the floor under it fed by the
+    foreline, the exhaust leaving the box's front, and a cooling hose looped off the pump's side."""
     p = prop("vacuum_pump", "The reaction chamber's exhaust pump: a turbomolecular pump backed by a roughing pump (exhaust)", WALL)
-    body = flange(p, "inlet", (0.0, 1.0, 0.0), (0, 0, -1), 0.35, rim=0.055, t=0.04)
-    parts = [p.box("gate_valve", (-0.24, 0.76, 0.03), (0.24, 1.24, 0.15), "machinery"),
+    body = p.box("gate_valve", (-0.26, 0.74, 0.0), (0.26, 1.26, 0.15), {"-z": "trim", "*": "machinery"})
+    p.ports["inlet"] = {"at_m": [0.0, 1.0, 0.0], "dir": [0.0, 0.0, -1.0], "dia_m": 0.35}
+    p.flanges.append(("inlet", at((0.0, 1.0, 0.0), (0, 0, -1)), 0.175, 0.26))
+    parts = [
              p.box("gate_bonnet", (-0.08, 1.23, 0.05), (0.08, 1.40, 0.13), "accent"),
-             revolve(p, "turbo", [(0.18, 0.14), (0.25, 0.20), (0.25, 0.66), (0.16, 0.72)], ["trim", "bulkhead", "trim"], "z", (0.0, 1.0),
-                     sides=8, caps=("trim", "trim"))]
-    for s in (-1, 1):
-        parts.append(p.prism(f"side_frame_{s:+d}", [(0.22, 0.0), (0.28, 0.0), (0.28, 0.70), (0.92, 0.70), (0.92, 0.0), (0.98, 0.0),
-                                                     (0.98, 0.76), (0.22, 0.76)], "x", min(s * 0.30, s * 0.35), max(s * 0.30, s * 0.35),
-                             "trim"))
-    for i, z in enumerate((0.30, 0.62)):
-        parts.append(p.box(f"cradle_{i}", (-0.35, 0.71, z - 0.035), (0.35, 0.78, z + 0.035), "trim"))
-    parts.append(p.box("backing_pump", (-0.24, 0.0, 0.36), (0.31, 0.40, 0.88), {"+z": "bulkhead", "*": "machinery"}))
-    parts.append(pipe(p, "foreline", [(0.10, 0.80, 0.62), (0.10, 0.38, 0.62)], 0.035, "trim", sides=6))
+             revolve(p, "turbo", [(0.25, 0.14), (0.25, 0.64), (0.17, 0.72)], ["bulkhead", "trim"], "z", (0.0, 1.0), sides=8,
+                     caps=("trim", "trim"))]
+    parts.append(p.prism("stand_frame", [(-0.34, 0.0), (-0.28, 0.0), (-0.28, 0.70), (0.28, 0.70), (0.28, 0.0), (0.34, 0.0), (0.34, 0.76),
+                                         (-0.34, 0.76)], "z", 0.24, 0.30, "trim"))
+    parts.append(p.box("backing_pump", (-0.19, 0.0, 0.36), (0.37, 0.40, 0.88), {"+z": "bulkhead", "*": "machinery"}))
+    parts.append(rod(p, "foreline", "y", (0.0, 0.62), 0.38, 0.77, 0.035, "trim", sides=4))
     parts += port(p, "exhaust", (0.30, 0.30, 1.10), (0, 0, 1), 0.10, body=0.25, sides=6)
-    hose = [(0.20, 1.06, 0.48), (0.385, 1.06, 0.48)]
-    for k in range(5):
-        a = 2 * math.pi * k / 5
-        hose.append((0.385, 0.50 + 0.13 * math.cos(a), 0.52 + 0.13 * math.sin(a)))
-    parts.append(pipe(p, "cooling_hose", hose, 0.013, "machinery", sides=4))
+    parts.append(pipe(p, "cooling_hose", [(0.20, 1.06, 0.48), (0.33, 1.06, 0.48), (0.33, 0.55, 0.64), (0.33, 0.36, 0.64)], 0.013,
+                      "machinery", sides=4))
     p.union(body, "valve_pump_stand", parts)
     p.body = body
     p.operators.append([0.0, 0.0, 1.6])
@@ -899,15 +882,14 @@ def vacuum_pump():
         for R in regions(D, lambda R: R.role == "bulkhead" and R.origin.y > 0.7):
             for z in (0.34, 0.40, 0.46, 0.52, 0.58):
                 strip(D, R, (0, 0, 1), z - 0.012, z + 0.012, "bolt", reserve=False)
-        mb = at((0.035, 0.0, 0.88))
-        D.plate(mb, 0.0, 0.32, 0.26, 0.06, "ROUGHING", size=0.03)
-        D.grille(mb, -0.20, 0.06, 0.20, 0.22, pitch=0.03)
-        for R in regions(D, lambda R: R.role == "machinery" and R.origin.x > 0.36):
+        mb = at((0.09, 0.0, 0.88))
+        D.plate(mb, -0.08, 0.32, 0.26, 0.06, "ROUGHING", size=0.03)
+        D.grille(mb, -0.24, 0.06, 0.08, 0.22, pitch=0.03)
+        for R in regions(D, lambda R: R.role == "machinery" and R.origin.x > 0.28):
             whole(D, R, "blue")
         flange_bolts(D, p)
     p.decor.append(decor)
     return p
-
 
 def ash_tank():
     """The exhaust and ash tank: a vertical tank 0.9 m across on four legs, a hazard band, a pressure
@@ -1014,8 +996,9 @@ def power_converter():
 
 COIL_AZ = [22.5 + 45.0 * k for k in range(8)]
 PORT_AZ = [45.0 * k for k in range(8)]
-COIL = [(2.25, 0.40), (2.70, 0.40), (3.05, 0.55), (3.22, 0.95), (3.25, 1.60), (3.25, 4.40), (3.22, 5.05), (3.05, 5.45),
-        (2.70, 5.60), (2.25, 5.60)]
+# A coil case's outline in (r, y): the straight inner leg on r 2.25, the outer side on r 3.25 with its corners
+# drawn in, so the poloidal rings (r 2.99-3.21 where they pass) run through the case's solid, clamped in it.
+COIL = [(2.25, 0.40), (3.02, 0.40), (3.24, 0.46), (3.25, 0.80), (3.25, 5.20), (3.24, 5.54), (3.02, 5.60), (2.25, 5.60)]
 
 
 def reactor_dressing():
@@ -1023,7 +1006,7 @@ def reactor_dressing():
     magnets: eight toroidal field coil cases, deep red D-shaped plates 0.3 m thick in radial planes at
     22.5 + 45 k degrees (r 2.25-3.25, y 0.4-5.6); two octagonal poloidal coil rings (a 0.2 m square
     tube, its corners on r 3.1 inside the coils) at y 0.6 and 5.4; between the coils eight radial port
-    stubs at y 1.0 ending in flanges on r 3.30 (port_0 to port_7), each saddled onto the lower ring; a
+    stubs at y 1.0 ending in flanges on r 3.30 (port_0 to port_7), each standing on a pedestal; a
     cable loom down every coil's outer edge to the floor; a magnet feed box on top of two coils with
     white cryogenic lines down their sides. Everything stays between r 2.24 and 3.30 and below y 6.7,
     and clear of the azimuths 45 k between y 2.2 and 2.8 and between y 5.8 and 6.4 (the coolant,
@@ -1043,10 +1026,9 @@ def reactor_dressing():
         parts.append(hoop(p, f"ring_{i}", Matrix.Translation((0.0, y, 0.0)), 3.10, 0.20, 0.20, 8, "trim", phase_deg=22.5))
     for k, a in enumerate(PORT_AZ):
         u = azim(a)
-        parts += port(p, f"port_{k}", tuple(3.30 * u + Vector((0.0, 1.0, 0.0))), tuple(u), 0.35, body=1.04)
+        parts += nozzle_port(p, f"port_{k}", tuple(3.30 * u + Vector((0.0, 1.0, 0.0))), tuple(u), 0.35, 1.04, body_role="trim")
         m = frame((0.0, 0.0, 0.0), 0.0, a)
-        parts.append(p.box(f"saddle_{k}", (-0.08, 0.66, 2.74), (0.08, 0.86, 2.94), "trim", m=m))
-        parts.append(turned(p, f"port_root_{k}", m @ Matrix.Translation((0.0, 1.0, 2.26)), [(0.235, 0.0), (0.235, 0.05)], "trim", 8))
+        parts.append(p.box(f"pedestal_{k}", (-0.06, 0.0, 2.40), (0.06, 0.86, 2.52), "machinery", m=m))
     for k, a in enumerate(COIL_AZ):
         m = frame((0.0, 0.0, 0.0), 0.0, a)
         loom = p.prism(f"loom_{k}", [(3.10, 5.05), (3.295, 4.60), (3.295, 0.0), (3.225, 0.0), (3.225, 4.58), (3.08, 4.92)], "x",
@@ -1057,8 +1039,7 @@ def reactor_dressing():
         m = frame((0.0, 0.0, 0.0), 0.0, a)
         parts.append(p.box(f"feed_box_{i}", (-0.24, 5.55, 2.40), (0.24, 6.20, 3.05), "machinery", m=m))
         for j, s in enumerate((-1, 1)):
-            path = in_frame(m, [(s * 0.10, 6.00, 3.00), (s * 0.10, 6.00, 3.20), (s * 0.22, 5.70, 3.20), (s * 0.22, 4.70, 3.20),
-                                (s * 0.14, 4.70, 3.10)])
+            path = in_frame(m, [(s * 0.21, 5.95, 3.00), (s * 0.21, 5.95, 3.20), (s * 0.21, 0.0, 3.20)])
             parts.append(pipe(p, f"cryo_line_{i}_{j}", path, 0.035, "machinery", sides=6))
     p.union(body, "coils_rings_ports_looms_feeds", parts)
     p.body = body
@@ -1089,7 +1070,8 @@ def reactor_dressing():
             mt = facet(tuple(Vector((0.0, 6.20, 0.0)) + u * 2.725), (0.0, 1.0, 0.0), tuple(u))
             D.grille(mt, -0.18, -0.25, 0.18, 0.25, pitch=0.04)
         for R in regions(D, lambda R: R.role == "machinery" and R.origin.y < 5.6):
-            strip(D, R, (0, 1, 0), 4.70, 4.90, "frost", reserve=False)
+            for y0, y1 in ((5.70, 5.92), (0.05, 0.25)):
+                strip(D, R, (0, 1, 0), y0, y1, "frost", reserve=False)
     p.decor.append(decor)
     return p
 
@@ -1119,7 +1101,6 @@ def gantry_crane():
         parts.append(p.box(f"end_truck_{s:+d}", (x - 0.25, Y - 0.01, -0.80), (x + 0.25, Y + 0.40, 0.80),
                            {"+y": "machinery", "-y": "machinery", "*": "hazard"}))
         parts.append(p.box(f"rail_{s:+d}", (x - 0.04, Y - 0.14, -1.0), (x + 0.04, Y + 0.0, 1.0), "trim"))
-        parts.append(revolve(p, f"drive_{s:+d}", [(0.11, 0.30), (0.11, 0.70)], "trim", "z", (x - s * 0.33, Y + 0.20), sides=8))
         for e in (-1, 1):
             parts.append(p.box(f"buffer_{s:+d}_{e:+d}", (x - 0.09, Y + 0.12, min(e * 0.79, e * 0.92)), (x + 0.09, Y + 0.28, max(e * 0.79, e * 0.92)),
                                "trim"))
@@ -1370,13 +1351,12 @@ def tool_board():
     parts += [p.box("vice_base", (0.58, 0.89, 0.42), (0.86, 0.98, 0.66), "machinery"),
               p.box("vice_fixed_jaw", (0.60, 0.97, 0.44), (0.84, 1.08, 0.52), "accent"),
               p.box("vice_moving_jaw", (0.60, 0.95, 0.60), (0.84, 1.08, 0.68), "accent"),
-              rod(p, "vice_screw", "z", (0.72, 1.01), 0.66, 0.74, 0.016, "trim", sides=6),
-              p.box("vice_handle", (0.62, 0.995, 0.715), (0.82, 1.025, 0.745), "trim")]
+              rod(p, "vice_screw", "z", (0.72, 1.01), 0.66, 0.745, 0.016, "trim", sides=4)]
     for s in (-1, 1):
         parts.append(p.box(f"upright_{s:+d}", (min(s * 1.04, s * 1.10), 0.89, 0.0), (max(s * 1.04, s * 1.10), 2.20, 0.06), "trim"))
     parts.append(p.box("pegboard", (-1.05, 1.02, 0.0), (1.05, 2.02, 0.025), "machinery"))
     parts.append(p.box("shelf", (-1.10, 2.10, 0.0), (1.10, 2.15, 0.34), "trim"))
-    for i, (x0, x1, h) in enumerate(((-0.95, -0.55, 0.18), (-0.45, -0.10, 0.14), (0.05, 0.50, 0.20))):
+    for i, (x0, x1, h) in enumerate(((-0.95, -0.45, 0.18), (0.05, 0.50, 0.20))):
         parts.append(p.box(f"box_{i}", (x0, 2.14, 0.04), (x1, 2.14 + h, 0.30), "accent" if i == 1 else "bulkhead"))
     tools = [
         ("wrench_a", [(-0.80, 1.20), (-0.76, 1.20), (-0.76, 1.62), (-0.72, 1.66), (-0.74, 1.72), (-0.82, 1.72), (-0.84, 1.66), (-0.80, 1.62)]),
@@ -1388,9 +1368,8 @@ def tool_board():
     for name, poly in tools:
         parts.append(p.prism(name, [(x, y) for x, y in poly], "z", 0.015, 0.045, "trim"))
     parts.append(hoop(p, "hose_coil", Matrix.Translation((0.62, 1.50, 0.04)) @ Matrix.Rotation(math.pi / 2, 4, "X"), 0.20, 0.035, 0.04,
-                      8, "machinery", phase_deg=22.5))
-    parts.append(p.box("hose_hook", (0.60, 1.66, 0.01), (0.64, 1.72, 0.12), "trim"))
-    parts.append(pipe(p, "lamp_arm", [(1.07, 1.95, 0.03), (0.85, 2.05, 0.30), (0.70, 1.80, 0.42)], 0.018, "trim", sides=6))
+                      6, "machinery", phase_deg=0.0))
+    parts.append(pipe(p, "lamp_arm", [(1.07, 1.95, 0.03), (0.85, 2.05, 0.30), (0.70, 1.80, 0.42)], 0.018, "trim", sides=4))
     parts.append(p.hull("lamp_shade", [(0.70 + 0.07 * math.cos(a), 1.82, 0.42 + 0.07 * math.sin(a)) for a in (0, 2.1, 4.2)]
                         + [(0.70 + 0.13 * math.cos(a), 1.70, 0.42 + 0.13 * math.sin(a)) for a in (0.0, 1.05, 2.1, 3.15, 4.2, 5.25)],
                         "machinery"))
@@ -1424,7 +1403,7 @@ def tool_board():
             if R.n.y < -0.5:
                 whole(D, R, "lamp")
         mb = at((0.0, 0.0, 0.30))
-        D.text(mb, "SEALS", -0.75, 2.23, 0.035, "stencil_dark")
+        D.text(mb, "SEALS", -0.70, 2.23, 0.035, "stencil_dark")
         D.text(mb, "FILTERS", 0.275, 2.24, 0.035, "stencil_dark")
     p.decor.append(decor)
     return p
@@ -1464,100 +1443,114 @@ def tool_chest():
 
 
 def parts_rack():
-    """Heavy shelving of spares: four shelves notched round four corner posts, two gas bottles chained to
-    the left end; on the shelves crates, a pump impeller, two valve bodies, a pipe spool and a coil of
-    cable."""
+    """Heavy shelving of spares: four shelves between two solid end panels, two gas bottles standing on
+    the left panel's foot plate (their chain is in the atlas); on the shelves crates, a pump impeller, a
+    valve body, a pipe spool and a cable reel."""
     p = prop("parts_rack", "A rack of spares: impellers, valves, pipe spools, cable and gas (maintenance)", WALL)
     p.finish_of = {"bulkhead": "green"}
-    xl, xr = -0.78, 1.10
-    shelves = [p.box(f"shelf_{i}", (xl, y, 0.01), (xr, y + 0.04, 0.68), "trim") for i, y in enumerate((0.10, 0.66, 1.22, 1.78))]
-    body = shelves[0]
-    parts = shelves[1:]
-    for xa, xb in ((xl - 0.02, xl + 0.04), (xr - 0.04, xr + 0.02)):
-        for za, zb in ((0.0, 0.06), (0.62, 0.70)):
-            parts.append(p.box(f"post_{xa:+.2f}_{za:.2f}", (xa, 0.0, za), (xb, 2.30, zb), "machinery"))
-    for i, (x0, x1, y, h) in enumerate(((-0.70, -0.25, 0.13, 0.36), (0.55, 1.02, 1.25, 0.30), (-0.15, 0.25, 1.81, 0.24))):
+    xl, xr = -0.78, 1.06
+    body = p.box("panel_l", (xl - 0.06, 0.01, 0.0), (xl, 2.30, 0.70), "machinery")
+    parts = [p.box("panel_r", (xr, 0.01, 0.0), (xr + 0.06, 2.30, 0.70), "machinery"),
+             p.box("foot_plate", (-1.12, 0.0, 0.0), (xl - 0.03, 0.04, 0.70), {"+y": "trim", "*": "hazard"})]
+    for i, y in enumerate((0.10, 0.66, 1.22, 1.78)):
+        parts.append(p.box(f"shelf_{i}", (xl - 0.02, y, 0.01), (xr + 0.02, y + 0.04, 0.68), "trim"))
+    for i, (x0, x1, y, h) in enumerate(((-0.70, -0.25, 0.13, 0.36), (0.55, 1.00, 1.25, 0.30), (-0.15, 0.25, 1.81, 0.24))):
         parts.append(p.box(f"crate_{i}", (x0, y, 0.06), (x1, y + h, 0.58), "bulkhead"))
-    parts.append(revolve(p, "impeller", [(0.20, 0.69), (0.20, 0.74), (0.08, 0.80), (0.05, 0.86)], "accent", "y", (-0.40, 0.35), sides=8))
-    for i, x in enumerate((0.20, 0.55)):
-        parts.append(p.box(f"valve_body_{i}", (x - 0.12, 0.69, 0.22), (x + 0.12, 0.90, 0.46), "machinery"))
-        parts.append(rod(p, f"valve_flange_{i}", "x", (0.795, 0.34), x - 0.16, x + 0.16, 0.10, "trim", sides=8))
-    parts.append(revolve(p, "pipe_spool", [(0.12, -0.55), (0.12, 0.25)], "trim", "x", (1.37, 0.35), sides=8))
-    parts.append(hoop(p, "cable_coil", Matrix.Translation((0.80, 1.85, 0.35)), 0.20, 0.06, 0.08, 8, "machinery", phase_deg=22.5))
+    parts.append(revolve(p, "impeller", [(0.20, 0.69), (0.20, 0.74), (0.06, 0.80), (0.06, 0.86)], "accent", "y", (-0.40, 0.35), sides=6))
+    parts.append(p.box("valve_body", (0.30, 0.69, 0.22), (0.54, 0.90, 0.46), "machinery"))
+    parts.append(rod(p, "valve_flanges", "x", (0.795, 0.34), 0.24, 0.60, 0.10, "trim", sides=6))
+    parts.append(revolve(p, "pipe_spool", [(0.12, -0.55), (0.12, 0.25)], "trim", "x", (1.37, 0.35), sides=6))
+    parts.append(revolve(p, "cable_reel", [(0.20, 1.81), (0.20, 2.00)], "machinery", "y", (0.72, 0.35), sides=8))
     for i, z in enumerate((0.20, 0.50)):
-        parts.append(revolve(p, f"gas_bottle_{i}", [(0.11, 0.0), (0.11, 1.30), (0.04, 1.42), (0.04, 1.50)], ["bulkhead", "bulkhead", "trim"],
+        parts.append(revolve(p, f"gas_bottle_{i}", [(0.11, 0.02), (0.11, 1.30), (0.04, 1.42), (0.04, 1.50)], ["bulkhead", "bulkhead", "trim"],
                              "y", (-0.98, z), sides=6))
-    for i, y in enumerate((0.55, 1.05)):
-        parts.append(p.box(f"chain_{i}", (-1.10, y - 0.015, 0.05), (-0.77, y + 0.015, 0.66), "trim"))
-    p.union(body, "posts_and_spares", parts)
+    p.union(body, "shelves_and_spares", parts)
     p.body = body
     p.operators.append([0.0, 0.0, 1.2])
 
     def decor(D):
-        for i, (x0, x1, y, h) in enumerate(((-0.70, -0.25, 0.13, 0.36), (0.55, 1.02, 1.25, 0.30), (-0.15, 0.25, 1.81, 0.24))):
+        for i, (x0, x1, y, h) in enumerate(((-0.70, -0.25, 0.13, 0.36), (0.55, 1.00, 1.25, 0.30), (-0.15, 0.25, 1.81, 0.24))):
             mc = at(((x0 + x1) / 2, y + h / 2, 0.58))
             D.text(mc, ("SEALS", "BEARINGS", "GASKETS")[i], 0.0, 0.03, 0.035, "stencil")
             D.text(mc, f"P/N 40{i}7-{i + 2}", 0.0, -0.04, 0.022, "stencil")
-        for a, m, w in facets(6, 0.11, (-0.98, 0.20)) + facets(6, 0.11, (-0.98, 0.50)):
-            D.box(m, -w / 2 + 0.003, 1.05, w / 2 - 0.003, 1.30, -0.002, 0.004, "white", reserve=False)
-            D.reserve(m, -w / 2, 0.0, w / 2, 1.30)
+        for z in (0.20, 0.50):
+            for a, m, w in facets(6, 0.11, (-0.98, z)):
+                D.box(m, -w / 2 + 0.003, 1.05, w / 2 - 0.003, 1.30, -0.002, 0.004, "white", reserve=False)
+                for y in (0.55, 1.00):
+                    for j in range(3):
+                        D.box(m, -w / 2 + 0.004 + j * (w - 0.008) / 3, y - 0.012, -w / 2 + 0.004 + (j + 1) * (w - 0.008) / 3 - 0.006, y + 0.012,
+                              -0.002, 0.010, "steel", inset=0.004, reserve=False)
+                D.reserve(m, -w / 2, 0.02, w / 2, 1.30)
+            D.text(facets(6, 0.11, (-0.98, z))[0][1], "N2" if z < 0.3 else "Ar", 0.0, 0.80, 0.05, "stencil_dark")
+        mside = at((xl - 0.06, 0.0, 0.35), (-1, 0, 0))
+        for y in (0.55, 1.00):
+            D.box(mside, -0.30, y - 0.015, 0.30, y + 0.015, -0.002, 0.012, "steel", inset=0.004, reserve=False)
         for R in regions(D, lambda R: R.role == "trim" and R.n.z > 0.9 and abs(R.origin.z - 0.68) < 0.01):
             for x in (-0.6, 0.2, 0.9):
                 strip(D, R, (1, 0, 0), x - 0.08, x + 0.08, "stencil", reserve=False)
+        mp = at((xr + 0.06, 0.0, 0.35), (1, 0, 0))
+        D.plate(mp, 0.0, 1.60, 0.30, 0.08, "SPARES", size=0.04)
     p.decor.append(decor)
     return p
+
 
 
 # ----------------------------------------------------------------------------- valves
 
 def valve_large():
     """A flanged gate valve for a 0.45 m pipe along X: two flanges (ports a and b, their faces at
-    x = +-0.35), the gate body between them, a tapered bonnet, the stem and a hand wheel 0.6 m across
-    above, pointing +Y. The pipe's centreline is centreline_m above the floor (the flanges' lowest
-    flat on y = 0): the kit's read-back wants every prop's lowest point on y = 0."""
+    x = +-0.35), the gate body between them, a tapered bonnet and a hand wheel 0.6 m across on its
+    spindle above, pointing +Y. The pipe's centreline is centreline_m above the floor (the flanges'
+    lowest flat on y = 0): the kit's read-back wants every prop's lowest point on y = 0."""
     p = prop("valve_large", "A gate valve for the 0.45 m coolant pipe (pipework)",
              "floor under the pipe's centreline, at the middle of the valve; the centreline is centreline_m above it")
     cy = 0.45 / 2 + max(0.025, round(0.14 * 0.45, 4))
-    body = p.box("gate_body", (-0.31, cy - 0.20, -0.17), (0.31, cy + 0.26, 0.17), "machinery")
+    body = p.box("gate_body", (-0.31, cy - 0.20, -0.15), (0.31, cy + 0.24, 0.15), "machinery")
     parts = [flange(p, "a", (-0.35, cy, 0.0), (-1, 0, 0), 0.45), flange(p, "b", (0.35, cy, 0.0), (1, 0, 0), 0.45),
-             p.hull("bonnet", [(x, cy + 0.25, z) for x in (-0.20, 0.20) for z in (-0.14, 0.14)]
-                    + [(x, cy + 0.52, z) for x in (-0.09, 0.09) for z in (-0.08, 0.08)], "machinery"),
-             rod(p, "stem", "y", (0.0, 0.0), cy + 0.50, cy + 0.68, 0.025, "trim", sides=6)]
-    parts += wheel(p, "wheel", (0.0, 0.0), cy + 0.66, 0.30)
+             p.hull("bonnet", [(x, cy + 0.23, z) for x in (-0.20, 0.20) for z in (-0.12, 0.12)]
+                    + [(x, cy + 0.58, z) for x in (-0.05, 0.05) for z in (-0.05, 0.05)], "machinery")]
+    parts += wheel(p, "wheel", (0.0, 0.0), cy + 0.64, 0.30)
     p.union(body, "flanges_bonnet_wheel", parts)
     p.body = body
     p.extra["centreline_m"] = round(cy, 4)
 
     def decor(D):
-        mf = at((0.0, cy, 0.17))
-        D.text(mf, "V-101", 0.0, 0.05, 0.05, "stencil")
-        D.text(mf, "DN 450", 0.0, -0.05, 0.035, "stencil")
+        mf = at((0.0, cy, 0.15))
+        D.text(mf, "V-101", 0.0, 0.07, 0.05, "stencil")
+        D.text(mf, "DN 450", 0.0, -0.03, 0.035, "stencil")
+        D.box(mf, -0.20, -0.14, 0.20, -0.10, -0.002, 0.004, "hazard")
         flange_bolts(D, p)
     p.decor.append(decor)
     return p
-
 
 def valve_small():
-    """A globe valve for a 0.15 m pipe along X: two flanges (ports a and b at x = +-0.15), a globe body,
-    a bonnet and stem and a hand wheel 0.25 m across above, pointing +Y; centreline_m as valve_large."""
+    """A globe valve for a 0.15 m pipe along X: a hexagonal body 0.2 m across whose end faces are its
+    flanges (ports a and b at x = +-0.15), a tapered bonnet, a spindle and a hand wheel 0.25 m across
+    above, pointing +Y; centreline_m as valve_large."""
     p = prop("valve_small", "A globe valve for the 0.15 m pipes (pipework)",
              "floor under the pipe's centreline, at the middle of the valve; the centreline is centreline_m above it")
-    cy = 0.15 / 2 + max(0.025, round(0.14 * 0.15, 4))
-    body = p.hull("globe", [(x, cy + y, z) for x in (-0.11, 0.11) for y, z in ((-0.06, 0.0), (0.0, -0.08), (0.0, 0.08), (0.07, 0.0))]
-                  + [(0.0, cy - 0.09, 0.0), (0.0, cy + 0.10, 0.0)], "machinery")
-    parts = port(p, "a", (-0.15, cy, 0.0), (-1, 0, 0), 0.15, body=0.07, sides=6) + port(p, "b", (0.15, cy, 0.0), (1, 0, 0), 0.15, body=0.07, sides=6)
-    parts += [
-             rod(p, "bonnet", "y", (0.0, 0.0), cy + 0.06, cy + 0.20, 0.035, "machinery", sides=6),
-             rod(p, "stem", "y", (0.0, 0.0), cy + 0.19, cy + 0.27, 0.012, "trim", sides=4)]
-    parts += wheel(p, "wheel", (0.0, 0.0), cy + 0.26, 0.125)
-    p.union(body, "flanges_bonnet_wheel", parts)
+    dia, rim = 0.15, 0.025
+    cy = dia / 2 + rim
+    body = rod(p, "body", "x", (cy, 0.0), -0.15, 0.15, cy, "machinery", sides=6)
+    for name, x, d in (("a", -0.15, (-1, 0, 0)), ("b", 0.15, (1, 0, 0))):
+        p.ports[name] = {"at_m": r3((x, cy, 0.0)), "dir": r3(d), "dia_m": dia}
+        p.flanges.append((name, at((x, cy, 0.0), d), dia / 2, cy))
+    parts = [p.hull("bonnet", [(x, cy + 0.08, z) for x in (-0.05, 0.05) for z in (-0.04, 0.04)]
+                    + [(x, cy + 0.18, z) for x in (-0.025, 0.025) for z in (-0.025, 0.025)], "machinery")]
+    parts += wheel(p, "wheel", (0.0, 0.0), cy + 0.24, 0.125)
+    p.union(body, "bonnet_wheel", parts)
     p.body = body
     p.extra["centreline_m"] = round(cy, 4)
 
     def decor(D):
+        for R in regions(D, lambda R: R.role == "machinery" and abs(R.n.x) < 0.1 and R.origin.y < cy + 0.11):
+            for x0, x1 in ((-0.15, -0.115), (0.115, 0.15)):
+                strip(D, R, (1, 0, 0), x0, x1, "steel", reserve=False)
+            strip(D, R, (1, 0, 0), -0.03, 0.03, "hazard", reserve=False)
         flange_bolts(D, p)
     p.decor.append(decor)
     return p
+
 
 
 # ----------------------------------------------------------------------------- the manifest's ports
