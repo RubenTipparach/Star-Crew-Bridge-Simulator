@@ -53,15 +53,41 @@ pub mod keys {
     pub const N3: u32 = sdl::SDLK_3.0;
     /// F12.
     pub const F12: u32 = sdl::SDLK_F12.0;
+    /// W.
+    pub const W: u32 = sdl::SDLK_W.0;
+    /// A.
+    pub const A: u32 = sdl::SDLK_A.0;
+    /// S.
+    pub const S: u32 = sdl::SDLK_S.0;
+    /// D.
+    pub const D: u32 = sdl::SDLK_D.0;
+    /// Q.
+    pub const Q: u32 = sdl::SDLK_Q.0;
+    /// E.
+    pub const E: u32 = sdl::SDLK_E.0;
+    /// Space.
+    pub const SPACE: u32 = sdl::SDLK_SPACE.0;
+    /// C.
+    pub const C: u32 = sdl::SDLK_C.0;
+    /// Left shift.
+    pub const LSHIFT: u32 = sdl::SDLK_LSHIFT.0;
+    /// Tab.
+    pub const TAB: u32 = sdl::SDLK_TAB.0;
 }
 
 /// An input event, as the app sees it.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Event {
     /// The window was closed or the program was asked to quit.
     Quit,
-    /// A key went down: its SDL keycode.
+    /// A key went down: its SDL keycode (not repeated while held).
     KeyDown(u32),
+    /// A key came up: its SDL keycode.
+    KeyUp(u32),
+    /// The mouse moved by this many pixels (raw, not smoothed: CLAUDE.md's mouse rule in Pale-Blue-Dot).
+    MouseMotion(f32, f32),
+    /// A mouse button went down.
+    MouseDown,
 }
 
 /// One frame's facts.
@@ -114,6 +140,17 @@ struct State {
 
 thread_local! {
     static PENDING: RefCell<Option<(WindowConfig, MakeApp)>> = const { RefCell::new(None) };
+    static WINDOW: std::cell::Cell<*mut sdl::SDL_Window> = const { std::cell::Cell::new(std::ptr::null_mut()) };
+}
+
+/// Capture the mouse for looking around (hidden, relative motion) or let it go. Call from the app's
+/// callbacks; does nothing before the window exists.
+pub fn capture_mouse(on: bool) {
+    let w = WINDOW.with(std::cell::Cell::get);
+    if !w.is_null() {
+        // SAFETY: the window is alive between app_init and app_quit, and this runs on the main thread.
+        unsafe { sdl::SDL_SetWindowRelativeMouseMode(w, on) };
+    }
 }
 
 fn sdl_error() -> String {
@@ -170,6 +207,7 @@ unsafe extern "C" fn app_init(appstate: *mut *mut c_void, _argc: c_int, _argv: *
             Ok(app) => {
                 // SAFETY: SDL_GetTicksNS has no preconditions once SDL is initialised.
                 let last_ns = unsafe { sdl::SDL_GetTicksNS() };
+                WINDOW.with(|c| c.set(window));
                 let state = Box::new(State { window, context, app, last_ns, index: 0 });
                 // SAFETY: appstate is SDL's slot for our state; it hands it back to every callback.
                 unsafe { *appstate = Box::into_raw(state).cast() };
@@ -262,8 +300,18 @@ unsafe extern "C" fn app_event(appstate: *mut c_void, event: *mut sdl::SDL_Event
     let ev = if kind == sdl::SDL_EVENT_QUIT.0 {
         Some(Event::Quit)
     } else if kind == sdl::SDL_EVENT_KEY_DOWN.0 {
-        // SAFETY: a key-down event's payload is the keyboard member.
-        Some(Event::KeyDown(unsafe { e.key.key.0 }))
+        // SAFETY: a key event's payload is the keyboard member.
+        let k = unsafe { e.key };
+        (!k.repeat).then_some(Event::KeyDown(k.key.0))
+    } else if kind == sdl::SDL_EVENT_KEY_UP.0 {
+        // SAFETY: as above.
+        Some(Event::KeyUp(unsafe { e.key.key.0 }))
+    } else if kind == sdl::SDL_EVENT_MOUSE_MOTION.0 {
+        // SAFETY: a motion event's payload is the motion member.
+        let m = unsafe { e.motion };
+        Some(Event::MouseMotion(m.xrel, m.yrel))
+    } else if kind == sdl::SDL_EVENT_MOUSE_BUTTON_DOWN.0 {
+        Some(Event::MouseDown)
     } else {
         None
     };
@@ -277,6 +325,7 @@ unsafe extern "C" fn app_quit(appstate: *mut c_void, _result: sdl::SDL_AppResult
     // SAFETY: appstate is the State app_init boxed; this is the last callback. The app (and with it
     // the renderer) is dropped while the context is still current, then the context goes.
     unsafe {
+        WINDOW.with(|c| c.set(std::ptr::null_mut()));
         let s = Box::from_raw(appstate.cast::<State>());
         let (window, context) = (s.window, s.context);
         drop(s);

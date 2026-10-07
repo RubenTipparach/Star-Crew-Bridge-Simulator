@@ -9,3 +9,6 @@ __pycache__/
 /target/
 # The sokol-shdc binary, fetched at its pinned revision by tools/fetch_sokol_shdc.py (11.6 MB a platform)
 /third_party/sokol-shdc/
+# Exported and compiled game data (tools/deck/export_deck.mjs, sc-tools deckc): rebuilt, never committed
+/build/
+/compiled/

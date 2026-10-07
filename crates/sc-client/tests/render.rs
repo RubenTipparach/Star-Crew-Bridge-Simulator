@@ -95,7 +95,14 @@ impl App for Test {
         let mvp = glam::camera::rh::proj::opengl::orthographic(-HALF_M, HALF_M, -HALF_M, HALF_M, -1.0, 1.0);
         self.r.begin_3d(&self.target, [0.0, 0.0, 0.0, 1.0]);
         for (mesh, prog, w, flash) in &self.draws {
-            let p = DeckParams { mvp, state_weights: *w, flash_dir: Vec3::Z, flash: *flash };
+            let p = DeckParams {
+                mvp,
+                state_weights: *w,
+                flash_dir: Vec3::Z,
+                flash: *flash,
+                panel_first: u32::MAX,
+                panel_glow: 0.0,
+            };
             self.r.draw_deck(&self.target, mesh, *prog, &p, Some(&self.tex));
         }
         self.r.end_pass();

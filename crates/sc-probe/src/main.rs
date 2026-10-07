@@ -181,7 +181,14 @@ fn ortho() -> Mat4 {
 }
 
 fn params() -> DeckParams {
-    DeckParams { mvp: ortho(), state_weights: [1.0, 0.0, 0.0], flash_dir: glam::Vec3::Z, flash: 0.0 }
+    DeckParams {
+        mvp: ortho(),
+        state_weights: [1.0, 0.0, 0.0],
+        flash_dir: glam::Vec3::Z,
+        flash: 0.0,
+        panel_first: u32::MAX,
+        panel_glow: 0.0,
+    }
 }
 
 impl Probe {

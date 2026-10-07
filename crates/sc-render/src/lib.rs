@@ -62,6 +62,10 @@ pub struct DeckParams {
     pub flash_dir: glam::Vec3,
     /// The dynamic light's strength.
     pub flash: f32,
+    /// The first texture layer whose alpha is an emission mask (`u32::MAX`: none).
+    pub panel_first: u32,
+    /// How bright emission masks glow now (1: as the texel).
+    pub panel_glow: f32,
 }
 
 /// A deck mesh on the GPU: 28-byte vertices and their indices. Dropping it frees its buffers.
@@ -187,11 +191,12 @@ impl Renderer {
         };
         let nearest = sampler(sg::Filter::Nearest);
         let linear = sampler(sg::Filter::Linear);
-        // Deck textures repeat (world-projected coordinates run across many spans, deck-pipeline 5a)
-        // and are sampled nearest up close (surface-materials).
+        // Deck textures repeat (world-projected coordinates run across many spans, deck-pipeline 5a),
+        // are sampled nearest up close and from their mipmaps at a distance (surface-materials).
         let deck_sampler = sg::make_sampler(&sg::SamplerDesc {
-            min_filter: sg::Filter::Nearest,
+            min_filter: sg::Filter::Linear,
             mag_filter: sg::Filter::Nearest,
+            mipmap_filter: sg::Filter::Linear,
             wrap_u: sg::Wrap::Repeat,
             wrap_v: sg::Wrap::Repeat,
             ..Default::default()
@@ -305,6 +310,36 @@ impl Renderer {
         make_texture_array(size_px, rgba)
     }
 
+    /// A texture array with its mip chain: `levels[k]` holds every layer at `size_px >> k`.
+    ///
+    /// # Panics
+    /// When a level is not whole layers of its size, or there are more than 16 levels.
+    pub fn make_texture_array_mips(&self, size_px: u32, layers: u32, levels: &[&[u8]]) -> TextureArray {
+        assert!(!levels.is_empty() && levels.len() <= 16, "1 to 16 mip levels");
+        let mut data = sg::ImageData::new();
+        for (k, l) in levels.iter().enumerate() {
+            let px = (size_px >> k).max(1) as usize;
+            assert_eq!(l.len(), px * px * 4 * layers as usize, "mip level {k} is whole layers of {px} px");
+            data.mip_levels[k] = sg::slice_as_range(l);
+        }
+        let img = sg::make_image(&sg::ImageDesc {
+            _type: sg::ImageType::Array,
+            width: size_px as i32,
+            height: size_px as i32,
+            num_slices: layers as i32,
+            num_mipmaps: levels.len() as i32,
+            pixel_format: COLOR_FORMAT,
+            data,
+            ..Default::default()
+        });
+        TextureArray {
+            view: sg::make_view(&sg::ViewDesc {
+                texture: sg::TextureViewDesc { image: img, ..Default::default() },
+                ..Default::default()
+            }),
+        }
+    }
+
     /// Begin the 3D pass into `t`, cleared to `clear` (linear RGBA) and depth 1.
     pub fn begin_3d(&mut self, t: &Target, clear: [f32; 4]) {
         let mut action = sg::PassAction::new();
@@ -361,6 +396,11 @@ impl Renderer {
             flash: [params.flash_dir.x, params.flash_dir.y, params.flash_dir.z, params.flash],
         };
         sg::apply_uniforms(shaders::deck::UB_DECK_VS_PARAMS, &sg::value_as_range(&u));
+        if program == DeckProgram::Textured {
+            let first_layer = if params.panel_first == u32::MAX { 1.0e9 } else { params.panel_first as f32 };
+            let fs = shaders::deck::DeckFsParams { glow: [first_layer, params.panel_glow, 0.0, 0.0] };
+            sg::apply_uniforms(shaders::deck::UB_DECK_FS_PARAMS, &sg::value_as_range(&fs));
+        }
         sg::draw(first, count, 1);
     }
 

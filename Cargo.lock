@@ -270,6 +270,8 @@ name = "sc-tools"
 version = "0.1.0"
 dependencies = [
  "sc-core",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

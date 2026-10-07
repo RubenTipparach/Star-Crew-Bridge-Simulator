@@ -42,13 +42,21 @@ void main() {
 @fs deck_fs
 layout(binding=0) uniform texture2DArray tex;
 layout(binding=0) uniform sampler smp;
+layout(binding=1) uniform deck_fs_params {
+    // x: the first layer whose alpha is an emission mask (the panel layers); y: how bright the masks
+    // glow in the current lighting state (panels.json glow, blended by the state weights).
+    vec4 glow;
+};
 
 in vec4 color;
 in vec3 uv_layer;
 out vec4 frag_color;
 
 void main() {
-    frag_color = vec4(texture(sampler2DArray(tex, smp), uv_layer).rgb * color.rgb, 1.0);
+    vec4 t = texture(sampler2DArray(tex, smp), uv_layer);
+    // A panel layer's alpha is its emission mask: there the texel shows as itself, whatever the light.
+    float emit = step(glow.x - 0.5, uv_layer.z) * t.a * glow.y;
+    frag_color = vec4(mix(t.rgb * color.rgb, t.rgb, emit), 1.0);
 }
 @end
 

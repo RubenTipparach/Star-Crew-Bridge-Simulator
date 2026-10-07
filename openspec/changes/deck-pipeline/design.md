@@ -642,6 +642,37 @@ it to the compartment and the one or two seen through open doors.
    35,180 (section 11, 2026-10-05), so nearly all of a shell's cost is the bake's subdivision.
    `light-baking`'s adaptive subdivision can keep it low where light is even.
 
+### 13. The first deck in the engine: the kit's own output (2026-10-07)
+
+The owner, 2026-10-07: "just build it, we'll worry about performance later. is the entire level in?"
+It was not: the engine drew a test room. **Decision (the owner's "just build it"):** the engine draws
+the whole Tern now, from the geometry the mockups already build, rather than after a Rust `deckc`
+reimplements the kit. One implementation of the deck rules stays the rule (CLAUDE.md 6.1): the kit
+(`docs/mockups/lib/shipkit.js`) is that implementation today, so the engine takes its output instead of
+a second copy of it.
+
+| Step | Tool | What it does |
+| --- | --- | --- |
+| Export | `node tools/deck/export_deck.mjs` | Opens the deck plan headless, waits until every room is lit (from the bake cache), and writes `build/deck/<ship>/`: each compartment's triangles in ship coordinates, normals, texture coordinates, layers, the three state colours (the bake, tints included), and the texture arrays |
+| Compile | `cargo run --release -p sc-tools -- deckc` | Packs every vertex with `sc-core`'s one packer into `compiled/<ship>.deck` (`sc-core::deck`): positions relative to each compartment's centre, texture coordinates shifted by whole spans, colours as display multipliers, identical vertices merged behind 32-bit indices, the prop atlases resampled into the one texture array, a mip chain |
+| Draw | `sc-client` | Loads the deck, draws every compartment through the deck pipeline with the camera subtracted in `f64` (the frames rule), the panel layers' emission masks glowing by `panels.json` `glow` |
+
+**What it is, measured** (`compiled/tern.deck`): 37 compartments, 160,247 triangles, 195,813 vertices
+(5.5 MB), 142 texture layers of 256 px with 9 mips (49.6 MB), 57 MB in all. Every compartment is
+drawn every frame: one draw each, no portal culling yet, and 256 px layers where the budget plans
+128 (section 8, `surface-materials`). The owner: performance later.
+
+**What it is not yet:** the `.deck` file of section 8 (it is a simpler first format, version 1, without
+chunks, collision, portals, probes or CRCs); collision and walking (the client flies); portal culling;
+the console faces (the screens' atlas is a separate texture in the deck plan, not exported yet); the
+viewscreen and the windows (the deck plan paints space into them; here they are dark); doors and
+movers. The export needs Node with Playwright and the deck plan; a Pi draws the compiled deck, it does
+not compile it. `build/` and `compiled/` are build output and are not committed.
+
+**When the Rust `deckc` of sections 2-8 is built**, it replaces the export step and this section's
+format, and the kit's rules move into it with tests; until then a change to the kit reaches the
+engine by re-running the two commands.
+
 ## Risks / Trade-offs
 
 - **The kit can make every room look the same.** Mitigation: hero detail files for the bridge

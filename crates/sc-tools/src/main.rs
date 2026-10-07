@@ -3,6 +3,9 @@
 //!
 //! `sc-tools check-data` loads every engine data file through `sc-core`'s one loader, so a file the
 //! game would refuse at startup is refused here first, naming the file and the field.
+//! `sc-tools deckc [ship]` compiles a ship's decks into `compiled/<ship>.deck` (see `deckc`).
+
+mod deckc;
 
 use std::path::Path;
 use std::process::ExitCode;
@@ -36,8 +39,18 @@ fn main() -> ExitCode {
                 }
             }
         }
+        Some("deckc") => match deckc::run(Path::new("."), args.get(1).map(String::as_str).unwrap_or("tern")) {
+            Ok(s) => {
+                println!("deckc: {s}");
+                ExitCode::SUCCESS
+            }
+            Err(e) => {
+                eprintln!("deckc: {e}");
+                ExitCode::FAILURE
+            }
+        },
         _ => {
-            eprintln!("usage: sc-tools check-data [repository root]");
+            eprintln!("usage: sc-tools check-data [repository root] | sc-tools deckc [ship]");
             ExitCode::from(2)
         }
     }

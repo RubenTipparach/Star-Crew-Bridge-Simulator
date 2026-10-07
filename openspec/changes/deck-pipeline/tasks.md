@@ -51,3 +51,12 @@
 - [ ] 6.3 Captures in `docs/screenshots/deck-pipeline/`: each refusal's message, the Tern from the helm, the main corridor with doors open and closed, red alert, emergency power.
 - [ ] 6.4 Owner review of the open questions K1-K4 with the `deck-plan` mockup shots.
 - [x] 6.5 `docs/mockups/deck-plan.html` presents this change: lamp fixtures by the kit rule, three colour sets blended per compartment by one shader, partitions as single lines; shots in `docs/screenshots/mockups/deck-plan-*.png` (documentation tooling, not engine code).
+
+## 7. The first deck in the engine (design section 13; the owner: "just build it")
+
+- [x] 7.1 The deck plan exports every compartment as it draws it (`window.MOCKUP_EXPORT_DECK`), and `tools/deck/export_deck.mjs` writes `build/deck/<ship>/`.
+- [x] 7.2 `sc-core::deck`: the first compiled deck format (index, vertices, indices, texture mips), read with every range checked; tests for a round trip, a truncated file and a compartment pointing outside it.
+- [x] 7.3 `sc-tools deckc`: packs with `sc-core`'s vertex packer, merges identical vertices, remaps and resamples the texture arrays into one, builds the mip chain.
+- [x] 7.4 `sc-client` draws the whole Tern in the three states and flies through it; headless shots from the deck plan's walk viewpoints in `docs/screenshots/engine/`.
+- [ ] 7.5 The console faces and the viewscreens and windows (space) in the engine.
+

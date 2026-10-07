@@ -8,8 +8,9 @@ with 1 GB of RAM**, with a 4 GB Pi 5 as the main server.
 
 **Status: design, and the engine's first light.** The game is written up first, as OpenSpec
 changes with three.js mockups, and built on request (CLAUDE.md section 4). The engine (Rust, SDL3,
-sokol_gfx on OpenGL ES 3.0) has its foundations, the Pi 5 probe and a first-light client
-(`openspec/changes/engine-stack`, design section 14). There is no game to play yet.
+sokol_gfx on OpenGL ES 3.0) has its foundations, the Pi 5 probe, and a client that flies through the
+whole Tern, lit by the bake in the three lighting states (`engine-stack` design section 14,
+`deck-pipeline` section 13). There is no game to play yet: no walking, crew or systems.
 
 ## Start here
 
@@ -29,7 +30,9 @@ sokol_gfx on OpenGL ES 3.0) has its foundations, the Pi 5 probe and a first-ligh
 
 ```sh
 cargo build --release                     # SDL 3.4 is built from source the first time (cmake, a C compiler)
-./target/release/sc-client --window       # first light: keys 1, 2, 3 switch the lighting state; F12 captures
+node tools/deck/export_deck.mjs           # the ship as the deck plan builds it (Node and Playwright)
+./target/release/sc-tools deckc           # compiled/tern.deck
+./target/release/sc-client --window       # fly the Tern: click, W A S D, Space and C, Shift; 1 2 3 the lighting states; F12 a capture
 ./target/release/sc-probe --out docs/benchmarks/$(date +%F)-pi5-probe   # on a Pi 5, full screen
 ./scripts/check.sh                        # every check, in order (also runs the rows below)
 ```
@@ -40,6 +43,9 @@ Wayland ones for a desktop window). Without a display, `--headless` draws throug
 driver (Mesa's llvmpipe in a cloud session): `sc-client --headless --shots DIR` writes the three
 states, and the render tests run that way. Shaders are compiled with `python3 tools/sokol_shaders.py`,
 which fetches the pinned `sokol-shdc`; the generated modules are committed.
+
+**On a Raspberry Pi 5:** [docs/engine/pi-setup.md](docs/engine/pi-setup.md) (the card, packages,
+building on the Pi, running the probe and the client).
 
 ## Checks
 

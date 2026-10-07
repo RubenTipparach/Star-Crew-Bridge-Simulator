@@ -533,7 +533,7 @@ everything drew through Mesa's llvmpipe over EGL, OpenGL ES 3.0, with SDL's offs
 | `sc-core` | `crates/sc-core/` | The fixed-step clock, generational arenas, seeded randomness, the replay hash, the data loader with `data/engine/render.json`, the deck vertex table and packer; 21 tests |
 | `sc-render` | `crates/sc-render/` | sokol_gfx set up with the pools from data, the deck pipelines built from `sc-core`'s table, the 3D target (MSAA when asked) and the blit to the output, readback for captures |
 | The platform | `crates/sc-client/src/platform.rs` | SDL 3.4.18 built from source (`sdl3-sys`), its main callbacks, an OpenGL ES 3.0 context (4.1 core on Windows and macOS), `SDL_KMSDRM_ATOMIC` set for the Pi 5 |
-| `sc-client` | `crates/sc-client/src/main.rs` | First light: a placeholder room through the deck pipeline in the three states, blended by the state weights over 0.5 s (keys 1, 2, 3) |
+| `sc-client` | `crates/sc-client/src/main.rs` | The whole Tern from `compiled/tern.deck` (`deck-pipeline` section 13), flown with the mouse and W A S D, in the three states blended by the state weights over 0.5 s (keys 1, 2, 3); first light's test room when no deck is compiled. Setup on a Pi: `docs/engine/pi-setup.md` |
 | `sc-probe` | `crates/sc-probe/` | Scenes 1, 2, 3, 4 and 8, the JSON and Markdown report |
 | Render tests | `crates/sc-client/tests/render.rs` | Known deck vertices drawn and read back, and a reference image |
 | `scripts/check.sh` | | Section 12's list, then the shader modules, the engine data and the lighting data |
