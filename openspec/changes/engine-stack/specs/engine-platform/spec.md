@@ -38,9 +38,31 @@ any extension only behind a fallback path that has been measured on a Pi 5.
 - **WHEN** the GL context offers no float colour-buffer extension
 - **THEN** every pass still draws correctly with 8-bit targets
 
-#### Scenario: The same shaders on a desktop
-- **WHEN** the client runs on desktop OpenGL 3.3 core
-- **THEN** it compiles the same shader sources with a prelude and draws the same frame
+#### Scenario: The same shaders on a desktop and in a browser
+- **WHEN** the client runs on desktop OpenGL 4.1 core, or in a browser on WebGL 2
+- **THEN** it draws the same frame from the same shader sources, compiled by `sokol-shdc`
+
+### Requirement: Shader layouts are generated, not hand-kept
+Every shader program SHALL have one source file, compiled by `sokol-shdc` at a pinned revision, and
+the Rust types for its uniforms and vertex inputs SHALL be generated from that source, never
+written by hand.
+
+#### Scenario: A uniform added to a shader
+- **WHEN** a uniform is added to a shader's source
+- **THEN** the generated Rust struct gains it in the same build, and code that does not set it fails to compile
+
+#### Scenario: The deck vertex against its pipeline
+- **WHEN** the render test builds the deck pipeline from `sc-core`'s vertex format table and draws a known vertex
+- **THEN** its position, layer, mover, normal, colours and texture coordinate reach the shader as `deckc` wrote them
+
+### Requirement: The frame never blocks
+The client SHALL run one frame per call of its frame callback and return, and SHALL NOT wait on
+the network, a file or a thread inside a frame, so that the same client runs where the browser
+drives the frame.
+
+#### Scenario: A slow network
+- **WHEN** no packet arrives for 2 s
+- **THEN** every frame in that time still returns within the frame budget and the console shows the connection as late
 
 ### Requirement: The simulation core is engine-independent
 Every gameplay rule SHALL live in `sc-core`, which SHALL NOT depend on rendering, windowing,
