@@ -46,7 +46,7 @@
   #stage { position: fixed; left: 0; right: 0; top: 44px; bottom: 0; display: flex; align-items: center; justify-content: center; }
   #console { position: absolute; width: 1280px; height: 720px; transform-origin: 0 0; background: #070a0f; overflow: hidden;
     user-select: none; -webkit-user-select: none; touch-action: none; }
-  #console svg { position: absolute; left: 0; top: 0; overflow: visible; }
+  #console svg { position: absolute; left: 0; top: 0; overflow: hidden; } /* a panel never draws outside its box (CLAUDE.md 10) */
   #console [data-act], #console [data-drag], #console [data-hold] { cursor: pointer; }
   #tip { position: fixed; z-index: 9; pointer-events: none; background: #182231; color: var(--fg); border: 1px solid #2c3a4d;
     border-radius: 5px; padding: 4px 8px; font: 600 13px var(--font); letter-spacing: .03em; display: none; white-space: nowrap; }
@@ -4343,14 +4343,65 @@ function works(loadId) {
 const reactorUp = () => st.reactor.state === "running";
 
 // The page's stand-ins for flight, contacts, weapons, shields and scans (not yet designed).
+// ---- 3D: vectors [x, y, z] and quaternions [w, x, y, z] (Hamilton product) ----
+// Ship axes are the layout's: +X port, +Y dorsal, +Z bow. An attitude q maps ship axes to the
+// navigation reference's axes (flight-and-navigation 6a).
+const v3 = {
+  add: (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]],
+  sub: (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]],
+  mul: (a, k) => [a[0] * k, a[1] * k, a[2] * k],
+  dot: (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2],
+  cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]],
+  len: (a) => Math.hypot(a[0], a[1], a[2]),
+  norm: (a) => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; },
+};
+const quat = {
+  mul: (a, b) => [a[0] * b[0] - a[1] * b[1] - a[2] * b[2] - a[3] * b[3], a[0] * b[1] + a[1] * b[0] + a[2] * b[3] - a[3] * b[2],
+    a[0] * b[2] - a[1] * b[3] + a[2] * b[0] + a[3] * b[1], a[0] * b[3] + a[1] * b[2] - a[2] * b[1] + a[3] * b[0]],
+  conj: (q) => [q[0], -q[1], -q[2], -q[3]],
+  rot: (q, v) => quat.mul(quat.mul(q, [0, v[0], v[1], v[2]]), [q[0], -q[1], -q[2], -q[3]]).slice(1),
+  axis: (ax, deg) => { const h = (deg * D2R) / 2, s = Math.sin(h); return [Math.cos(h), ax[0] * s, ax[1] * s, ax[2] * s]; },
+  norm: (q) => { const l = Math.hypot(q[0], q[1], q[2], q[3]) || 1; return q.map((x) => x / l); },
+  /** The one of q and -q with w >= 0: the same attitude, the form the consoles show. */
+  canon: (q) => (q[0] < 0 ? q.map((x) => -x) : q),
+  /** Heading (to starboard), pitch (nose up), roll (starboard down), degrees: Ry(-h) Rx(-p) Rz(r). */
+  fromEuler: (h, p, r) => quat.canon(quat.mul(quat.mul(quat.axis([0, 1, 0], -h), quat.axis([1, 0, 0], -p)), quat.axis([0, 0, 1], r))),
+  /** The Euler view of q; at pitch +/-90 roll folds into heading and gimbal is set. */
+  toEuler(q) {
+    const f = quat.rot(q, [0, 0, 1]), u = quat.rot(q, [0, 1, 0]), s = quat.rot(q, [-1, 0, 0]);
+    const p = Math.asin(clamp(f[1], -1, 1)) / D2R;
+    if (Math.abs(f[1]) > 0.99999) return { h: wrap360(Math.atan2(f[1] > 0 ? u[0] : -u[0], f[1] > 0 ? -u[2] : u[2]) / D2R), p, r: 0, gimbal: true };
+    return { h: wrap360(Math.atan2(-f[0], f[2]) / D2R), p, r: Math.atan2(-s[1], u[1]) / D2R, gimbal: false };
+  },
+};
+/** A direction from heading (to starboard) and climb, degrees, in reference axes. */
+const dirOf = (h, c) => [-Math.sin(h * D2R) * Math.cos(c * D2R), Math.sin(c * D2R), Math.cos(h * D2R) * Math.cos(c * D2R)];
+/** The attitude whose bow points along d (reference axes), dorsal side as near the reference's north as it goes. */
+const bowOn = (d) => { const f = v3.norm(d); return quat.fromEuler(wrap360(Math.atan2(-f[0], f[2]) / D2R), Math.asin(clamp(f[1], -1, 1)) / D2R, 0); };
+
+// The Tern's flight limits, from flight-and-navigation sections 2 and 4 (a stand-in until its
+// flight.json exists): rate limits under assist and RCS angular accelerations per ship axis
+// (x pitch, y yaw, z roll), thrust accelerations, the assist's set point ranges and time constants.
+const FL = { rate_dps: [18, 18, 36], alpha_dps2: [12, 12, 30], fwd_ms2: 15, rev_ms2: 5, rcs_ms2: 4,
+  speed_min_ms: -100, speed_max_ms: 400, strafe_max_ms: 50, tau_v_s: 1.0, tau_w_s: 0.25, held_deg: 0.5, held_dps: 0.2 };
+// The Tern's shield, from weapons-and-shields section 11.
+const SH = { axes_m: [17, 13, 54], centre_m: [0, 1.5, -2], total_mj: 240, cap_min_mj: 15, cap_max_mj: 80, regen_per_mw: 0.25, flash_s: 0.4, hit_show_s: 8 };
+
+/** The flight stand-in's state: attitude, body rates, velocity and position in reference axes. */
+const F = {
+  q: quat.fromEuler(20, 0, 0), w: [0, 0, 0], V: [0, 0, 0], P: [0, 0, 0], acc: [0, 0, 0], wset: [0, 0, 0],
+  speedSet: 140, strafe: [0, 0], stickDrag: [0, 0, 0], keys: new Set(),
+  oe: { h: 45, p: 10, r: -30 }, order: null, orderActive: false, plan: null,
+};
+F.V = quat.rot(F.q, [0, 0, 140]);
 const G = {
-  t: 0, n: 0, x: 0, y: 0, hdg: 20, hdgOrder: 20, speed: 140, throttle: 0.3, ap: "HOLD", evade: null, evadeT: 0,
-  wp: { x: 9, y: 16 },
+  t: 0, n: 0, ap: "HOLD",
+  wp: [9000, 1500, 16000],
   contacts: [
-    { id: "T1", cls: "corvette", iff: "hostile", x: 5.0, y: 8.2, hdg: 210, v: 0.16, hull: 100, scan: 0.35 },
-    { id: "T2", cls: "fighter", iff: "hostile", x: -6.5, y: 7.5, hdg: 150, v: 0.32, hull: 100, scan: 0 },
-    { id: "N1", cls: "freighter", iff: "neutral", x: 11, y: -5, hdg: 300, v: 0.07, hull: 100, scan: 1 },
-    { id: "U1", cls: "corvette", iff: "unknown", x: -16, y: -12, hdg: 45, v: 0.11, hull: 100, scan: 0 },
+    { id: "T1", cls: "corvette", iff: "hostile", p: [-5000, 900, 8200], dir: dirOf(205, -4), v: 160, hull: 100, scan: 0.35 },
+    { id: "T2", cls: "fighter", iff: "hostile", p: [6500, -1800, 7500], dir: dirOf(140, 8), v: 320, hull: 100, scan: 0 },
+    { id: "N1", cls: "freighter", iff: "neutral", p: [-11000, 300, -5000], dir: dirOf(300, 0), v: 70, hull: 100, scan: 1 },
+    { id: "U1", cls: "corvette", iff: "unknown", p: [16000, 2500, -12000], dir: dirOf(45, -3), v: 110, hull: 100, scan: 0 },
   ],
   target: "T1", sciSel: "T1",
   turrets: [
@@ -4360,106 +4411,182 @@ const G = {
     { id: "stbd", short: "S", load: "turret_stbd", arc: [10, 170], mode: "AUTO", op: null, heat: 0.4, aim: 90, firing: false },
   ],
   tubes: [{ state: "READY", t: 0 }, { state: "LOADING", t: 3.1 }], magazine: 6, missiles: [], inbound: [],
-  // Shield faces: bow, stern, port, stbd, dorsal, ventral; share of capacity and stored MJ.
-  share: [0.25, 0.15, 0.2, 0.2, 0.1, 0.1], stored: [80, 50, 66, 66, 33, 33], capMj: 330, freq: "A", shieldBy: "Science",
+  // Shield faces in weapons-and-shields' order: bow, stern, port, starboard, dorsal, ventral.
+  weight: [1, 1, 1, 1, 1, 1], charge: [36, 36, 36, 36, 36, 36], flash: [-9, -9, -9, -9, -9, -9], hitLog: [],
+  freq: "A", shieldBy: "Science", preset: -1, shieldCam: { yaw: 62, el: 24 },
   scanning: false, ping: 0, feed: "FWD", zoom: 1,
-  navRange: 20, tacRange: 10, sciRange: 25,
+  navRange: 20, tacRange: 5, sciRange: 25,
   orders: [], composer: { to: "helm", verb: null }, braced: 0, viewOverride: false,
   lastFire: 0, hits: 0, shipSel: "engineering",
 };
-// Warm up 300 s of ship time at cruise (deterministic), as the systems mockup does.
-for (let k = 0; k < 3000; k++) { sim.setActivity(activity()); sim.step(); }
-const FACES = ["bow", "stern", "port", "stbd", "dorsal", "ventral"];
+const FACES = ["bow", "stern", "port", "starboard", "dorsal", "ventral"];
 const TUBE_LOAD_S = 7.2;
 const RANGES = { nav: [5, 20, 100], tac: [2, 5, 10], sci: [5, 25, 100] };
 const contact = (id) => G.contacts.find((c) => c.id === id);
-const rangeKm = (c) => Math.hypot(c.x - G.x, c.y - G.y);
-/** Bearing of a contact from the ship relative to the bow, deg (-180..180). */
-const relBearing = (c) => wrap180(Math.atan2(c.x - G.x, c.y - G.y) / D2R - G.hdg);
+/** Where a point is from the ship, in ship axes, metres. */
+const relPos = (p) => quat.rot(quat.conj(F.q), v3.sub(p, F.P));
+const rangeKm = (c) => v3.len(v3.sub(c.p, F.P)) / 1000;
+/** Bearing (deg, to starboard from the bow, -180..180) and elevation (deg, up) of a ship-axes direction. */
+const brgOf = (d) => wrap180(Math.atan2(-d[0], d[2]) / D2R);
+const elevOf = (d) => Math.atan2(d[1], Math.hypot(d[0], d[2])) / D2R;
+const relBearing = (c) => brgOf(relPos(c.p));
 function inArc(a, arc) { a = wrap360(a); const [a0, a1] = arc; return a0 < 0 ? a >= wrap360(a0) || a <= a1 : a >= a0 && a <= a1; }
-function maxSpeed() { return 600 * works("impulse_drive"); }
-function turnRate() { return 14 * works("impulse_drive") * (0.5 + 0.5 * works("inertial_dampers")); }
-/** The page's stand-in hit chances (weapons is not designed): falls with range, halved on fighters. */
+/** The page's stand-in hit chances (weapons is not built): falls with range, halved on fighters. */
 function turretHit(t, c) { return clamp(0.9 - rangeKm(c) * 0.12, 0.05, 0.9) * works(t.load) * (c.cls === "fighter" ? 0.55 : 1); }
 function missileHit(c) { return c ? clamp(0.95 - rangeKm(c) * 0.03, 0.1, 0.95) * (c.cls === "fighter" ? 0.5 : 1) * works("missile_hoist") : 0; }
-function tubesBear() { const c = contact(G.target); return !!c && Math.abs(relBearing(c)) <= 5; }
+function tubesBear() { const c = contact(G.target); if (!c) return false; const d = v3.norm(relPos(c.p)); return d[2] >= Math.cos(5 * D2R); }
+const rcsPower = () => Math.max(0, (works("rcs_fwd") + works("rcs_aft")) / 2);
+
+// ---- shields (weapons-and-shields 11): the one face rule, capacities, the hit ----
+/** The face of a point o, in ship axes from the shield's centre: the largest of o divided by the semi-axes. */
+function shieldFace(o) {
+  const n = [o[0] / SH.axes_m[0], o[1] / SH.axes_m[1], o[2] / SH.axes_m[2]], a = n.map(Math.abs);
+  if (a[2] >= a[0] && a[2] >= a[1]) return n[2] >= 0 ? 0 : 1;
+  if (a[0] >= a[1]) return n[0] >= 0 ? 2 : 3;
+  return n[1] >= 0 ? 4 : 5;
+}
+/** The point of the shield ellipsoid in direction d from its centre, ship axes, metres. */
+function ellipsoidPoint(d) { const k = 1 / Math.hypot(d[0] / SH.axes_m[0], d[1] / SH.axes_m[1], d[2] / SH.axes_m[2]); return v3.mul(d, k); }
+function shieldCap(f) {
+  const sum = G.weight.reduce((a, b) => a + b, 0), health = sim.capability(loadAt("shield_generator"));
+  return clamp((SH.total_mj * health * G.weight[f]) / sum, SH.cap_min_mj, SH.cap_max_mj);
+}
+const shieldRatio = (f) => G.charge[f] / Math.max(1e-6, shieldCap(f));
+const ratioCol = (k) => (k > 0.5 ? C.ok : k > 0.2 ? C.warn : C.danger);
+
 function activity() {
   const firing = (id) => (G.turrets.find((t) => t.id === id).firing ? 1 : 0);
-  const regen = G.stored.some((s, i) => s < G.capMj * G.share[i] - 0.5) ? 1 : 0;
+  const regen = G.charge.some((c, f) => c < shieldCap(f) - 0.5) ? 1 : 0;
+  const turning = Math.min(1, v3.len(F.w) / (18 * D2R)), lateral = Math.min(1, Math.hypot(F.acc[0], F.acc[1]) / FL.rcs_ms2);
   return {
-    drive: clamp(Math.abs(G.throttle), 0.05, 1), dampers: G.evade ? 0.9 : 0.25, rcs: G.evade ? 0.8 : 0.15, shield_regen: regen,
+    drive: clamp(Math.max(0, F.acc[2]) / FL.fwd_ms2, 0.05, 1), dampers: clamp(v3.len(F.acc) / 25, 0.1, 1), rcs: clamp(Math.max(turning, lateral), 0.05, 1), shield_regen: regen,
     turret_dorsal: firing("dorsal"), turret_ventral: firing("ventral"), turret_port: firing("port"), turret_stbd: firing("stbd"),
     sensors_active: G.scanning || G.ping > 0 ? 1 : 0, comms: 0.2, hoist: G.tubes.some((t) => t.state === "LOADING") ? 1 : 0,
   };
+}
+// Warm up 300 s of ship time at cruise (deterministic), as the systems mockup does.
+for (let k = 0; k < 3000; k++) { sim.setActivity(activity()); sim.step(); }
+for (let f = 0; f < 6; f++) G.charge[f] = shieldCap(f) * 0.9;
+
+// ---- the flight stand-in: flight-and-navigation sections 3, 4 and 6a ----
+/** Where the ship is told to point, if anywhere: an attitude order, or an autopilot pointing mode. */
+function attitudeGoal() {
+  if (F.orderActive) return F.order;
+  const tgt = contact(G.target);
+  if (G.ap === "COURSE") return bowOn(v3.sub(G.wp, F.P));
+  if (G.ap === "CHASE" && tgt) return bowOn(v3.sub(tgt.p, F.P));
+  if (G.ap === "MATCH" && tgt) return bowOn(tgt.dir);
+  return null;
+}
+/**
+ * The slew to an attitude (design 6a): the shortest single-axis turn, its rate set point, and its
+ * time. The console's time preview calls this same function.
+ */
+function slewPlan(qt) {
+  let e = quat.mul(quat.conj(F.q), qt); if (e[0] < 0) e = e.map((x) => -x);
+  const ang = 2 * Math.acos(clamp(e[0], -1, 1)), s = Math.hypot(e[1], e[2], e[3]);
+  if (s < 1e-9) return { w: [0, 0, 0], angle: 0, time: 0, held: v3.len(F.w) < FL.held_dps * D2R };
+  const u = [e[1] / s, e[2] / s, e[3] / s], pw = Math.max(rcsPower(), 1e-3);
+  let rmax = Infinity, amax = Infinity;
+  for (let i = 0; i < 3; i++) if (Math.abs(u[i]) > 1e-6) { rmax = Math.min(rmax, (FL.rate_dps[i] * D2R) / Math.abs(u[i])); amax = Math.min(amax, (FL.alpha_dps2[i] * D2R * pw) / Math.abs(u[i])); }
+  const time = ang > (rmax * rmax) / amax ? ang / rmax + rmax / amax : 2 * Math.sqrt(ang / amax);
+  const inside = ang < FL.held_deg * D2R;
+  return { w: v3.mul(u, inside ? 0 : Math.min(rmax, Math.sqrt(1.6 * amax * ang))), angle: ang / D2R, time, held: inside && v3.len(F.w) < FL.held_dps * D2R };
+}
+/** The stick: keys (design section 6) and the drag controls, yaw to starboard, pitch up, roll right, each -1..1. */
+function stick() {
+  const k = F.keys, ax = (a, b) => (k.has(a) ? -1 : 0) + (k.has(b) ? 1 : 0);
+  return [clamp(ax("a", "d") + F.stickDrag[0], -1, 1), clamp(ax("f", "r") + F.stickDrag[1], -1, 1), clamp(ax("q", "e") + F.stickDrag[2], -1, 1)];
+}
+function stepFlight(dt) {
+  const sk = stick(), pw = rcsPower();
+  let wset;
+  if (Math.abs(sk[0]) + Math.abs(sk[1]) + Math.abs(sk[2]) > 0.01) {
+    // The stick sets rates and cancels any attitude order or pointing mode.
+    F.orderActive = false; if (G.ap !== "EVADE") G.ap = "HOLD"; F.plan = null;
+    wset = [-sk[1] * FL.rate_dps[0] * D2R, -sk[0] * FL.rate_dps[1] * D2R, sk[2] * FL.rate_dps[2] * D2R];
+  } else {
+    const goal = attitudeGoal();
+    F.plan = goal ? slewPlan(goal) : null;
+    wset = F.plan ? F.plan.w : [0, 0, 0];
+  }
+  F.wset = wset;
+  for (let i = 0; i < 3; i++) { const am = FL.alpha_dps2[i] * D2R * pw; F.w[i] += clamp((wset[i] - F.w[i]) / FL.tau_w_s, -am, am) * dt; }
+  const dq = quat.mul(F.q, [0, F.w[0], F.w[1], F.w[2]]);
+  F.q = quat.norm(F.q.map((x, i) => x + 0.5 * dt * dq[i]));
+  // Linear, full assist: forward, lateral and vertical speed set points in ship axes.
+  if (G.ap === "EVADE") { const k = Math.floor(G.t / 4); F.strafe = [(hash("jinkx", k) - 0.5) * 80, (hash("jinky", k) - 0.5) * 80]; }
+  const kk = F.keys, lat = (kk.has("c") ? 1 : 0) - (kk.has("z") ? 1 : 0), ver = (kk.has(" ") ? 1 : 0) - (kk.has("control") ? 1 : 0);
+  const strafe = [lat ? lat * FL.strafe_max_ms : F.strafe[0], ver ? ver * FL.strafe_max_ms : F.strafe[1]];
+  if (G.ap === "MATCH") { const tgt = contact(G.target); if (tgt) F.speedSet = clamp(tgt.v, FL.speed_min_ms, FL.speed_max_ms); }
+  const vt = quat.rot(F.q, [-strafe[0], strafe[1], F.speedSet]);
+  const ab = quat.rot(quat.conj(F.q), v3.mul(v3.sub(vt, F.V), 1 / FL.tau_v_s)), dr = works("impulse_drive");
+  ab[0] = clamp(ab[0], -FL.rcs_ms2 * pw, FL.rcs_ms2 * pw); ab[1] = clamp(ab[1], -FL.rcs_ms2 * pw, FL.rcs_ms2 * pw);
+  ab[2] = clamp(ab[2], -FL.rev_ms2 * pw, FL.fwd_ms2 * dr);
+  F.acc = ab;
+  F.V = v3.add(F.V, v3.mul(quat.rot(F.q, ab), dt)); F.P = v3.add(F.P, v3.mul(F.V, dt));
+}
+/** Turn a unit direction toward another by at most maxDeg. */
+function turnToward(d, want, maxDeg) {
+  const c = clamp(v3.dot(d, want), -1, 1), ang = Math.acos(c), m = maxDeg * D2R;
+  if (ang <= m) return want;
+  const ax = v3.cross(d, want), al = v3.len(ax);
+  const axis = al < 1e-9 ? [0, 1, 0] : v3.mul(ax, 1 / al);
+  return v3.norm(quat.rot(quat.axis(axis, maxDeg), d));
 }
 
 /** One fixed step of the page's stand-ins (seconds, never frames: CLAUDE.md 6.4). */
 function stepGame(dt) {
   G.t += dt; G.n++;
-  // Helm: autopilot, evasive patterns, turn and speed limited by the drive's power.
-  if (G.ap === "COURSE") G.hdgOrder = wrap360(Math.atan2(G.wp.x - G.x, G.wp.y - G.y) / D2R);
+  stepFlight(dt);
   const tgt = contact(G.target);
-  if (G.ap === "CHASE" && tgt) G.hdgOrder = wrap360(Math.atan2(tgt.x - G.x, tgt.y - G.y) / D2R);
-  if (G.ap === "MATCH" && tgt) { G.hdgOrder = tgt.hdg; G.throttle = clamp((tgt.v * 1000) / Math.max(1, 600), -0.25, 1); }
-  let order = G.hdgOrder;
-  if (G.evade) {
-    G.evadeT -= dt;
-    const ph = Math.floor(G.t / 1.6) % 2 ? 1 : -1;
-    if (G.evade === "JINK") order = G.hdgOrder + ph * 30;
-    if (G.evade === "SPIRAL") order = G.hdg + 40;
-    if (G.evade === "PORT") order = G.hdgOrder - 90;
-    if (G.evade === "STBD") order = G.hdgOrder + 90;
-    if (G.evadeT <= 0) G.evade = null;
-  }
-  const dh = wrap180(order - G.hdg), tr = turnRate() * dt;
-  G.hdg = wrap360(G.hdg + clamp(dh, -tr, tr));
-  const want = G.throttle * maxSpeed();
-  G.speed += clamp(want - G.speed, -60 * dt, 40 * dt);
-  G.x += (G.speed / 1000) * Math.sin(G.hdg * D2R) * dt; G.y += (G.speed / 1000) * Math.cos(G.hdg * D2R) * dt;
-  // Contacts: hostiles close to about 3 km and circle; others keep their course.
+  // Contacts: hostiles close to about 3.5 km and circle in 3D; others keep their course.
   for (const c of G.contacts) {
     if (c.hull <= 0) continue;
     if (c.iff === "hostile") {
-      const r = rangeKm(c), toShip = wrap360(Math.atan2(G.x - c.x, G.y - c.y) / D2R);
-      const aim = r > 3.5 ? toShip : wrap360(toShip + 80);
-      c.hdg = wrap360(c.hdg + clamp(wrap180(aim - c.hdg), -18 * dt, 18 * dt));
+      const to = v3.sub(F.P, c.p), r = v3.len(to), toN = v3.mul(to, 1 / r);
+      const want = r > 3500 ? toN : v3.norm(v3.cross(toN, [0.2, 1, 0]));
+      c.dir = turnToward(c.dir, want, 18 * dt);
     }
-    c.x += c.v * Math.sin(c.hdg * D2R) * dt; c.y += c.v * Math.cos(c.hdg * D2R) * dt;
+    c.p = v3.add(c.p, v3.mul(c.dir, c.v * dt));
   }
   // Turrets: AUTO and TARGET fire at the target in arc and in 5 km; PD only at inbound missiles.
   for (const t of G.turrets) {
     let aimAt = null;
-    if (t.mode === "PD") { const m = G.inbound.find((m) => inArc(m.brg, t.arc)); if (m) aimAt = m.brg; }
+    const pdm = G.inbound.find((m) => inArc(brgOf(m.d), t.arc));
+    if (t.mode === "PD") { if (pdm) aimAt = brgOf(pdm.d); }
     else if (t.mode !== "HOLD" && tgt && tgt.hull > 0 && tgt.iff === "hostile" && rangeKm(tgt) < 5 && inArc(relBearing(tgt), t.arc)) aimAt = relBearing(tgt);
     t.firing = aimAt != null && t.heat < 1 && !t.cooling && works(t.load) > 0.05;
     if (aimAt != null) t.aim = aimAt;
     if (t.firing) {
       t.heat += 0.07 * dt;
       if (t.mode !== "PD" && hash("turret", t.id, G.n) < turretHit(t, tgt) * dt * 0.6) tgt.hull = Math.max(0, tgt.hull - 1.2);
-      if (t.mode === "PD") { const m = G.inbound.find((m) => inArc(m.brg, t.arc)); if (m && hash("pd", t.id, G.n) < 0.5 * dt) m.dead = true; }
+      if (t.mode === "PD" && pdm && hash("pd", t.id, G.n) < 0.5 * dt) pdm.dead = true;
     } else t.heat = Math.max(0, t.heat - 0.05 * dt);
     if (t.heat >= 1) t.cooling = true;
     if (t.cooling && t.heat < 0.4) t.cooling = false;
   }
-  // Tubes and missiles.
+  // Tubes and missiles (1.4 km/s, homing).
   for (const tb of G.tubes) if (tb.state === "LOADING") { tb.t += dt * works("missile_hoist"); if (tb.t >= TUBE_LOAD_S) { tb.state = "READY"; tb.t = 0; } }
   for (const m of G.missiles) {
     const c = contact(m.target); if (!c) { m.dead = true; continue; }
-    const r = Math.hypot(c.x - m.x, c.y - m.y), step = 1.4 * dt;
-    if (r <= step) { m.dead = true; if (hash("missile", m.n) < m.p) c.hull = Math.max(0, c.hull - 45); }
-    else { m.x += ((c.x - m.x) / r) * step; m.y += ((c.y - m.y) / r) * step; }
+    const d = v3.sub(c.p, m.pos), r = v3.len(d), step = 1400 * dt;
+    if (r <= step) { m.dead = true; if (hash("missile", m.n) < m.chance) c.hull = Math.max(0, c.hull - 45); }
+    else m.pos = v3.add(m.pos, v3.mul(d, step / r));
   }
   G.missiles = G.missiles.filter((m) => !m.dead);
-  // Enemy fire at red alert: a hostile within 6 km fires every 9 s at the face it sees.
+  // Enemy fire at red alert: a hostile within 6 km fires every 9 s, from where it is.
   if (st.alert === "red_alert" && G.t - G.lastFire > 9) {
     const shooter = G.contacts.find((c) => c.iff === "hostile" && c.hull > 0 && rangeKm(c) < 6);
-    if (shooter) { G.lastFire = G.t; G.inbound.push({ brg: relBearing(shooter), t: 2.0, n: ++G.hits }); }
+    if (shooter) { G.lastFire = G.t; G.inbound.push({ d: v3.norm(relPos(shooter.p)), t: 2.0, n: ++G.hits }); }
   }
-  for (const m of G.inbound) { m.t -= dt; if (m.t <= 0 && !m.dead) { m.dead = true; hitUs(m.brg, 40, m.n); } }
+  for (const m of G.inbound) { m.t -= dt; if (m.t <= 0 && !m.dead) { m.dead = true; hitUs(m.d, 40, m.n); } }
   G.inbound = G.inbound.filter((m) => !m.dead);
-  // Shields recharge from the shield group's power.
-  const regen = 5 * works("shield_generator") * dt;
-  for (let f = 0; f < 6; f++) G.stored[f] = Math.min(G.capMj * G.share[f], G.stored[f] + regen * G.share[f] * 2);
+  // Shields recharge from the power the generator gets: 0.25 MJ/s per MW, to the faces furthest below their capacity.
+  const regen = SH.regen_per_mw * st.alloc[loadAt("shield_generator")] * dt;
+  const want = G.charge.map((c, f) => Math.max(0, G.weight[f] * (shieldCap(f) - c))), sw = want.reduce((a, b) => a + b, 0);
+  for (let f = 0; f < 6; f++) G.charge[f] = Math.min(shieldCap(f), G.charge[f] + (sw > 0 ? (regen * want[f]) / sw : 0));
+  G.hitLog = G.hitLog.filter((h) => G.t - h.t < SH.hit_show_s);
   // Science: the scan advances with the sensors' power; a ping decays.
   const sc = contact(G.sciSel);
   if (G.scanning && sc) { sc.scan = Math.min(1, sc.scan + (dt / 6) * works("sensors")); if (sc.scan >= 1) G.scanning = false; }
@@ -4467,19 +4594,22 @@ function stepGame(dt) {
   for (const c of G.contacts) if (c.hull <= 0 && G.target === c.id) G.target = (G.contacts.find((x) => x.hull > 0 && x.iff === "hostile") || {}).id || null;
   if (G.braced > 0) G.braced -= dt;
 }
-/** A hit on our hull at bearing brg (deg from the bow): the shield face takes what it can, the rest goes to the damage model. */
-function hitUs(brg, mj, n) {
-  const a = wrap360(brg);
-  const face = a < 45 || a >= 315 ? 0 : a >= 135 && a < 225 ? 1 : a >= 225 ? 2 : 3;
-  const take = Math.min(G.stored[face], mj);
-  G.stored[face] -= take;
+/**
+ * A hit from direction d (ship axes, toward the attacker): the face it strikes takes what it can,
+ * and the rest goes to the damage model at the hull under that face.
+ */
+function hitUs(d, mj, n) {
+  d = v3.norm(d);
+  const o = ellipsoidPoint(d), face = shieldFace(o);
+  const take = Math.min(G.charge[face], mj);
+  G.charge[face] -= take; G.flash[face] = G.t;
+  G.hitLog.push({ d, face, t: G.t, mj, through: mj - take > 0.5 });
   const left = (mj - take) * (G.braced > 0 ? 0.8 : 1);
   if (left <= 0.5) return;
-  const z = face === 0 ? 38 : face === 1 ? -40 : -30 + 60 * hash("hitz", n);
-  const h = sim.hullHalfBeam(z), yy = 0.5 + 3 * hash("hity", n);
-  const at = face === 0 ? [0, 1.5, 39] : face === 1 ? [0, 1.0, -41] : face === 2 ? [h.hw, yy, z] : [-h.hw, yy, z];
-  const dir = face === 0 ? [0, 0, -1] : face === 1 ? [0, 0, 1] : face === 2 ? [-1, 0, 0] : [1, 0, 0];
-  sim.resolveHit(at, dir, left);
+  const p = v3.add(o, SH.centre_m), z = clamp(p[2], -40, 40), h = sim.hullHalfBeam(z);
+  const at = face === 0 ? [0, 1.5, 39] : face === 1 ? [0, 1.0, -41] : face === 2 ? [h.hw, clamp(p[1], h.bottom + 1, h.top - 1), z]
+    : face === 3 ? [-h.hw, clamp(p[1], h.bottom + 1, h.top - 1), z] : face === 4 ? [clamp(p[0], -3, 3), h.top, z] : [clamp(p[0], -3, 3), h.bottom, z];
+  sim.resolveHit(at, v3.mul(d, -1), left);
 }
 /** Hull integrity, % of the 54 sections (damage-control): an untouched section is 100. */
 function hullPct() { let s = 0, n = 0; for (const v of Object.values(st.hull)) { s += 100 - v.integrity; n++; } return 100 - s / 54; }
@@ -4518,8 +4648,12 @@ G.orders.push({ to: "engineering", verb: "COMBAT", t: -40, state: "done" });
 // =================================================================== drawing: frame
 const grid = (c, r, w, h) => ({ x: 20 + 104 * c, y: 280 + 102 * r, w: 104 * w - 8, h: 102 * h - 8 });
 /** A panel: a fixed box from the grid with a one-word title; body(w, h) draws inside it. */
+const PANEL_CACHE = {};
 function panel(title, g, body, o) {
   o = o || {};
+  // A panel with o.hz redraws at most that often, and at once when o.key (what it is looking at) changes.
+  const c = PANEL_CACHE[station + title];
+  if (o.hz && c && c.key === o.key && G.t - c.t < 1 / o.hz && G.t >= c.t) { PANEL_OUT.push(c.html); return c.html; }
   const hb = 24, bh = g.h - hb;
   let s = `<svg x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" viewBox="0 0 ${g.w} ${g.h}" style="left:${g.x}px;top:${g.y}px">`;
   s += `<rect x="0.5" y="0.5" width="${g.w - 1}" height="${g.h - 1}" rx="9" fill="${C.panel}" stroke="${o.stroke || C.line}" stroke-width="${o.stroke ? 2 : 1}"/>`;
@@ -4527,6 +4661,7 @@ function panel(title, g, body, o) {
   s += text(21, 18, 13, C.dim, title, { ls: 2, w: 700 });
   s += `<g transform="translate(0,${hb})">${body(g.w, bh)}</g>`;
   s += "</svg>";
+  if (o.hz) PANEL_CACHE[station + title] = { t: G.t, key: o.key, html: s };
   PANEL_OUT.push(s);
   return s;
 }
@@ -4562,34 +4697,44 @@ function titleBand() {
   s += text(1268, 21, 14, C.dim, `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`, { a: "end" });
   return s + "</svg>";
 }
-/** The look band: no UI, the room from the seat. Here a flat sketch of the viewscreen and its feed. */
+/** Stars: fixed directions in reference axes (seeded), so they wheel past as the ship yaws, pitches and rolls. */
+const STARS = Array.from({ length: 1400 }, (_, i) => {
+  const z = hash("starz", i) * 2 - 1, a = hash("stara", i) * Math.PI * 2, r = Math.sqrt(1 - z * z);
+  return { d: [r * Math.cos(a), z, r * Math.sin(a)], big: hash("starr", i) < 0.06, lum: 0.25 + hash("starl", i) * 0.75 };
+});
+/** The camera of a viewscreen feed, in ship axes: forward, right (starboard for the bow feed) and up. */
+function feedBasis() {
+  const tgt = contact(G.target);
+  const f = { FWD: [0, 0, 1], AFT: [0, 0, -1], PORT: [1, 0, 0], STBD: [-1, 0, 0], CHASE: [0, 0, 1] }[G.feed] || (tgt ? v3.norm(relPos(tgt.p)) : [0, 0, 1]);
+  let r = v3.cross(f, [0, 1, 0]);
+  if (v3.len(r) < 1e-3) r = [-1, 0, 0];
+  r = v3.norm(r);
+  return { f, r, u: v3.cross(r, f) };
+}
+/** The look band: no UI, the room from the seat. Here a flat sketch of the viewscreen, its feed drawn in 3D. */
 function lookBand() {
   const red = st.alert === "red_alert";
   let s = `<svg y="32" width="1280" height="240" viewBox="0 0 1280 240" style="top:32px">`;
   s += `<defs><linearGradient id="lb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b1018"/><stop offset="1" stop-color="#05070b"/></linearGradient>`;
   s += `<radialGradient id="rv" cx="0.5" cy="0.5" r="0.75"><stop offset="0.55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="${C.alert}" stop-opacity="${red ? 0.35 : 0}"/></radialGradient></defs>`;
   s += `<rect width="1280" height="240" fill="url(#lb)"/>`;
-  // Bridge silhouettes: the forward consoles and the screen's frame.
   s += `<path d="M0 240V150l180-30h120l40 120zM1280 240V150l-180-30H980l-40 120z" fill="#0d131c" stroke="#18212d"/>`;
   s += `<rect x="330" y="18" width="620" height="200" rx="6" fill="#020306" stroke="#2a3442" stroke-width="3"/>`;
-  // Stars, fixed to the feed's direction so they slide as the ship turns.
-  const feedYaw = { FWD: 0, AFT: 180, PORT: -90, STBD: 90, TARGET: 0, CHASE: 0 }[G.feed];
-  let look = G.hdg + feedYaw;
-  const tgt = contact(G.target);
-  if (G.feed === "TARGET" && tgt) look = G.hdg + relBearing(tgt);
   s += `<svg x="333" y="21" width="614" height="194" viewBox="0 0 614 194">`;
-  for (let i = 0; i < 90; i++) {
-    const az = hash("star", i) * 360, el = hash("stary", i) * 194, sx = ((wrap180(az - look) / 60) * 307 + 307) * G.zoom - 307 * (G.zoom - 1);
-    if (sx < 0 || sx > 614) continue;
-    s += `<circle cx="${sx.toFixed(0)}" cy="${el.toFixed(0)}" r="${hash("starr", i) < 0.15 ? 1.4 : 0.8}" fill="#cfd8e6" opacity="${0.4 + hash("stara", i) * 0.6}"/>`;
+  const B = feedBasis(), foc = (307 / Math.tan(35 * D2R)) * G.zoom, qi = quat.conj(F.q);
+  const projectShip = (d) => { const cz = v3.dot(d, B.f); if (cz <= 0.01) return null; return [307 + (v3.dot(d, B.r) / cz) * foc, 97 - (v3.dot(d, B.u) / cz) * foc]; };
+  for (const st0 of STARS) {
+    const p = projectShip(quat.rot(qi, st0.d));
+    if (!p || p[0] < 0 || p[0] > 614 || p[1] < 0 || p[1] > 194) continue;
+    s += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${st0.big ? 1.4 : 0.8}" fill="#cfd8e6" opacity="${st0.lum.toFixed(2)}"/>`;
   }
   for (const c of G.contacts) {
     if (c.hull <= 0 || c.iff === "unknown") continue;
-    const b = wrap180(G.hdg + relBearing(c) - look);
-    if (Math.abs(b) > 60 / G.zoom) continue;
-    const sx = (b / 60) * 307 * G.zoom + 307, sz = clamp(60 / rangeKm(c), 6, 70) * G.zoom;
-    s += shipGlyph(c, sx, 97, sz, (c.hdg - look) | 0, C[c.iff]);
-    if (c.id === G.target) s += `<rect x="${sx - sz * 0.9}" y="${97 - sz * 0.9}" width="${sz * 1.8}" height="${sz * 1.8}" fill="none" stroke="${C.hostile}" stroke-dasharray="6 ${sz * 1.8 - 12}" stroke-dashoffset="3"/>`;
+    const rp = relPos(c.p), p = projectShip(rp);
+    if (!p || p[0] < -40 || p[0] > 654 || p[1] < -40 || p[1] > 234) continue;
+    const sz = clamp(60 / (v3.len(rp) / 1000), 5, 70) * G.zoom;
+    s += shipGlyph(c, p[0], p[1], sz, 0, C[c.iff]);
+    if (c.id === G.target) s += `<rect x="${p[0] - sz * 0.9}" y="${p[1] - sz * 0.9}" width="${sz * 1.8}" height="${sz * 1.8}" fill="none" stroke="${C.hostile}" stroke-dasharray="6 ${sz * 1.8 - 12}" stroke-dashoffset="3"/>`;
   }
   s += `</svg>`;
   s += text(342, 38, 11, C.dim, `VIEWSCREEN · ${G.feed}`, { ls: 2 });
@@ -4603,11 +4748,11 @@ function statusStrip() {
   const hp = hullPct(), hc = hp > 75 ? C.ok : hp > 40 ? C.warn : C.danger;
   s += `<g${tipAttr("Hull")}>` + icon("hull", 22, 16, 16, hc) + bar(36, 11, 90, 10, hp / 100, hc) + text(132, 21, 14, C.text, `${hp.toFixed(0)}%`) + "</g>";
   s += `<g${tipAttr("Shields: bow, stern, port, starboard, dorsal, ventral")}>` + icon("shields", 196, 16, 16, accentFor("shields"));
-  for (let f = 0; f < 6; f++) { const k = G.stored[f] / Math.max(1, G.capMj * G.share[f]); s += bar(212 + f * 16, 8, 11, 16, k, k > 0.5 ? C.ok : k > 0.2 ? C.warn : C.danger, true); }
+  for (let f = 0; f < 6; f++) { const k = shieldRatio(f); s += bar(212 + f * 16, 8, 11, 16, k, ratioCol(k), true); }
   s += "</g>";
   const pw = st.rxOut + st.batOut;
   s += `<g${tipAttr(st.batOut > 0.05 ? `Reactor ${st.rxOut.toFixed(1)} MW, battery ${st.batOut.toFixed(1)} MW` : "Power in use")}>` + icon("bolt", 330, 16, 16, reactorUp() ? C.text : C.emergency) + text(344, 21, 14, C.text, `${pw.toFixed(1)} MW`) + "</g>";
-  s += `<g${tipAttr("Speed")}>` + icon("speed", 432, 16, 16, C.text) + text(446, 21, 14, C.text, `${G.speed.toFixed(0)} m/s`) + "</g>";
+  s += `<g${tipAttr("Speed")}>` + icon("speed", 432, 16, 16, C.text) + text(446, 21, 14, C.text, `${v3.len(F.V).toFixed(0)} m/s`) + "</g>";
   const nf = fires(), nb = breaches();
   s += `<g${tipAttr("Fires")}>` + icon("flame", 540, 16, 16, nf ? C.danger : C.faint) + text(554, 21, 14, nf ? C.danger : C.faint, String(nf)) + "</g>";
   s += `<g${tipAttr("Compartments open to space")}>` + icon("breach", 590, 16, 16, nb ? C.danger : C.faint) + text(604, 21, 14, nb ? C.danger : C.faint, String(nb)) + "</g>";
@@ -4635,93 +4780,257 @@ function shipGlyph(c, x, y, s, hdg, col, sel) {
   g += hollow ? `<path d="M0 -10L10 0L0 10L-10 0Z" fill="none" stroke="${col}" stroke-width="${2.5 * 24 / s}"/>` : `<path d="${P}" fill="${col}"/>`;
   return g + "</g>" + (sel ? `<circle cx="${x}" cy="${y}" r="${s * 0.75}" fill="none" stroke="${col}" stroke-width="1.5" stroke-dasharray="4 3"/>` : "");
 }
-/** A heading-up plot: the ship in the middle, range rings, contacts; returns the svg and a projector. */
-function plot(w, h, rangeKmNow, o) {
+/**
+ * The 3D scanner (helm, tactical and science share it): the plane of the ship's wings seen from aft
+ * and above as an ellipse, the bow up the screen, each contact on a stalk to its height above or
+ * below that plane. at(p) projects a reference-axes point; inside is false beyond the range.
+ */
+const SCAN_K = 0.42, SCAN_H = 0.42;
+function scanner(w, h, rangeKmNow, cy0) {
+  const cx = w / 2, cy = cy0 == null ? h / 2 : cy0, R = Math.min(w / 2 - 14, h * 0.56);
+  const at = (p) => {
+    const r = v3.mul(relPos(p), 1 / (rangeKmNow * 1000));
+    const x = cx - r[0] * R, by = cy - r[2] * R * SCAN_K;
+    return { x, by, y: by - r[1] * R * SCAN_H, inside: v3.len(r) <= 1 };
+  };
+  let s = `<ellipse cx="${cx}" cy="${cy}" rx="${R}" ry="${R * SCAN_K}" fill="#0a1017" stroke="${C.line2}"/>`;
+  s += `<ellipse cx="${cx}" cy="${cy}" rx="${R / 2}" ry="${(R * SCAN_K) / 2}" fill="none" stroke="${C.line}"/>`;
+  s += `<path d="M${cx} ${cy - R * SCAN_K}V${cy + R * SCAN_K}M${cx - R} ${cy}H${cx + R}" stroke="${C.line}" stroke-dasharray="2 6"/>`;
+  for (let a = 30; a < 360; a += 30) { const x = cx + Math.sin(a * D2R) * R, y = cy - Math.cos(a * D2R) * R * SCAN_K; s += `<circle cx="${x}" cy="${y}" r="1.4" fill="${C.faint}"/>`; }
+  return { s, at, cx, cy, R };
+}
+/** Every live contact on a scanner, on its stalk, in its IFF colour; act(c) is what a press does. */
+function scannerContacts(S, act, tip) {
+  let b = "";
+  const list = G.contacts.filter((c) => c.hull > 0).map((c) => ({ c, p: S.at(c.p) })).filter((x) => x.p.inside).sort((a, b) => a.p.by - b.p.by);
+  for (const { c, p } of list) {
+    const ahead = S.at(v3.add(c.p, v3.mul(c.dir, 1500))), rot = Math.atan2(ahead.x - p.x, -(ahead.y - p.y)) / D2R;
+    const above = p.y < p.by, col = C[c.iff];
+    b += `<path d="M${p.x} ${p.by}V${p.y}" stroke="${col}" stroke-width="1.5" opacity="0.7" ${above ? "" : 'stroke-dasharray="3 3"'}/>`;
+    b += `<ellipse cx="${p.x}" cy="${p.by}" rx="4" ry="1.8" fill="${col}" opacity="0.6"/>`;
+    b += `<g data-act="${act(c)}"${tipAttr(tip(c))}>` + shipGlyph(c, p.x, p.y, 18, rot, col, c.id === G.target || (station === "science" && c.id === G.sciSel)) + "</g>";
+  }
+  return b;
+}
+
+// ---- the 3D shield view (weapons-and-shields 11) ----
+/** The hull loft from the layout: each section's eight corners, ship axes, metres from the shield's centre. */
+const HULL = L.hull.sections.map((q) => {
+  const hb = q.half_beam_m, t = q.top_m, b = q.bottom_m, c = q.chamfer_m;
+  return [[hb, t - c], [hb - c, t], [-(hb - c), t], [-hb, t - c], [-hb, b + c], [-(hb - c), b], [hb - c, b], [hb, b + c]]
+    .map(([x, y]) => v3.sub([x, y, q.z_m], SH.centre_m));
+});
+/** The bubble cut into patches; each patch keeps the face the hit rule gives its centre. */
+function makeBubble(NT, NP) {
+  const pt = (i, j) => { const th = (i / NT) * Math.PI, ph = (j / NP) * 2 * Math.PI; return [SH.axes_m[0] * Math.sin(th) * Math.cos(ph), SH.axes_m[1] * Math.sin(th) * Math.sin(ph), SH.axes_m[2] * Math.cos(th)]; };
+  const patches = [];
+  for (let i = 0; i < NT; i++) for (let j = 0; j < NP; j++) {
+    const v = [pt(i, j), pt(i + 1, j), pt(i + 1, j + 1), pt(i, j + 1)];
+    const th = ((i + 0.5) / NT) * Math.PI, ph = ((j + 0.5) / NP) * 2 * Math.PI;
+    const mid = [SH.axes_m[0] * Math.sin(th) * Math.cos(ph), SH.axes_m[1] * Math.sin(th) * Math.sin(ph), SH.axes_m[2] * Math.cos(th)];
+    patches.push({ v, mid, face: shieldFace(mid), i, j });
+  }
+  // Edges where two faces meet, drawn as the faces' borders.
+  const at = (i, j) => patches[i * NP + ((j + NP) % NP)], edges = [];
+  for (const p of patches) {
+    if (p.i + 1 < NT && at(p.i + 1, p.j).face !== p.face) edges.push([p.v[1], p.v[2]]);
+    if (at(p.i, p.j + 1).face !== p.face) edges.push([p.v[2], p.v[3]]);
+  }
+  return { patches, edges };
+}
+const BUBBLE_BIG = makeBubble(12, 20), BUBBLE_MINI = makeBubble(8, 12);
+function camBasis(cam) {
+  const ce = Math.cos(cam.el * D2R), d = [Math.sin(cam.yaw * D2R) * ce, Math.sin(cam.el * D2R), -Math.cos(cam.yaw * D2R) * ce];
+  const f = v3.mul(d, -1), r = v3.norm(v3.cross(f, [0, 1, 0]));
+  return { f, r, u: v3.cross(r, f) };
+}
+/**
+ * The ship inside its shield, in 3D: hull panels lit and depth sorted with the bubble's patches,
+ * each patch filled by its face's charge, face borders, hostiles' directions, inbound missiles,
+ * and recent hits as arrows from where they came. o.big adds the hit angles and face presses.
+ */
+/**
+ * The shield view's projected geometry for one camera: hull panels lit, bubble patches, both depth
+ * sorted, and the face borders. It depends on the camera alone, so it is kept until the view turns.
+ */
+const SV_CACHE = new Map();
+function shieldGeometry(cx, cy, sc, cam, B, P, BUBBLE) {
+  const key = `${cx}|${cy}|${sc}|${cam.yaw.toFixed(2)}|${cam.el.toFixed(2)}|${BUBBLE.patches.length}`;
+  if (SV_CACHE.has(key)) return SV_CACHE.get(key);
+  const light = v3.norm(v3.add(v3.mul(B.f, -1), [0.3, 0.8, 0.2])), polys = [];
+  const pts = (vs) => vs.map((v) => { const q = P(v); return q[0].toFixed(1) + "," + q[1].toFixed(1); }).join(" ");
+  for (let s = 0; s + 1 < HULL.length; s++) for (let k = 0; k < 8; k++) {
+    const a = HULL[s][k], b = HULL[s][(k + 1) % 8], c = HULL[s + 1][(k + 1) % 8], d = HULL[s + 1][k];
+    let n = v3.norm(v3.cross(v3.sub(b, a), v3.sub(d, a)));
+    const mid = v3.mul(v3.add(v3.add(a, b), v3.add(c, d)), 0.25);
+    if (v3.dot(n, [mid[0], mid[1] - (HULL[s][0][1] + HULL[s][4][1]) / 2, 0]) < 0) n = v3.mul(n, -1);
+    if (v3.dot(n, B.f) > 0) continue;
+    const lum = 0.35 + 0.65 * Math.max(0, v3.dot(n, light));
+    polys.push({ z: v3.dot(mid, B.f), svg: `<polygon points="${pts([a, b, c, d])}" fill="rgb(${Math.round(70 * lum + 20)},${Math.round(84 * lum + 22)},${Math.round(102 * lum + 26)})" stroke="#0d141d" stroke-width="0.6"/>` });
+  }
+  for (const end of [HULL[0], HULL[HULL.length - 1]]) {
+    const mid = v3.mul(end.reduce((a, p) => v3.add(a, p), [0, 0, 0]), 1 / 8);
+    polys.push({ z: v3.dot(mid, B.f), svg: `<polygon points="${pts(end)}" fill="#3a4656" stroke="#0d141d" stroke-width="0.6"/>` });
+  }
+  for (const p of BUBBLE.patches) polys.push({ z: v3.dot(p.mid, B.f), pts: pts(p.v), face: p.face, front: v3.dot(p.mid, B.f) < 0 });
+  polys.sort((a, b) => b.z - a.z);
+  let edges = "";
+  for (const [a, b] of BUBBLE.edges) { const pa = P(a), pb = P(b), front = pa[2] + pb[2] < 0; edges += `<path d="M${pa[0].toFixed(1)} ${pa[1].toFixed(1)}L${pb[0].toFixed(1)} ${pb[1].toFixed(1)}" stroke="#cfe3f5" stroke-width="${front ? 1.2 : 0.6}" opacity="${front ? 0.55 : 0.2}"/>`; }
+  const geo = { polys, edges };
+  if (SV_CACHE.size > 8) SV_CACHE.clear();
+  SV_CACHE.set(key, geo);
+  return geo;
+}
+function shieldView(cx, cy, sc, cam, o) {
   o = o || {};
-  const cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2 - 12;
-  const P = (x, y) => { const dx = x - G.x, dy = y - G.y, a = -G.hdg * D2R; const rx = dx * Math.cos(a) + dy * Math.sin(a), ry = -dx * Math.sin(a) + dy * Math.cos(a); return [cx + (rx / rangeKmNow) * R, cy - (ry / rangeKmNow) * R]; };
-  let s = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="#0a1017" stroke="${C.line2}"/><circle cx="${cx}" cy="${cy}" r="${R / 2}" fill="none" stroke="${C.line}"/>`;
-  s += `<path d="M${cx} ${cy - R}V${cy + R}M${cx - R} ${cy}H${cx + R}" stroke="${C.line}" stroke-dasharray="2 6"/>`;
-  return { s, P, cx, cy, R };
+  const B = camBasis(cam), P = (p) => [cx + v3.dot(p, B.r) * sc, cy - v3.dot(p, B.u) * sc, v3.dot(p, B.f)];
+  const geo = shieldGeometry(cx, cy, sc, cam, B, P, o.big ? BUBBLE_BIG : BUBBLE_MINI);
+  let s = "";
+  const placed = [], place = (x, y) => { for (let i = 0; i < 8 && placed.some((q) => Math.abs(q[0] - x) < 52 && Math.abs(q[1] - y) < 15); i++) y -= 16; placed.push([x, y]); return y; };
+  for (const p of geo.polys) {
+    if (p.face == null) { s += p.svg; continue; }
+    const f = p.face, k = shieldRatio(f), fl = Math.max(0, 1 - (G.t - G.flash[f]) / SH.flash_s);
+    const op = (p.front ? 0.07 + 0.2 * k : 0.04 + 0.1 * k) + 0.5 * fl;
+    const tip = o.big ? ` data-act="favour:${f}" data-tip="${FACES[f][0].toUpperCase() + FACES[f].slice(1)}: ${G.charge[f].toFixed(0)} of ${shieldCap(f).toFixed(0)} MJ"` : "";
+    s += `<polygon points="${p.pts}" fill="${ratioCol(k)}" fill-opacity="${op.toFixed(2)}"${tip}/>`;
+  }
+  s += geo.edges;
+  if (o.big) {
+    // Hit labels first, so a face name moves rather than a number.
+    for (const h of G.hitLog) { const b = P(v3.add(ellipsoidPoint(h.d), v3.mul(h.d, 38))); placed.push([b[0], b[1] - 6]); }
+    const tips = [[0, 0, 1], [0, 0, -1], [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0]], names = ["BOW", "STERN", "PORT", "STBD", "TOP", "BELOW"];
+    tips.forEach((d, f) => {
+      const e = v3.mul(d, [SH.axes_m[2], SH.axes_m[2], SH.axes_m[0], SH.axes_m[0], SH.axes_m[1], SH.axes_m[1]][f]);
+      if (v3.dot(d, B.f) > -0.25) return;
+      const p = P(v3.mul(e, f < 2 ? 1.1 : 1.45)), ly = place(p[0], p[1] + 4);
+      s += text(p[0], ly, 12, ratioCol(shieldRatio(f)), names[f], { a: "middle", w: 700, ls: 1.5 });
+    });
+  }
+  // Where the attacks come from: hostiles' directions, inbound missiles, the last 8 s of hits.
+  for (const c of G.contacts) {
+    if (c.hull <= 0 || c.iff !== "hostile" || rangeKm(c) > G.sciRange) continue;
+    const d = v3.norm(relPos(c.p)), e = ellipsoidPoint(d), a = P(e), b = P(v3.add(e, v3.mul(d, o.big ? 48 : 34)));
+    s += `<path d="M${b[0]} ${b[1]}L${a[0]} ${a[1]}" stroke="${C.hostile}" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.8"/>`;
+    s += `<circle cx="${b[0]}" cy="${b[1]}" r="${o.big ? 4 : 2.5}" fill="${C.hostile}"${tipAttr(`${c.id}: ${String(Math.round(wrap360(brgOf(d)))).padStart(3, "0")} ${elevOf(d) >= 0 ? "+" : ""}${Math.round(elevOf(d))}`)}/>`;
+  }
+  for (const m of G.inbound) {
+    const e = ellipsoidPoint(m.d), q = P(v3.add(e, v3.mul(m.d, 20 * m.t))), q2 = P(v3.add(e, v3.mul(m.d, 20 * m.t - 4)));
+    const ang = Math.atan2(q2[0] - q[0], -(q2[1] - q[1])) / D2R;
+    s += `<g transform="translate(${q[0]},${q[1]}) rotate(${ang})"><path d="M0 -${o.big ? 8 : 5}L${o.big ? 6 : 4} ${o.big ? 6 : 4}L0 ${o.big ? 2 : 1}L-${o.big ? 6 : 4} ${o.big ? 6 : 4}Z" fill="${C.danger}"/></g>`;
+  }
+  for (const h of G.hitLog) {
+    const age = (G.t - h.t) / SH.hit_show_s, e = ellipsoidPoint(h.d), a = P(e), b = P(v3.add(e, v3.mul(h.d, o.big ? 38 : 26)));
+    const col = h.through ? C.danger : C.warn, op = (1 - age).toFixed(2), ang = Math.atan2(a[0] - b[0], -(a[1] - b[1])) / D2R;
+    s += `<g opacity="${op}"><path d="M${b[0]} ${b[1]}L${a[0]} ${a[1]}" stroke="${col}" stroke-width="${o.big ? 3 : 2}"/>`;
+    s += `<g transform="translate(${a[0]},${a[1]}) rotate(${ang})"><path d="M0 0L-${o.big ? 6 : 4} -${o.big ? 10 : 7}H${o.big ? 6 : 4}Z" fill="${col}"/></g>`;
+    if (o.big) {
+      const el = Math.round(elevOf(h.d));
+      s += text(b[0], b[1] - 6, 14, col, `${String(Math.round(wrap360(brgOf(h.d)))).padStart(3, "0")} ${el >= 0 ? "+" : ""}${el}`, { a: "middle", w: 700 });
+    }
+    s += "</g>";
+  }
+  return s;
 }
 function rangeChip(x, y, km, act) {
   return `<g data-act="${act}"${tipAttr("Range")}><rect x="${x}" y="${y}" width="66" height="28" rx="6" fill="${C.panel2}" stroke="${C.line2}"/>${text(x + 33, y + 19, 14, C.text, `${km} km`, { a: "middle" })}</g>`;
 }
+const fmtQ = (q) => quat.canon(q).map((x) => (x < 0 ? "" : " ") + x.toFixed(4)).join("  ");
+const fmtAng = (x, signed) => (signed ? (x >= 0 ? "+" : "") + Math.round(x) : String(Math.round(wrap360(x)) % 360).padStart(3, "0")) + "°";
 
 // =================================================================== HELM
 function helm() {
   let s = "";
-  s += panel("THROTTLE", grid(0, 0, 2, 4), (w, h) => {
-    let b = text(w / 2, 40, 40, C.text, G.speed.toFixed(0), { a: "middle", w: 700 }) + text(w / 2, 58, 13, C.dim, "m/s", { a: "middle" });
-    // The lever: a track from -25 % to 100 %, the setpoint as a handle, the speed as the fill,
-    // and the top speed the drive's power allows now as a ghost line.
-    const tx = w / 2 - 26, ty = 76, th = 222, tw = 52;
-    const yOf = (k) => ty + th * (1 - (k + 0.25) / 1.25);
-    b += `<g data-drag="throttle"${tipAttr("Drag to set speed")}><rect x="${tx}" y="${ty}" width="${tw}" height="${th}" rx="8" fill="#101822" stroke="${C.line2}"/>`;
-    b += `<rect x="${tx}" y="${yOf(0)}" width="${tw}" height="${yOf(-0.25) - yOf(0)}" rx="8" fill="url(#hatch)" opacity="0.6"/>`;
-    const sk = G.speed / 600;
-    b += `<rect x="${tx + 6}" y="${Math.min(yOf(sk), yOf(0))}" width="${tw - 12}" height="${Math.abs(yOf(0) - yOf(sk))}" rx="4" fill="${accent()}" opacity="0.55"/>`;
-    const mk = maxSpeed() / 600;
-    if (mk < 0.99) b += `<path d="M${tx - 8} ${yOf(mk)}H${tx + tw + 8}" stroke="${C.warn}" stroke-width="2" stroke-dasharray="4 3"/>`;
+  s += panel("THRUST", grid(0, 0, 3, 4), (w, h) => {
+    const vb = quat.rot(quat.conj(F.q), F.V);
+    let b = text(70, 40, 38, C.text, Math.round(vb[2]), { a: "middle", w: 700 }) + text(70, 58, 13, C.dim, "m/s", { a: "middle" });
+    // The forward speed lever, -100 to +400 m/s: the handle is the set point, the fill the speed.
+    const tx = 44, ty = 74, th = h - 150, tw = 52, yOf = (v) => ty + th * (1 - (v - FL.speed_min_ms) / (FL.speed_max_ms - FL.speed_min_ms));
+    b += `<g data-drag="throttle"${tipAttr("Forward speed: drag (W, S)")}><rect x="${tx}" y="${ty}" width="${tw}" height="${th}" rx="8" fill="#101822" stroke="${C.line2}"/>`;
+    b += `<rect x="${tx}" y="${yOf(0)}" width="${tw}" height="${ty + th - yOf(0)}" rx="8" fill="url(#hatch)" opacity="0.6"/>`;
+    b += `<rect x="${tx + 6}" y="${Math.min(yOf(vb[2]), yOf(0))}" width="${tw - 12}" height="${Math.abs(yOf(0) - yOf(vb[2]))}" rx="4" fill="${accent()}" opacity="0.55"/>`;
     b += `<path d="M${tx - 6} ${yOf(0)}H${tx + tw + 6}" stroke="${C.dim}"/>`;
-    const hy = yOf(G.throttle);
+    const hy = yOf(F.speedSet);
     b += `<rect x="${tx - 12}" y="${hy - 9}" width="${tw + 24}" height="18" rx="5" fill="${C.text}"/><path d="M${tx - 4} ${hy}H${tx + tw + 4}" stroke="${C.bg}" stroke-width="2"/></g>`;
     b += `<defs><pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="8" fill="#2a3442"/></pattern></defs>`;
-    b += button({ x: 14, y: h - 62, w: w - 28, h: 50, icon: "stop", label: "STOP", act: "allstop", col2: C.danger, stroke: C.danger + "88", tip: "All stop (X)" });
+    // The strafe pad: the puck is the lateral and vertical set point, the dot the drift now.
+    const px = 150, py = 74, ps = w - px - 14, pc = [px + ps / 2, py + ps / 2], k = ps / 2 / FL.strafe_max_ms;
+    b += `<g data-drag="strafe"${tipAttr(`Strafe: drag (Z, C, Space, Ctrl). Now ${(-vb[0]).toFixed(0)} m/s to starboard, ${vb[1].toFixed(0)} m/s up`)}>`;
+    b += `<rect x="${px}" y="${py}" width="${ps}" height="${ps}" rx="10" fill="#101822" stroke="${C.line2}"/>`;
+    b += `<path d="M${pc[0]} ${py + 8}V${py + ps - 8}M${px + 8} ${pc[1]}H${px + ps - 8}" stroke="${C.line2}"/>`;
+    b += `<path d="M${pc[0]} ${py + 4}l-5 7h10zM${pc[0]} ${py + ps - 4}l-5 -7h10zM${px + 4} ${pc[1]}l7 -5v10zM${px + ps - 4} ${pc[1]}l-7 -5v10z" fill="${C.dim}"/>`;
+    b += `<circle cx="${pc[0] + clamp(-vb[0], -50, 50) * k}" cy="${pc[1] - clamp(vb[1], -50, 50) * k}" r="4" fill="${accent()}"/>`;
+    b += `<circle cx="${pc[0] + F.strafe[0] * k}" cy="${pc[1] - F.strafe[1] * k}" r="13" fill="none" stroke="${C.text}" stroke-width="3"/></g>`;
+    b += icon("drive", px + ps / 2, py + ps + 22, 18, C.dim);
+    b += button({ x: 14, y: h - 62, w: w - 28, h: 50, icon: "stop", label: "STOP", act: "allstop", col2: C.danger, stroke: C.danger + "88", tip: "All stop: speed and drift to zero (X)" });
     return b;
   });
-  s += panel("NAV", grid(2, 0, 6, 4), (w, h) => {
-    const pw = w - 12, ph = h - 62;
-    const p = plot(pw, ph, G.navRange);
-    let b = `<g transform="translate(6,0)">` + p.s;
-    // The tubes' 10 deg arc: it lights when the target is in it.
-    const bear = tubesBear();
-    b += `<path d="${wedge(p.cx, p.cy, p.R, -5, 5)}" fill="${bear ? C.ok : accent()}" opacity="${bear ? 0.35 : 0.08}"${tipAttr(bear ? "Tubes bear on the target" : "Tubes' arc")}/>`;
-    const [wx, wy] = p.P(G.wp.x, G.wp.y);
-    b += `<path d="M${p.cx} ${p.cy}L${wx} ${wy}" stroke="${accent()}" stroke-width="2" stroke-dasharray="6 5" opacity="${G.ap === "COURSE" ? 1 : 0.45}"/>`;
-    b += `<path d="M${wx} ${wy - 9}l9 9-9 9-9-9z" fill="none" stroke="${accent()}" stroke-width="2"${tipAttr("Waypoint")}/>`;
-    for (const c of G.contacts) {
-      if (c.hull <= 0) continue;
-      const [x, y] = p.P(c.x, c.y);
-      if (Math.hypot(x - p.cx, y - p.cy) > p.R) continue;
-      b += `<g data-act="target:${c.id}"${tipAttr(`${c.id} · ${rangeKm(c).toFixed(1)} km`)}>` + shipGlyph(c, x, y, 18, wrap180(c.hdg - G.hdg), C[c.iff], c.id === G.target) + "</g>";
-    }
-    b += shipGlyph({ cls: "corvette", iff: "friendly" }, p.cx, p.cy, 22, 0, C.text);
-    b += "</g>" + rangeChip(12, 6, G.navRange, "navrange");
-    const aps = [["HOLD", "hold", "Hold heading and speed"], ["COURSE", "course", "Fly to the waypoint"], ["CHASE", "chase", "Intercept the target"], ["MATCH", "match", "Match the target's course and speed"]];
-    const bw = (w - 24 - 3 * 8) / 4;
-    aps.forEach(([k, ic, tip], i) => { b += button({ x: 12 + i * (bw + 8), y: h - 54, w: bw, h: 44, icon: ic, label: k, on: G.ap === k, act: `ap:${k}`, tip }); });
+  s += panel("SCANNER", grid(3, 0, 5, 4), (w, h) => {
+    const S = scanner(w, h - 58, G.navRange);
+    let b = S.s;
+    // The tubes' 10 deg cone along the bow: it lights when the target is in it.
+    const bear = tubesBear(), tip = S.at(v3.add(F.P, quat.rot(F.q, [0, 0, G.navRange * 1000])));
+    const sp = Math.tan(5 * D2R) * (tip.y - S.cy);
+    b += `<path d="M${S.cx} ${S.cy}L${tip.x - sp} ${tip.y}L${tip.x + sp} ${tip.y}Z" fill="${bear ? C.ok : accent()}" opacity="${bear ? 0.35 : 0.1}"${tipAttr(bear ? "Tubes bear on the target" : "Tubes' cone")}/>`;
+    const wp = S.at(G.wp);
+    b += `<path d="M${S.cx} ${S.cy}L${wp.x} ${wp.y}" stroke="${accent()}" stroke-width="2" stroke-dasharray="6 5" opacity="${G.ap === "COURSE" ? 1 : 0.45}"/>`;
+    b += `<path d="M${wp.x} ${wp.by}V${wp.y}" stroke="${accent()}" stroke-dasharray="2 3"/><path d="M${wp.x} ${wp.y - 9}l9 9-9 9-9-9z" fill="none" stroke="${accent()}" stroke-width="2"${tipAttr("Waypoint")}/>`;
+    b += shipGlyph({ cls: "corvette", iff: "friendly" }, S.cx, S.cy, 22, 0, C.text);
+    b += scannerContacts(S, (c) => `target:${c.id}`, (c) => `${c.id} · ${rangeKm(c).toFixed(1)} km`);
+    b += rangeChip(12, 6, G.navRange, "navrange");
+    const aps = [["HOLD", "hold", "Hold attitude and speed"], ["COURSE", "course", "Fly to the waypoint"], ["CHASE", "chase", "Point at the target"], ["MATCH", "match", "Match the target's course and speed"], ["EVADE", "jink", "Jink sideways and up and down"]];
+    const bw = (w - 24 - 4 * 6) / 5;
+    aps.forEach(([k, ic, tp], i) => { b += button({ x: 12 + i * (bw + 6), y: h - 52, w: bw, h: 42, icon: ic, label: k, on: G.ap === k, act: `ap:${k}`, tip: tp, fs: 13, is: 16 }); });
     return b;
   });
-  s += panel("HEADING", grid(8, 0, 4, 2), (w, h) => {
-    // A compass arc: drag anywhere on it to order a heading; the ghost is the turn to come.
-    const cx = w / 2, cy = h + 60, R = 190;
-    let b = `<g data-drag="heading"${tipAttr("Drag to order a heading")}><path d="${arcPath(cx, cy, R, -62, 62)}" stroke="${C.line2}" stroke-width="30" fill="none"/>`;
-    for (let d = -60; d <= 60; d += 10) {
-      const hd = Math.round(G.hdg / 10) * 10 + d, off = wrap180(hd - G.hdg);
-      if (Math.abs(off) > 60) continue;
-      const [x0, y0] = pol(cx, cy, R - 15, off), [x1, y1] = pol(cx, cy, R - (hd % 30 === 0 ? 2 : 8), off);
-      b += `<path d="M${x0} ${y0}L${x1} ${y1}" stroke="${C.dim}" stroke-width="1.5"/>`;
-      if (wrap360(hd) % 30 === 0) { const [lx, ly] = pol(cx, cy, R + 14, off); b += text(lx, ly + 4, 12, C.dim, String(wrap360(hd)).padStart(3, "0"), { a: "middle" }); }
-    }
-    const toGo = clamp(wrap180(G.hdgOrder - G.hdg), -60, 60);
-    if (Math.abs(toGo) > 0.5) b += `<path d="${arcPath(cx, cy, R, Math.min(0, toGo), Math.max(0, toGo))}" stroke="${accent()}" stroke-width="30" fill="none" opacity="0.28"/>`;
-    const [bx, by] = pol(cx, cy, R + 2, toGo);
-    b += `<g transform="translate(${bx},${by}) rotate(${toGo})"><path d="M0 -6L-9 -22H9Z" fill="${accent()}"/></g>`;
-    b += `<path d="M${cx} ${cy - R - 16}V${cy - R + 16}" stroke="${C.text}" stroke-width="3"/></g>`;
-    b += text(cx, h - 14, 44, C.text, String(Math.round(G.hdg) % 360).padStart(3, "0") + "°", { a: "middle", w: 700 });
-    const secs = Math.abs(wrap180(G.hdgOrder - G.hdg)) / Math.max(0.1, turnRate());
-    if (secs > 0.5) b += text(cx, h - 62, 15, accent(), `${String(Math.round(G.hdgOrder) % 360).padStart(3, "0")}° in ${secs.toFixed(0)} s`, { a: "middle" });
-    return b;
-  });
-  s += panel("EVADE", grid(8, 2, 4, 2), (w, h) => {
-    const ev = [["JINK", "jink"], ["SPIRAL", "spiral"], ["PORT", "breakp"], ["STBD", "breaks"]];
-    const bw = (w - 24 - 3 * 8) / 4;
-    let b = "";
-    ev.forEach(([k, ic], i) => {
-      b += button({ x: 12 + i * (bw + 8), y: 10, w: bw, h: h - 22, icon: ic, label: k, stack: true, is: 34, on: G.evade === k, act: `evade:${k}`, tip: `Evasive: ${k.toLowerCase()} (${i + 1})` });
-      if (G.evade === k) b += `<rect x="${12 + i * (bw + 8) + 8}" y="${h - 20}" width="${(bw - 16) * clamp(G.evadeT / 8, 0, 1)}" height="4" rx="2" fill="${accent()}"/>`;
+  s += panel("ATTITUDE", grid(8, 0, 4, 2), (w, h) => {
+    const e = quat.toEuler(F.q), cx = 80, cy = h / 2 + 2, R = 66, ppd = R / 60;
+    // The ball: the reference plane as a horizon, pitched and rolled; drag it to fly (yaw and pitch).
+    let b = `<defs><clipPath id="ballclip"><circle cx="${cx}" cy="${cy}" r="${R}"/></clipPath></defs>`;
+    b += `<g data-drag="stick"${tipAttr(`Drag to turn. Now ${fmtQ(F.q)}`)}><g clip-path="url(#ballclip)"><g transform="rotate(${(-e.r).toFixed(2)} ${cx} ${cy}) translate(0 ${(e.p * ppd).toFixed(2)})">`;
+    b += `<rect x="${cx - 3 * R}" y="${cy - 6 * R}" width="${6 * R}" height="${6 * R}" fill="#14304a"/><rect x="${cx - 3 * R}" y="${cy}" width="${6 * R}" height="${6 * R}" fill="#3a2a16"/>`;
+    b += `<path d="M${cx - 3 * R} ${cy}H${cx + 3 * R}" stroke="#d9e6f2" stroke-width="2"/>`;
+    for (let a = -90; a <= 90; a += 15) if (a) { const y = cy - a * ppd, wd = a % 30 ? 14 : 26; b += `<path d="M${cx - wd} ${y}H${cx + wd}" stroke="#d9e6f2" stroke-width="1.2" opacity="0.7"/>`; if (!(a % 30)) b += text(cx + wd + 4, y + 4, 10, "#d9e6f2", Math.abs(a), { ls: 0 }); }
+    b += `</g>`;
+    // The turn to come: the ordered horizon as a ghost.
+    const goal = F.orderActive ? F.order : attitudeGoal();
+    if (goal) { const ge = quat.toEuler(goal); b += `<g transform="rotate(${(-ge.r).toFixed(2)} ${cx} ${cy}) translate(0 ${(ge.p * ppd).toFixed(2)})" opacity="0.8"><path d="M${cx - 3 * R} ${cy}H${cx + 3 * R}" stroke="${accent()}" stroke-width="2.5" stroke-dasharray="7 5"/></g>`; }
+    b += `</g><circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${C.line2}" stroke-width="2"/>`;
+    b += `<path d="M${cx - 30} ${cy}H${cx - 10}L${cx - 4} ${cy + 7}L${cx} ${cy}L${cx + 4} ${cy + 7}L${cx + 10} ${cy}H${cx + 30}" fill="none" stroke="${C.warn}" stroke-width="3" stroke-linejoin="round"/></g>`;
+    // Heading, pitch and roll, each with its rate bar (set point as a ghost; drag a bar to turn on that axis).
+    const rows = [["YAW", fmtAng(e.h), -F.w[1] / (FL.rate_dps[1] * D2R), -F.wset[1] / (FL.rate_dps[1] * D2R), 0], ["PITCH", fmtAng(e.p, true), -F.w[0] / (FL.rate_dps[0] * D2R), -F.wset[0] / (FL.rate_dps[0] * D2R), 1], ["ROLL", fmtAng(e.r, true), F.w[2] / (FL.rate_dps[2] * D2R), F.wset[2] / (FL.rate_dps[2] * D2R), 2]];
+    const x0 = 166, bwid = w - x0 - 12;
+    rows.forEach(([word, val, rate, set, ax], i) => {
+      const y = 4 + i * 56;
+      b += text(x0, y + 18, 12, C.dim, word, { ls: 2 }) + text(w - 12, y + 22, 26, C.text, val, { a: "end", w: 700 });
+      const bx = x0, by = y + 32, mid = bx + bwid / 2;
+      b += `<g data-drag="rate:${ax}"${tipAttr(`${word.toLowerCase()} rate ${(rate * FL.rate_dps[[1, 0, 2][ax]]).toFixed(1)} deg/s: drag to turn`)}><rect x="${bx}" y="${by - 6}" width="${bwid}" height="22" fill="transparent"/><rect x="${bx}" y="${by}" width="${bwid}" height="10" rx="3" fill="#16202c"/>`;
+      const rx = mid + clamp(rate, -1, 1) * (bwid / 2);
+      b += `<rect x="${Math.min(mid, rx)}" y="${by}" width="${Math.abs(rx - mid)}" height="10" rx="3" fill="${accent()}"/>`;
+      b += `<path d="M${mid + clamp(set, -1, 1) * (bwid / 2)} ${by - 3}v16" stroke="${C.text}" stroke-width="2" opacity="0.7"/><path d="M${mid} ${by - 2}v14" stroke="${C.dim}"/></g>`;
     });
+    if (e.gimbal) b += text(cx, h - 4, 11, C.warn, "ROLL IN YAW", { a: "middle", ls: 1 });
+    return b;
+  });
+  s += panel("ORIENT", grid(8, 2, 4, 2), (w, h) => {
+    // The attitude order (flight-and-navigation 6a): heading, pitch and roll, and its exact quaternion.
+    const q = quat.fromEuler(F.oe.h, F.oe.p, F.oe.r), plan = slewPlan(q);
+    let b = "";
+    const rows = [["YAW", "h", fmtAng(F.oe.h)], ["PITCH", "p", fmtAng(F.oe.p, true)], ["ROLL", "r", fmtAng(F.oe.r, true)]];
+    rows.forEach(([word, k, val], i) => {
+      const y = 2 + i * 36;
+      b += text(10, y + 22, 12, C.dim, word, { ls: 2 });
+      b += button({ x: 62, y, w: 32, h: 32, label: "−", act: `ostep:${k}:-5`, fs: 20, tip: `${word.toLowerCase()} −5° (Shift: −1°)` });
+      b += text(150, y + 24, 24, C.text, val, { a: "middle", w: 700 });
+      b += button({ x: 206, y, w: 32, h: 32, label: "+", act: `ostep:${k}:5`, fs: 20, tip: `${word.toLowerCase()} +5° (Shift: +1°)` });
+    });
+    b += `<g${tipAttr("The order as a quaternion: w, x, y, z (ship axes to reference axes)")}><rect x="8" y="112" width="232" height="26" rx="5" fill="#0a1017" stroke="${C.line}"/>`;
+    b += `<text x="124" y="130" font-size="13" fill="${accent()}" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace" xml:space="preserve">${esc(fmtQ(q))}</text></g>`;
+    const active = F.orderActive, held = active && F.plan && F.plan.held;
+    const go = active ? (held ? "HELD" : `${Math.ceil(F.plan ? F.plan.time : plan.time)} s`) : "GO";
+    b += button({ x: 250, y: 2, w: w - 260, h: 68, label: go, act: "ogo", on: active, fs: 24, tip: active ? "Holding this attitude; the stick cancels it" : `Turn there: ${plan.angle.toFixed(0)}° in ${plan.time.toFixed(0)} s` });
+    if (!active) b += text(250 + (w - 260) / 2, 62, 12, C.dim, `${plan.time.toFixed(0)} s`, { a: "middle" });
+    const qb = [["LEVEL", "olevel", "Pitch and roll to zero"], ["FLIP", "oflip", "Turn about to the reciprocal heading"], ["TARGET", "otarget", "Point the bow at the target"]];
+    qb.forEach(([k, a, tp], i) => { b += button({ x: 250, y: 76 + i * 26, w: w - 260, h: 24, label: k, act: a, fs: 12, tip: tp }); });
     return b;
   });
   return s;
@@ -4747,25 +5056,14 @@ function tactical() {
     return b;
   });
   s += panel("PLOT", grid(3, 0, 5, 4), (w, h) => {
-    const p = plot(w, h - 52, G.tacRange);
-    let b = p.s;
-    // Shield ring: four arcs by face, thickness and colour by charge. Click a face to favour it.
-    const faceArc = [[-40, 40], [140, 220], [230, 310], [50, 130]];
-    faceArc.forEach(([a0, a1], f) => {
-      const k = G.stored[f] / Math.max(1, G.capMj * G.share[f]), col = k > 0.5 ? C.ok : k > 0.2 ? C.warn : C.danger;
-      b += `<path d="${arcPath(p.cx, p.cy, 26, a0, a1)}" stroke="${col}" stroke-width="${3 + 9 * G.share[f]}" fill="none" opacity="${0.35 + 0.65 * k}" data-act="favour:${f}"${tipAttr(`${FACES[f]} shield: favour it`)}/>`;
-    });
-    b += shipGlyph({ cls: "corvette", iff: "friendly" }, p.cx, p.cy, 22, 0, C.text);
-    for (const m of G.inbound) { const [x, y] = pol(p.cx, p.cy, 32 + m.t * 40, m.brg); b += `<g transform="translate(${x},${y}) rotate(${m.brg + 180})"><path d="M0 -8L6 6L0 2L-6 6Z" fill="${C.danger}"/></g>`; }
-    for (const m of G.missiles) { const [x, y] = p.P(m.x, m.y); b += `<circle cx="${x}" cy="${y}" r="3.5" fill="${C.ok}"/>`; }
-    for (const c of G.contacts) {
-      if (c.hull <= 0) continue;
-      const [x, y] = p.P(c.x, c.y);
-      if (Math.hypot(x - p.cx, y - p.cy) > p.R) continue;
-      // The line to the target: dashed while aimed, solid green while a turret fires on it.
-      if (c.id === G.target) b += `<path d="M${p.cx} ${p.cy}L${x} ${y}" stroke="${G.turrets.some((t) => t.firing && t.mode !== "PD") ? C.ok : C.hostile}" stroke-width="${G.turrets.some((t) => t.firing && t.mode !== "PD") ? 2.5 : 1.5}" stroke-dasharray="${G.turrets.some((t) => t.firing && t.mode !== "PD") ? "10 4" : "3 5"}" opacity="0.8"/>`;
-      b += `<g data-act="target:${c.id}"${tipAttr(c.id)}>` + shipGlyph(c, x, y, 20, wrap180(c.hdg - G.hdg), C[c.iff], c.id === G.target) + "</g>";
-    }
+    const S = scanner(w, h - 52, G.tacRange);
+    let b = S.s;
+    // The ship in its shield in 3D at the plot's own tilt (weapons-and-shields 11): press a face to favour it.
+    b += shieldView(S.cx, S.cy, 0.9, { yaw: 0, el: Math.asin(SCAN_K) / D2R }, {});
+    for (const m of G.missiles) { const p = S.at(m.pos); if (p.inside) b += `<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="${C.ok}"/>`; }
+    const tgt = contact(G.target), firing = G.turrets.some((t) => t.firing && t.mode !== "PD");
+    if (tgt && tgt.hull > 0) { const p = S.at(tgt.p); if (p.inside) b += `<path d="M${S.cx} ${S.cy}L${p.x} ${p.y}" stroke="${firing ? C.ok : C.hostile}" stroke-width="${firing ? 2.5 : 1.5}" stroke-dasharray="${firing ? "10 4" : "3 5"}" opacity="0.8"/>`; }
+    b += scannerContacts(S, (c) => `target:${c.id}`, (c) => `${c.id} · ${rangeKm(c).toFixed(1)} km`);
     b += rangeChip(8, 4, G.tacRange, "tacrange");
     const pre = [["balance", "Balanced", -1], ["fwd", "Bow", 0], ["aft", "Stern", 1], ["port", "Port", 2], ["stbd", "Starboard", 3]];
     const bw = (w - 20 - 4 * 6) / 5;
@@ -4939,53 +5237,44 @@ function engineering() {
 // =================================================================== SCIENCE
 function science() {
   let s = "";
-  s += panel("SENSORS", grid(0, 0, 6, 4), (w, h) => {
-    const p = plot(w - 12, h - 56, G.sciRange);
-    let b = `<g transform="translate(6,0)">` + p.s;
-    const sweep = (G.t * 60) % 360;
-    b += `<path d="${wedge(p.cx, p.cy, p.R, sweep - 25, sweep)}" fill="${accent()}" opacity="0.10"/>`;
-    if (G.ping > 0) b += `<circle cx="${p.cx}" cy="${p.cy}" r="${p.R * (1 - G.ping / 2)}" fill="none" stroke="${accent()}" stroke-width="3" opacity="${G.ping / 2}"/>`;
-    for (const c of G.contacts) {
-      if (c.hull <= 0) continue;
-      const [x, y] = p.P(c.x, c.y);
-      if (Math.hypot(x - p.cx, y - p.cy) > p.R) continue;
-      b += `<g data-act="sci:${c.id}"${tipAttr(c.iff === "unknown" ? "Unknown" : `${c.id} · ${rangeKm(c).toFixed(1)} km`)}>` + shipGlyph(c, x, y, 18, wrap180(c.hdg - G.hdg), C[c.iff], c.id === G.sciSel) + "</g>";
-    }
-    b += shipGlyph({ cls: "corvette", iff: "friendly" }, p.cx, p.cy, 20, 0, C.text) + "</g>";
+  s += panel("SENSORS", grid(0, 0, 5, 4), (w, h) => {
+    const S = scanner(w, h - 56, G.sciRange);
+    let b = S.s;
+    const sweep = (G.t * 60) % 360, a0 = sweep - 25;
+    const sw = (a) => [S.cx + Math.sin(a * D2R) * S.R, S.cy - Math.cos(a * D2R) * S.R * SCAN_K];
+    const [x0, y0] = sw(a0), [x1, y1] = sw(sweep);
+    b += `<path d="M${S.cx} ${S.cy}L${x0} ${y0}A${S.R} ${S.R * SCAN_K} 0 0 1 ${x1} ${y1}Z" fill="${accent()}" opacity="0.10"/>`;
+    if (G.ping > 0) { const k = 1 - G.ping / 2; b += `<ellipse cx="${S.cx}" cy="${S.cy}" rx="${S.R * k}" ry="${S.R * SCAN_K * k}" fill="none" stroke="${accent()}" stroke-width="3" opacity="${G.ping / 2}"/>`; }
+    b += shipGlyph({ cls: "corvette", iff: "friendly" }, S.cx, S.cy, 20, 0, C.text);
+    b += scannerContacts(S, (c) => `sci:${c.id}`, (c) => (c.iff === "unknown" ? "Unknown" : `${c.id} · ${rangeKm(c).toFixed(1)} km`));
     b += rangeChip(12, 6, G.sciRange, "scirange");
     b += button({ x: w - 160, y: h - 50, w: 148, h: 42, icon: "ping", label: "PING", hold: "ping", col: accent(), tip: "Active ping: hold. Everyone hears it." });
     return b;
   });
-  s += panel("CONTACT", grid(6, 0, 3, 4), (w, h) => {
+  s += panel("SHIELDS", grid(5, 0, 4, 4), (w, h) => {
+    // The ship and its six faces in 3D (weapons-and-shields 11). Drag to turn the view; press a face to favour it.
+    let b = `<g data-drag="shieldcam"><rect x="0" y="0" width="${w}" height="${h - 60}" fill="transparent"${tipAttr("Drag to turn the view; press a face to favour it")}/>`;
+    b += shieldView(w / 2, (h - 60) / 2 + 4, 3.3, G.shieldCam, { big: true }) + "</g>";
+    const pre = [["balance", "Balanced", -1], ["fwd", "Bow", 0], ["aft", "Stern", 1], ["port", "Port", 2], ["stbd", "Starboard", 3]];
+    pre.forEach(([ic, tip, f], i) => { b += button({ x: 10 + i * 50, y: h - 52, w: 44, h: 42, icon: ic, act: `favour:${f}`, tip: `Shields: ${tip}`, is: 20, on: G.preset === f }); });
+    b += button({ x: 268, y: h - 52, w: 44, h: 42, label: G.freq, act: "freq", tip: "Frequency band", fs: 18 });
+    b += button({ x: 318, y: h - 52, w: 44, h: 42, icon: "eye", act: "shieldview", tip: "Back to the usual view", is: 20 });
+    b += `<g${tipAttr(`Set by ${G.shieldBy}`)}>` + icon(G.shieldBy === "Science" ? "science" : "tactical", w - 22, h - 31, 18, ROLE[G.shieldBy.toLowerCase()]) + "</g>";
+    return b;
+  }, { hz: 30, key: `${G.shieldCam.yaw}|${G.shieldCam.el}|${G.weight}|${G.freq}|${G.preset}|${PAUSED}|${HOLD.key}` });
+  s += panel("CONTACT", grid(9, 0, 3, 2), (w, h) => {
     const c = contact(G.sciSel);
     if (!c) return text(w / 2, h / 2, 14, C.dim, "NO CONTACT", { a: "middle", ls: 2 });
-    const col = C[c.iff], cx = w / 2, cy = 120;
-    let b = `<path d="${arcPath(cx, cy, 86, 0, 359.99)}" stroke="#1c2734" stroke-width="8" fill="none"/>`;
-    if (c.scan > 0) b += `<path d="${arcPath(cx, cy, 86, 0, 360 * c.scan)}" stroke="${accent()}" stroke-width="8" fill="none"${tipAttr(`Scanned ${Math.round(c.scan * 100)}%`)}/>`;
-    b += shipGlyph(c, cx, cy, 104, 0, col);
-    // What a scan has revealed: hull at 30 %, its shield faces at 60 %, its weak point at 100 %.
-    if (c.scan >= 0.6) [[-40, 40], [140, 220], [230, 310], [50, 130]].forEach(([a0, a1], f) => { const k = [0.8, 0.3, 0.6, 0.55][f] * c.hull / 100; b += `<path d="${arcPath(cx, cy, 68, a0, a1)}" stroke="${k > 0.5 ? C.ok : k > 0.2 ? C.warn : C.danger}" stroke-width="5" fill="none"${tipAttr("Its shields")}/>`; });
-    if (c.scan >= 1) b += `<circle cx="${cx + 10}" cy="${cy + 18}" r="${7 + 3 * Math.sin(G.t * 6)}" fill="none" stroke="${C.warn}" stroke-width="3"${tipAttr("Weak point: its drive")}/>`;
-    b += text(cx, 238, 24, C.text, c.iff === "unknown" ? "?" : c.id, { a: "middle", w: 700 });
-    b += text(cx, 258, 13, C.dim, c.iff === "unknown" ? "UNKNOWN" : c.cls.toUpperCase(), { a: "middle", ls: 2 });
-    if (c.scan >= 0.3) b += bar(30, 272, w - 60, 8, c.hull / 100, col);
+    const col = C[c.iff], cx = 68, cy = h / 2;
+    let b = `<path d="${arcPath(cx, cy, 58, 0, 359.99)}" stroke="#1c2734" stroke-width="7" fill="none"/>`;
+    if (c.scan > 0) b += `<path d="${arcPath(cx, cy, 58, 0, 360 * c.scan)}" stroke="${accent()}" stroke-width="7" fill="none"${tipAttr(`Scanned ${Math.round(c.scan * 100)}%`)}/>`;
+    b += shipGlyph(c, cx, cy, 64, 0, col);
+    if (c.scan >= 1) b += `<circle cx="${cx + 6}" cy="${cy + 12}" r="${5 + 2 * Math.sin(G.t * 6)}" fill="none" stroke="${C.warn}" stroke-width="3"${tipAttr("Weak point: its drive")}/>`;
+    b += text(140, 30, 24, C.text, c.iff === "unknown" ? "?" : c.id, { w: 700 });
+    b += text(140, 50, 12, C.dim, c.iff === "unknown" ? "UNKNOWN" : c.cls.toUpperCase(), { ls: 2 });
+    if (c.scan >= 0.3) b += bar(140, 60, w - 154, 8, c.hull / 100, col);
     const done = c.scan >= 1;
-    b += button({ x: 14, y: h - 62, w: w - 28, h: 50, icon: "scan", label: done ? "SCANNED" : G.scanning ? "SCANNING" : "SCAN", act: done ? null : "scan", off: done, on: G.scanning, tip: "Scan (Q)" });
-    return b;
-  });
-  s += panel("SHIELDS", grid(9, 0, 3, 2), (w, h) => {
-    const cx = 80, cy = 82;
-    let b = shipGlyph({ cls: "corvette", iff: "friendly" }, cx, cy, 52, 0, C.dim);
-    const faceArc = [[-40, 40], [140, 220], [230, 310], [50, 130]];
-    faceArc.forEach(([a0, a1], f) => {
-      const k = G.stored[f] / Math.max(1, G.capMj * G.share[f]), col = k > 0.5 ? C.ok : k > 0.2 ? C.warn : C.danger;
-      b += `<path d="${arcPath(cx, cy, 56, a0, a1)}" stroke="${col}" stroke-width="${4 + 22 * G.share[f]}" fill="none" data-act="favour:${f}"${tipAttr(`${FACES[f]}: ${Math.round(G.share[f] * 100)}% of the shields`)}/>`;
-    });
-    // Dorsal and ventral: two discs beside the top view.
-    [4, 5].forEach((f, j) => { const k = G.stored[f] / Math.max(1, G.capMj * G.share[f]); b += `<circle cx="${180}" cy="${50 + j * 64}" r="${8 + 40 * G.share[f]}" fill="${k > 0.5 ? C.ok : C.warn}" opacity="${0.25 + 0.6 * k}" data-act="favour:${f}"${tipAttr(`${FACES[f]}: ${Math.round(G.share[f] * 100)}%`)}/>` + `<path d="${f === 4 ? "M174 " + (54 + j * 64) + "l6-8 6 8" : "M174 " + (46 + j * 64) + "l6 8 6-8"}" stroke="${C.bg}" stroke-width="3" fill="none"/>`; });
-    b += button({ x: w - 64, y: 8, w: 54, h: 54, icon: "balance", act: "favour:-1", tip: "Balance all faces (B)" });
-    b += button({ x: w - 64, y: 70, w: 54, h: 40, label: G.freq, act: "freq", tip: "Frequency (F)" });
-    b += `<g${tipAttr(`Set by ${G.shieldBy}`)}>` + icon(G.shieldBy === "Science" ? "science" : "tactical", w - 37, h - 22, 18, ROLE[G.shieldBy.toLowerCase()]) + "</g>";
+    b += button({ x: 140, y: h - 58, w: w - 152, h: 46, icon: "scan", label: done ? "DONE" : G.scanning ? "SCANNING" : "SCAN", act: done ? null : "scan", off: done, on: G.scanning, tip: "Scan (Q)", fs: 14 });
     return b;
   });
   s += panel("SCREEN", grid(9, 2, 3, 2), (w, h) => {
@@ -5177,14 +5466,23 @@ function fit() {
 }
 window.addEventListener("resize", fit);
 
-function act(a) {
-  const [k, v] = a.split(":");
+function act(a, ev) {
+  const [k, v, w] = a.split(":");
   const S = station;
   if (k === "tab") captainTab = v;
   if (k === "ack") { const o = newestOrderFor(S); if (o) o.state = "done"; }
-  if (k === "allstop") { G.throttle = 0; G.ap = "HOLD"; }
-  if (k === "ap") G.ap = v;
-  if (k === "evade") { G.evade = G.evade === v ? null : v; G.evadeT = 8; }
+  if (k === "allstop") { F.speedSet = 0; F.strafe = [0, 0]; G.ap = "HOLD"; }
+  if (k === "ap") { if (G.ap === "EVADE" && v !== "EVADE") F.strafe = [0, 0]; G.ap = v; if (v !== "HOLD" && v !== "EVADE") F.orderActive = false; }
+  if (k === "ostep") {
+    const d = (+w > 0 ? 1 : -1) * (ev && ev.shiftKey ? 1 : 5);
+    if (v === "h") F.oe.h = wrap360(F.oe.h + d);
+    if (v === "p") F.oe.p = clamp(F.oe.p + d, -90, 90);
+    if (v === "r") F.oe.r = wrap180(F.oe.r + d);
+  }
+  if (k === "ogo") { if (F.orderActive) F.orderActive = false; else orient(F.oe); }
+  if (k === "olevel") { const e = quat.toEuler(F.q); orient({ h: e.h, p: 0, r: 0 }); }
+  if (k === "oflip") { const e = quat.toEuler(F.q); orient({ h: wrap360(e.h + 180), p: e.p, r: e.r }); }
+  if (k === "otarget") { const c = contact(G.target); if (c) { const e = quat.toEuler(bowOn(v3.sub(c.p, F.P))); orient({ h: e.h, p: e.p, r: 0 }); } }
   if (k === "target") G.target = v;
   if (k === "navrange") G.navRange = RANGES.nav[(RANGES.nav.indexOf(G.navRange) + 1) % 3];
   if (k === "tacrange") G.tacRange = RANGES.tac[(RANGES.tac.indexOf(G.tacRange) + 1) % 3];
@@ -5192,13 +5490,14 @@ function act(a) {
   if (k === "tmode") { const t = G.turrets[+v], m = ["AUTO", "TARGET", "PD", "HOLD"]; t.mode = m[(m.indexOf(t.mode) + 1) % m.length]; }
   if (k === "load") { const t = G.tubes[+v]; if (t.state === "EMPTY" && G.magazine > 0) { G.magazine--; t.state = "LOADING"; t.t = 0; } }
   if (k === "favour") favour(+v, S === "science" ? "Science" : "Tactical");
+  if (k === "shieldview") G.shieldCam = { yaw: 62, el: 24 };
   if (k === "preset") sim.applyPreset(v);
   if (k === "prio") { const g = GROUPS.find((x) => x.id === v), p = groupNow(g).prio, np = p === 1 ? 3 : p - 1; for (const id of g.loads) sim.setPriority(id, np); }
   if (k === "scram") { if (ARMED.key === "scram" && now() - ARMED.t < 3) { sim.scram("manual"); ARMED.key = null; } else ARMED = { key: "scram", t: now() }; }
   if (k === "rxmode") st.reactor.mode = st.reactor.mode === "auto" ? "manual" : "auto";
   if (k === "sci") G.sciSel = v;
   if (k === "scan") G.scanning = !G.scanning;
-  if (k === "freq") G.freq = "ABCDEF"[("ABCDEF".indexOf(G.freq) + 1) % 6];
+  if (k === "freq") G.freq = "ABCD"[("ABCD".indexOf(G.freq) + 1) % 4];
   if (k === "feed") G.feed = v;
   if (k === "zoom") G.zoom = clamp(G.zoom * (+v > 0 ? 2 : 0.5), 1, 8);
   if (k === "compose") { G.composer.to = v; G.composer.verb = null; }
@@ -5209,17 +5508,20 @@ function act(a) {
   if (k === "room") G.shipSel = v;
   if (k === "orderrepair") sendOrder("engineering", "REPAIR");
 }
-/** Shield presets: -1 balances; a face takes 40 % and the rest share what is left. */
+/** An attitude order from heading, pitch and roll (flight-and-navigation 6a). */
+function orient(e) { F.oe = { h: e.h, p: e.p, r: e.r }; F.order = quat.fromEuler(e.h, e.p, e.r); F.orderActive = true; if (G.ap !== "EVADE") G.ap = "HOLD"; }
+/** Shield presets (weapons-and-shields 11): -1 balances; a face at weight 2.0 and its opposite at 0.5. */
 function favour(f, by) {
-  G.share = f < 0 ? [1, 1, 1, 1, 1, 1].map(() => 1 / 6) : [0, 1, 2, 3, 4, 5].map((k) => (k === f ? 0.4 : 0.12));
+  const opp = [1, 0, 3, 2, 5, 4];
+  G.weight = [0, 1, 2, 3, 4, 5].map((k) => (f < 0 ? 1 : k === f ? 2 : k === opp[f] ? 0.5 : 1));
   G.preset = f; G.shieldBy = by;
-  for (let k = 0; k < 6; k++) G.stored[k] = Math.min(G.stored[k], G.capMj * G.share[k]);
+  for (let k = 0; k < 6; k++) G.charge[k] = Math.min(G.charge[k], shieldCap(k));
 }
 function holdDone(key) {
   const [k, v] = key.split(":");
   if (k === "fire") {
     const i = G.tubes.findIndex((t) => t.state === "READY"), c = contact(G.target);
-    if (i >= 0 && c) { G.tubes[i].state = "EMPTY"; G.missiles.push({ x: G.x, y: G.y, target: c.id, p: missileHit(c), n: ++G.hits }); }
+    if (i >= 0 && c) { G.tubes[i].state = "EMPTY"; G.missiles.push({ pos: F.P.slice(), target: c.id, chance: missileHit(c), n: ++G.hits }); }
   }
   if (k === "ping") G.ping = 2;
   if (k === "redalert") setAlert(st.alert !== "red_alert");
@@ -5227,30 +5529,35 @@ function holdDone(key) {
 }
 let DRAG = null;
 function dragTo(e) {
-  const r = DRAG.rect, ky = (r.bottom - e.clientY) / r.height;
-  if (DRAG.kind === "throttle") G.throttle = clamp(Math.round((ky * 1.25 - 0.25) * 20) / 20, -0.25, 1);
-  if (DRAG.kind === "heading") {
-    // The panel's own box: the arc's centre is at (w / 2, body height + 60) below the 24 lp title.
-    const sc = r.width / 408, x = (e.clientX - r.left) / sc, y = (e.clientY - r.top) / sc;
-    G.hdgOrder = wrap360(Math.round((G.hdg + clamp(Math.atan2(x - 204, 196 + 60 - y) / D2R, -60, 60)) / 5) * 5);
+  const r = DRAG.rect, ky = (r.bottom - e.clientY) / r.height, kx = (e.clientX - r.left) / r.width;
+  if (DRAG.kind === "throttle") F.speedSet = clamp(Math.round((FL.speed_min_ms + ky * (FL.speed_max_ms - FL.speed_min_ms)) / 10) * 10, FL.speed_min_ms, FL.speed_max_ms);
+  if (DRAG.kind === "strafe") F.strafe = [clamp(Math.round((kx * 2 - 1) * FL.strafe_max_ms / 5) * 5, -50, 50), clamp(Math.round((ky * 2 - 1) * FL.strafe_max_ms / 5) * 5, -50, 50)];
+  // Virtual sticks spring back to centre on release: the ball for yaw and pitch, a rate bar for its own axis.
+  if (DRAG.kind === "stick") { F.stickDrag[0] = clamp((e.clientX - DRAG.x0) / (r.width * 0.5), -1, 1); F.stickDrag[1] = clamp(-(e.clientY - DRAG.y0) / (r.height * 0.5), -1, 1); }
+  if (DRAG.kind === "rate") F.stickDrag[+DRAG.arg] = clamp(kx * 2 - 1, -1, 1);
+  if (DRAG.kind === "shieldcam") {
+    G.shieldCam = { yaw: DRAG.cam.yaw + ((e.clientX - DRAG.x0) / r.width) * 360, el: clamp(DRAG.cam.el + ((e.clientY - DRAG.y0) / r.height) * 120, -80, 80) };
   }
   if (DRAG.kind === "fader") {
     const sp = clamp(Math.round(ky * 1.5 * 20) / 20, 0, 1.5);
     PREVIEW = { gid: DRAG.arg, sp, r: sim.previewGroup(DRAG.arg, sp) };
   }
-  render();
+  if (DRAG.kind !== "stick" && DRAG.kind !== "rate" && DRAG.kind !== "shieldcam") render();
 }
 CONSOLE.addEventListener("pointerdown", (e) => {
-  const d = e.target.closest("[data-drag]"), a = e.target.closest("[data-act]"), h = e.target.closest("[data-hold]");
-  if (d) {
+  const a = e.target.closest("[data-act]"), d = e.target.closest("[data-drag]"), h = e.target.closest("[data-hold]");
+  // A press on a face inside the shield view favours it; a drag that starts there turns the view.
+  if (d && !(a && d.contains(a) && d.dataset.drag !== "shieldcam")) {
     const [kind, arg] = d.dataset.drag.split(":");
-    DRAG = { kind, arg, rect: d.getBoundingClientRect() };
-    if (kind === "fader" || kind === "throttle") DRAG.rect = d.querySelector("rect").getBoundingClientRect();
-    if (kind === "heading") DRAG.rect = d.closest("svg").getBoundingClientRect();
-    CONSOLE.setPointerCapture(e.pointerId); dragTo(e); return;
+    DRAG = { kind, arg, rect: d.getBoundingClientRect(), x0: e.clientX, y0: e.clientY, cam: { ...G.shieldCam }, act: a && d.contains(a) ? a.dataset.act : null };
+    if (kind === "fader" || kind === "throttle" || kind === "strafe") DRAG.rect = d.querySelector("rect").getBoundingClientRect();
+    if (kind === "rate") DRAG.rect = d.querySelectorAll("rect")[1].getBoundingClientRect();
+    CONSOLE.setPointerCapture(e.pointerId);
+    if (kind !== "shieldcam" && kind !== "stick") dragTo(e);
+    return;
   }
   if (h) { HOLD.key = h.dataset.hold; HOLD.t0 = now(); render(); return; }
-  if (a) { act(a.dataset.act); render(); }
+  if (a) { act(a.dataset.act, e); render(); }
 });
 CONSOLE.addEventListener("pointermove", (e) => {
   if (DRAG) { dragTo(e); return; }
@@ -5258,25 +5565,30 @@ CONSOLE.addEventListener("pointermove", (e) => {
   if (el) { TIP.textContent = el.dataset.tip; TIP.style.display = "block"; TIP.style.left = e.clientX + 14 + "px"; TIP.style.top = e.clientY + 16 + "px"; }
   else TIP.style.display = "none";
 });
-window.addEventListener("pointerup", () => {
+window.addEventListener("pointerup", (e) => {
   if (DRAG && DRAG.kind === "fader" && PREVIEW) setGroup(PREVIEW.gid, PREVIEW.sp);
+  // A press on a shield face that did not move is a press, not a turn of the view.
+  if (DRAG && DRAG.kind === "shieldcam" && DRAG.act && Math.hypot(e.clientX - DRAG.x0, e.clientY - DRAG.y0) < 4) act(DRAG.act, e);
+  F.stickDrag = [0, 0, 0];
   DRAG = null; PREVIEW = null; HOLD.key = null; render();
 });
+// Helm's keys (flight-and-navigation section 6): held keys fly the ship; W and S step the speed set point.
+const HELD_KEYS = new Set(["a", "d", "r", "f", "q", "e", "z", "c", " ", "control"]);
 window.addEventListener("keydown", (e) => {
   const k = e.key.toLowerCase();
   if (station === "helm") {
-    if (k === "w" || k === "r") G.throttle = clamp(G.throttle + 0.05, -0.25, 1);
-    if (k === "s" || k === "f") G.throttle = clamp(G.throttle - 0.05, -0.25, 1);
-    if (k === "a") G.hdgOrder = wrap360(G.hdgOrder - 5);
-    if (k === "d") G.hdgOrder = wrap360(G.hdgOrder + 5);
+    if (HELD_KEYS.has(k)) { F.keys.add(k); e.preventDefault(); }
+    if (k === "w") F.speedSet = clamp(F.speedSet + 10, FL.speed_min_ms, FL.speed_max_ms);
+    if (k === "s") F.speedSet = clamp(F.speedSet - 10, FL.speed_min_ms, FL.speed_max_ms);
     if (k === "x") act("allstop");
-    if ("1234".includes(k)) act(`evade:${["JINK", "SPIRAL", "PORT", "STBD"][+k - 1]}`);
   }
   if (station === "tactical" && k === "t") { const l = G.contacts.filter((c) => c.hull > 0); G.target = l[(l.findIndex((c) => c.id === G.target) + 1) % l.length].id; }
   if (station === "science" && k === "q") act("scan");
   if (k === "y") act("ack");
   render();
 });
+window.addEventListener("keyup", (e) => { F.keys.delete(e.key.toLowerCase()); });
+window.addEventListener("blur", () => F.keys.clear());
 
 // The clock, in seconds and fixed steps (CLAUDE.md 6.4): the ship's systems at their 10 Hz,
 // the page's stand-ins (flight, contacts, weapons) at 60 Hz so what moves on screen moves
@@ -5291,10 +5603,12 @@ function advanceTime(d) {
 }
 /** n steps of the ship's systems (0.1 s each), for the named shots. */
 function advance(n) { for (let i = 0; i < n; i++) advanceTime(DT); }
+// A named shot freezes the clock, so the picture is the moment its setup built, however slow the renderer.
+let PAUSED = false;
 function frame() {
   const t = now(), d = Math.min(0.25, t - last); last = t;
-  advanceTime(d);
-  if (!DRAG) render();
+  if (!PAUSED) advanceTime(d);
+  if (!DRAG || DRAG.kind === "stick" || DRAG.kind === "rate" || DRAG.kind === "shieldcam") render();
   requestAnimationFrame(frame);
 }
 
@@ -5303,25 +5617,27 @@ let shotsFresh = true;
 function scenario(name) {
   if (name === "combat" && shotsFresh) {
     shotsFresh = false;
-    setAlert(true); sim.applyPreset("combat"); G.ap = "CHASE"; G.throttle = 0.6;
+    setAlert(true); sim.applyPreset("combat"); act("ap:CHASE"); F.speedSet = 250;
     advance(300);
-    hitUs(80, 70, 101); hitUs(260, 80, 102); hitUs(100, 60, 103);
-    advance(40);
+    hitUs(dirOf(80, 10), 70, 101); hitUs(dirOf(250, 12), 80, 102); hitUs(dirOf(100, -20), 60, 103); hitUs(dirOf(330, 35), 30, 104);
+    advance(20);
   }
 }
 window.MOCKUP_SHOTS = [
   { name: "helm", setup: () => { station = "helm"; render(); } },
+  { name: "helm-orient", setup: () => { station = "helm"; orient({ h: 45, p: 10, r: -30 }); advance(20); render(); } },
   { name: "tactical", setup: () => { station = "tactical"; render(); } },
   { name: "engineering", setup: () => { station = "engineering"; render(); } },
   { name: "science", setup: () => { station = "science"; render(); } },
   { name: "captain", setup: () => { station = "captain"; captainTab = "CMD"; render(); } },
-  { name: "red-helm-evading", setup: () => { scenario("combat"); station = "helm"; act("evade:JINK"); advance(20); render(); } },
+  { name: "red-helm-evading", setup: () => { scenario("combat"); station = "helm"; act("ap:EVADE"); advance(20); render(); } },
   { name: "red-tactical", setup: () => { scenario("combat"); station = "tactical"; HOLD.key = null; render(); } },
+  { name: "red-science-shields", setup: () => { scenario("combat"); hitUs(dirOf(250, 12), 25, 105); hitUs(dirOf(80, -15), 20, 106); advance(5); station = "science"; render(); } },
   { name: "red-engineering", setup: () => { scenario("combat"); station = "engineering"; render(); } },
   { name: "red-captain", setup: () => { scenario("combat"); station = "captain"; captainTab = "CMD"; render(); } },
   { name: "red-captain-ship", setup: () => { scenario("combat"); station = "captain"; captainTab = "SHIP"; G.shipSel = "engineering"; render(); } },
   { name: "scram-engineering", setup: () => { scenario("combat"); sim.scram("manual"); advance(30); station = "engineering"; render(); } },
-];
+].map((shot) => ({ name: shot.name, setup: () => { PAUSED = true; shot.setup(); render(); } }));
 
 fit(); render();
 requestAnimationFrame(frame);

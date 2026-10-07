@@ -124,6 +124,21 @@ distributed by science's face weights; below 15% of nominal supply every face SH
 - **WHEN** the shield generator's supply falls to 10% of nominal
 - **THEN** every face loses 2 MJ per second until it is empty or power returns
 
+### Requirement: The shield view shows the ship, its faces and where attacks come from
+Science's shield panel and tactical's plot SHALL draw the shield as the hull loft from the layout
+inside the ellipsoid, each patch of the ellipsoid coloured by the charge of the face the hit-resolving
+function assigns to its centre. Every hostile in sensor range SHALL draw a line from its direction, and
+every hit in the last 8 s SHALL draw an arrow from its direction onto the face it struck, labelled with
+its bearing (to starboard from the bow) and elevation in degrees.
+
+#### Scenario: A hit on the port quarter
+- **WHEN** a bolt strikes the port face from bearing 250, elevation +12
+- **THEN** the port face flashes, its fill drops by the energy absorbed, and an arrow labelled `250 +12` points into it from that direction for 8 s
+
+#### Scenario: The view agrees with the resolver
+- **WHEN** a hit lands 20 m forward of midships on the port side
+- **THEN** the view colours that spot as the port face, as the resolver does, not the bow
+
 ### Requirement: Only overflow reaches the hull, as a hull hit for damage-control
 The damage resolution SHALL be one function for every ship and craft. A face SHALL absorb the hit's
 energy times its band factor; if the face holds less, it SHALL empty and the remainder SHALL reach

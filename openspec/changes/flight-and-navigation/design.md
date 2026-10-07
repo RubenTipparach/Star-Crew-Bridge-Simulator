@@ -208,6 +208,77 @@ zone; it is a helm command, not a player's look (Pale-Blue-Dot's raw-look rule i
 it holds: the seated helm's head still looks with raw mouse displacement when the console is
 released).
 
+### 6a. Attitude orders: absolute and relative (owner, 2026-10-07)
+
+The owner: "the game should be full 3d, with lateral thrusters, full yaw, pitch, roll controls, and
+even absoulute quaternion roataions instructions (advacned, still described as directional eulers,
+but shows you exact 4 set coordinates for clarity)". Sections 2-6 already fly the Tern in six degrees
+of freedom: the stick sets yaw, pitch and roll rates, the throttle a forward speed, and the strafe
+controls lateral and vertical speeds through the RCS. This section adds the order that says where
+the ship should end up pointing, rather than how fast it should turn.
+
+**Conventions** (one set, used by helm, the captain's orders, the autopilot and the network):
+
+| Thing | Convention |
+| --- | --- |
+| Ship axes | The layout's: +X port, +Y dorsal, +Z bow, right handed |
+| Reference axes | The navigation reference (section 4): +Y its north (normal to the reference plane), +Z its heading zero, +X completing a right-handed set |
+| Attitude | A unit quaternion `q = (w, x, y, z)`, Hamilton product, mapping ship axes to reference axes (`v_ref = q v_ship q*`). It is the state; Euler angles are only a view of it |
+| Heading | Degrees 000-359, increasing to starboard, like a compass: the bow's direction in the reference plane |
+| Pitch | Degrees -90 to +90, nose up positive: the bow's angle above the reference plane |
+| Roll | Degrees -180 to +180, starboard wing down positive |
+| Euler to quaternion | `q = Ry(-heading) Rx(-pitch) Rz(+roll)`, applied in that order (yaw, then pitch, then roll, each about the ship's own axes): the signs only make "starboard", "nose up" and "starboard down" positive on the ship's +X-port axes |
+| Shown as | Euler first, in words a crew uses (`045 / +10 / -30`), then the four numbers `w x y z` to four decimals with `w >= 0` (`q` and `-q` are the same attitude; the display picks the one with `w >= 0`) |
+| Nose straight up or down | At pitch +/-90 heading and roll are the same turn; the view folds roll into heading and marks it. The order is the quaternion, so it never misbehaves there |
+
+Worked values (checked by a script that converts both ways over 20,000 random attitudes, worst
+error 2.5e-12 degrees):
+
+| Heading / pitch / roll | `w x y z` | The bow points (reference axes) |
+| --- | --- | --- |
+| 000 / 0 / 0 | 1.0000, 0.0000, 0.0000, 0.0000 | +Z |
+| 090 / 0 / 0 | 0.7071, 0.0000, -0.7071, 0.0000 | -X (starboard of heading zero) |
+| 000 / +30 / 0 | 0.9659, -0.2588, 0.0000, 0.0000 | 30 degrees above the plane |
+| 000 / 0 / +90 | 0.7071, 0.0000, 0.0000, 0.7071 | +Z, rolled onto the starboard side |
+| 045 / +10 / -30 | 0.8804, 0.0209, -0.3891, -0.2704 | (-0.696, 0.174, 0.696) |
+| 180 / 0 / 0 | 0.0000, 0.0000, -1.0000, 0.0000 | -Z |
+
+**The orders.** Helm (or the captain, as an order to helm, or the autopilot) gives one of:
+
+| Order | Means | Becomes |
+| --- | --- | --- |
+| Absolute | "Come to 045, pitch +10, roll -30", or four numbers typed or pasted | `q_target` from the table above, or the four numbers normalized |
+| Relative | "Yaw 30 to starboard", "pitch up 15", "roll 90 right", about the ship's own axes | `q_target = q_now Ry(-yaw) Rx(-pitch) Rz(roll)` |
+| Level | Pitch and roll to zero, keep the heading | `q_target` from (heading now, 0, 0) |
+| Flip | Turn about to the reciprocal heading, keep pitch and roll | `q_target` from (heading + 180, pitch, roll) |
+| Bow on target | Point the bow at the designated target, keeping the dorsal side as near the reference north as it can | `q_target` from the look direction and that up |
+
+A network message carries `q_target` as four `f32`. It is rejected if any is not finite or if its
+length is not 1 within 0.001, then normalized in `f64` on the server (CLAUDE.md 6.6, guard the edges).
+
+**The slew.** The ship turns about one axis, the shortest way (an eigen-axis slew), through the same
+angular controller as the stick (section 4), so every limit, the RCS's power and the damper-safe limit
+apply unchanged:
+
+```text
+q_e     = conj(q) q_target ; if q_e.w < 0 then q_e = -q_e      shortest way round
+angle   = 2 acos(q_e.w) ;  u = q_e.xyz / |q_e.xyz|              axis in ship axes
+r_max   = min over axes i of rate_limit_i / |u_i|               18, 18, 36 deg/s (section 4)
+a_max   = min over axes i of alpha_i / |u_i|                    12, 12, 30 deg/s^2 (section 2)
+w_set   = u min(r_max, sqrt(1.6 a_max angle))                   brakes in time, 20 % margin
+held    = angle < 0.5 deg and |w| < 0.2 deg/s                   then attitude hold
+time    = angle / r_max + r_max / a_max   if angle > r_max^2 / a_max
+          2 sqrt(angle / a_max)            otherwise
+```
+
+The time is the console's preview ("045 / +10 / -30 in 12 s"), computed by the same function the slew
+runs (bridge-stations 9). Moving the stick cancels an attitude order; the helm sees it go.
+
+**On the helm console** (bridge-stations 8.0): an ATTITUDE ball shows the ship's heading, pitch and
+roll against the reference, with the turn to come as a ghost, and an ORIENT panel holds the order:
+heading, pitch and roll as three big numbers with steppers, the four quaternion numbers under them,
+GO, and LEVEL, FLIP and TARGET.
+
 ### 7. In-system travel: the jump drive (recommended)
 
 | Quantity | Value |

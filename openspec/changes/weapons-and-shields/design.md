@@ -343,6 +343,27 @@ face = the axis with the largest |n|, with its sign
 Without the normalization, a hit on the port side 20 m forward of midships would count as the bow
 (|z| 20 > |x| 12); with it, it is port (0.71 against 0.37), which is what the crew see.
 
+**The shield view (owner, 2026-10-07).** The owner: "shields should display a full 3d model of the
+ship and shield facings, and where enemies attack are from what angles". Science's SHIELDS panel, and
+the middle of tactical's plot, draw the shield in 3D:
+
+- **The ship** is the hull loft from the layout (the octagonal sections of `hull.sections`), as
+  low-poly lines: 10 sections of 8 corners, about 140 triangles, the same shape the deck plan draws.
+- **The bubble** is this section's ellipsoid, cut into its six faces by the rule above: each patch of
+  the bubble takes the face `shield_face(o)` gives its centre, the function that resolves a hit (one
+  implementation, CLAUDE.md 6.1). A face is filled by its charge (green, amber, red at 50 % and
+  20 %), thicker where its weight is higher, and flashes when hit.
+- **Where the attacks come from**: each hostile in sensor range draws a dashed line into the bubble
+  from its direction; each hit in the last 8 s draws an arrow from where it came, fading, onto the face
+  it struck, labelled with its bearing and elevation in ship axes (bearing to starboard from the bow,
+  elevation up; `040 +12`). An inbound missile draws a red chevron on its line.
+- **The view** turns by drag (yaw about the ship's +Y, then tilt), starts from aft, above and to port,
+  and has one button back to that view. Tactical's copy is fixed at the plot's own tilt.
+
+On the Pi it is one small 3D viewport in the console pass: the hull lines and the ellipsoid of the
+flash (about 1,200 triangles, face per vertex, six opacities as uniforms), two draw calls, no
+render target. The mockup draws it in SVG with the same projection.
+
 **Balance (science).** Science sets a weight per face, 0.5 to 2.0 (default 1). A face's capacity
 is `240 MJ x h_gen x w_f / sum(w)`, clamped to 15-80 MJ. Regeneration goes to faces in proportion
 to `w_f x (capacity_f - charge_f)`, so the weakest favoured face fills first. When a face's

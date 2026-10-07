@@ -50,3 +50,4 @@
 
 - [x] 7.1 `docs/mockups/exterior.html` shots `broadside`, `missile-launch`, `gunner-view`, `shields-hit`, `chase`.
 - [ ] 7.2 Screenshot those shots (`node tools/mockups/shoot.mjs docs/mockups/exterior.html`) and look at each; the authoring session could not run the tool.
+- [x] 7.3 `docs/mockups/consoles.html`: the shield view of section 11 on science and in tactical's plot, faces by the hit rule, hostiles' directions, hits labelled with bearing and elevation; shot `consoles-red-science-shields.png`.

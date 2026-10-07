@@ -78,6 +78,12 @@ From the owner's brief, 2026-10-04. Quotes are the owner's words.
   we just want to design the console to BE AS USER FRIENDLY AS POSSIBLE this means no overloading
   the screen with text like you AI like to do". Console mockups are flat 2D pages, and consoles are
   glance first (section 10).
+- **Full 3D flight** (owner, 2026-10-07): "the game should be full 3d, with lateral thrusters, full
+  yaw, pitch, roll controls, and even absoulute quaternion roataions instructions (advacned, still
+  described as directional eulers, but shows you exact 4 set coordinates for clarity)". Six degrees of
+  freedom, attitude held as a quaternion and shown as heading, pitch and roll with the four numbers
+  beside them (`flight-and-navigation` 6a). And: "shields should display a full 3d model of the ship
+  and shield facings, and where enemies attack are from what angles" (`weapons-and-shields` 11).
 
 ## 2. The Raspberry Pi 5 floor
 

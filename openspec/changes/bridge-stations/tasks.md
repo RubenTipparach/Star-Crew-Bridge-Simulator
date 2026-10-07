@@ -20,6 +20,7 @@ separate request once the owner approves the mockup (CLAUDE.md 10).
 - [ ] 1.8 Consoles glance first (design 8.0, owner 2026-10-07):
   - [x] 1.8.1 `docs/mockups/consoles.html`: Helm, Tactical, Engineering, Science and the Captain (with the SHIP damage view) as flat 2D consoles on the 8.1 canvas, Engineering and the ship plan driven by `shipsystems.js`, three conditions (normal, red alert, emergency power).
   - [x] 1.8.2 Screenshots in `docs/screenshots/mockups/consoles-*.png`, looked at.
+  - [x] 1.8.4 Full 3D (owner, 2026-10-07): Helm flies six degrees of freedom with the attitude order and its quaternion (`flight-and-navigation` 6a); the shield in 3D with attack directions on Science and in Tactical's plot (`weapons-and-shields` 11); shots `consoles-helm-orient.png`, `consoles-red-science-shields.png`.
   - [ ] 1.8.3 Ask B13 in the survey with the shots (asked 2026-10-07; the answer is open); when approved, rewrite the section 10 panel tables for these five consoles from 8.0 and redraw Comms, Flight ops, the damage board and bay control the same way.
 
 ## 2. Data

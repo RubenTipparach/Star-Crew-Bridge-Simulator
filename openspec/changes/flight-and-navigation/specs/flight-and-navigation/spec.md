@@ -71,6 +71,32 @@ throttle, two strafes and buttons), and any connected device SHALL drive the sea
 - **WHEN** a player sits at helm with only a gamepad connected
 - **THEN** the left stick pitches and yaws, the triggers set the throttle and the bumpers roll
 
+### Requirement: Attitude orders are quaternions, shown as Euler angles
+An attitude order SHALL be held as a unit quaternion `(w, x, y, z)` mapping ship axes (+X port, +Y
+dorsal, +Z bow) to the navigation reference's axes, and SHALL be shown as heading (to starboard),
+pitch (nose up) and roll (starboard down) in degrees, with the four quaternion numbers to four
+decimals beside them and `w >= 0`. Euler angles SHALL convert as `Ry(-heading) Rx(-pitch) Rz(roll)`.
+The ship SHALL reach the order by the shortest single-axis turn through the flight assist's angular
+controller, within its rate and acceleration limits, and the console's time preview SHALL be computed
+by the function that runs the turn. An order whose four numbers are not finite or whose length is not
+1 within 0.001 SHALL be rejected.
+
+#### Scenario: Come to 045, pitch +10, roll -30
+- **WHEN** helm orders heading 045, pitch +10, roll -30
+- **THEN** the order reads `0.8804, 0.0209, -0.3891, -0.2704`, and the ship ends with its bow along (-0.696, 0.174, 0.696) in reference axes, within 0.5 degrees
+
+#### Scenario: The shortest way round
+- **WHEN** an order and the ship's attitude differ by 200 degrees about one axis
+- **THEN** the ship turns 160 degrees the other way
+
+#### Scenario: Nose straight up
+- **WHEN** helm orders pitch +90
+- **THEN** the ship points its bow along the reference's +Y, and the view shows roll folded into heading
+
+#### Scenario: A malformed order
+- **WHEN** a client sends an attitude order of (1, 1, 0, 0)
+- **THEN** the server rejects it and the ship keeps its current order
+
 ### Requirement: Bodies ride analytic rails and pull with local gravity
 Planets, moons and stations SHALL move on Keplerian rails evaluated analytically in `f64`, never
 integrated or perturbed by ships. A ship SHALL feel gravity `mu / r^2` toward each body, scaled by a
