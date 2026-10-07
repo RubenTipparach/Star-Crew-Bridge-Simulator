@@ -92,6 +92,18 @@
       "pipe": { "v0_m": 1.75, "h_m": 0.125 }
     }
   },
+  "edges": {
+    "_doc": "Bands on the floor at a platform's foot (floor-panels design 6; the owner, 2026-10-07: 'can we make custom floor vents and stuff for the bridge floor? since the elements arent grid aligned they get cutoff by various decks on or rafters on the bridge'). One layer per finish (finishes.<finish>.edges.layer) holds the rows; on names the row each platform edge kind takes (a rail edge a vent band, a riser edge a cable trench band; wall and step edges none). A band is width_m wide, its row's full height across it (u along the edge, v from the platform's face to the band's outer edge), raised raise_m above the floor. Each row repeats every period_m, one fitting between plain ends, and a page lays an edge's band in a whole number of periods, n = max(1, round(length / period_m)), stretching u by length / (n period_m), so no grille is cut; an edge shorter than min_edge_m takes no band.",
+    "period_m": 0.5,
+    "width_m": 0.3125,
+    "raise_m": 0.012,
+    "min_edge_m": 0.25,
+    "on": { "rail": "vent", "riser": "trench" },
+    "rows": {
+      "vent": { "v0_m": 0.0625, "h_m": 0.3125 },
+      "trench": { "v0_m": 0.4375, "h_m": 0.3125 }
+    }
+  },
   "upholstery": {
     "_doc": "Padded leather for the chairs (the owner, 2026-10-07, on the captain's chair: 'chairs suck still mainly its a texture problem'): two layers that tile in both directions over the 2 m layer (wear and grain on a 4D torus, as the walkway's), baked in a neutral light warm grey because a page multiplies them by a tint per chair (tints_srgb, by prop name). channel: rolled vertical channels 2/21 m (95 mm) wide with a stitched groove between them and a welted seam across every 0.5 m (v = 0.25 + 0.5 k), for seat and back faces; panel: padded panels 2/7 m by 0.25 m with welted seams on every edge and a stitch line inside them, for bolsters, headrests and arm pads. The chairs' roles upholstery and upholstery_panel (tools/blender/hs_kit.py ROLES) take them, UV0 in metres over layers.span_m. Colours: leather the padding, welt the piping, seam what shows between pillows, stitch the thread; grain is the leather's pebble (cell_m across), its relief (bump strength 0-1) and mottle (colour variation 0-1).",
     "layers": { "channel": 68, "panel": 69 },
@@ -122,6 +134,7 @@
     "floor": { "key_light_tangent": [-0.3, 0.45, 0.84], "key_angle_deg": 15.0, "ambient": 0.45 },
     "trims": { "key_light_tangent": [0.5, 0.2, 0.84], "key_angle_deg": 10.0, "ambient": 0.42 },
     "platforms": { "key_light_tangent": [-0.25, 0.6, 0.76], "key_angle_deg": 10.0, "ambient": 0.42 },
+    "edges": { "key_light_tangent": [-0.3, 0.45, 0.84], "key_angle_deg": 15.0, "ambient": 0.45 },
     "upholstery": { "key_light_tangent": [-0.55, 0.45, 0.70], "key_angle_deg": 30.0, "ambient": 0.36 }
   },
   "ui": {
@@ -192,6 +205,7 @@
         "wear": { "grime": 0.14, "grime_scale_per_m": 2.0, "crevice": 0.6, "crevice_m": 0.03, "edge": 0.65, "streaks": 0.10, "rust": 0.0 }
       },
       "platforms": { "layer": 66 },
+      "edges": { "layer": 70 },
       "modules": {
         "plate": { "layer": 11, "weight": 3, "placed": "draw", "emissive": false, "mirrored": false },
         "vent": { "layer": 12, "weight": 1, "placed": "draw", "emissive": false, "mirrored": false, "variant": "louvre" },
@@ -267,6 +281,7 @@
         "wear": { "grime": 0.26, "grime_scale_per_m": 2.5, "crevice": 0.6, "crevice_m": 0.04, "edge": 0.6, "streaks": 0.25, "rust": 0.5 }
       },
       "platforms": { "layer": 67 },
+      "edges": { "layer": 71 },
       "modules": {
         "plate": { "layer": 22, "weight": 3, "placed": "draw", "emissive": false, "mirrored": false },
         "vent": { "layer": 23, "weight": 1, "placed": "draw", "emissive": false, "mirrored": false, "variant": "octagons" },

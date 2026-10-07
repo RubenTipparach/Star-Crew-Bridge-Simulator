@@ -623,6 +623,7 @@
       }
       if (F.trims) out.push({ name: panelLayerName(fn, "trims"), stem: `${fn}_trims`, layer: F.trims.layer });
       if (F.platforms) out.push({ name: panelLayerName(fn, "platform"), stem: `${fn}_platforms`, layer: F.platforms.layer });
+      if (F.edges) out.push({ name: panelLayerName(fn, "floor_edges"), stem: `${fn}_floor_edges`, layer: F.edges.layer });   // floor-panels 6
     }
     // Upholstery (ship-props design 4b): one bake for every finish, tinted per seat by the page.
     if (S.upholstery) for (const k of Object.keys(S.upholstery.layers)) out.push({ name: `panel:upholstery:${k}`, stem: `upholstery_${k}`, layer: S.upholstery.layers[k] });
@@ -991,9 +992,11 @@
    * it ({ rect, f }), zone their collar or rim width; lamps (a ceiling) are the lamps under it,
    * whose housings make the cells they span lamp_surround; paths (a floor) the walkway bands. A cell
    * is cropped (and takes plate) when its outline or a hole cuts its central core (cells.core_m
-   * either side of its centre).
+   * either side of its centre). covers (a floor) are the outlines of what stands on it (platforms, the
+   * bands at their feet; floor-panels design 6): a cell wholly under one is not drawn, and a cell whose
+   * core one reaches takes plate, so no drawn module is ever cut by a platform.
    */
-  function dressFlat(B, comp, br, bi, kind, poly, holes, zone, y, dir, lamps, paths, ctx, D) {
+  function dressFlat(B, comp, br, bi, kind, poly, holes, zone, y, dir, lamps, paths, ctx, D, covers) {
     const S = ctx.S, set = S.finishes[comp.finish][kind], st = ctx.stats[kind];
     if (!set) throw new Error(`shipkit: finish ${comp.finish} has no ${kind} in panels.json`);
     const span = S.layers.span_m, cs = S.cells.size_m, ox = S.cells.origin_x_m, mg = S.cells.margin_m;
@@ -1015,6 +1018,15 @@
       }
     };
     const count = (m) => { st.cells++; st.modules[m] = (st.modules[m] || 0) + 1; };
+    const clipArea = (pg, x0, x1, z0, z1) => { const c = clipPolyRect(pg, x0, x1, z0, z1); return c.length > 2 ? Math.abs(signedArea(c)) : 0; };
+    // "hidden" when the covers hide all of the cell's floor, "core" when one reaches its core, else null.
+    const covered = (x0, x1, z0, z1, fx0, fx1, fz0, fz1) => {
+      if (!covers || !covers.length) return null;
+      const floor = clipArea(poly, x0, x1, z0, z1);
+      const under = covers.reduce((s, cp) => s + clipArea(cp, x0, x1, z0, z1), 0);
+      if (floor > 0 && under >= floor - 1e-3) return "hidden";
+      return covers.some((cp) => clipArea(cp, fx0, fx1, fz0, fz1) > 1e-4) ? "core" : null;
+    };
     const shown = new Map();
     const j0 = Math.floor((Z0 - fo) / fs + EPS), j1 = Math.ceil((Z1 - fo) / fs - EPS) - 1;
     const k0 = Math.floor((X0 - ox) / cs + 0.5 + EPS), k1 = Math.ceil((X1 - ox) / cs - 0.5 - EPS);
@@ -1038,8 +1050,11 @@
         const fx0 = cx - core, fx1 = cx + core, fz0 = zc - core, fz1 = zc + core;
         const whole = [[fx0, fz0], [fx1, fz0], [fx1, fz1], [fx0, fz1]].every(([x, z]) => insidePoly(poly, x, z)) && !cut.some((h) => meets(h, fx0, fx1, fz0, fz1));
         let m, vz = zc, why = "draw";
+        const cv = covered(x0, x1, z0, z1, fx0, fx1, fz0, fz1);
+        if (cv === "hidden") { st.rules.hidden = (st.rules.hidden || 0) + 1; continue; }
         if (lit.has(k)) { m = "lamp_surround"; vz = lit.get(k); why = "lamp"; }
         else if (zones.some((h) => meets(h, x0, x1, z0, z1))) { m = "plate"; why = "portal"; }
+        else if (cv === "core") { m = "plate"; why = "covered"; }
         else if (kind === "floor" && myPaths.some((p) => segRectDistance(p.a, p.b, x0, x1, z0, z1) <= W.width_m / 2 - W.min_overlap_m + EPS)) { m = "walkway"; st.walkway++; why = "walkway"; }
         else if (!whole) { m = "plate"; why = "cropped"; }
         else {
@@ -1255,7 +1270,8 @@
       if (panelsOn) {
         const bi = comp.brushes.indexOf(br);
         const under = lampList.filter((l) => insidePoly(br.poly, l.p[0], l.p[2]) && l.p[1] > br.y[0] && l.p[1] < br.y[1] + EPS);
-        dressFlat(B, comp, br, bi, "floor", br.poly, fHoles, FP.rim_width_m, br.y[0], 1, null, walkPaths, panelsOn, D);
+        const covers = (opts.floorCovers || []).filter((cv) => Math.abs(cv.y_m - br.y[0]) < 0.3).map((cv) => cv.poly);
+        dressFlat(B, comp, br, bi, "floor", br.poly, fHoles, FP.rim_width_m, br.y[0], 1, null, walkPaths, panelsOn, D, covers);
         dressFlat(B, comp, br, bi, "ceiling", inner, cHoles, FP.collar_width_m, br.y[1], -1, under, null, panelsOn, D);
       } else {
         B.flat(THREE, "floor", br.poly, fHoles.map((h) => h.rect), br.y[0], 1);
@@ -1826,6 +1842,129 @@
     B.triUv("platform_riser", p[0], p[1], p[2], uv[0], uv[1], uv[2], n, fit.layer);
     B.triUv("platform_riser", p[0], p[2], p[3], uv[0], uv[2], uv[3], n, fit.layer);
   }
+  /** Sutherland-Hodgman: the part of polygon pg ([x, z] points) inside the convex polygon clip (either winding). */
+  function clipConvex(pg, clip) {
+    const sgn = signedArea(clip) >= 0 ? 1 : -1;
+    let out = pg;
+    for (let i = 0; i < clip.length && out.length; i++) {
+      const a = clip[i], b = clip[(i + 1) % clip.length], inp = out;
+      const side = (p) => sgn * ((b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]));
+      out = [];
+      for (let j = 0; j < inp.length; j++) {
+        const p = inp[j], q = inp[(j + 1) % inp.length], sp = side(p), sq = side(q);
+        if (sp >= 0) out.push(p);
+        if ((sp >= 0) !== (sq >= 0)) { const k = sp / (sp - sq); out.push([p[0] + k * (q[0] - p[0]), p[1] + k * (q[1] - p[1])]); }
+      }
+    }
+    return out;
+  }
+  function isConvex(pg) {
+    let sign = 0;
+    for (let i = 0; i < pg.length; i++) {
+      const a = pg[i], b = pg[(i + 1) % pg.length], c = pg[(i + 2) % pg.length];
+      const cr = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]);
+      if (Math.abs(cr) < 1e-9) continue;
+      if (sign && Math.sign(cr) !== sign) return false;
+      sign = Math.sign(cr);
+    }
+    return true;
+  }
+
+  /**
+   * The bands on the floor at platforms' feet (floor-panels design 6): along every edge whose kind panels.json's
+   * edges.on names (a rail edge a vent band, a riser edge a trench band), edges.width_m out from the face, laid in a
+   * whole number of edges.period_m periods so the band ends on a frame. Where two banded edges meet at a convex
+   * corner the gap between their square ends is a wedge on the frame (uPlain); at a reflex corner both are mitred on
+   * the bisector. Clipped to opts.room (the floor's outline) when it is convex. Returns
+   * [{ pts: [[x, z], ...], uv: [[u, v], ...] (layer units), row }] in the floor plan; [] without panels.json edges.
+   */
+  function edgeBands(platforms, opts) {
+    const S = panelsData().manifest, E = S.edges;
+    if (!E) return [];
+    const span = S.layers.span_m, W = E.width_m, P = E.period_m, room = opts && opts.room && isConvex(opts.room) ? opts.room : null;
+    const cross = (u, v) => u[0] * v[1] - u[1] * v[0];
+    const area = (pg) => (pg.length > 2 ? Math.abs(signedArea(pg)) : 0);
+    // Each platform counter-clockwise, with its edges' kinds.
+    const pfs = platforms.map((pf) => {
+      let poly = pf.poly.map((p) => p.slice()), edges = pf.edges.slice();
+      if (signedArea(poly) < 0) { poly = poly.reverse(); edges = edges.slice(0, -1).reverse().concat(edges.slice(-1)); }
+      return { poly, edges };
+    });
+    // One platform's bands (and corner wedges), given which of its edges are dropped.
+    const bandsOf = (pi, dropped) => {
+      const { poly, edges } = pfs[pi], n = poly.length, out = [];
+      const len = (i) => Math.hypot(poly[(i + 1) % n][0] - poly[i][0], poly[(i + 1) % n][1] - poly[i][1]);
+      const banded = (i) => { const k = (i + n) % n; return !!E.on[edges[k]] && len(k) >= E.min_edge_m && !dropped.has(k); };
+      const dir = (i) => { const a = poly[(i + n) % n], b = poly[(i + 1 + n) % n], l = Math.hypot(b[0] - a[0], b[1] - a[1]); return [(b[0] - a[0]) / l, (b[1] - a[1]) / l]; };
+      const nrm = (i) => { const d = dir(i); return [d[1], -d[0]]; };
+      // Where the outer lines of edges i and i + 1 cross: the mitre point at their shared corner.
+      const mitre = (i) => {
+        const c = poly[(i + 1) % n], ni = nrm(i), nj = nrm(i + 1), m = [ni[0] + nj[0], ni[1] + nj[1]], d = 1 + ni[0] * nj[0] + ni[1] * nj[1];
+        return [c[0] + (m[0] * W) / d, c[1] + (m[1] * W) / d];
+      };
+      const convexAt = (i) => cross(dir(i), dir(i + 1)) > 0;   // the corner after edge i turns left: convex (CCW)
+      for (let i = 0; i < n; i++) {
+        if (!banded(i)) continue;
+        const a = poly[i], b = poly[(i + 1) % n], L = len(i), t = dir(i), on = nrm(i), rowName = E.on[edges[i]], row = E.rows[rowName];
+        const k = Math.max(1, Math.round(L / P)), sc = (k * P) / L;
+        // The band's outline: inner edge a to b, outer edge square or mitred at each end.
+        const A0 = [a[0] + on[0] * W, a[1] + on[1] * W], B0 = [b[0] + on[0] * W, b[1] + on[1] * W];
+        const startM = banded(i - 1) && !convexAt(i - 1), endM = banded(i + 1) && !convexAt(i);
+        const pts = [a, b, endM ? mitre(i) : B0, startM ? mitre(i - 1) : A0];
+        const uvOf = (p) => { const d = [p[0] - a[0], p[1] - a[1]]; return [((d[0] * t[0] + d[1] * t[1]) * sc) / span, (row.v0_m + (d[0] * on[0] + d[1] * on[1])) / span]; };
+        out.push({ pf: pi, edge: i, pts, uv: pts.map(uvOf), row: rowName });
+        // A convex corner to the next banded edge: the wedge between the two square ends, on the frame (u of the
+        // period's first centimetre), v across as the bands'.
+        if (banded(i + 1) && convexAt(i)) {
+          const on2 = nrm(i + 1), w = [b, [b[0] + on2[0] * W, b[1] + on2[1] * W], mitre(i), B0], uPlain = 0.01 / span;
+          out.push({ pf: pi, edge: i, wedge: true, pts: w, uv: w.map((q) => [uPlain, (row.v0_m + Math.min(W, Math.hypot(q[0] - b[0], q[1] - b[1]))) / span]), row: rowName });
+        }
+      }
+      return out;
+    };
+    // A band that would run under another platform, or over a band already laid (platforms in data order), is
+    // dropped whole: a narrow gap between two platforms stays plain deck rather than showing a cut fitting.
+    const kept = [];
+    pfs.forEach((pf, pi) => {
+      const dropped = new Set();
+      for (const b of bandsOf(pi, dropped)) {
+        const underOther = pfs.some((q, qi) => qi !== pi && area(clipConvex(q.poly, b.pts)) > 1e-4);
+        const overLaid = kept.some((o) => area(clipConvex(o.pts, b.pts)) > 1e-4);
+        if (underOther || overLaid) dropped.add(b.edge);
+      }
+      // Wedges belong to the corner after their edge: drop the edge after a dropped one's wedge too.
+      for (const b of bandsOf(pi, dropped)) kept.push(b);
+    });
+    const out = [];
+    for (const b of kept) {
+      const pg = room ? clipConvex(b.pts, room) : b.pts;
+      if (pg.length < 3) continue;
+      if (pg === b.pts) { out.push(b); continue; }
+      // Re-derive the clipped points' coordinates from the band's own mapping (affine over the quad).
+      out.push({ pf: b.pf, edge: b.edge, row: b.row, pts: pg, uv: pg.map((p) => affineUv(b.pts, b.uv, p)) });
+    }
+    return out;
+  }
+  /** The texture coordinates at p of a convex polygon whose corners pts carry uv, by the triangle of its fan holding p. */
+  function affineUv(pts, uv, p) {
+    for (let i = 1; i + 1 < pts.length; i++) {
+      const a = pts[0], b = pts[i], c = pts[i + 1];
+      const d = (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1]);
+      if (Math.abs(d) < 1e-12) continue;
+      const l1 = ((b[1] - c[1]) * (p[0] - c[0]) + (c[0] - b[0]) * (p[1] - c[1])) / d, l2 = ((c[1] - a[1]) * (p[0] - c[0]) + (a[0] - c[0]) * (p[1] - c[1])) / d, l3 = 1 - l1 - l2;
+      if (l1 >= -1e-6 && l2 >= -1e-6 && l3 >= -1e-6) return [l1 * uv[0][0] + l2 * uv[i][0] + l3 * uv[i + 1][0], l1 * uv[0][1] + l2 * uv[i][1] + l3 * uv[i + 1][1]];
+    }
+    return uv[0];
+  }
+
+  /** What stands on a floor and hides it (floor-panels design 6): the platforms' outlines and the bands at their feet,
+   * as buildCompartment's opts.floorCovers ([{ y_m, poly }]). */
+  function platformCovers(platforms, floorY, opts) {
+    const out = platforms.map((pf) => ({ y_m: floorY, poly: pf.poly.map((p) => p.slice()) }));
+    for (const b of edgeBands(platforms, opts)) out.push({ y_m: floorY, poly: b.pts });
+    return out;
+  }
+
   function buildPlatforms(THREE, B, platforms, stairs, floorY, D, opts) {
     D = D || shipData("detailing");
     opts = opts || {};
@@ -1835,6 +1974,17 @@
       members: { railing: { face: "rail", sides: "rail", ends: "rail", role: "fit_railing" } } } : null;
     const rbox = (role, c, u, v, w, hu, hv, hw, faces) => (RT ? stripBox(B, RT, role, c, u, v, w, hu, hv, hw, faces) : B.box(role, c, u, v, w, hu, hv, hw, faces));
     stairs = stairs || [];
+    // The bands at the platforms' feet, on the finish's floor edge layer (opts.edgeLayer; floor-panels design 6).
+    if (opts.edgeLayer) {
+      const y = floorY + panelsData().manifest.edges.raise_m, up = [0, 1, 0];
+      for (const b of edgeBands(platforms, opts)) {
+        const pts = b.pts, uv = b.uv;
+        for (let i = 1; i + 1 < pts.length; i++) {
+          const p = [pts[0], pts[i], pts[i + 1]].map((q) => [q[0], y, q[1]]);
+          B.triUv("floor_edge", p[0], p[1], p[2], uv[0], uv[i], uv[i + 1], up, opts.edgeLayer);   // triUv winds it to face up
+        }
+      }
+    }
     for (const pf of platforms) {
       let poly = pf.poly.map((p) => p.slice()), edges = pf.edges.slice();
       if (signedArea(poly) < 0) { poly = poly.reverse(); edges = edges.slice(0, -1).reverse().concat(edges.slice(-1)); }
@@ -2475,7 +2625,7 @@
     buildCompartment, roomShell, lampsFor, frameStations, loadMaterials, surfaceMaterial, geometryOf, finishOf, compartmentMesh, paintRole, bakeDirect,
     // wall panels (openspec/changes/wall-panels)
     loadPanels, panelsData, panelBands, panelBays, fnv1a, decodePng, panelLayerList, panelLayerName, walkwayPaths,
-    Builder, subdivideParts, buildPlatforms, buildSpiralStair, spiralReach, spiralCorners, buildLiftCar, buildFitout, platformRows,
+    Builder, subdivideParts, buildPlatforms, platformCovers, edgeBands, buildSpiralStair, spiralReach, spiralCorners, buildLiftCar, buildFitout, platformRows,
     // hull, labels, chrome
     hullGeometry, hullHalfWidth, label, budgetHud, titleBlock, registerShots, markReady, panelChrome,
     rectMinusHoles, intervalMinus, worldUv,

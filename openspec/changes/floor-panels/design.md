@@ -102,6 +102,73 @@ Built 2026-10-06 with `ceilings-and-trims` (the same build, data file and kit op
 - **Fixtures keep their own floors**: a dais, a mezzanine or a catwalk a page adds keeps its tiled
   material (the deck plan draws them in roles of their own), platforms being a non-goal.
 
+### 6. Floors around platforms, and vent bands at their feet (2026-10-07)
+
+The owner, 2026-10-07, on a first-person shot of the bridge: "can we make custom floor vents and
+stuff for the bridge floor? since the elements arent grid aligned they get cutoff by various decks
+on or rafters on the bridge". The cells of section 1 sit on a 2 m grid from the centreline and know
+nothing of what stands on the floor, so a raised ring, the dais or a sub-platform crosses grates and
+vents part way: half a grate shows at a platform's foot, the rest under it.
+
+**Covers.** A page passes the footprints that stand on a floor and hide it (`floorCovers`: each
+platform's outline, and the edge bands below), with the floor's height. The cell rule (section 5)
+gains one step after the portal's:
+
+1. a ceiling cell a lamp housing spans: `lamp_surround`;
+2. a cell holding a floor portal: `plate`;
+3. **a cell wholly under a cover is not drawn** (it cannot be seen); **a cell whose core
+   (`cells.core_m` either side of its centre) a cover reaches takes `plate`**;
+4. the walkway; 5. a cropped cell, `plate`; 6. otherwise drawn by weight.
+
+So no grate, vent, drain or access plate is ever cut by a platform: the cells left drawn are those a
+platform does not reach, and the ones it does are plain plate, which reads the same cut or whole.
+
+**Vent bands.** Where a platform meets the floor, the floor gets fittings made for that edge, not
+for the grid:
+- **Where.** Along every platform edge of kind `rail` or `riser` (`deck-pipeline` 5a), on the floor
+  at the foot of the face. Not along a `wall` edge, and not along a `step` edge, where the stair
+  stands.
+- **What.** Under a `rail` edge a **vent** band: return-air grilles, where the crew stand at the
+  rail and the air is drawn down (X2's grilles along the consoles). Under a `riser` edge a
+  **trench** band: a cable trench cover with finger slots, where the cables to a platform's consoles
+  come up.
+- **Size.** 0.3125 m wide (20 texels at 64 px per metre), raised 1.2 cm, as the nosing is
+  (CLAUDE.md 8: deliberately parallel surfaces at least 1 cm apart).
+- **Whole fittings.** A band's row tiles with a 0.5 m period: one grille, or one trench plate,
+  between plain frame ends. An edge of length L holds n = max(1, round(L / 0.5)) periods, its u
+  stretched by L / (0.5 n), so every band ends on a frame and no grille is cut. An edge under
+  0.25 m takes no band.
+- **Corners.** At a convex corner between two banded edges, the gap between them is a wedge mapped
+  onto the frame. At a reflex corner both bands are mitred on the bisector: the mitre takes
+  w tan(a / 2) off each band's end, inside its 5 cm frame while the turn a is under 18 degrees.
+- **Edges.** A band is clipped to its room's floor, so it never runs into a wall.
+- **The layer.** One per finish, `<finish>_floor_edges`, holding the two rows like the platform
+  layer (`edges.rows`). The panel build models them with the hard-surface kit, lit as floors.
+
+The bands are covers too: the cells under them follow step 3.
+
+**Crowded platforms.** Built, the round bridge's sub-platform stood 0.2 to 0.7 m from each ring, so
+its trench band and the ring's vent band overlapped in the gap (0.43 m^2 of z-fighting found by
+`tools/mockups/zfight.mjs`), and a band ran under the next platform. So a band that would run under
+another platform, or over a band already laid (platforms in data order), is **dropped whole**: a
+narrow gap between platforms stays plain deck. Cropping the band instead would show a cut fitting,
+the thing this section removes.
+
+**As built (2026-10-07), on the round bridge** (`command-suite`), in the deck plan, the command deck
+and the bridge variants:
+
+| Item | Measured |
+| --- | --- |
+| Bands | 18 laid of 25 candidate edges (14 vent, 4 trench); 7 dropped where platforms crowd; 4 corner wedges; 8.83 m^2 |
+| Triangles | The deck plan's whole-ship count rose by 24 (92,634 to 92,658): the bands' triangles less the floor cells now hidden under platforms |
+| Texture memory | 2 layers (`crew_floor_edges` 70, `working_floor_edges` 71): 699,048 bytes with mips at 256 px, 174,762 at 128 px; the panel layers now 21,320,964 and the whole array with the materials 25,165,728 bytes at 256 px (25.2 MB of 96 MB) |
+| Disk | 4 PNGs, 32,117 bytes |
+| Draw calls | None |
+| z-fighting | Back to each page's slivers: deck plan 0.073 m^2, command deck 0.046, bridge variants 0.078 |
+
+Not measured on a Pi 5 (a cloud session has no GPU, CLAUDE.md 12). Shots before and after:
+`docs/screenshots/mockups/bridge-floor-before/`, `bridge-floor-after/`.
+
 ## Risks / Trade-offs
 
 - **Busy floors.** Grates are weighted 2 in 10 and plate 3. Weights are data.

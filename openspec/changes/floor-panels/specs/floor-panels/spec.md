@@ -20,6 +20,30 @@ each cell one floor module from the set of its compartment's finish
 - **WHEN** two cells side by side are neither walkway nor fixed by a portal
 - **THEN** they take different modules
 
+### Requirement: No floor module is cut by a platform
+
+A floor cell that a platform, or a band at its foot, reaches into SHALL take `plate`, and a cell
+wholly under one SHALL NOT be drawn, so no drawn floor module is ever partly hidden by something
+standing on the floor (design section 6).
+
+#### Scenario: A grate at a ring's foot
+- **WHEN** the bridge's raised ring covers part of a floor cell's core
+- **THEN** that cell is plain plate, and no grate, vent, drain or access plate runs under the ring
+
+#### Scenario: Under the dais
+- **WHEN** a floor cell lies wholly under the captain's dais
+- **THEN** no triangle is drawn for it
+
+### Requirement: Platform edges carry whole fittings
+
+Every `rail` and `riser` edge of a platform at least 0.25 m long SHALL carry a band on the floor at
+its foot (vents under rails, trench covers under risers) whose row holds a whole number of 0.5 m
+periods, so the band begins and ends on a frame and no grille is cut (design section 6).
+
+#### Scenario: A 1.3 m rail edge
+- **WHEN** a rail edge is 1.3 m long
+- **THEN** its band holds three grilles, each stretched by 1.3 / 1.5
+
 ### Requirement: Floors stay within their budget
 
 Floor modules SHALL be layers of the deck's one texture array, so a compartment stays one draw

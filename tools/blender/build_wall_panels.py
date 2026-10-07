@@ -1,11 +1,11 @@
 """Star Crew's panel textures: the wall modules and strips, the ceiling and floor modules, the trim
-strips, the platform faces and the chairs' upholstery, modelled in Blender the hard-surface CSG way and
+strips, the platform faces, the floor bands at platforms' feet and the chairs' upholstery, modelled in Blender the hard-surface CSG way and
 baked to texture layers (openspec/changes/wall-panels, design section 6, option B; ceilings-and-trims;
 floor-panels).
 
 It owns the panel layers (assets/textures/panels/<px>/<finish>_<module>.png, <finish>_strips.png,
 <finish>_ceiling_<module>.png, <finish>_floor_<module>.png, <finish>_trims.png, <finish>_platforms.png,
-upholstery_channel.png and upholstery_panel.png at 256 and 128 px), the reusable screen and key images
+<finish>_floor_edges.png, upholstery_channel.png and upholstery_panel.png at 256 and 128 px), the reusable screen and key images
 (assets/textures/panels/ui_screen_<finish>.png, keys_<finish>.png), their manifest
 (assets/textures/panels/manifest.json) and the contact sheet
 (docs/screenshots/materials/panels-contact-sheet.png). It lives in tools/blender because the
@@ -21,14 +21,18 @@ in the wall-panels design asks the owner which way panels are made from now on.
 
 Run (from anywhere), with Pillow installed beside bpy (pip install bpy pillow):
   <python with the bpy module> tools/blender/build_wall_panels.py [--only crew_plate,working_strips,...]
-      [--samples N] [--post-only] [--no-sheet]
+      [--samples N] [--post-only] [--no-sheet] [--reuse-built]
   --only       render only these targets (<finish>_<module>, <finish>_strips, <finish>_ui, <finish>_keys,
                <finish>_ceiling_<module>, <finish>_floor_<module>, <finish>_trims, <finish>_platforms,
-               upholstery_channel, upholstery_panel);
+               <finish>_floor_edges, upholstery_channel, upholstery_panel);
                the post-process still writes every layer from the raw renders it finds
   --samples    override render.samples (a quick look; the committed layers use panels.json's)
   --post-only  skip rendering; rebuild the layers and the sheet from tools/materials/raw/panels
   --no-sheet   skip the contact sheet
+  --reuse-built  post-process: a layer (or UI image) whose raw renders are missing is taken from its
+               committed PNGs as they are, so a session can add or rebuild a few layers without first
+               rendering all of them (the raw renders are not in git); the manifest and the sheet still
+               cover every layer
 
 The method, per module (panel space = the bridge props' prop space: x right, y up, z out of the wall,
 metres; the module spans x -1..1, y 0..2):
@@ -50,7 +54,9 @@ every 2 m and its wear noise lies on a 4D torus, so it is periodic in x and in y
 rendered like strips, one render a row, and stacked into one 2 m layer per finish at the rows'
 places (trims.rows), the gaps between them filled by repeating each row's edge. Platform faces are
 built the same way (platforms.rows), each row designed to fit one face height, lit from above
-(render.platforms). The upholstery layers have no finish: padded leather modelled as smooth pillows
+(render.platforms). Floor edge rows (edges.rows) are bands seen from above at a platform's foot, built
+the same way and lit as floors (render.edges); each row repeats every edges.period_m, one fitting between
+plain ends, so a page lays a band in whole periods. The upholstery layers have no finish: padded leather modelled as smooth pillows
 (a heightfield per pillow, welts as cords), baked neutral in a soft light (render.upholstery) with wear
 and leather grain on a 4D torus, so they tile both ways, for a page to tint per chair.
 
@@ -106,6 +112,10 @@ TRIM_MEMBERS = ("rib", "beam", "baseboard", "frame", "window_frame", "cove")
 # member rows each run across one kit member that took the generic trim tile (a rail, a kickplate, a
 # coaming, a lamp housing's side, a conduit).
 PLATFORM_ROWS = ("riser", "riser_low", "step", "rail", "kick", "collar", "housing", "pipe")
+# Floor edge rows (panels.json edges.rows; floor-panels design 6): bands laid on the floor at a
+# platform's foot, each tiling along the band in edges.period_m periods so a band ends on a frame.
+EDGE_ROWS = ("vent", "trench")
+EDGE_KINDS = ("rail", "riser")    # the platform edge kinds that carry a band (edges.on)
 # The upholstery layers (panels.json upholstery.layers), in layer order, and the colour each role they
 # use takes from upholstery.colours_srgb. A role not named here is not used by them (check_roles).
 UPHOLSTERY = ("channel", "panel")
@@ -141,6 +151,7 @@ UI_ROLES = ("ui_bg", "ui_dim", "ui_fg", "ui_hi", "ui_alert")
 
 I4 = Matrix.Identity(4)
 DATA = None   # panels.json once load_panels has read it (the trim rows' builders read their pieces)
+REUSE = False  # --reuse-built: a layer whose raw renders are missing is taken from its committed PNGs (post)
 
 
 # ----------------------------------------------------------------------------- data
@@ -244,7 +255,7 @@ def load_panels():
     if d.get("schema") != SCHEMA:
         fail(f"schema must be {SCHEMA!r}")
     keys_exact(d, {"schema", "status", "layers", "bands", "bays", "rule", "glow", "render", "ui", "finishes", "source",
-                   "cells", "walkway", "trims", "platforms", "upholstery"}, "top level")
+                   "cells", "walkway", "trims", "platforms", "edges", "upholstery"}, "top level")
     keys_exact(d["layers"], {"first_layer", "span_m", "margin_m", "sizes_px", "colours", "dir"}, "layers")
     with open(MATERIALS_JSON, encoding="utf-8") as f:
         n_mats = len(json.load(f)["materials"])
@@ -261,11 +272,11 @@ def load_panels():
         num(v, f"glow.{k}", 0, 1)
     r = d["render"]
     keys_exact(r, {"px_per_m", "samples", "mask_samples", "key_light_tangent", "key_angle_deg", "ambient", "bounces",
-                   "ceiling", "floor", "trims", "platforms", "upholstery"}, "render")
+                   "ceiling", "floor", "trims", "platforms", "edges", "upholstery"}, "render")
     num(r["ambient"], "render.ambient", 0, 0.95)
     if len(r["key_light_tangent"]) != 3 or r["key_light_tangent"][2] <= 0:
         fail("render.key_light_tangent must be [x, y, z] with z above 0 (out of the wall)")
-    for k in ("ceiling", "floor", "trims", "platforms", "upholstery"):
+    for k in ("ceiling", "floor", "trims", "platforms", "edges", "upholstery"):
         light_ok(r[k], f"render.{k}")
     keys_exact(d["ui"], {"screen_m", "screen_px", "keys_m", "keys_px"}, "ui")
     # cells, walkway, trims (ceilings-and-trims, floor-panels)
@@ -302,6 +313,22 @@ def load_panels():
     # platform faces (the owner, 2026-10-07) and the chairs' upholstery
     keys_exact(d["platforms"], {"rows"}, "platforms")
     rows_ok(d["platforms"]["rows"], PLATFORM_ROWS, span, "platforms.rows")
+    # floor edge bands (floor-panels design 6, the owner 2026-10-07)
+    E = d["edges"]
+    keys_exact(E, {"period_m", "width_m", "raise_m", "min_edge_m", "on", "rows"}, "edges")
+    num(E["period_m"], "edges.period_m", 0.1, span)
+    if abs(span / E["period_m"] - round(span / E["period_m"])) > 1e-9:
+        fail("edges.period_m must divide the layer's span: a row holds whole periods")
+    num(E["raise_m"], "edges.raise_m", 0.01, 0.05)
+    num(E["min_edge_m"], "edges.min_edge_m", 0, span)
+    rows_ok(E["rows"], EDGE_ROWS, span, "edges.rows")
+    for name, R in E["rows"].items():
+        if abs(R["h_m"] - E["width_m"]) > 1e-9:
+            fail(f"edges.rows.{name}.h_m must equal edges.width_m: a band shows its row across its width, unstretched")
+    keys_exact(E["on"], set(EDGE_KINDS), "edges.on")
+    for k, row in E["on"].items():
+        if row not in EDGE_ROWS:
+            fail(f"edges.on.{k} names no row: {row}")
     U = d["upholstery"]
     keys_exact(U, {"layers", "colours_srgb", "wear", "grain", "tints_srgb"}, "upholstery")
     keys_exact(U["layers"], set(UPHOLSTERY), "upholstery.layers")
@@ -321,7 +348,7 @@ def load_panels():
     for fn in FINISHES:
         F = d["finishes"][fn]
         w = f"finishes.{fn}"
-        keys_exact(F, {"colours_srgb", "wear", "modules", "strips", "ceiling", "floor", "trims", "platforms"}, w)
+        keys_exact(F, {"colours_srgb", "wear", "modules", "strips", "ceiling", "floor", "trims", "platforms", "edges"}, w)
         colours_ok(F["colours_srgb"], w + ".colours_srgb", colour_keys)
         wear_ok(F["wear"], w + ".wear")
         keys_exact(F["modules"], set(MODULES), w + ".modules")
@@ -363,6 +390,8 @@ def load_panels():
         layers_seen.append(Tf["layer"])
         keys_exact(F["platforms"], {"layer"}, w + ".platforms")
         layers_seen.append(F["platforms"]["layer"])
+        keys_exact(F["edges"], {"layer"}, w + ".edges")
+        layers_seen.append(F["edges"]["layer"])
     first = d["layers"]["first_layer"]
     if sorted(layers_seen) != list(range(first, first + len(layers_seen))):
         fail(f"panel layers must be numbered {first}-{first + len(layers_seen) - 1} once each, got {sorted(layers_seen)}")
@@ -373,10 +402,11 @@ def load_panels():
 
 def kind_finish(F, kind):
     """A finish as one kind of surface sees it: its colours with the kind's overrides and the kind's
-    wear (walls are the finish itself; platform faces take the finish's trim colours and wear)."""
+    wear (walls are the finish itself; platform faces take the finish's trim colours and wear, floor
+    edge bands its floor's)."""
     if kind in ("module", "strip", "keys", "ui"):
         return F
-    K = F["trims"] if kind == "platforms" else F[kind]
+    K = F["trims"] if kind == "platforms" else F["floor"] if kind == "edges" else F[kind]
     C = dict(F["colours_srgb"])
     C.update({k: v for k, v in K["colours_srgb"].items() if not k.startswith("_")})
     return {"colours_srgb": C, "wear": K["wear"], "modules": K.get("modules", {})}
@@ -2042,6 +2072,73 @@ PLATFORM_BUILDERS = {"riser": p_riser, "riser_low": p_riser_low, "step": p_step,
                      "collar": p_collar, "housing": p_housing, "pipe": p_pipe}
 
 
+# A floor edge row (edges.rows; floor-panels design 6, the owner 2026-10-07: "can we make custom floor
+# vents and stuff for the bridge floor? since the elements arent grid aligned they get cutoff"): a band on
+# the floor at a platform's foot, seen from above. Panel x runs along the band (one 2 m layer span at x
+# offset ox, built at ox -2, 0 and 2 so the render tiles), panel y across it from the platform's face (0)
+# to the band's outer edge (h), z up. The row holds four periods of edges.period_m (0.5 m): each is one
+# fitting between plain ends, so a page that lays a band in whole periods ends it on a frame and never
+# shows a cut grille. A steel lip runs along both long edges. Nothing is under about 2 cm.
+
+def edge_lips(P, ox, h):
+    """The two steel lips along the band's long edges, built once across the render (as face_frame's lip)."""
+    if ox == 0.0:
+        for y0, y1 in ((0.0, 0.028), (h - 0.028, h)):
+            P.box("lip", (-3.2, y0, -0.01), (3.2, y1, 0.012), "trim", bevel=0.004)
+
+
+def e_vent(P, ox, h, F):
+    """A floor vent band (under a rail edge): every 0.5 m a return-air grille 0.40 m long in a steel frame,
+    eight bars across it over a dark well with a spine under them, a bolt in each corner of the frame, and
+    a plate joint at each period's end, so 5 cm of plain plate stands at each end of a period."""
+    cuts = []
+    edge_lips(P, ox, h)
+    ya, yb = 0.045, h - 0.045
+    for dx in (-0.75, -0.25, 0.25, 0.75):
+        cx = ox + dx
+        x0, x1 = cx - 0.20, cx + 0.20
+        frame_ring(P, "grille_frame", x0, ya, x1, yb, 0.03, -0.02, 0.014, "trim", bevel=0.004)
+        cuts.append(P.box("well", (x0 + 0.026, ya + 0.026, -0.08), (x1 - 0.026, yb - 0.026, 0.05), "machinery"))
+        n = 8
+        for k in range(n):
+            x = x0 + 0.03 + (x1 - x0 - 0.06) * (k + 0.5) / n
+            P.box("bar", (x - 0.009, ya + 0.022, -0.035), (x + 0.009, yb - 0.022, -0.004), "paint2", bevel=0.002)
+        ym = (ya + yb) / 2
+        P.box("spine", (x0 + 0.024, ym - 0.008, -0.06), (x1 - 0.024, ym + 0.008, -0.036), "machinery")
+        P.box("well_floor", (x0 + 0.026, ya + 0.026, -0.076), (x1 - 0.026, yb - 0.026, -0.066), "machinery")
+        bolts(P, [(x, y) for x in (x0 + 0.015, x1 - 0.015) for y in (ya + 0.015, yb - 0.015)], r=0.008, z0=0.0, z1=0.02)
+        cuts.append(P.box("joint", (cx + 0.25 - 0.005, 0.03, -0.012), (cx + 0.25 + 0.005, h - 0.03, 0.05), "machinery"))
+    return cuts
+
+
+def e_trench(P, ox, h, F):
+    """A cable trench band (under a riser edge): every 0.5 m a bolted cover plate 0.47 m long set in the
+    deck with a gap round it, two finger slots with round ends along its middle, a bolt at each corner."""
+    cuts = []
+    edge_lips(P, ox, h)
+    ya, yb = 0.045, h - 0.045
+    ym = (ya + yb) / 2
+    for dx in (-0.75, -0.25, 0.25, 0.75):
+        cx = ox + dx
+        x0, x1 = cx - 0.225, cx + 0.225
+        cuts.append(P.recess(x0 - 0.01, ya - 0.01, x1 + 0.01, yb + 0.01, 0.04))
+        cov = P.box("cover", (x0, ya, -0.04), (x1, yb, 0.004), "paint2")
+        slots = []
+        for x in (cx - 0.13, cx + 0.13):
+            slots.append(P.box("slot", (x - 0.045, ym - 0.015, -0.03), (x + 0.045, ym + 0.015, 0.1), "machinery"))
+            for sx in (-1, 1):
+                slots.append(P.cyl("slot_end", "z", (x + sx * 0.045, ym), 0.015, -0.03, 0.1, "machinery", sides=12, smooth=False))
+        P.cut(cov, "finger_slots", slots)
+        bevel_ob(cov, 0.004)
+        for x in (x0 + 0.03, x1 - 0.03):
+            for y in (ya + 0.03, yb - 0.03):
+                P.cyl("bolt", "z", (x, y), 0.011, -0.01, 0.012, "trim", sides=6, bevel=0.004)
+    return cuts
+
+
+EDGE_BUILDERS = {"vent": e_vent, "trench": e_trench}
+
+
 # ----------------------------------------------------------------------------- upholstery
 # Padded leather (panels.json upholstery; the owner, 2026-10-07: "chairs suck still mainly its a texture
 # problem"): panel space as for a floor cell, x -1..1 and y 0..2, z out of the padding. Both layers tile
@@ -2317,13 +2414,14 @@ def render_target(D, fn, kind, item, samples):
     F = D["finishes"][fn]
     set_roles()
     ppm = R["px_per_m"]
-    cfg = dict(R, **R[kind]) if kind in ("ceiling", "floor", "trims", "platforms") else R
+    cfg = dict(R, **R[kind]) if kind in ("ceiling", "floor", "trims", "platforms", "edges") else R
     FK = kind_finish(F, kind)
     streaky = kind in ("module", "strip", "keys")
     if kind == "strip":
         jobs = [(s, (int(2 * ppm), int(0.5 * ppm)), 2.0, 0.25, True) for s in STRIPS]
-    elif kind in ("trims", "platforms"):
-        rows, names = (D["trims"]["rows"], TRIM_ROWS) if kind == "trims" else (D["platforms"]["rows"], PLATFORM_ROWS)
+    elif kind in ("trims", "platforms", "edges"):
+        rows, names = {"trims": (D["trims"]["rows"], TRIM_ROWS), "platforms": (D["platforms"]["rows"], PLATFORM_ROWS),
+                       "edges": (D["edges"]["rows"], EDGE_ROWS)}[kind]
         jobs = [(r, (int(2 * ppm), int(round(rows[r]["h_m"] * ppm))), 2.0, rows[r]["h_m"] / 2, True) for r in names]
     elif kind == "keys":
         kw, kh = D["ui"]["keys_m"]
@@ -2341,6 +2439,8 @@ def render_target(D, fn, kind, item, samples):
             name = f"{fn}_trim_{sub}"
         elif kind == "platforms":
             name = f"{fn}_platform_{sub}"
+        elif kind == "edges":
+            name = f"{fn}_edge_{sub}"
         else:
             name = f"{fn}_{sub}"
         for mask in (False, True):
@@ -2370,6 +2470,14 @@ def render_target(D, fn, kind, item, samples):
                 cuts = []
                 for ox in (-2.0, 0.0, 2.0):
                     cuts += PLATFORM_BUILDERS[sub](P, ox, h, FK)
+                plate = plate_slab(P, strip=True, role="bulkhead")
+                if cuts:
+                    P.cut(plate, "cuts", cuts)
+            elif kind == "edges":
+                h = D["edges"]["rows"][sub]["h_m"]
+                cuts = []
+                for ox in (-2.0, 0.0, 2.0):
+                    cuts += EDGE_BUILDERS[sub](P, ox, h, FK)
                 plate = plate_slab(P, strip=True, role="bulkhead")
                 if cuts:
                     P.cut(plate, "cuts", cuts)
@@ -2453,35 +2561,36 @@ def finish_image(beauty, mask, px, colours):
     return np.dstack([rgb, a])
 
 
-def layer_sources(D, fn):
+def raw_pair(name):
+    """The beauty and mask renders of one raw target, read."""
+    b, k = raw_path(name), raw_path(name, "mask")
+    if not (os.path.exists(b) and os.path.exists(k)):
+        raise SystemExit(f"[panels] missing raw render {os.path.relpath(b, ROOT)}: render it first")
+    return read_exr(b), read_exr(k)
+
+
+def layer_sources(D, fn, lazy=False):
     """(file stem, beauty, mask) at render size for every layer of a finish; strips stacked into
-    one square layer, row 0 at the bottom."""
+    one square layer, row 0 at the bottom. lazy: (file stem, a function that reads them) instead, so
+    --reuse-built can tell which layers have their raw renders."""
+    F = D["finishes"][fn]
     out = []
     for m in MODULES:
-        b, k = raw_path(f"{fn}_{m}"), raw_path(f"{fn}_{m}", "mask")
-        if not (os.path.exists(b) and os.path.exists(k)):
-            raise SystemExit(f"[panels] missing raw render {os.path.relpath(b, ROOT)}: render it first")
-        out.append((f"{fn}_{m}", read_exr(b), read_exr(k)))
-    rows = D["finishes"][fn]["strips"]["rows"]
+        out.append((f"{fn}_{m}", lambda m=m: raw_pair(f"{fn}_{m}")))
+    rows = F["strips"]["rows"]
     order = sorted(STRIPS, key=lambda s: -rows[s])        # top of the image is the highest row
-    bs, ks = [], []
-    for s in order:
-        b, k = raw_path(f"{fn}_{s}"), raw_path(f"{fn}_{s}", "mask")
-        if not (os.path.exists(b) and os.path.exists(k)):
-            raise SystemExit(f"[panels] missing raw render {os.path.relpath(b, ROOT)}: render it first")
-        bs.append(read_exr(b))
-        ks.append(read_exr(k))
-    out.append((f"{fn}_strips", np.concatenate(bs, axis=0), np.concatenate(ks, axis=0)))
-    F = D["finishes"][fn]
+
+    def strips():
+        pairs = [raw_pair(f"{fn}_{s}") for s in order]
+        return np.concatenate([b for b, _ in pairs], axis=0), np.concatenate([k for _, k in pairs], axis=0)
+    out.append((f"{fn}_strips", strips))
     for kind in ("ceiling", "floor"):
         for m in module_ids(F, kind):
-            b, k = raw_path(f"{fn}_{kind}_{m}"), raw_path(f"{fn}_{kind}_{m}", "mask")
-            if not (os.path.exists(b) and os.path.exists(k)):
-                raise SystemExit(f"[panels] missing raw render {os.path.relpath(b, ROOT)}: render it first")
-            out.append((f"{fn}_{kind}_{m}", read_exr(b), read_exr(k)))
-    out.append((f"{fn}_trims",) + trim_layer(D, fn))
-    out.append((f"{fn}_platforms",) + stacked_layer(D, D["platforms"]["rows"], PLATFORM_ROWS, f"{fn}_platform_"))
-    return out
+            out.append((f"{fn}_{kind}_{m}", lambda kind=kind, m=m: raw_pair(f"{fn}_{kind}_{m}")))
+    out.append((f"{fn}_trims", lambda: trim_layer(D, fn)))
+    out.append((f"{fn}_platforms", lambda: stacked_layer(D, D["platforms"]["rows"], PLATFORM_ROWS, f"{fn}_platform_")))
+    out.append((f"{fn}_floor_edges", lambda: stacked_layer(D, D["edges"]["rows"], EDGE_ROWS, f"{fn}_edge_")))
+    return out if lazy else [(stem, *make()) for stem, make in out]
 
 
 def trim_layer(D, fn):
@@ -2525,14 +2634,32 @@ def sha256(path):
         return hashlib.sha256(f.read()).hexdigest()
 
 
-def upholstery_sources(D):
-    """(file stem, beauty, mask) for the upholstery layers, in layer order."""
+def upholstery_sources(D, lazy=False):
+    """(file stem, beauty, mask) for the upholstery layers, in layer order (lazy: as layer_sources)."""
+    out = [(f"upholstery_{item}", lambda item=item: raw_pair(f"upholstery_{item}")) for item in UPHOLSTERY]
+    return out if lazy else [(stem, *make()) for stem, make in out]
+
+
+def committed(path):
+    """A committed layer or UI image as RGBA uint8, for --reuse-built (its bytes are left as they are)."""
+    if not os.path.exists(path):
+        raise SystemExit(f"[panels] no raw render and no committed {os.path.relpath(path, ROOT)}: render it first")
+    return np.asarray(Image.open(path).convert("RGBA"))
+
+
+def sources_or_reuse(fn, make):
+    """make() (the raw renders' sources); with --reuse-built, a stem whose raw renders are missing comes back as
+    (stem, None, None), and post takes its committed PNGs."""
+    if not REUSE:
+        return make()
     out = []
-    for item in UPHOLSTERY:
-        b, k = raw_path(f"upholstery_{item}"), raw_path(f"upholstery_{item}", "mask")
-        if not (os.path.exists(b) and os.path.exists(k)):
-            raise SystemExit(f"[panels] missing raw render {os.path.relpath(b, ROOT)}: render it first")
-        out.append((f"upholstery_{item}", read_exr(b), read_exr(k)))
+    for stem, maker in make(lazy=True):
+        try:
+            out.append((stem,) + maker())
+        except SystemExit as e:
+            if "missing raw render" not in str(e):
+                raise
+            out.append((stem, None, None))
     return out
 
 
@@ -2540,24 +2667,43 @@ def post(D, sheet=True):
     out_dir = os.path.join(ROOT, D["layers"]["dir"])
     colours = D["layers"]["colours"]
     files, layers = {}, {}
+    reused = []
     for fn in FINISHES + ("upholstery",):
-        for stem, beauty, mask in (upholstery_sources(D) if fn == "upholstery" else layer_sources(D, fn)):
+        srcs = (sources_or_reuse(fn, lambda lazy=False: upholstery_sources(D, lazy)) if fn == "upholstery"
+                else sources_or_reuse(fn, lambda lazy=False: layer_sources(D, fn, lazy)))
+        for stem, beauty, mask in srcs:
             for px in D["layers"]["sizes_px"]:
-                img = finish_image(beauty, mask, px, colours)
                 path = os.path.join(out_dir, str(px), stem + ".png")
+                if beauty is None:
+                    layers[(stem, px)] = committed(path)
+                    continue
+                img = finish_image(beauty, mask, px, colours)
                 mm.save_png(Image.fromarray(img, "RGBA"), path)
                 layers[(stem, px)] = img
+            if beauty is None:
+                reused.append(stem)
         if fn == "upholstery":
             continue
-        ui = read_exr(raw_path(f"{fn}_ui"))
         sw, sh = D["ui"]["screen_px"]
-        img = finish_image(ui, None, sw, colours)
-        mm.save_png(Image.fromarray(img, "RGBA"), os.path.join(out_dir, f"ui_screen_{fn}.png"))
-        layers[(f"ui_screen_{fn}", sw)] = img
-        kb, kk = read_exr(raw_path(f"{fn}_keys")), read_exr(raw_path(f"{fn}_keys", "mask"))
-        img = finish_image(kb, kk, D["ui"]["keys_px"][0], colours)
-        mm.save_png(Image.fromarray(img, "RGBA"), os.path.join(out_dir, f"keys_{fn}.png"))
-        layers[(f"keys_{fn}", D["ui"]["keys_px"][0])] = img
+        if REUSE and not os.path.exists(raw_path(f"{fn}_ui")):
+            layers[(f"ui_screen_{fn}", sw)] = committed(os.path.join(out_dir, f"ui_screen_{fn}.png"))
+            reused.append(f"ui_screen_{fn}")
+        else:
+            ui = read_exr(raw_path(f"{fn}_ui"))
+            img = finish_image(ui, None, sw, colours)
+            mm.save_png(Image.fromarray(img, "RGBA"), os.path.join(out_dir, f"ui_screen_{fn}.png"))
+            layers[(f"ui_screen_{fn}", sw)] = img
+        if REUSE and not os.path.exists(raw_path(f"{fn}_keys")):
+            layers[(f"keys_{fn}", D["ui"]["keys_px"][0])] = committed(os.path.join(out_dir, f"keys_{fn}.png"))
+            reused.append(f"keys_{fn}")
+        else:
+            kb, kk = read_exr(raw_path(f"{fn}_keys")), read_exr(raw_path(f"{fn}_keys", "mask"))
+            img = finish_image(kb, kk, D["ui"]["keys_px"][0], colours)
+            mm.save_png(Image.fromarray(img, "RGBA"), os.path.join(out_dir, f"keys_{fn}.png"))
+            layers[(f"keys_{fn}", D["ui"]["keys_px"][0])] = img
+    if reused:
+        print(f"[panels] --reuse-built: {len(reused)} layers and images taken from their committed PNGs, unchanged: "
+              + ", ".join(reused))
     for root, _, names in os.walk(out_dir):
         for n in sorted(names):
             if n.endswith(".png"):
@@ -2587,6 +2733,7 @@ def all_layers(D):
                 out.append((fn, f"{fn}_{kind}_{m}", M["layer"], M["emissive"]))
         out.append((fn, f"{fn}_trims", F["trims"]["layer"], None))
         out.append((fn, f"{fn}_platforms", F["platforms"]["layer"], None))
+        out.append((fn, f"{fn}_floor_edges", F["edges"]["layer"], None))
     for item in UPHOLSTERY:
         out.append(("upholstery", f"upholstery_{item}", D["upholstery"]["layers"][item], False))
     return out
@@ -2606,7 +2753,7 @@ def report(D, layers, files, out_dir):
         if declared is not None and emissive != declared:
             raise SystemExit(f"[panels] {stem}: panels.json says emissive {declared}, the render glows on {glow_fraction(img):.1%}")
         both = stem.endswith("_floor_walkway") or stem.startswith("upholstery_")
-        tiles = stem.endswith("_strips") or stem.endswith("_trims") or stem.endswith("_platforms") or both
+        tiles = stem.endswith("_strips") or stem.endswith("_trims") or stem.endswith("_platforms") or stem.endswith("_floor_edges") or both
         seam = mm.seam_ratio(img[..., :3], 1) if tiles else None
         seam_y = mm.seam_ratio(img[..., :3], 0) if both else None
         rows[stem] = {"layer": layer, "glow_fraction": round(glow_fraction(img), 4),
@@ -2614,6 +2761,7 @@ def report(D, layers, files, out_dir):
         if seam_y is not None:
             rows[stem]["seam_ratio_y"] = round(seam_y, 3)
         kind = ("trims" if stem.endswith("_trims") else "platforms" if stem.endswith("_platforms")
+                else "edges" if stem.endswith("_floor_edges")
                 else "upholstery" if stem.startswith("upholstery_") else "ceiling" if "_ceiling_" in stem
                 else "floor" if "_floor_" in stem else "walls")
         by_kind[kind] = by_kind.get(kind, 0) + 1
@@ -2713,6 +2861,7 @@ def contact_sheet(D, layers):
             items = [(f"{fn}_{kind}_{m}", f"{F[kind]['modules'][m]['layer']}  {m}", sub_of(F[kind]["modules"][m])) for m in module_ids(F, kind)]
             if kind == "floor":
                 items.append((f"{fn}_trims", f"{F['trims']['layer']}  trims", "7 rows, 2 m period"))
+                items.append((f"{fn}_floor_edges", f"{F['edges']['layer']}  floor edges", f"{len(EDGE_ROWS)} rows, {D['edges']['period_m']:g} m period"))
             y = tiles(fn, items, y)
         dr.text((gap, y), "illustrative ceiling and floor at 64 px/m, 6 m x 8 m (fixed sequences, not the rule); the trims as members at 128 px/m",
                 fill=(232, 234, 238), font=font)
@@ -2973,6 +3122,8 @@ def parse_args():
     ap.add_argument("--samples", type=int, default=None)
     ap.add_argument("--post-only", action="store_true")
     ap.add_argument("--no-sheet", action="store_true")
+    ap.add_argument("--reuse-built", action="store_true",
+                    help="post: a layer whose raw renders are missing is taken from its committed PNGs, unchanged")
     return ap.parse_args(argv)
 
 
@@ -2990,6 +3141,7 @@ def targets(D):
                 out.append((fn, kind, m, f"{fn}_{kind}_{m}"))
         out.append((fn, "trims", "trims", f"{fn}_trims"))
         out.append((fn, "platforms", "platforms", f"{fn}_platforms"))
+        out.append((fn, "edges", "edges", f"{fn}_floor_edges"))
     for item in UPHOLSTERY:
         out.append((None, "upholstery", item, f"upholstery_{item}"))
     return out
@@ -2997,6 +3149,8 @@ def targets(D):
 
 def main():
     args = parse_args()
+    global REUSE
+    REUSE = args.reuse_built
     D = load_panels()
     if not args.post_only:
         only = set(args.only.split(",")) if args.only else None

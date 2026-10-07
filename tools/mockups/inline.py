@@ -114,6 +114,8 @@ def block(kind):
                 stems.append((fin["trims"]["layer"], f"{fn}_trims"))
             if "platforms" in fin:   # risers, step fronts and the members still on tiling trim (ceilings-and-trims 9)
                 stems.append((fin["platforms"]["layer"], f"{fn}_platforms"))
+            if "edges" in fin:   # the bands at platforms' feet (floor-panels 6)
+                stems.append((fin["edges"]["layer"], f"{fn}_floor_edges"))
         # Upholstery (ship-props 4b): one bake for every finish.
         for name, layer in manifest.get("upholstery", {}).get("layers", {}).items():
             stems.append((layer, f"upholstery_{name}"))
