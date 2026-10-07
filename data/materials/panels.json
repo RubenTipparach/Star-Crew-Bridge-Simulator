@@ -99,8 +99,8 @@
     "wear": { "grime": 0.06, "grime_scale_per_m": 3.0, "crevice": 0.55, "crevice_m": 0.025, "edge": 0.0, "streaks": 0.0, "rust": 0.0 },
     "grain": { "cell_m": 0.006, "relief": 0.25, "mottle": 0.05 },
     "tints_srgb": {
-      "captain_chair": [0.50, 0.10, 0.12],
-      "crew_chair": [0.25, 0.29, 0.33]
+      "captain_chair": [0.66, 0.17, 0.18],
+      "crew_chair": [0.38, 0.42, 0.47]
     }
   },
   "glow": { "normal": 1.0, "red_alert": 1.0, "emergency": 0.3 },
@@ -117,7 +117,7 @@
     "floor": { "key_light_tangent": [-0.3, 0.45, 0.84], "key_angle_deg": 15.0, "ambient": 0.45 },
     "trims": { "key_light_tangent": [0.5, 0.2, 0.84], "key_angle_deg": 10.0, "ambient": 0.42 },
     "platforms": { "key_light_tangent": [-0.25, 0.6, 0.76], "key_angle_deg": 10.0, "ambient": 0.42 },
-    "upholstery": { "key_light_tangent": [-0.35, 0.45, 0.82], "key_angle_deg": 35.0, "ambient": 0.5 }
+    "upholstery": { "key_light_tangent": [-0.55, 0.45, 0.70], "key_angle_deg": 30.0, "ambient": 0.36 }
   },
   "ui": {
     "_doc": "Screen and key images, reusable by console props (owner, 2026-10-05: 'better UI place holders, keyboards etc'). The screen is a UI placeholder modelled as emissive shapes (a header band, bar graphs, a line plot over a grid, a schematic, rows of text-like ticks; no real text) and rendered face-on; the screen module shows it in its display. The keys are a strip of raised keys, a few lit, baked like the modules. Both are written per finish as <dir>/ui_screen_<finish>.png and <dir>/keys_<finish>.png.",

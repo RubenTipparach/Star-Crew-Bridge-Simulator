@@ -1848,11 +1848,11 @@
       const top = pf.top_m, h = top - floorY, n = poly.length;
       if (opts.topLayer) tileTop(THREE, B, "platform_top", poly, top, opts.topLayer);
       else B.flat(THREE, "platform", poly, [], top, 1);
-      let along = 0;   // metres of outline from the first corner: the riser's u, so its vents carry round a ring
+      let walked = 0;   // metres of outline from the first corner: the riser's u, so its vents carry round a ring
       for (let i = 0; i < n; i++) {
         const kind = edges[i];
-        const a = poly[i], b = poly[(i + 1) % n], len = Math.hypot(b[0] - a[0], b[1] - a[1]), u0 = along;
-        along += len;
+        const a = poly[i], b = poly[(i + 1) % n], len = Math.hypot(b[0] - a[0], b[1] - a[1]), u0 = walked;
+        walked += len;
         if (kind === "wall") continue;
         const t = [(b[0] - a[0]) / len, 0, (b[1] - a[1]) / len], on = outwardNormal(a, b), out = [on[0], 0, on[1]];
         if (fit) fittedFace(B, fit, [a[0], floorY, a[1]], [b[0], floorY, b[1]], h, u0, len, out, fit.forHeight(h));

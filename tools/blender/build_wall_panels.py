@@ -1958,8 +1958,11 @@ TRIM_BUILDERS = {"side": t_side, "baseboard": t_baseboard, "rib": t_rib, "rib_en
 
 def face_frame(P, ox, h, toe, lip):
     """The toe kick (a dark recess toe metres high at the floor) and the lip (a steel bar lip metres
-    deep under the nosing, its lower edge chamfered to catch the light). Returns the toe's cutter."""
-    P.box("lip", (ox - 1.05, h - lip, -0.012), (ox + 1.05, h + 0.03, 0.014), "trim", bevel=0.004)
+    deep under the nosing, its lower edge chamfered to catch the light). The lip is one bar across all
+    three copies, made with the middle one (ox 0): copies that overlapped would leave their buried ends
+    in its occlusion. Returns the toe's cutter."""
+    if ox == 0.0:
+        P.box("lip", (-3.2, h - lip, -0.012), (3.2, h + 0.03, 0.014), "trim", bevel=0.004)
     return [P.box("toe_cut", (ox - 1.1, -0.2, -0.035), (ox + 1.1, toe, 0.05), "machinery")]
 
 
@@ -2079,9 +2082,11 @@ def p_step(P, ox, h, F):
              for x in (-0.35, -0.25, -0.15, -0.05, 0.05, 0.15, 0.25, 0.35)]
     P.cut(pl, "slot_band", slots)
     cuts.append(P.box("slot_well", (ox - 0.40, ym - 0.02, -0.04), (ox + 0.40, ym + 0.02, 0.05), "machinery"))
-    if rusty(F):
-        P.box("hazard_band", (ox - 0.994, y0 + 0.006, 0.0), (ox + 0.994, y0 + 0.042, 0.012), "hazard", bevel=0.002)
-    bolts(P, [(ox + x, y) for x in (-0.9, -0.5, 0.5, 0.9) for y in (y0 + 0.028, y1 - 0.028)], r=0.011, z0=0.0, z1=0.02)
+    yb = y0 + 0.028
+    if rusty(F):     # the band along the foot, the lower bolts above it
+        P.box("hazard_band", (ox - 0.994, y0 + 0.005, 0.0), (ox + 0.994, y0 + 0.037, 0.012), "hazard", bevel=0.002)
+        yb = y0 + 0.056
+    bolts(P, [(ox + x, y) for x in (-0.9, -0.5, 0.5, 0.9) for y in (yb, y1 - 0.028)], r=0.011, z0=0.0, z1=0.02)
     return cuts
 
 
@@ -2110,7 +2115,8 @@ def pad_height(x, y, cell, height, rx, ry):
 def pillows(P, what, cells, height, rx, ry, role, nx, ny, z0=-0.03):
     """Padded pillows as one mesh: each cell (x0, y0, x1, y1) a smooth heightfield rising `height` above
     z = 0 in its middle and falling to z = 0 at its edges over rx (across x) and ry (along y), closed by
-    flat sides down to z0 and a flat bottom. nx, ny: the grid's segments across and along."""
+    flat sides down to z0 and a flat bottom. The sides have their own vertices along the rim, so the
+    smooth top's normals come from the top alone. nx, ny: the grid's segments across and along."""
     bm = bmesh.new()
     ri = kit.ROLES.index(role)
     for cell in cells:
@@ -2125,10 +2131,11 @@ def pillows(P, what, cells, height, rx, ry, role, nx, ny, z0=-0.03):
                 f.smooth = True
         rim = ([top[0][i] for i in range(nx + 1)] + [top[j][nx] for j in range(1, ny + 1)]
                + [top[ny][i] for i in range(nx - 1, -1, -1)] + [top[j][0] for j in range(ny - 1, 0, -1)])
+        side = [bm.verts.new(v.co.copy()) for v in rim]
         bot = [bm.verts.new(Vector((v.co.x, v.co.y, z0))) for v in rim]
         n = len(rim)
         for k in range(n):
-            bm.faces.new((rim[k], bot[k], bot[(k + 1) % n], rim[(k + 1) % n])).material_index = ri
+            bm.faces.new((side[k], bot[k], bot[(k + 1) % n], side[(k + 1) % n])).material_index = ri
         bm.faces.new(list(reversed(bot))).material_index = ri
     return kit._object(bm, P._name(what), P.coll)
 
@@ -2148,7 +2155,7 @@ def u_channel(P):
     """Channel-stitched padding: rolled vertical channels 2/21 m wide (95 mm) with a stitched groove
     between them, crossed every 0.5 m (at y 0.25 + 0.5 k) by a welted seam, a piping cord in a pinched
     gap with a twin topstitch either side, so a seat or a back reads as quilted panels."""
-    pitch, gap, welt_gap, height = 2.0 / 21.0, 0.009, 0.024, 0.016
+    pitch, gap, welt_gap, height = 2.0 / 21.0, 0.009, 0.024, 0.028
     welts = [0.25 + 0.5 * k for k in range(-1, 5)]
     cells = []
     for j in range(len(welts) - 1):
@@ -2156,7 +2163,7 @@ def u_channel(P):
         for i in range(-12, 12):
             xa = i * pitch + gap / 2
             cells.append((xa, ya, xa + pitch - gap, yb))
-    rx, ry = (pitch - gap) / 2, 0.07
+    rx, ry = (pitch - gap) / 2, 0.08
     P.box("base", (-1.6, -0.6, -0.25), (1.6, 2.6, 0.0), "machinery")
     pillows(P, "channels", cells, height, rx, ry, "upholstery", 8, 24)
     items = []
@@ -2170,15 +2177,18 @@ def u_channel(P):
 
 
 def u_panel(P):
-    """Padded panels 2/7 m by 0.25 m: each a cushion rising 2 cm, its edges rolled over 4.5 cm, a
-    piping cord in the welted seam on every edge and a stitch line 2.2 cm inside it; for bolsters,
-    headrests and arm pads."""
-    pw, ph, gap, height = 2.0 / 7.0, 0.25, 0.02, 0.02
+    """Padded panels 2/7 m by 0.25 m: each a cushion rising 4.5 cm, domed over 11 cm from every edge,
+    a piping cord in the welted seam on every edge and a stitch line 2.2 cm inside it; for bolsters,
+    headrests and arm pads. The seams lie at x = (k + 1/2) 2/7 and y = 0.125 + 0.25 k, so the layer's
+    edges cross padding, not a cord."""
+    pw, ph, gap, height = 2.0 / 7.0, 0.25, 0.02, 0.045
+    ox, oy = pw / 2, ph / 2
     cells = []
     for j in range(-1, 9):
-        for i in range(-4, 4):
-            cells.append((i * pw + gap / 2, j * ph + gap / 2, (i + 1) * pw - gap / 2, (j + 1) * ph - gap / 2))
-    r = 0.045
+        for i in range(-5, 4):
+            x0, y0 = ox + i * pw, oy + j * ph - ph
+            cells.append((x0 + gap / 2, y0 + gap / 2, x0 + pw - gap / 2, y0 + ph - gap / 2))
+    r = 0.11
     P.box("base", (-1.6, -0.6, -0.25), (1.6, 2.6, 0.0), "machinery")
     pillows(P, "panels", cells, height, r, r, "upholstery", 16, 14)
     items = []
@@ -2194,9 +2204,9 @@ def u_panel(P):
             items += stitches(P, [(x0, y), (x1, y)], "y", c, height, r, r)
     studs(P, "topstitch", items, "stencil", top=0.7)
     for j in range(-1, 10):
-        P.cyl("welt", "x", (j * ph, 0.0015), 0.0075, -1.4, 1.4, "paint2", sides=12)
-    for i in range(-4, 5):
-        P.cyl("welt", "y", (i * pw, 0.0015), 0.0075, -0.4, 2.4, "paint2", sides=12)
+        P.cyl("welt", "x", (oy + j * ph - ph, 0.0015), 0.0075, -1.4, 1.4, "paint2", sides=12)
+    for i in range(-5, 5):
+        P.cyl("welt", "y", (ox + i * pw, 0.0015), 0.0075, -0.4, 2.4, "paint2", sides=12)
 
 
 UPHOLSTERY_BUILDERS = {"channel": u_channel, "panel": u_panel}
@@ -2352,20 +2362,20 @@ def render_ui(D, fn, samples):
 
 def render_target(D, fn, kind, item, samples):
     """One wall module, the strips of a finish (item 'strips': four renders), the keys image, a
-    ceiling or floor module (kind 'ceiling' or 'floor'), or the trim rows of a finish (kind
-    'trims': one render a row)."""
+    ceiling or floor module (kind 'ceiling' or 'floor'), or the trim rows or platform face rows of a
+    finish (kind 'trims' or 'platforms': one render a row)."""
     R = D["render"]
     F = D["finishes"][fn]
     set_roles()
     ppm = R["px_per_m"]
-    cfg = dict(R, **R[kind]) if kind in ("ceiling", "floor", "trims") else R
+    cfg = dict(R, **R[kind]) if kind in ("ceiling", "floor", "trims", "platforms") else R
     FK = kind_finish(F, kind)
     streaky = kind in ("module", "strip", "keys")
     if kind == "strip":
         jobs = [(s, (int(2 * ppm), int(0.5 * ppm)), 2.0, 0.25, True) for s in STRIPS]
-    elif kind == "trims":
-        jobs = [(r, (int(2 * ppm), int(round(D["trims"]["rows"][r]["h_m"] * ppm))), 2.0, D["trims"]["rows"][r]["h_m"] / 2, True)
-                for r in TRIM_ROWS]
+    elif kind in ("trims", "platforms"):
+        rows, names = (D["trims"]["rows"], TRIM_ROWS) if kind == "trims" else (D["platforms"]["rows"], PLATFORM_ROWS)
+        jobs = [(r, (int(2 * ppm), int(round(rows[r]["h_m"] * ppm))), 2.0, rows[r]["h_m"] / 2, True) for r in names]
     elif kind == "keys":
         kw, kh = D["ui"]["keys_m"]
         res = (D["ui"]["keys_px"][0] * 4, D["ui"]["keys_px"][1] * 4)
@@ -2380,6 +2390,8 @@ def render_target(D, fn, kind, item, samples):
             name = f"{fn}_{kind}_{item}"
         elif kind == "trims":
             name = f"{fn}_trim_{sub}"
+        elif kind == "platforms":
+            name = f"{fn}_platform_{sub}"
         else:
             name = f"{fn}_{sub}"
         for mask in (False, True):
@@ -2404,6 +2416,14 @@ def render_target(D, fn, kind, item, samples):
                 plate = plate_slab(P, strip=True, role="paint2" if sub in ("rib", "beam") else "bulkhead")
                 if cuts:
                     P.cut(plate, "cuts", cuts)
+            elif kind == "platforms":
+                h = D["platforms"]["rows"][sub]["h_m"]
+                cuts = []
+                for ox in (-2.0, 0.0, 2.0):
+                    cuts += PLATFORM_BUILDERS[sub](P, ox, h, FK)
+                plate = plate_slab(P, strip=True, role="bulkhead")
+                if cuts:
+                    P.cut(plate, "cuts", cuts)
             elif kind == "keys":
                 kw, kh = D["ui"]["keys_m"]
                 P.box("plate", (-1.0, -1.0, -0.2), (1.0, 1.0, -0.012), "machinery")
@@ -2422,9 +2442,34 @@ def render_target(D, fn, kind, item, samples):
             else:
                 MODULE_BUILDERS[item](P, F, F["modules"][item])
             camera(0.0, cy, width, res)
+            check_roles(name)
             if mask:
                 mask_materials()
             render_to(raw_path(name, "mask" if mask else "beauty"))
+
+
+def render_upholstery(D, item, samples):
+    """An upholstery layer (item 'channel' or 'panel'): a 2 m cell of padding, face-on in the soft
+    light of render.upholstery, in the neutral colours of upholstery.colours_srgb, its wear and grain
+    on a 4D torus so it tiles both ways. No finish: a page tints it per chair."""
+    R = D["render"]
+    U = D["upholstery"]
+    set_roles()
+    ppm = R["px_per_m"]
+    cfg = dict(R, **R["upholstery"])
+    FU = {"colours_srgb": U["colours_srgb"], "wear": U["wear"]}
+    name = f"upholstery_{item}"
+    res = (int(2 * ppm), int(2 * ppm))
+    for mask in (False, True):
+        reset(cfg, R["mask_samples"] if mask else samples, res, mask=mask)
+        make_materials(FU, "xy", streaky=False, role_colour=UPHOLSTERY_ROLE_COLOUR, grain=U["grain"])
+        P = Panel(name)
+        UPHOLSTERY_BUILDERS[item](P)
+        camera(0.0, 1.0, 2.0, res)
+        check_roles(name)
+        if mask:
+            mask_materials()
+        render_to(raw_path(name, "mask" if mask else "beauty"))
 
 
 # ----------------------------------------------------------------------------- post-process
@@ -2486,6 +2531,7 @@ def layer_sources(D, fn):
                 raise SystemExit(f"[panels] missing raw render {os.path.relpath(b, ROOT)}: render it first")
             out.append((f"{fn}_{kind}_{m}", read_exr(b), read_exr(k)))
     out.append((f"{fn}_trims",) + trim_layer(D, fn))
+    out.append((f"{fn}_platforms",) + stacked_layer(D, D["platforms"]["rows"], PLATFORM_ROWS, f"{fn}_platform_"))
     return out
 
 
@@ -2493,18 +2539,25 @@ def trim_layer(D, fn):
     """The trim rows of a finish stacked into one square layer at render size: each row at its
     place (trims.rows, v0_m from the layer's bottom), and every gap filled by repeating the nearest
     row's edge, so a mip blends a row only with its own edge colour (ceilings-and-trims section 3)."""
+    return stacked_layer(D, D["trims"]["rows"], TRIM_ROWS, f"{fn}_trim_")
+
+
+def stacked_layer(D, rows, names, prefix):
+    """Rows rendered one by one (raw renders <prefix><row>) stacked into one square layer at render
+    size: each row at its place (rows[row].v0_m from the layer's bottom), every gap filled by repeating
+    the nearest row's edge. The trims' layer and the platform faces' layer are made this way."""
     ppm = D["render"]["px_per_m"]
     size = int(round(D["layers"]["span_m"] * ppm))
     out = []
     for kind in ("beauty", "mask"):
         canvas = np.zeros((size, size, 3), np.float32)
         owner = np.full(size, -1, np.int64)
-        for r in TRIM_ROWS:
-            path = raw_path(f"{fn}_trim_{r}", kind)
+        for r in names:
+            path = raw_path(f"{prefix}{r}", kind)
             if not os.path.exists(path):
                 raise SystemExit(f"[panels] missing raw render {os.path.relpath(path, ROOT)}: render it first")
             img = read_exr(path)
-            R = D["trims"]["rows"][r]
+            R = rows[r]
             top = int(round((D["layers"]["span_m"] - R["v0_m"] - R["h_m"]) * ppm))   # image rows run top down
             if img.shape[0] != int(round(R["h_m"] * ppm)) or img.shape[1] != size:
                 raise SystemExit(f"[panels] {os.path.relpath(path, ROOT)} is {img.shape[1]}x{img.shape[0]}, expected {size}x{int(round(R['h_m'] * ppm))}")
@@ -2523,17 +2576,30 @@ def sha256(path):
         return hashlib.sha256(f.read()).hexdigest()
 
 
+def upholstery_sources(D):
+    """(file stem, beauty, mask) for the upholstery layers, in layer order."""
+    out = []
+    for item in UPHOLSTERY:
+        b, k = raw_path(f"upholstery_{item}"), raw_path(f"upholstery_{item}", "mask")
+        if not (os.path.exists(b) and os.path.exists(k)):
+            raise SystemExit(f"[panels] missing raw render {os.path.relpath(b, ROOT)}: render it first")
+        out.append((f"upholstery_{item}", read_exr(b), read_exr(k)))
+    return out
+
+
 def post(D, sheet=True):
     out_dir = os.path.join(ROOT, D["layers"]["dir"])
     colours = D["layers"]["colours"]
     files, layers = {}, {}
-    for fn in FINISHES:
-        for stem, beauty, mask in layer_sources(D, fn):
+    for fn in FINISHES + ("upholstery",):
+        for stem, beauty, mask in (upholstery_sources(D) if fn == "upholstery" else layer_sources(D, fn)):
             for px in D["layers"]["sizes_px"]:
                 img = finish_image(beauty, mask, px, colours)
                 path = os.path.join(out_dir, str(px), stem + ".png")
                 mm.save_png(Image.fromarray(img, "RGBA"), path)
                 layers[(stem, px)] = img
+        if fn == "upholstery":
+            continue
         ui = read_exr(raw_path(f"{fn}_ui"))
         sw, sh = D["ui"]["screen_px"]
         img = finish_image(ui, None, sw, colours)
@@ -2571,6 +2637,9 @@ def all_layers(D):
                 M = F[kind]["modules"][m]
                 out.append((fn, f"{fn}_{kind}_{m}", M["layer"], M["emissive"]))
         out.append((fn, f"{fn}_trims", F["trims"]["layer"], None))
+        out.append((fn, f"{fn}_platforms", F["platforms"]["layer"], None))
+    for item in UPHOLSTERY:
+        out.append(("upholstery", f"upholstery_{item}", D["upholstery"]["layers"][item], False))
     return out
 
 
@@ -2587,14 +2656,17 @@ def report(D, layers, files, out_dir):
         emissive = bool(np.any(img[..., 3] > 0))
         if declared is not None and emissive != declared:
             raise SystemExit(f"[panels] {stem}: panels.json says emissive {declared}, the render glows on {glow_fraction(img):.1%}")
-        tiles = stem.endswith("_strips") or stem.endswith("_trims") or stem.endswith("_floor_walkway")
+        both = stem.endswith("_floor_walkway") or stem.startswith("upholstery_")
+        tiles = stem.endswith("_strips") or stem.endswith("_trims") or stem.endswith("_platforms") or both
         seam = mm.seam_ratio(img[..., :3], 1) if tiles else None
-        seam_y = mm.seam_ratio(img[..., :3], 0) if stem.endswith("_floor_walkway") else None
+        seam_y = mm.seam_ratio(img[..., :3], 0) if both else None
         rows[stem] = {"layer": layer, "glow_fraction": round(glow_fraction(img), 4),
                       "seam_ratio_x": None if seam is None else round(seam, 3)}
         if seam_y is not None:
             rows[stem]["seam_ratio_y"] = round(seam_y, 3)
-        kind = "trims" if stem.endswith("_trims") else "ceiling" if "_ceiling_" in stem else "floor" if "_floor_" in stem else "walls"
+        kind = ("trims" if stem.endswith("_trims") else "platforms" if stem.endswith("_platforms")
+                else "upholstery" if stem.startswith("upholstery_") else "ceiling" if "_ceiling_" in stem
+                else "floor" if "_floor_" in stem else "walls")
         by_kind[kind] = by_kind.get(kind, 0) + 1
         print(f"  {layer:>3}  {stem:<26} glows on {glow_fraction(img):6.1%}" + (f"  seam x {seam:.2f}" if seam is not None else "")
               + (f"  seam y {seam_y:.2f}" if seam_y is not None else ""))
@@ -2631,14 +2703,17 @@ def contact_sheet(D, layers):
     ribs, the top strip); then the ceiling and floor modules and the trim layer, an illustrative
     ceiling (cells between beams, lamps in their surrounds) and floor (a walkway down the middle), and
     the trims as members: a crew pillar, engineering's tall pillar, a beam, a cove, a baseboard and a
-    door jamb. The illustrations use fixed sequences, not the rule: they judge composition."""
+    door jamb; then the platform face layer and an elevation of its rows as faces (a 0.45 m riser and
+    a 0.225 m riser 6 m long under their hazard nosings, a 1.2 m stair's three steps). Last, the
+    upholstery layers, neutral and in each chair's tint. The illustrations use fixed sequences, not the
+    rule: they judge composition."""
     tile, gap, lab = 256, 14, 40
     cols = 6
     font = ImageFont.load_default(size=17)
     small = ImageFont.load_default(size=13)
     head = ImageFont.load_default(size=22)
     W = gap + cols * (tile + gap)
-    sheet = Image.new("RGB", (W, 12000), (22, 24, 28))
+    sheet = Image.new("RGB", (W, 16000), (22, 24, 28))
     dr = ImageDraw.Draw(sheet)
     y = gap
 
@@ -2699,15 +2774,88 @@ def contact_sheet(D, layers):
         trims = trims_image(D, fn, layers, small)
         sheet.paste(trims, (gap + ceil.width + floor.width + 2 * gap, y))
         y += max(ceil.height, floor.height, trims.height) + 2 * gap
+        # platform faces: the layer and its rows as faces
+        dr.text((gap, y), "platform faces (rings, dais, stairs): each row fits one face height; elevation at 128 px/m under the hazard nosing",
+                fill=(200, 204, 210), font=font)
+        y += 26
+        y0 = y
+        y = tiles(fn, [(f"{fn}_platforms", f"{F['platforms']['layer']}  platforms", "3 rows, 2 m period")], y)
+        elev = platforms_image(D, fn, layers, small)
+        sheet.paste(elev, (gap + tile + gap, y0))
+        y = max(y, y0 + elev.height + gap)
+    # the upholstery: no finish; a page multiplies it by a tint per chair
+    U = D["upholstery"]
+    dr.text((gap, y), "upholstery (no finish: baked neutral, a page multiplies it by a tint per chair)", fill=(236, 238, 242), font=head)
+    y += 36
+    items = []
+    for item in UPHOLSTERY:
+        items.append((f"upholstery_{item}", f"{U['layers'][item]}  upholstery_{item}", "neutral, tiles both ways"))
+    for item in UPHOLSTERY:
+        for prop, t in U["tints_srgb"].items():
+            key = (f"upholstery_{item}|{prop}", 256)
+            layers[key] = tinted(layers[(f"upholstery_{item}", 256)], t)
+            items.append((key[0], f"{U['layers'][item]}  {item}", f"tinted for {prop}"))
+    y = tiles(None, items, y)
     sheet = sheet.crop((0, 0, W, y))
     mm.save_png(sheet, SHEET)
     print("contact sheet:", os.path.relpath(SHEET, ROOT))
 
 
-def row_image(D, fn, layers, row, px=256):
-    """One trim row of a finish's layer at `px` (rows of the image: top = high v)."""
-    img = layers[(f"{fn}_trims", px)][..., :3]
-    R = D["trims"]["rows"][row]
+def tinted(img, tint_srgb):
+    """A layer multiplied by a tint in linear light, as a page tints the upholstery (RGB, uint8)."""
+    to_lin = lambda c: np.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)   # noqa: E731
+    lin_img = to_lin(img[..., :3].astype(np.float64) / 255.0) * to_lin(np.array(tint_srgb, np.float64))
+    return np.dstack([mm.to_u8(linear_to_srgb(lin_img)), img[..., 3]])
+
+
+def platforms_image(D, fn, layers, font):
+    """The platform rows as faces at 128 px/m: a 0.45 m riser and a 0.225 m riser 6 m long, each under a
+    0.05 m hazard nosing (the hazard material) over a strip of floor, and a 1.2 m stair's three steps
+    stacked as they rise, each with its nosing; u of a step from the stair's centre, as a page maps it."""
+    ppm = 128
+    bg = (40, 42, 46)
+    haz = Image.open(os.path.join(ROOT, "assets", "textures", "hazard.png")).convert("RGB")
+    haz = np.asarray(haz.resize((haz.width * ppm * 2 // haz.width, haz.height * ppm * 2 // haz.height), Image.NEAREST))
+    nose = int(round(0.05 * ppm))
+
+    def nosing(width):
+        return np.tile(haz[:nose], (1, width // haz.shape[1] + 1, 1))[:, :width]
+
+    def face(row, width, u0=0.0):
+        r = row_image(D, fn, layers, row, 256, kind="platforms")
+        r = np.concatenate([r, r, r, r], axis=1)
+        a = int(round((u0 % 2.0) * ppm))
+        return r[:, a:a + width]
+    parts = []
+    for row, label in (("riser", "riser 0.45 m, 6 m"), ("riser_low", "riser 0.225 m, 6 m")):
+        w = 6 * ppm
+        parts.append((np.concatenate([nosing(w), face(row, w), np.full((10, w, 3), 70, np.uint8)], axis=0), label))
+    sw = int(round(1.2 * ppm))
+    stair = [nosing(sw)]
+    for k in range(3):
+        stair += [face("step", sw, -0.6), nosing(sw)] if k < 2 else [face("step", sw, -0.6)]
+    stair.append(np.full((10, sw, 3), 70, np.uint8))
+    stair = np.concatenate(stair, axis=0)
+    Wd = 6 * ppm + 30 + sw + 20
+    H = max(sum(p.shape[0] + 26 for p, _ in parts) + 10, stair.shape[0] + 30)
+    img = Image.new("RGB", (Wd, H), bg)
+    dr = ImageDraw.Draw(img)
+    yy = 20
+    for p, label in parts:
+        dr.text((10, yy - 17), label, fill=(200, 204, 210), font=font)
+        img.paste(Image.fromarray(np.ascontiguousarray(p)), (10, yy))
+        yy += p.shape[0] + 26
+    x = 10 + 6 * ppm + 20
+    dr.text((x, 3), "stair, 1.2 m", fill=(200, 204, 210), font=font)
+    img.paste(Image.fromarray(np.ascontiguousarray(stair)), (x, 20))
+    return img
+
+
+def row_image(D, fn, layers, row, px=256, kind="trims"):
+    """One row of a finish's trim layer (kind 'trims') or platform layer ('platforms') at `px` (rows of
+    the image: top = high v)."""
+    img = layers[(f"{fn}_{kind}", px)][..., :3]
+    R = D[kind]["rows"][row]
     k = px / D["layers"]["span_m"]
     top = int(round((D["layers"]["span_m"] - R["v0_m"] - R["h_m"]) * k))
     return img[top:top + int(round(R["h_m"] * k))]
@@ -2887,6 +3035,9 @@ def targets(D):
             for m in module_ids(D["finishes"][fn], kind):
                 out.append((fn, kind, m, f"{fn}_{kind}_{m}"))
         out.append((fn, "trims", "trims", f"{fn}_trims"))
+        out.append((fn, "platforms", "platforms", f"{fn}_platforms"))
+    for item in UPHOLSTERY:
+        out.append((None, "upholstery", item, f"upholstery_{item}"))
     return out
 
 
@@ -2905,6 +3056,8 @@ def main():
             print(f"[panels] rendering {name}", flush=True)
             if kind == "ui":
                 render_ui(D, fn, 16)
+            elif kind == "upholstery":
+                render_upholstery(D, item, samples)
             else:
                 render_target(D, fn, kind, item, samples)
     post(D, sheet=not args.no_sheet)

@@ -26,7 +26,9 @@ Conventions (every builder's manifest repeats them in its _rules):
     (export_yup) turns it back.
   * The origin is on the floor at the centre of the prop's back.
   * One material per role (ROLES), named for a Star Crew material (data/materials/materials.json)
-    or `screen` (emissive, coloured by the page) or `accent` (tinted by the page).
+    or `screen` (emissive, coloured by the page) or `accent` (tinted by the page), or for one of the
+    panel build's upholstery layers (`upholstery`, `upholstery_panel`: neutral leather a page tints
+    per chair, data/materials/panels.json upholstery).
   * UV0 is in metres, projected per face exactly as shipkit.js worldUv does.
   * Flat shaded (normals split per face), triangulated, every prop one closed manifold solid.
   * A prop over its triangle budget is refused, named with its count, and nothing is written.
@@ -52,9 +54,16 @@ TEXTURES = os.path.join(ROOT, "assets", "textures")
 SHIPKIT = os.path.join(ROOT, "docs", "mockups", "lib", "shipkit.js")
 
 # Material roles, in slot order (every mesh carries all of them, so a Boolean's material
-# transfer never adds a slot and the export's material order is fixed).
-ROLES = ("machinery", "trim", "bulkhead", "hazard", "light_panel", "screen", "accent")
+# transfer never adds a slot and the export's material order is fixed). A glb lists only the roles
+# its faces use, so a role appended here changes no prop that does not use it. The two upholstery
+# roles (the owner, 2026-10-07: "chairs suck still mainly its a texture problem") are panel layers,
+# not materials: channel-stitched padding for seats and backs, padded panels for bolsters, headrests
+# and arm pads.
+ROLES = ("machinery", "trim", "bulkhead", "hazard", "light_panel", "screen", "accent", "upholstery", "upholstery_panel")
 PAGE_COLOURED = {"screen": "screen", "accent": "engineering"}   # role -> shipkit PALETTE key for previews
+# Roles drawn on a panel layer (tools/blender/build_wall_panels.py, assets/textures/panels/256/<stem>.png):
+# their preview colour is that layer's mean, as a material role's is its layer's.
+PANEL_LAYERED = {"upholstery": "upholstery_channel", "upholstery_panel": "upholstery_panel"}
 EMISSIVE = {"light_panel", "screen"}
 
 SHOWS = ("console", "upper", "keys")   # what a recorded screen shows (bridge-stations 11.6)
@@ -100,12 +109,14 @@ def _palette(key):
 
 
 def role_colours():
-    """{role: (sRGB colour, emissive)}. Star Crew roles must be materials.json keys."""
+    """{role: (sRGB colour, emissive)}. Star Crew roles must be materials.json keys or panel layers."""
     known = json.load(open(MATERIALS_JSON, encoding="utf-8"))["materials"]
     out = {}
     for r in ROLES:
         if r in PAGE_COLOURED:
             out[r] = (_palette(PAGE_COLOURED[r]), r in EMISSIVE)
+        elif r in PANEL_LAYERED:
+            out[r] = (_layer_mean(os.path.join("panels", "256", PANEL_LAYERED[r])), r in EMISSIVE)
         elif r not in known:
             raise SystemExit(f"[props] material role {r!r} is not in {MATERIALS_JSON}")
         else:

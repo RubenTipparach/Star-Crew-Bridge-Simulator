@@ -90,6 +90,10 @@
    "bytes": 9906,
    "sha256": "c4a8e46f0f793279186cb390013e7565cc3d430c3e2364e984257806dafc6c40"
   },
+  "128/crew_platforms.png": {
+   "bytes": 6642,
+   "sha256": "f42883846da606bc9b1a6c75e805e87f31dfdead13f7c89a78ac252a84a29da7"
+  },
   "128/crew_ribbed.png": {
    "bytes": 11593,
    "sha256": "9ed0596ceda65c6caaf3dc6fd2922bcb2dccf23bcba87e41983cdc7bbaa5ad3b"
@@ -109,6 +113,14 @@
   "128/crew_vent.png": {
    "bytes": 8889,
    "sha256": "979296ea7e0550bac3186937d0a4aea099eaaa7366888af6c6b0163286820c69"
+  },
+  "128/upholstery_channel.png": {
+   "bytes": 16106,
+   "sha256": "1498951bf6f394cabe551bb4acf02b588cd0fb62e41640f1fd326606d218671d"
+  },
+  "128/upholstery_panel.png": {
+   "bytes": 16777,
+   "sha256": "90999c11d73a7f9712f0dbd628933ccb5b2c7072e00e685b74a94f049cf03f56"
   },
   "128/working_ceiling_cable_tray.png": {
    "bytes": 12584,
@@ -201,6 +213,10 @@
   "128/working_plate.png": {
    "bytes": 12944,
    "sha256": "c3efc47ec6e8651feabfad491cf6248eb6f8977a9db695d44fd859d2bfb26aef"
+  },
+  "128/working_platforms.png": {
+   "bytes": 8206,
+   "sha256": "cf97990c67f54bdf10f3303c8bed15b3c950f374afe9c619bc44f3e1e024a4b1"
   },
   "128/working_ribbed.png": {
    "bytes": 14163,
@@ -310,6 +326,10 @@
    "bytes": 28258,
    "sha256": "60c74bddde17d7dd8ba656494bf1d855934be8e343d43b76759e80b835ecca2c"
   },
+  "256/crew_platforms.png": {
+   "bytes": 18698,
+   "sha256": "cc140ce694924044b483560c1f08a357da2fb8a37aef52bd5062a421278dc013"
+  },
   "256/crew_ribbed.png": {
    "bytes": 33722,
    "sha256": "cbdb379c7a133514a7462c7479fdffc8b0c0e98bfe13f0f84ebb433e32da5f7a"
@@ -329,6 +349,14 @@
   "256/crew_vent.png": {
    "bytes": 26733,
    "sha256": "384761e5a2607c58c33e0f9fb90fbb945294360a35dffb2cc3d10e8bd0a4f13d"
+  },
+  "256/upholstery_channel.png": {
+   "bytes": 55569,
+   "sha256": "63207df59e2a16e8598c6f82b6ffb4c728a44c9ba7966fa18aeb9b6dda7acd73"
+  },
+  "256/upholstery_panel.png": {
+   "bytes": 64547,
+   "sha256": "acee0940fd524c4451bf1aecf5fe4dd700af3dafcdb29401db51e9a3ab158833"
   },
   "256/working_ceiling_cable_tray.png": {
    "bytes": 36321,
@@ -422,6 +450,10 @@
    "bytes": 36127,
    "sha256": "1175a0d1fb3aacc05a37e8d1e6b75884dc4b3585b2642f466e0e014b36e2724d"
   },
+  "256/working_platforms.png": {
+   "bytes": 21198,
+   "sha256": "e38fb4b832d0a439e2c2aa59d5c3122a897d837556e165d5cc561387e545f3aa"
+  },
   "256/working_ribbed.png": {
    "bytes": 39866,
    "sha256": "0a1db7fe1807a1506d5dbaf6ed6597e611b11cd3b08420f4b11387150a6ead7b"
@@ -460,14 +492,14 @@
   }
  },
  "generator": "tools/blender/build_wall_panels.py",
- "generator_version": 2,
+ "generator_version": 3,
  "gpu_bytes_panel_layers": {
-  "128": 4805900,
-  "256": 19223820
+  "128": 5155420,
+  "256": 20621916
  },
  "gpu_bytes_with_materials": {
-  "128": 5767080,
-  "256": 23068584
+  "128": 6116600,
+  "256": 24466680
  },
  "layers": {
   "crew_ceiling_cable_tray": {
@@ -581,6 +613,11 @@
    "layer": 11,
    "seam_ratio_x": null
   },
+  "crew_platforms": {
+   "glow_fraction": 0.0015,
+   "layer": 66,
+   "seam_ratio_x": 0.638
+  },
   "crew_ribbed": {
    "glow_fraction": 0.0,
    "layer": 17,
@@ -605,6 +642,18 @@
    "glow_fraction": 0.0,
    "layer": 12,
    "seam_ratio_x": null
+  },
+  "upholstery_channel": {
+   "glow_fraction": 0.0,
+   "layer": 68,
+   "seam_ratio_x": 0.314,
+   "seam_ratio_y": 0.289
+  },
+  "upholstery_panel": {
+   "glow_fraction": 0.0,
+   "layer": 69,
+   "seam_ratio_x": 0.605,
+   "seam_ratio_y": 3.843
   },
   "working_ceiling_cable_tray": {
    "glow_fraction": 0.0,
@@ -722,6 +771,11 @@
    "layer": 22,
    "seam_ratio_x": null
   },
+  "working_platforms": {
+   "glow_fraction": 0.0015,
+   "layer": 67,
+   "seam_ratio_x": 0.564
+  },
   "working_ribbed": {
    "glow_fraction": 0.0,
    "layer": 28,
@@ -751,7 +805,9 @@
  "layers_by_kind": {
   "ceiling": 16,
   "floor": 15,
+  "platforms": 2,
   "trims": 2,
+  "upholstery": 2,
   "walls": 22
  },
  "numpy": "1.26.4",
