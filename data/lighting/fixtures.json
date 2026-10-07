@@ -1,0 +1,46 @@
+{
+  "schema": "starcrew.fixtures/1",
+  "status": "Proposed (2026-10-07) by openspec/changes/light-baking, design sections 11 and 15. Read by docs/mockups/lighting.html and docs/mockups/deck-plan.html through lightbake.js today, by sc-tools bake once it is built. The photometry is the mockup's, judged on its shots, not measured from a real fixture.",
+  "_rules": [
+    "A fixture type is what a fixture record (the kit's lamp rule today; deckgen's placement and the detail files later, deck-pipeline section 7) names. The layout holds no lights.",
+    "kind point: a light at a position with a radius (soft shadows), intensity_cd straight down its beam, beam_exponent (cos^n falloff off the axis; 0 lights every way), range_m (where its light ends), drop_m (the light's centre under the lens the kit draws).",
+    "kind area: an emissive face (a strip, a screen, a glow band) that lights the room: luminance_cd_m2 over the face's area, range_m; a strip also width_m (across the cove) and end_clear_m (kept off each end of its cove).",
+    "light names where its colour per state comes from: lamp or strip (ShipKit.LIGHTING's lamp or strip colour and weight in each state, the state palette every mockup shares), role (the station's role colour, steady in every state) or fixed (color_srgb, steady in every state).",
+    "emergency: bus (lit on emergency power only when the record is on the emergency bus) or always. emergency_scale multiplies its emergency-power light (an emergency-bus lamp burns brighter than its share; a screen dims).",
+    "Units are in the keys. An unknown key is an error; a missing optional key takes the default stated here (emergency_scale 1). tools/lighting_check.py validates this file."
+  ],
+  "types": {
+    "ceiling_panel": {
+      "_doc": "A recessed ceiling panel: beam_exponent 8 puts half its intensity inside 23 degrees of the axis, so it draws a pool. The kit's rule puts one in every frame bay, one per 8 m^2 of floor.",
+      "kind": "point", "intensity_cd": 850, "radius_m": 0.25, "beam_exponent": 8, "range_m": 9.0, "drop_m": 0.08,
+      "light": "lamp", "emergency": "bus", "emergency_scale": 1.6
+    },
+    "high_bay": {
+      "_doc": "The kit's lamp in a room taller than one deck: the same floor light from 6 m up as a panel gives from 3 m.",
+      "kind": "point", "intensity_cd": 2200, "radius_m": 0.3, "beam_exponent": 10, "range_m": 14.0, "drop_m": 0.1,
+      "light": "lamp", "emergency": "bus", "emergency_scale": 1.6
+    },
+    "console_glow": {
+      "_doc": "A console's screens lighting the desk and its operator (the deck plan's stations; the lighting page draws its screens as area emitters of console_screen).",
+      "kind": "point", "intensity_cd": 18, "radius_m": 0.25, "beam_exponent": 1, "range_m": 3.0, "drop_m": 0.0,
+      "light": "role", "emergency": "always", "emergency_scale": 0.6
+    },
+    "cove_strip": {
+      "_doc": "A light strip along the middle of every cove the kit builds, and under a mezzanine along its walls.",
+      "kind": "area", "luminance_cd_m2": 1400, "range_m": 6.0, "width_m": 0.08, "end_clear_m": 0.25,
+      "light": "strip", "emergency": "always"
+    },
+    "console_screen": {
+      "kind": "area", "luminance_cd_m2": 160, "range_m": 3.5, "light": "role", "emergency": "always", "emergency_scale": 0.6
+    },
+    "viewscreen": {
+      "kind": "area", "luminance_cd_m2": 45, "range_m": 14.0, "light": "fixed", "color_srgb": "#6f8fd0", "emergency": "always"
+    },
+    "reactor_glow": {
+      "kind": "area", "luminance_cd_m2": 420, "range_m": 9.0, "light": "fixed", "color_srgb": "#48d6ff", "emergency": "always", "emergency_scale": 0.2
+    },
+    "indicator_panel": {
+      "kind": "area", "luminance_cd_m2": 90, "range_m": 2.5, "light": "fixed", "color_srgb": "#ffb347", "emergency": "always"
+    }
+  }
+}

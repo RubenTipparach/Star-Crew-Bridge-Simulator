@@ -130,6 +130,54 @@
     emergency: { label: "Emergency power", ambient: 0x120c08, ambientI: 0.3, lamp: 0xff8a1c, lampI: 0.35, strip: 0xff8a1c, stripI: 0.8, fog: 0x060403, status: 0xff8a1c },
   };
 
+  // ---------------------------------------------------------------- lighting data (light-baking design 15)
+
+  const srgbLin = (c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  /** A colour (0xrrggbb or "#rrggbb") as linear RGB times k. */
+  function hexLinear(hex, k) {
+    const h = typeof hex === "string" ? parseInt(hex.slice(1), 16) : hex;
+    return [(h >> 16) & 255, (h >> 8) & 255, h & 255].map((c) => srgbLin(c / 255) * (k === undefined ? 1 : k));
+  }
+  /** data/lighting/fixtures.json and bake.json, inlined as data:lighting/fixtures and data:lighting/bake. */
+  function lightingData() { return { fixtures: shipData("fixtures"), bake: shipData("bake") }; }
+  /**
+   * A fixture's light in each lighting state, { normal, red_alert, emergency } as linear RGB that multiplies its
+   * intensity_cd or luminance_cd_m2: its type's light (lamp or strip: LIGHTING's colour and weight in that state;
+   * role: roleHex; fixed: its color_srgb), times its emergency_scale on emergency power, and dark on emergency power
+   * when it is on the bus rule and not on the emergency bus (onBus).
+   */
+  function fixtureStates(type, onBus, roleHex) {
+    const em = type.emergency_scale === undefined ? 1 : type.emergency_scale, out = {};
+    for (const s of ["normal", "red_alert", "emergency"]) {
+      const L = LIGHTING[s];
+      let c = type.light === "lamp" ? hexLinear(L.lamp, L.lampI) : type.light === "strip" ? hexLinear(L.strip, L.stripI)
+        : type.light === "role" ? hexLinear(roleHex) : hexLinear(type.color_srgb);
+      if (s === "emergency") { const k = type.emergency === "bus" && !onBus ? 0 : em; c = c.map((x) => x * k); }
+      out[s] = c;
+    }
+    return out;
+  }
+  /** bake.json, with a preset's overrides (preset "preview"), as lightbake.js's settings (its key names). */
+  function bakeSettings(preset) {
+    const B = shipData("bake"), P = (preset && B.presets[preset]) || {};
+    const g = (k) => (P[k] !== undefined ? P[k] : B[k]);
+    return {
+      seed: g("seed"), reference_lux: g("reference_lux"), shadow_samples: g("shadow_samples"),
+      emitter_sample_area_m2: g("emitter_sample_area_m2"), emitter_sample_spacing_m: g("emitter_sample_spacing_m"),
+      gather_rays: g("gather_rays"), cache_gather_rays: g("cache_gather_rays"), cache_filter: g("cache_filter_passes"),
+      ao_rays: g("ao_rays"), ao_radius_m: g("ao_radius_m"), bounces: g("bounces"), cache_spacing_m: g("cache_spacing_m"),
+      bias_m: g("ray_bias_m"), inset_m: g("sample_inset_m"), dither: g("dither"),
+    };
+  }
+  /** Each lighting state's ambient fill in lux: LIGHTING's ambient colour times its weight times bake.json's ambient_scale_lux. */
+  function ambientLux() {
+    const k = shipData("bake").ambient_scale_lux, out = {};
+    for (const s of ["normal", "red_alert", "emergency"]) out[s] = hexLinear(LIGHTING[s].ambient, LIGHTING[s].ambientI * k);
+    return out;
+  }
+  /** The triangles a compartment's adaptive bake may add (bake.json max_added_triangles, its default otherwise). */
+  function bakeCap(id) { const m = shipData("bake").max_added_triangles; return m[id] !== undefined ? m[id] : m.default; }
+
   // ---------------------------------------------------------------- lookups
 
   function byId(list, id) {
@@ -2616,6 +2664,7 @@
   window.ShipKit = {
     version: 2,
     layout, shipData, PI_BUDGET, PALETTE, LIGHTING,
+    lightingData, fixtureStates, bakeSettings, ambientLux, bakeCap, hexLinear,
     byId, compartment, applyPatch, portalsOf, stationsIn, systemsIn, deckById,
     // plan geometry
     signedArea, outwardNormal, insidePoly, chord, insetPoly, polyCentroid,

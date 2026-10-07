@@ -416,6 +416,7 @@ Before claiming anything is done, run what applies:
 | Specs | `openspec validate --all` |
 | Dash check | Section 5 |
 | Ship layouts | `python3 tools/layout_check.py` |
+| Lighting data | `python3 tools/lighting_check.py` |
 | Mockups hold the current layout | `python3 tools/mockups/inline.py --check` |
 | Mockup screenshots | `node tools/mockups/shoot.mjs` |
 | No z-fighting in the mockups | `node tools/mockups/zfight.mjs docs/mockups/*.html` |

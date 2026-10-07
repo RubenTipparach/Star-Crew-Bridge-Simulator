@@ -14,6 +14,7 @@ current files between them (CLAUDE.md section 11):
 "data:<ship>/<name>" copies data/ships/<ship>/<name>.json into a
 <script id="ship-data-<name>" type="application/json"> block, for mockups that
 read a ship's other data files (power.json, atmosphere.json, detailing.json).
+"data:lighting/<name>" copies data/lighting/<name>.json (fixtures, bake) the same way.
 "materials" copies data/materials/materials.json and every layer it names
 (assets/textures/<name>.png, as a base64 data URI) into a
 <script id="ship-materials" type="application/json"> block, which shipkit's
@@ -142,7 +143,10 @@ def block(kind):
             return "\n<script>\n" + f.read().rstrip() + "\n</script>\n"
     if kind.startswith("data:"):
         ship, name = kind.split(":", 1)[1].split("/", 1)
-        with open(os.path.join(ROOT, "data", "ships", ship, name + ".json"), encoding="utf-8") as f:
+        # data:lighting/<name> is data/lighting/<name>.json (the fixture types and bake settings, light-baking
+        # design 15); any other data:<ship>/<name> is a ship's data file.
+        sub = (ship,) if ship == "lighting" else ("ships", ship)
+        with open(os.path.join(ROOT, "data", *sub, name + ".json"), encoding="utf-8") as f:
             data = json.load(f)
         text = json.dumps(data, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
         return f'\n<script id="ship-data-{name}" type="application/json">\n{text}\n</script>\n'

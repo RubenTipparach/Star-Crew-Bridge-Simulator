@@ -103,6 +103,16 @@
 {"schema":"starcrew.detailing/1","status":"Proposed (2026-10-05) by openspec/changes/deck-pipeline, section 5a. Read by docs/mockups/lib/shipkit.js today and by deckc once it is built; the sizes are first choices judged on mockup screenshots, not measurements.","_rules":["The detail a ship's decks are dressed with is generated from its layout by one rule set, so every room of a class reads alike and no room is decorated by hand (deck-pipeline section 5a; adapted from Undercity's tools/godot/detailing.py and its UT99 checklist, fps-game-demo f6cd25c).","Detail is not air: coves, ribs, beams and trims stand inside a compartment's brushes and the air model ignores them (life-support quotes brush volumes).","No z-fighting: every detail face is either pressed back to back against a wall, floor or ceiling (and not drawn), or stands at least 1 cm clear of any parallel face (CLAUDE.md section 8). Raised floor plates are raise_m above the floor for that reason.","Lengths in metres. A detail that would cross a portal opening is cut back to clear it; one that would be shorter than min_piece_m is dropped."],"frames":{"_doc":"Ship frames: ribs on the walls and beams under the ceiling at fixed stations along the keel, frame k at z = origin_z_m + k * spacing_m. Walls that run fore and aft carry ribs at the frames; walls that run athwartships carry stiffeners at x = (k + 1/2) * spacing_m. A room taller than the cove's tall_room_m gets the deep beams and ribs.","spacing_m":2.0,"origin_z_m":0.0,"end_clear_m":0.35,"rib_width_m":0.24,"rib_depth_m":0.12,"tall_rib_depth_m":0.22,"beam_width_m":0.24,"beam_depth_m":0.18,"deep_beam_depth_m":0.38,"portal_clear_m":0.1},"cove":{"_doc":"A 45 degree panel between every solid wall and the ceiling: the hull's octagonal section, echoed inside. Not drawn along an edge open to another brush of the same compartment.","size_m":0.35,"tall_size_m":0.6,"tall_room_m":3.6},"baseboard":{"height_m":0.14,"depth_m":0.03},"door_frame":{"_doc":"Every door, wall hatch and pressure door is framed: jambs and a lintel fill a ring cut around the clear opening (size_m stays the clear opening crew pass through), proud of the wall on each side. Pressure doors are heavier and hazard-striped. A status strip glows on the lintel.","jamb_m":0.16,"lintel_m":0.22,"proud_m":0.06,"pressure_jamb_m":0.26,"pressure_proud_m":0.12,"status_strip_m":[0.5,0.05]},"window_frame":{"frame_m":0.14,"proud_m":0.08,"sill_depth_m":0.16},"floor_portal":{"_doc":"A hazard rim on the floor around every hatch, ladder well, hoist and bay door, and a trim collar under the ceiling around it. Ladders get rails and rungs from the lower floor to ladder_above_m over the upper one.","rim_width_m":0.15,"raise_m":0.012,"collar_width_m":0.1,"collar_depth_m":0.1,"ladder_rail_m":0.05,"ladder_width_m":0.5,"rung_spacing_m":0.3,"ladder_above_m":1.0},"railing":{"_doc":"Along an edge where a brush opens onto a lower floor of the same compartment (a hangar gallery over the hangar floor): two rails, posts and a kick plate.","min_drop_m":0.5,"height_m":1.05,"post_m":0.06,"post_spacing_m":1.5,"inset_m":0.05,"kick_m":0.12},"platforms":{"_doc":"Raised floors that are solid, not air (a dais, a work ring, a sub-platform; bridge-stations section 11a): a riser and a hazard nosing on every edge that is not against a wall, a railing on rail edges with gaps at stairs, treads of tread_rise_m.","tread_rise_m":0.225,"nosing_m":0.05,"nosing_raise_m":0.012,"rail_height_m":0.75,"rail_mid_m":0.375,"rail_m":0.05,"rail_inset_m":0.08,"rail_end_m":0.1,"rail_post_spacing_m":1.2},"runner":{"_doc":"A deck plate strip down the middle of every corridor.","width_m":0.9,"raise_m":0.012,"end_clear_m":0.05},"conduits":{"_doc":"Two pipes along the top of every fore-and-aft corridor wall, below the cove and clear of the ribs.","radii_m":[0.06,0.04],"gap_m":0.06,"drop_m":0.1,"sides":8},"lamps":{"_doc":"The lamp rule (deck-pipeline section 5): lamps sit in the bays between frames, never on a beam. A bay gets round(area / area_per_lamp_m2) lamps across its width, a corridor bay at least one, a pod one. Every emergency_every-th lamp of a compartment is on the emergency bus. A room taller than tall_room_m gets high-bay lamps: radius and size scale with its height over 3 m, and they hang hang_m below the ceiling.","area_per_lamp_m2":8.0,"min_bay_m":1.0,"wall_clear_m":0.6,"emergency_every":3,"panel_m":[0.9,0.45],"corridor_panel_m":[0.7,0.35],"housing_m":0.06,"radius_m":3.0,"tall_room_m":3.6,"hang_m":0.4,"keep_out_m":0.5},"finishes":{"_doc":"Which material (data/materials/materials.json) each generated surface takes, by the compartment's finish in the layout.","crew":{"floor":"deck_tiles","wall":"bulkhead","ceiling":"ceiling","cove":"trim","rib":"trim","beam":"trim","baseboard":"trim","frame":"trim","frame_hazard":"hazard","status":"light_panel","window_frame":"trim","rim":"hazard","collar":"trim","ladder":"trim","runner":"deck_plate","pipe":"machinery","railing":"trim","kickplate":"hazard","lamp_housing":"trim","lamp":"light_panel","platform":"deck_tiles","riser":"trim","nosing":"hazard","stair":"deck_plate"},"working":{"floor":"deck_plate","wall":"bulkhead","ceiling":"machinery","cove":"trim","rib":"machinery","beam":"machinery","baseboard":"hazard","frame":"trim","frame_hazard":"hazard","status":"light_panel","window_frame":"trim","rim":"hazard","collar":"machinery","ladder":"trim","runner":"deck_tiles","pipe":"machinery","railing":"trim","kickplate":"hazard","lamp_housing":"machinery","lamp":"light_panel","platform":"deck_plate","riser":"machinery","nosing":"hazard","stair":"deck_plate"}}}
 </script>
 <!-- INLINE data:tern/detailing END -->
+<!-- INLINE data:lighting/fixtures BEGIN -->
+<script id="ship-data-fixtures" type="application/json">
+{"schema":"starcrew.fixtures/1","status":"Proposed (2026-10-07) by openspec/changes/light-baking, design sections 11 and 15. Read by docs/mockups/lighting.html and docs/mockups/deck-plan.html through lightbake.js today, by sc-tools bake once it is built. The photometry is the mockup's, judged on its shots, not measured from a real fixture.","_rules":["A fixture type is what a fixture record (the kit's lamp rule today; deckgen's placement and the detail files later, deck-pipeline section 7) names. The layout holds no lights.","kind point: a light at a position with a radius (soft shadows), intensity_cd straight down its beam, beam_exponent (cos^n falloff off the axis; 0 lights every way), range_m (where its light ends), drop_m (the light's centre under the lens the kit draws).","kind area: an emissive face (a strip, a screen, a glow band) that lights the room: luminance_cd_m2 over the face's area, range_m; a strip also width_m (across the cove) and end_clear_m (kept off each end of its cove).","light names where its colour per state comes from: lamp or strip (ShipKit.LIGHTING's lamp or strip colour and weight in each state, the state palette every mockup shares), role (the station's role colour, steady in every state) or fixed (color_srgb, steady in every state).","emergency: bus (lit on emergency power only when the record is on the emergency bus) or always. emergency_scale multiplies its emergency-power light (an emergency-bus lamp burns brighter than its share; a screen dims).","Units are in the keys. An unknown key is an error; a missing optional key takes the default stated here (emergency_scale 1). tools/lighting_check.py validates this file."],"types":{"ceiling_panel":{"_doc":"A recessed ceiling panel: beam_exponent 8 puts half its intensity inside 23 degrees of the axis, so it draws a pool. The kit's rule puts one in every frame bay, one per 8 m^2 of floor.","kind":"point","intensity_cd":850,"radius_m":0.25,"beam_exponent":8,"range_m":9.0,"drop_m":0.08,"light":"lamp","emergency":"bus","emergency_scale":1.6},"high_bay":{"_doc":"The kit's lamp in a room taller than one deck: the same floor light from 6 m up as a panel gives from 3 m.","kind":"point","intensity_cd":2200,"radius_m":0.3,"beam_exponent":10,"range_m":14.0,"drop_m":0.1,"light":"lamp","emergency":"bus","emergency_scale":1.6},"console_glow":{"_doc":"A console's screens lighting the desk and its operator (the deck plan's stations; the lighting page draws its screens as area emitters of console_screen).","kind":"point","intensity_cd":18,"radius_m":0.25,"beam_exponent":1,"range_m":3.0,"drop_m":0.0,"light":"role","emergency":"always","emergency_scale":0.6},"cove_strip":{"_doc":"A light strip along the middle of every cove the kit builds, and under a mezzanine along its walls.","kind":"area","luminance_cd_m2":1400,"range_m":6.0,"width_m":0.08,"end_clear_m":0.25,"light":"strip","emergency":"always"},"console_screen":{"kind":"area","luminance_cd_m2":160,"range_m":3.5,"light":"role","emergency":"always","emergency_scale":0.6},"viewscreen":{"kind":"area","luminance_cd_m2":45,"range_m":14.0,"light":"fixed","color_srgb":"#6f8fd0","emergency":"always"},"reactor_glow":{"kind":"area","luminance_cd_m2":420,"range_m":9.0,"light":"fixed","color_srgb":"#48d6ff","emergency":"always","emergency_scale":0.2},"indicator_panel":{"kind":"area","luminance_cd_m2":90,"range_m":2.5,"light":"fixed","color_srgb":"#ffb347","emergency":"always"}}}
+</script>
+<!-- INLINE data:lighting/fixtures END -->
+<!-- INLINE data:lighting/bake BEGIN -->
+<script id="ship-data-bake" type="application/json">
+{"schema":"starcrew.bake/1","status":"Proposed (2026-10-07) by openspec/changes/light-baking, design sections 11, 12 and 15: the mockup baker's final settings. Read by docs/mockups/lighting.html and docs/mockups/deck-plan.html today, by sc-tools bake once it is built.","_rules":["Every key has a unit or is a count; a present zero means zero. An unknown key is an error. tools/lighting_check.py validates this file.","reference_lux: the irradiance that shows a surface at exactly its texture colour. ambient_scale_lux: ShipKit.LIGHTING's ambient colour times its weight times this is each state's ambient fill in lux, times the baked occlusion.","shadow_samples per lamp per receiver; emitter samples one per emitter_sample_area_m2 and at least one per emitter_sample_spacing_m of its longest edge; ao_rays and ao_radius_m the occlusion; bounces 0, 1 or 2, read from an irradiance cache of cache_spacing_m with cache_gather_rays per point and cache_filter_passes of a tent filter; gather_rays where bounce is gathered per sample (probes); ray_bias_m along the normal; sample_inset_m inside a face's edge; dither on the 8-bit output.","adaptive and max_added_triangles: the engine's subdivision (design section 3), and the lighting page's. mockup: the deck plan's stand-in for it (design section 15), cells no wider than cell_m on floors, walls and ceilings; uncapped_triangles the lighting page's no-cap comparison.","presets override these for a quicker bake (preview)."],"seed":1,"reference_lux":100,"ambient_scale_lux":260,"shadow_samples":12,"emitter_sample_area_m2":0.06,"emitter_sample_spacing_m":0.25,"ao_rays":24,"ao_radius_m":0.8,"exterior_ao_radius_m":2.0,"bounces":1,"cache_spacing_m":0.5,"cache_gather_rays":128,"cache_filter_passes":1,"gather_rays":48,"ray_bias_m":0.004,"sample_inset_m":0.01,"dither":true,"adaptive":{"base_m":2.0,"min_m":0.25,"max_error_levels":5},"max_added_triangles":{"default":2000,"bridge":7500},"mockup":{"cell_m":1.0,"uncapped_triangles":60000},"probes":{"spacing_m":1.0,"wall_offset_m":0.5,"invalid_backface_fraction":0.5},"lightmap_texel_m":0.25,"power_loss":{"flicker_s":0.6,"fade_s":0.5},"presets":{"preview":{"shadow_samples":4,"cache_gather_rays":32,"bounces":0,"adaptive":{"max_error_levels":8}}}}
+</script>
+<!-- INLINE data:lighting/bake END -->
 <!-- INLINE data:tern/command_suite BEGIN -->
 <script id="ship-data-command_suite" type="application/json">
 {"schema":"starcrew.layout-patch/1","status":"Proposed (2026-10-06): openspec/changes/command-suite, docs/mockups/command-deck.html. Written by tools/command_suite.py; edit the script, not this file. The layout does not hold it yet: applying it is the change's task 2.","_rules":["compartments and portals replace the layout's record of the same id, or are added; stations move the named station's seat; fixtures update the layout's fixture of the same id field by field, or are added; fixtures_removed are dropped; systems update field by field.","bridge holds the round bridge's platforms, stairs, consoles and seats, as a variant of data/ships/tern/bridge_variants.json does.","furnishings are the side rooms' furniture, placed as the bridge props are: back_m is the back of the piece at floor level and yaw_deg the way its front faces (0 the bow, +90 port); set names the prop set (assets/models/<set>); a chair's seat_m is its sitter's seat point. They become the deck's detail file when the patch is applied."],"bridge":{"id":"suite","name":"Round, with side rooms","after":"R2 (a round bridge with a briefing room on one side) and the owner's pick of B, 2026-10-06","summary":"Variant B's sixteen-sided room. The ring starts a segment further forward, so a door in each aft diagonal wall opens from the walkway: the ready room to port, the briefing room to starboard. Helm and tactical sit at two desks 1.5 m either side of the centreline, so their heads clear the screen from the captain's eye (11a's fix).","platforms":[{"id":"ring_p","name":"Port ring","poly":[[3.512,20.944],[5.256,22.688],[6.2,24.967],[6.2,27.433],[5.256,29.712],[4.768,30.2],[3.217,28.9],[3.838,27.906],[4.16,26.778],[4.158,25.606],[3.832,24.481],[3.208,23.489],[2.333,22.708]],"top_m":3.95,"edges":["wall","wall","wall","wall","wall","step","rail","rail","rail","rail","rail","rail","step"]},{"id":"ring_s","name":"Starboard ring","poly":[[-2.333,22.708],[-3.208,23.489],[-3.832,24.481],[-4.158,25.606],[-4.16,26.778],[-3.838,27.906],[-3.217,28.9],[-4.768,30.2],[-5.256,29.712],[-6.2,27.433],[-6.2,24.967],[-5.256,22.688],[-3.512,20.944]],"top_m":3.95,"edges":["rail","rail","rail","rail","rail","rail","step","wall","wall","wall","wall","wall","step"]},{"id":"sub","name":"Helm and tactical sub-platform","poly":[[-2.6,26.6],[2.6,26.6],[3.0,27.2],[3.0,29.2],[-3.0,29.2],[-3.0,27.2]],"top_m":3.725,"edges":["riser","riser","riser","riser","riser","riser"]},{"id":"command","name":"Captain's dais","poly":[[0.456,23.9],[1.1,24.544],[1.1,25.456],[0.456,26.1],[-0.456,26.1],[-1.1,25.456],[-1.1,24.544],[-0.456,23.9]],"top_m":3.95,"edges":["rail","rail","rail","riser","rail","rail","rail","step"]}],"stairs":[{"top_m":[2.889,3.95,21.876],"foot_m":[2.473,3.5,21.599],"width_m":1.6,"note":"Port ring down to the door aisle."},{"top_m":[3.983,3.95,29.542],"foot_m":[3.662,3.5,29.926],"width_m":1.6,"note":"Port ring down to the forward walkway."},{"top_m":[-2.889,3.95,21.876],"foot_m":[-2.473,3.5,21.599],"width_m":1.6,"note":"Starboard ring down to the door aisle."},{"top_m":[-3.983,3.95,29.542],"foot_m":[-3.662,3.5,29.926],"width_m":1.6,"note":"Starboard ring down to the forward walkway."},{"top_m":[0.0,3.95,23.9],"foot_m":[0.0,3.5,23.4],"width_m":1.0,"note":"Captain's dais down to the aisle."}],"props":[{"prop":"wall_bank_comms","station":"comms","back_m":[4.384,3.95,21.816],"yaw_deg":-45.0},{"prop":"wall_bank","station":"status_p","back_m":[5.728,3.95,23.828],"yaw_deg":-67.5},{"prop":"wall_bank_core_engineering","station":"engineering","back_m":[6.2,3.95,26.2],"yaw_deg":-90.0},{"prop":"wall_bank","station":"repeater_p","back_m":[5.728,3.95,28.572],"yaw_deg":-112.5},{"prop":"wall_bank_flight_ops","station":"flight_ops","back_m":[-4.384,3.95,21.816],"yaw_deg":45.0},{"prop":"wall_bank","station":"status_s","back_m":[-5.728,3.95,23.828],"yaw_deg":67.5},{"prop":"wall_bank_core_science","station":"science","back_m":[-6.2,3.95,26.2],"yaw_deg":90.0},{"prop":"wall_bank","station":"repeater_s","back_m":[-5.728,3.95,28.572],"yaw_deg":112.5},{"prop":"free_console_helm","station":"helm","back_m":[1.5,3.725,28.812],"yaw_deg":180.0},{"prop":"free_console_tactical","station":"tactical","back_m":[-1.5,3.725,28.812],"yaw_deg":180.0},{"prop":"captain_chair","station":"captain","back_m":[0.0,3.95,24.939],"yaw_deg":0.0}],"seats":[{"station":"comms","seat_m":[3.712,3.95,22.488],"yaw_deg":135.0},{"station":"engineering","seat_m":[5.25,3.95,26.2],"yaw_deg":90.0},{"station":"flight_ops","seat_m":[-3.712,3.95,22.488],"yaw_deg":-135.0},{"station":"science","seat_m":[-5.25,3.95,26.2],"yaw_deg":-90.0},{"station":"helm","seat_m":[1.5,3.725,27.902],"yaw_deg":0.0},{"station":"tactical","seat_m":[-1.5,3.725,27.902],"yaw_deg":0.0},{"station":"captain","seat_m":[0.0,3.95,25.0],"yaw_deg":0.0}]},"compartments":[{"id":"bridge","poi":1,"name":"Bridge","decks":["A"],"kind":"room","finish":"crew","purpose":"The ship's command centre, round (bridge-stations 11a, variant B): seven stations and the ring's wall banks facing the main viewscreen and two forward windows; doors to the command passage, the ready room and the briefing room.","brushes":[{"y":[3.5,7.0],"poly":[[1.233,20.0],[3.512,20.944],[5.256,22.688],[6.2,24.967],[6.2,27.433],[5.256,29.712],[3.512,31.456],[3.165,31.6],[-3.165,31.6],[-3.512,31.456],[-5.256,29.712],[-6.2,27.433],[-6.2,24.967],[-5.256,22.688],[-3.512,20.944],[-1.233,20.0]]}]},{"id":"ready_room","poi":2,"name":"Captain's ready room","decks":["A"],"kind":"room","finish":"crew","purpose":"The captain's office: a desk with the captain's private console, a sofa, and a window. Its door opens onto the bridge's walkway; a second door to the command passage, a third to the captain's quarters.","brushes":[{"y":[3.5,6.5],"poly":[[1.25,14.0],[8.8,14.0],[9.6,14.8],[8.9,20.0],[1.25,20.0]]},{"y":[3.5,6.5],"poly":[[1.233,20.0],[8.9,20.0],[8.738,20.944],[3.512,20.944]]},{"y":[3.5,6.5],"poly":[[3.512,20.944],[8.738,20.944],[8.44,22.688],[5.256,22.688]]},{"y":[3.5,6.5],"poly":[[5.256,22.688],[8.44,22.688],[8.05,24.967],[6.2,24.967]]}]},{"id":"briefing_room","poi":31,"name":"Briefing room","decks":["A"],"kind":"room","finish":"crew","purpose":"Meetings and mission briefings: a table for eight facing a wall screen, a window. Its door opens onto the bridge's walkway; a second door to the command passage.","brushes":[{"y":[3.5,6.5],"poly":[[-1.25,20.0],[-8.9,20.0],[-9.6,14.8],[-8.8,14.0],[-1.25,14.0]]},{"y":[3.5,6.5],"poly":[[-3.512,20.944],[-8.738,20.944],[-8.9,20.0],[-1.233,20.0]]},{"y":[3.5,6.5],"poly":[[-5.256,22.688],[-8.44,22.688],[-8.738,20.944],[-3.512,20.944]]},{"y":[3.5,6.5],"poly":[[-6.2,24.967],[-8.05,24.967],[-8.44,22.688],[-5.256,22.688]]}]},{"id":"computer_core","poi":3,"name":"Computer core","decks":["A"],"kind":"room","finish":"working","purpose":"Processing for sensors, targeting and automation. Automated stations draw on it. Two rows of racks; moved aft of the briefing room (command-suite).","brushes":[{"y":[3.5,6.5],"poly":[[-1.25,14.0],[-9.708,14.0],[-10.381,9.0],[-1.25,9.0]]}]},{"id":"captains_quarters","poi":32,"name":"Captain's quarters","decks":["A"],"kind":"room","finish":"crew","purpose":"The captain's cabin: a bed, a wardrobe, a desk and an en-suite. Doors to the command passage and the ready room.","brushes":[{"y":[3.5,6.5],"poly":[[1.25,9.0],[10.381,9.0],[9.708,14.0],[1.25,14.0]]}]},{"id":"head","poi":33,"name":"Head","decks":["A"],"kind":"room","finish":"crew","purpose":"The command deck's washroom: two toilets, two showers, a wash counter and lockers.","brushes":[{"y":[3.5,6.5],"poly":[[1.25,4.0],[9.587,4.0],[10.387,4.8],[10.515,8.0],[10.381,9.0],[1.25,9.0]]}]},{"id":"bridge_locker","poi":34,"name":"Bridge locker","decks":["A"],"kind":"room","finish":"working","purpose":"The bridge crew's EVA suits and emergency kit, spare console boards and a workbench.","brushes":[{"y":[3.5,6.5],"poly":[[-1.25,9.0],[-10.381,9.0],[-10.515,8.0],[-10.387,4.8],[-9.587,4.0],[-1.25,4.0]]}]}],"portals":[{"id":"p_ready_bridge","kind":"door","between":["bridge","ready_room"],"center_m":[2.018,4.6,20.325],"normal":[0.3827,0.0,-0.9239],"size_m":[1.2,2.2]},{"id":"p_briefing_bridge","kind":"door","between":["bridge","briefing_room"],"center_m":[-2.018,4.6,20.325],"normal":[-0.3827,0.0,-0.9239],"size_m":[1.2,2.2]},{"id":"p_briefing","kind":"door","between":["briefing_room","a_corridor"],"center_m":[-1.25,4.6,16.4],"normal":[1.0,0.0,0.0],"size_m":[1.2,2.2]},{"id":"p_core","kind":"door","between":["computer_core","a_corridor"],"center_m":[-1.25,4.6,12.5],"normal":[1.0,0.0,0.0],"size_m":[1.0,2.2]},{"id":"p_captains_quarters","kind":"door","between":["captains_quarters","a_corridor"],"center_m":[1.25,4.6,12.5],"normal":[-1.0,0.0,0.0],"size_m":[1.0,2.2]},{"id":"p_head","kind":"door","between":["head","a_corridor"],"center_m":[1.25,4.6,6.5],"normal":[-1.0,0.0,0.0],"size_m":[1.0,2.2]},{"id":"p_bridge_locker","kind":"door","between":["bridge_locker","a_corridor"],"center_m":[-1.25,4.6,6.5],"normal":[1.0,0.0,0.0],"size_m":[1.0,2.2]},{"id":"p_quarters_ready","kind":"door","between":["captains_quarters","ready_room"],"center_m":[5.6,4.6,14.0],"normal":[0.0,0.0,1.0],"size_m":[1.0,2.2]},{"id":"p_ready_window","kind":"window","between":["ready_room","space"],"center_m":[9.25,5.0,17.4],"normal":[0.9911,0.0,0.1334],"size_m":[2.0,1.0]},{"id":"p_briefing_window","kind":"window","between":["briefing_room","space"],"center_m":[-9.25,5.0,17.4],"normal":[-0.9911,0.0,0.1334],"size_m":[2.0,1.0]},{"id":"p_bridge_window_p","kind":"window","between":["bridge","space"],"center_m":[4.384,5.0,30.584],"normal":[0.7071,0.0,0.7071],"size_m":[2.0,1.2]},{"id":"p_bridge_window_s","kind":"window","between":["bridge","space"],"center_m":[-4.384,5.0,30.584],"normal":[-0.7071,0.0,0.7071],"size_m":[2.0,1.2]}],"stations":[{"station":"comms","seat_m":[3.712,3.95,22.488],"yaw_deg":135.0},{"station":"engineering","seat_m":[5.25,3.95,26.2],"yaw_deg":90.0},{"station":"flight_ops","seat_m":[-3.712,3.95,22.488],"yaw_deg":-135.0},{"station":"science","seat_m":[-5.25,3.95,26.2],"yaw_deg":-90.0},{"station":"helm","seat_m":[1.5,3.725,27.902],"yaw_deg":0.0},{"station":"tactical","seat_m":[-1.5,3.725,27.902],"yaw_deg":0.0},{"station":"captain","seat_m":[0.0,3.95,25.0],"yaw_deg":0.0}],"fixtures":[{"id":"viewscreen","center_m":[0.0,5.2,31.5]},{"id":"eva_suits_a","kind":"locker","compartment":"bridge_locker","center_m":[-5.0,3.5,8.725],"size_m":[2.4,0.55],"facing_yaw_deg":180,"note":"EVA suits for the bridge crew, beside the bridge (crew-on-deck, damage-control: a second suit locker, proposed)."}],"fixtures_removed":["captain_dais"],"systems":[{"id":"computer","center_m":[-5.0,3.5,11.7]}],"furnishings":[{"room":"ready_room","prop":"desk","set":"suite","back_m":[6.95,3.5,17.4],"yaw_deg":90.0,"note":"the captain's desk and private console, its back to the room"},{"room":"ready_room","prop":"crew_chair","set":"bridge","back_m":[7.948,3.5,17.4],"yaw_deg":-90.0,"note":"the captain, facing the room with the window behind","seat_m":[7.9,3.5,17.4]},{"room":"ready_room","prop":"crew_chair","set":"bridge","back_m":[5.502,3.5,16.85],"yaw_deg":90.0,"note":"a visitor","seat_m":[5.55,3.5,16.85]},{"room":"ready_room","prop":"crew_chair","set":"bridge","back_m":[5.502,3.5,17.95],"yaw_deg":90.0,"note":"a visitor","seat_m":[5.55,3.5,17.95]},{"room":"ready_room","prop":"sofa","set":"suite","back_m":[3.0,3.5,14.0],"yaw_deg":0.0},{"room":"ready_room","prop":"low_table","set":"suite","back_m":[3.0,3.5,15.25],"yaw_deg":0.0},{"room":"ready_room","prop":"shelf","set":"suite","back_m":[7.7,3.5,14.0],"yaw_deg":0.0},{"room":"ready_room","prop":"shelf","set":"suite","back_m":[7.13,3.5,24.95],"yaw_deg":180.0,"note":"at the end of the corner"},{"room":"briefing_room","prop":"briefing_table","set":"suite","back_m":[-4.3,3.5,17.0],"yaw_deg":-90.0,"note":"its length fore and aft"},{"room":"briefing_room","prop":"crew_chair","set":"bridge","back_m":[-3.702,3.5,15.5],"yaw_deg":-90.0,"seat_m":[-3.75,3.5,15.5]},{"room":"briefing_room","prop":"crew_chair","set":"bridge","back_m":[-6.298,3.5,15.5],"yaw_deg":90.0,"seat_m":[-6.25,3.5,15.5]},{"room":"briefing_room","prop":"crew_chair","set":"bridge","back_m":[-3.702,3.5,16.5],"yaw_deg":-90.0,"seat_m":[-3.75,3.5,16.5]},{"room":"briefing_room","prop":"crew_chair","set":"bridge","back_m":[-6.298,3.5,16.5],"yaw_deg":90.0,"seat_m":[-6.25,3.5,16.5]},{"room":"briefing_room","prop":"crew_chair","set":"bridge","back_m":[-3.702,3.5,17.5],"yaw_deg":-90.0,"seat_m":[-3.75,3.5,17.5]},{"room":"briefing_room","prop":"crew_chair","set":"bridge","back_m":[-6.298,3.5,17.5],"yaw_deg":90.0,"seat_m":[-6.25,3.5,17.5]},{"room":"briefing_room","prop":"crew_chair","set":"bridge","back_m":[-3.702,3.5,18.5],"yaw_deg":-90.0,"seat_m":[-3.75,3.5,18.5]},{"room":"briefing_room","prop":"crew_chair","set":"bridge","back_m":[-6.298,3.5,18.5],"yaw_deg":90.0,"seat_m":[-6.25,3.5,18.5]},{"room":"briefing_room","prop":"wall_screen","set":"suite","back_m":[-5.0,3.5,14.0],"yaw_deg":0.0,"note":"the briefing screen, down the table"},{"room":"briefing_room","prop":"shelf","set":"suite","back_m":[-7.13,3.5,24.95],"yaw_deg":180.0,"note":"at the end of the corner"},{"room":"captains_quarters","prop":"bed","set":"suite","back_m":[7.0,3.5,9.0],"yaw_deg":0.0,"note":"its head on the aft wall"},{"room":"captains_quarters","prop":"wardrobe","set":"suite","back_m":[8.7,3.5,9.0],"yaw_deg":0.0},{"room":"captains_quarters","prop":"desk","set":"suite","back_m":[3.2,3.5,14.0],"yaw_deg":180.0},{"room":"captains_quarters","prop":"crew_chair","set":"bridge","back_m":[3.2,3.5,12.852],"yaw_deg":0.0,"seat_m":[3.2,3.5,12.9]},{"room":"captains_quarters","prop":"wet_cell","set":"suite","back_m":[8.3,3.5,14.0],"yaw_deg":180.0,"note":"the en-suite"},{"room":"head","prop":"wash_counter","set":"suite","back_m":[4.0,3.5,4.0],"yaw_deg":0.0},{"room":"head","prop":"toilet_stall","set":"suite","back_m":[6.9,3.5,4.0],"yaw_deg":0.0},{"room":"head","prop":"toilet_stall","set":"suite","back_m":[8.0,3.5,4.0],"yaw_deg":0.0},{"room":"head","prop":"shower_stall","set":"suite","back_m":[7.7,3.5,9.0],"yaw_deg":180.0},{"room":"head","prop":"shower_stall","set":"suite","back_m":[8.8,3.5,9.0],"yaw_deg":180.0},{"room":"head","prop":"locker_bank","set":"suite","back_m":[5.0,3.5,9.0],"yaw_deg":180.0},{"room":"bridge_locker","prop":"locker_bank","set":"suite","back_m":[-5.0,3.5,9.0],"yaw_deg":180.0,"note":"EVA suits for the bridge crew (fixture eva_suits_a)"},{"room":"bridge_locker","prop":"locker_bank","set":"suite","back_m":[-7.6,3.5,9.0],"yaw_deg":180.0,"note":"fire and first-aid kits, breathing sets"},{"room":"bridge_locker","prop":"workbench","set":"suite","back_m":[-5.0,3.5,4.0],"yaw_deg":0.0,"note":"spare console boards"},{"room":"bridge_locker","prop":"shelf","set":"suite","back_m":[-2.4,3.5,4.0],"yaw_deg":0.0},{"room":"bridge_locker","prop":"shelf","set":"suite","back_m":[-7.6,3.5,4.0],"yaw_deg":0.0},{"room":"computer_core","prop":"server_rack","set":"suite","back_m":[-4.4,3.5,11.6],"yaw_deg":180.0},{"room":"computer_core","prop":"server_rack","set":"suite","back_m":[-4.4,3.5,11.8],"yaw_deg":0.0},{"room":"computer_core","prop":"server_rack","set":"suite","back_m":[-5.2,3.5,11.6],"yaw_deg":180.0},{"room":"computer_core","prop":"server_rack","set":"suite","back_m":[-5.2,3.5,11.8],"yaw_deg":0.0},{"room":"computer_core","prop":"server_rack","set":"suite","back_m":[-6.0,3.5,11.6],"yaw_deg":180.0},{"room":"computer_core","prop":"server_rack","set":"suite","back_m":[-6.0,3.5,11.8],"yaw_deg":0.0},{"room":"computer_core","prop":"server_rack","set":"suite","back_m":[-6.8,3.5,11.6],"yaw_deg":180.0},{"room":"computer_core","prop":"server_rack","set":"suite","back_m":[-6.8,3.5,11.8],"yaw_deg":0.0},{"room":"computer_core","prop":"server_rack","set":"suite","back_m":[-7.6,3.5,11.6],"yaw_deg":180.0},{"room":"computer_core","prop":"server_rack","set":"suite","back_m":[-7.6,3.5,11.8],"yaw_deg":0.0}],"prop_brief_m":{"briefing_table":[4.0,0.75,1.4],"wall_screen":[3.0,2.6,0.1],"desk":[1.6,1.25,0.75],"sofa":[2.0,0.85,0.85],"low_table":[1.1,0.42,0.6],"shelf":[1.2,2.0,0.4],"bed":[1.4,1.0,2.1],"wardrobe":[1.2,2.1,0.6],"wet_cell":[1.8,2.3,1.8],"toilet_stall":[1.0,2.0,1.5],"wash_counter":[2.4,2.0,0.6],"shower_stall":[1.0,2.2,1.0],"locker_bank":[2.4,2.1,0.55],"server_rack":[0.8,2.1,1.1],"workbench":[1.8,1.75,0.75]},"numbers":{"rooms":[{"id":"bridge","name":"Bridge","brushes":1,"air_m3":415.9,"floor_m2":118.8,"was_air_m3":608.6,"hull_margin_m":0.8,"doors":["p_bridge_aft","p_briefing_bridge","p_ready_bridge"],"windows":["p_bridge_window_p","p_bridge_window_s"],"furniture":0},{"id":"ready_room","name":"Captain's ready room","brushes":4,"air_m3":201.3,"floor_m2":67.1,"was_air_m3":143.9,"hull_margin_m":1.06,"doors":["p_quarters_ready","p_ready","p_ready_bridge"],"windows":["p_ready_window"],"furniture":8},{"id":"briefing_room","name":"Briefing room","brushes":4,"air_m3":201.3,"floor_m2":67.1,"was_air_m3":null,"hull_margin_m":1.06,"doors":["p_briefing","p_briefing_bridge"],"windows":["p_briefing_window"],"furniture":11},{"id":"captains_quarters","name":"Captain's quarters","brushes":1,"air_m3":131.9,"floor_m2":44.0,"was_air_m3":null,"hull_margin_m":0.99,"doors":["p_captains_quarters","p_quarters_ready"],"windows":[],"furniture":5},{"id":"computer_core","name":"Computer core","brushes":1,"air_m3":131.9,"floor_m2":44.0,"was_air_m3":143.9,"hull_margin_m":0.99,"doors":["p_core"],"windows":[],"furniture":10},{"id":"head","name":"Head","brushes":1,"air_m3":136.9,"floor_m2":45.6,"was_air_m3":null,"hull_margin_m":0.98,"doors":["p_head"],"windows":[],"furniture":6},{"id":"bridge_locker","name":"Bridge locker","brushes":1,"air_m3":136.9,"floor_m2":45.6,"was_air_m3":null,"hull_margin_m":0.98,"doors":["p_bridge_locker"],"windows":[],"furniture":5},{"id":"a_corridor","name":"Command passage","brushes":1,"air_m3":120.0,"floor_m2":40.0,"was_air_m3":120.0,"hull_margin_m":1.3,"doors":["p_bridge_aft","p_bridge_locker","p_briefing","p_captains_quarters","p_core","p_dorsal_fwd","p_head","p_ready"],"windows":[],"furniture":0}],"ship_air_m3":{"before":9824.8,"after":10284.7},"walks":{"captain's chair to the ready room desk":{"m":11.8,"s":7.0},"captain's chair to the briefing table's head":{"m":7.6,"s":4.7},"captain's bed to the captain's chair, through the ready room":{"m":16.9,"s":9.8},"captain's bed to the captain's chair, by the passage":{"m":19.4,"s":11.2},"helm's seat to the bridge locker's suits":{"m":26.5,"s":14.7},"helm's seat to damage control's suits, today":{"m":40.1,"s":24.8}}}}
@@ -291,6 +301,54 @@
     red_alert: { label: "Red alert", ambient: 0x2a0d10, ambientI: 0.45, lamp: 0xff3030, lampI: 0.75, strip: 0xff2020, stripI: 1.0, fog: 0x120406, status: 0xff2a2a },
     emergency: { label: "Emergency power", ambient: 0x120c08, ambientI: 0.3, lamp: 0xff8a1c, lampI: 0.35, strip: 0xff8a1c, stripI: 0.8, fog: 0x060403, status: 0xff8a1c },
   };
+
+  // ---------------------------------------------------------------- lighting data (light-baking design 15)
+
+  const srgbLin = (c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  /** A colour (0xrrggbb or "#rrggbb") as linear RGB times k. */
+  function hexLinear(hex, k) {
+    const h = typeof hex === "string" ? parseInt(hex.slice(1), 16) : hex;
+    return [(h >> 16) & 255, (h >> 8) & 255, h & 255].map((c) => srgbLin(c / 255) * (k === undefined ? 1 : k));
+  }
+  /** data/lighting/fixtures.json and bake.json, inlined as data:lighting/fixtures and data:lighting/bake. */
+  function lightingData() { return { fixtures: shipData("fixtures"), bake: shipData("bake") }; }
+  /**
+   * A fixture's light in each lighting state, { normal, red_alert, emergency } as linear RGB that multiplies its
+   * intensity_cd or luminance_cd_m2: its type's light (lamp or strip: LIGHTING's colour and weight in that state;
+   * role: roleHex; fixed: its color_srgb), times its emergency_scale on emergency power, and dark on emergency power
+   * when it is on the bus rule and not on the emergency bus (onBus).
+   */
+  function fixtureStates(type, onBus, roleHex) {
+    const em = type.emergency_scale === undefined ? 1 : type.emergency_scale, out = {};
+    for (const s of ["normal", "red_alert", "emergency"]) {
+      const L = LIGHTING[s];
+      let c = type.light === "lamp" ? hexLinear(L.lamp, L.lampI) : type.light === "strip" ? hexLinear(L.strip, L.stripI)
+        : type.light === "role" ? hexLinear(roleHex) : hexLinear(type.color_srgb);
+      if (s === "emergency") { const k = type.emergency === "bus" && !onBus ? 0 : em; c = c.map((x) => x * k); }
+      out[s] = c;
+    }
+    return out;
+  }
+  /** bake.json, with a preset's overrides (preset "preview"), as lightbake.js's settings (its key names). */
+  function bakeSettings(preset) {
+    const B = shipData("bake"), P = (preset && B.presets[preset]) || {};
+    const g = (k) => (P[k] !== undefined ? P[k] : B[k]);
+    return {
+      seed: g("seed"), reference_lux: g("reference_lux"), shadow_samples: g("shadow_samples"),
+      emitter_sample_area_m2: g("emitter_sample_area_m2"), emitter_sample_spacing_m: g("emitter_sample_spacing_m"),
+      gather_rays: g("gather_rays"), cache_gather_rays: g("cache_gather_rays"), cache_filter: g("cache_filter_passes"),
+      ao_rays: g("ao_rays"), ao_radius_m: g("ao_radius_m"), bounces: g("bounces"), cache_spacing_m: g("cache_spacing_m"),
+      bias_m: g("ray_bias_m"), inset_m: g("sample_inset_m"), dither: g("dither"),
+    };
+  }
+  /** Each lighting state's ambient fill in lux: LIGHTING's ambient colour times its weight times bake.json's ambient_scale_lux. */
+  function ambientLux() {
+    const k = shipData("bake").ambient_scale_lux, out = {};
+    for (const s of ["normal", "red_alert", "emergency"]) out[s] = hexLinear(LIGHTING[s].ambient, LIGHTING[s].ambientI * k);
+    return out;
+  }
+  /** The triangles a compartment's adaptive bake may add (bake.json max_added_triangles, its default otherwise). */
+  function bakeCap(id) { const m = shipData("bake").max_added_triangles; return m[id] !== undefined ? m[id] : m.default; }
 
   // ---------------------------------------------------------------- lookups
 
@@ -2778,6 +2836,7 @@
   window.ShipKit = {
     version: 2,
     layout, shipData, PI_BUDGET, PALETTE, LIGHTING,
+    lightingData, fixtureStates, bakeSettings, ambientLux, bakeCap, hexLinear,
     byId, compartment, applyPatch, portalsOf, stationsIn, systemsIn, deckById,
     // plan geometry
     signedArea, outwardNormal, insidePoly, chord, insetPoly, polyCentroid,
@@ -3715,6 +3774,1535 @@
 })();
 </script>
 <!-- INLINE lib:propkit END -->
+<!-- INLINE lib:lightbake BEGIN -->
+<script>
+/*
+ * lightbake.js: a small CPU light baker for the Star Crew mockups.
+ *
+ * What it owns: turning a compartment's planar patches, its light fixtures and
+ * its emissive surfaces into baked light, by the method that
+ * openspec/changes/light-baking designs for the engine's baker (`sc-tools
+ * bake`, planned, not built):
+ *   - direct light from fixtures, with soft shadows from walls, props and
+ *     closed doors (shadow rays to sample points on each lamp);
+ *   - emissive surfaces (screens, light strips, the viewscreen) as area lights;
+ *   - ambient occlusion on a small ambient term;
+ *   - zero, one or two diffuse bounces, gathered once on a coarse irradiance
+ *     cache (a uniform 0.5 m grid on every surface, many rays per point) and
+ *     interpolated to vertices and texels: bounce is smooth, so this is
+ *     quieter than gathering at every output sample, at about the same cost
+ *     in a big room (after Ward's irradiance caching);
+ *   - all three lighting states (normal, red alert, emergency power) from one
+ *     set of rays, because light is linear in its sources;
+ *   - storage as 8-bit gamma-encoded vertex colours (three sets), or as a
+ *     lightmap atlas (three textures), for comparison;
+ *   - adaptive subdivision, so vertex lighting can carry shadows and pools;
+ *   - ambient cubes (six colours) at probe points, for things that move.
+ *
+ * Surfaces are patches: parallelograms, or convex polygons (a hull-following
+ * floor, a mitred cove) held as a polygon inside their bounding rectangle, so
+ * every face of a brush-built room subdivides and takes texels the same way.
+ * patchesFromTriangles() turns ShipKit's generated triangles (shell and detail)
+ * into patches. bakedSurfaceMaterial() draws the result the engine's way: the
+ * three baked sets, blended by a uniform, multiply a ShipKit surface material's
+ * Material Maker texel.
+ *
+ * Why it lives here: it is documentation tooling (CLAUDE.md section 4), not
+ * engine code. The lighting mockup uses it so the owner sees what each option
+ * looks like and what it costs, measured by a real bake rather than painted.
+ * It mirrors the planned engine baker's method so the pictures are honest; it
+ * is not a reference the engine must match bit for bit.
+ *
+ * Like shipkit.js it is a classic script (pages work from disk), copied into a
+ * page by tools/mockups/inline.py between "INLINE lib:lightbake" markers. Edit
+ * it here, never in a page. Functions that build three.js objects take THREE as
+ * their first argument because the page owns the three.js import.
+ *
+ * Deterministic: no Math.random. Every sample pattern is an R2 quasi-random
+ * sequence rotated by a hash of (bake seed, receiver key, purpose), so the same
+ * inputs and seed give byte-identical output, and digest() proves it.
+ *
+ * Units: metres; candela (cd) for a point light's intensity on its beam axis;
+ * candela per square metre (cd/m^2) for emissive luminance; lux (lx) for
+ * irradiance. State colours are linear RGB multipliers. Stored light is
+ * gamma-encoded (2.2) with 2x overbright headroom: byte 128 shows a surface at
+ * its palette colour, under the reference irradiance settings.reference_lux.
+ */
+(function () {
+  "use strict";
+
+  /** The three lighting states, in colour-set order (CLAUDE.md section 9). */
+  const STATES = ["normal", "red_alert", "emergency"];
+  const NS = 3;
+  const GAMMA = 2.2;
+  const OVERBRIGHT = 2.0;   // stored light 1.0 (byte 255) shows 2x the palette colour
+  const SHOULDER = 1.5;     // display multiplier above which highlights roll off instead of clipping
+
+  /** Defaults for bake(). Every key has a unit; a present zero means zero. */
+  const DEFAULTS = {
+    seed: 1,
+    reference_lux: 100,      // irradiance that shows a surface at exactly its palette colour
+    shadow_samples: 12,      // per lamp per receiver; adaptive: 4 first, the rest only in penumbra
+    emitter_sample_area_m2: 0.06, // one sample per this much emissive area, 4 to 16 per emitter
+    gather_rays: 48,         // cosine-weighted rays per sample, where bounce is gathered per sample (probes)
+    cache_gather_rays: 128,  // cosine-weighted rays per irradiance-cache vertex; outputs interpolate the cache
+    bounce_from_cache: true, // false: gather bounce at every output sample (noisier, slower; for comparison)
+    cache_filter: 1,         // passes of a 3 x 3 tent filter over each patch's cached bounce (0: none); bounce is smooth
+    emitter_sample_spacing_m: 0.25, // at least one sample per this much of an emitter's longest edge (long strips)
+    ao_rays: 24,             // cosine-weighted rays per receiver for ambient occlusion
+    ao_radius_m: 0.8,
+    ao: true,
+    bounces: 1,              // 0, 1 or 2
+    cache_spacing_m: 0.5,    // vertex spacing of the irradiance cache that bounce rays read
+    bias_m: 0.004,           // ray origin offset along the normal (no shadow acne)
+    inset_m: 0.01,           // receivers on a patch edge are sampled this far inside it
+    dither: true,            // +-0.5 LSB seeded dither on the 8-bit output
+    yield_ms: 30,            // async bakes yield to the page this often
+  };
+
+  // ------------------------------------------------------------ hashing
+
+  function mix32(x) {
+    x = x >>> 0;
+    x ^= x >>> 16; x = Math.imul(x, 0x7feb352d);
+    x ^= x >>> 15; x = Math.imul(x, 0x846ca68b);
+    x ^= x >>> 16;
+    return x >>> 0;
+  }
+  function hash3(a, b, c) { return mix32((a >>> 0) ^ mix32((b >>> 0) ^ mix32((c >>> 0) + 0x9e3779b9))); }
+  function u01(h) { return (h >>> 0) / 4294967296; }
+  const R2A = 0.7548776662466927, R2B = 0.5698402909980532; // Roberts' R2 sequence
+  function frac(x) { return x - Math.floor(x); }
+
+  // ------------------------------------------------------------ colour
+
+  function srgbToLinear(c) { return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
+  function hexToSrgb(hex) { return [((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255]; }
+  function hexToLinear(hex) { return hexToSrgb(hex).map(srgbToLinear); }
+
+  /** Irradiance ratio x = E / reference_lux to a display multiplier in [0, OVERBRIGHT]. */
+  function encodeLevel(x) {
+    if (!(x > 0)) return 0;
+    let d = Math.pow(x, 1 / GAMMA);
+    if (d > SHOULDER) d = SHOULDER + (OVERBRIGHT - SHOULDER) * Math.tanh((d - SHOULDER) / (OVERBRIGHT - SHOULDER));
+    return d;
+  }
+  /** Display multiplier to a byte, with an optional dither offset in [0, 1). */
+  function toByte(d, dither) {
+    const v = Math.floor((d / OVERBRIGHT) * 255 + dither);
+    return v < 0 ? 0 : v > 255 ? 255 : v;
+  }
+  /** Display luminance of one state of a 9-float lux record, in 8-bit levels (for error tests). */
+  function level8(E, s, refLux) {
+    const y = (0.2126 * E[s * 3] + 0.7152 * E[s * 3 + 1] + 0.0722 * E[s * 3 + 2]) / refLux;
+    return (encodeLevel(y) / OVERBRIGHT) * 255;
+  }
+
+  // ------------------------------------------------------------ vectors (small, allocation-light)
+
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+  const scale = (a, s) => [a[0] * s, a[1] * s, a[2] * s];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const len = (a) => Math.sqrt(dot(a, a));
+  const norm = (a) => { const l = len(a) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+
+  /** Orthonormal basis around a unit normal (Duff et al. 2017, branchless). */
+  function basis(nx, ny, nz, out) {
+    const sgn = nz >= 0 ? 1 : -1;
+    const a = -1 / (sgn + nz), b = nx * ny * a;
+    out[0] = 1 + sgn * nx * nx * a; out[1] = sgn * b; out[2] = -sgn * nx;
+    out[3] = b; out[4] = sgn + ny * ny * a; out[5] = -ny;
+  }
+
+  // ------------------------------------------------------------ patches
+
+  /**
+   * A patch is a planar parallelogram P(s, t) = o + s u + t v, s, t in [0, 1],
+   * facing n = normalize(u x v); or a triangle (tri: true, s + t <= 1); or a
+   * convex polygon inside the rectangle (polyM, below). Patches are what the
+   * baker subdivides and what a lightmap gives texels to.
+   *
+   * opts: albedoHex (palette colour) or albedo (linear RGB) and display (sRGB),
+   * cast (in the ray scene, default true), receive (in the outputs, default
+   * true), cheap (casts shadows but neither sends nor gathers bounce: a small
+   * prop face whose bounce is not worth its cache points), emissive ({ normal, red_alert, emergency } display colours as
+   * [r, g, b] in 0..1, drawn unlit), tag, material (a name the page uses to
+   * texture the patch), polyM (a convex polygon, [[x, y], ...] in metres along
+   * u and v from o, any winding; u and v must then be perpendicular).
+   */
+  function patch(o, u, v, opts) {
+    opts = opts || {};
+    const c = cross(u, v), area = len(c);
+    const hex = opts.albedoHex !== undefined ? opts.albedoHex : 0x808080;
+    const p = {
+      o: o.slice(), u: u.slice(), v: v.slice(), n: norm(c),
+      area: opts.tri ? area / 2 : area, lenU: len(u), lenV: len(v), tri: !!opts.tri,
+      display: opts.display || hexToSrgb(hex), albedo: opts.albedo || hexToLinear(hex),
+      cast: opts.cast !== false && !opts.emissive, receive: opts.receive !== false && !opts.emissive,
+      emissive: opts.emissive || null, tag: opts.tag || "", material: opts.material || null, poly: null,
+      cheap: !!opts.cheap,
+    };
+    if (opts.polyM) setPolygon(p, opts.polyM);
+    return p;
+  }
+
+  /**
+   * Give a patch a convex polygon: poly ([s, t] corners, counter-clockwise about
+   * n), polyM (the same in metres), edges (each edge's start and inward unit
+   * normal, in metres) and insetMax (a limit on the sample inset for a slim
+   * polygon). Its area becomes the polygon's.
+   */
+  function setPolygon(p, polyM) {
+    let pts = polyM.map((q) => [q[0], q[1]]);
+    // Drop repeated corners.
+    pts = pts.filter((q, i) => { const r = pts[(i + 1) % pts.length]; return Math.abs(q[0] - r[0]) + Math.abs(q[1] - r[1]) > 1e-9; });
+    if (signedArea2(pts) < 0) pts.reverse();
+    const area = signedArea2(pts);
+    let perim = 0;
+    const edges = pts.map((a, i) => {
+      const b = pts[(i + 1) % pts.length], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1;
+      perim += l;
+      return { ax: a[0], ay: a[1], nx: -dy / l, ny: dx / l };
+    });
+    p.polyM = pts; p.edges = edges; p.area = area;
+    p.poly = pts.map((q) => [q[0] / (p.lenU || 1), q[1] / (p.lenV || 1)]);
+    p.insetMax = perim > 0 ? (0.45 * 2 * area) / perim : 0;
+  }
+  function signedArea2(pts) {
+    let s = 0;
+    for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; s += a[0] * b[1] - b[0] * a[1]; }
+    return s / 2;
+  }
+  /** True when (x, y), in metres, is inside a polygon patch (its boundary counts). */
+  function insidePolygon(p, x, y) {
+    for (const e of p.edges) if ((x - e.ax) * e.nx + (y - e.ay) * e.ny < -1e-7) return false;
+    return true;
+  }
+  /** A convex polygon [[x, y], ...] clipped to a polygon patch (Sutherland-Hodgman), in metres; may be empty. */
+  function clipToPolygon(p, subject) {
+    let out = subject;
+    for (const e of p.edges) {
+      const inp = out; out = [];
+      if (!inp.length) break;
+      for (let i = 0; i < inp.length; i++) {
+        const P = inp[i], Q = inp[(i + 1) % inp.length];
+        const dp = (P[0] - e.ax) * e.nx + (P[1] - e.ay) * e.ny, dq = (Q[0] - e.ax) * e.nx + (Q[1] - e.ay) * e.ny;
+        const pin = dp >= -1e-9, qin = dq >= -1e-9;
+        if (pin) out.push(P);
+        if (pin !== qin) { const t = dp / (dp - dq); out.push([P[0] + (Q[0] - P[0]) * t, P[1] + (Q[1] - P[1]) * t]); }
+      }
+      // Remove repeated corners a tangent cut can leave.
+      out = out.filter((q, i) => { const r = out[(i + 1) % out.length]; return Math.abs(q[0] - r[0]) + Math.abs(q[1] - r[1]) > 1e-9; });
+    }
+    return out.length >= 3 && signedArea2(out) > 1e-10 ? out : [];
+  }
+
+  /**
+   * A convex planar polygon (3D corners in order, either winding) facing n, as a
+   * patch: a parallelogram when it is one, else a polygon patch whose rectangle
+   * runs along its longest edge (so a hull-following floor's grid lines up with
+   * its walls). opts as for patch().
+   */
+  function polygonPatch(pts, n, opts) {
+    n = norm(n);
+    if (pts.length === 4) {
+      const s0 = add(pts[0], pts[2]), s1 = add(pts[1], pts[3]);
+      if (len(sub(s0, s1)) < 1e-6) {
+        let u = sub(pts[1], pts[0]), v = sub(pts[3], pts[0]);
+        if (dot(cross(u, v), n) < 0) { const t = u; u = v; v = t; }
+        return patch(pts[0], u, v, opts);
+      }
+    }
+    let best = -1, ud = null;
+    for (let i = 0; i < pts.length; i++) {
+      const e = sub(pts[(i + 1) % pts.length], pts[i]), l = len(e);
+      if (l > best + 1e-9) { best = l; ud = e; }
+    }
+    ud = norm(sub(ud, scale(n, dot(ud, n))));
+    const vd = cross(n, ud); // u x v = n
+    const q = pts.map((p) => [dot(sub(p, pts[0]), ud), dot(sub(p, pts[0]), vd)]);
+    const mnU = Math.min(...q.map((a) => a[0])), mxU = Math.max(...q.map((a) => a[0]));
+    const mnV = Math.min(...q.map((a) => a[1])), mxV = Math.max(...q.map((a) => a[1]));
+    const o = add(pts[0], add(scale(ud, mnU), scale(vd, mnV)));
+    const polyM = q.map((a) => [a[0] - mnU, a[1] - mnV]);
+    return patch(o, scale(ud, mxU - mnU), scale(vd, mxV - mnV), Object.assign({}, opts, { polyM }));
+  }
+
+  /** A patch's corners in 3D, counter-clockwise about its normal. */
+  function patchCorners(p) {
+    const at = (s, t) => [p.o[0] + s * p.u[0] + t * p.v[0], p.o[1] + s * p.u[1] + t * p.v[1], p.o[2] + s * p.u[2] + t * p.v[2]];
+    if (p.poly) return p.poly.map((q) => at(q[0], q[1]));
+    if (p.tri) return [at(0, 0), at(1, 0), at(0, 1)];
+    return [at(0, 0), at(1, 0), at(1, 1), at(0, 1)];
+  }
+
+  /**
+   * Patches from a flat triangle list (ShipKit's buildCompartment parts: position
+   * and normal, 9 numbers per triangle). Coplanar triangles whose union is one
+   * convex polygon (a floor, a ceiling, a wall cell, a mitred cove) become one
+   * patch; otherwise consecutive pairs that make a parallelogram (ShipKit's
+   * quads) become one, and a lone triangle is a polygon patch of three corners.
+   * The normal array decides which way a patch faces. opts as for patch().
+   */
+  function patchesFromTriangles(P, N, opts) {
+    const groups = new Map(), order = [];
+    for (let t = 0; t + 8 < P.length; t += 9) {
+      const a = [P[t], P[t + 1], P[t + 2]], b = [P[t + 3], P[t + 4], P[t + 5]], c = [P[t + 6], P[t + 7], P[t + 8]];
+      const cr = cross(sub(b, a), sub(c, a)), area = len(cr) / 2;
+      if (area < 1e-10) continue;
+      let n = norm(cr);
+      if (N && dot(n, [N[t], N[t + 1], N[t + 2]]) < 0) n = scale(n, -1);
+      const key = [n[0], n[1], n[2], dot(n, a)].map((x) => Math.round(x * 1000)).join(",");
+      let g = groups.get(key);
+      if (!g) { g = { n, tris: [], area: 0 }; groups.set(key, g); order.push(g); }
+      g.tris.push([a, b, c]); g.area += area;
+    }
+    const out = [];
+    const same = (p, q) => Math.abs(p[0] - q[0]) + Math.abs(p[1] - q[1]) + Math.abs(p[2] - q[2]) < 1e-6;
+    for (const g of order) {
+      // The convex hull of the group's corners, in the plane (Andrew's monotone chain).
+      const e1 = norm(Math.abs(g.n[1]) < 0.9 ? cross([0, 1, 0], g.n) : cross([1, 0, 0], g.n)), e2 = cross(g.n, e1);
+      const pts = [];
+      for (const tr of g.tris) for (const p of tr) if (!pts.some((q) => same(p, q))) pts.push(p);
+      const xy = pts.map((p, i) => ({ x: dot(p, e1), y: dot(p, e2), i })).sort((a, b) => a.x - b.x || a.y - b.y);
+      const turn = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+      const lower = [], upper = [];
+      for (const p of xy) { while (lower.length >= 2 && turn(lower[lower.length - 2], lower[lower.length - 1], p) <= 1e-12) lower.pop(); lower.push(p); }
+      for (let k = xy.length - 1; k >= 0; k--) { const p = xy[k]; while (upper.length >= 2 && turn(upper[upper.length - 2], upper[upper.length - 1], p) <= 1e-12) upper.pop(); upper.push(p); }
+      const hull = lower.slice(0, -1).concat(upper.slice(0, -1));
+      let ha = 0;
+      for (let k = 0; k < hull.length; k++) { const a = hull[k], b = hull[(k + 1) % hull.length]; ha += a.x * b.y - b.x * a.y; }
+      ha /= 2;
+      if (hull.length >= 3 && Math.abs(ha - g.area) <= 1e-6 + 1e-5 * g.area) {
+        out.push(polygonPatch(hull.map((h) => pts[h.i]), g.n, opts));
+        continue;
+      }
+      // Not one convex piece: pair ShipKit's quads, keep lone triangles.
+      for (let k = 0; k < g.tris.length; k++) {
+        const A = g.tris[k], B = g.tris[k + 1];
+        if (B) {
+          const shared = A.filter((p) => B.some((q) => same(p, q)));
+          if (shared.length === 2) {
+            const X = A.find((p) => !shared.some((q) => same(p, q))), Y = B.find((p) => !shared.some((q) => same(p, q)));
+            if (len(sub(add(X, Y), add(shared[0], shared[1]))) < 1e-6) {
+              out.push(polygonPatch([X, shared[0], Y, shared[1]], g.n, opts));
+              k++; continue;
+            }
+          }
+        }
+        out.push(polygonPatch(A, g.n, opts));
+      }
+    }
+    return out;
+  }
+
+  /**
+   * The faces of an oriented box: centre c, unit axes u, v, w, half sizes hu, hv,
+   * hw. faces lists the faces to make ("+u", "-u", "+v", "-v", "+w", "-w"; all
+   * when omitted), as ShipKit's Builder.box names them. opts as for patch().
+   */
+  function orientedBoxPatches(c, u, v, w, hu, hv, hw, faces, opts) {
+    const ax = { u: [u, hu], v: [v, hv], w: [w, hw] }, out = [];
+    for (const f of faces || ["+u", "-u", "+v", "-v", "+w", "-w"]) {
+      const sgn = f[0] === "+" ? 1 : -1, k = f[1], others = ["u", "v", "w"].filter((x) => x !== k);
+      const [a, ha] = ax[others[0]], [b, hb] = ax[others[1]], [n, hn] = ax[k];
+      const out3 = scale(n, sgn);
+      const fc = add(c, scale(out3, hn));
+      const o = sub(sub(fc, scale(a, ha)), scale(b, hb));
+      let U = scale(a, 2 * ha), V = scale(b, 2 * hb), O = o;
+      if (dot(cross(U, V), out3) < 0) { const t = U; U = V; V = t; }
+      if (len(cross(U, V)) > 1e-12) out.push(patch(O, U, V, opts));
+    }
+    return out;
+  }
+
+  /** The six faces of an axis-aligned box, facing out. opts.skip: ["-y", "+x", ...]. */
+  function boxPatches(min, max, opts) {
+    opts = opts || {};
+    const skip = opts.skip || [];
+    const [x0, y0, z0] = min, [x1, y1, z1] = max;
+    const dx = x1 - x0, dy = y1 - y0, dz = z1 - z0;
+    const out = [];
+    const f = (key, o, u, v) => { if (skip.indexOf(key) < 0 && len(cross(u, v)) > 1e-9) out.push(patch(o, u, v, opts)); };
+    f("+x", [x1, y0, z0], [0, dy, 0], [0, 0, dz]);
+    f("-x", [x0, y0, z0], [0, 0, dz], [0, dy, 0]);
+    f("+y", [x0, y1, z0], [0, 0, dz], [dx, 0, 0]);
+    f("-y", [x0, y0, z0], [dx, 0, 0], [0, 0, dz]);
+    f("+z", [x0, y0, z1], [dx, 0, 0], [0, dy, 0]);
+    f("-z", [x0, y0, z0], [0, dy, 0], [dx, 0, 0]);
+    return out;
+  }
+
+  /**
+   * Recover patches from a triangle BufferGeometry (world space): consecutive
+   * coplanar triangle pairs that share an edge and form a parallelogram become
+   * one quad patch; anything else stays a triangle patch. The geometry's normal
+   * attribute, when present, decides which way a patch faces. ShipKit.roomShell
+   * output comes back as exactly its rectangles. opts as for patch().
+   */
+  function patchesFromGeometry(geometry, opts) {
+    const P = geometry.getAttribute("position"), N = geometry.getAttribute("normal");
+    const idx = geometry.index ? geometry.index.array : null;
+    const count = idx ? idx.length : P.count;
+    const vi = (k) => (idx ? idx[k] : k);
+    const pos = (i) => [P.getX(i), P.getY(i), P.getZ(i)];
+    const out = [];
+    const same = (a, b) => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]) < 1e-6;
+    const facing = (tri, i) => {
+      const fn = cross(sub(tri[1], tri[0]), sub(tri[2], tri[0]));
+      if (!N) return fn;
+      const nn = [N.getX(i), N.getY(i), N.getZ(i)];
+      return dot(fn, nn) < 0 ? scale(nn, 1) : fn;
+    };
+    for (let k = 0; k + 2 < count; k += 3) {
+      const a = [pos(vi(k)), pos(vi(k + 1)), pos(vi(k + 2))];
+      const nA = facing(a, vi(k));
+      let used = false;
+      if (k + 5 < count) {
+        const b = [pos(vi(k + 3)), pos(vi(k + 4)), pos(vi(k + 5))];
+        const shared = a.filter((p) => b.some((q) => same(p, q)));
+        if (shared.length === 2) {
+          const X = a.find((p) => !shared.some((q) => same(p, q)));
+          const D = b.find((p) => !shared.some((q) => same(p, q)));
+          const [S1, S2] = shared;
+          const coplanar = Math.abs(dot(norm(nA), norm(sub(D, X)))) < 1e-5;
+          const parallelogram = same(add(X, D), add(S1, S2));
+          if (coplanar && parallelogram) {
+            let u = sub(S1, X), v = sub(S2, X);
+            if (dot(cross(u, v), nA) < 0) { const t = u; u = v; v = t; }
+            out.push(patch(X, u, v, opts));
+            k += 3; used = true;
+          }
+        }
+      }
+      if (!used) {
+        let u = sub(a[1], a[0]), v = sub(a[2], a[0]);
+        if (dot(cross(u, v), nA) < 0) { const t = u; u = v; v = t; }
+        out.push(patch(a[0], u, v, Object.assign({}, opts, { tri: true })));
+      }
+    }
+    return out;
+  }
+
+  /**
+   * A point on a patch, clamped inset_m inside its edges so edge receivers do not sit on a
+   * neighbouring wall. On a polygon patch, a point outside the polygon (a grid point of its
+   * rectangle beyond an angled wall) is moved inside it, so it reads the light at the edge.
+   */
+  function pointOn(p, s, t, inset, out) {
+    if (p.poly) {
+      let x = s * p.lenU, y = t * p.lenV;
+      const d = Math.min(inset, p.insetMax);
+      for (let it = 0; it < 2; it++) {
+        for (const e of p.edges) {
+          const k = (x - e.ax) * e.nx + (y - e.ay) * e.ny;
+          if (k < d) { x += e.nx * (d - k); y += e.ny * (d - k); }
+        }
+      }
+      s = x / (p.lenU || 1); t = y / (p.lenV || 1);
+      out[0] = p.o[0] + s * p.u[0] + t * p.v[0];
+      out[1] = p.o[1] + s * p.u[1] + t * p.v[1];
+      out[2] = p.o[2] + s * p.u[2] + t * p.v[2];
+      return out;
+    }
+    const es = Math.min(0.45, inset / Math.max(p.lenU, 1e-6)), et = Math.min(0.45, inset / Math.max(p.lenV, 1e-6));
+    s = Math.min(1 - es, Math.max(es, s)); t = Math.min(1 - et, Math.max(et, t));
+    if (p.tri && s + t > 1 - es) { const k = (1 - es) / (s + t); s *= k; t *= k; }
+    out[0] = p.o[0] + s * p.u[0] + t * p.v[0];
+    out[1] = p.o[1] + s * p.u[1] + t * p.v[1];
+    out[2] = p.o[2] + s * p.u[2] + t * p.v[2];
+    return out;
+  }
+
+  // ------------------------------------------------------------ meshes
+
+  /**
+   * A mesh here is plain typed arrays: positions, normals, display (sRGB
+   * albedo 0..1), indices, plus per vertex the patch it lies on and its (s, t),
+   * and per triangle its patch. Vertices are shared inside a patch (one normal,
+   * one colour) and never across patches: flat shading.
+   */
+  function meshBuilder() { return { pos: [], st: [], pv: [], idx: [], tp: [] }; }
+  function finishMesh(b, patches) {
+    const nv = b.pv.length, nt = b.idx.length / 3;
+    const m = {
+      positions: new Float32Array(b.pos), normals: new Float32Array(nv * 3), display: new Float32Array(nv * 3),
+      st: new Float32Array(b.st), patchOfVertex: new Int32Array(b.pv), patchOfTriangle: new Int32Array(b.tp),
+      indices: nv < 65536 ? new Uint16Array(b.idx) : new Uint32Array(b.idx),
+      vertexCount: nv, triangleCount: nt, uv2: b.uv2 ? new Float32Array(b.uv2) : null, keys: new Uint32Array(b.keys || []),
+      grids: b.grids || null, // per patch: { base, nu, nv } of its uniform grid (quad patches from tessellate), else null
+    };
+    for (let i = 0; i < nv; i++) {
+      const p = patches[m.patchOfVertex[i]];
+      m.normals.set(p.n, i * 3); m.display.set(p.display, i * 3);
+    }
+    return m;
+  }
+
+  /**
+   * Tessellate patches into a uniform grid of about spacing_m (Infinity: one
+   * quad, triangle or polygon fan per patch, the deck's own density). Only
+   * patches passing filter(p) are included; patch indices refer to the full
+   * list. A polygon patch keeps its rectangle's whole vertex grid (so bounce
+   * can be read bilinearly anywhere on it) and draws only the cells inside its
+   * polygon, cutting the cells its edges cross.
+   */
+  function tessellate(patches, spacing, filter) {
+    const b = meshBuilder(); b.keys = []; b.grids = new Array(patches.length).fill(null);
+    patches.forEach((p, pi) => {
+      if (filter && !filter(p)) return;
+      const nu = isFinite(spacing) ? Math.max(1, Math.round(p.lenU / spacing)) : 1;
+      const nv = isFinite(spacing) ? Math.max(1, Math.round(p.lenV / spacing)) : 1;
+      const base = b.pv.length;
+      if (p.poly && !isFinite(spacing)) {
+        // The deck's own density: the polygon itself, fanned.
+        p.poly.forEach((q, k) => {
+          b.pos.push(p.o[0] + q[0] * p.u[0] + q[1] * p.v[0], p.o[1] + q[0] * p.u[1] + q[1] * p.v[1], p.o[2] + q[0] * p.u[2] + q[1] * p.v[2]);
+          b.st.push(q[0], q[1]); b.pv.push(pi); b.keys.push(hash3(pi, 0x9000 + k, 0));
+        });
+        for (let k = 1; k + 1 < p.poly.length; k++) { b.idx.push(base, base + k, base + k + 1); b.tp.push(pi); }
+        return;
+      }
+      if (!p.tri) b.grids[pi] = { base, nu, nv };
+      if (p.poly) {
+        for (let j = 0; j <= nv; j++) for (let i = 0; i <= nu; i++) {
+          const s = i / nu, t = j / nv;
+          b.pos.push(p.o[0] + s * p.u[0] + t * p.v[0], p.o[1] + s * p.u[1] + t * p.v[1], p.o[2] + s * p.u[2] + t * p.v[2]);
+          b.st.push(s, t); b.pv.push(pi); b.keys.push(hash3(pi, i, j));
+        }
+        const cw = p.lenU / nu, ch = p.lenV / nv, extra = new Map();
+        const vtx = (x, y) => {
+          const gi = Math.round(x / cw), gj = Math.round(y / ch);
+          if (Math.abs(x - gi * cw) < 1e-7 && Math.abs(y - gj * ch) < 1e-7 && gi >= 0 && gi <= nu && gj >= 0 && gj <= nv) return base + gj * (nu + 1) + gi;
+          const qx = Math.round(x * 1e5), qy = Math.round(y * 1e5), k = qx * 1e7 + qy;
+          let id = extra.get(k);
+          if (id === undefined) {
+            const s = x / p.lenU, t = y / p.lenV;
+            id = b.pv.length; extra.set(k, id);
+            b.pos.push(p.o[0] + s * p.u[0] + t * p.v[0], p.o[1] + s * p.u[1] + t * p.v[1], p.o[2] + s * p.u[2] + t * p.v[2]);
+            b.st.push(s, t); b.pv.push(pi); b.keys.push(hash3(pi, 0x40000000 + (qx & 0xfffffff), qy));
+          }
+          return id;
+        };
+        for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) {
+          const x0 = i * cw, x1 = (i + 1) * cw, y0 = j * ch, y1 = (j + 1) * ch;
+          const a = base + j * (nu + 1) + i, c = a + nu + 2;
+          if (insidePolygon(p, x0, y0) && insidePolygon(p, x1, y0) && insidePolygon(p, x1, y1) && insidePolygon(p, x0, y1)) {
+            b.idx.push(a, a + 1, c, a, c, c - 1); b.tp.push(pi, pi);
+            continue;
+          }
+          const cut = clipToPolygon(p, [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]);
+          const ids = cut.map((q) => vtx(q[0], q[1]));
+          for (let k = 1; k + 1 < ids.length; k++) { b.idx.push(ids[0], ids[k], ids[k + 1]); b.tp.push(pi); }
+        }
+        return;
+      }
+      if (!p.tri) {
+        for (let j = 0; j <= nv; j++) for (let i = 0; i <= nu; i++) {
+          const s = i / nu, t = j / nv;
+          b.pos.push(p.o[0] + s * p.u[0] + t * p.v[0], p.o[1] + s * p.u[1] + t * p.v[1], p.o[2] + s * p.u[2] + t * p.v[2]);
+          b.st.push(s, t); b.pv.push(pi); b.keys.push(hash3(pi, i, j));
+        }
+        for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) {
+          const a = base + j * (nu + 1) + i, c = a + nu + 2;
+          b.idx.push(a, a + 1, c, a, c, c - 1); b.tp.push(pi, pi);
+        }
+      } else {
+        const n = Math.max(nu, nv);
+        const row = []; let k = base;
+        for (let j = 0; j <= n; j++) { row.push(k); for (let i = 0; i <= n - j; i++) {
+          const s = i / n, t = j / n;
+          b.pos.push(p.o[0] + s * p.u[0] + t * p.v[0], p.o[1] + s * p.u[1] + t * p.v[1], p.o[2] + s * p.u[2] + t * p.v[2]);
+          b.st.push(s, t); b.pv.push(pi); b.keys.push(hash3(pi, i, j)); k++;
+        } }
+        for (let j = 0; j < n; j++) for (let i = 0; i < n - j; i++) {
+          const a = row[j] + i, c = row[j + 1] + i;
+          b.idx.push(a, a + 1, c); b.tp.push(pi);
+          if (i < n - j - 1) { b.idx.push(a + 1, c + 1, c); b.tp.push(pi); }
+        }
+      }
+    });
+    return finishMesh(b, patches);
+  }
+
+  // ------------------------------------------------------------ BVH ray caster
+
+  /**
+   * A bounding volume hierarchy over a mesh's triangles (median split on the
+   * widest centroid axis, leaves of up to 4). Occlusion is two-sided: the back
+   * of a wall blocks light as well as its front. Closest-hit reports whether
+   * the ray met a back face, which the gather treats as black (a leak guard).
+   */
+  function buildBVH(mesh) {
+    const nt = mesh.triangleCount, P = mesh.positions, I = mesh.indices;
+    const cen = new Float32Array(nt * 3), tb = new Float32Array(nt * 6);
+    for (let t = 0; t < nt; t++) {
+      let mnx = Infinity, mny = Infinity, mnz = Infinity, mxx = -Infinity, mxy = -Infinity, mxz = -Infinity;
+      for (let k = 0; k < 3; k++) {
+        const i = I[t * 3 + k] * 3, x = P[i], y = P[i + 1], z = P[i + 2];
+        if (x < mnx) mnx = x; if (y < mny) mny = y; if (z < mnz) mnz = z;
+        if (x > mxx) mxx = x; if (y > mxy) mxy = y; if (z > mxz) mxz = z;
+      }
+      tb.set([mnx, mny, mnz, mxx, mxy, mxz], t * 6);
+      cen[t * 3] = (mnx + mxx) / 2; cen[t * 3 + 1] = (mny + mxy) / 2; cen[t * 3 + 2] = (mnz + mxz) / 2;
+    }
+    const order = new Int32Array(nt); for (let t = 0; t < nt; t++) order[t] = t;
+    const maxNodes = Math.max(1, 2 * nt);
+    const bb = new Float32Array(maxNodes * 6), nc = new Int32Array(maxNodes * 2);
+    let nodes = 1;
+    const stack = [[0, 0, nt]];
+    while (stack.length) {
+      const [node, start, end] = stack.pop();
+      let mnx = Infinity, mny = Infinity, mnz = Infinity, mxx = -Infinity, mxy = -Infinity, mxz = -Infinity;
+      let cnx = Infinity, cny = Infinity, cnz = Infinity, cxx = -Infinity, cxy = -Infinity, cxz = -Infinity;
+      for (let k = start; k < end; k++) {
+        const t = order[k], o = t * 6;
+        if (tb[o] < mnx) mnx = tb[o]; if (tb[o + 1] < mny) mny = tb[o + 1]; if (tb[o + 2] < mnz) mnz = tb[o + 2];
+        if (tb[o + 3] > mxx) mxx = tb[o + 3]; if (tb[o + 4] > mxy) mxy = tb[o + 4]; if (tb[o + 5] > mxz) mxz = tb[o + 5];
+        const c = t * 3;
+        if (cen[c] < cnx) cnx = cen[c]; if (cen[c + 1] < cny) cny = cen[c + 1]; if (cen[c + 2] < cnz) cnz = cen[c + 2];
+        if (cen[c] > cxx) cxx = cen[c]; if (cen[c + 1] > cxy) cxy = cen[c + 1]; if (cen[c + 2] > cxz) cxz = cen[c + 2];
+      }
+      bb.set([mnx - 1e-5, mny - 1e-5, mnz - 1e-5, mxx + 1e-5, mxy + 1e-5, mxz + 1e-5], node * 6);
+      const count = end - start;
+      const ex = cxx - cnx, ey = cxy - cny, ez = cxz - cnz;
+      if (count <= 4 || Math.max(ex, ey, ez) < 1e-6) { nc[node * 2] = start; nc[node * 2 + 1] = count; continue; }
+      const axis = ex >= ey && ex >= ez ? 0 : ey >= ez ? 1 : 2;
+      const seg = Array.from(order.subarray(start, end)).sort((a, b) => cen[a * 3 + axis] - cen[b * 3 + axis] || a - b);
+      order.set(seg, start);
+      const mid = (start + end) >> 1, left = nodes; nodes += 2;
+      nc[node * 2] = left; nc[node * 2 + 1] = -(axis + 1);
+      stack.push([left + 1, mid, end], [left, start, mid]);
+    }
+    // Triangles in BVH order as v0, e1, e2 for Moller-Trumbore.
+    const tri = new Float32Array(nt * 9), triId = new Int32Array(nt);
+    for (let k = 0; k < nt; k++) {
+      const t = order[k]; triId[k] = t;
+      const a = I[t * 3] * 3, b = I[t * 3 + 1] * 3, c = I[t * 3 + 2] * 3;
+      tri[k * 9] = P[a]; tri[k * 9 + 1] = P[a + 1]; tri[k * 9 + 2] = P[a + 2];
+      tri[k * 9 + 3] = P[b] - P[a]; tri[k * 9 + 4] = P[b + 1] - P[a + 1]; tri[k * 9 + 5] = P[b + 2] - P[a + 2];
+      tri[k * 9 + 6] = P[c] - P[a]; tri[k * 9 + 7] = P[c + 1] - P[a + 1]; tri[k * 9 + 8] = P[c + 2] - P[a + 2];
+    }
+    return { bb: bb.subarray(0, nodes * 6), nc: nc.subarray(0, nodes * 2), tri, triId, nodes, triangles: nt, stack: new Int32Array(128) };
+  }
+
+  const EPS_T = 1e-4;
+
+  /** True when anything lies on the ray within (EPS_T, tmax). */
+  function occluded(B, ox, oy, oz, dx, dy, dz, tmax) {
+    if (B.triangles === 0) return false;
+    const ix = 1 / (dx || 1e-12), iy = 1 / (dy || 1e-12), iz = 1 / (dz || 1e-12);
+    const bb = B.bb, nc = B.nc, T = B.tri, st = B.stack;
+    let sp = 0; st[sp++] = 0;
+    while (sp > 0) {
+      const n = st[--sp], b = n * 6;
+      let t0 = (bb[b] - ox) * ix, t1 = (bb[b + 3] - ox) * ix;
+      let tn = t0 < t1 ? t0 : t1, tf = t0 < t1 ? t1 : t0;
+      t0 = (bb[b + 1] - oy) * iy; t1 = (bb[b + 4] - oy) * iy;
+      if (t0 > t1) { const q = t0; t0 = t1; t1 = q; }
+      if (t0 > tn) tn = t0; if (t1 < tf) tf = t1;
+      t0 = (bb[b + 2] - oz) * iz; t1 = (bb[b + 5] - oz) * iz;
+      if (t0 > t1) { const q = t0; t0 = t1; t1 = q; }
+      if (t0 > tn) tn = t0; if (t1 < tf) tf = t1;
+      if (tf < tn || tf < 0 || tn > tmax) continue;
+      const first = nc[n * 2], cnt = nc[n * 2 + 1];
+      if (cnt > 0) {
+        for (let k = first; k < first + cnt; k++) {
+          const o = k * 9;
+          const e1x = T[o + 3], e1y = T[o + 4], e1z = T[o + 5], e2x = T[o + 6], e2y = T[o + 7], e2z = T[o + 8];
+          const px = dy * e2z - dz * e2y, py = dz * e2x - dx * e2z, pz = dx * e2y - dy * e2x;
+          const det = e1x * px + e1y * py + e1z * pz;
+          if (det > -1e-12 && det < 1e-12) continue;
+          const inv = 1 / det;
+          const tx = ox - T[o], ty = oy - T[o + 1], tz = oz - T[o + 2];
+          const u = (tx * px + ty * py + tz * pz) * inv;
+          if (u < 0 || u > 1) continue;
+          const qx = ty * e1z - tz * e1y, qy = tz * e1x - tx * e1z, qz = tx * e1y - ty * e1x;
+          const v = (dx * qx + dy * qy + dz * qz) * inv;
+          if (v < 0 || u + v > 1) continue;
+          const t = (e2x * qx + e2y * qy + e2z * qz) * inv;
+          if (t > EPS_T && t < tmax) return true;
+        }
+      } else { st[sp++] = first; st[sp++] = first + 1; }
+    }
+    return false;
+  }
+
+  /** Closest hit. Returns false or fills hit = { tri (mesh triangle), t, u, v, back }. */
+  function closest(B, ox, oy, oz, dx, dy, dz, tmax, hit) {
+    if (B.triangles === 0) return false;
+    const ix = 1 / (dx || 1e-12), iy = 1 / (dy || 1e-12), iz = 1 / (dz || 1e-12);
+    const bb = B.bb, nc = B.nc, T = B.tri, st = B.stack;
+    let sp = 0; st[sp++] = 0;
+    let best = tmax, bk = -1, bu = 0, bv = 0, bdet = 0;
+    while (sp > 0) {
+      const n = st[--sp], b = n * 6;
+      let t0 = (bb[b] - ox) * ix, t1 = (bb[b + 3] - ox) * ix;
+      let tn = t0 < t1 ? t0 : t1, tf = t0 < t1 ? t1 : t0;
+      t0 = (bb[b + 1] - oy) * iy; t1 = (bb[b + 4] - oy) * iy;
+      if (t0 > t1) { const q = t0; t0 = t1; t1 = q; }
+      if (t0 > tn) tn = t0; if (t1 < tf) tf = t1;
+      t0 = (bb[b + 2] - oz) * iz; t1 = (bb[b + 5] - oz) * iz;
+      if (t0 > t1) { const q = t0; t0 = t1; t1 = q; }
+      if (t0 > tn) tn = t0; if (t1 < tf) tf = t1;
+      if (tf < tn || tf < 0 || tn > best) continue;
+      const first = nc[n * 2], cnt = nc[n * 2 + 1];
+      if (cnt > 0) {
+        for (let k = first; k < first + cnt; k++) {
+          const o = k * 9;
+          const e1x = T[o + 3], e1y = T[o + 4], e1z = T[o + 5], e2x = T[o + 6], e2y = T[o + 7], e2z = T[o + 8];
+          const px = dy * e2z - dz * e2y, py = dz * e2x - dx * e2z, pz = dx * e2y - dy * e2x;
+          const det = e1x * px + e1y * py + e1z * pz;
+          if (det > -1e-12 && det < 1e-12) continue;
+          const inv = 1 / det;
+          const tx = ox - T[o], ty = oy - T[o + 1], tz = oz - T[o + 2];
+          const u = (tx * px + ty * py + tz * pz) * inv;
+          if (u < 0 || u > 1) continue;
+          const qx = ty * e1z - tz * e1y, qy = tz * e1x - tx * e1z, qz = tx * e1y - ty * e1x;
+          const v = (dx * qx + dy * qy + dz * qz) * inv;
+          if (v < 0 || u + v > 1) continue;
+          const t = (e2x * qx + e2y * qy + e2z * qz) * inv;
+          if (t > EPS_T && t < best) { best = t; bk = k; bu = u; bv = v; bdet = det; }
+        }
+      } else {
+        // Near child first: the split axis is stored as -(axis + 1).
+        const axis = -cnt - 1, dpos = axis === 0 ? dx > 0 : axis === 1 ? dy > 0 : dz > 0;
+        if (dpos) { st[sp++] = first + 1; st[sp++] = first; } else { st[sp++] = first; st[sp++] = first + 1; }
+      }
+    }
+    if (bk < 0) return false;
+    hit.tri = B.triId[bk]; hit.t = best; hit.u = bu; hit.v = bv; hit.back = bdet < 0;
+    return true;
+  }
+
+  // ------------------------------------------------------------ scene and lights
+
+  /**
+   * Prepare a bake. def:
+   *   patches   all patches (receivers, occluders and emissive), world space
+   *   occluders axis-aligned boxes [{ min, max, albedoHex }] that only cast
+   *   lights    point lights: { id, position_m, radius_m, intensity_cd,
+   *             beam: { axis, exponent } or null, range_m, states }
+   *   emitters  area lights: { id, quad: { o, u, v } (emits along u x v),
+   *             luminance_cd_m2, beam_exponent, range_m, states }
+   *   ambient_lux { normal: [r, g, b], ... } lux of fill light, times AO
+   *   settings  see DEFAULTS
+   * states: { normal: [r, g, b], red_alert: [...], emergency: [...] } linear
+   * multipliers of the light's intensity; [0, 0, 0] is off in that state.
+   */
+  function scene(def) {
+    const settings = Object.assign({}, DEFAULTS, def.settings || {});
+    const patches = def.patches.slice();
+    for (const b of def.occluders || []) for (const p of boxPatches(b.min, b.max, { albedoHex: b.albedoHex !== undefined ? b.albedoHex : 0x606060, receive: false, tag: "occluder" })) patches.push(p);
+    const stateVec = (st) => { const v = new Float32Array(9); STATES.forEach((s, i) => { const c = (st && st[s]) || [0, 0, 0]; v[i * 3] = c[0]; v[i * 3 + 1] = c[1]; v[i * 3 + 2] = c[2]; }); return v; };
+    const lights = (def.lights || []).map((l) => ({
+      id: l.id, p: l.position_m.slice(), r: l.radius_m || 0, I: l.intensity_cd,
+      axis: l.beam ? norm(l.beam.axis) : null, exp: l.beam ? l.beam.exponent : 0,
+      range: l.range_m, st: stateVec(l.states),
+    }));
+    const emitters = (def.emitters || []).map((e) => {
+      const q = e.quad, c = cross(q.u, q.v), area = len(c), n = norm(c);
+      const longest = Math.max(len(q.u), len(q.v));
+      const ns = Math.max(4, Math.min(64, Math.max(Math.ceil(area / settings.emitter_sample_area_m2), Math.ceil(longest / settings.emitter_sample_spacing_m))));
+      const centre = add(q.o, add(scale(q.u, 0.5), scale(q.v, 0.5)));
+      return { id: e.id, o: q.o.slice(), u: q.u.slice(), v: q.v.slice(), n, area, L: e.luminance_cd_m2, exp: e.beam_exponent || 1,
+        range: e.range_m, st: stateVec(e.states), ns, centre, halfDiag: 0.5 * len(add(q.u, q.v)) };
+    });
+    const ambient = stateVec(def.ambient_lux);
+    const t0 = performance.now();
+    const cache = tessellate(patches, settings.cache_spacing_m, (p) => p.cast);
+    const bvh = buildBVH(cache);
+    const triAlbedo = new Float32Array(cache.triangleCount * 3);
+    for (let t = 0; t < cache.triangleCount; t++) triAlbedo.set(patches[cache.patchOfTriangle[t]].albedo, t * 3);
+    return {
+      settings, patches, lights, emitters, ambient, cache, bvh, triAlbedo,
+      source: null, // per cache vertex, 9 floats: the light that bounce rays pick up
+      field: null,  // per cache vertex, 9 floats: the bounce irradiance there (bounce_from_cache)
+      rays: { shadow: 0, gather: 0, ao: 0 }, buildMs: performance.now() - t0,
+    };
+  }
+
+  // ------------------------------------------------------------ the receiver function
+
+  const DIRECT = 1, AMBIENT = 2, BOUNCE = 4, ALL = 7;
+  const _b = new Float64Array(6), _q = [0, 0, 0], _hit = { tri: 0, t: 0, u: 0, v: 0, back: false };
+
+  /**
+   * The one irradiance function. Everything baked (cache vertices, output
+   * vertices, lightmap texels, probe faces) is a call to this with a point, a
+   * normal and a seed key, so every output form agrees by construction.
+   * Adds into out[9] (lux per state, RGB) and returns the AO factor.
+   */
+  function irradiance(S, px, py, pz, nx, ny, nz, key, what, out, gatherRays) {
+    const set = S.settings, B = S.bvh, seed = set.seed >>> 0;
+    const ox = px + nx * set.bias_m, oy = py + ny * set.bias_m, oz = pz + nz * set.bias_m;
+    let ao = 1;
+    if (what & DIRECT) {
+      // Point lights with a radius: sample a disc facing the receiver (soft shadows).
+      for (let li = 0; li < S.lights.length; li++) {
+        const L = S.lights[li];
+        const cx = L.p[0] - px, cy = L.p[1] - py, cz = L.p[2] - pz;
+        const cd = Math.sqrt(cx * cx + cy * cy + cz * cz);
+        if (cd - L.r > L.range) continue;
+        if (cx * nx + cy * ny + cz * nz < -L.r) continue;
+        const wx = cx / cd, wy = cy / cd, wz = cz / cd;
+        basis(wx, wy, wz, _b);
+        const h = hash3(seed, key, 0x1000 + li), r1 = u01(h), r2 = u01(mix32(h));
+        const nsMax = L.r > 0 ? set.shadow_samples : 1;
+        let sum = 0, cnt = 0, vis = 0, tested = 0;
+        for (let k = 0; k < nsMax; k++) {
+          if (k === 4 && tested > 0 && (vis === 0 || vis === tested)) break; // umbra or fully lit: done
+          const a = frac(r1 + k * R2A), bb = frac(r2 + k * R2B);
+          const rr = L.r * Math.sqrt(a), ph = 6.283185307179586 * bb;
+          const qx = L.p[0] + rr * (Math.cos(ph) * _b[0] + Math.sin(ph) * _b[3]);
+          const qy = L.p[1] + rr * (Math.cos(ph) * _b[1] + Math.sin(ph) * _b[4]);
+          const qz = L.p[2] + rr * (Math.cos(ph) * _b[2] + Math.sin(ph) * _b[5]);
+          let dx = qx - ox, dy = qy - oy, dz = qz - oz;
+          const d2 = dx * dx + dy * dy + dz * dz, d = Math.sqrt(d2);
+          dx /= d; dy /= d; dz /= d;
+          cnt++;
+          const cosr = dx * nx + dy * ny + dz * nz;
+          if (cosr <= 0) continue;
+          let g = 1;
+          if (L.axis) { const ce = -(dx * L.axis[0] + dy * L.axis[1] + dz * L.axis[2]); if (ce <= 0) continue; g = Math.pow(ce, L.exp); }
+          const x = d / L.range, win = x >= 1 ? 0 : (1 - x * x * x * x) * (1 - x * x * x * x);
+          if (win <= 0) continue;
+          tested++; S.rays.shadow++;
+          if (occluded(B, ox, oy, oz, dx, dy, dz, d - 0.01)) continue;
+          vis++;
+          sum += (L.I * g * cosr * win) / Math.max(d2, 0.04);
+        }
+        if (sum > 0 && cnt > 0) {
+          const e = sum / cnt;
+          for (let c = 0; c < 9; c++) out[c] += e * L.st[c];
+        }
+      }
+      // Area emitters: sample points on the quad, cosine at both ends.
+      for (let ei = 0; ei < S.emitters.length; ei++) {
+        const E = S.emitters[ei];
+        const cx = E.centre[0] - px, cy = E.centre[1] - py, cz = E.centre[2] - pz;
+        const cd = Math.sqrt(cx * cx + cy * cy + cz * cz);
+        if (cd - E.halfDiag > E.range) continue;
+        if (cx * nx + cy * ny + cz * nz < -E.halfDiag) continue;
+        if (-(cx * E.n[0] + cy * E.n[1] + cz * E.n[2]) < -E.halfDiag) continue; // receiver behind the emitter
+        const h = hash3(seed, key, 0x2000 + ei), r1 = u01(h), r2 = u01(mix32(h));
+        const dA = E.area / E.ns;
+        let sum = 0;
+        for (let k = 0; k < E.ns; k++) {
+          const a = frac(r1 + k * R2A), bb = frac(r2 + k * R2B);
+          const qx = E.o[0] + a * E.u[0] + bb * E.v[0] + E.n[0] * 0.01;
+          const qy = E.o[1] + a * E.u[1] + bb * E.v[1] + E.n[1] * 0.01;
+          const qz = E.o[2] + a * E.u[2] + bb * E.v[2] + E.n[2] * 0.01;
+          let dx = qx - ox, dy = qy - oy, dz = qz - oz;
+          const d2 = dx * dx + dy * dy + dz * dz, d = Math.sqrt(d2);
+          dx /= d; dy /= d; dz /= d;
+          const cosr = dx * nx + dy * ny + dz * nz;
+          if (cosr <= 0) continue;
+          const ce = -(dx * E.n[0] + dy * E.n[1] + dz * E.n[2]);
+          if (ce <= 0) continue;
+          const x = d / E.range, win = x >= 1 ? 0 : (1 - x * x * x * x) * (1 - x * x * x * x);
+          if (win <= 0) continue;
+          S.rays.shadow++;
+          if (occluded(B, ox, oy, oz, dx, dy, dz, d - 0.012)) continue;
+          sum += (E.L * (E.exp === 1 ? ce : Math.pow(ce, E.exp)) * cosr * dA * win) / Math.max(d2, dA);
+        }
+        if (sum > 0) for (let c = 0; c < 9; c++) out[c] += sum * E.st[c];
+      }
+    }
+    if ((what & AMBIENT) && set.ao) {
+      basis(nx, ny, nz, _b);
+      const h = hash3(seed, key, 0x3000), r1 = u01(h), r2 = u01(mix32(h));
+      let open = 0;
+      for (let k = 0; k < set.ao_rays; k++) {
+        const a = frac(r1 + k * R2A), bb = frac(r2 + k * R2B);
+        const rr = Math.sqrt(a), ph = 6.283185307179586 * bb, lz = Math.sqrt(1 - a);
+        const lx = rr * Math.cos(ph), ly = rr * Math.sin(ph);
+        S.rays.ao++;
+        if (!occluded(B, ox, oy, oz, lx * _b[0] + ly * _b[3] + lz * nx, lx * _b[1] + ly * _b[4] + lz * ny, lx * _b[2] + ly * _b[5] + lz * nz, set.ao_radius_m)) open++;
+      }
+      ao = open / set.ao_rays;
+    }
+    if (what & AMBIENT) for (let c = 0; c < 9; c++) out[c] += S.ambient[c] * ao;
+    if ((what & BOUNCE) && S.source && set.bounces > 0) {
+      basis(nx, ny, nz, _b);
+      const h = hash3(seed, key, 0x4000), r1 = u01(h), r2 = u01(mix32(h));
+      const src = S.source, I = S.cache.indices, alb = S.triAlbedo, n = gatherRays || set.gather_rays;
+      let a0 = 0, a1 = 0, a2 = 0, a3 = 0, a4 = 0, a5 = 0, a6 = 0, a7 = 0, a8 = 0;
+      for (let k = 0; k < n; k++) {
+        const a = frac(r1 + k * R2A), bb = frac(r2 + k * R2B);
+        const rr = Math.sqrt(a), ph = 6.283185307179586 * bb, lz = Math.sqrt(1 - a);
+        const lx = rr * Math.cos(ph), ly = rr * Math.sin(ph);
+        S.rays.gather++;
+        if (!closest(B, ox, oy, oz, lx * _b[0] + ly * _b[3] + lz * nx, lx * _b[1] + ly * _b[4] + lz * ny, lx * _b[2] + ly * _b[5] + lz * nz, 80, _hit)) continue;
+        if (_hit.back) continue; // the back of a surface is inside a wall or a prop: no light there
+        const t = _hit.tri, w0 = 1 - _hit.u - _hit.v, w1 = _hit.u, w2 = _hit.v;
+        const i0 = I[t * 3] * 9, i1 = I[t * 3 + 1] * 9, i2 = I[t * 3 + 2] * 9;
+        const ar = alb[t * 3], ag = alb[t * 3 + 1], ab = alb[t * 3 + 2];
+        a0 += ar * (w0 * src[i0] + w1 * src[i1] + w2 * src[i2]);
+        a1 += ag * (w0 * src[i0 + 1] + w1 * src[i1 + 1] + w2 * src[i2 + 1]);
+        a2 += ab * (w0 * src[i0 + 2] + w1 * src[i1 + 2] + w2 * src[i2 + 2]);
+        a3 += ar * (w0 * src[i0 + 3] + w1 * src[i1 + 3] + w2 * src[i2 + 3]);
+        a4 += ag * (w0 * src[i0 + 4] + w1 * src[i1 + 4] + w2 * src[i2 + 4]);
+        a5 += ab * (w0 * src[i0 + 5] + w1 * src[i1 + 5] + w2 * src[i2 + 5]);
+        a6 += ar * (w0 * src[i0 + 6] + w1 * src[i1 + 6] + w2 * src[i2 + 6]);
+        a7 += ag * (w0 * src[i0 + 7] + w1 * src[i1 + 7] + w2 * src[i2 + 7]);
+        a8 += ab * (w0 * src[i0 + 8] + w1 * src[i1 + 8] + w2 * src[i2 + 8]);
+      }
+      // Cosine-weighted sampling: E = (1/N) sum of albedo x E(hit). The pi of the
+      // cosine pdf cancels the 1/pi of a diffuse surface's radiance.
+      out[0] += a0 / n; out[1] += a1 / n; out[2] += a2 / n; out[3] += a3 / n; out[4] += a4 / n;
+      out[5] += a5 / n; out[6] += a6 / n; out[7] += a7 / n; out[8] += a8 / n;
+    }
+    return ao;
+  }
+
+  // ------------------------------------------------------------ async plumbing
+
+  function yielder(S, onProgress) {
+    let last = performance.now();
+    return async (frac) => {
+      const now = performance.now();
+      if (now - last >= S.settings.yield_ms) {
+        if (onProgress) onProgress(frac);
+        await new Promise((r) => setTimeout(r, 0));
+        last = performance.now();
+      }
+    };
+  }
+
+  /**
+   * Light the irradiance cache: direct light at every cache vertex (what
+   * bounce rays pick up), then, for two bounces, one gather pass over it.
+   * With bounce_from_cache, one more gather (cache_gather_rays per vertex)
+   * stores the bounce irradiance itself at every cache vertex, and outputs
+   * interpolate it instead of gathering per sample. Call once per scene (and
+   * per change of bounce count) before baking outputs.
+   */
+  async function prepare(S, onProgress) {
+    const t0 = performance.now(), set = S.settings;
+    const C = S.cache, nv = C.vertexCount, src = new Float32Array(nv * 9), tmp = new Float32Array(9), p = [0, 0, 0];
+    const y = yielder(S, onProgress);
+    const passes = 1 + (set.bounces > 1 ? 1 : 0) + (set.bounce_from_cache ? 1 : 0);
+    let pass = 0;
+    const gatherPass = async (from, rays, salt) => {
+      const out = new Float32Array(nv * 9);
+      S.source = from;
+      for (let i = 0; i < nv; i++) {
+        const P = S.patches[C.patchOfVertex[i]];
+        if (P.cheap) continue;
+        pointOn(P, C.st[i * 2], C.st[i * 2 + 1], set.inset_m, p);
+        tmp.fill(0);
+        irradiance(S, p[0], p[1], p[2], P.n[0], P.n[1], P.n[2], mix32(C.keys[i] ^ salt), BOUNCE, tmp, rays);
+        out.set(tmp, i * 9);
+        if ((i & 31) === 0) await y((pass + i / nv) / passes);
+      }
+      pass++;
+      return out;
+    };
+    S.source = null; S.field = null;
+    if (set.bounces > 0) {
+      for (let i = 0; i < nv; i++) {
+        const P = S.patches[C.patchOfVertex[i]];
+        if (P.cheap) continue;   // a cheap patch casts shadows but neither sends nor gathers bounce (its source stays 0)
+        pointOn(P, C.st[i * 2], C.st[i * 2 + 1], set.inset_m, p);
+        tmp.fill(0);
+        irradiance(S, p[0], p[1], p[2], P.n[0], P.n[1], P.n[2], C.keys[i], DIRECT, tmp);
+        src.set(tmp, i * 9);
+        if ((i & 63) === 0) await y(i / nv / passes);
+      }
+      pass++;
+      let from = src;
+      if (set.bounces > 1) {
+        const g = await gatherPass(src, set.gather_rays, 0x5bd1e995);
+        const second = new Float32Array(nv * 9);
+        for (let k = 0; k < second.length; k++) second[k] = src[k] + g[k];
+        from = second;
+      }
+      if (set.bounce_from_cache) {
+        S.field = await gatherPass(from, set.cache_gather_rays, 0x27d4eb2f);
+        for (let k = 0; k < set.cache_filter; k++) filterField(C, S.field);
+      }
+      S.source = from;
+    }
+    S.prepareMs = performance.now() - t0;
+    return S;
+  }
+
+  /**
+   * One pass of a 3 x 3 tent filter (weights 1 2 1) over each quad patch's
+   * cache grid, never across patches, so bounce does not leak round a corner.
+   * A few bright pools seen by a few gather rays make a splotchy field (the
+   * classic irradiance-cache artefact); this trades it for softness that
+   * bounce light has anyway.
+   */
+  function filterField(C, F) {
+    for (const g of C.grids || []) {
+      if (!g) continue;
+      const W = g.nu + 1, H = g.nv + 1, src = F.slice(g.base * 9, (g.base + W * H) * 9);
+      for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+        const acc = new Float64Array(9); let wsum = 0;
+        for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+          const x = i + di, y = j + dj;
+          if (x < 0 || y < 0 || x >= W || y >= H) continue;
+          const w = (2 - Math.abs(di)) * (2 - Math.abs(dj)), o = (y * W + x) * 9;
+          for (let k = 0; k < 9; k++) acc[k] += w * src[o + k];
+          wsum += w;
+        }
+        const o = (g.base + j * W + i) * 9;
+        for (let k = 0; k < 9; k++) F[o + k] = acc[k] / wsum;
+      }
+    }
+  }
+
+  /**
+   * Add the cached bounce at (s, t) on patch pi into out[9], bilinear between
+   * the four cache vertices around it. Returns false when there is no cached
+   * value there (no field, or a triangle patch), and the caller gathers.
+   */
+  function bounceAt(S, pi, s, t, out) {
+    const g = S.field && S.cache.grids ? S.cache.grids[pi] : null;
+    if (!g) return false;
+    const x = Math.min(g.nu, Math.max(0, s * g.nu)), yy = Math.min(g.nv, Math.max(0, t * g.nv));
+    const i = Math.min(g.nu - 1, Math.floor(x)), j = Math.min(g.nv - 1, Math.floor(yy)), fx = x - i, fy = yy - j;
+    const a = (g.base + j * (g.nu + 1) + i) * 9, b = a + 9, c = a + (g.nu + 1) * 9, d = c + 9, F = S.field;
+    const wa = (1 - fx) * (1 - fy), wb = fx * (1 - fy), wc = (1 - fx) * fy, wd = fx * fy;
+    for (let k = 0; k < 9; k++) out[k] += wa * F[a + k] + wb * F[b + k] + wc * F[c + k] + wd * F[d + k];
+    return true;
+  }
+
+  /** All light at a point on patch pi: direct and ambient here, bounce from the cache where it has one. Returns AO. */
+  function receive(S, pi, s, t, pt, key, out) {
+    const P = S.patches[pi];
+    if (S.field && S.cache.grids && S.cache.grids[pi]) {
+      const ao = irradiance(S, pt[0], pt[1], pt[2], P.n[0], P.n[1], P.n[2], key, DIRECT | AMBIENT, out);
+      bounceAt(S, pi, s, t, out);
+      return ao;
+    }
+    return irradiance(S, pt[0], pt[1], pt[2], P.n[0], P.n[1], P.n[2], key, ALL, out);
+  }
+
+  // ------------------------------------------------------------ encoding
+
+  /** Encode 9-float lux records (one per sample) into three RGBA8 sets; alpha holds AO. */
+  function encodeSets(S, E, ao, keys) {
+    const n = ao.length, ref = S.settings.reference_lux, sets = {};
+    STATES.forEach((name, s) => {
+      const out = new Uint8Array(n * 4);
+      for (let i = 0; i < n; i++) {
+        for (let c = 0; c < 3; c++) {
+          const d = S.settings.dither ? u01(hash3(S.settings.seed, keys[i], 0x6000 + s * 3 + c)) : 0.5;
+          out[i * 4 + c] = toByte(encodeLevel(E[i * 9 + s * 3 + c] / ref), d);
+        }
+        out[i * 4 + 3] = toByte(ao[i] * OVERBRIGHT, 0.5);
+      }
+      sets[name] = out;
+    });
+    return sets;
+  }
+
+  // ------------------------------------------------------------ outputs: vertices
+
+  /** Bake every vertex of a mesh (from tessellate). Returns { sets, stats }. */
+  async function bakeVertices(S, mesh, onProgress) {
+    const t0 = performance.now(), r0 = Object.assign({}, S.rays);
+    const nv = mesh.vertexCount, E = new Float32Array(nv * 9), ao = new Float32Array(nv), tmp = new Float32Array(9), p = [0, 0, 0];
+    const y = yielder(S, onProgress);
+    for (let i = 0; i < nv; i++) {
+      const pi = mesh.patchOfVertex[i], P = S.patches[pi], s = mesh.st[i * 2], t = mesh.st[i * 2 + 1];
+      pointOn(P, s, t, S.settings.inset_m, p);
+      tmp.fill(0);
+      ao[i] = receive(S, pi, s, t, p, mesh.keys[i], tmp);
+      E.set(tmp, i * 9);
+      if ((i & 15) === 0) await y(i / nv);
+    }
+    return { sets: encodeSets(S, E, ao, mesh.keys), E, ao, stats: stats(S, t0, r0, nv, "vertices") };
+  }
+
+  function stats(S, t0, r0, samples, what) {
+    const r = S.rays;
+    const rays = (r.shadow - r0.shadow) + (r.gather - r0.gather) + (r.ao - r0.ao);
+    const ms = performance.now() - t0;
+    return { ms, samples, what, rays, shadowRays: r.shadow - r0.shadow, gatherRays: r.gather - r0.gather, aoRays: r.ao - r0.ao,
+      raysPerSecond: ms > 0 ? (rays * 1000) / ms : 0 };
+  }
+
+  // ------------------------------------------------------------ outputs: adaptive subdivision
+
+  /**
+   * Adaptive subdivision for vertex lighting. Each quad patch starts as a grid
+   * of about base_m; a cell splits into four (down to min_m) while the light
+   * at its centre or edge midpoints differs from what its corners would
+   * interpolate by more than max_error_levels (8-bit display levels, worst
+   * lighting state), highest error first, until max_added_triangles is spent.
+   * The quadtree is then balanced (neighbours differ by at most one level) and
+   * cells with a finer neighbour are fanned from their centre, so the mesh has
+   * no T-junctions inside a patch. Refinement looks at direct light and AO;
+   * bounce, which is smooth, is added to the final vertices only.
+   *
+   * opts: base_m, min_m, max_error_levels, max_added_triangles.
+   * Returns { mesh, sets, stats: { ..., baseTriangles, triangles, splits, capped, maxResidual } }.
+   */
+  async function bakeAdaptive(S, opts, onProgress) {
+    const t0 = performance.now(), r0 = Object.assign({}, S.rays);
+    const set = S.settings, ref = set.reference_lux, y = yielder(S, onProgress);
+    const LMAX = 4, F = 1 << LMAX;
+    const pts = [], cells = [];
+    const heap = [];
+    const push = (c) => { heap.push(c); let i = heap.length - 1; while (i > 0) { const pa = (i - 1) >> 1; if (heap[pa].err >= heap[i].err) break; [heap[pa], heap[i]] = [heap[i], heap[pa]]; i = pa; } };
+    const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l].err > heap[m].err) m = l; if (r < heap.length && heap[r].err > heap[m].err) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+    const tmp = new Float32Array(9), pp = [0, 0, 0];
+    let evals = 0;
+    // Per patch: a vertex cache keyed by fine-grid coordinates, and the cell tree.
+    const P = S.patches.map((p, pi) => {
+      if (!p.receive) return null;
+      const nu = p.tri ? 1 : Math.max(1, Math.round(p.lenU / opts.base_m)), nv = p.tri ? 1 : Math.max(1, Math.round(p.lenV / opts.base_m));
+      const cell = Math.min(p.lenU / nu, p.lenV / nv);
+      const lmax = p.tri ? 0 : Math.max(0, Math.min(LMAX, Math.floor(Math.log2(cell / opts.min_m) + 1e-9)));
+      return { pi, p, nu, nv, lmax, W: nu * F, H: nv * F, verts: new Map(), split: new Set(), cls: new Map(), extra: new Map() };
+    });
+    function evalVertex(R, s, t, key, base) {
+      pointOn(R.p, s, t, set.inset_m, pp);
+      tmp.fill(0);
+      const ao = irradiance(S, pp[0], pp[1], pp[2], R.p.n[0], R.p.n[1], R.p.n[2], key, DIRECT | AMBIENT, tmp);
+      evals++;
+      return Object.assign(base, { s, t, key, E: Float32Array.from(tmp), ao, lv: [level8(tmp, 0, ref), level8(tmp, 1, ref), level8(tmp, 2, ref)], out: -1 });
+    }
+    function vertex(R, gx, gy) {
+      const k = gx + gy * (R.W + 1);
+      let v = R.verts.get(k);
+      if (v) return v;
+      v = evalVertex(R, gx / R.W, gy / R.H, hash3(R.pi, gx, gy), { gx, gy });
+      R.verts.set(k, v);
+      return v;
+    }
+    // A polygon patch: where a cell lies against its polygon ("in", "out" or "part"), and the
+    // vertices its edges cut into cells (metres along u and v).
+    function classify(R, L, i, j) {
+      if (!R.p.poly) return "in";
+      const id = L + "," + i + "," + j;
+      let c = R.cls.get(id);
+      if (c) return c;
+      const k = F >> L, fw = R.p.lenU / R.W, fh = R.p.lenV / R.H;
+      const x0 = i * k * fw, x1 = (i + 1) * k * fw, y0 = j * k * fh, y1 = (j + 1) * k * fh;
+      if (insidePolygon(R.p, x0, y0) && insidePolygon(R.p, x1, y0) && insidePolygon(R.p, x1, y1) && insidePolygon(R.p, x0, y1)) c = "in";
+      else c = clipToPolygon(R.p, [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]).length ? "part" : "out";
+      R.cls.set(id, c);
+      return c;
+    }
+    function pointVertex(R, x, y) {
+      const fw = R.p.lenU / R.W, fh = R.p.lenV / R.H, gx = Math.round(x / fw), gy = Math.round(y / fh);
+      if (Math.abs(x - gx * fw) < 1e-6 && Math.abs(y - gy * fh) < 1e-6 && gx >= 0 && gx <= R.W && gy >= 0 && gy <= R.H) return vertex(R, gx, gy);
+      const qx = Math.round(x * 1e5), qy = Math.round(y * 1e5), k = qx * 1e7 + qy;
+      let v = R.extra.get(k);
+      if (!v) { v = evalVertex(R, x / R.p.lenU, y / R.p.lenV, hash3(R.pi, 0x40000000 + (qx & 0xfffffff), qy), {}); R.extra.set(k, v); }
+      return v;
+    }
+    function cellError(R, L, i, j) {
+      if (L >= R.lmax) return 0;
+      if (classify(R, L, i, j) === "out") return 0;
+      const k = F >> L, x0 = i * k, y0 = j * k, x1 = x0 + k, y1 = y0 + k, xm = x0 + k / 2, ym = y0 + k / 2;
+      const c00 = vertex(R, x0, y0), c10 = vertex(R, x1, y0), c01 = vertex(R, x0, y1), c11 = vertex(R, x1, y1);
+      const tests = [[vertex(R, xm, ym), [c00, c10, c01, c11]], [vertex(R, xm, y0), [c00, c10]], [vertex(R, xm, y1), [c01, c11]],
+        [vertex(R, x0, ym), [c00, c01]], [vertex(R, x1, ym), [c10, c11]]];
+      let err = 0;
+      for (const [m, cs] of tests) for (let s = 0; s < NS; s++) {
+        let avg = 0; for (const c of cs) avg += c.lv[s]; avg /= cs.length;
+        const e = Math.abs(m.lv[s] - avg); if (e > err) err = e;
+      }
+      return err;
+    }
+    // Base grids.
+    let leaves = 0;
+    for (const R of P) {
+      if (!R) continue;
+      for (let j = 0; j < R.nv; j++) for (let i = 0; i < R.nu; i++) {
+        if (classify(R, 0, i, j) === "out") continue;
+        push({ R, L: 0, i, j, err: cellError(R, 0, i, j) }); leaves++;
+      }
+      await y(0.1);
+    }
+    const baseTriangles = 2 * leaves;
+    let splits = 0, capped = false, maxResidual = 0;
+    const cap = opts.max_added_triangles;
+    while (heap.length) {
+      const c = pop();
+      if (c.err <= opts.max_error_levels) { maxResidual = Math.max(maxResidual, c.err); break; }
+      if (6 * (splits + 1) > cap) { capped = true; maxResidual = Math.max(maxResidual, c.err); break; }
+      c.R.split.add(c.L + "," + c.i + "," + c.j);
+      splits++;
+      for (let dj = 0; dj < 2; dj++) for (let di = 0; di < 2; di++) {
+        const L = c.L + 1, i = c.i * 2 + di, j = c.j * 2 + dj;
+        push({ R: c.R, L, i, j, err: cellError(c.R, L, i, j) });
+      }
+      if ((splits & 7) === 0) await y(0.1 + 0.6 * Math.min(1, (6 * splits) / Math.max(1, cap)));
+    }
+    if (heap.length && !capped) for (const c of heap) maxResidual = Math.max(maxResidual, c.err);
+    // Balance: no leaf may touch a neighbour split two levels finer.
+    const isSplit = (R, L, i, j) => R.split.has(L + "," + i + "," + j);
+    let changed = true, forced = 0;
+    while (changed) {
+      changed = false;
+      for (const R of P) {
+        if (!R) continue;
+        const leafList = [];
+        collectLeaves(R, leafList);
+        for (const [L, i, j] of leafList) {
+          const nb = [[i + 1, j, (a) => [[2 * (i + 1), 2 * j + a]]], [i - 1, j, (a) => [[2 * (i - 1) + 1, 2 * j + a]]],
+            [i, j + 1, (a) => [[2 * i + a, 2 * (j + 1)]]], [i, j - 1, (a) => [[2 * i + a, 2 * (j - 1) + 1]]]];
+          let must = false;
+          for (const [ni, nj, kids] of nb) {
+            if (!isSplit(R, L, ni, nj)) continue;
+            for (let a = 0; a < 2 && !must; a++) { const [[ki, kj]] = kids(a); if (isSplit(R, L + 1, ki, kj)) must = true; }
+            if (must) break;
+          }
+          if (must && L < LMAX) { R.split.add(L + "," + i + "," + j); forced++; changed = true; }
+        }
+      }
+    }
+    function collectLeaves(R, list) {
+      const walk = (L, i, j) => { if (isSplit(R, L, i, j)) { for (let dj = 0; dj < 2; dj++) for (let di = 0; di < 2; di++) walk(L + 1, 2 * i + di, 2 * j + dj); } else list.push([L, i, j]); };
+      for (let j = 0; j < R.nv; j++) for (let i = 0; i < R.nu; i++) walk(0, i, j);
+    }
+    // Triangulate.
+    const b = meshBuilder(); b.keys = [];
+    const outVerts = [];
+    const vid = (R, v) => {
+      if (v.out < 0) { v.out = b.pv.length; const p = R.p; b.pos.push(p.o[0] + v.s * p.u[0] + v.t * p.v[0], p.o[1] + v.s * p.u[1] + v.t * p.v[1], p.o[2] + v.s * p.u[2] + v.t * p.v[2]); b.st.push(v.s, v.t); b.pv.push(R.pi); b.keys.push(v.key); outVerts.push(v); }
+      return v.out;
+    };
+    for (const R of P) {
+      if (!R) continue;
+      if (R.p.tri) {
+        const a = vertex(R, 0, 0), c = vertex(R, R.W, 0), d = vertex(R, 0, R.H);
+        b.idx.push(vid(R, a), vid(R, c), vid(R, d)); b.tp.push(R.pi); continue;
+      }
+      const list = []; collectLeaves(R, list);
+      // A triangle of vertex objects into the mesh; on a polygon patch's edge cell, cut to the polygon first.
+      const emit = (cls, a, c, d) => {
+        if (cls === "in") { b.idx.push(vid(R, a), vid(R, c), vid(R, d)); b.tp.push(R.pi); return; }
+        const cut = clipToPolygon(R.p, [a, c, d].map((v) => [v.s * R.p.lenU, v.t * R.p.lenV]));
+        const vs = cut.map((q) => pointVertex(R, q[0], q[1]));
+        for (let q = 1; q + 1 < vs.length; q++) {
+          if (vs[0] === vs[q] || vs[q] === vs[q + 1] || vs[0] === vs[q + 1]) continue;
+          b.idx.push(vid(R, vs[0]), vid(R, vs[q]), vid(R, vs[q + 1])); b.tp.push(R.pi);
+        }
+      };
+      for (const [L, i, j] of list) {
+        const cls = classify(R, L, i, j);
+        if (cls === "out") continue;
+        const k = F >> L, x0 = i * k, y0 = j * k, x1 = x0 + k, y1 = y0 + k, h = k / 2;
+        const hang = [isSplit(R, L, i, j - 1), isSplit(R, L, i + 1, j), isSplit(R, L, i, j + 1), isSplit(R, L, i - 1, j)];
+        const c00 = vertex(R, x0, y0), c10 = vertex(R, x1, y0), c11 = vertex(R, x1, y1), c01 = vertex(R, x0, y1);
+        if (!hang.some(Boolean)) {
+          // Split along the diagonal whose ends agree best (fewer zig-zags in gradients).
+          const d1 = Math.abs(c00.lv[0] - c11.lv[0]), d2 = Math.abs(c10.lv[0] - c01.lv[0]);
+          if (d1 <= d2) { emit(cls, c00, c10, c11); emit(cls, c00, c11, c01); } else { emit(cls, c00, c10, c01); emit(cls, c10, c11, c01); }
+        } else {
+          const ring = [c00]; if (hang[0]) ring.push(vertex(R, x0 + h, y0));
+          ring.push(c10); if (hang[1]) ring.push(vertex(R, x1, y0 + h));
+          ring.push(c11); if (hang[2]) ring.push(vertex(R, x0 + h, y1));
+          ring.push(c01); if (hang[3]) ring.push(vertex(R, x0, y0 + h));
+          const cc = vertex(R, x0 + h, y0 + h);
+          for (let q = 0; q < ring.length; q++) emit(cls, cc, ring[q], ring[(q + 1) % ring.length]);
+        }
+      }
+      await y(0.75);
+    }
+    const mesh = finishMesh(b, S.patches);
+    // Final pass: add the bounce to the vertices that made it into the mesh.
+    const E = new Float32Array(mesh.vertexCount * 9), ao = new Float32Array(mesh.vertexCount);
+    for (let n = 0; n < outVerts.length; n++) {
+      const v = outVerts[n], R = P[mesh.patchOfVertex[n]];
+      E.set(v.E, n * 9); ao[n] = v.ao;
+      if (S.source && set.bounces > 0) {
+        tmp.fill(0);
+        if (!bounceAt(S, R.pi, v.s, v.t, tmp)) {
+          pointOn(R.p, v.s, v.t, set.inset_m, pp);
+          irradiance(S, pp[0], pp[1], pp[2], R.p.n[0], R.p.n[1], R.p.n[2], v.key, BOUNCE, tmp);
+        }
+        for (let c = 0; c < 9; c++) E[n * 9 + c] += tmp[c];
+      }
+      if ((n & 15) === 0) await y(0.8 + 0.2 * n / outVerts.length);
+    }
+    const st = stats(S, t0, r0, evals, "adaptive");
+    Object.assign(st, { baseTriangles, triangles: mesh.triangleCount, splits, forced, capped, maxResidual, evaluated: evals });
+    return { mesh, sets: encodeSets(S, E, ao, mesh.keys), E, ao, stats: st };
+  }
+
+  // ------------------------------------------------------------ outputs: lightmap atlas
+
+  /**
+   * Bake a lightmap: every receiving patch gets a block of texels of at most
+   * texel_m on a side plus a one-texel gutter (copied from the edge, so
+   * bilinear filtering never reads a neighbour's light), shelf-packed into a
+   * power-of-two-wide atlas. The mesh is the deck density (one quad per patch)
+   * with a second UV set. Returns { mesh, atlas: { width, height, sets }, stats }.
+   */
+  async function bakeLightmap(S, opts, onProgress) {
+    const t0 = performance.now(), r0 = Object.assign({}, S.rays);
+    const texel = opts.texel_m, set = S.settings, y = yielder(S, onProgress);
+    const rects = [];
+    S.patches.forEach((p, pi) => {
+      if (!p.receive) return;
+      const nu = Math.max(1, Math.ceil(p.lenU / texel - 1e-6)), nv = Math.max(1, Math.ceil(p.lenV / texel - 1e-6));
+      rects.push({ pi, p, nu, nv, w: nu + 2, h: nv + 2, x: 0, y: 0 });
+    });
+    let area = 0, widest = 0; for (const r of rects) { area += r.w * r.h; widest = Math.max(widest, r.w); }
+    let W = 64; while (W * W < area * 1.25 || W < widest) W *= 2;
+    const order = rects.slice().sort((a, b) => b.h - a.h || b.w - a.w || a.pi - b.pi);
+    let x = 0, yy = 0, shelf = 0;
+    for (const r of order) {
+      if (x + r.w > W) { x = 0; yy += shelf; shelf = 0; }
+      r.x = x; r.y = yy; x += r.w; shelf = Math.max(shelf, r.h);
+    }
+    const H = yy + shelf;
+    const texels = rects.reduce((n, r) => n + r.nu * r.nv, 0);
+    const E = new Float32Array(W * H * 9), AO = new Float32Array(W * H), keys = new Uint32Array(W * H);
+    const tmp = new Float32Array(9), pp = [0, 0, 0];
+    let done = 0;
+    for (const r of rects) {
+      const p = r.p;
+      for (let j = 0; j < r.nv; j++) for (let i = 0; i < r.nu; i++) {
+        const s = (i + 0.5) / r.nu, t = (j + 0.5) / r.nv;
+        pointOn(p, s, t, set.inset_m, pp);
+        tmp.fill(0);
+        const key = hash3(r.pi, 0x10000 + i, j);
+        const a = receive(S, r.pi, s, t, pp, key, tmp);
+        const at = (r.y + 1 + j) * W + (r.x + 1 + i);
+        E.set(tmp, at * 9); AO[at] = a; keys[at] = key;
+        done++;
+        if ((done & 15) === 0) await y(done / texels);
+      }
+      // Gutter: copy the nearest inner texel (corners included).
+      for (let j = -1; j <= r.nv; j++) for (let i = -1; i <= r.nu; i++) {
+        if (i >= 0 && i < r.nu && j >= 0 && j < r.nv) continue;
+        const ci = Math.min(r.nu - 1, Math.max(0, i)), cj = Math.min(r.nv - 1, Math.max(0, j));
+        const from = (r.y + 1 + cj) * W + (r.x + 1 + ci), to = (r.y + 1 + j) * W + (r.x + 1 + i);
+        for (let c = 0; c < 9; c++) E[to * 9 + c] = E[from * 9 + c];
+        AO[to] = AO[from]; keys[to] = keys[from];
+      }
+    }
+    // Mesh: one quad per receiving patch, second UV set into its block.
+    const b = meshBuilder(); b.keys = []; b.uv2 = [];
+    for (const r of rects) {
+      const p = r.p, base = b.pv.length;
+      // A polygon patch draws its polygon (fanned) over its rectangle's block; texels outside
+      // the polygon read the light at its edge (pointOn), so they serve as its gutter.
+      const corners = p.poly ? p.poly : p.tri ? [[0, 0], [1, 0], [0, 1]] : [[0, 0], [1, 0], [1, 1], [0, 1]];
+      corners.forEach(([s, t], k) => {
+        b.pos.push(p.o[0] + s * p.u[0] + t * p.v[0], p.o[1] + s * p.u[1] + t * p.v[1], p.o[2] + s * p.u[2] + t * p.v[2]);
+        b.st.push(s, t); b.pv.push(r.pi); b.keys.push(p.poly ? hash3(r.pi, 0x9000 + k, 7) : hash3(r.pi, s * 7, t * 7));
+        b.uv2.push((r.x + 1 + s * r.nu) / W, (r.y + 1 + t * r.nv) / H);
+      });
+      for (let k = 1; k + 1 < corners.length; k++) { b.idx.push(base, base + k, base + k + 1); b.tp.push(r.pi); }
+    }
+    const mesh = finishMesh(b, S.patches);
+    const st = stats(S, t0, r0, texels, "lightmap");
+    const bytesRGBA8 = W * H * 4 * NS;
+    Object.assign(st, { texels, width: W, height: H, bytes: bytesRGBA8, fill: texels / (W * H) });
+    return { mesh, atlas: { width: W, height: H, sets: encodeSets(S, E, AO, keys), texel_m: texel }, stats: st };
+  }
+
+  // ------------------------------------------------------------ probes
+
+  const AXES = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+
+  /**
+   * An ambient cube at a point (Half-Life 2's six-colour probe): the
+   * irradiance a surface facing +X, -X, +Y, -Y, +Z and -Z would receive there,
+   * from the same irradiance function as the walls. Returns Float32Array(54):
+   * axis-major, then state, then RGB, in lux.
+   */
+  function probeCube(S, point, key) {
+    const out = new Float32Array(54), tmp = new Float32Array(9);
+    AXES.forEach((a, i) => {
+      tmp.fill(0);
+      irradiance(S, point[0] - a[0] * S.settings.bias_m, point[1] - a[1] * S.settings.bias_m, point[2] - a[2] * S.settings.bias_m,
+        a[0], a[1], a[2], hash3(key >>> 0, 0x7000, i), ALL, tmp);
+      out.set(tmp, i * 9);
+    });
+    return out;
+  }
+
+  /** Encode an ambient cube for one state into six display colours (0..OVERBRIGHT). */
+  function cubeDisplay(S, cube, state) {
+    const s = STATES.indexOf(state), ref = S.settings.reference_lux, out = [];
+    for (let i = 0; i < 6; i++) out.push([0, 1, 2].map((c) => encodeLevel(cube[i * 9 + s * 3 + c] / ref)));
+    return out;
+  }
+
+  // ------------------------------------------------------------ digest
+
+  /** FNV-1a over byte arrays, as 8 hex digits: two bakes with one seed must match. */
+  function digest(arrays) {
+    let h = 0x811c9dc5;
+    for (const a of arrays) for (let i = 0; i < a.length; i++) { h ^= a[i]; h = Math.imul(h, 0x01000193); }
+    return (h >>> 0).toString(16).padStart(8, "0");
+  }
+
+  // ------------------------------------------------------------ three.js adapters
+
+  /** BufferGeometry with position, normal, albedo (sRGB) and, when given, colN/colR/colE (RGBA8, normalized) and lmuv. */
+  function toGeometry(THREE, mesh, sets) {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.BufferAttribute(mesh.positions, 3));
+    g.setAttribute("normal", new THREE.BufferAttribute(mesh.normals, 3));
+    g.setAttribute("albedo", new THREE.BufferAttribute(mesh.display, 3));
+    const lin = new Float32Array(mesh.display.length);
+    for (let i = 0; i < lin.length; i++) lin[i] = srgbToLinear(mesh.display[i]);
+    g.setAttribute("color", new THREE.BufferAttribute(lin, 3)); // for three's own materials (linear)
+    if (sets) {
+      g.setAttribute("colN", new THREE.BufferAttribute(sets.normal, 4, true));
+      g.setAttribute("colR", new THREE.BufferAttribute(sets.red_alert, 4, true));
+      g.setAttribute("colE", new THREE.BufferAttribute(sets.emergency, 4, true));
+    }
+    if (mesh.uv2) g.setAttribute("lmuv", new THREE.BufferAttribute(mesh.uv2, 2));
+    g.setIndex(new THREE.BufferAttribute(mesh.indices, 1));
+    return g;
+  }
+
+  /**
+   * The deck shader the engine plans (engine-stack section 7, program 1),
+   * reduced to what a mockup needs: three baked colour sets blended by a
+   * per-compartment weight uniform, times the palette albedo. One texture-free
+   * path; the output is display sRGB already (light is stored gamma-encoded).
+   */
+  function vertexMaterial(THREE) {
+    return new THREE.ShaderMaterial({
+      uniforms: { stateW: { value: new THREE.Vector3(1, 0, 0) }, aoOnly: { value: 0 } },
+      vertexShader: `
+        attribute vec3 albedo; attribute vec4 colN; attribute vec4 colR; attribute vec4 colE;
+        uniform vec3 stateW; uniform float aoOnly; varying vec3 vCol;
+        void main() {
+          vec4 l = colN * stateW.x + colR * stateW.y + colE * stateW.z;
+          vCol = aoOnly > 0.5 ? vec3(l.a * ${OVERBRIGHT.toFixed(1)} * 0.5) : albedo * l.rgb * ${OVERBRIGHT.toFixed(1)};
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }`,
+      fragmentShader: `varying vec3 vCol; void main() { gl_FragColor = vec4(vCol, 1.0); }`,
+    });
+  }
+
+  /** Three RGBA8 DataTextures (one per state), bilinear, clamped, no mipmaps. */
+  function lightmapTextures(THREE, atlas) {
+    const out = {};
+    for (const s of STATES) {
+      const t = new THREE.DataTexture(atlas.sets[s], atlas.width, atlas.height, THREE.RGBAFormat, THREE.UnsignedByteType);
+      t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearFilter; t.generateMipmaps = false;
+      t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping; t.flipY = false; t.needsUpdate = true;
+      out[s] = t;
+    }
+    return out;
+  }
+
+  /**
+   * The lightmap variant of the deck shader: the same weights, three texture
+   * fetches (a real engine binds one, or two while a state crossfades).
+   * grid > 0 tints alternate texels, the debug view of texel density.
+   */
+  function lightmapMaterial(THREE, tex, atlas) {
+    return new THREE.ShaderMaterial({
+      uniforms: { stateW: { value: new THREE.Vector3(1, 0, 0) }, lmN: { value: tex.normal }, lmR: { value: tex.red_alert }, lmE: { value: tex.emergency },
+        lmSize: { value: new THREE.Vector2(atlas.width, atlas.height) }, grid: { value: 0 }, aoOnly: { value: 0 } },
+      vertexShader: `
+        attribute vec3 albedo; attribute vec2 lmuv; varying vec3 vAlb; varying vec2 vUv;
+        void main() { vAlb = albedo; vUv = lmuv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+      fragmentShader: `
+        uniform sampler2D lmN; uniform sampler2D lmR; uniform sampler2D lmE; uniform vec3 stateW; uniform vec2 lmSize; uniform float grid; uniform float aoOnly;
+        varying vec3 vAlb; varying vec2 vUv;
+        void main() {
+          vec4 l = texture2D(lmN, vUv) * stateW.x + texture2D(lmR, vUv) * stateW.y + texture2D(lmE, vUv) * stateW.z;
+          vec3 c = aoOnly > 0.5 ? vec3(l.a * ${OVERBRIGHT.toFixed(1)} * 0.5) : vAlb * l.rgb * ${OVERBRIGHT.toFixed(1)};
+          if (grid > 0.5) { vec2 cell = floor(vUv * lmSize); float k = mod(cell.x + cell.y, 2.0); c = mix(c, c * vec3(1.35, 0.75, 1.35) + vec3(0.05, 0.0, 0.05), k * 0.6); }
+          gl_FragColor = vec4(c, 1.0);
+        }`,
+    });
+  }
+
+  /**
+   * The deck shader as the engine plans it, on a textured surface: extends a ShipKit
+   * surface material (ShipKit.surfaceMaterial(THREE, mats, { lit: false }), the kit's
+   * Material Maker texture array times the vertex colour) so the vertex colour is the
+   * three baked sets blended by a per-compartment weight uniform (or, where a vertex's
+   * lmw is 1, the light from a lightmap atlas). base is modified and returned.
+   *
+   * Geometry attributes: colN, colR, colE (RGBA8, normalized: light, occlusion in alpha),
+   * lmuv (atlas UV), lmw (1 lightmapped, 0 vertex light), plus the kit's own. Stored
+   * light is display-space (gamma 2.2, 2x overbright), so the shader decodes it to the
+   * linear multiplier three.js works in: (2 c)^2.2.
+   * U holds uniform objects shared by every material made with it: stateW (Vector3),
+   * aoOnly (occlusion as grey), flat (0: textured; else a flat linear albedo instead of
+   * the texel, for views where the light itself is the point), grid (lightmap texel
+   * checker). lightmap: { textures, atlas } from lightmapTextures and bakeLightmap.
+   */
+  // TODO kit: ShipKit.surfaceMaterial could take the three baked sets and the weight uniform itself (it is
+  // the engine's deck shader); until then this extends its shader text, and throws if that text moves.
+  function bakedSurfaceMaterial(THREE, base, U, lightmap) {
+    const kitHook = base.onBeforeCompile;
+    const G = GAMMA.toFixed(1), OB = OVERBRIGHT.toFixed(1);
+    const lm = lightmap ? { lmN: { value: lightmap.textures.normal }, lmR: { value: lightmap.textures.red_alert }, lmE: { value: lightmap.textures.emergency },
+      lmSize: { value: new THREE.Vector2(lightmap.atlas.width, lightmap.atlas.height) } } : null;
+    const need = (src, s) => { if (src.indexOf(s) < 0) throw new Error("lightbake: shader text not found (ShipKit surfaceMaterial changed?): " + s); };
+    base.onBeforeCompile = (sh, renderer) => {
+      kitHook(sh, renderer);
+      Object.assign(sh.uniforms, { stateW: U.stateW, aoOnly: U.aoOnly, flatAlbedo: U.flat, lmGrid: U.grid }, lm || {});
+      need(sh.vertexShader, "#include <color_vertex>");
+      need(sh.fragmentShader, "diffuseColor.rgb *= surfTex.rgb;");
+      need(sh.fragmentShader, "#include <color_fragment>");
+      sh.vertexShader = sh.vertexShader
+        .replace("#include <common>", "#include <common>\nattribute vec4 colN;\nattribute vec4 colR;\nattribute vec4 colE;\nattribute vec2 lmuv;\nattribute float lmw;\nuniform vec3 stateW;\nuniform float aoOnly;\nvarying vec2 vLm;\nvarying float vLmw;")
+        .replace("#include <color_vertex>", `#include <color_vertex>
+          {
+            vec4 l = colN * stateW.x + colR * stateW.y + colE * stateW.z;
+            vec3 c = aoOnly > 0.5 ? vec3(l.a) : ${OB} * l.rgb;
+            vColor = mix(pow(c, vec3(${G})), vec3(1.0), lmw);
+            vLm = lmuv; vLmw = lmw;
+          }`);
+      let frag = sh.fragmentShader
+        .replace("#include <common>", "#include <common>\nuniform float flatAlbedo;\nuniform float aoOnly;\nuniform float lmGrid;\nvarying vec2 vLm;\nvarying float vLmw;" +
+          (lm ? "\nuniform sampler2D lmN;\nuniform sampler2D lmR;\nuniform sampler2D lmE;\nuniform vec2 lmSize;\nuniform vec3 stateW;" : ""))
+        .replace("diffuseColor.rgb *= surfTex.rgb;", "diffuseColor.rgb *= flatAlbedo > 0.0 ? vec3(flatAlbedo) : surfTex.rgb;");
+      if (lm) {
+        frag = frag.replace("#include <color_fragment>", `#include <color_fragment>
+          {
+            vec4 l = texture(lmN, vLm) * stateW.x + texture(lmR, vLm) * stateW.y + texture(lmE, vLm) * stateW.z;
+            vec3 c = aoOnly > 0.5 ? vec3(l.a) : ${OB} * l.rgb;
+            diffuseColor.rgb *= mix(vec3(1.0), pow(c, vec3(${G})), vLmw);
+            if (lmGrid > 0.5 && vLmw > 0.5) {
+              vec2 cell = floor(vLm * lmSize);
+              float k = mod(cell.x + cell.y, 2.0);
+              diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(2.4, 0.3, 2.4) + vec3(0.03, 0.0, 0.03), k * 0.8);
+            }
+          }`);
+      }
+      sh.fragmentShader = frag;
+    };
+    base.customProgramCacheKey = () => "lightbake-" + (lightmap ? "lightmap" : "vertex");
+    return base;
+  }
+
+  /** A canvas showing one state of an atlas (for a debug panel). */
+  function atlasCanvas(atlas, state) {
+    const cv = document.createElement("canvas"); cv.width = atlas.width; cv.height = atlas.height;
+    const ctx = cv.getContext("2d"), img = ctx.createImageData(atlas.width, atlas.height), src = atlas.sets[state];
+    for (let i = 0; i < atlas.width * atlas.height; i++) { img.data[i * 4] = src[i * 4]; img.data[i * 4 + 1] = src[i * 4 + 1]; img.data[i * 4 + 2] = src[i * 4 + 2]; img.data[i * 4 + 3] = 255; }
+    ctx.putImageData(img, 0, 0);
+    return cv;
+  }
+
+  window.LightBake = {
+    version: 2, STATES, DEFAULTS, GAMMA, OVERBRIGHT,
+    patch, boxPatches, orientedBoxPatches, polygonPatch, patchCorners, patchesFromGeometry, patchesFromTriangles,
+    tessellate, buildBVH, occluded, closest,
+    scene, prepare, irradiance, bounceAt, bakeVertices, bakeAdaptive, bakeLightmap, probeCube, cubeDisplay,
+    encodeLevel, srgbToLinear, hexToSrgb, hexToLinear, hash3, digest,
+    toGeometry, vertexMaterial, lightmapTextures, lightmapMaterial, bakedSurfaceMaterial, atlasCanvas,
+    DIRECT, AMBIENT, BOUNCE, ALL,
+  };
+})();
+</script>
+<!-- INLINE lib:lightbake END -->
 </head>
 <body>
 <div class="legend" id="legend"></div>
@@ -4076,11 +5664,23 @@ function suiteParts(parts, c, noCar) {
 // ------------------------------------------------------------------ build: one mesh per compartment, baked three ways
 // The bay doors are drawn closed (skipKinds), as the template does: the bay floors stay whole.
 /** Bake a mesh's light in the three states into its c0, c1 and c2 sets (lamps from the kit rule), lamp lenses and prop tints included. */
-function bakeStates(geo, lamps) {
+function bakeStates(geo, lamps, baked) {
   const states = [];
+  // With the bake (light-baking design 15), every vertex but the drawn lights (lenses, status strips, screens) takes
+  // its baked light times its tint; without it, the quick light of ShipKit.bakeDirect.
+  const keep = new Uint8Array(geo.attributes.position.count);
+  if (baked) for (const r of ["lamp", "status", "screen"]) { const g = geo.userData.roles[r]; if (g) keep.fill(1, g[0], g[0] + g[1]); }
+  const T = geo.attributes.tint ? geo.attributes.tint.array : null;
   for (const key of STATES) {
     K.bakeDirect(THREE, geo, lamps, key);
     const col = geo.attributes.color;
+    if (baked) {
+      const k = STATES.indexOf(key), A = col.array;
+      for (let v = 0; v < keep.length; v++) {
+        if (keep[v]) continue;
+        for (let c = 0; c < 3; c++) A[v * 3 + c] = baked[v * 9 + k * 3 + c] * (T ? T[v * 3 + c] : 1);
+      }
+    }
     // TODO kit: bakeDirect paints every lens the emergency colour; only the emergency bus is lit on emergency power.
     const lr = geo.userData.roles.lamp;
     if (key === "emergency" && lr && lr[1] === lamps.length * 6) {
@@ -4301,6 +5901,9 @@ function floorCoversOf(c) {
   if (!SUITE || c.id !== "bridge") return [];
   return K.platformCovers(SUITE_PATCH.bridge.platforms, K.deckById(L, "A").floor_y_m, bridgeEdges(c));
 }
+const BAKE_DATA = K.lightingData().bake;
+/** The kit's flat shell roles a vertex bake needs split (floors, walls, ceilings, platform tops, a page's added floors). */
+const SPLIT_ROLES = new Set(["floor", "ceiling", "panel", "wall", "platform_top", "fx_floor", "fx_platform"]);
 /** One compartment's mesh: the kit's shell and detail, the fixtures, props and suite; noCar leaves a lift's car out. */
 function roomGeo(c, noCar) {
   const built = K.buildCompartment(THREE, L, c, { detailing: DET, skipKinds: ["bay_door"], panels: true, wallFixtures: wallFixturesOf(c.id), floorCovers: floorCoversOf(c) });
@@ -4330,9 +5933,16 @@ function roomGeo(c, noCar) {
     PK.addFaces(F, it.prop, it.back, it.yaw, it.faces || it.station);
     if (it.glow) {   // the screens' own light on the desk and the floor in front, in the station's colour (as the command deck)
       const th = rad(it.yaw), col = PK.roleColor(it.station);
-      lamps.push({ p: [it.back[0] + Math.sin(th) * 0.5, it.back[1] + it.glow, it.back[2] + Math.cos(th) * 0.5], R: 1.3, I: 0.5, fixed: true, color: [col.r * 0.6, col.g * 0.6, col.b * 0.6] });
+      lamps.push({ p: [it.back[0] + Math.sin(th) * 0.5, it.back[1] + it.glow, it.back[2] + Math.cos(th) * 0.5], R: 1.3, I: 0.5, fixed: true, color: [col.r * 0.6, col.g * 0.6, col.b * 0.6],
+        axis: [Math.sin(th), -0.35, Math.cos(th)], roleHex: col.getHex() });   // the bake's console_glow (light-baking design 15)
     }
   }
+  // The shell's flats split to cells no wider than bake.json mockup.cell_m, so a vertex bake shows a lamp's pool on a
+  // floor (light-baking design 15: the deck plan's stand-in for the engine's adaptive subdivision).
+  const splitRoles = Object.keys(parts).filter((r) => SPLIT_ROLES.has(r)), triCount = () => splitRoles.reduce((n, r) => n + parts[r].position.length / 9, 0);
+  const splitBefore = triCount();
+  K.subdivideParts(parts, BAKE_DATA.mockup.cell_m, splitRoles);
+  const split = { before: splitBefore, after: triCount() };
   const finish = Object.assign({}, K.finishOf(c, DET));
   for (const r of Object.keys(parts)) if (PROPS[r]) finish[r] = PROPS[r].mat;
   for (const r of Object.keys(parts)) if (r.startsWith("fx_")) finish[r] = finish[r.slice(3)];
@@ -4351,7 +5961,8 @@ function roomGeo(c, noCar) {
     bakeStates(faceGeo, lamps);
     faceGeo.computeBoundingSphere();
   }
-  return { geo, lamps: built.lamps, tris: geo.attributes.position.count / 3 + (faceGeo ? faceGeo.attributes.position.count / 3 : 0), faceGeo };
+  return { geo, lamps: built.lamps, tris: geo.attributes.position.count / 3 + (faceGeo ? faceGeo.attributes.position.count / 3 : 0), faceGeo,
+    allLamps: lamps, openings: built.openings, split };
 }
 // A lift's room also gets a copy without its car, for the walk: there the car is a mesh of its own, and moves.
 const LIFT = (L.fixtures || []).find((f) => f.kind === "lift") || null;
@@ -4479,6 +6090,199 @@ for (const [cid, r] of rooms.entries()) {
     for (const id of c.decks) { r.slices[id] = add(groups[id], id); const f = addFaces(groups[id], id); if (f) r.faceSlices.push(f); }
   } else { add(groups[c.decks[0]], "whole"); addFaces(groups[c.decks[0]], "whole"); }
 }
+
+// ------------------------------------------------------------------ the bake (light-baking design 15)
+// Every compartment baked with the mockup baker (lightbake.js): alone, doors closed, three lighting states from one set
+// of rays, at data/lighting/bake.json's final settings, into its own vertices (the shell split to mockup.cell_m by
+// roomGeo). Lights are data/lighting/fixtures.json's types: the kit's lamps (ceiling_panel, high_bay), a cove strip
+// along every cove, each station's console_glow. Bounce comes from the irradiance cache. The room in view goes first;
+// until its bake arrives a room keeps the quick light of ShipKit.bakeDirect. Documentation tooling, not the engine
+// baker (design section 10).
+const LBK = window.LightBake;
+const FIX = K.lightingData().fixtures.types, BAKE_SET = K.bakeSettings(), AMB_LUX = K.ambientLux();
+const srgb2lin = (c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+/** Each texture layer's mean colour, linear, for the bounce: the main array's layers and every bigger array's. */
+const LAYER_ALBEDO = (() => {
+  const out = new Map();
+  const mean = (data, px, i) => {
+    let r = 0, g = 0, b = 0, n = 0;
+    const off = i * px * px * 4;
+    for (let k = 0; k < px * px; k += 7) { r += srgb2lin(data[off + k * 4] / 255); g += srgb2lin(data[off + k * 4 + 1] / 255); b += srgb2lin(data[off + k * 4 + 2] / 255); n++; }
+    return [r / n, g / n, b / n];
+  };
+  const T = pmats.texture.image;
+  for (let i = 0; i < T.depth; i++) out.set(i, mean(T.data, T.width, i));
+  for (const B of pmats.big || []) { const I = B.texture.image; for (let i = 0; i < I.depth; i++) out.set(B.base + i, mean(I.data, I.width, i)); }
+  return out;
+})();
+const v3 = { add: (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]], sub: (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], mul: (a, k) => [a[0] * k, a[1] * k, a[2] * k],
+  dot: (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]] };
+const unit3 = (a) => v3.mul(a, 1 / (Math.hypot(a[0], a[1], a[2]) || 1));
+/** A rectangle centred at c spanning +-ha along a and +-hb along b, facing facing (as lighting.html's quadPatch). */
+function quadPatch(c, a, b, ha, hb, facing, opts) {
+  let u = v3.mul(a, 2 * ha), v = v3.mul(b, 2 * hb);
+  if (v3.dot(v3.cross(u, v), facing) < 0) [u, v] = [v, u];
+  return LBK.patch(v3.sub(c, v3.add(v3.mul(u, 0.5), v3.mul(v, 0.5))), u, v, opts);
+}
+/** One room's bake scene: its surfaces as patches (each texture layer's mean colour, times a prop's tint), door leaves
+ * in its doors, its lights and strips. */
+function bakeScene(r) {
+  const c = r.comp, geo = r.geo, P = geo.attributes.position.array, N = geo.attributes.normal.array, Ly = geo.attributes.surfLayer.array;
+  const T = geo.attributes.tint ? geo.attributes.tint.array : null, groups = new Map();
+  for (const [role, [v0, n]] of Object.entries(geo.userData.roles)) {
+    if (role === "lamp" || role === "status" || role === "screen" || (PROPS[role] && PROPS[role].glow)) continue;   // drawn lights, not surfaces
+    const pt = PROPS[role] ? PROPS[role].tint : null;
+    for (let v = v0; v < v0 + n; v += 3) {
+      const a = LAYER_ALBEDO.get(Math.round(Ly[v])) || [0.18, 0.18, 0.18];
+      const alb = [0, 1, 2].map((k) => Math.min(0.95, a[k] * (T ? T[v * 3 + k] : 1) * (pt ? [pt.r, pt.g, pt.b][k] : 1)));
+      const key = alb.map((x) => Math.round(x * 50)).join(",");
+      let g = groups.get(key);
+      if (!g) { g = { alb, pos: [], nor: [] }; groups.set(key, g); }
+      for (let k = 0; k < 9; k++) { g.pos.push(P[v * 3 + k]); g.nor.push(N[v * 3 + k]); }
+    }
+  }
+  const patches = [];
+  // A face under 0.1 m^2 (a prop's bevel, a bolt, a rail) casts shadows but its bounce is not worth its cache points.
+  for (const g of groups.values()) for (const p of LBK.patchesFromTriangles(g.pos, g.nor, { albedo: g.alb, receive: false })) { if (p.area < 0.1) p.cheap = true; patches.push(p); }
+  // Doors closed (design section 9): a leaf in every door, hatch and pressure door, as lighting.html draws them.
+  const door = { albedo: [0.12, 0.12, 0.13], receive: false };
+  for (const op of r.openings || []) {
+    const p = op.portal;
+    if (op.floor || !["door", "hatch", "pressure_door"].includes(p.kind)) continue;
+    const f = K.portalFrame(p), out = K.portalOut(p, c.id), cc = f.c, hw = f.w / 2, hh = f.h / 2;
+    patches.push(quadPatch(v3.add(cc, v3.mul(out, 0.05)), f.t, [0, 1, 0], hw, hh, v3.mul(out, -1), door));
+  }
+  // The lamps: the kit's (ceiling panels, high-bay lamps), the lower floor's, each console's glow.
+  const lights = r.allLamps.map((l, i) => {
+    if (l.fixed) {
+      const t = FIX.console_glow;
+      return { id: `${c.id}_glow_${i}`, position_m: l.p.slice(), radius_m: t.radius_m, intensity_cd: t.intensity_cd, range_m: t.range_m,
+        beam: l.axis ? { axis: unit3(l.axis), exponent: t.beam_exponent } : null, states: K.fixtureStates(t, true, l.roleHex || 0x48d6ff) };
+    }
+    const t = FIX[l.tall ? "high_bay" : "ceiling_panel"];
+    return { id: `${c.id}_lamp_${i}`, position_m: [l.p[0], l.p[1] - t.drop_m, l.p[2]], radius_m: t.radius_m, intensity_cd: t.intensity_cd,
+      range_m: t.range_m, beam: { axis: [0, -1, 0], exponent: t.beam_exponent }, states: K.fixtureStates(t, !!l.emergency) };
+  });
+  // A light strip along the middle of every cove (the kit's plain coves), facing into the room, as lighting.html's.
+  const emitters = [], st = FIX.cove_strip;
+  const plain = K.buildCompartment(THREE, L, c, { detailing: DET, skipKinds: ["bay_door"], wallFixtures: wallFixturesOf(c.id) }).parts.cove;
+  if (plain) for (const cove of LBK.patchesFromTriangles(plain.position, plain.normal, {})) {
+    const cs = LBK.patchCorners(cove).slice().sort((a, b) => a[1] - b[1]), A = cs[0], B = cs[1], hi = cs.slice(2);
+    if (cs.length !== 4) continue;   // a cove's mitred end (a triangle) carries no strip
+    const plan = (p, q) => Math.hypot(p[0] - q[0], p[2] - q[2]);
+    const A2 = plan(A, hi[0]) <= plan(A, hi[1]) ? hi[0] : hi[1], B2 = A2 === hi[0] ? hi[1] : hi[0];
+    const edge = Math.hypot(...v3.sub(B, A)), slant = Math.hypot(...v3.sub(A2, A));
+    if (edge < 2 * st.end_clear_m + 0.3) continue;
+    const mix = (a, b, f) => v3.add(a, v3.mul(v3.sub(b, a), f));
+    const Q = (f, g) => v3.add(mix(mix(A, B, g), mix(A2, B2, g), f), v3.mul(cove.n, 0.01));
+    const g0 = st.end_clear_m / edge, g1 = 1 - g0, f0 = 0.5 - st.width_m / 2 / slant, f1 = 0.5 + st.width_m / 2 / slant;
+    const o = Q(f0, g0);
+    let U = v3.sub(Q(f0, g1), o), V = v3.sub(Q(f1, g0), o);
+    if (v3.dot(v3.cross(U, V), cove.n) < 0) [U, V] = [V, U];
+    emitters.push({ id: `${c.id}_cove_${emitters.length}`, quad: { o, u: U, v: V }, luminance_cd_m2: st.luminance_cd_m2, beam_exponent: 1,
+      range_m: st.range_m, states: K.fixtureStates(st) });
+  }
+  return LBK.scene({ patches, lights, emitters, ambient_lux: AMB_LUX, settings: BAKE_SET });
+}
+/** A room's bake: its lights at every vertex (direct and ambient traced, bounce from the cache), as display multipliers
+ * in three states (9 floats a vertex), and its stats. */
+async function bakeRoom(r, onProgress) {
+  const t0 = performance.now(), S = bakeScene(r), tScene = performance.now() - t0;
+  await LBK.prepare(S, (f) => onProgress && onProgress(0.5 * f));
+  const geo = r.geo, P = geo.attributes.position.array, N = geo.attributes.normal.array, nv = P.length / 3;
+  // The cache's points in a 0.5 m grid, for the bounce at a vertex: the nearest ones on its plane, by distance.
+  const C = S.cache, cell = 0.5, grid = new Map(), gk = (x, y, z) => `${Math.floor(x / cell)},${Math.floor(y / cell)},${Math.floor(z / cell)}`;
+  if (S.field) for (let i = 0; i < C.vertexCount; i++) {
+    const k = gk(C.positions[i * 3], C.positions[i * 3 + 1], C.positions[i * 3 + 2]);
+    let l = grid.get(k); if (!l) grid.set(k, (l = [])); l.push(i);
+  }
+  const ref = BAKE_SET.reference_lux, out = new Float32Array(nv * 9), memo = new Map(), tmp = new Float32Array(9);
+  const roomKey = Array.from(r.comp.id).reduce((h, ch) => Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0, 2166136261);
+  const skip = new Uint8Array(nv);
+  for (const role of ["lamp", "status", "screen"]) { const g = geo.userData.roles[role]; if (g) skip.fill(1, g[0], g[0] + g[1]); }
+  const tB = performance.now();
+  let baked = 0;
+  for (let v = 0; v < nv; v++) {
+    if (skip[v]) continue;
+    const px = P[v * 3], py = P[v * 3 + 1], pz = P[v * 3 + 2], nx = N[v * 3], ny = N[v * 3 + 1], nz = N[v * 3 + 2];
+    const mk = `${Math.round(px * 1e3)},${Math.round(py * 1e3)},${Math.round(pz * 1e3)},${Math.round(nx * 100)},${Math.round(ny * 100)},${Math.round(nz * 100)}`;
+    let E = memo.get(mk);
+    if (!E) {
+      tmp.fill(0);
+      const ins = BAKE_SET.inset_m;
+      LBK.irradiance(S, px + nx * ins, py + ny * ins, pz + nz * ins, nx, ny, nz, LBK.hash3(BAKE_SET.seed, roomKey, memo.size), LBK.DIRECT | LBK.AMBIENT, tmp);
+      if (S.field) {   // bounce: inverse-distance weights over the cache points within 0.75 m on this plane
+        let w = 0;
+        const acc = new Float32Array(9), x0 = Math.floor((px - 0.75) / cell), x1 = Math.floor((px + 0.75) / cell);
+        for (let gx = x0; gx <= x1; gx++) for (let gy = Math.floor((py - 0.75) / cell); gy <= Math.floor((py + 0.75) / cell); gy++)
+          for (let gz = Math.floor((pz - 0.75) / cell); gz <= Math.floor((pz + 0.75) / cell); gz++) {
+            for (const i of grid.get(`${gx},${gy},${gz}`) || []) {
+              if (C.normals[i * 3] * nx + C.normals[i * 3 + 1] * ny + C.normals[i * 3 + 2] * nz < 0.9) continue;
+              const dx = C.positions[i * 3] - px, dy = C.positions[i * 3 + 1] - py, dz = C.positions[i * 3 + 2] - pz;
+              if (Math.abs(dx * nx + dy * ny + dz * nz) > 0.05) continue;
+              const d = Math.hypot(dx, dy, dz);
+              if (d > 0.75) continue;
+              const wi = 1 / (d + 0.1);
+              for (let k = 0; k < 9; k++) acc[k] += wi * S.field[i * 9 + k];
+              w += wi;
+            }
+          }
+        if (w > 0) for (let k = 0; k < 9; k++) tmp[k] += acc[k] / w;
+      }
+      E = new Float32Array(9);
+      for (let k = 0; k < 9; k++) E[k] = Math.pow(LBK.encodeLevel(tmp[k] / ref), LBK.GAMMA);
+      memo.set(mk, E);
+    }
+    out.set(E, v * 9);
+    if ((++baked & 255) === 0) { if (onProgress) onProgress(0.5 + 0.5 * v / nv); await new Promise((res) => setTimeout(res, 0)); }
+  }
+  const bytes = new Uint8Array(out.buffer.slice(0));
+  return { light: out, stats: {
+    vertices: memo.size, triangles: nv / 3, patches: S.patches.length, lamps: S.lights.length, strips: S.emitters.length,
+    cachePoints: C.vertexCount, rays: Object.assign({}, S.rays), sceneMs: Math.round(tScene), cacheMs: Math.round(S.prepareMs || 0),
+    verticesMs: Math.round(performance.now() - tB), ms: Math.round(performance.now() - t0),
+    digest: LBK.digest([bytes]),
+  } };
+}
+// The queue: the room in view first (the walker's, else the selected one), then the rest in order; one at a time,
+// yielding to the frame. BAKED holds each room's stats; window.MOCKUP_BAKE() reports them (tools/mockups/bake_ship.mjs).
+const BAKED = new Map();
+let bakeBusy = false, bakeNow = null, bakeFrac = 0;
+const bakeBadge = document.createElement("div");
+bakeBadge.style.cssText = "position:fixed;left:50%;transform:translateX(-50%);top:8px;z-index:40;padding:4px 10px;border-radius:6px;background:rgba(8,11,16,.8);" +
+  "border:1px solid #2a3340;color:#9fb0c4;font:600 12px system-ui,sans-serif;pointer-events:none";
+document.body.appendChild(bakeBadge);
+function bakeLabel() {
+  bakeBadge.textContent = BAKED.size === rooms.length ? `Light: baked, ${rooms.length} rooms`
+    : `Light: baking ${BAKED.size} / ${rooms.length}` + (bakeNow ? `, ${bakeNow.comp.name} ${Math.round(bakeFrac * 100)}%` : "");
+}
+function nextToBake() {
+  const want = [];
+  if (state.walk && WALK) { const p = WALK.pose(), i = rooms.findIndex((r) => K.brushAt(r.comp, p.x, p.y + 1.0, p.z)); if (i >= 0) want.push(i); }
+  if (state.sel >= 0) want.push(state.sel);
+  for (let i = 0; i < rooms.length; i++) want.push(i);
+  for (const i of want) if (!BAKED.has(rooms[i].comp.id)) return rooms[i];
+  return null;
+}
+async function bakeLoop() {
+  if (bakeBusy) return;
+  bakeBusy = true;
+  for (let r = nextToBake(); r; r = nextToBake()) {
+    bakeNow = r; bakeFrac = 0; bakeLabel();
+    const res = await bakeRoom(r, (f) => { bakeFrac = f; bakeLabel(); });
+    bakeStates(r.geo, r.allLamps, res.light);
+    BAKED.set(r.comp.id, res.stats);
+    applyLight();
+  }
+  bakeNow = null; bakeLabel(); bakeBusy = false;
+}
+window.MOCKUP_BAKE = () => ({ done: BAKED.size === rooms.length, baked: BAKED.size, total: rooms.length,
+  rooms: Object.fromEntries(rooms.map((r) => [r.comp.id, Object.assign({ name: r.comp.name, roomTriangles: r.tris, splitBefore: r.split.before, splitAfter: r.split.after,
+    lamps: r.allLamps.filter((l) => !l.fixed).length, emergencyLamps: r.allLamps.filter((l) => !l.fixed && l.emergency).length, floor_m2: K.measure(r.comp).floor_m2 },
+    BAKED.get(r.comp.id) || {})])) });
+/** For tools: show a lighting state at once (tools/mockups/bake_ship.mjs shoots each view in the three). */
+window.MOCKUP_LIGHT = (k) => setLight(k, true);
+bakeLabel();
 
 // ------------------------------------------------------------------ markers: flat colours, per deck slice
 // Diagram marks that read from above: wall-top bands by compartment kind, portal markers by kind, the hoist's posts,
@@ -5652,6 +7456,8 @@ K.registerShots([
   ] : []),
 ]);
 renderer.setAnimationLoop(frame);
+// The bake starts once the page has drawn (light-baking design 15); ?bake=0 keeps the quick light only (quick checks).
+if (new URLSearchParams(location.search).get("bake") !== "0") setTimeout(bakeLoop, 300); else bakeBadge.style.display = "none";
 </script>
 </body>
 </html>
