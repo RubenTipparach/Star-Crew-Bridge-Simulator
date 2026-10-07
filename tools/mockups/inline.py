@@ -15,6 +15,9 @@ current files between them (CLAUDE.md section 11):
 <script id="ship-data-<name>" type="application/json"> block, for mockups that
 read a ship's other data files (power.json, atmosphere.json, detailing.json).
 "data:lighting/<name>" copies data/lighting/<name>.json (fixtures, bake) the same way.
+"bakecache:<name>" copies docs/mockups/cache/<name>.bin (a page's baked light, written by
+tools/mockups/bake_ship.mjs --write-cache) as base64 into <script id="bake-cache-<name>">, empty when
+there is none; --check also fails when a cache was baked by another lightbake.js.
 "materials" copies data/materials/materials.json and every layer it names
 (assets/textures/<name>.png, as a base64 data URI) into a
 <script id="ship-materials" type="application/json"> block, which shipkit's
@@ -46,6 +49,8 @@ Usage: python3 tools/mockups/inline.py [--check] [page.html ...]
 
 import base64
 import glob
+import gzip
+import hashlib
 import json
 import os
 import re
@@ -62,7 +67,9 @@ MATERIALS = os.path.join(ROOT, "data", "materials", "materials.json")
 TEXTURES = os.path.join(ROOT, "assets", "textures")
 PANELS = os.path.join(ROOT, "data", "materials", "panels.json")
 SCREENS = os.path.join(ROOT, "assets", "textures", "screens", "screens.json")
-MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-9_-]+/[a-z0-9_-]+|shipkit|materials|panels|screens|models:[a-z0-9_-]+) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
+CACHE = os.path.join(ROOT, "docs", "mockups", "cache")
+LIGHTBAKE = os.path.join(LIB, "lightbake.js")
+MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-9_-]+/[a-z0-9_-]+|bakecache:[a-z0-9_-]+|shipkit|materials|panels|screens|models:[a-z0-9_-]+) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
 
 
 def png_uri(path):
@@ -70,7 +77,42 @@ def png_uri(path):
         return "data:image/png;base64," + base64.b64encode(f.read()).decode("ascii")
 
 
+def bake_cache_index(path):
+    """A bake cache's index (docs/mockups/cache/<name>.bin: gzip of "SCBK", version 1, index length, index JSON, data)."""
+    with gzip.open(path, "rb") as f:
+        raw = f.read()
+    if raw[:4] != b"SCBK" or int.from_bytes(raw[4:8], "little") != 1:
+        raise ValueError(f"{os.path.relpath(path, ROOT)} is not a version 1 bake cache")
+    n = int.from_bytes(raw[8:12], "little")
+    return json.loads(raw[12:12 + n].decode("utf-8"))
+
+
+def bake_caches_ok():
+    """Every bake cache was written by the baker the pages carry (lightbake.js), or it would be stale light."""
+    with open(LIGHTBAKE, "rb") as f:
+        sha = hashlib.sha256(f.read()).hexdigest()
+    ok = True
+    for path in sorted(glob.glob(os.path.join(CACHE, "*.bin"))):
+        rel = os.path.relpath(path, ROOT)
+        if bake_cache_index(path).get("baker_sha256") != sha:
+            print(f"  FAIL {rel}: baked by another lightbake.js; run node tools/mockups/bake_ship.mjs --write-cache")
+            ok = False
+        else:
+            print(f"  {rel}: baked by the current lightbake.js")
+    return ok
+
+
 def block(kind):
+    if kind.startswith("bakecache:"):
+        # The deck plan's baked light (tools/mockups/bake_ship.mjs --write-cache), as base64; empty when there is none,
+        # and the page then bakes live.
+        path = os.path.join(CACHE, kind.split(":", 1)[1] + ".bin")
+        name = kind.split(":", 1)[1]
+        if not os.path.exists(path):
+            return f'\n<script id="bake-cache-{name}" type="application/octet-stream"></script>\n'
+        with open(path, "rb") as f:
+            text = base64.b64encode(f.read()).decode("ascii")
+        return f'\n<script id="bake-cache-{name}" type="application/octet-stream">\n{text}\n</script>\n'
     if kind == "screens":
         with open(SCREENS, encoding="utf-8") as f:
             manifest = json.load(f)
@@ -220,6 +262,7 @@ def main(argv):
         pages = sorted(glob.glob(os.path.join(ROOT, "docs", "mockups", "*.html")))
     ok = all([process(p, check) for p in pages])
     ok = budget_ok() and ok
+    ok = bake_caches_ok() and ok
     return 0 if ok else 1
 
 

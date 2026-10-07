@@ -20,6 +20,7 @@ on is engine work, taken on a separate request once the owner has answered G1 to
 - [x] 1.9 The deck plan bakes every compartment with `lightbake.js` in the three states (doors closed, the kit's lamps, cove strips, station screens, props), the shell split to `mockup_cell_m`, the room in view first; a digest per room.
 - [x] 1.10 `tools/mockups/bake_ship.mjs`: the ship bake report in `docs/benchmarks/<date>-tern-bake/` and shots of named rooms in the three states, looked at.
 - [ ] 1.11 Engineering's lower floor on red alert and emergency power (design section 15, point 4): its lamps under the mezzanine on the emergency bus and the reactor glow lighting its base, judged on `walk-eng-lower` in the three states.
+- [x] 1.12 The bake cached (design section 15, point 5; the owner: "can we cache those results?"): `bake_ship.mjs --write-cache`, `docs/mockups/cache/deck-plan-bake.bin`, the page's keys, `inline.py --check` on the baker's digest.
 
 ## 2. Data
 

@@ -647,6 +647,28 @@ then the bake in the three states):
   emergency bus as a stairwell does (every lamp a crew member must find a valve by), and the
   reactor's glow lights its own base. It is task 1.11, and the bake shows when it is right.
 
+**5. The bake is cached (2026-10-07).** The owner, on the deck plan baking as it opened: "I see
+light is baking in real time, can we cache those results? or do you prefer to do it in real time?"
+Cached: in the engine the light is never baked at run time (`deckc` bakes it offline into the
+deck), so baking in the page was only ever the mockup standing in. `tools/mockups/bake_ship.mjs
+--write-cache` bakes every room and writes `docs/mockups/cache/deck-plan-bake.bin`: gzip of a
+header, an index (each room's key, its place in the data, its stats, and the sha256 of the
+`lightbake.js` that baked it) and one byte a value, the display multiplier from 0 to 2 as the
+engine's deck vertex colours store it (section 5). `tools/mockups/inline.py` inlines it into the
+page (1.31 MB; the page is 13.2 MB, under the 16 MB an artifact allows).
+
+- **A room's key** is a digest of its vertices, normals and every bake input (surfaces and their
+  albedos, lights, strips, ambient, settings). A room whose key matches takes the cached light at
+  once; any other room bakes live as before. A stale cache never shows wrong light: it shows the
+  quick light, then a fresh bake.
+- **`inline.py --check` fails** when the cache was baked by another `lightbake.js`, naming the
+  command that rewrites it.
+- **Measured:** the deck plan opens lit, all 37 rooms from the cache, 6.6 s after the page starts
+  loading in this cloud container, against 278 s baking live. `?bake=fresh` ignores the cache;
+  `bake_ship.mjs` always bakes fresh, since it measures the baker.
+- **When to rewrite it:** after any change to the rooms, their props, the fixtures or the bake
+  settings, rerun `bake_ship.mjs --write-cache` in the same commit, so the page opens lit.
+
 **Not in this step:** the engine baker, adaptive subdivision in a page, probes for moving things,
 runtime lights over the bake, and portal spill light (sections 6, 7 and 9); power loss stays the
 lighting page's.
