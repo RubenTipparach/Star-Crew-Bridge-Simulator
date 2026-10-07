@@ -1,9 +1,11 @@
-"""Star Crew's panel textures: the wall modules and strips, the ceiling and floor modules and the trim
-strips, modelled in Blender the hard-surface CSG way and baked to texture layers
-(openspec/changes/wall-panels, design section 6, option B; ceilings-and-trims; floor-panels).
+"""Star Crew's panel textures: the wall modules and strips, the ceiling and floor modules, the trim
+strips, the platform faces and the chairs' upholstery, modelled in Blender the hard-surface CSG way and
+baked to texture layers (openspec/changes/wall-panels, design section 6, option B; ceilings-and-trims;
+floor-panels).
 
 It owns the panel layers (assets/textures/panels/<px>/<finish>_<module>.png, <finish>_strips.png,
-<finish>_ceiling_<module>.png, <finish>_floor_<module>.png and <finish>_trims.png at 256 and 128 px), the reusable screen and key images
+<finish>_ceiling_<module>.png, <finish>_floor_<module>.png, <finish>_trims.png, <finish>_platforms.png,
+upholstery_channel.png and upholstery_panel.png at 256 and 128 px), the reusable screen and key images
 (assets/textures/panels/ui_screen_<finish>.png, keys_<finish>.png), their manifest
 (assets/textures/panels/manifest.json) and the contact sheet
 (docs/screenshots/materials/panels-contact-sheet.png). It lives in tools/blender because the
@@ -21,7 +23,8 @@ Run (from anywhere), with Pillow installed beside bpy (pip install bpy pillow):
   <python with the bpy module> tools/blender/build_wall_panels.py [--only crew_plate,working_strips,...]
       [--samples N] [--post-only] [--no-sheet]
   --only       render only these targets (<finish>_<module>, <finish>_strips, <finish>_ui, <finish>_keys,
-               <finish>_ceiling_<module>, <finish>_floor_<module>, <finish>_trims);
+               <finish>_ceiling_<module>, <finish>_floor_<module>, <finish>_trims, <finish>_platforms,
+               upholstery_channel, upholstery_panel);
                the post-process still writes every layer from the raw renders it finds
   --samples    override render.samples (a quick look; the committed layers use panels.json's)
   --post-only  skip rendering; rebuild the layers and the sheet from tools/materials/raw/panels
@@ -45,7 +48,11 @@ seen from the room (panel x is world +x, panel y world +z, the bow), lit nearly 
 lamps light them (render.ceiling, render.floor). The walkway tiles both ways: its pattern repeats
 every 2 m and its wear noise lies on a 4D torus, so it is periodic in x and in y. Trim rows are
 rendered like strips, one render a row, and stacked into one 2 m layer per finish at the rows'
-places (trims.rows), the gaps between them filled by repeating each row's edge.
+places (trims.rows), the gaps between them filled by repeating each row's edge. Platform faces are
+built the same way (platforms.rows), each row designed to fit one face height, lit from above
+(render.platforms). The upholstery layers have no finish: padded leather modelled as smooth pillows
+(a heightfield per pillow, welts as cords), baked neutral in a soft light (render.upholstery) with wear
+and leather grain on a 4D torus, so they tile both ways, for a page to tint per chair.
 
 Determinism: Cycles on the CPU with a fixed seed and no denoiser renders the same pixels on a second
 run (each pixel's random sequence depends only on its position and sample index), and the
@@ -94,11 +101,22 @@ KIND_REQUIRED = {"ceiling": set(CEILING_MODULES), "floor": {"walkway", "plate"}}
 TRIM_ROWS = ("side", "baseboard", "rib", "rib_ends", "beam", "frame", "cove")
 TRIM_PIECES = ("rib_base", "rib_capital")
 TRIM_MEMBERS = ("rib", "beam", "baseboard", "frame", "window_frame", "cove")
+# Platform face rows (panels.json platforms.rows), bottom to top in the layer: each fits one face height
+# (a 0.45 m riser, a 0.225 m riser, a stair step's front), not a crop of another.
+PLATFORM_ROWS = ("riser", "riser_low", "step")
+# The upholstery layers (panels.json upholstery.layers), in layer order, and the colour each role they
+# use takes from upholstery.colours_srgb. A role not named here is not used by them (check_roles).
+UPHOLSTERY = ("channel", "panel")
+UPHOLSTERY_ROLE_COLOUR = {"upholstery": "leather", "paint2": "welt", "machinery": "seam", "stencil": "stitch"}
+GRAIN_ROLES = {"upholstery", "paint2"}    # leather: the padding and the welts take the grain
 TEXEL_64 = 1.0 / 64.0     # a row lands on whole texels at 64 px per metre, so at 128 too
 
-# Material roles. The first seven are the props kit's slot order (kit.ROLES); a panel uses them
+# Material roles. The first ones are the props kit's slot order (kit.ROLES); a panel uses them
 # with these meanings, plus its own. kit.ROLES is extended at build time (set_roles), so the kit's
-# primitives give every mesh all of them in one fixed order.
+# primitives give every mesh all of them in one fixed order. The kit's upholstery roles are not in this
+# table: a wall, ceiling, floor, trim or platform layer never uses them (make_materials marks them
+# unused and check_roles refuses a face that has one); the upholstery layers map their own roles
+# (UPHOLSTERY_ROLE_COLOUR).
 ROLE_COLOUR = {
     "machinery": "dark",      # dark metal: recess floors and walls, grilles, kick plates
     "trim": "metal",          # bare metal: frames, collars, rivets, handles
@@ -188,6 +206,28 @@ def on_texel(v, where):
         fail(f"{where} must be a whole number of 1/64 m (a texel at 64 px per metre), got {v}")
 
 
+def rows_ok(rows, names, span, where):
+    """Rows of a stacked layer (trims.rows, platforms.rows): exactly these names, each v0_m and h_m whole
+    texels at 64 px per metre, a texel of guard at the layer's top and bottom and two between rows."""
+    keys_exact(rows, set(names), where)
+    spans = []
+    for name in names:
+        R = rows[name]
+        w = f"{where}.{name}"
+        keys_exact(R, {"v0_m", "h_m"}, w)
+        num(R["v0_m"], w + ".v0_m", 0, span)
+        num(R["h_m"], w + ".h_m", TEXEL_64, span)
+        on_texel(R["v0_m"], w + ".v0_m")
+        on_texel(R["h_m"], w + ".h_m")
+        spans.append((R["v0_m"], R["v0_m"] + R["h_m"], name))
+    spans.sort()
+    if spans[0][0] < TEXEL_64 or spans[-1][1] > span - TEXEL_64:
+        fail(f"{where} must leave at least one texel (1/64 m) of guard at the layer's top and bottom")
+    for (a0, a1, an), (b0, b1, bn) in zip(spans, spans[1:]):
+        if b0 < a1 + 2 * TEXEL_64 - 1e-9:
+            fail(f"{where} {an} and {bn} need at least two texels (2/64 m) of guard between them")
+
+
 def module_ok(M, where, drawn_ok=True):
     keys_exact(M, {"layer", "weight", "placed", "emissive"}, where)
     num(M["weight"], where + ".weight", 0)
@@ -202,7 +242,7 @@ def load_panels():
     if d.get("schema") != SCHEMA:
         fail(f"schema must be {SCHEMA!r}")
     keys_exact(d, {"schema", "status", "layers", "bands", "bays", "rule", "glow", "render", "ui", "finishes", "source",
-                   "cells", "walkway", "trims"}, "top level")
+                   "cells", "walkway", "trims", "platforms", "upholstery"}, "top level")
     keys_exact(d["layers"], {"first_layer", "span_m", "margin_m", "sizes_px", "colours", "dir"}, "layers")
     with open(MATERIALS_JSON, encoding="utf-8") as f:
         n_mats = len(json.load(f)["materials"])
@@ -219,11 +259,11 @@ def load_panels():
         num(v, f"glow.{k}", 0, 1)
     r = d["render"]
     keys_exact(r, {"px_per_m", "samples", "mask_samples", "key_light_tangent", "key_angle_deg", "ambient", "bounces",
-                   "ceiling", "floor", "trims"}, "render")
+                   "ceiling", "floor", "trims", "platforms", "upholstery"}, "render")
     num(r["ambient"], "render.ambient", 0, 0.95)
     if len(r["key_light_tangent"]) != 3 or r["key_light_tangent"][2] <= 0:
         fail("render.key_light_tangent must be [x, y, z] with z above 0 (out of the wall)")
-    for k in ("ceiling", "floor", "trims"):
+    for k in ("ceiling", "floor", "trims", "platforms", "upholstery"):
         light_ok(r[k], f"render.{k}")
     keys_exact(d["ui"], {"screen_m", "screen_px", "keys_m", "keys_px"}, "ui")
     # cells, walkway, trims (ceilings-and-trims, floor-panels)
@@ -239,23 +279,7 @@ def load_panels():
     T = d["trims"]
     keys_exact(T, {"stretch_max", "rows", "pieces", "pillar", "members"}, "trims")
     num(T["stretch_max"], "trims.stretch_max", 1.0, 4.0)
-    keys_exact(T["rows"], set(TRIM_ROWS), "trims.rows")
-    spans = []
-    for name in TRIM_ROWS:
-        R = T["rows"][name]
-        w = f"trims.rows.{name}"
-        keys_exact(R, {"v0_m", "h_m"}, w)
-        num(R["v0_m"], w + ".v0_m", 0, span)
-        num(R["h_m"], w + ".h_m", TEXEL_64, span)
-        on_texel(R["v0_m"], w + ".v0_m")
-        on_texel(R["h_m"], w + ".h_m")
-        spans.append((R["v0_m"], R["v0_m"] + R["h_m"], name))
-    spans.sort()
-    if spans[0][0] < TEXEL_64 or spans[-1][1] > span - TEXEL_64:
-        fail("trims.rows must leave at least one texel (1/64 m) of guard at the layer's top and bottom")
-    for (a0, a1, an), (b0, b1, bn) in zip(spans, spans[1:]):
-        if b0 < a1 + 2 * TEXEL_64 - 1e-9:
-            fail(f"trims.rows {an} and {bn} need at least two texels (2/64 m) of guard between them")
+    rows_ok(T["rows"], TRIM_ROWS, span, "trims.rows")
     keys_exact(T["pieces"], set(TRIM_PIECES), "trims.pieces")
     for name, Pc in T["pieces"].items():
         w = f"trims.pieces.{name}"
@@ -273,14 +297,29 @@ def load_panels():
         for k in ("face", "sides"):
             if M[k] not in T["rows"]:
                 fail(f"trims.members.{name}.{k} names no row: {M[k]}")
+    # platform faces (the owner, 2026-10-07) and the chairs' upholstery
+    keys_exact(d["platforms"], {"rows"}, "platforms")
+    rows_ok(d["platforms"]["rows"], PLATFORM_ROWS, span, "platforms.rows")
+    U = d["upholstery"]
+    keys_exact(U, {"layers", "colours_srgb", "wear", "grain", "tints_srgb"}, "upholstery")
+    keys_exact(U["layers"], set(UPHOLSTERY), "upholstery.layers")
+    colours_ok(U["colours_srgb"], "upholstery.colours_srgb", set(UPHOLSTERY_ROLE_COLOUR.values()))
+    wear_ok(U["wear"], "upholstery.wear")
+    keys_exact(U["grain"], {"cell_m", "relief", "mottle"}, "upholstery.grain")
+    num(U["grain"]["cell_m"], "upholstery.grain.cell_m", 0.001, 0.1)
+    num(U["grain"]["relief"], "upholstery.grain.relief", 0, 1)
+    num(U["grain"]["mottle"], "upholstery.grain.mottle", 0, 1)
+    if not U["tints_srgb"] or any(k.startswith("_") for k in U["tints_srgb"]):
+        fail("upholstery.tints_srgb must name at least one prop")
+    colours_ok(U["tints_srgb"], "upholstery.tints_srgb", set(U["tints_srgb"]))
     keys_exact(d["finishes"], set(FINISHES), "finishes")
-    layers_seen = []
+    layers_seen = [U["layers"][k] for k in UPHOLSTERY]
     colour_keys = {"plate", "paint2", "dark", "metal", "hazard_a", "hazard_b", "safety", "rubber", "stencil", "light",
                    "amber", "status", "rust", "walk"} | set(UI_ROLES)
     for fn in FINISHES:
         F = d["finishes"][fn]
         w = f"finishes.{fn}"
-        keys_exact(F, {"colours_srgb", "wear", "modules", "strips", "ceiling", "floor", "trims"}, w)
+        keys_exact(F, {"colours_srgb", "wear", "modules", "strips", "ceiling", "floor", "trims", "platforms"}, w)
         colours_ok(F["colours_srgb"], w + ".colours_srgb", colour_keys)
         wear_ok(F["wear"], w + ".wear")
         keys_exact(F["modules"], set(MODULES), w + ".modules")
@@ -320,6 +359,8 @@ def load_panels():
         colours_ok(Tf["colours_srgb"], w + ".trims.colours_srgb", colour_keys, exact=False)
         wear_ok(Tf["wear"], w + ".trims.wear")
         layers_seen.append(Tf["layer"])
+        keys_exact(F["platforms"], {"layer"}, w + ".platforms")
+        layers_seen.append(F["platforms"]["layer"])
     first = d["layers"]["first_layer"]
     if sorted(layers_seen) != list(range(first, first + len(layers_seen))):
         fail(f"panel layers must be numbered {first}-{first + len(layers_seen) - 1} once each, got {sorted(layers_seen)}")
@@ -330,10 +371,10 @@ def load_panels():
 
 def kind_finish(F, kind):
     """A finish as one kind of surface sees it: its colours with the kind's overrides and the kind's
-    wear (walls are the finish itself)."""
+    wear (walls are the finish itself; platform faces take the finish's trim colours and wear)."""
     if kind in ("module", "strip", "keys", "ui"):
         return F
-    K = F[kind]
+    K = F["trims"] if kind == "platforms" else F[kind]
     C = dict(F["colours_srgb"])
     C.update({k: v for k, v in K["colours_srgb"].items() if not k.startswith("_")})
     return {"colours_srgb": C, "wear": K["wear"], "modules": K.get("modules", {})}
@@ -606,11 +647,34 @@ def worn_blotchy(N, base, F, role, v):
     return col
 
 
-def diffuse(N, col):
+def diffuse(N, col, normal=None):
     d = N.new("ShaderNodeBsdfDiffuse")
     N.feed(d.inputs["Color"], col)
     d.inputs["Roughness"].default_value = 1.0
+    if normal is not None:
+        N.feed(d.inputs["Normal"], normal)
     N.out(d.outputs[0])
+
+
+def leather(N, col, grain):
+    """Leather grain on a colour (upholstery.grain): a pebble of Voronoi cells cell_m across, as a bump
+    of strength relief and a slight darkening in the cracks between cells, and a soft mottle of mottle
+    across a few centimetres. On the 4D torus of coords(N, "xy"), so it tiles both ways. Returns
+    (colour, normal)."""
+    vec, w = coords(N, "xy")[0]
+    vor = N.new("ShaderNodeTexVoronoi", voronoi_dimensions="4D", feature="DISTANCE_TO_EDGE")
+    N.feed(vor.inputs["Vector"], vec)
+    N.feed(vor.inputs["W"], w)
+    vor.inputs["Scale"].default_value = 1.0 / grain["cell_m"]
+    crack = N.ramp(vor.outputs["Distance"], 0.0, 0.12)          # 0 in a crack, 1 on a pebble
+    bump = N.new("ShaderNodeBump")
+    bump.inputs["Strength"].default_value = grain["relief"]
+    bump.inputs["Distance"].default_value = 0.0015
+    N.feed(bump.inputs["Height"], crack)
+    col = N.mix(N.math("MULTIPLY", N.math("SUBTRACT", 1.0, crack), grain["relief"] * 0.35), col, (0.0, 0.0, 0.0, 1.0))
+    mot = N.noise((vec, w), 30.0, 3.0, 0.55)
+    col = N.mix(N.math("MULTIPLY", N.ramp(mot, 0.35, 0.65), grain["mottle"]), col, (0.0, 0.0, 0.0, 1.0))
+    return col, bump.outputs["Normal"]
 
 
 def emission(N, col, strength=1.0):
@@ -620,13 +684,22 @@ def emission(N, col, strength=1.0):
     N.out(e.outputs[0])
 
 
-def make_materials(F, periodic, ui_image=None, ui_rect=None, streaky=True):
+def make_materials(F, periodic, ui_image=None, ui_rect=None, streaky=True, role_colour=None, grain=None):
     """One material per role for a finish. ui_image (a loaded bpy image) is shown on `screen`
-    faces, mapped onto ui_rect (x0, y0, x1, y1 in panel space). streaky: see worn()."""
+    faces, mapped onto ui_rect (x0, y0, x1, y1 in panel space). streaky: see worn(). role_colour maps
+    a role to its colour in F (ROLE_COLOUR unless given); a role it does not name gets a material
+    marked unused, which check_roles refuses on any face. grain (upholstery.grain) gives GRAIN_ROLES
+    leather grain."""
     C = F["colours_srgb"]
+    rc = ROLE_COLOUR if role_colour is None else role_colour
     for role in kit.ROLES:
         m = bpy.data.materials.new(role)
         N = Nodes(m)
+        if role not in rc:
+            diffuse(N, (0.0, 0.0, 0.0, 1.0))
+            m["emissive"] = False
+            m["unused"] = True
+            continue
         if role in EMISSIVE:
             if role == "screen" and ui_image is not None:
                 geo = N.new("ShaderNodeNewGeometry")
@@ -640,7 +713,7 @@ def make_materials(F, periodic, ui_image=None, ui_rect=None, streaky=True):
                 N.nt.links.new(N.xyz(u, vv, 0.0), tex.inputs["Vector"])
                 emission(N, tex.outputs["Color"])
             else:
-                key = ROLE_COLOUR[role] or "ui_fg"
+                key = rc[role] or "ui_fg"
                 emission(N, lin(C[key]) + (1.0,))
             m["emissive"] = True
             continue
@@ -653,9 +726,29 @@ def make_materials(F, periodic, ui_image=None, ui_rect=None, streaky=True):
             band = N.math("GREATER_THAN", ph, 0.5)
             base = N.mix(band, lin(C["hazard_a"]) + (1.0,), lin(C["hazard_b"]) + (1.0,))
         else:
-            base = lin(C[ROLE_COLOUR[role]]) + (1.0,)
-        diffuse(N, worn(N, base, F, role, periodic, streaky))
+            base = lin(C[rc[role]]) + (1.0,)
+        col = worn(N, base, F, role, periodic, streaky)
+        if grain is not None and role in GRAIN_ROLES:
+            diffuse(N, *leather(N, col, grain))
+        else:
+            diffuse(N, col)
         m["emissive"] = False
+
+
+def check_roles(name):
+    """Refuse a panel whose faces use a role its kind does not colour (make_materials marked it unused):
+    a wall drawn in an upholstery role, or upholstery in a hazard stripe."""
+    for ob in bpy.context.scene.objects:
+        if ob.type == "MESH":
+            slots = ob.material_slots
+            used = {p.material_index for p in ob.data.polygons}
+            bad = sorted(slots[i].material.name for i in used if slots[i].material is not None and slots[i].material.get("unused"))
+        elif ob.type in ("CURVE", "FONT"):
+            bad = sorted(m.name for m in ob.data.materials if m is not None and m.get("unused"))
+        else:
+            continue
+        if bad:
+            raise SystemExit(f"[panels] {name}: {ob.name} uses role {', '.join(bad)}, which this kind of layer does not colour")
 
 
 def mask_materials():
@@ -1851,6 +1944,262 @@ def t_cove(P, ox, h, F):
 
 TRIM_BUILDERS = {"side": t_side, "baseboard": t_baseboard, "rib": t_rib, "rib_ends": t_rib_ends, "beam": t_beam,
                  "frame": t_frame, "cove": t_cove}
+
+
+# ----------------------------------------------------------------------------- platform faces
+# A platform row (platforms.rows; the owner, 2026-10-07: "small metal panels that should fit vertically
+# on the geometry uv"): panel x along the face (one 2 m period at x offset ox, built at ox -2, 0 and 2 so
+# the render tiles), panel y up the face from the floor (0) to the row's height h (the top, under the
+# hazard nosing), z out of the face. A page maps the face's bottom to y 0 and its top to y h exactly, so
+# each row is designed for its height: a dark toe kick at the floor, a steel lip under the nosing, and
+# between them bays of vent grilles and bolted access panels as tall as the clear height, divided by
+# stiles. Nothing is under about 3 cm, so it reads at 128 px per metre. A builder returns the cutters
+# for the slab behind it.
+
+def face_frame(P, ox, h, toe, lip):
+    """The toe kick (a dark recess toe metres high at the floor) and the lip (a steel bar lip metres
+    deep under the nosing, its lower edge chamfered to catch the light). Returns the toe's cutter."""
+    P.box("lip", (ox - 1.05, h - lip, -0.012), (ox + 1.05, h + 0.03, 0.014), "trim", bevel=0.004)
+    return [P.box("toe_cut", (ox - 1.1, -0.2, -0.035), (ox + 1.1, toe, 0.05), "machinery")]
+
+
+def bays(ox, widths, stile_w):
+    """The bays of one period: (x0, x1) for each width in turn, a stile stile_w wide before each (the
+    first on the period's edge, shared with the period before). Returns (bays, stile centres)."""
+    if abs(sum(widths) + stile_w * len(widths) - 2.0) > 1e-9:
+        raise SystemExit("[panels] a platform row's bays and stiles must fill its 2 m period")
+    x, out, stiles = ox - 1.0, [], []
+    for w in widths:
+        stiles.append(x)
+        out.append((x + stile_w / 2, x + stile_w / 2 + w))
+        x += stile_w + w
+    return out, stiles
+
+
+def access_panel(P, x0, y0, x1, y1, role="bulkhead", pull=True, lens=None, port=False):
+    """A small bolted access panel filling (x0, y0)-(x1, y1): a plate 2 cm proud with chamfered
+    corners, a bolt in each corner and a pull slot under its top edge. lens (an emissive role) puts a
+    step light in a bezel at its middle; port a round cable port in its lower half."""
+    c = min(0.035, 0.15 * (y1 - y0))
+    pl = cplate(P, "access", x0, y0, x1, y1, c, -0.01, 0.010, role, bevel=0.004)
+    cx = (x0 + x1) / 2
+    cuts = []
+    if pull:
+        yp = y1 - 0.055
+        cuts.append(P.box("pull_cut", (cx - 0.055, yp - 0.016, 0.0), (cx + 0.055, yp + 0.016, 0.06), "machinery"))
+    if port:
+        yq = y0 + 0.36 * (y1 - y0)
+        cuts.append(P.cyl("port_cut", "z", (cx, yq), 0.03, -0.02, 0.06, "machinery", sides=20, smooth=False))
+    if cuts:
+        P.cut(pl, "access_cuts", cuts)
+    if pull:
+        P.box("pull_bar", (cx - 0.045, yp - 0.005, -0.004), (cx + 0.045, yp + 0.005, 0.008), "trim", bevel=0.002)
+    if port:
+        ring(P, "port_ring", cx, yq, 0.042, 0.03, -0.005, 0.02, "trim", sides=24, bevel=0.003)
+        P.cyl("port_cable", "z", (cx, yq), 0.018, -0.02, 0.03, "rubber", sides=12)
+    if lens:
+        yl = (y0 + y1) / 2 + (0.02 if pull else 0.0)
+        bez = P.box("lens_bezel", (cx - 0.075, yl - 0.03, 0.0), (cx + 0.075, yl + 0.03, 0.022), "trim", bevel=0.004)
+        P.cut(bez, "lens_well", [P.box("lens_well", (cx - 0.06, yl - 0.017, 0.012), (cx + 0.06, yl + 0.017, 0.06), "machinery")])
+        P.box("lens", (cx - 0.056, yl - 0.013, 0.0), (cx + 0.056, yl + 0.013, 0.019), lens, bevel=0.004, seg=2)
+    bolts(P, [(x, y) for x in (x0 + 0.03, x1 - 0.03) for y in (y0 + 0.03, y1 - 0.03)], r=0.011, z0=0.0, z1=0.021)
+    return pl
+
+
+def louvre_grille(P, x0, y0, x1, y1, n, cuts, mullion=False):
+    """A louvred vent filling (x0, y0)-(x1, y1): a steel frame 3 cm wide with a bolt at each corner,
+    n slats tipped up 45 degrees in a dark well cut 6 cm into the slab (its cutter appended to cuts),
+    and with mullion a bar down the middle."""
+    w = 0.028
+    frame_ring(P, "grille_frame", x0, y0, x1, y1, w, -0.02, 0.016, "trim", bevel=0.004)
+    cuts.append(P.box("grille_well", (x0 + w - 0.004, y0 + w - 0.004, -0.06), (x1 - w + 0.004, y1 - w + 0.004, 0.05), "machinery"))
+    slats(P, x0 + w, x1 - w, y0 + w, y1 - w, n, -0.03, 45.0, role="paint2", thick=0.005)
+    if mullion:
+        cx = (x0 + x1) / 2
+        P.box("mullion", (cx - 0.016, y0 + w - 0.01, -0.05), (cx + 0.016, y1 - w + 0.01, 0.012), "trim", bevel=0.003)
+    bolts(P, [(x, y) for x in (x0 + w / 2, x1 - w / 2) for y in (y0 + w / 2, y1 - w / 2)], r=0.009, z0=0.006, z1=0.024)
+
+
+def slot_grille(P, x0, y0, x1, y1, pitch, cuts):
+    """A slotted vent plate filling (x0, y0)-(x1, y1): a plate 1.5 cm proud, pierced by upright slots
+    3 cm wide at pitch into a dark well, a bolt at each corner."""
+    pl = cplate(P, "slot_plate", x0, y0, x1, y1, 0.025, -0.01, 0.015, "paint2", bevel=0.004)
+    n = int(round((x1 - x0 - 0.08) / pitch))
+    xs = [(x0 + x1) / 2 + (k - (n - 1) / 2) * pitch for k in range(n)]
+    P.cut(pl, "slots", [P.box("slot", (x - 0.015, y0 + 0.05, -0.02), (x + 0.015, y1 - 0.05, 0.06), "machinery") for x in xs])
+    cuts.append(P.box("slot_well", (xs[0] - 0.02, y0 + 0.045, -0.05), (xs[-1] + 0.02, y1 - 0.045, 0.05), "machinery"))
+    bolts(P, [(x, y) for x in (x0 + 0.025, x1 - 0.025) for y in (y0 + 0.025, y1 - 0.025)], r=0.01, z0=0.0, z1=0.026)
+
+
+def p_riser(P, ox, h, F):
+    """A 0.45 m riser: a 4.5 cm toe kick, a 2.5 cm lip, and between them, every 2 m, a bolted access
+    panel, a louvred vent, an access panel with a step light and a slotted vent, each the clear height
+    tall, between stiles; a working face's first panel is hazard-striped and its step light amber."""
+    toe, lip = 0.045, 0.025
+    cuts = face_frame(P, ox, h, toe, lip)
+    (a, b, c, d), stiles = bays(ox, (0.38, 0.56, 0.38, 0.56), 0.03)
+    for x in stiles:
+        P.box("stile", (x - 0.015, toe - 0.01, -0.01), (x + 0.015, h - lip + 0.005, 0.018), "paint2", bevel=0.004)
+    y0, y1 = toe + 0.016, h - lip - 0.016
+    access_panel(P, a[0] + 0.012, y0, a[1] - 0.012, y1, role="hazard" if rusty(F) else "bulkhead")
+    louvre_grille(P, b[0] + 0.012, y0, b[1] - 0.012, y1, 6, cuts)
+    access_panel(P, c[0] + 0.012, y0, c[1] - 0.012, y1, pull=False, lens="amber" if rusty(F) else "light_panel")
+    slot_grille(P, d[0] + 0.012, y0, d[1] - 0.012, y1, 0.06, cuts)
+    return cuts
+
+
+def p_riser_low(P, ox, h, F):
+    """A 0.225 m riser, designed at its own height (not a crop of the riser): a 3.5 cm toe kick, a 2 cm
+    lip, and every 2 m a long louvred vent, a short access panel with a cable port, a long vent with a
+    centre bar and a short panel with a step light."""
+    toe, lip = 0.035, 0.02
+    cuts = face_frame(P, ox, h, toe, lip)
+    (a, b, c, d), stiles = bays(ox, (0.66, 0.28, 0.66, 0.28), 0.03)
+    for x in stiles:
+        P.box("stile", (x - 0.015, toe - 0.01, -0.01), (x + 0.015, h - lip + 0.005, 0.018), "paint2", bevel=0.004)
+    y0, y1 = toe + 0.013, h - lip - 0.013
+    louvre_grille(P, a[0] + 0.012, y0, a[1] - 0.012, y1, 3, cuts)
+    access_panel(P, b[0] + 0.012, y0, b[1] - 0.012, y1, role="hazard" if rusty(F) else "bulkhead", pull=False, port=True)
+    louvre_grille(P, c[0] + 0.012, y0, c[1] - 0.012, y1, 3, cuts, mullion=True)
+    access_panel(P, d[0] + 0.012, y0, d[1] - 0.012, y1, pull=False, lens="amber" if rusty(F) else "light_panel")
+    return cuts
+
+
+def p_step(P, ox, h, F):
+    """A stair step's 0.225 m front, quieter than a riser: a 3 cm toe kick, a 2 cm lip, and a bolted
+    kick plate with a band of slot vents centred on x = 0 (a stair's middle: a page measures u from the
+    stair's centre) and plate joints at the period's edges; a working step's plate has a hazard band
+    along its foot."""
+    toe, lip = 0.03, 0.02
+    cuts = face_frame(P, ox, h, toe, lip)
+    y0, y1 = toe + 0.008, h - lip - 0.008
+    pl = P.box("kick_plate", (ox - 0.994, y0, -0.01), (ox + 0.994, y1, 0.008), "bulkhead", bevel=0.004)
+    ym = (y0 + y1) / 2
+    slots = [P.box("slot", (ox + x - 0.035, ym - 0.016, -0.02), (ox + x + 0.035, ym + 0.016, 0.06), "machinery")
+             for x in (-0.35, -0.25, -0.15, -0.05, 0.05, 0.15, 0.25, 0.35)]
+    P.cut(pl, "slot_band", slots)
+    cuts.append(P.box("slot_well", (ox - 0.40, ym - 0.02, -0.04), (ox + 0.40, ym + 0.02, 0.05), "machinery"))
+    if rusty(F):
+        P.box("hazard_band", (ox - 0.994, y0 + 0.006, 0.0), (ox + 0.994, y0 + 0.042, 0.012), "hazard", bevel=0.002)
+    bolts(P, [(ox + x, y) for x in (-0.9, -0.5, 0.5, 0.9) for y in (y0 + 0.028, y1 - 0.028)], r=0.011, z0=0.0, z1=0.02)
+    return cuts
+
+
+PLATFORM_BUILDERS = {"riser": p_riser, "riser_low": p_riser_low, "step": p_step}
+
+
+# ----------------------------------------------------------------------------- upholstery
+# Padded leather (panels.json upholstery; the owner, 2026-10-07: "chairs suck still mainly its a texture
+# problem"): panel space as for a floor cell, x -1..1 and y 0..2, z out of the padding. Both layers tile
+# both ways: every pitch divides 2 m and the pieces are laid out past the frame on every side, so a
+# pillow the frame cuts continues on the opposite edge. Pillows are smooth heightfields, not booleans,
+# and smooth shaded, so the padding reads soft under render.upholstery's soft light.
+
+def pad_rise(t, r):
+    """The padding's rise at distance t in from a pillow's edge: 0 at the edge, 1 from r in, curving
+    over like a filled cushion (a parabola, steepest at the edge)."""
+    u = min(1.0, max(0.0, t / r))
+    return 1.0 - (1.0 - u) ** 2
+
+
+def pad_height(x, y, cell, height, rx, ry):
+    x0, y0, x1, y1 = cell
+    return height * pad_rise(min(x - x0, x1 - x), rx) * pad_rise(min(y - y0, y1 - y), ry)
+
+
+def pillows(P, what, cells, height, rx, ry, role, nx, ny, z0=-0.03):
+    """Padded pillows as one mesh: each cell (x0, y0, x1, y1) a smooth heightfield rising `height` above
+    z = 0 in its middle and falling to z = 0 at its edges over rx (across x) and ry (along y), closed by
+    flat sides down to z0 and a flat bottom. nx, ny: the grid's segments across and along."""
+    bm = bmesh.new()
+    ri = kit.ROLES.index(role)
+    for cell in cells:
+        x0, y0, x1, y1 = cell
+        xs = [x0 + (x1 - x0) * i / nx for i in range(nx + 1)]
+        ys = [y0 + (y1 - y0) * j / ny for j in range(ny + 1)]
+        top = [[bm.verts.new(Vector((x, y, pad_height(x, y, cell, height, rx, ry)))) for x in xs] for y in ys]
+        for j in range(ny):
+            for i in range(nx):
+                f = bm.faces.new((top[j][i], top[j][i + 1], top[j + 1][i + 1], top[j + 1][i]))
+                f.material_index = ri
+                f.smooth = True
+        rim = ([top[0][i] for i in range(nx + 1)] + [top[j][nx] for j in range(1, ny + 1)]
+               + [top[ny][i] for i in range(nx - 1, -1, -1)] + [top[j][0] for j in range(ny - 1, 0, -1)])
+        bot = [bm.verts.new(Vector((v.co.x, v.co.y, z0))) for v in rim]
+        n = len(rim)
+        for k in range(n):
+            bm.faces.new((rim[k], bot[k], bot[(k + 1) % n], rim[(k + 1) % n])).material_index = ri
+        bm.faces.new(list(reversed(bot))).material_index = ri
+    return kit._object(bm, P._name(what), P.coll)
+
+
+def stitches(P, pts, along, cell, height, rx, ry, length=0.011, width=0.0035):
+    """A stitch line on a pillow's surface: a raised dash of thread at each point, laid along `along`
+    ('x' or 'y') and lifted to the padding's height there."""
+    items = []
+    for x, y in pts:
+        z = pad_height(x, y, cell, height, rx, ry)
+        hl, hw = (length / 2, width / 2) if along == "x" else (width / 2, length / 2)
+        items.append(([(x - hl, y - hw), (x + hl, y - hw), (x + hl, y + hw), (x - hl, y + hw)], z - 0.003, z + 0.0012))
+    return items
+
+
+def u_channel(P):
+    """Channel-stitched padding: rolled vertical channels 2/21 m wide (95 mm) with a stitched groove
+    between them, crossed every 0.5 m (at y 0.25 + 0.5 k) by a welted seam, a piping cord in a pinched
+    gap with a twin topstitch either side, so a seat or a back reads as quilted panels."""
+    pitch, gap, welt_gap, height = 2.0 / 21.0, 0.009, 0.024, 0.016
+    welts = [0.25 + 0.5 * k for k in range(-1, 5)]
+    cells = []
+    for j in range(len(welts) - 1):
+        ya, yb = welts[j] + welt_gap / 2, welts[j + 1] - welt_gap / 2
+        for i in range(-12, 12):
+            xa = i * pitch + gap / 2
+            cells.append((xa, ya, xa + pitch - gap, yb))
+    rx, ry = (pitch - gap) / 2, 0.07
+    P.box("base", (-1.6, -0.6, -0.25), (1.6, 2.6, 0.0), "machinery")
+    pillows(P, "channels", cells, height, rx, ry, "upholstery", 8, 24)
+    items = []
+    for c in cells:
+        for y in (c[1] + 0.012, c[3] - 0.012):
+            xs = [c[0] + 0.008 + k * 0.0195 for k in range(5)]
+            items += stitches(P, [(x, y) for x in xs if x < c[2] - 0.006], "x", c, height, rx, ry)
+    studs(P, "topstitch", items, "stencil", top=0.7)
+    for y in welts:
+        P.cyl("welt", "x", (y, 0.0015), 0.0075, -1.4, 1.4, "paint2", sides=12)
+
+
+def u_panel(P):
+    """Padded panels 2/7 m by 0.25 m: each a cushion rising 2 cm, its edges rolled over 4.5 cm, a
+    piping cord in the welted seam on every edge and a stitch line 2.2 cm inside it; for bolsters,
+    headrests and arm pads."""
+    pw, ph, gap, height = 2.0 / 7.0, 0.25, 0.02, 0.02
+    cells = []
+    for j in range(-1, 9):
+        for i in range(-4, 4):
+            cells.append((i * pw + gap / 2, j * ph + gap / 2, (i + 1) * pw - gap / 2, (j + 1) * ph - gap / 2))
+    r = 0.045
+    P.box("base", (-1.6, -0.6, -0.25), (1.6, 2.6, 0.0), "machinery")
+    pillows(P, "panels", cells, height, r, r, "upholstery", 16, 14)
+    items = []
+    for c in cells:
+        x0, y0, x1, y1 = c[0] + 0.022, c[1] + 0.022, c[2] - 0.022, c[3] - 0.022
+        n = int((x1 - x0) / 0.02)
+        for k in range(n + 1):
+            x = x0 + (x1 - x0) * k / n
+            items += stitches(P, [(x, y0), (x, y1)], "x", c, height, r, r)
+        n = int((y1 - y0) / 0.02)
+        for k in range(1, n):
+            y = y0 + (y1 - y0) * k / n
+            items += stitches(P, [(x0, y), (x1, y)], "y", c, height, r, r)
+    studs(P, "topstitch", items, "stencil", top=0.7)
+    for j in range(-1, 10):
+        P.cyl("welt", "x", (j * ph, 0.0015), 0.0075, -1.4, 1.4, "paint2", sides=12)
+    for i in range(-4, 5):
+        P.cyl("welt", "y", (i * pw, 0.0015), 0.0075, -0.4, 2.4, "paint2", sides=12)
+
+
+UPHOLSTERY_BUILDERS = {"channel": u_channel, "panel": u_panel}
 
 
 # ----------------------------------------------------------------------------- the UI images

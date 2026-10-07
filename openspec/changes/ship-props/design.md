@@ -154,6 +154,36 @@ bank's back tearing through the briefing room's wall, the owner's screenshot) an
 layout where it gave 15,944 (`deck-pipeline` section 11's table was made at 15,688 and stays an upper bound). Props
 lose their undersides and wall backs (section 5's table is measured after this).
 
+### 4b. Seats (2026-10-07)
+
+The owner, on the captain's chair in the deck plan: "chairs suck still mainly its a texture problem", with four
+references: two Next Generation captain's chairs (tan leather; burgundy channelled leather), Elite Force 2's Klingon
+bridge and a Bridge Commander bridge. The chairs were boxes in the machinery texture, a grey-brown stone that reads as
+nothing anyone would sit on.
+
+**Upholstery is a texture of its own.** Two panel layers baked in Blender (`panel-textures`: designed relief under a
+fixed light, not a Material Maker graph, because the padding is modelled), shared by every finish:
+
+| Layer | What it shows | Used on |
+| --- | --- | --- |
+| `upholstery_channel` (68) | padded vertical channels about 9-10 cm wide with a stitched groove between them, a welted seam every 0.5 m, a fine leather grain | seat and back cushions |
+| `upholstery_panel` (69) | smooth padded panels with welted, piped seams | bolsters, headrests, arm pads |
+
+Both are baked in a light neutral grey and tile both ways over 2 m; the page multiplies them by the seat's colour, so one
+bake serves every colour: the captain's chair burgundy, after the second reference, the crew's chairs a dark slate with
+the station's colour as piping (the `accent` role, as today).
+
+**The chairs are remodelled after the references** (`tools/blender/build_bridge_props.py`, two new roles in the
+hard-surface kit, `upholstery` and `upholstery_panel`): the captain's a tall back with the Next Generation chair's centre
+slot, a headrest, wing bolsters, a rolled seat front, arms on angled supports carrying their consoles, a louvred pedestal
+on a base plate; the crew's the same family, simpler. Their anchors, seat heights and operator points are unchanged, so
+every page places them where they stood. Budgets rise for the shape: the captain's from 300 to 900 triangles, the crew's
+from 160 to 480 (section 5 is measured after them).
+
+**What it costs.** Two layers, 0.35 MB each at 256 px with mips. At most 600 triangles more for the captain's chair and
+320 for each crew chair: the bridge (the captain and six crew) about 2,500 more, inside its 30,000; the briefing room
+(eight chairs) about 2,600 more, inside its 8,000. Section 5's table is re-measured with them. No draw call.
+
 ### 5. The Pi 5 budget this change spends
 
 Measured on the deck plan, 2026-10-06: `MOCKUP_STATS` per compartment, which counts the compartment's mesh and its

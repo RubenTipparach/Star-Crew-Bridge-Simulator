@@ -33,6 +33,11 @@
     const sets = opts.sets || ["bridge"];
     const roleColor = (station) => new THREE.Color(ROLE_OF[station] ? K.PALETTE.role[ROLE_OF[station]] : K.PALETTE.screen);
     const STAR_MATS = new Set(Object.keys(mats.layer));
+    // Upholstery (ship-props design 4b): a prop's upholstery roles take the panel layers baked for them, light grey
+    // and tinted per seat; a page without them (no loadPanels, or panels.json before the layers) draws them as trim.
+    const UPHOLSTERY = { upholstery: "panel:upholstery:channel", upholstery_panel: "panel:upholstery:panel" };
+    const PANEL_SPAN = mats.panels ? mats.panels.manifest.layers.span_m : 2;
+    const SEAT_TINT = { captain_chair: new THREE.Color(0x8a2433), default: new THREE.Color(0x4b5666) };   // burgundy, dark slate
 
     // ---------------------------------------------------------------- the prop sets
     async function loadSet(set) {
@@ -230,8 +235,10 @@
         const screen = mname === "screen", accent = mname === "accent";
         // Under a console face (design 11.6) a screen's recess floor is black glass; without the faces it glows the station's colour.
         const glass = screen && SCREENS && PROPS && PROPS[kind];
-        const role = screen ? "screen" : `prop_${STAR_MATS.has(mname) ? mname : "trim"}${accent ? "_accent" : ""}`;
-        const dst = parts[role] || (parts[role] = { position: [], normal: [], uvm: [], tint: [], material: screen ? "light_panel" : (STAR_MATS.has(mname) ? mname : "trim") });
+        const uph = UPHOLSTERY[mname] && STAR_MATS.has(UPHOLSTERY[mname]) ? UPHOLSTERY[mname] : null;
+        const role = screen ? "screen" : uph ? `prop_${mname}` : `prop_${STAR_MATS.has(mname) ? mname : "trim"}${accent ? "_accent" : ""}`;
+        const dst = parts[role] || (parts[role] = { position: [], normal: [], uvm: [], tint: [], material: screen ? "light_panel" : uph || (STAR_MATS.has(mname) ? mname : "trim") });
+        const seat = uph && ((o && o.upholstery) || baseTint(kind));
         dst.tint = dst.tint || [];
         // A light panel strip on a prop glows, as the rooms' lamps and status strips do (its texels' alpha is the emission mask).
         // It glows evenly: its UVs sit on one lit cell of the lamp layer, so a canopy, a reactor's window band or a
@@ -249,13 +256,18 @@
           dst.position.push(back[0] + x * c + z * s, back[1] + y, back[2] - x * s + z * c);
           const nx = P.normal[i * 3], ny = P.normal[i * 3 + 1], nz = P.normal[i * 3 + 2];
           dst.normal.push(nx * c + nz * s, ny, -nx * s + nz * c);
-          if (lit) dst.uvm.push(GLOW_UV_M[0], GLOW_UV_M[1]); else dst.uvm.push(P.uvm[i * 2], P.uvm[i * 2 + 1]);
-          const t = glass ? [0.03, 0.035, 0.045] : screen ? [tint.r * 0.9, tint.g * 0.9, tint.b * 0.9] : accent ? [tint.r, tint.g, tint.b] : [1, 1, 1];
+          if (lit) dst.uvm.push(GLOW_UV_M[0], GLOW_UV_M[1]);
+          else if (uph) dst.uvm.push(P.uvm[i * 2] / PANEL_SPAN, P.uvm[i * 2 + 1] / PANEL_SPAN);   // a panel layer's UVs are in spans
+          else dst.uvm.push(P.uvm[i * 2], P.uvm[i * 2 + 1]);
+          const t = glass ? [0.03, 0.035, 0.045] : screen ? [tint.r * 0.9, tint.g * 0.9, tint.b * 0.9] : accent ? [tint.r, tint.g, tint.b] : seat ? [seat.r, seat.g, seat.b] : [1, 1, 1];
           dst.tint.push(...t);
           if (lit) dst.glow.push(1);
         }
       }
     }
+
+    /** A seat's upholstery colour: the captain's chair burgundy, any other dark slate (o.upholstery overrides it). */
+    function baseTint(kind) { return SEAT_TINT[baseOf(kind)] || SEAT_TINT.default; }
 
     /** A seated crew member for scale: legs, torso and head in the station's role colour. */
     function placeCrew(parts, seat, yawDeg, station) {

@@ -229,6 +229,15 @@ ceiling too busy.
   (a dais into `floor`) must use a role of its own (deck-plan's `fx_<role>`).
 - Without the option a page gets exactly the geometry it always had (checked by hashing every
   compartment's parts with the old kit and the new).
+- **Platform faces** (ceilings-and-trims design 9): `K.buildPlatforms(..., { topLayer, riserLayer:
+  K.panelLayerName(finish, "platform") })` maps each riser onto the `riser` or `riser_low` row of
+  `<finish>_platform` (the nearer height) and each stair step's front onto `step`, bottom edge to the
+  row's bottom and top edge to its top, u along the outline in metres; role `platform_riser`.
+- **Upholstery** (ship-props design 4b): give `PropKit.create` the panel set (`pmats`, not `mats`).
+  A prop's `upholstery` and `upholstery_panel` roles then take `panel:upholstery:channel` and
+  `panel:upholstery:panel`, their metre UVs divided by the 2 m span, tinted per seat (the captain's
+  chair burgundy, others dark slate; `placeProp(..., { upholstery: THREE.Color })` overrides). Without
+  the panel set they fall back to trim.
 
 ## Pitfalls actually hit
 

@@ -774,7 +774,10 @@
         for (const m of Object.keys(F[kind].modules)) if (m[0] !== "_") out.push({ name: panelLayerName(fn, m, kind), stem: `${fn}_${kind}_${m}`, layer: F[kind].modules[m].layer });
       }
       if (F.trims) out.push({ name: panelLayerName(fn, "trims"), stem: `${fn}_trims`, layer: F.trims.layer });
+      if (F.platforms) out.push({ name: panelLayerName(fn, "platform"), stem: `${fn}_platform`, layer: F.platforms.layer });
     }
+    // Upholstery (ship-props design 4b): one bake for every finish, tinted per seat by the page.
+    if (S.upholstery) for (const k of Object.keys(S.upholstery.layers)) out.push({ name: `panel:upholstery:${k}`, stem: `upholstery_${k}`, layer: S.upholstery.layers[k] });
     return out;
   }
 
@@ -1868,10 +1871,32 @@
       }
     }
   }
+  /**
+   * The platform layer's rows for opts.riserLayer (ceilings-and-trims design 9), or null without it or without the
+   * rows in the page's panels.json: { layer, span, rows, stretch, forHeight(h) }, forHeight naming the row nearer h.
+   */
+  function platformRows(opts) {
+    if (!opts || !opts.riserLayer) return null;
+    const S = panelsData().manifest;
+    if (!S.platforms) return null;
+    const R = S.platforms.rows, cut = (R.riser.h_m + R.riser_low.h_m) / 2;
+    return { layer: opts.riserLayer, span: S.layers.span_m, rows: R, stretch: S.trims.stretch_max, forHeight: (h) => (h >= cut ? "riser" : "riser_low") };
+  }
+  /**
+   * A vertical face from a to b (floor points) h high, on a row of the platform layer: its bottom edge on the row's
+   * bottom, its top on the row's top, so what the row shows fits the face; u is u0 + metres along it over the span.
+   */
+  function fittedFace(B, fit, a, b, h, u0, len, n, rowName) {
+    const r = fit.rows[rowName], v0 = r.v0_m / fit.span, v1 = (r.v0_m + r.h_m) / fit.span;
+    const p = [a, b, [b[0], b[1] + h, b[2]], [a[0], a[1] + h, a[2]]];
+    const uv = [[u0 / fit.span, v0], [(u0 + len) / fit.span, v0], [(u0 + len) / fit.span, v1], [u0 / fit.span, v1]];
+    B.triUv("platform_riser", p[0], p[1], p[2], uv[0], uv[1], uv[2], n, fit.layer);
+    B.triUv("platform_riser", p[0], p[2], p[3], uv[0], uv[2], uv[3], n, fit.layer);
+  }
   function buildPlatforms(THREE, B, platforms, stairs, floorY, D, opts) {
     D = D || shipData("detailing");
     opts = opts || {};
-    const Q = D.platforms;
+    const Q = D.platforms, fit = platformRows(opts);
     stairs = stairs || [];
     for (const pf of platforms) {
       let poly = pf.poly.map((p) => p.slice()), edges = pf.edges.slice();
@@ -1879,12 +1904,15 @@
       const top = pf.top_m, h = top - floorY, n = poly.length;
       if (opts.topLayer) tileTop(THREE, B, "platform_top", poly, top, opts.topLayer);
       else B.flat(THREE, "platform", poly, [], top, 1);
+      let along = 0;   // metres of outline from the first corner: the riser's u, so its vents carry round a ring
       for (let i = 0; i < n; i++) {
         const kind = edges[i];
+        const a = poly[i], b = poly[(i + 1) % n], len = Math.hypot(b[0] - a[0], b[1] - a[1]), u0 = along;
+        along += len;
         if (kind === "wall") continue;
-        const a = poly[i], b = poly[(i + 1) % n], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
         const t = [(b[0] - a[0]) / len, 0, (b[1] - a[1]) / len], on = outwardNormal(a, b), out = [on[0], 0, on[1]];
-        B.quad("riser", [a[0], floorY, a[1]], [b[0], floorY, b[1]], [b[0], top, b[1]], [a[0], top, a[1]], out);
+        if (fit) fittedFace(B, fit, [a[0], floorY, a[1]], [b[0], floorY, b[1]], h, u0, len, out, fit.forHeight(h));
+        else B.quad("riser", [a[0], floorY, a[1]], [b[0], floorY, b[1]], [b[0], top, b[1]], [a[0], top, a[1]], out);
         // The nosing: a hazard strip on the top's edge, raised clear of the platform's face.
         // Where the edge before is nosed too, this one starts a nosing's width in, so the two never overlap at the
         // corner (CLAUDE.md section 8): the corner is the edge before's.
@@ -1935,7 +1963,12 @@
         const back = run - s0;
         const cb = [ft[0] + w[0] * (s0 + back / 2), ft[1] + k * r + r / 2, ft[2] + w[2] * (s0 + back / 2)];
         void c;
-        B.box("stair", cb, u, [0, 1, 0], w, st.width_m / 2, r / 2, back / 2, ["+v", "-w", "+u", "-u"]);
+        B.box("stair", cb, u, [0, 1, 0], w, st.width_m / 2, r / 2, back / 2, fit ? ["+v", "+u", "-u"] : ["+v", "-w", "+u", "-u"]);
+        if (fit) {   // the step's front on the platform layer's step row, fitted to the rise
+          const fa = [ft[0] + w[0] * s0 - u[0] * st.width_m / 2, ft[1] + k * r, ft[2] + w[2] * s0 - u[2] * st.width_m / 2];
+          const fb = [ft[0] + w[0] * s0 + u[0] * st.width_m / 2, ft[1] + k * r, ft[2] + w[2] * s0 + u[2] * st.width_m / 2];
+          fittedFace(B, fit, fb, fa, r, -st.width_m / 2, st.width_m, [-w[0], 0, -w[2]], "step");   // fb to fa: it faces down the stair
+        }
         const nm = Q.nosing_m;
         B.box("nosing", [ft[0] + w[0] * (s0 + nm / 2), ft[1] + hh + Q.nosing_raise_m / 2, ft[2] + w[2] * (s0 + nm / 2)], u, [0, 1, 0], w, st.width_m / 2, Q.nosing_raise_m / 2, nm / 2, ["+v", "-w", "+u", "-u"]);
       }
@@ -2790,6 +2823,11 @@
     const sets = opts.sets || ["bridge"];
     const roleColor = (station) => new THREE.Color(ROLE_OF[station] ? K.PALETTE.role[ROLE_OF[station]] : K.PALETTE.screen);
     const STAR_MATS = new Set(Object.keys(mats.layer));
+    // Upholstery (ship-props design 4b): a prop's upholstery roles take the panel layers baked for them, light grey
+    // and tinted per seat; a page without them (no loadPanels, or panels.json before the layers) draws them as trim.
+    const UPHOLSTERY = { upholstery: "panel:upholstery:channel", upholstery_panel: "panel:upholstery:panel" };
+    const PANEL_SPAN = mats.panels ? mats.panels.manifest.layers.span_m : 2;
+    const SEAT_TINT = { captain_chair: new THREE.Color(0x8a2433), default: new THREE.Color(0x4b5666) };   // burgundy, dark slate
 
     // ---------------------------------------------------------------- the prop sets
     async function loadSet(set) {
@@ -2987,8 +3025,10 @@
         const screen = mname === "screen", accent = mname === "accent";
         // Under a console face (design 11.6) a screen's recess floor is black glass; without the faces it glows the station's colour.
         const glass = screen && SCREENS && PROPS && PROPS[kind];
-        const role = screen ? "screen" : `prop_${STAR_MATS.has(mname) ? mname : "trim"}${accent ? "_accent" : ""}`;
-        const dst = parts[role] || (parts[role] = { position: [], normal: [], uvm: [], tint: [], material: screen ? "light_panel" : (STAR_MATS.has(mname) ? mname : "trim") });
+        const uph = UPHOLSTERY[mname] && STAR_MATS.has(UPHOLSTERY[mname]) ? UPHOLSTERY[mname] : null;
+        const role = screen ? "screen" : uph ? `prop_${mname}` : `prop_${STAR_MATS.has(mname) ? mname : "trim"}${accent ? "_accent" : ""}`;
+        const dst = parts[role] || (parts[role] = { position: [], normal: [], uvm: [], tint: [], material: screen ? "light_panel" : uph || (STAR_MATS.has(mname) ? mname : "trim") });
+        const seat = uph && ((o && o.upholstery) || baseTint(kind));
         dst.tint = dst.tint || [];
         // A light panel strip on a prop glows, as the rooms' lamps and status strips do (its texels' alpha is the emission mask).
         // It glows evenly: its UVs sit on one lit cell of the lamp layer, so a canopy, a reactor's window band or a
@@ -3006,13 +3046,18 @@
           dst.position.push(back[0] + x * c + z * s, back[1] + y, back[2] - x * s + z * c);
           const nx = P.normal[i * 3], ny = P.normal[i * 3 + 1], nz = P.normal[i * 3 + 2];
           dst.normal.push(nx * c + nz * s, ny, -nx * s + nz * c);
-          if (lit) dst.uvm.push(GLOW_UV_M[0], GLOW_UV_M[1]); else dst.uvm.push(P.uvm[i * 2], P.uvm[i * 2 + 1]);
-          const t = glass ? [0.03, 0.035, 0.045] : screen ? [tint.r * 0.9, tint.g * 0.9, tint.b * 0.9] : accent ? [tint.r, tint.g, tint.b] : [1, 1, 1];
+          if (lit) dst.uvm.push(GLOW_UV_M[0], GLOW_UV_M[1]);
+          else if (uph) dst.uvm.push(P.uvm[i * 2] / PANEL_SPAN, P.uvm[i * 2 + 1] / PANEL_SPAN);   // a panel layer's UVs are in spans
+          else dst.uvm.push(P.uvm[i * 2], P.uvm[i * 2 + 1]);
+          const t = glass ? [0.03, 0.035, 0.045] : screen ? [tint.r * 0.9, tint.g * 0.9, tint.b * 0.9] : accent ? [tint.r, tint.g, tint.b] : seat ? [seat.r, seat.g, seat.b] : [1, 1, 1];
           dst.tint.push(...t);
           if (lit) dst.glow.push(1);
         }
       }
     }
+
+    /** A seat's upholstery colour: the captain's chair burgundy, any other dark slate (o.upholstery overrides it). */
+    function baseTint(kind) { return SEAT_TINT[baseOf(kind)] || SEAT_TINT.default; }
 
     /** A seated crew member for scale: legs, torso and head in the station's role colour. */
     function placeCrew(parts, seat, yawDeg, station) {
@@ -3135,7 +3180,7 @@ window.MOCKUP_BUDGET = () => hud.read();
 // deck draws them (owner, 2026-10-06: "You had like really dope looking bridge chairs and consoles in one of the
 // mockups, bring that into the deck plan"), and the machinery set's systems, craft and crew-room furniture where
 // the page carries it. A plain block stays only for what no set models.
-const PK = await window.PropKit.create(THREE, K, GLTFLoader, mats, { sets: ["bridge", "suite", "machinery"], sizes: SUITE_PATCH.prop_brief_m });
+const PK = await window.PropKit.create(THREE, K, GLTFLoader, pmats, { sets: ["bridge", "suite", "machinery"], sizes: SUITE_PATCH.prop_brief_m });   // pmats: the upholstery layers
 if (PK.SCREENS) hud.textureBytes += PK.SCREENS.bytes;
 const hasProp = (k) => !!(PK.PROPS && PK.PROPS[k]);
 
@@ -3411,7 +3456,7 @@ function suiteParts(parts, c, noCar) {
   const B = new K.Builder();
   // The platforms' tops in the room floors' tread (the walkway module), not the gridded deck tiles (owner, 2026-10-06).
   if (c.id === "bridge") K.buildPlatforms(THREE, B, SUITE_PATCH.bridge.platforms, SUITE_PATCH.bridge.stairs, K.deckById(L, "A").floor_y_m, DET,
-    { topLayer: K.panelLayerName(c.finish, "walkway", "floor") });
+    { topLayer: K.panelLayerName(c.finish, "walkway", "floor"), riserLayer: K.panelLayerName(c.finish, "platform") });   // risers fitted (ceilings-and-trims 9)
   // deck-access's stair towers and lift car (fixtures the layout gains with that patch).
   for (const f of (L.fixtures || []).filter((x) => x.compartment === c.id)) {
     if (f.kind === "spiral_stair") K.buildSpiralStair(THREE, B, f);

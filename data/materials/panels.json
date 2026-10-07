@@ -79,6 +79,30 @@
       "cove": { "face": "cove", "sides": "cove" }
     }
   },
+  "platforms": {
+    "_doc": "The faces of raised floors (the bridge's rings, the dais, a sub-platform) and the fronts of their stairs' steps (the owner, 2026-10-07: 'the wall on these platforms kinda suck, please use better uv tiling, and redo to make the texture conform to the height better ... Usually these areas are made of vents of some kind, or small metal panels that should fit vertically on the geometry uv'). One layer per finish (finishes.<finish>.platforms.layer) holds three rows, each designed to fit one face height: riser a 0.45 m riser, riser_low a 0.225 m riser, step a stair step's 0.225 m front. A page maps a face's bottom to its row's v0_m and its top to v0_m + h_m, exactly, with no repeat and no stretch beyond the row's few millimetres over the face; u runs along the face, world-projected or measured round the outline, tiling with a 2 m period. Each row has a dark toe kick at the floor, a steel lip under the hazard nosing and, between them, vent grilles and small bolted access panels the row's clear height tall. Built like the trim rows (v0_m and h_m whole texels at 64 px per metre, at least two texels between rows, the gaps filled by repeating each row's edge), in the finish's trim colours and trim wear, under render.platforms.",
+    "rows": {
+      "riser": { "v0_m": 0.125, "h_m": 0.453125 },
+      "riser_low": { "v0_m": 0.75, "h_m": 0.234375 },
+      "step": { "v0_m": 1.25, "h_m": 0.234375 }
+    }
+  },
+  "upholstery": {
+    "_doc": "Padded leather for the chairs (the owner, 2026-10-07, on the captain's chair: 'chairs suck still mainly its a texture problem'): two layers that tile in both directions over the 2 m layer (wear and grain on a 4D torus, as the walkway's), baked in a neutral light warm grey because a page multiplies them by a tint per chair (tints_srgb, by prop name). channel: rolled vertical channels 2/21 m (95 mm) wide with a stitched groove between them and a welted seam across every 0.5 m (v = 0.25 + 0.5 k), for seat and back faces; panel: padded panels 2/7 m by 0.25 m with welted seams on every edge and a stitch line inside them, for bolsters, headrests and arm pads. The chairs' roles upholstery and upholstery_panel (tools/blender/hs_kit.py ROLES) take them, UV0 in metres over layers.span_m. Colours: leather the padding, welt the piping, seam what shows between pillows, stitch the thread; grain is the leather's pebble (cell_m across), its relief (bump strength 0-1) and mottle (colour variation 0-1).",
+    "layers": { "channel": 68, "panel": 69 },
+    "colours_srgb": {
+      "leather": [0.79, 0.775, 0.75],
+      "welt": [0.70, 0.685, 0.66],
+      "seam": [0.36, 0.35, 0.335],
+      "stitch": [0.90, 0.88, 0.84]
+    },
+    "wear": { "grime": 0.06, "grime_scale_per_m": 3.0, "crevice": 0.55, "crevice_m": 0.025, "edge": 0.0, "streaks": 0.0, "rust": 0.0 },
+    "grain": { "cell_m": 0.006, "relief": 0.25, "mottle": 0.05 },
+    "tints_srgb": {
+      "captain_chair": [0.50, 0.10, 0.12],
+      "crew_chair": [0.25, 0.29, 0.33]
+    }
+  },
   "glow": { "normal": 1.0, "red_alert": 1.0, "emergency": 0.3 },
   "render": {
     "_doc": "How tools/blender/build_wall_panels.py bakes a module (design section 6, option B): orthographic and face-on, Cycles on the CPU, a fixed key light from the upper left (key_light_tangent: x right, y up, z out of the wall) of angular size key_angle_deg, and a uniform ambient of ambient, scaled so that a flat, unoccluded face renders at exactly its colour; occlusion and one or two bounces come from the path tracing. Rendered at px_per_m with samples per pixel and no denoiser, then area-averaged to the layer sizes. The emission mask is a second render in which emissive materials glow white and everything else is black.",
@@ -91,7 +115,9 @@
     "bounces": 2,
     "ceiling": { "key_light_tangent": [0.2, 0.3, 0.93], "key_angle_deg": 25.0, "ambient": 0.5 },
     "floor": { "key_light_tangent": [-0.3, 0.45, 0.84], "key_angle_deg": 15.0, "ambient": 0.45 },
-    "trims": { "key_light_tangent": [0.5, 0.2, 0.84], "key_angle_deg": 10.0, "ambient": 0.42 }
+    "trims": { "key_light_tangent": [0.5, 0.2, 0.84], "key_angle_deg": 10.0, "ambient": 0.42 },
+    "platforms": { "key_light_tangent": [-0.25, 0.6, 0.76], "key_angle_deg": 10.0, "ambient": 0.42 },
+    "upholstery": { "key_light_tangent": [-0.35, 0.45, 0.82], "key_angle_deg": 35.0, "ambient": 0.5 }
   },
   "ui": {
     "_doc": "Screen and key images, reusable by console props (owner, 2026-10-05: 'better UI place holders, keyboards etc'). The screen is a UI placeholder modelled as emissive shapes (a header band, bar graphs, a line plot over a grid, a schematic, rows of text-like ticks; no real text) and rendered face-on; the screen module shows it in its display. The keys are a strip of raised keys, a few lit, baked like the modules. Both are written per finish as <dir>/ui_screen_<finish>.png and <dir>/keys_<finish>.png.",
@@ -160,6 +186,7 @@
         "colours_srgb": { "plate": [0.31, 0.31, 0.30], "paint2": [0.23, 0.23, 0.225], "metal": [0.66, 0.65, 0.62], "dark": [0.07, 0.07, 0.075] },
         "wear": { "grime": 0.14, "grime_scale_per_m": 2.0, "crevice": 0.6, "crevice_m": 0.03, "edge": 0.65, "streaks": 0.10, "rust": 0.0 }
       },
+      "platforms": { "layer": 66 },
       "modules": {
         "plate": { "layer": 11, "weight": 3, "placed": "draw", "emissive": false, "mirrored": false },
         "vent": { "layer": 12, "weight": 1, "placed": "draw", "emissive": false, "mirrored": false, "variant": "louvre" },
@@ -234,6 +261,7 @@
         "colours_srgb": { "plate": [0.24, 0.225, 0.20], "paint2": [0.18, 0.17, 0.15], "metal": [0.54, 0.50, 0.44] },
         "wear": { "grime": 0.26, "grime_scale_per_m": 2.5, "crevice": 0.6, "crevice_m": 0.04, "edge": 0.6, "streaks": 0.25, "rust": 0.5 }
       },
+      "platforms": { "layer": 67 },
       "modules": {
         "plate": { "layer": 22, "weight": 3, "placed": "draw", "emissive": false, "mirrored": false },
         "vent": { "layer": 23, "weight": 1, "placed": "draw", "emissive": false, "mirrored": false, "variant": "octagons" },
@@ -252,8 +280,8 @@
   "source": {
     "tool": "blender",
     "generator": "tools/blender/build_wall_panels.py",
-    "generator_version": 2,
+    "generator_version": 3,
     "blender": "4.5 LTS (the bpy module, 4.5.14)",
-    "note": "Question V2 is answered (owner, 2026-10-05): panels are modelled and baked in Blender (option B; CLAUDE.md section 9). Version 2 adds the ceiling and floor modules and the trim rows; the wall layers it writes are byte for byte version 1's."
+    "note": "Question V2 is answered (owner, 2026-10-05): panels are modelled and baked in Blender (option B; CLAUDE.md section 9). Version 2 adds the ceiling and floor modules and the trim rows; the wall layers it writes are byte for byte version 1's. Version 3 (2026-10-07) adds the platform face layers (66, 67) and the upholstery layers (68, 69); every earlier layer is byte for byte version 2's."
   }
 }
