@@ -1,0 +1,6 @@
+{
+  "schema": "starcrew.render/1",
+  "_doc": "What the renderer allocates at startup (openspec/changes/engine-stack, design sections 5 and 8; read by sc-core::data::RenderConfig). sokol_gfx's pools are fixed at sg_setup, which is CLAUDE.md 2's allocate up front: a pool too small fails loudly when a resource is made. The sizes are first choices for the Tern (about 37 compartments, one buffer pair each, a few programs and targets) with room for the probe's scenes; the probe reports the memory they take (design section 11, scene 8).",
+  "pools": { "buffers": 256, "images": 64, "samplers": 16, "shaders": 16, "pipelines": 64, "views": 128 },
+  "uniform_buffer_bytes": 4194304
+}

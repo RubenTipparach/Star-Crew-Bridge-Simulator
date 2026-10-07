@@ -14,7 +14,7 @@ how it is kept). Keep editing it rather than starting another.
 
 | Change | Designs | Mockup | Published |
 | --- | --- | --- | --- |
-| [engine-stack](../../openspec/changes/engine-stack/) | The custom engine (Rust, SDL3, sokol_gfx), the OpenGL ES 3.0 floor, crates, the Pi 5 budget table, the probe, the browser playtest build | | |
+| [engine-stack](../../openspec/changes/engine-stack/) | The custom engine (Rust, SDL3, sokol_gfx), the OpenGL ES 3.0 floor, crates, the Pi 5 budget table, the probe, the browser playtest build. **Being built** (design section 14): first light and the probe's shots are in [docs/screenshots/engine/](../screenshots/engine/) | | |
 | [netcode-and-sessions](../../openspec/changes/netcode-and-sessions/) | Authoritative server, WebRTC data channels for every client (the owner's choice, 2026-10-07), snapshots, prediction, seats, sessions | | |
 | [matchmaker](../../openspec/changes/matchmaker/) | A small service on Fly.io: join by a six-character code from a browser or a desktop with no port forwarding, the WebRTC connection setup, STUN and TURN | | |
 | [reference-ship-tern](../../openspec/changes/reference-ship-tern/) | The Tern's floor plan, deck by deck; the deck plan shows deck A with the command suite (proposed), or today's layout with its Bridge buttons | [deck-plan.html](../mockups/deck-plan.html) | [3YJXPa...](https://claude.ai/artifact/3YJXPa7vZuNtAB3YyWQSPV) |

@@ -12,22 +12,22 @@ measurement instrument and comes first.
 
 ## 2. Measure the Pi (the probe)
 
-- [ ] 2.1 Workspace skeleton: `Cargo.toml` with `sc-core`, `sc-net`, `sc-render`, `sc-client`, `sc-server`, `sc-tools`, `sc-probe`; `rustfmt.toml`; workspace lints with warnings as errors.
+- [x] 2.1 Workspace skeleton: `Cargo.toml` with `sc-core`, `sc-net`, `sc-render`, `sc-client`, `sc-server`, `sc-tools`, `sc-probe`; `rustfmt.toml`; workspace lints with warnings as errors.
 - [ ] 2.2 Cross-compilation: a Raspberry Pi OS (64-bit) sysroot with libdrm, GBM, EGL, GLESv2 and SDL3's build dependencies (SDL 3.4+ built from source through `sdl3-src`), and a C cross-compiler for sokol_gfx; `cross` or `cargo zigbuild` config for `aarch64-unknown-linux-gnu` with `-C target-cpu=cortex-a76`.
-- [ ] 2.2a Vendor `sokol_gfx.h`, `sokol_log.h` and the generated `gfx.rs` and `log.rs` into `third_party/sokol/` at pinned revisions with a provenance file; `sc-render`'s build script compiles them (`SOKOL_GLES3` or `SOKOL_GLCORE`) and runs the pinned `sokol-shdc` over `sc-render/shaders/`.
-- [ ] 2.3 `sc-render` minimum: SDL3 window and OpenGL ES 3.0 context (atomic KMS/DRM on the Pi, `SDL_KMSDRM_ATOMIC=1`) driven by SDL3's main callbacks, sokol_gfx set up on it with the budget's pool sizes, the deck shader and vertex format in sokol_gfx's terms (design section 7), a frame timer.
-- [ ] 2.4 `sc-probe` scenes 1-6 and 8 (design section 11; scene 8 measures sokol_gfx's own cost) with a JSON and Markdown report.
+- [x] 2.2a Vendor `sokol_gfx.h`, `sokol_log.h` and the generated `gfx.rs` and `log.rs` into `third_party/sokol/` at pinned revisions with a provenance file; `sc-render`'s build script compiles them (`SOKOL_GLES3` or `SOKOL_GLCORE`) and runs the pinned `sokol-shdc` over `sc-render/shaders/`. Done 2026-10-07, with one change: `tools/sokol_shaders.py` fetches the pinned `sokol-shdc` (checked by sha256) and writes the modules, which are committed; the build script refuses a stale one (design section 14).
+- [x] 2.3 `sc-render` minimum: SDL3 window and OpenGL ES 3.0 context (atomic KMS/DRM on the Pi, `SDL_KMSDRM_ATOMIC=1`) driven by SDL3's main callbacks, sokol_gfx set up on it with the budget's pool sizes, the deck shader and vertex format in sokol_gfx's terms (design section 7), a frame timer.
+- [ ] 2.4 `sc-probe` scenes 1-6 and 8 (design section 11; scene 8 measures sokol_gfx's own cost) with a JSON and Markdown report. In progress: scenes 1-4 and 8 are built and run (design section 14); scene 5 waits for the egui painter, scene 6 for `deckc`.
 - [ ] 2.4a Probe scene 9: the probe built for `wasm32-unknown-emscripten` (SDL3's Emscripten port, or `sokol_app` if it fails), opened in Chromium and Firefox; report the download size and that each scene draws.
 - [ ] 2.5 Owner runs the probe on a 1 GB Pi 5; report in `docs/benchmarks/<date>-pi5-probe/`.
 - [ ] 2.6 Correct the budget table (design section 5) and its marker from the report, with `docs/mockups/lib/shipkit.js` `PI_BUDGET` in the same commit.
 
 ## 3. Foundations
 
-- [ ] 3.1 `scripts/check.sh` running design section 12's list in order.
-- [ ] 3.2 `sc-core` skeleton: fixed-step clock in seconds, generational arenas, seeded random source (seed, stable id, purpose), replay hash.
-- [ ] 3.3 Data loading in `sc-core`: serde types with `deny_unknown_fields`, units in keys, validation that stops startup naming the file and field; tests for a misspelt key and a non-finite value.
+- [x] 3.1 `scripts/check.sh` running design section 12's list in order.
+- [x] 3.2 `sc-core` skeleton: fixed-step clock in seconds, generational arenas, seeded random source (seed, stable id, purpose), replay hash.
+- [x] 3.3 Data loading in `sc-core`: serde types with `deny_unknown_fields`, units in keys, validation that stops startup naming the file and field; tests for a misspelt key and a non-finite value.
 - [ ] 3.4 Startup memory sizing from the budget table; a debug counting allocator that fails a test on steady-state allocation.
-- [ ] 3.5 Headless render tests through Mesa `llvmpipe` (EGL, OpenGL ES 3.0) with reference images.
+- [x] 3.5 Headless render tests through Mesa `llvmpipe` (EGL, OpenGL ES 3.0) with reference images.
 - [ ] 3.6 Deploy: copy binaries, `data/` and `compiled/` to a Pi over SSH; a systemd unit for the full-screen client with `SDL_VIDEODRIVER=kmsdrm`, and one for `sc-server` that restarts on failure.
 
 ## 4. Move to specs

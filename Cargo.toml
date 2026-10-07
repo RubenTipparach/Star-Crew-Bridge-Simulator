@@ -1,0 +1,46 @@
+# The Star Crew engine workspace (openspec/changes/engine-stack, design section 3).
+# Dependencies only point up the design's picture: sc-core depends on nothing of ours.
+[workspace]
+resolver = "2"
+members = [
+    "crates/sc-core",
+    "crates/sc-net",
+    "crates/sc-render",
+    "crates/sc-client",
+    "crates/sc-server",
+    "crates/sc-tools",
+    "crates/sc-probe",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+license = "UNLICENSED"
+publish = false
+
+[workspace.dependencies]
+sc-core = { path = "crates/sc-core" }
+sc-net = { path = "crates/sc-net" }
+sc-render = { path = "crates/sc-render" }
+sc-client = { path = "crates/sc-client" }
+glam = "0.34"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+log = "0.4"
+cc = "1"
+# SDL 3.4 built from source with the game (design section 4: the Pi 5 needs 3.4's atomic KMS/DRM path).
+sdl3-sys = { version = "0.7", features = ["build-from-source-static"] }
+
+# Warnings are errors (CLAUDE.md 6.6); check.sh also runs clippy with -D warnings.
+[workspace.lints.rust]
+warnings = "deny"
+unsafe_op_in_unsafe_fn = "deny"
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+debug = 1

@@ -1,7 +1,9 @@
 # Design: the engine stack
 
 Status: **proposed** (2026-10-04); the language and stack are **decided** by the owner (E1,
-below), and the graphics layer since 2026-10-07 (E2: sokol_gfx with SDL3). Nothing here is built. The budget table in section 5 is provisional until `sc-probe`
+below), and the graphics layer since 2026-10-07 (E2: sokol_gfx with SDL3). **Being built since
+2026-10-07** (the owner: "start building the game"): section 14 says what exists and what the
+build taught. The budget table in section 5 is provisional until `sc-probe`
 measures it on a Pi 5 (section 11).
 
 **History.** This design was first written against a Raspberry Pi 3 (OpenGL ES 2.0, 1 GB). The
@@ -146,7 +148,7 @@ thread (a listen server); a solo game is exactly that (CLAUDE.md 6.3). The main 
 | --- | --- | --- |
 | Window, GL context, input, gamepads, audio out | SDL3, version 3.4 or later (`sdl3` crate, with SDL built from source through `sdl3-src` so the version does not depend on the OS's package) | KMS/DRM backend on the Pi with no desktop (the atomic path, which the Pi 5 needs); X11, Wayland, Windows and macOS on desktops; the gamepad database. |
 | Graphics API | `sokol_gfx` on its GLES3 backend (GLCORE, GL 4.1, on Windows and macOS), from the sokol headers at a pinned revision | Pipelines, pools and a validation layer over GL; WebGL 2 in the browser; decided 2026-10-07 (section 2, E2). |
-| Shader compiler | `sokol-shdc`, a prebuilt binary at a pinned revision (Linux x86-64 and arm64, macOS, Windows builds exist), run by `sc-render`'s build script | One GLSL source per program, compiled to `glsl300es` and `glsl410`, with Rust uniform structs and reflection generated. |
+| Shader compiler | `sokol-shdc`, a prebuilt binary at a pinned revision (Linux x86-64 and arm64, macOS, Windows builds exist), fetched and checked against its sha256 by `tools/sokol_shaders.py`, which writes the generated modules; `sc-render`'s build script refuses a module whose source changed (section 14) | One GLSL source per program, compiled to `glsl300es` and `glsl410`, with Rust uniform structs and reflection generated. |
 | Maths | `glam` (f32 and f64 types) | Small, SIMD on aarch64 NEON, both precisions for the frames rule. |
 | Data | `serde`, `serde_json` with `deny_unknown_fields` | Validated JSON data with units in keys (CLAUDE.md 6.5). |
 | Wire and save format | `postcard` (compact binary over serde) | Small packets; one schema crate for both ends. |
@@ -343,10 +345,10 @@ are read as one four-lane attribute, checked against the real header's list of f
 
 | Bytes | Content (`deck-pipeline`) | sokol_gfx format | In the shader |
 | ---: | --- | --- | --- |
-| 0-7 | Position 3 x `i16`, then mover and layer 2 x `u8` | `SHORT4` | `xyz` is the position in 1/1024 m; `w` holds mover + 256 x layer as a signed 16-bit number, decoded exactly in floats (add 65,536 when negative, then divide by 256) |
+| 0-7 | Position 3 x `i16`, then mover and layer 2 x `u8` | `SHORT4` | An integer attribute (`ivec4`; corrected 2026-10-07, section 14): `xyz` is the position in 1/1024 m; `w & 0xffff` holds the mover in its low byte and the layer in its high byte |
 | 8-11 | Normal, 2_10_10_10 | `INT10_N2` | Normalized; sokol reports whether the context has it (`vertexformat_int10_n2`), and GLES 3.0 does |
 | 12-23 | Three colour sets | `UBYTE4N` x 3 | As before |
-| 24-27 | Texture coordinate 2 x `i16` | `SHORT2` | Times 1/1024 of a layer's span |
+| 24-27 | Texture coordinate 2 x `i16` | `SHORT2` | An integer attribute (`ivec2`), times 1/1024 of a layer's span |
 
 `deckc`'s writer and `sc-render`'s pipeline description name these offsets once, in `sc-core`'s
 format table, and a test builds the pipeline from that table and draws a known vertex
@@ -517,6 +519,57 @@ compose; they do not prove anything about the Pi's speed.
   cross-builds to the Pi and Emscripten included.
 - **SDL3 on Emscripten through the Rust crates** is unproven here (probe scene 9 tests it); the
   fallback for the browser alone is `sokol_app`.
+
+## 14. Built so far, and what building taught (2026-10-07)
+
+The owner, 2026-10-07: "start building the game". Built, in a Claude Code cloud session (no GPU:
+everything drew through Mesa's llvmpipe over EGL, OpenGL ES 3.0, with SDL's offscreen video driver):
+
+| Part | Where | State |
+| --- | --- | --- |
+| The workspace | `Cargo.toml`, `crates/sc-*`, `rustfmt.toml` | The seven crates of section 3; warnings are errors for rustc and clippy |
+| sokol, vendored | `third_party/sokol/` with `PROVENANCE.md` | `sokol_gfx.h`, `sokol_log.h`, `gfx.rs`, `log.rs` at the revisions of section 4, sha256 recorded |
+| Shaders | `crates/sc-render/shaders/*.glsl`, `src/shaders/*.rs`, `tools/sokol_shaders.py` | The deck program (textured and flat) and the blit, from one source each |
+| `sc-core` | `crates/sc-core/` | The fixed-step clock, generational arenas, seeded randomness, the replay hash, the data loader with `data/engine/render.json`, the deck vertex table and packer; 21 tests |
+| `sc-render` | `crates/sc-render/` | sokol_gfx set up with the pools from data, the deck pipelines built from `sc-core`'s table, the 3D target (MSAA when asked) and the blit to the output, readback for captures |
+| The platform | `crates/sc-client/src/platform.rs` | SDL 3.4.18 built from source (`sdl3-sys`), its main callbacks, an OpenGL ES 3.0 context (4.1 core on Windows and macOS), `SDL_KMSDRM_ATOMIC` set for the Pi 5 |
+| `sc-client` | `crates/sc-client/src/main.rs` | First light: a placeholder room through the deck pipeline in the three states, blended by the state weights over 0.5 s (keys 1, 2, 3) |
+| `sc-probe` | `crates/sc-probe/` | Scenes 1, 2, 3, 4 and 8, the JSON and Markdown report |
+| Render tests | `crates/sc-client/tests/render.rs` | Known deck vertices drawn and read back, and a reference image |
+| `scripts/check.sh` | | Section 12's list, then the shader modules, the engine data and the lighting data |
+| `sc-server`, `sc-tools` | | The server's 30 Hz loop skeleton; `sc-tools check-data` |
+
+**What building taught, and what changed because of it:**
+
+- **sokol_gfx's 16-bit vertex formats are integer formats.** At the pinned revision `SHORT4` and
+  `SHORT2` have an integer base type, and the validation layer refused them for `vec4` inputs on
+  the first run (`VALIDATE_PIPELINEDESC_ATTR_BASETYPE_MISMATCH`). The deck shader now reads them as
+  `ivec4` and `ivec2` (GLES 3.0 integer attributes), and decodes the mover and layer exactly with a
+  mask and a shift instead of section 7's float arithmetic. The 28 bytes do not change. The render
+  test draws layer 200, whose top bit is the sign bit of the packed lane, and reads it back.
+- **`sokol-shdc` is fetched, not committed, and its output is committed.** The binary is 11.6 MB a
+  platform. `tools/sokol_shaders.py` fetches it at revision `11d0cf6` and refuses one whose sha256
+  differs (`third_party/sokol/PROVENANCE.md`); it writes each program's Rust module with the
+  compiler revision and its source's sha256 on the first line; `sc-render`'s build script refuses a
+  module whose source has changed since. A Pi builds the game offline, and the Rust and GLSL
+  layouts still come from one source (section 4, the engine-platform spec's "Shader layouts are
+  generated, not hand-kept").
+- **A baked colour byte is a display multiplier, 0 to 2x.** The deck shader doubles the blended
+  colour, as `light-baking` section 5 stores light and as the deck plan's bake cache does.
+- **The probe waits for the GPU each frame.** Without `glFinish` a frame time measures only how fast
+  commands are queued (llvmpipe's fill scenes read 0.1 ms). The probe's CPU submit time is taken
+  before the wait; the game never waits.
+- **Deck textures need their own sampler.** World-projected coordinates run across many spans: the
+  deck samples with repeat and nearest; the blit with clamp.
+
+**The cloud probe run** (`docs/benchmarks/2026-10-07-probe-cloud/`, release build, 60 frames a step
+after 15 of warm-up, 2 repeats) proves every built scene draws and that the report is complete. Its
+times are llvmpipe's on a cloud CPU and say nothing about a Pi (CLAUDE.md 2). The shots are
+`docs/screenshots/engine/probe-contact-sheet.png` and `first-light-*.png`.
+
+**Not yet:** cross-compiling for the Pi (task 2.2); probe scenes 5 (UI, with the egui painter), 6
+(the Tern's decks, with `deckc`), 7 (the ship systems) and 9 (the browser); startup memory sizing
+and the counting allocator (3.4); the deploy (3.6). The owner's Pi 5 run (2.5) corrects section 5.
 
 ## Open questions
 

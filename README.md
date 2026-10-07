@@ -6,8 +6,10 @@ breathable, repair damage, man or automate the turrets, load the missile tubes, 
 of the hangar in a fighter. Low poly, on a custom engine whose floor is a **Raspberry Pi 5
 with 1 GB of RAM**, with a 4 GB Pi 5 as the main server.
 
-**Status: design.** There is no engine code yet. The game is being written up first, as
-OpenSpec changes with three.js mockups, and built on request (CLAUDE.md section 4).
+**Status: design, and the engine's first light.** The game is written up first, as OpenSpec
+changes with three.js mockups, and built on request (CLAUDE.md section 4). The engine (Rust, SDL3,
+sokol_gfx on OpenGL ES 3.0) has its foundations, the Pi 5 probe and a first-light client
+(`openspec/changes/engine-stack`, design section 14). There is no game to play yet.
 
 ## Start here
 
@@ -23,6 +25,22 @@ OpenSpec changes with three.js mockups, and built on request (CLAUDE.md section 
 | [docs/analysis/](docs/analysis/) | What carries over from star-crew-64, Pale-Blue-Dot and Undercity. |
 | [docs/references.md](docs/references.md) | The games and engines this design borrows from. |
 
+## Building the engine
+
+```sh
+cargo build --release                     # SDL 3.4 is built from source the first time (cmake, a C compiler)
+./target/release/sc-client --window       # first light: keys 1, 2, 3 switch the lighting state; F12 captures
+./target/release/sc-probe --out docs/benchmarks/$(date +%F)-pi5-probe   # on a Pi 5, full screen
+./scripts/check.sh                        # every check, in order (also runs the rows below)
+```
+
+On Linux the build needs the OpenGL ES and EGL development files (on Debian and Ubuntu:
+`libegl-dev libgles-dev libdrm-dev libgbm-dev libudev-dev libasound2-dev`, plus the X11 or
+Wayland ones for a desktop window). Without a display, `--headless` draws through SDL's offscreen
+driver (Mesa's llvmpipe in a cloud session): `sc-client --headless --shots DIR` writes the three
+states, and the render tests run that way. Shaders are compiled with `python3 tools/sokol_shaders.py`,
+which fetches the pinned `sokol-shdc`; the generated modules are committed.
+
 ## Checks
 
 ```sh
@@ -30,7 +48,7 @@ openspec validate --all                 # npm install -g @fission-ai/openspec
 python3 tools/layout_check.py           # the ship layouts
 python3 tools/mockups/inline.py --check # mockups hold the current layout and budget
 node tools/mockups/shoot.mjs            # screenshot every mockup (needs Playwright)
-LC_ALL=C.UTF-8 grep -rnIP '\x{2014}|\x{2013}' --exclude-dir=.git --exclude-dir=.claude . && echo FAIL
+LC_ALL=C.UTF-8 grep -rnIP '\x{2014}|\x{2013}' --exclude-dir=.git --exclude-dir=.claude --exclude-dir=target --exclude-dir=third_party . && echo FAIL
 ```
 
 ## Opening a mockup

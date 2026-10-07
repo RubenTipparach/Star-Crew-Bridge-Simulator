@@ -180,7 +180,8 @@ chat replies.
 The repository holds none of them outside tool-owned files (section 16):
 
 ```sh
-LC_ALL=C.UTF-8 grep -rnIP '\x{2014}|\x{2013}' --exclude-dir=.git --exclude-dir=.claude . && echo FAIL
+LC_ALL=C.UTF-8 grep -rnIP '\x{2014}|\x{2013}' --exclude-dir=.git --exclude-dir=.claude \
+  --exclude-dir=target --exclude-dir=third_party . && echo FAIL
 ```
 
 - **Numbers carry units**, in SI unless a table says otherwise: metres, seconds, kilograms,
@@ -420,7 +421,7 @@ Before claiming anything is done, run what applies:
 | Mockups hold the current layout | `python3 tools/mockups/inline.py --check` |
 | Mockup screenshots | `node tools/mockups/shoot.mjs` |
 | No z-fighting in the mockups | `node tools/mockups/zfight.mjs docs/mockups/*.html` |
-| Engine (once it exists) | the format, lint and test commands `engine-stack` defines |
+| Engine, and every row above | `scripts/check.sh` (format, clippy with warnings as errors, the workspace's tests with the headless render tests, then the rows above, the shader modules and the engine data) |
 
 - **Know what is proven.** Distinguish implemented, validated and proposed work in docs, PRs
   and replies. A design is not a feature, a green test is not a visual sign-off, and a mockup
@@ -493,5 +494,8 @@ Nothing is an exception until it is listed here with its reason.
 - **Tool-owned files keep their tool's text.** The OpenSpec CLI writes
   `.claude/skills/openspec-*` and `.claude/commands/opsx/*`, and `openspec update` rewrites
   them. The dash check excludes `.claude/` for that reason. Don't hand-edit them.
+- **Vendored code keeps its text.** `third_party/` holds code copied unchanged from other
+  projects (sokol, with its `PROVENANCE.md`), and `target/` is build output; the dash check
+  excludes both. Never edit a vendored file: update it from its source at a new revision.
 - **Copied skills keep their source's text** below their "In Star Crew" note, so a later copy
   from the source can be diffed. They are listed in `.claude/skills/PROVENANCE.md`.

@@ -1,0 +1,16 @@
+[package]
+name = "sc-core"
+description = "The ship simulation: every gameplay rule, headless, with no I/O, GL, sockets or SDL."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+serde_path_to_error = "0.1"
+
+[lints]
+workspace = true

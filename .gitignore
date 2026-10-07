@@ -5,3 +5,7 @@ tools/materials/raw/
 # Python byte code
 __pycache__/
 *.pyc
+# Rust build output
+/target/
+# The sokol-shdc binary, fetched at its pinned revision by tools/fetch_sokol_shdc.py (11.6 MB a platform)
+/third_party/sokol-shdc/
