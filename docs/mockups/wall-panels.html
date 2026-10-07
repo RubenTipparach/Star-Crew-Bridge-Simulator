@@ -1505,8 +1505,29 @@
   }
 
   /** A decoded image scaled up to px by nearest neighbour (a whole factor), as the engine would fill a larger array. */
+  /**
+   * A decoded image scaled down to px by a whole factor, averaging each block in linear light (alpha averaged as is):
+   * a big prop's 512 or 1024 px atlas in a page whose array is smaller. It loses the detail the bigger atlas carries;
+   * the engine's array holds it at full size (engineering-fitout design section 7).
+   */
+  function scaleDown(img, px) {
+    const f = img.w / px, out = new Uint8Array(px * px * 4), lin = new Float32Array(256);
+    for (let i = 0; i < 256; i++) { const c = i / 255; lin[i] = c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
+    const enc = (v) => Math.round(255 * (v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 2.4) - 0.055));
+    for (let y = 0; y < px; y++) for (let x = 0; x < px; x++) {
+      const acc = [0, 0, 0, 0];
+      for (let j = 0; j < f; j++) for (let i = 0; i < f; i++) {
+        const s = ((y * f + j) * img.w + x * f + i) * 4;
+        acc[0] += lin[img.rgba[s]]; acc[1] += lin[img.rgba[s + 1]]; acc[2] += lin[img.rgba[s + 2]]; acc[3] += img.rgba[s + 3];
+      }
+      const o = (y * px + x) * 4, n = f * f;
+      out[o] = enc(acc[0] / n); out[o + 1] = enc(acc[1] / n); out[o + 2] = enc(acc[2] / n); out[o + 3] = Math.round(acc[3] / n);
+    }
+    return { w: px, h: px, rgba: out };
+  }
   function scaleNearest(img, px) {
     if (img.w === px) return img;
+    if (img.w > px && img.w % px === 0 && img.h === img.w) return scaleDown(img, px);
     const f = px / img.w;
     if (f !== Math.round(f) || img.h !== img.w) throw new Error(`shipkit: cannot scale a ${img.w} px layer to ${px} px`);
     const out = new Uint8Array(px * px * 4);
@@ -1526,6 +1547,7 @@
    * have span 1 (their texture coordinates are already in layer units), and surfaceMaterial makes
    * their alpha glow.
    */
+  const BIG_LAYER = 1000;   // the layer index step between the main array and each bigger one (loadPanels)
   async function loadPanels(THREE, mats, opts) {
     opts = opts || {};
     const d = panelsData(), S = d.manifest, px = opts.px || 128, md = materialsData(), first = mats.names.length;
@@ -1550,18 +1572,27 @@
         for (const [prop, uri] of Object.entries(d.atlases || {}).sort()) atl.push([`prop:${set}:${prop}`, uri]);
       }
     }
-    const total = n + atl.length, all = new Uint8Array(px * px * 4 * total);
+    // An atlas bigger than the array (a big prop's 512 or 1024 px, so it reads at walking distance) goes into an array
+    // of its own size, BIG_LAYER apart per size: index BIG_LAYER * k + i is layer i of the k-th bigger array.
+    const imgs = [];
+    for (const [name, uri] of atl) imgs.push([name, await decodePng(uri)]);
+    const small = imgs.filter(([, im]) => im.w <= px), sizes = [...new Set(imgs.filter(([, im]) => im.w > px).map(([, im]) => im.w))].sort((a, b) => a - b);
+    const total = n + small.length, all = new Uint8Array(px * px * 4 * total);
     all.set(data);
-    for (let j = 0; j < atl.length; j++) {
-      const img = await decodePng(atl[j][1]);
-      putLayer(all, n + j, px, img.w === px && img.h === px ? img : scaleNearest(img, px));
-    }
+    small.forEach(([, img], j) => putLayer(all, n + j, px, img.w === px && img.h === px ? img : scaleNearest(img, px)));
     const layer = Object.assign({}, mats.layer), span = Object.assign({}, mats.span);
     pnames.forEach(([name], j) => { layer[name] = first + j; span[name] = 1; });
-    atl.forEach(([name], j) => { layer[name] = n + j; span[name] = 1; });
+    small.forEach(([name], j) => { layer[name] = n + j; span[name] = 1; });
+    let bytes = Math.round((all.length * 4) / 3);
+    const big = sizes.map((bp, k) => {
+      const these = imgs.filter(([, im]) => im.w === bp), d = new Uint8Array(bp * bp * 4 * these.length);
+      these.forEach(([name, img], i) => { putLayer(d, i, bp, img); layer[name] = BIG_LAYER * (k + 1) + i; span[name] = 1; });
+      bytes += Math.round((d.length * 4) / 3);
+      return { px: bp, base: BIG_LAYER * (k + 1), texture: layerTexture(THREE, d, bp, these.length), names: these.map((q) => q[0]) };
+    });
     return {
-      texture: layerTexture(THREE, all, px, total), names: mats.names.concat(pnames.map((q) => q[0]), atl.map((q) => q[0])), layer, span,
-      manifest: mats.manifest, bytes: Math.round((all.length * 4) / 3), panels: { manifest: S, first, px },
+      texture: layerTexture(THREE, all, px, total), names: mats.names.concat(pnames.map((q) => q[0]), small.map((q) => q[0])), layer, span, big,
+      manifest: mats.manifest, bytes, panels: { manifest: S, first, px },
     };
   }
 
@@ -1603,6 +1634,18 @@
       sh.fragmentShader = sh.fragmentShader
         .replace("#include <common>", "#include <common>\nprecision highp sampler2DArray;\nuniform sampler2DArray uLayers;\nuniform vec3 uGlowTint;\nuniform float uGlowGain;\nvarying vec3 vSurf;\nvarying float vGlow;")
         .replace("#include <map_fragment>", "vec4 surfTex = texture(uLayers, vec3(vSurf.xy, floor(vSurf.z + 0.5)));\ndiffuseColor.rgb *= surfTex.rgb;");
+      // The bigger arrays (loadPanels big): a layer index BIG_LAYER * k + i samples the k-th of them.
+      const big = mats.big || [];
+      if (big.length) {
+        big.forEach((b, k) => { sh.uniforms["uBig" + k] = { value: b.texture }; });
+        sh.fragmentShader = sh.fragmentShader
+          .replace("uniform sampler2DArray uLayers;", "uniform sampler2DArray uLayers;\n" + big.map((b, k) => `uniform sampler2DArray uBig${k};`).join("\n"))
+          .replace("vec4 surfTex = texture(uLayers, vec3(vSurf.xy, floor(vSurf.z + 0.5)));",
+            "float surfL = floor(vSurf.z + 0.5);\nvec4 surfTex;\n" + big.slice().reverse().map((b, r) => {
+              const k = big.length - 1 - r;
+              return `if (surfL > ${b.base - 0.5}) surfTex = texture(uBig${k}, vec3(vSurf.xy, surfL - ${b.base}.0)); else `;
+            }).join("") + "surfTex = texture(uLayers, vec3(vSurf.xy, surfL));");
+      }
       if (lit) sh.fragmentShader = sh.fragmentShader.replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\ntotalEmissiveRadiance += surfTex.rgb * vGlow * uGlowTint * uGlowGain;");
       if (panels) {
         sh.uniforms.uPanelFirst = { value: panels.first };
@@ -1614,7 +1657,7 @@
         else sh.fragmentShader = sh.fragmentShader.replace("#include <color_fragment>", "#include <color_fragment>\ndiffuseColor.rgb = mix(diffuseColor.rgb, surfTex.rgb, panelGlow);");
       }
     };
-    m.customProgramCacheKey = () => "shipkit-surface-" + (lit ? "lit" : "baked") + (panels ? "-panels" : "");
+    m.customProgramCacheKey = () => "shipkit-surface-" + (lit ? "lit" : "baked") + (panels ? "-panels" : "") + "-big" + (mats.big || []).length;
     return m;
   }
 

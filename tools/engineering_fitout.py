@@ -177,7 +177,7 @@ def machines():
             f"reactor generator {tag} (power.json gen_{tag}), on the aft chamfer")
     put("control_desk", "control_desk", [5.5, Z, -22.0], 0, "mezz", "eng_main", "the engineer's desk (station eng_main): the seat stands forward of it",
         station="eng_main")
-    put("reactor_panel", "local_panel", [0.0, Z, -20.55], 0, "mezz", "reactor", "the layout's reactor_panel fixture: scram reset, throttle, branch valves",
+    put("reactor_panel", "local_panel", [0.0, Z, -20.6], 0, "mezz", "reactor", "the layout's reactor_panel fixture: scram reset, throttle, branch valves",
         fixture="reactor_panel")
     put("mimic", "mimic_board", [0.0, 0.6, -18.0], 180, "mezz", "plant", "the plant mimic, under the catwalk")
     put("rack_mezz", "parts_rack", [3.6, Z, -32.0], 0, "mezz", "upkeep", "spares")
@@ -336,7 +336,7 @@ def structure(R):
         {"id": "eng_gantry_bridge", "kind": "catwalk", "compartment": ROOM,
          "center_m": [0.0, FLOOR_GANTRY, r3((bridge_z0 + bridge_z1) / 2)], "size_m": [1.2, r3(bridge_z1 - bridge_z0)],
          "note": "The bridge from the catwalk to the ring catwalk (engineering-fitout)."},
-        {"id": "reactor_panel", "center_m": [0.0, 0.0, -20.3]},
+        {"id": "reactor_panel", "center_m": [0.0, 0.0, -20.35]},
     ]
     rails = []
     # The well: a twelve-sided rail outside the 24-sided hole.
@@ -513,7 +513,7 @@ WALK = [
     ("the lower stair's landing", FLOOR_LOWER, ("poly", rect(-7.2, -6.0, -22.3, -18.0))),
     ("the way from the lower stair to the ring", FLOOR_LOWER, ("poly", rect(-7.2, -4.4, -22.3, -21.5))),
     ("the mezzanine's ring round the well", FLOOR_MEZZ, ("annulus", 3.45, 4.4)),
-    ("the floor before the mimic wall", FLOOR_MEZZ, ("poly", rect(-2.0, 2.0, -20.05, -18.15))),
+    ("the floor before the mimic wall", FLOOR_MEZZ, ("poly", rect(-2.0, 2.0, -20.0, -18.25))),
     ("the way from the port gallery door", FLOOR_MEZZ, ("poly", rect(2.0, 7.2, -20.2, -19.25))),
     ("the way from the starboard gallery door", FLOOR_MEZZ, ("poly", rect(-7.2, -2.0, -20.3, -19.25))),
     ("the way aft to the drive hatch", FLOOR_MEZZ, ("poly", rect(-1.3, 1.3, -31.75, -28.4))),

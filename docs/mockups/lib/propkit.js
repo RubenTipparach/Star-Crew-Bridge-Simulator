@@ -67,7 +67,9 @@
               P.position.push(...p); P.normal.push(...n);
               const uv = ua ? [ua.getX(i), ua.getY(i)] : K.worldUv(p, n);
               P.uvm.push(uv[0], uv[1]);
-              if (ub) P.uva.push(ub.getX(i), ub.getY(i));   // the prop's atlas (TEXCOORD_1, ship-props design 4c)
+              // The prop's atlas (TEXCOORD_1, ship-props design 4c). glTF's v runs down from the image's top; the layer
+              // array's runs up from its bottom (shipkit putLayer), so v is turned over here.
+              if (ub) P.uva.push(ub.getX(i), 1 - ub.getY(i));
             }
           }
         });

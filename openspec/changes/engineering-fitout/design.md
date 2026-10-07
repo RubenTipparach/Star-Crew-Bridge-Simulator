@@ -276,16 +276,29 @@ engineering the bridge's 30,000, as the ship's second showpiece room:
   7.3 MB of the 96 MB texture budget (the panels and props use about 23 MB today). The pipework
   layer adds 0.35 MB.
 
-**Where it goes** (estimates until the deck plan measures; section 8):
+**Where it goes.** Measured in the deck plan (`window.MOCKUP_STATS`, 2026-10-07): engineering is **27,762
+triangles**, 93 % of 30,000. The estimate it replaces:
 
-| Part | Triangles |
+| Part | Triangles (estimate) |
 | --- | ---: |
 | Today's shell, kit detail, reactor, switchboards, desk, pumps | 5,486 |
 | Removed: the small pump skid and the free desk | -760 |
-| Machines (21 props, 31 placed) | about 16,000 |
-| Pipe runs (25), trays, busbars, hangers, crane runways | about 6,000 |
-| Railings and the ring catwalk | about 1,500 |
+| Machines (21 props, 34 placed; built at 85-97 % of their budgets) | about 16,000 |
+| Pipe runs (24), trays, busbars, hangers, crane runways | about 6,000 |
+| Railings, the ring catwalk and the lamps under the mezzanine | about 1,500 |
 | Total | about 28,000 |
+
+**The big props' atlases.** The reactor (1024 px), the dressing (1024), the heat exchanger and the crane
+(512) and five machinery props carry atlases bigger than the page's 256 px array, so they read at walking
+distance (the reactor was 10.8 px per metre and read as blotches). The mockups hold them in two more arrays of
+their own sizes (`ShipKit.loadPanels`, `big`): 10 layers, about 26 MB with mipmaps in the browser. On the Pi
+that is 26 MB more of the 96 MB texture budget; whether the engine keeps one array at 256 px and tiles the big
+atlases, or keeps a second array, is a measurement for `engine-stack`'s probe.
+
+**Found on the way:** every prop atlas had been sampled upside down in the pages. glTF's v runs down from an
+image's top and the layer array's runs up from its bottom, and nothing turned it over. The reactor column
+showed the black, unused half of its atlas. `propkit.js` now turns v over; the bridge and suite sets look as
+their Blender stills do.
 
 ### 8. What is measured and checked
 

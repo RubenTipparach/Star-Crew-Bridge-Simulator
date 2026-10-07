@@ -204,14 +204,6 @@ def handwheel(p, what, c, y, r, role="accent"):
     return [plate, spindle]
 
 
-def lift(objs, dy):
-    """Raise pieces by dy (the crane and the valves are designed about their own datum, then stood on
-    the floor)."""
-    for o in objs:
-        place(o, Matrix.Translation((0.0, dy, 0.0)))
-    return objs
-
-
 def facets(n, r, c=(0.0, 0.0)):
     """The flats of an n-sided vertical revolve (revolve's default phase, n even): for each, its
     azimuth, a frame on it (local y is world y, local x across it) and its width."""
@@ -749,6 +741,7 @@ def fuel_processor():
     pellet gun to the front."""
     p = prop("fuel_processor", "The fuel processing and pellet injector skid: freezes fuel into pellets and fires them into "
                                "the reactor (fuel)", FREE)
+    p.finish_of = {"bulkhead": "white"}
     skid = p.box("skid", (-1.20, 0.0, -0.65), (1.20, 0.14, 0.65), {"+y": "machinery", "*": "hazard"})
     p.chamfer(skid, "skid_edges", 0.015, lambda m, d, n1, n2: near(m.y, 0.14))
     parts = [revolve(p, "cryostat", [(0.30, 0.10), (0.30, 1.62), (0.24, 1.78), (0.12, 1.84)], ["bulkhead", "bulkhead", "trim"], "y",
@@ -760,11 +753,11 @@ def fuel_processor():
     for name, x, z in (("d2", -0.60, -0.48), ("he3", 0.0, -0.40)):
         parts.append(p.box(f"{name}_valve", (x - 0.06, 0.72, z - 0.05), (x + 0.06, 0.90, z + 0.05), "machinery"))
         parts += wheel(p, f"{name}_wheel", (x, z), 0.98, 0.07)
-    parts.append(revolve(p, "pump_motor", [(0.15, 0.10), (0.15, 0.62)], "bulkhead", "x", (0.40, -0.30), sides=8))
+    parts.append(revolve(p, "pump_motor", [(0.15, 0.10), (0.15, 0.62)], "trim", "x", (0.40, -0.30), sides=8))
     parts.append(p.box("pump_head", (0.04, 0.13, -0.46), (0.16, 0.58, -0.14), "machinery"))
     parts.append(p.box("pump_foot", (0.40, 0.13, -0.38), (0.56, 0.28, -0.22), "machinery"))
     parts.append(pipe(p, "pump_line", [(0.10, 0.50, -0.30), (0.10, 0.62, -0.30), (-0.38, 0.62, -0.10)], 0.035, "trim", sides=6))
-    box = p.box("control_box", (0.75, 0.13, -0.05), (1.15, 1.45, 0.45), {"+z": "bulkhead", "*": "machinery"})
+    box = p.box("control_box", (0.75, 0.13, -0.05), (1.15, 1.45, 0.45), "machinery")
     p.chamfer(box, "control_lamp", 0.025, lambda m, d, n1, n2: near(m.y, 1.45) and near(m.z, 0.45), role="light_panel")
     parts.append(box)
     parts.append(pipe(p, "injector_line", [(-0.40, 1.20, 0.05), (0.60, 1.20, 0.05), (0.60, 1.20, 0.64)], 0.05, "trim", sides=6))
@@ -1240,7 +1233,7 @@ def control_desk():
     radius), a knee recess under its top, a sloped control shelf with a lit mimic strip along its top
     edge, and three monitors on stands angled at the seat (the centre one the console image, the outer
     ones the two halves of the upper image). Two big rotary knobs and breaker toggles stand on the
-    shelf, a handset in its cradle on the left end."""
+    shelf, a handset in its cradle on the left end; full-depth end cheeks and a footrest along the knee wall."""
     p = prop("control_desk", "The engineering control desk: the engineer's station (eng_main)", "floor, centre of the pedestal's back")
     steps, rb = 3, 4.0
     half = math.asin(1.5 / rb)
@@ -1281,6 +1274,17 @@ def control_desk():
                                                          [(-0.011, -0.008, -0.012), (0.011, -0.008, -0.012), (0.0, 0.012, -0.012),
                                                           (-0.014, -0.004 + lean, 0.06), (0.014, -0.004 + lean, 0.06),
                                                           (0.0, 0.006 + lean, 0.06)]), "machinery" if up else "accent"))
+    for e in (-1, 1):                       # end cheeks, full depth, 3 cm proud of each end
+        phi = e * half
+        t = Vector((math.cos(phi), 0.0, math.sin(phi))) * e
+        pts = []
+        for d, y in ((-0.02, 0.0), (1.20, 0.0), (1.20, 0.78), (0.78, 0.82), (0.42, 1.05), (0.34, 1.10), (-0.02, 1.10)):
+            base = Vector(((rb - d) * math.sin(phi), y, cz - (rb - d) * math.cos(phi)))
+            pts += [tuple(base - t * 0.01), tuple(base + t * 0.03)]
+        parts.append(p.hull(f"cheek_{e:+d}", pts, "trim"))
+    rr = rb - 0.80                          # a footrest along the knee wall, between the cheeks
+    parts.append(pipe(p, "footrest", [(rr * math.sin(-half + i * fa), 0.12, cz - rr * math.cos(-half + i * fa)) for i in range(4)],
+                      0.02, "trim", sides=6))
     mtop = on(0, 0.98, 0.78, 84.0)
     parts.append(p.box("handset_cradle", (-0.36, -0.07, -0.02), (-0.16, 0.07, 0.03), "machinery", m=mtop))
     parts.append(p.hull("handset", in_frame(mtop, [(x, y, z) for x in (-0.35, -0.17) for y in (-0.035, 0.035) for z in (0.025, 0.06)]),

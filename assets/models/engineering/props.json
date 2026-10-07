@@ -586,7 +586,7 @@
         "union cryostat_manifold_pump_box (20)",
         "difference screens (1)"
       ],
-      "sha256": "964bd7d23eade1218c1adfd5f81d70fbc9e5866d65090ff2de3b7b284b5f9121",
+      "sha256": "0ec55032e546b6d56ae634a0bdad940dc2f7bafb34eeb5ccab4ab1a0b1da4df6",
       "atlas": {
         "file": "atlas/fuel_processor.png",
         "px": 256,
@@ -594,8 +594,8 @@
         "charts": 39,
         "cover": 0.809,
         "glow": 0.0096,
-        "sha256": "7ab81e4062e3a68ed8182920e57d29028ae1e534bf4f8839d5214d60b49454b7",
-        "bytes": 18617
+        "sha256": "2870acbee0754ede81aef55b9ecb734f4725ed64485b1da3c308072405afc08c",
+        "bytes": 21546
       }
     },
     "cryoplant": {
@@ -1188,20 +1188,20 @@
       "presents": "The engineering control desk: the engineer's station (eng_main)",
       "anchor": "floor, centre of the pedestal's back",
       "dimensions_m": [
-        3.0,
+        3.0706,
         1.4901,
-        1.353
+        1.3828
       ],
       "bounds_m": {
         "min": [
-          -1.5,
+          -1.5353,
           0.0,
           0.0
         ],
         "max": [
-          1.5,
+          1.5353,
           1.4901,
-          1.353
+          1.3828
         ]
       },
       "operators_m": [
@@ -1278,7 +1278,7 @@
           "half": 1
         }
       ],
-      "triangles": 538,
+      "triangles": 662,
       "budget_triangles": 900,
       "materials": [
         "machinery",
@@ -1293,19 +1293,19 @@
         "chamfer monitor_0_edges (4 edges, 12 mm)",
         "chamfer monitor_1_edges (4 edges, 12 mm)",
         "chamfer monitor_2_edges (4 edges, 12 mm)",
-        "union monitors_and_controls (18)",
+        "union monitors_and_controls (21)",
         "difference screens (3)"
       ],
-      "sha256": "a2f1e11a21908ab7c19734c9160c8389ef38d8e24fdbbbeb6e32da403a0bf678",
+      "sha256": "23e934daa7e05ad8997b1639cd87df0a0fd506cdfbeb4f617f6b0554ea0073d5",
       "atlas": {
         "file": "atlas/control_desk.png",
         "px": 256,
-        "px_per_m": 52.65,
-        "charts": 40,
-        "cover": 0.601,
-        "glow": 0.0342,
-        "sha256": "5b69b1d1d910be32eb914ed1047a7ff3c2e2ace390fb1b8043f42a77038e9e8e",
-        "bytes": 13449
+        "px_per_m": 45.93,
+        "charts": 54,
+        "cover": 0.538,
+        "glow": 0.0335,
+        "sha256": "b464a93e89f1419a23b8c93cde4f8c325fd0b872c82a9563822c73750171143c",
+        "bytes": 13949
       }
     },
     "mimic_board": {
