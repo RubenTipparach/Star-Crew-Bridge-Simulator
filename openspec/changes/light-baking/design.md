@@ -18,7 +18,7 @@ for low poly aesthetics."
 | Decided elsewhere | Where |
 | --- | --- |
 | Flat-shaded, vertex-coloured low poly; no normal maps, no PBR; light baked into vertex colours, one set per lighting state, blended by a per-compartment uniform; light baked offline from fixtures that are data | CLAUDE.md section 9 |
-| Rust, SDL3 (3.4 or later) and glow on OpenGL ES 3.0; the Pi 5 budget table; shader 1 (deck) "three baked vertex colour sets blended by per-compartment uniforms ... an optional lightmap (`light-baking`)"; `sc-tools` holds `bake` | `engine-stack` sections 3, 5 and 7 |
+| Rust, SDL3 (3.4 or later) and sokol_gfx on OpenGL ES 3.0 (glow until 2026-10-07); the Pi 5 budget table; shader 1 (deck) "three baked vertex colour sets blended by per-compartment uniforms ... an optional lightmap (`light-baking`)"; `sc-tools` holds `bake` | `engine-stack` sections 3, 5 and 7 |
 | Fixtures are entities with a colour and intensity per state and an emergency-bus flag; the bake is step 4 of `deckc`; the 28-byte vertex with three `RGBA8` sets whose alpha is reserved for this change; the per-compartment uniform block (state weights eased over 0.5 s, a dimmer from the lighting bus voltage, a damage flicker, up to four dynamic lights); the `.deck` file | `deck-pipeline` sections 5, 7 and 8 |
 | The red-alert look (red lamps and strips, or white lamps with red strips) | `bridge-stations` question B3 |
 

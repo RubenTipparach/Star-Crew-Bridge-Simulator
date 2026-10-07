@@ -14,8 +14,9 @@ how it is kept). Keep editing it rather than starting another.
 
 | Change | Designs | Mockup | Published |
 | --- | --- | --- | --- |
-| [engine-stack](../../openspec/changes/engine-stack/) | The custom engine (Rust, SDL3, glow), the OpenGL ES 3.0 floor, crates, the Pi 5 budget table, the probe | | |
-| [netcode-and-sessions](../../openspec/changes/netcode-and-sessions/) | Authoritative server, snapshots, prediction, seats, sessions | | |
+| [engine-stack](../../openspec/changes/engine-stack/) | The custom engine (Rust, SDL3, sokol_gfx), the OpenGL ES 3.0 floor, crates, the Pi 5 budget table, the probe, the browser playtest build | | |
+| [netcode-and-sessions](../../openspec/changes/netcode-and-sessions/) | Authoritative server, WebRTC data channels for every client (the owner's choice, 2026-10-07), snapshots, prediction, seats, sessions | | |
+| [matchmaker](../../openspec/changes/matchmaker/) | A small service on Fly.io: join by a six-character code from a browser or a desktop with no port forwarding, the WebRTC connection setup, STUN and TURN | | |
 | [reference-ship-tern](../../openspec/changes/reference-ship-tern/) | The Tern's floor plan, deck by deck; the deck plan shows deck A with the command suite (proposed), or today's layout with its Bridge buttons | [deck-plan.html](../mockups/deck-plan.html) | [3YJXPa...](https://claude.ai/artifact/3YJXPa7vZuNtAB3YyWQSPV) |
 | [deck-pipeline](../../openspec/changes/deck-pipeline/) | Brush-built decks, compartments and portals, baked vertex light, portal culling | [deck-plan.html](../mockups/deck-plan.html) | [3YJXPa...](https://claude.ai/artifact/3YJXPa7vZuNtAB3YyWQSPV) |
 | [surface-materials](../../openspec/changes/surface-materials/) | Material Maker graphs to 128 px layers of one texture array: texel density, relief baked into colour, emission alpha | [contact sheet](../screenshots/materials/contact-sheet.png); every mockup is textured | |

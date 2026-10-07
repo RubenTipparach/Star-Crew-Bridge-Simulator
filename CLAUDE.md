@@ -65,9 +65,13 @@ From the owner's brief, 2026-10-04. Quotes are the owner's words.
   decks stay the approach.
 - **The stack is decided, and the graphics stay modest** (owner, 2026-10-04, on the
   engine-stack recommendation): "That's fine..this game doesn't need high end graphics. Your
-  stack sounds like a solid plan". The engine is Rust with SDL3 and glow on OpenGL ES 3.0
-  (`openspec/changes/engine-stack`). Spend effort on the simulation, not on rendering
-  features the game does not need.
+  stack sounds like a solid plan". The engine is Rust with SDL3 and sokol_gfx on OpenGL ES 3.0
+  (owner, 2026-10-07: "sokol it is then", "with sdl3"; `openspec/changes/engine-stack`). Spend
+  effort on the simulation, not on rendering features the game does not need.
+- **WebRTC for every player, in the browser and on the desktop** (owner, 2026-10-07: "I want to
+  use webrtc if posible to do multiplayer on web and desktop"). A browser build is a playtest
+  target, never the measure of the game's speed (`engine-stack` section 10a,
+  `netcode-and-sessions`, `matchmaker`).
 - **Documentation and mockups first.** "First we need to do some extreme documentation and
   mockups in 3js." Mockups are three.js pages (section 11).
 

@@ -1,9 +1,18 @@
 # Design: netcode and sessions
 
 Status: **proposed** (2026-10-04). Numbers are estimates sized against the Pi 5 budget in
-`engine-stack` (64 kbit/s down and 16 kbit/s up per client; the main server on a 4 GB Pi 5);
+`engine-stack` (80 kbit/s down and 32 kbit/s up per client since 2026-10-07, section 4; the main
+server on a 4 GB Pi 5);
 the first networked build measures them. Re-floored the same day on the owner's correction:
 "I'm sorry we're running on a pi5 1gb-4gb, 4 GB can be used as main server too".
+
+**2026-10-07: WebRTC for every client.** The owner asked about browser playtest builds, then
+"what if we stood up a matchmaking service on fly io? would that help unify web vs desktop
+users?", then decided: "I want to use webrtc if posible to do multiplayer on web and desktop".
+The transport (section 2) moved from plain UDP to WebRTC data channels for every client, native
+and browser alike; the matchmaker that finds sessions and carries the connection setup is its
+own change, `matchmaker`; the per-client network budget rose to pay for WebRTC's headers
+(section 4).
 
 References, cited for shape only: Glenn Fiedler's "Gaffer on Games" articles on UDP
 reliability, snapshot interpolation and snapshot compression; Valve's "Source Multiplayer
@@ -14,11 +23,19 @@ sources before the first networked build.
 ## 1. Topology
 
 ```text
-   client (Pi 5 or PC)  \
-   client (Pi 5 or PC)   >---- UDP ----  sc-server  (the main server: a 4 GB Pi 5 on Ethernet)
-   client (Pi 5 or PC)  /                   |
-                                            +-- sc-core: the one authoritative ship
+                         matchmaker (Fly.io: session codes, connection setup, ICE servers)
+                           ^   ^   ^                         ^
+                 wss, join |   |   |                         | wss, kept open by the server
+                           |   |   |                         |
+   client (Pi 5 or PC)  \  |   |   |                         |
+   client (Pi 5 or PC)   >----- WebRTC data channels -----  sc-server  (the main server:
+   client (browser)     /    (direct, or through TURN)       |          a 4 GB Pi 5 on Ethernet)
+                                                             +-- sc-core: the one authoritative ship
 ```
+
+The matchmaker only introduces a client to a server. Game traffic goes between them directly,
+or through a TURN relay that forwards encrypted bytes it cannot read; the matchmaker never sees
+game state and decides nothing.
 
 | Mode | Where the server runs | Use |
 | --- | --- | --- |
@@ -33,26 +50,60 @@ measurement (task 6.1).
 
 ## 2. Transport
 
-- **UDP**, one socket per process. Payloads at most 1,200 bytes so a packet never fragments on
-  the internet's common paths.
-- **Every packet** carries: protocol id and version (4 bytes), session token (4), sequence
-  number (2), latest received remote sequence (2) and a 32-bit acknowledgement bitfield, then
-  messages.
-- **Channels:**
+**WebRTC data channels, for every client** (owner, 2026-10-07: "I want to use webrtc if posible to
+do multiplayer on web and desktop"). One transport means one connection path to test, one set of
+channel semantics, and a browser player and a Pi player in the same crew on equal terms.
 
-| Channel | Delivery | Carries |
-| --- | --- | --- |
-| Input | Unreliable, newest wins; each packet repeats the last 4 input frames | Avatar movement, fighter flight controls, turret aim |
-| Snapshot | Unreliable, sequenced | Server state deltas |
-| Command | Reliable, ordered, resent until acknowledged | Console actions, seat claims, door use, chat |
-| Bulk | Reliable, fragmented and reassembled | Join-in-progress state, the save at session end |
+- **One peer connection per client, to the server.** The server holds up to eight. Clients never
+  connect to each other.
+- **Native ends** (the Pi client, desktops, `sc-server`) use `str0m`, a WebRTC library in Rust
+  written sans I/O: it owns no socket and no thread, and is fed datagrams and the time by our
+  network thread, which keeps the frame non-blocking (`engine-stack` section 6) and the memory
+  ours to size. Version 0.24.1 (2026-10-03) has data channels (SCTP through `sctp-proto`) and
+  pluggable crypto: its pure Rust backend (`rust-crypto`, DTLS by `dimpl`) needs no OpenSSL on the
+  Pi; `aws-lc-rs` and OpenSSL are the alternatives. Which backend, and its cost on an A76 (which
+  has the ARMv8 crypto extensions), is measured in the first networked build (task 1.1).
+- **The browser** uses its own `RTCPeerConnection`, called from the WebAssembly through a small
+  JavaScript module. `sc-net` has one transport interface with these two implementations, and
+  that is the only fork: the channels, messages, acknowledgements and everything above are one
+  code path (CLAUDE.md 6.1).
+- **Setting up a connection** (ICE: STUN to find each end's public address, a direct path when
+  one exists, a TURN relay otherwise) is carried by the `matchmaker` change; on a LAN with no
+  internet, native clients do the same exchange with the server's own small endpoint
+  (section 8).
 
-- **Connection:** a challenge and response with the protocol version and a session token
-  (cheap protection against spoofed packets); keep-alives at 4 Hz when idle; a timeout of 5 s.
+**Channels.** Each of section 2's channels is a WebRTC data channel, negotiated up front by id so
+neither end waits for the other to announce it:
+
+| Channel | WebRTC settings | Delivery | Carries |
+| --- | --- | --- | --- |
+| Input | `ordered: false`, `maxRetransmits: 0` | Unreliable, newest wins; each message repeats the last 3 input frames | Avatar movement, fighter flight controls, turret aim |
+| Snapshot | `ordered: false`, `maxRetransmits: 0` | Unreliable; our sequence number drops anything older than the newest applied | Server state deltas |
+| Command | ordered, reliable | Reliable, ordered, by SCTP | Console actions, seat claims, door use, chat |
+| Bulk | ordered, reliable, its own channel | Reliable, so a join's keyframe never queues ahead of commands | Join-in-progress state, the save at session end |
+
+- **Our header** is carried only on the two unreliable channels: sequence number (2 bytes), latest
+  received remote sequence (2) and a 32-bit acknowledgement bitfield (4), 8 bytes. Snapshot deltas
+  need to know which snapshot the client holds, and SCTP does not tell an application what an
+  unreliable channel delivered. The reliable channels need no header: SCTP delivers them in order.
+  The old header's protocol id and session token are gone: DTLS authenticates the connection, and
+  the protocol version is checked once, in the first command (section 8).
+- **Message sizes.** An unreliable message stays at most 1,200 bytes, so it is one SCTP chunk in
+  one datagram: SCTP drops a fragmented unreliable message whole if any fragment is lost. A
+  reliable message is at most 16 KiB, a size every browser accepts; the bulk channel cuts larger
+  transfers into 16 KiB messages.
+- **Liveness:** WebRTC's own consent checks keep the path open; the server also drops a client
+  silent for 5 s on the input channel, as before.
 - **Validation:** every field is range-checked on arrival and non-finite numbers are rejected
-  (CLAUDE.md 6.6). A malformed packet is dropped and counted, never trusted.
+  (CLAUDE.md 6.6). A malformed message is dropped and counted, never trusted.
+- **What WebRTC costs per packet** (estimates, measured in task 2.3): IPv4 and UDP 28 bytes, a
+  DTLS 1.2 record with AES-GCM 37, SCTP's common and DATA chunk headers 28, our header 8: about
+  101 bytes, against the plain UDP design's 42. Section 4 carries the difference.
 
-### 2a. WebRTC, considered (2026-10-06)
+### 2a. WebRTC, considered (2026-10-06; decided for every client 2026-10-07)
+
+*This section is the case as it was argued on 2026-10-06, kept as the record. The owner decided
+WebRTC for every client the next day, and section 2 above is now the transport.*
 
 The owner asked, 2026-10-06: "is webrtc any good?". WebRTC's data channels carry game traffic over
 SCTP inside DTLS inside UDP (RFC 8831), and a channel can be unordered with no retransmission,
@@ -76,7 +127,8 @@ The topology needs little of that. Clients always connect out to the main server
 server must be reachable: one forwarded port, or a port the server opens itself through the
 router's UPnP or NAT-PMP. Players behind carrier-grade NAT need a relay whichever protocol is used.
 
-**Recommendation taken (ask only with screenshots), M4:** keep plain UDP. Reach the main server
+**Recommendation taken (ask only with screenshots), M4, 2026-10-06; superseded 2026-10-07 by the
+owner's decision for WebRTC:** keep plain UDP. Reach the main server
 through LAN broadcast, a forwarded port, then UPnP or NAT-PMP (a later change), and then M1's
 rendezvous and a relay. Choose WebRTC if browser clients become a goal. This section's
 channels, at most 1,200-byte payloads with reliable and unreliable delivery, map onto WebRTC data
@@ -130,6 +182,17 @@ budget, so input is sent at 20 Hz with 3 repeats (**11 kbit/s**); a seated playe
 commands add about 1 kbit/s (`bridge-stations` section 12): **12 kbit/s up**. The first networked
 build measures both.
 
+**Redone for WebRTC, 2026-10-07.** With about 101 bytes of headers a packet (section 2) in place
+of 28, a snapshot is about 425 bytes: 425 B x 20 Hz = 8.5 kB/s = **68 kbit/s down**, and **about
+73 kbit/s** in a full engagement. Up, an input message of 3 frames (36 B) with 101 B of headers at
+20 Hz is 2.7 kB/s = 22 kbit/s; SCTP's acknowledgements of the snapshots ride in the same
+datagrams (about 16 B each, 2.6 kbit/s), and commands add about 1 kbit/s: **about 26 kbit/s up**.
+That is over the 64 and 16 kbit/s budget, so the budget moves rather than the design: **80 kbit/s
+down and 32 kbit/s up per client** (`engine-stack` section 5, the one source, changed in the same
+commit). On any connection a player has today that is nothing, and the main server sends about
+0.6 Mbit/s to eight players. The headers are the price of encryption, NAT traversal and browser
+players.
+
 ## 5. Prediction, interpolation and correction
 
 | Thing | Who renders it how |
@@ -177,10 +240,20 @@ gunner's view time, capped at 200 ms. This is a co-operative game, so it favours
 
 - **The mess is the lobby.** Players spawn there and claim stations; the host starts the
   mission.
-- **Finding a game:** a LAN broadcast every second lists servers; the main server can also be
-  joined from outside by address and UDP port (one port forwarded on the router). Because the
-  main server is always on, it is also the natural home for a small rendezvous service (session
-  codes and NAT hole punching) so friends need no port forwarding: a later change.
+- **Finding a game** (revised 2026-10-07 for WebRTC):
+  - **By code, from anywhere:** the main server registers with the matchmaker on Fly.io and gets a
+    six-character join code; a player in a browser or on a desktop types it, and the matchmaker
+    carries the connection setup (`matchmaker`). No port forwarding. This is the normal way in.
+  - **On a LAN, with or without internet:** a UDP broadcast every second lists servers to native
+    clients, and they set up the connection through the server's own small signalling endpoint
+    (the same messages as the matchmaker's, over a WebSocket on the LAN). A browser cannot reach a
+    LAN address from a page served over HTTPS, so browser players always come through the
+    matchmaker.
+  - **By address** (native clients): the server's signalling endpoint and its WebRTC port, both
+    forwarded, for a host who wants no third party involved.
+- **Version check:** the first command is a hello carrying the protocol version, the ship's
+  layout digest and the data digest. The matchmaker checks them before introducing anyone (an early
+  refusal); the server checks again, because it is the authority.
 - **Join in progress:** the joining client receives a keyframe over the bulk channel (about 2.2 kB
   of state plus the ship's id and versions; the client loads its own copy of the compiled ship),
   then deltas. A version mismatch in the protocol, the ship's layout digest or the data digest
@@ -201,20 +274,22 @@ tests pin the systems' behaviour.
 
 | Cost | Estimate | Budget |
 | --- | ---: | ---: |
-| Down per client | 56 kbit/s typical, about 61 kbit/s in a full engagement (corrected 2026-10-04 from 57 kbit/s, section 4) | 64 kbit/s |
-| Up per client | 12 kbit/s (inputs 11, console commands 1) | 16 kbit/s |
-| Server up, 8 clients | about 0.49 Mbit/s in a full engagement | (Pi 5 gigabit Ethernet) |
+| Down per client | 68 kbit/s typical, about 73 kbit/s in a full engagement, with WebRTC's headers (section 4; 56 and 61 kbit/s on plain UDP) | 80 kbit/s (64 until 2026-10-07) |
+| Up per client | about 26 kbit/s (inputs 22, SCTP acknowledgements 3, console commands 1) | 32 kbit/s (16 until 2026-10-07) |
+| Server up, 8 clients | about 0.58 Mbit/s in a full engagement | (Pi 5 gigabit Ethernet) |
+| Server CPU for encryption, 8 clients | about 4,000 DTLS records a second; to measure with `str0m`'s crypto backend on an A76 (task 1.1) | inside the networking millisecond below, to verify |
 | Server CPU for networking, 8 clients | under 1 ms per tick (delta encoding of about 2 kB per client) | beside the simulation's 2 ms per ship, in the 33 ms tick (`engine-stack` section 5; corrected 2026-10-04 from "the 4 ms tick", which that table does not have) |
 | Server memory for history | 300 ms of 64 bodies at 30 Hz, about 40 kB; per-client acknowledged baselines, 8 x 2 kB | inside 64 MB |
 | Client memory | snapshot buffer of 1 s, about 40 kB | inside 384 MB |
 
 ## Open questions
 
-Per CLAUDE.md section 13 these take the recommendation; none has anything to look at yet.
+Per CLAUDE.md section 13 these take the recommendation; none has anything to look at yet. M4 the
+owner decided in chat.
 
 | # | Question | Options | Recommendation | Status |
 | --- | --- | --- | --- | --- |
-| M1 | Internet play without port forwarding needs a rendezvous service someone hosts. The 4 GB Pi 5 main server is always on. | Port forwarding only / a rendezvous service on the main server later / a relay | Port forwarding and LAN first; a rendezvous service on the main server as a later change | Recommendation taken (ask only with screenshots) |
-| M2 | Our own UDP layer or a crate such as `renet`. | Ours / renet | Ours: about 1,000 lines, and it must match the snapshot design exactly | Recommendation taken (ask only with screenshots) |
-| M4 | Plain UDP or WebRTC data channels (section 2a; the owner asked "is webrtc any good?", 2026-10-06). | UDP / WebRTC / both, WebRTC for browsers | UDP, with WebRTC only if browser clients become a goal: the main server is the one host that must be reachable, and UPnP or a forwarded port reaches it | Recommendation taken (ask only with screenshots) |
+| M1 | Internet play without port forwarding needs a rendezvous service someone hosts. The 4 GB Pi 5 main server is always on. | Port forwarding only / a rendezvous service on the main server later / a relay / a matchmaker on Fly.io (the owner asked, 2026-10-07) | A matchmaker on Fly.io, the `matchmaker` change: browsers need a signalling service anyway, and a home Pi cannot be one for them | Recommendation taken (ask only with screenshots), 2026-10-07; port forwarding and LAN first until then |
+| M2 | Our own UDP layer or a crate such as `renet`. Since 2026-10-07: our own channel layer over WebRTC. | Ours / renet | Ours, now smaller: SCTP gives reliability, ordering and fragmentation, so ours is the 8-byte header on the unreliable channels, acknowledgement tracking for snapshot baselines and the channel mapping, a few hundred lines; `renet` does not run over WebRTC | Recommendation taken (ask only with screenshots) |
+| M4 | Plain UDP or WebRTC data channels (section 2a; the owner asked "is webrtc any good?", 2026-10-06). | UDP / WebRTC / both, WebRTC for browsers | UDP, with WebRTC only if browser clients become a goal (2026-10-06) | **Decided 2026-10-07 by the owner: WebRTC for every client**, "I want to use webrtc if posible to do multiplayer on web and desktop" (section 2) |
 | M3 | Maximum players. Eight seats with work for each exist on the Tern (four core, captain, comms, flight ops, gunners, pilots). | 8 / more | 8 | Recommendation taken (ask only with screenshots) |

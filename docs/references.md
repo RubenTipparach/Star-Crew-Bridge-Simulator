@@ -60,6 +60,22 @@ Gathered 2026-10-04 for `engine-stack` ("Why SDL3, not SDL2").
 | [`sdl3` crate](https://crates.io/crates/sdl3), [`sdl3-sys` docs](https://docs.rs/crate/sdl3-sys/latest) | Rust bindings at 0.20 (September 2026); `sdl3-sys` bundles SDL 3.4.10. |
 | [SDL3 environment variables](https://wiki.libsdl.org/SDL3/EnvironmentVariables) | `SDL_KMSDRM_ATOMIC`, `SDL_KMSDRM_DEVICE_INDEX` and the other KMS/DRM hints. |
 
+## Graphics layer, transport and matchmaking
+
+Gathered 2026-10-07 for `engine-stack` (E2, sokol_gfx; section 10a, the browser build),
+`netcode-and-sessions` (section 2, WebRTC) and `matchmaker`. Read that day; revisions pinned.
+
+| Source | Cited for |
+| --- | --- |
+| [sokol](https://github.com/floooh/sokol), `sokol_gfx.h` at `401f21f` | The backends (`SOKOL_GLCORE`, `SOKOL_GLES3`, D3D11, Metal, WebGPU, Vulkan); the vertex formats (`SG_VERTEXFORMAT_*`: no three-component 16-bit format, `SHORT4`, `INT10_N2`, `UBYTE4N`, `SHORT2`); `SOKOL_EXTERNAL_GL_LOADER`; uniform blocks uploaded with `glUniform4fv` in the GL backends; GLSL `#version 410` as the desktop GL floor. |
+| [sokol-rust](https://github.com/floooh/sokol-rust) at `1a5cb22` | The generated Rust bindings; a git dependency, not on crates.io; its `build.rs` compiles every module and links X11 or Wayland, ALSA and GL on Linux; web builds through `wasm32-unknown-emscripten`; its warning about stale builds after a header update. |
+| [crates.io, `sokol`](https://crates.io/crates/sokol) | An unrelated binding, version 0.3.0, last updated 2019-04-29. |
+| [sokol-shdc documentation](https://github.com/floooh/sokol-tools/blob/master/docs/sokol-shdc.md) | Output languages `glsl300es`, `glsl410`, `glsl430`; the `sokol_rust` output format; reflection. |
+| [sokol-tools-bin](https://github.com/floooh/sokol-tools-bin) at `11d0cf6` | Prebuilt `sokol-shdc` for Linux x86-64 and arm64, macOS and Windows. |
+| [str0m](https://github.com/algesten/str0m), version 0.24.1 (2026-10-03) | WebRTC in Rust, sans I/O; data channels through `sctp-proto`; crypto backends `rust-crypto` (DTLS by `dimpl`), `aws-lc-rs`, OpenSSL; the `str0m-netem` network emulator. |
+| [Fly.io, "UDP and TCP"](https://fly.io/docs/networking/udp-and-tcp/) | UDP needs a dedicated IPv4 address (not shared IPv4 or IPv6), an app bound to `fly-global-services`, and the same port externally; Fly takes "a couple dozen bytes" of the MTU. |
+| RFC 8831 (WebRTC data channels), RFC 8445 (ICE), RFC 8656 (TURN) | The transport and connection setup (`netcode-and-sessions` section 2a). |
+
 ## Flight and networking
 
 | Source | Cited for |

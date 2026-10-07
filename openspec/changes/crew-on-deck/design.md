@@ -580,7 +580,7 @@ standing up is that change's hold (E for 0.5 s, gamepad B for 0.6 s).
 
 That adds about 1 kbit/s to netcode's typical delta. `netcode-and-sessions` carries both groups
 since 2026-10-04; its redone check is 56 kbit/s typical and about 61 kbit/s in a full engagement,
-inside the 64 kbit/s budget.
+inside the 64 kbit/s budget (on WebRTC since 2026-10-07: 68 and about 73 kbit/s, inside 80).
 Up, nothing changes: the input frame is the one netcode already sizes.
 
 ### 15. Data (proposed)
@@ -740,7 +740,7 @@ byte names, at the speed their interpolated positions give.
 ### 18. The Pi 5 budget this change spends
 
 Against `engine-stack`'s provisional table (200,000 triangles and 300 draw calls per frame; crew
-avatar 3,000 triangles, at most 48 bones; client resident memory 384 MB; 64 kbit/s down).
+avatar 3,000 triangles, at most 48 bones; client resident memory 384 MB; 64 kbit/s down, 80 since 2026-10-07).
 
 | Item | Triangles | Draw calls | Memory | Notes |
 | --- | ---: | ---: | --- | --- |
