@@ -1,0 +1,1865 @@
+{
+ "schema": "starcrew.layout-patch/1",
+ "status": "Proposed (2026-10-06): openspec/changes/deck-access. Applies after data/ships/tern/command_suite.json. Written by tools/deck_access.py; edit the script, not this file. The layout does not hold it yet.",
+ "_rules": [
+  "The same fields and rules as command_suite.json (ShipKit.applyPatch, tools/command_suite.py patch_layout), applied after it."
+ ],
+ "compartments": [
+  {
+   "id": "stair_p",
+   "poi": 35,
+   "name": "Port stair tower",
+   "decks": [
+    "C",
+    "B",
+    "A"
+   ],
+   "kind": "trunk",
+   "finish": "crew",
+   "purpose": "A spiral stair from deck C to deck A, with a landing and two doors on every deck: the spine corridor, and the captains quarters, quarters, life support beside it. Needs no power.",
+   "brushes": [
+    {
+     "y": [
+      -3.5,
+      6.5
+     ],
+     "poly": [
+      [
+       1.25,
+       9.0
+      ],
+      [
+       3.85,
+       9.0
+      ],
+      [
+       3.85,
+       11.6
+      ],
+      [
+       1.25,
+       11.6
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "stair_s",
+   "poi": 36,
+   "name": "Starboard stair tower",
+   "decks": [
+    "C",
+    "B",
+    "A"
+   ],
+   "kind": "trunk",
+   "finish": "crew",
+   "purpose": "A spiral stair from deck C to deck A, with a landing and two doors on every deck: the spine corridor, and the computer core, mess, cargo beside it. Needs no power.",
+   "brushes": [
+    {
+     "y": [
+      -3.5,
+      6.5
+     ],
+     "poly": [
+      [
+       -3.85,
+       9.0
+      ],
+      [
+       -1.25,
+       9.0
+      ],
+      [
+       -1.25,
+       11.6
+      ],
+      [
+       -3.85,
+       11.6
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "lift",
+   "poi": 37,
+   "name": "Lift",
+   "decks": [
+    "C",
+    "B",
+    "A"
+   ],
+   "kind": "trunk",
+   "finish": "working",
+   "purpose": "A lift (elevator) from deck C to deck A beside the bridge door, its car big enough for a stretcher. Fast with power; stops without it, and then the stair towers and ladders remain.",
+   "brushes": [
+    {
+     "y": [
+      -3.5,
+      6.5
+     ],
+     "poly": [
+      [
+       -3.3,
+       17.1
+      ],
+      [
+       -1.25,
+       17.1
+      ],
+      [
+       -1.25,
+       19.0
+      ],
+      [
+       -3.3,
+       19.0
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "briefing_room",
+   "poi": 31,
+   "name": "Briefing room",
+   "decks": [
+    "A"
+   ],
+   "kind": "room",
+   "finish": "crew",
+   "purpose": "Meetings and mission briefings: a table for eight facing a wall screen, a window. Its door opens onto the bridge's walkway; a second door to the command passage.",
+   "brushes": [
+    {
+     "y": [
+      3.5,
+      6.5
+     ],
+     "poly": [
+      [
+       -3.3,
+       20.0
+      ],
+      [
+       -8.9,
+       20.0
+      ],
+      [
+       -9.6,
+       14.8
+      ],
+      [
+       -8.8,
+       14.0
+      ],
+      [
+       -3.3,
+       14.0
+      ]
+     ]
+    },
+    {
+     "y": [
+      3.5,
+      6.5
+     ],
+     "poly": [
+      [
+       -3.3,
+       17.1
+      ],
+      [
+       -3.3,
+       14.0
+      ],
+      [
+       -1.25,
+       14.0
+      ],
+      [
+       -1.25,
+       17.1
+      ]
+     ]
+    },
+    {
+     "y": [
+      3.5,
+      6.5
+     ],
+     "poly": [
+      [
+       -1.25,
+       20.0
+      ],
+      [
+       -3.3,
+       20.0
+      ],
+      [
+       -3.3,
+       19.0
+      ],
+      [
+       -1.25,
+       19.0
+      ]
+     ]
+    },
+    {
+     "y": [
+      3.5,
+      6.5
+     ],
+     "poly": [
+      [
+       -3.512,
+       20.944
+      ],
+      [
+       -8.738,
+       20.944
+      ],
+      [
+       -8.9,
+       20.0
+      ],
+      [
+       -1.233,
+       20.0
+      ]
+     ]
+    },
+    {
+     "y": [
+      3.5,
+      6.5
+     ],
+     "poly": [
+      [
+       -5.256,
+       22.688
+      ],
+      [
+       -8.44,
+       22.688
+      ],
+      [
+       -8.738,
+       20.944
+      ],
+      [
+       -3.512,
+       20.944
+      ]
+     ]
+    },
+    {
+     "y": [
+      3.5,
+      6.5
+     ],
+     "poly": [
+      [
+       -6.2,
+       24.967
+      ],
+      [
+       -8.05,
+       24.967
+      ],
+      [
+       -8.44,
+       22.688
+      ],
+      [
+       -5.256,
+       22.688
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "captains_quarters",
+   "poi": 32,
+   "name": "Captain's quarters",
+   "decks": [
+    "A"
+   ],
+   "kind": "room",
+   "finish": "crew",
+   "purpose": "The captain's cabin: a bed, a wardrobe, a desk and an en-suite. Doors to the command passage and the ready room.",
+   "brushes": [
+    {
+     "y": [
+      3.5,
+      6.5
+     ],
+     "poly": [
+      [
+       3.85,
+       9.0
+      ],
+      [
+       10.381,
+       9.0
+      ],
+      [
+       9.708,
+       14.0
+      ],
+      [
+       3.85,
+       14.0
+      ]
+     ]
+    },
+    {
+     "y": [
+      3.5,
+      6.5
+     ],
+     "poly": [
+      [
+       3.85,
+       11.6
+      ],
+      [
+       3.85,
+       14.0
+      ],
+      [
+       1.25,
+       14.0
+      ],
+      [
+       1.25,
+       11.6
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "cargo",
+   "poi": 23,
+   "name": "Cargo and stores",
+   "decks": [
+    "C"
+   ],
+   "kind": "room",
+   "finish": "working",
+   "purpose": "Spare parts, reserve gas bottles and the gravity generator.",
+   "brushes": [
+    {
+     "y": [
+      -3.5,
+      -0.5
+     ],
+     "poly": [
+      [
+       -8.6,
+       6.0
+      ],
+      [
+       -3.85,
+       6.0
+      ],
+      [
+       -3.85,
+       20.0
+      ],
+      [
+       -8.4,
+       20.0
+      ],
+      [
+       -8.6,
+       19.8
+      ]
+     ]
+    },
+    {
+     "y": [
+      -3.5,
+      -0.5
+     ],
+     "poly": [
+      [
+       -3.85,
+       6.0
+      ],
+      [
+       -1.25,
+       6.0
+      ],
+      [
+       -1.25,
+       9.0
+      ],
+      [
+       -3.85,
+       9.0
+      ]
+     ]
+    },
+    {
+     "y": [
+      -3.5,
+      -0.5
+     ],
+     "poly": [
+      [
+       -3.3,
+       20.0
+      ],
+      [
+       -3.85,
+       20.0
+      ],
+      [
+       -3.85,
+       11.6
+      ],
+      [
+       -3.3,
+       11.6
+      ]
+     ]
+    },
+    {
+     "y": [
+      -3.5,
+      -0.5
+     ],
+     "poly": [
+      [
+       -1.25,
+       11.6
+      ],
+      [
+       -1.25,
+       17.1
+      ],
+      [
+       -3.3,
+       17.1
+      ],
+      [
+       -3.3,
+       11.6
+      ]
+     ]
+    },
+    {
+     "y": [
+      -3.5,
+      -0.5
+     ],
+     "poly": [
+      [
+       -1.25,
+       19.0
+      ],
+      [
+       -1.25,
+       20.0
+      ],
+      [
+       -3.3,
+       20.0
+      ],
+      [
+       -3.3,
+       19.0
+      ]
+     ]
+    },
+    {
+     "y": [
+      -3.5,
+      -0.5
+     ],
+     "poly": [
+      [
+       -10.6,
+       6.0
+      ],
+      [
+       -8.6,
+       6.0
+      ],
+      [
+       -8.6,
+       10.0
+      ],
+      [
+       -10.38,
+       10.0
+      ],
+      [
+       -10.6,
+       8.0
+      ]
+     ]
+    },
+    {
+     "y": [
+      -3.5,
+      -0.5
+     ],
+     "poly": [
+      [
+       -9.95,
+       14.0
+      ],
+      [
+       -8.6,
+       14.0
+      ],
+      [
+       -8.6,
+       19.8
+      ],
+      [
+       -9.4,
+       19.0
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "computer_core",
+   "poi": 3,
+   "name": "Computer core",
+   "decks": [
+    "A"
+   ],
+   "kind": "room",
+   "finish": "working",
+   "purpose": "Processing for sensors, targeting and automation. Automated stations draw on it. Two rows of racks; moved aft of the briefing room (command-suite).",
+   "brushes": [
+    {
+     "y": [
+      3.5,
+      6.5
+     ],
+     "poly": [
+      [
+       -3.85,
+       14.0
+      ],
+      [
+       -9.708,
+       14.0
+      ],
+      [
+       -10.381,
+       9.0
+      ],
+      [
+       -3.85,
+       9.0
+      ]
+     ]
+    },
+    {
+     "y": [
+      3.5,
+      6.5
+     ],
+     "poly": [
+      [
+       -1.25,
+       14.0
+      ],
+      [
+       -3.85,
+       14.0
+      ],
+      [
+       -3.85,
+       11.6
+      ],
+      [
+       -1.25,
+       11.6
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "damage_control",
+   "poi": 9,
+   "name": "Damage control",
+   "decks": [
+    "B"
+   ],
+   "kind": "room",
+   "finish": "crew",
+   "purpose": "Repair kits, extinguishers, EVA suits and the damage control board.",
+   "brushes": [
+    {
+     "y": [
+      0.0,
+      3.0
+     ],
+     "poly": [
+      [
+       -3.3,
+       26.0
+      ],
+      [
+       -8.4,
+       26.0
+      ],
+      [
+       -9.7,
+       18.0
+      ],
+      [
+       -3.3,
+       18.0
+      ]
+     ]
+    },
+    {
+     "y": [
+      0.0,
+      3.0
+     ],
+     "poly": [
+      [
+       -1.25,
+       26.0
+      ],
+      [
+       -3.3,
+       26.0
+      ],
+      [
+       -3.3,
+       19.0
+      ],
+      [
+       -1.25,
+       19.0
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "life_support",
+   "poi": 22,
+   "name": "Life support",
+   "decks": [
+    "C"
+   ],
+   "kind": "room",
+   "finish": "working",
+   "purpose": "Oxygen generator, CO2 scrubbers, the air handler, thermal control and the water tank.",
+   "brushes": [
+    {
+     "y": [
+      -3.5,
+      -0.5
+     ],
+     "poly": [
+      [
+       3.85,
+       6.0
+      ],
+      [
+       10.6,
+       6.0
+      ],
+      [
+       10.6,
+       8.0
+      ],
+      [
+       9.4,
+       19.0
+      ],
+      [
+       8.4,
+       20.0
+      ],
+      [
+       3.85,
+       20.0
+      ]
+     ]
+    },
+    {
+     "y": [
+      -3.5,
+      -0.5
+     ],
+     "poly": [
+      [
+       1.25,
+       6.0
+      ],
+      [
+       3.85,
+       6.0
+      ],
+      [
+       3.85,
+       9.0
+      ],
+      [
+       1.25,
+       9.0
+      ]
+     ]
+    },
+    {
+     "y": [
+      -3.5,
+      -0.5
+     ],
+     "poly": [
+      [
+       3.85,
+       11.6
+      ],
+      [
+       3.85,
+       20.0
+      ],
+      [
+       1.25,
+       20.0
+      ],
+      [
+       1.25,
+       11.6
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "mess",
+   "poi": 11,
+   "name": "Mess",
+   "decks": [
+    "B"
+   ],
+   "kind": "room",
+   "finish": "crew",
+   "purpose": "Galley and tables; the lobby room before a mission.",
+   "brushes": [
+    {
+     "y": [
+      0.0,
+      3.0
+     ],
+     "poly": [
+      [
+       -3.85,
+       18.0
+      ],
+      [
+       -9.7,
+       18.0
+      ],
+      [
+       -10.9,
+       8.0
+      ],
+      [
+       -3.85,
+       8.0
+      ]
+     ]
+    },
+    {
+     "y": [
+      0.0,
+      3.0
+     ],
+     "poly": [
+      [
+       -3.85,
+       9.0
+      ],
+      [
+       -3.85,
+       8.0
+      ],
+      [
+       -1.25,
+       8.0
+      ],
+      [
+       -1.25,
+       9.0
+      ]
+     ]
+    },
+    {
+     "y": [
+      0.0,
+      3.0
+     ],
+     "poly": [
+      [
+       -3.3,
+       18.0
+      ],
+      [
+       -3.85,
+       18.0
+      ],
+      [
+       -3.85,
+       11.6
+      ],
+      [
+       -3.3,
+       11.6
+      ]
+     ]
+    },
+    {
+     "y": [
+      0.0,
+      3.0
+     ],
+     "poly": [
+      [
+       -3.3,
+       17.1
+      ],
+      [
+       -3.3,
+       11.6
+      ],
+      [
+       -1.25,
+       11.6
+      ],
+      [
+       -1.25,
+       17.1
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "quarters",
+   "poi": 10,
+   "name": "Crew quarters",
+   "decks": [
+    "B"
+   ],
+   "kind": "room",
+   "finish": "crew",
+   "purpose": "Bunks and lockers; where crew spawn at the start of a mission.",
+   "brushes": [
+    {
+     "y": [
+      0.0,
+      3.0
+     ],
+     "poly": [
+      [
+       3.85,
+       8.0
+      ],
+      [
+       10.9,
+       8.0
+      ],
+      [
+       9.7,
+       18.0
+      ],
+      [
+       3.85,
+       18.0
+      ]
+     ]
+    },
+    {
+     "y": [
+      0.0,
+      3.0
+     ],
+     "poly": [
+      [
+       1.25,
+       8.0
+      ],
+      [
+       3.85,
+       8.0
+      ],
+      [
+       3.85,
+       9.0
+      ],
+      [
+       1.25,
+       9.0
+      ]
+     ]
+    },
+    {
+     "y": [
+      0.0,
+      3.0
+     ],
+     "poly": [
+      [
+       3.85,
+       11.6
+      ],
+      [
+       3.85,
+       18.0
+      ],
+      [
+       1.25,
+       18.0
+      ],
+      [
+       1.25,
+       11.6
+      ]
+     ]
+    }
+   ]
+  }
+ ],
+ "portals": [
+  {
+   "id": "p_stair_p_a",
+   "kind": "door",
+   "between": [
+    "stair_p",
+    "a_corridor"
+   ],
+   "center_m": [
+    1.25,
+    4.6,
+    9.55
+   ],
+   "normal": [
+    -1.0,
+    0.0,
+    0.0
+   ],
+   "size_m": [
+    1.0,
+    2.2
+   ]
+  },
+  {
+   "id": "p_stair_p_a_room",
+   "kind": "door",
+   "between": [
+    "stair_p",
+    "captains_quarters"
+   ],
+   "center_m": [
+    3.85,
+    4.6,
+    9.55
+   ],
+   "normal": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "size_m": [
+    1.0,
+    2.2
+   ]
+  },
+  {
+   "id": "p_stair_p_b",
+   "kind": "door",
+   "between": [
+    "stair_p",
+    "b_spine"
+   ],
+   "center_m": [
+    1.25,
+    1.1,
+    9.55
+   ],
+   "normal": [
+    -1.0,
+    0.0,
+    0.0
+   ],
+   "size_m": [
+    1.0,
+    2.2
+   ]
+  },
+  {
+   "id": "p_stair_p_b_room",
+   "kind": "door",
+   "between": [
+    "stair_p",
+    "quarters"
+   ],
+   "center_m": [
+    3.85,
+    1.1,
+    9.55
+   ],
+   "normal": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "size_m": [
+    1.0,
+    2.2
+   ]
+  },
+  {
+   "id": "p_stair_p_c",
+   "kind": "door",
+   "between": [
+    "stair_p",
+    "c_spine"
+   ],
+   "center_m": [
+    1.25,
+    -2.4,
+    9.55
+   ],
+   "normal": [
+    -1.0,
+    0.0,
+    0.0
+   ],
+   "size_m": [
+    1.0,
+    2.2
+   ]
+  },
+  {
+   "id": "p_stair_p_c_room",
+   "kind": "door",
+   "between": [
+    "stair_p",
+    "life_support"
+   ],
+   "center_m": [
+    3.85,
+    -2.4,
+    9.55
+   ],
+   "normal": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "size_m": [
+    1.0,
+    2.2
+   ]
+  },
+  {
+   "id": "p_stair_p_a_aft",
+   "kind": "door",
+   "between": [
+    "stair_p",
+    "head"
+   ],
+   "center_m": [
+    2.55,
+    4.6,
+    9.0
+   ],
+   "normal": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "size_m": [
+    1.0,
+    2.2
+   ]
+  },
+  {
+   "id": "p_stair_s_a",
+   "kind": "door",
+   "between": [
+    "stair_s",
+    "a_corridor"
+   ],
+   "center_m": [
+    -1.25,
+    4.6,
+    9.55
+   ],
+   "normal": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "size_m": [
+    1.0,
+    2.2
+   ]
+  },
+  {
+   "id": "p_stair_s_a_room",
+   "kind": "door",
+   "between": [
+    "stair_s",
+    "computer_core"
+   ],
+   "center_m": [
+    -3.85,
+    4.6,
+    9.55
+   ],
+   "normal": [
+    -1.0,
+    0.0,
+    0.0
+   ],
+   "size_m": [
+    1.0,
+    2.2
+   ]
+  },
+  {
+   "id": "p_stair_s_b",
+   "kind": "door",
+   "between": [
+    "stair_s",
+    "b_spine"
+   ],
+   "center_m": [
+    -1.25,
+    1.1,
+    9.55
+   ],
+   "normal": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "size_m": [
+    1.0,
+    2.2
+   ]
+  },
+  {
+   "id": "p_stair_s_b_room",
+   "kind": "door",
+   "between": [
+    "stair_s",
+    "mess"
+   ],
+   "center_m": [
+    -3.85,
+    1.1,
+    9.55
+   ],
+   "normal": [
+    -1.0,
+    0.0,
+    0.0
+   ],
+   "size_m": [
+    1.0,
+    2.2
+   ]
+  },
+  {
+   "id": "p_stair_s_c",
+   "kind": "door",
+   "between": [
+    "stair_s",
+    "c_spine"
+   ],
+   "center_m": [
+    -1.25,
+    -2.4,
+    9.55
+   ],
+   "normal": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "size_m": [
+    1.0,
+    2.2
+   ]
+  },
+  {
+   "id": "p_stair_s_c_room",
+   "kind": "door",
+   "between": [
+    "stair_s",
+    "cargo"
+   ],
+   "center_m": [
+    -3.85,
+    -2.4,
+    9.55
+   ],
+   "normal": [
+    -1.0,
+    0.0,
+    0.0
+   ],
+   "size_m": [
+    1.0,
+    2.2
+   ]
+  },
+  {
+   "id": "p_stair_s_a_aft",
+   "kind": "door",
+   "between": [
+    "stair_s",
+    "bridge_locker"
+   ],
+   "center_m": [
+    -2.55,
+    4.6,
+    9.0
+   ],
+   "normal": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "size_m": [
+    1.0,
+    2.2
+   ]
+  },
+  {
+   "id": "p_lift_a",
+   "kind": "door",
+   "between": [
+    "lift",
+    "a_corridor"
+   ],
+   "center_m": [
+    -1.25,
+    4.6,
+    18.05
+   ],
+   "normal": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "size_m": [
+    1.2,
+    2.2
+   ]
+  },
+  {
+   "id": "p_lift_b",
+   "kind": "door",
+   "between": [
+    "lift",
+    "b_spine"
+   ],
+   "center_m": [
+    -1.25,
+    1.1,
+    18.05
+   ],
+   "normal": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "size_m": [
+    1.2,
+    2.2
+   ]
+  },
+  {
+   "id": "p_lift_c",
+   "kind": "door",
+   "between": [
+    "lift",
+    "c_spine"
+   ],
+   "center_m": [
+    -1.25,
+    -2.4,
+    18.05
+   ],
+   "normal": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "size_m": [
+    1.2,
+    2.2
+   ]
+  },
+  {
+   "id": "p_scuttle_ready",
+   "kind": "hatch",
+   "between": [
+    "ready_room",
+    "medbay"
+   ],
+   "center_m": [
+    7.6,
+    3.0,
+    19.2
+   ],
+   "normal": [
+    0.0,
+    -1.0,
+    0.0
+   ],
+   "size_m": [
+    0.9,
+    0.9
+   ]
+  },
+  {
+   "id": "p_bridge_scuttle",
+   "kind": "hatch",
+   "between": [
+    "briefing_room",
+    "damage_control"
+   ],
+   "center_m": [
+    -7.6,
+    3.0,
+    19.2
+   ],
+   "normal": [
+    0.0,
+    -1.0,
+    0.0
+   ],
+   "size_m": [
+    0.9,
+    0.9
+   ]
+  },
+  {
+   "id": "p_port_turret_quarters",
+   "kind": "door",
+   "between": [
+    "port_turret",
+    "quarters"
+   ],
+   "center_m": [
+    5.5,
+    1.1,
+    8.0
+   ],
+   "normal": [
+    0.0,
+    0.0,
+    1.0
+   ],
+   "size_m": [
+    1.0,
+    2.2
+   ]
+  },
+  {
+   "id": "p_stbd_turret_mess",
+   "kind": "door",
+   "between": [
+    "stbd_turret",
+    "mess"
+   ],
+   "center_m": [
+    -5.5,
+    1.1,
+    8.0
+   ],
+   "normal": [
+    0.0,
+    0.0,
+    1.0
+   ],
+   "size_m": [
+    1.0,
+    2.2
+   ]
+  },
+  {
+   "id": "p_dc_torpedo",
+   "kind": "door",
+   "between": [
+    "damage_control",
+    "torpedo_room"
+   ],
+   "center_m": [
+    -4.5,
+    1.1,
+    26.0
+   ],
+   "normal": [
+    0.0,
+    0.0,
+    1.0
+   ],
+   "size_m": [
+    1.0,
+    2.2
+   ]
+  },
+  {
+   "id": "p_shield_life_support",
+   "kind": "door",
+   "between": [
+    "shield_room",
+    "life_support"
+   ],
+   "center_m": [
+    5.5,
+    -2.4,
+    6.0
+   ],
+   "normal": [
+    0.0,
+    0.0,
+    1.0
+   ],
+   "size_m": [
+    1.0,
+    2.2
+   ]
+  },
+  {
+   "id": "p_switchboard_cargo",
+   "kind": "door",
+   "between": [
+    "switchboard",
+    "cargo"
+   ],
+   "center_m": [
+    -6.3,
+    -2.4,
+    6.0
+   ],
+   "normal": [
+    0.0,
+    0.0,
+    1.0
+   ],
+   "size_m": [
+    1.0,
+    2.2
+   ]
+  },
+  {
+   "id": "p_life_support_magazine",
+   "kind": "door",
+   "between": [
+    "life_support",
+    "magazine"
+   ],
+   "center_m": [
+    5.0,
+    -2.4,
+    20.0
+   ],
+   "normal": [
+    0.0,
+    0.0,
+    1.0
+   ],
+   "size_m": [
+    1.0,
+    2.2
+   ]
+  }
+ ],
+ "stations": [],
+ "fixtures": [
+  {
+   "id": "stair_p_spiral",
+   "kind": "spiral_stair",
+   "compartment": "stair_p",
+   "center_m": [
+    2.55,
+    -3.5,
+    10.3
+   ],
+   "radius_m": 1.2,
+   "column_radius_m": 0.15,
+   "floors_y_m": [
+    -3.5,
+    0.0,
+    3.5
+   ],
+   "risers_per_deck": 18,
+   "start_yaw_deg": 240.0,
+   "sweep_deg": 240.0,
+   "landing_poly": [
+    [
+     1.25,
+     9.0
+    ],
+    [
+     3.85,
+     9.0
+    ],
+    [
+     3.85,
+     10.1
+    ],
+    [
+     1.25,
+     10.1
+    ]
+   ],
+   "walk_line_m": 0.85,
+   "well_poly": [
+    [
+     1.25,
+     9.0
+    ],
+    [
+     3.85,
+     9.0
+    ],
+    [
+     3.85,
+     11.6
+    ],
+    [
+     1.25,
+     11.6
+    ]
+   ],
+   "note": "Treads sweep forward from the landing and round to the next deck's landing over it, one deck a sweep. They run out to the trunk's walls (well_poly), so there is no gap to fall through (owner, 2026-10-07)."
+  },
+  {
+   "id": "stair_s_spiral",
+   "kind": "spiral_stair",
+   "compartment": "stair_s",
+   "center_m": [
+    -2.55,
+    -3.5,
+    10.3
+   ],
+   "radius_m": 1.2,
+   "column_radius_m": 0.15,
+   "floors_y_m": [
+    -3.5,
+    0.0,
+    3.5
+   ],
+   "risers_per_deck": 18,
+   "start_yaw_deg": 120.0,
+   "sweep_deg": -240.0,
+   "landing_poly": [
+    [
+     -3.85,
+     9.0
+    ],
+    [
+     -1.25,
+     9.0
+    ],
+    [
+     -1.25,
+     10.1
+    ],
+    [
+     -3.85,
+     10.1
+    ]
+   ],
+   "walk_line_m": 0.85,
+   "well_poly": [
+    [
+     -3.85,
+     9.0
+    ],
+    [
+     -1.25,
+     9.0
+    ],
+    [
+     -1.25,
+     11.6
+    ],
+    [
+     -3.85,
+     11.6
+    ]
+   ],
+   "note": "Treads sweep forward from the landing and round to the next deck's landing over it, one deck a sweep. They run out to the trunk's walls (well_poly), so there is no gap to fall through (owner, 2026-10-07)."
+  },
+  {
+   "id": "lift_car",
+   "kind": "lift",
+   "compartment": "lift",
+   "center_m": [
+    -2.275,
+    3.5,
+    18.05
+   ],
+   "car_m": [
+    1.9,
+    2.2,
+    1.6
+   ],
+   "stops_y_m": [
+    -3.5,
+    0.0,
+    3.5
+   ],
+   "speed_m_s": 1.5,
+   "door_s": 2.0,
+   "facing_yaw_deg": 90.0,
+   "note": "Drawn at deck A; its door faces the passage (+x). Speed and door times assumed (deck-access design 3)."
+  }
+ ],
+ "fixtures_removed": [],
+ "systems": [],
+ "numbers": {
+  "single_losses": {
+   "today": {
+    "a_corridor": [
+     "a_aft_passage",
+     "airlock",
+     "b_spine",
+     "c_spine",
+     "cargo",
+     "computer_core",
+     "damage_control",
+     "dorsal_turret",
+     "drive",
+     "engineering",
+     "hangar",
+     "launch_bay_p",
+     "launch_bay_s",
+     "life_support",
+     "magazine",
+     "medbay",
+     "mess",
+     "pod_dorsal",
+     "pod_port",
+     "pod_stbd",
+     "pod_ventral",
+     "port_turret",
+     "quarters",
+     "ready_room",
+     "shield_room",
+     "stbd_turret",
+     "switchboard",
+     "torpedo_room"
+    ],
+    "dorsal_turret": [
+     "pod_dorsal"
+    ],
+    "port_turret": [
+     "pod_port"
+    ],
+    "stbd_turret": [
+     "pod_stbd"
+    ],
+    "b_spine": [
+     "damage_control",
+     "medbay",
+     "mess",
+     "pod_port",
+     "pod_stbd",
+     "port_turret",
+     "quarters",
+     "stbd_turret",
+     "torpedo_room"
+    ],
+    "hangar": [
+     "launch_bay_p",
+     "launch_bay_s"
+    ],
+    "engineering": [
+     "drive"
+    ],
+    "c_spine": [
+     "airlock",
+     "cargo",
+     "life_support",
+     "magazine",
+     "pod_ventral",
+     "shield_room",
+     "switchboard"
+    ],
+    "cargo": [
+     "airlock"
+    ]
+   },
+   "with_the_suite": {
+    "a_corridor": [
+     "a_aft_passage",
+     "airlock",
+     "b_spine",
+     "bridge_locker",
+     "c_spine",
+     "cargo",
+     "computer_core",
+     "damage_control",
+     "dorsal_turret",
+     "drive",
+     "engineering",
+     "hangar",
+     "head",
+     "launch_bay_p",
+     "launch_bay_s",
+     "life_support",
+     "magazine",
+     "medbay",
+     "mess",
+     "pod_dorsal",
+     "pod_port",
+     "pod_stbd",
+     "pod_ventral",
+     "port_turret",
+     "quarters",
+     "shield_room",
+     "stbd_turret",
+     "switchboard",
+     "torpedo_room"
+    ],
+    "dorsal_turret": [
+     "pod_dorsal"
+    ],
+    "port_turret": [
+     "pod_port"
+    ],
+    "stbd_turret": [
+     "pod_stbd"
+    ],
+    "b_spine": [
+     "damage_control",
+     "medbay",
+     "mess",
+     "pod_port",
+     "pod_stbd",
+     "port_turret",
+     "quarters",
+     "stbd_turret",
+     "torpedo_room"
+    ],
+    "hangar": [
+     "launch_bay_p",
+     "launch_bay_s"
+    ],
+    "engineering": [
+     "drive"
+    ],
+    "c_spine": [
+     "airlock",
+     "cargo",
+     "life_support",
+     "magazine",
+     "pod_ventral",
+     "shield_room",
+     "switchboard"
+    ],
+    "cargo": [
+     "airlock"
+    ]
+   },
+   "with_deck_access": {
+    "dorsal_turret": [
+     "pod_dorsal"
+    ],
+    "port_turret": [
+     "pod_port"
+    ],
+    "stbd_turret": [
+     "pod_stbd"
+    ],
+    "hangar": [
+     "launch_bay_p",
+     "launch_bay_s"
+    ],
+    "engineering": [
+     "drive"
+    ],
+    "c_spine": [
+     "pod_ventral"
+    ],
+    "cargo": [
+     "airlock"
+    ]
+   },
+   "with_deck_access_and_no_power": {
+    "dorsal_turret": [
+     "pod_dorsal"
+    ],
+    "port_turret": [
+     "pod_port"
+    ],
+    "stbd_turret": [
+     "pod_stbd"
+    ],
+    "hangar": [
+     "launch_bay_p",
+     "launch_bay_s"
+    ],
+    "engineering": [
+     "drive"
+    ],
+    "c_spine": [
+     "pod_ventral"
+    ],
+    "cargo": [
+     "airlock"
+    ]
+   }
+  },
+  "air_m3": {
+   "stair_p": 67.6,
+   "stair_s": 67.6,
+   "lift": 38.9,
+   "briefing_room": 189.7,
+   "captains_quarters": 111.6,
+   "cargo": 317.1,
+   "computer_core": 111.6,
+   "damage_control": 181.1,
+   "life_support": 347.5,
+   "mess": 245.7,
+   "quarters": 251.2
+  },
+  "ship_air_m3": {
+   "with_the_suite": 10284.7,
+   "with_deck_access": 10302.1
+  },
+  "spiral_s_per_deck": 3.4,
+  "routes_s": {
+   "casualty, helm to a medbay bed: down the ladder (today)": 34.8,
+   "casualty, helm to a medbay bed: by the lift": 20.3,
+   "crew quarters door to the bridge door: up the ladder (today)": 11.7,
+   "crew quarters door to the bridge door: up the port tower": 14.0,
+   "deck C spine to the bridge door: the ladder (today)": 15.9,
+   "deck C spine to the bridge door: a tower": 15.3,
+   "deck C spine to the bridge door: the lift": 14.9
+  }
+ }
+}

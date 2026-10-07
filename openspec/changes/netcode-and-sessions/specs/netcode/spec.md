@@ -36,7 +36,7 @@ eight players aboard.
 
 #### Scenario: A full crew in combat
 - **WHEN** eight avatars move and twelve bodies are near the ship for 60 s
-- **THEN** the measured average downstream rate per client is at most 64 kbit/s
+- **THEN** the measured average downstream rate per client, headers included, is at most 80 kbit/s
 
 ### Requirement: Seats belong to the server and never freeze
 The server SHALL own the seat table. When a player leaves a seat or disconnects, the station
@@ -46,6 +46,20 @@ remain aboard as an NPC.
 #### Scenario: The helm disconnects mid-turn
 - **WHEN** the client holding the helm disconnects while steering hard to port
 - **THEN** helm automation takes the seat on the next tick and the ship does not keep turning on the last input
+
+### Requirement: Every client connects over WebRTC
+Every client, native or in a browser, SHALL connect to the server with one WebRTC peer connection
+carrying four data channels (input and snapshot unreliable and unordered, command and bulk reliable
+and ordered), and the channel layer above the transport SHALL be the same code for both kinds of
+client.
+
+#### Scenario: A browser player and a Pi player in one crew
+- **WHEN** a player in a browser and a player on a 1 GB Pi 5 join the same session
+- **THEN** both connect through WebRTC data channels, and the server cannot tell their messages apart except by the client kind each declares in its hello
+
+#### Scenario: An unreliable message that would fragment
+- **WHEN** a snapshot delta would exceed 1,200 bytes
+- **THEN** it is sent as more than one message, each under 1,200 bytes, never as one fragmented message
 
 ### Requirement: Packets are validated before use
 Every received field SHALL be range-checked and non-finite numbers SHALL be rejected; a packet

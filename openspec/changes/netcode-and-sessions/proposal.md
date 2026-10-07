@@ -24,11 +24,14 @@ Three things make this harder than a shooter:
 - **Client and server.** `sc-server` is the authority. Normally it runs headless as the main
   server on a 4 GB Pi 5; a host can also run it inside their client (a listen server). A solo
   game is a listen server with one client.
-- **UDP with channels.** An unreliable sequenced channel for snapshots and input, and a
-  reliable ordered channel for commands (open this door, set this allocation, claim this seat),
-  with acknowledgements carried in every packet.
+- **WebRTC data channels, for every client** (owner, 2026-10-07: "I want to use webrtc if posible
+  to do multiplayer on web and desktop"; plain UDP until then). Unreliable unordered channels for
+  snapshots and input, carrying our acknowledgements, and reliable ordered channels for commands
+  (open this door, set this allocation, claim this seat) and bulk transfers. `str0m` on native
+  ends, the browser's own WebRTC in a browser; one channel layer above both.
 - **Snapshots at 20 Hz**, delta-compressed against the last snapshot the client acknowledged,
-  with ship systems sent at lower rates by priority, inside 64 kbit/s down per client.
+  with ship systems sent at lower rates by priority, inside 80 kbit/s down per client (64 until
+  WebRTC's headers, 2026-10-07).
 - **Prediction for what a player drives:** their own avatar and a fighter they fly. Everything
   else is interpolated 100 ms in the past.
 - **Commands are intents, validated by the server.** A console sends "set shields to 120%"; the
@@ -36,8 +39,9 @@ Three things make this harder than a shooter:
   with, and the result comes back in a snapshot.
 - **Seats are server state.** Claiming, releasing and automation hand-over happen on the server,
   so a disconnect hands the seat to automation instead of freezing it (star-crew-64's bug).
-- **Sessions:** host on LAN with discovery, or by address and port over the internet; join in
-  progress with a full state transfer; up to eight players.
+- **Sessions:** join by a code through the matchmaker on Fly.io (the `matchmaker` change), on a LAN
+  with discovery, or by address; join in progress with a full state transfer; up to eight
+  players.
 
 ## Capabilities
 

@@ -1,0 +1,37 @@
+{
+  "schema": "starcrew.bake/1",
+  "status": "Proposed (2026-10-07) by openspec/changes/light-baking, design sections 11, 12 and 15: the mockup baker's final settings. Read by docs/mockups/lighting.html and docs/mockups/deck-plan.html today, by sc-tools bake once it is built.",
+  "_rules": [
+    "Every key has a unit or is a count; a present zero means zero. An unknown key is an error. tools/lighting_check.py validates this file.",
+    "reference_lux: the irradiance that shows a surface at exactly its texture colour. ambient_scale_lux: ShipKit.LIGHTING's ambient colour times its weight times this is each state's ambient fill in lux, times the baked occlusion.",
+    "shadow_samples per lamp per receiver; emitter samples one per emitter_sample_area_m2 and at least one per emitter_sample_spacing_m of its longest edge; ao_rays and ao_radius_m the occlusion; bounces 0, 1 or 2, read from an irradiance cache of cache_spacing_m with cache_gather_rays per point and cache_filter_passes of a tent filter; gather_rays where bounce is gathered per sample (probes); ray_bias_m along the normal; sample_inset_m inside a face's edge; dither on the 8-bit output.",
+    "adaptive and max_added_triangles: the engine's subdivision (design section 3), and the lighting page's. mockup: the deck plan's stand-in for it (design section 15), cells no wider than cell_m on floors, walls and ceilings; uncapped_triangles the lighting page's no-cap comparison.",
+    "presets override these for a quicker bake (preview)."
+  ],
+  "seed": 1,
+  "reference_lux": 100,
+  "ambient_scale_lux": 260,
+  "shadow_samples": 12,
+  "emitter_sample_area_m2": 0.06,
+  "emitter_sample_spacing_m": 0.25,
+  "ao_rays": 24,
+  "ao_radius_m": 0.8,
+  "exterior_ao_radius_m": 2.0,
+  "bounces": 1,
+  "cache_spacing_m": 0.5,
+  "cache_gather_rays": 128,
+  "cache_filter_passes": 1,
+  "gather_rays": 48,
+  "ray_bias_m": 0.004,
+  "sample_inset_m": 0.01,
+  "dither": true,
+  "adaptive": { "base_m": 2.0, "min_m": 0.25, "max_error_levels": 5 },
+  "max_added_triangles": { "default": 2000, "bridge": 7500 },
+  "mockup": { "cell_m": 1.0, "uncapped_triangles": 60000 },
+  "probes": { "spacing_m": 1.0, "wall_offset_m": 0.5, "invalid_backface_fraction": 0.5 },
+  "lightmap_texel_m": 0.25,
+  "power_loss": { "flicker_s": 0.6, "fade_s": 0.5 },
+  "presets": {
+    "preview": { "shadow_samples": 4, "cache_gather_rays": 32, "bounces": 0, "adaptive": { "max_error_levels": 8 } }
+  }
+}

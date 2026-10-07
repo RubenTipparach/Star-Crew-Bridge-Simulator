@@ -323,8 +323,9 @@ Science's feed control shows "held by Captain" meanwhile.
 
 CLAUDE.md 10: consoles are full-screen 2D when seated, the bridge stays visible behind or beside
 them, panels are a fixed size, and the engine's immediate-mode UI draws them, not render-to-texture.
-`engine-stack` decides the library (section 4 there, question E3, recommendation taken): **`egui`
-with `egui_glow`, inside our fixed-panel rules**, measured by the Pi 5 probe, with a minimal panel
+`engine-stack` decides the library (section 4 there, question E3, recommendation taken): **`egui`,
+drawn by our painter on sokol_gfx (in place of `egui_glow` since 2026-10-07), inside our
+fixed-panel rules**, measured by the Pi 5 probe, with a minimal panel
 layer of our own as the fallback. The rules below are ours and hold whichever library draws them:
 
 - **egui draws; the grid decides.** Each panel is a child `Ui` given a fixed rectangle from the
@@ -459,7 +460,7 @@ proposed) and can be rebound.
 #### 8.7 Cost
 
 egui tessellates a frame into meshes, one per run of shapes that share a clip rectangle and a
-texture, and `egui_glow` draws each mesh with one call. Under the fixed-panel rules a panel is one
+texture, and our sokol_gfx painter draws each mesh with one call. Under the fixed-panel rules a panel is one
 clip rectangle, so the calls follow the panel count:
 
 | Part | Draw calls |
@@ -993,8 +994,11 @@ baked light in the three lighting states. **The layout does not change until the
   - the **captain**: two or three steps up.
 
   The platforms' risers, nosings, rails and stairs come from `deck-pipeline` 5a's platform rule.
-- **Rails mark the drops.** A drop of two steps or more has a railing, 1.0 m high, with a gap at
-  each stair (R1, R2, R8). A single step has a hazard nosing only.
+- **Rails mark the drops.** A drop of two steps or more has a railing, 0.75 m high, with a gap at
+  each stair (R1, R2, R8). A single step has a hazard nosing only. (Lowered from 1.0 m by the
+  owner, 2026-10-07, on the first-person shots of the bridge: "can we lower the railing by about
+  25%". A platform drops at most three steps, 0.675 m; the rails that guard a deck-high drop, the
+  hangar's galleries, engineering's catwalks and the stair towers, keep their own heights.)
 - **Side stations are built into the walls.** Each side station is a **wall bank** (R1, R5, R9):
   a desk with its displays set into the wall between two frames. The generated ribs, coves and
   baseboards stay clear of it: a wall fixture keeps them off its width plus 0.25 m either side.
@@ -1169,7 +1173,7 @@ Low poly stays the style: these are ceilings, and the estimates sit well under t
 - **CPU, client.** Console UI build and tessellation inside the 2 ms UI share (section 8.7).
 - **Network.** The seat table grows by 1 byte per station (section 3); orders are reliable commands
   of about 16 bytes; a seated player's console commands are at most 10 a second of about 12 bytes
-  (about 1 kbit/s up, inside 16 kbit/s); the helm's stick rides the input channel at 20 Hz.
+  (about 1 kbit/s up, inside 16 kbit/s, 32 since 2026-10-07); the helm's stick rides the input channel at 20 Hz.
 
 ### 13. Data (proposed)
 
@@ -1223,7 +1227,7 @@ An excerpt of `data/stations.json`:
 | `ship-frames` | The exterior pose, the viewscreen camera, the window pass and its scissor, the turret sight's pass; `frames::damper_load` | The viewscreen feed selection; brace |
 | `crew-on-deck` | Bodies, the seat snap clip, downed state, braced state, the crew collider | Seat claim, release, relieve and swap rules; NPC posts |
 | `deck-pipeline`, `light-baking` | The compiled bridge mesh in budget; three baked colour sets; per-compartment state uniforms | Fixture positions and furniture sizes (section 11) |
-| `engine-stack` | The Pi 5 budget; egui and `egui_glow` with the probe's measurement of them (E3); the viewscreen target and the secondary views; the audio voices | This budget's spend (section 12); the console UI's workload for the probe |
+| `engine-stack` | The Pi 5 budget; egui and its sokol_gfx painter with the probe's measurement of them (E3); the viewscreen target and the secondary views; the audio voices | This budget's spend (section 12); the console UI's workload for the probe |
 
 ### 15. Lessons from star-crew-64
 

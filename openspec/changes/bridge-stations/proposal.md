@@ -40,7 +40,7 @@ Everything below is **proposed** unless it says it comes from the layout or the 
   holds (netcode-and-sessions).
 - **Command**: the captain's condition (normal, red alert), orders to stations with acknowledge
   and unable, and what red alert changes ship-wide (lighting, automation presets, klaxon).
-- **The console UI framework**: `egui` (with `egui_glow`) drawing inside our fixed-panel rules,
+- **The console UI framework**: `egui` (drawn by our sokol_gfx painter) inside our fixed-panel rules,
   as `engine-stack` decides (question E3), on a 1280 by 720 logical canvas (drawn at 1.5 device
   pixels per logical pixel on the Pi 5's 1920x1080 output), a title band, a look band
   that keeps the bridge and viewscreen visible above the console, a 12 by 4 panel grid with

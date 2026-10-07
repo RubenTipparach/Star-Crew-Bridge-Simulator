@@ -148,7 +148,8 @@
    *
    * opts: albedoHex (palette colour) or albedo (linear RGB) and display (sRGB),
    * cast (in the ray scene, default true), receive (in the outputs, default
-   * true), emissive ({ normal, red_alert, emergency } display colours as
+   * true), cheap (casts shadows but neither sends nor gathers bounce: a small
+   * prop face whose bounce is not worth its cache points), emissive ({ normal, red_alert, emergency } display colours as
    * [r, g, b] in 0..1, drawn unlit), tag, material (a name the page uses to
    * texture the patch), polyM (a convex polygon, [[x, y], ...] in metres along
    * u and v from o, any winding; u and v must then be perpendicular).
@@ -163,6 +164,7 @@
       display: opts.display || hexToSrgb(hex), albedo: opts.albedo || hexToLinear(hex),
       cast: opts.cast !== false && !opts.emissive, receive: opts.receive !== false && !opts.emissive,
       emissive: opts.emissive || null, tag: opts.tag || "", material: opts.material || null, poly: null,
+      cheap: !!opts.cheap,
     };
     if (opts.polyM) setPolygon(p, opts.polyM);
     return p;
@@ -911,6 +913,7 @@
       S.source = from;
       for (let i = 0; i < nv; i++) {
         const P = S.patches[C.patchOfVertex[i]];
+        if (P.cheap) continue;
         pointOn(P, C.st[i * 2], C.st[i * 2 + 1], set.inset_m, p);
         tmp.fill(0);
         irradiance(S, p[0], p[1], p[2], P.n[0], P.n[1], P.n[2], mix32(C.keys[i] ^ salt), BOUNCE, tmp, rays);
@@ -924,6 +927,7 @@
     if (set.bounces > 0) {
       for (let i = 0; i < nv; i++) {
         const P = S.patches[C.patchOfVertex[i]];
+        if (P.cheap) continue;   // a cheap patch casts shadows but neither sends nor gathers bounce (its source stays 0)
         pointOn(P, C.st[i * 2], C.st[i * 2 + 1], set.inset_m, p);
         tmp.fill(0);
         irradiance(S, p[0], p[1], p[2], P.n[0], P.n[1], P.n[2], C.keys[i], DIRECT, tmp);

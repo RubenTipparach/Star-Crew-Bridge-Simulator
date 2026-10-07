@@ -5,9 +5,10 @@ follows `engine-stack` tasks 2 and 3.
 
 ## 1. Transport
 
-- [ ] 1.1 `sc-net` packet header, challenge and response, keep-alive and timeout; a test that a packet from the wrong session token is dropped.
-- [ ] 1.2 Acknowledgement bitfield and the reliable ordered channel with resend; a test over a simulated link with 10% loss and 150 ms jitter that every command arrives once, in order.
-- [ ] 1.3 Bulk channel with fragmentation and reassembly; a test that a 40 kB transfer survives 10% loss.
+- [ ] 1.1 `sc-net`'s transport interface with two implementations: `str0m` on our own socket and network thread (native), and the browser's `RTCPeerConnection` through a JavaScript module (web). Measure the DTLS cost of `str0m`'s crypto backends on a Pi 5 A76 and pick one.
+- [ ] 1.2 The four channels (design section 2) negotiated by id; the 8-byte header and acknowledgement bitfield on the unreliable ones; a test over `str0m`'s network emulator (`str0m-netem`) with 10% loss and 150 ms jitter that every command arrives once, in order, and that snapshot acknowledgements name what arrived.
+- [ ] 1.3 Bulk transfers cut into 16 KiB messages; a test that a 40 kB transfer survives 10% loss; a test that a native client and a browser client (headless Chromium) join one server.
+- [ ] 1.3a The server's LAN signalling endpoint (the matchmaker's messages over a WebSocket), for native clients without internet.
 - [ ] 1.4 Field validation on decode: ranges, non-finite rejection, a counter of dropped packets.
 
 ## 2. Snapshots
@@ -31,7 +32,7 @@ follows `engine-stack` tasks 2 and 3.
 ## 5. Sessions
 
 - [ ] 5.1 Listen server on a client thread; dedicated `sc-server` binary; solo as a listen server with one client.
-- [ ] 5.2 LAN discovery broadcast; join by address and port.
+- [ ] 5.2 LAN discovery broadcast; join by address; join by code through the `matchmaker`.
 - [ ] 5.3 Join in progress with protocol, layout digest and data digest checks.
 - [ ] 5.4 Campaign save at mission end through a temporary file and rename, versioned, with a migration test.
 

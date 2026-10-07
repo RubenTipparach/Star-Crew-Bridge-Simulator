@@ -18,7 +18,7 @@ for low poly aesthetics."
 | Decided elsewhere | Where |
 | --- | --- |
 | Flat-shaded, vertex-coloured low poly; no normal maps, no PBR; light baked into vertex colours, one set per lighting state, blended by a per-compartment uniform; light baked offline from fixtures that are data | CLAUDE.md section 9 |
-| Rust, SDL3 (3.4 or later) and glow on OpenGL ES 3.0; the Pi 5 budget table; shader 1 (deck) "three baked vertex colour sets blended by per-compartment uniforms ... an optional lightmap (`light-baking`)"; `sc-tools` holds `bake` | `engine-stack` sections 3, 5 and 7 |
+| Rust, SDL3 (3.4 or later) and sokol_gfx on OpenGL ES 3.0 (glow until 2026-10-07); the Pi 5 budget table; shader 1 (deck) "three baked vertex colour sets blended by per-compartment uniforms ... an optional lightmap (`light-baking`)"; `sc-tools` holds `bake` | `engine-stack` sections 3, 5 and 7 |
 | Fixtures are entities with a colour and intensity per state and an emergency-bus flag; the bake is step 4 of `deckc`; the 28-byte vertex with three `RGBA8` sets whose alpha is reserved for this change; the per-compartment uniform block (state weights eased over 0.5 s, a dimmer from the lighting bus voltage, a damage flicker, up to four dynamic lights); the `.deck` file | `deck-pipeline` sections 5, 7 and 8 |
 | The red-alert look (red lamps and strips, or white lamps with red strips) | `bridge-stations` question B3 |
 
@@ -537,6 +537,119 @@ Against `engine-stack`'s table; estimates from the two measured rooms.
 | Per vertex | The blend (9 multiply-adds, `deck-pipeline`), plus two `pow` and about 15 operations per active runtime light | Vertex-rate work, a small share of an A76-class GPU's vertex rate (to measure) |
 | Per pixel | Nothing | A lightmap would add one fetch |
 | Server | Nothing | Lighting is client-side; alert level and bus voltage are already simulation state |
+
+### 15. Baking the Tern in the mockups (2026-10-07)
+
+The owner, 2026-10-07: "begin setting up light baking for our 3 lighting conditions, normal, red
+alert, and emergency", then, after the floor and texture work, "commence light baking". Until now
+only `lighting.html` used the baker, on two rooms; the deck plan, the one page that shows the whole
+ship and that the owner walks, lit every room with `ShipKit.bakeDirect` (direct light with no
+shadows, no occlusion and no bounce). This section is the first step of the bake pipeline that can
+be taken before the engine exists. All of it is documentation tooling (CLAUDE.md 4): it decides
+nothing `sc-tools bake` (section 10) will not decide again, and it reads the same data that baker
+will read.
+
+**The questions this needed** (G1 to G4) have shots, so they are in the owner survey, with them
+(its Lighting section, unanswered on 2026-10-07). The owner said to start, so the work proceeds on the recommendations, recorded as
+"recommendation taken (ask only with screenshots), pending the survey": G1 b (vertex colours, with
+adaptive subdivision in the engine), G2 a (keep the cap), G3 pools, G4 one bounce. An answer that
+differs changes `bake.json` or the fixture types, not this work.
+
+**1. The data, one source** (section 11, task 2.1). `data/lighting/fixtures.json` holds the fixture
+types, `data/lighting/bake.json` the bake settings, each validated by `tools/lighting_check.py`
+(unknown keys, missing states, non-finite or negative numbers, a fixture type a record names but
+the file lacks, each with its path and field). Two changes from section 11's sketch, so nothing has
+two sources:
+- **State colours stay in `ShipKit.LIGHTING`**, the state palette every mockup already shares. A
+  fixture type names which of its colours it takes (`"light": "lamp"`, `"strip"`, or a fixed
+  `"color_srgb"`), and keeps its own scale per state and its `emergency_scale`.
+- **`bake.json` gains `ambient_scale_lux`** (260: the palette's ambient colour times its weight
+  times this is the fill in lux) and `mockup_cell_m` (point 2).
+
+`lighting.html` and the deck plan read both files (inlined by `tools/mockups/inline.py`, which now
+also takes `data:lighting/<name>`), in place of the constants `lighting.html` carried.
+
+**2. The deck plan bakes every compartment** with `lightbake.js`, at `bake.json`'s final settings,
+three states from one set of rays:
+- **Each compartment alone, doors closed** (section 9): its shell and detail, its fixtures, its
+  props and the craft in it, door leaves as occluders in its door openings.
+- **Its lights:** the kit's lamps (ceiling panels and high-bay lamps, the emergency bus by the kit's
+  rule), the cove strips along every cove, the lower floor's lamps under engineering's mezzanine,
+  and each station's screens as a small steady light in its role colour. Lenses, status strips and
+  screens keep the colours they show today; they are drawn, not lit.
+- **Albedo** for the bounce is each texture layer's mean colour times a prop's tint.
+- **Storage, a stand-in:** colours on the deck plan's own vertices, with the shell's floors, walls
+  and ceilings first split to cells no wider than `mockup_cell_m` (1.0 m) so a lamp's pool reads on
+  a floor. Section 3's adaptive subdivision (error-driven, capped per compartment) stays the
+  engine's: it re-tessellates faces, and carrying every texture coordinate and layer through a
+  re-tessellation is `deckc`'s job (`deck-pipeline` task 3.2). The uniform split costs more
+  triangles than the adaptive one for the same look; every compartment's added triangles are
+  reported against its ceiling.
+- **Bounce** at a vertex is read from the irradiance cache (the nearest cache points on the same
+  plane, by distance), as section 1 has it.
+- **In the page:** the room the viewer stands in or has selected is baked first, then the rest in
+  the background, yielding to the frame; until its bake arrives a room shows the quick light, and
+  a badge says how many rooms are baked. Each room's bake has a digest (`LightBake.digest`), and
+  the same inputs give the same digest in any session.
+
+**3. The ship bake** (`tools/mockups/bake_ship.mjs`, a measurement instrument): it opens the deck
+plan headless, waits for every compartment's bake, and writes
+`docs/benchmarks/<date>-tern-bake/report.json` and `report.md`: per compartment its lit floor
+area, lamps (on the emergency bus), emitters, triangles before and after the split against its
+ceiling, vertices baked, rays, time and digest. Times are this cloud machine's CPU in one browser
+thread, never a Pi 5 or engine number (CLAUDE.md 12). It also shoots named rooms in the three
+states for `docs/screenshots/`.
+
+**4. What the ship bake measured (2026-10-07)**, `docs/benchmarks/2026-10-07-tern-bake/report.md`,
+in this cloud container's headless Chromium (SwiftShader, one thread: never a Pi 5 or engine
+number):
+
+| Quantity | Value |
+| --- | ---: |
+| Compartments baked | 37 of 37, each with its own digest |
+| Floor lit | 2,573 m^2 |
+| Lamps | 368, 126 of them on the emergency bus |
+| Cove strips | 204 |
+| Triangles in the rooms | 160,207, of which the 1 m split added 70,851 |
+| Vertices baked | 177,536, nine values each (three states) |
+| Rays | 86.6 million |
+| Time | 273 s of baking, 278 s from opening the page |
+| Slowest rooms | Engineering 84.8 s (199,453 cache points), the hangar 26.2 s, the bridge 14.8 s |
+
+The irradiance cache is about 80% of the time in every room (engineering 65.3 of 84.8 s), so a
+faster cache gather is where the engine baker's time goes first, not the vertex pass.
+
+**Two rooms go past their ceiling, both because of the split:**
+
+| Room | Before the split | With the split | Ceiling |
+| --- | ---: | ---: | ---: |
+| Engineering | 27,762 | 37,207 | 30,000 |
+| Hangar | 5,188 | 12,895 | 8,000 |
+
+Every other room stays under its ceiling with the split. The uniform 1 m split is the stand-in that
+section 3's adaptive subdivision replaces. The engine's cap (`max_added_triangles`, 2,000 a room and
+7,500 on the bridge) allows each of them 2,000 added triangles, inside both ceilings (engineering
+has 2,238 to spare, the hangar 2,812), where the split adds 9,445 and 7,707. So the big open rooms are the test of the
+adaptive pass: task 3.4's `the_bridge_converges_inside_its_cap` gains engineering and the hangar
+beside the bridge.
+
+**What the shots show** (`docs/screenshots/mockups/bake/`, one strip a view: the quick light,
+then the bake in the three states):
+- **The bridge** reads in every state. Lamp pools on the floor, the cove line on the ceiling,
+  consoles lit by their own screens, shadows under the rails and the platforms. Red alert and
+  emergency power keep every station readable.
+- **Corridor B** keeps its lamp rhythm down the corridor, and the door strips light the frames.
+- **Engineering's mezzanine** reads in all three states.
+- **Engineering's lower floor is too dark on red alert and on emergency power.** Its lamps hang
+  under the mezzanine, and on emergency power only every third of them stays lit
+  (`emergency_every`), so the reactor's base and the pumps go nearly black. The quick light hid
+  this behind its flat fill. The fix is data, not baker code: the lower floor's lamps take the
+  emergency bus as a stairwell does (every lamp a crew member must find a valve by), and the
+  reactor's glow lights its own base. It is task 1.11, and the bake shows when it is right.
+
+**Not in this step:** the engine baker, adaptive subdivision in a page, probes for moving things,
+runtime lights over the bake, and portal spill light (sections 6, 7 and 9); power loss stays the
+lighting page's.
 
 ## Risks / Trade-offs
 

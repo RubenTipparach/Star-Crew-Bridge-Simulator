@@ -10,7 +10,8 @@
     "screens are the recess floors a page draws on: centre_m on the floor, normal out of it, up the in-plane direction of height_m (width_m runs along up x normal). shows says what: console (a main screen image, assets/textures/screens/screens.json), keys (a key panel) or strip (a long table display the page fills with a generic display).",
     "UV0 is in metres, projected per face as shipkit.js worldUv does (x, z where |n.y| > 0.75, else the face's horizontal tangent and y); divide by the material's span_m.",
     "Flat shaded (one normal per face), triangulated, one closed manifold solid per prop; faces against the floor or the wall are kept for the deck compiler to drop.",
-    "triangles is counted in the .glb; the build refuses a prop over budget_triangles. sha256 is the .glb's, from the Blender and exporter versions in generator: a second build with them writes the same bytes."
+    "triangles is counted in the .glb; the build refuses a prop over budget_triangles. sha256 is the .glb's, from the Blender and exporter versions in generator: a second build with them writes the same bytes.",
+    "atlas is the prop's own baked texture (assets/models/<set>/atlas/<prop>.png, written by the build with its sha256): 256 x 256 RGBA, alpha the glow mask, read through the glb's second UV map (TEXCOORD_1; TEXCOORD_0 stays the metre UVs). px_per_m is its texel density, charts how many pieces its surface was cut into. data/materials/prop_atlas.json says how it is baked; screen faces carry no content in it (the page draws the console faces), accent faces bake light and neutral for the page to tint."
   ],
   "generator": {
     "script": "tools/blender/build_suite_props.py",
@@ -129,7 +130,17 @@
         "union pedestals (4)",
         "difference screens (1)"
       ],
-      "sha256": "14ef9a2875f39406966a2beffdfdcd661c92a1a7da97e591126aa1fd1eaa1a2b"
+      "sha256": "64e64e5c70ce8ed3ea65a0fd876e1e6f9c370ea60aac9e8e0396d0e7e3401cbd",
+      "atlas": {
+        "file": "atlas/briefing_table.png",
+        "px": 256,
+        "px_per_m": 60.36,
+        "charts": 8,
+        "cover": 0.809,
+        "glow": 0.0,
+        "sha256": "df413e878b5ea7ab080094280ec7d1341de97904ff620e20eb594fba87d40210",
+        "bytes": 14356
+      }
     },
     "wall_screen": {
       "file": "wall_screen.glb",
@@ -188,7 +199,17 @@
         "chamfer bezel_edges (3 edges, 15 mm)",
         "difference screens (3)"
       ],
-      "sha256": "2226ec07d1ac9a4fbe1b02feb18ec7509e508db439411317d4e6da834430a122"
+      "sha256": "0eeae8c23dff8baacc4ca59b76fabcd7afec883d352f266e43afa293c804e940",
+      "atlas": {
+        "file": "atlas/wall_screen.png",
+        "px": 256,
+        "px_per_m": 59.28,
+        "charts": 11,
+        "cover": 0.47,
+        "glow": 0.0302,
+        "sha256": "72fb0f233ab4b647ec02b94dc109b7e3d6e058875cfe41282311859efab55e49",
+        "bytes": 10038
+      }
     },
     "desk": {
       "file": "desk.glb",
@@ -276,7 +297,17 @@
         "union frame_and_monitor (6)",
         "difference recesses (5)"
       ],
-      "sha256": "9e08ea2808efbc9f5b4cb09b5d378d39d073cd3e4948d187b483d1d8d623441a"
+      "sha256": "95b0b50361b095000e1840b3b6518e147dfcf4b704704f3e061fbec12736fab0",
+      "atlas": {
+        "file": "atlas/desk.png",
+        "px": 256,
+        "px_per_m": 81.11,
+        "charts": 14,
+        "cover": 0.659,
+        "glow": 0.0,
+        "sha256": "5887d8c4443f426355222389213f2210b19206b7f752a78aba67f06a619216a1",
+        "bytes": 14483
+      }
     },
     "sofa": {
       "file": "sofa.glb",
@@ -317,7 +348,17 @@
         "chamfer seat_2_edge (1 edges, 20 mm)",
         "union arms_and_cushions (8)"
       ],
-      "sha256": "5490e2542f1136e85bf2e2e63ab8148b6189863c27372d7288c1a1093d078bdb"
+      "sha256": "1c7fb8a6b52a3ecffc2ecec4ed6acf659e05ed4d56a34ea0f7f0c67cf1403258",
+      "atlas": {
+        "file": "atlas/sofa.png",
+        "px": 256,
+        "px_per_m": 85.02,
+        "charts": 12,
+        "cover": 0.558,
+        "glow": 0.0,
+        "sha256": "efd04e3a8b2b790f5bfd5c4b828b9462917fb1a2fedb028959514af79a6a35e5",
+        "bytes": 14445
+      }
     },
     "low_table": {
       "file": "low_table.glb",
@@ -352,7 +393,17 @@
       "csg": [
         "chamfer top_edges (2 edges, 15 mm)"
       ],
-      "sha256": "8ca8659203cfb1a9ad9929bfe8a8688b1e230293d87a515ace352a7e47cc8d9c"
+      "sha256": "9ba72fc1497889d4bb0cbc3491c46567402fc68ba642fea906dafca9b0945e9a",
+      "atlas": {
+        "file": "atlas/low_table.png",
+        "px": 256,
+        "px_per_m": 128.0,
+        "charts": 4,
+        "cover": 0.59,
+        "glow": 0.0,
+        "sha256": "19162df6bc90f946532892382dc7b4a9a360453d708c2126a3b076c845c314db",
+        "bytes": 9190
+      }
     },
     "shelf": {
       "file": "shelf.glb",
@@ -389,7 +440,17 @@
         "difference bays (4)",
         "union items (5)"
       ],
-      "sha256": "69c72f2af41ac141e86d7992a95847fcfe608a29ec8ebcaa33e7258657e6d1e4"
+      "sha256": "c2e8eeacaee767e8a26a9ec05162c951cfe95a84479a6103fcb08c3ccd9757f9",
+      "atlas": {
+        "file": "atlas/shelf.png",
+        "px": 256,
+        "px_per_m": 61.48,
+        "charts": 19,
+        "cover": 0.597,
+        "glow": 0.0,
+        "sha256": "897328c608d1b1f8ac34e2fcfe1d3d4c75994064f20f9e804a5a65ecd4895c42",
+        "bytes": 17199
+      }
     },
     "bed": {
       "file": "bed.glb",
@@ -431,7 +492,17 @@
         "union bed (5)",
         "difference recesses (5)"
       ],
-      "sha256": "2cb4d07071e189680850c888a5c79775ebbef0f08d19fd644892925f4377ef88"
+      "sha256": "1dd623c669e827b9fb9553f3d322b49fae59639eb53defd7986862a54a1d9b5f",
+      "atlas": {
+        "file": "atlas/bed.png",
+        "px": 256,
+        "px_per_m": 80.12,
+        "charts": 14,
+        "cover": 0.697,
+        "glow": 0.0193,
+        "sha256": "3a71bfe0287d02b48260c70b18e9d8ac862e8054fcbdaa037b2f5815f22e17cd",
+        "bytes": 17286
+      }
     },
     "wardrobe": {
       "file": "wardrobe.glb",
@@ -467,7 +538,17 @@
         "union handles (2)",
         "difference door_split (1)"
       ],
-      "sha256": "2a79b36281976d9af6bcf3083ce0da895ea5f10b991a35955fb9f5a1451cdf50"
+      "sha256": "00b883811ba5488ec7944c5d3bea4b0b548f998f67c62e4ce3702a4dc4b97fa7",
+      "atlas": {
+        "file": "atlas/wardrobe.png",
+        "px": 256,
+        "px_per_m": 87.86,
+        "charts": 7,
+        "cover": 0.683,
+        "glow": 0.0,
+        "sha256": "5e8e599dc514d7771d5faaf5551782f5a87eccf473ec13f1cda7bee3f9cbf31b",
+        "bytes": 10900
+      }
     },
     "wet_cell": {
       "file": "wet_cell.glb",
@@ -505,7 +586,17 @@
         "difference recesses (2)",
         "union handle (1)"
       ],
-      "sha256": "c67812ed84534cb6b233115c63532781334aaeb6e0dfc9f8a41fb24176d284e9"
+      "sha256": "7ea95da54545c647bcd31386ebe30c7f17b3d46df05ac619185713699adb1fce",
+      "atlas": {
+        "file": "atlas/wet_cell.png",
+        "px": 256,
+        "px_per_m": 48.5,
+        "charts": 7,
+        "cover": 0.687,
+        "glow": 0.0,
+        "sha256": "9b86799991390c38e228f8c976f92232f85d856f562b457008a1226c07cb8ad8",
+        "bytes": 15660
+      }
     },
     "toilet_stall": {
       "file": "toilet_stall.glb",
@@ -547,7 +638,17 @@
         "difference recesses (2)",
         "union handle (1)"
       ],
-      "sha256": "c41035b50a31a6ccdc8e170b70e1d22aa723f81d79a5a7feef60005fad6e9e65"
+      "sha256": "f6757dbe38c0d7dcc5312de7e20928b01b45fd1a01e21df0bdcee44366ea3a5a",
+      "atlas": {
+        "file": "atlas/toilet_stall.png",
+        "px": 256,
+        "px_per_m": 48.13,
+        "charts": 17,
+        "cover": 0.613,
+        "glow": 0.0,
+        "sha256": "cc61b8c983cb3968b02ef564ac8f4ba61399f7867bc2e35dd54c533e1643146d",
+        "bytes": 15040
+      }
     },
     "wash_counter": {
       "file": "wash_counter.glb",
@@ -588,7 +689,17 @@
         "union taps (2)",
         "difference doors (2)"
       ],
-      "sha256": "19b00ca08d8cb18ecd978ae57176dd3ef148941606efee23f7288099e696af64"
+      "sha256": "ab2c1f1c370773fbee7d186a2ffdd92c16af6a6861c506784b37353bbc783ab4",
+      "atlas": {
+        "file": "atlas/wash_counter.png",
+        "px": 256,
+        "px_per_m": 70.72,
+        "charts": 27,
+        "cover": 0.601,
+        "glow": 0.0983,
+        "sha256": "bcda4f868ee42417211dea6af09c51037fbba746dcb77250a3de5a10982e1094",
+        "bytes": 15015
+      }
     },
     "shower_stall": {
       "file": "shower_stall.glb",
@@ -628,7 +739,17 @@
         "union fittings (3)",
         "difference light (1)"
       ],
-      "sha256": "e8b5997162d104d91bfb6c7c5ee8936be532797a2c4665ef75b0799993e399b8"
+      "sha256": "01128a94d549588b3bbe5f2ee0974c695e6c1934e6f8ee69c680b75432e3fcc4",
+      "atlas": {
+        "file": "atlas/shower_stall.png",
+        "px": 256,
+        "px_per_m": 42.23,
+        "charts": 11,
+        "cover": 0.325,
+        "glow": 0.0166,
+        "sha256": "e06409d1f8383985875acab2480f9716281425b47c0e8081945ffafef407d4a6",
+        "bytes": 13498
+      }
     },
     "locker_bank": {
       "file": "locker_bank.glb",
@@ -665,7 +786,17 @@
       "csg": [
         "difference doors (11)"
       ],
-      "sha256": "6957f7a35276af173fe47829299096d8a7f998b58dfafd7400c5c594f4b6452c"
+      "sha256": "af0605ded67a67c4ae36454a67d44a418017ee21f20b35e303e0f57b95cbfd89",
+      "atlas": {
+        "file": "atlas/locker_bank.png",
+        "px": 256,
+        "px_per_m": 71.64,
+        "charts": 14,
+        "cover": 0.7,
+        "glow": 0.0,
+        "sha256": "bdcd43debdd09fbc8532d061b56ff5cb38b9b9af1e6d6b8c031c4c1dc553a12c",
+        "bytes": 12482
+      }
     },
     "server_rack": {
       "file": "server_rack.glb",
@@ -703,7 +834,17 @@
         "difference tray_channel (1)",
         "union tray (1)"
       ],
-      "sha256": "54429c8501de443050481105946d3cbba0031136236ebdef99e1735b38752803"
+      "sha256": "1ec779e296af23ca28566d71ff61d940b3b052372fbc3aec384f557f5e544b48",
+      "atlas": {
+        "file": "atlas/server_rack.png",
+        "px": 256,
+        "px_per_m": 70.67,
+        "charts": 13,
+        "cover": 0.683,
+        "glow": 0.0211,
+        "sha256": "d6b0ed3e41ff11cf0754e0b8707c458625ba12c4dc976efca0d823e2e64136cd",
+        "bytes": 9736
+      }
     },
     "workbench": {
       "file": "workbench.glb",
@@ -741,7 +882,17 @@
         "chamfer front_edge (1 edges, 15 mm)",
         "union bench (11)"
       ],
-      "sha256": "561546ce847543bcd24940846ec84e3c38be3435c4f298b540a28d3c81debd13"
+      "sha256": "1a772b4a1cdfe4cc611f81bf0bd09e790bfcbeb0ca41506193640c50507f8fbc",
+      "atlas": {
+        "file": "atlas/workbench.png",
+        "px": 256,
+        "px_per_m": 75.75,
+        "charts": 19,
+        "cover": 0.816,
+        "glow": 0.0213,
+        "sha256": "39a7543e456614dc8d98a836bd5c486d4909c85043e9ec2dfd61150ba1ab8ac0",
+        "bytes": 14321
+      }
     }
   }
 }

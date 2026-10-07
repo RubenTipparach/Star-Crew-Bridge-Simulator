@@ -308,11 +308,13 @@ def to_u8(a):
     return (np.clip(a, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint8)
 
 
-def reduce_palette(rgb8, colours):
-    """Median-cut palette reduction without dithering: deterministic, and a per-texel mapping, so
-    a layer that tiled before still tiles."""
-    img = Image.fromarray(rgb8, "RGB").quantize(colors=colours, method=Image.Quantize.MEDIANCUT,
-                                                dither=Image.Dither.NONE)
+def reduce_palette(rgb8, colours, method="median_cut"):
+    """Palette reduction without dithering: deterministic, and a per-texel mapping, so a layer that
+    tiled before still tiles. Median cut (the default, the materials' and panels') splits the colour
+    boxes by how many texels they hold; max coverage (the props' atlases) by their colour range, so a
+    small saturated area, a lamp or a station's stripe, keeps its own colour."""
+    how = {"median_cut": Image.Quantize.MEDIANCUT, "max_coverage": Image.Quantize.MAXCOVERAGE}[method]
+    img = Image.fromarray(rgb8, "RGB").quantize(colors=colours, method=how, dither=Image.Dither.NONE)
     return np.asarray(img.convert("RGB"))
 
 

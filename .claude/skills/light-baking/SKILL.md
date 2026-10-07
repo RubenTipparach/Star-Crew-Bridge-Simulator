@@ -29,9 +29,13 @@ emergency power cost nothing extra to bake. Stored as three `RGBA8` vertex colou
 
 ## The rules
 
-- **Fixtures are data.** A fixture type (`data/lighting/fixtures.json`, proposed) has units in its
-  keys: `intensity_cd`, `luminance_cd_m2`, `radius_m`, `range_m`, `beam_exponent`, and a colour and
-  scale per state. A fixture record (deckgen's placement or a deck detail file, `deck-pipeline`
+- **Fixtures are data.** A fixture type (`data/lighting/fixtures.json`) has units in its keys:
+  `intensity_cd`, `luminance_cd_m2`, `radius_m`, `range_m`, `beam_exponent`, `drop_m`; its colour per
+  state comes from `light` (lamp or strip: `ShipKit.LIGHTING`, the one state palette; role; fixed with
+  `color_srgb`), its emergency-power behaviour from `emergency` (bus or always) and `emergency_scale`.
+  The bake settings are `data/lighting/bake.json`. `python3 tools/lighting_check.py` validates both;
+  the pages read them through `ShipKit.lightingData()`, `fixtureStates()`, `bakeSettings()`,
+  `ambientLux()` and `bakeCap()` (design section 15). A fixture record (deckgen's placement or a deck detail file, `deck-pipeline`
   section 7) names its type, position and `emergency_bus`. **The layout holds no lights**; never add
   them to `layout.json`.
 - **Every light has a visible fixture** (CLAUDE.md 11, `deck-pipeline`'s check) and a colour for each
@@ -51,6 +55,20 @@ emergency power cost nothing extra to bake. Stored as three `RGBA8` vertex colou
 - **Numbers say what they are**: a bake time from the mockup is this machine's CPU in one browser
   thread, not a Pi 5 and not the engine baker.
 
+## The whole ship (the deck plan)
+
+The deck plan bakes every compartment with `lightbake.js` (design section 15): each alone, doors
+closed, the kit's lamps, a cove strip along every cove, each station's `console_glow`, the shell
+split to `bake.json` `mockup.cell_m` (1 m) and lit per vertex, bounce from the cache. The room the
+viewer stands in or has selected goes first; a badge at the top counts the rooms baked; `?bake=0`
+keeps the quick light (`ShipKit.bakeDirect`) for fast checks. A face under 0.1 m^2 is `cheap`: it
+casts shadows but neither sends nor gathers bounce (the bridge bakes 3.4 times faster for it).
+
+`node tools/mockups/bake_ship.mjs` waits for the whole ship, writes
+`docs/benchmarks/<date>-tern-bake/report.{json,md}` (per room: lamps, strips, triangles against the
+ceiling, vertices, rays, time, digest) and shoots fixed views in the three states beside the quick
+light into `docs/screenshots/mockups/bake/` (`<view>-compare.png`). Look at every strip.
+
 ## Bake and compare today (the mockup baker)
 
 `docs/mockups/lib/lightbake.js` is a small CPU baker in the design's method; `docs/mockups/lighting.html`
@@ -65,13 +83,13 @@ uses it on the Tern's bridge and engineering. It is documentation tooling, not e
    Texel size; Toggles (AO in the bake on or off, Debug: occlusion only, Debug: vertex wireframe
    or lightmap texel checker, the probe-lit crew figure). The panel on the right gives triangles, vertices, bytes, atlas size, bake time,
    rays, residual and digest; the meter gives the Pi 5 budget.
-3. **Place or tune a lamp** in the page: fixture types and their photometry are `FIXTURE_TYPES`
+3. **Place or tune a lamp**: fixture types and their photometry are `data/lighting/fixtures.json`
    (a ceiling panel 850 cd, a high-bay lamp 2,200 cd); placement is the kit's lamp rule
    (`ShipKit.lampsFor`, from `data/ships/tern/detailing.json` `lamps`: a panel in every frame bay,
    one per 8 m^2 of floor, high-bay lamps in rooms taller than 3.6 m, every third lamp on the
    emergency bus), turned into lights by `addLamps()`, with cove strips along every cove the kit
    builds (`coveStrip()`): 21 lamps on the bridge and 56 in engineering (the level under its
-   mezzanine included) on layout v2. Quality and caps are `BAKE`. The shell and detail are the
+   mezzanine included) on layout v2. Quality and caps are `data/lighting/bake.json`. The shell and detail are the
    kit's `buildCompartment()`; props and emissive faces are added in `compartmentScene()`,
    `bridgeProps()` and `engineeringProps()`.
 4. **Change the baker** only in `docs/mockups/lib/lightbake.js`, then

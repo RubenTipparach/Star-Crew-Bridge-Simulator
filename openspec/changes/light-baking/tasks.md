@@ -11,12 +11,19 @@ on is engine work, taken on a separate request once the owner has answered G1 to
 - [x] 1.3 `docs/mockups/lighting.html`: the bridge and engineering from the layout, unlit, runtime lights, vertex on the deck mesh, vertex adaptive (capped and uncapped), lightmap at three texel sizes, split views, three states, power loss, cutaway, close and eye-level cameras, debug views, the Pi 5 meter.
 - [x] 1.4 Screenshots in `docs/screenshots/mockups/lighting-*.png`, looked at.
 - [x] 1.5 `.claude/skills/light-baking/SKILL.md`.
-- [ ] 1.6 Put G1 to G4 in the owner survey with their shots; fold the answers back into this change.
+- [x] 1.6 Put G1 to G4 in the owner survey with their shots (the survey's Lighting section); fold the answers back into this change when they come.
 - [ ] 1.7 Offer `deck-pipeline` the probe chunk (`PROB`), the portal spill record and the lamp spacing rule (G5); record its answer here.
+
+## 1b. The ship bake in the mockups (design section 15, the owner 2026-10-07: "commence light baking")
+
+- [x] 1.8 G1 to G4 taken by recommendation to start (2026-10-07), and the survey says so under its Lighting table.
+- [x] 1.9 The deck plan bakes every compartment with `lightbake.js` in the three states (doors closed, the kit's lamps, cove strips, station screens, props), the shell split to `mockup_cell_m`, the room in view first; a digest per room.
+- [x] 1.10 `tools/mockups/bake_ship.mjs`: the ship bake report in `docs/benchmarks/<date>-tern-bake/` and shots of named rooms in the three states, looked at.
+- [ ] 1.11 Engineering's lower floor on red alert and emergency power (design section 15, point 4): its lamps under the mezzanine on the emergency bus and the reactor glow lighting its base, judged on `walk-eng-lower` in the three states.
 
 ## 2. Data
 
-- [ ] 2.1 `data/lighting/fixtures.json` and `data/lighting/bake.json` (design.md section 11) with a validator: unknown keys, missing states, negative or non-finite numbers, undefined types; a test per rule (`a_fixture_type_without_an_emergency_colour_stops_the_bake`).
+- [ ] 2.1 `data/lighting/fixtures.json` and `data/lighting/bake.json` (design.md section 11, as amended by section 15) with a validator, `tools/lighting_check.py`: unknown keys, missing states, negative or non-finite numbers, undefined types; a test per rule (`a_fixture_type_without_an_emergency_colour_stops_the_bake`).
 - [ ] 2.2 Fixture records in the detail-file schema (`deck-pipeline` task 1.2) and in `deckgen`'s placement: `type`, `center_m` or `from_m`/`to_m`, `facing_yaw_deg`, `emergency_bus`.
 
 ## 3. The baker (`sc-tools bake`)

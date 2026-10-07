@@ -130,6 +130,54 @@
     emergency: { label: "Emergency power", ambient: 0x120c08, ambientI: 0.3, lamp: 0xff8a1c, lampI: 0.35, strip: 0xff8a1c, stripI: 0.8, fog: 0x060403, status: 0xff8a1c },
   };
 
+  // ---------------------------------------------------------------- lighting data (light-baking design 15)
+
+  const srgbLin = (c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  /** A colour (0xrrggbb or "#rrggbb") as linear RGB times k. */
+  function hexLinear(hex, k) {
+    const h = typeof hex === "string" ? parseInt(hex.slice(1), 16) : hex;
+    return [(h >> 16) & 255, (h >> 8) & 255, h & 255].map((c) => srgbLin(c / 255) * (k === undefined ? 1 : k));
+  }
+  /** data/lighting/fixtures.json and bake.json, inlined as data:lighting/fixtures and data:lighting/bake. */
+  function lightingData() { return { fixtures: shipData("fixtures"), bake: shipData("bake") }; }
+  /**
+   * A fixture's light in each lighting state, { normal, red_alert, emergency } as linear RGB that multiplies its
+   * intensity_cd or luminance_cd_m2: its type's light (lamp or strip: LIGHTING's colour and weight in that state;
+   * role: roleHex; fixed: its color_srgb), times its emergency_scale on emergency power, and dark on emergency power
+   * when it is on the bus rule and not on the emergency bus (onBus).
+   */
+  function fixtureStates(type, onBus, roleHex) {
+    const em = type.emergency_scale === undefined ? 1 : type.emergency_scale, out = {};
+    for (const s of ["normal", "red_alert", "emergency"]) {
+      const L = LIGHTING[s];
+      let c = type.light === "lamp" ? hexLinear(L.lamp, L.lampI) : type.light === "strip" ? hexLinear(L.strip, L.stripI)
+        : type.light === "role" ? hexLinear(roleHex) : hexLinear(type.color_srgb);
+      if (s === "emergency") { const k = type.emergency === "bus" && !onBus ? 0 : em; c = c.map((x) => x * k); }
+      out[s] = c;
+    }
+    return out;
+  }
+  /** bake.json, with a preset's overrides (preset "preview"), as lightbake.js's settings (its key names). */
+  function bakeSettings(preset) {
+    const B = shipData("bake"), P = (preset && B.presets[preset]) || {};
+    const g = (k) => (P[k] !== undefined ? P[k] : B[k]);
+    return {
+      seed: g("seed"), reference_lux: g("reference_lux"), shadow_samples: g("shadow_samples"),
+      emitter_sample_area_m2: g("emitter_sample_area_m2"), emitter_sample_spacing_m: g("emitter_sample_spacing_m"),
+      gather_rays: g("gather_rays"), cache_gather_rays: g("cache_gather_rays"), cache_filter: g("cache_filter_passes"),
+      ao_rays: g("ao_rays"), ao_radius_m: g("ao_radius_m"), bounces: g("bounces"), cache_spacing_m: g("cache_spacing_m"),
+      bias_m: g("ray_bias_m"), inset_m: g("sample_inset_m"), dither: g("dither"),
+    };
+  }
+  /** Each lighting state's ambient fill in lux: LIGHTING's ambient colour times its weight times bake.json's ambient_scale_lux. */
+  function ambientLux() {
+    const k = shipData("bake").ambient_scale_lux, out = {};
+    for (const s of ["normal", "red_alert", "emergency"]) out[s] = hexLinear(LIGHTING[s].ambient, LIGHTING[s].ambientI * k);
+    return out;
+  }
+  /** The triangles a compartment's adaptive bake may add (bake.json max_added_triangles, its default otherwise). */
+  function bakeCap(id) { const m = shipData("bake").max_added_triangles; return m[id] !== undefined ? m[id] : m.default; }
+
   // ---------------------------------------------------------------- lookups
 
   function byId(list, id) {
@@ -439,6 +487,22 @@
       P.vlayer.push(layer);
     }
   };
+  /**
+   * A triangle with its own texture coordinates in metres (uvm, divided by the material's span like any
+   * other), for a surface that shows a whole picture rather than a window onto a world-projected tile: a
+   * lamp's lens shows two whole light panels, centred. Wound to face n like tri.
+   */
+  Builder.prototype.triUvm = function (role, a, b, c, ua, ub, uc, n) {
+    const P = this.part(role);
+    const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], ac = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+    const cr = [ab[1] * ac[2] - ab[2] * ac[1], ab[2] * ac[0] - ab[0] * ac[2], ab[0] * ac[1] - ab[1] * ac[0]];
+    const pts = cr[0] * n[0] + cr[1] * n[1] + cr[2] * n[2] < 0 ? [[a, ua], [c, uc], [b, ub]] : [[a, ua], [b, ub], [c, uc]];
+    for (const [p, uv] of pts) {
+      P.position.push(p[0], p[1], p[2]);
+      P.normal.push(n[0], n[1], n[2]);
+      P.uvm.push(uv[0], uv[1]);
+    }
+  };
   /** A polygon with holes on the horizontal plane y, facing up (dir 1) or down (-1). */
   Builder.prototype.flat = function (THREE, role, contour, holes, y, dir) {
     const v2 = (p) => new THREE.Vector2(p[0], p[1]);
@@ -506,17 +570,37 @@
     return out;
   }
 
+  /** A stair landing's slab thickness, metres (deck-access design section 2): buildSpiralStair draws it, lampsFor hangs a trunk's lamps under it. */
+  const LANDING_SLAB_M = 0.2;
+
   /**
    * Lamps by the kit rule (detailing.json lamps; deck-pipeline section 5): in the bays
    * between frames, round(bay area / area_per_lamp_m2) across the bay's width (a
    * corridor bay at least one, a pod one), every emergency_every-th lamp on the emergency
-   * bus. Returns [{ p: [x, y, z] (the lens), R, I, emergency, size: [x, z], tall }].
+   * bus. A trunk instead gets one lamp a deck (deck-access). Returns [{ p: [x, y, z] (the lens), R, I,
+   * emergency, size: [x, z], tall }].
    */
   function lampsFor(L, comp, D) {
     D = D || shipData("detailing");
     const R = D.lamps, out = [];
     const holes = ceilingPortals(L, comp);
     const keep = systemsIn(L, comp.id).filter((s) => s.radius_m).map((s) => ({ x: s.center_m[0], z: s.center_m[2], r: s.radius_m + R.keep_out_m }));
+    if (comp.kind === "trunk") {
+      // A trunk (deck-access design section 2) is lit at every deck it serves, not once at its top: one
+      // lamp a deck, over the stair's landing when it has one, else at the shaft's centre. It hangs under
+      // the landing of the deck above (lighting the flight that climbs to it), or at the top deck's ceiling.
+      const st = (L.fixtures || []).find((f) => f.compartment === comp.id && f.landing_poly);
+      for (const br of comp.brushes) {
+        const [x, z] = polyCentroid(st ? st.landing_poly : br.poly);
+        const floors = L.decks.map((d) => d.floor_y_m).filter((y) => y > br.y[0] - EPS && y < br.y[1] - EPS).sort((a, b) => a - b);
+        floors.forEach((y0, k) => {
+          const y = (k + 1 < floors.length ? floors[k + 1] - LANDING_SLAB_M : br.y[1]) - R.housing_m;
+          out.push({ p: [x, y, z], R: R.radius_m, I: 1, emergency: false, size: R.panel_m, tall: false });
+        });
+      }
+      out.forEach((l, i) => { l.emergency = i % R.emergency_every === 0; });
+      return out;
+    }
     for (const br of comp.brushes) {
       const h = br.y[1] - br.y[0], tall = h > R.tall_room_m + EPS, scale = tall ? h / 3.0 : 1.0;
       const size = (comp.kind === "corridor" ? R.corridor_panel_m : R.panel_m).map((v) => v * (tall ? Math.min(scale, 1.6) : 1));
@@ -586,7 +670,11 @@
         for (const m of Object.keys(F[kind].modules)) if (m[0] !== "_") out.push({ name: panelLayerName(fn, m, kind), stem: `${fn}_${kind}_${m}`, layer: F[kind].modules[m].layer });
       }
       if (F.trims) out.push({ name: panelLayerName(fn, "trims"), stem: `${fn}_trims`, layer: F.trims.layer });
+      if (F.platforms) out.push({ name: panelLayerName(fn, "platform"), stem: `${fn}_platforms`, layer: F.platforms.layer });
+      if (F.edges) out.push({ name: panelLayerName(fn, "floor_edges"), stem: `${fn}_floor_edges`, layer: F.edges.layer });   // floor-panels 6
     }
+    // Upholstery (ship-props design 4b): one bake for every finish, tinted per seat by the page.
+    if (S.upholstery) for (const k of Object.keys(S.upholstery.layers)) out.push({ name: `panel:upholstery:${k}`, stem: `upholstery_${k}`, layer: S.upholstery.layers[k] });
     return out;
   }
 
@@ -636,8 +724,8 @@
         const v0 = r.v0_m / span, v1 = (r.v0_m + r.h_m) / span;
         const q = [[s.a0, c0, v0], [s.a1, c0, v0], [s.a1, c1, v1], [s.a0, c1, v1]];
         const pts = q.map(([a, c]) => P(a, c)), uvs = q.map(([a, , v]) => [uOf(a), v]);
-        B.triUv(role, pts[0], pts[1], pts[2], uvs[0], uvs[1], uvs[2], n, T.layer);
-        B.triUv(role, pts[0], pts[2], pts[3], uvs[0], uvs[2], uvs[3], n, T.layer);
+        B.triUv(role, pts[0], pts[1], pts[2], uvs[0], uvs[1], uvs[2], n, r.layer || T.layer);   // a row may live on another layer
+        B.triUv(role, pts[0], pts[2], pts[3], uvs[0], uvs[2], uvs[3], n, r.layer || T.layer);
       }
     }
     T.stats.faces++;
@@ -647,8 +735,23 @@
   function trimContext(ctx, comp) {
     const S = ctx.S, fin = S.finishes[comp.finish];
     if (!fin || !fin.trims) throw new Error(`shipkit: compartment ${comp.id} has finish ${comp.finish}, with no trims in panels.json`);
-    const Tr = S.trims;
-    return { S, layer: panelLayerName(comp.finish, "trims"), rows: Tr.rows, members: Tr.members, pieces: Tr.pieces, pillar: Tr.pillar, span: S.layers.span_m, stretch: Tr.stretch_max, stats: ctx.stats.trims };
+    const Tr = S.trims, fit = fittingRows(S, comp.finish);
+    return { S, layer: panelLayerName(comp.finish, "trims"), rows: Object.assign({}, Tr.rows, fit.rows), members: Object.assign({}, Tr.members, fit.members),
+      pieces: Tr.pieces, pillar: Tr.pillar, span: S.layers.span_m, stretch: Tr.stretch_max, stats: ctx.stats.trims };
+  }
+  /**
+   * The members still on the tiling trim that take rows of the finish's platform layer instead (ceilings-and-trims
+   * design 9): rails, kickplates, ladders, collars and lamp housings, each under a role of its own (fit_<role>), since a
+   * role's triangles either all carry a layer or none do. Empty without the rows in the page's panels.json.
+   */
+  function fittingRows(S, finish) {
+    const P = S.platforms, fin = S.finishes[finish];
+    if (!P || !fin || !fin.platforms) return { rows: {}, members: {} };
+    const layer = panelLayerName(finish, "platform"), rows = {}, members = {};
+    for (const [k, r] of Object.entries(P.rows)) if (k[0] !== "_") rows[k] = Object.assign({ layer }, r);
+    const of = { railing: "rail", ladder: "rail", kickplate: "kick", collar: "collar", lamp_housing: "housing" };
+    for (const [role, row] of Object.entries(of)) if (rows[row]) members[role] = { face: row, sides: row, ends: row, role: `fit_${role}` };
+    return { rows, members };
   }
 
   /**
@@ -673,7 +776,7 @@
       const al = others.indexOf(long) >= 0 ? long : (hs[others[0]] >= hs[others[1]] ? others[0] : others[1]);
       const ac = others.find((k) => k !== al);
       const isEnd = others.indexOf(long) < 0;
-      const rowName = isEnd ? "side" : f === front ? M.face : M.sides;
+      const rowName = isEnd ? M.ends || "side" : f === front ? M.face : M.sides;
       const o = [0, 1, 2].map((k) => c[k] + ax[a][k] * s * hs[a]);
       const n = ax[a].map((x) => x * s);
       const L = hs[al];
@@ -685,7 +788,7 @@
           T.stats.pillars++;
         }
       }
-      stripFace(B, r, T, o, ax[al], ax[ac], hs[ac], n, rowName, segs);
+      stripFace(B, M.role || r, T, o, ax[al], ax[ac], hs[ac], n, rowName, segs);   // a member may draw under a role of its own
     }
   }
 
@@ -937,9 +1040,11 @@
    * it ({ rect, f }), zone their collar or rim width; lamps (a ceiling) are the lamps under it,
    * whose housings make the cells they span lamp_surround; paths (a floor) the walkway bands. A cell
    * is cropped (and takes plate) when its outline or a hole cuts its central core (cells.core_m
-   * either side of its centre).
+   * either side of its centre). covers (a floor) are the outlines of what stands on it (platforms, the
+   * bands at their feet; floor-panels design 6): a cell wholly under one is not drawn, and a cell whose
+   * core one reaches takes plate, so no drawn module is ever cut by a platform.
    */
-  function dressFlat(B, comp, br, bi, kind, poly, holes, zone, y, dir, lamps, paths, ctx, D) {
+  function dressFlat(B, comp, br, bi, kind, poly, holes, zone, y, dir, lamps, paths, ctx, D, covers) {
     const S = ctx.S, set = S.finishes[comp.finish][kind], st = ctx.stats[kind];
     if (!set) throw new Error(`shipkit: finish ${comp.finish} has no ${kind} in panels.json`);
     const span = S.layers.span_m, cs = S.cells.size_m, ox = S.cells.origin_x_m, mg = S.cells.margin_m;
@@ -961,6 +1066,15 @@
       }
     };
     const count = (m) => { st.cells++; st.modules[m] = (st.modules[m] || 0) + 1; };
+    const clipArea = (pg, x0, x1, z0, z1) => { const c = clipPolyRect(pg, x0, x1, z0, z1); return c.length > 2 ? Math.abs(signedArea(c)) : 0; };
+    // "hidden" when the covers hide all of the cell's floor, "core" when one reaches its core, else null.
+    const covered = (x0, x1, z0, z1, fx0, fx1, fz0, fz1) => {
+      if (!covers || !covers.length) return null;
+      const floor = clipArea(poly, x0, x1, z0, z1);
+      const under = covers.reduce((s, cp) => s + clipArea(cp, x0, x1, z0, z1), 0);
+      if (floor > 0 && under >= floor - 1e-3) return "hidden";
+      return covers.some((cp) => clipArea(cp, fx0, fx1, fz0, fz1) > 1e-4) ? "core" : null;
+    };
     const shown = new Map();
     const j0 = Math.floor((Z0 - fo) / fs + EPS), j1 = Math.ceil((Z1 - fo) / fs - EPS) - 1;
     const k0 = Math.floor((X0 - ox) / cs + 0.5 + EPS), k1 = Math.ceil((X1 - ox) / cs - 0.5 - EPS);
@@ -984,8 +1098,11 @@
         const fx0 = cx - core, fx1 = cx + core, fz0 = zc - core, fz1 = zc + core;
         const whole = [[fx0, fz0], [fx1, fz0], [fx1, fz1], [fx0, fz1]].every(([x, z]) => insidePoly(poly, x, z)) && !cut.some((h) => meets(h, fx0, fx1, fz0, fz1));
         let m, vz = zc, why = "draw";
+        const cv = covered(x0, x1, z0, z1, fx0, fx1, fz0, fz1);
+        if (cv === "hidden") { st.rules.hidden = (st.rules.hidden || 0) + 1; continue; }
         if (lit.has(k)) { m = "lamp_surround"; vz = lit.get(k); why = "lamp"; }
         else if (zones.some((h) => meets(h, x0, x1, z0, z1))) { m = "plate"; why = "portal"; }
+        else if (cv === "core") { m = "plate"; why = "covered"; }
         else if (kind === "floor" && myPaths.some((p) => segRectDistance(p.a, p.b, x0, x1, z0, z1) <= W.width_m / 2 - W.min_overlap_m + EPS)) { m = "walkway"; st.walkway++; why = "walkway"; }
         else if (!whole) { m = "plate"; why = "cropped"; }
         else {
@@ -1108,9 +1225,14 @@
       // Baseboard between ribs and doors.
       const BB = D.baseboard;
       const cuts = clear.filter((h) => h.v0 < w.y0 + BB.height_m).map((h) => [h.u0, h.u1]).concat(ribs.map((u) => [u - F.rib_width_m / 2, u + F.rib_width_m / 2]));
-      for (const [u0, u1] of intervalMinus(0, w.len, cuts)) {
+      // Inside corners are owned by the walls running athwartships: a fore-and-aft wall's baseboard stops at the
+      // other's face, so two never overlap in the corner. An end on a wall plane has no cap: the cap is pressed to that
+      // wall, and from the room behind it would fight that room's wall (CLAUDE.md section 8).
+      const owns = Math.abs(w.t[0]) >= Math.abs(w.t[1]), e0 = owns ? 0 : BB.depth_m, e1 = owns ? w.len : w.len - BB.depth_m;
+      for (const [u0, u1] of intervalMinus(e0, e1, cuts)) {
         if (u1 - u0 < 0.05) continue;
-        tbox("baseboard", P3((u0 + u1) / 2, w.y0 + BB.height_m / 2, BB.depth_m / 2), ax, up, nIn, (u1 - u0) / 2, BB.height_m / 2, BB.depth_m / 2, ["+v", "+w", "+u", "-u"], null, "+w");
+        const caps = ["+v", "+w"].concat(u0 > 1e-6 ? ["-u"] : [], u1 < w.len - 1e-6 ? ["+u"] : []);
+        tbox("baseboard", P3((u0 + u1) / 2, w.y0 + BB.height_m / 2, BB.depth_m / 2), ax, up, nIn, (u1 - u0) / 2, BB.height_m / 2, BB.depth_m / 2, caps, null, "+w");
       }
       // Door and window frames on this side: jambs, lintel, sill, and a status strip.
       for (const h of holes) {
@@ -1130,19 +1252,32 @@
         }
       }
       // A railing along an edge that opens onto a lower floor of the same compartment (a gallery's edge).
+      // A stair that lands on this edge (its top within 0.3 m of the edge, at this floor) gets a gap the stair's width
+      // and 0.1 m each side: the railing stood across the hangar's gallery stairs, and walking up them hit it.
       const RL = D.railing;
+      const stairGaps = (L.fixtures || []).filter((f) => f.kind === "stair" && f.compartment === comp.id && Math.abs(f.top_m[1] - w.y0) < 0.05).map((f) => {
+        const along = (x, z) => (x - w.a[0]) * w.t[0] + (z - w.a[1]) * w.t[1], off = (x, z) => (x - w.a[0]) * w.n[0] + (z - w.a[1]) * w.n[1];
+        if (Math.abs(off(f.top_m[0], f.top_m[2])) > 0.3) return null;
+        const dx = f.top_m[0] - f.foot_m[0], dz = f.top_m[2] - f.foot_m[2], l = Math.hypot(dx, dz), px = (-dz / l) * f.width_m / 2, pz = (dx / l) * f.width_m / 2;
+        const a = along(f.top_m[0] + px, f.top_m[2] + pz), b = along(f.top_m[0] - px, f.top_m[2] - pz);
+        return [Math.min(a, b) - 0.1, Math.max(a, b) + 0.1];
+      }).filter(Boolean);
       for (const h of w.holes) {
         if (!h.sibling || h.siblingFloor > w.y0 - RL.min_drop_m) continue;
-        const u0 = h.u0 + RL.post_m, u1 = h.u1 - RL.post_m, inset = RL.inset_m + RL.post_m / 2, hp = RL.post_m / 2;
-        if (u1 - u0 < 0.3) continue;
+        for (const [u0, u1] of intervalMinus(h.u0 + RL.post_m, h.u1 - RL.post_m, stairGaps)) railRun(u0, u1);
+      }
+      function railRun(u0, u1) {
+        const inset = RL.inset_m + RL.post_m / 2, hp = RL.post_m / 2;
+        if (u1 - u0 < 0.3) return;
         for (const y of [w.y0 + RL.height_m, w.y0 + RL.height_m / 2]) {
-          B.box("railing", P3((u0 + u1) / 2, y, inset), ax, up, nIn, (u1 - u0) / 2, hp, hp, ["+v", "-v", "+w", "-w", "+u", "-u"]);
+          tbox("railing", P3((u0 + u1) / 2, y, inset), ax, up, nIn, (u1 - u0) / 2, hp, hp, ["+v", "-v", "+w", "-w", "+u", "-u"]);
         }
-        B.box("kickplate", P3((u0 + u1) / 2, w.y0 + RL.kick_m / 2, inset), ax, up, nIn, (u1 - u0) / 2, RL.kick_m / 2, 0.01, ["+v", "+w", "-w", "+u", "-u"]);
+        tbox("kickplate", P3((u0 + u1) / 2, w.y0 + RL.kick_m / 2, inset), ax, up, nIn, (u1 - u0) / 2, RL.kick_m / 2, 0.01, ["+v", "+w", "-w", "+u", "-u"]);
         const n = Math.max(1, Math.round((u1 - u0) / RL.post_spacing_m));
         for (let k = 0; k <= n; k++) {
           const u = u0 + ((u1 - u0) * k) / n;
-          B.box("railing", P3(u, w.y0 + RL.height_m / 2, inset), ax, up, nIn, hp, RL.height_m / 2, hp, ["+u", "-u", "+w", "-w"]);
+          // A post a little thinner than the rails it crosses, so their faces never share a plane (CLAUDE.md section 8).
+          tbox("railing", P3(u, w.y0 + RL.height_m / 2, inset), ax, up, nIn, hp * 0.8, RL.height_m / 2, hp * 0.8, ["+u", "-u", "+w", "-w"]);
         }
       }
       // Conduits along fore-and-aft corridor walls.
@@ -1183,7 +1318,8 @@
       if (panelsOn) {
         const bi = comp.brushes.indexOf(br);
         const under = lampList.filter((l) => insidePoly(br.poly, l.p[0], l.p[2]) && l.p[1] > br.y[0] && l.p[1] < br.y[1] + EPS);
-        dressFlat(B, comp, br, bi, "floor", br.poly, fHoles, FP.rim_width_m, br.y[0], 1, null, walkPaths, panelsOn, D);
+        const covers = (opts.floorCovers || []).filter((cv) => Math.abs(cv.y_m - br.y[0]) < 0.3).map((cv) => cv.poly);
+        dressFlat(B, comp, br, bi, "floor", br.poly, fHoles, FP.rim_width_m, br.y[0], 1, null, walkPaths, panelsOn, D, covers);
         dressFlat(B, comp, br, bi, "ceiling", inner, cHoles, FP.collar_width_m, br.y[1], -1, under, null, panelsOn, D);
       } else {
         B.flat(THREE, "floor", br.poly, fHoles.map((h) => h.rect), br.y[0], 1);
@@ -1207,15 +1343,23 @@
         const f = h.f, W = FP.collar_width_m, y = br.y[1] - FP.collar_depth_m / 2;
         for (const [sx, sz] of SIDES) {
           const along = sx === 0, hu = along ? f.sx / 2 + W : W / 2, hw = along ? W / 2 : f.sz / 2;
-          B.box("collar", [f.c[0] + sx * (f.sx / 2 + W / 2), y, f.c[2] + sz * (f.sz / 2 + W / 2)], [1, 0, 0], [0, 1, 0], [0, 0, 1], hu, FP.collar_depth_m / 2, hw, ["-v", "+u", "-u", "+w", "-w"]);
+          tbox("collar", [f.c[0] + sx * (f.sx / 2 + W / 2), y, f.c[2] + sz * (f.sz / 2 + W / 2)], [1, 0, 0], [0, 1, 0], [0, 0, 1], hu, FP.collar_depth_m / 2, hw, ["-v", "+u", "-u", "+w", "-w"]);
         }
-        if (h.p.kind === "ladder") {
-          const topY = br.y[1] + 0.5 + FP.ladder_above_m, bot = br.y[0], zl = f.c[2] - f.sz / 2 + FP.ladder_rail_m, hr = FP.ladder_rail_m / 2;
+        // A ladder up through a ladder well, and through a floor hatch (a scuttle, a turret pod's hatch: deck-access),
+        // from this floor to the floor above, and its handholds past it.
+        if (h.p.kind === "ladder" || h.p.kind === "hatch") {
+          const above = h.p.between.find((id) => id !== comp.id), up = above && compartment(L, above);
+          const top = up ? floorAt(up, f.c[0], f.c[2], br.y[1] + 0.3) : br.y[1] + 0.5;
+          // Its handholds past the floor above only where the ladder ends there: where the room above has its own
+          // ladder up from the same well, that one carries on, and two would overlap rail on rail.
+          const goesOn = up && portalsOf(L, up.id).some((q) => q !== h.p && (q.kind === "ladder" || q.kind === "hatch") &&
+            Math.abs(q.center_m[0] - f.c[0]) < 0.3 && Math.abs(q.center_m[2] - f.c[2]) < 0.3 && q.center_m[1] > f.c[1] + 0.5);
+          const topY = top + (goesOn ? 0 : FP.ladder_above_m), bot = br.y[0], zl = f.c[2] - f.sz / 2 + FP.ladder_rail_m, hr = FP.ladder_rail_m / 2;
           for (const s of [-1, 1]) {
-            B.box("ladder", [f.c[0] + (s * FP.ladder_width_m) / 2, (topY + bot) / 2, zl], [1, 0, 0], [0, 1, 0], [0, 0, 1], hr, (topY - bot) / 2, hr, ["+u", "-u", "+w", "-w", "+v"]);
+            tbox("ladder", [f.c[0] + (s * FP.ladder_width_m) / 2, (topY + bot) / 2, zl], [1, 0, 0], [0, 1, 0], [0, 0, 1], hr, (topY - bot) / 2, hr, ["+u", "-u", "+w", "-w", "+v"]);
           }
           for (let y = bot + FP.rung_spacing_m; y < topY - 0.05; y += FP.rung_spacing_m) {
-            B.box("ladder", [f.c[0], y, zl], [1, 0, 0], [0, 1, 0], [0, 0, 1], FP.ladder_width_m / 2, hr * 0.7, hr * 0.7, ["+v", "-v", "+w", "-w"]);
+            tbox("ladder", [f.c[0], y, zl], [1, 0, 0], [0, 1, 0], [0, 0, 1], FP.ladder_width_m / 2, hr * 0.7, hr * 0.7, ["+v", "-v", "+w", "-w"]);
           }
         }
       }
@@ -1246,7 +1390,10 @@
           for (const h of cHoles) if (Math.abs(z - h.f.c[2]) < h.f.sz / 2 + F.beam_width_m) bc.push([h.f.c[0] - h.f.sx / 2 - FP.collar_width_m, h.f.c[0] + h.f.sx / 2 + FP.collar_width_m]);
           for (const [a, b] of intervalMinus(ch[0], ch[1], bc)) {
             if (b - a < 0.2) continue;
-            tbox("beam", [(a + b) / 2, br.y[1] - d / 2, z], [1, 0, 0], [0, 1, 0], [0, 0, 1], (b - a) / 2, d / 2, F.beam_width_m / 2, ["-v", "+w", "-w", "+u", "-u"], null, "-v");
+            // No cap where the beam meets a wall: it is pressed there, and would fight the room behind's wall.
+            const caps = ["-v", "+w", "-w"].concat(b < ch[1] - 1e-6 ? ["+u"] : [], a > ch[0] + 1e-6 ? ["-u"] : []);
+            // 1 cm narrower each side than the ribs it meets at the frame, so their sides never share a plane.
+            tbox("beam", [(a + b) / 2, br.y[1] - d / 2, z], [1, 0, 0], [0, 1, 0], [0, 0, 1], (b - a) / 2, d / 2, F.beam_width_m / 2 - 0.01, caps, null, "-v");
           }
         }
       }
@@ -1256,8 +1403,15 @@
     const lamps = lampList;
     if (detail) {
       const hh = D.lamps.housing_m / 2;
+      // The lens shows two whole light panels side by side, centred on the lamp (owner, 2026-10-06: "UV them correctly.
+      // They look off centered"): a lens is 2:1 (detailing.json panel_m and corridor_panel_m), and the light_panel
+      // layer's span holds two panels across and two down, so the lens takes the layer's top half exactly.
+      const LENS_U_M = 2.0, LENS_V_M = 1.0;   // the light_panel layer's span is 2 m: u over all of it, v over half
       for (const l of lamps) {
-        B.box("lamp_housing", [l.p[0], l.p[1] + hh, l.p[2]], [1, 0, 0], [0, 1, 0], [0, 0, 1], l.size[0] / 2, hh, l.size[1] / 2, ["-v", "+u", "-u", "+w", "-w"], { "-v": "lamp" });
+        tbox("lamp_housing", [l.p[0], l.p[1] + hh, l.p[2]], [1, 0, 0], [0, 1, 0], [0, 0, 1], l.size[0] / 2, hh, l.size[1] / 2, ["+u", "-u", "+w", "-w"]);
+        const x0 = l.p[0] - l.size[0] / 2, x1 = l.p[0] + l.size[0] / 2, z0 = l.p[2] - l.size[1] / 2, z1 = l.p[2] + l.size[1] / 2, y = l.p[1], dn = [0, -1, 0];
+        B.triUvm("lamp", [x0, y, z0], [x1, y, z0], [x1, y, z1], [0, 0], [LENS_U_M, 0], [LENS_U_M, LENS_V_M], dn);
+        B.triUvm("lamp", [x0, y, z0], [x1, y, z1], [x0, y, z1], [0, 0], [LENS_U_M, LENS_V_M], [0, LENS_V_M], dn);
       }
     }
     return panelsOn ? { parts: B.parts, lamps, walls, openings, panels: panelsOn.stats } : { parts: B.parts, lamps, walls, openings };
@@ -1355,8 +1509,29 @@
   }
 
   /** A decoded image scaled up to px by nearest neighbour (a whole factor), as the engine would fill a larger array. */
+  /**
+   * A decoded image scaled down to px by a whole factor, averaging each block in linear light (alpha averaged as is):
+   * a big prop's 512 or 1024 px atlas in a page whose array is smaller. It loses the detail the bigger atlas carries;
+   * the engine's array holds it at full size (engineering-fitout design section 7).
+   */
+  function scaleDown(img, px) {
+    const f = img.w / px, out = new Uint8Array(px * px * 4), lin = new Float32Array(256);
+    for (let i = 0; i < 256; i++) { const c = i / 255; lin[i] = c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
+    const enc = (v) => Math.round(255 * (v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 2.4) - 0.055));
+    for (let y = 0; y < px; y++) for (let x = 0; x < px; x++) {
+      const acc = [0, 0, 0, 0];
+      for (let j = 0; j < f; j++) for (let i = 0; i < f; i++) {
+        const s = ((y * f + j) * img.w + x * f + i) * 4;
+        acc[0] += lin[img.rgba[s]]; acc[1] += lin[img.rgba[s + 1]]; acc[2] += lin[img.rgba[s + 2]]; acc[3] += img.rgba[s + 3];
+      }
+      const o = (y * px + x) * 4, n = f * f;
+      out[o] = enc(acc[0] / n); out[o + 1] = enc(acc[1] / n); out[o + 2] = enc(acc[2] / n); out[o + 3] = Math.round(acc[3] / n);
+    }
+    return { w: px, h: px, rgba: out };
+  }
   function scaleNearest(img, px) {
     if (img.w === px) return img;
+    if (img.w > px && img.w % px === 0 && img.h === img.w) return scaleDown(img, px);
     const f = px / img.w;
     if (f !== Math.round(f) || img.h !== img.w) throw new Error(`shipkit: cannot scale a ${img.w} px layer to ${px} px`);
     const out = new Uint8Array(px * px * 4);
@@ -1376,6 +1551,7 @@
    * have span 1 (their texture coordinates are already in layer units), and surfaceMaterial makes
    * their alpha glow.
    */
+  const BIG_LAYER = 1000;   // the layer index step between the main array and each bigger one (loadPanels)
   async function loadPanels(THREE, mats, opts) {
     opts = opts || {};
     const d = panelsData(), S = d.manifest, px = opts.px || 128, md = materialsData(), first = mats.names.length;
@@ -1392,11 +1568,35 @@
       if (img.w !== px || img.h !== px) throw new Error(`shipkit: panel layer ${pnames[j][1]} is ${img.w}x${img.h}, expected ${px}`);
       putLayer(data, first + j, px, img);
     }
+    // Every prop's own baked atlas the page carries (ship-props design 4c), after the panel layers: prop:<set>:<prop>.
+    const atl = [];
+    if (typeof document !== "undefined") {
+      for (const el of document.querySelectorAll('script[id^="ship-models-"]')) {
+        const set = el.id.slice("ship-models-".length), d = JSON.parse(el.textContent);
+        for (const [prop, uri] of Object.entries(d.atlases || {}).sort()) atl.push([`prop:${set}:${prop}`, uri]);
+      }
+    }
+    // An atlas bigger than the array (a big prop's 512 or 1024 px, so it reads at walking distance) goes into an array
+    // of its own size, BIG_LAYER apart per size: index BIG_LAYER * k + i is layer i of the k-th bigger array.
+    const imgs = [];
+    for (const [name, uri] of atl) imgs.push([name, await decodePng(uri)]);
+    const small = imgs.filter(([, im]) => im.w <= px), sizes = [...new Set(imgs.filter(([, im]) => im.w > px).map(([, im]) => im.w))].sort((a, b) => a - b);
+    const total = n + small.length, all = new Uint8Array(px * px * 4 * total);
+    all.set(data);
+    small.forEach(([, img], j) => putLayer(all, n + j, px, img.w === px && img.h === px ? img : scaleNearest(img, px)));
     const layer = Object.assign({}, mats.layer), span = Object.assign({}, mats.span);
     pnames.forEach(([name], j) => { layer[name] = first + j; span[name] = 1; });
+    small.forEach(([name], j) => { layer[name] = n + j; span[name] = 1; });
+    let bytes = Math.round((all.length * 4) / 3);
+    const big = sizes.map((bp, k) => {
+      const these = imgs.filter(([, im]) => im.w === bp), d = new Uint8Array(bp * bp * 4 * these.length);
+      these.forEach(([name, img], i) => { putLayer(d, i, bp, img); layer[name] = BIG_LAYER * (k + 1) + i; span[name] = 1; });
+      bytes += Math.round((d.length * 4) / 3);
+      return { px: bp, base: BIG_LAYER * (k + 1), texture: layerTexture(THREE, d, bp, these.length), names: these.map((q) => q[0]) };
+    });
     return {
-      texture: layerTexture(THREE, data, px, n), names: mats.names.concat(pnames.map((q) => q[0])), layer, span,
-      manifest: mats.manifest, bytes: Math.round((data.length * 4) / 3), panels: { manifest: S, first, px },
+      texture: layerTexture(THREE, all, px, total), names: mats.names.concat(pnames.map((q) => q[0]), small.map((q) => q[0])), layer, span, big,
+      manifest: mats.manifest, bytes, panels: { manifest: S, first, px },
     };
   }
 
@@ -1438,6 +1638,18 @@
       sh.fragmentShader = sh.fragmentShader
         .replace("#include <common>", "#include <common>\nprecision highp sampler2DArray;\nuniform sampler2DArray uLayers;\nuniform vec3 uGlowTint;\nuniform float uGlowGain;\nvarying vec3 vSurf;\nvarying float vGlow;")
         .replace("#include <map_fragment>", "vec4 surfTex = texture(uLayers, vec3(vSurf.xy, floor(vSurf.z + 0.5)));\ndiffuseColor.rgb *= surfTex.rgb;");
+      // The bigger arrays (loadPanels big): a layer index BIG_LAYER * k + i samples the k-th of them.
+      const big = mats.big || [];
+      if (big.length) {
+        big.forEach((b, k) => { sh.uniforms["uBig" + k] = { value: b.texture }; });
+        sh.fragmentShader = sh.fragmentShader
+          .replace("uniform sampler2DArray uLayers;", "uniform sampler2DArray uLayers;\n" + big.map((b, k) => `uniform sampler2DArray uBig${k};`).join("\n"))
+          .replace("vec4 surfTex = texture(uLayers, vec3(vSurf.xy, floor(vSurf.z + 0.5)));",
+            "float surfL = floor(vSurf.z + 0.5);\nvec4 surfTex;\n" + big.slice().reverse().map((b, r) => {
+              const k = big.length - 1 - r;
+              return `if (surfL > ${b.base - 0.5}) surfTex = texture(uBig${k}, vec3(vSurf.xy, surfL - ${b.base}.0)); else `;
+            }).join("") + "surfTex = texture(uLayers, vec3(vSurf.xy, surfL));");
+      }
       if (lit) sh.fragmentShader = sh.fragmentShader.replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\ntotalEmissiveRadiance += surfTex.rgb * vGlow * uGlowTint * uGlowGain;");
       if (panels) {
         sh.uniforms.uPanelFirst = { value: panels.first };
@@ -1449,7 +1661,7 @@
         else sh.fragmentShader = sh.fragmentShader.replace("#include <color_fragment>", "#include <color_fragment>\ndiffuseColor.rgb = mix(diffuseColor.rgb, surfTex.rgb, panelGlow);");
       }
     };
-    m.customProgramCacheKey = () => "shipkit-surface-" + (lit ? "lit" : "baked") + (panels ? "-panels" : "");
+    m.customProgramCacheKey = () => "shipkit-surface-" + (lit ? "lit" : "baked") + (panels ? "-panels" : "") + "-big" + (mats.big || []).length;
     return m;
   }
 
@@ -1635,25 +1847,213 @@
    * detailing.platforms.tread_rise_m with nosings. Adds roles platform, riser, nosing,
    * railing and stair to the builder.
    */
-  function buildPlatforms(THREE, B, platforms, stairs, floorY, D) {
+  /**
+   * A platform's top in one floor panel module (opts.topLayer of buildPlatforms, a panelLayerName), cell by cell on
+   * panels.json's cell grid as the room floors are dressed, so it matches them and a plain module (the walkway's
+   * tread) reads seamless. The owner, 2026-10-06, on the bridge's platforms in the gridded deck_tiles: "I don't like
+   * the gridded floor please use something else that's more pleasing to look at".
+   */
+  function tileTop(THREE, B, role, poly, y, layer) {
+    const S = panelsData().manifest, cs = S.cells.size_m, span = S.layers.span_m, ox = S.cells.origin_x_m;
+    const xs = poly.map((p) => p[0]), zs = poly.map((p) => p[1]), up = [0, 1, 0];
+    const v2 = (p) => new THREE.Vector2(p[0], p[1]);
+    for (let k = Math.floor((Math.min(...xs) - ox) / cs - 0.5); ox + (k - 0.5) * cs < Math.max(...xs); k++) {
+      for (let j = Math.floor(Math.min(...zs) / cs - 0.5); (j - 0.5) * cs < Math.max(...zs); j++) {
+        const cx = ox + k * cs, cz = j * cs, pg = clipPolyRect(poly, cx - cs / 2, cx + cs / 2, cz - cs / 2, cz + cs / 2);
+        if (pg.length < 3) continue;
+        for (const f of THREE.ShapeUtils.triangulateShape(pg.map(v2), [])) {
+          const p = f.map((i) => [pg[i][0], y, pg[i][1]]), uv = p.map((q) => [0.5 + (q[0] - cx) / span, 0.5 + (q[2] - cz) / span]);
+          B.triUv(role, p[0], p[1], p[2], uv[0], uv[1], uv[2], up, layer);
+        }
+      }
+    }
+  }
+  /**
+   * The platform layer's rows for opts.riserLayer (ceilings-and-trims design 9), or null without it or without the
+   * rows in the page's panels.json: { layer, span, rows, stretch, forHeight(h) }, forHeight naming the row nearer h.
+   */
+  function platformRows(opts) {
+    if (!opts || !opts.riserLayer) return null;
+    const S = panelsData().manifest;
+    if (!S.platforms) return null;
+    const R = S.platforms.rows, cut = (R.riser.h_m + R.riser_low.h_m) / 2;
+    return { layer: opts.riserLayer, span: S.layers.span_m, rows: R, stretch: S.trims.stretch_max, forHeight: (h) => (h >= cut ? "riser" : "riser_low") };
+  }
+  /**
+   * A vertical face from a to b (floor points) h high, on a row of the platform layer: its bottom edge on the row's
+   * bottom, its top on the row's top, so what the row shows fits the face; u is u0 + metres along it over the span.
+   */
+  function fittedFace(B, fit, a, b, h, u0, len, n, rowName) {
+    const r = fit.rows[rowName], v0 = r.v0_m / fit.span, v1 = (r.v0_m + r.h_m) / fit.span;
+    const p = [a, b, [b[0], b[1] + h, b[2]], [a[0], a[1] + h, a[2]]];
+    const uv = [[u0 / fit.span, v0], [(u0 + len) / fit.span, v0], [(u0 + len) / fit.span, v1], [u0 / fit.span, v1]];
+    B.triUv("platform_riser", p[0], p[1], p[2], uv[0], uv[1], uv[2], n, fit.layer);
+    B.triUv("platform_riser", p[0], p[2], p[3], uv[0], uv[2], uv[3], n, fit.layer);
+  }
+  /** Sutherland-Hodgman: the part of polygon pg ([x, z] points) inside the convex polygon clip (either winding). */
+  function clipConvex(pg, clip) {
+    const sgn = signedArea(clip) >= 0 ? 1 : -1;
+    let out = pg;
+    for (let i = 0; i < clip.length && out.length; i++) {
+      const a = clip[i], b = clip[(i + 1) % clip.length], inp = out;
+      const side = (p) => sgn * ((b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]));
+      out = [];
+      for (let j = 0; j < inp.length; j++) {
+        const p = inp[j], q = inp[(j + 1) % inp.length], sp = side(p), sq = side(q);
+        if (sp >= 0) out.push(p);
+        if ((sp >= 0) !== (sq >= 0)) { const k = sp / (sp - sq); out.push([p[0] + k * (q[0] - p[0]), p[1] + k * (q[1] - p[1])]); }
+      }
+    }
+    return out;
+  }
+  function isConvex(pg) {
+    let sign = 0;
+    for (let i = 0; i < pg.length; i++) {
+      const a = pg[i], b = pg[(i + 1) % pg.length], c = pg[(i + 2) % pg.length];
+      const cr = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]);
+      if (Math.abs(cr) < 1e-9) continue;
+      if (sign && Math.sign(cr) !== sign) return false;
+      sign = Math.sign(cr);
+    }
+    return true;
+  }
+
+  /**
+   * The bands on the floor at platforms' feet (floor-panels design 6): along every edge whose kind panels.json's
+   * edges.on names (a rail edge a vent band, a riser edge a trench band), edges.width_m out from the face, laid in a
+   * whole number of edges.period_m periods so the band ends on a frame. Where two banded edges meet at a convex
+   * corner the gap between their square ends is a wedge on the frame (uPlain); at a reflex corner both are mitred on
+   * the bisector. Clipped to opts.room (the floor's outline) when it is convex. Returns
+   * [{ pts: [[x, z], ...], uv: [[u, v], ...] (layer units), row }] in the floor plan; [] without panels.json edges.
+   */
+  function edgeBands(platforms, opts) {
+    const S = panelsData().manifest, E = S.edges;
+    if (!E) return [];
+    const span = S.layers.span_m, W = E.width_m, P = E.period_m, room = opts && opts.room && isConvex(opts.room) ? opts.room : null;
+    const cross = (u, v) => u[0] * v[1] - u[1] * v[0];
+    const area = (pg) => (pg.length > 2 ? Math.abs(signedArea(pg)) : 0);
+    // Each platform counter-clockwise, with its edges' kinds.
+    const pfs = platforms.map((pf) => {
+      let poly = pf.poly.map((p) => p.slice()), edges = pf.edges.slice();
+      if (signedArea(poly) < 0) { poly = poly.reverse(); edges = edges.slice(0, -1).reverse().concat(edges.slice(-1)); }
+      return { poly, edges };
+    });
+    // One platform's bands (and corner wedges), given which of its edges are dropped.
+    const bandsOf = (pi, dropped) => {
+      const { poly, edges } = pfs[pi], n = poly.length, out = [];
+      const len = (i) => Math.hypot(poly[(i + 1) % n][0] - poly[i][0], poly[(i + 1) % n][1] - poly[i][1]);
+      const banded = (i) => { const k = (i + n) % n; return !!E.on[edges[k]] && len(k) >= E.min_edge_m && !dropped.has(k); };
+      const dir = (i) => { const a = poly[(i + n) % n], b = poly[(i + 1 + n) % n], l = Math.hypot(b[0] - a[0], b[1] - a[1]); return [(b[0] - a[0]) / l, (b[1] - a[1]) / l]; };
+      const nrm = (i) => { const d = dir(i); return [d[1], -d[0]]; };
+      // Where the outer lines of edges i and i + 1 cross: the mitre point at their shared corner.
+      const mitre = (i) => {
+        const c = poly[(i + 1) % n], ni = nrm(i), nj = nrm(i + 1), m = [ni[0] + nj[0], ni[1] + nj[1]], d = 1 + ni[0] * nj[0] + ni[1] * nj[1];
+        return [c[0] + (m[0] * W) / d, c[1] + (m[1] * W) / d];
+      };
+      const convexAt = (i) => cross(dir(i), dir(i + 1)) > 0;   // the corner after edge i turns left: convex (CCW)
+      for (let i = 0; i < n; i++) {
+        if (!banded(i)) continue;
+        const a = poly[i], b = poly[(i + 1) % n], L = len(i), t = dir(i), on = nrm(i), rowName = E.on[edges[i]], row = E.rows[rowName];
+        const k = Math.max(1, Math.round(L / P)), sc = (k * P) / L;
+        // The band's outline: inner edge a to b, outer edge square or mitred at each end.
+        const A0 = [a[0] + on[0] * W, a[1] + on[1] * W], B0 = [b[0] + on[0] * W, b[1] + on[1] * W];
+        const startM = banded(i - 1) && !convexAt(i - 1), endM = banded(i + 1) && !convexAt(i);
+        const pts = [a, b, endM ? mitre(i) : B0, startM ? mitre(i - 1) : A0];
+        const uvOf = (p) => { const d = [p[0] - a[0], p[1] - a[1]]; return [((d[0] * t[0] + d[1] * t[1]) * sc) / span, (row.v0_m + (d[0] * on[0] + d[1] * on[1])) / span]; };
+        out.push({ pf: pi, edge: i, pts, uv: pts.map(uvOf), row: rowName });
+        // A convex corner to the next banded edge: the wedge between the two square ends, on the frame (u of the
+        // period's first centimetre), v across as the bands'.
+        if (banded(i + 1) && convexAt(i)) {
+          const on2 = nrm(i + 1), w = [b, [b[0] + on2[0] * W, b[1] + on2[1] * W], mitre(i), B0], uPlain = 0.01 / span;
+          out.push({ pf: pi, edge: i, wedge: true, pts: w, uv: w.map((q) => [uPlain, (row.v0_m + Math.min(W, Math.hypot(q[0] - b[0], q[1] - b[1]))) / span]), row: rowName });
+        }
+      }
+      return out;
+    };
+    // A band that would run under another platform, or over a band already laid (platforms in data order), is
+    // dropped whole: a narrow gap between two platforms stays plain deck rather than showing a cut fitting.
+    const kept = [];
+    pfs.forEach((pf, pi) => {
+      const dropped = new Set();
+      for (const b of bandsOf(pi, dropped)) {
+        const underOther = pfs.some((q, qi) => qi !== pi && area(clipConvex(q.poly, b.pts)) > 1e-4);
+        const overLaid = kept.some((o) => area(clipConvex(o.pts, b.pts)) > 1e-4);
+        if (underOther || overLaid) dropped.add(b.edge);
+      }
+      // Wedges belong to the corner after their edge: drop the edge after a dropped one's wedge too.
+      for (const b of bandsOf(pi, dropped)) kept.push(b);
+    });
+    const out = [];
+    for (const b of kept) {
+      const pg = room ? clipConvex(b.pts, room) : b.pts;
+      if (pg.length < 3) continue;
+      if (pg === b.pts) { out.push(b); continue; }
+      // Re-derive the clipped points' coordinates from the band's own mapping (affine over the quad).
+      out.push({ pf: b.pf, edge: b.edge, row: b.row, pts: pg, uv: pg.map((p) => affineUv(b.pts, b.uv, p)) });
+    }
+    return out;
+  }
+  /** The texture coordinates at p of a convex polygon whose corners pts carry uv, by the triangle of its fan holding p. */
+  function affineUv(pts, uv, p) {
+    for (let i = 1; i + 1 < pts.length; i++) {
+      const a = pts[0], b = pts[i], c = pts[i + 1];
+      const d = (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1]);
+      if (Math.abs(d) < 1e-12) continue;
+      const l1 = ((b[1] - c[1]) * (p[0] - c[0]) + (c[0] - b[0]) * (p[1] - c[1])) / d, l2 = ((c[1] - a[1]) * (p[0] - c[0]) + (a[0] - c[0]) * (p[1] - c[1])) / d, l3 = 1 - l1 - l2;
+      if (l1 >= -1e-6 && l2 >= -1e-6 && l3 >= -1e-6) return [l1 * uv[0][0] + l2 * uv[i][0] + l3 * uv[i + 1][0], l1 * uv[0][1] + l2 * uv[i][1] + l3 * uv[i + 1][1]];
+    }
+    return uv[0];
+  }
+
+  /** What stands on a floor and hides it (floor-panels design 6): the platforms' outlines and the bands at their feet,
+   * as buildCompartment's opts.floorCovers ([{ y_m, poly }]). */
+  function platformCovers(platforms, floorY, opts) {
+    const out = platforms.map((pf) => ({ y_m: floorY, poly: pf.poly.map((p) => p.slice()) }));
+    for (const b of edgeBands(platforms, opts)) out.push({ y_m: floorY, poly: b.pts });
+    return out;
+  }
+
+  function buildPlatforms(THREE, B, platforms, stairs, floorY, D, opts) {
     D = D || shipData("detailing");
-    const Q = D.platforms;
+    opts = opts || {};
+    const Q = D.platforms, fit = platformRows(opts);
+    // With the platform layer, a railing takes its rail row as the compartment's railings do (ceilings-and-trims 9).
+    const RT = fit && fit.rows.rail ? { layer: fit.layer, rows: { rail: fit.rows.rail }, span: fit.span, stretch: fit.stretch, stats: { faces: 0, pillars: 0 },
+      members: { railing: { face: "rail", sides: "rail", ends: "rail", role: "fit_railing" } } } : null;
+    const rbox = (role, c, u, v, w, hu, hv, hw, faces) => (RT ? stripBox(B, RT, role, c, u, v, w, hu, hv, hw, faces) : B.box(role, c, u, v, w, hu, hv, hw, faces));
     stairs = stairs || [];
+    // The bands at the platforms' feet, on the finish's floor edge layer (opts.edgeLayer; floor-panels design 6).
+    if (opts.edgeLayer) {
+      const y = floorY + panelsData().manifest.edges.raise_m, up = [0, 1, 0];
+      for (const b of edgeBands(platforms, opts)) {
+        const pts = b.pts, uv = b.uv;
+        for (let i = 1; i + 1 < pts.length; i++) {
+          const p = [pts[0], pts[i], pts[i + 1]].map((q) => [q[0], y, q[1]]);
+          B.triUv("floor_edge", p[0], p[1], p[2], uv[0], uv[i], uv[i + 1], up, opts.edgeLayer);   // triUv winds it to face up
+        }
+      }
+    }
     for (const pf of platforms) {
       let poly = pf.poly.map((p) => p.slice()), edges = pf.edges.slice();
       if (signedArea(poly) < 0) { poly = poly.reverse(); edges = edges.slice(0, -1).reverse().concat(edges.slice(-1)); }
       const top = pf.top_m, h = top - floorY, n = poly.length;
-      B.flat(THREE, "platform", poly, [], top, 1);
+      if (opts.topLayer) tileTop(THREE, B, "platform_top", poly, top, opts.topLayer);
+      else B.flat(THREE, "platform", poly, [], top, 1);
+      let walked = 0;   // metres of outline from the first corner: the riser's u, so its vents carry round a ring
       for (let i = 0; i < n; i++) {
         const kind = edges[i];
+        const a = poly[i], b = poly[(i + 1) % n], len = Math.hypot(b[0] - a[0], b[1] - a[1]), u0 = walked;
+        walked += len;
         if (kind === "wall") continue;
-        const a = poly[i], b = poly[(i + 1) % n], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
         const t = [(b[0] - a[0]) / len, 0, (b[1] - a[1]) / len], on = outwardNormal(a, b), out = [on[0], 0, on[1]];
-        B.quad("riser", [a[0], floorY, a[1]], [b[0], floorY, b[1]], [b[0], top, b[1]], [a[0], top, a[1]], out);
+        if (fit) fittedFace(B, fit, [a[0], floorY, a[1]], [b[0], floorY, b[1]], h, u0, len, out, fit.forHeight(h));
+        else B.quad("riser", [a[0], floorY, a[1]], [b[0], floorY, b[1]], [b[0], top, b[1]], [a[0], top, a[1]], out);
         // The nosing: a hazard strip on the top's edge, raised clear of the platform's face.
-        const nm = Q.nosing_m, nr = Q.nosing_raise_m;
-        const c = [(a[0] + b[0]) / 2 - on[0] * nm / 2, top + nr / 2, (a[1] + b[1]) / 2 - on[1] * nm / 2];
-        B.box("nosing", c, t, [0, 1, 0], out, len / 2, nr / 2, nm / 2, ["+v", "+w", "+u", "-u"]);
+        // Where the edge before is nosed too, this one starts a nosing's width in, so the two never overlap at the
+        // corner (CLAUDE.md section 8): the corner is the edge before's.
+        const nm = Q.nosing_m, nr = Q.nosing_raise_m, s0 = edges[(i + n - 1) % n] !== "wall" ? nm : 0;
+        const c = [(a[0] + b[0]) / 2 + t[0] * s0 / 2 - on[0] * nm / 2, top + nr / 2, (a[1] + b[1]) / 2 + t[2] * s0 / 2 - on[1] * nm / 2];
+        B.box("nosing", c, t, [0, 1, 0], out, (len - s0) / 2, nr / 2, nm / 2, ["+v", "+w", "+u", "-u"]);
         if (kind !== "rail") continue;
         // The railing, inset from the edge, with gaps.
         const along = Math.abs(t[0]) >= Math.abs(t[2]) ? 0 : 2;
@@ -1675,11 +2075,11 @@
         for (const [u0, u1] of intervalMinus(Q.rail_end_m, len - Q.rail_end_m, gaps)) {
           if (u1 - u0 < 0.3) continue;
           for (const y of [top + Q.rail_height_m, top + Q.rail_mid_m]) {
-            B.box("railing", P3((u0 + u1) / 2, y), t, [0, 1, 0], out, (u1 - u0) / 2, rm, rm, ["+v", "-v", "+w", "-w", "+u", "-u"]);
+            rbox("railing", P3((u0 + u1) / 2, y), t, [0, 1, 0], out, (u1 - u0) / 2, rm, rm, ["+v", "-v", "+w", "-w", "+u", "-u"]);
           }
           const k = Math.max(1, Math.round((u1 - u0) / Q.rail_post_spacing_m));
           for (let j = 0; j <= k; j++) {
-            B.box("railing", P3(u0 + ((u1 - u0) * j) / k, top + Q.rail_height_m / 2), t, [0, 1, 0], out, rm, Q.rail_height_m / 2, rm, ["+u", "-u", "+w", "-w"]);
+            rbox("railing", P3(u0 + ((u1 - u0) * j) / k, top + Q.rail_height_m / 2), t, [0, 1, 0], out, rm * 0.8, Q.rail_height_m / 2, rm * 0.8, ["+u", "-u", "+w", "-w"]);   // posts thinner than the rails
           }
         }
       }
@@ -1693,11 +2093,25 @@
       for (let k = 0; k < n - 1; k++) {
         const hh = (k + 1) * r, s0 = k * depth, cz = s0 + depth / 2;
         const c = [ft[0] + w[0] * cz, ft[1] + hh / 2, ft[2] + w[2] * cz];
-        // Each tread runs from its own front edge back to the top, so the steps are solid.
+        // Each step is a layer one rise high, from its own front edge back to the top, so the steps are solid and
+        // no two steps' sides share a plane where they overlap (CLAUDE.md section 8).
         const back = run - s0;
-        const cb = [ft[0] + w[0] * (s0 + back / 2), ft[1] + hh / 2, ft[2] + w[2] * (s0 + back / 2)];
+        const cb = [ft[0] + w[0] * (s0 + back / 2), ft[1] + k * r + r / 2, ft[2] + w[2] * (s0 + back / 2)];
         void c;
-        B.box("stair", cb, u, [0, 1, 0], w, st.width_m / 2, hh / 2, back / 2, ["+v", "-w", "+u", "-u"]);
+        // With the tread on the platforms' tops, each step's top takes it too (the stone deck plate was the last of it).
+        const tread = !!opts.topLayer;
+        B.box("stair", cb, u, [0, 1, 0], w, st.width_m / 2, r / 2, back / 2, (tread ? [] : ["+v"]).concat(fit ? ["+u", "-u"] : ["-w", "+u", "-u"]));
+        if (tread) {
+          const hw = st.width_m / 2, yt = ft[1] + (k + 1) * r, P0 = (sa, ua) => [ft[0] + w[0] * sa + u[0] * ua, ft[2] + w[2] * sa + u[2] * ua];
+          let pg = [P0(s0, -hw), P0(s0, hw), P0(run, hw), P0(run, -hw)];
+          if (signedArea(pg) < 0) pg = pg.reverse();
+          tileTop(THREE, B, "platform_top", pg, yt, opts.topLayer);
+        }
+        if (fit) {   // the step's front on the platform layer's step row, fitted to the rise
+          const fa = [ft[0] + w[0] * s0 - u[0] * st.width_m / 2, ft[1] + k * r, ft[2] + w[2] * s0 - u[2] * st.width_m / 2];
+          const fb = [ft[0] + w[0] * s0 + u[0] * st.width_m / 2, ft[1] + k * r, ft[2] + w[2] * s0 + u[2] * st.width_m / 2];
+          fittedFace(B, fit, fb, fa, r, -st.width_m / 2, st.width_m, [-w[0], 0, -w[2]], "step");   // fb to fa: it faces down the stair
+        }
         const nm = Q.nosing_m;
         B.box("nosing", [ft[0] + w[0] * (s0 + nm / 2), ft[1] + hh + Q.nosing_raise_m / 2, ft[2] + w[2] * (s0 + nm / 2)], u, [0, 1, 0], w, st.width_m / 2, Q.nosing_raise_m / 2, nm / 2, ["+v", "-w", "+u", "-u"]);
       }
@@ -1713,6 +2127,277 @@
    * around the interior. With opts.mats it also carries color, surfUv, surfLayer and
    * surfGlow for a surfaceMaterial, in the "hull" material (opts.material names another).
    */
+  /**
+   * A spiral stair fixture (kind "spiral_stair", openspec/changes/deck-access) into builder B: a centre
+   * column, and for each deck from floors_y_m[k] to floors_y_m[k + 1] risers_per_deck - 1 treads (the last
+   * riser lands on the landing above) sweeping sweep_deg from start_yaw_deg (yaw: 0 the bow, +90 port), and
+   * a landing slab (landing_poly) at every deck above the lowest, whose floor is the tower's own.
+   * Roles: railing (the column, steel; not rib, whose faces the trims texture by layer), stair (treads),
+   * nosing (tread edges), platform and riser (landings).
+   */
+  /**
+   * How far a spiral stair's treads reach along yaw deg (degrees, 0 the bow, 90 port): to the trunk's walls
+   * (f.well_poly, 1 cm short of them) when the fixture gives them, else its radius. The kit's treads and a page's
+   * collision ramp both read it, so they agree.
+   */
+  function spiralReach(f, deg) {
+    if (!f.well_poly) return f.radius_m;
+    const [cx, , cz] = f.center_m, a = (deg * Math.PI) / 180, dx = Math.sin(a), dz = Math.cos(a), poly = f.well_poly;
+    let best = Infinity;
+    for (let i = 0; i < poly.length; i++) {
+      const p = poly[i], q = poly[(i + 1) % poly.length], ex = q[0] - p[0], ez = q[1] - p[1], den = dx * ez - dz * ex;
+      if (Math.abs(den) < 1e-9) continue;
+      const t = ((p[0] - cx) * ez - (p[1] - cz) * ex) / den, u = ((p[0] - cx) * dz - (p[1] - cz) * dx) / den;
+      if (t > 0 && u >= -1e-9 && u <= 1 + 1e-9) best = Math.min(best, t);
+    }
+    return isFinite(best) ? best - 0.01 : f.radius_m;
+  }
+  /** The yaws (degrees) between a0 and a1 where a spiral's reach turns a corner of its trunk, in order from a0. */
+  function spiralCorners(f, a0, a1) {
+    if (!f.well_poly) return [];
+    const [cx, , cz] = f.center_m, lo = Math.min(a0, a1), hi = Math.max(a0, a1), out = [];
+    for (const [x, z] of f.well_poly) {
+      const d = (Math.atan2(x - cx, z - cz) * 180) / Math.PI;
+      for (let k = -2; k <= 3; k++) { const v = d + 360 * k; if (v > lo + 1e-6 && v < hi - 1e-6) out.push(v); }
+    }
+    return out.sort((x, y) => (a1 > a0 ? x - y : y - x));
+  }
+  function buildSpiralStair(THREE, B, f) {
+    const [cx, , cz] = f.center_m, r0 = f.column_radius_m, fl = f.floors_y_m, n = f.risers_per_deck;
+    const rad = (deg) => (deg * Math.PI) / 180;
+    const P = (deg, r, y) => [cx + Math.sin(rad(deg)) * r, y, cz + Math.cos(rad(deg)) * r];
+    const tan = (deg) => [Math.cos(rad(deg)), 0, -Math.sin(rad(deg))];   // the direction of increasing yaw
+    const T = 0.06, S = LANDING_SLAB_M, treads = n - 1, step = f.sweep_deg / treads, sg = Math.sign(step), up = [0, 1, 0], down = [0, -1, 0];
+    B.pipe("railing", [cx, fl[0], cz], [cx, fl[fl.length - 1] + 2.4, cz], r0, 8);
+    for (let k = 0; k + 1 < fl.length; k++) {
+      const rise = (fl[k + 1] - fl[k]) / n;
+      for (let i = 0; i < treads; i++) {
+        const a0 = f.start_yaw_deg + step * i, a1 = a0 + step, y = fl[k] + rise * (i + 1), m = a0 + step / 2;
+        // A tread from the column out to the trunk's walls (or the radius): its outline round the corners it turns.
+        const outer = [a0].concat(spiralCorners(f, a0, a1), [a1]).map((d) => [d, spiralReach(f, d)]);
+        const poly = [[P(a0, r0, 0), P(a1, r0, 0)], outer.slice().reverse().map(([d, r]) => P(d, r, 0))].flat().map((q) => [q[0], q[2]]);
+        const ccw = signedArea(poly) > 0 ? poly : poly.slice().reverse();
+        B.flat(THREE, "stair", ccw, [], y, 1);
+        B.flat(THREE, "stair", ccw, [], y - T, -1);
+        if (!f.well_poly) {   // a free edge at the radius: its nosing
+          const o = [Math.sin(rad(m)), 0, Math.cos(rad(m))], R = f.radius_m;
+          B.quad("nosing", P(a0, R, y - T), P(a1, R, y - T), P(a1, R, y), P(a0, R, y), o);
+        }
+        const t0 = tan(a0).map((v) => -v * sg), t1 = tan(a1).map((v) => v * sg), R0 = spiralReach(f, a0), R1 = spiralReach(f, a1);
+        B.quad("nosing", P(a0, r0, y - T), P(a0, R0, y - T), P(a0, R0, y), P(a0, r0, y), t0);
+        B.quad("nosing", P(a1, r0, y - T), P(a1, R1, y - T), P(a1, R1, y), P(a1, r0, y), t1);
+      }
+      const y = fl[k + 1], poly = f.landing_poly;
+      B.flat(THREE, "platform", poly, [], y, 1);
+      B.flat(THREE, "platform", poly, [], y - S, -1);
+      for (let i = 0; i < poly.length; i++) {
+        const a = poly[i], b = poly[(i + 1) % poly.length], nrm = outwardNormal(a, b);
+        B.quad("riser", [a[0], y - S, a[1]], [b[0], y - S, b[1]], [b[0], y, b[1]], [a[0], y, a[1]], [nrm[0], 0, nrm[1]]);
+      }
+    }
+  }
+
+  /**
+   * A lift car (fixture kind "lift", openspec/changes/deck-access) into builder B, standing at its
+   * center_m: car_m is its size along x, up and along z; its open side faces facing_yaw_deg (+90: +x).
+   * Roles: lift_floor (deck plate), lift_wall (walls and roof, bulkhead), lift_rail (the handrail, trim); each
+   * part names its material, so no finish needs them. f.roof false leaves the roof off, for a page that draws
+   * its rooms without ceilings.
+   */
+  function buildLiftCar(B, f) {
+    const [x, y, z] = f.center_m, [w, h, d] = f.car_m, X = [1, 0, 0], Y = [0, 1, 0], Z = [0, 0, 1], t = 0.05;
+    const all = ["+u", "-u", "+v", "-v", "+w", "-w"], open = Math.round(Math.sin((f.facing_yaw_deg * Math.PI) / 180));
+    // The walls stand on the floor and under the roof, and the back wall between the side walls: no two parts
+    // overlap, so none shares a plane with another where both face the same way (CLAUDE.md section 8).
+    const wh = h - (f.roof !== false ? 2 * t : t), wy = y + t + wh / 2;
+    B.box("lift_floor", [x, y + t / 2, z], X, Y, Z, w / 2, t / 2, d / 2, all);
+    if (f.roof !== false) B.box("lift_wall", [x, y + h - t / 2, z], X, Y, Z, w / 2, t / 2, d / 2, all);
+    B.box("lift_wall", [x - open * (w / 2 - t / 2), wy, z], X, Y, Z, t / 2, wh / 2, d / 2 - t, all);
+    for (const sz of [1, -1]) B.box("lift_wall", [x, wy, z + sz * (d / 2 - t / 2)], X, Y, Z, w / 2, wh / 2, t / 2, all);
+    B.box("lift_rail", [x - open * (w / 2 - 0.08), y + 0.95, z], X, Y, Z, 0.025, 0.025, d / 2 - 0.15, all);
+    B.parts.lift_floor.material = "deck_plate"; B.parts.lift_wall.material = "bulkhead"; B.parts.lift_rail.material = "trim";
+  }
+
+  /**
+   * A fitted-out room's plumbing and structure (openspec/changes/engineering-fitout, data/ships/<id>/engineering.json
+   * "engineering"), into builder B: pipe runs swept along their centrelines (straight legs, an elbow of bend radius one
+   * diameter at every corner, flanges at free ends and every 6 m, collars where a leg passes a slab, hangers up from long
+   * legs), the feeders' trays and busbars (boxes along their paths, a junction box at each corner), railings along
+   * polylines (posts, a top rail with a cap at each corner, a mid rail), rods and the crane's runways.
+   * fit: { layer, span, rows } from platformRows (the platform layer's rows): every surface takes a row of that layer
+   * (pipe, rail, kick, collar, housing), u along the member in metres over the span, v across the row, so no surface
+   * shows the generic tile (the owner, 2026-10-07). slabs: [{ y, below_m }], the floors a vertical leg passes.
+   * Roles: fit_pipe, fit_flange, fit_tray, fit_railing, fit_rod (each a layer per vertex).
+   */
+  function buildFitout(B, E, fit, slabs) {
+    const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+    const mul = (a, s) => [a[0] * s, a[1] * s, a[2] * s], dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+    const unit = (a) => { const l = Math.hypot(a[0], a[1], a[2]); return [a[0] / l, a[1] / l, a[2] / l]; };
+    const row = (name) => { const r = fit.rows[name]; return [r.v0_m / fit.span, (r.v0_m + r.h_m) / fit.span]; };
+    const quadUv = (role, p, uv, n) => {
+      B.triUv(role, p[0], p[1], p[2], uv[0], uv[1], uv[2], n, fit.layer);
+      B.triUv(role, p[0], p[2], p[3], uv[0], uv[2], uv[3], n, fit.layer);
+    };
+    // A frame perpendicular to t, carried from the previous one (parallel transport), so a run does not twist.
+    const perp = (t, prev) => {
+      let e = prev ? sub(prev, mul(t, dot(prev, t))) : (Math.abs(t[1]) < 0.9 ? cross(t, [0, 1, 0]) : cross(t, [1, 0, 0]));
+      if (Math.hypot(e[0], e[1], e[2]) < 1e-6) e = Math.abs(t[1]) < 0.9 ? cross(t, [0, 1, 0]) : cross(t, [1, 0, 0]);
+      return unit(e);
+    };
+    /** A tube through rings [{ c, t, u }] (centre, tangent, metres along); v round it mirrors the row (no seam). */
+    function tube(role, rings, r, n, rowName) {
+      const [v0, v1] = row(rowName);
+      let e1 = perp(rings[0].t, null);
+      const frames = rings.map((g) => { e1 = perp(g.t, e1); return [e1, cross(g.t, e1)]; });
+      const at = (i, k) => { const [a, b] = frames[i], th = (2 * Math.PI * k) / n; return add(rings[i].c, add(mul(a, Math.cos(th) * r), mul(b, Math.sin(th) * r))); };
+      const nrm = (i, k) => { const [a, b] = frames[i], th = (2 * Math.PI * (k + 0.5)) / n; return add(mul(a, Math.cos(th)), mul(b, Math.sin(th))); };
+      const v = (k) => v0 + (v1 - v0) * Math.abs(1 - (2 * k) / n);
+      for (let i = 0; i + 1 < rings.length; i++) {
+        const u0 = rings[i].u / fit.span, u1 = rings[i + 1].u / fit.span;
+        for (let k = 0; k < n; k++) {
+          const nm = unit(add(nrm(i, k), nrm(i + 1, k)));
+          quadUv(role, [at(i, k), at(i + 1, k), at(i + 1, k + 1), at(i, k + 1)], [[u0, v(k)], [u1, v(k)], [u1, v(k + 1)], [u0, v(k + 1)]], nm);
+        }
+      }
+    }
+    /** A ring round an axis: outer face and both annuli (a flange, a collar, a clamp band); no inner face. */
+    function ring(c, t, ri, ro, len, n, rowName) {
+      const [v0, v1] = row(rowName), e1 = perp(t, null), e2 = cross(t, e1), h = len / 2;
+      const pt = (rad, k, s) => add(add(c, mul(t, s * h)), add(mul(e1, Math.cos((2 * Math.PI * k) / n) * rad), mul(e2, Math.sin((2 * Math.PI * k) / n) * rad)));
+      for (let k = 0; k < n; k++) {
+        const nm = add(mul(e1, Math.cos((2 * Math.PI * (k + 0.5)) / n)), mul(e2, Math.sin((2 * Math.PI * (k + 0.5)) / n)));
+        const a = k / n, b = (k + 1) / n;
+        quadUv("fit_flange", [pt(ro, k, -1), pt(ro, k, 1), pt(ro, k + 1, 1), pt(ro, k + 1, -1)], [[a, v0], [a, v1], [b, v1], [b, v0]], nm);
+        for (const s of [1, -1]) quadUv("fit_flange", [pt(ri, k, s), pt(ro, k, s), pt(ro, k + 1, s), pt(ri, k + 1, s)], [[a, v0], [a, v1], [b, v1], [b, v0]], mul(t, s));
+      }
+    }
+    /** A box along a to b, w wide along axis wa (unit, perpendicular to the leg), d deep along the third axis. */
+    function member(role, a, b, wa, w, d, rowName, faces) {
+      const len = Math.hypot(...sub(b, a));
+      if (len < 1e-4) return;
+      const t = unit(sub(b, a)), da = unit(cross(t, wa)), c = mul(add(a, b), 0.5), [v0, v1] = row(rowName);
+      const fs = faces || ["+w", "-w", "+d", "-d"];
+      const half = { w: w / 2, d: d / 2 };
+      for (const f of fs) {
+        const s = f[0] === "+" ? 1 : -1, ax = f[1] === "w" ? wa : da, other = f[1] === "w" ? da : wa, oh = f[1] === "w" ? half.d : half.w;
+        const o = add(c, mul(ax, s * half[f[1]]));
+        const p = [add(add(o, mul(t, -len / 2)), mul(other, -oh)), add(add(o, mul(t, len / 2)), mul(other, -oh)),
+          add(add(o, mul(t, len / 2)), mul(other, oh)), add(add(o, mul(t, -len / 2)), mul(other, oh))];
+        const u0 = dot(a, t) / fit.span, u1 = u0 + len / fit.span;
+        quadUv(role, p, [[u0, v0], [u1, v0], [u1, v1], [u0, v1]], mul(ax, s));
+      }
+      return { t, da };
+    }
+    /** An axis-aligned or oriented block at c (half sizes along e1, e2, e3), all six faces, one row. */
+    function block(role, c, axes, hs, rowName) {
+      const [v0, v1] = row(rowName);
+      for (let a = 0; a < 3; a++) for (const s of [1, -1]) {
+        const b1 = (a + 1) % 3, b2 = (a + 2) % 3, o = add(c, mul(axes[a], s * hs[a]));
+        const p = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([i, j]) => add(o, add(mul(axes[b1], i * hs[b1]), mul(axes[b2], j * hs[b2]))));
+        quadUv(role, p, [[0, v0], [2 * hs[b1] / fit.span, v0], [2 * hs[b1] / fit.span, v1], [0, v1]], mul(axes[a], s));
+      }
+    }
+
+    // Pipe runs.
+    for (const run of E.runs || []) {
+      const P = run.points_m, r = run.dia_m / 2, n = run.dia_m >= 0.3 ? 8 : 6, R = run.dia_m;
+      const d = []; for (let i = 0; i + 1 < P.length; i++) d.push(unit(sub(P[i + 1], P[i])));
+      const tl = [0];   // tangent length cut from each corner by its elbow
+      for (let i = 1; i + 1 < P.length; i++) tl.push(R * Math.tan(Math.acos(Math.max(-1, Math.min(1, dot(d[i - 1], d[i])))) / 2));
+      tl.push(0);
+      const rings = []; let u = 0;
+      const push = (c, t, du) => { u += du; rings.push({ c, t, u }); };
+      push(P[0], d[0], 0);
+      for (let i = 0; i + 1 < P.length; i++) {
+        const end = sub(P[i + 1], mul(d[i], tl[i + 1]));
+        push(end, d[i], Math.hypot(...sub(end, rings[rings.length - 1].c)));
+        if (i + 2 < P.length && tl[i + 1] > 1e-6) {   // the elbow at P[i+1], from d[i] to d[i+1]
+          const th = Math.acos(Math.max(-1, Math.min(1, dot(d[i], d[i + 1])))), m = unit(sub(d[i + 1], mul(d[i], Math.cos(th))));
+          const C = add(end, mul(m, R)), seg = Math.max(1, Math.round((4 * th) / (Math.PI / 2)));
+          for (let k = 1; k <= seg; k++) {
+            const ph = (th * k) / seg;
+            push(add(C, add(mul(m, -R * Math.cos(ph)), mul(d[i], R * Math.sin(ph)))), unit(add(mul(m, Math.sin(ph)), mul(d[i], Math.cos(ph)))), (R * th) / seg);
+          }
+        }
+      }
+      tube("fit_pipe", rings, r, n, "pipe");
+      // Flanges: at a free end (the reactor's nozzle, the ceiling, a loop's joint) and every 6 m; a port has its own.
+      const endFlange = (e, at, t) => {
+        if (e.port || e.tee) return;
+        if (e.reactor !== undefined) { ring(add(at, mul(t, 0.24)), t, r, r * 1.35, 0.08, n, "collar"); return; }
+        if (e.ceiling) { ring(add(at, mul(t, -0.05)), t, r, r * 1.4, 0.1, n, "collar"); return; }
+        ring(at, t, r, r * 1.3, 0.06, n, "collar");
+      };
+      endFlange(run.from, P[0], mul(d[0], run.from.reactor !== undefined ? 1 : -1));
+      if (!run.to.loop) endFlange(run.to, P[P.length - 1], run.to.reactor !== undefined ? mul(d[d.length - 1], -1) : d[d.length - 1]);
+      const total = rings[rings.length - 1].u;
+      for (let s = 6; s < total - 1; s += 6) {
+        let k = 1; while (k < rings.length - 1 && rings[k].u < s) k++;
+        const g0 = rings[k - 1], g1 = rings[k], f = (s - g0.u) / Math.max(1e-6, g1.u - g0.u);
+        if (Math.abs(dot(g0.t, g1.t)) > 0.999) ring(add(g0.c, mul(sub(g1.c, g0.c), f)), g0.t, r, r * 1.3, 0.06, n, "collar");
+      }
+      // Collars where a vertical leg passes a slab: on its top and under it.
+      for (let i = 0; i + 1 < P.length; i++) {
+        if (Math.abs(d[i][1]) < 0.999) continue;
+        const lo = Math.min(P[i][1], P[i + 1][1]), hi = Math.max(P[i][1], P[i + 1][1]);
+        for (const sl of slabs || []) {
+          if (lo < sl.y - sl.below_m - 0.1 && hi > sl.y + 0.1) {
+            for (const [y, s] of [[sl.y + 0.03, 1], [sl.y - sl.below_m - 0.03, -1]]) ring([P[i][0], y, P[i][2]], [0, 1, 0], r, r + 0.08, 0.06, n, "collar");
+          }
+        }
+      }
+      // Hangers: a rod from the pipe's top up to what is over it, and a clamp band round the pipe.
+      for (const [x, y0, y1, z] of run.hangers || []) {
+        const c = [x, y0 - r, z];
+        let t = d[0], best = Infinity;   // the leg the hanger stands on: the nearest to it
+        for (let i = 0; i < d.length; i++) {
+          const q = sub(c, P[i]), s = Math.max(0, Math.min(Math.hypot(...sub(P[i + 1], P[i])), dot(q, d[i]))), e = Math.hypot(...sub(q, mul(d[i], s)));
+          if (e < best) { best = e; t = d[i]; }
+        }
+        ring(c, t, r, r + 0.03, 0.05, n, "collar");
+        tube("fit_rod", [{ c: [x, y0 + 0.03, z], t: [0, 1, 0], u: 0 }, { c: [x, y1, z], t: [0, 1, 0], u: y1 - y0 }], 0.02, 6, "rail");
+      }
+    }
+    // Trays and busbars: a box per leg, its width across both legs at a corner; a junction box at each corner.
+    for (const tr of E.trays || []) {
+      const P = tr.points_m, [w, dpt] = tr.size_m, j = Math.max(w, dpt) / 2;
+      const d = []; for (let i = 0; i + 1 < P.length; i++) d.push(unit(sub(P[i + 1], P[i])));
+      const horiz = d.map((v) => Math.abs(v[1]) < 0.5);
+      for (let i = 0; i < d.length; i++) {
+        let wa;
+        if (horiz[i]) wa = unit([-d[i][2], 0, d[i][0]]);
+        else { const h = d[i + 1] && horiz[i + 1] ? d[i + 1] : d[i - 1] && horiz[i - 1] ? d[i - 1] : [1, 0, 0]; wa = unit([-h[2], 0, h[0]]); }
+        const a = i > 0 ? add(P[i], mul(d[i], j)) : P[i], b = i + 2 < P.length ? sub(P[i + 1], mul(d[i], j)) : P[i + 1];
+        member("fit_tray", a, b, wa, w, dpt, horiz[i] ? "housing" : "kick");
+        // A turn in the horizontal plane gets a flat junction the tray's depth; a turn up or down a cube.
+        if (i + 2 < P.length) block("fit_tray", P[i + 1], [[1, 0, 0], [0, 1, 0], [0, 0, 1]], [j, horiz[i] && horiz[i + 1] ? dpt / 2 : j, j], "kick");
+      }
+    }
+    // Railings: posts at every vertex and at most 1.6 m apart, a top rail capped at each corner, a mid rail. Each member
+    // differs from the one it crosses by at least 1 cm a side (posts 30 mm, mid rail 50, top rail 60, caps 75), so no two
+    // share a plane (CLAUDE.md section 8).
+    const H = 1.05, tr = 0.03, mr = 0.025, pr = 0.015, cr = 0.0375;
+    for (const rl of E.railings || []) {
+      const P = rl.points_m.slice(); if (rl.closed) P.push(P[0]);
+      const corner = (i) => rl.closed || (i > 0 && i < P.length - 1);
+      for (let i = 0; i + 1 < P.length; i++) {
+        const a = P[i], b = P[i + 1], t = unit(sub(b, a)), th = unit([t[0], 0, t[2]]), wa = unit([-th[2], 0, th[0]]);
+        const top = (p) => [p[0], p[1] + H, p[2]], mid = (p) => [p[0], p[1] + H * 0.5, p[2]];
+        const cut = (p, s, by) => add(p, mul(t, (s * by) / Math.max(0.3, Math.hypot(t[0], t[2]))));
+        member("fit_railing", top(cut(a, corner(i) ? 1 : 0, tr)), top(cut(b, corner(i + 1) ? -1 : 0, tr)), wa, 2 * tr, 2 * tr, "rail");
+        member("fit_railing", mid(cut(a, 1, pr + 0.02)), mid(cut(b, -1, pr + 0.02)), wa, 2 * mr, 2 * mr, "rail");
+        const len = Math.hypot(...sub(b, a)), k = Math.max(1, Math.ceil(len / 1.6));
+        const post = (p) => member("fit_railing", p, [p[0], p[1] + H - tr, p[2]], [1, 0, 0], 2 * pr, 2 * pr, "rail");
+        for (let q = 0; q < k; q++) post(add(a, mul(sub(b, a), q / k)));
+        if (!rl.closed && i + 2 === P.length) post(b);
+        if (corner(i + 1) || (rl.closed && i + 2 === P.length)) block("fit_railing", top(b), [[1, 0, 0], [0, 1, 0], [0, 0, 1]], [cr, cr, cr], "rail");
+      }
+    }
+    for (const rd of E.rods || []) tube("fit_rod", [{ c: rd.from_m, t: unit(sub(rd.to_m, rd.from_m)), u: 0 }, { c: rd.to_m, t: unit(sub(rd.to_m, rd.from_m)), u: Math.hypot(...sub(rd.to_m, rd.from_m)) }], rd.dia_m / 2, 6, "rail");
+    for (const rw of E.runways || []) member("fit_tray", rw.from_m, rw.to_m, [1, 0, 0], rw.size_m[0], rw.size_m[1], "housing", ["+w", "-w", "+d", "-d"]);
+  }
+
   function hullGeometry(THREE, L, opts) {
     opts = opts || {};
     const inflate = opts.inflate_m || 0;
@@ -1979,6 +2664,7 @@
   window.ShipKit = {
     version: 2,
     layout, shipData, PI_BUDGET, PALETTE, LIGHTING,
+    lightingData, fixtureStates, bakeSettings, ambientLux, bakeCap, hexLinear,
     byId, compartment, applyPatch, portalsOf, stationsIn, systemsIn, deckById,
     // plan geometry
     signedArea, outwardNormal, insidePoly, chord, insetPoly, polyCentroid,
@@ -1988,7 +2674,7 @@
     buildCompartment, roomShell, lampsFor, frameStations, loadMaterials, surfaceMaterial, geometryOf, finishOf, compartmentMesh, paintRole, bakeDirect,
     // wall panels (openspec/changes/wall-panels)
     loadPanels, panelsData, panelBands, panelBays, fnv1a, decodePng, panelLayerList, panelLayerName, walkwayPaths,
-    Builder, subdivideParts, buildPlatforms,
+    Builder, subdivideParts, buildPlatforms, platformCovers, edgeBands, buildSpiralStair, spiralReach, spiralCorners, buildLiftCar, buildFitout, platformRows,
     // hull, labels, chrome
     hullGeometry, hullHalfWidth, label, budgetHud, titleBlock, registerShots, markReady, panelChrome,
     rectMinusHoles, intervalMinus, worldUv,

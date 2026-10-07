@@ -15,7 +15,8 @@
  * first use with curl (it honours the session's proxy); a flaky CDN then cannot fail a run.
  *
  * Usage: node tools/mockups/shoot.mjs [page.html ...] [--out docs/screenshots/mockups]
- *        [--size 1440x900] [--only shotName] [--wait seconds]
+ *        [--size 1440x900] [--only shotName[,shotName...]] [--wait seconds]
+ *        (--only takes names, comma separated; a name ending in * takes every shot it starts)
  */
 import { createRequire } from "node:module";
 import { execSync } from "node:child_process";
@@ -37,6 +38,7 @@ const opt = (name, dflt) => { const i = args.indexOf(name); return i >= 0 ? args
 const outDir = path.resolve(ROOT, opt("--out", "docs/screenshots/mockups"));
 const [W, H] = opt("--size", "1440x900").split("x").map(Number);
 const only = opt("--only", null);
+const wanted = (shot) => !only || only.split(",").some((n) => (n.endsWith("*") ? shot.startsWith(n.slice(0, -1)) : shot === n));
 // Seconds to wait for a page to set MOCKUP_READY: a page that bakes several rooms on a shared CPU needs more.
 const readyS = Number(opt("--wait", "60"));
 let pages = args.length ? args.map((p) => path.resolve(p)) :
@@ -59,7 +61,7 @@ async function serveCdnFromCache(page) {
       try { execSync(`curl -sSfL --retry 4 -o ${JSON.stringify(file)} ${JSON.stringify(url)}`); }
       catch (_) { return route.continue(); }
     }
-    const type = file.endsWith(".js") ? "text/javascript" : "application/octet-stream";
+    const type = /\.m?js$/.test(file) ? "text/javascript" : "application/octet-stream";
     return route.fulfill({ status: 200, contentType: type, headers: { "access-control-allow-origin": "*" }, body: fs.readFileSync(file) });
   });
 }
@@ -85,7 +87,7 @@ for (const file of pages) {
     taken.push(path.relative(ROOT, out));
   }
   for (let i = 0; i < shots.length; i++) {
-    if (only && shots[i] !== only) continue;
+    if (!wanted(shots[i])) continue;
     await page.evaluate((i) => Promise.resolve(window.MOCKUP_SHOTS[i].setup()), i);
     await frames(page, 45);
     const out = path.join(outDir, `${name}-${shots[i]}.png`);

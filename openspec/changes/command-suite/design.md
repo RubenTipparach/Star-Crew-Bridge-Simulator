@@ -182,7 +182,7 @@ The briefing room's corner is the mirror image.
 
 **Bridge locker** (starboard, POI 34, new, working finish):
 - **Suits:** the bridge crew's own EVA suits, in a new locker fixture `eva_suits_a`. Helm reaches
-  them in 25.5 m and 14.2 s. Today the nearest suits are damage control's on deck B, down the
+  them in 26.5 m and 14.7 s (the locker moved outboard for `deck-access`'s stair tower; it was 25.5 m and 14.2 s). Today the nearest suits are damage control's on deck B, down the
   ladder trunk: 40.1 m and 24.8 s.
 - **Other furniture:** a second locker bank (fire and first-aid kits, breathing sets), a
   workbench for spare console boards, and two shelves.
@@ -204,7 +204,7 @@ New and changed portals (all 2.2 m doors unless noted):
 | --- | --- | --- | --- |
 | `p_ready_bridge` | bridge, ready room | the bridge's aft port diagonal wall, 0.85 m from its aft end | 1.2 x 2.2 |
 | `p_briefing_bridge` | bridge, briefing room | its mirror | 1.2 x 2.2 |
-| `p_briefing` | briefing room, passage | x -1.25, z 17.0 (the core's old door) | 1.2 x 2.2 |
+| `p_briefing` | briefing room, passage | x -1.25, z 16.4 (beside the core's old door at z 17.0, so `deck-access`'s lift fits forward of it) | 1.2 x 2.2 |
 | `p_core` (moved) | computer core, passage | x -1.25, z 12.5 (was z 17.0) | 1.0 x 2.2 |
 | `p_captains_quarters` | quarters, passage | x 1.25, z 12.5 | 1.0 x 2.2 |
 | `p_quarters_ready` | quarters, ready room | x 5.6, z 14.0 | 1.0 x 2.2 |
@@ -394,5 +394,6 @@ Per CLAUDE.md 13 a question goes to the owner only with something to look at. Th
 | --- | --- | --- | --- | --- |
 | A1 | The side rooms as drawn: the ready room to port with the quarters behind it, the briefing room to starboard with the core behind it, the head and the bridge locker aft. Each side room is 44-67 m^2; the ship gains 459.9 m^3 of air | As drawn / swap port and starboard / give the head's place to an officer's cabin / other | As drawn: the captain's rooms are together on one side, the room the whole crew uses on the other | `command-deck-cutaway.png`, `command-deck-ready-room.png`, `command-deck-briefing-room.png`, `command-deck-quarters.png` |
 | A2 | Helm and tactical at two desks 1.5 m apart (heads clear of the screen) or B's one curved console (6.3 % of the screen hidden) | Two desks / one curved console | Two desks. Recommendation taken (ask only with screenshots): 11a's fix, and the captain's view is the bridge's point | `command-deck-captain.png` |
-| A3 | The bridge crew's EVA suits on deck A (14.2 s from helm) as well as damage control's (24.8 s) | Both / damage control's only | Both. Recommendation taken (ask only with screenshots); `damage-control` decides its use | none |
+| A3 | The bridge crew's EVA suits on deck A (14.7 s from helm) as well as damage control's (24.8 s) | Both / damage control's only | Both. Recommendation taken (ask only with screenshots); `damage-control` decides its use | none |
 | A4 | Windows in the ready room and the briefing room (two more breach points) | Windows / none | Windows: the rooms look out, as R2's do. Recommendation taken (ask only with screenshots) | `command-deck-ready-room.png` |
+| A5 | The captain's dais, two steps (0.45 m) up, is railed on six of its eight edges (`bridge_variants.py` B's `command` platform), where `bridge-stations` says "railed behind"; the captain sits behind bars from the aisle, the ring and the dais (the `ship-props` after tour) | Six edges, as drawn / railed behind only (the two aft diagonals) / no rail, a hazard nosing | Railed behind only: a hand rail where the dais drops to the aisle, the view forward and to the sides clear | `dais-rails-aisle.png`, `dais-rails-ring.png`, `dais-rails-dais.png` (left to right: as drawn, behind, none) |

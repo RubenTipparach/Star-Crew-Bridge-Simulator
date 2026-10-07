@@ -1,0 +1,1288 @@
+{
+  "schema": "starcrew.props/1",
+  "status": "Built (2026-10-06) by tools/blender/build_machinery_props.py. Proposed machinery, craft and crew-room furniture for the Tern (data/ships/tern/layout.json systems and craft; deck-pipeline section 5), to replace the deck plan mockup's grey boxes; no page or engine code loads them yet.",
+  "_rules": [
+    "This file is written by tools/blender/build_machinery_props.py; never edit it by hand. Rebuild, and the .glb files and this file change together.",
+    "Metres. Prop space is the glTF frame: +Y up, +Z toward the user (the prop's front: the side it is worked from; a craft's nose), +X the user's right as they face the prop.",
+    "anchor says where the origin is. 'floor, centre of the back, on the wall plane' (a WALL prop): on the floor at the centre of its back, the back flat on a wall at z = 0. 'floor, centre of the footprint' (a FREE prop): on the floor at the centre of its footprint. 'floor, centre of the footprint, nose toward +Z' (a CRAFT): the same, its nose toward +Z.",
+    "Placing props: the layout's system or craft centre_m (on the floor) is the anchor for a FREE prop or a CRAFT; a WALL prop's anchor goes on the wall plane with its +Z into the room. operators_m are floor points where a crew member stands or sits to work it, in prop space.",
+    "Materials are roles: machinery, trim, bulkhead, hazard and light_panel are data/materials/materials.json layers (light_panel is emissive: lamps, glowing bands, vents, nozzles and canopies); screen is emissive and coloured by the page; accent (blankets, valve wheels, bus bars, coil windings, tripped breakers) is tinted by the page.",
+    "screens are the recess floors a page draws on: centre_m on the floor, normal out of it, up the in-plane direction of height_m (width_m runs along up x normal). shows says what: console (a main screen image, assets/textures/screens/screens.json), upper (half of an upper image) or keys (a key panel).",
+    "UV0 is in metres, projected per face as shipkit.js worldUv does (x, z where |n.y| > 0.75, else the face's horizontal tangent and y); divide by the material's span_m.",
+    "Flat shaded (one normal per face), triangulated, one closed manifold solid per prop; faces against the floor or the wall are kept for the deck compiler to drop.",
+    "triangles is counted in the .glb; the build refuses a prop over budget_triangles. sha256 is the .glb's, from the Blender and exporter versions in generator: a second build with them writes the same bytes.",
+    "atlas is the prop's own baked texture (assets/models/<set>/atlas/<prop>.png, written by the build with its sha256): 256 x 256 RGBA, alpha the glow mask, read through the glb's second UV map (TEXCOORD_1; TEXCOORD_0 stays the metre UVs). px_per_m is its texel density, charts how many pieces its surface was cut into. data/materials/prop_atlas.json says how it is baked; screen faces carry no content in it (the page draws the console faces), accent faces bake light and neutral for the page to tint."
+  ],
+  "generator": {
+    "script": "tools/blender/build_machinery_props.py",
+    "blender": "4.5.14 LTS",
+    "gltf_exporter": "4.5.51"
+  },
+  "props": {
+    "switchboard": {
+      "file": "switchboard.glb",
+      "presents": "The main switchboard: breaker cabinets that route the reactor's and the battery's power to every bus (power grid)",
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        2.4,
+        2.0,
+        0.755
+      ],
+      "bounds_m": {
+        "min": [
+          -1.2,
+          0.0,
+          0.0
+        ],
+        "max": [
+          1.2,
+          2.0,
+          0.755
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          1.35
+        ]
+      ],
+      "screens": [
+        {
+          "label": "status",
+          "shows": "console",
+          "centre_m": [
+            0.0,
+            1.43,
+            0.705
+          ],
+          "normal": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "up": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "width_m": 0.62,
+          "height_m": 0.34
+        }
+      ],
+      "triangles": 598,
+      "budget_triangles": 600,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard",
+        "light_panel",
+        "screen",
+        "accent"
+      ],
+      "csg": [
+        "difference cabinet_and_door_splits (3)",
+        "chamfer trunking_edge (1 edges, 20 mm)",
+        "union trunking (4)",
+        "difference panels (5)",
+        "union toggles_and_pulls (21)"
+      ],
+      "sha256": "ff20525edd81e12b0c08c4957af74e89e637ed7a5443c210d39090b00d99ee09",
+      "atlas": {
+        "file": "atlas/switchboard.png",
+        "px": 256,
+        "px_per_m": 61.22,
+        "charts": 43,
+        "cover": 0.67,
+        "glow": 0.0319,
+        "sha256": "4f40faeb79950d1c7e100d848d567a8b2ad5a6176abb783ab07bc6838c8da330",
+        "bytes": 17961
+      }
+    },
+    "battery_bank": {
+      "file": "battery_bank.glb",
+      "presents": "The battery bank: racked cell modules that store the grid's reserve (power grid)",
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        2.0,
+        1.6,
+        1.185
+      ],
+      "bounds_m": {
+        "min": [
+          -1.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          1.0,
+          1.6,
+          1.185
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          1.6
+        ]
+      ],
+      "screens": [],
+      "triangles": 450,
+      "budget_triangles": 500,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard",
+        "light_panel",
+        "accent"
+      ],
+      "csg": [
+        "difference bays (9)",
+        "chamfer module_0_0_lamp (1 edges, 30 mm)",
+        "chamfer module_1_0_lamp (1 edges, 30 mm)",
+        "chamfer module_2_0_lamp (1 edges, 30 mm)",
+        "chamfer module_0_1_lamp (1 edges, 30 mm)",
+        "chamfer module_1_1_lamp (1 edges, 30 mm)",
+        "chamfer module_2_1_lamp (1 edges, 30 mm)",
+        "chamfer module_0_2_lamp (1 edges, 30 mm)",
+        "chamfer module_1_2_lamp (1 edges, 30 mm)",
+        "chamfer module_2_2_lamp (1 edges, 30 mm)",
+        "union modules (9)",
+        "union bus_bars (4)"
+      ],
+      "sha256": "eeb441894efc695f7a0ace42a95b634934f791ec20be831c3f4e6001e18a0915",
+      "atlas": {
+        "file": "atlas/battery_bank.png",
+        "px": 512,
+        "px_per_m": 76.7,
+        "charts": 54,
+        "cover": 0.812,
+        "glow": 0.0279,
+        "sha256": "46b59c1617e46b605bead97fe2f117209aea21dcc8cc8a2568f2eaa7c8478576",
+        "bytes": 55344
+      }
+    },
+    "coolant_pumps": {
+      "file": "coolant_pumps.glb",
+      "presents": "The reactor's coolant pumps: two pumps on a skid that drive the coolant loop (power grid, thermal)",
+      "anchor": "floor, centre of the footprint",
+      "dimensions_m": [
+        1.96,
+        1.4066,
+        1.57
+      ],
+      "bounds_m": {
+        "min": [
+          -0.98,
+          0.0,
+          -0.78
+        ],
+        "max": [
+          0.98,
+          1.4066,
+          0.79
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          1.2
+        ]
+      ],
+      "screens": [],
+      "triangles": 576,
+      "budget_triangles": 600,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard",
+        "light_panel",
+        "accent"
+      ],
+      "csg": [
+        "chamfer skid_edges (4 edges, 20 mm)",
+        "chamfer starter_lamp (1 edges, 30 mm)",
+        "union pumps_and_pipes (12)"
+      ],
+      "sha256": "3e02f94828e17db51011c9d1900aad45c0c0f70d179efb87ac7b324704e7311c",
+      "atlas": {
+        "file": "atlas/coolant_pumps.png",
+        "px": 256,
+        "px_per_m": 64.05,
+        "charts": 34,
+        "cover": 0.678,
+        "glow": 0.0151,
+        "sha256": "9a3f8b5907789d466caf920ee2b37e703c09f5ed06a41484b8d09d17725bbae6",
+        "bytes": 23591
+      }
+    },
+    "impulse_drive": {
+      "file": "impulse_drive.glb",
+      "presents": "The impulse drive: the engine core on its cradle in the drive room (propulsion)",
+      "anchor": "floor, centre of the footprint",
+      "dimensions_m": [
+        3.0,
+        2.7,
+        4.0
+      ],
+      "bounds_m": {
+        "min": [
+          -1.5,
+          0.0,
+          -2.0
+        ],
+        "max": [
+          1.5,
+          2.7,
+          2.0
+        ]
+      },
+      "operators_m": [
+        [
+          1.9,
+          0.0,
+          0.0
+        ]
+      ],
+      "screens": [],
+      "triangles": 882,
+      "budget_triangles": 900,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard",
+        "light_panel"
+      ],
+      "csg": [
+        "difference saddle_0_holes (2)",
+        "difference saddle_1_holes (2)",
+        "union cradle_and_conduits (8)",
+        "difference vents (6)"
+      ],
+      "sha256": "bde29097e15a82a74b1a9cdcc58a76f888a2f68100b37834ff42c1586f254107",
+      "atlas": {
+        "file": "atlas/impulse_drive.png",
+        "px": 512,
+        "px_per_m": 52.92,
+        "charts": 82,
+        "cover": 0.529,
+        "glow": 0.0419,
+        "sha256": "c174b0f48bae02453bc47c36a8bc8151c254efc13d746aab1101dfd5e8ced16d",
+        "bytes": 66038
+      }
+    },
+    "inertial_dampers": {
+      "file": "inertial_dampers.glb",
+      "presents": "The inertial dampers: the gyro housing that keeps the crew from feeling the ship's acceleration (dampers)",
+      "anchor": "floor, centre of the footprint",
+      "dimensions_m": [
+        1.4,
+        1.6,
+        1.4
+      ],
+      "bounds_m": {
+        "min": [
+          -0.7,
+          0.0,
+          -0.7
+        ],
+        "max": [
+          0.7,
+          1.6,
+          0.7
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          1.2
+        ]
+      ],
+      "screens": [],
+      "triangles": 412,
+      "budget_triangles": 500,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard",
+        "light_panel"
+      ],
+      "csg": [
+        "difference access_panels (2)"
+      ],
+      "sha256": "eab3ed3af09cf02c5c91beb49d9f04ab4c464b300e5e12d2baf3269e73a3e2c0",
+      "atlas": {
+        "file": "atlas/inertial_dampers.png",
+        "px": 256,
+        "px_per_m": 68.23,
+        "charts": 33,
+        "cover": 0.521,
+        "glow": 0.0961,
+        "sha256": "4f21d0b346eeeaeff4f8f1a3d82bca15f7900f3efc03e843cf010bff6e67cc96",
+        "bytes": 23866
+      }
+    },
+    "shield_generator": {
+      "file": "shield_generator.glb",
+      "presents": "The shield generator: the emitter column and its coils (shields)",
+      "anchor": "floor, centre of the footprint",
+      "dimensions_m": [
+        2.0,
+        2.2,
+        2.0
+      ],
+      "bounds_m": {
+        "min": [
+          -1.0,
+          0.0,
+          -1.0
+        ],
+        "max": [
+          1.0,
+          2.2,
+          1.0
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          1.6
+        ]
+      ],
+      "screens": [],
+      "triangles": 636,
+      "budget_triangles": 700,
+      "materials": [
+        "machinery",
+        "trim",
+        "hazard",
+        "light_panel",
+        "accent"
+      ],
+      "csg": [
+        "difference vents (4)"
+      ],
+      "sha256": "b7c0eaf0631f2575c0e87799e6974fe511042b08886468e506688703ed61fb97",
+      "atlas": {
+        "file": "atlas/shield_generator.png",
+        "px": 256,
+        "px_per_m": 42.55,
+        "charts": 79,
+        "cover": 0.512,
+        "glow": 0.1899,
+        "sha256": "34202ad3a179e3e8be9f86aabcd2771ddb089a429b1ad07a12b8cdce776cb1fc",
+        "bytes": 33014
+      }
+    },
+    "ls_tanks": {
+      "file": "ls_tanks.glb",
+      "presents": "Life support's oxygen generator: gas tanks, their valves and the control box (life support)",
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        1.8,
+        2.0162,
+        1.56
+      ],
+      "bounds_m": {
+        "min": [
+          -0.9,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.9,
+          2.0162,
+          1.56
+        ]
+      },
+      "operators_m": [
+        [
+          0.48,
+          0.0,
+          2.0
+        ]
+      ],
+      "screens": [
+        {
+          "label": "screen",
+          "shows": "console",
+          "centre_m": [
+            0.48,
+            0.92,
+            1.535
+          ],
+          "normal": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "up": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "width_m": 0.52,
+          "height_m": 0.34
+        }
+      ],
+      "triangles": 470,
+      "budget_triangles": 500,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard",
+        "light_panel",
+        "screen",
+        "accent"
+      ],
+      "csg": [
+        "chamfer plinth_edge (1 edges, 20 mm)",
+        "chamfer control_lamp (1 edges, 30 mm)",
+        "union tanks_and_box (8)",
+        "difference screens (1)"
+      ],
+      "sha256": "e03da8108f592bab9513cb5f74e33fd3278f2028c39ea9ba3b7f1bc3fe690638",
+      "atlas": {
+        "file": "atlas/ls_tanks.png",
+        "px": 256,
+        "px_per_m": 46.1,
+        "charts": 28,
+        "cover": 0.552,
+        "glow": 0.0172,
+        "sha256": "60630e044146f6229ebe6089ab5d33e727325586bdb34af0dc6399199be3bfc5",
+        "bytes": 18420
+      }
+    },
+    "ls_scrubbers": {
+      "file": "ls_scrubbers.glb",
+      "presents": "Life support's CO2 scrubbers: fan cabinets with filter drawers (life support)",
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        1.8,
+        2.0,
+        1.58
+      ],
+      "bounds_m": {
+        "min": [
+          -0.9,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.9,
+          2.0,
+          1.58
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          2.1
+        ]
+      ],
+      "screens": [],
+      "triangles": 404,
+      "budget_triangles": 500,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard",
+        "light_panel"
+      ],
+      "csg": [
+        "difference split (1)",
+        "chamfer duct_edge (1 edges, 20 mm)",
+        "union duct (1)",
+        "difference fans_and_drawers (6)",
+        "union fans_and_pulls (12)"
+      ],
+      "sha256": "096961ac4d041bbb256c759a62c75bb4cc30c018a1b32c20a7640403aab9243b",
+      "atlas": {
+        "file": "atlas/ls_scrubbers.png",
+        "px": 256,
+        "px_per_m": 59.09,
+        "charts": 25,
+        "cover": 0.689,
+        "glow": 0.0212,
+        "sha256": "5c2e628354385f5ade4df6d29a96a72859700fc6c8c17f9dcddd757e1645bd04",
+        "bytes": 16982
+      }
+    },
+    "ls_air_handler": {
+      "file": "ls_air_handler.glb",
+      "presents": "Life support's air handler: a duct box with a big fan, its ducts rising to the ceiling (life support)",
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        1.8,
+        2.0,
+        1.55
+      ],
+      "bounds_m": {
+        "min": [
+          -0.9,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.9,
+          2.0,
+          1.55
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          2.1
+        ]
+      ],
+      "screens": [
+        {
+          "label": "keys",
+          "shows": "keys",
+          "centre_m": [
+            0.57,
+            1.08,
+            1.538
+          ],
+          "normal": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "up": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "width_m": 0.4,
+          "height_m": 0.26
+        }
+      ],
+      "triangles": 326,
+      "budget_triangles": 500,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard",
+        "light_panel",
+        "screen"
+      ],
+      "csg": [
+        "union ducts (4)",
+        "difference fan_louvres_panels (6)",
+        "union fan (6)"
+      ],
+      "sha256": "f1b3ae1d8a9430ccf59bd55cd328827a320e51f7232bbb07c854f9b6d8ac914b",
+      "atlas": {
+        "file": "atlas/ls_air_handler.png",
+        "px": 256,
+        "px_per_m": 58.78,
+        "charts": 38,
+        "cover": 0.687,
+        "glow": 0.0504,
+        "sha256": "c2b56451a116bcec04bb56824bfb034e5ba5954e298771bf0ed735df1bdf1090",
+        "bytes": 20783
+      }
+    },
+    "gravity_generator": {
+      "file": "gravity_generator.glb",
+      "presents": "The gravity generator: the ring coil that holds the ship's artificial gravity (gravity)",
+      "anchor": "floor, centre of the footprint",
+      "dimensions_m": [
+        1.6,
+        1.4,
+        1.6
+      ],
+      "bounds_m": {
+        "min": [
+          -0.8,
+          0.0,
+          -0.8
+        ],
+        "max": [
+          0.8,
+          1.4,
+          0.8
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          1.3
+        ]
+      ],
+      "screens": [],
+      "triangles": 472,
+      "budget_triangles": 500,
+      "materials": [
+        "machinery",
+        "trim",
+        "hazard",
+        "light_panel",
+        "accent"
+      ],
+      "csg": [
+        "difference bore (1)",
+        "union ring (8)",
+        "difference vents (4)"
+      ],
+      "sha256": "e334d326e3b6ba125d755614ca34287d20ea5f8eb5c1b918024e87f67494ae1a",
+      "atlas": {
+        "file": "atlas/gravity_generator.png",
+        "px": 256,
+        "px_per_m": 69.61,
+        "charts": 46,
+        "cover": 0.522,
+        "glow": 0.157,
+        "sha256": "428954b4e2087872aeb50ac9ecc97859ab67ebae572107b09f9e6f996cc5709c",
+        "bytes": 28179
+      }
+    },
+    "med_bed": {
+      "file": "med_bed.glb",
+      "presents": "A sick bay bed with its scanner arch and monitor (medical)",
+      "anchor": "floor, centre of the footprint",
+      "dimensions_m": [
+        1.0,
+        1.2,
+        2.24
+      ],
+      "bounds_m": {
+        "min": [
+          -0.5,
+          0.0,
+          -1.12
+        ],
+        "max": [
+          0.5,
+          1.2,
+          1.12
+        ]
+      },
+      "operators_m": [
+        [
+          0.75,
+          0.0,
+          0.0
+        ]
+      ],
+      "screens": [
+        {
+          "label": "monitor",
+          "shows": "console",
+          "centre_m": [
+            0.0,
+            1.03,
+            -1.057
+          ],
+          "normal": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "up": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "width_m": 0.48,
+          "height_m": 0.28
+        }
+      ],
+      "triangles": 236,
+      "budget_triangles": 400,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "light_panel",
+        "screen",
+        "accent"
+      ],
+      "csg": [
+        "chamfer base_edges (4 edges, 20 mm)",
+        "chamfer frame_edges (2 edges, 20 mm)",
+        "chamfer pad_edges (4 edges, 25 mm)",
+        "union bed (8)",
+        "difference screens (1)"
+      ],
+      "sha256": "6d2224009ab739f5be24140fe949830f5a29d3788463e97c0fe75c5a39656d6f",
+      "atlas": {
+        "file": "atlas/med_bed.png",
+        "px": 256,
+        "px_per_m": 62.92,
+        "charts": 20,
+        "cover": 0.548,
+        "glow": 0.0642,
+        "sha256": "e8ab484400703a2eebbbc45db4fafedc5d4a8c9ff25446d60f25fd043a6e809d",
+        "bytes": 22613
+      }
+    },
+    "magazine_rack": {
+      "file": "magazine_rack.glb",
+      "presents": "The magazine's missile racks: two tiers of missiles in cradles under a rail hoist (weapons, magazine)",
+      "anchor": "floor, centre of the footprint",
+      "dimensions_m": [
+        5.1,
+        1.6,
+        2.8
+      ],
+      "bounds_m": {
+        "min": [
+          -2.55,
+          0.0,
+          -1.4
+        ],
+        "max": [
+          2.55,
+          1.6,
+          1.4
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          1.9
+        ]
+      ],
+      "screens": [],
+      "triangles": 768,
+      "budget_triangles": 900,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard",
+        "accent"
+      ],
+      "csg": [
+        "difference end_frame_-1_hole (1)",
+        "difference end_frame_+1_hole (1)",
+        "union rack_and_hoist (17)"
+      ],
+      "sha256": "6940154b0465d7c2362b473571d144538e795d105dfc85c0a58aa2aa846ffb91",
+      "atlas": {
+        "file": "atlas/magazine_rack.png",
+        "px": 512,
+        "px_per_m": 67.78,
+        "charts": 30,
+        "cover": 0.814,
+        "glow": 0.0,
+        "sha256": "61184de851fddb0fd71d2872d87999fc1229afeddd503a23f06374f22ce8c13c",
+        "bytes": 71952
+      }
+    },
+    "missile_tube": {
+      "file": "missile_tube.glb",
+      "presents": "A missile launch tube, its breech toward the torpedo room (weapons)",
+      "anchor": "floor, centre of the footprint",
+      "dimensions_m": [
+        0.9,
+        2.0,
+        3.08
+      ],
+      "bounds_m": {
+        "min": [
+          -0.45,
+          0.0,
+          -1.54
+        ],
+        "max": [
+          0.45,
+          2.0,
+          1.54
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          2.0
+        ]
+      ],
+      "screens": [],
+      "triangles": 420,
+      "budget_triangles": 500,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard",
+        "accent"
+      ],
+      "csg": [
+        "union saddles (5)",
+        "difference door (1)",
+        "union door_fittings (3)"
+      ],
+      "sha256": "935ce019ab7a0daaa491b2f2df9924b0c1026b5284388f6bc4769aa0abfa2acd",
+      "atlas": {
+        "file": "atlas/missile_tube.png",
+        "px": 256,
+        "px_per_m": 49.91,
+        "charts": 27,
+        "cover": 0.535,
+        "glow": 0.0,
+        "sha256": "ed7e2d4ede9b612bff15c2bdb053e7ef2494586677ceaf0a4eee63553bb74003",
+        "bytes": 25096
+      }
+    },
+    "reactor_core": {
+      "file": "reactor_core.glb",
+      "presents": "The reactor: the column that runs through three decks, seen at each deck's eye height (power grid)",
+      "anchor": "floor, centre of the footprint",
+      "dimensions_m": [
+        4.4,
+        10.0,
+        4.4
+      ],
+      "bounds_m": {
+        "min": [
+          -2.2,
+          0.0,
+          -2.2
+        ],
+        "max": [
+          2.2,
+          10.0,
+          2.2
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          2.8
+        ]
+      ],
+      "screens": [],
+      "triangles": 1068,
+      "budget_triangles": 1200,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard",
+        "light_panel"
+      ],
+      "csg": [
+        "union coolant_pipes (4)"
+      ],
+      "sha256": "6d164e687704a68a91d35d996e9e9acb3a71a729990d23fe0abace651581459d",
+      "atlas": {
+        "file": "atlas/reactor_core.png",
+        "px": 1024,
+        "px_per_m": 49.99,
+        "charts": 72,
+        "cover": 0.44,
+        "glow": 0.0729,
+        "sha256": "c84abeed34bff8da3341154b779257b566a4ec9992d91de7fe6693e7e14e9873",
+        "bytes": 149519
+      }
+    },
+    "launch_cradle": {
+      "file": "launch_cradle.glb",
+      "presents": "A fighter launch cradle: rails and clamps on a hazard-striped plate (shuttle bay, fighters)",
+      "anchor": "floor, centre of the footprint",
+      "dimensions_m": [
+        3.2,
+        0.5,
+        6.4
+      ],
+      "bounds_m": {
+        "min": [
+          -1.6,
+          0.0,
+          -3.2
+        ],
+        "max": [
+          1.6,
+          0.5,
+          3.2
+        ]
+      },
+      "operators_m": [
+        [
+          2.2,
+          0.0,
+          0.0
+        ]
+      ],
+      "screens": [],
+      "triangles": 260,
+      "budget_triangles": 400,
+      "materials": [
+        "machinery",
+        "trim",
+        "hazard",
+        "light_panel"
+      ],
+      "csg": [
+        "chamfer plate_edges (4 edges, 20 mm)",
+        "chamfer clamp_-1_-1_lamp (1 edges, 30 mm)",
+        "difference clamp_-1_-1_jaw (1)",
+        "chamfer clamp_-1_+1_lamp (1 edges, 30 mm)",
+        "difference clamp_-1_+1_jaw (1)",
+        "chamfer clamp_+1_-1_lamp (1 edges, 30 mm)",
+        "difference clamp_+1_-1_jaw (1)",
+        "chamfer clamp_+1_+1_lamp (1 edges, 30 mm)",
+        "difference clamp_+1_+1_jaw (1)",
+        "union deck_rails_clamps (7)",
+        "difference strips (2)"
+      ],
+      "sha256": "30af2916033d75fa077b29e3a5258e2ab77e310260a9093a3b7f46d009d50a55",
+      "atlas": {
+        "file": "atlas/launch_cradle.png",
+        "px": 512,
+        "px_per_m": 73.65,
+        "charts": 23,
+        "cover": 0.615,
+        "glow": 0.043,
+        "sha256": "2aab1fa0f2311c66b023e11f8e256bd2ef32bf966b51b8f14954508397ac0b42",
+        "bytes": 71428
+      }
+    },
+    "swift_fighter": {
+      "file": "swift_fighter.glb",
+      "presents": "The Swift: a single-seat fighter, gear down (shuttle bay, fighters)",
+      "anchor": "floor, centre of the footprint, nose toward +Z",
+      "dimensions_m": [
+        4.5932,
+        1.8,
+        7.0
+      ],
+      "bounds_m": {
+        "min": [
+          -2.2966,
+          0.0,
+          -3.5
+        ],
+        "max": [
+          2.2966,
+          1.8,
+          3.5
+        ]
+      },
+      "operators_m": [
+        [
+          1.0,
+          0.0,
+          1.5
+        ]
+      ],
+      "screens": [],
+      "triangles": 886,
+      "budget_triangles": 1000,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "light_panel",
+        "accent"
+      ],
+      "csg": [
+        "union craft (18)",
+        "difference livery (2)"
+      ],
+      "sha256": "aef5ac0d24704fa2707a14be7120f3c5430d1be860a377e5ec7d9031b108094c",
+      "atlas": {
+        "file": "atlas/swift_fighter.png",
+        "px": 512,
+        "px_per_m": 64.96,
+        "charts": 56,
+        "cover": 0.592,
+        "glow": 0.0717,
+        "sha256": "771cc7279cb2914cc154d4bb4d19f86fd18ff31038db47e13655a2f89f4e3b08",
+        "bytes": 77798
+      }
+    },
+    "petrel_shuttle": {
+      "file": "petrel_shuttle.glb",
+      "presents": "The Petrel: a four-seat shuttle, its rear ramp down (shuttle bay)",
+      "anchor": "floor, centre of the footprint, nose toward +Z",
+      "dimensions_m": [
+        4.52,
+        3.2,
+        10.0
+      ],
+      "bounds_m": {
+        "min": [
+          -2.26,
+          0.0,
+          -5.0
+        ],
+        "max": [
+          2.26,
+          3.2,
+          5.0
+        ]
+      },
+      "operators_m": [
+        [
+          2.6,
+          0.0,
+          0.25
+        ]
+      ],
+      "screens": [],
+      "triangles": 1918,
+      "budget_triangles": 2000,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard",
+        "light_panel",
+        "accent"
+      ],
+      "csg": [
+        "difference canopy_hold_lines (23)",
+        "difference door_window (1)",
+        "chamfer ramp_edges (2 edges, 120 mm)",
+        "union spine_pods_ramp_gear (30)"
+      ],
+      "sha256": "ca7b66ca9808d8a01036a5805993df5caee5048ed07921feff96819813e2242d",
+      "atlas": {
+        "file": "atlas/petrel_shuttle.png",
+        "px": 1024,
+        "px_per_m": 74.82,
+        "charts": 150,
+        "cover": 0.635,
+        "glow": 0.0838,
+        "sha256": "90bf9497065405fa1abacb700cdfb2112ac0eb138fa11c32c442f77dc5fd7cfd",
+        "bytes": 156410
+      }
+    },
+    "bunk": {
+      "file": "bunk.glb",
+      "presents": "A two-tier crew bunk (crew quarters)",
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        2.1,
+        2.0,
+        0.95
+      ],
+      "bounds_m": {
+        "min": [
+          -1.05,
+          0.0,
+          0.0
+        ],
+        "max": [
+          1.05,
+          2.0,
+          0.95
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          1.4
+        ]
+      ],
+      "screens": [],
+      "triangles": 264,
+      "budget_triangles": 300,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "light_panel",
+        "accent"
+      ],
+      "csg": [
+        "difference berths (2)",
+        "difference berth_lights (2)",
+        "union bedding_and_ladder (11)"
+      ],
+      "sha256": "d8dcbfd51847fba8418ed0fad19a31bdb15a6aed26fdf764fcb87a9ec3d6a053",
+      "atlas": {
+        "file": "atlas/bunk.png",
+        "px": 256,
+        "px_per_m": 41.2,
+        "charts": 23,
+        "cover": 0.5,
+        "glow": 0.0358,
+        "sha256": "4d1bdb861d3aff4b1bf7ee63f7f559eb21fbdc29273f8919afd699ac5a42a512",
+        "bytes": 23299
+      }
+    },
+    "mess_table": {
+      "file": "mess_table.glb",
+      "presents": "A mess table with its two benches, fixed to the deck (mess)",
+      "anchor": "floor, centre of the footprint",
+      "dimensions_m": [
+        2.0,
+        0.8,
+        1.9
+      ],
+      "bounds_m": {
+        "min": [
+          -1.0,
+          0.0,
+          -0.95
+        ],
+        "max": [
+          1.0,
+          0.8,
+          0.95
+        ]
+      },
+      "operators_m": [
+        [
+          -0.6,
+          0.0,
+          -0.76
+        ],
+        [
+          0.0,
+          0.0,
+          -0.76
+        ],
+        [
+          0.6,
+          0.0,
+          -0.76
+        ],
+        [
+          -0.6,
+          0.0,
+          0.76
+        ],
+        [
+          0.0,
+          0.0,
+          0.76
+        ],
+        [
+          0.6,
+          0.0,
+          0.76
+        ]
+      ],
+      "screens": [],
+      "triangles": 240,
+      "budget_triangles": 300,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "accent"
+      ],
+      "csg": [
+        "chamfer top_edges (4 edges, 20 mm)",
+        "chamfer cushion_-1_edge (2 edges, 15 mm)",
+        "chamfer cushion_+1_edge (2 edges, 15 mm)",
+        "union legs_and_benches (12)"
+      ],
+      "sha256": "1e06150195b6cbf7e9bb2ee4428cd80003ab1ff67c6665ea507502f296b53bda",
+      "atlas": {
+        "file": "atlas/mess_table.png",
+        "px": 256,
+        "px_per_m": 60.93,
+        "charts": 17,
+        "cover": 0.564,
+        "glow": 0.0,
+        "sha256": "9d815c84d4cb0af826bf7180d766da14f743117a045e8fced85bde2d72287911",
+        "bytes": 22221
+      }
+    },
+    "galley_counter": {
+      "file": "galley_counter.glb",
+      "presents": "The galley's counter: cooktop, sink, dispenser and upper cabinets (mess)",
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        2.4,
+        2.2,
+        0.7
+      ],
+      "bounds_m": {
+        "min": [
+          -1.2,
+          0.0,
+          0.0
+        ],
+        "max": [
+          1.2,
+          2.2,
+          0.7
+        ]
+      },
+      "operators_m": [
+        [
+          -0.3,
+          0.0,
+          1.2
+        ]
+      ],
+      "screens": [
+        {
+          "label": "dispenser_keys",
+          "shows": "keys",
+          "centre_m": [
+            0.86,
+            1.36,
+            0.288
+          ],
+          "normal": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "up": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "width_m": 0.34,
+          "height_m": 0.16
+        }
+      ],
+      "triangles": 330,
+      "budget_triangles": 450,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "light_panel",
+        "screen"
+      ],
+      "csg": [
+        "difference doors (3)",
+        "chamfer top_edge (1 edges, 20 mm)",
+        "chamfer under_light (1 edges, 40 mm)",
+        "union top_and_fittings (6)",
+        "difference sink (1)",
+        "difference burners_and_dispenser (7)"
+      ],
+      "sha256": "2cf2b2bacc61a0f6123c64933a3b1dcbf681f8c86113fbf2fb55228a860c2883",
+      "atlas": {
+        "file": "atlas/galley_counter.png",
+        "px": 256,
+        "px_per_m": 62.46,
+        "charts": 33,
+        "cover": 0.673,
+        "glow": 0.0648,
+        "sha256": "efed14491bb2b6de10e104ea6fa02fd55d7dfff364be5e319d298c59165f7afe",
+        "bytes": 15625
+      }
+    }
+  }
+}

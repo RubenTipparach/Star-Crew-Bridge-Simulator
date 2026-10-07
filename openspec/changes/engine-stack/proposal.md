@@ -32,15 +32,27 @@ Rust with SDL and glow (SDL3, for the Pi 5's KMS/DRM path). The design was first
 the Pi 5 raised the renderer floor to ES 3.0 and re-estimated every budget, and left the approved
 stack as it was.
 
+**Decided** (owner, 2026-10-07, after asking whether a browser build was possible and how sokol
+compared with glow): "sokol it is then", "with sdl3". Question E2 is closed: the renderer draws
+through `sokol_gfx` in place of glow, SDL3 stays the platform layer, and the browser becomes a
+playtest target (design section 10a). The same day the owner chose WebRTC for every client:
+"I want to use webrtc if posible to do multiplayer on web and desktop" (`netcode-and-sessions`).
+
 ## What Changes
 
 - **Language: Rust** (stable, edition 2024), in a Cargo workspace, cross-compiled to the Pi.
 - **Platform layer: SDL3 (3.4 or later)**, for the window and GL context (its atomic KMS/DRM backend runs full screen
   on a Pi with no desktop), keyboard, mouse, gamepads and audio output.
-- **Renderer: our own, on OpenGL ES 3.0** through the thin `glow` bindings, with GLSL ES 3.00
-  shaders. The same sources run on desktop OpenGL 3.3 and, later, WebGL 2. Nothing above ES 3.0
-  is assumed; any extension sits behind a measured fallback.
-- **Crates:** `sc-core` (the ship simulation, no I/O), `sc-net` (protocol and transport),
+- **Renderer: our own, on OpenGL ES 3.0** through `sokol_gfx` (vendored at a pinned revision,
+  its GLES3 backend; GL 4.1 core on Windows and macOS). Each shader is one source compiled by
+  `sokol-shdc` to GLSL ES 3.00 and GLSL 4.10, with its Rust uniform structs generated. The same
+  renderer runs in a browser on WebGL 2. Nothing above ES 3.0 is assumed; any extension sits
+  behind a measured fallback.
+- **The frame is a callback** (SDL3's main callbacks), so the client runs unchanged where the
+  browser drives the frame.
+- **A browser playtest build** (`wasm32-unknown-emscripten`), designed now and built after the Pi
+  client, handed out through a restricted itch.io page. Never a measure of the game's speed.
+- **Crates:** `sc-core` (the ship simulation, no I/O), `sc-net` (protocol and the WebRTC transport),
   `sc-render` (the renderer), `sc-client` (the game), `sc-server` (headless, the main server),
   `sc-tools` (offline compilers: `deckc`, `meshc`, the light baker) and `sc-probe` (the Pi 5
   measurement instrument).
@@ -67,6 +79,8 @@ None.
 
 - New Cargo workspace at the repository root with the seven crates above.
 - New `scripts/check.sh`.
+- `third_party/sokol/` holds the vendored headers and generated bindings with their provenance.
+- `bridge-stations` draws egui through our sokol_gfx painter in place of `egui_glow`.
 - Every other change states its cost against the budget table this change owns.
 - The mockups' budget meter (`docs/mockups/lib/shipkit.js`, `PI_BUDGET`) is checked against the
   table's marker by `tools/mockups/inline.py --check`.

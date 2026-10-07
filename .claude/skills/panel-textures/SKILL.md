@@ -59,6 +59,9 @@ bow), so a cut only crops. Rule order, per cell:
 1. A ceiling cell a lamp housing spans takes `lamp_surround`, a light channel across the whole cell
    with v centred on the lamp, so the housing sits in it wherever the lamp rule put it.
 2. A cell holding a floor portal (its hole plus its collar or rim) takes `plate`.
+2a. A floor cell under what stands on the floor (`floorCovers`: platforms and the bands at their
+   feet; floor-panels design 6) is not drawn when wholly covered, and takes `plate` when a cover
+   reaches its core, so no grate or vent is ever cut by a platform.
 3. A floor cell the walkway band crosses takes `walkway`.
 4. A cell whose core (`cells.core_m`, 0.6 m either side of its centre) the room's outline or a hole
    cuts takes `plate`: a cove cropping 0.35 m off a cell against a wall only crops its margin.
@@ -68,6 +71,16 @@ bow), so a cut only crops. Rule order, per cell:
 `rule.door_kinds`) to the centroid of the brushes on its floor; in a corridor, down its long axis,
 with each door joining it square. The walkway module tiles both ways, so a path reads as one path.
 Where floors are dressed the corridor runner is not drawn.
+
+**Floor edge bands** (floor-panels design 6; the owner, 2026-10-07: "custom floor vents and stuff for
+the bridge floor ... they get cutoff by various decks"). Fittings made for a platform's edge, not for
+the grid: a band `edges.width_m` (0.3125 m) wide on the floor at the foot of every `rail` edge (a vent
+band) and `riser` edge (a cable trench band), raised `edges.raise_m`. Each row repeats every
+`edges.period_m` (0.5 m), one fitting between plain ends, and the kit (`ShipKit.edgeBands`) lays an
+edge in a whole number of periods, so a band always ends on a frame. Convex corners take a wedge on the
+frame, reflex ones a mitre; bands are clipped to a convex room. A page passes `edgeLayer` and `room`
+to `buildPlatforms`, and `ShipKit.platformCovers(...)` as `buildCompartment`'s `floorCovers`. One
+layer per finish, `<finish>_floor_edges`, stacked like the platform layer.
 
 **Trims** (ceilings-and-trims design 3-4). Ribs, beams, coves, baseboards, door and window frames
 keep their geometry; only their texture changes. Each finish has one trim layer of seven rows
@@ -161,21 +174,25 @@ PY=<python with the bpy 4.5 module and Pillow>
 $PY tools/blender/build_wall_panels.py                         # everything (about 45 min on 4 cores)
 $PY tools/blender/build_wall_panels.py --only crew_ceiling_fan,working_trims --samples 6   # a quick look
 $PY tools/blender/build_wall_panels.py --post-only             # layers and sheet from the raw renders
+$PY tools/blender/build_wall_panels.py --only crew_floor_edges,working_floor_edges --reuse-built   # new layers only
 ```
 
 `--only` names targets (`<finish>_<module>`, `<finish>_strips`, `<finish>_ceiling_<module>`,
 `<finish>_floor_<module>`, `<finish>_trims`, `<finish>_ui`, `<finish>_keys`); the post-process still
 writes every layer from the raw renders it finds in `tools/materials/raw/panels/` (gitignored), so
-render everything once in a session before iterating on a few.
+render everything once in a session before iterating on a few, or pass `--reuse-built`: a layer
+whose raw renders are missing is then taken from its committed PNGs, byte for byte, and only the
+targets rendered in this session are rewritten. A fresh cloud container has no raw renders and a
+full build takes over two hours there, so add or change a few layers with `--reuse-built`.
 
 ## Densities, mask and budget
 
 | Item | Value |
 | --- | --- |
 | Layer size | 256 px at 128 px per metre (the mockups' setting, survey S1 open), 128 px at 64 |
-| Layers | 55: walls 22 (10 modules and a strip layer a finish), ceilings 16, floors 15, trims 2 |
-| GPU bytes with mips, panel layers | 19,223,820 at 256 px; 4,805,900 at 128 px |
-| Whole array with the 11 materials | 23,068,584 bytes at 256 px (23.1 MB of the 96 MB budget); 5,767,080 at 128 px |
+| Layers | 61: walls 22 (10 modules and a strip layer a finish), ceilings 16, floors 15, trims 2, platforms 2, floor edges 2, upholstery 2 |
+| GPU bytes with mips, panel layers | 21,320,964 at 256 px; 5,330,180 at 128 px |
+| Whole array with the 11 materials | 25,165,728 bytes at 256 px (25.2 MB of the 96 MB budget); 6,291,360 at 128 px |
 | Emission | Alpha: 255 shows the texel at full brightness whatever the light. `glow` scales it per lighting state (1.0, 1.0, 0.3 on emergency power) |
 | Draw calls | None added: every layer is in the one array, so a compartment stays one draw |
 | Triangles | `kit_report.mjs --panels` measures them; quote it, never estimate |
@@ -229,6 +246,15 @@ ceiling too busy.
   (a dais into `floor`) must use a role of its own (deck-plan's `fx_<role>`).
 - Without the option a page gets exactly the geometry it always had (checked by hashing every
   compartment's parts with the old kit and the new).
+- **Platform faces** (ceilings-and-trims design 9): `K.buildPlatforms(..., { topLayer, riserLayer:
+  K.panelLayerName(finish, "platform") })` maps each riser onto the `riser` or `riser_low` row of
+  `<finish>_platforms` (the nearer height) and each stair step's front onto `step`, bottom edge to the
+  row's bottom and top edge to its top, u along the outline in metres; role `platform_riser`.
+- **Upholstery** (ship-props design 4b): give `PropKit.create` the panel set (`pmats`, not `mats`).
+  A prop's `upholstery` and `upholstery_panel` roles then take `panel:upholstery:channel` and
+  `panel:upholstery:panel`, their metre UVs divided by the 2 m span, tinted per seat (the captain's
+  chair burgundy, others dark slate; `placeProp(..., { upholstery: THREE.Color })` overrides). Without
+  the panel set they fall back to trim.
 
 ## Pitfalls actually hit
 
@@ -241,6 +267,8 @@ ceiling too busy.
 | A floor of grates | Grates are the strongest module | Weight 1 in crew spaces |
 | `could not broadcast input array` in the sheet | An illustration tiled a strip too few times | Tile to the image width |
 | An edited module not in the layers | The build loads the script once: an edit during a run is not in that run's renders | Re-render the target |
+| Grates and drains half under a platform | The cell grid knows nothing of what stands on the floor | `floorCovers` (rule 2a) and the edge bands; whole periods per edge |
+| Two bands z-fighting in the gap between two platforms | Platforms closer than two band widths | `edgeBands` drops a band that would run under another platform or over a band already laid; the gap stays plain deck |
 | A page throws "no texture layer undefined" | Triangles without a layer added to a dressed role | A role of the page's own |
 | Diamond-plate lugs floating over a grate's pit or a drain, reading as a mesh | The tread was laid over the whole cell, openings included | `deck_plate(P, F, keep_out)`: list every opening the module cuts |
 | Black ceilings in the comparison shots | The stand-in bake has no bounce and the lamps sit at the ceiling | The comparison page's floor-bounce stand-in; judge ceilings on the light-baking page too |

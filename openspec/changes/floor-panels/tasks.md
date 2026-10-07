@@ -8,6 +8,8 @@
 - [x] 1.4 Floors on in the bridge, the deck plan, light baking and the comparison page with the walls and ceilings; shots before and after, looked at (`docs/screenshots/mockups/`).
 - [x] 1.5 The bridge variants with floors (2026-10-06), and survey R1 asked with the shots (the answer is open).
 
+- [x] 1.6 Floors around platforms (design section 6, the owner 2026-10-07): covers in the cell rule; the `floor_edges` layer per finish (vent and trench rows) in the panel build; the kit lays the bands along platforms' rail and riser edges with whole periods; the bridge in the deck plan, command deck and bridge variants; shots before and after, looked at.
+
 ## 2. The deck build (`deckc`)
 
 - [ ] 2.1 Floor cells and the walkway from the brushes, frames, doors and portals; tests `the_walkway_joins_every_door`, `a_hatch_keeps_its_rim`.

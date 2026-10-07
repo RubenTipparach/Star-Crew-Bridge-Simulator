@@ -312,7 +312,7 @@ agree, which `deckc`'s tests check against the same data file):
 | Window frames | Frame and sill round every window | 0.14 m, 0.08 m proud | UT99 "few, small, heavily framed" windows |
 | Floor openings | A hazard rim on the floor round every hatch, ladder well, hoist and bay door; a collar under the ceiling round it; rails and rungs up through every ladder well | rim 0.15 m wide, 0.012 m raised | UT99 hazard stripes; Undercity's railed pit |
 | Railings | Along every edge where a brush opens onto a lower floor of the same room (the hangar's galleries) | 1.05 m, posts every 1.5 m, kick plate | Undercity's catwalks |
-| Platforms (proposed with the bridge variants, `bridge-stations` 11a) | A raised floor that is solid, not air: a dais, a work ring, a sub-platform. Each edge of its footprint names its kind: `wall` (against the room's wall, nothing drawn), `riser` (a step face), `rail` (a step face with a railing, posts spaced evenly, gaps at the stairs) or `step` (a riser with a stair at it). Every edge not against a wall takes a hazard nosing; a stair divides its rise into the whole number of equal steps nearest `tread_rise_m`, and its rails stop clear of the stair | rise 0.225 m; nosing 0.05 m, 1.2 cm up; rail 1.0 m, mid rail 0.5 m, posts spaced evenly about 1.2 m apart | The references' rails at every level change (`docs/analysis/star-trek-bridges.md`); Undercity's stairs and the UT99 hazard stripe |
+| Platforms (proposed with the bridge variants, `bridge-stations` 11a) | A raised floor that is solid, not air: a dais, a work ring, a sub-platform. Each edge of its footprint names its kind: `wall` (against the room's wall, nothing drawn), `riser` (a step face), `rail` (a step face with a railing, posts spaced evenly, gaps at the stairs) or `step` (a riser with a stair at it). Every edge not against a wall takes a hazard nosing; a stair divides its rise into the whole number of equal steps nearest `tread_rise_m`, and its rails stop clear of the stair | rise 0.225 m; nosing 0.05 m, 1.2 cm up; rail 0.75 m, mid rail 0.375 m (both 1.0 and 0.5 m until the owner's "can we lower the railing by about 25%", 2026-10-07), posts spaced evenly about 1.2 m apart | The references' rails at every level change (`docs/analysis/star-trek-bridges.md`); Undercity's stairs and the UT99 hazard stripe |
 | Corridors | Two conduits along the top of each fore-and-aft wall, clear of the ribs; a deck plate runner down the middle | radii 0.06 and 0.04 m, 8 sides; runner 0.9 m | UT99 "pipes, vents and ducts wrapping the room", "8-16 sided cylinders" |
 | Lamps | In the bays between frames, never on a beam: round(bay area / 8 m^2) across each bay, at least one per corridor bay, one per pod (beside its hatch if the hatch is central); every third on the emergency bus; high-bay lamps hanging 0.4 m in rooms over 3.6 m | panels 0.9 x 0.45 m, corridors 0.7 x 0.35 m | UT99 checklist 4 ("light fixtures are recessed or bracketed"); Undercity 7.3 ("every light has a visible fixture", lights in the bays between girders); this change's lamp rule, kept at one per 8 m^2 |
 | Finishes | Each compartment's `finish` (`crew` or `working`) picks the material of every generated surface (`finishes` in detailing.json): crew spaces tiled floors and steel trims, working spaces diamond plate, machinery ceilings and hazard baseboards | | UT99 "one warm key colour, one cool fill colour, at most one saturated accent" |
@@ -582,6 +582,11 @@ figures.
 First estimate on the v1 boxes, for comparison: 8,858.8 m^3, 2,135.0 m^2 of floor, 3,485.2 m^2 of
 wall; shell 16,936 (tessellated to the lighting grid), detail 23,377 (estimated densities), props
 18,260: 58,573 triangles, 22 % of 262,000, 91 draws.
+
+**Detail re-measured, 2026-10-06** (`ship-props` section 4a). The kit now leaves out the end caps that skirting
+and beams pressed into a wall (they fought the next room's wall), so `kit_report` gives 14,996 detail triangles
+on today's layout where this table was made at 15,688. The table's Detail and Total columns stay as an upper
+bound until it is re-measured whole; no compartment's use rises.
 
 **What the table says.**
 

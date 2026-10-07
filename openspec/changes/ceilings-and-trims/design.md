@@ -186,6 +186,38 @@ variants. Where the text above left a choice, the prototype made the nearest one
   panels alike: with the lamps at the ceiling and no bounce, every ceiling was black. The light
   baking page bakes real bounce.
 
+### 9. Platform faces (2026-10-07)
+
+The owner, on the bridge's raised rings: "the wall on these platforms kinda suck, please use better uv tiling, and redo
+to make the texture conform to the height better, and look better. Usually these areas are made of vents of some kind,
+or small metal panels that should fit vertically on the geometry uv". A platform's riser (deck-pipeline 5a: the face
+under a raised floor's edge) took the finish's `trim` material projected flat in metres, so it stretched, and nothing on
+it was sized to its 0.45 m.
+
+**A platform layer per finish** (`<finish>_platforms`, panel layers 66 and 67, after the 55 that exist), built like the
+trim layer: rows stacked into one 2 m layer, each tiling along x with the layer's period.
+
+| Row | Face | Height | What it shows |
+| --- | --- | ---: | --- |
+| `riser` | a riser two steps high (the rings, the dais) | 29/64 m | a dark toe kick, a lip under the nosing, and between them louvred vents and small bolted panels as tall as the face's clear height |
+| `riser_low` | a riser one step high (the helm sub-platform) | 15/64 m | the same family designed at its own height, not a crop |
+| `step` | a stair step's front | 15/64 m | a quieter bolted kick plate with a slot vent band |
+
+**Mapped to fit.** A riser's bottom edge takes the row's bottom and its top edge the row's top, exactly: the vents end at
+the kick and the lip whatever the face. A face is given the row nearer its height (`riser` from the mean of the two rows'
+heights up), stretched by at most `trims.stretch_max`. u runs along the platform's outline from its first corner, in
+metres over the layer's 2 m, so the rhythm of vents carries round a ring of short segments without a seam at every
+corner. The kit draws a riser this way when a page passes `riserLayer` (with `topLayer`, the tread on top); its role is
+`platform_riser`, the page's own, as `platform_top` is.
+
+**The other members still on the tiling trim** take rows of the same layer, mapped as trims are (u along the member,
+v across it): `rail` (railing rails and posts, ladder rails and rungs, the lift's handrail), `kick` (a railing's
+kickplate), `collar` (a floor opening's coaming), `housing` (a lamp housing's sides) and `pipe` (a conduit). The owner,
+on the same view: "basically everything using the metal tile grid needs to get replaced with custom textures".
+
+**What it costs.** Two layers, 0.35 MB each at 256 px with mips (87 KB at 128 px). The same triangles each face always
+had; no draw call.
+
 ## Risks / Trade-offs
 
 - **A busy ceiling over busy walls.** The crew ceiling set is deliberately quieter, with plate

@@ -342,7 +342,7 @@
      "yaw_deg": 0.0
     },
     {
-     "prop": "wall_bank",
+     "prop": "wall_bank_flight_ops",
      "station": "flight_ops",
      "back_m": [
       -8.09,
@@ -352,7 +352,7 @@
      "yaw_deg": 103.4
     },
     {
-     "prop": "wall_bank_core",
+     "prop": "wall_bank_core_science",
      "station": "science",
      "back_m": [
       -7.303,
@@ -976,7 +976,7 @@
      "yaw_deg": 22.5
     },
     {
-     "prop": "wall_bank",
+     "prop": "wall_bank_flight_ops",
      "station": "flight_ops",
      "back_m": [
       -4.384,
@@ -996,7 +996,7 @@
      "yaw_deg": 67.5
     },
     {
-     "prop": "wall_bank_core",
+     "prop": "wall_bank_core_science",
      "station": "science",
      "back_m": [
       -6.2,
@@ -1301,7 +1301,7 @@
      "yaw_deg": 0.0
     },
     {
-     "prop": "wall_bank",
+     "prop": "wall_bank_flight_ops",
      "station": "flight_ops",
      "back_m": [
       -8.114,
@@ -1311,7 +1311,7 @@
      "yaw_deg": 103.4
     },
     {
-     "prop": "wall_bank_core",
+     "prop": "wall_bank_core_science",
      "station": "science",
      "back_m": [
       -7.025,
