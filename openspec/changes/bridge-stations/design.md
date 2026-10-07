@@ -994,8 +994,11 @@ baked light in the three lighting states. **The layout does not change until the
   - the **captain**: two or three steps up.
 
   The platforms' risers, nosings, rails and stairs come from `deck-pipeline` 5a's platform rule.
-- **Rails mark the drops.** A drop of two steps or more has a railing, 1.0 m high, with a gap at
-  each stair (R1, R2, R8). A single step has a hazard nosing only.
+- **Rails mark the drops.** A drop of two steps or more has a railing, 0.75 m high, with a gap at
+  each stair (R1, R2, R8). A single step has a hazard nosing only. (Lowered from 1.0 m by the
+  owner, 2026-10-07, on the first-person shots of the bridge: "can we lower the railing by about
+  25%". A platform drops at most three steps, 0.675 m; the rails that guard a deck-high drop, the
+  hangar's galleries, engineering's catwalks and the stair towers, keep their own heights.)
 - **Side stations are built into the walls.** Each side station is a **wall bank** (R1, R5, R9):
   a desk with its displays set into the wall between two frames. The generated ribs, coves and
   baseboards stay clear of it: a wall fixture keeps them off its width plus 0.25 m either side.
