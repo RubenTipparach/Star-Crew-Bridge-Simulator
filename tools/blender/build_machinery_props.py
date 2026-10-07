@@ -1079,7 +1079,65 @@ def galley_counter():
     return p
 
 
-PROPS = {
+# ----------------------------------------------------------------------------- the atlas's details
+# What each prop carries on its baked atlas besides the kit's rules (the owner, 2026-10-07: "basically
+# everything using the metal tile grid needs to get replaced with custom textures"): its system's
+# stencilled name, warning placards, gauges and lamps, each placed where it fits on the face looking
+# the given way (hs_kit.Detail.spot), letters sized to the prop's atlas density (at least 4 texels).
+# A furniture prop's painted faces take a furniture finish (FINISH_OF). Directions are prop space.
+F, BK, L, R, U = (0.0, 0.0, 1.0), (0.0, 0.0, -1.0), (-1.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0)
+SIDES = [F, L, R, BK]
+DECOR = {
+    "switchboard": [("stencil", "MAIN BUS", 0.08, F, "stencil", "high"), ("placard", "HIGH VOLTAGE", 0.40, 0.10, F),
+                    ("gauge", 0.06, F), ("gauge", 0.06, F), ("lamps", 6, F, ("led_green", "led_green", "led_amber"))],
+    "battery_bank": [("stencil", "BATTERY", 0.10, [F, L, R], "stencil", "high"), ("placard", "DANGER|HIGH VOLTAGE", 0.36, 0.16, [L, R, F]),
+                     ("lamps", 9, F, ("led_green", "led_green", "led_amber"))],
+    "coolant_pumps": [("stencil", "COOLANT", 0.10, [F, L, R, U]), ("placard", "HOT SURFACE", 0.34, 0.09, [F, R, L]),
+                      ("gauge", 0.06, [F, L, R]), ("gauge", 0.06, [L, R, F])],
+    "impulse_drive": [("stencil", "IMPULSE 1", 0.14, [L, R], "stencil", "centre", 0.7), ("placard", "DANGER|RADIATION", 0.6, 0.3, [R, L, F], "yellow", "stencil_dark", "low", 0.7),
+                      ("placard", "NO STEP", 0.5, 0.14, [U], "yellow", "stencil_dark", "centre", 0.7)],
+    "inertial_dampers": [("stencil", "DAMPERS", 0.07, [F, L, R, BK], "stencil", "centre", 0.8), ("placard", "GYRO|DO NOT OPEN", 0.34, 0.14, [R, L, F], "yellow", "stencil_dark", "centre", 0.8),
+                         ("gauge", 0.06, [F, L, R], "centre", 0.8)],
+    "shield_generator": [("stencil", "SHIELDS", 0.05, [F, L, R, BK], "stencil", "centre", 0.6), ("stencil", "EMITTER 1", 0.05, [R, L, BK], "stencil", "centre", 0.6)],
+    "ls_tanks": [("stencil", "O2", 0.12, F, "stencil", "high", 0.8), ("placard", "OXYGEN", 0.30, 0.08, [L, R, F], "yellow", "stencil_dark", "low"),
+                 ("gauge", 0.06, [F, L, R])],
+    "ls_scrubbers": [("stencil", "CO2 SCRUB", 0.08, F, "stencil", "high"), ("placard", "FILTERS|CHANGE 90 D", 0.32, 0.14, [F, L, R]),
+                     ("lamps", 4, F, ("led_green", "led_amber"))],
+    "ls_air_handler": [("stencil", "AIR HANDLER", 0.08, F, "stencil", "high"), ("placard", "KEEP CLEAR", 0.34, 0.09, [F, L, R], "yellow", "stencil_dark", "low"),
+                       ("gauge", 0.06, [F, L, R])],
+    "gravity_generator": [("stencil", "GRAVITY", 0.10, [F, L, R, U], "stencil", "centre", 0.8), ("placard", "MAGNETIC FIELD", 0.30, 0.07, [F, L, R, BK], "yellow", "stencil_dark", "centre", 0.8),
+                          ("lamps", 5, [F, L, R], ("led_blue", "led_white"), 0.012, 0.04, "high", 0.8)],
+    "med_bed": [("stencil", "MED 1", 0.07, [L, R, F, BK]), ("lamps", 4, [L, R, F, BK], ("led_green", "led_blue"))],
+    "magazine_rack": [("stencil", "ORDNANCE", 0.12, [F, BK, U], "stencil", "centre", 0.8), ("placard", "LIVE ROUNDS|NO SMOKING", 0.6, 0.24, [F, BK, L, R], "yellow", "stencil_dark", "centre", 0.8)],
+    "missile_tube": [("stencil", "TUBE 1", 0.14, [L, R, U], "stencil", "centre", 0.7), ("placard", "DANGER|LAUNCH ZONE", 0.42, 0.16, [R, L, F, BK], "yellow", "stencil_dark", "centre", 0.7)],
+    "reactor_core": [("stencil", "REACTOR", 0.26, [F, L, R, BK], "stencil", "centre", 0.85), ("placard", "DANGER|RADIATION", 1.0, 0.5, [R, L, BK], "yellow", "stencil_dark", "low", 0.85),
+                     ("gauge", 0.16, [F, L, R], "low", 0.85)],
+    "launch_cradle": [("stencil", "BAY 1", 0.40, U, "stencil", "centre", 0.8), ("placard", "KEEP CLEAR", 0.8, 0.2, U, "yellow", "stencil_dark", "low", 0.8)],
+    "swift_fighter": [("stencil", "SWIFT 01", 0.12, [L, R], "stencil", "centre", 0.6), ("stencil", "SCS TERN", 0.10, [R, L], "stencil", "centre", 0.6),
+                      ("placard", "NO STEP", 0.5, 0.14, U, "yellow", "stencil_dark", "centre", 0.8)],
+    "petrel_shuttle": [("stencil", "PETREL", 0.35, [L, R], "stencil", "centre", 0.6), ("stencil", "SCS TERN", 0.25, [R, L], "stencil", "centre", 0.6),
+                       ("placard", "NO STEP", 0.7, 0.2, U, "yellow", "stencil_dark", "centre", 0.8), ("lamps", 3, [L, R], ("led_red", "led_green"), 0.03, 0.12, "high", 0.6)],
+    "bunk": [("placard", "BERTH 3|BERTH 4", 0.22, 0.14, [F, L, R], "plate", "stencil_dark", "high")],
+    "mess_table": [],
+    "galley_counter": [("stencil", "GALLEY", 0.07, F, "stencil", "high"), ("placard", "HOT", 0.14, 0.07, F, "red", "stencil")],
+}
+FINISH_OF = {
+    "mess_table": {"bulkhead": "laminate"},
+    "galley_counter": {"bulkhead": "laminate"},
+    "bunk": {"bulkhead": "laminate"},
+    "med_bed": {"bulkhead": "laminate"},
+}
+
+
+def decorated(name):
+    """Build a prop with its atlas details (DECOR) and finishes (FINISH_OF) attached."""
+    p = BUILDERS[name]()
+    p.decor.append(lambda D: D.apply(DECOR[name]))
+    p.finish_of.update(FINISH_OF.get(name, {}))
+    return p
+
+
+BUILDERS = {
     "switchboard": switchboard,
     "battery_bank": battery_bank,
     "coolant_pumps": coolant_pumps,
@@ -1101,6 +1159,7 @@ PROPS = {
     "mess_table": mess_table,
     "galley_counter": galley_counter,
 }
+PROPS = {n: (lambda n=n: decorated(n)) for n in BUILDERS}
 
 
 # ----------------------------------------------------------------------------- main
@@ -1118,6 +1177,7 @@ RULES = [
     "UV0 is in metres, projected per face as shipkit.js worldUv does (x, z where |n.y| > 0.75, else the face's horizontal tangent and y); divide by the material's span_m.",
     "Flat shaded (one normal per face), triangulated, one closed manifold solid per prop; faces against the floor or the wall are kept for the deck compiler to drop.",
     "triangles is counted in the .glb; the build refuses a prop over budget_triangles. sha256 is the .glb's, from the Blender and exporter versions in generator: a second build with them writes the same bytes.",
+    "atlas is the prop's own baked texture (assets/models/<set>/atlas/<prop>.png, written by the build with its sha256): 256 x 256 RGBA, alpha the glow mask, read through the glb's second UV map (TEXCOORD_1; TEXCOORD_0 stays the metre UVs). px_per_m is its texel density, charts how many pieces its surface was cut into. data/materials/prop_atlas.json says how it is baked; screen faces carry no content in it (the page draws the console faces), accent faces bake light and neutral for the page to tint.",
 ]
 
 MACHINERY = PropSet("machinery", "MachineryProps", OUT, GENERATOR, PROPS, BUDGETS, STATUS, RULES, __doc__)

@@ -454,7 +454,57 @@ def server_rack():
     return p
 
 
-PROPS = {
+# ----------------------------------------------------------------------------- the atlas's details
+# What each prop carries on its baked atlas besides the kit's rules (the owner, 2026-10-07: "basically
+# everything using the metal tile grid needs to get replaced with custom textures"): furniture takes a
+# furniture finish on its painted faces (FINISH_OF: wood, laminate, fabric, porcelain), and labels,
+# placards and lamps go where they fit on the face looking the given way (hs_kit.Detail.spot).
+F, BK, L, R, U = (0.0, 0.0, 1.0), (0.0, 0.0, -1.0), (-1.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0)
+FINISH_OF = {
+    "briefing_table": {"bulkhead": "wood"},
+    "desk": {"bulkhead": "wood"},
+    "sofa": {"bulkhead": "fabric"},
+    "low_table": {"bulkhead": "wood"},
+    "shelf": {"bulkhead": "wood"},
+    "bed": {"bulkhead": "wood"},
+    "wardrobe": {"bulkhead": "laminate"},
+    "wet_cell": {"bulkhead": "laminate"},
+    "toilet_stall": {"bulkhead": "laminate"},
+    "wash_counter": {"bulkhead": "laminate"},
+    "shower_stall": {"bulkhead": "porcelain"},
+}
+DECOR = {
+    "briefing_table": [],
+    "wall_screen": [("placard", "BRIEFING 1", 0.42, 0.08, F, "plate", "stencil_dark", "low")],
+    "desk": [],
+    "sofa": [],
+    "low_table": [],
+    "shelf": [],
+    "bed": [],
+    "wardrobe": [("placard", "CAPTAIN", 0.24, 0.07, F, "plate", "stencil_dark", "high")],
+    "wet_cell": [("placard", "HEAD", 0.18, 0.07, F, "plate", "stencil_dark", "high")],
+    "toilet_stall": [("placard", "HEAD", 0.18, 0.07, F, "plate", "stencil_dark", "high")],
+    "wash_counter": [],
+    "shower_stall": [],
+    "locker_bank": [("stencil", "EVA 1", 0.06, F, "stencil", "high"), ("stencil", "EVA 2", 0.06, F, "stencil", "high"),
+                    ("stencil", "EVA 3", 0.06, F, "stencil", "high"), ("stencil", "EVA 4", 0.06, F, "stencil", "high"),
+                    ("placard", "SUITS|CHECK SEALS", 0.30, 0.12, [L, R, F], "yellow", "stencil_dark")],
+    "workbench": [("placard", "EYE PROTECTION", 0.42, 0.08, F, "yellow", "stencil_dark", "high")],
+    "server_rack": [("stencil", "CORE 01", 0.07, F, "stencil", "high"), ("lamps", 8, F, ("led_green", "led_green", "led_blue", "led_amber"), 0.01, 0.035, "high"),
+                    ("lamps", 8, F, ("led_blue", "led_green", "led_green"), 0.01, 0.035, "low"),
+                    ("placard", "HIGH VOLTAGE", 0.34, 0.09, [L, R, BK])],
+}
+
+
+def decorated(name):
+    """Build a prop with its atlas details (DECOR) and finishes (FINISH_OF) attached."""
+    p = BUILDERS[name]()
+    p.decor.append(lambda D: D.apply(DECOR[name]))
+    p.finish_of.update(FINISH_OF.get(name, {}))
+    return p
+
+
+BUILDERS = {
     "briefing_table": briefing_table,
     "wall_screen": wall_screen,
     "desk": desk,
@@ -471,6 +521,7 @@ PROPS = {
     "server_rack": server_rack,
     "workbench": workbench,
 }
+PROPS = {n: (lambda n=n: decorated(n)) for n in BUILDERS}
 
 
 # ----------------------------------------------------------------------------- main
@@ -487,6 +538,7 @@ RULES = [
     "UV0 is in metres, projected per face as shipkit.js worldUv does (x, z where |n.y| > 0.75, else the face's horizontal tangent and y); divide by the material's span_m.",
     "Flat shaded (one normal per face), triangulated, one closed manifold solid per prop; faces against the floor or the wall are kept for the deck compiler to drop.",
     "triangles is counted in the .glb; the build refuses a prop over budget_triangles. sha256 is the .glb's, from the Blender and exporter versions in generator: a second build with them writes the same bytes.",
+    "atlas is the prop's own baked texture (assets/models/<set>/atlas/<prop>.png, written by the build with its sha256): 256 x 256 RGBA, alpha the glow mask, read through the glb's second UV map (TEXCOORD_1; TEXCOORD_0 stays the metre UVs). px_per_m is its texel density, charts how many pieces its surface was cut into. data/materials/prop_atlas.json says how it is baked; screen faces carry no content in it (the page draws the console faces), accent faces bake light and neutral for the page to tint.",
 ]
 
 SUITE = PropSet("suite", "SuiteProps", OUT, GENERATOR, PROPS, BUDGETS, STATUS, RULES, __doc__)

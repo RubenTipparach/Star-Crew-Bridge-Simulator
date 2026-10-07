@@ -1,0 +1,3140 @@
+{
+ "schema": "starcrew.layout-patch/1",
+ "status": "Proposed (2026-10-07): openspec/changes/engineering-fitout. Applies after data/ships/tern/deck_access.json. Written by tools/engineering_fitout.py; edit the script, not this file.",
+ "_rules": [
+  "The patch fields are command_suite.json's (ShipKit.applyPatch, tools/command_suite.py patch_layout).",
+  "engineering.machines: back_m is the prop's origin (a wall prop: the centre of its back on the wall plane; a free one: the centre of its footprint; the crane: its rails' top; a valve: on its pipe's axis), yaw_deg the way its front faces (0 the bow, +90 port), set the prop set that models it. station: the station whose console it is. fixture: the layout fixture it draws.",
+  "engineering.runs: points_m the centreline, dia_m the outside diameter; from and to the port (machine.port), the reactor (azimuth), a tee onto another run, the ceiling, or the run's own start (a loop); hangers [x, y_bottom, y_top, z] rods up from it.",
+  "engineering.trays: the feeders' trays, power.json conduit paths clipped to the room (derived), and the converters' busbars; size_m [width, depth]. railings: polylines along the top of what they guard (sloped on a stair). rods, runways: straight members. lamps: lamps under the mezzanine, at_m the lens's centre, size_m its plan size.",
+  "engineering.replaces: what the fit-out draws instead of the deck plan's own placement."
+ ],
+ "compartments": [],
+ "portals": [],
+ "stations": [],
+ "fixtures": [
+  {
+   "id": "eng_gantry_ring",
+   "kind": "mezzanine",
+   "compartment": "engineering",
+   "center_m": [
+    0.0,
+    3.5,
+    -25.0
+   ],
+   "ring_inner_radius_m": 2.35,
+   "poly": [
+    [
+     -1.3876,
+     -21.65
+    ],
+    [
+     -3.35,
+     -23.6124
+    ],
+    [
+     -3.35,
+     -26.3876
+    ],
+    [
+     -1.3876,
+     -28.35
+    ],
+    [
+     1.3876,
+     -28.35
+    ],
+    [
+     3.35,
+     -26.3876
+    ],
+    [
+     3.35,
+     -23.6124
+    ],
+    [
+     1.3876,
+     -21.65
+    ]
+   ],
+   "note": "A ring catwalk round the reactor at deck A level, hung from the ceiling: the column's upper half within reach (engineering-fitout)."
+  },
+  {
+   "id": "eng_gantry_bridge",
+   "kind": "catwalk",
+   "compartment": "engineering",
+   "center_m": [
+    0.0,
+    3.5,
+    -20.825
+   ],
+   "size_m": [
+    1.2,
+    1.65
+   ],
+   "note": "The bridge from the catwalk to the ring catwalk (engineering-fitout)."
+  },
+  {
+   "id": "reactor_panel",
+   "center_m": [
+    0.0,
+    0.0,
+    -20.3
+   ]
+  }
+ ],
+ "fixtures_removed": [],
+ "systems": [
+  {
+   "id": "coolant_pumps",
+   "center_m": [
+    -7.2,
+    -3.5,
+    -25.0
+   ]
+  }
+ ],
+ "engineering": {
+  "machines": [
+   {
+    "id": "dressing",
+    "prop": "reactor_dressing",
+    "set": "engineering",
+    "back_m": [
+     0.0,
+     -3.5,
+     -25.0
+    ],
+    "yaw_deg": 0,
+    "level": "lower",
+    "serves": "reactor",
+    "note": "magnet coils, field rings, ports and cable looms round the column",
+    "on_wall": false
+   },
+   {
+    "id": "vac_45",
+    "prop": "vacuum_pump",
+    "set": "engineering",
+    "back_m": [
+     2.3335,
+     -3.5,
+     -22.6665
+    ],
+    "yaw_deg": 45,
+    "level": "lower",
+    "serves": "exhaust",
+    "note": "exhaust pump on the reactor's port at azimuth 45",
+    "on_wall": false
+   },
+   {
+    "id": "vac_135",
+    "prop": "vacuum_pump",
+    "set": "engineering",
+    "back_m": [
+     2.3335,
+     -3.5,
+     -27.3335
+    ],
+    "yaw_deg": 135,
+    "level": "lower",
+    "serves": "exhaust",
+    "note": "exhaust pump on the reactor's port at azimuth 135",
+    "on_wall": false
+   },
+   {
+    "id": "vac_225",
+    "prop": "vacuum_pump",
+    "set": "engineering",
+    "back_m": [
+     -2.3335,
+     -3.5,
+     -27.3335
+    ],
+    "yaw_deg": 225,
+    "level": "lower",
+    "serves": "exhaust",
+    "note": "exhaust pump on the reactor's port at azimuth 225",
+    "on_wall": false
+   },
+   {
+    "id": "vac_315",
+    "prop": "vacuum_pump",
+    "set": "engineering",
+    "back_m": [
+     -2.3335,
+     -3.5,
+     -22.6665
+    ],
+    "yaw_deg": 315,
+    "level": "lower",
+    "serves": "exhaust",
+    "note": "exhaust pump on the reactor's port at azimuth 315",
+    "on_wall": false
+   },
+   {
+    "id": "pump_a",
+    "prop": "coolant_pump",
+    "set": "engineering",
+    "back_m": [
+     7.2,
+     -3.5,
+     -25.0
+    ],
+    "yaw_deg": -90,
+    "level": "lower",
+    "serves": "primary_a",
+    "note": "coolant pump A, under heat exchanger A",
+    "on_wall": false
+   },
+   {
+    "id": "pump_b",
+    "prop": "coolant_pump",
+    "set": "engineering",
+    "back_m": [
+     -7.2,
+     -3.5,
+     -25.0
+    ],
+    "yaw_deg": 90,
+    "level": "lower",
+    "serves": "primary_b",
+    "note": "coolant pump B, under heat exchanger B",
+    "on_wall": false
+   },
+   {
+    "id": "dewar_1",
+    "prop": "fuel_dewar",
+    "set": "engineering",
+    "back_m": [
+     8.3,
+     -3.5,
+     -20.4
+    ],
+    "yaw_deg": -90,
+    "level": "lower",
+    "serves": "fuel",
+    "note": "deuterium",
+    "on_wall": false
+   },
+   {
+    "id": "dewar_2",
+    "prop": "fuel_dewar",
+    "set": "engineering",
+    "back_m": [
+     8.25,
+     -3.5,
+     -21.9
+    ],
+    "yaw_deg": -90,
+    "level": "lower",
+    "serves": "fuel",
+    "note": "deuterium",
+    "on_wall": false
+   },
+   {
+    "id": "he3_rack",
+    "prop": "helium3_rack",
+    "set": "engineering",
+    "back_m": [
+     6.0,
+     -3.5,
+     -18.0
+    ],
+    "yaw_deg": 180,
+    "level": "lower",
+    "serves": "fuel",
+    "note": "helium-3, on the forward wall",
+    "on_wall": true
+   },
+   {
+    "id": "fuel_processor",
+    "prop": "fuel_processor",
+    "set": "engineering",
+    "back_m": [
+     5.0,
+     -3.5,
+     -20.4
+    ],
+    "yaw_deg": -90,
+    "level": "lower",
+    "serves": "fuel",
+    "note": "meters the fuel and fires pellets into the reactor",
+    "on_wall": false
+   },
+   {
+    "id": "fuel_panel",
+    "prop": "local_panel",
+    "set": "engineering",
+    "back_m": [
+     3.4,
+     -3.5,
+     -18.0
+    ],
+    "yaw_deg": 180,
+    "level": "lower",
+    "serves": "fuel",
+    "note": "the fuel processor's local panel: fuel kg",
+    "on_wall": true
+   },
+   {
+    "id": "ash_tank",
+    "prop": "ash_tank",
+    "set": "engineering",
+    "back_m": [
+     -5.2,
+     -3.5,
+     -20.8
+    ],
+    "yaw_deg": 180,
+    "level": "lower",
+    "serves": "exhaust",
+    "note": "the exhaust's ash, and its roughing pump",
+    "on_wall": false
+   },
+   {
+    "id": "cryoplant",
+    "prop": "cryoplant",
+    "set": "engineering",
+    "back_m": [
+     -4.3,
+     -3.5,
+     -30.94
+    ],
+    "yaw_deg": 0,
+    "level": "lower",
+    "serves": "cryogenic",
+    "note": "cools the magnet coils; against the aft wall",
+    "on_wall": false
+   },
+   {
+    "id": "cryo_panel",
+    "prop": "local_panel",
+    "set": "engineering",
+    "back_m": [
+     -2.0,
+     -3.5,
+     -32.0
+    ],
+    "yaw_deg": 0,
+    "level": "lower",
+    "serves": "cryogenic",
+    "note": "the cryoplant's local panel",
+    "on_wall": true
+   },
+   {
+    "id": "makeup_tank",
+    "prop": "coolant_tank",
+    "set": "engineering",
+    "back_m": [
+     6.2,
+     -3.5,
+     -28.7
+    ],
+    "yaw_deg": 0,
+    "level": "lower",
+    "serves": "primary_a",
+    "note": "the loop's drain and makeup tank: a buffer",
+    "on_wall": false
+   },
+   {
+    "id": "coolant_valves",
+    "prop": "local_panel",
+    "set": "engineering",
+    "back_m": [
+     -6.5,
+     -3.5,
+     -27.65
+    ],
+    "yaw_deg": 0,
+    "level": "lower",
+    "serves": "primary",
+    "note": "the layout's coolant_valves fixture: loop valves and the radiator bypass",
+    "fixture": "coolant_valves",
+    "on_wall": false
+   },
+   {
+    "id": "bench",
+    "prop": "tool_board",
+    "set": "engineering",
+    "back_m": [
+     4.4,
+     -3.5,
+     -32.0
+    ],
+    "yaw_deg": 0,
+    "level": "lower",
+    "serves": "upkeep",
+    "note": "bench, vice and tool board",
+    "on_wall": true
+   },
+   {
+    "id": "chest_lower",
+    "prop": "tool_chest",
+    "set": "engineering",
+    "back_m": [
+     2.2,
+     -3.5,
+     -31.45
+    ],
+    "yaw_deg": 0,
+    "level": "lower",
+    "serves": "upkeep",
+    "note": "rolling tool chest",
+    "on_wall": false
+   },
+   {
+    "id": "rack_lower",
+    "prop": "parts_rack",
+    "set": "engineering",
+    "back_m": [
+     0.0,
+     -3.5,
+     -32.0
+    ],
+    "yaw_deg": 0,
+    "level": "lower",
+    "serves": "upkeep",
+    "note": "spares: impellers, valve bodies, pipe spools",
+    "on_wall": true
+   },
+   {
+    "id": "hx_a",
+    "prop": "heat_exchanger",
+    "set": "engineering",
+    "back_m": [
+     7.0,
+     0.0,
+     -25.0
+    ],
+    "yaw_deg": -90,
+    "level": "mezz",
+    "serves": "primary_a",
+    "note": "heat exchanger A: the hot leg in at the top, the cold leg down to pump A",
+    "on_wall": false
+   },
+   {
+    "id": "hx_b",
+    "prop": "heat_exchanger",
+    "set": "engineering",
+    "back_m": [
+     -7.0,
+     0.0,
+     -25.0
+    ],
+    "yaw_deg": 90,
+    "level": "mezz",
+    "serves": "primary_b",
+    "note": "heat exchanger B",
+    "on_wall": false
+   },
+   {
+    "id": "pressurizer",
+    "prop": "pressurizer",
+    "set": "engineering",
+    "back_m": [
+     -7.4,
+     0.0,
+     -28.4
+    ],
+    "yaw_deg": 90,
+    "level": "mezz",
+    "serves": "primary_b",
+    "note": "the loop's pressure buffer, on hot leg B",
+    "on_wall": false
+   },
+   {
+    "id": "converter_p",
+    "prop": "power_converter",
+    "set": "engineering",
+    "back_m": [
+     7.75,
+     0.0,
+     -31.0
+    ],
+    "yaw_deg": -38.66,
+    "level": "mezz",
+    "serves": "gen_p",
+    "note": "reactor generator p (power.json gen_p), on the aft chamfer",
+    "on_wall": true
+   },
+   {
+    "id": "converter_s",
+    "prop": "power_converter",
+    "set": "engineering",
+    "back_m": [
+     -7.75,
+     0.0,
+     -31.0
+    ],
+    "yaw_deg": 38.66,
+    "level": "mezz",
+    "serves": "gen_s",
+    "note": "reactor generator s (power.json gen_s), on the aft chamfer",
+    "on_wall": true
+   },
+   {
+    "id": "control_desk",
+    "prop": "control_desk",
+    "set": "engineering",
+    "back_m": [
+     5.5,
+     0.0,
+     -22.0
+    ],
+    "yaw_deg": 0,
+    "level": "mezz",
+    "serves": "eng_main",
+    "note": "the engineer's desk (station eng_main): the seat stands forward of it",
+    "station": "eng_main",
+    "on_wall": false
+   },
+   {
+    "id": "reactor_panel",
+    "prop": "local_panel",
+    "set": "engineering",
+    "back_m": [
+     0.0,
+     0.0,
+     -20.55
+    ],
+    "yaw_deg": 0,
+    "level": "mezz",
+    "serves": "reactor",
+    "note": "the layout's reactor_panel fixture: scram reset, throttle, branch valves",
+    "fixture": "reactor_panel",
+    "on_wall": false
+   },
+   {
+    "id": "mimic",
+    "prop": "mimic_board",
+    "set": "engineering",
+    "back_m": [
+     0.0,
+     0.6,
+     -18.0
+    ],
+    "yaw_deg": 180,
+    "level": "mezz",
+    "serves": "plant",
+    "note": "the plant mimic, under the catwalk",
+    "on_wall": true
+   },
+   {
+    "id": "rack_mezz",
+    "prop": "parts_rack",
+    "set": "engineering",
+    "back_m": [
+     3.6,
+     0.0,
+     -32.0
+    ],
+    "yaw_deg": 0,
+    "level": "mezz",
+    "serves": "upkeep",
+    "note": "spares",
+    "on_wall": true
+   },
+   {
+    "id": "chest_mezz",
+    "prop": "tool_chest",
+    "set": "engineering",
+    "back_m": [
+     -3.5,
+     0.0,
+     -31.4
+    ],
+    "yaw_deg": 0,
+    "level": "mezz",
+    "serves": "upkeep",
+    "note": "rolling tool chest",
+    "on_wall": false
+   },
+   {
+    "id": "crane",
+    "prop": "gantry_crane",
+    "set": "engineering",
+    "back_m": [
+     0.0,
+     5.6,
+     -29.0
+    ],
+    "yaw_deg": 0,
+    "level": "mezz",
+    "serves": "upkeep",
+    "note": "overhead crane over the aft bay, on runways along the side walls",
+    "on_wall": false
+   },
+   {
+    "id": "valve_hot_a",
+    "prop": "valve_large",
+    "set": "engineering",
+    "back_m": [
+     4.4,
+     2.6,
+     -25.0
+    ],
+    "yaw_deg": 0,
+    "level": "mezz",
+    "serves": "primary_a",
+    "note": "hot leg A isolation valve",
+    "run": "hot_a",
+    "on_wall": false
+   },
+   {
+    "id": "valve_hot_b",
+    "prop": "valve_large",
+    "set": "engineering",
+    "back_m": [
+     -4.4,
+     2.6,
+     -25.0
+    ],
+    "yaw_deg": 0,
+    "level": "mezz",
+    "serves": "primary_b",
+    "note": "hot leg B isolation valve",
+    "run": "hot_b",
+    "on_wall": false
+   },
+   {
+    "id": "valve_makeup",
+    "prop": "valve_small",
+    "set": "engineering",
+    "back_m": [
+     7.9,
+     -2.0,
+     -27.7
+    ],
+    "yaw_deg": 0,
+    "level": "lower",
+    "serves": "primary_a",
+    "note": "makeup valve",
+    "run": "makeup",
+    "on_wall": false
+   }
+  ],
+  "runs": [
+   {
+    "id": "hot_a",
+    "loop": "primary_a",
+    "kind": "lagged",
+    "dia_m": 0.45,
+    "from": {
+     "reactor": 90,
+     "at": [
+      1.8,
+      2.6,
+      -25.0
+     ],
+     "dir": [
+      1.0,
+      0.0,
+      6.123233995736766e-17
+     ]
+    },
+    "to": {
+     "port": "hx_a.hot_in",
+     "at": [
+      5.95,
+      4.25,
+      -25.0
+     ],
+     "dir": [
+      -1.0,
+      0,
+      6.123233995736766e-17
+     ],
+     "dia": 0.45
+    },
+    "points_m": [
+     [
+      1.8,
+      2.6,
+      -25.0
+     ],
+     [
+      5.2,
+      2.6,
+      -25.0
+     ],
+     [
+      5.2,
+      4.25,
+      -25.0
+     ],
+     [
+      5.95,
+      4.25,
+      -25.0
+     ]
+    ],
+    "note": "hot leg A: the reactor's blanket to heat exchanger A's gooseneck",
+    "hangers": [
+     [
+      3.5,
+      2.825,
+      6.5,
+      -25.0
+     ]
+    ]
+   },
+   {
+    "id": "cold_a",
+    "loop": "primary_a",
+    "kind": "lagged",
+    "dia_m": 0.45,
+    "from": {
+     "port": "hx_a.cold_out",
+     "at": [
+      7.95,
+      0.75,
+      -25.0
+     ],
+     "dir": [
+      1.0,
+      0,
+      -6.123233995736766e-17
+     ],
+     "dia": 0.45
+    },
+    "to": {
+     "port": "pump_a.suction",
+     "at": [
+      8.0,
+      -2.8,
+      -25.0
+     ],
+     "dir": [
+      1.0,
+      0,
+      -6.123233995736766e-17
+     ],
+     "dia": 0.45
+    },
+    "points_m": [
+     [
+      7.95,
+      0.75,
+      -25.0
+     ],
+     [
+      8.65,
+      0.75,
+      -25.0
+     ],
+     [
+      8.65,
+      -2.8,
+      -25.0
+     ],
+     [
+      8.0,
+      -2.8,
+      -25.0
+     ]
+    ],
+    "note": "cold leg A: down through the mezzanine to pump A",
+    "hangers": []
+   },
+   {
+    "id": "return_a",
+    "loop": "primary_a",
+    "kind": "lagged",
+    "dia_m": 0.45,
+    "from": {
+     "port": "pump_a.discharge",
+     "at": [
+      6.4,
+      -2.8,
+      -25.0
+     ],
+     "dir": [
+      -1.0,
+      0,
+      6.123233995736766e-17
+     ],
+     "dia": 0.45
+    },
+    "to": {
+     "reactor": 90,
+     "at": [
+      1.8,
+      -1.1,
+      -25.0
+     ],
+     "dir": [
+      1.0,
+      0.0,
+      6.123233995736766e-17
+     ]
+    },
+    "points_m": [
+     [
+      6.4,
+      -2.8,
+      -25.0
+     ],
+     [
+      5.9,
+      -2.8,
+      -25.0
+     ],
+     [
+      5.9,
+      -1.1,
+      -25.0
+     ],
+     [
+      1.8,
+      -1.1,
+      -25.0
+     ]
+    ],
+    "note": "return A: pump A back into the reactor",
+    "hangers": [
+     [
+      3.85,
+      -0.875,
+      -0.2,
+      -25.0
+     ]
+    ]
+   },
+   {
+    "id": "sec_out_a",
+    "loop": "secondary_a",
+    "kind": "lagged",
+    "dia_m": 0.3,
+    "from": {
+     "port": "hx_a.sec_out",
+     "at": [
+      7.0,
+      3.2,
+      -24.05
+     ],
+     "dir": [
+      6.123233995736766e-17,
+      0,
+      1.0
+     ],
+     "dia": 0.3
+    },
+    "to": {
+     "ceiling": true,
+     "at": [
+      7.0,
+      6.55,
+      -23.5
+     ]
+    },
+    "points_m": [
+     [
+      7.0,
+      3.2,
+      -24.05
+     ],
+     [
+      7.0,
+      3.2,
+      -23.5
+     ],
+     [
+      7.0,
+      6.55,
+      -23.5
+     ]
+    ],
+    "note": "secondary out, up to the hull radiators",
+    "hangers": []
+   },
+   {
+    "id": "sec_in_a",
+    "loop": "secondary_a",
+    "kind": "lagged",
+    "dia_m": 0.3,
+    "from": {
+     "port": "hx_a.sec_in",
+     "at": [
+      7.0,
+      1.6,
+      -25.95
+     ],
+     "dir": [
+      -6.123233995736766e-17,
+      0,
+      -1.0
+     ],
+     "dia": 0.3
+    },
+    "to": {
+     "ceiling": true,
+     "at": [
+      7.0,
+      6.55,
+      -26.5
+     ]
+    },
+    "points_m": [
+     [
+      7.0,
+      1.6,
+      -25.95
+     ],
+     [
+      7.0,
+      1.6,
+      -26.5
+     ],
+     [
+      7.0,
+      6.55,
+      -26.5
+     ]
+    ],
+    "note": "secondary in, down from the hull radiators",
+    "hangers": []
+   },
+   {
+    "id": "hot_b",
+    "loop": "primary_b",
+    "kind": "lagged",
+    "dia_m": 0.45,
+    "from": {
+     "reactor": 270,
+     "at": [
+      -1.8,
+      2.6,
+      -25.0
+     ],
+     "dir": [
+      -1.0,
+      0.0,
+      -1.8369701987210297e-16
+     ]
+    },
+    "to": {
+     "port": "hx_b.hot_in",
+     "at": [
+      -5.95,
+      4.25,
+      -25.0
+     ],
+     "dir": [
+      1.0,
+      0,
+      6.123233995736766e-17
+     ],
+     "dia": 0.45
+    },
+    "points_m": [
+     [
+      -1.8,
+      2.6,
+      -25.0
+     ],
+     [
+      -5.2,
+      2.6,
+      -25.0
+     ],
+     [
+      -5.2,
+      4.25,
+      -25.0
+     ],
+     [
+      -5.95,
+      4.25,
+      -25.0
+     ]
+    ],
+    "note": "hot leg B: the reactor's blanket to heat exchanger B's gooseneck",
+    "hangers": [
+     [
+      -3.5,
+      2.825,
+      6.5,
+      -25.0
+     ]
+    ]
+   },
+   {
+    "id": "cold_b",
+    "loop": "primary_b",
+    "kind": "lagged",
+    "dia_m": 0.45,
+    "from": {
+     "port": "hx_b.cold_out",
+     "at": [
+      -7.95,
+      0.75,
+      -25.0
+     ],
+     "dir": [
+      -1.0,
+      0,
+      -6.123233995736766e-17
+     ],
+     "dia": 0.45
+    },
+    "to": {
+     "port": "pump_b.suction",
+     "at": [
+      -8.0,
+      -2.8,
+      -25.0
+     ],
+     "dir": [
+      -1.0,
+      0,
+      -6.123233995736766e-17
+     ],
+     "dia": 0.45
+    },
+    "points_m": [
+     [
+      -7.95,
+      0.75,
+      -25.0
+     ],
+     [
+      -8.65,
+      0.75,
+      -25.0
+     ],
+     [
+      -8.65,
+      -2.8,
+      -25.0
+     ],
+     [
+      -8.0,
+      -2.8,
+      -25.0
+     ]
+    ],
+    "note": "cold leg B: down through the mezzanine to pump B",
+    "hangers": []
+   },
+   {
+    "id": "return_b",
+    "loop": "primary_b",
+    "kind": "lagged",
+    "dia_m": 0.45,
+    "from": {
+     "port": "pump_b.discharge",
+     "at": [
+      -6.4,
+      -2.8,
+      -25.0
+     ],
+     "dir": [
+      1.0,
+      0,
+      6.123233995736766e-17
+     ],
+     "dia": 0.45
+    },
+    "to": {
+     "reactor": 270,
+     "at": [
+      -1.8,
+      -1.1,
+      -25.0
+     ],
+     "dir": [
+      -1.0,
+      0.0,
+      -1.8369701987210297e-16
+     ]
+    },
+    "points_m": [
+     [
+      -6.4,
+      -2.8,
+      -25.0
+     ],
+     [
+      -5.9,
+      -2.8,
+      -25.0
+     ],
+     [
+      -5.9,
+      -1.1,
+      -25.0
+     ],
+     [
+      -1.8,
+      -1.1,
+      -25.0
+     ]
+    ],
+    "note": "return B: pump B back into the reactor",
+    "hangers": [
+     [
+      -3.85,
+      -0.875,
+      -0.2,
+      -25.0
+     ]
+    ]
+   },
+   {
+    "id": "sec_out_b",
+    "loop": "secondary_b",
+    "kind": "lagged",
+    "dia_m": 0.3,
+    "from": {
+     "port": "hx_b.sec_out",
+     "at": [
+      -7.0,
+      3.2,
+      -25.95
+     ],
+     "dir": [
+      6.123233995736766e-17,
+      0,
+      -1.0
+     ],
+     "dia": 0.3
+    },
+    "to": {
+     "ceiling": true,
+     "at": [
+      -7.0,
+      6.55,
+      -26.5
+     ]
+    },
+    "points_m": [
+     [
+      -7.0,
+      3.2,
+      -25.95
+     ],
+     [
+      -7.0,
+      3.2,
+      -26.5
+     ],
+     [
+      -7.0,
+      6.55,
+      -26.5
+     ]
+    ],
+    "note": "secondary out, up to the hull radiators",
+    "hangers": []
+   },
+   {
+    "id": "sec_in_b",
+    "loop": "secondary_b",
+    "kind": "lagged",
+    "dia_m": 0.3,
+    "from": {
+     "port": "hx_b.sec_in",
+     "at": [
+      -7.0,
+      1.6,
+      -24.05
+     ],
+     "dir": [
+      -6.123233995736766e-17,
+      0,
+      1.0
+     ],
+     "dia": 0.3
+    },
+    "to": {
+     "ceiling": true,
+     "at": [
+      -7.0,
+      6.55,
+      -23.5
+     ]
+    },
+    "points_m": [
+     [
+      -7.0,
+      1.6,
+      -24.05
+     ],
+     [
+      -7.0,
+      1.6,
+      -23.5
+     ],
+     [
+      -7.0,
+      6.55,
+      -23.5
+     ]
+    ],
+    "note": "secondary in, down from the hull radiators",
+    "hangers": []
+   },
+   {
+    "id": "surge",
+    "loop": "primary_b",
+    "kind": "painted",
+    "dia_m": 0.2,
+    "from": {
+     "port": "pressurizer.surge",
+     "at": [
+      -6.800000000000001,
+      0.4,
+      -28.4
+     ],
+     "dir": [
+      1.0,
+      0,
+      6.123233995736766e-17
+     ],
+     "dia": 0.2
+    },
+    "to": {
+     "tee": "hot_b",
+     "at": [
+      -3.6,
+      2.6,
+      -25.225
+     ]
+    },
+    "points_m": [
+     [
+      -6.8,
+      0.4,
+      -28.4
+     ],
+     [
+      -6.4,
+      0.4,
+      -28.4
+     ],
+     [
+      -6.4,
+      2.6,
+      -28.4
+     ],
+     [
+      -3.6,
+      2.6,
+      -28.4
+     ],
+     [
+      -3.6,
+      2.6,
+      -25.225
+     ]
+    ],
+    "note": "the pressurizer's surge line into hot leg B",
+    "hangers": [
+     [
+      -3.6,
+      2.7,
+      6.5,
+      -26.8125
+     ]
+    ]
+   },
+   {
+    "id": "makeup",
+    "loop": "primary_a",
+    "kind": "painted",
+    "dia_m": 0.15,
+    "from": {
+     "port": "makeup_tank.outlet",
+     "at": [
+      7.2,
+      -3.15,
+      -28.099999999999998
+     ],
+     "dir": [
+      0.0,
+      0,
+      1.0
+     ],
+     "dia": 0.15
+    },
+    "to": {
+     "tee": "cold_a",
+     "at": [
+      8.65,
+      -2.0,
+      -25.225
+     ]
+    },
+    "points_m": [
+     [
+      7.2,
+      -3.15,
+      -28.1
+     ],
+     [
+      7.2,
+      -3.15,
+      -27.7
+     ],
+     [
+      7.2,
+      -2.0,
+      -27.7
+     ],
+     [
+      8.65,
+      -2.0,
+      -27.7
+     ],
+     [
+      8.65,
+      -2.0,
+      -25.225
+     ]
+    ],
+    "note": "makeup from the drain and makeup tank into cold leg A",
+    "hangers": []
+   },
+   {
+    "id": "d2_a",
+    "loop": "fuel",
+    "kind": "cryo",
+    "dia_m": 0.1,
+    "from": {
+     "port": "dewar_1.fuel_out",
+     "at": [
+      7.65,
+      -3.05,
+      -20.4
+     ],
+     "dir": [
+      -1.0,
+      0,
+      6.123233995736766e-17
+     ],
+     "dia": 0.1
+    },
+    "to": {
+     "port": "fuel_processor.d2_in",
+     "at": [
+      5.65,
+      -2.7,
+      -21.0
+     ],
+     "dir": [
+      1.0,
+      0,
+      -6.123233995736766e-17
+     ],
+     "dia": 0.1
+    },
+    "points_m": [
+     [
+      7.65,
+      -3.05,
+      -20.4
+     ],
+     [
+      6.3,
+      -3.05,
+      -20.4
+     ],
+     [
+      6.3,
+      -3.05,
+      -21.0
+     ],
+     [
+      6.3,
+      -2.7,
+      -21.0
+     ],
+     [
+      5.65,
+      -2.7,
+      -21.0
+     ]
+    ],
+    "note": "deuterium from dewar 1 to the fuel processor",
+    "hangers": []
+   },
+   {
+    "id": "d2_b",
+    "loop": "fuel",
+    "kind": "cryo",
+    "dia_m": 0.1,
+    "from": {
+     "port": "dewar_2.fuel_out",
+     "at": [
+      7.6,
+      -3.05,
+      -21.9
+     ],
+     "dir": [
+      -1.0,
+      0,
+      6.123233995736766e-17
+     ],
+     "dia": 0.1
+    },
+    "to": {
+     "tee": "d2_a",
+     "at": [
+      6.9,
+      -3.05,
+      -20.45
+     ]
+    },
+    "points_m": [
+     [
+      7.6,
+      -3.05,
+      -21.9
+     ],
+     [
+      6.9,
+      -3.05,
+      -21.9
+     ],
+     [
+      6.9,
+      -3.05,
+      -20.45
+     ]
+    ],
+    "note": "deuterium from dewar 2, teed into dewar 1's line",
+    "hangers": []
+   },
+   {
+    "id": "he3",
+    "loop": "fuel",
+    "kind": "cryo",
+    "dia_m": 0.08,
+    "from": {
+     "port": "he3_rack.fuel_out",
+     "at": [
+      4.85,
+      -1.65,
+      -18.5
+     ],
+     "dir": [
+      -1.0,
+      0,
+      -1.2246467991473532e-16
+     ],
+     "dia": 0.08
+    },
+    "to": {
+     "port": "fuel_processor.he3_in",
+     "at": [
+      5.65,
+      -2.7,
+      -20.4
+     ],
+     "dir": [
+      1.0,
+      0,
+      -6.123233995736766e-17
+     ],
+     "dia": 0.08
+    },
+    "points_m": [
+     [
+      4.85,
+      -1.65,
+      -18.5
+     ],
+     [
+      4.2,
+      -1.65,
+      -18.5
+     ],
+     [
+      4.2,
+      -1.65,
+      -18.95
+     ],
+     [
+      6.0,
+      -1.65,
+      -18.95
+     ],
+     [
+      6.0,
+      -1.65,
+      -20.4
+     ],
+     [
+      6.0,
+      -2.7,
+      -20.4
+     ],
+     [
+      5.65,
+      -2.7,
+      -20.4
+     ]
+    ],
+    "note": "helium-3 from the rack to the fuel processor, over the gap between them",
+    "hangers": []
+   },
+   {
+    "id": "inject",
+    "loop": "fuel",
+    "kind": "cryo",
+    "dia_m": 0.1,
+    "from": {
+     "port": "fuel_processor.inject_out",
+     "at": [
+      4.35,
+      -2.3,
+      -19.799999999999997
+     ],
+     "dir": [
+      -1.0,
+      0,
+      6.123233995736766e-17
+     ],
+     "dia": 0.1
+    },
+    "to": {
+     "reactor": 0,
+     "at": [
+      0.0,
+      -1.0,
+      -23.2
+     ],
+     "dir": [
+      0.0,
+      0.0,
+      1.0
+     ]
+    },
+    "points_m": [
+     [
+      4.35,
+      -2.3,
+      -19.8
+     ],
+     [
+      3.0,
+      -2.3,
+      -19.8
+     ],
+     [
+      3.0,
+      -1.0,
+      -19.8
+     ],
+     [
+      0.0,
+      -1.0,
+      -19.8
+     ],
+     [
+      0.0,
+      -1.0,
+      -23.2
+     ]
+    ],
+    "note": "the pellet injector line into the reactor",
+    "hangers": [
+     [
+      0.0,
+      -0.95,
+      -0.2,
+      -21.5
+     ]
+    ]
+   },
+   {
+    "id": "lhe_supply",
+    "loop": "cryogenic",
+    "kind": "cryo",
+    "dia_m": 0.15,
+    "from": {
+     "port": "cryoplant.lhe_out",
+     "at": [
+      -3.1999999999999997,
+      -1.1,
+      -30.19
+     ],
+     "dir": [
+      0.0,
+      0,
+      1.0
+     ],
+     "dia": 0.15
+    },
+    "to": {
+     "reactor": 180,
+     "at": [
+      0.15000000000000022,
+      -1.1,
+      -26.79373911146521
+     ],
+     "dir": [
+      1.2246467991473532e-16,
+      0.0,
+      -1.0
+     ]
+    },
+    "points_m": [
+     [
+      -3.2,
+      -1.1,
+      -30.19
+     ],
+     [
+      -3.2,
+      -1.1,
+      -29.75
+     ],
+     [
+      0.15,
+      -1.1,
+      -29.75
+     ],
+     [
+      0.15,
+      -1.1,
+      -26.7937
+     ]
+    ],
+    "note": "liquid helium to the magnet coils",
+    "hangers": [
+     [
+      -1.525,
+      -1.025,
+      -0.2,
+      -29.75
+     ]
+    ]
+   },
+   {
+    "id": "lhe_return",
+    "loop": "cryogenic",
+    "kind": "cryo",
+    "dia_m": 0.15,
+    "from": {
+     "port": "cryoplant.lhe_return",
+     "at": [
+      -3.6999999999999997,
+      -1.1,
+      -30.19
+     ],
+     "dir": [
+      0.0,
+      0,
+      1.0
+     ],
+     "dia": 0.15
+    },
+    "to": {
+     "reactor": 180,
+     "at": [
+      -0.14999999999999977,
+      -1.1,
+      -26.79373911146521
+     ],
+     "dir": [
+      1.2246467991473532e-16,
+      0.0,
+      -1.0
+     ]
+    },
+    "points_m": [
+     [
+      -3.7,
+      -1.1,
+      -30.19
+     ],
+     [
+      -3.7,
+      -1.1,
+      -29.25
+     ],
+     [
+      -0.15,
+      -1.1,
+      -29.25
+     ],
+     [
+      -0.15,
+      -1.1,
+      -26.7937
+     ]
+    ],
+    "note": "helium gas back from the coils",
+    "hangers": [
+     [
+      -1.925,
+      -1.025,
+      -0.2,
+      -29.25
+     ]
+    ]
+   },
+   {
+    "id": "exhaust_45",
+    "loop": "exhaust",
+    "kind": "steel",
+    "dia_m": 0.1,
+    "from": {
+     "port": "vac_45.exhaust",
+     "at": [
+      3.3234494936611663,
+      -3.2,
+      -22.100814575050762
+     ],
+     "dir": [
+      0.7071067811865475,
+      0,
+      0.7071067811865476
+     ],
+     "dia": 0.1
+    },
+    "to": {
+     "tee": "exhaust_ring",
+     "at": [
+      3.429515510839148,
+      -0.7749999999999999,
+      -21.99474855787278
+     ]
+    },
+    "points_m": [
+     [
+      3.3234,
+      -3.2,
+      -22.1008
+     ],
+     [
+      3.4295,
+      -3.2,
+      -21.9947
+     ],
+     [
+      3.4295,
+      -0.775,
+      -21.9947
+     ]
+    ],
+    "note": "exhaust riser from the pump at azimuth 45",
+    "hangers": []
+   },
+   {
+    "id": "exhaust_135",
+    "loop": "exhaust",
+    "kind": "steel",
+    "dia_m": 0.1,
+    "from": {
+     "port": "vac_135.exhaust",
+     "at": [
+      2.899185424949238,
+      -3.2,
+      -28.32344949366117
+     ],
+     "dir": [
+      0.7071067811865476,
+      0,
+      -0.7071067811865475
+     ],
+     "dia": 0.1
+    },
+    "to": {
+     "tee": "exhaust_ring",
+     "at": [
+      3.00525144212722,
+      -0.7749999999999999,
+      -28.429515510839153
+     ]
+    },
+    "points_m": [
+     [
+      2.8992,
+      -3.2,
+      -28.3234
+     ],
+     [
+      3.0053,
+      -3.2,
+      -28.4295
+     ],
+     [
+      3.0053,
+      -0.775,
+      -28.4295
+     ]
+    ],
+    "note": "exhaust riser from the pump at azimuth 135",
+    "hangers": []
+   },
+   {
+    "id": "exhaust_225",
+    "loop": "exhaust",
+    "kind": "steel",
+    "dia_m": 0.1,
+    "from": {
+     "port": "vac_225.exhaust",
+     "at": [
+      -3.3234494936611663,
+      -3.2,
+      -27.899185424949238
+     ],
+     "dir": [
+      -0.7071067811865475,
+      0,
+      -0.7071067811865477
+     ],
+     "dia": 0.1
+    },
+    "to": {
+     "tee": "exhaust_ring",
+     "at": [
+      -3.429515510839148,
+      -0.7749999999999999,
+      -28.00525144212722
+     ]
+    },
+    "points_m": [
+     [
+      -3.3234,
+      -3.2,
+      -27.8992
+     ],
+     [
+      -3.4295,
+      -3.2,
+      -28.0053
+     ],
+     [
+      -3.4295,
+      -0.775,
+      -28.0053
+     ]
+    ],
+    "note": "exhaust riser from the pump at azimuth 225",
+    "hangers": []
+   },
+   {
+    "id": "exhaust_315",
+    "loop": "exhaust",
+    "kind": "steel",
+    "dia_m": 0.1,
+    "from": {
+     "port": "vac_315.exhaust",
+     "at": [
+      -2.899185424949238,
+      -3.2,
+      -21.67655050633883
+     ],
+     "dir": [
+      -0.7071067811865477,
+      0,
+      0.7071067811865474
+     ],
+     "dia": 0.1
+    },
+    "to": {
+     "tee": "exhaust_ring",
+     "at": [
+      -3.0052514421272205,
+      -0.7749999999999999,
+      -21.570484489160847
+     ]
+    },
+    "points_m": [
+     [
+      -2.8992,
+      -3.2,
+      -21.6766
+     ],
+     [
+      -3.0053,
+      -3.2,
+      -21.5705
+     ],
+     [
+      -3.0053,
+      -0.775,
+      -21.5705
+     ]
+    ],
+    "note": "exhaust riser from the pump at azimuth 315",
+    "hangers": []
+   },
+   {
+    "id": "exhaust_ring",
+    "loop": "exhaust",
+    "kind": "steel",
+    "dia_m": 0.15,
+    "from": {
+     "loop": true,
+     "at": [
+      0.0,
+      -0.7,
+      -20.45
+     ]
+    },
+    "to": {
+     "loop": true,
+     "at": [
+      0.0,
+      -0.7,
+      -20.45
+     ]
+    },
+    "points_m": [
+     [
+      0.0,
+      -0.7,
+      -20.45
+     ],
+     [
+      1.8847,
+      -0.7,
+      -20.45
+     ],
+     [
+      4.55,
+      -0.7,
+      -23.1153
+     ],
+     [
+      4.55,
+      -0.7,
+      -26.8847
+     ],
+     [
+      1.8847,
+      -0.7,
+      -29.55
+     ],
+     [
+      -1.8847,
+      -0.7,
+      -29.55
+     ],
+     [
+      -4.55,
+      -0.7,
+      -26.8847
+     ],
+     [
+      -4.55,
+      -0.7,
+      -23.1153
+     ],
+     [
+      -1.8847,
+      -0.7,
+      -20.45
+     ],
+     [
+      0.0,
+      -0.7,
+      -20.45
+     ]
+    ],
+    "note": "the exhaust ring header under the mezzanine",
+    "hangers": [
+     [
+      3.2173,
+      -0.625,
+      -0.2,
+      -21.7827
+     ],
+     [
+      4.55,
+      -0.625,
+      -0.2,
+      -25.0
+     ],
+     [
+      3.2173,
+      -0.625,
+      -0.2,
+      -28.2173
+     ],
+     [
+      0.0,
+      -0.625,
+      -0.2,
+      -29.55
+     ],
+     [
+      -3.2173,
+      -0.625,
+      -0.2,
+      -28.2173
+     ],
+     [
+      -4.55,
+      -0.625,
+      -0.2,
+      -25.0
+     ],
+     [
+      -3.2173,
+      -0.625,
+      -0.2,
+      -21.7827
+     ]
+    ]
+   },
+   {
+    "id": "ash",
+    "loop": "exhaust",
+    "kind": "steel",
+    "dia_m": 0.15,
+    "from": {
+     "tee": "exhaust_ring",
+     "at": [
+      -2.340737725975564,
+      -0.7,
+      -20.8
+     ]
+    },
+    "to": {
+     "port": "ash_tank.inlet",
+     "at": [
+      -4.6000000000000005,
+      -1.7,
+      -20.8
+     ],
+     "dir": [
+      1.0,
+      0,
+      1.2246467991473532e-16
+     ],
+     "dia": 0.15
+    },
+    "points_m": [
+     [
+      -2.3407,
+      -0.7,
+      -20.8
+     ],
+     [
+      -4.0,
+      -0.7,
+      -20.8
+     ],
+     [
+      -4.0,
+      -1.7,
+      -20.8
+     ],
+     [
+      -4.6,
+      -1.7,
+      -20.8
+     ]
+    ],
+    "note": "the ring header to the ash tank",
+    "hangers": []
+   }
+  ],
+  "trays": [
+   {
+    "conduit": "k_drive_p",
+    "kind": "tray",
+    "size_m": [
+     0.4,
+     0.1
+    ],
+    "points_m": [
+     [
+      8.6,
+      2.0,
+      -20.6
+     ],
+     [
+      8.6,
+      5.0,
+      -20.6
+     ],
+     [
+      8.6,
+      5.0,
+      -29.6
+     ],
+     [
+      6.2,
+      5.0,
+      -29.6
+     ],
+     [
+      6.2,
+      5.0,
+      -31.45
+     ],
+     [
+      0.5,
+      5.0,
+      -31.45
+     ],
+     [
+      0.5,
+      2.5,
+      -31.45
+     ],
+     [
+      0.5,
+      2.5,
+      -32.0
+     ]
+    ]
+   },
+   {
+    "conduit": "k_drive_s",
+    "kind": "tray",
+    "size_m": [
+     0.4,
+     0.1
+    ],
+    "points_m": [
+     [
+      -8.6,
+      2.0,
+      -21.45
+     ],
+     [
+      -8.6,
+      5.0,
+      -21.45
+     ],
+     [
+      -8.6,
+      5.0,
+      -29.6
+     ],
+     [
+      -6.2,
+      5.0,
+      -29.6
+     ],
+     [
+      -6.2,
+      5.0,
+      -31.45
+     ],
+     [
+      -0.5,
+      5.0,
+      -31.45
+     ],
+     [
+      -0.5,
+      2.5,
+      -31.45
+     ],
+     [
+      -0.5,
+      2.5,
+      -32.0
+     ]
+    ]
+   },
+   {
+    "conduit": "k_aft_p",
+    "kind": "tray",
+    "size_m": [
+     0.4,
+     0.1
+    ],
+    "points_m": [
+     [
+      8.6,
+      2.0,
+      -20.15
+     ],
+     [
+      8.6,
+      2.7,
+      -20.15
+     ],
+     [
+      8.6,
+      2.7,
+      -18.75
+     ],
+     [
+      7.75,
+      2.7,
+      -18.75
+     ],
+     [
+      7.75,
+      2.7,
+      -18.0
+     ]
+    ]
+   },
+   {
+    "conduit": "k_aft_s",
+    "kind": "tray",
+    "size_m": [
+     0.4,
+     0.1
+    ],
+    "points_m": [
+     [
+      -8.6,
+      2.0,
+      -20.55
+     ],
+     [
+      -8.6,
+      2.7,
+      -20.55
+     ],
+     [
+      -8.6,
+      2.7,
+      -18.75
+     ],
+     [
+      -7.75,
+      2.7,
+      -18.75
+     ],
+     [
+      -7.75,
+      2.7,
+      -18.0
+     ]
+    ]
+   },
+   {
+    "conduit": "k_a_aft",
+    "kind": "tray",
+    "size_m": [
+     0.4,
+     0.1
+    ],
+    "points_m": [
+     [
+      -8.6,
+      2.0,
+      -21.0
+     ],
+     [
+      -8.6,
+      2.95,
+      -21.0
+     ],
+     [
+      -8.6,
+      2.95,
+      -18.75
+     ],
+     [
+      -6.8,
+      2.95,
+      -18.75
+     ],
+     [
+      -6.8,
+      6.2,
+      -18.75
+     ],
+     [
+      0.6,
+      6.2,
+      -18.75
+     ],
+     [
+      0.6,
+      6.2,
+      -18.0
+     ]
+    ]
+   },
+   {
+    "conduit": "gen_p",
+    "kind": "busbar",
+    "size_m": [
+     0.5,
+     0.2
+    ],
+    "points_m": [
+     [
+      7.4377,
+      2.8,
+      -30.6096
+     ],
+     [
+      7.4377,
+      3.1,
+      -30.6096
+     ],
+     [
+      7.4377,
+      3.1,
+      -29.6
+     ],
+     [
+      7.4377,
+      4.95,
+      -29.6
+     ]
+    ],
+    "note": "converter p (the generator) up to the drive feeder's tray"
+   },
+   {
+    "conduit": "gen_s",
+    "kind": "busbar",
+    "size_m": [
+     0.5,
+     0.2
+    ],
+    "points_m": [
+     [
+      -7.4377,
+      2.8,
+      -30.6096
+     ],
+     [
+      -7.4377,
+      3.1,
+      -30.6096
+     ],
+     [
+      -7.4377,
+      3.1,
+      -29.6
+     ],
+     [
+      -7.4377,
+      4.95,
+      -29.6
+     ]
+    ],
+    "note": "converter s (the generator) up to the drive feeder's tray"
+   }
+  ],
+  "railings": [
+   {
+    "id": "rail_well",
+    "points_m": [
+     [
+      0.9298,
+      0.0,
+      -21.53
+     ],
+     [
+      2.5402,
+      0.0,
+      -22.4598
+     ],
+     [
+      3.47,
+      0.0,
+      -24.0702
+     ],
+     [
+      3.47,
+      0.0,
+      -25.9298
+     ],
+     [
+      2.5402,
+      0.0,
+      -27.5402
+     ],
+     [
+      0.9298,
+      0.0,
+      -28.47
+     ],
+     [
+      -0.9298,
+      0.0,
+      -28.47
+     ],
+     [
+      -2.5402,
+      0.0,
+      -27.5402
+     ],
+     [
+      -3.47,
+      0.0,
+      -25.9298
+     ],
+     [
+      -3.47,
+      0.0,
+      -24.0702
+     ],
+     [
+      -2.5402,
+      0.0,
+      -22.4598
+     ],
+     [
+      -0.9298,
+      0.0,
+      -21.53
+     ]
+    ],
+    "closed": true
+   },
+   {
+    "id": "rail_ring",
+    "points_m": [
+     [
+      0.65,
+      3.5,
+      -21.7
+     ],
+     [
+      1.3669,
+      3.5,
+      -21.7
+     ],
+     [
+      3.3,
+      3.5,
+      -23.6331
+     ],
+     [
+      3.3,
+      3.5,
+      -26.3669
+     ],
+     [
+      1.3669,
+      3.5,
+      -28.3
+     ],
+     [
+      -1.3669,
+      3.5,
+      -28.3
+     ],
+     [
+      -3.3,
+      3.5,
+      -26.3669
+     ],
+     [
+      -3.3,
+      3.5,
+      -23.6331
+     ],
+     [
+      -1.3669,
+      3.5,
+      -21.7
+     ],
+     [
+      -0.65,
+      3.5,
+      -21.7
+     ]
+    ],
+    "closed": false
+   },
+   {
+    "id": "rail_bridge_p",
+    "points_m": [
+     [
+      0.55,
+      3.5,
+      -20.0
+     ],
+     [
+      0.55,
+      3.5,
+      -21.7
+     ]
+    ],
+    "closed": false
+   },
+   {
+    "id": "rail_bridge_s",
+    "points_m": [
+     [
+      -0.55,
+      3.5,
+      -20.0
+     ],
+     [
+      -0.55,
+      3.5,
+      -21.7
+     ]
+    ],
+    "closed": false
+   },
+   {
+    "id": "rail_catwalk_p",
+    "points_m": [
+     [
+      1.95,
+      3.5,
+      -19.25
+     ],
+     [
+      1.95,
+      3.5,
+      -19.95
+     ],
+     [
+      0.6,
+      3.5,
+      -19.95
+     ]
+    ],
+    "closed": false
+   },
+   {
+    "id": "rail_catwalk_s",
+    "points_m": [
+     [
+      -0.6,
+      3.5,
+      -19.95
+     ],
+     [
+      -1.95,
+      3.5,
+      -19.95
+     ],
+     [
+      -1.95,
+      3.5,
+      -18.1
+     ]
+    ],
+    "closed": false
+   },
+   {
+    "id": "rail_stair_hole",
+    "points_m": [
+     [
+      -2.0,
+      0.0,
+      -19.25
+     ],
+     [
+      -6.05,
+      0.0,
+      -19.25
+     ],
+     [
+      -6.05,
+      0.0,
+      -18.1
+     ]
+    ],
+    "closed": false
+   },
+   {
+    "id": "rail_upper_stair",
+    "points_m": [
+     [
+      2.05,
+      3.5,
+      -19.25
+     ],
+     [
+      6.0,
+      0.0,
+      -19.25
+     ]
+    ],
+    "closed": false,
+    "sloped": true
+   },
+   {
+    "id": "rail_lower_stair",
+    "points_m": [
+     [
+      -4.0,
+      -1.75,
+      -19.25
+     ],
+     [
+      -6.0,
+      -3.5,
+      -19.25
+     ]
+    ],
+    "closed": false,
+    "sloped": true
+   }
+  ],
+  "rods": [
+   {
+    "id": "hanger_ring_0",
+    "from_m": [
+     1.3394,
+     3.5,
+     -21.7664
+    ],
+    "to_m": [
+     1.3394,
+     6.45,
+     -21.7664
+    ],
+    "dia_m": 0.06
+   },
+   {
+    "id": "hanger_ring_1",
+    "from_m": [
+     3.2336,
+     3.5,
+     -23.6606
+    ],
+    "to_m": [
+     3.2336,
+     6.45,
+     -23.6606
+    ],
+    "dia_m": 0.06
+   },
+   {
+    "id": "hanger_ring_2",
+    "from_m": [
+     3.2336,
+     3.5,
+     -26.3394
+    ],
+    "to_m": [
+     3.2336,
+     6.45,
+     -26.3394
+    ],
+    "dia_m": 0.06
+   },
+   {
+    "id": "hanger_ring_3",
+    "from_m": [
+     1.3394,
+     3.5,
+     -28.2336
+    ],
+    "to_m": [
+     1.3394,
+     6.45,
+     -28.2336
+    ],
+    "dia_m": 0.06
+   },
+   {
+    "id": "hanger_ring_4",
+    "from_m": [
+     -1.3394,
+     3.5,
+     -28.2336
+    ],
+    "to_m": [
+     -1.3394,
+     6.45,
+     -28.2336
+    ],
+    "dia_m": 0.06
+   },
+   {
+    "id": "hanger_ring_5",
+    "from_m": [
+     -3.2336,
+     3.5,
+     -26.3394
+    ],
+    "to_m": [
+     -3.2336,
+     6.45,
+     -26.3394
+    ],
+    "dia_m": 0.06
+   },
+   {
+    "id": "hanger_ring_6",
+    "from_m": [
+     -3.2336,
+     3.5,
+     -23.6606
+    ],
+    "to_m": [
+     -3.2336,
+     6.45,
+     -23.6606
+    ],
+    "dia_m": 0.06
+   },
+   {
+    "id": "hanger_ring_7",
+    "from_m": [
+     -1.3394,
+     3.5,
+     -21.7664
+    ],
+    "to_m": [
+     -1.3394,
+     6.45,
+     -21.7664
+    ],
+    "dia_m": 0.06
+   }
+  ],
+  "runways": [
+   {
+    "id": "runway_p",
+    "from_m": [
+     8.5,
+     5.45,
+     -30.0
+    ],
+    "to_m": [
+     8.5,
+     5.45,
+     -27.6
+    ],
+    "size_m": [
+     0.3,
+     0.3
+    ]
+   },
+   {
+    "id": "runway_s",
+    "from_m": [
+     -8.5,
+     5.45,
+     -30.0
+    ],
+    "to_m": [
+     -8.5,
+     5.45,
+     -27.6
+    ],
+    "size_m": [
+     0.3,
+     0.3
+    ]
+   }
+  ],
+  "lamps": [
+   {
+    "id": "lamp_lower_0",
+    "at_m": [
+     1.9326,
+     -0.23,
+     -20.3344
+    ],
+    "size_m": [
+     0.9,
+     0.45
+    ],
+    "emergency": true
+   },
+   {
+    "id": "lamp_lower_1",
+    "at_m": [
+     4.6656,
+     -0.23,
+     -23.0674
+    ],
+    "size_m": [
+     0.9,
+     0.45
+    ],
+    "emergency": false
+   },
+   {
+    "id": "lamp_lower_2",
+    "at_m": [
+     4.6656,
+     -0.23,
+     -26.9326
+    ],
+    "size_m": [
+     0.9,
+     0.45
+    ],
+    "emergency": false
+   },
+   {
+    "id": "lamp_lower_3",
+    "at_m": [
+     1.9326,
+     -0.23,
+     -29.6656
+    ],
+    "size_m": [
+     0.9,
+     0.45
+    ],
+    "emergency": true
+   },
+   {
+    "id": "lamp_lower_4",
+    "at_m": [
+     -1.3395,
+     -0.23,
+     -30.1796
+    ],
+    "size_m": [
+     0.9,
+     0.45
+    ],
+    "emergency": false
+   },
+   {
+    "id": "lamp_lower_5",
+    "at_m": [
+     -4.6656,
+     -0.23,
+     -26.9326
+    ],
+    "size_m": [
+     0.9,
+     0.45
+    ],
+    "emergency": false
+   },
+   {
+    "id": "lamp_lower_6",
+    "at_m": [
+     -4.6656,
+     -0.23,
+     -23.0674
+    ],
+    "size_m": [
+     0.9,
+     0.45
+    ],
+    "emergency": true
+   },
+   {
+    "id": "lamp_lower_7",
+    "at_m": [
+     -1.9326,
+     -0.23,
+     -20.3344
+    ],
+    "size_m": [
+     0.9,
+     0.45
+    ],
+    "emergency": false
+   },
+   {
+    "id": "lamp_lower_8",
+    "at_m": [
+     6.8,
+     -0.23,
+     -21.2
+    ],
+    "size_m": [
+     0.9,
+     0.45
+    ],
+    "emergency": false
+   },
+   {
+    "id": "lamp_lower_9",
+    "at_m": [
+     4.6,
+     -0.23,
+     -30.4
+    ],
+    "size_m": [
+     0.9,
+     0.45
+    ],
+    "emergency": true
+   },
+   {
+    "id": "lamp_lower_10",
+    "at_m": [
+     -4.4,
+     -0.23,
+     -29.4
+    ],
+    "size_m": [
+     0.9,
+     0.45
+    ],
+    "emergency": false
+   },
+   {
+    "id": "lamp_lower_11",
+    "at_m": [
+     -6.3,
+     -0.23,
+     -22.6
+    ],
+    "size_m": [
+     0.9,
+     0.45
+    ],
+    "emergency": false
+   }
+  ],
+  "replaces": {
+   "systems": [
+    "coolant_pumps"
+   ],
+   "stations": {
+    "eng_main": "control_desk"
+   }
+  },
+  "prop_brief_m": {
+   "heat_exchanger": {
+    "size_m": [
+     1.9,
+     4.6,
+     1.9
+    ],
+    "anchor": "free",
+    "y_m": [
+     0.0,
+     4.6
+    ]
+   },
+   "pressurizer": {
+    "size_m": [
+     1.0,
+     4.2,
+     1.0
+    ],
+    "anchor": "free",
+    "y_m": [
+     0.0,
+     4.2
+    ]
+   },
+   "coolant_tank": {
+    "size_m": [
+     3.0,
+     1.75,
+     1.3
+    ],
+    "anchor": "free",
+    "y_m": [
+     0.0,
+     1.75
+    ]
+   },
+   "fuel_dewar": {
+    "size_m": [
+     1.2,
+     2.75,
+     1.2
+    ],
+    "anchor": "free",
+    "y_m": [
+     0.0,
+     2.75
+    ]
+   },
+   "helium3_rack": {
+    "size_m": [
+     2.4,
+     2.0,
+     0.7
+    ],
+    "anchor": "wall",
+    "y_m": [
+     0.0,
+     2.0
+    ]
+   },
+   "fuel_processor": {
+    "size_m": [
+     2.4,
+     1.9,
+     1.3
+    ],
+    "anchor": "free",
+    "y_m": [
+     0.0,
+     1.9
+    ]
+   },
+   "cryoplant": {
+    "size_m": [
+     3.4,
+     2.75,
+     1.6
+    ],
+    "anchor": "free",
+    "y_m": [
+     0.0,
+     2.75
+    ]
+   },
+   "vacuum_pump": {
+    "size_m": [
+     0.8,
+     1.4,
+     1.2
+    ],
+    "anchor": "back",
+    "y_m": [
+     0.0,
+     1.4
+    ]
+   },
+   "ash_tank": {
+    "size_m": [
+     1.6,
+     2.4,
+     1.0
+    ],
+    "anchor": "free",
+    "y_m": [
+     0.0,
+     2.4
+    ]
+   },
+   "power_converter": {
+    "size_m": [
+     2.6,
+     2.8,
+     1.0
+    ],
+    "anchor": "wall",
+    "y_m": [
+     0.0,
+     2.8
+    ]
+   },
+   "reactor_dressing": {
+    "size_m": [
+     6.6,
+     6.2,
+     6.6
+    ],
+    "anchor": "free",
+    "y_m": [
+     0.0,
+     6.2
+    ]
+   },
+   "gantry_crane": {
+    "size_m": [
+     17.5,
+     2.2,
+     1.6
+    ],
+    "anchor": "free",
+    "y_m": [
+     -1.6,
+     0.6
+    ]
+   },
+   "coolant_pump": {
+    "size_m": [
+     1.7,
+     2.75,
+     1.7
+    ],
+    "anchor": "free",
+    "y_m": [
+     0.0,
+     2.75
+    ]
+   },
+   "local_panel": {
+    "size_m": [
+     0.9,
+     1.75,
+     0.5
+    ],
+    "anchor": "wall",
+    "y_m": [
+     0.0,
+     1.75
+    ]
+   },
+   "control_desk": {
+    "size_m": [
+     3.0,
+     1.5,
+     1.2
+    ],
+    "anchor": "back",
+    "y_m": [
+     0.0,
+     1.5
+    ]
+   },
+   "mimic_board": {
+    "size_m": [
+     3.6,
+     2.4,
+     0.15
+    ],
+    "anchor": "wall",
+    "y_m": [
+     0.0,
+     2.4
+    ]
+   },
+   "tool_board": {
+    "size_m": [
+     2.2,
+     2.2,
+     0.75
+    ],
+    "anchor": "wall",
+    "y_m": [
+     0.0,
+     2.2
+    ]
+   },
+   "tool_chest": {
+    "size_m": [
+     1.0,
+     1.1,
+     0.55
+    ],
+    "anchor": "free",
+    "y_m": [
+     0.0,
+     1.1
+    ]
+   },
+   "parts_rack": {
+    "size_m": [
+     2.2,
+     2.3,
+     0.7
+    ],
+    "anchor": "wall",
+    "y_m": [
+     0.0,
+     2.3
+    ]
+   },
+   "valve_large": {
+    "size_m": [
+     0.7,
+     1.0,
+     0.6
+    ],
+    "anchor": "axis",
+    "y_m": [
+     -0.3,
+     0.75
+    ]
+   },
+   "valve_small": {
+    "size_m": [
+     0.3,
+     0.45,
+     0.25
+    ],
+    "anchor": "axis",
+    "y_m": [
+     -0.1,
+     0.35
+    ]
+   }
+  }
+ }
+}

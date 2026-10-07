@@ -4,8 +4,12 @@ else does (CLAUDE.md 12).
 It owns nothing the game loads. It imports the exported .glb files listed in the set's
 props.json (assets/models/<set>/props.json), not the build's scene (CLAUDE.md 6.6, validate the
 real artifact), so the pictures show the geometry, normals and materials as the page will get
-them. It writes, into docs/screenshots/props/ (or --shots):
+them. Each prop wears its baked atlas (props.json atlas, read through the glb's TEXCOORD_1, nearest
+sampling as the page samples it up close), glowing where the atlas's alpha says; screen faces stay
+the page's flat screen colour and accent faces are multiplied by the glb's accent preview colour, as
+a page multiplies them by a station's. It writes, into docs/screenshots/props/ (or --shots):
   <name>.png            one prop, isometric, on a floor (and a wall when its anchor is on the wall plane)
+  <name>-<view>.png     with --views, the other views: front (a low front three-quarter) and back
   the set's sheet       every prop laid out together, labelled with its triangles: contact-sheet.png
                         for the bridge set, suite-props.png for the suite set, machinery-props.png
                         for the machinery set
@@ -17,12 +21,13 @@ that a cloud session does not have).
 
 Run (from anywhere):
   <python with the bpy module> tools/blender/render_props.py [--set bridge|suite|machinery] [--only a,b] [--samples 24]
-      [--no-sheet] [--no-stills] [--shots DIR]
+      [--no-sheet] [--no-stills] [--shots DIR] [--views iso,front,back]
   blender -b --factory-startup -P tools/blender/render_props.py -- [same options]
   --set        which prop set: bridge (the default), suite or machinery
   --only       render the stills of only these props (the sheet still shows the whole set)
   --no-sheet   skip the contact sheet; --no-stills skip the stills
   --shots      write into DIR instead of docs/screenshots/props
+  --views      which views of each still: iso (the default, <name>.png), front, back
 """
 import json
 import math
@@ -36,6 +41,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 SHOTS = os.path.join(ROOT, "docs", "screenshots", "props")
 VIEW = Vector((1.0, -1.35, 0.95)).normalized()      # from the prop toward the camera: front right, above
+# the stills' views (Blender frame: the prop's front, prop +Z, is Blender -Y): the isometric, a low
+# front three-quarter from the left and a three-quarter from behind
+VIEWS = {"iso": VIEW, "front": Vector((-0.75, -1.3, 0.55)).normalized(), "back": Vector((0.8, 1.25, 0.75)).normalized()}
 FLOOR_RGB = (0.025, 0.028, 0.034)   # linear
 WALL_RGB = (0.06, 0.066, 0.078)
 # Per set: its folder, the sheet's rows (the first row stands against a wall), the sheet's file, the
@@ -45,7 +53,8 @@ WALL_RGB = (0.06, 0.066, 0.078)
 SETS = {
     "bridge": {
         "dir": os.path.join(ROOT, "assets", "models", "bridge"),
-        "rows": [["wall_bank_core", "wall_bank_core_engineering", "wall_bank", "wall_bank_comms", "wall_bank_double"],
+        "rows": [["wall_bank_core", "wall_bank_core_engineering", "wall_bank_core_science", "wall_bank", "wall_bank_comms",
+                  "wall_bank_flight_ops", "wall_bank_double"],
                  ["free_console", "free_console_helm", "free_console_tactical", "helm_arc", "standup_console"],
                  ["captain_chair", "crew_chair"]],
         "sheet": "contact-sheet.png",
@@ -89,7 +98,7 @@ def on_wall(row):
 def parse_args():
     args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else (
         [] if os.path.basename(sys.argv[0]).startswith("blender") else sys.argv[1:])
-    opts = {"set": "bridge", "only": None, "samples": 24, "sheet": True, "stills": True, "shots": SHOTS}
+    opts = {"set": "bridge", "only": None, "samples": 24, "sheet": True, "stills": True, "shots": SHOTS, "views": ["iso"]}
     i = 0
     while i < len(args):
         if args[i] == "--set":
@@ -110,6 +119,12 @@ def parse_args():
             i += 1
         elif args[i] == "--no-sheet":
             opts["sheet"] = False
+        elif args[i] == "--views":
+            opts["views"] = args[i + 1].split(",")
+            i += 1
+            for v in opts["views"]:
+                if v not in VIEWS:
+                    raise SystemExit(f"[render] no view {v!r}; the views are {', '.join(VIEWS)}")
         else:
             raise SystemExit(f"[render] unknown argument {args[i]!r}\n{__doc__}")
         i += 1
@@ -206,7 +221,50 @@ def plane(name, size, loc, rot, mat):
     return ob
 
 
-def import_prop(path, coll, offset):
+def atlas_material(mat, atlas_path):
+    """Rebuild an imported glTF material to wear the prop's atlas through the second UV map: diffuse
+    where the atlas's alpha is 0, glowing where it is 1; accent multiplied by the material's own
+    (preview) colour, as a page multiplies it by the station's; screen stays flat (the page draws
+    the console faces there)."""
+    role = mat.name.split(".")[0]
+    if role == "screen":
+        flat_material(mat)
+        return
+    nt = mat.node_tree
+    bsdf = next((n for n in nt.nodes if n.type == "BSDF_PRINCIPLED"), None)
+    tint = tuple(bsdf.inputs["Base Color"].default_value) if bsdf else (1.0, 1.0, 1.0, 1.0)
+    for n in list(nt.nodes):
+        nt.nodes.remove(n)
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    uvn = nt.nodes.new("ShaderNodeUVMap")
+    uvn.uv_map = "UVMap.001"
+    tex = nt.nodes.new("ShaderNodeTexImage")
+    tex.image = bpy.data.images.load(atlas_path, check_existing=True)
+    tex.image.alpha_mode = "CHANNEL_PACKED"     # alpha is the glow mask, not coverage: never premultiply by it
+    tex.interpolation = "Closest"
+    nt.links.new(uvn.outputs["UV"], tex.inputs["Vector"])
+    col = tex.outputs["Color"]
+    if role == "accent":
+        mix = nt.nodes.new("ShaderNodeMix")
+        mix.data_type = "RGBA"
+        mix.blend_type = "MULTIPLY"
+        mix.inputs["Factor"].default_value = 1.0
+        nt.links.new(col, mix.inputs[6])
+        mix.inputs[7].default_value = tint
+        col = mix.outputs[2]
+    dif = nt.nodes.new("ShaderNodeBsdfDiffuse")
+    nt.links.new(col, dif.inputs["Color"])
+    emi = nt.nodes.new("ShaderNodeEmission")
+    nt.links.new(col, emi.inputs["Color"])
+    sh = nt.nodes.new("ShaderNodeMixShader")
+    nt.links.new(tex.outputs["Alpha"], sh.inputs[0])
+    nt.links.new(dif.outputs[0], sh.inputs[1])
+    nt.links.new(emi.outputs[0], sh.inputs[2])
+    nt.links.new(sh.outputs[0], out.inputs["Surface"])
+
+
+def import_prop(path, coll, offset, atlas=None):
+    """Import a prop's glb into coll, moved by offset; with atlas (its PNG's path) it wears it."""
     before = set(bpy.data.objects)
     bpy.ops.import_scene.gltf(filepath=path)
     new = [o for o in bpy.data.objects if o not in before]
@@ -216,11 +274,21 @@ def import_prop(path, coll, offset):
         coll.objects.link(o)
         o.location += offset
         if o.type == "MESH":
+            if atlas and len(o.data.uv_layers) > 1:
+                o.data.uv_layers[1].name = "UVMap.001"
             for slot in o.material_slots:
                 if slot.material and not slot.material.get("_flat"):
-                    flat_material(slot.material)
+                    if atlas:
+                        slot.material = slot.material.copy()
+                        atlas_material(slot.material, atlas)
+                    else:
+                        flat_material(slot.material)
                     slot.material["_flat"] = True
     return [o for o in new if o.type == "MESH"]
+
+
+def atlas_of(props_dir, row):
+    return os.path.join(props_dir, row["atlas"]["file"]) if row.get("atlas") else None
 
 
 def points(objs):
@@ -241,18 +309,18 @@ def bounds(objs):
             Vector((max(p.x for p in pts), max(p.y for p in pts), max(p.z for p in pts))))
 
 
-def camera(objs, res, margin=1.12):
+def camera(objs, res, margin=1.12, view=VIEW):
     lo, hi = bounds(objs)
     sc = bpy.context.scene
     sc.render.resolution_x, sc.render.resolution_y = res
     c = (lo + hi) / 2
-    rot = (-VIEW).to_track_quat("-Z", "Y")
+    rot = (-view).to_track_quat("-Z", "Y")
     cd = bpy.data.cameras.new("Cam")
     cd.type = "ORTHO"
     cd.clip_end = 200.0
     cam = bpy.data.objects.new("Cam", cd)
     cam.rotation_euler = rot.to_euler()
-    cam.location = c + VIEW * 30.0
+    cam.location = c + view * 30.0
     sc.collection.objects.link(cam)
     sc.camera = cam
     right, up = rot @ Vector((1, 0, 0)), rot @ Vector((0, 1, 0))
@@ -286,15 +354,15 @@ def render(path):
     print("[render] wrote", path)
 
 
-def one(props_dir, shots, name, row, samples):
+def one(props_dir, shots, name, row, samples, view="iso"):
     props = reset(samples)
-    objs = import_prop(os.path.join(props_dir, row["file"]), props, Vector())
+    objs = import_prop(os.path.join(props_dir, row["file"]), props, Vector(), atlas_of(props_dir, row))
     plane("Floor", (12, 12), (0, 0, 0), (0, 0, 0), plain("floor", FLOOR_RGB))
-    if on_wall(row):
+    if on_wall(row) and view != "back":
         # the wall the prop stands on, 2 mm behind its back face (prop z = 0 is Blender y = 0)
         plane("Wall", (12, 6), (0, 0.002, 3), (math.radians(90), 0, 0), plain("wall", WALL_RGB))
-    camera(objs, (1024, 768))
-    render(os.path.join(shots, name + ".png"))
+    camera(objs, (1024, 768), view=VIEWS[view])
+    render(os.path.join(shots, name + ("" if view == "iso" else "-" + view) + ".png"))
 
 
 def sheet(ps, out, rows, samples):
@@ -318,7 +386,7 @@ def sheet(ps, out, rows, samples):
             b = rows[n]["bounds_m"]
             # prop z (toward the operator) is Blender -y: put the prop's back on the row's line
             off = Vector((x - b["min"][0], y + b["min"][2], 0.0))
-            objs = import_prop(os.path.join(ps["dir"], rows[n]["file"]), props, off)
+            objs = import_prop(os.path.join(ps["dir"], rows[n]["file"]), props, off, atlas_of(ps["dir"], rows[n]))
             placed += objs
             front_y = y - (b["max"][2] - b["min"][2])
             placed.append(label(f"{n}\n{rows[n]['triangles']} / {rows[n]['budget_triangles']} triangles",
@@ -341,7 +409,8 @@ def main():
         for n in opts["only"] or list(rows):
             if n not in rows:
                 raise SystemExit(f"[render] {n!r} is not in props.json")
-            one(ps["dir"], opts["shots"], n, rows[n], opts["samples"])
+            for v in opts["views"]:
+                one(ps["dir"], opts["shots"], n, rows[n], opts["samples"], v)
     if opts["sheet"]:
         sheet(ps, os.path.join(opts["shots"], ps["sheet"]), rows, opts["samples"])
 

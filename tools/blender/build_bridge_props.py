@@ -1,6 +1,7 @@
 """Star Crew's bridge furniture, modelled in Blender the hard-surface CSG way: wall-built console
 banks between pierced structural fins, a free-standing helm desk, a curved two-seat helm in the
-first series' style, the captain's chair, a crew chair and a stand-up console.
+first series' style, the captain's chair (after a TNG captain's chair), a crew chair of the same family
+and a stand-up console.
 
 It owns the bridge props' geometry (assets/models/bridge/<name>.glb) and their manifest
 (assets/models/bridge/props.json). It lives in tools/blender because meshes are files built by a
@@ -61,19 +62,24 @@ GENERATOR = "tools/blender/build_bridge_props.py"
 # Triangles per prop: the budgets these props were briefed with (2026-10-05), inside
 # bridge-stations section 12's allowance of 700 for a desk with its screen and 300 for a seat.
 # A station's variant (the same body with its own hand controls, bridge-stations 11.6) keeps its
-# base's budget.
+# base's budget. The chairs' were raised on 2026-10-07 (captain 300 to 900, crew 160 to 480) for the
+# owner's references ("chairs suck still mainly its a texture problem", with a TNG captain's chair,
+# a burgundy one and Bridge Commander's): a slotted back with wings and a headrest, bolsters, a rolled
+# seat front, angled arm supports and a louvred pedestal cannot be drawn in a seat's 300.
 BUDGETS = {
     "wall_bank_core": 420,
     "wall_bank_core_engineering": 420,
+    "wall_bank_core_science": 420,
     "wall_bank": 420,
     "wall_bank_comms": 420,
+    "wall_bank_flight_ops": 420,
     "wall_bank_double": 700,
     "free_console": 420,
     "free_console_helm": 420,
     "free_console_tactical": 420,
     "helm_arc": 600,
-    "captain_chair": 300,
-    "crew_chair": 160,
+    "captain_chair": 900,
+    "crew_chair": 480,
     "standup_console": 160,
 }
 
@@ -147,7 +153,234 @@ def slider_bank(p, m, tag, levels):
     return [block] + caps
 
 
+def dial_bank(p, m, tag, n=3):
+    """A bank of tuning dials: a block 3 cm high on the desk and n knobs on it, square and turned, their
+    pointers and scales painted on by the atlas. Larger than life, so it reads from across the room."""
+    block = obox(p.coll, f"{p.name}.{tag}_block", (-0.14, -0.035, -0.02), (0.14, 0.035, 0.03), m,
+                 {"*": "machinery", "+z": "bulkhead"})
+    knobs = []
+    for i in range(n):
+        x = -0.09 + i * 0.18 / (n - 1)
+        knobs.append(obox(p.coll, f"{p.name}.{tag}_knob_{i}", (-0.02, -0.02, 0.02), (0.02, 0.02, 0.06),
+                          m @ Matrix.Translation((x, 0.0, 0.0)) @ Matrix.Rotation(math.radians(45.0 + 20.0 * i), 4, "Z"),
+                          {"*": "trim"}))
+    return [block] + knobs
+
+
 # ----------------------------------------------------------------------------- the props
+
+# ----------------------------------------------------------------------------- the atlas's details
+# What each console and chair carries on its atlas (hs_kit.Detail, baked onto the prop's own UV; the
+# owner, 2026-10-07: "the textures on the console man, they need to be full on custom details, youre
+# using generic textures on them"). A station's console says whose it is with a stencilled name plate
+# (a station-less one an AUX number), and no two kinds look alike: each has its own scheme of keys,
+# lamps and status displays. Sizes suit the atlas's 50-110 px per metre: keys 3-4 cm, lamps 1-2 cm
+# (a lamp reads by its glow), letters 5-8 cm tall.
+
+LABELS = {
+    "wall_bank_core": ("AUX 01",), "wall_bank_core_engineering": ("ENGINEERING",), "wall_bank_core_science": ("SCIENCE",),
+    "wall_bank": ("AUX 02",), "wall_bank_comms": ("COMMS",), "wall_bank_flight_ops": ("FLIGHT OPS",),
+    "wall_bank_double": ("AUX 03", "AUX 04"), "free_console": ("AUX 05",), "free_console_helm": ("HELM",),
+    "free_console_tactical": ("TACTICAL",), "helm_arc": ("HELM", "TACTICAL"), "standup_console": ("AUX 06",),
+}
+# a station's label to its role in shipkit's PALETTE (its stripe's colour, finish role_<role>)
+ROLE_OF_LABEL = {"HELM": "helm", "TACTICAL": "tactical", "ENGINEERING": "engineering", "SCIENCE": "science",
+                 "COMMS": "comms", "FLIGHT OPS": "flight_ops"}
+# a console kind's keys (cycling: a glow finish is a lit key), lamps and status displays
+SCHEMES = {
+    None: {"keys": ("key", "key", "led_white", "key", "key", "led_green"), "leds": ("led_green", "led_green", "led_amber"),
+           "display": "display"},
+    "breakers": {"keys": ("key", "led_amber", "key", "key"), "leds": ("led_amber", "led_green", "led_red"), "display": "display_amber"},
+    "sliders": {"keys": ("key", "led_green", "key"), "leds": ("led_green", "led_amber", "led_green"), "display": "display"},
+    "dials": {"keys": ("key", "led_blue", "key", "led_white"), "leds": ("led_blue", "led_white"), "display": "display"},
+    "levers": {"keys": ("key", "led_red", "key", "led_green"), "leds": ("led_red", "led_green", "led_amber"), "display": "display_amber"},
+    "helm": {"keys": ("key", "led_blue", "key", "key"), "leds": ("led_blue", "led_white"), "display": "display"},
+    "tactical": {"keys": ("key", "led_red", "key", "led_amber"), "leds": ("led_red", "led_amber"), "display": "display_amber"},
+}
+
+
+def label_size(text, w, h):
+    """Letters as tall as fit a plate w x h: at most 0.6 of its height, and the label 0.85 of its width
+    (the built-in font's capitals advance about 0.62 of their height)."""
+    return min(h * 0.6, 0.85 * w / (0.62 * max(1, len(text))))
+
+
+def name_plate(D, m, x, y, w, h, text):
+    D.plate(m, x, y, w, h, text, size=label_size(text, w, h))
+
+
+def led_column(D, m, x, ys, finishes):
+    for k, y in enumerate(ys):
+        D.disc(m, x, y, 0.009, -0.002, 0.005, finishes[k % len(finishes)], sides=10)
+
+
+def wall_bank_decor(p, name, bay_w, seats, controls, D_, desk_at, desk_tilt, band, pc, main, z_wall, yc, w_up):
+    """A wall bank's details: per seat a name plate on its access panel over a vent, cable glands
+    under it, a row of keys and lamps behind the keyboard well (left of a comms bank's faders), lit
+    keys along the button band, lamp columns beside the main screen, status displays under the upper
+    screens and a lit seam between them; engineering a HIGH VOLTAGE placard in place of the vent."""
+    labels = LABELS[name]
+    sc = SCHEMES[controls]
+    xs = [0.0] if seats == 1 else [-bay_w / 4, bay_w / 4]
+    seat_w = bay_w if seats == 1 else bay_w / 2
+    band_tilt = math.degrees(math.atan2(band[0][0] - band[1][0], band[1][1] - band[0][1]))
+    band_c = ((band[0][1] + band[1][1]) / 2, (band[0][0] + band[1][0]) / 2)
+
+    def decor(D):
+        for i, cx in enumerate(xs):
+            aw = seat_w - 0.20
+            ma = frame((cx, 0.0, D_ - 0.012))          # the access panel's floor, 12 mm in
+            name_plate(D, ma, 0.0, 0.535, min(aw - 0.10, 0.70), 0.11, labels[i])
+            if controls == "breakers":
+                D.box(ma, -0.20, 0.25, 0.20, 0.41, -0.002, 0.004, "yellow", inset=0.003)
+                D.text(ma, "HIGH VOLTAGE", 0.0, 0.33, label_size("HIGH VOLTAGE", 0.38, 0.14), "stencil_dark", z=0.0056)
+                D.grille(ma, -aw / 2 + 0.06, 0.25, -0.26, 0.41, along="y", pitch=0.03)
+                D.grille(ma, 0.26, 0.25, aw / 2 - 0.06, 0.41, along="y", pitch=0.03)
+            else:
+                D.grille(ma, -aw / 2 + 0.06, 0.25, aw / 2 - 0.06, 0.41, pitch=0.032 if controls != "sliders" else 0.022)
+            for sx in (-1, 1):
+                for yy in (0.23, 0.59):
+                    D.disc(ma, sx * (aw / 2 - 0.03), yy, 0.01, -0.002, 0.007, "bolt", sides=10, inset=0.003)
+            mf = frame((cx, 0.0, D_))
+            if labels[i] in ROLE_OF_LABEL:      # the station's stripe under the desk's edge
+                D.paint(mf, [(-seat_w / 2 + 0.03, 0.655), (seat_w / 2 - 0.03, 0.655), (seat_w / 2 - 0.03, 0.695),
+                             (-seat_w / 2 + 0.03, 0.695)], "role_" + ROLE_OF_LABEL[labels[i]])
+            for sx in (-1, 1):
+                D.ring(mf, sx * (seat_w / 2 - 0.16), 0.15, 0.013, 0.026, -0.002, 0.012, "bolt")
+                D.disc(mf, sx * (seat_w / 2 - 0.16), 0.15, 0.013, -0.002, 0.004, "rubber", sides=12, reserve=False)
+            # behind the keyboard well
+            md = frame(desk_at(cx, 0.235), desk_tilt)
+            kw = 1.20 if bay_w >= 1.4 and seats == 1 else 0.86
+            if controls == "breakers":
+                D.leds(md, -kw / 2 + 0.03, 0.0, 3, 0.04, sc["leds"])
+                D.leds(md, kw / 2 - 0.11, 0.0, 3, 0.04, sc["leds"][::-1])
+            elif controls == "sliders":
+                D.buttons(md, -kw / 2 + 0.02, 0.0, 6, 0.06, 0.04, sc["keys"])
+                D.leds(md, -kw / 2 + 0.40, 0.0, 3, 0.035, sc["leds"])
+            elif controls in ("dials", "levers"):
+                D.buttons(md, -kw / 2 + 0.02, 0.0, 4, 0.06, 0.04, sc["keys"])
+                D.leds(md, kw / 2 - 0.12, 0.0, 3, 0.04, sc["leds"])
+            else:
+                n = int((kw - 0.20) / 0.06)
+                D.buttons(md, -kw / 2 + 0.02, 0.0, n, 0.06, 0.04, sc["keys"])
+                D.leds(md, kw / 2 - 0.08, 0.0, 2, 0.035, sc["leds"])
+            # the button band, lit keys along it (the page multiplies this band by the station's colour)
+            mb = frame((cx, band_c[0], band_c[1]), band_tilt)
+            n = int((seat_w - 0.16) / 0.07)
+            D.buttons(mb, -(n - 1) * 0.07 / 2 - 0.016, 0.0, n, 0.07, 0.032, sc["keys"][::-1])
+            # lamps beside the main screen
+            mx, mw = main[i]
+            mm_ = frame((mx, pc[1], pc[2]), 20.0)
+            for sx in (-1, 1):
+                led_column(D, mm_, sx * (mw / 2 + 0.045), (-0.12, -0.06, 0.0, 0.06, 0.12), sc["leds"])
+        # status displays under the upper screens and a lit seam between each pair
+        mw_ = frame((0.0, 0.0, z_wall))
+        n_up = 2 * seats
+        for k in range(n_up):
+            cx = -bay_w / 2 + 0.08 + w_up / 2 + k * (w_up + 0.08)
+            for j in range(3):
+                x = cx - w_up / 2 + 0.04 + j * (w_up - 0.08) / 2
+                D.box(mw_, x - 0.045, 1.445, x + 0.045, 1.47, -0.002, 0.003, sc["display"] if j != 1 else "led_white")
+            if k < n_up - 1:
+                gx = cx + w_up / 2 + 0.04
+                D.box(mw_, gx - 0.007, yc - 0.17, gx + 0.007, yc + 0.17, -0.002, 0.004, sc["leds"][0])
+    p.decor.append(decor)
+
+
+def free_console_decor(p, name, controls, top, zb, zf, m_h, zt, zbb):
+    """A free console's details: a name plate on the pedestal's sloped front over a vent, lamps under the
+    upright screen, lit keys in the button band, keys on the desk's free side strips (a throttle,
+    a stick or fire buttons take theirs), a row of lamps along the front edge."""
+    sc = SCHEMES[controls]
+    label = LABELS[name][0]
+    tilt_ped = -math.degrees(math.atan2(0.14, 0.60))      # the pedestal's front leans 13 degrees forward
+
+    def decor(D):
+        mp = frame((0.0, 0.30, 0.26 + 0.14 * 0.30 / 0.60), tilt_ped)
+        name_plate(D, mp, 0.0, 0.11, 0.58, 0.12, label)
+        if label in ROLE_OF_LABEL:
+            D.paint(mp, [(-0.40, 0.21), (0.40, 0.21), (0.40, 0.245), (-0.40, 0.245)], "role_" + ROLE_OF_LABEL[label])
+        D.grille(mp, -0.28, -0.20, 0.28, -0.06, pitch=0.03)
+        D.leds(m_h, -0.36, 0.005, 8, 0.025, sc["leds"], r=0.007)
+        mbb = frame((0.0, top(zbb), zbb), 78.0) @ Matrix.Translation((0.0, 0.0, -0.012))
+        D.buttons(mbb, -0.53, 0.0, 15, 0.072, 0.034, sc["keys"])
+        for side in (-1, 1):
+            ms = frame((side * 0.625, top(zt), zt), 78.0)
+            free = (controls is None) or (controls == "tactical" and side < 0)
+            if free:
+                for r in range(3):
+                    D.buttons(ms, -0.05, -0.07 + 0.07 * r, 3, 0.045, 0.034, sc["keys"][r:] + sc["keys"][:r])
+        mfr = frame((0.0, top(zf - 0.035), zf - 0.035), 78.0)
+        D.leds(mfr, -0.45, 0.0, 10, 0.1, sc["leds"], r=0.007)
+    p.decor.append(decor)
+
+
+def helm_arc_decor(p, r_back, half, steps, r_mid):
+    """The helm arc's details: a name plate on the front of each seat's facet (HELM, TACTICAL), lamps
+    along the sloped top's front edge, lit keys along the rim's band and vents on the hood's sides."""
+    facet = 2 * half / steps
+
+    def decor(D):
+        for k in range(steps):
+            phi = -half + (k + 0.5) * facet
+            cf = math.cos(facet / 2)          # a facet is the chord: its middle is cos(facet / 2) of the radius out
+            r = (r_back - 0.60) * cf
+            mfront = frame((math.sin(phi) * r, 0.0, r_back - math.cos(phi) * r), 0.0, -math.degrees(phi))
+            chord = 2 * (r_back - 0.60) * math.sin(facet / 2)
+            if k in (1, steps - 2):
+                text = LABELS["helm_arc"][0 if k == 1 else 1]
+                name_plate(D, mfront, 0.0, 0.55, chord - 0.05, 0.10, text)
+                D.paint(mfront, [(-chord / 2 + 0.01, 0.65), (chord / 2 - 0.01, 0.65), (chord / 2 - 0.01, 0.685),
+                                 (-chord / 2 + 0.01, 0.685)], "role_" + ROLE_OF_LABEL[text])
+                D.grille(mfront, -chord / 2 + 0.05, 0.22, chord / 2 - 0.05, 0.38, pitch=0.03)
+            elif k in (3, 4):
+                D.grille(mfront, -chord / 2 + 0.05, 0.30, chord / 2 - 0.05, 0.55, along="y", pitch=0.035)
+            # the top's front strip: lamps; the rim band: lit keys
+            sc = SCHEMES["helm" if phi < 0 else "tactical"]
+            d = 0.56
+            y = 0.75 + (0.60 - d) / 0.46 * 0.10
+            slope = math.degrees(math.atan2(0.10, 0.46))
+            rt = (r_back - d) * cf
+            mtop = frame((math.sin(phi) * rt, y, r_back - math.cos(phi) * rt), 90.0 - slope, -math.degrees(phi))
+            D.leds(mtop, -chord / 2 + 0.05, 0.0, 4, (chord - 0.10) / 3, sc["leds"], r=0.007)
+            rr = (r_back - 0.12) * cf
+            mrim = frame((math.sin(phi) * rr, 0.875, r_back - math.cos(phi) * rr), math.degrees(math.atan2(0.04, 0.05)), -math.degrees(phi))
+            D.buttons(mrim, -chord / 2 + 0.04, 0.0, 4, (chord - 0.08 - 0.03) / 3, 0.03, sc["keys"])
+        for s in (-1, 1):
+            mh = frame((s * 0.17, 0.89, 0.25), 0.0, s * 90.0)
+            D.grille(mh, -0.12, -0.08, 0.10, 0.06, along="y", pitch=0.025)
+    p.decor.append(decor)
+
+
+def standup_decor(p, top, zb, zf):
+    """The stand-up console's details: a name plate over a vent on its column, lamp columns either side
+    of its screen."""
+    sc = SCHEMES[None]
+
+    def decor(D):
+        mc = frame((0.0, 0.55, 0.18 + 0.06 * 0.52 / 0.87), -math.degrees(math.atan2(0.06, 0.87)))
+        name_plate(D, mc, 0.0, 0.10, 0.24, 0.09, LABELS["standup_console"][0])
+        D.grille(mc, -0.09, -0.25, 0.09, -0.05, along="y", pitch=0.03)
+        slope = math.degrees(math.atan2(1.16 - 1.04, zf - zb))
+        for side in (-1, 1):
+            ms = frame((side * 0.29, top((zb + zf) / 2), (zb + zf) / 2), 90.0 - slope)
+            led_column(D, ms, 0.0, (-0.10, -0.05, 0.0, 0.05, 0.10), sc["leds"])
+    p.decor.append(decor)
+
+
+def chair_decor(p, arms, az):
+    """A chair's details: on the captain's, lit keys on each arm console's inner face and a plate on the
+    pedestal's back; on both, bolts round the base."""
+    def decor(D):
+        if arms:
+            zfa = az + 0.31
+            for s in (-1, 1):
+                mi = frame((s * 0.315, 0.63, zfa - 0.10), 0.0, -s * 90.0)
+                D.buttons(mi, -0.075, 0.005, 4, 0.04, 0.026, ("led_amber", "key", "led_green", "key"))
+            mb = frame((0.0, 0.20, 0.0), 0.0, 180.0)
+            D.plate(mb, 0.0, 0.0, 0.2, 0.07, "CO", size=0.04)
+    p.decor.append(decor)
+
 
 def wall_bank(name, bay_w, seats, presents, controls=None):
     """A console bank built into a wall, in a bay between two structural fins.
@@ -160,8 +393,9 @@ def wall_bank(name, bay_w, seats, presents, controls=None):
     front edges raked at the screen panel's 20 degrees, pierced by a truss of triangular holes.
     A keyboard well 15 cm deep is let into the desk in front of each seat (its key panel is
     texture), and controls adds a station's own hand controls on the desk behind it:
-    "breakers" (engineering: a row of five breaker toggles, one tripped) or "sliders" (comms: a
-    bank of four faders)."""
+    "breakers" (engineering: a row of five breaker toggles, one tripped), "sliders" (comms: a
+    bank of four faders), "dials" (science: three sensor tuning dials) or "levers" (flight ops: a
+    launch lever and an abort button). Its atlas's details are wall_bank_decor's."""
     p = Prop(name, presents, "floor, centre of the back, on the wall plane")
     p.wall = True
     hw = bay_w / 2
@@ -247,6 +481,15 @@ def wall_bank(name, bay_w, seats, presents, controls=None):
     elif controls == "sliders":
         p.union(body, "sliders", slider_bank(p, frame(desk_at(0.25, 0.2375), desk_tilt), "faders", (0.8, 0.45, 0.65, 0.15)))
         p.controls.append("a bank of four faders behind the keyboard, to the operator's right")
+    elif controls == "dials":
+        p.union(body, "dials", dial_bank(p, frame(desk_at(0.0, 0.2375), desk_tilt), "dials"))
+        p.controls.append("a bank of three sensor tuning dials behind the keyboard")
+    elif controls == "levers":
+        ma = frame(desk_at(-0.25, 0.235), desk_tilt)
+        p.union(body, "levers", throttle(p, frame(desk_at(0.25, 0.235), desk_tilt), "launch")
+                + [obox(p.coll, f"{name}.abort_housing", (-0.035, -0.035, -0.02), (0.035, 0.035, 0.022), ma, {"*": "hazard", "+z": "machinery"}),
+                   obox(p.coll, f"{name}.abort_button", (-0.018, -0.018, 0.012), (0.018, 0.018, 0.04), ma, {"*": "accent"})])
+        p.controls.append("a launch lever behind the keyboard to the operator's right, an abort button in a hazard housing to their left")
     elif controls is not None:
         raise SystemExit(f"[props] {name}: unknown controls {controls!r}")
 
@@ -279,6 +522,7 @@ def wall_bank(name, bay_w, seats, presents, controls=None):
     p.cut(body, "screens", screens)
 
     p.body = body
+    wall_bank_decor(p, name, bay_w, seats, controls, D, desk_at, desk_tilt, (desk_back, band_top), pc, main, z_wall, yc, w_up)
     desk_mid = (desk_front[0] + 0.0) / 2
     for cx in ([0.0] if seats == 1 else [-bay_w / 4, bay_w / 4]):
         p.operators.append([round(cx, 4), 0.0, round(desk_mid + 0.65, 4)])
@@ -344,6 +588,7 @@ def free_console(name, presents, controls=None):
              record=False)
     p.cut(desk, "screens", screens)
     p.body = desk
+    free_console_decor(p, name, controls, top, zb, zf, m_h, zt, zb_)
     p.operators.append([0.0, 0.0, round((zb + zf) / 2 + 0.65, 4)])
     return p
 
@@ -405,58 +650,203 @@ def helm_arc(name, presents):
              shows="upper", half=0)
     p.cut(body, "screens", screens)
     p.body = body
+    helm_arc_decor(p, r_back, half, steps, r_mid)
     return p
 
 
-def chair(name, presents, captain):
-    """A swivel chair: a hexagonal foot, a pedestal, a seat shell with its cushion (top at
-    0.45 m), a back shell leaning 10 degrees with its cushion and a headrest band in the
-    station's role colour; the captain's adds armrests 0.15 m wide with a small console let
-    into each, and a taller back."""
+# ----------------------------------------------------------------------------- chairs
+# The owner, 2026-10-07, on the captain's chair: "chairs suck still mainly its a texture problem",
+# with the references (the shape taken, never the art, CLAUDE.md 15): a TNG captain's chair (a tall
+# padded back split by a vertical slot, a padded headrest, wing bolsters, a seat with a rolled front,
+# armrests on angled metal supports with console tops, a pedestal on a base plate), a burgundy one
+# (channelled leather, a louvred pedestal on a base, angled arm consoles on bent supports) and Bridge
+# Commander's grey chairs on pedestals. The cushions take the upholstery layers: `upholstery` (rolled
+# channels) on seat and back faces, `upholstery_panel` (padded panels) on bolsters, headrests, wings,
+# arm pads and the back's leather; frames and supports `trim`; pedestals, bases and consoles
+# `machinery`; a thin `accent` stripe the page tints with the station's colour.
+#
+# Both keep today's placement exactly: the origin on the floor at the centre of the pedestal's back
+# (the column's flat back, or the louvred pedestal's back face, at z = 0), the seat's top 0.45 m up,
+# its centre over operators_m [0, 0, az] with az = col_r cos 30 degrees (0.0606 m for the captain,
+# 0.0476 m for a crew chair, the values the variants and the command suite place them by).
+
+SEAT_Y = 0.45      # the cushion's top: seat_m
+
+
+def facing(m):
+    """The prop-space direction of a frame's local +Z (a face's normal)."""
+    return (m.to_3x3() @ Vector((0.0, 0.0, 1.0))).normalized()
+
+
+def front_edges(m, lo=0.99):
+    """A chamfer predicate: the edges round a face whose normal is frame m's +Z (a pad's front)."""
+    f = facing(m)
+    return lambda mid, d, n1, n2: max(n1.dot(f), n2.dot(f)) > lo and min(n1.dot(f), n2.dot(f)) < 0.5
+
+
+def swept(p, what, m, x0, x1, profile, role):
+    """A convex profile in frame m's (z, y) swept along its x from x0 to x1, as a hull (one role):
+    a rolled cushion edge, a headrest. A list of (x, profile) pairs instead tapers it."""
+    pts = [(x, y, z) for x in (x0, x1) for z, y in profile]
+    return hull(p.coll, f"{p.name}.{what}", in_frame(m, pts), role)
+
+
+def seat_parts(p, az, half_w, z_back, z_front, bolster):
+    """A seat on its pan: the pan (trim) 5 cm deep, the cushion (channels on top, padded panels on
+    its sides) whose top is SEAT_Y, a rolled front 1.5 cm prouder, and with bolster > 0 side
+    bolsters that wide, 5 cm higher than the cushion. Returns the pieces."""
+    n = p.name
+    inner = half_w - bolster
+    pan = obox(p.coll, f"{n}.seat_pan", (-half_w - 0.02, 0.33, z_back - 0.02), (half_w + 0.02, 0.38, z_front + 0.01), Matrix(),
+               {"*": "trim"})
+    p.chamfer(pan, "pan_edges", 0.015, lambda mid, d, n1, n2: mid.y < 0.335 and abs(d.x) > 0.9)
+    roll_z = z_front - 0.115
+    cushion = obox(p.coll, f"{n}.seat_cushion", (-inner - 0.01, 0.37, z_back), (inner + 0.01, SEAT_Y, roll_z + 0.02), Matrix(),
+                   {"+y": "upholstery", "*": "upholstery_panel"})
+    roll = swept(p, "seat_roll", Matrix(), -inner - 0.005, inner + 0.005,
+                 [(roll_z, 0.37), (z_front - 0.03, 0.355), (z_front, 0.385), (z_front + 0.004, 0.425), (z_front - 0.02, 0.458),
+                  (z_front - 0.06, SEAT_Y + 0.015), (roll_z, SEAT_Y + 0.015)], "upholstery_panel")
+    parts = [pan, cushion, roll]
+    if bolster:
+        for s in (-1, 1):
+            xa, xb = inner - 0.012, half_w
+            prof = [(xa, 0.37), (xb, 0.37), (xb, SEAT_Y + 0.03), (xb - 0.02, SEAT_Y + 0.05), (xa + 0.025, SEAT_Y + 0.05),
+                    (xa, SEAT_Y + 0.025)]
+            pts = [(s * x, y, z) for z in (z_back, z_front - 0.03) for x, y in prof]
+            b = hull(p.coll, f"{n}.bolster_{s:+d}", pts, "upholstery_panel")
+            p.chamfer(b, f"bolster_{s:+d}_front", 0.02, lambda mid, d, n1, n2: mid.z > z_front - 0.04 and mid.y > SEAT_Y)
+            parts.append(b)
+    return parts
+
+
+def captain_chair(name, presents):
+    """The captain's chair (the TNG chair's family, in low poly): a louvred pedestal on a chamfered
+    base plate; a seat pan, a cushion in channels with a rolled front and side bolsters; a tall back
+    leaning 11 degrees, two channelled pads either side of a vertical slot that runs through the back,
+    wing bolsters and a padded headrest with a stripe in the station's colour; armrests on angled
+    supports, each with a padded rest at the back and a console head with its key panel at the front."""
     p = Prop(name, presents, "floor, centre of the pedestal's back")
     p.wall = False
-    col_r = 0.07 if captain else 0.055
-    az = col_r * math.cos(math.pi / 6)        # the column's flat back is at z = 0
-    seat_w, seat_d = (0.60, 0.52) if captain else (0.55, 0.50)
-    foot_r = 0.32 if captain else 0.27
-    foot = prism(p.coll, f"{name}.foot", ngon(0.0, az, foot_r, 6), "y", 0.0, 0.05, "trim")
-    p.chamfer(foot, "foot_edges", 0.02, lambda m, d, n1, n2: m.y > 0.03)
-    column = prism(p.coll, f"{name}.column", ngon(0.0, az, col_r, 6), "y", 0.03, 0.37, "trim")
-    # the seat: a trim shell with a cushion inset 25 mm, its top at 0.45 m
-    z0, z1 = az - seat_d / 2, az + seat_d / 2
-    shell = obox(p.coll, f"{name}.seat_shell", (-seat_w / 2, 0.35, z0), (seat_w / 2, 0.40, z1), Matrix(), {"*": "trim"})
-    cushion = obox(p.coll, f"{name}.seat_cushion", (-seat_w / 2 + 0.025, 0.39, z0 + 0.02), (seat_w / 2 - 0.025, 0.45, z1 - 0.015),
-                   Matrix(), {"*": "machinery"})
-    p.chamfer(cushion, "cushion_edge", 0.02, lambda m, d, n1, n2: m.y > 0.44 and m.z > z1 - 0.03 and abs(d.x) > 0.9)
-    # the back: a trim shell leaning back, a cushion 25 mm proud of it, the headrest band on top
-    back_h = 0.78 if captain else 0.64
-    m_b = frame((0.0, 0.40, z0 + 0.03), 12.0 if captain else 10.0)
-    hb = seat_w / 2 - 0.02
-    back = obox(p.coll, f"{name}.back", (-hb, 0.0, -0.08), (hb, back_h, 0.0), m_b, {"*": "trim"})
-    pad = obox(p.coll, f"{name}.back_cushion", (-hb + 0.03, 0.07, -0.01), (hb - 0.03, back_h - 0.10, 0.025), m_b,
-               {"*": "machinery"})
-    band = obox(p.coll, f"{name}.headrest", (-hb - 0.01, back_h - 0.09, -0.09), (hb + 0.01, back_h + 0.01, 0.012),
-                m_b, {"*": "accent"})
-    seat = shell
-    parts = [foot, column, seat, cushion, back, pad, band]
-    screens = []
-    if captain:
-        zr, zf = az - 0.20, az + 0.30
+    col_r = 0.07                               # today's column: the seat point stays where it was
+    az = col_r * math.cos(math.pi / 6)
+    # the base plate and the louvred pedestal, whose back face is the origin's plane (z = 0)
+    zc = 0.12
+    base = prism(p.coll, f"{name}.base", [(-0.30, zc - 0.20), (-0.22, zc - 0.28), (0.22, zc - 0.28), (0.30, zc - 0.20),
+                                          (0.30, zc + 0.20), (0.22, zc + 0.28), (-0.22, zc + 0.28), (-0.30, zc + 0.20)],
+                 "y", 0.0, 0.045, "machinery")
+    p.chamfer(base, "base_edges", 0.02, lambda m, d, n1, n2: m.y > 0.03)
+    ped = hull(p.coll, f"{name}.pedestal", [(sx * 0.17, 0.03, z) for sx in (-1, 1) for z in (0.0, 0.25)]
+               + [(sx * 0.14, 0.345, z) for sx in (-1, 1) for z in (0.0, 0.20)], "machinery")
+    louvres = []
+    for k in range(4):
+        # a sawtooth louvre: a shadowed lip over a slope that catches the light, across the front and
+        # down both sides (the pedestal tapers, so each cutter follows its face)
+        y = 0.12 + 0.06 * k
+        zf = 0.25 - (y - 0.03) * 0.05 / 0.315
+        xs = 0.17 - (y - 0.03) * 0.03 / 0.315
+        louvres.append(prism(p.coll, f"{name}.louvre_front_{k}", [(zf + 0.05, y), (zf - 0.014, y), (zf + 0.05, y - 0.034)], "x",
+                             -0.13, 0.13, "machinery"))
         for s in (-1, 1):
-            xa, xb = sorted((s * (seat_w / 2 - 0.02), s * (seat_w / 2 + 0.13)))
-            arm = prism(p.coll, f"{name}.arm_{s:+d}", [(zr, 0.36), (zf - 0.08, 0.36), (zf, 0.44), (zf, 0.62), (zr, 0.66)],
-                        "x", xa, xb, ["machinery", "machinery", "trim", "machinery", "trim"], cap="machinery")
-            p.chamfer(arm, f"arm_{s:+d}_edges", 0.015, lambda m, d, n1, n2: m.y > 0.6 and abs(d.z) > 0.9)
-            parts.append(arm)
-            tilt = 90.0 - math.degrees(math.atan2(0.04, zf - zr))
-            ymid = 0.62 + 0.04 * 0.5
-            p.recess(screens, f"arm_panel_{s:+d}", frame((s * (seat_w / 2 + 0.055), ymid, (zr + zf) / 2), tilt),
-                     0.10, 0.30, 0.012, shows="keys")
-    p.union(foot, "chair", parts[1:])
-    if screens:
-        p.cut(foot, "screens", screens)
-    p.body = foot
-    p.seat = [0.0, 0.45, round(az, 4)]
+            tri = [(s * (xs + 0.05), y), (s * (xs - 0.014), y), (s * (xs + 0.05), y - 0.034)]
+            louvres.append(hull(p.coll, f"{name}.louvre_side_{k}_{s:+d}", [(x, yy, z) for x, yy in tri for z in (0.035, zf - 0.035)],
+                                "machinery"))
+    p.cut(ped, "louvres", louvres)
+    parts = [ped]
+    # the seat
+    z_back, z_front = az - 0.235, az + 0.275
+    parts += seat_parts(p, az, 0.30, z_back, z_front, 0.085)
+    # the back: a frame on the cushion's back edge, leaning 11 degrees
+    m_b = frame((0.0, 0.385, z_back - 0.005), 11.0)
+    shell = obox(p.coll, f"{name}.back_shell", (-0.27, -0.02, -0.10), (0.27, 0.84, -0.025), m_b, {"*": "upholstery_panel"})
+    up_b = m_b.to_3x3() @ Vector((0.0, 1.0, 0.0))
+    p.chamfer(shell, "shell_top", 0.02, lambda m, d, n1, n2: min(n1.dot(facing(m_b)), n2.dot(facing(m_b))) < -0.9
+              and (m - m_b.to_translation()).dot(up_b) > 0.8)
+    p.cut(shell, "slot", [obox(p.coll, f"{name}.slot_cut", (-0.035, 0.13, -0.3), (0.035, 0.60, 0.3), m_b, {"*": "trim"})])
+    for s in (-1, 1):
+        xa, xb = sorted((s * 0.042, s * 0.205))
+        pad = obox(p.coll, f"{name}.back_pad_{s:+d}", (xa, 0.05, -0.04), (xb, 0.74, 0.035), m_b,
+                   {"+z": "upholstery", "*": "upholstery_panel"})
+        p.chamfer(pad, f"back_pad_{s:+d}_edges", 0.018, front_edges(m_b))
+        parts.append(pad)
+        wing = [(s * x, z) for x, z in ((0.195, -0.09), (0.28, -0.09), (0.29, -0.01), (0.275, 0.055), (0.24, 0.085), (0.205, 0.07))]
+        top = [(s * x, z) for x, z in ((0.195, -0.09), (0.28, -0.09), (0.285, -0.02), (0.27, 0.02), (0.235, 0.035), (0.205, 0.03))]
+        parts.append(hull(p.coll, f"{name}.wing_{s:+d}", in_frame(m_b, [(x, 0.0, z) for x, z in wing] + [(x, 0.79, z) for x, z in top]),
+                          "upholstery_panel"))
+    parts.append(shell)
+    head = swept(p, "headrest", m_b, -0.165, 0.165,
+                 [(-0.08, 0.79), (0.02, 0.79), (0.06, 0.82), (0.07, 0.905), (0.05, 0.965), (-0.06, 0.965), (-0.085, 0.93)],
+                 "upholstery_panel")
+    band = obox(p.coll, f"{name}.headrest_stripe", (-0.12, 0.862, 0.06), (0.12, 0.884, 0.078), m_b, {"*": "accent"})
+    parts += [head, band]
+    # the arms: an angled support from the pan, the rest and the console head
+    screens = []
+    zr, zfa = az - 0.20, az + 0.31
+    for s in (-1, 1):
+        xa, xb = sorted((s * 0.315, s * 0.445))
+        arm = prism(p.coll, f"{name}.arm_{s:+d}", [(zr, 0.585), (zfa - 0.05, 0.585), (zfa, 0.615), (zfa, 0.64), (zfa - 0.025, 0.662),
+                                                   (az - 0.03, 0.675), (az - 0.03, 0.62), (zr, 0.62)],
+                    "x", xa, xb, ["machinery", "machinery", "machinery", "trim", "trim", "machinery", "machinery", "machinery"],
+                    cap="machinery")
+        p.chamfer(arm, f"arm_{s:+d}_edges", 0.012, lambda m, d, n1, n2: m.y > 0.6 and abs(d.x) > 0.9 and m.z > az)
+        sa, sb = sorted((s * 0.31, s * 0.355))
+        sup = prism(p.coll, f"{name}.arm_support_{s:+d}", [(az - 0.17, 0.335), (az + 0.04, 0.335), (az + 0.20, 0.595),
+                                                           (az + 0.08, 0.595), (az - 0.06, 0.395), (az - 0.17, 0.395)],
+                    "x", sa, sb, "trim")
+        rest = obox(p.coll, f"{name}.arm_rest_{s:+d}", (xa + 0.012, 0.612, zr + 0.012), (xb - 0.012, 0.652, az - 0.02), Matrix(),
+                    {"*": "upholstery_panel"})
+        p.chamfer(rest, f"arm_rest_{s:+d}_edges", 0.012, lambda m, d, n1, n2: m.y > 0.64)
+        parts += [arm, sup, rest]
+        a0, a1 = (az - 0.03, 0.675), (zfa - 0.025, 0.662)
+        tilt = 90.0 - math.degrees(math.atan2(a0[1] - a1[1], a1[0] - a0[0]))
+        c = (s * 0.38, (a0[1] + a1[1]) / 2, (a0[0] + a1[0]) / 2)
+        p.recess(screens, f"arm_panel_{s:+d}", frame(c, tilt), 0.10, 0.24, 0.012, shows="keys")
+    p.union(base, "chair", parts)
+    p.cut(base, "screens", screens)
+    p.body = base
+    chair_decor(p, True, az)
+    p.seat = [0.0, SEAT_Y, round(az, 4)]
+    p.operators.append([0.0, 0.0, round(az, 4)])      # the floor under the seat
+    return p
+
+
+def crew_chair(name, presents):
+    """A station's swivel chair, the captain's family made simpler: a hexagonal column (its flat back
+    at z = 0) with a collar on an octagonal base; a seat pan, a channelled cushion with a rolled
+    front; a padded back leaning 10 degrees in channels, its leather shell, a stripe in the station's
+    colour under a padded headrest; short arms, a padded rest on a post either side."""
+    p = Prop(name, presents, "floor, centre of the pedestal's back")
+    p.wall = False
+    col_r = 0.055
+    az = col_r * math.cos(math.pi / 6)        # the column's flat back is at z = 0
+    base = prism(p.coll, f"{name}.base", ngon(0.0, az, 0.26, 8), "y", 0.0, 0.04, "machinery")
+    p.chamfer(base, "base_edges", 0.018, lambda m, d, n1, n2: m.y > 0.03)
+    column = prism(p.coll, f"{name}.column", ngon(0.0, az, col_r, 6), "y", 0.03, 0.345, "machinery")
+    collar = prism(p.coll, f"{name}.collar", ngon(0.0, az, 0.085, 6, flat_back=False), "y", 0.27, 0.34, "trim")
+    parts = [column, collar]
+    z_back, z_front = az - 0.225, az + 0.255
+    parts += seat_parts(p, az, 0.235, z_back, z_front, 0.0)
+    m_b = frame((0.0, 0.39, z_back - 0.005), 10.0)
+    shell = obox(p.coll, f"{name}.back_shell", (-0.225, -0.02, -0.075), (0.225, 0.60, -0.02), m_b, {"*": "upholstery_panel"})
+    pad = obox(p.coll, f"{name}.back_pad", (-0.195, 0.05, -0.03), (0.195, 0.555, 0.03), m_b,
+               {"+z": "upholstery", "*": "upholstery_panel"})
+    p.chamfer(pad, "back_pad_edges", 0.016, front_edges(m_b))
+    stripe = obox(p.coll, f"{name}.back_stripe", (-0.226, 0.565, -0.076), (0.226, 0.585, -0.019), m_b, {"*": "accent"})
+    head = swept(p, "headrest", m_b, -0.14, 0.14,
+                 [(-0.065, 0.59), (0.01, 0.59), (0.045, 0.615), (0.05, 0.685), (0.03, 0.725), (-0.05, 0.725), (-0.07, 0.70)],
+                 "upholstery_panel")
+    parts += [shell, pad, stripe, head]
+    for s in (-1, 1):
+        xa, xb = sorted((s * 0.235, s * 0.29))
+        post = obox(p.coll, f"{name}.arm_post_{s:+d}", (min(xa, xb) + 0.012, 0.36, az - 0.09), (max(xa, xb) - 0.012, 0.585, az - 0.02),
+                    Matrix(), {"*": "trim"})
+        rest = obox(p.coll, f"{name}.arm_rest_{s:+d}", (xa, 0.575, az - 0.16), (xb, 0.615, az + 0.11), Matrix(),
+                    {"*": "upholstery_panel"})
+        p.chamfer(rest, f"arm_rest_{s:+d}_edges", 0.012, lambda m, d, n1, n2: m.y > 0.6 and abs(d.x) > 0.9)
+        parts += [post, rest]
+    p.union(base, "chair", parts)
+    p.body = base
+    chair_decor(p, False, az)
+    p.seat = [0.0, SEAT_Y, round(az, 4)]
     p.operators.append([0.0, 0.0, round(az, 4)])      # the floor under the seat
     return p
 
@@ -488,6 +878,7 @@ def standup_console(name, presents):
     p.recess(screens, "screen", frame((0.0, top(zt), zt), 90.0 - slope), 0.50, 0.30, 0.015, shows="console")
     p.cut(head, "screens", screens)
     p.body = head
+    standup_decor(p, top, zb, zf)
     p.operators.append([0.0, 0.0, round(zf + 0.35, 4)])
     return p
 
@@ -505,10 +896,16 @@ PROPS = {
     "wall_bank_core_engineering": lambda: variant(wall_bank("wall_bank_core_engineering", 1.40, 1,
                                                             "Engineering's core bank, with its breaker toggles", "breakers"),
                                                   "wall_bank_core", ["engineering"]),
+    "wall_bank_core_science": lambda: variant(wall_bank("wall_bank_core_science", 1.40, 1,
+                                                        "Science's core bank, with its sensor tuning dials", "dials"),
+                                              "wall_bank_core", ["science"]),
     "wall_bank": lambda: wall_bank("wall_bank", 1.10, 1,
                                    "A station built into a wall (bridge-stations 11.1: desk 1.10 m)"),
     "wall_bank_comms": lambda: variant(wall_bank("wall_bank_comms", 1.10, 1, "Comms' bank, with its slider bank", "sliders"),
                                        "wall_bank", ["comms"]),
+    "wall_bank_flight_ops": lambda: variant(wall_bank("wall_bank_flight_ops", 1.10, 1,
+                                                      "Flight ops' bank, with its launch lever and abort button", "levers"),
+                                            "wall_bank", ["flight_ops"]),
     "wall_bank_double": lambda: wall_bank("wall_bank_double", 2.40, 2, "Two seats in one wall bay"),
     "free_console": lambda: free_console("free_console", "The free-standing helm or tactical desk (desk 1.40 m)"),
     "free_console_helm": lambda: variant(free_console("free_console_helm", "Helm's free-standing desk, with its throttle and stick",
@@ -517,8 +914,8 @@ PROPS = {
                                                           "Tactical's free-standing desk, with its guarded fire buttons", "tactical"),
                                              "free_console", ["tactical"]),
     "helm_arc": lambda: helm_arc("helm_arc", "A curved two-seat helm, the first series' style"),
-    "captain_chair": lambda: chair("captain_chair", "The captain's chair on the dais", True),
-    "crew_chair": lambda: chair("crew_chair", "A station's swivel chair", False),
+    "captain_chair": lambda: captain_chair("captain_chair", "The captain's chair on the dais"),
+    "crew_chair": lambda: crew_chair("crew_chair", "A station's swivel chair"),
     "standup_console": lambda: standup_console("standup_console", "A pedestal stand-up console"),
 }
 
@@ -533,12 +930,13 @@ RULES = [
     "Metres. Prop space is the glTF frame: +Y up, +Z toward the operator (out of a console's working face; for a chair, the way the sitter faces), +X the operator's right as they face the prop.",
     "The origin is on the floor at the centre of the prop's back: the wall plane for a wall bank, the back of the pedestal otherwise.",
     "Placing props at a layout station (seat_m on the floor, yaw_deg, the seat facing +Z at yaw 0): operators_m are floor points, so the layout's seat_m lands on one. A chair turns by yaw_deg (its operators_m is the floor under its seat); a console faces the seat, so it turns by yaw_deg + 180. seat_m in a chair's row is the sitting point on the cushion, 0.45 m up.",
-    "Materials are roles: machinery, trim, bulkhead, hazard and light_panel are data/materials/materials.json layers; screen is emissive and coloured by the page (its console UI); accent is the station's role colour.",
+    "Materials are roles: machinery, trim, bulkhead, hazard and light_panel are data/materials/materials.json layers; screen is emissive and coloured by the page (its console UI); accent is the station's role colour; upholstery and upholstery_panel are the panel layers upholstery_channel and upholstery_panel (data/materials/panels.json upholstery), neutral leather the page tints per chair (upholstery.tints_srgb).",
     "screens are the recess floors a page draws on: centre_m on the floor, normal out of it, up the in-plane direction of height_m (width_m runs along up x normal). shows says what: console (the station's main screen image), upper (half 0 or 1 of its upper image) or keys (a key panel); the images and how to fit them are assets/textures/screens/screens.json (bridge-stations 11.6).",
     "A row with variant_of is that prop with a station's own hand controls (controls says which): it stands wherever variant_of would at one of its stations, with the same operators_m.",
     "UV0 is in metres, projected per face as shipkit.js worldUv does (x, z where |n.y| > 0.75, else the face's horizontal tangent and y); divide by the material's span_m.",
     "Flat shaded (one normal per face), triangulated, one closed manifold solid per prop; faces against the floor or the wall are kept for the deck compiler to drop.",
     "triangles is counted in the .glb; the build refuses a prop over budget_triangles. sha256 is the .glb's, from the Blender and exporter versions in generator: a second build with them writes the same bytes.",
+    "atlas is the prop's own baked texture (assets/models/<set>/atlas/<prop>.png, written by the build with its sha256): 256 x 256 RGBA, alpha the glow mask, read through the glb's second UV map (TEXCOORD_1; TEXCOORD_0 stays the metre UVs). px_per_m is its texel density, charts how many pieces its surface was cut into. data/materials/prop_atlas.json says how it is baked; screen faces carry no content in it (the page draws the console faces), accent faces bake light and neutral for the page to tint.",
 ]
 
 BRIDGE = PropSet("bridge", "BridgeProps", OUT, GENERATOR, PROPS, BUDGETS, STATUS, RULES, __doc__)

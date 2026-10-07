@@ -105,7 +105,7 @@
     "grain": { "cell_m": 0.006, "relief": 0.25, "mottle": 0.05 },
     "tints_srgb": {
       "captain_chair": [0.66, 0.17, 0.18],
-      "crew_chair": [0.38, 0.42, 0.47]
+      "crew_chair": [0.50, 0.55, 0.62]
     }
   },
   "glow": { "normal": 1.0, "red_alert": 1.0, "emergency": 0.3 },

@@ -389,8 +389,15 @@ def module_ids(F, kind):
 
 # ----------------------------------------------------------------------------- scene
 
-def lin(c):
-    return tuple(kit._srgb_to_linear(v) for v in c)
+lin = kit.lin            # the shading helpers are the kit's (tools/blender/hs_kit.py), shared with the props' atlas bake
+Nodes = kit.Nodes
+diffuse = kit.diffuse
+emission = kit.emission
+
+
+def worn_blotchy(N, base, F, role, v):
+    """kit.worn_blotchy for a panel role: edge wear and rust on the roles in WORN."""
+    return kit.worn_blotchy(N, base, F, role in WORN, v)
 
 
 def B(p):
@@ -467,75 +474,6 @@ def camera(cx, cy, width_m, res):
 
 
 # ----------------------------------------------------------------------------- materials
-
-class Nodes:
-    """A small helper for shader node trees: sockets or constants in, sockets out."""
-
-    def __init__(self, mat):
-        mat.use_nodes = True
-        self.nt = mat.node_tree
-        for n in list(self.nt.nodes):
-            self.nt.nodes.remove(n)
-
-    def new(self, kind, **props):
-        n = self.nt.nodes.new(kind)
-        for k, v in props.items():
-            setattr(n, k, v)
-        return n
-
-    def feed(self, sock, v):
-        if isinstance(v, bpy.types.NodeSocket):
-            self.nt.links.new(v, sock)
-        else:
-            sock.default_value = v
-
-    def math(self, op, a, b=0.0, clamp=False):
-        n = self.new("ShaderNodeMath", operation=op, use_clamp=clamp)
-        self.feed(n.inputs[0], a)
-        self.feed(n.inputs[1], b)
-        return n.outputs[0]
-
-    def mix(self, fac, a, b, blend="MIX"):
-        n = self.new("ShaderNodeMix", data_type="RGBA", blend_type=blend, clamp_factor=True)
-        ins = {s.identifier: s for s in n.inputs}
-        self.feed(ins["Factor_Float"], fac)
-        self.feed(ins["A_Color"], a)
-        self.feed(ins["B_Color"], b)
-        return {s.identifier: s for s in n.outputs}["Result_Color"]
-
-    def ramp(self, v, lo, hi):
-        n = self.new("ShaderNodeMapRange", clamp=True)
-        self.feed(n.inputs[0], v)
-        n.inputs[1].default_value = lo
-        n.inputs[2].default_value = hi
-        n.inputs[3].default_value = 0.0
-        n.inputs[4].default_value = 1.0
-        return n.outputs[0]
-
-    def noise(self, vec, scale, detail=4.0, rough=0.55):
-        """Fractal noise at vec: a socket (3D noise) or (socket, w) for 4D noise on a torus."""
-        if isinstance(vec, tuple):
-            n = self.new("ShaderNodeTexNoise", noise_dimensions="4D")
-            self.feed(n.inputs["Vector"], vec[0])
-            self.feed(n.inputs["W"], vec[1])
-        else:
-            n = self.new("ShaderNodeTexNoise", noise_dimensions="3D")
-            self.feed(n.inputs["Vector"], vec)
-        n.inputs["Scale"].default_value = scale
-        n.inputs["Detail"].default_value = detail
-        n.inputs["Roughness"].default_value = rough
-        return n.outputs["Fac"]
-
-    def xyz(self, x, y, z):
-        n = self.new("ShaderNodeCombineXYZ")
-        for i, v in enumerate((x, y, z)):
-            self.feed(n.inputs[i], v)
-        return n.outputs[0]
-
-    def out(self, shader):
-        o = self.new("ShaderNodeOutputMaterial")
-        self.nt.links.new(shader, o.inputs["Surface"])
-
 
 def coords(N, periodic):
     """Panel-space position for wear noise: (x, y, depth). Periodic in x with a 2 m period for
@@ -617,47 +555,6 @@ def worn(N, base, F, role, periodic, streaky=True):
     return col
 
 
-def worn_blotchy(N, base, F, role, v):
-    """worn() for surfaces that do not hang: the same grime, crevices and edge wear, with grime
-    blotches in place of streaks and rust in patches and specks."""
-    W, C = F["wear"], F["colours_srgb"]
-    s = W["grime_scale_per_m"]
-    col = N.mix(N.math("MULTIPLY", N.ramp(N.noise(v, s, 6.0, 0.6), 0.38, 0.78), W["grime"]), base, (0.0, 0.0, 0.0, 1.0))
-    ao = N.new("ShaderNodeAmbientOcclusion", samples=8, only_local=False)
-    ao.inputs["Distance"].default_value = W["crevice_m"]
-    col = N.mix(N.math("MULTIPLY", N.math("SUBTRACT", 1.0, ao.outputs["AO"]), W["crevice"]), col, (0.0, 0.0, 0.0, 1.0))
-    if role in WORN and W["edge"] > 0:
-        bev = N.new("ShaderNodeBevel", samples=8)
-        bev.inputs["Radius"].default_value = 0.006
-        geo = N.new("ShaderNodeNewGeometry")
-        dot = N.new("ShaderNodeVectorMath", operation="DOT_PRODUCT")
-        N.nt.links.new(bev.outputs["Normal"], dot.inputs[0])
-        N.nt.links.new(geo.outputs["Normal"], dot.inputs[1])
-        edge = N.ramp(dot.outputs["Value"], 0.97, 0.80)
-        chips = N.ramp(N.noise(v, 9.0, 3.0, 0.7), 0.42, 0.62)
-        worn_c = lin([min(1.0, c * 1.25 + 0.06) for c in C["metal"]]) + (1.0,)
-        col = N.mix(N.math("MULTIPLY", N.math("MULTIPLY", edge, chips), W["edge"]), col, worn_c)
-    if role in WORN and W["streaks"] > 0:
-        # scuffs and dirt: small, sharp blotches
-        blot = N.ramp(N.noise(v, 6.0, 3.0, 0.6), 0.60, 0.74)
-        col = N.mix(N.math("MULTIPLY", blot, W["streaks"]), col, (0.0, 0.0, 0.0, 1.0))
-    if role in WORN and W["rust"] > 0:
-        patch = N.ramp(N.noise(v, 2.2, 4.0, 0.62), 0.56, 0.74)
-        col = N.mix(N.math("MULTIPLY", patch, W["rust"]), col, lin(C["rust"]) + (1.0,))
-        speck = N.ramp(N.noise(v, 22.0, 2.0, 0.6), 0.66, 0.74)
-        col = N.mix(N.math("MULTIPLY", speck, W["rust"] * 0.6), col, lin(C["rust"]) + (1.0,))
-    return col
-
-
-def diffuse(N, col, normal=None):
-    d = N.new("ShaderNodeBsdfDiffuse")
-    N.feed(d.inputs["Color"], col)
-    d.inputs["Roughness"].default_value = 1.0
-    if normal is not None:
-        N.feed(d.inputs["Normal"], normal)
-    N.out(d.outputs[0])
-
-
 def leather(N, col, grain):
     """Leather grain on a colour (upholstery.grain): a pebble of Voronoi cells cell_m across, as a bump
     of strength relief and a slight darkening in the cracks between cells, and a soft mottle of mottle
@@ -677,13 +574,6 @@ def leather(N, col, grain):
     mot = N.noise((vec, w), 30.0, 3.0, 0.55)
     col = N.mix(N.math("MULTIPLY", N.ramp(mot, 0.35, 0.65), grain["mottle"]), col, (0.0, 0.0, 0.0, 1.0))
     return col, bump.outputs["Normal"]
-
-
-def emission(N, col, strength=1.0):
-    e = N.new("ShaderNodeEmission")
-    N.feed(e.inputs["Color"], col)
-    e.inputs["Strength"].default_value = strength
-    N.out(e.outputs[0])
 
 
 def make_materials(F, periodic, ui_image=None, ui_rect=None, streaky=True, role_colour=None, grain=None):

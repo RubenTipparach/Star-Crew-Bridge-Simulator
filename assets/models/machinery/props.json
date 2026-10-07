@@ -10,7 +10,8 @@
     "screens are the recess floors a page draws on: centre_m on the floor, normal out of it, up the in-plane direction of height_m (width_m runs along up x normal). shows says what: console (a main screen image, assets/textures/screens/screens.json), upper (half of an upper image) or keys (a key panel).",
     "UV0 is in metres, projected per face as shipkit.js worldUv does (x, z where |n.y| > 0.75, else the face's horizontal tangent and y); divide by the material's span_m.",
     "Flat shaded (one normal per face), triangulated, one closed manifold solid per prop; faces against the floor or the wall are kept for the deck compiler to drop.",
-    "triangles is counted in the .glb; the build refuses a prop over budget_triangles. sha256 is the .glb's, from the Blender and exporter versions in generator: a second build with them writes the same bytes."
+    "triangles is counted in the .glb; the build refuses a prop over budget_triangles. sha256 is the .glb's, from the Blender and exporter versions in generator: a second build with them writes the same bytes.",
+    "atlas is the prop's own baked texture (assets/models/<set>/atlas/<prop>.png, written by the build with its sha256): 256 x 256 RGBA, alpha the glow mask, read through the glb's second UV map (TEXCOORD_1; TEXCOORD_0 stays the metre UVs). px_per_m is its texel density, charts how many pieces its surface was cut into. data/materials/prop_atlas.json says how it is baked; screen faces carry no content in it (the page draws the console faces), accent faces bake light and neutral for the page to tint."
   ],
   "generator": {
     "script": "tools/blender/build_machinery_props.py",
@@ -87,7 +88,17 @@
         "difference panels (5)",
         "union toggles_and_pulls (21)"
       ],
-      "sha256": "b5c483457426a5c0079a21e117182521760e809718de711211d6123267eaeab5"
+      "sha256": "cd558b6c10c0f270417e7328a8a3533f203424433571df777d199924a78c942a",
+      "atlas": {
+        "file": "atlas/switchboard.png",
+        "px": 256,
+        "px_per_m": 61.22,
+        "charts": 37,
+        "cover": 0.67,
+        "glow": 0.0203,
+        "sha256": "ab6babcb41b2344a8110e1bf818a6eb34e8737a594a3c6b79878c0bce27f1fb6",
+        "bytes": 18158
+      }
     },
     "battery_bank": {
       "file": "battery_bank.glb",
@@ -142,7 +153,17 @@
         "union modules (9)",
         "union bus_bars (4)"
       ],
-      "sha256": "1e35a7fce6dd5556c63cb179cae8aed9da288aa0898358b932e8253c033de995"
+      "sha256": "64c37c722a9a73e88f7a0f2342953bc0a3b24d10827d6417568f93b726f149fa",
+      "atlas": {
+        "file": "atlas/battery_bank.png",
+        "px": 256,
+        "px_per_m": 35.61,
+        "charts": 45,
+        "cover": 0.7,
+        "glow": 0.0179,
+        "sha256": "03ae6f7534d25c433762526f69fcb3f7db670eabd0264ee84a0527ed98cf49a7",
+        "bytes": 20174
+      }
     },
     "coolant_pumps": {
       "file": "coolant_pumps.glb",
@@ -188,7 +209,17 @@
         "chamfer starter_lamp (1 edges, 30 mm)",
         "union pumps_and_pipes (12)"
       ],
-      "sha256": "863e45c9d2542c5aad24fd6b2afccfb40f1818d48858668c35370a897a0bb5ff"
+      "sha256": "e58a5039107cfacf4b0e9ea1f225910a528cc1a1e03025fc48e6fb78e9eda998",
+      "atlas": {
+        "file": "atlas/coolant_pumps.png",
+        "px": 256,
+        "px_per_m": 64.43,
+        "charts": 33,
+        "cover": 0.686,
+        "glow": 0.0032,
+        "sha256": "b9f5393956601ae881a6a0870c41085777c1f9c1ed726e796bf2e38d06fc4dfa",
+        "bytes": 24148
+      }
     },
     "impulse_drive": {
       "file": "impulse_drive.glb",
@@ -234,7 +265,17 @@
         "union cradle_and_conduits (8)",
         "difference vents (6)"
       ],
-      "sha256": "28a793c5ca269b31e3e31e06832283c4876331156b77f7e47c9f35491b26200d"
+      "sha256": "9c3c4bbec481b1d01e1ad4c1efca9e206cd5c34ac059e25d31707b756288c3d3",
+      "atlas": {
+        "file": "atlas/impulse_drive.png",
+        "px": 256,
+        "px_per_m": 22.87,
+        "charts": 69,
+        "cover": 0.396,
+        "glow": 0.0339,
+        "sha256": "e8591e40cbecce410a76daa358b65121a7525baad24b239fd9faea210431a84c",
+        "bytes": 27275
+      }
     },
     "inertial_dampers": {
       "file": "inertial_dampers.glb",
@@ -277,7 +318,17 @@
       "csg": [
         "difference access_panels (2)"
       ],
-      "sha256": "0b2f730a74cc6afd6ada6646652c5b4b446e7f37c259bb0143c22a9b6f4a99f9"
+      "sha256": "bf5061ddfc2168ff9d430546f7b84373e5b52dec1e1081622c61944320f2c302",
+      "atlas": {
+        "file": "atlas/inertial_dampers.png",
+        "px": 256,
+        "px_per_m": 63.79,
+        "charts": 22,
+        "cover": 0.455,
+        "glow": 0.0604,
+        "sha256": "119fb684568fc168f99307019e586f02a5c6485d9818ef557af1e964d2333877",
+        "bytes": 20944
+      }
     },
     "shield_generator": {
       "file": "shield_generator.glb",
@@ -320,7 +371,17 @@
       "csg": [
         "difference vents (4)"
       ],
-      "sha256": "e588d1aac24743087a7d7f45dfcd7efb365834ab445ae3644ff4a1e5302e81e0"
+      "sha256": "2245dc38b6552d90db1b0d438742073368d61a4dcc437b6eefc442e4879c1916",
+      "atlas": {
+        "file": "atlas/shield_generator.png",
+        "px": 256,
+        "px_per_m": 42.26,
+        "charts": 24,
+        "cover": 0.505,
+        "glow": 0.0796,
+        "sha256": "b1c40d4b529d640d6c9efd110f877b43ed25c098ab5cdb7ca36e2b677c26d346",
+        "bytes": 30329
+      }
     },
     "ls_tanks": {
       "file": "ls_tanks.glb",
@@ -390,7 +451,17 @@
         "union tanks_and_box (8)",
         "difference screens (1)"
       ],
-      "sha256": "044a3ff4c19bd4098706196f36dbd9e08bc41d9393645062beec3388961ef007"
+      "sha256": "4246a4ed132158e8c8048ee305f442e43938a9f87a6af15a346f2b94951eca2b",
+      "atlas": {
+        "file": "atlas/ls_tanks.png",
+        "px": 256,
+        "px_per_m": 46.1,
+        "charts": 27,
+        "cover": 0.552,
+        "glow": 0.0,
+        "sha256": "7f3ec5dbae927c41ea6f4c4990ae739c3864cabe7180ab49eacd22f26361b35f",
+        "bytes": 18761
+      }
     },
     "ls_scrubbers": {
       "file": "ls_scrubbers.glb",
@@ -437,7 +508,17 @@
         "difference fans_and_drawers (6)",
         "union fans_and_pulls (12)"
       ],
-      "sha256": "f513c5c0c3b8a50abb25e3bd8cfb7cb5462206ceb7e5001f2245169e0379feb6"
+      "sha256": "e2e7f33c718481f95d1b42d7d2db85d9c5fd1eb74949f4ef25632bed6e12b1d9",
+      "atlas": {
+        "file": "atlas/ls_scrubbers.png",
+        "px": 256,
+        "px_per_m": 50.26,
+        "charts": 24,
+        "cover": 0.499,
+        "glow": 0.0058,
+        "sha256": "6ea82d48150b26ee2025a582e8ec6517b2e58dc5cbdf9045865ce539f6da7e83",
+        "bytes": 24795
+      }
     },
     "ls_air_handler": {
       "file": "ls_air_handler.glb",
@@ -505,7 +586,17 @@
         "difference fan_louvres_panels (6)",
         "union fan (6)"
       ],
-      "sha256": "263f81d47966e2565008a1cf576693cf31e1231fb1a6a43f97cb4993deb5fe37"
+      "sha256": "3cf59920791e94222296352ae2fe07bac0579656b08d645678e6d00f6547af70",
+      "atlas": {
+        "file": "atlas/ls_air_handler.png",
+        "px": 256,
+        "px_per_m": 58.09,
+        "charts": 26,
+        "cover": 0.671,
+        "glow": 0.0354,
+        "sha256": "06858dc8d558714fe2c6016a6965acb3d22476d0a5175b70889722494aee152e",
+        "bytes": 22531
+      }
     },
     "gravity_generator": {
       "file": "gravity_generator.glb",
@@ -550,7 +641,17 @@
         "union ring (8)",
         "difference vents (4)"
       ],
-      "sha256": "dfb8e6a72ae8d3eb302e709535686d7b59277aa81b8c41d772df950938fc67f6"
+      "sha256": "d3b8d72e0019e73a654535cd4ea5714b30c6cb0475485346a7165864a799b850",
+      "atlas": {
+        "file": "atlas/gravity_generator.png",
+        "px": 256,
+        "px_per_m": 67.72,
+        "charts": 26,
+        "cover": 0.494,
+        "glow": 0.0994,
+        "sha256": "f4be146a7a104f045ded8b3cd801c9381b768aa16c47de9d91e2c34a74ab2d95",
+        "bytes": 21961
+      }
     },
     "med_bed": {
       "file": "med_bed.glb",
@@ -620,7 +721,17 @@
         "union bed (8)",
         "difference screens (1)"
       ],
-      "sha256": "acd9f12938b03e5e125d05f853725c2912b0483bd806dda8f84395efd7dce50b"
+      "sha256": "476c4a0a3be35bc5cf4e10d73674ab70fdfbaaaa53f5e16ae971ec4e3f45242c",
+      "atlas": {
+        "file": "atlas/med_bed.png",
+        "px": 256,
+        "px_per_m": 65.66,
+        "charts": 19,
+        "cover": 0.597,
+        "glow": 0.0534,
+        "sha256": "cdca731bfa8d9cd2462eaadee99fd0a9dc0e151fd36db459fed2b52d1b816495",
+        "bytes": 22531
+      }
     },
     "magazine_rack": {
       "file": "magazine_rack.glb",
@@ -665,7 +776,17 @@
         "difference end_frame_+1_hole (1)",
         "union rack_and_hoist (17)"
       ],
-      "sha256": "ca37cfa893394a513be33eb57e457126f7af299d3a9a45420a211d9b3c636936"
+      "sha256": "5e98f01a94f048cb4496868ac4bf260bff09164326793e478d57df0da91c37f0",
+      "atlas": {
+        "file": "atlas/magazine_rack.png",
+        "px": 256,
+        "px_per_m": 31.98,
+        "charts": 30,
+        "cover": 0.725,
+        "glow": 0.0,
+        "sha256": "68838f829e68533224fc0ef6147e09b23db6227dbb41bf7d65f4e65450f98a97",
+        "bytes": 28980
+      }
     },
     "missile_tube": {
       "file": "missile_tube.glb",
@@ -710,7 +831,17 @@
         "difference door (1)",
         "union door_fittings (3)"
       ],
-      "sha256": "9d85858c66acf1288f0ce0519c1487ce4b99bad2b00d399eef0d5f72ff7f5f19"
+      "sha256": "935ce019ab7a0daaa491b2f2df9924b0c1026b5284388f6bc4769aa0abfa2acd",
+      "atlas": {
+        "file": "atlas/missile_tube.png",
+        "px": 256,
+        "px_per_m": 49.91,
+        "charts": 27,
+        "cover": 0.535,
+        "glow": 0.0,
+        "sha256": "ed7e2d4ede9b612bff15c2bdb053e7ef2494586677ceaf0a4eee63553bb74003",
+        "bytes": 25096
+      }
     },
     "reactor_core": {
       "file": "reactor_core.glb",
@@ -753,7 +884,17 @@
       "csg": [
         "union coolant_pipes (4)"
       ],
-      "sha256": "81190d5c08b851e417c77dc83743831b76479e8aa9ebe044d2f34354ffaa00c2"
+      "sha256": "61bbffe2dd40cd1a9df5e78d2f366da558caae4e5003edf9e1105b76d562269b",
+      "atlas": {
+        "file": "atlas/reactor_core.png",
+        "px": 256,
+        "px_per_m": 10.77,
+        "charts": 39,
+        "cover": 0.326,
+        "glow": 0.0666,
+        "sha256": "17de8e8ff9c75f23031ea2a83a73d8b2a649348589ebc3421b2cb604414d13d1",
+        "bytes": 22861
+      }
     },
     "launch_cradle": {
       "file": "launch_cradle.glb",
@@ -805,7 +946,17 @@
         "union deck_rails_clamps (7)",
         "difference strips (2)"
       ],
-      "sha256": "1e1f80516a25a855de5cac90b8a9d7b60966a1c946c75db177ae9da2bf269208"
+      "sha256": "2a2fae4c075431bf384bbd487fa25227489dc4cba559203270a1ea2d9a6678c6",
+      "atlas": {
+        "file": "atlas/launch_cradle.png",
+        "px": 256,
+        "px_per_m": 35.03,
+        "charts": 23,
+        "cover": 0.557,
+        "glow": 0.0201,
+        "sha256": "940e45963574467f34a54e16fa7e1ed04cfbae3701f93de59280b93328ee8851",
+        "bytes": 36324
+      }
     },
     "swift_fighter": {
       "file": "swift_fighter.glb",
@@ -849,7 +1000,17 @@
         "union craft (18)",
         "difference livery (2)"
       ],
-      "sha256": "693ccce42d7da8a7032b14291f39fb3e9664a59c1327e12026d0ca392d141220"
+      "sha256": "ac9c15fa44787e875c3faefa20b8c4a8e1c3c9fb4cb32ae6a2fb48c9535dfd2f",
+      "atlas": {
+        "file": "atlas/swift_fighter.png",
+        "px": 256,
+        "px_per_m": 30.58,
+        "charts": 33,
+        "cover": 0.525,
+        "glow": 0.0455,
+        "sha256": "9925ee94fb68d83ec83712a0f845d485678b35a06d75c7367db930198b41ca78",
+        "bytes": 29773
+      }
     },
     "petrel_shuttle": {
       "file": "petrel_shuttle.glb",
@@ -896,7 +1057,17 @@
         "chamfer ramp_edges (2 edges, 120 mm)",
         "union spine_pods_ramp_gear (30)"
       ],
-      "sha256": "36c28b0c30634908061ffa0eb1ac938662c1308f7901490fe0d9fe1b30c94fe6"
+      "sha256": "8627505fa3b55552e0ed0ebf00bb570b5f9e18643c0613c6880027c7dd1b0ad4",
+      "atlas": {
+        "file": "atlas/petrel_shuttle.png",
+        "px": 256,
+        "px_per_m": 16.76,
+        "charts": 97,
+        "cover": 0.51,
+        "glow": 0.0803,
+        "sha256": "f78f3a2d88b3d05a334b8218301b69048201fb833540038e6786e704d84d7c21",
+        "bytes": 35351
+      }
     },
     "bunk": {
       "file": "bunk.glb",
@@ -941,7 +1112,17 @@
         "difference berth_lights (2)",
         "union bedding_and_ladder (11)"
       ],
-      "sha256": "d65d1fdc50a2b6ee316d820f721e651c8eb0125dfb22e8681ebc0dadf6830e06"
+      "sha256": "6148607c6aa92c1943a499ca84b440959784580ee88a5f760eb18d351fc2ebc1",
+      "atlas": {
+        "file": "atlas/bunk.png",
+        "px": 256,
+        "px_per_m": 41.2,
+        "charts": 21,
+        "cover": 0.5,
+        "glow": 0.0163,
+        "sha256": "868b30bc3b6517f8d35c88e8a60003ebcef1bfa4e5e6d4a372ccbac910b6dfca",
+        "bytes": 23408
+      }
     },
     "mess_table": {
       "file": "mess_table.glb",
@@ -1011,7 +1192,17 @@
         "chamfer cushion_+1_edge (2 edges, 15 mm)",
         "union legs_and_benches (12)"
       ],
-      "sha256": "f8993b6719dc6e09318b273de59cafa37ac18b3d18bdd8b61d4d6415b5f39a21"
+      "sha256": "1e06150195b6cbf7e9bb2ee4428cd80003ab1ff67c6665ea507502f296b53bda",
+      "atlas": {
+        "file": "atlas/mess_table.png",
+        "px": 256,
+        "px_per_m": 60.93,
+        "charts": 17,
+        "cover": 0.564,
+        "glow": 0.0,
+        "sha256": "9d815c84d4cb0af826bf7180d766da14f743117a045e8fced85bde2d72287911",
+        "bytes": 22221
+      }
     },
     "galley_counter": {
       "file": "galley_counter.glb",
@@ -1081,7 +1272,17 @@
         "difference sink (1)",
         "difference burners_and_dispenser (7)"
       ],
-      "sha256": "cc9437ccb7c7f51297a447663143834e001595b839a7e2be953bb7bcdcb061ab"
+      "sha256": "978964d8e46bad738bcb79a4997192f9317af515d789c8440a55515e1f8860fb",
+      "atlas": {
+        "file": "atlas/galley_counter.png",
+        "px": 256,
+        "px_per_m": 66.63,
+        "charts": 22,
+        "cover": 0.766,
+        "glow": 0.0494,
+        "sha256": "c164990401aca99dc3e0e8f6476d8780515d11be5cb9d95e065098ff6eaac669",
+        "bytes": 17760
+      }
     }
   }
 }

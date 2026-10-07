@@ -1930,7 +1930,15 @@
         const back = run - s0;
         const cb = [ft[0] + w[0] * (s0 + back / 2), ft[1] + k * r + r / 2, ft[2] + w[2] * (s0 + back / 2)];
         void c;
-        B.box("stair", cb, u, [0, 1, 0], w, st.width_m / 2, r / 2, back / 2, fit ? ["+v", "+u", "-u"] : ["+v", "-w", "+u", "-u"]);
+        // With the tread on the platforms' tops, each step's top takes it too (the stone deck plate was the last of it).
+        const tread = !!opts.topLayer;
+        B.box("stair", cb, u, [0, 1, 0], w, st.width_m / 2, r / 2, back / 2, (tread ? [] : ["+v"]).concat(fit ? ["+u", "-u"] : ["-w", "+u", "-u"]));
+        if (tread) {
+          const hw = st.width_m / 2, yt = ft[1] + (k + 1) * r, P0 = (sa, ua) => [ft[0] + w[0] * sa + u[0] * ua, ft[2] + w[2] * sa + u[2] * ua];
+          let pg = [P0(s0, -hw), P0(s0, hw), P0(run, hw), P0(run, -hw)];
+          if (signedArea(pg) < 0) pg = pg.reverse();
+          tileTop(THREE, B, "platform_top", pg, yt, opts.topLayer);
+        }
         if (fit) {   // the step's front on the platform layer's step row, fitted to the rise
           const fa = [ft[0] + w[0] * s0 - u[0] * st.width_m / 2, ft[1] + k * r, ft[2] + w[2] * s0 - u[2] * st.width_m / 2];
           const fb = [ft[0] + w[0] * s0 + u[0] * st.width_m / 2, ft[1] + k * r, ft[2] + w[2] * s0 + u[2] * st.width_m / 2];
@@ -2007,6 +2015,186 @@
     for (const sz of [1, -1]) B.box("lift_wall", [x, wy, z + sz * (d / 2 - t / 2)], X, Y, Z, w / 2, wh / 2, t / 2, all);
     B.box("lift_rail", [x - open * (w / 2 - 0.08), y + 0.95, z], X, Y, Z, 0.025, 0.025, d / 2 - 0.15, all);
     B.parts.lift_floor.material = "deck_plate"; B.parts.lift_wall.material = "bulkhead"; B.parts.lift_rail.material = "trim";
+  }
+
+  /**
+   * A fitted-out room's plumbing and structure (openspec/changes/engineering-fitout, data/ships/<id>/engineering.json
+   * "engineering"), into builder B: pipe runs swept along their centrelines (straight legs, an elbow of bend radius one
+   * diameter at every corner, flanges at free ends and every 6 m, collars where a leg passes a slab, hangers up from long
+   * legs), the feeders' trays and busbars (boxes along their paths, a junction box at each corner), railings along
+   * polylines (posts, a top rail with a cap at each corner, a mid rail), rods and the crane's runways.
+   * fit: { layer, span, rows } from platformRows (the platform layer's rows): every surface takes a row of that layer
+   * (pipe, rail, kick, collar, housing), u along the member in metres over the span, v across the row, so no surface
+   * shows the generic tile (the owner, 2026-10-07). slabs: [{ y, below_m }], the floors a vertical leg passes.
+   * Roles: fit_pipe, fit_flange, fit_tray, fit_railing, fit_rod (each a layer per vertex).
+   */
+  function buildFitout(B, E, fit, slabs) {
+    const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+    const mul = (a, s) => [a[0] * s, a[1] * s, a[2] * s], dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+    const unit = (a) => { const l = Math.hypot(a[0], a[1], a[2]); return [a[0] / l, a[1] / l, a[2] / l]; };
+    const row = (name) => { const r = fit.rows[name]; return [r.v0_m / fit.span, (r.v0_m + r.h_m) / fit.span]; };
+    const quadUv = (role, p, uv, n) => {
+      B.triUv(role, p[0], p[1], p[2], uv[0], uv[1], uv[2], n, fit.layer);
+      B.triUv(role, p[0], p[2], p[3], uv[0], uv[2], uv[3], n, fit.layer);
+    };
+    // A frame perpendicular to t, carried from the previous one (parallel transport), so a run does not twist.
+    const perp = (t, prev) => {
+      let e = prev ? sub(prev, mul(t, dot(prev, t))) : (Math.abs(t[1]) < 0.9 ? cross(t, [0, 1, 0]) : cross(t, [1, 0, 0]));
+      if (Math.hypot(e[0], e[1], e[2]) < 1e-6) e = Math.abs(t[1]) < 0.9 ? cross(t, [0, 1, 0]) : cross(t, [1, 0, 0]);
+      return unit(e);
+    };
+    /** A tube through rings [{ c, t, u }] (centre, tangent, metres along); v round it mirrors the row (no seam). */
+    function tube(role, rings, r, n, rowName) {
+      const [v0, v1] = row(rowName);
+      let e1 = perp(rings[0].t, null);
+      const frames = rings.map((g) => { e1 = perp(g.t, e1); return [e1, cross(g.t, e1)]; });
+      const at = (i, k) => { const [a, b] = frames[i], th = (2 * Math.PI * k) / n; return add(rings[i].c, add(mul(a, Math.cos(th) * r), mul(b, Math.sin(th) * r))); };
+      const nrm = (i, k) => { const [a, b] = frames[i], th = (2 * Math.PI * (k + 0.5)) / n; return add(mul(a, Math.cos(th)), mul(b, Math.sin(th))); };
+      const v = (k) => v0 + (v1 - v0) * Math.abs(1 - (2 * k) / n);
+      for (let i = 0; i + 1 < rings.length; i++) {
+        const u0 = rings[i].u / fit.span, u1 = rings[i + 1].u / fit.span;
+        for (let k = 0; k < n; k++) {
+          const nm = unit(add(nrm(i, k), nrm(i + 1, k)));
+          quadUv(role, [at(i, k), at(i + 1, k), at(i + 1, k + 1), at(i, k + 1)], [[u0, v(k)], [u1, v(k)], [u1, v(k + 1)], [u0, v(k + 1)]], nm);
+        }
+      }
+    }
+    /** A ring round an axis: outer face and both annuli (a flange, a collar, a clamp band); no inner face. */
+    function ring(c, t, ri, ro, len, n, rowName) {
+      const [v0, v1] = row(rowName), e1 = perp(t, null), e2 = cross(t, e1), h = len / 2;
+      const pt = (rad, k, s) => add(add(c, mul(t, s * h)), add(mul(e1, Math.cos((2 * Math.PI * k) / n) * rad), mul(e2, Math.sin((2 * Math.PI * k) / n) * rad)));
+      for (let k = 0; k < n; k++) {
+        const nm = add(mul(e1, Math.cos((2 * Math.PI * (k + 0.5)) / n)), mul(e2, Math.sin((2 * Math.PI * (k + 0.5)) / n)));
+        const a = k / n, b = (k + 1) / n;
+        quadUv("fit_flange", [pt(ro, k, -1), pt(ro, k, 1), pt(ro, k + 1, 1), pt(ro, k + 1, -1)], [[a, v0], [a, v1], [b, v1], [b, v0]], nm);
+        for (const s of [1, -1]) quadUv("fit_flange", [pt(ri, k, s), pt(ro, k, s), pt(ro, k + 1, s), pt(ri, k + 1, s)], [[a, v0], [a, v1], [b, v1], [b, v0]], mul(t, s));
+      }
+    }
+    /** A box along a to b, w wide along axis wa (unit, perpendicular to the leg), d deep along the third axis. */
+    function member(role, a, b, wa, w, d, rowName, faces) {
+      const len = Math.hypot(...sub(b, a));
+      if (len < 1e-4) return;
+      const t = unit(sub(b, a)), da = unit(cross(t, wa)), c = mul(add(a, b), 0.5), [v0, v1] = row(rowName);
+      const fs = faces || ["+w", "-w", "+d", "-d"];
+      const half = { w: w / 2, d: d / 2 };
+      for (const f of fs) {
+        const s = f[0] === "+" ? 1 : -1, ax = f[1] === "w" ? wa : da, other = f[1] === "w" ? da : wa, oh = f[1] === "w" ? half.d : half.w;
+        const o = add(c, mul(ax, s * half[f[1]]));
+        const p = [add(add(o, mul(t, -len / 2)), mul(other, -oh)), add(add(o, mul(t, len / 2)), mul(other, -oh)),
+          add(add(o, mul(t, len / 2)), mul(other, oh)), add(add(o, mul(t, -len / 2)), mul(other, oh))];
+        const u0 = dot(a, t) / fit.span, u1 = u0 + len / fit.span;
+        quadUv(role, p, [[u0, v0], [u1, v0], [u1, v1], [u0, v1]], mul(ax, s));
+      }
+      return { t, da };
+    }
+    /** An axis-aligned or oriented block at c (half sizes along e1, e2, e3), all six faces, one row. */
+    function block(role, c, axes, hs, rowName) {
+      const [v0, v1] = row(rowName);
+      for (let a = 0; a < 3; a++) for (const s of [1, -1]) {
+        const b1 = (a + 1) % 3, b2 = (a + 2) % 3, o = add(c, mul(axes[a], s * hs[a]));
+        const p = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([i, j]) => add(o, add(mul(axes[b1], i * hs[b1]), mul(axes[b2], j * hs[b2]))));
+        quadUv(role, p, [[0, v0], [2 * hs[b1] / fit.span, v0], [2 * hs[b1] / fit.span, v1], [0, v1]], mul(axes[a], s));
+      }
+    }
+
+    // Pipe runs.
+    for (const run of E.runs || []) {
+      const P = run.points_m, r = run.dia_m / 2, n = run.dia_m >= 0.3 ? 8 : 6, R = run.dia_m;
+      const d = []; for (let i = 0; i + 1 < P.length; i++) d.push(unit(sub(P[i + 1], P[i])));
+      const tl = [0];   // tangent length cut from each corner by its elbow
+      for (let i = 1; i + 1 < P.length; i++) tl.push(R * Math.tan(Math.acos(Math.max(-1, Math.min(1, dot(d[i - 1], d[i])))) / 2));
+      tl.push(0);
+      const rings = []; let u = 0;
+      const push = (c, t, du) => { u += du; rings.push({ c, t, u }); };
+      push(P[0], d[0], 0);
+      for (let i = 0; i + 1 < P.length; i++) {
+        const end = sub(P[i + 1], mul(d[i], tl[i + 1]));
+        push(end, d[i], Math.hypot(...sub(end, rings[rings.length - 1].c)));
+        if (i + 2 < P.length && tl[i + 1] > 1e-6) {   // the elbow at P[i+1], from d[i] to d[i+1]
+          const th = Math.acos(Math.max(-1, Math.min(1, dot(d[i], d[i + 1])))), m = unit(sub(d[i + 1], mul(d[i], Math.cos(th))));
+          const C = add(end, mul(m, R)), seg = Math.max(1, Math.round((4 * th) / (Math.PI / 2)));
+          for (let k = 1; k <= seg; k++) {
+            const ph = (th * k) / seg;
+            push(add(C, add(mul(m, -R * Math.cos(ph)), mul(d[i], R * Math.sin(ph)))), unit(add(mul(m, Math.sin(ph)), mul(d[i], Math.cos(ph)))), (R * th) / seg);
+          }
+        }
+      }
+      tube("fit_pipe", rings, r, n, "pipe");
+      // Flanges: at a free end (the reactor's nozzle, the ceiling, a loop's joint) and every 6 m; a port has its own.
+      const endFlange = (e, at, t) => {
+        if (e.port || e.tee) return;
+        if (e.reactor !== undefined) { ring(add(at, mul(t, 0.24)), t, r, r * 1.35, 0.08, n, "collar"); return; }
+        if (e.ceiling) { ring(add(at, mul(t, -0.05)), t, r, r * 1.4, 0.1, n, "collar"); return; }
+        ring(at, t, r, r * 1.3, 0.06, n, "collar");
+      };
+      endFlange(run.from, P[0], mul(d[0], run.from.reactor !== undefined ? 1 : -1));
+      if (!run.to.loop) endFlange(run.to, P[P.length - 1], run.to.reactor !== undefined ? mul(d[d.length - 1], -1) : d[d.length - 1]);
+      const total = rings[rings.length - 1].u;
+      for (let s = 6; s < total - 1; s += 6) {
+        let k = 1; while (k < rings.length - 1 && rings[k].u < s) k++;
+        const g0 = rings[k - 1], g1 = rings[k], f = (s - g0.u) / Math.max(1e-6, g1.u - g0.u);
+        if (Math.abs(dot(g0.t, g1.t)) > 0.999) ring(add(g0.c, mul(sub(g1.c, g0.c), f)), g0.t, r, r * 1.3, 0.06, n, "collar");
+      }
+      // Collars where a vertical leg passes a slab: on its top and under it.
+      for (let i = 0; i + 1 < P.length; i++) {
+        if (Math.abs(d[i][1]) < 0.999) continue;
+        const lo = Math.min(P[i][1], P[i + 1][1]), hi = Math.max(P[i][1], P[i + 1][1]);
+        for (const sl of slabs || []) {
+          if (lo < sl.y - sl.below_m - 0.1 && hi > sl.y + 0.1) {
+            for (const [y, s] of [[sl.y + 0.03, 1], [sl.y - sl.below_m - 0.03, -1]]) ring([P[i][0], y, P[i][2]], [0, 1, 0], r, r + 0.08, 0.06, n, "collar");
+          }
+        }
+      }
+      // Hangers: a rod from the pipe's top up to what is over it, and a clamp band round the pipe.
+      for (const [x, y0, y1, z] of run.hangers || []) {
+        const c = [x, y0 - r, z];
+        let t = d[0], best = Infinity;   // the leg the hanger stands on: the nearest to it
+        for (let i = 0; i < d.length; i++) {
+          const q = sub(c, P[i]), s = Math.max(0, Math.min(Math.hypot(...sub(P[i + 1], P[i])), dot(q, d[i]))), e = Math.hypot(...sub(q, mul(d[i], s)));
+          if (e < best) { best = e; t = d[i]; }
+        }
+        ring(c, t, r, r + 0.03, 0.05, n, "collar");
+        tube("fit_rod", [{ c: [x, y0 + 0.03, z], t: [0, 1, 0], u: 0 }, { c: [x, y1, z], t: [0, 1, 0], u: y1 - y0 }], 0.02, 6, "rail");
+      }
+    }
+    // Trays and busbars: a box per leg, its width across both legs at a corner; a junction box at each corner.
+    for (const tr of E.trays || []) {
+      const P = tr.points_m, [w, dpt] = tr.size_m, j = Math.max(w, dpt) / 2;
+      const d = []; for (let i = 0; i + 1 < P.length; i++) d.push(unit(sub(P[i + 1], P[i])));
+      const horiz = d.map((v) => Math.abs(v[1]) < 0.5);
+      for (let i = 0; i < d.length; i++) {
+        let wa;
+        if (horiz[i]) wa = unit([-d[i][2], 0, d[i][0]]);
+        else { const h = d[i + 1] && horiz[i + 1] ? d[i + 1] : d[i - 1] && horiz[i - 1] ? d[i - 1] : [1, 0, 0]; wa = unit([-h[2], 0, h[0]]); }
+        const a = i > 0 ? add(P[i], mul(d[i], j)) : P[i], b = i + 2 < P.length ? sub(P[i + 1], mul(d[i], j)) : P[i + 1];
+        member("fit_tray", a, b, wa, w, dpt, horiz[i] ? "housing" : "kick");
+        // A turn in the horizontal plane gets a flat junction the tray's depth; a turn up or down a cube.
+        if (i + 2 < P.length) block("fit_tray", P[i + 1], [[1, 0, 0], [0, 1, 0], [0, 0, 1]], [j, horiz[i] && horiz[i + 1] ? dpt / 2 : j, j], "kick");
+      }
+    }
+    // Railings: posts at every vertex and at most 1.6 m apart, a top rail capped at each corner, a mid rail. Each member
+    // differs from the one it crosses by at least 1 cm a side (posts 30 mm, mid rail 50, top rail 60, caps 75), so no two
+    // share a plane (CLAUDE.md section 8).
+    const H = 1.05, tr = 0.03, mr = 0.025, pr = 0.015, cr = 0.0375;
+    for (const rl of E.railings || []) {
+      const P = rl.points_m.slice(); if (rl.closed) P.push(P[0]);
+      const corner = (i) => rl.closed || (i > 0 && i < P.length - 1);
+      for (let i = 0; i + 1 < P.length; i++) {
+        const a = P[i], b = P[i + 1], t = unit(sub(b, a)), th = unit([t[0], 0, t[2]]), wa = unit([-th[2], 0, th[0]]);
+        const top = (p) => [p[0], p[1] + H, p[2]], mid = (p) => [p[0], p[1] + H * 0.5, p[2]];
+        const cut = (p, s, by) => add(p, mul(t, (s * by) / Math.max(0.3, Math.hypot(t[0], t[2]))));
+        member("fit_railing", top(cut(a, corner(i) ? 1 : 0, tr)), top(cut(b, corner(i + 1) ? -1 : 0, tr)), wa, 2 * tr, 2 * tr, "rail");
+        member("fit_railing", mid(cut(a, 1, pr + 0.02)), mid(cut(b, -1, pr + 0.02)), wa, 2 * mr, 2 * mr, "rail");
+        const len = Math.hypot(...sub(b, a)), k = Math.max(1, Math.ceil(len / 1.6));
+        const post = (p) => member("fit_railing", p, [p[0], p[1] + H - tr, p[2]], [1, 0, 0], 2 * pr, 2 * pr, "rail");
+        for (let q = 0; q < k; q++) post(add(a, mul(sub(b, a), q / k)));
+        if (!rl.closed && i + 2 === P.length) post(b);
+        if (corner(i + 1) || (rl.closed && i + 2 === P.length)) block("fit_railing", top(b), [[1, 0, 0], [0, 1, 0], [0, 0, 1]], [cr, cr, cr], "rail");
+      }
+    }
+    for (const rd of E.rods || []) tube("fit_rod", [{ c: rd.from_m, t: unit(sub(rd.to_m, rd.from_m)), u: 0 }, { c: rd.to_m, t: unit(sub(rd.to_m, rd.from_m)), u: Math.hypot(...sub(rd.to_m, rd.from_m)) }], rd.dia_m / 2, 6, "rail");
+    for (const rw of E.runways || []) member("fit_tray", rw.from_m, rw.to_m, [1, 0, 0], rw.size_m[0], rw.size_m[1], "housing", ["+w", "-w", "+d", "-d"]);
   }
 
   function hullGeometry(THREE, L, opts) {
@@ -2284,7 +2472,7 @@
     buildCompartment, roomShell, lampsFor, frameStations, loadMaterials, surfaceMaterial, geometryOf, finishOf, compartmentMesh, paintRole, bakeDirect,
     // wall panels (openspec/changes/wall-panels)
     loadPanels, panelsData, panelBands, panelBays, fnv1a, decodePng, panelLayerList, panelLayerName, walkwayPaths,
-    Builder, subdivideParts, buildPlatforms, buildSpiralStair, buildLiftCar,
+    Builder, subdivideParts, buildPlatforms, buildSpiralStair, buildLiftCar, buildFitout, platformRows,
     // hull, labels, chrome
     hullGeometry, hullHalfWidth, label, budgetHud, titleBlock, registerShots, markReady, panelChrome,
     rectMinusHoles, intervalMinus, worldUv,
