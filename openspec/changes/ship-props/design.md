@@ -184,6 +184,29 @@ from 160 to 480 (section 5 is measured after them).
 320 for each crew chair: the bridge (the captain and six crew) about 2,500 more, inside its 30,000; the briefing room
 (eight chairs) about 2,600 more, inside its 8,000. Section 5's table is re-measured with them. No draw call.
 
+### 4c. A custom texture for every prop (2026-10-07)
+
+The owner, on the consoles: "the textures on the console man, they need to be full on custom details, youre using generic
+textures on them which looks pretty bad", then: "basically everything using the metal tile grid needs to get replaced with
+custom textures". Every prop took the deck's tiling materials by role (the grey tiled `trim`, the `machinery`, the
+`bulkhead`), so a helm console, a battery bank and a locker were the same squares.
+
+**An atlas per prop.** Each prop gets its own 256 x 256 layer (`assets/models/<set>/atlas/<prop>.png`), the way game
+props have always been textured: the low-poly mesh unwrapped once into a second UV set (glTF `TEXCOORD_1`, the first
+staying the metre UVs), and a detailed version of the prop that exists only for the bake (panel seams, bolts and
+rivets, vents and louvres, stencilled labels and name plates, button rows, toggle banks, LED strips, gauges, warning
+placards, wear) baked onto it in Blender under the panels' fixed light, relief and occlusion in the colour, the glow
+in alpha (CLAUDE.md section 9: no normal maps). The low-poly geometry does not change; its triangles are the budget's.
+Consoles carry their station's name; no two kinds look alike.
+
+**In the page.** A prop with an atlas takes it on every face but its screens (the console faces are drawn there, as
+today) and its `accent` faces, which are baked light so the station's colour still tints them. Chairs carry their
+upholstery in the atlas, in their colour. A prop without one keeps the tiling materials.
+
+**What it costs.** One layer a prop kind: 0.35 MB at 256 px with mips, 87 KB at 128 px. The Tern's 47 kinds
+(bridge 12, suite 15, machinery 20) come to 16.4 MB at 256 px or 4.1 MB at 128 px of the 96 MB texture budget; a
+deck's array need hold only the kinds it places. No draw call and no triangle added.
+
 ### 5. The Pi 5 budget this change spends
 
 Measured on the deck plan, 2026-10-06: `MOCKUP_STATS` per compartment, which counts the compartment's mesh and its

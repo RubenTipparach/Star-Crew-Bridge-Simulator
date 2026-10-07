@@ -10,6 +10,7 @@
 - [x] 1.6 Tour again, look, fix what is found; the Pi 5 budget table (design section 5) from the deck plan's counts.
 - [x] 1.7 No z-fighting (design section 4a): `tools/mockups/zfight.mjs`, every mockup under 0.1 m^2 of fighting surfaces.
 - [ ] 1.8 Seats (design section 4b): the two upholstery layers, the remodelled captain's and crew chairs, tinted per seat in the pages; renders and shots looked at.
+- [ ] 1.9 A custom atlas per prop (design section 4c): bridge set, then machinery, then suite; the pages map them; contact sheets and shots looked at.
 
 ## 2. When the layout takes the patches
 

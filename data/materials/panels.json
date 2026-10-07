@@ -80,11 +80,16 @@
     }
   },
   "platforms": {
-    "_doc": "The faces of raised floors (the bridge's rings, the dais, a sub-platform) and the fronts of their stairs' steps (the owner, 2026-10-07: 'the wall on these platforms kinda suck, please use better uv tiling, and redo to make the texture conform to the height better ... Usually these areas are made of vents of some kind, or small metal panels that should fit vertically on the geometry uv'). One layer per finish (finishes.<finish>.platforms.layer) holds three rows, each designed to fit one face height: riser a 0.45 m riser, riser_low a 0.225 m riser, step a stair step's 0.225 m front. A page maps a face's bottom to its row's v0_m and its top to v0_m + h_m, exactly, with no repeat and no stretch beyond the row's few millimetres over the face; u runs along the face, world-projected or measured round the outline, tiling with a 2 m period. Each row has a dark toe kick at the floor, a steel lip under the hazard nosing and, between them, vent grilles and small bolted access panels the row's clear height tall. Built like the trim rows (v0_m and h_m whole texels at 64 px per metre, at least two texels between rows, the gaps filled by repeating each row's edge), in the finish's trim colours and trim wear, under render.platforms.",
+    "_doc": "The faces of raised floors (the bridge's rings, the dais, a sub-platform) and the fronts of their stairs' steps (the owner, 2026-10-07: 'the wall on these platforms kinda suck, please use better uv tiling, and redo to make the texture conform to the height better ... Usually these areas are made of vents of some kind, or small metal panels that should fit vertically on the geometry uv'). One layer per finish (finishes.<finish>.platforms.layer) holds three rows, each designed to fit one face height: riser a 0.45 m riser, riser_low a 0.225 m riser, step a stair step's 0.225 m front. A page maps a face's bottom to its row's v0_m and its top to v0_m + h_m, exactly, with no repeat and no stretch beyond the row's few millimetres over the face; u runs along the face, world-projected or measured round the outline, tiling with a 2 m period. Each face row has a dark toe kick at the floor, a steel lip under the hazard nosing and, between them, vent grilles and small bolted access panels the row's clear height tall. The same layer holds the rows of the kit members that took the generic trim tile (the owner, 2026-10-07: 'basically everything using the metal tile grid needs to get replaced with custom textures'), each across its member with v from one long edge to the other: rail (railing rails and posts, ladder rails and rungs, the lift's handrail: a round steel bar with a clamp band every 0.5 m), kick (a railing's kickplate: a bolted plate under a hazard edge), collar (a floor opening's coaming: bolted steel under a lip), housing (a lamp housing's sides: ribbed steel with a seam every 0.5 m) and pipe (a conduit seen side on: clamps every 0.5 m and a flange every 1 m). Built like the trim rows (v0_m and h_m whole texels at 64 px per metre, at least two texels between rows, the gaps filled by repeating each row's edge), in the finish's trim colours and trim wear, under render.platforms.",
     "rows": {
-      "riser": { "v0_m": 0.125, "h_m": 0.453125 },
-      "riser_low": { "v0_m": 0.75, "h_m": 0.234375 },
-      "step": { "v0_m": 1.25, "h_m": 0.234375 }
+      "riser": { "v0_m": 0.0625, "h_m": 0.453125 },
+      "riser_low": { "v0_m": 0.5625, "h_m": 0.234375 },
+      "step": { "v0_m": 0.84375, "h_m": 0.234375 },
+      "rail": { "v0_m": 1.125, "h_m": 0.0625 },
+      "kick": { "v0_m": 1.234375, "h_m": 0.125 },
+      "collar": { "v0_m": 1.40625, "h_m": 0.125 },
+      "housing": { "v0_m": 1.578125, "h_m": 0.125 },
+      "pipe": { "v0_m": 1.75, "h_m": 0.125 }
     }
   },
   "upholstery": {

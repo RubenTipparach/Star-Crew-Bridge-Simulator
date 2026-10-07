@@ -707,7 +707,7 @@
         for (const m of Object.keys(F[kind].modules)) if (m[0] !== "_") out.push({ name: panelLayerName(fn, m, kind), stem: `${fn}_${kind}_${m}`, layer: F[kind].modules[m].layer });
       }
       if (F.trims) out.push({ name: panelLayerName(fn, "trims"), stem: `${fn}_trims`, layer: F.trims.layer });
-      if (F.platforms) out.push({ name: panelLayerName(fn, "platform"), stem: `${fn}_platform`, layer: F.platforms.layer });
+      if (F.platforms) out.push({ name: panelLayerName(fn, "platform"), stem: `${fn}_platforms`, layer: F.platforms.layer });
     }
     // Upholstery (ship-props design 4b): one bake for every finish, tinted per seat by the page.
     if (S.upholstery) for (const k of Object.keys(S.upholstery.layers)) out.push({ name: `panel:upholstery:${k}`, stem: `upholstery_${k}`, layer: S.upholstery.layers[k] });
@@ -760,8 +760,8 @@
         const v0 = r.v0_m / span, v1 = (r.v0_m + r.h_m) / span;
         const q = [[s.a0, c0, v0], [s.a1, c0, v0], [s.a1, c1, v1], [s.a0, c1, v1]];
         const pts = q.map(([a, c]) => P(a, c)), uvs = q.map(([a, , v]) => [uOf(a), v]);
-        B.triUv(role, pts[0], pts[1], pts[2], uvs[0], uvs[1], uvs[2], n, T.layer);
-        B.triUv(role, pts[0], pts[2], pts[3], uvs[0], uvs[2], uvs[3], n, T.layer);
+        B.triUv(role, pts[0], pts[1], pts[2], uvs[0], uvs[1], uvs[2], n, r.layer || T.layer);   // a row may live on another layer
+        B.triUv(role, pts[0], pts[2], pts[3], uvs[0], uvs[2], uvs[3], n, r.layer || T.layer);
       }
     }
     T.stats.faces++;
@@ -771,8 +771,23 @@
   function trimContext(ctx, comp) {
     const S = ctx.S, fin = S.finishes[comp.finish];
     if (!fin || !fin.trims) throw new Error(`shipkit: compartment ${comp.id} has finish ${comp.finish}, with no trims in panels.json`);
-    const Tr = S.trims;
-    return { S, layer: panelLayerName(comp.finish, "trims"), rows: Tr.rows, members: Tr.members, pieces: Tr.pieces, pillar: Tr.pillar, span: S.layers.span_m, stretch: Tr.stretch_max, stats: ctx.stats.trims };
+    const Tr = S.trims, fit = fittingRows(S, comp.finish);
+    return { S, layer: panelLayerName(comp.finish, "trims"), rows: Object.assign({}, Tr.rows, fit.rows), members: Object.assign({}, Tr.members, fit.members),
+      pieces: Tr.pieces, pillar: Tr.pillar, span: S.layers.span_m, stretch: Tr.stretch_max, stats: ctx.stats.trims };
+  }
+  /**
+   * The members still on the tiling trim that take rows of the finish's platform layer instead (ceilings-and-trims
+   * design 9): rails, kickplates, ladders, collars and lamp housings, each under a role of its own (fit_<role>), since a
+   * role's triangles either all carry a layer or none do. Empty without the rows in the page's panels.json.
+   */
+  function fittingRows(S, finish) {
+    const P = S.platforms, fin = S.finishes[finish];
+    if (!P || !fin || !fin.platforms) return { rows: {}, members: {} };
+    const layer = panelLayerName(finish, "platform"), rows = {}, members = {};
+    for (const [k, r] of Object.entries(P.rows)) if (k[0] !== "_") rows[k] = Object.assign({ layer }, r);
+    const of = { railing: "rail", ladder: "rail", kickplate: "kick", collar: "collar", lamp_housing: "housing" };
+    for (const [role, row] of Object.entries(of)) if (rows[row]) members[role] = { face: row, sides: row, ends: row, role: `fit_${role}` };
+    return { rows, members };
   }
 
   /**
@@ -797,7 +812,7 @@
       const al = others.indexOf(long) >= 0 ? long : (hs[others[0]] >= hs[others[1]] ? others[0] : others[1]);
       const ac = others.find((k) => k !== al);
       const isEnd = others.indexOf(long) < 0;
-      const rowName = isEnd ? "side" : f === front ? M.face : M.sides;
+      const rowName = isEnd ? M.ends || "side" : f === front ? M.face : M.sides;
       const o = [0, 1, 2].map((k) => c[k] + ax[a][k] * s * hs[a]);
       const n = ax[a].map((x) => x * s);
       const L = hs[al];
@@ -809,7 +824,7 @@
           T.stats.pillars++;
         }
       }
-      stripFace(B, r, T, o, ax[al], ax[ac], hs[ac], n, rowName, segs);
+      stripFace(B, M.role || r, T, o, ax[al], ax[ac], hs[ac], n, rowName, segs);   // a member may draw under a role of its own
     }
   }
 
@@ -1265,14 +1280,14 @@
         const u0 = h.u0 + RL.post_m, u1 = h.u1 - RL.post_m, inset = RL.inset_m + RL.post_m / 2, hp = RL.post_m / 2;
         if (u1 - u0 < 0.3) continue;
         for (const y of [w.y0 + RL.height_m, w.y0 + RL.height_m / 2]) {
-          B.box("railing", P3((u0 + u1) / 2, y, inset), ax, up, nIn, (u1 - u0) / 2, hp, hp, ["+v", "-v", "+w", "-w", "+u", "-u"]);
+          tbox("railing", P3((u0 + u1) / 2, y, inset), ax, up, nIn, (u1 - u0) / 2, hp, hp, ["+v", "-v", "+w", "-w", "+u", "-u"]);
         }
-        B.box("kickplate", P3((u0 + u1) / 2, w.y0 + RL.kick_m / 2, inset), ax, up, nIn, (u1 - u0) / 2, RL.kick_m / 2, 0.01, ["+v", "+w", "-w", "+u", "-u"]);
+        tbox("kickplate", P3((u0 + u1) / 2, w.y0 + RL.kick_m / 2, inset), ax, up, nIn, (u1 - u0) / 2, RL.kick_m / 2, 0.01, ["+v", "+w", "-w", "+u", "-u"]);
         const n = Math.max(1, Math.round((u1 - u0) / RL.post_spacing_m));
         for (let k = 0; k <= n; k++) {
           const u = u0 + ((u1 - u0) * k) / n;
           // A post a little thinner than the rails it crosses, so their faces never share a plane (CLAUDE.md section 8).
-          B.box("railing", P3(u, w.y0 + RL.height_m / 2, inset), ax, up, nIn, hp * 0.8, RL.height_m / 2, hp * 0.8, ["+u", "-u", "+w", "-w"]);
+          tbox("railing", P3(u, w.y0 + RL.height_m / 2, inset), ax, up, nIn, hp * 0.8, RL.height_m / 2, hp * 0.8, ["+u", "-u", "+w", "-w"]);
         }
       }
       // Conduits along fore-and-aft corridor walls.
@@ -1337,7 +1352,7 @@
         const f = h.f, W = FP.collar_width_m, y = br.y[1] - FP.collar_depth_m / 2;
         for (const [sx, sz] of SIDES) {
           const along = sx === 0, hu = along ? f.sx / 2 + W : W / 2, hw = along ? W / 2 : f.sz / 2;
-          B.box("collar", [f.c[0] + sx * (f.sx / 2 + W / 2), y, f.c[2] + sz * (f.sz / 2 + W / 2)], [1, 0, 0], [0, 1, 0], [0, 0, 1], hu, FP.collar_depth_m / 2, hw, ["-v", "+u", "-u", "+w", "-w"]);
+          tbox("collar", [f.c[0] + sx * (f.sx / 2 + W / 2), y, f.c[2] + sz * (f.sz / 2 + W / 2)], [1, 0, 0], [0, 1, 0], [0, 0, 1], hu, FP.collar_depth_m / 2, hw, ["-v", "+u", "-u", "+w", "-w"]);
         }
         // A ladder up through a ladder well, and through a floor hatch (a scuttle, a turret pod's hatch: deck-access),
         // from this floor to the floor above, and its handholds past it.
@@ -1350,10 +1365,10 @@
             Math.abs(q.center_m[0] - f.c[0]) < 0.3 && Math.abs(q.center_m[2] - f.c[2]) < 0.3 && q.center_m[1] > f.c[1] + 0.5);
           const topY = top + (goesOn ? 0 : FP.ladder_above_m), bot = br.y[0], zl = f.c[2] - f.sz / 2 + FP.ladder_rail_m, hr = FP.ladder_rail_m / 2;
           for (const s of [-1, 1]) {
-            B.box("ladder", [f.c[0] + (s * FP.ladder_width_m) / 2, (topY + bot) / 2, zl], [1, 0, 0], [0, 1, 0], [0, 0, 1], hr, (topY - bot) / 2, hr, ["+u", "-u", "+w", "-w", "+v"]);
+            tbox("ladder", [f.c[0] + (s * FP.ladder_width_m) / 2, (topY + bot) / 2, zl], [1, 0, 0], [0, 1, 0], [0, 0, 1], hr, (topY - bot) / 2, hr, ["+u", "-u", "+w", "-w", "+v"]);
           }
           for (let y = bot + FP.rung_spacing_m; y < topY - 0.05; y += FP.rung_spacing_m) {
-            B.box("ladder", [f.c[0], y, zl], [1, 0, 0], [0, 1, 0], [0, 0, 1], FP.ladder_width_m / 2, hr * 0.7, hr * 0.7, ["+v", "-v", "+w", "-w"]);
+            tbox("ladder", [f.c[0], y, zl], [1, 0, 0], [0, 1, 0], [0, 0, 1], FP.ladder_width_m / 2, hr * 0.7, hr * 0.7, ["+v", "-v", "+w", "-w"]);
           }
         }
       }
@@ -1402,7 +1417,7 @@
       // layer's span holds two panels across and two down, so the lens takes the layer's top half exactly.
       const LENS_U_M = 2.0, LENS_V_M = 1.0;   // the light_panel layer's span is 2 m: u over all of it, v over half
       for (const l of lamps) {
-        B.box("lamp_housing", [l.p[0], l.p[1] + hh, l.p[2]], [1, 0, 0], [0, 1, 0], [0, 0, 1], l.size[0] / 2, hh, l.size[1] / 2, ["+u", "-u", "+w", "-w"]);
+        tbox("lamp_housing", [l.p[0], l.p[1] + hh, l.p[2]], [1, 0, 0], [0, 1, 0], [0, 0, 1], l.size[0] / 2, hh, l.size[1] / 2, ["+u", "-u", "+w", "-w"]);
         const x0 = l.p[0] - l.size[0] / 2, x1 = l.p[0] + l.size[0] / 2, z0 = l.p[2] - l.size[1] / 2, z1 = l.p[2] + l.size[1] / 2, y = l.p[1], dn = [0, -1, 0];
         B.triUvm("lamp", [x0, y, z0], [x1, y, z0], [x1, y, z1], [0, 0], [LENS_U_M, 0], [LENS_U_M, LENS_V_M], dn);
         B.triUvm("lamp", [x0, y, z0], [x1, y, z1], [x0, y, z1], [0, 0], [LENS_U_M, LENS_V_M], [0, LENS_V_M], dn);
@@ -1540,11 +1555,26 @@
       if (img.w !== px || img.h !== px) throw new Error(`shipkit: panel layer ${pnames[j][1]} is ${img.w}x${img.h}, expected ${px}`);
       putLayer(data, first + j, px, img);
     }
+    // Every prop's own baked atlas the page carries (ship-props design 4c), after the panel layers: prop:<set>:<prop>.
+    const atl = [];
+    if (typeof document !== "undefined") {
+      for (const el of document.querySelectorAll('script[id^="ship-models-"]')) {
+        const set = el.id.slice("ship-models-".length), d = JSON.parse(el.textContent);
+        for (const [prop, uri] of Object.entries(d.atlases || {}).sort()) atl.push([`prop:${set}:${prop}`, uri]);
+      }
+    }
+    const total = n + atl.length, all = new Uint8Array(px * px * 4 * total);
+    all.set(data);
+    for (let j = 0; j < atl.length; j++) {
+      const img = await decodePng(atl[j][1]);
+      putLayer(all, n + j, px, img.w === px && img.h === px ? img : scaleNearest(img, px));
+    }
     const layer = Object.assign({}, mats.layer), span = Object.assign({}, mats.span);
     pnames.forEach(([name], j) => { layer[name] = first + j; span[name] = 1; });
+    atl.forEach(([name], j) => { layer[name] = n + j; span[name] = 1; });
     return {
-      texture: layerTexture(THREE, data, px, n), names: mats.names.concat(pnames.map((q) => q[0])), layer, span,
-      manifest: mats.manifest, bytes: Math.round((data.length * 4) / 3), panels: { manifest: S, first, px },
+      texture: layerTexture(THREE, all, px, total), names: mats.names.concat(pnames.map((q) => q[0]), atl.map((q) => q[0])), layer, span,
+      manifest: mats.manifest, bytes: Math.round((all.length * 4) / 3), panels: { manifest: S, first, px },
     };
   }
 
@@ -1830,6 +1860,10 @@
     D = D || shipData("detailing");
     opts = opts || {};
     const Q = D.platforms, fit = platformRows(opts);
+    // With the platform layer, a railing takes its rail row as the compartment's railings do (ceilings-and-trims 9).
+    const RT = fit && fit.rows.rail ? { layer: fit.layer, rows: { rail: fit.rows.rail }, span: fit.span, stretch: fit.stretch, stats: { faces: 0, pillars: 0 },
+      members: { railing: { face: "rail", sides: "rail", ends: "rail", role: "fit_railing" } } } : null;
+    const rbox = (role, c, u, v, w, hu, hv, hw, faces) => (RT ? stripBox(B, RT, role, c, u, v, w, hu, hv, hw, faces) : B.box(role, c, u, v, w, hu, hv, hw, faces));
     stairs = stairs || [];
     for (const pf of platforms) {
       let poly = pf.poly.map((p) => p.slice()), edges = pf.edges.slice();
@@ -1873,11 +1907,11 @@
         for (const [u0, u1] of intervalMinus(Q.rail_end_m, len - Q.rail_end_m, gaps)) {
           if (u1 - u0 < 0.3) continue;
           for (const y of [top + Q.rail_height_m, top + Q.rail_mid_m]) {
-            B.box("railing", P3((u0 + u1) / 2, y), t, [0, 1, 0], out, (u1 - u0) / 2, rm, rm, ["+v", "-v", "+w", "-w", "+u", "-u"]);
+            rbox("railing", P3((u0 + u1) / 2, y), t, [0, 1, 0], out, (u1 - u0) / 2, rm, rm, ["+v", "-v", "+w", "-w", "+u", "-u"]);
           }
           const k = Math.max(1, Math.round((u1 - u0) / Q.rail_post_spacing_m));
           for (let j = 0; j <= k; j++) {
-            B.box("railing", P3(u0 + ((u1 - u0) * j) / k, top + Q.rail_height_m / 2), t, [0, 1, 0], out, rm * 0.8, Q.rail_height_m / 2, rm * 0.8, ["+u", "-u", "+w", "-w"]);   // posts thinner than the rails
+            rbox("railing", P3(u0 + ((u1 - u0) * j) / k, top + Q.rail_height_m / 2), t, [0, 1, 0], out, rm * 0.8, Q.rail_height_m / 2, rm * 0.8, ["+u", "-u", "+w", "-w"]);   // posts thinner than the rails
           }
         }
       }

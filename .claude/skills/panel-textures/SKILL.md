@@ -231,7 +231,7 @@ ceiling too busy.
   compartment's parts with the old kit and the new).
 - **Platform faces** (ceilings-and-trims design 9): `K.buildPlatforms(..., { topLayer, riserLayer:
   K.panelLayerName(finish, "platform") })` maps each riser onto the `riser` or `riser_low` row of
-  `<finish>_platform` (the nearer height) and each stair step's front onto `step`, bottom edge to the
+  `<finish>_platforms` (the nearer height) and each stair step's front onto `step`, bottom edge to the
   row's bottom and top edge to its top, u along the outline in metres; role `platform_riser`.
 - **Upholstery** (ship-props design 4b): give `PropKit.create` the panel set (`pmats`, not `mats`).
   A prop's `upholstery` and `upholstery_panel` roles then take `panel:upholstery:channel` and

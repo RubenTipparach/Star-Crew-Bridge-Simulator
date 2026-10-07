@@ -37,7 +37,11 @@
     // and tinted per seat; a page without them (no loadPanels, or panels.json before the layers) draws them as trim.
     const UPHOLSTERY = { upholstery: "panel:upholstery:channel", upholstery_panel: "panel:upholstery:panel" };
     const PANEL_SPAN = mats.panels ? mats.panels.manifest.layers.span_m : 2;
-    const SEAT_TINT = { captain_chair: new THREE.Color(0x8a2433), default: new THREE.Color(0x4b5666) };   // burgundy, dark slate
+    // The seats' colours are panels.json's upholstery.tints_srgb, by prop (the captain's burgundy, the crew's slate).
+    const TINTS = (mats.panels && mats.panels.manifest.upholstery && mats.panels.manifest.upholstery.tints_srgb) || {};
+    const SEAT_TINT = {};
+    for (const [k, c] of Object.entries(TINTS)) SEAT_TINT[k] = new THREE.Color().setRGB(c[0], c[1], c[2], THREE.SRGBColorSpace);
+    SEAT_TINT.default = SEAT_TINT.crew_chair || new THREE.Color(0x5f6b78);
 
     // ---------------------------------------------------------------- the prop sets
     async function loadSet(set) {
@@ -54,19 +58,22 @@
           const g = (o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone()).applyMatrix4(o.matrixWorld);
           const ms = Array.isArray(o.material) ? o.material : [o.material];
           const groups = g.groups.length ? g.groups : [{ start: 0, count: g.attributes.position.count, materialIndex: 0 }];
-          const pa = g.attributes.position, na = g.attributes.normal, ua = g.attributes.uv;
+          const pa = g.attributes.position, na = g.attributes.normal, ua = g.attributes.uv, ub = g.attributes.uv1;
           for (const gr of groups) {
             const mname = ((ms[gr.materialIndex] || ms[0]).name || "trim").split(".")[0];
-            const P = parts[mname] || (parts[mname] = { position: [], normal: [], uvm: [] });
+            const P = parts[mname] || (parts[mname] = { position: [], normal: [], uvm: [], uva: [] });
             for (let i = gr.start; i < gr.start + gr.count; i++) {
               const p = [pa.getX(i), pa.getY(i), pa.getZ(i)], n = na ? [na.getX(i), na.getY(i), na.getZ(i)] : [0, 1, 0];
               P.position.push(...p); P.normal.push(...n);
               const uv = ua ? [ua.getX(i), ua.getY(i)] : K.worldUv(p, n);
               P.uvm.push(uv[0], uv[1]);
+              if (ub) P.uva.push(ub.getX(i), ub.getY(i));   // the prop's atlas (TEXCOORD_1, ship-props design 4c)
             }
           }
         });
-        out[name] = { parts, rec: d.manifest.props[name], set };
+        // The prop's own atlas when the page carries it (ShipKit.loadPanels adds it to the array as prop:<set>:<name>).
+        const atlas = d.atlases && d.atlases[name] && STAR_MATS.has(`prop:${set}:${name}`) ? `prop:${set}:${name}` : null;
+        out[name] = { parts, rec: d.manifest.props[name], set, atlas };
       }
       return out;
     }
@@ -235,10 +242,13 @@
         const screen = mname === "screen", accent = mname === "accent";
         // Under a console face (design 11.6) a screen's recess floor is black glass; without the faces it glows the station's colour.
         const glass = screen && SCREENS && PROPS && PROPS[kind];
-        const uph = UPHOLSTERY[mname] && STAR_MATS.has(UPHOLSTERY[mname]) ? UPHOLSTERY[mname] : null;
-        const role = screen ? "screen" : uph ? `prop_${mname}` : `prop_${STAR_MATS.has(mname) ? mname : "trim"}${accent ? "_accent" : ""}`;
+        // A prop with its own atlas takes it on every face but its screens: one role, its layer and UVs per vertex.
+        const onAtlas = !!(pr.atlas && !screen && P.uva && P.uva.length === (P.position.length / 3) * 2);
+        const uph = !onAtlas && UPHOLSTERY[mname] && STAR_MATS.has(UPHOLSTERY[mname]) ? UPHOLSTERY[mname] : null;
+        const role = screen ? "screen" : onAtlas ? "prop_atlas" : uph ? `prop_${mname}` : `prop_${STAR_MATS.has(mname) ? mname : "trim"}${accent ? "_accent" : ""}`;
         const dst = parts[role] || (parts[role] = { position: [], normal: [], uvm: [], tint: [], material: screen ? "light_panel" : uph || (STAR_MATS.has(mname) ? mname : "trim") });
         const seat = uph && ((o && o.upholstery) || baseTint(kind));
+        if (onAtlas) { dst.vlayer = dst.vlayer || []; dst.glow = dst.glow || []; }
         dst.tint = dst.tint || [];
         // A light panel strip on a prop glows, as the rooms' lamps and status strips do (its texels' alpha is the emission mask).
         // It glows evenly: its UVs sit on one lit cell of the lamp layer, so a canopy, a reactor's window band or a
@@ -256,12 +266,13 @@
           dst.position.push(back[0] + x * c + z * s, back[1] + y, back[2] - x * s + z * c);
           const nx = P.normal[i * 3], ny = P.normal[i * 3 + 1], nz = P.normal[i * 3 + 2];
           dst.normal.push(nx * c + nz * s, ny, -nx * s + nz * c);
-          if (lit) dst.uvm.push(GLOW_UV_M[0], GLOW_UV_M[1]);
+          if (onAtlas) { dst.uvm.push(P.uva[i * 2], P.uva[i * 2 + 1]); dst.vlayer.push(pr.atlas); dst.glow.push(1); }   // alpha is the glow
+          else if (lit) dst.uvm.push(GLOW_UV_M[0], GLOW_UV_M[1]);
           else if (uph) dst.uvm.push(P.uvm[i * 2] / PANEL_SPAN, P.uvm[i * 2 + 1] / PANEL_SPAN);   // a panel layer's UVs are in spans
           else dst.uvm.push(P.uvm[i * 2], P.uvm[i * 2 + 1]);
           const t = glass ? [0.03, 0.035, 0.045] : screen ? [tint.r * 0.9, tint.g * 0.9, tint.b * 0.9] : accent ? [tint.r, tint.g, tint.b] : seat ? [seat.r, seat.g, seat.b] : [1, 1, 1];
           dst.tint.push(...t);
-          if (lit) dst.glow.push(1);
+          if (lit && !onAtlas) dst.glow.push(1);
         }
       }
     }

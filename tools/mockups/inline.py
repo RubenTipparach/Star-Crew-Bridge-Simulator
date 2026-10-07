@@ -26,8 +26,9 @@ and the UI images
 type="application/json"> block, which shipkit's loadPanels() adds to the texture array
 (wall-panels, ceilings-and-trims, floor-panels).
 "models:<set>" copies assets/models/<set>/props.json and every .glb it lists (as base64
-data URIs) into a <script id="ship-models-<set>" type="application/json"> block, for pages
-that place the Blender-built props (tools/blender, the blender-hard-surface skill).
+data URIs), and each prop's baked atlas PNG where it has one, into a
+<script id="ship-models-<set>" type="application/json"> block, for pages that place the
+Blender-built props (tools/blender, the blender-hard-surface skill).
 "screens" copies assets/textures/screens/screens.json and every image it names (each
 station's <station>.png and <station>_upper.png, and the shared ui_screen_crew.png and
 keys_crew.png of the wall panels) into a <script id="ship-screens" type="application/json">
@@ -87,11 +88,15 @@ def block(kind):
         base = os.path.join(ROOT, "assets", "models", name)
         with open(os.path.join(base, "props.json"), encoding="utf-8") as f:
             manifest = json.load(f)
-        models = {}
+        models, atlases = {}, {}
         for key, rec in sorted(manifest.get("props", {}).items()):
             with open(os.path.join(base, rec["file"]), "rb") as f:
                 models[key] = "data:model/gltf-binary;base64," + base64.b64encode(f.read()).decode("ascii")
-        text = json.dumps({"manifest": manifest, "models": models}, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
+            # A prop's own baked texture (ship-props design 4c), when its set's build has made one.
+            if rec.get("atlas"):
+                atlases[key] = png_uri(os.path.join(base, rec["atlas"]["file"]))
+        text = json.dumps({"manifest": manifest, "models": models, "atlases": atlases}, separators=(",", ":"),
+                          ensure_ascii=False).replace("</", "<\\/")
         return f'\n<script id="ship-models-{name}" type="application/json">\n{text}\n</script>\n'
     if kind == "panels":
         with open(PANELS, encoding="utf-8") as f:
@@ -107,6 +112,11 @@ def block(kind):
                                      if not name.startswith("_")))
             if "trims" in fin:
                 stems.append((fin["trims"]["layer"], f"{fn}_trims"))
+            if "platforms" in fin:   # risers, step fronts and the members still on tiling trim (ceilings-and-trims 9)
+                stems.append((fin["platforms"]["layer"], f"{fn}_platforms"))
+        # Upholstery (ship-props 4b): one bake for every finish.
+        for name, layer in manifest.get("upholstery", {}).get("layers", {}).items():
+            stems.append((layer, f"upholstery_{name}"))
         layers = {str(px): {stem: png_uri(os.path.join(base, str(px), stem + ".png")) for _, stem in sorted(stems)}
                   for px in manifest["layers"]["sizes_px"]}
         ui = {}

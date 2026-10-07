@@ -194,7 +194,7 @@ or small metal panels that should fit vertically on the geometry uv". A platform
 under a raised floor's edge) took the finish's `trim` material projected flat in metres, so it stretched, and nothing on
 it was sized to its 0.45 m.
 
-**A platform layer per finish** (`<finish>_platform`, panel layers 66 and 67, after the 55 that exist), built like the
+**A platform layer per finish** (`<finish>_platforms`, panel layers 66 and 67, after the 55 that exist), built like the
 trim layer: rows stacked into one 2 m layer, each tiling along x with the layer's period.
 
 | Row | Face | Height | What it shows |
@@ -210,8 +210,13 @@ metres over the layer's 2 m, so the rhythm of vents carries round a ring of shor
 corner. The kit draws a riser this way when a page passes `riserLayer` (with `topLayer`, the tread on top); its role is
 `platform_riser`, the page's own, as `platform_top` is.
 
-**What it costs.** Two layers, 0.35 MB each at 256 px with mips (87 KB at 128 px). The same two triangles a riser
-always had; no draw call.
+**The other members still on the tiling trim** take rows of the same layer, mapped as trims are (u along the member,
+v across it): `rail` (railing rails and posts, ladder rails and rungs, the lift's handrail), `kick` (a railing's
+kickplate), `collar` (a floor opening's coaming), `housing` (a lamp housing's sides) and `pipe` (a conduit). The owner,
+on the same view: "basically everything using the metal tile grid needs to get replaced with custom textures".
+
+**What it costs.** Two layers, 0.35 MB each at 256 px with mips (87 KB at 128 px). The same triangles each face always
+had; no draw call.
 
 ## Risks / Trade-offs
 

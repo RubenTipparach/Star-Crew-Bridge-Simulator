@@ -101,9 +101,11 @@ KIND_REQUIRED = {"ceiling": set(CEILING_MODULES), "floor": {"walkway", "plate"}}
 TRIM_ROWS = ("side", "baseboard", "rib", "rib_ends", "beam", "frame", "cove")
 TRIM_PIECES = ("rib_base", "rib_capital")
 TRIM_MEMBERS = ("rib", "beam", "baseboard", "frame", "window_frame", "cove")
-# Platform face rows (panels.json platforms.rows), bottom to top in the layer: each fits one face height
-# (a 0.45 m riser, a 0.225 m riser, a stair step's front), not a crop of another.
-PLATFORM_ROWS = ("riser", "riser_low", "step")
+# Platform layer rows (panels.json platforms.rows), bottom to top in the layer: the face rows each fit
+# one face height (a 0.45 m riser, a 0.225 m riser, a stair step's front), not a crop of another; the
+# member rows each run across one kit member that took the generic trim tile (a rail, a kickplate, a
+# coaming, a lamp housing's side, a conduit).
+PLATFORM_ROWS = ("riser", "riser_low", "step", "rail", "kick", "collar", "housing", "pipe")
 # The upholstery layers (panels.json upholstery.layers), in layer order, and the colour each role they
 # use takes from upholstery.colours_srgb. A role not named here is not used by them (check_roles).
 UPHOLSTERY = ("channel", "panel")
@@ -2070,27 +2072,79 @@ def p_riser_low(P, ox, h, F):
 
 def p_step(P, ox, h, F):
     """A stair step's 0.225 m front, quieter than a riser: a 3 cm toe kick, a 2 cm lip, and a bolted
-    kick plate with a band of slot vents centred on x = 0 (a stair's middle: a page measures u from the
-    stair's centre) and plate joints at the period's edges; a working step's plate has a hazard band
-    along its foot."""
+    kick plate with a band of eight slot vents. A page maps a step's u from the stair's middle (u 0 of
+    the layer, panel x +-1, the period's edge), so each copy's plate runs from ox to ox + 2 with the
+    band at its middle, ox + 1, and the plates' joints fall a metre from any stair's middle."""
     toe, lip = 0.03, 0.02
     cuts = face_frame(P, ox, h, toe, lip)
     y0, y1 = toe + 0.008, h - lip - 0.008
-    pl = P.box("kick_plate", (ox - 0.994, y0, -0.01), (ox + 0.994, y1, 0.008), "bulkhead", bevel=0.004)
-    ym = (y0 + y1) / 2
-    slots = [P.box("slot", (ox + x - 0.035, ym - 0.016, -0.02), (ox + x + 0.035, ym + 0.016, 0.06), "machinery")
-             for x in (-0.35, -0.25, -0.15, -0.05, 0.05, 0.15, 0.25, 0.35)]
-    P.cut(pl, "slot_band", slots)
-    cuts.append(P.box("slot_well", (ox - 0.40, ym - 0.02, -0.04), (ox + 0.40, ym + 0.02, 0.05), "machinery"))
-    yb = y0 + 0.028
-    if rusty(F):     # the band along the foot, the lower bolts above it
-        P.box("hazard_band", (ox - 0.994, y0 + 0.005, 0.0), (ox + 0.994, y0 + 0.037, 0.012), "hazard", bevel=0.002)
-        yb = y0 + 0.056
-    bolts(P, [(ox + x, y) for x in (-0.9, -0.5, 0.5, 0.9) for y in (yb, y1 - 0.028)], r=0.011, z0=0.0, z1=0.02)
+    c, ym = ox + 1.0, (y0 + y1) / 2
+    pl = P.box("kick_plate", (ox + 0.006, y0, -0.01), (ox + 1.994, y1, 0.008), "bulkhead", bevel=0.004)
+    P.cut(pl, "slot_band", [P.box("slot", (c + x - 0.035, ym - 0.016, -0.02), (c + x + 0.035, ym + 0.016, 0.06), "machinery")
+                            for x in (-0.35, -0.25, -0.15, -0.05, 0.05, 0.15, 0.25, 0.35)])
+    cuts.append(P.box("slot_well", (c - 0.40, ym - 0.02, -0.04), (c + 0.40, ym + 0.02, 0.05), "machinery"))
+    bolts(P, [(c + x, y) for x in (-0.9, -0.48, 0.48, 0.9) for y in (y0 + 0.028, y1 - 0.028)], r=0.011, z0=0.0, z1=0.02)
     return cuts
 
 
-PLATFORM_BUILDERS = {"riser": p_riser, "riser_low": p_riser_low, "step": p_step}
+def p_rail(P, ox, h, F):
+    """A rail across its 6.25 cm row: a round steel bar (lit from above, so it reads round) on a dark
+    ground, a clamp band with a bolt every 0.5 m."""
+    P.cyl("bar", "x", (h / 2, -0.004), h / 2 - 0.002, ox - 1.05, ox + 1.05, "trim", sides=24)
+    for dx in (-0.75, -0.25, 0.25, 0.75):
+        P.cyl("clamp", "x", (h / 2, -0.004), h / 2 + 0.003, ox + dx - 0.018, ox + dx + 0.018, "paint2", sides=24, bevel=0.003)
+        P.cyl("clamp_bolt", "z", (ox + dx, h / 2), 0.008, 0.0, h / 2 + 0.008, "trim", sides=10, bevel=0.003)
+    return []
+
+
+def p_kick(P, ox, h, F):
+    """A railing's kickplate across its 12.5 cm row: a bolted plate with a joint every 1 m under a
+    hazard edge along its top."""
+    for a, b in ((-1.0, -0.004), (0.004, 1.0)):
+        P.box("kick", (ox + a, 0.006, -0.01), (ox + b, h - 0.034, 0.008), "bulkhead", bevel=0.004)
+    P.box("hazard_edge", (ox - 1.05, h - 0.03, -0.01), (ox + 1.05, h + 0.02, 0.01), "hazard", bevel=0.003)
+    bolts(P, [(ox + x, 0.035) for x in (-0.875, -0.375, 0.125, 0.625)], r=0.01, z0=0.0, z1=0.019)
+    return []
+
+
+def p_collar(P, ox, h, F):
+    """A floor opening's coaming across its 12.5 cm row: a steel lip along its top, a bolted plate under
+    it with a bolt every 0.25 m, a joint every 1 m."""
+    P.box("lip", (ox - 1.05, h - 0.03, -0.01), (ox + 1.05, h + 0.02, 0.016), "trim", bevel=0.005)
+    for a, b in ((-1.0, -0.004), (0.004, 1.0)):
+        P.box("plate", (ox + a, 0.004, -0.01), (ox + b, h - 0.034, 0.008), "bulkhead", bevel=0.004)
+    bolts(P, [(ox - 0.875 + 0.25 * k, (h - 0.03) / 2) for k in range(8)], r=0.01, z0=0.0, z1=0.019)
+    return []
+
+
+def p_housing(P, ox, h, F):
+    """A lamp housing's side across its 12.5 cm row: three raised ribs along it on a dark ground and a
+    seam with two screws every 0.5 m."""
+    for y0, y1 in ((0.012, 0.036), (0.05, 0.075), (0.089, 0.113)):
+        P.box("rib", (ox - 1.05, y0, -0.01), (ox + 1.05, y1, 0.009), "bulkhead", bevel=0.004)
+    cuts = []
+    for dx in (-0.75, -0.25, 0.25, 0.75):
+        cuts.append(P.box("seam", (ox + dx - 0.006, -0.1, -0.03), (ox + dx + 0.006, h + 0.1, 0.05), "machinery"))
+        for y in (0.024, 0.101):
+            P.cyl("screw", "z", (ox + dx + 0.03, y), 0.008, 0.0, 0.016, "trim", sides=10, bevel=0.003)
+    return cuts
+
+
+def p_pipe(P, ox, h, F):
+    """A conduit seen side on across its 12.5 cm row: a pipe filling the row, a clamp every 0.5 m and a
+    flange pair every 1 m."""
+    r = h / 2 - 0.004
+    P.cyl("pipe", "x", (h / 2, -0.01), r, ox - 1.05, ox + 1.05, "trim", sides=28)
+    for dx in (-0.75, -0.25, 0.25, 0.75):
+        P.cyl("clamp", "x", (h / 2, -0.01), r + 0.004, ox + dx - 0.015, ox + dx + 0.015, "paint2", sides=28, bevel=0.003)
+    for dx in (-0.5, 0.5):
+        for e in (-0.012, 0.012):
+            P.cyl("flange", "x", (h / 2, -0.01), r + 0.0035, ox + dx + e - 0.009, ox + dx + e + 0.009, "paint2", sides=28, bevel=0.003)
+    return []
+
+
+PLATFORM_BUILDERS = {"riser": p_riser, "riser_low": p_riser_low, "step": p_step, "rail": p_rail, "kick": p_kick,
+                     "collar": p_collar, "housing": p_housing, "pipe": p_pipe}
 
 
 # ----------------------------------------------------------------------------- upholstery
@@ -2179,10 +2233,10 @@ def u_channel(P):
 def u_panel(P):
     """Padded panels 2/7 m by 0.25 m: each a cushion rising 4.5 cm, domed over 11 cm from every edge,
     a piping cord in the welted seam on every edge and a stitch line 2.2 cm inside it; for bolsters,
-    headrests and arm pads. The seams lie at x = (k + 1/2) 2/7 and y = 0.125 + 0.25 k, so the layer's
-    edges cross padding, not a cord."""
+    headrests and arm pads. The seams lie at x = 2/7 k (seven to the layer, so its edges at x = +-1 fall
+    mid-panel) and y = 0.125 + 0.25 k, so the layer's edges cross padding, not a cord."""
     pw, ph, gap, height = 2.0 / 7.0, 0.25, 0.02, 0.045
-    ox, oy = pw / 2, ph / 2
+    ox, oy = 0.0, ph / 2
     cells = []
     for j in range(-1, 9):
         for i in range(-5, 4):
@@ -2703,8 +2757,9 @@ def contact_sheet(D, layers):
     ribs, the top strip); then the ceiling and floor modules and the trim layer, an illustrative
     ceiling (cells between beams, lamps in their surrounds) and floor (a walkway down the middle), and
     the trims as members: a crew pillar, engineering's tall pillar, a beam, a cove, a baseboard and a
-    door jamb; then the platform face layer and an elevation of its rows as faces (a 0.45 m riser and
-    a 0.225 m riser 6 m long under their hazard nosings, a 1.2 m stair's three steps). Last, the
+    door jamb; then the platform layer and an elevation of its rows as faces (a 0.45 m riser and a
+    0.225 m riser 6 m long under their hazard nosings, a 1.2 m stair's three steps, the member rows
+    4 m long). Last, the
     upholstery layers, neutral and in each chair's tint. The illustrations use fixed sequences, not the
     rule: they judge composition."""
     tile, gap, lab = 256, 14, 40
@@ -2779,7 +2834,7 @@ def contact_sheet(D, layers):
                 fill=(200, 204, 210), font=font)
         y += 26
         y0 = y
-        y = tiles(fn, [(f"{fn}_platforms", f"{F['platforms']['layer']}  platforms", "3 rows, 2 m period")], y)
+        y = tiles(fn, [(f"{fn}_platforms", f"{F['platforms']['layer']}  platforms", f"{len(PLATFORM_ROWS)} rows, 2 m period")], y)
         elev = platforms_image(D, fn, layers, small)
         sheet.paste(elev, (gap + tile + gap, y0))
         y = max(y, y0 + elev.height + gap)
@@ -2810,8 +2865,9 @@ def tinted(img, tint_srgb):
 
 def platforms_image(D, fn, layers, font):
     """The platform rows as faces at 128 px/m: a 0.45 m riser and a 0.225 m riser 6 m long, each under a
-    0.05 m hazard nosing (the hazard material) over a strip of floor, and a 1.2 m stair's three steps
-    stacked as they rise, each with its nosing; u of a step from the stair's centre, as a page maps it."""
+    0.05 m hazard nosing (the hazard material) over a strip of floor, the member rows 4 m long, and a
+    1.2 m stair's three steps stacked as they rise, each with its nosing; u of a step from the stair's
+    centre, as a page maps it."""
     ppm = 128
     bg = (40, 42, 46)
     haz = Image.open(os.path.join(ROOT, "assets", "textures", "hazard.png")).convert("RGB")
@@ -2830,6 +2886,9 @@ def platforms_image(D, fn, layers, font):
     for row, label in (("riser", "riser 0.45 m, 6 m"), ("riser_low", "riser 0.225 m, 6 m")):
         w = 6 * ppm
         parts.append((np.concatenate([nosing(w), face(row, w), np.full((10, w, 3), 70, np.uint8)], axis=0), label))
+    for row, label in (("rail", "rail, 4 m"), ("kick", "kickplate, 4 m"), ("collar", "coaming, 4 m"),
+                       ("housing", "lamp housing side, 4 m"), ("pipe", "conduit, 4 m")):
+        parts.append((face(row, 4 * ppm), label))
     sw = int(round(1.2 * ppm))
     stair = [nosing(sw)]
     for k in range(3):
