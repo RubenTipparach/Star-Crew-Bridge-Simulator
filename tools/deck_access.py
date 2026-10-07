@@ -233,7 +233,9 @@ def build():
                          "floors_y_m": [DECK_Y["C"], DECK_Y["B"], DECK_Y["A"]], "risers_per_deck": RISERS,
                          "start_yaw_deg": 240.0 if side > 0 else 120.0, "sweep_deg": SWEEP_DEG * side,
                          "landing_poly": rect(x0, x1, z0, z0 + LANDING_D), "walk_line_m": WALK_LINE_R,
-                         "note": "Treads sweep forward from the landing and round to the next deck's landing over it, one deck a sweep."})
+                         "well_poly": rect(x0, x1, z0, z1),
+                         "note": ("Treads sweep forward from the landing and round to the next deck's landing over it, one deck a sweep. "
+                                  "They run out to the trunk's walls (well_poly), so there is no gap to fall through (owner, 2026-10-07).")})
     x0, x1 = LIFT["x"]
     z0, z1 = LIFT["z"]
     comps.append({"id": "lift", "poi": 37, "name": "Lift", "decks": ["C", "B", "A"], "kind": "trunk", "finish": "working",

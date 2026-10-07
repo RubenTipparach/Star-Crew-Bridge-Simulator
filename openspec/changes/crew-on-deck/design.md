@@ -162,6 +162,52 @@ gravity, feet lose the floor: section 11.
 catwalk, the galleries and the landing, so on the Tern a fall happens only when gravity returns
 under a floating body (a 3 m fall at full gravity lands at 7.7 m/s: 14 HP).
 
+### 3a. The controller: Rapier's character controller, stairs as ramps
+
+The owner, 2026-10-07, after walking the deck plan: "I get stuck in the stair well, need better collisders for
+those stairs. I also dont like bouncing up and down on stairs if you can make that smoother that would be nice.
+this fps controller is also kinda poor, is there a better controller we can use?"
+
+**What was wrong** with the mockups' first controller (`docs/mockups/lib/shipwalk.js`, hand-written over three.js's
+Octree):
+- **Stuck in stairwells.** Walls were found with a capsule starting 0.65 m above the feet, and stairs collided as
+  their solid steps. On a steep or spiral flight, the treads ahead hit that capsule and pushed the body back.
+- **Bouncing.** The feet snapped to each tread's height, and the eye with them: a 0.2 m jump per step.
+
+**The controller is Rapier's kinematic character controller** (dimforge Rapier: `rapier3d` in Rust, the same
+library compiled to WebAssembly for the mockups, `@dimforge/rapier3d-compat`). It moves the standing capsule of
+section 2 by a desired translation and returns the corrected one, with:
+- **autostep** up to the step height (0.35 m) over a ledge at least 0.15 m deep;
+- **snap to ground** within 0.4 m, so walking down stairs and off a ledge does not leave the floor;
+- **slopes** climbed to 50 degrees and slid down beyond 60;
+- **sliding** along walls instead of stopping at them.
+
+The engine's simulation core can use the same crate (`rapier3d`, pure Rust, no GPU), so the mockup and the game
+move a body by one implementation (CLAUDE.md 6.1). Recommendation taken (ask only with screenshots); whether the
+core takes Rapier whole or only its character controller is `engine-stack`'s call.
+
+**Stairs collide as ramps.** Each flight's collision is the sloped plane over its nosings (a helical ramp for a
+spiral stair), and the steps are drawn but not collided with. A body walks a flight like a slope: no tread can
+catch it, and its height changes smoothly. This is common practice in first-person games for the same two
+reasons.
+
+**The eye is smoothed** where the feet still change height in a step (a ledge, a platform's riser, getting off a
+lift): it follows the feet with a 0.08 s time constant, and never lags them by more than 0.25 m.
+
+**Spiral stairs reach the trunk's walls** (the owner, the same day: "make sure the edge of sprial stairs extend in
+to the well as well, so as a player I cant just falkl off the side and get stuck"); `deck-access` section 2.
+
+**Measured in the deck plan** (`window.MOCKUP_WALK`, headless, 2026-10-07):
+- every straight flight is walked up and down (engineering's two, the hangar's two), and a stair tower from deck C to deck A;
+- the eye moves at most 9 mm a frame on a straight flight and 17 mm on a spiral, against 0.2 m a step before;
+- running at every wall of every compartment in eight directions for 4 s (288 runs): the first controller left the
+  ship twice (through the torpedo room's and deck B's main corridor's forward walls; three.js's Octree capsule test
+  only sees a triangle from its front, so a wall wound the wrong way let a body through), Rapier's none;
+- a deck up a ladder takes 2.1 s, against 5.4 s.
+
+**Found on the way:** the hangar gallery's railing stood across the tops of its stairs, and walking up them hit it.
+The kit now leaves a gap where a stair lands on a railed edge.
+
 ### 4. Ladders
 
 The Tern's ladder trunk at z = 11 m runs from deck A through deck B to deck C (`p_ladder_ab`,
@@ -170,15 +216,21 @@ their hatches.
 
 | Quantity | Value |
 | --- | ---: |
-| Get on (walk into the ladder volume facing it within 45 deg, or Use within 1.0 m) | 0.5 s clip |
-| Climb up | 0.8 m/s |
-| Climb down | 1.0 m/s |
-| Get off at the top or bottom | 0.5 s clip |
+| Get on (walk into the ladder volume facing it within 45 deg, or Use within 1.0 m) | 0.15 s clip |
+| Climb up | 2.0 m/s |
+| Climb down | 2.5 m/s |
+| Get off at the top or bottom | 0.15 s clip |
+
+**Snappy, not realistic** (owner, 2026-10-07, after walking the deck plan: "the travel down ladders or up
+ladders is too slow, make that snappy"). The first values (0.8 m/s up, 1.0 m/s down, 0.5 s on and off) were a
+real person's; a deck took about 5 s and felt like waiting. A deck now takes about 2 s up and 1.7 s down. The
+route times other changes quote from the old values (`deck-access`'s ladder rows, `walk_times.py`,
+`command_suite.py`) are re-measured with the tools when this change is applied, not edited by hand.
 | Rung spacing (the clip's stride) | 0.30 m |
 | Bodies on one trunk | One per 1.8 m of ladder; a climber stops behind another |
 
 - **Through, not off.** A climber going from deck A to deck C passes deck B without getting off:
-  7.0 m down takes 7.0 s plus 1.0 s on and off.
+  7.0 m down takes 2.8 s plus 0.3 s on and off.
 - **Hands on a ladder.** A one-handed item rides clipped to the belt. A two-handed load or a
   trolley cannot be taken onto a ladder. A casualty can, over the shoulder, at half the ladder
   speeds.
@@ -559,7 +611,7 @@ An excerpt of `data/crew.json`:
                "standing_eye_m": 1.65, "crouched_eye_m": 1.05, "seated_eye_m": 1.20 },
   "move": { "walk_m_s": 1.8, "run_m_s": 4.0, "crouch_m_s": 0.9, "back_scale": 0.7, "stair_scale": 0.7,
             "accel_cap_m_s2": 6.0, "grip_mu": 0.6, "step_m": 0.35, "stick_yaw_deg_s": 200.0, "stick_pitch_deg_s": 140.0 },
-  "ladder": { "up_m_s": 0.8, "down_m_s": 1.0, "mount_s": 0.5, "dismount_s": 0.5, "casualty_scale": 0.5 },
+  "ladder": { "up_m_s": 2.0, "down_m_s": 2.5, "mount_s": 0.15, "dismount_s": 0.15, "casualty_scale": 0.5 },
   "doors": { "sensor_m": 3.0, "door_open_s": 0.6, "door_close_s": 0.8, "close_delay_s": 2.0,
              "pressure_door_s": 2.0, "hatch_s": 1.0, "override_hold_s": 3.0 },
   "health": { "max_hp": 100, "wounded_below_hp": 50, "stabilize_s": 120.0, "revive_hold_s": 5.0, "revive_hp": 25,

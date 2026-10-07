@@ -61,7 +61,7 @@ async function serveCdnFromCache(page) {
       try { execSync(`curl -sSfL --retry 4 -o ${JSON.stringify(file)} ${JSON.stringify(url)}`); }
       catch (_) { return route.continue(); }
     }
-    const type = file.endsWith(".js") ? "text/javascript" : "application/octet-stream";
+    const type = /\.m?js$/.test(file) ? "text/javascript" : "application/octet-stream";
     return route.fulfill({ status: 200, contentType: type, headers: { "access-control-allow-origin": "*" }, body: fs.readFileSync(file) });
   });
 }

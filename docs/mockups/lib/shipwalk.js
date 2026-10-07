@@ -7,11 +7,15 @@
  *   - It moves at crew-on-deck's speeds (section 3): walk 1.8 m/s, run 4.0 m/s, 70 % of that backwards and
  *     on stairs, never faster to change than 6 m/s2. It steps up and down 0.35 m, so stairs and spiral
  *     stairs are walked, not animated, and it falls where there is no floor (no jumping: C5).
- *   - Ladders and floor hatches are climbed at 0.8 m/s up and 1.0 m/s down, 0.5 s on and 0.5 s off
- *     (section 4); a hatch in a wall with a sill too high to step over takes 1.5 s; a lift rides at its
- *     fixture's speed and door time, and comes when the body walks up to one of its doors.
- *   - It collides with the rooms as they are drawn: the page builds an Octree from every room's mesh (and
- *     covers over the openings a body must not fall or walk through), so what blocks is what is seen.
+ *   - Ladders and floor hatches are climbed at 2.0 m/s up and 2.5 m/s down, 0.15 s on and off (section 4,
+ *     snappy at the owner's word, 2026-10-07); a hatch in a wall with a sill too high to step over takes
+ *     0.6 s; a lift rides at its fixture's speed and door time, and comes when the body walks up to one of
+ *     its doors.
+ *   - It moves by Rapier's kinematic character controller (section 3a: autostep, snap to ground, slopes,
+ *     sliding along walls), over the rooms as they are drawn: every room's mesh as one static triangle mesh,
+ *     with covers over the openings a body must not fall or walk through, and every stair as a ramp (the
+ *     page leaves the steps out and passes the ramps as covers). The eye follows the feet smoothed. Without
+ *     Rapier (o.rapier null: the CDN did not load) it falls back to the first controller over an Octree.
  * Input: W A S D or the arrows, the mouse (click to capture it, or drag), Shift to run, E to use (climb, go
  * through a hatch, take the lift up), Q to take the lift down, Esc to stop. On a touch screen: a stick on the
  * left, drag on the right to look, and buttons.
@@ -25,8 +29,13 @@
   // crew-on-deck's proposed data/crew.json (design section 15): capsule, move and ladder.
   const BODY = { radius_m: 0.30, height_m: 1.80, eye_m: 1.65, step_m: 0.35 };
   const MOVE = { walk_m_s: 1.8, run_m_s: 4.0, back_scale: 0.7, stair_scale: 0.7, accel_m_s2: 6.0 };
-  const LADDER = { up_m_s: 0.8, down_m_s: 1.0, mount_s: 0.5, dismount_s: 0.5 };
-  const SIDE_HATCH_S = 1.5;          // a hatch in a wall (the deck plan's route tool, side_hatch_s)
+  const LADDER = { up_m_s: 2.0, down_m_s: 2.5, mount_s: 0.15, dismount_s: 0.15 };
+  const SIDE_HATCH_S = 0.6;          // a hatch in a wall
+  // Rapier's controller (crew-on-deck section 3a): the gap it keeps, the step it climbs over a ledge at least
+  // STEP_DEPTH_M deep, how far below it keeps the feet on the floor, and the slopes it climbs and slides on (the
+  // Tern's straight stairs are 41-43 degrees and a spiral's walk line 44, steeper toward its column).
+  const KCC = { offset_m: 0.02, step_depth_m: 0.15, snap_m: 0.4, climb_deg: 62, slide_deg: 70 };
+  const EYE_TAU_S = 0.08, EYE_LAG_M = 0.25;   // the eye follows the feet's height smoothed, never further behind
   const GRAVITY_M_S2 = 9.81, FALL_MAX_M_S = 20;
   const DROP_M = 0.4;                // how far below the feet a walking body still finds its floor (a stair down)
   const REACH_M = 0.9;               // how near a ladder's or hatch's centre the body stands to use it
@@ -72,8 +81,28 @@
   }
 
   /**
+   * Rapier's world for the body to collide with: the same triangles as octreeOf, as one static triangle mesh.
+   * R is the initialised Rapier module (@dimforge/rapier3d-compat).
+   */
+  function rapierWorld(R, soups, extra) {
+    let n = 0;
+    for (const a of soups) n += Math.floor(a.length / 9) * 9;
+    n += (extra || []).length * 9;
+    const v = new Float32Array(n);
+    let k = 0;
+    for (const a of soups) { const m = Math.floor(a.length / 9) * 9; v.set(a.subarray ? a.subarray(0, m) : a.slice(0, m), k); k += m; }
+    for (const t of extra || []) for (const p of t) { v[k++] = p[0]; v[k++] = p[1]; v[k++] = p[2]; }
+    const idx = new Uint32Array(n / 3);
+    for (let i = 0; i < idx.length; i++) idx[i] = i;
+    const world = new R.World({ x: 0, y: 0, z: 0 });
+    world.createCollider(R.ColliderDesc.trimesh(v, idx));
+    return world;
+  }
+
+  /**
    * A walking body for camera on canvas dom. o:
-   *   octree: from octreeOf;
+   *   octree: from octreeOf (floors under a point, standing room);
+   *   rapier, world: the Rapier module and rapierWorld's world over the same triangles (null: the Octree moves the body);
    *   ladders: [{ x, z, lo, hi, name }]: floor openings climbed from floor lo to floor hi (metres);
    *   hatches: [{ x, z, n: [x, z], sill, name }]: wall hatches (n the wall's normal); those whose sill is
    *     more than a step above the floor on a side are gone through with E, the rest are walked through;
@@ -91,7 +120,36 @@
     const pos = new THREE.Vector3(), cap = new Capsule(new THREE.Vector3(), new THREE.Vector3(), BODY.radius_m);
     const ray = new THREE.Ray(new THREE.Vector3(), new THREE.Vector3(0, -1, 0));
     const keys = {}, stick = { x: 0, y: 0 };
-    let yaw = 0, pitch = 0, vx = 0, vz = 0, vy = 0, grounded = true, stairT = 0, action = null, on = false, runToggle = false;
+    let yaw = 0, pitch = 0, vx = 0, vz = 0, vy = 0, grounded = true, stairT = 0, action = null, on = false, runToggle = false, eyeY = 0;
+    // Rapier: the body is a kinematic capsule its character controller moves; each lift's car floor is a kinematic box.
+    const R = o.rapier && o.world ? o.rapier : null, world = R ? o.world : null;
+    const HALF = BODY.height_m / 2 - BODY.radius_m;
+    let kBody = null, kCol = null, kcc = null;
+    if (R) {
+      kBody = world.createRigidBody(R.RigidBodyDesc.kinematicPositionBased());
+      kCol = world.createCollider(R.ColliderDesc.capsule(HALF, BODY.radius_m), kBody);
+      kcc = world.createCharacterController(KCC.offset_m);
+      kcc.setUp({ x: 0, y: 1, z: 0 });
+      kcc.enableAutostep(BODY.step_m, KCC.step_depth_m, false);
+      kcc.enableSnapToGround(KCC.snap_m);
+      kcc.setMaxSlopeClimbAngle((KCC.climb_deg * Math.PI) / 180);
+      kcc.setMinSlopeSlideAngle((KCC.slide_deg * Math.PI) / 180);
+      kcc.setSlideEnabled(true);
+      for (const l of o.lifts || []) {
+        const xs = l.poly.map((q) => q[0]), zs = l.poly.map((q) => q[1]);
+        const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cz = (Math.min(...zs) + Math.max(...zs)) / 2;
+        const b = world.createRigidBody(R.RigidBodyDesc.kinematicPositionBased().setTranslation(cx, l.carY - 0.05, cz));
+        world.createCollider(R.ColliderDesc.cuboid((Math.max(...xs) - Math.min(...xs)) / 2, 0.05, (Math.max(...zs) - Math.min(...zs)) / 2), b);
+        l.rb = b; l.cx = cx; l.cz = cz;
+      }
+      world.step();
+    }
+    /** Put the capsule where pos (the feet) is, at once (a teleport: entering, a ladder, the lift). */
+    function syncBody() {
+      if (!R) return;
+      kBody.setTranslation({ x: pos.x, y: pos.y + BODY.height_m / 2 + KCC.offset_m, z: pos.z }, true);
+      world.step();
+    }
 
     // ---------------------------------------------------------------- ground and walls
     /** The floor under (x, z) seen from `from` downwards, or null: a lift's car inside its shaft, else the octree. */
@@ -140,6 +198,7 @@
       else if (l.phase === "moving") {
         const d = l.target - l.carY, s = l.speed_m_s * h;
         l.carY = Math.abs(d) <= s ? l.target : l.carY + Math.sign(d) * s;
+        if (l.rb) l.rb.setTranslation({ x: l.cx, y: l.carY - 0.05, z: l.cz }, true);
         if (l.carY === l.target) { l.phase = "opening"; l.t = 0; }
         if (l.onMove) l.onMove(l.carY);
       } else if (l.phase === "opening" && l.t >= l.door_s) { l.phase = "idle"; l.t = 0; }
@@ -170,6 +229,7 @@
       action = null; grounded = true; vy = 0;
       const [px, pz] = pushOut(pos.x, pos.z, pos.y);
       pos.x += px; pos.z += pz;
+      syncBody();
     }
     const P = (x, y, z) => new THREE.Vector3(x, y, z);
     function climb(l, up) {
@@ -242,7 +302,7 @@
       if (mag > 1) { f /= mag; s /= mag; }
       let speed = keys.ShiftLeft || keys.ShiftRight || runToggle ? MOVE.run_m_s : MOVE.walk_m_s;
       if (f < -0.1) speed *= MOVE.back_scale;
-      if (stairT > 0) speed *= MOVE.stair_scale;
+      if (stairT > 0 && !R) speed *= MOVE.stair_scale;   // Rapier's controller already slows the body on a slope
       const fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
       const tx = (fx * f + rx * s) * speed, tz = (fz * f + rz * s) * speed;
       if (grounded) {
@@ -259,6 +319,7 @@
         if (l !== inCar && near && !boardable(l)) { nx = pos.x; nz = pos.z; vx = vz = 0; }
         if (l === inCar && !boardable(l) && !inPoly(l.poly, nx, nz)) { nx = pos.x; nz = pos.z; vx = vz = 0; }
       }
+      if (R) { kccMove(nx - pos.x, nz - pos.z, h, inCar); return; }
       const [px, pz] = pushOut(nx, nz, pos.y);
       if (px || pz) {
         nx += px; nz += pz;
@@ -279,6 +340,32 @@
       }
       stairT = Math.max(0, stairT - h);
       pos.x = nx; pos.z = nz;
+    }
+
+    /** One step by Rapier's character controller: the wanted move (dx, dz) plus gravity, corrected against the world. */
+    function kccMove(dx, dz, h, inCar) {
+      if (inCar && inCar.phase === "moving") {   // riding: the car carries the feet
+        pos.y = inCar.carY; vy = 0; grounded = true; syncBody(); return;
+      }
+      vy = grounded ? -0.5 : Math.max(vy - GRAVITY_M_S2 * h, -FALL_MAX_M_S);
+      kcc.computeColliderMovement(kCol, { x: dx, y: vy * h, z: dz });
+      const m = kcc.computedMovement(), t = kBody.translation();
+      const nt = { x: t.x + m.x, y: t.y + m.y, z: t.z + m.z };
+      kBody.setNextKinematicTranslation(nt);
+      world.step();
+      const was = pos.y;
+      pos.set(nt.x, nt.y - BODY.height_m / 2 - KCC.offset_m, nt.z);
+      grounded = kcc.computedGrounded();
+      if (grounded) vy = 0;
+      // A wall (a near-vertical contact): drop the part of the velocity into it, keep the part along it. A floor, a
+      // ramp or a stair's slope is not a wall, and slows nothing.
+      for (let i = 0; i < kcc.numComputedCollisions(); i++) {
+        const n = kcc.computedCollision(i).normal1, hl = Math.hypot(n.x, n.z);
+        if (Math.abs(n.y) > 0.3 || hl < 1e-6) continue;
+        const ux = n.x / hl, uz = n.z / hl, into = vx * ux + vz * uz;
+        if (into < 0) { vx -= into * ux; vz -= into * uz; }
+      }
+      if (grounded && h > 0 && Math.abs(pos.y - was) / h > 0.3) stairT = 0.35;   // climbing or descending: a stair's pace
     }
 
     // ---------------------------------------------------------------- HUD and input
@@ -398,6 +485,8 @@
       pos.set(p.x, p.y, p.z);
       const g = groundAt(p.x, p.z, p.y, 1.0);   // the floor at about p.y, not the top of a chair beside it
       if (g !== null) pos.y = g;
+      eyeY = pos.y;
+      syncBody();
       yaw = p.face ? Math.atan2(-p.face[0], -p.face[1]) : p.yaw || 0;
       pitch = ((p.pitch_deg || 0) * Math.PI) / 180;
       if (!hud) hud = buildHud();
@@ -421,7 +510,7 @@
       if (o.onExit) o.onExit();
     }
     function place() {
-      camera.position.set(pos.x, pos.y + BODY.eye_m, pos.z);
+      camera.position.set(pos.x, eyeY + BODY.eye_m, pos.z);
       camera.rotation.set(pitch, yaw, 0, "YXZ");
     }
     /** Advance dt_s seconds (in steps of 1/120 s) and place the camera at the eye. */
@@ -430,14 +519,20 @@
       dt = Math.min(dt, 0.1);
       const n = Math.max(1, Math.ceil(dt / SUBSTEP_S));
       for (let i = 0; i < n; i++) step(dt / n);
+      // The eye: straight with the feet on a ladder or in a lift, else smoothed over a step or a ledge.
+      if (action || lifts.some((l) => l.phase === "moving" && liftIn(pos.x, pos.z) === l)) eyeY = pos.y;
+      else {
+        eyeY += (pos.y - eyeY) * (1 - Math.exp(-dt / EYE_TAU_S));
+        eyeY = Math.max(pos.y - EYE_LAG_M, Math.min(pos.y + EYE_LAG_M, eyeY));
+      }
       place();
       hudTick(dt);
     }
     return {
       enter, exit, update, use, keys, lifts,
       active: () => on,
-      /** Where the body stands and looks: { x, y (feet), z, yaw, pitch, grounded, climbing }. */
-      pose: () => ({ x: pos.x, y: pos.y, z: pos.z, yaw, pitch, grounded, climbing: !!action }),
+      /** Where the body stands and looks: { x, y (feet), z, yaw, pitch, grounded, climbing, eye (the camera's height) }. */
+      pose: () => ({ x: pos.x, y: pos.y, z: pos.z, yaw, pitch, grounded, climbing: !!action, eye: eyeY + BODY.eye_m }),
       /** True when a body can stand at (x, z) on a floor within a step of feet: nothing on top of the floor there
        * (a table, a machine) and no wall in its way. */
       canStand: (x, z, feet) => {
@@ -453,5 +548,5 @@
     };
   }
 
-  window.ShipWalk = { create, octreeOf, BODY, MOVE, LADDER, inPoly };
+  window.ShipWalk = { create, octreeOf, rapierWorld, BODY, MOVE, LADDER, KCC, inPoly };
 })();

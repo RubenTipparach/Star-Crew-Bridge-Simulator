@@ -72,7 +72,7 @@ unit are.
 **What it is.** A trunk compartment (kind `trunk`) from deck C's floor to deck A's ceiling,
 2.6 x 2.6 m and 10 m tall: 67.6 m^3 of air each, open from top to bottom like engineering. Inside is
 a spiral stair (fixture kind `spiral_stair`):
-- a column 0.15 m in radius, and treads out to 1.2 m;
+- a column 0.15 m in radius, and treads out to the trunk's walls (the owner, 2026-10-07, after walking it: "make sure the edge of sprial stairs extend in to the well as well, so as a player I cant just falkl off the side and get stuck"; the walk line stays 0.85 m out, the first treads ended at 1.2 m and left the trunk's corners open);
 - per deck, 18 risers of 0.194 m (3.5 m), 17 treads sweeping 240 degrees forward from the landing;
 - a landing at each deck, 1.1 m deep across the tower's aft end, and the treads arrive on the
   landing above.

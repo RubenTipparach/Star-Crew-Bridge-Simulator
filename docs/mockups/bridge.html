@@ -1309,11 +1309,23 @@
         }
       }
       // A railing along an edge that opens onto a lower floor of the same compartment (a gallery's edge).
+      // A stair that lands on this edge (its top within 0.3 m of the edge, at this floor) gets a gap the stair's width
+      // and 0.1 m each side: the railing stood across the hangar's gallery stairs, and walking up them hit it.
       const RL = D.railing;
+      const stairGaps = (L.fixtures || []).filter((f) => f.kind === "stair" && f.compartment === comp.id && Math.abs(f.top_m[1] - w.y0) < 0.05).map((f) => {
+        const along = (x, z) => (x - w.a[0]) * w.t[0] + (z - w.a[1]) * w.t[1], off = (x, z) => (x - w.a[0]) * w.n[0] + (z - w.a[1]) * w.n[1];
+        if (Math.abs(off(f.top_m[0], f.top_m[2])) > 0.3) return null;
+        const dx = f.top_m[0] - f.foot_m[0], dz = f.top_m[2] - f.foot_m[2], l = Math.hypot(dx, dz), px = (-dz / l) * f.width_m / 2, pz = (dx / l) * f.width_m / 2;
+        const a = along(f.top_m[0] + px, f.top_m[2] + pz), b = along(f.top_m[0] - px, f.top_m[2] - pz);
+        return [Math.min(a, b) - 0.1, Math.max(a, b) + 0.1];
+      }).filter(Boolean);
       for (const h of w.holes) {
         if (!h.sibling || h.siblingFloor > w.y0 - RL.min_drop_m) continue;
-        const u0 = h.u0 + RL.post_m, u1 = h.u1 - RL.post_m, inset = RL.inset_m + RL.post_m / 2, hp = RL.post_m / 2;
-        if (u1 - u0 < 0.3) continue;
+        for (const [u0, u1] of intervalMinus(h.u0 + RL.post_m, h.u1 - RL.post_m, stairGaps)) railRun(u0, u1);
+      }
+      function railRun(u0, u1) {
+        const inset = RL.inset_m + RL.post_m / 2, hp = RL.post_m / 2;
+        if (u1 - u0 < 0.3) return;
         for (const y of [w.y0 + RL.height_m, w.y0 + RL.height_m / 2]) {
           tbox("railing", P3((u0 + u1) / 2, y, inset), ax, up, nIn, (u1 - u0) / 2, hp, hp, ["+v", "-v", "+w", "-w", "+u", "-u"]);
         }
@@ -2045,8 +2057,35 @@
    * Roles: railing (the column, steel; not rib, whose faces the trims texture by layer), stair (treads),
    * nosing (tread edges), platform and riser (landings).
    */
+  /**
+   * How far a spiral stair's treads reach along yaw deg (degrees, 0 the bow, 90 port): to the trunk's walls
+   * (f.well_poly, 1 cm short of them) when the fixture gives them, else its radius. The kit's treads and a page's
+   * collision ramp both read it, so they agree.
+   */
+  function spiralReach(f, deg) {
+    if (!f.well_poly) return f.radius_m;
+    const [cx, , cz] = f.center_m, a = (deg * Math.PI) / 180, dx = Math.sin(a), dz = Math.cos(a), poly = f.well_poly;
+    let best = Infinity;
+    for (let i = 0; i < poly.length; i++) {
+      const p = poly[i], q = poly[(i + 1) % poly.length], ex = q[0] - p[0], ez = q[1] - p[1], den = dx * ez - dz * ex;
+      if (Math.abs(den) < 1e-9) continue;
+      const t = ((p[0] - cx) * ez - (p[1] - cz) * ex) / den, u = ((p[0] - cx) * dz - (p[1] - cz) * dx) / den;
+      if (t > 0 && u >= -1e-9 && u <= 1 + 1e-9) best = Math.min(best, t);
+    }
+    return isFinite(best) ? best - 0.01 : f.radius_m;
+  }
+  /** The yaws (degrees) between a0 and a1 where a spiral's reach turns a corner of its trunk, in order from a0. */
+  function spiralCorners(f, a0, a1) {
+    if (!f.well_poly) return [];
+    const [cx, , cz] = f.center_m, lo = Math.min(a0, a1), hi = Math.max(a0, a1), out = [];
+    for (const [x, z] of f.well_poly) {
+      const d = (Math.atan2(x - cx, z - cz) * 180) / Math.PI;
+      for (let k = -2; k <= 3; k++) { const v = d + 360 * k; if (v > lo + 1e-6 && v < hi - 1e-6) out.push(v); }
+    }
+    return out.sort((x, y) => (a1 > a0 ? x - y : y - x));
+  }
   function buildSpiralStair(THREE, B, f) {
-    const [cx, , cz] = f.center_m, R = f.radius_m, r0 = f.column_radius_m, fl = f.floors_y_m, n = f.risers_per_deck;
+    const [cx, , cz] = f.center_m, r0 = f.column_radius_m, fl = f.floors_y_m, n = f.risers_per_deck;
     const rad = (deg) => (deg * Math.PI) / 180;
     const P = (deg, r, y) => [cx + Math.sin(rad(deg)) * r, y, cz + Math.cos(rad(deg)) * r];
     const tan = (deg) => [Math.cos(rad(deg)), 0, -Math.sin(rad(deg))];   // the direction of increasing yaw
@@ -2056,13 +2095,19 @@
       const rise = (fl[k + 1] - fl[k]) / n;
       for (let i = 0; i < treads; i++) {
         const a0 = f.start_yaw_deg + step * i, a1 = a0 + step, y = fl[k] + rise * (i + 1), m = a0 + step / 2;
-        const o = [Math.sin(rad(m)), 0, Math.cos(rad(m))];
-        B.quad("stair", P(a0, r0, y), P(a1, r0, y), P(a1, R, y), P(a0, R, y), up);
-        B.quad("stair", P(a0, r0, y - T), P(a1, r0, y - T), P(a1, R, y - T), P(a0, R, y - T), down);
-        B.quad("nosing", P(a0, R, y - T), P(a1, R, y - T), P(a1, R, y), P(a0, R, y), o);
-        const t0 = tan(a0).map((v) => -v * sg), t1 = tan(a1).map((v) => v * sg);
-        B.quad("nosing", P(a0, r0, y - T), P(a0, R, y - T), P(a0, R, y), P(a0, r0, y), t0);
-        B.quad("nosing", P(a1, r0, y - T), P(a1, R, y - T), P(a1, R, y), P(a1, r0, y), t1);
+        // A tread from the column out to the trunk's walls (or the radius): its outline round the corners it turns.
+        const outer = [a0].concat(spiralCorners(f, a0, a1), [a1]).map((d) => [d, spiralReach(f, d)]);
+        const poly = [[P(a0, r0, 0), P(a1, r0, 0)], outer.slice().reverse().map(([d, r]) => P(d, r, 0))].flat().map((q) => [q[0], q[2]]);
+        const ccw = signedArea(poly) > 0 ? poly : poly.slice().reverse();
+        B.flat(THREE, "stair", ccw, [], y, 1);
+        B.flat(THREE, "stair", ccw, [], y - T, -1);
+        if (!f.well_poly) {   // a free edge at the radius: its nosing
+          const o = [Math.sin(rad(m)), 0, Math.cos(rad(m))], R = f.radius_m;
+          B.quad("nosing", P(a0, R, y - T), P(a1, R, y - T), P(a1, R, y), P(a0, R, y), o);
+        }
+        const t0 = tan(a0).map((v) => -v * sg), t1 = tan(a1).map((v) => v * sg), R0 = spiralReach(f, a0), R1 = spiralReach(f, a1);
+        B.quad("nosing", P(a0, r0, y - T), P(a0, R0, y - T), P(a0, R0, y), P(a0, r0, y), t0);
+        B.quad("nosing", P(a1, r0, y - T), P(a1, R1, y - T), P(a1, R1, y), P(a1, r0, y), t1);
       }
       const y = fl[k + 1], poly = f.landing_poly;
       B.flat(THREE, "platform", poly, [], y, 1);
@@ -2550,7 +2595,7 @@
     buildCompartment, roomShell, lampsFor, frameStations, loadMaterials, surfaceMaterial, geometryOf, finishOf, compartmentMesh, paintRole, bakeDirect,
     // wall panels (openspec/changes/wall-panels)
     loadPanels, panelsData, panelBands, panelBays, fnv1a, decodePng, panelLayerList, panelLayerName, walkwayPaths,
-    Builder, subdivideParts, buildPlatforms, buildSpiralStair, buildLiftCar, buildFitout, platformRows,
+    Builder, subdivideParts, buildPlatforms, buildSpiralStair, spiralReach, spiralCorners, buildLiftCar, buildFitout, platformRows,
     // hull, labels, chrome
     hullGeometry, hullHalfWidth, label, budgetHud, titleBlock, registerShots, markReady, panelChrome,
     rectMinusHoles, intervalMinus, worldUv,

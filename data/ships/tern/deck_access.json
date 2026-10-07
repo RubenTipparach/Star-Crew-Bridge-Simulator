@@ -1535,7 +1535,25 @@
     ]
    ],
    "walk_line_m": 0.85,
-   "note": "Treads sweep forward from the landing and round to the next deck's landing over it, one deck a sweep."
+   "well_poly": [
+    [
+     1.25,
+     9.0
+    ],
+    [
+     3.85,
+     9.0
+    ],
+    [
+     3.85,
+     11.6
+    ],
+    [
+     1.25,
+     11.6
+    ]
+   ],
+   "note": "Treads sweep forward from the landing and round to the next deck's landing over it, one deck a sweep. They run out to the trunk's walls (well_poly), so there is no gap to fall through (owner, 2026-10-07)."
   },
   {
    "id": "stair_s_spiral",
@@ -1575,7 +1593,25 @@
     ]
    ],
    "walk_line_m": 0.85,
-   "note": "Treads sweep forward from the landing and round to the next deck's landing over it, one deck a sweep."
+   "well_poly": [
+    [
+     -3.85,
+     9.0
+    ],
+    [
+     -1.25,
+     9.0
+    ],
+    [
+     -1.25,
+     11.6
+    ],
+    [
+     -3.85,
+     11.6
+    ]
+   ],
+   "note": "Treads sweep forward from the landing and round to the next deck's landing over it, one deck a sweep. They run out to the trunk's walls (well_poly), so there is no gap to fall through (owner, 2026-10-07)."
   },
   {
    "id": "lift_car",
