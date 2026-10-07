@@ -145,7 +145,7 @@ a slanted corner, one material each. The command deck had the seated crew's shin
 2 cm short) and is at 0.05 m^2. The other mockups share the kit: `systems.html` drew the turret pods' floors on their
 access rooms' floors in its plan (now 2 cm up) and its markers on one plane (now an overlay), and `bridge-variants.html`
 built stairs of three steps or more from blocks whose sides overlapped (now one layer a step) and two rooms' wall caps
-as two meshes; all are under 0.1 m^2. `bridge.html`, `lighting.html`, `wall-panels.html` and `exterior.html` show none.
+as two meshes; all are under 0.1 m^2. `bridge.html`, `lighting.html` and `wall-panels.html` show none, `exterior.html` 0.001 m^2.
 
 Before and after, in first person: `docs/screenshots/mockups/zfight-briefing-wall-before-after.png` (a bridge wall
 bank's back tearing through the briefing room's wall, the owner's screenshot) and `zfight-quarters-wall-before-after.png`.
