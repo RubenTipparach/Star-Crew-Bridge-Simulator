@@ -2088,9 +2088,11 @@ def p_step(P, ox, h, F):
 
 
 def p_rail(P, ox, h, F):
-    """A rail across its 6.25 cm row: a round steel bar (lit from above, so it reads round) on a dark
+    """A rail across its 6.25 cm row (the member rows build their continuous pieces once, with the middle
+    copy, as face_frame does the lip): a round steel bar (lit from above, so it reads round) on a dark
     ground, a clamp band with a bolt every 0.5 m."""
-    P.cyl("bar", "x", (h / 2, -0.004), h / 2 - 0.002, ox - 1.05, ox + 1.05, "trim", sides=24)
+    if ox == 0.0:     # continuous pieces once across the render (see face_frame)
+        P.cyl("bar", "x", (h / 2, -0.004), h / 2 - 0.002, -3.2, 3.2, "trim", sides=24)
     for dx in (-0.75, -0.25, 0.25, 0.75):
         P.cyl("clamp", "x", (h / 2, -0.004), h / 2 + 0.003, ox + dx - 0.018, ox + dx + 0.018, "paint2", sides=24, bevel=0.003)
         P.cyl("clamp_bolt", "z", (ox + dx, h / 2), 0.008, 0.0, h / 2 + 0.008, "trim", sides=10, bevel=0.003)
@@ -2102,7 +2104,8 @@ def p_kick(P, ox, h, F):
     hazard edge along its top."""
     for a, b in ((-1.0, -0.004), (0.004, 1.0)):
         P.box("kick", (ox + a, 0.006, -0.01), (ox + b, h - 0.034, 0.008), "bulkhead", bevel=0.004)
-    P.box("hazard_edge", (ox - 1.05, h - 0.03, -0.01), (ox + 1.05, h + 0.02, 0.01), "hazard", bevel=0.003)
+    if ox == 0.0:
+        P.box("hazard_edge", (-3.2, h - 0.03, -0.01), (3.2, h + 0.02, 0.01), "hazard", bevel=0.003)
     bolts(P, [(ox + x, 0.035) for x in (-0.875, -0.375, 0.125, 0.625)], r=0.01, z0=0.0, z1=0.019)
     return []
 
@@ -2110,7 +2113,8 @@ def p_kick(P, ox, h, F):
 def p_collar(P, ox, h, F):
     """A floor opening's coaming across its 12.5 cm row: a steel lip along its top, a bolted plate under
     it with a bolt every 0.25 m, a joint every 1 m."""
-    P.box("lip", (ox - 1.05, h - 0.03, -0.01), (ox + 1.05, h + 0.02, 0.016), "trim", bevel=0.005)
+    if ox == 0.0:
+        P.box("lip", (-3.2, h - 0.03, -0.01), (3.2, h + 0.02, 0.016), "trim", bevel=0.005)
     for a, b in ((-1.0, -0.004), (0.004, 1.0)):
         P.box("plate", (ox + a, 0.004, -0.01), (ox + b, h - 0.034, 0.008), "bulkhead", bevel=0.004)
     bolts(P, [(ox - 0.875 + 0.25 * k, (h - 0.03) / 2) for k in range(8)], r=0.01, z0=0.0, z1=0.019)
@@ -2120,8 +2124,8 @@ def p_collar(P, ox, h, F):
 def p_housing(P, ox, h, F):
     """A lamp housing's side across its 12.5 cm row: three raised ribs along it on a dark ground and a
     seam with two screws every 0.5 m."""
-    for y0, y1 in ((0.012, 0.036), (0.05, 0.075), (0.089, 0.113)):
-        P.box("rib", (ox - 1.05, y0, -0.01), (ox + 1.05, y1, 0.009), "bulkhead", bevel=0.004)
+    for y0, y1 in ((0.012, 0.036), (0.05, 0.075), (0.089, 0.113)) if ox == 0.0 else ():
+        P.box("rib", (-3.2, y0, -0.01), (3.2, y1, 0.009), "bulkhead", bevel=0.004)
     cuts = []
     for dx in (-0.75, -0.25, 0.25, 0.75):
         cuts.append(P.box("seam", (ox + dx - 0.006, -0.1, -0.03), (ox + dx + 0.006, h + 0.1, 0.05), "machinery"))
@@ -2134,7 +2138,8 @@ def p_pipe(P, ox, h, F):
     """A conduit seen side on across its 12.5 cm row: a pipe filling the row, a clamp every 0.5 m and a
     flange pair every 1 m."""
     r = h / 2 - 0.004
-    P.cyl("pipe", "x", (h / 2, -0.01), r, ox - 1.05, ox + 1.05, "trim", sides=28)
+    if ox == 0.0:
+        P.cyl("pipe", "x", (h / 2, -0.01), r, -3.2, 3.2, "trim", sides=28)
     for dx in (-0.75, -0.25, 0.25, 0.75):
         P.cyl("clamp", "x", (h / 2, -0.01), r + 0.004, ox + dx - 0.015, ox + dx + 0.015, "paint2", sides=28, bevel=0.003)
     for dx in (-0.5, 0.5):
