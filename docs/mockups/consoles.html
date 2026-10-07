@@ -4344,7 +4344,7 @@ const reactorUp = () => st.reactor.state === "running";
 
 // The page's stand-ins for flight, contacts, weapons, shields and scans (not yet designed).
 const G = {
-  t: 0, x: 0, y: 0, hdg: 20, hdgOrder: 20, speed: 140, throttle: 0.3, ap: "HOLD", evade: null, evadeT: 0,
+  t: 0, n: 0, x: 0, y: 0, hdg: 20, hdgOrder: 20, speed: 140, throttle: 0.3, ap: "HOLD", evade: null, evadeT: 0,
   wp: { x: 9, y: 16 },
   contacts: [
     { id: "T1", cls: "corvette", iff: "hostile", x: 5.0, y: 8.2, hdg: 210, v: 0.16, hull: 100, scan: 0.35 },
@@ -4395,7 +4395,7 @@ function activity() {
 
 /** One fixed step of the page's stand-ins (seconds, never frames: CLAUDE.md 6.4). */
 function stepGame(dt) {
-  G.t += dt;
+  G.t += dt; G.n++;
   // Helm: autopilot, evasive patterns, turn and speed limited by the drive's power.
   if (G.ap === "COURSE") G.hdgOrder = wrap360(Math.atan2(G.wp.x - G.x, G.wp.y - G.y) / D2R);
   const tgt = contact(G.target);
@@ -4435,8 +4435,8 @@ function stepGame(dt) {
     if (aimAt != null) t.aim = aimAt;
     if (t.firing) {
       t.heat += 0.07 * dt;
-      if (t.mode !== "PD" && hash("turret", t.id, Math.floor(G.t * 2)) < turretHit(t, tgt) * dt * 0.6) tgt.hull = Math.max(0, tgt.hull - 1.2);
-      if (t.mode === "PD") { const m = G.inbound.find((m) => inArc(m.brg, t.arc)); if (m && hash("pd", t.id, Math.floor(G.t * 4)) < 0.5 * dt) m.dead = true; }
+      if (t.mode !== "PD" && hash("turret", t.id, G.n) < turretHit(t, tgt) * dt * 0.6) tgt.hull = Math.max(0, tgt.hull - 1.2);
+      if (t.mode === "PD") { const m = G.inbound.find((m) => inArc(m.brg, t.arc)); if (m && hash("pd", t.id, G.n) < 0.5 * dt) m.dead = true; }
     } else t.heat = Math.max(0, t.heat - 0.05 * dt);
     if (t.heat >= 1) t.cooling = true;
     if (t.cooling && t.heat < 0.4) t.cooling = false;
@@ -4526,7 +4526,9 @@ function panel(title, g, body, o) {
   s += `<rect x="12" y="9" width="3" height="10" rx="1" fill="${o.titleCol || accent()}"/>`;
   s += text(21, 18, 13, C.dim, title, { ls: 2, w: 700 });
   s += `<g transform="translate(0,${hb})">${body(g.w, bh)}</g>`;
-  return s + "</svg>";
+  s += "</svg>";
+  PANEL_OUT.push(s);
+  return s;
 }
 function titleBand() {
   const S = stationDef(), red = st.alert === "red_alert", emerg = !reactorUp();
@@ -5127,12 +5129,32 @@ function captainShip() {
 // =================================================================== frame and input
 const CONSOLE = document.getElementById("console"), TIP = document.getElementById("tip");
 const DRAW = { helm, tactical, engineering, science, captain };
+/**
+ * Draw the console. Each band and panel is its own region, rebuilt only when its picture
+ * changed: a plot that moves is redrawn every frame, a row of buttons that did not change is
+ * left alone (so a button is never swapped out between a press and its release).
+ */
+let PANEL_OUT = [], REGIONS = [], regionsFor = "";
 function render() {
-  CONSOLE.innerHTML = titleBand() + lookBand() + DRAW[station]() + statusStrip();
+  PANEL_OUT = [];
+  DRAW[station]();
+  const parts = [titleBand(), lookBand(), ...PANEL_OUT, statusStrip()];
+  const key = station + "|" + captainTab;
+  if (key !== regionsFor || parts.length !== REGIONS.length) {
+    CONSOLE.textContent = "";
+    REGIONS = parts.map(() => { const d = document.createElement("div"); CONSOLE.appendChild(d); d._html = null; return d; });
+    regionsFor = key;
+  }
+  parts.forEach((html, i) => { const d = REGIONS[i]; if (d._html !== html) { d.innerHTML = html; d._html = html; } });
   renderBar();
 }
+let barFor = "";
 function renderBar() {
   const bar = document.getElementById("bar");
+  // Rebuilt only when what it shows changes, or a click would lose its button mid-press.
+  const key = station + "|" + st.alert;
+  if (key === barFor) return;
+  barFor = key;
   const panels = { helm: 4, tactical: 4, engineering: 4, science: 4, captain: 4 }[station];
   bar.innerHTML = `<b>Consoles</b>` + STATIONS.map((s) => `<button data-st="${s.id}" class="${s.id === station ? "on" : ""}" style="${s.id === station ? `border-color:${ROLE[s.role]};color:${ROLE[s.role]}` : ""}">${s.word}</button>`).join("") +
     `<span class="sep"></span><button data-ev="red" class="${st.alert === "red_alert" ? "on" : ""}">Red alert</button><button data-ev="hit">Hit us</button><button data-ev="scram">Scram</button><button data-ev="reset">Reset</button>` +
@@ -5256,21 +5278,23 @@ window.addEventListener("keydown", (e) => {
   render();
 });
 
-// The clock: the systems at their 10 Hz, the stand-ins at the same fixed step.
-let acc = 0, last = now(), lastDraw = 0;
-function advance(n) {
-  for (let i = 0; i < n; i++) {
-    stepGame(DT);
-    if (HOLD.key && now() - HOLD.t0 >= HOLD_S) { holdDone(HOLD.key); HOLD.key = null; }
-    sim.setActivity(activity()); sim.step();
-  }
-}
-function frame() {
-  const t = now(); acc += Math.min(0.25, t - last); last = t;
-  let n = 0; while (acc >= DT) { acc -= DT; n++; }
-  advance(n);
+// The clock, in seconds and fixed steps (CLAUDE.md 6.4): the ship's systems at their 10 Hz,
+// the page's stand-ins (flight, contacts, weapons) at 60 Hz so what moves on screen moves
+// smoothly. The console is drawn every frame; only the regions that changed are rebuilt.
+const GAME_DT = 1 / 60;
+let acc = 0, gacc = 0, last = now();
+function advanceTime(d) {
+  gacc += d; acc += d;
+  while (gacc >= GAME_DT) { gacc -= GAME_DT; stepGame(GAME_DT); }
+  while (acc >= DT) { acc -= DT; sim.setActivity(activity()); sim.step(); }
   if (HOLD.key && now() - HOLD.t0 >= HOLD_S) { holdDone(HOLD.key); HOLD.key = null; }
-  if (n > 0 || t - lastDraw > 0.1) { if (!DRAG) render(); lastDraw = t; }
+}
+/** n steps of the ship's systems (0.1 s each), for the named shots. */
+function advance(n) { for (let i = 0; i < n; i++) advanceTime(DT); }
+function frame() {
+  const t = now(), d = Math.min(0.25, t - last); last = t;
+  advanceTime(d);
+  if (!DRAG) render();
   requestAnimationFrame(frame);
 }
 
