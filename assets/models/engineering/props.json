@@ -1,0 +1,1672 @@
+{
+  "schema": "starcrew.props/1",
+  "status": "Built (2026-10-07) by tools/blender/build_engineering_props.py. Proposed plant for the Tern's engine core room (the owner, 2026-10-07: consoles, lots of pipes and heavy machinery: fuel, coolant, tanks, pumps and maintenance); no page or engine code loads them yet.",
+  "_rules": [
+    "This file is written by tools/blender/build_engineering_props.py; never edit it by hand. Rebuild, and the .glb files, the atlases and this file change together.",
+    "Metres. Prop space is the glTF frame: +Y up, +Z the prop's front (the side it is worked from), +X the right of someone facing it.",
+    "anchor says where the origin is. 'floor, centre of the back, on the wall plane' (a WALL prop): on the floor at the centre of its back, the back flat on a wall at z = 0 (the vacuum pump's wall is the reactor port it stands against). 'floor, centre of the footprint' (a FREE prop). control_desk keeps free_console's anchor (the floor at the centre of the pedestal's back). gantry_crane's origin is under the girder's centre at the hook's lowest point, its rails' top rail_top_m above; the valves' origin is on the floor under the pipe's centreline, the centreline centreline_m above.",
+    "Placing props: a FREE prop's anchor goes on the layout's floor point; a WALL prop's on the wall plane with its +Z into the room. operators_m are floor points where a crew member stands or sits to work it; control_desk's operators_m[0] is its seat, as free_console's.",
+    "ports are where pipes meet the prop: at_m the centre of the flange face (in prop space), dir the unit direction the pipe leaves in, dia_m the pipe's outside diameter. A flange is modelled at every port with its outer face on at_m, so a pipe drawn from at_m along dir butts onto it; the build checks each lies on a face facing dir. port_sections_m gives a port's section where it is not round (power_converter's bus_out: a 0.5 x 0.2 m busbar duct, dia_m its width).",
+    "Materials are roles: machinery, trim, bulkhead, hazard and light_panel are data/materials/materials.json layers (light_panel is emissive); screen is emissive and coloured by the page; accent (valve wheels, actuators, guards, rails) is tinted by the page with the station's colour (engineering's amber).",
+    "screens are the recess floors a page draws on: centre_m on the floor, normal out of it, up the in-plane direction of height_m. shows says what: console (a main screen image), upper (half 0 or 1 of an upper image) or keys.",
+    "atlas is the prop's own texture (glTF TEXCOORD_1), baked by tools/blender/hs_kit.py from data/materials/prop_atlas.json: every role in its finish (a prop's finish_of re-colours a role: lagging, magnet red, safety yellow, white cryogenic jackets) and the prop's details (lagging bands, gauges, stencils, placards, bolts, lamps). Its alpha is the glow mask.",
+    "UV0 is in metres, projected per face as shipkit.js worldUv does (x, z where |n.y| > 0.75, else the face's horizontal tangent and y); divide by the material's span_m.",
+    "Flat shaded (one normal per face), triangulated, one closed manifold solid per prop; faces against the floor or the wall are kept for the deck compiler to drop.",
+    "triangles is counted in the .glb; the build refuses a prop over budget_triangles. sha256 is the .glb's, from the Blender and exporter versions in generator: a second build with them writes the same bytes."
+  ],
+  "generator": {
+    "script": "tools/blender/build_engineering_props.py",
+    "blender": "4.5.14 LTS",
+    "gltf_exporter": "4.5.51"
+  },
+  "props": {
+    "heat_exchanger": {
+      "file": "heat_exchanger.glb",
+      "presents": "A coolant loop heat exchanger: hot coolant in at the gooseneck, cold out at the back, the secondary loop to the hull radiators at the sides (thermal)",
+      "anchor": "floor, centre of the footprint",
+      "dimensions_m": [
+        1.9,
+        4.6668,
+        2.0
+      ],
+      "bounds_m": {
+        "min": [
+          -0.95,
+          0.0,
+          -0.95
+        ],
+        "max": [
+          0.95,
+          4.6668,
+          1.05
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          1.35
+        ]
+      ],
+      "screens": [],
+      "ports": {
+        "cold_out": {
+          "at_m": [
+            0.0,
+            0.75,
+            -0.95
+          ],
+          "dir": [
+            0.0,
+            0.0,
+            -1.0
+          ],
+          "dia_m": 0.45
+        },
+        "hot_in": {
+          "at_m": [
+            0.0,
+            4.25,
+            1.05
+          ],
+          "dir": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "dia_m": 0.45
+        },
+        "sec_in": {
+          "at_m": [
+            -0.95,
+            1.6,
+            0.0
+          ],
+          "dir": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "dia_m": 0.3
+        },
+        "sec_out": {
+          "at_m": [
+            0.95,
+            3.2,
+            0.0
+          ],
+          "dir": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "dia_m": 0.3
+        }
+      },
+      "triangles": 866,
+      "budget_triangles": 900,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard"
+      ],
+      "csg": [
+        "union vessel_nozzles_ladder (29)"
+      ],
+      "sha256": "d39e7d34f7690e039048410448741b36014cb56886c5a9841fd98a0742561e95",
+      "atlas": {
+        "file": "atlas/heat_exchanger.png",
+        "px": 512,
+        "px_per_m": 78.04,
+        "charts": 41,
+        "cover": 0.648,
+        "glow": 0.0,
+        "sha256": "0ddf886b502959bd3d0f375063a1003a4b248407117d4421dc4f2e86e5152c8f",
+        "bytes": 73269
+      }
+    },
+    "pressurizer": {
+      "file": "pressurizer.glb",
+      "presents": "The coolant loop's pressurizer: a steam bubble over the coolant holds the loop's pressure (thermal)",
+      "anchor": "floor, centre of the footprint",
+      "dimensions_m": [
+        1.0,
+        4.22,
+        1.1
+      ],
+      "bounds_m": {
+        "min": [
+          -0.5,
+          0.0,
+          -0.5
+        ],
+        "max": [
+          0.5,
+          4.22,
+          0.6
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "screens": [],
+      "ports": {
+        "surge": {
+          "at_m": [
+            0.0,
+            0.4,
+            0.6
+          ],
+          "dir": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "dia_m": 0.2
+        }
+      },
+      "triangles": 544,
+      "budget_triangles": 600,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "accent"
+      ],
+      "csg": [
+        "difference heater_openings (2)",
+        "union vessel_valves_lines (18)"
+      ],
+      "sha256": "28115694a5ac0bb519da98c5f06c0ae8fc465a3a61080524dafc9afcd0738cd0",
+      "atlas": {
+        "file": "atlas/pressurizer.png",
+        "px": 256,
+        "px_per_m": 57.9,
+        "charts": 23,
+        "cover": 0.723,
+        "glow": 0.0,
+        "sha256": "0c214e06287e02840ba2d8be5b5ba0b9e47b40677a586efcdbf4c200314bc915",
+        "bytes": 17957
+      }
+    },
+    "coolant_pump": {
+      "file": "coolant_pump.glb",
+      "presents": "A reactor coolant pump: drives the coolant loop through the reactor and its heat exchanger (thermal)",
+      "anchor": "floor, centre of the footprint",
+      "dimensions_m": [
+        1.6,
+        2.75,
+        1.6
+      ],
+      "bounds_m": {
+        "min": [
+          -0.8,
+          0.0,
+          -0.8
+        ],
+        "max": [
+          0.8,
+          2.75,
+          0.8
+        ]
+      },
+      "operators_m": [
+        [
+          1.2,
+          0.0,
+          0.0
+        ]
+      ],
+      "screens": [],
+      "ports": {
+        "discharge": {
+          "at_m": [
+            0.0,
+            0.7,
+            0.8
+          ],
+          "dir": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "dia_m": 0.45
+        },
+        "suction": {
+          "at_m": [
+            0.0,
+            0.7,
+            -0.8
+          ],
+          "dir": [
+            0.0,
+            0.0,
+            -1.0
+          ],
+          "dia_m": 0.45
+        }
+      },
+      "triangles": 554,
+      "budget_triangles": 600,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard",
+        "accent"
+      ],
+      "csg": [
+        "chamfer plate_edges (4 edges, 15 mm)",
+        "union casing_stand_motor (13)"
+      ],
+      "sha256": "7907f8a9621fdd496bd4c142975cb1ce6067537edfb301aa36ace88b1ddbaf58",
+      "atlas": {
+        "file": "atlas/coolant_pump.png",
+        "px": 256,
+        "px_per_m": 55.42,
+        "charts": 19,
+        "cover": 0.592,
+        "glow": 0.0,
+        "sha256": "91ce31a0ea6d279ec1ffafaa609ea4cae5ecd8f27e5dcccc2f35ef7e8ecc047f",
+        "bytes": 23492
+      }
+    },
+    "coolant_tank": {
+      "file": "coolant_tank.glb",
+      "presents": "The coolant drain and makeup tank: buffers the loop's coolant (thermal)",
+      "anchor": "floor, centre of the footprint",
+      "dimensions_m": [
+        3.0,
+        1.84,
+        1.464
+      ],
+      "bounds_m": {
+        "min": [
+          -1.5,
+          0.0,
+          -0.65
+        ],
+        "max": [
+          1.5,
+          1.84,
+          0.814
+        ]
+      },
+      "operators_m": [
+        [
+          0.45,
+          0.0,
+          1.25
+        ]
+      ],
+      "screens": [],
+      "ports": {
+        "outlet": {
+          "at_m": [
+            1.0,
+            0.35,
+            0.6
+          ],
+          "dir": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "dia_m": 0.15
+        }
+      },
+      "triangles": 476,
+      "budget_triangles": 500,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard"
+      ],
+      "csg": [
+        "union saddles_and_fittings (14)"
+      ],
+      "sha256": "91751d90e1f10d839865f8c3ce643e593256bd4808b93a85bbd62f32c3248129",
+      "atlas": {
+        "file": "atlas/coolant_tank.png",
+        "px": 256,
+        "px_per_m": 54.09,
+        "charts": 28,
+        "cover": 0.739,
+        "glow": 0.0006,
+        "sha256": "9f39bdaba914cec5ce06466032beb2cf16fdf73d3d80ed528f07e8a4cafc536f",
+        "bytes": 17137
+      }
+    },
+    "fuel_dewar": {
+      "file": "fuel_dewar.glb",
+      "presents": "A deuterium dewar: stores the reactor's deuterium fuel as a cryogenic liquid (fuel)",
+      "anchor": "floor, centre of the footprint",
+      "dimensions_m": [
+        1.2618,
+        2.72,
+        1.25
+      ],
+      "bounds_m": {
+        "min": [
+          -0.6309,
+          0.0,
+          -0.6
+        ],
+        "max": [
+          0.6309,
+          2.72,
+          0.65
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          1.1
+        ]
+      ],
+      "screens": [],
+      "ports": {
+        "fuel_out": {
+          "at_m": [
+            0.0,
+            0.45,
+            0.65
+          ],
+          "dir": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "dia_m": 0.1
+        }
+      },
+      "triangles": 524,
+      "budget_triangles": 600,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "accent"
+      ],
+      "csg": [
+        "union legs_tree_rail (14)"
+      ],
+      "sha256": "55339fb541723aadbbf4ee1f1d6bd3aaaf86430d0225fbd94baa90f3dc139b89",
+      "atlas": {
+        "file": "atlas/fuel_dewar.png",
+        "px": 256,
+        "px_per_m": 57.0,
+        "charts": 25,
+        "cover": 0.526,
+        "glow": 0.0,
+        "sha256": "f41e7de170be031fa178b5ead2f609c709d54c1b0100031965ea6ec3d5b3f04d",
+        "bytes": 16229
+      }
+    },
+    "helium3_rack": {
+      "file": "helium3_rack.glb",
+      "presents": "The helium-3 store: racked gas cylinders feeding the fuel processor through a regulator (fuel)",
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        2.4,
+        2.0,
+        0.7
+      ],
+      "bounds_m": {
+        "min": [
+          -1.2,
+          0.0,
+          0.0
+        ],
+        "max": [
+          1.2,
+          2.0,
+          0.7
+        ]
+      },
+      "operators_m": [
+        [
+          0.75,
+          0.0,
+          1.3
+        ]
+      ],
+      "screens": [],
+      "ports": {
+        "fuel_out": {
+          "at_m": [
+            1.15,
+            1.85,
+            0.5
+          ],
+          "dir": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "dia_m": 0.08
+        }
+      },
+      "triangles": 652,
+      "budget_triangles": 700,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "accent"
+      ],
+      "csg": [
+        "union frame_cylinders_regulator (15)"
+      ],
+      "sha256": "cab640d26b9b765e478c168b3121e1862a2d33dd87c7f8edffe70dffe627f62e",
+      "atlas": {
+        "file": "atlas/helium3_rack.png",
+        "px": 256,
+        "px_per_m": 42.7,
+        "charts": 22,
+        "cover": 0.671,
+        "glow": 0.0,
+        "sha256": "f8772eb8c1039f53209ee3afef8fad90829af0153f6465960ac31694ed64d43e",
+        "bytes": 13663
+      }
+    },
+    "fuel_processor": {
+      "file": "fuel_processor.glb",
+      "presents": "The fuel processing and pellet injector skid: freezes fuel into pellets and fires them into the reactor (fuel)",
+      "anchor": "floor, centre of the footprint",
+      "dimensions_m": [
+        2.4,
+        1.9,
+        1.3
+      ],
+      "bounds_m": {
+        "min": [
+          -1.2,
+          0.0,
+          -0.65
+        ],
+        "max": [
+          1.2,
+          1.9,
+          0.65
+        ]
+      },
+      "operators_m": [
+        [
+          0.95,
+          0.0,
+          1.15
+        ]
+      ],
+      "screens": [
+        {
+          "label": "screen",
+          "shows": "console",
+          "centre_m": [
+            0.95,
+            1.16,
+            0.435
+          ],
+          "normal": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "up": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "width_m": 0.3,
+          "height_m": 0.2
+        }
+      ],
+      "ports": {
+        "d2_in": {
+          "at_m": [
+            -0.6,
+            0.8,
+            -0.65
+          ],
+          "dir": [
+            0.0,
+            0.0,
+            -1.0
+          ],
+          "dia_m": 0.1
+        },
+        "he3_in": {
+          "at_m": [
+            0.0,
+            0.8,
+            -0.65
+          ],
+          "dir": [
+            0.0,
+            0.0,
+            -1.0
+          ],
+          "dia_m": 0.08
+        },
+        "inject_out": {
+          "at_m": [
+            0.6,
+            1.2,
+            0.65
+          ],
+          "dir": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "dia_m": 0.1
+        }
+      },
+      "triangles": 718,
+      "budget_triangles": 800,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard",
+        "light_panel",
+        "screen",
+        "accent"
+      ],
+      "csg": [
+        "chamfer skid_edges (4 edges, 15 mm)",
+        "chamfer control_lamp (1 edges, 25 mm)",
+        "union cryostat_manifold_pump_box (20)",
+        "difference screens (1)"
+      ],
+      "sha256": "964bd7d23eade1218c1adfd5f81d70fbc9e5866d65090ff2de3b7b284b5f9121",
+      "atlas": {
+        "file": "atlas/fuel_processor.png",
+        "px": 256,
+        "px_per_m": 66.12,
+        "charts": 39,
+        "cover": 0.809,
+        "glow": 0.0096,
+        "sha256": "7ab81e4062e3a68ed8182920e57d29028ae1e534bf4f8839d5214d60b49454b7",
+        "bytes": 18617
+      }
+    },
+    "cryoplant": {
+      "file": "cryoplant.glb",
+      "presents": "The magnets' cryoplant: compresses and expands helium to cool the reactor's magnets (cryogenics)",
+      "anchor": "floor, centre of the footprint",
+      "dimensions_m": [
+        3.4,
+        2.75,
+        1.6
+      ],
+      "bounds_m": {
+        "min": [
+          -1.7,
+          0.0,
+          -0.8
+        ],
+        "max": [
+          1.7,
+          2.75,
+          0.8
+        ]
+      },
+      "operators_m": [
+        [
+          1.0,
+          0.0,
+          1.45
+        ]
+      ],
+      "screens": [],
+      "ports": {
+        "lhe_out": {
+          "at_m": [
+            1.1,
+            2.4,
+            0.75
+          ],
+          "dir": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "dia_m": 0.15
+        },
+        "lhe_return": {
+          "at_m": [
+            0.6,
+            2.4,
+            0.75
+          ],
+          "dir": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "dia_m": 0.15
+        }
+      },
+      "triangles": 818,
+      "budget_triangles": 900,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard",
+        "accent"
+      ],
+      "csg": [
+        "chamfer base_edges (4 edges, 15 mm)",
+        "chamfer cold_box_top (4 edges, 30 mm)",
+        "chamfer compressor_top (4 edges, 20 mm)",
+        "union cold_box_and_compressor (20)"
+      ],
+      "sha256": "f203a8cbb12ea6bd2f98fa3ea105b53dcb45ad0f0a4ccdc4c3348c4d3d92b52d",
+      "atlas": {
+        "file": "atlas/cryoplant.png",
+        "px": 256,
+        "px_per_m": 42.33,
+        "charts": 40,
+        "cover": 0.812,
+        "glow": 0.0002,
+        "sha256": "1da1927a22990656057796ea21feb3e6ca648852b3e18cdf1ccdbf96b3e4bffa",
+        "bytes": 24929
+      }
+    },
+    "vacuum_pump": {
+      "file": "vacuum_pump.glb",
+      "presents": "The reaction chamber's exhaust pump: a turbomolecular pump backed by a roughing pump (exhaust)",
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        0.7266,
+        1.4,
+        1.1
+      ],
+      "bounds_m": {
+        "min": [
+          -0.34,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.3866,
+          1.4,
+          1.1
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          1.6
+        ]
+      ],
+      "screens": [],
+      "ports": {
+        "exhaust": {
+          "at_m": [
+            0.3,
+            0.3,
+            1.1
+          ],
+          "dir": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "dia_m": 0.1
+        },
+        "inlet": {
+          "at_m": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "dir": [
+            0.0,
+            0.0,
+            -1.0
+          ],
+          "dia_m": 0.35
+        }
+      },
+      "triangles": 248,
+      "budget_triangles": 300,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "accent"
+      ],
+      "csg": [
+        "union valve_pump_stand (8)"
+      ],
+      "sha256": "a6d54ebf07af5298a0ac7f8103df0d9316cee5946290fbbfcc0549772cea42fd",
+      "atlas": {
+        "file": "atlas/vacuum_pump.png",
+        "px": 256,
+        "px_per_m": 108.12,
+        "charts": 21,
+        "cover": 0.606,
+        "glow": 0.0,
+        "sha256": "c476c8ebf0dc6d9384c0963a1a10e612e1d92e28618cdc795cac7c95bbfbd75e",
+        "bytes": 15883
+      }
+    },
+    "ash_tank": {
+      "file": "ash_tank.glb",
+      "presents": "The exhaust and ash tank: collects the reactor's helium ash and unburnt fuel (exhaust)",
+      "anchor": "floor, centre of the footprint",
+      "dimensions_m": [
+        1.4,
+        2.52,
+        0.95
+      ],
+      "bounds_m": {
+        "min": [
+          -0.6,
+          0.0,
+          -0.45
+        ],
+        "max": [
+          0.8,
+          2.52,
+          0.5
+        ]
+      },
+      "operators_m": [
+        [
+          0.3,
+          0.0,
+          0.95
+        ]
+      ],
+      "screens": [],
+      "ports": {
+        "inlet": {
+          "at_m": [
+            -0.6,
+            1.8,
+            0.0
+          ],
+          "dir": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "dia_m": 0.15
+        }
+      },
+      "triangles": 370,
+      "budget_triangles": 400,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard",
+        "accent"
+      ],
+      "csg": [
+        "union legs_inlet_pump (12)"
+      ],
+      "sha256": "7053d2333332037bd18c85b82b17671bcd6aa2b1ff0aab7c00d19de87f4e49e8",
+      "atlas": {
+        "file": "atlas/ash_tank.png",
+        "px": 256,
+        "px_per_m": 74.81,
+        "charts": 24,
+        "cover": 0.722,
+        "glow": 0.0,
+        "sha256": "832830be2bfcc77dfdd017974feb004c81103e7b7f7c2b73e3e22ada9ef33382",
+        "bytes": 20232
+      }
+    },
+    "power_converter": {
+      "file": "power_converter.glb",
+      "presents": "A direct energy converter cabinet: turns the reactor's charged exhaust into power for the grid (power grid)",
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        2.6,
+        2.8,
+        1.035
+      ],
+      "bounds_m": {
+        "min": [
+          -1.3,
+          0.0,
+          0.0
+        ],
+        "max": [
+          1.3,
+          2.8,
+          1.035
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          1.5
+        ]
+      ],
+      "screens": [],
+      "ports": {
+        "bus_out": {
+          "at_m": [
+            0.0,
+            2.8,
+            0.5
+          ],
+          "dir": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "dia_m": 0.5
+        }
+      },
+      "triangles": 448,
+      "budget_triangles": 600,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard",
+        "light_panel"
+      ],
+      "csg": [
+        "difference bay_splits (2)",
+        "union duct_and_handles (5)",
+        "difference fan_bays_and_mimic (3)",
+        "union fans (12)"
+      ],
+      "sha256": "1303f882f9d860fe6b23a5574f1c5ea2ab17b137e97393b9e4a84fd235eb508b",
+      "atlas": {
+        "file": "atlas/power_converter.png",
+        "px": 256,
+        "px_per_m": 54.52,
+        "charts": 31,
+        "cover": 0.712,
+        "glow": 0.0348,
+        "sha256": "65ab48b748bb8a1370e3bbc9eeedc4c79ea785f0ee7baf512342987d91941da9",
+        "bytes": 16467
+      },
+      "port_sections_m": {
+        "bus_out": [
+          0.5,
+          0.2
+        ]
+      }
+    },
+    "reactor_dressing": {
+      "file": "reactor_dressing.glb",
+      "presents": "The reactor's magnet dressing: field coils, poloidal rings, diagnostic ports, cable looms and feeds round the reactor column (power grid)",
+      "anchor": "floor, centre of the footprint",
+      "dimensions_m": [
+        6.6,
+        6.2,
+        6.6
+      ],
+      "bounds_m": {
+        "min": [
+          -3.3,
+          0.0,
+          -3.3
+        ],
+        "max": [
+          3.3,
+          6.2,
+          3.3
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "ports": {
+        "port_0": {
+          "at_m": [
+            0.0,
+            1.0,
+            3.3
+          ],
+          "dir": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "dia_m": 0.35
+        },
+        "port_1": {
+          "at_m": [
+            2.3335,
+            1.0,
+            2.3335
+          ],
+          "dir": [
+            0.7071,
+            0.0,
+            0.7071
+          ],
+          "dia_m": 0.35
+        },
+        "port_2": {
+          "at_m": [
+            3.3,
+            1.0,
+            0.0
+          ],
+          "dir": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "dia_m": 0.35
+        },
+        "port_3": {
+          "at_m": [
+            2.3335,
+            1.0,
+            -2.3335
+          ],
+          "dir": [
+            0.7071,
+            0.0,
+            -0.7071
+          ],
+          "dia_m": 0.35
+        },
+        "port_4": {
+          "at_m": [
+            0.0,
+            1.0,
+            -3.3
+          ],
+          "dir": [
+            0.0,
+            0.0,
+            -1.0
+          ],
+          "dia_m": 0.35
+        },
+        "port_5": {
+          "at_m": [
+            -2.3335,
+            1.0,
+            -2.3335
+          ],
+          "dir": [
+            -0.7071,
+            0.0,
+            -0.7071
+          ],
+          "dia_m": 0.35
+        },
+        "port_6": {
+          "at_m": [
+            -3.3,
+            1.0,
+            0.0
+          ],
+          "dir": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "dia_m": 0.35
+        },
+        "port_7": {
+          "at_m": [
+            -2.3335,
+            1.0,
+            2.3335
+          ],
+          "dir": [
+            -0.7071,
+            0.0,
+            0.7071
+          ],
+          "dia_m": 0.35
+        }
+      },
+      "triangles": 1616,
+      "budget_triangles": 1800,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard"
+      ],
+      "csg": [
+        "union coils_rings_ports_looms_feeds (47)"
+      ],
+      "sha256": "7d681ce24a7c8ca8b7c0f3d0392dac3c6a32fcc2c52f33bfd57d8df1f95714be",
+      "atlas": {
+        "file": "atlas/reactor_dressing.png",
+        "px": 1024,
+        "px_per_m": 71.16,
+        "charts": 97,
+        "cover": 0.809,
+        "glow": 0.0,
+        "sha256": "97b52d9f8f59232f8fabcadd2a5874b1ae2c38cd47bacb1952a447795a57e593",
+        "bytes": 175813
+      }
+    },
+    "gantry_crane": {
+      "file": "gantry_crane.glb",
+      "presents": "An overhead travelling crane over the engine core room's floor (maintenance)",
+      "anchor": "under the girder's centre, at the hook's lowest point; the rails' top is rail_top_m above it",
+      "dimensions_m": [
+        17.5,
+        2.52,
+        2.0
+      ],
+      "bounds_m": {
+        "min": [
+          -8.75,
+          0.0,
+          -1.0
+        ],
+        "max": [
+          8.75,
+          2.52,
+          1.0
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 480,
+      "budget_triangles": 500,
+      "materials": [
+        "machinery",
+        "trim",
+        "hazard"
+      ],
+      "csg": [
+        "union ribs_trucks_trolley_hook (19)"
+      ],
+      "sha256": "5c3d48eb9fa414b46173181cf119b7e466c0742bde997fa4016b1ba47b9b7e9c",
+      "atlas": {
+        "file": "atlas/gantry_crane.png",
+        "px": 512,
+        "px_per_m": 67.61,
+        "charts": 40,
+        "cover": 0.843,
+        "glow": 0.0,
+        "sha256": "9f8ed427c68ad6b830564063eee09a6a3b7b0d6c3b533a9d1da2c210953e8310",
+        "bytes": 72303
+      },
+      "rail_top_m": 1.6
+    },
+    "local_panel": {
+      "file": "local_panel.glb",
+      "presents": "A local control station beside a machine (engineering)",
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        0.85,
+        1.75,
+        0.5286
+      ],
+      "bounds_m": {
+        "min": [
+          -0.4,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.45,
+          1.75,
+          0.5286
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          0.9
+        ]
+      ],
+      "screens": [
+        {
+          "label": "screen",
+          "shows": "console",
+          "centre_m": [
+            -0.13,
+            1.1707,
+            0.4258
+          ],
+          "normal": [
+            0.0,
+            0.3387,
+            0.9409
+          ],
+          "up": [
+            0.0,
+            0.9409,
+            -0.3387
+          ],
+          "width_m": 0.24,
+          "height_m": 0.13
+        }
+      ],
+      "triangles": 304,
+      "budget_triangles": 350,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard",
+        "light_panel",
+        "screen",
+        "accent"
+      ],
+      "csg": [
+        "union bezels_estop_conduit (7)",
+        "difference screen (1)"
+      ],
+      "sha256": "d0df620cbd692701024b4f38cd70acfc4211dfe4f497eb44520b4d6a0655c9d1",
+      "atlas": {
+        "file": "atlas/local_panel.png",
+        "px": 256,
+        "px_per_m": 115.5,
+        "charts": 18,
+        "cover": 0.688,
+        "glow": 0.02,
+        "sha256": "9d79951fe32dc841a3b99af6d4a6bd5ea357dc4c59178937b98bbdf288edca42",
+        "bytes": 14928
+      }
+    },
+    "control_desk": {
+      "file": "control_desk.glb",
+      "presents": "The engineering control desk: the engineer's station (eng_main)",
+      "anchor": "floor, centre of the pedestal's back",
+      "dimensions_m": [
+        3.0,
+        1.4901,
+        1.353
+      ],
+      "bounds_m": {
+        "min": [
+          -1.5,
+          0.0,
+          0.0
+        ],
+        "max": [
+          1.5,
+          1.4901,
+          1.353
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          1.5203
+        ]
+      ],
+      "screens": [
+        {
+          "label": "monitor_0",
+          "shows": "upper",
+          "centre_m": [
+            -0.964,
+            1.2961,
+            0.2882
+          ],
+          "normal": [
+            0.2448,
+            0.2588,
+            0.9344
+          ],
+          "up": [
+            -0.0656,
+            0.9659,
+            -0.2504
+          ],
+          "width_m": 0.82,
+          "height_m": 0.32,
+          "half": 0
+        },
+        {
+          "label": "monitor_1",
+          "shows": "console",
+          "centre_m": [
+            0.0,
+            1.2961,
+            0.164
+          ],
+          "normal": [
+            0.0,
+            0.2588,
+            0.9659
+          ],
+          "up": [
+            0.0,
+            0.9659,
+            -0.2588
+          ],
+          "width_m": 0.82,
+          "height_m": 0.32
+        },
+        {
+          "label": "monitor_2",
+          "shows": "upper",
+          "centre_m": [
+            0.964,
+            1.2961,
+            0.2882
+          ],
+          "normal": [
+            -0.2448,
+            0.2588,
+            0.9344
+          ],
+          "up": [
+            0.0656,
+            0.9659,
+            -0.2504
+          ],
+          "width_m": 0.82,
+          "height_m": 0.32,
+          "half": 1
+        }
+      ],
+      "triangles": 538,
+      "budget_triangles": 900,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "light_panel",
+        "screen",
+        "accent"
+      ],
+      "csg": [
+        "chamfer front_edge (3 edges, 20 mm)",
+        "chamfer monitor_0_edges (4 edges, 12 mm)",
+        "chamfer monitor_1_edges (4 edges, 12 mm)",
+        "chamfer monitor_2_edges (4 edges, 12 mm)",
+        "union monitors_and_controls (18)",
+        "difference screens (3)"
+      ],
+      "sha256": "a2f1e11a21908ab7c19734c9160c8389ef38d8e24fdbbbeb6e32da403a0bf678",
+      "atlas": {
+        "file": "atlas/control_desk.png",
+        "px": 256,
+        "px_per_m": 52.65,
+        "charts": 40,
+        "cover": 0.601,
+        "glow": 0.0342,
+        "sha256": "5b69b1d1d910be32eb914ed1047a7ff3c2e2ace390fb1b8043f42a77038e9e8e",
+        "bytes": 13449
+      }
+    },
+    "mimic_board": {
+      "file": "mimic_board.glb",
+      "presents": "The plant mimic wall: the coolant, power and fuel loops drawn in light (engineering)",
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        3.6,
+        2.4,
+        0.2
+      ],
+      "bounds_m": {
+        "min": [
+          -1.8,
+          0.0,
+          0.0
+        ],
+        "max": [
+          1.8,
+          2.4,
+          0.2
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          1.5
+        ]
+      ],
+      "screens": [],
+      "triangles": 196,
+      "budget_triangles": 300,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard",
+        "light_panel"
+      ],
+      "csg": [
+        "union meters (8)",
+        "difference field_and_readout (2)"
+      ],
+      "sha256": "40e51cccfb24e89f2626e1e45b2baab567cc6396889dca8ea141b20f8f68f136",
+      "atlas": {
+        "file": "atlas/mimic_board.png",
+        "px": 256,
+        "px_per_m": 61.34,
+        "charts": 19,
+        "cover": 0.61,
+        "glow": 0.0605,
+        "sha256": "6c84f5a556b4d8d9c3510d7900392bef29fcf7cc4bdfee18c16cf6b35503a87c",
+        "bytes": 12179
+      }
+    },
+    "tool_board": {
+      "file": "tool_board.glb",
+      "presents": "The maintenance bench: the engineers' tools for keeping the plant running (maintenance)",
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        2.2,
+        2.34,
+        0.75
+      ],
+      "bounds_m": {
+        "min": [
+          -1.1,
+          0.0,
+          0.0
+        ],
+        "max": [
+          1.1,
+          2.34,
+          0.75
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          1.2
+        ]
+      ],
+      "screens": [],
+      "triangles": 554,
+      "budget_triangles": 600,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard",
+        "accent"
+      ],
+      "csg": [
+        "difference kick (1)",
+        "difference drawer_and_door_lines (5)",
+        "union top_vice_board_tools (19)"
+      ],
+      "sha256": "68cfa8ecdd435421090d8408915d36db25d86455c6fc7170f31aee864ee2cf8a",
+      "atlas": {
+        "file": "atlas/tool_board.png",
+        "px": 256,
+        "px_per_m": 61.59,
+        "charts": 46,
+        "cover": 0.615,
+        "glow": 0.0031,
+        "sha256": "d860edf2f65180593e8cc9fd398f5ac94b7f0dd123858ab6c85fb9169d1f216b",
+        "bytes": 21906
+      }
+    },
+    "tool_chest": {
+      "file": "tool_chest.glb",
+      "presents": "A rolling tool chest (maintenance)",
+      "anchor": "floor, centre of the footprint",
+      "dimensions_m": [
+        0.975,
+        1.1,
+        0.55
+      ],
+      "bounds_m": {
+        "min": [
+          -0.46,
+          0.0,
+          -0.275
+        ],
+        "max": [
+          0.515,
+          1.1,
+          0.275
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          0.85
+        ]
+      ],
+      "screens": [],
+      "triangles": 128,
+      "budget_triangles": 160,
+      "materials": [
+        "machinery",
+        "trim"
+      ],
+      "csg": [
+        "union top_casters_handle (6)"
+      ],
+      "sha256": "92ba49568efcd4c1b7f549908904b01342b8ddd5f1f2e3cf39527f84b0934871",
+      "atlas": {
+        "file": "atlas/tool_chest.png",
+        "px": 256,
+        "px_per_m": 120.21,
+        "charts": 11,
+        "cover": 0.897,
+        "glow": 0.0,
+        "sha256": "c3ebf41a2e3eed17124a86716d6ae5a96471e3d19b0270af014826d1f24aa458",
+        "bytes": 18880
+      }
+    },
+    "parts_rack": {
+      "file": "parts_rack.glb",
+      "presents": "A rack of spares: impellers, valves, pipe spools, cable and gas (maintenance)",
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        2.24,
+        2.3,
+        0.7
+      ],
+      "bounds_m": {
+        "min": [
+          -1.12,
+          0.0,
+          0.0
+        ],
+        "max": [
+          1.12,
+          2.3,
+          0.7
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          1.2
+        ]
+      ],
+      "screens": [],
+      "triangles": 464,
+      "budget_triangles": 500,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard",
+        "accent"
+      ],
+      "csg": [
+        "union shelves_and_spares (16)"
+      ],
+      "sha256": "a6b84ae9b02ad779e89167126a537920dde62bbccec88081dc60ace54195dc64",
+      "atlas": {
+        "file": "atlas/parts_rack.png",
+        "px": 256,
+        "px_per_m": 47.88,
+        "charts": 33,
+        "cover": 0.772,
+        "glow": 0.0,
+        "sha256": "6431615350fff60f6e7cd04ac0cbf52f04873b2720bed404361cd2547743a077",
+        "bytes": 17267
+      }
+    },
+    "valve_large": {
+      "file": "valve_large.glb",
+      "presents": "A gate valve for the 0.45 m coolant pipe (pipework)",
+      "anchor": "floor under the pipe's centreline, at the middle of the valve; the centreline is centreline_m above it",
+      "dimensions_m": [
+        0.7,
+        0.933,
+        0.6
+      ],
+      "bounds_m": {
+        "min": [
+          -0.35,
+          0.0,
+          -0.3
+        ],
+        "max": [
+          0.35,
+          0.933,
+          0.3
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "ports": {
+        "a": {
+          "at_m": [
+            -0.35,
+            0.288,
+            0.0
+          ],
+          "dir": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "dia_m": 0.45
+        },
+        "b": {
+          "at_m": [
+            0.35,
+            0.288,
+            0.0
+          ],
+          "dir": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "dia_m": 0.45
+        }
+      },
+      "triangles": 140,
+      "budget_triangles": 160,
+      "materials": [
+        "machinery",
+        "trim",
+        "accent"
+      ],
+      "csg": [
+        "union flanges_bonnet_wheel (5)"
+      ],
+      "sha256": "a59e7dfde4e6b57f58979e6ee895677ae8bdb113e19b24417a1f92f527746558",
+      "atlas": {
+        "file": "atlas/valve_large.png",
+        "px": 256,
+        "px_per_m": 128.0,
+        "charts": 10,
+        "cover": 0.696,
+        "glow": 0.0,
+        "sha256": "cfe6a72178ff1611e3447c4ff07e5da678bcc4bca8decb448309940cced80440",
+        "bytes": 16604
+      },
+      "centreline_m": 0.288
+    },
+    "valve_small": {
+      "file": "valve_small.glb",
+      "presents": "A globe valve for the 0.15 m pipes (pipework)",
+      "anchor": "floor under the pipe's centreline, at the middle of the valve; the centreline is centreline_m above it",
+      "dimensions_m": [
+        0.3,
+        0.345,
+        0.25
+      ],
+      "bounds_m": {
+        "min": [
+          -0.15,
+          0.0,
+          -0.125
+        ],
+        "max": [
+          0.15,
+          0.345,
+          0.125
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "ports": {
+        "a": {
+          "at_m": [
+            -0.15,
+            0.1,
+            0.0
+          ],
+          "dir": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "dia_m": 0.15
+        },
+        "b": {
+          "at_m": [
+            0.15,
+            0.1,
+            0.0
+          ],
+          "dir": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "dia_m": 0.15
+        }
+      },
+      "triangles": 76,
+      "budget_triangles": 90,
+      "materials": [
+        "machinery",
+        "trim",
+        "accent"
+      ],
+      "csg": [
+        "union bonnet_wheel (3)"
+      ],
+      "sha256": "d74c8dd0455df8cadf57013acbab73037c9a7b5a2ade2eade51ca8698ea6ee7b",
+      "atlas": {
+        "file": "atlas/valve_small.png",
+        "px": 256,
+        "px_per_m": 128.0,
+        "charts": 5,
+        "cover": 0.098,
+        "glow": 0.0,
+        "sha256": "ac9d3c3604f851a3e7aa9aebbcbfc3a7290818ac119dca9db5bfce8fb704b090",
+        "bytes": 5573
+      },
+      "centreline_m": 0.1
+    }
+  }
+}

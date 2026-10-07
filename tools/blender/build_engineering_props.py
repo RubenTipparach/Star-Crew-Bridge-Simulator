@@ -194,6 +194,16 @@ def nozzle_port(p, name, point, d, dia, body, role="trim", body_role="bulkhead")
     return [nozzle, flange(p, name, point, d, dia, role=role)]
 
 
+def handwheel(p, what, c, y, r, role="accent"):
+    """A valve's hand wheel seen from above: a hexagonal plate 2.5 cm thick, apothem r, at height y on the
+    vertical line c = (x, z), on a square spindle reaching 10 cm down into its bonnet. Its rim, three
+    spokes and hub are painted in the atlas (wheel_paint), the gaps between them dark, as a wheel is
+    read from above and across a room; a ring of spokes in geometry would cost the valves their budget."""
+    plate = revolve(p, what, [(r, y), (r, y + 0.025)], role, "y", c, sides=6)
+    spindle = rod(p, what + "_spindle", "y", c, y - 0.10, y + 0.01, 0.02, "trim", sides=4)
+    return [plate, spindle]
+
+
 def lift(objs, dy):
     """Raise pieces by dy (the crane and the valves are designed about their own datum, then stood on
     the floor)."""
@@ -323,6 +333,19 @@ def diamond(D, m, x, y, s, fill="red", label="2"):
     k = s - 0.014
     D.prism(m, [(x, y - k), (x + k, y), (x, y + k), (x - k, y)], -0.002, 0.0045, fill, reserve=False)
     D.text(m, label, x, y - s * 0.42, s * 0.36, "stencil", z=0.0058)
+
+
+def wheel_paint(D, c, y_top, r):
+    """The gaps of a hand wheel painted dark on its top face (y_top, centred on c = (x, z), apothem r):
+    between a rim 0.18 r wide, three spokes and a hub, so a flat plate reads as a wheel from above."""
+    m = frame((c[0], y_top, c[1]), 90.0)
+    r0, r1 = 0.30 * r, 0.80 * r
+    for k in range(3):
+        a0, a1 = math.radians(120 * k + 14), math.radians(120 * k + 106)
+        arc = [(r1 * math.cos(a0 + (a1 - a0) * j / 5), r1 * math.sin(a0 + (a1 - a0) * j / 5)) for j in range(6)]
+        arc += [(r0 * math.cos(a1 - (a1 - a0) * j / 3), r0 * math.sin(a1 - (a1 - a0) * j / 3)) for j in range(4)]
+        D.prism(m, arc, -0.002, 0.0015, "dark", reserve=False)
+    D.reserve(m, -r, -r, r, r)
 
 
 def placard(D, m, x, y, w, h, text, plate="yellow", ink="stencil_dark"):
@@ -605,6 +628,7 @@ def coolant_tank():
         D.box(msg, -0.012, -0.30, 0.012, 0.06, 0.0005, 0.004, "display", reserve=False)
         for y in (-0.25, -0.1, 0.05, 0.20):
             D.box(msg, 0.026, y - 0.003, 0.05, y + 0.003, -0.002, 0.003, "stencil", reserve=False)
+        wheel_paint(D, (1.0, 0.37), 0.55, 0.09)
         flange_bolts(D, p)
     p.decor.append(decor)
     return p
@@ -660,6 +684,8 @@ def fuel_dewar():
             whole(D, R, "frost")
         for R in regions(D, lambda R: R.role == "trim" and R.origin.y > 2.20 and abs(R.origin.x) > 0.22):
             strip(D, R, (0, 1, 0), 2.20, 2.32, "frost", reserve=False)
+        for s_ in (-1, 1):
+            wheel_paint(D, (s_ * 0.15, 0.0), 2.56, 0.075)
         flange_bolts(D, p)
     p.decor.append(decor)
     return p
@@ -766,8 +792,10 @@ def fuel_processor():
         label(D, m0, 0.0, 1.05, "PELLET", 0.04)
         label(D, m0, 0.0, 0.98, "FREEZER", 0.04)
         diamond(D, m0, 0.0, 0.72, 0.07, "red", "2")
-        mg = frame((0.60, 1.205, 0.32), 90.0)
-        placard(D, mg, 0.0, 0.0, 0.14, 0.18, "INJ")
+        mg = frame((0.60, 1.31, 0.32), 90.0)
+        placard(D, mg, 0.0, 0.0, 0.12, 0.20, "INJ")
+        for c in ((-0.60, -0.48), (0.0, -0.40)):
+            wheel_paint(D, c, 1.01, 0.07)
         for R in regions(D, lambda R: R.role == "trim" and -0.50 < R.origin.x < 0.70 and 1.10 < R.origin.y < 1.30 and R.origin.z < 0.15):
             strip(D, R, (1, 0, 0), -0.35, -0.25, "frost", reserve=False)
         flange_bolts(D, p)
@@ -995,6 +1023,26 @@ def power_converter():
 # ----------------------------------------------------------------------------- the reactor's magnets
 
 COIL_AZ = [22.5 + 45.0 * k for k in range(8)]
+
+
+def D_winding(D, m, lx, w=0.07):
+    """A toroidal field coil's winding pack painted on a case's side (frame m, its local x along lx times
+    the radius from r 2.75): a D, its straight leg on r 2.42 from y 0.70 to 5.30, its curve out to r 3.08
+    at mid height, a band w wide in steel, so the case reads as the D its brief asks for."""
+    loop = []
+    for j in range(13):
+        t = -math.pi / 2 + math.pi * j / 12
+        loop.append((2.42 + 0.66 * max(0.0, math.cos(t)) ** 0.8, 3.0 + 2.30 * math.sin(t)))
+    for (r0, y0), (r1, y1) in zip(loop, loop[1:] + loop[:1]):
+        dx, dy = r1 - r0, y1 - y0
+        ln = math.hypot(dx, dy) or 1.0
+        nx, ny = -dy / ln * w / 2, dx / ln * w / 2
+        quad = [((r0 - 2.75 - nx) * lx, y0 - ny), ((r1 - 2.75 - nx) * lx, y1 - ny), ((r1 - 2.75 + nx) * lx, y1 + ny),
+                ((r0 - 2.75 + nx) * lx, y0 + ny)]
+        if lx < 0:
+            quad.reverse()
+        D.paint(m, quad, "steel", reserve=False)
+    D.reserve(m, -0.52, 0.40, 0.52, 5.60)
 PORT_AZ = [45.0 * k for k in range(8)]
 # A coil case's outline in (r, y): the straight inner leg on r 2.25, the outer side on r 3.25 with its corners
 # drawn in, so the poloidal rings (r 2.99-3.21 where they pass) run through the case's solid, clamped in it.
@@ -1054,6 +1102,7 @@ def reactor_dressing():
                 n = t * s
                 mside = facet(tuple(u * 2.75 + n * 0.15), tuple(n), (0.0, 1.0, 0.0))
                 lx = -1.0 if (mside.to_3x3() @ Vector((1, 0, 0))).dot(u) < 0 else 1.0
+                D_winding(D, mside, lx)
                 D.text(mside, f"TF-{k + 1:02d}", lx * 0.0, 3.05, 0.14, "stencil")
                 D.text(mside, "B 5.3 T", 0.0, 2.85, 0.06, "stencil")
                 for y in (1.2, 2.0, 3.6, 4.4):
@@ -1509,7 +1558,7 @@ def valve_large():
     parts = [flange(p, "a", (-0.35, cy, 0.0), (-1, 0, 0), 0.45), flange(p, "b", (0.35, cy, 0.0), (1, 0, 0), 0.45),
              p.hull("bonnet", [(x, cy + 0.23, z) for x in (-0.20, 0.20) for z in (-0.12, 0.12)]
                     + [(x, cy + 0.58, z) for x in (-0.05, 0.05) for z in (-0.05, 0.05)], "machinery")]
-    parts += wheel(p, "wheel", (0.0, 0.0), cy + 0.64, 0.30)
+    parts += handwheel(p, "wheel", (0.0, 0.0), cy + 0.62, 0.30)
     p.union(body, "flanges_bonnet_wheel", parts)
     p.body = body
     p.extra["centreline_m"] = round(cy, 4)
@@ -1519,6 +1568,7 @@ def valve_large():
         D.text(mf, "V-101", 0.0, 0.07, 0.05, "stencil")
         D.text(mf, "DN 450", 0.0, -0.03, 0.035, "stencil")
         D.box(mf, -0.20, -0.14, 0.20, -0.10, -0.002, 0.004, "hazard")
+        wheel_paint(D, (0.0, 0.0), cy + 0.645, 0.30)
         flange_bolts(D, p)
     p.decor.append(decor)
     return p
@@ -1537,7 +1587,7 @@ def valve_small():
         p.flanges.append((name, at((x, cy, 0.0), d), dia / 2, cy))
     parts = [p.hull("bonnet", [(x, cy + 0.08, z) for x in (-0.05, 0.05) for z in (-0.04, 0.04)]
                     + [(x, cy + 0.18, z) for x in (-0.025, 0.025) for z in (-0.025, 0.025)], "machinery")]
-    parts += wheel(p, "wheel", (0.0, 0.0), cy + 0.24, 0.125)
+    parts += handwheel(p, "wheel", (0.0, 0.0), cy + 0.22, 0.125)
     p.union(body, "bonnet_wheel", parts)
     p.body = body
     p.extra["centreline_m"] = round(cy, 4)
@@ -1547,6 +1597,7 @@ def valve_small():
             for x0, x1 in ((-0.15, -0.115), (0.115, 0.15)):
                 strip(D, R, (1, 0, 0), x0, x1, "steel", reserve=False)
             strip(D, R, (1, 0, 0), -0.03, 0.03, "hazard", reserve=False)
+        wheel_paint(D, (0.0, 0.0), cy + 0.245, 0.125)
         flange_bolts(D, p)
     p.decor.append(decor)
     return p

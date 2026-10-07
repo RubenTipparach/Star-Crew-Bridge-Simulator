@@ -363,7 +363,7 @@
     "yaw_deg": -112.5
    },
    {
-    "prop": "wall_bank",
+    "prop": "wall_bank_flight_ops",
     "station": "flight_ops",
     "back_m": [
      -4.384,
@@ -383,7 +383,7 @@
     "yaw_deg": 67.5
    },
    {
-    "prop": "wall_bank_core",
+    "prop": "wall_bank_core_science",
     "station": "science",
     "back_m": [
      -6.2,

@@ -88,16 +88,16 @@
         "difference panels (5)",
         "union toggles_and_pulls (21)"
       ],
-      "sha256": "cabba9a98b4064e3a4bf258c4ede3d6125c443fdd98e12a79aa123c10b72b595",
+      "sha256": "ff20525edd81e12b0c08c4957af74e89e637ed7a5443c210d39090b00d99ee09",
       "atlas": {
         "file": "atlas/switchboard.png",
         "px": 256,
         "px_per_m": 61.22,
         "charts": 43,
         "cover": 0.67,
-        "glow": 0.0501,
-        "sha256": "3049d0e7a4a481b379824d5c9c91a4280b91056fa829d62b52c259372cf0e308",
-        "bytes": 17983
+        "glow": 0.0319,
+        "sha256": "4f40faeb79950d1c7e100d848d567a8b2ad5a6176abb783ab07bc6838c8da330",
+        "bytes": 17961
       }
     },
     "battery_bank": {
@@ -508,16 +508,16 @@
         "difference fans_and_drawers (6)",
         "union fans_and_pulls (12)"
       ],
-      "sha256": "d3b18d7c3976f7a85fe62ac48c8daacf0373923be287028eeff0bdf0392defef",
+      "sha256": "096961ac4d041bbb256c759a62c75bb4cc30c018a1b32c20a7640403aab9243b",
       "atlas": {
         "file": "atlas/ls_scrubbers.png",
         "px": 256,
         "px_per_m": 59.09,
         "charts": 25,
         "cover": 0.689,
-        "glow": 0.0335,
-        "sha256": "72d936af3df17b8acb507f1e6fb0be255b1b4955cceb6dfb5b757a2f24314181",
-        "bytes": 16723
+        "glow": 0.0212,
+        "sha256": "5c2e628354385f5ade4df6d29a96a72859700fc6c8c17f9dcddd757e1645bd04",
+        "bytes": 16982
       }
     },
     "ls_air_handler": {
@@ -1000,16 +1000,16 @@
         "union craft (18)",
         "difference livery (2)"
       ],
-      "sha256": "60b0057901be394c990b06f0e3b94f46d76d36c19eacf1b5df3445f7df2b69bc",
+      "sha256": "aef5ac0d24704fa2707a14be7120f3c5430d1be860a377e5ec7d9031b108094c",
       "atlas": {
         "file": "atlas/swift_fighter.png",
         "px": 512,
-        "px_per_m": 64.63,
+        "px_per_m": 64.96,
         "charts": 56,
-        "cover": 0.586,
-        "glow": 0.0987,
-        "sha256": "1e9985da300c15b91d9e1f10d415ccc07114ff7008e7406a5bdbfaac5f5d1f86",
-        "bytes": 79215
+        "cover": 0.592,
+        "glow": 0.0717,
+        "sha256": "771cc7279cb2914cc154d4bb4d19f86fd18ff31038db47e13655a2f89f4e3b08",
+        "bytes": 77798
       }
     },
     "petrel_shuttle": {
@@ -1112,16 +1112,16 @@
         "difference berth_lights (2)",
         "union bedding_and_ladder (11)"
       ],
-      "sha256": "ff1cc17bf30091528440642e4c964f988a8a1bfa3b7d46294b78e431346471ca",
+      "sha256": "d8dcbfd51847fba8418ed0fad19a31bdb15a6aed26fdf764fcb87a9ec3d6a053",
       "atlas": {
         "file": "atlas/bunk.png",
-        "px": 512,
-        "px_per_m": 85.02,
+        "px": 256,
+        "px_per_m": 41.2,
         "charts": 23,
-        "cover": 0.532,
-        "glow": 0.0168,
-        "sha256": "ac4429fab3d8d99e4f0e8513a792f78e0ee0e84fdecf3daa6ac17d31d3a34182",
-        "bytes": 62292
+        "cover": 0.5,
+        "glow": 0.0358,
+        "sha256": "4d1bdb861d3aff4b1bf7ee63f7f559eb21fbdc29273f8919afd699ac5a42a512",
+        "bytes": 23299
       }
     },
     "mess_table": {
@@ -1272,16 +1272,16 @@
         "difference sink (1)",
         "difference burners_and_dispenser (7)"
       ],
-      "sha256": "bb8870c5786b1a0a25406e21a22c4a27b2744614471596ac2b87d79b93892eb7",
+      "sha256": "2cf2b2bacc61a0f6123c64933a3b1dcbf681f8c86113fbf2fb55228a860c2883",
       "atlas": {
         "file": "atlas/galley_counter.png",
         "px": 256,
-        "px_per_m": 61.72,
+        "px_per_m": 62.46,
         "charts": 33,
-        "cover": 0.657,
-        "glow": 0.0823,
-        "sha256": "8e78794bb277cf781328d908ddd77a66010ee2ed1c9b0cd01af0e2cb548b59e5",
-        "bytes": 15749
+        "cover": 0.673,
+        "glow": 0.0648,
+        "sha256": "efed14491bb2b6de10e104ea6fa02fd55d7dfff364be5e319d298c59165f7afe",
+        "bytes": 15625
       }
     }
   }
