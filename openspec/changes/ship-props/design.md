@@ -147,6 +147,9 @@ access rooms' floors in its plan (now 2 cm up) and its markers on one plane (now
 built stairs of three steps or more from blocks whose sides overlapped (now one layer a step) and two rooms' wall caps
 as two meshes; all are under 0.1 m^2. `bridge.html`, `lighting.html`, `wall-panels.html` and `exterior.html` show none.
 
+Before and after, in first person: `docs/screenshots/mockups/zfight-briefing-wall-before-after.png` (a bridge wall
+bank's back tearing through the briefing room's wall, the owner's screenshot) and `zfight-quarters-wall-before-after.png`.
+
 **What it changes in the kit's counts.** No end caps in walls, so `kit_report` gives 14,996 detail triangles on today's
 layout where it gave 15,944 (`deck-pipeline` section 11's table was made at 15,688 and stays an upper bound). Props
 lose their undersides and wall backs (section 5's table is measured after this).
