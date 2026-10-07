@@ -29,6 +29,9 @@ and the UI images
 (ui_screen_<finish>.png, keys_<finish>.png) into a <script id="ship-panels"
 type="application/json"> block, which shipkit's loadPanels() adds to the texture array
 (wall-panels, ceilings-and-trims, floor-panels).
+"font:<name>" copies assets/fonts/<name>/<style>-<weight>.woff2 into a <style> block of
+@font-face rules with data URIs (the family is the folder name in title case), so a page
+published as one artifact needs no font server.
 "models:<set>" copies assets/models/<set>/props.json and every .glb it lists (as base64
 data URIs), and each prop's baked atlas PNG where it has one, into a
 <script id="ship-models-<set>" type="application/json"> block, for pages that place the
@@ -69,7 +72,7 @@ PANELS = os.path.join(ROOT, "data", "materials", "panels.json")
 SCREENS = os.path.join(ROOT, "assets", "textures", "screens", "screens.json")
 CACHE = os.path.join(ROOT, "docs", "mockups", "cache")
 LIGHTBAKE = os.path.join(LIB, "lightbake.js")
-MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-9_-]+/[a-z0-9_-]+|bakecache:[a-z0-9_-]+|shipkit|materials|panels|screens|models:[a-z0-9_-]+) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
+MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-9_-]+/[a-z0-9_-]+|bakecache:[a-z0-9_-]+|shipkit|materials|panels|screens|models:[a-z0-9_-]+|font:[a-z0-9_-]+) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
 
 
 def png_uri(path):
@@ -103,6 +106,21 @@ def bake_caches_ok():
 
 
 def block(kind):
+    if kind.startswith("font:"):
+        # A typeface's woff2 files (assets/fonts/<name>/<style>-<weight>.woff2) as @font-face rules with data URIs,
+        # so a page published as one artifact needs no font server. The family is the folder's name in title case.
+        name = kind.split(":", 1)[1]
+        base = os.path.join(ROOT, "assets", "fonts", name)
+        family = " ".join(w.capitalize() for w in name.split("-"))
+        rules = []
+        for path in sorted(glob.glob(os.path.join(base, "*.woff2"))):
+            weight = int(os.path.basename(path)[:-6].rsplit("-", 1)[1])
+            with open(path, "rb") as f:
+                uri = "data:font/woff2;base64," + base64.b64encode(f.read()).decode("ascii")
+            rules.append(f'@font-face {{ font-family: "{family}"; font-weight: {weight}; font-style: normal; src: url({uri}) format("woff2"); }}')
+        if not rules:
+            raise ValueError(f"no woff2 files in {os.path.relpath(base, ROOT)}")
+        return "\n<style>\n" + "\n".join(rules) + "\n</style>\n"
     if kind.startswith("bakecache:"):
         # The deck plan's baked light (tools/mockups/bake_ship.mjs --write-cache), as base64; empty when there is none,
         # and the page then bakes live.

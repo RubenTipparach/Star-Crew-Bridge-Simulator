@@ -165,6 +165,23 @@ ellipsis and lists SHALL scroll inside their panel. A validator SHALL check ever
 - **WHEN** a contact's name is wider than the Targets panel's row
 - **THEN** it is clipped with an ellipsis and the panel keeps its size
 
+### Requirement: Consoles are read at a glance
+Every console SHALL have at most four panels, each one picture (a lever, a dial, a plot, a set of
+faders, a plan) rather than rows of labels and values. Panel titles and control labels SHALL be one
+word, or two at most, and a console at rest SHALL show at most 30 words, not counting numbers and
+crew names. A number SHALL be shown at rest only where a player acts on it; the exact values behind
+every picture SHALL be shown for the control under the pointer or the gamepad focus. State SHALL be
+shown by colour and by shape together. The console validator SHALL check the panel count, the
+label lengths and the word count of every `data/consoles/*.json`.
+
+#### Scenario: A fifth panel
+- **WHEN** a console file declares five panels
+- **THEN** the validator fails and names the console
+
+#### Scenario: Power wanted and not delivered
+- **WHEN** the shields' group wants 15 MW and the solve delivers 9 MW
+- **THEN** its fader shows the 9 MW as a fill and the missing 6 MW as a hatched gap above it, and the numbers appear only on hover or focus
+
 ### Requirement: A console's preview is computed by the resolver
 Every preview a console shows (a power setpoint's delivered MW, a turn's time, a turret's hit
 chance, a scan's time, a pump-down time, a repair time, whether an order can be executed) SHALL be

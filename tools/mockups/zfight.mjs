@@ -12,6 +12,9 @@
  * A measurement instrument and a check (CLAUDE.md section 4): it changes nothing. Rendering is software
  * (SwiftShader); only geometry is read.
  *
+ * A flat 2D page (the consoles, CLAUDE.md section 11) sets window.MOCKUP_FLAT and has no geometry to fight: it is
+ * reported and skipped.
+ *
  * Usage: node tools/mockups/zfight.mjs [page.html ...] [--setup "js run in the page first"] [--max-m2 0.1]
  *        (default: docs/mockups/deck-plan.html). Exits 1 when the fighting area passes --max-m2.
  */
@@ -48,6 +51,7 @@ async function trianglesOf(browser, file) {
   await page.goto("file://" + file);
   for (let i = 0; i < 100; i++) { if (await page.evaluate(() => window.MOCKUP_READY)) break; await page.waitForTimeout(3000); }
   if (errors.length) throw new Error(`${path.basename(file)}: ${errors[0]}`);
+  if (await page.evaluate(() => !!window.MOCKUP_FLAT)) { await page.close(); return null; }
   if (!(await page.evaluate(() => !!window.MOCKUP_SCENE))) throw new Error(`${path.basename(file)} does not set window.MOCKUP_SCENE`);
   if (setup) await page.evaluate(setup);
   const meshes = await page.evaluate(() => {
@@ -166,7 +170,9 @@ const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromi
   .catch(() => chromium.launch({ args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] }));
 let failed = false;
 for (const file of pages) {
-  const tris = await trianglesOf(browser, file), rows = fights(tris), total = rows.reduce((s, r) => s + r.m2, 0);
+  const tris = await trianglesOf(browser, file);
+  if (!tris) { console.log(`${path.relative(ROOT, file)}: a flat 2D page, no geometry`); continue; }
+  const rows = fights(tris), total = rows.reduce((s, r) => s + r.m2, 0);
   console.log(`${path.relative(ROOT, file)}: ${tris.length} triangles, ${rows.length} fighting pairs of surfaces, ${total.toFixed(3)} m2`);
   for (const r of rows) console.log(`  ${r.m2.toFixed(3)} m2 ${String(r.pairs).padStart(4)} pairs  ${r.a}  vs  ${r.b}  at ${JSON.stringify(r.at)}`);
   if (total > maxM2) { failed = true; console.log(`  FAIL: more than ${maxM2} m2`); }

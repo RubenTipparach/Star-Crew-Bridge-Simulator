@@ -74,6 +74,10 @@ From the owner's brief, 2026-10-04. Quotes are the owner's words.
   `netcode-and-sessions`, `matchmaker`).
 - **Documentation and mockups first.** "First we need to do some extreme documentation and
   mockups in 3js." Mockups are three.js pages (section 11).
+- **Consoles are user friendly above all** (owner, 2026-10-07): "console mockups dont need 3d,
+  we just want to design the console to BE AS USER FRIENDLY AS POSSIBLE this means no overloading
+  the screen with text like you AI like to do". Console mockups are flat 2D pages, and consoles are
+  glance first (section 10).
 
 ## 2. The Raspberry Pi 5 floor
 
@@ -385,12 +389,29 @@ Adopted from Undercity section 8 and star-crew-64's UI text rules.
   keyboard, mouse or pad, not only the first.
 - **Menus name things, they don't explain them.** A row is a label and a control. Reasons
   belong in `docs/`.
+- **Consoles are glance first** (owner, 2026-10-07; `bridge-stations` design 8.0). A console is
+  read in a second, under fire:
+  - at most four panels, each one picture (a lever, a dial, a plot, faders, a plan), never rows of
+    label and value;
+  - one word a label, two at most, and at most 30 words on a console at rest (numbers and crew
+    names aside);
+  - a number only where a player acts on it; everything else is a fill, a ring or a position;
+  - colour means state, the same everywhere, and always with a shape (a hatched gap, a broken
+    line, a flame);
+  - the main action is the biggest control; nothing touched is under 24 lp;
+  - the exact values come on hover or gamepad focus, in one tooltip, never at rest;
+  - previews are ghosts on the picture, not sentences.
 
 ## 11. Mockups
 
 - **Mockups are three.js pages** in `docs/mockups/`, one page per subject, built to be opened
   from disk and published as claude.ai artifacts. three.js comes from the jsDelivr CDN through
   an import map, pinned to one version for every mockup.
+- **Console mockups are flat 2D pages** (owner, 2026-10-07: "console mockups dont need 3d").
+  `docs/mockups/consoles.html` draws each console on the 1280 x 720 canvas in SVG, drives the
+  ship's systems from `docs/mockups/lib/shipsystems.js`, shows the normal, red alert and
+  emergency power states, and shows its cost as UI draw calls instead of triangles. Its typeface is
+  inlined from `assets/fonts/` (the `font:` block).
 - **They read the one layout source.** A mockup never hand-places a room. `tools/mockups/
   inline.py` copies `data/ships/<id>/layout.json` and the shared `docs/mockups/lib/shipkit.js`
   into each page between marker comments, and its `--check` mode fails when a page holds a
