@@ -122,12 +122,13 @@
    * Interior lighting states. Every interior mockup shows at least normal and
    * red alert (CLAUDE.md section 11). In the engine these are baked vertex
    * colour sets blended by a per-compartment uniform; here they are light
-   * colours and intensities. status is the door status strips' colour.
+   * colours and intensities. status is the door status strips' colour; kick the kick strips' (openspec/changes/
+   * kick-lights: the blue of the owner's reference K1 in normal light).
    */
   const LIGHTING = {
-    normal: { label: "Normal", ambient: 0x2a3340, ambientI: 0.55, lamp: 0xffe9c8, lampI: 1.0, strip: 0x9fd8ff, stripI: 0.6, fog: 0x0b0e14, status: 0x5ee08a },
-    red_alert: { label: "Red alert", ambient: 0x2a0d10, ambientI: 0.45, lamp: 0xff3030, lampI: 0.75, strip: 0xff2020, stripI: 1.0, fog: 0x120406, status: 0xff2a2a },
-    emergency: { label: "Emergency power", ambient: 0x120c08, ambientI: 0.3, lamp: 0xff8a1c, lampI: 0.35, strip: 0xff8a1c, stripI: 0.8, fog: 0x060403, status: 0xff8a1c },
+    normal: { label: "Normal", ambient: 0x2a3340, ambientI: 0.55, lamp: 0xffe9c8, lampI: 1.0, strip: 0x9fd8ff, stripI: 0.6, kick: 0x1f4bff, kickI: 1.0, fog: 0x0b0e14, status: 0x5ee08a },
+    red_alert: { label: "Red alert", ambient: 0x2a0d10, ambientI: 0.45, lamp: 0xff3030, lampI: 0.75, strip: 0xff2020, stripI: 1.0, kick: 0xff2020, kickI: 1.0, fog: 0x120406, status: 0xff2a2a },
+    emergency: { label: "Emergency power", ambient: 0x120c08, ambientI: 0.3, lamp: 0xff8a1c, lampI: 0.35, strip: 0xff8a1c, stripI: 0.8, kick: 0xff8a1c, kickI: 0.8, fog: 0x060403, status: 0xff8a1c },
   };
 
   // ---------------------------------------------------------------- lighting data (light-baking design 15)
@@ -142,7 +143,7 @@
   function lightingData() { return { fixtures: shipData("fixtures"), bake: shipData("bake") }; }
   /**
    * A fixture's light in each lighting state, { normal, red_alert, emergency } as linear RGB that multiplies its
-   * intensity_cd or luminance_cd_m2: its type's light (lamp or strip: LIGHTING's colour and weight in that state;
+   * intensity_cd or luminance_cd_m2: its type's light (lamp, strip or kick: LIGHTING's colour and weight in that state;
    * role: roleHex; fixed: its color_srgb), times its emergency_scale on emergency power, and dark on emergency power
    * when it is on the bus rule and not on the emergency bus (onBus).
    */
@@ -151,6 +152,7 @@
     for (const s of ["normal", "red_alert", "emergency"]) {
       const L = LIGHTING[s];
       let c = type.light === "lamp" ? hexLinear(L.lamp, L.lampI) : type.light === "strip" ? hexLinear(L.strip, L.stripI)
+        : type.light === "kick" ? hexLinear(L.kick, L.kickI)
         : type.light === "role" ? hexLinear(roleHex) : hexLinear(type.color_srgb);
       if (s === "emergency") { const k = type.emergency === "bus" && !onBus ? 0 : em; c = c.map((x) => x * k); }
       out[s] = c;
@@ -1691,7 +1693,7 @@
         if (!name || !(name in mats.layer)) throw new Error(`shipkit: no material for role ${r} (detailing.json finishes)`);
         li = mats.layer[name]; span = mats.span[name];
       }
-      const g = r === "lamp" || r === "status" || r === "screen" ? 1 : 0;
+      const g = r === "lamp" || r === "status" || r === "screen" || r === "kick_strip" ? 1 : 0;
       pos.set(P.position, k * 3); nor.set(P.normal, k * 3);
       for (let i = 0; i < cnt; i++) { uv[(k + i) * 2] = P.uvm[i * 2] / span; uv[(k + i) * 2 + 1] = P.uvm[i * 2 + 1] / span; lay[k + i] = P.vlayer ? vlayerIndex(mats, P.vlayer[i]) : li; glow[k + i] = P.glow ? P.glow[i] : g; }
       if (P.tint) { tint.set(P.tint, k * 3); col.set(P.tint, k * 3); }
@@ -1799,6 +1801,7 @@
       }
     }
     paintRole(geo, "status", new THREE.Color(s.status).multiplyScalar(1.4));
+    paintRole(geo, "kick_strip", new THREE.Color(s.kick).multiplyScalar(1.4 * s.kickI));   // kick-lights: a drawn light
     const sr = geo.userData.roles.screen;
     if (sr) for (let i = sr[0]; i < sr[0] + sr[1]; i++) C.setXYZ(i, (T ? T[i * 3] : 1) * 1.25, (T ? T[i * 3 + 1] : 1) * 1.25, (T ? T[i * 3 + 2] : 1) * 1.25);
     C.needsUpdate = true;
@@ -2008,15 +2011,76 @@
   /** What stands on a floor and hides it (floor-panels design 6): the platforms' outlines and the bands at their feet,
    * as buildCompartment's opts.floorCovers ([{ y_m, poly }]). */
   function platformCovers(platforms, floorY, opts) {
-    const out = platforms.map((pf) => ({ y_m: floorY, poly: pf.poly.map((p) => p.slice()) }));
+    // Under a kicked edge the platform hides the floor only behind its toe kick (kick-lights design 1).
+    const out = platforms.map((pf) => ({ y_m: floorY, poly: opts && opts.kicks ? kickOutline(pf, opts.kicks) : pf.poly.map((p) => p.slice()) }));
     for (const b of edgeBands(platforms, opts)) out.push({ y_m: floorY, poly: b.pts });
     return out;
   }
 
+  /**
+   * A platform's outline with every edge of a kind in K.on moved in by depth (default K.depth_m): the line its toe
+   * kick's back face stands on (kick-lights design 1). A corner between two kicked edges is their inset lines' mitre;
+   * between a kicked edge and another, the inset line meets the other edge's line. Counter-clockwise, as given or
+   * reversed; edges unchanged.
+   */
+  function kickOutline(pf, K, depth) {
+    let poly = pf.poly.map((p) => p.slice()), edges = pf.edges.slice();
+    if (signedArea(poly) < 0) { poly = poly.reverse(); edges = edges.slice(0, -1).reverse().concat(edges.slice(-1)); }
+    const n = poly.length, d = depth === undefined ? K.depth_m : depth;
+    const on = (i) => { const a = poly[(i + n) % n], b = poly[(i + 1 + n) % n]; return outwardNormal(a, b); };
+    const off = (i) => (K.on.includes(edges[(i + n) % n]) ? d : 0);
+    // Corner i: where edge i - 1's line (moved in by its offset) meets edge i's.
+    return poly.map((c, i) => {
+      const n0 = on(i - 1), n1 = on(i), d0 = off(i - 1), d1 = off(i);
+      if (!d0 && !d1) return c.slice();
+      const det = n0[0] * n1[1] - n0[1] * n1[0];
+      if (Math.abs(det) < 1e-6) return [c[0] - n1[0] * Math.max(d0, d1), c[1] - n1[1] * Math.max(d0, d1)];
+      // Solve n0 . (x - c) = -d0 and n1 . (x - c) = -d1.
+      const x = (-d0 * n1[1] + d1 * n0[1]) / det, z = (-d1 * n0[0] + d0 * n1[0]) / det;
+      return [c[0] + x, c[1] + z];
+    });
+  }
+  /**
+   * One platform's toe kicks (kick-lights design 1) into builder B: under every edge of a kind in K.on, a soffit at
+   * K.height_m, a strip (role kick_strip) on a chamfer K.chamfer_m square at the back of the soffit facing out and
+   * down, the back face down to the floor, and an end face where the next edge is not kicked. Returns the strips as
+   * { o, u, v, n, len } (corner, the two sides, the facing, the length) for a bake's emitters.
+   */
+  function buildKicks(B, poly, edges, floorY, K) {
+    const n = poly.length, kh = K.height_m, kd = K.depth_m, ch = K.chamfer_m, out = [];
+    const kicked = (i) => K.on.includes(edges[(i + n) % n]);
+    const inner = kickOutline({ poly, edges }, K, kd), mid = kickOutline({ poly, edges }, K, kd - ch);
+    const at = (p, y) => [p[0], floorY + y, p[1]];
+    for (let i = 0; i < n; i++) {
+      if (!kicked(i)) continue;
+      const a = poly[i], b = poly[(i + 1) % n], on = outwardNormal(a, b), o3 = [on[0], 0, on[1]];
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]), t = [(b[0] - a[0]) / len, (b[1] - a[1]) / len];
+      // A recess that ends at an edge without one ends square at the corner.
+      const sq = (p, d) => [p[0] - on[0] * d, p[1] - on[1] * d];
+      const A1 = kicked(i - 1) ? inner[i] : sq(a, kd), B1 = kicked(i + 1) ? inner[(i + 1) % n] : sq(b, kd);
+      const A2 = kicked(i - 1) ? mid[i] : sq(a, kd - ch), B2 = kicked(i + 1) ? mid[(i + 1) % n] : sq(b, kd - ch);
+      B.quad("riser", at(a, kh), at(b, kh), at(B2, kh), at(A2, kh), [0, -1, 0]);   // the soffit
+      const sn = [o3[0] * Math.SQRT1_2, -Math.SQRT1_2, o3[2] * Math.SQRT1_2];
+      B.quad("kick_strip", at(A2, kh), at(B2, kh), at(B1, kh - ch), at(A1, kh - ch), sn);
+      B.quad("riser", at(A1, 0), at(B1, 0), at(B1, kh - ch), at(A1, kh - ch), o3);   // the back
+      const t3 = [t[0], 0, t[1]], end = (p, P1, P2, dir) => {
+        const nrm = t3.map((x) => x * dir);
+        B.quad("riser", at(p, 0), at(P1, 0), at(P1, kh - ch), at(p, kh - ch), nrm);
+        B.quad("riser", at(p, kh - ch), at(P1, kh - ch), at(P2, kh), at(p, kh), nrm);
+      };
+      if (!kicked(i - 1)) end(a, A1, A2, 1);
+      if (!kicked(i + 1)) end(b, B1, B2, -1);
+      const o = at(A2, kh), u = [B2[0] - A2[0], 0, B2[1] - A2[1]], v = [A1[0] - A2[0], -ch, A1[1] - A2[1]];
+      out.push({ o, u, v, n: sn, len: Math.hypot(u[0], u[2]) });
+    }
+    return out;
+  }
   function buildPlatforms(THREE, B, platforms, stairs, floorY, D, opts) {
     D = D || shipData("detailing");
     opts = opts || {};
     const Q = D.platforms, fit = platformRows(opts);
+    // opts.kicks: detailing.json kicks.platform, toe kicks with strips on its edge kinds (kick-lights design 1).
+    const KK = opts.kicks || null;
     // With the platform layer, a railing takes its rail row as the compartment's railings do (ceilings-and-trims 9).
     const RT = fit && fit.rows.rail ? { layer: fit.layer, rows: { rail: fit.rows.rail }, span: fit.span, stretch: fit.stretch, stats: { faces: 0, pillars: 0 },
       members: { railing: { face: "rail", sides: "rail", ends: "rail", role: "fit_railing" } } } : null;
@@ -2037,6 +2101,7 @@
       let poly = pf.poly.map((p) => p.slice()), edges = pf.edges.slice();
       if (signedArea(poly) < 0) { poly = poly.reverse(); edges = edges.slice(0, -1).reverse().concat(edges.slice(-1)); }
       const top = pf.top_m, h = top - floorY, n = poly.length;
+      if (KK) B.kicks = (B.kicks || []).concat(buildKicks(B, poly, edges, floorY, KK));
       if (opts.topLayer) tileTop(THREE, B, "platform_top", poly, top, opts.topLayer);
       else B.flat(THREE, "platform", poly, [], top, 1);
       let walked = 0;   // metres of outline from the first corner: the riser's u, so its vents carry round a ring
@@ -2046,8 +2111,10 @@
         walked += len;
         if (kind === "wall") continue;
         const t = [(b[0] - a[0]) / len, 0, (b[1] - a[1]) / len], on = outwardNormal(a, b), out = [on[0], 0, on[1]];
-        if (fit) fittedFace(B, fit, [a[0], floorY, a[1]], [b[0], floorY, b[1]], h, u0, len, out, fit.forHeight(h));
-        else B.quad("riser", [a[0], floorY, a[1]], [b[0], floorY, b[1]], [b[0], top, b[1]], [a[0], top, a[1]], out);
+        // Over a toe kick the riser starts at the kick's height (kick-lights design 1).
+        const y0 = KK && KK.on.includes(kind) ? floorY + KK.height_m : floorY;
+        if (fit) fittedFace(B, fit, [a[0], y0, a[1]], [b[0], y0, b[1]], top - y0, u0, len, out, fit.forHeight(h));
+        else B.quad("riser", [a[0], y0, a[1]], [b[0], y0, b[1]], [b[0], top, b[1]], [a[0], top, a[1]], out);
         // The nosing: a hazard strip on the top's edge, raised clear of the platform's face.
         // Where the edge before is nosed too, this one starts a nosing's width in, so the two never overlap at the
         // corner (CLAUDE.md section 8): the corner is the edge before's.
@@ -2674,7 +2741,7 @@
     buildCompartment, roomShell, lampsFor, frameStations, loadMaterials, surfaceMaterial, geometryOf, finishOf, compartmentMesh, paintRole, bakeDirect,
     // wall panels (openspec/changes/wall-panels)
     loadPanels, panelsData, panelBands, panelBays, fnv1a, decodePng, panelLayerList, panelLayerName, walkwayPaths,
-    Builder, subdivideParts, buildPlatforms, platformCovers, edgeBands, buildSpiralStair, spiralReach, spiralCorners, buildLiftCar, buildFitout, platformRows,
+    Builder, subdivideParts, buildPlatforms, platformCovers, kickOutline, edgeBands, buildSpiralStair, spiralReach, spiralCorners, buildLiftCar, buildFitout, platformRows,
     // hull, labels, chrome
     hullGeometry, hullHalfWidth, label, budgetHud, titleBlock, registerShots, markReady, panelChrome,
     rectMinusHoles, intervalMinus, worldUv,

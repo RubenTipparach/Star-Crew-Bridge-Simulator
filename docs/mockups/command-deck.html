@@ -54,7 +54,7 @@
 <!-- INLINE layout:tern END -->
 <!-- INLINE data:tern/detailing BEGIN -->
 <script id="ship-data-detailing" type="application/json">
-{"schema":"starcrew.detailing/1","status":"Proposed (2026-10-05) by openspec/changes/deck-pipeline, section 5a. Read by docs/mockups/lib/shipkit.js today and by deckc once it is built; the sizes are first choices judged on mockup screenshots, not measurements.","_rules":["The detail a ship's decks are dressed with is generated from its layout by one rule set, so every room of a class reads alike and no room is decorated by hand (deck-pipeline section 5a; adapted from Undercity's tools/godot/detailing.py and its UT99 checklist, fps-game-demo f6cd25c).","Detail is not air: coves, ribs, beams and trims stand inside a compartment's brushes and the air model ignores them (life-support quotes brush volumes).","No z-fighting: every detail face is either pressed back to back against a wall, floor or ceiling (and not drawn), or stands at least 1 cm clear of any parallel face (CLAUDE.md section 8). Raised floor plates are raise_m above the floor for that reason.","Lengths in metres. A detail that would cross a portal opening is cut back to clear it; one that would be shorter than min_piece_m is dropped."],"frames":{"_doc":"Ship frames: ribs on the walls and beams under the ceiling at fixed stations along the keel, frame k at z = origin_z_m + k * spacing_m. Walls that run fore and aft carry ribs at the frames; walls that run athwartships carry stiffeners at x = (k + 1/2) * spacing_m. A room taller than the cove's tall_room_m gets the deep beams and ribs.","spacing_m":2.0,"origin_z_m":0.0,"end_clear_m":0.35,"rib_width_m":0.24,"rib_depth_m":0.12,"tall_rib_depth_m":0.22,"beam_width_m":0.24,"beam_depth_m":0.18,"deep_beam_depth_m":0.38,"portal_clear_m":0.1},"cove":{"_doc":"A 45 degree panel between every solid wall and the ceiling: the hull's octagonal section, echoed inside. Not drawn along an edge open to another brush of the same compartment.","size_m":0.35,"tall_size_m":0.6,"tall_room_m":3.6},"baseboard":{"height_m":0.14,"depth_m":0.03},"door_frame":{"_doc":"Every door, wall hatch and pressure door is framed: jambs and a lintel fill a ring cut around the clear opening (size_m stays the clear opening crew pass through), proud of the wall on each side. Pressure doors are heavier and hazard-striped. A status strip glows on the lintel.","jamb_m":0.16,"lintel_m":0.22,"proud_m":0.06,"pressure_jamb_m":0.26,"pressure_proud_m":0.12,"status_strip_m":[0.5,0.05]},"window_frame":{"frame_m":0.14,"proud_m":0.08,"sill_depth_m":0.16},"floor_portal":{"_doc":"A hazard rim on the floor around every hatch, ladder well, hoist and bay door, and a trim collar under the ceiling around it. Ladders get rails and rungs from the lower floor to ladder_above_m over the upper one.","rim_width_m":0.15,"raise_m":0.012,"collar_width_m":0.1,"collar_depth_m":0.1,"ladder_rail_m":0.05,"ladder_width_m":0.5,"rung_spacing_m":0.3,"ladder_above_m":1.0},"railing":{"_doc":"Along an edge where a brush opens onto a lower floor of the same compartment (a hangar gallery over the hangar floor): two rails, posts and a kick plate.","min_drop_m":0.5,"height_m":1.05,"post_m":0.06,"post_spacing_m":1.5,"inset_m":0.05,"kick_m":0.12},"platforms":{"_doc":"Raised floors that are solid, not air (a dais, a work ring, a sub-platform; bridge-stations section 11a): a riser and a hazard nosing on every edge that is not against a wall, a railing on rail edges with gaps at stairs, treads of tread_rise_m.","tread_rise_m":0.225,"nosing_m":0.05,"nosing_raise_m":0.012,"rail_height_m":0.75,"rail_mid_m":0.375,"rail_m":0.05,"rail_inset_m":0.08,"rail_end_m":0.1,"rail_post_spacing_m":1.2},"runner":{"_doc":"A deck plate strip down the middle of every corridor.","width_m":0.9,"raise_m":0.012,"end_clear_m":0.05},"conduits":{"_doc":"Two pipes along the top of every fore-and-aft corridor wall, below the cove and clear of the ribs.","radii_m":[0.06,0.04],"gap_m":0.06,"drop_m":0.1,"sides":8},"lamps":{"_doc":"The lamp rule (deck-pipeline section 5): lamps sit in the bays between frames, never on a beam. A bay gets round(area / area_per_lamp_m2) lamps across its width, a corridor bay at least one, a pod one. Every emergency_every-th lamp of a compartment is on the emergency bus. A room taller than tall_room_m gets high-bay lamps: radius and size scale with its height over 3 m, and they hang hang_m below the ceiling.","area_per_lamp_m2":8.0,"min_bay_m":1.0,"wall_clear_m":0.6,"emergency_every":3,"panel_m":[0.9,0.45],"corridor_panel_m":[0.7,0.35],"housing_m":0.06,"radius_m":3.0,"tall_room_m":3.6,"hang_m":0.4,"keep_out_m":0.5},"finishes":{"_doc":"Which material (data/materials/materials.json) each generated surface takes, by the compartment's finish in the layout.","crew":{"floor":"deck_tiles","wall":"bulkhead","ceiling":"ceiling","cove":"trim","rib":"trim","beam":"trim","baseboard":"trim","frame":"trim","frame_hazard":"hazard","status":"light_panel","window_frame":"trim","rim":"hazard","collar":"trim","ladder":"trim","runner":"deck_plate","pipe":"machinery","railing":"trim","kickplate":"hazard","lamp_housing":"trim","lamp":"light_panel","platform":"deck_tiles","riser":"trim","nosing":"hazard","stair":"deck_plate"},"working":{"floor":"deck_plate","wall":"bulkhead","ceiling":"machinery","cove":"trim","rib":"machinery","beam":"machinery","baseboard":"hazard","frame":"trim","frame_hazard":"hazard","status":"light_panel","window_frame":"trim","rim":"hazard","collar":"machinery","ladder":"trim","runner":"deck_tiles","pipe":"machinery","railing":"trim","kickplate":"hazard","lamp_housing":"machinery","lamp":"light_panel","platform":"deck_plate","riser":"machinery","nosing":"hazard","stair":"deck_plate"}}}
+{"schema":"starcrew.detailing/1","status":"Proposed (2026-10-05) by openspec/changes/deck-pipeline, section 5a. Read by docs/mockups/lib/shipkit.js today and by deckc once it is built; the sizes are first choices judged on mockup screenshots, not measurements.","_rules":["The detail a ship's decks are dressed with is generated from its layout by one rule set, so every room of a class reads alike and no room is decorated by hand (deck-pipeline section 5a; adapted from Undercity's tools/godot/detailing.py and its UT99 checklist, fps-game-demo f6cd25c).","Detail is not air: coves, ribs, beams and trims stand inside a compartment's brushes and the air model ignores them (life-support quotes brush volumes).","No z-fighting: every detail face is either pressed back to back against a wall, floor or ceiling (and not drawn), or stands at least 1 cm clear of any parallel face (CLAUDE.md section 8). Raised floor plates are raise_m above the floor for that reason.","Lengths in metres. A detail that would cross a portal opening is cut back to clear it; one that would be shorter than min_piece_m is dropped."],"frames":{"_doc":"Ship frames: ribs on the walls and beams under the ceiling at fixed stations along the keel, frame k at z = origin_z_m + k * spacing_m. Walls that run fore and aft carry ribs at the frames; walls that run athwartships carry stiffeners at x = (k + 1/2) * spacing_m. A room taller than the cove's tall_room_m gets the deep beams and ribs.","spacing_m":2.0,"origin_z_m":0.0,"end_clear_m":0.35,"rib_width_m":0.24,"rib_depth_m":0.12,"tall_rib_depth_m":0.22,"beam_width_m":0.24,"beam_depth_m":0.18,"deep_beam_depth_m":0.38,"portal_clear_m":0.1},"cove":{"_doc":"A 45 degree panel between every solid wall and the ceiling: the hull's octagonal section, echoed inside. Not drawn along an edge open to another brush of the same compartment.","size_m":0.35,"tall_size_m":0.6,"tall_room_m":3.6},"baseboard":{"height_m":0.14,"depth_m":0.03},"door_frame":{"_doc":"Every door, wall hatch and pressure door is framed: jambs and a lintel fill a ring cut around the clear opening (size_m stays the clear opening crew pass through), proud of the wall on each side. Pressure doors are heavier and hazard-striped. A status strip glows on the lintel.","jamb_m":0.16,"lintel_m":0.22,"proud_m":0.06,"pressure_jamb_m":0.26,"pressure_proud_m":0.12,"status_strip_m":[0.5,0.05]},"window_frame":{"frame_m":0.14,"proud_m":0.08,"sill_depth_m":0.16},"floor_portal":{"_doc":"A hazard rim on the floor around every hatch, ladder well, hoist and bay door, and a trim collar under the ceiling around it. Ladders get rails and rungs from the lower floor to ladder_above_m over the upper one.","rim_width_m":0.15,"raise_m":0.012,"collar_width_m":0.1,"collar_depth_m":0.1,"ladder_rail_m":0.05,"ladder_width_m":0.5,"rung_spacing_m":0.3,"ladder_above_m":1.0},"railing":{"_doc":"Along an edge where a brush opens onto a lower floor of the same compartment (a hangar gallery over the hangar floor): two rails, posts and a kick plate.","min_drop_m":0.5,"height_m":1.05,"post_m":0.06,"post_spacing_m":1.5,"inset_m":0.05,"kick_m":0.12},"platforms":{"_doc":"Raised floors that are solid, not air (a dais, a work ring, a sub-platform; bridge-stations section 11a): a riser and a hazard nosing on every edge that is not against a wall, a railing on rail edges with gaps at stairs, treads of tread_rise_m.","tread_rise_m":0.225,"nosing_m":0.05,"nosing_raise_m":0.012,"rail_height_m":0.75,"rail_mid_m":0.375,"rail_m":0.05,"rail_inset_m":0.08,"rail_end_m":0.1,"rail_post_spacing_m":1.2},"kicks":{"_doc":"Kick lights (openspec/changes/kick-lights): indirect light at the foot of platform edges and consoles. platform: every edge of a kind in on is undercut at its foot by a recess height_m high and depth_m deep (the wall banks' own toe kick), a strip on a chamfer chamfer_m square at the back of the recess's ceiling, facing out and down. props: each console family's strips in prop space (props.json's frame: +Y up, +Z towards the operator, the origin on the floor at the centre of the back): y_m and z_m the strip's bottom and top edges (z at each), x_m its half width, x_inset_m in from the prop's bounds, or beside_m out from the bounds (a strip each side), normal the way it faces, type its fixture type (kick_strip unless named: column_strip for the light columns behind the terminals).","platform":{"height_m":0.1,"depth_m":0.08,"chamfer_m":0.03,"on":["riser","rail"]},"props":{"wall_bank":[{"name":"front","y_m":[0.005,0.095],"z_m":[0.532,0.532],"x_inset_m":0.03,"normal":[0,0,1]},{"name":"columns","type":"column_strip","y_m":[0.15,2.05],"z_m":[0.012,0.012],"beside_m":[0.03,0.08],"normal":[0,0,1]}],"free_console":[{"name":"front","y_m":[0.06,0.1],"z_m":[0.286,0.295],"x_m":0.34,"normal":[0,-0.227,0.974]},{"name":"back","y_m":[0.06,0.1],"z_m":[-0.012,-0.012],"x_m":0.34,"normal":[0,0,-1]}]}},"runner":{"_doc":"A deck plate strip down the middle of every corridor.","width_m":0.9,"raise_m":0.012,"end_clear_m":0.05},"conduits":{"_doc":"Two pipes along the top of every fore-and-aft corridor wall, below the cove and clear of the ribs.","radii_m":[0.06,0.04],"gap_m":0.06,"drop_m":0.1,"sides":8},"lamps":{"_doc":"The lamp rule (deck-pipeline section 5): lamps sit in the bays between frames, never on a beam. A bay gets round(area / area_per_lamp_m2) lamps across its width, a corridor bay at least one, a pod one. Every emergency_every-th lamp of a compartment is on the emergency bus. A room taller than tall_room_m gets high-bay lamps: radius and size scale with its height over 3 m, and they hang hang_m below the ceiling.","area_per_lamp_m2":8.0,"min_bay_m":1.0,"wall_clear_m":0.6,"emergency_every":3,"panel_m":[0.9,0.45],"corridor_panel_m":[0.7,0.35],"housing_m":0.06,"radius_m":3.0,"tall_room_m":3.6,"hang_m":0.4,"keep_out_m":0.5},"finishes":{"_doc":"Which material (data/materials/materials.json) each generated surface takes, by the compartment's finish in the layout.","crew":{"floor":"deck_tiles","wall":"bulkhead","ceiling":"ceiling","cove":"trim","rib":"trim","beam":"trim","baseboard":"trim","frame":"trim","frame_hazard":"hazard","status":"light_panel","kick_strip":"light_panel","window_frame":"trim","rim":"hazard","collar":"trim","ladder":"trim","runner":"deck_plate","pipe":"machinery","railing":"trim","kickplate":"hazard","lamp_housing":"trim","lamp":"light_panel","platform":"deck_tiles","riser":"trim","nosing":"hazard","stair":"deck_plate"},"working":{"floor":"deck_plate","wall":"bulkhead","ceiling":"machinery","cove":"trim","rib":"machinery","beam":"machinery","baseboard":"hazard","frame":"trim","frame_hazard":"hazard","status":"light_panel","kick_strip":"light_panel","window_frame":"trim","rim":"hazard","collar":"machinery","ladder":"trim","runner":"deck_tiles","pipe":"machinery","railing":"trim","kickplate":"hazard","lamp_housing":"machinery","lamp":"light_panel","platform":"deck_plate","riser":"machinery","nosing":"hazard","stair":"deck_plate"}}}
 </script>
 <!-- INLINE data:tern/detailing END -->
 <!-- INLINE data:tern/command_suite BEGIN -->
@@ -213,13 +213,63 @@
    * Interior lighting states. Every interior mockup shows at least normal and
    * red alert (CLAUDE.md section 11). In the engine these are baked vertex
    * colour sets blended by a per-compartment uniform; here they are light
-   * colours and intensities. status is the door status strips' colour.
+   * colours and intensities. status is the door status strips' colour; kick the kick strips' (openspec/changes/
+   * kick-lights: the blue of the owner's reference K1 in normal light).
    */
   const LIGHTING = {
-    normal: { label: "Normal", ambient: 0x2a3340, ambientI: 0.55, lamp: 0xffe9c8, lampI: 1.0, strip: 0x9fd8ff, stripI: 0.6, fog: 0x0b0e14, status: 0x5ee08a },
-    red_alert: { label: "Red alert", ambient: 0x2a0d10, ambientI: 0.45, lamp: 0xff3030, lampI: 0.75, strip: 0xff2020, stripI: 1.0, fog: 0x120406, status: 0xff2a2a },
-    emergency: { label: "Emergency power", ambient: 0x120c08, ambientI: 0.3, lamp: 0xff8a1c, lampI: 0.35, strip: 0xff8a1c, stripI: 0.8, fog: 0x060403, status: 0xff8a1c },
+    normal: { label: "Normal", ambient: 0x2a3340, ambientI: 0.55, lamp: 0xffe9c8, lampI: 1.0, strip: 0x9fd8ff, stripI: 0.6, kick: 0x1f4bff, kickI: 1.0, fog: 0x0b0e14, status: 0x5ee08a },
+    red_alert: { label: "Red alert", ambient: 0x2a0d10, ambientI: 0.45, lamp: 0xff3030, lampI: 0.75, strip: 0xff2020, stripI: 1.0, kick: 0xff2020, kickI: 1.0, fog: 0x120406, status: 0xff2a2a },
+    emergency: { label: "Emergency power", ambient: 0x120c08, ambientI: 0.3, lamp: 0xff8a1c, lampI: 0.35, strip: 0xff8a1c, stripI: 0.8, kick: 0xff8a1c, kickI: 0.8, fog: 0x060403, status: 0xff8a1c },
   };
+
+  // ---------------------------------------------------------------- lighting data (light-baking design 15)
+
+  const srgbLin = (c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  /** A colour (0xrrggbb or "#rrggbb") as linear RGB times k. */
+  function hexLinear(hex, k) {
+    const h = typeof hex === "string" ? parseInt(hex.slice(1), 16) : hex;
+    return [(h >> 16) & 255, (h >> 8) & 255, h & 255].map((c) => srgbLin(c / 255) * (k === undefined ? 1 : k));
+  }
+  /** data/lighting/fixtures.json and bake.json, inlined as data:lighting/fixtures and data:lighting/bake. */
+  function lightingData() { return { fixtures: shipData("fixtures"), bake: shipData("bake") }; }
+  /**
+   * A fixture's light in each lighting state, { normal, red_alert, emergency } as linear RGB that multiplies its
+   * intensity_cd or luminance_cd_m2: its type's light (lamp, strip or kick: LIGHTING's colour and weight in that state;
+   * role: roleHex; fixed: its color_srgb), times its emergency_scale on emergency power, and dark on emergency power
+   * when it is on the bus rule and not on the emergency bus (onBus).
+   */
+  function fixtureStates(type, onBus, roleHex) {
+    const em = type.emergency_scale === undefined ? 1 : type.emergency_scale, out = {};
+    for (const s of ["normal", "red_alert", "emergency"]) {
+      const L = LIGHTING[s];
+      let c = type.light === "lamp" ? hexLinear(L.lamp, L.lampI) : type.light === "strip" ? hexLinear(L.strip, L.stripI)
+        : type.light === "kick" ? hexLinear(L.kick, L.kickI)
+        : type.light === "role" ? hexLinear(roleHex) : hexLinear(type.color_srgb);
+      if (s === "emergency") { const k = type.emergency === "bus" && !onBus ? 0 : em; c = c.map((x) => x * k); }
+      out[s] = c;
+    }
+    return out;
+  }
+  /** bake.json, with a preset's overrides (preset "preview"), as lightbake.js's settings (its key names). */
+  function bakeSettings(preset) {
+    const B = shipData("bake"), P = (preset && B.presets[preset]) || {};
+    const g = (k) => (P[k] !== undefined ? P[k] : B[k]);
+    return {
+      seed: g("seed"), reference_lux: g("reference_lux"), shadow_samples: g("shadow_samples"),
+      emitter_sample_area_m2: g("emitter_sample_area_m2"), emitter_sample_spacing_m: g("emitter_sample_spacing_m"),
+      gather_rays: g("gather_rays"), cache_gather_rays: g("cache_gather_rays"), cache_filter: g("cache_filter_passes"),
+      ao_rays: g("ao_rays"), ao_radius_m: g("ao_radius_m"), bounces: g("bounces"), cache_spacing_m: g("cache_spacing_m"),
+      bias_m: g("ray_bias_m"), inset_m: g("sample_inset_m"), dither: g("dither"),
+    };
+  }
+  /** Each lighting state's ambient fill in lux: LIGHTING's ambient colour times its weight times bake.json's ambient_scale_lux. */
+  function ambientLux() {
+    const k = shipData("bake").ambient_scale_lux, out = {};
+    for (const s of ["normal", "red_alert", "emergency"]) out[s] = hexLinear(LIGHTING[s].ambient, LIGHTING[s].ambientI * k);
+    return out;
+  }
+  /** The triangles a compartment's adaptive bake may add (bake.json max_added_triangles, its default otherwise). */
+  function bakeCap(id) { const m = shipData("bake").max_added_triangles; return m[id] !== undefined ? m[id] : m.default; }
 
   // ---------------------------------------------------------------- lookups
 
@@ -1734,7 +1784,7 @@
         if (!name || !(name in mats.layer)) throw new Error(`shipkit: no material for role ${r} (detailing.json finishes)`);
         li = mats.layer[name]; span = mats.span[name];
       }
-      const g = r === "lamp" || r === "status" || r === "screen" ? 1 : 0;
+      const g = r === "lamp" || r === "status" || r === "screen" || r === "kick_strip" ? 1 : 0;
       pos.set(P.position, k * 3); nor.set(P.normal, k * 3);
       for (let i = 0; i < cnt; i++) { uv[(k + i) * 2] = P.uvm[i * 2] / span; uv[(k + i) * 2 + 1] = P.uvm[i * 2 + 1] / span; lay[k + i] = P.vlayer ? vlayerIndex(mats, P.vlayer[i]) : li; glow[k + i] = P.glow ? P.glow[i] : g; }
       if (P.tint) { tint.set(P.tint, k * 3); col.set(P.tint, k * 3); }
@@ -1842,6 +1892,7 @@
       }
     }
     paintRole(geo, "status", new THREE.Color(s.status).multiplyScalar(1.4));
+    paintRole(geo, "kick_strip", new THREE.Color(s.kick).multiplyScalar(1.4 * s.kickI));   // kick-lights: a drawn light
     const sr = geo.userData.roles.screen;
     if (sr) for (let i = sr[0]; i < sr[0] + sr[1]; i++) C.setXYZ(i, (T ? T[i * 3] : 1) * 1.25, (T ? T[i * 3 + 1] : 1) * 1.25, (T ? T[i * 3 + 2] : 1) * 1.25);
     C.needsUpdate = true;
@@ -2051,15 +2102,76 @@
   /** What stands on a floor and hides it (floor-panels design 6): the platforms' outlines and the bands at their feet,
    * as buildCompartment's opts.floorCovers ([{ y_m, poly }]). */
   function platformCovers(platforms, floorY, opts) {
-    const out = platforms.map((pf) => ({ y_m: floorY, poly: pf.poly.map((p) => p.slice()) }));
+    // Under a kicked edge the platform hides the floor only behind its toe kick (kick-lights design 1).
+    const out = platforms.map((pf) => ({ y_m: floorY, poly: opts && opts.kicks ? kickOutline(pf, opts.kicks) : pf.poly.map((p) => p.slice()) }));
     for (const b of edgeBands(platforms, opts)) out.push({ y_m: floorY, poly: b.pts });
     return out;
   }
 
+  /**
+   * A platform's outline with every edge of a kind in K.on moved in by depth (default K.depth_m): the line its toe
+   * kick's back face stands on (kick-lights design 1). A corner between two kicked edges is their inset lines' mitre;
+   * between a kicked edge and another, the inset line meets the other edge's line. Counter-clockwise, as given or
+   * reversed; edges unchanged.
+   */
+  function kickOutline(pf, K, depth) {
+    let poly = pf.poly.map((p) => p.slice()), edges = pf.edges.slice();
+    if (signedArea(poly) < 0) { poly = poly.reverse(); edges = edges.slice(0, -1).reverse().concat(edges.slice(-1)); }
+    const n = poly.length, d = depth === undefined ? K.depth_m : depth;
+    const on = (i) => { const a = poly[(i + n) % n], b = poly[(i + 1 + n) % n]; return outwardNormal(a, b); };
+    const off = (i) => (K.on.includes(edges[(i + n) % n]) ? d : 0);
+    // Corner i: where edge i - 1's line (moved in by its offset) meets edge i's.
+    return poly.map((c, i) => {
+      const n0 = on(i - 1), n1 = on(i), d0 = off(i - 1), d1 = off(i);
+      if (!d0 && !d1) return c.slice();
+      const det = n0[0] * n1[1] - n0[1] * n1[0];
+      if (Math.abs(det) < 1e-6) return [c[0] - n1[0] * Math.max(d0, d1), c[1] - n1[1] * Math.max(d0, d1)];
+      // Solve n0 . (x - c) = -d0 and n1 . (x - c) = -d1.
+      const x = (-d0 * n1[1] + d1 * n0[1]) / det, z = (-d1 * n0[0] + d0 * n1[0]) / det;
+      return [c[0] + x, c[1] + z];
+    });
+  }
+  /**
+   * One platform's toe kicks (kick-lights design 1) into builder B: under every edge of a kind in K.on, a soffit at
+   * K.height_m, a strip (role kick_strip) on a chamfer K.chamfer_m square at the back of the soffit facing out and
+   * down, the back face down to the floor, and an end face where the next edge is not kicked. Returns the strips as
+   * { o, u, v, n, len } (corner, the two sides, the facing, the length) for a bake's emitters.
+   */
+  function buildKicks(B, poly, edges, floorY, K) {
+    const n = poly.length, kh = K.height_m, kd = K.depth_m, ch = K.chamfer_m, out = [];
+    const kicked = (i) => K.on.includes(edges[(i + n) % n]);
+    const inner = kickOutline({ poly, edges }, K, kd), mid = kickOutline({ poly, edges }, K, kd - ch);
+    const at = (p, y) => [p[0], floorY + y, p[1]];
+    for (let i = 0; i < n; i++) {
+      if (!kicked(i)) continue;
+      const a = poly[i], b = poly[(i + 1) % n], on = outwardNormal(a, b), o3 = [on[0], 0, on[1]];
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]), t = [(b[0] - a[0]) / len, (b[1] - a[1]) / len];
+      // A recess that ends at an edge without one ends square at the corner.
+      const sq = (p, d) => [p[0] - on[0] * d, p[1] - on[1] * d];
+      const A1 = kicked(i - 1) ? inner[i] : sq(a, kd), B1 = kicked(i + 1) ? inner[(i + 1) % n] : sq(b, kd);
+      const A2 = kicked(i - 1) ? mid[i] : sq(a, kd - ch), B2 = kicked(i + 1) ? mid[(i + 1) % n] : sq(b, kd - ch);
+      B.quad("riser", at(a, kh), at(b, kh), at(B2, kh), at(A2, kh), [0, -1, 0]);   // the soffit
+      const sn = [o3[0] * Math.SQRT1_2, -Math.SQRT1_2, o3[2] * Math.SQRT1_2];
+      B.quad("kick_strip", at(A2, kh), at(B2, kh), at(B1, kh - ch), at(A1, kh - ch), sn);
+      B.quad("riser", at(A1, 0), at(B1, 0), at(B1, kh - ch), at(A1, kh - ch), o3);   // the back
+      const t3 = [t[0], 0, t[1]], end = (p, P1, P2, dir) => {
+        const nrm = t3.map((x) => x * dir);
+        B.quad("riser", at(p, 0), at(P1, 0), at(P1, kh - ch), at(p, kh - ch), nrm);
+        B.quad("riser", at(p, kh - ch), at(P1, kh - ch), at(P2, kh), at(p, kh), nrm);
+      };
+      if (!kicked(i - 1)) end(a, A1, A2, 1);
+      if (!kicked(i + 1)) end(b, B1, B2, -1);
+      const o = at(A2, kh), u = [B2[0] - A2[0], 0, B2[1] - A2[1]], v = [A1[0] - A2[0], -ch, A1[1] - A2[1]];
+      out.push({ o, u, v, n: sn, len: Math.hypot(u[0], u[2]) });
+    }
+    return out;
+  }
   function buildPlatforms(THREE, B, platforms, stairs, floorY, D, opts) {
     D = D || shipData("detailing");
     opts = opts || {};
     const Q = D.platforms, fit = platformRows(opts);
+    // opts.kicks: detailing.json kicks.platform, toe kicks with strips on its edge kinds (kick-lights design 1).
+    const KK = opts.kicks || null;
     // With the platform layer, a railing takes its rail row as the compartment's railings do (ceilings-and-trims 9).
     const RT = fit && fit.rows.rail ? { layer: fit.layer, rows: { rail: fit.rows.rail }, span: fit.span, stretch: fit.stretch, stats: { faces: 0, pillars: 0 },
       members: { railing: { face: "rail", sides: "rail", ends: "rail", role: "fit_railing" } } } : null;
@@ -2080,6 +2192,7 @@
       let poly = pf.poly.map((p) => p.slice()), edges = pf.edges.slice();
       if (signedArea(poly) < 0) { poly = poly.reverse(); edges = edges.slice(0, -1).reverse().concat(edges.slice(-1)); }
       const top = pf.top_m, h = top - floorY, n = poly.length;
+      if (KK) B.kicks = (B.kicks || []).concat(buildKicks(B, poly, edges, floorY, KK));
       if (opts.topLayer) tileTop(THREE, B, "platform_top", poly, top, opts.topLayer);
       else B.flat(THREE, "platform", poly, [], top, 1);
       let walked = 0;   // metres of outline from the first corner: the riser's u, so its vents carry round a ring
@@ -2089,8 +2202,10 @@
         walked += len;
         if (kind === "wall") continue;
         const t = [(b[0] - a[0]) / len, 0, (b[1] - a[1]) / len], on = outwardNormal(a, b), out = [on[0], 0, on[1]];
-        if (fit) fittedFace(B, fit, [a[0], floorY, a[1]], [b[0], floorY, b[1]], h, u0, len, out, fit.forHeight(h));
-        else B.quad("riser", [a[0], floorY, a[1]], [b[0], floorY, b[1]], [b[0], top, b[1]], [a[0], top, a[1]], out);
+        // Over a toe kick the riser starts at the kick's height (kick-lights design 1).
+        const y0 = KK && KK.on.includes(kind) ? floorY + KK.height_m : floorY;
+        if (fit) fittedFace(B, fit, [a[0], y0, a[1]], [b[0], y0, b[1]], top - y0, u0, len, out, fit.forHeight(h));
+        else B.quad("riser", [a[0], y0, a[1]], [b[0], y0, b[1]], [b[0], top, b[1]], [a[0], top, a[1]], out);
         // The nosing: a hazard strip on the top's edge, raised clear of the platform's face.
         // Where the edge before is nosed too, this one starts a nosing's width in, so the two never overlap at the
         // corner (CLAUDE.md section 8): the corner is the edge before's.
@@ -2707,6 +2822,7 @@
   window.ShipKit = {
     version: 2,
     layout, shipData, PI_BUDGET, PALETTE, LIGHTING,
+    lightingData, fixtureStates, bakeSettings, ambientLux, bakeCap, hexLinear,
     byId, compartment, applyPatch, portalsOf, stationsIn, systemsIn, deckById,
     // plan geometry
     signedArea, outwardNormal, insidePoly, chord, insetPoly, polyCentroid,
@@ -2716,7 +2832,7 @@
     buildCompartment, roomShell, lampsFor, frameStations, loadMaterials, surfaceMaterial, geometryOf, finishOf, compartmentMesh, paintRole, bakeDirect,
     // wall panels (openspec/changes/wall-panels)
     loadPanels, panelsData, panelBands, panelBays, fnv1a, decodePng, panelLayerList, panelLayerName, walkwayPaths,
-    Builder, subdivideParts, buildPlatforms, platformCovers, edgeBands, buildSpiralStair, spiralReach, spiralCorners, buildLiftCar, buildFitout, platformRows,
+    Builder, subdivideParts, buildPlatforms, platformCovers, kickOutline, edgeBands, buildSpiralStair, spiralReach, spiralCorners, buildLiftCar, buildFitout, platformRows,
     // hull, labels, chrome
     hullGeometry, hullHalfWidth, label, budgetHud, titleBlock, registerShots, markReady, panelChrome,
     rectMinusHoles, intervalMinus, worldUv,
@@ -3247,9 +3363,39 @@
       }
     }
 
+    /**
+     * A placed console's kick strips (openspec/changes/kick-lights design 2): its family's strips from kicks (detailing.json
+     * kicks.props; every wall bank is "wall_bank"), turned by yaw and moved to back as placeProp places the prop, into
+     * parts.kick_strip (a drawn light on the light panel layer). Returns them as { o, u, v, n, len, type } in the room
+     * (type the fixture type: kick_strip, or column_strip for the light columns beside a wall bank), for a bake's
+     * emitters; none for a prop whose family lists none.
+     */
+    function placeKicks(parts, kind, back, yawDeg, kicks) {
+      const fam = kind.startsWith("wall_bank") ? "wall_bank" : baseOf(kind), list = (kicks && kicks[fam]) || [];
+      if (!list.length) return [];
+      const pr = propOf(kind), th = (yawDeg * Math.PI) / 180, c = Math.cos(th), s = Math.sin(th);
+      back = offWall(pr, back, s, c);
+      const W = (x, y, z) => [back[0] + x * c + z * s, back[1] + y, back[2] - x * s + z * c];
+      const bounds = pr.rec && pr.rec.bounds_m, B = new K.Builder(), out = [];
+      for (const k of list) {
+        if (k.x_m === undefined && !bounds) continue;   // a stand-in has no bounds to measure from
+        const spans = k.beside_m ? [[bounds.min[0] - k.beside_m[1], bounds.min[0] - k.beside_m[0]], [bounds.max[0] + k.beside_m[0], bounds.max[0] + k.beside_m[1]]]
+          : [[k.x_m !== undefined ? -k.x_m : bounds.min[0] + k.x_inset_m, k.x_m !== undefined ? k.x_m : bounds.max[0] - k.x_inset_m]];
+        const [ya, yb] = k.y_m, [za, zb] = k.z_m, n = [k.normal[0] * c + k.normal[2] * s, k.normal[1], -k.normal[0] * s + k.normal[2] * c];
+        for (const [x0, x1] of spans) {
+          const p0 = W(x0, ya, za), p1 = W(x1, ya, za), p2 = W(x1, yb, zb), p3 = W(x0, yb, zb);
+          B.quad("kick_strip", p0, p1, p2, p3, n);
+          out.push({ o: p0, u: p1.map((v, j) => v - p0[j]), v: p3.map((v, j) => v - p0[j]), n, len: Math.max(x1 - x0, yb - ya), type: k.type || "kick_strip" });
+        }
+      }
+      const P = B.parts.kick_strip, dst = parts.kick_strip || (parts.kick_strip = { position: [], normal: [], uvm: [], material: "light_panel" });
+      dst.position.push(...P.position); dst.normal.push(...P.normal); dst.uvm.push(...P.uvm);
+      return out;
+    }
+
     return {
       PROPS, SCREENS, baseOf, propFor, imagesOf, addFaces, faceMat, standIn, propOf, operatorZ,
-      placeProp, placeCrew, mergeParts, roleColor, spaceViews, bytes: SCREENS ? SCREENS.bytes : 0,
+      placeProp, placeKicks, placeCrew, mergeParts, roleColor, spaceViews, bytes: SCREENS ? SCREENS.bytes : 0,
     };
   }
 
