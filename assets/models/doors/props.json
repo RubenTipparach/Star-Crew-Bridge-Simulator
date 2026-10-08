@@ -51,16 +51,16 @@
         "chamfer panel_edges (20 edges, 6 mm)",
         "difference band (2)"
       ],
-      "sha256": "d6b454d27a5a9904feb6c83ef2597df2fdfb82dcaeb5da8686cfa5b97fabda2e",
+      "sha256": "4360a3aec07bd339a34b9c027b209f0ca45662dad476e62cdbcfb7c672a99787",
       "atlas": {
         "file": "atlas/door_100x220_l.png",
         "px": 256,
         "px_per_m": 111.88,
-        "charts": 11,
+        "charts": 17,
         "cover": 0.504,
         "glow": 0.0007,
-        "sha256": "fc6b6b2b41d5eec48ea7437f930683905a306a035d0a0af645ffb61392ce7db4",
-        "bytes": 15703
+        "sha256": "9d67032e891e9363c983b8538110669dd74f01f6fef8c673fe38dc06cf865400",
+        "bytes": 14966
       }
     },
     "door_100x220_r": {
@@ -98,16 +98,16 @@
         "chamfer panel_edges (20 edges, 6 mm)",
         "difference band (2)"
       ],
-      "sha256": "597909793c1c1a59fe64e6ab7287d4f70af75d63f66bf20cbef7bc864c0d07b5",
+      "sha256": "82647f4d857b40731929eca383338bbbf0f8c4336329905e24d74c53f49d7803",
       "atlas": {
         "file": "atlas/door_100x220_r.png",
         "px": 256,
-        "px_per_m": 107.25,
-        "charts": 11,
-        "cover": 0.469,
+        "px_per_m": 108.5,
+        "charts": 17,
+        "cover": 0.48,
         "glow": 0.0,
-        "sha256": "40e3cda0b758180a0c6f9964c6ab3086ef08ac95eefee56736ca83e04f14690a",
-        "bytes": 20234
+        "sha256": "8d87394a6d34ce730ea2b0b74e9f5e7de10d67ae2686de49f43f767dd003b611",
+        "bytes": 18483
       }
     },
     "door_120x210_l": {
@@ -145,16 +145,16 @@
         "chamfer panel_edges (20 edges, 6 mm)",
         "difference band (2)"
       ],
-      "sha256": "444b92d32b729ce98368a62b2de252435a25ad798b1203e53f63636fe9db324e",
+      "sha256": "7d8a72c7d54ae85ba947b2eee07f92a0aeabc4a18fcd8ab23db86ad96c68493b",
       "atlas": {
         "file": "atlas/door_120x210_l.png",
         "px": 256,
         "px_per_m": 99.88,
-        "charts": 11,
+        "charts": 17,
         "cover": 0.452,
         "glow": 0.0005,
-        "sha256": "4307dfa9aeb91076f6ec4fe8c9175fd641196834774a169058f35764f0ef651c",
-        "bytes": 15305
+        "sha256": "8e26b48b4403ff4a6f9911bd20bfd40bdbbd56893d91aaa7af5c7856fc0c5297",
+        "bytes": 14874
       }
     },
     "door_120x210_r": {
@@ -239,16 +239,16 @@
         "chamfer panel_edges (20 edges, 6 mm)",
         "difference band (2)"
       ],
-      "sha256": "c316700da8b431d7a0e78bdc1d1ef3c75216f62f5160b169ab8aade111af5095",
+      "sha256": "0528450dc68ed6b82d9ab68c4d969b64a35dc6ebdf1d59d6c486c9199cccd26c",
       "atlas": {
         "file": "atlas/door_120x220_l.png",
         "px": 256,
-        "px_per_m": 98.88,
-        "charts": 11,
-        "cover": 0.462,
+        "px_per_m": 99.88,
+        "charts": 17,
+        "cover": 0.471,
         "glow": 0.0005,
-        "sha256": "6ca121e00259aba1880e7c0ace8ca46566db404967f1da2f8835c7145a07f0ae",
-        "bytes": 13859
+        "sha256": "d3e7bf771fbd477510a4dd8161ab54d51da610f8b987d12745b586effd28987b",
+        "bytes": 17050
       }
     },
     "door_120x220_r": {
@@ -286,16 +286,16 @@
         "chamfer panel_edges (20 edges, 6 mm)",
         "difference band (2)"
       ],
-      "sha256": "6a92f45d56c550739f465df25d172f404055eddca31f40f8b61a963f15376e6e",
+      "sha256": "c2a1ec38d7cc9417c637004469847b4eb799232afdb56fb2832a2947a0eaebc2",
       "atlas": {
         "file": "atlas/door_120x220_r.png",
         "px": 256,
-        "px_per_m": 99.25,
-        "charts": 14,
-        "cover": 0.47,
+        "px_per_m": 99.38,
+        "charts": 24,
+        "cover": 0.471,
         "glow": 0.0,
-        "sha256": "19df5422da5cf3f6c6f822cf75ce1fd9080cbae668aba2e8ce7cb058383a6538",
-        "bytes": 18668
+        "sha256": "d0d7b99d3eddafb7074babb9ac22edb74131e5dba810aaa2a5ae92a460b1959c",
+        "bytes": 17478
       }
     },
     "door_160x230_l": {
@@ -333,16 +333,16 @@
         "chamfer panel_edges (20 edges, 6 mm)",
         "difference band (2)"
       ],
-      "sha256": "b8beaa9fa66018073b0c66e04c1beb80bece3c9608009481aebebd1d2232087f",
+      "sha256": "7e7245b5a8fc6af763a97d39498c9b096fafcfea7a4bb810fe54da4ec86097aa",
       "atlas": {
         "file": "atlas/door_160x230_l.png",
         "px": 256,
-        "px_per_m": 90.75,
-        "charts": 14,
-        "cover": 0.524,
-        "glow": 0.0004,
-        "sha256": "853290de24bf64b13c41a6f2dbdc94d25599eacd24d2e958f44499a0bf7f6877",
-        "bytes": 15532
+        "px_per_m": 90.14,
+        "charts": 24,
+        "cover": 0.517,
+        "glow": 0.0005,
+        "sha256": "dc20738b344f630690af24f289a141cf16e948f8f8f0939a6f15ded420f2a763",
+        "bytes": 16978
       }
     },
     "door_160x230_r": {
@@ -380,16 +380,16 @@
         "chamfer panel_edges (20 edges, 6 mm)",
         "difference band (2)"
       ],
-      "sha256": "acbc3cd87fa569f16023e00fb53c00ebbcce73c4d885ef9e844fe05196a3ff4d",
+      "sha256": "9faddab79914aa302ce16c5a2a4e2558084c97fe648876db108573b1c68c4354",
       "atlas": {
         "file": "atlas/door_160x230_r.png",
         "px": 256,
-        "px_per_m": 83.26,
-        "charts": 14,
-        "cover": 0.447,
+        "px_per_m": 82.9,
+        "charts": 24,
+        "cover": 0.444,
         "glow": 0.0,
-        "sha256": "09e033548a427e26e90662ebed22dc7ab6ae2791dae81e49731efd87e97c3798",
-        "bytes": 17613
+        "sha256": "fd30443799636b886de8ce67ecefda12d41078ec44e2a5a9c59603ec69bb2db2",
+        "bytes": 17318
       }
     },
     "door_200x230_l": {
@@ -427,16 +427,16 @@
         "chamfer panel_edges (20 edges, 6 mm)",
         "difference band (2)"
       ],
-      "sha256": "483165feb290ccedb1fa9347587c4bff8ee8482a5f7349f7b97c4ddef0b4a6ed",
+      "sha256": "6ef67edaaa05328aeb9bdc2fa408c0dc2136ea156c41bf41e9902f3221ea0764",
       "atlas": {
         "file": "atlas/door_200x230_l.png",
         "px": 256,
-        "px_per_m": 79.9,
-        "charts": 14,
-        "cover": 0.499,
+        "px_per_m": 79.79,
+        "charts": 24,
+        "cover": 0.497,
         "glow": 0.0004,
-        "sha256": "d69ac5bd9e7c096eec2bd4d8f38344e0a4c6d9565a58cabbcb8665e55daf65bf",
-        "bytes": 17598
+        "sha256": "f0eb2ac9c72361c2a30d7cbe3d73434ff8ded57d4fa492470e0a7b2160b683ab",
+        "bytes": 18870
       }
     },
     "door_200x230_r": {
@@ -474,16 +474,16 @@
         "chamfer panel_edges (20 edges, 6 mm)",
         "difference band (2)"
       ],
-      "sha256": "93da14f5465325f05fa04b770f7af6bd4c947289458de13471c12ef32a035e95",
+      "sha256": "4d30e42819ca35d3a3c317ba998c8984700753d1f6aa4718d5565026429f2bc7",
       "atlas": {
         "file": "atlas/door_200x230_r.png",
         "px": 256,
-        "px_per_m": 74.36,
-        "charts": 14,
-        "cover": 0.437,
+        "px_per_m": 74.58,
+        "charts": 24,
+        "cover": 0.44,
         "glow": 0.0,
-        "sha256": "51a3638f740d3e47f4860be9465ddbcd5204643e22936cd3b99060078c3bbba1",
-        "bytes": 16437
+        "sha256": "66600e5c429f078493235265b79683e729a4cd43237379b518a9ff897a2a8862",
+        "bytes": 15850
       }
     },
     "door_200x250_l": {
@@ -521,16 +521,16 @@
         "chamfer panel_edges (20 edges, 6 mm)",
         "difference band (2)"
       ],
-      "sha256": "3d550cd2207e1e95d755e06d96b872422d9a3c0e4eeb96dda11cce1e240808a5",
+      "sha256": "1395d32b5467459d0563efd6d38368d060398b89da46d2ce0b53596ee0635a26",
       "atlas": {
         "file": "atlas/door_200x250_l.png",
         "px": 256,
-        "px_per_m": 75.53,
-        "charts": 14,
-        "cover": 0.481,
+        "px_per_m": 75.64,
+        "charts": 24,
+        "cover": 0.482,
         "glow": 0.0003,
-        "sha256": "81213a761e2ce4949fe9c32cf2a76da46787577fc6d8804caa764760fb482f57",
-        "bytes": 13594
+        "sha256": "e0ed94ccde1815b12e380994a250928e422f06ff490575549c647a93cb4f0527",
+        "bytes": 15186
       }
     },
     "door_200x250_r": {
@@ -568,16 +568,16 @@
         "chamfer panel_edges (20 edges, 6 mm)",
         "difference band (2)"
       ],
-      "sha256": "a557b78e4847f3de1e0e18e81e9ada5e7e364e1068e9500e8cc2fb418ac57cf6",
+      "sha256": "62dc52a93b43da5ec74b056a7e4cdafd2862ae7a48ef88a4cd99b04baa9f94db",
       "atlas": {
         "file": "atlas/door_200x250_r.png",
         "px": 256,
-        "px_per_m": 67.63,
-        "charts": 14,
-        "cover": 0.394,
+        "px_per_m": 65.52,
+        "charts": 24,
+        "cover": 0.37,
         "glow": 0.0,
-        "sha256": "027acec8cd4b2e912ba6ff0cfcf3c5d4952b1d6d3974eb06e7d5ef9fa60be68f",
-        "bytes": 16601
+        "sha256": "ca920cd1d5da0664c5da518d9fff3b565b9d95baad17596ede13df87add794d0",
+        "bytes": 15573
       }
     },
     "pressure_100x220": {
@@ -615,16 +615,16 @@
         "chamfer bar_edges (4 edges, 8 mm)",
         "difference plate_seams (4)"
       ],
-      "sha256": "0e91c7fe6df7e1fe89e1c8d04c40d9c40d98900652970ad9983f2a1e1ea6d369",
+      "sha256": "98b69e882f81f20613ad4b02cff650a12bc912b8f1308c929330106a47b12339",
       "atlas": {
         "file": "atlas/pressure_100x220.png",
         "px": 256,
         "px_per_m": 93.19,
-        "charts": 8,
+        "charts": 12,
         "cover": 0.744,
         "glow": 0.0006,
-        "sha256": "dc81a4386061e1355557ca96952f44d10accde5282f537e45b5f79899beb83cd",
-        "bytes": 12323
+        "sha256": "2523af5b9f3838bb351ab71ff846ca38e13f5237ca513ea826382b958e871ef2",
+        "bytes": 12562
       }
     }
   }

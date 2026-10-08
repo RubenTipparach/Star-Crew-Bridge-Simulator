@@ -919,22 +919,21 @@ def petrel_shuttle():
     edge_roles = ["machinery", "trim", "machinery", "accent", "bulkhead", "trim", "bulkhead", "trim", "bulkhead", "accent",
                   "machinery", "trim", "machinery", "machinery"]
     body = loft(p, "hull", sections, edge_roles, ("trim", "trim"))
-    # The canopy, open glass: a pane in each upper face (upper sides, roof chamfers, roof) of two bands, the cabin's
-    # front (z 1.10-2.30) and the cockpit's (2.30-4.05), cut right through the hull into the cabin, the hull left
-    # between them as the frames (owner, 2026-10-08: "shuttle window should be like way bigger"; the panes were
-    # recesses glowing white, and from inside a dark wall). From outside the lit cockpit shows; from inside, the bay.
+    # The canopy: a pane in each upper face of the S2-S3 band (upper sides, roof chamfers, roof), each following
+    # its face, the hull left between them as the frames. They cut right through into the cockpit, so from inside
+    # the pilots look out where the outside shows glass (owner, 2026-10-08: "I like the exterior canopy the way it
+    # was. I just wanted interior to match exterior"; a second band of panes over the cabin's front was undone).
     cuts = []
-    for band, (sa, za, sb, zb) in enumerate(((base, 1.10, s2, 2.30), (s2, 2.30, s3, 4.05))):
-        for e in (4, 5, 6, 7, 8):
-            a0, a1 = sa[e], sa[(e + 1) % 14]
-            b0, b1 = sb[e], sb[(e + 1) % 14]
-            hint = ((a0[0] + a1[0]) / 2, (a0[1] + a1[1]) / 2 - 1.6, 0.3)
-            cuts.append(pane(p, f"canopy_{band}_{e}", [(a0[0], a0[1], za), (a1[0], a1[1], za), (b1[0], b1[1], zb), (b0[0], b0[1], zb)],
-                             hint, 0.06, 0.32, wall="trim", floor="machinery"))
+    for e in (4, 5, 6, 7, 8):
+        a0, a1 = s2[e], s2[(e + 1) % 14]
+        b0, b1 = s3[e], s3[(e + 1) % 14]
+        hint = ((a0[0] + a1[0]) / 2, (a0[1] + a1[1]) / 2 - 1.6, 0.3)
+        cuts.append(pane(p, f"canopy_{e}", [(a0[0], a0[1], 2.30), (a1[0], a1[1], 2.30), (b1[0], b1[1], 4.05), (b0[0], b0[1], 4.05)],
+                         hint, 0.055, 0.32, wall="trim", floor="machinery"))
     # The cabin (owner, 2026-10-08: "need interior for shuttle, and I should be able to walk into it"): the hull hollowed
     # by a loft of its own sections inset 8 cm, from the stern wall to the cockpit under the canopy, its deck flat at the
     # ramp's top; the stern opening 1.32 m wide and 1.95 m clear above the deck, so a body walks up the ramp and in. The
-    # canopy's panes cut through into it, so the cockpit and the cabin's front look out through the frames.
+    # canopy's panes cut through into the cockpit, so it looks out through the frames.
     def inset(sec, t):
         return [(x - math.copysign(t, x), y + t if y < 1.65 else y - t) for x, y in sec]
     s3i = [(a[0] + (b[0] - a[0]) * 0.8, a[1] + (b[1] - a[1]) * 0.8) for a, b in zip(s2, s3)]
