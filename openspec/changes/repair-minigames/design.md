@@ -81,14 +81,14 @@ The medic (`medical-officer`) treats a body on a bed or in the field on one scre
 - **Triage.** A body chart, front and back, with each wound marked by kind and size: a cut, a burn, a fracture, a
   bleed, smoke in the lungs. The vitals strip along the top: heart rate, blood oxygen, the HP bar and the window
   left for a downed or critical body (`crew-on-deck` 7).
-- **The tool.** Each wound takes one tool: the dermal sealer for cuts (trace along the cut, steady, inside the line),
-  burn gel for burns (paint the area until it is covered), the bone knitter for a fracture (hold the two ends
-  aligned while it knits), a clamp then the sealer for a bleed (the bleed's spurts are timed: clamp between them),
+- **The tool.** Each wound takes one tool: the dermal sealer for cuts (sweep along the cut until it is sealed),
+  burn gel for burns (paint the area until it is covered), the bone knitter for a fracture (drag the loose end into
+  its socket and hold it while it knits), a clamp then the sealer for a bleed (the bleed's spurts are timed: clamp between them),
   the inhaler for smoke (press as the chest rises). The wrong tool does nothing and costs a moment.
 - **Rates.** Each treated wound gives back its share of HP at `medical-officer`'s rates: field healing 4.0 HP/s to
   75 HP, the bed 6.0 HP/s tended; a revive is the first wound treated on a downed body (2.0 s with the kit at a
   steady hand, the rate's time). A dose is spent per 25 HP given, as there.
-- **Slips** (the trace leaves the line, gel off the wound): the patient flinches, 2 HP lost, the wound reopens a
+- **Slips** (a clamp in a spurt, a puff on the out-breath, the bone yanked out while it knits): the patient flinches, 2 HP lost, the wound reopens a
   little. Never a death: a slip costs time, not a life.
 - **Several patients.** On the medbay's beds the screen tabs between them; the vitals of the ones not being treated
   keep running (a critical body's window keeps falling), which is the triage.
@@ -178,6 +178,23 @@ alternate, a toilet then a shower:
   are soaked". Later rounds have bigger grids.
 - **The part step** of a disabled toilet fits a new flush valve (the flapper) from the crate onto its seat in the open
   cistern.
+
+**The medic** (`repairs/medic.js`). The owner: "the medical one kinda sucks"; "the tools dont respond well and just
+end up dragging the frame". Rebuilt so every tool answers on the frame it is pressed, and only timing is ever a slip:
+
+- **Bigger wounds.** The close-up takes most of the screen; a ring in its corner fills as the wound heals. Treated
+  wounds are ticked on the body chart, and clicking a marker opens its wound.
+- **The tray** shows each tool's key (1-5). A press counts on the wound only if it starts in the close-up, so a click
+  on the tray or the chart never touches it.
+- **The wrong tool** is drawn greyed with a red cross at the pointer; pressing it says "Wrong tool" and does nothing.
+- **Cut:** press near the cut and sweep along it either way; what the tip passes over seals, 95% to close. Drifting
+  off pauses, never slips.
+- **Burn:** a 50 px brush; gel off the burn is wasted, not a slip; 85% covered to close.
+- **Fracture:** grab the loose bone anywhere along it, drag it to its ghost; it snaps in within about 25 px, and
+  holding it knits. Letting go pauses. Only yanking it out of the socket in the same hold slips.
+- **Bleed:** a hand goes round a ring once a beat, the spurt hatched red and the gap solid green; clamp in the gap,
+  then seal the tear like a cut.
+- **Smoke:** the chest widens and a breath gauge climbs on the in-breath; puff then, once a breath.
 
 ## 7. The Pi 5 budget
 
