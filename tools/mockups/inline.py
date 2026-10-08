@@ -14,7 +14,8 @@ current files between them (CLAUDE.md section 11):
 "data:<ship>/<name>" copies data/ships/<ship>/<name>.json into a
 <script id="ship-data-<name>" type="application/json"> block, for mockups that
 read a ship's other data files (power.json, atmosphere.json, detailing.json).
-"data:lighting/<name>" copies data/lighting/<name>.json (fixtures, bake) the same way.
+"data:lighting/<name>" copies data/lighting/<name>.json (fixtures, bake) the same way, and
+"data:crew/<name>" data/crew/<name>.json (the walk's numbers, crew-on-deck).
 "bakecache:<name>" copies docs/mockups/cache/<name>.bin (a page's baked light, written by
 tools/mockups/bake_ship.mjs --write-cache) as base64 into <script id="bake-cache-<name>">, empty when
 there is none; --check also fails when a cache was baked by another lightbake.js.
@@ -204,8 +205,8 @@ def block(kind):
     if kind.startswith("data:"):
         ship, name = kind.split(":", 1)[1].split("/", 1)
         # data:lighting/<name> is data/lighting/<name>.json (the fixture types and bake settings, light-baking
-        # design 15); any other data:<ship>/<name> is a ship's data file.
-        sub = (ship,) if ship == "lighting" else ("ships", ship)
+        # design 15), data:crew/<name> data/crew/<name>.json (the walk); any other data:<ship>/<name> a ship's file.
+        sub = (ship,) if ship in ("lighting", "crew") else ("ships", ship)
         with open(os.path.join(ROOT, "data", *sub, name + ".json"), encoding="utf-8") as f:
             data = json.load(f)
         text = json.dumps(data, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")

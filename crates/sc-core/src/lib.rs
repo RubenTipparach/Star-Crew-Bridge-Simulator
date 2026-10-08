@@ -13,3 +13,4 @@ pub mod deck;
 pub mod replay;
 pub mod rng;
 pub mod vertex;
+pub mod walk;

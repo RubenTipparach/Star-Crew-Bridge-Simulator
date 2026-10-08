@@ -15,7 +15,7 @@ members = [
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.85"
+rust-version = "1.86"   # rapier3d 0.36 needs 1.86
 license = "UNLICENSED"
 publish = false
 
@@ -25,6 +25,8 @@ sc-net = { path = "crates/sc-net" }
 sc-render = { path = "crates/sc-render" }
 sc-client = { path = "crates/sc-client" }
 glam = "0.34"
+# The character controller and collision queries for walking (crew-on-deck 3a, deck-pipeline 13a): pure Rust, no GPU.
+rapier3d = "0.36"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 log = "0.4"

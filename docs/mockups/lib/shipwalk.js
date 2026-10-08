@@ -21,7 +21,7 @@
  *     page leaves the steps out and passes the ramps as covers). The eye follows the feet smoothed. Without
  *     Rapier (o.rapier null: the CDN did not load) it falls back to the first controller over an Octree.
  * Input: W A S D or the arrows, the mouse (click to capture it, or drag), Shift to run, E to use (climb, go
- * through a hatch, take the lift up), Q to take the lift down, Esc to stop. On a touch screen: a stick on the
+ * through a hatch, take the lift up), Q to take the lift or a ladder down, Esc to stop. On a touch screen: a stick on the
  * left, drag on the right to look, and buttons.
  *
  * Why a lib of its own: every interior page can walk with it (CLAUDE.md 6.1). freecam.js's walk keeps the
@@ -30,29 +30,35 @@
  */
 (function () {
   "use strict";
-  // crew-on-deck's proposed data/crew.json (design section 15): capsule, move and ladder.
-  const BODY = { radius_m: 0.25, height_m: 1.80, eye_m: 1.65, step_m: 0.35 };
-  // Starting and stopping are quick (owner, 2026-10-08: "walking is to much like ice skating"): crew-on-deck section 3.
-  const MOVE = { walk_m_s: 1.8, run_m_s: 4.0, back_scale: 0.7, stair_scale: 0.7, accel_m_s2: 20.0, stop_m_s2: 30.0 };
-  const LADDER = { up_m_s: 2.0, down_m_s: 2.5, mount_s: 0.15, dismount_s: 0.15 };
-  const SIDE_HATCH_S = 0.6;          // a hatch in a wall
-  // Doors (crew-on-deck section 5): a door opens when a body comes within ZONE_M of its plane, inside its width plus
-  // ZONE_SIDE_M, and closes CLOSE_AFTER_S after the zone is empty; a pressure door opens and closes on E only.
+  // The walk's numbers are data/crew/walk.json (crew-on-deck sections 2-5 and 3a), inlined into the page between the
+  // "INLINE data:crew/walk" markers: the engine's sc-core::walk reads the same file, so the two walk alike.
+  const WD = (() => {
+    const el = document.getElementById("ship-data-walk");
+    if (!el) throw new Error("shipwalk: no #ship-data-walk in the page (add <!-- INLINE data:crew/walk --> markers and run tools/mockups/inline.py)");
+    return JSON.parse(el.textContent);
+  })();
+  const BODY = WD.body, MOVE = WD.move;   // the capsule; walk, run and back speeds, and the starting and stopping rates
+  const LADDER = { up_m_s: WD.ladder.up_m_s, down_m_s: WD.ladder.down_m_s, mount_s: WD.ladder.mount_s, dismount_s: WD.ladder.dismount_s };
+  const SIDE_HATCH_S = WD.side_hatch_s;   // a hatch in a wall
+  // Doors (crew-on-deck section 5): a door opens when a body comes within zone_m of its plane, inside its width plus
+  // zone_side_m, and closes close_after_s after the zone is empty; a pressure door opens and closes on E only.
   // Neither closes on a body in the doorway. Times are opening and closing, seconds.
-  const DOOR = { zone_m: 3.0, zone_side_m: 0.5, close_after_s: 2.0, door_s: [0.6, 0.8], pressure_s: [2.0, 2.0], passable: 0.9, thick_m: 0.04 };
+  const DOOR = { zone_m: WD.door.zone_m, zone_side_m: WD.door.zone_side_m, close_after_s: WD.door.close_after_s,
+    door_s: [WD.door.open_s, WD.door.close_s], pressure_s: [WD.door.pressure_open_s, WD.door.pressure_close_s],
+    passable: WD.door.passable, thick_m: WD.door.thick_m };
   // Rapier's controller (crew-on-deck section 3a): the gap it keeps, the step it climbs over a ledge at least
-  // STEP_DEPTH_M deep, how far below it keeps the feet on the floor, and the slopes it climbs and slides on (the
+  // step_depth_m deep, how far below it keeps the feet on the floor, and the slopes it climbs and slides on (the
   // Tern's straight stairs are 41-43 degrees and a spiral's walk line 44, steeper toward its column).
-  const KCC = { offset_m: 0.02, step_depth_m: 0.15, snap_m: 0.4, climb_deg: 62, slide_deg: 70 };
-  const EYE_TAU_S = 0.08, EYE_LAG_M = 0.25;   // the eye follows the feet's height smoothed, never further behind
-  const GRAVITY_M_S2 = 9.81, FALL_MAX_M_S = 20;
-  // A jump (owner, 2026-10-08: "bring back jumping, its kinda weird without it"; crew-on-deck section 3): 3.0 m/s up,
-  // about 0.46 m at full gravity; for JUMP_LIFT_S after take-off the floor under the feet does not count as landing.
-  const JUMP_M_S = 3.0, JUMP_LIFT_S = 0.12;
-  const DROP_M = 0.4;                // how far below the feet a walking body still finds its floor (a stair down)
-  const REACH_M = 0.9;               // how near a ladder's or hatch's centre the body stands to use it
-  const CALL_M = 1.8;                // how near a lift door calls the car
-  const SUBSTEP_S = 1 / 120;
+  const KCC = WD.controller;
+  const EYE_TAU_S = WD.eye.tau_s, EYE_LAG_M = WD.eye.lag_m;   // the eye follows the feet's height smoothed, never further behind
+  const GRAVITY_M_S2 = WD.gravity_m_s2, FALL_MAX_M_S = WD.fall_max_m_s;
+  // A jump (owner, 2026-10-08: "bring back jumping"; crew-on-deck section 3): about 0.46 m at full gravity; for lift_s
+  // after take-off the floor under the feet does not count as landing.
+  const JUMP_M_S = WD.jump.speed_m_s, JUMP_LIFT_S = WD.jump.lift_s;
+  const DROP_M = WD.drop_m;               // how far below the feet a walking body still finds its floor (a stair down)
+  const REACH_M = WD.ladder.reach_m;      // how near a ladder's or hatch's centre the body stands to use it
+  const CALL_M = WD.lift_call_m;          // how near a lift door calls the car
+  const SUBSTEP_S = WD.substep_s;
   const LOOK_RAD_PX = 0.0022, TOUCH_LOOK_RAD_PX = 0.005, PITCH_MAX = 1.45, STICK_PX = 48;
 
   /** True when (x, z) is inside a polygon of [x, z] corners. */
@@ -298,13 +304,14 @@
       const to = h.sides[1 - from];
       run([{ dur: SIDE_HATCH_S, to: P(to.x, to.y, to.z) }]);
     }
-    /** What E does here, or null: { label, go }. */
-    function choice() {
+    /** What E does here, or null: { label, go }; with down, a ladder down before one up (Q, where a trunk goes both ways:
+     * the engine's sc-core::walk has the same rule). */
+    function choice(down) {
       if (action) return null;
       const l = liftIn(pos.x, pos.z);
       if (l) return null;   // a car has its own buttons
-      for (const d of ladders) {
-        if (Math.hypot(d.x - pos.x, d.z - pos.z) > REACH_M) continue;
+      const near = ladders.filter((d) => Math.hypot(d.x - pos.x, d.z - pos.z) <= REACH_M);
+      for (const d of near.slice().sort((a, b) => (Math.abs(pos.y - a.hi) < 0.4) === down ? -1 : (Math.abs(pos.y - b.hi) < 0.4) === down ? 1 : 0)) {
         if (Math.abs(pos.y - d.lo) < 0.4) return { label: "Climb up" + (d.name ? " to " + d.name.up : ""), go: () => climb(d, true) };
         if (Math.abs(pos.y - d.hi) < 0.4) return { label: "Climb down" + (d.name ? " to " + d.name.down : ""), go: () => climb(d, false) };
       }
@@ -335,7 +342,8 @@
         keepInside(l); request(l, l.stops[j]);
         return;
       }
-      if (dir > 0) { const c = choice(); if (c) c.go(); }
+      const c = choice(dir < 0);
+      if (c && (dir > 0 || /^Climb down/.test(c.label))) c.go();
     }
 
     // ---------------------------------------------------------------- the step
@@ -468,7 +476,7 @@
         for (const b of [upB, downB, useB, runB]) b.type = "button";
         upB.onclick = () => use(1); downB.onclick = () => use(-1); useB.onclick = () => use(1);
         runB.onclick = () => { runToggle = !runToggle; runB.classList.toggle("on", runToggle); };
-      } else el("div", "sw-keys", root, "W A S D move, mouse looks (click to capture), Shift run, Space jump, E use, Q lift down, Esc stop");
+      } else el("div", "sw-keys", root, "W A S D move, mouse looks (click to capture), Shift run, Space jump, E use, Q down (a lift or a ladder), Esc stop");
       function refresh() { for (const { b, e } of pageBtns) e.textContent = b.label(); }
       refresh();
       return { root, where, prompt, upB, downB, useB, knob, refresh };

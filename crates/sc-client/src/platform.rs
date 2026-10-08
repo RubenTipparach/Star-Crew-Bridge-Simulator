@@ -73,6 +73,8 @@ pub mod keys {
     pub const LSHIFT: u32 = sdl::SDLK_LSHIFT.0;
     /// Tab.
     pub const TAB: u32 = sdl::SDLK_TAB.0;
+    /// F: walk or fly.
+    pub const F: u32 = sdl::SDLK_F.0;
 }
 
 /// An input event, as the app sees it.

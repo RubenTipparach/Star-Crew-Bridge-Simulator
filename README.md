@@ -32,7 +32,7 @@ whole Tern, lit by the bake in the three lighting states (`engine-stack` design 
 cargo build --release                     # SDL 3.4 is built from source the first time (cmake, a C compiler)
 node tools/deck/export_deck.mjs           # the ship as the deck plan builds it (Node and Playwright)
 ./target/release/sc-tools deckc           # compiled/tern.deck
-./target/release/sc-client --window       # fly the Tern: click, W A S D, Space and C, Shift; 1 2 3 the lighting states; F12 a capture
+./target/release/sc-client --window       # walk the Tern from the bridge: click, W A S D, Shift, Space jumps, E/Q ladders; F flies; 1 2 3 the lighting states; F12 a capture
 ./target/release/sc-probe --out docs/benchmarks/$(date +%F)-pi5-probe   # on a Pi 5, full screen
 ./scripts/check.sh                        # every check, in order (also runs the rows below)
 ```
@@ -41,7 +41,8 @@ On Linux the build needs the OpenGL ES and EGL development files (on Debian and 
 `libegl-dev libgles-dev libdrm-dev libgbm-dev libudev-dev libasound2-dev`, plus the X11 or
 Wayland ones for a desktop window). Without a display, `--headless` draws through SDL's offscreen
 driver (Mesa's llvmpipe in a cloud session): `sc-client --headless --shots DIR` writes the three
-states, and the render tests run that way. Shaders are compiled with `python3 tools/sokol_shaders.py`,
+states, and the render tests run that way; `sc-client --headless --walk-test DIR` walks a route from the
+bridge down both ladders to deck C, capturing along it, and fails if the body does not arrive. Shaders are compiled with `python3 tools/sokol_shaders.py`,
 which fetches the pinned `sokol-shdc`; the generated modules are committed.
 
 **On a Raspberry Pi 5:** [docs/engine/pi-setup.md](docs/engine/pi-setup.md) (the card, packages,

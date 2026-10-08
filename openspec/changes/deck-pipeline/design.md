@@ -673,6 +673,76 @@ not compile it. `build/` and `compiled/` are build output and are not committed.
 format, and the kit's rules move into it with tests; until then a change to the kit reaches the
 engine by re-running the two commands.
 
+### 13a. The first walk in the engine (2026-10-08)
+
+The owner, after the deck plan's second walk: "back to building the engine". The client flies; the next
+step is to walk the Tern in it as the deck plan does. The same decision as section 13: the engine takes the
+walk world the deck plan already builds, rather than a second copy of its rules.
+
+**The walk world, exported.** The deck plan's walk collides against one triangle soup built by its own
+rules (`deck-plan.html`: `collisionSoups`, `stairRamps`, `walkCovers`, `propBoxes`): every room's shell
+without its ceilings and trims, every stair as a ramp, covers over the openings a body must not fall
+through, props as boxes, round machines as prisms, chairs as pedestals, the Petrel as its own triangles.
+`MOCKUP_EXPORT_DECK` exports that soup and the walk's entities beside the render meshes:
+
+| Entity | Fields | From |
+| --- | --- | --- |
+| Start | the floor point and facing a walk starts at (the bridge, by its door) | `walkStart` |
+| Ladders and floor hatches | x, z, the lower and upper floor | `walkLadders` |
+| Wall hatches | x, z, the wall's normal, the sill | `walkHatches` |
+| Doors | centre, normal, width, height, kind, portal id | `walkDoors` |
+| The lift | footprint, stops, the car's floor | `walkLifts` |
+
+**The file.** `compiled/<ship>.deck` goes to version 2: the index gains `walk`, the triangle soup in ship
+coordinates (`f32`, the ship is under 100 m across, so the frames rule is kept) and the entities as JSON, the
+triangles' range checked like every other blob. A version 1 file is refused with the command that rebuilds it.
+
+**The body: `sc-core::walk`.** Rapier's kinematic character controller (`rapier3d`, pure Rust, no GPU), as
+`crew-on-deck` section 3a decided, over one static triangle mesh of the soup. One step of `walk::step`
+takes the input (move, run, jump, use) and a fixed time step and does what `shipwalk.js` does in its
+Rapier path: speed up at 20 m/s^2 and brake at 30, walk 1.8 m/s and run 4.0, 70 % backwards, climb steps and
+ramps (autostep 0.35 m, snap 0.4 m, slopes to 62 degrees), slide along walls, fall at 9.81 m/s^2, jump at
+3.0 m/s, climb a ladder or go through a hatch with Use. The values are **`data/crew/walk.json`**, units in
+the keys, loaded with `deny_unknown_fields`; the deck plan's `shipwalk.js` reads the same file (inlined),
+so the mockup and the engine cannot walk differently by their numbers. The eye follows the feet smoothed
+(0.08 s, never more than 0.25 m behind) in the client, as the camera is the client's.
+
+**What this step leaves out**, each for its own change: doors stand open (the engine draws no leaves yet,
+so they are not walls either); the lift's car stays at deck A where it is drawn, and the shaft is walled at
+every landing it is not at; no other bodies, no network, no prediction (`crew-on-deck` 4.2); the console
+faces and windows (7.5).
+
+**The client.** `sc-client` starts on its feet on the bridge, by its door. F toggles flying; E uses; Space
+jumps; Shift runs. Headless shots walk a scripted path (the bridge, the stair down, the corridor) and
+capture along it, so a shot proves the body got there.
+
+**Tests** (`sc-core`, on small built meshes, not the Tern): a body reaches walking speed in about a tenth
+of a second and stops as quickly; a wall stops it and it slides along; it walks up a 41 degree ramp and a
+0.3 m step; it falls off a ledge and lands; a jump rises about 0.46 m; a ladder takes it to the floor above.
+On the real deck, the client's headless run walks its path and fails if the body ends anywhere but where
+the path ends.
+
+**Built (2026-10-08).** `compiled/tern.deck` version 2: 173,655 render triangles and a walk world of 93,393
+(93,277 after the degenerate ones are dropped), 62.2 MB in all. The client builds the walk world in 43 ms
+(llvmpipe container, release build). `sc-core` has eight tests of the body (speed, braking, a wall, a ramp and a
+0.3 m step, a ledge, a jump, a ladder, a trunk of two ladders, a lift landing); `sc-client --headless --walk-test`
+walks the Tern from the bridge down both ladders to deck C's corridor and arrives within 3 cm of the route's end.
+Shots: `docs/screenshots/engine/walk-*.png`.
+
+**Found on the way.**
+- Rapier 0.36's own autostep never steps. It first casts the body straight up with the skin gap as its
+  tolerance, and a body standing against a riser at that gap always counts as blocked. `sc-core::walk` steps up
+  itself: a grounded body stopped by a wall is lifted by the step height, carried a step's depth onto the ledge if
+  there is room, and set down there, never into anything.
+- Where two ladders meet (the trunk at z 11 runs A to B and B to C), Use took whichever came first, back up the
+  way the body came. Now E prefers the way up and Q the way down, in the engine and in the deck plan.
+
+**The Pi 5 budget.** The soup is the deck plan's walk world, 93,393 triangles,
+which Rapier holds with its bounding volume tree: measured on the desktop at load, to be measured on the Pi
+by the probe. A body's step is one character-controller query a substep at 120 Hz. One body in the client
+today; the server will run every body (about eight). Memory and step time are reported by the client at
+load and in the headless run; the budget table gains a walk row when the probe has measured it.
+
 ## Risks / Trade-offs
 
 - **The kit can make every room look the same.** Mitigation: hero detail files for the bridge

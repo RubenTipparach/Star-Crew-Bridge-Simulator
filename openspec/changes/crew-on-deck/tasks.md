@@ -21,6 +21,7 @@ the write-up.
 ## 3. Core (`sc-core::crew`)
 
 - [ ] 3.1 `crew::step`: capsule movement against `deck-pipeline`'s query, slide and step-up, speeds, grip-limited acceleration, stairs, crouch, falling; test `a_body_reaches_walking_speed_in_a_third_of_a_second`.
+  - First form built (2026-10-08, `deck-pipeline` 13a): `sc-core::walk` moves a standing body over the deck plan's exported walk world on Rapier's character controller (slide, step-up, speeds and rates, stairs as ramps, falling, a jump, ladders and wall hatches), from `data/crew/walk.json`, with its tests. Crouch, grip, `deck-pipeline`'s own query and compartment tracking remain.
 - [ ] 3.2 Ladders: volumes, getting on and off, speeds, one body per 1.8 m, hands rules; test `a_trolley_cannot_be_taken_onto_a_ladder`.
 - [ ] 3.3 Doors, hatches and pressure doors: approach sensing, times, never closing on a body, locks, `life-support`'s interlock (20 kPa) and the override hold; tests `a_door_will_not_open_into_vacuum` and `a_closing_door_waits_for_the_body_in_it`.
 - [ ] 3.4 Use: reach, line of sight, posture and hands checks; items as interior objects; pick up and drop; the trolley's push, brake and room limits.

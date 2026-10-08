@@ -59,4 +59,7 @@
 - [x] 7.3 `sc-tools deckc`: packs with `sc-core`'s vertex packer, merges identical vertices, remaps and resamples the texture arrays into one, builds the mip chain.
 - [x] 7.4 `sc-client` draws the whole Tern in the three states and flies through it; headless shots from the deck plan's walk viewpoints in `docs/screenshots/engine/`.
 - [ ] 7.5 The console faces and the viewscreens and windows (space) in the engine.
+- [x] 7.6 The walk world exported with the deck (design section 13a): the deck plan's collision soup and walk entities in `MOCKUP_EXPORT_DECK`, carried by `export_deck.mjs`, packed by `deckc` into deck version 2, read with every range checked.
+- [x] 7.7 `sc-core::walk` on Rapier's character controller with `data/crew/walk.json` (read by `shipwalk.js` too); tests that read as sentences.
+- [x] 7.8 `sc-client` walks: on its feet on the bridge, F to fly, a scripted headless walk with shots in `docs/screenshots/engine/`.
 

@@ -14,7 +14,9 @@
 //! - identical vertices merged, in first-seen order (stable), behind 32-bit indices;
 //! - a full mip chain for the texture array (box filter), sampled nearest up close.
 
-use sc_core::deck::{self, DeckCompartment, DeckIndex, DeckTextures};
+use sc_core::deck::{
+    self, DeckCompartment, DeckIndex, DeckTextures, DeckWalk, WalkDoor, WalkHatch, WalkLadder, WalkLift, WalkStart,
+};
 use sc_core::vertex::{pack_deck_vertex, DeckVertexIn};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -30,6 +32,19 @@ struct Export {
     panel_glow: Glow,
     textures: ExportTextures,
     rooms: Vec<Room>,
+    walk: ExportWalk,
+}
+/// The walk world as the deck plan exported it (deck-pipeline 13a): the triangles' file and the entities.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ExportWalk {
+    triangles: String,
+    triangle_count: u64,
+    start: WalkStart,
+    ladders: Vec<WalkLadder>,
+    hatches: Vec<WalkHatch>,
+    doors: Vec<WalkDoor>,
+    lifts: Vec<WalkLift>,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -245,6 +260,9 @@ pub fn run(root: &Path, ship: &str) -> Result<String, String> {
             index_count: (indices.len() - first_index) as u32,
         });
     }
+    // The walk world: its triangles carried as they are, checked finite and whole.
+    let w = &ex.walk;
+    let walk_tris = floats(&dir, &w.triangles, w.triangle_count as usize * 9)?;
     let index = DeckIndex {
         ship: ex.ship.clone(),
         source: "the deck plan's kit (docs/mockups/lib/shipkit.js) via tools/deck/export_deck.mjs".into(),
@@ -260,14 +278,22 @@ pub fn run(root: &Path, ship: &str) -> Result<String, String> {
         vertex_bytes: vertices.len() as u64,
         index_count: indices.len() as u64,
         texture_bytes: tex_blob.len() as u64,
+        walk: DeckWalk {
+            triangle_count: w.triangle_count,
+            start: w.start.clone(),
+            ladders: w.ladders.clone(),
+            hatches: w.hatches.clone(),
+            doors: w.doors.clone(),
+            lifts: w.lifts.clone(),
+        },
     };
-    let bytes = deck::write(&index, &vertices, &indices, &tex_blob);
+    let bytes = deck::write(&index, &vertices, &indices, &tex_blob, &walk_tris);
     deck::read(&bytes).map_err(|e| format!("the deck just written does not read back: {e}"))?;
     let out = root.join("compiled").join(format!("{ship}.deck"));
     std::fs::create_dir_all(out.parent().unwrap()).map_err(|e| e.to_string())?;
     std::fs::write(&out, &bytes).map_err(|e| format!("{}: {e}", out.display()))?;
     Ok(format!(
-        "{}: {} compartments, {} triangles, {} vertices ({:.1} MB), {} texture layers of {} px with {} mips ({:.1} MB), {:.1} MB in all",
+        "{}: {} compartments, {} triangles, {} vertices ({:.1} MB), {} texture layers of {} px with {} mips ({:.1} MB), a walk world of {} triangles, {:.1} MB in all",
         out.display(),
         index.compartments.len(),
         tris,
@@ -277,6 +303,7 @@ pub fn run(root: &Path, ship: &str) -> Result<String, String> {
         size,
         index.textures.mips,
         tex_blob.len() as f64 / 1e6,
+        w.triangle_count,
         bytes.len() as f64 / 1e6
     ))
 }

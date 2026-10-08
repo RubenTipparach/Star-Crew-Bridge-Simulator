@@ -1,18 +1,24 @@
 //! `sc-client`: the game client (engine-stack design sections 3 and 6).
 //!
-//! Today it loads the ship's compiled decks (`compiled/tern.deck`, from `sc-tools deckc`) and lets you fly
-//! through every compartment, lit by the bake in the three lighting states, blended by the state weights as
-//! the decks will be (keys 1, 2 and 3: normal, red alert, emergency power). Click to look around with the
-//! mouse; W A S D move, Space and C rise and sink, Shift is faster; Tab lets the mouse go; F12 writes a
-//! capture; Escape quits. There is no walking, collision, portal culling or simulation yet: it is a fly-through
-//! of the level. Without a compiled deck it shows first light's test room and says how to build the deck.
+//! Today it loads the ship's compiled decks (`compiled/tern.deck`, from `sc-tools deckc`), every compartment lit
+//! by the bake in the three lighting states, blended by the state weights as the decks will be (keys 1, 2 and 3:
+//! normal, red alert, emergency power), and puts you on your feet on the bridge (deck-pipeline 13a): a body
+//! walking the deck plan's walk world with `sc-core::walk` and the numbers of `data/crew/walk.json`. Click to look
+//! around with the mouse; W A S D walk, Shift runs, Space jumps, E climbs a ladder (up where a trunk goes both ways; Q down) or goes through a hatch; F flies
+//! instead (Space and C rise and sink) and lands you where you are; Tab lets the mouse go; F12 writes a capture;
+//! Escape quits. Doors stand open and the lift stays at deck A (13a); there is no portal culling or simulation
+//! yet. Without a compiled deck it shows first light's test room and says how to build the deck.
 //!
-//! Usage: sc-client [--window] [--deck compiled/tern.deck] [--headless --shots DIR]
+//! Usage: sc-client [--window] [--deck compiled/tern.deck] [--headless --shots DIR] [--headless --walk-test DIR]
+//!
+//! `--walk-test DIR` walks a scripted route from the bridge down both ladders to deck C, captures along it, and
+//! fails if the body does not arrive where the route ends.
 
 mod first_light;
 
 use glam::{Mat4, Vec3};
 use sc_client::platform::{self, keys, App, Event, Flow, Frame, WindowConfig};
+use sc_core::walk::{self, Body, Input, WalkData, WalkEntities, WalkWorld};
 use sc_render::{DeckParams, DeckProgram, Indices, Mesh, Renderer, Target, TextureArray};
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -40,6 +46,43 @@ const POSES: &[(&str, [f64; 3], [f32; 2], f32)] = &[
     ("eng-lower", [0.0, -3.5, -18.9], [0.12, -1.0], 10.0),
 ];
 
+/// The scripted walk of `--walk-test`: from the bridge's start aft through its door, down the command passage to
+/// the ladder trunk, down to deck B and on down to deck C, with a shot at each stage. Plan positions `[x, z]`.
+enum Leg {
+    /// Walk to a point.
+    To([f32; 2]),
+    /// Use (climb the ladder in reach, down if `true`) and wait until off it.
+    Use(bool),
+    /// Face `[x, z]` at a pitch (degrees), settle, and capture.
+    Shot(&'static str, [f32; 2], f32),
+}
+const ROUTE: &[Leg] = &[
+    Leg::Shot("walk-1-bridge", [0.0, 1.0], -8.0),
+    Leg::To([0.0, 20.6]),
+    Leg::To([0.0, 15.0]),
+    Leg::Shot("walk-2-command-passage", [0.0, -1.0], -6.0),
+    Leg::To([0.0, 11.3]),
+    Leg::Use(true),
+    Leg::Shot("walk-3-deck-B-at-the-ladder", [0.0, 1.0], -4.0),
+    Leg::Use(true),
+    Leg::Shot("walk-4-deck-C-at-the-ladder", [0.0, -1.0], -4.0),
+    // The ladder's rails and rungs stand just aft of where the climb ends: step round them.
+    Leg::To([0.85, 11.3]),
+    Leg::To([0.85, 9.5]),
+    Leg::To([0.0, 6.0]),
+    Leg::Shot("walk-5-deck-C-corridor", [0.0, -1.0], -6.0),
+];
+/// Where the route must end, ship coordinates (deck C's spine aft of the trunk), and how near.
+const ROUTE_END: ([f32; 3], f32) = ([0.0, -3.5, 6.0], 0.3);
+
+/// A body on the decks and the eye that follows it.
+struct Walker {
+    world: WalkWorld,
+    data: WalkData,
+    body: Body,
+    eye_y: f32,
+}
+
 struct Camera {
     pos: [f64; 3],
     yaw: f32,
@@ -57,8 +100,18 @@ impl Camera {
 }
 
 enum Scene {
-    Ship { rooms: Vec<(Mesh, [f64; 3])>, tex: TextureArray, panel_first: u32, panel_glow: [f32; 3], triangles: usize },
-    TestRoom { room: Mesh, tex: TextureArray },
+    Ship {
+        rooms: Vec<(Mesh, [f64; 3])>,
+        tex: TextureArray,
+        panel_first: u32,
+        panel_glow: [f32; 3],
+        triangles: usize,
+        start: sc_core::deck::WalkStart,
+    },
+    TestRoom {
+        room: Mesh,
+        tex: TextureArray,
+    },
 }
 
 struct Client {
@@ -75,9 +128,17 @@ struct Client {
     shot_frame: u64,
     capture_next: bool,
     r: Renderer,
+    walker: Option<Walker>,
+    flying: bool,
+    /// One-shot keys this frame (jump, use), taken by the walk's next step.
+    pressed: HashSet<u32>,
+    /// `--walk-test`: the leg on now, its seconds so far, and the frames a shot has settled.
+    walk_test: Option<(usize, f64, u32)>,
+    /// The walk test: the feet's height when a Use began.
+    use_from: f32,
 }
 
-fn load_ship(r: &Renderer, path: &std::path::Path) -> Result<Scene, String> {
+fn load_ship(r: &Renderer, path: &std::path::Path) -> Result<(Scene, Option<Walker>), String> {
     let bytes = std::fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
     let d = sc_core::deck::read(&bytes).map_err(|e| format!("{}: {e}", path.display()))?;
     let t = &d.index.textures;
@@ -103,34 +164,79 @@ fn load_ship(r: &Renderer, path: &std::path::Path) -> Result<Scene, String> {
         triangles,
         t.layers
     );
-    Ok(Scene::Ship { rooms, tex, panel_first: t.panel_first, panel_glow: t.panel_glow, triangles })
+    // The walk world (deck-pipeline 13a) and the walk's numbers.
+    let text = std::fs::read_to_string("data/crew/walk.json").map_err(|e| format!("data/crew/walk.json: {e}"))?;
+    let data: WalkData = sc_core::data::parse("data/crew/walk.json", &text).map_err(|e| e.to_string())?;
+    let w = &d.index.walk;
+    let ents = WalkEntities {
+        ladders: w.ladders.clone(),
+        hatches: w.hatches.clone(),
+        doors: w.doors.clone(),
+        lifts: w.lifts.clone(),
+    };
+    let t0 = std::time::Instant::now();
+    let world = WalkWorld::new(&d.walk_triangles(), &ents, &data)?;
+    println!(
+        "sc-client: walk world of {} triangles built in {:.0} ms; {} ladders, {} hatches, {} doors",
+        world.triangles,
+        t0.elapsed().as_secs_f64() * 1000.0,
+        w.ladders.len(),
+        w.hatches.len(),
+        w.doors.len()
+    );
+    let body = Body::at_start(&w.start, &data);
+    let eye_y = w.start.at_m[1];
+    let walker = Walker { world, data, body, eye_y };
+    let scene = Scene::Ship {
+        rooms,
+        tex,
+        panel_first: t.panel_first,
+        panel_glow: t.panel_glow,
+        triangles,
+        start: w.start.clone(),
+    };
+    Ok((scene, Some(walker)))
 }
 
 impl Client {
-    fn new(deck: PathBuf, shots: Option<PathBuf>) -> Result<Self, String> {
+    fn new(deck: PathBuf, shots: Option<PathBuf>, walk_test: bool) -> Result<Self, String> {
         let text =
             std::fs::read_to_string("data/engine/render.json").map_err(|e| format!("data/engine/render.json: {e}"))?;
         let cfg = sc_core::data::parse("data/engine/render.json", &text).map_err(|e| e.to_string())?;
         let mut r = Renderer::new(&cfg);
         let target = r.make_target(RENDER_3D.0, RENDER_3D.1, 4);
-        let scene = match load_ship(&r, &deck) {
+        let (scene, walker) = match load_ship(&r, &deck) {
             Ok(s) => s,
+            Err(e) if walk_test => return Err(format!("--walk-test needs the ship: {e}")),
             Err(e) => {
                 eprintln!("sc-client: no ship ({e}); showing first light's test room.");
                 eprintln!("sc-client: build the deck with: node tools/deck/export_deck.mjs && cargo run --release -p sc-tools -- deckc");
                 let (v, i) = first_light::room();
                 let (size, layers) = first_light::layers();
-                Scene::TestRoom { room: r.make_mesh(&v, Indices::U16(&i)), tex: r.make_texture_array(size, &layers) }
+                (
+                    Scene::TestRoom {
+                        room: r.make_mesh(&v, Indices::U16(&i)),
+                        tex: r.make_texture_array(size, &layers),
+                    },
+                    None,
+                )
             }
         };
-        let cam = match scene {
-            Scene::Ship { .. } => Camera::at(&POSES[0]),
+        let cam = match &scene {
+            Scene::Ship { start, .. } => Camera {
+                pos: [f64::from(start.at_m[0]), f64::from(start.at_m[1]) + EYE_M, f64::from(start.at_m[2])],
+                yaw: start.face[0].atan2(start.face[1]),
+                pitch: 0.0,
+            },
             Scene::TestRoom { .. } => Camera { pos: [0.0, 1.65, -2.6], yaw: 0.0, pitch: -0.1 },
         };
-        // Headless shots: every pose (the ship) or one view (the test room), in each state.
+        // Headless shots: every pose (the ship) or one view (the test room), in each state; a walk test instead walks.
         let poses = if matches!(scene, Scene::Ship { .. }) { POSES.len() } else { 1 };
-        let shot_plan =
-            if shots.is_some() { (0..poses).flat_map(|p| (0..3).map(move |s| (p, s))).collect() } else { Vec::new() };
+        let shot_plan = if shots.is_some() && !walk_test {
+            (0..poses).flat_map(|p| (0..3).map(move |s| (p, s))).collect()
+        } else {
+            Vec::new()
+        };
         Ok(Self {
             target,
             scene,
@@ -145,7 +251,100 @@ impl Client {
             shot_frame: 0,
             capture_next: false,
             r,
+            flying: walker.is_none(),
+            walker,
+            pressed: HashSet::new(),
+            walk_test: walk_test.then_some((0, 0.0, 0)),
+            use_from: 0.0,
         })
+    }
+
+    /// One step of the body from the keys (or the walk test's steering), and the camera on its eye.
+    fn walk(&mut self, dt: f64, steer: Option<Input>) {
+        let Some(w) = self.walker.as_mut() else { return };
+        let k = |c: u32| if self.held.contains(&c) { 1.0 } else { 0.0 };
+        let input = steer.unwrap_or(Input {
+            forward: k(keys::W) - k(keys::S),
+            right: k(keys::D) - k(keys::A),
+            yaw: self.cam.yaw,
+            run: self.held.contains(&keys::LSHIFT),
+            jump: self.pressed.contains(&keys::SPACE),
+            use_: self.pressed.contains(&keys::E) || self.pressed.contains(&keys::Q),
+            down: self.pressed.contains(&keys::Q),
+        });
+        self.pressed.clear();
+        w.body.step(&w.world, &w.data, &input, dt);
+        w.eye_y = walk::eye_follow(w.eye_y, w.body.feet[1], dt as f32, &w.data, w.body.climbing());
+        let f = w.body.feet;
+        self.cam.pos = [f64::from(f[0]), f64::from(w.eye_y) + w.data.body.eye_m, f64::from(f[2])];
+    }
+
+    /// The walk test's next move: steering toward a leg's point, a use, or a shot. Returns the input, the shot
+    /// file name when one is due, and whether the route is done (Err: it failed).
+    fn walk_test_step(&mut self, dt: f64) -> Result<(Option<Input>, Option<String>, bool), String> {
+        let Some((leg, t, settle)) = self.walk_test else { return Ok((None, None, false)) };
+        let Some(w) = self.walker.as_ref() else { return Err("no walker".into()) };
+        let feet = w.body.feet;
+        let next = |s: &mut Self| s.walk_test = Some((leg + 1, 0.0, 0));
+        let Some(l) = ROUTE.get(leg) else {
+            let (end, tol) = ROUTE_END;
+            let off = ((feet[0] - end[0]).powi(2) + (feet[1] - end[1]).powi(2) + (feet[2] - end[2]).powi(2)).sqrt();
+            return if off <= tol {
+                println!("sc-client: walk test: arrived at {feet:?}, {off:.2} m from the route's end");
+                Ok((None, None, true))
+            } else {
+                Err(format!("walk test: the body ended at {feet:?}, {off:.2} m from {end:?}"))
+            };
+        };
+        self.walk_test = Some((leg, t + dt, settle));
+        match l {
+            Leg::To(p) => {
+                let (dx, dz) = (p[0] - feet[0], p[1] - feet[2]);
+                if dx.hypot(dz) < 0.12 {
+                    next(self);
+                    return Ok((Some(Input { yaw: self.cam.yaw, ..Input::default() }), None, false));
+                }
+                if t > 20.0 {
+                    return Err(format!("walk test: leg {leg} did not reach {p:?} in 20 s; the body is at {feet:?}"));
+                }
+                self.cam.yaw = dx.atan2(dz);
+                Ok((Some(Input { forward: 1.0, yaw: self.cam.yaw, ..Input::default() }), None, false))
+            }
+            Leg::Use(down) => {
+                if t == 0.0 {
+                    let y0 = feet[1];
+                    self.use_from = y0;
+                    return Ok((
+                        Some(Input { use_: true, down: *down, yaw: self.cam.yaw, ..Input::default() }),
+                        None,
+                        false,
+                    ));
+                }
+                if !w.body.climbing() && t > 0.1 {
+                    if !w.body.grounded {
+                        return Ok((Some(Input { yaw: self.cam.yaw, ..Input::default() }), None, false));
+                    }
+                    if (feet[1] - self.use_from).abs() < 1.0 {
+                        return Err(format!("walk test: leg {leg}: Use climbed nothing; the body is at {feet:?}"));
+                    }
+                    next(self);
+                }
+                if t > 10.0 {
+                    return Err(format!("walk test: leg {leg}: Use climbed nothing; the body is at {feet:?}"));
+                }
+                Ok((Some(Input { yaw: self.cam.yaw, ..Input::default() }), None, false))
+            }
+            Leg::Shot(name, face, pitch) => {
+                self.cam.yaw = face[0].atan2(face[1]);
+                self.cam.pitch = pitch.to_radians();
+                let shot = (settle == 30).then(|| format!("{name}.png"));
+                self.walk_test = Some((leg, t + dt, settle + 1));
+                if shot.is_some() {
+                    next(self);
+                }
+                Ok((Some(Input { yaw: self.cam.yaw, ..Input::default() }), shot, false))
+            }
+        }
     }
 
     fn fly(&mut self, dt: f64) {
@@ -169,7 +368,21 @@ impl App for Client {
         let dt = if headless { 1.0 / 30.0 } else { f.elapsed_s.min(0.1) };
         self.time_s += dt;
         let mut shot_name = None;
-        if headless {
+        if self.walk_test.is_some() {
+            match self.walk_test_step(dt) {
+                Ok((input, shot, done)) => {
+                    if done {
+                        return Flow::Done;
+                    }
+                    self.walk(dt, input);
+                    shot_name = shot;
+                }
+                Err(e) => {
+                    eprintln!("sc-client: {e}");
+                    return Flow::Fail;
+                }
+            }
+        } else if headless {
             // Each shot: set the pose and state, settle 40 frames (the blend), then capture.
             let Some(&(p, s)) = self.shot_plan.first() else { return Flow::Done };
             self.want = s;
@@ -183,8 +396,10 @@ impl App for Client {
                 self.shot_plan.remove(0);
                 self.shot_frame = 0;
             }
-        } else {
+        } else if self.flying {
             self.fly(dt);
+        } else {
+            self.walk(dt, None);
         }
         let step = (dt as f32 / STATE_BLEND_S).min(1.0);
         for (k, w) in self.weights.iter_mut().enumerate() {
@@ -290,7 +505,23 @@ impl App for Client {
             Event::KeyDown(keys::N2) => self.want = 1,
             Event::KeyDown(keys::N3) => self.want = 2,
             Event::KeyDown(keys::F12) => self.capture_next = true,
+            Event::KeyDown(keys::F) if self.walker.is_some() => {
+                // Flying, then landing where the camera is: the body stands on the floor under the eye.
+                self.flying = !self.flying;
+                if let (false, Some(w)) = (self.flying, self.walker.as_mut()) {
+                    let (x, z) = (self.cam.pos[0] as f32, self.cam.pos[2] as f32);
+                    let y = w
+                        .world
+                        .floor_below(x, self.cam.pos[1] as f32, z)
+                        .unwrap_or(self.cam.pos[1] as f32 - EYE_M as f32);
+                    w.body = Body::new([x, y, z], &w.data);
+                    w.eye_y = y;
+                }
+            }
             Event::KeyDown(k) => {
+                if !self.held.contains(&k) {
+                    self.pressed.insert(k);
+                }
                 self.held.insert(k);
             }
             Event::KeyUp(k) => {
@@ -308,6 +539,9 @@ fn main() -> ExitCode {
     let headless = args.iter().any(|a| a == "--headless");
     let shots = value("--shots");
     let deck = value("--deck").unwrap_or_else(|| PathBuf::from("compiled/tern.deck"));
+    let walk_dir = value("--walk-test");
+    let walk_test = walk_dir.is_some();
+    let shots = shots.or(walk_dir);
     if headless && shots.is_none() {
         eprintln!("sc-client: --headless needs --shots DIR (nothing would be seen)");
         return ExitCode::from(2);
@@ -322,6 +556,6 @@ fn main() -> ExitCode {
     };
     platform::run(cfg, move |gl| {
         println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);
-        Client::new(deck, shots).map(|c| Box::new(c) as Box<dyn App>)
+        Client::new(deck, shots, walk_test).map(|c| Box::new(c) as Box<dyn App>)
     })
 }
