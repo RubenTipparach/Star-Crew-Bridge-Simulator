@@ -22,6 +22,7 @@ pub mod shaders {
     pub mod blit;
     pub mod deck;
     pub mod sky;
+    pub mod ui;
 }
 
 use gfx as sg;
@@ -67,6 +68,8 @@ pub struct DeckParams {
     pub panel_first: u32,
     /// How bright emission masks glow now (1: as the texel).
     pub panel_glow: f32,
+    /// Nothing above this height in the mesh's own frame is drawn, metres (`f32::MAX`: no cut; ship-plan-view 5).
+    pub clip_y: f32,
 }
 
 /// The sky's numbers (deck-pipeline 13b; `data/space/exterior.json` through the client): directions are ship
@@ -91,6 +94,44 @@ pub struct SkyParams {
     pub atmosphere: [f32; 4],
     /// Star density, brightness, and a pixel's size in radians.
     pub stars: [f32; 4],
+}
+
+/// A UI vertex: a position in points from the output's top left, a texture coordinate and a premultiplied sRGB
+/// colour (lobby design 3).
+#[repr(C)]
+#[derive(Copy, Clone, Debug, Default)]
+pub struct UiVertex {
+    /// Points from the top left.
+    pub pos: [f32; 2],
+    /// Texture coordinate, 0-1 from the texture's top left.
+    pub uv: [f32; 2],
+    /// Premultiplied sRGBA.
+    pub color: [u8; 4],
+}
+
+/// One clipped batch of UI triangles: what the UI layer hands the painter.
+pub struct UiMesh<'a> {
+    /// The clip rectangle in output pixels: x, y from the top left, width, height.
+    pub clip_px: [i32; 4],
+    /// The texture, by the id given to `Renderer::ui_texture`.
+    pub texture: u64,
+    /// Vertices.
+    pub vertices: &'a [UiVertex],
+    /// Indices into `vertices`.
+    pub indices: &'a [u32],
+}
+
+/// The UI's streamed buffers, sized once (CLAUDE.md 2: allocate up front): a frame's UI that does not fit is cut, and
+/// said so once.
+const UI_MAX_VERTICES: usize = 65_536;
+const UI_MAX_INDICES: usize = 196_608;
+
+struct UiPainter {
+    pipeline: sg::Pipeline,
+    vbuf: sg::Buffer,
+    ibuf: sg::Buffer,
+    textures: HashMap<u64, (sg::Image, sg::View)>,
+    overflow_said: bool,
 }
 
 /// A deck mesh on the GPU: 28-byte vertices and their indices. Dropping it frees its buffers.
@@ -168,6 +209,7 @@ pub struct Renderer {
     sky_shader: sg::Shader,
     screen_shader: sg::Shader,
     outside_pipes: HashMap<(bool, i32), sg::Pipeline>,
+    ui: UiPainter,
     blit: sg::Pipeline,
     nearest: sg::Sampler,
     linear: sg::Sampler,
@@ -231,6 +273,56 @@ impl Renderer {
             ..Default::default()
         });
         let white = make_texture_array(1, &[255u8; 4]);
+        let ui = {
+            let shader = sg::make_shader(&shaders::ui::ui_shader_desc(backend));
+            let mut d = sg::PipelineDesc {
+                shader,
+                index_type: sg::IndexType::Uint32,
+                cull_mode: sg::CullMode::None,
+                label: c"ui".as_ptr(),
+                ..Default::default()
+            };
+            d.layout.buffers[0].stride = std::mem::size_of::<UiVertex>() as i32;
+            d.layout.attrs[shaders::ui::ATTR_UI_POS].format = sg::VertexFormat::Float2;
+            d.layout.attrs[shaders::ui::ATTR_UI_POS].offset = 0;
+            d.layout.attrs[shaders::ui::ATTR_UI_UV].format = sg::VertexFormat::Float2;
+            d.layout.attrs[shaders::ui::ATTR_UI_UV].offset = 8;
+            d.layout.attrs[shaders::ui::ATTR_UI_COLOR].format = sg::VertexFormat::Ubyte4n;
+            d.layout.attrs[shaders::ui::ATTR_UI_COLOR].offset = 16;
+            d.depth.pixel_format = DEPTH_FORMAT;
+            d.depth.compare = sg::CompareFunc::Always;
+            d.colors[0].pixel_format = COLOR_FORMAT;
+            // egui's colours are premultiplied.
+            d.colors[0].blend = sg::BlendState {
+                enabled: true,
+                src_factor_rgb: sg::BlendFactor::One,
+                dst_factor_rgb: sg::BlendFactor::OneMinusSrcAlpha,
+                op_rgb: sg::BlendOp::Add,
+                src_factor_alpha: sg::BlendFactor::OneMinusDstAlpha,
+                dst_factor_alpha: sg::BlendFactor::One,
+                op_alpha: sg::BlendOp::Add,
+            };
+            let buffer = |bytes: usize, index: bool| {
+                sg::make_buffer(&sg::BufferDesc {
+                    size: bytes,
+                    usage: sg::BufferUsage {
+                        vertex_buffer: !index,
+                        index_buffer: index,
+                        write_transient: true,
+                        ..Default::default()
+                    },
+                    label: c"ui".as_ptr(),
+                    ..Default::default()
+                })
+            };
+            UiPainter {
+                pipeline: sg::make_pipeline(&d),
+                vbuf: buffer(UI_MAX_VERTICES * std::mem::size_of::<UiVertex>(), false),
+                ibuf: buffer(UI_MAX_INDICES * 4, true),
+                textures: HashMap::new(),
+                overflow_said: false,
+            }
+        };
         let sky_shader = sg::make_shader(&shaders::sky::sky_shader_desc(backend));
         let screen_shader = sg::make_shader(&shaders::sky::screen_shader_desc(backend));
         Self {
@@ -239,6 +331,7 @@ impl Renderer {
             sky_shader,
             screen_shader,
             outside_pipes: HashMap::new(),
+            ui,
             blit,
             nearest,
             linear,
@@ -493,6 +586,7 @@ impl Renderer {
             mvp: params.mvp.to_cols_array(),
             state_weights: [params.state_weights[0], params.state_weights[1], params.state_weights[2], 0.0],
             flash: [params.flash_dir.x, params.flash_dir.y, params.flash_dir.z, params.flash],
+            clip: [params.clip_y.min(1.0e9), 0.0, 0.0, 0.0],
         };
         sg::apply_uniforms(shaders::deck::UB_DECK_VS_PARAMS, &sg::value_as_range(&u));
         if program == DeckProgram::Textured {
@@ -508,9 +602,114 @@ impl Renderer {
         sg::end_pass();
     }
 
+    /// Set the UI texture `id` to an RGBA8 image (premultiplied sRGB), `width` x `height`, replacing it if it exists.
+    /// The UI layer calls it when its font atlas or an image changes, not every frame.
+    pub fn ui_texture(&mut self, id: u64, width: u32, height: u32, rgba: &[u8]) {
+        assert_eq!(rgba.len(), (width * height * 4) as usize, "a UI texture is whole RGBA8 pixels");
+        self.ui_free_texture(id);
+        let mut data = sg::ImageData::new();
+        data.mip_levels[0] = sg::slice_as_range(rgba);
+        let img = sg::make_image(&sg::ImageDesc {
+            width: width as i32,
+            height: height as i32,
+            pixel_format: COLOR_FORMAT,
+            data,
+            label: c"ui".as_ptr(),
+            ..Default::default()
+        });
+        let view = sg::make_view(&sg::ViewDesc {
+            texture: sg::TextureViewDesc { image: img, ..Default::default() },
+            ..Default::default()
+        });
+        self.ui.textures.insert(id, (img, view));
+    }
+
+    /// Free UI texture `id` (nothing if it does not exist).
+    pub fn ui_free_texture(&mut self, id: u64) {
+        if let Some((img, view)) = self.ui.textures.remove(&id) {
+            sg::destroy_view(view);
+            sg::destroy_image(img);
+        }
+    }
+
+    /// Draw `t` over the whole output, then the UI's meshes over it (`points` the output's size in points). Like
+    /// `present`, with a UI.
+    pub fn present_with_ui(
+        &mut self,
+        t: &Target,
+        width: u32,
+        height: u32,
+        linear: bool,
+        meshes: &[UiMesh<'_>],
+        points: [f32; 2],
+    ) {
+        // The UI's triangles, all meshes in one vertex and one index write (a transient buffer is written once a
+        // frame, before it is bound), the indices offset to their mesh's first vertex.
+        let mut verts: Vec<UiVertex> = Vec::new();
+        let mut idx: Vec<u32> = Vec::new();
+        let mut draws = Vec::new();
+        for m in meshes {
+            if verts.len() + m.vertices.len() > UI_MAX_VERTICES || idx.len() + m.indices.len() > UI_MAX_INDICES {
+                if !self.ui.overflow_said {
+                    eprintln!("sc-render: the UI's buffers are full; the rest of this frame's UI is cut");
+                    self.ui.overflow_said = true;
+                }
+                break;
+            }
+            let base = verts.len() as u32;
+            let first = idx.len();
+            verts.extend_from_slice(m.vertices);
+            idx.extend(m.indices.iter().map(|i| i + base));
+            draws.push((first, m.indices.len(), m.texture, m.clip_px));
+        }
+        if !draws.is_empty() {
+            sg::write_buffer_transient(&sg::WriteBufferDesc {
+                src: sg::WriteBufferSource { data: sg::slice_as_range(&verts), offset: 0 },
+                dst: sg::BufferLocation { buffer: self.ui.vbuf, offset: 0 },
+                size: 0,
+            });
+            sg::write_buffer_transient(&sg::WriteBufferDesc {
+                src: sg::WriteBufferSource { data: sg::slice_as_range(&idx), offset: 0 },
+                dst: sg::BufferLocation { buffer: self.ui.ibuf, offset: 0 },
+                size: 0,
+            });
+        }
+        self.output_pass(t, width, height, linear);
+        if !draws.is_empty() {
+            sg::apply_pipeline(self.ui.pipeline);
+            let u = shaders::ui::UiVsParams { screen: [2.0 / points[0], 2.0 / points[1], 0.0, 0.0] };
+            sg::apply_uniforms(shaders::ui::UB_UI_VS_PARAMS, &sg::value_as_range(&u));
+            for (first, count, tex, clip) in draws {
+                let Some(&(_, view)) = self.ui.textures.get(&tex) else { continue };
+                let x0 = clip[0].clamp(0, width as i32);
+                let y0 = clip[1].clamp(0, height as i32);
+                let x1 = (clip[0] + clip[2]).clamp(x0, width as i32);
+                let y1 = (clip[1] + clip[3]).clamp(y0, height as i32);
+                if x1 <= x0 || y1 <= y0 {
+                    continue;
+                }
+                sg::apply_scissor_rect(x0, y0, x1 - x0, y1 - y0, true);
+                let mut b = sg::Bindings::new();
+                b.vertex_buffers[0] = self.ui.vbuf;
+                b.index_buffer = self.ui.ibuf;
+                b.views[shaders::ui::VIEW_TEX] = view;
+                b.samplers[shaders::ui::SMP_SMP] = self.linear;
+                sg::apply_bindings(&b);
+                sg::draw(first, count, 1);
+            }
+        }
+        sg::end_pass();
+    }
+
     /// Draw `t` over the whole output of `width` x `height` pixels (framebuffer 0), scaled with
     /// linear filtering or nearest.
     pub fn present(&mut self, t: &Target, width: u32, height: u32, linear: bool) {
+        self.output_pass(t, width, height, linear);
+        sg::end_pass();
+    }
+
+    /// Begin the output pass and blit `t` over it; the pass stays open.
+    fn output_pass(&mut self, t: &Target, width: u32, height: u32, linear: bool) {
         let mut action = sg::PassAction::new();
         action.colors[0].load_action = sg::LoadAction::Dontcare;
         action.depth.load_action = sg::LoadAction::Dontcare;
@@ -530,7 +729,6 @@ impl Renderer {
         b.samplers[shaders::blit::SMP_SMP] = if linear { self.linear } else { self.nearest };
         sg::apply_bindings(&b);
         sg::draw(0, 3, 1);
-        sg::end_pass();
     }
 
     /// Finish the frame.

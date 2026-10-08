@@ -1,0 +1,14 @@
+{
+  "schema": "starcrew.company/1",
+  "_doc": "The Tern's bot crew (openspec/changes/crew-npcs, design 1 and 7; read by sc-core::crew::CompanyData). Departments in the order bots leave as players join (the last first). `count` is with one player aboard; `rooms` are layout compartment ids the department works in; a bot walks between places in them and stays at each for a time drawn from `stay_s`. `colour_srgb` is the tunic (sRGB 0-1), also the department's marker on the map (ship-plan-view).",
+  "berths": 12,
+  "stay_s": [8.0, 25.0],
+  "departments": [
+    { "id": "command", "name": "Command", "count": 2, "colour_srgb": [0.78, 0.25, 0.20], "rooms": ["bridge", "ready_room", "computer_core", "a_corridor"] },
+    { "id": "engineering", "name": "Engineering", "count": 2, "colour_srgb": [0.85, 0.63, 0.20], "rooms": ["engineering", "switchboard", "life_support", "shield_room"] },
+    { "id": "deckhands", "name": "Deckhands", "count": 2, "colour_srgb": [0.47, 0.56, 0.24], "rooms": ["magazine", "hangar", "cargo", "torpedo_room"] },
+    { "id": "medical", "name": "Medical", "count": 1, "colour_srgb": [0.22, 0.66, 0.64], "rooms": ["medbay", "b_spine"] },
+    { "id": "security", "name": "Security", "count": 1, "colour_srgb": [0.30, 0.38, 0.58], "rooms": ["b_spine", "c_spine", "a_corridor", "damage_control"] },
+    { "id": "galley", "name": "Galley", "count": 1, "colour_srgb": [0.86, 0.86, 0.82], "rooms": ["mess", "quarters"] }
+  ]
+}

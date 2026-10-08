@@ -409,6 +409,13 @@ impl WalkWorld {
         best.map(|(li, s, _)| (li, s))
     }
 
+    /// How far a ray from `from` along `dir` (unit) goes before it meets the walk world, within `max_m`; `None` if it
+    /// meets nothing. Open lift landings are not met (as for a body).
+    pub fn cast(&self, from: [f32; 3], dir: [f32; 3], max_m: f32) -> Option<f32> {
+        let ray = Ray::new(Vector::new(from[0], from[1], from[2]), Vector::new(dir[0], dir[1], dir[2]));
+        self.queries().cast_ray(&ray, max_m, true).map(|(_, toi)| toi)
+    }
+
     /// The first floor straight down from `(x, from, z)`, or `None`.
     pub fn floor_below(&self, x: f32, from: f32, z: f32) -> Option<f32> {
         let ray = Ray::new(Vector::new(x, from, z), Vector::new(0.0, -1.0, 0.0));
@@ -422,7 +429,7 @@ impl WalkWorld {
 }
 
 /// `(x, z)` inside a polygon of `[x, z]` corners.
-fn in_poly(poly: &[[f32; 2]], x: f32, z: f32) -> bool {
+pub fn in_poly(poly: &[[f32; 2]], x: f32, z: f32) -> bool {
     let mut inside = false;
     let n = poly.len();
     for i in 0..n {

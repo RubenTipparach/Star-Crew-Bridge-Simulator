@@ -12,6 +12,9 @@ layout(binding=0) uniform deck_vs_params {
     vec4 state_weights;
     // xyz: a dynamic light's direction towards the light, w: its strength (0: none).
     vec4 flash;
+    // x: a clip height in the mesh's own frame, metres: nothing above it is drawn (the ship map's cut,
+    // ship-plan-view 5); a huge value draws everything.
+    vec4 clip;
 };
 
 // Integer attributes (sokol_gfx's SHORT4 and SHORT2 are integer formats): exact, decoded here.
@@ -24,8 +27,10 @@ in ivec2 uv;
 
 out vec4 color;
 out vec3 uv_layer;
+out float above_clip;
 
 void main() {
+    above_clip = float(pos_mover_layer.y) * (1.0 / 1024.0) - clip.x;
     gl_Position = mvp * vec4(vec3(pos_mover_layer.xyz) * (1.0 / 1024.0), 1.0);
     // The fourth lane holds the mover in its low byte and the texture layer in its high byte
     // (sc-core::vertex); it arrives sign-extended, so mask it back to 16 bits.
@@ -50,9 +55,13 @@ layout(binding=1) uniform deck_fs_params {
 
 in vec4 color;
 in vec3 uv_layer;
+in float above_clip;
 out vec4 frag_color;
 
 void main() {
+    if (above_clip > 0.0) {
+        discard;
+    }
     vec4 t = texture(sampler2DArray(tex, smp), uv_layer);
     // A panel layer's alpha is its emission mask: there the texel shows as itself, whatever the light.
     float emit = step(glow.x - 0.5, uv_layer.z) * t.a * glow.y;
@@ -63,9 +72,13 @@ void main() {
 @fs deck_flat_fs
 in vec4 color;
 in vec3 uv_layer;
+in float above_clip;
 out vec4 frag_color;
 
 void main() {
+    if (above_clip > 0.0) {
+        discard;
+    }
     frag_color = vec4(color.rgb, 1.0);
 }
 @end

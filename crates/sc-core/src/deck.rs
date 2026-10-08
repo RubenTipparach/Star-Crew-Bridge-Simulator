@@ -11,14 +11,16 @@
 //! walk's triangles (nine f32 each: three corners in ship coordinates, metres).
 //!
 //! Version 3 (deck-pipeline 13b) adds a compartment's mover (the lift's car is a compartment of its own that moves),
-//! a lift's speed, door time and car, the viewscreens, and the first layer of the console screens' atlas.
+//! a lift's speed, door time and car, the viewscreens, and the first layer of the console screens' atlas. Version 4
+//! (crew-npcs 7) adds a compartment's floor centre, where a bot goes to work in it, and the crew figures (the deck
+//! `figure`).
 
 use serde::{Deserialize, Serialize};
 
 /// The file's magic number.
 pub const MAGIC: &[u8; 4] = b"SCDK";
 /// The format version this build reads and writes.
-pub const VERSION: u32 = 3;
+pub const VERSION: u32 = 4;
 
 /// One compartment's mesh in the file.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -42,6 +44,9 @@ pub struct DeckCompartment {
     pub index_count: u32,
     /// The mover every vertex of it rides (0: static; the lift's car is 1), also in each vertex (`sc-core::vertex`).
     pub mover: u8,
+    /// The middle of its floor on its lowest deck, ship coordinates, metres: where a bot goes to work in it. None for
+    /// what is not a room (the dock, the figures, the lift's car).
+    pub floor_m: Option<[f32; 3]>,
 }
 
 /// The texture array: square RGBA8 layers with a full mip chain, largest first.
@@ -336,6 +341,7 @@ mod tests {
                 index_offset: 0,
                 index_count: 3,
                 mover: 0,
+                floor_m: None,
             }],
             textures: DeckTextures {
                 size_px: 1,

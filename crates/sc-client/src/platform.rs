@@ -75,10 +75,30 @@ pub mod keys {
     pub const TAB: u32 = sdl::SDLK_TAB.0;
     /// F: walk or fly.
     pub const F: u32 = sdl::SDLK_F.0;
+    /// M: the ship's map.
+    pub const M: u32 = sdl::SDLK_M.0;
+    /// Return (Enter).
+    pub const RETURN: u32 = sdl::SDLK_RETURN.0;
+    /// Backspace.
+    pub const BACKSPACE: u32 = sdl::SDLK_BACKSPACE.0;
+    /// Delete.
+    pub const DELETE: u32 = sdl::SDLK_DELETE.0;
+    /// Left arrow.
+    pub const LEFT: u32 = sdl::SDLK_LEFT.0;
+    /// Right arrow.
+    pub const RIGHT: u32 = sdl::SDLK_RIGHT.0;
+    /// Up arrow.
+    pub const UP: u32 = sdl::SDLK_UP.0;
+    /// Down arrow.
+    pub const DOWN: u32 = sdl::SDLK_DOWN.0;
+    /// Home.
+    pub const HOME: u32 = sdl::SDLK_HOME.0;
+    /// End.
+    pub const END: u32 = sdl::SDLK_END.0;
 }
 
 /// An input event, as the app sees it.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Event {
     /// The window was closed or the program was asked to quit.
     Quit,
@@ -90,6 +110,38 @@ pub enum Event {
     MouseMotion(f32, f32),
     /// A mouse button went down.
     MouseDown,
+    /// The pointer is here, window coordinates from the top left (the UI's points).
+    Pointer(f32, f32),
+    /// A mouse button (1 left, 2 middle, 3 right) went down (true) or up.
+    MouseButton(u8, bool),
+    /// The wheel turned: x, y in notches.
+    Wheel(f32, f32),
+    /// Text typed (the platform's text input, on while a text field has focus).
+    Text(String),
+    /// A held key repeated: its SDL keycode.
+    KeyRepeat(u32),
+}
+
+/// Which modifier keys are held: shift, ctrl, alt.
+pub fn modifiers() -> (bool, bool, bool) {
+    // SAFETY: SDL_GetModState has no preconditions once SDL is initialised.
+    let m = unsafe { sdl::SDL_GetModState() };
+    (m.0 & sdl::SDL_KMOD_SHIFT.0 != 0, m.0 & sdl::SDL_KMOD_CTRL.0 != 0, m.0 & sdl::SDL_KMOD_ALT.0 != 0)
+}
+
+/// Turn the platform's text input on (a text field has focus) or off.
+pub fn text_input(on: bool) {
+    let w = WINDOW.with(std::cell::Cell::get);
+    if !w.is_null() {
+        // SAFETY: the window is alive between app_init and app_quit, and this runs on the main thread.
+        unsafe {
+            if on {
+                sdl::SDL_StartTextInput(w);
+            } else {
+                sdl::SDL_StopTextInput(w);
+            }
+        }
+    }
 }
 
 /// One frame's facts.
@@ -103,6 +155,10 @@ pub struct Frame {
     pub elapsed_s: f64,
     /// Frames begun so far, this one included.
     pub index: u64,
+    /// The window's size in its own coordinates (the UI's points): pixels over points is the UI's scale.
+    pub window_w: f32,
+    /// As `window_w`.
+    pub window_h: f32,
 }
 
 /// A program driven by the platform's callbacks.
@@ -279,16 +335,24 @@ fn open(cfg: &WindowConfig) -> Result<(*mut sdl::SDL_Window, sdl::SDL_GLContext,
 unsafe extern "C" fn app_iterate(appstate: *mut c_void) -> sdl::SDL_AppResult {
     // SAFETY: appstate is the State app_init boxed; SDL calls back on one thread.
     let s = unsafe { &mut *appstate.cast::<State>() };
-    let (mut w, mut h) = (0, 0);
+    let (mut w, mut h, mut lw, mut lh) = (0, 0, 0, 0);
     // SAFETY: the window lives until app_quit.
     let now = unsafe {
         sdl::SDL_GetWindowSizeInPixels(s.window, &mut w, &mut h);
+        sdl::SDL_GetWindowSize(s.window, &mut lw, &mut lh);
         sdl::SDL_GetTicksNS()
     };
     let elapsed_s = if s.index == 0 { 0.0 } else { (now - s.last_ns) as f64 * 1e-9 };
     s.last_ns = now;
     s.index += 1;
-    let flow = s.app.frame(&Frame { width: w.max(1) as u32, height: h.max(1) as u32, elapsed_s, index: s.index });
+    let flow = s.app.frame(&Frame {
+        width: w.max(1) as u32,
+        height: h.max(1) as u32,
+        elapsed_s,
+        index: s.index,
+        window_w: lw.max(1) as f32,
+        window_h: lh.max(1) as f32,
+    });
     // SAFETY: as above.
     unsafe { sdl::SDL_GL_SwapWindow(s.window) };
     result(flow)
@@ -299,25 +363,49 @@ unsafe extern "C" fn app_event(appstate: *mut c_void, event: *mut sdl::SDL_Event
     let (s, e) = unsafe { (&mut *appstate.cast::<State>(), &*event) };
     // SAFETY: the type field is shared by every member of the union.
     let kind = unsafe { e.r#type };
-    let ev = if kind == sdl::SDL_EVENT_QUIT.0 {
-        Some(Event::Quit)
+    let mut evs = Vec::new();
+    if kind == sdl::SDL_EVENT_QUIT.0 {
+        evs.push(Event::Quit);
     } else if kind == sdl::SDL_EVENT_KEY_DOWN.0 {
         // SAFETY: a key event's payload is the keyboard member.
         let k = unsafe { e.key };
-        (!k.repeat).then_some(Event::KeyDown(k.key.0))
+        evs.push(if k.repeat { Event::KeyRepeat(k.key.0) } else { Event::KeyDown(k.key.0) });
     } else if kind == sdl::SDL_EVENT_KEY_UP.0 {
         // SAFETY: as above.
-        Some(Event::KeyUp(unsafe { e.key.key.0 }))
+        evs.push(Event::KeyUp(unsafe { e.key.key.0 }));
     } else if kind == sdl::SDL_EVENT_MOUSE_MOTION.0 {
         // SAFETY: a motion event's payload is the motion member.
         let m = unsafe { e.motion };
-        Some(Event::MouseMotion(m.xrel, m.yrel))
-    } else if kind == sdl::SDL_EVENT_MOUSE_BUTTON_DOWN.0 {
-        Some(Event::MouseDown)
-    } else {
-        None
-    };
-    ev.map_or(sdl::SDL_APP_CONTINUE, |ev| result(s.app.event(ev)))
+        evs.push(Event::MouseMotion(m.xrel, m.yrel));
+        evs.push(Event::Pointer(m.x, m.y));
+    } else if kind == sdl::SDL_EVENT_MOUSE_BUTTON_DOWN.0 || kind == sdl::SDL_EVENT_MOUSE_BUTTON_UP.0 {
+        // SAFETY: a button event's payload is the button member.
+        let b = unsafe { e.button };
+        let down = kind == sdl::SDL_EVENT_MOUSE_BUTTON_DOWN.0;
+        evs.push(Event::Pointer(b.x, b.y));
+        if down {
+            evs.push(Event::MouseDown);
+        }
+        evs.push(Event::MouseButton(b.button, down));
+    } else if kind == sdl::SDL_EVENT_MOUSE_WHEEL.0 {
+        // SAFETY: a wheel event's payload is the wheel member.
+        let w = unsafe { e.wheel };
+        evs.push(Event::Wheel(w.x, w.y));
+    } else if kind == sdl::SDL_EVENT_TEXT_INPUT.0 {
+        // SAFETY: a text event's payload is the text member; its text is a nul-terminated UTF-8 string owned by SDL.
+        let t = unsafe { e.text };
+        if !t.text.is_null() {
+            // SAFETY: as above.
+            evs.push(Event::Text(unsafe { CStr::from_ptr(t.text) }.to_string_lossy().into_owned()));
+        }
+    }
+    for ev in evs {
+        let r = s.app.event(ev);
+        if r != Flow::Continue {
+            return result(r);
+        }
+    }
+    sdl::SDL_APP_CONTINUE
 }
 
 unsafe extern "C" fn app_quit(appstate: *mut c_void, _result: sdl::SDL_AppResult) {

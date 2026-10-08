@@ -15,3 +15,10 @@
 
 - [ ] 3.1 NPCs in the engine client walking their schedules; on the plan view (`ship-plan-view`).
 - [ ] 3.2 Server CPU with eight NPCs measured on the 4 GB Pi.
+
+## 4. The first version (design 7)
+
+- [x] 4.1 `data/crew/company.json`; the company from the seed with names from `sc-core::names`.
+- [x] 4.2 `sc-core::nav`: the walk grid and A*; tests.
+- [x] 4.3 Places from the deck file's compartment floors; the bots' loop; figures from `deckc`.
+- [x] 4.4 Shots of the bots aboard in `docs/screenshots/engine/` (`ship-corridor-B-normal.png`, the map shots). The grid builds in about 30-40 ms on a cloud CPU (7,884 cells); not measured on a Pi.

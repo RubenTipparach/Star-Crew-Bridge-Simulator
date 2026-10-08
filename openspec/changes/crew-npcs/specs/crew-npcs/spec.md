@@ -28,3 +28,12 @@ its schedule when the condition returns to normal.
 #### Scenario: Red alert
 - **WHEN** the captain sets red alert
 - **THEN** the medic heads for the medbay and the deckhands for the magazine
+
+### Requirement: The bot crew walk the ship between their department's rooms
+
+Each bot crew member SHALL walk, by a path that keeps its body on the walk world, from place to place among its
+department's rooms, staying at each for a time drawn from its seeded stream, the same seed giving the same choices.
+
+#### Scenario: An engineer on rounds
+- **WHEN** an engineering bot has stood its time in the switchboard
+- **THEN** it walks to another engineering room by a path and arrives there on its feet

@@ -14,3 +14,10 @@
 - [ ] 3.1 The engine's plan camera: deck, exploded and whole; the cut and the wall-top bands.
 - [ ] 3.2 Markers for every body from the snapshot; hazards from the simulation.
 - [ ] 3.3 The whole ship in plan measured on the Pi 5 (the probe's scene 6).
+
+## 4. The first version in the engine (design 5)
+
+- [x] 4.1 The deck shader's clip height; the exploded decks drawn with it.
+- [x] 4.2 M toggles the map from any mode; orbit, zoom, Tab steps the decks.
+- [x] 4.3 Markers for the player and every bot crew member, names by the UI layer.
+- [x] 4.4 Shots in `docs/screenshots/engine/` (`map-1-all-decks.png`, `map-2-deck-B.png`, from `sc-client --headless --lobby-test`).

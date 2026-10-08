@@ -28,3 +28,13 @@ player's marker in its role colour with its name and a downed body flashing.
 #### Scenario: A player goes down in engineering
 - **WHEN** a player's body is downed in engineering
 - **THEN** its marker on the captain's crew page flashes there within one snapshot
+
+### Requirement: Any crew member can open the ship map at any time
+
+A player on foot, flying or riding the lift SHALL be able to open a 3D map of the whole ship with one key and close it
+with the same key, and the map SHALL show every body aboard at its position: every player with their name and every
+bot crew member, the player's own marker set apart.
+
+#### Scenario: Finding a friend
+- **WHEN** a player presses M while walking on deck B
+- **THEN** the map shows all three decks exploded, with every player's and bot's marker where their body stands

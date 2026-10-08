@@ -188,6 +188,7 @@ fn params() -> DeckParams {
         flash: 0.0,
         panel_first: u32::MAX,
         panel_glow: 0.0,
+        clip_y: f32::MAX,
     }
 }
 

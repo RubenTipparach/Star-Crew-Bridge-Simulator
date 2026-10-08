@@ -1,0 +1,73 @@
+{
+  "schema": "starcrew.names/1",
+  "_doc": "Officer and crew names (openspec/changes/lobby design 2; read by sc-core::names). A style is a pattern of {part}s, and each part is a list of syllable slots: one syllable is drawn from each slot in turn and joined (an empty string makes a slot optional). A style is drawn by its weight. Names are built from syllables, never taken from a series: a generated name equal to an entry of `deny` (canon characters, checked case-blind against the whole name and each word of it) is drawn again. Take the shape, not the text (CLAUDE.md 15).",
+  "ranks": [
+    { "name": "Ensign", "short": "Ens." },
+    { "name": "Lieutenant junior grade", "short": "Lt. jg" },
+    { "name": "Lieutenant", "short": "Lt." },
+    { "name": "Lieutenant commander", "short": "Lt. Cmdr." },
+    { "name": "Commander", "short": "Cmdr." },
+    { "name": "Captain", "short": "Capt." }
+  ],
+  "styles": [
+    {
+      "id": "human",
+      "_doc": "A given name and a family name: Maren Holloway, Teo Vasquez.",
+      "pattern": "{given} {family}",
+      "parts": {
+        "given": [
+          ["Ma", "Te", "Ro", "Ela", "Da", "Ki", "Tho", "Sa", "Li", "Ne", "Ja", "Ove", "Ari", "Mi", "Cal", "Ze", "Ha", "Iri", "No", "Ru"],
+          ["ren", "o", "an", "na", "vi", "ra", "mas", "ya", "la", "il", "den", "ka", "sha", "ro", "lin", "e", "nia", "ko", "ssa", "th"]
+        ],
+        "family": [
+          ["Hol", "Vas", "Okon", "Bren", "Mar", "Tal", "Kes", "Lund", "Ferr", "Ash", "Nak", "Dor", "Quin", "Sel", "Rav", "Oyel", "Strand", "Wex", "Corr", "Ibar"],
+          ["lo", "", "e", "a", "i", "ow", "", "ar", "o", "", "a", "en", "", "ber", "", "o", "", "", "i", "ra"],
+          ["way", "quez", "kwo", "nan", "tin", "ley", "sler", "gren", "ari", "ford", "mura", "van", "tero", "by", "ensk", "ye", "berg", "ton", "gan", "ola"]
+        ]
+      }
+    },
+    {
+      "id": "apostrophe",
+      "_doc": "A two-part name with an apostrophe: T'vessa, Ke'ral.",
+      "pattern": "{head}'{tail}",
+      "parts": {
+        "head": [["T", "S", "K", "V", "Ke", "Sa", "Ta", "Re", "Ni", "Xa"]],
+        "tail": [
+          ["ve", "ra", "so", "ma", "ka", "len", "pa", "ri", "lo", "dra"],
+          ["ssa", "l", "nek", "rin", "vik", "th", "lan", "sha", "ru", "n"]
+        ]
+      }
+    },
+    {
+      "id": "family_first",
+      "_doc": "A family name first, then a given name: Davl Varen, Orrin Tesk.",
+      "pattern": "{family} {given}",
+      "parts": {
+        "family": [["Davl", "Orr", "Pel", "Ma", "Ves", "Ka", "Tor", "Ren", "Sil", "Ja"], ["", "in", "", "ro", "", "lo", "", "a", "", "n"]],
+        "given": [["Va", "Te", "Ne", "Lo", "Mi", "Ari", "Sa", "Ko", "Ri", "Dey"], ["ren", "sk", "ris", "ma", "tal", "n", "lis", "ven", "ana", "ro"]]
+      }
+    },
+    {
+      "id": "clan",
+      "_doc": "One strong name and a house: Gorath of House Mekra.",
+      "pattern": "{name} of House {house}",
+      "parts": {
+        "name": [["Gor", "Kar", "Tor", "Vek", "Mor", "Dur", "Kel", "Rag", "Bel", "Hur"], ["ath", "rog", "vak", "esh", "dag", "ok", "rix", "ath", "gra", "uk"]],
+        "house": [["Mek", "Tar", "Vor", "Kru", "Dag", "Ost", "Zar", "Hel"], ["ra", "gath", "len", "mog", "ra", "rek", "vel", "ka"]]
+      }
+    }
+  ],
+  "weights": { "human": 6, "apostrophe": 2, "family_first": 2, "clan": 1 },
+  "deny": [
+    "Kirk", "Spock", "McCoy", "Scott", "Uhura", "Sulu", "Chekov", "Chapel", "Rand", "Pike", "Number One", "Una",
+    "Picard", "Riker", "Data", "Worf", "Troi", "Crusher", "Laforge", "La Forge", "Geordi", "Yar", "Pulaski", "Guinan", "Ro", "Laren", "Barclay", "Lwaxana", "Wesley",
+    "Sisko", "Kira", "Nerys", "Odo", "Dax", "Jadzia", "Ezri", "Bashir", "Quark", "Rom", "Nog", "Garak", "Dukat", "Martok", "Gowron", "Kor", "Kang", "Koloth", "Damar", "Weyoun", "Winn", "Opaka", "Jake", "Kasidy", "Leeta", "Morn", "Keiko", "O'Brien",
+    "Janeway", "Chakotay", "Tuvok", "Paris", "Torres", "Kim", "Neelix", "Kes", "Seven", "Seven of Nine", "Doctor", "Icheb", "Naomi", "Seska",
+    "Archer", "T'Pol", "Tucker", "Trip", "Reed", "Mayweather", "Sato", "Hoshi", "Phlox", "Shran",
+    "Burnham", "Saru", "Tilly", "Stamets", "Culber", "Georgiou", "Lorca", "Detmer", "Owosekun", "Book",
+    "Mariner", "Boimler", "Tendi", "Rutherford", "Freeman", "Ransom", "Dal", "Gwyn", "Zero", "Jankom", "Rok-Tahk",
+    "Sarek", "Amanda", "T'Pring", "Stonn", "Valeris", "Saavik", "Khan", "Gorkon", "Azetbur", "Chang", "Kruge", "Tomalak", "Sela", "Lore", "Q", "Borg", "Locutus", "Shinzon", "Nero", "Krall",
+    "Raffi", "Rios", "Jurati", "Elnor", "Soji", "Dahj", "Shaw", "T'Lyn", "Ortegas", "M'Benga", "La'an", "Noonien-Singh", "Kyle",
+    "Tpol", "T'Lar", "T'Pau", "Surak", "Tolian", "Soran", "Ruk", "Vash", "Kahless", "Kurn", "Alexander", "K'Ehleyr", "Lursa", "B'Etor", "Duras", "Toral"
+  ]
+}

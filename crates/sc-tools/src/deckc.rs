@@ -169,6 +169,36 @@ fn shrink(src: &[u8], from: u32, to: u32) -> Vec<u8> {
     out
 }
 
+/// The middle of compartment `id`'s floor on its lowest deck: the centroid of the largest of its lowest brushes (each is
+/// a convex prism, so the centroid is inside it).
+fn floor_middle(layout: &serde_json::Value, id: &str) -> Option<[f32; 3]> {
+    let c = layout["compartments"].as_array()?.iter().find(|c| c["id"] == id)?;
+    let brushes = c["brushes"].as_array()?;
+    let lo = brushes.iter().filter_map(|b| b["y"][0].as_f64()).fold(f64::MAX, f64::min);
+    let mut best: Option<(f64, [f64; 2])> = None;
+    for b in brushes.iter().filter(|b| b["y"][0].as_f64() == Some(lo)) {
+        let p: Vec<[f64; 2]> =
+            b["poly"].as_array()?.iter().filter_map(|q| Some([q[0].as_f64()?, q[1].as_f64()?])).collect();
+        let (mut a, mut cx, mut cz) = (0.0, 0.0, 0.0);
+        for i in 0..p.len() {
+            let (u, v) = (p[i], p[(i + 1) % p.len()]);
+            let k = u[0] * v[1] - v[0] * u[1];
+            a += k;
+            cx += (u[0] + v[0]) * k;
+            cz += (u[1] + v[1]) * k;
+        }
+        if a.abs() < 1e-9 {
+            continue;
+        }
+        let area = a.abs() / 2.0;
+        let centre = [cx / (3.0 * a), cz / (3.0 * a)];
+        if best.is_none_or(|(ba, _)| area > ba) {
+            best = Some((area, centre));
+        }
+    }
+    best.map(|(_, c)| [c[0] as f32, lo as f32, c[1] as f32])
+}
+
 /// Pack a compartment's vertices: identical ones merged in first-seen order (stable), its indices local to it. Returns
 /// its vertex offset (bytes), vertex count, index offset and index count.
 fn pack(
@@ -354,6 +384,60 @@ pub fn run(root: &Path, ship: &str) -> Result<String, String> {
             index_offset,
             index_count,
             mover: r.mover,
+            floor_m: None,
+        });
+    }
+    // Bots' places (crew-npcs 7): each layout compartment's floor middle, set on the rooms above.
+    let layout: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(root.join("data/ships").join(ship).join("layout.json")).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| format!("layout.json: {e}"))?;
+    for c in comps.iter_mut() {
+        c.floor_m = floor_middle(&layout, &c.id);
+    }
+    // The crew figures (crew-npcs 7): one a department, flat-lit, feet at the origin.
+    let company: sc_core::crew::CompanyData = sc_core::data::parse(
+        "data/crew/company.json",
+        &std::fs::read_to_string(root.join("data/crew/company.json")).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| e.to_string())?;
+    // The player's own figure on the map (ship-plan-view 5): white and amber, set apart from every department.
+    let player = sc_core::crew::Department {
+        id: "player".into(),
+        name: "Player".into(),
+        count: 0,
+        colour_srgb: [1.0, 0.72, 0.3],
+        rooms: Vec::new(),
+    };
+    for d in company.departments.iter().chain(std::iter::once(&player)) {
+        let tunic = sc_core::exterior::linear(d.colour_srgb);
+        let ins: Vec<DeckVertexIn> = crate::figure::build(tunic)
+            .iter()
+            .map(|v| {
+                let c = [color_byte(v.colour[0]), color_byte(v.colour[1]), color_byte(v.colour[2]), 255];
+                DeckVertexIn {
+                    position_m: v.position_m,
+                    mover: 0,
+                    layer: 0,
+                    normal: v.normal,
+                    colors: [c, c, c],
+                    uv: [0.0, 0.0],
+                }
+            })
+            .collect();
+        let id = format!("figure_{}", d.id);
+        let (vertex_offset, vertex_count, index_offset, index_count) = pack(&mut vertices, &mut indices, &ins, &id)?;
+        comps.push(DeckCompartment {
+            id,
+            name: format!("{} crew", d.name),
+            deck: "figure".into(),
+            origin_m: [0.0; 3],
+            vertex_offset,
+            vertex_count,
+            index_offset,
+            index_count,
+            mover: 0,
+            floor_m: None,
         });
     }
     // The space dock's frame (13b): one compartment a bay, in the deck `outside`, lit by the sun here.
@@ -413,6 +497,7 @@ pub fn run(root: &Path, ship: &str) -> Result<String, String> {
             index_offset,
             index_count,
             mover: 0,
+            floor_m: None,
         });
     }
     // The walk world: its triangles carried as they are, checked finite and whole.
