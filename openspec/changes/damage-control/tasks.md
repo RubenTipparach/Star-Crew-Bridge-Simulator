@@ -45,3 +45,4 @@
 - [ ] 6.1 `weapons-and-shields`: the `HullHit` contract (section 1), the magazine cook-off rule, turret and tube states from integrity.
 - [ ] 6.2 `shuttle-bay-and-fighters`: cradle capability and drop door jams from section 1.
 - [ ] 6.3 `crew-on-deck`: carrying kits, extinguishers and plates; suits; the teams' bodies.
+- [ ] 6.4 Officers and ratings (design 6a): the rank from `crew-on-deck`'s roster in `damage::repair_time`, with the test that an officer takes 42 s and a rating 125 s from 25% (owner, 2026-10-08).

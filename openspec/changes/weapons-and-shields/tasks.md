@@ -51,3 +51,5 @@
 - [x] 7.1 `docs/mockups/exterior.html` shots `broadside`, `missile-launch`, `gunner-view`, `shields-hit`, `chase`.
 - [ ] 7.2 Screenshot those shots (`node tools/mockups/shoot.mjs docs/mockups/exterior.html`) and look at each; the authoring session could not run the tool.
 - [x] 7.3 `docs/mockups/consoles.html`: the shield view of section 11 on science and in tactical's plot, faces by the hit rule, hostiles' directions, hits labelled with bearing and elevation; shot `consoles-red-science-shields.png`.
+- [x] 7.4 Section 11: the shield drawn as a see-through shell (far half, hull, near half) and the faces' round rule (owner, 2026-10-08); shots `docs/screenshots/mockups/shield-shell-*.png`.
+- [ ] 7.5 Loading seen in the ship (section 10, owner 2026-10-08): the hoist, rack, breech, rammer and umbilical movers and the crew's breech clips, driven by the tube state; a body in the hoist stops it.

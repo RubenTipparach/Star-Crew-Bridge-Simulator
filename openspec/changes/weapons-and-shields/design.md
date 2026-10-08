@@ -284,6 +284,29 @@ at fighters inside 400 m when no missile is inbound.
 | Fire | Tactical | Door open 1 s; the tube is empty 1.5 s after launch | |
 | Clear a jam | A crew member at the breech | 20 s | Automation cannot clear a jam |
 
+**Loading is seen in the ship** (owner, 2026-10-08: "considerations for in ship activities: loading a
+missile plays animation within the ship"). Every step above is something a crew member standing in the
+magazine or the torpedo room watches happen, at the times above, never a bar that fills on a console:
+
+| Step | What moves | Where |
+| --- | --- | --- |
+| Magazine to a ready rack (20 s) | The rack's cradle lifts a Gannet out (3 s), the hoist platform carries it up the 0.5 m trunk through the deck (14 s), the ready rack's arms take it (3 s); the trunk's hazard lights turn while it moves | Magazine (deck C) to the torpedo room (deck B), through the hoist opening (`p_hoist`) |
+| Ready rack to the tube, autoloader (18 s) | The breech door swings open (3 s), the rammer pushes the missile in along its tray (8 s), the breech closes and locks (4 s), the umbilical arm swings in and plugs (3 s) | The tube's breech, its aft end in the torpedo room |
+| Crew hands-on (10 s) | The same movers, driven by the crew member's three actions at the breech panel (open, ram, seal), each a held Use with its own clip: `breech_open` 1.0 s, `ram_guide` 6.0 s (the body walks beside the rammer with a hand on the missile), `breech_seal` 1.5 s | |
+| Hand crank (40 s) | The rammer moves only while the crank turns; the body plays `crank` in a loop | |
+| Clearing a jam (20 s) | The breech open, the missile drawn back 0.3 m, re-seated: `jam_clear` 20 s | |
+| Fire | The tube's door and the breech's lock lights; the room shakes (`crew-on-deck` section 12) | |
+
+- **The movers are the mechanisms' own** (deck-pipeline's movers: cradle, hoist platform, rack arms,
+  breech door, rammer, umbilical arm), driven by the tube's state and its progress through the step,
+  so what is seen and what the simulation says are the same number (CLAUDE.md 6.1).
+- **The body's clips** join `crew-on-deck`'s clip list (its section 15): `breech_open`, `ram_guide`,
+  `breech_seal`, `crank` and `jam_clear`.
+- **A missile in the hoist is a body in the trunk**: a body standing in the hoist opening stops the
+  platform (an interlock, as a door never closes on a body), and the console says HOIST BLOCKED.
+- **Budget**: the movers are about 600 triangles for the hoist and 400 for each breech; one Gannet
+  model (about 500 triangles) per missile in view, at most 4 (two racks, two tubes).
+
 Sustained rate: two tubes share one hoist, so after the first pair (two missiles staged on the
 ready racks at the start of a mission) the hoist is the limit: one missile every 20 s.
 

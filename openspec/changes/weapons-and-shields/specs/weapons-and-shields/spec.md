@@ -97,6 +97,22 @@ clear a jam, in 20 s.
 - **THEN** the autoloader has both tubes loaded 18 s later, and the hoist has restocked one ready
   rack 20 s after it started
 
+### Requirement: Loading a missile is seen inside the ship
+Every step from the magazine to the tube SHALL be shown in the magazine and the torpedo room by the
+mechanisms that do it (the rack cradle, the hoist platform, the ready rack's arms, the breech door, the
+rammer and the umbilical arm), driven by the tube's state and its progress, at the step's own time; a
+crew member loading by hand SHALL play the step's clip at the breech. A body in the hoist opening SHALL
+stop the hoist.
+
+#### Scenario: Watching the autoloader
+- **WHEN** a crew member stands in the torpedo room while tube 1 loads from a ready rack
+- **THEN** they see the breech open, the missile rammed in and the breech sealed over 18 s, and the
+  tube reads Loaded when the umbilical plugs in
+
+#### Scenario: Someone in the hoist trunk
+- **WHEN** a body stands in the hoist opening while a missile is coming up
+- **THEN** the hoist stops until the opening is clear, and the console says HOIST BLOCKED
+
 ### Requirement: Missiles are guided bodies that can be intercepted
 A Gannet SHALL be handed to the system frame at launch with the tube's point velocity plus 30 m/s,
 ignite 0.5 s later, boost at 120 m/s^2 for 6 s and sustain at 40 m/s^2 for 20 s, steer by
