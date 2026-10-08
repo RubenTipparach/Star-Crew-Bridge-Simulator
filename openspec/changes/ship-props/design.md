@@ -100,7 +100,7 @@ with a flat deck 0.6 m above the floor at the ramp's top. The stern opening is 1
   hull), the shape it always had outside, cut right through into the cockpit, the hull left between them as the
   frames (section 4f).
 
-It stays one closed solid (`build_machinery_props.py`), 2,732 triangles against 1,918 before (budget 2,900). In the walk it collides
+It stays one closed solid (`build_machinery_props.py`), 2,604 triangles against 1,918 before (budget 2,900). In the walk it collides
 as its own triangles instead of its bounds box (`deck-plan.html` `MESH_PROPS`), so a body walks up the 22 degree
 ramp, along the aisle and into the cockpit. Measured headless: the ramp climbed and the deck reached at 0.6 m in
 2.3 s from the hangar floor, and out again.
