@@ -13,6 +13,9 @@
 - [ ] 1.9 A custom atlas per prop (design section 4c): bridge set, then machinery, then suite; the pages map them; contact sheets and shots looked at.
 
 - [x] 1.10 Doors (design section 4g): the `doors` set in Blender, one prop per leaf size within budget, `--check` reproducible; the lift car's `door_m` in its data; the page slides each leaf whole and clips it at its jamb; shots of every size shut, half open and open, looked at.
+- [x] 1.11 The Petrel's cabin (design 4h): four folding seats forward, a cargo bay with tie-down rails aft; shots.
+- [x] 1.12 The pressure door's leaf (design 4i): rim, ribs, locking wheel, rams, within 1,700 triangles; renders and shots.
+- [ ] 1.13 The seat pans fold on Use (`ship-interactables`).
 
 ## 2. When the layout takes the patches
 

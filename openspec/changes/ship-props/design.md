@@ -100,7 +100,7 @@ with a flat deck 0.6 m above the floor at the ramp's top. The stern opening is 1
   hull), the shape it always had outside, cut right through into the cockpit, the hull left between them as the
   frames (section 4f).
 
-It stays one closed solid (`build_machinery_props.py`), 2,604 triangles against 1,918 before (budget 2,900). In the walk it collides
+It stays one closed solid (`build_machinery_props.py`), 2,842 triangles against 1,918 before (budget 2,900). In the walk it collides
 as its own triangles instead of its bounds box (`deck-plan.html` `MESH_PROPS`), so a body walks up the 22 degree
 ramp, along the aisle and into the cockpit. Measured headless: the ramp climbed and the deck reached at 0.6 m in
 2.3 s from the hangar floor, and out again.
@@ -383,6 +383,43 @@ vertex where the chart already has it, or it is not made.
 
 Recommendation taken (ask only with screenshots): the shape above, its numbers and its colours are first choices,
 for the owner to judge on the shots.
+
+### 4h. The Petrel's cabin: folding seats forward, cargo aft (2026-10-08)
+
+The owner, on the canopy shots: "Id move the passenger seats up a bit since the back of the shuttle could be
+for cargo. Make the seats foldable in case the shuttle needs to carry cargo."
+
+- **Four folding seats** replace the two benches: two a side, centred 0.35 m and 0.65 m forward of the
+  cabin's middle (z -0.65 and +0.45 in prop space, from -2.90 to -0.40 before), each a back plate on the hull
+  with its belts, a hinge rail and a seat pan 0.46 m deep, 0.44 m above the cabin deck, modelled down.
+- **The cargo bay** is the cabin aft of them, 2.0 m long by the 1.24 m between the seats' rails at the floor:
+  two tie-down rails along the deck. A pallet 1.2 x 1.0 m fits with the seats folded or down.
+- **Folding is a fixture** (`ship-interactables` 3): a seat pan is its own small mesh that turns up 90 degrees
+  about its hinge on Use, as a door leaf slides. Until the fixture is built the pans are modelled down.
+
+Built: `build_machinery_props.py`, the Petrel at 2,842 triangles (2,604 before, budget 2,900). Shots of the
+cabin, its seats and the cargo bay, and of the pressure door (4i), in
+`docs/screenshots/mockups/walk-fixes-2026-10-08d/`.
+
+### 4i. The pressure door: the bulkiest door on the ship (2026-10-08)
+
+The owner, on the door contact sheet: "if anything the pressure door should be the biggest bulkiest and
+most complex looking lol". 4g gave it a plain slab with a bar and baked ribs, the simplest leaf of the set.
+It becomes the heaviest:
+
+- 20 cm thick (z +-0.10, inside its 24 cm frame), against the sliding leaves' 6 cm;
+- a raised rim round each face, 6 cm wide and 2 cm proud, and two modelled ribs across it, low and high;
+- a locking wheel at 1.10 m on each face: a hub, four spokes and an eight-sided rim 0.48 m across, standing
+  6 cm proud;
+- the locking bar above it, two hydraulic rams at its lower corners, the plate seams, and in its atlas the
+  hazard foot, the window, the amber lamp and the PRESSURE plate.
+
+Budget 1,700 triangles, built at 984: the most complex door, and there are four on the ship, a room seeing
+one or two (about 2,000 at most, against a sliding door's 348). A first brief of 900 was set before the
+wheel, the rams and the rim were modelled; built as 48 separate pieces it came to 1,622, every piece unioned
+onto a face cutting that face into more triangles, and the rim's bars met in one plane. Made as one frame
+and one ring, each a solid with its middle cut out, it is 984. Its charts stay
+short: the ribs and the seams cut each face into pieces under 0.7 m tall (4g).
 
 ### 5. The Pi 5 budget this change spends
 

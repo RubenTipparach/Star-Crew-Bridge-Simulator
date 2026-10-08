@@ -1,0 +1,48 @@
+# The browser playtest build (openspec/changes/engine-stack design 10a): build the engine for WebGL 2
+# and push it to itch.io. The logic is tools/web/release.sh, which a developer runs too (CLAUDE.md:
+# keep CI thin). It pushes to https://ruben-tipparach.itch.io/star-crew-bridge-simulator when the repository
+# secret BUTLER_API_KEY is set; without it, it builds, keeps the folder as a workflow artifact and pushes nothing.
+name: web build
+# Every commit, on every branch, is built and pushed (owner, 2026-10-08: "go ahead and deploy after every
+# commit to this repo"); the newest push wins.
+on:
+  workflow_dispatch:
+  push:
+concurrency:
+  group: web-build
+  cancel-in-progress: true
+jobs:
+  web:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-emscripten
+      - uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 6.0.11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Playwright and Chromium, for the deck export
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Build (and push when the key is set)
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+          ITCH_TARGET: ruben-tipparach/star-crew-bridge-simulator
+        run: |
+          if [ -n "$BUTLER_API_KEY" ]; then
+            tools/web/release.sh
+          else
+            echo "BUTLER_API_KEY is not set: building without pushing"
+            tools/web/release.sh --no-push
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: star-crew-web
+          path: build/web
+          retention-days: 14

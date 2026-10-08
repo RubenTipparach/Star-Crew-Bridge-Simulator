@@ -30,6 +30,13 @@ measurement instrument and comes first.
 - [x] 3.5 Headless render tests through Mesa `llvmpipe` (EGL, OpenGL ES 3.0) with reference images.
 - [ ] 3.6 Deploy: copy binaries, `data/` and `compiled/` to a Pi over SSH; a systemd unit for the full-screen client with `SDL_VIDEODRIVER=kmsdrm`, and one for `sc-server` that restarts on failure.
 
+## 3a. The browser build (design 10b; owner, 2026-10-08)
+
+- [x] 3a.1 `sc-client` for `wasm32-unknown-emscripten` on WebGL 2: the link, the deck fetch, the canvas; the Tern walked in headless Chromium.
+- [x] 3a.2 `tools/web/build.sh`, `release.sh`, `push_itch.sh` and `.github/workflows/web.yml`, pushing to itch.io with the `BUTLER_API_KEY` secret.
+- [ ] 3a.3 The first CI run green, and the itch.io page playing it.
+- [ ] 3a.4 The deck plan's newer work in the engine: door leaves, fixtures, the plan view.
+
 ## 4. Move to specs
 
 - [ ] 4.1 When 2.6 and 3.1 are done, move the `engine-platform` requirements that are then true into `openspec/specs/engine-platform/spec.md`, each with the check that proves it, and move the `pi-budget` marker with them.

@@ -986,17 +986,23 @@ def petrel_shuttle():
                    ["machinery", "hazard", "machinery", "machinery"], cap="trim")
     p.chamfer(ramp, "ramp_edges", 0.12, lambda m, d, n1, n2: abs(m.x) > 0.6 and max(n1.y, n2.y) > 0.8, role="hazard")
     parts.append(ramp)
-    # The cabin's fittings, each standing on the deck or against the hull so the shuttle stays one solid: a bench of two
-    # seats along each side with a back on the hull, a light strip along the ceiling, and in the cockpit two seats on
-    # pedestals facing a console under the canopy, 0.6 m apart so a body walks between them to the console.
+    # The cabin's fittings, each standing on the deck or against the hull so the shuttle stays one solid. Forward, two
+    # folding seats a side (owner, 2026-10-08: "move the passenger seats up a bit since the back of the shuttle could be
+    # for cargo. Make the seats foldable"): a back plate on the hull with its belts, a hinge rail and a seat pan, drawn
+    # down (ship-props 4h; folding is a fixture, ship-interactables). Aft, the cargo bay: two tie-down rails on the deck.
+    # A light strip along the ceiling; in the cockpit two seats on pedestals facing a console under the canopy, 0.6 m
+    # apart so a body walks between them to the console.
     for s in (-1, 1):
-        parts.append(p.box(f"bench_{s:+d}", (min(s * 0.62, s * 1.10), 0.55, -2.90), (max(s * 0.62, s * 1.10), 1.05, -0.40),
-                           {"+y": "accent", "*": "machinery"}))
-        parts.append(p.box(f"bench_back_{s:+d}", (min(s * 0.98, s * 1.18), 1.05, -2.85), (max(s * 0.98, s * 1.18), 1.75, -0.45),
-                           {"*": "accent"}))
-        for i, z in enumerate((-2.30, -1.00)):
-            parts.append(p.box(f"belt_{s:+d}_{i}", (min(s * 0.95, s * 0.985), 1.10, z - 0.05), (max(s * 0.95, s * 0.985), 1.70, z + 0.05),
-                               "hazard"))
+        for i, z in enumerate((-0.65, 0.45)):
+            parts.append(p.box(f"seat_back_{s:+d}_{i}", (min(s * 0.99, s * 1.18), 1.06, z - 0.24), (max(s * 0.99, s * 1.18), 1.80, z + 0.24),
+                               "accent"))
+            parts.append(p.box(f"hinge_{s:+d}_{i}", (min(s * 0.97, s * 1.05), 0.96, z - 0.22), (max(s * 0.97, s * 1.05), 1.08, z + 0.22), "trim"))
+            parts.append(p.box(f"seat_pan_{s:+d}_{i}", (min(s * 0.55, s * 1.02), 0.98, z - 0.22), (max(s * 0.55, s * 1.02), 1.04, z + 0.22),
+                               {"+y": "accent", "*": "machinery"}))
+            for j, dz in enumerate((-0.12, 0.12)):
+                parts.append(p.box(f"belt_{s:+d}_{i}_{j}", (min(s * 0.955, s * 0.995), 1.12, z + dz - 0.03),
+                                   (max(s * 0.955, s * 0.995), 1.74, z + dz + 0.03), "hazard"))
+        parts.append(p.box(f"cargo_rail_{s:+d}", (s * 0.42 - 0.03, 0.58, -3.30), (s * 0.42 + 0.03, 0.635, -1.15), "trim"))
         parts.append(p.box(f"seat_{s:+d}", (s * 0.52 - 0.22, 0.62, 2.35), (s * 0.52 + 0.22, 1.08, 2.85), {"+y": "accent", "*": "machinery"}))
         parts.append(p.box(f"seat_back_{s:+d}", (s * 0.52 - 0.22, 1.08, 2.27), (s * 0.52 + 0.22, 1.80, 2.40), "accent"))
         parts.append(p.box(f"seat_post_{s:+d}", (s * 0.52 - 0.08, 0.55, 2.45), (s * 0.52 + 0.08, 0.66, 2.75), "trim"))

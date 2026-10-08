@@ -449,6 +449,41 @@ run too.
 **What a browser playtest is for.** Showing the game to people without a Pi: the decks, the
 consoles, the crew working together. It is not a performance test and not a Pi substitute.
 
+### 10b. The browser build, built (2026-10-08)
+
+The owner, 2026-10-08: "I'm also happy with the game in js now and want to move to building it in the web
+app with gles ... continue building the game to run on actual engine rather than js", and the itch.io page
+https://ruben-tipparach.itch.io/star-crew-bridge-simulator with a `BUTLER_API_KEY` repository secret. The
+browser build moves up: it is the next engine step, built beside the Pi client, and the mockups stop
+growing as the game. The Pi stays the floor (CLAUDE.md 2); a browser frame rate is never a Pi measurement.
+
+**Built:**
+
+| Part | Where | What |
+| --- | --- | --- |
+| The link | `crates/sc-client/build.rs` | For `wasm32-unknown-emscripten` only: WebGL 2 and nothing older, a growing heap from 256 MB, `data/engine/render.json` and `data/crew/walk.json` embedded, `web/pre.js` |
+| The deck | `web/pre.js` | Fetches `tern.deck.gz` (9.2 MB, from 62.2 MB), unpacks it with the browser's own gzip and writes `/compiled/tern.deck` before `main` runs: the client reads it with `std::fs` as on a Pi. A host that serves only text gets the same bytes as base64 (`tern.deck.gz.txt`) |
+| The window | `crates/sc-client/src/main.rs` | The page's canvas, 1280 x 720, never full screen |
+| The page | `web/index.html` | The canvas, the load status, the keys |
+| The build | `tools/web/build.sh` | `cargo build --target wasm32-unknown-emscripten --release` and the folder `build/web/` |
+| The release | `tools/web/release.sh`, `tools/web/push_itch.sh` | Export the deck, `deckc`, build, push with butler to `ruben-tipparach/star-crew-bridge-simulator:html5`, the commit as the version |
+| CI | `.github/workflows/web.yml` | Installs Rust, Emscripten 6.0.11, Node and Chromium, then calls `release.sh`; without the key it only builds and keeps the folder |
+
+Nothing in `sc-core`, `sc-render` or the client's logic changed: SDL 3.4.18 built from source compiled
+for Emscripten as it is, sokol_gfx's GLES3 backend runs on WebGL 2, and the shaders (GLSL ES 3.00) are the
+Pi's. Only the link needed flags: without `-sMAX_WEBGL_VERSION=2` every GLES 3.0 entry point
+(`glBindSampler`, `glTexStorage3D`, ...) was missing at link.
+
+**Measured in a cloud session** (headless Chromium on SwiftShader, no GPU: proof it runs, never how fast):
+`sc_client.wasm` 3.2 MB with debug info, the loader 0.2 MB; the whole Tern loaded (38 compartments,
+173,655 triangles, 145 texture layers), its walk world built in 130-220 ms, walking and the three lighting
+states working. Shots: `docs/screenshots/engine/web-*.png`.
+
+**Next, in order:** the deck plan's newer work into the engine (door leaves, fixtures, the plan view,
+`ship-plan-view`); console UI; the network (WebRTC, `netcode-and-sessions`), which the browser needs from
+its first multiplayer build; a smaller first download (the texture array at the Pi's 128 px is a quarter
+of today's 50.7 MB, and ETC2 is out of WebGL 2's guaranteed set, so the browser keeps RGBA8).
+
 ## 11. The probe: measuring before building
 
 `sc-probe` is a measurement instrument (CLAUDE.md section 4) and the first thing built. It links

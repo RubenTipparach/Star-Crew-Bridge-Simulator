@@ -28,6 +28,7 @@ Conventions (written into props.json too):
     edges; their finishes are this set's own (FINISH_OF).
 """
 import json
+import math
 import os
 import sys
 
@@ -56,10 +57,11 @@ BAND_M = 0.008         # its depth
 LOWER_Y = (0.30, 1.20)  # the raised panels
 UPPER_Y0 = 1.62
 TOP_GAP_M = 0.12       # the upper panel stops this far under the leaf's top
-PRESSURE_THICK_M = 0.16
-RIB_Y = (0.55, 1.10, 1.95)  # a pressure leaf's ribs (baked relief), centres
-RIB_M = (0.08, 0.02)        # height, proud (baked)
-SEAM_PLATES_Y = (0.82, 1.50)  # a pressure leaf's plate seams
+PRESSURE_THICK_M = 0.20
+RIB_Y = ((0.50, 0.58), (1.92, 2.00))  # a pressure leaf's two ribs across each face, from and to (modelled)
+RIM_M = (0.06, 0.02)                   # its rim: width, proud
+WHEEL_Y, WHEEL_R = 1.10, 0.24          # its locking wheel's centre height and outer radius
+SEAM_PLATES_Y = (0.80, 1.52)  # a pressure leaf's plate seams
 
 # The set's colours: a warm light grey leaf, its raised panels a shade lighter, the band and edges dark
 # (data/materials/prop_atlas.json finishes).
@@ -180,43 +182,78 @@ def door_leaf(kind, w, h, side):
 
 
 def pressure_leaf(kind, w, h):
-    """A pressure door's one leaf, jamb to jamb: a thick slab with a locking bar across its middle; in the
-    atlas three ribs each side, a hazard foot, a small dark window and an amber lamp beside it."""
+    """A pressure door's one leaf, jamb to jamb, the heaviest door on the ship (design 4i): a 20 cm slab with
+    a raised rim round each face, two ribs across it, a locking wheel (hub, spokes, an eight-sided rim), the
+    locking bar above it and two hydraulic rams; in the atlas a hazard foot, a window, an amber lamp and the
+    PRESSURE plate."""
     n = name_of(kind, w, h, None)
-    p = Prop(n, f"The leaf of a {w:.1f} x {h:.1f} m pressure door, sliding whole into its left jamb (ship-props design 4g)",
+    p = Prop(n, f"The leaf of a {w:.1f} x {h:.1f} m pressure door, sliding whole into its left jamb (ship-props design 4i)",
              "floor, at the left jamb's face; the leaf runs toward +x to the right jamb")
     t = PRESSURE_THICK_M / 2
+    top = h - LINTEL_M
     x0, x1 = -IN_JAMB_M, w + IN_JAMB_M
-    body = p.box("slab", (x0, 0.0, -t), (x1, h - LINTEL_M, t), {"+z": "bulkhead", "-z": "bulkhead", "*": "machinery"})
-    # The ribs are baked relief (decor): modelled across the face they cut it into strips the atlas unfolds
-    # skewed. The locking bar is modelled, the depth a glance reads.
-    bars = []
+    body = p.box("slab", (x0, 0.0, -t), (x1, top, t), {"+z": "bulkhead", "-z": "bulkhead", "*": "machinery"})
+    pieces = []
     for zs in (1, -1):
-        lo, hi = (t - 0.005, t + 0.035) if zs > 0 else (-t - 0.035, -t + 0.005)
-        bars.append(p.box(f"bar_{'f' if zs > 0 else 'b'}", (0.20, 1.36, lo), (w - 0.20, 1.46, hi), "trim"))
-    p.union(body, "locking_bar", bars)
-    p.chamfer(body, "bar_edges", 0.008, lambda m, d, n1, n2: abs(m[2]) > t + 0.03 and abs(d[0]) > 0.9)
-    # Two plate seams across each face (V-grooves 12 mm wide and deep): a heavy leaf is plated, and a face
-    # cut in three is three charts the atlas lays flat whole (one 2.2 m chart it cut into triangles).
+        f = "f" if zs > 0 else "b"
+
+        def z(lo, hi):
+            """A span proud of this face: lo..hi metres out of it (into the slab when negative)."""
+            return (t + lo, t + hi) if zs > 0 else (-t - hi, -t - lo)
+        r0, r1 = z(-0.005, RIM_M[1])
+        # The rim: one frame round the face, a plate with its middle cut out (bars would meet in one plane).
+        rim = p.box(f"rim_{f}", (0.0, 0.0, r0), (w, top, r1), "trim")
+        c0_, c1_ = z(-0.05, RIM_M[1] + 0.05)
+        p.cut(rim, f"rim_{f}_open", [p.box(f"rim_{f}_hole", (RIM_M[0], RIM_M[0], c0_), (w - RIM_M[0], top - RIM_M[0], c1_), "trim")])
+        pieces.append(rim)
+        for k, (ya, yb) in enumerate(RIB_Y):
+            q0, q1 = z(-0.005, RIM_M[1] - 0.006)
+            pieces.append(p.box(f"rib_{f}{k}", (RIM_M[0] - 0.01, ya, q0), (w - RIM_M[0] + 0.01, yb, q1), "trim"))
+        # The locking bar, and the wheel below it: hub, four spokes and an eight-sided rim.
+        b0, b1 = z(-0.005, 0.035)
+        pieces.append(p.box(f"bar_{f}", (0.20, 1.36, b0), (w - 0.20, 1.46, b1), "trim"))
+        cx, cy = w / 2, WHEEL_Y
+        h0, h1 = z(-0.005, 0.07)
+        pieces.append(p.prism(f"hub_{f}", [(cx + 0.075 * math.cos(math.pi / 8 + k * math.pi / 4), cy + 0.075 * math.sin(math.pi / 8 + k * math.pi / 4))
+                                          for k in range(8)], "z", h0, h1, "machinery"))
+        s0, s1 = z(0.02, 0.055)
+        for k in range(4):
+            m = Matrix.Translation((cx, cy, 0.0)) @ Matrix.Rotation(math.pi / 4 + k * math.pi / 2, 4, "Z")
+            pieces.append(p.box(f"spoke_{f}{k}", (0.05, -0.018, s0), (WHEEL_R - 0.02, 0.018, s1), "trim", m=m))
+        w0, w1 = z(0.015, 0.06)
+        octo = lambda r: [(cx + r * math.cos(math.pi / 8 + k * math.pi / 4), cy + r * math.sin(math.pi / 8 + k * math.pi / 4)) for k in range(8)]
+        ring = p.prism(f"wheel_{f}", octo(WHEEL_R / math.cos(math.pi / 8)), "z", w0, w1, "machinery")
+        i0, i1 = z(-0.05, 0.11)
+        p.cut(ring, f"wheel_{f}_open", [p.prism(f"wheel_{f}_hole", octo((WHEEL_R - 0.035) / math.cos(math.pi / 8)), "z", i0, i1, "machinery")])
+        pieces.append(ring)
+        # Two hydraulic rams at the wheel's lower corners: a cylinder body and its rod, on a slant.
+        for sgn in (-1, 1):
+            ang = math.radians(35.0) * sgn
+            m = Matrix.Translation((cx + sgn * 0.33, 0.70, 0.0)) @ Matrix.Rotation(ang, 4, "Z")
+            c0, c1 = z(-0.005, 0.05)
+            pieces.append(p.box(f"ram_{f}{sgn:+d}", (-0.025, -0.10, c0), (0.025, 0.04, c1), "machinery", m=m))
+            d0, d1 = z(-0.005, 0.035)
+            pieces.append(p.box(f"rod_{f}{sgn:+d}", (-0.012, 0.03, d0), (0.012, 0.12, d1), "trim", m=m))
+    p.union(body, "rim_ribs_wheel_rams", pieces)
+    p.chamfer(body, "proud_edges", 0.006, lambda m, d, n1, n2: abs(m[2]) > t + 0.012 and abs(d[0]) > 0.99)
+    # Two plate seams across each face (V-grooves 12 mm wide and deep), between the ribs, so no chart of a face
+    # is long (design 4g).
     p.cut(body, "plate_seams", [p.prism(f"seam_{'f' if zs > 0 else 'b'}{k}", [(zs * (t + 0.05), y - 0.006), (zs * (t - 0.012), y), (zs * (t + 0.05), y + 0.006)][::zs],
-                                        "x", x0 - 0.05, x1 + 0.05, "machinery") for zs in (1, -1) for k, y in enumerate(SEAM_PLATES_Y)])
+                                        "x", RIM_M[0] + 0.02, w - RIM_M[0] - 0.02, "machinery") for zs in (1, -1) for k, y in enumerate(SEAM_PLATES_Y)])
     p.body = body
 
     def decor(D):
         for zs, at in faces():
             X = (lambda x: x) if zs > 0 else (lambda x: -x)
             face = at(t)
-            xs = sorted((X(0.02), X(w - 0.02)))
-            for yc in RIB_Y:
-                rx = sorted((X(0.05), X(w - 0.05)))
-                D.box(face, rx[0], yc - RIB_M[0] / 2, rx[1], yc + RIB_M[0] / 2, -0.002, RIB_M[1], "steel", inset=0.008)
-            D.paint(face, [(xs[0], 0.03), (xs[1], 0.03), (xs[1], 0.24), (xs[0], 0.24)], "hazard")
-            wx = sorted((X(w / 2 - 0.16), X(w / 2 + 0.16)))
-            D.box(face, wx[0] - 0.02, 1.53, wx[1] + 0.02, 1.83, -0.002, 0.008, "steel", inset=0.004)
-            D.box(face, wx[0], 1.55, wx[1], 1.81, -0.002, 0.009, "glass")
-            D.disc(face, X(w / 2 + 0.26), 1.68, 0.026, -0.002, 0.008, "led_amber", sides=14, inset=0.003)
-            D.ring(face, X(w / 2 + 0.26), 1.68, 0.026, 0.034, -0.002, 0.01, "bolt", sides=14)
-            D.plate(face, X(w / 2), 2.08 if h > 2.15 else h - 0.12, 0.30, 0.07, "PRESSURE", finish="yellow", ink="stencil_dark")
+            xs = sorted((X(RIM_M[0] + 0.01), X(w - RIM_M[0] - 0.01)))
+            D.paint(face, [(xs[0], RIM_M[0] + 0.02), (xs[1], RIM_M[0] + 0.02), (xs[1], RIB_Y[0][0] - 0.03), (xs[0], RIB_Y[0][0] - 0.03)], "hazard")
+            wx = sorted((X(w / 2 - 0.15), X(w / 2 + 0.15)))
+            D.box(face, wx[0] - 0.02, 1.56, wx[1] + 0.02, 1.84, -0.002, 0.008, "steel", inset=0.004)
+            D.box(face, wx[0], 1.58, wx[1], 1.82, -0.002, 0.009, "glass")
+            D.disc(face, X(w / 2 + 0.28), 1.70, 0.026, -0.002, 0.008, "led_amber", sides=14, inset=0.003)
+            D.ring(face, X(w / 2 + 0.28), 1.70, 0.026, 0.034, -0.002, 0.01, "bolt", sides=14)
+            D.plate(face, X(w / 2), (RIB_Y[1][1] + top - RIM_M[0]) / 2, 0.30, 0.06, "PRESSURE", finish="yellow", ink="stencil_dark")
     p.decor.append(decor)
     p.finish_of.update(PRESSURE_FINISH_OF)
     return p
@@ -231,8 +268,8 @@ for _kind, _w, _h in ship_sizes():
         for _side in ("l", "r"):
             LEAVES[name_of("door", _w, _h, _side)] = (lambda w=_w, h=_h, s=_side: door_leaf("door", w, h, s))
 
-# Triangles per leaf (design 4g's table): a door leaf 220-240 by its size, a pressure leaf 320.
-BUDGETS = {n: (320 if n.startswith("pressure") else 220 if float(n.split("_")[1].split("x")[0]) <= 120 else 240) for n in LEAVES}
+# Triangles per leaf (design 4g's table, 4i): a door leaf 220-240 by its size, a pressure leaf 1,700.
+BUDGETS = {n: (1700 if n.startswith("pressure") else 220 if float(n.split("_")[1].split("x")[0]) <= 120 else 240) for n in LEAVES}
 
 STATUS = ("Built (2026-10-08) by " + GENERATOR + " for the owner's 'doors are still flat geometry' "
           "(openspec/changes/ship-props design section 4g). docs/mockups/deck-plan.html draws them; the engine does not yet.")

@@ -1,0 +1,79 @@
+<title>Star Crew Engine</title>
+<meta name="description" content="The Star Crew engine (Rust, sokol_gfx on WebGL 2) walking the SCS Tern in the browser.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* One screen, deliberately dark: the game's canvas fills it; a thin bridge-console strip under it
+     names the build and the keys. Single-theme by choice (a game screen). */
+  :root {
+    --hull: #0b0f14;        /* the page, the colour of the ship's dark */
+    --panel: #121a23;       /* the strip under the canvas */
+    --line: #233142;        /* hairlines */
+    --text: #c9d6e3;        /* running text */
+    --dim: #7d8fa3;         /* labels */
+    --amber: #f0a347;       /* the ship's status amber, the one accent */
+    --display: "Saira Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; }
+  body {
+    background: var(--hull); color: var(--text); font: 14px/1.5 var(--mono);
+    display: flex; flex-direction: column; padding-inline: 16px; padding-block: 12px; box-sizing: border-box; gap: 10px;
+  }
+  .screen { position: relative; flex: 1 1 auto; min-height: 0; border: 1px solid var(--line); background: #000; }
+  canvas#canvas { display: block; width: 100%; height: 100%; outline: none; cursor: crosshair; }
+  canvas#canvas:focus-visible { box-shadow: inset 0 0 0 2px var(--amber); }
+  .status {
+    position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
+    font-family: var(--display); font-weight: 700; font-size: 1.3rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--amber);
+    background: radial-gradient(circle at 50% 45%, #16202b 0%, #000 70%); pointer-events: none;
+  }
+  .status[hidden] { display: none; }
+  .status small { display: block; font: 400 0.8rem/1.6 var(--mono); letter-spacing: 0; text-transform: none; color: var(--dim); margin-top: 6px; }
+  .strip {
+    display: flex; flex-wrap: wrap; gap: 6px 22px; align-items: baseline; background: var(--panel);
+    border: 1px solid var(--line); padding: 8px 12px; font-size: 12px; color: var(--dim);
+  }
+  .strip b { font-family: var(--display); font-weight: 700; font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text); }
+  .strip kbd { font: 500 11px var(--mono); color: var(--amber); border: 1px solid var(--line); padding: 0 4px; border-radius: 2px; }
+  .strip .note { margin-left: auto; }
+  @media (max-width: 640px) { .strip .note { margin-left: 0; } }
+</style>
+
+<div class="screen">
+  <canvas id="canvas" tabindex="0" oncontextmenu="event.preventDefault()" aria-label="The Tern, drawn by the Star Crew engine"></canvas>
+  <div class="status" id="status">Starting the engine<small>Rust and sokol_gfx on WebGL 2. The ship is a 9 MB download.</small></div>
+</div>
+<div class="strip">
+  <b>SCS Tern</b>
+  <span>Click to look: <kbd>mouse</kbd></span>
+  <span>Walk <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> run <kbd>Shift</kbd> jump <kbd>Space</kbd></span>
+  <span>Use <kbd>E</kbd> down <kbd>Q</kbd> fly <kbd>F</kbd></span>
+  <span>Light <kbd>1</kbd> normal <kbd>2</kbd> red alert <kbd>3</kbd> emergency</span>
+  <span class="note">The same engine as the Pi 5 client. A browser frame rate says nothing about a Pi.</span>
+</div>
+
+<script>
+  const statusEl = document.getElementById("status");
+  const canvas = document.getElementById("canvas");
+  var Module = {
+    canvas,
+    print: (t) => console.log(t),
+    printErr: (t) => console.warn(t),
+    setStatus: (t) => {
+      if (!t) { statusEl.hidden = true; return; }
+      statusEl.hidden = false;
+      statusEl.firstChild.nodeValue = t.replace(/\(\d+\/\d+\)/, "").trim() || "Loading";
+    },
+    onAbort: (what) => { statusEl.hidden = false; statusEl.firstChild.nodeValue = "The engine stopped: " + what; },
+  };
+  // The canvas's drawing buffer follows its size on the page, so the engine draws at the screen's pixels.
+  function fit() {
+    const r = canvas.getBoundingClientRect(), d = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.max(1, Math.round(r.width * d)); canvas.height = Math.max(1, Math.round(r.height * d));
+  }
+  fit();
+  canvas.addEventListener("click", () => canvas.focus());
+</script>
+<script src="sc-client.js"></script>

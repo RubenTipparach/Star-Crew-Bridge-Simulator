@@ -114,16 +114,16 @@
       "csg": [
         "union vessel_nozzles_ladder (29)"
       ],
-      "sha256": "d39e7d34f7690e039048410448741b36014cb56886c5a9841fd98a0742561e95",
+      "sha256": "0f8aabbfb796e2adc18ce9ffda73650adea06bf6ea69e483b6c4824bdd090e81",
       "atlas": {
         "file": "atlas/heat_exchanger.png",
         "px": 512,
-        "px_per_m": 78.04,
-        "charts": 41,
-        "cover": 0.648,
+        "px_per_m": 78.8,
+        "charts": 90,
+        "cover": 0.66,
         "glow": 0.0,
-        "sha256": "0ddf886b502959bd3d0f375063a1003a4b248407117d4421dc4f2e86e5152c8f",
-        "bytes": 73269
+        "sha256": "6307a0759aac4f8f8a0eac58ec6eafd3df4434e8ef52d5ff7dc3d86d29992533",
+        "bytes": 76974
       }
     },
     "pressurizer": {
@@ -182,16 +182,16 @@
         "difference heater_openings (2)",
         "union vessel_valves_lines (18)"
       ],
-      "sha256": "28115694a5ac0bb519da98c5f06c0ae8fc465a3a61080524dafc9afcd0738cd0",
+      "sha256": "e845313f2561f6bdd79d9746f748cdf413a77bdf3cc48100aac477313292e3fa",
       "atlas": {
         "file": "atlas/pressurizer.png",
         "px": 256,
-        "px_per_m": 57.9,
-        "charts": 23,
-        "cover": 0.723,
+        "px_per_m": 53.44,
+        "charts": 53,
+        "cover": 0.616,
         "glow": 0.0,
-        "sha256": "0c214e06287e02840ba2d8be5b5ba0b9e47b40677a586efcdbf4c200314bc915",
-        "bytes": 17957
+        "sha256": "3de0fd06e06e31880bd0c27ad5c59fcf3c4202d5662a59bc24ddf3cbc61fda7d",
+        "bytes": 23113
       }
     },
     "coolant_pump": {
@@ -264,16 +264,16 @@
         "chamfer plate_edges (4 edges, 15 mm)",
         "union casing_stand_motor (13)"
       ],
-      "sha256": "7907f8a9621fdd496bd4c142975cb1ce6067537edfb301aa36ace88b1ddbaf58",
+      "sha256": "8210f01ef53a642ea77fc91d005dea7c073a0157661012c353c991082e88348d",
       "atlas": {
         "file": "atlas/coolant_pump.png",
         "px": 256,
-        "px_per_m": 55.42,
-        "charts": 19,
-        "cover": 0.592,
-        "glow": 0.0,
-        "sha256": "91ce31a0ea6d279ec1ffafaa609ea4cae5ecd8f27e5dcccc2f35ef7e8ecc047f",
-        "bytes": 23492
+        "px_per_m": 52.89,
+        "charts": 57,
+        "cover": 0.539,
+        "glow": 0.0002,
+        "sha256": "6419d81a873593141c4e4951b555f0b9ff05a4d77bebe42271c29986282e949b",
+        "bytes": 30282
       }
     },
     "coolant_tank": {
@@ -331,16 +331,16 @@
       "csg": [
         "union saddles_and_fittings (14)"
       ],
-      "sha256": "91751d90e1f10d839865f8c3ce643e593256bd4808b93a85bbd62f32c3248129",
+      "sha256": "1d3dce87cbc61d0e91d07bff0e97e347938ed72a16be85431ed41f99cb28462b",
       "atlas": {
         "file": "atlas/coolant_tank.png",
         "px": 256,
-        "px_per_m": 54.09,
-        "charts": 28,
-        "cover": 0.739,
-        "glow": 0.0006,
-        "sha256": "9f39bdaba914cec5ce06466032beb2cf16fdf73d3d80ed528f07e8a4cafc536f",
-        "bytes": 17137
+        "px_per_m": 48.81,
+        "charts": 54,
+        "cover": 0.601,
+        "glow": 0.0005,
+        "sha256": "70db25bc489e91b1ea744eea15efa55360e6e21b746cf95fcf972c0a28bc76b5",
+        "bytes": 20363
       }
     },
     "fuel_dewar": {
@@ -398,16 +398,16 @@
       "csg": [
         "union legs_tree_rail (14)"
       ],
-      "sha256": "55339fb541723aadbbf4ee1f1d6bd3aaaf86430d0225fbd94baa90f3dc139b89",
+      "sha256": "86896ce42173cec862640908c8c0639800b73ee6d1442f1dbac24c8e39aa84c3",
       "atlas": {
         "file": "atlas/fuel_dewar.png",
         "px": 256,
-        "px_per_m": 57.0,
-        "charts": 25,
-        "cover": 0.526,
+        "px_per_m": 59.61,
+        "charts": 56,
+        "cover": 0.576,
         "glow": 0.0,
-        "sha256": "f41e7de170be031fa178b5ead2f609c709d54c1b0100031965ea6ec3d5b3f04d",
-        "bytes": 16229
+        "sha256": "cb89dc505207461c5eb6b5ee862fb14d83f5ed7d74eabdd17223812133a9dc5d",
+        "bytes": 26500
       }
     },
     "helium3_rack": {
@@ -465,16 +465,16 @@
       "csg": [
         "union frame_cylinders_regulator (15)"
       ],
-      "sha256": "cab640d26b9b765e478c168b3121e1862a2d33dd87c7f8edffe70dffe627f62e",
+      "sha256": "a332853a847e42e76215730352f093bf49c0733fc4dbec3e880e2f065455b027",
       "atlas": {
         "file": "atlas/helium3_rack.png",
         "px": 256,
-        "px_per_m": 42.7,
-        "charts": 22,
-        "cover": 0.671,
+        "px_per_m": 42.6,
+        "charts": 39,
+        "cover": 0.668,
         "glow": 0.0,
-        "sha256": "f8772eb8c1039f53209ee3afef8fad90829af0153f6465960ac31694ed64d43e",
-        "bytes": 13663
+        "sha256": "da1577bf6ea4e56800ae787515ae9883c102822e2bec3c7ddcfe5d6e395fa218",
+        "bytes": 18174
       }
     },
     "fuel_processor": {
@@ -586,16 +586,16 @@
         "union cryostat_manifold_pump_box (20)",
         "difference screens (1)"
       ],
-      "sha256": "0ec55032e546b6d56ae634a0bdad940dc2f7bafb34eeb5ccab4ab1a0b1da4df6",
+      "sha256": "1dd82a121ed346d60d58b37fe839899b30c61c443665607eef6b076c6cecacc4",
       "atlas": {
         "file": "atlas/fuel_processor.png",
         "px": 256,
-        "px_per_m": 66.12,
-        "charts": 39,
-        "cover": 0.809,
-        "glow": 0.0096,
-        "sha256": "2870acbee0754ede81aef55b9ecb734f4725ed64485b1da3c308072405afc08c",
-        "bytes": 21546
+        "px_per_m": 58.22,
+        "charts": 79,
+        "cover": 0.627,
+        "glow": 0.0098,
+        "sha256": "27b5b73b53b4ecb9154cf1bcf627ae1024fc800fa8d300ba4c7dc26eebca6c79",
+        "bytes": 28763
       }
     },
     "cryoplant": {
@@ -670,16 +670,16 @@
         "chamfer compressor_top (4 edges, 20 mm)",
         "union cold_box_and_compressor (20)"
       ],
-      "sha256": "f203a8cbb12ea6bd2f98fa3ea105b53dcb45ad0f0a4ccdc4c3348c4d3d92b52d",
+      "sha256": "816d0eff893d73499f145d718ff548542f4c641d23b3c6852f73cf5b5f29d822",
       "atlas": {
         "file": "atlas/cryoplant.png",
-        "px": 256,
-        "px_per_m": 42.33,
-        "charts": 40,
-        "cover": 0.812,
-        "glow": 0.0002,
-        "sha256": "1da1927a22990656057796ea21feb3e6ca648852b3e18cdf1ccdbf96b3e4bffa",
-        "bytes": 24929
+        "px": 512,
+        "px_per_m": 83.1,
+        "charts": 82,
+        "cover": 0.783,
+        "glow": 0.0001,
+        "sha256": "345ded140a8724ebbffaa4dd750147e9610f367f06d867355b039c784db12bab",
+        "bytes": 59625
       }
     },
     "vacuum_pump": {
@@ -750,16 +750,16 @@
       "csg": [
         "union valve_pump_stand (8)"
       ],
-      "sha256": "a6d54ebf07af5298a0ac7f8103df0d9316cee5946290fbbfcc0549772cea42fd",
+      "sha256": "e93d82e1fb3793473046cd1faf6cc56871612d47f0e10a2b718f592bdc9ca06b",
       "atlas": {
         "file": "atlas/vacuum_pump.png",
         "px": 256,
-        "px_per_m": 108.12,
-        "charts": 21,
-        "cover": 0.606,
-        "glow": 0.0,
-        "sha256": "c476c8ebf0dc6d9384c0963a1a10e612e1d92e28618cdc795cac7c95bbfbd75e",
-        "bytes": 15883
+        "px_per_m": 107.25,
+        "charts": 37,
+        "cover": 0.597,
+        "glow": 0.0001,
+        "sha256": "222d4e5cc2b856d744c5a94949b21c9a2df1cdb1351517d7a4c6abf76d804406",
+        "bytes": 20136
       }
     },
     "ash_tank": {
@@ -818,16 +818,16 @@
       "csg": [
         "union legs_inlet_pump (12)"
       ],
-      "sha256": "7053d2333332037bd18c85b82b17671bcd6aa2b1ff0aab7c00d19de87f4e49e8",
+      "sha256": "d2d83c1b3e3065b19283aaf32f9ea3f161d3a21318c6d35d38e24ffd25472d7c",
       "atlas": {
         "file": "atlas/ash_tank.png",
         "px": 256,
-        "px_per_m": 74.81,
-        "charts": 24,
-        "cover": 0.722,
+        "px_per_m": 71.63,
+        "charts": 51,
+        "cover": 0.662,
         "glow": 0.0,
-        "sha256": "832830be2bfcc77dfdd017974feb004c81103e7b7f7c2b73e3e22ada9ef33382",
-        "bytes": 20232
+        "sha256": "7b4eea402d648a1e085158252d053ccd0f0490a00af096752856842235d000da",
+        "bytes": 20960
       }
     },
     "power_converter": {
@@ -889,16 +889,16 @@
         "difference fan_bays_and_mimic (3)",
         "union fans (12)"
       ],
-      "sha256": "1303f882f9d860fe6b23a5574f1c5ea2ab17b137e97393b9e4a84fd235eb508b",
+      "sha256": "c5fb6f6d270daccb4039b7fbede9c6d1f8dfc1b3481d04e9df0dc29f7246478e",
       "atlas": {
         "file": "atlas/power_converter.png",
         "px": 256,
-        "px_per_m": 54.52,
-        "charts": 31,
-        "cover": 0.712,
-        "glow": 0.0348,
-        "sha256": "65ab48b748bb8a1370e3bbc9eeedc4c79ea785f0ee7baf512342987d91941da9",
-        "bytes": 16467
+        "px_per_m": 53.13,
+        "charts": 48,
+        "cover": 0.676,
+        "glow": 0.033,
+        "sha256": "aa918b6cd9f35b6ea1d1112031414b2f5c31045423964522a5d3f2409b5ca7e4",
+        "bytes": 16374
       },
       "port_sections_m": {
         "bus_out": [
@@ -1047,16 +1047,16 @@
       "csg": [
         "union coils_rings_ports_looms_feeds (47)"
       ],
-      "sha256": "7d681ce24a7c8ca8b7c0f3d0392dac3c6a32fcc2c52f33bfd57d8df1f95714be",
+      "sha256": "b637048c840ff5ba6c6516db9c85cab50d33d9ade055cc67323a2d1f953e1162",
       "atlas": {
         "file": "atlas/reactor_dressing.png",
         "px": 1024,
-        "px_per_m": 71.16,
-        "charts": 97,
-        "cover": 0.809,
+        "px_per_m": 68.92,
+        "charts": 210,
+        "cover": 0.759,
         "glow": 0.0,
-        "sha256": "97b52d9f8f59232f8fabcadd2a5874b1ae2c38cd47bacb1952a447795a57e593",
-        "bytes": 175813
+        "sha256": "c66f67ed1851bf1bbf5426cf7b18e499df84c05465fda86f19a64dff92ef58f7",
+        "bytes": 225435
       }
     },
     "gantry_crane": {
@@ -1092,16 +1092,16 @@
       "csg": [
         "union ribs_trucks_trolley_hook (19)"
       ],
-      "sha256": "5c3d48eb9fa414b46173181cf119b7e466c0742bde997fa4016b1ba47b9b7e9c",
+      "sha256": "223cda7848518dde860c43606818dde0aa72a8782849d48801bca4be4e62ec51",
       "atlas": {
         "file": "atlas/gantry_crane.png",
         "px": 512,
-        "px_per_m": 67.61,
-        "charts": 40,
-        "cover": 0.843,
+        "px_per_m": 62.5,
+        "charts": 69,
+        "cover": 0.72,
         "glow": 0.0,
-        "sha256": "9f8ed427c68ad6b830564063eee09a6a3b7b0d6c3b533a9d1da2c210953e8310",
-        "bytes": 72303
+        "sha256": "7c9a8791583553f6b2dc32e9fb39748f9d3506995f9cb8f061b658fc235a4f94",
+        "bytes": 72415
       },
       "rail_top_m": 1.6
     },
@@ -1171,16 +1171,16 @@
         "union bezels_estop_conduit (7)",
         "difference screen (1)"
       ],
-      "sha256": "f47392665423b931c60e659abe61030e42cde12ab9220c9939cf47f3535766e5",
+      "sha256": "d1e9f8dd0489bb70c3a7d7e79232c8a0b1d17a12c6a5dafd0456b86d4ff198f6",
       "atlas": {
         "file": "atlas/local_panel.png",
         "px": 256,
-        "px_per_m": 94.35,
-        "charts": 15,
-        "cover": 0.649,
-        "glow": 0.0198,
-        "sha256": "9ed81e8bbebb5f604269e694e8bcb629f20d24525ac20f8074e24ec852bae552",
-        "bytes": 12184
+        "px_per_m": 96.18,
+        "charts": 27,
+        "cover": 0.675,
+        "glow": 0.0193,
+        "sha256": "67f1fa6a7eb13d18faa16dbbb3f76944750dfa7c5627a0e75a0903eb9d8cf291",
+        "bytes": 12740
       }
     },
     "control_desk": {
@@ -1297,16 +1297,16 @@
         "difference screens (3)",
         "union cheeks (4)"
       ],
-      "sha256": "995bb6e98253c0977c629aa7c30a29816f50826808b2bd3414bb3eb9e5127892",
+      "sha256": "260fc64f6370f89c95c17c0060a763e53bdc00be8c845abc2c47b5e104bca6ba",
       "atlas": {
         "file": "atlas/control_desk.png",
         "px": 256,
-        "px_per_m": 45.47,
-        "charts": 50,
-        "cover": 0.526,
-        "glow": 0.034,
-        "sha256": "763713c77d4ab8fa1bb185e537ca014c99e99e55b833ed894838dd0730f31fa7",
-        "bytes": 17307
+        "px_per_m": 46.51,
+        "charts": 96,
+        "cover": 0.551,
+        "glow": 0.0352,
+        "sha256": "f150c7621c35b79d3cb803220741585621daadf69934e6750ba0a6355735607f",
+        "bytes": 16058
       }
     },
     "mimic_board": {
@@ -1351,16 +1351,16 @@
         "union meters (8)",
         "difference field_and_readout (2)"
       ],
-      "sha256": "40e51cccfb24e89f2626e1e45b2baab567cc6396889dca8ea141b20f8f68f136",
+      "sha256": "a199670e5bb84150bf18452b4aa090ab8b708e55be91e5bd0518e2c9bb0d4508",
       "atlas": {
         "file": "atlas/mimic_board.png",
         "px": 256,
         "px_per_m": 61.34,
-        "charts": 19,
+        "charts": 37,
         "cover": 0.61,
-        "glow": 0.0605,
-        "sha256": "6c84f5a556b4d8d9c3510d7900392bef29fcf7cc4bdfee18c16cf6b35503a87c",
-        "bytes": 12179
+        "glow": 0.0596,
+        "sha256": "048e98e6d658b279850cb449a873ad85261c1e2c5cdd9cc6c105f04b042c83be",
+        "bytes": 14349
       }
     },
     "tool_board": {
@@ -1406,16 +1406,16 @@
         "difference drawer_and_door_lines (5)",
         "union top_vice_board_tools (19)"
       ],
-      "sha256": "68cfa8ecdd435421090d8408915d36db25d86455c6fc7170f31aee864ee2cf8a",
+      "sha256": "e842c5b6171fc9956af1c4d038e2a56a70f86045342cc05f0dacc7a4d410157e",
       "atlas": {
         "file": "atlas/tool_board.png",
         "px": 256,
-        "px_per_m": 61.59,
-        "charts": 46,
-        "cover": 0.615,
-        "glow": 0.0031,
-        "sha256": "d860edf2f65180593e8cc9fd398f5ac94b7f0dd123858ab6c85fb9169d1f216b",
-        "bytes": 21906
+        "px_per_m": 60.9,
+        "charts": 61,
+        "cover": 0.601,
+        "glow": 0.0063,
+        "sha256": "6535ddb4813cc28ac3e4e275b8091e3bbf4dd45c775e91771171e6e67e4d083e",
+        "bytes": 27078
       }
     },
     "tool_chest": {
@@ -1456,16 +1456,16 @@
       "csg": [
         "union top_casters_handle (6)"
       ],
-      "sha256": "92ba49568efcd4c1b7f549908904b01342b8ddd5f1f2e3cf39527f84b0934871",
+      "sha256": "177f7297e672fd7d0fbf98ccec848fc4bdf8f60d7018ee0870e33dc68661cb57",
       "atlas": {
         "file": "atlas/tool_chest.png",
         "px": 256,
-        "px_per_m": 120.21,
-        "charts": 11,
-        "cover": 0.897,
+        "px_per_m": 113.15,
+        "charts": 20,
+        "cover": 0.795,
         "glow": 0.0,
-        "sha256": "c3ebf41a2e3eed17124a86716d6ae5a96471e3d19b0270af014826d1f24aa458",
-        "bytes": 18880
+        "sha256": "f3b39af6d3128c0ca5a16a67dccfc9fd66b0e7d994644c8e60c9abba7125db2c",
+        "bytes": 13283
       }
     },
     "parts_rack": {
@@ -1509,16 +1509,16 @@
       "csg": [
         "union shelves_and_spares (16)"
       ],
-      "sha256": "a6b84ae9b02ad779e89167126a537920dde62bbccec88081dc60ace54195dc64",
+      "sha256": "8c8ecb2b0a91861bd356c1ad69cdf48f49bab112889641d3800a168dbceec2eb",
       "atlas": {
         "file": "atlas/parts_rack.png",
         "px": 256,
-        "px_per_m": 47.88,
-        "charts": 33,
-        "cover": 0.772,
+        "px_per_m": 44.96,
+        "charts": 49,
+        "cover": 0.681,
         "glow": 0.0,
-        "sha256": "6431615350fff60f6e7cd04ac0cbf52f04873b2720bed404361cd2547743a077",
-        "bytes": 17267
+        "sha256": "747001a7d3e3810b86ba78a5b61badd1f1847cea2cd40fa0e26f191ba599e440",
+        "bytes": 19671
       }
     },
     "valve_large": {
@@ -1582,16 +1582,16 @@
       "csg": [
         "union flanges_bonnet_wheel (5)"
       ],
-      "sha256": "a59e7dfde4e6b57f58979e6ee895677ae8bdb113e19b24417a1f92f527746558",
+      "sha256": "8f02d9780f8ae885b9f29dba8c371f5186645c63c2209eac009bfc52a078a1d4",
       "atlas": {
         "file": "atlas/valve_large.png",
         "px": 256,
-        "px_per_m": 128.0,
-        "charts": 10,
-        "cover": 0.696,
+        "px_per_m": 110.62,
+        "charts": 19,
+        "cover": 0.52,
         "glow": 0.0,
-        "sha256": "cfe6a72178ff1611e3447c4ff07e5da678bcc4bca8decb448309940cced80440",
-        "bytes": 16604
+        "sha256": "45d94079447233a5de25efdc55bc759be22efcf8c21857288d1e24d7168dd714",
+        "bytes": 22092
       },
       "centreline_m": 0.288
     },
@@ -1656,16 +1656,16 @@
       "csg": [
         "union bonnet_wheel (3)"
       ],
-      "sha256": "d74c8dd0455df8cadf57013acbab73037c9a7b5a2ade2eade51ca8698ea6ee7b",
+      "sha256": "2da7644f9732fabb209b13f100aa0426694262ee6dcd13b63e50336bf3dee6e5",
       "atlas": {
         "file": "atlas/valve_small.png",
         "px": 256,
         "px_per_m": 128.0,
-        "charts": 5,
+        "charts": 9,
         "cover": 0.098,
         "glow": 0.0,
-        "sha256": "ac9d3c3604f851a3e7aa9aebbcbfc3a7290818ac119dca9db5bfce8fb704b090",
-        "bytes": 5573
+        "sha256": "b29193c4e9c915b267989719b875977136b773de89894799027f19ceba33850c",
+        "bytes": 6867
       },
       "centreline_m": 0.1
     }

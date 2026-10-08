@@ -582,49 +582,53 @@
     },
     "pressure_100x220": {
       "file": "pressure_100x220.glb",
-      "presents": "The leaf of a 1.0 x 2.2 m pressure door, sliding whole into its left jamb (ship-props design 4g)",
+      "presents": "The leaf of a 1.0 x 2.2 m pressure door, sliding whole into its left jamb (ship-props design 4i)",
       "anchor": "floor, at the left jamb's face; the leaf runs toward +x to the right jamb",
       "dimensions_m": [
         1.04,
         2.195,
-        0.23
+        0.34
       ],
       "bounds_m": {
         "min": [
           -0.02,
           0.0,
-          -0.115
+          -0.17
         ],
         "max": [
           1.02,
           2.195,
-          0.115
+          0.17
         ]
       },
       "operators_m": [],
       "screens": [],
-      "triangles": 116,
-      "budget_triangles": 320,
+      "triangles": 984,
+      "budget_triangles": 1700,
       "materials": [
         "machinery",
         "trim",
         "bulkhead"
       ],
       "csg": [
-        "union locking_bar (2)",
-        "chamfer bar_edges (4 edges, 8 mm)",
+        "difference rim_f_open (1)",
+        "difference wheel_f_open (1)",
+        "difference rim_b_open (1)",
+        "difference wheel_b_open (1)",
+        "union rim_ribs_wheel_rams (28)",
+        "chamfer proud_edges (40 edges, 6 mm)",
         "difference plate_seams (4)"
       ],
-      "sha256": "98b69e882f81f20613ad4b02cff650a12bc912b8f1308c929330106a47b12339",
+      "sha256": "2f4773cd1ce82e319c5c28607633c14ffa2b3dabd3d1947636a914d3c4c4c88b",
       "atlas": {
         "file": "atlas/pressure_100x220.png",
         "px": 256,
-        "px_per_m": 93.19,
-        "charts": 12,
-        "cover": 0.744,
-        "glow": 0.0006,
-        "sha256": "2523af5b9f3838bb351ab71ff846ca38e13f5237ca513ea826382b958e871ef2",
-        "bytes": 12562
+        "px_per_m": 67.82,
+        "charts": 89,
+        "cover": 0.497,
+        "glow": 0.0004,
+        "sha256": "3edb1705cd72f55e2479c12468909d18823cc6ba726503cefc06428cf0715471",
+        "bytes": 29993
       }
     }
   }

@@ -548,9 +548,10 @@ fn main() -> ExitCode {
     }
     let cfg = WindowConfig {
         title: "Star Crew".into(),
-        width: 1920,
-        height: 1080,
-        fullscreen: !headless && !args.iter().any(|a| a == "--window"),
+        // In the browser the window is the page's canvas, sized by the page (engine-stack design 10a).
+        width: if cfg!(target_os = "emscripten") { 1280 } else { 1920 },
+        height: if cfg!(target_os = "emscripten") { 720 } else { 1080 },
+        fullscreen: !headless && !args.iter().any(|a| a == "--window") && !cfg!(target_os = "emscripten"),
         headless,
         vsync: !headless,
     };

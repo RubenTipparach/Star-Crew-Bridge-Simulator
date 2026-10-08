@@ -72,6 +72,13 @@ From the owner's brief, 2026-10-04. Quotes are the owner's words.
   use webrtc if posible to do multiplayer on web and desktop"). A browser build is a playtest
   target, never the measure of the game's speed (`engine-stack` section 10a,
   `netcode-and-sessions`, `matchmaker`).
+- **Every commit is deployed to itch.io** (owner, 2026-10-08: "go ahead and deploy after every commit to
+  this repo"). `.github/workflows/web.yml` builds the engine for the browser and pushes it with butler
+  (`BUTLER_API_KEY`, a repository secret) to https://ruben-tipparach.itch.io/star-crew-bridge-simulator;
+  `tools/web/release.sh` is the same thing by hand (`engine-stack` 10b). A push that breaks that build is a
+  broken deploy: run `tools/web/build.sh` before pushing engine changes.
+- **The engine is the game now** (owner, 2026-10-08: "continue building the game to run on actual engine
+  rather than js"). The three.js mockups stay the design tool; new gameplay is built in the Rust engine.
 - **Documentation and mockups first.** "First we need to do some extreme documentation and
   mockups in 3js." Mockups are three.js pages (section 11).
 - **Consoles are user friendly above all** (owner, 2026-10-07): "console mockups dont need 3d,
