@@ -291,7 +291,9 @@ for yaw and pitch and a flipper switch that can roll the ship"):
   stick direction that would move it so, its length the turn rate against the limit (owner,
   2026-10-08: "need arrows onthe for directional lines that light up when it becomes the dominant
   direction, and a line that shows wich direction the ships nose is moving toards on the flight
-  stick"). Both are rate commands, the stick of section 4, and spring
+  stick"). The base and the boot stay put and only the shaft and the plain grip lean (owner,
+  2026-10-08: "bottom of this joystick should NOT rotate, and remove the red button"). Both are
+  rate commands, the stick of section 4, and spring
   back to centre when let go. Pulling the stick toward you is nose up, as on an aircraft (invertible
   in the bindings). Beside them, heading, pitch and roll now, each with its rate bar and the rate
   set point as a ghost.
@@ -299,7 +301,11 @@ for yaw and pitch and a flipper switch that can roll the ship"):
   live on the helm ui") lives to the right of the viewscreen, in the band above the panels (owner,
   2026-10-08: "nav ball goes to the right of view screen"): the
   reference plane as a horizon pitched and rolled with the ship, heading marks along it, and the
-  order's horizon as a ghost.
+  order's horizon as a ghost. Its pitch ladder (the ball's latitude) has a line every 15 degrees,
+  numbered every 30 at both ends; a roll ring round the rim, ticked every 10 degrees and numbered
+  every 30, turns with the horizon under a fixed index at the top, so the index reads the roll; and
+  the roll in whole degrees stands in a box beside it (owner, 2026-10-08: "nav ball needs latitude
+  degrees, and roll degrees on the side").
 - **ORIENT**: the order as three thumbwheels, one each for heading, pitch and roll. A wheel turns
   one whole degree a notch (drag it, scroll it, or tap its top or bottom half), and its number reads
   under it. The four quaternion numbers sit under the wheels, then GO with the turn's time, and LEVEL,

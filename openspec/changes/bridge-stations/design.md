@@ -408,8 +408,16 @@ and tilts toward the viewer to use its height (its ellipse at least 0.42 as tall
 **-** and **+** beside its number, or the scroll wheel over the plot, through 1, 2, 5, 10, 20, 50
 and 100 km. Every contact stands on a line from a disk on the ship's plane (the plane of its wings):
 the disk is where it would be at the ship's height, the line its height above or below, solid above
-and dashed below. Beside it, its elevation in whole degrees with a mark, `▲ +12` above the plane or
-`▼ -8` below, in its IFF colour.
+and dashed below. Beside it, a mark for above (`▲`) or below (`▼`) and its distance, `4.2 km`
+(owner, 2026-10-08: "instead of elevation number, show distance numbers on these"); the elevation
+in degrees is in its tooltip. A contact below the plane is drawn at half strength, its glyph, disk,
+line and number alike, so it is plainly below ("anything below the plane should be shaded darker so
+its obvious"). A drag turns the plot round the ship and tilts it (12 to 90 degrees), shrinking it
+to stay in its panel; the ship's glyph, the tubes' cone, the camera cone and the contacts turn with
+it, and a reset button beside the range brings it back to bow up at the panel's own tilt (owner,
+2026-10-08: "let players rotate this around too, and add a button to reset it at default
+orientation"). Pressing a contact still selects it; only a drag that starts off the contacts turns
+the plot.
 
 **Where the viewscreen looks** (owner, 2026-10-08: "for panels with view screeen, there should be a
 little camera icon that shows what quadrant of ship the camera is viewing on the scanner, show if
@@ -423,7 +431,9 @@ happening (owner, 2026-10-08: "this display thingy should be 3d", "I can click a
 direction og the ship things are happening", "have targets and enemies show up on there"). Under it,
 the feed buttons (forward, aft, port, starboard, target, chase) are on every console, not only
 Science's (owner: "i ccnt change camera view on helm, please fix that"); the captain's override
-still wins while it is held.
+still wins while it is held. They are laid out as arrow keys (owner, 2026-10-08: "arrange the arrows
+in a sensible way please"): forward over aft, port and starboard either side of aft, target and
+chase in the top corners, the same on every pad.
 
 **Words where a number needs one** (owner, 2026-10-08: "I dont understand whta the percent disal is
 for"): a number whose meaning is not its picture carries its one word. FIRE's ring is the chance the
