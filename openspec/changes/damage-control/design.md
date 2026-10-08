@@ -18,8 +18,8 @@ come straight here (`flight-and-navigation`). A Gannet carries 60 MJ, a Lance 40
 
 The Tern's layout puts systems in rooms (`systems[].compartment`) and `power-grid` routes its
 conduits through named compartments with polylines, so a hit can find what lies near its path. Its
-damage control room (POI 9) is on deck B forward, its board 20.8 s walking from the forward
-switchboard and 39.1 s from the main switchboard by the aft passage, 30.9 s through the hangar
+damage control room (POI 9) is on deck B forward, its board 22.7 s walking from the forward
+switchboard (20.8 s before its door moved aft to z 1.2, 2026-10-08) and 39.1 s from the main switchboard by the aft passage, 30.9 s through the hangar
 once T1 is applied (`reference-ship-tern` section 6 at `crew-on-deck`'s speeds; v2 plan,
 2026-10-05, the board on the room's new outer wall, was 19.0 s, 37.3 s and 29.1 s; corrected
 2026-10-04 from 20.7 s and 29.9 s at an assumed 1.6 m/s). The

@@ -52,6 +52,7 @@ GENERATOR = "tools/blender/build_suite_props.py"
 
 # Triangles per prop: the budgets these props were briefed with (2026-10-06), the command-suite
 # design's section 5 table.
+# The armory's three (2026-10-08): the armory design's "racks and lockers about 1,500 triangles" together.
 BUDGETS = {
     "briefing_table": 400,
     "wall_screen": 120,
@@ -68,6 +69,9 @@ BUDGETS = {
     "locker_bank": 200,
     "server_rack": 140,
     "workbench": 220,
+    "rifle_rack": 700,
+    "ammo_cabinet": 170,
+    "armour_rack": 400,
 }
 
 # What a recorded screen shows: the bridge's kinds and "strip", a long thin display let into a
@@ -454,6 +458,83 @@ def server_rack():
     return p
 
 
+# ----------------------------------------------------------------------------- the armory (openspec/changes/armory)
+
+def rifle(p, i, x):
+    """One rifle standing muzzle up in a rack, its side to the room: a side profile in x (across the rifle) and y
+    (along it), 50 mm thick, its butt in the rack's base and its handguard through the locking bar."""
+    prof = [(-0.03, 0.04), (0.07, 0.04), (0.03, 0.42), (0.10, 0.47), (0.10, 0.51), (0.03, 0.53), (0.12, 0.61),
+            (0.12, 0.67), (0.03, 0.69), (0.02, 0.96), (0.008, 1.14), (-0.012, 1.14), (-0.045, 0.92), (-0.045, 0.40)]
+    roles = ["machinery", "machinery", "machinery", "trim", "machinery", "machinery", "trim", "machinery", "machinery",
+             "trim", "trim", "trim", "machinery", "machinery"]
+    return p.prism(f"rifle_{i}", [(x + u, v) for u, v in prof], "z", 0.095, 0.145, roles, cap="machinery")
+
+
+def rifle_rack():
+    """A rifle rack for six: a backboard, a base trough the butts stand in, a locking bar across the handguards
+    (hazard-striped, its lock lit), a shelf of magazines above and six rifles standing muzzle up, sides to the room."""
+    p = prop("rifle_rack", "The armory's rifle rack: six rifles behind a locking bar")
+    W, D = 1.9, 0.26
+    board = p.box("backboard", (-W / 2, 0.0, 0.0), (W / 2, 1.85, 0.04), "bulkhead")
+    base = p.box("base", (-W / 2, 0.0, 0.04), (W / 2, 0.10, D), {"+y": "machinery", "*": "trim"})
+    sides = [p.box(f"side_{s:+d}", (min(s * W / 2, s * (W / 2 - 0.04)), 0.0, 0.04), (max(s * W / 2, s * (W / 2 - 0.04)), 1.50, D),
+                   "trim") for s in (-1, 1)]
+    bar = p.box("lock_bar", (-W / 2 + 0.04, 0.80, 0.04), (W / 2 - 0.04, 0.87, 0.22), {"+z": "hazard", "*": "trim"})
+    lock = p.box("lock", (0.80, 0.78, 0.20), (0.90, 0.89, 0.25), {"+z": "light_panel", "*": "machinery"})
+    shelf = p.box("shelf", (-W / 2, 1.46, 0.04), (W / 2, 1.50, D), "trim")
+    mags = [p.box(f"mags_{k}", (-0.82 + 0.33 * k, 1.50, 0.07), (-0.62 + 0.33 * k, 1.62, 0.22), "machinery") for k in range(6)]
+    guns = [rifle(p, i, -0.80 + 0.32 * i) for i in range(6)]
+    p.union(board, "rack", [base, bar, lock, shelf] + sides + mags + guns)
+    p.chamfer(board, "front_edges", 0.012, edge("x", {"y": 0.10, "z": D}))
+    p.body = board
+    return p
+
+
+def ammo_cabinet():
+    """A steel ammunition cabinet: two doors split by a V-groove, a hazard plinth, a keypad lit by its lamp, louvre
+    slots low on each door and a chamfered top."""
+    p = prop("ammo_cabinet", "The armory's ammunition cabinet, locked by a keypad")
+    W, D = 1.0, 0.50
+    body = p.prism("body", [(0.0, 0.0), (0.45, 0.0), (0.45, 0.10), (D, 0.10), (D, 1.84), (0.46, 1.90), (0.0, 1.90)], "x",
+                   -W / 2, W / 2, ["machinery", "hazard", "machinery", "bulkhead", "trim", "machinery", "bulkhead"], cap="bulkhead")
+    cuts = [p.prism("door_split", [(-0.031, D + 0.05), (0.031, D + 0.05), (0.0, D - 0.012)], "y", 0.12, 1.82, "machinery")]
+    for i, x in enumerate((-0.25, 0.25)):
+        cuts.append(p.prism(f"vent_{i}", [(D + 0.05, 0.22), (D + 0.05, 0.36), (D - 0.04, 0.36)], "x", x - 0.16, x + 0.16, "machinery"))
+    p.cut(body, "doors", cuts)
+    pad = p.box("keypad", (0.06, 1.10, D - 0.01), (0.20, 1.30, D + 0.03), {"+z": "light_panel", "*": "machinery"})
+    lamp = p.box("lamp", (0.08, 1.33, D - 0.01), (0.18, 1.36, D + 0.02), {"+z": "light_panel", "*": "machinery"})
+    p.union(body, "keypad", [pad, lamp])
+    p.body = body
+    return p
+
+
+def armour_rack():
+    """An armour rack: a backboard with a rail of three vests on hangers (each a chest and back plate in one block,
+    shoulders cut in) and a shelf of three helmets above, the rail's ends on brackets."""
+    p = prop("armour_rack", "The armory's armour rack: three vests and three helmets")
+    W, D = 1.8, 0.42
+    board = p.box("backboard", (-W / 2, 0.0, 0.0), (W / 2, 2.0, 0.04), "bulkhead")
+    rail = p.box("rail", (-W / 2 + 0.05, 1.50, 0.18), (W / 2 - 0.05, 1.54, 0.22), "trim")
+    brackets = [p.box(f"bracket_{s:+d}", (s * (W / 2 - 0.05) - 0.03, 1.46, 0.04), (s * (W / 2 - 0.05) + 0.03, 1.56, 0.24), "trim")
+                for s in (-1, 1)]
+    shelf = p.box("shelf", (-W / 2, 1.70, 0.04), (W / 2, 1.74, D - 0.06), "trim")
+    parts = [rail, shelf] + brackets
+    for i, x in enumerate((-0.58, 0.0, 0.58)):
+        vest = p.hull(f"vest_{i}", [(x + sx * 0.24, 0.80, z) for sx in (-1, 1) for z in (0.08, 0.30)]
+                      + [(x + sx * 0.27, 1.20, z) for sx in (-1, 1) for z in (0.07, 0.31)]
+                      + [(x + sx * 0.20, 1.47, z) for sx in (-1, 1) for z in (0.10, 0.28)], "accent")
+        neck = p.box(f"neck_{i}", (x - 0.11, 1.30, 0.0), (x + 0.11, 1.60, 0.40), "accent")
+        p.cut(vest, f"vest_{i}_neck", [neck])
+        hook = p.box(f"hook_{i}", (x - 0.02, 1.40, 0.17), (x + 0.02, 1.56, 0.23), "trim")
+        helmet = p.hull(f"helmet_{i}", [(x + 0.15 * math.cos(a), 1.74, 0.20 + 0.16 * math.sin(a)) for a in [k * math.pi / 4 for k in range(8)]]
+                        + [(x + 0.10 * math.cos(a), 1.88, 0.20 + 0.11 * math.sin(a)) for a in [k * math.pi / 4 for k in range(8)]]
+                        + [(x, 1.93, 0.20)], "machinery")
+        parts += [vest, hook, helmet]
+    p.union(board, "rack", parts)
+    p.body = board
+    return p
+
+
 # ----------------------------------------------------------------------------- the atlas's details
 # What each prop carries on its baked atlas besides the kit's rules (the owner, 2026-10-07: "basically
 # everything using the metal tile grid needs to get replaced with custom textures"): furniture takes a
@@ -490,6 +571,9 @@ DECOR = {
                     ("stencil", "EVA 3", 0.06, F, "stencil", "high"), ("stencil", "EVA 4", 0.06, F, "stencil", "high"),
                     ("placard", "SUITS|CHECK SEALS", 0.30, 0.12, [L, R, F], "yellow", "stencil_dark")],
     "workbench": [("placard", "EYE PROTECTION", 0.42, 0.08, F, "yellow", "stencil_dark", "high")],
+    "rifle_rack": [("placard", "SIGN OUT|SECURITY", 0.36, 0.12, F, "yellow", "stencil_dark", "high")],
+    "ammo_cabinet": [("placard", "AMMUNITION", 0.40, 0.08, F, "yellow", "stencil_dark", "high"), ("stencil", "ARMS 2", 0.06, F, "stencil", "low")],
+    "armour_rack": [("placard", "ARMOUR", 0.30, 0.08, F, "plate", "stencil_dark", "high")],
     "server_rack": [("stencil", "CORE 01", 0.07, F, "stencil", "high"), ("lamps", 8, F, ("led_green", "led_green", "led_blue", "led_amber"), 0.01, 0.035, "high"),
                     ("lamps", 8, F, ("led_blue", "led_green", "led_green"), 0.01, 0.035, "low"),
                     ("placard", "HIGH VOLTAGE", 0.34, 0.09, [L, R, BK])],
@@ -520,6 +604,9 @@ BUILDERS = {
     "locker_bank": locker_bank,
     "server_rack": server_rack,
     "workbench": workbench,
+    "rifle_rack": rifle_rack,
+    "ammo_cabinet": ammo_cabinet,
+    "armour_rack": armour_rack,
 }
 PROPS = {n: (lambda n=n: decorated(n)) for n in BUILDERS}
 

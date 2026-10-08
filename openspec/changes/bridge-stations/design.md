@@ -891,7 +891,7 @@ nearest side seat; 2.2 m from the aft stations to the aft wall's chamfered corne
 the engineering and science desks and their raked walls, 0.38 m for comms and flight operations
 (v2 plan, 2026-10-05: the side seats sit on the raked walls and face them; were 3.5 m, 1.6 m to
 the aft bulkhead and 0.65 m). Every seat and the route to it is checked against the crew collider
-(`crew-on-deck`: radius 0.30 m) by the deck compiler (CLAUDE.md 8).
+(`crew-on-deck`: radius 0.25 m) by the deck compiler (CLAUDE.md 8).
 
 #### 11.2 The viewscreen
 

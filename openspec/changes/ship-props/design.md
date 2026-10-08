@@ -21,8 +21,8 @@ chairs and furniture (`bridge` and `suite` prop sets, placed by `lib/propkit.js`
 - System sizes in the layout (`reference-ship-tern` T4): the props are built to the deck plan's nominal sizes
   until T4 sets them.
 - Door leaves as the engine will build them. The kit's walls are drawn back to back with no thickness to slide
-  a leaf into, so the deck plan's leaves (section 4d) retract into their jambs instead, until the deck pipeline
-  draws walls with thickness.
+  a leaf into, so the deck plan's leaves (section 4e) slide toward their jambs and are clipped there, until the
+  deck pipeline draws walls with thickness.
 - The exterior: hull mounts, sensors and the radiators stay as they are.
 
 ## Decisions
@@ -89,6 +89,20 @@ medbay's beds are a pair; the reactor stands from its base on deck C. The comput
 
 **Craft.** At their layout centre, on their bay's floor, nose to the bow.
 
+**The Petrel is walked into** (owner, 2026-10-08: "need interior for shuttle, and I should be able to walk into it").
+Its hull is hollowed by a loft of its own sections inset 8 cm, from the stern wall to the cockpit under the canopy,
+with a flat deck 0.6 m above the floor at the ramp's top. The stern opening is 1.32 m wide and 1.95 m clear. Inside:
+- a bench of two seats along each side, its back on the hull, with belts;
+- a light strip along the ceiling;
+- in the cockpit, two seats on pedestals, 0.6 m apart so a body passes between them to the console under the
+  canopy. Inside, the canopy's band is dark glass (glowing as the panes do outside, it filled the cockpit with a
+  white wall); four lamps along the ceiling and over the cockpit light the cabin in the bake.
+
+It stays one closed solid (`build_machinery_props.py`), 2,520 triangles against 1,918 before. In the walk it collides
+as its own triangles instead of its bounds box (`deck-plan.html` `MESH_PROPS`), so a body walks up the 22 degree
+ramp, along the aisle and into the cockpit. Measured headless: the ramp climbed and the deck reached at 0.6 m in
+2.3 s from the hangar floor, and out again.
+
 **Crew rooms.** `tools/crew_rooms.py` writes `data/ships/tern/crew_rooms.json` and checks it with
 `tools/command_suite.py`'s furniture checks, on the layout as it stands, with the suite, and with deck access:
 every piece inside its room, clear of every door's zone (1.0 m), none overlapping, and the scuttle ladders' floor
@@ -99,12 +113,20 @@ in damage control and the medbay kept clear.
 | Crew quarters | Six two-tier bunks (twelve berths): two on the forward wall, one on the aft wall, one on the corridor wall, and two back to back in the middle of the room; two locker banks on the hull side |
 | Mess | A galley on the forward wall, two tables of four |
 | Damage control | A workbench (repair kits), two locker banks (EVA suits, extinguishers) |
+| Port and starboard turret rooms | Each: the turret's capacitor bank (three battery banks) on the aft wall; its power converter and power panel by the pod's hatch; the pod's air handler and scrubbers on the forward wall; the gunner's locker bank and a tool board on the corridor wall |
 
 Recommendation taken (ask only with screenshots): eight berths, the most crew the netcode allows (M3). The owner,
 2026-10-08: "should have more bunks in crew quarters": twelve berths, for eight crew and the four bodies of the damage
 control teams, who sleep aboard too. The walls are full (the doors from the stair tower, the turret room and the
 spine), so the two new bunks stand back to back in the middle, 2 cm apart, between aisles of 1.6 m and 2.1 m
 (`tools/crew_rooms.py` checks them against the doors and the walls).
+
+The turret rooms (owner, 2026-10-08: "turret access rooms are empty, they need to have some kind of battery or life
+support stuff there"). Their purposes in the layout name the hatch into the pod and the turret's capacitor bank; the
+deck plan drew 78 m^2 each of bare floor. They take what keeps a pod's gun and gunner going, from the machinery and
+engineering sets already built, and the middle stays open between the room's three doors. Each room adds 3,576
+triangles of props (three battery banks at 450, the converter 448, the panel 304, the air handler 326, the scrubbers
+404, the lockers 190, the tool board 554), merged into its one draw.
 
 ### 4. The kit
 
@@ -228,6 +250,30 @@ The owner walked the deck plan and found nine things; each is fixed in the page 
 | "some more weird missing geometry" (the magazine's ceiling) | A hole between decks showed the half metre between one room's ceiling and the next one's floor | Every floor hole is lined from the ceiling to the floor above (`ShipKit`, the collars) |
 | "I cant walk around the reactor all the way" | The reactor collided as its square bounds, whose corners reached into the ring catwalk at the diagonals | Round machines (the reactor, the pressurizer, the dewars) collide as 16-sided prisms; the ring walks round both ways |
 | "there should be two impulse thingies connected to these thrusters" | One drive unit on the centreline, between two engines | The layout's impulse drive stands as two units, one on each engine's centreline, nozzles against the aft bulkhead (`units_m`; one system for power and damage, `reference-ship-tern`) |
+
+### 4e. The owner's walk, second round (2026-10-08)
+
+The owner walked it again the same day. Each is fixed in the page, the libraries or the data, shown in
+`docs/screenshots/mockups/walk-fixes-2026-10-08b/` and checked headless with `MOCKUP_WALK`:
+
+| The owner | Cause | Fix |
+| --- | --- | --- |
+| "theres no pipe connecting these modules to the thrusters" | The impulse units stood free of the engines | A duct 1.2 m across from each unit's nozzle into the aft bulkhead, on the engine's axis (`deck-plan.html`, the drive's fit-out) |
+| "my collider is too wide, this chair is blocking me from walking" | A chair collided as its bounds, armrests and all, and the body was 0.6 m across | A chair collides as its pedestal (0.25 m round); the body is 0.5 m across (`crew-on-deck` section 2) |
+| "the doors are scaled to open ... doors should preserve volume" | A leaf shrank toward its jamb | A leaf keeps its size and slides toward its jamb, clipped there, so it never shows past the frame or over its neighbour; its texture moves with it |
+| "elevator is severly broken still", "im stuck in the elevator well" | The car's floor was a moving box flush with the deck, which jammed Rapier's controller at the seam; a shut shaft was guarded only by a soft check that froze every move near it | Each landing door is a wall while shut; inside the shaft the feet are held on the car's floor; a step away from a shut shaft is never stopped (`crew-on-deck` 3a). Every ride between the three decks, and walking off, measured |
+| "i cant walk up spiral stairs" | Their collision ramp was one quad a tread from column to wall; one of its triangles stood at 75 degrees across the walk line | The ramp is cut in 0.12 m rings, each at the helix's own slope (`crew-on-deck` 3a); both towers climbed and descended at three radii |
+| "whats the deal with this hole right in front of the door?" | The ventral pod's hatch lay between the shield room's and the switchboard's doors, which faced each other across deck C's corridor at z 3.0 | The doors move: the shield room's forward to z 5.0, the switchboard's aft to z 1.2 (`reference-ship-tern` section 4) |
+| "engine room textures get cut off here" | Engineering's walls were banded once from its lowest floor, so the mezzanine and the catwalk cut through module rows | A wall's bands start again above every floor inside the room (`wall-panels` section 2) |
+| "we need to be able to see some cool plasma ... inside a confined ring" | The reactor's windows were a flat glow | A ray-marched plasma ring behind each window, turning, with helical filaments (`engineering-fitout` 5a) |
+| "turret access rooms are empty" | Nothing was placed there | Capacitor banks, a power converter and panel, the pod's air handler and scrubbers, lockers and a tool board (section 4 crew rooms) |
+| "did you add armory room somewhere too?" | It was designed (`armory`) but not drawn | An armory on deck A, 56 m^2, with three new props: the rifle rack, the ammunition cabinet and the armour rack (`armory` section 4) |
+| "need interior for shuttle, and I should be able to walk into it" | The Petrel was a solid hull | A cabin, cockpit and fittings inside, walked into up the ramp (Craft, above) |
+| "this console has some messed up geometry" | The control desk's end cheeks were the convex hulls of a concave profile, so each stood as a slab 0.12 m above the control shelf | Each cheek follows the desk's profile as two convex pieces, a 5 cm rim above the top, the shelf and the deck (`build_engineering_props.py`) |
+
+Recommendation taken (ask only with screenshots): the doors themselves, modelled after the owner's reference
+(a stepped seam, raised panels, a black band with a grille, vents and a sign plate), are the next step; this round
+keeps the sliding leaves.
 
 ### 5. The Pi 5 budget this change spends
 

@@ -3,7 +3,7 @@
  *
  * What it owns: a crew member's body on the decks the way openspec/changes/crew-on-deck designs it, so the
  * owner can run round a ship (owner, 2026-10-06: "do you have fps mode in deck plan for me to run arond?").
- *   - The body is crew-on-deck's standing capsule (section 2): 0.30 m radius, 1.80 m tall, the eye at 1.65 m.
+ *   - The body is crew-on-deck's standing capsule (section 2): 0.25 m radius, 1.80 m tall, the eye at 1.65 m.
  *   - It moves at crew-on-deck's speeds (section 3): walk 1.8 m/s, run 4.0 m/s, 70 % of that backwards and
  *     on stairs; it speeds up at 20 m/s2 and brakes at 30 (the owner: "walking is to much like ice skating"). It
  *     steps up and down 0.35 m, so stairs and spiral stairs are walked, not animated; it jumps 0.46 m (Space; C5,
@@ -31,7 +31,7 @@
 (function () {
   "use strict";
   // crew-on-deck's proposed data/crew.json (design section 15): capsule, move and ladder.
-  const BODY = { radius_m: 0.30, height_m: 1.80, eye_m: 1.65, step_m: 0.35 };
+  const BODY = { radius_m: 0.25, height_m: 1.80, eye_m: 1.65, step_m: 0.35 };
   // Starting and stopping are quick (owner, 2026-10-08: "walking is to much like ice skating"): crew-on-deck section 3.
   const MOVE = { walk_m_s: 1.8, run_m_s: 4.0, back_scale: 0.7, stair_scale: 0.7, accel_m_s2: 20.0, stop_m_s2: 30.0 };
   const LADDER = { up_m_s: 2.0, down_m_s: 2.5, mount_s: 0.15, dismount_s: 0.15 };
@@ -136,7 +136,9 @@
     const ray = new THREE.Ray(new THREE.Vector3(), new THREE.Vector3(0, -1, 0));
     const keys = {}, stick = { x: 0, y: 0 };
     let yaw = 0, pitch = 0, vx = 0, vz = 0, vy = 0, grounded = true, jumpT = 0, stairT = 0, action = null, on = false, runToggle = false, eyeY = 0;
-    // Rapier: the body is a kinematic capsule its character controller moves; each lift's car floor is a kinematic box.
+    // Rapier: the body is a kinematic capsule its character controller moves. A lift's car floor is no collider: inside
+    // the shaft the feet are held on it (kccMove), because a separate box flush with the deck jammed the controller at
+    // the seam (owner, 2026-10-08: "I cant walk out when the doors are open").
     const R = o.rapier && o.world ? o.rapier : null, world = R ? o.world : null;
     const HALF = BODY.height_m / 2 - BODY.radius_m;
     let kBody = null, kCol = null, kcc = null;
@@ -150,19 +152,12 @@
       kcc.setMaxSlopeClimbAngle((KCC.climb_deg * Math.PI) / 180);
       kcc.setMinSlopeSlideAngle((KCC.slide_deg * Math.PI) / 180);
       kcc.setSlideEnabled(true);
-      // A closed door is a wall: a thin box in its opening, off while it stands open.
+      // A closed door is a wall: a thin box in its opening, off while it stands open. A lift's landing door too, so the
+      // shaft is shut wherever the car is not standing open (owner: "im stuck in the elevator well. this should be impossible").
       for (const d of doors) {
-        if (d.kind === "lift") continue;
         const th = Math.atan2(d.n[0], d.n[1]);
         d.col = world.createCollider(R.ColliderDesc.cuboid(d.w / 2, d.h / 2, DOOR.thick_m / 2).setTranslation(d.c[0], d.c[1], d.c[2])
           .setRotation({ x: 0, y: Math.sin(th / 2), z: 0, w: Math.cos(th / 2) }));
-      }
-      for (const l of o.lifts || []) {
-        const xs = l.poly.map((q) => q[0]), zs = l.poly.map((q) => q[1]);
-        const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cz = (Math.min(...zs) + Math.max(...zs)) / 2;
-        const b = world.createRigidBody(R.RigidBodyDesc.kinematicPositionBased().setTranslation(cx, l.carY - 0.05, cz));
-        world.createCollider(R.ColliderDesc.cuboid((Math.max(...xs) - Math.min(...xs)) / 2, 0.05, (Math.max(...zs) - Math.min(...zs)) / 2), b);
-        l.rb = b; l.cx = cx; l.cz = cz;
       }
       world.step();
     }
@@ -220,7 +215,6 @@
       else if (l.phase === "moving") {
         const d = l.target - l.carY, s = l.speed_m_s * h;
         l.carY = Math.abs(d) <= s ? l.target : l.carY + Math.sign(d) * s;
-        if (l.rb) l.rb.setTranslation({ x: l.cx, y: l.carY - 0.05, z: l.cz }, true);
         if (l.carY === l.target) { l.phase = "opening"; l.t = 0; }
         if (l.onMove) l.onMove(l.carY);
       } else if (l.phase === "opening" && l.t >= l.door_s) { l.phase = "idle"; l.t = 0; }
@@ -236,6 +230,7 @@
       const xs = l.poly.map((p) => p[0]), zs = l.poly.map((p) => p[1]), m = BODY.radius_m + 0.02;
       pos.x = Math.min(Math.max(pos.x, Math.min(...xs) + m), Math.max(...xs) - m);
       pos.z = Math.min(Math.max(pos.z, Math.min(...zs) + m), Math.max(...zs) - m);
+      vx = vz = 0; syncBody();
     }
 
     // ---------------------------------------------------------------- doors
@@ -249,6 +244,7 @@
       if (d.kind === "lift") {
         const l = lifts[d.lift], here = Math.abs(l.carY - d.stop) < 0.05;
         d.open = !here ? 0 : l.phase === "idle" ? 1 : l.phase === "opening" ? Math.min(1, l.t / l.door_s) : l.phase === "closing" ? Math.max(0, 1 - l.t / l.door_s) : 0;
+        if (d.col) d.col.setEnabled(d.open < DOOR.passable);
       } else {
         const r = doorRel(d), busy = on && inDoorway(d);
         if (d.kind === "door") {
@@ -371,10 +367,12 @@
         vx += dx; vz += dz;
       }
       let nx = pos.x + vx * h, nz = pos.z + vz * h;
-      // A lift's doors: closed unless its car stands here, open.
+      // A lift's doors: closed unless its car stands here, open. A step toward a shut shaft stops; a step away from it
+      // never does, so a body left at the door when the car goes can walk off.
       const inCar = liftIn(pos.x, pos.z);
       for (const l of lifts) {
-        const near = inPoly(l.poly, nx, nz) || polyDist(l.poly, nx, nz) < BODY.radius_m * 0.6;
+        const dn = inPoly(l.poly, nx, nz) ? -1 : polyDist(l.poly, nx, nz), d0 = inPoly(l.poly, pos.x, pos.z) ? -1 : polyDist(l.poly, pos.x, pos.z);
+        const near = dn < BODY.radius_m * 0.6 && dn < d0;
         if (l !== inCar && near && !boardable(l)) { nx = pos.x; nz = pos.z; vx = vz = 0; }
         if (l === inCar && !boardable(l) && !inPoly(l.poly, nx, nz)) { nx = pos.x; nz = pos.z; vx = vz = 0; }
       }
@@ -406,15 +404,18 @@
       if (inCar && inCar.phase === "moving") {   // riding: the car carries the feet
         pos.y = inCar.carY; vy = 0; grounded = true; syncBody(); return;
       }
-      vy = grounded ? -0.5 : Math.max(vy - GRAVITY_M_S2 * h, -FALL_MAX_M_S);
+      // In a car's shaft nothing is under the feet but the car: no pull down while standing, and the car's floor stops a fall.
+      vy = grounded ? (inCar ? 0 : -0.5) : Math.max(vy - GRAVITY_M_S2 * h, -FALL_MAX_M_S);
       kcc.computeColliderMovement(kCol, { x: dx, y: vy * h, z: dz });
       const m = kcc.computedMovement(), t = kBody.translation();
-      const nt = { x: t.x + m.x, y: t.y + m.y, z: t.z + m.z };
+      const nt = { x: t.x + m.x, y: t.y + m.y, z: t.z + m.z }, up = BODY.height_m / 2 + KCC.offset_m;
+      const onCar = inCar && nt.y - up <= inCar.carY + 1e-4;
+      if (onCar) nt.y = inCar.carY + up;
       kBody.setNextKinematicTranslation(nt);
       world.step();
       const was = pos.y;
-      pos.set(nt.x, nt.y - BODY.height_m / 2 - KCC.offset_m, nt.z);
-      grounded = kcc.computedGrounded() && jumpT <= 0;
+      pos.set(nt.x, nt.y - up, nt.z);
+      grounded = (onCar || kcc.computedGrounded()) && jumpT <= 0;
       if (grounded) vy = 0;
       else if (vy > 0 && m.y < vy * h * 0.5) vy = 0;   // the head met a ceiling
       // A wall (a near-vertical contact): drop the part of the velocity into it, keep the part along it. A floor, a

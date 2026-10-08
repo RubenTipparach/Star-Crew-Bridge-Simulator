@@ -55,8 +55,23 @@ a wounded body in heavy armour with a rifle walks min(1.4, 1.8 x 0.75 x 0.95) = 
 
 ### 4. The armory
 
-- On deck A in the command suite's spare space by the bridge locker, about 2.4 x 3.0 m: a rifle rack,
-  two armour lockers, an ammunition cabinet, a bench.
+- On deck A, a room of its own (owner, 2026-10-08: "did you add armory room somewhere too? theres still room
+  for more rooms on top deck"). With the command suite and deck access, deck A is empty aft of the head and the
+  bridge locker on both sides of the aft passage (z -18 to 0). The armory takes the port side's forward end: 9.35 x
+  6.0 m (x 1.25 to 10.6, z -6 to 0, 56 m^2, 168 m^3), from the passage out to the hull's line, inside the hull's
+  0.5 m clearance at the ceiling's chamfer. Its door `p_armory` (1.0 x 2.2 m) opens from the aft passage at z -3.0,
+  8 m aft of the command passage, so the bridge crew reach it in about 15 s at a run. It is a layout patch,
+  `data/ships/tern/armory.json`, written and checked by `tools/armory.py` (the layout check with the hull, every
+  piece inside the room, clear of the door and of each other).
+- What stands in it, from the suite prop set (`tools/blender/build_suite_props.py`, built 2026-10-08):
+  - on the aft wall, facing the door: the rifle rack (six rifles standing behind a hazard-striped locking bar,
+    magazines on a shelf above, 688 triangles), the ammunition cabinet (two doors, a keypad, 100) and a workbench
+    for cleaning and checking weapons;
+  - on the forward wall: two armour racks (three vests on hangers and three helmets each, 388) and a locker bank
+    for heavy suits;
+  - on the hull side: a shelf of holsters and slings.
+- The rest of deck A's spare space (the port side aft of the armory, z -18 to -6, and the starboard side, z -18 to
+  0) is left for the rooms still to come: the security office (`security-station`), an officer's cabin.
 - Its door is locked by default (`crew-on-deck`'s lock); the security officer and the captain unlock
   it from their consoles, anyone else overrides it at the panel in 3.0 s, logged.
 - Taking a rifle: Use at the rack, 1.0 s. Putting on a vest: 4 s; a heavy suit: 15 s.
@@ -71,6 +86,6 @@ a wounded body in heavy armour with a rifle walks min(1.4, 1.8 x 0.75 x 0.95) = 
 ## Pi 5 budget
 
 Per armed body one pistol prop (about 150 triangles) and, when carried, a rifle (about 300); the armory
-once (racks and lockers about 1,500 triangles). Muzzle flashes are runtime lights, at most 4 at once,
+once (its racks, lockers and benches 2,126 triangles, measured off the built props). Muzzle flashes are runtime lights, at most 4 at once,
 inside `light-baking`'s runtime light budget. Network: the held item and the holster state ride the
 snapshot's existing fields; a shot is one event (shooter, target or point, hit).

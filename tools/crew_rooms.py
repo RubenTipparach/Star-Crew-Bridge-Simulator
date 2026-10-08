@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The Tern's crew rooms furnished: the crew quarters, the mess and damage control.
+"""The Tern's crew rooms furnished: the crew quarters, the mess, damage control and the two turret rooms.
 
 It owns data/ships/tern/crew_rooms.json: where each piece of furniture stands in those rooms (its back on
 the floor, the way it faces), for the mockups to place as props (the machinery set's bunks, mess tables and
@@ -30,6 +30,7 @@ import deck_access as DA  # noqa: E402
 ROOT = os.path.dirname(HERE)
 OUT = os.path.join(ROOT, "data", "ships", "tern", "crew_rooms.json")
 MACHINERY = os.path.join(ROOT, "assets", "models", "machinery", "props.json")
+ENGINEERING = os.path.join(ROOT, "assets", "models", "engineering", "props.json")
 FLOOR_B = 0.0
 
 # The machinery set's crew furniture, as briefed (W x H x D, metres; tools/blender/build_machinery_props.py),
@@ -47,8 +48,19 @@ def on_slant(a, b, t):
     return [round(x, 3), FLOOR_B, round(z, 3)], round(math.degrees(math.atan2(nx / ln, nz / ln)), 2)
 
 
+def prop_set(prop):
+    """The prop set that models a piece: the suite's, the engineering set's (its manifest names it) or the machinery set's."""
+    if prop in SUITE_SET:
+        return "suite"
+    if os.path.exists(ENGINEERING):
+        with open(ENGINEERING, encoding="utf-8") as f:
+            if prop in json.load(f)["props"]:
+                return "engineering"
+    return "machinery"
+
+
 def piece(room, prop, back, yaw, note):
-    return {"room": room, "prop": prop, "set": "suite" if prop in SUITE_SET else "machinery",
+    return {"room": room, "prop": prop, "set": prop_set(prop),
             "back_m": [round(v, 3) for v in back], "yaw_deg": yaw, "note": note}
 
 
@@ -76,6 +88,21 @@ def furnishings():
     F.append(piece("damage_control", "workbench", [-5.0, FLOOR_B, 18.0], 0.0, "repair kits, on the aft wall"))
     F.append(piece("damage_control", "locker_bank", [-7.0, FLOOR_B, 26.0], 180.0, "EVA suits, on the forward wall"))
     F.append(piece("damage_control", "locker_bank", [-2.55, FLOOR_B, 26.0], 180.0, "extinguishers, on the forward wall"))
+    # The turret rooms (deck B, port and starboard, 9.75 x 8 m): what keeps a pod's gun and gunner going, which the
+    # rooms' purposes name and the deck plan drew as nothing (owner, 2026-10-08: "turret access rooms are empty, they
+    # need to have some kind of battery or life support stuff there"). The turret's capacitor bank on the aft wall,
+    # its power converter and power panel by the pod's hatch, the pod's air handler and scrubbers on the forward wall,
+    # the gunner's lockers and a tool board on the corridor wall; the middle stays open between the three doors.
+    for sx, room in ((1, "port_turret"), (-1, "stbd_turret")):
+        side = "port" if sx > 0 else "starboard"
+        for x in (3.2, 5.4, 7.6):
+            F.append(piece(room, "battery_bank", [sx * x, FLOOR_B, 0.0], 0.0, f"the {side} turret's capacitor bank, on the aft wall"))
+        F.append(piece(room, "power_converter", [sx * 11.0, FLOOR_B, 6.6], -sx * 90.0, "the turret's power converter, on the hull side forward of the pod's hatch"))
+        F.append(piece(room, "local_panel", [sx * 11.0, FLOOR_B, 2.5], -sx * 90.0, "the turret's power panel, aft of the pod's hatch"))
+        F.append(piece(room, "ls_air_handler", [sx * 3.0, FLOOR_B, 8.0], 180.0, "the pod's air handler, on the forward wall"))
+        F.append(piece(room, "ls_scrubbers", [sx * 8.0, FLOOR_B, 8.0], 180.0, "the pod's scrubbers, on the forward wall"))
+        F.append(piece(room, "locker_bank", [sx * 1.25, FLOOR_B, 6.6], sx * 90.0, "the gunner's suit and spares, on the corridor wall"))
+        F.append(piece(room, "tool_board", [sx * 1.25, FLOOR_B, 1.6], sx * 90.0, "tools for the gun and the bank, on the corridor wall"))
     return F
 
 
@@ -86,6 +113,13 @@ def footprints():
     if os.path.exists(MACHINERY):
         with open(MACHINERY, encoding="utf-8") as f:
             man = json.load(f)["props"]
+    # Any other prop of the machinery or engineering sets: its built bounds.
+    for path in (MACHINERY, ENGINEERING):
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as f:
+                for name, rec in json.load(f)["props"].items():
+                    b = rec["bounds_m"]
+                    fp.setdefault(name, (b["min"][0], b["max"][0], b["min"][2], b["max"][2]))
     for name, ((w, _, d), anchor) in BRIEF.items():
         if man and name in man:
             b = man[name]["bounds_m"]

@@ -78,7 +78,7 @@ BUDGETS = {
     "reactor_core": 1200,
     "launch_cradle": 400,
     "swift_fighter": 1000,
-    "petrel_shuttle": 2000,
+    "petrel_shuttle": 2900,   # 2,000 outside; its cabin, benches, cockpit and console (2026-10-08) about 900
     "bunk": 300,
     "mess_table": 300,
     "galley_counter": 450,
@@ -928,9 +928,20 @@ def petrel_shuttle():
         hint = ((a0[0] + a1[0]) / 2, (a0[1] + a1[1]) / 2 - 1.6, 0.3)
         cuts.append(pane(p, f"canopy_{e}", [(a0[0], a0[1], 2.30), (a1[0], a1[1], 2.30), (b1[0], b1[1], 4.05), (b0[0], b0[1], 4.05)],
                          hint, 0.055, 0.03))
-    # The hold behind the ramp, lit at its far end; panel lines; windows, hatches and the crew door.
-    cuts.append(p.box("hold", (-0.66, 0.60, -4.0), (0.66, 2.40, -2.50),
-                      {"+z": "light_panel", "+y": "light_panel", "-y": "machinery", "*": "bulkhead"}))
+    # The cabin (owner, 2026-10-08: "need interior for shuttle, and I should be able to walk into it"): the hull hollowed
+    # by a loft of its own sections inset 8 cm, from the stern wall to the cockpit under the canopy, its deck flat at the
+    # ramp's top; the stern opening 1.32 m wide and 1.95 m clear above the deck, so a body walks up the ramp and in. Inside,
+    # the canopy's band is dark glass: glowing like the panes outside, it filled the cockpit's view with a white wall.
+    def inset(sec, t):
+        return [(x - math.copysign(t, x), y + t if y < 1.65 else y - t) for x, y in sec]
+    s3i = [(a[0] + (b[0] - a[0]) * 0.8, a[1] + (b[1] - a[1]) * 0.8) for a, b in zip(s2, s3)]
+    glass = ["bulkhead"] * 4 + ["machinery"] * 5 + ["bulkhead"] * 5
+    cabin = loft(p, "cabin", [(-3.55, inset(base, 0.08)), (1.10, inset(base, 0.08)), (2.30, inset(s2, 0.08)), (3.70, inset(s3i, 0.08))],
+                 [["bulkhead"] * 14, ["bulkhead"] * 14, glass], ("bulkhead", "machinery"))
+    p.cut(cabin, "cabin_deck", [p.box("cabin_deck", (-2.0, -1.0, -4.5), (2.0, 0.60, 4.5), "trim")])
+    cuts.append(cabin)
+    # The stern opening, behind the ramp.
+    cuts.append(p.box("hold", (-0.66, 0.60, -4.0), (0.66, 2.55, -3.45), {"+y": "light_panel", "-y": "trim", "*": "bulkhead"}))
     for s in (-1, 1):
         for i, z in enumerate((-2.75, -0.55, 0.92)):
             cuts.append(groove(p, f"line_{s:+d}_{i}", (s * 1.42, 1.34, z), (s * 1.42, 2.32, z), (s, 0.0, 0.0)))
@@ -973,6 +984,23 @@ def petrel_shuttle():
                    ["machinery", "hazard", "machinery", "machinery"], cap="trim")
     p.chamfer(ramp, "ramp_edges", 0.12, lambda m, d, n1, n2: abs(m.x) > 0.6 and max(n1.y, n2.y) > 0.8, role="hazard")
     parts.append(ramp)
+    # The cabin's fittings, each standing on the deck or against the hull so the shuttle stays one solid: a bench of two
+    # seats along each side with a back on the hull, a light strip along the ceiling, and in the cockpit two seats on
+    # pedestals facing a console under the canopy, 0.6 m apart so a body walks between them to the console.
+    for s in (-1, 1):
+        parts.append(p.box(f"bench_{s:+d}", (min(s * 0.62, s * 1.10), 0.55, -2.90), (max(s * 0.62, s * 1.10), 1.05, -0.40),
+                           {"+y": "accent", "*": "machinery"}))
+        parts.append(p.box(f"bench_back_{s:+d}", (min(s * 0.98, s * 1.18), 1.05, -2.85), (max(s * 0.98, s * 1.18), 1.75, -0.45),
+                           {"*": "accent"}))
+        for i, z in enumerate((-2.30, -1.00)):
+            parts.append(p.box(f"belt_{s:+d}_{i}", (min(s * 0.95, s * 0.985), 1.10, z - 0.05), (max(s * 0.95, s * 0.985), 1.70, z + 0.05),
+                               "hazard"))
+        parts.append(p.box(f"seat_{s:+d}", (s * 0.52 - 0.22, 0.62, 2.35), (s * 0.52 + 0.22, 1.08, 2.85), {"+y": "accent", "*": "machinery"}))
+        parts.append(p.box(f"seat_back_{s:+d}", (s * 0.52 - 0.22, 1.08, 2.27), (s * 0.52 + 0.22, 1.80, 2.40), "accent"))
+        parts.append(p.box(f"seat_post_{s:+d}", (s * 0.52 - 0.08, 0.55, 2.45), (s * 0.52 + 0.08, 0.66, 2.75), "trim"))
+    parts.append(p.box("ceiling_light", (-0.12, 2.62, -3.30), (0.12, 2.78, 1.20), {"-y": "light_panel", "*": "trim"}))
+    console = p.box("console", (-0.68, 0.62, 3.25), (0.68, 1.20, 3.75), {"+y": "light_panel", "*": "machinery"})
+    parts.append(console)
     parts += gear_leg(p, "gear_nose", 0.0, 3.30, 0.62, -0.50)
     for s in (-1, 1):
         parts += gear_leg(p, f"gear_{s:+d}", s * 1.0, -2.30, 0.69, 0.50)

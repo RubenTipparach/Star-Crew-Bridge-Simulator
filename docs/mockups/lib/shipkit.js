@@ -877,11 +877,44 @@
    * world-anchored u along the wall (wall-panels design sections 1-5). Adds role "panel" to the
    * builder, with a layer name per vertex (vlayer) that geometryOf resolves.
    */
-  function dressWall(B, comp, w, top, holes, clear, ribs, ctx, P3, nIn) {
+  /**
+   * Where fixture floors inside a room meet one of its walls (wall-panels design section 2): stretches [{ u0, u1, floors }]
+   * covering 0..len, floors the [{ y_m, slab_m }] standing against the wall over that stretch (between its floor and its
+   * top), lowest first. floors: [{ y_m, slab_m, poly }]; P3(u, v, inset) is the wall's point.
+   */
+  function wallFloorStretches(len, y0, top, floors, P3) {
+    const step = 0.05, n = Math.max(1, Math.ceil(len / step)), on = (f, u) => { const q = P3(u, 0, 0.05); return insidePoly(f.poly, q[0], q[2], 0.06) || insidePoly(f.poly.slice().reverse(), q[0], q[2], 0.06); };
+    const mine = (floors || []).filter((f) => f.y_m - f.slab_m > y0 + 0.3 && f.y_m < top - 0.3);
+    if (!mine.length) return [{ u0: 0, u1: len, floors: [] }];
+    const out = [];
+    let cur = null;
+    for (let i = 0; i < n; i++) {
+      const u0 = (len * i) / n, u1 = (len * (i + 1)) / n, mid = (u0 + u1) / 2;
+      const fs = mine.filter((f) => on(f, mid)).sort((a, b) => a.y_m - b.y_m), key = fs.map((f) => f.y_m).join(",");
+      if (cur && cur.key === key) cur.u1 = u1; else { cur = { u0, u1, floors: fs, key }; out.push(cur); }
+    }
+    return out;
+  }
+  /** A wall stretch's bands: panelBands from its floor, again from each fixture floor against it, the slabs as top strips. */
+  function stretchBands(y0, top, floors, Sb) {
+    const out = [];
+    let y = y0, k = 0;
+    for (const f of floors) {
+      for (const b of panelBands(y, f.y_m - f.slab_m, Sb)) out.push(Object.assign(b, { level: b.level === undefined ? undefined : b.level + 100 * k }));
+      out.push({ strip: Sb.top, v0: f.y_m - f.slab_m, v1: f.y_m, q0: f.y_m - f.slab_m });
+      y = f.y_m; k++;
+    }
+    for (const b of panelBands(y, top, Sb)) out.push(Object.assign(b, { level: b.level === undefined ? undefined : b.level + 100 * k }));
+    return out;
+  }
+
+  function dressWall(B, comp, w, top, holes, clear, ribs, ctx, P3, nIn, floors) {
     const S = ctx.S, fin = S.finishes[comp.finish];
     if (!fin) throw new Error(`shipkit: compartment ${comp.id} has finish ${comp.finish}, not in panels.json finishes`);
     const span = S.layers.span_m, half = S.layers.margin_m / 2, Sb = S.bands;
-    const bays = panelBays(w.len, clear, ribs, S), bands = panelBands(w.y0, top, Sb);
+    const stretches = wallFloorStretches(w.len, w.y0, top, floors, P3);
+    const cuts = stretches.slice(1).map((st) => st.u0);
+    const bays = panelBays(w.len, clear, ribs.concat(cuts), S);
     const nRows = Object.keys(fin.strips.rows).length;
     // World-anchored strip u: along the wall to the viewer's right (w.t), in metres, over the 2 m period.
     const along = (u) => (w.a[0] + w.t[0] * u) * w.t[0] + (w.a[1] + w.t[1] * u) * w.t[1];
@@ -895,10 +928,10 @@
       B.triUv("panel", pts[0], pts[2], pts[3], uvs[0], uvs[2], uvs[3], nIn, layer);
     };
     const below = new Map();
-    for (const band of bands) {
+    for (const st of stretches) for (const band of stretchBands(w.y0, top, st.floors, Sb)) {
       if (band.strip) {
         const row = fin.strips.rows[band.strip], layer = panelLayerName(comp.finish, "strips");
-        for (const c of rectMinusHoles({ u0: 0, u1: w.len, v0: band.v0, v1: band.v1 }, holes)) {
+        for (const c of rectMinusHoles({ u0: st.u0, u1: st.u1, v0: band.v0, v1: band.v1 }, holes)) {
           quad(c, (u, v) => [along(u) / span, (row + (v - band.q0) / Sb.strip_m) / nRows], layer);
         }
         continue;
@@ -906,6 +939,7 @@
       let prev = null;
       bays.forEach((bay, bi) => {
         const wd = bay.u1 - bay.u0, c = (bay.u0 + bay.u1) / 2;
+        if (c < st.u0 || c > st.u1) return;   // another stretch's bay
         const door = bay.door && bay.door.v0 < band.v1 - EPS && bay.door.v1 > band.v0 + EPS ? bay.door : null;
         const cell = { u0: bay.u0, u1: bay.u1, v0: band.v0, v1: band.v1 };
         let m;
@@ -1128,6 +1162,8 @@
    * lamp_housing, lamp.
    * opts.skipKinds: portal kinds not to cut (["bay_door"] keeps a closed bay door's floor);
    * opts.wallFixtures: things on a wall that ribs and baseboards must clear (see below).
+   * opts.innerFloors: [{ y_m, slab_m, poly }], floors standing inside the room (a mezzanine, a catwalk, a landing): with
+   *   panels, a wall's bands start again above each over the stretch of wall it meets (wall-panels design section 2);
    * opts.panels (true, or panels.json): the panel dressing (wall-panels, ceilings-and-trims,
    * floor-panels). Flat walls become role "panel"; floor, ceiling, rib, beam, cove, baseboard,
    * frame and window_frame carry a layer name per vertex (vlayer) and coordinates in layer units;
@@ -1293,7 +1329,7 @@
           y -= r + C.gap_m;
         }
       }
-      if (panelsOn) dressWall(B, comp, w, top, holes, clear, ribs, panelsOn, P3, nIn);
+      if (panelsOn) dressWall(B, comp, w, top, holes, clear, ribs, panelsOn, P3, nIn, opts.innerFloors);
     }
 
     // ---- per brush: coves, floor, ceiling, and the detail on them

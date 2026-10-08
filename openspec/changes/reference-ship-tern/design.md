@@ -143,7 +143,7 @@ Map: `docs/design/maps/tern-deck-B.svg`.
 | ---: | --- | --- | ---: | ---: | --- | --- |
 | 7 | Torpedo room | Two forward missile tubes and their breeches (systems `tube_1`, `tube_2` at z = 31; mounts at z = 37), the ready racks, the hoist from the magazine below (`p_hoist`, 1.2 x 3.0 m); the room fills the bow's taper | 354.6 (was 210.0) | 118.2 (was 70.0) | `p_torpedo` (1.6 x 2.3 m) to 14; hoist to 21 | The tubes fire along the keel, so the breeches are at the bow; the magazine is directly below, so the hoist is a straight lift (20 s a missile, `weapons-and-shields`) |
 | 8 | Medbay | Two beds that revive and heal (`medbay_beds`) | 187.2 (was 138.0) | 62.4 (was 46.0) | `p_medbay` (1.2 x 2.2 m) to 14 | Forward on the main corridor, 8.5 s from the quarters, and on the same corridor as the ladder trunk, so a casualty from the bridge comes down one ladder |
-| 9 | Damage control | Repair kits, extinguishers, EVA suits; the damage control board (station `damage_board`); the board and the lockers stand on the raked outer wall | 187.2 (was 138.0) | 62.4 (was 46.0) | `p_damage_control` (1.2 x 2.2 m) to 14 | Mid-ship forward, beside the trunk: 20.8 s to the forward switchboard, 39.1 s to the main switchboard by the aft passage today (30.9 s through the hangar once T1 is applied; v2 plan, 2026-10-05: the board moved 3.3 m outboard; was 19.0, 37.3 and 29.1 s) |
+| 9 | Damage control | Repair kits, extinguishers, EVA suits; the damage control board (station `damage_board`); the board and the lockers stand on the raked outer wall | 187.2 (was 138.0) | 62.4 (was 46.0) | `p_damage_control` (1.2 x 2.2 m) to 14 | Mid-ship forward, beside the trunk: 22.7 s to the forward switchboard (20.8 s before its door moved aft, 2026-10-08), 39.1 s to the main switchboard by the aft passage today (30.9 s through the hangar once T1 is applied; v2 plan, 2026-10-05: the board moved 3.3 m outboard; was 19.0, 37.3 and 29.1 s) |
 | 10 | Crew quarters | Bunks and lockers; the mission spawn | 271.5 (was 232.5) | 90.5 (was 77.5) | `p_quarters` (1.0 x 2.2 m) to 14 | Port, in the protected middle of deck B; 19.5 s to the helm (v2 plan, 2026-10-05: the helm's seat moved 1 m forward; was 18.9 s) |
 | 11 | Mess | Galley and tables; the lobby before a mission | 271.5 (was 232.5) | 90.5 (was 77.5) | `p_mess` (1.6 x 2.3 m, wide for muster) to 14 | Opposite the quarters; the crew muster here and walk to stations |
 | 12 | Port turret access | The hatch into the port pod and the turret's capacitor bank (no ammunition: pulse cannons) | 233.0 (was 234.0) | 77.7 (was 78.0) | `p_port_turret` to 14, hatch `p_pod_port` (0.9 x 1.4 m) to 29 | The widest point of the hull (12.2 m half beam) puts the pod furthest out for its arc |
@@ -171,6 +171,16 @@ galleries (deck B) or the hangar floor (deck C) without changing deck outside. I
 ship's largest air volume (2,538 m^3, 26 % of the ship; v2 plan, 2026-10-05, was 2,520 m^3 and
 28 %), which slows a fire's oxygen use and a breach's pressure drop there (numbers are
 `life-support`'s).
+
+**The shield room's and the switchboard's doors stand clear of the ventral pod's hatch** (owner, 2026-10-08:
+"whats the deal with this hole right in front of the door? ... it shouldnt be right in front of the door"). Both
+doors faced each other across deck C's corridor at z 3.0, over `p_pod_ventral` (0.9 m square at z 3.0, its edge
+0.8 m from each doorway), so a body stepping out of either room stepped toward the hole. The hatch cannot move far
+enough: the pod under it spans z 1.75-4.25, so the hatch stays within z 2.2-3.8, and a 1.0 m door at z 3.0 spans
+2.5-3.5. The doors move instead: `p_shield` forward to z 5.0 (the shield generator stands at z 3.0 inside, clear of
+it), `p_switchboard` aft to z 1.2 (the forward switchboard unit stands at z 4.8 just inside that wall, so forward
+was not open to it). Each is now 0.8-1.1 m from the hatch's edge along the corridor and none opens toward it. Damage
+control's board is 1.9 s further from the forward switchboard (22.7 s, was 20.8 s).
 
 ### 5. Design reasoning
 
@@ -263,7 +273,7 @@ engineering console 33.0 s and 35.4 s; the damage control board to the forward s
 | Helm to engineering console, through the hangar | 57.7 | 35.9 | 19.3 | 1, 4, ladder, 14, 15 (landing, gallery), 18 | **No route** until T1; with T2 alone, 42.2 s by the hangar floor and the gallery stair |
 | Helm to the reactor's lower floor | 57.0 | 36.7 | 21.4 | 1, 4, ladder, 14, ladder, 20, 15 (floor), 18 | Same |
 | Helm to the reactor panel (scram reset), by the aft passage | 60.4 | 35.7 | 16.6 | 1, 4, 5, 6, 18 (catwalk, stair down) | Same (T2 applied) |
-| Damage control board to forward switchboard | 31.3 | 20.8 | 12.3 | 9, 14, ladder, 20, 26 | Same |
+| Damage control board to forward switchboard | 34.7 | 22.7 | 13.2 | 9, 14, ladder, 20, 26 | Same (was 31.3 m and 20.8 s before `p_switchboard` moved aft, 2026-10-08) |
 | Damage control board to battery bank | 32.8 | 21.7 | 12.7 | 9, 14, ladder, 20, 26 | Same |
 | Damage control board to main switchboard, through the hangar | 54.0 | 30.9 | 14.4 | 9, 14, 15 (landing, gallery), 18 | **No route** until T1 |
 | Damage control board to main switchboard, by the aft passage | 60.4 | 39.1 | 21.1 | 9, 14, ladder, 4, 5, 6, 18 | Same (T2 applied) |

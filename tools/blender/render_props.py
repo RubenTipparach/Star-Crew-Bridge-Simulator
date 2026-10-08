@@ -66,11 +66,22 @@ SETS = {
         "dir": os.path.join(ROOT, "assets", "models", "suite"),
         "rows": [["wall_screen", "shelf", "wardrobe", "locker_bank", "wash_counter"],
                  ["workbench", "sofa", "bed", "toilet_stall", "shower_stall"],
-                 ["briefing_table", "desk", "low_table", "wet_cell", "server_rack"]],
+                 ["briefing_table", "desk", "low_table", "wet_cell", "server_rack"],
+                 ["rifle_rack", "ammo_cabinet", "armour_rack"]],
         "sheet": "suite-props.png",
         "gap_y": 3.8,     # the suite's pod and stalls are tall: a 2.3 m prop hides 3.3 m of floor behind it
         "gap_x": 1.0,
         "label_m": 0.17,  # a wider scene than the bridge's, so larger labels to stay legible
+    },
+    "engineering": {
+        "dir": os.path.join(ROOT, "assets", "models", "engineering"),
+        "rows": [["control_desk", "mimic_board", "local_panel", "tool_board", "tool_chest", "parts_rack"],
+                 ["coolant_pump", "coolant_tank", "pressurizer", "heat_exchanger", "power_converter", "valve_large", "valve_small"],
+                 ["fuel_dewar", "helium3_rack", "fuel_processor", "cryoplant", "vacuum_pump", "ash_tank"]],
+        "sheet": "engineering-props.png",
+        "gap_y": 3.6,
+        "gap_x": 1.0,
+        "label_m": 0.2,
     },
     "machinery": {
         "dir": os.path.join(ROOT, "assets", "models", "machinery"),

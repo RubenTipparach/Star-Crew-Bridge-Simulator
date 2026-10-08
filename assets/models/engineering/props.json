@@ -1278,7 +1278,7 @@
           "half": 1
         }
       ],
-      "triangles": 662,
+      "triangles": 716,
       "budget_triangles": 900,
       "materials": [
         "machinery",
@@ -1293,19 +1293,20 @@
         "chamfer monitor_0_edges (4 edges, 12 mm)",
         "chamfer monitor_1_edges (4 edges, 12 mm)",
         "chamfer monitor_2_edges (4 edges, 12 mm)",
-        "union monitors_and_controls (21)",
-        "difference screens (3)"
+        "union monitors_and_controls (19)",
+        "difference screens (3)",
+        "union cheeks (4)"
       ],
-      "sha256": "23e934daa7e05ad8997b1639cd87df0a0fd506cdfbeb4f617f6b0554ea0073d5",
+      "sha256": "995bb6e98253c0977c629aa7c30a29816f50826808b2bd3414bb3eb9e5127892",
       "atlas": {
         "file": "atlas/control_desk.png",
         "px": 256,
-        "px_per_m": 45.93,
-        "charts": 54,
-        "cover": 0.538,
-        "glow": 0.0335,
-        "sha256": "b464a93e89f1419a23b8c93cde4f8c325fd0b872c82a9563822c73750171143c",
-        "bytes": 13949
+        "px_per_m": 45.47,
+        "charts": 50,
+        "cover": 0.526,
+        "glow": 0.034,
+        "sha256": "763713c77d4ab8fa1bb185e537ca014c99e99e55b833ed894838dd0730f31fa7",
+        "bytes": 17307
       }
     },
     "mimic_board": {

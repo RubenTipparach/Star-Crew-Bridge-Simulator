@@ -295,8 +295,8 @@
     { "id": "p_cargo", "kind": "door", "between": ["cargo", "c_spine"], "center_m": [-1.25, -2.35, 15.0], "normal": [1.0, 0.0, 0.0], "size_m": [2.0, 2.3] },
     { "id": "p_airlock_inner", "kind": "pressure_door", "between": ["cargo", "airlock"], "center_m": [-8.6, -2.4, 12.0], "normal": [-1.0, 0.0, 0.0], "size_m": [1.0, 2.2] },
     { "id": "p_airlock_outer", "kind": "pressure_door", "between": ["airlock", "space"], "center_m": [-10.8, -2.4, 12.0], "normal": [-1.0, 0.0, 0.0], "size_m": [1.0, 2.2] },
-    { "id": "p_shield", "kind": "door", "between": ["shield_room", "c_spine"], "center_m": [1.25, -2.4, 3.0], "normal": [-1.0, 0.0, 0.0], "size_m": [1.0, 2.2] },
-    { "id": "p_switchboard", "kind": "door", "between": ["switchboard", "c_spine"], "center_m": [-1.25, -2.4, 3.0], "normal": [1.0, 0.0, 0.0], "size_m": [1.0, 2.2] },
+    { "id": "p_shield", "kind": "door", "between": ["shield_room", "c_spine"], "center_m": [1.25, -2.4, 5.0], "normal": [-1.0, 0.0, 0.0], "size_m": [1.0, 2.2] },
+    { "id": "p_switchboard", "kind": "door", "between": ["switchboard", "c_spine"], "center_m": [-1.25, -2.4, 1.2], "normal": [1.0, 0.0, 0.0], "size_m": [1.0, 2.2] },
     { "id": "p_pod_ventral", "kind": "hatch", "between": ["c_spine", "pod_ventral"], "center_m": [0.0, -3.5, 3.0], "normal": [0.0, -1.0, 0.0], "size_m": [0.9, 0.9] }
   ],
   "stations": [
@@ -362,7 +362,7 @@
     { "id": "coolant_pumps", "name": "Coolant pumps", "kind": "thermal", "compartment": "engineering", "center_m": [-6.5, -3.5, -29.0] },
     { "id": "radiators", "name": "Radiator panels", "kind": "thermal", "compartment": "space", "center_m": [0.0, 8.2, -26.0] },
     { "id": "impulse_drive", "name": "Impulse drive", "kind": "propulsion", "compartment": "drive", "center_m": [0.0, 1.5, -37.0],
-      "units_m": [[3.2, 1.5, -38.3], [-3.2, 1.5, -38.3]], "units_note": "Two impulse units, one on each main engine's centreline, each nozzle against the aft bulkhead in line with its engine (owner, 2026-10-08: \"there should be two impulse thingies connected to these thrusters in the back of the ship\"). One system for power and damage; the units are where it stands." },
+      "units_m": [[3.2, 1.5, -37.0], [-3.2, 1.5, -37.0]], "units_note": "Two impulse units, one on each main engine's centreline, each nozzle ducted through the aft bulkhead to its engine (\"theres no pipe connecting these modules to the thrusters\") (owner, 2026-10-08: \"there should be two impulse thingies connected to these thrusters in the back of the ship\"). One system for power and damage; the units are where it stands." },
     { "id": "inertial_dampers", "name": "Inertial dampers", "kind": "dampers", "compartment": "drive", "center_m": [4.0, 0.0, -34.0] },
     { "id": "battery_bank", "name": "Battery bank", "kind": "power_storage", "compartment": "switchboard", "center_m": [-4.5, -3.5, 1.5] },
     { "id": "aux_switchboard", "name": "Forward switchboard", "kind": "power_distribution", "compartment": "switchboard", "center_m": [-2.2, -3.5, 4.8] },

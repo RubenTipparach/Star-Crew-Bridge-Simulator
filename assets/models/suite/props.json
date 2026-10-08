@@ -893,6 +893,151 @@
         "sha256": "39a7543e456614dc8d98a836bd5c486d4909c85043e9ec2dfd61150ba1ab8ac0",
         "bytes": 14321
       }
+    },
+    "rifle_rack": {
+      "file": "rifle_rack.glb",
+      "presents": "The armory's rifle rack: six rifles behind a locking bar",
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        1.98,
+        1.85,
+        0.26
+      ],
+      "bounds_m": {
+        "min": [
+          -0.95,
+          0.0,
+          0.0
+        ],
+        "max": [
+          1.03,
+          1.85,
+          0.26
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 688,
+      "budget_triangles": 700,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard",
+        "light_panel"
+      ],
+      "csg": [
+        "union rack (18)",
+        "chamfer front_edges (1 edges, 12 mm)"
+      ],
+      "sha256": "5e420524f6ddd55af6a8acf53983c5da50abe7fa4386e6d466945c9b11cb0acb",
+      "atlas": {
+        "file": "atlas/rifle_rack.png",
+        "px": 256,
+        "px_per_m": 71.36,
+        "charts": 40,
+        "cover": 0.697,
+        "glow": 0.0028,
+        "sha256": "305248b1a5a48c39e43a91ae7d56e5d3ee96d71f658c09e996b78f1dbc9c5efc",
+        "bytes": 17143
+      }
+    },
+    "ammo_cabinet": {
+      "file": "ammo_cabinet.glb",
+      "presents": "The armory's ammunition cabinet, locked by a keypad",
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        1.0,
+        1.9,
+        0.53
+      ],
+      "bounds_m": {
+        "min": [
+          -0.5,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          1.9,
+          0.53
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 100,
+      "budget_triangles": 170,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard",
+        "light_panel"
+      ],
+      "csg": [
+        "difference doors (3)",
+        "union keypad (2)"
+      ],
+      "sha256": "1821fb80f73ddd76ee338b8f04bcc5380f905fcca43c256fddafee6db7a197bd",
+      "atlas": {
+        "file": "atlas/ammo_cabinet.png",
+        "px": 256,
+        "px_per_m": 102.03,
+        "charts": 12,
+        "cover": 0.699,
+        "glow": 0.0119,
+        "sha256": "8429e8e979ba882de1965ec02582133ce08b10bb481372067f3f8fe290ca7dc8",
+        "bytes": 8381
+      }
+    },
+    "armour_rack": {
+      "file": "armour_rack.glb",
+      "presents": "The armory's armour rack: three vests and three helmets",
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        1.8,
+        2.0,
+        0.36
+      ],
+      "bounds_m": {
+        "min": [
+          -0.9,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.9,
+          2.0,
+          0.36
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 388,
+      "budget_triangles": 400,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "accent"
+      ],
+      "csg": [
+        "difference vest_0_neck (1)",
+        "difference vest_1_neck (1)",
+        "difference vest_2_neck (1)",
+        "union rack (13)"
+      ],
+      "sha256": "a6eb0a2fe784dacc8ff444776cdc6d3885018ebd91b71acba93763862d888bbe",
+      "atlas": {
+        "file": "atlas/armour_rack.png",
+        "px": 256,
+        "px_per_m": 74.83,
+        "charts": 23,
+        "cover": 0.783,
+        "glow": 0.0,
+        "sha256": "feba1353e63861529a6ab3a65d37f8b4a060a1b9e3b0e7693f51c3bd3eff2d32",
+        "bytes": 24504
+      }
     }
   }
 }

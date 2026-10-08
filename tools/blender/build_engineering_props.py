@@ -1278,14 +1278,25 @@ def control_desk():
                                                          [(-0.011, -0.008, -0.012), (0.011, -0.008, -0.012), (0.0, 0.012, -0.012),
                                                           (-0.014, -0.004 + lean, 0.06), (0.014, -0.004 + lean, 0.06),
                                                           (0.0, 0.006 + lean, 0.06)]), "machinery" if up else "accent"))
-    for e in (-1, 1):                       # end cheeks, full depth, 3 cm proud of each end
+    # End cheeks, full depth, 3 cm proud of each end, following the desk's profile: the top, the control shelf's slope and
+    # the monitor deck. The profile is concave where the shelf meets the top, so one hull of it stood 0.12 m above the shelf
+    # as a flat slab (owner, 2026-10-08: "this console has some messed up geometry"). A cheek is two convex pieces: the
+    # lower to the top's height, the upper along the shelf's slope to the deck, 5 mm thinner and 5 mm in from the back so
+    # no face of one lies in a plane of the other. They join the desk after its screens are cut, a union of their own.
+    cheeks = []
+    for e in (-1, 1):
         phi = e * half
         t = Vector((math.cos(phi), 0.0, math.sin(phi))) * e
-        pts = []
-        for d, y in ((-0.02, 0.0), (1.20, 0.0), (1.20, 0.78), (0.78, 0.82), (0.42, 1.05), (0.34, 1.10), (-0.02, 1.10)):
+
+        def at(d, y, w):
             base = Vector(((rb - d) * math.sin(phi), y, cz - (rb - d) * math.cos(phi)))
-            pts += [tuple(base - t * 0.01), tuple(base + t * 0.03)]
-        parts.append(p.hull(f"cheek_{e:+d}", pts, "trim"))
+            return tuple(base + t * w)
+        # 5 cm proud of the desk's top, shelf and deck, a raised rim at each end, so no face of a cheek lies within a
+        # centimetre of one of the desk's and parallel to it (the check refuses that).
+        lower = ((-0.02, 0.0), (1.20, 0.0), (1.20, 0.81), (0.78, 0.85), (-0.02, 0.85))
+        upper = ((0.82, 0.83), (0.46, 1.08), (0.39, 1.13), (-0.015, 1.13), (-0.015, 0.83))
+        cheeks.append(p.hull(f"cheek_{e:+d}", [at(d, y, w) for d, y in lower for w in (-0.01, 0.03)], "trim"))
+        cheeks.append(p.hull(f"cheek_{e:+d}_upper", [at(d, y, w) for d, y in upper for w in (-0.005, 0.025)], "trim"))
     rr = rb - 0.80                          # a footrest along the knee wall, between the cheeks
     parts.append(pipe(p, "footrest", [(rr * math.sin(-half + i * fa), 0.12, cz - rr * math.cos(-half + i * fa)) for i in range(4)],
                       0.02, "trim", sides=6))
@@ -1299,6 +1310,7 @@ def control_desk():
         p.recess(screens, f"monitor_{k}", mh, 0.82, 0.32, 0.015, shows="console" if k == 1 else "upper",
                  half=None if k == 1 else (0 if k == 0 else 1))
     p.cut(body, "screens", screens)
+    p.union(body, "cheeks", cheeks)
     p.body = body
     p.operators.append([0.0, 0.0, round(1.18 * math.cos(fa / 2) + 0.35, 4)])
 
