@@ -282,12 +282,22 @@ for yaw and pitch and a flipper switch that can roll the ship"):
 - **ATTITUDE**: a joystick for yaw and pitch and a spring-return flipper switch for roll, each a
   small 3D model (base, boot, shaft and grip; housing, boss and bat) turned by the stick and drawn
   as shaded vector art from a fixed camera (owner, 2026-10-08: "maybe you juist need to make it 3d
-  and transform the positions of stuff to vector art"). Both are rate commands, the stick of section 4, and spring
+  and transform the positions of stuff to vector art"). The stick is smooth shaded (fine facets, no outlines)
+  and seen from 80 degrees above, looking down onto its grip the way a seated pilot sees it (owner,
+  2026-10-08: "flight stuck should be smooth shaded and rotate it towards the camera more.I would
+  preffer it to be like 80 degrees toward camera"). Four arrows on its base mark the stick's
+  directions (forward nose down, back nose up, left and right yaw), and the one the stick leans
+  furthest lights up; a line from the centre shows which way the nose is actually moving, as the
+  stick direction that would move it so, its length the turn rate against the limit (owner,
+  2026-10-08: "need arrows onthe for directional lines that light up when it becomes the dominant
+  direction, and a line that shows wich direction the ships nose is moving toards on the flight
+  stick"). Both are rate commands, the stick of section 4, and spring
   back to centre when let go. Pulling the stick toward you is nose up, as on an aircraft (invertible
   in the bindings). Beside them, heading, pitch and roll now, each with its rate bar and the rate
   set point as a ghost.
 - **The navball** (owner, 2026-10-08: "nav ball was nice to have here. find a new place for it to
-  live on the helm ui") lives in the SCANNER's top right corner, outside the plot's ellipse: the
+  live on the helm ui") lives to the right of the viewscreen, in the band above the panels (owner,
+  2026-10-08: "nav ball goes to the right of view screen"): the
   reference plane as a horizon pitched and rolled with the ship, heading marks along it, and the
   order's horizon as a ghost.
 - **ORIENT**: the order as three thumbwheels, one each for heading, pitch and roll. A wheel turns

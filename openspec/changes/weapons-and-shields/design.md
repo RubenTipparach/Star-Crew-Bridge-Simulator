@@ -362,7 +362,9 @@ the middle of tactical's plot, draw the shield in 3D:
 - **The faces' names and charges** (owner, 2026-10-08: "the text on sides not visible should still
   apear but darker colroed"): all six faces are named on the model (BOW, STERN, PORT, STBD, TOP,
   BELOW), each with a small bar of its charge under its name; a face on the far side keeps its name
-  and bar, drawn darker. The model is drawn large enough to fill the panel.
+  and bar, drawn darker. The model is drawn large enough to fill the panel. Each name stays pinned
+  just outside its face as the view turns; names are never pushed about to avoid each other (owner,
+  2026-10-08: "the top and below label keeps popping between multiple positions").
 
 On the Pi it is one small 3D viewport in the console pass: the hull lines and the ellipsoid of the
 flash (about 1,200 triangles, face per vertex, six opacities as uniforms), two draw calls, no

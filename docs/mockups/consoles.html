@@ -4413,7 +4413,7 @@ const G = {
   tubes: [{ state: "READY", t: 0 }, { state: "LOADING", t: 3.1 }], magazine: 6, missiles: [], inbound: [],
   // Shield faces in weapons-and-shields' order: bow, stern, port, starboard, dorsal, ventral.
   weight: [1, 1, 1, 1, 1, 1], charge: [36, 36, 36, 36, 36, 36], flash: [-9, -9, -9, -9, -9, -9], hitLog: [],
-  freq: "A", shieldBy: "Science", preset: -1, shieldCam: { yaw: 62, el: 24 },
+  freq: "A", shieldBy: "Science", preset: -1, shieldCam: { yaw: 62, el: 24 }, feedViewCam: { yaw: 40, el: 30 },
   scanning: false, ping: 0, feed: "FWD", zoom: 1,
   navRange: 20, tacRange: 5, sciRange: 20,
   orders: [], composer: { to: "helm", verb: null }, braced: 0, viewOverride: false,
@@ -4750,8 +4750,8 @@ function lookBand() {
   }
   s += `</svg>`;
   s += text(342, 38, 11, C.dim, `VIEWSCREEN · ${G.feed}`, { ls: 2 });
-  s += feedWidget(232, 34);
-  s += `<rect width="1280" height="240" fill="url(#rv)"/>`;
+  s += feedWidget(196, 10) + navball(1046, 116, 76);
+  s += `<rect width="1280" height="240" fill="url(#rv)" pointer-events="none"/>`;
   return s + "</svg>";
 }
 /** The status strip: the same on every console, pictures and numbers only. */
@@ -4798,19 +4798,24 @@ function shipGlyph(c, x, y, s, hdg, col, sel) {
  * and above as an ellipse, the bow up the screen, each contact on a stalk to its height above or
  * below that plane. at(p) projects a reference-axes point; inside is false beyond the range.
  */
+/**
+ * The wheel fills its panel (owner, 2026-10-08: "I wish tactical plot display had a bigger wheel
+ * thing", "same with the other stations"): as wide as the panel allows, tilted further toward the
+ * viewer (K, the ellipse's height over its width) to use the panel's height, never flatter than 0.42.
+ */
 const SCAN_K = 0.42, SCAN_H = 0.42;
 function scanner(w, h, rangeKmNow, cy0) {
-  const cx = w / 2, cy = cy0 == null ? h / 2 : cy0, R = Math.min(w / 2 - 14, h * 0.56);
+  const cx = w / 2, cy = cy0 == null ? h / 2 + 4 : cy0, R = w / 2 - 16, K = clamp((h / 2 - 22) / R, SCAN_K, 0.62), H = 0.36;
   const at = (p) => {
     const r = v3.mul(relPos(p), 1 / (rangeKmNow * 1000));
-    const x = cx - r[0] * R, by = cy - r[2] * R * SCAN_K;
-    return { x, by, y: by - r[1] * R * SCAN_H, inside: v3.len(r) <= 1 };
+    const x = cx - r[0] * R, by = cy - r[2] * R * K;
+    return { x, by, y: by - r[1] * R * H, inside: v3.len(r) <= 1 };
   };
-  let s = `<rect x="0" y="0" width="${w}" height="${h}" fill="transparent"/><ellipse cx="${cx}" cy="${cy}" rx="${R}" ry="${R * SCAN_K}" fill="#0a1017" stroke="${C.line2}"/>`;
-  s += `<ellipse cx="${cx}" cy="${cy}" rx="${R / 2}" ry="${(R * SCAN_K) / 2}" fill="none" stroke="${C.line}"/>`;
-  s += `<path d="M${cx} ${cy - R * SCAN_K}V${cy + R * SCAN_K}M${cx - R} ${cy}H${cx + R}" stroke="${C.line}" stroke-dasharray="2 6"/>`;
-  for (let a = 30; a < 360; a += 30) { const x = cx + Math.sin(a * D2R) * R, y = cy - Math.cos(a * D2R) * R * SCAN_K; s += `<circle cx="${x}" cy="${y}" r="1.4" fill="${C.faint}"/>`; }
-  return { s, at, cx, cy, R };
+  let s = `<rect x="0" y="0" width="${w}" height="${h}" fill="transparent"/><ellipse cx="${cx}" cy="${cy}" rx="${R}" ry="${R * K}" fill="#0a1017" stroke="${C.line2}"/>`;
+  s += `<ellipse cx="${cx}" cy="${cy}" rx="${R / 2}" ry="${(R * K) / 2}" fill="none" stroke="${C.line}"/>`;
+  s += `<path d="M${cx} ${cy - R * K}V${cy + R * K}M${cx - R} ${cy}H${cx + R}" stroke="${C.line}" stroke-dasharray="2 6"/>`;
+  for (let a = 30; a < 360; a += 30) { const x = cx + Math.sin(a * D2R) * R, y = cy - Math.cos(a * D2R) * R * K; s += `<circle cx="${x}" cy="${y}" r="1.4" fill="${C.faint}"/>`; }
+  return { s, at, cx, cy, R, K };
 }
 /** Every live contact on a scanner, on its stalk, in its IFF colour; act(c) is what a press does. */
 function scannerContacts(S, act, tip) {
@@ -4839,7 +4844,7 @@ function feedDir() { const f = feedBasis().f; return { f, brg: brgOf(f), el: Mat
  */
 function feedCone(S) {
   const d = feedDir(), half = 35 / G.zoom, az = d.brg * D2R, len = S.R * 0.34;
-  const pt = (a, k) => [S.cx + Math.sin(a) * len * k, S.cy - Math.cos(a) * len * k * SCAN_K];
+  const pt = (a, k) => [S.cx + Math.sin(a) * len * k, S.cy - Math.cos(a) * len * k * S.K];
   const [x0, y0] = pt(az - half * D2R, 1), [x1, y1] = pt(az + half * D2R, 1), [ix, iy] = pt(az, 0.32);
   const rot = Math.atan2(ix - S.cx, -(iy - S.cy)) / D2R;
   let s = `<g${tipAttr(`Viewscreen: ${G.feed.toLowerCase()}, bearing ${String(Math.round(wrap360(d.brg))).padStart(3, "0")}, elevation ${d.el}°`)}>`;
@@ -4851,27 +4856,40 @@ function feedCone(S) {
   }
   return s + "</g>";
 }
-/** Beside the viewscreen: the ship from above with the camera's cone, and from the side with its elevation. */
+/**
+ * Left of the viewscreen: the ship in 3D with the camera's cone and every contact in its direction
+ * (the target ringed). Drag it to turn the view; the feed buttons under it work on every console.
+ */
+let FEEDVIEW_MEMO = { key: null, svg: "" };
 function feedWidget(x, y) {
-  const d = feedDir(), secs = L.hull.sections, sc = 0.78, zc = 0, half = 35 / G.zoom;
-  let s = `<g${tipAttr(`Viewscreen looks ${G.feed.toLowerCase()}: bearing ${String(Math.round(wrap360(d.brg))).padStart(3, "0")}, elevation ${d.el}°`)}>`;
-  // From above: bow up, port on the left.
-  const cx = x + 44, cy = y + 46;
-  s += `<rect x="${x}" y="${y}" width="88" height="92" rx="8" fill="#070a0f" stroke="#26313e"/>`;
-  const outline = secs.map((q) => [cx - q.half_beam_m * sc, cy - (q.z_m - zc) * sc]).concat(secs.slice().reverse().map((q) => [cx + q.half_beam_m * sc, cy - (q.z_m - zc) * sc]));
-  s += `<polygon points="${outline.map((p) => p.map((v) => v.toFixed(1)).join(",")).join(" ")}" fill="#2a3442" stroke="#4a5868"/>`;
-  const az = d.brg * D2R, L2 = 40, a0 = az - half * D2R, a1 = az + half * D2R;
-  s += `<path d="M${cx} ${cy}L${(cx + Math.sin(a0) * L2).toFixed(1)} ${(cy - Math.cos(a0) * L2).toFixed(1)}A${L2} ${L2} 0 0 1 ${(cx + Math.sin(a1) * L2).toFixed(1)} ${(cy - Math.cos(a1) * L2).toFixed(1)}Z" fill="#cfe3f5" fill-opacity="0.22" stroke="#cfe3f5" stroke-opacity="0.6"/>`;
-  s += `<g transform="translate(${cx} ${cy}) rotate(${d.brg.toFixed(1)})"><rect x="-5" y="-2" width="10" height="9" rx="2" fill="#e8eef6"/><path d="M-4 -2L-7 -8H7L4 -2Z" fill="#e8eef6"/></g>`;
-  // From the side: bow to the right, the camera's elevation as a line up or down.
-  const sy = y + 98, scy = sy + 22, fwd = Math.cos(az) >= 0 ? 1 : -1;
-  s += `<rect x="${x}" y="${sy}" width="88" height="44" rx="8" fill="#070a0f" stroke="#26313e"/>`;
-  const prof = secs.map((q) => [cx + (q.z_m - zc) * 0.95, scy - (q.top_m - 1.2) * 0.95]).concat(secs.slice().reverse().map((q) => [cx + (q.z_m - zc) * 0.95, scy - (q.bottom_m - 1.2) * 0.95]));
-  s += `<polygon points="${prof.map((p) => p.map((v) => v.toFixed(1)).join(",")).join(" ")}" fill="#2a3442" stroke="#4a5868"/>`;
-  const el = clamp(d.el, -89, 89) * D2R, ex = cx + fwd * Math.cos(el) * 34, ey = scy - Math.sin(el) * 34;
-  s += `<path d="M${cx} ${scy}L${ex.toFixed(1)} ${ey.toFixed(1)}" stroke="#e8eef6" stroke-width="2"/><circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="3" fill="#e8eef6"/>`;
-  if (Math.abs(d.el) >= 3) s += text(x + 84, sy + 14, 11, "#e8eef6", d.el > 0 ? `▲+${d.el}` : `▼${d.el}`, { a: "end", w: 700, ls: 0 });
-  return s + "</g>";
+  const cam = G.feedViewCam, cx = x + 60, cy = y + 66, sc = 1.05, B = camBasis(cam);
+  const P = (v) => [cx + v3.dot(v, B.r) * sc, cy - v3.dot(v, B.u) * sc, v3.dot(v, B.f)];
+  let s = `<g data-drag="feedview"${tipAttr("Drag to look round the ship; the cone is where the viewscreen looks")}><rect x="${x}" y="${y}" width="120" height="134" rx="8" fill="#070a0f" stroke="#26313e"/>`;
+  const key = `${cam.yaw.toFixed(2)}|${cam.el.toFixed(2)}|${x}|${y}`;
+  if (FEEDVIEW_MEMO.key !== key) FEEDVIEW_MEMO = { key, svg: drawMesh(HULL_POLYS, cam, cx, cy, sc) };
+  s += `<svg x="${x}" y="${y}" width="120" height="134" style="position:static" overflow="hidden"><g transform="translate(${-x} ${-y})">` + FEEDVIEW_MEMO.svg;
+  // The camera's cone: from the ship along the feed's direction, as wide as the screen's field of view.
+  const d = feedDir(), f = d.f, half = (35 / G.zoom) * D2R, Lc = 42;
+  const a = v3.norm(Math.abs(f[1]) > 0.9 ? v3.cross(f, [1, 0, 0]) : v3.cross(f, [0, 1, 0])), bb = v3.cross(f, a);
+  const ring = [];
+  for (let t = 0; t < 12; t++) { const th = (t / 12) * 2 * Math.PI; ring.push(P(v3.add(v3.mul(f, Lc), v3.mul(v3.add(v3.mul(a, Math.cos(th)), v3.mul(bb, Math.sin(th))), Lc * Math.tan(half))))); }
+  const o = P([0, 0, 0]);
+  s += ring.map((q, t) => { const q2 = ring[(t + 1) % 12]; return `<path d="M${o[0].toFixed(1)} ${o[1].toFixed(1)}L${q[0].toFixed(1)} ${q[1].toFixed(1)}L${q2[0].toFixed(1)} ${q2[1].toFixed(1)}Z" fill="#cfe3f5" fill-opacity="0.07"/>`; }).join("");
+  s += `<path d="M${ring.map((q) => q[0].toFixed(1) + " " + q[1].toFixed(1)).join("L")}Z" fill="none" stroke="#cfe3f5" stroke-opacity="0.7"/>`;
+  s += `<circle cx="${o[0].toFixed(1)}" cy="${o[1].toFixed(1)}" r="3" fill="#e8eef6"/>`;
+  // Every contact in its direction, nearer ones larger; the target ringed.
+  const marks = G.contacts.filter((c) => c.hull > 0).map((c) => { const dd = v3.norm(relPos(c.p)), q = P(v3.mul(dd, 50)); return { c, q }; }).sort((m1, m2) => m2.q[2] - m1.q[2]);
+  for (const { c, q } of marks) {
+    const col = C[c.iff], near = q[2] < 0, r0 = near ? 4 : 3;
+    s += `<path d="M${o[0].toFixed(1)} ${o[1].toFixed(1)}L${q[0].toFixed(1)} ${q[1].toFixed(1)}" stroke="${col}" stroke-width="1" stroke-dasharray="2 3" opacity="${near ? 0.7 : 0.35}"/>`;
+    s += c.iff === "unknown" ? `<rect x="${(q[0] - r0).toFixed(1)}" y="${(q[1] - r0).toFixed(1)}" width="${2 * r0}" height="${2 * r0}" fill="none" stroke="${col}" stroke-width="1.5" opacity="${near ? 1 : 0.55}" transform="rotate(45 ${q[0].toFixed(1)} ${q[1].toFixed(1)})"/>` : `<circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="${r0}" fill="${col}" opacity="${near ? 1 : 0.55}"/>`;
+    if (c.id === G.target) s += `<circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="${r0 + 4}" fill="none" stroke="${col}" stroke-width="1.5" stroke-dasharray="3 2"/>`;
+  }
+  s += `</g></svg></g>`;
+  // The feed buttons: any console can choose what the viewscreen shows.
+  const feeds = [["FWD", "fwd"], ["AFT", "aft"], ["PORT", "port"], ["STBD", "stbd"], ["TARGET", "target"], ["CHASE", "chasecam"]];
+  feeds.forEach(([k, ic], i) => { s += button({ x: x + (i % 3) * 41, y: y + 140 + Math.floor(i / 3) * 28, w: 38, h: 25, icon: ic, is: 15, act: `feed:${k}`, on: G.feed === k, tip: `Viewscreen: ${k.toLowerCase()}` }); });
+  return s;
 }
 
 // ---- the 3D shield view (weapons-and-shields 11) ----
@@ -4900,6 +4918,19 @@ function makeBubble(NT, NP) {
   return { patches, edges };
 }
 const BUBBLE_BIG = makeBubble(12, 20), BUBBLE_MINI = makeBubble(8, 12);
+/** The hull loft as polygons with outward normals, for drawMesh (the camera widget). */
+const HULL_POLYS = (() => {
+  const polys = [], col = [96, 110, 128];
+  for (let s = 0; s + 1 < HULL.length; s++) for (let k = 0; k < 8; k++) {
+    const a = HULL[s][k], b = HULL[s][(k + 1) % 8], c = HULL[s + 1][(k + 1) % 8], d = HULL[s + 1][k];
+    let n = v3.norm(v3.cross(v3.sub(b, a), v3.sub(d, a)));
+    const mid = v3.mul(v3.add(v3.add(a, b), v3.add(c, d)), 0.25);
+    if (v3.dot(n, [mid[0], mid[1] - (HULL[s][0][1] + HULL[s][4][1]) / 2, 0]) < 0) n = v3.mul(n, -1);
+    polys.push({ v: [a, b, c, d], n, col });
+  }
+  polys.push({ v: HULL[0].slice(), n: [0, 0, 1], col }, { v: HULL[HULL.length - 1].slice(), n: [0, 0, -1], col });
+  return polys;
+})();
 function camBasis(cam) {
   const ce = Math.cos(cam.el * D2R), d = [Math.sin(cam.yaw * D2R) * ce, Math.sin(cam.el * D2R), -Math.cos(cam.yaw * D2R) * ce];
   const f = v3.mul(d, -1), r = v3.norm(v3.cross(f, [0, 1, 0]));
@@ -4962,9 +4993,11 @@ function shieldView(cx, cy, sc, cam, o) {
     const dirs = [[0, 0, 1], [0, 0, -1], [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0]], names = ["BOW", "STERN", "PORT", "STBD", "TOP", "BELOW"];
     dirs.forEach((d, f) => {
       const ax = [SH.axes_m[2], SH.axes_m[2], SH.axes_m[0], SH.axes_m[0], SH.axes_m[1], SH.axes_m[1]][f];
-      const far = v3.dot(d, B.f) > 0.05, p = P(v3.mul(d, ax * (f < 2 ? 1.1 : 1.45))), k = shieldRatio(f);
+      // Pinned to the face: its centre on the bubble, pushed 14 lp straight out from the bubble's middle on screen.
+      const far = v3.dot(d, B.f) > 0.05, k = shieldRatio(f), c0 = P([0, 0, 0]), p0 = P(v3.mul(d, ax));
+      const sx = p0[0] - c0[0], sy = p0[1] - c0[1], sl = Math.hypot(sx, sy), p = sl > 4 ? [p0[0] + (sx / sl) * 14, p0[1] + (sy / sl) * 14] : [p0[0], p0[1]];
       p[0] = clamp(p[0], 30, (o.w || 400) - 30);
-      const ly = place(p[0], p[1] + 4);
+      const ly = p[1] + 4;
       s += `<g opacity="${far ? 0.42 : 1}"${tipAttr(`${FACES[f]}: ${G.charge[f].toFixed(0)} of ${shieldCap(f).toFixed(0)} MJ${far ? " (far side)" : ""}`)}>`;
       s += text(p[0], ly, 12, ratioCol(k), names[f], { a: "middle", w: 700, ls: 1.5 });
       s += `<rect x="${p[0] - 16}" y="${ly + 4}" width="32" height="4" rx="2" fill="#16202c"/><rect x="${p[0] - 16}" y="${ly + 4}" width="${32 * clamp(k, 0, 1)}" height="4" rx="2" fill="${ratioCol(k)}"/></g>`;
@@ -5031,19 +5064,47 @@ const fmtQ = (q) => quat.canon(q).map((x) => (x < 0 ? "" : " ") + x.toFixed(4)).
 const fmtAng = (x, signed) => (signed ? (x >= 0 ? "+" : "") + Math.round(x) : String(Math.round(wrap360(x)) % 360).padStart(3, "0")) + "°";
 
 // ---- a tiny 3D kit for the helm's controls: meshes turned about a pivot, lit, sorted and drawn as vector art ----
-/** A surface of revolution about +Y: profile [[r, y], ...] from the bottom of the axis round to the top. */
-function lathe(profile, col, n) {
+/**
+ * A surface of revolution about +Y: profile [[r, y], ...] from the bottom of the axis round to the top.
+ * With smooth set, each band takes the average of the normals at its two edges, so a finely sampled
+ * profile shades as one smooth surface; a point given as [r, y, true] stays a sharp corner.
+ */
+function lathe(profile, col, n, smooth) {
   n = n || 14;
+  const seg = [];
+  for (let i = 0; i + 1 < profile.length; i++) { const nr = profile[i + 1][1] - profile[i][1], ny = -(profile[i + 1][0] - profile[i][0]), l = Math.hypot(nr, ny) || 1; seg.push([nr / l, ny / l]); }
+  const vn = profile.map((p, i) => {
+    const a = seg[i - 1], b = seg[i];
+    if (!a || !b || p[2]) return null;
+    const x = a[0] + b[0], y = a[1] + b[1], l = Math.hypot(x, y) || 1;
+    return [x / l, y / l];
+  });
   const polys = [];
   for (let i = 0; i + 1 < profile.length; i++) {
-    const [r0, y0] = profile[i], [r1, y1] = profile[i + 1], nr = y1 - y0, ny = -(r1 - r0), nl = Math.hypot(nr, ny) || 1;
+    const [r0, y0] = profile[i], [r1, y1] = profile[i + 1];
+    let [nr, ny] = seg[i];
+    if (smooth) { const e0 = vn[i] || seg[i], e1 = vn[i + 1] || seg[i], x = e0[0] + e1[0], y = e0[1] + e1[1], l = Math.hypot(x, y) || 1; nr = x / l; ny = y / l; }
     for (let j = 0; j < n; j++) {
       const a0 = (j / n) * 2 * Math.PI, a1 = ((j + 1) / n) * 2 * Math.PI, am = (a0 + a1) / 2;
       const v = [[r0 * Math.cos(a0), y0, r0 * Math.sin(a0)], [r1 * Math.cos(a0), y1, r1 * Math.sin(a0)], [r1 * Math.cos(a1), y1, r1 * Math.sin(a1)], [r0 * Math.cos(a1), y0, r0 * Math.sin(a1)]];
-      polys.push({ v, n: [(nr / nl) * Math.cos(am), ny / nl, (nr / nl) * Math.sin(am)], col });
+      polys.push({ v, n: [nr * Math.cos(am), ny, nr * Math.sin(am)], col });
     }
   }
   return polys;
+}
+/** A smooth profile through control points [[r, y], ...] (Catmull-Rom), k samples per span; ends kept. */
+function smoothProfile(pts, k) {
+  const out = [];
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(pts.length - 1, i + 2)];
+    for (let t = 0; t < k; t++) {
+      const u = t / k, u2 = u * u, u3 = u2 * u;
+      const f = (a, b, c, d) => 0.5 * (2 * b + (-a + c) * u + (2 * a - 5 * b + 4 * c - d) * u2 + (-a + 3 * b - 3 * c + d) * u3);
+      out.push([Math.max(0, f(p0[0], p1[0], p2[0], p3[0])), f(p0[1], p1[1], p2[1], p3[1])]);
+    }
+  }
+  out.push(pts[pts.length - 1]);
+  return out;
 }
 /** A box centred at c with half sizes h. */
 function boxMesh(c, h, col) {
@@ -5073,13 +5134,17 @@ function drawMesh(polys, cam, cx, cy, sc) {
   return vis.map((p) => `<polygon points="${p.pts}" fill="${p.fill}" stroke="${p.fill}" stroke-width="0.6" stroke-linejoin="round"/>`).join("");
 }
 // The models, in their own units, at rest: a base, a boot, a shaft and a grip; a housing, a boss and a bat.
+// The stick is smooth shaded (flight-and-navigation 6a): fine bands, normals averaged, sharp only at the base's rim.
 const JOY = {
-  base: lathe([[0, -0.3], [1.0, -0.3], [1.05, -0.05], [0.95, 0.02], [0.42, 0.02], [0, 0.02]], [34, 43, 54], 20),
-  boot: lathe([[0, 0], [0.4, 0.02], [0.33, 0.14], [0.2, 0.3], [0.11, 0.42], [0, 0.44]], [24, 29, 36], 16),
-  shaft: lathe([[0, 0.3], [0.075, 0.3], [0.075, 1.22], [0, 1.22]], [150, 160, 172], 12),
-  grip: lathe([[0, 1.12], [0.16, 1.14], [0.22, 1.3], [0.23, 1.55], [0.2, 1.78], [0.13, 1.9], [0, 1.93]], [62, 72, 86], 16),
-  button: lathe([[0, 1.9], [0.075, 1.9], [0.075, 1.97], [0, 1.99]], [255, 71, 87], 10).map((p) => ({ ...p, v: p.v.map((x) => [x[0], x[1], x[2] + 0.06]) })),
+  base: lathe([[0, -0.3], [1.0, -0.3, true], [1.06, -0.12], [1.04, -0.02], [0.96, 0.02, true], [0.42, 0.02], [0, 0.02]], [34, 43, 54], 40, true),
+  boot: lathe(smoothProfile([[0, 0], [0.4, 0.02], [0.34, 0.12], [0.22, 0.28], [0.12, 0.4], [0, 0.44]], 4), [26, 31, 38], 32, true),
+  shaft: lathe([[0, 0.3], [0.075, 0.3, true], [0.075, 1.22, true], [0, 1.22]], [150, 160, 172], 24, true),
+  grip: lathe(smoothProfile([[0, 1.1], [0.15, 1.13], [0.21, 1.28], [0.235, 1.5], [0.22, 1.7], [0.16, 1.86], [0.07, 1.93], [0, 1.95]], 4), [62, 72, 86], 36, true),
+  button: lathe(smoothProfile([[0, 1.92], [0.08, 1.925], [0.075, 1.96], [0.04, 1.985], [0, 1.99]], 3), [255, 71, 87], 20, true).map((p) => ({ ...p, v: p.v.map((x) => [x[0], x[1] + 0.005, x[2] + 0.07]) })),
 };
+// The stick is seen from 80 degrees above, looking down onto the grip as a seated pilot does.
+const JOY_CAM = { yaw: 180, el: 80 };
+let JOY_MEMO = { key: null, svg: "" };
 const FLIP = {
   housing: boxMesh([0, -0.2, 0], [0.62, 0.2, 0.5], [30, 38, 48]),
   boss: lathe([[0, 0], [0.3, 0], [0.3, 0.1], [0.22, 0.16], [0, 0.16]], [44, 54, 66], 16),
@@ -5100,7 +5165,23 @@ function joystick(cx, h, yaw, pitch) {
   const half = quat.mul(quat.axis([0, 0, 1], -yaw * 11), quat.axis([1, 0, 0], pitch * 11));
   const parts = JOY.base.concat(turnMesh(JOY.boot, half, [0, 0, 0]), turnMesh(JOY.shaft.concat(JOY.grip, JOY.button), t, [0, 0, 0]));
   let s = `<g data-drag="joy"${tipAttr("Stick: yaw and pitch (A, D, R, F). Pull back for nose up")}><rect x="${cx - 74}" y="0" width="148" height="${h}" fill="transparent"/>`;
-  s += drawMesh(parts, CTRL_CAM, cx, h - 46, 62);
+  const key = `${yaw.toFixed(3)}|${pitch.toFixed(3)}|${cx}|${h}`;
+  if (JOY_MEMO.key !== key) JOY_MEMO = { key, svg: drawMesh(parts, JOY_CAM, cx, h / 2 + 6, 60) };
+  s += JOY_MEMO.svg;
+  // The stick's four directions on its base; the one it leans furthest lights up.
+  const bc = [cx, h / 2 + 6], R = 47, dom = Math.max(Math.abs(yaw), Math.abs(pitch)) < 0.15 ? null : Math.abs(yaw) >= Math.abs(pitch) ? (yaw > 0 ? "r" : "l") : pitch > 0 ? "d" : "u";
+  const arrows = [["u", 0, -1, "Push: nose down"], ["d", 0, 1, "Pull: nose up"], ["l", -1, 0, "Left: yaw to port"], ["r", 1, 0, "Right: yaw to starboard"]];
+  for (const [k, dx, dy, tip] of arrows) {
+    const on = dom === k, x = bc[0] + dx * R, y = bc[1] + dy * R * 0.985, ang = Math.atan2(dx, -dy) / D2R;
+    s += `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${ang})"${tipAttr(tip)}><path d="M0 -7L7 3H2V7H-2V3H-7Z" fill="${on ? accent() : "#7d8a99"}" opacity="${on ? 1 : 0.55}" stroke="${on ? "#fff" : "none"}" stroke-width="0.8"/></g>`;
+  }
+  // Which way the nose is moving: the stick direction that moves it so, as long as the rate against its limit.
+  const ry = -F.w[1] / (FL.rate_dps[1] * D2R), rp = -F.w[0] / (FL.rate_dps[0] * D2R), mag = Math.min(1, Math.hypot(ry, rp));
+  if (mag > 0.03) {
+    const ux = ry / Math.hypot(ry, rp), uy = rp / Math.hypot(ry, rp), L = 14 + 26 * mag, ex = bc[0] + ux * L, ey = bc[1] + uy * L;
+    s += `<g${tipAttr(`Nose moving: yaw ${(ry * FL.rate_dps[1]).toFixed(1)} deg/s, pitch ${(rp * FL.rate_dps[0]).toFixed(1)} deg/s`)}><path d="M${bc[0]} ${bc[1]}L${ex.toFixed(1)} ${ey.toFixed(1)}" stroke="${C.warn}" stroke-width="3" stroke-linecap="round"/>`;
+    s += `<g transform="translate(${ex.toFixed(1)} ${ey.toFixed(1)}) rotate(${(Math.atan2(ux, -uy) / D2R).toFixed(1)})"><path d="M0 -6L5 3H-5Z" fill="${C.warn}"/></g></g>`;
+  }
   return s + "</g>";
 }
 /**
@@ -5176,7 +5257,7 @@ function helm() {
     b += `<path d="M${wp.x} ${wp.by}V${wp.y}" stroke="${accent()}" stroke-dasharray="2 3"/><path d="M${wp.x} ${wp.y - 9}l9 9-9 9-9-9z" fill="none" stroke="${accent()}" stroke-width="2"${tipAttr("Waypoint")}/>`;
     b += feedCone(S) + shipGlyph({ cls: "corvette", iff: "friendly" }, S.cx, S.cy, 22, 0, C.text);
     b += scannerContacts(S, (c) => `target:${c.id}`, (c) => `${c.id} · ${rangeKm(c).toFixed(1)} km · elevation ${Math.round(elevOf(relPos(c.p)))}°`);
-    b += "</g>" + rangeCtl(12, 6, "nav") + navball(w - 60, 58, 50);
+    b += "</g>" + rangeCtl(12, 6, "nav");
     const aps = [["HOLD", "hold", "Hold attitude and speed"], ["COURSE", "course", "Fly to the waypoint"], ["CHASE", "chase", "Point at the target"], ["MATCH", "match", "Match the target's course and speed"], ["EVADE", "jink", "Jink sideways and up and down"]];
     const bw = (w - 24 - 4 * 6) / 5;
     aps.forEach(([k, ic, tp], i) => { b += button({ x: 12 + i * (bw + 6), y: h - 52, w: bw, h: 42, icon: ic, label: k, on: G.ap === k, act: `ap:${k}`, tip: tp, fs: 13, is: 16 }); });
@@ -5246,7 +5327,7 @@ function tactical() {
     const S = scanner(w, h - 52, G.tacRange);
     let b = `<g data-wheel="range:tac">` + S.s;
     // The ship in its shield in 3D at the plot's own tilt (weapons-and-shields 11): press a face to favour it.
-    b += feedCone(S) + shieldView(S.cx, S.cy, 0.9, { yaw: 0, el: Math.asin(SCAN_K) / D2R }, {});
+    b += feedCone(S) + shieldView(S.cx, S.cy, 1.25, { yaw: 0, el: Math.asin(S.K) / D2R }, {});
     for (const m of G.missiles) { const p = S.at(m.pos); if (p.inside) b += `<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="${C.ok}"/>`; }
     const tgt = contact(G.target), firing = G.turrets.some((t) => t.firing && t.mode !== "PD");
     if (tgt && tgt.hull > 0) { const p = S.at(tgt.p); if (p.inside) b += `<path d="M${S.cx} ${S.cy}L${p.x} ${p.y}" stroke="${firing ? C.ok : C.hostile}" stroke-width="${firing ? 2.5 : 1.5}" stroke-dasharray="${firing ? "10 4" : "3 5"}" opacity="0.8"/>`; }
@@ -5428,10 +5509,10 @@ function science() {
     const S = scanner(w, h - 56, G.sciRange);
     let b = `<g data-wheel="range:sci">` + S.s;
     const sweep = (G.t * 60) % 360, a0 = sweep - 25;
-    const sw = (a) => [S.cx + Math.sin(a * D2R) * S.R, S.cy - Math.cos(a * D2R) * S.R * SCAN_K];
+    const sw = (a) => [S.cx + Math.sin(a * D2R) * S.R, S.cy - Math.cos(a * D2R) * S.R * S.K];
     const [x0, y0] = sw(a0), [x1, y1] = sw(sweep);
-    b += `<path d="M${S.cx} ${S.cy}L${x0} ${y0}A${S.R} ${S.R * SCAN_K} 0 0 1 ${x1} ${y1}Z" fill="${accent()}" opacity="0.10"/>`;
-    if (G.ping > 0) { const k = 1 - G.ping / 2; b += `<ellipse cx="${S.cx}" cy="${S.cy}" rx="${S.R * k}" ry="${S.R * SCAN_K * k}" fill="none" stroke="${accent()}" stroke-width="3" opacity="${G.ping / 2}"/>`; }
+    b += `<path d="M${S.cx} ${S.cy}L${x0} ${y0}A${S.R} ${S.R * S.K} 0 0 1 ${x1} ${y1}Z" fill="${accent()}" opacity="0.10"/>`;
+    if (G.ping > 0) { const k = 1 - G.ping / 2; b += `<ellipse cx="${S.cx}" cy="${S.cy}" rx="${S.R * k}" ry="${S.R * S.K * k}" fill="none" stroke="${accent()}" stroke-width="3" opacity="${G.ping / 2}"/>`; }
     b += feedCone(S) + shipGlyph({ cls: "corvette", iff: "friendly" }, S.cx, S.cy, 20, 0, C.text);
     b += scannerContacts(S, (c) => `sci:${c.id}`, (c) => (c.iff === "unknown" ? "Unknown" : `${c.id} · ${rangeKm(c).toFixed(1)} km`));
     b += "</g>" + rangeCtl(12, 6, "sci");
@@ -5730,25 +5811,28 @@ function dragTo(e) {
   if (DRAG.kind === "shieldcam") {
     G.shieldCam = { yaw: DRAG.cam.yaw + ((e.clientX - DRAG.x0) / r.width) * 360, el: clamp(DRAG.cam.el + ((e.clientY - DRAG.y0) / r.height) * 120, -80, 80) };
   }
+  if (DRAG.kind === "feedview") {
+    G.feedViewCam = { yaw: DRAG.cam.yaw + ((e.clientX - DRAG.x0) / r.width) * 180, el: clamp(DRAG.cam.el + ((e.clientY - DRAG.y0) / r.height) * 120, -85, 85) };
+  }
   if (DRAG.kind === "fader") {
     const sp = clamp(Math.round(ky * 1.5 * 20) / 20, 0, 1.5);
     PREVIEW = { gid: DRAG.arg, sp, r: sim.previewGroup(DRAG.arg, sp) };
   }
-  if (DRAG.kind !== "joy" && DRAG.kind !== "flip" && DRAG.kind !== "shieldcam") render();
+  if (DRAG.kind !== "joy" && DRAG.kind !== "flip" && DRAG.kind !== "shieldcam" && DRAG.kind !== "feedview") render();
 }
 CONSOLE.addEventListener("pointerdown", (e) => {
   const a = e.target.closest("[data-act]"), d = e.target.closest("[data-drag]"), h = e.target.closest("[data-hold]");
   // A press on a face inside the shield view favours it; a drag that starts there turns the view.
   if (d && !(a && d.contains(a) && d.dataset.drag !== "shieldcam")) {
     const [kind, arg] = d.dataset.drag.split(":");
-    DRAG = { kind, arg, rect: d.getBoundingClientRect(), x0: e.clientX, y0: e.clientY, cam: { ...G.shieldCam }, act: a && d.contains(a) ? a.dataset.act : null };
+    DRAG = { kind, arg, rect: d.getBoundingClientRect(), x0: e.clientX, y0: e.clientY, cam: { ...(kind === "feedview" ? G.feedViewCam : G.shieldCam) }, act: a && d.contains(a) ? a.dataset.act : null };
     if (kind === "fader" || kind === "throttle" || kind === "strafe") DRAG.rect = d.querySelector("rect").getBoundingClientRect();
     // Widths in lp of what each drag measures against, to turn screen pixels into lp.
     DRAG.wlp = { joy: 148, flip: 80, wheel: 52 }[kind] || 1;
     if (kind === "wheel") DRAG.v0 = F.oe[arg];
     if (kind === "flip") { const rr = d.getBoundingClientRect(); DRAG.side = e.clientX < rr.left + rr.width / 2 ? -1 : 1; }
     CONSOLE.setPointerCapture(e.pointerId);
-    if (kind !== "shieldcam" && kind !== "wheel") dragTo(e);
+    if (kind !== "shieldcam" && kind !== "feedview" && kind !== "wheel") dragTo(e);
     return;
   }
   if (h) { HOLD.key = h.dataset.hold; HOLD.t0 = now(); render(); return; }
@@ -5815,7 +5899,7 @@ let PAUSED = false;
 function frame() {
   const t = now(), d = Math.min(0.25, t - last); last = t;
   if (!PAUSED) advanceTime(d);
-  if (!DRAG || DRAG.kind === "joy" || DRAG.kind === "flip" || DRAG.kind === "shieldcam") render();
+  if (!DRAG || DRAG.kind === "joy" || DRAG.kind === "flip" || DRAG.kind === "shieldcam" || DRAG.kind === "feedview") render();
   requestAnimationFrame(frame);
 }
 
@@ -5832,6 +5916,7 @@ function scenario(name) {
 }
 window.MOCKUP_SHOTS = [
   { name: "helm", setup: () => { station = "helm"; render(); } },
+  { name: "helm-stick", setup: () => { station = "helm"; F.orderActive = false; F.stickDrag = [0.7, -0.35, 0]; advance(15); render(); F.stickDrag = [0.7, -0.35, 0]; } },
   { name: "helm-orient", setup: () => { station = "helm"; orient({ h: 45, p: 10, r: -30 }); advance(20); render(); } },
   { name: "tactical", setup: () => { station = "tactical"; render(); } },
   { name: "engineering", setup: () => { station = "engineering"; render(); } },

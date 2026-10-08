@@ -392,7 +392,7 @@ The four core consoles and the captain's, as drawn in the mockup (grid cells as 
 
 | Console | Panels | Main pictures |
 | --- | --- | --- |
-| Helm | THRUST (0,0,3,4), SCANNER (3,0,5,4), ATTITUDE (8,0,4,2), ORIENT (8,2,4,2) | Full 3D flight (owner, 2026-10-07; `flight-and-navigation` 6a): a forward speed lever from -100 to +400 m/s and a strafe pad whose puck sets lateral and vertical speed, the actual drift as a dot; a 3D scanner (the plane of the ship's wings seen from aft and above, each contact on a stalk to its height) with the bow's 10 deg tube cone and autopilot as five words; a joystick for yaw and pitch and a spring-return flipper switch for roll, each a small 3D model drawn as vector art (owner, 2026-10-08), the navball in the scanner's corner, with heading, pitch and roll and their rate bars; the attitude order on three thumbwheels in whole degrees (owner, 2026-10-08), its four quaternion numbers under them, GO with the turn's time, and LEVEL, FLIP and TARGET |
+| Helm | THRUST (0,0,3,4), SCANNER (3,0,5,4), ATTITUDE (8,0,4,2), ORIENT (8,2,4,2) | Full 3D flight (owner, 2026-10-07; `flight-and-navigation` 6a): a forward speed lever from -100 to +400 m/s and a strafe pad whose puck sets lateral and vertical speed, the actual drift as a dot; a 3D scanner (the plane of the ship's wings seen from aft and above, each contact on a stalk to its height) with the bow's 10 deg tube cone and autopilot as five words; a joystick for yaw and pitch and a spring-return flipper switch for roll, each a small 3D model drawn as vector art (owner, 2026-10-08), the navball right of the viewscreen, with heading, pitch and roll and their rate bars; the attitude order on three thumbwheels in whole degrees (owner, 2026-10-08), its four quaternion numbers under them, GO with the turn's time, and LEVEL, FLIP and TARGET |
 | Tactical | TARGETS (0,0,3,4), PLOT (3,0,5,4), TURRETS (8,0,4,2), TUBES (8,2,4,2) | Four target cards (silhouette, id, range, hull once scanned); the 3D scanner at 10 km with the ship and its shield bubble in 3D in the middle (`weapons-and-shields` 11), inbound missiles and the line to the target, solid while a turret fires; four turrets as aim needles in heat rings, with their gunner or AUTO and a one-word mode; two tubes as pills that fill as they load, FIRE held 0.6 s with the hit chance as its ring |
 | Engineering | POWER (0,0,8,4), REACTOR (8,0,4,2), BUSES (8,2,2,2), AIR (10,2,2,2) | Supply against demand as one bar; the eleven load groups as a mixing desk, each fader an icon, a handle at the setpoint, a fill for what it gets and a hatched gap for what it wants and does not get, with priority as pips; presets as four words; the reactor as a dial and three thermometers; the buses as a one-line diagram with five breakers; air as three ticks |
 | Science | SENSORS (0,0,5,4), SHIELDS (5,0,4,4), CONTACT (9,0,3,2), SCREEN (9,2,3,2) | The 3D scanner sweeping, PING held; the shields as a 3D model you turn by drag (owner, 2026-10-07: "a full 3d model of the ship and shield facings, and where enemies attack are from what angles"): the hull inside the six-faced bubble, faces filled by charge, hostiles' directions as lines and the last 8 s of hits as arrows labelled with bearing and elevation, the face weights and the frequency band as buttons; the selected contact with its scan as a ring; the viewscreen feed as six icons and a zoom |
@@ -401,7 +401,10 @@ The four core consoles and the captain's, as drawn in the mockup (grid cells as 
 
 **The scanner** (helm's, tactical's and science's plots are one widget; owner, 2026-10-08:
 "scanner needs to be able to adjust range, enemiy ships on radar need to show positive or negative
-elevation", "and a line and disk to show its offset from the ships plane"): the range steps with
+elevation", "and a line and disk to show its offset from the ships plane"; "I wish tactical plot
+display had a bigger wheel thing", "same with the other stations"): the wheel fills its panel's width
+and tilts toward the viewer to use its height (its ellipse at least 0.42 as tall as wide, at most
+0.62). The range steps with
 **-** and **+** beside its number, or the scroll wheel over the plot, through 1, 2, 5, 10, 20, 50
 and 100 km. Every contact stands on a line from a disk on the ship's plane (the plane of its wings):
 the disk is where it would be at the ship's height, the line its height above or below, solid above
@@ -413,9 +416,14 @@ little camera icon that shows what quadrant of ship the camera is viewing on the
 camerea is viewing aboce or below the ship. we need a little widget that shows what direction of the
 ship the camera is pointed at next to view screen"): every scanner draws a camera at the ship with
 its field of view as a cone on the ship's plane, pointing where the feed looks, and `▲ +20` or
-`▼ -15` beside it when the feed looks above or below that plane. Beside the viewscreen, a small
-widget shows the ship from above with the camera's cone, and from the side with the camera's
-elevation, so a glance tells which way the picture faces.
+`▼ -15` beside it when the feed looks above or below that plane. Left of the viewscreen, a small
+3D model of the ship shows the camera's cone and every contact in its direction (the target ringed,
+hostiles in their colour), and turns when dragged, to see from which side of the ship things are
+happening (owner, 2026-10-08: "this display thingy should be 3d", "I can click and drag to see what
+direction og the ship things are happening", "have targets and enemies show up on there"). Under it,
+the feed buttons (forward, aft, port, starboard, target, chase) are on every console, not only
+Science's (owner: "i ccnt change camera view on helm, please fix that"); the captain's override
+still wins while it is held.
 
 **Words where a number needs one** (owner, 2026-10-08: "I dont understand whta the percent disal is
 for"): a number whose meaning is not its picture carries its one word. FIRE's ring is the chance the
