@@ -30,7 +30,7 @@ this change works through (`bridge-stations` sections 10.8 and 10.9).
 
 | It did | Kept | Changed |
 | --- | --- | --- |
-| Shield face by the dominant axis; overflow to the hull | Yes (`weapons-and-shields`) | The overflow is a hull hit with a point and an energy |
+| Shield face by the dominant axis; overflow to the hull | Yes (`weapons-and-shields`, with round caps fore and aft) | The overflow is a hull hit with a point and an energy |
 | Damage routed to a station by a four-way angle test | | A ray from the hull point through the compartments it crosses |
 | Station HP 50; 0 HP stops a station; damage passed to its occupant | Systems that stop when broken; people near them hurt | Integrity in percent, four states, capability by state; crew hurt by distance |
 | A room ignites after three hits in 180 frames; fire never goes out alone; 2 HP/s to officers, 0.5 HP/s to the station | Fire persists until crew act or it starves | Fire from energy, fuel and oxygen; t-squared growth; out when starved; it heats, smokes and damages |

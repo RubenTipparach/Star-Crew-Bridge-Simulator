@@ -331,17 +331,27 @@ otherwise. A hit that bleeds into the magazine is damage-control's (cook-off is 
 | Holding | Below 15% of nominal supply the faces cannot hold and each decays at 2 MJ/s | |
 | Shunt rate | 10 MJ/s between faces, 20% lost | When balance changes |
 
-**The face of a hit** (star-crew-64's dominant axis, normalized so the long hull does not make
-everything the bow or stern):
+**The face of a hit** (after star-crew-64's dominant axis, normalized so the long hull does not make
+everything the bow or stern, and with round borders):
 
 ```text
 o = R^T (P_hit - P_s) - c_shield           ship axes, metres
 n = (o.x / 17.0, o.y / 13.0, o.z / 54.0)
-face = the axis with the largest |n|, with its sign
+bow or stern   if |n.z| / |n| >= 2/3       (within 48.19 deg of the long axis), by the sign of n.z
+port or stbd   else if |n.x| >= |n.y|      by the sign of n.x
+dorsal/ventral otherwise                    by the sign of n.y
 ```
 
 Without the normalization, a hit on the port side 20 m forward of midships would count as the bow
-(|z| 20 > |x| 12); with it, it is port (0.71 against 0.37), which is what the crew see.
+(|z| 20 > |x| 12); with it, it is port (n.z / |n| = 0.46, under 2/3), which is what the crew see.
+
+The first rule took the largest of |n.x|, |n.y| and |n.z|, star-crew-64's own. That cuts the
+shield like a cube: the bow and stern faces come out square, with corners, which is what the shield
+view showed (owner, 2026-10-08: "why does it shaped like that on the front and back face (of
+projected cube borders)"). The round rule keeps what the cube rule was for, each face exactly one
+sixth of the normalized sphere (a cap of half-angle acos(2/3) is 2 pi (1 - 2/3) = 4 pi / 6, and the
+band between the caps splits into four equal quarters), and gives the ends round caps and the sides
+straight seams on the diagonals. Recommendation taken (ask only with screenshots).
 
 **The shield view (owner, 2026-10-07).** The owner: "shields should display a full 3d model of the
 ship and shield facings, and where enemies attack are from what angles". Science's SHIELDS panel, and
@@ -351,8 +361,14 @@ the middle of tactical's plot, draw the shield in 3D:
   low-poly lines: 10 sections of 8 corners, about 140 triangles, the same shape the deck plan draws.
 - **The bubble** is this section's ellipsoid, cut into its six faces by the rule above: each patch of
   the bubble takes the face `shield_face(o)` gives its centre, the function that resolves a hit (one
-  implementation, CLAUDE.md 6.1). A face is filled by its charge (green, amber, red at 50 % and
-  20 %), thicker where its weight is higher, and flashes when hit.
+  implementation, CLAUDE.md 6.1). The bubble is cut along the faces' borders (rings at the caps'
+  edge, seams on the diagonals), so every patch lies in one face and each border is drawn true. A
+  face is filled by its charge (green, amber, red at 50 % and 20 %), thicker where its weight is
+  higher, and flashes when hit.
+- **Drawn as a see-through shell** (owner, 2026-10-08: "you see how shield has transparency
+  problem?"): the far half of the bubble and its borders first, then the hull, then the near half
+  and its borders, each half far to near. Sorting the bubble's patches in among the hull's long
+  panels by their centres drew pieces of the far side over the hull.
 - **Where the attacks come from**: each hostile in sensor range draws a dashed line into the bubble
   from its direction; each hit in the last 8 s draws an arrow from where it came, fading, onto the face
   it struck, labelled with its bearing and elevation in ship axes (bearing to starboard from the bow,

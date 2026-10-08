@@ -108,10 +108,13 @@ that reaches it.
 - **WHEN** a Gannet is launched at a stationary target 5 km ahead
 - **THEN** it reaches it in about 9.7 s
 
-### Requirement: Shields have six faces chosen by the normalized dominant axis
+### Requirement: Shields have six faces with round caps fore and aft
 The Tern's shield SHALL be an ellipsoid of semi-axes 17.0 x 13.0 x 54.0 m centred at [0.0, 1.5,
--2.0] in the ship frame, with six faces (bow, stern, port, starboard, dorsal, ventral). A hit's face
-SHALL be the largest component of its ship-frame offset from that centre divided by the semi-axes.
+-2.0] in the ship frame, with six faces (bow, stern, port, starboard, dorsal, ventral). With n the
+hit's ship-frame offset from that centre divided by the semi-axes, a hit's face SHALL be the bow or
+the stern when |n.z| / |n| is at least 2/3, otherwise port or starboard when |n.x| >= |n.y|, otherwise
+dorsal or ventral, each by the sign of its component, so that each face is one sixth of the
+normalized sphere.
 Total capacity SHALL be 240 MJ times the generator's health, regeneration `0.25 x delivered power`,
 distributed by science's face weights; below 15% of nominal supply every face SHALL decay at
 2 MJ/s.
@@ -119,6 +122,12 @@ distributed by science's face weights; below 15% of nominal supply every face SH
 #### Scenario: A hit on the side near the bow
 - **WHEN** a bolt strikes the shield at ship-frame offset (12, 0, 20) m from its centre
 - **THEN** the port face absorbs it, not the bow
+
+#### Scenario: The bow's border is round
+- **WHEN** two hits strike the shield 47 degrees from the long axis in normalized coordinates, one
+  straight toward the top and one toward the diagonal between the top and port
+- **THEN** both are bow hits, where the old largest-component rule gave the first to the top and the
+  second to the bow
 
 #### Scenario: Shields without power
 - **WHEN** the shield generator's supply falls to 10% of nominal

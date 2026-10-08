@@ -26,6 +26,7 @@ separate request once the owner approves the mockup (CLAUDE.md 10).
   - [x] 1.8.7 The feed buttons laid out as arrow keys on every pad (owner, 2026-10-08: "arrange the arrows in a sensible way please"). Shots `consoles-*.png`.
   - [x] 1.8.8 The owner's last notes of 2026-10-08: the stick's base and boot fixed and its button gone; the navball's pitch ladder numbered, a roll ring with a fixed index and the roll in a box beside it; scanners turned by dragging with a reset button, contacts labelled with their distance and drawn darker below the plane. Shots `consoles-*.png`, `consoles-red-tactical-turned.png`; presses and drags tested with real input.
   - [x] 1.8.9 Scanner range in 5 km steps from 5 to 100 km (owner, 2026-10-08).
+  - [x] 1.8.10 The shield view as a see-through shell (far half, hull, near half) and the faces' round rule from `weapons-and-shields` (owner, 2026-10-08: "you see how shield has transparency problem? also why does it shaped like that on the front and back face"). Shots `consoles-red-science-shields.png`, `consoles-red-tactical*.png`.
   - [ ] 1.8.3 Ask B13 in the survey with the shots (asked 2026-10-07; the answer is open); when approved, rewrite the section 10 panel tables for these five consoles from 8.0 and redraw Comms, Flight ops, the damage board and bay control the same way.
 
 ## 2. Data

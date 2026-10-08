@@ -4444,13 +4444,22 @@ function tubesBear() { const c = contact(G.target); if (!c) return false; const 
 const rcsPower = () => Math.max(0, (works("rcs_fwd") + works("rcs_aft")) / 2);
 
 // ---- shields (weapons-and-shields 11): the one face rule, capacities, the hit ----
-/** The face of a point o, in ship axes from the shield's centre: the largest of o divided by the semi-axes. */
+/**
+ * The face of a point o, in ship axes from the shield's centre (weapons-and-shields, "The face of a
+ * hit"). Divided by the semi-axes, o is a direction n on the unit sphere: within 48.19 degrees of the
+ * long axis (n.z / |n| at least 2/3) it is the bow or the stern, a round cap; otherwise the band
+ * between them is cut into quarters at the diagonals, port and starboard, dorsal and ventral. Each
+ * face is one sixth of the sphere, as the cube-shaped dominant axis rule was, with round borders.
+ */
+const SH_CAP_COS = 2 / 3;
 function shieldFace(o) {
-  const n = [o[0] / SH.axes_m[0], o[1] / SH.axes_m[1], o[2] / SH.axes_m[2]], a = n.map(Math.abs);
-  if (a[2] >= a[0] && a[2] >= a[1]) return n[2] >= 0 ? 0 : 1;
-  if (a[0] >= a[1]) return n[0] >= 0 ? 2 : 3;
+  const n = [o[0] / SH.axes_m[0], o[1] / SH.axes_m[1], o[2] / SH.axes_m[2]], l = Math.hypot(n[0], n[1], n[2]) || 1;
+  if (Math.abs(n[2]) / l >= SH_CAP_COS) return n[2] >= 0 ? 0 : 1;
+  if (Math.abs(n[0]) >= Math.abs(n[1])) return n[0] >= 0 ? 2 : 3;
   return n[1] >= 0 ? 4 : 5;
 }
+/** The outward normal of the shield ellipsoid at its point o. */
+const ellipsoidNormal = (o) => v3.norm([o[0] / SH.axes_m[0] ** 2, o[1] / SH.axes_m[1] ** 2, o[2] / SH.axes_m[2] ** 2]);
 /** The point of the shield ellipsoid in direction d from its centre, ship axes, metres. */
 function ellipsoidPoint(d) { const k = 1 / Math.hypot(d[0] / SH.axes_m[0], d[1] / SH.axes_m[1], d[2] / SH.axes_m[2]); return v3.mul(d, k); }
 function shieldCap(f) {
@@ -4923,13 +4932,20 @@ const HULL = L.hull.sections.map((q) => {
   return [[hb, t - c], [hb - c, t], [-(hb - c), t], [-hb, t - c], [-hb, b + c], [-(hb - c), b], [hb - c, b], [hb, b + c]]
     .map(([x, y]) => v3.sub([x, y, q.z_m], SH.centre_m));
 });
-/** The bubble cut into patches; each patch keeps the face the hit rule gives its centre. */
-function makeBubble(NT, NP) {
-  const pt = (i, j) => { const th = (i / NT) * Math.PI, ph = (j / NP) * 2 * Math.PI; return [SH.axes_m[0] * Math.sin(th) * Math.cos(ph), SH.axes_m[1] * Math.sin(th) * Math.sin(ph), SH.axes_m[2] * Math.cos(th)]; };
+/**
+ * The bubble cut into patches; each patch keeps the face the hit rule gives its centre. Rows are cut
+ * at the caps' edge (NC rows in each cap, NM in the band) and NP, a multiple of 8, puts columns on the
+ * diagonals, so every patch lies inside one face and the borders are the faces' true round edges.
+ */
+function makeBubble(NC, NM, NP) {
+  const tc = Math.acos(SH_CAP_COS), NT = 2 * NC + NM;
+  const theta = (i) => (i <= NC ? (i / NC) * tc : i <= NC + NM ? tc + ((i - NC) / NM) * (Math.PI - 2 * tc) : Math.PI - tc + ((i - NC - NM) / NC) * tc);
+  const at3 = (th, ph) => [SH.axes_m[0] * Math.sin(th) * Math.cos(ph), SH.axes_m[1] * Math.sin(th) * Math.sin(ph), SH.axes_m[2] * Math.cos(th)];
+  const pt = (i, j) => at3(theta(i), (j / NP) * 2 * Math.PI);
   const patches = [];
   for (let i = 0; i < NT; i++) for (let j = 0; j < NP; j++) {
     const v = [pt(i, j), pt(i + 1, j), pt(i + 1, j + 1), pt(i, j + 1)];
-    const th = ((i + 0.5) / NT) * Math.PI, ph = ((j + 0.5) / NP) * 2 * Math.PI;
+    const th = (theta(i) + theta(i + 1)) / 2, ph = ((j + 0.5) / NP) * 2 * Math.PI;
     const mid = [SH.axes_m[0] * Math.sin(th) * Math.cos(ph), SH.axes_m[1] * Math.sin(th) * Math.sin(ph), SH.axes_m[2] * Math.cos(th)];
     patches.push({ v, mid, face: shieldFace(mid), i, j });
   }
@@ -4941,7 +4957,7 @@ function makeBubble(NT, NP) {
   }
   return { patches, edges };
 }
-const BUBBLE_BIG = makeBubble(12, 20), BUBBLE_MINI = makeBubble(8, 12);
+const BUBBLE_BIG = makeBubble(4, 8, 32), BUBBLE_MINI = makeBubble(2, 4, 16);
 /** The hull loft as polygons with outward normals, for drawMesh (the camera widget). */
 const HULL_POLYS = (() => {
   const polys = [], col = [96, 110, 128];
@@ -4988,10 +5004,20 @@ function shieldGeometry(cx, cy, sc, cam, B, P, BUBBLE) {
     const mid = v3.mul(end.reduce((a, p) => v3.add(a, p), [0, 0, 0]), 1 / 8);
     polys.push({ z: v3.dot(mid, B.f), svg: `<polygon points="${pts(end)}" fill="#3a4656" stroke="#0d141d" stroke-width="0.6"/>` });
   }
-  for (const p of BUBBLE.patches) polys.push({ z: v3.dot(p.mid, B.f), pts: pts(p.v), face: p.face, front: v3.dot(p.mid, B.f) < 0 });
+  // A see-through shell round a solid draws in three passes: its far half, the hull, its near half.
+  // Sorting patches among the hull's long panels by their centres drew the far side over the hull.
   polys.sort((a, b) => b.z - a.z);
-  let edges = "";
-  for (const [a, b] of BUBBLE.edges) { const pa = P(a), pb = P(b), front = pa[2] + pb[2] < 0; edges += `<path d="M${pa[0].toFixed(1)} ${pa[1].toFixed(1)}L${pb[0].toFixed(1)} ${pb[1].toFixed(1)}" stroke="#cfe3f5" stroke-width="${front ? 1.2 : 0.6}" opacity="${front ? 0.55 : 0.2}"/>`; }
+  const shell = BUBBLE.patches.map((p) => ({ z: v3.dot(p.mid, B.f), pts: pts(p.v), face: p.face, front: v3.dot(ellipsoidNormal(p.mid), B.f) < 0 }));
+  const far = shell.filter((p) => !p.front).sort((a, b) => b.z - a.z), near = shell.filter((p) => p.front).sort((a, b) => b.z - a.z);
+  // The faces' borders go with their half: the far ones under the hull, the near ones over it.
+  let edges = "", farEdges = "";
+  for (const [a, b] of BUBBLE.edges) {
+    const pa = P(a), pb = P(b), front = v3.dot(ellipsoidNormal(v3.mul(v3.add(a, b), 0.5)), B.f) < 0;
+    const e = `<path d="M${pa[0].toFixed(1)} ${pa[1].toFixed(1)}L${pb[0].toFixed(1)} ${pb[1].toFixed(1)}" stroke="#cfe3f5" stroke-width="${front ? 1.2 : 0.6}" opacity="${front ? 0.55 : 0.25}"/>`;
+    if (front) edges += e; else farEdges += e;
+  }
+  polys.unshift(...far, { svg: farEdges });
+  polys.push(...near);
   const geo = { polys, edges };
   if (SV_CACHE.size > 8) SV_CACHE.clear();
   SV_CACHE.set(key, geo);
