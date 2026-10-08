@@ -153,6 +153,13 @@ tell me whats wrong until I click on the wrong screw"; "wheres my toilet minigam
   order, from the first fastener round the star (`KIT.starOrder`); every fastener carries its number and the next one
   is lit and ringed at rest (`KIT.draw.orderBadge`). A fastener out of order is still refused (the pylon's bolt is
   still lost), but it is never a guess.
+- **The reactor core in two controls and two stages** (owner: "warp core stabilizer should just be a vertical and
+  horizontal dial for simplicity", "there should be a stage 2 to stabilize plasma ring too"). One vertical and one
+  horizontal slider replace the four coil sliders: each pulls the field the way its handle is pushed, and the coils
+  glow with it. Each round is two stages on the same controls: hold the core in its centre band, then the plasma ring
+  round it, which the load pulls out of round (the horizontal slider sets its width, the vertical its height), held
+  round in its band. The ring bulging into the wall or collapsing onto the core is the same heat spike as the core
+  touching the wall.
 - **Toilets and showers** and **the medic**: section 6c.
 
 ## 7. The Pi 5 budget
