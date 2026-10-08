@@ -56,7 +56,7 @@ that system's mini-game.
 | **Reactor core** (engineering) | Keep the plasma ball centred in the containment ring by trimming four magnet coils (one stick or four sliders) while a fifth coil is swapped out; it drifts with the core's load | One coil swapped while held centred | The plasma touches the wall: a heat spike, the core's temperature jumps | `power-grid`: the ship runs on batteries |
 | **Impulse engines** (drive, the two impulse units) | Injector timing: pulses run along a scrolling trace; tap as each crosses the firing line, the rhythm set by the unit's tune | Eight injectors timed | Off the line: a misfire, a soot cough, the unit's heat up | Half thrust per unit down (`flight-and-navigation`) |
 | **Warp pylons** (outside, EVA only) | On the hull, tethered: clip from handhold to handhold to the damaged coil segment, unbolt it in a pattern, slide the new one in against a drift | One segment changed | Unclipped too long: the tether snaps you back; a dropped bolt is lost | Section 5: no warp; not repairable in combat |
-| **Heads and showers** (crew quarters) | A pipe puzzle: rotate the tiles so water runs from the main to the fixture without a dead end | One fixture's run | A loose joint: a spray, you are wet (a moodlet) | Section 4: comfort and morale |
+| **Toilets and showers** (crew quarters) | Rounds alternate. A toilet: plunge the clog down the trap in a safe rhythm, then flush. A shower: rotate the deckhead pipe tiles so one run joins the main to the shower, then open the valve | One toilet unclogged and flushed, or one shower running | Plunging too fast or flushing a clog: overflow, the floor is wet. Opening the valve on an open run: a loose joint, you are soaked (a moodlet) | Section 4: comfort and morale |
 | **Medbay biobeds** (medbay) | Sensor calibration: tune two knobs until the bed's trace lies on the reference trace | One sensor channel | Over-driven: the bed alarms; nothing hurt | Beds heal at the unpowered rate |
 | **Twin pulse cannon** (each turret's access room) | Focus the emitter: align two lenses so the test beam's spot is smallest and centred, then reseat the capacitor bank's coupling (drag it home at the right speed) | One lens pair, or the coupling | Coupling slammed: the bank arcs (10 HP) and loses its charge | The turret does not fire |
 | **Gannet tubes and hoist** (magazine) | The tube's breech: clear the jam by rotating the locking ring through its notches, then run the load-and-arm sequence (guide rail, latch, interlock) in order | One tube cleared and cycled | A step out of order: the interlock trips, back to the latch | The tube cannot load |
@@ -161,6 +161,23 @@ tell me whats wrong until I click on the wrong screw"; "wheres my toilet minigam
   round in its band. The ring bulging into the wall or collapsing onto the core is the same heat spike as the core
   touching the wall.
 - **Toilets and showers** and **the medic**: section 6c.
+
+### 6c. Toilets and showers, and the medic (2026-10-08)
+
+**Toilets and showers** (`repairs/heads.js`; the id stays `heads`). The owner: "wheres my toilet minigame". Rounds
+alternate, a toilet then a shower:
+
+- **The toilet.** A clogged toilet, lid up, a plunger in the bowl, and a cutaway of the trap beside it showing the
+  clog. Drag the plunger down and up (or Down then Up, or Space for a whole stroke); each full stroke pushes the clog
+  along the trap. The ring on the plunger's knob is the rhythm: dashed while it is too soon, solid when the next stroke
+  is safe. A stroke too soon sloshes the water up the bowl; over the rim is the fumble "Overflow: the floor is wet".
+  Flushing a clog fills the bowl too. When the clog clears the culprit floats up (a rubber duck) and the handle glows:
+  flush it and the bowl swirls clean. Later rounds take more strokes and a slower, narrower rhythm.
+- **The shower.** A pipe puzzle in the deckhead: turn tiles a quarter at a time until one run joins the main to the
+  shower with no open end, then open the valve on the main. Opening it on an open run is the fumble "Loose joint: you
+  are soaked". Later rounds have bigger grids.
+- **The part step** of a disabled toilet fits a new flush valve (the flapper) from the crate onto its seat in the open
+  cistern.
 
 ## 7. The Pi 5 budget
 
