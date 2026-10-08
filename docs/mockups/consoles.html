@@ -4424,8 +4424,8 @@ const G = {
 };
 const FACES = ["bow", "stern", "port", "starboard", "dorsal", "ventral"];
 const TUBE_LOAD_S = 7.2;
-/** The scanners' range ladder, km (bridge-stations 8.0, "The scanner"). */
-const RANGE_KM = [1, 2, 5, 10, 20, 50, 100];
+/** The scanners' range ladder, km: 5 km steps from 5 to 100 (bridge-stations 8.0, "The scanner"). */
+const RANGE_KM = Array.from({ length: 20 }, (_, i) => 5 * (i + 1));
 const RANGE_OF = { nav: "navRange", tac: "tacRange", sci: "sciRange" };
 function stepRange(key, d) { const f = RANGE_OF[key], i = RANGE_KM.indexOf(G[f]); G[f] = RANGE_KM[clamp((i < 0 ? 3 : i) + d, 0, RANGE_KM.length - 1)]; }
 const contact = (id) => G.contacts.find((c) => c.id === id);

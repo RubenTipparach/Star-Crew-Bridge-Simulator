@@ -405,8 +405,8 @@ elevation", "and a line and disk to show its offset from the ships plane"; "I wi
 display had a bigger wheel thing", "same with the other stations"): the wheel fills its panel's width
 and tilts toward the viewer to use its height (its ellipse at least 0.42 as tall as wide, at most
 0.62). The range steps with
-**-** and **+** beside its number, or the scroll wheel over the plot, through 1, 2, 5, 10, 20, 50
-and 100 km. Every contact stands on a line from a disk on the ship's plane (the plane of its wings):
+**-** and **+** beside its number, or the scroll wheel over the plot, 5 km a step from 5 to 100 km
+(owner, 2026-10-08: "scanner range should be increments of 5 km"). Every contact stands on a line from a disk on the ship's plane (the plane of its wings):
 the disk is where it would be at the ship's height, the line its height above or below, solid above
 and dashed below. Beside it, a mark for above (`▲`) or below (`▼`) and its distance, `4.2 km`
 (owner, 2026-10-08: "instead of elevation number, show distance numbers on these"); the elevation
