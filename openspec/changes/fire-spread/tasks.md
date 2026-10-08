@@ -7,6 +7,7 @@
 - [ ] 1.3 `docs/mockups/lib/firespread.js`: the cell model (design 1-2, 5); `shipsystems.js` takes a room's heat release from it.
 - [ ] 1.4 `tools/mockups/fire_cases.mjs`: the table's cases with the cell model, careful and careless aim; calibrate design 4's target.
 - [ ] 1.5 `docs/mockups/fire.html`: walk and board views (design 6), normal and red alert, Pi cost; inlined by `tools/mockups/inline.py`.
+- [ ] 1.5a Venting as the captain's call (design 6a): the guarded vent with its preview of who is inside, the 5 s warning, harm as oxygen and heat fall; the mockup's vent and the harness's vented case.
 - [ ] 1.6 Shots in `docs/screenshots/fire/`; published for the owner.
 
 ## 2. Engine (after the owner has played it)

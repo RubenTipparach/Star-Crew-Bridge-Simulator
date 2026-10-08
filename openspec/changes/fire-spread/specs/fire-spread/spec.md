@@ -47,3 +47,21 @@ after that from a burning neighbour or the hot layer.
 #### Scenario: A line left burning behind
 - **WHEN** a player knocks down half a fire and leaves a burning cell beside the knocked-down ones
 - **THEN** the knocked-down cells beside it reignite once their 20 s pass
+
+### Requirement: Only the captain vents a room
+
+Venting a room SHALL be a guarded command of the captain's console; the damage control board SHALL be able to request
+it and SHALL NOT be able to vent, and automation SHALL never vent.
+
+#### Scenario: The damage board asks
+- **WHEN** the damage control officer requests a vent of the quarters
+- **THEN** the request shows on the captain's console and the quarters' dump stays shut until the captain arms and fires it
+
+### Requirement: Crew in a venting room take damage as oxygen and heat fall
+
+Every crew member in a room being vented SHALL lose health at the rates of `atmosphere.json` `crew_effects` for the
+room's oxygen partial pressure and air temperature, each step, from the moment the dump opens.
+
+#### Scenario: Caught in the quarters
+- **WHEN** the captain vents the quarters with a crew member inside who does not leave
+- **THEN** that crew member's health falls as the quarters' oxygen and temperature fall, and they are down before the room reaches 20 kPa's 90 s limit

@@ -116,6 +116,40 @@ turns red alert on), walked by `shipwalk.js`, its air and fire run by `shipsyste
 - **Both** show the room's numbers on hover only (heat release, air C, oxygen, smoke), and the cost on the Pi 5:
   triangles and draw calls from `renderer.info`. A desktop frame rate is not a Pi measurement.
 
+## 6a. Venting: the captain's call
+
+The owner, 2026-10-08: "The captain can also vent a room of oxygen but all crew members will take damage as oxygen
+and heat drops". This answers `bridge-stations`' open "who may vent" (section 10.9 leaves it to `damage-control`).
+
+- **Who.** The captain vents, from the captain's console, any room with a vent (all of them). It is a guarded
+  control (`bridge-stations` 8.5: arm, then fire within 3 s). The damage control board can ask for it (the request
+  lights on the captain's console) but cannot vent on its own, and automation never vents (`damage-control` 7).
+- **What the captain sees first.** Arming shows the room on the ship plan with everyone in it, by name, and the time
+  the room takes to empty (from the same solve that empties it: the preview is the outcome, CLAUDE.md 6.1).
+- **The warning.** Firing shuts the room's doors and dampers, sounds the room's klaxon and strobes its lights red for
+  5 s, then opens the dump (`damage-control` 4's venting: the room to 20 kPa in 24 s, engineering in 82 s). For those
+  5 s the doors open from inside on a press, so the crew can run; after that they hold against the pressure.
+- **Everyone in the room takes damage as the air goes**, by `life-support`'s harm table (section 8), which this
+  change proposes to extend so the fall is felt as health lost, not only as a slide toward unconsciousness:
+
+  | What falls | Harm (proposed) | From |
+  | --- | --- | --- |
+  | Oxygen | 0 HP/s above 16 kPa of oxygen, rising in a straight line to 2.0 HP/s at 6.3 kPa and below | New; the hypoxia dose toward unconsciousness stays as it is |
+  | Heat | 0 HP/s above 5 C, rising 0.04 HP/s per kelvin below it (1.0 HP/s at -20 C) | Replaces the cold row's 0.2 HP/s below -20 C |
+  | Pressure | As today: knocked down (10 HP) by a fall faster than 50 kPa/s; dead after 90 s below 6.3 kPa | Unchanged |
+
+  The air cools as it expands out of the dump, so oxygen and heat fall together. A crew member who stays in a
+  venting room from the first second should be down (0 HP) within about a minute, so the warning matters and staying
+  is a real cost: a rough hand count (oxygen past 16 kPa at 4 s and past 6.3 kPa at 18 s of a 24 s vent) gives about
+  60 s before the cold is added. The fire harness measures the real figures (design 4) and the rates are tuned to
+  that target, not to this estimate.
+- **The fire goes out** below 20 kPa, as today, with every cell's flame shrinking together as oxygen falls (5).
+- **Refilling** is `life-support`'s: the room is refilled from the reserve through its vent when the captain closes
+  the dump, the medbay in 170 s.
+
+Recommendation taken (ask only with screenshots): the 5 s warning with the doors opening from inside, the damage
+board's request without its own vent, and the harm rates above. They are data in `atmosphere.json` `crew_effects`.
+
 ## 7. The Pi 5 budget
 
 | Item | Cost | Against |
