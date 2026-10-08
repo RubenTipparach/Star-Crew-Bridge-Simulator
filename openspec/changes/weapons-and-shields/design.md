@@ -359,6 +359,10 @@ the middle of tactical's plot, draw the shield in 3D:
   elevation up; `040 +12`). An inbound missile draws a red chevron on its line.
 - **The view** turns by drag (yaw about the ship's +Y, then tilt), starts from aft, above and to port,
   and has one button back to that view. Tactical's copy is fixed at the plot's own tilt.
+- **The faces' names and charges** (owner, 2026-10-08: "the text on sides not visible should still
+  apear but darker colroed"): all six faces are named on the model (BOW, STERN, PORT, STBD, TOP,
+  BELOW), each with a small bar of its charge under its name; a face on the far side keeps its name
+  and bar, drawn darker. The model is drawn large enough to fill the panel.
 
 On the Pi it is one small 3D viewport in the console pass: the hull lines and the ellipsoid of the
 flash (about 1,200 triangles, face per vertex, six opacities as uniforms), two draw calls, no

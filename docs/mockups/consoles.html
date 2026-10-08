@@ -4415,13 +4415,16 @@ const G = {
   weight: [1, 1, 1, 1, 1, 1], charge: [36, 36, 36, 36, 36, 36], flash: [-9, -9, -9, -9, -9, -9], hitLog: [],
   freq: "A", shieldBy: "Science", preset: -1, shieldCam: { yaw: 62, el: 24 },
   scanning: false, ping: 0, feed: "FWD", zoom: 1,
-  navRange: 20, tacRange: 5, sciRange: 25,
+  navRange: 20, tacRange: 5, sciRange: 20,
   orders: [], composer: { to: "helm", verb: null }, braced: 0, viewOverride: false,
   lastFire: 0, hits: 0, shipSel: "engineering",
 };
 const FACES = ["bow", "stern", "port", "starboard", "dorsal", "ventral"];
 const TUBE_LOAD_S = 7.2;
-const RANGES = { nav: [5, 20, 100], tac: [2, 5, 10], sci: [5, 25, 100] };
+/** The scanners' range ladder, km (bridge-stations 8.0, "The scanner"). */
+const RANGE_KM = [1, 2, 5, 10, 20, 50, 100];
+const RANGE_OF = { nav: "navRange", tac: "tacRange", sci: "sciRange" };
+function stepRange(key, d) { const f = RANGE_OF[key], i = RANGE_KM.indexOf(G[f]); G[f] = RANGE_KM[clamp((i < 0 ? 3 : i) + d, 0, RANGE_KM.length - 1)]; }
 const contact = (id) => G.contacts.find((c) => c.id === id);
 /** Where a point is from the ship, in ship axes, metres. */
 const relPos = (p) => quat.rot(quat.conj(F.q), v3.sub(p, F.P));
@@ -4592,7 +4595,6 @@ function stepGame(dt) {
   if (G.scanning && sc) { sc.scan = Math.min(1, sc.scan + (dt / 6) * works("sensors")); if (sc.scan >= 1) G.scanning = false; }
   if (G.ping > 0) { G.ping -= dt; for (const c of G.contacts) if (c.iff === "unknown" && rangeKm(c) < G.sciRange) { c.iff = "neutral"; c.scan = Math.max(c.scan, 0.2); } }
   for (const c of G.contacts) if (c.hull <= 0 && G.target === c.id) G.target = (G.contacts.find((x) => x.hull > 0 && x.iff === "hostile") || {}).id || null;
-  if (G.braced > 0) G.braced -= dt;
 }
 /**
  * A hit from direction d (ship axes, toward the attacker): the face it strikes takes what it can,
@@ -4618,11 +4620,13 @@ function breaches() { let n = 0; for (let i = 0; i < sim.N; i++) if (sim.P[i] / 
 
 // =================================================================== stations and their state
 const STATIONS = [
-  { id: "helm", role: "helm", word: "HELM", op: "Ana", merged: [] },
-  { id: "tactical", role: "tactical", word: "TACTICAL", op: "Ben", merged: [["FLIGHT", "flight_ops"]] },
-  { id: "engineering", role: "engineering", word: "ENGINEERING", op: "Cleo", merged: [["DAMAGE", "engineering"]] },
-  { id: "science", role: "science", word: "SCIENCE", op: "Dev", merged: [["COMMS", "comms"]] },
-  { id: "captain", role: "command", word: "CAPTAIN", op: "You", merged: [] },
+  // Who sits where in the mockup. Science is open (its automation runs), so any console can swap to it
+  // (bridge-stations 5: no merging; swap to an open station from any seat).
+  { id: "helm", role: "helm", word: "HELM", op: "Ana" },
+  { id: "tactical", role: "tactical", word: "TACTICAL", op: "Ben" },
+  { id: "engineering", role: "engineering", word: "ENGINEERING", op: "Cleo" },
+  { id: "science", role: "science", word: "SCIENCE", op: null },
+  { id: "captain", role: "command", word: "CAPTAIN", op: "You" },
 ];
 let station = "helm", captainTab = "CMD";
 const stationDef = () => STATIONS.find((s) => s.id === station);
@@ -4670,16 +4674,24 @@ function titleBand() {
   let s = `<svg width="1280" height="32" viewBox="0 0 1280 32">`;
   s += `<rect width="1280" height="32" fill="${emerg ? "#2b1a08" : red ? "#3a0c10" : "#0a0f16"}"/>`;
   s += `<rect y="31" width="1280" height="1" fill="${emerg ? C.emergency : red ? C.alert : C.line}"/>`;
-  // Tabs: the station's own first, then the stations merged onto it.
-  const tabs = [[S.word, S.role, true]].concat(S.merged.map(([w, r]) => [w, r, false]));
-  if (S.id === "captain") { tabs.length = 0; tabs.push(["COMMAND", "command", captainTab === "CMD", "tab:CMD"], ["SHIP", "command", captainTab === "SHIP", "tab:SHIP"]); }
+  // The station's own chip (the captain's two pages), then the open stations: press one to swap to it.
+  const tabs = S.id === "captain" ? [["COMMAND", "command", captainTab === "CMD", "tab:CMD"], ["SHIP", "command", captainTab === "SHIP", "tab:SHIP"]] : [[S.word, S.role, true, null]];
   let x = 8;
   for (const [w, r, on, act] of tabs) {
     const tw = 34 + w.length * 9.4;
-    s += `<g ${act ? `data-act="${act}"` : ""}${tipAttr(!act && !on ? "Merged here while nobody sits at it (next round)" : null)}>`;
+    s += `<g ${act ? `data-act="${act}"` : ""}>`;
     s += `<rect x="${x}" y="4" width="${tw}" height="24" rx="5" fill="${on ? ROLE[r] + "26" : "transparent"}" stroke="${on ? ROLE[r] : C.line2}"/>`;
     s += icon(r, x + 13, 16, 14, on ? ROLE[r] : C.dim);
     s += text(x + 25, 21, 13, on ? C.text : C.dim, w, { ls: 1.5, w: 700 }) + "</g>";
+    x += tw + 6;
+  }
+  const open = STATIONS.filter((o) => !o.op && o.id !== S.id).map((o) => [o.word, o.role, o.id]).concat([["COMMS", "comms", null], ["FLIGHT", "flight_ops", null]]);
+  for (const [w, r, id] of open) {
+    const tw = 44 + w.length * 8.6;
+    s += `<g ${id ? `data-act="swap:${id}"` : ""}${tipAttr(id ? `${w.toLowerCase()} is open: swap to it` : `${w.toLowerCase()} is open (its console is not in this mockup yet)`)}>`;
+    s += `<rect x="${x}" y="4" width="${tw}" height="24" rx="5" fill="transparent" stroke="${C.line2}" stroke-dasharray="4 3"/>`;
+    s += icon(r, x + 13, 16, 13, id ? ROLE[r] : C.faint) + text(x + 24, 21, 12, id ? C.text : C.faint, w, { ls: 1.5, w: 700 });
+    s += `<path d="M${x + tw - 15} ${12}h8l-3 -3M${x + tw - 7} ${20}h-8l3 3" fill="none" stroke="${id ? C.text : C.faint}" stroke-width="1.5"/></g>`;
     x += tw + 6;
   }
   // The newest order to this station.
@@ -4738,6 +4750,7 @@ function lookBand() {
   }
   s += `</svg>`;
   s += text(342, 38, 11, C.dim, `VIEWSCREEN · ${G.feed}`, { ls: 2 });
+  s += feedWidget(232, 34);
   s += `<rect width="1280" height="240" fill="url(#rv)"/>`;
   return s + "</svg>";
 }
@@ -4757,7 +4770,7 @@ function statusStrip() {
   s += `<g${tipAttr("Fires")}>` + icon("flame", 540, 16, 16, nf ? C.danger : C.faint) + text(554, 21, 14, nf ? C.danger : C.faint, String(nf)) + "</g>";
   s += `<g${tipAttr("Compartments open to space")}>` + icon("breach", 590, 16, 16, nb ? C.danger : C.faint) + text(604, 21, 14, nb ? C.danger : C.faint, String(nb)) + "</g>";
   const S = stationDef();
-  s += icon("person", 1090, 16, 16, accent()) + text(1106, 21, 14, C.text, `${S.op} · ${S.word}`);
+  s += icon("person", 1090, 16, 16, accent()) + text(1106, 21, 14, C.text, `${S.op || "You"} · ${S.word}`);
   return s + "</svg>";
 }
 function accentFor() { return C.text; }
@@ -4793,7 +4806,7 @@ function scanner(w, h, rangeKmNow, cy0) {
     const x = cx - r[0] * R, by = cy - r[2] * R * SCAN_K;
     return { x, by, y: by - r[1] * R * SCAN_H, inside: v3.len(r) <= 1 };
   };
-  let s = `<ellipse cx="${cx}" cy="${cy}" rx="${R}" ry="${R * SCAN_K}" fill="#0a1017" stroke="${C.line2}"/>`;
+  let s = `<rect x="0" y="0" width="${w}" height="${h}" fill="transparent"/><ellipse cx="${cx}" cy="${cy}" rx="${R}" ry="${R * SCAN_K}" fill="#0a1017" stroke="${C.line2}"/>`;
   s += `<ellipse cx="${cx}" cy="${cy}" rx="${R / 2}" ry="${(R * SCAN_K) / 2}" fill="none" stroke="${C.line}"/>`;
   s += `<path d="M${cx} ${cy - R * SCAN_K}V${cy + R * SCAN_K}M${cx - R} ${cy}H${cx + R}" stroke="${C.line}" stroke-dasharray="2 6"/>`;
   for (let a = 30; a < 360; a += 30) { const x = cx + Math.sin(a * D2R) * R, y = cy - Math.cos(a * D2R) * R * SCAN_K; s += `<circle cx="${x}" cy="${y}" r="1.4" fill="${C.faint}"/>`; }
@@ -4805,12 +4818,60 @@ function scannerContacts(S, act, tip) {
   const list = G.contacts.filter((c) => c.hull > 0).map((c) => ({ c, p: S.at(c.p) })).filter((x) => x.p.inside).sort((a, b) => a.p.by - b.p.by);
   for (const { c, p } of list) {
     const ahead = S.at(v3.add(c.p, v3.mul(c.dir, 1500))), rot = Math.atan2(ahead.x - p.x, -(ahead.y - p.y)) / D2R;
-    const above = p.y < p.by, col = C[c.iff];
-    b += `<path d="M${p.x} ${p.by}V${p.y}" stroke="${col}" stroke-width="1.5" opacity="0.7" ${above ? "" : 'stroke-dasharray="3 3"'}/>`;
-    b += `<ellipse cx="${p.x}" cy="${p.by}" rx="4" ry="1.8" fill="${col}" opacity="0.6"/>`;
+    const col = C[c.iff], el = Math.round(elevOf(relPos(c.p))), above = el > 0;
+    // The disk: where it would be at the ship's height. The line: its height above (solid) or below (dashed).
+    b += `<ellipse cx="${p.x}" cy="${p.by}" rx="8" ry="3.2" fill="${col}" fill-opacity="0.22" stroke="${col}" stroke-width="1.5"/>`;
+    b += `<path d="M${p.x} ${p.by}V${p.y}" stroke="${col}" stroke-width="2" opacity="0.85" ${el < 0 ? 'stroke-dasharray="4 3"' : ""}/>`;
+    // Its elevation, whole degrees: a mark up or down and the number.
+    const lx = p.x + 13, ly = p.y + 1;
+    if (el !== 0) b += `<path d="${above ? `M${lx} ${ly + 3}l4 -7l4 7z` : `M${lx} ${ly - 4}l4 7l4 -7z`}" fill="${col}"/>`;
+    b += text(lx + (el !== 0 ? 11 : 0), ly + 4, 12, col, el > 0 ? `+${el}` : String(el), { w: 700, ls: 0 });
     b += `<g data-act="${act(c)}"${tipAttr(tip(c))}>` + shipGlyph(c, p.x, p.y, 18, rot, col, c.id === G.target || (station === "science" && c.id === G.sciSel)) + "</g>";
   }
   return b;
+}
+
+/** Where the viewscreen looks, in ship axes: bearing (to starboard) and elevation, degrees. */
+function feedDir() { const f = feedBasis().f; return { f, brg: brgOf(f), el: Math.round(elevOf(f)) }; }
+/**
+ * The viewscreen's camera on a scanner: an icon at the ship and its field of view as a cone on the
+ * ship's plane, toward where the feed looks; above or below that plane, a mark and the elevation.
+ */
+function feedCone(S) {
+  const d = feedDir(), half = 35 / G.zoom, az = d.brg * D2R, len = S.R * 0.34;
+  const pt = (a, k) => [S.cx + Math.sin(a) * len * k, S.cy - Math.cos(a) * len * k * SCAN_K];
+  const [x0, y0] = pt(az - half * D2R, 1), [x1, y1] = pt(az + half * D2R, 1), [ix, iy] = pt(az, 0.32);
+  const rot = Math.atan2(ix - S.cx, -(iy - S.cy)) / D2R;
+  let s = `<g${tipAttr(`Viewscreen: ${G.feed.toLowerCase()}, bearing ${String(Math.round(wrap360(d.brg))).padStart(3, "0")}, elevation ${d.el}°`)}>`;
+  s += `<path d="M${S.cx} ${S.cy}L${x0.toFixed(1)} ${y0.toFixed(1)}L${x1.toFixed(1)} ${y1.toFixed(1)}Z" fill="#cfe3f5" fill-opacity="0.09" stroke="#cfe3f5" stroke-opacity="0.35" stroke-dasharray="3 3"/>`;
+  s += `<g transform="translate(${ix.toFixed(1)} ${iy.toFixed(1)}) rotate(${rot.toFixed(1)})"><rect x="-5" y="-2" width="10" height="9" rx="2" fill="#cfe3f5"/><path d="M-4 -2L-7 -8H7L4 -2Z" fill="#cfe3f5"/></g>`;
+  if (Math.abs(d.el) >= 3) {
+    const lx = ix + 10, ly = iy - 8, up = d.el > 0;
+    s += `<path d="${up ? `M${lx} ${ly + 3}l4 -7l4 7z` : `M${lx} ${ly - 4}l4 7l4 -7z`}" fill="#cfe3f5"/>` + text(lx + 11, ly + 4, 11, "#cfe3f5", up ? `+${d.el}` : String(d.el), { w: 700, ls: 0 });
+  }
+  return s + "</g>";
+}
+/** Beside the viewscreen: the ship from above with the camera's cone, and from the side with its elevation. */
+function feedWidget(x, y) {
+  const d = feedDir(), secs = L.hull.sections, sc = 0.78, zc = 0, half = 35 / G.zoom;
+  let s = `<g${tipAttr(`Viewscreen looks ${G.feed.toLowerCase()}: bearing ${String(Math.round(wrap360(d.brg))).padStart(3, "0")}, elevation ${d.el}°`)}>`;
+  // From above: bow up, port on the left.
+  const cx = x + 44, cy = y + 46;
+  s += `<rect x="${x}" y="${y}" width="88" height="92" rx="8" fill="#070a0f" stroke="#26313e"/>`;
+  const outline = secs.map((q) => [cx - q.half_beam_m * sc, cy - (q.z_m - zc) * sc]).concat(secs.slice().reverse().map((q) => [cx + q.half_beam_m * sc, cy - (q.z_m - zc) * sc]));
+  s += `<polygon points="${outline.map((p) => p.map((v) => v.toFixed(1)).join(",")).join(" ")}" fill="#2a3442" stroke="#4a5868"/>`;
+  const az = d.brg * D2R, L2 = 40, a0 = az - half * D2R, a1 = az + half * D2R;
+  s += `<path d="M${cx} ${cy}L${(cx + Math.sin(a0) * L2).toFixed(1)} ${(cy - Math.cos(a0) * L2).toFixed(1)}A${L2} ${L2} 0 0 1 ${(cx + Math.sin(a1) * L2).toFixed(1)} ${(cy - Math.cos(a1) * L2).toFixed(1)}Z" fill="#cfe3f5" fill-opacity="0.22" stroke="#cfe3f5" stroke-opacity="0.6"/>`;
+  s += `<g transform="translate(${cx} ${cy}) rotate(${d.brg.toFixed(1)})"><rect x="-5" y="-2" width="10" height="9" rx="2" fill="#e8eef6"/><path d="M-4 -2L-7 -8H7L4 -2Z" fill="#e8eef6"/></g>`;
+  // From the side: bow to the right, the camera's elevation as a line up or down.
+  const sy = y + 98, scy = sy + 22, fwd = Math.cos(az) >= 0 ? 1 : -1;
+  s += `<rect x="${x}" y="${sy}" width="88" height="44" rx="8" fill="#070a0f" stroke="#26313e"/>`;
+  const prof = secs.map((q) => [cx + (q.z_m - zc) * 0.95, scy - (q.top_m - 1.2) * 0.95]).concat(secs.slice().reverse().map((q) => [cx + (q.z_m - zc) * 0.95, scy - (q.bottom_m - 1.2) * 0.95]));
+  s += `<polygon points="${prof.map((p) => p.map((v) => v.toFixed(1)).join(",")).join(" ")}" fill="#2a3442" stroke="#4a5868"/>`;
+  const el = clamp(d.el, -89, 89) * D2R, ex = cx + fwd * Math.cos(el) * 34, ey = scy - Math.sin(el) * 34;
+  s += `<path d="M${cx} ${scy}L${ex.toFixed(1)} ${ey.toFixed(1)}" stroke="#e8eef6" stroke-width="2"/><circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="3" fill="#e8eef6"/>`;
+  if (Math.abs(d.el) >= 3) s += text(x + 84, sy + 14, 11, "#e8eef6", d.el > 0 ? `▲+${d.el}` : `▼${d.el}`, { a: "end", w: 700, ls: 0 });
+  return s + "</g>";
 }
 
 // ---- the 3D shield view (weapons-and-shields 11) ----
@@ -4896,14 +4957,17 @@ function shieldView(cx, cy, sc, cam, o) {
   }
   s += geo.edges;
   if (o.big) {
-    // Hit labels first, so a face name moves rather than a number.
+    // Every face named on the model with its charge under the name; a face on the far side darker.
     for (const h of G.hitLog) { const b = P(v3.add(ellipsoidPoint(h.d), v3.mul(h.d, 38))); placed.push([b[0], b[1] - 6]); }
-    const tips = [[0, 0, 1], [0, 0, -1], [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0]], names = ["BOW", "STERN", "PORT", "STBD", "TOP", "BELOW"];
-    tips.forEach((d, f) => {
-      const e = v3.mul(d, [SH.axes_m[2], SH.axes_m[2], SH.axes_m[0], SH.axes_m[0], SH.axes_m[1], SH.axes_m[1]][f]);
-      if (v3.dot(d, B.f) > -0.25) return;
-      const p = P(v3.mul(e, f < 2 ? 1.1 : 1.45)), ly = place(p[0], p[1] + 4);
-      s += text(p[0], ly, 12, ratioCol(shieldRatio(f)), names[f], { a: "middle", w: 700, ls: 1.5 });
+    const dirs = [[0, 0, 1], [0, 0, -1], [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0]], names = ["BOW", "STERN", "PORT", "STBD", "TOP", "BELOW"];
+    dirs.forEach((d, f) => {
+      const ax = [SH.axes_m[2], SH.axes_m[2], SH.axes_m[0], SH.axes_m[0], SH.axes_m[1], SH.axes_m[1]][f];
+      const far = v3.dot(d, B.f) > 0.05, p = P(v3.mul(d, ax * (f < 2 ? 1.1 : 1.45))), k = shieldRatio(f);
+      p[0] = clamp(p[0], 30, (o.w || 400) - 30);
+      const ly = place(p[0], p[1] + 4);
+      s += `<g opacity="${far ? 0.42 : 1}"${tipAttr(`${FACES[f]}: ${G.charge[f].toFixed(0)} of ${shieldCap(f).toFixed(0)} MJ${far ? " (far side)" : ""}`)}>`;
+      s += text(p[0], ly, 12, ratioCol(k), names[f], { a: "middle", w: 700, ls: 1.5 });
+      s += `<rect x="${p[0] - 16}" y="${ly + 4}" width="32" height="4" rx="2" fill="#16202c"/><rect x="${p[0] - 16}" y="${ly + 4}" width="${32 * clamp(k, 0, 1)}" height="4" rx="2" fill="${ratioCol(k)}"/></g>`;
     });
   }
   // Where the attacks come from: hostiles' directions, inbound missiles, the last 8 s of hits.
@@ -4931,11 +4995,147 @@ function shieldView(cx, cy, sc, cam, o) {
   }
   return s;
 }
-function rangeChip(x, y, km, act) {
-  return `<g data-act="${act}"${tipAttr("Range")}><rect x="${x}" y="${y}" width="66" height="28" rx="6" fill="${C.panel2}" stroke="${C.line2}"/>${text(x + 33, y + 19, 14, C.text, `${km} km`, { a: "middle" })}</g>`;
+/** The range of a scanner: its number between - and +. */
+/**
+ * The navball: the reference plane as a horizon, pitched and rolled with the ship, heading marks
+ * along it, and the order's horizon as a ghost (flight-and-navigation 6a).
+ */
+function navball(cx, cy, R) {
+  const e = quat.toEuler(F.q), ppd = R / 60;
+  let b = `<defs><clipPath id="navclip"><circle cx="${cx}" cy="${cy}" r="${R}"/></clipPath></defs>`;
+  b += `<g${tipAttr(`Heading ${fmtAng(e.h)}, pitch ${fmtAng(e.p, true)}, roll ${fmtAng(e.r, true)}. Now ${fmtQ(F.q)}`)}><g clip-path="url(#navclip)"><g transform="rotate(${(-e.r).toFixed(2)} ${cx} ${cy}) translate(0 ${(e.p * ppd).toFixed(2)})">`;
+  b += `<rect x="${cx - 3 * R}" y="${cy - 6 * R}" width="${6 * R}" height="${6 * R}" fill="#14304a"/><rect x="${cx - 3 * R}" y="${cy}" width="${6 * R}" height="${6 * R}" fill="#3a2a16"/>`;
+  b += `<path d="M${cx - 3 * R} ${cy}H${cx + 3 * R}" stroke="#d9e6f2" stroke-width="2"/>`;
+  for (let a = -90; a <= 90; a += 15) if (a) { const y = cy - a * ppd, wd = a % 30 ? 9 : 18; b += `<path d="M${cx - wd} ${y}H${cx + wd}" stroke="#d9e6f2" stroke-width="1" opacity="0.7"/>`; }
+  for (let hd = 0; hd < 360; hd += 30) {
+    const off = wrap180(hd - e.h);
+    if (Math.abs(off) > 75) continue;
+    const x = cx + off * ppd;
+    b += `<path d="M${x} ${cy}v-6" stroke="#d9e6f2" stroke-width="1.5"/>` + text(x, cy - 8, 9, "#d9e6f2", String(hd).padStart(3, "0"), { a: "middle", ls: 0 });
+  }
+  b += `</g>`;
+  const goal = F.orderActive ? F.order : attitudeGoal();
+  if (goal) { const ge = quat.toEuler(goal); b += `<g transform="rotate(${(-ge.r).toFixed(2)} ${cx} ${cy}) translate(0 ${(ge.p * ppd).toFixed(2)})"><path d="M${cx - 3 * R} ${cy}H${cx + 3 * R}" stroke="${accent()}" stroke-width="2" stroke-dasharray="6 4"/></g>`; }
+  b += `</g><circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${C.line2}" stroke-width="2"/>`;
+  b += `<path d="M${cx - 20} ${cy}H${cx - 7}L${cx - 3} ${cy + 5}L${cx} ${cy}L${cx + 3} ${cy + 5}L${cx + 7} ${cy}H${cx + 20}" fill="none" stroke="${C.warn}" stroke-width="2.5" stroke-linejoin="round"/></g>`;
+  return b;
+}
+function rangeCtl(x, y, key) {
+  const km = G[RANGE_OF[key]];
+  let s = button({ x, y, w: 32, h: 30, label: "−", act: `range:${key}:-1`, fs: 20, off: km === RANGE_KM[0], tip: "Closer (scroll)" });
+  s += `<rect x="${x + 36}" y="${y}" width="64" height="30" rx="6" fill="${C.panel2}" stroke="${C.line2}"/>` + text(x + 68, y + 20, 15, C.text, `${km} km`, { a: "middle", w: 700 });
+  s += button({ x: x + 104, y, w: 32, h: 30, label: "+", act: `range:${key}:1`, fs: 20, off: km === RANGE_KM[RANGE_KM.length - 1], tip: "Further (scroll)" });
+  return s;
 }
 const fmtQ = (q) => quat.canon(q).map((x) => (x < 0 ? "" : " ") + x.toFixed(4)).join("  ");
 const fmtAng = (x, signed) => (signed ? (x >= 0 ? "+" : "") + Math.round(x) : String(Math.round(wrap360(x)) % 360).padStart(3, "0")) + "°";
+
+// ---- a tiny 3D kit for the helm's controls: meshes turned about a pivot, lit, sorted and drawn as vector art ----
+/** A surface of revolution about +Y: profile [[r, y], ...] from the bottom of the axis round to the top. */
+function lathe(profile, col, n) {
+  n = n || 14;
+  const polys = [];
+  for (let i = 0; i + 1 < profile.length; i++) {
+    const [r0, y0] = profile[i], [r1, y1] = profile[i + 1], nr = y1 - y0, ny = -(r1 - r0), nl = Math.hypot(nr, ny) || 1;
+    for (let j = 0; j < n; j++) {
+      const a0 = (j / n) * 2 * Math.PI, a1 = ((j + 1) / n) * 2 * Math.PI, am = (a0 + a1) / 2;
+      const v = [[r0 * Math.cos(a0), y0, r0 * Math.sin(a0)], [r1 * Math.cos(a0), y1, r1 * Math.sin(a0)], [r1 * Math.cos(a1), y1, r1 * Math.sin(a1)], [r0 * Math.cos(a1), y0, r0 * Math.sin(a1)]];
+      polys.push({ v, n: [(nr / nl) * Math.cos(am), ny / nl, (nr / nl) * Math.sin(am)], col });
+    }
+  }
+  return polys;
+}
+/** A box centred at c with half sizes h. */
+function boxMesh(c, h, col) {
+  const P = (x, y, z) => [c[0] + x * h[0], c[1] + y * h[1], c[2] + z * h[2]];
+  return [
+    { v: [P(1, -1, -1), P(1, 1, -1), P(1, 1, 1), P(1, -1, 1)], n: [1, 0, 0], col }, { v: [P(-1, -1, 1), P(-1, 1, 1), P(-1, 1, -1), P(-1, -1, -1)], n: [-1, 0, 0], col },
+    { v: [P(-1, 1, -1), P(-1, 1, 1), P(1, 1, 1), P(1, 1, -1)], n: [0, 1, 0], col }, { v: [P(-1, -1, 1), P(-1, -1, -1), P(1, -1, -1), P(1, -1, 1)], n: [0, -1, 0], col },
+    { v: [P(-1, -1, 1), P(1, -1, 1), P(1, 1, 1), P(-1, 1, 1)], n: [0, 0, 1], col }, { v: [P(1, -1, -1), P(-1, -1, -1), P(-1, 1, -1), P(1, 1, -1)], n: [0, 0, -1], col },
+  ];
+}
+/** Turn polygons about a pivot by a quaternion, normals with them. */
+function turnMesh(polys, q, pivot) {
+  return polys.map((p) => ({ ...p, v: p.v.map((x) => v3.add(quat.rot(q, v3.sub(x, pivot)), pivot)), n: quat.rot(q, p.n) }));
+}
+/** Draw polygons from a camera: back faces dropped, the rest lit and drawn far to near. */
+function drawMesh(polys, cam, cx, cy, sc) {
+  const B = camBasis(cam), light = v3.norm(v3.add(v3.mul(B.f, -1), [0.5, 0.9, 0.2]));
+  const vis = [];
+  for (const p of polys) {
+    if (v3.dot(p.n, B.f) >= 0) continue;
+    const mid = v3.mul(p.v.reduce((a, x) => v3.add(a, x), [0, 0, 0]), 1 / p.v.length), d = Math.max(0, v3.dot(p.n, light));
+    const k = 0.28 + 0.72 * d, spec = Math.pow(Math.max(0, v3.dot(p.n, v3.norm(v3.add(light, v3.mul(B.f, -1))))), 24) * 70;
+    const col = p.col.map((c) => Math.min(255, Math.round(c * k + spec)));
+    vis.push({ z: v3.dot(mid, B.f), pts: p.v.map((x) => (cx + v3.dot(x, B.r) * sc).toFixed(1) + "," + (cy - v3.dot(x, B.u) * sc).toFixed(1)).join(" "), fill: `rgb(${col.join(",")})` });
+  }
+  vis.sort((a, b) => b.z - a.z);
+  return vis.map((p) => `<polygon points="${p.pts}" fill="${p.fill}" stroke="${p.fill}" stroke-width="0.6" stroke-linejoin="round"/>`).join("");
+}
+// The models, in their own units, at rest: a base, a boot, a shaft and a grip; a housing, a boss and a bat.
+const JOY = {
+  base: lathe([[0, -0.3], [1.0, -0.3], [1.05, -0.05], [0.95, 0.02], [0.42, 0.02], [0, 0.02]], [34, 43, 54], 20),
+  boot: lathe([[0, 0], [0.4, 0.02], [0.33, 0.14], [0.2, 0.3], [0.11, 0.42], [0, 0.44]], [24, 29, 36], 16),
+  shaft: lathe([[0, 0.3], [0.075, 0.3], [0.075, 1.22], [0, 1.22]], [150, 160, 172], 12),
+  grip: lathe([[0, 1.12], [0.16, 1.14], [0.22, 1.3], [0.23, 1.55], [0.2, 1.78], [0.13, 1.9], [0, 1.93]], [62, 72, 86], 16),
+  button: lathe([[0, 1.9], [0.075, 1.9], [0.075, 1.97], [0, 1.99]], [255, 71, 87], 10).map((p) => ({ ...p, v: p.v.map((x) => [x[0], x[1], x[2] + 0.06]) })),
+};
+const FLIP = {
+  housing: boxMesh([0, -0.2, 0], [0.62, 0.2, 0.5], [30, 38, 48]),
+  boss: lathe([[0, 0], [0.3, 0], [0.3, 0.1], [0.22, 0.16], [0, 0.16]], [44, 54, 66], 16),
+  bat: boxMesh([0, 0.62, 0], [0.11, 0.5, 0.08], [150, 160, 172]).concat(boxMesh([0, 1.12, 0], [0.15, 0.06, 0.1], [62, 72, 86])),
+};
+const CTRL_CAM = { yaw: 180, el: 26 };
+
+// ---- helm's controls, drawn as pictures of physical ones (flight-and-navigation 6a) ----
+/**
+ * A joystick in perspective: a base plate, a rubber boot, a shaft and a grip that leans the way it
+ * is pushed. yaw and pitch are -1..1; pitch +1 is pulled toward you (nose up), so the grip comes
+ * nearer: lower and larger. Drag it; it springs back.
+ */
+function joystick(cx, h, yaw, pitch) {
+  // Tilt about the pivot at the base's top: pulling back (pitch +1) brings the grip toward the camera,
+  // yaw +1 leans it right. The boot follows at half the angle.
+  const t = quat.mul(quat.axis([0, 0, 1], -yaw * 22), quat.axis([1, 0, 0], pitch * 22));
+  const half = quat.mul(quat.axis([0, 0, 1], -yaw * 11), quat.axis([1, 0, 0], pitch * 11));
+  const parts = JOY.base.concat(turnMesh(JOY.boot, half, [0, 0, 0]), turnMesh(JOY.shaft.concat(JOY.grip, JOY.button), t, [0, 0, 0]));
+  let s = `<g data-drag="joy"${tipAttr("Stick: yaw and pitch (A, D, R, F). Pull back for nose up")}><rect x="${cx - 74}" y="0" width="148" height="${h}" fill="transparent"/>`;
+  s += drawMesh(parts, CTRL_CAM, cx, h - 46, 62);
+  return s + "</g>";
+}
+/**
+ * A spring-return flipper switch for roll: a bat on a boss that tips left or right. roll is -1..1,
+ * +1 is roll right (starboard down). Press a side, or drag; it springs back to centre.
+ */
+function flipper(cx, h, roll) {
+  let s = `<g data-drag="flip"${tipAttr("Flipper: roll left or right (Q, E)")}><rect x="${cx - 40}" y="0" width="80" height="${h}" fill="transparent"/>`;
+  // Roll left and roll right: arrows curving out over the bat's tip, lit while the switch is held that way.
+  const y0 = h - 140, lc = roll < -0.05 ? accent() : C.dim, rc = roll > 0.05 ? accent() : C.dim;
+  s += `<path d="M${cx - 6} ${y0}Q${cx - 24} ${y0 - 4} ${cx - 30} ${y0 + 10}" fill="none" stroke="${lc}" stroke-width="2.5"/><path d="M${cx - 35} ${y0 + 6}l5 9 5 -7z" fill="${lc}"/>`;
+  s += `<path d="M${cx + 6} ${y0}Q${cx + 24} ${y0 - 4} ${cx + 30} ${y0 + 10}" fill="none" stroke="${rc}" stroke-width="2.5"/><path d="M${cx + 35} ${y0 + 6}l-5 9 -5 -7z" fill="${rc}"/>`;
+  const parts = FLIP.housing.concat(FLIP.boss, turnMesh(FLIP.bat, quat.axis([0, 0, 1], -roll * 30), [0, 0.1, 0]));
+  s += drawMesh(parts, CTRL_CAM, cx, h - 46, 54);
+  return s + "</g>";
+}
+/**
+ * A thumbwheel: a ridged drum in its housing, rolling one whole degree a notch. Drag it, scroll it,
+ * or tap its top or bottom half. The ridges roll with the value, so it reads as a wheel turning.
+ */
+function thumbwheel(cx, top, hh, value, k, word) {
+  const id = `tw${k}`, cy = top + hh / 2, R = hh / 2 - 8, phase = (((value * 15) % 15) + 15) % 15;
+  let s = `<g data-drag="wheel:${k}" data-wheel="ow:${k}"${tipAttr(`${word.toLowerCase()}: drag, scroll or tap, 1° a notch`)}>`;
+  s += `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#07090c"/><stop offset="0.5" stop-color="#3b4654"/><stop offset="1" stop-color="#07090c"/></linearGradient><clipPath id="${id}c"><rect x="${cx - 17}" y="${top + 6}" width="34" height="${hh - 12}" rx="4"/></clipPath></defs>`;
+  s += `<rect x="${cx - 26}" y="${top}" width="52" height="${hh}" rx="7" fill="#10161e" stroke="${C.line2}"/>`;
+  s += `<rect x="${cx - 17}" y="${top + 6}" width="34" height="${hh - 12}" rx="4" fill="url(#${id})"/><g clip-path="url(#${id}c)">`;
+  for (let a = -90; a <= 90; a += 15) {
+    const ang = a + phase;
+    if (ang < -89 || ang > 89) continue;
+    const y = cy - R * Math.sin(ang * D2R), t = Math.cos(ang * D2R);
+    s += `<rect x="${cx - 17}" y="${(y - 1.6 * t).toFixed(1)}" width="34" height="${(3.2 * t + 0.4).toFixed(1)}" fill="#0a0d11"/><rect x="${cx - 17}" y="${(y - 1.6 * t - 1).toFixed(1)}" width="34" height="1" fill="#8a96a4" opacity="${(0.5 * t).toFixed(2)}"/>`;
+  }
+  s += `</g><path d="M${cx + 21} ${top + 12}l3 5h-6z M${cx + 21} ${top + hh - 12}l3 -5h-6z" fill="${C.dim}"/>`;
+  return s + "</g>";
+}
 
 // =================================================================== HELM
 function helm() {
@@ -4966,7 +5166,7 @@ function helm() {
   });
   s += panel("SCANNER", grid(3, 0, 5, 4), (w, h) => {
     const S = scanner(w, h - 58, G.navRange);
-    let b = S.s;
+    let b = `<g data-wheel="range:nav">` + S.s;
     // The tubes' 10 deg cone along the bow: it lights when the target is in it.
     const bear = tubesBear(), tip = S.at(v3.add(F.P, quat.rot(F.q, [0, 0, G.navRange * 1000])));
     const sp = Math.tan(5 * D2R) * (tip.y - S.cy);
@@ -4974,57 +5174,44 @@ function helm() {
     const wp = S.at(G.wp);
     b += `<path d="M${S.cx} ${S.cy}L${wp.x} ${wp.y}" stroke="${accent()}" stroke-width="2" stroke-dasharray="6 5" opacity="${G.ap === "COURSE" ? 1 : 0.45}"/>`;
     b += `<path d="M${wp.x} ${wp.by}V${wp.y}" stroke="${accent()}" stroke-dasharray="2 3"/><path d="M${wp.x} ${wp.y - 9}l9 9-9 9-9-9z" fill="none" stroke="${accent()}" stroke-width="2"${tipAttr("Waypoint")}/>`;
-    b += shipGlyph({ cls: "corvette", iff: "friendly" }, S.cx, S.cy, 22, 0, C.text);
-    b += scannerContacts(S, (c) => `target:${c.id}`, (c) => `${c.id} · ${rangeKm(c).toFixed(1)} km`);
-    b += rangeChip(12, 6, G.navRange, "navrange");
+    b += feedCone(S) + shipGlyph({ cls: "corvette", iff: "friendly" }, S.cx, S.cy, 22, 0, C.text);
+    b += scannerContacts(S, (c) => `target:${c.id}`, (c) => `${c.id} · ${rangeKm(c).toFixed(1)} km · elevation ${Math.round(elevOf(relPos(c.p)))}°`);
+    b += "</g>" + rangeCtl(12, 6, "nav") + navball(w - 60, 58, 50);
     const aps = [["HOLD", "hold", "Hold attitude and speed"], ["COURSE", "course", "Fly to the waypoint"], ["CHASE", "chase", "Point at the target"], ["MATCH", "match", "Match the target's course and speed"], ["EVADE", "jink", "Jink sideways and up and down"]];
     const bw = (w - 24 - 4 * 6) / 5;
     aps.forEach(([k, ic, tp], i) => { b += button({ x: 12 + i * (bw + 6), y: h - 52, w: bw, h: 42, icon: ic, label: k, on: G.ap === k, act: `ap:${k}`, tip: tp, fs: 13, is: 16 }); });
     return b;
   });
   s += panel("ATTITUDE", grid(8, 0, 4, 2), (w, h) => {
-    const e = quat.toEuler(F.q), cx = 80, cy = h / 2 + 2, R = 66, ppd = R / 60;
-    // The ball: the reference plane as a horizon, pitched and rolled; drag it to fly (yaw and pitch).
-    let b = `<defs><clipPath id="ballclip"><circle cx="${cx}" cy="${cy}" r="${R}"/></clipPath></defs>`;
-    b += `<g data-drag="stick"${tipAttr(`Drag to turn. Now ${fmtQ(F.q)}`)}><g clip-path="url(#ballclip)"><g transform="rotate(${(-e.r).toFixed(2)} ${cx} ${cy}) translate(0 ${(e.p * ppd).toFixed(2)})">`;
-    b += `<rect x="${cx - 3 * R}" y="${cy - 6 * R}" width="${6 * R}" height="${6 * R}" fill="#14304a"/><rect x="${cx - 3 * R}" y="${cy}" width="${6 * R}" height="${6 * R}" fill="#3a2a16"/>`;
-    b += `<path d="M${cx - 3 * R} ${cy}H${cx + 3 * R}" stroke="#d9e6f2" stroke-width="2"/>`;
-    for (let a = -90; a <= 90; a += 15) if (a) { const y = cy - a * ppd, wd = a % 30 ? 14 : 26; b += `<path d="M${cx - wd} ${y}H${cx + wd}" stroke="#d9e6f2" stroke-width="1.2" opacity="0.7"/>`; if (!(a % 30)) b += text(cx + wd + 4, y + 4, 10, "#d9e6f2", Math.abs(a), { ls: 0 }); }
-    b += `</g>`;
-    // The turn to come: the ordered horizon as a ghost.
-    const goal = F.orderActive ? F.order : attitudeGoal();
-    if (goal) { const ge = quat.toEuler(goal); b += `<g transform="rotate(${(-ge.r).toFixed(2)} ${cx} ${cy}) translate(0 ${(ge.p * ppd).toFixed(2)})" opacity="0.8"><path d="M${cx - 3 * R} ${cy}H${cx + 3 * R}" stroke="${accent()}" stroke-width="2.5" stroke-dasharray="7 5"/></g>`; }
-    b += `</g><circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${C.line2}" stroke-width="2"/>`;
-    b += `<path d="M${cx - 30} ${cy}H${cx - 10}L${cx - 4} ${cy + 7}L${cx} ${cy}L${cx + 4} ${cy + 7}L${cx + 10} ${cy}H${cx + 30}" fill="none" stroke="${C.warn}" stroke-width="3" stroke-linejoin="round"/></g>`;
-    // Heading, pitch and roll, each with its rate bar (set point as a ghost; drag a bar to turn on that axis).
-    const rows = [["YAW", fmtAng(e.h), -F.w[1] / (FL.rate_dps[1] * D2R), -F.wset[1] / (FL.rate_dps[1] * D2R), 0], ["PITCH", fmtAng(e.p, true), -F.w[0] / (FL.rate_dps[0] * D2R), -F.wset[0] / (FL.rate_dps[0] * D2R), 1], ["ROLL", fmtAng(e.r, true), F.w[2] / (FL.rate_dps[2] * D2R), F.wset[2] / (FL.rate_dps[2] * D2R), 2]];
-    const x0 = 166, bwid = w - x0 - 12;
-    rows.forEach(([word, val, rate, set, ax], i) => {
-      const y = 4 + i * 56;
-      b += text(x0, y + 18, 12, C.dim, word, { ls: 2 }) + text(w - 12, y + 22, 26, C.text, val, { a: "end", w: 700 });
-      const bx = x0, by = y + 32, mid = bx + bwid / 2;
-      b += `<g data-drag="rate:${ax}"${tipAttr(`${word.toLowerCase()} rate ${(rate * FL.rate_dps[[1, 0, 2][ax]]).toFixed(1)} deg/s: drag to turn`)}><rect x="${bx}" y="${by - 6}" width="${bwid}" height="22" fill="transparent"/><rect x="${bx}" y="${by}" width="${bwid}" height="10" rx="3" fill="#16202c"/>`;
+    const e = quat.toEuler(F.q), sk = stick();
+    let b = joystick(76, h, sk[0], sk[1]) + flipper(196, h, sk[2]);
+    // Heading, pitch and roll now, each with its rate bar and the rate set point as a ghost.
+    const rows = [["YAW", fmtAng(e.h), -F.w[1] / (FL.rate_dps[1] * D2R), -F.wset[1] / (FL.rate_dps[1] * D2R)], ["PITCH", fmtAng(e.p, true), -F.w[0] / (FL.rate_dps[0] * D2R), -F.wset[0] / (FL.rate_dps[0] * D2R)], ["ROLL", fmtAng(e.r, true), F.w[2] / (FL.rate_dps[2] * D2R), F.wset[2] / (FL.rate_dps[2] * D2R)]];
+    const x0 = 250, bwid = w - x0 - 12;
+    rows.forEach(([word, val, rate, set], i) => {
+      const y = 2 + i * 56, by = y + 34, mid = x0 + bwid / 2;
+      b += text(x0, y + 18, 11, C.dim, word, { ls: 2 }) + text(w - 12, y + 24, 24, C.text, val, { a: "end", w: 700 });
+      b += `<g${tipAttr(`${word.toLowerCase()} rate ${(rate * FL.rate_dps[[1, 0, 2][i]]).toFixed(1)} deg/s`)}><rect x="${x0}" y="${by}" width="${bwid}" height="9" rx="3" fill="#16202c"/>`;
       const rx = mid + clamp(rate, -1, 1) * (bwid / 2);
-      b += `<rect x="${Math.min(mid, rx)}" y="${by}" width="${Math.abs(rx - mid)}" height="10" rx="3" fill="${accent()}"/>`;
-      b += `<path d="M${mid + clamp(set, -1, 1) * (bwid / 2)} ${by - 3}v16" stroke="${C.text}" stroke-width="2" opacity="0.7"/><path d="M${mid} ${by - 2}v14" stroke="${C.dim}"/></g>`;
+      b += `<rect x="${Math.min(mid, rx)}" y="${by}" width="${Math.abs(rx - mid)}" height="9" rx="3" fill="${accent()}"/>`;
+      b += `<path d="M${mid + clamp(set, -1, 1) * (bwid / 2)} ${by - 3}v15" stroke="${C.text}" stroke-width="2" opacity="0.7"/><path d="M${mid} ${by - 2}v13" stroke="${C.dim}"/></g>`;
     });
-    if (e.gimbal) b += text(cx, h - 4, 11, C.warn, "ROLL IN YAW", { a: "middle", ls: 1 });
+    if (e.gimbal) b += text(x0, h - 2, 11, C.warn, "ROLL IN YAW", { ls: 1 });
     return b;
   });
   s += panel("ORIENT", grid(8, 2, 4, 2), (w, h) => {
-    // The attitude order (flight-and-navigation 6a): heading, pitch and roll, and its exact quaternion.
+    // The attitude order (flight-and-navigation 6a) on three thumbwheels, whole degrees, and its exact quaternion.
     const q = quat.fromEuler(F.oe.h, F.oe.p, F.oe.r), plan = slewPlan(q);
     let b = "";
-    const rows = [["YAW", "h", fmtAng(F.oe.h)], ["PITCH", "p", fmtAng(F.oe.p, true)], ["ROLL", "r", fmtAng(F.oe.r, true)]];
-    rows.forEach(([word, k, val], i) => {
-      const y = 2 + i * 36;
-      b += text(10, y + 22, 12, C.dim, word, { ls: 2 });
-      b += button({ x: 62, y, w: 32, h: 32, label: "−", act: `ostep:${k}:-5`, fs: 20, tip: `${word.toLowerCase()} −5° (Shift: −1°)` });
-      b += text(150, y + 24, 24, C.text, val, { a: "middle", w: 700 });
-      b += button({ x: 206, y, w: 32, h: 32, label: "+", act: `ostep:${k}:5`, fs: 20, tip: `${word.toLowerCase()} +5° (Shift: +1°)` });
+    const wheels = [["YAW", "h", fmtAng(F.oe.h)], ["PITCH", "p", fmtAng(F.oe.p, true)], ["ROLL", "r", fmtAng(F.oe.r, true)]];
+    wheels.forEach(([word, k, val], i) => {
+      const cx = 42 + i * 82;
+      b += text(cx, 11, 11, C.dim, word, { a: "middle", ls: 2 });
+      b += thumbwheel(cx, 16, 84, F.oe[k], k, word);
+      b += text(cx, 125, 22, C.text, val, { a: "middle", w: 700 });
     });
-    b += `<g${tipAttr("The order as a quaternion: w, x, y, z (ship axes to reference axes)")}><rect x="8" y="112" width="232" height="26" rx="5" fill="#0a1017" stroke="${C.line}"/>`;
-    b += `<text x="124" y="130" font-size="13" fill="${accent()}" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace" xml:space="preserve">${esc(fmtQ(q))}</text></g>`;
+    b += `<g${tipAttr("The order as a quaternion: w, x, y, z (ship axes to reference axes)")}><rect x="8" y="136" width="232" height="26" rx="5" fill="#0a1017" stroke="${C.line}"/>`;
+    b += `<text x="124" y="154" font-size="13" fill="${accent()}" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace" xml:space="preserve">${esc(fmtQ(q))}</text></g>`;
     const active = F.orderActive, held = active && F.plan && F.plan.held;
     const go = active ? (held ? "HELD" : `${Math.ceil(F.plan ? F.plan.time : plan.time)} s`) : "GO";
     b += button({ x: 250, y: 2, w: w - 260, h: 68, label: go, act: "ogo", on: active, fs: 24, tip: active ? "Holding this attitude; the stick cancels it" : `Turn there: ${plan.angle.toFixed(0)}° in ${plan.time.toFixed(0)} s` });
@@ -5057,14 +5244,14 @@ function tactical() {
   });
   s += panel("PLOT", grid(3, 0, 5, 4), (w, h) => {
     const S = scanner(w, h - 52, G.tacRange);
-    let b = S.s;
+    let b = `<g data-wheel="range:tac">` + S.s;
     // The ship in its shield in 3D at the plot's own tilt (weapons-and-shields 11): press a face to favour it.
-    b += shieldView(S.cx, S.cy, 0.9, { yaw: 0, el: Math.asin(SCAN_K) / D2R }, {});
+    b += feedCone(S) + shieldView(S.cx, S.cy, 0.9, { yaw: 0, el: Math.asin(SCAN_K) / D2R }, {});
     for (const m of G.missiles) { const p = S.at(m.pos); if (p.inside) b += `<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="${C.ok}"/>`; }
     const tgt = contact(G.target), firing = G.turrets.some((t) => t.firing && t.mode !== "PD");
     if (tgt && tgt.hull > 0) { const p = S.at(tgt.p); if (p.inside) b += `<path d="M${S.cx} ${S.cy}L${p.x} ${p.y}" stroke="${firing ? C.ok : C.hostile}" stroke-width="${firing ? 2.5 : 1.5}" stroke-dasharray="${firing ? "10 4" : "3 5"}" opacity="0.8"/>`; }
     b += scannerContacts(S, (c) => `target:${c.id}`, (c) => `${c.id} · ${rangeKm(c).toFixed(1)} km`);
-    b += rangeChip(8, 4, G.tacRange, "tacrange");
+    b += "</g>" + rangeCtl(8, 4, "tac");
     const pre = [["balance", "Balanced", -1], ["fwd", "Bow", 0], ["aft", "Stern", 1], ["port", "Port", 2], ["stbd", "Starboard", 3]];
     const bw = (w - 20 - 4 * 6) / 5;
     pre.forEach(([ic, tip, f], i) => { b += button({ x: 10 + i * (bw + 6), y: h - 46, w: bw, h: 38, icon: ic, act: `favour:${f}`, tip: `Shields: ${tip}`, is: 20, on: G.preset === f }); });
@@ -5112,7 +5299,7 @@ function tactical() {
     b += `<g ${can ? `data-hold="fire"` : ""}${tipAttr(can ? "Hold to fire" : "No tube ready or no hostile target")}><circle cx="${cxF}" cy="${cyF}" r="52" fill="${can ? "#3a0d14" : C.panel2}" stroke="${can ? C.danger : C.line2}" stroke-width="2"/>`;
     if (HOLD.key === "fire") b += `<circle cx="${cxF}" cy="${cyF}" r="${52 * clamp((now() - HOLD.t0) / HOLD_S, 0, 1)}" fill="${C.danger}" opacity="0.4"/>`;
     b += text(cxF, cyF + 2, 22, can ? C.text : C.faint, "FIRE", { a: "middle", w: 700, ls: 2 });
-    if (can) b += text(cxF, cyF + 24, 15, p > 0.5 ? C.ok : C.warn, `${Math.round(p * 100)}%`, { a: "middle" });
+    if (can) b += text(cxF, cyF + 24, 15, p > 0.5 ? C.ok : C.warn, `${Math.round(p * 100)}% HIT`, { a: "middle", ls: 1 });
     return b + "</g>";
   });
   return s;
@@ -5239,22 +5426,23 @@ function science() {
   let s = "";
   s += panel("SENSORS", grid(0, 0, 5, 4), (w, h) => {
     const S = scanner(w, h - 56, G.sciRange);
-    let b = S.s;
+    let b = `<g data-wheel="range:sci">` + S.s;
     const sweep = (G.t * 60) % 360, a0 = sweep - 25;
     const sw = (a) => [S.cx + Math.sin(a * D2R) * S.R, S.cy - Math.cos(a * D2R) * S.R * SCAN_K];
     const [x0, y0] = sw(a0), [x1, y1] = sw(sweep);
     b += `<path d="M${S.cx} ${S.cy}L${x0} ${y0}A${S.R} ${S.R * SCAN_K} 0 0 1 ${x1} ${y1}Z" fill="${accent()}" opacity="0.10"/>`;
     if (G.ping > 0) { const k = 1 - G.ping / 2; b += `<ellipse cx="${S.cx}" cy="${S.cy}" rx="${S.R * k}" ry="${S.R * SCAN_K * k}" fill="none" stroke="${accent()}" stroke-width="3" opacity="${G.ping / 2}"/>`; }
-    b += shipGlyph({ cls: "corvette", iff: "friendly" }, S.cx, S.cy, 20, 0, C.text);
+    b += feedCone(S) + shipGlyph({ cls: "corvette", iff: "friendly" }, S.cx, S.cy, 20, 0, C.text);
     b += scannerContacts(S, (c) => `sci:${c.id}`, (c) => (c.iff === "unknown" ? "Unknown" : `${c.id} · ${rangeKm(c).toFixed(1)} km`));
-    b += rangeChip(12, 6, G.sciRange, "scirange");
+    b += "</g>" + rangeCtl(12, 6, "sci");
     b += button({ x: w - 160, y: h - 50, w: 148, h: 42, icon: "ping", label: "PING", hold: "ping", col: accent(), tip: "Active ping: hold. Everyone hears it." });
     return b;
   });
   s += panel("SHIELDS", grid(5, 0, 4, 4), (w, h) => {
     // The ship and its six faces in 3D (weapons-and-shields 11). Drag to turn the view; press a face to favour it.
-    let b = `<g data-drag="shieldcam"><rect x="0" y="0" width="${w}" height="${h - 60}" fill="transparent"${tipAttr("Drag to turn the view; press a face to favour it")}/>`;
-    b += shieldView(w / 2, (h - 60) / 2 + 4, 3.3, G.shieldCam, { big: true }) + "</g>";
+    const vh = h - 60;
+    let b = `<g data-drag="shieldcam"><rect x="0" y="0" width="${w}" height="${vh}" fill="transparent"${tipAttr("Drag to turn the view; press a face to favour it")}/>`;
+    b += `<svg x="0" y="0" width="${w}" height="${vh}" style="position:static">` + shieldView(w / 2 + 10, vh / 2 + 6, 2.8, G.shieldCam, { big: true, w }) + "</svg></g>";
     const pre = [["balance", "Balanced", -1], ["fwd", "Bow", 0], ["aft", "Stern", 1], ["port", "Port", 2], ["stbd", "Starboard", 3]];
     pre.forEach(([ic, tip, f], i) => { b += button({ x: 10 + i * 50, y: h - 52, w: 44, h: 42, icon: ic, act: `favour:${f}`, tip: `Shields: ${tip}`, is: 20, on: G.preset === f }); });
     b += button({ x: 268, y: h - 52, w: 44, h: 42, label: G.freq, act: "freq", tip: "Frequency band", fs: 18 });
@@ -5353,7 +5541,7 @@ function captain() {
     return b;
   });
   s += panel("CREW", grid(5, 0, 4, 2), (w, h) => {
-    const rows = [["helm", "Ana"], ["tactical", "Ben"], ["engineering", "Cleo"], ["science", "Dev"], ["comms", null], ["flight_ops", null]];
+    const rows = [["helm", "Ana"], ["tactical", "Ben"], ["engineering", "Cleo"], ["science", null], ["comms", null], ["flight_ops", null]];
     const cw = (w - 20 - 6) / 2, ch = (h - 12 - 2 * 6) / 3;
     let b = "";
     rows.forEach(([r, op], i) => {
@@ -5370,7 +5558,7 @@ function captain() {
     const red = st.alert === "red_alert";
     let b = button({ x: 10, y: 6, w: w - 20, h: 74, label: red ? "STAND DOWN" : "RED ALERT", hold: "redalert", col: red ? C.ok : C.alert, col2: red ? C.ok : C.alert, stroke: (red ? C.ok : C.alert) + "88", fs: 20, tip: "Hold" });
     const bw = (w - 20 - 6) / 2;
-    b += button({ x: 10, y: 90, w: bw, h: h - 102, icon: "brace", label: "BRACE", stack: true, act: "brace", on: G.braced > 0, col: C.warn, tip: "Brace for impact" });
+    b += button({ x: 10, y: 90, w: bw, h: h - 102, icon: "brace", label: "BRACE", stack: true, act: "brace", on: G.braced > 0, col: C.warn, tip: G.braced ? "Braced: press to stand down" : "Brace for impact" });
     b += button({ x: 16 + bw, y: 90, w: bw, h: h - 102, icon: "eye", label: "SCREEN", stack: true, act: "viewtake", on: G.viewOverride, tip: "Take the viewscreen" });
     return b;
   });
@@ -5470,23 +5658,17 @@ function act(a, ev) {
   const [k, v, w] = a.split(":");
   const S = station;
   if (k === "tab") captainTab = v;
+  if (k === "swap") station = v;
   if (k === "ack") { const o = newestOrderFor(S); if (o) o.state = "done"; }
   if (k === "allstop") { F.speedSet = 0; F.strafe = [0, 0]; G.ap = "HOLD"; }
   if (k === "ap") { if (G.ap === "EVADE" && v !== "EVADE") F.strafe = [0, 0]; G.ap = v; if (v !== "HOLD" && v !== "EVADE") F.orderActive = false; }
-  if (k === "ostep") {
-    const d = (+w > 0 ? 1 : -1) * (ev && ev.shiftKey ? 1 : 5);
-    if (v === "h") F.oe.h = wrap360(F.oe.h + d);
-    if (v === "p") F.oe.p = clamp(F.oe.p + d, -90, 90);
-    if (v === "r") F.oe.r = wrap180(F.oe.r + d);
-  }
+  if (k === "ostep") F.oe[v] = wholeDeg(v, F.oe[v] + (+w > 0 ? 1 : -1));
   if (k === "ogo") { if (F.orderActive) F.orderActive = false; else orient(F.oe); }
   if (k === "olevel") { const e = quat.toEuler(F.q); orient({ h: e.h, p: 0, r: 0 }); }
   if (k === "oflip") { const e = quat.toEuler(F.q); orient({ h: wrap360(e.h + 180), p: e.p, r: e.r }); }
   if (k === "otarget") { const c = contact(G.target); if (c) { const e = quat.toEuler(bowOn(v3.sub(c.p, F.P))); orient({ h: e.h, p: e.p, r: 0 }); } }
   if (k === "target") G.target = v;
-  if (k === "navrange") G.navRange = RANGES.nav[(RANGES.nav.indexOf(G.navRange) + 1) % 3];
-  if (k === "tacrange") G.tacRange = RANGES.tac[(RANGES.tac.indexOf(G.tacRange) + 1) % 3];
-  if (k === "scirange") G.sciRange = RANGES.sci[(RANGES.sci.indexOf(G.sciRange) + 1) % 3];
+  if (k === "range") stepRange(v, +w);
   if (k === "tmode") { const t = G.turrets[+v], m = ["AUTO", "TARGET", "PD", "HOLD"]; t.mode = m[(m.indexOf(t.mode) + 1) % m.length]; }
   if (k === "load") { const t = G.tubes[+v]; if (t.state === "EMPTY" && G.magazine > 0) { G.magazine--; t.state = "LOADING"; t.t = 0; } }
   if (k === "favour") favour(+v, S === "science" ? "Science" : "Tactical");
@@ -5503,13 +5685,20 @@ function act(a, ev) {
   if (k === "compose") { G.composer.to = v; G.composer.verb = null; }
   if (k === "verb") G.composer.verb = v;
   if (k === "send") { sendOrder(G.composer.to, G.composer.verb); G.composer.verb = null; }
-  if (k === "brace") G.braced = 6;
+  if (k === "brace") G.braced = G.braced ? 0 : 1;
   if (k === "viewtake") G.viewOverride = !G.viewOverride;
   if (k === "room") G.shipSel = v;
   if (k === "orderrepair") sendOrder("engineering", "REPAIR");
 }
 /** An attitude order from heading, pitch and roll (flight-and-navigation 6a). */
-function orient(e) { F.oe = { h: e.h, p: e.p, r: e.r }; F.order = quat.fromEuler(e.h, e.p, e.r); F.orderActive = true; if (G.ap !== "EVADE") G.ap = "HOLD"; }
+/** An order's angle in whole degrees and its range: heading 000-359, pitch -90..+90, roll -179..+180. */
+function wholeDeg(k, v) {
+  v = Math.round(v);
+  if (k === "h") return ((v % 360) + 360) % 360;
+  if (k === "p") return clamp(v, -90, 90);
+  return ((((v + 179) % 360) + 360) % 360) - 179;
+}
+function orient(e) { e = { h: wholeDeg("h", e.h), p: wholeDeg("p", e.p), r: wholeDeg("r", e.r) }; F.oe = { h: e.h, p: e.p, r: e.r }; F.order = quat.fromEuler(e.h, e.p, e.r); F.orderActive = true; if (G.ap !== "EVADE") G.ap = "HOLD"; }
 /** Shield presets (weapons-and-shields 11): -1 balances; a face at weight 2.0 and its opposite at 0.5. */
 function favour(f, by) {
   const opp = [1, 0, 3, 2, 5, 4];
@@ -5532,9 +5721,12 @@ function dragTo(e) {
   const r = DRAG.rect, ky = (r.bottom - e.clientY) / r.height, kx = (e.clientX - r.left) / r.width;
   if (DRAG.kind === "throttle") F.speedSet = clamp(Math.round((FL.speed_min_ms + ky * (FL.speed_max_ms - FL.speed_min_ms)) / 10) * 10, FL.speed_min_ms, FL.speed_max_ms);
   if (DRAG.kind === "strafe") F.strafe = [clamp(Math.round((kx * 2 - 1) * FL.strafe_max_ms / 5) * 5, -50, 50), clamp(Math.round((ky * 2 - 1) * FL.strafe_max_ms / 5) * 5, -50, 50)];
-  // Virtual sticks spring back to centre on release: the ball for yaw and pitch, a rate bar for its own axis.
-  if (DRAG.kind === "stick") { F.stickDrag[0] = clamp((e.clientX - DRAG.x0) / (r.width * 0.5), -1, 1); F.stickDrag[1] = clamp(-(e.clientY - DRAG.y0) / (r.height * 0.5), -1, 1); }
-  if (DRAG.kind === "rate") F.stickDrag[+DRAG.arg] = clamp(kx * 2 - 1, -1, 1);
+  // The stick and the flipper spring back to centre on release (pointerup zeroes them).
+  const lp = r.width / DRAG.wlp;
+  if (DRAG.kind === "joy") { F.stickDrag[0] = clamp((e.clientX - DRAG.x0) / (40 * lp), -1, 1); F.stickDrag[1] = clamp((e.clientY - DRAG.y0) / (24 * lp), -1, 1); }
+  if (DRAG.kind === "flip") F.stickDrag[2] = clamp(DRAG.side + (e.clientX - DRAG.x0) / (24 * lp), -1, 1);
+  // A thumbwheel: a whole degree every 5 lp of drag, up to turn it up.
+  if (DRAG.kind === "wheel") { const n = Math.round(-(e.clientY - DRAG.y0) / (5 * lp)); F.oe[DRAG.arg] = wholeDeg(DRAG.arg, DRAG.v0 + n); DRAG.moved = DRAG.moved || n !== 0; }
   if (DRAG.kind === "shieldcam") {
     G.shieldCam = { yaw: DRAG.cam.yaw + ((e.clientX - DRAG.x0) / r.width) * 360, el: clamp(DRAG.cam.el + ((e.clientY - DRAG.y0) / r.height) * 120, -80, 80) };
   }
@@ -5542,7 +5734,7 @@ function dragTo(e) {
     const sp = clamp(Math.round(ky * 1.5 * 20) / 20, 0, 1.5);
     PREVIEW = { gid: DRAG.arg, sp, r: sim.previewGroup(DRAG.arg, sp) };
   }
-  if (DRAG.kind !== "stick" && DRAG.kind !== "rate" && DRAG.kind !== "shieldcam") render();
+  if (DRAG.kind !== "joy" && DRAG.kind !== "flip" && DRAG.kind !== "shieldcam") render();
 }
 CONSOLE.addEventListener("pointerdown", (e) => {
   const a = e.target.closest("[data-act]"), d = e.target.closest("[data-drag]"), h = e.target.closest("[data-hold]");
@@ -5551,9 +5743,12 @@ CONSOLE.addEventListener("pointerdown", (e) => {
     const [kind, arg] = d.dataset.drag.split(":");
     DRAG = { kind, arg, rect: d.getBoundingClientRect(), x0: e.clientX, y0: e.clientY, cam: { ...G.shieldCam }, act: a && d.contains(a) ? a.dataset.act : null };
     if (kind === "fader" || kind === "throttle" || kind === "strafe") DRAG.rect = d.querySelector("rect").getBoundingClientRect();
-    if (kind === "rate") DRAG.rect = d.querySelectorAll("rect")[1].getBoundingClientRect();
+    // Widths in lp of what each drag measures against, to turn screen pixels into lp.
+    DRAG.wlp = { joy: 148, flip: 80, wheel: 52 }[kind] || 1;
+    if (kind === "wheel") DRAG.v0 = F.oe[arg];
+    if (kind === "flip") { const rr = d.getBoundingClientRect(); DRAG.side = e.clientX < rr.left + rr.width / 2 ? -1 : 1; }
     CONSOLE.setPointerCapture(e.pointerId);
-    if (kind !== "shieldcam" && kind !== "stick") dragTo(e);
+    if (kind !== "shieldcam" && kind !== "wheel") dragTo(e);
     return;
   }
   if (h) { HOLD.key = h.dataset.hold; HOLD.t0 = now(); render(); return; }
@@ -5569,6 +5764,8 @@ window.addEventListener("pointerup", (e) => {
   if (DRAG && DRAG.kind === "fader" && PREVIEW) setGroup(PREVIEW.gid, PREVIEW.sp);
   // A press on a shield face that did not move is a press, not a turn of the view.
   if (DRAG && DRAG.kind === "shieldcam" && DRAG.act && Math.hypot(e.clientX - DRAG.x0, e.clientY - DRAG.y0) < 4) act(DRAG.act, e);
+  // A tap on a thumbwheel turns it one degree: the top half up, the bottom half down.
+  if (DRAG && DRAG.kind === "wheel" && !DRAG.moved) { const r = DRAG.rect; act(`ostep:${DRAG.arg}:${DRAG.y0 < r.top + r.height / 2 ? 1 : -1}`); }
   F.stickDrag = [0, 0, 0];
   DRAG = null; PREVIEW = null; HOLD.key = null; render();
 });
@@ -5588,6 +5785,16 @@ window.addEventListener("keydown", (e) => {
   render();
 });
 window.addEventListener("keyup", (e) => { F.keys.delete(e.key.toLowerCase()); });
+// The scroll wheel: a notch turns a thumbwheel one degree, or steps a scanner's range.
+CONSOLE.addEventListener("wheel", (e) => {
+  const el = e.target.closest && e.target.closest("[data-wheel]");
+  if (!el) return;
+  e.preventDefault();
+  const [k, v] = el.dataset.wheel.split(":"), d = e.deltaY < 0 ? 1 : -1;
+  if (k === "ow") act(`ostep:${v}:${d}`);
+  if (k === "range") stepRange(v, -d);
+  render();
+}, { passive: false });
 window.addEventListener("blur", () => F.keys.clear());
 
 // The clock, in seconds and fixed steps (CLAUDE.md 6.4): the ship's systems at their 10 Hz,
@@ -5608,7 +5815,7 @@ let PAUSED = false;
 function frame() {
   const t = now(), d = Math.min(0.25, t - last); last = t;
   if (!PAUSED) advanceTime(d);
-  if (!DRAG || DRAG.kind === "stick" || DRAG.kind === "rate" || DRAG.kind === "shieldcam") render();
+  if (!DRAG || DRAG.kind === "joy" || DRAG.kind === "flip" || DRAG.kind === "shieldcam") render();
   requestAnimationFrame(frame);
 }
 
@@ -5632,6 +5839,7 @@ window.MOCKUP_SHOTS = [
   { name: "captain", setup: () => { station = "captain"; captainTab = "CMD"; render(); } },
   { name: "red-helm-evading", setup: () => { scenario("combat"); station = "helm"; act("ap:EVADE"); advance(20); render(); } },
   { name: "red-tactical", setup: () => { scenario("combat"); station = "tactical"; HOLD.key = null; render(); } },
+  { name: "red-science-target-feed", setup: () => { scenario("combat"); G.feed = "TARGET"; station = "science"; render(); } },
   { name: "red-science-shields", setup: () => { scenario("combat"); hitUs(dirOf(250, 12), 25, 105); hitUs(dirOf(80, -15), 20, 106); advance(5); station = "science"; render(); } },
   { name: "red-engineering", setup: () => { scenario("combat"); station = "engineering"; render(); } },
   { name: "red-captain", setup: () => { scenario("combat"); station = "captain"; captainTab = "CMD"; render(); } },

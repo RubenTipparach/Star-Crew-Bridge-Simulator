@@ -171,7 +171,19 @@ automation fire, though it would never choose to.
 
 ### 5. Merging and player counts
 
-**Merging** (proposed): every station that has no seated player keeps its automation running and
+**Superseded: no merging; swap to an open station from any seat** (owner, 2026-10-08: "we shouldnt
+need this merge thing, players can just swap to open stations from any seat"). Every station with no
+player runs on its automation (section 4), and no console carries another station's tab. Each
+console's title band lists the open stations (no player, automation running) as chips; pressing one
+swaps this player's console to that station in one press, from wherever they sit. The station they
+leave goes back to its automation, from its current state (section 6, release). With one player the
+player swaps between stations as the moment needs, and automation flies, fights and keeps the plant
+running at its stated competence on all the others. The captain's command functions stay in every
+console's title band while no captain is seated. Swapping to a station from a seat that is not its
+own is the seat rules' switch (section 6) without standing up; who may take a held station is
+unchanged. The tables below are kept as the earlier proposal and no longer apply.
+
+**Merging** (earlier proposal, superseded): every station that has no seated player keeps its automation running and
 appears as a **tab** on a manned console: the first manned station in its merge list
 (`data/stations.json`, flat lists, no chains). The host player can open the tab and change any
 setpoint; automation keeps running underneath and keeps what the player set (section 4). With one
@@ -380,12 +392,37 @@ The four core consoles and the captain's, as drawn in the mockup (grid cells as 
 
 | Console | Panels | Main pictures |
 | --- | --- | --- |
-| Helm | THRUST (0,0,3,4), SCANNER (3,0,5,4), ATTITUDE (8,0,4,2), ORIENT (8,2,4,2) | Full 3D flight (owner, 2026-10-07; `flight-and-navigation` 6a): a forward speed lever from -100 to +400 m/s and a strafe pad whose puck sets lateral and vertical speed, the actual drift as a dot; a 3D scanner (the plane of the ship's wings seen from aft and above, each contact on a stalk to its height) with the bow's 10 deg tube cone and autopilot as five words; an attitude ball for heading, pitch and roll with yaw, pitch and roll rate bars and the turn to come as a ghost; the attitude order as three big numbers with steppers, its four quaternion numbers under them, GO with the turn's time, and LEVEL, FLIP and TARGET |
+| Helm | THRUST (0,0,3,4), SCANNER (3,0,5,4), ATTITUDE (8,0,4,2), ORIENT (8,2,4,2) | Full 3D flight (owner, 2026-10-07; `flight-and-navigation` 6a): a forward speed lever from -100 to +400 m/s and a strafe pad whose puck sets lateral and vertical speed, the actual drift as a dot; a 3D scanner (the plane of the ship's wings seen from aft and above, each contact on a stalk to its height) with the bow's 10 deg tube cone and autopilot as five words; a joystick for yaw and pitch and a spring-return flipper switch for roll, each a small 3D model drawn as vector art (owner, 2026-10-08), the navball in the scanner's corner, with heading, pitch and roll and their rate bars; the attitude order on three thumbwheels in whole degrees (owner, 2026-10-08), its four quaternion numbers under them, GO with the turn's time, and LEVEL, FLIP and TARGET |
 | Tactical | TARGETS (0,0,3,4), PLOT (3,0,5,4), TURRETS (8,0,4,2), TUBES (8,2,4,2) | Four target cards (silhouette, id, range, hull once scanned); the 3D scanner at 10 km with the ship and its shield bubble in 3D in the middle (`weapons-and-shields` 11), inbound missiles and the line to the target, solid while a turret fires; four turrets as aim needles in heat rings, with their gunner or AUTO and a one-word mode; two tubes as pills that fill as they load, FIRE held 0.6 s with the hit chance as its ring |
 | Engineering | POWER (0,0,8,4), REACTOR (8,0,4,2), BUSES (8,2,2,2), AIR (10,2,2,2) | Supply against demand as one bar; the eleven load groups as a mixing desk, each fader an icon, a handle at the setpoint, a fill for what it gets and a hatched gap for what it wants and does not get, with priority as pips; presets as four words; the reactor as a dial and three thermometers; the buses as a one-line diagram with five breakers; air as three ticks |
 | Science | SENSORS (0,0,5,4), SHIELDS (5,0,4,4), CONTACT (9,0,3,2), SCREEN (9,2,3,2) | The 3D scanner sweeping, PING held; the shields as a 3D model you turn by drag (owner, 2026-10-07: "a full 3d model of the ship and shield facings, and where enemies attack are from what angles"): the hull inside the six-faced bubble, faces filled by charge, hostiles' directions as lines and the last 8 s of hits as arrows labelled with bearing and elevation, the face weights and the frequency band as buttons; the selected contact with its scan as a ring; the viewscreen feed as six icons and a zoom |
 | Captain | SHIP (0,0,5,4), CREW (5,0,4,2), ALERT (9,0,3,2), ORDERS (5,2,7,2) | The three decks in plan, every room coloured by its state from the simulation (fire, open to space, smoke, damaged, no power) with crew as dots; who sits where; RED ALERT held, BRACE, the viewscreen; orders as a station, a verb and SEND, with the last four and their state |
 | Captain, SHIP tab | DECK A (0,0,6,2), DECK B (6,0,6,2), DECK C (0,2,6,2), ROOM (6,2,6,2) | The captain's damage view: the decks large, a room chosen by touch with its pressure, oxygen, temperature and crew, and SEND REPAIRS as an order |
+
+**The scanner** (helm's, tactical's and science's plots are one widget; owner, 2026-10-08:
+"scanner needs to be able to adjust range, enemiy ships on radar need to show positive or negative
+elevation", "and a line and disk to show its offset from the ships plane"): the range steps with
+**-** and **+** beside its number, or the scroll wheel over the plot, through 1, 2, 5, 10, 20, 50
+and 100 km. Every contact stands on a line from a disk on the ship's plane (the plane of its wings):
+the disk is where it would be at the ship's height, the line its height above or below, solid above
+and dashed below. Beside it, its elevation in whole degrees with a mark, `▲ +12` above the plane or
+`▼ -8` below, in its IFF colour.
+
+**Where the viewscreen looks** (owner, 2026-10-08: "for panels with view screeen, there should be a
+little camera icon that shows what quadrant of ship the camera is viewing on the scanner, show if
+camerea is viewing aboce or below the ship. we need a little widget that shows what direction of the
+ship the camera is pointed at next to view screen"): every scanner draws a camera at the ship with
+its field of view as a cone on the ship's plane, pointing where the feed looks, and `▲ +20` or
+`▼ -15` beside it when the feed looks above or below that plane. Beside the viewscreen, a small
+widget shows the ship from above with the camera's cone, and from the side with the camera's
+elevation, so a glance tells which way the picture faces.
+
+**Words where a number needs one** (owner, 2026-10-08: "I dont understand whta the percent disal is
+for"): a number whose meaning is not its picture carries its one word. FIRE's ring is the chance the
+missile hits the target and reads `88% HIT`; the same holds for every ring that is a chance.
+
+**BRACE is a toggle** (owner, 2026-10-08: "unable to untoggle brace for impact"): one press braces
+the crew, the next stands them down. It stays on until pressed again.
 
 The mockup drives Engineering and the Captain's ship from `docs/mockups/lib/shipsystems.js` (the
 power, air, heat, fire and hit model of `power-grid`, `life-support` and `damage-control`), so
@@ -416,8 +453,8 @@ atlas egui rasterizes at that scale, so text stays crisp. Every number below is 
  y  720 +--------------------------------------------------------------------------+
 ```
 
-- **Title band** (y 0-32): x 0-420 the tab chips (64 lp each: the station's own tab first, then
-  merged stations in merge-list order, at most six visible, then a "+N" chip); x 420-940 the
+- **Title band** (y 0-32): x 0-420 the station's own chip, then the open stations as chips with a
+  swap mark (section 5, superseded merging: press one to swap to it); x 420-940 the
   newest order to this station; x 940-1280 the condition chip, then the mission clock (mm:ss).
 - **Look band** (y 32-272): the bridge stays visible above the console (CLAUDE.md 10). The 3D
   passes render into a 1280 x 240 lp viewport from the seat's eye (seat point plus 1.20 m) with a

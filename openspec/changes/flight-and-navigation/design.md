@@ -247,7 +247,7 @@ error 2.5e-12 degrees):
 
 | Order | Means | Becomes |
 | --- | --- | --- |
-| Absolute | "Come to 045, pitch +10, roll -30", or four numbers typed or pasted | `q_target` from the table above, or the four numbers normalized |
+| Absolute | "Come to 045, pitch +10, roll -30" in whole degrees on the thumbwheels, or four numbers typed or pasted | `q_target` from the table above, or the four numbers normalized |
 | Relative | "Yaw 30 to starboard", "pitch up 15", "roll 90 right", about the ship's own axes | `q_target = q_now Ry(-yaw) Rx(-pitch) Rz(roll)` |
 | Level | Pitch and roll to zero, keep the heading | `q_target` from (heading now, 0, 0) |
 | Flip | Turn about to the reciprocal heading, keep pitch and roll | `q_target` from (heading + 180, pitch, roll) |
@@ -274,10 +274,31 @@ time    = angle / r_max + r_max / a_max   if angle > r_max^2 / a_max
 The time is the console's preview ("045 / +10 / -30 in 12 s"), computed by the same function the slew
 runs (bridge-stations 9). Moving the stick cancels an attitude order; the helm sees it go.
 
-**On the helm console** (bridge-stations 8.0): an ATTITUDE ball shows the ship's heading, pitch and
-roll against the reference, with the turn to come as a ghost, and an ORIENT panel holds the order:
-heading, pitch and roll as three big numbers with steppers, the four quaternion numbers under them,
-GO, and LEVEL, FLIP and TARGET.
+**On the helm console** (bridge-stations 8.0), the controls are pictures of physical ones (owner,
+2026-10-08: "we need dials for orient, can do precise degrees whole integer numbers", with a photo
+of a ridged thumbwheel rocker, and "on the atitude control I need like a pseudo 3d looking joystick
+for yaw and pitch and a flipper switch that can roll the ship"):
+
+- **ATTITUDE**: a joystick for yaw and pitch and a spring-return flipper switch for roll, each a
+  small 3D model (base, boot, shaft and grip; housing, boss and bat) turned by the stick and drawn
+  as shaded vector art from a fixed camera (owner, 2026-10-08: "maybe you juist need to make it 3d
+  and transform the positions of stuff to vector art"). Both are rate commands, the stick of section 4, and spring
+  back to centre when let go. Pulling the stick toward you is nose up, as on an aircraft (invertible
+  in the bindings). Beside them, heading, pitch and roll now, each with its rate bar and the rate
+  set point as a ghost.
+- **The navball** (owner, 2026-10-08: "nav ball was nice to have here. find a new place for it to
+  live on the helm ui") lives in the SCANNER's top right corner, outside the plot's ellipse: the
+  reference plane as a horizon pitched and rolled with the ship, heading marks along it, and the
+  order's horizon as a ghost.
+- **ORIENT**: the order as three thumbwheels, one each for heading, pitch and roll. A wheel turns
+  one whole degree a notch (drag it, scroll it, or tap its top or bottom half), and its number reads
+  under it. The four quaternion numbers sit under the wheels, then GO with the turn's time, and LEVEL,
+  FLIP and TARGET.
+
+**Orders are whole degrees.** Heading 000-359, pitch -90 to +90, roll -179 to +180, integers.
+LEVEL, FLIP and TARGET round to the nearest degree, so an order always reads as the numbers its
+wheels show; half a degree is inside the bow tubes' 10 degree cone. Four numbers typed or pasted
+stay exact (the advanced form), and the wheels then show them rounded.
 
 ### 7. In-system travel: the jump drive (recommended)
 
