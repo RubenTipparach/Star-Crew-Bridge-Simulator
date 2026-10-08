@@ -1041,7 +1041,7 @@
         ]
       ],
       "screens": [],
-      "triangles": 2520,
+      "triangles": 2732,
       "budget_triangles": 2900,
       "materials": [
         "machinery",
@@ -1053,21 +1053,21 @@
       ],
       "csg": [
         "difference cabin_deck (1)",
-        "difference canopy_hold_lines (24)",
+        "difference canopy_hold_lines (29)",
         "difference door_window (1)",
         "chamfer ramp_edges (2 edges, 120 mm)",
         "union spine_pods_ramp_gear (46)"
       ],
-      "sha256": "65fe4d39320bd23d62c707b68d728668e2854d5a95ff5574ef8cf7727e93164c",
+      "sha256": "f299ec5264ee1345dd0d3e8f2ffd7e3478d9198d4a37ec7675c76251cdaa19f7",
       "atlas": {
         "file": "atlas/petrel_shuttle.png",
         "px": 1024,
-        "px_per_m": 53.22,
-        "charts": 175,
-        "cover": 0.505,
-        "glow": 0.0451,
-        "sha256": "5a702bd16ed47d5fbf6293550b49fc9931428df42b6dc7d6152adb4374155ef9",
-        "bytes": 164008
+        "px_per_m": 57.21,
+        "charts": 206,
+        "cover": 0.534,
+        "glow": 0.0257,
+        "sha256": "14db9fbfb58abb52af90d5b24093a2cfc1573e3b518e88b77e779414c1889130",
+        "bytes": 269739
       }
     },
     "bunk": {

@@ -95,10 +95,12 @@ with a flat deck 0.6 m above the floor at the ramp's top. The stern opening is 1
 - a bench of two seats along each side, its back on the hull, with belts;
 - a light strip along the ceiling;
 - in the cockpit, two seats on pedestals, 0.6 m apart so a body passes between them to the console under the
-  canopy. Inside, the canopy's band is dark glass (glowing as the panes do outside, it filled the cockpit with a
-  white wall); four lamps along the ceiling and over the cockpit light the cabin in the bake.
+  canopy; four lamps along the ceiling and over the cockpit light the cabin in the bake.
+- the canopy is open: ten panes, five across the roof and upper sides over each of two bands (the cabin's front,
+  1.10-2.30 m along the hull, and the cockpit, 2.30-4.05 m), cut right through into the cabin, the hull left
+  between them as the frames (section 4f).
 
-It stays one closed solid (`build_machinery_props.py`), 2,520 triangles against 1,918 before. In the walk it collides
+It stays one closed solid (`build_machinery_props.py`), 2,732 triangles against 1,918 before (budget 2,900). In the walk it collides
 as its own triangles instead of its bounds box (`deck-plan.html` `MESH_PROPS`), so a body walks up the 22 degree
 ramp, along the aisle and into the cockpit. Measured headless: the ramp climbed and the deck reached at 0.6 m in
 2.3 s from the hangar floor, and out again.
@@ -274,6 +276,18 @@ The owner walked it again the same day. Each is fixed in the page, the libraries
 Recommendation taken (ask only with screenshots): the doors themselves, modelled after the owner's reference
 (a stepped seam, raised panels, a black band with a grille, vents and a sign plate), are the next step; this round
 keeps the sliding leaves.
+
+### 4f. The owner's walk, third round (2026-10-08)
+
+Shown in `docs/screenshots/mockups/walk-fixes-2026-10-08c/`, before and after:
+
+| The owner | Cause | Fix |
+| --- | --- | --- |
+| "shuttle window should be like way bigger lol", "what it looks like form outside" | The canopy was five shallow recesses over the cockpit's band only, their floors glowing white from outside and lined with dark glass inside, so the cockpit looked at a wall | Ten panes over two bands, from the cabin's front to the nose, cut through the hull: from inside the pilots see the bay through the frames, from outside the lit cockpit and its seats show (Craft, section 3). 2,732 triangles, 212 more |
+| "these pipes arent textured and arent integrated into the wall correctly" | Each duct began inside the impulse unit's nozzle bell and ran on through the aft bulkhead to the engine, one tube with a ring of vertices at each end; both rings lay in shadow (in the bell, and outside the room), so the vertex bake lit the whole tube black, and it showed going into the wall with nothing where it met it | The duct runs from the nozzle's exit to the bulkhead's face, with a ring every 0.4 m for the bake to light, a flange at the nozzle and a collar on the wall (`deck-plan.html` the drive's fit-out; `ShipKit.buildFitout` takes `wall` for an end that enters a wall, as `ceiling` does) |
+
+Not done: the canopy has no glass. A tinted pane would be one more transparent draw per craft, and a later step
+decides glass with the exterior view (`ship-frames`).
 
 ### 5. The Pi 5 budget this change spends
 
