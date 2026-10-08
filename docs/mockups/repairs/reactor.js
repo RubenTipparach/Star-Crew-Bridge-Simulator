@@ -56,6 +56,9 @@ RepairKit.register({
       return null;
     };
     /** Each coil's pull from the two controls (N, E, S, W): it glows with it. */
+    // A heat spike trips the trims: both sliders spring back to centre and let go of the hand on them (owner,
+    // 2026-10-08: "when reactor ball hits the wall reset the sliders"), so a recovery starts from neutral.
+    const resetControls = () => { ax = { x: 0, y: 0 }; grab = null; };
     const coilPull = () => [(1 - ax.y) / 2, (1 + ax.x) / 2, (1 + ax.y) / 2, (1 - ax.x) / 2];
     const load = (t) => {
       const m = drift.m * (1 + 0.35 * Math.sin(1.3 * t + drift.p1));
@@ -116,6 +119,7 @@ RepairKit.register({
         if (off + BALL >= WALL && cool <= 0) {
           heat = 1; cool = 1;
           p.x *= 0.5; p.y *= 0.5; v.x = 0; v.y = 0; trail = [];
+          resetControls();
           api.fumble("Plasma touched the wall: heat spike");
           return;
         }
@@ -131,6 +135,7 @@ RepairKit.register({
           const rx = RING * (1 + RING_GAIN * ring.x), ry = RING * (1 + RING_GAIN * ring.y);
           if ((Math.max(rx, ry) >= WALL - 6 || Math.min(rx, ry) <= BALL * 2) && cool <= 0) {
             heat = 1; cool = 1; ring.x *= 0.4; ring.y *= 0.4;
+            resetControls();
             api.fumble(Math.max(rx, ry) >= WALL - 6 ? "Plasma ring touched the wall: heat spike" : "Plasma ring collapsed on the core: heat spike");
             return;
           }

@@ -48,6 +48,28 @@
   .fact { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 15px; }
   .fact b { display: block; font-size: 12px; letter-spacing: 0.1em; color: var(--dim); text-transform: uppercase; margin-bottom: 2px; }
   .note { color: var(--dim); font-size: 13px; margin-top: 8px; }
+  /* Phones (owner, 2026-10-08: "Do these work on mobile too"): the game first, a picker above it, a full screen
+     mode that fits the canvas to the screen, and a hint to turn a phone held upright sideways. */
+  .bar { display: none; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .bar select, .bar button { font: 600 16px var(--font); color: var(--fg); background: #1a2232; border: 1px solid var(--line);
+    border-radius: 16px; padding: 8px 12px; min-height: 40px; }
+  .bar select { flex: 1; min-width: 0; }
+  .turn { display: none; color: var(--amber); font-size: 15px; margin-bottom: 8px; }
+  .shut { display: none; }
+  @media (max-width: 860px), (pointer: coarse) {
+    .bar { display: flex; }
+    main { order: -1; }
+    .wrap { grid-template-columns: 1fr; }
+    canvas { width: min(100%, calc((100svh - 70px) * 16 / 9)); margin: 0 auto; }
+  }
+  @media (pointer: coarse) and (orientation: portrait) { .turn { display: block; } }
+  body.full { overflow: hidden; }
+  body.full .stage { position: fixed; inset: 0; z-index: 10; max-width: none; background: #000; display: flex;
+    align-items: center; justify-content: center; }
+  body.full canvas { width: min(100vw, calc(100svh * 16 / 9)); border: 0; border-radius: 0; margin: 0; }
+  body.full .shut { display: block; position: absolute; top: 8px; right: 8px; z-index: 11; width: 44px; height: 44px;
+    border-radius: 22px; border: 1px solid var(--line); background: rgba(12, 18, 26, 0.8); color: var(--fg);
+    font: 700 22px var(--font); }
 </style>
 </head>
 <body>
@@ -64,7 +86,9 @@
     <div class="opts"><button id="again">Again</button></div>
   </nav>
   <main>
-    <div class="stage"><canvas id="c" width="1280" height="720"></canvas></div>
+    <div class="bar"><select id="pick" aria-label="Game"></select><button id="full">Full screen</button></div>
+    <div class="turn">Turn sideways to play</div>
+    <div class="stage"><canvas id="c" width="1280" height="720"></canvas><button class="shut" id="shut" aria-label="Close">&#215;</button></div>
     <div class="facts">
       <div class="fact"><b>Where</b><span id="f-place"></span></div>
       <div class="fact"><b>Fumble</b><span id="f-hazard"></span></div>
@@ -110,6 +134,7 @@
   const runner = K.start($("c"), {
     onOpen(game, run) {
       document.querySelectorAll(".games button").forEach((b) => b.classList.toggle("on", b.dataset.id === game.id));
+      $("pick").value = game.id;
       $("f-place").textContent = game.place;
       $("f-hazard").textContent = game.hazard;
       $("f-down").textContent = game.down;
@@ -129,7 +154,27 @@
       else b.onclick = () => { current = id; runner.open(id); };
       box.appendChild(b);
     }
+    // The phone picker: the same games, grouped the same way.
+    const og = document.createElement("optgroup"); og.label = group; $("pick").appendChild(og);
+    for (const id of ids) {
+      const g = K.games.find((x) => x.id === id);
+      if (!g) continue;
+      const o = document.createElement("option"); o.value = id; o.textContent = g.title; og.appendChild(o);
+    }
   }
+  $("pick").onchange = () => { current = $("pick").value; runner.open(current); };
+  // Full screen: the page's own mode works everywhere (an iPhone has no element full screen); where the browser has
+  // one it is asked for too, and a phone is asked to hold landscape.
+  const full = (on) => {
+    document.body.classList.toggle("full", on);
+    const d = document, el = d.documentElement;
+    if (on && el.requestFullscreen && !d.fullscreenElement) {
+      el.requestFullscreen().then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock("landscape").catch(() => {})).catch(() => {});
+    } else if (!on && d.fullscreenElement && d.exitFullscreen) d.exitFullscreen().catch(() => {});
+  };
+  $("full").onclick = () => full(true);
+  $("shut").onclick = () => full(false);
+  addEventListener("fullscreenchange", () => { if (!document.fullscreenElement) document.body.classList.remove("full"); });
   const choice = (el, key, values) => {
     for (const [v, label] of values) {
       const b = document.createElement("button"); b.textContent = label;

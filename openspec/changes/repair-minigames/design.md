@@ -48,7 +48,7 @@ that system's mini-game.
 
 | System (where) | The game | A step | Fumble and hazard | When it is down |
 | --- | --- | --- | --- | --- |
-| **Gravity generator** (engineering, deck C) | Three field rings turn at their own speeds; stop each so its bright arc lines up with the marker, outer to inner | One ring set | Released off the mark: the field lurches, everyone nearby floats for 2 s | Section 4: everyone floats, slowly |
+| **Gravity generator** (engineering, deck C) | Field alignment: the field is a 3D wave surface over the deck, drawn beside the reference shape it should hold. Turn, shift and stretch the live wave until it lies on the reference, and keep it there against its drift (section 6d) | One field held aligned for the step | The field surges past the red line: everyone near floats for 2 s | Section 4: everyone floats, slowly |
 | **Galley synthesizer** (mess) | A recipe card shows four nutrient columns; open valves to fill each column to its band without spilling over, then purge | One recipe balanced | Overfill: a splash of paste, the step's column drains | Section 4: hunger between missions |
 | **Life support scrubbers** (life support) | Swap the spent CO2 cartridge for a fresh one (drag out, drag in), then trim three gas valves until O2, N2 and CO2 sit in their green bands | One cartridge, or one bank trimmed | Cartridge dropped, or a valve left in the red: a hiss, the room's CO2 rises by the share | `life-support`'s clock: the air goes bad |
 | **Fighters** (hangar, a Swift on its cradle) | Lift the panel, then match the avionics plugs to their sockets by shape and colour stripe; torque the panel's fasteners in a star order | One panel: plugs, then fasteners | A plug forced into the wrong socket: a spark (5 HP), the plug bent | The fighter cannot launch |
@@ -195,6 +195,47 @@ end up dragging the frame". Rebuilt so every tool answers on the frame it is pre
 - **Bleed:** a hand goes round a ring once a beat, the spurt hatched red and the gap solid green; clamp in the gap,
   then seal the tear like a cut.
 - **Smoke:** the chest widens and a breath gauge climbs on the in-breath; puff then, once a breath.
+
+### 6d. The gravity generator redesigned, the reactor's reset, and phones (2026-10-08)
+
+The owner: "Gravity generator is too slow and basic, redesign that completely. Something about realigning a 3d wave
+form graph might be fun"; "When reactor ball hits the wall reset the sliders"; "Do these work on mobile too".
+
+**Why the rings were slow.** Three taps played a round in a few seconds, and then the player waited for the step's
+share to fill at the rate (section 1): most of the job was watching a bar. A round must keep hands busy for about as
+long as its share takes, so the new game is a hold against drift, like the reactor, and its hold time is sized to the
+share.
+
+**Field alignment** (`repairs/gravity.js`, replacing the rings):
+
+- **The picture.** The generator's field over the deck as a 3D wave surface: a wireframe grid in perspective, its
+  height the field's ripple. The reference shape (the field the generator should make) is drawn as a faint ghost in
+  the same space. Where the live surface lies on the ghost it is green; where it is off it shades to amber, then red,
+  so the picture says where it is wrong, not only how much.
+- **The controls**, the same on every round and each one picture (section 10 of CLAUDE.md):
+  - **Turn**: a dial that rotates the wave's crests across the deck (its direction);
+  - **Shift**: a horizontal slider that slides the crests along their direction (the phase);
+  - **Stretch**: a vertical slider for the spacing of the crests (the wavelength), from round 2;
+  - dragging on the surface itself turns (sideways) and shifts (up and down) as a shortcut.
+- **The match.** One number drives everything: the root mean square difference between the live surface and the
+  ghost over the grid, divided by the ghost's own. Under 0.15 the field holds: a ring round the graph fills while it
+  stays there, and the round is played when it fills. Above 0.85 the field surges: the fumble, and the drift is
+  kicked to a new heading.
+- **The drift.** The live wave wanders in all three settings, smoothly, faster each round and faster in combat, so a
+  held field has to be nursed, never set and left.
+- **Rounds.** Round 1: turn and shift. Round 2: stretch joins. Round 3 and on: the reference has a second, smaller
+  ripple across the first and the live field has its own, aligned by the same three controls (a tab picks which
+  ripple the controls hold). The hold to fill is sized to the step's share at the officer's rate, so play and the bar
+  end together.
+- **The part step** of a disabled generator fits the new field coil from the crate into the hub, as before.
+
+**The reactor resets its trims on a spike.** When the plasma or its ring touches the wall, both sliders spring back
+to centre and let go of the hand on them, so the recovery starts from neutral, not from the setting that caused it.
+
+**Phones.** Every game is driven by pointer events, so a finger plays it as a mouse does. The page puts the game
+first on a narrow or touch screen, with a game picker and a Full screen button above it (full screen fits the canvas
+to the screen, and asks a phone to hold landscape where the browser allows), and tells a phone held upright to turn
+sideways. Each game is checked by playing it to the end with touch alone on a phone-sized screen.
 
 ## 7. The Pi 5 budget
 
