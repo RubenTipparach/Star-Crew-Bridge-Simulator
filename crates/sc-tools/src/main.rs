@@ -4,18 +4,26 @@
 //! `sc-tools check-data` loads every engine data file through `sc-core`'s one loader, so a file the
 //! game would refuse at startup is refused here first, naming the file and the field.
 //! `sc-tools deckc [ship]` compiles a ship's decks into `compiled/<ship>.deck` (see `deckc`).
+//! `sc-tools walk-report [ship]` measures the walk world's heap and a body's step time (see `walk_report`).
 
+mod alloc;
 mod deckc;
+mod walk_report;
+
+/// Every allocation is counted, for `walk-report`'s heap figures.
+#[global_allocator]
+static ALLOC: alloc::Counting = alloc::Counting;
 
 use std::path::Path;
 use std::process::ExitCode;
 
 fn check_data(root: &Path) -> Result<usize, String> {
-    let files = [("data/engine/render.json", "render")];
+    let files = [("data/engine/render.json", "render"), ("data/crew/walk.json", "walk")];
     for (rel, kind) in files {
         let text = std::fs::read_to_string(root.join(rel)).map_err(|e| format!("{rel}: cannot be read: {e}"))?;
         match kind {
             "render" => sc_core::data::parse::<sc_core::data::RenderConfig>(rel, &text).map(|_| ()),
+            "walk" => sc_core::data::parse::<sc_core::walk::WalkData>(rel, &text).map(|_| ()),
             _ => unreachable!("every listed file has a schema"),
         }
         .map_err(|e| e.to_string())?;
@@ -49,8 +57,22 @@ fn main() -> ExitCode {
                 ExitCode::FAILURE
             }
         },
+        Some("walk-report") => {
+            match walk_report::run(Path::new("."), args.get(1).map(String::as_str).unwrap_or("tern")) {
+                Ok(s) => {
+                    println!("{s}");
+                    ExitCode::SUCCESS
+                }
+                Err(e) => {
+                    eprintln!("walk-report: {e}");
+                    ExitCode::FAILURE
+                }
+            }
+        }
         _ => {
-            eprintln!("usage: sc-tools check-data [repository root] | sc-tools deckc [ship]");
+            eprintln!(
+                "usage: sc-tools check-data [repository root] | sc-tools deckc [ship] | sc-tools walk-report [ship]"
+            );
             ExitCode::from(2)
         }
     }

@@ -737,9 +737,23 @@ Shots: `docs/screenshots/engine/walk-*.png`.
 - Where two ladders meet (the trunk at z 11 runs A to B and B to C), Use took whichever came first, back up the
   way the body came. Now E prefers the way up and Q the way down, in the engine and in the deck plan.
 
-**The Pi 5 budget.** The soup is the deck plan's walk world, 93,393 triangles,
-which Rapier holds with its bounding volume tree: measured on the desktop at load, to be measured on the Pi
-by the probe. A body's step is one character-controller query a substep at 120 Hz. One body in the client
+**The Pi 5 budget.** The soup is the deck plan's walk world, 93,393 triangles, which Rapier holds with its
+bounding volume tree. Measured (2026-10-08, the owner: "you can try testing it in your env to see how much memory
+is used") in the cloud container, x86-64, release build, llvmpipe:
+
+| What | Measured | Against the budget table (`engine-stack` section 5) |
+| --- | ---: | --- |
+| The walk world on the heap, built (`sc-tools walk-report`, a counting allocator) | 12.7 MB | 3 % of the client's 384 MB |
+| The most on the heap while it is built | 22.8 MB | For under a tenth of a second at load |
+| Building it | 51 ms | Load time only |
+| A body's 1/60 s step, two substeps (3,600 steps, a minute walking and running round the start) | mean 0.26 ms, median 0.14, 99th 1.3, worst 2.3 | Eight bodies on the server: about 12 % of one core here |
+| The heap while walking | 32 KB more in a minute | No allocation per step to speak of |
+| The deck file read whole at load | 62.2 MB | Freed after the upload; the load's peak |
+| The whole client walking the Tern (peak resident set, `/proc` sampled) | 277 MB at load, 249 MB walking | Includes llvmpipe's copies of the GPU data (textures 50.7 MB, meshes 6 MB) and Mesa's JIT, which a Pi keeps in CMA and its driver; not a Pi number |
+
+So the walk is not where the client's memory goes: the textures are (256 px layers where the budget plans 128,
+section 13). Reading the deck file in pieces would take the 62 MB peak at load away; that and the Pi's own numbers
+are the probe's (`engine-stack` 2.4), run on the hardware with the same `sc-tools walk-report`. A body's step is one character-controller query a substep at 120 Hz. One body in the client
 today; the server will run every body (about eight). Memory and step time are reported by the client at
 load and in the headless run; the budget table gains a walk row when the probe has measured it.
 
