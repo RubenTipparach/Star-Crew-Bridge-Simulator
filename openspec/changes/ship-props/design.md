@@ -20,8 +20,9 @@ chairs and furniture (`bridge` and `suite` prop sets, placed by `lib/propkit.js`
 **Non-Goals**
 - System sizes in the layout (`reference-ship-tern` T4): the props are built to the deck plan's nominal sizes
   until T4 sets them.
-- Door leaves. The kit's walls are drawn back to back with no thickness to slide a leaf into; a door is an
-  open frame until the deck pipeline draws walls with thickness.
+- Door leaves as the engine will build them. The kit's walls are drawn back to back with no thickness to slide
+  a leaf into, so the deck plan's leaves (section 4e) slide toward their jambs and are clipped there, until the
+  deck pipeline draws walls with thickness.
 - The exterior: hull mounts, sensors and the radiators stay as they are.
 
 ## Decisions
@@ -88,6 +89,22 @@ medbay's beds are a pair; the reactor stands from its base on deck C. The comput
 
 **Craft.** At their layout centre, on their bay's floor, nose to the bow.
 
+**The Petrel is walked into** (owner, 2026-10-08: "need interior for shuttle, and I should be able to walk into it").
+Its hull is hollowed by a loft of its own sections inset 8 cm, from the stern wall to the cockpit under the canopy,
+with a flat deck 0.6 m above the floor at the ramp's top. The stern opening is 1.32 m wide and 1.95 m clear. Inside:
+- a bench of two seats along each side, its back on the hull, with belts;
+- a light strip along the ceiling;
+- in the cockpit, two seats on pedestals, 0.6 m apart so a body passes between them to the console under the
+  canopy; four lamps along the ceiling and over the cockpit light the cabin in the bake.
+- the canopy is open: its five panes across the roof and upper sides of the cockpit's band (2.30-4.05 m along the
+  hull), the shape it always had outside, cut right through into the cockpit, the hull left between them as the
+  frames (section 4f).
+
+It stays one closed solid (`build_machinery_props.py`), 2,842 triangles against 1,918 before (budget 2,900). In the walk it collides
+as its own triangles instead of its bounds box (`deck-plan.html` `MESH_PROPS`), so a body walks up the 22 degree
+ramp, along the aisle and into the cockpit. Measured headless: the ramp climbed and the deck reached at 0.6 m in
+2.3 s from the hangar floor, and out again.
+
 **Crew rooms.** `tools/crew_rooms.py` writes `data/ships/tern/crew_rooms.json` and checks it with
 `tools/command_suite.py`'s furniture checks, on the layout as it stands, with the suite, and with deck access:
 every piece inside its room, clear of every door's zone (1.0 m), none overlapping, and the scuttle ladders' floor
@@ -95,11 +112,23 @@ in damage control and the medbay kept clear.
 
 | Room | Pieces |
 | --- | --- |
-| Crew quarters | Four two-tier bunks (eight berths), two locker banks on the hull side |
+| Crew quarters | Six two-tier bunks (twelve berths): two on the forward wall, one on the aft wall, one on the corridor wall, and two back to back in the middle of the room; two locker banks on the hull side |
 | Mess | A galley on the forward wall, two tables of four |
 | Damage control | A workbench (repair kits), two locker banks (EVA suits, extinguishers) |
+| Port and starboard turret rooms | Each: the turret's capacitor bank (three battery banks) on the aft wall; its power converter and power panel by the pod's hatch; the pod's air handler and scrubbers on the forward wall; the gunner's locker bank and a tool board on the corridor wall |
 
-Recommendation taken (ask only with screenshots): eight berths, the most crew the netcode allows (M3).
+Recommendation taken (ask only with screenshots): eight berths, the most crew the netcode allows (M3). The owner,
+2026-10-08: "should have more bunks in crew quarters": twelve berths, for eight crew and the four bodies of the damage
+control teams, who sleep aboard too. The walls are full (the doors from the stair tower, the turret room and the
+spine), so the two new bunks stand back to back in the middle, 2 cm apart, between aisles of 1.6 m and 2.1 m
+(`tools/crew_rooms.py` checks them against the doors and the walls).
+
+The turret rooms (owner, 2026-10-08: "turret access rooms are empty, they need to have some kind of battery or life
+support stuff there"). Their purposes in the layout name the hatch into the pod and the turret's capacitor bank; the
+deck plan drew 78 m^2 each of bare floor. They take what keeps a pod's gun and gunner going, from the machinery and
+engineering sets already built, and the middle stays open between the room's three doors. Each room adds 3,576
+triangles of props (three battery banks at 450, the converter 448, the panel 304, the air handler 326, the scrubbers
+404, the lockers 190, the tool board 554), merged into its one draw.
 
 ### 4. The kit
 
@@ -206,6 +235,191 @@ upholstery in the atlas, in their colour. A prop without one keeps the tiling ma
 **What it costs.** One layer a prop kind: 0.35 MB at 256 px with mips, 87 KB at 128 px. The Tern's 47 kinds
 (bridge 12, suite 15, machinery 20) come to 16.4 MB at 256 px or 4.1 MB at 128 px of the 96 MB texture budget; a
 deck's array need hold only the kinds it places. No draw call and no triangle added.
+
+### 4d. The owner's walk of 2026-10-08
+
+The owner walked the deck plan and found nine things; each is fixed in the page and the libraries, shown in
+`docs/screenshots/mockups/walk-fixes-2026-10-08/`, and checked with the walk's own hooks (`MOCKUP_WALK`):
+
+| The owner | Cause | Fix |
+| --- | --- | --- |
+| "I cant walk up these steps anymore" | The bridge platforms' steps were blocks, not ramps; with the floor bands and nosings added at their feet, the first riser and its 5 cm nosing stood as a 0.24 m lip in front of the ramp, too shallow for the controller to step onto | The platform steps collide as ramps like every stair (`crew-on-deck` 3a); the walk leaves out every step inside a flight's footprint lengthened 8 cm at both ends. Head-on, every approach across the width now climbs |
+| "walking is to much like ice skating" | Starting and stopping at the feet's grip, 6 m/s2 | 20 m/s2 to speed up, 30 m/s2 to brake (`crew-on-deck` section 3) |
+| "bring back jumping" | C5 had none | A 0.46 m jump on Space (`crew-on-deck` section 3, C5) |
+| "elevator interior using crappy texture" | The car took the stand-in `bulkhead` and `deck_plate` | The car's inside wears the crew finish's panels: a light column facing the door, ribbed sides, a plate floor (`ShipKit.buildLiftCar`, `f.panels`) |
+| "the whole ship is missing doors!" | No leaves were drawn (above) | Every door and pressure door has its leaves, driven by `shipwalk.js` with `crew-on-deck` section 5's rules: a door opens as a body comes within 3 m and closes 2 s after it leaves; a pressure door opens and closes on E; a closed door is a wall; the lift's landing and car doors open with the car. A leaf retracts into its jamb |
+| "the back of this console in the engine room is missing geometry" | The local panel is built as a wall prop, so the page dropped its back wherever it stood, though two stand free | A placement's own `on_wall` decides (`PropKit.placeProp`, `o.wall`), and the panel's back gets its share of the atlas |
+| "some more weird missing geometry" (the magazine's ceiling) | A hole between decks showed the half metre between one room's ceiling and the next one's floor | Every floor hole is lined from the ceiling to the floor above (`ShipKit`, the collars) |
+| "I cant walk around the reactor all the way" | The reactor collided as its square bounds, whose corners reached into the ring catwalk at the diagonals | Round machines (the reactor, the pressurizer, the dewars) collide as 16-sided prisms; the ring walks round both ways |
+| "there should be two impulse thingies connected to these thrusters" | One drive unit on the centreline, between two engines | The layout's impulse drive stands as two units, one on each engine's centreline, nozzles against the aft bulkhead (`units_m`; one system for power and damage, `reference-ship-tern`) |
+
+### 4e. The owner's walk, second round (2026-10-08)
+
+The owner walked it again the same day. Each is fixed in the page, the libraries or the data, shown in
+`docs/screenshots/mockups/walk-fixes-2026-10-08b/` and checked headless with `MOCKUP_WALK`:
+
+| The owner | Cause | Fix |
+| --- | --- | --- |
+| "theres no pipe connecting these modules to the thrusters" | The impulse units stood free of the engines | A duct 1.2 m across from each unit's nozzle into the aft bulkhead, on the engine's axis (`deck-plan.html`, the drive's fit-out) |
+| "my collider is too wide, this chair is blocking me from walking" | A chair collided as its bounds, armrests and all, and the body was 0.6 m across | A chair collides as its pedestal (0.25 m round); the body is 0.5 m across (`crew-on-deck` section 2) |
+| "the doors are scaled to open ... doors should preserve volume" | A leaf shrank toward its jamb | A leaf keeps its size and slides toward its jamb, clipped there, so it never shows past the frame or over its neighbour; its texture moves with it |
+| "elevator is severly broken still", "im stuck in the elevator well" | The car's floor was a moving box flush with the deck, which jammed Rapier's controller at the seam; a shut shaft was guarded only by a soft check that froze every move near it | Each landing door is a wall while shut; inside the shaft the feet are held on the car's floor; a step away from a shut shaft is never stopped (`crew-on-deck` 3a). Every ride between the three decks, and walking off, measured |
+| "i cant walk up spiral stairs" | Their collision ramp was one quad a tread from column to wall; one of its triangles stood at 75 degrees across the walk line | The ramp is cut in 0.12 m rings, each at the helix's own slope (`crew-on-deck` 3a); both towers climbed and descended at three radii |
+| "whats the deal with this hole right in front of the door?" | The ventral pod's hatch lay between the shield room's and the switchboard's doors, which faced each other across deck C's corridor at z 3.0 | The doors move: the shield room's forward to z 5.0, the switchboard's aft to z 1.2 (`reference-ship-tern` section 4) |
+| "engine room textures get cut off here" | Engineering's walls were banded once from its lowest floor, so the mezzanine and the catwalk cut through module rows | A wall's bands start again above every floor inside the room (`wall-panels` section 2) |
+| "we need to be able to see some cool plasma ... inside a confined ring" | The reactor's windows were a flat glow | A ray-marched plasma ring behind each window, turning, with helical filaments (`engineering-fitout` 5a) |
+| "turret access rooms are empty" | Nothing was placed there | Capacitor banks, a power converter and panel, the pod's air handler and scrubbers, lockers and a tool board (section 4 crew rooms) |
+| "did you add armory room somewhere too?" | It was designed (`armory`) but not drawn | An armory on deck A, 56 m^2, with three new props: the rifle rack, the ammunition cabinet and the armour rack (`armory` section 4) |
+| "need interior for shuttle, and I should be able to walk into it" | The Petrel was a solid hull | A cabin, cockpit and fittings inside, walked into up the ramp (Craft, above) |
+| "this console has some messed up geometry" | The control desk's end cheeks were the convex hulls of a concave profile, so each stood as a slab 0.12 m above the control shelf | Each cheek follows the desk's profile as two convex pieces, a 5 cm rim above the top, the shelf and the deck (`build_engineering_props.py`) |
+
+Recommendation taken (ask only with screenshots): the doors themselves, modelled after the owner's reference
+(a stepped seam, raised panels, a black band with a grille, vents and a sign plate), are the next step; this round
+keeps the sliding leaves.
+
+### 4f. The owner's walk, third round (2026-10-08)
+
+Shown in `docs/screenshots/mockups/walk-fixes-2026-10-08c/`, before and after:
+
+| The owner | Cause | Fix |
+| --- | --- | --- |
+| "shuttle window should be like way bigger lol", "what it looks like form outside" | The canopy was five shallow recesses over the cockpit's band, their floors glowing white from outside and lined with dark glass inside, so the cockpit looked at a wall | The same five panes cut through the hull: from inside the pilots see the bay through the frames, from outside the lit cockpit shows (Craft, section 3). A first fix added five more panes over the cabin's front; the owner: "I don't like that. I like the exterior canopy the way it was. I just wanted interior to match exterior", so it was undone |
+| "these pipes arent textured and arent integrated into the wall correctly" | Each duct began inside the impulse unit's nozzle bell and ran on through the aft bulkhead to the engine, one tube with a ring of vertices at each end; both rings lay in shadow (in the bell, and outside the room), so the vertex bake lit the whole tube black, and it showed going into the wall with nothing where it met it | The duct runs from the nozzle's exit to the bulkhead's face, with a ring every 0.4 m for the bake to light, a flange at the nozzle and a collar on the wall (`deck-plan.html` the drive's fit-out; `ShipKit.buildFitout` takes `wall` for an end that enters a wall, as `ceiling` does) |
+
+Not done: the canopy has no glass. A tinted pane would be one more transparent draw per craft, and a later step
+decides glass with the exterior view (`ship-frames`).
+
+### 4g. Doors modelled, sliding into their jambs (2026-10-08)
+
+The owner, on the leaves of 4d and 4e: "doors are still flat geometry", with a still of a corridor door from Star
+Trek: The Next Generation as the reference. A leaf was two textured quads 4 cm apart. What the reference does, in
+shape only (CLAUDE.md 15): two leaves meet on a stepped seam (vertical, a short diagonal, vertical again), each
+leaf carries raised panels above and below, a dark band crosses both at chest height with a grille in it, and a
+small round lamp and a plate sit by the seam.
+
+**The leaves are props, one per leaf size,** in a new set `doors` (`tools/blender/build_door_props.py`,
+`assets/models/doors/`), modelled and baked like every other set (the hard-surface kit, an atlas each):
+
+| Prop | Leaf, W x H, m | Used by | Budget, triangles |
+| --- | --- | --- | ---: |
+| `door_100x220_l`, `_r` | 0.50 x 2.20 | 1.0 m doors (35) | 220 each |
+| `door_120x220_l`, `_r` | 0.60 x 2.20 | 1.2 m doors (12), the lift's landing doors among them | 220 each |
+| `door_120x210_l`, `_r` | 0.60 x 2.10 | the lift car's own door | 220 each |
+| `door_160x230_l`, `_r` | 0.80 x 2.30 | 1.6 m doors (6): the bridge's, the mess's, the torpedo room's, the magazine's, two of the hangar's | 240 each |
+| `door_200x230_l`, `_r` | 1.00 x 2.30 | the cargo hold's 2.0 m door | 240 each |
+| `door_200x250_l`, `_r` | 1.00 x 2.50 | the hangar's 2.0 m door from deck C's spine | 240 each |
+| `pressure_100x220` | 1.00 x 2.20, one leaf | pressure doors (4): the launch bays', the airlock's two | 320 |
+
+The sizes are the layout's (`layout.json` and its patches: `deck_access`, `command_suite`, `armory`) and the lift
+fixture's car door, which moves into its data as `door_m` (1.2 x 2.1 m) so the page and the build read one number;
+the build refuses a size the data has and it has no model for, and the page draws a door without a model as the old
+flat leaf and says so in the console.
+
+**A door leaf**, in its prop space (x from its jamb toward the seam, y up, z out of the door's front; the origin on
+the floor at the jamb):
+- a slab 6 cm thick (z +-0.03), standing on the floor (its underside, never seen, is left out as every prop's is)
+  and 5 mm under the lintel, reaching 2 cm into its jamb, so its end is hidden in the frame whether the door is
+  shut or open;
+- the stepped seam: the left leaf's edge stands 8 cm past the opening's middle below 1.00 m, crosses 16 cm on a
+  45 degree step to 8 cm short of it above 1.16 m, and the right leaf's edge follows it 4 mm away (a 2 mm gap a
+  side, as the flat leaves had);
+- on each face, a raised panel above the band and one below, 12 mm proud and chamfered, 6 cm in from the edges;
+- the band: a dark recess 0.22 m tall at 1.30-1.52 m, 8 mm deep, holding a grille of five horizontal slots;
+- a louvre of six slots low on the leaf, 0.20 m above the floor;
+- by the seam, on the left leaf only, a round lamp in the band (it glows) and a plate under it with an accent
+  stripe the page tints with the room's colour; the right leaf has a second, smaller plate.
+- Both faces carry the same relief, so a door looks like a door from either room. The two leaves are different
+  props, not mirrors: the seam steps one way, and the lamp is on one of them.
+
+**A pressure door's leaf** is one piece from jamb to jamb, 16 cm thick (z +-0.08, inside its 0.24 m deep frame):
+a locking bar across its middle, modelled 3.5 cm proud; in its atlas, three horizontal ribs on each face, a hazard
+band along its foot, a small dark window over the bar and an amber lamp beside it. (Modelled ribs across the whole
+face cut it into strips the atlas unfolded skewed, garbling the window and the plate; baked, they read the same.)
+
+**Opening: the leaf slides whole and is cut at the jamb.** The leaf of 4e kept its size but was squeezed toward
+its jamb vertex by vertex, which only works on a flat leaf. A modelled leaf moves rigidly: opened by `o` (0 shut,
+1 open) it stands `o` times its width toward its jamb, and everything of it beyond the jamb's face is cut away by a
+clipping plane at that face, its own material's, so it never shows past the frame into the wall or the next room.
+The frame's jamb is 12 cm deep (`detailing.json` `door_frame.proud_m` either side) and the leaf 6 cm with its
+panels at most 9, so the cut end always lies behind the jamb's face and is never seen. A pressure leaf (16 cm)
+sits in its 24 cm frame the same way. A leaf all the way in is not drawn.
+
+**Light.** A leaf is lit where it stands, by the lamps of both rooms it joins, in the three lighting states, as
+4e's leaves were (`bakeStates` on a placed copy); it is baked shut, and the light it carries moves with it.
+
+**Collision is unchanged.** A shut door is a wall (`crew-on-deck` section 5), its box `walk.json` `door.thick_m`
+(4 cm); a body's 0.25 m radius keeps it clear of the leaf's 4.5 cm faces.
+
+**Built** (2026-10-08): `tools/blender/build_door_props.py`, `assets/models/doors/` (13 leaves, `--check`
+reproducible), the lift fixture's `door_m`, and `deck-plan.html` drawing every leaf from the set, sliding and
+clipped (`modelLeaf`, `slideModel`; the flat leaf stays only for a size without a model, named in the console).
+Shots, shut, part open and nearly in, of a 1.0 m, a 1.2 m lift landing, a 1.6 m, the 2.0 x 2.5 m hangar door
+and a pressure door: `docs/screenshots/mockups/doors-2026-10-08/`. `MOCKUP_WALK.doorPose(id, open)` holds a door
+at an opening for checks and shots.
+
+**The Pi 5 budget**, measured (`assets/models/doors/props.json`):
+
+| Leaf | Triangles | Budget |
+| --- | ---: | ---: |
+| every sliding door leaf, all six sizes | 174 | 220-240 |
+| `pressure_100x220` | 116 | 320 |
+
+A sliding door is 348 triangles against 24 for the flat pair: 56 sliding doors (the lift car's among them) and 4
+pressure doors are about 19,950 triangles across the ship, of which a room sees two to six doors, under 2,100 in
+any one view. Each leaf is its own draw, as the flat leaves were; the engine can draw every leaf of a deck in one
+call, its offset a uniform per leaf, and clip with a plane uniform and `discard` (GLSL ES 3.00 has no user clip
+distances), which is a later step (`deck-pipeline`). Atlases: 13 layers at 256 px, 4.5 MB of the array with mips,
+against the 96 MB the array may use. A cloud session renders on lavapipe: these are counts, not frame times.
+
+The pressure leaf's ribs are baked, not modelled: ribs across its whole face cut it into strips the atlas
+unfolded skewed, and a 2.2 m face is too long a chart for its 256 px atlas, which cut it into triangles. Two
+plate seams across each face keep its charts whole.
+
+**Found on the way: a kit bug in the atlas layout.** `hs_kit._unfold` joins a neighbouring planar chart by turning
+it flat across the edge they share, but where the two charts already shared a third vertex (a band's floor
+unfolded with one wall, then the other) it kept the first chart's place for it, so the second's faces were
+stretched onto it: the lift car's right leaf baked its band as a skewed smear. A join now has to put every shared
+vertex where the chart already has it, or it is not made.
+
+Recommendation taken (ask only with screenshots): the shape above, its numbers and its colours are first choices,
+for the owner to judge on the shots.
+
+### 4h. The Petrel's cabin: folding seats forward, cargo aft (2026-10-08)
+
+The owner, on the canopy shots: "Id move the passenger seats up a bit since the back of the shuttle could be
+for cargo. Make the seats foldable in case the shuttle needs to carry cargo."
+
+- **Four folding seats** replace the two benches: two a side, centred 0.35 m and 0.65 m forward of the
+  cabin's middle (z -0.65 and +0.45 in prop space, from -2.90 to -0.40 before), each a back plate on the hull
+  with its belts, a hinge rail and a seat pan 0.46 m deep, 0.44 m above the cabin deck, modelled down.
+- **The cargo bay** is the cabin aft of them, 2.0 m long by the 1.24 m between the seats' rails at the floor:
+  two tie-down rails along the deck. A pallet 1.2 x 1.0 m fits with the seats folded or down.
+- **Folding is a fixture** (`ship-interactables` 3): a seat pan is its own small mesh that turns up 90 degrees
+  about its hinge on Use, as a door leaf slides. Until the fixture is built the pans are modelled down.
+
+Built: `build_machinery_props.py`, the Petrel at 2,842 triangles (2,604 before, budget 2,900). Shots of the
+cabin, its seats and the cargo bay, and of the pressure door (4i), in
+`docs/screenshots/mockups/walk-fixes-2026-10-08d/`.
+
+### 4i. The pressure door: the bulkiest door on the ship (2026-10-08)
+
+The owner, on the door contact sheet: "if anything the pressure door should be the biggest bulkiest and
+most complex looking lol". 4g gave it a plain slab with a bar and baked ribs, the simplest leaf of the set.
+It becomes the heaviest:
+
+- 20 cm thick (z +-0.10, inside its 24 cm frame), against the sliding leaves' 6 cm;
+- a raised rim round each face, 6 cm wide and 2 cm proud, and two modelled ribs across it, low and high;
+- a locking wheel at 1.10 m on each face: a hub, four spokes and an eight-sided rim 0.48 m across, standing
+  6 cm proud;
+- the locking bar above it, two hydraulic rams at its lower corners, the plate seams, and in its atlas the
+  hazard foot, the window, the amber lamp and the PRESSURE plate.
+
+Budget 1,700 triangles, built at 984: the most complex door, and there are four on the ship, a room seeing
+one or two (about 2,000 at most, against a sliding door's 348). A first brief of 900 was set before the
+wheel, the rams and the rim were modelled; built as 48 separate pieces it came to 1,622, every piece unioned
+onto a face cutting that face into more triangles, and the rim's bars met in one plane. Made as one frame
+and one ring, each a solid with its middle cut out, it is 984. Its charts stay
+short: the ribs and the seams cut each face into pieces under 0.7 m tall (4g).
 
 ### 5. The Pi 5 budget this change spends
 

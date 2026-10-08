@@ -1,6 +1,6 @@
 {
   "schema": "starcrew.prop-atlas/1",
-  "status": "Proposed (2026-10-07) for the owner: 'the textures on the console man, they need to be full on custom details, youre using generic textures on them which looks pretty bad' and 'basically everything using the metal tile grid needs to get replaced with custom textures'. Read by tools/blender/hs_kit.py when a prop set builds (build_bridge_props.py, build_machinery_props.py, build_suite_props.py); the atlases it bakes are assets/models/<set>/atlas/<prop>.png. The colours, wear and light are first choices made by eye on the contact sheets, not decisions: the owner judges them.",
+  "status": "Proposed (2026-10-07) for the owner: 'the textures on the console man, they need to be full on custom details, youre using generic textures on them which looks pretty bad' and 'basically everything using the metal tile grid needs to get replaced with custom textures'. Read by tools/blender/hs_kit.py when a prop set builds (build_bridge_props.py, build_machinery_props.py, build_suite_props.py, build_door_props.py); the atlases it bakes are assets/models/<set>/atlas/<prop>.png. The colours, wear and light are first choices made by eye on the contact sheets, not decisions: the owner judges them.",
   "_rules": [
     "Every prop carries a second UV map, the atlas (glTF TEXCOORD_1; TEXCOORD_0 stays the metre UVs): its faces cut into planar charts (connected triangles of one plane), each laid flat at one texel density, packed into one square with margin_px of padding round every chart, at the highest density up to max_px_per_m that fits. The square is atlas.px (256) unless that leaves the prop under min_px_per_m, when it doubles until it does not or reaches px_max: a 10 m reactor or a shuttle needs 1024 px to read at walking distance. The manifest records each prop's px and px_per_m.",
     "The atlas is baked, never painted: a detail version of the prop that exists only for the bake (the low-poly surfaces plus details modelled on them: seams, bolts, vents, buttons, lamps, labels) is baked onto the atlas with Cycles, selected to active, rays from cage_m out along each face. bake_scale times the atlas's size, samples per pixel, fixed seed, no denoiser; area-averaged in linear light to atlas.px, encoded sRGB and reduced to atlas.colours colours as the panels are (tools/materials/postprocess.py), by max coverage rather than median cut, so a small saturated area (a lamp, a station's stripe) keeps its colour. A second bake of emission only is the alpha mask: 255 where it glows (lamps, LEDs, status displays), 0 elsewhere.",
@@ -15,7 +15,7 @@
     "crew": { "grime": 0.12, "grime_scale_per_m": 3.0, "crevice": 0.55, "crevice_m": 0.03, "edge": 0.45, "streaks": 0.06, "rust": 0.0 },
     "working": { "grime": 0.16, "grime_scale_per_m": 2.5, "crevice": 0.55, "crevice_m": 0.04, "edge": 0.55, "streaks": 0.12, "rust": 0.25 }
   },
-  "sets": { "bridge": "crew", "suite": "crew", "machinery": "working", "engineering": "working" },
+  "sets": { "bridge": "crew", "suite": "crew", "machinery": "working", "engineering": "working", "doors": "crew" },
   "edge_metal_srgb": [0.66, 0.66, 0.64],
   "rust_srgb": [0.36, 0.19, 0.09],
   "roles": {
@@ -69,6 +69,8 @@
     "lagging": { "kind": "brushed", "srgb": [0.72, 0.73, 0.74] },
     "magnet_red": { "kind": "paint", "srgb": [0.47, 0.07, 0.06] },
     "fuel_orange": { "kind": "paint", "srgb": [0.90, 0.44, 0.10] },
-    "frost": { "kind": "flat", "srgb": [0.90, 0.93, 0.96] }
+    "frost": { "kind": "flat", "srgb": [0.90, 0.93, 0.96] },
+    "door_leaf": { "kind": "paint", "srgb": [0.52, 0.51, 0.48] },
+    "door_panel": { "kind": "paint", "srgb": [0.60, 0.59, 0.56] }
   }
 }

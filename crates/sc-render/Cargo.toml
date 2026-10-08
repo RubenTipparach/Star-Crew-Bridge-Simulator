@@ -1,0 +1,21 @@
+[package]
+name = "sc-render"
+description = "The renderer: sokol_gfx on OpenGL ES 3.0, its shaders, the deck vertex layout, passes. Never SDL."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+build = "build.rs"
+links = "sokol_gfx"
+
+[dependencies]
+sc-core.workspace = true
+glam.workspace = true
+
+[build-dependencies]
+cc.workspace = true
+sha2 = "0.10"
+
+[lints]
+workspace = true

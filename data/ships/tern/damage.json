@@ -58,7 +58,7 @@
     "note": "A crew member near the path loses hp_per_mj x share x the energy deposited near them, with the systems falloff (100 hit points is full health). Without crew positions (the mockup), each crew member in the room takes the room total times the fraction of its floor within r of the path."
   },
   "repair": {
-    "kit_pct_per_s": { "player": 1.0, "team_member": 0.6 },
+    "kit_pct_per_s": { "officer": 1.8, "rating": 0.6 },
     "kit_locker": "damage_control",
     "kits_in_locker": 6,
     "parts_store": "cargo",

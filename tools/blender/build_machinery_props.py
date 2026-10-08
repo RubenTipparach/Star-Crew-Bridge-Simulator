@@ -78,7 +78,7 @@ BUDGETS = {
     "reactor_core": 1200,
     "launch_cradle": 400,
     "swift_fighter": 1000,
-    "petrel_shuttle": 2000,
+    "petrel_shuttle": 2900,   # 2,000 outside; its cabin, benches, cockpit and console (2026-10-08) about 900
     "bunk": 300,
     "mess_table": 300,
     "galley_counter": 450,
@@ -919,18 +919,31 @@ def petrel_shuttle():
     edge_roles = ["machinery", "trim", "machinery", "accent", "bulkhead", "trim", "bulkhead", "trim", "bulkhead", "accent",
                   "machinery", "trim", "machinery", "machinery"]
     body = loft(p, "hull", sections, edge_roles, ("trim", "trim"))
-    # The canopy: a pane in each upper face of the S2-S3 band (upper sides, roof chamfers, roof),
-    # each following its face, the hull left between them as the frames.
+    # The canopy: a pane in each upper face of the S2-S3 band (upper sides, roof chamfers, roof), each following
+    # its face, the hull left between them as the frames. They cut right through into the cockpit, so from inside
+    # the pilots look out where the outside shows glass (owner, 2026-10-08: "I like the exterior canopy the way it
+    # was. I just wanted interior to match exterior"; a second band of panes over the cabin's front was undone).
     cuts = []
     for e in (4, 5, 6, 7, 8):
         a0, a1 = s2[e], s2[(e + 1) % 14]
         b0, b1 = s3[e], s3[(e + 1) % 14]
         hint = ((a0[0] + a1[0]) / 2, (a0[1] + a1[1]) / 2 - 1.6, 0.3)
         cuts.append(pane(p, f"canopy_{e}", [(a0[0], a0[1], 2.30), (a1[0], a1[1], 2.30), (b1[0], b1[1], 4.05), (b0[0], b0[1], 4.05)],
-                         hint, 0.055, 0.03))
-    # The hold behind the ramp, lit at its far end; panel lines; windows, hatches and the crew door.
-    cuts.append(p.box("hold", (-0.66, 0.60, -4.0), (0.66, 2.40, -2.50),
-                      {"+z": "light_panel", "+y": "light_panel", "-y": "machinery", "*": "bulkhead"}))
+                         hint, 0.055, 0.32, wall="trim", floor="machinery"))
+    # The cabin (owner, 2026-10-08: "need interior for shuttle, and I should be able to walk into it"): the hull hollowed
+    # by a loft of its own sections inset 8 cm, from the stern wall to the cockpit under the canopy, its deck flat at the
+    # ramp's top; the stern opening 1.32 m wide and 1.95 m clear above the deck, so a body walks up the ramp and in. The
+    # canopy's panes cut through into the cockpit, so it looks out through the frames.
+    def inset(sec, t):
+        return [(x - math.copysign(t, x), y + t if y < 1.65 else y - t) for x, y in sec]
+    s3i = [(a[0] + (b[0] - a[0]) * 0.8, a[1] + (b[1] - a[1]) * 0.8) for a, b in zip(s2, s3)]
+    glass = ["bulkhead"] * 4 + ["machinery"] * 5 + ["bulkhead"] * 5
+    cabin = loft(p, "cabin", [(-3.55, inset(base, 0.08)), (1.10, inset(base, 0.08)), (2.30, inset(s2, 0.08)), (3.70, inset(s3i, 0.08))],
+                 [["bulkhead"] * 14, ["bulkhead"] * 14, glass], ("bulkhead", "machinery"))
+    p.cut(cabin, "cabin_deck", [p.box("cabin_deck", (-2.0, -1.0, -4.5), (2.0, 0.60, 4.5), "trim")])
+    cuts.append(cabin)
+    # The stern opening, behind the ramp.
+    cuts.append(p.box("hold", (-0.66, 0.60, -4.0), (0.66, 2.55, -3.45), {"+y": "light_panel", "-y": "trim", "*": "bulkhead"}))
     for s in (-1, 1):
         for i, z in enumerate((-2.75, -0.55, 0.92)):
             cuts.append(groove(p, f"line_{s:+d}_{i}", (s * 1.42, 1.34, z), (s * 1.42, 2.32, z), (s, 0.0, 0.0)))
@@ -973,6 +986,29 @@ def petrel_shuttle():
                    ["machinery", "hazard", "machinery", "machinery"], cap="trim")
     p.chamfer(ramp, "ramp_edges", 0.12, lambda m, d, n1, n2: abs(m.x) > 0.6 and max(n1.y, n2.y) > 0.8, role="hazard")
     parts.append(ramp)
+    # The cabin's fittings, each standing on the deck or against the hull so the shuttle stays one solid. Forward, two
+    # folding seats a side (owner, 2026-10-08: "move the passenger seats up a bit since the back of the shuttle could be
+    # for cargo. Make the seats foldable"): a back plate on the hull with its belts, a hinge rail and a seat pan, drawn
+    # down (ship-props 4h; folding is a fixture, ship-interactables). Aft, the cargo bay: two tie-down rails on the deck.
+    # A light strip along the ceiling; in the cockpit two seats on pedestals facing a console under the canopy, 0.6 m
+    # apart so a body walks between them to the console.
+    for s in (-1, 1):
+        for i, z in enumerate((-0.65, 0.45)):
+            parts.append(p.box(f"seat_back_{s:+d}_{i}", (min(s * 0.99, s * 1.18), 1.06, z - 0.24), (max(s * 0.99, s * 1.18), 1.80, z + 0.24),
+                               "accent"))
+            parts.append(p.box(f"hinge_{s:+d}_{i}", (min(s * 0.97, s * 1.05), 0.96, z - 0.22), (max(s * 0.97, s * 1.05), 1.08, z + 0.22), "trim"))
+            parts.append(p.box(f"seat_pan_{s:+d}_{i}", (min(s * 0.55, s * 1.02), 0.98, z - 0.22), (max(s * 0.55, s * 1.02), 1.04, z + 0.22),
+                               {"+y": "accent", "*": "machinery"}))
+            for j, dz in enumerate((-0.12, 0.12)):
+                parts.append(p.box(f"belt_{s:+d}_{i}_{j}", (min(s * 0.955, s * 0.995), 1.12, z + dz - 0.03),
+                                   (max(s * 0.955, s * 0.995), 1.74, z + dz + 0.03), "hazard"))
+        parts.append(p.box(f"cargo_rail_{s:+d}", (s * 0.42 - 0.03, 0.58, -3.30), (s * 0.42 + 0.03, 0.635, -1.15), "trim"))
+        parts.append(p.box(f"seat_{s:+d}", (s * 0.52 - 0.22, 0.62, 2.35), (s * 0.52 + 0.22, 1.08, 2.85), {"+y": "accent", "*": "machinery"}))
+        parts.append(p.box(f"seat_back_{s:+d}", (s * 0.52 - 0.22, 1.08, 2.27), (s * 0.52 + 0.22, 1.80, 2.40), "accent"))
+        parts.append(p.box(f"seat_post_{s:+d}", (s * 0.52 - 0.08, 0.55, 2.45), (s * 0.52 + 0.08, 0.66, 2.75), "trim"))
+    parts.append(p.box("ceiling_light", (-0.12, 2.62, -3.30), (0.12, 2.78, 0.90), {"-y": "light_panel", "*": "trim"}))
+    console = p.box("console", (-0.68, 0.62, 3.25), (0.68, 1.20, 3.75), {"+y": "light_panel", "*": "machinery"})
+    parts.append(console)
     parts += gear_leg(p, "gear_nose", 0.0, 3.30, 0.62, -0.50)
     for s in (-1, 1):
         parts += gear_leg(p, f"gear_{s:+d}", s * 1.0, -2.30, 0.69, 0.50)

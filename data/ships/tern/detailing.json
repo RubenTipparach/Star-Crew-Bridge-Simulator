@@ -69,6 +69,20 @@
     "rail_end_m": 0.1,
     "rail_post_spacing_m": 1.2
   },
+  "kicks": {
+    "_doc": "Kick lights (openspec/changes/kick-lights): indirect light at the foot of platform edges and consoles. platform: every edge of a kind in on is undercut at its foot by a recess height_m high and depth_m deep (the wall banks' own toe kick), a strip on a chamfer chamfer_m square at the back of the recess's ceiling, facing out and down. props: each console family's strips in prop space (props.json's frame: +Y up, +Z towards the operator, the origin on the floor at the centre of the back): y_m and z_m the strip's bottom and top edges (z at each), x_m its half width, x_inset_m in from the prop's bounds, or beside_m out from the bounds (a strip each side), normal the way it faces, type its fixture type (kick_strip unless named: column_strip for the light columns behind the terminals).",
+    "platform": { "height_m": 0.10, "depth_m": 0.08, "chamfer_m": 0.03, "on": ["riser", "rail"] },
+    "props": {
+      "wall_bank": [
+        { "name": "front", "y_m": [0.005, 0.095], "z_m": [0.532, 0.532], "x_inset_m": 0.03, "normal": [0, 0, 1] },
+        { "name": "columns", "type": "column_strip", "y_m": [0.15, 2.05], "z_m": [0.012, 0.012], "beside_m": [0.03, 0.08], "normal": [0, 0, 1] }
+      ],
+      "free_console": [
+        { "name": "front", "y_m": [0.06, 0.10], "z_m": [0.286, 0.295], "x_m": 0.34, "normal": [0, -0.227, 0.974] },
+        { "name": "back", "y_m": [0.06, 0.10], "z_m": [-0.012, -0.012], "x_m": 0.34, "normal": [0, 0, -1] }
+      ]
+    }
+  },
   "runner": { "_doc": "A deck plate strip down the middle of every corridor.", "width_m": 0.9, "raise_m": 0.012, "end_clear_m": 0.05 },
   "conduits": {
     "_doc": "Two pipes along the top of every fore-and-aft corridor wall, below the cove and clear of the ribs.",
@@ -95,14 +109,14 @@
     "_doc": "Which material (data/materials/materials.json) each generated surface takes, by the compartment's finish in the layout.",
     "crew": {
       "floor": "deck_tiles", "wall": "bulkhead", "ceiling": "ceiling", "cove": "trim", "rib": "trim", "beam": "trim",
-      "baseboard": "trim", "frame": "trim", "frame_hazard": "hazard", "status": "light_panel", "window_frame": "trim",
+      "baseboard": "trim", "frame": "trim", "frame_hazard": "hazard", "status": "light_panel", "kick_strip": "light_panel", "window_frame": "trim",
       "rim": "hazard", "collar": "trim", "ladder": "trim", "runner": "deck_plate", "pipe": "machinery",
       "railing": "trim", "kickplate": "hazard", "lamp_housing": "trim", "lamp": "light_panel",
       "platform": "deck_tiles", "riser": "trim", "nosing": "hazard", "stair": "deck_plate"
     },
     "working": {
       "floor": "deck_plate", "wall": "bulkhead", "ceiling": "machinery", "cove": "trim", "rib": "machinery", "beam": "machinery",
-      "baseboard": "hazard", "frame": "trim", "frame_hazard": "hazard", "status": "light_panel", "window_frame": "trim",
+      "baseboard": "hazard", "frame": "trim", "frame_hazard": "hazard", "status": "light_panel", "kick_strip": "light_panel", "window_frame": "trim",
       "rim": "hazard", "collar": "machinery", "ladder": "trim", "runner": "deck_tiles", "pipe": "machinery",
       "railing": "trim", "kickplate": "hazard", "lamp_housing": "machinery", "lamp": "light_panel",
       "platform": "deck_plate", "riser": "machinery", "nosing": "hazard", "stair": "deck_plate"

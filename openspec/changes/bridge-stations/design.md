@@ -171,7 +171,19 @@ automation fire, though it would never choose to.
 
 ### 5. Merging and player counts
 
-**Merging** (proposed): every station that has no seated player keeps its automation running and
+**Superseded: no merging; swap to an open station from any seat** (owner, 2026-10-08: "we shouldnt
+need this merge thing, players can just swap to open stations from any seat"). Every station with no
+player runs on its automation (section 4), and no console carries another station's tab. Each
+console's title band lists the open stations (no player, automation running) as chips; pressing one
+swaps this player's console to that station in one press, from wherever they sit. The station they
+leave goes back to its automation, from its current state (section 6, release). With one player the
+player swaps between stations as the moment needs, and automation flies, fights and keeps the plant
+running at its stated competence on all the others. The captain's command functions stay in every
+console's title band while no captain is seated. Swapping to a station from a seat that is not its
+own is the seat rules' switch (section 6) without standing up; who may take a held station is
+unchanged. The tables below are kept as the earlier proposal and no longer apply.
+
+**Merging** (earlier proposal, superseded): every station that has no seated player keeps its automation running and
 appears as a **tab** on a manned console: the first manned station in its merge list
 (`data/stations.json`, flat lists, no chains). The host player can open the tab and change any
 setpoint; automation keeps running underneath and keeps what the player set (section 4). With one
@@ -340,6 +352,102 @@ layer of our own as the fallback. The rules below are ours and hold whichever li
 - **If the probe rejects egui** (question E3), the console data files, the grid, the bands, the
   widgets and the bindings below do not change: only the layer that draws them does.
 
+#### 8.0 Glance first (owner, 2026-10-07)
+
+The owner, on the console mockups: "console mockups dont need 3d, we just want to design the
+console to BE AS USER FRIENDLY AS POSSIBLE this means no overloading the screen with text like you
+AI like to do". The panel tables in section 10 list what each station can see and do; they are a
+list of contents, not a screen. A console that printed them would be a spreadsheet read under fire.
+These rules decide how that content is put on the screen, and where they disagree with a table in
+section 10, they win. The mockup is `docs/mockups/consoles.html` (2D pages, not three.js).
+
+1. **At most four panels.** A console is four pictures, not seven tables. Fewer panels also means
+   fewer draw calls (section 8.7: 2 for the bands plus 1 a panel, 6 in all).
+2. **One picture per panel.** Each panel is one thing seen at once: a lever, a dial, a plot, a
+   mixing desk, the ship in plan. Rows of label and value are not a picture.
+3. **One word a label.** Panel titles, buttons and chips are one word (two at most: HOLD FIRE,
+   STAND DOWN). No sentences on a console, no "click here", no units spelled out where a picture
+   already says what the number is. At rest a console shows at most 30 words, not counting
+   numbers and crew names.
+4. **A number only where someone acts on it.** Helm's speed and heading, the reactor's output, a
+   group's setpoint, range to a target, the chance a missile hits. Everything else is a shape: a
+   fill, a ring, a thickness, a position.
+5. **Colour means state, the same on every console, and never alone.** Green working, amber look at
+   it, red act now; the station's own colour marks what is yours to touch. A failing thing also
+   changes shape: a hatched gap for power wanted and not delivered, a broken line for an open
+   breaker, a flame or a burst on a room.
+6. **The main action is the biggest thing.** STOP on Helm, FIRE on Tactical, the faders on
+   Engineering, SCAN on Science, RED ALERT on the Captain's, each at least 44 lp tall. Nothing a
+   player touches is under 24 lp.
+7. **Detail on hover or focus.** The exact numbers the section 10 tables list (wanted and delivered
+   MW, a contact's class, a room's oxygen, why a control is off) are shown for the control under
+   the pointer or the gamepad focus, in one tooltip, and nowhere else at rest.
+8. **Previews are ghosts, not sentences.** The turn to come is a ghost arc on the heading, the
+   power a fader would get is a ghost fill on it while dragged, the chance to hit is the ring
+   round FIRE. Each is computed by the rule that resolves it (section 9).
+9. **Guarded controls show their guard.** A held control fills as it is held; an armed one
+   changes its word (SCRAM, then CONFIRM).
+
+The four core consoles and the captain's, as drawn in the mockup (grid cells as section 8.1):
+
+| Console | Panels | Main pictures |
+| --- | --- | --- |
+| Helm | THRUST (0,0,3,4), SCANNER (3,0,5,4), ATTITUDE (8,0,4,2), ORIENT (8,2,4,2) | Full 3D flight (owner, 2026-10-07; `flight-and-navigation` 6a): a forward speed lever from -100 to +400 m/s and a strafe pad whose puck sets lateral and vertical speed, the actual drift as a dot; a 3D scanner (the plane of the ship's wings seen from aft and above, each contact on a stalk to its height) with the bow's 10 deg tube cone and autopilot as five words; a joystick for yaw and pitch and a spring-return flipper switch for roll, each a small 3D model drawn as vector art (owner, 2026-10-08), the navball right of the viewscreen, with heading, pitch and roll and their rate bars; the attitude order on three thumbwheels in whole degrees (owner, 2026-10-08), its four quaternion numbers under them, GO with the turn's time, and LEVEL, FLIP and TARGET |
+| Tactical | TARGETS (0,0,3,4), PLOT (3,0,5,4), TURRETS (8,0,4,2), TUBES (8,2,4,2) | Four target cards (silhouette, id, range, hull once scanned); the 3D scanner at 10 km with the ship and its shield bubble in 3D in the middle (`weapons-and-shields` 11), inbound missiles and the line to the target, solid while a turret fires; four turrets as aim needles in heat rings, with their gunner or AUTO and a one-word mode; two tubes as pills that fill as they load, FIRE held 0.6 s with the hit chance as its ring |
+| Engineering | POWER (0,0,8,4), REACTOR (8,0,4,2), BUSES (8,2,2,2), AIR (10,2,2,2) | Supply against demand as one bar; the eleven load groups as a mixing desk, each fader an icon, a handle at the setpoint, a fill for what it gets and a hatched gap for what it wants and does not get, with priority as pips; presets as four words; the reactor as a dial and three thermometers; the buses as a one-line diagram with five breakers; air as three ticks |
+| Science | SENSORS (0,0,5,4), SHIELDS (5,0,4,4), CONTACT (9,0,3,2), SCREEN (9,2,3,2) | The 3D scanner sweeping, PING held; the shields as a 3D model you turn by drag (owner, 2026-10-07: "a full 3d model of the ship and shield facings, and where enemies attack are from what angles"): the hull inside the six-faced bubble, faces filled by charge, hostiles' directions as lines and the last 8 s of hits as arrows labelled with bearing and elevation, the face weights and the frequency band as buttons; the selected contact with its scan as a ring; the viewscreen feed as six icons and a zoom |
+| Captain | SHIP (0,0,5,4), CREW (5,0,4,2), ALERT (9,0,3,2), ORDERS (5,2,7,2) | The three decks in plan, every room coloured by its state from the simulation (fire, open to space, smoke, damaged, no power) with crew as dots; who sits where; RED ALERT held, BRACE, the viewscreen; orders as a station, a verb and SEND, with the last four and their state |
+| Captain, SHIP tab | DECK A (0,0,6,2), DECK B (6,0,6,2), DECK C (0,2,6,2), ROOM (6,2,6,2) | The captain's damage view: the decks large, a room chosen by touch with its pressure, oxygen, temperature and crew, and SEND REPAIRS as an order |
+
+**The scanner** (helm's, tactical's and science's plots are one widget; owner, 2026-10-08:
+"scanner needs to be able to adjust range, enemiy ships on radar need to show positive or negative
+elevation", "and a line and disk to show its offset from the ships plane"; "I wish tactical plot
+display had a bigger wheel thing", "same with the other stations"): the wheel fills its panel's width
+and tilts toward the viewer to use its height (its ellipse at least 0.42 as tall as wide, at most
+0.62). The range steps with
+**-** and **+** beside its number, or the scroll wheel over the plot, 5 km a step from 5 to 100 km
+(owner, 2026-10-08: "scanner range should be increments of 5 km"). Every contact stands on a line from a disk on the ship's plane (the plane of its wings):
+the disk is where it would be at the ship's height, the line its height above or below, solid above
+and dashed below. Beside it, a mark for above (`▲`) or below (`▼`) and its distance, `4.2 km`
+(owner, 2026-10-08: "instead of elevation number, show distance numbers on these"); the elevation
+in degrees is in its tooltip. A contact below the plane is drawn at half strength, its glyph, disk,
+line and number alike, so it is plainly below ("anything below the plane should be shaded darker so
+its obvious"). A drag turns the plot round the ship and tilts it (12 to 90 degrees), shrinking it
+to stay in its panel; the ship's glyph, the tubes' cone, the camera cone and the contacts turn with
+it, and a reset button beside the range brings it back to bow up at the panel's own tilt (owner,
+2026-10-08: "let players rotate this around too, and add a button to reset it at default
+orientation"). Pressing a contact still selects it; only a drag that starts off the contacts turns
+the plot.
+
+**Where the viewscreen looks** (owner, 2026-10-08: "for panels with view screeen, there should be a
+little camera icon that shows what quadrant of ship the camera is viewing on the scanner, show if
+camerea is viewing aboce or below the ship. we need a little widget that shows what direction of the
+ship the camera is pointed at next to view screen"): every scanner draws a camera at the ship with
+its field of view as a cone on the ship's plane, pointing where the feed looks, and `▲ +20` or
+`▼ -15` beside it when the feed looks above or below that plane. Left of the viewscreen, a small
+3D model of the ship shows the camera's cone and every contact in its direction (the target ringed,
+hostiles in their colour), and turns when dragged, to see from which side of the ship things are
+happening (owner, 2026-10-08: "this display thingy should be 3d", "I can click and drag to see what
+direction og the ship things are happening", "have targets and enemies show up on there"). Under it,
+the feed buttons (forward, aft, port, starboard, target, chase) are on every console, not only
+Science's (owner: "i ccnt change camera view on helm, please fix that"); the captain's override
+still wins while it is held. They are laid out as arrow keys (owner, 2026-10-08: "arrange the arrows
+in a sensible way please"): forward over aft, port and starboard either side of aft, target and
+chase in the top corners, the same on every pad.
+
+**Words where a number needs one** (owner, 2026-10-08: "I dont understand whta the percent disal is
+for"): a number whose meaning is not its picture carries its one word. FIRE's ring is the chance the
+missile hits the target and reads `88% HIT`; the same holds for every ring that is a chance.
+
+**BRACE is a toggle** (owner, 2026-10-08: "unable to untoggle brace for impact"): one press braces
+the crew, the next stands them down. It stays on until pressed again.
+
+The mockup drives Engineering and the Captain's ship from `docs/mockups/lib/shipsystems.js` (the
+power, air, heat, fire and hit model of `power-grid`, `life-support` and `damage-control`), so
+those pictures show simulated values and the fader's ghost is `previewGroup`, the solve itself.
+Flight, contacts, turrets, tubes, shields and scans are the page's stand-ins until
+`flight-and-navigation` and `weapons-and-shields` are built; the page says so.
+
 #### 8.1 The canvas and its bands
 
 The console is laid out on a **1280 x 720 logical canvas** (logical pixels, lp). The Pi 5 drives a
@@ -363,8 +471,8 @@ atlas egui rasterizes at that scale, so text stays crisp. Every number below is 
  y  720 +--------------------------------------------------------------------------+
 ```
 
-- **Title band** (y 0-32): x 0-420 the tab chips (64 lp each: the station's own tab first, then
-  merged stations in merge-list order, at most six visible, then a "+N" chip); x 420-940 the
+- **Title band** (y 0-32): x 0-420 the station's own chip, then the open stations as chips with a
+  swap mark (section 5, superseded merging: press one to swap to it); x 420-940 the
   newest order to this station; x 940-1280 the condition chip, then the mission clock (mm:ss).
 - **Look band** (y 32-272): the bridge stays visible above the console (CLAUDE.md 10). The 3D
   passes render into a 1280 x 240 lp viewport from the seat's eye (seat point plus 1.20 m) with a
@@ -506,6 +614,11 @@ leading `~`) because replicated state is up to 100 ms old (`netcode-and-sessions
 
 Wireframes use the grid of section 8.1: `(c, r, w, h)` in columns and rows, then `x, y, w x h`
 in lp. All four core consoles, the captain's, comms' and flight ops' are drawn in the mockup.
+
+**These tables are contents, not layouts** (2026-10-07). How a console puts them on the screen is
+section 8.0: at most four panels, pictures first, the exact values on hover or focus. The layouts in
+8.0's table and `docs/mockups/consoles.html` replace the panel grids below for Helm, Tactical,
+Engineering, Science and the Captain once the owner approves them (question B13).
 
 #### 10.1 Helm
 
@@ -778,7 +891,7 @@ nearest side seat; 2.2 m from the aft stations to the aft wall's chamfered corne
 the engineering and science desks and their raked walls, 0.38 m for comms and flight operations
 (v2 plan, 2026-10-05: the side seats sit on the raked walls and face them; were 3.5 m, 1.6 m to
 the aft bulkhead and 0.65 m). Every seat and the route to it is checked against the crew collider
-(`crew-on-deck`: radius 0.30 m) by the deck compiler (CLAUDE.md 8).
+(`crew-on-deck`: radius 0.25 m) by the deck compiler (CLAUDE.md 8).
 
 #### 11.2 The viewscreen
 
@@ -1286,3 +1399,4 @@ taken (ask only with screenshots)".
 | B10 | Gunner turrets: no remote gunnery from Tactical? The Pi 5 budget's secondary view (512 x 256 at 15 Hz) could carry a sight, so this is a design choice, not a cost | None / remote sight from Tactical | None: the pods are the reason to leave the bridge. Recommendation taken (ask only with screenshots) | none |
 | B11 | Which bridge: the wedge with three levels, the round room with a ring, or the wedge split front and back (section 11a)? All three put the side consoles in the walls, raise the captain and keep the 3.5 m room; they differ in shape, levels and what the captain sees | A. Wedge, tiered / B. Round / C. Split level / today's flat bridge | A: the owner's levels exactly, the ship's shape, all the air, nothing hides the screen. **Answered 2026-10-06** (owner, in chat): "can we do the more circular bridge? but have like side rooms for meetings, captains quarters and stuff?": B, with side rooms; taken up by `command-suite` | `bridge-variants-{today,A,B,C}-cutaway.png`, `bridge-variants-{A,B,C}-captain.png`, `bridge-variants-{A,B,C}-door.png` |
 | B12 | Console screens in the room (section 11.6): each shows its own station's console, or all show one generic placeholder UI? | Own console / generic | Own console: the room previews the game a player gets when they sit | `bridge-variants-{A,B,C}-helm.png`, `bridge-variants-{A,B,C}-engineering.png`, `bridge-variants-{A,B,C}-ring.png` |
+| B13 | The consoles drawn glance first (section 8.0): four panels each, pictures instead of tables, one-word labels, the exact numbers on hover. Do they read at a glance? | Approve / approve with changes (say which) / still too busy / too sparse | Approve: each console is at most 30 words at rest, against well over a hundred in the section 10 tables | `consoles-{helm,tactical,engineering,science,captain}.png`, `consoles-red-*.png`, `consoles-scram-engineering.png` |

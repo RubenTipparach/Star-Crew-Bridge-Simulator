@@ -14,7 +14,11 @@ current files between them (CLAUDE.md section 11):
 "data:<ship>/<name>" copies data/ships/<ship>/<name>.json into a
 <script id="ship-data-<name>" type="application/json"> block, for mockups that
 read a ship's other data files (power.json, atmosphere.json, detailing.json).
-"data:lighting/<name>" copies data/lighting/<name>.json (fixtures, bake) the same way.
+"data:lighting/<name>" copies data/lighting/<name>.json (fixtures, bake) the same way, and
+"data:crew/<name>" data/crew/<name>.json (the walk's numbers, crew-on-deck).
+"bakecache:<name>" copies docs/mockups/cache/<name>.bin (a page's baked light, written by
+tools/mockups/bake_ship.mjs --write-cache) as base64 into <script id="bake-cache-<name>">, empty when
+there is none; --check also fails when a cache was baked by another lightbake.js.
 "materials" copies data/materials/materials.json and every layer it names
 (assets/textures/<name>.png, as a base64 data URI) into a
 <script id="ship-materials" type="application/json"> block, which shipkit's
@@ -26,6 +30,9 @@ and the UI images
 (ui_screen_<finish>.png, keys_<finish>.png) into a <script id="ship-panels"
 type="application/json"> block, which shipkit's loadPanels() adds to the texture array
 (wall-panels, ceilings-and-trims, floor-panels).
+"font:<name>" copies assets/fonts/<name>/<style>-<weight>.woff2 into a <style> block of
+@font-face rules with data URIs (the family is the folder name in title case), so a page
+published as one artifact needs no font server.
 "models:<set>" copies assets/models/<set>/props.json and every .glb it lists (as base64
 data URIs), and each prop's baked atlas PNG where it has one, into a
 <script id="ship-models-<set>" type="application/json"> block, for pages that place the
@@ -46,6 +53,8 @@ Usage: python3 tools/mockups/inline.py [--check] [page.html ...]
 
 import base64
 import glob
+import gzip
+import hashlib
 import json
 import os
 import re
@@ -62,7 +71,9 @@ MATERIALS = os.path.join(ROOT, "data", "materials", "materials.json")
 TEXTURES = os.path.join(ROOT, "assets", "textures")
 PANELS = os.path.join(ROOT, "data", "materials", "panels.json")
 SCREENS = os.path.join(ROOT, "assets", "textures", "screens", "screens.json")
-MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-9_-]+/[a-z0-9_-]+|shipkit|materials|panels|screens|models:[a-z0-9_-]+) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
+CACHE = os.path.join(ROOT, "docs", "mockups", "cache")
+LIGHTBAKE = os.path.join(LIB, "lightbake.js")
+MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-9_-]+/[a-z0-9_-]+|bakecache:[a-z0-9_-]+|shipkit|materials|panels|screens|models:[a-z0-9_-]+|font:[a-z0-9_-]+) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
 
 
 def png_uri(path):
@@ -70,7 +81,57 @@ def png_uri(path):
         return "data:image/png;base64," + base64.b64encode(f.read()).decode("ascii")
 
 
+def bake_cache_index(path):
+    """A bake cache's index (docs/mockups/cache/<name>.bin: gzip of "SCBK", version 1, index length, index JSON, data)."""
+    with gzip.open(path, "rb") as f:
+        raw = f.read()
+    if raw[:4] != b"SCBK" or int.from_bytes(raw[4:8], "little") != 1:
+        raise ValueError(f"{os.path.relpath(path, ROOT)} is not a version 1 bake cache")
+    n = int.from_bytes(raw[8:12], "little")
+    return json.loads(raw[12:12 + n].decode("utf-8"))
+
+
+def bake_caches_ok():
+    """Every bake cache was written by the baker the pages carry (lightbake.js), or it would be stale light."""
+    with open(LIGHTBAKE, "rb") as f:
+        sha = hashlib.sha256(f.read()).hexdigest()
+    ok = True
+    for path in sorted(glob.glob(os.path.join(CACHE, "*.bin"))):
+        rel = os.path.relpath(path, ROOT)
+        if bake_cache_index(path).get("baker_sha256") != sha:
+            print(f"  FAIL {rel}: baked by another lightbake.js; run node tools/mockups/bake_ship.mjs --write-cache")
+            ok = False
+        else:
+            print(f"  {rel}: baked by the current lightbake.js")
+    return ok
+
+
 def block(kind):
+    if kind.startswith("font:"):
+        # A typeface's woff2 files (assets/fonts/<name>/<style>-<weight>.woff2) as @font-face rules with data URIs,
+        # so a page published as one artifact needs no font server. The family is the folder's name in title case.
+        name = kind.split(":", 1)[1]
+        base = os.path.join(ROOT, "assets", "fonts", name)
+        family = " ".join(w.capitalize() for w in name.split("-"))
+        rules = []
+        for path in sorted(glob.glob(os.path.join(base, "*.woff2"))):
+            weight = int(os.path.basename(path)[:-6].rsplit("-", 1)[1])
+            with open(path, "rb") as f:
+                uri = "data:font/woff2;base64," + base64.b64encode(f.read()).decode("ascii")
+            rules.append(f'@font-face {{ font-family: "{family}"; font-weight: {weight}; font-style: normal; src: url({uri}) format("woff2"); }}')
+        if not rules:
+            raise ValueError(f"no woff2 files in {os.path.relpath(base, ROOT)}")
+        return "\n<style>\n" + "\n".join(rules) + "\n</style>\n"
+    if kind.startswith("bakecache:"):
+        # The deck plan's baked light (tools/mockups/bake_ship.mjs --write-cache), as base64; empty when there is none,
+        # and the page then bakes live.
+        path = os.path.join(CACHE, kind.split(":", 1)[1] + ".bin")
+        name = kind.split(":", 1)[1]
+        if not os.path.exists(path):
+            return f'\n<script id="bake-cache-{name}" type="application/octet-stream"></script>\n'
+        with open(path, "rb") as f:
+            text = base64.b64encode(f.read()).decode("ascii")
+        return f'\n<script id="bake-cache-{name}" type="application/octet-stream">\n{text}\n</script>\n'
     if kind == "screens":
         with open(SCREENS, encoding="utf-8") as f:
             manifest = json.load(f)
@@ -144,8 +205,8 @@ def block(kind):
     if kind.startswith("data:"):
         ship, name = kind.split(":", 1)[1].split("/", 1)
         # data:lighting/<name> is data/lighting/<name>.json (the fixture types and bake settings, light-baking
-        # design 15); any other data:<ship>/<name> is a ship's data file.
-        sub = (ship,) if ship == "lighting" else ("ships", ship)
+        # design 15), data:crew/<name> data/crew/<name>.json (the walk); any other data:<ship>/<name> a ship's file.
+        sub = (ship,) if ship in ("lighting", "crew") else ("ships", ship)
         with open(os.path.join(ROOT, "data", *sub, name + ".json"), encoding="utf-8") as f:
             data = json.load(f)
         text = json.dumps(data, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
@@ -220,6 +281,7 @@ def main(argv):
         pages = sorted(glob.glob(os.path.join(ROOT, "docs", "mockups", "*.html")))
     ok = all([process(p, check) for p in pages])
     ok = budget_ok() and ok
+    ok = bake_caches_ok() and ok
     return 0 if ok else 1
 
 

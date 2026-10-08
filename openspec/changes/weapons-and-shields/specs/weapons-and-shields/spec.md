@@ -97,6 +97,22 @@ clear a jam, in 20 s.
 - **THEN** the autoloader has both tubes loaded 18 s later, and the hoist has restocked one ready
   rack 20 s after it started
 
+### Requirement: Loading a missile is seen inside the ship
+Every step from the magazine to the tube SHALL be shown in the magazine and the torpedo room by the
+mechanisms that do it (the rack cradle, the hoist platform, the ready rack's arms, the breech door, the
+rammer and the umbilical arm), driven by the tube's state and its progress, at the step's own time; a
+crew member loading by hand SHALL play the step's clip at the breech. A body in the hoist opening SHALL
+stop the hoist.
+
+#### Scenario: Watching the autoloader
+- **WHEN** a crew member stands in the torpedo room while tube 1 loads from a ready rack
+- **THEN** they see the breech open, the missile rammed in and the breech sealed over 18 s, and the
+  tube reads Loaded when the umbilical plugs in
+
+#### Scenario: Someone in the hoist trunk
+- **WHEN** a body stands in the hoist opening while a missile is coming up
+- **THEN** the hoist stops until the opening is clear, and the console says HOIST BLOCKED
+
 ### Requirement: Missiles are guided bodies that can be intercepted
 A Gannet SHALL be handed to the system frame at launch with the tube's point velocity plus 30 m/s,
 ignite 0.5 s later, boost at 120 m/s^2 for 6 s and sustain at 40 m/s^2 for 20 s, steer by
@@ -108,10 +124,13 @@ that reaches it.
 - **WHEN** a Gannet is launched at a stationary target 5 km ahead
 - **THEN** it reaches it in about 9.7 s
 
-### Requirement: Shields have six faces chosen by the normalized dominant axis
+### Requirement: Shields have six faces with round caps fore and aft
 The Tern's shield SHALL be an ellipsoid of semi-axes 17.0 x 13.0 x 54.0 m centred at [0.0, 1.5,
--2.0] in the ship frame, with six faces (bow, stern, port, starboard, dorsal, ventral). A hit's face
-SHALL be the largest component of its ship-frame offset from that centre divided by the semi-axes.
+-2.0] in the ship frame, with six faces (bow, stern, port, starboard, dorsal, ventral). With n the
+hit's ship-frame offset from that centre divided by the semi-axes, a hit's face SHALL be the bow or
+the stern when |n.z| / |n| is at least 2/3, otherwise port or starboard when |n.x| >= |n.y|, otherwise
+dorsal or ventral, each by the sign of its component, so that each face is one sixth of the
+normalized sphere.
 Total capacity SHALL be 240 MJ times the generator's health, regeneration `0.25 x delivered power`,
 distributed by science's face weights; below 15% of nominal supply every face SHALL decay at
 2 MJ/s.
@@ -120,9 +139,30 @@ distributed by science's face weights; below 15% of nominal supply every face SH
 - **WHEN** a bolt strikes the shield at ship-frame offset (12, 0, 20) m from its centre
 - **THEN** the port face absorbs it, not the bow
 
+#### Scenario: The bow's border is round
+- **WHEN** two hits strike the shield 47 degrees from the long axis in normalized coordinates, one
+  straight toward the top and one toward the diagonal between the top and port
+- **THEN** both are bow hits, where the old largest-component rule gave the first to the top and the
+  second to the bow
+
 #### Scenario: Shields without power
 - **WHEN** the shield generator's supply falls to 10% of nominal
 - **THEN** every face loses 2 MJ per second until it is empty or power returns
+
+### Requirement: The shield view shows the ship, its faces and where attacks come from
+Science's shield panel and tactical's plot SHALL draw the shield as the hull loft from the layout
+inside the ellipsoid, each patch of the ellipsoid coloured by the charge of the face the hit-resolving
+function assigns to its centre. Every hostile in sensor range SHALL draw a line from its direction, and
+every hit in the last 8 s SHALL draw an arrow from its direction onto the face it struck, labelled with
+its bearing (to starboard from the bow) and elevation in degrees.
+
+#### Scenario: A hit on the port quarter
+- **WHEN** a bolt strikes the port face from bearing 250, elevation +12
+- **THEN** the port face flashes, its fill drops by the energy absorbed, and an arrow labelled `250 +12` points into it from that direction for 8 s
+
+#### Scenario: The view agrees with the resolver
+- **WHEN** a hit lands 20 m forward of midships on the port side
+- **THEN** the view colours that spot as the port face, as the resolver does, not the bow
 
 ### Requirement: Only overflow reaches the hull, as a hull hit for damage-control
 The damage resolution SHALL be one function for every ship and craft. A face SHALL absorb the hit's

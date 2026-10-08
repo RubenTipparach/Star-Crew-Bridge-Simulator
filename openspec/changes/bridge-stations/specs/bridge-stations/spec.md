@@ -98,19 +98,20 @@ setpoints passively.
 - **WHEN** the computer core's breaker trips with Helm and the turrets automated
 - **THEN** the ship holds its heading and speed and the automated turrets stop firing until the core is powered again
 
-### Requirement: Unmanned stations merge onto manned consoles
-A station with no seated player SHALL appear as a tab on the first manned station in its merge
-list from `data/stations.json`, while its automation keeps running. While no captain is seated,
-the condition, orders and brace SHALL be available in the title band of every manned bridge
-console.
+### Requirement: A player swaps to any open station from any seat
+A station with no player SHALL run on its automation and SHALL NOT appear as a tab on another
+console. Every console's title band SHALL list the open stations, and pressing one SHALL swap that
+player's console to the station without standing up, handing the station they leave back to its
+automation from its current state. While no captain is seated, the condition, orders and brace SHALL
+be available in the title band of every manned bridge console.
 
 #### Scenario: One player
 - **WHEN** one player sits at the helm and no one else is aboard
-- **THEN** the helm console shows tabs for Tactical, Engineering, Science, Comms, Flight ops and the Damage board, and the title band offers the condition
+- **THEN** the helm console's title band lists Tactical, Engineering, Science, Comms, Flight ops and the Damage board as open, with no tabs, and pressing Engineering turns the console into Engineering while helm automation holds course
 
-#### Scenario: Four players
-- **WHEN** players sit at helm, tactical, engineering and science
-- **THEN** Flight ops is a tab on Tactical, Comms a tab on Science, and the Damage board a tab on Engineering
+#### Scenario: A taken station is not open
+- **WHEN** Ben sits at Tactical
+- **THEN** Tactical is not in any other console's open list
 
 ### Requirement: Body swap never takes a player's body
 When body swap is enabled, a player SHALL be able to swap into any NPC body aboard that is not
@@ -164,6 +165,23 @@ ellipsis and lists SHALL scroll inside their panel. A validator SHALL check ever
 #### Scenario: A long name
 - **WHEN** a contact's name is wider than the Targets panel's row
 - **THEN** it is clipped with an ellipsis and the panel keeps its size
+
+### Requirement: Consoles are read at a glance
+Every console SHALL have at most four panels, each one picture (a lever, a dial, a plot, a set of
+faders, a plan) rather than rows of labels and values. Panel titles and control labels SHALL be one
+word, or two at most, and a console at rest SHALL show at most 30 words, not counting numbers and
+crew names. A number SHALL be shown at rest only where a player acts on it; the exact values behind
+every picture SHALL be shown for the control under the pointer or the gamepad focus. State SHALL be
+shown by colour and by shape together. The console validator SHALL check the panel count, the
+label lengths and the word count of every `data/consoles/*.json`.
+
+#### Scenario: A fifth panel
+- **WHEN** a console file declares five panels
+- **THEN** the validator fails and names the console
+
+#### Scenario: Power wanted and not delivered
+- **WHEN** the shields' group wants 15 MW and the solve delivers 9 MW
+- **THEN** its fader shows the 9 MW as a fill and the missing 6 MW as a hatched gap above it, and the numbers appear only on hover or focus
 
 ### Requirement: A console's preview is computed by the resolver
 Every preview a console shows (a power setpoint's delivered MW, a turn's time, a turret's hit

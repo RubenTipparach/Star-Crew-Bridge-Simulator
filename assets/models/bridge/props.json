@@ -156,16 +156,16 @@
         "union fins (2)",
         "difference screens (5)"
       ],
-      "sha256": "97083022c75dbba868dda3bec768f9088b5b291405f4794934b7e99b3d542c91",
+      "sha256": "5edcd4b78a462bb7ed9f3518f090e212ef33369e15f40407a4060b8e2756fe76",
       "atlas": {
         "file": "atlas/wall_bank_core.png",
         "px": 256,
-        "px_per_m": 65.77,
-        "charts": 22,
-        "cover": 0.515,
-        "glow": 0.0424,
-        "sha256": "5da5a5afa3f4debed5d68bfc7cd6fe538d1e83bf3a960c6703778cf74ca2749e",
-        "bytes": 19615
+        "px_per_m": 65.86,
+        "charts": 41,
+        "cover": 0.517,
+        "glow": 0.0368,
+        "sha256": "d191b68806cde78f9ca1cfe493d5f80be58e50d4613ba6d7d304542d02f9dc86",
+        "bytes": 21111
       }
     },
     "wall_bank_core_engineering": {
@@ -312,16 +312,16 @@
         "union breakers (5)",
         "difference screens (5)"
       ],
-      "sha256": "74318b7a064c204217b00edcd277dea3faa7e782710ad499adea30247764dfb5",
+      "sha256": "a5ed68856c9796fd0540f49586180b8b20f8302de26096080edb1537d92d4dc9",
       "atlas": {
         "file": "atlas/wall_bank_core_engineering.png",
         "px": 256,
-        "px_per_m": 66.23,
-        "charts": 27,
-        "cover": 0.524,
-        "glow": 0.0412,
-        "sha256": "bed12319f288dc4fbd1b82003554ab060ffad764b10b52555b93832f85fd7abf",
-        "bytes": 13631
+        "px_per_m": 65.87,
+        "charts": 57,
+        "cover": 0.518,
+        "glow": 0.0362,
+        "sha256": "a045ed225fad3f951c76a61512c5d9edd96e01690cc5f76221eca006fabad736",
+        "bytes": 19502
       }
     },
     "wall_bank_core_science": {
@@ -468,16 +468,16 @@
         "union dials (4)",
         "difference screens (5)"
       ],
-      "sha256": "378eb4627ad0ea380961b42180ff7063b97a86cdaf8677d0cf4bf193422b2eae",
+      "sha256": "f4d14c2f7bd5c85593d25f803e4e43916a26ed23f3a918af589ea4be2a0ff47b",
       "atlas": {
         "file": "atlas/wall_bank_core_science.png",
         "px": 256,
-        "px_per_m": 65.71,
-        "charts": 27,
-        "cover": 0.517,
-        "glow": 0.0383,
-        "sha256": "281cccb07c2f15cec26f8ea3ea51e8f7c546dcbf104bae96d0372eb0bc996681",
-        "bytes": 17760
+        "px_per_m": 65.54,
+        "charts": 53,
+        "cover": 0.514,
+        "glow": 0.0362,
+        "sha256": "d6d9bf04beda27221348924223172dde174e28ff078ebd8c31ce9872624cecfa",
+        "bytes": 20116
       }
     },
     "wall_bank": {
@@ -616,16 +616,16 @@
         "union fins (2)",
         "difference screens (5)"
       ],
-      "sha256": "6d66a083bd807ed4e9b5fec7e142672f6624ce65c1fc34f1018285c4f2dd5981",
+      "sha256": "e8febe0e84bad9d2a00046923083015cdf829c5c9d55d9df3ad2cee0f714144d",
       "atlas": {
         "file": "atlas/wall_bank.png",
         "px": 256,
-        "px_per_m": 70.6,
-        "charts": 21,
-        "cover": 0.534,
-        "glow": 0.0382,
-        "sha256": "dddfa4a50f4721c8f70d8d1cc4144cae3afd5bcdd85b5fc5e66ca6b95cc96bbe",
-        "bytes": 16629
+        "px_per_m": 68.62,
+        "charts": 40,
+        "cover": 0.504,
+        "glow": 0.0335,
+        "sha256": "122ab117da0c9fbfd31462613cf930eb0f674c6a905beef08dc643ee0eb3b518",
+        "bytes": 23336
       }
     },
     "wall_bank_comms": {
@@ -772,16 +772,16 @@
         "union sliders (5)",
         "difference screens (5)"
       ],
-      "sha256": "36437f646601ae3245bba2b074da2c9ca9e0d222d892bad823a6fbb6c881ea82",
+      "sha256": "a3d095de18204c4cc9809d6dede32259cab1e6bdad4b013785f4a3948eaa95e1",
       "atlas": {
         "file": "atlas/wall_bank_comms.png",
         "px": 256,
-        "px_per_m": 70.24,
-        "charts": 26,
-        "cover": 0.531,
-        "glow": 0.033,
-        "sha256": "898fca47e562b22b5b9e437534f73b31691667b1a9c419152aee6010d02a64de",
-        "bytes": 17334
+        "px_per_m": 68.55,
+        "charts": 51,
+        "cover": 0.505,
+        "glow": 0.0333,
+        "sha256": "360ef970f772384fa3f107a5174a97c7b174689df1140c7d6a7730654e2d5faa",
+        "bytes": 21325
       }
     },
     "wall_bank_flight_ops": {
@@ -929,16 +929,16 @@
         "union levers (5)",
         "difference screens (5)"
       ],
-      "sha256": "4b1b915e2c6c5a54328a74f03fc709a7e39d499377325948e8db8851c9b27456",
+      "sha256": "c8490cfe1b69cb87b05a0aa4bc5576a8ba2623e561cae6caa609ca8152aa3e0d",
       "atlas": {
         "file": "atlas/wall_bank_flight_ops.png",
         "px": 256,
-        "px_per_m": 70.43,
-        "charts": 26,
-        "cover": 0.534,
-        "glow": 0.0362,
-        "sha256": "710efc005f6134a817c9419908c3540527e581cb41d8c3cf96f95c2adb87c57c",
-        "bytes": 11325
+        "px_per_m": 68.55,
+        "charts": 49,
+        "cover": 0.505,
+        "glow": 0.0333,
+        "sha256": "bb642bc9076f8a10f33ec88e57a1a94d5e23a60ed28ffacbce1721d0a163ddf8",
+        "bytes": 17372
       }
     },
     "wall_bank_double": {
@@ -1168,16 +1168,16 @@
         "union fins (2)",
         "difference screens (10)"
       ],
-      "sha256": "ac3c369076571afb19cc09dd0b6b181b7f0fa0f0f21d5b1ae3cfd87b8e7cbfdc",
+      "sha256": "b05ece5d367b5cedc5315cdc5695e22d5559b11574393cb99eb269e57829bbd8",
       "atlas": {
         "file": "atlas/wall_bank_double.png",
         "px": 256,
-        "px_per_m": 54.19,
-        "charts": 27,
-        "cover": 0.469,
-        "glow": 0.05,
-        "sha256": "18dc1e9f1173360a10f7ef9c649250eff87b0444784ed9bd0b2542e53001bdb1",
-        "bytes": 22266
+        "px_per_m": 55.04,
+        "charts": 51,
+        "cover": 0.483,
+        "glow": 0.0518,
+        "sha256": "71d8f388b33e7c027f75c7368a336315a96acbfadd913a2103834a2e26584451",
+        "bytes": 21207
       }
     },
     "free_console": {
@@ -1269,16 +1269,16 @@
         "union pedestal_plinth_housing (3)",
         "difference screens (3)"
       ],
-      "sha256": "78aa0426c706b11fed907b88e679f8141a8a34a5ae6601dc14f7adc8502b7793",
+      "sha256": "624987e8501c695c427af5b285b74059fce6849468a14447f97e4ca134c27804",
       "atlas": {
         "file": "atlas/free_console.png",
         "px": 256,
-        "px_per_m": 90.11,
-        "charts": 10,
-        "cover": 0.554,
-        "glow": 0.0036,
-        "sha256": "e616c3cac16c3bf446c81e1cfb999959408fdeafb62b231ad0f83a59168da2b7",
-        "bytes": 12446
+        "px_per_m": 93.19,
+        "charts": 25,
+        "cover": 0.592,
+        "glow": 0.0044,
+        "sha256": "f8c4248f20bfc6004272c7adce4aff624450069d2f8626fb568d0a72f8e8377c",
+        "bytes": 14966
       }
     },
     "free_console_helm": {
@@ -1379,16 +1379,16 @@
         "union helm_controls (6)",
         "difference screens (3)"
       ],
-      "sha256": "54e9ade197eac9d13ff6f9ba3e7edc336d90734b04c741e47b15e97d7ff7d868",
+      "sha256": "fc01adda39434ca5f9567968603e7ae89a0d5bd149090332f6bc82facff4352a",
       "atlas": {
         "file": "atlas/free_console_helm.png",
         "px": 256,
-        "px_per_m": 90.01,
-        "charts": 18,
-        "cover": 0.56,
-        "glow": 0.0024,
-        "sha256": "d8b1d68014e28dcbd0127ac81fc6e2a92d1e5382d5793ab5e0bbf4dbd00ea602",
-        "bytes": 14522
+        "px_per_m": 91.89,
+        "charts": 37,
+        "cover": 0.583,
+        "glow": 0.0019,
+        "sha256": "071576c63318a824d52b01cfc79ba175060adfabde12eb2339bec558230d58bf",
+        "bytes": 20525
       }
     },
     "free_console_tactical": {
@@ -1489,16 +1489,16 @@
         "union fire_buttons (6)",
         "difference screens (3)"
       ],
-      "sha256": "9f2ab1988e88766cc307a9675618667bcfccd39fec1b8cb1d4fd73fb9fcd407e",
+      "sha256": "893f554aa72b04e55ce19542cda3f5bb7276684c166dfd98b7cd7d5dbd56564f",
       "atlas": {
         "file": "atlas/free_console_tactical.png",
         "px": 256,
-        "px_per_m": 90.11,
-        "charts": 16,
-        "cover": 0.558,
-        "glow": 0.0037,
-        "sha256": "cc50ead40e2505abe54164a1394b309f24c0254b8c4182cbceda70681da977dd",
-        "bytes": 12852
+        "px_per_m": 93.17,
+        "charts": 33,
+        "cover": 0.597,
+        "glow": 0.0048,
+        "sha256": "4d825a6d453e8cd0d61b921591c1982821be96ddeb16bbf6b893308fb3b5c2a1",
+        "bytes": 13967
       }
     },
     "helm_arc": {
@@ -1622,16 +1622,16 @@
         "union controls (12)",
         "difference screens (3)"
       ],
-      "sha256": "a89c8342cd945584978214458d7890bdd8cb425c7ab01e95e0478e32920ee6e9",
+      "sha256": "bd1ae2e39e8227c46fe9c02593cf7791cab1c4d5630996c305ed3acdfdd98b9e",
       "atlas": {
         "file": "atlas/helm_arc.png",
         "px": 256,
-        "px_per_m": 75.51,
-        "charts": 34,
-        "cover": 0.637,
-        "glow": 0.0506,
-        "sha256": "64ee1198631f4166ab913230ae63f330737a23ff98220692253c83f92903227b",
-        "bytes": 17050
+        "px_per_m": 74.4,
+        "charts": 45,
+        "cover": 0.618,
+        "glow": 0.0492,
+        "sha256": "a4acfa0e84e2f16e5c51db9e51caebb089f3f3e6dfa7edb83014bf89b92a50db",
+        "bytes": 17804
       }
     },
     "captain_chair": {
@@ -1738,16 +1738,16 @@
         "union chair (19)",
         "difference screens (2)"
       ],
-      "sha256": "5a167b27e23adac1986fe3400e3ea09897b35d04c8ccb8ef864d8c0b2d08085a",
+      "sha256": "c202c2e7c667ea637b1124c2beeafb77def81dd6a3f8503d26e93b98566fef83",
       "atlas": {
         "file": "atlas/captain_chair.png",
         "px": 256,
-        "px_per_m": 90.62,
-        "charts": 36,
-        "cover": 0.483,
-        "glow": 0.0011,
-        "sha256": "9d1d70891ec0f910eb17bd25746af87a4ad78a99c4faf3d215d623e31ff27871",
-        "bytes": 23599
+        "px_per_m": 94.0,
+        "charts": 95,
+        "cover": 0.52,
+        "glow": 0.0004,
+        "sha256": "36bd9cbdd83d99ad95e8a33f4beab5cc9e53a542c8fb1b270c68b0d71e35f636",
+        "bytes": 31999
       }
     },
     "crew_chair": {
@@ -1801,16 +1801,16 @@
         "chamfer arm_rest_+1_edges (2 edges, 12 mm)",
         "union chair (13)"
       ],
-      "sha256": "13290caa4d9af68071d0de75260302a74bdec42f4fccbdbbb3f1941f88fb9c18",
+      "sha256": "e150b8b095485661920bea3e551d1bd1d5110a8b6e0fd9aa30463ca0b5aed450",
       "atlas": {
         "file": "atlas/crew_chair.png",
         "px": 256,
         "px_per_m": 128.0,
-        "charts": 20,
+        "charts": 40,
         "cover": 0.535,
         "glow": 0.0,
-        "sha256": "fdaa05198a815be7da79ad36bc305800cb2c40bddfe6319bb89c58af049cbc21",
-        "bytes": 25938
+        "sha256": "1a2118705f42361a5b74ec129d1eca3f1a3ae891efa0403a3d4decaa4e17369c",
+        "bytes": 27140
       }
     },
     "standup_console": {
@@ -1879,16 +1879,16 @@
         "union column_base (2)",
         "difference screens (1)"
       ],
-      "sha256": "54df1076194637ecfa41930750006f9efcfd3a5f4e2ec9087937b08e9d203291",
+      "sha256": "914c4e05efe7219e79c7a60a4d8ff9b90b2263e995ad837cc9fe498446d19090",
       "atlas": {
         "file": "atlas/standup_console.png",
         "px": 256,
         "px_per_m": 128.0,
-        "charts": 5,
+        "charts": 9,
         "cover": 0.494,
-        "glow": 0.0018,
-        "sha256": "6810080c37ed47b63694eb121108b2193482b9e98bf444fa7a43d54cd117fdcd",
-        "bytes": 12201
+        "glow": 0.0007,
+        "sha256": "4d39f7190ade076454dafaf63dd3f64e7d35a58ee4cf4621caafba04086f798d",
+        "bytes": 18578
       }
     }
   }

@@ -332,6 +332,8 @@ def check(path, quiet=False):
     for s in L.get("systems", []):
         sys_ids.add(s["id"])
         inside(s["compartment"], s["center_m"], f"system {s['id']}")
+        for k, u in enumerate(s.get("units_m", [])):   # a system built as several machines (the impulse drive's two)
+            inside(s["compartment"], u, f"system {s['id']} unit {k}")
     mounts = {m["id"] for m in L.get("mounts", [])}
     station_ids = {s["id"] for s in L.get("stations", [])}
     for s in L.get("stations", []):

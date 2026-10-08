@@ -1,0 +1,18 @@
+[package]
+name = "sc-probe"
+description = "The Pi 5 probe: synthetic scenes that measure the budget on real hardware (a measurement instrument)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+sc-core.workspace = true
+sc-render.workspace = true
+sc-client.workspace = true
+glam.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

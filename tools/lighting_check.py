@@ -12,8 +12,8 @@ It is documentation tooling (CLAUDE.md section 4): it changes nothing.
 Checks:
   - each file's schema, and no key outside the ones listed here (keys starting with _ are notes);
   - every number finite, non-negative where a negative means nothing, and in its range;
-  - a fixture type's kind (point or area) and exactly that kind's keys; light (lamp, strip, role,
-    fixed) with color_srgb exactly when fixed; emergency (bus or always);
+  - a fixture type's kind (point or area) and exactly that kind's keys; light (lamp, strip, kick,
+    role, fixed) with color_srgb exactly when fixed; emergency (bus or always);
   - bake.json's presets override only keys bake.json has, with values of the same type;
   - max_added_triangles has a default.
 
@@ -30,7 +30,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FIXTURES = os.path.join(ROOT, "data", "lighting", "fixtures.json")
 BAKE = os.path.join(ROOT, "data", "lighting", "bake.json")
 
-LIGHTS = ("lamp", "strip", "role", "fixed")
+LIGHTS = ("lamp", "strip", "kick", "role", "fixed")
 EMERGENCY = ("bus", "always")
 COMMON = {"kind", "light", "emergency", "range_m"}
 OPTIONAL = {"emergency_scale", "color_srgb"}

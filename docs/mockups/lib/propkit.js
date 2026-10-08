@@ -234,11 +234,13 @@
     const operatorZ = (kind, fallback) => (PROPS && PROPS[kind] && PROPS[kind].rec.operators_m && PROPS[kind].rec.operators_m[0][2]) || fallback;
 
     /** Append a prop's parts, turned by yaw (degrees, 0 faces the bow) and moved to back_m, into parts by role.
-     * Its accent takes the station's role colour, or o.accent (a THREE.Color) when given. */
+     * Its accent takes the station's role colour, or o.accent (a THREE.Color) when given. o.wall, when given, says whether
+     * this placement stands on a wall (its back left out) whatever the prop's anchor: a wall prop standing free beside its
+     * machine keeps its back (owner, 2026-10-08: "the back of this console in the engine room is missing geometry"). */
     function placeProp(parts, kind, back, yawDeg, station, o) {
       const pr = propOf(kind), th = (yawDeg * Math.PI) / 180, c = Math.cos(th), s = Math.sin(th);
       back = offWall(pr, back, s, c);
-      const onWall = !!(pr.rec && String(pr.rec.anchor || "").includes("wall"));
+      const onWall = o && o.wall !== undefined ? !!o.wall : !!(pr.rec && String(pr.rec.anchor || "").includes("wall"));
       const tint = (o && o.accent) || roleColor(station);
       for (const [mname, P] of Object.entries(pr.parts)) {
         const screen = mname === "screen", accent = mname === "accent";
@@ -350,9 +352,39 @@
       }
     }
 
+    /**
+     * A placed console's kick strips (openspec/changes/kick-lights design 2): its family's strips from kicks (detailing.json
+     * kicks.props; every wall bank is "wall_bank"), turned by yaw and moved to back as placeProp places the prop, into
+     * parts.kick_strip (a drawn light on the light panel layer). Returns them as { o, u, v, n, len, type } in the room
+     * (type the fixture type: kick_strip, or column_strip for the light columns beside a wall bank), for a bake's
+     * emitters; none for a prop whose family lists none.
+     */
+    function placeKicks(parts, kind, back, yawDeg, kicks) {
+      const fam = kind.startsWith("wall_bank") ? "wall_bank" : baseOf(kind), list = (kicks && kicks[fam]) || [];
+      if (!list.length) return [];
+      const pr = propOf(kind), th = (yawDeg * Math.PI) / 180, c = Math.cos(th), s = Math.sin(th);
+      back = offWall(pr, back, s, c);
+      const W = (x, y, z) => [back[0] + x * c + z * s, back[1] + y, back[2] - x * s + z * c];
+      const bounds = pr.rec && pr.rec.bounds_m, B = new K.Builder(), out = [];
+      for (const k of list) {
+        if (k.x_m === undefined && !bounds) continue;   // a stand-in has no bounds to measure from
+        const spans = k.beside_m ? [[bounds.min[0] - k.beside_m[1], bounds.min[0] - k.beside_m[0]], [bounds.max[0] + k.beside_m[0], bounds.max[0] + k.beside_m[1]]]
+          : [[k.x_m !== undefined ? -k.x_m : bounds.min[0] + k.x_inset_m, k.x_m !== undefined ? k.x_m : bounds.max[0] - k.x_inset_m]];
+        const [ya, yb] = k.y_m, [za, zb] = k.z_m, n = [k.normal[0] * c + k.normal[2] * s, k.normal[1], -k.normal[0] * s + k.normal[2] * c];
+        for (const [x0, x1] of spans) {
+          const p0 = W(x0, ya, za), p1 = W(x1, ya, za), p2 = W(x1, yb, zb), p3 = W(x0, yb, zb);
+          B.quad("kick_strip", p0, p1, p2, p3, n);
+          out.push({ o: p0, u: p1.map((v, j) => v - p0[j]), v: p3.map((v, j) => v - p0[j]), n, len: Math.max(x1 - x0, yb - ya), type: k.type || "kick_strip" });
+        }
+      }
+      const P = B.parts.kick_strip, dst = parts.kick_strip || (parts.kick_strip = { position: [], normal: [], uvm: [], material: "light_panel" });
+      dst.position.push(...P.position); dst.normal.push(...P.normal); dst.uvm.push(...P.uvm);
+      return out;
+    }
+
     return {
       PROPS, SCREENS, baseOf, propFor, imagesOf, addFaces, faceMat, standIn, propOf, operatorZ,
-      placeProp, placeCrew, mergeParts, roleColor, spaceViews, bytes: SCREENS ? SCREENS.bytes : 0,
+      placeProp, placeKicks, placeCrew, mergeParts, roleColor, spaceViews, bytes: SCREENS ? SCREENS.bytes : 0,
     };
   }
 

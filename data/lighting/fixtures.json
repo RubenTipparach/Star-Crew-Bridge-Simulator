@@ -5,7 +5,7 @@
     "A fixture type is what a fixture record (the kit's lamp rule today; deckgen's placement and the detail files later, deck-pipeline section 7) names. The layout holds no lights.",
     "kind point: a light at a position with a radius (soft shadows), intensity_cd straight down its beam, beam_exponent (cos^n falloff off the axis; 0 lights every way), range_m (where its light ends), drop_m (the light's centre under the lens the kit draws).",
     "kind area: an emissive face (a strip, a screen, a glow band) that lights the room: luminance_cd_m2 over the face's area, range_m; a strip also width_m (across the cove) and end_clear_m (kept off each end of its cove).",
-    "light names where its colour per state comes from: lamp or strip (ShipKit.LIGHTING's lamp or strip colour and weight in each state, the state palette every mockup shares), role (the station's role colour, steady in every state) or fixed (color_srgb, steady in every state).",
+    "light names where its colour per state comes from: lamp, strip or kick (ShipKit.LIGHTING's lamp or strip colour and weight in each state, the state palette every mockup shares), role (the station's role colour, steady in every state) or fixed (color_srgb, steady in every state).",
     "emergency: bus (lit on emergency power only when the record is on the emergency bus) or always. emergency_scale multiplies its emergency-power light (an emergency-bus lamp burns brighter than its share; a screen dims).",
     "Units are in the keys. An unknown key is an error; a missing optional key takes the default stated here (emergency_scale 1). tools/lighting_check.py validates this file."
   ],
@@ -29,6 +29,16 @@
       "_doc": "A light strip along the middle of every cove the kit builds, and under a mezzanine along its walls.",
       "kind": "area", "luminance_cd_m2": 1400, "range_m": 6.0, "width_m": 0.08, "end_clear_m": 0.25,
       "light": "strip", "emergency": "always"
+    },
+    "kick_strip": {
+      "_doc": "An indirect strip hidden at the foot of a platform edge (in its toe kick, on a 45 degree chamfer facing out and down) or of a console (openspec/changes/kick-lights): the floor glows, the strip is not seen. Its colour is the state palette's kick colour, the blue of the owner's reference K1 in normal light. Lit on emergency power: it marks the floor edges to the doors.",
+      "kind": "area", "luminance_cd_m2": 3000, "range_m": 2.5, "width_m": 0.042, "end_clear_m": 0.0,
+      "light": "kick", "emergency": "always", "emergency_scale": 0.7
+    },
+    "column_strip": {
+      "_doc": "A vertical light column on the wall at each side of a wall bank, behind the terminals (openspec/changes/kick-lights design 2a; the owner, 2026-10-07: \"vertical lights behind terminals too\", after reference K1's blue light panels beside its consoles). Seen directly; it lights the wall and the bank's fins. Its colour is the state palette's kick colour.",
+      "kind": "area", "luminance_cd_m2": 1500, "range_m": 3.0, "width_m": 0.05, "end_clear_m": 0.0,
+      "light": "kick", "emergency": "always", "emergency_scale": 0.5
     },
     "console_screen": {
       "kind": "area", "luminance_cd_m2": 160, "range_m": 3.5, "light": "role", "emergency": "always", "emergency_scale": 0.6

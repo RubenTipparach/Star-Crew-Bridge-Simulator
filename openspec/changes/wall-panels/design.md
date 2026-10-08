@@ -68,6 +68,18 @@ From the floor up:
 | More modules | 2.0 m each | Another module for each further whole 2.5 m of height (tall rooms: engineering, the hangar) | Chosen by the same rule, one level up |
 | Top | the rest, up to the cove | Pipe and conduit run; on walls over 0.5 m it repeats in 0.5 m quads, the last cropped | A strip that tiles along the wall |
 
+**A floor inside the room starts the bands again** (owner, 2026-10-08, from engineering's mezzanine:
+"engine room textures get cut off here, should fix"). Engineering is one room 10 m tall, and its walls were
+banded once from the deck C floor: base to -3.0, module to -1.0, louvre, then a module from -0.5 to 1.5 m,
+which the mezzanine's floor at 0.0 m cut through, so from the mezzanine every wall showed modules sunk half a
+metre into the floor (and again at the catwalk, deck A). Now, over the stretch of a wall that a fixture floor
+inside the room meets (a mezzanine, a catwalk or a landing, `deck-pipeline`), the wall is banded as two walls:
+from the floor below up to the slab's underside, its top strips cropped there, and from the fixture floor up,
+starting with a base strip, as a wall rising from a deck does. The slab's own thickness takes a top strip,
+hidden behind the slab's edge. Elsewhere on the same wall the bands run from the bottom as before; the bays are
+cut where the floor's stretch begins and ends. A level above a fixture floor counts its levels from 100 a
+floor, so the rule's keys (section 4) differ from the levels below.
+
 A crew room 3.0 m high has 2.65 m of flat wall under its 0.35 m cove: a base, a module and a
 0.15 m top band. The bridge (3.5 m, 3.15 m of flat wall) has a 0.65 m top band. Strips are 0.5 m
 tall and tile with a 2 m period. The four strips of a set (base, top, a louvre band and a spare)

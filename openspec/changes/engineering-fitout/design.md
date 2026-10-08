@@ -243,6 +243,42 @@ not used by the solve: a conduit has a capacity, not a resistance, in `power-gri
   get replaced with custom textures"). They take the floor panels' cells, as a compartment's own
   floor does (`floor-panels`).
 
+### 5a. The reactor's plasma windows
+
+The owner, 2026-10-08, on the reactor's glowing window bands: "we need to be able to see some cool plasma
+shit traveling around inside a confined ring here. need the best shaders you got for this". The three
+windows (0.64 m tall, at each deck's eye height, `build_machinery_props.py` `reactor_core`) were a flat
+emissive band. Now each looks into the column, through glass, at the plasma held in its ring:
+
+- **The volume behind the glass.** The column's window is a twelve-sided band 1.82 m from the axis. Behind it
+  the shader marches the view ray through a ring-shaped chamber, from the glass in to a dark inner wall
+  0.95 m from the axis, and between the band's top and bottom. Nothing is modelled inside: what is seen is
+  computed per pixel, so it moves with the eye (parallax) as a real chamber would.
+- **The plasma.** A torus of hot gas, its centre line 1.40 m from the axis at the window's mid-height, 0.26 m
+  in minor radius, brightest in its core. It turns round the axis, faster near its centre line than at its
+  edges (differential rotation), so the glow shears as it goes round. Twisted filaments run along it on a
+  helix (the field lines of the magnets that hold it), and a slow noise breaks it into clumps and wisps.
+- **Colour.** Violet at its thin edges, through blue and cyan, to white where it is densest: the blue-white
+  of section 1's reference, never orange (orange is fuel).
+- **The glass and the frame.** The glass reflects a little at a grazing angle; the twelve facets' joints are
+  dark mullions; the band's top and bottom edges are shaded where they meet the column's steel.
+- **Lighting states.** It burns the same in the normal and red-alert lights and at 30 % on emergency power,
+  the panels' glow (`panels.json` `glow`). On red alert it turns a little faster.
+
+**Where it lives.** A page-side shader in the mockups (`deck-plan.html`, three.js `ShaderMaterial`, GLSL ES
+3.00), on three twelve-sided bands 12 mm proud of the prop's window faces, in the reactor prop's placement
+and in every deck slice's clipping. The engine's version is `engine-stack`'s: the same idea in one shader
+module.
+
+**The Pi 5 cost.** It is the one per-pixel effect in engineering. The mockup marches 28 steps a pixel (each
+pixel's first step jittered, so the samples never line up into rings) with two octaves of 3D value noise, which is far more than a Pi 5 can spend: at 1280 x 720 the window bands
+cover at most about 15 % of the screen when the crew stand at the reactor (about 140,000 pixels), and 28
+steps of noise there is several gigaflops a second at 60 frames a second. The engine's version takes the
+shape, not the cost: three layers of one 128 x 128 scrolling noise texture at three depths (parallax by
+offsetting each layer's coordinates along the view direction), sampled once each, about 6 texture reads a
+pixel. That is one more draw (the bands are a separate material, since they animate) and one 16 KB texture.
+Measured on a Pi 5 by `engine-stack`'s probe before it is committed to; the mockup's look is the target.
+
 ### 6. Consoles
 
 The owner asked for consoles. Engineering gets:

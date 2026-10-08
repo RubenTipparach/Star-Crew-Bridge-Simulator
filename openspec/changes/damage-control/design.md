@@ -18,8 +18,8 @@ come straight here (`flight-and-navigation`). A Gannet carries 60 MJ, a Lance 40
 
 The Tern's layout puts systems in rooms (`systems[].compartment`) and `power-grid` routes its
 conduits through named compartments with polylines, so a hit can find what lies near its path. Its
-damage control room (POI 9) is on deck B forward, its board 20.8 s walking from the forward
-switchboard and 39.1 s from the main switchboard by the aft passage, 30.9 s through the hangar
+damage control room (POI 9) is on deck B forward, its board 22.7 s walking from the forward
+switchboard (20.8 s before its door moved aft to z 1.2, 2026-10-08) and 39.1 s from the main switchboard by the aft passage, 30.9 s through the hangar
 once T1 is applied (`reference-ship-tern` section 6 at `crew-on-deck`'s speeds; v2 plan,
 2026-10-05, the board on the room's new outer wall, was 19.0 s, 37.3 s and 29.1 s; corrected
 2026-10-04 from 20.7 s and 29.9 s at an assumed 1.6 m/s). The
@@ -30,7 +30,7 @@ this change works through (`bridge-stations` sections 10.8 and 10.9).
 
 | It did | Kept | Changed |
 | --- | --- | --- |
-| Shield face by the dominant axis; overflow to the hull | Yes (`weapons-and-shields`) | The overflow is a hull hit with a point and an energy |
+| Shield face by the dominant axis; overflow to the hull | Yes (`weapons-and-shields`, with round caps fore and aft) | The overflow is a hull hit with a point and an energy |
 | Damage routed to a station by a four-way angle test | | A ray from the hull point through the compartments it crosses |
 | Station HP 50; 0 HP stops a station; damage passed to its occupant | Systems that stop when broken; people near them hurt | Integrity in percent, four states, capability by state; crew hurt by distance |
 | A room ignites after three hits in 180 frames; fire never goes out alone; 2 HP/s to officers, 0.5 HP/s to the station | Fire persists until crew act or it starves | Fire from energy, fuel and oxygen; t-squared growth; out when starved; it heats, smokes and damages |
@@ -192,7 +192,7 @@ missile would cook off near 334 s. The magazine has inert gas for this reason.
 
 | Job | Needs | Time | Result |
 | --- | --- | --- | --- |
-| A damaged system (25-75%) | A repair kit | 1% a second for a player, 0.6% for a team member; two working together 1.6 times one | Up to 100% |
+| A damaged system (25-75%) | A repair kit | 1.8% a second for an officer, 0.6% for a rating (section 6a); two working together 1.6 times the faster | Up to 100% |
 | A disabled system (0-25%) | A kit and 1 spare part | As above, from its integrity | Up to 100% |
 | A destroyed system (0%) | 3 parts | 180 s rebuild to 25%, then the kit | Up to 100% |
 | A switchboard section or panel (destroyed) | 4 parts | 120 s | Health 0.5, then the kit to 1 |
@@ -202,6 +202,28 @@ missile would cook off near 334 s. The magazine has inert gas for this reason.
 | A larger breach, or a hull section's armour | EVA through the airlock (`life-support` section 14) | 60 s per m^2 of breach; 0.5% a second of armour | Sealed; armour restored |
 
 Spare parts: 24 aboard, in cargo. Kits: 6 in the damage control locker.
+
+### 6a. Repairs are done in person, and officers repair three times as fast
+
+The owner, 2026-10-08: "repairs: you need to physically go to the station to repair stuff, officers have
+repair buff of 3x of normal crew members".
+
+- **In person.** A repair is a body with a kit at the system's repair point (`crew-on-deck` section 6:
+  kneeling or standing, unable to move). No console repairs anything: engineering reroutes power round
+  a fault and the damage board sends people, but a system's integrity rises only under someone's hands.
+  A damaged bridge console is repaired at the console.
+- **Rank.** Every body has a rank, set by `crew-on-deck`'s roster: **officer** or **rating**. Every
+  player's body is an officer; the watch bodies and the damage control teams are ratings.
+- **Rates.** A rating restores 0.6% of integrity a second with a kit (the team rate this design already
+  used); an officer 3 times that, **1.8% a second**. A system at 25% takes an officer 42 s to reach
+  100% and a rating 125 s. Two working together go 1.6 times the faster of them. The rebuild and splice
+  times above (180 s, 120 s, 30 s) and the breach plates (15 s a plate) are the officer's; a rating
+  takes 3 times as long.
+- **One rate function.** `damage::repair_time(job, who)` reads the body's rank, so the board's "42 s"
+  is the time the officer will take (CLAUDE.md 6.1). Wounds, cold and gloves still slow tool work as
+  `crew-on-deck` says, multiplied in.
+- Recommendation taken (ask only with screenshots): players are the officers, and the rating's rate is
+  unchanged, so a repair by a player is faster than before (1.8% a second against 1%).
 
 **Previews from the resolver.** The board's time to repair (`damage::repair_time(job, who)`) is the
 repair functions' own rates over the job's remaining work, plus the walk on the crew-portal graph
@@ -224,7 +246,7 @@ Two teams of two NPC crew bodies (`crew-on-deck`), at home in damage control. Pr
 | Dispatch delay | 5 s after the board (or its automation) assigns a job |
 | Speed | `crew-on-deck`'s: walk 1.8 m/s; run 4.0 m/s to a fire or to a breach with crew in it; suited 1.5 m/s with no running; ladders 0.8 m/s up and 1.0 m/s down (corrected 2026-10-04 from walk 1.6 m/s and ladders 0.8 m/s). Reconciled 2026-10-05: crew-on-deck owns this; `damage.json` `teams` now holds the same values |
 | Suit | `crew-on-deck`'s donning time, 20 s, at the damage control lockers, before entering a room below 50 kPa or a fire over 2 MW. Reconciled 2026-10-05: crew-on-deck owns this (was 30 s) |
-| Repair rate | 0.6% a second each with a kit (a player's is 1%) |
+| Repair rate | 0.6% a second each with a kit: ratings (an officer, every player, 1.8%: section 6a) |
 | Risk | The same air, heat, smoke and blast as players; they can be hurt, fall unconscious and die, and must be carried out |
 
 **Automation** (the board unmanned, `bridge-stations`): jobs in this order, nearest team first: a

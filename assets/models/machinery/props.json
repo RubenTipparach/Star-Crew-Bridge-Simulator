@@ -88,16 +88,16 @@
         "difference panels (5)",
         "union toggles_and_pulls (21)"
       ],
-      "sha256": "ff20525edd81e12b0c08c4957af74e89e637ed7a5443c210d39090b00d99ee09",
+      "sha256": "ca3de038aee95a3282a553715d047f3c7ad4dd4aab90ea52088cc581f9eb3d09",
       "atlas": {
         "file": "atlas/switchboard.png",
         "px": 256,
         "px_per_m": 61.22,
-        "charts": 43,
+        "charts": 80,
         "cover": 0.67,
-        "glow": 0.0319,
-        "sha256": "4f40faeb79950d1c7e100d848d567a8b2ad5a6176abb783ab07bc6838c8da330",
-        "bytes": 17961
+        "glow": 0.0302,
+        "sha256": "c936626315317e164402d1c5fed88b75f61aa4660cd90b701fcd8484c5307450",
+        "bytes": 19784
       }
     },
     "battery_bank": {
@@ -153,16 +153,16 @@
         "union modules (9)",
         "union bus_bars (4)"
       ],
-      "sha256": "eeb441894efc695f7a0ace42a95b634934f791ec20be831c3f4e6001e18a0915",
+      "sha256": "0b63bea8934be3cde1d47be5516cb1871dcfe79e9216f9c061159afd67a22b91",
       "atlas": {
         "file": "atlas/battery_bank.png",
         "px": 512,
-        "px_per_m": 76.7,
-        "charts": 54,
-        "cover": 0.812,
-        "glow": 0.0279,
-        "sha256": "46b59c1617e46b605bead97fe2f117209aea21dcc8cc8a2568f2eaa7c8478576",
-        "bytes": 55344
+        "px_per_m": 70.89,
+        "charts": 71,
+        "cover": 0.694,
+        "glow": 0.0274,
+        "sha256": "4a003b1f98e3b97ae061aa435aef61de12c11a26cfdf108d3d525b809dfb17a8",
+        "bytes": 42287
       }
     },
     "coolant_pumps": {
@@ -209,16 +209,16 @@
         "chamfer starter_lamp (1 edges, 30 mm)",
         "union pumps_and_pipes (12)"
       ],
-      "sha256": "3e02f94828e17db51011c9d1900aad45c0c0f70d179efb87ac7b324704e7311c",
+      "sha256": "be00405d5b64747b7d55078bef75412a98c0c031e4113b7712c918a41b52e5ba",
       "atlas": {
         "file": "atlas/coolant_pumps.png",
         "px": 256,
-        "px_per_m": 64.05,
-        "charts": 34,
-        "cover": 0.678,
-        "glow": 0.0151,
-        "sha256": "9a3f8b5907789d466caf920ee2b37e703c09f5ed06a41484b8d09d17725bbae6",
-        "bytes": 23591
+        "px_per_m": 58.05,
+        "charts": 54,
+        "cover": 0.557,
+        "glow": 0.0156,
+        "sha256": "b34e747c9174ad1a8b5d444e2b7b5cdbc367712a100d0ee16b2890a31b47cec0",
+        "bytes": 29129
       }
     },
     "impulse_drive": {
@@ -265,16 +265,16 @@
         "union cradle_and_conduits (8)",
         "difference vents (6)"
       ],
-      "sha256": "bde29097e15a82a74b1a9cdcc58a76f888a2f68100b37834ff42c1586f254107",
+      "sha256": "feb9e3ff0ea4a745ee9f9d1dc977f0d703978301b165cb69cc3d1849af61d8c5",
       "atlas": {
         "file": "atlas/impulse_drive.png",
         "px": 512,
-        "px_per_m": 52.92,
-        "charts": 82,
-        "cover": 0.529,
-        "glow": 0.0419,
-        "sha256": "c174b0f48bae02453bc47c36a8bc8151c254efc13d746aab1101dfd5e8ced16d",
-        "bytes": 66038
+        "px_per_m": 52.07,
+        "charts": 111,
+        "cover": 0.512,
+        "glow": 0.0392,
+        "sha256": "c0d487d168dbf57443f55211ad0b26d55321782b868210978e567bf1027c26a3",
+        "bytes": 86018
       }
     },
     "inertial_dampers": {
@@ -318,16 +318,16 @@
       "csg": [
         "difference access_panels (2)"
       ],
-      "sha256": "eab3ed3af09cf02c5c91beb49d9f04ab4c464b300e5e12d2baf3269e73a3e2c0",
+      "sha256": "b4c6cc6e7434c65be16c3e68c4400879d8c1d67ea2005ffd443c9bdc5a91b040",
       "atlas": {
         "file": "atlas/inertial_dampers.png",
         "px": 256,
-        "px_per_m": 68.23,
-        "charts": 33,
-        "cover": 0.521,
-        "glow": 0.0961,
-        "sha256": "4f21d0b346eeeaeff4f8f1a3d82bca15f7900f3efc03e843cf010bff6e67cc96",
-        "bytes": 23866
+        "px_per_m": 64.9,
+        "charts": 60,
+        "cover": 0.471,
+        "glow": 0.0907,
+        "sha256": "915a4829edfb5f43bd043281c2902f8549eda634ed40efe29b639fd811e6d983",
+        "bytes": 26194
       }
     },
     "shield_generator": {
@@ -371,16 +371,16 @@
       "csg": [
         "difference vents (4)"
       ],
-      "sha256": "b7c0eaf0631f2575c0e87799e6974fe511042b08886468e506688703ed61fb97",
+      "sha256": "1fd93e2009083a3daf50481afb8108ce482f03965280e23cbae814ef356157c9",
       "atlas": {
         "file": "atlas/shield_generator.png",
         "px": 256,
-        "px_per_m": 42.55,
-        "charts": 79,
-        "cover": 0.512,
-        "glow": 0.1899,
-        "sha256": "34202ad3a179e3e8be9f86aabcd2771ddb089a429b1ad07a12b8cdce776cb1fc",
-        "bytes": 33014
+        "px_per_m": 40.4,
+        "charts": 95,
+        "cover": 0.462,
+        "glow": 0.183,
+        "sha256": "421157fab21008052d0ea398ac20bb807176cf05e2f49f86ebd0286c90520937",
+        "bytes": 32461
       }
     },
     "ls_tanks": {
@@ -451,16 +451,16 @@
         "union tanks_and_box (8)",
         "difference screens (1)"
       ],
-      "sha256": "e03da8108f592bab9513cb5f74e33fd3278f2028c39ea9ba3b7f1bc3fe690638",
+      "sha256": "6fd4f2b62cb6e1facb406816f8e5add0b5b656d7e6a201e07bd3bfd1ce6684ef",
       "atlas": {
         "file": "atlas/ls_tanks.png",
         "px": 256,
-        "px_per_m": 46.1,
-        "charts": 28,
-        "cover": 0.552,
-        "glow": 0.0172,
-        "sha256": "60630e044146f6229ebe6089ab5d33e727325586bdb34af0dc6399199be3bfc5",
-        "bytes": 18420
+        "px_per_m": 43.62,
+        "charts": 56,
+        "cover": 0.494,
+        "glow": 0.0152,
+        "sha256": "d28762250d5cf8dcbc21ac97312d3656858ee53ec25277adc5849b6f0f870e00",
+        "bytes": 21855
       }
     },
     "ls_scrubbers": {
@@ -508,16 +508,16 @@
         "difference fans_and_drawers (6)",
         "union fans_and_pulls (12)"
       ],
-      "sha256": "096961ac4d041bbb256c759a62c75bb4cc30c018a1b32c20a7640403aab9243b",
+      "sha256": "a7fcfded51c66beda8caef6294f6ddf2819654c5a1459c8c59ee7c8fe4ad5960",
       "atlas": {
         "file": "atlas/ls_scrubbers.png",
         "px": 256,
-        "px_per_m": 59.09,
-        "charts": 25,
-        "cover": 0.689,
-        "glow": 0.0212,
-        "sha256": "5c2e628354385f5ade4df6d29a96a72859700fc6c8c17f9dcddd757e1645bd04",
-        "bytes": 16982
+        "px_per_m": 59.3,
+        "charts": 34,
+        "cover": 0.694,
+        "glow": 0.0197,
+        "sha256": "fea20406dd5c4599908faabd3841070fcc0a172f8b3c1615fd653c7bcf174b79",
+        "bytes": 20996
       }
     },
     "ls_air_handler": {
@@ -586,16 +586,16 @@
         "difference fan_louvres_panels (6)",
         "union fan (6)"
       ],
-      "sha256": "f1b3ae1d8a9430ccf59bd55cd328827a320e51f7232bbb07c854f9b6d8ac914b",
+      "sha256": "9f39fedb76ad1f13f4721cbfaffe2758f3c3d335d79461cfb7ced806b9920ac0",
       "atlas": {
         "file": "atlas/ls_air_handler.png",
         "px": 256,
-        "px_per_m": 58.78,
-        "charts": 38,
-        "cover": 0.687,
-        "glow": 0.0504,
-        "sha256": "c2b56451a116bcec04bb56824bfb034e5ba5954e298771bf0ed735df1bdf1090",
-        "bytes": 20783
+        "px_per_m": 58.15,
+        "charts": 44,
+        "cover": 0.673,
+        "glow": 0.0501,
+        "sha256": "4c4067dd1e8c6417a4f7df87f426a3444fa71f11f8a23d5fafdbd4a71bd85022",
+        "bytes": 21594
       }
     },
     "gravity_generator": {
@@ -641,16 +641,16 @@
         "union ring (8)",
         "difference vents (4)"
       ],
-      "sha256": "e334d326e3b6ba125d755614ca34287d20ea5f8eb5c1b918024e87f67494ae1a",
+      "sha256": "be36300208b80eac97e8d64d985527ecf8400c4d45c761e82112feb942d14a66",
       "atlas": {
         "file": "atlas/gravity_generator.png",
         "px": 256,
-        "px_per_m": 69.61,
-        "charts": 46,
-        "cover": 0.522,
-        "glow": 0.157,
-        "sha256": "428954b4e2087872aeb50ac9ecc97859ab67ebae572107b09f9e6f996cc5709c",
-        "bytes": 28179
+        "px_per_m": 69.32,
+        "charts": 62,
+        "cover": 0.518,
+        "glow": 0.1484,
+        "sha256": "f6a229b67c33f7dcd8bd9a99bc784c4099ecb7ed1e9b48e75bcb371570daf112",
+        "bytes": 28071
       }
     },
     "med_bed": {
@@ -721,16 +721,16 @@
         "union bed (8)",
         "difference screens (1)"
       ],
-      "sha256": "6d2224009ab739f5be24140fe949830f5a29d3788463e97c0fe75c5a39656d6f",
+      "sha256": "4da273c8efe147edfdcdf5216b1ab62d0e38510c657bd2851479d2ad84a67cdb",
       "atlas": {
         "file": "atlas/med_bed.png",
         "px": 256,
-        "px_per_m": 62.92,
-        "charts": 20,
-        "cover": 0.548,
-        "glow": 0.0642,
-        "sha256": "e8ab484400703a2eebbbc45db4fafedc5d4a8c9ff25446d60f25fd043a6e809d",
-        "bytes": 22613
+        "px_per_m": 59.69,
+        "charts": 28,
+        "cover": 0.493,
+        "glow": 0.041,
+        "sha256": "bba55a4e8fc86c7f37ea512243bf23a38c6d132acdad44dac32ac5dae33b16f3",
+        "bytes": 21295
       }
     },
     "magazine_rack": {
@@ -776,16 +776,16 @@
         "difference end_frame_+1_hole (1)",
         "union rack_and_hoist (17)"
       ],
-      "sha256": "6940154b0465d7c2362b473571d144538e795d105dfc85c0a58aa2aa846ffb91",
+      "sha256": "328a597fafa5aaeee20ccee2d99920d76341b0e0ffeae66951e1fd3f212c6ae6",
       "atlas": {
         "file": "atlas/magazine_rack.png",
         "px": 512,
-        "px_per_m": 67.78,
-        "charts": 30,
-        "cover": 0.814,
+        "px_per_m": 63.74,
+        "charts": 74,
+        "cover": 0.72,
         "glow": 0.0,
-        "sha256": "61184de851fddb0fd71d2872d87999fc1229afeddd503a23f06374f22ce8c13c",
-        "bytes": 71952
+        "sha256": "dcab82973e02b16ce1bedf2a1c6a473b4cfd95e389feafca6a321a522d5a596b",
+        "bytes": 84398
       }
     },
     "missile_tube": {
@@ -831,16 +831,16 @@
         "difference door (1)",
         "union door_fittings (3)"
       ],
-      "sha256": "935ce019ab7a0daaa491b2f2df9924b0c1026b5284388f6bc4769aa0abfa2acd",
+      "sha256": "6597bac92a3ad383910d6ada50db90c97fa6805958d54371584733e671ccf509",
       "atlas": {
         "file": "atlas/missile_tube.png",
         "px": 256,
-        "px_per_m": 49.91,
-        "charts": 27,
-        "cover": 0.535,
+        "px_per_m": 49.31,
+        "charts": 46,
+        "cover": 0.522,
         "glow": 0.0,
-        "sha256": "ed7e2d4ede9b612bff15c2bdb053e7ef2494586677ceaf0a4eee63553bb74003",
-        "bytes": 25096
+        "sha256": "81d89483952edeb0147410845f0e2427a2ee66c32b95a2e3730b0fd9d9804a21",
+        "bytes": 30525
       }
     },
     "reactor_core": {
@@ -884,16 +884,16 @@
       "csg": [
         "union coolant_pipes (4)"
       ],
-      "sha256": "6d164e687704a68a91d35d996e9e9acb3a71a729990d23fe0abace651581459d",
+      "sha256": "9c98788da167396edade55efbf535f47b45a5073ffbe137d38926e48ffcc2793",
       "atlas": {
         "file": "atlas/reactor_core.png",
         "px": 1024,
-        "px_per_m": 49.99,
-        "charts": 72,
-        "cover": 0.44,
-        "glow": 0.0729,
-        "sha256": "c84abeed34bff8da3341154b779257b566a4ec9992d91de7fe6693e7e14e9873",
-        "bytes": 149519
+        "px_per_m": 51.38,
+        "charts": 112,
+        "cover": 0.465,
+        "glow": 0.078,
+        "sha256": "2bc3206195fd8e3b5d0a49a56dda37608c83688fe1f55f8f1f98459916953658",
+        "bytes": 166108
       }
     },
     "launch_cradle": {
@@ -946,16 +946,16 @@
         "union deck_rails_clamps (7)",
         "difference strips (2)"
       ],
-      "sha256": "30af2916033d75fa077b29e3a5258e2ab77e310260a9093a3b7f46d009d50a55",
+      "sha256": "328a5eacec09f4eb4e060effb89f8d922bd10f279d56979cdfd6c2ae556964bc",
       "atlas": {
         "file": "atlas/launch_cradle.png",
         "px": 512,
         "px_per_m": 73.65,
-        "charts": 23,
+        "charts": 33,
         "cover": 0.615,
-        "glow": 0.043,
-        "sha256": "2aab1fa0f2311c66b023e11f8e256bd2ef32bf966b51b8f14954508397ac0b42",
-        "bytes": 71428
+        "glow": 0.0432,
+        "sha256": "9858b253a52ba2136fc2f5658570feb214e1d78ecfd67078bb7f6f27a5754d8a",
+        "bytes": 75696
       }
     },
     "swift_fighter": {
@@ -1000,16 +1000,16 @@
         "union craft (18)",
         "difference livery (2)"
       ],
-      "sha256": "aef5ac0d24704fa2707a14be7120f3c5430d1be860a377e5ec7d9031b108094c",
+      "sha256": "f3810774d95ceded81f948de3159c2223839302f10ab4ead61bde2f5f97a8460",
       "atlas": {
         "file": "atlas/swift_fighter.png",
         "px": 512,
-        "px_per_m": 64.96,
-        "charts": 56,
-        "cover": 0.592,
-        "glow": 0.0717,
-        "sha256": "771cc7279cb2914cc154d4bb4d19f86fd18ff31038db47e13655a2f89f4e3b08",
-        "bytes": 77798
+        "px_per_m": 67.76,
+        "charts": 107,
+        "cover": 0.644,
+        "glow": 0.0731,
+        "sha256": "283f5b002d821fdf27a8e9a41c13f5a190c771fb01e8b57367fb214819b197ab",
+        "bytes": 64236
       }
     },
     "petrel_shuttle": {
@@ -1041,8 +1041,8 @@
         ]
       ],
       "screens": [],
-      "triangles": 1918,
-      "budget_triangles": 2000,
+      "triangles": 2842,
+      "budget_triangles": 2900,
       "materials": [
         "machinery",
         "trim",
@@ -1052,21 +1052,22 @@
         "accent"
       ],
       "csg": [
-        "difference canopy_hold_lines (23)",
+        "difference cabin_deck (1)",
+        "difference canopy_hold_lines (24)",
         "difference door_window (1)",
         "chamfer ramp_edges (2 edges, 120 mm)",
-        "union spine_pods_ramp_gear (30)"
+        "union spine_pods_ramp_gear (60)"
       ],
-      "sha256": "ca7b66ca9808d8a01036a5805993df5caee5048ed07921feff96819813e2242d",
+      "sha256": "078009020d434ceb9057e7a44e3e6362f8c01ded1d8cf9d2565e5da33c5ee772",
       "atlas": {
         "file": "atlas/petrel_shuttle.png",
         "px": 1024,
-        "px_per_m": 74.82,
-        "charts": 150,
-        "cover": 0.635,
-        "glow": 0.0838,
-        "sha256": "90bf9497065405fa1abacb700cdfb2112ac0eb138fa11c32c442f77dc5fd7cfd",
-        "bytes": 156410
+        "px_per_m": 66.29,
+        "charts": 330,
+        "cover": 0.737,
+        "glow": 0.0305,
+        "sha256": "1d1fcd52329f56afac532f4fb45ae9c666b3a6c8f2600f0853543905eb2f9896",
+        "bytes": 197073
       }
     },
     "bunk": {
@@ -1112,16 +1113,16 @@
         "difference berth_lights (2)",
         "union bedding_and_ladder (11)"
       ],
-      "sha256": "d8dcbfd51847fba8418ed0fad19a31bdb15a6aed26fdf764fcb87a9ec3d6a053",
+      "sha256": "77190dc1afaa375e6791ed69c4c3e44825c3199eb70d08b81f3b9436b2e3bc43",
       "atlas": {
         "file": "atlas/bunk.png",
         "px": 256,
-        "px_per_m": 41.2,
-        "charts": 23,
-        "cover": 0.5,
-        "glow": 0.0358,
-        "sha256": "4d1bdb861d3aff4b1bf7ee63f7f559eb21fbdc29273f8919afd699ac5a42a512",
-        "bytes": 23299
+        "px_per_m": 45.41,
+        "charts": 35,
+        "cover": 0.607,
+        "glow": 0.0343,
+        "sha256": "0eb52f87426a4e696f218c5b0f8a592b8c362a1b1cf0ba0229f829e585992b04",
+        "bytes": 20456
       }
     },
     "mess_table": {
@@ -1192,16 +1193,16 @@
         "chamfer cushion_+1_edge (2 edges, 15 mm)",
         "union legs_and_benches (12)"
       ],
-      "sha256": "1e06150195b6cbf7e9bb2ee4428cd80003ab1ff67c6665ea507502f296b53bda",
+      "sha256": "5880d4f2882f366be43f4f82b171ae840029a9682bae28e68e1fa8f866e3c421",
       "atlas": {
         "file": "atlas/mess_table.png",
         "px": 256,
-        "px_per_m": 60.93,
-        "charts": 17,
-        "cover": 0.564,
+        "px_per_m": 63.38,
+        "charts": 36,
+        "cover": 0.61,
         "glow": 0.0,
-        "sha256": "9d815c84d4cb0af826bf7180d766da14f743117a045e8fced85bde2d72287911",
-        "bytes": 22221
+        "sha256": "020dcd76499ecff77153481f31e0fea894d83314a561fd0d3fad481bd0169378",
+        "bytes": 24644
       }
     },
     "galley_counter": {
@@ -1272,16 +1273,16 @@
         "difference sink (1)",
         "difference burners_and_dispenser (7)"
       ],
-      "sha256": "2cf2b2bacc61a0f6123c64933a3b1dcbf681f8c86113fbf2fb55228a860c2883",
+      "sha256": "8c851fd4604babffabb6d72781b028bb74610417f7575023a9909dabca547414",
       "atlas": {
         "file": "atlas/galley_counter.png",
         "px": 256,
-        "px_per_m": 62.46,
-        "charts": 33,
-        "cover": 0.673,
-        "glow": 0.0648,
-        "sha256": "efed14491bb2b6de10e104ea6fa02fd55d7dfff364be5e319d298c59165f7afe",
-        "bytes": 15625
+        "px_per_m": 63.95,
+        "charts": 37,
+        "cover": 0.705,
+        "glow": 0.0695,
+        "sha256": "b9cec7ebffa8b9dc932e17f3b2c4647a83d71ed20d08ec15b70a3ef306124d83",
+        "bytes": 17838
       }
     }
   }

@@ -97,13 +97,13 @@ three confirm `deck-pipeline`'s working values):
 
 | Posture | Capsule radius | Capsule height | Eye above the floor | Notes |
 | --- | ---: | ---: | ---: | --- |
-| Standing, walking, running | 0.30 m | 1.80 m | 1.65 m | The mockup's walk mode uses this eye height (`bridge-walk-aft.png`). |
-| Crouched | 0.30 m | 1.20 m | 1.05 m | Toggle; under a low obstruction it stays crouched. |
-| Seated | 0.30 m | 1.30 m | 1.20 m | `bridge-stations`' seated eye (seat point plus 1.20 m). |
+| Standing, walking, running | 0.25 m | 1.80 m | 1.65 m | The mockup's walk mode uses this eye height (`bridge-walk-aft.png`). The radius was 0.30 m; walking the deck plan, a body could not pass between a bridge chair and the ring's railing (owner, 2026-10-08: "my collider is too wide, this chair is blocking me from walking"). 0.25 m is still wider than a person's half shoulders. |
+| Crouched | 0.25 m | 1.20 m | 1.05 m | Toggle; under a low obstruction it stays crouched. |
+| Seated | 0.25 m | 1.30 m | 1.20 m | `bridge-stations`' seated eye (seat point plus 1.20 m). |
 | Suited (any of the above) | 0.35 m | standing 1.90 m, crouched 1.30 m | +0.05 m | The suit's pack and helmet. |
 | Carrying a casualty | 0.40 m | 1.90 m | 1.65 m | The carried body over the shoulder. |
 | Downed, critical, knocked down | a box 1.80 x 0.50 x 0.30 m | | 0.25 m | Lower than a step (section 3): another body steps over it, so **a downed body never blocks a doorway or a corridor**. |
-| Floating | 0.30 m | 1.80 m, kept upright | | Section 11: "up" stays the ship's +Y, so the same vertical capsule query serves. |
+| Floating | 0.25 m | 1.80 m, kept upright | | Section 11: "up" stays the ship's +Y, so the same vertical capsule query serves. |
 
 **Every crew portal of the Tern passes the body that must use it** (the layout's sizes, decided;
 the check is proposed for `tools/layout_check.py` and `deckc`):
@@ -120,7 +120,7 @@ the check is proposed for `tools/layout_check.py` and `deckc`):
 | Side hatches `p_pod_port`, `p_pod_stbd` | 2 | 0.9 x 1.4 m, sill 0.40 m above the floor | **by the climb-through clip only** (1.80 m does not fit; the 0.40 m sill is over a step) | by the clip | by the clip, twice its time |
 | Hatch `p_drive` | 1 | 1.0 x 2.0 m | passes (0.20 m over the head) | passes (0.10 m) | passes |
 
-The narrowest door (1.0 m) leaves 0.20 m each side of a standing body and 0.15 m of a suited
+The narrowest door (1.0 m) leaves 0.25 m each side of a standing body and 0.15 m of a suited
 one. Nothing on the Tern today is too small; the check exists so that no later layout edit
 makes it so.
 
@@ -142,14 +142,15 @@ proposed and replace `reference-ship-tern`'s assumptions (its question T5).
 | Pushing a loaded trolley | at most 0.8 m/s | Section 6. |
 | Stairs | 0.7 x the speed above, along the slope | `reference-ship-tern`'s assumption, kept. |
 | Step up without stairs | 0.35 m | The captain's dais is 0.30 m high (layout, decided): one step. |
-| Acceleration and braking | `max(0, min(6.0 m/s^2, grip - h))` | Feet push on the floor: traction is grip less what the residual already takes. At full gravity and no residual: 0 to walking in 0.31 s, 0 to running in 0.68 s, running to a stop in 0.68 s over 1.36 m. |
+| Acceleration | `max(0, 20.0 m/s^2 - h)` | 0 to walking in 0.09 s, 0 to running in 0.20 s. |
+| Braking | `max(0, 30.0 m/s^2 - h)` | Running to a stop in 0.13 s over 0.27 m. The first rule held both at the feet's grip (`min(6.0, grip - h)`: running to a stop in 0.68 s over 1.36 m), and walking the deck plan felt like ice (owner, 2026-10-08: "walking is to much like ice skating fix the walking please"). A player's body answers the controls at once, as in every first-person game; the residual still takes its share, and grip still decides when the lurch knocks a body over (section 12). |
 | Turn | Mouse: the frame's raw displacement, never smoothed or eased. Gamepad stick: at most 200 deg/s yaw and 140 deg/s pitch, with a squared response curve. | Pale-Blue-Dot's look rule, adopted by `ship-frames`. |
 | Pitch limits | +/-85 deg | |
-| Jump | none | A ship's interior has no gaps to clear; no jump means no bunny hopping, no ledge bugs and no collision on ceilings. Question C5. |
+| Jump | 3.0 m/s up: 0.46 m at full gravity, 0.61 s in the air | The first rule had none (a ship's interior has no gaps to clear). Walking the deck plan without it felt wrong (owner, 2026-10-08: "bring back jumping, its kinda weird without it"). A jump is a jump of the body's own legs, so it is higher in low gravity and none at zero. Not from a ladder, a lift car or a held action; no control in the air; the head stops at a ceiling. Question C5, answered. |
 | Head bob | none | Comfort; the lurch (section 12) already moves the head when the ship does. |
 
 **Doors cost no time at walk or run.** A door opens when a body comes within 3.0 m of it
-(section 5) and takes 0.6 s; a runner's capsule (0.30 m radius) reaches the leaf 0.68 s after
+(section 5) and takes 0.6 s; a runner's capsule (0.25 m radius) reaches the leaf 0.69 s after
 entering that zone.
 
 **Low gravity changes traction, not top speed.** With the generator at half output (`g_art` =
@@ -196,6 +197,32 @@ lift): it follows the feet with a 0.08 s time constant, and never lags them by m
 
 **Spiral stairs reach the trunk's walls** (the owner, the same day: "make sure the edge of sprial stairs extend in
 to the well as well, so as a player I cant just falkl off the side and get stuck"); `deck-access` section 2.
+
+**A spiral's ramp is cut in rings** 0.12 m wide from the column to the wall (owner, 2026-10-08: "i cant walk up
+spiral stairs"). It was one quad a tread from the column to the wall, and of the two triangles that split it,
+one took its slope from its short edge at the column: about 75 degrees across the walk line, past the 62 the
+controller climbs, so a body stopped a third of the way up. Cut in rings, each piece has the helix's own slope at
+its radius: 44 degrees on the walk line, 57 at 0.55 m from the column, steeper only inside 0.5 m, where the
+treads are too narrow to stand on anyway. Measured headless on both towers: up and down each deck, along lines
+0.55, 0.85 and 1.05 m from the column, all reach the next landing.
+
+**A lift's landing door is a wall while it is shut, and the car's floor holds the feet** (owner, 2026-10-08: "elevator
+is severly broken still, I keep falling through the geometry and colliders are unreliable, I cant walk out when the
+doors are open", "im stuck in the elevator well. this should be impossible"). The first walk gave the car a floor
+of its own, a moving box flush with the deck, and only a soft check kept a body out of a shaft whose car was
+elsewhere. Rapier's controller jammed on the seam between that box and the deck (contact at time zero, every
+step), so a body that had walked in could not walk out; and the soft check froze any move near the shut door,
+backing away included. Now:
+- each landing door is a collider like any door, standing while the door is less than 90% open, so the shaft is
+  shut on every deck where the car is not standing open;
+- while the body's centre is over the shaft, nothing pulls it down and its feet are held on the car's floor (a
+  jump lands there); riding, the car carries them;
+- a step toward a shut shaft stops, a step away never does;
+- calling the car up or down from inside first moves the body clear of the open side.
+
+Measured in the deck plan, headless: boarding, riding and leaving on every pair of the three decks (six rides),
+running and pushing diagonally at a shut door on a deck the car is not on, backing away from it, jumping in the
+car, and riding while standing at its open side: all pass.
 
 **Measured in the deck plan** (`window.MOCKUP_WALK`, headless, 2026-10-07):
 - every straight flight is walked up and down (engineering's two, the hangar's two), and a stair tower from deck C to deck A;
@@ -585,7 +612,7 @@ Up, nothing changes: the input frame is the one netcode already sizes.
 
 ### 15. Data (proposed)
 
-- `data/crew.json`: capsule and eye per posture (section 2); speeds, acceleration cap, grip `mu`,
+- `data/crew.json`: capsule and eye per posture (section 2); speeds, acceleration and braking, grip `mu`,
   step height, turn rates (section 3); ladder speeds and clip times (section 4); door and hatch
   times and the override hold (section 5; the interlock's 20 kPa is `life-support`'s
   `portals.interlock_max_dp_kpa`); item masses, hands and actions (section 6); trolley
@@ -607,10 +634,10 @@ An excerpt of `data/crew.json`:
 
 ```json
 {
-  "capsule": { "radius_m": 0.30, "standing_height_m": 1.80, "crouched_height_m": 1.20, "seated_height_m": 1.30,
+  "capsule": { "radius_m": 0.25, "standing_height_m": 1.80, "crouched_height_m": 1.20, "seated_height_m": 1.30,
                "standing_eye_m": 1.65, "crouched_eye_m": 1.05, "seated_eye_m": 1.20 },
   "move": { "walk_m_s": 1.8, "run_m_s": 4.0, "crouch_m_s": 0.9, "back_scale": 0.7, "stair_scale": 0.7,
-            "accel_cap_m_s2": 6.0, "grip_mu": 0.6, "step_m": 0.35, "stick_yaw_deg_s": 200.0, "stick_pitch_deg_s": 140.0 },
+            "accel_m_s2": 20.0, "stop_m_s2": 30.0, "grip_mu": 0.6, "step_m": 0.35, "stick_yaw_deg_s": 200.0, "stick_pitch_deg_s": 140.0 },
   "ladder": { "up_m_s": 2.0, "down_m_s": 2.5, "mount_s": 0.15, "dismount_s": 0.15, "casualty_scale": 0.5 },
   "doors": { "sensor_m": 3.0, "door_open_s": 0.6, "door_close_s": 0.8, "close_delay_s": 2.0,
              "pressure_door_s": 2.0, "hatch_s": 1.0, "override_hold_s": 3.0 },
@@ -823,7 +850,7 @@ shots are in `docs/screenshots/mockups/`. The rest take the recommendation, reco
 | C2 | Walking by default with a held run, or running by default with a held walk? | Walk 1.8 m/s default / run 4.0 m/s default | Walk by default: the ship feels its size and a run is a decision. Recommendation taken (ask only with screenshots) | none |
 | C3 | Can a body die for good in a mission? | No: downed, critical, and a campaign injury / yes, after a critical timer | No permanent death: friends playing together should not lose a player to one bad fire. Recommendation taken (ask only with screenshots) | none |
 | C4 | Revive by hand in 5 s at 25 HP, or with a medkit only? | By hand / medkit only / both (medkit faster) | By hand: no item to fetch while a friend is down. Recommendation taken (ask only with screenshots) | none |
-| C5 | Jumping? | None / a small hop | None (section 3). Recommendation taken (ask only with screenshots) | none |
+| C5 | Jumping? | None / a small hop | A small hop (section 3): the owner, 2026-10-08, "bring back jumping" | A small hop |
 | C6 | EVA outside the hull: a magnetic-boot walk on a tether, or free flight with a thruster pack? | Boots and tether / thruster pack / both | Boots and tether: simpler to build, and the ship's motion stays a danger that helm controls. Recommendation taken (ask only with screenshots) | none |
 | C7 | In zero gravity, may a body roll freely (decks upside down on screen)? | Keep "up" as the ship's +Y / free roll | Keep "up": readable and kind to stomachs. Recommendation taken (ask only with screenshots) | none |
 | C8 | Run unlimited, or a stamina bar? | Unlimited / stamina | Unlimited: the air and injuries already limit it (section 9). Recommendation taken (ask only with screenshots) | none |

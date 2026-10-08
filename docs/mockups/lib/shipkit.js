@@ -122,12 +122,13 @@
    * Interior lighting states. Every interior mockup shows at least normal and
    * red alert (CLAUDE.md section 11). In the engine these are baked vertex
    * colour sets blended by a per-compartment uniform; here they are light
-   * colours and intensities. status is the door status strips' colour.
+   * colours and intensities. status is the door status strips' colour; kick the kick strips' (openspec/changes/
+   * kick-lights: the blue of the owner's reference K1 in normal light).
    */
   const LIGHTING = {
-    normal: { label: "Normal", ambient: 0x2a3340, ambientI: 0.55, lamp: 0xffe9c8, lampI: 1.0, strip: 0x9fd8ff, stripI: 0.6, fog: 0x0b0e14, status: 0x5ee08a },
-    red_alert: { label: "Red alert", ambient: 0x2a0d10, ambientI: 0.45, lamp: 0xff3030, lampI: 0.75, strip: 0xff2020, stripI: 1.0, fog: 0x120406, status: 0xff2a2a },
-    emergency: { label: "Emergency power", ambient: 0x120c08, ambientI: 0.3, lamp: 0xff8a1c, lampI: 0.35, strip: 0xff8a1c, stripI: 0.8, fog: 0x060403, status: 0xff8a1c },
+    normal: { label: "Normal", ambient: 0x2a3340, ambientI: 0.55, lamp: 0xffe9c8, lampI: 1.0, strip: 0x9fd8ff, stripI: 0.6, kick: 0x1f4bff, kickI: 1.0, fog: 0x0b0e14, status: 0x5ee08a },
+    red_alert: { label: "Red alert", ambient: 0x2a0d10, ambientI: 0.45, lamp: 0xff3030, lampI: 0.75, strip: 0xff2020, stripI: 1.0, kick: 0xff2020, kickI: 1.0, fog: 0x120406, status: 0xff2a2a },
+    emergency: { label: "Emergency power", ambient: 0x120c08, ambientI: 0.3, lamp: 0xff8a1c, lampI: 0.35, strip: 0xff8a1c, stripI: 0.8, kick: 0xff8a1c, kickI: 0.8, fog: 0x060403, status: 0xff8a1c },
   };
 
   // ---------------------------------------------------------------- lighting data (light-baking design 15)
@@ -142,7 +143,7 @@
   function lightingData() { return { fixtures: shipData("fixtures"), bake: shipData("bake") }; }
   /**
    * A fixture's light in each lighting state, { normal, red_alert, emergency } as linear RGB that multiplies its
-   * intensity_cd or luminance_cd_m2: its type's light (lamp or strip: LIGHTING's colour and weight in that state;
+   * intensity_cd or luminance_cd_m2: its type's light (lamp, strip or kick: LIGHTING's colour and weight in that state;
    * role: roleHex; fixed: its color_srgb), times its emergency_scale on emergency power, and dark on emergency power
    * when it is on the bus rule and not on the emergency bus (onBus).
    */
@@ -151,6 +152,7 @@
     for (const s of ["normal", "red_alert", "emergency"]) {
       const L = LIGHTING[s];
       let c = type.light === "lamp" ? hexLinear(L.lamp, L.lampI) : type.light === "strip" ? hexLinear(L.strip, L.stripI)
+        : type.light === "kick" ? hexLinear(L.kick, L.kickI)
         : type.light === "role" ? hexLinear(roleHex) : hexLinear(type.color_srgb);
       if (s === "emergency") { const k = type.emergency === "bus" && !onBus ? 0 : em; c = c.map((x) => x * k); }
       out[s] = c;
@@ -875,11 +877,44 @@
    * world-anchored u along the wall (wall-panels design sections 1-5). Adds role "panel" to the
    * builder, with a layer name per vertex (vlayer) that geometryOf resolves.
    */
-  function dressWall(B, comp, w, top, holes, clear, ribs, ctx, P3, nIn) {
+  /**
+   * Where fixture floors inside a room meet one of its walls (wall-panels design section 2): stretches [{ u0, u1, floors }]
+   * covering 0..len, floors the [{ y_m, slab_m }] standing against the wall over that stretch (between its floor and its
+   * top), lowest first. floors: [{ y_m, slab_m, poly }]; P3(u, v, inset) is the wall's point.
+   */
+  function wallFloorStretches(len, y0, top, floors, P3) {
+    const step = 0.05, n = Math.max(1, Math.ceil(len / step)), on = (f, u) => { const q = P3(u, 0, 0.05); return insidePoly(f.poly, q[0], q[2], 0.06) || insidePoly(f.poly.slice().reverse(), q[0], q[2], 0.06); };
+    const mine = (floors || []).filter((f) => f.y_m - f.slab_m > y0 + 0.3 && f.y_m < top - 0.3);
+    if (!mine.length) return [{ u0: 0, u1: len, floors: [] }];
+    const out = [];
+    let cur = null;
+    for (let i = 0; i < n; i++) {
+      const u0 = (len * i) / n, u1 = (len * (i + 1)) / n, mid = (u0 + u1) / 2;
+      const fs = mine.filter((f) => on(f, mid)).sort((a, b) => a.y_m - b.y_m), key = fs.map((f) => f.y_m).join(",");
+      if (cur && cur.key === key) cur.u1 = u1; else { cur = { u0, u1, floors: fs, key }; out.push(cur); }
+    }
+    return out;
+  }
+  /** A wall stretch's bands: panelBands from its floor, again from each fixture floor against it, the slabs as top strips. */
+  function stretchBands(y0, top, floors, Sb) {
+    const out = [];
+    let y = y0, k = 0;
+    for (const f of floors) {
+      for (const b of panelBands(y, f.y_m - f.slab_m, Sb)) out.push(Object.assign(b, { level: b.level === undefined ? undefined : b.level + 100 * k }));
+      out.push({ strip: Sb.top, v0: f.y_m - f.slab_m, v1: f.y_m, q0: f.y_m - f.slab_m });
+      y = f.y_m; k++;
+    }
+    for (const b of panelBands(y, top, Sb)) out.push(Object.assign(b, { level: b.level === undefined ? undefined : b.level + 100 * k }));
+    return out;
+  }
+
+  function dressWall(B, comp, w, top, holes, clear, ribs, ctx, P3, nIn, floors) {
     const S = ctx.S, fin = S.finishes[comp.finish];
     if (!fin) throw new Error(`shipkit: compartment ${comp.id} has finish ${comp.finish}, not in panels.json finishes`);
     const span = S.layers.span_m, half = S.layers.margin_m / 2, Sb = S.bands;
-    const bays = panelBays(w.len, clear, ribs, S), bands = panelBands(w.y0, top, Sb);
+    const stretches = wallFloorStretches(w.len, w.y0, top, floors, P3);
+    const cuts = stretches.slice(1).map((st) => st.u0);
+    const bays = panelBays(w.len, clear, ribs.concat(cuts), S);
     const nRows = Object.keys(fin.strips.rows).length;
     // World-anchored strip u: along the wall to the viewer's right (w.t), in metres, over the 2 m period.
     const along = (u) => (w.a[0] + w.t[0] * u) * w.t[0] + (w.a[1] + w.t[1] * u) * w.t[1];
@@ -893,10 +928,10 @@
       B.triUv("panel", pts[0], pts[2], pts[3], uvs[0], uvs[2], uvs[3], nIn, layer);
     };
     const below = new Map();
-    for (const band of bands) {
+    for (const st of stretches) for (const band of stretchBands(w.y0, top, st.floors, Sb)) {
       if (band.strip) {
         const row = fin.strips.rows[band.strip], layer = panelLayerName(comp.finish, "strips");
-        for (const c of rectMinusHoles({ u0: 0, u1: w.len, v0: band.v0, v1: band.v1 }, holes)) {
+        for (const c of rectMinusHoles({ u0: st.u0, u1: st.u1, v0: band.v0, v1: band.v1 }, holes)) {
           quad(c, (u, v) => [along(u) / span, (row + (v - band.q0) / Sb.strip_m) / nRows], layer);
         }
         continue;
@@ -904,6 +939,7 @@
       let prev = null;
       bays.forEach((bay, bi) => {
         const wd = bay.u1 - bay.u0, c = (bay.u0 + bay.u1) / 2;
+        if (c < st.u0 || c > st.u1) return;   // another stretch's bay
         const door = bay.door && bay.door.v0 < band.v1 - EPS && bay.door.v1 > band.v0 + EPS ? bay.door : null;
         const cell = { u0: bay.u0, u1: bay.u1, v0: band.v0, v1: band.v1 };
         let m;
@@ -1126,6 +1162,8 @@
    * lamp_housing, lamp.
    * opts.skipKinds: portal kinds not to cut (["bay_door"] keeps a closed bay door's floor);
    * opts.wallFixtures: things on a wall that ribs and baseboards must clear (see below).
+   * opts.innerFloors: [{ y_m, slab_m, poly }], floors standing inside the room (a mezzanine, a catwalk, a landing): with
+   *   panels, a wall's bands start again above each over the stretch of wall it meets (wall-panels design section 2);
    * opts.panels (true, or panels.json): the panel dressing (wall-panels, ceilings-and-trims,
    * floor-panels). Flat walls become role "panel"; floor, ceiling, rib, beam, cove, baseboard,
    * frame and window_frame carry a layer name per vertex (vlayer) and coordinates in layer units;
@@ -1291,7 +1329,7 @@
           y -= r + C.gap_m;
         }
       }
-      if (panelsOn) dressWall(B, comp, w, top, holes, clear, ribs, panelsOn, P3, nIn);
+      if (panelsOn) dressWall(B, comp, w, top, holes, clear, ribs, panelsOn, P3, nIn, opts.innerFloors);
     }
 
     // ---- per brush: coves, floor, ceiling, and the detail on them
@@ -1344,6 +1382,19 @@
         for (const [sx, sz] of SIDES) {
           const along = sx === 0, hu = along ? f.sx / 2 + W : W / 2, hw = along ? W / 2 : f.sz / 2;
           tbox("collar", [f.c[0] + sx * (f.sx / 2 + W / 2), y, f.c[2] + sz * (f.sz / 2 + W / 2)], [1, 0, 0], [0, 1, 0], [0, 0, 1], hu, FP.collar_depth_m / 2, hw, ["-v", "+u", "-u", "+w", "-w"]);
+        }
+        // The hole's sides through the slab, from this ceiling up to the floor of the room above (owner, 2026-10-08,
+        // looking up the magazine's hoist: "some more weird missing geometry"): without them a hole between decks
+        // shows the empty half metre between one room's ceiling and the next one's floor.
+        const upId = h.p.between.find((id) => id !== comp.id), upC = upId && upId !== "space" && compartment(L, upId);
+        const slabTop = upC ? floorAt(upC, f.c[0], f.c[2], br.y[1] + 0.3) : null;
+        if (slabTop !== null && slabTop !== undefined && slabTop - br.y[1] > 0.02) {
+          const hh = (slabTop - br.y[1]) / 2, yc = br.y[1] + hh, e = 0.005;
+          for (const [sx, sz] of SIDES) {
+            const along = sx === 0, inward = along ? (sz > 0 ? "-w" : "+w") : (sx > 0 ? "-u" : "+u");
+            tbox("collar", [f.c[0] + sx * (f.sx / 2 + e), yc, f.c[2] + sz * (f.sz / 2 + e)], [1, 0, 0], [0, 1, 0], [0, 0, 1],
+              along ? f.sx / 2 : e, hh, along ? e : f.sz / 2, [inward]);
+          }
         }
         // A ladder up through a ladder well, and through a floor hatch (a scuttle, a turret pod's hatch: deck-access),
         // from this floor to the floor above, and its handholds past it.
@@ -1691,7 +1742,7 @@
         if (!name || !(name in mats.layer)) throw new Error(`shipkit: no material for role ${r} (detailing.json finishes)`);
         li = mats.layer[name]; span = mats.span[name];
       }
-      const g = r === "lamp" || r === "status" || r === "screen" ? 1 : 0;
+      const g = r === "lamp" || r === "status" || r === "screen" || r === "kick_strip" ? 1 : 0;
       pos.set(P.position, k * 3); nor.set(P.normal, k * 3);
       for (let i = 0; i < cnt; i++) { uv[(k + i) * 2] = P.uvm[i * 2] / span; uv[(k + i) * 2 + 1] = P.uvm[i * 2 + 1] / span; lay[k + i] = P.vlayer ? vlayerIndex(mats, P.vlayer[i]) : li; glow[k + i] = P.glow ? P.glow[i] : g; }
       if (P.tint) { tint.set(P.tint, k * 3); col.set(P.tint, k * 3); }
@@ -1799,6 +1850,7 @@
       }
     }
     paintRole(geo, "status", new THREE.Color(s.status).multiplyScalar(1.4));
+    paintRole(geo, "kick_strip", new THREE.Color(s.kick).multiplyScalar(1.4 * s.kickI));   // kick-lights: a drawn light
     const sr = geo.userData.roles.screen;
     if (sr) for (let i = sr[0]; i < sr[0] + sr[1]; i++) C.setXYZ(i, (T ? T[i * 3] : 1) * 1.25, (T ? T[i * 3 + 1] : 1) * 1.25, (T ? T[i * 3 + 2] : 1) * 1.25);
     C.needsUpdate = true;
@@ -2008,15 +2060,76 @@
   /** What stands on a floor and hides it (floor-panels design 6): the platforms' outlines and the bands at their feet,
    * as buildCompartment's opts.floorCovers ([{ y_m, poly }]). */
   function platformCovers(platforms, floorY, opts) {
-    const out = platforms.map((pf) => ({ y_m: floorY, poly: pf.poly.map((p) => p.slice()) }));
+    // Under a kicked edge the platform hides the floor only behind its toe kick (kick-lights design 1).
+    const out = platforms.map((pf) => ({ y_m: floorY, poly: opts && opts.kicks ? kickOutline(pf, opts.kicks) : pf.poly.map((p) => p.slice()) }));
     for (const b of edgeBands(platforms, opts)) out.push({ y_m: floorY, poly: b.pts });
     return out;
   }
 
+  /**
+   * A platform's outline with every edge of a kind in K.on moved in by depth (default K.depth_m): the line its toe
+   * kick's back face stands on (kick-lights design 1). A corner between two kicked edges is their inset lines' mitre;
+   * between a kicked edge and another, the inset line meets the other edge's line. Counter-clockwise, as given or
+   * reversed; edges unchanged.
+   */
+  function kickOutline(pf, K, depth) {
+    let poly = pf.poly.map((p) => p.slice()), edges = pf.edges.slice();
+    if (signedArea(poly) < 0) { poly = poly.reverse(); edges = edges.slice(0, -1).reverse().concat(edges.slice(-1)); }
+    const n = poly.length, d = depth === undefined ? K.depth_m : depth;
+    const on = (i) => { const a = poly[(i + n) % n], b = poly[(i + 1 + n) % n]; return outwardNormal(a, b); };
+    const off = (i) => (K.on.includes(edges[(i + n) % n]) ? d : 0);
+    // Corner i: where edge i - 1's line (moved in by its offset) meets edge i's.
+    return poly.map((c, i) => {
+      const n0 = on(i - 1), n1 = on(i), d0 = off(i - 1), d1 = off(i);
+      if (!d0 && !d1) return c.slice();
+      const det = n0[0] * n1[1] - n0[1] * n1[0];
+      if (Math.abs(det) < 1e-6) return [c[0] - n1[0] * Math.max(d0, d1), c[1] - n1[1] * Math.max(d0, d1)];
+      // Solve n0 . (x - c) = -d0 and n1 . (x - c) = -d1.
+      const x = (-d0 * n1[1] + d1 * n0[1]) / det, z = (-d1 * n0[0] + d0 * n1[0]) / det;
+      return [c[0] + x, c[1] + z];
+    });
+  }
+  /**
+   * One platform's toe kicks (kick-lights design 1) into builder B: under every edge of a kind in K.on, a soffit at
+   * K.height_m, a strip (role kick_strip) on a chamfer K.chamfer_m square at the back of the soffit facing out and
+   * down, the back face down to the floor, and an end face where the next edge is not kicked. Returns the strips as
+   * { o, u, v, n, len } (corner, the two sides, the facing, the length) for a bake's emitters.
+   */
+  function buildKicks(B, poly, edges, floorY, K) {
+    const n = poly.length, kh = K.height_m, kd = K.depth_m, ch = K.chamfer_m, out = [];
+    const kicked = (i) => K.on.includes(edges[(i + n) % n]);
+    const inner = kickOutline({ poly, edges }, K, kd), mid = kickOutline({ poly, edges }, K, kd - ch);
+    const at = (p, y) => [p[0], floorY + y, p[1]];
+    for (let i = 0; i < n; i++) {
+      if (!kicked(i)) continue;
+      const a = poly[i], b = poly[(i + 1) % n], on = outwardNormal(a, b), o3 = [on[0], 0, on[1]];
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]), t = [(b[0] - a[0]) / len, (b[1] - a[1]) / len];
+      // A recess that ends at an edge without one ends square at the corner.
+      const sq = (p, d) => [p[0] - on[0] * d, p[1] - on[1] * d];
+      const A1 = kicked(i - 1) ? inner[i] : sq(a, kd), B1 = kicked(i + 1) ? inner[(i + 1) % n] : sq(b, kd);
+      const A2 = kicked(i - 1) ? mid[i] : sq(a, kd - ch), B2 = kicked(i + 1) ? mid[(i + 1) % n] : sq(b, kd - ch);
+      B.quad("riser", at(a, kh), at(b, kh), at(B2, kh), at(A2, kh), [0, -1, 0]);   // the soffit
+      const sn = [o3[0] * Math.SQRT1_2, -Math.SQRT1_2, o3[2] * Math.SQRT1_2];
+      B.quad("kick_strip", at(A2, kh), at(B2, kh), at(B1, kh - ch), at(A1, kh - ch), sn);
+      B.quad("riser", at(A1, 0), at(B1, 0), at(B1, kh - ch), at(A1, kh - ch), o3);   // the back
+      const t3 = [t[0], 0, t[1]], end = (p, P1, P2, dir) => {
+        const nrm = t3.map((x) => x * dir);
+        B.quad("riser", at(p, 0), at(P1, 0), at(P1, kh - ch), at(p, kh - ch), nrm);
+        B.quad("riser", at(p, kh - ch), at(P1, kh - ch), at(P2, kh), at(p, kh), nrm);
+      };
+      if (!kicked(i - 1)) end(a, A1, A2, 1);
+      if (!kicked(i + 1)) end(b, B1, B2, -1);
+      const o = at(A2, kh), u = [B2[0] - A2[0], 0, B2[1] - A2[1]], v = [A1[0] - A2[0], -ch, A1[1] - A2[1]];
+      out.push({ o, u, v, n: sn, len: Math.hypot(u[0], u[2]) });
+    }
+    return out;
+  }
   function buildPlatforms(THREE, B, platforms, stairs, floorY, D, opts) {
     D = D || shipData("detailing");
     opts = opts || {};
     const Q = D.platforms, fit = platformRows(opts);
+    // opts.kicks: detailing.json kicks.platform, toe kicks with strips on its edge kinds (kick-lights design 1).
+    const KK = opts.kicks || null;
     // With the platform layer, a railing takes its rail row as the compartment's railings do (ceilings-and-trims 9).
     const RT = fit && fit.rows.rail ? { layer: fit.layer, rows: { rail: fit.rows.rail }, span: fit.span, stretch: fit.stretch, stats: { faces: 0, pillars: 0 },
       members: { railing: { face: "rail", sides: "rail", ends: "rail", role: "fit_railing" } } } : null;
@@ -2037,6 +2150,7 @@
       let poly = pf.poly.map((p) => p.slice()), edges = pf.edges.slice();
       if (signedArea(poly) < 0) { poly = poly.reverse(); edges = edges.slice(0, -1).reverse().concat(edges.slice(-1)); }
       const top = pf.top_m, h = top - floorY, n = poly.length;
+      if (KK) B.kicks = (B.kicks || []).concat(buildKicks(B, poly, edges, floorY, KK));
       if (opts.topLayer) tileTop(THREE, B, "platform_top", poly, top, opts.topLayer);
       else B.flat(THREE, "platform", poly, [], top, 1);
       let walked = 0;   // metres of outline from the first corner: the riser's u, so its vents carry round a ring
@@ -2046,8 +2160,10 @@
         walked += len;
         if (kind === "wall") continue;
         const t = [(b[0] - a[0]) / len, 0, (b[1] - a[1]) / len], on = outwardNormal(a, b), out = [on[0], 0, on[1]];
-        if (fit) fittedFace(B, fit, [a[0], floorY, a[1]], [b[0], floorY, b[1]], h, u0, len, out, fit.forHeight(h));
-        else B.quad("riser", [a[0], floorY, a[1]], [b[0], floorY, b[1]], [b[0], top, b[1]], [a[0], top, a[1]], out);
+        // Over a toe kick the riser starts at the kick's height (kick-lights design 1).
+        const y0 = KK && KK.on.includes(kind) ? floorY + KK.height_m : floorY;
+        if (fit) fittedFace(B, fit, [a[0], y0, a[1]], [b[0], y0, b[1]], top - y0, u0, len, out, fit.forHeight(h));
+        else B.quad("riser", [a[0], y0, a[1]], [b[0], y0, b[1]], [b[0], top, b[1]], [a[0], top, a[1]], out);
         // The nosing: a hazard strip on the top's edge, raised clear of the platform's face.
         // Where the edge before is nosed too, this one starts a nosing's width in, so the two never overlap at the
         // corner (CLAUDE.md section 8): the corner is the edge before's.
@@ -2202,18 +2318,39 @@
    * center_m: car_m is its size along x, up and along z; its open side faces facing_yaw_deg (+90: +x).
    * Roles: lift_floor (deck plate), lift_wall (walls and roof, bulkhead), lift_rail (the handrail, trim); each
    * part names its material, so no finish needs them. f.roof false leaves the roof off, for a page that draws
-   * its rooms without ceilings.
+   * its rooms without ceilings. f.panels ({ wall, back, floor }: panel layer names, ShipKit.loadPanels) dresses the
+   * inside of the car as the crew rooms are dressed (owner, 2026-10-08: "elevator interior using crappy texture"):
+   * one module centred on each wall and on the floor, role lift_panel; the outsides keep their materials.
    */
   function buildLiftCar(B, f) {
     const [x, y, z] = f.center_m, [w, h, d] = f.car_m, X = [1, 0, 0], Y = [0, 1, 0], Z = [0, 0, 1], t = 0.05;
     const all = ["+u", "-u", "+v", "-v", "+w", "-w"], open = Math.round(Math.sin((f.facing_yaw_deg * Math.PI) / 180));
+    const P = f.panels || null, but = (face) => (P ? all.filter((q) => q !== face) : all);
     // The walls stand on the floor and under the roof, and the back wall between the side walls: no two parts
     // overlap, so none shares a plane with another where both face the same way (CLAUDE.md section 8).
     const wh = h - (f.roof !== false ? 2 * t : t), wy = y + t + wh / 2;
-    B.box("lift_floor", [x, y + t / 2, z], X, Y, Z, w / 2, t / 2, d / 2, all);
+    B.box("lift_floor", [x, y + t / 2, z], X, Y, Z, w / 2, t / 2, d / 2, but("+v"));
     if (f.roof !== false) B.box("lift_wall", [x, y + h - t / 2, z], X, Y, Z, w / 2, t / 2, d / 2, all);
-    B.box("lift_wall", [x - open * (w / 2 - t / 2), wy, z], X, Y, Z, t / 2, wh / 2, d / 2 - t, all);
-    for (const sz of [1, -1]) B.box("lift_wall", [x, wy, z + sz * (d / 2 - t / 2)], X, Y, Z, w / 2, wh / 2, t / 2, all);
+    B.box("lift_wall", [x - open * (w / 2 - t / 2), wy, z], X, Y, Z, t / 2, wh / 2, d / 2 - t, but(open > 0 ? "+u" : "-u"));
+    for (const sz of [1, -1]) B.box("lift_wall", [x, wy, z + sz * (d / 2 - t / 2)], X, Y, Z, w / 2, wh / 2, t / 2, but(sz > 0 ? "-w" : "+w"));
+    if (P) {
+      // A face's corners [a, b, c, d] (counter-clockwise seen from inside) and its picture: a module fitted to the
+      // wall's height and centred along it, or centred on the floor at its own 2 m size.
+      const face = (pts, uvs, n, layer) => {
+        B.triUv("lift_panel", pts[0], pts[1], pts[2], uvs[0], uvs[1], uvs[2], n, layer);
+        B.triUv("lift_panel", pts[0], pts[2], pts[3], uvs[0], uvs[2], uvs[3], n, layer);
+      };
+      const y0 = y + t, y1 = y0 + wh, xb = x - open * (w / 2 - t), zi = d / 2 - t, xf = x + open * (w / 2);
+      const wallUv = (len) => { const k = len / wh / 2; return [[0.5 - k, 0], [0.5 + k, 0], [0.5 + k, 1], [0.5 - k, 1]]; };
+      face([[xb, y0, z - zi], [xb, y0, z + zi], [xb, y1, z + zi], [xb, y1, z - zi]], wallUv(2 * zi), [open, 0, 0], P.back);
+      for (const sz of [1, -1]) {
+        const zz = z + sz * zi;
+        face([[xb, y0, zz], [xf, y0, zz], [xf, y1, zz], [xb, y1, zz]], wallUv(Math.abs(xf - xb)), [0, 0, -sz], P.wall);
+      }
+      const fu = (q) => 0.5 + q / 2;
+      face([[x - w / 2, y + t, z - d / 2], [x + w / 2, y + t, z - d / 2], [x + w / 2, y + t, z + d / 2], [x - w / 2, y + t, z + d / 2]],
+        [[fu(-w / 2), fu(-d / 2)], [fu(w / 2), fu(-d / 2)], [fu(w / 2), fu(d / 2)], [fu(-w / 2), fu(d / 2)]], [0, 1, 0], P.floor);
+    }
     B.box("lift_rail", [x - open * (w / 2 - 0.08), y + 0.95, z], X, Y, Z, 0.025, 0.025, d / 2 - 0.15, all);
     B.parts.lift_floor.material = "deck_plate"; B.parts.lift_wall.material = "bulkhead"; B.parts.lift_rail.material = "trim";
   }
@@ -2322,11 +2459,11 @@
         }
       }
       tube("fit_pipe", rings, r, n, "pipe");
-      // Flanges: at a free end (the reactor's nozzle, the ceiling, a loop's joint) and every 6 m; a port has its own.
+      // Flanges: at a free end (the reactor's nozzle, the ceiling or wall it enters, a loop's joint) and every 6 m; a port has its own.
       const endFlange = (e, at, t) => {
         if (e.port || e.tee) return;
         if (e.reactor !== undefined) { ring(add(at, mul(t, 0.24)), t, r, r * 1.35, 0.08, n, "collar"); return; }
-        if (e.ceiling) { ring(add(at, mul(t, -0.05)), t, r, r * 1.4, 0.1, n, "collar"); return; }
+        if (e.ceiling || e.wall) { ring(add(at, mul(t, -0.05)), t, r, r * 1.4, 0.1, n, "collar"); return; }
         ring(at, t, r, r * 1.3, 0.06, n, "collar");
       };
       endFlange(run.from, P[0], mul(d[0], run.from.reactor !== undefined ? 1 : -1));
@@ -2674,7 +2811,7 @@
     buildCompartment, roomShell, lampsFor, frameStations, loadMaterials, surfaceMaterial, geometryOf, finishOf, compartmentMesh, paintRole, bakeDirect,
     // wall panels (openspec/changes/wall-panels)
     loadPanels, panelsData, panelBands, panelBays, fnv1a, decodePng, panelLayerList, panelLayerName, walkwayPaths,
-    Builder, subdivideParts, buildPlatforms, platformCovers, edgeBands, buildSpiralStair, spiralReach, spiralCorners, buildLiftCar, buildFitout, platformRows,
+    Builder, subdivideParts, buildPlatforms, platformCovers, kickOutline, edgeBands, buildSpiralStair, spiralReach, spiralCorners, buildLiftCar, buildFitout, platformRows,
     // hull, labels, chrome
     hullGeometry, hullHalfWidth, label, budgetHud, titleBlock, registerShots, markReady, panelChrome,
     rectMinusHoles, intervalMinus, worldUv,

@@ -42,7 +42,7 @@ coordinator to apply.
   T5), printed by `tools/walk_times.py` on the v2 plan (2026-10-05, where the bridge seats and the
   damage control board moved with their walls): quarters to the helm 19.5 s; the helm to the
   engineering console 33.5 s by the aft passage and 35.9 s through the hangar (with T1); damage
-  control to the forward switchboard 20.8 s; any bridge station to a launch bay's pressure door
+  control to the forward switchboard 22.7 s (20.8 s before its door moved aft, 2026-10-08); any bridge station to a launch bay's pressure door
   26.3-28.8 s; the magazine to the torpedo room 24.1 s on foot (on the v1 boxes: 18.9 s, 33.0 s,
   35.4 s, 19.0 s and 25.7-28.2 s).
 - **Design reasoning**: the double-height hangar with galleries, the always-pressurized aft

@@ -36,8 +36,9 @@ seconds, ranges in metres, power drawn from the grid.
 - **Gannet missiles**: twelve in the magazine, a hoist to two ready racks, an autoloader (18 s) or
   crew hands-on (10 s), tube states (empty, loading, loaded, arming, armed, fired, jammed,
   damaged), proportional navigation, 60 MJ warheads, interception by point defence.
-- **Six shield faces** on an ellipsoid around the hull, chosen by star-crew-64's dominant axis in
-  coordinates normalized by the ellipsoid; 240 MJ in total, regenerating at 3 MJ/s from 12 MW
+- **Six shield faces** on an ellipsoid around the hull, in coordinates normalized by the ellipsoid:
+  round caps fore and aft and four quarters between them, each a sixth (after star-crew-64's
+  dominant axis, which cut the shield like a cube); 240 MJ in total, regenerating at 3 MJ/s from 12 MW
   (`power-grid`); face balance and frequency set by science; only overflow reaches the hull,
   as a hull hit (point, direction, energy, kind) that `damage-control` resolves.
 - **One damage resolution** for every ship and craft: the Tern, the raider corvette and a single

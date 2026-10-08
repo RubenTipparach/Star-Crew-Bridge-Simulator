@@ -12,6 +12,11 @@
 - [ ] 1.8 Seats (design section 4b): the two upholstery layers, the remodelled captain's and crew chairs, tinted per seat in the pages; renders and shots looked at.
 - [ ] 1.9 A custom atlas per prop (design section 4c): bridge set, then machinery, then suite; the pages map them; contact sheets and shots looked at.
 
+- [x] 1.10 Doors (design section 4g): the `doors` set in Blender, one prop per leaf size within budget, `--check` reproducible; the lift car's `door_m` in its data; the page slides each leaf whole and clips it at its jamb; shots of every size shut, half open and open, looked at.
+- [x] 1.11 The Petrel's cabin (design 4h): four folding seats forward, a cargo bay with tie-down rails aft; shots.
+- [x] 1.12 The pressure door's leaf (design 4i): rim, ribs, locking wheel, rams, within 1,700 triangles; renders and shots.
+- [ ] 1.13 The seat pans fold on Use (`ship-interactables`).
+
 ## 2. When the layout takes the patches
 
 - [ ] 2.1 `reference-ship-tern` T4 sets system sizes; rebuild the machines to them.
@@ -21,3 +26,4 @@
 
 - [ ] 3.1 Captures of each machine room and the crew rooms in the three lighting states (owner).
 - [ ] 3.2 Move each requirement into `openspec/specs/ship-props/` with the check that proves it.
+- [x] 3.3 The owner's walk of 2026-10-08 (design 4d): platform steps as ramps, quick starts and stops, a jump, the lift car's panels, door leaves with their rules, free-standing panels' backs, the floor holes lined, round machines round, two impulse units, twelve berths; shots `docs/screenshots/mockups/walk-fixes-2026-10-08/`.

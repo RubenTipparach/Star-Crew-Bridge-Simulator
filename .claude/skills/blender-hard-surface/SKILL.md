@@ -288,6 +288,8 @@ The main bridge mockup still builds its own box furniture (`stationProps` in
 | Texture scale wrong in the page | UVs not in metres, or V unflipped | Write (u, 1 - v); the read-back compares the file with `worldUv` |
 | `doubleSided: true` in the glb | Blender's material default | `use_backface_culling = True` |
 | A different glb from the same script | Another Blender or exporter version | Compare against the versions in `props.json` |
+| A face's atlas detail baked as a skewed smear (a recess floor, a band) | The atlas layout unfolded a neighbour across one edge where the charts shared a third vertex, stretching it (fixed in `hs_kit._unfold`, 2026-10-08) | Fixed; if it recurs, look at the prop's atlas PNG: every chart must be its faces' true shape |
+| A long face (over about 2 m) cut into triangles in the atlas | A chart longer than the atlas allows at its density is not kept whole | Seam the face (a V-groove or a band across it) so each part fits, as the pressure door's plate seams do |
 
 ## Checks before calling a prop done
 

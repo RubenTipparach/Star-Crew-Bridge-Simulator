@@ -1,0 +1,4 @@
+# One style source for the engine (CLAUDE.md 6.6). cargo fmt --all -- --check runs in scripts/check.sh.
+edition = "2021"
+max_width = 120
+use_small_heuristics = "Max"

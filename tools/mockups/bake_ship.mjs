@@ -14,6 +14,14 @@
  * thread with software rendering: never a Pi 5 number, never the engine baker's (CLAUDE.md 12).
  *
  * Usage: node tools/mockups/bake_ship.mjs [--date YYYY-MM-DD] [--views a,b] [--no-shots] [--timeout-min 60]
+ *        [--page docs/mockups/x.html] [--name tern-bake] [--shots-dir docs/screenshots/mockups/bake] [--no-quick]
+ *        [--rooms bridge,engineering] [--write-cache]
+ * --page bakes another copy of the deck plan (a before, say), --name names the report's directory, --shots-dir moves
+ * the shots and --no-quick skips the quick-light shots and the comparison strips. --rooms waits for those rooms only
+ * and reports them alone (a quick look at one room; the shots of others then show the quick light). The page always
+ * bakes fresh here (?bake=fresh): this is a measurement of the baker, never of the cache. --write-cache also writes every
+ * room's light into docs/mockups/cache/deck-plan-bake.bin (gzip: "SCBK", version 1, the index length, the index as
+ * JSON with the baker's sha256, then a byte per value) and inlines it into the page, so the page opens lit.
  */
 import { createRequire } from "node:module";
 import { execSync, execFileSync } from "node:child_process";
@@ -29,14 +37,17 @@ function loadPlaywright() {
 const { chromium } = loadPlaywright();
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const CACHE = path.join(ROOT, "tools", "mockups", ".cache");
-const PAGE = path.join(ROOT, "docs", "mockups", "deck-plan.html");
+let PAGE = path.join(ROOT, "docs", "mockups", "deck-plan.html");
 const args = process.argv.slice(2);
 const opt = (name, dflt) => { const i = args.indexOf(name); return i >= 0 ? args.splice(i, 2)[1] : dflt; };
 const flag = (name) => { const i = args.indexOf(name); if (i >= 0) args.splice(i, 1); return i >= 0; };
 const date = opt("--date", new Date().toISOString().slice(0, 10));
 const views = opt("--views", "walk-bridge-forward,walk-bridge-helm-chairs,walk-bridge-captain,walk-eng-mezzanine,walk-eng-lower,walk-corridor-B").split(",");
-const timeoutMin = Number(opt("--timeout-min", "60")), noShots = flag("--no-shots");
-const OUT = path.join(ROOT, "docs", "benchmarks", `${date}-tern-bake`), SHOTS = path.join(ROOT, "docs", "screenshots", "mockups", "bake");
+const timeoutMin = Number(opt("--timeout-min", "60")), noShots = flag("--no-shots"), noQuick = flag("--no-quick");
+const onlyRooms = opt("--rooms", "").split(",").filter(Boolean), writeCache = flag("--write-cache");
+PAGE = path.resolve(ROOT, opt("--page", path.relative(ROOT, PAGE)));
+const OUT = path.join(ROOT, "docs", "benchmarks", `${date}-${opt("--name", "tern-bake")}`);
+const SHOTS = path.resolve(ROOT, opt("--shots-dir", path.join("docs", "screenshots", "mockups", "bake")));
 const STATES = ["normal", "red_alert", "emergency"];
 // Each compartment's triangle ceiling (engine-stack design section 5, "Content"; engineering's from engineering-fitout
 // design section 7). The report compares; the tables are the source.
@@ -63,21 +74,44 @@ async function shoot(page, name, file) {
 const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] })
   .catch(() => chromium.launch({ args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] }));
 const t0 = Date.now();
-const { page, errors } = await open(browser, "");
+const { page, errors } = await open(browser, "?bake=fresh");
 let last = -1;
 for (;;) {
   const s = await page.evaluate(() => window.MOCKUP_BAKE());
   if (errors.length) throw new Error("deck-plan.html: " + errors[0]);
   if (s.baked !== last) { process.stdout.write(`baked ${s.baked}/${s.total} after ${((Date.now() - t0) / 1000).toFixed(0)} s\n`); last = s.baked; }
-  if (s.done) break;
+  if (s.done || (onlyRooms.length && onlyRooms.every((id) => s.rooms[id] && s.rooms[id].digest))) break;
   if (Date.now() - t0 > timeoutMin * 60000) throw new Error(`bake not done after ${timeoutMin} min`);
   await page.waitForTimeout(2000);
 }
 const bake = await page.evaluate(() => window.MOCKUP_BAKE());
 const wall = (Date.now() - t0) / 1000;
 
+// ------------------------------------------------------------------ the cache
+if (writeCache) {
+  const zlib = await import("node:zlib"), crypto = await import("node:crypto");
+  const index = { baker_sha256: crypto.createHash("sha256").update(fs.readFileSync(path.join(ROOT, "docs", "mockups", "lib", "lightbake.js"))).digest("hex"),
+    date, rooms: {} };
+  const chunks = [];
+  let offset = 0;
+  for (const id of Object.keys(bake.rooms).sort()) {
+    const e = await page.evaluate((x) => window.MOCKUP_BAKE_EXPORT(x), id);
+    if (!e) throw new Error(`no light for ${id}: was it baked here?`);
+    const b = Buffer.from(e.b64, "base64");
+    index.rooms[id] = { key: e.key, offset, count: e.count, stats: e.stats };
+    chunks.push(b); offset += b.length;
+  }
+  const json = Buffer.from(JSON.stringify(index)), head = Buffer.alloc(12);
+  head.write("SCBK", 0, "ascii"); head.writeUInt32LE(1, 4); head.writeUInt32LE(json.length, 8);
+  const out = path.join(ROOT, "docs", "mockups", "cache", "deck-plan-bake.bin");
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  fs.writeFileSync(out, zlib.gzipSync(Buffer.concat([head, json, ...chunks]), { level: 9, mtime: 0 }));
+  execFileSync("python3", [path.join(ROOT, "tools", "mockups", "inline.py"), PAGE], { stdio: "inherit" });
+  console.log(`cache: ${path.relative(ROOT, out)} (${(fs.statSync(out).size / 1e6).toFixed(2)} MB, ${Object.keys(index.rooms).length} rooms)`);
+}
+
 // ------------------------------------------------------------------ the report
-const rows = Object.entries(bake.rooms).map(([id, r]) => {
+const rows = Object.entries(bake.rooms).filter(([id]) => !onlyRooms.length || onlyRooms.includes(id)).map(([id, r]) => {
   const ceiling = CEILING[id] || CEILING_DEFAULT;
   return Object.assign({ id, ceiling, overCeiling: r.roomTriangles > ceiling, splitAdded: r.splitAfter - r.splitBefore }, r);
 });
@@ -123,7 +157,9 @@ if (!noShots) {
     }
   }
   await page.close();
-  const quick = await open(browser, "?bake=0");
+}
+if (!noShots && !noQuick) {
+  const quick = await open(browser, "?bake=0");   // the quick light, no bake
   for (const v of views) {
     await shoot(quick.page, v);
     await quick.page.screenshot({ path: path.join(SHOTS, `${v}-quick.png`) });

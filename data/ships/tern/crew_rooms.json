@@ -55,6 +55,30 @@
   },
   {
    "room": "quarters",
+   "prop": "bunk",
+   "set": "machinery",
+   "back_m": [
+    6.39,
+    0.0,
+    12.5
+   ],
+   "yaw_deg": -90.0,
+   "note": "two berths in the middle of the room, facing the stair tower"
+  },
+  {
+   "room": "quarters",
+   "prop": "bunk",
+   "set": "machinery",
+   "back_m": [
+    6.41,
+    0.0,
+    12.5
+   ],
+   "yaw_deg": 90.0,
+   "note": "two berths in the middle of the room, facing the hull"
+  },
+  {
+   "room": "quarters",
    "prop": "locker_bank",
    "set": "suite",
    "back_m": [
@@ -148,6 +172,222 @@
    ],
    "yaw_deg": 180.0,
    "note": "extinguishers, on the forward wall"
+  },
+  {
+   "room": "port_turret",
+   "prop": "battery_bank",
+   "set": "machinery",
+   "back_m": [
+    3.2,
+    0.0,
+    0.0
+   ],
+   "yaw_deg": 0.0,
+   "note": "the port turret's capacitor bank, on the aft wall"
+  },
+  {
+   "room": "port_turret",
+   "prop": "battery_bank",
+   "set": "machinery",
+   "back_m": [
+    5.4,
+    0.0,
+    0.0
+   ],
+   "yaw_deg": 0.0,
+   "note": "the port turret's capacitor bank, on the aft wall"
+  },
+  {
+   "room": "port_turret",
+   "prop": "battery_bank",
+   "set": "machinery",
+   "back_m": [
+    7.6,
+    0.0,
+    0.0
+   ],
+   "yaw_deg": 0.0,
+   "note": "the port turret's capacitor bank, on the aft wall"
+  },
+  {
+   "room": "port_turret",
+   "prop": "power_converter",
+   "set": "engineering",
+   "back_m": [
+    11.0,
+    0.0,
+    6.6
+   ],
+   "yaw_deg": -90.0,
+   "note": "the turret's power converter, on the hull side forward of the pod's hatch"
+  },
+  {
+   "room": "port_turret",
+   "prop": "local_panel",
+   "set": "engineering",
+   "back_m": [
+    11.0,
+    0.0,
+    2.5
+   ],
+   "yaw_deg": -90.0,
+   "note": "the turret's power panel, aft of the pod's hatch"
+  },
+  {
+   "room": "port_turret",
+   "prop": "ls_air_handler",
+   "set": "machinery",
+   "back_m": [
+    3.0,
+    0.0,
+    8.0
+   ],
+   "yaw_deg": 180.0,
+   "note": "the pod's air handler, on the forward wall"
+  },
+  {
+   "room": "port_turret",
+   "prop": "ls_scrubbers",
+   "set": "machinery",
+   "back_m": [
+    8.0,
+    0.0,
+    8.0
+   ],
+   "yaw_deg": 180.0,
+   "note": "the pod's scrubbers, on the forward wall"
+  },
+  {
+   "room": "port_turret",
+   "prop": "locker_bank",
+   "set": "suite",
+   "back_m": [
+    1.25,
+    0.0,
+    6.6
+   ],
+   "yaw_deg": 90.0,
+   "note": "the gunner's suit and spares, on the corridor wall"
+  },
+  {
+   "room": "port_turret",
+   "prop": "tool_board",
+   "set": "engineering",
+   "back_m": [
+    1.25,
+    0.0,
+    1.6
+   ],
+   "yaw_deg": 90.0,
+   "note": "tools for the gun and the bank, on the corridor wall"
+  },
+  {
+   "room": "stbd_turret",
+   "prop": "battery_bank",
+   "set": "machinery",
+   "back_m": [
+    -3.2,
+    0.0,
+    0.0
+   ],
+   "yaw_deg": 0.0,
+   "note": "the starboard turret's capacitor bank, on the aft wall"
+  },
+  {
+   "room": "stbd_turret",
+   "prop": "battery_bank",
+   "set": "machinery",
+   "back_m": [
+    -5.4,
+    0.0,
+    0.0
+   ],
+   "yaw_deg": 0.0,
+   "note": "the starboard turret's capacitor bank, on the aft wall"
+  },
+  {
+   "room": "stbd_turret",
+   "prop": "battery_bank",
+   "set": "machinery",
+   "back_m": [
+    -7.6,
+    0.0,
+    0.0
+   ],
+   "yaw_deg": 0.0,
+   "note": "the starboard turret's capacitor bank, on the aft wall"
+  },
+  {
+   "room": "stbd_turret",
+   "prop": "power_converter",
+   "set": "engineering",
+   "back_m": [
+    -11.0,
+    0.0,
+    6.6
+   ],
+   "yaw_deg": 90.0,
+   "note": "the turret's power converter, on the hull side forward of the pod's hatch"
+  },
+  {
+   "room": "stbd_turret",
+   "prop": "local_panel",
+   "set": "engineering",
+   "back_m": [
+    -11.0,
+    0.0,
+    2.5
+   ],
+   "yaw_deg": 90.0,
+   "note": "the turret's power panel, aft of the pod's hatch"
+  },
+  {
+   "room": "stbd_turret",
+   "prop": "ls_air_handler",
+   "set": "machinery",
+   "back_m": [
+    -3.0,
+    0.0,
+    8.0
+   ],
+   "yaw_deg": 180.0,
+   "note": "the pod's air handler, on the forward wall"
+  },
+  {
+   "room": "stbd_turret",
+   "prop": "ls_scrubbers",
+   "set": "machinery",
+   "back_m": [
+    -8.0,
+    0.0,
+    8.0
+   ],
+   "yaw_deg": 180.0,
+   "note": "the pod's scrubbers, on the forward wall"
+  },
+  {
+   "room": "stbd_turret",
+   "prop": "locker_bank",
+   "set": "suite",
+   "back_m": [
+    -1.25,
+    0.0,
+    6.6
+   ],
+   "yaw_deg": -90.0,
+   "note": "the gunner's suit and spares, on the corridor wall"
+  },
+  {
+   "room": "stbd_turret",
+   "prop": "tool_board",
+   "set": "engineering",
+   "back_m": [
+    -1.25,
+    0.0,
+    1.6
+   ],
+   "yaw_deg": -90.0,
+   "note": "tools for the gun and the bank, on the corridor wall"
   }
  ]
 }

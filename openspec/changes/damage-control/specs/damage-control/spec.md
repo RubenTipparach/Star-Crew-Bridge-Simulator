@@ -94,12 +94,18 @@ inside at the racks by the one hit resolution; the next missile SHALL check agai
 - **THEN** the air passes 200 C at about 274 s and the first missile cooks off about 60 s later
 
 ### Requirement: Repairs need people, tools and time
-Repairs SHALL be done at the damage: a kit restores 1% of integrity a second for a player and 0.6%
-for a team member (two together 1.6 times one); a disabled system needs a spare part first; a
+Repairs SHALL be done in person at the damage, never from a console: a kit restores 1.8% of integrity
+a second for an officer (every player's body) and 0.6% for a rating (the watch and the damage control
+teams), three times as fast for an officer; two together go 1.6 times the faster; a disabled system needs a spare part first; a
 destroyed system needs 3 parts and a 180 s rebuild to 25%; a destroyed power node 4 parts and 120 s
 to half health; a severed conduit 1 part and a 30 s splice to half capacity; a breach up to 1 m^2
 plates from inside at 15 s per 0.25 m^2, larger ones EVA at 60 s per m^2. The board's time to repair
 SHALL be computed by the repair's own rates plus the walk and any suiting.
+
+#### Scenario: An officer and a rating repair the same system
+- **WHEN** a player and a damage control team member each repair a system from 25% alone
+- **THEN** the player reaches 100% after about 42 s and the team member after 125 s, and the board's
+  times said so before they started
 
 #### Scenario: Restoring power after the switchboard hit
 - **WHEN** a suited team rebuilds the destroyed port switchboard section and splices the port trunk

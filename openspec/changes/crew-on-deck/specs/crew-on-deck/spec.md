@@ -24,7 +24,7 @@ of `ship-frames`.
 - **THEN** both arrive at the same position to within 1 mm
 
 ### Requirement: The crew capsule fits every crew portal
-A body SHALL collide as a vertical capsule of radius 0.30 m and height 1.80 m standing, 1.20 m
+A body SHALL collide as a vertical capsule of radius 0.25 m and height 1.80 m standing, 1.20 m
 crouched and 1.30 m seated, and 0.35 m and 1.90 m suited, from `data/crew.json`. The layout check
 SHALL refuse a layout in which a door, pressure door or ladder trunk is narrower than the
 capsule's diameter plus 0.1 m, or a door or pressure door lower than the standing height, for

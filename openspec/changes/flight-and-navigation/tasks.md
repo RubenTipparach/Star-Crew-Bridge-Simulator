@@ -16,6 +16,7 @@
 - [ ] 2.5 `nav::rails`: Kepler evaluation, local gravity with smoothstep falloff, influence and mass-lock radii.
 - [ ] 2.6 `nav::jump`: spool, alignment, mass lock, field, arrival scatter, cooldown, the rebase through `ship-frames`.
 - [ ] 2.7 `nav::autopilot`: every mode on top of the assist; docking corridors and latching; helm automation.
+- [ ] 2.7a `flight::attitude`: Euler to quaternion and back with the fold at pitch +/-90, relative orders, level, flip, bow on target, the eigen-axis slew and its time preview (design 6a).
 - [ ] 2.8 `collide`: near-frame broad phase, GJK and EPA, swept tests, impulse response, kinetic hull hits.
 
 ## 3. Tests
@@ -24,6 +25,7 @@
 - [ ] 3.2 `half_drive_power_halves_the_burn`.
 - [ ] 3.3 `assist_off_keeps_momentum` and `full_assist_turns_about_to_brake`.
 - [ ] 3.4 `the_damper_safe_limit_keeps_every_compartment_under_capacity` (property test over random commands and rates).
+- [ ] 3.4a `an_attitude_order_round_trips_through_euler_angles` (the design's table and 20,000 random attitudes) and `the_slew_takes_the_short_way_round`.
 - [ ] 3.5 `planet_gravity_fades_smoothly_at_the_influence_radius`.
 - [ ] 3.6 `a_mass_lock_refuses_the_spool` and `craft_outside_the_field_stay_behind`.
 - [ ] 3.7 `docking_faster_than_point_two_metres_a_second_bounces`.
@@ -43,3 +45,4 @@
 
 - [x] 6.1 `docs/mockups/exterior.html` shots `chase` and `decoupling-split`.
 - [ ] 6.2 Screenshot those shots (`node tools/mockups/shoot.mjs docs/mockups/exterior.html`) and look at each; the authoring session could not run the tool.
+- [x] 6.3 `docs/mockups/consoles.html`: helm flies the six degrees of freedom of sections 3-4 with the attitude order of 6a (Euler steppers, the order's quaternion, the slew's time preview from the slew function itself, LEVEL, FLIP, TARGET); shot `consoles-helm-orient.png`.

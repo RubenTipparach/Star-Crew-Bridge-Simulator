@@ -284,6 +284,29 @@ at fighters inside 400 m when no missile is inbound.
 | Fire | Tactical | Door open 1 s; the tube is empty 1.5 s after launch | |
 | Clear a jam | A crew member at the breech | 20 s | Automation cannot clear a jam |
 
+**Loading is seen in the ship** (owner, 2026-10-08: "considerations for in ship activities: loading a
+missile plays animation within the ship"). Every step above is something a crew member standing in the
+magazine or the torpedo room watches happen, at the times above, never a bar that fills on a console:
+
+| Step | What moves | Where |
+| --- | --- | --- |
+| Magazine to a ready rack (20 s) | The rack's cradle lifts a Gannet out (3 s), the hoist platform carries it up the 0.5 m trunk through the deck (14 s), the ready rack's arms take it (3 s); the trunk's hazard lights turn while it moves | Magazine (deck C) to the torpedo room (deck B), through the hoist opening (`p_hoist`) |
+| Ready rack to the tube, autoloader (18 s) | The breech door swings open (3 s), the rammer pushes the missile in along its tray (8 s), the breech closes and locks (4 s), the umbilical arm swings in and plugs (3 s) | The tube's breech, its aft end in the torpedo room |
+| Crew hands-on (10 s) | The same movers, driven by the crew member's three actions at the breech panel (open, ram, seal), each a held Use with its own clip: `breech_open` 1.0 s, `ram_guide` 6.0 s (the body walks beside the rammer with a hand on the missile), `breech_seal` 1.5 s | |
+| Hand crank (40 s) | The rammer moves only while the crank turns; the body plays `crank` in a loop | |
+| Clearing a jam (20 s) | The breech open, the missile drawn back 0.3 m, re-seated: `jam_clear` 20 s | |
+| Fire | The tube's door and the breech's lock lights; the room shakes (`crew-on-deck` section 12) | |
+
+- **The movers are the mechanisms' own** (deck-pipeline's movers: cradle, hoist platform, rack arms,
+  breech door, rammer, umbilical arm), driven by the tube's state and its progress through the step,
+  so what is seen and what the simulation says are the same number (CLAUDE.md 6.1).
+- **The body's clips** join `crew-on-deck`'s clip list (its section 15): `breech_open`, `ram_guide`,
+  `breech_seal`, `crank` and `jam_clear`.
+- **A missile in the hoist is a body in the trunk**: a body standing in the hoist opening stops the
+  platform (an interlock, as a door never closes on a body), and the console says HOIST BLOCKED.
+- **Budget**: the movers are about 600 triangles for the hoist and 400 for each breech; one Gannet
+  model (about 500 triangles) per missile in view, at most 4 (two racks, two tubes).
+
 Sustained rate: two tubes share one hoist, so after the first pair (two missiles staged on the
 ready racks at the start of a mission) the hoist is the limit: one missile every 20 s.
 
@@ -331,17 +354,60 @@ otherwise. A hit that bleeds into the magazine is damage-control's (cook-off is 
 | Holding | Below 15% of nominal supply the faces cannot hold and each decays at 2 MJ/s | |
 | Shunt rate | 10 MJ/s between faces, 20% lost | When balance changes |
 
-**The face of a hit** (star-crew-64's dominant axis, normalized so the long hull does not make
-everything the bow or stern):
+**The face of a hit** (after star-crew-64's dominant axis, normalized so the long hull does not make
+everything the bow or stern, and with round borders):
 
 ```text
 o = R^T (P_hit - P_s) - c_shield           ship axes, metres
 n = (o.x / 17.0, o.y / 13.0, o.z / 54.0)
-face = the axis with the largest |n|, with its sign
+bow or stern   if |n.z| / |n| >= 2/3       (within 48.19 deg of the long axis), by the sign of n.z
+port or stbd   else if |n.x| >= |n.y|      by the sign of n.x
+dorsal/ventral otherwise                    by the sign of n.y
 ```
 
 Without the normalization, a hit on the port side 20 m forward of midships would count as the bow
-(|z| 20 > |x| 12); with it, it is port (0.71 against 0.37), which is what the crew see.
+(|z| 20 > |x| 12); with it, it is port (n.z / |n| = 0.46, under 2/3), which is what the crew see.
+
+The first rule took the largest of |n.x|, |n.y| and |n.z|, star-crew-64's own. That cuts the
+shield like a cube: the bow and stern faces come out square, with corners, which is what the shield
+view showed (owner, 2026-10-08: "why does it shaped like that on the front and back face (of
+projected cube borders)"). The round rule keeps what the cube rule was for, each face exactly one
+sixth of the normalized sphere (a cap of half-angle acos(2/3) is 2 pi (1 - 2/3) = 4 pi / 6, and the
+band between the caps splits into four equal quarters), and gives the ends round caps and the sides
+straight seams on the diagonals. Recommendation taken (ask only with screenshots).
+
+**The shield view (owner, 2026-10-07).** The owner: "shields should display a full 3d model of the
+ship and shield facings, and where enemies attack are from what angles". Science's SHIELDS panel, and
+the middle of tactical's plot, draw the shield in 3D:
+
+- **The ship** is the hull loft from the layout (the octagonal sections of `hull.sections`), as
+  low-poly lines: 10 sections of 8 corners, about 140 triangles, the same shape the deck plan draws.
+- **The bubble** is this section's ellipsoid, cut into its six faces by the rule above: each patch of
+  the bubble takes the face `shield_face(o)` gives its centre, the function that resolves a hit (one
+  implementation, CLAUDE.md 6.1). The bubble is cut along the faces' borders (rings at the caps'
+  edge, seams on the diagonals), so every patch lies in one face and each border is drawn true. A
+  face is filled by its charge (green, amber, red at 50 % and 20 %), thicker where its weight is
+  higher, and flashes when hit.
+- **Drawn as a see-through shell** (owner, 2026-10-08: "you see how shield has transparency
+  problem?"): the far half of the bubble and its borders first, then the hull, then the near half
+  and its borders, each half far to near. Sorting the bubble's patches in among the hull's long
+  panels by their centres drew pieces of the far side over the hull.
+- **Where the attacks come from**: each hostile in sensor range draws a dashed line into the bubble
+  from its direction; each hit in the last 8 s draws an arrow from where it came, fading, onto the face
+  it struck, labelled with its bearing and elevation in ship axes (bearing to starboard from the bow,
+  elevation up; `040 +12`). An inbound missile draws a red chevron on its line.
+- **The view** turns by drag (yaw about the ship's +Y, then tilt), starts from aft, above and to port,
+  and has one button back to that view. Tactical's copy is fixed at the plot's own tilt.
+- **The faces' names and charges** (owner, 2026-10-08: "the text on sides not visible should still
+  apear but darker colroed"): all six faces are named on the model (BOW, STERN, PORT, STBD, TOP,
+  BELOW), each with a small bar of its charge under its name; a face on the far side keeps its name
+  and bar, drawn darker. The model is drawn large enough to fill the panel. Each name stays pinned
+  just outside its face as the view turns; names are never pushed about to avoid each other (owner,
+  2026-10-08: "the top and below label keeps popping between multiple positions").
+
+On the Pi it is one small 3D viewport in the console pass: the hull lines and the ellipsoid of the
+flash (about 1,200 triangles, face per vertex, six opacities as uniforms), two draw calls, no
+render target. The mockup draws it in SVG with the same projection.
 
 **Balance (science).** Science sets a weight per face, 0.5 to 2.0 (default 1). A face's capacity
 is `240 MJ x h_gen x w_f / sum(w)`, clamped to 15-80 MJ. Regeneration goes to faces in proportion

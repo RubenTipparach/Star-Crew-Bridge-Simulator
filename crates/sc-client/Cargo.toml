@@ -1,0 +1,24 @@
+[package]
+name = "sc-client"
+description = "The game client: SDL3 platform (window, GL context, input, audio), the frame callbacks, prediction and console UI."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+sc-core.workspace = true
+sc-render.workspace = true
+sdl3-sys.workspace = true
+glam.workspace = true
+png = "0.18"
+
+[lints]
+workspace = true
+
+# Render tests draw through a real GL context (Mesa's llvmpipe in a cloud session), so they run
+# under the platform's own callbacks, not the test harness (engine-stack task 3.5).
+[[test]]
+name = "render"
+harness = false

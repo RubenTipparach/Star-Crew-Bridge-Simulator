@@ -1,0 +1,15 @@
+[package]
+name = "sc-server"
+description = "The authoritative server: sc-core stepped at 30 Hz, headless, with sessions and saves."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+sc-core.workspace = true
+sc-net.workspace = true
+
+[lints]
+workspace = true

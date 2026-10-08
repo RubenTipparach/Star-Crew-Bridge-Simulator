@@ -69,6 +69,14 @@ casts shadows but neither sends nor gathers bounce (the bridge bakes 3.4 times f
 ceiling, vertices, rays, time, digest) and shoots fixed views in the three states beside the quick
 light into `docs/screenshots/mockups/bake/` (`<view>-compare.png`). Look at every strip.
 
+
+**The cache.** The deck plan opens lit from `docs/mockups/cache/deck-plan-bake.bin`. After changing
+anything a room's bake reads (geometry, props, fixtures, `bake.json`, `lightbake.js`), run
+`node tools/mockups/bake_ship.mjs --write-cache` (about 5 minutes here) and commit the cache with the
+change; `python3 tools/mockups/inline.py --check` fails when the cache was baked by another
+`lightbake.js`. A room the cache does not match bakes live, so a forgotten rewrite costs time, not
+correctness. `?bake=fresh` ignores the cache; `--rooms bridge` bakes one room for a quick look.
+
 ## Bake and compare today (the mockup baker)
 
 `docs/mockups/lib/lightbake.js` is a small CPU baker in the design's method; `docs/mockups/lighting.html`

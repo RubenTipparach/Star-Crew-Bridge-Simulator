@@ -1,0 +1,635 @@
+{
+  "schema": "starcrew.props/1",
+  "status": "Built (2026-10-08) by tools/blender/build_door_props.py for the owner's 'doors are still flat geometry' (openspec/changes/ship-props design section 4g). docs/mockups/deck-plan.html draws them; the engine does not yet.",
+  "_rules": [
+    "This file is written by tools/blender/build_door_props.py; never edit it by hand. Rebuild, and the .glb files and this file change together.",
+    "Metres. Prop space is the glTF frame: +Y up, +Z out of the door's front, +X from a left leaf's jamb toward the opening's middle (a right leaf runs toward -X from its jamb).",
+    "The origin is on the floor at the jamb's face, where the opening begins. A leaf reaches 0.02 m into its jamb, so its end is hidden in the frame; a page cuts it there with a clipping plane as it slides.",
+    "A name is <kind>_<width cm>x<height cm>_<l|r>: the opening's clear size, and which leaf (l stands at the opening's -x jamb in prop space, r at its +x jamb). A pressure door has one leaf, no side.",
+    "Materials are roles: bulkhead (the leaf's faces), trim (raised panels, ribs, bars) and machinery (the band and the edges); the atlas carries their colours.",
+    "UV0 is in metres as shipkit.js worldUv; TEXCOORD_1 is the leaf's own atlas (assets/models/doors/atlas/<prop>.png), alpha its glow mask (the lamp).",
+    "Flat shaded, triangulated, one closed manifold solid per leaf. triangles is counted in the .glb; the build refuses a leaf over budget_triangles."
+  ],
+  "generator": {
+    "script": "tools/blender/build_door_props.py",
+    "blender": "4.5.14 LTS",
+    "gltf_exporter": "4.5.51"
+  },
+  "props": {
+    "door_100x220_l": {
+      "file": "door_100x220_l.glb",
+      "presents": "The left leaf of a 1.0 x 2.2 m sliding door (ship-props design 4g)",
+      "anchor": "floor, at the left jamb's face; the leaf runs toward +x",
+      "dimensions_m": [
+        0.598,
+        2.195,
+        0.084
+      ],
+      "bounds_m": {
+        "min": [
+          -0.02,
+          0.0,
+          -0.042
+        ],
+        "max": [
+          0.578,
+          2.195,
+          0.042
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 174,
+      "budget_triangles": 220,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead"
+      ],
+      "csg": [
+        "union raised_panels (4)",
+        "chamfer panel_edges (20 edges, 6 mm)",
+        "difference band (2)"
+      ],
+      "sha256": "4360a3aec07bd339a34b9c027b209f0ca45662dad476e62cdbcfb7c672a99787",
+      "atlas": {
+        "file": "atlas/door_100x220_l.png",
+        "px": 256,
+        "px_per_m": 111.88,
+        "charts": 17,
+        "cover": 0.504,
+        "glow": 0.0007,
+        "sha256": "9d67032e891e9363c983b8538110669dd74f01f6fef8c673fe38dc06cf865400",
+        "bytes": 14966
+      }
+    },
+    "door_100x220_r": {
+      "file": "door_100x220_r.glb",
+      "presents": "The right leaf of a 1.0 x 2.2 m sliding door (ship-props design 4g)",
+      "anchor": "floor, at the right jamb's face; the leaf runs toward -x",
+      "dimensions_m": [
+        0.598,
+        2.195,
+        0.084
+      ],
+      "bounds_m": {
+        "min": [
+          -0.578,
+          0.0,
+          -0.042
+        ],
+        "max": [
+          0.02,
+          2.195,
+          0.042
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 174,
+      "budget_triangles": 220,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead"
+      ],
+      "csg": [
+        "union raised_panels (4)",
+        "chamfer panel_edges (20 edges, 6 mm)",
+        "difference band (2)"
+      ],
+      "sha256": "82647f4d857b40731929eca383338bbbf0f8c4336329905e24d74c53f49d7803",
+      "atlas": {
+        "file": "atlas/door_100x220_r.png",
+        "px": 256,
+        "px_per_m": 108.5,
+        "charts": 17,
+        "cover": 0.48,
+        "glow": 0.0,
+        "sha256": "8d87394a6d34ce730ea2b0b74e9f5e7de10d67ae2686de49f43f767dd003b611",
+        "bytes": 18483
+      }
+    },
+    "door_120x210_l": {
+      "file": "door_120x210_l.glb",
+      "presents": "The left leaf of a 1.2 x 2.1 m sliding door (ship-props design 4g)",
+      "anchor": "floor, at the left jamb's face; the leaf runs toward +x",
+      "dimensions_m": [
+        0.698,
+        2.095,
+        0.084
+      ],
+      "bounds_m": {
+        "min": [
+          -0.02,
+          0.0,
+          -0.042
+        ],
+        "max": [
+          0.678,
+          2.095,
+          0.042
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 174,
+      "budget_triangles": 220,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead"
+      ],
+      "csg": [
+        "union raised_panels (4)",
+        "chamfer panel_edges (20 edges, 6 mm)",
+        "difference band (2)"
+      ],
+      "sha256": "7d8a72c7d54ae85ba947b2eee07f92a0aeabc4a18fcd8ab23db86ad96c68493b",
+      "atlas": {
+        "file": "atlas/door_120x210_l.png",
+        "px": 256,
+        "px_per_m": 99.88,
+        "charts": 17,
+        "cover": 0.452,
+        "glow": 0.0005,
+        "sha256": "8e26b48b4403ff4a6f9911bd20bfd40bdbbd56893d91aaa7af5c7856fc0c5297",
+        "bytes": 14874
+      }
+    },
+    "door_120x210_r": {
+      "file": "door_120x210_r.glb",
+      "presents": "The right leaf of a 1.2 x 2.1 m sliding door (ship-props design 4g)",
+      "anchor": "floor, at the right jamb's face; the leaf runs toward -x",
+      "dimensions_m": [
+        0.698,
+        2.095,
+        0.084
+      ],
+      "bounds_m": {
+        "min": [
+          -0.678,
+          0.0,
+          -0.042
+        ],
+        "max": [
+          0.02,
+          2.095,
+          0.042
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 174,
+      "budget_triangles": 220,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead"
+      ],
+      "csg": [
+        "union raised_panels (4)",
+        "chamfer panel_edges (20 edges, 6 mm)",
+        "difference band (2)"
+      ],
+      "sha256": "5d2f5b5a3f86663150d8102bfc184a79ba6d41282bfbca5a13909cc4676161b6",
+      "atlas": {
+        "file": "atlas/door_120x210_r.png",
+        "px": 256,
+        "px_per_m": 104.75,
+        "charts": 17,
+        "cover": 0.497,
+        "glow": 0.0,
+        "sha256": "be099e823cb5b72cc781702e82ad5de185412f2bfa19ea6ed927987b8f322dcf",
+        "bytes": 20586
+      }
+    },
+    "door_120x220_l": {
+      "file": "door_120x220_l.glb",
+      "presents": "The left leaf of a 1.2 x 2.2 m sliding door (ship-props design 4g)",
+      "anchor": "floor, at the left jamb's face; the leaf runs toward +x",
+      "dimensions_m": [
+        0.698,
+        2.195,
+        0.084
+      ],
+      "bounds_m": {
+        "min": [
+          -0.02,
+          0.0,
+          -0.042
+        ],
+        "max": [
+          0.678,
+          2.195,
+          0.042
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 174,
+      "budget_triangles": 220,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead"
+      ],
+      "csg": [
+        "union raised_panels (4)",
+        "chamfer panel_edges (20 edges, 6 mm)",
+        "difference band (2)"
+      ],
+      "sha256": "0528450dc68ed6b82d9ab68c4d969b64a35dc6ebdf1d59d6c486c9199cccd26c",
+      "atlas": {
+        "file": "atlas/door_120x220_l.png",
+        "px": 256,
+        "px_per_m": 99.88,
+        "charts": 17,
+        "cover": 0.471,
+        "glow": 0.0005,
+        "sha256": "d3e7bf771fbd477510a4dd8161ab54d51da610f8b987d12745b586effd28987b",
+        "bytes": 17050
+      }
+    },
+    "door_120x220_r": {
+      "file": "door_120x220_r.glb",
+      "presents": "The right leaf of a 1.2 x 2.2 m sliding door (ship-props design 4g)",
+      "anchor": "floor, at the right jamb's face; the leaf runs toward -x",
+      "dimensions_m": [
+        0.698,
+        2.195,
+        0.084
+      ],
+      "bounds_m": {
+        "min": [
+          -0.678,
+          0.0,
+          -0.042
+        ],
+        "max": [
+          0.02,
+          2.195,
+          0.042
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 174,
+      "budget_triangles": 220,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead"
+      ],
+      "csg": [
+        "union raised_panels (4)",
+        "chamfer panel_edges (20 edges, 6 mm)",
+        "difference band (2)"
+      ],
+      "sha256": "c2a1ec38d7cc9417c637004469847b4eb799232afdb56fb2832a2947a0eaebc2",
+      "atlas": {
+        "file": "atlas/door_120x220_r.png",
+        "px": 256,
+        "px_per_m": 99.38,
+        "charts": 24,
+        "cover": 0.471,
+        "glow": 0.0,
+        "sha256": "d0d7b99d3eddafb7074babb9ac22edb74131e5dba810aaa2a5ae92a460b1959c",
+        "bytes": 17478
+      }
+    },
+    "door_160x230_l": {
+      "file": "door_160x230_l.glb",
+      "presents": "The left leaf of a 1.6 x 2.3 m sliding door (ship-props design 4g)",
+      "anchor": "floor, at the left jamb's face; the leaf runs toward +x",
+      "dimensions_m": [
+        0.898,
+        2.295,
+        0.084
+      ],
+      "bounds_m": {
+        "min": [
+          -0.02,
+          0.0,
+          -0.042
+        ],
+        "max": [
+          0.878,
+          2.295,
+          0.042
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 174,
+      "budget_triangles": 240,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead"
+      ],
+      "csg": [
+        "union raised_panels (4)",
+        "chamfer panel_edges (20 edges, 6 mm)",
+        "difference band (2)"
+      ],
+      "sha256": "7e7245b5a8fc6af763a97d39498c9b096fafcfea7a4bb810fe54da4ec86097aa",
+      "atlas": {
+        "file": "atlas/door_160x230_l.png",
+        "px": 256,
+        "px_per_m": 90.14,
+        "charts": 24,
+        "cover": 0.517,
+        "glow": 0.0005,
+        "sha256": "dc20738b344f630690af24f289a141cf16e948f8f8f0939a6f15ded420f2a763",
+        "bytes": 16978
+      }
+    },
+    "door_160x230_r": {
+      "file": "door_160x230_r.glb",
+      "presents": "The right leaf of a 1.6 x 2.3 m sliding door (ship-props design 4g)",
+      "anchor": "floor, at the right jamb's face; the leaf runs toward -x",
+      "dimensions_m": [
+        0.898,
+        2.295,
+        0.084
+      ],
+      "bounds_m": {
+        "min": [
+          -0.878,
+          0.0,
+          -0.042
+        ],
+        "max": [
+          0.02,
+          2.295,
+          0.042
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 174,
+      "budget_triangles": 240,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead"
+      ],
+      "csg": [
+        "union raised_panels (4)",
+        "chamfer panel_edges (20 edges, 6 mm)",
+        "difference band (2)"
+      ],
+      "sha256": "9faddab79914aa302ce16c5a2a4e2558084c97fe648876db108573b1c68c4354",
+      "atlas": {
+        "file": "atlas/door_160x230_r.png",
+        "px": 256,
+        "px_per_m": 82.9,
+        "charts": 24,
+        "cover": 0.444,
+        "glow": 0.0,
+        "sha256": "fd30443799636b886de8ce67ecefda12d41078ec44e2a5a9c59603ec69bb2db2",
+        "bytes": 17318
+      }
+    },
+    "door_200x230_l": {
+      "file": "door_200x230_l.glb",
+      "presents": "The left leaf of a 2.0 x 2.3 m sliding door (ship-props design 4g)",
+      "anchor": "floor, at the left jamb's face; the leaf runs toward +x",
+      "dimensions_m": [
+        1.098,
+        2.295,
+        0.084
+      ],
+      "bounds_m": {
+        "min": [
+          -0.02,
+          0.0,
+          -0.042
+        ],
+        "max": [
+          1.078,
+          2.295,
+          0.042
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 174,
+      "budget_triangles": 240,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead"
+      ],
+      "csg": [
+        "union raised_panels (4)",
+        "chamfer panel_edges (20 edges, 6 mm)",
+        "difference band (2)"
+      ],
+      "sha256": "6ef67edaaa05328aeb9bdc2fa408c0dc2136ea156c41bf41e9902f3221ea0764",
+      "atlas": {
+        "file": "atlas/door_200x230_l.png",
+        "px": 256,
+        "px_per_m": 79.79,
+        "charts": 24,
+        "cover": 0.497,
+        "glow": 0.0004,
+        "sha256": "f0eb2ac9c72361c2a30d7cbe3d73434ff8ded57d4fa492470e0a7b2160b683ab",
+        "bytes": 18870
+      }
+    },
+    "door_200x230_r": {
+      "file": "door_200x230_r.glb",
+      "presents": "The right leaf of a 2.0 x 2.3 m sliding door (ship-props design 4g)",
+      "anchor": "floor, at the right jamb's face; the leaf runs toward -x",
+      "dimensions_m": [
+        1.098,
+        2.295,
+        0.084
+      ],
+      "bounds_m": {
+        "min": [
+          -1.078,
+          0.0,
+          -0.042
+        ],
+        "max": [
+          0.02,
+          2.295,
+          0.042
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 174,
+      "budget_triangles": 240,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead"
+      ],
+      "csg": [
+        "union raised_panels (4)",
+        "chamfer panel_edges (20 edges, 6 mm)",
+        "difference band (2)"
+      ],
+      "sha256": "4d30e42819ca35d3a3c317ba998c8984700753d1f6aa4718d5565026429f2bc7",
+      "atlas": {
+        "file": "atlas/door_200x230_r.png",
+        "px": 256,
+        "px_per_m": 74.58,
+        "charts": 24,
+        "cover": 0.44,
+        "glow": 0.0,
+        "sha256": "66600e5c429f078493235265b79683e729a4cd43237379b518a9ff897a2a8862",
+        "bytes": 15850
+      }
+    },
+    "door_200x250_l": {
+      "file": "door_200x250_l.glb",
+      "presents": "The left leaf of a 2.0 x 2.5 m sliding door (ship-props design 4g)",
+      "anchor": "floor, at the left jamb's face; the leaf runs toward +x",
+      "dimensions_m": [
+        1.098,
+        2.495,
+        0.084
+      ],
+      "bounds_m": {
+        "min": [
+          -0.02,
+          0.0,
+          -0.042
+        ],
+        "max": [
+          1.078,
+          2.495,
+          0.042
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 174,
+      "budget_triangles": 240,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead"
+      ],
+      "csg": [
+        "union raised_panels (4)",
+        "chamfer panel_edges (20 edges, 6 mm)",
+        "difference band (2)"
+      ],
+      "sha256": "1395d32b5467459d0563efd6d38368d060398b89da46d2ce0b53596ee0635a26",
+      "atlas": {
+        "file": "atlas/door_200x250_l.png",
+        "px": 256,
+        "px_per_m": 75.64,
+        "charts": 24,
+        "cover": 0.482,
+        "glow": 0.0003,
+        "sha256": "e0ed94ccde1815b12e380994a250928e422f06ff490575549c647a93cb4f0527",
+        "bytes": 15186
+      }
+    },
+    "door_200x250_r": {
+      "file": "door_200x250_r.glb",
+      "presents": "The right leaf of a 2.0 x 2.5 m sliding door (ship-props design 4g)",
+      "anchor": "floor, at the right jamb's face; the leaf runs toward -x",
+      "dimensions_m": [
+        1.098,
+        2.495,
+        0.084
+      ],
+      "bounds_m": {
+        "min": [
+          -1.078,
+          0.0,
+          -0.042
+        ],
+        "max": [
+          0.02,
+          2.495,
+          0.042
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 174,
+      "budget_triangles": 240,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead"
+      ],
+      "csg": [
+        "union raised_panels (4)",
+        "chamfer panel_edges (20 edges, 6 mm)",
+        "difference band (2)"
+      ],
+      "sha256": "62dc52a93b43da5ec74b056a7e4cdafd2862ae7a48ef88a4cd99b04baa9f94db",
+      "atlas": {
+        "file": "atlas/door_200x250_r.png",
+        "px": 256,
+        "px_per_m": 65.52,
+        "charts": 24,
+        "cover": 0.37,
+        "glow": 0.0,
+        "sha256": "ca920cd1d5da0664c5da518d9fff3b565b9d95baad17596ede13df87add794d0",
+        "bytes": 15573
+      }
+    },
+    "pressure_100x220": {
+      "file": "pressure_100x220.glb",
+      "presents": "The leaf of a 1.0 x 2.2 m pressure door, sliding whole into its left jamb (ship-props design 4i)",
+      "anchor": "floor, at the left jamb's face; the leaf runs toward +x to the right jamb",
+      "dimensions_m": [
+        1.04,
+        2.195,
+        0.34
+      ],
+      "bounds_m": {
+        "min": [
+          -0.02,
+          0.0,
+          -0.17
+        ],
+        "max": [
+          1.02,
+          2.195,
+          0.17
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 984,
+      "budget_triangles": 1700,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead"
+      ],
+      "csg": [
+        "difference rim_f_open (1)",
+        "difference wheel_f_open (1)",
+        "difference rim_b_open (1)",
+        "difference wheel_b_open (1)",
+        "union rim_ribs_wheel_rams (28)",
+        "chamfer proud_edges (40 edges, 6 mm)",
+        "difference plate_seams (4)"
+      ],
+      "sha256": "2f4773cd1ce82e319c5c28607633c14ffa2b3dabd3d1947636a914d3c4c4c88b",
+      "atlas": {
+        "file": "atlas/pressure_100x220.png",
+        "px": 256,
+        "px_per_m": 67.82,
+        "charts": 89,
+        "cover": 0.497,
+        "glow": 0.0004,
+        "sha256": "3edb1705cd72f55e2479c12468909d18823cc6ba726503cefc06428cf0715471",
+        "bytes": 29993
+      }
+    }
+  }
+}

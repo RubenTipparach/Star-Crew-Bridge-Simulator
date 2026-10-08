@@ -3,10 +3,14 @@
  *
  * What it owns: a crew member's body on the decks the way openspec/changes/crew-on-deck designs it, so the
  * owner can run round a ship (owner, 2026-10-06: "do you have fps mode in deck plan for me to run arond?").
- *   - The body is crew-on-deck's standing capsule (section 2): 0.30 m radius, 1.80 m tall, the eye at 1.65 m.
+ *   - The body is crew-on-deck's standing capsule (section 2): 0.25 m radius, 1.80 m tall, the eye at 1.65 m.
  *   - It moves at crew-on-deck's speeds (section 3): walk 1.8 m/s, run 4.0 m/s, 70 % of that backwards and
- *     on stairs, never faster to change than 6 m/s2. It steps up and down 0.35 m, so stairs and spiral
- *     stairs are walked, not animated, and it falls where there is no floor (no jumping: C5).
+ *     on stairs; it speeds up at 20 m/s2 and brakes at 30 (the owner: "walking is to much like ice skating"). It
+ *     steps up and down 0.35 m, so stairs and spiral stairs are walked, not animated; it jumps 0.46 m (Space; C5,
+ *     the owner: "bring back jumping") and falls where there is no floor.
+ *   - Doors (section 5): a door slides open as the body comes near and closes 2 s after it leaves; a pressure
+ *     door opens and closes on E; a closed door is a wall; a lift's doors open with its car. The page draws the
+ *     leaves from each door's set(open).
  *   - Ladders and floor hatches are climbed at 2.0 m/s up and 2.5 m/s down, 0.15 s on and off (section 4,
  *     snappy at the owner's word, 2026-10-07); a hatch in a wall with a sill too high to step over takes
  *     0.6 s; a lift rides at its fixture's speed and door time, and comes when the body walks up to one of
@@ -17,7 +21,7 @@
  *     page leaves the steps out and passes the ramps as covers). The eye follows the feet smoothed. Without
  *     Rapier (o.rapier null: the CDN did not load) it falls back to the first controller over an Octree.
  * Input: W A S D or the arrows, the mouse (click to capture it, or drag), Shift to run, E to use (climb, go
- * through a hatch, take the lift up), Q to take the lift down, Esc to stop. On a touch screen: a stick on the
+ * through a hatch, take the lift up), Q to take the lift or a ladder down, Esc to stop. On a touch screen: a stick on the
  * left, drag on the right to look, and buttons.
  *
  * Why a lib of its own: every interior page can walk with it (CLAUDE.md 6.1). freecam.js's walk keeps the
@@ -26,21 +30,35 @@
  */
 (function () {
   "use strict";
-  // crew-on-deck's proposed data/crew.json (design section 15): capsule, move and ladder.
-  const BODY = { radius_m: 0.30, height_m: 1.80, eye_m: 1.65, step_m: 0.35 };
-  const MOVE = { walk_m_s: 1.8, run_m_s: 4.0, back_scale: 0.7, stair_scale: 0.7, accel_m_s2: 6.0 };
-  const LADDER = { up_m_s: 2.0, down_m_s: 2.5, mount_s: 0.15, dismount_s: 0.15 };
-  const SIDE_HATCH_S = 0.6;          // a hatch in a wall
+  // The walk's numbers are data/crew/walk.json (crew-on-deck sections 2-5 and 3a), inlined into the page between the
+  // "INLINE data:crew/walk" markers: the engine's sc-core::walk reads the same file, so the two walk alike.
+  const WD = (() => {
+    const el = document.getElementById("ship-data-walk");
+    if (!el) throw new Error("shipwalk: no #ship-data-walk in the page (add <!-- INLINE data:crew/walk --> markers and run tools/mockups/inline.py)");
+    return JSON.parse(el.textContent);
+  })();
+  const BODY = WD.body, MOVE = WD.move;   // the capsule; walk, run and back speeds, and the starting and stopping rates
+  const LADDER = { up_m_s: WD.ladder.up_m_s, down_m_s: WD.ladder.down_m_s, mount_s: WD.ladder.mount_s, dismount_s: WD.ladder.dismount_s };
+  const SIDE_HATCH_S = WD.side_hatch_s;   // a hatch in a wall
+  // Doors (crew-on-deck section 5): a door opens when a body comes within zone_m of its plane, inside its width plus
+  // zone_side_m, and closes close_after_s after the zone is empty; a pressure door opens and closes on E only.
+  // Neither closes on a body in the doorway. Times are opening and closing, seconds.
+  const DOOR = { zone_m: WD.door.zone_m, zone_side_m: WD.door.zone_side_m, close_after_s: WD.door.close_after_s,
+    door_s: [WD.door.open_s, WD.door.close_s], pressure_s: [WD.door.pressure_open_s, WD.door.pressure_close_s],
+    passable: WD.door.passable, thick_m: WD.door.thick_m };
   // Rapier's controller (crew-on-deck section 3a): the gap it keeps, the step it climbs over a ledge at least
-  // STEP_DEPTH_M deep, how far below it keeps the feet on the floor, and the slopes it climbs and slides on (the
+  // step_depth_m deep, how far below it keeps the feet on the floor, and the slopes it climbs and slides on (the
   // Tern's straight stairs are 41-43 degrees and a spiral's walk line 44, steeper toward its column).
-  const KCC = { offset_m: 0.02, step_depth_m: 0.15, snap_m: 0.4, climb_deg: 62, slide_deg: 70 };
-  const EYE_TAU_S = 0.08, EYE_LAG_M = 0.25;   // the eye follows the feet's height smoothed, never further behind
-  const GRAVITY_M_S2 = 9.81, FALL_MAX_M_S = 20;
-  const DROP_M = 0.4;                // how far below the feet a walking body still finds its floor (a stair down)
-  const REACH_M = 0.9;               // how near a ladder's or hatch's centre the body stands to use it
-  const CALL_M = 1.8;                // how near a lift door calls the car
-  const SUBSTEP_S = 1 / 120;
+  const KCC = WD.controller;
+  const EYE_TAU_S = WD.eye.tau_s, EYE_LAG_M = WD.eye.lag_m;   // the eye follows the feet's height smoothed, never further behind
+  const GRAVITY_M_S2 = WD.gravity_m_s2, FALL_MAX_M_S = WD.fall_max_m_s;
+  // A jump (owner, 2026-10-08: "bring back jumping"; crew-on-deck section 3): about 0.46 m at full gravity; for lift_s
+  // after take-off the floor under the feet does not count as landing.
+  const JUMP_M_S = WD.jump.speed_m_s, JUMP_LIFT_S = WD.jump.lift_s;
+  const DROP_M = WD.drop_m;               // how far below the feet a walking body still finds its floor (a stair down)
+  const REACH_M = WD.ladder.reach_m;      // how near a ladder's or hatch's centre the body stands to use it
+  const CALL_M = WD.lift_call_m;          // how near a lift door calls the car
+  const SUBSTEP_S = WD.substep_s;
   const LOOK_RAD_PX = 0.0022, TOUCH_LOOK_RAD_PX = 0.005, PITCH_MAX = 1.45, STICK_PX = 48;
 
   /** True when (x, z) is inside a polygon of [x, z] corners. */
@@ -117,11 +135,16 @@
     const { Capsule } = lib;
     const camera = o.camera, dom = o.dom, octree = o.octree;
     const ladders = o.ladders || [], lifts = (o.lifts || []).map((l) => Object.assign({ phase: "idle", t: 0, target: l.carY }, l));
+    // Doors: { kind "door" | "pressure_door" | "lift", c [x, y, z] (the opening's centre), n [x, z] (its normal), w, h,
+    // name, set(open 0..1) }; a lift door also names its lift (an index into o.lifts) and stop (its floor's y).
+    const doors = (o.doors || []).map((d) => Object.assign({ open: 0, target: 0, emptyT: Infinity, shown: -1 }, d));
     const pos = new THREE.Vector3(), cap = new Capsule(new THREE.Vector3(), new THREE.Vector3(), BODY.radius_m);
     const ray = new THREE.Ray(new THREE.Vector3(), new THREE.Vector3(0, -1, 0));
     const keys = {}, stick = { x: 0, y: 0 };
-    let yaw = 0, pitch = 0, vx = 0, vz = 0, vy = 0, grounded = true, stairT = 0, action = null, on = false, runToggle = false, eyeY = 0;
-    // Rapier: the body is a kinematic capsule its character controller moves; each lift's car floor is a kinematic box.
+    let yaw = 0, pitch = 0, vx = 0, vz = 0, vy = 0, grounded = true, jumpT = 0, stairT = 0, action = null, on = false, runToggle = false, eyeY = 0;
+    // Rapier: the body is a kinematic capsule its character controller moves. A lift's car floor is no collider: inside
+    // the shaft the feet are held on it (kccMove), because a separate box flush with the deck jammed the controller at
+    // the seam (owner, 2026-10-08: "I cant walk out when the doors are open").
     const R = o.rapier && o.world ? o.rapier : null, world = R ? o.world : null;
     const HALF = BODY.height_m / 2 - BODY.radius_m;
     let kBody = null, kCol = null, kcc = null;
@@ -135,12 +158,12 @@
       kcc.setMaxSlopeClimbAngle((KCC.climb_deg * Math.PI) / 180);
       kcc.setMinSlopeSlideAngle((KCC.slide_deg * Math.PI) / 180);
       kcc.setSlideEnabled(true);
-      for (const l of o.lifts || []) {
-        const xs = l.poly.map((q) => q[0]), zs = l.poly.map((q) => q[1]);
-        const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cz = (Math.min(...zs) + Math.max(...zs)) / 2;
-        const b = world.createRigidBody(R.RigidBodyDesc.kinematicPositionBased().setTranslation(cx, l.carY - 0.05, cz));
-        world.createCollider(R.ColliderDesc.cuboid((Math.max(...xs) - Math.min(...xs)) / 2, 0.05, (Math.max(...zs) - Math.min(...zs)) / 2), b);
-        l.rb = b; l.cx = cx; l.cz = cz;
+      // A closed door is a wall: a thin box in its opening, off while it stands open. A lift's landing door too, so the
+      // shaft is shut wherever the car is not standing open (owner: "im stuck in the elevator well. this should be impossible").
+      for (const d of doors) {
+        const th = Math.atan2(d.n[0], d.n[1]);
+        d.col = world.createCollider(R.ColliderDesc.cuboid(d.w / 2, d.h / 2, DOOR.thick_m / 2).setTranslation(d.c[0], d.c[1], d.c[2])
+          .setRotation({ x: 0, y: Math.sin(th / 2), z: 0, w: Math.cos(th / 2) }));
       }
       world.step();
     }
@@ -198,7 +221,6 @@
       else if (l.phase === "moving") {
         const d = l.target - l.carY, s = l.speed_m_s * h;
         l.carY = Math.abs(d) <= s ? l.target : l.carY + Math.sign(d) * s;
-        if (l.rb) l.rb.setTranslation({ x: l.cx, y: l.carY - 0.05, z: l.cz }, true);
         if (l.carY === l.target) { l.phase = "opening"; l.t = 0; }
         if (l.onMove) l.onMove(l.carY);
       } else if (l.phase === "opening" && l.t >= l.door_s) { l.phase = "idle"; l.t = 0; }
@@ -214,6 +236,33 @@
       const xs = l.poly.map((p) => p[0]), zs = l.poly.map((p) => p[1]), m = BODY.radius_m + 0.02;
       pos.x = Math.min(Math.max(pos.x, Math.min(...xs) + m), Math.max(...xs) - m);
       pos.z = Math.min(Math.max(pos.z, Math.min(...zs) + m), Math.max(...zs) - m);
+      vx = vz = 0; syncBody();
+    }
+
+    // ---------------------------------------------------------------- doors
+    /** Where the body stands against a door: along its width, across its plane, and whether on its floor. */
+    function doorRel(d) {
+      const rx = pos.x - d.c[0], rz = pos.z - d.c[2];
+      return { along: rx * -d.n[1] + rz * d.n[0], across: rx * d.n[0] + rz * d.n[1], floor: Math.abs(pos.y - (d.c[1] - d.h / 2)) < 1.0 };
+    }
+    function inDoorway(d) { const r = doorRel(d); return r.floor && Math.abs(r.across) < BODY.radius_m + 0.15 && Math.abs(r.along) < d.w / 2 + BODY.radius_m; }
+    function doorTick(d, h) {
+      if (d.kind === "lift") {
+        const l = lifts[d.lift], here = Math.abs(l.carY - d.stop) < 0.05;
+        d.open = !here ? 0 : l.phase === "idle" ? 1 : l.phase === "opening" ? Math.min(1, l.t / l.door_s) : l.phase === "closing" ? Math.max(0, 1 - l.t / l.door_s) : 0;
+        if (d.col) d.col.setEnabled(d.open < DOOR.passable);
+      } else {
+        const r = doorRel(d), busy = on && inDoorway(d);
+        if (d.kind === "door") {
+          const near = on && r.floor && Math.abs(r.across) < DOOR.zone_m && Math.abs(r.along) < d.w / 2 + DOOR.zone_side_m;
+          if (near) { d.emptyT = 0; d.target = 1; } else { d.emptyT += h; if (d.emptyT >= DOOR.close_after_s) d.target = 0; }
+        }
+        if (busy && d.open > 0) d.target = 1;   // a closing leaf stops and reopens for a body in the doorway; a shut one stays shut
+        const [up, down] = d.kind === "pressure_door" ? DOOR.pressure_s : DOOR.door_s;
+        d.open = d.target > d.open ? Math.min(d.target, d.open + h / up) : Math.max(d.target, d.open - h / down);
+        if (d.col) d.col.setEnabled(d.open < DOOR.passable);
+      }
+      if (Math.abs(d.open - d.shown) > 1e-4) { d.shown = d.open; if (d.set) d.set(d.open); }
     }
 
     // ---------------------------------------------------------------- climbing and hatches (moves the body along set points)
@@ -255,15 +304,24 @@
       const to = h.sides[1 - from];
       run([{ dur: SIDE_HATCH_S, to: P(to.x, to.y, to.z) }]);
     }
-    /** What E does here, or null: { label, go }. */
-    function choice() {
+    /** What E does here, or null: { label, go }; with down, a ladder down before one up (Q, where a trunk goes both ways:
+     * the engine's sc-core::walk has the same rule). */
+    function choice(down) {
       if (action) return null;
       const l = liftIn(pos.x, pos.z);
       if (l) return null;   // a car has its own buttons
-      for (const d of ladders) {
-        if (Math.hypot(d.x - pos.x, d.z - pos.z) > REACH_M) continue;
+      const near = ladders.filter((d) => Math.hypot(d.x - pos.x, d.z - pos.z) <= REACH_M);
+      for (const d of near.slice().sort((a, b) => (Math.abs(pos.y - a.hi) < 0.4) === down ? -1 : (Math.abs(pos.y - b.hi) < 0.4) === down ? 1 : 0)) {
         if (Math.abs(pos.y - d.lo) < 0.4) return { label: "Climb up" + (d.name ? " to " + d.name.up : ""), go: () => climb(d, true) };
         if (Math.abs(pos.y - d.hi) < 0.4) return { label: "Climb down" + (d.name ? " to " + d.name.down : ""), go: () => climb(d, false) };
+      }
+      for (const d of doors) {
+        if (d.kind !== "pressure_door") continue;
+        const r = doorRel(d);
+        if (!r.floor || Math.abs(r.across) > 1.5 || Math.abs(r.along) > d.w / 2 + 0.3) continue;
+        const opening = d.target < 0.5;
+        if (!opening && inDoorway(d)) continue;
+        return { label: (opening ? "Open the pressure door" : "Close the pressure door") + (d.name ? " to " + d.name : ""), go: () => { d.target = opening ? 1 : 0; } };
       }
       for (const h of hatches) {
         if (Math.hypot(h.x - pos.x, h.z - pos.z) > REACH_M + 0.2) continue;
@@ -284,12 +342,15 @@
         keepInside(l); request(l, l.stops[j]);
         return;
       }
-      if (dir > 0) { const c = choice(); if (c) c.go(); }
+      const c = choice(dir < 0);
+      if (c && (dir > 0 || /^Climb down/.test(c.label))) c.go();
     }
 
     // ---------------------------------------------------------------- the step
     function step(h) {
+      jumpT = Math.max(0, jumpT - h);
       for (const l of lifts) liftTick(l, h);
+      for (const d of doors) doorTick(d, h);
       if (action) { actionTick(h); return; }
       liftCalls();
       let f = 0, s = 0;
@@ -307,15 +368,19 @@
       const tx = (fx * f + rx * s) * speed, tz = (fz * f + rz * s) * speed;
       if (grounded) {
         let dx = tx - vx, dz = tz - vz;
-        const dl = Math.hypot(dx, dz), capV = MOVE.accel_m_s2 * h;
+        // Braking (slowing, or turning against the way the body moves) takes the stopping rate; speeding up the other.
+        const braking = tx * tx + tz * tz < vx * vx + vz * vz || tx * vx + tz * vz < 0;
+        const dl = Math.hypot(dx, dz), capV = (braking ? MOVE.stop_m_s2 : MOVE.accel_m_s2) * h;
         if (dl > capV) { dx *= capV / dl; dz *= capV / dl; }
         vx += dx; vz += dz;
       }
       let nx = pos.x + vx * h, nz = pos.z + vz * h;
-      // A lift's doors: closed unless its car stands here, open.
+      // A lift's doors: closed unless its car stands here, open. A step toward a shut shaft stops; a step away from it
+      // never does, so a body left at the door when the car goes can walk off.
       const inCar = liftIn(pos.x, pos.z);
       for (const l of lifts) {
-        const near = inPoly(l.poly, nx, nz) || polyDist(l.poly, nx, nz) < BODY.radius_m * 0.6;
+        const dn = inPoly(l.poly, nx, nz) ? -1 : polyDist(l.poly, nx, nz), d0 = inPoly(l.poly, pos.x, pos.z) ? -1 : polyDist(l.poly, pos.x, pos.z);
+        const near = dn < BODY.radius_m * 0.6 && dn < d0;
         if (l !== inCar && near && !boardable(l)) { nx = pos.x; nz = pos.z; vx = vz = 0; }
         if (l === inCar && !boardable(l) && !inPoly(l.poly, nx, nz)) { nx = pos.x; nz = pos.z; vx = vz = 0; }
       }
@@ -347,16 +412,20 @@
       if (inCar && inCar.phase === "moving") {   // riding: the car carries the feet
         pos.y = inCar.carY; vy = 0; grounded = true; syncBody(); return;
       }
-      vy = grounded ? -0.5 : Math.max(vy - GRAVITY_M_S2 * h, -FALL_MAX_M_S);
+      // In a car's shaft nothing is under the feet but the car: no pull down while standing, and the car's floor stops a fall.
+      vy = grounded ? (inCar ? 0 : -0.5) : Math.max(vy - GRAVITY_M_S2 * h, -FALL_MAX_M_S);
       kcc.computeColliderMovement(kCol, { x: dx, y: vy * h, z: dz });
       const m = kcc.computedMovement(), t = kBody.translation();
-      const nt = { x: t.x + m.x, y: t.y + m.y, z: t.z + m.z };
+      const nt = { x: t.x + m.x, y: t.y + m.y, z: t.z + m.z }, up = BODY.height_m / 2 + KCC.offset_m;
+      const onCar = inCar && nt.y - up <= inCar.carY + 1e-4;
+      if (onCar) nt.y = inCar.carY + up;
       kBody.setNextKinematicTranslation(nt);
       world.step();
       const was = pos.y;
-      pos.set(nt.x, nt.y - BODY.height_m / 2 - KCC.offset_m, nt.z);
-      grounded = kcc.computedGrounded();
+      pos.set(nt.x, nt.y - up, nt.z);
+      grounded = (onCar || kcc.computedGrounded()) && jumpT <= 0;
       if (grounded) vy = 0;
+      else if (vy > 0 && m.y < vy * h * 0.5) vy = 0;   // the head met a ceiling
       // A wall (a near-vertical contact): drop the part of the velocity into it, keep the part along it. A floor, a
       // ramp or a stair's slope is not a wall, and slows nothing.
       for (let i = 0; i < kcc.numComputedCollisions(); i++) {
@@ -407,7 +476,7 @@
         for (const b of [upB, downB, useB, runB]) b.type = "button";
         upB.onclick = () => use(1); downB.onclick = () => use(-1); useB.onclick = () => use(1);
         runB.onclick = () => { runToggle = !runToggle; runB.classList.toggle("on", runToggle); };
-      } else el("div", "sw-keys", root, "W A S D move, mouse looks (click to capture), Shift run, E use, Q lift down, Esc stop");
+      } else el("div", "sw-keys", root, "W A S D move, mouse looks (click to capture), Shift run, Space jump, E use, Q down (a lift or a ladder), Esc stop");
       function refresh() { for (const { b, e } of pageBtns) e.textContent = b.label(); }
       refresh();
       return { root, where, prompt, upB, downB, useB, knob, refresh };
@@ -433,11 +502,17 @@
         hud.upB.hidden = hud.downB.hidden = !(l && l.phase === "idle");
       }
     }
+    /** Leave the floor, if standing on one and not climbing, riding or busy. */
+    function jump() {
+      if (!grounded || action || liftIn(pos.x, pos.z)) return;
+      vy = JUMP_M_S; grounded = false; jumpT = JUMP_LIFT_S;
+    }
     function onKey(e, down) {
       if (!on) return;
       if (/^(Arrow|Space)/.test(e.code)) e.preventDefault();
       keys[e.code] = down;
       if (!down) return;
+      if (e.code === "Space") jump();
       if (e.code === "KeyE") use(1);
       if (e.code === "KeyQ") use(-1);
       if (e.code === "Escape" && document.pointerLockElement !== dom) exit();
@@ -500,6 +575,7 @@
     function exit() {
       if (!on) return;
       on = false;
+      for (const d of doors) { d.open = d.target = 0; d.emptyT = Infinity; d.shown = 0; if (d.col) d.col.setEnabled(true); if (d.set) d.set(0); }
       removeEventListener("keydown", kd); removeEventListener("keyup", ku); removeEventListener("blur", blur);
       document.removeEventListener("mousemove", mm);
       dom.removeEventListener("pointerdown", pd); dom.removeEventListener("pointermove", pm);
@@ -529,7 +605,7 @@
       hudTick(dt);
     }
     return {
-      enter, exit, update, use, keys, lifts,
+      enter, exit, update, use, keys, lifts, doors,
       active: () => on,
       /** Where the body stands and looks: { x, y (feet), z, yaw, pitch, grounded, climbing, eye (the camera's height) }. */
       pose: () => ({ x: pos.x, y: pos.y, z: pos.z, yaw, pitch, grounded, climbing: !!action, eye: eyeY + BODY.eye_m }),
@@ -544,6 +620,8 @@
       },
       /** Turn the body to face [x, z]. */
       face: (f) => { yaw = Math.atan2(-f[0], -f[1]); },
+      /** Tilt the view: radians, up positive, within the pitch limits. */
+      look: (p) => { pitch = Math.max(-PITCH_MAX, Math.min(PITCH_MAX, p)); },
       refreshButtons: () => hud && hud.refresh(),
     };
   }
