@@ -34,7 +34,7 @@ measurement instrument and comes first.
 
 - [x] 3a.1 `sc-client` for `wasm32-unknown-emscripten` on WebGL 2: the link, the deck fetch, the canvas; the Tern walked in headless Chromium.
 - [x] 3a.2 `tools/web/build.sh`, `release.sh`, `push_itch.sh` and `.github/workflows/web.yml`, pushing to itch.io with the `BUTLER_API_KEY` secret.
-- [ ] 3a.3 The first CI run green, and the itch.io page playing it.
+- [x] 3a.3 The first CI run green (run 2, 4 min 35 s) and pushed to itch.io's html5 channel; the owner sets the upload to play in the browser on the itch.io page once.
 - [ ] 3a.4 The deck plan's newer work in the engine: door leaves, fixtures, the plan view.
 
 ## 4. Move to specs
