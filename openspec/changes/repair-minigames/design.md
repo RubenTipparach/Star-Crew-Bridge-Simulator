@@ -135,6 +135,26 @@ with screenshots):
 - The kit holds the drawing every game shares (hatching, a turn arrow); the part-step drag, a star order and a drag
   helper are still repeated in several games and move into the kit next (task 1.5).
 
+### 6b. After the owner played them (2026-10-08)
+
+The owner: "the tools dont respond well and just end up dragging the frame"; "some of the panel ones would be cool to
+like screw or unscrew stuff"; "the fighter thing needs some way to tell me what the next screw is, the highlight doesnt
+tell me whats wrong until I click on the wrong screw"; "wheres my toilet minigame"; "the medical one kinda sucks".
+
+- **The pointer is the game's.** A drag on a game's canvas no longer drags or selects the page: the kit stops the
+  browser's own drag, selection, panning and menu, and takes the pointer until it is released. Every game gets it.
+- **Access panels with screws** (kit). A game that names a `panel` has its machine behind a cover plate: the job
+  starts by unscrewing it (turn each screw anticlockwise by dragging round it, the wheel over it, or holding Left; Tab
+  picks the next) and ends by screwing it back (clockwise) before the job counts as done. 2.5 turns a screw; a ring
+  round each head shows how far it has turned. Not a fumble anywhere: a screw only turns while you turn it. On the
+  breaker cabinet (6 screws), the scrubber cabinet and the biobed's control box (4 each). In the engine the same
+  plates are where the layout's repair points are.
+- **The order is shown before the first fastener.** Star orders (the fighter's panel, the pylon's bolt plate) have one
+  order, from the first fastener round the star (`KIT.starOrder`); every fastener carries its number and the next one
+  is lit and ringed at rest (`KIT.draw.orderBadge`). A fastener out of order is still refused (the pylon's bolt is
+  still lost), but it is never a guess.
+- **Toilets and showers** and **the medic**: section 6c.
+
 ## 7. The Pi 5 budget
 
 A mini-game is a UI screen: a few hundred to a few thousand UI triangles in a handful of draws, the 3D pass behind it

@@ -17,6 +17,7 @@ RepairKit.register({
   group: "Engineering",
   hazard: "Arc flash: 10 HP",
   down: "power-grid",
+  panel: { x: 120, y: 92, w: 660, h: 609, screws: 6 },   // the cover, screwed on (kit: access panels)
   create(api) {
     const { C, KIT } = api, D = KIT.draw;
     const CAB = { x: 120, y: 92, w: 660, h: 610 };       // the switchboard cabinet

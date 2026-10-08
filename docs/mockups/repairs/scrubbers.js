@@ -16,6 +16,7 @@ RepairKit.register({
   group: "Life",
   hazard: "Hiss: the room's CO2 rises",
   down: "The air goes bad (life-support)",
+  panel: { x: 90, y: 100, w: 420, h: 589, screws: 4 },   // the cover, screwed on (kit: access panels)
   create(api) {
     const { C, KIT } = api, D = KIT.draw;
     const HISS = "Hiss: the room's CO2 rises";

@@ -15,6 +15,7 @@ RepairKit.register({
   group: "Life",
   hazard: "The bed alarms",
   down: "Beds heal at the unpowered rate",
+  panel: { x: 640, y: 489, w: 458, h: 210, screws: 4 },   // the cover, screwed on (kit: access panels)
   create(api) {
     const { C, KIT } = api, D = KIT.draw;
     const ALARM = "The bed alarms";

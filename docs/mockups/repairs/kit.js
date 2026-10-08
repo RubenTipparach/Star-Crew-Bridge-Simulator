@@ -46,7 +46,9 @@
      * Register a game:
      *   id: short id (the URL hash), title: the system's name, place: where its repair point is,
      *   group: the menu's column, hazard: what a fumble does, down: what the ship loses while it is down,
-     *   doneWord (optional): the word when the job is done ("Treated"; default "Repaired"),
+     *   panel (optional): { x, y, w, h, screws } a cover plate over the machine, unscrewed before the work and screwed
+ *     back after it (4 screws at the corners, or 6),
+ *   doneWord (optional): the word when the job is done ("Treated"; default "Repaired"),
  *   job (optional): { unit: "%" | "HP", start, target, rate or rateBy: { officer, rating }, steps, fumble } to
  *     override the integrity job (the medic: HP, its rates and a 2 HP slip),
      *   create(api): returns { draw(g, t, dt), update?(dt, input), step?(index, part) }:
@@ -88,6 +90,20 @@
         g.lineTo(hx + Math.cos(a1) * 9, hy + Math.sin(a1) * 9); g.lineTo(hx - Math.cos(a1) * 9, hy - Math.sin(a1) * 9);
         g.closePath(); g.fillStyle = color; g.fill();
       },
+      /**
+       * A fastener's place in its order: its number beside it, and a bright pulsing ring on the one that comes next, at
+       * rest (owner, 2026-10-08: "needs some way to tell me what the next screw is"). `r` is the fastener's radius.
+       */
+      orderBadge(g, x, y, r, n, next, t) {
+        if (next) {
+          KIT.draw.ring(g, x, y, r + 9 + 2 * Math.sin(t * 6), C.accent, 3);
+          KIT.draw.disc(g, x, y, r + 5, "rgba(79,195,247,0.18)");
+        }
+        const br = Math.max(13, r * 0.8), bx = x + r + br - 2, by = y - r - br + 4;
+        KIT.draw.disc(g, bx, by, br, next ? C.accent : "#1d2738");
+        KIT.draw.ring(g, bx, by, br, next ? "#e8f7ff" : "#4a5568", 1.5);
+        KIT.draw.text(g, String(n), bx, by + 1, Math.round(br * 1.3), next ? "#04131c" : C.fg, "center", 700);
+      },
       /** A button: returns true when the pointer pressed it this frame. */
       button(g, input, label, x, y, w, h, opts = {}) {
         const over = input.x >= x && input.x <= x + w && input.y >= y && input.y <= y + h;
@@ -101,6 +117,90 @@
   };
   window.RepairKit = KIT;
 
+  // ------------------------------------------------------------------ access panels (screws)
+  // The owner, 2026-10-08: "some of the panel ones would be cool to like screw or unscrew stuff". A game that names a
+  // `panel` ({ x, y, w, h, screws }) has its machine behind a cover plate: the job opens by unscrewing it (turn each
+  // screw anticlockwise: drag round it, roll the wheel over it, or hold Left; Tab picks the next) and ends by screwing
+  // it back (clockwise, Right). The plate hides the machine until it is off. Nothing here is a fumble: a screw only
+  // turns while the pointer goes round it.
+  const SCREW_TURNS = 2.5;                      // turns to free a screw, and to drive it home
+  const SCREW_R = 15;                           // a screw head's radius, px
+  function screwPanel(spec) {
+    const n = spec.screws || 4, m = 26, { x, y, w, h } = spec;
+    const spots = n >= 6
+      ? [[x + m, y + m], [x + w / 2, y + m], [x + w - m, y + m], [x + w - m, y + h - m], [x + w / 2, y + h - m], [x + m, y + h - m]]
+      : [[x + m, y + m], [x + w - m, y + m], [x + w - m, y + h - m], [x + m, y + h - m]];
+    return { x, y, w, h, phase: "shut", lift: 0, sel: 0, grab: -1, prevA: 0,
+      screws: spots.slice(0, n).map(([sx, sy]) => ({ x: sx, y: sy, turn: 0, rot: 0 })) };
+  }
+  KIT.screwPanel = screwPanel;
+  /** The star (cross) order to work n fasteners round a rim, from the first: across, then round. */
+  const STARS = { 4: [0, 2, 1, 3], 6: [0, 3, 1, 4, 2, 5], 8: [0, 4, 2, 6, 1, 5, 3, 7] };
+  KIT.starOrder = (n) => (STARS[n] || [...Array(n).keys()]).slice();
+  /** Run a panel a frame: `dir` -1 unscrews (anticlockwise), +1 drives home. Returns true when every screw is done. */
+  function turnScrews(p, input, dt, dir) {
+    const goal = SCREW_TURNS * Math.PI * 2;
+    const left = p.screws.filter((sc) => sc.turn < goal);
+    if (!left.length) return true;
+    if (input.hit.has("Tab")) { const i = p.screws.indexOf(left.find((sc) => p.screws.indexOf(sc) > p.sel) || left[0]); p.sel = i; }
+    if (p.screws[p.sel].turn >= goal) p.sel = p.screws.indexOf(left[0]);
+    const near = (sc) => Math.hypot(input.x - sc.x, input.y - sc.y) < SCREW_R + 22;
+    if (input.pressed) { const i = p.screws.findIndex((sc) => sc.turn < goal && near(sc)); if (i >= 0) { p.grab = i; p.sel = i; p.prevA = null; } }
+    if (!input.down) p.grab = -1;
+    const turn = (sc, d) => { const k = Math.max(0, d * dir); sc.turn = Math.min(goal, sc.turn + k); sc.rot += d; };
+    if (p.grab >= 0) {
+      const sc = p.screws[p.grab], dx = input.x - sc.x, dy = input.y - sc.y;
+      if (Math.hypot(dx, dy) > 6) {
+        const a = Math.atan2(dy, dx);
+        if (p.prevA !== null) { let d = a - p.prevA; d = Math.atan2(Math.sin(d), Math.cos(d)); turn(sc, d); }
+        p.prevA = a;
+      }
+    }
+    if (input.wheel) { const sc = p.screws.find((q) => q.turn < goal && near(q)) || p.screws[p.sel]; turn(sc, -input.wheel * 0.7); }
+    const key = (input.keys.has("ArrowRight") || input.keys.has("KeyD") ? 1 : 0) - (input.keys.has("ArrowLeft") || input.keys.has("KeyA") ? 1 : 0);
+    if (key) turn(p.screws[p.sel], key * 9 * dt);
+    return p.screws.every((sc) => sc.turn >= goal);
+  }
+  function drawPanel(g, p, t) {
+    const D = KIT.draw, goal = SCREW_TURNS * Math.PI * 2;
+    if (p.lift >= 1) return;
+    g.save();
+    g.translate(0, -p.lift * (p.h + 120));
+    g.globalAlpha = 1 - p.lift * 0.6;
+    // The plate: brushed steel, a stencil, vent slots, a drop shadow.
+    g.fillStyle = "rgba(0,0,0,0.45)"; D.round(g, p.x + 8, p.y + 10, p.w, p.h, 12); g.fill();
+    const grd = g.createLinearGradient(p.x, p.y, p.x + p.w, p.y + p.h);
+    grd.addColorStop(0, "#3a4556"); grd.addColorStop(1, "#262f3d");
+    D.round(g, p.x, p.y, p.w, p.h, 12); g.fillStyle = grd; g.fill(); g.lineWidth = 3; g.strokeStyle = "#556275"; g.stroke();
+    g.strokeStyle = "rgba(255,255,255,0.04)"; g.lineWidth = 1;
+    for (let yy = p.y + 6; yy < p.y + p.h; yy += 5) { g.beginPath(); g.moveTo(p.x + 6, yy); g.lineTo(p.x + p.w - 6, yy); g.stroke(); }
+    const vs = Math.min(6, Math.floor((p.w - 120) / 40));
+    for (let i = 0; i < vs; i++) { D.round(g, p.x + p.w / 2 - (vs * 40) / 2 + i * 40 + 8, p.y + p.h - 64, 24, 30, 6); g.fillStyle = "#151b25"; g.fill(); }
+    D.hatch(g, p.x + 60, p.y + 50, Math.min(140, p.w - 120), 14, "rgba(242,160,70,0.55)");
+    for (const [i, sc] of p.screws.entries()) {
+      const k = Math.min(1, sc.turn / goal), out = p.phase === "open" ? k : 1 - k;
+      // A screw backs out as it turns: it stands proud, its shadow grows.
+      D.disc(g, sc.x + 3 + 5 * out, sc.y + 4 + 5 * out, SCREW_R + 1, "rgba(0,0,0,0.5)");
+      D.disc(g, sc.x, sc.y, SCREW_R + 2 * out, out > 0.98 && p.phase === "open" ? "#6d7686" : "#b7c0cc");
+      D.ring(g, sc.x, sc.y, SCREW_R + 2 * out, "#7a8494", 2);
+      g.save(); g.translate(sc.x, sc.y); g.rotate(sc.rot);
+      g.strokeStyle = "#2a313c"; g.lineWidth = 4; g.beginPath(); g.moveTo(-8, 0); g.lineTo(8, 0); g.moveTo(0, -8); g.lineTo(0, 8); g.stroke();
+      g.restore();
+      if (sc.turn < goal) {
+        g.beginPath(); g.arc(sc.x, sc.y, SCREW_R + 9, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2 * sc.turn) / goal);
+        g.strokeStyle = C.amber; g.lineWidth = 4; g.stroke();
+        if (i === p.sel) D.ring(g, sc.x, sc.y, SCREW_R + 15 + Math.sin(t * 5) * 2, "rgba(232,238,246,0.35)", 2);
+      } else D.ring(g, sc.x, sc.y, SCREW_R + 9, C.ok, 3);
+    }
+    // Which way they turn, once, by the selected screw: a turn arrow (anticlockwise off, clockwise on).
+    const sc = p.screws[p.sel];
+    if (sc && sc.turn < goal) {
+      const dir = p.phase === "open" ? -1 : 1;
+      D.turnArrow(g, sc.x, sc.y, SCREW_R + 26, dir < 0 ? 0.2 : -1.6, dir < 0 ? -1.6 : 0.2, "rgba(232,238,246,0.6)");
+    }
+    g.restore();
+  }
+
   // ------------------------------------------------------------------ the runner (the page calls RepairKit.start)
   KIT.start = function (canvas, ui) {
     const g = canvas.getContext("2d");
@@ -109,9 +209,24 @@
     const opts = { who: "officer", state: "damaged", combat: false };
     let run = null;
     const toCanvas = (e) => { const r = canvas.getBoundingClientRect(); return [(e.clientX - r.left) * (W / r.width), (e.clientY - r.top) * (H / r.height)]; };
-    canvas.addEventListener("pointermove", (e) => { [input.x, input.y] = toCanvas(e); });
-    canvas.addEventListener("pointerdown", (e) => { [input.x, input.y] = toCanvas(e); input.down = true; input.pressed = true; canvas.setPointerCapture(e.pointerId); });
-    canvas.addEventListener("pointerup", (e) => { [input.x, input.y] = toCanvas(e); input.down = false; input.released = true; });
+    // The canvas owns the pointer: no native drag of the canvas, no text selection, no page pan, no menu, so a drag in a
+    // game never drags the frame instead (owner, 2026-10-08: "the tools dont respond well and just end up dragging the
+    // frame").
+    canvas.draggable = false;
+    canvas.style.userSelect = "none";
+    canvas.style.webkitUserSelect = "none";
+    canvas.style.touchAction = "none";
+    for (const ev of ["dragstart", "selectstart", "contextmenu"]) canvas.addEventListener(ev, (e) => e.preventDefault());
+    canvas.addEventListener("pointermove", (e) => { [input.x, input.y] = toCanvas(e); if (input.down) e.preventDefault(); });
+    canvas.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      [input.x, input.y] = toCanvas(e); input.down = true; input.pressed = true;
+      try { canvas.setPointerCapture(e.pointerId); } catch (_) { /* a synthetic event has no pointer to capture */ }
+    });
+    const up = (e) => { [input.x, input.y] = toCanvas(e); if (input.down) input.released = true; input.down = false; };
+    canvas.addEventListener("pointerup", up);
+    canvas.addEventListener("pointercancel", up);
+    canvas.addEventListener("lostpointercapture", (e) => { if (input.down) { input.down = false; input.released = true; } });
     canvas.addEventListener("wheel", (e) => { input.wheel += Math.sign(e.deltaY); e.preventDefault(); }, { passive: false });
     addEventListener("keydown", (e) => { if (!input.keys.has(e.code)) input.hit.add(e.code); input.keys.add(e.code); if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault(); });
     addEventListener("keyup", (e) => input.keys.delete(e.code));
@@ -153,6 +268,7 @@
         get who() { return opts.who; },
       };
       run.inst = game.create(run.api);
+      run.panel = game.panel ? Object.assign(screwPanel(game.panel), { phase: "open" }) : null;
       function startStep() { if (run.inst.step) run.inst.step(run.step, job.part && run.step === 0); }
       run.startStep = startStep;
       run.cap = cap;
@@ -174,12 +290,22 @@
       if (!run.done) {
         // The bar fills at the rate up to the current step's share (design 1).
         if (run.value < run.cap()) run.value = Math.min(run.cap(), run.value + job.rate * dt);
-        if (run.auto) run.roundDone = true;
-        else if (run.inst.update) run.inst.update(dt, input);
+        const P = run.panel;
+        if (run.auto) { run.roundDone = true; if (P) P.lift = 1; }
+        else if (P && P.phase !== "work") {
+          // The cover: off before the work (anticlockwise), back on after it (clockwise).
+          if (P.phase === "open" && turnScrews(P, input, dt, -1)) { P.phase = "lifting"; }
+          if (P.phase === "lifting") { P.lift = Math.min(1, P.lift + dt * 2.5); if (P.lift >= 1) P.phase = "work"; }
+          if (P.phase === "lowering") { P.lift = Math.max(0, P.lift - dt * 2.5); if (P.lift <= 0) { P.phase = "close"; P.sel = 0; } }
+          if (P.phase === "close" && turnScrews(P, input, dt, 1)) { run.done = true; run.note = run.game.doneWord || "Repaired"; run.noteT = 99; }
+        } else if (run.inst.update) run.inst.update(dt, input);
         if (run.roundDone && run.value >= run.cap() - 1e-6) {
           run.roundDone = false; run.fumbles = 0; run.step++;
-          if (run.step >= job.steps) { run.done = true; run.value = job.target; run.note = run.game.doneWord || "Repaired"; run.noteT = 99; }
-          else run.startStep();
+          if (run.step >= job.steps) {
+            run.value = job.target;
+            if (P && !run.auto) { P.phase = "lowering"; P.screws.forEach((sc) => { sc.turn = 0; }); }
+            else { run.done = true; run.note = run.game.doneWord || "Repaired"; run.noteT = 99; }
+          } else run.startStep();
         }
       }
       run.flash = Math.max(0, run.flash - dt * 2.5);
@@ -228,6 +354,7 @@
         if (run.auto) {
           KIT.draw.text(g, "RATING AT WORK", W / 2, H / 2, 40, C.dim, "center", 700);
         } else run.inst.draw(g, run.t, dt, input);
+        if (run.panel && !run.auto) drawPanel(g, run.panel, run.t);
         g.restore();
         if (run.done) { g.fillStyle = "rgba(4,6,10,0.55)"; g.fillRect(0, BAR_H, W, H - BAR_H); KIT.draw.text(g, (run.game.doneWord || "Repaired").toUpperCase(), W / 2, H / 2, 64, C.ok, "center", 700); }
         if (run.flash > 0) { g.fillStyle = `rgba(255,71,87,${0.25 * run.flash})`; g.fillRect(0, BAR_H, W, H - BAR_H); }

@@ -4,9 +4,10 @@
  *
  * The Swift sits on its cradle at the left with its dorsal avionics bay marked; the bay fills the rest of the screen.
  * Lift the access panel off (drag it away), plug each avionics lead into the socket of the same shape and stripe, then
- * torque the panel's fasteners back in a star order: each one across from the last, working round. A plug forced
- * into the wrong socket sparks (5 HP) and comes back bent. A fastener out of order is refused, and from then on the
- * next one in the star glows faintly; nothing glows at rest. Later steps have more leads, fewer shapes to tell them
+ * torque the panel's fasteners back in a star order: each one across from the last, working round. Every fastener
+ * shows its number in the order and the next one is lit, so the order is known before the first is picked (the
+ * owner: "needs some way to tell me what the next screw is"). A plug forced into the wrong socket sparks (5 HP) and
+ * comes back bent; a fastener out of order is refused with a red cross. Later steps have more leads, fewer shapes to tell them
  * apart by (the stripe decides), and more fasteners. A disabled fighter's first step fits the new avionics unit: drag
  * it from the crate into the empty rack slot. Keys: arrows choose, Space lifts, picks up, places and turns.
  */
@@ -29,8 +30,7 @@ RepairKit.register({
     const SWIFT = { x: 214, y: 380 };                    // the fighter's picture, nose up
     const SHAPES = ["circle", "square", "triangle", "diamond"];
     const STRIPES = [C.accent, C.amber, C.lilac];       // stripe i is drawn as i + 1 bars, so it reads without colour
-    const STAR = { 6: [0, 3, 1, 4, 2, 5], 8: [0, 4, 2, 6, 1, 5, 3, 7] };   // across, then round
-    let phase, panel, plugs, sockets, fast, order, hinting, wrong, unit, kf, fi, carry, held, spark;
+    let phase, panel, plugs, sockets, fast, order, wrong, unit, kf, fi, carry, held, spark;
     const near = (ax, ay, bx, by, r) => Math.hypot(ax - bx, ay - by) < r;
     const wrapI = (i, n) => ((i % n) + n) % n;
     const shuffle = (a, r) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -42,15 +42,13 @@ RepairKit.register({
       return n === 6 ? [[L, T], [M, T], [R, T], [R, B], [M, B], [L, B]]
         : [[L, T], [M, T], [R, T], [R, V], [R, B], [M, B], [L, B], [L, V]];
     }
-    /** The fasteners that may come next: the star from any start, either way round. */
+    /** The fastener that comes next: the kit's star order from the first (one order, shown at rest, KIT.starOrder). */
     function nextInStar(done, n) {
-      const S = STAR[n], out = [];
-      for (let s = 0; s < n; s++) for (const d of [1, -1]) {
-        const at = (k) => wrapI(s + d * S[k], n);
-        if (done.every((f, k) => f === at(k))) out.push(at(done.length));
-      }
-      return out;
+      const S = KIT.starOrder(n);
+      return done.length < n ? [S[done.length]] : [];
     }
+    /** Fastener i's number in the order, from 1. */
+    const orderNo = (i, n) => KIT.starOrder(n).indexOf(i) + 1;
     function shape(g, kind, x, y, r) {
       g.beginPath();
       if (kind === "circle") g.arc(x, y, r, 0, Math.PI * 2);
@@ -79,14 +77,14 @@ RepairKit.register({
       if (nextInStar(order, fast.length).includes(i)) {
         fast[i].on = true; order.push(i);
         if (order.length === fast.length) { phase = "done"; api.stepDone(); }
-      } else { wrong = { i, t: 0.7 }; hinting = true; api.say("Out of order"); }
+      } else { wrong = { i, t: 0.7 }; api.say("Out of order"); }
     }
     function seatUnit() { unit.set = true; unit.held = false; unit.x = SLOT.x; unit.y = SLOT.y; phase = "done"; api.stepDone(); }
 
     return {
       step(index, isPart) {
         const r = api.rand();
-        kf = false; fi = 0; carry = null; held = null; hinting = false; wrong = null; spark = null;
+        kf = false; fi = 0; carry = null; held = null; wrong = null; spark = null;
         panel = { dx: 0, dy: 0, tx: 0, ty: 0, held: false, gx: 0, gy: 0 };
         plugs = []; sockets = []; order = [];
         fast = ringPts(index === 0 ? 6 : 8).map(([x, y]) => ({ x, y, on: false, t: 0 }));
@@ -302,7 +300,6 @@ RepairKit.register({
       fast.forEach((f, i) => {
         const fx = f.x + ox, fy = f.y + oy;
         if (!loose) { D.disc(g, fx, fy, 10, "#0b0f15"); D.ring(g, fx, fy, 10, "#4a5568", 2); return; }
-        if (hinting && phase === "torque" && nextInStar(order, fast.length)[0] === i) D.disc(g, fx, fy, 30, `rgba(79,195,247,${0.14 + 0.08 * Math.sin(t * 4)})`);
         hex(g, fx, fy, 14);
         if (f.on) {
           g.fillStyle = "#c9d3df"; g.fill();
@@ -310,6 +307,8 @@ RepairKit.register({
         } else { g.fillStyle = "#0b0f15"; g.fill(); g.strokeStyle = "#c9d3df"; g.lineWidth = 2; g.stroke(); }
         g.strokeStyle = f.on ? "#2a3446" : "#c9d3df"; g.lineWidth = 3;
         g.beginPath(); g.moveTo(fx - 6, fy); g.lineTo(fx + 6, fy); g.stroke();
+        // Every fastener's number in the star, the next one lit (owner: tell me the next screw before I pick one).
+        if (phase === "torque" && !f.on) D.orderBadge(g, fx, fy, 14, orderNo(i, fast.length), nextInStar(order, fast.length)[0] === i, t);
         if (wrong && wrong.i === i) {
           g.strokeStyle = C.danger; g.lineWidth = 5; g.beginPath();
           g.moveTo(fx - 18, fy - 18); g.lineTo(fx + 18, fy + 18); g.moveTo(fx + 18, fy - 18); g.lineTo(fx - 18, fy + 18); g.stroke();

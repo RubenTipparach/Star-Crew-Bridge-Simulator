@@ -5,8 +5,8 @@
  * cracked. You are the suited figure at the dorsal airlock on two tether clips. Click a handhold within reach and you
  * swing to it with one clip open; its hook swings past the rail, and you clip it home as it crosses (click, or Space).
  * Only one clip is ever open, and an open clip has a few seconds: miss them and the tether snaps you back to the last
- * hold. At the damaged segment the view closes in: unbolt its plate in a star order (across, then round; a wrong bolt
- * slips and is lost, and the next one glows faintly from then on), let the old segment go, and push the new one up
+ * hold. At the damaged segment the view closes in: unbolt its plate in a star order (across, then round; every bolt
+ * shows its number and the next is lit; a wrong bolt slips and is lost), let the old segment go, and push the new one up
  * into the gap against the drift until it seats square. Later steps go further out along the coil, with shorter clip
  * times, more bolts and a stronger drift. A disabled pylon's first step fits the new coil driver into its socket at the
  * pylon's root. In combat an EVA is refused (design 5): nothing here can be played.
@@ -24,7 +24,6 @@ RepairKit.register({
     const HULL = { x: 600, y: 3000, r: 2400 };           // the hull's curve, side on
     const COIL = { x0: 380, y0: 172, h: 88, seg: 120, n: 7 };
     const REACH = 175;                                   // how far a suited arm and lanyard reach, px
-    const STAR = { 6: [0, 3, 1, 4, 2, 5], 8: [0, 4, 2, 6, 1, 5, 3, 7] };
     const hullY = (x) => HULL.y - Math.sqrt(HULL.r * HULL.r - (x - HULL.x) * (x - HULL.x));
     const HATCH = { x: 232, y: hullY(232) };
     const SOCKET = { x: 512, y: 548 };                   // the coil driver's socket, low on the pylon
@@ -33,18 +32,16 @@ RepairKit.register({
     const wrapI = (i, n) => ((i % n) + n) % n;
     const sr = KIT.rng(KIT.hash("pylons:stars"));
     const stars = Array.from({ length: 170 }, () => ({ x: sr() * 1280, y: 80 + sr() * 640, r: 0.6 + sr() * 1.6, p: sr() * 6 }));
-    let phase, holds, at, mode, from, to, openT, openMax, omega, swingT, miss, fig, cam, dmg, bolts, order, hinting, wrong,
+    let phase, holds, at, mode, from, to, openT, openMax, omega, swingT, miss, fig, cam, dmg, bolts, order, wrong,
       lost, rel, seg, kf, fi, drv, index;
 
-    /** The fasteners that may come next: the star from any start, either way round. */
+    /** The fastener that comes next: the kit's star order from the first (one order, shown at rest, KIT.starOrder). */
     function nextInStar(done, n) {
-      const S = STAR[n], out = [];
-      for (let s = 0; s < n; s++) for (const d of [1, -1]) {
-        const k = (j) => wrapI(s + d * S[j], n);
-        if (done.every((f, j) => f === k(j))) out.push(k(done.length));
-      }
-      return out;
+      const S = KIT.starOrder(n);
+      return done.length < n ? [S[done.length]] : [];
     }
+    /** Fastener i's number in the order, from 1. */
+    const orderNo = (i, n) => KIT.starOrder(n).indexOf(i) + 1;
     const segX = (k) => COIL.x0 + k * COIL.seg;
     const seat = () => ({ x: segX(dmg) + COIL.seg / 2, y: COIL.y0 + COIL.h / 2 });
     const toWorld = (x, y) => [(x - 640) / cam.s + cam.x, (y - 400) / cam.s + cam.y];
@@ -66,7 +63,7 @@ RepairKit.register({
         b.out = true; order.push(i);
         if (order.length === bolts.length) { phase = "release"; rel = 0; }
       } else {
-        wrong = { i, t: 0.7 }; hinting = true;
+        wrong = { i, t: 0.7 };
         lost.push({ x: fig.x + 10, y: fig.y + 20, vx: 30 + 20 * Math.sin(order.length), vy: 46, a: 0, t: 0 });
         api.fumble("A dropped bolt is lost");
       }
@@ -76,7 +73,7 @@ RepairKit.register({
       step(i, isPart) {
         index = i;
         const r = api.rand();
-        mode = "safe"; at = 0; openT = 0; miss = 0; kf = false; fi = 0; order = []; hinting = false; wrong = null; lost = [];
+        mode = "safe"; at = 0; openT = 0; miss = 0; kf = false; fi = 0; order = []; wrong = null; lost = [];
         rel = 0; cam = { s: 1, x: 640, y: 400 };
         openMax = Math.max(1.8, 3.4 - 0.4 * index);
         omega = Math.PI * 2 / Math.max(0.9, 1.4 - 0.12 * index);
@@ -316,8 +313,9 @@ RepairKit.register({
       const loose = phase === "bolts";
       bolts.forEach((b, i) => {
         if (b.out) { D.disc(g, b.x, b.y, 5, "#05070b"); D.ring(g, b.x, b.y, 6, "#4a5568", 1.5); return; }
-        if (loose && hinting && nextInStar(order, bolts.length)[0] === i) D.disc(g, b.x, b.y, 13, `rgba(79,195,247,${0.16 + 0.08 * Math.sin(t * 4)})`);
         hex(g, b.x, b.y, 6); g.fillStyle = "#c9d3df"; g.fill(); g.strokeStyle = "#2a3446"; g.lineWidth = 1.5; g.stroke();
+        // Every bolt's number in the star, the next one lit (the owner's note on the fighter, the same here).
+        if (loose) D.orderBadge(g, b.x, b.y, 6, orderNo(i, bolts.length), nextInStar(order, bolts.length)[0] === i, t);
         if (loose && kf && fi === i) { g.setLineDash([3, 3]); D.ring(g, b.x, b.y, 11, C.amber, 1.5); g.setLineDash([]); }
         if (wrong && wrong.i === i) {
           g.strokeStyle = C.danger; g.lineWidth = 2.5; g.beginPath();
