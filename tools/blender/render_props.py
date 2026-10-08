@@ -20,10 +20,10 @@ with few samples: it runs headless, without a GPU (Workbench and EEVEE need an O
 that a cloud session does not have).
 
 Run (from anywhere):
-  <python with the bpy module> tools/blender/render_props.py [--set bridge|suite|machinery] [--only a,b] [--samples 24]
+  <python with the bpy module> tools/blender/render_props.py [--set bridge|suite|engineering|machinery|doors] [--only a,b] [--samples 24]
       [--no-sheet] [--no-stills] [--shots DIR] [--views iso,front,back]
   blender -b --factory-startup -P tools/blender/render_props.py -- [same options]
-  --set        which prop set: bridge (the default), suite or machinery
+  --set        which prop set: bridge (the default), suite, engineering, machinery or doors
   --only       render the stills of only these props (the sheet still shows the whole set)
   --no-sheet   skip the contact sheet; --no-stills skip the stills
   --shots      write into DIR instead of docs/screenshots/props
@@ -97,6 +97,17 @@ SETS = {
         "label_m": 0.36,  # the widest scene of the three
         "res": (2400, 1650),   # the reactor is 10 m tall: the rest of the set needs the pixels
         "floor_m": (90, 90),   # the rows nearer the camera shift right past a 40 m floor
+    },
+    "doors": {
+        "dir": os.path.join(ROOT, "assets", "models", "doors"),
+        # each sliding door's two leaves side by side as they meet, the pressure leaf and the lift car's at the end
+        "rows": [["door_100x220_l", "door_100x220_r", "door_120x220_l", "door_120x220_r", "door_120x210_l", "door_120x210_r"],
+                 ["door_160x230_l", "door_160x230_r", "door_200x230_l", "door_200x230_r", "door_200x250_l", "door_200x250_r",
+                  "pressure_100x220"]],
+        "sheet": "door-props.png",
+        "gap_y": 2.4,
+        "gap_x": 0.6,
+        "label_m": 0.12,
     },
 }
 

@@ -56,3 +56,18 @@ with handholds past it.
 #### Scenario: A scuttle
 - **WHEN** a crew member stands under a scuttle's hatch
 - **THEN** a ladder runs from their floor up through the hatch to the floor of the room above
+
+### Requirement: Doors are modelled leaves that slide into their jambs
+
+Every door, pressure door and lift door SHALL be drawn with modelled leaves from the `doors` prop set, one prop per
+leaf size in the layout and the lift's data, each within its budget. Opening SHALL move a leaf whole toward its
+jamb, and no part of a leaf SHALL be drawn beyond its jamb's face.
+
+#### Scenario: A door size without a model is refused
+- **WHEN** the layout or the lift's data holds a door size the `doors` set has no prop for
+- **THEN** the doors build names the size and writes nothing
+
+#### Scenario: A half-open door
+- **WHEN** a 1.0 m door stands half open
+- **THEN** each leaf stands 0.25 m toward its jamb, its relief unchanged, and nothing of it shows past the frame
+

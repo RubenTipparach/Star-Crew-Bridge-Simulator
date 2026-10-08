@@ -62,6 +62,7 @@ WALK_LINE_R = 0.85        # where a person walks a spiral stair
 # meets the backs of the briefing table's inboard chairs, at x -3.3.
 LIFT = {"x": (-3.3, -1.25), "z": (17.1, 19.0)}
 LIFT_CAR = [1.9, 2.2, 1.6]   # depth from its door (x), height, width (z) in metres: a 1.9 m stretcher fits lengthwise
+LIFT_CAR_DOOR = [1.2, 2.1]   # the car's own door, clear width and height in metres: the landing door's width, 0.1 m under the car's roof (ship-props 4g)
 LIFT_SPEED_M_S = 1.5         # assumed (design section 3)
 LIFT_DOOR_S = 2.0            # to open, and again to close (assumed)
 # The scuttles: a hatch and ladder from each side room by the bridge down to the room below.
@@ -247,7 +248,7 @@ def build():
     for d in "ABC":
         portals.append(door(f"p_lift_{d.lower()}", "lift", corridors[d], x1, d, lz, 1.0, w=1.2))
     fixtures.append({"id": "lift_car", "kind": "lift", "compartment": "lift", "center_m": [r3((x0 + x1) / 2), DECK_Y["A"], lz],
-                     "car_m": LIFT_CAR, "stops_y_m": [DECK_Y["C"], DECK_Y["B"], DECK_Y["A"]],
+                     "car_m": LIFT_CAR, "door_m": LIFT_CAR_DOOR, "stops_y_m": [DECK_Y["C"], DECK_Y["B"], DECK_Y["A"]],
                      "speed_m_s": LIFT_SPEED_M_S, "door_s": LIFT_DOOR_S, "facing_yaw_deg": 90.0,
                      "note": "Drawn at deck A; its door faces the passage (+x). Speed and door times assumed (deck-access design 3)."})
     for pid, upper, lower, x, z in SCUTTLES:

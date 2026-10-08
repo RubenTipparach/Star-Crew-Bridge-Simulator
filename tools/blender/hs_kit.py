@@ -1009,6 +1009,10 @@ def _unfold(groups, bm, max_len):
             x, y = q[0] - bx1, q[1] - by1
             return (ax1 + x * c - y * s_, ay1 + x * s_ + y * c)
         moved = [[tf(q) for q in t] for t in B_["tris"]]
+        # A vertex both charts hold besides the hinge must land where A has it, or B's faces would be
+        # stretched onto A's positions (a band's floor unfolded with both its walls: a skewed, garbled chart).
+        if any(math.dist(A_["pos"][v], tf(q)) > 1e-6 for v, q in B_["pos"].items() if v in A_["pos"] and v not in (v1, v2)):
+            continue
         pos = dict(A_["pos"])
         for v, q in B_["pos"].items():
             pos.setdefault(v, tf(q))

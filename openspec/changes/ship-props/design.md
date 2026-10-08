@@ -289,6 +289,101 @@ Shown in `docs/screenshots/mockups/walk-fixes-2026-10-08c/`, before and after:
 Not done: the canopy has no glass. A tinted pane would be one more transparent draw per craft, and a later step
 decides glass with the exterior view (`ship-frames`).
 
+### 4g. Doors modelled, sliding into their jambs (2026-10-08)
+
+The owner, on the leaves of 4d and 4e: "doors are still flat geometry", with a still of a corridor door from Star
+Trek: The Next Generation as the reference. A leaf was two textured quads 4 cm apart. What the reference does, in
+shape only (CLAUDE.md 15): two leaves meet on a stepped seam (vertical, a short diagonal, vertical again), each
+leaf carries raised panels above and below, a dark band crosses both at chest height with a grille in it, and a
+small round lamp and a plate sit by the seam.
+
+**The leaves are props, one per leaf size,** in a new set `doors` (`tools/blender/build_door_props.py`,
+`assets/models/doors/`), modelled and baked like every other set (the hard-surface kit, an atlas each):
+
+| Prop | Leaf, W x H, m | Used by | Budget, triangles |
+| --- | --- | --- | ---: |
+| `door_100x220_l`, `_r` | 0.50 x 2.20 | 1.0 m doors (35) | 220 each |
+| `door_120x220_l`, `_r` | 0.60 x 2.20 | 1.2 m doors (12), the lift's landing doors among them | 220 each |
+| `door_120x210_l`, `_r` | 0.60 x 2.10 | the lift car's own door | 220 each |
+| `door_160x230_l`, `_r` | 0.80 x 2.30 | 1.6 m doors (6): the bridge's, the mess's, the torpedo room's, the magazine's, two of the hangar's | 240 each |
+| `door_200x230_l`, `_r` | 1.00 x 2.30 | the cargo hold's 2.0 m door | 240 each |
+| `door_200x250_l`, `_r` | 1.00 x 2.50 | the hangar's 2.0 m door from deck C's spine | 240 each |
+| `pressure_100x220` | 1.00 x 2.20, one leaf | pressure doors (4): the launch bays', the airlock's two | 320 |
+
+The sizes are the layout's (`layout.json` and its patches: `deck_access`, `command_suite`, `armory`) and the lift
+fixture's car door, which moves into its data as `door_m` (1.2 x 2.1 m) so the page and the build read one number;
+the build refuses a size the data has and it has no model for, and the page draws a door without a model as the old
+flat leaf and says so in the console.
+
+**A door leaf**, in its prop space (x from its jamb toward the seam, y up, z out of the door's front; the origin on
+the floor at the jamb):
+- a slab 6 cm thick (z +-0.03), standing on the floor (its underside, never seen, is left out as every prop's is)
+  and 5 mm under the lintel, reaching 2 cm into its jamb, so its end is hidden in the frame whether the door is
+  shut or open;
+- the stepped seam: the left leaf's edge stands 8 cm past the opening's middle below 1.00 m, crosses 16 cm on a
+  45 degree step to 8 cm short of it above 1.16 m, and the right leaf's edge follows it 4 mm away (a 2 mm gap a
+  side, as the flat leaves had);
+- on each face, a raised panel above the band and one below, 12 mm proud and chamfered, 6 cm in from the edges;
+- the band: a dark recess 0.22 m tall at 1.30-1.52 m, 8 mm deep, holding a grille of five horizontal slots;
+- a louvre of six slots low on the leaf, 0.20 m above the floor;
+- by the seam, on the left leaf only, a round lamp in the band (it glows) and a plate under it with an accent
+  stripe the page tints with the room's colour; the right leaf has a second, smaller plate.
+- Both faces carry the same relief, so a door looks like a door from either room. The two leaves are different
+  props, not mirrors: the seam steps one way, and the lamp is on one of them.
+
+**A pressure door's leaf** is one piece from jamb to jamb, 16 cm thick (z +-0.08, inside its 0.24 m deep frame):
+a locking bar across its middle, modelled 3.5 cm proud; in its atlas, three horizontal ribs on each face, a hazard
+band along its foot, a small dark window over the bar and an amber lamp beside it. (Modelled ribs across the whole
+face cut it into strips the atlas unfolded skewed, garbling the window and the plate; baked, they read the same.)
+
+**Opening: the leaf slides whole and is cut at the jamb.** The leaf of 4e kept its size but was squeezed toward
+its jamb vertex by vertex, which only works on a flat leaf. A modelled leaf moves rigidly: opened by `o` (0 shut,
+1 open) it stands `o` times its width toward its jamb, and everything of it beyond the jamb's face is cut away by a
+clipping plane at that face, its own material's, so it never shows past the frame into the wall or the next room.
+The frame's jamb is 12 cm deep (`detailing.json` `door_frame.proud_m` either side) and the leaf 6 cm with its
+panels at most 9, so the cut end always lies behind the jamb's face and is never seen. A pressure leaf (16 cm)
+sits in its 24 cm frame the same way. A leaf all the way in is not drawn.
+
+**Light.** A leaf is lit where it stands, by the lamps of both rooms it joins, in the three lighting states, as
+4e's leaves were (`bakeStates` on a placed copy); it is baked shut, and the light it carries moves with it.
+
+**Collision is unchanged.** A shut door is a wall (`crew-on-deck` section 5), its box `walk.json` `door.thick_m`
+(4 cm); a body's 0.25 m radius keeps it clear of the leaf's 4.5 cm faces.
+
+**Built** (2026-10-08): `tools/blender/build_door_props.py`, `assets/models/doors/` (13 leaves, `--check`
+reproducible), the lift fixture's `door_m`, and `deck-plan.html` drawing every leaf from the set, sliding and
+clipped (`modelLeaf`, `slideModel`; the flat leaf stays only for a size without a model, named in the console).
+Shots, shut, part open and nearly in, of a 1.0 m, a 1.2 m lift landing, a 1.6 m, the 2.0 x 2.5 m hangar door
+and a pressure door: `docs/screenshots/mockups/doors-2026-10-08/`. `MOCKUP_WALK.doorPose(id, open)` holds a door
+at an opening for checks and shots.
+
+**The Pi 5 budget**, measured (`assets/models/doors/props.json`):
+
+| Leaf | Triangles | Budget |
+| --- | ---: | ---: |
+| every sliding door leaf, all six sizes | 174 | 220-240 |
+| `pressure_100x220` | 116 | 320 |
+
+A sliding door is 348 triangles against 24 for the flat pair: 56 sliding doors (the lift car's among them) and 4
+pressure doors are about 19,950 triangles across the ship, of which a room sees two to six doors, under 2,100 in
+any one view. Each leaf is its own draw, as the flat leaves were; the engine can draw every leaf of a deck in one
+call, its offset a uniform per leaf, and clip with a plane uniform and `discard` (GLSL ES 3.00 has no user clip
+distances), which is a later step (`deck-pipeline`). Atlases: 13 layers at 256 px, 4.5 MB of the array with mips,
+against the 96 MB the array may use. A cloud session renders on lavapipe: these are counts, not frame times.
+
+The pressure leaf's ribs are baked, not modelled: ribs across its whole face cut it into strips the atlas
+unfolded skewed, and a 2.2 m face is too long a chart for its 256 px atlas, which cut it into triangles. Two
+plate seams across each face keep its charts whole.
+
+**Found on the way: a kit bug in the atlas layout.** `hs_kit._unfold` joins a neighbouring planar chart by turning
+it flat across the edge they share, but where the two charts already shared a third vertex (a band's floor
+unfolded with one wall, then the other) it kept the first chart's place for it, so the second's faces were
+stretched onto it: the lift car's right leaf baked its band as a skewed smear. A join now has to put every shared
+vertex where the chart already has it, or it is not made.
+
+Recommendation taken (ask only with screenshots): the shape above, its numbers and its colours are first choices,
+for the owner to judge on the shots.
+
 ### 5. The Pi 5 budget this change spends
 
 Measured on the deck plan, 2026-10-06: `MOCKUP_STATS` per compartment, which counts the compartment's mesh and its
