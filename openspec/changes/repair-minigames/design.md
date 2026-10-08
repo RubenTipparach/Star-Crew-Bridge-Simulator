@@ -225,8 +225,12 @@ share.
   held field has to be nursed, never set and left.
 - **Rounds.** Round 1: turn and shift. Round 2: stretch joins. Round 3 and on: the reference has a second, smaller
   ripple across the first and the live field has its own, aligned by the same three controls (a tab picks which
-  ripple the controls hold). The hold to fill is sized to the step's share at the officer's rate, so play and the bar
-  end together.
+  ripple the controls hold). The small ripple drifts at about a third of the big one's speed and never in stretch
+  (its stretch still starts off the mark), so two ripples are nursed, not chased.
+- **The hold** is sized from the step's share at the officer's rate: 0.62 of the share for one ripple (5-9.5 s, plus
+  0.4 s a round) and 0.5 of it for two, because catching both takes longer. Measured with a scripted player, a damaged
+  job's rounds are played in 10-14 s against a 13.9 s share, so play and the bar end together. A disabled job's part
+  step still waits out its share after the coil is fitted: that is the kit's step rule (section 1), not this game.
 - **The part step** of a disabled generator fits the new field coil from the crate into the hub, as before.
 
 **The reactor resets its trims on a spike.** When the plasma or its ring touches the wall, both sliders spring back
