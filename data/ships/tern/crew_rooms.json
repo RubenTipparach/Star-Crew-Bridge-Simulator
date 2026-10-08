@@ -55,6 +55,30 @@
   },
   {
    "room": "quarters",
+   "prop": "bunk",
+   "set": "machinery",
+   "back_m": [
+    6.39,
+    0.0,
+    12.5
+   ],
+   "yaw_deg": -90.0,
+   "note": "two berths in the middle of the room, facing the stair tower"
+  },
+  {
+   "room": "quarters",
+   "prop": "bunk",
+   "set": "machinery",
+   "back_m": [
+    6.41,
+    0.0,
+    12.5
+   ],
+   "yaw_deg": 90.0,
+   "note": "two berths in the middle of the room, facing the hull"
+  },
+  {
+   "room": "quarters",
    "prop": "locker_bank",
    "set": "suite",
    "back_m": [

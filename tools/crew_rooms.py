@@ -54,11 +54,16 @@ def piece(room, prop, back, yaw, note):
 
 def furnishings():
     F = []
-    # Crew quarters (deck B, port): eight berths in four two-tier bunks, and lockers on the hull side.
+    # Crew quarters (deck B, port): twelve berths in six two-tier bunks, for eight crew and the four of the damage
+    # control teams (owner, 2026-10-08: "should have more bunks in crew quarters"), and lockers on the hull side. The
+    # walls are full (the doors from the stair tower, the turret room and the spine), so two stand back to back in
+    # the middle of the room, 2 cm apart, between aisles of 1.6 m and 2.1 m.
     F.append(piece("quarters", "bunk", [5.0, FLOOR_B, 18.0], 180.0, "two berths on the forward wall"))
     F.append(piece("quarters", "bunk", [7.3, FLOOR_B, 18.0], 180.0, "two berths on the forward wall"))
     F.append(piece("quarters", "bunk", [8.0, FLOOR_B, 8.0], 0.0, "two berths on the aft wall, clear of the door from the turret room"))
     F.append(piece("quarters", "bunk", [1.25, FLOOR_B, 16.4], 90.0, "two berths on the corridor wall, forward of the door"))
+    F.append(piece("quarters", "bunk", [6.39, FLOOR_B, 12.5], -90.0, "two berths in the middle of the room, facing the stair tower"))
+    F.append(piece("quarters", "bunk", [6.41, FLOOR_B, 12.5], 90.0, "two berths in the middle of the room, facing the hull"))
     for t, note in ((0.42, "lockers on the hull side"), (0.68, "lockers on the hull side")):
         back, yaw = on_slant((10.9, 8.0), (9.7, 18.0), t)
         F.append(piece("quarters", "locker_bank", back, yaw, note))

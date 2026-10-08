@@ -20,8 +20,9 @@ chairs and furniture (`bridge` and `suite` prop sets, placed by `lib/propkit.js`
 **Non-Goals**
 - System sizes in the layout (`reference-ship-tern` T4): the props are built to the deck plan's nominal sizes
   until T4 sets them.
-- Door leaves. The kit's walls are drawn back to back with no thickness to slide a leaf into; a door is an
-  open frame until the deck pipeline draws walls with thickness.
+- Door leaves as the engine will build them. The kit's walls are drawn back to back with no thickness to slide
+  a leaf into, so the deck plan's leaves (section 4d) retract into their jambs instead, until the deck pipeline
+  draws walls with thickness.
 - The exterior: hull mounts, sensors and the radiators stay as they are.
 
 ## Decisions
@@ -95,11 +96,15 @@ in damage control and the medbay kept clear.
 
 | Room | Pieces |
 | --- | --- |
-| Crew quarters | Four two-tier bunks (eight berths), two locker banks on the hull side |
+| Crew quarters | Six two-tier bunks (twelve berths): two on the forward wall, one on the aft wall, one on the corridor wall, and two back to back in the middle of the room; two locker banks on the hull side |
 | Mess | A galley on the forward wall, two tables of four |
 | Damage control | A workbench (repair kits), two locker banks (EVA suits, extinguishers) |
 
-Recommendation taken (ask only with screenshots): eight berths, the most crew the netcode allows (M3).
+Recommendation taken (ask only with screenshots): eight berths, the most crew the netcode allows (M3). The owner,
+2026-10-08: "should have more bunks in crew quarters": twelve berths, for eight crew and the four bodies of the damage
+control teams, who sleep aboard too. The walls are full (the doors from the stair tower, the turret room and the
+spine), so the two new bunks stand back to back in the middle, 2 cm apart, between aisles of 1.6 m and 2.1 m
+(`tools/crew_rooms.py` checks them against the doors and the walls).
 
 ### 4. The kit
 
@@ -206,6 +211,23 @@ upholstery in the atlas, in their colour. A prop without one keeps the tiling ma
 **What it costs.** One layer a prop kind: 0.35 MB at 256 px with mips, 87 KB at 128 px. The Tern's 47 kinds
 (bridge 12, suite 15, machinery 20) come to 16.4 MB at 256 px or 4.1 MB at 128 px of the 96 MB texture budget; a
 deck's array need hold only the kinds it places. No draw call and no triangle added.
+
+### 4d. The owner's walk of 2026-10-08
+
+The owner walked the deck plan and found nine things; each is fixed in the page and the libraries, shown in
+`docs/screenshots/mockups/walk-fixes-2026-10-08/`, and checked with the walk's own hooks (`MOCKUP_WALK`):
+
+| The owner | Cause | Fix |
+| --- | --- | --- |
+| "I cant walk up these steps anymore" | The bridge platforms' steps were blocks, not ramps; with the floor bands and nosings added at their feet, the first riser and its 5 cm nosing stood as a 0.24 m lip in front of the ramp, too shallow for the controller to step onto | The platform steps collide as ramps like every stair (`crew-on-deck` 3a); the walk leaves out every step inside a flight's footprint lengthened 8 cm at both ends. Head-on, every approach across the width now climbs |
+| "walking is to much like ice skating" | Starting and stopping at the feet's grip, 6 m/s2 | 20 m/s2 to speed up, 30 m/s2 to brake (`crew-on-deck` section 3) |
+| "bring back jumping" | C5 had none | A 0.46 m jump on Space (`crew-on-deck` section 3, C5) |
+| "elevator interior using crappy texture" | The car took the stand-in `bulkhead` and `deck_plate` | The car's inside wears the crew finish's panels: a light column facing the door, ribbed sides, a plate floor (`ShipKit.buildLiftCar`, `f.panels`) |
+| "the whole ship is missing doors!" | No leaves were drawn (above) | Every door and pressure door has its leaves, driven by `shipwalk.js` with `crew-on-deck` section 5's rules: a door opens as a body comes within 3 m and closes 2 s after it leaves; a pressure door opens and closes on E; a closed door is a wall; the lift's landing and car doors open with the car. A leaf retracts into its jamb |
+| "the back of this console in the engine room is missing geometry" | The local panel is built as a wall prop, so the page dropped its back wherever it stood, though two stand free | A placement's own `on_wall` decides (`PropKit.placeProp`, `o.wall`), and the panel's back gets its share of the atlas |
+| "some more weird missing geometry" (the magazine's ceiling) | A hole between decks showed the half metre between one room's ceiling and the next one's floor | Every floor hole is lined from the ceiling to the floor above (`ShipKit`, the collars) |
+| "I cant walk around the reactor all the way" | The reactor collided as its square bounds, whose corners reached into the ring catwalk at the diagonals | Round machines (the reactor, the pressurizer, the dewars) collide as 16-sided prisms; the ring walks round both ways |
+| "there should be two impulse thingies connected to these thrusters" | One drive unit on the centreline, between two engines | The layout's impulse drive stands as two units, one on each engine's centreline, nozzles against the aft bulkhead (`units_m`; one system for power and damage, `reference-ship-tern`) |
 
 ### 5. The Pi 5 budget this change spends
 

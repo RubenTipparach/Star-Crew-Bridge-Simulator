@@ -1347,6 +1347,19 @@
           const along = sx === 0, hu = along ? f.sx / 2 + W : W / 2, hw = along ? W / 2 : f.sz / 2;
           tbox("collar", [f.c[0] + sx * (f.sx / 2 + W / 2), y, f.c[2] + sz * (f.sz / 2 + W / 2)], [1, 0, 0], [0, 1, 0], [0, 0, 1], hu, FP.collar_depth_m / 2, hw, ["-v", "+u", "-u", "+w", "-w"]);
         }
+        // The hole's sides through the slab, from this ceiling up to the floor of the room above (owner, 2026-10-08,
+        // looking up the magazine's hoist: "some more weird missing geometry"): without them a hole between decks
+        // shows the empty half metre between one room's ceiling and the next one's floor.
+        const upId = h.p.between.find((id) => id !== comp.id), upC = upId && upId !== "space" && compartment(L, upId);
+        const slabTop = upC ? floorAt(upC, f.c[0], f.c[2], br.y[1] + 0.3) : null;
+        if (slabTop !== null && slabTop !== undefined && slabTop - br.y[1] > 0.02) {
+          const hh = (slabTop - br.y[1]) / 2, yc = br.y[1] + hh, e = 0.005;
+          for (const [sx, sz] of SIDES) {
+            const along = sx === 0, inward = along ? (sz > 0 ? "-w" : "+w") : (sx > 0 ? "-u" : "+u");
+            tbox("collar", [f.c[0] + sx * (f.sx / 2 + e), yc, f.c[2] + sz * (f.sz / 2 + e)], [1, 0, 0], [0, 1, 0], [0, 0, 1],
+              along ? f.sx / 2 : e, hh, along ? e : f.sz / 2, [inward]);
+          }
+        }
         // A ladder up through a ladder well, and through a floor hatch (a scuttle, a turret pod's hatch: deck-access),
         // from this floor to the floor above, and its handholds past it.
         if (h.p.kind === "ladder" || h.p.kind === "hatch") {
@@ -2269,18 +2282,39 @@
    * center_m: car_m is its size along x, up and along z; its open side faces facing_yaw_deg (+90: +x).
    * Roles: lift_floor (deck plate), lift_wall (walls and roof, bulkhead), lift_rail (the handrail, trim); each
    * part names its material, so no finish needs them. f.roof false leaves the roof off, for a page that draws
-   * its rooms without ceilings.
+   * its rooms without ceilings. f.panels ({ wall, back, floor }: panel layer names, ShipKit.loadPanels) dresses the
+   * inside of the car as the crew rooms are dressed (owner, 2026-10-08: "elevator interior using crappy texture"):
+   * one module centred on each wall and on the floor, role lift_panel; the outsides keep their materials.
    */
   function buildLiftCar(B, f) {
     const [x, y, z] = f.center_m, [w, h, d] = f.car_m, X = [1, 0, 0], Y = [0, 1, 0], Z = [0, 0, 1], t = 0.05;
     const all = ["+u", "-u", "+v", "-v", "+w", "-w"], open = Math.round(Math.sin((f.facing_yaw_deg * Math.PI) / 180));
+    const P = f.panels || null, but = (face) => (P ? all.filter((q) => q !== face) : all);
     // The walls stand on the floor and under the roof, and the back wall between the side walls: no two parts
     // overlap, so none shares a plane with another where both face the same way (CLAUDE.md section 8).
     const wh = h - (f.roof !== false ? 2 * t : t), wy = y + t + wh / 2;
-    B.box("lift_floor", [x, y + t / 2, z], X, Y, Z, w / 2, t / 2, d / 2, all);
+    B.box("lift_floor", [x, y + t / 2, z], X, Y, Z, w / 2, t / 2, d / 2, but("+v"));
     if (f.roof !== false) B.box("lift_wall", [x, y + h - t / 2, z], X, Y, Z, w / 2, t / 2, d / 2, all);
-    B.box("lift_wall", [x - open * (w / 2 - t / 2), wy, z], X, Y, Z, t / 2, wh / 2, d / 2 - t, all);
-    for (const sz of [1, -1]) B.box("lift_wall", [x, wy, z + sz * (d / 2 - t / 2)], X, Y, Z, w / 2, wh / 2, t / 2, all);
+    B.box("lift_wall", [x - open * (w / 2 - t / 2), wy, z], X, Y, Z, t / 2, wh / 2, d / 2 - t, but(open > 0 ? "+u" : "-u"));
+    for (const sz of [1, -1]) B.box("lift_wall", [x, wy, z + sz * (d / 2 - t / 2)], X, Y, Z, w / 2, wh / 2, t / 2, but(sz > 0 ? "-w" : "+w"));
+    if (P) {
+      // A face's corners [a, b, c, d] (counter-clockwise seen from inside) and its picture: a module fitted to the
+      // wall's height and centred along it, or centred on the floor at its own 2 m size.
+      const face = (pts, uvs, n, layer) => {
+        B.triUv("lift_panel", pts[0], pts[1], pts[2], uvs[0], uvs[1], uvs[2], n, layer);
+        B.triUv("lift_panel", pts[0], pts[2], pts[3], uvs[0], uvs[2], uvs[3], n, layer);
+      };
+      const y0 = y + t, y1 = y0 + wh, xb = x - open * (w / 2 - t), zi = d / 2 - t, xf = x + open * (w / 2);
+      const wallUv = (len) => { const k = len / wh / 2; return [[0.5 - k, 0], [0.5 + k, 0], [0.5 + k, 1], [0.5 - k, 1]]; };
+      face([[xb, y0, z - zi], [xb, y0, z + zi], [xb, y1, z + zi], [xb, y1, z - zi]], wallUv(2 * zi), [open, 0, 0], P.back);
+      for (const sz of [1, -1]) {
+        const zz = z + sz * zi;
+        face([[xb, y0, zz], [xf, y0, zz], [xf, y1, zz], [xb, y1, zz]], wallUv(Math.abs(xf - xb)), [0, 0, -sz], P.wall);
+      }
+      const fu = (q) => 0.5 + q / 2;
+      face([[x - w / 2, y + t, z - d / 2], [x + w / 2, y + t, z - d / 2], [x + w / 2, y + t, z + d / 2], [x - w / 2, y + t, z + d / 2]],
+        [[fu(-w / 2), fu(-d / 2)], [fu(w / 2), fu(-d / 2)], [fu(w / 2), fu(d / 2)], [fu(-w / 2), fu(d / 2)]], [0, 1, 0], P.floor);
+    }
     B.box("lift_rail", [x - open * (w / 2 - 0.08), y + 0.95, z], X, Y, Z, 0.025, 0.025, d / 2 - 0.15, all);
     B.parts.lift_floor.material = "deck_plate"; B.parts.lift_wall.material = "bulkhead"; B.parts.lift_rail.material = "trim";
   }

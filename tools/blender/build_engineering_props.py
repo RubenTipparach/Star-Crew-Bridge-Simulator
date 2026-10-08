@@ -1183,6 +1183,10 @@ def local_panel():
     of lit push buttons, a red emergency-stop mushroom in a yellow guard, a key switch and a label
     plate; a lit chamfer on top and a conduit down its side to the floor."""
     p = prop("local_panel", "A local control station beside a machine (engineering)", WALL)
+    # Placed on a wall or standing free beside its machine (the fuel train's stands in the room): its back is at z = 0
+    # but seen, so it gets its share of the atlas (owner, 2026-10-08: "the back of this console in the engine room is
+    # missing geometry").
+    p.wall, p.back_at_z0 = False, True
     hw = 0.40
     prof = [(0.0, 0.0), (0.40, 0.0), (0.40, 0.10), (0.46, 0.10), (0.46, 0.98), (0.50, 1.00), (0.32, 1.50), (0.32, 1.72), (0.29, 1.75),
             (0.0, 1.75)]

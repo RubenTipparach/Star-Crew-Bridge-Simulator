@@ -1171,16 +1171,16 @@
         "union bezels_estop_conduit (7)",
         "difference screen (1)"
       ],
-      "sha256": "d0df620cbd692701024b4f38cd70acfc4211dfe4f497eb44520b4d6a0655c9d1",
+      "sha256": "f47392665423b931c60e659abe61030e42cde12ab9220c9939cf47f3535766e5",
       "atlas": {
         "file": "atlas/local_panel.png",
         "px": 256,
-        "px_per_m": 115.5,
-        "charts": 18,
-        "cover": 0.688,
-        "glow": 0.02,
-        "sha256": "9d79951fe32dc841a3b99af6d4a6bd5ea357dc4c59178937b98bbdf288edca42",
-        "bytes": 14928
+        "px_per_m": 94.35,
+        "charts": 15,
+        "cover": 0.649,
+        "glow": 0.0198,
+        "sha256": "9ed81e8bbebb5f604269e694e8bcb629f20d24525ac20f8074e24ec852bae552",
+        "bytes": 12184
       }
     },
     "control_desk": {

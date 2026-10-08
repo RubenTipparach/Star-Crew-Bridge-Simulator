@@ -21,3 +21,4 @@
 
 - [ ] 3.1 Captures of each machine room and the crew rooms in the three lighting states (owner).
 - [ ] 3.2 Move each requirement into `openspec/specs/ship-props/` with the check that proves it.
+- [x] 3.3 The owner's walk of 2026-10-08 (design 4d): platform steps as ramps, quick starts and stops, a jump, the lift car's panels, door leaves with their rules, free-standing panels' backs, the floor holes lined, round machines round, two impulse units, twelve berths; shots `docs/screenshots/mockups/walk-fixes-2026-10-08/`.

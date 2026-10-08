@@ -234,11 +234,13 @@
     const operatorZ = (kind, fallback) => (PROPS && PROPS[kind] && PROPS[kind].rec.operators_m && PROPS[kind].rec.operators_m[0][2]) || fallback;
 
     /** Append a prop's parts, turned by yaw (degrees, 0 faces the bow) and moved to back_m, into parts by role.
-     * Its accent takes the station's role colour, or o.accent (a THREE.Color) when given. */
+     * Its accent takes the station's role colour, or o.accent (a THREE.Color) when given. o.wall, when given, says whether
+     * this placement stands on a wall (its back left out) whatever the prop's anchor: a wall prop standing free beside its
+     * machine keeps its back (owner, 2026-10-08: "the back of this console in the engine room is missing geometry"). */
     function placeProp(parts, kind, back, yawDeg, station, o) {
       const pr = propOf(kind), th = (yawDeg * Math.PI) / 180, c = Math.cos(th), s = Math.sin(th);
       back = offWall(pr, back, s, c);
-      const onWall = !!(pr.rec && String(pr.rec.anchor || "").includes("wall"));
+      const onWall = o && o.wall !== undefined ? !!o.wall : !!(pr.rec && String(pr.rec.anchor || "").includes("wall"));
       const tint = (o && o.accent) || roleColor(station);
       for (const [mname, P] of Object.entries(pr.parts)) {
         const screen = mname === "screen", accent = mname === "accent";
