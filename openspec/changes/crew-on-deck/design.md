@@ -132,8 +132,8 @@ proposed and replace `reference-ship-tern`'s assumptions (its question T5).
 
 | Quantity | Value | Why |
 | --- | ---: | --- |
-| Walk | 1.8 m/s | A brisk human walk. The default: a player moving through the ship is walking. `bridge-stations` uses it for seat to seat times. |
-| Run (hold) | 4.0 m/s | A run, not a sprint. Unlimited while healthy: no stamina bar to manage; the air and injuries limit it instead (sections 7, 9). |
+| Walk | 2.4 m/s | Brisker than a human walk (1.8 m/s until the owner, 2026-10-08, in the engine: "walk speed is also a little slow"). The default: a player moving through the ship is walking. `bridge-stations` uses it for seat to seat times. |
+| Run (hold) | 4.8 m/s (4.0 until 2026-10-08, raised with the walk) | A run, not a sprint. Unlimited while healthy: no stamina bar to manage; the air and injuries limit it instead (sections 7, 9). |
 | Crouched | 0.9 m/s | |
 | Backwards | 0.7 x the forward speed | |
 | Wounded (under 50 HP) | 1.4 m/s, no running | Section 7. |

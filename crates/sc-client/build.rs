@@ -26,7 +26,7 @@ fn main() {
     ] {
         println!("cargo:rustc-link-arg-bins={arg}");
     }
-    for rel in ["data/engine/render.json", "data/crew/walk.json"] {
+    for rel in ["data/engine/render.json", "data/crew/walk.json", "data/space/exterior.json"] {
         let f = root.join(rel);
         println!("cargo:rerun-if-changed={}", f.display());
         println!("cargo:rustc-link-arg-bins=--embed-file={}@/{rel}", f.display());

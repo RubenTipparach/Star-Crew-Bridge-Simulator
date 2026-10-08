@@ -12,7 +12,8 @@
 //!   backwards; it steps up ledges, follows ramps and stairs (stairs collide as ramps), slides along walls,
 //!   falls, and jumps;
 //! - Use climbs a ladder or floor hatch from either end and goes through a wall hatch whose sill is too high;
-//! - inside a lift's shaft the feet stand on its car; every landing the car is not standing at is walled.
+//! - inside a lift's shaft the feet stand on its car wherever it is (`set_lift`); every landing is a wall unless the car
+//!   stands there with its doors open (deck-pipeline 13b, `crate::lift`).
 //!
 //! What it leaves out for now (deck-pipeline 13a): doors stand open, the car does not move, one body.
 
@@ -253,9 +254,15 @@ pub struct WalkWorld {
     ladders: Vec<WalkLadder>,
     hatches: Vec<Hatch>,
     lifts: Vec<WalkLift>,
+    /// Each lift landing's wall: the lift's index, the landing's floor, the wall's collider.
+    landings: Vec<(usize, f32, ColliderHandle)>,
     /// Triangles in the static mesh.
     pub triangles: usize,
 }
+
+/// Collision groups: a wall in force, and an open landing (in no group, so no query sees it).
+const SOLID: InteractionGroups = InteractionGroups::all();
+const OPEN: InteractionGroups = InteractionGroups::none();
 
 impl WalkWorld {
     /// Build the world from triangles (three corners, ship coordinates, metres) and the entities.
@@ -282,19 +289,28 @@ impl WalkWorld {
             let co = ColliderBuilder::trimesh(verts, idx.clone()).map_err(|e| format!("the walk mesh: {e:?}"))?;
             colliders.insert(co);
         }
-        // A lift's landing door is a wall where the car is not standing (the car does not move yet).
+        // Every lift landing is a wall, opened by `set_lift` while the car stands there with its doors open. Its lift
+        // is the one whose shaft holds a point just inside the opening, on either side.
+        let mut landings = Vec::new();
         for dr in e.doors.iter().filter(|dr| dr.kind == "lift") {
             let stop = dr.center_m[1] - dr.height_m / 2.0;
-            if e.lifts.iter().any(|l| (l.car_m - stop).abs() < 0.05) {
+            let side = |s: f32| (dr.center_m[0] + dr.normal[0] * 0.3 * s, dr.center_m[2] + dr.normal[1] * 0.3 * s);
+            let Some(li) = e.lifts.iter().position(|l| {
+                let ((ax, az), (bx, bz)) = (side(1.0), side(-1.0));
+                in_poly(&l.poly, ax, az) || in_poly(&l.poly, bx, bz)
+            }) else {
                 continue;
-            }
+            };
             let th = dr.normal[0].atan2(dr.normal[1]);
             let thick = d.door.thick_m as f32;
-            colliders.insert(
+            let open = (e.lifts[li].car_m - stop).abs() < 0.05;
+            let h = colliders.insert(
                 ColliderBuilder::cuboid(dr.width_m / 2.0, dr.height_m / 2.0, thick / 2.0)
                     .translation(Vector::new(dr.center_m[0], dr.center_m[1], dr.center_m[2]))
-                    .rotation(Vector::Y * th),
+                    .rotation(Vector::Y * th)
+                    .collision_groups(if open { OPEN } else { SOLID }),
             );
+            landings.push((li, stop, h));
         }
         let mut w = Self {
             colliders,
@@ -304,6 +320,7 @@ impl WalkWorld {
             ladders: e.ladders.clone(),
             hatches: Vec::new(),
             lifts: e.lifts.clone(),
+            landings,
             triangles: idx.len(),
         };
         // One step of an empty physics pipeline fills the broad phase's tree; nothing moves in it afterwards.
@@ -344,8 +361,52 @@ impl WalkWorld {
             self.narrow_phase.query_dispatcher(),
             &self.bodies,
             &self.colliders,
-            QueryFilter::default(),
+            QueryFilter::default().groups(SOLID),
         )
+    }
+
+    /// Where lift `i`'s car is and which landing it stands open at: the feet in its shaft ride `car_y`, and only the
+    /// landing at `open_at` (a floor height, metres) lets a body through. Call it each step the car moves.
+    pub fn set_lift(&mut self, i: usize, car_y: f32, open_at: Option<f32>) {
+        if let Some(l) = self.lifts.get_mut(i) {
+            l.car_m = car_y;
+        }
+        for &(li, stop, h) in &self.landings {
+            if li == i {
+                let open = open_at.is_some_and(|y| (y - stop).abs() < 0.05);
+                if let Some(c) = self.colliders.get_mut(h) {
+                    c.set_collision_groups(if open { OPEN } else { SOLID });
+                }
+            }
+        }
+    }
+
+    /// The lifts, as built and as `set_lift` last moved them.
+    pub fn lifts(&self) -> &[WalkLift] {
+        &self.lifts
+    }
+
+    /// The lift whose shaft holds `(x, z)`, by index.
+    pub fn lift_index_at(&self, x: f32, z: f32) -> Option<usize> {
+        self.lifts.iter().position(|l| in_poly(&l.poly, x, z))
+    }
+
+    /// The lift landing nearest `(x, y, z)` within `reach_m` across the plan and on that floor: the lift's index and
+    /// the landing's floor height.
+    pub fn landing_near(&self, x: f32, y: f32, z: f32, reach_m: f32, doors: &[WalkDoor]) -> Option<(usize, f32)> {
+        let mut best: Option<(usize, f32, f32)> = None;
+        for dr in doors.iter().filter(|d| d.kind == "lift") {
+            let stop = dr.center_m[1] - dr.height_m / 2.0;
+            let d = (dr.center_m[0] - x).hypot(dr.center_m[2] - z);
+            if (stop - y).abs() > 0.6 || d > reach_m {
+                continue;
+            }
+            let Some(&(li, _, _)) = self.landings.iter().find(|(_, s, _)| (s - stop).abs() < 0.05) else { continue };
+            if best.is_none_or(|b| d < b.2) {
+                best = Some((li, stop, d));
+            }
+        }
+        best.map(|(li, s, _)| (li, s))
     }
 
     /// The first floor straight down from `(x, from, z)`, or `None`.
@@ -743,7 +804,12 @@ mod tests {
         let w = world(&floor(), &WalkEntities::default());
         let mut b = Body::new([0.0, 0.0, 0.0], &d);
         run(&mut b, &w, &d, NORTH, 0.12);
-        assert!((b.speed() - 1.8).abs() < 0.05, "1.8 m/s at 20 m/s^2 takes 0.09 s, not ice skating: {}", b.speed());
+        let walk = d.r#move.walk_m_s as f32;
+        assert!(
+            (b.speed() - walk).abs() < 0.05,
+            "{walk} m/s at 20 m/s^2 takes about 0.1 s, not ice skating: {}",
+            b.speed()
+        );
         run(&mut b, &w, &d, Input::default(), 0.08);
         assert!(b.speed() < 0.01, "braking at 30 m/s^2 stops it in 0.06 s: {}", b.speed());
         assert!(b.grounded && b.feet[1].abs() < 0.02, "it stays on the floor: {:?}", b.feet);
@@ -776,8 +842,9 @@ mod tests {
         quad(&mut t, [5.0, 0.0, -3.0], [5.0, 0.3, -3.0], [5.0, 0.3, 3.0], [5.0, 0.0, 3.0]);
         let w = world(&t, &WalkEntities::default());
         let mut b = Body::new([0.0, 0.0, 0.0], &d);
-        // On the slope the controller keeps the speed along the surface, so the plan sees about 1.3 m/s.
-        run(&mut b, &w, &d, NORTH, 6.0);
+        // On the slope the controller keeps the speed along the surface, so the plan sees about 1.8 m/s; 3.5 s ends
+        // on the landing, short of its far edge at z 9.
+        run(&mut b, &w, &d, NORTH, 3.5);
         assert!((b.feet[1] - 2.0).abs() < 0.05 && b.feet[2] > 4.6, "up the ramp to the landing: {:?}", b.feet);
         let mut b = Body::new([3.0, 0.0, 0.0], &d);
         run(&mut b, &w, &d, Input { yaw: std::f32::consts::FRAC_PI_2, ..NORTH }, 2.0);
@@ -866,6 +933,9 @@ mod tests {
             poly: vec![[-3.0, -1.0], [-1.0, -1.0], [-1.0, 1.0], [-3.0, 1.0]],
             stops_m: vec![0.0, 3.5],
             car_m: 3.5,
+            speed_m_s: 1.5,
+            door_s: 2.0,
+            car_room: None,
         };
         let door = |y: f32| WalkDoor {
             id: format!("p_lift_{y}"),
@@ -878,13 +948,58 @@ mod tests {
         let e = WalkEntities { doors: vec![door(0.0), door(3.5)], lifts: vec![lift], ..WalkEntities::default() };
         let w = world(&t, &e);
         let west = Input { yaw: -std::f32::consts::FRAC_PI_2, ..NORTH };
-        // Upstairs the car stands: the body walks in and stands on it.
+        // Upstairs the car stands: the body walks in and stands on it (1.2 s, short of the test shaft's open far side).
         let mut b = Body::new([1.0, 3.5, 0.0], &d);
-        run(&mut b, &w, &d, west, 2.0);
+        run(&mut b, &w, &d, west, 1.2);
         assert!(b.feet[0] < -1.5 && (b.feet[1] - 3.5).abs() < 0.01, "into the car, on its floor: {:?}", b.feet);
         // Downstairs it does not: the landing is shut.
         let mut b = Body::new([1.0, 0.0, 0.0], &d);
         run(&mut b, &w, &d, west, 2.0);
         assert!(b.feet[0] > -1.0 && b.feet[1].abs() < 0.01, "the shaft is walled where the car is not: {:?}", b.feet);
+    }
+
+    #[test]
+    fn a_car_brought_down_opens_its_landing_and_carries_a_body_with_it() {
+        let d = data();
+        let mut t = floor();
+        quad(&mut t, [-1.0, 3.5, -5.0], [-1.0, 3.5, 5.0], [6.0, 3.5, 5.0], [6.0, 3.5, -5.0]);
+        let lift = WalkLift {
+            poly: vec![[-3.0, -1.0], [-1.0, -1.0], [-1.0, 1.0], [-3.0, 1.0]],
+            stops_m: vec![0.0, 3.5],
+            car_m: 3.5,
+            speed_m_s: 1.5,
+            door_s: 2.0,
+            car_room: None,
+        };
+        let door = |y: f32| WalkDoor {
+            id: format!("p_lift_{y}"),
+            kind: "lift".into(),
+            center_m: [-1.0, y + 1.1, 0.0],
+            normal: [1.0, 0.0],
+            width_m: 1.2,
+            height_m: 2.2,
+        };
+        let e = WalkEntities { doors: vec![door(0.0), door(3.5)], lifts: vec![lift], ..WalkEntities::default() };
+        let mut w = world(&t, &e);
+        let west = Input { yaw: -std::f32::consts::FRAC_PI_2, ..NORTH };
+        let east = Input { yaw: std::f32::consts::FRAC_PI_2, ..NORTH };
+        // A body in the car at the top rides it down as the car moves.
+        let mut b = Body::new([-2.0, 3.5, 0.0], &d);
+        run(&mut b, &w, &d, Input::default(), 0.3);
+        w.set_lift(0, 3.5, None);
+        for k in 1..=60 {
+            w.set_lift(0, 3.5 - 3.5 * k as f32 / 60.0, None);
+            b.step(&w, &d, &Input::default(), 1.0 / 60.0);
+        }
+        w.set_lift(0, 0.0, Some(0.0));
+        run(&mut b, &w, &d, Input::default(), 0.2);
+        assert!(b.feet[1].abs() < 0.02, "the body rode the car down: {:?}", b.feet);
+        // The lower landing is open now: it walks out.
+        run(&mut b, &w, &d, east, 2.0);
+        assert!(b.feet[0] > 0.0, "out of the car on the lower deck: {:?}", b.feet);
+        // The upper landing is a wall now.
+        let mut u = Body::new([1.0, 3.5, 0.0], &d);
+        run(&mut u, &w, &d, west, 2.0);
+        assert!(u.feet[0] > -1.0 && (u.feet[1] - 3.5).abs() < 0.01, "upstairs the shaft is walled: {:?}", u.feet);
     }
 }

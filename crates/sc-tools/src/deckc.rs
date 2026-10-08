@@ -12,10 +12,13 @@
 //! - a colour byte is the display multiplier `c^(1/2.2) / 2` (light-baking design 5, 0-2x);
 //! - the bigger texture arrays' layers resampled into the one array after the main layers;
 //! - identical vertices merged, in first-seen order (stable), behind 32-bit indices;
-//! - a full mip chain for the texture array (box filter), sampled nearest up close.
+//! - a full mip chain for the texture array (box filter), sampled nearest up close;
+//! - since 13b: a room's mover (the lift's car is a room of its own, mover 1), each room's console faces appended to
+//!   its mesh in the screens' atlas, which is cut into square layers after every other layer, and the viewscreens.
 
 use sc_core::deck::{
-    self, DeckCompartment, DeckIndex, DeckTextures, DeckWalk, WalkDoor, WalkHatch, WalkLadder, WalkLift, WalkStart,
+    self, DeckCompartment, DeckIndex, DeckTextures, DeckView, DeckWalk, WalkDoor, WalkHatch, WalkLadder, WalkLift,
+    WalkStart,
 };
 use sc_core::vertex::{pack_deck_vertex, DeckVertexIn};
 use serde::Deserialize;
@@ -33,6 +36,7 @@ struct Export {
     textures: ExportTextures,
     rooms: Vec<Room>,
     walk: ExportWalk,
+    views: Vec<DeckView>,
 }
 /// The walk world as the deck plan exported it (deck-pipeline 13a): the triangles' file and the entities.
 #[derive(Deserialize)]
@@ -58,6 +62,16 @@ struct Glow {
 struct ExportTextures {
     main: TexArray,
     big: Vec<BigArray>,
+    screens: Option<Screens>,
+}
+/// The console screens' atlas (bridge-stations 11.6): one image `width_px` wide, rows of screens down it; a face's
+/// v runs down the image from its top.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Screens {
+    width_px: u32,
+    height_px: u32,
+    rgba: String,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -80,8 +94,27 @@ struct Room {
     id: String,
     name: String,
     deck: String,
+    mover: u8,
     vertices: u32,
     files: RoomFiles,
+    faces: Option<Faces>,
+}
+/// A room's console faces: triangles textured from the screens' atlas, lit by the room's bake.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Faces {
+    vertices: u32,
+    files: FaceFiles,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct FaceFiles {
+    position: String,
+    normal: String,
+    uv: String,
+    c0: String,
+    c1: String,
+    c2: String,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -136,6 +169,30 @@ fn shrink(src: &[u8], from: u32, to: u32) -> Vec<u8> {
     out
 }
 
+/// Pack a compartment's vertices: identical ones merged in first-seen order (stable), its indices local to it. Returns
+/// its vertex offset (bytes), vertex count, index offset and index count.
+fn pack(
+    vertices: &mut Vec<u8>,
+    indices: &mut Vec<u32>,
+    ins: &[DeckVertexIn],
+    id: &str,
+) -> Result<(u64, u32, u64, u32), String> {
+    let mut seen: HashMap<[u8; 28], u32> = HashMap::new();
+    let first_vertex = vertices.len();
+    let first_index = indices.len();
+    let mut local_count = 0u32;
+    for (i, v) in ins.iter().enumerate() {
+        let b = pack_deck_vertex(v).map_err(|e| format!("{id}: vertex {i}: {}", e.0))?;
+        let k = *seen.entry(b).or_insert_with(|| {
+            vertices.extend_from_slice(&b);
+            local_count += 1;
+            local_count - 1
+        });
+        indices.push(k);
+    }
+    Ok((first_vertex as u64, local_count, first_index as u64, (indices.len() - first_index) as u32))
+}
+
 /// Compile `build/deck/<ship>/export.json` under `root` into `compiled/<ship>.deck`; returns a summary.
 pub fn run(root: &Path, ship: &str) -> Result<String, String> {
     let dir = root.join("build/deck").join(ship);
@@ -163,6 +220,27 @@ pub fn run(root: &Path, ship: &str) -> Result<String, String> {
         }
         remap.push((b.base, b.layers, next));
         next += b.layers;
+    }
+    // The screens' atlas: cut into square layers of its width, down the image, each shrunk to the array's size.
+    let screens_first = next;
+    let mut screens_rows = 0u32;
+    let mut screens_w = size;
+    if let Some(sc) = &ex.textures.screens {
+        let data = std::fs::read(dir.join(&sc.rgba)).map_err(|e| e.to_string())?;
+        if data.len() != (sc.width_px * sc.height_px * 4) as usize || sc.width_px % size != 0 {
+            return Err(format!("the screens' atlas ({} x {} px) is inconsistent", sc.width_px, sc.height_px));
+        }
+        let w = sc.width_px as usize;
+        let n = sc.height_px.div_ceil(sc.width_px) as usize;
+        for i in 0..n {
+            let mut sq = vec![0u8; w * w * 4];
+            let rows = (sc.height_px as usize - i * w).min(w);
+            sq[..rows * w * 4].copy_from_slice(&data[i * w * w * 4..(i * w + rows) * w * 4]);
+            layers.extend_from_slice(&shrink(&sq, sc.width_px, size));
+        }
+        next += n as u32;
+        screens_rows = sc.height_px;
+        screens_w = sc.width_px;
     }
     let total_layers = next;
     if total_layers > 256 {
@@ -225,39 +303,116 @@ pub fn run(root: &Path, ship: &str) -> Result<String, String> {
         let mean =
             |a: usize| (uv.chunks_exact(2).map(|q| f64::from(q[a])).sum::<f64>() / n.max(1) as f64).floor() as f32;
         let shift = [mean(0), mean(1)];
-        let mut seen: HashMap<[u8; 28], u32> = HashMap::new();
-        let first_vertex = vertices.len();
-        let first_index = indices.len();
-        let mut local_count = 0u32;
+        let vertex = |i: usize, p: &[f32], nr: &[f32], c: &[Vec<f32>; 3], layer: u8, uv: [f32; 2]| DeckVertexIn {
+            position_m: std::array::from_fn(|k| (f64::from(p[i * 3 + k]) - origin[k]) as f32),
+            mover: r.mover,
+            layer,
+            normal: [nr[i * 3], nr[i * 3 + 1], nr[i * 3 + 2]],
+            colors: std::array::from_fn(|s| {
+                [color_byte(c[s][i * 3]), color_byte(c[s][i * 3 + 1]), color_byte(c[s][i * 3 + 2]), 255]
+            }),
+            uv,
+        };
+        let mut ins = Vec::with_capacity(n);
         for i in 0..n {
-            let v = DeckVertexIn {
-                position_m: std::array::from_fn(|k| (f64::from(pos[i * 3 + k]) - origin[k]) as f32),
-                mover: 0,
-                layer: map_layer(lay[i])?,
-                normal: [nor[i * 3], nor[i * 3 + 1], nor[i * 3 + 2]],
-                colors: std::array::from_fn(|s| {
-                    [color_byte(cs[s][i * 3]), color_byte(cs[s][i * 3 + 1]), color_byte(cs[s][i * 3 + 2]), 255]
-                }),
-                uv: [uv[i * 2] - shift[0], uv[i * 2 + 1] - shift[1]],
-            };
-            let b = pack_deck_vertex(&v).map_err(|e| format!("{}: vertex {i}: {}", r.id, e.0))?;
-            let id = *seen.entry(b).or_insert_with(|| {
-                vertices.extend_from_slice(&b);
-                local_count += 1;
-                local_count - 1
-            });
-            indices.push(id);
+            ins.push(vertex(i, &pos, &nor, &cs, map_layer(lay[i])?, [uv[i * 2] - shift[0], uv[i * 2 + 1] - shift[1]]));
         }
+        // The console faces, after the room's own triangles: a triangle's layer is the atlas square its centre lies
+        // in, and its v is measured down that square (a face never crosses one: the images are whole squares' halves).
+        if let Some(fc) = &r.faces {
+            if screens_rows == 0 {
+                return Err(format!("{}: console faces but no screens' atlas", r.id));
+            }
+            let m = fc.vertices as usize;
+            let g = &fc.files;
+            let (fp, fnr, fuv) =
+                (floats(&dir, &g.position, m * 3)?, floats(&dir, &g.normal, m * 3)?, floats(&dir, &g.uv, m * 2)?);
+            let fcs = [floats(&dir, &g.c0, m * 3)?, floats(&dir, &g.c1, m * 3)?, floats(&dir, &g.c2, m * 3)?];
+            let (rows, w) = (screens_rows as f32, screens_w as f32);
+            for t in 0..m / 3 {
+                let mid = (0..3).map(|k| fuv[(t * 3 + k) * 2 + 1]).sum::<f32>() / 3.0 * rows;
+                let sq = (mid / w).floor().max(0.0);
+                let layer =
+                    u8::try_from(screens_first + sq as u32).map_err(|_| format!("{}: screens layer past 255", r.id))?;
+                for k in 0..3 {
+                    let i = t * 3 + k;
+                    let v = (fuv[i * 2 + 1] * rows - sq * w) / w;
+                    ins.push(vertex(i, &fp, &fnr, &fcs, layer, [fuv[i * 2], v]));
+                }
+            }
+            tris += m / 3;
+        }
+        let (vertex_offset, vertex_count, index_offset, index_count) = pack(&mut vertices, &mut indices, &ins, &r.id)?;
         tris += n / 3;
         comps.push(DeckCompartment {
             id: r.id.clone(),
             name: r.name.clone(),
             deck: r.deck.clone(),
             origin_m: origin,
-            vertex_offset: first_vertex as u64,
-            vertex_count: local_count,
-            index_offset: first_index as u64,
-            index_count: (indices.len() - first_index) as u32,
+            vertex_offset,
+            vertex_count,
+            index_offset,
+            index_count,
+            mover: r.mover,
+        });
+    }
+    // The space dock's frame (13b): one compartment a bay, in the deck `outside`, lit by the sun here.
+    let ext_text = std::fs::read_to_string(root.join("data/space/exterior.json"))
+        .map_err(|e| format!("data/space/exterior.json: {e}"))?;
+    let ext: sc_core::exterior::ExteriorData =
+        sc_core::data::parse("data/space/exterior.json", &ext_text).map_err(|e| e.to_string())?;
+    let mats: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(root.join("data/materials/materials.json")).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| format!("data/materials/materials.json: {e}"))?;
+    let material = |id: &str| -> Result<(u8, f32), String> {
+        let m = &mats["materials"][id];
+        match (m["layer"].as_u64(), m["span_m"].as_f64()) {
+            (Some(l), Some(s)) => Ok((map_layer(l as f32)?, s as f32)),
+            _ => Err(format!("data/materials/materials.json: no material {id:?} with a layer and a span")),
+        }
+    };
+    let (steel_layer, span) = material(&ext.dock.material)?;
+    let (light_layer, _) = material("light_panel")?;
+    for bay in crate::dock::build(&ext.dock, ext.sun.dir, ext.sun.colour_srgb, span) {
+        let mut lo = [f32::MAX; 3];
+        let mut hi = [f32::MIN; 3];
+        for v in &bay.vertices {
+            for k in 0..3 {
+                lo[k] = lo[k].min(v.position_m[k]);
+                hi[k] = hi[k].max(v.position_m[k]);
+            }
+        }
+        let origin: [f64; 3] =
+            std::array::from_fn(|k| ((f64::from(lo[k]) + f64::from(hi[k])) / 2.0 * 100.0).round() / 100.0);
+        let ins: Vec<DeckVertexIn> = bay
+            .vertices
+            .iter()
+            .map(|v| {
+                let c = [color_byte(v.colour[0]), color_byte(v.colour[1]), color_byte(v.colour[2]), 255];
+                DeckVertexIn {
+                    position_m: std::array::from_fn(|k| (f64::from(v.position_m[k]) - origin[k]) as f32),
+                    mover: 0,
+                    layer: if v.light { light_layer } else { steel_layer },
+                    normal: v.normal,
+                    colors: [c, c, c],
+                    uv: v.uv,
+                }
+            })
+            .collect();
+        let (vertex_offset, vertex_count, index_offset, index_count) =
+            pack(&mut vertices, &mut indices, &ins, &bay.id)?;
+        tris += ins.len() / 3;
+        comps.push(DeckCompartment {
+            id: bay.id.clone(),
+            name: "Space dock".into(),
+            deck: "outside".into(),
+            origin_m: origin,
+            vertex_offset,
+            vertex_count,
+            index_offset,
+            index_count,
+            mover: 0,
         });
     }
     // The walk world: its triangles carried as they are, checked finite and whole.
@@ -274,6 +429,7 @@ pub fn run(root: &Path, ship: &str) -> Result<String, String> {
             mip_offsets,
             panel_first: ex.panel_first,
             panel_glow: [ex.panel_glow.normal, ex.panel_glow.red_alert, ex.panel_glow.emergency],
+            screens_first,
         },
         vertex_bytes: vertices.len() as u64,
         index_count: indices.len() as u64,
@@ -286,6 +442,7 @@ pub fn run(root: &Path, ship: &str) -> Result<String, String> {
             doors: w.doors.clone(),
             lifts: w.lifts.clone(),
         },
+        views: ex.views.clone(),
     };
     let bytes = deck::write(&index, &vertices, &indices, &tex_blob, &walk_tris);
     deck::read(&bytes).map_err(|e| format!("the deck just written does not read back: {e}"))?;

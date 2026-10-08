@@ -8,6 +8,7 @@
 
 mod alloc;
 mod deckc;
+mod dock;
 mod walk_report;
 
 /// Every allocation is counted, for `walk-report`'s heap figures.
@@ -18,12 +19,17 @@ use std::path::Path;
 use std::process::ExitCode;
 
 fn check_data(root: &Path) -> Result<usize, String> {
-    let files = [("data/engine/render.json", "render"), ("data/crew/walk.json", "walk")];
+    let files = [
+        ("data/engine/render.json", "render"),
+        ("data/crew/walk.json", "walk"),
+        ("data/space/exterior.json", "exterior"),
+    ];
     for (rel, kind) in files {
         let text = std::fs::read_to_string(root.join(rel)).map_err(|e| format!("{rel}: cannot be read: {e}"))?;
         match kind {
             "render" => sc_core::data::parse::<sc_core::data::RenderConfig>(rel, &text).map(|_| ()),
             "walk" => sc_core::data::parse::<sc_core::walk::WalkData>(rel, &text).map(|_| ()),
+            "exterior" => sc_core::data::parse::<sc_core::exterior::ExteriorData>(rel, &text).map(|_| ()),
             _ => unreachable!("every listed file has a schema"),
         }
         .map_err(|e| e.to_string())?;

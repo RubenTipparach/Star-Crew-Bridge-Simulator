@@ -21,6 +21,7 @@ mod sokol_log;
 pub mod shaders {
     pub mod blit;
     pub mod deck;
+    pub mod sky;
 }
 
 use gfx as sg;
@@ -66,6 +67,30 @@ pub struct DeckParams {
     pub panel_first: u32,
     /// How bright emission masks glow now (1: as the texel).
     pub panel_glow: f32,
+}
+
+/// The sky's numbers (deck-pipeline 13b; `data/space/exterior.json` through the client): directions are ship
+/// coordinates, colours linear. See `shaders/sky.glsl` for each lane.
+#[derive(Copy, Clone, Debug)]
+pub struct SkyParams {
+    /// The inverse of the projection times the view's rotation (no translation).
+    pub inv_vp: glam::Mat4,
+    /// The way to the sun, and the cosine of the disc's angular radius.
+    pub sun: [f32; 4],
+    /// The sun's colour, and the glow's strength.
+    pub sun_colour: [f32; 4],
+    /// The way to the planet's centre, and the sine of its angular radius.
+    pub planet: [f32; 4],
+    /// Sea, and the share of land.
+    pub ocean: [f32; 4],
+    /// Land, and the share of cloud.
+    pub land: [f32; 4],
+    /// Cloud, and the night side's brightness.
+    pub cloud: [f32; 4],
+    /// The atmosphere's rim, and its thickness as a share of the radius.
+    pub atmosphere: [f32; 4],
+    /// Star density, brightness, and a pixel's size in radians.
+    pub stars: [f32; 4],
 }
 
 /// A deck mesh on the GPU: 28-byte vertices and their indices. Dropping it frees its buffers.
@@ -139,6 +164,10 @@ pub struct FrameCounts {
 pub struct Renderer {
     pipes: HashMap<(DeckProgram, IndexWidth, i32), sg::Pipeline>,
     shaders: HashMap<DeckProgram, sg::Shader>,
+    /// The sky and screen programs, and their pipelines by sample count (false: sky, true: screen).
+    sky_shader: sg::Shader,
+    screen_shader: sg::Shader,
+    outside_pipes: HashMap<(bool, i32), sg::Pipeline>,
     blit: sg::Pipeline,
     nearest: sg::Sampler,
     linear: sg::Sampler,
@@ -202,7 +231,77 @@ impl Renderer {
             ..Default::default()
         });
         let white = make_texture_array(1, &[255u8; 4]);
-        Self { pipes: HashMap::new(), shaders, blit, nearest, linear, deck_sampler, white }
+        let sky_shader = sg::make_shader(&shaders::sky::sky_shader_desc(backend));
+        let screen_shader = sg::make_shader(&shaders::sky::screen_shader_desc(backend));
+        Self {
+            pipes: HashMap::new(),
+            shaders,
+            sky_shader,
+            screen_shader,
+            outside_pipes: HashMap::new(),
+            blit,
+            nearest,
+            linear,
+            deck_sampler,
+            white,
+        }
+    }
+
+    /// The sky's pipeline (no depth test or write: it is drawn first) or a screen's (depth tested, both faces).
+    fn outside_pipeline(&mut self, screen: bool, samples: i32) -> sg::Pipeline {
+        let shader = if screen { self.screen_shader } else { self.sky_shader };
+        *self.outside_pipes.entry((screen, samples)).or_insert_with(|| {
+            let mut d = sg::PipelineDesc {
+                shader,
+                cull_mode: sg::CullMode::None,
+                sample_count: samples,
+                label: if screen { c"screen".as_ptr() } else { c"sky".as_ptr() },
+                ..Default::default()
+            };
+            d.depth.compare = if screen { sg::CompareFunc::LessEqual } else { sg::CompareFunc::Always };
+            d.depth.write_enabled = screen;
+            d.depth.pixel_format = DEPTH_FORMAT;
+            d.colors[0].pixel_format = COLOR_FORMAT;
+            sg::make_pipeline(&d)
+        })
+    }
+
+    /// Draw the sky over the whole of `t`'s current pass (first, before anything else).
+    pub fn draw_sky(&mut self, t: &Target, p: &SkyParams) {
+        let pip = self.outside_pipeline(false, t.samples);
+        // The sky reads no buffer or texture, and sokol_gfx refuses empty bindings: none are applied.
+        sg::apply_pipeline(pip);
+        let vs = shaders::sky::SkyVsParams { inv_vp: p.inv_vp.to_cols_array() };
+        sg::apply_uniforms(shaders::sky::UB_SKY_VS_PARAMS, &sg::value_as_range(&vs));
+        let fs = shaders::sky::SkyFsParams {
+            sun: p.sun,
+            sun_colour: p.sun_colour,
+            planet: p.planet,
+            ocean: p.ocean,
+            land: p.land,
+            cloud: p.cloud,
+            atmosphere: p.atmosphere,
+            stars: p.stars,
+        };
+        sg::apply_uniforms(shaders::sky::UB_SKY_FS_PARAMS, &sg::value_as_range(&fs));
+        sg::draw(0, 3, 1);
+    }
+
+    /// Draw a screen in `t`'s current pass: a quad whose corners (-1..1, z 0) `mvp` places, showing `source`'s
+    /// picture (rendered earlier this frame, in its own pass). `look`: scan lines' depth, the source's height in
+    /// pixels, brightness.
+    pub fn draw_screen(&mut self, t: &Target, mvp: glam::Mat4, source: &Target, look: [f32; 4]) {
+        let pip = self.outside_pipeline(true, t.samples);
+        sg::apply_pipeline(pip);
+        let mut b = sg::Bindings::new();
+        b.views[shaders::sky::VIEW_TEX] = source.texture;
+        b.samplers[shaders::sky::SMP_SMP] = self.linear;
+        sg::apply_bindings(&b);
+        let vs = shaders::sky::ScreenVsParams { mvp: mvp.to_cols_array() };
+        sg::apply_uniforms(shaders::sky::UB_SCREEN_VS_PARAMS, &sg::value_as_range(&vs));
+        let fs = shaders::sky::ScreenFsParams { look };
+        sg::apply_uniforms(shaders::sky::UB_SCREEN_FS_PARAMS, &sg::value_as_range(&fs));
+        sg::draw(0, 6, 1);
     }
 
     /// The deck pipeline for a program, an index width and a sample count, made once.

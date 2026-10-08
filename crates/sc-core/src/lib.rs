@@ -10,6 +10,8 @@ pub mod arena;
 pub mod clock;
 pub mod data;
 pub mod deck;
+pub mod exterior;
+pub mod lift;
 pub mod replay;
 pub mod rng;
 pub mod vertex;

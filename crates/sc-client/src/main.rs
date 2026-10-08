@@ -6,8 +6,8 @@
 //! walking the deck plan's walk world with `sc-core::walk` and the numbers of `data/crew/walk.json`. Click to look
 //! around with the mouse; W A S D walk, Shift runs, Space jumps, E climbs a ladder (up where a trunk goes both ways; Q down) or goes through a hatch; F flies
 //! instead (Space and C rise and sink) and lands you where you are; Tab lets the mouse go; F12 writes a capture;
-//! Escape quits. Doors stand open and the lift stays at deck A (13a); there is no portal culling or simulation
-//! yet. Without a compiled deck it shows first light's test room and says how to build the deck.
+//! Escape quits. In the lift's car E sends it up a deck and Q down; at a lift door E calls it (deck-pipeline 13b,
+//! `sc-core::lift`). Doors stand open (13a); there is no portal culling yet. Without a compiled deck it shows first light's test room and says how to build the deck.
 //!
 //! Usage: sc-client [--window] [--deck compiled/tern.deck] [--headless --shots DIR] [--headless --walk-test DIR]
 //!
@@ -18,8 +18,11 @@ mod first_light;
 
 use glam::{Mat4, Vec3};
 use sc_client::platform::{self, keys, App, Event, Flow, Frame, WindowConfig};
+use sc_core::deck::{DeckView, WalkDoor};
+use sc_core::exterior::{linear, normalized, ExteriorData};
+use sc_core::lift::Lift;
 use sc_core::walk::{self, Body, Input, WalkData, WalkEntities, WalkWorld};
-use sc_render::{DeckParams, DeckProgram, Indices, Mesh, Renderer, Target, TextureArray};
+use sc_render::{DeckParams, DeckProgram, Indices, Mesh, Renderer, SkyParams, Target, TextureArray};
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -41,6 +44,8 @@ const POSES: &[(&str, [f64; 3], [f32; 2], f32)] = &[
     ("bridge-forward", [0.0, 3.5, 21.2], [0.0, 1.0], -10.0),
     ("bridge-captain", [1.2, 3.95, 27.0], [-0.25, -1.0], -14.0),
     ("bridge-helm-chairs", [3.8, 3.95, 25.0], [-0.75, 1.0], -22.0),
+    ("bridge-viewscreen", [0.0, 3.5, 24.5], [0.0, 1.0], 9.0),
+    ("bridge-port-window", [3.4, 3.5, 28.9], [0.68, 0.73], -14.0),
     ("corridor-B", [0.0, 0.0, 15.0], [0.0, -1.0], -4.0),
     ("eng-mezzanine", [7.0, 0.0, -18.9], [-0.55, -1.0], 6.0),
     ("eng-lower", [0.0, -3.5, -18.9], [0.12, -1.0], 10.0),
@@ -55,10 +60,25 @@ enum Leg {
     Use(bool),
     /// Face `[x, z]` at a pitch (degrees), settle, and capture.
     Shot(&'static str, [f32; 2], f32),
+    /// Press the lift's E (true) or Q, wait until the car stands open again, and check the feet rode it.
+    Lift(bool),
 }
+/// The lift's landings are at x -1.25, z 18.05, facing +x; its car is x -3.3 to -1.25 (deck-access).
 const ROUTE: &[Leg] = &[
     Leg::Shot("walk-1-bridge", [0.0, 1.0], -8.0),
     Leg::To([0.0, 20.6]),
+    Leg::To([0.0, 18.05]),
+    Leg::Shot("lift-1-landing-deck-A", [-1.0, 0.0], -6.0),
+    Leg::To([-2.3, 18.05]),
+    Leg::Shot("lift-2-in-the-car-at-A", [1.0, 0.0], -6.0),
+    Leg::Lift(false),
+    Leg::Shot("lift-3-car-at-B", [1.0, 0.0], -6.0),
+    Leg::Lift(false),
+    Leg::Shot("lift-4-car-at-C", [1.0, 0.0], -6.0),
+    Leg::Lift(true),
+    Leg::Lift(true),
+    Leg::Shot("lift-5-back-at-A", [1.0, 0.0], -6.0),
+    Leg::To([0.0, 18.05]),
     Leg::To([0.0, 15.0]),
     Leg::Shot("walk-2-command-passage", [0.0, -1.0], -6.0),
     Leg::To([0.0, 11.3]),
@@ -81,6 +101,46 @@ struct Walker {
     data: WalkData,
     body: Body,
     eye_y: f32,
+    /// Each lift's car, and the floor height its room was drawn at in the deck.
+    lifts: Vec<(Lift, f32)>,
+    /// The doors, for the lift landings a call reaches.
+    doors: Vec<WalkDoor>,
+}
+
+impl Walker {
+    /// E and Q for the lifts: in a car, up and down a deck; at a landing, E calls the car. True when a key was taken.
+    fn lift_keys(&mut self, up: bool, down: bool) -> bool {
+        if !up && !down {
+            return false;
+        }
+        let f = self.body.feet;
+        if let Some(i) = self.world.lift_index_at(f[0], f[2]) {
+            let l = &mut self.lifts[i].0;
+            if up {
+                l.up();
+            } else {
+                l.down();
+            }
+            return true;
+        }
+        let reach = self.data.lift_call_m as f32;
+        if let (true, Some((i, stop))) = (up, self.world.landing_near(f[0], f[1], f[2], reach, &self.doors)) {
+            let l = &mut self.lifts[i].0;
+            let (s, _) = l.nearest_stop(stop);
+            l.send(s);
+            return true;
+        }
+        false
+    }
+
+    /// Run the cars `dt` seconds and tell the walk world where they are.
+    fn step_lifts(&mut self, dt: f32) {
+        for (i, (l, _)) in self.lifts.iter_mut().enumerate() {
+            l.step(dt);
+            let open = (l.doors_open() > 0.9).then(|| l.stops()[l.stop()]);
+            self.world.set_lift(i, l.car_y, open);
+        }
+    }
 }
 
 struct Camera {
@@ -99,9 +159,49 @@ impl Camera {
     }
 }
 
+/// A compartment as the client draws it.
+struct Room {
+    mesh: Mesh,
+    /// Its frame's origin, ship coordinates, metres.
+    origin: [f64; 3],
+    /// The lift whose car it is (a mover), if any.
+    car: Option<usize>,
+    /// Outside the hull (the space dock): drawn in the bow camera's view too.
+    outside: bool,
+}
+
+/// The outside (deck-pipeline 13b): the sky's numbers, the bow camera's target and where the viewscreens are.
+struct Outside {
+    data: ExteriorData,
+    bow: Target,
+    views: Vec<DeckView>,
+}
+
+impl Outside {
+    /// The sky's parameters seen through `proj * view` (a view with no translation), `px_rad` a pixel's angle.
+    fn sky(&self, proj: Mat4, view: Mat4, px_rad: f32) -> SkyParams {
+        let e = &self.data;
+        let sun = normalized(e.sun.dir);
+        let pl = normalized(e.planet.dir);
+        let v4 = |c: [f32; 3], w: f64| [c[0], c[1], c[2], w as f32];
+        SkyParams {
+            inv_vp: (proj * view).inverse(),
+            sun: v4(sun, (e.sun.disc_deg / 2.0).to_radians().cos()),
+            sun_colour: v4(linear(e.sun.colour_srgb), e.sun.glow),
+            planet: v4(pl, e.planet.radius_deg.to_radians().sin()),
+            ocean: v4(linear(e.planet.ocean_srgb), e.planet.land_frac),
+            land: v4(linear(e.planet.land_srgb), e.planet.cloud_frac),
+            cloud: v4(linear(e.planet.cloud_srgb), e.planet.night),
+            atmosphere: v4(linear(e.planet.atmosphere_srgb), e.planet.atmosphere_frac),
+            stars: [e.stars.density as f32, e.stars.brightness as f32, px_rad, 0.0],
+        }
+    }
+}
+
 enum Scene {
     Ship {
-        rooms: Vec<(Mesh, [f64; 3])>,
+        rooms: Vec<Room>,
+        outside: Option<Box<Outside>>,
         tex: TextureArray,
         panel_first: u32,
         panel_glow: [f32; 3],
@@ -138,7 +238,7 @@ struct Client {
     use_from: f32,
 }
 
-fn load_ship(r: &Renderer, path: &std::path::Path) -> Result<(Scene, Option<Walker>), String> {
+fn load_ship(r: &mut Renderer, path: &std::path::Path) -> Result<(Scene, Option<Walker>), String> {
     let bytes = std::fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
     let d = sc_core::deck::read(&bytes).map_err(|e| format!("{}: {e}", path.display()))?;
     let t = &d.index.textures;
@@ -155,7 +255,17 @@ fn load_ship(r: &Renderer, path: &std::path::Path) -> Result<(Scene, Option<Walk
     for c in &d.index.compartments {
         let idx = d.indices_of(c);
         triangles += idx.len() / 3;
-        rooms.push((r.make_mesh(d.vertices_of(c), Indices::U32(&idx)), c.origin_m));
+        let car = if c.mover == 0 {
+            None
+        } else {
+            d.index.walk.lifts.iter().position(|l| l.car_room.as_deref() == Some(c.id.as_str()))
+        };
+        rooms.push(Room {
+            mesh: r.make_mesh(d.vertices_of(c), Indices::U32(&idx)),
+            origin: c.origin_m,
+            car,
+            outside: c.deck == "outside",
+        });
     }
     println!(
         "sc-client: {} with {} compartments, {} triangles, {} texture layers",
@@ -186,9 +296,17 @@ fn load_ship(r: &Renderer, path: &std::path::Path) -> Result<(Scene, Option<Walk
     );
     let body = Body::at_start(&w.start, &data);
     let eye_y = w.start.at_m[1];
-    let walker = Walker { world, data, body, eye_y };
+    let lifts = w.lifts.iter().map(|l| (Lift::new(&l.stops_m, l.speed_m_s, l.door_s, l.car_m), l.car_m)).collect();
+    let walker = Walker { world, data, body, eye_y, lifts, doors: w.doors.clone() };
+    // The outside: its data, and the bow camera's target (no MSAA: it is shown a fifth of the screen's size).
+    let text =
+        std::fs::read_to_string("data/space/exterior.json").map_err(|e| format!("data/space/exterior.json: {e}"))?;
+    let ext: ExteriorData = sc_core::data::parse("data/space/exterior.json", &text).map_err(|e| e.to_string())?;
+    let [bw, bh] = ext.viewscreen.target_px;
+    let outside = Outside { bow: r.make_target(bw, bh, 1), views: d.index.views.clone(), data: ext };
     let scene = Scene::Ship {
         rooms,
+        outside: Some(Box::new(outside)),
         tex,
         panel_first: t.panel_first,
         panel_glow: t.panel_glow,
@@ -205,7 +323,7 @@ impl Client {
         let cfg = sc_core::data::parse("data/engine/render.json", &text).map_err(|e| e.to_string())?;
         let mut r = Renderer::new(&cfg);
         let target = r.make_target(RENDER_3D.0, RENDER_3D.1, 4);
-        let (scene, walker) = match load_ship(&r, &deck) {
+        let (scene, walker) = match load_ship(&mut r, &deck) {
             Ok(s) => s,
             Err(e) if walk_test => return Err(format!("--walk-test needs the ship: {e}")),
             Err(e) => {
@@ -272,7 +390,11 @@ impl Client {
             use_: self.pressed.contains(&keys::E) || self.pressed.contains(&keys::Q),
             down: self.pressed.contains(&keys::Q),
         });
+        // E and Q work the lift first (in its car, or at a landing); otherwise they climb.
+        let lift = steer.is_none() && w.lift_keys(self.pressed.contains(&keys::E), self.pressed.contains(&keys::Q));
+        let input = if lift { Input { use_: false, down: false, ..input } } else { input };
         self.pressed.clear();
+        w.step_lifts(dt as f32);
         w.body.step(&w.world, &w.data, &input, dt);
         w.eye_y = walk::eye_follow(w.eye_y, w.body.feet[1], dt as f32, &w.data, w.body.climbing());
         let f = w.body.feet;
@@ -331,6 +453,29 @@ impl Client {
                 }
                 if t > 10.0 {
                     return Err(format!("walk test: leg {leg}: Use climbed nothing; the body is at {feet:?}"));
+                }
+                Ok((Some(Input { yaw: self.cam.yaw, ..Input::default() }), None, false))
+            }
+            Leg::Lift(up) => {
+                let w = self.walker.as_mut().ok_or("no walker")?;
+                if t == 0.0 {
+                    self.use_from = feet[1];
+                    if !w.lift_keys(*up, !*up) {
+                        return Err(format!("walk test: leg {leg}: the lift key did nothing at {feet:?}"));
+                    }
+                    return Ok((Some(Input { yaw: self.cam.yaw, ..Input::default() }), None, false));
+                }
+                let (l, _) = &w.lifts[0];
+                if l.phase == sc_core::lift::Phase::Idle && t > 0.5 {
+                    if (feet[1] - l.car_y).abs() > 0.02 || (feet[1] - self.use_from).abs() < 3.0 {
+                        return Err(format!(
+                            "walk test: leg {leg}: the car is at {} m and the feet at {feet:?}, from {}",
+                            l.car_y, self.use_from
+                        ));
+                    }
+                    next(self);
+                } else if t > 20.0 {
+                    return Err(format!("walk test: leg {leg}: the car did not arrive in 20 s"));
                 }
                 Ok((Some(Input { yaw: self.cam.yaw, ..Input::default() }), None, false))
             }
@@ -417,15 +562,57 @@ impl App for Client {
             300.0,
         );
         let w = self.weights;
+        // The bow camera's view first, in its own pass: the sky and the dock, for the viewscreens (13b).
+        if let Scene::Ship { rooms, outside: Some(o), tex, panel_first, panel_glow, .. } = &self.scene {
+            let v = &o.data.viewscreen;
+            let (tw, th) = o.bow.size();
+            let bproj = glam::camera::rh::proj::opengl::perspective(
+                (v.fov_deg as f32).to_radians(),
+                tw as f32 / th as f32,
+                0.5,
+                400.0,
+            );
+            let look = normalized(v.look);
+            let bview = glam::camera::rh::view::look_to_mat4(Vec3::ZERO, Vec3::from(look), Vec3::Y);
+            self.r.begin_3d(&o.bow, [0.0, 0.0, 0.0, 1.0]);
+            self.r.draw_sky(&o.bow, &o.sky(bproj, bview, (v.fov_deg as f32).to_radians() / th as f32));
+            let glow = w[0] * panel_glow[0] + w[1] * panel_glow[1] + w[2] * panel_glow[2];
+            for room in rooms.iter().filter(|r| r.outside) {
+                let rel = Vec3::new(
+                    (room.origin[0] - v.camera_m[0]) as f32,
+                    (room.origin[1] - v.camera_m[1]) as f32,
+                    (room.origin[2] - v.camera_m[2]) as f32,
+                );
+                let p = DeckParams {
+                    mvp: bproj * bview * Mat4::from_translation(rel),
+                    state_weights: w,
+                    flash_dir: Vec3::Z,
+                    flash: 0.0,
+                    panel_first: *panel_first,
+                    panel_glow: glow,
+                };
+                self.r.draw_deck(&o.bow, &room.mesh, DeckProgram::Textured, &p, Some(tex));
+            }
+            self.r.end_pass();
+        }
         self.r.begin_3d(&self.target, [0.004, 0.005, 0.012, 1.0]);
         match &self.scene {
-            Scene::Ship { rooms, tex, panel_first, panel_glow, .. } => {
+            Scene::Ship { rooms, outside, tex, panel_first, panel_glow, .. } => {
+                if let Some(o) = outside {
+                    let px = 70f32.to_radians() / RENDER_3D.1 as f32;
+                    self.r.draw_sky(&self.target, &o.sky(proj, view, px));
+                }
                 let glow = w[0] * panel_glow[0] + w[1] * panel_glow[1] + w[2] * panel_glow[2];
-                for (mesh, origin) in rooms {
+                for Room { mesh, origin, car, .. } in rooms {
+                    // A lift's car is drawn where the car is: its room was exported at the car's floor in the deck.
+                    let lift_dy = match (car, self.walker.as_ref()) {
+                        (Some(i), Some(w)) => w.lifts.get(*i).map_or(0.0, |(l, base)| f64::from(l.car_y - base)),
+                        _ => 0.0,
+                    };
                     // The frames rule: subtract the camera in f64, then narrow to f32.
                     let rel = Vec3::new(
                         (origin[0] - self.cam.pos[0]) as f32,
-                        (origin[1] - self.cam.pos[1]) as f32,
+                        (origin[1] + lift_dy - self.cam.pos[1]) as f32,
                         (origin[2] - self.cam.pos[2]) as f32,
                     );
                     let p = DeckParams {
@@ -437,6 +624,27 @@ impl App for Client {
                         panel_glow: glow,
                     };
                     self.r.draw_deck(&self.target, mesh, DeckProgram::Textured, &p, Some(tex));
+                }
+                // The viewscreens: the bow camera's picture on a quad 3 cm in front of each.
+                if let Some(o) = outside {
+                    for vw in &o.views {
+                        let f = vw.facing_yaw_deg.to_radians();
+                        let n = Vec3::new(f.sin(), 0.0, f.cos());
+                        let right = Vec3::new(n.z, 0.0, -n.x);
+                        let c = Vec3::new(
+                            (f64::from(vw.center_m[0]) - self.cam.pos[0]) as f32,
+                            (f64::from(vw.center_m[1]) - self.cam.pos[1]) as f32,
+                            (f64::from(vw.center_m[2]) - self.cam.pos[2]) as f32,
+                        ) + n * 0.03;
+                        let model = Mat4::from_cols(
+                            (right * vw.size_m[0] / 2.0).extend(0.0),
+                            (Vec3::Y * vw.size_m[1] / 2.0).extend(0.0),
+                            n.extend(0.0),
+                            c.extend(1.0),
+                        );
+                        let look = [o.data.viewscreen.scanlines as f32, o.bow.size().1 as f32, 1.0, 0.0];
+                        self.r.draw_screen(&self.target, proj * view * model, &o.bow, look);
+                    }
                 }
             }
             Scene::TestRoom { room, tex } => {

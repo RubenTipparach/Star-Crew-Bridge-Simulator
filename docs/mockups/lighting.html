@@ -1256,6 +1256,7 @@
    */
   function buildCompartment(THREE, L, comp, opts) {
     opts = opts || {};
+    const liftShaft = (L.fixtures || []).some((f) => f.kind === "lift" && f.compartment === comp.id);
     const D = opts.detailing || shipData("detailing");
     const detail = opts.detail !== false;
     const B = new Builder();
@@ -1323,9 +1324,10 @@
         clear.push({ u0: u - f.width / 2, u1: u + f.width / 2, v0: w.y0, v1: top });
       }
 
-      // Ribs on fore-and-aft walls at the frames; stiffeners on athwartship walls between them.
+      // Ribs on fore-and-aft walls at the frames; stiffeners on athwartship walls between them. A lift's shaft keeps
+      // none: its car runs there (owner, 2026-10-08, in the engine: "theres also a metal bar in the back too").
       const ribs = [];
-      if (comp.kind !== "pod") {
+      if (comp.kind !== "pod" && !liftShaft) {
         const along = Math.abs(w.t[1]) >= Math.SQRT1_2;
         let stations;
         if (along) {
@@ -1511,8 +1513,9 @@
           B.box("runner", c, alongZ ? [1, 0, 0] : [0, 0, 1], [0, 1, 0], alongZ ? [0, 0, 1] : [1, 0, 0], R.width_m / 2, R.raise_m / 2, (b - a) / 2, ["+v", "+u", "-u", "+w", "-w"]);
         }
       }
-      // Beams under the ceiling at the frames, butting the coves, split round tall systems and ceiling holes.
-      if (comp.kind !== "pod") {
+      // Beams under the ceiling at the frames, butting the coves, split round tall systems and ceiling holes; none in a
+      // lift's shaft.
+      if (comp.kind !== "pod" && !liftShaft) {
         const keep = systemsIn(L, comp.id).filter((s) => s.radius_m);
         for (const z of frameStations(D, z0, z1, F.end_clear_m + 0.05)) {
           const ch = chord(inner, 1, z);
