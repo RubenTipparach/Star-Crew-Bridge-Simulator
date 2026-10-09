@@ -136,11 +136,13 @@
     const camera = o.camera, dom = o.dom, octree = o.octree;
     const ladders = o.ladders || [], lifts = (o.lifts || []).map((l) => Object.assign({ phase: "idle", t: 0, target: l.carY }, l));
     // Doors: { kind "door" | "pressure_door" | "lift", c [x, y, z] (the opening's centre), n [x, z] (its normal), w, h,
-    // name, set(open 0..1) }; a lift door also names its lift (an index into o.lifts) and stop (its floor's y).
+    // name, set(open 0..1) }; a lift door also names its lift (an index into o.lifts) and stop (its floor's y). The page
+    // may set a door's held (open whatever the walk says) or locked (shut) at any time.
     const doors = (o.doors || []).map((d) => Object.assign({ open: 0, target: 0, emptyT: Infinity, shown: -1 }, d));
     const pos = new THREE.Vector3(), cap = new Capsule(new THREE.Vector3(), new THREE.Vector3(), BODY.radius_m);
     const ray = new THREE.Ray(new THREE.Vector3(), new THREE.Vector3(0, -1, 0));
     const keys = {}, stick = { x: 0, y: 0 };
+    let speedK = 1;
     let yaw = 0, pitch = 0, vx = 0, vz = 0, vy = 0, grounded = true, jumpT = 0, stairT = 0, action = null, on = false, runToggle = false, eyeY = 0;
     // Rapier: the body is a kinematic capsule its character controller moves. A lift's car floor is no collider: inside
     // the shaft the feet are held on it (kccMove), because a separate box flush with the deck jammed the controller at
@@ -258,6 +260,10 @@
           if (near) { d.emptyT = 0; d.target = 1; } else { d.emptyT += h; if (d.emptyT >= DOOR.close_after_s) d.target = 0; }
         }
         if (busy && d.open > 0) d.target = 1;   // a closing leaf stops and reopens for a body in the doorway; a shut one stays shut
+        // A page may hold a door: held open (the damage control board's override) or locked shut (an interlock with more
+        // pressure across it than its limit); a locked door does not open for a body (fire-spread design 6a).
+        if (d.held) d.target = 1;
+        if (d.locked) d.target = 0;
         const [up, down] = d.kind === "pressure_door" ? DOOR.pressure_s : DOOR.door_s;
         d.open = d.target > d.open ? Math.min(d.target, d.open + h / up) : Math.max(d.target, d.open - h / down);
         if (d.col) d.col.setEnabled(d.open < DOOR.passable);
@@ -363,6 +369,7 @@
       if (mag > 1) { f /= mag; s /= mag; }
       let speed = keys.ShiftLeft || keys.ShiftRight || runToggle ? MOVE.run_m_s : MOVE.walk_m_s;
       if (f < -0.1) speed *= MOVE.back_scale;
+      speed *= speedK;   // a wounded body (crew-on-deck 7), set by the page
       if (stairT > 0 && !R) speed *= MOVE.stair_scale;   // Rapier's controller already slows the body on a slope
       const fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
       const tx = (fx * f + rx * s) * speed, tz = (fz * f + rz * s) * speed;
@@ -623,6 +630,8 @@
       /** Tilt the view: radians, up positive, within the pitch limits. */
       look: (p) => { pitch = Math.max(-PITCH_MAX, Math.min(PITCH_MAX, p)); },
       refreshButtons: () => hud && hud.refresh(),
+      /** Scale walking and running speed (crew-on-deck 7: half speed when wounded); 1 is whole. */
+      setSpeedScale: (k) => { speedK = k; },
     };
   }
 

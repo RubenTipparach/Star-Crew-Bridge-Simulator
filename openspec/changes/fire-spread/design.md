@@ -18,18 +18,23 @@ it exists.
 
 - **The grid.** Each room's floor is cut into square cells of 0.5 m (`fire.cells.size_m`), on the deck's own x and z,
   so cells line up across a doorway. A cell belongs to a room when its centre is on the room's floor polygon (the
-  layout's prisms, as `shipkit` builds them). The Tern's floors make about 6,400 cells; the quarters about 110.
+  layout's prisms, as `shipkit` builds them). The Tern's floors make 10,074 cells (measured by `firespread.js` on layout v2; the first estimate said 6,400), the
+  quarters 373 (its 92 m^2; the first estimate's 110 was wrong).
 - **Fuel.** A cell takes the fuel class of what stands on it, from the props and fixtures that cover its centre
   (`fire.cells.classes`), else the room's `bare` class:
 
   | Class | What | Fuel MJ/m^2 | Ignites (dose, s at full exposure) | Peak kW/m^2 |
   | --- | --- | ---: | ---: | ---: |
-  | `bedding` | bunks, couches, the medbay's beds | 500 | 12 | 250 |
-  | `furniture` | tables, chairs, desks, lockers | 350 | 25 | 250 |
-  | `cables` | cable trays, switchboard cabinets, consoles | 300 | 30 | 250 |
-  | `stores` | crates, racks, the magazine's missiles | 400 | 35 | 250 |
-  | `machinery` | pumps, generators, engines | 150 | 60 | 250 |
-  | `bare` | deck plating and its coatings | the remainder | 70 | 250 |
+  | `bedding` | bunks, couches, the medbay's beds | 500 | 36 | 250 |
+  | `furniture` | tables, chairs, desks, lockers | 350 | 50 | 250 |
+  | `cables` | cable trays, switchboard cabinets, consoles | 300 | 60 | 250 |
+  | `stores` | crates, racks, the magazine's missiles | 400 | 70 | 250 |
+  | `machinery` | pumps, generators, engines | 150 | 120 | 250 |
+  | `bare` | deck plating and its coatings | the remainder | 110 | 250 |
+
+  The doses are the harness's tuned figures (section 4; the first draft had 12, 25, 30, 35, 60 and 70 s, which grew
+  the quarters' fire to 1 MW in 60 s). Which prop is which class is `fire.cells.props`; what stands where is the
+  mockups' furnishing (`crew_rooms.json`, the medbay's beds, the layout's lockers), through `FireSpread.placements`.
 
   The room's total fuel stays `fuel_mj_per_m2[room] x floor` (`damage-control` 3): the `bare` cells take what the
   furnished ones leave, never below 20 MJ/m^2, so a room burns the energy the table was measured with.
@@ -77,11 +82,25 @@ it. `tools/mockups/fire_cases.mjs` (a measurement instrument, CLAUDE.md 4) runs 
 - **The target**: the quarters, door shut, 50 kW seed: 1 MW at 113 s within 10%, peak heat release, peak air
   temperature and the time out within 15%. The dose figures and the neighbour weights above are the knobs; the
   harness tunes them once, and they are data (`fire.cells`).
+- **Met** (2026-10-09, `fire-cases.md`), with the seed on the quarters' forward-wall bunk: 1 MW at 113 s (0%), peak
+  3.48 MW against 3.71 (-6%), peak air 295 C against 307 (-4%), out at 284 s against 321 (-12%). The neighbour
+  weights stayed as designed (1, 0.7, 0.35); the knobs that moved were every class's dose (about doubled) and the hot
+  layer's preheat, which now starts at 50 C and is full at 180 C (it was 100 C to 300 C). With the first preheat
+  range no set of doses passed: a fire slow enough to reach 1 MW at 113 s then peaked near 2 MW, because the room
+  model's growth ignores oxygen until its ceiling and the cells' does not, so the cells must involve the whole floor
+  by the time the oxygen falls. Peak heat release is the tightest of the four (within 6%).
 - **The rest of the table** is reported, not tuned: a furnished room now burns faster where its bedding is and
   slower on bare deck, which is the point. Where a case moves by more than 15%, the design says so beside it, and
   `damage-control`'s table is replaced by the harness's output when the engine takes this model.
 - **Suppression cases** are run with the extinguisher aimed by a script that sweeps the nearest burning cells (the
   competent player) and again aimed at the room's centre (the careless one), so the table says what aim is worth.
+
+**Late fires need more than a hand extinguisher** (recommendation taken, ask only with screenshots, 2026-10-09). The
+cell model says a fire caught after about 100 s relights behind a careful crew member from the bunks and the hot
+layer, where the room model said two extinguishers at 120 s or three at 180 s would do. That is kept: it is
+`damage-control`'s race made sharper, so a fire found early is one crew member's job and a late one is the board's
+(mist, inert gas, the captain's vent, a sealed door). The knob if play finds it too harsh is the agent time
+(`fire.cells.agent_s`), not the cut.
 
 ## 5. Putting it out
 
@@ -102,11 +121,13 @@ it. `tools/mockups/fire_cases.mjs` (a measurement instrument, CLAUDE.md 4) runs 
 
 ## 6. The mockup: `docs/mockups/fire.html`
 
-One deck of the Tern (deck B: the quarters, the mess, the medbay, damage control and the spine corridor between them),
+One deck of the Tern (deck B: the quarters, the mess, the medbay, damage control and the spine corridor between them,
+and the hangar beside them, the nearest room with water mist, so the board can show mist acting),
 built from the one layout by `shipkit.js`, lit by its own fixtures in the normal and red-alert states (the alarm
 turns red alert on), walked by `shipwalk.js`, its air and fire run by `shipsystems.js` with `firespread.js`.
 
-- **Walk** (first person, mouse and keys or touch): take an extinguisher from the damage control locker (E), walk
+- **Walk** (first person, mouse and keys or touch): take an extinguisher from a room's safety point or the damage
+  control locker (E; `safety-points`), walk
   to the fire, hold the left button (or the spray button on a touch screen) to discharge. The spray is drawn, and
   its footprint is a ring on the floor. At rest the screen shows three pictures and no words: the agent left (a
   ring on the extinguisher), the room's heat and smoke (a fill), your health.
@@ -134,15 +155,15 @@ and heat drops". This answers `bridge-stations`' open "who may vent" (section 10
 
   | What falls | Harm (proposed) | From |
   | --- | --- | --- |
-  | Oxygen | 0 HP/s above 16 kPa of oxygen, rising in a straight line to 2.0 HP/s at 6.3 kPa and below | New; the hypoxia dose toward unconsciousness stays as it is |
+  | Oxygen | 0 HP/s above 10.6 kPa of oxygen, rising in a straight line to 2.0 HP/s at 6.3 kPa and below | New; the hypoxia dose toward unconsciousness stays as it is. It begins at 10.6 kPa, where `life-support`'s unconsciousness rule does, so a room flooded with inert gas (about 12.7 kPa) impairs but does not kill (recommendation taken, ask only with screenshots, 2026-10-09) |
   | Heat | 0 HP/s above 5 C, rising 0.04 HP/s per kelvin below it (1.0 HP/s at -20 C) | Replaces the cold row's 0.2 HP/s below -20 C |
   | Pressure | As today: knocked down (10 HP) by a fall faster than 50 kPa/s; dead after 90 s below 6.3 kPa | Unchanged |
 
   The air cools as it expands out of the dump, so oxygen and heat fall together. A crew member who stays in a
   venting room from the first second should be down (0 HP) within about a minute, so the warning matters and staying
-  is a real cost: a rough hand count (oxygen past 16 kPa at 4 s and past 6.3 kPa at 18 s of a 24 s vent) gives about
-  60 s before the cold is added. The fire harness measures the real figures (design 4) and the rates are tuned to
-  that target, not to this estimate.
+  is a real cost. Measured by the fire harness (`fire-cases.md`): from the captain's command, the dump opens at 5 s,
+  oxygen passes 6.3 kPa at 23 s and the air 5 C at 26 s; a crew member who stays is incapacitated at 57 s, at 0 HP at
+  66 s and critical at 87 s.
 - **The fire goes out** below 20 kPa, as today, with every cell's flame shrinking together as oxygen falls (5).
 - **Refilling** is `life-support`'s: the room is refilled from the reserve through its vent when the captain closes
   the dump, the medbay in 170 s.

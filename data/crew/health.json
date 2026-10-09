@@ -1,0 +1,9 @@
+{
+ "schema": "starcrew.health/1",
+ "status": "Proposed (2026-10-09): openspec/changes/crew-on-deck section 7, the owner's rule of 2026-10-09 (\"50% health the player moves at half speed; lower than 20% the player or crew bot is incapacitated\"). Read by docs/mockups/lib/shipsystems.js (the falling vitals, for every body) and docs/mockups/fire.html (the walking player's speed and the incapacitated overlay). Its own file, not a block of walk.json, because sc-core::walk reads walk.json with unknown fields refused; the engine takes these numbers when crew-on-deck section 7 is built.",
+ "full_hp": 100.0,
+ "wounded_at_or_below_hp": 50.0,
+ "wounded_speed_scale": 0.5,
+ "incapacitated_below_hp": 20.0,
+ "vitals_fall_hp_per_s": 0.17
+}

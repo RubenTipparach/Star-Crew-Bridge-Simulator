@@ -26,6 +26,15 @@
  * in a page it is inlined before this file; in node, set globalThis.window = globalThis and
  * run shipkit.js, which touches no DOM until a page function is called.
  *
+ * Fire on the floor (openspec/changes/fire-spread): when firespread.js is loaded before this file (and opts.cells is
+ * not false), a room's fire is its burning floor cells, and the room's heat release is their sum; the room model
+ * below stays the one authority for what that heat release does (oxygen, smoke, heat, damage, spread through doors)
+ * and caps it (oxygen, ceiling), scaling every cell together. Without firespread.js the room grows on its own
+ * t-squared line, as damage-control's table was measured. Extinguishers are aimed cones (useExtinguisher with
+ * "careful" or "careless", or a held one from newExtinguisher whose aim the page sets); venting is the captain's,
+ * with a warning before the dump opens (fire-spread design 6a), and ventPreview runs the same flow solve on a copy of
+ * the gas to say how long the room takes to empty.
+ *
  * Classic script, no DOM: works in a page (window.ShipSystems) and in node (globalThis).
  * Units: SI. Pressure in Pa inside, kPa at the edges. Power in W inside, MW at the edges.
  */
@@ -154,7 +163,8 @@
   /**
    * Build a ship's systems simulation from its layout and the three proposed data files.
    * opts.dt_s overrides the sub-step (default 1 / power.solve.substep_hz = 0.1 s);
-   * opts.seed is the session seed for every random choice.
+   * opts.seed is the session seed for every random choice; opts.health is data/crew/health.json (crew-on-deck 7: a body
+ * below its incapacitated threshold loses vitals), opts.fireItems FireSpread.placements, opts.cells false the cell model off.
    */
   function create(L, PW, AT, DM, opts) {
     opts = opts || {};
@@ -347,10 +357,20 @@
     for (const l of loads) st.loop.branchOpen[l.id] = true;
     st.reactor.T = PW.coolant.initial_k + 250;
     const FI = AT.fire;
+    // The rates fire-spread design 6a adds; a missing one is an error, not a silent zero (CLAUDE.md 6.5).
+    for (const [blk, keys] of [["hypoxia", ["harm_below_po2_kpa", "harm_full_po2_kpa", "harm_full_hp_per_s"]], ["heat", ["cold_harm_below_k", "cold_harm_hp_per_s_per_k"]]])
+      for (const k of keys) if (!Number.isFinite(AT.crew_effects[blk][k])) throw new Error(`atmosphere.json crew_effects.${blk}.${k}: missing (openspec/changes/fire-spread design 6a)`);
+    if (!FI.suppression.venting || !Number.isFinite(FI.suppression.venting.warning_s)) throw new Error("atmosphere.json fire.suppression.venting.warning_s: missing (fire-spread design 6a)");
     for (let i = 0; i < N; i++) {
       const fm2 = FI.fuel_mj_per_m2[comps[i].id] != null ? FI.fuel_mj_per_m2[comps[i].id] : FI.fuel_mj_per_m2_default;
       st.fire.push({ hrr: 0, fuel: fm2 * floor[i] * 1e6, ext: 0, mist: 0, mistLeft: FI.suppression.water_mist.discharges, inert: 0, prevP: P[i], out: 0 });
     }
+    // The cell model (fire-spread design 1-2), when firespread.js is loaded: opts.fireItems are FireSpread.placements
+    // (what stands where, and so where the fuel is); without them every cell is bare deck.
+    const FS = root.FireSpread && opts.cells !== false && FI.cells ? root.FireSpread.create(L, FI, { items: opts.fireItems || [], fuel_j: st.fire.map((f) => f.fuel) }) : null;
+    const EX = FI.extinguisher, VENT = FI.suppression.venting;
+    st.extinguishers = [];   // { comp, aim ("careful" | "careless" | { from, dir }), on, agent_kg, n, door, held }
+    st.vent = null;          // { comp, phase: "warning" | "venting", warn }
     function setActivity(a) { Object.assign(st.activity, a); }
     setActivity({ drive: 0.3, dampers: 0.2, rcs: 0.1, shield_regen: 0, turret_dorsal: 0, turret_ventral: 0, turret_port: 0, turret_stbd: 0,
       sensors_active: 0, comms: 0.2, hoist: 0, cradle_p: 0, cradle_s: 0, pad: 0 });
@@ -928,6 +948,7 @@
         }
         if (f.mist > 0) { f.mist -= dt; U[i] -= MIST.cooling_mw * MWW * dt; }
         derive();
+        if (FS) { stepFireCells(i); continue; }
         if (f.hrr <= 0) {
           // Spread: hot air with fuel and oxygen ignites (deterministic threshold).
           if (T[i] > FI.autoignition_k && f.fuel > 0 && fO2(i) > 0) { f.hrr = FI.seed_kw * 1000; log("Fire spreads into " + comps[i].name); }
@@ -935,7 +956,8 @@
         }
         const max = FI.hrr_max_kw_per_m2 * 1000 * floor[i] * fO2(i) * (f.fuel > 0 ? 1 : 0);
         let cut = 0;
-        if (f.ext > 0) { cut += FI.extinguisher.hrr_cut_kw_per_s * 1000 * (f.extN || 1); f.ext -= dt; }
+        for (const e of st.extinguishers) if (e.comp === i && e.on && e.agent_kg > 1e-6) { cut += EX.hrr_cut_kw_per_s * 1000 * e.n; spend(e); }
+        if (f.ext > 0) f.ext -= dt;
         if (f.mist > 0) cut += MIST.hrr_cut_kw_per_s * 1000;
         if (cut > 0) f.hrr -= cut * dt;
         else if (f.hrr < max) f.hrr = Math.min(max, f.hrr + dt * 2 * Math.sqrt(alpha * f.hrr));
@@ -948,7 +970,61 @@
         n[O2][i] -= o2; n[CO2][i] += FI.co2_mol_per_mol_o2 * o2; n[SMOKE][i] += y * o2;
         U[i] += f.hrr * dt; f.fuel -= f.hrr * dt;
       }
+      st.extinguishers = st.extinguishers.filter((e) => e.held || e.agent_kg > 1e-6);
       derive();
+    }
+    /** An extinguisher's agent for one step (0.4 kg a second: agent_kg over discharge_s); empty, it stops. */
+    function spend(e) { e.agent_kg -= (EX.agent_kg / EX.discharge_s) * dt; if (e.agent_kg <= 1e-6) { e.agent_kg = 0; e.on = false; } }
+    /** The way into a room a crew member comes by: its first door to a corridor (else its first door), [x, z]. */
+    function doorOf(i) {
+      const ps = kit().portalsOf(L, comps[i].id).filter((p) => Math.abs(p.normal[1]) < 0.5 && p.between.indexOf("space") < 0);
+      const other = (p) => comps[idx[p.between[0] === comps[i].id ? p.between[1] : p.between[0]]];
+      const p = ps.find((q) => (other(q) || {}).kind === "corridor") || ps[0];
+      if (p) return [p.center_m[0], p.center_m[2]];
+      const c = kit().center(comps[i]); return [c[0], c[2]];
+    }
+    /**
+     * One room's fire as its cells (fire-spread design 2 and 5): spread in from a neighbour at autoignition, the cells'
+     * step with the extinguishers' cones and the mist, then the room's caps (ceiling and decay, half its oxygen in a step)
+     * scaling every cell, then the chemistry exactly as the room model does it.
+     */
+    function stepFireCells(i) {
+      const f = st.fire[i], r = FS.rooms[i], MIST = FI.suppression.water_mist, fo = fO2(i), was = f.hrr;
+      if (f.hrr <= 0 && T[i] > FI.autoignition_k && f.fuel > 0 && fo > 0) {
+        // Spread: the new fire starts at the cell nearest the portal whose flow brought the heat in (the open one to
+        // the hottest neighbour).
+        let best = null;
+        for (const l of links) {
+          if (!l.mix || l.open <= 0 || (l.a !== i && l.b !== i)) continue;
+          const j = l.a === i ? l.b : l.a;
+          if (j !== SPACE && (!best || T[j] > T[best.j])) best = { l, j };
+        }
+        const at = best && best.l.center ? best.l.center : kit().center(comps[i]);
+        FS.seed(i, at[0], at[2], FI.seed_kw);
+        log("Fire spreads into " + comps[i].name);
+      }
+      const cuts = [];
+      for (const e of st.extinguishers) {
+        if (e.comp !== i || !e.on || e.agent_kg <= 1e-6) continue;
+        const aim = typeof e.aim === "string" ? FS.scriptedAim(i, e.aim, e.door || doorOf(i)) : e.aim;
+        cuts.push({ cells: aim ? FS.footprintCells(i, aim.from, aim.dir) : [], w_per_s: EX.hrr_cut_kw_per_s * 1000 * e.n });
+        e.lastAim = aim;
+        spend(e);
+      }
+      if (f.ext > 0) f.ext -= dt;
+      let hrr = FS.stepRoom(i, dt, { t_k: T[i], f_o2: fo, cuts, mist_w_per_s: f.mist > 0 ? MIST.hrr_cut_kw_per_s * 1000 : 0, wet: f.mist > 0 });
+      const max = FI.hrr_max_kw_per_m2 * 1000 * floor[i] * fo;
+      if (hrr > max) hrr = FS.scale(i, (hrr + ((max - hrr) * dt) / FI.decay_time_s) / hrr);
+      let o2 = (hrr * dt) / (FI.mj_per_mol_o2 * MWW);
+      if (o2 > 0.5 * n[O2][i]) { const k = (0.5 * n[O2][i]) / o2; hrr = FS.scale(i, k); o2 = (hrr * dt) / (FI.mj_per_mol_o2 * MWW); }
+      f.hrr = hrr;
+      if (was >= FI.out_below_kw * 1000 && hrr < FI.out_below_kw * 1000) log("Fire out in " + comps[i].name);
+      if (hrr > 0 || r.active) f.fuel = FS.fuelLeft(i);
+      if (hrr <= 0) return;
+      const x = n[O2][i] / Math.max(1e-9, ntot[i]);
+      const y = x < FI.starved_below_o2_fraction ? FI.smoke_mol_per_mol_o2_starved : FI.smoke_mol_per_mol_o2_ventilated;
+      n[O2][i] -= o2; n[CO2][i] += FI.co2_mol_per_mol_o2 * o2; n[SMOKE][i] += y * o2;
+      U[i] += hrr * dt;
     }
     /** Hot air damages what is in the room: systems, switchboards and (more slowly) the reactor. */
     function stepFireDamage() {
@@ -961,10 +1037,16 @@
         if (comps[i].id === L.systems.find((x) => x.id === PW.reactor.system).compartment) st.reactor.integrity = Math.max(0, st.reactor.integrity - pts * FI.reactor_damage_factor);
       }
     }
-    function ignite(compId, kw) {
+    /** A fire of kw (kW) in a room; at ([x, z]) is where, for the cell model (a hit's entry, a click), else the room's centre. */
+    function ignite(compId, kw, at) {
       const i = idx[compId], f = st.fire[i];
       if (f.fuel <= 0) return false;
-      f.hrr = Math.max(f.hrr, (kw || FI.seed_kw) * 1000);
+      if (FS) {
+        const c = at || (() => { const m = kit().center(comps[i]); return [m[0], m[2]]; })();
+        FS.seed(i, c[0], c[1], kw || FI.seed_kw);
+        let q = 0; const r = FS.rooms[i]; for (let k = 0; k < r.n; k++) if (r.state[k] === FS.BURNING) q += r.q[k];
+        f.hrr = q;
+      } else f.hrr = Math.max(f.hrr, (kw || FI.seed_kw) * 1000);
       log("Fire in " + comps[i].name + " (" + (f.hrr / 1000).toFixed(0) + " kW)");
       return true;
     }
@@ -1025,7 +1107,10 @@
         f.detect = f.hrr > WM.auto_above_kw * 1000 ? (f.detect || 0) + dt : 0;
         if (st.autoMist !== false && f.detect >= WM.confirm_s && f.mist <= 0 && f.mistLeft > 0) dischargeMist(comps[i].id);
       }
-      // Portal motion.
+      movePortals();
+    }
+    /** Portal motion: every door, vent, dump and valve toward its target at its own speed. */
+    function movePortals() {
       for (const l of links) {
         if (l.open === l.target) continue;
         const opening = l.open < l.target, time = opening ? l.move : l.moveClose;
@@ -1035,7 +1120,7 @@
     }
 
     // ======================================================= crew
-    const CE = AT.crew_effects, MET = AT.metabolism;
+    const CE = AT.crew_effects, MET = AT.metabolism, HE = opts.health || null;
     function addCrew(id, name, compId, o) {
       st.crew.push(Object.assign({ id, name, comp: idx[compId], working: false, suited: false, hp: 100, hyp: 0, hyc: 0, fed: 0, vac: 0, uncon: false, uncon_s: 0, dead: false, status: "ok", lastP: null }, o || {}));
     }
@@ -1057,6 +1142,8 @@
         if (po2 < H.tuc_table_po2_kpa_s[0][0]) { c.hyp += dt / lerpTable(H.tuc_table_po2_kpa_s, po2); }
         else if (po2 >= H.impaired_below_po2_kpa) c.hyp = Math.max(0, c.hyp - H.recover_per_s * dt);
         if (po2 < H.impaired_below_po2_kpa) impaired = true;
+        // Health lost as oxygen falls (fire-spread design 6a): 0 at harm_below_po2_kpa, harm_full_hp_per_s at harm_full_po2_kpa.
+        if (po2 < H.harm_below_po2_kpa) c.hp -= H.harm_full_hp_per_s * clamp((H.harm_below_po2_kpa - po2) / (H.harm_below_po2_kpa - H.harm_full_po2_kpa), 0, 1) * dt;
         // Hypercapnia.
         const HC = CE.hypercapnia;
         if (pco2 >= HC.tuc_table_pco2_kpa_s[0][0]) {
@@ -1071,13 +1158,20 @@
         const HT = CE.heat;
         if (T[i] > HT.harm_above_k) c.hp -= HT.harm_hp_per_s_per_k * (T[i] - HT.harm_above_k) * dt;
         if (T[i] > HT.impaired_above_k || T[i] < HT.cold_impaired_below_k) impaired = true;
-        if (T[i] < HT.cold_harm_below_k) c.hp -= HT.cold_harm_hp_per_s * dt;
+        if (T[i] < HT.cold_harm_below_k) c.hp -= HT.cold_harm_hp_per_s_per_k * (HT.cold_harm_below_k - T[i]) * dt;   // fire-spread 6a
         // Pressure.
         const PR = CE.pressure;
         if (pk < PR.armstrong_kpa) c.vac += dt / PR.vacuum_death_s; else c.vac = Math.max(0, c.vac - dt / PR.vacuum_death_s);
         if (pk < PR.impaired_below_kpa) impaired = true;
         if (c.lastP != null && (c.lastP - P[i]) / 1000 > PR.knockdown_drop_kpa_in_1s * dt) { c.hp -= PR.knockdown_hp * dt; }
         c.lastP = P[i];
+        // crew-on-deck 7 (opts.health, data/crew/health.json): below incapacitated_below_hp a body is down and its vitals
+        // fall on top of whatever still hurts it; nobody revives in the field.
+        if (HE) {
+          c.wounded = c.hp <= HE.wounded_at_or_below_hp;
+          c.incapacitated = c.hp < HE.incapacitated_below_hp;
+          if (c.incapacitated) c.hp -= HE.vitals_fall_hp_per_s * dt;
+        }
         const unc = c.hyp >= 1 || c.hyc >= 1 || c.fed >= 1 || c.hp <= 0;
         c.uncon = unc;
         if (unc) {
@@ -1134,7 +1228,7 @@
       const lo = [0, 1, 2].map((a) => Math.min(point[a], end[a])), hi = [0, 1, 2].map((a) => Math.max(point[a], end[a]));
       const candComps = []; for (let c = 0; c < N; c++) { const b = kit().bounds(comps[c]); if (b.x[0] <= hi[0] && b.x[1] >= lo[0] && b.y[0] <= hi[1] && b.y[1] >= lo[1] && b.z[0] <= hi[2] && b.z[1] >= lo[2]) candComps.push(c); }
       const compOn = (p) => { for (const c of candComps) if (inComp(comps[c], p)) return c; return SPACE; };
-      const sysPts = new Float64Array(loads.length), nodePts = {}, condE = {}, roomE = new Float64Array(N), roomLen = new Float64Array(N), roomR = new Float64Array(N);
+      const sysPts = new Float64Array(loads.length), nodePts = {}, condE = {}, roomE = new Float64Array(N), roomLen = new Float64Array(N), roomR = new Float64Array(N), roomAt = [];
       let cur = SPACE, entered = false, s = 0;
       for (; s <= PG.march_max_m && E > 0.05; s += PG.march_step_m) {
         const p = [point[0] + dir[0] * s, point[1] + dir[1] * s, point[2] + dir[2] * s];
@@ -1154,6 +1248,7 @@
         if (c === SPACE || dE <= 0) continue;
         const r = PG.radius_m + PG.radius_per_sqrt_mj * Math.sqrt(E + dE);
         roomE[c] += dE; roomLen[c] += PG.march_step_m; roomR[c] = Math.max(roomR[c], r);
+        if (!roomAt[c]) roomAt[c] = p;   // where the march entered the room: a fire there starts under it (fire-spread 2)
         for (const li of candLoads) {
           const q = loads[li].center, d = Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]);
           if (d < r) sysPts[li] += DM.systems.points_per_mj * dE * (1 - d / r);
@@ -1191,7 +1286,7 @@
         const e = roomE[c]; if (e <= 0.01) continue;
         out.compartments.push({ id: comps[c].id, mj: e, radius_m: roomR[c] });
         const chance = Math.min(DM.fire.chance_max, DM.fire.chance_per_mj * e) * fO2(c);
-        if (hash32(seed, id, comps[c].id, "fire") < chance) { ignite(comps[c].id, FI.seed_kw + DM.fire.seed_kw_per_mj * e); out.fire.push(comps[c].id); }
+        if (hash32(seed, id, comps[c].id, "fire") < chance) { ignite(comps[c].id, FI.seed_kw + DM.fire.seed_kw_per_mj * e, roomAt[c] ? [roomAt[c][0], roomAt[c][2]] : null); out.fire.push(comps[c].id); }
         // Crew: the engine knows where each crew member stands (crew-on-deck) and applies the
         // same falloff as systems; this mockup has no positions, so every crew member in the
         // room takes the expected share: the fraction of the floor within r of the path.
@@ -1258,17 +1353,70 @@
       st.damperForced[compId] = false;
       st.fire[i].inert = IG.time_s + IG.soak_s; log("Inert gas flooding " + comps[i].name); return true;
     }
-    /** count crew discharging extinguishers at the same fire together (their cuts add). */
-    function useExtinguisher(compId, count) { const f = st.fire[idx[compId]]; f.ext = FI.extinguisher.discharge_s; f.extN = count || 1; log((count > 1 ? count + " extinguishers" : "Extinguisher") + " on the fire in " + comps[idx[compId]].name); }
-    function ventCompartment(compId) {
-      // Vent through the duct: shut the room's doors, isolate the duct, open this room's vent and the dump.
-      const vi = idx[compId];
-      for (const l of links) if ((l.a === vi || l.b === vi) && ["door", "pressure_door", "hatch", "ladder", "hoist"].indexOf(l.kind) >= 0) l.target = 0;
-      for (let i = 0; i < N; i++) st.damperForced[comps[i].id] = comps[i].id === compId;
-      setLink(GA.overboard_dump.id, 1);
-      log("Venting " + comps[idx[compId]].name + " overboard through the duct");
+    /**
+     * count crew discharging extinguishers at the same fire together (their cuts add). aim (the cell model): "careful"
+     * (the default: they sweep the burning cells nearest the door they came in by) or "careless" (at the room's centre).
+     */
+    function useExtinguisher(compId, count, aim) {
+      const i = idx[compId], f = st.fire[i];
+      f.ext = EX.discharge_s; f.extN = count || 1;
+      st.extinguishers.push({ comp: i, aim: aim || "careful", on: true, agent_kg: EX.agent_kg, n: count || 1, door: doorOf(i), held: false });
+      log((count > 1 ? count + " extinguishers" : "Extinguisher") + " on the fire in " + comps[i].name);
     }
-    function stopVent() { st.damperForced = {}; setLink(GA.overboard_dump.id, 0); }
+    /** An extinguisher a crew member carries (the walking player): the page sets comp (a compartment index), aim
+     * ({ from, dir }) and on (the trigger held) each frame; agent_kg is what is left (refill: set it to EX.agent_kg). */
+    function newExtinguisher() {
+      const e = { comp: -1, aim: null, on: false, agent_kg: EX.agent_kg, n: 1, door: null, held: true };
+      st.extinguishers.push(e); return e;
+    }
+    const VENT_DOORS = ["door", "pressure_door", "hatch", "ladder", "hoist"];
+    /**
+     * The captain's vent (fire-spread design 6a; damage-control 4): the room's doors and its damper shut at once and the
+     * room is warned for VENT.warning_s (klaxon, red strobe; its doors still open from inside on a press), then the
+     * duct is isolated, this room's vent opens and the dump opens. The board can only request it.
+     */
+    function ventCompartment(compId) {
+      const vi = idx[compId];
+      for (const l of links) if ((l.a === vi || l.b === vi) && VENT_DOORS.indexOf(l.kind) >= 0) { l.target = 0; l.manualHold = false; }
+      st.damperForced[compId] = false;
+      st.vent = { comp: vi, phase: "warning", warn: VENT.warning_s, t0: st.t };
+      log("Venting " + comps[vi].name + " in " + VENT.warning_s.toFixed(0) + " s: doors shut, klaxon");
+    }
+    function openDump(vi) {
+      for (const l of links) if ((l.a === vi || l.b === vi) && VENT_DOORS.indexOf(l.kind) >= 0) { l.target = 0; l.manualHold = false; }
+      for (let i = 0; i < N; i++) st.damperForced[comps[i].id] = i === vi;
+      setLink(GA.overboard_dump.id, 1);
+      log("Venting " + comps[vi].name + " overboard through the duct");
+    }
+    function stepVent() {
+      const v = st.vent;
+      if (!v || v.phase !== "warning") return;
+      v.warn -= dt;
+      if (v.warn <= 1e-9) { v.warn = 0; v.phase = "venting"; openDump(v.comp); }
+    }
+    function stopVent() { st.vent = null; st.damperForced = {}; setLink(GA.overboard_dump.id, 0); }
+    /**
+     * What the captain sees on arming a vent (fire-spread design 6a): who is in the room, the warning, and the seconds the
+     * room takes to fall to extinct_kpa once the dump opens, from the same flow solve run on a copy of the gas (doors
+     * shut, the duct isolated, this room's vent and the dump opening at their own speeds), which is then put back.
+     */
+    function ventPreview(compId) {
+      const i = idx[compId];
+      derive();
+      const save = { n: n.map((a) => a.slice()), U: U.slice(), links: links.map((l) => [l.open, l.target, l.G, l.F, l.flow]), lost: st.lostOverboard };
+      for (const l of links) if ((l.a === i || l.b === i) && VENT_DOORS.indexOf(l.kind) >= 0) { l.open = 0; l.target = 0; }
+      for (let k = 0; k < N; k++) links[ventOf[k]].target = k === i ? 1 : 0;
+      linkById[GA.overboard_dump.id].target = 1;
+      const end = FI.extinct_kpa * 1000;
+      let t = 0;
+      while (t < 900 && P[i] > end) { movePortals(); flowSolve(); t += dt; }
+      for (let k = 0; k < 4; k++) n[k].set(save.n[k]);
+      U.set(save.U); st.lostOverboard = save.lost;
+      links.forEach((l, k) => { [l.open, l.target, l.G, l.F, l.flow] = save.links[k]; });
+      derive();
+      return { compartment: compId, warning_s: VENT.warning_s, empty_s: t, total_s: VENT.warning_s + t, reached: P[i] > end ? t < 900 : true,
+        crew: st.crew.filter((c) => c.comp === i && !c.dead).map((c) => c.name) };
+    }
     /**
      * Open or close a door the way a crew member or the damage control board does: an opening
      * across more than the interlock's pressure difference is refused unless overridden.
@@ -1305,6 +1453,7 @@
 
     // ======================================================= the sub-step
     function step() {
+      stepVent();
       stepAutomation();
       stepPower();
       stepHeat();
@@ -1344,10 +1493,10 @@
       dt, L, PW, AT, DM, st, comps, N, DUCT, idx, vol, floor, extArea, adj, links, linkById, loads, loadIdx, stores, nodes, SPECIES,
       step, derive, solveGrid, gridSnapshot, computeDemand, solveWithDropout, previewSetpoint, previewGroup, scram, scramReset,
       resolveHit, hullHalfBeam, breach, patch, setLink, closeAllDoors, isolate, ignite, bayPumpdown, bayRepress,
-      dischargeMist, dischargeInert, useExtinguisher, gravityG, capability, damageState, auxRatio, ignitionRate,
+      dischargeMist, dischargeInert, useExtinguisher, newExtinguisher, ventPreview, gravityG, capability, damageState, auxRatio, ignitionRate,
       operateDoor, setPriority, applyPreset, repressurize, repairSystem, spliceConduit, rebuildNode, fanRatio,
       airlockCycleOut, airlockCycleIn, ventCompartment, stopVent, addCrew, setActivity, compartmentReadout, lighting,
-      receiverKpa, storeMol, fillStandard, log,
+      receiverKpa, storeMol, fillStandard, log, fs: FS, fO2,
       get P() { return P; }, get T() { return T; }, get n() { return n; }, get ntot() { return ntot; },
     };
   }
