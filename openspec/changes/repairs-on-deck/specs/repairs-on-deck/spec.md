@@ -5,15 +5,20 @@
 ### Requirement: A repair is played docked at the machine
 
 A player SHALL start a repair by Use at the system's repair point while holding a kit, which docks the body at the
-point; the service face's cover SHALL be unscrewed and lifted off in the 3D view, and only then SHALL the system's
-mini-game be drawn over the live, darkened 3D view. The job SHALL count as done only once the cover is screwed back
-on in 3D.
+point; the service face's cover, a textured plate, SHALL be unscrewed and lifted off in the 3D view, which SHALL
+show a still picture of the system's mini-game in the machine. Only a click on that picture (or Use while it is
+pointed at) SHALL draw the mini-game over the live, darkened 3D view, and Esc SHALL put it back into the picture
+with the round paused. The job SHALL count as done only once the cover is screwed back on in 3D.
 
 #### Scenario: Docking at the coolant pump
 - **WHEN** a player holding a kit uses the damaged coolant pump's repair point
 - **THEN** the body kneels at the point, the camera frames the coupling guard, the player turns its four screws out
-  on the pump in 3D and the guard lifts off, and the pump game is drawn over the engineering room, which keeps
-  rendering around it
+  on the pump in 3D and the guard lifts off, showing a picture of the pump game in the pump
+
+#### Scenario: Clicking the picture opens the game
+- **WHEN** the docked player clicks the pump game's picture in the opened pump
+- **THEN** the pump game is drawn over the engineering room, which keeps rendering around it
+- **AND** Esc puts the game back into the picture with its round paused
 
 ### Requirement: A landed round shows in the room
 

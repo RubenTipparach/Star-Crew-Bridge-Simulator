@@ -46,6 +46,12 @@ keys_crew.png of the wall panels) into a <script id="ship-screens" type="applica
 block, { manifest, images: { <file as the manifest names it>: data URI } }, for pages that
 draw console faces on the props (tools/mockups/console_screens.py; bridge-stations 11.6).
 
+"repairs" copies assets/textures/repairs/covers.json and faces/faces.json with every image they
+name (the service covers baked by tools/blender/build_repair_covers.py and the games' still
+pictures captured by tools/mockups/repair_faces.mjs) into a <script id="ship-repairs"
+type="application/json"> block, { covers, faces, images: { <file>: data URI } }, for pages that
+open a machine for a repair (repairs-on-deck design 3b).
+
 --check rewrites nothing and fails when a page holds a stale copy, and also
 checks that shipkit's PI_BUDGET matches the budget marker in the engine-stack
 design (the table there is the source). Documentation tooling, standard library
@@ -76,7 +82,7 @@ PANELS = os.path.join(ROOT, "data", "materials", "panels.json")
 SCREENS = os.path.join(ROOT, "assets", "textures", "screens", "screens.json")
 CACHE = os.path.join(ROOT, "docs", "mockups", "cache")
 LIGHTBAKE = os.path.join(LIB, "lightbake.js")
-MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-9_-]+/[a-z0-9_-]+|bakecache:[a-z0-9_-]+|shipkit|materials|panels|screens|models:[a-z0-9_-]+|manifest:[a-z0-9_-]+|font:[a-z0-9_-]+) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
+MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-9_-]+/[a-z0-9_-]+|bakecache:[a-z0-9_-]+|shipkit|materials|panels|screens|repairs|models:[a-z0-9_-]+|manifest:[a-z0-9_-]+|font:[a-z0-9_-]+) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
 
 
 def png_uri(path):
@@ -198,6 +204,17 @@ def block(kind):
                 ui[stem] = png_uri(os.path.join(base, stem + ".png"))
         text = json.dumps({"manifest": manifest, "layers": layers, "ui": ui}, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
         return f'\n<script id="ship-panels" type="application/json">\n{text}\n</script>\n'
+    if kind == "repairs":
+        base = os.path.join(ROOT, "assets", "textures", "repairs")
+        with open(os.path.join(base, "covers.json"), encoding="utf-8") as f:
+            covers = json.load(f)
+        with open(os.path.join(base, "faces", "faces.json"), encoding="utf-8") as f:
+            faces = json.load(f)
+        files = [c["file"] for c in covers["covers"].values()] + [r["file"] for r in faces["faces"].values()]
+        images = {rel: png_uri(os.path.join(ROOT, rel)) for rel in sorted(files)}
+        text = json.dumps({"covers": covers, "faces": faces, "images": images}, separators=(",", ":"),
+                          ensure_ascii=False).replace("</", "<\\/")
+        return f'\n<script id="ship-repairs" type="application/json">\n{text}\n</script>\n'
     if kind == "materials":
         with open(MATERIALS, encoding="utf-8") as f:
             manifest = json.load(f)

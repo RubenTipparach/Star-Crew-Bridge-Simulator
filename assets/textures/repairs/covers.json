@@ -1,0 +1,70 @@
+{
+  "schema": "starcrew.repair-covers-built/1",
+  "source": "data/materials/repair_covers.json",
+  "built_by": "tools/blender/build_repair_covers.py",
+  "size_m": [
+    0.56,
+    0.455
+  ],
+  "versions": {
+    "blender": "4.5.4 LTS",
+    "pillow": "12.3.0",
+    "numpy": "1.26.4"
+  },
+  "covers": {
+    "crew": {
+      "file": "assets/textures/repairs/cover_crew.png",
+      "px": [
+        256,
+        208
+      ],
+      "bytes": 24601,
+      "sha256": "cf1418e8ff089bcaaa98c8f2b467c48ad9dd4b94256c322d9c4d1d8f29724fb4",
+      "holes_uv": [
+        [
+          0.075,
+          0.09231
+        ],
+        [
+          0.925,
+          0.09231
+        ],
+        [
+          0.075,
+          0.90769
+        ],
+        [
+          0.925,
+          0.90769
+        ]
+      ]
+    },
+    "working": {
+      "file": "assets/textures/repairs/cover_working.png",
+      "px": [
+        256,
+        208
+      ],
+      "bytes": 27697,
+      "sha256": "8de4a418a9a71be352ba73f2d3f26e1967d24e471f813c4c8439212b800b2fed",
+      "holes_uv": [
+        [
+          0.075,
+          0.09231
+        ],
+        [
+          0.925,
+          0.09231
+        ],
+        [
+          0.075,
+          0.90769
+        ],
+        [
+          0.925,
+          0.90769
+        ]
+      ]
+    }
+  }
+}

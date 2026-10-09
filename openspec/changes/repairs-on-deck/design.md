@@ -88,6 +88,38 @@ are part of the prop, and taking them off is played on the prop in the docked 3D
   6 on a switchboard cubicle.
 - **The 2D covers stay in `repairs.html`**, which has no ship to put them on; in the game the kit's cover step is this.
 
+### 3b. A textured cover, the puzzle in the machine, a click to play (owner, 2026-10-09)
+
+The owner: "Metal panel with screws should be in the world, 3d textured. And should reveal a png of the puzzle. But
+when the player clicks on it it brings up the 2d puzzle gui". So docking no longer opens the panel by itself:
+
+1. **The cover is a textured prop part.** The plate is a box the cover's size, 25 mm thick, its face taking a baked
+   texture: brushed plate with chamfered, worn edges, a hazard band round it, a stencilled SERVICE and four
+   countersunk holes at its corners. The 3D screws sit in those holes. The texture is baked in Blender with the
+   hard-surface kit, like the wall panels (CLAUDE.md 9), by `tools/blender/build_repair_covers.py`, one per finish
+   (`crew`, `working`), into `assets/textures/repairs/cover_<finish>.png`, from the finish's colours, wear and
+   light in `panels.json` and the cover's own numbers in `data/materials/repair_covers.json`. The bake writes the
+   holes' positions as fractions of the plate into `assets/textures/repairs/covers.json`, and the screws are placed
+   from that file, so a screw can never sit off its hole. One bake (0.56 x 0.455 m at 457 px per metre, 256 x 208
+   px) serves every cover from 1.1 to 1.4 wide to high: the UVs stretch it to the cover, the holes stay at their
+   fractions.
+2. **Behind it, a picture of the puzzle.** With the cover off, the opening shows the job's game as a still, set in a
+   dark frame 4 mm back from the face: `assets/textures/repairs/faces/<game>.png`, the game's at-rest picture (its
+   first round of a damaged job: the game area under the kit's bar, 1280 x 648, at a fifth, 256 x 130 px). It is
+   captured from the 2D game itself by `tools/mockups/repair_faces.mjs`, which records each file's sha256 in
+   `faces/faces.json`, and committed, so the picture and the game cannot drift apart: rerun it when a game's look
+   changes. It is a still on purpose: a console or game is never rendered into a texture every frame
+   (CLAUDE.md 10), and a still costs one texture and nothing a frame. The machine's lamp beside it says the state.
+3. **Click it to play.** Pointing at the picture lights its frame in the accent colour and the prompt reads
+   "Click: repair". A click (or E, or gamepad A with the frame lit) opens the 2D game, which grows out of the
+   picture's place on the screen to its own over 0.2 s, so it reads as the same thing come closer.
+4. **Esc goes back a step.** From the 2D game, Esc shrinks it back into the picture and pauses the round (kept, as
+   leaving keeps it); from the docked view, Esc stands up. Look up (right mouse, Q) works in both.
+5. **The last round lands**: the game shrinks back into the picture, the lamp goes green, and the cover goes back
+   on and is screwed home in 3D as in 3a.
+
+A crewmate walking past an open machine sees the picture of its puzzle in it, which says what is being repaired.
+
 **The screen while docked.** The panel covers the middle of the screen (1280 x 720 on a 1920 x 1080 output, or 2/3
 of the height on any other). The docked 3D view keeps rendering around it, darkened 35%, with no blur (the Pi 5 does
 not pay for one): smoke rolling in, a fire spreading, a crewmate running past, the red-alert lighting. The machine
@@ -213,6 +245,8 @@ landed rounds, with no panel.
 - Docked: the camera's cut-in, the cover's screws turned out in 3D and the plate lifted off (section 3a), the real
   mini-game (`repairs/pump.js` and `repairs/coolant.js` through `kit.js`, its own 2D cover skipped) drawn on the panel
   over the darkened live room, the look-up hold, leaving and resuming, and the cover screwed back on at the end.
+- The covers wear their baked texture, and behind each the job's puzzle picture; pointing at it lights its frame,
+  a click opens the game out of it, and Esc puts it back (section 3b).
 - A landed round: the lamp steps and the machine's effects change; a fumble: the hazard's flash in the room.
 - Shots of each in `docs/screenshots/repairs-on-deck/`.
 
@@ -223,6 +257,8 @@ landed rounds, with no panel.
 | The docked view | The main camera moved; no second render target. One full-screen quad darkens it |
 | The panel | The UI layer, as a console: at most 40 draw calls, the same budget as `bridge-stations`' consoles |
 | Service faces | The open state's inner detail: at most 400 triangles a prop, drawn only while open, inside the prop's budget (`ship-props`) |
+| Covers (3b) | Two baked cover textures (crew, working), each one 256 x 256 layer of the deck's texture array with the cover in its top 236 rows: 0.5 MB with mips. A cover is 12 triangles and its screws 40 each, drawn with the prop |
+| Puzzle pictures (3b) | One 1024 x 1024 atlas of the 24 games' 256 x 130 px stills (4 across, 7 down, 28 places): 4.2 MB, 5.6 MB with mips. Two triangles a picture and two for its frame, drawn only while its cover is off |
 | Effects | Sparks, smoke and puffs from one particle batch, at most 200 particles across the ship |
 | The kit's work light | One of the runtime lights over the bake, at most 2 at once ship-wide (`light-baking`) |
 | Network | Section 6: a few reliable messages a minute |
@@ -233,6 +269,9 @@ landed rounds, with no panel.
 - `data/ships/tern/repairs.json`: each job's game and `workers`, the rounds by state (`repair-minigames` 2), each
   game's levels (`repair-minigames` 1a) and `min_round_s` by level, the hazards' radius and damage.
 - `kit.json` gains the parts bins and the kit's `pouch_parts: 3`.
+- `data/materials/repair_covers.json`: the cover's size, rim, band, holes and stencils (3b), validated by its bake.
+- `assets/textures/repairs/`: the cover bakes with `covers.json` (the holes' fractions, each file's size and sha256)
+  and the puzzle pictures with `faces/faces.json`, written by the two tools of 3b, never by hand.
 
 ## 12. Order of work
 

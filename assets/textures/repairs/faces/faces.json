@@ -1,0 +1,227 @@
+{
+  "schema": "starcrew.repair-faces/1",
+  "source": "docs/mockups/repairs.html",
+  "built_by": "tools/mockups/repair_faces.mjs",
+  "game_area_px": [
+    1280,
+    648
+  ],
+  "faces": {
+    "biobed": {
+      "file": "assets/textures/repairs/faces/biobed.png",
+      "px": [
+        256,
+        130
+      ],
+      "bytes": 14853,
+      "sha256": "0bd25e1d8d0901fe687efeefdaa0cd26957dad2d9646a80b494c76678ffeebee"
+    },
+    "breakers": {
+      "file": "assets/textures/repairs/faces/breakers.png",
+      "px": [
+        256,
+        130
+      ],
+      "bytes": 14328,
+      "sha256": "556750682f1d747e0f0f788b1d46dd8ffd72d13db0e7a365ad4566b3cdf1f567"
+    },
+    "chiller": {
+      "file": "assets/textures/repairs/faces/chiller.png",
+      "px": [
+        256,
+        130
+      ],
+      "bytes": 15094,
+      "sha256": "4655746478f49767df308ea9f8d674392c2ee094b98abeeb7968e13a7dcc30bf"
+    },
+    "conduits": {
+      "file": "assets/textures/repairs/faces/conduits.png",
+      "px": [
+        256,
+        130
+      ],
+      "bytes": 7702,
+      "sha256": "e48262e9189ba8822fc8e47e0d9b207310ade938387c6d11ff3da3e00f2fdf81"
+    },
+    "coolant": {
+      "file": "assets/textures/repairs/faces/coolant.png",
+      "px": [
+        256,
+        130
+      ],
+      "bytes": 21678,
+      "sha256": "3b974ff5140c9e0686db701c010afc1369c4ae3e3a4025ac04618c4d58cce03c"
+    },
+    "doors": {
+      "file": "assets/textures/repairs/faces/doors.png",
+      "px": [
+        256,
+        130
+      ],
+      "bytes": 12806,
+      "sha256": "56cffce097bea880a12b8a01dffa668ae74f840d5972b468ae71c2fe2ff51392"
+    },
+    "fighter": {
+      "file": "assets/textures/repairs/faces/fighter.png",
+      "px": [
+        256,
+        130
+      ],
+      "bytes": 10108,
+      "sha256": "2bdde1cf299b92bea64aad2014eed2b11e2ae6dfc3deeeab68c4524a4fb10ea5"
+    },
+    "galley": {
+      "file": "assets/textures/repairs/faces/galley.png",
+      "px": [
+        256,
+        130
+      ],
+      "bytes": 9297,
+      "sha256": "1a1fe053bbc1f864cb592f1a04a4a753cd40b1b0698416781f3634928fc1b1c2"
+    },
+    "gravity": {
+      "file": "assets/textures/repairs/faces/gravity.png",
+      "px": [
+        256,
+        130
+      ],
+      "bytes": 33914,
+      "sha256": "ec213c64ad4934ee96e93de8735d726a20bea76ed102d8d1220453d68ec01a71"
+    },
+    "hull": {
+      "file": "assets/textures/repairs/faces/hull.png",
+      "px": [
+        256,
+        130
+      ],
+      "bytes": 25805,
+      "sha256": "b0b49bdd08fa5ce1cc7bc322f89c45fa20882e2e151ac6b7f42d62631d12f3ce"
+    },
+    "impulse": {
+      "file": "assets/textures/repairs/faces/impulse.png",
+      "px": [
+        256,
+        130
+      ],
+      "bytes": 9840,
+      "sha256": "471630f47f8f6fd966d924910cf7f7bb4aa1cc7cd4fb60f5a63415b4a2669f33"
+    },
+    "medic": {
+      "file": "assets/textures/repairs/faces/medic.png",
+      "px": [
+        256,
+        130
+      ],
+      "bytes": 34756,
+      "sha256": "8048e5a7f97931e0f069dfc004590a659197dfcbf10b1841856305d5dd9fc84b"
+    },
+    "pipes": {
+      "file": "assets/textures/repairs/faces/pipes.png",
+      "px": [
+        256,
+        130
+      ],
+      "bytes": 12077,
+      "sha256": "1c7f816e1e783ef1541345b76642828453cacd3251864da0e6ca7929d4d878c3"
+    },
+    "pump": {
+      "file": "assets/textures/repairs/faces/pump.png",
+      "px": [
+        256,
+        130
+      ],
+      "bytes": 13830,
+      "sha256": "82a84263436ce1e946cc6525f823276acfc5b220e823d291815e7c0e55343b58"
+    },
+    "pylons": {
+      "file": "assets/textures/repairs/faces/pylons.png",
+      "px": [
+        256,
+        130
+      ],
+      "bytes": 15338,
+      "sha256": "31eef67a1d292891681eebc599af3f9fa3b590762ec5bd77211a57d936e028c6"
+    },
+    "reactor": {
+      "file": "assets/textures/repairs/faces/reactor.png",
+      "px": [
+        256,
+        130
+      ],
+      "bytes": 15784,
+      "sha256": "c2cff8e6a8d8199070ea5724b3d4e4d6dc4b36731b1f1eaa9518fa46c8f1a913"
+    },
+    "scrubbers": {
+      "file": "assets/textures/repairs/faces/scrubbers.png",
+      "px": [
+        256,
+        130
+      ],
+      "bytes": 13946,
+      "sha256": "a8dd73e133cea63215453c4105ed29f210971f6fa169cdd62ed93a4120582f74"
+    },
+    "sensors": {
+      "file": "assets/textures/repairs/faces/sensors.png",
+      "px": [
+        256,
+        130
+      ],
+      "bytes": 16252,
+      "sha256": "de91295f1d01a9783b554ea43ae372184494024246c4c2707b060b56f32468e8"
+    },
+    "shields": {
+      "file": "assets/textures/repairs/faces/shields.png",
+      "px": [
+        256,
+        130
+      ],
+      "bytes": 25194,
+      "sha256": "f2eab6eb6d01d86d51e2cdf68441cfdb81af6eabd37bfbd6d2e37ffb62b535e2"
+    },
+    "shower": {
+      "file": "assets/textures/repairs/faces/shower.png",
+      "px": [
+        256,
+        130
+      ],
+      "bytes": 12714,
+      "sha256": "6609ec7eda99499d59317ecb30ecfe05d2ca98f2ad365416a9a3e7169d99a88d"
+    },
+    "shuttle": {
+      "file": "assets/textures/repairs/faces/shuttle.png",
+      "px": [
+        256,
+        130
+      ],
+      "bytes": 13875,
+      "sha256": "6da5416200b3cb308108d260e4cdfe747d659c49c83a4ce52ac0ddb18d0b4c14"
+    },
+    "toilet": {
+      "file": "assets/textures/repairs/faces/toilet.png",
+      "px": [
+        256,
+        130
+      ],
+      "bytes": 18927,
+      "sha256": "d749de4a5b76b37aeec2081f6530e8c5453936f5bef0bc904e66125a744b7e24"
+    },
+    "tubes": {
+      "file": "assets/textures/repairs/faces/tubes.png",
+      "px": [
+        256,
+        130
+      ],
+      "bytes": 11736,
+      "sha256": "c4cf0eb576c092e8e2b6635c948c3a4dbc81044157e4316e477dc1ae8067be18"
+    },
+    "turret": {
+      "file": "assets/textures/repairs/faces/turret.png",
+      "px": [
+        256,
+        130
+      ],
+      "bytes": 15041,
+      "sha256": "4e61e5648d7c75cea6be6adc94ef5cd5b223b6984324d39d684deb885d984282"
+    }
+  }
+}

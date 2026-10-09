@@ -6,6 +6,9 @@
   environment" (2026-10-09).
 - [x] 1.2 `docs/mockups/repairs-on-deck.html`: engineering in 3D, the pump and the valve board docked, the covers unscrewed in 3D, the real games over
   the live room, rounds and fumbles shown in the room; shots in `docs/screenshots/repairs-on-deck/`.
+- [x] 1.3 Design 3b: the covers baked in Blender (`tools/blender/build_repair_covers.py`), the puzzle pictures
+  captured from the games (`tools/mockups/repair_faces.mjs`), both inlined into the page; point at the picture and
+  click to open the game, Esc back to it; shots.
 
 ## 2. Data
 

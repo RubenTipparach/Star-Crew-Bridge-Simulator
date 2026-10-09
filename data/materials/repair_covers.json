@@ -1,0 +1,19 @@
+{
+  "schema": "starcrew.repair-covers/1",
+  "status": "Proposed (2026-10-09) by openspec/changes/repairs-on-deck, design 3b. Baked by tools/blender/build_repair_covers.py into assets/textures/repairs/cover_<finish>.png with assets/textures/repairs/covers.json; no engine code reads them yet.",
+  "_rules": [
+    "One cover is baked per finish and stretched by its UVs onto every service cover from 1.1 to 1.4 wide to high; the screw holes stay at their fractions of the plate, which covers.json records and the 3D screws are placed from.",
+    "size_m is the plate baked (x across, y up); out_px the layer it becomes, at the same pixels per metre both ways; the render is supersample times out_px, area-averaged down.",
+    "Colours and wear are the finish's own in data/materials/panels.json, and the light is its render block: a cover is a wall part."
+  ],
+  "size_m": [0.56, 0.455],
+  "out_px": [256, 208],
+  "supersample": 4,
+  "colours": 48,
+  "finishes": ["crew", "working"],
+  "corner_m": 0.016,
+  "rim_w_m": 0.02,
+  "hazard_w_m": 0.024,
+  "screw": { "inset_m": 0.042, "hole_r_m": 0.0105, "countersink_r_m": 0.017 },
+  "text": { "label": "SERVICE", "label_m": 0.062, "note": "4 SCREWS", "note_m": 0.024 }
+}
