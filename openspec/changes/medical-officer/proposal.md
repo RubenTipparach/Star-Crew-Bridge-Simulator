@@ -5,10 +5,10 @@
 The owner, 2026-10-08, listing in-ship activities: "medical bay: ship can be damaged, a player can
 play as the medical officer to heal players".
 
-`crew-on-deck` (sections 7 and 8) already hurts bodies and heals them: anyone revives a downed body by
-hand in 5.0 s, a body out of danger recovers to 50 HP on its own, and above 50 HP only a medbay bed
+`crew-on-deck` (sections 7 and 8) already hurts bodies and heals them: below 20 HP a body is
+incapacitated, anyone with a first aid kit stabilizes it and it is carried to the medbay, a body out of danger recovers to 50 HP on its own, and above 50 HP only a medbay bed
 heals, at 2.0 HP/s with nobody tending it. Nothing there is a job. A fifth to eighth player has no
-reason to stand in the medbay, and the crew have no one to call when three of them are down in a
+reason to stand in the medbay, and the crew have no one to call when three of them are incapacitated in a
 burning engineering bay.
 
 ## What Changes
