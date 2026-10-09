@@ -18,8 +18,8 @@
         256,
         208
       ],
-      "bytes": 24601,
-      "sha256": "cf1418e8ff089bcaaa98c8f2b467c48ad9dd4b94256c322d9c4d1d8f29724fb4",
+      "bytes": 25307,
+      "sha256": "b97a08952f2975e45f2a717860aed8e59fbe8871e0bdab4f86e3c1ca5a3e1d92",
       "holes_uv": [
         [
           0.075,
@@ -45,8 +45,8 @@
         256,
         208
       ],
-      "bytes": 27697,
-      "sha256": "8de4a418a9a71be352ba73f2d3f26e1967d24e471f813c4c8439212b800b2fed",
+      "bytes": 28915,
+      "sha256": "500e5b850ee09fecc0d39d9fdb0991f2f45489081b0e7986933bca63b5cdf556",
       "holes_uv": [
         [
           0.075,
@@ -65,6 +65,26 @@
           0.90769
         ]
       ]
+    }
+  },
+  "interiors": {
+    "circuit": {
+      "file": "assets/textures/repairs/interior_circuit.png",
+      "px": [
+        256,
+        208
+      ],
+      "bytes": 30158,
+      "sha256": "7905e31b4f8ae779c60f9c6a48fcec224c6a0219e435a9b6b75ba86e747c6f47"
+    },
+    "wiring": {
+      "file": "assets/textures/repairs/interior_wiring.png",
+      "px": [
+        256,
+        208
+      ],
+      "bytes": 28424,
+      "sha256": "c905ad53fdb181c9af362fda8861360251ac0f51dfd698b924d5ae62118611fc"
     }
   }
 }

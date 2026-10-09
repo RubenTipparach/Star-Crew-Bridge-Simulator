@@ -88,10 +88,13 @@ are part of the prop, and taking them off is played on the prop in the docked 3D
   6 on a switchboard cubicle.
 - **The 2D covers stay in `repairs.html`**, which has no ship to put them on; in the game the kit's cover step is this.
 
-### 3b. A textured cover, the puzzle in the machine, a click to play (owner, 2026-10-09)
+### 3b. A textured cover, the machine's insides behind it, a click to play (owner, 2026-10-09)
 
 The owner: "Metal panel with screws should be in the world, 3d textured. And should reveal a png of the puzzle. But
-when the player clicks on it it brings up the 2d puzzle gui". So docking no longer opens the panel by itself:
+when the player clicks on it it brings up the 2d puzzle gui". The first build put a still of the game itself behind
+the cover, and the owner turned it down the same day: "that UI in 3d is wrong. I wanted an image of like wiring or
+circuit board behind the panel". So the opening shows the machine's insides, never its game, and docking no longer
+opens the panel by itself:
 
 1. **The cover is a textured prop part.** The plate is a box the cover's size, 25 mm thick, its face taking a baked
    texture: brushed plate with chamfered, worn edges, a hazard band round it, a stencilled SERVICE and four
@@ -103,22 +106,25 @@ when the player clicks on it it brings up the 2d puzzle gui". So docking no long
    from that file, so a screw can never sit off its hole. One bake (0.56 x 0.455 m at 457 px per metre, 256 x 208
    px) serves every cover from 1.1 to 1.4 wide to high: the UVs stretch it to the cover, the holes stay at their
    fractions.
-2. **Behind it, a picture of the puzzle.** With the cover off, the opening shows the job's game as a still, set in a
-   dark frame 4 mm back from the face: `assets/textures/repairs/faces/<game>.png`, the game's at-rest picture (its
-   first round of a damaged job: the game area under the kit's bar, 1280 x 648, at a fifth, 256 x 130 px). It is
-   captured from the 2D game itself by `tools/mockups/repair_faces.mjs`, which records each file's sha256 in
-   `faces/faces.json`, and committed, so the picture and the game cannot drift apart: rerun it when a game's look
-   changes. It is a still on purpose: a console or game is never rendered into a texture every frame
-   (CLAUDE.md 10), and a still costs one texture and nothing a frame. The machine's lamp beside it says the state.
-3. **Click it to play.** Pointing at the picture lights its frame in the accent colour and the prompt reads
-   "Click: repair". A click (or E, or gamepad A with the frame lit) opens the 2D game, which grows out of the
-   picture's place on the screen to its own over 0.2 s, so it reads as the same thing come closer.
-4. **Esc goes back a step.** From the 2D game, Esc shrinks it back into the picture and pauses the round (kept, as
+2. **Behind it, the machine's insides.** With the cover off, the opening shows what the cover was hiding, as a
+   baked texture on the opening's back, 4 mm in from the face: a circuit board (a green board with copper traces,
+   chips, capacitors, a heatsink, a header with its wires and two status LEDs) or a terminal box (a DIN rail of
+   terminal blocks, their wires gathered into a tied loom, a relay). Each job names its interior by what the
+   machine is: electronics take the board (the valve board, sensors, shields, a console), power and motors take the
+   wiring (the pump's motor box, a breaker panel, a turret's drive). They are baked in Blender with the hard-surface
+   kit by the same `build_repair_covers.py`, into `assets/textures/repairs/interior_<kind>.png` at the cover's size
+   and density (256 x 208 px), with their own colours and a light wear in `repair_covers.json` (`interiors`): a
+   circuit board has no wall paint and no rust. There is no game on it: the 2D game is drawn only on the panel, and
+   nothing is ever rendered into a texture every frame (CLAUDE.md 10). The machine's lamp beside it says the state.
+3. **Click it to play.** Pointing at the insides lights a thin frame round the opening in the accent colour and
+   the prompt reads "Click: repair". A click (or E, or gamepad A with the frame lit) opens the 2D game, which grows
+   out of the opening's place on the screen to its own over 0.2 s, so it reads as a closer look at the same insides.
+4. **Esc goes back a step.** From the 2D game, Esc shrinks it back into the opening and pauses the round (kept, as
    leaving keeps it); from the docked view, Esc stands up. Look up (right mouse, Q) works in both.
-5. **The last round lands**: the game shrinks back into the picture, the lamp goes green, and the cover goes back
+5. **The last round lands**: the game shrinks back into the opening, the lamp goes green, and the cover goes back
    on and is screwed home in 3D as in 3a.
 
-A crewmate walking past an open machine sees the picture of its puzzle in it, which says what is being repaired.
+A crewmate walking past an open machine sees its insides, a board or a loom, which says it is under repair.
 
 **The screen while docked.** The panel covers the middle of the screen (1280 x 720 on a 1920 x 1080 output, or 2/3
 of the height on any other). The docked 3D view keeps rendering around it, darkened 35%, with no blur (the Pi 5 does
@@ -245,8 +251,9 @@ landed rounds, with no panel.
 - Docked: the camera's cut-in, the cover's screws turned out in 3D and the plate lifted off (section 3a), the real
   mini-game (`repairs/pump.js` and `repairs/coolant.js` through `kit.js`, its own 2D cover skipped) drawn on the panel
   over the darkened live room, the look-up hold, leaving and resuming, and the cover screwed back on at the end.
-- The covers wear their baked texture, and behind each the job's puzzle picture; pointing at it lights its frame,
-  a click opens the game out of it, and Esc puts it back (section 3b).
+- The covers wear their baked texture, and behind each the machine's baked insides (the pump's wiring, the valve
+  board's circuit board); pointing at them lights the opening's frame, a click opens the game out of it, and Esc
+  puts it back (section 3b).
 - A landed round: the lamp steps and the machine's effects change; a fumble: the hazard's flash in the room.
 - Shots of each in `docs/screenshots/repairs-on-deck/`.
 
@@ -258,7 +265,7 @@ landed rounds, with no panel.
 | The panel | The UI layer, as a console: at most 40 draw calls, the same budget as `bridge-stations`' consoles |
 | Service faces | The open state's inner detail: at most 400 triangles a prop, drawn only while open, inside the prop's budget (`ship-props`) |
 | Covers (3b) | Two baked cover textures (crew, working), each one 256 x 256 layer of the deck's texture array with the cover in its top 236 rows: 0.5 MB with mips. A cover is 12 triangles and its screws 40 each, drawn with the prop |
-| Puzzle pictures (3b) | One 1024 x 1024 atlas of the 24 games' 256 x 130 px stills (4 across, 7 down, 28 places): 4.2 MB, 5.6 MB with mips. Two triangles a picture and two for its frame, drawn only while its cover is off |
+| Interiors (3b) | Two baked interiors (circuit board, wiring), each one 256 x 256 layer of the deck's texture array like a cover: 0.5 MB with mips. Two triangles an interior and eight for its frame, drawn only while its cover is off |
 | Effects | Sparks, smoke and puffs from one particle batch, at most 200 particles across the ship |
 | The kit's work light | One of the runtime lights over the bake, at most 2 at once ship-wide (`light-baking`) |
 | Network | Section 6: a few reliable messages a minute |
@@ -269,9 +276,10 @@ landed rounds, with no panel.
 - `data/ships/tern/repairs.json`: each job's game and `workers`, the rounds by state (`repair-minigames` 2), each
   game's levels (`repair-minigames` 1a) and `min_round_s` by level, the hazards' radius and damage.
 - `kit.json` gains the parts bins and the kit's `pouch_parts: 3`.
-- `data/materials/repair_covers.json`: the cover's size, rim, band, holes and stencils (3b), validated by its bake.
-- `assets/textures/repairs/`: the cover bakes with `covers.json` (the holes' fractions, each file's size and sha256)
-  and the puzzle pictures with `faces/faces.json`, written by the two tools of 3b, never by hand.
+- `data/materials/repair_covers.json`: the cover's size, rim, band, holes and stencils, and the interiors' colours
+  and wear (3b), validated by its bake.
+- `assets/textures/repairs/`: the cover and interior bakes with `covers.json` (the holes' fractions, each file's size
+  and sha256), written by `build_repair_covers.py`, never by hand. Each job in `repairs.json` names its `interior`.
 
 ## 12. Order of work
 

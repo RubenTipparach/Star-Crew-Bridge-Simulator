@@ -46,11 +46,11 @@ keys_crew.png of the wall panels) into a <script id="ship-screens" type="applica
 block, { manifest, images: { <file as the manifest names it>: data URI } }, for pages that
 draw console faces on the props (tools/mockups/console_screens.py; bridge-stations 11.6).
 
-"repairs" copies assets/textures/repairs/covers.json and faces/faces.json with every image they
-name (the service covers baked by tools/blender/build_repair_covers.py and the games' still
-pictures captured by tools/mockups/repair_faces.mjs) into a <script id="ship-repairs"
-type="application/json"> block, { covers, faces, images: { <file>: data URI } }, for pages that
-open a machine for a repair (repairs-on-deck design 3b).
+"repairs" copies assets/textures/repairs/covers.json with every image it names (the service
+covers and the machines' insides, a circuit board and a terminal box's wiring, baked by
+tools/blender/build_repair_covers.py) into a <script id="ship-repairs" type="application/json">
+block, { covers, images: { <file>: data URI } }, for pages that open a machine for a repair
+(repairs-on-deck design 3b).
 
 --check rewrites nothing and fails when a page holds a stale copy, and also
 checks that shipkit's PI_BUDGET matches the budget marker in the engine-stack
@@ -208,11 +208,9 @@ def block(kind):
         base = os.path.join(ROOT, "assets", "textures", "repairs")
         with open(os.path.join(base, "covers.json"), encoding="utf-8") as f:
             covers = json.load(f)
-        with open(os.path.join(base, "faces", "faces.json"), encoding="utf-8") as f:
-            faces = json.load(f)
-        files = [c["file"] for c in covers["covers"].values()] + [r["file"] for r in faces["faces"].values()]
+        files = [c["file"] for c in covers["covers"].values()] + [r["file"] for r in covers["interiors"].values()]
         images = {rel: png_uri(os.path.join(ROOT, rel)) for rel in sorted(files)}
-        text = json.dumps({"covers": covers, "faces": faces, "images": images}, separators=(",", ":"),
+        text = json.dumps({"covers": covers, "images": images}, separators=(",", ":"),
                           ensure_ascii=False).replace("</", "<\\/")
         return f'\n<script id="ship-repairs" type="application/json">\n{text}\n</script>\n'
     if kind == "materials":

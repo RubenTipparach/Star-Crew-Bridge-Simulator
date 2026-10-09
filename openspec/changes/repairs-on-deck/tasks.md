@@ -6,9 +6,11 @@
   environment" (2026-10-09).
 - [x] 1.2 `docs/mockups/repairs-on-deck.html`: engineering in 3D, the pump and the valve board docked, the covers unscrewed in 3D, the real games over
   the live room, rounds and fumbles shown in the room; shots in `docs/screenshots/repairs-on-deck/`.
-- [x] 1.3 Design 3b: the covers baked in Blender (`tools/blender/build_repair_covers.py`), the puzzle pictures
-  captured from the games (`tools/mockups/repair_faces.mjs`), both inlined into the page; point at the picture and
-  click to open the game, Esc back to it; shots.
+- [x] 1.3 Design 3b: the covers baked in Blender (`tools/blender/build_repair_covers.py`) and inlined into the page;
+  point at the opening and click to open the game, Esc back to it; shots.
+- [x] 1.4 Design 3b revised (owner: "an image of like wiring or circuit board behind the panel"): the machine's
+  insides, a circuit board and a terminal box with its loom, baked by the same tool in place of the game stills
+  (the stills and their capture tool removed); shots.
 
 ## 2. Data
 
