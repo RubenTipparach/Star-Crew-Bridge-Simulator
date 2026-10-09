@@ -52,7 +52,7 @@ that system's mini-game.
 | **Galley synthesizer** (mess) | A recipe card shows four nutrient columns; open valves to fill each column to its band without spilling over, then purge | One recipe balanced | Overfill: a splash of paste, the step's column drains | Section 4: hunger between missions |
 | **Life support scrubbers** (life support) | Swap the spent CO2 cartridge for a fresh one (drag out, drag in), then trim three gas valves until O2, N2 and CO2 sit in their green bands | One cartridge, or one bank trimmed | Cartridge dropped, or a valve left in the red: a hiss, the room's CO2 rises by the share | `life-support`'s clock: the air goes bad |
 | **Fighters** (hangar, a Swift on its cradle) | Lift the panel, then match the avionics plugs to their sockets by shape and colour stripe; torque the panel's fasteners in a star order | One panel: plugs, then fasteners | A plug forced into the wrong socket: a spark (5 HP), the plug bent | The fighter cannot launch |
-| **Shuttle** (hangar, the Petrel) | Fuel line pressure test: close valves in order along a branching line to isolate the leak, then patch it and hold the pressure needle in band for 3 s | One branch isolated and patched | Wrong valve: fuel mist, the bay's fire risk up | The Petrel cannot launch |
+| **Shuttle** (hangar, the Petrel) | Fuel line leak: sniff along the lines to find it, close the valve on the tank's side of it, patch it, then pump the line up and hold the needle in band for 3 s (6f) | One leak found, isolated, patched and tested | Wrong valve: the leak still fed, fuel mist, the bay's fire risk up | The Petrel cannot launch |
 | **Reactor core** (engineering) | Keep the plasma ball centred in the containment ring by trimming four magnet coils (one stick or four sliders) while a fifth coil is swapped out; it drifts with the core's load | One coil swapped while held centred | The plasma touches the wall: a heat spike, the core's temperature jumps | `power-grid`: the ship runs on batteries |
 | **Impulse engines** (drive, the two impulse units) | Injector timing: pulses run along a scrolling trace; tap as each crosses the firing line, the rhythm set by the unit's tune | Eight injectors timed | Off the line: a misfire, a soot cough, the unit's heat up | Half thrust per unit down (`flight-and-navigation`) |
 | **Warp pylons** (outside, EVA only) | On the hull, tethered: clip from handhold to handhold to the damaged coil segment, unbolt it in a pattern, slide the new one in against a drift | One segment changed | Unclipped too long: the tether snaps you back; a dropped bolt is lost | Section 5: no warp; not repairable in combat |
@@ -255,6 +255,24 @@ labels) is 7-9 CSS px on a phone, too small to read; the mistake note matters mo
 Three more games, designed in their own changes: **Hull plating** (`hull-repair` 3: cut out, fit, weld, bolt), and
 the reactor's coolant system, **Coolant pipes** and **Coolant balance** (`reactor-cooling` 4 and 5). The reactor's
 game is now **Reactor: magnetic core** (`reactor-cooling` 1). All three play by mouse, keys and touch.
+
+### 6f. The shuttle's fuel line, made readable (2026-10-09)
+
+The owner: "im not really sure how the shuttle mini game works". The first version found the leak by closing valves
+outward from the tank and reading a gauge: holding meant the leak was past the valve. That is the reverse of what a
+player guesses, and nothing on screen says it. Rebuilt, keeping the job (find, seal, prove):
+
+1. **Find**: drag the leak sniffer along the Petrel's fuel lines. Its ring pulses faster and brighter the nearer the
+   leak, warmer and colder, and a faint mist shows once it is within reach. No mistake is possible here: it is the
+   looking.
+2. **Isolate**: tap the valve on the tank's side of the leak. The line past it empties (drawn hollow) and the mist
+   stops. Closing a valve that leaves the leak still fed (on the far side of it, or on another line) is the mistake:
+   "Fuel mist: the bay's fire risk rises", and the valve springs back.
+3. **Patch**: drag the patch onto the leak.
+4. **Pressure test**: open the valve, hold the pump, keep the needle in the green band for 3 s (as before).
+
+Later steps put the leak deeper in the lines and narrow the band. A disabled shuttle's first step still fits the new
+isolation valve into the gap in the main line.
 
 ## 7. The Pi 5 budget
 
