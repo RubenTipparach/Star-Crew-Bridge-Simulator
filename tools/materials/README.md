@@ -16,6 +16,7 @@ its `_rules` say what a layer is. The how-to is the `material-maker` skill
 ```sh
 python3 tools/materials/build_ptex.py                                   # graphs (only when one changed)
 MATERIAL_MAKER_DIR=/path/to/material-maker tools/materials/export_materials.sh  # render + build
+# no GPU or screen (a cloud session): the material-maker-headless skill's setup.sh, then the line above
 tools/materials/export_materials.sh --from-fps /path/to/fps-game-demo   # no Material Maker: fps's exports
 python3 tools/materials/postprocess.py                                  # rebuild from raw/ after a knob change
 ```
@@ -30,14 +31,21 @@ question V2.
 
 ## How the 2026-10-05 layers were made
 
-Material Maker could not run in the Claude Code cloud session that built the first set (it needs
-Godot 4.7 and a GPU, and release downloads are blocked there). The layers were built with
+Material Maker was not run in the Claude Code cloud session that built the first set (it was
+thought to need a GPU, and release downloads were blocked then). The layers were built with
 `--from-fps /home/user/fps-game-demo` at fps-game-demo revision `f6cd25c`: its committed
 `game/textures/<graph>.png`, `_normal`, `_orm` and `_emission` maps, which are Material Maker
 renders of the same `.ptex` files (graphs and exports landed together in fps commit `b832b84` and
 have not changed since), rendered at 2048 px and downsampled to 1024 px by fps's own
 `postprocess.py`. A fresh render through Material Maker starts from 2048 px and gives slightly
 different layers (a different digest); that is expected, and the contact sheet is the check.
+
+On 2026-10-09 Material Maker ran headless in a cloud session (`material-maker-headless` skill:
+Godot 4.7 with Mesa's software Vulkan under Xvfb). Its 2048 px renders of `tech_panel` and
+`light_panel`, downsampled to 1024, match fps-game-demo's committed exports exactly. Layers rebuilt
+straight from those 2048 px renders differ from the committed ones by 0.2 to 1.9 of 255 on
+average; that rebuild was measured and not committed. Moving the layers onto Material Maker's own
+render is a commit of its own, with the contact sheet.
 
 ## Provenance
 

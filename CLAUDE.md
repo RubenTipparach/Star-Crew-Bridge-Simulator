@@ -502,6 +502,7 @@ Before claiming anything is done, run what applies:
 | `threejs-mockups` | Building, inlining, screenshotting and publishing a mockup (section 11). |
 | `light-baking` | Placing lamps, baking and judging static light, the three lighting states (section 9). |
 | `material-maker` | Making, recolouring and judging surface materials: Material Maker graphs to 128 px texture layers, texel density, the contact sheet (section 9). |
+| `material-maker-headless` | Running Material Maker with no GPU and no screen (a cloud session): setup, render, the two exporter patches, proving a render. Shared by the owner's repositories (section 9). |
 | `blender-hard-surface` | Modelling low-poly props in Blender with booleans and CSG: cutters, chamfers, cleaning, triangle budgets, the glb and manifest conventions, headless renders (sections 8 and 9). |
 | `panel-textures` | The owner's "textures skill": making, placing and judging the wall, ceiling, floor and trim panels baked in Blender, the rules that place them, the contact sheet (section 9). |
 | `obs-record` | Recording a window with OBS on the owner's machine, for videos of the running game. |

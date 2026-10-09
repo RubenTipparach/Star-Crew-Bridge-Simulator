@@ -64,15 +64,18 @@ provenance. This is how to work with them.
      metallic or roughness is unwired, and add a provenance row to `tools/materials/README.md`.
    Wire albedo, normal and occlusion at least, and emission for a lamp or screen.
 3. **Export.**
-   - With Material Maker: `MATERIAL_MAKER_DIR=/path/to/material-maker tools/materials/export_materials.sh [graph ...]`.
+   - With Material Maker: `MATERIAL_MAKER_DIR=/path/to/material-maker tools/materials/export_materials.sh`.
      The graphs are Material Maker 1.7 graphs (fps-game-demo's README); a release folder holds
      `material_maker.x86_64`, and a source checkout is run by a Godot 4.7 binary (`GODOT=...`).
-     It writes `raw/<graph>_albedo.png`, `_normal`, `_orm`, `_emission` at 2048 px.
-   - In a cloud session (no Godot, no GPU, release downloads blocked):
-     `tools/materials/export_materials.sh --from-fps /home/user/fps-game-demo` takes fps-game-demo's
-     committed exports of the same graphs. It only covers graphs fps has exported. A new or
-     changed graph cannot be rendered there: say so in the reply and leave its layer to a machine
-     with Material Maker. Do not fake it.
+     It writes `raw/<graph>_albedo.png`, `_normal`, `_orm`, `_emission` at 2048 px. Name no
+     graphs: the post-process builds every layer and stops on a missing one.
+   - In a cloud session (no GPU, no screen) Material Maker runs too, on software Vulkan under
+     Xvfb: the `material-maker-headless` skill sets it up (about 40 s) and the export script needs
+     nothing else. All eight graphs render in about 80 s, and a render matches a desktop one pixel
+     for pixel. So a new or changed graph is rendered here, never left to another machine.
+   - `--from-fps /home/user/fps-game-demo` stays as the fallback when Material Maker cannot be
+     fetched at all: it takes fps-game-demo's committed exports, so it only covers graphs fps has.
+     Do not fake a graph that neither path can render.
 4. **Tune the knobs** and rebuild from the same raw maps with `python3 tools/materials/postprocess.py`
    (seconds; `raw/` stays until the next export).
 5. **Look at the contact sheet** (Read `docs/screenshots/materials/contact-sheet.png`) before
@@ -145,7 +148,8 @@ on them (CLAUDE.md 4).
 ## Do not
 
 - Do not write a Python texture generator that imitates a graph; the graph is the one
-  implementation. A cloud session that cannot render a new graph says so.
+  implementation. Material Maker runs in a cloud session (`material-maker-headless`); a session
+  that cannot fetch it says so.
 - Do not hand-edit `assets/textures/*.png`; change the graph or the knobs and rebuild.
 - Do not renumber `layer`, change `layers.px` or a span without a change that says why and what
   it costs.
