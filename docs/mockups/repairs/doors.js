@@ -63,7 +63,7 @@ RepairKit.register({
         const r = api.rand();
         if (isPart) hadPart = true;
         part = isPart;
-        hard = Math.max(0, index - (hadPart ? 1 : 0));
+        hard = index;   // the round's level - 1 (repair-minigames 1a)
         pinion = { x: 835, y: 635, held: false, set: false };
         turns = Math.PI * 2 * (5 + hard);
         amp = 1.8 + 0.6 * hard;

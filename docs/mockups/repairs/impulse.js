@@ -45,7 +45,7 @@ RepairKit.register({
         const r = api.rand();
         part = isPart;
         inj = { x: 1110, y: 214, held: false, set: false };
-        unit = index % 2;
+        unit = 0;   // one unit's job (repairs-on-deck 5)
         speed = 240 + 40 * index;
         tol = Math.max(18, 30 - 3 * index);
         time = 0; heat = 0; soot = []; kick = 0; fired = 0;

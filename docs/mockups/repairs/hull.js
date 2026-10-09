@@ -18,6 +18,7 @@
  * Q and E (or Left and Right) turn it; arrows pick a bolt and Space drives it.
  */
 RepairKit.register({
+  phases: ["cut", "fit", "weldbolt"],
   id: "hull",
   title: "Hull plating",
   place: "Any wall, from inside",
@@ -38,8 +39,6 @@ RepairKit.register({
   create(api) {
     const { C, KIT } = api, D = KIT.draw;
     const BURNED = "Burned through: a hiss of air";
-    const PLAN_DAMAGED = ["cut", "fit", "weldbolt"];
-    const PLAN_DISABLED = ["part", "cut", "fit", "weld", "bolt"];
 
     // ---------------------------------------------------------------- the wall (canvas px)
     const OC = { x: 450, y: 396 };            // the opening's centre
@@ -59,8 +58,10 @@ RepairKit.register({
     const CUT_DONE = 0.98;                    // share of the line cut through to free the panel
     const WELD_REF = 420;                     // px/s at which the torch's heat would fall to nothing
     const HEAT_TAU = 0.25;                    // s: the heat follows the speed with this lag
-    const COLD = 0.35, BURN = 0.85;           // heat under COLD lays a cold bead; over BURN for BURN_S burns through
-    const BURN_S = 0.3, TORCH_COOL_S = 0.8;   // s
+    // Heat under COLD lays a cold bead; over BURN for BURN_S burns through. The good band narrows and the burn comes
+    // sooner each level (repair-minigames 1a): level 1 is 0.35-0.85 and 0.3 s; each level 0.025 off each end, 0.03 s off.
+    const COLD0 = 0.35, BURN0 = 0.85, BURN_S0 = 0.3, TORCH_COOL_S = 0.8;   // s
+    let COLD = COLD0, BURN = BURN0, BURN_S = BURN_S0;
     const WELD_DONE = 0.97;                   // share of a seam that must be good
     const KEY_SPEED = 300, KEY_WELD = 150;    // px/s the keys run the torch along a line
     const SNAP = 0.06;                        // rad: the plate's holes meet inside this
@@ -140,12 +141,13 @@ RepairKit.register({
         creases: Array.from({ length: 7 }, () => [r(), r(), r(), r()]), stacked: 6,
       };
     }
-    function start(index, isPart) {
+    function start(index, isPart, phase) {
       const r = api.rand();
-      if (!wall) wall = freshWall(r);
+      // Each round is a whole plate (repair-minigames 1a): cut, fit, weld and bolt; a new round starts a new wall.
+      if (!wall || (phase === "cut" && !isPart && wall.round !== index)) { wall = freshWall(r); wall.round = index; }
       if (shares[index] === undefined) shares[index] = (100 - api.value) / Math.max(1, api.steps - index) / (KIT.RATES[api.who] || KIT.RATES.officer);
-      const plan = api.steps >= 5 ? PLAN_DISABLED : PLAN_DAMAGED;
-      const kind = isPart ? "part" : plan[Math.min(index, plan.length - 1)];
+      const kind = isPart ? "part" : phase || "cut";
+      COLD = Math.min(0.45, COLD0 + 0.025 * index); BURN = Math.max(0.75, BURN0 - 0.025 * index); BURN_S = Math.max(0.15, BURN_S0 - 0.03 * index);
       s = { kind, phase: kind === "weldbolt" ? "weld" : kind, heat: 0, burnT: 0, cool: 0, hiss: [], sparks: [], cur: 0, keys: false, keyS: 0,
         grab: null, prevA: 0, wrong: null, played: false, carry: null, sel: 0 };
       if (kind === "part") { wall.plate.onTrolley = false; s.carry = { x: STACK.x + STACK.w / 2, y: STACK.y + STACK.h / 2 + 10, held: false, dx: 0, dy: 0 }; }
@@ -516,7 +518,7 @@ RepairKit.register({
         if (wall.seams) out.seams = wall.seams.map((q) => ({ n: q.n, good: count(q, 2), cold: count(q, 1), burned: count(q, 3), a: q.pts[0], b: q.pts[q.pts.length - 1] }));
         return out;
       },
-      step(index, isPart) { start(index, isPart); },
+      step(index, isPart, phase) { start(index, isPart, phase); },
       update(dt, input) {
         if (wall.cut && wall.fall < 1) wall.fall = Math.min(1, wall.fall + dt * 1.4);
         for (const p of s.sparks) { p.vy += 700 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; }

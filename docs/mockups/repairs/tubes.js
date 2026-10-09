@@ -67,7 +67,7 @@ RepairKit.register({
         const r = api.rand();
         if (isPart) hadPart = true;
         part = isPart;
-        hard = Math.max(0, index - (hadPart ? 1 : 0));
+        hard = index;   // the round's level - 1 (repair-minigames 1a)
         seal = { x: 1080, y: 540, held: false, set: false };
         phase = part ? "part" : "jam";
         // Hidden notches, clockwise from the ring's rest.

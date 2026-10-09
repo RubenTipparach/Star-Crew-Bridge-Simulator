@@ -37,6 +37,7 @@
  * cracked tile fits it), Enter fills.
  */
 RepairKit.register({
+  phases: ["isolate", "rebuild", "bleed"],
   id: "pipes",
   title: "Coolant pipes",
   place: "Engineering, the reactor's pipe run",
@@ -62,8 +63,6 @@ RepairKit.register({
     const MIXED = "Legs mixed: hot into cold";
     const OPEN_END = "Open joint: a scalding spray";
     const HOT = "#ff6a4d", COLD = "#4fa8f7";
-    const PLAN_DAMAGED = ["isolate", "rebuild", "bleed"];
-    const PLAN_DISABLED = ["part", "isolate", "rebuild", "rebuild", "bleed"];
     const REACH = KIT.TOUCH_R + 8;          // px: a valve's tap reach
     const BLANKET_JUMP_K = 20;              // K the blanket heats when the core is starved (design 4)
     const BLEED_SHARE = 0.45, BLEED_MIN_S = 3, BLEED_MAX_S = 7;   // the bleed's hold, a share of the step's time
@@ -323,8 +322,9 @@ RepairKit.register({
     }
 
     function rebuildStep(r, round) {
+      // The level sets the grid (repair-minigames 1a): 5 x 4 at level 1, 7 x 5 from level 2; more crossings and cracks.
       const [cols, rows, T] = round === 0 ? [5, 4, 88] : [7, 5, 80];
-      const want = round === 0 ? 1 : 3, cracks = round === 0 ? 1 : 2;
+      const want = round === 0 ? 1 : Math.min(4, 2 + round), cracks = Math.min(4, 1 + round);
       let runs = layRuns(r, cols, rows, want);
       if (!runs) runs = layRuns(r, cols, rows, 1);
       s = {
@@ -790,15 +790,15 @@ RepairKit.register({
         if (s.kind === "bleed") return { ...base, up: s.up, dn: s.dn, fill: s.fill, air: s.air, played: s.played, need: s.need, targets: targets() };
         return { ...base, set: s.set, spools: s.spools.map((sp) => ({ leg: sp.leg, x: sp.x, y: sp.y })), gap: [GAP.x + GAP.w / 2, GAP.y] };
       },
-      step(index, isPart) {
+      step(index, isPart, phase) {
         const r = api.rand();
-        if (!job) job = { leg: r() < 0.5 ? "hot" : "cold", seg: r() < 0.5 ? 2 : 3 };
+        // Each round is the whole job on a new segment (repair-minigames 1a): isolate, rebuild, refill and bleed.
+        if (phase === "isolate" || !job) job = { leg: r() < 0.5 ? "hot" : "cold", seg: r() < 0.5 ? 2 : 3 };
         if (shares[index] === undefined) shares[index] = (100 - api.value) / Math.max(1, api.steps - index) / (KIT.RATES[api.who] || KIT.RATES.officer);
-        const plan = api.steps >= 5 ? PLAN_DISABLED : PLAN_DAMAGED;
-        const kind = isPart ? "part" : plan[Math.min(index, plan.length - 1)];
+        const kind = isPart ? "part" : phase || "isolate";
         if (kind === "part") partStep(r);
         else if (kind === "isolate") isoStep();
-        else if (kind === "rebuild") rebuildStep(r, plan.slice(0, index).filter((k) => k === "rebuild").length);
+        else if (kind === "rebuild") rebuildStep(r, index);
         else bleedStep(index);
       },
       update(dt, input) {

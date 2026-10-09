@@ -113,7 +113,7 @@ RepairKit.register({
     const CRATE = { x: 30, y: 596, w: 170, h: 108 };   // the part step's crate
 
     // ---------------------------------------------------------------- state
-    let s = null, sim = null, clock = 0, hadPart = false, lastIndex = -1;
+    let s = null, sim = null, clock = 0, hadPart = false, lastIndex = -1, lastPart = false;
     const shares = {};
     const log = [];
     const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
@@ -147,13 +147,16 @@ RepairKit.register({
         // The step's share of the job in seconds at this repairer's rate (design 1): (target - now) / steps left / rate.
         shares[index] = (100 - api.value) / Math.max(1, api.steps - index) / (KIT.RATES[api.who] || KIT.RATES.officer);
       }
-      const order = hadPart ? ORDER.disabled : ORDER.damaged;
-      const round = index - (hadPart ? 1 : 0);
-      const kind = isPart ? order[0] : order[Math.min(round, order.length - 1)];
+      // The same balance each round against a harder state (repair-minigames 1a); a disabled job's are harder still.
+      const order = api.steps >= 4 ? ORDER.disabled : ORDER.damaged;
+      const round = index;
+      const kind = order[Math.min(round, order.length - 1)];
       // A restarted step (three fumbles) restarts the loop too: the reactor came back from a scram.
-      if (!sim || index === lastIndex) sim = freshLoop(kind);
-      if (index === lastIndex && !isPart) { sim.Tc = 330; sim.Th = 338; sim.throttle = 0.1; sim.restartT = SCRAM_RESTART_S; }
-      lastIndex = index;
+      // The part move hands on to its round at the same index: that is not a restart.
+      const restart = index === lastIndex && !isPart && !lastPart;
+      if (!sim || restart) sim = freshLoop(kind);
+      if (restart) { sim.Tc = 330; sim.Th = 338; sim.throttle = 0.1; sim.restartT = SCRAM_RESTART_S; }
+      lastIndex = index; lastPart = isPart;
       s = {
         index, round, kind, part: isPart, phase: isPart ? "part" : "play", hold: 0,
         holdNeed: isPart ? 0 : clamp(HOLD_SHARE * shares[index], HOLD_MIN_S, HOLD_MAX_S),

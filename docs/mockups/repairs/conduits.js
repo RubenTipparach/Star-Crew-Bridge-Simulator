@@ -11,6 +11,8 @@
  * conduit's first step fits a new length: drag it from the crate into the gap.
  */
 RepairKit.register({
+  // A round splices; a disabled job has a burnt junction box too, rerouted every round (repair-minigames 1a).
+  phases: (api) => (api.steps >= 4 ? ["splice", "reroute"] : ["splice"]),
   id: "conduits",
   title: "Electrical conduits",
   place: "Anywhere a conduit runs",
@@ -105,11 +107,11 @@ RepairKit.register({
     }
 
     return {
-      step(index, isPart) {
+      step(index, isPart, phase) {
         const r = api.rand();
         part = isPart; time = 0; spark = null; done = false; deny = null;
         len = { x: 1130, y: 620, held: false, set: false };
-        mode = isPart ? "part" : index % 3 === 2 || index === api.steps - 1 ? "reroute" : "splice";
+        mode = isPart ? "part" : phase || "splice";
         // The splice.
         n = Math.min(6, 3 + index);
         rightOrder = Array.from({ length: n }, (_, i) => i);

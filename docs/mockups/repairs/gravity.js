@@ -178,7 +178,7 @@ RepairKit.register({
         // The step's share of the job in seconds at this repairer's rate (design 1): (target - now) / steps left / rate.
         shares[index] = (100 - api.value) / Math.max(1, api.steps - index) / (KIT.RATES[api.who] || KIT.RATES.officer);
       }
-      const round = index + 1 - (hadPart ? 1 : 0);
+      const round = index + 1;   // the round's level (repair-minigames 1a)
       const mult = (1 + ROUND_SPEEDUP * (round - 1)) * (api.combat ? COMBAT_SPEEDUP : 1);
       s = {
         index, round, part: isPart, phase: isPart ? "part" : "play", t: 0,

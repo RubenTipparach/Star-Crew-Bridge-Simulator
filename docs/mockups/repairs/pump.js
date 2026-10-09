@@ -16,6 +16,7 @@
  * the casing's rotation arrow; tap it (or F) to turn it over. Fitted the wrong way round: "Impeller backwards: no flow".
  */
 RepairKit.register({
+  phases: ["align", "start"],
   id: "pump",
   title: "Coolant pump",
   place: "Engineering, the core and radiator pumps",
@@ -78,13 +79,12 @@ RepairKit.register({
     const leverY = (v) => LEVER.y0 + ((LEVER.y1 - LEVER.y0) * v) / V_MAX;
     const red = () => Math.min(0.36, 0.25 + 0.03 * s.index);
 
-    let partJob = false;   // this job began by fitting a part, so its rounds count from step 1
-    function step(index, isPart) {
+    // A round aligns the motor, then starts the pump (repair-minigames 1a): the kit runs the phases in order and the
+    // round's level is its index + 1, so every knob reads s.index.
+    function step(index, isPart, phase) {
       const r = api.rand();
-      if (index === 0) partJob = isPart;
-      const k = index - (partJob ? 1 : 0);
       // The motor sits true (feet where they belong) except while it is being aligned.
-      s = { index, t: 0, phase: isPart ? "part" : k % 2 === 0 ? "align" : "start", sel: 0, keys: false, spin: 0, bubbles: 0, knock: 0, done: false,
+      s = { index, t: 0, phase: isPart ? "part" : phase || "align", sel: 0, keys: false, spin: 0, bubbles: 0, knock: 0, done: false,
         h: [0, 0], want: [0, 0], off: [0, 0], grab: -1 };
       if (s.phase === "part") {
         // The new impeller waits in the crate, the right way round or not, at random.

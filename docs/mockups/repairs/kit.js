@@ -2,10 +2,11 @@
  * repairs/kit.js: the repair mini-games' shared kit (openspec/changes/repair-minigames, design sections 1 and 6).
  *
  * It owns what every game shares, so no game re-implements it (CLAUDE.md 6.1):
- * - the job: integrity from where the damage left it to 100%, filled at the repairer's rate (damage-control 6a: an
- *   officer 1.8% a second, a rating 0.6%), cut into steps; a step completes only when its round is played AND its
- *   share has filled at the rate, so no play beats the board's preview (design 1);
- * - fumbles: 5% of the job back and the game's hazard; three in a step restart it;
+ * - the job: integrity from where the damage left it to 100%, cut into rounds (design 1, revised 2026-10-09): a
+ *   round is the game's whole set of `phases`, played at level min(round, 6) (design 1a), and lands its share at once
+ *   when its last phase is played; a disabled job's spare part opens its first round; a rating has no game and fills
+ *   at its rate (damage-control 6a); opts.paused holds the round while the repairer stands up (repairs-on-deck 3);
+ * - fumbles: 5% of the job back and the game's hazard; three in a round restart it;
  * - input: pointer (mouse or touch) in canvas pixels, keys, a "stick" from the arrows or W A S D, one action button
  *   (Space or Enter), and the wheel; every action has a pointer path, so a phone plays with touch alone (keys and the
  *   wheel are a pad's and a desk's extras), and only the finger that started a press drives it;
@@ -18,8 +19,9 @@
  * - fluid through pipe tiles (flood): the breadth-first fill the shower and the coolant pipes share.
  *
  * A game is a classic script that calls RepairKit.register({...}) (no modules: the page opens from disk). See
- * register() for the fields. A game draws into the area below the bar (y >= 80) and calls api.stepDone() when its round
- * is played, api.fumble("what happened") on a mistake.
+ * register() for the fields. A game draws into the area below the bar (y >= 80) and calls api.stepDone() when its part
+ * move or a phase of its round is played, api.fumble("what happened") on a mistake; step(index, isPart, phase) starts
+ * each, with api.level the round's level.
  */
 (function () {
   "use strict";
@@ -27,10 +29,11 @@
   const RATES = { officer: 1.8, rating: 0.6 };          // % of integrity a second (damage-control 6a)
   const FUMBLE_SHARE = 5;                                 // % of the job (design 1; damage.json repair.fumble_share)
   const FUMBLES_PER_STEP = 3;
-  const STATES = {                                        // design 2: steps by the job's state
-    damaged: { start: 25, steps: 3, label: "Damaged" },
+  const STATES = {                                        // design 2: rounds by the job's state; a disabled job's
+    damaged: { start: 25, steps: 3, label: "Damaged" },   // part opens its first round (design 1, 2026-10-09)
     disabled: { start: 12, steps: 4, part: true, label: "Disabled" },
   };
+  const MAX_LEVEL = 6;                                    // design 1a: round n is played at level min(n, 6)
   const C = {
     bg: "#04060a", panel: "#0c121a", panel2: "#121a25", line: "#1f2a37", fg: "#e8eef6", dim: "#6f7f94",
     ok: "#3ddc84", warn: "#ffc542", danger: "#ff4757", accent: "#4fc3f7", amber: "#f2a046", lilac: "#be9fe6",
@@ -676,17 +679,23 @@
       // A job a game overrides (the medic's HP) keeps its own steps and never has a part step.
       const job = game.job
         ? Object.assign({ unit: "%", start: st.start, target: 100, rate: RATES[opts.who], part: false }, game.job)
-        : { unit: "%", start: st.start, target: 100, rate: RATES[opts.who], steps: st.steps + (st.part ? 1 : 0), part: !!st.part };
+        : { unit: "%", start: st.start, target: 100, rate: RATES[opts.who], steps: st.steps, part: !!st.part };
       if (game.job && game.job.rateBy) job.rate = game.job.rateBy[opts.who];
-      run = { game, job, value: job.start, step: 0, fumbles: 0, fumblesTotal: 0, roundDone: false, done: false, t: 0, flash: 0, note: "", noteT: 0, shake: 0 };
+      run = { game, job, value: job.start, shown: job.start, step: 0, phase: 0, partPending: !!job.part, fumbles: 0, fumblesTotal: 0,
+        roundDone: false, done: false, t: 0, flash: 0, note: "", noteT: 0, shake: 0 };
+      // A round is the game's whole set of phases, in order (design 1a): only the last lands the round.
+      const phases = () => { const ph = typeof game.phases === "function" ? game.phases(run.api) : game.phases; return ph && ph.length ? ph : [null]; };
+      run.phases = phases;
       const share = () => (job.target - job.start) / job.steps;
       // Never past the target: after the last step the cover still has to go back on, and the bar holds at 100%.
       const cap = () => Math.min(job.target, job.start + share() * (run.step + 1));
       run.api = {
         W, H, BAR_H, C, KIT,
-        /** This game's and step's random stream. */
-        rand: () => rng(hash(game.id + ":" + run.step + ":" + opts.state)),
-        /** The round is played: the step completes once its share has filled at the rate. */
+        /** This game's, round's and phase's random stream. */
+        // A round's first phase keeps the stream it always had, so a game's tuned puzzles stay as they were.
+        rand: () => rng(hash(game.id + ":" + run.step + (run.phase ? ":" + run.phase : "") + (run.partPending ? ":part" : "") + ":" + opts.state)),
+        /** This phase is played. The part move hands on to the round; the last phase lands the round's share at once
+         *  (design 1, 2026-10-09). */
         stepDone() { run.roundDone = true; },
         /** A mistake: 5% of the job back and the hazard said. */
         fumble(what) {
@@ -694,21 +703,25 @@
           run.value = Math.max(0, job.start - share(), run.value - (job.fumble ?? FUMBLE_SHARE));
           run.fumbles++; run.fumblesTotal++; run.flash = 1; run.shake = Math.max(run.shake, 0.6);
           run.note = what || game.hazard; run.noteT = 2.5;
-          if (run.fumbles >= FUMBLES_PER_STEP) { run.fumbles = 0; run.roundDone = false; run.note = "Step restarted"; run.noteT = 2; startStep(); }
+          if (run.fumbles >= FUMBLES_PER_STEP) { run.fumbles = 0; run.roundDone = false; run.phase = 0; run.note = "Round restarted"; run.noteT = 2; startStep(); }
         },
         /** Say something on the bar briefly (an event, not instructions). */
         say(what) { run.note = what; run.noteT = 2; },
         get step() { return run.step; },
+        /** The round's level, 1 to 6 (design 1a): the only thing that changes between rounds. */
+        get level() { return Math.min(run.step + 1, MAX_LEVEL); },
+        /** The round's phase (a game's `phases`), or null for a game of one. */
+        get phase() { return run.phases()[run.phase]; },
         /** The job's value now: integrity in %, or the patient's HP. */
         get value() { return run.value; },
         get steps() { return job.steps; },
-        get part() { return job.part && run.step === 0; },
+        get part() { return run.partPending; },
         get combat() { return opts.combat; },
         get who() { return opts.who; },
       };
       run.inst = game.create(run.api);
       run.panel = game.panel ? Object.assign(screwPanel(game.panel), { phase: "open" }) : null;
-      function startStep() { if (run.inst.step) run.inst.step(run.step, job.part && run.step === 0); }
+      function startStep() { if (run.inst.step) run.inst.step(run.step, run.partPending, run.phases()[run.phase]); }
       run.startStep = startStep;
       run.cap = cap;
       // A rating (or a bot) repairs with no game (design 1): the bar fills at its rate, nothing to play.
@@ -723,7 +736,8 @@
     }
 
     function update(dt) {
-      if (!run) return;
+      // opts.paused: the repairer has stood up (repairs-on-deck 3): the round waits where it is.
+      if (!run || opts.paused) return;
       input.stick.x = (input.keys.has("ArrowRight") || input.keys.has("KeyD") ? 1 : 0) - (input.keys.has("ArrowLeft") || input.keys.has("KeyA") ? 1 : 0);
       input.stick.y = (input.keys.has("ArrowDown") || input.keys.has("KeyS") ? 1 : 0) - (input.keys.has("ArrowUp") || input.keys.has("KeyW") ? 1 : 0);
       input.action = input.keys.has("Space") || input.keys.has("Enter");
@@ -743,8 +757,8 @@
       const job = run.job;
       run.t += dt;
       if (!run.done) {
-        // The bar fills at the rate up to the current step's share (design 1).
-        if (run.value < run.cap()) run.value = Math.min(run.cap(), run.value + job.rate * dt);
+        // A rating's bar fills at its rate (no game, design 1); a player's round lands its share at once, below.
+        if (run.auto && run.value < run.cap()) run.value = Math.min(run.cap(), run.value + job.rate * dt);
         const P = run.panel;
         if (run.auto) { run.roundDone = true; if (P) P.lift = 1; }
         else if (P && P.phase !== "work") {
@@ -755,8 +769,17 @@
           if (P.phase === "lowering") { P.lift = Math.max(0, P.lift - dt * 2.5); if (P.lift <= 0) { P.phase = "close"; P.sel = 0; } }
           if (P.phase === "close" && turnScrews(P, input, dt, 1)) { run.done = true; run.note = run.game.doneWord || "Repaired"; run.noteT = 99; }
         } else if (run.inst.update) run.inst.update(dt, input);
-        if (run.roundDone && run.value >= run.cap() - 1e-6) {
-          run.roundDone = false; run.fumbles = 0; run.step++;
+        let land = false;
+        if (run.roundDone && run.auto) land = run.value >= run.cap() - 1e-6;
+        else if (run.roundDone) {
+          run.roundDone = false;
+          if (run.partPending) { run.partPending = false; run.note = "Part fitted"; run.noteT = 1.2; run.startStep(); }
+          else if (run.phase < run.phases().length - 1) { run.phase++; run.startStep(); }
+          else { land = true; run.value = run.cap(); }
+        }
+        if (land) {
+          run.roundDone = false; run.fumbles = 0; run.step++; run.phase = 0;
+          if (run.step < job.steps && !run.auto) { run.note = `Round ${run.step} done`; run.noteT = 1.4; }
           if (run.step >= job.steps) {
             run.value = job.target;
             if (P && !run.auto) { P.phase = "lowering"; P.screws.forEach((sc) => { sc.turn = 0; }); }
@@ -764,6 +787,9 @@
           } else run.startStep();
         }
       }
+      // The bar shows the jump quickly, never a wait (0.2 s to settle).
+      run.shown += (run.value - run.shown) * Math.min(1, dt * 18);
+      if (Math.abs(run.value - run.shown) < 0.05) run.shown = run.value;
       run.flash = Math.max(0, run.flash - dt * 2.5);
       run.noteT -= dt;
       run.shake = Math.max(0, run.shake - dt * 1.5);
@@ -780,17 +806,21 @@
       const f = (v) => x0 + (x1 - x0) * Math.max(0, Math.min(1, v / Math.max(job.target, 100)));
       D.round(g, x0, y, x1 - x0, h, 11); g.fillStyle = "#1a2230"; g.fill();
       D.round(g, x0, y, f(run.cap()) - x0, h, 11); g.fillStyle = "rgba(79,195,247,0.18)"; g.fill();
-      const good = run.value >= 75 ? C.ok : run.value >= 25 ? C.warn : C.danger;
-      D.round(g, x0, y, Math.max(h, f(run.value) - x0), h, 11); g.fillStyle = run.flash > 0 ? C.danger : good; g.fill();
-      D.text(g, `${Math.round(run.value)}${job.unit === "%" ? "%" : " HP"}`, x1 + 14, y + h / 2, 22, C.fg, "left", 700);
-      // Steps as dots; the time left at the rate (the board's preview, damage::repair_time).
+      const v = run.shown, good = v >= 75 ? C.ok : v >= 25 ? C.warn : C.danger;
+      D.round(g, x0, y, Math.max(h, f(v) - x0), h, 11); g.fillStyle = run.flash > 0 ? C.danger : good; g.fill();
+      D.text(g, `${Math.round(v)}${job.unit === "%" ? "%" : " HP"}`, x1 + 14, y + h / 2, 22, C.fg, "left", 700);
+      // Rounds as dots, the one being played with its phases as ticks under it.
+      const nph = run.phases().length;
       for (let i = 0; i < job.steps; i++) {
-        const cx = x0 + 10 + i * 26, cy = 58;
+        const cx = x0 + 10 + i * 26, cy = 56;
         D.disc(g, cx, cy, 7, i < run.step ? C.ok : i === run.step && !run.done ? C.amber : "#2a3446");
+        if (i === run.step && !run.done && nph > 1) for (let k = 0; k < nph; k++) { g.fillStyle = k < run.phase ? C.ok : k === run.phase ? C.amber : "#2a3446"; g.fillRect(cx - (nph * 7) / 2 + k * 7, cy + 10, 5, 3); }
       }
-      const left = Math.max(0, (job.target - run.value) / job.rate);
-      // The time gives way while a note is up, so a long note never overlaps it.
-      if (!run.done && run.noteT <= 0) D.text(g, `${left.toFixed(0)} s`, x1 + 14, 58, 16, C.dim, "left", 600);
+      // What the board previews (design 1): a player's rounds left; a rating's time at its rate (damage::repair_time).
+      const rounds = job.steps - run.step;
+      const left = run.auto ? `${Math.max(0, (job.target - run.value) / job.rate).toFixed(0)} s` : `${rounds} round${rounds === 1 ? "" : "s"} left, level ${Math.min(run.step + 1, MAX_LEVEL)}`;
+      // It gives way while a note is up, so a long note never overlaps it.
+      if (!run.done && run.noteT <= 0) D.text(g, left, x1 + 14, 58, 16, C.dim, "left", 600);
       // Fumbles this step as three ticks.
       for (let i = 0; i < FUMBLES_PER_STEP; i++) { g.fillStyle = i < run.fumbles ? C.danger : "#2a3446"; g.fillRect(1140 + i * 20, 18, 12, 26); }
       // The guide's button, beside the pips (design 6g).

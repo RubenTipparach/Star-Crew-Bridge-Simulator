@@ -24,22 +24,30 @@
  * A disabled toilet's first step fits the new flush valve (the flapper): the cistern is open, drag the flapper from
  * the crate onto its seat at the cistern's bottom (or move it with the arrows and drop it with Space).
  */
-RepairKit.register({
-  id: "heads",
-  title: "Toilets and showers",
+// Two jobs since 2026-10-09 (repair-minigames 1a, "harder variants of the same minigame"): a toilet and a shower are
+// different fixtures with their own repair points, so each is its own game here; every round is the same game, harder.
+for (const KIND of ["toilet", "shower"]) RepairKit.register({
+  id: KIND,
+  title: KIND === "toilet" ? "Toilet" : "Shower",
   place: "Crew quarters",
   group: "Life",
-  hazard: "Overflow: the floor is wet",
+  hazard: KIND === "toilet" ? "Overflow: the floor is wet" : "Loose joint: you are soaked",
   // The how-to card (repair-minigames 6g), drawn by the kit: pictures and a few words, on demand.
-  guide: {
+  guide: KIND === "toilet" ? {
     steps: [
       { icon: "drag", text: "Drag the plunger down, up" },
       { icon: "rhythm", text: "Wait for the solid ring" },
       { icon: "tap", text: "Clog gone: pull the flush" },
-      { icon: "pipes", text: "Shower: join the run, open" },
     ],
     mistake: "Plunging too soon, or flushing a clog: an overflow",
-    now: (q) => (q.kind === "shower" ? 3 : q.kind !== "toilet" ? -1 : q.phase === "ready" || q.phase === "flush" ? 2 : 0),
+    now: (q) => (q.kind !== "toilet" ? -1 : q.phase === "ready" || q.phase === "flush" ? 2 : 0),
+  } : {
+    steps: [
+      { icon: "pipes", text: "Turn tiles: one run, main to head" },
+      { icon: "tap", text: "Then open the valve" },
+    ],
+    mistake: "Opening on an open run: a loose joint, soaked",
+    now: (q) => (q.kind === "shower" ? 0 : -1),
   },
   down: "Comfort and morale (design 4)",
   create(api) {
@@ -99,7 +107,7 @@ RepairKit.register({
     const LUMP_END = 0.86;                                // the lump sits this far along when the last stroke lands
 
     function toiletStep(index, isPart, r) {
-      const tune = TUNE[Math.min(Math.floor(index / 2), TUNE.length - 1)];
+      const tune = TUNE[Math.min(index, TUNE.length - 1)];   // the round's level (repair-minigames 1a)
       s = {
         kind: isPart ? "part" : "toilet", index, r, tune,
         phase: isPart ? "part" : "plunge",
@@ -605,7 +613,7 @@ RepairKit.register({
     }
 
     function showerStep(index, r) {
-      const [cols, rows] = SIZES[Math.min(Math.floor(index / 2), SIZES.length - 1)];
+      const [cols, rows] = SIZES[Math.min(index, SIZES.length - 1)];   // the round's level (repair-minigames 1a)
       s = { kind: "shower", index, r, cols, rows, phase: "play", tiles: [], cur: { c: 0, r: 0 }, keys: false, flow: 0, runT: 0, spray: 0, net: null, va: 0, running: false };
       s.gx = 600 - (cols * T) / 2; s.gy = 410 - (rows * T) / 2;
       s.r0 = Math.floor(r() * rows); s.r1 = Math.floor(r() * rows);
@@ -742,7 +750,8 @@ RepairKit.register({
       /** Even steps a toilet, odd steps a shower; a part step is the toilet's flapper. */
       step(index, isPart) {
         const r = api.rand();
-        if (isPart || index % 2 === 0) toiletStep(index, isPart, r); else showerStep(index, r);
+        if (KIND === "toilet") toiletStep(index, isPart, r);
+        else { showerStep(index, r); if (isPart) api.stepDone(); }   // a shower has no part to fit: its round starts at once
       },
       update(dt, input) { if (s.kind === "shower") showerUpdate(dt, input); else toiletUpdate(dt, input); },
       draw(g, t) { if (s.kind === "shower") showerDraw(g, t); else toiletDraw(g, t); },

@@ -14,6 +14,7 @@
  * A disabled chiller's first step fits a new plate: drag it from the crate into the gap in the pack.
  */
 RepairKit.register({
+  phases: ["scrub", "restack"],
   id: "chiller",
   title: "Heat exchanger (chiller)",
   place: "Engineering, the chiller",
@@ -46,7 +47,7 @@ RepairKit.register({
     const PW = 40;                                     // a plate's width, side on
     const CRATE = { x: 1020, y: 190, w: 170, h: 400 };
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-    let s, partJob = false;
+    let s;
 
     // ---------------------------------------------------------------- scrub
     /** How far a point is from the gasket's line (its edge run and its two port rings), px. */
@@ -238,11 +239,10 @@ RepairKit.register({
 
     return {
       get state() { return s; },
-      step(index, isPart) {
+      step(index, isPart, phase) {
         const r = api.rand();
-        if (index === 0) partJob = isPart;
-        const k = index - (partJob ? 1 : 0);
-        if (isPart || k % 2 === 1) restackStep(index, r, isPart); else scrubStep(index, r);
+        // A round scrubs the plate, then restacks the pack (repair-minigames 1a); the part opens the first round.
+        if (isPart || phase === "restack") restackStep(index, r, isPart); else scrubStep(index, r);
       },
       /** For tools (shots and tests): the round's state, read only. */
       peek() {

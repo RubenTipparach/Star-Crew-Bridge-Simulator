@@ -9,6 +9,7 @@
  * the new sensor module: drag it from the crate into its socket on the arch.
  */
 RepairKit.register({
+  phases: ["ch1", "ch2"],   // a round tunes both channels (repair-minigames 1a)
   id: "biobed",
   title: "Medbay biobeds",
   place: "Medbay",
@@ -127,13 +128,13 @@ RepairKit.register({
 
     return {
       get state() { return s; },   // for tools: the headless checks read the round
-      step(index, isPart) {
+      step(index, isPart, phase) {
         const r = api.rand();
         if (isPart) firstCh = 1;
         const base = [0.18 + 0.5 * r(), 0.18 + 0.55 * r()];
         const k = base.map((b) => { const off = 0.18 + 0.12 * r(); return b + off < 0.82 && (r() < 0.5 || b - off < 0.02) ? b + off : b - off; });
         s = {
-          index, t: 0, phase: isPart ? "part" : "tune", ch: index % CHANNELS.length, base, k, ph: r() * 6.28,
+          index, t: 0, phase: isPart ? "part" : "tune", ch: phase === "ch2" ? 1 % CHANNELS.length : 0, base, k, ph: r() * 6.28,
           tol: Math.max(0.025, 0.045 - 0.006 * index), drift: Math.min(0.05, 0.015 * index), noise: 2 + 2.5 * index,
           hold: 0, sel: 0, drag: -1, lastA: 0, keys: false, alarm: 0,
           mod: { x: CRATE.x + CRATE.w / 2, y: CRATE.y + CRATE.h / 2, held: false, pad: false, set: !isPart },

@@ -93,11 +93,12 @@
       <div class="fact"><b>Where</b><span id="f-place"></span></div>
       <div class="fact"><b>Fumble</b><span id="f-hazard"></span></div>
       <div class="fact"><b>While it is down</b><span id="f-down"></span></div>
-      <div class="fact"><b>Rate</b><span id="f-rate"></span></div>
+      <div class="fact"><b>Job</b><span id="f-rate"></span></div>
     </div>
-    <div class="note">openspec/changes/repair-minigames. A step completes when its round is played and its share has
-      filled at the repairer's rate (damage-control 6a), so no play beats the board's time. A rating repairs with no
-      game. Mouse or touch; keys: arrows or W A S D, Space. A desktop frame rate says nothing about a Pi 5.</div>
+    <div class="note">openspec/changes/repair-minigames (design 1 and 1a, 2026-10-09). A repair is a few rounds of one
+      game: each round lands its share of health the moment it is played, and each is the same game a level harder.
+      A rating repairs with no game, at its rate. Mouse or touch; keys: arrows or W A S D, Space. A desktop frame rate
+      says nothing about a Pi 5.</div>
   </main>
 </div>
 <script src="repairs/kit.js"></script>
@@ -130,7 +131,7 @@
   const K = window.RepairKit;
   const MENU = [
     ["Engineering", ["gravity", "reactor", "pipes", "coolant", "pump", "chiller", "impulse", "shields", "conduits", "breakers"]],
-    ["Life", ["scrubbers", "galley", "heads", "biobed", "medic"]],
+    ["Life", ["scrubbers", "galley", "toilet", "shower", "biobed", "medic"]],
     ["Weapons and sensors", ["turret", "tubes", "sensors"]],
     ["Hangar", ["fighter", "shuttle"]],
     ["Outside and doors", ["pylons", "doors"]],
@@ -144,7 +145,9 @@
       $("f-place").textContent = game.place;
       $("f-hazard").textContent = game.hazard;
       $("f-down").textContent = game.down;
-      $("f-rate").textContent = `${run.job.rate} ${run.job.unit === "%" ? "% a second" : "HP a second"}, ${run.job.steps} steps`;
+      $("f-rate").textContent = run.job.unit === "%"
+        ? `${run.job.steps} rounds, each the same game a level harder; a finished round lands at once (a rating: ${run.job.rate}% a second, no game)`
+        : `${run.job.steps} wounds, at ${run.job.rate} HP a second`;
     },
   });
   let current = null;

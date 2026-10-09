@@ -66,34 +66,35 @@ retires the officer's 3 times rate for a player's own repairs (`damage-control` 
 for anyone repairing without a game. Recommendation taken (ask only with screenshots): the rating's 0.6% a second
 and the bots are unchanged.
 
-**What turns up, by game.** Level 1 is today's first round; each level after turns the knobs listed, by the step
-shown, until level 6. Each game's knobs are data (`data/ships/tern/repairs.json`, `levels`), one row a game.
+**What turns up, by game.** Level 1 is the round the game always had; each level after turns the knobs listed, until
+level 6. In the mockups the knobs are constants in each game's script; in the engine they are data
+(`data/ships/tern/repairs.json`, `levels`, one row a game; repairs-on-deck 11).
 
-| Game | A round is | What each level turns up |
+| Game | A round is | What each level turns up (as built in the mockups) |
 | --- | --- | --- |
-| Gravity generator | Lay the field on the ghost and hold it | Drift +25%; the ghost gains a lobe at levels 3 and 5; hold 3 s, then +0.5 s a level |
-| Galley synthesizer | Fill four columns to their bands, purge | Bands 7.5% wide, -1% a level (floor 4%); run-on after letting go +20% a level |
-| Life support scrubbers | Swap the cartridge, trim three valves into green | Green bands 10% wide, -1.5% a level (floor 5%); the valves drift from level 3 |
-| Fighters | Panel off, plugs to sockets, fasteners in order | Plugs 4, +1 a level to 8; from level 3 a decoy socket of a near shape; fasteners 6, 8 from level 2, 10 from level 4 |
-| Shuttle | Sniff, isolate, patch, pump up and hold | The simple valve set at level 1, the full network from level 2; hold band 9% wide, -1.5% a level (floor 4.5%); pressure decay 0.1, +0.025 a level |
-| Reactor core | Swap a coil while holding the plasma centred | Drift speed 0.3 rad/s, +0.1 a level; drift size +14 px a level |
-| Impulse engines | Time eight injectors | Pulse speed 240 px/s, +40 a level; window 30 px, -3 a level (floor 18) |
-| Warp pylons | Clip along the handholds, unbolt, slide in | Clip window 3.4 s, -0.4 a level; the swing faster each level |
-| Toilet (its own job) | Plunge the clog in rhythm, flush | Strokes to clear +1 a level; the safe window narrower |
-| Shower (its own job) | Turn the tiles into one run, open the valve | Grid 4 x 3, one column more at levels 3 and 5; one more cracked tile a level |
-| Medbay biobeds | Tune both channels onto their references | Knob red zones wider and trace noise up, a step a level |
-| Twin pulse cannon | Focus both lenses, then seat the coupling | Lens wander up; the coupling's speed window narrower, a step a level |
-| Gannet tubes | Clear the ring's jam, then the arming sequence | Notches narrower; the sequence 3 switches, 4 from level 3, 5 from level 5 |
-| Shield generator | Match a face's wave by phase and gain | Phase tolerance 0.24, -0.025 a level; gain 0.13, -0.012; wander +0.06 a level |
-| Sensors | Find the return, clean the trace | Sky noise and false returns up; filter bands narrower, a step a level |
-| Electrical conduits | Strip the burns, join the pairs (and reroute round a burnt box when the job has one) | Pairs 3, +1 a level to 6; the clamp faster; a reroute's run longer |
-| Switchboard and breakers | Rack out, fit the rated fuse, rack in on green | Cartridges to choose from 3, 4 from level 3; the green window shorter |
-| Doors | Crank the leaf against the waves | Turns 5, +1 a level; waves faster |
-| Hull plating | Cut, drop the plate, weld, bolt | Plate larger; weld window narrower; bolts +1 a level |
-| Coolant balance | Both legs into their bands | Bands narrower; disturbances larger, a step a level |
-| Coolant pipes | Isolate, re-tile, fill, reopen and bleed | More cracked tiles and one more valve on the path at levels 3 and 5 |
-| Coolant pump | Guard, vanes, feet, speed up to the band | Vanes +1 a level; foot rings smaller; the speed band narrower and the safe ramp lower |
-| Chiller | Scrub the plates, then restack and torque | Scale patches +1 a level; plates +1 at levels 3 and 5; nut tolerance narrower |
+| Gravity generator | Lay the field on the ghost and hold it | Drift 15% faster a level; a second ripple across the first from level 3; the hold 0.4 s longer a level |
+| Galley synthesizer | Fill four columns to their bands, purge | Bands 7.5% wide, 1% narrower a level (floor 4%) |
+| Life support scrubbers | Swap the cartridge, trim three valves into green | Green bands 10% wide, 1.5% narrower a level (floor 5%) |
+| Fighters | Panel off, leads to their sockets, fasteners in the lit order | Leads 3, one more a level to 5, told apart by fewer shapes (4, 3, then 2) so the stripe has to be read; fasteners 6, then 8 |
+| Shuttle | Sniff, isolate, patch, pump up and hold | The simple valve set at level 1, the full network from level 2; hold band 9% wide, 1.5% narrower a level (floor 4.5%); pressure decay 0.1, +0.025 a level |
+| Reactor core | Swap a coil while holding the plasma centred | Drift 0.3 rad/s, +0.1 a level; drift size +14 px a level |
+| Impulse engines | Time eight injectors | Pulse speed 240 px/s, +40 a level; window 30 px, 3 px less a level (floor 18) |
+| Warp pylons | Clip along the handholds, unbolt, slide in | Clip window 3.4 s, 0.4 s shorter a level (floor 1.8 s); the swing faster each level |
+| Toilet (its own job) | Plunge the clog in rhythm, flush | Strokes to clear 6, 9, then 12; the safe gap between strokes 0.5-3.0 s, 0.65-2.5 s, then 0.8-2.1 s |
+| Shower (its own job) | Turn the tiles into one run, open the valve | Grid 5 x 4, 6 x 4, 6 x 5, then 7 x 5 |
+| Medbay biobeds | Tune both channels onto their references | Tolerance 0.045, 0.006 less a level (floor 0.025); drift and trace noise up a step a level |
+| Twin pulse cannon | Focus both lenses, then seat the coupling | Shimmer +1.3 a level; the spot's tolerance 15 px, 1.5 px less a level (floor 9); the coupling's good speed band narrower each level |
+| Gannet tubes | Clear the ring's jam, then the arming sequence | Notches 8.5% wide, 1% narrower a level (floor 4.5%); the ring kicks back harder; from level 3 the switches are in a shuffled order |
+| Shield generator | Match a face's wave by phase and gain | Phase tolerance 0.24, 0.025 less a level; gain 0.13, 0.012 less; wander +0.06 a level |
+| Sensors | Find the return, clean the trace | A false return from level 2; the true return 70 px wide, 8 px less a level (floor 42); filter tolerance 0.15, 0.02 less a level (floor 0.08); noisier sky |
+| Electrical conduits | Strip the burns, join the pairs; a disabled job reroutes round its burnt box every round too | Pairs 3, one more a level to 6; the clamp closes sooner; the reroute's map busier |
+| Switchboard and breakers | Rack out, fit the rated fuse, rack in on green | Cartridges to choose from 3, 4 from level 3; the synchro light faster (+0.35 rad/s a level) and its green window shorter (0.34, 0.04 less a level, floor 0.16) |
+| Doors | Crank the leaf against the waves | Turns 5, one more a level; waves stronger (+0.6 a level) |
+| Hull plating | Cut, drop the plate, weld, bolt: a new plate each round | The good weld band 0.35-0.85, 0.025 off each end a level; burn-through after 0.3 s over it, 0.03 s sooner a level |
+| Coolant balance | Both legs into their bands against the reactor's state | Damaged: cruise, surge, then pump B lost; disabled: a leak, overdrive, a radiator pump down, then a surge |
+| Coolant pipes | Isolate, rebuild, refill and bleed a new segment | Grid 5 x 4 at level 1, 7 x 5 from level 2; crossings and cracked tiles one more a level (to 4) |
+| Coolant pump | Guard off, align the feet, then speed up to the band | Foot rings 20 px, 3 px smaller a level (floor 10); the suction dial's red edge nearer (+0.03 a level) |
+| Chiller | Scrub the plate, then restack and torque the pack | Scale patches 8, two more a level; plates out of order 1, then 2 from level 3 |
 
 The medic's treatment is not rounds: each wound is the job's step, and a body's wounds are what they are
 (section 3).

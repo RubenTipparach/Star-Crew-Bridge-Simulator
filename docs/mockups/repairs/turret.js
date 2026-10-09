@@ -13,6 +13,7 @@
  * empty carrier.
  */
 RepairKit.register({
+  phases: ["lens", "coupling"],
   id: "turret",
   title: "Twin pulse cannon",
   place: "Turret access room",
@@ -59,12 +60,12 @@ RepairKit.register({
 
 
     return {
-      step(index, isPart) {
+      step(index, isPart, phase) {
         const r = api.rand();
         if (isPart) hadPart = true;
         part = isPart;
-        const n = index - (hadPart ? 1 : 0);              // rounds since the part
-        kind = n % 2 === 0 ? "lens" : "coupling";
+        const n = index;                                  // the round's level - 1 (repair-minigames 1a)
+        kind = phase || "lens";
         lensPart = { x: 190, y: 475, held: false, set: false };
         target = [0.2 + 0.6 * r(), 0.2 + 0.6 * r()];
         // Start the lenses well off their marks.

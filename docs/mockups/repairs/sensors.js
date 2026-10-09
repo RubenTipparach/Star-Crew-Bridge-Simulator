@@ -65,7 +65,7 @@ RepairKit.register({
         const r = api.rand();
         if (isPart) hadPart = true;
         part = isPart;
-        hard = Math.max(0, index - (hadPart ? 1 : 0));
+        hard = index;   // the round's level - 1 (repair-minigames 1a)
         phase = part ? "part" : "sweep";
         horn = { x: 1160, y: 400, held: false, set: false };
         // The return somewhere inside the stops, the dish parked away from it.
