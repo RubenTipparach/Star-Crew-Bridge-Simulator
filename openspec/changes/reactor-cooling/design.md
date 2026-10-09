@@ -139,6 +139,34 @@ properly I can diagnose this by looking at the master reactor screen and click i
   capability, a cracked hot leg segment, a fouled chiller, a radiator pump down, the Cooling breaker open, a tank
   leak) so the diagnosis can be tried, and the repair games embedded from `repairs/`.
 
+**As built in the mockups** (2026-10-09, tasks 3.1 and 3.2):
+
+- **The parts in `shipsystems.js`.** The eight segments (`power.json` `coolant.segments`, numbered from the core along
+  the flow), the two tanks and the exchanger (`coolant.exchanger`) each have integrity; the pumps are the loads they
+  were. Capability is `damage-control` 2's, one function for every part. A leg's factor is its worst segment's
+  capability, or `coolant.isolated_leg_flow` (0.5) times the worst of the rest when one is isolated; flow takes the
+  worse leg. Segments and tanks leak by `damage.json` `coolant` (20 kg/s x (75 - integrity) / 75), a segment from the
+  loop and a tank from its own reserve; an isolated segment neither leaks nor carries. The exchanger's capability is
+  its integrity's. `coolantView` is the screen's read-only picture of all of it; `damagePart`, `repairPart` and
+  `isolateSegment` are the scenario buttons', the games' and the valves' commands; `repairTime` takes
+  `{ kind: "coolant", id }`. `loop.leak_kg_s` stays an outside hook (the console's cooling shot uses it), added to the
+  segments' leaks.
+- **A pump's speed is no longer reduced twice.** A damaged load's demand is its capability times its want, so a
+  damaged pump fed in full now turns at its setpoint and moves capability x its flow (it used to read as turning at
+  the square root of its capability as well). Pump A at 37.5% integrity: flow 75%, the hot leg from 338 K toward 342 K at cruise.
+- **The screen** (`docs/mockups/reactor-system.html`): the schematic, the loop's needles (hot leg, fill, flow) with
+  BALANCE, and the card. A segment's card adds ISOLATE (its valves either side). FIX opens the games read-only from
+  `repairs/`: the coolant pipes game for a segment or a tank, the magnetic core game for the core, the coolant balance
+  for BALANCE. **No game exists yet for a pump or the chiller**: the scrubbers' cabinet (its screw panel, the blower
+  fan as the part step, valves trimmed to their gauges) stands in, and the game's bar says so. While a segment's pipe
+  game is played, its valves shut in the simulation once the game's isolate step is done (the leak stops, the leg runs
+  through the bypass); finishing it mends the part to 100% and opens the valves. Played with a real mouse to
+  Repaired: pump A (flow 75% back to 100%) and a cracked hot leg segment (12 kg/s, the loop at 95%; isolated: no leak,
+  flow 50%; repaired: flow 100%, the loop refilled).
+- **Not built here**: a hit's march reaching the coolant parts (they are damaged by `damagePart`); the leak's heat and
+  steam into engineering and the scald; the pipes game mending the tapped segment's own picture (it draws its own leg
+  and segment, chosen by its seed); opening the screen from the console's REACTOR ring.
+
 ## 7. The Pi 5 budget
 
 | Item | Cost | Against |

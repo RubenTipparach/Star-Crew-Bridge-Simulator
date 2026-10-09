@@ -328,11 +328,24 @@
       { "id": "tank_p", "name": "Coolant tank, port", "capacity_kg": 2000.0 },
       { "id": "tank_s", "name": "Coolant tank, starboard", "capacity_kg": 2000.0 }
     ],
+    "segments": [
+      { "id": "seg_hot_1", "name": "Hot leg pipe 1", "leg": "hot" },
+      { "id": "seg_hot_2", "name": "Hot leg pipe 2", "leg": "hot" },
+      { "id": "seg_hot_3", "name": "Hot leg pipe 3", "leg": "hot" },
+      { "id": "seg_hot_4", "name": "Hot leg pipe 4", "leg": "hot" },
+      { "id": "seg_cold_1", "name": "Cold leg pipe 1", "leg": "cold" },
+      { "id": "seg_cold_2", "name": "Cold leg pipe 2", "leg": "cold" },
+      { "id": "seg_cold_3", "name": "Cold leg pipe 3", "leg": "cold" },
+      { "id": "seg_cold_4", "name": "Cold leg pipe 4", "leg": "cold" }
+    ],
+    "segments_note": "reactor-cooling design 1-2: the loop's eight pipe segments, numbered from the core along the flow (the hot leg from the core to the chiller, the cold leg from the chiller back to the core). Each is a part with integrity (damage.json coolant). A leg carries flow x its worst segment's capability; an isolated segment carries nothing and its leg runs through the bypass jumper round it at isolated_leg_flow.",
+    "isolated_leg_flow": 0.5,
+    "exchanger": { "id": "chiller", "name": "Heat exchanger (chiller)" },
     "makeup": { "pump": "makeup_pump", "max_kg_s": 10.0, "auto_open_below": 0.95 },
     "cavitation": { "full_flow_from": 0.8, "no_flow_below": 0.6 },
     "bands": { "hot_leg_k": [335.0, 350.0], "cold_leg_k": [320.0, 335.0], "hot_leg_warning_k": 370.0 },
     "automation": { "period_s": 3.0, "design_rise_k": 15.0, "pump_speed_min": 1.0 },
-    "cooling_note": "reactor-cooling design 2, 3, 5 and 6. Speed-law loads (power_exponent) draw nominal_mw x speed^power_exponent, their standby_mw unused, and run at the speed their supply allows. flow = max(natural_circulation_flow, core pumps' speed x capability x flow_per_pump, summed, x cavitation); cavitation = clamp((m_loop / inventory_kg - no_flow_below) / (full_flow_from - no_flow_below), 0, 1). C_loop = capacity_mj_per_k x m_loop / inventory_kg. Hot leg = loop temperature + heat into the loop / (flow x design_flow_kg_s x specific heat); it is the one the loop scram reads. Radiator rejection gains the exchanger's capability and the radiator pumps' speed x capability x flow_per_radiator_pump, summed. Automation every period_s: core pumps at the flow the heat needs at design_rise_k, never below pump_speed_min (the mockup keeps power-grid's full-flow walkthroughs), up to 1.2; radiator pumps at full; the bypass holds the cold leg by radiators.bypass_band_k (325-330 K, design 5's 327 K); makeup opens below auto_open_below and shuts at full. Pipe segments, leaks and the exchanger's damage are design 1-2 and not in this file yet."
+    "cooling_note": "reactor-cooling design 2, 3, 5 and 6. Speed-law loads (power_exponent) draw nominal_mw x speed^power_exponent, their standby_mw unused, and run at the speed their supply allows. flow = max(natural_circulation_flow, core pumps' speed x capability x flow_per_pump, summed, x cavitation); cavitation = clamp((m_loop / inventory_kg - no_flow_below) / (full_flow_from - no_flow_below), 0, 1). C_loop = capacity_mj_per_k x m_loop / inventory_kg. Hot leg = loop temperature + heat into the loop / (flow x design_flow_kg_s x specific heat); it is the one the loop scram reads. Radiator rejection gains the exchanger's capability and the radiator pumps' speed x capability x flow_per_radiator_pump, summed. Automation every period_s: core pumps at the flow the heat needs at design_rise_k, never below pump_speed_min (the mockup keeps power-grid's full-flow walkthroughs), up to 1.2; radiator pumps at full; the bypass holds the cold leg by radiators.bypass_band_k (325-330 K, design 5's 327 K); makeup opens below auto_open_below and shuts at full. Pipe segments, leaks and the exchanger's damage (design 1-2): flow gains x min over the two legs of the leg's factor (its worst segment's capability, or isolated_leg_flow x the worst of the rest when one is isolated); the exchanger's capability is its integrity's (damage.json systems); segments and tanks leak by damage.json coolant."
   },
   "radiators": {
     "system": "radiators",

@@ -41,6 +41,11 @@
     "destroyed_below": 0.25,
     "note": "A switchboard section, panel or bus loses health as a system does (points / 100); below destroyed_below it carries nothing until rebuilt."
   },
+  "coolant": {
+    "leak_below_pct": 75.0,
+    "leak_kg_s_at_zero": 20.0,
+    "note": "reactor-cooling design 2: a coolant pipe segment or tank below leak_below_pct integrity leaks leak_kg_s_at_zero x (leak_below_pct - integrity) / leak_below_pct kg/s: a segment at 0% leaks 20 kg/s, the loop's 11.1 t in under 10 minutes; a tank leaks its own reserve. An isolated segment does not leak. The parts' capability follows systems (power.json coolant.segments, tanks and exchanger)."
+  },
   "conduits": {
     "sever_mj": 1.0,
     "damage_mj": 0.3,

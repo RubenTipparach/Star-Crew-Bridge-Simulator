@@ -5,8 +5,10 @@
  * mockup shows what the designs say and nothing else:
  *   openspec/changes/power-grid      (the power solve, reactor, battery, heat and coolant)
  *   openspec/changes/reactor-cooling (the Cooling group, pump speeds, the radiator pumps, the loop's
- *                                     inventory and makeup, the two legs, the cooling automation; its
- *                                     pipe segments, leaks and the exchanger's damage are not here yet)
+ *                                     inventory and makeup, the two legs, the cooling automation, and the
+ *                                     coolant parts: eight pipe segments, two tanks and the exchanger with
+ *                                     their integrity, leaks, isolation and the bypass; coolantView is the
+ *                                     reactor system screen's read-only picture of them, design 6a)
  *   openspec/changes/life-support    (the atmosphere step, plant, pumps, crew effects)
  *   openspec/changes/damage-control  (fire, hit resolution, suppression)
  * Every tuning number comes from the proposed data files data/ships/<id>/power.json,
@@ -21,7 +23,8 @@
  * Designed but not implemented here (the designs say so): the magazine's cook-off, door
  * jams, remote control lost with the computer core, crew positions (crew are per
  * compartment, and a hit hurts them by the expected share of the room), damage control
- * teams, and the time-to-pressure preview. The repair-time preview is repairTime() (damage::repair_time's rates, without
+ * teams, the time-to-pressure preview, and of reactor-cooling's coolant parts: a hit's march reaching them (they are
+ * damaged by damagePart), the leak's heat and steam into engineering and its scald. The repair-time preview is repairTime() (damage::repair_time's rates, without
  * the walk). The damage map (ship-plan-view 6) reads conduitView, nodeView, breakers and repairTime, which change nothing.
  *
  * Geometry comes from the layout's brushes (starcrew.ship-layout/2: a compartment's air is the
@@ -342,7 +345,12 @@
         // reactor-cooling: inventory (kg), the tanks' reserve, the hot leg, the radiator pumps' flow, the
         // exchanger's capability (1 until its damage is modelled) and a leak hook (kg/s) for the pipe segments to come.
         m_kg: PW.coolant.inventory_kg, tanks_kg: PW.coolant.tanks.map((t) => t.capacity_kg), hot_k: PW.coolant.initial_k,
-        rad_flow: 1, exchanger: 1, chiller: 1, leak_kg_s: 0, makeup_kg_s: 0 },
+        rad_flow: 1, exchanger: 1, chiller: 1, leak_kg_s: 0, makeup_kg_s: 0,
+        // The coolant parts (reactor-cooling design 1-2): leak_kg_s above stays an outside hook (a page's own leak);
+        // the segments' and tanks' leaks are computed each step into seg_leak_kg_s and tank_leak_kg_s.
+        seg_leak_kg_s: 0, tank_leak_kg_s: 0, legs: { hot: 1, cold: 1 } },
+      // Each coolant part's integrity (percent) and, for a pipe segment, whether its valves isolate it.
+      coolantParts: {},
       // The engineer's hand on the loop (reactor-cooling design 5): AUTO, or MANUAL with the chiller's share and the
       // makeup valve set by hand (the pumps' speeds are their loads' setpoints either way).
       cooling: { mode: "auto", chiller: 1, makeup: 0, timer: 0 },
@@ -374,6 +382,14 @@
     for (const k of PW.conduits) st.conduit[k.id] = { health: 1, severed: false, breaker: true, cut: null };
     for (const l of loads) if (l.heat && l.heat.to === "node") st.thermal[l.id] = { T: PW.coolant.initial_k + 5 };
     for (const l of loads) st.loop.branchOpen[l.id] = true;
+    // The coolant parts (reactor-cooling design 1): a missing block is an error, not a silent zero (CLAUDE.md 6.5).
+    if (!Array.isArray(PW.coolant.segments) || !PW.coolant.exchanger || !Number.isFinite(PW.coolant.isolated_leg_flow))
+      throw new Error("power.json coolant.segments, exchanger and isolated_leg_flow: missing (reactor-cooling design 1-2)");
+    if (!DM.coolant || !Number.isFinite(DM.coolant.leak_below_pct) || !Number.isFinite(DM.coolant.leak_kg_s_at_zero))
+      throw new Error("damage.json coolant.leak_below_pct and leak_kg_s_at_zero: missing (reactor-cooling design 2)");
+    for (const sg of PW.coolant.segments) st.coolantParts[sg.id] = { integrity: 100, isolated: false };
+    for (const t of PW.coolant.tanks) st.coolantParts[t.id] = { integrity: 100, isolated: false };
+    st.coolantParts[PW.coolant.exchanger.id] = { integrity: 100, isolated: false };
     st.reactor.T = PW.coolant.initial_k + 250;
     const FI = AT.fire;
     // The rates fire-spread design 6a adds; a missing one is an error, not a silent zero (CLAUDE.md 6.5).
@@ -532,8 +548,10 @@
       return d;
     }
     /** What a system can do at its integrity (damage-control's states): 1, integrity / nominal, or 0. */
-    function capability(i) {
-      const g = st.integrity[i], SY = DM.systems;
+    function capability(i) { return capOf(st.integrity[i]); }
+    /** The capability at integrity g (percent): the one rule for loads, coolant parts and anything else with integrity. */
+    function capOf(g) {
+      const SY = DM.systems;
       if (g < SY.disabled_below_pct) return 0;
       if (g < SY.nominal_from_pct) return g / SY.nominal_from_pct;
       return 1;
@@ -634,11 +652,15 @@
       return clamp(a / PW.reactor.restart.ignition_mw, 0, 1);
     }
     // ======================================================= the cooling loop (reactor-cooling)
-    /** A speed-law load's speed (0 to its setpoint_max): the speed its delivered power allows, power = nominal x speed^exponent. */
+    /**
+     * A speed-law load's speed (0 to its setpoint_max): the speed its delivered power allows, power = nominal x
+     * capability x speed^exponent (computeDemand scales a damaged load's demand by its capability, so a damaged pump fed
+     * in full turns at its setpoint and moves capability x its flow; the capability is not counted twice).
+     */
     function pumpSpeed(i) {
-      const l = loads[i];
-      if (!(l.nominal_mw > 0)) return 0;
-      return Math.pow(Math.max(0, st.alloc[i] / l.nominal_mw), 1 / (l.power_exponent || 1));
+      const l = loads[i], cap = capability(i);
+      if (!(l.nominal_mw > 0) || cap <= 0) return 0;
+      return Math.pow(Math.max(0, st.alloc[i] / (l.nominal_mw * cap)), 1 / (l.power_exponent || 1));
     }
     /** A set of pumps' flow: speed x capability x each one's share, summed (reactor-cooling design 2). */
     function pumpsFlow(ids, share) { let f = 0; for (const id of ids) { const i = loadIdx[id]; f += pumpSpeed(i) * capability(i) * share; } return f; }
@@ -647,10 +669,31 @@
       const C = PW.coolant, CV = C.cavitation;
       return clamp((st.loop.m_kg / C.inventory_kg - CV.no_flow_below) / (CV.full_flow_from - CV.no_flow_below), 0, 1);
     }
-    /** The loop's flow fraction: the core pumps, cavitation, and natural circulation when they stop. */
-    function loopFlow() {
+    /**
+     * A leg's factor (reactor-cooling design 2): the worst capability of its segments; with one isolated, the leg runs
+     * through the bypass jumper round it at isolated_leg_flow, times the worst of the rest.
+     */
+    function legFactor(leg) {
       const C = PW.coolant;
-      return Math.max(C.natural_circulation_flow, pumpsFlow(C.pumps, C.flow_per_pump) * cavitation());
+      let worst = 1, isolated = false;
+      for (const sg of C.segments) {
+        if (sg.leg !== leg) continue;
+        const p = st.coolantParts[sg.id];
+        if (p.isolated) isolated = true; else worst = Math.min(worst, capOf(p.integrity));
+      }
+      return isolated ? C.isolated_leg_flow * worst : worst;
+    }
+    /** The loop's flow fraction: the core pumps, cavitation, the worse leg, and natural circulation when they stop. */
+    function loopFlow() {
+      const C = PW.coolant, loop = st.loop;
+      loop.legs.hot = legFactor("hot"); loop.legs.cold = legFactor("cold");
+      return Math.max(C.natural_circulation_flow, pumpsFlow(C.pumps, C.flow_per_pump) * cavitation() * Math.min(loop.legs.hot, loop.legs.cold));
+    }
+    /** A pipe segment's or tank's leak, kg/s (damage.json coolant): none at or above leak_below_pct, or isolated. */
+    function partLeak(id) {
+      const p = st.coolantParts[id], CL = DM.coolant;
+      if (!p || p.isolated || p.integrity >= CL.leak_below_pct || id === PW.coolant.exchanger.id) return 0;
+      return CL.leak_kg_s_at_zero * (CL.leak_below_pct - p.integrity) / CL.leak_below_pct;
     }
     /** The heat the loop's flow carries at the design rise, MW (40 MW at full flow): the second needle's scale. */
     const carryMw = (flow) => flow * PW.coolant.design_flow_kg_s * PW.coolant.specific_heat_kj_per_kg_k * PW.coolant.automation.design_rise_k / 1000;
@@ -702,6 +745,96 @@
         bands: C.bands, limit_k: PW.reactor.scram.loop_over_k,
       };
     }
+    /**
+     * The whole reactor system as its screen draws it (reactor-cooling design 6a), read from the state the step leaves:
+     * nothing here changes the ship, and the screen decides nothing for itself (CLAUDE.md 6.1). It is coolantReadout
+     * plus every part: { ...coolantReadout(), cavitation, legs: { hot, cold } (each leg's factor), leak_kg_s (the
+     * segments' and the outside hook's), tank_leak_kg_s, breaker ("closed" | "open" | "locked", the Cooling feed),
+     * cooling_mw and cooling_want_mw (the group's delivered and wanted power), core: { integrity, state, capability,
+     * throttle, p_th_mw, p_e_mw, blanket_k, scram_cause }, parts: [{ id, name, kind ("core" | "segment" | "tank" |
+     * "pump" | "radiator_pump" | "makeup" | "exchanger"), leg, index, integrity, state (damageState), capability, leak_kg_s,
+     * isolated, flow (the share of design flow through it now), temp_k, speed, setpoint, alloc_mw, want_mw, kg, frac,
+     * job (the repairTime job that mends it) }] }.
+     */
+    function coolantView() {
+      const C = PW.coolant, loop = st.loop, rx = st.reactor, base = coolantReadout();
+      const part = (o) => Object.assign({ leg: null, index: 0, leak_kg_s: 0, isolated: false, speed: null, setpoint: null, alloc_mw: 0, want_mw: 0, kg: null, frac: null }, o,
+        { state: damageState(o.integrity), capability: capOf(o.integrity) });
+      const parts = [];
+      parts.push(part({ id: PW.reactor.system, name: "Magnetic core", kind: "core", integrity: rx.integrity, flow: loop.flow, temp_k: rx.T, job: { kind: "reactor" } }));
+      const legIdx = { hot: 0, cold: 0 };
+      for (const sg of C.segments) {
+        const p = st.coolantParts[sg.id];
+        parts.push(part({ id: sg.id, name: sg.name, kind: "segment", leg: sg.leg, index: ++legIdx[sg.leg], integrity: p.integrity, isolated: p.isolated, leak_kg_s: partLeak(sg.id),
+          flow: p.isolated ? 0 : loop.flow, temp_k: sg.leg === "hot" ? loop.hot_k : loop.T, job: { kind: "coolant", id: sg.id } }));
+      }
+      C.tanks.forEach((t, k) => {
+        const p = st.coolantParts[t.id];
+        parts.push(part({ id: t.id, name: t.name, kind: "tank", index: k + 1, integrity: p.integrity, leak_kg_s: partLeak(t.id), kg: loop.tanks_kg[k], frac: loop.tanks_kg[k] / t.capacity_kg,
+          flow: loop.makeup_kg_s / C.design_flow_kg_s, temp_k: loop.T, job: { kind: "coolant", id: t.id } }));
+      });
+      const pumpPart = (id, kind, share, k) => {
+        const i = loadIdx[id];
+        return part({ id, name: loads[i].name, kind, index: k + 1, integrity: st.integrity[i], speed: pumpSpeed(i), setpoint: st.setpoint[i], alloc_mw: st.alloc[i], want_mw: st.want[i],
+          flow: pumpSpeed(i) * capOf(st.integrity[i]) * share, temp_k: kind === "pump" ? loop.T : null, job: { kind: "system", id } });
+      };
+      C.pumps.forEach((id, k) => parts.push(pumpPart(id, "pump", C.flow_per_pump, k)));
+      C.radiator_pumps.forEach((id, k) => parts.push(pumpPart(id, "radiator_pump", C.flow_per_radiator_pump, k)));
+      const mi = loadIdx[C.makeup.pump];
+      parts.push(part({ id: C.makeup.pump, name: loads[mi].name, kind: "makeup", integrity: st.integrity[mi], alloc_mw: st.alloc[mi], want_mw: st.want[mi],
+        flow: loop.makeup_kg_s / C.design_flow_kg_s, temp_k: loop.T, job: { kind: "system", id: C.makeup.pump } }));
+      const ex = st.coolantParts[C.exchanger.id];
+      parts.push(part({ id: C.exchanger.id, name: C.exchanger.name, kind: "exchanger", integrity: ex.integrity, flow: loop.flow * loop.chiller, temp_k: loop.hot_k,
+        job: { kind: "coolant", id: C.exchanger.id } }));
+      const g = PW.groups.find((x) => x.loads.indexOf(C.pumps[0]) >= 0);
+      let mw = 0, want = 0;
+      if (g) for (const id of g.loads) { mw += st.alloc[loadIdx[id]]; want += st.want[loadIdx[id]]; }
+      return Object.assign(base, {
+        cavitation: cavitation(), legs: { hot: loop.legs.hot, cold: loop.legs.cold }, leak_kg_s: loop.leak_kg_s + loop.seg_leak_kg_s, tank_leak_kg_s: loop.tank_leak_kg_s,
+        radiator_health: loop.radiatorHealth, breaker: g ? st.groupBreaker[g.id] || "closed" : "closed", group: g ? g.id : null, cooling_mw: mw, cooling_want_mw: want,
+        core: { integrity: rx.integrity, state: rx.state, capability: capOf(rx.integrity), throttle: rx.throttle, target: rx.target, p_th_mw: rx.P_th / MWW, p_e_mw: rx.P_e / MWW,
+          blanket_k: rx.T, blanket_scram_k: PW.reactor.heat.scram_k, scram_cause: rx.scramCause },
+        parts,
+      });
+    }
+    /** The integrity of any part the reactor system screen names: a coolant part, a load (a pump), or the core. */
+    function partIntegrity(id) {
+      if (st.coolantParts[id]) return st.coolantParts[id].integrity;
+      if (id === PW.reactor.system) return st.reactor.integrity;
+      if (loadIdx[id] != null) return st.integrity[loadIdx[id]];
+      return null;
+    }
+    function setPartIntegrity(id, g) {
+      g = clamp(g, 0, 100);
+      if (st.coolantParts[id]) st.coolantParts[id].integrity = g;
+      else if (id === PW.reactor.system) st.reactor.integrity = g;
+      else if (loadIdx[id] != null) st.integrity[loadIdx[id]] = g;
+      else return null;
+      return g;
+    }
+    /** Damage a part to at most pct integrity (a hit, or a scenario button). Returns its integrity, or null for no such part. */
+    function damagePart(id, pct) {
+      const g = partIntegrity(id);
+      if (g == null || !Number.isFinite(pct)) return null;
+      const out = setPartIntegrity(id, Math.min(g, pct));
+      log("Damage: " + id + " at " + out.toFixed(0) + "%");
+      return out;
+    }
+    /** Repair a part by pts integrity points, or to 100% with no pts (its repair job completed). Returns its integrity. */
+    function repairPart(id, pts) {
+      const g = partIntegrity(id);
+      if (g == null) return null;
+      const out = setPartIntegrity(id, pts == null ? 100 : g + pts);
+      log("Repaired: " + id + " at " + out.toFixed(0) + "%");
+      return out;
+    }
+    /** Close (on) or open the valves either side of a pipe segment (the pipe game's first step): isolated, it neither leaks nor carries. */
+    function isolateSegment(id, on) {
+      const p = st.coolantParts[id];
+      if (!p || !PW.coolant.segments.some((sg) => sg.id === id)) return false;
+      p.isolated = !!on; log((on ? "Isolated " : "Opened ") + id);
+      return true;
+    }
     /** Open, close or lock open a group's feed breaker (power-grid 5): a locked breaker refuses to close until it is unlocked (opened). */
     function setGroupBreaker(gid, state) {
       const g = PW.groups.find((x) => x.id === gid);
@@ -719,6 +852,7 @@
       const loop = st.loop, C = PW.coolant, RD = PW.radiators;
       loop.flow = loopFlow();
       loop.rad_flow = pumpsFlow(C.radiator_pumps, C.flow_per_radiator_pump);
+      loop.exchanger = capOf(st.coolantParts[C.exchanger.id].integrity);
       let toLoop = 0;
       for (let i = 0; i < loads.length; i++) {
         const l = loads[i], h = l.heat; if (!h) continue;
@@ -772,7 +906,12 @@
       const mk = Math.max(0, Math.min(C.makeup.max_kg_s * (loop.makeupValve || 0) * mkSupply * dt, tanks, C.inventory_kg - loop.m_kg));
       if (mk > 0) for (let k = 0; k < loop.tanks_kg.length; k++) loop.tanks_kg[k] -= mk * (loop.tanks_kg[k] / tanks);
       loop.makeup_kg_s = mk / dt;
-      loop.m_kg = clamp(loop.m_kg + mk - loop.leak_kg_s * dt, 0, C.inventory_kg);
+      // The parts' leaks (reactor-cooling design 2): a segment's from the loop, a tank's from its own reserve.
+      let segLeak = 0, tankLeak = 0;
+      for (const sg of C.segments) segLeak += partLeak(sg.id);
+      C.tanks.forEach((t, k) => { const q = Math.min(loop.tanks_kg[k], partLeak(t.id) * dt); loop.tanks_kg[k] -= q; tankLeak += q / dt; });
+      loop.seg_leak_kg_s = Math.min(segLeak, (loop.m_kg + mk) / dt); loop.tank_leak_kg_s = tankLeak;
+      loop.m_kg = clamp(loop.m_kg + mk - (loop.leak_kg_s + segLeak) * dt, 0, C.inventory_kg);
       // The loop's heat capacity follows its inventory; the hot leg is the cold leg plus the heat the flow carries.
       const cLoop = C.capacity_mj_per_k * MWW * Math.max(0.05, loop.m_kg / C.inventory_kg);
       loop.T += (dt * (toLoop - loop.rad_mw * MWW)) / cLoop;
@@ -1634,7 +1773,8 @@
     }
     /**
      * damage::repair_time (damage-control 6 and 6a): the time and the parts a job takes, the one rate the damage board
-     * previews and the repair spends. job: { kind: "system", id: a load id } | { kind: "reactor" } | { kind: "node", id }
+     * previews and the repair spends. job: { kind: "system", id: a load id } | { kind: "reactor" }
+     * | { kind: "coolant", id: a pipe segment, tank or the exchanger (reactor-cooling design 1) } | { kind: "node", id }
      * | { kind: "conduit", id } | { kind: "breach", id: a breach link id } | { kind: "hull", key: "span:face" }.
      * who: "officer" (every player) or "rating" (the teams); hands: 1, or 2 working together (two_hands_factor times the
      * faster). Returns { s, parts, kit, plates, eva, steps: [{ what, s }] }, or null when there is nothing to do, or
@@ -1654,6 +1794,7 @@
       };
       if (job.kind === "system") return system(st.integrity[loadIdx[job.id]]);
       if (job.kind === "reactor") return system(st.reactor.integrity);
+      if (job.kind === "coolant") return st.coolantParts[job.id] ? system(st.coolantParts[job.id].integrity) : null;
       if (job.kind === "node") {
         const h = nodeHp(job.id);
         if (h >= 1) return null;
@@ -1725,7 +1866,7 @@
       step, derive, solveGrid, gridSnapshot, computeDemand, solveWithDropout, previewSetpoint, previewGroup, scram, scramReset,
       resolveHit, hullHalfBeam, breach, patch, setLink, closeAllDoors, isolate, ignite, bayPumpdown, bayRepress,
       dischargeMist, dischargeInert, useExtinguisher, newExtinguisher, ventPreview, gravityG, capability, damageState, auxRatio, ignitionRate,
-      operateDoor, setPriority, applyPreset, setCooling, coolantReadout, setGroupBreaker, pumpSpeed, repressurize, repairSystem, spliceConduit, rebuildNode, fanRatio,
+      operateDoor, setPriority, applyPreset, setCooling, coolantReadout, coolantView, damagePart, repairPart, isolateSegment, partIntegrity, setGroupBreaker, pumpSpeed, repressurize, repairSystem, spliceConduit, rebuildNode, fanRatio,
       airlockCycleOut, airlockCycleIn, ventCompartment, stopVent, addCrew, setActivity, compartmentReadout, lighting,
       receiverKpa, storeMol, fillStandard, log, fs: FS, fO2, conduitView, nodeView, nodeLive, breakers, repairTime, hullSection,
       get P() { return P; }, get T() { return T; }, get n() { return n; }, get ntot() { return ntot; },
