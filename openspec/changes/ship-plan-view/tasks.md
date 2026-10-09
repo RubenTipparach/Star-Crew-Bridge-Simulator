@@ -21,3 +21,9 @@
 - [x] 4.2 M toggles the map from any mode; orbit, zoom, Tab steps the decks.
 - [x] 4.3 Markers for the player and every bot crew member, names by the UI layer.
 - [x] 4.4 Shots in `docs/screenshots/engine/` (`map-1-all-decks.png`, `map-2-deck-B.png`, from `sc-client --headless --lobby-test`).
+
+## 5. Damage control mode (design 6, owner 2026-10-09)
+
+- [x] 5.1 Design 6: the five layers, how the mode is opened, what is seen at rest, the engine's wait for the simulations.
+- [ ] 5.2 `docs/mockups/damage-map.html`: the mode on the mockups' simulation, with a hit, a fire and a severed conduit to show; shots.
+- [ ] 5.3 In the engine, once `sc-core` has damage, power and fire: the mode on the M map.

@@ -38,3 +38,13 @@ bot crew member, the player's own marker set apart.
 #### Scenario: Finding a friend
 - **WHEN** a player presses M while walking on deck B
 - **THEN** the map shows all three decks exploded, with every player's and bot's marker where their body stands
+
+### Requirement: The map has a damage control mode
+
+The ship map SHALL have a Damage mode that shows, from the simulations that own them, every damaged system by its state,
+every damaged room (breaches, damaged wall sections, charred floor, the hull's armour), every fire, every switchboard
+section and distribution panel that needs repair or has a breaker tripped, and every conduit as live, dead or severed.
+
+#### Scenario: After a hit in engineering
+- **WHEN** a hit severs the port drive feeder and destroys the port switchboard section, and a fire starts in engineering
+- **THEN** the Damage mode shows the feeder red with a break, the switchboard box red with a cross, the burning cells in engineering, and the drive's loads fed from the starboard feeder drawn live
