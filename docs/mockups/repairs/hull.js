@@ -59,7 +59,7 @@ RepairKit.register({
     const WELD_REF = 420;                     // px/s at which the torch's heat would fall to nothing
     const HEAT_TAU = 0.25;                    // s: the heat follows the speed with this lag
     // Heat under COLD lays a cold bead; over BURN for BURN_S burns through. The good band narrows and the burn comes
-    // sooner each level (repair-minigames 1a): level 1 is 0.35-0.85 and 0.3 s; each level 0.025 off each end, 0.03 s off.
+    // sooner each level (repair-minigames 1a): level 1 is 0.35-0.85 and 0.3 s; each level 0.015 off each end, 0.015 s off.
     const COLD0 = 0.35, BURN0 = 0.85, BURN_S0 = 0.3, TORCH_COOL_S = 0.8;   // s
     let COLD = COLD0, BURN = BURN0, BURN_S = BURN_S0;
     const WELD_DONE = 0.97;                   // share of a seam that must be good
@@ -147,7 +147,7 @@ RepairKit.register({
       if (!wall || (phase === "cut" && !isPart && wall.round !== index)) { wall = freshWall(r); wall.round = index; }
       if (shares[index] === undefined) shares[index] = (100 - api.value) / Math.max(1, api.steps - index) / (KIT.RATES[api.who] || KIT.RATES.officer);
       const kind = isPart ? "part" : phase || "cut";
-      COLD = Math.min(0.45, COLD0 + 0.025 * index); BURN = Math.max(0.75, BURN0 - 0.025 * index); BURN_S = Math.max(0.15, BURN_S0 - 0.03 * index);
+      COLD = Math.min(0.425, COLD0 + 0.015 * index); BURN = Math.max(0.775, BURN0 - 0.015 * index); BURN_S = Math.max(0.225, BURN_S0 - 0.015 * index);
       s = { kind, phase: kind === "weldbolt" ? "weld" : kind, heat: 0, burnT: 0, cool: 0, hiss: [], sparks: [], cur: 0, keys: false, keyS: 0,
         grab: null, prevA: 0, wrong: null, played: false, carry: null, sel: 0 };
       if (kind === "part") { wall.plate.onTrolley = false; s.carry = { x: STACK.x + STACK.w / 2, y: STACK.y + STACK.h / 2 + 10, held: false, dx: 0, dy: 0 }; }

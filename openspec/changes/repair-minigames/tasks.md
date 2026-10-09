@@ -31,7 +31,7 @@
 
 - [x] 6.1 Design 1 and 1a, the proposal and the spec delta: a round lands its share at once; every round is the same
   game at the next level; the heads become two jobs.
-- [ ] 6.2 `kit.js`: rounds land at once, the level passed to every game; the part move opens round 1.
-- [ ] 6.3 Every game's knobs by level (design 1a's table); the alternating games (heads, chiller, conduits, turret,
+- [x] 6.2 `kit.js`: rounds land at once, the level passed to every game; the part move opens round 1.
+- [x] 6.3 Every game's knobs by level (design 1a's table); the alternating games (heads, chiller, conduits, turret,
   pipes, fighter, shuttle, biobed) play their whole game every round.
 - [ ] 6.4 `data/ships/tern/repairs.json` with the levels, validated; shots of a level 1 and a level 3 round per game.

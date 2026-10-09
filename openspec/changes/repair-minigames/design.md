@@ -90,7 +90,7 @@ level 6. In the mockups the knobs are constants in each game's script; in the en
 | Electrical conduits | Strip the burns, join the pairs; a disabled job reroutes round its burnt box every round too | Pairs 3, one more a level to 6; the clamp closes sooner; the reroute's map busier |
 | Switchboard and breakers | Rack out, fit the rated fuse, rack in on green | Cartridges to choose from 3, 4 from level 3; the synchro light faster (+0.35 rad/s a level) and its green window shorter (0.34, 0.04 less a level, floor 0.16) |
 | Doors | Crank the leaf against the waves | Turns 5, one more a level; waves stronger (+0.6 a level) |
-| Hull plating | Cut, drop the plate, weld, bolt: a new plate each round | The good weld band 0.35-0.85, 0.025 off each end a level; burn-through after 0.3 s over it, 0.03 s sooner a level |
+| Hull plating | Cut, drop the plate, weld, bolt: a new plate each round | The good weld band 0.35-0.85, 0.015 off each end a level; burn-through after 0.3 s over it, 0.015 s sooner a level |
 | Coolant balance | Both legs into their bands against the reactor's state | Damaged: cruise, surge, then pump B lost; disabled: a leak, overdrive, a radiator pump down, then a surge |
 | Coolant pipes | Isolate, rebuild, refill and bleed a new segment | Grid 5 x 4 at level 1, 7 x 5 from level 2; crossings and cracked tiles one more a level (to 4) |
 | Coolant pump | Guard off, align the feet, then speed up to the band | Foot rings 20 px, 3 px smaller a level (floor 10); the suction dial's red edge nearer (+0.03 a level) |
@@ -206,8 +206,9 @@ tell me whats wrong until I click on the wrong screw"; "wheres my toilet minigam
   starts by unscrewing it (turn each screw anticlockwise by dragging round it, the wheel over it, or holding Left; Tab
   picks the next) and ends by screwing it back (clockwise) before the job counts as done. One full loop a screw (2.5 at first; the owner, 2026-10-09: loops were not "properly detecting", so every pointer sample now counts and a loop the wrong way flashes the arrow and says "Other way"); a ring
   round each head shows how far it has turned. Not a fumble anywhere: a screw only turns while you turn it. On the
-  breaker cabinet (6 screws), the scrubber cabinet and the biobed's control box (4 each). In the engine the same
-  plates are where the layout's repair points are.
+  breaker cabinet (6 screws), the scrubber cabinet and the biobed's control box (4 each). In the game the cover is
+  the prop's own and comes off in 3D, on the machine (owner, 2026-10-09: "The metal panels should just be in 3D";
+  `repairs-on-deck` 3a); the 2D cover stays here, in the menu that has no ship.
 - **The order is shown before the first fastener.** Star orders (the fighter's panel, the pylon's bolt plate) have one
   order, from the first fastener round the star (`KIT.starOrder`); every fastener carries its number and the next one
   is lit and ringed at rest (`KIT.draw.orderBadge`). A fastener out of order is still refused (the pylon's bolt is

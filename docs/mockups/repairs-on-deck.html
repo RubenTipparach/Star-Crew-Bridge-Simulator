@@ -9,11 +9,15 @@
 
   Engineering from the one layout and its fit-out (shipkit, propkit), lit by its own lamps in the normal and red alert
   states. Walk to the coolant pump or the coolant valve board, Use (E) docks: the body moves to the prop's operator
-  point, the camera cuts in to the framing, the service face opens, and the real mini-game (repairs/kit.js with
-  repairs/pump.js and repairs/coolant.js, the same scripts as repairs.html) is drawn over the darkened live room. A round
-  that lands changes the machine in the room (its status lamp, sparks, smoke); a fumble flashes there. Esc stands up;
-  the round waits 30 s. Hold the right mouse button or Q to look up from the job. The service faces are stand-ins (a
-  plate on the prop) until the props' Blender builds model them (repairs-on-deck task 2.1).
+  point and the camera cuts in to the framing. The cover comes off in 3D (design 3a, owner 2026-10-09: "The metal
+  panels should just be in 3D. Where you have to unscrew stuff"): drag round each screw anticlockwise (or hold Left,
+  Tab for the next) until it drops out, and the plate lifts off and leans on the machine. Then the real mini-game
+  (repairs/kit.js with repairs/pump.js and repairs/coolant.js, the same scripts as repairs.html, their own 2D covers
+  skipped) is drawn over the darkened live room. A round that lands changes the machine in the room (its status lamp,
+  sparks, smoke); a fumble flashes there. After the last round the plate goes back on and its screws are driven home
+  clockwise before the job is done. Esc stands up (the cover stays off; the round waits 30 s). Hold the right mouse
+  button or Q to look up. The covers are stand-ins (a plate with four screws) until the props' Blender builds model
+  them (repairs-on-deck task 2.1).
 -->
 <style>
   html, body { margin: 0; height: 100%; overflow: hidden; background: #04060a; color: #e8eef6; font: 14px/1.4 system-ui, sans-serif; }
@@ -34,7 +38,7 @@
     background: rgba(6, 9, 14, 0.82); border: 1px solid #2b3540; border-radius: 6px; font-weight: 600; white-space: nowrap; }
   #prompt .key { display: inline-block; min-width: 18px; padding: 0 5px; margin-right: 6px; border: 1px solid #f2a046; border-radius: 4px; color: #f2a046; text-align: center; }
   #hand { position: fixed; right: 12px; top: 12px; z-index: 20; }
-  #event { position: fixed; left: 50%; top: 18%; transform: translateX(-50%); z-index: 26; pointer-events: none; font-size: 22px; font-weight: 700;
+  #event { position: fixed; left: 50%; top: 10%; transform: translateX(-50%); z-index: 26; pointer-events: none; font-size: 22px; font-weight: 700;
     text-shadow: 0 2px 10px #000; opacity: 0; transition: opacity 0.25s; }
   /* Docked: the room darkened 35% around the panel, which keeps the live view at its edges (repairs-on-deck 3). */
   #dim { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.35); z-index: 21; pointer-events: none; opacity: 0; transition: opacity 0.3s; }
@@ -42,6 +46,8 @@
     width: min(66.7vw, calc(66.7vh * 16 / 9)); aspect-ratio: 16 / 9; border: 1px solid #2b3540; border-radius: 10px; overflow: hidden;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6); transition: opacity 0.2s; }
   #panel canvas { width: 100%; height: 100%; display: block; touch-action: none; }
+  /* The screws' rings while the cover is worked in 3D (repairs-on-deck 3a). */
+  #ov { position: fixed; inset: 0; z-index: 22; pointer-events: none; }
   #panel.up { opacity: 0.15; pointer-events: none; }
   #dockbar { position: fixed; left: 50%; bottom: calc(50% - min(33.35vw * 9 / 16, 33.35vh) - 34px); transform: translateX(-50%); z-index: 23; display: none;
     color: #9fb0c0; font-size: 13px; white-space: nowrap; }
@@ -3327,14 +3333,16 @@
   <div class="row" id="light"></div>
   <div class="row" id="fight"></div>
   <div class="row"><button id="reset">Damage them again</button></div>
-  <p>W A S D walk, Shift run, drag to look. At a machine: E repairs. Docked: play the panel; Esc stands up (the round
-    waits 30 s); hold the right mouse button or Q to look up.</p>
+  <p>W A S D walk, Shift run, drag to look. At a machine: E repairs. Docked: drag round each screw to take the cover
+    off, then play the panel; the cover goes back on at the end. Esc stands up (the round waits 30 s); hold the right
+    mouse button or Q to look up.</p>
 </div>
 <div id="hand" class="card">In hand: <b>repair kit</b>, 1 spare part in its pouch</div>
 <div id="cross"></div>
 <div id="prompt" hidden></div>
 <div id="event"></div>
 <div id="dim"></div>
+<canvas id="ov"></canvas>
 <div id="panel"><canvas id="game" width="1280" height="720"></canvas></div>
 <div id="dockbar"><span class="key">Esc</span> stand up <span class="key">Q</span> look up</div>
 <script type="module">
@@ -3430,18 +3438,19 @@ const JOBS = [
 const START = { damaged: 25, disabled: 12 };
 const BANDS = [[75, "#3ddc84", "Nominal"], [25, "#ffc542", "Damaged"], [0.01, "#ff4757", "Disabled"], [-1, "#3a3f47", "Destroyed"]];
 const band = (v) => BANDS.find((b) => v >= b[0]);
-// The stand-in service face: a dark steel plate with four screws, a hazard border and its word, so it reads as the
-// cover a repair takes off (the props' own will be modelled, repairs-on-deck task 2.1).
+// The stand-in service face: a dark steel plate with a hazard border and its word, and four real screws (below), so it
+// reads as the cover a repair takes off (the props' own will be modelled, repairs-on-deck task 2.1).
 const coverMat = (() => {
   const cv = document.createElement("canvas"); cv.width = 256; cv.height = 200; const g = cv.getContext("2d");
   for (let i = -200; i < 460; i += 28) { g.fillStyle = (i / 28) % 2 ? "#141414" : "#d6a21e"; g.beginPath(); g.moveTo(i, 0); g.lineTo(i + 14, 0); g.lineTo(i + 14 - 200, 200); g.lineTo(i - 200, 200); g.fill(); }
   g.fillStyle = "#3a4452"; g.fillRect(14, 14, 228, 172);
   g.strokeStyle = "#566273"; g.lineWidth = 3; g.strokeRect(16, 16, 224, 168);
-  for (const [x, y] of [[34, 34], [222, 34], [34, 166], [222, 166]]) { g.fillStyle = "#8a96a6"; g.beginPath(); g.arc(x, y, 8, 0, Math.PI * 2); g.fill(); g.strokeStyle = "#2a313b"; g.lineWidth = 2; g.beginPath(); g.moveTo(x - 5, y); g.lineTo(x + 5, y); g.stroke(); }
+  for (const [x, y] of [[34, 34], [222, 34], [34, 166], [222, 166]]) { g.fillStyle = "#1c2129"; g.beginPath(); g.arc(x, y, 9, 0, Math.PI * 2); g.fill(); }   // the holes
   g.fillStyle = "#d8dee6"; g.font = "bold 30px system-ui, sans-serif"; g.textAlign = "center"; g.fillText("SERVICE", 128, 112);
   const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
   return new THREE.MeshBasicMaterial({ map: tex });
 })();
+const screwMat = new THREE.MeshBasicMaterial({ color: 0xa9b4c2 }), slotMat = new THREE.MeshBasicMaterial({ color: 0x1a1f26 });
 const sparkTex = (() => {
   const cv = document.createElement("canvas"); cv.width = cv.height = 32; const g = cv.getContext("2d");
   const gr = g.createRadialGradient(16, 16, 0, 16, 16, 16); gr.addColorStop(0, "rgba(255,255,255,1)"); gr.addColorStop(0.4, "rgba(255,255,255,0.5)"); gr.addColorStop(1, "rgba(255,255,255,0)");
@@ -3455,13 +3464,43 @@ for (const j of JOBS) {
   j.target = toShip(m, j.face);
   j.normal = new THREE.Vector3(j.point.x - j.target.x, 0, j.point.z - j.target.z).normalize();
   j.right = new THREE.Vector3(-j.normal.z, 0, j.normal.x);
-  // The stand-in service face: a plate on the prop where the cover will be modelled, which slides aside when docked.
-  j.cover = new THREE.Mesh(new THREE.BoxGeometry(j.size[0], j.size[1], 0.03), coverMat);
+  // The service face (repairs-on-deck 3a): a plate on the prop with four screws at its corners, its +Z out of the
+  // machine. Off, it leans against the machine's foot beside the face, where the room sees it.
+  j.cover = new THREE.Group();
+  j.cover.add(new THREE.Mesh(new THREE.BoxGeometry(j.size[0], j.size[1], 0.025), coverMat));
   j.cover.position.copy(j.target).addScaledVector(j.normal, 0.02);
   j.cover.lookAt(j.cover.position.clone().add(j.normal));
-  j.coverHome = j.cover.position.clone();
+  j.coverHome = { p: j.cover.position.clone(), q: j.cover.quaternion.clone() };
+  const offP = j.target.clone().addScaledVector(j.normal, j.offOut || 0.55).addScaledVector(j.right, j.size[0] * 1.15);
+  offP.y = FLOOR + (j.size[1] / 2) * 0.97;
+  const lean = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -0.26);
+  j.coverOff = { p: offP, q: j.coverHome.q.clone().multiply(lean) };
+  j.screws = [[-1, 1], [1, 1], [1, -1], [-1, -1]].map(([sx, sy]) => {
+    const g = new THREE.Group();
+    const head = new THREE.Mesh(new THREE.CylinderGeometry(0.017, 0.017, 0.012, 14).rotateX(Math.PI / 2), screwMat);
+    const slot = new THREE.Mesh(new THREE.BoxGeometry(0.026, 0.005, 0.004), slotMat); slot.position.z = 0.0065;
+    const shank = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.03, 8).rotateX(Math.PI / 2), screwMat); shank.position.z = -0.02;
+    g.add(head, slot, shank);
+    g.position.set(sx * (j.size[0] / 2 - 0.045), sy * (j.size[1] / 2 - 0.045), 0.0185);
+    g.userData.home = g.position.z;
+    j.cover.add(g);
+    return { g, t: 0 };
+  });
   scene.add(j.cover);
-  j.open = 0;
+  j.cs = "on"; j.ca = 0; j.sel = 0;
+  // Behind the cover (a stand-in until the props model their insides): a dark recess, a few parts and a fault light
+  // that goes green when the job is done.
+  j.inside = new THREE.Group();
+  j.inside.position.copy(j.target).addScaledVector(j.normal, 0.004);
+  j.inside.quaternion.copy(j.coverHome.q);
+  j.inside.add(new THREE.Mesh(new THREE.BoxGeometry(j.size[0] * 0.94, j.size[1] * 0.94, 0.006), new THREE.MeshBasicMaterial({ color: 0x0d1117 })));
+  const partMat = new THREE.MeshBasicMaterial({ color: 0x55606e }), copper = new THREE.MeshBasicMaterial({ color: 0xb07a3c });
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, j.size[0] * 0.7, 12).rotateZ(Math.PI / 2), partMat); shaft.position.set(0, 0.02, 0.03);
+  const flange = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.04, 16).rotateZ(Math.PI / 2), copper); flange.position.set(-0.04, 0.02, 0.03);
+  const box = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.05), partMat); box.position.set(j.size[0] * 0.25, -j.size[1] * 0.27, 0.025);
+  j.fault = new THREE.Mesh(new THREE.SphereGeometry(0.012, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff4757 })); j.fault.position.set(j.size[0] * 0.25, -j.size[1] * 0.27, 0.055);
+  j.inside.add(shaft, flange, box, j.fault);
+  scene.add(j.inside);
   // The status lamp (repairs-on-deck 4), beside the service face at its top corner, where the repairer sees it.
   const top = j.target.clone().addScaledVector(j.right, -(j.size[0] / 2 + 0.14)).add(new THREE.Vector3(0, j.size[1] / 2, 0)).addScaledVector(j.normal, 0.06);
   j.lamp = new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 8), new THREE.MeshBasicMaterial({ color: 0xff4757 }));
@@ -3517,20 +3556,37 @@ function free(x, z) {
 }
 const keys = new Set();
 addEventListener("keydown", (e) => {
+  if (e.code === "Tab" && dock) e.preventDefault();
   keys.add(e.code);
   if (e.code === "KeyE" && !dock && near) startDock(near);
   if (e.code === "Escape" && dock && dock.phase !== "out") endDock();
 });
 addEventListener("keyup", (e) => keys.delete(e.code));
 let drag = null, lookUp = false;
-renderer.domElement.addEventListener("pointerdown", (e) => { if (e.button === 2) { lookUp = true; return; } drag = { x: e.clientX, y: e.clientY }; renderer.domElement.setPointerCapture(e.pointerId); });
+renderer.domElement.addEventListener("pointerdown", (e) => {
+  if (e.button === 2) { lookUp = true; return; }
+  drag = { x: e.clientX, y: e.clientY }; renderer.domElement.setPointerCapture(e.pointerId);
+  // Docked with the cover being worked: the press takes the nearest screw still to turn (repairs-on-deck 3a).
+  if (dock && dock.phase === "in" && working(dock.j) && !lookUp) {
+    const j = dock.j; let best = null, bd = 70;
+    for (const sc of left(j)) { const q = screwPx(sc), d = Math.hypot(q.x - e.clientX, q.y - e.clientY); if (d < bd) { bd = d; best = sc; } }
+    if (best) { j.sel = j.screws.indexOf(best); const q = screwPx(best); screwDrag = { sc: best, a: Math.atan2(-(e.clientY - q.y), e.clientX - q.x) }; }
+  }
+});
 renderer.domElement.addEventListener("pointermove", (e) => {
   if (!drag) return;
   const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag = { x: e.clientX, y: e.clientY };
-  if (dock && dock.phase === "in") { look.yaw -= dx * 0.004; look.pitch -= dy * 0.004; }
+  if (screwDrag && dock && working(dock.j)) {
+    // Round the screw's head: the angle swept, anticlockwise positive; only the screw's own way turns it.
+    const q = screwPx(screwDrag.sc), a = Math.atan2(-(e.clientY - q.y), e.clientX - q.x);
+    let d = a - screwDrag.a; d = Math.atan2(Math.sin(d), Math.cos(d)); screwDrag.a = a;
+    if (d * dirOf(dock.j) > 0) turnScrew(dock.j, screwDrag.sc, d); else if (Math.abs(d) > 0.05) wrongT = 0.5;
+    return;
+  }
+  if (dock && dock.phase === "in") { if (lookUp || keys.has("KeyQ")) { look.yaw -= dx * 0.004; look.pitch -= dy * 0.004; } }
   else if (!dock) { body.yaw -= dx * 0.004; body.pitch = Math.max(-1.3, Math.min(1.3, body.pitch - dy * 0.004)); }
 });
-addEventListener("pointerup", (e) => { if (e.button === 2) lookUp = false; drag = null; });
+addEventListener("pointerup", (e) => { if (e.button === 2) lookUp = false; drag = null; screwDrag = null; });
 addEventListener("contextmenu", (e) => e.preventDefault());
 // Look up (repairs-on-deck 3): the panel drops to 15%, the view frees within 70 degrees of the frame.
 const look = { yaw: 0, pitch: 0 };
@@ -3554,6 +3610,8 @@ function startDock(j) {
     runner._job = j.id;
     if (j.saved) restore(j.saved);
   } else if (j.leftAt >= 0 && performance.now() / 1000 - j.leftAt > RESUME_S) { const r = runner.run; r.phase = 0; r.fumbles = 0; r.startStep(); }
+  // The kit's own 2D cover is skipped: in the ship the cover is the prop's, taken off in 3D (repairs-on-deck 3a).
+  if (runner.run.panel && runner.run.panel.phase !== "work") { runner.run.panel.phase = "work"; runner.run.panel.lift = 1; }
   history.replaceState(null, "", hash0 || location.pathname);
   if (runner.guide.open) runner.guide.hide();
   j.leftAt = -1;
@@ -3574,9 +3632,82 @@ function endDock() {
   j.leftAt = performance.now() / 1000;
   dock = { j, phase: "out", t: 0, from: camPose(), to: { eye: new THREE.Vector3(body.p.x, FLOOR + 1.65, body.p.z), yaw: body.yaw, pitch: body.pitch } };
   panelEl.style.display = "none"; dockbar.style.display = "none"; dimEl.style.opacity = 0;
+  screwDrag = null;
 }
 function camPose() { return { eye: camera.position.clone(), yaw: camera.rotation.y, pitch: camera.rotation.x }; }
 const ease = (u) => u * u * (3 - 2 * u);
+
+// ------------------------------------------------------------------ the cover, in 3D (repairs-on-deck 3a)
+// j.cs: "on" (screwed on; docking unscrews it), "lift" (coming off), "off" (leaning on the machine; the rounds are
+// played), "back" (going back on), "home" (back on; its screws are driven home). A screw's t is how far it has turned
+// out: 0 home, one loop (TURN) free, when it drops into the kit's tray.
+const TURN = Math.PI * 2;
+const working = (j) => j.cs === "on" || j.cs === "home";
+const dirOf = (j) => (j.cs === "on" ? 1 : -1);   // +1 anticlockwise (out), -1 clockwise (home)
+const left = (j) => j.screws.filter((sc) => (j.cs === "on" ? sc.t < TURN : sc.t > 0));
+function coverPose(j, dt) {
+  if (j.cs === "lift") { j.ca = Math.min(1, j.ca + dt / 0.6); if (j.ca >= 1) { j.cs = "off"; if (dock && dock.j === j) say("Cover off", "#9fb0c0"); } }
+  if (j.cs === "back") { j.ca = Math.max(0, j.ca - dt / 0.6); if (j.ca <= 0) { j.cs = "home"; j.sel = 0; } }
+  const u = ease(j.ca);
+  j.cover.position.lerpVectors(j.coverHome.p, j.coverOff.p, u);
+  j.cover.quaternion.slerpQuaternions(j.coverHome.q, j.coverOff.q, u);
+  for (const sc of j.screws) {
+    sc.g.rotation.z = sc.t;                                          // anticlockwise seen from the front as it comes out
+    sc.g.position.z = sc.g.userData.home + 0.03 * Math.min(1, sc.t / TURN);
+    sc.g.visible = !(sc.t >= TURN && (j.cs === "on" || j.cs === "lift" || j.cs === "off"));   // a free screw is in the tray
+  }
+}
+/** The screen position of a screw, in CSS px. */
+function screwPx(sc) {
+  const v = new THREE.Vector3(); sc.g.getWorldPosition(v); v.project(camera);
+  return { x: (v.x + 1) / 2 * innerWidth, y: (1 - v.y) / 2 * innerHeight };
+}
+let screwDrag = null, wrongT = 0;
+function turnScrew(j, sc, d) {
+  const before = sc.t;
+  sc.t = Math.max(0, Math.min(TURN, sc.t + d));
+  if (j.cs === "on" && before < TURN && sc.t >= TURN) emit(new THREE.Vector3().setFromMatrixPosition(sc.g.matrixWorld), 4, { col: [0.7, 0.75, 0.8], speed: 0.6, up: 0.3, life: 0.4 });
+}
+/** Each frame while docked with the cover being worked: keys, and the cover lifting off or the job ending. */
+function coverStep(j, dt) {
+  const todo = left(j);
+  if (j.cs === "on" && !todo.length) { j.cs = "lift"; return; }
+  if (j.cs === "home" && !todo.length) {
+    j.cs = "on"; j.done = true; j.value = 100;
+    say(`${j.name}: repaired`, "#3ddc84");
+    setTimeout(() => { if (dock && dock.j === j && dock.phase === "in") endDock(); }, 1200);
+    return;
+  }
+  if (!working(j)) return;
+  if (!todo.includes(j.screws[j.sel])) j.sel = j.screws.indexOf(todo[0]);
+  if (keys.has("Tab")) { keys.delete("Tab"); j.sel = j.screws.indexOf(todo[(todo.indexOf(j.screws[j.sel]) + 1) % todo.length]); }
+  // Left turns anticlockwise, Right clockwise (a pad's stick or the arrows), 1.2 turns a second.
+  const k = (keys.has("ArrowLeft") ? 1 : 0) - (keys.has("ArrowRight") ? 1 : 0);
+  if (k === dirOf(j)) turnScrew(j, j.screws[j.sel], k * 1.2 * TURN * dt);
+  else if (k) wrongT = 0.5;
+}
+const ov = document.getElementById("ov"), og = ov.getContext("2d");
+function drawScrewRings(dt) {
+  if (ov.width !== innerWidth || ov.height !== innerHeight) { ov.width = innerWidth; ov.height = innerHeight; }
+  og.clearRect(0, 0, ov.width, ov.height);
+  wrongT = Math.max(0, wrongT - dt);
+  if (!dock || dock.phase !== "in" || dock.t < 0.3 || !working(dock.j)) return;
+  const j = dock.j, dir = dirOf(j);
+  for (const sc of left(j)) {
+    const { x, y } = screwPx(sc), sel = sc === j.screws[j.sel];
+    const f = dir > 0 ? sc.t / TURN : 1 - sc.t / TURN;
+    og.lineWidth = sel ? 5 : 3;
+    og.strokeStyle = "rgba(20,26,36,0.85)"; og.beginPath(); og.arc(x, y, 26, 0, Math.PI * 2); og.stroke();
+    og.strokeStyle = sel ? (wrongT > 0 ? "#ff4757" : "#f2a046") : "#6f7f94";
+    // The ring fills the way the screw turns: anticlockwise to come out, clockwise to go home.
+    og.beginPath(); og.arc(x, y, 26, -Math.PI / 2, -Math.PI / 2 - dir * f * Math.PI * 2, dir > 0); og.stroke();
+    if (sel) {
+      // The way to turn: an arrowhead at the ring's top, pointing round.
+      og.fillStyle = wrongT > 0 ? "#ff4757" : "#f2a046";
+      og.beginPath(); og.moveTo(x - dir * 8, y - 34); og.lineTo(x - dir * 8, y - 18); og.lineTo(x - dir * 20, y - 26); og.fill();
+    }
+  }
+}
 
 // ------------------------------------------------------------------ what the room shows (repairs-on-deck 4)
 const eventEl = document.getElementById("event");
@@ -3595,10 +3726,14 @@ function watchRun(dt) {
     emit(j.target.clone().addScaledVector(j.normal, 0.08), 60, { speed: 3.6, up: 2.2 });
     flashT = 0.6; FLASH.value.set(j.target.x + j.normal.x * 0.3, j.target.y, j.target.z + j.normal.z * 0.3, 0);
   }
-  if (r.done && !seen.done) {
-    j.done = true; j.value = 100;
-    say(`${j.name}: repaired`, "#3ddc84");
-    setTimeout(() => { if (dock && dock.j === j && dock.phase === "in") endDock(); }, 1400);
+  if (r.step >= r.job.steps && j.cs === "off") {
+    // The last round landed: the panel goes, the cover goes back on in 3D and its screws are driven home before the
+    // job counts as done (repairs-on-deck 3a).
+    j.value = 100; runner.opts.paused = true;
+    panelEl.style.display = "none"; dimEl.style.opacity = 0;
+    for (const sc of j.screws) sc.t = TURN;
+    j.cs = "back";
+    say("Last round landed: cover back on", "#3ddc84");
   }
   seen = { step: r.step, fumbles: r.fumblesTotal, done: r.done };
 }
@@ -3611,9 +3746,9 @@ function machineCues(dt) {
     // Amber blinks slowly, red fast (the band table).
     const blink = j.value >= 75 ? 1 : j.value >= 25 ? (Math.sin(ambientT * 4) > -0.2 ? 1 : 0.25) : (Math.sin(ambientT * 11) > 0 ? 1 : 0.2);
     j.halo.material.opacity = blink; j.halo.scale.setScalar(0.12 + 0.1 * blink);
-    const opening = dock && dock.j === j && dock.phase !== "out";
-    j.open += ((opening ? 1 : 0) - j.open) * Math.min(1, dt * 6);
-    j.cover.position.copy(j.coverHome).addScaledVector(j.right, j.open * (j.size[0] + 0.05)).addScaledVector(j.normal, j.open * 0.06);
+    coverPose(j, dt);
+    j.inside.visible = j.ca > 0.02;                                   // seen only once the cover is off its seat
+    j.fault.material.color.set(j.value >= 100 || j.done ? 0x3ddc84 : j.value >= 25 ? 0xffc542 : 0xff4757);
     // Sparks now and then while damaged; a thin smoke and more sparks while disabled.
     if (j.value < 75 && Math.random() < dt * (j.value < 25 ? 3 : 1)) emit(j.target.clone().addScaledVector(j.normal, 0.05), 6, { speed: 1.8 });
     if (j.value < 25 && Math.random() < dt * 6) emit(j.target.clone().add(new THREE.Vector3(0, 0.3, 0)), 1, { col: [0.32, 0.34, 0.37], speed: 0.2, up: 0.5, grav: 0.4, life: 2.4, smoke: true });
@@ -3642,7 +3777,11 @@ function choice(el, values, set) {
 let combat = false;
 choice(document.getElementById("light"), [[0, "Normal", true], [1, "Red alert"]], (v) => STATE_W.value.set(1 - v, v));
 choice(document.getElementById("fight"), [[false, "Quiet", true], [true, "Combat"]], (v) => { combat = v; runner.opts.combat = v; });
-document.getElementById("reset").onclick = () => { for (const j of JOBS) { j.value = START[j.state]; j.saved = null; j.done = false; j.leftAt = -1; } runner._job = null; };
+document.getElementById("reset").onclick = () => {
+  if (dock && dock.phase === "in") endDock();
+  for (const j of JOBS) { j.value = START[j.state]; j.saved = null; j.done = false; j.leftAt = -1; j.cs = "on"; j.ca = 0; j.sel = 0; for (const sc of j.screws) sc.t = 0; }
+  runner._job = null;
+};
 
 // ------------------------------------------------------------------ the frame
 let last = performance.now(), t = 0;
@@ -3686,10 +3825,15 @@ function frame(now) {
       const dy = Math.atan2(Math.sin(to.yaw - from.yaw), Math.cos(to.yaw - from.yaw));
       let yaw = from.yaw + dy * u, pitch = from.pitch + (to.pitch - from.pitch) * u;
       if (u >= 1) {
-        if (panelEl.style.display !== "block") {
-          panelEl.style.display = "block"; dockbar.style.display = "block"; dimEl.style.opacity = 1; runner.opts.paused = false;
-          body.p.set(dock.j.point.x, FLOOR, dock.j.point.z); body.yaw = to.yaw; body.pitch = to.pitch;
-        }
+        if (!dock.settled) { dock.settled = true; body.p.set(dock.j.point.x, FLOOR, dock.j.point.z); body.yaw = to.yaw; body.pitch = to.pitch; dockbar.style.display = "block"; }
+        coverStep(dock.j, dt);
+        // The panel only while the cover is off and the job is open; the rounds wait while the cover is worked.
+        const play = dock.j.cs === "off" && !dock.j.done;
+        if (play && panelEl.style.display !== "block") { panelEl.style.display = "block"; dimEl.style.opacity = 1; runner.opts.paused = false; }
+        if (!play && panelEl.style.display === "block") { panelEl.style.display = "none"; dimEl.style.opacity = 0; runner.opts.paused = true; }
+        dockbar.innerHTML = working(dock.j)
+          ? `<span class="key">Esc</span> stand up &nbsp; drag round each screw ${dock.j.cs === "on" ? "anticlockwise" : "clockwise"} <span class="key">Tab</span> next`
+          : `<span class="key">Esc</span> stand up <span class="key">Q</span> look up`;
         const up = lookUp || keys.has("KeyQ");
         panelEl.classList.toggle("up", up);
         if (!up) { look.yaw *= 0.8; look.pitch *= 0.8; }
@@ -3715,6 +3859,7 @@ function frame(now) {
   eventT -= dt; if (eventT <= 0) eventEl.style.opacity = 0;
   watchRun(dt);
   machineCues(dt);
+  drawScrewRings(dt);
   stepParticles(dt);
   hud.beginFrame(renderer);
   renderer.render(scene, camera);
@@ -3733,12 +3878,13 @@ async function walkTo(j, back = 1.4) {
   body.yaw = f.yaw; body.pitch = -0.12; body.eye = 1.65;
   await wait(200);
 }
-async function docked(j) { await walkTo(j, 0.6); startDock(j); await wait(900); }
+/** For shots: every screw turned out, as a player's drags would, and the cover lifted off. */
+async function coverOff(j) { for (const sc of j.screws) sc.t = TURN; await wait(1300); }
+async function docked(j) { await walkTo(j, 0.6); startDock(j); await wait(700); if (j.cs === "on") await coverOff(j); await wait(600); }
 /** For shots: play the round's part move and phases out, as a player finishing each would (its stepDone), waiting
  *  for the kit to take each one (a headless frame can be slow). */
 async function finishRound() {
   const r = runner.run, s0 = r.step;
-  if (r.panel) { r.panel.phase = "work"; r.panel.lift = 1; }
   for (let g = 0; g < 12 && r.step === s0 && !r.done; g++) {
     const ph = r.phase, pp = r.partPending;
     r.roundDone = true;
@@ -3746,17 +3892,25 @@ async function finishRound() {
   }
 }
 const PUMP = JOBS[0], VALVES = JOBS[1];
+const reset = () => document.getElementById("reset").click();
 K.registerShots([
-  { name: "approach", setup: async () => { STATE_W.value.set(1, 0); document.getElementById("reset").click(); await walkTo(PUMP, 1.3); } },
-  { name: "docked", setup: async () => { await docked(PUMP); await wait(600); } },
+  { name: "approach", setup: async () => { STATE_W.value.set(1, 0); reset(); await walkTo(PUMP, 1.3); } },
+  // Docked, the guard's screws coming out in 3D: two out, one turning (its ring two thirds round), one still home.
+  { name: "unscrew", setup: async () => { await walkTo(PUMP, 0.6); startDock(PUMP); await wait(700);
+    PUMP.screws[0].t = TURN; PUMP.screws[1].t = TURN; PUMP.screws[2].t = TURN * 0.6; PUMP.sel = 2; await wait(400); } },
+  { name: "docked", setup: async () => { await docked(PUMP); } },
   { name: "look-up", setup: async () => { await docked(PUMP); lookUp = true; look.yaw = rad(-40); look.pitch = rad(8); await wait(500); } },
   { name: "round-landed", setup: async () => { await docked(PUMP); await finishRound(); await wait(250); } },
   { name: "fumble", setup: async () => { await docked(PUMP); runner.run.api.fumble(); await wait(250); } },
-  { name: "valves-approach", setup: async () => { STATE_W.value.set(0, 1); await walkTo(VALVES, 1.1); } },
+  // The last round lands: the guard is back on in 3D and its screws are driven home clockwise.
+  { name: "screw-back", setup: async () => { await docked(PUMP); for (let n = 0; n < 6 && PUMP.cs === "off"; n++) await finishRound();
+    await wait(1200); PUMP.screws[0].t = 0; PUMP.screws[1].t = 0; PUMP.screws[2].t = TURN * 0.45; PUMP.sel = 2; await wait(400); } },
+  { name: "valves-approach", setup: async () => { reset(); STATE_W.value.set(0, 1); await walkTo(VALVES, 1.1); } },
   { name: "red-alert-valves", setup: async () => { STATE_W.value.set(0, 1); await docked(VALVES); await wait(600); } },
-  { name: "stood-up", setup: async () => { STATE_W.value.set(1, 0); await docked(PUMP); await finishRound(); await wait(300); endDock(); body.p.addScaledVector(PUMP.normal, 0.9); await wait(700); } },
+  // Stood up mid-job: a round landed, the cover still off and leaning on the pump where the room sees it.
+  { name: "stood-up", setup: async () => { STATE_W.value.set(1, 0); reset(); await docked(PUMP); await finishRound(); await wait(300); endDock(); body.p.addScaledVector(PUMP.normal, 0.9); await wait(700); } },
 ]);
-window.REPAIRS_ON_DECK = { JOBS, runner, startDock, endDock, finishRound };
+window.REPAIRS_ON_DECK = { JOBS, runner, startDock, endDock, finishRound, coverOff };
 K.markReady();
 </script>
 </body>

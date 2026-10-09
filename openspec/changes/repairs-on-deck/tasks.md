@@ -4,7 +4,7 @@
 
 - [x] 1.1 Proposal, design and spec delta from the owner's "how we would perform these mechanics in the games 3d
   environment" (2026-10-09).
-- [ ] 1.2 `docs/mockups/repairs-on-deck.html`: engineering in 3D, the pump and the reactor docked, the real games over
+- [x] 1.2 `docs/mockups/repairs-on-deck.html`: engineering in 3D, the pump and the valve board docked, the covers unscrewed in 3D, the real games over
   the live room, rounds and fumbles shown in the room; shots in `docs/screenshots/repairs-on-deck/`.
 
 ## 2. Data

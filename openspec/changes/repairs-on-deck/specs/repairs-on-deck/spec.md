@@ -5,12 +5,15 @@
 ### Requirement: A repair is played docked at the machine
 
 A player SHALL start a repair by Use at the system's repair point while holding a kit, which docks the body at the
-point, opens the service face and draws the system's mini-game over the live, darkened 3D view.
+point; the service face's cover SHALL be unscrewed and lifted off in the 3D view, and only then SHALL the system's
+mini-game be drawn over the live, darkened 3D view. The job SHALL count as done only once the cover is screwed back
+on in 3D.
 
 #### Scenario: Docking at the coolant pump
 - **WHEN** a player holding a kit uses the damaged coolant pump's repair point
-- **THEN** the body kneels at the point, the pump's coupling guard opens, and the pump game is drawn over the
-  engineering room, which keeps rendering around it
+- **THEN** the body kneels at the point, the camera frames the coupling guard, the player turns its four screws out
+  on the pump in 3D and the guard lifts off, and the pump game is drawn over the engineering room, which keeps
+  rendering around it
 
 ### Requirement: A landed round shows in the room
 

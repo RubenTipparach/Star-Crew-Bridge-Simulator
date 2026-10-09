@@ -49,7 +49,7 @@ the prop's Blender build so it moves with the model:
 | `p_m`, `facing` | Where the body's feet go and which way it faces |
 | `posture` | `kneel` (most), `stand` (switchboards, chiller), `reach` (deckhead runs: the shower pipes, overhead conduits), `under` (lying under a fighter or the shuttle's belly), `float` (zero gravity and EVA) |
 | `frame` | The docked camera: an eye point, a look point and a field of view, in prop space, set so the service face fills the middle of the screen |
-| `service` | The prop's service face: the cover or panel nodes that open (a hinge or a slide, and how far), and the inner detail they reveal |
+| `service` | The prop's service face: the cover plate, its screws (where, how many, turns to free each) and the inner detail it reveals (section 3a) |
 | `game` | The mini-game's id (`repair-minigames` 2) |
 | `workers` | 1, or 2 where two can work side by side (section 7) |
 | `handhold` | The handhold beside it, required: with gravity off a body can only dock where it can hold on |
@@ -62,10 +62,31 @@ The reach rule is `ship-interactables`': within 1.2 m of the point, facing it wi
 
 - The server checks the reach, the kit, the parts the job needs and the posture (not incapacitated, not carrying a
   casualty), then docks the body: it slides to `p_m` and turns to `facing` over 0.3 s and takes the posture.
-- The service face opens (a fixture state, so everyone sees it, section 4).
 - The camera moves from the eye to the `frame` pose over 0.3 s, a fixed cut-in, never a smoothed look: mouse look is
   off while docked, and when it comes back it is raw again (`crew-on-deck` 13).
-- The mini-game's 1280 x 720 panel comes up over the docked view.
+- The cover comes off in 3D (section 3a), on the machine, in the room.
+- Then the mini-game's 1280 x 720 panel comes up over the docked view, starting at the work behind the cover.
+
+### 3a. Off with the cover, in 3D (owner, 2026-10-09)
+
+The owner: "The metal panels should just be in 3D. Where you have to unscrew stuff". The cover plate and its screws
+are part of the prop, and taking them off is played on the prop in the docked 3D view, not drawn on the 2D panel:
+
+- **Unscrew.** The docked frame shows the whole cover. Drag round a screw head anticlockwise (it turns with the
+  pointer, one full loop frees it, a ring round the head shows how far), or hold Left on a pad or keys to turn the
+  lit screw, Tab to pick the next. A screw backs out of its hole as it turns and drops into the kit's tray when free.
+  Turning the wrong way does nothing but flash the head's arrow. It is never a fumble: a screw turns only while you
+  turn it (as `repair-minigames` 6b's 2D cover).
+- **Lift off.** With every screw out the plate lifts off and leans against the machine below the face, where the room
+  sees it. Then the panel comes up for the rounds.
+- **Back on.** When the last round lands, the panel goes, the plate goes back on in 3D and every screw is driven home
+  clockwise the same way. Only then is the job done and the body stands. Leaving with the job unfinished leaves the
+  cover off (a crewmate sees the machine open); the next to dock skips straight to the rounds.
+- **Every service face.** A machine whose game had no 2D cover still has a cover in the room (the coil housing on the
+  reactor ring, the injector cover, the breech door's latches): every repair starts by opening it in 3D. A latch is a
+  screw that takes a quarter turn. The count and the turns are the prop's (`service` in section 2): 4 screws on most,
+  6 on a switchboard cubicle.
+- **The 2D covers stay in `repairs.html`**, which has no ship to put them on; in the game the kit's cover step is this.
 
 **The screen while docked.** The panel covers the middle of the screen (1280 x 720 on a 1920 x 1080 output, or 2/3
 of the height on any other). The docked 3D view keeps rendering around it, darkened 35%, with no blur (the Pi 5 does
@@ -95,8 +116,9 @@ A repair is a thing that happens in the room, not on a private screen.
 
 - **The repairer.** In the posture, the kit open on the deck beside them, a work light on its lid lighting the
   service face (a runtime light from the kit, one of the few over the bake, `light-baking`).
-- **The service face.** Open: the cover hinged or slid aside, the inner detail showing (the vanes of the pump, the
-  coil stack of the reactor ring, the fuse rack).
+- **The service face.** Its screws turning out one by one, then the plate leaning against the machine, the inner
+  detail showing (the vanes of the pump, the coil stack of the reactor ring, the fuse rack), until the plate goes back
+  on and its screws in.
 - **The machine's state.** Its status lamp, sound and effects follow its integrity band:
 
 | Band | Lamp | Sound | Effects |
@@ -187,9 +209,10 @@ landed rounds, with no panel.
 
 - Engineering from the one layout (`shipkit.js`), lit by its own fixtures, normal and red alert, with the Pi 5 cost
   shown.
-- First person: walk up to the coolant pump and to the reactor's coil housing; the prompt; Use docks.
-- Docked: the camera's cut-in, the service face open, the real mini-game (`repairs/pump.js` and `repairs/reactor.js`
-  through `kit.js`) drawn on the panel over the darkened live room, the look-up hold, leaving and resuming.
+- First person: walk up to the coolant pump and the coolant valve board; the prompt; Use docks.
+- Docked: the camera's cut-in, the cover's screws turned out in 3D and the plate lifted off (section 3a), the real
+  mini-game (`repairs/pump.js` and `repairs/coolant.js` through `kit.js`, its own 2D cover skipped) drawn on the panel
+  over the darkened live room, the look-up hold, leaving and resuming, and the cover screwed back on at the end.
 - A landed round: the lamp steps and the machine's effects change; a fumble: the hazard's flash in the room.
 - Shots of each in `docs/screenshots/repairs-on-deck/`.
 
