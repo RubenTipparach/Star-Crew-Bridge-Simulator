@@ -14,12 +14,13 @@ here are not.
 - **Aim is worth everything.** The careless crew member (2 m short of the room's centre, aiming at it) never reaches
   the bunk fire, 4.7 m from the centre: every careless run is the unattended fire. The careful one (sweeping the
   burning cells nearest the door) puts out a fire caught at 30, 60 and 90 s with one extinguisher, as the table says.
-- **Late suppression is harder than the table says.** With one, two or three extinguishers at 120 s or 180 s the
-  careful crew member knocks the front of the fire down, but the cells under the bunks and the hot layer (above 50 C
-  it preheats every cell) relight the knocked-down cells once their 20 s of agent wear off: the fire is not out, and
-  it starves later instead, 288-515 s. Two extinguishers at 120 s, out at 129 s in the table, now fail; the fire
-  peaks higher (3.99 MW) because the knock-down saved oxygen for the reflash. The table's "two by 120 s, three by
-  180 s" was the room model's; with cells, a fire past about 100 s needs the hose team's sweep, mist or the vent.
+- **Late suppression matches the table** (rerun 2026-10-09 after the owner's "the cells in firefighting never get
+  fully extinguished"). The first cell model never let a knocked-down cell go cold: it smouldered for ever, and the
+  warm air of a room whose fire was out kept preheating it until it relit, so late cases "failed". Now a knocked-down
+  cell with no burning neighbour for `smoulder_s` (30 s) is out, and the hot layer preheats only unburnt cells and
+  only while something in the room burns. Two extinguishers at 120 s are out at 130 s (the table's 129), three at
+  180 s at 194 s (192); two at 180 s are too few, as in the table. A fire that is out stays out, and every cell that
+  burned stays charred (`FireSpread.damage`), which is the room's damage record.
 - **Rooms with no furniture in the mockups' placement grow on bare deck** (110 s of dose): the forward switchboard
   and the magazine, whose cabinets and racks are layout systems the placement does not stand as props yet, grow
   slower (the magazine's 1 MW at 181 s, not 113; the switchboard's fire never passes 60 kW before the inert gas).
@@ -55,7 +56,7 @@ centre. Times in seconds from ignition; the 0 HP and -50 HP times from the vent 
 | | cells | 113 | 123 |  | 234 | 102 / 182 / 193 | 284 | 3.48 | 295 | 190 | 13.0 |
 | Quarters, door held open | table | 113 | 120 | 267 | 246 | 97 / 184 / 196 | burning at 900 | 3.95 | 327 | 167 | 13.0 |
 | | room model | 113 | 120 | 267 | 246 | 97 / 183 / 196 | burning at 900 | 3.95 | 327 | 167 | 13.0 |
-| | cells | 113 | 125 | 273 | 239 | 104 / 185 / 196 | 545 | 3.75 | 327 | 176 | 12.9 |
+| | cells | 113 | 125 | 273 | 239 | 104 / 185 / 196 | 601 | 3.75 | 327 | 167 | 13.3 |
 | Quarters, one extinguisher at 30 s | table |  |  |  |  |  | 33 | 0.18 | 24 | 102 | 20.8 |
 | | room model |  |  |  |  |  | 33 | 0.18 | 24 | 102 | 20.8 |
 | | cells, careful |  |  |  |  |  | 31 | 0.06 | 22 | 101 | 20.9 |
@@ -70,19 +71,19 @@ centre. Times in seconds from ignition; the 0 HP and -50 HP times from the vent 
 | | cells, careless | 113 | 123 |  | 234 | 102 / 182 / 193 | 284 | 3.48 | 295 | 190 | 13.0 |
 | Quarters, one extinguisher at 120 s | table | 113 | 118 | 364 | 324 | 96 / 225 / 244 | 407 | 3.29 | 300 | 193 | 12.6 |
 | | room model | 113 | 118 | 363 | 323 | 95 / 224 / 242 | 407 | 3.29 | 300 | 192 | 12.6 |
-| | cells, careful | 113 | 123 |  | 270 | 102 / 215 / 228 | 318 | 3.80 | 295 | 190 | 12.9 |
+| | cells, careful | 113 | 123 |  | 272 | 102 / 215 / 229 | 319 | 3.84 | 294 | 190 | 13.0 |
 | | cells, careless | 113 | 123 |  | 234 | 102 / 182 / 193 | 284 | 3.47 | 295 | 190 | 12.9 |
 | Quarters, two extinguishers at 120 s | table | 113 | 118 |  |  | 96 / - / - | 129 | 1.10 | 65 | 116 | 19.7 |
 | | room model | 113 | 118 |  |  | 95 / - / - | 129 | 1.09 | 65 | 116 | 19.7 |
-| | cells, careful | 113 | 124 |  | 472 | 102 / 431 / 442 | 515 | 3.99 | 290 | 189 | 13.0 |
+| | cells, careful | 113 | 124 |  |  | 102 / - / - | 130 | 1.09 | 62 | 114 | 19.8 |
 | | cells, careless | 113 | 123 |  | 234 | 102 / 182 / 193 | 284 | 3.47 | 295 | 190 | 12.9 |
 | Quarters, two extinguishers at 180 s | table | 113 | 118 |  | 327 | 96 / 181 / 193 | 415 | 2.55 | 291 | 190 | 12.7 |
 | | room model | 113 | 118 |  | 325 | 95 / 180 / 193 | 414 | 2.56 | 292 | 190 | 12.7 |
-| | cells, careful | 113 | 123 |  | 252 | 102 / 182 / 194 | 288 | 3.29 | 295 | 190 | 13.0 |
+| | cells, careful | 113 | 123 |  | 253 | 102 / 182 / 194 | 290 | 3.11 | 295 | 190 | 13.0 |
 | | cells, careless | 113 | 123 |  | 235 | 102 / 182 / 193 | 284 | 3.35 | 295 | 190 | 12.9 |
 | Quarters, three extinguishers at 180 s | table | 113 | 118 |  |  | 96 / 181 / - | 192 | 2.12 | 139 | 140 | 17.6 |
 | | room model | 113 | 118 |  |  | 95 / 180 / 193 | 192 | 2.12 | 139 | 140 | 17.6 |
-| | cells, careful | 113 | 123 |  | 266 | 102 / 182 / 194 | 298 | 3.96 | 295 | 190 | 13.0 |
+| | cells, careful | 113 | 123 |  |  | 102 / 182 / 194 | 194 | 2.36 | 144 | 141 | 17.5 |
 | | cells, careless | 113 | 123 |  | 235 | 102 / 182 / 193 | 284 | 3.35 | 295 | 190 | 12.9 |
 | Quarters, vented at 60 s | table |  |  |  |  | 66 / 92 / - | 132 | 0.63 | 30 | 104 | 18.7 |
 | | room model |  |  |  |  | 70 / 96 / 151 | 137 | 0.68 | 32 | 105 | 18.4 |
@@ -112,10 +113,8 @@ centre. Times in seconds from ignition; the 0 HP and -50 HP times from the vent 
 ## Moved by more than 15% (cell model against the table)
 
 - Quarters, one extinguisher at 30 s: Peak MW 0.18 to 0.06 (-67%).
-- Quarters, one extinguisher at 120 s: Smoke 2,000 ppm 324 to 270 (-17%); Out 407 to 318 (-22%); Peak MW 3.29 to 3.80 (+16%).
-- Quarters, two extinguishers at 120 s: Out 129 to 515 (+299%); Peak MW 1.10 to 3.99 (+263%); Peak air C 65 to 290 (+346%); Peak kPa 116 to 189 (+63%); Oxygen at end % 19.7 to 13.0 (-34%).
-- Quarters, two extinguishers at 180 s: Smoke 2,000 ppm 327 to 252 (-23%); Out 415 to 288 (-31%); Peak MW 2.55 to 3.29 (+29%).
-- Quarters, three extinguishers at 180 s: Out 192 to 298 (+55%); Peak MW 2.12 to 3.96 (+87%); Peak air C 139 to 295 (+112%); Peak kPa 140 to 190 (+36%); Oxygen at end % 17.6 to 13.0 (-26%).
+- Quarters, one extinguisher at 120 s: Smoke 2,000 ppm 324 to 272 (-16%); Out 407 to 319 (-22%); Peak MW 3.29 to 3.84 (+17%).
+- Quarters, two extinguishers at 180 s: Smoke 2,000 ppm 327 to 253 (-23%); Out 415 to 290 (-30%); Peak MW 2.55 to 3.11 (+22%).
 - Quarters, vented at 60 s: Out 132 to 105 (-20%).
 - Medbay, door shut: 1 MW 113 to 94 (-17%); Peak MW 2.87 to 2.37 (-17%).
 - Forward switchboard, inert gas at 30 s: Out 127 to 90 (-29%); Peak MW 0.58 to 0.06 (-90%); Peak air C 53 to 26 (-51%).

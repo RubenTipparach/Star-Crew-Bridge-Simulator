@@ -24,14 +24,17 @@
 (function (root) {
   "use strict";
 
-  const UNBURNT = 0, BURNING = 1, KNOCKED = 2, BURNT = 3;
+  // OUT: put out and cooled, fuel left (owner, 2026-10-09: "The cells in firefighting never get fully extinguished"):
+  // a knocked-down cell with no burning neighbour for smoulder_s stops smouldering, and only a flame beside it or a
+  // flashover lights it again, never the warm air of a room whose fire is out.
+  const UNBURNT = 0, BURNING = 1, KNOCKED = 2, BURNT = 3, OUT = 4;
 
   // ------------------------------------------------------------------ validation (CLAUDE.md 6.5)
   // The keys of fire.cells and their kinds. An unknown key is an error, a missing one too: a misspelt knob that
   // silently does nothing is the worst kind of bug.
   const CELL_KEYS = {
     owned_by: "string", note: "?string", tuned: "?string", size_m: "number", rise_s: "number", ignite_kw: "number", out_below_kw: "number",
-    agent_s: "number", dose_cooling_per_s: "number", neighbour_weights: "object", layer_preheat_k: "pair",
+    agent_s: "number", smoulder_s: "number", dose_cooling_per_s: "number", neighbour_weights: "object", layer_preheat_k: "pair",
     bare_min_mj_per_m2: "number", aim_height_m: "number", flame_height_m: "pair", smoke_layer_ppm: "number",
     classes: "object", props: "object", fixtures: "object",
   };
@@ -152,7 +155,7 @@
         id: c.id, ri, n, x: Float32Array.from(xs), z: Float32Array.from(zs), y: Float32Array.from(ys),
         cls: new Uint8Array(n), prop: new Int16Array(n).fill(-1), fuel0: new Float64Array(n), fuel: new Float64Array(n), q: new Float64Array(n),
         dose: new Float64Array(n), agent: new Float64Array(n), state: new Uint8Array(n), peak: new Float64Array(n), doseN: new Float64Array(n),
-        sprayed: new Uint8Array(n), feed: new Float64Array(n), nb: [], nbw: [], active: false, hrr: 0, burning: 0,
+        sprayed: new Uint8Array(n), feed: new Float64Array(n), smoulder: new Float64Array(n), scorch: new Uint8Array(n), nb: [], nbw: [], active: false, hrr: 0, burning: 0,
       };
       // Fuel class: the first prop (in placement order) whose footprint covers the cell's centre.
       const mine = items.map((it, k) => [it, k]).filter(([it]) => it.room === c.id);
@@ -205,7 +208,7 @@
       }
       return hit;
     }
-    function igniteCell(r, k, q) { r.state[k] = BURNING; r.q[k] = q; r.dose[k] = 0; r.agent[k] = 0; r.active = true; }
+    function igniteCell(r, k, q) { r.scorch[k] = 1; r.state[k] = BURNING; r.q[k] = q; r.dose[k] = 0; r.agent[k] = 0; r.active = true; }
     /**
      * A seed of kw (kW) at (x, z) in a room: the cell there and, if one cell's peak cannot hold it, its nearest
      * neighbours, kw shared among them, so a seed is the same heat release it is in the room model (design 2).
@@ -261,11 +264,15 @@
         for (let k = 0; k < n; k++) { if (r.state[k] === BURNING) sum += r.q[k]; if (env.wet && r.fuel[k] > 0 && r.state[k] !== BURNT) r.agent[k] = C.agent_s; }
         if (sum > 0 && env.mist_w_per_s > 0) for (let k = 0; k < n; k++) if (r.state[k] === BURNING) { r.q[k] -= (env.mist_w_per_s * dt * r.q[k]) / sum; r.sprayed[k] = 1; }
       }
-      // Feeds from the cells burning at the start of the step (order does not matter).
-      const pre = layer(env.t_k);
+      // Feeds from the cells burning at the start of the step (order does not matter). The hot layer preheats only
+      // while something in the room burns, and never a cell that was put out (it is wet and cooled): a room whose
+      // fire is out stays out unless it flashes over (above).
+      let lit = false;
+      for (let k = 0; k < n && !lit; k++) if (r.state[k] === BURNING) lit = true;
+      const pre = lit ? layer(env.t_k) : 0;
       for (let k = 0; k < n; k++) {
         if (r.state[k] === BURNING || r.state[k] === BURNT) { r.feed[k] = 0; continue; }
-        let f = pre;
+        let f = r.state[k] === UNBURNT ? pre : 0;
         const nb = r.nb[k], w = r.nbw[k];
         for (let m = 0; m < nb.length; m++) { const j = nb[m]; if (r.state[j] === BURNING) f += (r.q[j] / r.peak[j]) * w[m]; }
         r.feed[k] = f;
@@ -283,8 +290,14 @@
           hrr += r.q[k]; burning++; active = true;
         } else if (s !== BURNT && r.fuel[k] > 0) {
           if (r.agent[k] > 0) { active = true; continue; }   // the agent on it: no dose
-          if (r.feed[k] > 0) { r.dose[k] += r.feed[k] * dt; active = true; }
+          if (r.feed[k] > 0) { r.dose[k] += r.feed[k] * dt; r.smoulder[k] = 0; active = true; }
           else if (r.dose[k] > 0) { r.dose[k] *= Math.max(0, 1 - C.dose_cooling_per_s * dt); if (r.dose[k] < 1e-3) r.dose[k] = 0; else active = true; }
+          // A knocked-down cell with nothing burning beside it smoulders out: then it is out, charred, and cold.
+          if (s === KNOCKED && r.feed[k] <= 0) {
+            r.smoulder[k] += dt;
+            if (r.smoulder[k] >= C.smoulder_s) { r.state[k] = OUT; r.dose[k] = 0; r.smoulder[k] = 0; continue; }
+            active = true;
+          }
           if (r.dose[k] >= r.doseN[k] && fO2 > 0) { igniteCell(r, k, C.ignite_kw * 1000); hrr += r.q[k]; burning++; }
         }
       }
@@ -304,10 +317,21 @@
     }
     /** Fuel left in a room, J. */
     function fuelLeft(roomId) { const r = roomOf(roomId); let f = 0; for (let k = 0; k < r.n; k++) f += r.fuel[k]; return f; }
+    /**
+     * What a fire left in a room (owner, 2026-10-09: charred spots "should represent that room has damaged there"):
+     * { charred (cells that ever burned: scorched, however briefly), burnt (cells with no fuel left), area_m2 (charred
+     * floor), share (of the room's floor) }. The damage control map reads it.
+     */
+    function damage(roomId) {
+      const r = roomOf(roomId);
+      let charred = 0, burnt = 0;
+      for (let k = 0; k < r.n; k++) { if (r.scorch[k]) charred++; if (r.state[k] === BURNT) burnt++; }
+      return { charred, burnt, area_m2: charred * S * S, share: r.n ? charred / r.n : 0 };
+    }
     /** Put a room back to unburnt (a scenario's reset). */
     function reset(roomId) {
       const r = roomOf(roomId);
-      r.q.fill(0); r.dose.fill(0); r.agent.fill(0); r.state.fill(UNBURNT); r.fuel.set(r.fuel0); r.active = false; r.hrr = 0; r.burning = 0;
+      r.q.fill(0); r.dose.fill(0); r.agent.fill(0); r.smoulder.fill(0); r.scorch.fill(0); r.state.fill(UNBURNT); r.fuel.set(r.fuel0); r.active = false; r.hrr = 0; r.burning = 0;
     }
     /** The burning cells' heat-release-weighted centre of a room, { x, y, z, hrr }, or null. */
     function centroid(roomId) {
@@ -341,12 +365,12 @@
     }
 
     return {
-      rooms, byId, items, size_m: S, classes: CLS, C, UNBURNT, BURNING, KNOCKED, BURNT,
+      rooms, byId, items, size_m: S, classes: CLS, C, UNBURNT, BURNING, KNOCKED, BURNT, OUT, damage,
       roomOf, cellAt, nearestCell, seed, footprintCells, stepRoom, scale, fuelLeft, reset, centroid, scriptedAim, layer,
       /** A flame's height at heat release q (W) of a cell whose peak is peak (W): flame_height_m from ignition to peak. */
       flameHeight: (q, peak) => C.flame_height_m[0] + (C.flame_height_m[1] - C.flame_height_m[0]) * Math.max(0, Math.min(1, q / peak)),
     };
   }
 
-  root.FireSpread = { version: 1, create, placements, footprint, validate, UNBURNT, BURNING, KNOCKED, BURNT };
+  root.FireSpread = { version: 1, create, placements, footprint, validate, UNBURNT, BURNING, KNOCKED, BURNT, OUT };
 })(typeof window !== "undefined" ? window : globalThis);

@@ -24,7 +24,7 @@ gives every repair job a short game on the repairer's rate.
   that 1.5 MJ as damage.
 - **Damage from the hull.** When a hull section's armour falls, the hull-side sections behind it lose the same points:
   the inside shows where the outside was hit.
-- **Fire and heat** do not damage walls (the panels are steel).
+- **Fire and heat** do not damage walls (the panels are steel); a fire chars the floor it burned (`fire-spread` 4), which is the room's fire damage, refitted like plating (3).
 
 ## 2. What a damaged section does
 
@@ -46,6 +46,7 @@ new.
 | --- | --- | --- | --- |
 | Plating a section at 1-99% | A repair kit and a hull plate (cargo holds 30; 12 in the damage control locker) | `damage::repair_time` at 1.8% a second for an officer, as every repair | The section to 100% |
 | Plating a section at 0% | Two plates | The same, from 0 | A hole sealed and the section to 100% |
+| Refitting a charred floor (`fire-spread`: cells a fire burned) | A repair kit | At the plating rate, 0.5 m^2 of charred floor counting as 1% | The char cleared; until then the room shows where it burned and the damage board counts it |
 | A hull section's armour | Plating every hull-side section behind it to 100% | | The hull section's armour rises to **50%** if it was below; above 50% only EVA (`damage-control` 6) |
 
 **The plating game** (`repairs.html`, `hull.js`), four steps in the kit's step rule (a step's share fills at the rate,

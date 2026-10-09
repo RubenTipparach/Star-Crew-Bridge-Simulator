@@ -39,7 +39,8 @@ it exists.
   The room's total fuel stays `fuel_mj_per_m2[room] x floor` (`damage-control` 3): the `bare` cells take what the
   furnished ones leave, never below 20 MJ/m^2, so a room burns the energy the table was measured with.
 - **State.** Each cell holds its heat release `q` (W), its fuel left (J), its dose (s of exposure), and a
-  suppression timer. It is unburnt, burning, knocked down (fuel left, `q` 0) or burnt out (no fuel). 6,400 cells
+  suppression timer. It is unburnt, burning, knocked down (fuel left, `q` 0, smouldering), out (fuel left, cold) or burnt out (no
+  fuel); a cell that ever burned is charred. 6,400 cells
   of 16 bytes are 100 KB; only rooms with a burning cell or a hot layer are stepped.
 
 ## 2. Burning and spreading
@@ -95,12 +96,15 @@ it. `tools/mockups/fire_cases.mjs` (a measurement instrument, CLAUDE.md 4) runs 
 - **Suppression cases** are run with the extinguisher aimed by a script that sweeps the nearest burning cells (the
   competent player) and again aimed at the room's centre (the careless one), so the table says what aim is worth.
 
-**Late fires need more than a hand extinguisher** (recommendation taken, ask only with screenshots, 2026-10-09). The
-cell model says a fire caught after about 100 s relights behind a careful crew member from the bunks and the hot
-layer, where the room model said two extinguishers at 120 s or three at 180 s would do. That is kept: it is
-`damage-control`'s race made sharper, so a fire found early is one crew member's job and a late one is the board's
-(mist, inert gas, the captain's vent, a sealed door). The knob if play finds it too harsh is the agent time
-(`fire.cells.agent_s`), not the cut.
+**A fire that is out stays out** (owner, 2026-10-09: "The cells in firefighting never get fully extinguished. You
+should fix that. Leave charred spots after the fire goes out. That should represent that room has damaged there"). A
+knocked-down cell with no burning neighbour for `fire.cells.smoulder_s` (30 s) after its agent wears off is **out**:
+cold, charred, its fuel left, lit again only by a flame beside it or a flashover. The hot layer preheats only unburnt
+cells, and only while something in the room burns. With that, the cell model's late suppression matches the room
+model's table (two extinguishers at 120 s out at 130 s, the table's 129; `fire-cases.md`). Every cell that ever burned
+stays **charred**: the floor shows where the fire was, and `FireSpread.damage(room)` (charred cells, area, share of the
+floor) is the room's fire damage, which the damage control map shows (`ship-plan-view` 6) and a refit clears
+(`hull-repair` 3, at the plating rate, the lowest priority).
 
 ## 5. Putting it out
 
