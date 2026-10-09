@@ -1,5 +1,5 @@
 /*
- * repairs/reactor.js: the reactor core's repair (openspec/changes/repair-minigames, design 2).
+ * repairs/reactor.js: "Reactor: magnetic core", the reactor core's repair (openspec/changes/repair-minigames, design 2).
  *
  * The containment vessel from the front: the plasma ball floats inside the ring, held by four magnet coils (N, E, S,
  * W), while a fifth coil in the upper right slot is swapped out. The core's load pushes the plasma off centre and the
@@ -15,7 +15,7 @@
  */
 RepairKit.register({
   id: "reactor",
-  title: "Reactor core",
+  title: "Reactor: magnetic core",
   place: "Engineering, deck C/B",
   group: "Engineering",
   hazard: "Plasma touched the wall: heat spike",

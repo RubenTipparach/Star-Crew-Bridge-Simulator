@@ -81,6 +81,13 @@ bench's E4 panel turned into the job, at the `eng_main` seat or the bridge's Eng
   needs and the radiator pumps at full, reacting every 3.0 s. With a pump or segment lost it does not rebalance the
   bypass or open the makeup early, so a damaged loop under load drifts hot: the player does better.
 
+**As built in the mockups** (2026-10-09): `repairs/pipes.js` plays design 4 (the dripping segment is one of the middle
+two on its leg, so isolating it never needs a main valve; a disabled job adds fetching the spool and a larger
+rebuild). `repairs/coolant.js` plays design 5 with the loop at six times ship time, so a step's drift shows within
+its share; the console's panel runs at ship time. It simplifies the blanket away (the hot leg follows the heat with a
+6 s lag), and the hold pauses rather than drains out of band. The HP harm and the segment's 10% on a water hammer are
+named in the fumbles but not simulated there; each fumble costs the kit's 5%.
+
 ## 6. Cooling on the engineering bench
 
 - **A twelfth load group, Cooling**, on E1: core pumps A and B (0.4 MW each), radiator pumps port and starboard

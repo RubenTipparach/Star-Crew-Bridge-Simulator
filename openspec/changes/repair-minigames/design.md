@@ -250,6 +250,12 @@ Still to fix: text drawn at 15-18 canvas px (the bar's place line, time left and
 labels) is 7-9 CSS px on a phone, too small to read; the mistake note matters most. Shots in
 `docs/screenshots/repairs/mobile/`.
 
+### 6e. Hull plating, coolant pipes and coolant balance (2026-10-09)
+
+Three more games, designed in their own changes: **Hull plating** (`hull-repair` 3: cut out, fit, weld, bolt), and
+the reactor's coolant system, **Coolant pipes** and **Coolant balance** (`reactor-cooling` 4 and 5). The reactor's
+game is now **Reactor: magnetic core** (`reactor-cooling` 1). All three play by mouse, keys and touch.
+
 ## 7. The Pi 5 budget
 
 A mini-game is a UI screen: a few hundred to a few thousand UI triangles in a handful of draws, the 3D pass behind it

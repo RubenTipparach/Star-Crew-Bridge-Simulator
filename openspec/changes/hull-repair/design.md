@@ -59,6 +59,10 @@ a fumble costs 5%):
    through: a hiss of air", 2 HP of burns), too fast leaves a cold bead (grey gaps) to go over again.
 4. **Bolt**: the frame bolts in star order (`KIT.starOrder`, the next one lit).
 
+**As built in the mockup** (`repairs/hull.js`, 2026-10-09): the kit gives a damaged job three steps, so cut, fit, and
+weld with bolt in the last; a disabled job has all four plus fetching the plate from the stack. The cutter's line
+reads too fast above 560 px/s; the plate's bolt holes meet within 0.06 rad.
+
 ## 4. Priority
 
 - **The damage board** (`bridge-stations` D1, D3) lists wall damage in its own dim row under each compartment

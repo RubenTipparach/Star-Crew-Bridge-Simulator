@@ -104,6 +104,8 @@
 <!-- One script a game (design 6). A missing one shows dimmed in the menu. -->
 <script src="repairs/gravity.js"></script>
 <script src="repairs/reactor.js"></script>
+<script src="repairs/pipes.js"></script>
+<script src="repairs/coolant.js"></script>
 <script src="repairs/impulse.js"></script>
 <script src="repairs/shields.js"></script>
 <script src="repairs/conduits.js"></script>
@@ -120,15 +122,17 @@
 <script src="repairs/shuttle.js"></script>
 <script src="repairs/pylons.js"></script>
 <script src="repairs/doors.js"></script>
+<script src="repairs/hull.js"></script>
 <script>
 (() => {
   const K = window.RepairKit;
   const MENU = [
-    ["Engineering", ["gravity", "reactor", "impulse", "shields", "conduits", "breakers"]],
+    ["Engineering", ["gravity", "reactor", "pipes", "coolant", "impulse", "shields", "conduits", "breakers"]],
     ["Life", ["scrubbers", "galley", "heads", "biobed", "medic"]],
     ["Weapons and sensors", ["turret", "tubes", "sensors"]],
     ["Hangar", ["fighter", "shuttle"]],
     ["Outside and doors", ["pylons", "doors"]],
+    ["Hull", ["hull"]],
   ];
   const $ = (id) => document.getElementById(id);
   const runner = K.start($("c"), {
