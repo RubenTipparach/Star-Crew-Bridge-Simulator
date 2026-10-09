@@ -26,6 +26,17 @@ RepairKit.register({
   place: "Hangar, the Petrel on its pad",
   group: "Hangar",
   hazard: "Fuel mist: the bay's fire risk rises",
+  // The how-to card (repair-minigames 6g), drawn by the kit: pictures and a few words, on demand.
+  guide: {
+    steps: [
+      { icon: "sweep", text: "Sniff along the lines" },
+      { icon: "valve", text: "Shut the valve tank-side" },
+      { icon: "drag", text: "Drag the patch on" },
+      { icon: "band", text: "Reopen, pump in the green" },
+    ],
+    mistake: "Shutting the wrong valve: fuel mist in the bay",
+    now: (q) => ({ find: 0, isolate: 1, drain: 1, patch: 2, open: 3, hold: 3 })[q.phase] ?? -1,
+  },
   down: "The Petrel cannot launch",
   create(api) {
     const { C, KIT } = api, D = KIT.draw;

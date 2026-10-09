@@ -18,6 +18,17 @@ RepairKit.register({
   place: "Turret access room",
   group: "Weapons and sensors",
   hazard: "The bank arcs: 10 HP, charge lost",
+  // The how-to card (repair-minigames 6g), drawn by the kit: pictures and a few words, on demand.
+  guide: {
+    steps: [
+      { icon: "slider", text: "Slide the two lenses" },
+      { icon: "aim", text: "Smallest spot on the cross" },
+      { icon: "hold", text: "Hold it there" },
+      { icon: "drag", text: "Coupling: push home steady" },
+    ],
+    mistake: "The coupling slammed home: the bank arcs, 10 HP",
+    now: (q) => (q.part ? -1 : q.kind === "coupling" ? 3 : 0),
+  },
   down: "The turret does not fire",
   create(api) {
     const { C, KIT } = api, D = KIT.draw;

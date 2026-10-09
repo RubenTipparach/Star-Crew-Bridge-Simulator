@@ -17,6 +17,16 @@ RepairKit.register({
   place: "Hangar, a Swift on its cradle",
   group: "Hangar",
   hazard: "Spark: 5 HP, a bent plug",
+  // The how-to card (repair-minigames 6g), drawn by the kit: pictures and a few words, on demand.
+  guide: {
+    steps: [
+      { icon: "drag", text: "Lift the panel off" },
+      { icon: "plug", text: "Each lead to its shape" },
+      { icon: "order", text: "Torque in the lit order" },
+    ],
+    mistake: "A plug in the wrong socket: a spark, 5 HP",
+    now: (q) => ({ panel: 0, plugs: 1, close: 2, torque: 2 })[q.phase] ?? -1,
+  },
   down: "The fighter cannot launch",
   create(api) {
     const { C, KIT } = api, D = KIT.draw;

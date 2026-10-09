@@ -30,6 +30,17 @@ RepairKit.register({
   place: "Crew quarters",
   group: "Life",
   hazard: "Overflow: the floor is wet",
+  // The how-to card (repair-minigames 6g), drawn by the kit: pictures and a few words, on demand.
+  guide: {
+    steps: [
+      { icon: "drag", text: "Drag the plunger down, up" },
+      { icon: "rhythm", text: "Wait for the solid ring" },
+      { icon: "tap", text: "Clog gone: pull the flush" },
+      { icon: "pipes", text: "Shower: join the run, open" },
+    ],
+    mistake: "Plunging too soon, or flushing a clog: an overflow",
+    now: (q) => (q.kind === "shower" ? 3 : q.kind !== "toilet" ? -1 : q.phase === "ready" || q.phase === "flush" ? 2 : 0),
+  },
   down: "Comfort and morale (design 4)",
   create(api) {
     const { C, KIT } = api, D = KIT.draw;
@@ -575,11 +586,11 @@ RepairKit.register({
     function network() {
       const first = at(0, s.r0), yMain = centre(0, s.r0)[1];
       if (!(open(first) & 8)) return { cells: new Map(), leaks: [[s.gx, yMain, 2]], whole: false, far: 0 };
-      const cells = new Map([[s.r0 * s.cols, 0]]), queue = [[0, s.r0]], leaks = [];
-      let reach = false, far = 0;
-      while (queue.length) {
-        const [c, r] = queue.shift(), m = open(at(c, r)), d0 = cells.get(r * s.cols + c);
-        far = Math.max(far, d0);
+      // The kit's fill (KIT.flood), shared with the coolant pipes: each tile numbered by its distance from the main.
+      const leaks = [];
+      let reach = false;
+      const { dist: cells, far } = KIT.flood([{ key: s.r0 * s.cols, c: 0, r: s.r0 }], ({ c, r }, d0, go) => {
+        const m = open(at(c, r));
         for (const d of DIRS) {
           if (!(m & d.b)) continue;
           if (c === 0 && r === s.r0 && d.b === 8) continue;
@@ -587,10 +598,9 @@ RepairKit.register({
           const n = at(c + d.dc, r + d.dr);
           const [x, y] = centre(c, r);
           if (!n || !(open(n) & OPP[d.b])) { leaks.push([x + (d.dc * T) / 2, y + (d.dr * T) / 2, d.b]); continue; }
-          const key = (r + d.dr) * s.cols + c + d.dc;
-          if (!cells.has(key)) { cells.set(key, d0 + 1); queue.push([c + d.dc, r + d.dr]); }
+          go({ key: (r + d.dr) * s.cols + c + d.dc, c: c + d.dc, r: r + d.dr });
         }
-      }
+      });
       return { cells, leaks, whole: reach && !leaks.length, far };
     }
 

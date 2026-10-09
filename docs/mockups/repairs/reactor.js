@@ -19,6 +19,16 @@ RepairKit.register({
   place: "Engineering, deck C/B",
   group: "Engineering",
   hazard: "Plasma touched the wall: heat spike",
+  // The how-to card (repair-minigames 6g), drawn by the kit: pictures and a few words, on demand.
+  guide: {
+    steps: [
+      { icon: "slider", text: "Sliders pull the field" },
+      { icon: "aim", text: "Keep the plasma centred" },
+      { icon: "band", text: "Then hold the ring round" },
+    ],
+    mistake: "Plasma or ring touches the wall: a heat spike",
+    now: (q) => (q.part ? -1 : q.stage === 2 ? 2 : 1),
+  },
   down: "The ship runs on batteries (power-grid)",
   create(api) {
     const { C, KIT } = api, D = KIT.draw;

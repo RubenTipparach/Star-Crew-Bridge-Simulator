@@ -14,6 +14,17 @@ RepairKit.register({
   place: "Medbay",
   group: "Life",
   hazard: "The bed alarms",
+  // The how-to card (repair-minigames 6g), drawn by the kit: pictures and a few words, on demand.
+  guide: {
+    steps: [
+      { icon: "screw", text: "Unscrew the cover", cover: true },
+      { icon: "turn", text: "Turn GAIN and PHASE" },
+      { icon: "match", text: "Live trace on the reference" },
+      { icon: "hold", text: "Hold it green 2 s" },
+    ],
+    mistake: "A knob in its red zone: the bed alarms",
+    now: (q) => (q.phase === "tune" ? 2 : -1),
+  },
   down: "Beds heal at the unpowered rate",
   panel: { x: 640, y: 489, w: 458, h: 210, screws: 4 },   // the cover, screwed on (kit: access panels)
   create(api) {

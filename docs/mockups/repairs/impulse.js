@@ -14,6 +14,15 @@ RepairKit.register({
   place: "Drive, the two impulse units",
   group: "Engineering",
   hazard: "Misfire: soot and heat",
+  // The how-to card (repair-minigames 6g), drawn by the kit: pictures and a few words, on demand.
+  guide: {
+    steps: [
+      { icon: "rhythm", text: "Pulses run to the line" },
+      { icon: "tap", text: "Tap as one crosses" },
+      { icon: "order", text: "Time all eight injectors" },
+    ],
+    mistake: "Tapping off the line: a misfire, soot and heat",
+  },
   down: "Half thrust for each unit down",
   create(api) {
     const { C, KIT } = api, D = KIT.draw;

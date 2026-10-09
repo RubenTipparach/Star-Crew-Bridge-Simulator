@@ -16,4 +16,4 @@
 
 - [x] 3.1 The coolant parts' damage in `shipsystems.js` (segments, tanks, exchanger, leaks), read-only views for the screen.
 - [x] 3.2 `docs/mockups/reactor-system.html` (design 6a): the whole system, diagnosis by looking, click a part to its repair game, the repair restoring it.
-- [ ] 3.3 The coolant pipes game's rebuild with coolant flowing through the tiles (design 4).
+- [x] 3.3 The coolant pipes game's rebuild with coolant flowing through the tiles (design 4).

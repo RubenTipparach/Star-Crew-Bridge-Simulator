@@ -29,6 +29,17 @@ RepairKit.register({
   place: "Engineering, deck C",
   group: "Engineering",
   hazard: "Field surge: everyone near floats for 2 s",
+  // The how-to card (repair-minigames 6g), drawn by the kit: pictures and a few words, on demand.
+  guide: {
+    steps: [
+      { icon: "match", text: "Lay the field on the ghost" },
+      { icon: "drag", text: "Drag the field to turn it" },
+      { icon: "slider", text: "Shift and Stretch slide it" },
+      { icon: "hold", text: "Hold it green; the ring fills" },
+    ],
+    mistake: "Far off the ghost: a field surge, everyone floats 2 s",
+    now: (q) => (q.part ? -1 : q.hold > 0 ? 3 : 0),
+  },
   down: "Everyone aboard floats, slowly (design 4)",
   create(api) {
     const { C, KIT } = api, D = KIT.draw;

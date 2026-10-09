@@ -26,6 +26,17 @@ RepairKit.register({
   group: "Life",
   doneWord: "Treated",
   hazard: "The patient flinches: 2 HP",
+  // The how-to card (repair-minigames 6g), drawn by the kit: pictures and a few words, on demand.
+  guide: {
+    steps: [
+      { icon: "tap", text: "Tap a wound on the body" },
+      { icon: "tool", text: "Pick the tool it needs" },
+      { icon: "sweep", text: "Sweep sealer or gel over it" },
+      { icon: "band", text: "Clamp or puff on green" },
+    ],
+    mistake: "Clamp in a spurt, or puff on the out-breath: a flinch, 2 HP",
+    now: (q) => { const w = q.wounds && q.wounds[q.cur]; if (!w || w.done) return 0; const need = w.kind === "bleed" ? (w.clamped ? 0 : 3) : { cut: 0, burn: 1, fracture: 2, smoke: 4 }[w.kind]; return q.tool !== need ? 1 : need >= 3 ? 3 : 2; },
+  },
   down: "Beds and field healing still work without a medic (medical-officer)",
   job: { unit: "HP", start: 30, target: 75, rateBy: { officer: 4.0, rating: 4.0 }, steps: 4, fumble: 2 },
   create(api) {

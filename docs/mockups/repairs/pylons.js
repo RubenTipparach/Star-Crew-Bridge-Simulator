@@ -18,6 +18,17 @@ RepairKit.register({
   place: "Outside, the dorsal pylon (EVA only)",
   group: "Outside and doors",
   hazard: "The tether snaps you back",
+  // The how-to card (repair-minigames 6g), drawn by the kit: pictures and a few words, on demand.
+  guide: {
+    steps: [
+      { icon: "tap", text: "Tap a handhold in reach" },
+      { icon: "rhythm", text: "Clip the hook as it passes" },
+      { icon: "order", text: "Unbolt in the lit order" },
+      { icon: "drag", text: "Push the new segment in" },
+    ],
+    mistake: "A clip missed: the tether snaps you back",
+    now: (q) => (q.phase === "climb" ? (q.mode === "open" ? 1 : 0) : q.phase === "bolts" ? 2 : q.phase === "release" || q.phase === "swap" ? 3 : -1),
+  },
   down: "No warp jump; not repairable in combat (design 5)",
   create(api) {
     const { C, KIT } = api, D = KIT.draw;

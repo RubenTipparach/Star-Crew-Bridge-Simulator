@@ -20,4 +20,4 @@
 
 ## 4. Guides (owner, 2026-10-09)
 
-- [ ] 4.1 The kit's ? button and card (design 6g); a guide in every game's registration; shown once on a game's first open.
+- [x] 4.1 The kit's ? button and card (design 6g); a guide in every game's registration; shown once on a game's first open.

@@ -16,6 +16,17 @@ RepairKit.register({
   place: "Main switchboard",
   group: "Engineering",
   hazard: "Arc flash: 10 HP",
+  // The how-to card (repair-minigames 6g), drawn by the kit: pictures and a few words, on demand.
+  guide: {
+    steps: [
+      { icon: "screw", text: "Unscrew the cover", cover: true },
+      { icon: "drag", text: "Rack the breaker out" },
+      { icon: "swap", text: "Fit the fuse the bus rates" },
+      { icon: "band", text: "Rack in, close on green" },
+    ],
+    mistake: "Closing on red, or a wrong fuse: an arc flash, 10 HP",
+    now: (q) => ({ out: 1, fuse: 2, in: 3, close: 3 })[q.phase] ?? -1,
+  },
   down: "power-grid",
   panel: { x: 120, y: 92, w: 660, h: 609, screws: 6 },   // the cover, screwed on (kit: access panels)
   create(api) {

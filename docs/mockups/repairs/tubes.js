@@ -19,6 +19,16 @@ RepairKit.register({
   place: "Magazine",
   group: "Weapons and sensors",
   hazard: "Interlock tripped: back to the latch",
+  // The how-to card (repair-minigames 6g), drawn by the kit: pictures and a few words, on demand.
+  guide: {
+    steps: [
+      { icon: "turn", text: "Turn the ring slowly" },
+      { icon: "hold", text: "Rest where the pawl drops" },
+      { icon: "order", text: "RAIL, LATCH, INTERLOCK" },
+    ],
+    mistake: "A switch out of order: the interlock trips",
+    now: (q) => (q.part ? -1 : q.phase === "jam" ? 0 : q.phase === "load" ? 2 : -1),
+  },
   down: "The tube cannot load",
   create(api) {
     const { C, KIT } = api, D = KIT.draw;

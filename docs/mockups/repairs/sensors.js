@@ -17,6 +17,17 @@ RepairKit.register({
   place: "Sensor bay and the dish",
   group: "Weapons and sensors",
   hazard: "The dish jams",
+  // The how-to card (repair-minigames 6g), drawn by the kit: pictures and a few words, on demand.
+  guide: {
+    steps: [
+      { icon: "drag", text: "Drag the dish round the sky" },
+      { icon: "band", text: "Rest on the strongest return" },
+      { icon: "slider", text: "LO, MID, HI clean the trace" },
+      { icon: "hold", text: "Hold the blip clean" },
+    ],
+    mistake: "The dish held against a stop: it jams",
+    now: (q) => (q.part ? -1 : q.phase === "sweep" ? (q.lockT > 0 ? 1 : 0) : q.phase === "filter" ? 2 : -1),
+  },
   down: "Science and tactical lose range",
   create(api) {
     const { C, KIT } = api, D = KIT.draw;

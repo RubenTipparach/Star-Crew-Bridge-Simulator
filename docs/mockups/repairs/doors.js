@@ -16,6 +16,15 @@ RepairKit.register({
   place: "Any door, jammed",
   group: "Outside and doors",
   hazard: "The leaf drops back",
+  // The how-to card (repair-minigames 6g), drawn by the kit: pictures and a few words, on demand.
+  guide: {
+    steps: [
+      { icon: "turn", text: "Crank round, clockwise" },
+      { icon: "band", text: "Ease off when it shudders" },
+      { icon: "rhythm", text: "Wind on between waves" },
+    ],
+    mistake: "The gauge past its limit: the crank slips, the leaf drops",
+  },
   down: "The door is stuck",
   create(api) {
     const { C, KIT } = api, D = KIT.draw;

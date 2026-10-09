@@ -15,6 +15,16 @@ RepairKit.register({
   place: "Deck C, under the drive",
   group: "Engineering",
   hazard: "Emitter crackle: the face drains",
+  // The how-to card (repair-minigames 6g), drawn by the kit: pictures and a few words, on demand.
+  guide: {
+    steps: [
+      { icon: "turn", text: "Phase dial moves the wave" },
+      { icon: "turn", text: "Gain dial sizes it" },
+      { icon: "match", text: "Lay it on the master" },
+      { icon: "hold", text: "Hold while the lock fills" },
+    ],
+    mistake: "Gain in the hatched red: a crackle, the face drains",
+  },
   down: "That shield face is down",
   create(api) {
     const { C, KIT } = api, D = KIT.draw;

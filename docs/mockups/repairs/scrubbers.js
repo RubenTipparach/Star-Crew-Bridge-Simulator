@@ -15,6 +15,17 @@ RepairKit.register({
   place: "Life support room",
   group: "Life",
   hazard: "Hiss: the room's CO2 rises",
+  // The how-to card (repair-minigames 6g), drawn by the kit: pictures and a few words, on demand.
+  guide: {
+    steps: [
+      { icon: "screw", text: "Unscrew the cover", cover: true },
+      { icon: "drag", text: "Spent cartridge to the bin" },
+      { icon: "drag", text: "Fresh one into the slot" },
+      { icon: "turn", text: "Turn valves: needles in green" },
+    ],
+    mistake: "A cartridge dropped short, or a needle in red: CO2 rises",
+    now: (q) => ({ out: 1, in: 2, trim: 3 })[q.phase] ?? -1,
+  },
   down: "The air goes bad (life-support)",
   panel: { x: 90, y: 100, w: 420, h: 589, screws: 4 },   // the cover, screwed on (kit: access panels)
   create(api) {

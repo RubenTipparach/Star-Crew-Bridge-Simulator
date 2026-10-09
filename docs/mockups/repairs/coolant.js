@@ -35,6 +35,16 @@ RepairKit.register({
   place: "Engineering bench",
   group: "Engineering",
   hazard: "Loop over-temperature warning",
+  // The how-to card (repair-minigames 6g), drawn by the kit: pictures and a few words, on demand.
+  guide: {
+    steps: [
+      { icon: "band", text: "Both legs in their bands" },
+      { icon: "slider", text: "Pump lever: more flow" },
+      { icon: "slider", text: "Chiller, radiators: more cooling" },
+      { icon: "valve", text: "Makeup keeps the loop full" },
+    ],
+    mistake: "Hot leg past 370 K: an over-temperature warning",
+  },
   down: "The reactor runs hot and scrams; the ship falls back on its batteries (power-grid 3)",
   create(api) {
     const { C, KIT } = api, D = KIT.draw;

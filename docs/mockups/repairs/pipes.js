@@ -14,8 +14,13 @@
  * Rebuild: the segment's run as a tile grid with two pairs of ends: hot (red, chevrons) left to right, cold (blue,
  * dots) top to bottom. Tap a tile to turn it a quarter. Join each pair with no open end and without the legs meeting;
  * crossover tiles let one leg pass over the other. Cracked tiles drip: drag a new piece from the tray onto each before
- * it carries anything. Then FILL: a cracked tile carrying coolant, an open joint or the legs meeting is a fumble
- * (a scalding spray). The second rebuild is larger, with more crossings.
+ * it carries anything. While building, the tiles each leg would reach show its tint and pattern faintly. Then FILL
+ * (reactor-cooling 4, "Coolant flows through it", as in the shower's run, through the kit's KIT.flood): coolant enters
+ * at both inlets at once and fills the connected tiles tile by tile, hot red with chevrons and cold blue with dots. A
+ * leg reaching its outlet fills the outlet pipe; one stopping at an open end jets there; a cracked tile carrying sprays;
+ * the legs meeting throw up steam. The first of those the coolant reaches is the fumble (a scalding spray, or hot into
+ * cold); the coolant drains back and the build goes on. Both legs at their outlets, unmixed, nothing cracked carrying:
+ * the round is played. The second rebuild is larger, with more crossings.
  *
  * Refill and bleed: the new segment between its two valves, over a high point with a bleed valve on top. Open the
  * downstream valve first, then the upstream one, then hold the bleed valve until the gauge's needle settles (air out,
@@ -34,6 +39,17 @@ RepairKit.register({
   place: "Engineering, the reactor's pipe run",
   group: "Engineering",
   hazard: "Scald: a hot coolant spray",
+  // The how-to card (repair-minigames 6g), drawn by the kit: pictures and a few words, on demand.
+  guide: {
+    steps: [
+      { icon: "valve", text: "Shut the valves either side" },
+      { icon: "pipes", text: "Turn tiles, swap cracked ones" },
+      { icon: "flow", text: "FILL: both legs reach the end" },
+      { icon: "order", text: "Open out, in, then bleed" },
+    ],
+    mistake: "Main valve shut: core starves. A spray or legs meeting: scald",
+    now: (q) => ({ isolate: 0, bleed: 3 })[q.kind] ?? (q.kind === "rebuild" ? (q.phase === "play" ? 1 : 2) : -1),
+  },
   down: "The loop leaks and loses flow; the reactor runs hot (reactor-cooling 2)",
   create(api) {
     const { C, KIT } = api, D = KIT.draw;
@@ -48,7 +64,9 @@ RepairKit.register({
     const REACH = KIT.TOUCH_R + 8;          // px: a valve's tap reach
     const BLANKET_JUMP_K = 20;              // K the blanket heats when the core is starved (design 4)
     const BLEED_SHARE = 0.45, BLEED_MIN_S = 3, BLEED_MAX_S = 7;   // the bleed's hold, a share of the step's time
-    const FLOW_TILES_S = 6;                 // coolant runs this many tiles a second once filled
+    const FLOW_TILES_S = 4;                 // coolant advances this many tiles a second once FILL is pressed
+    const FAULT_SHOW_S = 1.6;               // s the coolant keeps running after it meets a fault, before it drains
+    const DRAIN_S = 0.8;                    // s the spilt coolant takes to drain back out of the run
     const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
     const lerp = (a, b, u) => a + (b - a) * u;
     const shares = {};
@@ -285,7 +303,7 @@ RepairKit.register({
       if (!runs) runs = layRuns(r, cols, rows, 1);
       s = {
         kind: "rebuild", round, cols, rows, T, tiles: [], cur: { c: 0, r: 0 }, keys: false, sel: 0, held: null, refuse: null,
-        phase: "play", flowT: 0, sprayT: 0, leaks: [], ends: runs.ends, net: null,
+        phase: "play", front: 0, fumbled: false, afterFault: 0, drainT: 0, ends: runs.ends, net: null,
       };
       s.gx = 540 - (cols * T) / 2; s.gy = 410 - (rows * T) / 2;
       // Decoys first; the runs laid over them; crossings where they meet; then every tile turned at random.
@@ -314,53 +332,51 @@ RepairKit.register({
       };
     }
     /**
-     * Where each leg's coolant reaches through the tiles as they lie: the groups it fills (with their distance), its open
-     * ends, whether it reaches its own end, whether it meets the other leg, and whether it runs through a cracked tile.
+     * The coolant's reach through the tiles as they lie, both legs filling at once from their inlets through the kit's
+     * fill (KIT.flood, the shower's): which leg wets each tile's group and at what distance (in tiles), where each leg
+     * reaches its outlet, and the faults the coolant meets, each at the distance it gets there: an open end (it sprays
+     * there and goes no further), a cracked tile carrying, the two legs meeting. A tile at distance d wets from its inlet
+     * port at d to its far ports at d + 1.
      */
     function network() {
-      const ends = legEnds(), owner = new Map(), out = {};
+      const ends = legEnds(), legOf = new Map(), from = new Map(), faults = [], reach = { hot: -1, cold: -1 }, starts = [];
+      const groupAt = (c, rr, pin) => groups(tileAt(c, rr)).findIndex((gq) => gq.includes(pin));
+      const edge = (c, rr, p) => { const [x, y] = cellXY(c, rr); return [x + (DC[p] * s.T) / 2, y + (DR[p] * s.T) / 2]; };
       for (const leg of ["hot", "cold"]) {
-        const E = ends[leg], other = ends[leg === "hot" ? "cold" : "hot"];
-        const res = { cells: new Map(), from: new Map(), leaks: [], reach: false, mixed: false, cracked: false, far: 0 };
-        const q = [[E.start[0], E.start[1], E.pin, 0]];
-        while (q.length) {
-          const [c, rr, pin, dist] = q.shift(), tile = tileAt(c, rr), [x, y] = cellXY(c, rr);
-          const gp = groups(tile).findIndex((gq) => gq.includes(pin));
-          if (gp < 0) { res.leaks.push([x + (DC[pin] * s.T) / 2, y + (DR[pin] * s.T) / 2]); continue; }
-          const key = `${c},${rr},${gp}`;
-          if (res.cells.has(key)) continue;
-          if (owner.has(key) && owner.get(key) !== leg) res.mixed = true;
-          owner.set(key, leg); res.cells.set(key, dist); res.from.set(key, pin); res.far = Math.max(res.far, dist);
-          if (tile.cracked) res.cracked = true;
-          for (const p of groups(tile)[gp]) {
-            if (p === pin) continue;
-            if (c === E.goal[0] && rr === E.goal[1] && p === E.pout) { res.reach = true; continue; }
-            if (c === other.goal[0] && rr === other.goal[1] && p === other.pout) { res.mixed = true; continue; }
-            if (c === other.start[0] && rr === other.start[1] && p === other.pin) { res.mixed = true; continue; }
-            const nc = c + DC[p], nr = rr + DR[p];
-            if (!tileAt(nc, nr)) { res.leaks.push([x + (DC[p] * s.T) / 2, y + (DR[p] * s.T) / 2]); continue; }
-            q.push([nc, nr, opp(p), dist + 1]);
-          }
-        }
-        out[leg] = res;
+        const E = ends[leg], gp = groupAt(E.start[0], E.start[1], E.pin);
+        if (gp < 0) { faults.push({ kind: "leak", leg, at: edge(E.start[0], E.start[1], E.pin), dir: opp(E.pin), d: 0 }); continue; }
+        const key = `${E.start[0]},${E.start[1]},${gp}`;
+        starts.push({ key, c: E.start[0], r: E.start[1], gp, pin: E.pin, leg });
+        legOf.set(key, leg); from.set(key, E.pin);
       }
-      // A leg that runs into the other's groups meets it: mark both.
-      if (out.hot.mixed || out.cold.mixed || [...out.hot.cells.keys()].some((k) => out.cold.cells.has(k))) out.hot.mixed = out.cold.mixed = true;
-      out.ok = ["hot", "cold"].every((leg) => out[leg].reach && !out[leg].leaks.length && !out[leg].mixed && !out[leg].cracked);
-      return out;
+      const { dist, far } = KIT.flood(starts, (n, d, go) => {
+        const tile = tileAt(n.c, n.r), E = ends[n.leg], other = ends[n.leg === "hot" ? "cold" : "hot"];
+        if (tile.cracked) faults.push({ kind: "crack", leg: n.leg, at: cellXY(n.c, n.r), d: d + 0.5 });
+        for (const p of groups(tile)[n.gp]) {
+          if (p === n.pin) continue;
+          const here = edge(n.c, n.r, p);
+          if (n.c === E.goal[0] && n.r === E.goal[1] && p === E.pout) { if (reach[n.leg] < 0) reach[n.leg] = d + 1; continue; }
+          if ((n.c === other.goal[0] && n.r === other.goal[1] && p === other.pout) || (n.c === other.start[0] && n.r === other.start[1] && p === other.pin)) {
+            faults.push({ kind: "meet", leg: n.leg, at: here, d: d + 1 }); continue;
+          }
+          const nc = n.c + DC[p], nr = n.r + DR[p];
+          const ngp = tileAt(nc, nr) ? groupAt(nc, nr, opp(p)) : -1;
+          if (ngp < 0) { faults.push({ kind: "leak", leg: n.leg, at: here, dir: p, d: d + 1 }); continue; }
+          const key = `${nc},${nr},${ngp}`;
+          if (go({ key, c: nc, r: nr, gp: ngp, pin: opp(p), leg: n.leg })) { legOf.set(key, n.leg); from.set(key, opp(p)); }
+          else if (legOf.get(key) !== n.leg) faults.push({ kind: "meet", leg: n.leg, at: here, d: d + 1 });
+        }
+      });
+      faults.sort((a, b) => a.d - b.d);
+      const end = Math.max(far + 1, reach.hot, reach.cold, ...faults.map((f) => f.d));
+      const ok = reach.hot >= 0 && reach.cold >= 0 && !faults.length;
+      return { dist, legOf, from, faults, reach, far, end, ok };
     }
+    /** FILL: the coolant runs through what is built (design 4); what it meets is judged as it gets there. */
     function fill() {
-      const net = network();
-      s.net = net;
-      if (net.ok) { s.phase = "flow"; s.flowT = 0; return; }
-      s.sprayT = 1.4;
-      const legs = ["hot", "cold"];
-      if (legs.some((l) => net[l].cracked)) {
-        s.leaks = []; s.tiles.forEach((tile, i) => { if (tile.cracked) s.leaks.push(cellXY(i % s.cols, Math.floor(i / s.cols))); });
-        api.fumble(CRACKED);
-      } else if (net.hot.mixed) { s.leaks = []; api.fumble(MIXED); }
-      else { s.leaks = [...net.hot.leaks, ...net.cold.leaks].slice(0, 6); api.fumble(OPEN_END); }
+      s.net = network(); s.phase = "flow"; s.front = 0; s.fumbled = false; s.afterFault = 0; s.drainT = 0;
     }
+    const FAULT_SAY = { crack: CRACKED, meet: MIXED, leak: OPEN_END };
     function fitPart(c, rr, type) {
       const tile = tileAt(c, rr);
       if (!tile || !tile.cracked) { s.refuse = { c, r: rr, t: 0.6 }; return false; }
@@ -368,12 +384,24 @@ RepairKit.register({
       return true;
     }
     function rebuildUpdate(dt, input) {
-      s.sprayT = Math.max(0, s.sprayT - dt);
       if (s.refuse && (s.refuse.t -= dt) <= 0) s.refuse = null;
       for (const tile of s.tiles) { tile.ang += ((tile.k * Math.PI) / 2 - tile.ang) * Math.min(1, dt * 16); if (tile.fresh) tile.fresh = Math.max(0, tile.fresh - dt); }
       if (s.phase === "flow") {
-        s.flowT += dt * FLOW_TILES_S;
-        if (s.flowT > Math.max(s.net.hot.far, s.net.cold.far) + 2 && s.phase === "flow") { s.phase = "running"; api.stepDone(); }
+        // The front advances tile by tile; the first fault it reaches is the fumble, and it keeps running a moment so
+        // every spray it reaches shows, then drains back to the build.
+        s.front += dt * FLOW_TILES_S;
+        const first = s.net.faults[0];
+        if (first && !s.fumbled && s.front >= first.d) { s.fumbled = true; api.fumble(FAULT_SAY[first.kind]); return; }
+        if (s.fumbled) {
+          s.afterFault += dt;
+          if (s.afterFault >= FAULT_SHOW_S || s.front >= s.net.end + 0.5) { s.phase = "drain"; s.drainT = 0; }
+        } else if (s.front >= s.net.end + 0.6) { s.phase = "running"; api.stepDone(); }
+        return;
+      }
+      if (s.phase === "running") { s.front += dt * FLOW_TILES_S; return; }
+      if (s.phase === "drain") {
+        s.drainT += dt;
+        if (s.drainT >= DRAIN_S) { s.phase = "play"; s.net = null; s.front = 0; }
         return;
       }
       if (s.phase !== "play") return;
@@ -388,12 +416,12 @@ RepairKit.register({
         const tile = tileAt(s.cur.c, s.cur.r);
         if (tile.cracked) fitPart(s.cur.c, s.cur.r, TRAY[s.sel]); else tile.k++;
       }
-      if (input.hit.has("Enter") && s.sprayT === 0) { fill(); return; }
+      if (input.hit.has("Enter")) { fill(); return; }
       // Pointer: a press on the tray picks a piece up; a drag carries it; a tap on a tile turns it; FILL fills.
       if (input.pressed) {
         const i = KIT.nearest(TRAY.map((_, k) => slotXY(k)), input.x, input.y, 62);
         if (i >= 0) { s.held = { type: TRAY[i], x: input.x, y: input.y }; s.sel = i; s.keys = false; return; }
-        if (input.x >= FILL_BTN.x && input.x <= FILL_BTN.x + FILL_BTN.w && input.y >= FILL_BTN.y && input.y <= FILL_BTN.y + FILL_BTN.h) { if (s.sprayT === 0) fill(); return; }
+        if (input.x >= FILL_BTN.x && input.x <= FILL_BTN.x + FILL_BTN.w && input.y >= FILL_BTN.y && input.y <= FILL_BTN.y + FILL_BTN.h) { fill(); return; }
         const c = Math.floor((input.x - s.gx) / s.T), rr = Math.floor((input.y - s.gy) / s.T), tile = tileAt(c, rr);
         if (tile) { tile.k++; s.cur = { c, r: rr }; s.keys = false; }
       }
@@ -404,41 +432,47 @@ RepairKit.register({
         s.held = null;
       }
     }
-    /** One tile's pipes at the origin, unrotated groups turned by `ang`: each group a leg's colour where it is wet. */
-    function tilePipes(g, type, ang, T, legOf, wet, dim, fromOf) {
+    /**
+     * A tile group's branches as the coolant runs them, from the port it comes in by (`f`, unturned) to the far port(s):
+     * each a function of u, 0 at the inlet port and 1 at the far port, to a point in px at the tile's centre.
+     */
+    function branches(gp, f, T) {
+      const P = [(DC[f] * T) / 2, (DR[f] * T) / 2], at2 = (p) => [(DC[p] * T) / 2, (DR[p] * T) / 2];
+      const others = gp.filter((p) => p !== f);
+      if (gp.length === 3) return others.map((q) => (u) => (u < 0.5 ? [lerp(P[0], 0, u * 2), lerp(P[1], 0, u * 2)] : [lerp(0, at2(q)[0], u * 2 - 1), lerp(0, at2(q)[1], u * 2 - 1)]));
+      const Q = at2(others[0]);
+      if (opp(f) === others[0]) return [(u) => [lerp(P[0], Q[0], u), lerp(P[1], Q[1], u)]];
+      return [(u) => [(1 - u) * (1 - u) * P[0] + u * u * Q[0], (1 - u) * (1 - u) * P[1] + u * u * Q[1]]];   // the elbow: a curve round the centre
+    }
+    /**
+     * One tile's pipes at the origin, unrotated groups turned by `ang`. A group a leg reaches is tinted faintly with its
+     * pattern while building (the preview); once FILL runs, the coolant fills it from its inlet port, `wetOf(gi)` (0-1)
+     * of the way, in the leg's colour with its chevrons (hot) or dots (cold) moving with the flow.
+     */
+    function tilePipes(g, type, ang, T, legOf, wetOf, fromOf, t = 0, fade = 1) {
       g.save(); g.rotate(ang);
-      const gs = TYPES[type];
-      gs.forEach((gp, gi) => {
+      TYPES[type].forEach((gp, gi) => {
+        const leg = legOf ? legOf(gi) : null, w = leg && wetOf ? wetOf(gi) : 0;
+        const col = leg ? (leg === "hot" ? "rgba(255,106,77,0.3)" : "rgba(79,168,247,0.3)") : "#4a586d";
         // A crossover's second group (east-west) bridges over the first: drawn last, with a gap cut under it.
-        const leg = legOf ? legOf(gi) : null, w = wet ? wet(gi) : false;
-        const col = w ? (leg === "hot" ? HOT : COLD) : leg ? (leg === "hot" ? "rgba(255,106,77,0.5)" : "rgba(79,168,247,0.5)") : dim ? "#2b3546" : "#4a586d";
         if (type === "x" && gi === 1) { g.strokeStyle = "#0d131c"; g.lineWidth = 34; g.beginPath(); g.moveTo(-T / 2 + 18, 0); g.lineTo(T / 2 - 18, 0); g.stroke(); }
-        for (const [wd, c2] of [[28, "#232c3b"], [20, col]]) {
-          g.strokeStyle = c2; g.lineWidth = wd; g.lineCap = "round";
-          if (gp.length === 3) {
-            for (const p of gp) { g.beginPath(); g.moveTo(0, 0); g.lineTo((DC[p] * T) / 2, (DR[p] * T) / 2); g.stroke(); }
-          } else {
-            const [p, q] = gp;
-            g.beginPath(); g.moveTo((DC[p] * T) / 2, (DR[p] * T) / 2);
-            if (opp(p) === q) g.lineTo((DC[q] * T) / 2, (DR[q] * T) / 2);
-            else g.quadraticCurveTo(0, 0, (DC[q] * T) / 2, (DR[q] * T) / 2);
-            g.stroke();
-          }
-          g.lineCap = "butt";
+        const from = fromOf ? fromOf(gi) : null, br = branches(gp, from === null || !gp.includes(from) ? gp[0] : from, T);
+        const path = (fn, u1) => { g.beginPath(); for (let k = 0; k <= 16; k++) { const [x, y] = fn((u1 * k) / 16); if (k) g.lineTo(x, y); else g.moveTo(x, y); } g.stroke(); };
+        for (const [wd, c2] of [[28, "#232c3b"], [20, col]]) { g.strokeStyle = c2; g.lineWidth = wd; g.lineCap = "round"; for (const fn of br) path(fn, 1); }
+        if (w > 0) {
+          g.globalAlpha = fade; g.strokeStyle = leg === "hot" ? HOT : COLD; g.lineWidth = 20;
+          for (const fn of br) path(fn, Math.min(1, w));
+          g.globalAlpha = 1;
         }
-        // The leg's pattern on every group it reaches, wet or not: chevrons (hot) or dots (cold), never colour alone.
+        g.lineCap = "butt";
+        // The leg's pattern, never colour alone: bright and running where the coolant is, faint where it will go.
         if (leg) {
-          // Pointed the way the coolant runs: from the port it came in by (unturned, as the tile is drawn turned).
-          let [p, q] = gp;
-          const from = fromOf ? fromOf(gi) : null;
-          if (from !== null && from === q) [p, q] = [q, p];
-          const pts = opp(p) === q || gp.length === 3 ? [[(DC[p] * T) / 2, (DR[p] * T) / 2], [(DC[q] * T) / 2, (DR[q] * T) / 2]]
-            : [[(DC[p] * T) / 2, (DR[p] * T) / 2], [(DC[p] * T) / 6 + (DC[q] * T) / 6, (DR[p] * T) / 6 + (DR[q] * T) / 6], [(DC[q] * T) / 2, (DR[q] * T) / 2]];
-          for (let u = 0.2; u < 1; u += 0.3) {
-            const seg = pts.length === 2 ? 0 : u < 0.5 ? 0 : 1, uu = pts.length === 2 ? u : (u < 0.5 ? u * 2 : (u - 0.5) * 2);
-            const [x0, y0] = pts[seg], [x1, y1] = pts[seg + 1], x = lerp(x0, x1, uu), y = lerp(y0, y1, uu), a = Math.atan2(y1 - y0, x1 - x0);
-            g.save(); g.translate(x, y); g.rotate(a);
-            const ink = w ? (leg === "hot" ? "#fff3e0" : "#e8f6ff") : leg === "hot" ? "rgba(255,220,200,0.75)" : "rgba(220,240,255,0.75)";
+          const us = gp.length === 3 ? [0.25, 0.75] : [1 / 6, 0.5, 5 / 6], step = 1 / us.length;
+          for (const fn of br) for (const u0 of us) {
+            const u = w >= 1 ? (u0 + t * 0.9 * step * FLOW_TILES_S / 2) % 1 : u0, wet = u <= w;
+            const [x, y] = fn(u), [xa, ya] = fn(Math.max(0, u - 0.02)), [xb, yb] = fn(Math.min(1, u + 0.02));
+            g.save(); g.translate(x, y); g.rotate(Math.atan2(yb - ya, xb - xa)); g.globalAlpha = wet ? fade : 1;
+            const ink = wet ? (leg === "hot" ? "#fff3e0" : "#e8f6ff") : leg === "hot" ? "rgba(255,210,190,0.45)" : "rgba(210,235,255,0.45)";
             if (leg === "hot") { g.beginPath(); g.moveTo(-4, -6); g.lineTo(3, 0); g.lineTo(-4, 6); g.strokeStyle = ink; g.lineWidth = 2.5; g.stroke(); }
             else D.disc(g, 0, 0, 3, ink);
             g.restore();
@@ -448,32 +482,55 @@ RepairKit.register({
       D.disc(g, 0, 0, type === "x" ? 0 : 9, "#5a6a82");
       g.restore();
     }
+    /** Coolant jetting out of an open joint, the way it was running (`dir`, a port): a spray, and steam off the hot leg. */
+    function jet(g, x, y, dir, t, leg, k = 1) {
+      const dx = DC[dir], dy = DR[dir], col = leg === "hot" ? "255,150,110" : "130,195,250";
+      for (let j = 0; j < 36; j++) {
+        const ph = (t * 2.2 + j / 36) % 1, side = ((j * 7) % 11) / 10 - 0.5;
+        const px = x + dx * ph * 120 + (dx ? 0 : side * ph * 70), py = y + dy * ph * 120 + (dy ? 0 : side * ph * 70) + ph * ph * 50;
+        D.disc(g, px, py, 9 - 6 * ph, `rgba(${col},${(0.95 * (1 - ph) * k).toFixed(3)})`);
+      }
+      D.disc(g, x, y, 13, `rgba(${col},${(0.9 * k).toFixed(3)})`);
+      if (leg === "hot") for (let j = 0; j < 4; j++) { const ph = (t * 0.7 + j / 4) % 1; D.disc(g, x + dx * 40 + Math.sin(t * 2 + j) * 10, y + dy * 40 - ph * 70, 10 + ph * 18, `rgba(230,236,244,${(0.22 * (1 - ph) * k).toFixed(3)})`); }
+    }
+    /** The two legs meeting: hot into cold, a burst of steam over a ring half red, half blue, and a hatched core. */
+    function meetGlyph(g, x, y, t, k = 1) {
+      g.save(); g.globalAlpha = k;
+      for (let j = 0; j < 7; j++) { const ph = (t * 0.8 + j / 7) % 1; D.disc(g, x + Math.sin(j * 2.1 + t) * 22 * ph, y - ph * 80, 10 + ph * 24, `rgba(235,240,248,${(0.5 * (1 - ph)).toFixed(3)})`); }
+      const r = 24 + 3 * Math.sin(t * 8);
+      g.lineWidth = 6;
+      g.beginPath(); g.arc(x, y, r, Math.PI / 2, Math.PI * 1.5); g.strokeStyle = HOT; g.stroke();
+      g.beginPath(); g.arc(x, y, r, -Math.PI / 2, Math.PI / 2); g.strokeStyle = COLD; g.stroke();
+      g.beginPath(); g.arc(x, y, r - 6, 0, Math.PI * 2); g.save(); g.clip(); D.hatch(g, x - r, y - r, 2 * r, 2 * r, "rgba(190,159,230,0.8)"); g.restore();
+      g.restore();
+    }
     function rebuildDraw(g, t) {
-      const T = s.T, net = s.phase === "play" && s.sprayT === 0 ? network() : s.net || network();
+      const T = s.T, net = s.net || network(), flowing = s.phase !== "play", front = s.front;
+      const fade = s.phase === "drain" ? Math.max(0, 1 - s.drainT / DRAIN_S) : 1;
       D.panel(g, s.gx - 14, s.gy - 14, s.cols * T + 28, s.rows * T + 28, 16, "#0b1018");
-      // The ends: stubs in from outside, hot left to right, cold top to bottom.
-      const E = legEnds(), flowing = s.phase !== "play";
-      const [hx0, hy0] = cellXY(...E.hot.start), [hx1, hy1] = cellXY(...E.hot.goal), [cx0, cy0] = cellXY(...E.cold.start), [cx1, cy1] = cellXY(...E.cold.goal);
-      pipe(g, [[20, hy0], [s.gx, hy0]], "hot", { flow: 1, t });
-      pipe(g, [[s.gx + s.cols * T, hy1], [s.gx + s.cols * T + 90, hy1]], "hot", { flow: 1, t, dim: !flowing });
-      pipe(g, [[cx0, 84], [cx0, s.gy]], "cold", { flow: 1, t });
-      pipe(g, [[cx1, s.gy + s.rows * T], [cx1, 712]], "cold", { flow: 1, t, dim: !flowing });
+      // The ends: stubs in from outside, hot left to right, cold top to bottom. The inlets stand full behind the grid;
+      // an outlet fills once its leg's coolant reaches it.
+      const E = legEnds();
+      const [, hy0] = cellXY(...E.hot.start), [, hy1] = cellXY(...E.hot.goal), [cx0] = cellXY(...E.cold.start), [cx1] = cellXY(...E.cold.goal);
+      const outlet = (leg) => (flowing && net.reach[leg] >= 0 && front >= net.reach[leg] ? clamp((front - net.reach[leg]) / 1.2, 0.05, 1) * fade : 0);
+      pipe(g, [[20, hy0], [s.gx, hy0]], "hot", { flow: flowing ? 1 : 0.3, t });
+      pipe(g, [[s.gx + s.cols * T, hy1], [s.gx + s.cols * T + 90, hy1]], "hot", { flow: 1, t, dim: !outlet("hot"), fill: outlet("hot") });
+      pipe(g, [[cx0, 84], [cx0, s.gy]], "cold", { flow: flowing ? 1 : 0.3, t });
+      pipe(g, [[cx1, s.gy + s.rows * T], [cx1, 712]], "cold", { flow: 1, t, dim: !outlet("cold"), fill: outlet("cold") });
       for (const [x, y, v] of [[s.gx - 4, hy0, true], [s.gx + s.cols * T + 4, hy1, true], [cx0, s.gy - 4, false], [cx1, s.gy + s.rows * T + 4, false]]) {
         g.fillStyle = "#8796aa"; if (v) g.fillRect(x - 4, y - 22, 8, 44); else g.fillRect(x - 22, y - 4, 44, 8);
       }
-      // The tiles.
-      const legAt = (c, rr, gi) => (net.hot.cells.has(`${c},${rr},${gi}`) ? "hot" : net.cold.cells.has(`${c},${rr},${gi}`) ? "cold" : null);
+      // The tiles: the groups a leg reaches carry its tint while building, and fill in order of distance once flowing.
       for (let rr = 0; rr < s.rows; rr++) for (let c = 0; c < s.cols; c++) {
-        const tile = tileAt(c, rr), [x, y] = cellXY(c, rr);
+        const tile = tileAt(c, rr), [x, y] = cellXY(c, rr), key = (gi) => `${c},${rr},${gi}`;
         D.round(g, x - T / 2 + 3, y - T / 2 + 3, T - 6, T - 6, 10);
         g.fillStyle = tile.cracked ? "#1d1410" : tile.fresh ? `rgba(61,220,132,${0.25 * tile.fresh})` : "#0f1520"; g.fill();
         if (tile.cracked) { g.lineWidth = 2; g.strokeStyle = "rgba(255,71,87,0.6)"; g.setLineDash([6, 5]); g.stroke(); g.setLineDash([]); }
         g.save(); g.translate(x, y);
-        // Groups carry the leg that reaches them; once flowing they wet in order of distance.
-        const legOf = (gi) => legAt(c, rr, gi);
-        const wet = (gi) => { if (!flowing) return false; const L = legOf(gi); if (!L) return false; return s.net[L].cells.get(`${c},${rr},${gi}`) < s.flowT; };
-        const fromOf = (gi) => { const L = legOf(gi); if (!L) return null; const f = net[L].from.get(`${c},${rr},${gi}`); return f === undefined ? null : (((f - tile.k) % 4) + 4) % 4; };
-        tilePipes(g, tile.type, tile.ang, T, legOf, wet, false, fromOf);
+        const legOf = (gi) => net.legOf.get(key(gi)) || null;
+        const wet = (gi) => (flowing && net.dist.has(key(gi)) ? clamp(front - net.dist.get(key(gi)), 0, 1) : 0);
+        const fromOf = (gi) => { const f = net.from.get(key(gi)); return f === undefined ? null : (((f - tile.k) % 4) + 4) % 4; };
+        tilePipes(g, tile.type, tile.ang, T, legOf, wet, fromOf, t, fade);
         g.restore();
         if (tile.cracked) {
           g.strokeStyle = C.danger; g.lineWidth = 3;
@@ -484,6 +541,15 @@ RepairKit.register({
           g.strokeStyle = C.danger; g.lineWidth = 5; g.beginPath(); g.moveTo(x - 18, y - 18); g.lineTo(x + 18, y + 18); g.moveTo(x + 18, y - 18); g.lineTo(x - 18, y + 18); g.stroke();
         }
       }
+      // What the coolant met, each once it gets there: a jet at an open end, a spray from a cracked tile, steam where
+      // the legs meet.
+      if (flowing) for (const f of net.faults) {
+        if (front < f.d) continue;
+        const [fx, fy] = f.at;
+        if (f.kind === "leak") jet(g, fx, fy, f.dir, t, f.leg, fade);
+        else if (f.kind === "crack") { jet(g, fx + 6, fy, E_, t, f.leg, fade * 0.9); jet(g, fx - 6, fy, W_, t + 0.37, f.leg, fade * 0.9); }
+        else meetGlyph(g, fx, fy, t, fade);
+      }
       if (s.keys && s.phase === "play") { const [x, y] = cellXY(s.cur.c, s.cur.r); D.round(g, x - T / 2 + 1, y - T / 2 + 1, T - 2, T - 2, 10); g.lineWidth = 4; g.strokeStyle = C.amber; g.stroke(); }
       // The tray: three new pieces, picked up by a press and dropped on a cracked tile.
       D.panel(g, TRAY_BOX.x, TRAY_BOX.y, TRAY_BOX.w, TRAY_BOX.h, 16, "#0c121a");
@@ -491,15 +557,14 @@ RepairKit.register({
         const [x, y] = slotXY(i);
         D.round(g, x - 52, y - 52, 104, 104, 12); g.fillStyle = "#141c28"; g.fill();
         g.lineWidth = 2; g.strokeStyle = s.keys && s.sel === i ? C.amber : "#2a3446"; g.stroke();
-        g.save(); g.translate(x, y); tilePipes(g, type, 0, 84, null, null, false); g.restore();
+        g.save(); g.translate(x, y); tilePipes(g, type, 0, 84, null, null, null); g.restore();
       });
       // FILL: the round's main action, the biggest control.
-      const ready = s.phase === "play" && s.sprayT === 0;
+      const ready = s.phase === "play";
       D.round(g, FILL_BTN.x, FILL_BTN.y, FILL_BTN.w, FILL_BTN.h, 22); g.fillStyle = ready ? "#1f6b45" : "#1a2230"; g.fill();
       g.lineWidth = 3; g.strokeStyle = ready ? C.ok : C.line; g.stroke();
       D.text(g, "FILL", FILL_BTN.x + FILL_BTN.w / 2, FILL_BTN.y + FILL_BTN.h / 2, 40, ready ? C.fg : C.dim, "center", 700);
-      if (s.held) { g.save(); g.translate(s.held.x, s.held.y); g.globalAlpha = 0.9; D.round(g, -44, -44, 88, 88, 12); g.fillStyle = "rgba(20,28,40,0.85)"; g.fill(); tilePipes(g, s.held.type, 0, 84, null, null, false); g.restore(); g.globalAlpha = 1; }
-      if (s.sprayT > 0) for (const [x, y] of s.leaks) spray(g, x, y, t);
+      if (s.held) { g.save(); g.translate(s.held.x, s.held.y); g.globalAlpha = 0.9; D.round(g, -44, -44, 88, 88, 12); g.fillStyle = "rgba(20,28,40,0.85)"; g.fill(); tilePipes(g, s.held.type, 0, 84, null, null, null); g.restore(); g.globalAlpha = 1; }
     }
 
     // ================================================================ round 3: refill and bleed
@@ -695,8 +760,10 @@ RepairKit.register({
         if (s.kind === "rebuild") {
           const net = network();
           return { ...base, round: s.round, cols: s.cols, rows: s.rows, T: s.T, gx: s.gx, gy: s.gy, phase: s.phase,
-            tiles: s.tiles.map((tl) => ({ type: tl.type, k: tl.k % 4, sol: tl.sol, solK: tl.solK, cracked: tl.cracked })),
-            tray: TRAY.map((type, i) => ({ type, xy: slotXY(i) })), fill: FILL_BTN, ok: net.ok, ends: s.ends };
+            tiles: s.tiles.map((tl, i) => ({ type: tl.type, k: tl.k % 4, sol: tl.sol, solK: tl.solK, cracked: tl.cracked,
+              leg: [0, 1].map((gi) => net.legOf.get(`${i % s.cols},${Math.floor(i / s.cols)},${gi}`) || null) })),
+            tray: TRAY.map((type, i) => ({ type, xy: slotXY(i) })), fill: FILL_BTN, ok: net.ok, ends: s.ends,
+            front: s.front, faults: (s.net || net).faults.map((f) => ({ kind: f.kind, leg: f.leg, d: f.d, at: f.at })), reach: { ...(s.net || net).reach }, end: (s.net || net).end };
         }
         if (s.kind === "bleed") return { ...base, up: s.up, dn: s.dn, fill: s.fill, air: s.air, played: s.played, need: s.need, targets: targets() };
         return { ...base, set: s.set, spools: s.spools.map((sp) => ({ leg: sp.leg, x: sp.x, y: sp.y })), gap: [GAP.x + GAP.w / 2, GAP.y] };

@@ -16,6 +16,16 @@ RepairKit.register({
   place: "Anywhere a conduit runs",
   group: "Engineering",
   hazard: "Crossed pair: spark, 5 HP, breaker tripped",
+  // The how-to card (repair-minigames 6g), drawn by the kit: pictures and a few words, on demand.
+  guide: {
+    steps: [
+      { icon: "sweep", text: "Drag along to strip burns" },
+      { icon: "plug", text: "Join colours before the clamp" },
+      { icon: "drag", text: "Reroute: draw round the burn" },
+    ],
+    mistake: "A crossed pair: a spark, 5 HP, the breaker trips",
+    now: (q) => (q.mode === "part" ? -1 : q.mode === "reroute" ? 2 : q.stripped < 1 ? 0 : 1),
+  },
   down: "Loads beyond it are cut (power-grid)",
   create(api) {
     const { C, KIT } = api, D = KIT.draw;

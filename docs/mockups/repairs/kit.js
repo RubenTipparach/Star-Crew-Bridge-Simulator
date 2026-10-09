@@ -12,7 +12,10 @@
  * - touch targets: TOUCH_R, the smallest reach a target is given, and nearest(), which picks the closest of packed
  *   targets, so a fingertip on a phone (one canvas px is about half a CSS px there) still lands;
  * - the frame: a 1280 x 720 canvas, the job's bar along the top 72 px, the combat shake;
- * - a seeded random stream per game and step, so a shot is the same every time.
+ * - a seeded random stream per game and step, so a shot is the same every time;
+ * - the how-to guide (design 6g): the ? button in the bar, F1 or a pad's Back, and the card it lays over the game,
+ *   drawn here from each game's `guide` data with the icon set below, so every game's card looks the same;
+ * - fluid through pipe tiles (flood): the breadth-first fill the shower and the coolant pipes share.
  *
  * A game is a classic script that calls RepairKit.register({...}) (no modules: the page opens from disk). See
  * register() for the fields. A game draws into the area below the bar (y >= 80) and calls api.stepDone() when its round
@@ -72,6 +75,10 @@
      *   panel (optional): { x, y, w, h, screws } a cover plate over the machine, unscrewed before the work and screwed
  *     back after it (4 screws at the corners, or 6),
  *   doneWord (optional): the word when the job is done ("Treated"; default "Repaired"),
+ *   guide: { steps: [{ icon, text, cover? }], mistake, now? } the how-to card (design 6g): up to four steps in the
+ *     order they come, each an icon from KIT.icons and about three to six words; `cover: true` marks the step lit
+ *     while the cover's screws are worked; `mistake` is one line, cause and cost; now(q) (optional) takes the game's
+ *     peek() (or its state) and returns the step it is in (0-based), or -1, so the card lights it,
  *   job (optional): { unit: "%" | "HP", start, target, rate or rateBy: { officer, rating }, steps, fumble } to
  *     override the integrity job (the medic: HP, its rates and a 2 HP slip),
      *   create(api): returns { draw(g, t, dt), update?(dt, input), step?(index, part) }:
@@ -137,8 +144,280 @@
         return over && input.pressed;
       },
     },
+    /**
+     * A fluid's reach through connected pieces (the shower's tiles, the coolant pipes'): a breadth-first fill from the
+     * inlets, each piece numbered by how many pieces the fluid passed to reach it, so a valve or FILL can wet them in that
+     * order, tile by tile (owner, 2026-10-09: "pipes on coolant need work to actually function like the shower thing").
+     *   starts: [{ key, ... }] the pieces the fluid enters first, at distance 0;
+     *   visit(node, dist, reach): called once a piece, nearest first; reach(next) carries the fluid on into `next`
+     *     ({ key, ... }) at dist + 1 and returns false when that piece was already wet (by this or another inlet).
+     * Returns { dist: Map key -> distance, far: the furthest distance reached }.
+     */
+    flood(starts, visit) {
+      const dist = new Map(), queue = [];
+      for (const st of starts) if (!dist.has(st.key)) { dist.set(st.key, 0); queue.push([st, 0]); }
+      let far = 0;
+      for (let qi = 0; qi < queue.length; qi++) {
+        const [node, d] = queue[qi];
+        far = Math.max(far, d);
+        visit(node, d, (next) => { if (dist.has(next.key)) return false; dist.set(next.key, d + 1); queue.push([next, d + 1]); return true; });
+      }
+      return { dist, far };
+    },
   };
   window.RepairKit = KIT;
+
+  // ------------------------------------------------------------------ the guide's icons (design 6g)
+  // One small picture a move, drawn in a box 100 px across centred on the origin, so every game's card speaks the same
+  // picture language. A finger is the blue dot with a white rim; a target is amber; good is green, a mistake red.
+  const FINGER = (g, x, y) => { KIT.draw.disc(g, x, y, 10, C.accent); KIT.draw.ring(g, x, y, 10, "#e8f7ff", 2.5); };
+  const arrowHead = (g, x, y, a, col, s = 10) => {
+    g.beginPath(); g.moveTo(x + Math.cos(a) * s, y + Math.sin(a) * s);
+    g.lineTo(x + Math.cos(a + 2.5) * s, y + Math.sin(a + 2.5) * s); g.lineTo(x + Math.cos(a - 2.5) * s, y + Math.sin(a - 2.5) * s);
+    g.closePath(); g.fillStyle = col; g.fill();
+  };
+  const line = (g, pts, col, w = 4, dash = null) => {
+    g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+    if (dash) g.setLineDash(dash); g.strokeStyle = col; g.lineWidth = w; g.lineCap = "round"; g.lineJoin = "round"; g.stroke();
+    g.setLineDash([]); g.lineCap = "butt";
+  };
+  const ICONS = {
+    /** Tap a target. */
+    tap(g, t) {
+      for (let k = 0; k < 2; k++) { const ph = (t * 0.9 + k / 2) % 1; KIT.draw.ring(g, 0, 0, 14 + ph * 26, `rgba(242,160,70,${0.9 * (1 - ph)})`, 3); }
+      KIT.draw.ring(g, 0, 0, 16, C.amber, 4); FINGER(g, 0, 0);
+    },
+    /** Drag a part onto its place. */
+    drag(g, t) {
+      g.setLineDash([6, 5]); KIT.draw.round(g, 14, -38, 30, 30, 6); g.strokeStyle = C.amber; g.lineWidth = 3; g.stroke(); g.setLineDash([]);
+      const u = (t * 0.5) % 1, x = -30 + 59 * u, y = 22 - 45 * u;
+      line(g, [[-30, 22], [22, -16]], "rgba(232,238,246,0.35)", 3, [5, 6]);
+      KIT.draw.round(g, x - 14, y - 14, 28, 28, 6); g.fillStyle = C.steel; g.fill();
+      FINGER(g, x + 6, y + 8);
+    },
+    /** Hold a press while a ring fills. */
+    hold(g, t) {
+      KIT.draw.disc(g, 0, 0, 26, "#262e42"); KIT.draw.ring(g, 0, 0, 34, "#2a3446", 6);
+      g.beginPath(); g.arc(0, 0, 34, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * ((t * 0.4) % 1)); g.strokeStyle = C.ok; g.lineWidth = 6; g.stroke();
+      FINGER(g, 0, 0);
+    },
+    /** Turn round a knob, a wheel or a crank. */
+    turn(g, t) {
+      KIT.draw.ring(g, 0, 0, 22, C.steel, 6);
+      g.save(); g.rotate(t * 2); g.strokeStyle = "#c9d3e0"; g.lineWidth = 4;
+      for (let k = 0; k < 3; k++) { const b = (k * Math.PI * 2) / 3; g.beginPath(); g.moveTo(0, 0); g.lineTo(Math.cos(b) * 20, Math.sin(b) * 20); g.stroke(); }
+      g.restore();
+      KIT.draw.turnArrow(g, 0, 0, 38, -2.6, 0.4, C.amber);
+      const a = t * 2; FINGER(g, Math.cos(a) * 38, Math.sin(a) * 38);
+    },
+    /** A screw: turn it a full loop. */
+    screw(g, t) {
+      KIT.draw.disc(g, 0, 0, 18, "#b7c0cc"); KIT.draw.ring(g, 0, 0, 18, "#7a8494", 2);
+      g.save(); g.rotate(-t * 2); g.strokeStyle = "#2a313c"; g.lineWidth = 4; g.beginPath(); g.moveTo(-9, 0); g.lineTo(9, 0); g.moveTo(0, -9); g.lineTo(0, 9); g.stroke(); g.restore();
+      KIT.draw.turnArrow(g, 0, 0, 34, 0.4, -2.6, C.amber);
+    },
+    /** Swap a broken piece for a new one. */
+    swap(g) {
+      KIT.draw.round(g, -44, -18, 36, 36, 6); g.fillStyle = "#1d1410"; g.fill(); g.strokeStyle = C.danger; g.lineWidth = 2; g.stroke();
+      line(g, [[-32, -12], [-24, -2], [-30, 4], [-20, 14]], C.danger, 3);
+      KIT.draw.round(g, 8, -18, 36, 36, 6); g.fillStyle = C.steel; g.fill(); g.strokeStyle = C.ok; g.lineWidth = 2; g.stroke();
+      line(g, [[4, 28], [-6, 28]], C.fg, 4); arrowHead(g, -6, 28, Math.PI, C.fg);
+      line(g, [[-26, -28], [26, -28]], "rgba(232,238,246,0.3)", 2, [4, 4]);
+    },
+    /** Sweep a tool along a line. */
+    sweep(g, t) {
+      const pts = Array.from({ length: 21 }, (_, i) => [-40 + i * 4, 14 * Math.sin(i * 0.35)]);
+      line(g, pts, "rgba(232,238,246,0.35)", 3, [5, 5]);
+      const n = 1 + Math.floor(((t * 0.6) % 1) * 20);
+      line(g, pts.slice(0, n + 1), C.amber, 6);
+      FINGER(g, pts[n][0], pts[n][1]);
+    },
+    /** Act on the beat: a pulse crossing the line. */
+    rhythm(g, t) {
+      const off = ((t * 30) % 34);
+      line(g, [[-46, 16], [46, 16]], "#4a5568", 2);
+      for (let k = -2; k <= 2; k++) {
+        const x = -40 + k * 34 + off; if (x < -46 || x > 46) continue;
+        const on = Math.abs(x) < 6;
+        line(g, [[x - 8, 16], [x, -8], [x + 8, 16]], on ? C.ok : C.fg, 3);
+      }
+      line(g, [[0, -24], [0, 30]], C.amber, 3);
+    },
+    /** Keep a needle in its green band. */
+    band(g, t) {
+      g.beginPath(); g.arc(0, 14, 40, Math.PI * 1.05, Math.PI * 1.95); g.strokeStyle = "#2a3446"; g.lineWidth = 10; g.stroke();
+      g.beginPath(); g.arc(0, 14, 40, Math.PI * 1.4, Math.PI * 1.62); g.strokeStyle = C.ok; g.lineWidth = 10; g.stroke();
+      KIT.draw.hatchArc(g, 0, 14, 35, 45, Math.PI * 1.8, Math.PI * 1.95, C.danger);
+      const a = Math.PI * 1.51 + 0.07 * Math.sin(t * 3);
+      line(g, [[0, 14], [Math.cos(a) * 36, 14 + Math.sin(a) * 36]], C.fg, 4);
+      KIT.draw.disc(g, 0, 14, 6, C.steel);
+    },
+    /** Work things in their numbered order. */
+    order(g, t) {
+      const P = [[-30, 26], [22, 26], [-4, -18]];
+      line(g, [P[0], P[1]], "rgba(232,238,246,0.3)", 2, [4, 4]); line(g, [P[1], P[2]], "rgba(232,238,246,0.3)", 2, [4, 4]);
+      const next = Math.floor(t * 0.8) % 3;
+      P.forEach(([x, y], i) => { KIT.draw.disc(g, x, y, 8, "#b7c0cc"); KIT.draw.orderBadge(g, x, y, 8, i + 1, i === next, t); });
+    },
+    /** Slide a handle along its track. */
+    slider(g, t) {
+      line(g, [[-40, 0], [40, 0]], "#2a3446", 10);
+      line(g, [[-6, 0], [14, 0]], C.ok, 10);
+      const x = 4 + 12 * Math.sin(t * 2);
+      KIT.draw.round(g, x - 9, -20, 18, 40, 6); g.fillStyle = "#c9d3e0"; g.fill();
+      arrowHead(g, -46, 0, Math.PI, C.amber, 9); arrowHead(g, 46, 0, 0, C.amber, 9);
+    },
+    /** Lay a live trace on its reference. */
+    match(g, t) {
+      const wave = (ph, amp) => Array.from({ length: 25 }, (_, i) => [-44 + i * 3.67, amp * Math.sin(i * 0.5 + ph)]);
+      line(g, wave(0, 18), "rgba(61,220,132,0.4)", 9);
+      line(g, wave(0.6 * Math.sin(t * 1.5), 18 + 4 * Math.sin(t)), C.fg, 3);
+    },
+    /** A valve: open or shut it. */
+    valve(g) {
+      line(g, [[-46, 10], [46, 10]], "#3a4658", 12);
+      g.beginPath(); g.moveTo(-18, -4); g.lineTo(18, 24); g.lineTo(18, -4); g.lineTo(-18, 24); g.closePath(); g.fillStyle = "#c0392b"; g.fill(); g.strokeStyle = "#ff8a80"; g.lineWidth = 2; g.stroke();
+      line(g, [[0, 10], [0, -22]], "#c9d3e0", 4); line(g, [[-14, -22], [14, -22]], "#c9d3e0", 5);
+      FINGER(g, 10, -22);
+    },
+    /** Turn a pipe tile a quarter to join the run. */
+    pipes(g, t) {
+      KIT.draw.round(g, -30, -30, 60, 60, 8); g.fillStyle = "#0f1520"; g.fill(); g.strokeStyle = "#2a3446"; g.lineWidth = 2; g.stroke();
+      g.save(); g.rotate((Math.floor(t * 0.7) % 4) * Math.PI / 2 + Math.min(1, (t * 0.7 % 1) * 4) * Math.PI / 2);
+      g.beginPath(); g.moveTo(0, -30); g.quadraticCurveTo(0, 0, 30, 0); g.strokeStyle = "#4a586d"; g.lineWidth = 14; g.stroke();
+      g.restore();
+      KIT.draw.turnArrow(g, 0, 0, 42, -2.2, -0.9, C.amber);
+    },
+    /** Let the fluid run through what is built. */
+    flow(g, t) {
+      line(g, [[-46, 0], [46, 0]], "#263142", 22);
+      const u = (t * 0.5) % 1;
+      line(g, [[-46, 0], [-46 + 92 * u, 0]], "#ff6a4d", 14);
+      for (let x = -38; x < -46 + 92 * u - 6; x += 18) line(g, [[x - 4, -6], [x + 3, 0], [x - 4, 6]], "#fff3e0", 2.5);
+      KIT.draw.round(g, -26, 18, 52, 24, 12); g.fillStyle = "#1f6b45"; g.fill();
+    },
+    /** Aim at a mark. */
+    aim(g, t) {
+      KIT.draw.ring(g, 0, 0, 30, "#4a5568", 2); line(g, [[-40, 0], [40, 0]], "#4a5568", 2); line(g, [[0, -40], [0, 40]], "#4a5568", 2);
+      const r = 6 + 10 * Math.abs(Math.sin(t)); KIT.draw.disc(g, 4 * Math.sin(t * 1.3), 3 * Math.cos(t), r, "rgba(242,160,70,0.8)");
+    },
+    /** Pick the right tool from the tray. */
+    tool(g, t) {
+      for (let i = 0; i < 3; i++) {
+        const x = -34 + i * 34, on = i === 1;
+        KIT.draw.round(g, x - 14, -4, 28, 34, 6); g.fillStyle = on ? "#3a2a12" : "#141c28"; g.fill();
+        g.lineWidth = on ? 3 : 2; g.strokeStyle = on ? C.amber : "#2a3446"; g.stroke();
+        line(g, [[x - 5, 20], [x + 5, 4]], on ? C.fg : C.steel, 4);
+      }
+      FINGER(g, 4, 16 + 3 * Math.sin(t * 3));
+      arrowHead(g, 0, -20, Math.PI / 2, C.amber, 10);
+    },
+    /** A plug into the socket of its own shape. */
+    plug(g, t) {
+      const x = -6 - 10 * Math.abs(Math.sin(t * 1.5));
+      KIT.draw.round(g, 14, -18, 32, 36, 6); g.fillStyle = "#141c28"; g.fill(); g.strokeStyle = C.steel; g.lineWidth = 3; g.stroke();
+      g.beginPath(); g.moveTo(30, -9); g.lineTo(39, 6); g.lineTo(21, 6); g.closePath(); g.strokeStyle = C.amber; g.lineWidth = 2.5; g.stroke();
+      line(g, [[-46, 0], [x - 14, 0]], C.lilac, 6);
+      KIT.draw.round(g, x - 14, -12, 24, 24, 4); g.fillStyle = C.lilac; g.fill();
+      g.beginPath(); g.moveTo(x - 2, -7); g.lineTo(x + 5, 5); g.lineTo(x - 9, 5); g.closePath(); g.fillStyle = "#1d1430"; g.fill();
+    },
+  };
+  /** A warning triangle: the mistake's line. */
+  function warnGlyph(g, x, y, s) {
+    g.beginPath(); g.moveTo(x, y - s); g.lineTo(x + s * 1.1, y + s * 0.85); g.lineTo(x - s * 1.1, y + s * 0.85); g.closePath();
+    g.fillStyle = C.danger; g.fill();
+    g.fillStyle = "#1a0508"; g.fillRect(x - 2.5, y - s * 0.45, 5, s * 0.75); g.fillRect(x - 2.5, y + s * 0.45, 5, 5);
+  }
+  KIT.icons = ICONS;
+
+  /**
+   * Words wrapped to lines no wider than `w` px in the current font. Two lines are balanced (the break that makes the
+   * longer line shortest), so a step never leaves one word alone on its second line.
+   */
+  function wrap(g, s, w) {
+    const words = s.split(/\s+/), out = [];
+    let cur = "";
+    for (const word of words) {
+      const next = cur ? cur + " " + word : word;
+      if (cur && g.measureText(next).width > w) { out.push(cur); cur = word; } else cur = next;
+    }
+    if (cur) out.push(cur);
+    if (out.length !== 2) return out;
+    let best = out, bw = Infinity;
+    for (let i = 1; i < words.length; i++) {
+      const a = words.slice(0, i).join(" "), b = words.slice(i).join(" ");
+      const m = Math.max(g.measureText(a).width, g.measureText(b).width);
+      if (m <= w && m < bw) { bw = m; best = [a, b]; }
+    }
+    return best;
+  }
+  /** The guide's ? button in the bar, beside the fumble pips: canvas px. 48 px across, a 26 CSS px target on a phone. */
+  const GUIDE_BTN = { x: 1234, y: 31, r: 24 };
+  /** The card's frame, over the game below the bar. */
+  const CARD = { x: 120, y: 176, w: 1040, h: 400 };
+  /**
+   * The guide card (design 6g): numbered steps left to right, each a picture and its few words, the one the game is in
+   * lit; the mistake under them on one line; a cross in the corner. Tap anywhere, ?, F1, Escape or Back closes it.
+   */
+  function drawGuide(g, guide, now, t) {
+    const D = KIT.draw, steps = guide.steps.slice(0, 4), n = steps.length;
+    g.fillStyle = "rgba(4,6,10,0.72)"; g.fillRect(0, BAR_H, W, H - BAR_H);
+    D.panel(g, CARD.x, CARD.y, CARD.w, CARD.h, 22, "#0e151f", "#33445a");
+    // The cross: the card closes on a tap anywhere, the cross only says so.
+    const cx = CARD.x + CARD.w - 34, cy = CARD.y + 34;
+    g.strokeStyle = C.dim; g.lineWidth = 4; g.lineCap = "round";
+    g.beginPath(); g.moveTo(cx - 10, cy - 10); g.lineTo(cx + 10, cy + 10); g.moveTo(cx + 10, cy - 10); g.lineTo(cx - 10, cy + 10); g.stroke();
+    g.lineCap = "butt";
+    const colW = Math.min(240, (CARD.w - 80) / Math.max(1, n)), x0 = CARD.x + (CARD.w - colW * n) / 2, tile = 150, ty = CARD.y + 52;
+    steps.forEach((st, i) => {
+      const x = x0 + i * colW + colW / 2, lit = i === now;
+      // The picture.
+      D.round(g, x - tile / 2, ty, tile, tile, 18); g.fillStyle = lit ? "#1d2a3c" : "#121a25"; g.fill();
+      g.lineWidth = lit ? 4 : 2; g.strokeStyle = lit ? C.amber : "#2a3446"; g.stroke();
+      g.save(); g.translate(x, ty + tile / 2); g.scale(1.25, 1.25);
+      g.beginPath(); g.rect(-58, -58, 116, 116); g.clip();
+      (ICONS[st.icon] || ICONS.tap)(g, t);
+      g.restore();
+      // Its number, in the order the steps come.
+      D.disc(g, x - tile / 2 + 4, ty + 4, 18, lit ? C.amber : "#26324a");
+      D.ring(g, x - tile / 2 + 4, ty + 4, 18, lit ? "#ffe2bd" : "#4a5568", 2);
+      D.text(g, String(i + 1), x - tile / 2 + 4, ty + 5, 24, lit ? "#1a0f02" : C.fg, "center", 700);
+      // Between steps: a chevron, the way the job runs.
+      if (i < n - 1) { const ax = x0 + (i + 1) * colW; g.strokeStyle = "#4a5568"; g.lineWidth = 4; g.beginPath(); g.moveTo(ax - 6, ty + tile / 2 - 12); g.lineTo(ax + 4, ty + tile / 2); g.lineTo(ax - 6, ty + tile / 2 + 12); g.stroke(); }
+      // Its words.
+      g.font = `600 24px ${FONT}`;
+      wrap(g, st.text, colW - 22).slice(0, 3).forEach((ln, k) => D.text(g, ln, x, ty + tile + 30 + k * 28, 24, lit ? C.fg : "#c4cfdc", "center", 600));
+    });
+    // The mistake: what causes it and what it costs, one line.
+    if (guide.mistake) {
+      const my = CARD.y + CARD.h - 52;
+      D.round(g, CARD.x + 30, my - 28, CARD.w - 60, 56, 14); g.fillStyle = "#1c0f14"; g.fill(); g.strokeStyle = "rgba(255,71,87,0.55)"; g.lineWidth = 2; g.stroke();
+      warnGlyph(g, CARD.x + 66, my + 1, 16);
+      g.font = `600 24px ${FONT}`;
+      let s = guide.mistake;
+      const max = CARD.w - 150;
+      if (g.measureText(s).width > max) { while (s.length > 4 && g.measureText(s + "…").width > max) s = s.slice(0, -1); s = s.trimEnd() + "…"; }
+      D.text(g, s, CARD.x + 96, my + 1, 24, "#ffd2d6", "left", 600);
+    }
+  }
+  /** The ? button: lit while the card is up. */
+  function drawGuideButton(g, open) {
+    const D = KIT.draw, b = GUIDE_BTN;
+    D.disc(g, b.x, b.y, b.r, open ? C.accent : "#262e42");
+    D.ring(g, b.x, b.y, b.r, open ? "#e8f7ff" : "#4a5a70", 2);
+    D.text(g, "?", b.x, b.y + 2, 30, open ? "#04131c" : C.fg, "center", 700);
+  }
+  /** Whether a player has seen a game's card: browser storage where it works, this page's memory where it does not. */
+  const seenHere = new Set();
+  const GUIDE_KEY = (id) => "starcrew.repairs.guide." + id;
+  function guideSeen(id) {
+    if (seenHere.has(id)) return true;
+    try { return localStorage.getItem(GUIDE_KEY(id)) === "1"; } catch (_) { return false; }
+  }
+  function markGuideSeen(id) {
+    seenHere.add(id);
+    try { localStorage.setItem(GUIDE_KEY(id), "1"); } catch (_) { /* private window or blocked storage: memory only */ }
+  }
 
   // ------------------------------------------------------------------ access panels (screws)
   // The owner, 2026-10-08: "some of the panel ones would be cool to like screw or unscrew stuff". A game that names a
@@ -284,8 +563,42 @@
     canvas.addEventListener("pointercancel", up);
     canvas.addEventListener("lostpointercapture", (e) => { if (foreign(e)) return; if (input.down) { input.down = false; input.released = true; } owner = null; });
     canvas.addEventListener("wheel", (e) => { input.wheel += Math.sign(e.deltaY); e.preventDefault(); }, { passive: false });
-    addEventListener("keydown", (e) => { if (!input.keys.has(e.code)) input.hit.add(e.code); input.keys.add(e.code); if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault(); });
+    addEventListener("keydown", (e) => { if (!input.keys.has(e.code)) input.hit.add(e.code); input.keys.add(e.code); if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "F1"].includes(e.code)) e.preventDefault(); });
     addEventListener("keyup", (e) => input.keys.delete(e.code));
+
+    // The guide card (design 6g). While it is up, and until the press or key that closed it lets go, the game and the
+    // job's clock wait: nothing the player does to read or dismiss it reaches the game.
+    const guide = { open: false, hold: false, keys: null };
+    const IDLE = { x: -1, y: -1, path: [], down: false, pressed: false, released: false, keys: new Set(), hit: new Set(), wheel: 0,
+      stick: { x: 0, y: 0 }, action: false, actionPressed: false };
+    function showGuide() { if (run && run.game.guide) { guide.open = true; guide.hold = true; } }
+    function hideGuide() {
+      if (!guide.open) return;
+      guide.open = false; guide.keys = new Set(input.keys);
+      if (run) markGuideSeen(run.game.id);
+    }
+    /** The step the game is in, for the card to light: the cover's step while its screws are worked, else the game's. */
+    function guideNow() {
+      const gd = run.game.guide, P = run.panel;
+      if (P && !run.auto && P.phase !== "work") return gd.steps.findIndex((st) => st.cover);
+      if (!gd.now) return -1;
+      try { const i = run.inst; const q = i.peek ? i.peek() : i.state; return q ? gd.now(q) : -1; } catch (_) { return -1; }
+    }
+    // A pad's Back (the standard mapping's button 8) toggles the card; A or B (0, 1) closes it.
+    const padPrev = [];
+    function padEdges() {
+      let back = false, shut = false;
+      let pads = [];
+      try { pads = (navigator.getGamepads && navigator.getGamepads()) || []; } catch (_) { pads = []; }
+      for (let i = 0; i < pads.length; i++) {
+        const p = pads[i]; if (!p) continue;
+        const now = [0, 1, 8].map((b) => !!(p.buttons[b] && p.buttons[b].pressed)), was = padPrev[i] || [false, false, false];
+        if (now[2] && !was[2]) back = true;
+        if ((now[0] && !was[0]) || (now[1] && !was[1])) shut = true;
+        padPrev[i] = now;
+      }
+      return { back, shut };
+    }
 
     /** Open game `id` with the current options. */
     function open(id) {
@@ -333,6 +646,10 @@
       // A rating (or a bot) repairs with no game (design 1): the bar fills at its rate, nothing to play.
       run.auto = opts.who === "rating" && !game.job;
       startStep();
+      // The guide shows on its own the first time a player opens a game (until they close it once); a rating has
+      // nothing to play, so it waits for the ? there.
+      guide.open = guide.hold = !run.auto && !!game.guide && !guideSeen(game.id);
+      guide.keys = null;
       if (ui && ui.onOpen) ui.onOpen(game, run);
       location.hash = game.id;
     }
@@ -343,6 +660,18 @@
       input.stick.y = (input.keys.has("ArrowDown") || input.keys.has("KeyS") ? 1 : 0) - (input.keys.has("ArrowUp") || input.keys.has("KeyW") ? 1 : 0);
       input.action = input.keys.has("Space") || input.keys.has("Enter");
       input.actionPressed = input.hit.has("Space") || input.hit.has("Enter");
+      // The guide: ?, F1 or Back toggles it; while it is up any press or key closes it, and the game waits.
+      const pad = padEdges();
+      const onBtn = input.pressed && Math.hypot(input.x - GUIDE_BTN.x, input.y - GUIDE_BTN.y) <= GUIDE_BTN.r + 10;
+      const toggle = input.hit.has("F1") || pad.back || onBtn;
+      if (guide.open) {
+        if (toggle || input.pressed || pad.shut || input.hit.has("Escape") || input.actionPressed) hideGuide();
+      } else if (toggle) showGuide();
+      if (guide.hold) {
+        const keysUp = !guide.keys || ![...guide.keys].some((k) => input.keys.has(k));
+        if (guide.open || input.down || !keysUp) return;
+        guide.hold = false;
+      }
       const job = run.job;
       run.t += dt;
       if (!run.done) {
@@ -396,10 +725,12 @@
       if (!run.done && run.noteT <= 0) D.text(g, `${left.toFixed(0)} s`, x1 + 14, 58, 16, C.dim, "left", 600);
       // Fumbles this step as three ticks.
       for (let i = 0; i < FUMBLES_PER_STEP; i++) { g.fillStyle = i < run.fumbles ? C.danger : "#2a3446"; g.fillRect(1140 + i * 20, 18, 12, 26); }
-      if (run.noteT > 0) D.text(g, run.note, 1240, 58, 16, run.done ? C.ok : C.danger, "right", 700);
+      // The guide's button, beside the pips (design 6g).
+      if (run.game.guide) drawGuideButton(g, guide.open);
+      if (run.noteT > 0) D.text(g, run.note, 1240, 62, 16, run.done ? C.ok : C.danger, "right", 700);
     }
 
-    let last = performance.now();
+    let last = performance.now(), guideT = 0;
     function frame(now) {
       const dt = Math.min(0.05, (now - last) / 1000); last = now;
       update(dt);
@@ -412,7 +743,7 @@
         g.save(); g.beginPath(); g.rect(0, BAR_H, W, H - BAR_H); g.clip();
         if (run.auto) {
           KIT.draw.text(g, "RATING AT WORK", W / 2, H / 2, 40, C.dim, "center", 700);
-        } else run.inst.draw(g, run.t, dt, input);
+        } else run.inst.draw(g, run.t, dt, guide.hold ? IDLE : input);
         if (run.panel && !run.auto) drawPanel(g, run.panel, run.t);
         g.restore();
         if (run.done) { g.fillStyle = "rgba(4,6,10,0.55)"; g.fillRect(0, BAR_H, W, H - BAR_H); KIT.draw.text(g, (run.game.doneWord || "Repaired").toUpperCase(), W / 2, H / 2, 64, C.ok, "center", 700); }
@@ -420,6 +751,8 @@
         drawBar();
       }
       g.restore();
+      // The guide card, still while the ship shakes, over the game and never over the bar.
+      if (run && guide.open) { guideT += dt; drawGuide(g, run.game.guide, guideNow(), guideT); }
       input.pressed = false; input.released = false; input.hit.clear(); input.wheel = 0; input.path = [];
       if (lift) { lift = false; input.down = false; input.released = true; }
       requestAnimationFrame(frame);
@@ -431,6 +764,8 @@
       advance(seconds) { const n = Math.round(seconds * 60); for (let i = 0; i < n; i++) update(1 / 60); },
       get run() { return run; },
       input,
+      /** The guide card, for tools: whether it is up, and a way to raise or drop it as the ? would. */
+      guide: { get open() { return guide.open; }, show: showGuide, hide: hideGuide },
     };
   };
 })();

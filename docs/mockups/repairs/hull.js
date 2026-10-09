@@ -23,6 +23,17 @@ RepairKit.register({
   place: "Any wall, from inside",
   group: "Hull",
   hazard: "Burned through: a hiss of air",
+  // The how-to card (repair-minigames 6g), drawn by the kit: pictures and a few words, on demand.
+  guide: {
+    steps: [
+      { icon: "sweep", text: "Trace the torch round" },
+      { icon: "drag", text: "Drop the plate, turn it" },
+      { icon: "band", text: "Weld each seam steady" },
+      { icon: "order", text: "Bolt in the lit order" },
+    ],
+    mistake: "Welding too slow: it burns through, 2 HP",
+    now: (q) => ({ cut: 0, fit: 1, weld: 2, bolt: 3 })[q.phase] ?? -1,
+  },
   down: "Nothing yet; one more hit makes a hole (hull-repair 2)",
   create(api) {
     const { C, KIT } = api, D = KIT.draw;

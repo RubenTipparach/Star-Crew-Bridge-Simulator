@@ -14,6 +14,16 @@ RepairKit.register({
   place: "Mess",
   group: "Life",
   hazard: "Paste everywhere: the column drains",
+  // The how-to card (repair-minigames 6g), drawn by the kit: pictures and a few words, on demand.
+  guide: {
+    steps: [
+      { icon: "hold", text: "Hold a valve to fill" },
+      { icon: "band", text: "Let go early: it runs on" },
+      { icon: "tap", text: "All in band: PURGE" },
+    ],
+    mistake: "Past a band's top: paste everywhere, that column drains",
+    now: (q) => ({ fill: 0, purge: 2 })[q.phase] ?? -1,
+  },
   down: "Hunger between missions (design 4)",
   create(api) {
     const { C, KIT } = api, D = KIT.draw;
