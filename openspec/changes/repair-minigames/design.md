@@ -274,6 +274,22 @@ player guesses, and nothing on screen says it. Rebuilt, keeping the job (find, s
 Later steps put the leak deeper in the lines and narrow the band. A disabled shuttle's first step still fits the new
 isolation valve into the gap in the main line.
 
+### 6g. A how-to guide in every game (owner, 2026-10-09)
+
+The owner: "can you add a little info guide for players to figure stuff out a bit easier?". Every game gets a **?**
+button in its bar, beside the fumble pips. It pauses nothing and hides nothing at rest; pressed (or F1, gamepad
+Back), it lays a card over the game:
+
+- **Up to four steps, each a picture and a few words** ("Drag round the screw", "Hold the needle in green"), drawn
+  from the game's own art, numbered in the order they come, the current step lit.
+- **One line on the mistake**: what causes it and what it costs ("Wrong valve: fuel mist, 5% lost").
+- **Tap anywhere to close.** The first time a player opens a game the card shows once on its own; after that only on
+  the button.
+
+The guide is data in each game's registration (`guide: { steps: [{ icon, text }], mistake }`), drawn by the kit,
+so every game's card looks the same (CLAUDE.md 6.1). It is the one place a repair game holds sentences, and only on
+demand: at rest the game stays glance first (CLAUDE.md 10).
+
 ## 7. The Pi 5 budget
 
 A mini-game is a UI screen: a few hundred to a few thousand UI triangles in a handful of draws, the 3D pass behind it

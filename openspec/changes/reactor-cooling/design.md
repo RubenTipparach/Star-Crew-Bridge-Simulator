@@ -55,6 +55,11 @@ puzzle: two legs, valves, and the order matters.
    each pair without the two legs meeting; crossover tiles let one leg pass over the other. Cracked tiles drip and
    must be swapped for a new one from the parts tray (drag it on) before they carry anything. Larger runs on later
    steps; more crossovers.
+   **Coolant flows through it** (owner, 2026-10-09: "pipes on coolant need work to actually function like the shower
+   thing"): as in the shower's run, coolant enters at each leg's inlet and fills the tiles it is connected to, hot
+   red with chevrons and cold blue with dots, so a player sees a leg reach its outlet, stop at an open end (and spray
+   there), or meet the other leg. The FILL button runs the coolant through what is built; the step completes when both
+   legs reach their outlets, unmixed, with no cracked tile carrying.
 3. **Refill and bleed.** Open the valves downstream first, then upstream, then hold the bleed valve at the run's high
    point until the gauge's needle settles (air out, coolant in). Upstream first is the fumble "Water hammer: the
    joint jumps" (the segment loses 10%, and 2 HP to anyone within 2 m).
@@ -105,6 +110,34 @@ named in the fumbles but not simulated there; each fumble costs the kit's 5%.
   and `consoles-engineering-cooling-breaker.png`. The mockup's automation never runs the core pumps below full speed
   (`power.json` `coolant.automation.pump_speed_min`), so `power-grid`'s walkthroughs, measured at full flow, still hold;
   slowing them at low heat waits for task 2.3.
+
+## 6a. The reactor system screen (owner, 2026-10-09)
+
+The owner: "I'd like a screen to show the entire reactor system. And if flow control of pumps aren't working
+properly I can diagnose this by looking at the master reactor screen and click into the different parts to fix it."
+
+- **Where.** The reactor's own console at the `eng_main` seat beside the reactor, and full screen from the bridge's
+  Engineering console (a tap on the REACTOR panel's ring opens it). One screen, the whole system:
+  the magnetic core, both tanks, all eight pipe segments, core pumps A and B, the chiller, both radiator pumps, the
+  radiators, the makeup valve, the bypass, and the Cooling feed's breaker with the power each part draws.
+- **Diagnosis by looking.** Every part is drawn where it sits in the loop, coloured and shaped by its state
+  (`damage-control` 2's bands: sound, damaged, disabled, destroyed), with what flows through it: the pipes as thick as
+  their flow, dashes moving with it, the hot leg red to orange by temperature; a leak sprays from its segment; a pump
+  turns at its speed, or stands still. A fault shows where it is: a pump at half speed turns slowly and the flow
+  past it thins; a cracked segment drips and the inventory falls; a fouled chiller passes hot coolant back into
+  the cold leg; an open Cooling breaker stops every pump at once.
+- **Click into a part to fix it.** Tapping a part shows its card (integrity, what it does to the loop, the repair's
+  time and parts from `damage::repair_time`) and a FIX button that opens its repair game: a segment or a tank the
+  coolant pipes game (4), a pump or the chiller its screw panel and part step, the core the magnetic core game, and
+  the balance itself the coolant balance (5). Finishing the game repairs that part in the simulation, and the screen
+  shows the loop recover. In the game proper the repair is done at the part, by a body that walks there; the screen is
+  where the fault is found and the job sent (the damage board's queue).
+- **What the simulation needs.** The parts' integrity, the segment leaks, the exchanger's capability and the pumps'
+  speed are design 1-2's, written once in `shipsystems.js` (the mockups) and `sc-core` (the engine). The screen reads
+  them; it computes nothing of its own.
+- **The mockup**: `docs/mockups/reactor-system.html`, with scenario buttons that break things (a pump at half
+  capability, a cracked hot leg segment, a fouled chiller, a radiator pump down, the Cooling breaker open, a tank
+  leak) so the diagnosis can be tried, and the repair games embedded from `repairs/`.
 
 ## 7. The Pi 5 budget
 
