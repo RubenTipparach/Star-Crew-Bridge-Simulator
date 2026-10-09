@@ -21,3 +21,8 @@
 ## 4. Guides (owner, 2026-10-09)
 
 - [x] 4.1 The kit's ? button and card (design 6g); a guide in every game's registration; shown once on a game's first open.
+
+## 5. Pump and chiller (owner, 2026-10-09)
+
+- [x] 5.1 `repairs/pump.js` and `repairs/chiller.js` (design 6h), in the menu and opened from the reactor system screen;
+  played by mouse and touch, damaged, disabled and a fumble; shots.

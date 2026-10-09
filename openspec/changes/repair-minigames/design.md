@@ -290,6 +290,48 @@ The guide is data in each game's registration (`guide: { steps: [{ icon, text }]
 so every game's card looks the same (CLAUDE.md 6.1). It is the one place a repair game holds sentences, and only on
 demand: at rest the game stays glance first (CLAUDE.md 10).
 
+### 6h. The coolant pump and the chiller (owner, 2026-10-09)
+
+The owner: "make a pump and chiller repair game". Until now the reactor system screen sent a pump or the chiller to the
+scrubbers' cabinet as a stand-in (`reactor-cooling` 6a). Two games replace it, both in the Engineering group, both
+played by mouse, keys and touch, both following section 1 (a fumble costs 5%, three restart the step).
+
+**Coolant pump** (`repairs/pump.js`; the core pumps A and B, the radiator pumps and the makeup pump). The pump from
+the side: the volute (the snail-shell casing) on the left, its impeller behind a window, the coupling, the motor on
+two feet on the right. A guard over the coupling is screwed on (the kit's cover, 4 screws). Two rounds, alternating:
+
+1. **Align the shaft.** A laser on the pump's shaft throws two dots on two targets on the motor, near and far. Each
+   foot moves up and down by dragging its shim handle (or W and S on the selected foot, Tab to the other): the front
+   foot moves the near dot most, the rear foot the far one, and each pulls the other's dot a little (0.35 of its
+   move), as a real two-foot alignment does. Both dots held in their centre rings 0.6 s: aligned. A dot left off its
+   target plate 1.2 s is the fumble "Coupling knocks: the bearings heat". Later steps shrink the rings.
+2. **Spin it up.** The speed lever is the biggest control; the suction gauge beside it has a red band at the bottom.
+   Speed lowers suction (`p = 1 - 0.55 v^2`, followed with a 0.8 s lag) and a fast ramp drops it further while it
+   ramps (0.6 x the speed's rate). Raise the speed to the band at 100% and hold it there 1 s with the needle out of
+   the red: running. The needle in the red is the fumble "Cavitation: the impeller pits", bubbles in the window and
+   the speed knocked back to 40%. Later steps raise the red band, so the ramp has to be gentler.
+
+A disabled pump's first step fits a new impeller: drag it from the crate onto the shaft. Its vanes must curve away
+from the casing's rotation arrow (backward-curved, as every centrifugal pump's are); tap it in the crate to turn it
+over. Fitted the wrong way round is the fumble "Impeller backwards: no flow", and it drops back in the crate.
+
+**Heat exchanger (chiller)** (`repairs/chiller.js`). A plate exchanger: a pack of seven plates between a fixed frame
+and a pressure plate, held by a top and a bottom tie bolt. Two rounds, alternating:
+
+1. **Scrub the plates.** The fouled plate is on the bench, face on: grey scale over its chevron pattern, a black
+   rubber gasket round its edge and its two ports. Drag the brush over it: the scale under the brush comes off. The
+   brush held on the gasket 0.3 s is the fumble "Torn gasket: coolant weeps". 95% of the scale off: clean, and it
+   slides back into the pack. Later steps put more scale on, and closer to the gasket.
+2. **Restack and clamp.** The pack's plates must alternate, chevrons up and down; one or two hang the wrong way: tap a
+   plate to turn it over. Then close the pack to its mark: tap a tie bolt's nut to turn it a quarter, which moves its
+   end of the pressure plate in. The two ends more than two quarters apart is the fumble "Skewed pack: a plate
+   cracks", and that nut backs off. The bolts do not turn until the plates alternate. Both ends on the mark:
+   clamped.
+
+A disabled chiller's first step fits a new plate: drag it from the crate into the gap in the pack.
+
+Both games' guides follow section 6g. The reactor system screen opens them from a pump's or the chiller's FIX.
+
 ## 7. The Pi 5 budget
 
 A mini-game is a UI screen: a few hundred to a few thousand UI triangles in a handful of draws, the 3D pass behind it

@@ -284,6 +284,24 @@
       const next = Math.floor(t * 0.8) % 3;
       P.forEach(([x, y], i) => { KIT.draw.disc(g, x, y, 8, "#b7c0cc"); KIT.draw.orderBadge(g, x, y, 8, i + 1, i === next, t); });
     },
+    /** Keep off the rubber: a seal's black line, and the brush working beside it, never on it. */
+    rubber(g, t) {
+      KIT.draw.round(g, -40, -34, 80, 68, 10); g.strokeStyle = "#111418"; g.lineWidth = 9; g.stroke();
+      KIT.draw.round(g, -40, -34, 80, 68, 10); g.strokeStyle = "rgba(255,71,87,0.5)"; g.lineWidth = 2; g.stroke();
+      const x = -8 + 12 * Math.sin(t * 2.5);
+      KIT.draw.ring(g, x, 2, 15, "rgba(232,238,246,0.75)", 3);
+      FINGER(g, x, 2);
+    },
+    /** Alternate: chevrons up, down, up, one turning over to fit. */
+    alternate(g, t) {
+      const flip = Math.max(0, Math.sin(t * 1.6));
+      [-30, 0, 30].forEach((x, i) => {
+        const up = i === 1 ? flip < 0.5 : true, k = i === 1 ? Math.abs(1 - 2 * flip) : 1;
+        KIT.draw.round(g, x - 11 * k, -36, 22 * k, 72, 4); g.fillStyle = "#4a586d"; g.fill();
+        const col = up === (i !== 1) ? C.accent : C.amber, d = (i === 1 ? !up : up) ? 1 : -1;
+        line(g, [[x - 8 * k, 8 * d], [x, -8 * d], [x + 8 * k, 8 * d]], col, 4);
+      });
+    },
     /** Slide a handle along its track. */
     slider(g, t) {
       line(g, [[-40, 0], [40, 0]], "#2a3446", 10);

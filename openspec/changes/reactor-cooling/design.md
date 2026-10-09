@@ -165,8 +165,8 @@ properly I can diagnose this by looking at the master reactor screen and click i
 - **The screen** (`docs/mockups/reactor-system.html`): the schematic, the loop's needles (hot leg, fill, flow) with
   BALANCE, and the card. A segment's card adds ISOLATE (its valves either side). FIX opens the games read-only from
   `repairs/`: the coolant pipes game for a segment or a tank, the magnetic core game for the core, the coolant balance
-  for BALANCE. **No game exists yet for a pump or the chiller**: the scrubbers' cabinet (its screw panel, the blower
-  fan as the part step, valves trimmed to their gauges) stands in, and the game's bar says so. While a segment's pipe
+  for BALANCE. A pump (core, radiator or makeup) opens the coolant pump game and the chiller the heat exchanger game
+  (`repair-minigames` 6h, owner 2026-10-09); until those were built the scrubbers' cabinet stood in. While a segment's pipe
   game is played, its valves shut in the simulation once the game's isolate step is done (the leak stops, the leg runs
   through the bypass); finishing it mends the part to 100% and opens the valves. Played with a real mouse to
   Repaired: pump A (flow 75% back to 100%) and a cracked hot leg segment (12 kg/s, the loop at 95%; isolated: no leak,

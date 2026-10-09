@@ -4799,7 +4799,8 @@
 <script src="repairs/reactor.js"></script>
 <script src="repairs/pipes.js"></script>
 <script src="repairs/coolant.js"></script>
-<script src="repairs/scrubbers.js"></script>
+<script src="repairs/pump.js"></script>
+<script src="repairs/chiller.js"></script>
 <script>
 "use strict";
 const K = window.ShipKit, SS = window.ShipSystems, RK = window.RepairKit;
@@ -5156,9 +5157,8 @@ function loopPanel(v, w, h) {
 
 // =================================================================== drawing: the PART panel (a tapped part's card)
 const KIND_ICON = { core: "core", segment: "pipe", tank: "tank", pump: "pump", radiator_pump: "pump", makeup: "makeup", exchanger: "chiller" };
-/** The repair game each part's FIX opens (design 6a). No game is made for a pump or the chiller yet: the scrubbers'
- * cabinet (a screw panel, a fan for the part step, valves trimmed to their gauges) is the nearest machine. */
-const GAME = { core: "reactor", segment: "pipes", tank: "pipes", pump: "scrubbers", radiator_pump: "scrubbers", makeup: "scrubbers", exchanger: "scrubbers" };
+/** The repair game each part's FIX opens (design 6a; the pump and the chiller have their own, repair-minigames 6h). */
+const GAME = { core: "reactor", segment: "pipes", tank: "pipes", pump: "pump", radiator_pump: "pump", makeup: "pump", exchanger: "chiller" };
 function meter(x, y, w, ic, label, k, col, val, tip) {
   let s = `<g${tipAttr(tip)}>` + icon(ic, x + 11, y + 10, 20, col) + text(x + 28, y + 15, 14, C.dim, label, { ls: 1.5, w: 700 });
   s += bar(x, y + 26, w, 12, k, col) + text(x + w, y + 15, 15, C.text, val, { a: "end" });
@@ -5327,8 +5327,8 @@ function openFix(id, gameId) {
   REPAIRS.opts.state = p && (p.state === "disabled" || p.state === "destroyed") ? "disabled" : "damaged";
   REPAIRS.open(game);
   const g = REPAIRS.run.game;
-  // The game's bar names the part being mended; a stand-in game says so in its place line.
-  if (p) REPAIRS.run.game = Object.assign({}, g, { title: p.name, place: game === "scrubbers" ? "Its screw panel and part (the scrubbers' game stands in)" : g.place });
+  // The game's bar names the part being mended.
+  if (p) REPAIRS.run.game = Object.assign({}, g, { title: p.name });
   FIX = { id: p ? p.id : null, game, kind: p ? p.kind : "balance", seenIsolate: false, doneT: 0 };
   OVERLAY.classList.add("open");
   document.getElementById("ohead").innerHTML = `<svg width="1280" height="58" viewBox="0 0 1280 58">` + icon(p ? "wrench" : "balance", 82, 30, 22, ACCENT) +
