@@ -98,6 +98,30 @@
       },
       ring(g, x, y, r, color, w = 4) { g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.strokeStyle = color; g.lineWidth = w; g.stroke(); },
       disc(g, x, y, r, color) { g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fillStyle = color; g.fill(); },
+      /**
+       * Pipes with a bore, the shower's look and every pipe game's (owner, 2026-10-09: "use the better pipes from the
+       * shower mini game"): a dark casing, a metal `body`, and down the middle a bore, `dry` where nothing runs and
+       * `fluid` as far as it has got. `runs` are polylines, or { pts, fill } with `fill` (0-1) how far from pts[0] the
+       * fluid has run. Each layer is drawn for every run before the next, so runs that meet join cleanly.
+       */
+      pipe(g, runs, { w = 22, body = "#3a4658", casing = "#232c3b", bore = 0.4, dry = "#141b27", fluid = null, fluidAlpha = 1, cap = "round" } = {}) {
+        const list = runs.map((r) => (Array.isArray(r) ? { pts: r, fill: 1 } : r));
+        const stroke = (pts) => { g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke(); };
+        g.lineJoin = "round"; g.lineCap = cap;
+        for (const [lw, col] of [[w + 6, casing], [w, body], [w * bore, dry]]) { g.strokeStyle = col; g.lineWidth = lw; for (const r of list) stroke(r.pts); }
+        if (fluid) {
+          g.globalAlpha = fluidAlpha; g.strokeStyle = fluid; g.lineWidth = w * bore;
+          for (const r of list) if (r.fill > 0) stroke(r.fill >= 1 ? r.pts : KIT.polyCut(r.pts, r.fill));
+          g.globalAlpha = 1;
+        }
+        g.lineCap = "butt"; g.lineJoin = "miter";
+      },
+      /** The hub where a tile's arms meet: a boss on the body, its bore dry or holding `fluid`. */
+      pipeHub(g, x, y, { r = 14, body = "#4a5566", dry = "#141b27", fluid = null, fluidAlpha = 1 } = {}) {
+        KIT.draw.disc(g, x, y, r, body);
+        KIT.draw.disc(g, x, y, r * 0.43, dry);
+        if (fluid) { g.globalAlpha = fluidAlpha; KIT.draw.disc(g, x, y, r * 0.43, fluid); g.globalAlpha = 1; }
+      },
       /** Diagonal hatching over a rectangle: a stop, a red zone, a gap (colour always with a shape, CLAUDE.md 10). */
       hatch(g, x, y, w, h, color) {
         g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip();
@@ -112,10 +136,11 @@
         for (let i = -300; i < 300; i += 11) { g.beginPath(); g.moveTo(x + i, y + 40); g.lineTo(x + i + 160, y - 160); g.stroke(); }
         g.restore();
       },
-      /** A curved arrow along a rim from a0 to a1: the way a ring or a crank turns. */
+      /** A curved arrow along a rim from a0 to a1, the head at a1: the way a ring or a crank turns. a1 > a0 runs
+       *  clockwise on screen, a1 < a0 anticlockwise (the arc takes the short way, the head points along it). */
       turnArrow(g, x, y, r, a0, a1, color) {
-        g.beginPath(); g.arc(x, y, r, a0, a1); g.strokeStyle = color; g.lineWidth = 4; g.stroke();
-        const hx = x + Math.cos(a1) * r, hy = y + Math.sin(a1) * r, d = a1 + Math.PI / 2;
+        g.beginPath(); g.arc(x, y, r, a0, a1, a1 < a0); g.strokeStyle = color; g.lineWidth = 4; g.stroke();
+        const hx = x + Math.cos(a1) * r, hy = y + Math.sin(a1) * r, d = a1 + (a1 < a0 ? -1 : 1) * Math.PI / 2;
         g.beginPath(); g.moveTo(hx + Math.cos(d) * 12, hy + Math.sin(d) * 12);
         g.lineTo(hx + Math.cos(a1) * 9, hy + Math.sin(a1) * 9); g.lineTo(hx - Math.cos(a1) * 9, hy - Math.sin(a1) * 9);
         g.closePath(); g.fillStyle = color; g.fill();
@@ -438,6 +463,29 @@
       screws: spots.slice(0, n).map(([sx, sy]) => ({ x: sx, y: sy, turn: 0, rot: 0 })) };
   }
   KIT.screwPanel = screwPanel;
+  /** A polyline's length, px. */
+  KIT.polyLen = (pts) => { let L = 0; for (let i = 1; i < pts.length; i++) L += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); return L; };
+  /** The point `u` (0-1) of the way along a polyline by length, and the direction it runs there: [x, y, angle]. */
+  KIT.polyAt = (pts, u) => {
+    let d = Math.max(0, Math.min(1, u)) * KIT.polyLen(pts);
+    for (let i = 1; i < pts.length; i++) {
+      const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], L = Math.hypot(x1 - x0, y1 - y0);
+      if (d <= L || i === pts.length - 1) { const k = L > 0 ? Math.min(1, d / L) : 0; return [x0 + (x1 - x0) * k, y0 + (y1 - y0) * k, Math.atan2(y1 - y0, x1 - x0)]; }
+      d -= L;
+    }
+    return [pts[0][0], pts[0][1], 0];
+  };
+  /** The first `u` (0-1) of a polyline by length, as a polyline. */
+  KIT.polyCut = (pts, u) => {
+    let d = Math.max(0, Math.min(1, u)) * KIT.polyLen(pts);
+    const out = [pts[0]];
+    for (let i = 1; i < pts.length; i++) {
+      const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], L = Math.hypot(x1 - x0, y1 - y0);
+      if (d >= L) { out.push(pts[i]); d -= L; continue; }
+      const k = L > 0 ? d / L : 0; out.push([x0 + (x1 - x0) * k, y0 + (y1 - y0) * k]); break;
+    }
+    return out;
+  };
   /** The star (cross) order to work n fasteners round a rim, from the first: across, then round. */
   const STARS = { 4: [0, 2, 1, 3], 6: [0, 3, 1, 4, 2, 5], 8: [0, 4, 2, 6, 1, 5, 3, 7] };
   KIT.starOrder = (n) => (STARS[n] || [...Array(n).keys()]).slice();
@@ -500,7 +548,9 @@
       g.strokeStyle = "#2a313c"; g.lineWidth = 4; g.beginPath(); g.moveTo(-8, 0); g.lineTo(8, 0); g.moveTo(0, -8); g.lineTo(0, 8); g.stroke();
       g.restore();
       if (sc.turn < goal) {
-        g.beginPath(); g.arc(sc.x, sc.y, SCREW_R + 9, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2 * sc.turn) / goal);
+        // The progress ring fills the way the screw turns: anticlockwise coming off, clockwise going home.
+        const pdir = p.phase === "open" ? -1 : 1;
+        g.beginPath(); g.arc(sc.x, sc.y, SCREW_R + 9, -Math.PI / 2, -Math.PI / 2 + (pdir * Math.PI * 2 * sc.turn) / goal, pdir < 0);
         g.strokeStyle = C.amber; g.lineWidth = 4; g.stroke();
         if (i === p.sel) D.ring(g, sc.x, sc.y, SCREW_R + 15 + Math.sin(t * 5) * 2, "rgba(232,238,246,0.35)", 2);
       } else D.ring(g, sc.x, sc.y, SCREW_R + 9, C.ok, 3);

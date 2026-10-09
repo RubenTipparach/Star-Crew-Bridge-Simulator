@@ -35,14 +35,13 @@
       "loop_kw_per_k": 110.0,
       "room_w_per_k": 250.0,
       "warn_k": 750.0,
-      "scram_k": 820.0
+      "scram_k": 820.0,
+      "afterheat_share": 0.06,
+      "afterheat_tau_s": 180.0
     },
     "scram": {
       "loop_over_k": 380.0,
       "loop_over_hold_s": 2.0,
-      "coolant_flow_below": 0.3,
-      "coolant_flow_hold_s": 5.0,
-      "coolant_check_above_throttle": 0.2,
       "aux_supply_below": 0.8,
       "aux_rule": "best train: max over the two trains of supply / need",
       "aux_supply_hold_s": 2.0,
@@ -323,6 +322,7 @@
     "radiator_pumps": ["radiator_pump_p", "radiator_pump_s"],
     "flow_per_radiator_pump": 0.5,
     "natural_circulation_flow": 0.05,
+    "flow_alarm_below": 0.3,
     "inventory_kg": 11100.0,
     "tanks": [
       { "id": "tank_p", "name": "Coolant tank, port", "capacity_kg": 2000.0 },

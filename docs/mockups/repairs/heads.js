@@ -655,14 +655,7 @@ RepairKit.register({
     }
 
     // ---------------------------------------------------------------- shower drawing
-    function pipe(g, pts, w = 22, wet = false) {
-      g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
-      g.lineJoin = "round"; g.lineCap = "round";
-      g.strokeStyle = "#232c3b"; g.lineWidth = w + 6; g.stroke();
-      g.strokeStyle = "#3a4658"; g.lineWidth = w; g.stroke();
-      g.strokeStyle = wet ? C.accent : "#141b27"; g.lineWidth = w * 0.4; g.stroke();
-      g.lineCap = "butt";
-    }
+    const pipe = (g, pts, w = 22, wet = false) => D.pipe(g, [pts], { w, fluid: wet ? C.accent : null });
     function valveGlyph(g, x, y, a, on) {
       D.disc(g, x, y, VR, "#141b27");
       D.ring(g, x, y, VR - 5, on ? C.ok : "#b0473f", 10);
@@ -736,13 +729,8 @@ RepairKit.register({
         const inNet = net.cells.has(key), wet = (flowing && inNet && net.cells.get(key) < s.flow) || (wetAll && inNet);
         D.round(g, x - T / 2 + 3, y - T / 2 + 3, T - 6, T - 6, 10); g.fillStyle = inNet && s.phase === "play" ? "#121c2a" : "#0d131c"; g.fill();
         g.save(); g.translate(x, y); g.rotate(tile.ang);
-        g.lineCap = "round";
-        for (const [w, col] of [[28, "#232c3b"], [22, inNet ? "#5a6a82" : "#3a4658"], [9, wet ? C.accent : "#141b27"]]) {
-          g.strokeStyle = col; g.lineWidth = w;
-          for (const d of DIRS) if (tile.base & d.b) { g.beginPath(); g.moveTo(0, 0); g.lineTo((d.dc * T) / 2, (d.dr * T) / 2); g.stroke(); }
-        }
-        g.lineCap = "butt";
-        D.disc(g, 0, 0, 14, inNet ? "#6b7c95" : "#4a5566"); D.disc(g, 0, 0, 6, wet ? C.accent : "#141b27");
+        D.pipe(g, DIRS.filter((d) => tile.base & d.b).map((d) => [[0, 0], [(d.dc * T) / 2, (d.dr * T) / 2]]), { body: inNet ? "#5a6a82" : "#3a4658", fluid: wet ? C.accent : null });
+        D.pipeHub(g, 0, 0, { body: inNet ? "#6b7c95" : "#4a5566", fluid: wet ? C.accent : null });
         g.restore();
       }
       if (s.keys && s.phase === "play") { const [x, y] = centre(s.cur.c, s.cur.r); D.round(g, x - T / 2 + 2, y - T / 2 + 2, T - 4, T - 4, 10); g.lineWidth = 4; g.strokeStyle = C.amber; g.stroke(); }

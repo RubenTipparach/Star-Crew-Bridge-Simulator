@@ -31,6 +31,22 @@ allocation, with a setpoint for their speed, priority 0 by default, and a breake
 - **WHEN** the engineer opens the Cooling feed's breaker at cruise
 - **THEN** the loop's flow falls to 5% and the hot leg warms toward its scram limit
 
+### Requirement: Losing the cooling heats the core
+
+Coolant flow under 30% SHALL raise an alarm without scramming the core, so the core's blanket heats by its waste heat
+until the blanket trip scrams it; and a scrammed core SHALL keep putting out afterheat, 6% of its thermal power at
+the scram, falling with a 180 s time constant.
+
+#### Scenario: The Cooling breaker opened at full power
+- **WHEN** the engineer opens the Cooling feed's breaker with the core running
+- **THEN** the core keeps running and its blanket climbs, until the hot leg over 380 K or the blanket over 820 K
+  scrams it (at cruise, after about 3 minutes)
+
+#### Scenario: Afterheat without cooling
+- **WHEN** the core has scrammed and the loop's flow is still at natural circulation
+- **THEN** the blanket keeps climbing for a while after the scram, and the reset is refused while the loop
+  is at 350 K or over
+
 ### Requirement: Manual coolant control beats damaged automation
 
 The engineering console SHALL offer manual control of pump speed, the chiller's bypass, the radiator pumps and the

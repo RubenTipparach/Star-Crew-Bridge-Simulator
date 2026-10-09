@@ -6,10 +6,13 @@
  * valves, and the order matters.
  *
  * Isolate: the engineering pipe run as a one-line plan. The core is at the top, the chiller at the bottom, the hot leg
- * down the right (red, chevrons), the cold leg up the left (blue, dots), each with its valves and a bypass round it.
- * One segment drips. Close the two valves either side of it (tap a valve; tap again to open it): the leg's bypass
- * opens on its own and the drip stops. The main valves at the core and the chiller (boxed) carry the core's feed;
- * closing one is the fumble "Core starved: the blanket heats", and it springs back open.
+ * down the right (red, chevrons), the cold leg up the left (blue, dots), each with its valves and, round its middle
+ * run, a bypass with its own valve, shut in normal running. Coolant flows wherever the open valves let it: dashes move
+ * where it flows and stand still where it does not, and the cracked segment drips while either side of it is open.
+ * Open the leg's bypass, then shut the valve on each side of the segment (tap a valve; tap again to open it): one valve
+ * shut leaves it fed from the other side (owner, 2026-10-09: "I should have to close valves in two places to bypass
+ * the broken pipe"). Shutting the last open way from the core to the chiller (a boxed main valve, or the line with the
+ * bypass still shut) is the fumble "Core starved: the blanket heats", and that valve springs back open.
  *
  * Rebuild: the segment's run as a tile grid with two pairs of ends: hot (red, chevrons) left to right, cold (blue,
  * dots) top to bottom. Tap a tile to turn it a quarter. Join each pair with no open end and without the legs meeting;
@@ -42,7 +45,7 @@ RepairKit.register({
   // The how-to card (repair-minigames 6g), drawn by the kit: pictures and a few words, on demand.
   guide: {
     steps: [
-      { icon: "valve", text: "Shut the valves either side" },
+      { icon: "valve", text: "Open bypass, shut both sides" },
       { icon: "pipes", text: "Turn tiles, swap cracked ones" },
       { icon: "flow", text: "FILL: both legs reach the end" },
       { icon: "order", text: "Open out, in, then bleed" },
@@ -73,15 +76,16 @@ RepairKit.register({
     let s = null, job = null;
 
     // ================================================================ shared drawing
-    /** A pipe along a polyline: casing, coolant (or empty), and the leg's pattern running with the flow. */
+    /** The bore's share of a pipe's width here: wide enough to read the leg's colour and its pattern in it. */
+    const BORE = 0.55;
+    /**
+     * A pipe along a polyline, the kit's (the shower's look): the bore dry when `dim` or legless, else holding the
+     * leg's coolant `fill` of the way, with its pattern running with the flow.
+     */
     function pipe(g, pts, leg, { w = 24, flow = 0, t = 0, dim = false, fill = 1 } = {}) {
-      g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
-      g.lineJoin = "round"; g.lineCap = "round";
-      g.strokeStyle = "#263142"; g.lineWidth = w + 8; g.stroke();
-      g.strokeStyle = dim ? "#161e2b" : leg === "hot" ? "rgba(255,106,77,0.55)" : leg === "cold" ? "rgba(79,168,247,0.55)" : "#3a4658";
-      g.lineWidth = w; g.stroke();
-      g.lineCap = "butt";
-      if (dim || !leg || fill <= 0) return;
+      const wet = !dim && leg && fill > 0;
+      D.pipe(g, [{ pts, fill }], { w, bore: BORE, fluid: wet ? (leg === "hot" ? HOT : COLD) : null });
+      if (!wet) return;
       // The pattern: chevrons for hot, dots for cold, every 30 px along the run, moving with the flow.
       const segs = [];
       let total = 0;
@@ -151,6 +155,8 @@ RepairKit.register({
       { id: "h1", leg: "hot", x: XR, y: VY[0], i: 1 }, { id: "h2", leg: "hot", x: XR, y: VY[1], i: 2 }, { id: "h3", leg: "hot", x: XR, y: VY[2], i: 3 },
       { id: "h4", leg: "hot", x: 780, y: YB, main: true }, { id: "c0", leg: "cold", x: 500, y: YB, main: true },
       { id: "c1", leg: "cold", x: XL, y: VY[2], i: 1 }, { id: "c2", leg: "cold", x: XL, y: VY[1], i: 2 }, { id: "c3", leg: "cold", x: XL, y: VY[0], i: 3 },
+      // The bypasses' own valves, shut in normal running.
+      { id: "hb", leg: "hot", x: BYR, y: 400, bypass: true }, { id: "cb", leg: "cold", x: BYL, y: 400, bypass: true },
     ];
     /** Segment n (1-4) of a leg, as its pipe points: the hot leg runs core to chiller, the cold chiller to core. */
     function segPts(leg, n) {
@@ -168,8 +174,20 @@ RepairKit.register({
     const segMid = (leg, n) => { const p = segPts(leg, n); return [(p[0][0] + p[p.length - 1][0]) / 2, (p[0][1] + p[p.length - 1][1]) / 2]; };
 
     function isoStep() {
-      s = { kind: "isolate", shut: new Set(), spring: [], focus: 0, keys: false, blanket: 0, done: false, doneT: 0, bypass: { hot: 0, cold: 0 } };
+      s = { kind: "isolate", shut: new Set(VALVES.map((v, i) => (v.bypass ? i : -1)).filter((i) => i >= 0)), spring: [], focus: 0, keys: false,
+        blanket: 0, done: false, doneT: 0, bypass: { hot: 0, cold: 0 } };
     }
+    // Where the coolant can go (design 4): a leg's middle run carries it when its three line valves are open, its
+    // bypass when the bypass valve is open; the leg flows when either does.
+    const lineOpen = (leg, shut = s.shut) => VALVES.every((v, i) => v.leg !== leg || !v.i || !shut.has(i));
+    const bypassOpen = (leg, shut = s.shut) => VALVES.every((v, i) => v.leg !== leg || !v.bypass || !shut.has(i));
+    const legFlows = (leg, shut = s.shut) => lineOpen(leg, shut) || bypassOpen(leg, shut);
+    /** A line segment n (2 or 3, between line valves n-1 and n) is cut off when a valve on each side of it is shut,
+     *  the nearest or one further along (shutting valves 1 and 3 cuts off both middle runs). */
+    const segCut = (leg, n, shut = s.shut) => {
+      const shutAt = (k) => VALVES.some((v, i) => v.leg === leg && v.i === k && shut.has(i));
+      return [1, 2, 3].some((k) => k <= n - 1 && shutAt(k)) && [1, 2, 3].some((k) => k >= n && shutAt(k));
+    };
     const isoValve = (v) => VALVES.indexOf(v);
     /** The two valves either side of the cracked segment. */
     const isoNeed = () => VALVES.filter((v) => v.leg === job.leg && (v.i === job.seg - 1 || v.i === job.seg)).map(isoValve);
@@ -181,15 +199,23 @@ RepairKit.register({
         api.fumble(STARVED);
         return;
       }
-      if (s.shut.has(i)) s.shut.delete(i); else s.shut.add(i);
-      const need = isoNeed();
-      if (s.shut.size === 2 && need.every((k) => s.shut.has(k))) { s.done = true; api.stepDone(); }
+      const next = new Set(s.shut);
+      if (next.has(i)) next.delete(i); else next.add(i);
+      if (!legFlows(v.leg, next)) {
+        // That was the leg's last open way: the core's feed stops, the valve springs back open.
+        s.spring.push({ i, t: 0.7 }); s.blanket = 1;
+        api.fumble(STARVED);
+        return;
+      }
+      s.shut = next;
+      // Played: the cracked segment shut off on both sides, and its leg still flowing.
+      if (segCut(job.leg, job.seg) && legFlows(job.leg)) { s.done = true; api.stepDone(); }
     }
     function isoUpdate(dt, input) {
       s.blanket = Math.max(0, s.blanket - dt * 0.6);
       s.spring = s.spring.filter((sp) => (sp.t -= dt) > 0);
       for (const leg of ["hot", "cold"]) {
-        const want = [...s.shut].some((i) => VALVES[i].leg === leg) ? 1 : 0;
+        const want = bypassOpen(leg) ? 1 : 0;
         s.bypass[leg] += (want - s.bypass[leg]) * Math.min(1, dt * 4);
       }
       if (s.done) { s.doneT += dt; return; }
@@ -204,21 +230,21 @@ RepairKit.register({
     }
     function isoDraw(g, t) {
       D.panel(g, 40, 92, 1200, 616, 18, "#0a0f17");
-      const cut = (leg) => [...s.shut].some((i) => VALVES[i].leg === leg);
-      const crackIso = s.done;
-      // The bypasses: dashed and dry while shut, running once their leg is cut.
+      const crackIso = segCut(job.leg, job.seg);
+      // The bypasses: dashed and dry while their valve is shut, running once it is open.
       for (const leg of ["hot", "cold"]) {
         const X = leg === "hot" ? XR : XL, B = leg === "hot" ? BYR : BYL, k = s.bypass[leg];
         const pts = [[X, TEE[0]], [B, TEE[0]], [B, TEE[1]], [X, TEE[1]]];
         if (leg === "cold") pts.reverse();
         pipe(g, pts, k > 0.5 ? leg : null, { w: 14, flow: 1.5, t, dim: k < 0.5 });
         if (k < 0.5) { g.setLineDash([10, 8]); g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.strokeStyle = "#3a4658"; g.lineWidth = 3; g.stroke(); g.setLineDash([]); }
-        bowtie(g, B, 400, true, k < 0.5, { r: 12 });
       }
-      // The legs, segment by segment: dry where the bypass has taken the flow.
+      // The legs, segment by segment: the middle run flows only while its line is open (half its share with the
+      // bypass open too), stands still when a valve on it is shut, and is drawn dry where it is shut off both sides.
       for (const leg of ["hot", "cold"]) for (let n = 1; n <= 4; n++) {
-        const between = cut(leg) && n >= 2 && n <= 3, outer = cut(leg) && !between;
-        pipe(g, segPts(leg, n), leg, { flow: outer ? 0.6 : 1.5, t, dim: between });
+        const mid = n === 2 || n === 3, line = lineOpen(leg), by = bypassOpen(leg);
+        const flow = !mid ? 1.5 : line ? (by ? 0.8 : 1.5) : 0;
+        pipe(g, segPts(leg, n), leg, { flow, t, dim: mid && segCut(leg, n) });
       }
       // Main runs: core to the main valves, the main valves to the chiller.
       pipe(g, [[CORE.x + CORE.r, YT], [780, YT]], "hot", { flow: 1.5, t });
@@ -235,7 +261,7 @@ RepairKit.register({
       chillGlyph(g, CHILL.x, CHILL.y, CHILL.w, CHILL.h);
       VALVES.forEach((v, i) => {
         const shut = s.shut.has(i) || s.spring.some((sp) => sp.i === i);
-        bowtie(g, v.x, v.y, v.x === XR || v.x === XL, shut, { main: v.main, focus: s.keys && s.focus === i });
+        bowtie(g, v.x, v.y, v.x === XR || v.x === XL || !!v.bypass, shut, { main: v.main, r: v.bypass ? 14 : undefined, focus: s.keys && s.focus === i });
       });
       if (s.blanket > 0) D.text(g, "BLANKET +20 K", CORE.x, CORE.y + 74, 20, C.danger, "center", 700);
     }
@@ -433,16 +459,13 @@ RepairKit.register({
       }
     }
     /**
-     * A tile group's branches as the coolant runs them, from the port it comes in by (`f`, unturned) to the far port(s):
-     * each a function of u, 0 at the inlet port and 1 at the far port, to a point in px at the tile's centre.
+     * A tile group's branches as the coolant runs them, from the port it comes in by (`f`, unturned) to each far port:
+     * polylines in px about the tile's centre, the inlet port, the centre, the far port (straight arms meeting at the
+     * hub, as the shower's tiles are).
      */
     function branches(gp, f, T) {
-      const P = [(DC[f] * T) / 2, (DR[f] * T) / 2], at2 = (p) => [(DC[p] * T) / 2, (DR[p] * T) / 2];
-      const others = gp.filter((p) => p !== f);
-      if (gp.length === 3) return others.map((q) => (u) => (u < 0.5 ? [lerp(P[0], 0, u * 2), lerp(P[1], 0, u * 2)] : [lerp(0, at2(q)[0], u * 2 - 1), lerp(0, at2(q)[1], u * 2 - 1)]));
-      const Q = at2(others[0]);
-      if (opp(f) === others[0]) return [(u) => [lerp(P[0], Q[0], u), lerp(P[1], Q[1], u)]];
-      return [(u) => [(1 - u) * (1 - u) * P[0] + u * u * Q[0], (1 - u) * (1 - u) * P[1] + u * u * Q[1]]];   // the elbow: a curve round the centre
+      const at2 = (p) => [(DC[p] * T) / 2, (DR[p] * T) / 2];
+      return gp.filter((p) => p !== f).map((q) => [at2(f), [0, 0], at2(q)]);
     }
     /**
      * One tile's pipes at the origin, unrotated groups turned by `ang`. A group a leg reaches is tinted faintly with its
@@ -450,36 +473,34 @@ RepairKit.register({
      * of the way, in the leg's colour with its chevrons (hot) or dots (cold) moving with the flow.
      */
     function tilePipes(g, type, ang, T, legOf, wetOf, fromOf, t = 0, fade = 1) {
+      const w = T * 0.24;
       g.save(); g.rotate(ang);
       TYPES[type].forEach((gp, gi) => {
-        const leg = legOf ? legOf(gi) : null, w = leg && wetOf ? wetOf(gi) : 0;
-        const col = leg ? (leg === "hot" ? "rgba(255,106,77,0.3)" : "rgba(79,168,247,0.3)") : "#4a586d";
+        const leg = legOf ? legOf(gi) : null, wf = leg && wetOf ? wetOf(gi) : 0;
         // A crossover's second group (east-west) bridges over the first: drawn last, with a gap cut under it.
-        if (type === "x" && gi === 1) { g.strokeStyle = "#0d131c"; g.lineWidth = 34; g.beginPath(); g.moveTo(-T / 2 + 18, 0); g.lineTo(T / 2 - 18, 0); g.stroke(); }
+        if (type === "x" && gi === 1) { g.strokeStyle = "#0d131c"; g.lineWidth = w + 16; g.beginPath(); g.moveTo(-T / 2 + w, 0); g.lineTo(T / 2 - w, 0); g.stroke(); }
         const from = fromOf ? fromOf(gi) : null, br = branches(gp, from === null || !gp.includes(from) ? gp[0] : from, T);
-        const path = (fn, u1) => { g.beginPath(); for (let k = 0; k <= 16; k++) { const [x, y] = fn((u1 * k) / 16); if (k) g.lineTo(x, y); else g.moveTo(x, y); } g.stroke(); };
-        for (const [wd, c2] of [[28, "#232c3b"], [20, col]]) { g.strokeStyle = c2; g.lineWidth = wd; g.lineCap = "round"; for (const fn of br) path(fn, 1); }
-        if (w > 0) {
-          g.globalAlpha = fade; g.strokeStyle = leg === "hot" ? HOT : COLD; g.lineWidth = 20;
-          for (const fn of br) path(fn, Math.min(1, w));
-          g.globalAlpha = 1;
-        }
-        g.lineCap = "butt";
+        // A group a leg reaches: a brighter body and the bore tinted dark in its colour (the preview), until the
+        // coolant fills it from its inlet port.
+        D.pipe(g, br.map((pts) => ({ pts, fill: wf })), {
+          w, bore: BORE, body: leg ? "#5a6a82" : "#3a4658", dry: leg === "hot" ? "#3a1f1c" : leg === "cold" ? "#14263a" : "#141b27",
+          fluid: leg && wf > 0 ? (leg === "hot" ? HOT : COLD) : null, fluidAlpha: fade,
+        });
+        if (type !== "x" && gi === 0) D.pipeHub(g, 0, 0, { r: w * 0.62, body: leg ? "#6b7c95" : "#4a5566", fluid: leg && wf >= 0.5 ? (leg === "hot" ? HOT : COLD) : null, fluidAlpha: fade });
         // The leg's pattern, never colour alone: bright and running where the coolant is, faint where it will go.
         if (leg) {
-          const us = gp.length === 3 ? [0.25, 0.75] : [1 / 6, 0.5, 5 / 6], step = 1 / us.length;
-          for (const fn of br) for (const u0 of us) {
-            const u = w >= 1 ? (u0 + t * 0.9 * step * FLOW_TILES_S / 2) % 1 : u0, wet = u <= w;
-            const [x, y] = fn(u), [xa, ya] = fn(Math.max(0, u - 0.02)), [xb, yb] = fn(Math.min(1, u + 0.02));
-            g.save(); g.translate(x, y); g.rotate(Math.atan2(yb - ya, xb - xa)); g.globalAlpha = wet ? fade : 1;
+          const us = [1 / 6, 0.5, 5 / 6];
+          for (const pts of br) for (const u0 of us) {
+            const u = wf >= 1 ? (u0 + (t * 0.9 * FLOW_TILES_S) / 6) % 1 : u0, wet = u <= wf;
+            const [x, y, a] = KIT.polyAt(pts, u);
+            g.save(); g.translate(x, y); g.rotate(a); g.globalAlpha = wet ? fade : 1;
             const ink = wet ? (leg === "hot" ? "#fff3e0" : "#e8f6ff") : leg === "hot" ? "rgba(255,210,190,0.45)" : "rgba(210,235,255,0.45)";
-            if (leg === "hot") { g.beginPath(); g.moveTo(-4, -6); g.lineTo(3, 0); g.lineTo(-4, 6); g.strokeStyle = ink; g.lineWidth = 2.5; g.stroke(); }
-            else D.disc(g, 0, 0, 3, ink);
+            if (leg === "hot") { g.beginPath(); g.moveTo(-3, -4.5); g.lineTo(2.5, 0); g.lineTo(-3, 4.5); g.strokeStyle = ink; g.lineWidth = 2.2; g.lineJoin = "round"; g.stroke(); }
+            else D.disc(g, 0, 0, 2.6, ink);
             g.restore();
           }
         }
       });
-      D.disc(g, 0, 0, type === "x" ? 0 : 9, "#5a6a82");
       g.restore();
     }
     /** Coolant jetting out of an open joint, the way it was running (`dir`, a port): a spray, and steam off the hot leg. */
@@ -756,7 +777,8 @@ RepairKit.register({
       peek() {
         if (!s) return null;
         const base = { kind: s.kind, leg: job.leg, seg: job.seg };
-        if (s.kind === "isolate") return { ...base, shut: [...s.shut], need: isoNeed(), valves: VALVES.map((v) => ({ id: v.id, x: v.x, y: v.y, main: !!v.main, leg: v.leg })), done: s.done };
+        if (s.kind === "isolate") return { ...base, shut: [...s.shut], need: isoNeed(), valves: VALVES.map((v) => ({ id: v.id, x: v.x, y: v.y, i: v.i || 0, main: !!v.main, bypass: !!v.bypass, leg: v.leg })),
+          flows: { hot: legFlows("hot"), cold: legFlows("cold") }, cut: segCut(job.leg, job.seg), done: s.done };
         if (s.kind === "rebuild") {
           const net = network();
           return { ...base, round: s.round, cols: s.cols, rows: s.rows, T: s.T, gx: s.gx, gy: s.gy, phase: s.phase,

@@ -410,14 +410,6 @@ RepairKit.register({
       });
     }
 
-    /** A short curved arrow along a rim from a0 to a1, either way round (the kit's turnArrow goes clockwise only). */
-    function arcArrow(g, x, y, r, a0, a1, color) {
-      g.beginPath(); g.arc(x, y, r, a0, a1, a1 < a0); g.strokeStyle = color; g.lineWidth = 4; g.stroke();
-      const hx = x + Math.cos(a1) * r, hy = y + Math.sin(a1) * r, d = a1 + (a1 < a0 ? -1 : 1) * Math.PI / 2;
-      g.beginPath(); g.moveTo(hx + Math.cos(d) * 12, hy + Math.sin(d) * 12);
-      g.lineTo(hx + Math.cos(a1) * 9, hy + Math.sin(a1) * 9); g.lineTo(hx - Math.cos(a1) * 9, hy - Math.sin(a1) * 9);
-      g.closePath(); g.fillStyle = color; g.fill();
-    }
     function drawDial(g, t) {
       const on = s.phase === "play", R = s.rip[s.sel] || { ct: 0 };
       const grab = s.grab === "dial";
@@ -439,8 +431,8 @@ RepairKit.register({
       }
       g.restore();
       // Which ways it turns.
-      arcArrow(g, DIAL.x, DIAL.y, DIAL.r + 11, -2.45, -1.85, "rgba(232,238,246,0.45)");
-      arcArrow(g, DIAL.x, DIAL.y, DIAL.r + 11, -0.7, -1.3, "rgba(232,238,246,0.45)");
+      D.turnArrow(g, DIAL.x, DIAL.y, DIAL.r + 11, -2.45, -1.85, "rgba(232,238,246,0.45)");
+      D.turnArrow(g, DIAL.x, DIAL.y, DIAL.r + 11, -0.7, -1.3, "rgba(232,238,246,0.45)");
       D.text(g, "TURN", DIAL.x, DIAL.y + DIAL.r + 44, 20, on ? C.dim : "#3a4658", "center", 700);
     }
 

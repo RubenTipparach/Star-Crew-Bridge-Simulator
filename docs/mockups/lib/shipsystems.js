@@ -339,7 +339,7 @@
       t: 0, seed,
       alert: "normal",
       reactor: { mode: "auto", state: "running", throttle: PW.reactor.throttle_default * 0.6, target: PW.reactor.throttle_default, P_th: 0, P_e: 0,
-        T: 600, integrity: 100, fuel_kg: PW.reactor.fuel_load_kg, timers: { loop: 0, flow: 0, aux: 0 }, scramCause: null, ignition: 0, releaseReserve: false },
+        T: 600, integrity: 100, fuel_kg: PW.reactor.fuel_load_kg, timers: { loop: 0, aux: 0 }, scramCause: null, ignition: 0, releaseReserve: false, afterheatW: 0 },
       battery: { soc_mj: PW.battery.capacity_mj * PW.battery.initial_soc, out_mw: 0, in_mw: 0, health: 1 },
       loop: { T: PW.coolant.initial_k, flow: 1, rad_mw: 0, in_mw: 0, radiatorHealth: 1, branchOpen: {},
         // reactor-cooling: inventory (kg), the tanks' reserve, the hot leg, the radiator pumps' flow, the
@@ -879,7 +879,9 @@
       }
       // Reactor blanket.
       const rx = st.reactor, RH = PW.reactor.heat;
-      const waste = Math.max(0, rx.P_th - rx.P_e);
+      // Afterheat (reactor-cooling design 6b): a scrammed core keeps putting out a falling share of the power it had.
+      rx.afterheatW = rx.state === "running" ? 0 : rx.afterheatW * Math.exp(-dt / RH.afterheat_tau_s);
+      const waste = Math.max(0, rx.P_th - rx.P_e) + rx.afterheatW;
       const qRxLoop = RH.loop_kw_per_k * 1000 * loop.flow * (rx.T - loop.T);
       const eng = idx[L.systems.find((s) => s.id === PW.reactor.system).compartment];
       const qRxRoom = RH.room_w_per_k * (rx.T - T[eng]);
@@ -922,18 +924,18 @@
       if (rx.state !== "running") return;
       const tm = rx.timers;
       tm.loop = st.loop.hot_k > SC.loop_over_k ? tm.loop + dt : 0; // the hot leg (reactor-cooling design 3)
-      tm.flow = st.loop.flow < SC.coolant_flow_below && rx.throttle > SC.coolant_check_above_throttle ? tm.flow + dt : 0;
       tm.aux = auxRatio() < SC.aux_supply_below ? tm.aux + dt : 0;
       let cause = null;
       if (tm.loop >= SC.loop_over_hold_s) cause = "coolant hot leg over " + SC.loop_over_k + " K";
       else if (rx.T > PW.reactor.heat.scram_k) cause = "blanket over " + PW.reactor.heat.scram_k + " K";
-      else if (tm.flow >= SC.coolant_flow_hold_s) cause = "coolant flow below " + SC.coolant_flow_below * 100 + "%";
       else if (tm.aux >= SC.aux_supply_hold_s) cause = "auxiliaries below " + SC.aux_supply_below * 100 + "% supply";
       else if (rx.integrity < SC.integrity_below_pct) cause = "reactor integrity below " + SC.integrity_below_pct + "%";
       if (cause) scram(cause);
     }
     function scram(cause) {
-      const rx = st.reactor; rx.state = "scrammed"; rx.scramCause = cause; rx.throttle = 0; rx.P_th = 0; rx.timers = { loop: 0, flow: 0, aux: 0 };
+      // Low coolant flow is an alarm, not a cause (reactor-cooling design 6b): the core runs on and its blanket heats.
+      const rx = st.reactor; rx.state = "scrammed"; rx.scramCause = cause; rx.timers = { loop: 0, aux: 0 };
+      rx.afterheatW = PW.reactor.heat.afterheat_share * rx.P_th; rx.throttle = 0; rx.P_th = 0;
       log("SCRAM: " + cause);
     }
     /** The hands-on reset at the reactor panel: refused while a cause persists. */

@@ -6,7 +6,8 @@
 the blanket (10 MJ/K), which gives it to the loop at `110 kW/K x flow`. The loop is 40 MJ/K of pressurized water and
 glycol, 740 kg/s at full flow, two pumps of half the flow (0.4 MW each, class 0, never shed). Radiators reject
 `40 MW x health x flow x (T^4 - 4^4) / (330^4 - 4^4)` through a bypass that holds the loop at 325-330 K. Scram on
-the loop above 380 K for 2 s, the blanket above 820 K, or flow under 30% at a throttle above 20% for 5 s. The repair
+the loop above 380 K for 2 s, the blanket above 820 K, or flow under 30% at a throttle above 20% for 5 s (the last
+retired by section 6b: low flow is an alarm, and the core heats). The repair
 game for the reactor (`repair-minigames` 6b) holds the plasma ball and its ring with two sliders.
 
 ## 1. Two components
@@ -48,9 +49,16 @@ today's rules.
 A damaged segment, its job in the kit's step rule (a fumble costs 5% and the system's hazard). More than the shower's
 puzzle: two legs, valves, and the order matters.
 
-1. **Isolate.** The engineering pipe run as a one-line plan with its valves. Close the two valves either side of the
-   cracked segment (it is dripping, the plan's leak marker on it). The bypass opens on its own. Closing a valve that
-   cuts the core's feed instead is the fumble "Core starved: the blanket heats" (the blanket +20 K).
+1. **Isolate** (as the owner put it, 2026-10-09: "I should have to close valves in two places to bypass the broken
+   pipe"). The engineering pipe run as a one-line plan with its valves and, round each leg's middle run, a bypass
+   with its own valve, shut in normal running. Coolant flows wherever the open valves let it, and the plan shows it:
+   moving dashes where it flows, still where it stands, a drip wherever the cracked segment is still fed. To take the
+   segment out: open the leg's bypass valve, then shut a valve on each side of the segment (the nearest, or one further along: shutting the first and the
+   last valve of the run cuts off both its segments). One valve shut leaves it
+   fed from the other side, still dripping. Shutting the last open way between the core and the chiller (a main valve,
+   or the line's valve with the bypass still shut) is the fumble "Core starved: the blanket heats" (the blanket +20 K),
+   and that valve springs back open. The round is played when the segment is shut off on both sides and the leg still
+   flows.
 2. **Rebuild.** The segment's run as a tile grid with two pairs of ends: hot (red) and cold (blue). Turn tiles to join
    each pair without the two legs meeting; crossover tiles let one leg pass over the other. Cracked tiles drip and
    must be swapped for a new one from the parts tray (drag it on) before they carry anything. Larger runs on later
@@ -166,6 +174,42 @@ properly I can diagnose this by looking at the master reactor screen and click i
 - **Not built here**: a hit's march reaching the coolant parts (they are damaged by `damagePart`); the leak's heat and
   steam into engineering and the scald; the pipes game mending the tapped segment's own picture (it draws its own leg
   and segment, chosen by its seed); opening the screen from the console's REACTOR ring.
+
+## 6b. Losing the cooling heats the core (owner, 2026-10-09)
+
+The owner, on the reactor system screen with the Cooling breaker open: "reactor heat should go up if cooling system is
+offline. what does scram do?" A **scram** is the core's emergency shutdown: the confinement drops the plasma, thermal
+power goes to zero at once, the auxiliaries fall to standby and the ship runs on its battery until a hands-on reset at
+the reactor panel (`power-grid` 3: refused while the loop is at 350 K or over, the blanket at 700 K or over, or the
+core under 25%; ignition then draws 8 MW for 20 s).
+
+**What was wrong.** Losing the flow scrammed the core 5 s after it fell under 30% (`power-grid` 3, "Coolant flow
+lost"). Measured with the breaker opened at cruise: the core scrammed in 5 s with its blanket 6 K warmer (465 to
+471 K), then cooled about 3 K a minute on natural circulation. The heat never went up, and the crew had nothing to
+do but reset the core later: the trip took the crisis away from them.
+
+**What changes.**
+
+1. **Low coolant flow is an alarm, not a trip.** Under 30% flow (now `coolant.flow_alarm_below`) the FLOW dial is in
+   its red band and the console warns, but the core keeps running. Nothing carries its waste heat away, so its
+   blanket climbs at `waste / capacity`, and the little that natural circulation takes heats the loop, until a trip
+   scrams it: the hot leg over 380 K, or the blanket over 820 K. Measured with the breaker opened at cruise (42%
+   throttle, 34 MW thermal): the blanket climbs 1.25 K/s (465 to about 680 K) and the hot leg trips after about
+   3 minutes; at full power the climb is faster. That gives the crew a few minutes to act: close the breaker, run the pumps on what power there is, throttle
+   down to slow the climb, or scram by hand. The loop and blanket trips, the auxiliaries' and the damage trip stand
+   as they are.
+2. **A scrammed core keeps making heat for a while: afterheat.** The blanket and first wall carry heat and activation
+   after the plasma drops, so for minutes after a scram the core puts out `afterheat_share` (6%) of the thermal power
+   it had at the scram, falling by `exp(-t / afterheat_tau_s)` (180 s). A fictional rating, stated as such: a
+   deuterium and helium-3 core has far less activation than a fission core, and the figure is tuned so a scrammed core
+   without cooling still climbs after the scram (measured: about 680 K at the trip to a peak near 695 K, then
+   falling about 7 K a minute on natural circulation). It makes the cooling the first thing to fix after a scram:
+   the reset is refused while the loop is at 350 K or over, and without the pumps the loop stays near 375 K.
+
+Data: `reactor.scram` loses `coolant_flow_below`, `coolant_flow_hold_s` and `coolant_check_above_throttle`;
+`coolant.flow_alarm_below` (0.3) is the alarm; `reactor.heat` gains `afterheat_share` (0.06) and `afterheat_tau_s`
+(180). Not built here: the core's integrity wearing above its trip (a core held over 820 K by afterheat takes no damage
+yet).
 
 ## 7. The Pi 5 budget
 
