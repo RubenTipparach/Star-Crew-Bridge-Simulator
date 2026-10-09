@@ -4,6 +4,9 @@
  * It implements, in one place, the formulas of three proposed OpenSpec changes so the
  * mockup shows what the designs say and nothing else:
  *   openspec/changes/power-grid      (the power solve, reactor, battery, heat and coolant)
+ *   openspec/changes/reactor-cooling (the Cooling group, pump speeds, the radiator pumps, the loop's
+ *                                     inventory and makeup, the two legs, the cooling automation; its
+ *                                     pipe segments, leaks and the exchanger's damage are not here yet)
  *   openspec/changes/life-support    (the atmosphere step, plant, pumps, crew effects)
  *   openspec/changes/damage-control  (fire, hit resolution, suppression)
  * Every tuning number comes from the proposed data files data/ships/<id>/power.json,
@@ -328,7 +331,15 @@
       reactor: { mode: "auto", state: "running", throttle: PW.reactor.throttle_default * 0.6, target: PW.reactor.throttle_default, P_th: 0, P_e: 0,
         T: 600, integrity: 100, fuel_kg: PW.reactor.fuel_load_kg, timers: { loop: 0, flow: 0, aux: 0 }, scramCause: null, ignition: 0, releaseReserve: false },
       battery: { soc_mj: PW.battery.capacity_mj * PW.battery.initial_soc, out_mw: 0, in_mw: 0, health: 1 },
-      loop: { T: PW.coolant.initial_k, flow: 1, rad_mw: 0, in_mw: 0, radiatorHealth: 1, branchOpen: {} },
+      loop: { T: PW.coolant.initial_k, flow: 1, rad_mw: 0, in_mw: 0, radiatorHealth: 1, branchOpen: {},
+        // reactor-cooling: inventory (kg), the tanks' reserve, the hot leg, the radiator pumps' flow, the
+        // exchanger's capability (1 until its damage is modelled) and a leak hook (kg/s) for the pipe segments to come.
+        m_kg: PW.coolant.inventory_kg, tanks_kg: PW.coolant.tanks.map((t) => t.capacity_kg), hot_k: PW.coolant.initial_k,
+        rad_flow: 1, exchanger: 1, chiller: 1, leak_kg_s: 0, makeup_kg_s: 0 },
+      // The engineer's hand on the loop (reactor-cooling design 5): AUTO, or MANUAL with the chiller's share and the
+      // makeup valve set by hand (the pumps' speeds are their loads' setpoints either way).
+      cooling: { mode: "auto", chiller: 1, makeup: 0, timer: 0 },
+      groupBreaker: {}, // group id -> "closed" | "open" | "locked" (a group with feed_breaker, power-grid 5)
       setpoint: new Float64Array(loads.length).fill(1),
       priority: Int8Array.from(loads.map((l) => l.priority)),
       activity: {},
@@ -483,8 +494,9 @@
 
     function mayUseReserve(i) {
       const id = loads[i].id;
+      // The loop's pumps (core and radiator) may spend it while the reactor is down, as long as they stay vital.
       return id === "emergency_lighting" || (id.startsWith("reactor_aux") && st.reactor.state === "igniting") ||
-        (PW.coolant.pumps.indexOf(id) >= 0 && st.reactor.state !== "running");
+        ((PW.coolant.pumps.indexOf(id) >= 0 || PW.coolant.radiator_pumps.indexOf(id) >= 0) && st.reactor.state !== "running" && st.priority[i] === 0);
     }
     /** Demand per load from setpoints, activity, damage and breakers (MW). */
     function computeDemand(setpoints) {
@@ -502,6 +514,7 @@
         else if (l.activity === "airlock_pump") x = Math.min(st.airlock.pump_mw_want, l.nominal_mw * sp);
         else if (l.id.startsWith("reactor_aux") && st.reactor.state === "igniting") x = PW.reactor.restart.ignition_mw / 2;
         else if (l.id.startsWith("reactor_aux") && st.reactor.state === "scrammed") x = l.standby_mw;
+        else if (l.power_exponent) x = l.nominal_mw * Math.pow(sp, l.power_exponent); // a pump: its setpoint is its speed
         else {
           const a = l.activity ? (st.activity[l.activity] || 0) : 1;
           x = l.standby_mw + Math.max(0, l.nominal_mw * sp - l.standby_mw) * a;
@@ -612,19 +625,100 @@
       let a = 0; for (const id of ["reactor_aux_p", "reactor_aux_s"]) a += st.alloc[loadIdx[id]];
       return clamp(a / PW.reactor.restart.ignition_mw, 0, 1);
     }
+    // ======================================================= the cooling loop (reactor-cooling)
+    /** A speed-law load's speed (0 to its setpoint_max): the speed its delivered power allows, power = nominal x speed^exponent. */
+    function pumpSpeed(i) {
+      const l = loads[i];
+      if (!(l.nominal_mw > 0)) return 0;
+      return Math.pow(Math.max(0, st.alloc[i] / l.nominal_mw), 1 / (l.power_exponent || 1));
+    }
+    /** A set of pumps' flow: speed x capability x each one's share, summed (reactor-cooling design 2). */
+    function pumpsFlow(ids, share) { let f = 0; for (const id of ids) { const i = loadIdx[id]; f += pumpSpeed(i) * capability(i) * share; } return f; }
+    /** The loop's inventory as a fraction of full, and the cavitation it allows (1 from 80%, 0 at 60%). */
+    function cavitation() {
+      const C = PW.coolant, CV = C.cavitation;
+      return clamp((st.loop.m_kg / C.inventory_kg - CV.no_flow_below) / (CV.full_flow_from - CV.no_flow_below), 0, 1);
+    }
+    /** The loop's flow fraction: the core pumps, cavitation, and natural circulation when they stop. */
+    function loopFlow() {
+      const C = PW.coolant;
+      return Math.max(C.natural_circulation_flow, pumpsFlow(C.pumps, C.flow_per_pump) * cavitation());
+    }
+    /** The heat the loop's flow carries at the design rise, MW (40 MW at full flow): the second needle's scale. */
+    const carryMw = (flow) => flow * PW.coolant.design_flow_kg_s * PW.coolant.specific_heat_kj_per_kg_k * PW.coolant.automation.design_rise_k / 1000;
+    /**
+     * The loop's controls before the power solve: the makeup valve (AUTO opens it below auto_open_below and shuts it at
+     * full; MANUAL is the engineer's), the makeup pump's activity, and in AUTO every period_s the pumps' speeds
+     * (reactor-cooling design 5): the core pumps at the flow the heat needs at the design rise, never below
+     * pump_speed_min, up to their setpoint_max, and the radiator pumps at full. It reckons both core pumps whole, so a
+     * lost pump or a low loop is not made up for: a hurt loop under load drifts hot, and the engineer does better.
+     */
+    function stepCooling() {
+      const C = PW.coolant, A = C.automation, cl = st.cooling, loop = st.loop;
+      const frac = loop.m_kg / C.inventory_kg, tanks = loop.tanks_kg.reduce((a, b) => a + b, 0);
+      if (cl.mode === "auto") {
+        if (frac < C.makeup.auto_open_below) cl.autoMakeup = 1; else if (frac >= 1) cl.autoMakeup = 0;
+        loop.makeupValve = cl.autoMakeup || 0;
+      } else loop.makeupValve = cl.makeup;
+      st.activity.makeup = loop.makeupValve > 0 && frac < 1 && tanks > 0 ? 1 : 0;
+      if (cl.mode !== "auto") return;
+      cl.timer -= dt;
+      if (cl.timer > 0) return;
+      cl.timer = A.period_s;
+      const need = loop.in_mw / carryMw(1);
+      for (const id of C.pumps) { const i = loadIdx[id]; st.setpoint[i] = clamp(Math.max(A.pump_speed_min, need), 0, loads[i].setpoint_max); }
+      for (const id of C.radiator_pumps) st.setpoint[loadIdx[id]] = 1;
+    }
+    /** The engineer's hand on the loop: { mode, pumps, radiators (speeds), chiller (share through the exchanger), makeup (open) }. */
+    function setCooling(o) {
+      const C = PW.coolant, cl = st.cooling;
+      if (o.mode === "manual" && cl.mode !== "manual") { cl.chiller = st.loop.chiller; cl.makeup = st.loop.makeupValve || 0; }
+      if (o.mode === "auto" && cl.mode !== "auto") cl.timer = 0;
+      if (o.mode) cl.mode = o.mode;
+      const speed = (ids, v) => { for (const id of ids) { const i = loadIdx[id]; st.setpoint[i] = clamp(v, 0, loads[i].setpoint_max); } };
+      if (o.pumps != null) speed(C.pumps, o.pumps);
+      if (o.radiators != null) speed(C.radiator_pumps, o.radiators);
+      if (o.chiller != null) cl.chiller = clamp(o.chiller, 0, 1);
+      if (o.makeup != null) cl.makeup = o.makeup ? 1 : 0;
+    }
+    /** The loop as the engineering console shows it (preview = resolver: these are the step's own numbers). */
+    function coolantReadout() {
+      const C = PW.coolant, loop = st.loop;
+      const pumps = (ids) => ids.map((id) => { const i = loadIdx[id]; return { id, name: loads[i].name, setpoint: st.setpoint[i], speed: pumpSpeed(i), capability: capability(i), alloc_mw: st.alloc[i] }; });
+      return {
+        mode: st.cooling.mode, cold_k: loop.T, hot_k: loop.hot_k, flow: loop.flow, flow_kg_s: loop.flow * C.design_flow_kg_s,
+        heat_mw: loop.in_mw, carry_mw: carryMw(loop.flow), rad_mw: loop.rad_mw, rad_cap_mw: loop.rad_cap_mw, chiller: loop.chiller,
+        rad_flow: loop.rad_flow, exchanger: loop.exchanger, inventory: loop.m_kg / C.inventory_kg, m_kg: loop.m_kg,
+        tanks: C.tanks.map((t, k) => ({ id: t.id, name: t.name, kg: loop.tanks_kg[k], frac: loop.tanks_kg[k] / t.capacity_kg })),
+        makeup_valve: loop.makeupValve || 0, makeup_kg_s: loop.makeup_kg_s, pumps: pumps(C.pumps), radiator_pumps: pumps(C.radiator_pumps),
+        bands: C.bands, limit_k: PW.reactor.scram.loop_over_k,
+      };
+    }
+    /** Open, close or lock open a group's feed breaker (power-grid 5): a locked breaker refuses to close until it is unlocked (opened). */
+    function setGroupBreaker(gid, state) {
+      const g = PW.groups.find((x) => x.id === gid);
+      if (!g || !g.feed_breaker) return "no breaker";
+      if (state === "closed" && st.groupBreaker[gid] === "locked") return "locked";
+      st.groupBreaker[gid] = state;
+      for (const id of g.loads) st.breakerOpen[loadIdx[id]] = state === "closed" ? 0 : 1;
+      log(g.name + " breaker " + state);
+      return "ok";
+    }
+
     const roomHeat = new Float64Array(NN);
     function stepHeat() {
       roomHeat.fill(0);
       const loop = st.loop, C = PW.coolant, RD = PW.radiators;
-      let flow = 0;
-      for (const id of C.pumps) { const i = loadIdx[id]; flow += (loads[i].nominal_mw > 0 ? st.alloc[i] / loads[i].nominal_mw : 0) * C.flow_per_pump * (st.integrity[i] / 100); }
-      loop.flow = clamp(flow, 0, 1);
+      loop.flow = loopFlow();
+      loop.rad_flow = pumpsFlow(C.radiator_pumps, C.flow_per_radiator_pump);
       let toLoop = 0;
       for (let i = 0; i < loads.length; i++) {
         const l = loads[i], h = l.heat; if (!h) continue;
         const aW = st.alloc[i] * MWW;
         const over = l.nominal_mw > 0 ? Math.max(0, st.alloc[i] / l.nominal_mw - 1) : 0;
         const q = h.fraction * aW * (1 + PW.overdrive.heat_factor * over);
+        // Overdrive wears any load (power-grid 8): 2% of integrity a minute at 150%, in proportion to over / 0.5.
+        if (over > 0) st.integrity[i] = Math.max(0, st.integrity[i] - dt * (PW.overdrive.wear_pct_per_min_at_150 / 60) * (over / 0.5));
         if (h.to === "loop") toLoop += q;
         else if (h.to === "room") roomHeat[idx[h.room]] += q;
         else if (h.to === "duct") roomHeat[DUCT] += q;
@@ -639,7 +733,6 @@
           toLoop += qLoop; if (room != null) roomHeat[room] += qRoom;
           // Over-temperature wears the system (damage-control applies the state).
           if (th.T > h.damage_k) st.integrity[i] = Math.max(0, st.integrity[i] - dt * (th.T - h.damage_k) * 0.01);
-          if (over > 0) st.integrity[i] = Math.max(0, st.integrity[i] - dt * (PW.overdrive.wear_pct_per_min_at_150 / 60) * (over / 0.5));
         }
       }
       // Reactor blanket.
@@ -656,22 +749,36 @@
       // Radiators.
       const Tb4 = Math.pow(RD.background_k, 4);
       // Capacity by the fourth-power law; the bypass valve holds the loop near its nominal
-      // temperature when the heat is low, so the loop does not run cold at cruise.
-      loop.rad_cap_mw = (RD.rated_mw * loop.radiatorHealth * loop.flow * (Math.pow(loop.T, 4) - Tb4)) / (Math.pow(RD.rated_at_k, 4) - Tb4);
-      const open = RD.bypass_band_k > 0 ? clamp((loop.T - (C.nominal_k - RD.bypass_band_k)) / RD.bypass_band_k, 0, 1) : 1;
+      // temperature when the heat is low, so the loop does not run cold at cruise. The chiller (reactor-cooling design 2)
+      // passes it on through the exchanger's capability and the radiator pumps' flow; in MANUAL the engineer sets the
+      // share of the hot leg that goes through the exchanger instead of the bypass valve.
+      loop.rad_cap_mw = (RD.rated_mw * loop.radiatorHealth * loop.flow * loop.exchanger * loop.rad_flow * (Math.pow(loop.T, 4) - Tb4)) / (Math.pow(RD.rated_at_k, 4) - Tb4);
+      const open = st.cooling.mode === "manual" ? st.cooling.chiller : RD.bypass_band_k > 0 ? clamp((loop.T - (C.nominal_k - RD.bypass_band_k)) / RD.bypass_band_k, 0, 1) : 1;
+      loop.chiller = open;
       loop.rad_mw = Math.max(0, loop.rad_cap_mw) * open;
       loop.in_mw = toLoop / MWW;
-      loop.T += (dt * (toLoop - loop.rad_mw * MWW)) / (C.capacity_mj_per_k * MWW);
+      // Inventory: the makeup pump feeds the loop from the tanks while its valve is open and the loop is under full
+      // (at the share of its demand it gets); the leak hook takes it away (reactor-cooling design 2).
+      const mi = loadIdx[C.makeup.pump], tanks = loop.tanks_kg.reduce((a, b) => a + b, 0);
+      const mkSupply = st.demand[mi] > 1e-9 ? clamp(st.alloc[mi] / st.demand[mi], 0, 1) : 0;
+      const mk = Math.max(0, Math.min(C.makeup.max_kg_s * (loop.makeupValve || 0) * mkSupply * dt, tanks, C.inventory_kg - loop.m_kg));
+      if (mk > 0) for (let k = 0; k < loop.tanks_kg.length; k++) loop.tanks_kg[k] -= mk * (loop.tanks_kg[k] / tanks);
+      loop.makeup_kg_s = mk / dt;
+      loop.m_kg = clamp(loop.m_kg + mk - loop.leak_kg_s * dt, 0, C.inventory_kg);
+      // The loop's heat capacity follows its inventory; the hot leg is the cold leg plus the heat the flow carries.
+      const cLoop = C.capacity_mj_per_k * MWW * Math.max(0.05, loop.m_kg / C.inventory_kg);
+      loop.T += (dt * (toLoop - loop.rad_mw * MWW)) / cLoop;
+      loop.hot_k = loop.T + toLoop / (loop.flow * C.design_flow_kg_s * C.specific_heat_kj_per_kg_k * 1000);
     }
     function checkScram() {
       const rx = st.reactor, SC = PW.reactor.scram;
       if (rx.state !== "running") return;
       const tm = rx.timers;
-      tm.loop = st.loop.T > SC.loop_over_k ? tm.loop + dt : 0;
+      tm.loop = st.loop.hot_k > SC.loop_over_k ? tm.loop + dt : 0; // the hot leg (reactor-cooling design 3)
       tm.flow = st.loop.flow < SC.coolant_flow_below && rx.throttle > SC.coolant_check_above_throttle ? tm.flow + dt : 0;
       tm.aux = auxRatio() < SC.aux_supply_below ? tm.aux + dt : 0;
       let cause = null;
-      if (tm.loop >= SC.loop_over_hold_s) cause = "coolant loop over " + SC.loop_over_k + " K";
+      if (tm.loop >= SC.loop_over_hold_s) cause = "coolant hot leg over " + SC.loop_over_k + " K";
       else if (rx.T > PW.reactor.heat.scram_k) cause = "blanket over " + PW.reactor.heat.scram_k + " K";
       else if (tm.flow >= SC.coolant_flow_hold_s) cause = "coolant flow below " + SC.coolant_flow_below * 100 + "%";
       else if (tm.aux >= SC.aux_supply_hold_s) cause = "auxiliaries below " + SC.aux_supply_below * 100 + "% supply";
@@ -1430,10 +1537,15 @@
       l.target = 1; l.manualHold = !!override; // a crew member passing does not hold it; the board's override does
       return "ok";
     }
-    /** Engineering's priority for a load (1 to 3); the vital class 0 is fixed. */
+    /**
+     * Engineering's priority for a load (1 to 3); the vital class 0 is fixed, except in a group whose priority_min is 0
+     * (Cooling, reactor-cooling design 6), whose loads go from 0 to 3 and back.
+     */
     function setPriority(loadId, p) {
-      const i = loadIdx[loadId]; if (i == null || loads[i].priority === 0) return false;
-      st.priority[i] = clamp(Math.round(p), 1, 3); return true;
+      const i = loadIdx[loadId]; if (i == null) return false;
+      const g = PW.groups.find((x) => x.loads.indexOf(loadId) >= 0), lo = g && g.priority_min != null ? g.priority_min : 1;
+      if (loads[i].priority < lo) return false;
+      st.priority[i] = clamp(Math.round(p), lo, 3); return true;
     }
     /** Apply a named preset from the data: setpoints by group. */
     function applyPreset(name) {
@@ -1455,6 +1567,7 @@
     function step() {
       stepVent();
       stepAutomation();
+      stepCooling();
       stepPower();
       stepHeat();
       stepPlant();
@@ -1494,7 +1607,7 @@
       step, derive, solveGrid, gridSnapshot, computeDemand, solveWithDropout, previewSetpoint, previewGroup, scram, scramReset,
       resolveHit, hullHalfBeam, breach, patch, setLink, closeAllDoors, isolate, ignite, bayPumpdown, bayRepress,
       dischargeMist, dischargeInert, useExtinguisher, newExtinguisher, ventPreview, gravityG, capability, damageState, auxRatio, ignitionRate,
-      operateDoor, setPriority, applyPreset, repressurize, repairSystem, spliceConduit, rebuildNode, fanRatio,
+      operateDoor, setPriority, applyPreset, setCooling, coolantReadout, setGroupBreaker, pumpSpeed, repressurize, repairSystem, spliceConduit, rebuildNode, fanRatio,
       airlockCycleOut, airlockCycleIn, ventCompartment, stopVent, addCrew, setActivity, compartmentReadout, lighting,
       receiverKpa, storeMol, fillStandard, log, fs: FS, fO2,
       get P() { return P; }, get T() { return T; }, get n() { return n; }, get ntot() { return ntot; },

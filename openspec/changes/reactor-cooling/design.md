@@ -91,6 +91,13 @@ bench's E4 panel turned into the job, at the `eng_main` seat or the bridge's Eng
   load shedding take it when supply falls short. A breaker on the Cooling feed can be opened or locked like any other
   (`power-grid` 5), which stops the pumps: the loop's flow falls to its natural circulation (5%).
 - **E4 Coolant** becomes the balance panel of design 5: the ring, the two needles, the four controls, AUTO and MANUAL.
+- **In the console mockup** (`consoles.html`, 2026-10-09) the balance panel and the reactor readout are one panel,
+  REACTOR (6,0,4,4): the core's output dial sits at the top of the ring, so the console keeps the glance-first rule of
+  four panels (`bridge-stations` 8.0); POWER narrows to six columns for twelve faders and the battery's charge moves to
+  BUSES. Recommendation taken (ask only with screenshots): `docs/screenshots/mockups/consoles-engineering-cooling.png`
+  and `consoles-engineering-cooling-breaker.png`. The mockup's automation never runs the core pumps below full speed
+  (`power.json` `coolant.automation.pump_speed_min`), so `power-grid`'s walkthroughs, measured at full flow, still hold;
+  slowing them at low heat waits for task 2.3.
 
 ## 7. The Pi 5 budget
 

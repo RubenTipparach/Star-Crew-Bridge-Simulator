@@ -59,7 +59,7 @@
 <!-- INLINE layout:tern END -->
 <!-- INLINE data:tern/power BEGIN -->
 <script id="ship-data-power" type="application/json">
-{"schema":"starcrew.ship-power/1","status":"PROPOSED by openspec/changes/power-grid (2026-10-04). No engine code reads this yet; the systems mockup does. Numbers are tuning proposals, not decisions.","ship":"tern","units":{"power":"MW (megawatts)","energy":"MJ (megajoules)","temperature":"K (kelvin)","heat_capacity":"MJ/K","conductance":"kW/K for loop couplings, W/K for room couplings","time":"s","position":"metres, ship-local, as layout.json"},"solve":{"substep_hz":10,"quanta_rounds":3,"epsilon_mw":0.0005,"dropout_resolves":1},"reactor":{"system":"reactor","fuel":"deuterium and helium-3","thermal_rated_mw":80.0,"conversion_efficiency":0.6,"throttle_min":0.1,"throttle_max":1.2,"throttle_default":1.0,"ramp_up_per_s":0.02,"ramp_down_per_s":0.1,"fuel_energy_mj_per_kg":353000000.0,"fuel_load_kg":4.0,"overdrive_wear_pct_per_min_at_max":1.0,"heat":{"capacity_mj_per_k":10.0,"loop_kw_per_k":110.0,"room_w_per_k":250.0,"warn_k":750.0,"scram_k":820.0},"scram":{"loop_over_k":380.0,"loop_over_hold_s":2.0,"coolant_flow_below":0.3,"coolant_flow_hold_s":5.0,"coolant_check_above_throttle":0.2,"aux_supply_below":0.8,"aux_rule":"best train: max over the two trains of supply / need","aux_supply_hold_s":2.0,"integrity_below_pct":25.0},"reset":{"fixture":"reactor_panel","hold_s":3.0,"loop_below_k":350.0,"blanket_below_k":700.0},"restart":{"ignition_mw":8.0,"ignition_s":20.0,"start_throttle":0.1}},"battery":{"system":"battery_bank","node":"eb","capacity_mj":1800.0,"initial_soc":0.9,"discharge_max_mw":30.0,"charge_max_mw":12.0,"charge_efficiency":0.95,"discharge_efficiency":0.95,"restart_reserve_mj":350.0,"heat_to":"loop"},"nodes":[{"id":"msb_p","name":"Main switchboard, port section","kind":"switchboard","compartment":"engineering","center_m":[7.5,0.5,-20.6]},{"id":"msb_s","name":"Main switchboard, starboard section","kind":"switchboard","compartment":"engineering","center_m":[-7.5,0.5,-21.0]},{"id":"fsb_p","name":"Forward switchboard, port section","kind":"switchboard","compartment":"switchboard","center_m":[-2.4,-1.0,4.2]},{"id":"fsb_s","name":"Forward switchboard, starboard section","kind":"switchboard","compartment":"switchboard","center_m":[-2.4,-1.0,5.2]},{"id":"eb","name":"Emergency bus","kind":"emergency_bus","compartment":"switchboard","center_m":[-4.5,-1.0,2.0]},{"id":"dp_drive","name":"Drive panel","kind":"panel","compartment":"drive","center_m":[0.0,2.5,-34.0]},{"id":"dp_hangar_p","name":"Hangar port panel","kind":"panel","compartment":"hangar","center_m":[8.0,2.6,-8.0]},{"id":"dp_hangar_s","name":"Hangar starboard panel","kind":"panel","compartment":"hangar","center_m":[-8.0,2.6,-8.0]},{"id":"dp_port","name":"Port turret panel","kind":"panel","compartment":"port_turret","center_m":[6.0,2.6,4.0]},{"id":"dp_stbd","name":"Starboard turret panel","kind":"panel","compartment":"stbd_turret","center_m":[-6.0,2.6,4.0]},{"id":"dp_a","name":"Command deck panel","kind":"panel","compartment":"a_corridor","center_m":[0.6,6.2,10.5]},{"id":"dp_b_fwd","name":"Main deck forward panel","kind":"panel","compartment":"b_spine","center_m":[0.8,2.7,22.0]},{"id":"dp_c_fwd","name":"Lower deck forward panel","kind":"panel","compartment":"c_spine","center_m":[0.8,-0.8,9.0]},{"id":"dp_ls","name":"Life support panel","kind":"panel","compartment":"life_support","center_m":[3.0,-0.8,12.0]}],"generators":[{"id":"gen_p","name":"Reactor generator, port","node":"msb_p","capacity_mw":30.0},{"id":"gen_s","name":"Reactor generator, starboard","node":"msb_s","capacity_mw":30.0}],"ties":[{"id":"bt_main","name":"Main bus tie","between":["msb_p","msb_s"],"capacity_mw":40.0,"closed":true},{"id":"bt_fwd","name":"Forward cross-tie","between":["fsb_p","fsb_s"],"capacity_mw":30.0,"closed":true},{"id":"eb_p","name":"Emergency feed, port","between":["fsb_p","eb"],"capacity_mw":15.0,"closed":true},{"id":"eb_s","name":"Emergency feed, starboard","between":["fsb_s","eb"],"capacity_mw":15.0,"closed":true}],"conduits":[{"id":"k_drive_p","name":"Drive feeder, port","between":["msb_p","dp_drive"],"capacity_mw":20.0,"route":["engineering","drive"],"path_m":[[8.6,2.0,-20.6],[8.6,5.0,-20.6],[8.6,5.0,-29.6],[6.2,5.0,-29.6],[6.2,5.0,-31.45],[0.5,5.0,-31.45],[0.5,2.5,-31.45],[0.5,2.5,-34.0]]},{"id":"k_drive_s","name":"Drive feeder, starboard","between":["msb_s","dp_drive"],"capacity_mw":20.0,"route":["engineering","drive"],"path_m":[[-8.6,2.0,-21.45],[-8.6,5.0,-21.45],[-8.6,5.0,-29.6],[-6.2,5.0,-29.6],[-6.2,5.0,-31.45],[-0.5,5.0,-31.45],[-0.5,2.5,-31.45],[-0.5,2.5,-34.0]]},{"id":"k_aft_p","name":"Port main trunk, aft","between":["msb_p","dp_hangar_p"],"capacity_mw":30.0,"route":["engineering","hangar"],"path_m":[[8.6,2.0,-20.15],[8.6,2.7,-20.15],[8.6,2.7,-18.75],[7.75,2.7,-18.75],[7.75,2.7,-18.0],[8.0,2.6,-8.0]]},{"id":"k_aft_s","name":"Starboard main trunk, aft","between":["msb_s","dp_hangar_s"],"capacity_mw":30.0,"route":["engineering","hangar"],"path_m":[[-8.6,2.0,-20.55],[-8.6,2.7,-20.55],[-8.6,2.7,-18.75],[-7.75,2.7,-18.75],[-7.75,2.7,-18.0],[-8.0,2.6,-8.0]]},{"id":"k_mid_p","name":"Port main trunk, midships","between":["dp_hangar_p","dp_port"],"capacity_mw":30.0,"route":["hangar","port_turret"],"path_m":[[8.0,2.6,-8.0],[8.0,2.6,-2.5],[8.0,2.6,1.0],[6.0,2.6,4.0]]},{"id":"k_mid_s","name":"Starboard main trunk, midships","between":["dp_hangar_s","dp_stbd"],"capacity_mw":30.0,"route":["hangar","stbd_turret"],"path_m":[[-8.0,2.6,-8.0],[-8.0,2.6,-2.5],[-8.0,2.6,1.0],[-6.0,2.6,4.0]]},{"id":"k_fwd_p","name":"Port main trunk, forward","between":["dp_port","fsb_p"],"capacity_mw":30.0,"route":["port_turret","shield_room","c_spine","switchboard"],"path_m":[[6.0,2.6,4.0],[4.5,2.6,3.0],[4.5,-0.8,3.0],[1.5,-0.8,3.0],[-1.5,-0.8,3.5],[-2.4,-1.0,4.2]]},{"id":"k_fwd_s","name":"Starboard main trunk, forward","between":["dp_stbd","fsb_s"],"capacity_mw":30.0,"route":["stbd_turret","switchboard"],"path_m":[[-6.0,2.6,4.0],[-4.5,2.6,5.5],[-4.5,-0.8,5.5],[-2.4,-1.0,5.2]]},{"id":"k_a_fwd","name":"Command deck feeder, forward","between":["fsb_p","dp_a"],"capacity_mw":8.0,"route":["switchboard","c_spine","b_spine","a_corridor"],"path_m":[[-2.4,-1.0,4.2],[-0.8,-0.8,6.0],[-0.8,-0.8,11.3],[-0.6,2.7,11.3],[-0.6,6.2,11.3],[0.6,6.2,10.5]]},{"id":"k_a_aft","name":"Command deck feeder, aft","between":["msb_s","dp_a"],"capacity_mw":8.0,"route":["engineering","a_aft_passage","dorsal_turret","a_corridor"],"path_m":[[-8.6,2.0,-21.0],[-8.6,2.95,-21.0],[-8.6,2.95,-18.75],[-6.8,2.95,-18.75],[-6.8,6.2,-18.75],[0.6,6.2,-18.75],[0.6,6.2,-18.0],[0.6,6.2,0.0],[0.6,6.2,4.0],[0.6,6.2,10.5]]},{"id":"k_b_fwd","name":"Main deck forward feeder","between":["fsb_s","dp_b_fwd"],"capacity_mw":12.0,"route":["switchboard","c_spine","b_spine"],"path_m":[[-2.4,-1.0,5.2],[-0.9,-0.8,6.5],[-0.9,-0.8,11.6],[-0.9,2.7,11.6],[0.8,2.7,13.0],[0.8,2.7,22.0]]},{"id":"k_c_fwd_p","name":"Lower deck feeder, port","between":["fsb_p","dp_c_fwd"],"capacity_mw":30.0,"route":["switchboard","c_spine"],"path_m":[[-2.4,-1.0,4.2],[-1.0,-0.9,4.0],[0.8,-0.9,8.0],[0.8,-0.8,9.0]]},{"id":"k_c_fwd_s","name":"Lower deck feeder, starboard","between":["fsb_s","dp_c_fwd"],"capacity_mw":30.0,"route":["switchboard","c_spine"],"path_m":[[-2.4,-1.0,5.2],[-1.0,-1.4,5.6],[0.6,-1.4,9.0],[0.8,-0.8,9.0]]},{"id":"k_ls_n","name":"Life support feeder, normal","between":["fsb_p","dp_ls"],"capacity_mw":6.0,"route":["switchboard","c_spine","life_support"],"path_m":[[-2.4,-1.0,4.2],[-1.1,-1.1,5.0],[0.9,-1.1,12.0],[3.0,-0.8,12.0]]},{"id":"k_ls_e","name":"Life support feeder, emergency","between":["eb","dp_ls"],"capacity_mw":3.0,"route":["switchboard","c_spine","life_support"],"path_m":[[-4.5,-1.0,2.0],[-1.1,-1.6,2.5],[1.0,-1.6,13.0],[3.0,-0.9,13.0]]}],"loads":[{"id":"reactor_aux_p","name":"Reactor auxiliaries, port","system":"reactor","node":"msb_p","priority":0,"nominal_mw":1.0,"standby_mw":0.3,"setpoint_max":1.0,"min_ratio":0.0,"heat":{"to":"loop","fraction":1.0},"under":"Two full trains (port and starboard): the reactor scrams when neither train has had 80% of its supply for 2 s. Ignition runs at the pace the two trains' supply allows.","over":"Not adjustable."},{"id":"reactor_aux_s","name":"Reactor auxiliaries, starboard","system":"reactor","node":"msb_s","priority":0,"nominal_mw":1.0,"standby_mw":0.3,"setpoint_max":1.0,"min_ratio":0.0,"heat":{"to":"loop","fraction":1.0},"under":"As the port half.","over":"Not adjustable."},{"id":"coolant_pump_a","name":"Coolant pump A","system":"coolant_pumps","node":"msb_p","priority":0,"nominal_mw":0.4,"standby_mw":0.4,"setpoint_max":1.0,"min_ratio":0.0,"heat":{"to":"loop","fraction":1.0},"under":"Loop flow falls in proportion; each pump is half the flow.","over":"Not adjustable."},{"id":"coolant_pump_b","name":"Coolant pump B","system":"coolant_pumps","node":"msb_s","priority":0,"nominal_mw":0.4,"standby_mw":0.4,"setpoint_max":1.0,"min_ratio":0.0,"heat":{"to":"loop","fraction":1.0},"under":"As pump A.","over":"Not adjustable."},{"id":"emergency_lighting","name":"Emergency lighting","system":null,"node":"eb","priority":0,"nominal_mw":0.0049,"standby_mw":0.0049,"setpoint_max":1.0,"min_ratio":0.0,"center_m":[-4.5,-1.0,2.6],"heat":{"to":"none","fraction":0.0},"under":"Below 50%: compartments with no normal lighting go dark.","over":"Not adjustable."},{"id":"computer","name":"Computer core","system":"computer","node":"dp_a","priority":1,"nominal_mw":1.5,"standby_mw":1.5,"setpoint_max":1.5,"min_ratio":0.5,"heat":{"to":"node","fraction":0.95,"capacity_mj_per_k":4.3,"loop_kw_per_k":47.5,"room_w_per_k":30.0,"warn_k":363.0,"damage_k":393.0},"under":"Automation competence falls with supply; below 50% every automated station stops and targeting solutions are lost.","over":"Automation reaction time shortens by up to a third."},{"id":"bridge_consoles","name":"Bridge consoles","system":null,"node":"dp_a","priority":1,"nominal_mw":0.007,"standby_mw":0.007,"setpoint_max":1.0,"min_ratio":0.5,"center_m":[0.0,4.5,26.0],"heat":{"to":"room","fraction":1.0,"room":"bridge"},"under":"Below 50%: the bridge stations go dark; the engineering bay console and the damage control board still work.","over":"Not adjustable."},{"id":"o2_generator","name":"Oxygen generator","system":"o2_generator","node":"dp_ls","priority":1,"nominal_mw":1.0,"standby_mw":0.005,"setpoint_max":1.5,"min_ratio":0.0,"activity":"o2_output","heat":{"to":"node","fraction":0.3,"capacity_mj_per_k":0.9,"loop_kw_per_k":10.0,"room_w_per_k":20.0,"warn_k":363.0,"damage_k":393.0},"under":"Oxygen output in proportion to supply.","over":"Output up to 1.5 times rated, with heat and wear."},{"id":"co2_scrubbers","name":"CO2 scrubbers","system":"co2_scrubbers","node":"dp_ls","priority":1,"nominal_mw":0.25,"standby_mw":0.25,"setpoint_max":1.5,"min_ratio":0.0,"heat":{"to":"loop","fraction":1.0},"under":"CO2 and smoke removal in proportion to supply.","over":"Removal up to 1.5 times rated."},{"id":"air_handler","name":"Air handler fans","system":"air_handler","node":"dp_ls","priority":1,"nominal_mw":0.08,"standby_mw":0.08,"setpoint_max":1.25,"min_ratio":0.2,"heat":{"to":"duct","fraction":1.0},"under":"Circulation in proportion to supply; below 20% the fans stop and every vent damper springs shut.","over":"Circulation up to 1.25 times rated."},{"id":"thermal_control","name":"Thermal control","system":"thermal_control","node":"dp_ls","priority":1,"nominal_mw":0.75,"standby_mw":0.15,"setpoint_max":1.0,"min_ratio":0.0,"activity":"heater","heat":{"to":"none","fraction":0.0},"under":"Cabin cooling and heating in proportion to supply.","over":"Not adjustable."},{"id":"medbay","name":"Medbay beds","system":"medbay_beds","node":"dp_b_fwd","priority":1,"nominal_mw":0.008,"standby_mw":0.002,"setpoint_max":1.5,"min_ratio":0.25,"heat":{"to":"room","fraction":1.0,"room":"medbay"},"under":"Healing and revival in proportion to supply; below 25% the beds stop.","over":"Healing up to 1.5 times faster."},{"id":"shield_generator","name":"Shield generator","system":"shield_generator","node":"dp_c_fwd","priority":2,"nominal_mw":12.0,"standby_mw":2.0,"setpoint_max":1.5,"min_ratio":0.25,"activity":"shield_regen","heat":{"to":"node","fraction":0.35,"capacity_mj_per_k":12.6,"loop_kw_per_k":140.0,"room_w_per_k":40.0,"warn_k":363.0,"damage_k":393.0},"under":"Face regeneration and capacity in proportion to supply; below 25% the faces collapse.","over":"Regeneration up to 1.5 times, with heat."},{"id":"turret_dorsal","name":"Dorsal turret","mount":"turret_dorsal","node":"dp_a","priority":2,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.2,"activity":"turret_dorsal","heat":{"to":"node","fraction":0.4,"capacity_mj_per_k":4.8,"loop_kw_per_k":53.3,"room_w_per_k":25.0,"room":"pod_dorsal","warn_k":363.0,"damage_k":393.0},"under":"Capacitor charge rate in proportion to supply (4 MW nominal against 6 MW of sustained fire); below 20% it cannot fire.","over":"Up to 1.5 times the rate of fire, with heat."},{"id":"turret_ventral","name":"Ventral turret","mount":"turret_ventral","node":"dp_c_fwd","priority":2,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.2,"activity":"turret_ventral","heat":{"to":"node","fraction":0.4,"capacity_mj_per_k":4.8,"loop_kw_per_k":53.3,"room_w_per_k":25.0,"room":"pod_ventral","warn_k":363.0,"damage_k":393.0},"under":"As the dorsal turret.","over":"As the dorsal turret."},{"id":"turret_port","name":"Port turret","mount":"turret_port","node":"dp_port","priority":2,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.2,"activity":"turret_port","heat":{"to":"node","fraction":0.4,"capacity_mj_per_k":4.8,"loop_kw_per_k":53.3,"room_w_per_k":25.0,"room":"pod_port","warn_k":363.0,"damage_k":393.0},"under":"As the dorsal turret.","over":"As the dorsal turret."},{"id":"turret_stbd","name":"Starboard turret","mount":"turret_stbd","node":"dp_stbd","priority":2,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.2,"activity":"turret_stbd","heat":{"to":"node","fraction":0.4,"capacity_mj_per_k":4.8,"loop_kw_per_k":53.3,"room_w_per_k":25.0,"room":"pod_stbd","warn_k":363.0,"damage_k":393.0},"under":"As the dorsal turret.","over":"As the dorsal turret."},{"id":"sensors","name":"Sensor array","system":"sensor_array","node":"dp_b_fwd","priority":2,"nominal_mw":3.0,"standby_mw":0.5,"setpoint_max":1.5,"min_ratio":0.15,"activity":"sensors_active","heat":{"to":"node","fraction":0.5,"capacity_mj_per_k":4.5,"loop_kw_per_k":50.0,"room_w_per_k":0.0,"warn_k":363.0,"damage_k":393.0},"under":"Active range grows as the square root of supply; at standby only passive contacts.","over":"Range up to 1.22 times (square root of 1.5)."},{"id":"inertial_dampers","name":"Inertial dampers","system":"inertial_dampers","node":"dp_drive","priority":2,"nominal_mw":8.0,"standby_mw":2.0,"setpoint_max":1.5,"min_ratio":0.1,"activity":"dampers","heat":{"to":"node","fraction":0.5,"capacity_mj_per_k":12.0,"loop_kw_per_k":133.3,"room_w_per_k":40.0,"warn_k":363.0,"damage_k":393.0},"under":"The share of the ship's acceleration the crew feel is 1 minus supply/demand; past 0.5 g felt, crew are knocked down.","over":"Absorbs manoeuvres up to 1.5 times the rated acceleration."},{"id":"gravity_generator","name":"Gravity generator","system":"gravity_generator","node":"dp_c_fwd","priority":2,"nominal_mw":4.0,"standby_mw":4.0,"setpoint_max":1.25,"min_ratio":0.3,"heat":{"to":"node","fraction":0.5,"capacity_mj_per_k":6.0,"loop_kw_per_k":66.7,"room_w_per_k":40.0,"warn_k":363.0,"damage_k":393.0},"under":"Gravity in g equals supply ratio; below 30% the field drops to zero (free fall).","over":"Up to 1.25 g: crew move 10% slower."},{"id":"impulse_drive","name":"Impulse drive","system":"impulse_drive","node":"dp_drive","priority":3,"nominal_mw":16.0,"standby_mw":0.2,"setpoint_max":1.5,"min_ratio":0.1,"activity":"drive","heat":{"to":"node","fraction":0.15,"capacity_mj_per_k":7.2,"loop_kw_per_k":80.0,"room_w_per_k":60.0,"warn_k":363.0,"damage_k":393.0},"under":"Thrust in proportion to supply.","over":"Up to 1.5 times rated thrust, with heat and wear."},{"id":"rcs_aft","name":"RCS, aft block","system":null,"node":"dp_drive","priority":3,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.1,"activity":"rcs","center_m":[0.0,1.0,-39.0],"heat":{"to":"node","fraction":0.3,"capacity_mj_per_k":3.6,"loop_kw_per_k":40.0,"room_w_per_k":20.0,"room":"drive","warn_k":363.0,"damage_k":393.0},"under":"Turn rate in proportion to the weaker block's supply.","over":"Up to 1.5 times turn rate."},{"id":"rcs_fwd","name":"RCS, forward block","system":null,"node":"dp_b_fwd","priority":3,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.1,"activity":"rcs","center_m":[0.0,1.0,32.5],"heat":{"to":"node","fraction":0.3,"capacity_mj_per_k":3.6,"loop_kw_per_k":40.0,"room_w_per_k":20.0,"room":"torpedo_room","warn_k":363.0,"damage_k":393.0},"under":"As the aft block.","over":"As the aft block."},{"id":"missile_hoist","name":"Missile hoist and loaders","system":"magazine_racks","node":"dp_b_fwd","priority":3,"nominal_mw":0.03,"standby_mw":0.001,"setpoint_max":1.5,"min_ratio":0.2,"activity":"hoist","heat":{"to":"room","fraction":1.0,"room":"magazine"},"under":"Reload time grows as 1/supply; unpowered, crew load by hand crank (weapons-and-shields).","over":"Reload up to 1.5 times faster."},{"id":"comms","name":"Comms array","system":"comms_array","node":"dp_a","priority":3,"nominal_mw":0.5,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.2,"activity":"comms","heat":{"to":"node","fraction":0.5,"capacity_mj_per_k":0.75,"loop_kw_per_k":8.3,"room_w_per_k":0.0,"warn_k":363.0,"damage_k":393.0},"under":"Range in proportion to supply; below 20% only short-range voice.","over":"Range up to 1.5 times."},{"id":"hangar_pumps","name":"Bay pumps","system":"hangar_pumps","node":"dp_hangar_s","priority":3,"nominal_mw":6.0,"standby_mw":0.0,"setpoint_max":1.0,"min_ratio":0.0,"activity":"bay_pumps","heat":{"to":"node","fraction":0.4,"capacity_mj_per_k":7.2,"loop_kw_per_k":80.0,"room_w_per_k":40.0,"warn_k":363.0,"damage_k":393.0},"under":"Pumping speed in proportion to supply.","over":"Not adjustable."},{"id":"airlock_pump","name":"Airlock pump","system":null,"node":"dp_c_fwd","priority":3,"nominal_mw":0.15,"standby_mw":0.0,"setpoint_max":1.0,"min_ratio":0.0,"activity":"airlock_pump","center_m":[-9.5,-2.5,12.0],"heat":{"to":"room","fraction":1.0,"room":"cargo"},"under":"Pumping speed in proportion to supply.","over":"Not adjustable."},{"id":"cradle_p","name":"Port launch cradle","system":"cradle_p","node":"dp_hangar_p","priority":3,"nominal_mw":0.6,"standby_mw":0.05,"setpoint_max":1.5,"min_ratio":0.2,"activity":"cradle_p","heat":{"to":"loop","fraction":0.3},"under":"Release charge time grows as 1/supply.","over":"Charges up to 1.5 times faster."},{"id":"cradle_s","name":"Starboard launch cradle","system":"cradle_s","node":"dp_hangar_s","priority":3,"nominal_mw":0.6,"standby_mw":0.05,"setpoint_max":1.5,"min_ratio":0.2,"activity":"cradle_s","heat":{"to":"loop","fraction":0.3},"under":"As the port cradle.","over":"As the port cradle."},{"id":"shuttle_pad","name":"Shuttle lift pad","system":"shuttle_pad","node":"dp_hangar_p","priority":3,"nominal_mw":0.05,"standby_mw":0.0,"setpoint_max":1.0,"min_ratio":0.2,"activity":"pad","heat":{"to":"room","fraction":1.0,"room":"hangar"},"under":"Lift speed in proportion to supply.","over":"Not adjustable."}],"groups":[{"id":"drive","name":"Impulse drive and RCS","loads":["impulse_drive","rcs_aft","rcs_fwd"]},{"id":"shields","name":"Shields","loads":["shield_generator"]},{"id":"turrets","name":"Turrets","loads":["turret_dorsal","turret_ventral","turret_port","turret_stbd"]},{"id":"tubes","name":"Tubes and hoist","loads":["missile_hoist"]},{"id":"sensors","name":"Sensors","loads":["sensors"]},{"id":"comms","name":"Comms","loads":["comms"]},{"id":"life_support","name":"Life support","loads":["o2_generator","co2_scrubbers","air_handler","thermal_control"]},{"id":"gravity_dampers","name":"Gravity and dampers","loads":["gravity_generator","inertial_dampers"]},{"id":"computer","name":"Computer core","loads":["computer","bridge_consoles"]},{"id":"bays","name":"Bays and craft charging","loads":["hangar_pumps","airlock_pump","cradle_p","cradle_s","shuttle_pad"]},{"id":"medbay","name":"Medbay","loads":["medbay"]}],"presets":{"note":"Setpoints by group (1.0 is nominal; 0 switches the group off; above 1 is overdrive). Groups not named keep 1.0. Automated engineering applies combat on red alert and cruise on its end (bridge-stations).","cruise":{"drive":1.0,"shields":1.0,"turrets":1.0,"tubes":1.0,"sensors":1.0,"comms":1.0,"gravity_dampers":1.0,"computer":1.0,"bays":1.0},"combat":{"drive":0.75,"shields":1.25,"turrets":1.0,"tubes":1.0,"sensors":0.6,"comms":0.5,"gravity_dampers":1.0,"computer":1.25,"bays":1.0},"silent":{"drive":0.2,"shields":0.2,"turrets":0.0,"tubes":1.0,"sensors":0.17,"comms":0.2,"gravity_dampers":1.0,"computer":1.0,"bays":0.0},"emergency":{"drive":0.3,"shields":0.5,"turrets":0.5,"tubes":1.0,"sensors":0.17,"comms":0.2,"gravity_dampers":0.8,"computer":1.0,"bays":0.0}},"lighting":{"priority":1,"normal_w_per_m2":12.0,"emergency_w_per_m2":2.0,"normal_below_ratio":0.5,"panels":{"msb_s":["engineering"],"dp_drive":["drive"],"dp_hangar_p":["hangar","launch_bay_p"],"dp_hangar_s":["launch_bay_s"],"dp_port":["port_turret","pod_port","quarters"],"dp_stbd":["stbd_turret","pod_stbd","mess"],"dp_a":["bridge","ready_room","computer_core","a_corridor","dorsal_turret","pod_dorsal","a_aft_passage"],"dp_b_fwd":["torpedo_room","medbay","damage_control","b_spine"],"dp_c_fwd":["c_spine","magazine","cargo","airlock","shield_room","pod_ventral","switchboard"],"dp_ls":["life_support"]}},"coolant":{"system":"coolant_pumps","fluid":"water and glycol, pressurized","capacity_mj_per_k":40.0,"nominal_k":330.0,"initial_k":325.0,"warn_k":360.0,"pumps":["coolant_pump_a","coolant_pump_b"],"flow_per_pump":0.5,"design_flow_kg_s":740.0,"design_flow_note":"40 MW at a 15 K rise in water and glycol (3.6 kJ/kg K); the console shows flow as this times the flow fraction"},"radiators":{"system":"radiators","rated_mw":40.0,"rated_at_k":330.0,"background_k":4.0,"bypass_band_k":5.0,"law":"capacity = rated_mw * health * flow * (T^4 - Tb^4) / (rated_at_k^4 - Tb^4); rejected = capacity * clamp((T - (coolant.nominal_k - bypass_band_k)) / bypass_band_k, 0, 1)","note":"Fictional rating, stated as such: a physical radiator rejecting 40 MW at 330 K would need about 60,000 m^2. See design.md, Heat, and open question P4."},"overdrive":{"heat_factor":1.0,"wear_pct_per_min_at_150":2.0}}
+{"schema":"starcrew.ship-power/1","status":"PROPOSED by openspec/changes/power-grid (2026-10-04). No engine code reads this yet; the systems mockup does. Numbers are tuning proposals, not decisions.","ship":"tern","units":{"power":"MW (megawatts)","energy":"MJ (megajoules)","temperature":"K (kelvin)","heat_capacity":"MJ/K","conductance":"kW/K for loop couplings, W/K for room couplings","time":"s","position":"metres, ship-local, as layout.json"},"solve":{"substep_hz":10,"quanta_rounds":3,"epsilon_mw":0.0005,"dropout_resolves":1},"reactor":{"system":"reactor","fuel":"deuterium and helium-3","thermal_rated_mw":80.0,"conversion_efficiency":0.6,"throttle_min":0.1,"throttle_max":1.2,"throttle_default":1.0,"ramp_up_per_s":0.02,"ramp_down_per_s":0.1,"fuel_energy_mj_per_kg":353000000.0,"fuel_load_kg":4.0,"overdrive_wear_pct_per_min_at_max":1.0,"heat":{"capacity_mj_per_k":10.0,"loop_kw_per_k":110.0,"room_w_per_k":250.0,"warn_k":750.0,"scram_k":820.0},"scram":{"loop_over_k":380.0,"loop_over_hold_s":2.0,"coolant_flow_below":0.3,"coolant_flow_hold_s":5.0,"coolant_check_above_throttle":0.2,"aux_supply_below":0.8,"aux_rule":"best train: max over the two trains of supply / need","aux_supply_hold_s":2.0,"integrity_below_pct":25.0},"reset":{"fixture":"reactor_panel","hold_s":3.0,"loop_below_k":350.0,"blanket_below_k":700.0},"restart":{"ignition_mw":8.0,"ignition_s":20.0,"start_throttle":0.1}},"battery":{"system":"battery_bank","node":"eb","capacity_mj":1800.0,"initial_soc":0.9,"discharge_max_mw":30.0,"charge_max_mw":12.0,"charge_efficiency":0.95,"discharge_efficiency":0.95,"restart_reserve_mj":350.0,"heat_to":"loop"},"nodes":[{"id":"msb_p","name":"Main switchboard, port section","kind":"switchboard","compartment":"engineering","center_m":[7.5,0.5,-20.6]},{"id":"msb_s","name":"Main switchboard, starboard section","kind":"switchboard","compartment":"engineering","center_m":[-7.5,0.5,-21.0]},{"id":"fsb_p","name":"Forward switchboard, port section","kind":"switchboard","compartment":"switchboard","center_m":[-2.4,-1.0,4.2]},{"id":"fsb_s","name":"Forward switchboard, starboard section","kind":"switchboard","compartment":"switchboard","center_m":[-2.4,-1.0,5.2]},{"id":"eb","name":"Emergency bus","kind":"emergency_bus","compartment":"switchboard","center_m":[-4.5,-1.0,2.0]},{"id":"dp_drive","name":"Drive panel","kind":"panel","compartment":"drive","center_m":[0.0,2.5,-34.0]},{"id":"dp_hangar_p","name":"Hangar port panel","kind":"panel","compartment":"hangar","center_m":[8.0,2.6,-8.0]},{"id":"dp_hangar_s","name":"Hangar starboard panel","kind":"panel","compartment":"hangar","center_m":[-8.0,2.6,-8.0]},{"id":"dp_port","name":"Port turret panel","kind":"panel","compartment":"port_turret","center_m":[6.0,2.6,4.0]},{"id":"dp_stbd","name":"Starboard turret panel","kind":"panel","compartment":"stbd_turret","center_m":[-6.0,2.6,4.0]},{"id":"dp_a","name":"Command deck panel","kind":"panel","compartment":"a_corridor","center_m":[0.6,6.2,10.5]},{"id":"dp_b_fwd","name":"Main deck forward panel","kind":"panel","compartment":"b_spine","center_m":[0.8,2.7,22.0]},{"id":"dp_c_fwd","name":"Lower deck forward panel","kind":"panel","compartment":"c_spine","center_m":[0.8,-0.8,9.0]},{"id":"dp_ls","name":"Life support panel","kind":"panel","compartment":"life_support","center_m":[3.0,-0.8,12.0]}],"generators":[{"id":"gen_p","name":"Reactor generator, port","node":"msb_p","capacity_mw":30.0},{"id":"gen_s","name":"Reactor generator, starboard","node":"msb_s","capacity_mw":30.0}],"ties":[{"id":"bt_main","name":"Main bus tie","between":["msb_p","msb_s"],"capacity_mw":40.0,"closed":true},{"id":"bt_fwd","name":"Forward cross-tie","between":["fsb_p","fsb_s"],"capacity_mw":30.0,"closed":true},{"id":"eb_p","name":"Emergency feed, port","between":["fsb_p","eb"],"capacity_mw":15.0,"closed":true},{"id":"eb_s","name":"Emergency feed, starboard","between":["fsb_s","eb"],"capacity_mw":15.0,"closed":true}],"conduits":[{"id":"k_drive_p","name":"Drive feeder, port","between":["msb_p","dp_drive"],"capacity_mw":20.0,"route":["engineering","drive"],"path_m":[[8.6,2.0,-20.6],[8.6,5.0,-20.6],[8.6,5.0,-29.6],[6.2,5.0,-29.6],[6.2,5.0,-31.45],[0.5,5.0,-31.45],[0.5,2.5,-31.45],[0.5,2.5,-34.0]]},{"id":"k_drive_s","name":"Drive feeder, starboard","between":["msb_s","dp_drive"],"capacity_mw":20.0,"route":["engineering","drive"],"path_m":[[-8.6,2.0,-21.45],[-8.6,5.0,-21.45],[-8.6,5.0,-29.6],[-6.2,5.0,-29.6],[-6.2,5.0,-31.45],[-0.5,5.0,-31.45],[-0.5,2.5,-31.45],[-0.5,2.5,-34.0]]},{"id":"k_aft_p","name":"Port main trunk, aft","between":["msb_p","dp_hangar_p"],"capacity_mw":30.0,"route":["engineering","hangar"],"path_m":[[8.6,2.0,-20.15],[8.6,2.7,-20.15],[8.6,2.7,-18.75],[7.75,2.7,-18.75],[7.75,2.7,-18.0],[8.0,2.6,-8.0]]},{"id":"k_aft_s","name":"Starboard main trunk, aft","between":["msb_s","dp_hangar_s"],"capacity_mw":30.0,"route":["engineering","hangar"],"path_m":[[-8.6,2.0,-20.55],[-8.6,2.7,-20.55],[-8.6,2.7,-18.75],[-7.75,2.7,-18.75],[-7.75,2.7,-18.0],[-8.0,2.6,-8.0]]},{"id":"k_mid_p","name":"Port main trunk, midships","between":["dp_hangar_p","dp_port"],"capacity_mw":30.0,"route":["hangar","port_turret"],"path_m":[[8.0,2.6,-8.0],[8.0,2.6,-2.5],[8.0,2.6,1.0],[6.0,2.6,4.0]]},{"id":"k_mid_s","name":"Starboard main trunk, midships","between":["dp_hangar_s","dp_stbd"],"capacity_mw":30.0,"route":["hangar","stbd_turret"],"path_m":[[-8.0,2.6,-8.0],[-8.0,2.6,-2.5],[-8.0,2.6,1.0],[-6.0,2.6,4.0]]},{"id":"k_fwd_p","name":"Port main trunk, forward","between":["dp_port","fsb_p"],"capacity_mw":30.0,"route":["port_turret","shield_room","c_spine","switchboard"],"path_m":[[6.0,2.6,4.0],[4.5,2.6,3.0],[4.5,-0.8,3.0],[1.5,-0.8,3.0],[-1.5,-0.8,3.5],[-2.4,-1.0,4.2]]},{"id":"k_fwd_s","name":"Starboard main trunk, forward","between":["dp_stbd","fsb_s"],"capacity_mw":30.0,"route":["stbd_turret","switchboard"],"path_m":[[-6.0,2.6,4.0],[-4.5,2.6,5.5],[-4.5,-0.8,5.5],[-2.4,-1.0,5.2]]},{"id":"k_a_fwd","name":"Command deck feeder, forward","between":["fsb_p","dp_a"],"capacity_mw":8.0,"route":["switchboard","c_spine","b_spine","a_corridor"],"path_m":[[-2.4,-1.0,4.2],[-0.8,-0.8,6.0],[-0.8,-0.8,11.3],[-0.6,2.7,11.3],[-0.6,6.2,11.3],[0.6,6.2,10.5]]},{"id":"k_a_aft","name":"Command deck feeder, aft","between":["msb_s","dp_a"],"capacity_mw":8.0,"route":["engineering","a_aft_passage","dorsal_turret","a_corridor"],"path_m":[[-8.6,2.0,-21.0],[-8.6,2.95,-21.0],[-8.6,2.95,-18.75],[-6.8,2.95,-18.75],[-6.8,6.2,-18.75],[0.6,6.2,-18.75],[0.6,6.2,-18.0],[0.6,6.2,0.0],[0.6,6.2,4.0],[0.6,6.2,10.5]]},{"id":"k_b_fwd","name":"Main deck forward feeder","between":["fsb_s","dp_b_fwd"],"capacity_mw":12.0,"route":["switchboard","c_spine","b_spine"],"path_m":[[-2.4,-1.0,5.2],[-0.9,-0.8,6.5],[-0.9,-0.8,11.6],[-0.9,2.7,11.6],[0.8,2.7,13.0],[0.8,2.7,22.0]]},{"id":"k_c_fwd_p","name":"Lower deck feeder, port","between":["fsb_p","dp_c_fwd"],"capacity_mw":30.0,"route":["switchboard","c_spine"],"path_m":[[-2.4,-1.0,4.2],[-1.0,-0.9,4.0],[0.8,-0.9,8.0],[0.8,-0.8,9.0]]},{"id":"k_c_fwd_s","name":"Lower deck feeder, starboard","between":["fsb_s","dp_c_fwd"],"capacity_mw":30.0,"route":["switchboard","c_spine"],"path_m":[[-2.4,-1.0,5.2],[-1.0,-1.4,5.6],[0.6,-1.4,9.0],[0.8,-0.8,9.0]]},{"id":"k_ls_n","name":"Life support feeder, normal","between":["fsb_p","dp_ls"],"capacity_mw":6.0,"route":["switchboard","c_spine","life_support"],"path_m":[[-2.4,-1.0,4.2],[-1.1,-1.1,5.0],[0.9,-1.1,12.0],[3.0,-0.8,12.0]]},{"id":"k_ls_e","name":"Life support feeder, emergency","between":["eb","dp_ls"],"capacity_mw":3.0,"route":["switchboard","c_spine","life_support"],"path_m":[[-4.5,-1.0,2.0],[-1.1,-1.6,2.5],[1.0,-1.6,13.0],[3.0,-0.9,13.0]]}],"loads":[{"id":"reactor_aux_p","name":"Reactor auxiliaries, port","system":"reactor","node":"msb_p","priority":0,"nominal_mw":1.0,"standby_mw":0.3,"setpoint_max":1.0,"min_ratio":0.0,"heat":{"to":"loop","fraction":1.0},"under":"Two full trains (port and starboard): the reactor scrams when neither train has had 80% of its supply for 2 s. Ignition runs at the pace the two trains' supply allows.","over":"Not adjustable."},{"id":"reactor_aux_s","name":"Reactor auxiliaries, starboard","system":"reactor","node":"msb_s","priority":0,"nominal_mw":1.0,"standby_mw":0.3,"setpoint_max":1.0,"min_ratio":0.0,"heat":{"to":"loop","fraction":1.0},"under":"As the port half.","over":"Not adjustable."},{"id":"coolant_pump_a","name":"Coolant pump A","system":"coolant_pumps","node":"msb_p","priority":0,"nominal_mw":0.4,"standby_mw":0.4,"setpoint_max":1.2,"min_ratio":0.0,"power_exponent":2.0,"heat":{"to":"loop","fraction":1.0},"under":"Its setpoint is its speed; the speed it runs at is the one its supply allows. Loop flow falls in proportion; each pump is half the flow.","over":"Up to 120% speed: 1.2 times its flow for 1.44 times its power, with heat and wear (reactor-cooling design 6)."},{"id":"coolant_pump_b","name":"Coolant pump B","system":"coolant_pumps","node":"msb_s","priority":0,"nominal_mw":0.4,"standby_mw":0.4,"setpoint_max":1.2,"min_ratio":0.0,"power_exponent":2.0,"heat":{"to":"loop","fraction":1.0},"under":"As pump A.","over":"As pump A."},{"id":"radiator_pump_p","name":"Radiator pump, port","system":null,"node":"dp_drive","priority":0,"nominal_mw":0.6,"standby_mw":0.6,"setpoint_max":1.2,"min_ratio":0.0,"power_exponent":2.0,"center_m":[5.2,0.6,-32.8],"heat":{"to":"loop","fraction":1.0},"under":"Its setpoint is its speed. Radiator rejection falls in proportion; each pump is half the radiators' flow (reactor-cooling design 2).","over":"As the core pumps."},{"id":"radiator_pump_s","name":"Radiator pump, starboard","system":null,"node":"dp_drive","priority":0,"nominal_mw":0.6,"standby_mw":0.6,"setpoint_max":1.2,"min_ratio":0.0,"power_exponent":2.0,"center_m":[-5.2,0.6,-32.8],"heat":{"to":"loop","fraction":1.0},"under":"As the port pump.","over":"As the core pumps."},{"id":"makeup_pump","name":"Coolant makeup pump","system":"coolant_pumps","node":"msb_s","priority":0,"nominal_mw":0.05,"standby_mw":0.0,"setpoint_max":1.0,"min_ratio":0.0,"activity":"makeup","heat":{"to":"loop","fraction":1.0},"under":"Makeup flow from the tanks in proportion to supply.","over":"Not adjustable."},{"id":"emergency_lighting","name":"Emergency lighting","system":null,"node":"eb","priority":0,"nominal_mw":0.0049,"standby_mw":0.0049,"setpoint_max":1.0,"min_ratio":0.0,"center_m":[-4.5,-1.0,2.6],"heat":{"to":"none","fraction":0.0},"under":"Below 50%: compartments with no normal lighting go dark.","over":"Not adjustable."},{"id":"computer","name":"Computer core","system":"computer","node":"dp_a","priority":1,"nominal_mw":1.5,"standby_mw":1.5,"setpoint_max":1.5,"min_ratio":0.5,"heat":{"to":"node","fraction":0.95,"capacity_mj_per_k":4.3,"loop_kw_per_k":47.5,"room_w_per_k":30.0,"warn_k":363.0,"damage_k":393.0},"under":"Automation competence falls with supply; below 50% every automated station stops and targeting solutions are lost.","over":"Automation reaction time shortens by up to a third."},{"id":"bridge_consoles","name":"Bridge consoles","system":null,"node":"dp_a","priority":1,"nominal_mw":0.007,"standby_mw":0.007,"setpoint_max":1.0,"min_ratio":0.5,"center_m":[0.0,4.5,26.0],"heat":{"to":"room","fraction":1.0,"room":"bridge"},"under":"Below 50%: the bridge stations go dark; the engineering bay console and the damage control board still work.","over":"Not adjustable."},{"id":"o2_generator","name":"Oxygen generator","system":"o2_generator","node":"dp_ls","priority":1,"nominal_mw":1.0,"standby_mw":0.005,"setpoint_max":1.5,"min_ratio":0.0,"activity":"o2_output","heat":{"to":"node","fraction":0.3,"capacity_mj_per_k":0.9,"loop_kw_per_k":10.0,"room_w_per_k":20.0,"warn_k":363.0,"damage_k":393.0},"under":"Oxygen output in proportion to supply.","over":"Output up to 1.5 times rated, with heat and wear."},{"id":"co2_scrubbers","name":"CO2 scrubbers","system":"co2_scrubbers","node":"dp_ls","priority":1,"nominal_mw":0.25,"standby_mw":0.25,"setpoint_max":1.5,"min_ratio":0.0,"heat":{"to":"loop","fraction":1.0},"under":"CO2 and smoke removal in proportion to supply.","over":"Removal up to 1.5 times rated."},{"id":"air_handler","name":"Air handler fans","system":"air_handler","node":"dp_ls","priority":1,"nominal_mw":0.08,"standby_mw":0.08,"setpoint_max":1.25,"min_ratio":0.2,"heat":{"to":"duct","fraction":1.0},"under":"Circulation in proportion to supply; below 20% the fans stop and every vent damper springs shut.","over":"Circulation up to 1.25 times rated."},{"id":"thermal_control","name":"Thermal control","system":"thermal_control","node":"dp_ls","priority":1,"nominal_mw":0.75,"standby_mw":0.15,"setpoint_max":1.0,"min_ratio":0.0,"activity":"heater","heat":{"to":"none","fraction":0.0},"under":"Cabin cooling and heating in proportion to supply.","over":"Not adjustable."},{"id":"medbay","name":"Medbay beds","system":"medbay_beds","node":"dp_b_fwd","priority":1,"nominal_mw":0.008,"standby_mw":0.002,"setpoint_max":1.5,"min_ratio":0.25,"heat":{"to":"room","fraction":1.0,"room":"medbay"},"under":"Healing and revival in proportion to supply; below 25% the beds stop.","over":"Healing up to 1.5 times faster."},{"id":"shield_generator","name":"Shield generator","system":"shield_generator","node":"dp_c_fwd","priority":2,"nominal_mw":12.0,"standby_mw":2.0,"setpoint_max":1.5,"min_ratio":0.25,"activity":"shield_regen","heat":{"to":"node","fraction":0.35,"capacity_mj_per_k":12.6,"loop_kw_per_k":140.0,"room_w_per_k":40.0,"warn_k":363.0,"damage_k":393.0},"under":"Face regeneration and capacity in proportion to supply; below 25% the faces collapse.","over":"Regeneration up to 1.5 times, with heat."},{"id":"turret_dorsal","name":"Dorsal turret","mount":"turret_dorsal","node":"dp_a","priority":2,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.2,"activity":"turret_dorsal","heat":{"to":"node","fraction":0.4,"capacity_mj_per_k":4.8,"loop_kw_per_k":53.3,"room_w_per_k":25.0,"room":"pod_dorsal","warn_k":363.0,"damage_k":393.0},"under":"Capacitor charge rate in proportion to supply (4 MW nominal against 6 MW of sustained fire); below 20% it cannot fire.","over":"Up to 1.5 times the rate of fire, with heat."},{"id":"turret_ventral","name":"Ventral turret","mount":"turret_ventral","node":"dp_c_fwd","priority":2,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.2,"activity":"turret_ventral","heat":{"to":"node","fraction":0.4,"capacity_mj_per_k":4.8,"loop_kw_per_k":53.3,"room_w_per_k":25.0,"room":"pod_ventral","warn_k":363.0,"damage_k":393.0},"under":"As the dorsal turret.","over":"As the dorsal turret."},{"id":"turret_port","name":"Port turret","mount":"turret_port","node":"dp_port","priority":2,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.2,"activity":"turret_port","heat":{"to":"node","fraction":0.4,"capacity_mj_per_k":4.8,"loop_kw_per_k":53.3,"room_w_per_k":25.0,"room":"pod_port","warn_k":363.0,"damage_k":393.0},"under":"As the dorsal turret.","over":"As the dorsal turret."},{"id":"turret_stbd","name":"Starboard turret","mount":"turret_stbd","node":"dp_stbd","priority":2,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.2,"activity":"turret_stbd","heat":{"to":"node","fraction":0.4,"capacity_mj_per_k":4.8,"loop_kw_per_k":53.3,"room_w_per_k":25.0,"room":"pod_stbd","warn_k":363.0,"damage_k":393.0},"under":"As the dorsal turret.","over":"As the dorsal turret."},{"id":"sensors","name":"Sensor array","system":"sensor_array","node":"dp_b_fwd","priority":2,"nominal_mw":3.0,"standby_mw":0.5,"setpoint_max":1.5,"min_ratio":0.15,"activity":"sensors_active","heat":{"to":"node","fraction":0.5,"capacity_mj_per_k":4.5,"loop_kw_per_k":50.0,"room_w_per_k":0.0,"warn_k":363.0,"damage_k":393.0},"under":"Active range grows as the square root of supply; at standby only passive contacts.","over":"Range up to 1.22 times (square root of 1.5)."},{"id":"inertial_dampers","name":"Inertial dampers","system":"inertial_dampers","node":"dp_drive","priority":2,"nominal_mw":8.0,"standby_mw":2.0,"setpoint_max":1.5,"min_ratio":0.1,"activity":"dampers","heat":{"to":"node","fraction":0.5,"capacity_mj_per_k":12.0,"loop_kw_per_k":133.3,"room_w_per_k":40.0,"warn_k":363.0,"damage_k":393.0},"under":"The share of the ship's acceleration the crew feel is 1 minus supply/demand; past 0.5 g felt, crew are knocked down.","over":"Absorbs manoeuvres up to 1.5 times the rated acceleration."},{"id":"gravity_generator","name":"Gravity generator","system":"gravity_generator","node":"dp_c_fwd","priority":2,"nominal_mw":4.0,"standby_mw":4.0,"setpoint_max":1.25,"min_ratio":0.3,"heat":{"to":"node","fraction":0.5,"capacity_mj_per_k":6.0,"loop_kw_per_k":66.7,"room_w_per_k":40.0,"warn_k":363.0,"damage_k":393.0},"under":"Gravity in g equals supply ratio; below 30% the field drops to zero (free fall).","over":"Up to 1.25 g: crew move 10% slower."},{"id":"impulse_drive","name":"Impulse drive","system":"impulse_drive","node":"dp_drive","priority":3,"nominal_mw":16.0,"standby_mw":0.2,"setpoint_max":1.5,"min_ratio":0.1,"activity":"drive","heat":{"to":"node","fraction":0.15,"capacity_mj_per_k":7.2,"loop_kw_per_k":80.0,"room_w_per_k":60.0,"warn_k":363.0,"damage_k":393.0},"under":"Thrust in proportion to supply.","over":"Up to 1.5 times rated thrust, with heat and wear."},{"id":"rcs_aft","name":"RCS, aft block","system":null,"node":"dp_drive","priority":3,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.1,"activity":"rcs","center_m":[0.0,1.0,-39.0],"heat":{"to":"node","fraction":0.3,"capacity_mj_per_k":3.6,"loop_kw_per_k":40.0,"room_w_per_k":20.0,"room":"drive","warn_k":363.0,"damage_k":393.0},"under":"Turn rate in proportion to the weaker block's supply.","over":"Up to 1.5 times turn rate."},{"id":"rcs_fwd","name":"RCS, forward block","system":null,"node":"dp_b_fwd","priority":3,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.1,"activity":"rcs","center_m":[0.0,1.0,32.5],"heat":{"to":"node","fraction":0.3,"capacity_mj_per_k":3.6,"loop_kw_per_k":40.0,"room_w_per_k":20.0,"room":"torpedo_room","warn_k":363.0,"damage_k":393.0},"under":"As the aft block.","over":"As the aft block."},{"id":"missile_hoist","name":"Missile hoist and loaders","system":"magazine_racks","node":"dp_b_fwd","priority":3,"nominal_mw":0.03,"standby_mw":0.001,"setpoint_max":1.5,"min_ratio":0.2,"activity":"hoist","heat":{"to":"room","fraction":1.0,"room":"magazine"},"under":"Reload time grows as 1/supply; unpowered, crew load by hand crank (weapons-and-shields).","over":"Reload up to 1.5 times faster."},{"id":"comms","name":"Comms array","system":"comms_array","node":"dp_a","priority":3,"nominal_mw":0.5,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.2,"activity":"comms","heat":{"to":"node","fraction":0.5,"capacity_mj_per_k":0.75,"loop_kw_per_k":8.3,"room_w_per_k":0.0,"warn_k":363.0,"damage_k":393.0},"under":"Range in proportion to supply; below 20% only short-range voice.","over":"Range up to 1.5 times."},{"id":"hangar_pumps","name":"Bay pumps","system":"hangar_pumps","node":"dp_hangar_s","priority":3,"nominal_mw":6.0,"standby_mw":0.0,"setpoint_max":1.0,"min_ratio":0.0,"activity":"bay_pumps","heat":{"to":"node","fraction":0.4,"capacity_mj_per_k":7.2,"loop_kw_per_k":80.0,"room_w_per_k":40.0,"warn_k":363.0,"damage_k":393.0},"under":"Pumping speed in proportion to supply.","over":"Not adjustable."},{"id":"airlock_pump","name":"Airlock pump","system":null,"node":"dp_c_fwd","priority":3,"nominal_mw":0.15,"standby_mw":0.0,"setpoint_max":1.0,"min_ratio":0.0,"activity":"airlock_pump","center_m":[-9.5,-2.5,12.0],"heat":{"to":"room","fraction":1.0,"room":"cargo"},"under":"Pumping speed in proportion to supply.","over":"Not adjustable."},{"id":"cradle_p","name":"Port launch cradle","system":"cradle_p","node":"dp_hangar_p","priority":3,"nominal_mw":0.6,"standby_mw":0.05,"setpoint_max":1.5,"min_ratio":0.2,"activity":"cradle_p","heat":{"to":"loop","fraction":0.3},"under":"Release charge time grows as 1/supply.","over":"Charges up to 1.5 times faster."},{"id":"cradle_s","name":"Starboard launch cradle","system":"cradle_s","node":"dp_hangar_s","priority":3,"nominal_mw":0.6,"standby_mw":0.05,"setpoint_max":1.5,"min_ratio":0.2,"activity":"cradle_s","heat":{"to":"loop","fraction":0.3},"under":"As the port cradle.","over":"As the port cradle."},{"id":"shuttle_pad","name":"Shuttle lift pad","system":"shuttle_pad","node":"dp_hangar_p","priority":3,"nominal_mw":0.05,"standby_mw":0.0,"setpoint_max":1.0,"min_ratio":0.2,"activity":"pad","heat":{"to":"room","fraction":1.0,"room":"hangar"},"under":"Lift speed in proportion to supply.","over":"Not adjustable."}],"groups":[{"id":"drive","name":"Impulse drive and RCS","loads":["impulse_drive","rcs_aft","rcs_fwd"]},{"id":"shields","name":"Shields","loads":["shield_generator"]},{"id":"turrets","name":"Turrets","loads":["turret_dorsal","turret_ventral","turret_port","turret_stbd"]},{"id":"tubes","name":"Tubes and hoist","loads":["missile_hoist"]},{"id":"sensors","name":"Sensors","loads":["sensors"]},{"id":"comms","name":"Comms","loads":["comms"]},{"id":"life_support","name":"Life support","loads":["o2_generator","co2_scrubbers","air_handler","thermal_control"]},{"id":"gravity_dampers","name":"Gravity and dampers","loads":["gravity_generator","inertial_dampers"]},{"id":"computer","name":"Computer core","loads":["computer","bridge_consoles"]},{"id":"bays","name":"Bays and craft charging","loads":["hangar_pumps","airlock_pump","cradle_p","cradle_s","shuttle_pad"]},{"id":"medbay","name":"Medbay","loads":["medbay"]},{"id":"cooling","name":"Cooling","loads":["coolant_pump_a","coolant_pump_b","radiator_pump_p","radiator_pump_s","makeup_pump"],"priority_min":0,"feed_breaker":true,"note":"reactor-cooling design 6: the twelfth group, 2.05 MW at full speed. Its setpoint is the pumps' speed, 0-120% (120% is overdrive). Its loads are priority 0 (never shed) by default, and priority_min 0 lets engineering lower them to 1-3 and back, which lets load shedding take them. feed_breaker: one breaker on the group's feed, opened or locked open from the console; open, it stops every pump in the group and the loop falls to its natural circulation."}],"presets":{"note":"Setpoints by group (1.0 is nominal; 0 switches the group off; above 1 is overdrive). Groups not named keep 1.0. Automated engineering applies combat on red alert and cruise on its end (bridge-stations).","cruise":{"drive":1.0,"shields":1.0,"turrets":1.0,"tubes":1.0,"sensors":1.0,"comms":1.0,"gravity_dampers":1.0,"computer":1.0,"bays":1.0},"combat":{"drive":0.75,"shields":1.25,"turrets":1.0,"tubes":1.0,"sensors":0.6,"comms":0.5,"gravity_dampers":1.0,"computer":1.25,"bays":1.0},"silent":{"drive":0.2,"shields":0.2,"turrets":0.0,"tubes":1.0,"sensors":0.17,"comms":0.2,"gravity_dampers":1.0,"computer":1.0,"bays":0.0},"emergency":{"drive":0.3,"shields":0.5,"turrets":0.5,"tubes":1.0,"sensors":0.17,"comms":0.2,"gravity_dampers":0.8,"computer":1.0,"bays":0.0}},"lighting":{"priority":1,"normal_w_per_m2":12.0,"emergency_w_per_m2":2.0,"normal_below_ratio":0.5,"panels":{"msb_s":["engineering"],"dp_drive":["drive"],"dp_hangar_p":["hangar","launch_bay_p"],"dp_hangar_s":["launch_bay_s"],"dp_port":["port_turret","pod_port","quarters"],"dp_stbd":["stbd_turret","pod_stbd","mess"],"dp_a":["bridge","ready_room","computer_core","a_corridor","dorsal_turret","pod_dorsal","a_aft_passage"],"dp_b_fwd":["torpedo_room","medbay","damage_control","b_spine"],"dp_c_fwd":["c_spine","magazine","cargo","airlock","shield_room","pod_ventral","switchboard"],"dp_ls":["life_support"]}},"coolant":{"system":"coolant_pumps","fluid":"water and glycol, pressurized","capacity_mj_per_k":40.0,"nominal_k":330.0,"initial_k":325.0,"warn_k":360.0,"pumps":["coolant_pump_a","coolant_pump_b"],"flow_per_pump":0.5,"design_flow_kg_s":740.0,"design_flow_note":"40 MW at a 15 K rise in water and glycol (3.6 kJ/kg K); the console shows flow as this times the flow fraction","specific_heat_kj_per_kg_k":3.6,"radiator_pumps":["radiator_pump_p","radiator_pump_s"],"flow_per_radiator_pump":0.5,"natural_circulation_flow":0.05,"inventory_kg":11100.0,"tanks":[{"id":"tank_p","name":"Coolant tank, port","capacity_kg":2000.0},{"id":"tank_s","name":"Coolant tank, starboard","capacity_kg":2000.0}],"makeup":{"pump":"makeup_pump","max_kg_s":10.0,"auto_open_below":0.95},"cavitation":{"full_flow_from":0.8,"no_flow_below":0.6},"bands":{"hot_leg_k":[335.0,350.0],"cold_leg_k":[320.0,335.0],"hot_leg_warning_k":370.0},"automation":{"period_s":3.0,"design_rise_k":15.0,"pump_speed_min":1.0},"cooling_note":"reactor-cooling design 2, 3, 5 and 6. Speed-law loads (power_exponent) draw nominal_mw x speed^power_exponent, their standby_mw unused, and run at the speed their supply allows. flow = max(natural_circulation_flow, core pumps' speed x capability x flow_per_pump, summed, x cavitation); cavitation = clamp((m_loop / inventory_kg - no_flow_below) / (full_flow_from - no_flow_below), 0, 1). C_loop = capacity_mj_per_k x m_loop / inventory_kg. Hot leg = loop temperature + heat into the loop / (flow x design_flow_kg_s x specific heat); it is the one the loop scram reads. Radiator rejection gains the exchanger's capability and the radiator pumps' speed x capability x flow_per_radiator_pump, summed. Automation every period_s: core pumps at the flow the heat needs at design_rise_k, never below pump_speed_min (the mockup keeps power-grid's full-flow walkthroughs), up to 1.2; radiator pumps at full; the bypass holds the cold leg by radiators.bypass_band_k (325-330 K, design 5's 327 K); makeup opens below auto_open_below and shuts at full. Pipe segments, leaks and the exchanger's damage are design 1-2 and not in this file yet."},"radiators":{"system":"radiators","rated_mw":40.0,"rated_at_k":330.0,"background_k":4.0,"bypass_band_k":5.0,"law":"capacity = rated_mw * health * flow * exchanger * radiator_pumps * (T^4 - Tb^4) / (rated_at_k^4 - Tb^4); rejected = capacity * chiller, where chiller (the share of the hot leg through the exchanger) is clamp((T - (coolant.nominal_k - bypass_band_k)) / bypass_band_k, 0, 1) in AUTO and the engineer's in MANUAL; exchanger and radiator_pumps as coolant.cooling_note (reactor-cooling design 2)","note":"Fictional rating, stated as such: a physical radiator rejecting 40 MW at 330 K would need about 60,000 m^2. See design.md, Heat, and open question P4."},"overdrive":{"heat_factor":1.0,"wear_pct_per_min_at_150":2.0}}
 </script>
 <!-- INLINE data:tern/power END -->
 <!-- INLINE data:tern/atmosphere BEGIN -->
@@ -2906,6 +2906,9 @@
  * It implements, in one place, the formulas of three proposed OpenSpec changes so the
  * mockup shows what the designs say and nothing else:
  *   openspec/changes/power-grid      (the power solve, reactor, battery, heat and coolant)
+ *   openspec/changes/reactor-cooling (the Cooling group, pump speeds, the radiator pumps, the loop's
+ *                                     inventory and makeup, the two legs, the cooling automation; its
+ *                                     pipe segments, leaks and the exchanger's damage are not here yet)
  *   openspec/changes/life-support    (the atmosphere step, plant, pumps, crew effects)
  *   openspec/changes/damage-control  (fire, hit resolution, suppression)
  * Every tuning number comes from the proposed data files data/ships/<id>/power.json,
@@ -3230,7 +3233,15 @@
       reactor: { mode: "auto", state: "running", throttle: PW.reactor.throttle_default * 0.6, target: PW.reactor.throttle_default, P_th: 0, P_e: 0,
         T: 600, integrity: 100, fuel_kg: PW.reactor.fuel_load_kg, timers: { loop: 0, flow: 0, aux: 0 }, scramCause: null, ignition: 0, releaseReserve: false },
       battery: { soc_mj: PW.battery.capacity_mj * PW.battery.initial_soc, out_mw: 0, in_mw: 0, health: 1 },
-      loop: { T: PW.coolant.initial_k, flow: 1, rad_mw: 0, in_mw: 0, radiatorHealth: 1, branchOpen: {} },
+      loop: { T: PW.coolant.initial_k, flow: 1, rad_mw: 0, in_mw: 0, radiatorHealth: 1, branchOpen: {},
+        // reactor-cooling: inventory (kg), the tanks' reserve, the hot leg, the radiator pumps' flow, the
+        // exchanger's capability (1 until its damage is modelled) and a leak hook (kg/s) for the pipe segments to come.
+        m_kg: PW.coolant.inventory_kg, tanks_kg: PW.coolant.tanks.map((t) => t.capacity_kg), hot_k: PW.coolant.initial_k,
+        rad_flow: 1, exchanger: 1, chiller: 1, leak_kg_s: 0, makeup_kg_s: 0 },
+      // The engineer's hand on the loop (reactor-cooling design 5): AUTO, or MANUAL with the chiller's share and the
+      // makeup valve set by hand (the pumps' speeds are their loads' setpoints either way).
+      cooling: { mode: "auto", chiller: 1, makeup: 0, timer: 0 },
+      groupBreaker: {}, // group id -> "closed" | "open" | "locked" (a group with feed_breaker, power-grid 5)
       setpoint: new Float64Array(loads.length).fill(1),
       priority: Int8Array.from(loads.map((l) => l.priority)),
       activity: {},
@@ -3385,8 +3396,9 @@
 
     function mayUseReserve(i) {
       const id = loads[i].id;
+      // The loop's pumps (core and radiator) may spend it while the reactor is down, as long as they stay vital.
       return id === "emergency_lighting" || (id.startsWith("reactor_aux") && st.reactor.state === "igniting") ||
-        (PW.coolant.pumps.indexOf(id) >= 0 && st.reactor.state !== "running");
+        ((PW.coolant.pumps.indexOf(id) >= 0 || PW.coolant.radiator_pumps.indexOf(id) >= 0) && st.reactor.state !== "running" && st.priority[i] === 0);
     }
     /** Demand per load from setpoints, activity, damage and breakers (MW). */
     function computeDemand(setpoints) {
@@ -3404,6 +3416,7 @@
         else if (l.activity === "airlock_pump") x = Math.min(st.airlock.pump_mw_want, l.nominal_mw * sp);
         else if (l.id.startsWith("reactor_aux") && st.reactor.state === "igniting") x = PW.reactor.restart.ignition_mw / 2;
         else if (l.id.startsWith("reactor_aux") && st.reactor.state === "scrammed") x = l.standby_mw;
+        else if (l.power_exponent) x = l.nominal_mw * Math.pow(sp, l.power_exponent); // a pump: its setpoint is its speed
         else {
           const a = l.activity ? (st.activity[l.activity] || 0) : 1;
           x = l.standby_mw + Math.max(0, l.nominal_mw * sp - l.standby_mw) * a;
@@ -3514,19 +3527,100 @@
       let a = 0; for (const id of ["reactor_aux_p", "reactor_aux_s"]) a += st.alloc[loadIdx[id]];
       return clamp(a / PW.reactor.restart.ignition_mw, 0, 1);
     }
+    // ======================================================= the cooling loop (reactor-cooling)
+    /** A speed-law load's speed (0 to its setpoint_max): the speed its delivered power allows, power = nominal x speed^exponent. */
+    function pumpSpeed(i) {
+      const l = loads[i];
+      if (!(l.nominal_mw > 0)) return 0;
+      return Math.pow(Math.max(0, st.alloc[i] / l.nominal_mw), 1 / (l.power_exponent || 1));
+    }
+    /** A set of pumps' flow: speed x capability x each one's share, summed (reactor-cooling design 2). */
+    function pumpsFlow(ids, share) { let f = 0; for (const id of ids) { const i = loadIdx[id]; f += pumpSpeed(i) * capability(i) * share; } return f; }
+    /** The loop's inventory as a fraction of full, and the cavitation it allows (1 from 80%, 0 at 60%). */
+    function cavitation() {
+      const C = PW.coolant, CV = C.cavitation;
+      return clamp((st.loop.m_kg / C.inventory_kg - CV.no_flow_below) / (CV.full_flow_from - CV.no_flow_below), 0, 1);
+    }
+    /** The loop's flow fraction: the core pumps, cavitation, and natural circulation when they stop. */
+    function loopFlow() {
+      const C = PW.coolant;
+      return Math.max(C.natural_circulation_flow, pumpsFlow(C.pumps, C.flow_per_pump) * cavitation());
+    }
+    /** The heat the loop's flow carries at the design rise, MW (40 MW at full flow): the second needle's scale. */
+    const carryMw = (flow) => flow * PW.coolant.design_flow_kg_s * PW.coolant.specific_heat_kj_per_kg_k * PW.coolant.automation.design_rise_k / 1000;
+    /**
+     * The loop's controls before the power solve: the makeup valve (AUTO opens it below auto_open_below and shuts it at
+     * full; MANUAL is the engineer's), the makeup pump's activity, and in AUTO every period_s the pumps' speeds
+     * (reactor-cooling design 5): the core pumps at the flow the heat needs at the design rise, never below
+     * pump_speed_min, up to their setpoint_max, and the radiator pumps at full. It reckons both core pumps whole, so a
+     * lost pump or a low loop is not made up for: a hurt loop under load drifts hot, and the engineer does better.
+     */
+    function stepCooling() {
+      const C = PW.coolant, A = C.automation, cl = st.cooling, loop = st.loop;
+      const frac = loop.m_kg / C.inventory_kg, tanks = loop.tanks_kg.reduce((a, b) => a + b, 0);
+      if (cl.mode === "auto") {
+        if (frac < C.makeup.auto_open_below) cl.autoMakeup = 1; else if (frac >= 1) cl.autoMakeup = 0;
+        loop.makeupValve = cl.autoMakeup || 0;
+      } else loop.makeupValve = cl.makeup;
+      st.activity.makeup = loop.makeupValve > 0 && frac < 1 && tanks > 0 ? 1 : 0;
+      if (cl.mode !== "auto") return;
+      cl.timer -= dt;
+      if (cl.timer > 0) return;
+      cl.timer = A.period_s;
+      const need = loop.in_mw / carryMw(1);
+      for (const id of C.pumps) { const i = loadIdx[id]; st.setpoint[i] = clamp(Math.max(A.pump_speed_min, need), 0, loads[i].setpoint_max); }
+      for (const id of C.radiator_pumps) st.setpoint[loadIdx[id]] = 1;
+    }
+    /** The engineer's hand on the loop: { mode, pumps, radiators (speeds), chiller (share through the exchanger), makeup (open) }. */
+    function setCooling(o) {
+      const C = PW.coolant, cl = st.cooling;
+      if (o.mode === "manual" && cl.mode !== "manual") { cl.chiller = st.loop.chiller; cl.makeup = st.loop.makeupValve || 0; }
+      if (o.mode === "auto" && cl.mode !== "auto") cl.timer = 0;
+      if (o.mode) cl.mode = o.mode;
+      const speed = (ids, v) => { for (const id of ids) { const i = loadIdx[id]; st.setpoint[i] = clamp(v, 0, loads[i].setpoint_max); } };
+      if (o.pumps != null) speed(C.pumps, o.pumps);
+      if (o.radiators != null) speed(C.radiator_pumps, o.radiators);
+      if (o.chiller != null) cl.chiller = clamp(o.chiller, 0, 1);
+      if (o.makeup != null) cl.makeup = o.makeup ? 1 : 0;
+    }
+    /** The loop as the engineering console shows it (preview = resolver: these are the step's own numbers). */
+    function coolantReadout() {
+      const C = PW.coolant, loop = st.loop;
+      const pumps = (ids) => ids.map((id) => { const i = loadIdx[id]; return { id, name: loads[i].name, setpoint: st.setpoint[i], speed: pumpSpeed(i), capability: capability(i), alloc_mw: st.alloc[i] }; });
+      return {
+        mode: st.cooling.mode, cold_k: loop.T, hot_k: loop.hot_k, flow: loop.flow, flow_kg_s: loop.flow * C.design_flow_kg_s,
+        heat_mw: loop.in_mw, carry_mw: carryMw(loop.flow), rad_mw: loop.rad_mw, rad_cap_mw: loop.rad_cap_mw, chiller: loop.chiller,
+        rad_flow: loop.rad_flow, exchanger: loop.exchanger, inventory: loop.m_kg / C.inventory_kg, m_kg: loop.m_kg,
+        tanks: C.tanks.map((t, k) => ({ id: t.id, name: t.name, kg: loop.tanks_kg[k], frac: loop.tanks_kg[k] / t.capacity_kg })),
+        makeup_valve: loop.makeupValve || 0, makeup_kg_s: loop.makeup_kg_s, pumps: pumps(C.pumps), radiator_pumps: pumps(C.radiator_pumps),
+        bands: C.bands, limit_k: PW.reactor.scram.loop_over_k,
+      };
+    }
+    /** Open, close or lock open a group's feed breaker (power-grid 5): a locked breaker refuses to close until it is unlocked (opened). */
+    function setGroupBreaker(gid, state) {
+      const g = PW.groups.find((x) => x.id === gid);
+      if (!g || !g.feed_breaker) return "no breaker";
+      if (state === "closed" && st.groupBreaker[gid] === "locked") return "locked";
+      st.groupBreaker[gid] = state;
+      for (const id of g.loads) st.breakerOpen[loadIdx[id]] = state === "closed" ? 0 : 1;
+      log(g.name + " breaker " + state);
+      return "ok";
+    }
+
     const roomHeat = new Float64Array(NN);
     function stepHeat() {
       roomHeat.fill(0);
       const loop = st.loop, C = PW.coolant, RD = PW.radiators;
-      let flow = 0;
-      for (const id of C.pumps) { const i = loadIdx[id]; flow += (loads[i].nominal_mw > 0 ? st.alloc[i] / loads[i].nominal_mw : 0) * C.flow_per_pump * (st.integrity[i] / 100); }
-      loop.flow = clamp(flow, 0, 1);
+      loop.flow = loopFlow();
+      loop.rad_flow = pumpsFlow(C.radiator_pumps, C.flow_per_radiator_pump);
       let toLoop = 0;
       for (let i = 0; i < loads.length; i++) {
         const l = loads[i], h = l.heat; if (!h) continue;
         const aW = st.alloc[i] * MWW;
         const over = l.nominal_mw > 0 ? Math.max(0, st.alloc[i] / l.nominal_mw - 1) : 0;
         const q = h.fraction * aW * (1 + PW.overdrive.heat_factor * over);
+        // Overdrive wears any load (power-grid 8): 2% of integrity a minute at 150%, in proportion to over / 0.5.
+        if (over > 0) st.integrity[i] = Math.max(0, st.integrity[i] - dt * (PW.overdrive.wear_pct_per_min_at_150 / 60) * (over / 0.5));
         if (h.to === "loop") toLoop += q;
         else if (h.to === "room") roomHeat[idx[h.room]] += q;
         else if (h.to === "duct") roomHeat[DUCT] += q;
@@ -3541,7 +3635,6 @@
           toLoop += qLoop; if (room != null) roomHeat[room] += qRoom;
           // Over-temperature wears the system (damage-control applies the state).
           if (th.T > h.damage_k) st.integrity[i] = Math.max(0, st.integrity[i] - dt * (th.T - h.damage_k) * 0.01);
-          if (over > 0) st.integrity[i] = Math.max(0, st.integrity[i] - dt * (PW.overdrive.wear_pct_per_min_at_150 / 60) * (over / 0.5));
         }
       }
       // Reactor blanket.
@@ -3558,22 +3651,36 @@
       // Radiators.
       const Tb4 = Math.pow(RD.background_k, 4);
       // Capacity by the fourth-power law; the bypass valve holds the loop near its nominal
-      // temperature when the heat is low, so the loop does not run cold at cruise.
-      loop.rad_cap_mw = (RD.rated_mw * loop.radiatorHealth * loop.flow * (Math.pow(loop.T, 4) - Tb4)) / (Math.pow(RD.rated_at_k, 4) - Tb4);
-      const open = RD.bypass_band_k > 0 ? clamp((loop.T - (C.nominal_k - RD.bypass_band_k)) / RD.bypass_band_k, 0, 1) : 1;
+      // temperature when the heat is low, so the loop does not run cold at cruise. The chiller (reactor-cooling design 2)
+      // passes it on through the exchanger's capability and the radiator pumps' flow; in MANUAL the engineer sets the
+      // share of the hot leg that goes through the exchanger instead of the bypass valve.
+      loop.rad_cap_mw = (RD.rated_mw * loop.radiatorHealth * loop.flow * loop.exchanger * loop.rad_flow * (Math.pow(loop.T, 4) - Tb4)) / (Math.pow(RD.rated_at_k, 4) - Tb4);
+      const open = st.cooling.mode === "manual" ? st.cooling.chiller : RD.bypass_band_k > 0 ? clamp((loop.T - (C.nominal_k - RD.bypass_band_k)) / RD.bypass_band_k, 0, 1) : 1;
+      loop.chiller = open;
       loop.rad_mw = Math.max(0, loop.rad_cap_mw) * open;
       loop.in_mw = toLoop / MWW;
-      loop.T += (dt * (toLoop - loop.rad_mw * MWW)) / (C.capacity_mj_per_k * MWW);
+      // Inventory: the makeup pump feeds the loop from the tanks while its valve is open and the loop is under full
+      // (at the share of its demand it gets); the leak hook takes it away (reactor-cooling design 2).
+      const mi = loadIdx[C.makeup.pump], tanks = loop.tanks_kg.reduce((a, b) => a + b, 0);
+      const mkSupply = st.demand[mi] > 1e-9 ? clamp(st.alloc[mi] / st.demand[mi], 0, 1) : 0;
+      const mk = Math.max(0, Math.min(C.makeup.max_kg_s * (loop.makeupValve || 0) * mkSupply * dt, tanks, C.inventory_kg - loop.m_kg));
+      if (mk > 0) for (let k = 0; k < loop.tanks_kg.length; k++) loop.tanks_kg[k] -= mk * (loop.tanks_kg[k] / tanks);
+      loop.makeup_kg_s = mk / dt;
+      loop.m_kg = clamp(loop.m_kg + mk - loop.leak_kg_s * dt, 0, C.inventory_kg);
+      // The loop's heat capacity follows its inventory; the hot leg is the cold leg plus the heat the flow carries.
+      const cLoop = C.capacity_mj_per_k * MWW * Math.max(0.05, loop.m_kg / C.inventory_kg);
+      loop.T += (dt * (toLoop - loop.rad_mw * MWW)) / cLoop;
+      loop.hot_k = loop.T + toLoop / (loop.flow * C.design_flow_kg_s * C.specific_heat_kj_per_kg_k * 1000);
     }
     function checkScram() {
       const rx = st.reactor, SC = PW.reactor.scram;
       if (rx.state !== "running") return;
       const tm = rx.timers;
-      tm.loop = st.loop.T > SC.loop_over_k ? tm.loop + dt : 0;
+      tm.loop = st.loop.hot_k > SC.loop_over_k ? tm.loop + dt : 0; // the hot leg (reactor-cooling design 3)
       tm.flow = st.loop.flow < SC.coolant_flow_below && rx.throttle > SC.coolant_check_above_throttle ? tm.flow + dt : 0;
       tm.aux = auxRatio() < SC.aux_supply_below ? tm.aux + dt : 0;
       let cause = null;
-      if (tm.loop >= SC.loop_over_hold_s) cause = "coolant loop over " + SC.loop_over_k + " K";
+      if (tm.loop >= SC.loop_over_hold_s) cause = "coolant hot leg over " + SC.loop_over_k + " K";
       else if (rx.T > PW.reactor.heat.scram_k) cause = "blanket over " + PW.reactor.heat.scram_k + " K";
       else if (tm.flow >= SC.coolant_flow_hold_s) cause = "coolant flow below " + SC.coolant_flow_below * 100 + "%";
       else if (tm.aux >= SC.aux_supply_hold_s) cause = "auxiliaries below " + SC.aux_supply_below * 100 + "% supply";
@@ -4332,10 +4439,15 @@
       l.target = 1; l.manualHold = !!override; // a crew member passing does not hold it; the board's override does
       return "ok";
     }
-    /** Engineering's priority for a load (1 to 3); the vital class 0 is fixed. */
+    /**
+     * Engineering's priority for a load (1 to 3); the vital class 0 is fixed, except in a group whose priority_min is 0
+     * (Cooling, reactor-cooling design 6), whose loads go from 0 to 3 and back.
+     */
     function setPriority(loadId, p) {
-      const i = loadIdx[loadId]; if (i == null || loads[i].priority === 0) return false;
-      st.priority[i] = clamp(Math.round(p), 1, 3); return true;
+      const i = loadIdx[loadId]; if (i == null) return false;
+      const g = PW.groups.find((x) => x.loads.indexOf(loadId) >= 0), lo = g && g.priority_min != null ? g.priority_min : 1;
+      if (loads[i].priority < lo) return false;
+      st.priority[i] = clamp(Math.round(p), lo, 3); return true;
     }
     /** Apply a named preset from the data: setpoints by group. */
     function applyPreset(name) {
@@ -4357,6 +4469,7 @@
     function step() {
       stepVent();
       stepAutomation();
+      stepCooling();
       stepPower();
       stepHeat();
       stepPlant();
@@ -4396,7 +4509,7 @@
       step, derive, solveGrid, gridSnapshot, computeDemand, solveWithDropout, previewSetpoint, previewGroup, scram, scramReset,
       resolveHit, hullHalfBeam, breach, patch, setLink, closeAllDoors, isolate, ignite, bayPumpdown, bayRepress,
       dischargeMist, dischargeInert, useExtinguisher, newExtinguisher, ventPreview, gravityG, capability, damageState, auxRatio, ignitionRate,
-      operateDoor, setPriority, applyPreset, repressurize, repairSystem, spliceConduit, rebuildNode, fanRatio,
+      operateDoor, setPriority, applyPreset, setCooling, coolantReadout, setGroupBreaker, pumpSpeed, repressurize, repairSystem, spliceConduit, rebuildNode, fanRatio,
       airlockCycleOut, airlockCycleIn, ventCompartment, stopVent, addCrew, setActivity, compartmentReadout, lighting,
       receiverKpa, storeMol, fillStandard, log, fs: FS, fO2,
       get P() { return P; }, get T() { return T; }, get n() { return n; }, get ntot() { return ntot; },
@@ -4443,6 +4556,12 @@ const ICONS = {
   computer: '<rect x="6" y="6" width="12" height="12" rx="1.5"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/>',
   bays: '<path d="M3 21V9l9-5 9 5v12M7 21v-7h10v7"/>',
   medbay: '<path d="M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7z"/>',
+  cooling: '<path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7"/><path d="M9.5 4.5L12 7l2.5-2.5M9.5 19.5L12 17l2.5 2.5"/>',
+  pump: '<circle cx="12" cy="12" r="9"/><path d="M12 12l6-3.5M12 12l-6-3.5M12 12v7"/>',
+  chiller: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M6 15l3-6 3 6 3-6 3 6"/>',
+  radiator: '<path d="M5 4v14M9.5 4v14M14.5 4v14M19 4v14M3 20h18"/>',
+  makeup: '<rect x="4" y="3" width="9" height="13" rx="2"/><path d="M13 12h5v8M15.5 17.5L18 20l2.5-2.5"/>',
+  core: '<circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="9" stroke-dasharray="3 2.5"/>',
   bolt: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
   flame: '<path d="M12 2c1 4 6 6 6 12a6 6 0 0 1-12 0c0-3 2-5 3-7 0 2 1 3 2 3 0-3 0-6 1-8z"/>',
   breach: '<path d="M12 2l1.8 6.4L20 6l-3.6 5.4L22 14l-6.4.6L17 21l-5-4-5 4 1.4-6.4L2 14l5.6-2.6L4 6l6.2 2.4z"/>',
@@ -4551,12 +4670,29 @@ const LOADS = sim.loads;
 const loadAt = (id) => sim.loadIdx[id];
 const groupOf = {}; for (const g of GROUPS) for (const id of g.loads) groupOf[id] = g.id;
 const nominalMw = (g) => g.loads.reduce((a, id) => a + LOADS[loadAt(id)].nominal_mw, 0);
+/** A group's highest setpoint (its loads' setpoint_max): 1.5 for most, 1.2 for Cooling's pumps. */
+const groupMax = (g) => Math.max(...g.loads.map((id) => LOADS[loadAt(id)].setpoint_max));
+/**
+ * A group's MW as a share of its nominal, on the fader's setpoint scale: a pump group (power_exponent) draws
+ * nominal x speed^exponent, so its fader shows the speed that power buys, the same scale as its setpoint.
+ */
+function groupK(g, mw) {
+  const e = LOADS[loadAt(g.loads[0])].power_exponent || 1, k = mw / nominalMw(g);
+  return Math.pow(Math.max(0, k), 1 / e);
+}
+const COOLING = GROUPS.find((g) => g.id === "cooling");
 function groupNow(g) {
   let want = 0, got = 0;
   for (const id of g.loads) { want += st.want[loadAt(id)]; got += st.alloc[loadAt(id)]; }
   return { want, got, sp: st.setpoint[loadAt(g.loads[0])], prio: Math.min(...g.loads.map((id) => st.priority[loadAt(id)])) };
 }
-function setGroup(gid, sp) { const g = GROUPS.find((x) => x.id === gid); for (const id of g.loads) st.setpoint[loadAt(id)] = sp; st.preset = null; }
+function setGroup(gid, sp) {
+  const g = GROUPS.find((x) => x.id === gid);
+  for (const id of g.loads) st.setpoint[loadAt(id)] = Math.min(sp, LOADS[loadAt(id)].setpoint_max);
+  st.preset = null;
+  // A hand on the Cooling fader takes the loop from its automation, as touching a lever does (reactor-cooling design 5).
+  if (gid === "cooling") sim.setCooling({ mode: "manual" });
+}
 /** How well a load works now: its integrity (damage-control) times the share of its demand it gets. */
 function works(loadId) {
   const i = loadAt(loadId);
@@ -5673,10 +5809,146 @@ function tactical() {
 }
 
 // =================================================================== ENGINEERING
+// The cooling loop (reactor-cooling design 5 and 6): the cold leg blue, the hot leg red to orange with its
+// temperature. Every number here is shipsystems.js's own (coolantReadout); the tooltips carry the exact values.
+const COLD = "#4aa8ff", RADC = "#7fd3ff";
+function mixCol(a, b, k) {
+  const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+  const ch = (sh) => Math.round(((pa >> sh) & 255) * (1 - k) + ((pb >> sh) & 255) * k);
+  return hex((ch(16) << 16) | (ch(8) << 8) | ch(0));
+}
+const hotCol = (T) => mixCol("#e0483a", "#ffa42e", clamp((T - 335) / 35, 0, 1));
+/** The hot leg's state: green in its band or under it, amber over it, red from the over-temperature warning. */
+function hotState(cr) { return cr.hot_k >= cr.bands.hot_leg_warning_k ? C.danger : cr.hot_k > cr.bands.hot_leg_k[1] ? C.warn : C.ok; }
+/** A half dial with coloured zones and a needle: zones [[from, to, colour]], v on lo..hi. */
+function needleDial(cx, cy, r, v, lo, hi, zones, ic, col, tip) {
+  const A = (x) => -100 + 200 * clamp((x - lo) / (hi - lo), 0, 1);
+  let g = `<g${tipAttr(tip)}><rect x="${cx - r - 8}" y="${cy - r - 8}" width="${2 * r + 16}" height="${r + 40}" fill="transparent"/>`;
+  g += `<path d="${arcPath(cx, cy, r, -100, 100)}" stroke="#1c2734" stroke-width="9" fill="none"/>`;
+  for (const [a, b, c] of zones) g += `<path d="${arcPath(cx, cy, r, A(a), A(b))}" stroke="${c}" stroke-width="9" fill="none"/>`;
+  const [nx, ny] = pol(cx, cy, r + 5, A(v));
+  g += `<path d="M${cx} ${cy}L${nx.toFixed(1)} ${ny.toFixed(1)}" stroke="${C.text}" stroke-width="3" stroke-linecap="round"/><circle cx="${cx}" cy="${cy}" r="4.5" fill="${C.text}"/>`;
+  return g + icon(col === C.ok ? ic : "bang", cx, cy + 20, 18, col) + "</g>";
+}
+/**
+ * A lever (one of the loop's four controls): the handle at the setting (outlined while the automation holds it,
+ * solid in MANUAL), a fill for what it actually does and a hatched gap where that falls short.
+ */
+function lever(x, y, w, h, key, sp, max, actual, ic, tip, auto) {
+  const yOf = (v) => y + h * (1 - clamp(v, 0, max) / max), cx = x + w / 2;
+  const off = actual < 0.02 && sp > 0.02, col = off ? C.faint : actual > 1.001 ? C.warn : C.ok;
+  let g = `<g data-drag="lever:${key}"${tipAttr(tip)}>`;
+  g += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="#101822" stroke="${C.line2}"/>`;
+  if (max > 1) g += `<path d="M${x - 5} ${yOf(1)}H${x + w + 5}" stroke="${C.dim}" stroke-dasharray="3 3"/>`;
+  if (actual < sp - 0.03) g += `<rect x="${x + 4}" y="${yOf(sp)}" width="${w - 8}" height="${yOf(actual) - yOf(sp)}" fill="url(#shortR)"/>`;
+  g += `<rect x="${x + 4}" y="${yOf(actual)}" width="${w - 8}" height="${y + h - yOf(actual)}" rx="3" fill="${col}" opacity="0.9"/>`;
+  const hy = yOf(sp);
+  g += auto ? `<rect x="${cx - 17}" y="${hy - 6}" width="34" height="12" rx="4" fill="#101822" stroke="${C.text}" stroke-width="2"/>`
+    : `<rect x="${cx - 18}" y="${hy - 7}" width="36" height="14" rx="4" fill="${C.text}"/>`;
+  return g + "</g>" + icon(ic, cx, y + h + 16, 20, off ? C.danger : C.text);
+}
+/** A valve on a pipe: a bow tie, filled as far as it is open. */
+function valve(x, y, open, col, vertical) {
+  const d = vertical ? `M${x - 7} ${y - 8}L${x + 7} ${y - 8}L${x - 7} ${y + 8}L${x + 7} ${y + 8}Z` : `M${x - 8} ${y - 7}L${x - 8} ${y + 7}L${x + 8} ${y - 7}L${x + 8} ${y + 7}Z`;
+  return `<path d="${d}" fill="${open > 0.02 ? col : C.panel}" fill-opacity="${open > 0.02 ? 0.35 + 0.65 * open : 1}" stroke="${open > 0.02 ? col : C.dim}" stroke-width="2" stroke-linejoin="round"/>`;
+}
+/**
+ * REACTOR: the reactor's core at the top of its cooling loop (reactor-cooling design 5, the balance panel, and
+ * power-grid's reactor readout): the cold leg up the left into the core, the hot leg down the right to the chiller,
+ * the bypass across, the tanks and their makeup valve, the radiators and their pumps beyond the chiller. Pipes are as
+ * thick as their flow and their dashes move with it. Right: SCRAM and the reactor's mode, the two needles (the hot leg
+ * against its band and limit; the heat against what the flow carries), the four controls and the loop's AUTO.
+ */
+function reactorLoop(w, h) {
+  const R = st.reactor, run = reactorUp(), cr = sim.coolantReadout(), auto = cr.mode === "auto";
+  let b = `<defs><pattern id="shortR" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="3" height="6" fill="${C.danger}"/></pattern></defs>`;
+  const Lx = 34, Rx = 202, Ty = 78, By = 296, rc = 22, cx = 118, Yb = 252;
+  const fl = Math.min(cr.flow, 1.2), wid = (f) => (2.5 + 7.5 * clamp(f, 0, 1.2)).toFixed(1);
+  const move = (f) => (-(G.t * 46 * f) % 36).toFixed(1);
+  const pipe = (d, col, f, tip) => `<g${tipAttr(tip)}><path d="${d}" stroke="${col}" stroke-opacity="0.35" stroke-width="${wid(f)}" fill="none" stroke-linejoin="round"/>` +
+    `<path d="${d}" stroke="${col}" stroke-width="${wid(f)}" fill="none" stroke-dasharray="12 6" stroke-dashoffset="${move(f)}" stroke-linejoin="round"/>` +
+    `<path d="${d}" stroke="transparent" stroke-width="18" fill="none"/></g>`;
+  const hc = hotCol(cr.hot_k), through = cr.chiller, flowTip = `Flow ${cr.flow_kg_s.toFixed(0)} kg/s (${Math.round(cr.flow * 100)}%)`;
+  // The legs: the hot leg from the core to the bypass tee, then what the chiller takes; the cold leg back.
+  b += pipe(`M${cx + 46} ${Ty}H${Rx - rc}Q${Rx} ${Ty} ${Rx} ${Ty + rc}V${Yb}`, hc, fl, `Hot leg ${cr.hot_k.toFixed(0)} K · ${flowTip}`);
+  b += pipe(`M${Rx} ${Yb}V${By - rc}Q${Rx} ${By} ${Rx - rc} ${By}H${cx + 38}`, hc, fl * through, `Hot leg to the chiller: ${Math.round(through * 100)}%`);
+  b += pipe(`M${cx - 38} ${By}H${Lx + rc}Q${Lx} ${By} ${Lx} ${By - rc}V${Yb}`, COLD, fl * through, `Cold leg ${cr.cold_k.toFixed(0)} K`);
+  b += pipe(`M${Lx} ${Yb}V${Ty + rc}Q${Lx} ${Ty} ${Lx + rc} ${Ty}H${cx - 46}`, COLD, fl, `Cold leg ${cr.cold_k.toFixed(0)} K · ${flowTip}`);
+  // The bypass: what the chiller does not take goes straight across.
+  b += pipe(`M${Rx} ${Yb}H${Lx}`, mixCol(hc, COLD, 0.5), fl * (1 - through), `Bypass: ${Math.round((1 - through) * 100)}%`);
+  b += valve(cx, Yb, 1 - through, C.text);
+  // The core pumps on the cold leg, each turning at its speed; a lost or unpowered one stops and is dashed.
+  cr.pumps.forEach((p, k) => {
+    const y = 128 + k * 46, ok = p.speed > 0.05 && p.capability >= 1, col = p.speed < 0.05 ? C.danger : p.capability < 1 ? C.warn : C.text;
+    const a = (G.t * 330 * p.speed) % 360;
+    b += `<g${tipAttr(`${p.name}: ${Math.round(p.speed * 100)}% speed, ${p.alloc_mw.toFixed(2)} MW`)}><circle cx="${Lx}" cy="${y}" r="13" fill="${C.panel}" stroke="${col}" stroke-width="2.5"${ok ? "" : ` stroke-dasharray="4 3"`}/>`;
+    b += `<g transform="rotate(${a.toFixed(0)} ${Lx} ${y})"><path d="M${Lx} ${y}l7 -4M${Lx} ${y}l-7 -4M${Lx} ${y}v8" stroke="${col}" stroke-width="2.2" stroke-linecap="round"/></g></g>`;
+  });
+  // The tanks, each filled to its level, feeding the cold leg through the makeup valve.
+  const mv = cr.makeup_valve;
+  b += `<path d="M72 228V238M94 228V238M${Lx + 6} 238H94" stroke="${COLD}" stroke-opacity="${mv > 0.02 ? 0.9 : 0.35}" stroke-width="3" fill="none"/>`;
+  cr.tanks.forEach((t, k) => {
+    const x = 64 + k * 22, top = 150, hh = 78;
+    b += `<g${tipAttr(`${t.name}: ${Math.round(t.kg).toLocaleString("en")} kg`)}><rect x="${x}" y="${top}" width="16" height="${hh}" rx="4" fill="#101822" stroke="${C.line2}"/>`;
+    b += `<rect x="${x + 2}" y="${top + 2 + (hh - 4) * (1 - t.frac)}" width="12" height="${(hh - 4) * t.frac}" rx="2" fill="${COLD}" opacity="0.75"/></g>`;
+  });
+  b += `<g${tipAttr(`Makeup ${mv > 0.02 ? `open, ${cr.makeup_kg_s.toFixed(1)} kg/s` : "shut"} · loop ${Math.round(cr.inventory * 100)}% full`)}>` + valve(52, 238, mv, COLD) + "</g>";
+  // The loop's own fill: a ring round the tanks' feet when the loop is short of coolant (cavitation below 80%).
+  if (cr.inventory < 0.95) b += `<g${tipAttr(`Loop ${Math.round(cr.inventory * 100)}% full`)}>` + icon("drop", 118, 200, 20, cr.inventory < 0.8 ? C.danger : C.warn) + "</g>";
+  // The chiller (the heat exchanger) and, beyond it, the radiator pumps and the radiators.
+  const exCol = cr.exchanger < 1 ? C.warn : C.text;
+  b += `<g${tipAttr(`Chiller: ${Math.round(through * 100)}% through · radiators ${cr.rad_mw.toFixed(1)} of ${cr.rad_cap_mw.toFixed(1)} MW`)}>`;
+  b += `<rect x="${cx - 38}" y="${By - 16}" width="76" height="32" rx="6" fill="${C.panel2}" stroke="${exCol}" stroke-width="2"/>` + icon("chiller", cx, By, 22, exCol) + "</g>";
+  const rf = Math.min(cr.rad_flow, 1.2);
+  b += pipe(`M${cx - 26} ${By + 16}V348H226`, RADC, rf, `Radiator loop: ${Math.round(cr.rad_flow * 100)}%`);
+  cr.radiator_pumps.forEach((p, k) => {
+    const x = 110 + k * 30, y = 348, col = p.speed < 0.05 ? C.danger : p.capability < 1 ? C.warn : C.text, a = (G.t * 330 * p.speed) % 360;
+    b += `<g${tipAttr(`${p.name}: ${Math.round(p.speed * 100)}% speed, ${p.alloc_mw.toFixed(2)} MW`)}><circle cx="${x}" cy="${y}" r="10" fill="${C.panel}" stroke="${col}" stroke-width="2.2"${p.speed > 0.05 ? "" : ` stroke-dasharray="3 3"`}/>`;
+    b += `<g transform="rotate(${a.toFixed(0)} ${x} ${y})"><path d="M${x} ${y}l5 -3M${x} ${y}l-5 -3M${x} ${y}v6" stroke="${col}" stroke-width="2" stroke-linecap="round"/></g></g>`;
+  });
+  b += `<g${tipAttr(`Radiators ${cr.rad_mw.toFixed(1)} of ${cr.rad_cap_mw.toFixed(1)} MW`)}>`;
+  for (let k = 0; k < 7; k++) b += `<path d="M${172 + k * 9} 330V366" stroke="${RADC}" stroke-opacity="${(0.3 + 0.7 * clamp(cr.rad_mw / 40, 0, 1)).toFixed(2)}" stroke-width="3" stroke-linecap="round"/>`;
+  b += "</g>";
+  // The core at the top of the ring: power-grid's output dial, the target as a dot, the blanket's heat beside it.
+  const A = (k) => -120 + 240 * clamp(k / PW.reactor.throttle_max, 0, 1);
+  b += `<circle cx="${cx}" cy="${Ty}" r="47" fill="${C.panel}" stroke="${C.line2}"/>`;
+  b += `<path d="${arcPath(cx, Ty, 37, -120, 120)}" stroke="#1c2734" stroke-width="10" fill="none"/>`;
+  b += `<path d="${arcPath(cx, Ty, 37, A(1), 120)}" stroke="${C.warn}" stroke-width="3" fill="none" opacity="0.6"/>`;
+  if (R.throttle > 0.005) b += `<path d="${arcPath(cx, Ty, 37, -120, A(R.throttle))}" stroke="${run ? C.ok : C.emergency}" stroke-width="10" fill="none"${tipAttr(`Output ${(R.P_e / 1e6).toFixed(1)} MW`)}/>`;
+  if (run) { const [tx, ty] = pol(cx, Ty, 47, A(R.target)); b += `<circle cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="4.5" fill="${C.text}"${tipAttr(`Target ${Math.round(R.target * 100)}%`)}/>`; }
+  b += text(cx, Ty + (run ? 8 : 6), run ? 24 : 17, run ? C.text : C.emergency, run ? `${Math.round(R.throttle * 100)}%` : "SCRAM", { a: "middle", w: 700 });
+  if (!run && R.scramCause) b += text(cx, Ty + 62, 11, C.dim, String(R.scramCause).toUpperCase().slice(0, 22), { a: "middle", ls: 1 });
+  const bk = (R.T - 300) / (PW.reactor.heat.scram_k * 1.08 - 300), bcol = R.T >= PW.reactor.heat.scram_k ? C.danger : R.T >= PW.reactor.heat.warn_k ? C.warn : C.ok;
+  b += `<g${tipAttr(`Reactor heat: ${Math.round(R.T)} K`)}>` + bar(214, 18, 14, 96, bk, bcol, true);
+  b += `<path d="M210 ${18 + 96 * (1 - (PW.reactor.heat.scram_k - 300) / (PW.reactor.heat.scram_k * 1.08 - 300))}h22" stroke="${C.danger}" stroke-width="2"/>`;
+  b += icon("flame", 221, 130, 16, bcol) + "</g>";
+  // Right: SCRAM and the reactor's mode.
+  const X0 = 244, RW = w - X0 - 10;
+  const armed = ARMED.key === "scram" && now() - ARMED.t < 3;
+  b += button({ x: X0, y: 8, w: RW / 2 - 4, h: 48, label: armed ? "CONFIRM" : "SCRAM", act: run ? "scram" : null, off: !run, col2: C.danger, stroke: C.danger + "88", on: armed, col: C.danger, fill: "rgba(255,71,87,0.25)", fs: 14, tip: run ? "Scram: tap, then tap again" : "Restart at the reactor" });
+  b += button({ x: X0 + RW / 2 + 4, y: 8, w: RW / 2 - 4, h: 48, icon: "core", label: R.mode === "auto" ? "AUTO" : "MANUAL", stack: true, is: 20, fs: 12, act: "rxmode", tip: R.mode === "auto" ? "Reactor follows the load (AUTO)" : "Reactor throttle by hand (MANUAL)" });
+  // The two needles that matter (design 5).
+  const BD = cr.bands, hs = hotState(cr), ratio = cr.heat_mw / Math.max(1e-6, cr.carry_mw);
+  b += needleDial(X0 + RW * 0.25, 100, 30, cr.hot_k, 300, 400, [[BD.hot_leg_k[0], BD.hot_leg_k[1], C.ok], [BD.hot_leg_warning_k, cr.limit_k, C.warn], [cr.limit_k, 400, C.danger]], "temp", hs,
+    `Hot leg ${cr.hot_k.toFixed(0)} K (band ${BD.hot_leg_k[0]}-${BD.hot_leg_k[1]}, scram ${cr.limit_k}) · cold leg ${cr.cold_k.toFixed(0)} K`);
+  b += needleDial(X0 + RW * 0.75, 100, 30, ratio, 0, 1.5, [[0, 1, C.ok + "66"], [1, 1.2, C.warn], [1.2, 1.5, C.danger]], "drop", ratio > 1.2 ? C.danger : ratio > 1 ? C.warn : C.ok,
+    `Heat ${cr.heat_mw.toFixed(1)} MW · the flow carries ${cr.carry_mw.toFixed(1)} MW`);
+  // The four controls (design 5), and the loop's AUTO.
+  const lw = 24, step = RW / 4, ly = 150, lh = 150;
+  const cp = cr.pumps, rp = cr.radiator_pumps, avg = (a, f) => a.reduce((s, p) => s + f(p), 0) / a.length;
+  const pumpSp = avg(cp, (p) => p.setpoint), pumpAct = avg(cp, (p) => p.speed * Math.min(1, p.capability)), radSp = avg(rp, (p) => p.setpoint), radAct = avg(rp, (p) => p.speed * Math.min(1, p.capability));
+  const pmax = LOADS[loadAt(PW.coolant.pumps[0])].setpoint_max, rmax = LOADS[loadAt(PW.coolant.radiator_pumps[0])].setpoint_max;
+  b += lever(X0 + step * 0.5 - lw / 2, ly, lw, lh, "pumps", pumpSp, pmax, pumpAct, "pump", `Core pumps: ${Math.round(pumpSp * 100)}% set, ${Math.round(pumpAct * 100)}% running`, auto);
+  b += lever(X0 + step * 1.5 - lw / 2, ly, lw, lh, "chiller", through, 1, through, "chiller", `Chiller: ${Math.round(through * 100)}% of the hot leg through`, auto);
+  b += lever(X0 + step * 2.5 - lw / 2, ly, lw, lh, "radiators", radSp, rmax, radAct, "radiator", `Radiator pumps: ${Math.round(radSp * 100)}% set, ${Math.round(radAct * 100)}% running`, auto);
+  b += lever(X0 + step * 3.5 - lw / 2, ly, lw, lh, "makeup", mv, 1, cr.inventory >= 1 ? mv : cr.makeup_kg_s / PW.coolant.makeup.max_kg_s, "makeup", `Makeup valve: ${Math.round(mv * 100)}% open, ${cr.makeup_kg_s.toFixed(1)} kg/s`, auto);
+  b += button({ x: X0, y: h - 40, w: RW, h: 34, icon: "cooling", label: auto ? "AUTO" : "MANUAL", is: 18, fs: 14, act: "cmode", on: !auto, tip: auto ? "The loop runs itself: tap for MANUAL" : "The loop is yours: tap for AUTO" });
+  return b;
+}
 let PREVIEW = null; // { gid, sp, r } while a fader is dragged: the solve's answer at that setpoint
 function engineering() {
   let s = "";
-  s += panel("POWER", grid(0, 0, 8, 4), (w, h) => {
+  s += panel("POWER", grid(0, 0, 6, 4), (w, h) => {
     let b = "";
     // Supply against demand, one bar: delivered (fill), wanted (tick), reactor rating (end).
     let want = 0; for (let i = 0; i < LOADS.length; i++) want += st.want[i];
@@ -5689,65 +5961,54 @@ function engineering() {
     if (want > got + 0.05) b += `<rect x="${k(got)}" y="12" width="${k(want) - k(got)}" height="20" fill="url(#short)"${tipAttr("Wanted, not delivered")}/>`;
     b += `<defs><pattern id="short" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="3" height="6" fill="${C.danger}"/></pattern></defs>`;
     b += text(w - 16, 28, 18, C.text, `${got.toFixed(1)} / ${rated.toFixed(0)} MW`, { a: "end" });
-    // One fader per load group, like a mixing desk.
-    const n = GROUPS.length, fx0 = 14, fw = (w - 28) / n, ty = 70, th = h - 70 - 92;
+    // One fader per load group, like a mixing desk. Cooling (reactor-cooling design 6) is the twelfth: its scale
+    // stops at its pumps' 120%, its priority can be 0 (never shed, a ring round the pips), and its feed breaker sits
+    // under its pips.
+    const n = GROUPS.length, fx0 = 14, fw = (w - 28) / n, ty = 70, th = h - 70 - 130;
     const yOf = (v) => ty + th * (1 - v / 1.5);
     GROUPS.forEach((g, i) => {
-      const x = fx0 + i * fw, cx = x + fw / 2, gn = groupNow(g), nom = nominalMw(g);
+      const x = fx0 + i * fw, cx = x + fw / 2, gn = groupNow(g), max = groupMax(g);
       const pv = PREVIEW && PREVIEW.gid === g.id ? PREVIEW : null;
-      const short = gn.got < gn.want - Math.max(0.01, 0.02 * gn.want), off = gn.sp <= 0;
+      const brk = g.feed_breaker ? st.groupBreaker[g.id] || "closed" : "closed";
+      const short = gn.got < gn.want - Math.max(0.01, 0.02 * gn.want), off = gn.sp <= 0 || brk !== "closed";
       b += icon(g.id, cx, 52, 22, off ? C.faint : short ? C.danger : C.text);
       b += `<g data-drag="fader:${g.id}"${tipAttr(`${g.name}: ${gn.got.toFixed(2)} of ${gn.want.toFixed(2)} MW wanted`)}>`;
-      b += `<rect x="${cx - 13}" y="${ty}" width="26" height="${th}" rx="6" fill="#101822" stroke="${C.line2}"/>`;
+      b += `<rect x="${cx - 13}" y="${yOf(max)}" width="26" height="${ty + th - yOf(max)}" rx="6" fill="#101822" stroke="${C.line2}"/>`;
       b += `<path d="M${cx - 18} ${yOf(1)}H${cx + 18}" stroke="${C.dim}" stroke-dasharray="3 3"/>`;
-      const wantK = gn.want / nom, gotK = gn.got / nom;
+      const wantK = groupK(g, gn.want), gotK = groupK(g, gn.got);
       if (short) b += `<rect x="${cx - 9}" y="${yOf(wantK)}" width="18" height="${yOf(gotK) - yOf(wantK)}" fill="url(#short)"/>`;
       b += `<rect x="${cx - 9}" y="${yOf(gotK)}" width="18" height="${ty + th - yOf(gotK)}" rx="3" fill="${off ? C.faint : gn.sp > 1 ? C.warn : C.ok}" opacity="0.9"/>`;
-      if (pv) b += `<rect x="${cx - 9}" y="${yOf(pv.r.alloc_mw / nom)}" width="18" height="${ty + th - yOf(pv.r.alloc_mw / nom)}" rx="3" fill="${accent()}" opacity="0.45"/>`;
+      if (pv) b += `<rect x="${cx - 9}" y="${yOf(groupK(g, pv.r.alloc_mw))}" width="18" height="${ty + th - yOf(groupK(g, pv.r.alloc_mw))}" rx="3" fill="${accent()}" opacity="0.45"/>`;
       const hy = yOf(pv ? pv.sp : gn.sp);
       b += `<rect x="${cx - 22}" y="${hy - 7}" width="44" height="14" rx="4" fill="${pv ? accent() : C.text}"/>`;
       b += "</g>";
       b += text(cx, ty + th + 22, 15, off ? C.faint : C.text, off ? "OFF" : `${Math.round((pv ? pv.sp : gn.sp) * 100)}`, { a: "middle", w: 700 });
-      // Priority: one to three pips; tap to cycle.
-      b += `<g data-act="prio:${g.id}"${tipAttr("Priority: 1 is fed first")}><rect x="${cx - 22}" y="${ty + th + 28}" width="44" height="24" rx="5" fill="transparent"/>`;
+      // Priority: one to three pips, a ring round them at 0 (never shed); tap to cycle.
+      b += `<g data-act="prio:${g.id}"${tipAttr(gn.prio === 0 ? "Priority 0: never shed" : "Priority: 1 is fed first")}><rect x="${cx - 22}" y="${ty + th + 28}" width="44" height="24" rx="5" fill="transparent"/>`;
+      if (gn.prio === 0) b += `<rect x="${cx - 21}" y="${ty + th + 31}" width="42" height="18" rx="9" fill="none" stroke="${accent()}" stroke-width="1.5"/>`;
       for (let p = 0; p < 3; p++) b += `<circle cx="${cx - 12 + p * 12}" cy="${ty + th + 40}" r="4" fill="${p < 4 - gn.prio ? accent() : "#1c2734"}"/>`;
       b += "</g>";
+      // The feed breaker (power-grid 5): held 0.6 s to open or close, a lock beside it once it is open.
+      if (g.feed_breaker) {
+        const by = ty + th + 58, closed = brk === "closed", locked = brk === "locked";
+        const bx = cx - 26, held = HOLD.key === "gbrk:" + g.id;
+        b += `<g data-hold="gbrk:${g.id}"${tipAttr(locked ? `${g.name} breaker: locked open` : `${g.name} breaker: hold to ${closed ? "open" : "close"}`)}>`;
+        b += `<rect x="${bx}" y="${by}" width="26" height="26" rx="4" fill="${closed ? C.ok : "none"}" stroke="${closed ? C.ok : C.warn}" stroke-width="2.5"/>`;
+        if (!closed) b += `<path d="M${bx + 6} ${by + 20}L${bx + 20} ${by + 6}" stroke="${C.warn}" stroke-width="2.5"/>`;
+        if (held) b += `<rect x="${bx}" y="${by}" width="${26 * clamp((now() - HOLD.t0) / HOLD_S, 0, 1)}" height="26" fill="${C.warn}" opacity="0.6"/>`;
+        b += "</g>";
+        b += `<g ${closed ? "" : `data-act="glock:${g.id}"`}${tipAttr(closed ? "Open the breaker to lock it" : locked ? "Unlock" : "Lock open")}>`;
+        b += `<rect x="${cx + 2}" y="${by}" width="24" height="26" rx="4" fill="${locked ? C.warn + "33" : "transparent"}" stroke="${locked ? C.warn : C.line2}"/>`;
+        b += icon("lock", cx + 14, by + 13, 16, locked ? C.warn : closed ? C.faint : C.dim) + "</g>";
+      }
     });
     const pre = [["CRUISE", "cruise"], ["COMBAT", "combat"], ["SILENT", "silent"], ["EMERG", "emergency"]];
     const bw = (w - 24 - 3 * 8) / 4;
     pre.forEach(([k, id], i) => { b += button({ x: 12 + i * (bw + 8), y: h - 42, w: bw, h: 34, label: k, act: `preset:${id}`, on: st.preset === id, fs: 14 }); });
     return b;
   });
-  s += panel("REACTOR", grid(8, 0, 4, 2), (w, h) => {
-    const R = st.reactor, run = reactorUp();
-    let b = "";
-    // Output gauge: a half dial from 0 to the reactor's maximum throttle; the target as a needle.
-    const cx = 92, cy = 104, rr = 66, A = (k) => -120 + 240 * clamp(k / PW.reactor.throttle_max, 0, 1);
-    b += `<path d="${arcPath(cx, cy, rr, -120, 120)}" stroke="#1c2734" stroke-width="14" fill="none"/>`;
-    b += `<path d="${arcPath(cx, cy, rr, -120, A(1))}" stroke="none" fill="none"/><path d="${arcPath(cx, cy, rr, A(1), 120)}" stroke="${C.warn}" stroke-width="3" fill="none" opacity="0.6"/>`;
-    if (R.throttle > 0.005) b += `<path d="${arcPath(cx, cy, rr, -120, A(R.throttle))}" stroke="${run ? C.ok : C.emergency}" stroke-width="14" fill="none"${tipAttr(`Output ${(R.P_e / 1e6).toFixed(1)} MW`)}/>`;
-    const [nx, ny] = pol(cx, cy, rr + 12, A(R.target));
-    b += `<circle cx="${nx}" cy="${ny}" r="5" fill="${C.text}"${tipAttr("Target")}/>`;
-    b += text(cx, cy + 4, 30, run ? C.text : C.emergency, run ? `${Math.round(R.throttle * 100)}%` : "SCRAM", { a: "middle", w: 700 });
-    if (!run && R.scramCause) b += text(cx, cy + 24, 11, C.dim, String(R.scramCause).toUpperCase().slice(0, 18), { a: "middle", ls: 1.2 });
-    // Heat: the blanket and the coolant loop, each a thermometer with its limit.
-    const therm = (x, ic, T, lo, warn, lim, tip) => {
-      const k = (T - lo) / (lim * 1.08 - lo), col = T >= lim ? C.danger : T >= warn ? C.warn : C.ok;
-      let g = `<g${tipAttr(tip + `: ${Math.round(T)} K`)}>` + bar(x - 8, 14, 16, 112, k, col, true);
-      g += `<path d="M${x - 13} ${14 + 112 * (1 - (lim - lo) / (lim * 1.08 - lo))}h26" stroke="${C.danger}" stroke-width="2"/>`;
-      return g + icon(ic, x, 140, 16, col) + "</g>";
-    };
-    b += therm(196, "flame", R.T, 300, PW.reactor.heat.warn_k, PW.reactor.heat.scram_k, "Reactor heat");
-    b += therm(232, "drop", st.loop.T, 280, PW.reactor.scram.loop_over_k - 20, PW.reactor.scram.loop_over_k, "Coolant");
-    const soc = st.battery.soc_mj / PW.battery.capacity_mj;
-    b += `<g${tipAttr(`Battery ${Math.round(soc * 100)}%`)}>` + bar(260, 14, 16, 112, soc, soc > 0.3 ? C.ok : C.warn, true) + icon("battery", 268, 140, 16, C.text) + "</g>";
-    const armed = ARMED.key === "scram" && now() - ARMED.t < 3;
-    b += button({ x: w - 112, y: 14, w: 100, h: 54, label: armed ? "CONFIRM" : "SCRAM", act: run ? "scram" : null, off: !run, col2: C.danger, stroke: C.danger + "88", on: armed, col: C.danger, fill: "rgba(255,71,87,0.25)", tip: run ? "Scram: tap, then tap again" : "Restart at the reactor" });
-    b += button({ x: w - 112, y: 76, w: 100, h: 34, label: R.mode === "auto" ? "AUTO" : "MANUAL", act: "rxmode", tip: "Reactor follows the load (AUTO)" });
-    if (!run) b += icon("lock", w - 62, 140, 18, C.dim);
-    return b;
-  });
-  s += panel("BUSES", grid(8, 2, 2, 2), (w, h) => {
+  s += panel("REACTOR", grid(6, 0, 4, 4), reactorLoop);
+  s += panel("BUSES", grid(10, 0, 2, 2), (w, h) => {
     // The one-line diagram, simplified: reactor to two main buses, the tie, the battery's bus.
     const live = (on) => (on ? C.ok : C.faint);
     const gp = st.genClosed.gen_p, gs = st.genClosed.gen_s, tie = st.tieClosed.bt_main, ep = st.tieClosed.eb_p, es = st.tieClosed.eb_s;
@@ -5760,7 +6021,10 @@ function engineering() {
     b += bus(44, np, gp) + bus(w - 44, ns, gs);
     b += `<path d="M78 89H${w - 78}" stroke="${live(tie)}" stroke-width="3" stroke-dasharray="${tie ? "0" : "4 4"}"/>` + brk(w / 2, 89, tie, "bt_main", "Bus tie");
     b += `<path d="M44 94V120H${w - 44}V94" stroke="${C.faint}" stroke-width="2" fill="none"/>` + brk(70, 120, ep, "eb_p", "Emergency bus, port") + brk(w - 70, 120, es, "eb_s", "Emergency bus, starboard");
-    b += icon("battery", w / 2, 140, 18, st.batOut > 0.05 ? C.emergency : C.dim);
+    // The battery's charge (from the reactor panel, which now holds the cooling loop): a fill beside its icon.
+    const soc = st.battery.soc_mj / PW.battery.capacity_mj;
+    b += `<g${tipAttr(`Battery ${Math.round(soc * 100)}%`)}>` + icon("battery", w / 2 - 22, 140, 18, st.batOut > 0.05 ? C.emergency : C.dim);
+    b += bar(w / 2 - 8, 135, 46, 10, soc, soc > 0.3 ? C.ok : C.warn) + "</g>";
     const cut = Object.values(st.conduit).filter((c) => c.severed).length;
     if (cut) b += `<g${tipAttr("Cables cut: damage control splices them")}>` + icon("breach", 18, h - 14, 14, C.danger) + text(30, h - 9, 13, C.danger, String(cut)) + "</g>";
     return b;
@@ -6040,7 +6304,13 @@ function act(a, ev) {
   if (k === "favour") favour(+v, S === "science" ? "Science" : "Tactical");
   if (k === "shieldview") G.shieldCam = { yaw: 62, el: 24 };
   if (k === "preset") sim.applyPreset(v);
-  if (k === "prio") { const g = GROUPS.find((x) => x.id === v), p = groupNow(g).prio, np = p === 1 ? 3 : p - 1; for (const id of g.loads) sim.setPriority(id, np); }
+  if (k === "prio") {
+    // Tap cycles toward the back of the queue and round: 1, 3, 2, 1; a group that may be vital (Cooling) 0, 3, 2, 1, 0.
+    const g = GROUPS.find((x) => x.id === v), p = groupNow(g).prio, lo = g.priority_min != null ? g.priority_min : 1, np = p === lo ? 3 : p - 1;
+    for (const id of g.loads) sim.setPriority(id, np);
+  }
+  if (k === "glock") { const cur = st.groupBreaker[v] || "closed"; if (cur !== "closed") sim.setGroupBreaker(v, cur === "locked" ? "open" : "locked"); }
+  if (k === "cmode") sim.setCooling({ mode: st.cooling.mode === "auto" ? "manual" : "auto" });
   if (k === "scram") { if (ARMED.key === "scram" && now() - ARMED.t < 3) { sim.scram("manual"); ARMED.key = null; } else ARMED = { key: "scram", t: now() }; }
   if (k === "rxmode") st.reactor.mode = st.reactor.mode === "auto" ? "manual" : "auto";
   if (k === "sci") G.sciSel = v;
@@ -6081,6 +6351,7 @@ function holdDone(key) {
   if (k === "ping") G.ping = 2;
   if (k === "redalert") setAlert(st.alert !== "red_alert");
   if (k === "brk") { if (v.startsWith("gen")) st.genClosed[v] = !st.genClosed[v]; else st.tieClosed[v] = !st.tieClosed[v]; }
+  if (k === "gbrk") sim.setGroupBreaker(v, (st.groupBreaker[v] || "closed") === "closed" ? "open" : "closed");
 }
 let DRAG = null;
 function dragTo(e) {
@@ -6102,8 +6373,14 @@ function dragTo(e) {
   if (DRAG.kind === "feedview") {
     G.feedViewCam = { yaw: DRAG.cam.yaw + ((e.clientX - DRAG.x0) / r.width) * 180, el: clamp(DRAG.cam.el + ((e.clientY - DRAG.y0) / r.height) * 120, -85, 85) };
   }
+  if (DRAG.kind === "lever") {
+    // A hand on a lever takes the loop from its automation (reactor-cooling design 5); 5% steps.
+    const max = DRAG.arg === "pumps" ? LOADS[loadAt(PW.coolant.pumps[0])].setpoint_max : DRAG.arg === "radiators" ? LOADS[loadAt(PW.coolant.radiator_pumps[0])].setpoint_max : 1;
+    sim.setCooling({ mode: "manual", [DRAG.arg]: clamp(Math.round(ky * max * 20) / 20, 0, max) });
+  }
   if (DRAG.kind === "fader") {
-    const sp = clamp(Math.round(ky * 1.5 * 20) / 20, 0, 1.5);
+    const gmax = groupMax(GROUPS.find((x) => x.id === DRAG.arg));
+    const sp = clamp(Math.round(ky * gmax * 20) / 20, 0, gmax); // the track runs from 0 to the group's highest setpoint
     PREVIEW = { gid: DRAG.arg, sp, r: sim.previewGroup(DRAG.arg, sp) };
   }
   if (DRAG.kind !== "joy" && DRAG.kind !== "flip" && DRAG.kind !== "shieldcam" && DRAG.kind !== "feedview" && DRAG.kind !== "scancam") render();
@@ -6114,7 +6391,7 @@ CONSOLE.addEventListener("pointerdown", (e) => {
   if (d && !(a && d.contains(a) && d.dataset.drag !== "shieldcam")) {
     const [kind, arg] = d.dataset.drag.split(":");
     DRAG = { kind, arg, rect: d.getBoundingClientRect(), x0: e.clientX, y0: e.clientY, cam: { ...(kind === "feedview" ? G.feedViewCam : kind === "scancam" ? G.scanCam[arg] : G.shieldCam) }, act: a && d.contains(a) ? a.dataset.act : null };
-    if (kind === "fader" || kind === "throttle" || kind === "strafe") DRAG.rect = d.querySelector("rect").getBoundingClientRect();
+    if (kind === "fader" || kind === "throttle" || kind === "strafe" || kind === "lever") DRAG.rect = d.querySelector("rect").getBoundingClientRect();
     // Widths in lp of what each drag measures against, to turn screen pixels into lp.
     DRAG.wlp = { joy: 148, flip: 80, wheel: 52 }[kind] || 1;
     if (kind === "wheel") DRAG.v0 = F.oe[arg];
@@ -6193,6 +6470,13 @@ function frame() {
 
 // Named shots for tools/mockups/shoot.mjs: each sets a station and plays the ship forward.
 let shotsFresh = true;
+// The cooling shots leave a leak or an open breaker behind; the next shot closes it before it plays, so the shots after
+// them see the ship they always did (a little coolant short, which the makeup is already putting back).
+let COOL_SHOT = false;
+function undoCoolingShot() {
+  if (!COOL_SHOT) return;
+  COOL_SHOT = false; st.loop.leak_kg_s = 0; sim.setGroupBreaker("cooling", "closed");
+}
 function scenario(name) {
   if (name === "combat" && shotsFresh) {
     shotsFresh = false;
@@ -6208,6 +6492,12 @@ window.MOCKUP_SHOTS = [
   { name: "helm-orient", setup: () => { station = "helm"; orient({ h: 45, p: 10, r: -30 }); advance(20); render(); } },
   { name: "tactical", setup: () => { station = "tactical"; render(); } },
   { name: "engineering", setup: () => { station = "engineering"; render(); } },
+  // The cooling loop (reactor-cooling design 5 and 6). A leak of 12 kg/s for 90 s (the hook the pipe segments will use)
+  // takes the loop under 95%: the makeup valve opens and the tanks drain into it.
+  { name: "engineering-cooling", setup: () => { station = "engineering"; st.loop.leak_kg_s = 12; COOL_SHOT = true; advance(900); render(); } },
+  // The Cooling feed breaker opened 4.5 s ago: the pumps stop, the flow falls to natural circulation and the hot leg
+  // jumps over its band; held 5 s under 30% flow the reactor would scram, which the next shot does not wait for.
+  { name: "engineering-cooling-breaker", setup: () => { station = "engineering"; st.loop.leak_kg_s = 0; sim.setGroupBreaker("cooling", "open"); COOL_SHOT = true; advance(45); render(); } },
   { name: "science", setup: () => { station = "science"; render(); } },
   { name: "captain", setup: () => { station = "captain"; captainTab = "CMD"; render(); } },
   { name: "red-helm-evading", setup: () => { scenario("combat"); station = "helm"; act("ap:EVADE"); advance(20); render(); } },
@@ -6219,7 +6509,7 @@ window.MOCKUP_SHOTS = [
   { name: "red-captain-ship", setup: () => { scenario("combat"); station = "captain"; captainTab = "SHIP"; G.shipSel = "engineering"; render(); } },
   { name: "scram-engineering", setup: () => { scenario("combat"); sim.scram("manual"); advance(30); station = "engineering"; render(); } },
   { name: "red-tactical-turned", setup: () => { scenario("combat"); station = "tactical"; HOLD.key = null; G.scanCam.tac = { yaw: 70, dEl: 18 }; render(); } },
-].map((shot) => ({ name: shot.name, setup: () => { PAUSED = true; shot.setup(); render(); } }));
+].map((shot) => ({ name: shot.name, setup: () => { PAUSED = true; undoCoolingShot(); shot.setup(); render(); } }));
 
 fit(); render();
 requestAnimationFrame(frame);

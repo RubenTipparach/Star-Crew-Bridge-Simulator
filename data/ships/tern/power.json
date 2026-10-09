@@ -140,13 +140,25 @@
       "heat": { "to": "loop", "fraction": 1.0 },
       "under": "As the port half.", "over": "Not adjustable." },
     { "id": "coolant_pump_a", "name": "Coolant pump A", "system": "coolant_pumps", "node": "msb_p", "priority": 0,
-      "nominal_mw": 0.4, "standby_mw": 0.4, "setpoint_max": 1.0, "min_ratio": 0.0,
+      "nominal_mw": 0.4, "standby_mw": 0.4, "setpoint_max": 1.2, "min_ratio": 0.0, "power_exponent": 2.0,
       "heat": { "to": "loop", "fraction": 1.0 },
-      "under": "Loop flow falls in proportion; each pump is half the flow.", "over": "Not adjustable." },
+      "under": "Its setpoint is its speed; the speed it runs at is the one its supply allows. Loop flow falls in proportion; each pump is half the flow.", "over": "Up to 120% speed: 1.2 times its flow for 1.44 times its power, with heat and wear (reactor-cooling design 6)." },
     { "id": "coolant_pump_b", "name": "Coolant pump B", "system": "coolant_pumps", "node": "msb_s", "priority": 0,
-      "nominal_mw": 0.4, "standby_mw": 0.4, "setpoint_max": 1.0, "min_ratio": 0.0,
+      "nominal_mw": 0.4, "standby_mw": 0.4, "setpoint_max": 1.2, "min_ratio": 0.0, "power_exponent": 2.0,
       "heat": { "to": "loop", "fraction": 1.0 },
-      "under": "As pump A.", "over": "Not adjustable." },
+      "under": "As pump A.", "over": "As pump A." },
+    { "id": "radiator_pump_p", "name": "Radiator pump, port", "system": null, "node": "dp_drive", "priority": 0,
+      "nominal_mw": 0.6, "standby_mw": 0.6, "setpoint_max": 1.2, "min_ratio": 0.0, "power_exponent": 2.0, "center_m": [5.2, 0.6, -32.8],
+      "heat": { "to": "loop", "fraction": 1.0 },
+      "under": "Its setpoint is its speed. Radiator rejection falls in proportion; each pump is half the radiators' flow (reactor-cooling design 2).", "over": "As the core pumps." },
+    { "id": "radiator_pump_s", "name": "Radiator pump, starboard", "system": null, "node": "dp_drive", "priority": 0,
+      "nominal_mw": 0.6, "standby_mw": 0.6, "setpoint_max": 1.2, "min_ratio": 0.0, "power_exponent": 2.0, "center_m": [-5.2, 0.6, -32.8],
+      "heat": { "to": "loop", "fraction": 1.0 },
+      "under": "As the port pump.", "over": "As the core pumps." },
+    { "id": "makeup_pump", "name": "Coolant makeup pump", "system": "coolant_pumps", "node": "msb_s", "priority": 0,
+      "nominal_mw": 0.05, "standby_mw": 0.0, "setpoint_max": 1.0, "min_ratio": 0.0, "activity": "makeup",
+      "heat": { "to": "loop", "fraction": 1.0 },
+      "under": "Makeup flow from the tanks in proportion to supply.", "over": "Not adjustable." },
     { "id": "emergency_lighting", "name": "Emergency lighting", "system": null, "node": "eb", "priority": 0,
       "nominal_mw": 0.0049, "standby_mw": 0.0049, "setpoint_max": 1.0, "min_ratio": 0.0, "center_m": [-4.5, -1.0, 2.6],
       "heat": { "to": "none", "fraction": 0.0 },
@@ -266,7 +278,10 @@
     { "id": "gravity_dampers", "name": "Gravity and dampers", "loads": ["gravity_generator", "inertial_dampers"] },
     { "id": "computer", "name": "Computer core", "loads": ["computer", "bridge_consoles"] },
     { "id": "bays", "name": "Bays and craft charging", "loads": ["hangar_pumps", "airlock_pump", "cradle_p", "cradle_s", "shuttle_pad"] },
-    { "id": "medbay", "name": "Medbay", "loads": ["medbay"] }
+    { "id": "medbay", "name": "Medbay", "loads": ["medbay"] },
+    { "id": "cooling", "name": "Cooling", "loads": ["coolant_pump_a", "coolant_pump_b", "radiator_pump_p", "radiator_pump_s", "makeup_pump"],
+      "priority_min": 0, "feed_breaker": true,
+      "note": "reactor-cooling design 6: the twelfth group, 2.05 MW at full speed. Its setpoint is the pumps' speed, 0-120% (120% is overdrive). Its loads are priority 0 (never shed) by default, and priority_min 0 lets engineering lower them to 1-3 and back, which lets load shedding take them. feed_breaker: one breaker on the group's feed, opened or locked open from the console; open, it stops every pump in the group and the loop falls to its natural circulation." }
   ],
   "presets": {
     "note": "Setpoints by group (1.0 is nominal; 0 switches the group off; above 1 is overdrive). Groups not named keep 1.0. Automated engineering applies combat on red alert and cruise on its end (bridge-stations).",
@@ -303,7 +318,21 @@
     "pumps": ["coolant_pump_a", "coolant_pump_b"],
     "flow_per_pump": 0.5,
     "design_flow_kg_s": 740.0,
-    "design_flow_note": "40 MW at a 15 K rise in water and glycol (3.6 kJ/kg K); the console shows flow as this times the flow fraction"
+    "design_flow_note": "40 MW at a 15 K rise in water and glycol (3.6 kJ/kg K); the console shows flow as this times the flow fraction",
+    "specific_heat_kj_per_kg_k": 3.6,
+    "radiator_pumps": ["radiator_pump_p", "radiator_pump_s"],
+    "flow_per_radiator_pump": 0.5,
+    "natural_circulation_flow": 0.05,
+    "inventory_kg": 11100.0,
+    "tanks": [
+      { "id": "tank_p", "name": "Coolant tank, port", "capacity_kg": 2000.0 },
+      { "id": "tank_s", "name": "Coolant tank, starboard", "capacity_kg": 2000.0 }
+    ],
+    "makeup": { "pump": "makeup_pump", "max_kg_s": 10.0, "auto_open_below": 0.95 },
+    "cavitation": { "full_flow_from": 0.8, "no_flow_below": 0.6 },
+    "bands": { "hot_leg_k": [335.0, 350.0], "cold_leg_k": [320.0, 335.0], "hot_leg_warning_k": 370.0 },
+    "automation": { "period_s": 3.0, "design_rise_k": 15.0, "pump_speed_min": 1.0 },
+    "cooling_note": "reactor-cooling design 2, 3, 5 and 6. Speed-law loads (power_exponent) draw nominal_mw x speed^power_exponent, their standby_mw unused, and run at the speed their supply allows. flow = max(natural_circulation_flow, core pumps' speed x capability x flow_per_pump, summed, x cavitation); cavitation = clamp((m_loop / inventory_kg - no_flow_below) / (full_flow_from - no_flow_below), 0, 1). C_loop = capacity_mj_per_k x m_loop / inventory_kg. Hot leg = loop temperature + heat into the loop / (flow x design_flow_kg_s x specific heat); it is the one the loop scram reads. Radiator rejection gains the exchanger's capability and the radiator pumps' speed x capability x flow_per_radiator_pump, summed. Automation every period_s: core pumps at the flow the heat needs at design_rise_k, never below pump_speed_min (the mockup keeps power-grid's full-flow walkthroughs), up to 1.2; radiator pumps at full; the bypass holds the cold leg by radiators.bypass_band_k (325-330 K, design 5's 327 K); makeup opens below auto_open_below and shuts at full. Pipe segments, leaks and the exchanger's damage are design 1-2 and not in this file yet."
   },
   "radiators": {
     "system": "radiators",
@@ -311,7 +340,7 @@
     "rated_at_k": 330.0,
     "background_k": 4.0,
     "bypass_band_k": 5.0,
-    "law": "capacity = rated_mw * health * flow * (T^4 - Tb^4) / (rated_at_k^4 - Tb^4); rejected = capacity * clamp((T - (coolant.nominal_k - bypass_band_k)) / bypass_band_k, 0, 1)",
+    "law": "capacity = rated_mw * health * flow * exchanger * radiator_pumps * (T^4 - Tb^4) / (rated_at_k^4 - Tb^4); rejected = capacity * chiller, where chiller (the share of the hot leg through the exchanger) is clamp((T - (coolant.nominal_k - bypass_band_k)) / bypass_band_k, 0, 1) in AUTO and the engineer's in MANUAL; exchanger and radiator_pumps as coolant.cooling_note (reactor-cooling design 2)",
     "note": "Fictional rating, stated as such: a physical radiator rejecting 40 MW at 330 K would need about 60,000 m^2. See design.md, Heat, and open question P4."
   },
   "overdrive": {
