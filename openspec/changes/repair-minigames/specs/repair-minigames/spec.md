@@ -2,19 +2,28 @@
 
 ## ADDED Requirements
 
-### Requirement: A repair game never beats the rate
+### Requirement: A finished round lands its share at once
 
-A player's repair SHALL advance by steps whose progress fills at `damage::repair_time(job, who)`'s rate, so that no
-play finishes a job sooner than the time the damage board previews for that player.
+A player's repair SHALL be cut into rounds by the job's state (3 damaged, 4 disabled, 6 destroyed), and finishing a
+round SHALL raise the system's integrity by the round's share immediately, with the last round landing on the target.
 
-#### Scenario: A steady hand on a damaged turret
-- **WHEN** an officer repairs a turret from 25% and plays every step without a fumble
-- **THEN** the turret reaches 100% in the board's previewed time, give or take one frame
+#### Scenario: Three clean rounds on a damaged turret
+- **WHEN** a player repairs a turret from 25% and finishes its first round without a fumble
+- **THEN** the turret is at 50% as the round ends, with no wait for a bar to fill
+
+### Requirement: Every round of a job is the same game, harder
+
+Round n of a job SHALL be the same mini-game as round 1, played at level min(n, 6), with only that game's difficulty
+knobs changed between levels.
+
+#### Scenario: The second round of an impulse unit
+- **WHEN** a player starts the second round of an impulse unit's repair
+- **THEN** it is the injector timing game again, with pulses at 280 px a second and a 27 px firing window
 
 ### Requirement: A fumble costs a set share and the system's hazard
 
 A mistake in a repair game SHALL take 5% of the job back (`damage.json` `repair.fumble_share`) and apply that
-system's hazard, and three fumbles in one step SHALL restart the step.
+system's hazard, and three fumbles in one round SHALL restart the round.
 
 #### Scenario: A crossed pair in a splice
 - **WHEN** a player joins two wires of different colours while splicing a conduit

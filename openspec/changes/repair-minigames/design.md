@@ -18,31 +18,88 @@ repairs, mockups of them in the browser, and "a medbay minigame for healing crew
 
 ## 1. One rule for every mini-game
 
-A repair job (`damage-control` 6) is cut into **steps**, three to six by system (section 2). A step is one round of
-that system's mini-game.
+Revised 2026-10-09 by the owner's two notes (section 1a): "If a repair needs more than one round, like say you need 3
+rounds to repair something I would prefer that repair minigame to be harder variants of the same minigame", and "I
+also dont like waiting for the slider to slowly go up, if I repair something it should go up in health immediately".
 
-- **Time.** The job's time at the repairer's rate, `damage::repair_time(job, who)`, is shared out over its steps.
-  A step's game is tuned so a steady hand finishes it in about that share; finishing sooner does not finish the
-  repair sooner: the step's progress bar fills at the rate, and the game's next step waits for it. So a player can
-  never repair faster than the rate the board promised, and the board stays true (CLAUDE.md 6.1).
+A repair job (`damage-control` 6) is cut into **rounds**, three to six by the job's state (the table at the end of
+section 2). A round is the system's whole mini-game, played once.
+
+- **A round lands at once.** Finishing a round raises the system's integrity by the round's share there and then:
+  the job's bar jumps in 0.2 s, never fills at a rate while the player waits. The share is the job's span over its
+  rounds (25% to 100% in 3 rounds is 25% a round). The last round lands exactly on the target.
+- **Rounds get harder** (section 1a): every round of a job is the same game, at the next level of difficulty.
 - **Fumbles.** A mistake (a wrong wire, a dropped coil, a spike past the line) costs **5% of the job** (data,
-  `damage.json` `repair.fumble_share`) and that system's own hazard, said in section 2: a spark that stings for
-  5 HP, a puff of coolant, a heat spike in the reactor. Three fumbles in one step and the step restarts.
-- **Interruptions.** Taking a hit, being pushed or walking away pauses the game where it is; the work done stays
-  done. Under fire the screen shakes with the ship (`ship-frames`' lurch), which is the game getting harder by
-  itself, not a rule.
-- **Two hands.** Two players on one job each play their own steps from the same list, and the job's rate is
-  `damage-control`'s 1.6 times; a bot helping a player adds its rating's share with no game.
-- **No player, no game.** A bot or a damage control team repairs at its rate with no game and no fumble: a player's
-  game is how a player earns the officer's 3 times, not a tax on the ship.
-- **Parts and rebuilds.** A disabled system's first step is fitting the part (the part's own little step in each
-  game, section 2); a destroyed one's rebuild is its own longer game (the same game with every step, then the kit).
+  `damage.json` `repair.fumble_share`) at once, and that system's own hazard, said in section 2: a spark that stings
+  for 5 HP, a puff of coolant, a heat spike in the reactor. Three fumbles in one round and the round restarts.
+- **Interruptions.** Taking a hit, being pushed or walking away pauses the round where it is; rounds already landed
+  stay landed. Under fire the screen shakes with the ship (`ship-frames`' lurch), which is the game getting harder by
+  itself, not a rule. Where the player is in the ship while this happens is `repairs-on-deck`.
+- **Two hands.** Two players on one job each play their own rounds from the same list: each takes the next round
+  left, at its level, and each lands its own share. A bot helping a player adds its rating's rate between rounds,
+  with no game.
+- **No player, no game.** A bot or a damage control team repairs at its rate (`damage::repair_time(job, who)`, a
+  rating's 0.6% a second) with no game and no fumble.
+- **Parts and rebuilds.** A disabled system's first round opens by fitting the spare part (each game's own part move,
+  section 2), then plays the round. A destroyed system's rebuild is its rounds from level 1, the first opening with
+  the parts.
 - **The screen.** One screen, 1280 x 720 like a console: the system's picture in the middle, the job's bar along the
-  top (integrity now, where the step will take it, the time left at your rate), the step dots, and the one action.
-  No instructions on the screen at rest (CLAUDE.md 10); the first time a player meets a game, a ghost hand shows the
-  move once.
+  top (integrity now and where this round will take it), the round dots, and the one action. No instructions on the
+  screen at rest (CLAUDE.md 10); the how-to card (6g) is a button.
 - **Input.** Mouse, touch and pad: every game is pointing and one button, or a stick and a trigger. Keys mirror the
   pad. Nothing needs a fast double-click.
+- **What the board previews.** For a player the damage board shows the rounds left ("2 rounds"), which is exact;
+  for a bot or a team it shows the time at its rate, which is exact too (CLAUDE.md 6.1: a preview is computed by
+  the code that resolves it). A player's time is the player's own play, so the board does not invent one.
+
+## 1a. Rounds: the same game, harder (owner, 2026-10-09)
+
+**The rule.** Round *n* of a job (counted from 1) is played at **level** *n*, capped at 6. Level is the only thing
+that changes between rounds: the same machine, the same moves, the same how-to card, with the game's own knobs
+turned. A round never switches to a different activity; a game that used to alternate two activities now plays both
+in every round, in order, or (the heads) becomes two jobs.
+
+**Why it replaces the old timing.** The old rule held a finished step until a bar had filled at the officer's 1.8% a
+second, so a fast player waited and the time was fixed. Now the time is the play: three rounds of rising level take
+longer than three of level 1, so a badly damaged system is still a longer job, and a skilled crew is faster. That
+retires the officer's 3 times rate for a player's own repairs (`damage-control` 6a): it still sets the board's time
+for anyone repairing without a game. Recommendation taken (ask only with screenshots): the rating's 0.6% a second
+and the bots are unchanged.
+
+**What turns up, by game.** Level 1 is today's first round; each level after turns the knobs listed, by the step
+shown, until level 6. Each game's knobs are data (`data/ships/tern/repairs.json`, `levels`), one row a game.
+
+| Game | A round is | What each level turns up |
+| --- | --- | --- |
+| Gravity generator | Lay the field on the ghost and hold it | Drift +25%; the ghost gains a lobe at levels 3 and 5; hold 3 s, then +0.5 s a level |
+| Galley synthesizer | Fill four columns to their bands, purge | Bands 7.5% wide, -1% a level (floor 4%); run-on after letting go +20% a level |
+| Life support scrubbers | Swap the cartridge, trim three valves into green | Green bands 10% wide, -1.5% a level (floor 5%); the valves drift from level 3 |
+| Fighters | Panel off, plugs to sockets, fasteners in order | Plugs 4, +1 a level to 8; from level 3 a decoy socket of a near shape; fasteners 6, 8 from level 2, 10 from level 4 |
+| Shuttle | Sniff, isolate, patch, pump up and hold | The simple valve set at level 1, the full network from level 2; hold band 9% wide, -1.5% a level (floor 4.5%); pressure decay 0.1, +0.025 a level |
+| Reactor core | Swap a coil while holding the plasma centred | Drift speed 0.3 rad/s, +0.1 a level; drift size +14 px a level |
+| Impulse engines | Time eight injectors | Pulse speed 240 px/s, +40 a level; window 30 px, -3 a level (floor 18) |
+| Warp pylons | Clip along the handholds, unbolt, slide in | Clip window 3.4 s, -0.4 a level; the swing faster each level |
+| Toilet (its own job) | Plunge the clog in rhythm, flush | Strokes to clear +1 a level; the safe window narrower |
+| Shower (its own job) | Turn the tiles into one run, open the valve | Grid 4 x 3, one column more at levels 3 and 5; one more cracked tile a level |
+| Medbay biobeds | Tune both channels onto their references | Knob red zones wider and trace noise up, a step a level |
+| Twin pulse cannon | Focus both lenses, then seat the coupling | Lens wander up; the coupling's speed window narrower, a step a level |
+| Gannet tubes | Clear the ring's jam, then the arming sequence | Notches narrower; the sequence 3 switches, 4 from level 3, 5 from level 5 |
+| Shield generator | Match a face's wave by phase and gain | Phase tolerance 0.24, -0.025 a level; gain 0.13, -0.012; wander +0.06 a level |
+| Sensors | Find the return, clean the trace | Sky noise and false returns up; filter bands narrower, a step a level |
+| Electrical conduits | Strip the burns, join the pairs (and reroute round a burnt box when the job has one) | Pairs 3, +1 a level to 6; the clamp faster; a reroute's run longer |
+| Switchboard and breakers | Rack out, fit the rated fuse, rack in on green | Cartridges to choose from 3, 4 from level 3; the green window shorter |
+| Doors | Crank the leaf against the waves | Turns 5, +1 a level; waves faster |
+| Hull plating | Cut, drop the plate, weld, bolt | Plate larger; weld window narrower; bolts +1 a level |
+| Coolant balance | Both legs into their bands | Bands narrower; disturbances larger, a step a level |
+| Coolant pipes | Isolate, re-tile, fill, reopen and bleed | More cracked tiles and one more valve on the path at levels 3 and 5 |
+| Coolant pump | Guard, vanes, feet, speed up to the band | Vanes +1 a level; foot rings smaller; the speed band narrower and the safe ramp lower |
+| Chiller | Scrub the plates, then restack and torque | Scale patches +1 a level; plates +1 at levels 3 and 5; nut tolerance narrower |
+
+The medic's treatment is not rounds: each wound is the job's step, and a body's wounds are what they are
+(section 3).
+
+**The heads become two jobs.** A broken toilet and a broken shower are different fixtures with different repair
+points (`ship-interactables` 2), so each is its own job with its own game. The old alternating game is retired.
 
 ## 2. The mini-games
 
@@ -56,7 +113,7 @@ that system's mini-game.
 | **Reactor core** (engineering) | Keep the plasma ball centred in the containment ring by trimming four magnet coils (one stick or four sliders) while a fifth coil is swapped out; it drifts with the core's load | One coil swapped while held centred | The plasma touches the wall: a heat spike, the core's temperature jumps | `power-grid`: the ship runs on batteries |
 | **Impulse engines** (drive, the two impulse units) | Injector timing: pulses run along a scrolling trace; tap as each crosses the firing line, the rhythm set by the unit's tune | Eight injectors timed | Off the line: a misfire, a soot cough, the unit's heat up | Half thrust per unit down (`flight-and-navigation`) |
 | **Warp pylons** (outside, EVA only) | On the hull, tethered: clip from handhold to handhold to the damaged coil segment, unbolt it in a pattern, slide the new one in against a drift | One segment changed | Unclipped too long: the tether snaps you back; a dropped bolt is lost | Section 5: no warp; not repairable in combat |
-| **Toilets and showers** (crew quarters) | Rounds alternate. A toilet: plunge the clog down the trap in a safe rhythm, then flush. A shower: rotate the deckhead pipe tiles so one run joins the main to the shower, then open the valve | One toilet unclogged and flushed, or one shower running | Plunging too fast or flushing a clog: overflow, the floor is wet. Opening the valve on an open run: a loose joint, you are soaked (a moodlet) | Section 4: comfort and morale |
+| **Toilets and showers** (crew quarters; two jobs since 2026-10-09, section 1a) | A toilet: plunge the clog down the trap in a safe rhythm, then flush. A shower: rotate the deckhead pipe tiles so one run joins the main to the shower, then open the valve | One toilet unclogged and flushed, or one shower running | Plunging too fast or flushing a clog: overflow, the floor is wet. Opening the valve on an open run: a loose joint, you are soaked (a moodlet) | Section 4: comfort and morale |
 | **Medbay biobeds** (medbay) | Sensor calibration: tune two knobs until the bed's trace lies on the reference trace | One sensor channel | Over-driven: the bed alarms; nothing hurt | Beds heal at the unpowered rate |
 | **Twin pulse cannon** (each turret's access room) | Focus the emitter: align two lenses so the test beam's spot is smallest and centred, then reseat the capacitor bank's coupling (drag it home at the right speed) | One lens pair, or the coupling | Coupling slammed: the bank arcs (10 HP) and loses its charge | The turret does not fire |
 | **Gannet tubes and hoist** (magazine) | The tube's breech: clear the jam by rotating the locking ring through its notches, then run the load-and-arm sequence (guide rail, latch, interlock) in order | One tube cleared and cycled | A step out of order: the interlock trips, back to the latch | The tube cannot load |
@@ -66,13 +123,14 @@ that system's mini-game.
 | **Switchboard and breakers** (main switchboard) | Rack the breaker out, replace the fuse cartridge by its rating (the label matches the bus), rack it back in and close it on a green synchro light | One breaker | Closed on red: an arc flash (10 HP); a cartridge of the wrong rating blows as it seats (recommendation taken (ask only with screenshots): otherwise every cartridge could be tried for free) | `power-grid` |
 | **Doors** (any door, jammed) | Hand-crank the leaf: turn the crank against a resistance that comes in waves, never past the slip | One door | Slipped: the leaf drops back | The door is stuck |
 
-Seventeen systems; the medic's game is section 3. A system's steps by its job's state:
+Seventeen systems; the medic's game is section 3. A job's rounds by its state (revised 2026-10-09, section 1a; was a
+separate part step, and a destroyed system's 6 rebuild steps then 3):
 
-| Integrity | Steps |
-| --- | --- |
-| Damaged (25-75%) | 3 |
-| Disabled (under 25%) | 1 part step, then 4 |
-| Destroyed (0%) | 6 (the rebuild), then 3 |
+| Integrity | Rounds | Levels |
+| --- | --- | --- |
+| Damaged (25-75%) | 3 | 1, 2, 3 |
+| Disabled (under 25%) | 4, the first opening with the spare part | 1 to 4 |
+| Destroyed (0%) | 6, the first opening with the parts | 1 to 6 |
 
 ## 3. The medic's treatment
 

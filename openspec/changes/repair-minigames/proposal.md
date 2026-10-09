@@ -13,14 +13,19 @@ crew, someone needs to be medical".
 `damage-control` 6 and 6a already say a repair is done in person, with a kit, at a rate (1.8% of integrity a second
 for an officer, 0.6% for a rating) that one function owns. What the player's hands do during those seconds is
 undecided: today it would be holding a key. This change makes it a short game of its own for each kind of system,
-without moving the rate the board previews.
+without moving the rate the board previews for bots and teams.
+
+The owner, 2026-10-09, after playing them: "If a repair needs more than one round, like say you need 3 rounds to
+repair something I would prefer that repair minigame to be harder variants of the same minigame", and "I also dont
+like waiting for the slider to slowly go up, if I repair something it should go up in health immediately".
 
 ## What Changes
 
-- **One rule for every mini-game** (design 1): a repair is a few steps; a clean step finishes in the time the rate
-  function gives, a fumble costs a set share and the system's own hazard (a spark, a vent of gas, a heat spike).
-  Ratings and bots repair without a game, at their rate. A mini-game never makes a repair faster than an officer's
-  rate, so the board's "42 s" stays true for a steady hand.
+- **One rule for every mini-game** (design 1, revised 2026-10-09): a repair is a few rounds of the system's game; a
+  finished round raises the system's health by its share at once, a fumble costs a set share and the system's own
+  hazard (a spark, a vent of gas, a heat spike). Ratings and bots repair without a game, at their rate.
+- **Rounds get harder** (design 1a, owner 2026-10-09): every round of a job is the same game at the next level, never
+  a different activity.
 - **A mini-game per system** (design 2): seventeen, each drawn from what the machine is, all playable with a mouse or
   a pad in a few seconds a step, one screen each, glance first.
 - **The medic's treatment** (design 3): triage on a body chart, the right tool for each wound, a steady trace to close
