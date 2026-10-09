@@ -2923,7 +2923,8 @@
  * Designed but not implemented here (the designs say so): the magazine's cook-off, door
  * jams, remote control lost with the computer core, crew positions (crew are per
  * compartment, and a hit hurts them by the expected share of the room), damage control
- * teams, and the time-to-pressure and repair-time previews.
+ * teams, and the time-to-pressure preview. The repair-time preview is repairTime() (damage::repair_time's rates, without
+ * the walk). The damage map (ship-plan-view 6) reads conduitView, nodeView, breakers and repairTime, which change nothing.
  *
  * Geometry comes from the layout's brushes (starcrew.ship-layout/2: a compartment's air is the
  * union of convex prisms) through shipkit.js, the mockups' one reading of the layout: volumes,
@@ -3040,6 +3041,12 @@
   }
   /** Whether point p (ship metres) is in compartment c's air: inside one of its brushes. */
   function inComp(c, p) { return kit().brushAt(c, p[0], p[1], p[2]) !== null; }
+  /** The point of segment ab nearest p. */
+  function closestOnSeg(p, a, b) {
+    const d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], l2 = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
+    const t = l2 > 1e-12 ? clamp(((p[0] - a[0]) * d[0] + (p[1] - a[1]) * d[1] + (p[2] - a[2]) * d[2]) / l2, 0, 1) : 0;
+    return [a[0] + d[0] * t, a[1] + d[1] * t, a[2] + d[2] * t];
+  }
   function segSegDist(p1, q1, p2, q2) {
     // Closest distance between segments p1q1 and p2q2 (Ericson, Real-Time Collision Detection 5.1.9).
     const d1 = [q1[0] - p1[0], q1[1] - p1[1], q1[2] - p1[2]], d2 = [q2[0] - p2[0], q2[1] - p2[1], q2[2] - p2[2]];
@@ -3265,7 +3272,8 @@
     };
     for (const g of PW.generators) st.genClosed[g.id] = true;
     for (const t of PW.ties) st.tieClosed[t.id] = !!t.closed;
-    for (const k of PW.conduits) st.conduit[k.id] = { health: 1, severed: false, breaker: true };
+    // cut: where a hit severed the conduit, [x, y, z] on its path (null while whole), for the damage map's break marker.
+    for (const k of PW.conduits) st.conduit[k.id] = { health: 1, severed: false, breaker: true, cut: null };
     for (const l of loads) if (l.heat && l.heat.to === "node") st.thermal[l.id] = { T: PW.coolant.initial_k + 5 };
     for (const l of loads) st.loop.branchOpen[l.id] = true;
     st.reactor.T = PW.coolant.initial_k + 250;
@@ -4237,7 +4245,7 @@
       const lo = [0, 1, 2].map((a) => Math.min(point[a], end[a])), hi = [0, 1, 2].map((a) => Math.max(point[a], end[a]));
       const candComps = []; for (let c = 0; c < N; c++) { const b = kit().bounds(comps[c]); if (b.x[0] <= hi[0] && b.x[1] >= lo[0] && b.y[0] <= hi[1] && b.y[1] >= lo[1] && b.z[0] <= hi[2] && b.z[1] >= lo[2]) candComps.push(c); }
       const compOn = (p) => { for (const c of candComps) if (inComp(comps[c], p)) return c; return SPACE; };
-      const sysPts = new Float64Array(loads.length), nodePts = {}, condE = {}, roomE = new Float64Array(N), roomLen = new Float64Array(N), roomR = new Float64Array(N), roomAt = [];
+      const sysPts = new Float64Array(loads.length), nodePts = {}, condE = {}, condAt = {}, roomE = new Float64Array(N), roomLen = new Float64Array(N), roomR = new Float64Array(N), roomAt = [];
       let cur = SPACE, entered = false, s = 0;
       for (; s <= PG.march_max_m && E > 0.05; s += PG.march_step_m) {
         const p = [point[0] + dir[0] * s, point[1] + dir[1] * s, point[2] + dir[2] * s];
@@ -4269,9 +4277,14 @@
         }
         for (const k of candConduits) {
           if (k.route.indexOf(comps[c].id) < 0) continue;
-          let dmin = Infinity;
-          for (let q = 0; q + 1 < k.path_m.length; q++) dmin = Math.min(dmin, segSegDist(p, p, k.path_m[q], k.path_m[q + 1]));
-          if (dmin < r) condE[k.id] = (condE[k.id] || 0) + dE * (1 - dmin / r);
+          let dmin = Infinity, qmin = 0;
+          for (let q = 0; q + 1 < k.path_m.length; q++) { const d = segSegDist(p, p, k.path_m[q], k.path_m[q + 1]); if (d < dmin) { dmin = d; qmin = q; } }
+          if (dmin < r) {
+            const e = dE * (1 - dmin / r);
+            condE[k.id] = (condE[k.id] || 0) + e;
+            // Where the conduit took most of it: the cut, should it sever (the damage map draws the break there).
+            if (!condAt[k.id] || e > condAt[k.id].e) condAt[k.id] = { e, at: closestOnSeg(p, k.path_m[qmin], k.path_m[qmin + 1]) };
+          }
         }
       }
       for (let li = 0; li < loads.length; li++) if (sysPts[li] > 0.05) {
@@ -4288,7 +4301,7 @@
       for (const k of PW.conduits) {
         const e = condE[k.id]; if (!e) continue;
         const cs = st.conduit[k.id];
-        if (e >= DM.conduits.sever_mj) { cs.severed = true; out.conduits.push({ id: k.id, severed: true }); log("Conduit " + k.id + " severed"); }
+        if (e >= DM.conduits.sever_mj) { cs.severed = true; cs.cut = condAt[k.id].at; out.conduits.push({ id: k.id, severed: true, at: cs.cut }); log("Conduit " + k.id + " severed"); }
         else if (e >= DM.conduits.damage_mj) { cs.health = Math.min(cs.health, DM.conduits.damaged_capacity); out.conduits.push({ id: k.id, severed: false, health: cs.health }); }
       }
       for (let c = 0; c < N; c++) {
@@ -4461,9 +4474,114 @@
     }
     /** Repairs (damage-control): integrity points to a system, a conduit splice, a node rebuild. */
     function repairSystem(loadId, pts) { const i = loadIdx[loadId]; st.integrity[i] = clamp(st.integrity[i] + pts, 0, 100); return st.integrity[i]; }
-    function spliceConduit(id) { const c = st.conduit[id]; if (!c) return false; c.severed = false; c.health = Math.max(c.health, DM.repair.conduit_splice_capacity); return true; }
+    function spliceConduit(id) { const c = st.conduit[id]; if (!c) return false; c.severed = false; c.cut = null; c.health = Math.max(c.health, DM.repair.conduit_splice_capacity); return true; }
     function rebuildNode(id) { st.nodeHealth[id] = Math.max(st.nodeHealth[id] == null ? 1 : st.nodeHealth[id], DM.repair.node_rebuild_to); return true; }
     function log(msg) { st.log.push({ t: st.t, msg }); if (st.log.length > 200) st.log.shift(); }
+
+    // ======================================================= read-only views (ship-plan-view 6: the damage map)
+    // What the map draws, read from the state the solve and the hits leave: nothing here changes the ship, and the map
+    // never decides for itself whether a conduit is live or a box needs fixing (CLAUDE.md 6.1).
+    const nodeHp = (id) => (st.nodeHealth[id] == null ? 1 : st.nodeHealth[id]);
+    /** Whether a power node carries power now: an edge touching it carries flow, or a load on it is supplied. */
+    function nodeLive(id) {
+      if (nodeHp(id) <= 0) return false;
+      for (const k of PW.conduits) if ((k.between[0] === id || k.between[1] === id) && Math.abs(st.flows[k.id] || 0) > EPS) return true;
+      for (const t of PW.ties) if ((t.between[0] === id || t.between[1] === id) && Math.abs(st.flows[t.id] || 0) > EPS) return true;
+      for (const g of PW.generators) if (g.node === id && (st.flows[g.id] || 0) > EPS) return true;
+      if (PW.battery.node === id && (st.flows.battery_out || 0) > EPS) return true;
+      for (let i = 0; i < loads.length; i++) if (loads[i].node === id && st.alloc[i] > EPS) return true;
+      return false;
+    }
+    /**
+     * A conduit as the map draws it (power-grid 9): mw signed, positive from between[0] to between[1] (the solve's own
+     * edge flow); state "severed" (cut by a hit), "dead" (its breaker open, an end destroyed, or no power at either
+     * end) or "live" (carrying power, or energized and idle); health (its capacity's share left); breaker "closed" or
+     * "open"; cut, where a hit severed it ([x, y, z] on its path) or null.
+     */
+    function conduitView(id) {
+      const k = PW.conduits.find((x) => x.id === id), c = st.conduit[id];
+      if (!k || !c) return null;
+      const mw = st.flows[id] || 0;
+      let state = "live";
+      if (c.severed) state = "severed";
+      else if (!c.breaker || nodeHp(k.between[0]) <= 0 || nodeHp(k.between[1]) <= 0) state = "dead";
+      else if (Math.abs(mw) <= EPS && !(nodeLive(k.between[0]) && nodeLive(k.between[1]))) state = "dead";
+      return { id, name: k.name, mw, state, health: c.health, breaker: c.breaker ? "closed" : "open", cut: c.cut || null, capacity_mw: k.capacity_mw };
+    }
+    /** A switchboard section, panel or bus as the map draws it (power-grid 5): health 0-1 and state "sound", "damaged" or "destroyed". */
+    function nodeView(id) {
+      const h = nodeHp(id);
+      return { id, health: h, state: h <= 0 ? "destroyed" : h < 1 ? "damaged" : "sound", live: nodeLive(id) };
+    }
+    /**
+     * Every breaker, by the node whose box it stands in, and its state "closed", "open" (opened or tripped) or "locked"
+     * (locked open): a conduit's at its first end, a tie's at its first end, a generator's at its switchboard section,
+     * the battery's at its bus, a load's at its panel, a group's feed breaker (power-grid 5) at each of its loads'
+     * panels. [{ kind, id, name, node, state }]
+     */
+    function breakers() {
+      const out = [];
+      for (const k of PW.conduits) out.push({ kind: "conduit", id: k.id, name: k.name, node: k.between[0], state: st.conduit[k.id].breaker ? "closed" : "open" });
+      for (const t of PW.ties) out.push({ kind: "tie", id: t.id, name: t.name, node: t.between[0], state: st.tieClosed[t.id] ? "closed" : "open" });
+      for (const g of PW.generators) out.push({ kind: "generator", id: g.id, name: g.name, node: g.node, state: st.genClosed[g.id] ? "closed" : "open" });
+      out.push({ kind: "battery", id: "battery_out", name: "Battery", node: PW.battery.node, state: st.batteryBreaker ? "closed" : "open" });
+      const grouped = {};
+      for (const g of PW.groups) if (g.feed_breaker) {
+        const s = st.groupBreaker[g.id] || "closed", at = new Set(g.loads.map((id) => loads[loadIdx[id]].node));
+        for (const nd of at) out.push({ kind: "group", id: g.id, name: g.name, node: nd, state: s });
+        for (const id of g.loads) grouped[id] = true;
+      }
+      for (let i = 0; i < loads.length; i++) if (!grouped[loads[i].id] && st.breakerOpen[i]) out.push({ kind: "load", id: loads[i].id, name: loads[i].name, node: loads[i].node, state: "open" });
+      return out;
+    }
+    /**
+     * damage::repair_time (damage-control 6 and 6a): the time and the parts a job takes, the one rate the damage board
+     * previews and the repair spends. job: { kind: "system", id: a load id } | { kind: "reactor" } | { kind: "node", id }
+     * | { kind: "conduit", id } | { kind: "breach", id: a breach link id } | { kind: "hull", key: "span:face" }.
+     * who: "officer" (every player) or "rating" (the teams); hands: 1, or 2 working together (two_hands_factor times the
+     * faster). Returns { s, parts, kit, plates, eva, steps: [{ what, s }] }, or null when there is nothing to do, or
+     * { dock: true } for a damaged conduit (half its capacity until the dock). The walk to the job and suiting are not
+     * in it: this library has no crew-portal graph (crew-on-deck's walk times are the engine's).
+     */
+    function repairTime(job, who, hands) {
+      const RP = DM.repair, rate = RP.kit_pct_per_s[who || "officer"];
+      if (!Number.isFinite(rate)) throw new Error("damage.json repair.kit_pct_per_s." + who + ": missing");
+      const speed = (hands === 2 ? RP.two_hands_factor : 1), slow = RP.kit_pct_per_s.officer / rate; // fixed times are the officer's
+      const fixed = (s) => (s * slow) / speed, kit = (from, to) => (Math.max(0, to - from) / rate) / speed;
+      const res = (steps, parts, o) => Object.assign({ s: steps.reduce((a, x) => a + x.s, 0), parts, kit: false, plates: 0, eva: false, steps }, o || {});
+      const system = (g) => {
+        if (g >= 100) return null;
+        if (g <= 0) return res([{ what: "rebuild", s: fixed(RP.destroyed_rebuild_s) }, { what: "kit", s: kit(RP.destroyed_rebuild_to_pct, 100) }], RP.parts.destroyed_system, { kit: true });
+        return res([{ what: "kit", s: kit(g, 100) }], g < DM.systems.disabled_below_pct ? RP.parts.disabled_system : 0, { kit: true });
+      };
+      if (job.kind === "system") return system(st.integrity[loadIdx[job.id]]);
+      if (job.kind === "reactor") return system(st.reactor.integrity);
+      if (job.kind === "node") {
+        const h = nodeHp(job.id);
+        if (h >= 1) return null;
+        if (h <= 0) return res([{ what: "rebuild", s: fixed(RP.node_rebuild_s) }, { what: "kit", s: kit(RP.node_rebuild_to * 100, 100) }], RP.parts.node_rebuild, { kit: true });
+        return res([{ what: "kit", s: kit(h * 100, 100) }], 0, { kit: true });
+      }
+      if (job.kind === "conduit") {
+        const c = st.conduit[job.id];
+        if (!c) return null;
+        if (c.severed) return res([{ what: "splice", s: fixed(RP.conduit_splice_s) }], RP.parts.conduit_splice);
+        return c.health < 1 ? { dock: true } : null;
+      }
+      if (job.kind === "breach") {
+        const l = linkById[job.id];
+        if (!l || !(l.area > 0)) return null;
+        const PT = DM.patch;
+        if (l.area <= PT.inside_max_m2) { const n = Math.ceil(l.area / PT.plate_m2 - 1e-9); return res([{ what: "plates", s: fixed(n * PT.inside_s_per_plate) }], 0, { plates: n }); }
+        return res([{ what: "eva", s: fixed(l.area * PT.eva_s_per_m2) }], 0, { eva: true });
+      }
+      if (job.kind === "hull") {
+        const g = st.hull[job.key] ? st.hull[job.key].integrity : 100;
+        if (g >= 100) return null;
+        return res([{ what: "eva", s: fixed((100 - g) / RP.hull_section_pct_per_s_eva) }], 0, { eva: true });
+      }
+      return null;
+    }
 
     // ======================================================= the sub-step
     function step() {
@@ -4511,7 +4629,7 @@
       dischargeMist, dischargeInert, useExtinguisher, newExtinguisher, ventPreview, gravityG, capability, damageState, auxRatio, ignitionRate,
       operateDoor, setPriority, applyPreset, setCooling, coolantReadout, setGroupBreaker, pumpSpeed, repressurize, repairSystem, spliceConduit, rebuildNode, fanRatio,
       airlockCycleOut, airlockCycleIn, ventCompartment, stopVent, addCrew, setActivity, compartmentReadout, lighting,
-      receiverKpa, storeMol, fillStandard, log, fs: FS, fO2,
+      receiverKpa, storeMol, fillStandard, log, fs: FS, fO2, conduitView, nodeView, nodeLive, breakers, repairTime, hullSection,
       get P() { return P; }, get T() { return T; }, get n() { return n; }, get ntot() { return ntot; },
     };
   }

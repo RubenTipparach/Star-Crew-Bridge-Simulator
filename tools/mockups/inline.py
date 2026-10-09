@@ -37,6 +37,9 @@ published as one artifact needs no font server.
 data URIs), and each prop's baked atlas PNG where it has one, into a
 <script id="ship-models-<set>" type="application/json"> block, for pages that place the
 Blender-built props (tools/blender, the blender-hard-surface skill).
+"manifest:<set>" copies only assets/models/<set>/props.json, into a
+<script id="ship-manifest-<set>" type="application/json"> block, for pages that need what
+stands where (a prop's bounds, for fire-spread's fuel) but draw no prop: the damage map.
 "screens" copies assets/textures/screens/screens.json and every image it names (each
 station's <station>.png and <station>_upper.png, and the shared ui_screen_crew.png and
 keys_crew.png of the wall panels) into a <script id="ship-screens" type="application/json">
@@ -73,7 +76,7 @@ PANELS = os.path.join(ROOT, "data", "materials", "panels.json")
 SCREENS = os.path.join(ROOT, "assets", "textures", "screens", "screens.json")
 CACHE = os.path.join(ROOT, "docs", "mockups", "cache")
 LIGHTBAKE = os.path.join(LIB, "lightbake.js")
-MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-9_-]+/[a-z0-9_-]+|bakecache:[a-z0-9_-]+|shipkit|materials|panels|screens|models:[a-z0-9_-]+|font:[a-z0-9_-]+) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
+MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-9_-]+/[a-z0-9_-]+|bakecache:[a-z0-9_-]+|shipkit|materials|panels|screens|models:[a-z0-9_-]+|manifest:[a-z0-9_-]+|font:[a-z0-9_-]+) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
 
 
 def png_uri(path):
@@ -145,6 +148,12 @@ def block(kind):
         text = json.dumps({"manifest": manifest, "images": dict(sorted(images.items()))}, separators=(",", ":"),
                           ensure_ascii=False).replace("</", "<\\/")
         return f'\n<script id="ship-screens" type="application/json">\n{text}\n</script>\n'
+    if kind.startswith("manifest:"):
+        name = kind.split(":", 1)[1]
+        with open(os.path.join(ROOT, "assets", "models", name, "props.json"), encoding="utf-8") as f:
+            manifest = json.load(f)
+        text = json.dumps(manifest, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
+        return f'\n<script id="ship-manifest-{name}" type="application/json">\n{text}\n</script>\n'
     if kind.startswith("models:"):
         name = kind.split(":", 1)[1]
         base = os.path.join(ROOT, "assets", "models", name)
