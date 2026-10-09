@@ -68,6 +68,8 @@ RepairKit.register({
         bands = [0, 1, 2].map(() => { const c = 0.15 + 0.7 * r(); return { c, v: c > 0.5 ? c - 0.3 - 0.2 * r() : c + 0.3 + 0.2 * r(), p: r() * 6.3 }; });
         sel = 0; grab = -1; cleanT = 0; played = false;
       },
+      /** For tools (shots and tests): the round's state, read only, so a script can play it. */
+      peek() { return { phase, part, horn: { ...horn }, focus: pose().focus, dish: { ...dish }, src: { ...src }, R, MAP, SL, bands: bands.map((b) => ({ ...b })), lockT, jamT, strain, played }; },
       update(dt, input) {
         clock += dt;
         if (phase === "part") {

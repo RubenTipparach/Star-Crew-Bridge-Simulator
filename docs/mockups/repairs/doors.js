@@ -62,6 +62,8 @@ RepairKit.register({
         for (let i = 0; i < 40; i++) { const d = 1.2 + 0.4 * r(); waves.push({ t: tt, d }); tt += d + Math.max(0.6, 1.4 - 0.2 * hard) + r() * 1.2; }
         crank = 0; omega = 0; strain = 0; prog = 0; shown = 0; rt = 0; lock = 0; dragA = null; lastKey = ""; played = false; wobble = 0;
       },
+      /** For tools (shots and tests): the round's state, read only, so a script can play it. */
+      peek() { return { part, pinion: { ...pinion }, HUB, prog, strain, lock, omega, R: resistance(rt), played }; },
       update(dt, input) {
         if (part && !pinion.set) {
           if (input.pressed && Math.hypot(input.x - pinion.x, input.y - pinion.y) < 50) pinion.held = true;
@@ -80,7 +82,8 @@ RepairKit.register({
         if (lock > 0) { lock -= dt; omega = 0; strain = Math.max(0, strain - dt * 2); return; }
         // The hands: a drag round the hub (clockwise only: the ratchet holds the other way), or alternate keys.
         let turned = 0;
-        if (input.pressed && Math.hypot(input.x - HUB.x, input.y - HUB.y) < 220) dragA = Math.atan2(input.y - HUB.y, input.x - HUB.x);
+        // A press takes the crank, and so does a hand still on it once a slip's lock or a step change has let it go.
+        if ((input.pressed || (dragA === null && input.down)) && Math.hypot(input.x - HUB.x, input.y - HUB.y) < 220) dragA = Math.atan2(input.y - HUB.y, input.x - HUB.x);
         if (dragA !== null && input.down) {
           const a = Math.atan2(input.y - HUB.y, input.x - HUB.x);
           turned = Math.max(0, wrap(a - dragA)); dragA = a;

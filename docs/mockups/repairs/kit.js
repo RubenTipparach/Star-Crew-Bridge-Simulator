@@ -7,7 +7,10 @@
  *   share has filled at the rate, so no play beats the board's preview (design 1);
  * - fumbles: 5% of the job back and the game's hazard; three in a step restart it;
  * - input: pointer (mouse or touch) in canvas pixels, keys, a "stick" from the arrows or W A S D, one action button
- *   (Space or Enter), and the wheel;
+ *   (Space or Enter), and the wheel; every action has a pointer path, so a phone plays with touch alone (keys and the
+ *   wheel are a pad's and a desk's extras), and only the finger that started a press drives it;
+ * - touch targets: TOUCH_R, the smallest reach a target is given, and nearest(), which picks the closest of packed
+ *   targets, so a fingertip on a phone (one canvas px is about half a CSS px there) still lands;
  * - the frame: a 1280 x 720 canvas, the job's bar along the top 72 px, the combat shake;
  * - a seeded random stream per game and step, so a shot is the same every time.
  *
@@ -39,9 +42,29 @@
   }
   function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; }
 
+  /**
+   * The smallest hit reach a touch target gets, canvas px: on a phone held sideways the canvas is about 690 CSS px wide,
+   * so 30 canvas px is a 16 CSS px fingertip either side of the target. A game widens the hit zone, never the drawing.
+   */
+  const TOUCH_R = 30;
+  /**
+   * The nearest target to (x, y) within reach `r`, or -1. `pts` holds [x, y] pairs or { x, y } objects; a null entry
+   * (a target that is done or hidden) is skipped. Packed targets closer than two reaches are told apart by distance,
+   * so each one's zone reaches to halfway to its neighbour and no further.
+   */
+  function nearest(pts, x, y, r = TOUCH_R) {
+    let best = -1, bd = r;
+    pts.forEach((p, i) => {
+      if (!p) return;
+      const d = Math.hypot(x - (p.x ?? p[0]), y - (p.y ?? p[1]));
+      if (d < bd) { bd = d; best = i; }
+    });
+    return best;
+  }
+
   const games = [];
   const KIT = {
-    W, H, BAR_H, C, FONT, RATES, rng, hash,
+    W, H, BAR_H, C, FONT, RATES, rng, hash, TOUCH_R, nearest,
     /**
      * Register a game:
      *   id: short id (the URL hash), title: the system's name, place: where its repair point is,
@@ -145,7 +168,7 @@
     if (input.hit.has("Tab")) { const i = p.screws.indexOf(left.find((sc) => p.screws.indexOf(sc) > p.sel) || left[0]); p.sel = i; }
     if (p.screws[p.sel].turn >= goal) p.sel = p.screws.indexOf(left[0]);
     const near = (sc) => Math.hypot(input.x - sc.x, input.y - sc.y) < SCREW_R + 22;
-    if (input.pressed) { const i = p.screws.findIndex((sc) => sc.turn < goal && near(sc)); if (i >= 0) { p.grab = i; p.sel = i; p.prevA = null; } }
+    if (input.pressed) { const i = nearest(p.screws.map((sc) => (sc.turn < goal ? sc : null)), input.x, input.y, SCREW_R + 22); if (i >= 0) { p.grab = i; p.sel = i; p.prevA = null; } }
     if (!input.down) p.grab = -1;
     const turn = (sc, d) => { const k = Math.max(0, d * dir); sc.turn = Math.min(goal, sc.turn + k); sc.rot += d; };
     if (p.grab >= 0) {
@@ -217,16 +240,31 @@
     canvas.style.webkitUserSelect = "none";
     canvas.style.touchAction = "none";
     for (const ev of ["dragstart", "selectstart", "contextmenu"]) canvas.addEventListener(ev, (e) => e.preventDefault());
-    canvas.addEventListener("pointermove", (e) => { [input.x, input.y] = toCanvas(e); if (input.down) e.preventDefault(); });
+    // One pointer at a time: the one that started the press owns it until it lifts, so a palm or a second finger can
+    // neither move a drag nor end it. With nothing pressed, any pointer's move is the hover (a mouse's).
+    let owner = null;
+    const foreign = (e) => input.down && e.pointerId !== owner;
+    canvas.addEventListener("pointermove", (e) => { if (foreign(e)) return; [input.x, input.y] = toCanvas(e); if (input.down) e.preventDefault(); });
     canvas.addEventListener("pointerdown", (e) => {
       e.preventDefault();
+      if (foreign(e)) return;
+      owner = e.pointerId;
       [input.x, input.y] = toCanvas(e); input.down = true; input.pressed = true;
       try { canvas.setPointerCapture(e.pointerId); } catch (_) { /* a synthetic event has no pointer to capture */ }
     });
-    const up = (e) => { [input.x, input.y] = toCanvas(e); if (input.down) input.released = true; input.down = false; };
+    // A tap quicker than a frame (down and up between two frames) still reads as held for the one frame that sees its
+    // press, so a game that acts on "pressed while down" (the medic's clamp and inhaler) takes it; it lifts the frame after.
+    let lift = false;
+    const up = (e) => {
+      if (foreign(e)) return;
+      [input.x, input.y] = toCanvas(e); owner = null;
+      if (input.down && input.pressed) { lift = true; return; }
+      if (input.down) input.released = true;
+      input.down = false;
+    };
     canvas.addEventListener("pointerup", up);
     canvas.addEventListener("pointercancel", up);
-    canvas.addEventListener("lostpointercapture", (e) => { if (input.down) { input.down = false; input.released = true; } });
+    canvas.addEventListener("lostpointercapture", (e) => { if (foreign(e)) return; if (input.down) { input.down = false; input.released = true; } owner = null; });
     canvas.addEventListener("wheel", (e) => { input.wheel += Math.sign(e.deltaY); e.preventDefault(); }, { passive: false });
     addEventListener("keydown", (e) => { if (!input.keys.has(e.code)) input.hit.add(e.code); input.keys.add(e.code); if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault(); });
     addEventListener("keyup", (e) => input.keys.delete(e.code));
@@ -243,7 +281,8 @@
       if (game.job && game.job.rateBy) job.rate = game.job.rateBy[opts.who];
       run = { game, job, value: job.start, step: 0, fumbles: 0, fumblesTotal: 0, roundDone: false, done: false, t: 0, flash: 0, note: "", noteT: 0, shake: 0 };
       const share = () => (job.target - job.start) / job.steps;
-      const cap = () => job.start + share() * (run.step + 1);
+      // Never past the target: after the last step the cover still has to go back on, and the bar holds at 100%.
+      const cap = () => Math.min(job.target, job.start + share() * (run.step + 1));
       run.api = {
         W, H, BAR_H, C, KIT,
         /** This game's and step's random stream. */
@@ -252,7 +291,8 @@
         stepDone() { run.roundDone = true; },
         /** A mistake: 5% of the job back and the hazard said. */
         fumble(what) {
-          run.value = Math.max(job.start - share(), run.value - (job.fumble ?? FUMBLE_SHARE));
+          // Back at most one share below where the job started, and never below empty (a disabled job starts at 12%).
+          run.value = Math.max(0, job.start - share(), run.value - (job.fumble ?? FUMBLE_SHARE));
           run.fumbles++; run.fumblesTotal++; run.flash = 1; run.shake = Math.max(run.shake, 0.6);
           run.note = what || game.hazard; run.noteT = 2.5;
           if (run.fumbles >= FUMBLES_PER_STEP) { run.fumbles = 0; run.roundDone = false; run.note = "Step restarted"; run.noteT = 2; startStep(); }
@@ -362,6 +402,7 @@
       }
       g.restore();
       input.pressed = false; input.released = false; input.hit.clear(); input.wheel = 0;
+      if (lift) { lift = false; input.down = false; input.released = true; }
       requestAnimationFrame(frame);
     }
     requestAnimationFrame(frame);

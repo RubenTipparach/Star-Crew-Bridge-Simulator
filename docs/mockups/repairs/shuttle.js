@@ -144,7 +144,8 @@ RepairKit.register({
           else p += (0.7 - p) * dt * 2;
           if (busy > 0 && (busy -= dt) <= 0) return verdict();
           if (kf) { fi = wrapI(fi + dir, valves.length); if (input.actionPressed) close(fi); }
-          else if (input.pressed) { const i = valves.findIndex((v) => near(input.x, input.y, pos(v)[0], pos(v)[1], 24)); if (i >= 0) close(i); }
+          // The nearest valve within a fingertip's reach; no two valves are closer than 60 px (KIT.nearest).
+          else if (input.pressed) { const i = KIT.nearest(valves.map(pos), input.x, input.y, KIT.TOUCH_R + 6); if (i >= 0) close(i); }
           return;
         }
         if (phase === "patch") {

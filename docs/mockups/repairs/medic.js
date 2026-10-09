@@ -601,8 +601,9 @@ RepairKit.register({
           s.gest = null;
           // The tray and the chart take their press; neither ever reaches the wound.
           if (p.y >= TRAY.y - 4 && p.y <= TRAY.y + TRAY.h) {
-            const i = Math.floor((p.x - TRAY.x) / (TRAY.slot + TRAY.gap));
-            if (i >= 0 && i < 5 && p.x - TRAY.x - i * (TRAY.slot + TRAY.gap) <= TRAY.slot) s.tool = i;
+            // The slot under the finger, or the nearer one in the 11 px gap between two.
+            const i = Math.floor((p.x - TRAY.x + TRAY.gap / 2) / (TRAY.slot + TRAY.gap));
+            if (p.x >= TRAY.x - TRAY.gap && i >= 0 && i < 5) s.tool = i;
           } else if (p.x < CHART.x + CHART.w + 8) {
             let best = -1, bd = 40;
             s.wounds.forEach((q, i) => { const d = dist(p.x, p.y, ...chartXY(q)); if (d < bd) { bd = d; best = i; } });

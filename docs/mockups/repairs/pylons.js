@@ -135,7 +135,7 @@ RepairKit.register({
 
         if (phase === "part") {
           const [wx, wy] = toWorld(input.x, input.y);
-          if (input.pressed && Math.abs(wx - drv.x) < 34 && Math.abs(wy - drv.y) < 24) { drv.held = true; drv.gx = wx - drv.x; drv.gy = wy - drv.y; }
+          if (input.pressed && Math.abs(wx - drv.x) < 34 && Math.abs(wy - drv.y) < KIT.TOUCH_R + 4) { drv.held = true; drv.gx = wx - drv.x; drv.gy = wy - drv.y; }
           if (drv.held && input.down) { drv.x = wx - drv.gx; drv.y = wy - drv.gy; }
           const fit = () => { drv.set = true; drv.held = false; drv.x = SOCKET.x; drv.y = SOCKET.y; phase = "done"; api.stepDone(); };
           if (drv.held && input.released) { drv.held = false; if (near(drv.x, drv.y, SOCKET.x, SOCKET.y, 40)) return fit(); }
@@ -150,7 +150,9 @@ RepairKit.register({
             if (kf) { fi = wrapI(fi + dir, reach.length); if (input.actionPressed) go = reach[fi]; }
             else if (input.pressed) {
               const [wx, wy] = toWorld(input.x, input.y);
-              go = reach.find((i) => near(wx, wy, holds[i].x, holds[i].y, 26)) ?? -1;
+              // The nearest reachable hold within a fingertip's reach (KIT.nearest; holds are 70 px or more apart).
+              const k = KIT.nearest(reach.map((i) => holds[i]), wx, wy, KIT.TOUCH_R + 10);
+              go = k >= 0 ? reach[k] : -1;
             }
             if (go >= 0) { mode = "open"; from = at; to = go; openT = 0; swingT = 0; fi = 0; }
             return;
@@ -169,7 +171,8 @@ RepairKit.register({
           if (kf) { fi = wrapI(fi + dir, bolts.length); if (input.actionPressed) unbolt(fi); }
           else if (input.pressed) {
             const [wx, wy] = toWorld(input.x, input.y);
-            const i = bolts.findIndex((b) => near(wx, wy, b.x, b.y, 12));
+            // The bolts are 44 px apart in the world, seen at 2.3x: the nearest one within 20 world px, 46 on screen.
+            const i = KIT.nearest(bolts.map((b) => (b.out ? null : b)), wx, wy, 20);
             if (i >= 0) unbolt(i);
           }
           return;

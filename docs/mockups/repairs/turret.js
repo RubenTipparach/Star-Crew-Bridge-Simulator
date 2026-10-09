@@ -72,6 +72,8 @@ RepairKit.register({
         charge = coupling ? 0 : 1;
         arc = 0; latchT = 0; played = false;
       },
+      /** For tools (shots and tests): the round's state, read only, so a script can play it. */
+      peek() { return { kind, part, partSet: lensPart.set, lensPart: { ...lensPart }, lens: [...lens], target: [...target], lensX: [lensX(0), lensX(1)], LENS, AXIS, GUIDE, plug: { ...plug }, band: [...band], hold, played, spot: spot(clock) }; },
       update(dt, input) {
         clock += dt;
         arc = Math.max(0, arc - dt);
@@ -92,8 +94,10 @@ RepairKit.register({
         if (kind === "lens") {
           // Pick a lens by pointer or keys, slide it along its travel.
           if (input.pressed) {
-            for (let i = 0; i < 2; i++) {
-              if (Math.abs(input.x - lensX(i)) < 40 && input.y > AXIS - 90 && input.y < AXIS + 130) { grab = i; sel = i; }
+            // The nearer lens within 40 px across (two at the ends of their travels are 60 px apart).
+            if (input.y > AXIS - 90 && input.y < AXIS + 130) {
+              const i = KIT.nearest([0, 1].map((k) => [lensX(k), input.y]), input.x, input.y, 40);
+              if (i >= 0) { grab = i; sel = i; }
             }
           }
           if (grab >= 0 && input.down) {

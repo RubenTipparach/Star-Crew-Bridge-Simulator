@@ -163,7 +163,8 @@ RepairKit.register({
         if (held < 0) {
           if (up) selL = (selL + n - 1) % n;
           if (dn) selL = (selL + 1) % n;
-          if (input.pressed) for (let i = 0; i < n; i++) if (joins[i] < 0 && Math.hypot(input.x - lx, input.y - rowY(i)) < 22) { held = i; selL = i; }
+          // The ends are 26 px apart: the nearest free one within a fingertip's reach (KIT.nearest).
+          if (input.pressed) { const i = KIT.nearest(joins.map((j, k) => (j < 0 ? [lx, rowY(k)] : null)), input.x, input.y, KIT.TOUCH_R + 10); if (i >= 0) { held = i; selL = i; } }
           if (input.actionPressed && joins[selL] < 0) { held = selL; selR = rightOrder.findIndex((w, i) => !joins.includes(i)); }
           return;
         }
@@ -172,7 +173,7 @@ RepairKit.register({
         // Dragged onto a right end, or tapped there after tapping a left end; let go elsewhere, the wire drops back.
         let drop = -1;
         if (input.pressed || input.released) {
-          for (let i = 0; i < n; i++) if (Math.hypot(input.x - rx, input.y - ry[i]) < 26) drop = i;
+          drop = KIT.nearest(ry.map((y) => [rx, y]), input.x, input.y, KIT.TOUCH_R + 10);
           if (drop < 0 && input.released && Math.hypot(input.x - lx, input.y - rowY(held)) > 30) { held = -1; return; }
         }
         if (input.actionPressed) drop = selR;

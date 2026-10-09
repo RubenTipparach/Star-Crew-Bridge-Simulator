@@ -169,7 +169,7 @@ RepairKit.register({
         if (phase === "close") { if (Math.abs(panel.dx) < 2) { phase = "torque"; panel.dx = 0; panel.dy = 0; fi = 0; } return; }
         if (phase === "torque") {
           if (kf) { fi = wrapI(fi + dir, fast.length); if (input.actionPressed) turn(fi); }
-          else if (input.pressed) { const i = fast.findIndex((f) => near(input.x, input.y, f.x, f.y, 26)); if (i >= 0) turn(i); }
+          else if (input.pressed) { const i = KIT.nearest(fast, input.x, input.y, KIT.TOUCH_R + 10); if (i >= 0) turn(i); }
         }
       },
       /** For tools: the round's state, read only, so a script can play it. */

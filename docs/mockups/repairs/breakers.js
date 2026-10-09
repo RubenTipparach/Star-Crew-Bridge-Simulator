@@ -91,7 +91,8 @@ RepairKit.register({
           if (input.hit.has("ArrowUp") || input.hit.has("KeyW")) sel = live[(live.indexOf(sel) + live.length - 1) % live.length] ?? live[0];
           if (input.hit.has("ArrowDown") || input.hit.has("KeyS")) sel = live[(live.indexOf(sel) + 1) % live.length] ?? live[0];
           if (carts[sel] && carts[sel].gone) sel = live[0];
-          if (input.pressed) for (const i of live) if (inBox(cartBox(i), input.x, input.y)) { held = i; sel = i; }
+          // A cartridge is 44 px tall in a 60 px pitch: its zone reaches 8 px into each gap, 30 px from its middle (KIT.TOUCH_R).
+          if (input.pressed) for (const i of live) if (inBox(cartBox(i), input.x, input.y, 8)) { held = i; sel = i; }
           let fit = -1;
           if (held >= 0 && input.released) { if (inBox(holder(), input.x, input.y, 40)) fit = held; held = -1; }
           if (input.actionPressed) fit = sel;

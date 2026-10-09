@@ -71,6 +71,8 @@ RepairKit.register({
         focus = 0; on = { rail: false, latch: false, arm: false };
         railT = 0; latchT = 0; mx = M_START; mv = 0; tripT = 0; tripName = ""; played = false; armT = 0;
       },
+      /** For tools (shots and tests): the round's state, read only, so a script can play it. */
+      peek() { return { phase, part, seal: { ...seal }, FACE, notches: [...notches], found, ringA, dwell, slots: [...slots], slotX: [0, 1, 2].map(slotX), SW, on: { ...on }, railT, home: home(), mx, mv, played }; },
       update(dt, input) {
         ringShake = Math.max(0, ringShake - dt);
         tripT = Math.max(0, tripT - dt);

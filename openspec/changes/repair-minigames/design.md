@@ -241,6 +241,15 @@ first on a narrow or touch screen, with a game picker and a Full screen button a
 to the screen, and asks a phone to hold landscape where the browser allows), and tells a phone held upright to turn
 sideways. Each game is checked by playing it to the end with touch alone on a phone-sized screen.
 
+Checked 2026-10-09 (an emulated iPhone 13 held sideways, full screen, touch events only): all eighteen games play to
+the end in both job states, and a mistake can be made by touch in each. What touch needed: the kit follows only the
+finger that started a press (a second finger or a palm no longer jumps or ends a drag), a tap shorter than a frame
+counts as a press, and packed targets (wire ends, fuses, valves, fasteners, handholds, bolts, the medic's tray, the
+turret's lenses) take the nearest one within a reach of at least 30 canvas px (`KIT.TOUCH_R`, `KIT.nearest`).
+Still to fix: text drawn at 15-18 canvas px (the bar's place line, time left and mistake note, and several small
+labels) is 7-9 CSS px on a phone, too small to read; the mistake note matters most. Shots in
+`docs/screenshots/repairs/mobile/`.
+
 ## 7. The Pi 5 budget
 
 A mini-game is a UI screen: a few hundred to a few thousand UI triangles in a handful of draws, the 3D pass behind it
