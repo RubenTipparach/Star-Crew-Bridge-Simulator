@@ -146,7 +146,9 @@
   // screw anticlockwise: drag round it, roll the wheel over it, or hold Left; Tab picks the next) and ends by screwing
   // it back (clockwise, Right). The plate hides the machine until it is off. Nothing here is a fumble: a screw only
   // turns while the pointer goes round it.
-  const SCREW_TURNS = 2.5;                      // turns to free a screw, and to drive it home
+  // One full loop frees a screw or drives it home (owner, 2026-10-09: the screws were not "properly detecting when I do
+  // a full loop"; it took 2.5).
+  const SCREW_TURNS = 1;                        // turns to free a screw, and to drive it home
   const SCREW_R = 15;                           // a screw head's radius, px
   function screwPanel(spec) {
     const n = spec.screws || 4, m = 26, { x, y, w, h } = spec;
@@ -172,13 +174,22 @@
     if (!input.down) p.grab = -1;
     const turn = (sc, d) => { const k = Math.max(0, d * dir); sc.turn = Math.min(goal, sc.turn + k); sc.rot += d; };
     if (p.grab >= 0) {
-      const sc = p.screws[p.grab], dx = input.x - sc.x, dy = input.y - sc.y;
-      if (Math.hypot(dx, dy) > 6) {
+      // Every pointer sample since the last frame, not one a frame: a quick loop close round the head sweeps more than
+      // half a turn between frames, which a once-a-frame angle reads as the other way round and throws away.
+      const sc = p.screws[p.grab], pts = input.path.length ? input.path : [[input.x, input.y]];
+      let wrong = 0;
+      for (const [px, py] of pts) {
+        const dx = px - sc.x, dy = py - sc.y;
+        if (Math.hypot(dx, dy) <= 6) continue;                 // through the middle: no angle to read
         const a = Math.atan2(dy, dx);
-        if (p.prevA !== null) { let d = a - p.prevA; d = Math.atan2(Math.sin(d), Math.cos(d)); turn(sc, d); }
+        if (p.prevA !== null) { let d = a - p.prevA; d = Math.atan2(Math.sin(d), Math.cos(d)); turn(sc, d); if (d * dir < 0) wrong -= d * dir; }
         p.prevA = a;
       }
+      // Turning it the wrong way does nothing; after a third of a turn of it the arrow flashes and says so.
+      p.wrongAcc = (p.wrongAcc || 0) * Math.max(0, 1 - dt) + wrong;
+      if (p.wrongAcc > 2) { p.wrongAcc = 0; p.wrongT = 1.2; p.wrongSay = true; }
     }
+    p.wrongT = Math.max(0, (p.wrongT || 0) - dt);
     if (input.wheel) { const sc = p.screws.find((q) => q.turn < goal && near(q)) || p.screws[p.sel]; turn(sc, -input.wheel * 0.7); }
     const key = (input.keys.has("ArrowRight") || input.keys.has("KeyD") ? 1 : 0) - (input.keys.has("ArrowLeft") || input.keys.has("KeyA") ? 1 : 0);
     if (key) turn(p.screws[p.sel], key * 9 * dt);
@@ -219,7 +230,8 @@
     const sc = p.screws[p.sel];
     if (sc && sc.turn < goal) {
       const dir = p.phase === "open" ? -1 : 1;
-      D.turnArrow(g, sc.x, sc.y, SCREW_R + 26, dir < 0 ? 0.2 : -1.6, dir < 0 ? -1.6 : 0.2, "rgba(232,238,246,0.6)");
+      const wrong = p.wrongT > 0 && Math.sin(t * 18) > -0.3;   // turned the wrong way: the arrow flashes red
+      D.turnArrow(g, sc.x, sc.y, SCREW_R + 26, dir < 0 ? 0.2 : -1.6, dir < 0 ? -1.6 : 0.2, wrong ? C.danger : "rgba(232,238,246,0.6)");
     }
     g.restore();
   }
@@ -227,7 +239,7 @@
   // ------------------------------------------------------------------ the runner (the page calls RepairKit.start)
   KIT.start = function (canvas, ui) {
     const g = canvas.getContext("2d");
-    const input = { x: -1, y: -1, down: false, pressed: false, released: false, keys: new Set(), hit: new Set(), wheel: 0,
+    const input = { x: -1, y: -1, path: [], down: false, pressed: false, released: false, keys: new Set(), hit: new Set(), wheel: 0,
       stick: { x: 0, y: 0 }, action: false, actionPressed: false };
     const opts = { who: "officer", state: "damaged", combat: false };
     let run = null;
@@ -244,12 +256,18 @@
     // neither move a drag nor end it. With nothing pressed, any pointer's move is the hover (a mouse's).
     let owner = null;
     const foreign = (e) => input.down && e.pointerId !== owner;
-    canvas.addEventListener("pointermove", (e) => { if (foreign(e)) return; [input.x, input.y] = toCanvas(e); if (input.down) e.preventDefault(); });
+    // Every sample of a move while pressed goes on input.path (the browser's coalesced events between two frames), for
+    // games that follow a stroke's shape rather than where it ended (the screw panels).
+    canvas.addEventListener("pointermove", (e) => {
+      if (foreign(e)) return;
+      if (input.down) { const all = e.getCoalescedEvents ? e.getCoalescedEvents() : []; for (const q of all.length ? all : [e]) input.path.push(toCanvas(q)); }
+      [input.x, input.y] = toCanvas(e); if (input.down) e.preventDefault();
+    });
     canvas.addEventListener("pointerdown", (e) => {
       e.preventDefault();
       if (foreign(e)) return;
       owner = e.pointerId;
-      [input.x, input.y] = toCanvas(e); input.down = true; input.pressed = true;
+      [input.x, input.y] = toCanvas(e); input.down = true; input.pressed = true; input.path = [[input.x, input.y]];
       try { canvas.setPointerCapture(e.pointerId); } catch (_) { /* a synthetic event has no pointer to capture */ }
     });
     // A tap quicker than a frame (down and up between two frames) still reads as held for the one frame that sees its
@@ -335,6 +353,7 @@
         else if (P && P.phase !== "work") {
           // The cover: off before the work (anticlockwise), back on after it (clockwise).
           if (P.phase === "open" && turnScrews(P, input, dt, -1)) { P.phase = "lifting"; }
+          if (P.wrongSay) { P.wrongSay = false; run.note = "Other way"; run.noteT = 1.2; }
           if (P.phase === "lifting") { P.lift = Math.min(1, P.lift + dt * 2.5); if (P.lift >= 1) P.phase = "work"; }
           if (P.phase === "lowering") { P.lift = Math.max(0, P.lift - dt * 2.5); if (P.lift <= 0) { P.phase = "close"; P.sel = 0; } }
           if (P.phase === "close" && turnScrews(P, input, dt, 1)) { run.done = true; run.note = run.game.doneWord || "Repaired"; run.noteT = 99; }
@@ -401,7 +420,7 @@
         drawBar();
       }
       g.restore();
-      input.pressed = false; input.released = false; input.hit.clear(); input.wheel = 0;
+      input.pressed = false; input.released = false; input.hit.clear(); input.wheel = 0; input.path = [];
       if (lift) { lift = false; input.down = false; input.released = true; }
       requestAnimationFrame(frame);
     }

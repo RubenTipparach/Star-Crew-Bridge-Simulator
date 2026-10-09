@@ -145,7 +145,7 @@ tell me whats wrong until I click on the wrong screw"; "wheres my toilet minigam
   browser's own drag, selection, panning and menu, and takes the pointer until it is released. Every game gets it.
 - **Access panels with screws** (kit). A game that names a `panel` has its machine behind a cover plate: the job
   starts by unscrewing it (turn each screw anticlockwise by dragging round it, the wheel over it, or holding Left; Tab
-  picks the next) and ends by screwing it back (clockwise) before the job counts as done. 2.5 turns a screw; a ring
+  picks the next) and ends by screwing it back (clockwise) before the job counts as done. One full loop a screw (2.5 at first; the owner, 2026-10-09: loops were not "properly detecting", so every pointer sample now counts and a loop the wrong way flashes the arrow and says "Other way"); a ring
   round each head shows how far it has turned. Not a fumble anywhere: a screw only turns while you turn it. On the
   breaker cabinet (6 screws), the scrubber cabinet and the biobed's control box (4 each). In the engine the same
   plates are where the layout's repair points are.
