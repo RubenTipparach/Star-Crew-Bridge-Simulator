@@ -76,7 +76,9 @@ Reserve at most 9 material primitives per full exterior and one per baked LOD, t
 
 Render the actual GLBs in the inspection page and examine all registered captures. Validate OpenSpec, layouts and inlined pages. Run the mockup overlap check and build a second time in check mode to prove byte reproducibility. Record the asset counts and validation results here. Keep gameplay source untouched during this exterior design step.
 
-## Delivered assets and checks, revised 2026-10-10
+## Earlier delivered assets and checks, 2026-10-10
+
+Historical validation follows. The current result is recorded under "Owner correction: plated sides and projected livery" at the end of this document.
 
 Built in headless Blender 4.4.3 on the owner's Windows PC. The packed [Blender scene](../../../assets/models/exteriors/fleet.blend) retains named hull, pylon, nacelle, radiator, thruster, bay-door and weapon assemblies. The eleven exported GLBs across the three liveries have embedded PNG textures and the manifest records SHA-256 hashes. The [asset README](../../../assets/models/exteriors/README.md) lists rebuild commands and runtime integration limits.
 
@@ -150,3 +152,29 @@ The connected revision exposes too much grey on the command walls and forward co
 Final armor-restored exports: Copper 1,629,836 / 1,379,176 / 374,936; Cyan 1,664,116 / 1,413,976 / 382,524; Rescue 1,633,596 / 1,379,344 / 375,144 bytes for full/medium/distant. All three sets reproduce byte for byte. Geometry remains 4,824 / 1,290 / 496 triangles and 6 / 1 / 1 draws. The preview confirms 460 window/frame rays per livery, every deck menu and cutaway, and all nine livery/LOD selections with distinct baked textures. The fleet with interiors still totals 83,474 triangles in 50 draws and 78.17 MiB textures. OpenSpec passes all 42 items.
 
 The final armor-restored review covers 47 desktop captures and the phone default: all three liveries at each LOD, bow and service close-ups, all six mess-window angles, both interior lighting states, side and pylons. The preview inline blocks and budget marker match their sources. Geometry is unchanged from the passing 0.046 m2 shared-interior overlap check.
+
+## Owner correction: plated sides and projected livery
+
+The side texture still stretches broad machinery bands across the forward walls. Replace the side service recess and its exposed pipes with normal hull plating and fine seams; retain the dorsal machinery breaks. Remove the separate command-wall UV stretch so all side faces share one ship-height mapping. Author plate seams and livery bands as ship-local surface projections on the final hull, continuous across roof/wall transitions and clear of the physical window openings. Retain the projection data, an editable Blender source, region masks and unenhanced UV bake. Review that linework on the 3D hull before using built-in imagegen for restrained surface wear and detail. The projected boundaries and stripe placement stay fixed during enhancement.
+
+The cyan bands wrap over the forward shoulders and continue down both vertical sides; matching Copper and Rescue variants use the same layout. Existing lettering, silhouette, level pylons and lower mess windows stay. Export through the shared Material Maker graphs and rebake both LOD atlases. Removing side pipe geometry reduces full-detail triangles; no extra runtime geometry, material draws or texture allocation is required. Keep the 12,000 / 3,000 / 600 triangle ceilings, 9 / 1 / 1 draws, and 96 MiB scene texture ceiling. Validate projection continuity from shared 3D coordinates, clear window/frame rays, actual UVs, reproducible exports and reviewed full/LOD captures.
+
+
+Validation of projected plating, 2026-10-10: the new hull uses 3,834 / 1,290 / 496 triangles
+and 6 / 1 / 1 material draws. All eleven GLBs, six LOD atlases and three manifests reproduce
+byte for byte. The projection bake agrees with 385 sampled hull positions, with zero mismatches.
+All 27,718 stripe-interior pixels retain their livery color in each enhanced painting; boundary
+joins were inspected in the 3D captures. Material Maker RGB is preserved with zero hull emission.
+The original editable projection, its unenhanced bake and four pre-enhancement captures are retained.
+
+The preview passes 460 opening/frame rays per livery, all twenty window menu entries, three
+cutaways, nine livery/LOD selections, distinct LOD textures and separate control rows. Reviewed
+47 desktop captures and the phone default: 36 livery/LOD views, six mess-window views, both
+mess lighting states, side, pylons and default Cyan. The fleet with furnished interiors uses
+82,484 triangles in 50 draws, with unchanged 78.17 MiB decoded textures. The overlap check
+reports no exterior overlap; the existing shared room railing/baseboard overlap is 0.046 m2.
+The window patch, all 16 preview inline blocks and its budget marker match their sources.
+OpenSpec passes all 42 items. No Pi performance measurement is claimed.
+
+Full / medium / distant GLB bytes: Copper 1,797,816 / 1,515,260 / 400,304;
+Cyan 1,878,028 / 1,563,048 / 407,632; Rescue 1,789,944 / 1,508,900 / 399,652.

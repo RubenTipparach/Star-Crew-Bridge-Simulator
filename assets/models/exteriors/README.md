@@ -1,52 +1,130 @@
 # Exterior design fleet
 
-Open [fleet.blend](fleet.blend) to edit the named assemblies in Blender, or [the inspection page](../../../docs/mockups/ship-exteriors.html) to orbit the delivered models. Textures are embedded in every GLB and packed in the Blender file.
+The Tern uses broad white side plates with fine seams and cyan bands that wrap across roofs,
+bevels and vertical walls. Open [the inspection page](../../../docs/mockups/ship-exteriors.html)
+and select **Hull detail** to inspect those joins, or a window to look into the furnished decks.
+Cyan is the default; Copper and Rescue use the same projected layout. The side service gaps,
+pipes and brackets are removed. Dorsal and underside mechanical detail remains.
+
+Open [fleet.blend](fleet.blend) for the editable Copper fleet, or the livery folders for their
+packed Blender sources. All GLBs embed their textures. These are delivered art assets and a
+design mockup; the Rust renderer does not load them yet.
 
 | Model | Design | Triangles | Ceiling | Material draws |
 | --- | --- | ---: | ---: | ---: |
-| [tern.glb](tern.glb) | Player frigate, level swept pylons and 56 m nacelles | 4,824 | 12,000 | 6 |
+| [tern.glb](tern.glb) | Player frigate, level swept pylons and 56 m nacelles | 3,834 | 12,000 | 6 |
 | [tern_lod1.glb](tern_lod1.glb) | Medium detail, custom 1024 px atlas | 1,290 | 3,000 | 1 |
 | [tern_lod2.glb](tern_lod2.glb) | Distant detail, custom 512 px atlas | 496 | 600 | 1 |
 | [osprey.glb](osprey.glb) | Broad-bow courier, low drives, teal livery | 1,248 | 12,000 | 7 |
 | [shrike.glb](shrike.glb) | Arrowhead raider, weapon shoulders, red livery | 1,164 | 12,000 | 7 |
 
-The Tern's central hull is 79 m long after rounding the bow. Its overall envelope, including fittings, is recorded in [props.json](props.json). Metres, +X port, +Y up, +Z bow. The origin is the layout's deck B origin, not a floor or centre-of-bounds pivot. All models export as one mesh split into material primitives. Source assemblies and named cutters stay editable in the Blender file. Companion ships are exterior concepts with no approved interiors or simulation data.
+The central hull is 79 m long, 81.47 m including fittings. Metres, +X port, +Y up, +Z bow;
+the origin matches the layout's deck B origin. Pylon roots, tips and nacelle centers sit at
+Y = 1.2 m. Deck floors remain +3.5 m, 0 m and -3.5 m. The lower bow follows the enlarged bridge
+outline, with faceted corners and a 0.35 m rim bevel. The torpedo room, magazine and command
+rooms fit inside the actual inner hull. Companion ships remain exterior concepts.
 
-The Tern has three liveries, each with its own 1024 px hull/fittings atlas and freshly baked 1024/512 px LOD atlases. White armor sits over continuous grey mechanical channels. Two 51 m side service bands run between the lower window rows, replacing the disconnected patches. Their modeled pipes, clamps and equipment modules join the painted couplings, valves and vents. The side channels and two retained dorsal breaks recess the full-detail skin by 0.08 m while retaining at least 0.14 m of closed pressure hull. The builder reads back the actual recess depth and remaining skin. The Tern registration plate is removed: SCS TERN and SC-084 are painted directly into the hull texture. The accepted silhouette, pale window frames, level pylons and 56 m nacelles are retained.
+## Paint sources and liveries
 
 | Livery | Full model | Medium model | Distant model | Painted source | Prompt |
 | --- | --- | --- | --- | --- | --- |
-| Copper | [GLB](tern.glb) | [GLB](tern_lod1.glb) | [GLB](tern_lod2.glb) | [PNG](../../../tools/materials/sources/tern-connected-copper.png) | [Prompt](../../../tools/materials/sources/tern-connected-copper-prompt.txt) |
-| Cyan (preferred) | [GLB](liveries/cobalt/tern.glb) | [GLB](liveries/cobalt/tern_lod1.glb) | [GLB](liveries/cobalt/tern_lod2.glb) | [PNG](../../../tools/materials/sources/tern-connected-cyan.png) | [Prompt](../../../tools/materials/sources/tern-connected-cyan-prompt.txt) |
-| Rescue | [GLB](liveries/rescue/tern.glb) | [GLB](liveries/rescue/tern_lod1.glb) | [GLB](liveries/rescue/tern_lod2.glb) | [PNG](../../../tools/materials/sources/tern-connected-rescue.png) | [Prompt](../../../tools/materials/sources/tern-connected-rescue-prompt.txt) |
+| Copper | [GLB](tern.glb) | [GLB](tern_lod1.glb) | [GLB](tern_lod2.glb) | [PNG](../../../tools/materials/sources/tern-projected-copper.png) | [Prompt](../../../tools/materials/sources/tern-projected-copper-prompt.txt) |
+| Cyan (preferred) | [GLB](liveries/cobalt/tern.glb) | [GLB](liveries/cobalt/tern_lod1.glb) | [GLB](liveries/cobalt/tern_lod2.glb) | [PNG](../../../tools/materials/sources/tern-projected-cyan.png) | [Prompt](../../../tools/materials/sources/tern-projected-cyan-prompt.txt) |
+| Rescue | [GLB](liveries/rescue/tern.glb) | [GLB](liveries/rescue/tern_lod1.glb) | [GLB](liveries/rescue/tern_lod2.glb) | [PNG](../../../tools/materials/sources/tern-projected-rescue.png) | [Prompt](../../../tools/materials/sources/tern-projected-rescue-prompt.txt) |
 
-The liveries share identical triangle geometry, normals, UVs, window openings and triangle counts. Vertex packing can differ because the baked accent colors affect vertex sharing. Each directory retains its own manifest, editable Blender source and `atlases/` PNGs. The inspection page opens in Cyan and offers Copper, Cyan and Rescue buttons, plus **Subhull** for the service-channel close-up and **Lettering** for the painted name. LOD textures are shared only when their actual baked hashes match.
+[`project_hull_paint.py`](../../../tools/blender/project_hull_paint.py) projects seams and livery
+in ship-local metres on the actual model, then bakes them into UV space. The band field is
+Z - 0.6 |X| + 0.3 Y; two authored intervals cross both hull sides without per-face offsets.
+The [projection data](../../../data/ships/tern/hull_paint_projection.json) owns their positions,
+the 0.10 m seams and paint colors. All walls share one height-based UV mapping.
 
-The lower bow follows the actual bridge polygon, scaled 1.5 across its width and 2.0 along its forward half around Z = 26.2 m. Its faceted curved shoulders end at Z = 37 m with a 0.35 m rim bevel. All interior coordinates stay fixed. Actual inner/outer hull containment checks include the torpedo room and magazine. The hull painting stays anchored to its original longitudinal UV range. Select **Bow detail** in the inspection page for a close view.
+Retained authoring artifacts:
 
-Editable sources: [UV wireframe](../../../tools/materials/sources/tern-uv-wireframe.png), [island mask](../../../tools/materials/sources/tern-uv-mask.png), [UV polygons](../../../tools/materials/sources/tern-uv-layout.json), and [Material Maker graph](../../../tools/materials/ptex/tern_hull.ptex). Built-in imagegen edits the paintings against the actual 2048 px guide; each 1254 px bitmap uses normalized island placement. The [armor coverage prompt](../../../tools/materials/sources/tern-armor-coverage-prompt.txt) restores broad ivory panels between narrow connected grey channels on the forward walls. Bow faces use a dedicated strip with an ivory center and slim grey borders. Copper and Rescue are color edits of the revised Cyan painting, using the prompts in the table. Material Maker renders each hull texture at 1024 px through the same graph builder. The stable `cobalt` ID and filenames contain Cyan, selected by `default_livery` in the root manifest. Earlier paintings remain as design history.
+- [Editable projection scene](hull-paint-projection.blend), with the actual hull and shader.
+- [Unenhanced layout](../../../tools/materials/sources/tern-projected-layout.png) and
+  [region masks](../../../tools/materials/sources/tern-projected-masks.png), baked at 2048 px.
+  Mask R is livery, G is seams, B is projected hull coverage.
+- [3D layout inspection](../../../docs/screenshots/exteriors-projection-layout/ship-exteriors-livery-cobalt-0-service.png),
+  captured before enhancement, with windows and stepped wall transitions visible.
+- Supporting [UV wireframe](../../../tools/materials/sources/tern-uv-wireframe.png),
+  [island mask](../../../tools/materials/sources/tern-uv-mask.png) and
+  [UV polygons](../../../tools/materials/sources/tern-uv-layout.json).
+- [Projection check](../../../tools/materials/sources/tern-projection-validation.json) and
+  [enhancement check](../../../tools/materials/sources/tern-enhancement-validation.json).
 
-Companion ships retain the shared 2048 px [surface atlas](../../textures/exterior_surfaces.png), [source](../../../tools/materials/sources/exterior-surfaces.png), [prompt](../../../tools/materials/sources/exterior-surfaces-prompt.txt), and [graph](../../../tools/materials/ptex/exterior_surfaces.ptex). Small accents and hazards use the [pearl](../../textures/exterior_pearl.png) and [graphite](../../textures/exterior_graphite.png) layers. Exterior materials contain no tiled square grid.
+Built-in imagegen adds the worn white paint finish while preserving the projected stripe and
+seam layout. Copper and Rescue are color edits of Cyan. Each generated bitmap is 1254 px with
+the same normalized layout. The old `tern-connected-cyan.png` is the retained source for roof,
+underside and fittings before projection; do not overwrite it with the new finished painting.
+Registration is painted directly on the hull, with no backing panel or raised plate. There are
+no illustrated windows. Earlier paintings and prompts remain as design history.
 
-PNG alpha is the engine's emission mask, including cyan window detail, so an ordinary image viewer may display textures as transparent. GLB materials are opaque and preserve RGB. The [registration sheet](../../textures/exterior_decals.png) uses the repository's Barlow Semi Condensed font, under its [OFL licence](../../fonts/barlow-semi-condensed/OFL.txt). Full-detail colours and fixed sun shading are baked into `COLOR_0`; `KHR_materials_unlit` avoids double lighting. No normal maps or PBR lighting are needed. Twenty genuine openings match the portals from the command-suite and lower-deck window patches. Their dimensions and hull intersections are recorded in the manifest. The HTML preview shows furnished rooms on all three decks, bridge crew, transparent glass and passages between each interior window and the hull opening. Its window, interior and cutaway controls let you inspect the same rooms from both sides. Both normal and red-alert lighting are available.
+The [Material Maker graph](../../../tools/materials/ptex/tern_hull.ptex) and its Cyan/Rescue
+variants use one parameterized builder, rendered at 1024 px in Material Maker 1.4. Packaging
+preserves RGB and sets emission alpha to zero. The stable `cobalt` ID and filenames contain
+Cyan. Warp strips use a separate emissive material. Full-detail fixed sunlight is baked into
+vertex color; materials use `KHR_materials_unlit`, with no normal maps or runtime PBR lighting.
 
-The [medium atlas](atlases/tern_lod1.png) and [distant atlas](atlases/tern_lod2.png) bake the full-detail ship onto each lower mesh. Armour panels, service recesses, windows, radiators, bay doors, registration, copper markings and warp strips survive reduced geometry. Both are baked at twice their final width and height and reduced in linear light to limit grain. Their final densities are 8.92 and 4.25 px/m, intended for smaller distant views. Each has its own emission mask in alpha. Fixed shading is in the atlas, with neutral vertex colours to avoid double shading. Read-back confirms the GLB's embedded RGBA pixels exactly match the standalone atlas.
+Each livery has distinct 1024 px medium and 512 px distant atlases, baked from its finished full
+model at twice the final resolution and reduced in linear light. They preserve paint, windows,
+registration and machinery at 8.92 / 4.25 px/m. Temporary dark window backings exist during the
+bake only. Embedded atlas pixels match the standalone PNGs. The liveries share triangle geometry,
+normals, UVs and openings; vertex packing may differ with accent colors. Each has its own manifest,
+packed Blender scene and atlases. The preview shares textures only when their actual hashes match.
 
-The exterior library with all three liveries uses 60,642,636 bytes of RGBA8 textures with mipmaps (57.83 MiB). With the furnished rooms and corridors across all decks, the preview loads about 78.17 MiB. The visible fleet plus interior draws 83,474 triangles in 50 calls, below the provisional scene ceilings. GLBs carry standalone image copies; the preview shares identical textures. Pylon roots, tips and nacelle centres are at Y = 1.2 m. The three deck floor heights remain +3.5 m, 0 m and -3.5 m; the preview uses those same deck floors and existing furniture dimensions.
+Companions retain the original [surface atlas](../../textures/exterior_surfaces.png),
+[source](../../../tools/materials/sources/exterior-surfaces.png),
+[prompt](../../../tools/materials/sources/exterior-surfaces-prompt.txt) and
+[graph](../../../tools/materials/ptex/exterior_surfaces.ptex). The original registration sheet
+uses Barlow Semi Condensed under its [OFL license](../../fonts/barlow-semi-condensed/OFL.txt).
+PNG alpha encodes emission, so ordinary image viewers can show transparent pixels; GLBs are opaque.
 
-To regenerate with Blender 4.4.3:
+## Windows and preview
+
+Twenty genuine apertures connect with the same metre-scale interiors shown in the preview:
+four on A, ten on B and six on C. Pale 0.12 m frames surround the openings. The command shell is
+0.22 m thick, with 0.10 m clearance to the room wall, giving 0.32 m window returns. Lower-deck
+returns measure 0.551-0.560 m. Mess window centers are 1.50 m above the floor, with unchanged
+1.70 x 0.80 m openings. The interior camera targets the authored middle window.
+
+The [window design](../../../data/ships/tern/exterior_windows_design.json) owns stations and
+42 furnishings. Its [generator](../../../tools/exterior_windows.py) validates the
+[preview patch](../../../data/ships/tern/exterior_windows.json) against layout and prop bounds.
+Eighteen rooms and corridors are shown, with deck selectors, window views, cutaways and
+normal/red-alert lighting. Actual portal corners join the inner skin through combined liners
+and transparent glass batches. No opaque window pictures cover the openings.
+
+## Budget and validation
+
+Removing the side service structures saves 990 full-detail triangles. Tern now uses
+3,834 / 1,290 / 496 triangles and 6 / 1 / 1 material draws. The fleet with furnished interiors
+uses 82,484 triangles in 50 draws. Decoded textures with mipmaps remain 78.17 MiB against the
+96 MiB scene ceiling; the exterior library alone is 57.83 MiB. These are asset counts, not
+Pi frame-time measurements. Runtime rotation will need an adaptation of the fixed sun bake.
+Warp animation, damage meshes, turret articulation, attachment collision and weapon/shield
+occlusion updates remain separate engine work.
+
+## Rebuild
+
+Use Blender 4.4.3 with the dependencies described by the exterior builder, plus Material Maker
+1.4, Python with Pillow/NumPy/fontTools/Brotli, and Node with Playwright/Chromium. Rebuild the
+projection only when editing its authored layout, and inspect it before enhancing its texture:
+
+```powershell
+blender -b --factory-startup --python-use-system-env -P tools/blender/project_hull_paint.py
+```
+
+The committed generated paintings are the final art inputs. For existing artwork:
 
 ```powershell
 python tools/materials/build_ptex.py
-python tools/materials/export_graph.py exterior_paint exterior_surfaces --material-maker C:/Users/santi/repos/material_maker_1_4_windows/material_maker.exe
 python tools/materials/export_graph.py tern_hull tern_hull_cobalt tern_hull_rescue --material-maker C:/Users/santi/repos/material_maker_1_4_windows/material_maker.exe --size 1024
-python tools/materials/postprocess.py --only exterior_pearl exterior_graphite
-python tools/materials/exterior_decals.py
-python tools/exterior_windows.py
+python -c "from tools.materials.exterior_decals import pack_surfaces; [pack_surfaces(n,1024,False) for n in ['tern_hull','tern_hull_cobalt','tern_hull_rescue']]"
+python tools/materials/check_hull_projection.py
 python tools/exterior_windows.py --check
 foreach ($livery in @("copper", "cobalt", "rescue")) {
-    blender -b --factory-startup -P tools/blender/build_ship_exteriors.py -- --livery $livery
-    blender -b --factory-startup -P tools/blender/build_ship_exteriors.py -- --livery $livery --check
+    blender -b --factory-startup --python-use-system-env -P tools/blender/build_ship_exteriors.py -- --livery $livery
+    blender -b --factory-startup --python-use-system-env -P tools/blender/build_ship_exteriors.py -- --livery $livery --check
 }
 python tools/materials/exterior_uv_guide.py
 python tools/mockups/inline.py docs/mockups/ship-exteriors.html
@@ -54,32 +132,28 @@ node tools/mockups/shoot.mjs docs/mockups/ship-exteriors.html
 node tools/mockups/zfight.mjs docs/mockups/ship-exteriors.html --setup "window.EXTERIOR_VIEW.show('fleet')"
 ```
 
-The decal author needs Pillow, NumPy, fontTools and Brotli support. Material export needs Material Maker 1.4 or a compatible installed application. LOD chart packing is cached under ignored `build/exterior-tools/uv-cache/`; the key includes exact geometry, Blender version, packer source and packing settings. Every build still bakes the current artwork and emission into fresh LOD atlases. A clean build reconstructs the chart placement through the shared packer. Cached rebuilds skip packing; a clean pack takes several minutes on this PC. The mockup tools need Playwright and Chromium. `props.json` records file hashes, bounds, source assemblies, atlas density, emission coverage and actual costs. Rebuilding with another Blender version may change export bytes and must be reviewed.
+LOD chart packing is cached under ignored `build/exterior-tools/uv-cache/`, keyed by exact
+geometry, Blender version, packer source and settings. Every build rebakes artwork and emission.
+The manifests record hashes, bounds, source assemblies, atlas density and actual costs. Another
+Blender version can change export bytes and requires review. The repository-wide inliner still
+reports the pre-existing deck-plan light-bake cache hash mismatch; this page does not use it.
 
-These are delivered art assets and a design mockup. The Rust runtime does not load them yet. Warp animation, damage states, turret articulation, attachment collisions and shield/weapon occlusion updates belong to the separate engine implementation. The vertex sun bake is a fixed presentation light and must be replaced or adapted when ships rotate at runtime. No Pi performance measurement is claimed.
 
-Window correction: the side UV island contains solid plating, with no illustrated window slots. Each current livery prompt explicitly excludes illustrated windows; the full-detail openings remain geometry. Twenty 0.12 m pale-silver rims follow the actual portal/hull intersections. The preview checks their dedicated rim material along every frame edge and includes angled window captures.
+Validation of projected plating, 2026-10-10: the new hull uses 3,834 / 1,290 / 496 triangles
+and 6 / 1 / 1 material draws. All eleven GLBs, six LOD atlases and three manifests reproduce
+byte for byte. The projection bake agrees with 385 sampled hull positions, with zero mismatches.
+All 27,718 stripe-interior pixels retain their livery color in each enhanced painting; boundary
+joins were inspected in the 3D captures. Material Maker RGB is preserved with zero hull emission.
+The original editable projection, its unenhanced bake and four pre-enhancement captures are retained.
 
-Shallow-window correction: the forward upper hull now follows the existing bridge, ready-room and briefing-room outlines, joined to the rear by a 3 m sloped transition and finished with a 0.16 m roof chamfer. Every command window is 0.32 m from its room wall, replacing the 4.178 m bridge and 1.841 m side-room recesses. The shell remains 0.22 m thick, with 0.10 m of interior clearance. Cut walls use graphite, and the preview liners join the exact portal and inner-skin corners. The builder checks room containment and continuous UVs across coplanar painted faces; the preview checks aperture corners as well as the 460 opening/frame rays. Both LODs and their textures follow the revised hull.
+The preview passes 460 opening/frame rays per livery, all twenty window menu entries, three
+cutaways, nine livery/LOD selections, distinct LOD textures and separate control rows. Reviewed
+47 desktop captures and the phone default: 36 livery/LOD views, six mess-window views, both
+mess lighting states, side, pylons and default Cyan. The fleet with furnished interiors uses
+82,484 triangles in 50 draws, with unchanged 78.17 MiB decoded textures. The overlap check
+reports no exterior overlap; the existing shared room railing/baseboard overlap is 0.046 m2.
+The window patch, all 16 preview inline blocks and its budget marker match their sources.
+OpenSpec passes all 42 items. No Pi performance measurement is claimed.
 
-Windows on all decks: the Tern has 20 real openings, four on A, ten on B and six on C. The additional B/C room walls follow the existing hull with at least 0.50 m clearance; measured window returns are 0.551 to 0.560 m. The [design recipe](../../../data/ships/tern/exterior_windows_design.json) owns window stations and 42 furnishings. [The generator](../../../tools/exterior_windows.py) derives and validates the [preview patch](../../../data/ships/tern/exterior_windows.json) against the source layout and actual prop bounds. The preview shows 18 rooms and corridors, with deck selectors, a window menu, cutaways and inside views. Shared materials and two combined liner/glass batches keep the scene at 78.17 MiB for all liveries and 50 fleet-plus-interior draws. The side navigation lamps move to Z = 19 m to clear the new deck B apertures. Extra windows are baked into the existing LOD meshes and atlas sizes.
-
-The global inliner still reports the pre-existing deck-plan light-bake cache hash mismatch; this page does not use that cache.
-
-During LOD baking only, temporary graphite surfaces close the openings behind the window rims. This gives bake rays a dark window surface and prevents frame-coloured fill. These surfaces are removed before export; full-detail windows remain open into the preview interiors. The builder checks all 20 window centres against the actual packed UVs in each reduced atlas.
-
-Validation after the continuous service-channel revision: all eleven GLBs, six LOD atlases and three manifests reproduce byte for byte. The preview passes 460 opening/frame rays per livery, all deck/window controls, all nine livery/LOD selections and distinct reduced textures. Triangle geometry, normals and UVs match across all three liveries. Control rows do not overlap at desktop width. The overlap check reports no new exterior overlap; shared room railing/baseboard overlap remains 0.046 m2. The actual room corners fit the hull; OpenSpec passes all 42 items. The page's own inline blocks and budget marker match their sources. Desktop and phone captures cover all window close-ups, all decks, both lighting states, three liveries at all three LODs, lettering, the revised bow and Subhull close-ups.
-
-Cyan revision: the preferred livery is cyan blue, generated with built-in imagegen from the retained cobalt source. Matching cyan fittings and both LOD atlases were rebuilt. Cyan GLBs are 1,667,280 / 1,413,852 / 380,276 bytes, with unchanged 4,714 / 1,290 / 496 triangles and 6 / 1 / 1 draws. Cyan and the updated root catalog pass byte-for-byte rebuild checks. Browser checks pass all nine livery/LOD selections, 460 window rays, deck controls and the default Cyan selection. Sixteen desktop captures and one phone capture were inspected. Material Maker RGB is preserved exactly and painted cyan has zero emission. Texture allocation remains 78.17 MiB including interiors.
-
-The connected-subhull revision carries grey shoulder channels into vertical wall returns and around the bow. The front faces use a dedicated UV strip; command walls unfold across a wider part of the side painting so the machinery keeps its scale. All three liveries use built-in imagegen artwork, with sources and prompts linked above. The shared [detail refinement prompt](../../../tools/materials/sources/tern-connected-refinement-prompt.txt) records the smaller conduits and retained white armor. The Subhull view frames the forward deck transitions. Mess-hall window centers are now 1.50 m above the floor, 0.85 m lower, with the existing 1.70 x 0.80 m openings. Window rims are traced from the actual recessed skin, and the interior camera aims at the authored middle window.
-
-Validation of the initial connected structure and centered mess windows: all three livery sets reproduce byte for byte, including their full models, both reduced models, atlases and manifests. The overlap check reports the unchanged 0.046 m2 in shared room railings/baseboards and no exterior overlap. Reviewed 47 desktop captures (36 livery/LOD views, six mess opening views, normal/red-alert mess interiors, side, pylons and initial Cyan view), plus the phone default. The inspection page's 16 inline blocks and budget marker are current. The hull RGB still matches Material Maker exactly, with zero emission. No Pi frame-time measurement is claimed.
-
-Initial connected revision full/medium/distant GLB sizes in bytes: Copper 1,660,140 / 1,404,140 / 379,840; Cyan 1,690,368 / 1,429,808 / 384,332; Rescue 1,662,340 / 1,401,204 / 378,488. All use 4,824 / 1,290 / 496 triangles and 6 / 1 / 1 material draws. The full fleet with furnished interiors is 83,474 triangles in 50 draws; decoded textures remain 78.17 MiB.
-
-Armor coverage correction: the forward walls and bow return to broad ivory plates, with narrow grey bands and sparse upright connections. Cyan remains the preferred livery; Copper and Rescue use the same armor layout. The lower mess windows, physical service recesses, geometry and texture allocation are retained. The [exact imagegen correction prompt](../../../tools/materials/sources/tern-armor-coverage-prompt.txt) is kept with the painted sources.
-
-Final armor-restored exports: Copper 1,629,836 / 1,379,176 / 374,936; Cyan 1,664,116 / 1,413,976 / 382,524; Rescue 1,633,596 / 1,379,344 / 375,144 bytes for full/medium/distant. All three sets reproduce byte for byte. Geometry remains 4,824 / 1,290 / 496 triangles and 6 / 1 / 1 draws. The preview confirms 460 window/frame rays per livery, every deck menu and cutaway, and all nine livery/LOD selections with distinct baked textures. The fleet with interiors still totals 83,474 triangles in 50 draws and 78.17 MiB textures. OpenSpec passes all 42 items.
-
-The final armor-restored review covers 47 desktop captures and the phone default: all three liveries at each LOD, bow and service close-ups, all six mess-window angles, both interior lighting states, side and pylons. The preview inline blocks and budget marker match their sources. Geometry is unchanged from the passing 0.046 m2 shared-interior overlap check.
+Full / medium / distant GLB bytes: Copper 1,797,816 / 1,515,260 / 400,304;
+Cyan 1,878,028 / 1,563,048 / 407,632; Rescue 1,789,944 / 1,508,900 / 399,652.

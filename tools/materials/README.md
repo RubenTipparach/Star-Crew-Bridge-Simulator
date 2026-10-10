@@ -26,11 +26,26 @@ Needs Python 3 with numpy and Pillow (`pip install numpy pillow`).
 
 ## Custom exterior paint, 2026-10-10
 
-Ship linework now follows the owner's [3D projection workflow](../../CLAUDE.md#9-art-low-poly).
-The current `exterior_uv_guide.py` exports mesh edges and island coverage only. The delivered
-Tern paintings predate the projected-linework step; those UV guides are not a bake of authored
-panel lines. Future linework passes retain their hull projection source and unenhanced UV bake
-beside the enhanced texture, then use the existing Material Maker export and Blender LOD bakes.
+Ship linework follows the owner's [3D projection workflow](../../CLAUDE.md#9-art-low-poly).
+[`project_hull_paint.py`](../blender/project_hull_paint.py) builds the actual hull, projects
+ship-local seams and oblique livery bands, and bakes their color and region masks into its UVs.
+[`hull_paint_projection.json`](../../data/ships/tern/hull_paint_projection.json) owns the metre
+positions, widths and colors. The [editable Blender source](../../assets/models/exteriors/hull-paint-projection.blend),
+[unenhanced layout](sources/tern-projected-layout.png), [masks](sources/tern-projected-masks.png)
+and [3D inspection captures](../../docs/screenshots/exteriors-projection-layout/) are retained.
+The mask uses R for livery, G for seams and B for projected hull coverage. The bake checker
+compares 385 actual surface samples against the ship-local band field with zero mismatches.
+
+The source roof painting is retained in `tern-connected-cyan.png`; do not replace it with the
+new finished painting, which would make the projection depend on its own output. The current
+`exterior_uv_guide.py` exports mesh edges and island coverage as supporting guides, not as
+a replacement for authored linework. After the unenhanced layout was inspected in 3D,
+built-in imagegen enhanced its surface finish and made the two color variants. Material Maker
+exports the final paintings, then Blender bakes each reduced-detail atlas from the full model.
+`check_hull_projection.py` checks the generated colors against the retained stripe mask,
+confirms packaging preserves the rendered RGB, and rejects emissive hull paint. Run it after
+rendering and packaging the three graphs. The source, prompt, graph and resulting models are
+linked in the [asset README](../../assets/models/exteriors/README.md).
 
 The original [paint bitmap](sources/exterior-paint.png) was generated with the built-in image_gen tool. Its [complete prompt](sources/exterior-paint-prompt.txt) is committed beside it. The [exterior paint graph](ptex/exterior_paint.ptex) imports that bitmap as its editable albedo input. It supplies pearl and graphite ramps without a panel grid. Material Maker 1.4 rendered the graph at 2048 px using the owner's NVIDIA GPU; the existing post-process produced the two 128 px layers at 32 px/m. Existing layer indices remain stable; the new layers are 11 and 12, costing 174,760 bytes with mipmaps.
 
@@ -70,19 +85,20 @@ render is a commit of its own, with the contact sheet.
 
 ## Provenance
 
-The Tern hull and fittings use three built-in imagegen paintings, `sources/tern-connected-copper.png`,
-`tern-connected-cyan.png` and `tern-connected-rescue.png`. The initial connected Cyan edit is recorded
-in `tern-connected-cyan-prompt.txt`, its finer details in `tern-connected-refinement-prompt.txt`, and
-the restored broad armor panels in `tern-armor-coverage-prompt.txt`. Copper and Rescue are color edits
-of that revised Cyan painting; their exact prompts use the matching `tern-connected-<livery>-prompt.txt`
-paths. Cyan's stable graph and delivered texture filenames retain the `cobalt` suffix. All use angular
-white armor over continuous grey channels containing pipes, couplings and machinery, plus flat painted registration, with no illustrated
-windows. `sources/tern-uv-wireframe.png` and its mask come from actual mesh UV polygons in
+The Tern hull and fittings use three built-in imagegen paintings, `sources/tern-projected-copper.png`,
+`tern-projected-cyan.png` and `tern-projected-rescue.png`, with their exact edit prompts beside
+them. Cyan enhances the inspected 3D-projected bake, and Copper and Rescue recolor that result.
+Their normalized UV layouts are shared. Side walls use white armor and narrow seams, with
+painted bands wrapping over roofs, bevels and vertical walls. Mechanical detail remains on
+the roof, underside and fittings. There are no illustrated windows. Cyan's stable graph and
+delivered texture filenames retain the `cobalt` suffix.
+
+`sources/tern-uv-wireframe.png` and its mask come from actual mesh UV polygons in
 `sources/tern-uv-layout.json`, rasterized by `exterior_uv_guide.py`. The hull's dorsal UV orientation
 makes lettering readable with the bow at image top. `ptex/tern_hull.ptex`, `tern_hull_cobalt.ptex`
 and `tern_hull_rescue.ptex` share one parameterized graph builder and render at 1024 px in Material
-Maker. `exterior_decals.py` preserves their RGB and sets their emission alpha to zero, so blue
-paint cannot glow. Warp strips have a separate emissive material. Actual apertures and pale frames
+Maker. `exterior_decals.py` preserves their RGB and sets emission alpha to zero, so blue paint
+cannot glow. Warp strips have a separate emissive material. Actual apertures and pale frames
 are geometry. Earlier paintings and prompts remain as design history; the owner's Fallen Tribes
 reference textures were never changed.
 

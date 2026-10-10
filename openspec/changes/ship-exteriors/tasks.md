@@ -107,6 +107,13 @@
 - [x] Inspect the Cyan full-detail result, update all liveries and rebake LODs.
 - [x] Review final captures and verify window alignment, reproduction and budgets.
 
+## Owner correction: plated sides and projected livery
+
+- [x] Replace wide side gaps and stretched UVs with ordinary plated walls.
+- [x] Project seams and wrapping stripes on the 3D hull; retain and inspect the unenhanced bake.
+- [x] Enhance the surface finish, update all liveries and rebake both LODs.
+- [x] Validate windows, UV continuity, reproducible models and final captures.
+
 ## Separate engine implementation
 
 - [ ] Review the exterior art with the owner.

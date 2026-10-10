@@ -7,7 +7,7 @@
    "to_port": 0
   }
  ],
- "label": "Tern Connected Subhull - Rescue",
+ "label": "Tern Projected Plating - Rescue",
  "name": "Material",
  "node_position": {
   "x": 0,
@@ -21,7 +21,7 @@
     "y": 0
    },
    "parameters": {
-    "image": "../sources/tern-connected-rescue.png"
+    "image": "../sources/tern-projected-rescue.png"
    },
    "type": "image"
   },

@@ -34,3 +34,5 @@ Window-depth correction: fit the forward upper hull to the actual command rooms,
 Deliver deterministic textured GLBs, an editable Blender scene, source data and generator, a three.js inspection page and reviewed screenshots. Runtime loading, warp simulation and weapon collision changes remain proposed and require the separate implementation step in CLAUDE.md section 4.
 
 Owner correction: restore broad ivory armor on the forward side walls and bow corners. Keep connected grey channels narrow and subordinate, preserve the cyan identity paint, and retain the centered mess windows. Repaint the UV source, update all liveries and rebake both LODs.
+
+Owner correction: replace the still-wide side gaps with ordinary white hull plating and narrow panel seams. Continue the cyan identification stripe across vertical hull faces as well as the horizontal decks. Author seams and stripes on the actual hull in ship-local coordinates, inspect the 3D projection, bake to UV space, and then enhance the material finish. Retain the current window openings and approved silhouette.

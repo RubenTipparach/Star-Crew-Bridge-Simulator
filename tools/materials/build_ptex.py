@@ -416,9 +416,9 @@ def exterior_surfaces():
 
 
 def fitted_tern_hull(livery="copper"):
-    """Painted actual player hull UV islands, following the owner's Fallen Tribes workflow."""
-    g = Graph("Tern Connected Subhull - " + livery.title())
-    source = g.node("image", image=f"../sources/tern-connected-{livery}.png")
+    """Enhanced paint over linework projected on the actual player hull."""
+    g = Graph("Tern Projected Plating - " + livery.title())
+    source = g.node("image", image=f"../sources/tern-projected-{livery}.png")
     g.material(albedo=source, metallic_v=0.0, roughness_v=0.85)
     return g
 

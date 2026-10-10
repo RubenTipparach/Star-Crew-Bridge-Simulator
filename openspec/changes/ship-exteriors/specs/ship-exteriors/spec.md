@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Model-specific UV artwork
-The player exterior SHALL use original hull artwork painted against a wireframe exported from its actual UV layout, with retained editable guide and image sources.
+The player exterior SHALL use original hull artwork with seams and livery projected on the actual 3D hull, inspected there, and baked into its UV layout before texture enhancement. The editable projection, unenhanced bake, region masks, UV guide and image sources SHALL be retained.
 
 #### Scenario: Inspect the painted hull
 - **WHEN** the player hull is shown with its UV guide
@@ -86,7 +86,7 @@ The asset pipeline SHALL retain a committed generator, material provenance, an e
 - **THEN** the generated GLBs match the delivered bytes and all geometry and texture checks pass
 
 ### Requirement: Angular armor and selectable liveries
-The player exterior SHALL retain its accepted silhouette while displaying angular white armor interrupted by broad grey subhull areas, shallow modeled recesses, and registration painted directly onto the hull. It SHALL provide Copper, Cyan and Rescue liveries, each with matching full, medium and distant textures within the existing per-model budgets.
+The player exterior SHALL retain its accepted silhouette while displaying angular white armor with narrow side seams, retained dorsal mechanical breaks, and registration painted directly onto the hull. It SHALL provide Copper, Cyan and Rescue liveries, each with matching full, medium and distant textures within the existing per-model budgets.
 
 #### Scenario: Open the preferred livery
 - **WHEN** the exterior inspection page first opens
@@ -100,15 +100,16 @@ The player exterior SHALL retain its accepted silhouette while displaying angula
 - **WHEN** a livery is selected and the inspection page switches between all three detail levels
 - **THEN** its markings and armor breaks remain consistent, and the full-detail windows remain aligned with the same furnished interiors
 
-#### Scenario: Inspect the continuous mechanical subhull
-- **WHEN** the Tern is inspected along either side or its dorsal service channels
-- **THEN** the exposed grey structure reads as connected longitudinal segments containing pipes, couplings and mechanical detail, with calm white armor around it and unobstructed windows
-- **AND** both lower-detail textures preserve the same service-band layout and mechanical detail
-
-#### Scenario: Follow the subhull around a deck edge
-- **WHEN** the forward roof, stepped side walls and bow corners are inspected together
-- **THEN** grey service structure continues across horizontal and vertical surfaces through aligned returns, with visible mechanical detail and unobstructed window openings
+#### Scenario: Inspect the retained mechanical detail
+- **WHEN** the Tern is inspected from above or below
+- **THEN** the retained grey channels contain pipes, couplings and mechanical detail, with calm white armor around them
+- **AND** both lower-detail textures preserve those details and the narrow side-panel seams
 
 #### Scenario: Armor remains the dominant forward surface
 - **WHEN** the Tern is viewed from either forward quarter in any livery
-- **THEN** broad ivory armor panels SHALL dominate the command walls and bow, with narrower grey service channels and sparse upright connections retained between them.
+- **THEN** broad ivory armor panels SHALL cover the command walls and bow, separated by fine seams with no wide side service gaps or external side pipes.
+
+#### Scenario: Plate the sides and wrap the livery
+- **WHEN** the forward hull is viewed across roof and wall transitions
+- **THEN** normal ivory hull panels with narrow seams SHALL cover the side walls, and the livery stripe SHALL continue onto the vertical surfaces.
+- **AND** its layout SHALL originate from inspected 3D hull projections baked into UV space before texture enhancement and LOD baking.

@@ -7,7 +7,7 @@
    "to_port": 0
   }
  ],
- "label": "Tern Connected Subhull - Cyan",
+ "label": "Tern Projected Plating - Cyan",
  "name": "Material",
  "node_position": {
   "x": 0,
@@ -21,7 +21,7 @@
     "y": 0
    },
    "parameters": {
-    "image": "../sources/tern-connected-cyan.png"
+    "image": "../sources/tern-projected-cyan.png"
    },
    "type": "image"
   },

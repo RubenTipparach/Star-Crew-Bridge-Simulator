@@ -1,0 +1,9 @@
+{
+  "source": "data/ships/tern/hull_paint_projection.json",
+  "samples": {
+    "stripe": 14,
+    "plate": 371
+  },
+  "mismatches": 0,
+  "boundary_clearance_m": 0.3
+}

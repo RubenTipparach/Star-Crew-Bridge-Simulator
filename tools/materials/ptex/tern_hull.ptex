@@ -7,7 +7,7 @@
    "to_port": 0
   }
  ],
- "label": "Tern Connected Subhull - Copper",
+ "label": "Tern Projected Plating - Copper",
  "name": "Material",
  "node_position": {
   "x": 0,
@@ -21,7 +21,7 @@
     "y": 0
    },
    "parameters": {
-    "image": "../sources/tern-connected-copper.png"
+    "image": "../sources/tern-projected-copper.png"
    },
    "type": "image"
   },

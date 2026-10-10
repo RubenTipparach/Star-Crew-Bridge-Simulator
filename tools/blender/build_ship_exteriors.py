@@ -606,7 +606,7 @@ def surface_uv(ob, point, normal, role, rows, config, bounds):
             rect[1] + gutter + v * (rect[3] - rect[1] - 2 * gutter))
 
 
-def hero_uv(ob, point, normal, rows, bounds, config, upper_wall=False):
+def hero_uv(ob, point, normal, rows, bounds, config):
     """Artist-readable UV islands: hull deck, keel and wall."""
     za, zb = config["hero_atlas"]["longitudinal_range_m"]
     # Keep paint anchored when exterior sections are shortened or extended.
@@ -623,9 +623,8 @@ def hero_uv(ob, point, normal, rows, bounds, config, upper_wall=False):
     else:
         service_uv = config["hero_atlas"].get("side_service_uv")
         if service_uv:
-            # The command wall unfolds separately so small service details retain their scale.
-            wall_uv = config["hero_atlas"]["command_wall_uv"] if upper_wall else service_uv
-            return (float(np.interp(point.y, wall_uv["height_m"], wall_uv["u"])),
+            # One height mapping keeps side-wall paint at a consistent physical scale.
+            return (float(np.interp(point.y, service_uv["height_m"], service_uv["u"])),
                     float(np.interp(point.z, service_uv["station_m"], service_uv["v"])))
         rect = (0.63, 0.08, 0.745, 0.99)
         u, v = (point.y + 5.8) / 14, longitudinal
@@ -666,12 +665,10 @@ def prepare(p, ship, config):
                   Vector([max(v[i] for v in points) for i in range(3)]))
         colour = ob.data.color_attributes.new(name="SunBake", type="FLOAT_COLOR", domain="CORNER")
         ob.data.color_attributes.active_color = colour
+        projection = ob.data.attributes.new(name="HullProjection", type="BOOLEAN", domain="FACE")
         for poly in ob.data.polygons:
             role = ROLES[poly.material_index]
-            wall_uv = config["hero_atlas"]["command_wall_uv"]
-            face_points = [points[i] for i in poly.vertices]
-            upper_wall = (min(v.y for v in face_points) >= wall_uv["height_m"][0] - .001
-                          and min(v.z for v in face_points) >= wall_uv["from_z_m"] - .001)
+            projection.data[poly.index].value = bool(ob.get("hero_uv") and role == "bulkhead")
             row = config["materials"].get(role, config["materials"]["machinery"])
             fittings = ship.get("fittings_atlas", {}).get(role) if not (ob.get("hero_uv") and role == "bulkhead") else None
             tint = ship["livery_srgb"] if role == "accent" else row["tint_srgb"]
@@ -685,7 +682,7 @@ def prepare(p, ship, config):
                     uv[:] = surface_uv(ob, points[ob.data.loops[li].vertex_index], P(poly.normal),
                                        role, rows, config, bounds)
                 if ob.get("hero_uv") and role == "bulkhead":
-                    uv[:] = hero_uv(ob, points[ob.data.loops[li].vertex_index], P(poly.normal), rows, bounds, config, upper_wall)
+                    uv[:] = hero_uv(ob, points[ob.data.loops[li].vertex_index], P(poly.normal), rows, bounds, config)
                 elif fittings:
                     u, v, _, _ = assembly_uv(points[ob.data.loops[li].vertex_index], P(poly.normal), bounds)
                     gutter = config["hero_atlas"]["gutter_px"]/config["hero_atlas"]["px"]
