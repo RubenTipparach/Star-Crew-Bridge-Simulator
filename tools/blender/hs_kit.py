@@ -332,6 +332,7 @@ class Prop:
         self.controls = []      # the hand controls modelled on it, in words, for the manifest
         self.recesses = []      # every recess cut: (label, frame, width, height, depth, floor role)
         self.wear = None        # the wear (prop_atlas.json wear) its atlas bakes under: None takes its set's
+        self.min_px_per_m = None   # a texel density its atlas must reach, over the atlas's own minimum: None for none
         self.decor = []         # the prop's own details for its atlas bake: functions of a Detail, run first
         self.finish_of = {}     # a role baked in another finish than prop_atlas.json roles names
 
@@ -1057,11 +1058,13 @@ def _unfold(groups, bm, max_len):
 
 def atlas_uv(p, A):
     """The atlas UV (atlas_uv_at) in the smallest square, from atlas.px doubling up to px_max, that
-    gives the prop at least min_px_per_m. Returns its facts with the square's size, px."""
+    gives the prop at least min_px_per_m, or the prop's own min_px_per_m where it names a higher one (a
+    machine worked at arm's length, as a service bay is). Returns its facts with the square's size, px."""
     side = A["atlas"]["px"]
+    need = max(A["atlas"]["min_px_per_m"], p.min_px_per_m or 0)
     while True:
         facts = atlas_uv_at(p, A, side)
-        if facts["px_per_m"] >= A["atlas"]["min_px_per_m"] or side >= A["atlas"]["px_max"]:
+        if facts["px_per_m"] >= need or side >= A["atlas"]["px_max"]:
             facts["px"] = side
             return facts
         p.body.data.uv_layers.remove(p.body.data.uv_layers[ATLAS_UV])

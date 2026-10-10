@@ -94,16 +94,16 @@
         "union terminal_box (1)",
         "difference lid_bay (6)"
       ],
-      "sha256": "de72d79469815ebeafbc6c5d46d588fd26a23882e6372b839cf5edc54444fe83",
+      "sha256": "a63606c22912190f1e525d5e36d6c93a94c780a72280beb9d2f8ee03d8ce4c9d",
       "atlas": {
         "file": "atlas/coolant_pump_svc.png",
-        "px": 256,
-        "px_per_m": 52.6,
+        "px": 512,
+        "px_per_m": 115.25,
         "charts": 70,
-        "cover": 0.548,
+        "cover": 0.658,
         "glow": 0.0002,
-        "sha256": "43abbaf1c31e20a59da72a68ef94b9423f36be95ee05101a7637a10c3e921582",
-        "bytes": 26218
+        "sha256": "e1c6e17976babbd085eafa5ee8800b38754adf6a36b52453bb419da77a94f0f1",
+        "bytes": 63947
       }
     },
     "local_panel_svc": {
@@ -173,16 +173,16 @@
         "difference screen (1)",
         "difference door_bay (6)"
       ],
-      "sha256": "7a54e010036f6569183380d7e705aebc96f729d7f992acc187b3ccfddd511d8f",
+      "sha256": "651d1d7f1980a253703b4977e6929c0f6269d3e88d7bd4aa76df1caae9eb6825",
       "atlas": {
         "file": "atlas/local_panel_svc.png",
-        "px": 256,
-        "px_per_m": 96.25,
+        "px": 512,
+        "px_per_m": 128.0,
         "charts": 33,
-        "cover": 0.709,
-        "glow": 0.0202,
-        "sha256": "879ed1195b2975f06d8a3b0f2ed8ba7f7af2417ce9b838844d4f2aed172242d1",
-        "bytes": 14798
+        "cover": 0.313,
+        "glow": 0.0052,
+        "sha256": "8a1505074a98510f89bab6a874de8d23089afabc29b86c88247a6420449958bd",
+        "bytes": 20158
       }
     },
     "coolant_pump_svc_hw": {

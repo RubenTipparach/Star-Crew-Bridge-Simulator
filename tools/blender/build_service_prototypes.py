@@ -77,6 +77,10 @@ PARTS = {
     "cap_47u_35v": {"type": "Capacitor", "rating": "47 \u00b5F 35 V", "model": "part_cap"},
 }
 BROKEN = {"coolant_pump_svc": "part_relay_burnt", "local_panel_svc": "part_cap_bulged"}
+# A bay is worked kneeling at arm's length, so its machine's atlas reaches this density (a texel 1 cm): at the set's
+# 52 px/m the cover's seat, 3.5 cm wide, was two blotchy texels across (the owner, 2026-10-10: "The frame around the
+# open panel").
+BAY_PX_PER_M = 100
 COVER_T = 0.012       # the cover's thickness, and the rebate's depth: it sits flush
 HOLE_R = 0.0042       # a tapped hole in the rebate, under each screw
 
@@ -109,6 +113,17 @@ def cut_bay(p, bay, label):
         cuts.append(p.box(f"{label}_tap_{k}", (-HOLE_R, -HOLE_R, -COVER_T - 0.03), (HOLE_R, HOLE_R, 0.02), "machinery",
                           m=m @ Matrix.Translation((x, y, 0.0))))
     p.cut(p.body, f"{label}_bay", cuts)
+
+    def decor(D):
+        """The cover's seat, the rebate's walls and the bay's walls, machined steel (a flat finish: no rust or edge wear),
+        so the frame round the open bay reads as one clean part (the owner, 2026-10-10: "The frame around the open
+        panel"). The bay's floor, behind the hardware's plate, keeps its paint."""
+        inv = m.inverted()
+        for R in regions(D, lambda R: R.role in ("trim", "machinery")):
+            q = inv @ R.origin
+            if abs(q.x) <= w / 2 + 0.001 and abs(q.y) <= h / 2 + 0.001 and -COVER_T - bay["depth_m"] - 0.001 <= q.z <= 0.001:
+                whole(D, R, "machined")
+    p.decor.append(decor)
 
 
 # ----------------------------------------------------------------------------- the hardware in the bays (design 3d)
@@ -312,6 +327,7 @@ def coolant_pump_svc():
     p.union(p.body, "terminal_box", [box])
     cut_bay(p, BAYS["coolant_pump_svc"], "lid")
     p.presents = "Prototype (repairs-on-deck 3c, 3e): the coolant pump with its motor terminal box's lid bay built in"
+    p.min_px_per_m = BAY_PX_PER_M
     return p
 
 
@@ -322,6 +338,7 @@ def local_panel_svc():
     p.name = "local_panel_svc"
     cut_bay(p, BAYS["local_panel_svc"], "door")
     p.presents = "Prototype (repairs-on-deck 3c, 3e): the local control cabinet with a service door bay in its back"
+    p.min_px_per_m = BAY_PX_PER_M
     return p
 
 

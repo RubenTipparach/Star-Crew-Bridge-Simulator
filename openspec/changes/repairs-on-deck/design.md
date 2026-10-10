@@ -253,11 +253,18 @@ rectangles within 10% of the smallest, the one most of the chart's own triangle 
 face is square again (measured off the built glb). The other prop sets take the same rule at their next build; they are
 not rebuilt here (the cloud session's Blender is 4.5.4 against their 4.5.14, which changes their bytes regardless).
 
+**The frame round the open bay.** The owner, next: "The frame around the open panel". At the set's 52 px per metre a
+texel was 2 cm, so the cover's seat (3.5 cm wide) was two blotchy texels of rust and worn edges. A machine with a bay is
+worked kneeling at arm's length, so its atlas reaches 100 px per metre (`Prop.min_px_per_m`; the pump's atlas is
+512 px at 115, the cabinet's 512 at 128), and the seat, the rebate's walls and the bay's walls take `machined`, a flat
+steel finish (`prop_atlas.json`) with no rust or edge wear: a seat a gasket presses on is clean. The box's painted face
+round it keeps the working wear.
+
 **Pi 5 cost** (measured on the build, 2026-10-10). The machines are back to their own meshes: the pump 662 triangles,
 the cabinet 336. The hardware props: the pump's terminal box 828, the cabinet's board 718. The parts: a relay 12 (new
 or burnt), a capacitor 36 new and 56 bulged. A bay's hardware is one more draw while its cover is off (none while it is
 on: the cover hides it, and the deck culls it with the cover's state), and one atlas per prop as every prop has
-(256 x 256). A part is one draw while it is out of its seat or in the tray, and is drawn with the hardware's batch when
+(256 x 256, the two machines 512 x 512: 1.4 MB with mips each, against 0.35 MB at 256). A part is one draw while it is out of its seat or in the tray, and is drawn with the hardware's batch when
 seated. The plate stands 8 mm off the bay's floor, so its face is over 1 cm from it (CLAUDE.md 8).
 
 **The screen while docked.** The panel covers the middle of the screen (1280 x 720 on a 1920 x 1080 output, or 2/3
