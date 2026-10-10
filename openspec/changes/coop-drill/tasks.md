@@ -14,10 +14,10 @@ The owner asked for implementation on 2026-10-10 (proposal). Progress and findin
 
 ## 3. Network
 
-- [ ] 3.1 `sc-net` messages: codec, validation, the unreliable header; round-trip and rejection tests.
-- [ ] 3.2 `sc-net` transport: `str0m` on a network thread, server and client; LAN signalling (`POST /rtc`) and `GET /status`.
-- [ ] 3.3 `sc-server --drill drill-hound`: seats, automation, snapshots at 20 Hz, the drill's loop; the loss and delay test option.
-- [ ] 3.4 An in-process test: a server and two bot clients over loopback finish a drill.
+- [x] 3.1 `sc-net` messages: codec, validation, the unreliable header; round-trip and rejection tests.
+- [x] 3.2 `sc-net` transport: `str0m` on a network thread, server and client; LAN signalling (`POST /rtc`) and `GET /status`.
+- [x] 3.3 `sc-server --drill drill-hound`: seats, automation, snapshots at 20 Hz, the drill's loop; the loss and delay test option.
+- [x] 3.4 An in-process test: a server and two bot clients over loopback finish a drill.
 
 ## 4. Client
 

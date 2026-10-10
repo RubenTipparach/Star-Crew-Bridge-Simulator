@@ -30,3 +30,14 @@ Newest last. What was done, what was found, on which machine and commit.
 
   Tactical alone fires no missile: without a helm the bow is never on the Hound, which is the co-op point of the
   drill. Tests pin the first and last rows.
+- `sc-net` (messages, link, the `str0m` transport, the client session) and `sc-server` (the drill server as a
+  library and a binary) built on Pi 1 (tasks 3.1-3.4). Findings while building:
+  - `str0m` 0.24.1's default features pull `aws-lc-sys`, a large C build; `default-features = false` with
+    `rust-crypto` is pure Rust and built on the Pi with no extra packages.
+  - Each peer gets its own UDP socket on a random port, as `str0m`'s `http-post` example does, rather than one shared
+    7701 port: no demultiplexing to write, and on a LAN no firewall is in the way. Design 4.2 says 7701; the server
+    listens on 7700 TCP only, and the UDP ports are whatever the OS gives.
+  - Channels are opened in band (DCEP) by the client with labels, rather than pre-negotiated by id; the server maps
+    them by label. Simpler for a first cut; the 8-byte header still rides on the unreliable ones.
+  - `tests/lan_drill.rs`: a server and two bot clients over loopback WebRTC win the drill, and win it again with
+    10 % loss and 50 ms of delay on the unreliable channels (19 s for both, the server at four times real speed).

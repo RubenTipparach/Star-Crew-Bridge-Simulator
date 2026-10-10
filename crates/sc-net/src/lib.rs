@@ -7,4 +7,5 @@
 
 pub mod link;
 pub mod msg;
+pub mod session;
 pub mod transport;

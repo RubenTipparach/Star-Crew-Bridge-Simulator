@@ -1579,6 +1579,7 @@ version = "0.1.0"
 dependencies = [
  "sc-core",
  "sc-net",
+ "serde_json",
 ]
 
 [[package]]
