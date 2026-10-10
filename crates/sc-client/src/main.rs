@@ -1365,18 +1365,24 @@ fn main() -> ExitCode {
     let shots = shots.or(walk_dir).or(lobby_dir);
     // The co-op drill (openspec/changes/coop-drill design 5): its own mode, joined by address.
     if let Some(server) = args.iter().position(|a| a == "--connect").and_then(|i| args.get(i + 1)).cloned() {
+        // `--watch`: join with no station and watch the bridge (coop-drill design 9's overview).
+        let watch = args.iter().any(|a| a == "--watch");
         let station = args.iter().position(|a| a == "--station").and_then(|i| args.get(i + 1));
-        let Some(station) = station.map(String::as_str).and_then(sc_core::combat::Station::from_id) else {
-            eprintln!("sc-client: --connect needs --station helm or tactical");
+        let station = station.map(String::as_str).and_then(sc_core::combat::Station::from_id);
+        let station = if watch { station.or(Some(sc_core::combat::Station::Helm)) } else { station };
+        let Some(station) = station else {
+            eprintln!("sc-client: --connect needs --station helm or tactical (or --watch)");
             return ExitCode::from(2);
         };
         let bot = args.iter().any(|a| a == "--bot");
-        let name = args
-            .iter()
-            .position(|a| a == "--name")
-            .and_then(|i| args.get(i + 1))
-            .cloned()
-            .unwrap_or_else(|| format!("{} officer{}", station.name(), if bot { " (bot)" } else { "" }));
+        let name =
+            args.iter().position(|a| a == "--name").and_then(|i| args.get(i + 1)).cloned().unwrap_or_else(|| {
+                if watch {
+                    "Observer".into()
+                } else {
+                    format!("{} officer{}", station.name(), if bot { " (bot)" } else { "" })
+                }
+            });
         let cfg = WindowConfig {
             title: "Star Crew: drill".into(),
             width: 1920,
@@ -1385,7 +1391,7 @@ fn main() -> ExitCode {
             headless,
             vsync: !headless,
         };
-        let dargs = drill::DrillArgs { server, station, name, bot, shots };
+        let dargs = drill::DrillArgs { server, station, name, bot: bot && !watch, shots, watch };
         return platform::run(cfg, move |gl| {
             println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);
             drill::DrillApp::new(dargs).map(|c| Box::new(c) as Box<dyn App>)

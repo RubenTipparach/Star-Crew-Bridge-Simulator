@@ -54,6 +54,8 @@ pub struct DrillArgs {
     pub bot: bool,
     /// Where captures go, for the scripted shots.
     pub shots: Option<PathBuf>,
+    /// Join with no station and watch the bridge from its overview (`--watch`).
+    pub watch: bool,
 }
 
 struct Meshes {
@@ -165,6 +167,7 @@ impl DrillApp {
         let host = if args.server.contains(':') { args.server.clone() } else { format!("{}:7700", args.server) };
         let addr = host.to_socket_addrs().ok().and_then(|mut a| a.find(SocketAddr::is_ipv4));
         let bot = args.bot.then(|| Bot::new(&data, args.station));
+        let args_watch = args.watch;
         let mut app = Self {
             r,
             target,
@@ -192,7 +195,7 @@ impl DrillApp {
             shot_round: None,
             done: false,
             bridge: None,
-            overview: false,
+            overview: args_watch,
             walk_seen: (None, None),
         };
         match crate::drill_bridge::BridgeView::load(&mut app.r, std::path::Path::new("compiled/tern.deck")) {
@@ -215,7 +218,7 @@ impl DrillApp {
             addr,
             &self.args.name,
             self.args.bot,
-            Some(self.args.station),
+            (!self.args.watch).then_some(self.args.station),
             Impair::default(),
             self.time_s.to_bits(),
         ) {
@@ -663,17 +666,20 @@ impl App for DrillApp {
         let mut bridge_ui = None;
         if on_bridge {
             let own = walking && !self.overview && !shot_overview;
+            // Its own body is not drawn from its own eye, nor a watcher's anywhere (it only watches).
+            let hide_me = own || self.args.watch;
             let (eye, yaw, pitch) = match (own, mine) {
                 (true, Some(b)) => (crate::drill_bridge::eye_of(&b), b.yaw, -0.12),
                 _ => crate::drill_bridge::overview(),
             };
             if let Some(bv) = &self.bridge {
-                let vp = bv.draw(&mut self.r, &self.target, &self.exterior, eye, yaw, pitch, aspect, &bodies, me, own);
+                let vp =
+                    bv.draw(&mut self.r, &self.target, &self.exterior, eye, yaw, pitch, aspect, &bodies, me, hide_me);
                 let (w, h) = (720.0 * aspect, 720.0);
                 let crew = self.session.as_ref().map(|s| s.crew.clone()).unwrap_or_default();
                 let labels = bodies
                     .iter()
-                    .filter(|(b, _)| !(own && Some(b.slot) == me))
+                    .filter(|(b, _)| !(hide_me && Some(b.slot) == me))
                     .filter_map(|(b, _)| {
                         let head = [b.pos[0], b.pos[1] + 2.05, b.pos[2]];
                         let at = crate::drill_bridge::project(vp, eye, head, w, h)?;

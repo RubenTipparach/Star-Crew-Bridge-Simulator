@@ -126,9 +126,10 @@ pub fn eye_of(b: &BodySnap) -> [f64; 3] {
     [f64::from(b.pos[0]), f64::from(b.pos[1] + up), f64::from(b.pos[2])]
 }
 
-/// The overview: from high on the bridge's back wall, looking forward and down at the seats.
+/// The overview: from high at the bow end of the bridge, under the viewscreen, looking aft and down over the seats to
+/// the muster point at the back, so every body is in view from the moment it joins.
 pub fn overview() -> ([f64; 3], f32, f32) {
-    ([0.0, 6.3, 20.4], 0.0, -0.42)
+    ([0.0, 6.2, 31.8], std::f32::consts::PI, -0.40)
 }
 
 /// Bodies between two snapshots (the 100 ms behind, as the ships are): positions and headings blended by `f`.
