@@ -14,6 +14,10 @@
 - [x] 1.5 Design 3c prototypes: the coolant pump's terminal box and the valve cabinet's back door built into their
   meshes (`tools/blender/build_service_prototypes.py`, `assets/models/service_proto/`), covers and screws as their
   own props placed from `service.json`; `docs/mockups/service-panels.html` with shots.
+- [x] 1.7 Design 3d prototypes: the hardware modelled into both bays (the terminal box's rail, blocks, fuses,
+  contactor, relay and wires; the board's parts on a bare-board bake whose part list places them), the parts written
+  to `service.json` as hit targets, the faulty one broken and smoking; `service-panels.html` lights a part under the
+  pointer, says a sound one tests fine, and opens the 2D game from the faulty one; shots.
 - [ ] 1.6 After the owner approves 1.5: the bays in the engineering props' builds, and the repair page docking at
   the side or back where they are.
 

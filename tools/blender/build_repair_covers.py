@@ -12,7 +12,7 @@ is data/materials/repair_covers.json.
 
 Run, with Pillow and numpy beside bpy (pip install bpy==4.5.4 pillow numpy):
   <python with the bpy module> tools/blender/build_repair_covers.py [--samples N] [--only interior_circuit,...]
-  --only renders only these targets (cover_<finish>, interior_<kind>); the rest keep their files and entries
+  --only renders only these targets (cover_<finish>, interior_<kind>, board_circuit); the rest keep their files and entries
 
 Panel space: x right, y up, z out of the face, metres, the plate centred on (0, 1).
 
@@ -128,6 +128,16 @@ def build_cover(P, d):
 # every part has a white silkscreen outline and its designator.
 
 BOARD_Z = 0.0035            # the board's top face
+# The bare board (design 3d): BARE leaves the raised parts off the circuit bake (its traces, pads, vias, silkscreen and
+# fingers stay), and PARTS records where each part sits, so the machine's build stands real ones there.
+BARE = False
+PARTS = []
+
+
+def part(pid, label, kind, cx, cy, w, h, height, finish, click=True, **extra):
+    """Record one raised part of the board, in the bake's panel space (centred on (0, 1)): its box from the board."""
+    PARTS.append(dict({"id": pid, "label": label, "kind": kind, "x_m": round(cx, 4), "y_m": round(cy - 1.0, 4), "w_m": round(w, 4),
+                       "h_m": round(h, 4), "height_m": round(height, 4), "finish": finish, "click": click}, **extra))
 MOVES = {"n": (0, 1), "s": (0, -1), "e": (1, 0), "w": (-1, 0), "ne": (1, 1), "nw": (-1, 1), "se": (1, -1), "sw": (-1, -1)}
 
 
@@ -176,8 +186,10 @@ def qfp(P, cx, cy, size, n, label):
     """A square chip with n pins a side: the body, gull-wing pins on all four sides, a pin-1 dot. Returns each
     side's pin tips (left, right, top, bottom), where its traces start."""
     h = size / 2
-    P.box("chip", (cx - h, cy - h, BOARD_Z), (cx + h, cy + h, BOARD_Z + 0.004), "upholstery_panel", bevel=0.0012)
-    P.cyl("pin1", "z", (cx - h + 0.007, cy + h - 0.007), 0.0025, BOARD_Z + 0.004, BOARD_Z + 0.0046, "paint2", sides=12)
+    part(label, {"U1": "Processor U1", "U4": "Valve driver U4"}.get(label, label), "chip", cx, cy, size, size, 0.004, "dark")
+    if not BARE:
+        P.box("chip", (cx - h, cy - h, BOARD_Z), (cx + h, cy + h, BOARD_Z + 0.004), "upholstery_panel", bevel=0.0012)
+        P.cyl("pin1", "z", (cx - h + 0.007, cy + h - 0.007), 0.0025, BOARD_Z + 0.004, BOARD_Z + 0.0046, "paint2", sides=12)
     pitch = (size - 0.012) / (n - 1)
     out = 0.006
     tips = {"l": [], "r": [], "t": [], "b": []}
@@ -196,8 +208,10 @@ def qfp(P, cx, cy, size, n, label):
 
 def soic(P, cx, cy, w, h, n, label):
     """A long chip with n pins along its top and bottom sides. Returns the top and bottom pin tips."""
-    P.box("chip", (cx - w / 2, cy - h / 2, BOARD_Z), (cx + w / 2, cy + h / 2, BOARD_Z + 0.004), "upholstery_panel", bevel=0.001)
-    P.cyl("pin1", "z", (cx - w / 2 + 0.005, cy - h / 2 + 0.005), 0.0018, BOARD_Z + 0.004, BOARD_Z + 0.0046, "paint2", sides=10)
+    part(label, "Memory " + label, "chip", cx, cy, w, h, 0.004, "dark")
+    if not BARE:
+        P.box("chip", (cx - w / 2, cy - h / 2, BOARD_Z), (cx + w / 2, cy + h / 2, BOARD_Z + 0.004), "upholstery_panel", bevel=0.001)
+        P.cyl("pin1", "z", (cx - w / 2 + 0.005, cy - h / 2 + 0.005), 0.0018, BOARD_Z + 0.004, BOARD_Z + 0.0046, "paint2", sides=10)
     pitch = (w - 0.008) / (n - 1)
     tips = {"t": [], "b": []}
     for k in range(n):
@@ -218,14 +232,17 @@ def chip_part(P, cx, cy, w, h, role):
 
 def can(P, x, y, r, label):
     """An electrolytic capacitor from above: the blue sleeve's rim, the aluminium top with its pressed vent cross,
-    the polarity stripe, and its silkscreen ring."""
+    the polarity stripe, and its silkscreen ring (only the ring on the bare board)."""
+    part(label, "Capacitor " + label, "can", x, y, 2 * r, 2 * r, 0.02, "blue")
+    wp.ring(P, "silk_can", x, y, r + 0.003, r + 0.0018, BOARD_Z, BOARD_Z + 0.0005, "stencil", sides=28)
+    P.text(label, x + r + 0.002, y + r - 0.004, 0.009, z=BOARD_Z)
+    if BARE:
+        return
     P.cyl("can", "z", (x, y), r, BOARD_Z, BOARD_Z + 0.02, "upholstery", sides=24, bevel=0.0015)
     top = P.cyl("can_top", "z", (x, y), r * 0.86, BOARD_Z + 0.02, BOARD_Z + 0.0208, "paint2", sides=24)
     P.cut(top, "vent", [P.box("vent", (x - r * 0.55, y - 0.0007, BOARD_Z + 0.0203), (x + r * 0.55, y + 0.0007, BOARD_Z + 0.03), "machinery"),
                         P.box("vent", (x - 0.0007, y - r * 0.55, BOARD_Z + 0.0203), (x + 0.0007, y + r * 0.55, BOARD_Z + 0.03), "machinery")])
     P.box("stripe", (x - r, y - r * 0.4, BOARD_Z), (x - r * 0.82, y + r * 0.4, BOARD_Z + 0.0202), "stencil")
-    wp.ring(P, "silk_can", x, y, r + 0.003, r + 0.0018, BOARD_Z, BOARD_Z + 0.0005, "stencil", sides=28)
-    P.text(label, x + r + 0.002, y + r - 0.004, 0.009, z=BOARD_Z)
 
 
 def interior_circuit(P, d):
@@ -240,13 +257,17 @@ def interior_circuit(P, d):
     P.cut(board, "mount_holes", [P.cyl("hole", "z", hp, 0.0034, -0.01, 0.01, "machinery", sides=16, smooth=False) for hp in holes])
     for hx, hy in holes:
         wp.ring(P, "mount_pad", hx, hy, 0.0072, 0.0034, BOARD_Z, BOARD_Z + 0.0008, "trim", sides=20)
-        P.cyl("screw", "z", (hx, hy), 0.0045, BOARD_Z, BOARD_Z + 0.003, "paint2", sides=12, bevel=0.0008)
+        part(f"MH{len([q for q in PARTS if q['kind'] == 'screw']) + 1}", "Mounting screw", "screw", hx, hy, 0.009, 0.009, 0.003, "bolt", click=False)
+        if not BARE:
+            P.cyl("screw", "z", (hx, hy), 0.0045, BOARD_Z, BOARD_Z + 0.003, "paint2", sides=12, bevel=0.0008)
     # The processor, its memory, a driver, the crystal.
     U1 = qfp(P, -0.06, 1.0, 0.07, 10, "U1")   # a pin every 6.4 mm, so the traces read apart
     U2 = soic(P, 0.075, 1.085, 0.06, 0.026, 8, "U2")
     U3 = soic(P, 0.075, 0.93, 0.06, 0.026, 8, "U3")
     U4 = qfp(P, -0.2, 1.135, 0.036, 5, "U4")
-    P.box("xtal", (-0.075, 0.885, BOARD_Z), (-0.045, 0.897, BOARD_Z + 0.004), "paint2", bevel=0.0035)
+    part("Y1", "Crystal Y1", "chip", -0.06, 0.891, 0.03, 0.012, 0.004, "steel")
+    if not BARE:
+        P.box("xtal", (-0.075, 0.885, BOARD_Z), (-0.045, 0.897, BOARD_Z + 0.004), "paint2", bevel=0.0035)
     silk_box(P, -0.06, 0.891, 0.036, 0.018, "Y1", ly=0.902)
     # Buses with 45 degree bends: the processor's right side to the memory, its top to the header, its left to the
     # driver, its bottom to the edge fingers.
@@ -275,14 +296,18 @@ def interior_circuit(P, d):
         P.box("finger", (fx - 0.0018, by0, BOARD_Z), (fx + 0.0018, by0 + 0.022, BOARD_Z + 0.0008), "trim")
     # Power: a regulator on its heatsink, two inductors and the capacitors round them, with wide traces.
     hx0, hx1, hy0, hy1 = 0.175, 0.25, 1.06, 1.17
-    P.box("sink_base", (hx0, hy0, BOARD_Z), (hx1, hy1, BOARD_Z + 0.004), "upholstery_panel", bevel=0.001)
-    for k in range(10):
+    part("Q1", "Regulator Q1", "heatsink", (hx0 + hx1) / 2, (hy0 + hy1) / 2, hx1 - hx0, hy1 - hy0, 0.032, "dark", fins=10)
+    for k in range(10 if not BARE else 0):
         x = hx0 + 0.004 + k * (hx1 - hx0 - 0.008) / 9
         P.box("fin", (x - 0.002, hy0, BOARD_Z + 0.004), (x + 0.002, hy1, BOARD_Z + 0.032), "upholstery_panel", bevel=0.0008)
+    if not BARE:
+        P.box("sink_base", (hx0, hy0, BOARD_Z), (hx1, hy1, BOARD_Z + 0.004), "upholstery_panel", bevel=0.001)
     silk_box(P, (hx0 + hx1) / 2, (hy0 + hy1) / 2, hx1 - hx0 + 0.006, hy1 - hy0 + 0.006, "Q1")
     for lx, ly, lab in ((0.165, 0.95, "L1"), (0.165, 0.88, "L2")):
-        P.box("inductor", (lx - 0.016, ly - 0.016, BOARD_Z), (lx + 0.016, ly + 0.016, BOARD_Z + 0.012), "upholstery_panel", bevel=0.003)
-        P.text("100", lx - 0.009, ly - 0.004, 0.009, z=BOARD_Z + 0.012)
+        part(lab, "Inductor " + lab, "chip", lx, ly, 0.032, 0.032, 0.012, "dark")
+        if not BARE:
+            P.box("inductor", (lx - 0.016, ly - 0.016, BOARD_Z), (lx + 0.016, ly + 0.016, BOARD_Z + 0.012), "upholstery_panel", bevel=0.003)
+            P.text("100", lx - 0.009, ly - 0.004, 0.009, z=BOARD_Z + 0.012)
         silk_box(P, lx, ly, 0.038, 0.038, lab)
     for x, y, lab in ((0.225, 0.985, "C1"), (0.225, 0.935, "C2"), (0.225, 0.885, "C3"), (-0.215, 0.98, "C4"), (-0.215, 0.925, "C5")):
         can(P, x, y, 0.014, lab)
@@ -297,16 +322,21 @@ def interior_circuit(P, d):
         P.text("R" + str(int(sx * 100 + 30)), sx - 0.004, sy + 0.006, 0.0075, z=BOARD_Z)
     # The header at the top edge and its wires, the LEDs, test points, the board's name.
     jx0, jx1 = 0.0, 0.11
-    P.box("header", (jx0, 1.172, BOARD_Z), (jx1, 1.198, BOARD_Z + 0.014), "upholstery_panel", bevel=0.0015)
-    for k in range(8):
-        for row in (1.179, 1.191):
-            P.box("hpin", (jx0 + 0.007 + k * 0.0135 - 0.0018, row - 0.0018, BOARD_Z + 0.014), (jx0 + 0.007 + k * 0.0135 + 0.0018, row + 0.0018, BOARD_Z + 0.016), "trim")
-    for k in range(4):
-        x = jx0 + 0.02 + k * 0.024
-        P.cable("wire", [(x, 1.19, 0.018), (x + 0.003, 1.205, 0.03), (x + 0.008 * (k - 1.5), 1.25, 0.03)], 0.0036, "walk" if k % 2 else "rubber")
+    part("J1", "Header J1", "header", (jx0 + jx1) / 2, 1.185, jx1 - jx0, 0.026, 0.014, "dark", wires=4)
+    if not BARE:
+        P.box("header", (jx0, 1.172, BOARD_Z), (jx1, 1.198, BOARD_Z + 0.014), "upholstery_panel", bevel=0.0015)
+        for k in range(8):
+            for row in (1.179, 1.191):
+                P.box("hpin", (jx0 + 0.007 + k * 0.0135 - 0.0018, row - 0.0018, BOARD_Z + 0.014), (jx0 + 0.007 + k * 0.0135 + 0.0018, row + 0.0018, BOARD_Z + 0.016), "trim")
+        for k in range(4):
+            x = jx0 + 0.02 + k * 0.024
+            P.cable("wire", [(x, 1.19, 0.018), (x + 0.003, 1.205, 0.03), (x + 0.008 * (k - 1.5), 1.25, 0.03)], 0.0036, "walk" if k % 2 else "rubber")
     silk_box(P, (jx0 + jx1) / 2, 1.185, jx1 - jx0 + 0.006, 0.032, "J1", lx=jx1 + 0.004, ly=1.18)
-    P.box("led", (-0.245, 1.172, BOARD_Z), (-0.236, 1.18, BOARD_Z + 0.004), "accent", bevel=0.001)
-    P.box("led", (-0.23, 1.172, BOARD_Z), (-0.221, 1.18, BOARD_Z + 0.004), "amber", bevel=0.001)
+    part("D1", "Power LED D1", "chip", -0.2405, 1.176, 0.009, 0.008, 0.004, "led_green", click=False)
+    part("D2", "Activity LED D2", "chip", -0.2255, 1.176, 0.009, 0.008, 0.004, "led_amber", click=False)
+    if not BARE:
+        P.box("led", (-0.245, 1.172, BOARD_Z), (-0.236, 1.18, BOARD_Z + 0.004), "accent", bevel=0.001)
+        P.box("led", (-0.23, 1.172, BOARD_Z), (-0.221, 1.18, BOARD_Z + 0.004), "amber", bevel=0.001)
     P.text("PWR ACT", -0.247, 1.185, 0.0085, z=BOARD_Z)
     for tx, ty in ((-0.12, 0.83), (0.11, 1.0), (-0.24, 1.07), (0.05, 0.825)):
         wp.ring(P, "testpoint", tx, ty, 0.0045, 0.002, BOARD_Z, BOARD_Z + 0.0009, "trim", sides=16)
@@ -383,6 +413,7 @@ def render(d, name, F, role_colour, build):
         wp.reset(R, R["mask_samples"] if mask else (SAMPLES or R["samples"]), res, mask=mask)
         wp.make_materials(F, False, streaky=False, role_colour=role_colour)
         P = wp.Panel(name)
+        PARTS.clear()   # the part list is the last build's: render builds twice (the beauty and the mask)
         result = build(P, d)
         wp.camera(0.0, 1.0, d["size_m"][0], res)
         wp.check_roles(name)
@@ -433,10 +464,23 @@ def main():
         raw, _ = render(d, f"interior_{kind}", F, inner["kinds"][kind]["roles"], lambda P, d, b=INTERIOR_BUILDERS[kind]: b(P, d))
         interiors[kind] = write(d, f"interior_{kind}", raw)
         print(f"[covers] {interiors[kind]['file']}")
+    # The bare board (design 3d): the circuit without its raised parts, and where each part sits, for the machines.
+    global BARE
+    boards = {}
+    if not only or "board_circuit" in only:
+        BARE = True
+        PARTS.clear()
+        F = {"colours_srgb": copy.deepcopy(inner["colours_srgb"]), "wear": inner["wear"]}
+        raw, _ = render(d, "board_circuit", F, inner["kinds"]["circuit"]["roles"], interior_circuit)
+        BARE = False
+        boards["circuit"] = dict(write(d, "board_circuit", raw), frame_m=d["size_m"], parts=list(PARTS))
+        print(f"[covers] {boards['circuit']['file']}: {len(PARTS)} parts")
+    else:
+        boards = old.get("boards", {})
     man = {"schema": "starcrew.repair-covers-built/1", "source": os.path.relpath(DATA, ROOT),
            "built_by": os.path.relpath(__file__, ROOT), "size_m": d["size_m"],
            "versions": {"blender": wp.bpy.app.version_string, "pillow": PIL.__version__, "numpy": wp.np.__version__},
-           "covers": covers, "interiors": interiors}
+           "covers": covers, "interiors": interiors, "boards": boards}
     with open(os.path.join(OUT, "covers.json"), "w", encoding="utf-8") as f:
         json.dump(man, f, indent=2)
         f.write("\n")

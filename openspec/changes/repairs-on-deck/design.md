@@ -164,6 +164,44 @@ the prototypes, the bays move into the engineering props' builds and the repair 
 24; the interior face is one of the machine's existing faces with the interior texture of 3b. No draw call is added
 for the bay; the cover and screws are one draw each while the cover is off its seat.
 
+### 3d. Real hardware in the bay, and clicking the faulty part (owner, 2026-10-10)
+
+The owner, on 3c's prototypes: "Did you integrate the repair visuals into the models? The mini games being 2d UI
+works fine. But the repair part where you open a panel and click on some hardware should be what we are aiming for."
+They were not: 3c's bay shows 3b's insides as a flat picture on its back wall. So the bay holds modelled hardware,
+part of the machine's own mesh, and the repair starts by clicking a piece of it:
+
+1. **The hardware is geometry.** Each piece is modelled into the bay and unioned into the machine's mesh, its colours
+   painted into the machine's atlas from the set's finishes (`prop_atlas.json`). The pump's motor terminal box: a DIN
+   rail of terminal blocks (two blue for the neutral), three fuses, a contactor and a relay, with the wires from the
+   blocks gathered into a loom that leaves at the bottom. The valve cabinet: a circuit board on standoffs carrying
+   its processor, memory, a driver, a crystal, capacitors, inductors, a regulator on its heatsink, a header with its
+   wires and two LEDs.
+2. **Where texture still serves.** A prop's atlas is 50-100 px per metre, too coarse for a board's 3 mm traces. So the
+   board's top is a recorded face (`shows: board_circuit`) carrying a bake of the bare board (3b's board without its
+   parts: traces, pads, vias, silkscreen and the edge fingers), and the parts stand on it as geometry. The bake
+   writes where each part sits (`covers.json` `boards`), and the machine's build places the parts from that list, so
+   the traces always meet the parts. The terminal box needs no texture.
+3. **Every part is a hit target.** The build writes each piece of hardware into `service.json` (`hardware`: its id,
+   label, box in prop space and the game it opens). With the cover off, pointing at a piece lights its outline and
+   names it ("Relay K1"); a click on the faulty piece opens the job's 2D game, out of that piece; a click on a sound
+   one says it tests fine (a short line, no penalty): finding the fault is part of the repair.
+4. **The fault shows.** The faulty part is drawn as broken (the relay's housing scorched black with its fault lamp
+   lit, the capacitor bulged with its top scorched) and the page puts a thin smoke and a few sparks on it while the
+   job is open. Which part is faulty is the job's (`repairs.json`), one of the bay's pieces.
+5. **The game a part opens** is data on the part, the job's game unless the part names another (a fuse could open
+   `breakers`, a terminal `conduits`). The prototypes use the jobs' games: the pump game and the coolant game.
+
+**Pi 5 cost** (measured on the build, 2026-10-10). The hardware adds to its machine 1,010 triangles in the pump's
+terminal box (a rail, 12 terminal blocks, three fuses, a contactor, a relay and 16 wires: 662 to 1,672) and 778 on
+the valve cabinet's board (20 parts, a heatsink and a connector's wires: 336 to 1,114); drawn with the machine, no
+draw call added. The bare board bake is one 256 x 208 layer like 3b's interiors (28 kB as a PNG). The hit boxes are
+data, not geometry. Prototype budgets: 1,900 triangles for the pump, 1,300 for the cabinet; the shipped props'
+budgets are revisited when the bays move into them (task 1.6). Modelled parts sit at least 1 cm apart face to face
+(a heatsink's fins 13.6 mm on centre), and wires leave the switchgear from its bottom edge, clear of every top, so
+the kit's overlap check passes with no exception. The atlas texel (96 px per metre on the cabinet, 52 on the pump)
+blurs the smallest parts' wear into blotches: the owner judges that on the shots.
+
 **The screen while docked.** The panel covers the middle of the screen (1280 x 720 on a 1920 x 1080 output, or 2/3
 of the height on any other). The docked 3D view keeps rendering around it, darkened 35%, with no blur (the Pi 5 does
 not pay for one): smoke rolling in, a fire spreading, a crewmate running past, the red-alert lighting. The machine

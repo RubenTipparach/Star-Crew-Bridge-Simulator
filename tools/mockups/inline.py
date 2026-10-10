@@ -212,7 +212,8 @@ def block(kind):
         base = os.path.join(ROOT, "assets", "textures", "repairs")
         with open(os.path.join(base, "covers.json"), encoding="utf-8") as f:
             covers = json.load(f)
-        files = [c["file"] for c in covers["covers"].values()] + [r["file"] for r in covers["interiors"].values()]
+        files = ([c["file"] for c in covers["covers"].values()] + [r["file"] for r in covers["interiors"].values()]
+                 + [b["file"] for b in covers.get("boards", {}).values()])
         images = {rel: png_uri(os.path.join(ROOT, rel)) for rel in sorted(files)}
         text = json.dumps({"covers": covers, "images": images}, separators=(",", ":"),
                           ensure_ascii=False).replace("</", "<\\/")

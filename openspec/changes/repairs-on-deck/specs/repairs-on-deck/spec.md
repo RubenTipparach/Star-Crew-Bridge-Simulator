@@ -15,6 +15,12 @@ with the round paused. The job SHALL count as done only once the cover is screwe
 - **THEN** the body kneels at the point, the camera frames the coupling guard, the player turns its four screws out
   on the pump in 3D and the guard lifts off, showing the motor's terminal box and wiring behind it
 
+#### Scenario: The faulty part opens the game
+- **WHEN** the cover of a machine is off and the player clicks the faulty part among its hardware (the pump's
+  scorched relay)
+- **THEN** the job's 2D game opens from that part
+- **AND** a click on a sound part only says it tests fine
+
 #### Scenario: Clicking the insides opens the game
 - **WHEN** the docked player clicks the wiring in the opened pump
 - **THEN** the pump game is drawn over the engineering room, which keeps rendering around it

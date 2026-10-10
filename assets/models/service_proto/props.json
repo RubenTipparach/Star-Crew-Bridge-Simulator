@@ -49,29 +49,7 @@
           0.0
         ]
       ],
-      "screens": [
-        {
-          "label": "lid_bay",
-          "shows": "interior_wiring",
-          "centre_m": [
-            0.488,
-            1.92,
-            0.0
-          ],
-          "normal": [
-            1.0,
-            0.0,
-            0.0
-          ],
-          "up": [
-            0.0,
-            1.0,
-            0.0
-          ],
-          "width_m": 0.31,
-          "height_m": 0.25
-        }
-      ],
+      "screens": [],
       "ports": {
         "discharge": {
           "at_m": [
@@ -100,32 +78,32 @@
           "dia_m": 0.45
         }
       },
-      "triangles": 662,
-      "budget_triangles": 800,
+      "triangles": 1672,
+      "budget_triangles": 1900,
       "materials": [
         "machinery",
         "trim",
         "bulkhead",
         "hazard",
-        "screen",
         "accent"
       ],
       "csg": [
         "chamfer plate_edges (4 edges, 15 mm)",
         "union casing_stand_motor (13)",
         "union terminal_box (1)",
-        "difference lid_bay (6)"
+        "difference lid_bay (6)",
+        "union lid_hardware (37)"
       ],
-      "sha256": "bbab0396addd0ec940661773d00de106caaa75ca879e5553a9d6f79f6fdc0409",
+      "sha256": "b1c5e19cc041ac4b64691bae88e7b50a5ae77acba1847cd8e1a44bcb48c04e56",
       "atlas": {
         "file": "atlas/coolant_pump_svc.png",
         "px": 256,
-        "px_per_m": 52.11,
-        "charts": 68,
-        "cover": 0.538,
+        "px_per_m": 51.52,
+        "charts": 171,
+        "cover": 0.532,
         "glow": 0.0002,
-        "sha256": "0b5541e88ab4d66b4995d17afad4c6f6969a3dc188cc4a3ceefcc8d8a00ad846",
-        "bytes": 26256
+        "sha256": "9b2e7f85248faaf1eecc60242f5c52aca2a07ac83c59cf86663633b35c2265c6",
+        "bytes": 35750
       }
     },
     "local_panel_svc": {
@@ -180,7 +158,7 @@
         },
         {
           "label": "door_bay",
-          "shows": "interior_circuit",
+          "shows": "board_circuit",
           "centre_m": [
             0.0,
             0.85,
@@ -200,8 +178,8 @@
           "height_m": 0.385
         }
       ],
-      "triangles": 336,
-      "budget_triangles": 500,
+      "triangles": 1114,
+      "budget_triangles": 1300,
       "materials": [
         "machinery",
         "trim",
@@ -214,18 +192,19 @@
       "csg": [
         "union bezels_estop_conduit (7)",
         "difference screen (1)",
-        "difference door_bay (6)"
+        "difference door_bay (6)",
+        "union door_hardware (29)"
       ],
-      "sha256": "26a1e1109e47547532e55327ae85b3987c157e294547461d299eb6d878f1a2e7",
+      "sha256": "7a2a7f162fafc1c6b6887ddaf0481d1f81b804ed68c6e59d47e94a35537b1cac",
       "atlas": {
         "file": "atlas/local_panel_svc.png",
         "px": 256,
-        "px_per_m": 96.25,
-        "charts": 33,
-        "cover": 0.709,
-        "glow": 0.0205,
-        "sha256": "6e7c6f18b84cb7567198dc311588d5fe4454f4a65e6bee08a5a17e6f2971612c",
-        "bytes": 14334
+        "px_per_m": 96.23,
+        "charts": 102,
+        "cover": 0.715,
+        "glow": 0.024,
+        "sha256": "97dd5773c252e291323337ab4a29b1f4629370bbdfe418604eee4f7b08c588df",
+        "bytes": 22353
       }
     },
     "cover_pump": {

@@ -1906,13 +1906,13 @@ def verify_glb(path, prop):
         elif any(not (0.0 <= c <= 1.0) for uv in m["uv1"] for c in uv):
             problems.append(f"{name}: an atlas coordinate outside 0-1")
     # Screens face the operator (+Z) or up: a flipped axis on export would turn them away. A service bay's
-    # floor (a screen recorded as showing an interior, repairs-on-deck 3c) is on the side or back a repair
+    # floor (a screen recorded as showing an interior or a bare board, repairs-on-deck 3c and 3d) is on the side or back a repair
     # is worked from, so it may face any way; the next check still holds it to its recorded plane and
     # direction, which a flipped axis would break. And every screen the manifest records lies on a screen
     # face of the file, facing its way.
     planes = []
     bays = [(Vector(sc["normal"]), Vector(sc["normal"]).dot(Vector(sc["centre_m"]))) for sc in prop.screens
-            if sc["shows"].startswith("interior_")]
+            if sc["shows"].startswith(("interior_", "board_"))]
     m = prims.get("screen", {"idx": [], "pos": []})
     for t in range(0, len(m["idx"]), 3):
         a, b, c = (Vector(m["pos"][k]) for k in m["idx"][t:t + 3])
