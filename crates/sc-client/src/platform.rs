@@ -51,6 +51,8 @@ pub mod keys {
     pub const N2: u32 = sdl::SDLK_2.0;
     /// The 3 key.
     pub const N3: u32 = sdl::SDLK_3.0;
+    /// F1: a repair game's guide card.
+    pub const F1: u32 = sdl::SDLK_F1.0;
     /// F12.
     pub const F12: u32 = sdl::SDLK_F12.0;
     /// W.

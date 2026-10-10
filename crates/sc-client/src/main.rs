@@ -23,6 +23,7 @@
 mod drill;
 mod first_light;
 mod lobby;
+mod repairs;
 mod ships3d;
 mod ui;
 
@@ -1387,6 +1388,26 @@ fn main() -> ExitCode {
         return platform::run(cfg, move |gl| {
             println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);
             drill::DrillApp::new(dargs).map(|c| Box::new(c) as Box<dyn App>)
+        });
+    }
+    // The repair games (openspec/changes/repair-minigames design 8): their own mode, a menu with no ship.
+    if let Some(i) = args.iter().position(|a| a == "--repairs") {
+        let open = args.get(i + 1).filter(|a| !a.starts_with("--")).cloned();
+        let cfg = WindowConfig {
+            title: "Star Crew: repairs".into(),
+            width: 1920,
+            height: 1080,
+            fullscreen: !headless && !args.iter().any(|a| a == "--window"),
+            headless,
+            vsync: !headless,
+        };
+        if headless && shots.is_none() {
+            eprintln!("sc-client: --headless needs --shots DIR (nothing would be seen)");
+            return ExitCode::from(2);
+        }
+        return platform::run(cfg, move |gl| {
+            println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);
+            repairs::RepairsApp::new(open, shots).map(|c| Box::new(c) as Box<dyn App>)
         });
     }
     if headless && shots.is_none() && !args.iter().any(|a| a == "--connect") {
