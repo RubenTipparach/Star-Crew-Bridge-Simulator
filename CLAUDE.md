@@ -478,6 +478,14 @@ Before claiming anything is done, run what applies:
   tests, captures and measures, and the cloud session does not repeat the work. Its results
   come back through git as section 13 says. The cloud container tests only when no such session
   is connected, and then says so.
+  - **The most powerful device does the primary testing** (owner, 2026-10-10: "Always pick the
+    most powerful device for primary testing all other devices are for network testing"):
+    building, the test suites, running the game and its captures. Powerful is judged from what
+    each session reports of its machine (CPU, GPU, memory). Every other connected device is a
+    network-test machine: a client or a server in a networking test.
+  - **The Pi still measures the Pi.** Section 2's budget is measured on a Pi 5 and nowhere else:
+    the probe and any frame time, memory or load number the budget table quotes run on the Pi,
+    whichever device is most powerful. That is a measurement on the target, not primary testing.
 
 ## 13. Working with the owner
 
