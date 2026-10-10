@@ -1,0 +1,26 @@
+{
+  "schema": "starcrew.weapons/1",
+  "_doc": "Guns and missiles (openspec/changes/weapons-and-shields sections 1, 4 and 6; coop-drill design 2.3-2.4). A gun's bolt leaves at speed_mps plus its ship's velocity. sigma_rate_k is degrees of aim error per degree per second of the target's angular rate across the line of sight. A turret fires only when its hit chance is at least min_hit_chance.",
+  "guns": [
+    {
+      "id": "twin_pulse", "name": "Twin pulse cannon",
+      "rate_hz": 4, "speed_mps": 1500, "life_s": 1.6, "damage_mj": 1.2,
+      "capacitor_mj": 24, "charge_mw": 4, "draw_mj": 1.5,
+      "sigma_rate_k": 0.02, "min_hit_chance": 0.04
+    }
+    ,{
+      "id": "heavy_pulse", "name": "Heavy pulse cannon",
+      "_doc": "Placeholder: the Hound's turrets carry its whole threat until its Lance missiles (weapons-and-shields 10) are built.",
+      "rate_hz": 3, "speed_mps": 1400, "life_s": 1.8, "damage_mj": 2.6,
+      "capacitor_mj": 30, "charge_mw": 5, "draw_mj": 2.0,
+      "sigma_rate_k": 0.02, "min_hit_chance": 0.04
+    }
+  ],
+  "missiles": [
+    {
+      "id": "gannet", "name": "Gannet",
+      "eject_mps": 30, "boost_mps2": 120, "boost_s": 6, "sustain_mps2": 40, "sustain_s": 20,
+      "nav_gain": 4, "life_s": 60, "seeker_half_angle_deg": 30, "warhead_mj": 60, "blast_radius_m": 30
+    }
+  ]
+}

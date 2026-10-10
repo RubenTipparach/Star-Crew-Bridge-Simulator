@@ -1,0 +1,19 @@
+{
+  "schema": "starcrew.ship-combat/1",
+  "_doc": "What the Tern fights with in the coop-drill (openspec/changes/coop-drill design 2.2-2.4). hull_mj and hit_radius_m are placeholders: the hull is damage-control's, and the hit test becomes the shield ellipsoid of weapons-and-shields 9. Turret arcs are the placeholder for the hull mask (weapons-and-shields 2): dorsal bears from -10 to +90 deg of elevation, ventral from +10 to -90. Mount positions are ship-local metres.",
+  "combat": {
+    "hull_mj": 120,
+    "hit_radius_m": 12,
+    "gun": "twin_pulse",
+    "aim_sigma_base_deg": 0.15,
+    "turrets": [
+      { "id": "dorsal_fwd", "arc": "dorsal", "position_m": [0, 7, 12] },
+      { "id": "dorsal_aft", "arc": "dorsal", "position_m": [0, 7, -14] },
+      { "id": "ventral_fwd", "arc": "ventral", "position_m": [0, -5, 10] },
+      { "id": "ventral_aft", "arc": "ventral", "position_m": [0, -5, -12] }
+    ],
+    "arc_overlap_deg": 10,
+    "tubes": { "count": 2, "magazine": 12, "load_s": 18, "arm_s": 3, "missile": "gannet", "muzzle_m": [[2, 0, 28], [-2, 0, 28]] },
+    "lock": { "time_s": 2.0, "range_m": 10000 }
+  }
+}

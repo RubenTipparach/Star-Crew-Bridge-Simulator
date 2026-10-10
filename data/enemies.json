@@ -1,0 +1,24 @@
+{
+  "schema": "starcrew.enemies/1",
+  "_doc": "Enemy classes (openspec/changes/weapons-and-shields section 10; coop-drill design 2.5). The Hound's faces and hull are weapons-and-shields'; its flight, regeneration, hit radius, orbit speed and mounts are placeholders. Its turrets bear everywhere (arc 'all'). Its orbit's axis leans orbit_tilt_deg from the drill's up, so it passes above and below the Tern's plane.",
+  "classes": [
+    {
+      "id": "hound", "name": "Hound corvette",
+      "flight": {
+        "speed_min_mps": 0, "speed_max_mps": 300, "accel_fwd_mps2": 20, "accel_rev_mps2": 10,
+        "tau_v_s": 1.0, "tau_w_s": 0.3, "rate_limit_deg_s": [30, 30, 45], "ang_accel_deg_s2": [25, 25, 40]
+      },
+      "shields": { "regen_mj_s": 1.5, "presets": [ { "id": "balanced", "name": "Balanced", "faces_mj": [50, 50, 50, 50, 50, 50] } ] },
+      "combat": {
+        "hull_mj": 150, "hit_radius_m": 9, "gun": "heavy_pulse", "aim_sigma_base_deg": 0.3,
+        "turrets": [
+          { "id": "dorsal", "arc": "all", "position_m": [0, 3, 4] },
+          { "id": "ventral", "arc": "all", "position_m": [0, -3, 4] }
+        ],
+        "arc_overlap_deg": 10,
+        "lock": { "time_s": 0.0, "range_m": 10000 }
+      },
+      "ai": { "orbit_m": 1800, "orbit_speed_mps": 200, "approach_speed_mps": 300, "orbit_tilt_deg": 50 }
+    }
+  ]
+}

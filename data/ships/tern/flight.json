@@ -1,0 +1,14 @@
+{
+  "schema": "starcrew.flight/1",
+  "_doc": "The Tern's flight under full assist (openspec/changes/flight-and-navigation section 4; built as far as openspec/changes/coop-drill design 2.1 needs: full assist only). Read by sc-core::combat. Axes ship-local: +X port, +Y dorsal, +Z bow; rates and accelerations are [yaw, pitch, roll].",
+  "flight": {
+    "speed_min_mps": -100,
+    "speed_max_mps": 400,
+    "accel_fwd_mps2": 15,
+    "accel_rev_mps2": 5,
+    "tau_v_s": 1.0,
+    "tau_w_s": 0.25,
+    "rate_limit_deg_s": [18, 18, 36],
+    "ang_accel_deg_s2": [12, 12, 30]
+  }
+}
