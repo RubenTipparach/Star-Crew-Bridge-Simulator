@@ -93,6 +93,8 @@ pub struct Session {
     last_ping: f64,
     /// Messages that failed to decode.
     pub dropped: u64,
+    /// When anything last arrived from the server, session seconds.
+    heard_s: f64,
 }
 
 impl Session {
@@ -126,6 +128,7 @@ impl Session {
             epoch: Instant::now(),
             last_ping: -10.0,
             dropped: 0,
+            heard_s: 0.0,
         })
     }
 
@@ -138,6 +141,9 @@ impl Session {
     pub fn update(&mut self) {
         let now = self.now_s();
         for e in self.net.poll() {
+            if matches!(e, NetEvent::Data(..)) {
+                self.heard_s = now;
+            }
             match e {
                 NetEvent::Open(_) => {
                     if self.stage == Stage::Connecting {
@@ -196,6 +202,12 @@ impl Session {
                 self.rtt_ms = Some(self.rtt_ms.map_or(rtt, |r| r * 0.8 + rtt * 0.2));
             }
         }
+    }
+
+    /// Seconds since anything arrived from the server (or since the session began): a joined session silent for the
+    /// server's own 5 s has lost it, however long the transport takes to say so.
+    pub fn silent_s(&self) -> f64 {
+        self.now_s() - self.heard_s
     }
 
     /// Visual events since the last call.

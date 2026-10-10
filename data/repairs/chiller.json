@@ -1,0 +1,57 @@
+{
+  "schema": "starcrew.repair-game/1",
+  "id": "chiller",
+  "title": "Heat exchanger (chiller)",
+  "place": "Engineering, the chiller",
+  "group": "Engineering",
+  "hazard": {
+    "text": "Torn gasket: coolant weeps",
+    "hp": 0,
+    "radius_m": 0
+  },
+  "down": "The radiators can't take the loop's heat",
+  "guide": {
+    "steps": [
+      {
+        "icon": "sweep",
+        "text": "Brush the scale off"
+      },
+      {
+        "icon": "rubber",
+        "text": "Keep off the black rubber"
+      },
+      {
+        "icon": "alternate",
+        "text": "Plates alternate: up, down"
+      },
+      {
+        "icon": "turn",
+        "text": "Nuts in turn, to the mark"
+      }
+    ],
+    "mistake": "Brush on the rubber tears it; one nut far ahead cracks a plate"
+  },
+  "knobs": {
+    "scale_patches_count": {
+      "base": 8,
+      "per_level": 2
+    },
+    "wrong_plates_count": {
+      "levels": [
+        1,
+        1,
+        2
+      ]
+    }
+  },
+  "min_round_s": [
+    1.8,
+    1.8,
+    1.9,
+    1.9,
+    1.9,
+    2.1
+  ],
+  "min_round_measured": false,
+  "_min_round_note": "Provisional (design 8): 40% of the scripted hand's fastest round at each level, over every state and four seeds, until people's play is measured."
+}

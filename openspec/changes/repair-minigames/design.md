@@ -392,7 +392,70 @@ A disabled chiller's first step fits a new plate: drag it from the crate into th
 
 Both games' guides follow section 6g. The reactor system screen opens them from a pump's or the chiller's FIX.
 
-## 7. The Pi 5 budget
+## 8. In the engine (owner, 2026-10-10: "implement")
+
+The games move from the browser into the engine's UI layer, each against its mockup, which stays the design tool.
+Docking at a machine in the 3D ship is `repairs-on-deck` 3 and comes after the games; until then the engine opens
+them from a menu with no ship, as `docs/mockups/repairs.html` does.
+
+**Where each part lives** (CLAUDE.md 6.1 and 6.2):
+
+| Part | Where | Why there |
+| --- | --- | --- |
+| The job: rounds by state, the level, a round's share landing at once, a fumble's 5%, three fumbles restarting the round, a rating's rate with no game, and the server's checks of `repairs-on-deck` 6 (`Dock`, `RoundDone` with `min_round_s`, `Fumble`, `Undock`) | `sc-core::repair` | One rule for the menu, the ship and the server; tested with no GPU |
+| The kit: the 1280 x 720 frame, the job's bar, the round dots, the fumble pips, the cover's screws, the guide card and its icons, the combat shake, the input (pointer, keys, stick, action, wheel), the seeded stream per round, the drawing helpers | `sc-repairs::kit` | What every game shares, written once |
+| One game a file | `sc-repairs::games::<id>` | Built and judged apart, as the mockups are |
+| The menu, and the game drawn over the frame | `sc-client --repairs` | The client owns the window and the GL |
+
+`sc-repairs` is a new crate holding the UI layer's repair games: egui shapes and `sc-core`, no GL, no SDL, so every
+game is played to the end in a unit test by a scripted hand, the way the mockups were checked headless (6a).
+
+**The game contract.** A game is a struct with `step(round, part, phase)` to set up a phase of a round at its level,
+`update(dt, input)` to play it, `draw(pen)` to draw it below the bar, and `hand(t)`, the scripted hand that plays it
+for the tests and the captures. It calls the kit to say a phase is played or a fumble happened, and reads its knobs at
+the round's level from data. It never touches the job's value.
+
+**Data** (CLAUDE.md 6.5):
+
+- `data/repairs/<game>.json` (`starcrew.repair-game/1`), one file a game: its title, place, menu group, what a
+  fumble does and what the ship loses, the guide card (design 6g, the only sentences a game holds), the cover's
+  rectangle and screws, its phases, and its **knobs**: each a value at level 1 and a change per level, with a floor or
+  a ceiling, the unit in the knob's name (`window_px`, `drift_rad_s`). A game asks for its knobs by name and the load
+  fails on a knob it does not know or one it lacks. `min_round_s` by level is there too.
+- `data/repairs/rules.json` (`starcrew.repair-rules/1`): the rounds and start by state (section 2's table), the
+  fumbles that restart a round, the top level.
+- `data/ships/tern/damage.json`: `repair.kit_pct_per_s` (the officer's and the rating's rate) stays the one source,
+  and gains `fumble_share_pct` (5), which section 1 named `repair.fumble_share`.
+- `data/ships/tern/repairs.json` (`starcrew.ship-repairs/1`): the Tern's jobs, each a game, a place and its workers
+  (`repairs-on-deck` 5), for the ship and the board.
+
+**`min_round_s` is provisional.** `repairs-on-deck` 6 says it must be measured from people's play before it is
+data. Until then each game's floor is 40% of its scripted hand's time at that level, which is faster than any
+person's, marked provisional in its file.
+
+**The Pi 5 budget.** As section 7: one UI screen, a few thousand UI triangles in under 40 draws. Measured on the Pi
+when the games are in.
+
+### 8a. As ported (2026-10-10)
+
+All twenty-four games are in `sc-repairs` (the heads are two, toilet and shower), each from its mockup by a scripted
+port, each played to the end by its steady hand from damaged, disabled and destroyed with no fumble, and each with a
+mistake checked to fumble. What the ports showed:
+
+- **The floor is per level over every state and seed.** A damaged job's first round has no part step and an easy
+  seed's puzzle is quicker, so `min_round_s` is 40% of the hand's fastest round at each level over the three states
+  and four seeds; a test checks no floor refuses the hand. The medic's rounds are wounds dealt in random order, so
+  its floor is one value, 0.3 s, under the fastest wound seen over 39 seeds.
+- **Level knobs are data; physics stay code.** The coolant loop's heat capacity and flows, the gravity field's
+  shape and the like are the machine, the same at every level, and stay named constants in the game's file.
+- **Hold times are knobs now.** The mockups sized a hold from the round's share at the officer's rate; 1a retired
+  that wait, so the coolant, gravity and pipes holds are knobs set near the mockups' damaged values.
+- **The kit gained two fixes** from the ports: the cover's hand presses afresh on each screw, and a pie sector pairs
+  its arcs. The ports wrote their own ellipse, dashed ring, Bezier curves, multi-stop gradients and shape clips;
+  those move into the kit next (task 7.1). The pen clips only to rectangles, so rounded clips are approximate.
+- **One face, one weight.** egui's built-in face has no bold; the mockups' 700 weight is lost until the Barlow face
+  is loaded (task 7.3). No ✓ or ▲ glyph: ticks and arrows are drawn.
+
 
 A mini-game is a UI screen: a few hundred to a few thousand UI triangles in a handful of draws, the 3D pass behind it
 as at a console. No texture beyond the UI's atlas. Not measured: a cloud session renders on a CPU (CLAUDE.md 2).

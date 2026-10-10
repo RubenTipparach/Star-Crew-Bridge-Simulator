@@ -1,0 +1,58 @@
+{
+  "schema": "starcrew.repair-game/1",
+  "id": "fighter",
+  "title": "Fighters",
+  "place": "Hangar, a Swift on its cradle",
+  "group": "Hangar",
+  "hazard": {
+    "text": "Spark: 5 HP, a bent plug",
+    "hp": 5,
+    "radius_m": 1
+  },
+  "down": "The fighter cannot launch",
+  "guide": {
+    "steps": [
+      {
+        "icon": "drag",
+        "text": "Lift the panel off"
+      },
+      {
+        "icon": "plug",
+        "text": "Each lead to its shape"
+      },
+      {
+        "icon": "order",
+        "text": "Torque in the lit order"
+      }
+    ],
+    "mistake": "A plug in the wrong socket: a spark, 5 HP"
+  },
+  "knobs": {
+    "leads_count": {
+      "base": 3,
+      "per_level": 1,
+      "max": 5
+    },
+    "shapes_count": {
+      "base": 4,
+      "per_level": -1,
+      "min": 2
+    },
+    "fasteners_count": {
+      "levels": [
+        6,
+        8
+      ]
+    }
+  },
+  "min_round_s": [
+    1.7,
+    2.1,
+    2.4,
+    2.4,
+    2.4,
+    2.3
+  ],
+  "min_round_measured": false,
+  "_min_round_note": "Provisional (design 8): 40% of the scripted hand's fastest round at each level, over every state and four seeds, until people's play is measured."
+}

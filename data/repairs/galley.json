@@ -1,0 +1,55 @@
+{
+  "schema": "starcrew.repair-game/1",
+  "id": "galley",
+  "title": "Galley synthesizer",
+  "place": "Mess",
+  "group": "Life",
+  "hazard": {
+    "text": "Paste everywhere: the column drains",
+    "hp": 0,
+    "radius_m": 0
+  },
+  "down": "Hunger between missions (design 4)",
+  "guide": {
+    "steps": [
+      {
+        "icon": "hold",
+        "text": "Hold a valve to fill"
+      },
+      {
+        "icon": "band",
+        "text": "Let go early: it runs on"
+      },
+      {
+        "icon": "tap",
+        "text": "All in band: PURGE"
+      }
+    ],
+    "mistake": "Past a band's top: paste everywhere, that column drains"
+  },
+  "knobs": {
+    "band_half_frac": {
+      "base": 0.075,
+      "per_level": -0.01,
+      "min": 0.04
+    },
+    "feed_rate_frac_s": {
+      "base": 0.16,
+      "per_level": 0.03
+    },
+    "run_on_s": {
+      "base": 0.22,
+      "per_level": 0.06
+    }
+  },
+  "min_round_s": [
+    4.9,
+    4.5,
+    4.7,
+    5.1,
+    5.2,
+    5.6
+  ],
+  "min_round_measured": false,
+  "_min_round_note": "Provisional (design 8): 40% of the scripted hand's fastest round at each level, over every state and four seeds, until people's play is measured."
+}

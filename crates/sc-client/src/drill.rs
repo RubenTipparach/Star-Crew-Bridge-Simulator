@@ -55,6 +55,8 @@ pub struct DrillArgs {
     pub bot: bool,
     /// Where captures go, for the scripted shots.
     pub shots: Option<PathBuf>,
+    /// Join with no station and watch the bridge from its overview (`--watch`).
+    pub watch: bool,
 }
 
 struct Meshes {
@@ -91,6 +93,8 @@ pub struct DrillApp {
     blank: Target,
     /// The viewscreen's feed.
     feed: Target,
+    /// The bridge, drawn full screen while this player's body walks or the overview is up (design 9).
+    bridge_target: Target,
     ui: Ui,
     exterior: ExteriorData,
     data: DrillData,
@@ -115,6 +119,12 @@ pub struct DrillApp {
     phase_seen: Option<(u32, Phase, f64)>,
     shot_round: Option<u32>,
     done: bool,
+    /// The bridge, when the compiled deck is there (design 9).
+    bridge: Option<crate::drill_bridge::BridgeView>,
+    /// The overview of the bridge is up (V).
+    overview: bool,
+    /// The scripted shots: since when this player's body, and another's, has been seen walking.
+    walk_seen: (Option<f64>, Option<f64>),
 }
 
 fn load_data() -> Result<DrillData, String> {
@@ -138,6 +148,7 @@ impl DrillApp {
         let mut r = Renderer::new(&cfg);
         let blank = r.make_target(16, 16, 1);
         let feed = r.make_target(FEED.0, FEED.1, 4);
+        let bridge_target = r.make_target(1280, 720, 4);
         let text = std::fs::read_to_string("data/space/exterior.json")
             .map_err(|e| format!("data/space/exterior.json: {e}"))?;
         let exterior: ExteriorData =
@@ -155,10 +166,12 @@ impl DrillApp {
         let host = if args.server.contains(':') { args.server.clone() } else { format!("{}:7700", args.server) };
         let addr = host.to_socket_addrs().ok().and_then(|mut a| a.find(SocketAddr::is_ipv4));
         let bot = args.bot.then(|| Bot::new(&data, args.station));
+        let args_watch = args.watch;
         let mut app = Self {
             r,
             blank,
             feed,
+            bridge_target,
             ui: Ui::new(),
             exterior,
             data,
@@ -181,7 +194,17 @@ impl DrillApp {
             phase_seen: None,
             shot_round: None,
             done: false,
+            bridge: None,
+            overview: args_watch,
+            walk_seen: (None, None),
         };
+        match crate::drill_bridge::BridgeView::load(&mut app.r, std::path::Path::new("compiled/tern.deck")) {
+            Ok(b) => {
+                println!("sc-client: the bridge for the crew on foot, {} triangles", b.triangles);
+                app.bridge = Some(b);
+            }
+            Err(e) => println!("sc-client: no bridge to walk ({e}); the drill shows the consoles only"),
+        }
         app.try_connect();
         Ok(app)
     }
@@ -195,7 +218,7 @@ impl DrillApp {
             addr,
             &self.args.name,
             self.args.bot,
-            Some(self.args.station),
+            (!self.args.watch).then_some(self.args.station),
             Impair::default(),
             self.time_s.to_bits(),
         ) {
@@ -394,6 +417,25 @@ impl World<'_> {
 }
 
 impl DrillApp {
+    /// The crew's bodies 100 ms behind the newest snapshot, as the ships are drawn, each with whether it is a bot's.
+    fn bodies_now(&self) -> Vec<(sc_net::msg::BodySnap, bool)> {
+        let Some(s) = self.session.as_ref() else { return Vec::new() };
+        let Some((a, b, f)) = s.interpolation() else { return Vec::new() };
+        crate::drill_bridge::blend(&a.bodies, &b.bodies, f)
+            .into_iter()
+            .map(|x| {
+                let bot = s.crew.iter().any(|c| c.slot == x.slot && c.bot);
+                (x, bot)
+            })
+            .collect()
+    }
+
+    /// The scripted shots' overview frames: the first half second after another crew member is seen walking.
+    fn shot_overview(&self) -> bool {
+        self.walk_seen.1.is_some_and(|t| self.time_s - t < 0.6)
+            && !self.shots_taken.iter().any(|n| n.starts_with("0-bridge"))
+    }
+
     fn capture(&mut self, f: &Frame, name: &str) {
         if !self.shots_taken.insert(name.to_owned()) {
             return;
@@ -419,6 +461,18 @@ impl DrillApp {
         }
         if self.shot_round != Some(snap.round) {
             return;
+        }
+        // On foot: the overview while the crew walk, then this player's own walk if it has one.
+        if !snap.bodies.is_empty() && self.bridge.is_some() {
+            if snap.phase == Phase::Muster && (1.0..1.4).contains(&t) {
+                self.capture(f, &format!("0-bridge-{st}.png"));
+            }
+            let me = self.session.as_ref().and_then(|s| s.slot);
+            if snap.bodies.iter().any(|b| Some(b.slot) == me && b.posture == sc_core::combat::bodies::Posture::Walking)
+                && t > 1.5
+            {
+                self.capture(f, &format!("0-walking-{st}.png"));
+            }
         }
         let plan: &[(Phase, f64, &str)] = &[
             (Phase::Muster, 1.5, "1-briefing"),
@@ -448,6 +502,7 @@ impl App for DrillApp {
         match e {
             Event::Quit => return Flow::Done,
             Event::KeyDown(keys::ESCAPE) => return Flow::Done,
+            Event::KeyDown(keys::V) => self.overview = !self.overview,
             Event::KeyDown(keys::F3) => self.show_net = !self.show_net,
             Event::KeyDown(k) => {
                 if !self.held.contains(&k) {
@@ -494,9 +549,56 @@ impl App for DrillApp {
             }
         }
         let station = self.session.as_ref().and_then(|s| s.station());
+        let aspect = f.width as f32 / f.height.max(1) as f32;
+        // On foot (design 9): while this player's body is up and walking, or with the overview (V), the bridge.
+        let bodies = self.bodies_now();
+        let me = self.session.as_ref().and_then(|s| s.slot);
+        let mine = bodies.iter().find(|(b, _)| Some(b.slot) == me).map(|x| x.0);
+        let walking = mine.is_some_and(|b| b.posture != sc_core::combat::bodies::Posture::Seated);
+        let shot_overview = self.args.shots.is_some() && self.shot_overview();
+        let on_bridge = self.bridge.is_some() && !bodies.is_empty() && (walking || self.overview || shot_overview);
+        let mut bridge_ui = None;
+        if on_bridge {
+            let own = walking && !self.overview && !shot_overview;
+            // Its own body is not drawn from its own eye, nor a watcher's anywhere (it only watches).
+            let hide_me = own || self.args.watch;
+            let (eye, yaw, pitch) = match (own, mine) {
+                (true, Some(b)) => (crate::drill_bridge::eye_of(&b), b.yaw, -0.12),
+                _ => crate::drill_bridge::overview(),
+            };
+            if let Some(bv) = &self.bridge {
+                let vp = bv.draw(
+                    &mut self.r,
+                    &self.bridge_target,
+                    &self.exterior,
+                    eye,
+                    yaw,
+                    pitch,
+                    aspect,
+                    &bodies,
+                    me,
+                    hide_me,
+                );
+                let (w, h) = (720.0 * aspect, 720.0);
+                let crew = self.session.as_ref().map(|s| s.crew.clone()).unwrap_or_default();
+                let labels = bodies
+                    .iter()
+                    .filter(|(b, _)| !(hide_me && Some(b.slot) == me))
+                    .filter_map(|(b, _)| {
+                        let head = [b.pos[0], b.pos[1] + 2.05, b.pos[2]];
+                        let at = crate::drill_bridge::project(vp, eye, head, w, h)?;
+                        let name = crew.iter().find(|c| c.slot == b.slot).map(|c| c.name.clone()).unwrap_or_default();
+                        let going = b.going.map(|g| format!("to {}", g.name()));
+                        Some((Pos2::new(at[0], at[1]), name, going))
+                    })
+                    .collect();
+                let banner = mine.and_then(|b| b.going).map(|g| format!("Walking to {}", g.name()));
+                bridge_ui = Some(BridgeUi { labels, banner, overview: !own });
+            }
+        }
         let crew = self.session.as_ref().map(|s| s.crew.clone()).unwrap_or_default();
         // The console's view: the station this client holds (or wants), from the newest interpolated snapshot.
-        let console_view = ships.as_ref().map(|(t, h, snap)| {
+        let console_view = ships.as_ref().filter(|_| !on_bridge).map(|(t, h, snap)| {
             let st = station.unwrap_or(self.args.station);
             let ops: Vec<(Station, String)> = crew
                 .iter()
@@ -504,9 +606,12 @@ impl App for DrillApp {
                 .collect();
             self.seat.view(st, t, h, snap, &self.data, &ops, self.time_s)
         });
-        self.render_feed(ships.as_ref(), console_view.as_ref());
+        if !on_bridge {
+            self.render_feed(ships.as_ref(), console_view.as_ref());
+        }
         let mut ask: Vec<UiAsk> = Vec::new();
-        let view = UiView::gather(self, ships.as_ref());
+        let mut view = UiView::gather(self, ships.as_ref());
+        view.bridge = bridge_ui;
         let mut painted: Option<(console::kit::Hits, f32)> = None;
         let mut pointer: Vec<PointerEv> = Vec::new();
         let show_net = self.show_net;
@@ -561,6 +666,9 @@ impl App for DrillApp {
         // The viewscreen's feed in its window under the console, or black when there is no console yet.
         let ppp = f.height as f32 / frame.points[1].max(1.0);
         match console_view {
+            None if on_bridge => {
+                self.r.present_with_ui(&self.bridge_target, f.width, f.height, true, &frame.meshes(), frame.points)
+            }
             Some(_) => {
                 let at = console::viewscreen_px(frame.points, ppp);
                 self.r.present_with_ui_at(&self.feed, Some(at), f.width, f.height, true, &frame.meshes(), frame.points)
@@ -602,6 +710,15 @@ struct UiView {
     refused: Option<(String, f64)>,
     mission: sc_core::combat::data::MissionFile,
     tern_hull: f64,
+    /// The bridge on screen instead of the consoles (design 9).
+    bridge: Option<BridgeUi>,
+}
+
+/// What the bridge view's UI shows: a name over each body (and where it is going), and this player's own walk.
+struct BridgeUi {
+    labels: Vec<(Pos2, String, Option<String>)>,
+    banner: Option<String>,
+    overview: bool,
 }
 
 impl UiView {
@@ -623,6 +740,7 @@ impl UiView {
             refused: s.and_then(|s| s.refused.map(|(r, t)| (r.text().to_owned(), s.now_s() - t))),
             mission: app.data.mission.clone(),
             tern_hull: app.data.tern_combat.hull_mj,
+            bridge: None,
         }
     }
 }
@@ -682,6 +800,10 @@ fn draw_ui(ctx: &egui::Context, v: &UiView, ask: &mut Vec<UiAsk>, show_net: bool
         });
         return;
     };
+    if let Some(b) = &v.bridge {
+        bridge_overlay(ctx, v, snap, b, ask);
+        return;
+    }
     match snap.phase {
         Phase::Muster | Phase::Countdown => briefing(ctx, v, snap, ask),
         Phase::Engage => {
@@ -703,6 +825,38 @@ fn draw_ui(ctx: &egui::Context, v: &UiView, ask: &mut Vec<UiAsk>, show_net: bool
             let rtt = v.rtt_ms.map_or("--".to_owned(), |r| format!("{r:.0} ms"));
             label(ui, &format!("RTT {rtt}  LOSS {:.1}%", v.loss * 100.0), 13.0, DIM);
         });
+    }
+}
+
+/// The bridge on screen (design 9): a band along the top with the drill, its phase and clock and who holds each
+/// station, a name over every body with where it is walking, and this player's own walk said once in the middle.
+fn bridge_overlay(ctx: &egui::Context, v: &UiView, snap: &Snapshot, b: &BridgeUi, _ask: &mut Vec<UiAsk>) {
+    use egui::FontId;
+    let w = ctx.content_rect().width();
+    let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Middle, egui::Id::new("bridge-names")));
+    painter.rect_filled(Rect::from_min_size(Pos2::ZERO, Vec2::new(w, 34.0)), CornerRadius::ZERO, PANEL);
+    let phase = format!("{:?}", snap.phase).to_uppercase();
+    let head = format!("{}   {}   {}", v.mission.title, phase, mmss(snap.phase_s));
+    painter.text(Pos2::new(16.0, 17.0), Align2::LEFT_CENTER, head, FontId::proportional(17.0), TEXT);
+    let held: Vec<String> = Station::ALL
+        .iter()
+        .map(|s| {
+            let who = v.crew.iter().find(|c| c.station == Some(*s)).map_or("auto".to_owned(), |c| c.name.clone());
+            format!("{} {}", s.name(), who)
+        })
+        .collect();
+    painter.text(Pos2::new(w - 16.0, 17.0), Align2::RIGHT_CENTER, held.join("   "), FontId::proportional(14.0), DIM);
+    for (at, name, going) in &b.labels {
+        painter.text(*at, Align2::CENTER_BOTTOM, name, FontId::proportional(17.0), TEXT);
+        if let Some(g) = going {
+            painter.text(*at + Vec2::new(0.0, 18.0), Align2::CENTER_BOTTOM, g, FontId::proportional(14.0), AMBER);
+        }
+    }
+    if let Some(t) = &b.banner {
+        painter.text(Pos2::new(w / 2.0, 560.0), Align2::CENTER_CENTER, t, FontId::proportional(30.0), AMBER);
+    }
+    if b.overview {
+        painter.text(Pos2::new(w / 2.0, 700.0), Align2::CENTER_CENTER, "BRIDGE (V)", FontId::proportional(14.0), DIM);
     }
 }
 

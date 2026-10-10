@@ -10,6 +10,7 @@ members = [
     "crates/sc-server",
     "crates/sc-tools",
     "crates/sc-probe",
+    "crates/sc-repairs",
 ]
 
 [workspace.package]
@@ -24,6 +25,7 @@ sc-core = { path = "crates/sc-core" }
 sc-net = { path = "crates/sc-net" }
 sc-render = { path = "crates/sc-render" }
 sc-client = { path = "crates/sc-client" }
+sc-repairs = { path = "crates/sc-repairs" }
 glam = "0.34"
 # The character controller and collision queries for walking (crew-on-deck 3a, deck-pipeline 13a): pure Rust, no GPU.
 rapier3d = "0.36"

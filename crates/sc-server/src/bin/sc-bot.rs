@@ -2,6 +2,9 @@
 //! the LAN, takes a station and plays it with `sc-core`'s automation at the bot profile, printing a line for every
 //! phase and a summary each second it is engaged. The game client's `--bot` is the same bot with a screen.
 //!
+//! A lost connection is retried every `RETRY_S` seconds, as the game client does, so a bot left running rides out a
+//! server restart or the Wi-Fi dropping (coop-drill log, 2026-10-10: Pi 1's Wi-Fi went for two minutes mid-drill).
+//!
 //! Usage: sc-bot --connect HOST[:7700] --station helm|tactical|engineering|science|captain [--name N] [--root .] [--seconds S]
 
 use sc_core::combat::data::{DrillData, DRILL_FILES};
@@ -13,6 +16,10 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::path::PathBuf;
 use std::process::ExitCode;
 use std::time::{Duration, Instant};
+
+/// Seconds between tries to reach the server, and the longest a try may take to join before it is given up.
+const RETRY_S: f64 = 3.0;
+const JOIN_S: f64 = 15.0;
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -48,32 +55,62 @@ fn main() -> ExitCode {
         }
     };
     let start = Instant::now();
-    let mut s = match Session::connect(
-        addr,
-        &name,
-        true,
-        Some(station),
-        Impair::default(),
-        start.elapsed().as_nanos() as u64,
-    ) {
-        Ok(s) => s,
-        Err(e) => {
-            eprintln!("sc-bot: {e}");
-            return ExitCode::FAILURE;
+    let connect = || -> Option<Session> {
+        match Session::connect(addr, &name, true, Some(station), Impair::default(), start.elapsed().as_nanos() as u64) {
+            Ok(s) => {
+                println!(
+                    "[{:7.1} s] sc-bot: {name} connecting to {addr} for {}",
+                    start.elapsed().as_secs_f64(),
+                    station.name()
+                );
+                Some(s)
+            }
+            Err(e) => {
+                eprintln!("[{:7.1} s] sc-bot: {e}; trying again in {RETRY_S:.0} s", start.elapsed().as_secs_f64());
+                None
+            }
         }
     };
-    println!("sc-bot: {name} connecting to {addr} for {}", station.name());
+    let mut session = connect();
+    let mut tried = start.elapsed().as_secs_f64();
     let mut bot = Bot::new(&data, station);
-    let (mut last_phase, mut last_print, mut last_stage) = (None, 0.0, s.stage);
+    let (mut last_phase, mut last_print, mut last_stage) = (None, 0.0, None);
     loop {
-        s.update();
-        bot.drive(&mut s, &data);
-        if s.stage != last_stage {
-            last_stage = s.stage;
-            println!("[{:7.1} s] {:?}", start.elapsed().as_secs_f64(), s.stage);
-            if s.stage == Stage::Closed {
-                return ExitCode::FAILURE;
+        let now = start.elapsed().as_secs_f64();
+        if seconds.is_some_and(|x| now >= x) {
+            return ExitCode::SUCCESS;
+        }
+        // No connection, a closed one, or one that never joined: try again, as a fresh crew member.
+        let lost = match &session {
+            None => true,
+            Some(s) => {
+                s.stage == Stage::Closed
+                    || (s.stage != Stage::Joined && now - tried >= JOIN_S)
+                    || (s.stage == Stage::Joined && s.silent_s() >= sc_server::SILENT_S)
             }
+        };
+        if lost {
+            if now - tried >= RETRY_S || session.is_some() {
+                if session.take().is_some() {
+                    println!("[{now:7.1} s] lost the server; trying again every {RETRY_S:.0} s");
+                    tried = now;
+                    last_stage = None;
+                    continue;
+                }
+                session = connect();
+                tried = now;
+                bot = Bot::new(&data, station);
+                last_phase = None;
+            }
+            std::thread::sleep(Duration::from_millis(50));
+            continue;
+        }
+        let Some(s) = session.as_mut() else { continue };
+        s.update();
+        bot.drive(s, &data);
+        if Some(s.stage) != last_stage {
+            last_stage = Some(s.stage);
+            println!("[{:7.1} s] {:?}", start.elapsed().as_secs_f64(), s.stage);
         }
         if let Some(snap) = s.latest() {
             if last_phase != Some(snap.phase) {
@@ -101,9 +138,6 @@ fn main() -> ExitCode {
                     s.snapshot_loss() * 100.0
                 );
             }
-        }
-        if seconds.is_some_and(|x| start.elapsed().as_secs_f64() >= x) {
-            return ExitCode::SUCCESS;
         }
         std::thread::sleep(Duration::from_millis(5));
     }

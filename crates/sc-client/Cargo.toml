@@ -11,6 +11,7 @@ publish.workspace = true
 sc-core.workspace = true
 sc-render.workspace = true
 sc-net.workspace = true
+sc-repairs.workspace = true
 sdl3-sys.workspace = true
 glam.workspace = true
 serde.workspace = true

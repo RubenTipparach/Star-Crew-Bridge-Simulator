@@ -77,7 +77,8 @@
     "node_rebuild_s": 120.0,
     "node_rebuild_to": 0.5,
     "hull_section_pct_per_s_eva": 0.5,
-    "two_hands_factor": 1.6
+    "two_hands_factor": 1.6,
+    "fumble_share_pct": 5.0
   },
   "patch": {
     "plate_m2": 0.25,

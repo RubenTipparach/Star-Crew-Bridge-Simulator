@@ -22,9 +22,11 @@
 
 mod console;
 mod drill;
+mod drill_bridge;
 mod first_light;
 mod fixture;
 mod lobby;
+mod repairs;
 mod seat;
 mod ships3d;
 mod ui;
@@ -1386,19 +1388,27 @@ fn main() -> ExitCode {
     }
     // The co-op drill (openspec/changes/coop-drill design 5): its own mode, joined by address.
     if let Some(server) = args.iter().position(|a| a == "--connect").and_then(|i| args.get(i + 1)).cloned() {
+        // `--watch`: join with no station and watch the bridge (coop-drill design 9's overview).
+        let watch = args.iter().any(|a| a == "--watch");
         let station = args.iter().position(|a| a == "--station").and_then(|i| args.get(i + 1));
-        let Some(station) = station.map(String::as_str).and_then(sc_core::combat::Station::from_id) else {
-            eprintln!("sc-client: --connect needs --station helm, tactical, engineering, science or captain");
+        let station = station.map(String::as_str).and_then(sc_core::combat::Station::from_id);
+        let station = if watch { station.or(Some(sc_core::combat::Station::Helm)) } else { station };
+        let Some(station) = station else {
+            eprintln!(
+                "sc-client: --connect needs --station helm, tactical, engineering, science or captain (or --watch)"
+            );
             return ExitCode::from(2);
         };
         let bot = args.iter().any(|a| a == "--bot");
-        let name = args
-            .iter()
-            .position(|a| a == "--name")
-            .and_then(|i| args.get(i + 1))
-            .cloned()
-            // The server marks a bot in the crew list itself, so the name does not repeat it.
-            .unwrap_or_else(|| format!("{} officer", station.name()));
+        // The server marks a bot in the crew list itself, so the name does not repeat it.
+        let name =
+            args.iter().position(|a| a == "--name").and_then(|i| args.get(i + 1)).cloned().unwrap_or_else(|| {
+                if watch {
+                    "Observer".into()
+                } else {
+                    format!("{} officer", station.name())
+                }
+            });
         let cfg = WindowConfig {
             title: "Star Crew: drill".into(),
             width: 1920,
@@ -1407,10 +1417,30 @@ fn main() -> ExitCode {
             headless,
             vsync: !headless,
         };
-        let dargs = drill::DrillArgs { server, station, name, bot, shots };
+        let dargs = drill::DrillArgs { server, station, name, bot: bot && !watch, shots, watch };
         return platform::run(cfg, move |gl| {
             println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);
             drill::DrillApp::new(dargs).map(|c| Box::new(c) as Box<dyn App>)
+        });
+    }
+    // The repair games (openspec/changes/repair-minigames design 8): their own mode, a menu with no ship.
+    if let Some(i) = args.iter().position(|a| a == "--repairs") {
+        let open = args.get(i + 1).filter(|a| !a.starts_with("--")).cloned();
+        let cfg = WindowConfig {
+            title: "Star Crew: repairs".into(),
+            width: 1920,
+            height: 1080,
+            fullscreen: !headless && !args.iter().any(|a| a == "--window"),
+            headless,
+            vsync: !headless,
+        };
+        if headless && shots.is_none() {
+            eprintln!("sc-client: --headless needs --shots DIR (nothing would be seen)");
+            return ExitCode::from(2);
+        }
+        return platform::run(cfg, move |gl| {
+            println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);
+            repairs::RepairsApp::new(open, shots).map(|c| Box::new(c) as Box<dyn App>)
         });
     }
     if headless && shots.is_none() && !args.iter().any(|a| a == "--connect") {

@@ -1,0 +1,66 @@
+{
+  "schema": "starcrew.repair-game/1",
+  "id": "sensors",
+  "title": "Sensors",
+  "place": "Sensor bay and the dish",
+  "group": "Weapons and sensors",
+  "hazard": {
+    "text": "The dish jams",
+    "hp": 0,
+    "radius_m": 0
+  },
+  "down": "Science and tactical lose range",
+  "guide": {
+    "steps": [
+      {
+        "icon": "drag",
+        "text": "Drag the dish round the sky"
+      },
+      {
+        "icon": "band",
+        "text": "Rest on the strongest return"
+      },
+      {
+        "icon": "slider",
+        "text": "LO, MID, HI clean the trace"
+      },
+      {
+        "icon": "hold",
+        "text": "Hold the blip clean"
+      }
+    ],
+    "mistake": "The dish held against a stop: it jams"
+  },
+  "knobs": {
+    "return_px": {
+      "base": 70,
+      "per_level": -8,
+      "min": 42
+    },
+    "decoy_count": {
+      "levels": [
+        0,
+        1
+      ]
+    },
+    "filter_tol_frac": {
+      "base": 0.15,
+      "per_level": -0.02,
+      "min": 0.08
+    },
+    "sky_noise_frac": {
+      "base": 0.05,
+      "per_level": 0.02
+    }
+  },
+  "min_round_s": [
+    1.2,
+    1.3,
+    1.2,
+    1.2,
+    1.4,
+    1.3
+  ],
+  "min_round_measured": false,
+  "_min_round_note": "Provisional (design 8): 40% of the scripted hand's fastest round at each level, over every state and four seeds, until people's play is measured."
+}

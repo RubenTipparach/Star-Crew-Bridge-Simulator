@@ -51,6 +51,8 @@ pub mod keys {
     pub const N2: u32 = sdl::SDLK_2.0;
     /// The 3 key.
     pub const N3: u32 = sdl::SDLK_3.0;
+    /// F1: a repair game's guide card.
+    pub const F1: u32 = sdl::SDLK_F1.0;
     /// F3.
     pub const F3: u32 = sdl::SDLK_F3.0;
     /// F12.
@@ -89,6 +91,8 @@ pub mod keys {
     pub const L: u32 = sdl::SDLK_L.0;
     /// R.
     pub const R: u32 = sdl::SDLK_R.0;
+    /// V: the drill's overview of the bridge.
+    pub const V: u32 = sdl::SDLK_V.0;
     /// X.
     pub const X: u32 = sdl::SDLK_X.0;
     /// Z.

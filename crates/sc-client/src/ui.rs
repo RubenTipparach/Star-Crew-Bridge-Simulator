@@ -55,7 +55,8 @@ fn texture_key(id: egui::TextureId) -> u64 {
     }
 }
 
-fn key_of(code: u32) -> Option<egui::Key> {
+/// egui's key for an SDL keycode, where it has one (the repair games read egui's keys).
+pub fn key_of(code: u32) -> Option<egui::Key> {
     use egui::Key;
     Some(match code {
         keys::RETURN => Key::Enter,
@@ -70,6 +71,7 @@ fn key_of(code: u32) -> Option<egui::Key> {
         keys::END => Key::End,
         keys::ESCAPE => Key::Escape,
         keys::SPACE => Key::Space,
+        keys::F1 => Key::F1,
         // SDL's keycodes for letters and digits are their lowercase characters.
         c @ 0x30..=0x39 | c @ 0x61..=0x7a => {
             return char::from_u32(c).and_then(|ch| Key::from_name(&ch.to_ascii_uppercase().to_string()))

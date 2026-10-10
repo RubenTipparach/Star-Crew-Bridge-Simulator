@@ -234,4 +234,64 @@ server tick time, client frame rate. Results go in `docs/benchmarks/2026-10-10-c
 
 Deltas and keyframes, prediction (no avatar moves in this drill), lag compensation (bolts are server-side),
 matchmaker codes, LAN discovery broadcast, heat, the shield shunt, the hull mask, point defence, Lance missiles, the
-walk to the seat (players start seated, BS:266-269), more than one ship. Each is in its own change's tasks.
+walk to the seat (players start seated, BS:266-269; taken up by section 9), more than one ship. Each is in its own change's tasks.
+
+## 9. The crew on foot (owner, 2026-10-10)
+
+The owner, on the demo: "how come the demo didnt spawn bots running around the ship?" and "the bot should get up and
+go to another station if it needs to operate another station". Until now the drill had no bodies: a seat was a
+claim, granted at once from anywhere. This section puts every crew member aboard, on the bridge, and makes changing
+station a walk (BS 6, "Switching station", way 2). Recommendations taken (ask only with screenshots) are marked.
+
+**Bodies.** Every player and bot has a body on the bridge, a `sc-core::walk::Body` stepped by the same code as the
+ship walk's, on the walk world built from the compiled deck (`compiled/tern.deck`, `deckc`). The server loads it
+once; the deck's walk triangles, not its pictures. A body is seated, standing up, walking or sitting down.
+
+**Seats** are the layout's (`data/ships/tern/layout.json` `stations`, `seat_m` and `yaw_deg`): Helm and Tactical for
+this drill; the other bridge seats are places to stand, not stations here.
+
+**Joining.** A player starts seated at the station they claimed at muster (BS 6, way 4: "every player with a
+reservation starts seated at it"); a player with no station stands at the back of the bridge.
+
+**Changing station** (BS 6, way 2: stand, walk, sit):
+
+1. A claim of a seat the body is not in is a **walk order**: the server stands the body (0.4 s, BS 6), and the
+   station it left goes to automation at that tick.
+2. The body walks to the new seat by a path on the walk grid (`sc-core::nav`, the bot crew's), at the walk speed
+   (`data/crew/walk.json`, 2.4 m/s); bridge seats are 2-11 m apart, 1-5 s.
+3. Within 1.5 m of the seat it sits (0.4 s) and becomes the station's operator; until then automation has it.
+4. A seat held by a player cannot be walked into: the order is refused, "taken". A seat held by a bot is relieved:
+   the player walks up, the bot stands and walks on (BS 6, "Relieve").
+
+A player's walk is the same order as a bot's (recommendation taken): click the other station's chip in the title
+band, or Tab, and the body walks there on its own. Walking with W A S D on the bridge comes with the ship's walk
+in the drill client, its own step.
+
+**When a bot moves** (its `bot` profile in `data/stations.json`, recommendation taken):
+
+- **Relieved:** a player claims the bot's seat. The bot gets up and walks to the most important station no player
+  holds (the profile's `posts` order: Helm, then Tactical), or, with none free, to the back of the bridge.
+- **Needed elsewhere:** a station that matters more than the bot's own is empty for `reassign_s` (5 s) with no one
+  walking to it, and the bot's own is worth less. The drill's numbers say Helm first: a Helm bot with Tactical on
+  automation won 35 of 42 rounds, a Tactical bot alone loses every round (log.md). So a lone bot at Tactical gets
+  up and walks to Helm, and a second bot that joins takes Tactical.
+- **Never mid-walk:** a bot finishes a walk before it decides again, and never leaves a seat during Countdown.
+
+**On the wire.** Each body in the snapshot (section 4.1): its slot, its position on the bridge in centimetres
+(three `i16`, the ship frame), its heading (`u8`, 256 a turn) and its posture (`u8`): 9 bytes, 8 bodies 72 bytes
+at 20 Hz, 11.5 kbit/s a client against the 80 kbit/s measured. Bodies are drawn 100 ms in the past, interpolated,
+as the ships are. A `Claim` far from the seat is the walk order; no new message.
+
+**In the client.** While its own body is seated, the console as now. While it walks, the look band shows the
+bridge from the body's eye (the deck's renderer, as the ship walk draws it) with the other bodies as the crew's
+blocky figures (`crew-npcs` 7), and the console dims with "Walking to Helm". `V` toggles an overview of the bridge
+from its back wall, with every body and its name, for the demo video.
+
+**The Pi 5 budget.** Server: the walk world and the walk grid at load (the ship walk's figures: about 1 s and
+tens of MB on the Pi 5; logged), and a body step, 0.26 ms each on a cloud CPU (`crew-npcs` 6) for at most 2 walking
+bodies here. Client: the bridge's draw while walking is the ship walk's (measured, `docs/benchmarks/`), the figures
+about 100 triangles each.
+
+**Tests.** A lone Tactical bot walks to Helm and wins; a player who claims a bot's seat relieves it and the bot walks
+to the other; a station is automated while its walker is on the way; a claim of a player's seat is refused; a body
+reaches a seat on the bridge's walk world in under 6 s.

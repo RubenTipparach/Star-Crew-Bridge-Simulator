@@ -5,6 +5,8 @@
 //! for every game). It is the core plus a network adapter: every rule is `sc-core::combat`'s; this file maps peers
 //! to players and messages to the drill's calls.
 
+pub mod bridge;
+
 use std::collections::BTreeMap;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::atomic::Ordering;
@@ -32,6 +34,8 @@ pub struct ServerConfig {
     pub impair: Impair,
     /// The drill's seed.
     pub seed: u64,
+    /// The bridge the crew walk on (coop-drill design 9), or none for claims that seat at once.
+    pub bridge: Option<sc_core::combat::bodies::Bridge>,
 }
 
 struct Conn {
@@ -76,8 +80,12 @@ impl DrillServer {
     /// Start listening.
     pub fn start(data: DrillData, cfg: &ServerConfig) -> std::io::Result<Self> {
         let net = ServerNet::start(cfg.listen, cfg.host_ip, cfg.impair, cfg.seed)?;
+        let mut drill = Drill::new(data, cfg.seed);
+        if let Some(b) = &cfg.bridge {
+            drill.set_bridge(b.clone());
+        }
         Ok(Self {
-            drill: Drill::new(data, cfg.seed),
+            drill,
             net,
             conns: BTreeMap::new(),
             snap_acc: 0.0,
@@ -272,7 +280,12 @@ impl DrillServer {
     pub fn tick(&mut self) -> Vec<String> {
         let t0 = Instant::now();
         let mut log = Vec::new();
+        let before: Vec<_> = self.drill.players.iter().map(|p| (p.slot, p.station)).collect();
         self.drill.step();
+        // A body that sat down this tick changed who holds a station (coop-drill design 9).
+        if self.drill.players.iter().map(|p| (p.slot, p.station)).ne(before.iter().copied()) {
+            self.crew_dirty = true;
+        }
         if self.crew_dirty {
             self.crew_dirty = false;
             let crew = self
@@ -309,6 +322,12 @@ impl DrillServer {
                     // A new Muster clears everyone's ready mark.
                     self.crew_dirty = true;
                     ServerMsg::Phase(phase, outcome)
+                }
+                DrillEvent::Relieved { slot, station } => {
+                    let name = self.drill.players.iter().find(|p| p.slot == slot).map(|p| p.name.clone());
+                    log.push(format!("{} relieved at {}", name.unwrap_or_default(), station.name()));
+                    self.crew_dirty = true;
+                    continue;
                 }
                 DrillEvent::Refused { slot, reason } => {
                     if let Some(p) = self.peer_of(slot) {

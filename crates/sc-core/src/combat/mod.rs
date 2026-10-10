@@ -8,6 +8,7 @@
 
 pub mod attitude;
 pub mod automation;
+pub mod bodies;
 pub mod data;
 
 use crate::replay::ReplayHash;
@@ -454,6 +455,8 @@ pub enum Refusal {
     Full = 9,
     /// Not during this phase.
     WrongPhase = 10,
+    /// The body is on its way somewhere already (coop-drill design 9).
+    Walking = 11,
 }
 
 impl Refusal {
@@ -471,6 +474,7 @@ impl Refusal {
             MagazineEmpty,
             Full,
             WrongPhase,
+            Walking,
         ]
         .into_iter()
         .find(|r| *r as u8 == v)
@@ -488,6 +492,7 @@ impl Refusal {
             Self::MagazineEmpty => "Magazine empty",
             Self::Full => "Crew is full",
             Self::WrongPhase => "Not now",
+            Self::Walking => "On the way",
         }
     }
 }
@@ -551,6 +556,13 @@ pub enum DrillEvent {
         slot: u8,
         /// Why.
         reason: Refusal,
+    },
+    /// A player relieved a bot at a station; the bot is getting up (design 9).
+    Relieved {
+        /// The bot's slot.
+        slot: u8,
+        /// The station.
+        station: Station,
     },
 }
 
@@ -835,6 +847,10 @@ pub struct Drill {
     next_missile: u16,
     rng: Rng,
     auto: automation::Memory,
+    /// The bridge the crew walk on, when the drill has one (design 9); without it a claim seats at once.
+    pub on_foot: Option<bodies::Bridge>,
+    /// Every crew member's body, by slot order.
+    pub bodies: Vec<bodies::CrewBody>,
 }
 
 fn new_ship(id: u16, side: Side, combat: &CombatBlock, shields: &ShieldBlock, gun_capacitor_mj: f64) -> Ship {
@@ -911,6 +927,8 @@ impl Drill {
             next_missile: 1,
             rng: Rng::for_purpose(seed, 0, "drill"),
             auto: automation::Memory::default(),
+            on_foot: None,
+            bodies: Vec::new(),
         };
         d.reset_round();
         d
@@ -964,13 +982,37 @@ impl Drill {
         let name = clean_name(name);
         self.players.push(Player { slot, name, station: None, ready: false, bot });
         self.players.sort_by_key(|p| p.slot);
+        if let Some(b) = &self.on_foot {
+            self.bodies.push(bodies::CrewBody::at_muster(slot, b));
+            self.bodies.sort_by_key(|b| b.slot);
+        }
         Ok(slot)
+    }
+
+    /// Put the crew on foot on `bridge` (design 9): every body to the muster point, every station to automation.
+    pub fn set_bridge(&mut self, bridge: bodies::Bridge) {
+        self.bodies = self.players.iter().map(|p| bodies::CrewBody::at_muster(p.slot, &bridge)).collect();
+        for p in &mut self.players {
+            p.station = None;
+        }
+        self.on_foot = Some(bridge);
+    }
+
+    /// Slot `slot`'s body.
+    pub fn body(&self, slot: u8) -> Option<&bodies::CrewBody> {
+        self.bodies.iter().find(|b| b.slot == slot)
     }
 
     /// A player leaves; their station returns to automation on the next tick.
     pub fn leave(&mut self, slot: u8) {
         self.players.retain(|p| p.slot != slot);
+        self.bodies.retain(|b| b.slot != slot);
         self.queue.retain(|q| q.2 != Some(slot));
+    }
+
+    /// Slot `slot`'s player.
+    pub fn player(&self, slot: u8) -> Option<&Player> {
+        self.players.iter().find(|p| p.slot == slot)
     }
 
     fn player_mut(&mut self, slot: u8) -> Option<&mut Player> {
@@ -982,6 +1024,9 @@ impl Drill {
         if !self.data.mission.stations.iter().any(|id| id == s.id()) {
             return Err(Refusal::NoSuch);
         }
+        if self.on_foot.is_some() {
+            return self.claim_on_foot(slot, s);
+        }
         match self.operator(s) {
             Operator::Player(other) if other != slot => return Err(Refusal::StationTaken),
             _ => {}
@@ -989,6 +1034,64 @@ impl Drill {
         let p = self.player_mut(slot).ok_or(Refusal::NotYourStation)?;
         p.station = Some(s);
         Ok(())
+    }
+
+    /// A claim on foot (design 9): a walk order. The body gets up, its station goes to automation, it walks to the
+    /// seat and becomes the operator when it sits. A player relieves a bot; nobody walks into a player's seat, or one
+    /// someone is already walking to.
+    fn claim_on_foot(&mut self, slot: u8, s: Station) -> Result<(), Refusal> {
+        let Some(bridge) = self.on_foot.clone() else { return Err(Refusal::NoSuch) };
+        if !bridge.has(s) {
+            return Err(Refusal::NoSuch);
+        }
+        let me = self.players.iter().find(|p| p.slot == slot).ok_or(Refusal::NotYourStation)?;
+        let (me_bot, me_station) = (me.bot, me.station);
+        let body = self.bodies.iter().find(|b| b.slot == slot).ok_or(Refusal::NotYourStation)?;
+        if body.busy() {
+            return Err(Refusal::Walking);
+        }
+        if me_station == Some(s) {
+            return Ok(());
+        }
+        if self.bodies.iter().any(|b| b.slot != slot && b.walking_to() == Some(s)) {
+            return Err(Refusal::StationTaken);
+        }
+        if let Operator::Player(other) = self.operator(s) {
+            let other_bot = self.players.iter().any(|p| p.slot == other && p.bot);
+            if !(other_bot && !me_bot) {
+                return Err(Refusal::StationTaken);
+            }
+            // Relieved (BS 6): the bot stands and goes; its own logic picks where next.
+            if let Some(p) = self.player_mut(other) {
+                p.station = None;
+            }
+            if let Some(b) = self.bodies.iter_mut().find(|b| b.slot == other) {
+                b.go(bodies::Spot::Muster, &bridge);
+            }
+            self.events.push(DrillEvent::Relieved { slot: other, station: s });
+        }
+        if let Some(p) = self.player_mut(slot) {
+            p.station = None;
+        }
+        if let Some(b) = self.bodies.iter_mut().find(|b| b.slot == slot) {
+            b.go(bodies::Spot::Seat(s), &bridge);
+        }
+        Ok(())
+    }
+
+    fn step_bodies(&mut self) {
+        let Some(bridge) = self.on_foot.as_ref() else { return };
+        let mut sat = Vec::new();
+        for b in &mut self.bodies {
+            if let Some(s) = b.step(bridge, DT as f32) {
+                sat.push((b.slot, s));
+            }
+        }
+        for (slot, s) in sat {
+            if let Some(p) = self.players.iter_mut().find(|p| p.slot == slot) {
+                p.station = Some(s);
+            }
+        }
     }
 
     /// A player is ready (or not) to begin.
@@ -1024,6 +1127,7 @@ impl Drill {
     pub fn step(&mut self) {
         self.tick += 1;
         self.phase_s += DT;
+        self.step_bodies();
         // Commands, by station, then arrival (CLAUDE.md 6.4).
         let mut queue = std::mem::take(&mut self.queue);
         queue.sort_by_key(|q| (q.0, q.1));
@@ -1678,6 +1782,9 @@ impl Drill {
             }
         }
         h.u64(self.bolts.len() as u64).u64(self.missiles.len() as u64);
+        for b in &self.bodies {
+            h.u64(u64::from(b.slot)).f64(f64::from(b.pos[0])).f64(f64::from(b.pos[2])).u64(b.posture as u64);
+        }
         h.value()
     }
 }
@@ -1974,6 +2081,66 @@ mod tests {
         assert_eq!(d.round, 1);
         assert!(d.players.iter().all(|p| !p.ready));
         assert!(d.ships[1].alive && !d.ships[1].active, "a fresh Hound waits for the next Engage");
+    }
+
+    fn on_foot() -> Drill {
+        let mut d = drill();
+        d.set_bridge(bodies::tests::bridge());
+        d
+    }
+
+    fn walk_until(d: &mut Drill, mut done: impl FnMut(&Drill) -> bool) -> f64 {
+        for k in 0..(TICK_HZ as usize * 20) {
+            if done(d) {
+                return k as f64 * DT;
+            }
+            d.step();
+        }
+        panic!("it never happened");
+    }
+
+    #[test]
+    fn on_foot_a_claim_is_a_walk_and_the_station_is_automated_until_the_body_sits() {
+        let mut d = on_foot();
+        let a = d.join("Ens. Holt", false).expect("joins");
+        d.claim(a, Station::Helm).expect("a walk order");
+        assert_eq!(d.operator(Station::Helm), Operator::Auto, "automation holds helm while the body walks");
+        assert_eq!(d.body(a).and_then(|b| b.walking_to()), Some(Station::Helm));
+        assert_eq!(d.claim(a, Station::Tactical), Err(Refusal::Walking), "one walk at a time");
+        let t = walk_until(&mut d, |d| d.operator(Station::Helm) == Operator::Player(a));
+        assert!(t > 2.0 && t < 6.0, "the muster point to the helm seat is a few seconds' walk: {t}");
+        assert_eq!(d.body(a).map(|b| b.posture), Some(bodies::Posture::Seated));
+        // Changing station: up, across, down.
+        d.claim(a, Station::Tactical).expect("a walk order");
+        assert_eq!(d.operator(Station::Helm), Operator::Auto, "the seat left goes to automation at once");
+        let t = walk_until(&mut d, |d| d.operator(Station::Tactical) == Operator::Player(a));
+        assert!(t > 1.5 && t < 4.0, "seat to seat across the bridge: {t}");
+    }
+
+    #[test]
+    fn a_player_relieves_a_bot_and_nobody_walks_into_a_players_seat() {
+        let mut d = on_foot();
+        let bot = d.join("Lt. Venn (bot)", true).expect("joins");
+        let me = d.join("Ens. Holt", false).expect("joins");
+        let other = d.join("Ens. Rook", false).expect("joins");
+        d.claim(bot, Station::Helm).expect("walks");
+        walk_until(&mut d, |d| d.operator(Station::Helm) == Operator::Player(bot));
+        d.claim(me, Station::Helm).expect("a player relieves a bot");
+        assert!(d.drain_events().iter().any(|e| matches!(e, DrillEvent::Relieved { slot, .. } if *slot == bot)));
+        assert_eq!(d.player(bot).and_then(|p| p.station), None, "the bot is up");
+        assert_eq!(d.claim(other, Station::Helm), Err(Refusal::StationTaken), "someone is on the way");
+        walk_until(&mut d, |d| d.operator(Station::Helm) == Operator::Player(me));
+        assert_eq!(d.claim(other, Station::Helm), Err(Refusal::StationTaken), "a player's seat");
+        assert_eq!(d.claim(bot, Station::Helm), Err(Refusal::StationTaken), "a bot never relieves a player");
+    }
+
+    #[test]
+    fn leaving_takes_the_body_off_the_bridge() {
+        let mut d = on_foot();
+        let a = d.join("Ens. Holt", false).expect("joins");
+        assert!(d.body(a).is_some());
+        d.leave(a);
+        assert!(d.bodies.is_empty());
     }
 
     /// A drill in Engage with one player at helm and one at tactical, for driving commands by hand.
