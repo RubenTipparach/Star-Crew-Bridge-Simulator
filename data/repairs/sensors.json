@@ -1,0 +1,44 @@
+{
+  "schema": "starcrew.repair-game/1",
+  "id": "sensors",
+  "title": "Sensors",
+  "place": "Sensor bay and the dish",
+  "group": "Weapons and sensors",
+  "hazard": {
+    "text": "The dish jams",
+    "hp": 0,
+    "radius_m": 0
+  },
+  "down": "Science and tactical lose range",
+  "guide": {
+    "steps": [
+      {
+        "icon": "drag",
+        "text": "Drag the dish round the sky"
+      },
+      {
+        "icon": "band",
+        "text": "Rest on the strongest return"
+      },
+      {
+        "icon": "slider",
+        "text": "LO, MID, HI clean the trace"
+      },
+      {
+        "icon": "hold",
+        "text": "Hold the blip clean"
+      }
+    ],
+    "mistake": "The dish held against a stop: it jams"
+  },
+  "knobs": {},
+  "min_round_s": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "min_round_measured": false
+}

@@ -1,0 +1,40 @@
+{
+  "schema": "starcrew.repair-game/1",
+  "id": "galley",
+  "title": "Galley synthesizer",
+  "place": "Mess",
+  "group": "Life",
+  "hazard": {
+    "text": "Paste everywhere: the column drains",
+    "hp": 0,
+    "radius_m": 0
+  },
+  "down": "Hunger between missions (design 4)",
+  "guide": {
+    "steps": [
+      {
+        "icon": "hold",
+        "text": "Hold a valve to fill"
+      },
+      {
+        "icon": "band",
+        "text": "Let go early: it runs on"
+      },
+      {
+        "icon": "tap",
+        "text": "All in band: PURGE"
+      }
+    ],
+    "mistake": "Past a band's top: paste everywhere, that column drains"
+  },
+  "knobs": {},
+  "min_round_s": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "min_round_measured": false
+}

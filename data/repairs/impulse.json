@@ -1,0 +1,55 @@
+{
+  "schema": "starcrew.repair-game/1",
+  "id": "impulse",
+  "title": "Impulse engines",
+  "place": "Drive, the two impulse units",
+  "group": "Engineering",
+  "hazard": {
+    "text": "Misfire: soot and heat",
+    "hp": 0,
+    "radius_m": 0
+  },
+  "down": "Half thrust for each unit down",
+  "guide": {
+    "steps": [
+      {
+        "icon": "rhythm",
+        "text": "Pulses run to the line"
+      },
+      {
+        "icon": "tap",
+        "text": "Tap as one crosses"
+      },
+      {
+        "icon": "order",
+        "text": "Time all eight injectors"
+      }
+    ],
+    "mistake": "Tapping off the line: a misfire, soot and heat"
+  },
+  "knobs": {
+    "pulse_speed_px_s": {
+      "base": 240,
+      "per_level": 40
+    },
+    "window_px": {
+      "base": 30,
+      "per_level": -3,
+      "min": 18
+    },
+    "beat_s": {
+      "base": 0.78,
+      "per_level": -0.05,
+      "min": 0.5
+    }
+  },
+  "min_round_s": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "min_round_measured": false
+}

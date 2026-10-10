@@ -1,0 +1,36 @@
+{
+  "schema": "starcrew.repair-game/1",
+  "id": "shower",
+  "title": "Shower",
+  "place": "Crew quarters",
+  "group": "Life",
+  "hazard": {
+    "text": "Loose joint: you are soaked",
+    "hp": 0,
+    "radius_m": 0
+  },
+  "down": "Comfort and morale (design 4)",
+  "guide": {
+    "steps": [
+      {
+        "icon": "pipes",
+        "text": "Turn tiles: one run, main to head"
+      },
+      {
+        "icon": "tap",
+        "text": "Then open the valve"
+      }
+    ],
+    "mistake": "Opening on an open run: a loose joint, soaked"
+  },
+  "knobs": {},
+  "min_round_s": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "min_round_measured": false
+}

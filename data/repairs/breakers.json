@@ -1,0 +1,52 @@
+{
+  "schema": "starcrew.repair-game/1",
+  "id": "breakers",
+  "title": "Switchboard and breakers",
+  "place": "Main switchboard",
+  "group": "Engineering",
+  "hazard": {
+    "text": "Arc flash: 10 HP",
+    "hp": 10,
+    "radius_m": 1.5
+  },
+  "down": "power-grid",
+  "guide": {
+    "steps": [
+      {
+        "icon": "screw",
+        "text": "Unscrew the cover",
+        "cover": true
+      },
+      {
+        "icon": "drag",
+        "text": "Rack the breaker out"
+      },
+      {
+        "icon": "swap",
+        "text": "Fit the fuse the bus rates"
+      },
+      {
+        "icon": "band",
+        "text": "Rack in, close on green"
+      }
+    ],
+    "mistake": "Closing on red, or a wrong fuse: an arc flash, 10 HP"
+  },
+  "cover": {
+    "x": 120,
+    "y": 92,
+    "w": 660,
+    "h": 609,
+    "screws": 6
+  },
+  "knobs": {},
+  "min_round_s": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "min_round_measured": false
+}

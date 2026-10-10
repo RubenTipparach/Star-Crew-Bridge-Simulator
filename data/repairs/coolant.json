@@ -1,0 +1,44 @@
+{
+  "schema": "starcrew.repair-game/1",
+  "id": "coolant",
+  "title": "Coolant balance",
+  "place": "Engineering bench",
+  "group": "Engineering",
+  "hazard": {
+    "text": "Loop over-temperature warning",
+    "hp": 0,
+    "radius_m": 0
+  },
+  "down": "The reactor runs hot and scrams; the ship falls back on its batteries (power-grid 3)",
+  "guide": {
+    "steps": [
+      {
+        "icon": "band",
+        "text": "Both legs in their bands"
+      },
+      {
+        "icon": "slider",
+        "text": "Pump lever: more flow"
+      },
+      {
+        "icon": "slider",
+        "text": "Chiller, radiators: more cooling"
+      },
+      {
+        "icon": "valve",
+        "text": "Makeup keeps the loop full"
+      }
+    ],
+    "mistake": "Hot leg past 370 K: an over-temperature warning"
+  },
+  "knobs": {},
+  "min_round_s": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "min_round_measured": false
+}

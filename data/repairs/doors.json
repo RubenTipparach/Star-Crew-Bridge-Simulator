@@ -1,0 +1,40 @@
+{
+  "schema": "starcrew.repair-game/1",
+  "id": "doors",
+  "title": "Doors",
+  "place": "Any door, jammed",
+  "group": "Outside and doors",
+  "hazard": {
+    "text": "The leaf drops back",
+    "hp": 0,
+    "radius_m": 0
+  },
+  "down": "The door is stuck",
+  "guide": {
+    "steps": [
+      {
+        "icon": "turn",
+        "text": "Crank round, clockwise"
+      },
+      {
+        "icon": "band",
+        "text": "Ease off when it shudders"
+      },
+      {
+        "icon": "rhythm",
+        "text": "Wind on between waves"
+      }
+    ],
+    "mistake": "The gauge past its limit: the crank slips, the leaf drops"
+  },
+  "knobs": {},
+  "min_round_s": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "min_round_measured": false
+}

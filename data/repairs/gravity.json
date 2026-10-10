@@ -1,0 +1,44 @@
+{
+  "schema": "starcrew.repair-game/1",
+  "id": "gravity",
+  "title": "Gravity generator",
+  "place": "Engineering, deck C",
+  "group": "Engineering",
+  "hazard": {
+    "text": "Field surge: everyone near floats for 2 s",
+    "hp": 0,
+    "radius_m": 6
+  },
+  "down": "Everyone aboard floats, slowly (design 4)",
+  "guide": {
+    "steps": [
+      {
+        "icon": "match",
+        "text": "Lay the field on the ghost"
+      },
+      {
+        "icon": "drag",
+        "text": "Drag the field to turn it"
+      },
+      {
+        "icon": "slider",
+        "text": "Shift and Stretch slide it"
+      },
+      {
+        "icon": "hold",
+        "text": "Hold it green; the ring fills"
+      }
+    ],
+    "mistake": "Far off the ghost: a field surge, everyone floats 2 s"
+  },
+  "knobs": {},
+  "min_round_s": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "min_round_measured": false
+}

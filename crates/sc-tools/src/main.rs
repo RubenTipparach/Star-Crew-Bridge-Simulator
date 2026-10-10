@@ -49,7 +49,15 @@ fn check_data(root: &Path) -> Result<usize, String> {
         let texts: [&str; 6] = std::array::from_fn(|i| drill[i].as_str());
         sc_core::combat::data::DrillData::parse(texts, m, &read(m)?).map_err(|e| e.to_string())?;
     }
-    Ok(files.len() + drill.len() + missions.len())
+    // The repair files: the rules, the kit's rates, the Tern's jobs, and each game the jobs name (repair-minigames 8).
+    let mut ids: Vec<String> = std::fs::read_dir(root.join("data/repairs"))
+        .map_err(|e| format!("data/repairs: cannot be read: {e}"))?
+        .filter_map(|e| e.ok()?.file_name().into_string().ok()?.strip_suffix(".json").map(str::to_owned))
+        .filter(|id| id != "rules")
+        .collect();
+    ids.sort();
+    sc_core::repair::data::RepairData::load(&ids, read)?;
+    Ok(files.len() + drill.len() + missions.len() + 3 + ids.len())
 }
 
 fn main() -> ExitCode {

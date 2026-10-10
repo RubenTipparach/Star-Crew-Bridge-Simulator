@@ -5,10 +5,10 @@
 //! One implementation for the headless `sc-bot`, the in-process test and the game client's `--bot` (CLAUDE.md
 //! 6.1). It lives beside the session it drives; it defines no rule: every decision is the core's automation.
 
+use crate::session::{Session, Stage};
 use sc_core::combat::automation::{self, Memory};
 use sc_core::combat::data::{DrillData, Profile};
 use sc_core::combat::{Phase, Station};
-use crate::session::{Session, Stage};
 
 /// A bot playing one station.
 pub struct Bot {

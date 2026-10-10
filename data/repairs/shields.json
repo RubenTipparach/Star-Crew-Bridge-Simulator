@@ -1,0 +1,44 @@
+{
+  "schema": "starcrew.repair-game/1",
+  "id": "shields",
+  "title": "Shield generator",
+  "place": "Deck C, under the drive",
+  "group": "Engineering",
+  "hazard": {
+    "text": "Emitter crackle: the face drains",
+    "hp": 0,
+    "radius_m": 0
+  },
+  "down": "That shield face is down",
+  "guide": {
+    "steps": [
+      {
+        "icon": "turn",
+        "text": "Phase dial moves the wave"
+      },
+      {
+        "icon": "turn",
+        "text": "Gain dial sizes it"
+      },
+      {
+        "icon": "match",
+        "text": "Lay it on the master"
+      },
+      {
+        "icon": "hold",
+        "text": "Hold while the lock fills"
+      }
+    ],
+    "mistake": "Gain in the hatched red: a crackle, the face drains"
+  },
+  "knobs": {},
+  "min_round_s": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "min_round_measured": false
+}

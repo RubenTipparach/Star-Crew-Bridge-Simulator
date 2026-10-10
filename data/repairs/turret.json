@@ -1,0 +1,44 @@
+{
+  "schema": "starcrew.repair-game/1",
+  "id": "turret",
+  "title": "Twin pulse cannon",
+  "place": "Turret access room",
+  "group": "Weapons and sensors",
+  "hazard": {
+    "text": "The bank arcs: 10 HP, charge lost",
+    "hp": 10,
+    "radius_m": 1
+  },
+  "down": "The turret does not fire",
+  "guide": {
+    "steps": [
+      {
+        "icon": "slider",
+        "text": "Slide the two lenses"
+      },
+      {
+        "icon": "aim",
+        "text": "Smallest spot on the cross"
+      },
+      {
+        "icon": "hold",
+        "text": "Hold it there"
+      },
+      {
+        "icon": "drag",
+        "text": "Coupling: push home steady"
+      }
+    ],
+    "mistake": "The coupling slammed home: the bank arcs, 10 HP"
+  },
+  "knobs": {},
+  "min_round_s": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "min_round_measured": false
+}

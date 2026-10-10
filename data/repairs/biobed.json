@@ -1,0 +1,52 @@
+{
+  "schema": "starcrew.repair-game/1",
+  "id": "biobed",
+  "title": "Medbay biobeds",
+  "place": "Medbay",
+  "group": "Life",
+  "hazard": {
+    "text": "The bed alarms",
+    "hp": 0,
+    "radius_m": 0
+  },
+  "down": "Beds heal at the unpowered rate",
+  "guide": {
+    "steps": [
+      {
+        "icon": "screw",
+        "text": "Unscrew the cover",
+        "cover": true
+      },
+      {
+        "icon": "turn",
+        "text": "Turn GAIN and PHASE"
+      },
+      {
+        "icon": "match",
+        "text": "Live trace on the reference"
+      },
+      {
+        "icon": "hold",
+        "text": "Hold it green 2 s"
+      }
+    ],
+    "mistake": "A knob in its red zone: the bed alarms"
+  },
+  "cover": {
+    "x": 640,
+    "y": 489,
+    "w": 458,
+    "h": 210,
+    "screws": 4
+  },
+  "knobs": {},
+  "min_round_s": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "min_round_measured": false
+}

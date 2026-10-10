@@ -1,0 +1,40 @@
+{
+  "schema": "starcrew.repair-game/1",
+  "id": "conduits",
+  "title": "Electrical conduits",
+  "place": "Anywhere a conduit runs",
+  "group": "Engineering",
+  "hazard": {
+    "text": "Crossed pair: spark, 5 HP, breaker tripped",
+    "hp": 5,
+    "radius_m": 1
+  },
+  "down": "Loads beyond it are cut (power-grid)",
+  "guide": {
+    "steps": [
+      {
+        "icon": "sweep",
+        "text": "Drag along to strip burns"
+      },
+      {
+        "icon": "plug",
+        "text": "Join colours before the clamp"
+      },
+      {
+        "icon": "drag",
+        "text": "Reroute: draw round the burn"
+      }
+    ],
+    "mistake": "A crossed pair: a spark, 5 HP, the breaker trips"
+  },
+  "knobs": {},
+  "min_round_s": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "min_round_measured": false
+}

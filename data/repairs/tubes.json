@@ -1,0 +1,40 @@
+{
+  "schema": "starcrew.repair-game/1",
+  "id": "tubes",
+  "title": "Gannet tubes and hoist",
+  "place": "Magazine",
+  "group": "Weapons and sensors",
+  "hazard": {
+    "text": "Interlock tripped: back to the latch",
+    "hp": 0,
+    "radius_m": 0
+  },
+  "down": "The tube cannot load",
+  "guide": {
+    "steps": [
+      {
+        "icon": "turn",
+        "text": "Turn the ring slowly"
+      },
+      {
+        "icon": "hold",
+        "text": "Rest where the pawl drops"
+      },
+      {
+        "icon": "order",
+        "text": "RAIL, LATCH, INTERLOCK"
+      }
+    ],
+    "mistake": "A switch out of order: the interlock trips"
+  },
+  "knobs": {},
+  "min_round_s": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "min_round_measured": false
+}

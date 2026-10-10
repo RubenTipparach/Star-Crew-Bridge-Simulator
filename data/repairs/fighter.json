@@ -1,0 +1,40 @@
+{
+  "schema": "starcrew.repair-game/1",
+  "id": "fighter",
+  "title": "Fighters",
+  "place": "Hangar, a Swift on its cradle",
+  "group": "Hangar",
+  "hazard": {
+    "text": "Spark: 5 HP, a bent plug",
+    "hp": 5,
+    "radius_m": 1
+  },
+  "down": "The fighter cannot launch",
+  "guide": {
+    "steps": [
+      {
+        "icon": "drag",
+        "text": "Lift the panel off"
+      },
+      {
+        "icon": "plug",
+        "text": "Each lead to its shape"
+      },
+      {
+        "icon": "order",
+        "text": "Torque in the lit order"
+      }
+    ],
+    "mistake": "A plug in the wrong socket: a spark, 5 HP"
+  },
+  "knobs": {},
+  "min_round_s": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "min_round_measured": false
+}

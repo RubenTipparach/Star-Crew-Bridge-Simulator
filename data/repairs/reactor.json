@@ -1,0 +1,40 @@
+{
+  "schema": "starcrew.repair-game/1",
+  "id": "reactor",
+  "title": "Reactor: magnetic core",
+  "place": "Engineering, deck C/B",
+  "group": "Engineering",
+  "hazard": {
+    "text": "Plasma touched the wall: heat spike",
+    "hp": 4,
+    "radius_m": 2
+  },
+  "down": "The ship runs on batteries (power-grid)",
+  "guide": {
+    "steps": [
+      {
+        "icon": "slider",
+        "text": "Sliders pull the field"
+      },
+      {
+        "icon": "aim",
+        "text": "Keep the plasma centred"
+      },
+      {
+        "icon": "band",
+        "text": "Then hold the ring round"
+      }
+    ],
+    "mistake": "Plasma or ring touches the wall: a heat spike"
+  },
+  "knobs": {},
+  "min_round_s": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "min_round_measured": false
+}

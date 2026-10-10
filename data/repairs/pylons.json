@@ -1,0 +1,44 @@
+{
+  "schema": "starcrew.repair-game/1",
+  "id": "pylons",
+  "title": "Warp pylons",
+  "place": "Outside, the dorsal pylon (EVA only)",
+  "group": "Outside and doors",
+  "hazard": {
+    "text": "The tether snaps you back",
+    "hp": 0,
+    "radius_m": 0
+  },
+  "down": "No warp jump; not repairable in combat (design 5)",
+  "guide": {
+    "steps": [
+      {
+        "icon": "tap",
+        "text": "Tap a handhold in reach"
+      },
+      {
+        "icon": "rhythm",
+        "text": "Clip the hook as it passes"
+      },
+      {
+        "icon": "order",
+        "text": "Unbolt in the lit order"
+      },
+      {
+        "icon": "drag",
+        "text": "Push the new segment in"
+      }
+    ],
+    "mistake": "A clip missed: the tether snaps you back"
+  },
+  "knobs": {},
+  "min_round_s": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "min_round_measured": false
+}

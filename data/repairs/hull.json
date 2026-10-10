@@ -1,0 +1,44 @@
+{
+  "schema": "starcrew.repair-game/1",
+  "id": "hull",
+  "title": "Hull plating",
+  "place": "Any wall, from inside",
+  "group": "Hull",
+  "hazard": {
+    "text": "Burned through: a hiss of air",
+    "hp": 2,
+    "radius_m": 1
+  },
+  "down": "Nothing yet; one more hit makes a hole (hull-repair 2)",
+  "guide": {
+    "steps": [
+      {
+        "icon": "sweep",
+        "text": "Trace the torch round"
+      },
+      {
+        "icon": "drag",
+        "text": "Drop the plate, turn it"
+      },
+      {
+        "icon": "band",
+        "text": "Weld each seam steady"
+      },
+      {
+        "icon": "order",
+        "text": "Bolt in the lit order"
+      }
+    ],
+    "mistake": "Welding too slow: it burns through, 2 HP"
+  },
+  "knobs": {},
+  "min_round_s": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "min_round_measured": false
+}

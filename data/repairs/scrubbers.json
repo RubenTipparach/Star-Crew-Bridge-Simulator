@@ -1,0 +1,52 @@
+{
+  "schema": "starcrew.repair-game/1",
+  "id": "scrubbers",
+  "title": "Life support scrubbers",
+  "place": "Life support room",
+  "group": "Life",
+  "hazard": {
+    "text": "Hiss: the room's CO2 rises",
+    "hp": 0,
+    "radius_m": 0
+  },
+  "down": "The air goes bad (life-support)",
+  "guide": {
+    "steps": [
+      {
+        "icon": "screw",
+        "text": "Unscrew the cover",
+        "cover": true
+      },
+      {
+        "icon": "drag",
+        "text": "Spent cartridge to the bin"
+      },
+      {
+        "icon": "drag",
+        "text": "Fresh one into the slot"
+      },
+      {
+        "icon": "turn",
+        "text": "Turn valves: needles in green"
+      }
+    ],
+    "mistake": "A cartridge dropped short, or a needle in red: CO2 rises"
+  },
+  "cover": {
+    "x": 90,
+    "y": 100,
+    "w": 420,
+    "h": 589,
+    "screws": 4
+  },
+  "knobs": {},
+  "min_round_s": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "min_round_measured": false
+}

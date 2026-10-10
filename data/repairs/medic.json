@@ -1,0 +1,53 @@
+{
+  "schema": "starcrew.repair-game/1",
+  "id": "medic",
+  "title": "Medic: treatment",
+  "place": "Medbay or in the field",
+  "group": "Life",
+  "hazard": {
+    "text": "The patient flinches: 2 HP",
+    "hp": 0,
+    "radius_m": 0
+  },
+  "down": "Beds and field healing still work without a medic (medical-officer)",
+  "guide": {
+    "steps": [
+      {
+        "icon": "tap",
+        "text": "Tap a wound on the body"
+      },
+      {
+        "icon": "tool",
+        "text": "Pick the tool it needs"
+      },
+      {
+        "icon": "sweep",
+        "text": "Sweep sealer or gel over it"
+      },
+      {
+        "icon": "band",
+        "text": "Clamp or puff on green"
+      }
+    ],
+    "mistake": "Clamp in a spurt, or puff on the out-breath: a flinch, 2 HP"
+  },
+  "done_word": "Treated",
+  "job": {
+    "unit": "HP",
+    "start": 30,
+    "target": 75,
+    "rounds": 4,
+    "fumble": 2,
+    "rate_per_s": 4
+  },
+  "knobs": {},
+  "min_round_s": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "min_round_measured": false
+}

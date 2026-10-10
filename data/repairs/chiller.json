@@ -1,0 +1,44 @@
+{
+  "schema": "starcrew.repair-game/1",
+  "id": "chiller",
+  "title": "Heat exchanger (chiller)",
+  "place": "Engineering, the chiller",
+  "group": "Engineering",
+  "hazard": {
+    "text": "Torn gasket: coolant weeps",
+    "hp": 0,
+    "radius_m": 0
+  },
+  "down": "The radiators can't take the loop's heat",
+  "guide": {
+    "steps": [
+      {
+        "icon": "sweep",
+        "text": "Brush the scale off"
+      },
+      {
+        "icon": "rubber",
+        "text": "Keep off the black rubber"
+      },
+      {
+        "icon": "alternate",
+        "text": "Plates alternate: up, down"
+      },
+      {
+        "icon": "turn",
+        "text": "Nuts in turn, to the mark"
+      }
+    ],
+    "mistake": "Brush on the rubber tears it; one nut far ahead cracks a plate"
+  },
+  "knobs": {},
+  "min_round_s": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "min_round_measured": false
+}

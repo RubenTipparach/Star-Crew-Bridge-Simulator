@@ -1,0 +1,44 @@
+{
+  "schema": "starcrew.repair-game/1",
+  "id": "pipes",
+  "title": "Coolant pipes",
+  "place": "Engineering, the reactor's pipe run",
+  "group": "Engineering",
+  "hazard": {
+    "text": "Scald: a hot coolant spray",
+    "hp": 5,
+    "radius_m": 1
+  },
+  "down": "The loop leaks and loses flow; the reactor runs hot (reactor-cooling 2)",
+  "guide": {
+    "steps": [
+      {
+        "icon": "valve",
+        "text": "Open bypass, shut both sides"
+      },
+      {
+        "icon": "pipes",
+        "text": "Turn tiles, swap cracked ones"
+      },
+      {
+        "icon": "flow",
+        "text": "FILL: both legs reach the end"
+      },
+      {
+        "icon": "order",
+        "text": "Open out, in, then bleed"
+      }
+    ],
+    "mistake": "Main valve shut: core starves. A spray or legs meeting: scald"
+  },
+  "knobs": {},
+  "min_round_s": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "min_round_measured": false
+}

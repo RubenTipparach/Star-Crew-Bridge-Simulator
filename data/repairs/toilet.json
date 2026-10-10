@@ -1,0 +1,40 @@
+{
+  "schema": "starcrew.repair-game/1",
+  "id": "toilet",
+  "title": "Toilet",
+  "place": "Crew quarters",
+  "group": "Life",
+  "hazard": {
+    "text": "Overflow: the floor is wet",
+    "hp": 0,
+    "radius_m": 0
+  },
+  "down": "Comfort and morale (design 4)",
+  "guide": {
+    "steps": [
+      {
+        "icon": "drag",
+        "text": "Drag the plunger down, up"
+      },
+      {
+        "icon": "rhythm",
+        "text": "Wait for the solid ring"
+      },
+      {
+        "icon": "tap",
+        "text": "Clog gone: pull the flush"
+      }
+    ],
+    "mistake": "Plunging too soon, or flushing a clog: an overflow"
+  },
+  "knobs": {},
+  "min_round_s": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "min_round_measured": false
+}
