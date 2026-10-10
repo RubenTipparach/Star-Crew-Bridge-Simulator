@@ -7,6 +7,7 @@
 //! caller drops and counts, never applies.
 
 use glam::{DQuat, DVec3};
+use sc_core::combat::bodies::Posture;
 use sc_core::combat::{self, Command, HelmMode, Outcome, Phase, Refusal, Station, TubeState};
 
 /// The protocol's version; a Hello with another is refused.
@@ -362,6 +363,23 @@ pub struct Snapshot {
     pub missiles: Vec<MissileSnap>,
     /// This round's numbers.
     pub stats: StatsSnap,
+    /// The crew's bodies on the bridge (coop-drill design 9); empty in a drill with no bridge.
+    pub bodies: Vec<BodySnap>,
+}
+
+/// A crew member's body in a snapshot: 10 bytes (coop-drill design 9).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct BodySnap {
+    /// The player's slot.
+    pub slot: u8,
+    /// Where, ship frame, metres (sent in centimetres).
+    pub pos: [f32; 3],
+    /// The way it faces, radians about +Y (sent as 256 a turn).
+    pub yaw: f32,
+    /// What it is doing.
+    pub posture: Posture,
+    /// The station it is walking to.
+    pub going: Option<Station>,
 }
 
 /// The server's messages on the command channel.
@@ -628,6 +646,16 @@ impl Snapshot {
         w.f32(st.damage_dealt_mj);
         w.f32(st.damage_taken_mj);
         w.f32(st.engage_s);
+        w.u8(self.bodies.len() as u8);
+        for b in &self.bodies {
+            w.u8(b.slot);
+            for v in b.pos {
+                w.u16(((v * 100.0).round().clamp(-32768.0, 32767.0) as i16) as u16);
+            }
+            w.u8((b.yaw.rem_euclid(std::f32::consts::TAU) / std::f32::consts::TAU * 256.0) as u32 as u8);
+            w.u8(b.posture as u8);
+            w.u8(station_byte(b.going));
+        }
         w.0
     }
 
@@ -736,8 +764,24 @@ impl Snapshot {
             damage_taken_mj: r.f32(0.0, 1e9)?,
             engage_s: r.f32(0.0, 1e7)?,
         };
+        let nb = r.count(combat::MAX_PLAYERS)?;
+        let mut bodies = Vec::with_capacity(nb);
+        for _ in 0..nb {
+            let slot = r.u8()?;
+            if usize::from(slot) >= combat::MAX_PLAYERS {
+                return Err(DecodeError("no such slot"));
+            }
+            let mut pos = [0.0f32; 3];
+            for v in &mut pos {
+                *v = f32::from(r.u16()? as i16) / 100.0;
+            }
+            let yaw = f32::from(r.u8()?) / 256.0 * std::f32::consts::TAU;
+            let posture = Posture::from_u8(r.u8()?).ok_or(DecodeError("no such posture"))?;
+            let going = read_station(&mut r)?;
+            bodies.push(BodySnap { slot, pos, yaw, posture, going });
+        }
         r.done()?;
-        Ok(Self { header, tick, round, phase, phase_s, outcome, ships, missiles, stats })
+        Ok(Self { header, tick, round, phase, phase_s, outcome, ships, missiles, stats, bodies })
     }
 
     /// The snapshot of a drill (the header is the caller's, per client).
@@ -789,6 +833,11 @@ impl Snapshot {
             outcome: d.outcome,
             ships,
             missiles: d.missiles.iter().map(|m| MissileSnap { id: m.id, pos: m.pos, vel: m.vel }).collect(),
+            bodies: d
+                .bodies
+                .iter()
+                .map(|b| BodySnap { slot: b.slot, pos: b.pos, yaw: b.yaw, posture: b.posture, going: b.walking_to() })
+                .collect(),
             stats: StatsSnap {
                 tern_shots: st.tern_shots,
                 tern_hits: st.tern_hits,

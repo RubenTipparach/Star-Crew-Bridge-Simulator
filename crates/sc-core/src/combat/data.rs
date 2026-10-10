@@ -444,11 +444,51 @@ pub struct StationsFile {
     pub schema: String,
     /// Profiles.
     pub profiles: Vec<Profile>,
+    /// Getting in and out of a seat (bridge-stations 6).
+    pub seats: SeatTimes,
+    /// When a bot gets up for another station (coop-drill design 9).
+    pub bot_posts: BotPosts,
+}
+
+/// Getting in and out of a seat, seconds (bridge-stations 6: a 0.4 s seat snap either way).
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct SeatTimes {
+    /// Getting up.
+    pub stand_s: f64,
+    /// Sitting down.
+    pub sit_s: f64,
+}
+
+/// A bot's posts (coop-drill design 9): the stations it fills, most important first, and how long a more important
+/// one stands empty before it gets up for it.
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct BotPosts {
+    /// Station ids, most important first.
+    pub posts: Vec<String>,
+    /// Seconds a more important station is empty, nobody on the way, before the bot goes.
+    pub reassign_s: f64,
+}
+
+impl BotPosts {
+    /// The posts as stations, most important first.
+    pub fn stations(&self) -> Vec<crate::combat::Station> {
+        self.posts.iter().filter_map(|p| crate::combat::Station::from_id(p)).collect()
+    }
 }
 
 impl Validate for StationsFile {
     fn validate(&self, c: &mut Checks) {
         c.equals("schema", &self.schema, "starcrew.stations/1");
+        c.number("seats.stand_s", self.seats.stand_s, 0.0, 10.0);
+        c.number("seats.sit_s", self.seats.sit_s, 0.0, 10.0);
+        c.number("bot_posts.reassign_s", self.bot_posts.reassign_s, 0.0, 600.0);
+        for (i, p) in self.bot_posts.posts.iter().enumerate() {
+            if crate::combat::Station::from_id(p).is_none() {
+                c.equals(&format!("bot_posts.posts[{i}]"), p, "helm or tactical");
+            }
+        }
         for (i, p) in self.profiles.iter().enumerate() {
             c.number(&format!("profiles[{i}].helm.reaction_s"), p.helm.reaction_s, 0.0, 60.0);
             c.number(&format!("profiles[{i}].helm.rate_frac"), p.helm.rate_frac, 0.0, 1.0);
@@ -507,11 +547,19 @@ pub struct MissionFile {
     pub debrief_s: f64,
     /// How long a bot client reads the briefing, in seconds.
     pub bot_ready_s: f64,
+    /// Where the crew muster on the bridge, ship frame, metres (coop-drill design 9).
+    pub muster_m: [f64; 3],
+    /// Between bodies standing there, metres.
+    pub muster_spacing_m: f64,
 }
 
 impl Validate for MissionFile {
     fn validate(&self, c: &mut Checks) {
         c.equals("schema", &self.schema, "starcrew.mission/1");
+        for (i, v) in self.muster_m.iter().enumerate() {
+            c.number(&format!("muster_m[{i}]"), *v, -500.0, 500.0);
+        }
+        c.number("muster_spacing_m", self.muster_spacing_m, 0.3, 3.0);
         c.count("title (characters)", self.title.chars().count() as i64, 1, 60);
         c.count("objectives", self.objectives.len() as i64, 1, 6);
         c.count("stations", self.stations.len() as i64, 1, 2);

@@ -6,7 +6,10 @@
 //! phase and round. The drill repeats until the process is stopped.
 //!
 //! Usage: sc-server [--root .] [--mission drill-hound] [--listen 0.0.0.0:7700] [--host-ip IP] [--seed N]
-//!                  [--loss 0.1] [--delay-ms 50] [--rounds N] [--seconds S]
+//!                  [--loss 0.1] [--delay-ms 50] [--rounds N] [--seconds S] [--seated] [--deck compiled/tern.deck]
+//!
+//! The crew are on foot (design 9) unless `--seated`: a claim is a walk across the bridge, on paths from the
+//! compiled deck's walk grid when it is there.
 
 use sc_core::clock::FixedClock;
 use sc_core::combat::{data::DrillData, data::DRILL_FILES, TICK_HZ};
@@ -67,7 +70,22 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    let cfg = ServerConfig { listen, host_ip, impair, seed };
+    let bridge = if args.iter().any(|a| a == "--seated") {
+        None
+    } else {
+        let deck = root.join(value("--deck").unwrap_or_else(|| "compiled/tern.deck".into()));
+        match sc_server::bridge::load(&data, &root, Some(&deck)) {
+            Ok((b, how)) => {
+                println!("[     0.0 s] sc-server: the crew on foot: {how}");
+                Some(b)
+            }
+            Err(e) => {
+                eprintln!("sc-server: the bridge: {e}");
+                return ExitCode::FAILURE;
+            }
+        }
+    };
+    let cfg = ServerConfig { listen, host_ip, impair, seed, bridge };
     let mut server = match DrillServer::start(data, &cfg) {
         Ok(s) => s,
         Err(e) => {
