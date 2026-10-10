@@ -61,3 +61,11 @@ Newest last. What was done, what was found, on which machine and commit.
   - The 140-triangle Hound is lit by the probe program's ambient cube built from the sun, so it turns into and out
     of the light as it flies; bolts, missiles and bursts are flat emissive colours.
   - The lobby's Join a crew still does not take an address (task 4.1 says so): `--connect` is the way in for now.
+- Demo video recorded on Pi 1 (`docs/videos/2026-10-10-coop-drill-pi5.mp4`, task 5.3 for one machine): the Helm
+  client full screen with its bot, a Tactical `sc-bot`, the server, one whole round and the next briefing.
+  `wf-recorder` captured about 15 frames a second at 1280 x 720 (the Pi copies and encodes the screen while the
+  game draws); the game held 26 FPS median. First takes lost the briefing (the recorder started late) and the
+  debrief (`--rounds 1` stops the server as the round ends, so the client never sees the debrief: use `--seconds`).
+- **Network finding** (`docs/benchmarks/2026-10-10-coop-drill-lan/pi1.md`): 80 kbit/s down per client, exactly the
+  budget, against the design's 75 estimate; 7-8 kbit/s up. The whole snapshot at 20 Hz and a reliable event per
+  bolt are the cost. Server tick 0.014 ms median.
