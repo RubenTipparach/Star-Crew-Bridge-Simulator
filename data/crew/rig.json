@@ -1,0 +1,48 @@
+{
+  "schema": "starcrew.crew-rig/1",
+  "_doc": "Original cartoon body control rig. Blender has 30 deform bones and 8 non-deforming IK controls. Game exports contain only the deform rig. Rotations are degrees about the armature's rest axes; finger curl uses each finger's local X axis.",
+  "fps": 24,
+  "joint_blend_fraction": 0.60,
+  "shoulder_blend_fraction": 0.18,
+  "shoulder_attachment_weight": 0.20,
+  "limb_rings": [0.0, 0.2, 0.5, 0.8, 1.0],
+  "elbow_offset_m": 0.016,
+  "knee_offset_m": 0.018,
+  "pole_distance_m": 0.35,
+  "control_size_m": 0.12,
+  "palm_length_fraction": 0.50,
+  "finger_radius_width_fraction": 0.09,
+  "finger_spacing_width_fraction": 0.23,
+  "finger_length_fractions": [0.92, 1.0, 0.92, 0.75],
+  "thumb_length_fraction": 0.64,
+  "finger_curl_limit_deg": 100.0,
+  "clips": [
+    {"name":"Idle_Loop","duration_s":2.0,"loop":true,"floor":true,"keys":[
+      {"t":0.0,"bones":{"chest":[0,0,0],"head":[0,0,-2]},"curl_deg":8},
+      {"t":0.5,"bones":{"chest":[1.5,0,0],"head":[0,0,2]},"curl_deg":8},
+      {"t":1.0,"bones":{"chest":[0,0,0],"head":[0,0,-2]},"curl_deg":8}
+    ]},
+    {"name":"Walk_Loop","duration_s":1.0,"loop":true,"floor":true,"keys":[
+      {"t":0.0,"bones":{"thigh_L":[-27,0,0],"shin_L":[15,0,0],"foot_L":[12,0,0],"thigh_R":[25,0,0],"shin_R":[18,0,0],"foot_R":[-43,0,0],"upper_arm_L":[22,0,0],"forearm_L":[-15,0,0],"upper_arm_R":[-22,0,0],"forearm_R":[-15,0,0],"chest":[0,0,3]},"curl_deg":25},
+      {"t":0.25,"bones":{"thigh_L":[0,0,0],"shin_L":[8,0,0],"foot_L":[-8,0,0],"thigh_R":[-8,0,0],"shin_R":[55,0,0],"foot_R":[-30,0,0],"forearm_L":[-15,0,0],"forearm_R":[-15,0,0]},"curl_deg":25},
+      {"t":0.5,"bones":{"thigh_L":[25,0,0],"shin_L":[18,0,0],"foot_L":[-43,0,0],"thigh_R":[-27,0,0],"shin_R":[15,0,0],"foot_R":[12,0,0],"upper_arm_L":[-22,0,0],"forearm_L":[-15,0,0],"upper_arm_R":[22,0,0],"forearm_R":[-15,0,0],"chest":[0,0,-3]},"curl_deg":25},
+      {"t":0.75,"bones":{"thigh_L":[-8,0,0],"shin_L":[55,0,0],"foot_L":[-30,0,0],"thigh_R":[0,0,0],"shin_R":[8,0,0],"foot_R":[-8,0,0],"forearm_L":[-15,0,0],"forearm_R":[-15,0,0]},"curl_deg":25},
+      {"t":1.0,"bones":{"thigh_L":[-27,0,0],"shin_L":[15,0,0],"foot_L":[12,0,0],"thigh_R":[25,0,0],"shin_R":[18,0,0],"foot_R":[-43,0,0],"upper_arm_L":[22,0,0],"forearm_L":[-15,0,0],"upper_arm_R":[-22,0,0],"forearm_R":[-15,0,0],"chest":[0,0,3]},"curl_deg":25}
+    ]},
+    {"name":"Seated","duration_s":2.0,"loop":true,"floor":true,"keys":[
+      {"t":0.0,"bones":{"thigh_L":[-80,0,0],"thigh_R":[-80,0,0],"shin_L":[90,0,0],"shin_R":[90,0,0],"foot_L":[-10,0,0],"foot_R":[-10,0,0],"spine":[6,0,0],"chest":[4,0,0],"upper_arm_L":[-28,0,0],"upper_arm_R":[-28,0,0],"forearm_L":[-42,0,0],"forearm_R":[-42,0,0]},"curl_deg":20},
+      {"t":1.0,"bones":{"thigh_L":[-80,0,0],"thigh_R":[-80,0,0],"shin_L":[90,0,0],"shin_R":[90,0,0],"foot_L":[-10,0,0],"foot_R":[-10,0,0],"spine":[6,0,0],"chest":[4,0,0],"upper_arm_L":[-28,0,0],"upper_arm_R":[-28,0,0],"forearm_L":[-42,0,0],"forearm_R":[-42,0,0]},"curl_deg":20}
+    ]},
+    {"name":"Reach","duration_s":2.0,"loop":true,"floor":true,"keys":[
+      {"t":0.0,"bones":{"spine":[6,0,0],"chest":[4,0,0],"upper_arm_L":[-70,0,0],"upper_arm_R":[-70,0,0],"forearm_L":[-18,0,0],"forearm_R":[-18,0,0],"head":[-8,0,0]},"curl_deg":40},
+      {"t":1.0,"bones":{"spine":[6,0,0],"chest":[4,0,0],"upper_arm_L":[-70,0,0],"upper_arm_R":[-70,0,0],"forearm_L":[-18,0,0],"forearm_R":[-18,0,0],"head":[-8,0,0]},"curl_deg":40}
+    ]},
+    {"name":"Wave_Loop","duration_s":2.0,"loop":true,"floor":true,"keys":[
+      {"t":0.0,"bones":{"upper_arm_R":[-15,100,0],"forearm_R":[0,60,0],"hand_R":[0,0,-18],"head":[0,0,-6]},"curl_deg":5},
+      {"t":0.25,"bones":{"upper_arm_R":[-15,100,0],"forearm_R":[0,60,0],"hand_R":[0,0,18],"head":[0,0,-6]},"curl_deg":5},
+      {"t":0.5,"bones":{"upper_arm_R":[-15,100,0],"forearm_R":[0,60,0],"hand_R":[0,0,-18],"head":[0,0,-6]},"curl_deg":5},
+      {"t":0.75,"bones":{"upper_arm_R":[-15,100,0],"forearm_R":[0,60,0],"hand_R":[0,0,18],"head":[0,0,-6]},"curl_deg":5},
+      {"t":1.0,"bones":{"upper_arm_R":[-15,100,0],"forearm_R":[0,60,0],"hand_R":[0,0,-18],"head":[0,0,-6]},"curl_deg":5}
+    ]}
+  ]
+}

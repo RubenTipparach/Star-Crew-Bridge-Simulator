@@ -11,6 +11,7 @@ its `_rules` say what a layer is. The how-to is the `material-maker` skill
 | `ptex/*.ptex` | The Material Maker graphs: one per source material, the only implementation of how it looks. |
 | `build_ptex.py` | Writes the custom graphs from code (reproducible, diffable). Remove a graph from its `GRAPHS` once you edit it by hand in Material Maker. |
 | `export_materials.sh` | Renders the graphs into `raw/` (gitignored) with Material Maker's command line, or takes fps-game-demo's committed exports with `--from-fps <dir>`, then runs the post-process. |
+| `export_graph.py`, `render_graph.gd` | Export individual graphs through Material Maker's own renderer. Resolve bitmap paths and stage outputs in a fresh directory so the Windows 1.4 exporter needs no overwrite dialog. |
 | `postprocess.py` | Recolour, relief bake, fit to the layer, palette reduction; writes the layers, the contact sheet (`docs/screenshots/materials/contact-sheet.png`) and a table of sizes, texel densities, bytes and seam ratios. Deterministic: the last line is a digest. |
 
 ```sh
@@ -22,6 +23,20 @@ python3 tools/materials/postprocess.py                                  # rebuil
 ```
 
 Needs Python 3 with numpy and Pillow (`pip install numpy pillow`).
+
+## Custom exterior paint, 2026-10-10
+
+The original [paint bitmap](sources/exterior-paint.png) was generated with the built-in image_gen tool. Its [complete prompt](sources/exterior-paint-prompt.txt) is committed beside it. The [exterior paint graph](ptex/exterior_paint.ptex) imports that bitmap as its editable albedo input. It supplies pearl and graphite ramps without a panel grid. Material Maker 1.4 rendered the graph at 2048 px using the owner's NVIDIA GPU; the existing post-process produced the two 128 px layers at 32 px/m. Existing layer indices remain stable; the new layers are 11 and 12, costing 174,760 bytes with mipmaps.
+
+```powershell
+python tools/materials/build_ptex.py
+python tools/materials/export_graph.py exterior_paint --material-maker C:/Users/santi/repos/material_maker_1_4_windows/material_maker.exe
+python tools/materials/postprocess.py --only exterior_pearl exterior_graphite
+```
+
+`--only` rebuilds the selected layers and uses the other committed PNGs for the complete contact sheet. It does not require raw exports for unchanged graphs. Two builds of the custom paint produce digest `09732705c1517bd9443c10dc0680f04cea3bc983e69603f451c1cef034cf7809`. The Windows exporter emits legacy texture-format and UI-scale messages but produces a valid albedo and exits successfully. Fresh output staging prevents its overwrite-dialog crash; the wrapper refuses a missing export.
+
+Lower-detail exterior atlases are separate Blender bakes of the full model, not repeated copies of the paint layer. Their source is [the exterior builder](../blender/build_ship_exteriors.py).
 
 **Wall panels** (`openspec/changes/wall-panels`, a prototype) are not Material Maker graphs: they are
 modelled and baked in Blender by `tools/blender/build_wall_panels.py` from
@@ -48,6 +63,31 @@ average; that rebuild was measured and not committed. Moving the layers onto Mat
 render is a commit of its own, with the contact sheet.
 
 ## Provenance
+
+The Tern hull and fittings use three built-in imagegen paintings, `sources/tern-service-copper.png`,
+`tern-service-cyan.png` and `tern-service-rescue.png`. Each has its complete prompt at the matching
+`tern-service-<livery>-prompt.txt` path. Copper repaints the previous armor atlas against the actual
+mesh wireframe; cyan and rescue are targeted livery edits of that painting. Cyan uses a second built-in imagegen edit of cobalt, recorded in `sources/tern-service-cyan-prompt.txt`; its stable graph and delivered texture filenames retain the `cobalt` suffix. All use angular
+white armor over continuous grey channels containing pipes, couplings and machinery, plus flat painted registration, with no illustrated
+windows. The shared `sources/tern-service-coverage-prompt.txt` records the subsequent ivory-padding edit. `sources/tern-uv-wireframe.png` and its mask come from actual mesh UV polygons in
+`sources/tern-uv-layout.json`, rasterized by `exterior_uv_guide.py`. The hull's dorsal UV orientation
+makes lettering readable with the bow at image top. `ptex/tern_hull.ptex`, `tern_hull_cobalt.ptex`
+and `tern_hull_rescue.ptex` share one parameterized graph builder and render at 1024 px in Material
+Maker. `exterior_decals.py` preserves their RGB and sets their emission alpha to zero, so blue
+paint cannot glow. Warp strips have a separate emissive material. Actual apertures and pale frames
+are geometry. Earlier paintings and prompts remain as design history; the owner's Fallen Tribes
+reference textures were never changed.
+
+The exterior design also uses original generated assembly artwork: `sources/exterior-surfaces.png`,
+with its complete built-in image_gen prompt in `sources/exterior-surfaces-prompt.txt`. The owner's
+spacecraft reference supplied the surface-detail direction. `ptex/exterior_surfaces.ptex` imports
+that bitmap into Material Maker; `export_graph.py exterior_surfaces --material-maker PATH` renders
+the actual graph. `exterior_decals.py` preserves the rendered RGB and packages cyan window emission
+in alpha as `assets/textures/exterior_surfaces.png`. This fitted 2048 px decal/assembly atlas has
+four longitudinal regions: dorsal armour, ventral armour, side windows and mechanical trim. It is
+not a tiling texture-array layer. The ship builder fits its UVs and transfers the design into each
+LOD atlas. No procedural Python substitute paints its artwork. The existing 128 px pearl and
+graphite layers still supply small accent and hazard surfaces.
 
 Copied from **fps-game-demo** (Undercity/Brushfire), revision **`f6cd25c`**, on 2026-10-05.
 

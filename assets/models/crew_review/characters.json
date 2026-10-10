@@ -1,0 +1,1724 @@
+{
+  "schema": "starcrew.crew-review/1",
+  "status": "pending screenshot approval; engine and mockups retain blocky figures",
+  "generator": {
+    "script": "tools/blender/build_crew_characters.py",
+    "blender": "4.4.3"
+  },
+  "source_sha256": "ec5b9301dbadc83d99721f94f1f908811e9fcfd0491476de4d01547b8693ae57",
+  "company_sha256": "da1a5d03b3580f1b2e851d27810dab1ba00e8e15cefe86fbfe736d4c130bb340",
+  "rig_source_sha256": "e5c7769ae30a2e194a5a95b3e1d7c78ba91d215383dc7a95697461975368d255",
+  "anatomy_source_sha256": "ef877b0d9eedf0715a789a23fb53cd475e1b5d0c0dad91e1789d4eee0ec8ccbb",
+  "budget": {
+    "triangles": 3000,
+    "bones": 30,
+    "materials": 1,
+    "draw_calls": 1
+  },
+  "characters": [
+    {
+      "id": "command_01",
+      "department": "command",
+      "sex": "male",
+      "approval": "pending",
+      "file": "command_01.glb",
+      "triangles": 2940,
+      "bones": 30,
+      "materials": 1,
+      "draw_calls": 1,
+      "vertices": 1763,
+      "file_bytes": 504472,
+      "buffer_bytes": 397888,
+      "height_m": 1.8,
+      "eye_ratios": {
+        "L": {
+          "iris_eye": 0.55,
+          "pupil_iris": 0.4,
+          "eye_face": 0.2,
+          "eye_width_m": 0.104863
+        },
+        "R": {
+          "iris_eye": 0.55,
+          "pupil_iris": 0.4,
+          "eye_face": 0.2,
+          "eye_width_m": 0.104863
+        }
+      },
+      "covered_skin_samples": 1972,
+      "surface_checks": {
+        "garment_components": {
+          "garment_tunic": 1,
+          "garment_trousers": 1
+        },
+        "hair_scalp_intersections": 0,
+        "waist_intersections": 0,
+        "garment_self_intersections": 0
+      },
+      "parts": {
+        "garment_tunic": 1,
+        "covered_arm_L": 2,
+        "covered_arm_R": 3,
+        "covered_torso": 4,
+        "garment_trousers": 5,
+        "covered_leg_L": 6,
+        "boot_L": 7,
+        "covered_leg_R": 8,
+        "boot_R": 9,
+        "neck": 10,
+        "hand_L": 11,
+        "index_L": 12,
+        "middle_L": 13,
+        "ring_L": 14,
+        "pinky_L": 15,
+        "thumb_L": 16,
+        "hand_R": 17,
+        "index_R": 18,
+        "middle_R": 19,
+        "ring_R": 20,
+        "pinky_R": 21,
+        "thumb_R": 22,
+        "head_skin": 23,
+        "eye_L_lid": 24,
+        "eye_L_white": 25,
+        "eye_L_iris": 26,
+        "eye_L_pupil": 27,
+        "brow_L": 28,
+        "ear_L": 29,
+        "eye_R_lid": 30,
+        "eye_R_white": 31,
+        "eye_R_iris": 32,
+        "eye_R_pupil": 33,
+        "brow_R": 34,
+        "ear_R": 35,
+        "nose": 36,
+        "mouth": 37,
+        "hair_cap": 38,
+        "badge": 39,
+        "badge_bar_-1": 40,
+        "badge_bar_1": 41
+      },
+      "joint_names": [
+        "root",
+        "pelvis",
+        "spine",
+        "chest",
+        "neck",
+        "head",
+        "clavicle_L",
+        "upper_arm_L",
+        "forearm_L",
+        "hand_L",
+        "index_L",
+        "middle_L",
+        "ring_L",
+        "pinky_L",
+        "thumb_L",
+        "clavicle_R",
+        "upper_arm_R",
+        "forearm_R",
+        "hand_R",
+        "index_R",
+        "middle_R",
+        "ring_R",
+        "pinky_R",
+        "thumb_R",
+        "thigh_L",
+        "shin_L",
+        "foot_L",
+        "thigh_R",
+        "shin_R",
+        "foot_R"
+      ],
+      "animations": [
+        {
+          "name": "Idle_Loop",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Reach",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Seated",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Walk_Loop",
+          "duration_s": 1,
+          "channels": 90
+        },
+        {
+          "name": "Wave_Loop",
+          "duration_s": 2,
+          "channels": 90
+        }
+      ],
+      "sha256": "0d3ae4b10fbe55333a929d28f0b68b966746cabbd1a7b635bf0bd17c50e39e7c"
+    },
+    {
+      "id": "command_02",
+      "department": "command",
+      "sex": "female",
+      "approval": "pending",
+      "file": "command_02.glb",
+      "triangles": 2940,
+      "bones": 30,
+      "materials": 1,
+      "draw_calls": 1,
+      "vertices": 1763,
+      "file_bytes": 504284,
+      "buffer_bytes": 397888,
+      "height_m": 1.72,
+      "eye_ratios": {
+        "L": {
+          "iris_eye": 0.55,
+          "pupil_iris": 0.4,
+          "eye_face": 0.2,
+          "eye_width_m": 0.096194
+        },
+        "R": {
+          "iris_eye": 0.55,
+          "pupil_iris": 0.4,
+          "eye_face": 0.2,
+          "eye_width_m": 0.096194
+        }
+      },
+      "covered_skin_samples": 1972,
+      "surface_checks": {
+        "garment_components": {
+          "garment_tunic": 1,
+          "garment_trousers": 1
+        },
+        "hair_scalp_intersections": 0,
+        "waist_intersections": 0,
+        "garment_self_intersections": 0
+      },
+      "parts": {
+        "garment_tunic": 1,
+        "covered_arm_L": 2,
+        "covered_arm_R": 3,
+        "covered_torso": 4,
+        "garment_trousers": 5,
+        "covered_leg_L": 6,
+        "boot_L": 7,
+        "covered_leg_R": 8,
+        "boot_R": 9,
+        "neck": 10,
+        "hand_L": 11,
+        "index_L": 12,
+        "middle_L": 13,
+        "ring_L": 14,
+        "pinky_L": 15,
+        "thumb_L": 16,
+        "hand_R": 17,
+        "index_R": 18,
+        "middle_R": 19,
+        "ring_R": 20,
+        "pinky_R": 21,
+        "thumb_R": 22,
+        "head_skin": 23,
+        "eye_L_lid": 24,
+        "eye_L_white": 25,
+        "eye_L_iris": 26,
+        "eye_L_pupil": 27,
+        "brow_L": 28,
+        "ear_L": 29,
+        "eye_R_lid": 30,
+        "eye_R_white": 31,
+        "eye_R_iris": 32,
+        "eye_R_pupil": 33,
+        "brow_R": 34,
+        "ear_R": 35,
+        "nose": 36,
+        "mouth": 37,
+        "hair_cap": 38,
+        "badge": 39,
+        "badge_bar_-1": 40,
+        "badge_bar_1": 41
+      },
+      "joint_names": [
+        "root",
+        "pelvis",
+        "spine",
+        "chest",
+        "neck",
+        "head",
+        "clavicle_L",
+        "upper_arm_L",
+        "forearm_L",
+        "hand_L",
+        "index_L",
+        "middle_L",
+        "ring_L",
+        "pinky_L",
+        "thumb_L",
+        "clavicle_R",
+        "upper_arm_R",
+        "forearm_R",
+        "hand_R",
+        "index_R",
+        "middle_R",
+        "ring_R",
+        "pinky_R",
+        "thumb_R",
+        "thigh_L",
+        "shin_L",
+        "foot_L",
+        "thigh_R",
+        "shin_R",
+        "foot_R"
+      ],
+      "animations": [
+        {
+          "name": "Idle_Loop",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Reach",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Seated",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Walk_Loop",
+          "duration_s": 1,
+          "channels": 90
+        },
+        {
+          "name": "Wave_Loop",
+          "duration_s": 2,
+          "channels": 90
+        }
+      ],
+      "sha256": "234c5ed1b22de62a50e1e7f8b66f5e667f29b2fd529cc589bb3045bb49479c63"
+    },
+    {
+      "id": "engineering_01",
+      "department": "engineering",
+      "sex": "male",
+      "approval": "pending",
+      "file": "engineering_01.glb",
+      "triangles": 2940,
+      "bones": 30,
+      "materials": 1,
+      "draw_calls": 1,
+      "vertices": 1763,
+      "file_bytes": 504732,
+      "buffer_bytes": 397888,
+      "height_m": 1.76,
+      "eye_ratios": {
+        "L": {
+          "iris_eye": 0.55,
+          "pupil_iris": 0.4,
+          "eye_face": 0.2,
+          "eye_width_m": 0.102533
+        },
+        "R": {
+          "iris_eye": 0.55,
+          "pupil_iris": 0.4,
+          "eye_face": 0.2,
+          "eye_width_m": 0.102533
+        }
+      },
+      "covered_skin_samples": 1972,
+      "surface_checks": {
+        "garment_components": {
+          "garment_tunic": 1,
+          "garment_trousers": 1
+        },
+        "hair_scalp_intersections": 0,
+        "waist_intersections": 0,
+        "garment_self_intersections": 0
+      },
+      "parts": {
+        "garment_tunic": 1,
+        "covered_arm_L": 2,
+        "covered_arm_R": 3,
+        "covered_torso": 4,
+        "garment_trousers": 5,
+        "covered_leg_L": 6,
+        "boot_L": 7,
+        "covered_leg_R": 8,
+        "boot_R": 9,
+        "neck": 10,
+        "hand_L": 11,
+        "index_L": 12,
+        "middle_L": 13,
+        "ring_L": 14,
+        "pinky_L": 15,
+        "thumb_L": 16,
+        "hand_R": 17,
+        "index_R": 18,
+        "middle_R": 19,
+        "ring_R": 20,
+        "pinky_R": 21,
+        "thumb_R": 22,
+        "head_skin": 23,
+        "eye_L_lid": 24,
+        "eye_L_white": 25,
+        "eye_L_iris": 26,
+        "eye_L_pupil": 27,
+        "brow_L": 28,
+        "ear_L": 29,
+        "eye_R_lid": 30,
+        "eye_R_white": 31,
+        "eye_R_iris": 32,
+        "eye_R_pupil": 33,
+        "brow_R": 34,
+        "ear_R": 35,
+        "nose": 36,
+        "mouth": 37,
+        "hair_cap": 38,
+        "badge": 39,
+        "badge_bar_-1": 40,
+        "badge_bar_1": 41
+      },
+      "joint_names": [
+        "root",
+        "pelvis",
+        "spine",
+        "chest",
+        "neck",
+        "head",
+        "clavicle_L",
+        "upper_arm_L",
+        "forearm_L",
+        "hand_L",
+        "index_L",
+        "middle_L",
+        "ring_L",
+        "pinky_L",
+        "thumb_L",
+        "clavicle_R",
+        "upper_arm_R",
+        "forearm_R",
+        "hand_R",
+        "index_R",
+        "middle_R",
+        "ring_R",
+        "pinky_R",
+        "thumb_R",
+        "thigh_L",
+        "shin_L",
+        "foot_L",
+        "thigh_R",
+        "shin_R",
+        "foot_R"
+      ],
+      "animations": [
+        {
+          "name": "Idle_Loop",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Reach",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Seated",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Walk_Loop",
+          "duration_s": 1,
+          "channels": 90
+        },
+        {
+          "name": "Wave_Loop",
+          "duration_s": 2,
+          "channels": 90
+        }
+      ],
+      "sha256": "7f4c4b7850e2f0458bb85d2f448c43e1c27809c92570610a79dff44fa66cc6f4"
+    },
+    {
+      "id": "engineering_02",
+      "department": "engineering",
+      "sex": "female",
+      "approval": "pending",
+      "file": "engineering_02.glb",
+      "triangles": 2940,
+      "bones": 30,
+      "materials": 1,
+      "draw_calls": 1,
+      "vertices": 1763,
+      "file_bytes": 504544,
+      "buffer_bytes": 397888,
+      "height_m": 1.68,
+      "eye_ratios": {
+        "L": {
+          "iris_eye": 0.55,
+          "pupil_iris": 0.4,
+          "eye_face": 0.2,
+          "eye_width_m": 0.093957
+        },
+        "R": {
+          "iris_eye": 0.55,
+          "pupil_iris": 0.4,
+          "eye_face": 0.2,
+          "eye_width_m": 0.093957
+        }
+      },
+      "covered_skin_samples": 1972,
+      "surface_checks": {
+        "garment_components": {
+          "garment_tunic": 1,
+          "garment_trousers": 1
+        },
+        "hair_scalp_intersections": 0,
+        "waist_intersections": 0,
+        "garment_self_intersections": 0
+      },
+      "parts": {
+        "garment_tunic": 1,
+        "covered_arm_L": 2,
+        "covered_arm_R": 3,
+        "covered_torso": 4,
+        "garment_trousers": 5,
+        "covered_leg_L": 6,
+        "boot_L": 7,
+        "covered_leg_R": 8,
+        "boot_R": 9,
+        "neck": 10,
+        "hand_L": 11,
+        "index_L": 12,
+        "middle_L": 13,
+        "ring_L": 14,
+        "pinky_L": 15,
+        "thumb_L": 16,
+        "hand_R": 17,
+        "index_R": 18,
+        "middle_R": 19,
+        "ring_R": 20,
+        "pinky_R": 21,
+        "thumb_R": 22,
+        "head_skin": 23,
+        "eye_L_lid": 24,
+        "eye_L_white": 25,
+        "eye_L_iris": 26,
+        "eye_L_pupil": 27,
+        "brow_L": 28,
+        "ear_L": 29,
+        "eye_R_lid": 30,
+        "eye_R_white": 31,
+        "eye_R_iris": 32,
+        "eye_R_pupil": 33,
+        "brow_R": 34,
+        "ear_R": 35,
+        "nose": 36,
+        "mouth": 37,
+        "hair_cap": 38,
+        "badge": 39,
+        "badge_bar_-1": 40,
+        "badge_bar_1": 41
+      },
+      "joint_names": [
+        "root",
+        "pelvis",
+        "spine",
+        "chest",
+        "neck",
+        "head",
+        "clavicle_L",
+        "upper_arm_L",
+        "forearm_L",
+        "hand_L",
+        "index_L",
+        "middle_L",
+        "ring_L",
+        "pinky_L",
+        "thumb_L",
+        "clavicle_R",
+        "upper_arm_R",
+        "forearm_R",
+        "hand_R",
+        "index_R",
+        "middle_R",
+        "ring_R",
+        "pinky_R",
+        "thumb_R",
+        "thigh_L",
+        "shin_L",
+        "foot_L",
+        "thigh_R",
+        "shin_R",
+        "foot_R"
+      ],
+      "animations": [
+        {
+          "name": "Idle_Loop",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Reach",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Seated",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Walk_Loop",
+          "duration_s": 1,
+          "channels": 90
+        },
+        {
+          "name": "Wave_Loop",
+          "duration_s": 2,
+          "channels": 90
+        }
+      ],
+      "sha256": "0b4331b95931b6090ed405c1d7a47312151f9caa0af9438b29b747d578fb963c"
+    },
+    {
+      "id": "deckhands_01",
+      "department": "deckhands",
+      "sex": "male",
+      "approval": "pending",
+      "file": "deckhands_01.glb",
+      "triangles": 2940,
+      "bones": 30,
+      "materials": 1,
+      "draw_calls": 1,
+      "vertices": 1763,
+      "file_bytes": 504460,
+      "buffer_bytes": 397888,
+      "height_m": 1.84,
+      "eye_ratios": {
+        "L": {
+          "iris_eye": 0.55,
+          "pupil_iris": 0.4,
+          "eye_face": 0.2,
+          "eye_width_m": 0.107193
+        },
+        "R": {
+          "iris_eye": 0.55,
+          "pupil_iris": 0.4,
+          "eye_face": 0.2,
+          "eye_width_m": 0.107193
+        }
+      },
+      "covered_skin_samples": 1972,
+      "surface_checks": {
+        "garment_components": {
+          "garment_tunic": 1,
+          "garment_trousers": 1
+        },
+        "hair_scalp_intersections": 0,
+        "waist_intersections": 0,
+        "garment_self_intersections": 0
+      },
+      "parts": {
+        "garment_tunic": 1,
+        "covered_arm_L": 2,
+        "covered_arm_R": 3,
+        "covered_torso": 4,
+        "garment_trousers": 5,
+        "covered_leg_L": 6,
+        "boot_L": 7,
+        "covered_leg_R": 8,
+        "boot_R": 9,
+        "neck": 10,
+        "hand_L": 11,
+        "index_L": 12,
+        "middle_L": 13,
+        "ring_L": 14,
+        "pinky_L": 15,
+        "thumb_L": 16,
+        "hand_R": 17,
+        "index_R": 18,
+        "middle_R": 19,
+        "ring_R": 20,
+        "pinky_R": 21,
+        "thumb_R": 22,
+        "head_skin": 23,
+        "eye_L_lid": 24,
+        "eye_L_white": 25,
+        "eye_L_iris": 26,
+        "eye_L_pupil": 27,
+        "brow_L": 28,
+        "ear_L": 29,
+        "eye_R_lid": 30,
+        "eye_R_white": 31,
+        "eye_R_iris": 32,
+        "eye_R_pupil": 33,
+        "brow_R": 34,
+        "ear_R": 35,
+        "nose": 36,
+        "mouth": 37,
+        "hair_cap": 38,
+        "badge": 39,
+        "badge_bar_-1": 40,
+        "badge_bar_1": 41
+      },
+      "joint_names": [
+        "root",
+        "pelvis",
+        "spine",
+        "chest",
+        "neck",
+        "head",
+        "clavicle_L",
+        "upper_arm_L",
+        "forearm_L",
+        "hand_L",
+        "index_L",
+        "middle_L",
+        "ring_L",
+        "pinky_L",
+        "thumb_L",
+        "clavicle_R",
+        "upper_arm_R",
+        "forearm_R",
+        "hand_R",
+        "index_R",
+        "middle_R",
+        "ring_R",
+        "pinky_R",
+        "thumb_R",
+        "thigh_L",
+        "shin_L",
+        "foot_L",
+        "thigh_R",
+        "shin_R",
+        "foot_R"
+      ],
+      "animations": [
+        {
+          "name": "Idle_Loop",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Reach",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Seated",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Walk_Loop",
+          "duration_s": 1,
+          "channels": 90
+        },
+        {
+          "name": "Wave_Loop",
+          "duration_s": 2,
+          "channels": 90
+        }
+      ],
+      "sha256": "825af535263bd332ca84e0bde4f3bc41b2dd0b0df8679fab438eae63868b32d9"
+    },
+    {
+      "id": "deckhands_02",
+      "department": "deckhands",
+      "sex": "female",
+      "approval": "pending",
+      "file": "deckhands_02.glb",
+      "triangles": 2940,
+      "bones": 30,
+      "materials": 1,
+      "draw_calls": 1,
+      "vertices": 1763,
+      "file_bytes": 504604,
+      "buffer_bytes": 397888,
+      "height_m": 1.76,
+      "eye_ratios": {
+        "L": {
+          "iris_eye": 0.55,
+          "pupil_iris": 0.4,
+          "eye_face": 0.2,
+          "eye_width_m": 0.098431
+        },
+        "R": {
+          "iris_eye": 0.55,
+          "pupil_iris": 0.4,
+          "eye_face": 0.2,
+          "eye_width_m": 0.098431
+        }
+      },
+      "covered_skin_samples": 1972,
+      "surface_checks": {
+        "garment_components": {
+          "garment_tunic": 1,
+          "garment_trousers": 1
+        },
+        "hair_scalp_intersections": 0,
+        "waist_intersections": 0,
+        "garment_self_intersections": 0
+      },
+      "parts": {
+        "garment_tunic": 1,
+        "covered_arm_L": 2,
+        "covered_arm_R": 3,
+        "covered_torso": 4,
+        "garment_trousers": 5,
+        "covered_leg_L": 6,
+        "boot_L": 7,
+        "covered_leg_R": 8,
+        "boot_R": 9,
+        "neck": 10,
+        "hand_L": 11,
+        "index_L": 12,
+        "middle_L": 13,
+        "ring_L": 14,
+        "pinky_L": 15,
+        "thumb_L": 16,
+        "hand_R": 17,
+        "index_R": 18,
+        "middle_R": 19,
+        "ring_R": 20,
+        "pinky_R": 21,
+        "thumb_R": 22,
+        "head_skin": 23,
+        "eye_L_lid": 24,
+        "eye_L_white": 25,
+        "eye_L_iris": 26,
+        "eye_L_pupil": 27,
+        "brow_L": 28,
+        "ear_L": 29,
+        "eye_R_lid": 30,
+        "eye_R_white": 31,
+        "eye_R_iris": 32,
+        "eye_R_pupil": 33,
+        "brow_R": 34,
+        "ear_R": 35,
+        "nose": 36,
+        "mouth": 37,
+        "hair_cap": 38,
+        "badge": 39,
+        "badge_bar_-1": 40,
+        "badge_bar_1": 41
+      },
+      "joint_names": [
+        "root",
+        "pelvis",
+        "spine",
+        "chest",
+        "neck",
+        "head",
+        "clavicle_L",
+        "upper_arm_L",
+        "forearm_L",
+        "hand_L",
+        "index_L",
+        "middle_L",
+        "ring_L",
+        "pinky_L",
+        "thumb_L",
+        "clavicle_R",
+        "upper_arm_R",
+        "forearm_R",
+        "hand_R",
+        "index_R",
+        "middle_R",
+        "ring_R",
+        "pinky_R",
+        "thumb_R",
+        "thigh_L",
+        "shin_L",
+        "foot_L",
+        "thigh_R",
+        "shin_R",
+        "foot_R"
+      ],
+      "animations": [
+        {
+          "name": "Idle_Loop",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Reach",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Seated",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Walk_Loop",
+          "duration_s": 1,
+          "channels": 90
+        },
+        {
+          "name": "Wave_Loop",
+          "duration_s": 2,
+          "channels": 90
+        }
+      ],
+      "sha256": "f28833efab1b50ba959aa3688f37a119b967de9b82034d400e0fcd09cf4351ca"
+    },
+    {
+      "id": "medical_01",
+      "department": "medical",
+      "sex": "male",
+      "approval": "pending",
+      "file": "medical_01.glb",
+      "triangles": 2940,
+      "bones": 30,
+      "materials": 1,
+      "draw_calls": 1,
+      "vertices": 1763,
+      "file_bytes": 504188,
+      "buffer_bytes": 397888,
+      "height_m": 1.72,
+      "eye_ratios": {
+        "L": {
+          "iris_eye": 0.55,
+          "pupil_iris": 0.4,
+          "eye_face": 0.2,
+          "eye_width_m": 0.100202
+        },
+        "R": {
+          "iris_eye": 0.55,
+          "pupil_iris": 0.4,
+          "eye_face": 0.2,
+          "eye_width_m": 0.100202
+        }
+      },
+      "covered_skin_samples": 1972,
+      "surface_checks": {
+        "garment_components": {
+          "garment_tunic": 1,
+          "garment_trousers": 1
+        },
+        "hair_scalp_intersections": 0,
+        "waist_intersections": 0,
+        "garment_self_intersections": 0
+      },
+      "parts": {
+        "garment_tunic": 1,
+        "covered_arm_L": 2,
+        "covered_arm_R": 3,
+        "covered_torso": 4,
+        "garment_trousers": 5,
+        "covered_leg_L": 6,
+        "boot_L": 7,
+        "covered_leg_R": 8,
+        "boot_R": 9,
+        "neck": 10,
+        "hand_L": 11,
+        "index_L": 12,
+        "middle_L": 13,
+        "ring_L": 14,
+        "pinky_L": 15,
+        "thumb_L": 16,
+        "hand_R": 17,
+        "index_R": 18,
+        "middle_R": 19,
+        "ring_R": 20,
+        "pinky_R": 21,
+        "thumb_R": 22,
+        "head_skin": 23,
+        "eye_L_lid": 24,
+        "eye_L_white": 25,
+        "eye_L_iris": 26,
+        "eye_L_pupil": 27,
+        "brow_L": 28,
+        "ear_L": 29,
+        "eye_R_lid": 30,
+        "eye_R_white": 31,
+        "eye_R_iris": 32,
+        "eye_R_pupil": 33,
+        "brow_R": 34,
+        "ear_R": 35,
+        "nose": 36,
+        "mouth": 37,
+        "hair_cap": 38,
+        "badge": 39,
+        "badge_bar_-1": 40,
+        "badge_bar_1": 41
+      },
+      "joint_names": [
+        "root",
+        "pelvis",
+        "spine",
+        "chest",
+        "neck",
+        "head",
+        "clavicle_L",
+        "upper_arm_L",
+        "forearm_L",
+        "hand_L",
+        "index_L",
+        "middle_L",
+        "ring_L",
+        "pinky_L",
+        "thumb_L",
+        "clavicle_R",
+        "upper_arm_R",
+        "forearm_R",
+        "hand_R",
+        "index_R",
+        "middle_R",
+        "ring_R",
+        "pinky_R",
+        "thumb_R",
+        "thigh_L",
+        "shin_L",
+        "foot_L",
+        "thigh_R",
+        "shin_R",
+        "foot_R"
+      ],
+      "animations": [
+        {
+          "name": "Idle_Loop",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Reach",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Seated",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Walk_Loop",
+          "duration_s": 1,
+          "channels": 90
+        },
+        {
+          "name": "Wave_Loop",
+          "duration_s": 2,
+          "channels": 90
+        }
+      ],
+      "sha256": "b54529e379310174cb6d7f5befcead8623cbb4fbe5a545e683a6b79ffe216a18"
+    },
+    {
+      "id": "medical_02",
+      "department": "medical",
+      "sex": "female",
+      "approval": "pending",
+      "file": "medical_02.glb",
+      "triangles": 2940,
+      "bones": 30,
+      "materials": 1,
+      "draw_calls": 1,
+      "vertices": 1763,
+      "file_bytes": 504404,
+      "buffer_bytes": 397888,
+      "height_m": 1.64,
+      "eye_ratios": {
+        "L": {
+          "iris_eye": 0.55,
+          "pupil_iris": 0.4,
+          "eye_face": 0.2,
+          "eye_width_m": 0.09172
+        },
+        "R": {
+          "iris_eye": 0.55,
+          "pupil_iris": 0.4,
+          "eye_face": 0.2,
+          "eye_width_m": 0.09172
+        }
+      },
+      "covered_skin_samples": 1972,
+      "surface_checks": {
+        "garment_components": {
+          "garment_tunic": 1,
+          "garment_trousers": 1
+        },
+        "hair_scalp_intersections": 0,
+        "waist_intersections": 0,
+        "garment_self_intersections": 0
+      },
+      "parts": {
+        "garment_tunic": 1,
+        "covered_arm_L": 2,
+        "covered_arm_R": 3,
+        "covered_torso": 4,
+        "garment_trousers": 5,
+        "covered_leg_L": 6,
+        "boot_L": 7,
+        "covered_leg_R": 8,
+        "boot_R": 9,
+        "neck": 10,
+        "hand_L": 11,
+        "index_L": 12,
+        "middle_L": 13,
+        "ring_L": 14,
+        "pinky_L": 15,
+        "thumb_L": 16,
+        "hand_R": 17,
+        "index_R": 18,
+        "middle_R": 19,
+        "ring_R": 20,
+        "pinky_R": 21,
+        "thumb_R": 22,
+        "head_skin": 23,
+        "eye_L_lid": 24,
+        "eye_L_white": 25,
+        "eye_L_iris": 26,
+        "eye_L_pupil": 27,
+        "brow_L": 28,
+        "ear_L": 29,
+        "eye_R_lid": 30,
+        "eye_R_white": 31,
+        "eye_R_iris": 32,
+        "eye_R_pupil": 33,
+        "brow_R": 34,
+        "ear_R": 35,
+        "nose": 36,
+        "mouth": 37,
+        "hair_cap": 38,
+        "badge": 39,
+        "badge_bar_-1": 40,
+        "badge_bar_1": 41
+      },
+      "joint_names": [
+        "root",
+        "pelvis",
+        "spine",
+        "chest",
+        "neck",
+        "head",
+        "clavicle_L",
+        "upper_arm_L",
+        "forearm_L",
+        "hand_L",
+        "index_L",
+        "middle_L",
+        "ring_L",
+        "pinky_L",
+        "thumb_L",
+        "clavicle_R",
+        "upper_arm_R",
+        "forearm_R",
+        "hand_R",
+        "index_R",
+        "middle_R",
+        "ring_R",
+        "pinky_R",
+        "thumb_R",
+        "thigh_L",
+        "shin_L",
+        "foot_L",
+        "thigh_R",
+        "shin_R",
+        "foot_R"
+      ],
+      "animations": [
+        {
+          "name": "Idle_Loop",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Reach",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Seated",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Walk_Loop",
+          "duration_s": 1,
+          "channels": 90
+        },
+        {
+          "name": "Wave_Loop",
+          "duration_s": 2,
+          "channels": 90
+        }
+      ],
+      "sha256": "c7f9c0bc93395c447a10a0b30b134f2ab77853c17aa2f6f0aa57802f4c4b245f"
+    },
+    {
+      "id": "security_01",
+      "department": "security",
+      "sex": "male",
+      "approval": "pending",
+      "file": "security_01.glb",
+      "triangles": 2940,
+      "bones": 30,
+      "materials": 1,
+      "draw_calls": 1,
+      "vertices": 1763,
+      "file_bytes": 504272,
+      "buffer_bytes": 397888,
+      "height_m": 1.82,
+      "eye_ratios": {
+        "L": {
+          "iris_eye": 0.55,
+          "pupil_iris": 0.4,
+          "eye_face": 0.2,
+          "eye_width_m": 0.106028
+        },
+        "R": {
+          "iris_eye": 0.55,
+          "pupil_iris": 0.4,
+          "eye_face": 0.2,
+          "eye_width_m": 0.106028
+        }
+      },
+      "covered_skin_samples": 1972,
+      "surface_checks": {
+        "garment_components": {
+          "garment_tunic": 1,
+          "garment_trousers": 1
+        },
+        "hair_scalp_intersections": 0,
+        "waist_intersections": 0,
+        "garment_self_intersections": 0
+      },
+      "parts": {
+        "garment_tunic": 1,
+        "covered_arm_L": 2,
+        "covered_arm_R": 3,
+        "covered_torso": 4,
+        "garment_trousers": 5,
+        "covered_leg_L": 6,
+        "boot_L": 7,
+        "covered_leg_R": 8,
+        "boot_R": 9,
+        "neck": 10,
+        "hand_L": 11,
+        "index_L": 12,
+        "middle_L": 13,
+        "ring_L": 14,
+        "pinky_L": 15,
+        "thumb_L": 16,
+        "hand_R": 17,
+        "index_R": 18,
+        "middle_R": 19,
+        "ring_R": 20,
+        "pinky_R": 21,
+        "thumb_R": 22,
+        "head_skin": 23,
+        "eye_L_lid": 24,
+        "eye_L_white": 25,
+        "eye_L_iris": 26,
+        "eye_L_pupil": 27,
+        "brow_L": 28,
+        "ear_L": 29,
+        "eye_R_lid": 30,
+        "eye_R_white": 31,
+        "eye_R_iris": 32,
+        "eye_R_pupil": 33,
+        "brow_R": 34,
+        "ear_R": 35,
+        "nose": 36,
+        "mouth": 37,
+        "hair_cap": 38,
+        "badge": 39,
+        "badge_bar_-1": 40,
+        "badge_bar_1": 41
+      },
+      "joint_names": [
+        "root",
+        "pelvis",
+        "spine",
+        "chest",
+        "neck",
+        "head",
+        "clavicle_L",
+        "upper_arm_L",
+        "forearm_L",
+        "hand_L",
+        "index_L",
+        "middle_L",
+        "ring_L",
+        "pinky_L",
+        "thumb_L",
+        "clavicle_R",
+        "upper_arm_R",
+        "forearm_R",
+        "hand_R",
+        "index_R",
+        "middle_R",
+        "ring_R",
+        "pinky_R",
+        "thumb_R",
+        "thigh_L",
+        "shin_L",
+        "foot_L",
+        "thigh_R",
+        "shin_R",
+        "foot_R"
+      ],
+      "animations": [
+        {
+          "name": "Idle_Loop",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Reach",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Seated",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Walk_Loop",
+          "duration_s": 1,
+          "channels": 90
+        },
+        {
+          "name": "Wave_Loop",
+          "duration_s": 2,
+          "channels": 90
+        }
+      ],
+      "sha256": "1cd8be937efb1a95922df66fa3b85b0c6951a3288fa23324f68b9f13db70e6fc"
+    },
+    {
+      "id": "security_02",
+      "department": "security",
+      "sex": "female",
+      "approval": "pending",
+      "file": "security_02.glb",
+      "triangles": 2940,
+      "bones": 30,
+      "materials": 1,
+      "draw_calls": 1,
+      "vertices": 1763,
+      "file_bytes": 504136,
+      "buffer_bytes": 397888,
+      "height_m": 1.74,
+      "eye_ratios": {
+        "L": {
+          "iris_eye": 0.55,
+          "pupil_iris": 0.4,
+          "eye_face": 0.2,
+          "eye_width_m": 0.097313
+        },
+        "R": {
+          "iris_eye": 0.55,
+          "pupil_iris": 0.4,
+          "eye_face": 0.2,
+          "eye_width_m": 0.097313
+        }
+      },
+      "covered_skin_samples": 1972,
+      "surface_checks": {
+        "garment_components": {
+          "garment_tunic": 1,
+          "garment_trousers": 1
+        },
+        "hair_scalp_intersections": 0,
+        "waist_intersections": 0,
+        "garment_self_intersections": 0
+      },
+      "parts": {
+        "garment_tunic": 1,
+        "covered_arm_L": 2,
+        "covered_arm_R": 3,
+        "covered_torso": 4,
+        "garment_trousers": 5,
+        "covered_leg_L": 6,
+        "boot_L": 7,
+        "covered_leg_R": 8,
+        "boot_R": 9,
+        "neck": 10,
+        "hand_L": 11,
+        "index_L": 12,
+        "middle_L": 13,
+        "ring_L": 14,
+        "pinky_L": 15,
+        "thumb_L": 16,
+        "hand_R": 17,
+        "index_R": 18,
+        "middle_R": 19,
+        "ring_R": 20,
+        "pinky_R": 21,
+        "thumb_R": 22,
+        "head_skin": 23,
+        "eye_L_lid": 24,
+        "eye_L_white": 25,
+        "eye_L_iris": 26,
+        "eye_L_pupil": 27,
+        "brow_L": 28,
+        "ear_L": 29,
+        "eye_R_lid": 30,
+        "eye_R_white": 31,
+        "eye_R_iris": 32,
+        "eye_R_pupil": 33,
+        "brow_R": 34,
+        "ear_R": 35,
+        "nose": 36,
+        "mouth": 37,
+        "hair_cap": 38,
+        "badge": 39,
+        "badge_bar_-1": 40,
+        "badge_bar_1": 41
+      },
+      "joint_names": [
+        "root",
+        "pelvis",
+        "spine",
+        "chest",
+        "neck",
+        "head",
+        "clavicle_L",
+        "upper_arm_L",
+        "forearm_L",
+        "hand_L",
+        "index_L",
+        "middle_L",
+        "ring_L",
+        "pinky_L",
+        "thumb_L",
+        "clavicle_R",
+        "upper_arm_R",
+        "forearm_R",
+        "hand_R",
+        "index_R",
+        "middle_R",
+        "ring_R",
+        "pinky_R",
+        "thumb_R",
+        "thigh_L",
+        "shin_L",
+        "foot_L",
+        "thigh_R",
+        "shin_R",
+        "foot_R"
+      ],
+      "animations": [
+        {
+          "name": "Idle_Loop",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Reach",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Seated",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Walk_Loop",
+          "duration_s": 1,
+          "channels": 90
+        },
+        {
+          "name": "Wave_Loop",
+          "duration_s": 2,
+          "channels": 90
+        }
+      ],
+      "sha256": "f28d2b752d86eb9f9f8235a70aef7ceed1ba43e18514a5da3a7188f1f1f6e81b"
+    },
+    {
+      "id": "galley_01",
+      "department": "galley",
+      "sex": "male",
+      "approval": "pending",
+      "file": "galley_01.glb",
+      "triangles": 2940,
+      "bones": 30,
+      "materials": 1,
+      "draw_calls": 1,
+      "vertices": 1763,
+      "file_bytes": 504588,
+      "buffer_bytes": 397888,
+      "height_m": 1.7,
+      "eye_ratios": {
+        "L": {
+          "iris_eye": 0.55,
+          "pupil_iris": 0.4,
+          "eye_face": 0.2,
+          "eye_width_m": 0.099037
+        },
+        "R": {
+          "iris_eye": 0.55,
+          "pupil_iris": 0.4,
+          "eye_face": 0.2,
+          "eye_width_m": 0.099037
+        }
+      },
+      "covered_skin_samples": 1972,
+      "surface_checks": {
+        "garment_components": {
+          "garment_tunic": 1,
+          "garment_trousers": 1
+        },
+        "hair_scalp_intersections": 0,
+        "waist_intersections": 0,
+        "garment_self_intersections": 0
+      },
+      "parts": {
+        "garment_tunic": 1,
+        "covered_arm_L": 2,
+        "covered_arm_R": 3,
+        "covered_torso": 4,
+        "garment_trousers": 5,
+        "covered_leg_L": 6,
+        "boot_L": 7,
+        "covered_leg_R": 8,
+        "boot_R": 9,
+        "neck": 10,
+        "hand_L": 11,
+        "index_L": 12,
+        "middle_L": 13,
+        "ring_L": 14,
+        "pinky_L": 15,
+        "thumb_L": 16,
+        "hand_R": 17,
+        "index_R": 18,
+        "middle_R": 19,
+        "ring_R": 20,
+        "pinky_R": 21,
+        "thumb_R": 22,
+        "head_skin": 23,
+        "eye_L_lid": 24,
+        "eye_L_white": 25,
+        "eye_L_iris": 26,
+        "eye_L_pupil": 27,
+        "brow_L": 28,
+        "ear_L": 29,
+        "eye_R_lid": 30,
+        "eye_R_white": 31,
+        "eye_R_iris": 32,
+        "eye_R_pupil": 33,
+        "brow_R": 34,
+        "ear_R": 35,
+        "nose": 36,
+        "mouth": 37,
+        "hair_cap": 38,
+        "badge": 39,
+        "badge_bar_-1": 40,
+        "badge_bar_1": 41
+      },
+      "joint_names": [
+        "root",
+        "pelvis",
+        "spine",
+        "chest",
+        "neck",
+        "head",
+        "clavicle_L",
+        "upper_arm_L",
+        "forearm_L",
+        "hand_L",
+        "index_L",
+        "middle_L",
+        "ring_L",
+        "pinky_L",
+        "thumb_L",
+        "clavicle_R",
+        "upper_arm_R",
+        "forearm_R",
+        "hand_R",
+        "index_R",
+        "middle_R",
+        "ring_R",
+        "pinky_R",
+        "thumb_R",
+        "thigh_L",
+        "shin_L",
+        "foot_L",
+        "thigh_R",
+        "shin_R",
+        "foot_R"
+      ],
+      "animations": [
+        {
+          "name": "Idle_Loop",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Reach",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Seated",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Walk_Loop",
+          "duration_s": 1,
+          "channels": 90
+        },
+        {
+          "name": "Wave_Loop",
+          "duration_s": 2,
+          "channels": 90
+        }
+      ],
+      "sha256": "3c44b4f73bb2f58378d51dcd8e22c1355ac3355ab8ee7fdb0d63210860b5285e"
+    },
+    {
+      "id": "galley_02",
+      "department": "galley",
+      "sex": "female",
+      "approval": "pending",
+      "file": "galley_02.glb",
+      "triangles": 2940,
+      "bones": 30,
+      "materials": 1,
+      "draw_calls": 1,
+      "vertices": 1763,
+      "file_bytes": 504492,
+      "buffer_bytes": 397888,
+      "height_m": 1.62,
+      "eye_ratios": {
+        "L": {
+          "iris_eye": 0.55,
+          "pupil_iris": 0.4,
+          "eye_face": 0.2,
+          "eye_width_m": 0.090602
+        },
+        "R": {
+          "iris_eye": 0.55,
+          "pupil_iris": 0.4,
+          "eye_face": 0.2,
+          "eye_width_m": 0.090602
+        }
+      },
+      "covered_skin_samples": 1972,
+      "surface_checks": {
+        "garment_components": {
+          "garment_tunic": 1,
+          "garment_trousers": 1
+        },
+        "hair_scalp_intersections": 0,
+        "waist_intersections": 0,
+        "garment_self_intersections": 0
+      },
+      "parts": {
+        "garment_tunic": 1,
+        "covered_arm_L": 2,
+        "covered_arm_R": 3,
+        "covered_torso": 4,
+        "garment_trousers": 5,
+        "covered_leg_L": 6,
+        "boot_L": 7,
+        "covered_leg_R": 8,
+        "boot_R": 9,
+        "neck": 10,
+        "hand_L": 11,
+        "index_L": 12,
+        "middle_L": 13,
+        "ring_L": 14,
+        "pinky_L": 15,
+        "thumb_L": 16,
+        "hand_R": 17,
+        "index_R": 18,
+        "middle_R": 19,
+        "ring_R": 20,
+        "pinky_R": 21,
+        "thumb_R": 22,
+        "head_skin": 23,
+        "eye_L_lid": 24,
+        "eye_L_white": 25,
+        "eye_L_iris": 26,
+        "eye_L_pupil": 27,
+        "brow_L": 28,
+        "ear_L": 29,
+        "eye_R_lid": 30,
+        "eye_R_white": 31,
+        "eye_R_iris": 32,
+        "eye_R_pupil": 33,
+        "brow_R": 34,
+        "ear_R": 35,
+        "nose": 36,
+        "mouth": 37,
+        "hair_cap": 38,
+        "badge": 39,
+        "badge_bar_-1": 40,
+        "badge_bar_1": 41
+      },
+      "joint_names": [
+        "root",
+        "pelvis",
+        "spine",
+        "chest",
+        "neck",
+        "head",
+        "clavicle_L",
+        "upper_arm_L",
+        "forearm_L",
+        "hand_L",
+        "index_L",
+        "middle_L",
+        "ring_L",
+        "pinky_L",
+        "thumb_L",
+        "clavicle_R",
+        "upper_arm_R",
+        "forearm_R",
+        "hand_R",
+        "index_R",
+        "middle_R",
+        "ring_R",
+        "pinky_R",
+        "thumb_R",
+        "thigh_L",
+        "shin_L",
+        "foot_L",
+        "thigh_R",
+        "shin_R",
+        "foot_R"
+      ],
+      "animations": [
+        {
+          "name": "Idle_Loop",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Reach",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Seated",
+          "duration_s": 2,
+          "channels": 90
+        },
+        {
+          "name": "Walk_Loop",
+          "duration_s": 1,
+          "channels": 90
+        },
+        {
+          "name": "Wave_Loop",
+          "duration_s": 2,
+          "channels": 90
+        }
+      ],
+      "sha256": "0d72942bc15936896c3c90fd530d770e57dd03f8e335e26255a2e0261218b066"
+    }
+  ]
+}

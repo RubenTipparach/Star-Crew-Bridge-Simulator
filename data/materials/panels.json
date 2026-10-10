@@ -18,7 +18,7 @@
     "Each finish's ceiling, floor and trims may override any of its colours_srgb (colours_srgb under that kind) and carry their own wear and render light (render.ceiling, render.floor, render.trims): a ceiling and a floor are lit from the room, so the key light is nearly square to them; a trim strip is lit square on so it reads the same whichever way its member runs. A finish lists the modules it has: crew floors have no hazard module (crew takes plate for it, floor-panels design section 2)."
   ],
   "layers": {
-    "first_layer": 11,
+    "first_layer": 13,
     "span_m": 2.0,
     "margin_m": 0.2,
     "sizes_px": [128, 256],
@@ -106,7 +106,7 @@
   },
   "upholstery": {
     "_doc": "Padded leather for the chairs (the owner, 2026-10-07, on the captain's chair: 'chairs suck still mainly its a texture problem'): two layers that tile in both directions over the 2 m layer (wear and grain on a 4D torus, as the walkway's), baked in a neutral light warm grey because a page multiplies them by a tint per chair (tints_srgb, by prop name). channel: rolled vertical channels 2/21 m (95 mm) wide with a stitched groove between them and a welted seam across every 0.5 m (v = 0.25 + 0.5 k), for seat and back faces; panel: padded panels 2/7 m by 0.25 m with welted seams on every edge and a stitch line inside them, for bolsters, headrests and arm pads. The chairs' roles upholstery and upholstery_panel (tools/blender/hs_kit.py ROLES) take them, UV0 in metres over layers.span_m. Colours: leather the padding, welt the piping, seam what shows between pillows, stitch the thread; grain is the leather's pebble (cell_m across), its relief (bump strength 0-1) and mottle (colour variation 0-1).",
-    "layers": { "channel": 68, "panel": 69 },
+    "layers": { "channel": 70, "panel": 71 },
     "colours_srgb": {
       "leather": [0.79, 0.775, 0.75],
       "welt": [0.70, 0.685, 0.66],
@@ -174,14 +174,14 @@
         "colours_srgb": { "plate": [0.50, 0.49, 0.46], "paint2": [0.43, 0.42, 0.40], "metal": [0.64, 0.63, 0.60], "dark": [0.12, 0.12, 0.125] },
         "wear": { "grime": 0.08, "grime_scale_per_m": 1.5, "crevice": 0.45, "crevice_m": 0.05, "edge": 0.25, "streaks": 0.0, "rust": 0.0 },
         "modules": {
-          "plate": { "layer": 33, "weight": 3, "placed": "draw", "emissive": false },
-          "grille": { "layer": 34, "weight": 1, "placed": "draw", "emissive": false },
-          "fan": { "layer": 35, "weight": 1, "placed": "draw", "emissive": false },
-          "cable_tray": { "layer": 36, "weight": 1, "placed": "draw", "emissive": false },
-          "pipes": { "layer": 37, "weight": 1, "placed": "draw", "emissive": false },
-          "hatch": { "layer": 38, "weight": 1, "placed": "draw", "emissive": true },
-          "ribbed": { "layer": 39, "weight": 1, "placed": "draw", "emissive": false },
-          "lamp_surround": { "layer": 40, "weight": 0, "placed": "rule:lamp", "emissive": false }
+          "plate": { "layer": 35, "weight": 3, "placed": "draw", "emissive": false },
+          "grille": { "layer": 36, "weight": 1, "placed": "draw", "emissive": false },
+          "fan": { "layer": 37, "weight": 1, "placed": "draw", "emissive": false },
+          "cable_tray": { "layer": 38, "weight": 1, "placed": "draw", "emissive": false },
+          "pipes": { "layer": 39, "weight": 1, "placed": "draw", "emissive": false },
+          "hatch": { "layer": 40, "weight": 1, "placed": "draw", "emissive": true },
+          "ribbed": { "layer": 41, "weight": 1, "placed": "draw", "emissive": false },
+          "lamp_surround": { "layer": 42, "weight": 0, "placed": "rule:lamp", "emissive": false }
         }
       },
       "floor": {
@@ -189,36 +189,36 @@
         "colours_srgb": { "plate": [0.34, 0.335, 0.32], "paint2": [0.28, 0.275, 0.265], "dark": [0.07, 0.07, 0.075], "metal": [0.55, 0.54, 0.51] },
         "wear": { "grime": 0.22, "grime_scale_per_m": 1.8, "crevice": 0.55, "crevice_m": 0.05, "edge": 0.35, "streaks": 0.0, "rust": 0.0 },
         "modules": {
-          "walkway": { "layer": 41, "weight": 0, "placed": "rule:walkway", "emissive": false },
-          "plate": { "layer": 42, "weight": 4, "placed": "draw", "emissive": false },
-          "grate": { "layer": 43, "weight": 1, "placed": "draw", "emissive": false },
-          "access": { "layer": 44, "weight": 1, "placed": "draw", "emissive": false },
-          "trench": { "layer": 45, "weight": 1, "placed": "draw", "emissive": false },
-          "drain": { "layer": 46, "weight": 1, "placed": "draw", "emissive": false },
-          "vent": { "layer": 47, "weight": 1, "placed": "draw", "emissive": false }
+          "walkway": { "layer": 43, "weight": 0, "placed": "rule:walkway", "emissive": false },
+          "plate": { "layer": 44, "weight": 4, "placed": "draw", "emissive": false },
+          "grate": { "layer": 45, "weight": 1, "placed": "draw", "emissive": false },
+          "access": { "layer": 46, "weight": 1, "placed": "draw", "emissive": false },
+          "trench": { "layer": 47, "weight": 1, "placed": "draw", "emissive": false },
+          "drain": { "layer": 48, "weight": 1, "placed": "draw", "emissive": false },
+          "vent": { "layer": 49, "weight": 1, "placed": "draw", "emissive": false }
         }
       },
       "trims": {
         "_doc": "Crew trims: dark gunmetal steel with bright worn edges, darker than the crew walls, so the structure frames the plating instead of fading into it (the pale trim the proposal names).",
-        "layer": 48,
+        "layer": 50,
         "colours_srgb": { "plate": [0.31, 0.31, 0.30], "paint2": [0.23, 0.23, 0.225], "metal": [0.66, 0.65, 0.62], "dark": [0.07, 0.07, 0.075] },
         "wear": { "grime": 0.14, "grime_scale_per_m": 2.0, "crevice": 0.6, "crevice_m": 0.03, "edge": 0.65, "streaks": 0.10, "rust": 0.0 }
       },
-      "platforms": { "layer": 66 },
-      "edges": { "layer": 70 },
+      "platforms": { "layer": 68 },
+      "edges": { "layer": 72 },
       "modules": {
-        "plate": { "layer": 11, "weight": 3, "placed": "draw", "emissive": false, "mirrored": false },
-        "vent": { "layer": 12, "weight": 1, "placed": "draw", "emissive": false, "mirrored": false, "variant": "louvre" },
-        "pipes": { "layer": 13, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
-        "hatch": { "layer": 14, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
-        "junction": { "layer": 15, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
-        "light": { "layer": 16, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
-        "ribbed": { "layer": 17, "weight": 1, "placed": "draw", "emissive": false, "mirrored": false },
-        "screen": { "layer": 18, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
-        "flank": { "layer": 19, "weight": 0, "placed": "rule:door", "emissive": true, "mirrored": true },
-        "narrow": { "layer": 20, "weight": 0, "placed": "rule:narrow", "emissive": true, "mirrored": false }
+        "plate": { "layer": 13, "weight": 3, "placed": "draw", "emissive": false, "mirrored": false },
+        "vent": { "layer": 14, "weight": 1, "placed": "draw", "emissive": false, "mirrored": false, "variant": "louvre" },
+        "pipes": { "layer": 15, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
+        "hatch": { "layer": 16, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
+        "junction": { "layer": 17, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
+        "light": { "layer": 18, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
+        "ribbed": { "layer": 19, "weight": 1, "placed": "draw", "emissive": false, "mirrored": false },
+        "screen": { "layer": 20, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
+        "flank": { "layer": 21, "weight": 0, "placed": "rule:door", "emissive": true, "mirrored": true },
+        "narrow": { "layer": 22, "weight": 0, "placed": "rule:narrow", "emissive": true, "mirrored": false }
       },
-      "strips": { "layer": 21, "guard_m": 0.025, "rows": { "base": 0, "louvre": 1, "spare": 2, "top": 3 } }
+      "strips": { "layer": 23, "guard_m": 0.025, "rows": { "base": 0, "louvre": 1, "spare": 2, "top": 3 } }
     },
     "working": {
       "_doc": "Working spaces: darker grey-brown, rust streaks, hazard borders, amber light.",
@@ -249,14 +249,14 @@
         "colours_srgb": { "plate": [0.25, 0.235, 0.21], "paint2": [0.19, 0.18, 0.16] },
         "wear": { "grime": 0.26, "grime_scale_per_m": 2.0, "crevice": 0.6, "crevice_m": 0.06, "edge": 0.4, "streaks": 0.0, "rust": 0.45 },
         "modules": {
-          "plate": { "layer": 49, "weight": 3, "placed": "draw", "emissive": false },
-          "grille": { "layer": 50, "weight": 1, "placed": "draw", "emissive": false },
-          "fan": { "layer": 51, "weight": 1, "placed": "draw", "emissive": false },
-          "cable_tray": { "layer": 52, "weight": 1, "placed": "draw", "emissive": false },
-          "pipes": { "layer": 53, "weight": 1, "placed": "draw", "emissive": false },
-          "hatch": { "layer": 54, "weight": 1, "placed": "draw", "emissive": true },
-          "ribbed": { "layer": 55, "weight": 1, "placed": "draw", "emissive": false },
-          "lamp_surround": { "layer": 56, "weight": 0, "placed": "rule:lamp", "emissive": false }
+          "plate": { "layer": 51, "weight": 3, "placed": "draw", "emissive": false },
+          "grille": { "layer": 52, "weight": 1, "placed": "draw", "emissive": false },
+          "fan": { "layer": 53, "weight": 1, "placed": "draw", "emissive": false },
+          "cable_tray": { "layer": 54, "weight": 1, "placed": "draw", "emissive": false },
+          "pipes": { "layer": 55, "weight": 1, "placed": "draw", "emissive": false },
+          "hatch": { "layer": 56, "weight": 1, "placed": "draw", "emissive": true },
+          "ribbed": { "layer": 57, "weight": 1, "placed": "draw", "emissive": false },
+          "lamp_surround": { "layer": 58, "weight": 0, "placed": "rule:lamp", "emissive": false }
         }
       },
       "floor": {
@@ -264,37 +264,37 @@
         "colours_srgb": { "plate": [0.27, 0.255, 0.235], "paint2": [0.21, 0.195, 0.175], "metal": [0.48, 0.45, 0.40] },
         "wear": { "grime": 0.34, "grime_scale_per_m": 2.2, "crevice": 0.65, "crevice_m": 0.05, "edge": 0.5, "streaks": 0.0, "rust": 0.45 },
         "modules": {
-          "walkway": { "layer": 57, "weight": 0, "placed": "rule:walkway", "emissive": false },
-          "plate": { "layer": 58, "weight": 3, "placed": "draw", "emissive": false },
-          "grate": { "layer": 59, "weight": 2, "placed": "draw", "emissive": false },
-          "access": { "layer": 60, "weight": 1, "placed": "draw", "emissive": false },
-          "trench": { "layer": 61, "weight": 1, "placed": "draw", "emissive": false },
-          "drain": { "layer": 62, "weight": 1, "placed": "draw", "emissive": false },
-          "vent": { "layer": 63, "weight": 1, "placed": "draw", "emissive": false },
-          "hazard": { "layer": 64, "weight": 1, "placed": "draw", "emissive": false }
+          "walkway": { "layer": 59, "weight": 0, "placed": "rule:walkway", "emissive": false },
+          "plate": { "layer": 60, "weight": 3, "placed": "draw", "emissive": false },
+          "grate": { "layer": 61, "weight": 2, "placed": "draw", "emissive": false },
+          "access": { "layer": 62, "weight": 1, "placed": "draw", "emissive": false },
+          "trench": { "layer": 63, "weight": 1, "placed": "draw", "emissive": false },
+          "drain": { "layer": 64, "weight": 1, "placed": "draw", "emissive": false },
+          "vent": { "layer": 65, "weight": 1, "placed": "draw", "emissive": false },
+          "hazard": { "layer": 66, "weight": 1, "placed": "draw", "emissive": false }
         }
       },
       "trims": {
         "_doc": "Working trims: dark brown steel with rust, hazard edges on beams, frames and pillar bases, hazard kick plates.",
-        "layer": 65,
+        "layer": 67,
         "colours_srgb": { "plate": [0.24, 0.225, 0.20], "paint2": [0.18, 0.17, 0.15], "metal": [0.54, 0.50, 0.44] },
         "wear": { "grime": 0.26, "grime_scale_per_m": 2.5, "crevice": 0.6, "crevice_m": 0.04, "edge": 0.6, "streaks": 0.25, "rust": 0.5 }
       },
-      "platforms": { "layer": 67 },
-      "edges": { "layer": 71 },
+      "platforms": { "layer": 69 },
+      "edges": { "layer": 73 },
       "modules": {
-        "plate": { "layer": 22, "weight": 3, "placed": "draw", "emissive": false, "mirrored": false },
-        "vent": { "layer": 23, "weight": 1, "placed": "draw", "emissive": false, "mirrored": false, "variant": "octagons" },
-        "pipes": { "layer": 24, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
-        "hatch": { "layer": 25, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
-        "junction": { "layer": 26, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
-        "light": { "layer": 27, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
-        "ribbed": { "layer": 28, "weight": 1, "placed": "draw", "emissive": false, "mirrored": false },
-        "screen": { "layer": 29, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
-        "flank": { "layer": 30, "weight": 0, "placed": "rule:door", "emissive": true, "mirrored": true },
-        "narrow": { "layer": 31, "weight": 0, "placed": "rule:narrow", "emissive": true, "mirrored": false }
+        "plate": { "layer": 24, "weight": 3, "placed": "draw", "emissive": false, "mirrored": false },
+        "vent": { "layer": 25, "weight": 1, "placed": "draw", "emissive": false, "mirrored": false, "variant": "octagons" },
+        "pipes": { "layer": 26, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
+        "hatch": { "layer": 27, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
+        "junction": { "layer": 28, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
+        "light": { "layer": 29, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
+        "ribbed": { "layer": 30, "weight": 1, "placed": "draw", "emissive": false, "mirrored": false },
+        "screen": { "layer": 31, "weight": 1, "placed": "draw", "emissive": true, "mirrored": false },
+        "flank": { "layer": 32, "weight": 0, "placed": "rule:door", "emissive": true, "mirrored": true },
+        "narrow": { "layer": 33, "weight": 0, "placed": "rule:narrow", "emissive": true, "mirrored": false }
       },
-      "strips": { "layer": 32, "guard_m": 0.025, "rows": { "base": 0, "louvre": 1, "spare": 2, "top": 3 } }
+      "strips": { "layer": 34, "guard_m": 0.025, "rows": { "base": 0, "louvre": 1, "spare": 2, "top": 3 } }
     }
   },
   "source": {

@@ -967,7 +967,8 @@ def _raster_pack(masks, side):
             if not free.any():
                 continue
             ys, xs = np.nonzero(free)
-            j = np.lexsort((xs, ys + h))[0]
+            # nonzero returns row-major order: its first offset is already the top-left.
+            j = 0
             cand = (int(ys[j]) + h, int(xs[j]), turned, int(ys[j]), int(xs[j]), mk)
             if best is None or cand[:3] < best[:3]:
                 best = cand
@@ -1095,7 +1096,7 @@ def atlas_uv_at(p, A, side):
                 q = P(v.co)
                 pts[v.index] = (q.dot(right), q.dot(up))
         q = [P(v.co) for f in faces for v in f.verts]
-        unseen = ((n.y < -0.999 and max(v.y for v in q) < 0.001)
+        unseen = not getattr(p, "atlas_all_faces", False) and ((n.y < -0.999 and max(v.y for v in q) < 0.001)
                   or (p.wall and n.z < -0.999 and max(v.z for v in q) < 0.001))
         groups.append({"faces": [f.index for f in faces], "pos": pts, "tris": [[pts[v.index] for v in f.verts] for f in faces],
                        "fixed": unseen, "lamp": all(ROLES[f.material_index] == "light_panel" for f in faces)})

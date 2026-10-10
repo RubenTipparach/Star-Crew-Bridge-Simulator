@@ -134,6 +134,28 @@
       "relief": 1.0,
       "colours": 32
     },
+    "exterior_pearl": {
+      "layer": 11,
+      "role": "Custom exterior pearl ceramic paint, with brushed wear and no panel grid.",
+      "source": { "graph": "exterior_paint", "provenance": "Original built-in image_gen bitmap, tools/materials/sources/exterior-paint.png and exterior-paint-prompt.txt; imported into Material Maker, 2026-10-10." },
+      "tile_m": 4.0,
+      "span_m": 4.0,
+      "ramp": [[0.74, 0.76, 0.78], [0.93, 0.94, 0.95]],
+      "ramp_mix": 1.0,
+      "relief": 0.0,
+      "colours": 32
+    },
+    "exterior_graphite": {
+      "layer": 12,
+      "role": "Custom exterior graphite paint for service housings and armour.",
+      "source": { "graph": "exterior_paint", "provenance": "Original built-in image_gen bitmap, tools/materials/sources/exterior-paint.png and exterior-paint-prompt.txt; imported into Material Maker, 2026-10-10." },
+      "tile_m": 4.0,
+      "span_m": 4.0,
+      "ramp": [[0.18, 0.22, 0.26], [0.26, 0.30, 0.35]],
+      "ramp_mix": 1.0,
+      "relief": 0.0,
+      "colours": 32
+    },
     "hull_dark": {
       "layer": 10,
       "role": "Exterior accent plating: bands, the spine, around ports and bays.",

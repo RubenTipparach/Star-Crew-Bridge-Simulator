@@ -399,7 +399,36 @@ def rust_metal():
     return g
 
 
+def exterior_paint():
+    """Original generated brushed paint, with no panel grid. Image remains an editable graph input."""
+    g = Graph("Exterior Pearl Paint")
+    source = g.node("image", image="../sources/exterior-paint.png")
+    g.material(albedo=source, metallic_v=0.0, roughness_v=0.85)
+    return g
+
+
+def exterior_surfaces():
+    """Generated fitted ship artwork; four UV regions, not a repeating array layer."""
+    g = Graph("Exterior Fitted Surface Atlas")
+    source = g.node("image", image="../sources/exterior-surfaces.png")
+    g.material(albedo=source, metallic_v=0.0, roughness_v=0.85)
+    return g
+
+
+def fitted_tern_hull(livery="copper"):
+    """Painted actual player hull UV islands, following the owner's Fallen Tribes workflow."""
+    g = Graph("Tern Service Channels - " + livery.title())
+    source = g.node("image", image=f"../sources/tern-service-{livery}.png")
+    g.material(albedo=source, metallic_v=0.0, roughness_v=0.85)
+    return g
+
+
 GRAPHS = {
+    "tern_hull": fitted_tern_hull,
+    "tern_hull_cobalt": lambda: fitted_tern_hull("cyan"),
+    "tern_hull_rescue": lambda: fitted_tern_hull("rescue"),
+    "exterior_surfaces": exterior_surfaces,
+    "exterior_paint": exterior_paint,
     "tech_panel": tech_panel,
     "ceiling_tiles": ceiling_tiles,
     "floor_tiles": floor_tiles,
@@ -408,6 +437,8 @@ GRAPHS = {
     "light_panel": light_panel,
     "rust_metal": rust_metal,
 }
+
+
 
 
 # ----------------------------------------------------------------------------

@@ -1,0 +1,208 @@
+{
+  "schema": "starcrew.crew-captures/1",
+  "owner_approval": "pending",
+  "renderer": "Blender 4.4.3 CPU Cycles",
+  "assets": {
+    "command_01": "0d3ae4b10fbe55333a929d28f0b68b966746cabbd1a7b635bf0bd17c50e39e7c",
+    "command_02": "234c5ed1b22de62a50e1e7f8b66f5e667f29b2fd529cc589bb3045bb49479c63",
+    "engineering_01": "7f4c4b7850e2f0458bb85d2f448c43e1c27809c92570610a79dff44fa66cc6f4",
+    "engineering_02": "0b4331b95931b6090ed405c1d7a47312151f9caa0af9438b29b747d578fb963c",
+    "deckhands_01": "825af535263bd332ca84e0bde4f3bc41b2dd0b0df8679fab438eae63868b32d9",
+    "deckhands_02": "f28833efab1b50ba959aa3688f37a119b967de9b82034d400e0fcd09cf4351ca",
+    "medical_01": "b54529e379310174cb6d7f5befcead8623cbb4fbe5a545e683a6b79ffe216a18",
+    "medical_02": "c7f9c0bc93395c447a10a0b30b134f2ab77853c17aa2f6f0aa57802f4c4b245f",
+    "security_01": "1cd8be937efb1a95922df66fa3b85b0c6951a3288fa23324f68b9f13db70e6fc",
+    "security_02": "f28d2b752d86eb9f9f8235a70aef7ceed1ba43e18514a5da3a7188f1f1f6e81b",
+    "galley_01": "3c44b4f73bb2f58378d51dcd8e22c1355ac3355ab8ee7fdb0d63210860b5285e",
+    "galley_02": "0d72942bc15936896c3c90fd530d770e57dd03f8e335e26255a2e0261218b066"
+  },
+  "blender_sources": {
+    "command_01": "1218d0ff6a265692fca26081c07f30da69a2f3ae8dc3b5541d1b378c5f4edea8",
+    "command_02": "33a11c963deac6c2e6328ebea0e4f77eaac1c16bbeb6a8d6ff56168ffd38b791",
+    "engineering_01": "ebd20222f995ec117a31b4387c3826ba91cf4d4a88eb0c80df242528a7b854d5",
+    "engineering_02": "98a478a66d196a834f2edfa7ca4f79bdfd3107c86f7ccac46fb1ba74683efd20",
+    "deckhands_01": "e07ffb8ba5ab138f9a00a37344af92893aa3231a81fd1c5efbd05d2edce654a7",
+    "deckhands_02": "a4c3cbcdc3a73e777904f9f500709d7b0a14d8722814312d61ca2756e587d667",
+    "medical_01": "6cfa0922aa5fd60da26e099cd3d22a539ff8c7d7aca969421a49219355391656",
+    "medical_02": "0b4ef32090561fe985987595dd59d4abb927b7d2289c8ffdd904e7ca872c9574",
+    "security_01": "22f75a6224d410ca590d45c4e55b0dcad5d08486ab458ef3964197c4c8307e3a",
+    "security_02": "3a574f834d92dc6ebf0b7f73d042beb0e843647642f33355250f89ee71838c8a",
+    "galley_01": "d91c38f3612bf38b265abbdd0bb3783e1b6e7c225da562c5908a1e18d4450b33",
+    "galley_02": "8b5e56db588f24a57f67114712504cb6ebbfb2dd3596ec7e56e7333cb3c864c5"
+  },
+  "captures": [
+    {
+      "file": "docs/screenshots/crew-characters/body-width-comparison.png",
+      "width": 2000,
+      "height": 1000,
+      "sha256": "aad3841c05e1b945a88dd39c10cf4b325e2a02fd488b593f3719536aa98b9861",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/crew-characters/boots.png",
+      "width": 1600,
+      "height": 640,
+      "sha256": "a5416114fd680a4f66e667388e705dd659903d0f427fc9a00476ebeef4971724",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/crew-characters/command_01-turnaround.png",
+      "width": 1800,
+      "height": 900,
+      "sha256": "c06aef9fd3d4d68e4e5932adfbf0d4fa050ba479afd2183e2140f7ad01367cf4",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/crew-characters/command_02-turnaround.png",
+      "width": 1800,
+      "height": 900,
+      "sha256": "7fe6c4666df2f842de19cb88fe1e72740571c97764a88b4a877a7e22a18e87c2",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/crew-characters/deckhands_01-turnaround.png",
+      "width": 1800,
+      "height": 900,
+      "sha256": "d3a01ed0b3bf6e0f9e24613471614c1ef95d0081ec66ac80e49dc10612036e54",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/crew-characters/deckhands_02-turnaround.png",
+      "width": 1800,
+      "height": 900,
+      "sha256": "bacb461e67d8b83b8c46aaf1c32c2703a91f6418aec87240e5880cba18714a5a",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/crew-characters/engineering_01-turnaround.png",
+      "width": 1800,
+      "height": 900,
+      "sha256": "3ed530ac2d8b49d94bcfd8079fac71a6fa0c0ce2a28c115d98e254f47df63986",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/crew-characters/engineering_02-turnaround.png",
+      "width": 1800,
+      "height": 900,
+      "sha256": "278ff2c8ace153bcdc3012a769e95c57f11e9a8737c836b13f9bf50966d10a91",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/crew-characters/eyes-closeup.png",
+      "width": 900,
+      "height": 900,
+      "sha256": "8ddb70d642515d30042505f725bae78e5102a9a974f11b629d3d77e54cc393c6",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/crew-characters/galley_01-turnaround.png",
+      "width": 1800,
+      "height": 900,
+      "sha256": "8bd5970993f795d54b990dc19b63f8c60e08287f2f13c31889601fc095f21bf3",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/crew-characters/galley_02-turnaround.png",
+      "width": 1800,
+      "height": 900,
+      "sha256": "f429cf1a9d71f7b6bfcbdf0bbd7c09ad0427492a2b8051f9d3ed94a79d3a361e",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/crew-characters/hair-clearance.png",
+      "width": 1600,
+      "height": 640,
+      "sha256": "d8512722e3c1fc448206fabac134256f983641756bb88a52303d4c34857a53ba",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/crew-characters/lineup-female.png",
+      "width": 2000,
+      "height": 820,
+      "sha256": "45fe00ad084d49208218623dbf235b8d8deb47625a969f99488a64663f438b88",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/crew-characters/lineup.png",
+      "width": 2000,
+      "height": 820,
+      "sha256": "bc173f6196076c4286aa29c03e9cb7d262e9ad0ecd8c882dc1927e441bc810e5",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/crew-characters/medical_01-turnaround.png",
+      "width": 1800,
+      "height": 900,
+      "sha256": "26ee257532279b05b9c9df7cf0ae73ec1c624c28906bff1ae96341b01ec9227c",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/crew-characters/medical_02-turnaround.png",
+      "width": 1800,
+      "height": 900,
+      "sha256": "0bb71448d2f5e1d3f1a9e5b88eb633f610a406433a96590b5e23b0c772db0dba",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/crew-characters/probe-states.png",
+      "width": 1500,
+      "height": 1000,
+      "sha256": "fd0f708ee8e44da0449793c9687f0709a9fbba9b671fc12ac66a34c02889b48d",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/crew-characters/rig-poses-female.png",
+      "width": 2000,
+      "height": 960,
+      "sha256": "e4c08e9bd50d75571ae5a573918314f506d3ee2ce5bfa694673cfdc104ec8144",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/crew-characters/rig-poses.png",
+      "width": 2000,
+      "height": 960,
+      "sha256": "001da3c404d6493f016cb4e58807431de2613655bdb6d2d1f45cfcd5ccffc4fd",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/crew-characters/security_01-turnaround.png",
+      "width": 1800,
+      "height": 900,
+      "sha256": "ede0e24cb7517364b39c3bf121b3308eb80efd651f897b96db36374e8c8a6ae4",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/crew-characters/security_02-turnaround.png",
+      "width": 1800,
+      "height": 900,
+      "sha256": "d9f56104f002e13dff5e4a2f7fa7f65ecfc1b0c2aca3d3198ffa50e21327681b",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/crew-characters/waist-clearance.png",
+      "width": 1600,
+      "height": 640,
+      "sha256": "cc36b316537b13cdda399ef5901e7a7e49416af69032e3c58422f4e65ec0f60c",
+      "inspected": true
+    }
+  ],
+  "scope": "Twelve rest turnarounds, paired lineups, body width comparison, hair/waist/boot details, geometric eyes, illustrative probe states and both body variants in five actual exported poses. No engine or Pi measurement.",
+  "body_width_comparison": {
+    "before": {
+      "command_01": "b107f57921e4229472ed5321545603b2949dba2d7cd3c2cf68145aa8f00ceb38",
+      "command_02": "3785eef1d8d7273f2990199e02d00e74350a6d604d4fc327b4e8c38cee378612"
+    },
+    "after": {
+      "command_01": "0d3ae4b10fbe55333a929d28f0b68b966746cabbd1a7b635bf0bd17c50e39e7c",
+      "command_02": "234c5ed1b22de62a50e1e7f8b66f5e667f29b2fd529cc589bb3045bb49479c63"
+    },
+    "shoulder_width_multiplier": [
+      1.16,
+      0.9
+    ],
+    "waist_width_multiplier": [
+      0.86,
+      0.8
+    ]
+  }
+}

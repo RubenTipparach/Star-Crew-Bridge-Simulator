@@ -1,0 +1,60 @@
+{
+  "schema": "starcrew.character-checks/1",
+  "verified_artifacts": [
+    "command_01",
+    "command_02",
+    "engineering_01",
+    "engineering_02",
+    "deckhands_01",
+    "deckhands_02",
+    "medical_01",
+    "medical_02",
+    "security_01",
+    "security_02",
+    "galley_01",
+    "galley_02"
+  ],
+  "checks": [
+    {
+      "check": "more than 3000 triangles names the character and count",
+      "result": "pass",
+      "rejection": "[crew] command_01: over budget: 4920 triangles (limit 3000), read from command_01.glb"
+    },
+    {
+      "check": "mesh iris outside the requested range is rejected",
+      "result": "pass",
+      "rejection": "[crew] command_01: eye L: measured iris 0.620000, pupil 0.400000"
+    },
+    {
+      "check": "mesh pupil with the wrong ratio is rejected",
+      "result": "pass",
+      "rejection": "[crew] command_01: eye L: measured iris 0.550000, pupil 0.500000"
+    },
+    {
+      "check": "covered skin protruding through a tunic is rejected",
+      "result": "pass",
+      "rejection": "[crew] command_01: covered_torso skin outside its garment at (0.58468, 0.81197, -0.0) m"
+    },
+    {
+      "check": "second material and primitive are rejected",
+      "result": "pass",
+      "rejection": "[crew] command_01: over budget: 2 materials (limit 1), read from command_01.glb"
+    },
+    {
+      "check": "scalp clipping through hair is rejected",
+      "result": "pass",
+      "rejection": "[crew] command_01: hair intersects scalp: 115 triangle pairs"
+    },
+    {
+      "check": "trousers clipping through the hem are rejected",
+      "result": "pass",
+      "rejection": "[crew] command_01: trousers intersect tunic: 4 triangle pairs"
+    },
+    {
+      "check": "closed but detached garment geometry is rejected",
+      "result": "pass",
+      "rejection": "[crew] command_01: garment_tunic: disconnected garment: 2 components"
+    }
+  ],
+  "scope": "Exported review assets and rejection cases. Posed clothing and source IK controls are checked separately in rig-validation.json. Engine adoption, live deck probes and Pi measurements remain pending."
+}

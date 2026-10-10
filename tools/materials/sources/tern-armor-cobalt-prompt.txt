@@ -1,0 +1,5 @@
+Use case: precise-object-edit
+Asset type: starship UV color atlas, cobalt livery variant of the attached copper texture.
+Edit target: attached atlas. Lock every UV island's silhouette, location, scale, grey subhull break, white armor panel, weathering and exact painted lettering "SCS TERN" / "SC-084".
+Change the burnt copper markings to rich muted cobalt blue. Make the long aft dorsal shoulder markings into confident broad blue panels with a narrow ivory stripe through each. Add a small matching cobalt wedge on the white forward nose tip, inside the existing leftmost island. This is a cohesive blue exploration livery, about 10 percent colored paint and predominantly white armor over grey subhull. Keep the right middle fittings rectangle quiet ivory so fittings are not filled with dark marks.
+Preserve all text unaltered, flat ink directly on white hull with no backing plaque. No invented text or windows. No curved lines. No new island positions, no perspective, no 3D render, no lighting glow. Square bitmap, opaque black background outside the existing islands.

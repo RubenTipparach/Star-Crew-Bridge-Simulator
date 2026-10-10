@@ -1,0 +1,109 @@
+{
+  "schema": "starcrew.crew-viewer-qa/1",
+  "page": "docs/mockups/crew-characters.html",
+  "opened_from_disk": true,
+  "renderer": "headless Chromium SwiftShader",
+  "pi_measurement": false,
+  "owner_approval": "pending",
+  "checks": [
+    {
+      "character": "command_01",
+      "triangles": 3132,
+      "drawCalls": 2,
+      "glbDownload": "exact bytes"
+    },
+    {
+      "character": "command_02",
+      "triangles": 3132,
+      "drawCalls": 2,
+      "glbDownload": "exact bytes"
+    },
+    {
+      "character": "engineering_01",
+      "triangles": 3132,
+      "drawCalls": 2,
+      "glbDownload": "exact bytes"
+    },
+    {
+      "character": "engineering_02",
+      "triangles": 3132,
+      "drawCalls": 2,
+      "glbDownload": "exact bytes"
+    },
+    {
+      "character": "deckhands_01",
+      "triangles": 3132,
+      "drawCalls": 2,
+      "glbDownload": "exact bytes"
+    },
+    {
+      "character": "deckhands_02",
+      "triangles": 3132,
+      "drawCalls": 2,
+      "glbDownload": "exact bytes"
+    },
+    {
+      "character": "medical_01",
+      "triangles": 3132,
+      "drawCalls": 2,
+      "glbDownload": "exact bytes"
+    },
+    {
+      "character": "medical_02",
+      "triangles": 3132,
+      "drawCalls": 2,
+      "glbDownload": "exact bytes"
+    },
+    {
+      "character": "security_01",
+      "triangles": 3132,
+      "drawCalls": 2,
+      "glbDownload": "exact bytes"
+    },
+    {
+      "character": "security_02",
+      "triangles": 3132,
+      "drawCalls": 2,
+      "glbDownload": "exact bytes"
+    },
+    {
+      "character": "galley_01",
+      "triangles": 3132,
+      "drawCalls": 2,
+      "glbDownload": "exact bytes"
+    },
+    {
+      "character": "galley_02",
+      "triangles": 3132,
+      "drawCalls": 2,
+      "glbDownload": "exact bytes"
+    },
+    {
+      "lineup": 17832,
+      "sex": "female",
+      "drawCalls": 7
+    },
+    {
+      "pairedVariants": "six departments, both body variants selected and rendered"
+    },
+    {
+      "cameraPresets": "front, side, back, eyes, reset"
+    },
+    {
+      "lighting": "three distinct rendered states"
+    },
+    {
+      "mouse": "orbit, pan, zoom, auto rotate verified"
+    },
+    {
+      "rig": "all five baked clips deform the mesh; playback, pause, reverse scrubbing, loop closure, rest reset and skeleton overlay verified"
+    },
+    {
+      "panels": "close and restore verified"
+    },
+    {
+      "mobile": "390x844, controls fit, extra panels closed"
+    }
+  ],
+  "errors": []
+}

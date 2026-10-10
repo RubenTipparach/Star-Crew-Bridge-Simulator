@@ -1,0 +1,5886 @@
+{
+  "schema": "starcrew.crew-rig-checks/1",
+  "characters": [
+    {
+      "id": "command_01",
+      "sha256": "0d3ae4b10fbe55333a929d28f0b68b966746cabbd1a7b635bf0bd17c50e39e7c",
+      "exported": {
+        "vertices_checked": 1763,
+        "maximum_influences": 3,
+        "weighted_bones": 29,
+        "pose_samples": [
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.012044
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -2e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -2e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -2e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -2e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -2e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -2e-06
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          }
+        ],
+        "imported_bones": 30
+      },
+      "source": {
+        "file": "blender/command_01.blend",
+        "sha256": "1218d0ff6a265692fca26081c07f30da69a2f3ae8dc3b5541d1b378c5f4edea8",
+        "authoring_bones": 38,
+        "deform_bones": 30,
+        "controls": [
+          {
+            "limb": "arm_L",
+            "target_error_m": 1.07e-05,
+            "pole_joint_motion_m": 0.2354005
+          },
+          {
+            "limb": "leg_L",
+            "target_error_m": 1.16e-05,
+            "pole_joint_motion_m": 0.2381714
+          },
+          {
+            "limb": "arm_R",
+            "target_error_m": 1.07e-05,
+            "pole_joint_motion_m": 0.2354005
+          },
+          {
+            "limb": "leg_R",
+            "target_error_m": 1.15e-05,
+            "pole_joint_motion_m": 0.2381714
+          }
+        ]
+      }
+    },
+    {
+      "id": "command_02",
+      "sha256": "234c5ed1b22de62a50e1e7f8b66f5e667f29b2fd529cc589bb3045bb49479c63",
+      "exported": {
+        "vertices_checked": 1763,
+        "maximum_influences": 3,
+        "weighted_bones": 29,
+        "pose_samples": [
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.011509
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          }
+        ],
+        "imported_bones": 30
+      },
+      "source": {
+        "file": "blender/command_02.blend",
+        "sha256": "33a11c963deac6c2e6328ebea0e4f77eaac1c16bbeb6a8d6ff56168ffd38b791",
+        "authoring_bones": 38,
+        "deform_bones": 30,
+        "controls": [
+          {
+            "limb": "arm_L",
+            "target_error_m": 1.31e-05,
+            "pole_joint_motion_m": 0.2292724
+          },
+          {
+            "limb": "leg_L",
+            "target_error_m": 1.3e-05,
+            "pole_joint_motion_m": 0.2319326
+          },
+          {
+            "limb": "arm_R",
+            "target_error_m": 1.31e-05,
+            "pole_joint_motion_m": 0.2292723
+          },
+          {
+            "limb": "leg_R",
+            "target_error_m": 1.3e-05,
+            "pole_joint_motion_m": 0.2319326
+          }
+        ]
+      }
+    },
+    {
+      "id": "engineering_01",
+      "sha256": "7f4c4b7850e2f0458bb85d2f448c43e1c27809c92570610a79dff44fa66cc6f4",
+      "exported": {
+        "vertices_checked": 1763,
+        "maximum_influences": 3,
+        "weighted_bones": 29,
+        "pose_samples": [
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.011776
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          }
+        ],
+        "imported_bones": 30
+      },
+      "source": {
+        "file": "blender/engineering_01.blend",
+        "sha256": "ebd20222f995ec117a31b4387c3826ba91cf4d4a88eb0c80df242528a7b854d5",
+        "authoring_bones": 38,
+        "deform_bones": 30,
+        "controls": [
+          {
+            "limb": "arm_L",
+            "target_error_m": 1.18e-05,
+            "pole_joint_motion_m": 0.2323554
+          },
+          {
+            "limb": "leg_L",
+            "target_error_m": 1.24e-05,
+            "pole_joint_motion_m": 0.2350736
+          },
+          {
+            "limb": "arm_R",
+            "target_error_m": 1.18e-05,
+            "pole_joint_motion_m": 0.2323554
+          },
+          {
+            "limb": "leg_R",
+            "target_error_m": 1.24e-05,
+            "pole_joint_motion_m": 0.2350736
+          }
+        ]
+      }
+    },
+    {
+      "id": "engineering_02",
+      "sha256": "0b4331b95931b6090ed405c1d7a47312151f9caa0af9438b29b747d578fb963c",
+      "exported": {
+        "vertices_checked": 1763,
+        "maximum_influences": 3,
+        "weighted_bones": 29,
+        "pose_samples": [
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.011241
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          }
+        ],
+        "imported_bones": 30
+      },
+      "source": {
+        "file": "blender/engineering_02.blend",
+        "sha256": "98a478a66d196a834f2edfa7ca4f79bdfd3107c86f7ccac46fb1ba74683efd20",
+        "authoring_bones": 38,
+        "deform_bones": 30,
+        "controls": [
+          {
+            "limb": "arm_L",
+            "target_error_m": 1.42e-05,
+            "pole_joint_motion_m": 0.2261491
+          },
+          {
+            "limb": "leg_L",
+            "target_error_m": 1.36e-05,
+            "pole_joint_motion_m": 0.2287528
+          },
+          {
+            "limb": "arm_R",
+            "target_error_m": 1.42e-05,
+            "pole_joint_motion_m": 0.2261491
+          },
+          {
+            "limb": "leg_R",
+            "target_error_m": 1.36e-05,
+            "pole_joint_motion_m": 0.2287528
+          }
+        ]
+      }
+    },
+    {
+      "id": "deckhands_01",
+      "sha256": "825af535263bd332ca84e0bde4f3bc41b2dd0b0df8679fab438eae63868b32d9",
+      "exported": {
+        "vertices_checked": 1763,
+        "maximum_influences": 3,
+        "weighted_bones": 29,
+        "pose_samples": [
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.012312
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          }
+        ],
+        "imported_bones": 30
+      },
+      "source": {
+        "file": "blender/deckhands_01.blend",
+        "sha256": "e07ffb8ba5ab138f9a00a37344af92893aa3231a81fd1c5efbd05d2edce654a7",
+        "authoring_bones": 38,
+        "deform_bones": 30,
+        "controls": [
+          {
+            "limb": "arm_L",
+            "target_error_m": 9.3e-06,
+            "pole_joint_motion_m": 0.2384081
+          },
+          {
+            "limb": "leg_L",
+            "target_error_m": 1.09e-05,
+            "pole_joint_motion_m": 0.2412351
+          },
+          {
+            "limb": "arm_R",
+            "target_error_m": 9.3e-06,
+            "pole_joint_motion_m": 0.2384081
+          },
+          {
+            "limb": "leg_R",
+            "target_error_m": 1.09e-05,
+            "pole_joint_motion_m": 0.2412351
+          }
+        ]
+      }
+    },
+    {
+      "id": "deckhands_02",
+      "sha256": "f28833efab1b50ba959aa3688f37a119b967de9b82034d400e0fcd09cf4351ca",
+      "exported": {
+        "vertices_checked": 1763,
+        "maximum_influences": 3,
+        "weighted_bones": 29,
+        "pose_samples": [
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.011776
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          }
+        ],
+        "imported_bones": 30
+      },
+      "source": {
+        "file": "blender/deckhands_02.blend",
+        "sha256": "a4c3cbcdc3a73e777904f9f500709d7b0a14d8722814312d61ca2756e587d667",
+        "authoring_bones": 38,
+        "deform_bones": 30,
+        "controls": [
+          {
+            "limb": "arm_L",
+            "target_error_m": 1.19e-05,
+            "pole_joint_motion_m": 0.2323556
+          },
+          {
+            "limb": "leg_L",
+            "target_error_m": 1.24e-05,
+            "pole_joint_motion_m": 0.2350736
+          },
+          {
+            "limb": "arm_R",
+            "target_error_m": 1.19e-05,
+            "pole_joint_motion_m": 0.2323556
+          },
+          {
+            "limb": "leg_R",
+            "target_error_m": 1.24e-05,
+            "pole_joint_motion_m": 0.2350736
+          }
+        ]
+      }
+    },
+    {
+      "id": "medical_01",
+      "sha256": "b54529e379310174cb6d7f5befcead8623cbb4fbe5a545e683a6b79ffe216a18",
+      "exported": {
+        "vertices_checked": 1763,
+        "maximum_influences": 3,
+        "weighted_bones": 29,
+        "pose_samples": [
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.011509
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          }
+        ],
+        "imported_bones": 30
+      },
+      "source": {
+        "file": "blender/medical_01.blend",
+        "sha256": "6cfa0922aa5fd60da26e099cd3d22a539ff8c7d7aca969421a49219355391656",
+        "authoring_bones": 38,
+        "deform_bones": 30,
+        "controls": [
+          {
+            "limb": "arm_L",
+            "target_error_m": 1.33e-05,
+            "pole_joint_motion_m": 0.2292725
+          },
+          {
+            "limb": "leg_L",
+            "target_error_m": 1.3e-05,
+            "pole_joint_motion_m": 0.2319326
+          },
+          {
+            "limb": "arm_R",
+            "target_error_m": 1.32e-05,
+            "pole_joint_motion_m": 0.2292725
+          },
+          {
+            "limb": "leg_R",
+            "target_error_m": 1.3e-05,
+            "pole_joint_motion_m": 0.2319326
+          }
+        ]
+      }
+    },
+    {
+      "id": "medical_02",
+      "sha256": "c7f9c0bc93395c447a10a0b30b134f2ab77853c17aa2f6f0aa57802f4c4b245f",
+      "exported": {
+        "vertices_checked": 1763,
+        "maximum_influences": 3,
+        "weighted_bones": 29,
+        "pose_samples": [
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.010973
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          }
+        ],
+        "imported_bones": 30
+      },
+      "source": {
+        "file": "blender/medical_02.blend",
+        "sha256": "0b4ef32090561fe985987595dd59d4abb927b7d2289c8ffdd904e7ca872c9574",
+        "authoring_bones": 38,
+        "deform_bones": 30,
+        "controls": [
+          {
+            "limb": "arm_L",
+            "target_error_m": 1.52e-05,
+            "pole_joint_motion_m": 0.2229837
+          },
+          {
+            "limb": "leg_L",
+            "target_error_m": 1.42e-05,
+            "pole_joint_motion_m": 0.2255292
+          },
+          {
+            "limb": "arm_R",
+            "target_error_m": 1.52e-05,
+            "pole_joint_motion_m": 0.2229837
+          },
+          {
+            "limb": "leg_R",
+            "target_error_m": 1.42e-05,
+            "pole_joint_motion_m": 0.2255292
+          }
+        ]
+      }
+    },
+    {
+      "id": "security_01",
+      "sha256": "1cd8be937efb1a95922df66fa3b85b0c6951a3288fa23324f68b9f13db70e6fc",
+      "exported": {
+        "vertices_checked": 1763,
+        "maximum_influences": 3,
+        "weighted_bones": 29,
+        "pose_samples": [
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.012178
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          }
+        ],
+        "imported_bones": 30
+      },
+      "source": {
+        "file": "blender/security_01.blend",
+        "sha256": "22f75a6224d410ca590d45c4e55b0dcad5d08486ab458ef3964197c4c8307e3a",
+        "authoring_bones": 38,
+        "deform_bones": 30,
+        "controls": [
+          {
+            "limb": "arm_L",
+            "target_error_m": 1.01e-05,
+            "pole_joint_motion_m": 0.2369088
+          },
+          {
+            "limb": "leg_L",
+            "target_error_m": 1.12e-05,
+            "pole_joint_motion_m": 0.2397079
+          },
+          {
+            "limb": "arm_R",
+            "target_error_m": 1.01e-05,
+            "pole_joint_motion_m": 0.2369088
+          },
+          {
+            "limb": "leg_R",
+            "target_error_m": 1.12e-05,
+            "pole_joint_motion_m": 0.2397079
+          }
+        ]
+      }
+    },
+    {
+      "id": "security_02",
+      "sha256": "f28d2b752d86eb9f9f8235a70aef7ceed1ba43e18514a5da3a7188f1f1f6e81b",
+      "exported": {
+        "vertices_checked": 1763,
+        "maximum_influences": 3,
+        "weighted_bones": 29,
+        "pose_samples": [
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.011643
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          }
+        ],
+        "imported_bones": 30
+      },
+      "source": {
+        "file": "blender/security_02.blend",
+        "sha256": "3a574f834d92dc6ebf0b7f73d042beb0e843647642f33355250f89ee71838c8a",
+        "authoring_bones": 38,
+        "deform_bones": 30,
+        "controls": [
+          {
+            "limb": "arm_L",
+            "target_error_m": 1.26e-05,
+            "pole_joint_motion_m": 0.2308191
+          },
+          {
+            "limb": "leg_L",
+            "target_error_m": 1.27e-05,
+            "pole_joint_motion_m": 0.2335088
+          },
+          {
+            "limb": "arm_R",
+            "target_error_m": 1.27e-05,
+            "pole_joint_motion_m": 0.2308191
+          },
+          {
+            "limb": "leg_R",
+            "target_error_m": 1.27e-05,
+            "pole_joint_motion_m": 0.2335088
+          }
+        ]
+      }
+    },
+    {
+      "id": "galley_01",
+      "sha256": "3c44b4f73bb2f58378d51dcd8e22c1355ac3355ab8ee7fdb0d63210860b5285e",
+      "exported": {
+        "vertices_checked": 1763,
+        "maximum_influences": 3,
+        "weighted_bones": 29,
+        "pose_samples": [
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.011375
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          }
+        ],
+        "imported_bones": 30
+      },
+      "source": {
+        "file": "blender/galley_01.blend",
+        "sha256": "d91c38f3612bf38b265abbdd0bb3783e1b6e7c225da562c5908a1e18d4450b33",
+        "authoring_bones": 38,
+        "deform_bones": 30,
+        "controls": [
+          {
+            "limb": "arm_L",
+            "target_error_m": 1.35e-05,
+            "pole_joint_motion_m": 0.2277159
+          },
+          {
+            "limb": "leg_L",
+            "target_error_m": 1.34e-05,
+            "pole_joint_motion_m": 0.2303492
+          },
+          {
+            "limb": "arm_R",
+            "target_error_m": 1.35e-05,
+            "pole_joint_motion_m": 0.2277159
+          },
+          {
+            "limb": "leg_R",
+            "target_error_m": 1.34e-05,
+            "pole_joint_motion_m": 0.2303492
+          }
+        ]
+      }
+    },
+    {
+      "id": "galley_02",
+      "sha256": "0d72942bc15936896c3c90fd530d770e57dd03f8e335e26255a2e0261218b066",
+      "exported": {
+        "vertices_checked": 1763,
+        "maximum_influences": 3,
+        "weighted_bones": 29,
+        "pose_samples": [
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Idle_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.01084
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Walk_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -0.0
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Seated",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": -1e-06
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Reach",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.125,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.25,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.5,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 0.75,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          },
+          {
+            "clip": "Wave_Loop",
+            "fraction": 1,
+            "covered_skin_samples": 1972,
+            "surface_checks": {
+              "garment_components": {
+                "garment_tunic": 1,
+                "garment_trousers": 1
+              },
+              "hair_scalp_intersections": 0,
+              "waist_intersections": 0,
+              "garment_self_intersections": 0
+            },
+            "lowest_vertex_m": 0.0
+          }
+        ],
+        "imported_bones": 30
+      },
+      "source": {
+        "file": "blender/galley_02.blend",
+        "sha256": "8b5e56db588f24a57f67114712504cb6ebbfb2dd3596ec7e56e7333cb3c864c5",
+        "authoring_bones": 38,
+        "deform_bones": 30,
+        "controls": [
+          {
+            "limb": "arm_L",
+            "target_error_m": 1.58e-05,
+            "pole_joint_motion_m": 0.2213853
+          },
+          {
+            "limb": "leg_L",
+            "target_error_m": 1.44e-05,
+            "pole_joint_motion_m": 0.2239007
+          },
+          {
+            "limb": "arm_R",
+            "target_error_m": 1.58e-05,
+            "pole_joint_motion_m": 0.2213853
+          },
+          {
+            "limb": "leg_R",
+            "target_error_m": 1.44e-05,
+            "pole_joint_motion_m": 0.2239007
+          }
+        ]
+      }
+    }
+  ],
+  "scope": "Named exported pose samples and saved Blender controls; arbitrary animation poses and engine adoption remain outside this check."
+}

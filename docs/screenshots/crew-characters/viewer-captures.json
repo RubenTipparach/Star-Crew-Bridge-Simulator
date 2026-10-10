@@ -1,0 +1,157 @@
+{
+  "schema": "starcrew.crew-viewer-captures/1",
+  "page": "docs/mockups/crew-characters.html",
+  "page_sha256": "af3a6fe769e1a693a20dd2ba2e043fb582c84b13f49a6ac3bfb07afee9c9c006",
+  "owner_approval": "pending",
+  "renderer": "headless Chromium SwiftShader",
+  "pi_measurement": false,
+  "models": {
+    "command_01": "0d3ae4b10fbe55333a929d28f0b68b966746cabbd1a7b635bf0bd17c50e39e7c",
+    "command_02": "234c5ed1b22de62a50e1e7f8b66f5e667f29b2fd529cc589bb3045bb49479c63",
+    "engineering_01": "7f4c4b7850e2f0458bb85d2f448c43e1c27809c92570610a79dff44fa66cc6f4",
+    "engineering_02": "0b4331b95931b6090ed405c1d7a47312151f9caa0af9438b29b747d578fb963c",
+    "deckhands_01": "825af535263bd332ca84e0bde4f3bc41b2dd0b0df8679fab438eae63868b32d9",
+    "deckhands_02": "f28833efab1b50ba959aa3688f37a119b967de9b82034d400e0fcd09cf4351ca",
+    "medical_01": "b54529e379310174cb6d7f5befcead8623cbb4fbe5a545e683a6b79ffe216a18",
+    "medical_02": "c7f9c0bc93395c447a10a0b30b134f2ab77853c17aa2f6f0aa57802f4c4b245f",
+    "security_01": "1cd8be937efb1a95922df66fa3b85b0c6951a3288fa23324f68b9f13db70e6fc",
+    "security_02": "f28d2b752d86eb9f9f8235a70aef7ceed1ba43e18514a5da3a7188f1f1f6e81b",
+    "galley_01": "3c44b4f73bb2f58378d51dcd8e22c1355ac3355ab8ee7fdb0d63210860b5285e",
+    "galley_02": "0d72942bc15936896c3c90fd530d770e57dd03f8e335e26255a2e0261218b066"
+  },
+  "screenshots": [
+    {
+      "file": "docs/screenshots/mockups/crew-characters-back.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "db03519d60bc3832382931d682e2d16a2c1688c8eb4e2e7b85592f87ebb763b9",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/mockups/crew-characters-emergency.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "7158a29f07f2f05294c682e9449830659b0e53bfee555e2fe5e052dbe4fccc1c",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/mockups/crew-characters-eyes.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "54a25f21941bb289a8871cf077bcd6f2d7cbf8c5c726686389a9ef7cdcd31949",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/mockups/crew-characters-female-lineup.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "33d10da2aa0c5b8240e2b6465fcea0804a71b475e58a94bbc1f3759f8c643aa2",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/mockups/crew-characters-hair.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "664ecb68b288af897aee212750919e66b09d43599b5f47789f2867566852724d",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/mockups/crew-characters-lineup.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "98fd38f26fd7e0ad7f517ab78fcd138b95db45b33b476c524f7386f6810f5693",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/mockups/crew-characters-mobile.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "c0ea7d8fc47eca4af17ba0d767b0806171b4d6987e7d47eb12d4ca89a81761c2",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/mockups/crew-characters-reach.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "1421479c3291e228f025bf96eb9a85df4054c92f501d0f78bcedc7e9fb2d2da4",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/mockups/crew-characters-red-alert.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "ae1ad185ee39a9827ef47ec057d5486b31b41d4fad63b736e1fe620814287e07",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/mockups/crew-characters-seated.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "4107484cdc49c1341f6ecbee6246ee1d6aaed5bbe745962699127402cc1ce1b6",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/mockups/crew-characters-side.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "9a3aa96b08a5ec4194f5b334b8c37cc15be712816acc24aa9e2717484ac5b7e2",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/mockups/crew-characters-skeleton.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "9c8de8aa8f0e26781eda4993bf64732ba3abf7c3e6e9bf4162243a6b29a6f3e2",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/mockups/crew-characters-walk.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "738cdf3925c748e8f275cf8dc5a6a122c28a054632ed2684cde977e31093ada9",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/mockups/crew-characters-wave.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "a2d34cae07ccea5236649cc7ec333f261d6b07e1f88f7311a993257977c1006b",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/mockups/crew-characters-wireframe.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "552594eb6d5751180aa2937636bb20bf2313b0ab83468b842f778f67aacfba10",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/mockups/crew-characters.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "4ef1a969a2ac197846379985ea61b07b7678ed019b5c2550eaccc750a1272fb6",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/crew-characters/mobile-viewer/crew-characters-eyes.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "109828ca2845ce5aa795504ac303628d8a05181d17c9eb2559ed74def035e241",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/crew-characters/mobile-viewer/crew-characters-lineup.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "8f880025831c247e0b1ba893662704218bb1bdc58ee61001efd73c78e9072f56",
+      "inspected": true
+    },
+    {
+      "file": "docs/screenshots/crew-characters/mobile-viewer/rig.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "3966d98a0c6765aedfdf53ad1e4a63f7e5f63ba4049ce2b26d23ae5b8f8c7b52",
+      "inspected": true
+    }
+  ]
+}

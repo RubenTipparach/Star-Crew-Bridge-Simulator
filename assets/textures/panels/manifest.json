@@ -1,6 +1,6 @@
 {
  "_doc": "Written by tools/blender/build_wall_panels.py, never by hand: every panel layer and UI image it built, with its sha256, and what the panel layers cost. data/materials/panels.json is the source.",
- "blender": "4.5.14 LTS",
+ "blender": "4.4.3",
  "files": {
   "128/crew_ceiling_cable_tray.png": {
    "bytes": 8992,
@@ -514,317 +514,317 @@
   "256": 21320964
  },
  "gpu_bytes_with_materials": {
-  "128": 6291360,
-  "256": 25165728
+  "128": 6466120,
+  "256": 25864776
  },
  "layers": {
   "crew_ceiling_cable_tray": {
    "glow_fraction": 0.0,
-   "layer": 36,
+   "layer": 38,
    "seam_ratio_x": null
   },
   "crew_ceiling_fan": {
    "glow_fraction": 0.0,
-   "layer": 35,
+   "layer": 37,
    "seam_ratio_x": null
   },
   "crew_ceiling_grille": {
    "glow_fraction": 0.0,
-   "layer": 34,
+   "layer": 36,
    "seam_ratio_x": null
   },
   "crew_ceiling_hatch": {
    "glow_fraction": 0.0014,
-   "layer": 38,
+   "layer": 40,
    "seam_ratio_x": null
   },
   "crew_ceiling_lamp_surround": {
    "glow_fraction": 0.0,
-   "layer": 40,
+   "layer": 42,
    "seam_ratio_x": null
   },
   "crew_ceiling_pipes": {
    "glow_fraction": 0.0,
-   "layer": 37,
+   "layer": 39,
    "seam_ratio_x": null
   },
   "crew_ceiling_plate": {
    "glow_fraction": 0.0,
-   "layer": 33,
+   "layer": 35,
    "seam_ratio_x": null
   },
   "crew_ceiling_ribbed": {
    "glow_fraction": 0.0,
-   "layer": 39,
+   "layer": 41,
    "seam_ratio_x": null
   },
   "crew_flank": {
    "glow_fraction": 0.0436,
-   "layer": 19,
+   "layer": 21,
    "seam_ratio_x": null
   },
   "crew_floor_access": {
    "glow_fraction": 0.0,
-   "layer": 44,
+   "layer": 46,
    "seam_ratio_x": null
   },
   "crew_floor_drain": {
    "glow_fraction": 0.0,
-   "layer": 46,
+   "layer": 48,
    "seam_ratio_x": null
   },
   "crew_floor_edges": {
    "glow_fraction": 0.0,
-   "layer": 70,
+   "layer": 72,
    "seam_ratio_x": 0.236
   },
   "crew_floor_grate": {
    "glow_fraction": 0.0,
-   "layer": 43,
+   "layer": 45,
    "seam_ratio_x": null
   },
   "crew_floor_plate": {
    "glow_fraction": 0.0,
-   "layer": 42,
+   "layer": 44,
    "seam_ratio_x": null
   },
   "crew_floor_trench": {
    "glow_fraction": 0.0,
-   "layer": 45,
+   "layer": 47,
    "seam_ratio_x": null
   },
   "crew_floor_vent": {
    "glow_fraction": 0.0,
-   "layer": 47,
+   "layer": 49,
    "seam_ratio_x": null
   },
   "crew_floor_walkway": {
    "glow_fraction": 0.0,
-   "layer": 41,
+   "layer": 43,
    "seam_ratio_x": 0.275,
    "seam_ratio_y": 1.719
   },
   "crew_hatch": {
    "glow_fraction": 0.0011,
-   "layer": 14,
+   "layer": 16,
    "seam_ratio_x": null
   },
   "crew_junction": {
    "glow_fraction": 0.0016,
-   "layer": 15,
+   "layer": 17,
    "seam_ratio_x": null
   },
   "crew_light": {
    "glow_fraction": 0.053,
-   "layer": 16,
+   "layer": 18,
    "seam_ratio_x": null
   },
   "crew_narrow": {
    "glow_fraction": 0.0085,
-   "layer": 20,
+   "layer": 22,
    "seam_ratio_x": null
   },
   "crew_pipes": {
    "glow_fraction": 0.0004,
-   "layer": 13,
+   "layer": 15,
    "seam_ratio_x": null
   },
   "crew_plate": {
    "glow_fraction": 0.0,
-   "layer": 11,
+   "layer": 13,
    "seam_ratio_x": null
   },
   "crew_platforms": {
    "glow_fraction": 0.0015,
-   "layer": 66,
+   "layer": 68,
    "seam_ratio_x": 0.984
   },
   "crew_ribbed": {
    "glow_fraction": 0.0,
-   "layer": 17,
+   "layer": 19,
    "seam_ratio_x": null
   },
   "crew_screen": {
    "glow_fraction": 0.1579,
-   "layer": 18,
+   "layer": 20,
    "seam_ratio_x": null
   },
   "crew_strips": {
    "glow_fraction": 0.0,
-   "layer": 21,
+   "layer": 23,
    "seam_ratio_x": 2.149
   },
   "crew_trims": {
    "glow_fraction": 0.0,
-   "layer": 48,
+   "layer": 50,
    "seam_ratio_x": 0.964
   },
   "crew_vent": {
    "glow_fraction": 0.0,
-   "layer": 12,
+   "layer": 14,
    "seam_ratio_x": null
   },
   "upholstery_channel": {
    "glow_fraction": 0.0,
-   "layer": 68,
+   "layer": 70,
    "seam_ratio_x": 0.314,
    "seam_ratio_y": 0.289
   },
   "upholstery_panel": {
    "glow_fraction": 0.0,
-   "layer": 69,
+   "layer": 71,
    "seam_ratio_x": 0.643,
    "seam_ratio_y": 0.465
   },
   "working_ceiling_cable_tray": {
    "glow_fraction": 0.0,
-   "layer": 52,
+   "layer": 54,
    "seam_ratio_x": null
   },
   "working_ceiling_fan": {
    "glow_fraction": 0.0,
-   "layer": 51,
+   "layer": 53,
    "seam_ratio_x": null
   },
   "working_ceiling_grille": {
    "glow_fraction": 0.0,
-   "layer": 50,
+   "layer": 52,
    "seam_ratio_x": null
   },
   "working_ceiling_hatch": {
    "glow_fraction": 0.0014,
-   "layer": 54,
+   "layer": 56,
    "seam_ratio_x": null
   },
   "working_ceiling_lamp_surround": {
    "glow_fraction": 0.0,
-   "layer": 56,
+   "layer": 58,
    "seam_ratio_x": null
   },
   "working_ceiling_pipes": {
    "glow_fraction": 0.0,
-   "layer": 53,
+   "layer": 55,
    "seam_ratio_x": null
   },
   "working_ceiling_plate": {
    "glow_fraction": 0.0,
-   "layer": 49,
+   "layer": 51,
    "seam_ratio_x": null
   },
   "working_ceiling_ribbed": {
    "glow_fraction": 0.0,
-   "layer": 55,
+   "layer": 57,
    "seam_ratio_x": null
   },
   "working_flank": {
    "glow_fraction": 0.0436,
-   "layer": 30,
+   "layer": 32,
    "seam_ratio_x": null
   },
   "working_floor_access": {
    "glow_fraction": 0.0,
-   "layer": 60,
+   "layer": 62,
    "seam_ratio_x": null
   },
   "working_floor_drain": {
    "glow_fraction": 0.0,
-   "layer": 62,
+   "layer": 64,
    "seam_ratio_x": null
   },
   "working_floor_edges": {
    "glow_fraction": 0.0,
-   "layer": 71,
+   "layer": 73,
    "seam_ratio_x": 0.386
   },
   "working_floor_grate": {
    "glow_fraction": 0.0,
-   "layer": 59,
+   "layer": 61,
    "seam_ratio_x": null
   },
   "working_floor_hazard": {
    "glow_fraction": 0.0,
-   "layer": 64,
+   "layer": 66,
    "seam_ratio_x": null
   },
   "working_floor_plate": {
    "glow_fraction": 0.0,
-   "layer": 58,
+   "layer": 60,
    "seam_ratio_x": null
   },
   "working_floor_trench": {
    "glow_fraction": 0.0,
-   "layer": 61,
+   "layer": 63,
    "seam_ratio_x": null
   },
   "working_floor_vent": {
    "glow_fraction": 0.0,
-   "layer": 63,
+   "layer": 65,
    "seam_ratio_x": null
   },
   "working_floor_walkway": {
    "glow_fraction": 0.0,
-   "layer": 57,
+   "layer": 59,
    "seam_ratio_x": 0.26,
    "seam_ratio_y": 0.224
   },
   "working_hatch": {
    "glow_fraction": 0.0011,
-   "layer": 25,
+   "layer": 27,
    "seam_ratio_x": null
   },
   "working_junction": {
    "glow_fraction": 0.0016,
-   "layer": 26,
+   "layer": 28,
    "seam_ratio_x": null
   },
   "working_light": {
    "glow_fraction": 0.053,
-   "layer": 27,
+   "layer": 29,
    "seam_ratio_x": null
   },
   "working_narrow": {
    "glow_fraction": 0.0085,
-   "layer": 31,
+   "layer": 33,
    "seam_ratio_x": null
   },
   "working_pipes": {
    "glow_fraction": 0.0004,
-   "layer": 24,
+   "layer": 26,
    "seam_ratio_x": null
   },
   "working_plate": {
    "glow_fraction": 0.0,
-   "layer": 22,
+   "layer": 24,
    "seam_ratio_x": null
   },
   "working_platforms": {
    "glow_fraction": 0.0015,
-   "layer": 67,
+   "layer": 69,
    "seam_ratio_x": 0.885
   },
   "working_ribbed": {
    "glow_fraction": 0.0,
-   "layer": 28,
+   "layer": 30,
    "seam_ratio_x": null
   },
   "working_screen": {
    "glow_fraction": 0.1579,
-   "layer": 29,
+   "layer": 31,
    "seam_ratio_x": null
   },
   "working_strips": {
    "glow_fraction": 0.0,
-   "layer": 32,
+   "layer": 34,
    "seam_ratio_x": 1.79
   },
   "working_trims": {
    "glow_fraction": 0.0,
-   "layer": 65,
+   "layer": 67,
    "seam_ratio_x": 0.524
   },
   "working_vent": {
    "glow_fraction": 0.0,
-   "layer": 23,
+   "layer": 25,
    "seam_ratio_x": null
   }
  },

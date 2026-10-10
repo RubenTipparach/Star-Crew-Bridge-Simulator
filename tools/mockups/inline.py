@@ -37,6 +37,8 @@ published as one artifact needs no font server.
 data URIs), and each prop's baked atlas PNG where it has one, into a
 <script id="ship-models-<set>" type="application/json"> block, for pages that place the
 Blender-built props (tools/blender, the blender-hard-surface skill).
+Character review sets use characters.json (schema starcrew.crew-review/1) instead
+of props.json, with their character rows keyed by id in the same models block.
 "manifest:<set>" copies only assets/models/<set>/props.json, into a
 <script id="ship-manifest-<set>" type="application/json"> block, for pages that need what
 stands where (a prop's bounds, for fire-spread's fuel) but draw no prop: the damage map.
@@ -88,6 +90,26 @@ MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-
 def png_uri(path):
     with open(path, "rb") as f:
         return "data:image/png;base64," + base64.b64encode(f.read()).decode("ascii")
+
+
+def model_manifest(name):
+    """Read a prop or character-review manifest without inventing a second copy."""
+    base = os.path.join(ROOT, "assets", "models", name)
+    path = os.path.join(base, "props.json")
+    characters = not os.path.exists(path)
+    if characters:
+        path = os.path.join(base, "characters.json")
+    with open(path, encoding="utf-8") as f:
+        manifest = json.load(f)
+    if characters:
+        if manifest.get("schema") != "starcrew.crew-review/1":
+            raise ValueError(f"{path}: unsupported character manifest schema")
+        rows = {row["id"]: row for row in manifest["characters"]}
+        if len(rows) != len(manifest["characters"]):
+            raise ValueError(f"{path}: duplicate character ids")
+    else:
+        rows = manifest.get("props", {})
+    return manifest, rows
 
 
 def bake_cache_index(path):
@@ -156,17 +178,28 @@ def block(kind):
         return f'\n<script id="ship-screens" type="application/json">\n{text}\n</script>\n'
     if kind.startswith("manifest:"):
         name = kind.split(":", 1)[1]
-        with open(os.path.join(ROOT, "assets", "models", name, "props.json"), encoding="utf-8") as f:
-            manifest = json.load(f)
+        manifest, _ = model_manifest(name)
         text = json.dumps(manifest, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
         return f'\n<script id="ship-manifest-{name}" type="application/json">\n{text}\n</script>\n'
     if kind.startswith("models:"):
         name = kind.split(":", 1)[1]
         base = os.path.join(ROOT, "assets", "models", name)
-        with open(os.path.join(base, "props.json"), encoding="utf-8") as f:
-            manifest = json.load(f)
+        manifest, rows = model_manifest(name)
         models, atlases = {}, {}
-        for key, rec in sorted(manifest.get("props", {}).items()):
+        # Alternate paint sets use the same model loader and retain their own measured manifests.
+        for livery in manifest.get("liveries", []):
+            directory = livery["directory"]
+            livery["model_suffix"] = "" if directory == "." else "__" + livery["id"]
+            if directory == ".":
+                continue
+            with open(os.path.join(base, directory, "props.json"), encoding="utf-8") as f:
+                variant = json.load(f)
+            for key, rec in variant["props"].items():
+                rec["file"] = directory + "/" + rec["file"]
+                if rec.get("atlas"):
+                    rec["atlas"]["file"] = directory + "/" + rec["atlas"]["file"]
+                rows[key + livery["model_suffix"]] = rec
+        for key, rec in sorted(rows.items()):
             with open(os.path.join(base, rec["file"]), "rb") as f:
                 models[key] = "data:model/gltf-binary;base64," + base64.b64encode(f.read()).decode("ascii")
             # A prop's own baked texture (ship-props design 4c), when its set's build has made one.

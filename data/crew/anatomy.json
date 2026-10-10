@@ -1,0 +1,164 @@
+{
+  "schema": "starcrew.crew-anatomy/1",
+  "_doc": "Connected garment topology and adult body variants. Profile dimensions are metres or multipliers of the named anatomy radius. Front is Blender -Y. Shared seams use shared vertices and weights.",
+  "variants": {
+    "male": {
+      "shoulders": 1.0,
+      "chest_depth": 1.0,
+      "waist": 1.0,
+      "hips": 1.0,
+      "arms": 1.0,
+      "legs": 1.0,
+      "neck": 1.0,
+      "head_width": 1.0
+    },
+    "female": {
+      "shoulders": 0.87,
+      "chest_depth": 1.05,
+      "waist": 0.88,
+      "hips": 1.12,
+      "arms": 0.88,
+      "legs": 1.03,
+      "neck": 0.9,
+      "head_width": 0.96
+    }
+  },
+  "torso_sides": 12,
+  "limb_sides": 8,
+  "skin_inset_m": 0.016,
+  "hem_above_hip_m": 0.035,
+  "hem_band_m": 0.019,
+  "waist_overlap_m": 0.016,
+  "armpit_below_shoulder_m": 0.145,
+  "shoulder_rounding_m": 0.022,
+  "hip_drop_m": 0.085,
+  "crotch_drop_m": 0.14,
+  "arm_outward_fraction": 0.38,
+  "arm_profile": [
+    [
+      0.12,
+      1.0
+    ],
+    [
+      0.28,
+      1.14
+    ],
+    [
+      0.45,
+      0.92
+    ],
+    [
+      0.55,
+      0.9
+    ],
+    [
+      0.72,
+      0.97
+    ],
+    [
+      0.9,
+      0.69
+    ],
+    [
+      1.0,
+      0.65
+    ]
+  ],
+  "leg_profile": [
+    [
+      0.22,
+      1.2
+    ],
+    [
+      0.38,
+      1.15
+    ],
+    [
+      0.48,
+      0.93
+    ],
+    [
+      0.57,
+      0.91
+    ],
+    [
+      0.72,
+      1.03
+    ],
+    [
+      0.9,
+      0.73
+    ],
+    [
+      1.0,
+      0.66
+    ]
+  ],
+  "ankle_height_boot_fraction": 0.48,
+  "boot_toe_length_fraction": 0.73,
+  "boot_heel_length_fraction": 0.27,
+  "boot_toe_height_m": 0.062,
+  "boot_heel_height_m": 0.088,
+  "boot_instep_height_m": 0.126,
+  "boot_ankle_width_fraction": 0.65,
+  "boot_ankle_depth_fraction": 0.55,
+  "boot_footprint": [
+    [
+      0.65,
+      1.0
+    ],
+    [
+      0.88,
+      0.35
+    ],
+    [
+      1.0,
+      -0.7
+    ],
+    [
+      0.65,
+      -1.0
+    ],
+    [
+      -0.65,
+      -1.0
+    ],
+    [
+      -1.0,
+      -0.7
+    ],
+    [
+      -0.88,
+      0.35
+    ],
+    [
+      -0.65,
+      1.0
+    ]
+  ],
+  "hair_clearance_m": 0.016,
+  "hair_rim_m": 0.004,
+  "hairline": {
+    "crop": [
+      0.74,
+      0.64
+    ],
+    "swept": [
+      0.75,
+      0.65
+    ],
+    "bob": [
+      0.75,
+      0.32
+    ]
+  },
+  "hair_rows": 4,
+  "hair_front_span": 0.65,
+  "shoulder_skin_weight": 0.5,
+  "hip_skin_weight": 0.6,
+  "thigh_root_weight": 0.8,
+  "shoulder_root_weight": 0.7,
+  "hip_joint_drop_m": 0.1,
+  "shoulder_outset_m": 0.05,
+  "covered_arm_radius_fraction": 0.4
+}

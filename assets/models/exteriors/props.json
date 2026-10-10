@@ -1,0 +1,2326 @@
+{
+  "schema": "starcrew.props/1",
+  "status": "Exterior design assets, no runtime integration",
+  "generator": "tools/blender/build_ship_exteriors.py",
+  "blender": "4.4.3",
+  "source": "data/ships/exteriors.json",
+  "material_source": "data/materials/materials.json",
+  "axes": "+X port, +Y dorsal, +Z bow; metres; Tern origin matches layout.json",
+  "props": {
+    "tern": {
+      "file": "tern.glb",
+      "triangles": 4714,
+      "triangle_budget": 12000,
+      "vertices": 9327,
+      "draw_calls": 6,
+      "dimensions_m": [
+        45.0,
+        18.04,
+        81.47
+      ],
+      "bounds_m": [
+        [
+          -22.5,
+          -8.02,
+          -44.2
+        ],
+        [
+          22.5,
+          10.02,
+          37.27
+        ]
+      ],
+      "embedded_images": 3,
+      "texture_bytes_with_mips": 5767164,
+      "sha256": "2bd7f539acc622870cc9bc63459dc5d100c7fd32ba201fb7cc05778ad012a0e8",
+      "bytes": 1785788,
+      "name": "SCS Tern",
+      "class": "Heron-class frigate",
+      "role": "Player ship",
+      "lod": 0,
+      "warp_pylons": 2,
+      "warp_nacelles": 2,
+      "assemblies": [
+        "tern.hull",
+        "tern.p_bridge_window_p.rim",
+        "tern.p_bridge_window_s.rim",
+        "tern.p_ready_window.rim",
+        "tern.p_briefing_window.rim",
+        "tern.p_quarters_window_1.rim",
+        "tern.p_quarters_window_2.rim",
+        "tern.p_quarters_window_3.rim",
+        "tern.p_mess_window_1.rim",
+        "tern.p_mess_window_2.rim",
+        "tern.p_mess_window_3.rim",
+        "tern.p_medbay_window_1.rim",
+        "tern.p_medbay_window_2.rim",
+        "tern.p_damage_control_window_1.rim",
+        "tern.p_damage_control_window_2.rim",
+        "tern.p_life_support_window_1.rim",
+        "tern.p_life_support_window_2.rim",
+        "tern.p_cargo_window_1.rim",
+        "tern.p_cargo_window_2.rim",
+        "tern.p_shield_room_window_1.rim",
+        "tern.p_switchboard_window_1.rim",
+        "tern.service_pipe_-1_0",
+        "tern.service_pipe_-1_1",
+        "tern.service_clamp_-1_0",
+        "tern.service_clamp_-1_1",
+        "tern.service_clamp_-1_2",
+        "tern.service_clamp_-1_3",
+        "tern.service_clamp_-1_4",
+        "tern.service_clamp_-1_5",
+        "tern.service_clamp_-1_6",
+        "tern.service_clamp_-1_7",
+        "tern.service_clamp_-1_8",
+        "tern.service_clamp_-1_9",
+        "tern.service_clamp_-1_10",
+        "tern.service_module_-1_0",
+        "tern.service_latch_-1_0",
+        "tern.service_module_-1_1",
+        "tern.service_latch_-1_1",
+        "tern.service_module_-1_2",
+        "tern.service_latch_-1_2",
+        "tern.service_module_-1_3",
+        "tern.service_latch_-1_3",
+        "tern.service_module_-1_4",
+        "tern.service_latch_-1_4",
+        "tern.service_pipe_1_0",
+        "tern.service_pipe_1_1",
+        "tern.service_clamp_1_0",
+        "tern.service_clamp_1_1",
+        "tern.service_clamp_1_2",
+        "tern.service_clamp_1_3",
+        "tern.service_clamp_1_4",
+        "tern.service_clamp_1_5",
+        "tern.service_clamp_1_6",
+        "tern.service_clamp_1_7",
+        "tern.service_clamp_1_8",
+        "tern.service_clamp_1_9",
+        "tern.service_clamp_1_10",
+        "tern.service_module_1_0",
+        "tern.service_latch_1_0",
+        "tern.service_module_1_1",
+        "tern.service_latch_1_1",
+        "tern.service_module_1_2",
+        "tern.service_latch_1_2",
+        "tern.service_module_1_3",
+        "tern.service_latch_1_3",
+        "tern.service_module_1_4",
+        "tern.service_latch_1_4",
+        "tern.warp_pylon_-1",
+        "tern.pylon_identity_-1",
+        "tern.warp_nacelle_-1",
+        "tern.field_-1_-1",
+        "tern.field_frame_-1_-1",
+        "tern.field_-1_1",
+        "tern.field_frame_-1_1",
+        "tern.nacelle_spine_-1",
+        "tern.nacelle_-1.service_band_0",
+        "tern.nacelle_-1.service_band_1",
+        "tern.nacelle_-1.service_band_2",
+        "tern.nacelle_-1.service_band_3",
+        "tern.nacelle_-1.service_band_4",
+        "tern.nacelle_-1.intake",
+        "tern.nacelle_-1.collector",
+        "tern.warp_pylon_1",
+        "tern.pylon_identity_1",
+        "tern.warp_nacelle_1",
+        "tern.field_1_-1",
+        "tern.field_frame_1_-1",
+        "tern.field_1_1",
+        "tern.field_frame_1_1",
+        "tern.nacelle_spine_1",
+        "tern.nacelle_1.service_band_0",
+        "tern.nacelle_1.service_band_1",
+        "tern.nacelle_1.service_band_2",
+        "tern.nacelle_1.service_band_3",
+        "tern.nacelle_1.service_band_4",
+        "tern.nacelle_1.intake",
+        "tern.nacelle_1.collector",
+        "tern.turret_dorsal.base",
+        "tern.turret_dorsal.head",
+        "tern.turret_dorsal.barrel_-1",
+        "tern.turret_dorsal.barrel_1",
+        "tern.turret_ventral.base",
+        "tern.turret_ventral.head",
+        "tern.turret_ventral.barrel_-1",
+        "tern.turret_ventral.barrel_1",
+        "tern.turret_port.base",
+        "tern.turret_port.head",
+        "tern.turret_port.barrel_-1",
+        "tern.turret_port.barrel_1",
+        "tern.turret_stbd.base",
+        "tern.turret_stbd.head",
+        "tern.turret_stbd.barrel_-1",
+        "tern.turret_stbd.barrel_1",
+        "tern.tube_1.mouth",
+        "tern.tube_1.bore",
+        "tern.tube_2.mouth",
+        "tern.tube_2.bore",
+        "tern.main_engine_p.bell",
+        "tern.main_engine_p.glow",
+        "tern.main_engine_s.bell",
+        "tern.main_engine_s.glow",
+        "tern.shoulder_armour_-1_0",
+        "tern.shoulder_armour_-1_1",
+        "tern.shoulder_armour_-1_2",
+        "tern.rcs_cluster_-1_0",
+        "tern.rcs_nozzle_-1_0_-1",
+        "tern.rcs_nozzle_-1_0_1",
+        "tern.rcs_cluster_-1_1",
+        "tern.rcs_nozzle_-1_1_-1",
+        "tern.rcs_nozzle_-1_1_1",
+        "tern.nav_light_-1",
+        "tern.shoulder_armour_1_0",
+        "tern.shoulder_armour_1_1",
+        "tern.shoulder_armour_1_2",
+        "tern.rcs_cluster_1_0",
+        "tern.rcs_nozzle_1_0_-1",
+        "tern.rcs_nozzle_1_0_1",
+        "tern.rcs_cluster_1_1",
+        "tern.rcs_nozzle_1_1_-1",
+        "tern.rcs_nozzle_1_1_1",
+        "tern.nav_light_1",
+        "tern.dorsal_service_spine",
+        "tern.sensor_housing",
+        "tern.sensor_lens",
+        "tern.radiator_-1",
+        "tern.radiator_-1.fin_0",
+        "tern.radiator_-1.fin_1",
+        "tern.radiator_-1.fin_2",
+        "tern.radiator_-1.fin_3",
+        "tern.radiator_-1.fin_4",
+        "tern.radiator_-1.fin_5",
+        "tern.radiator_-1.fin_6",
+        "tern.radiator_-1.fin_7",
+        "tern.radiator_-1.fin_8",
+        "tern.radiator_-1.fin_9",
+        "tern.radiator_-1.fin_10",
+        "tern.radiator_-1.fin_11",
+        "tern.radiator_1",
+        "tern.radiator_1.fin_0",
+        "tern.radiator_1.fin_1",
+        "tern.radiator_1.fin_2",
+        "tern.radiator_1.fin_3",
+        "tern.radiator_1.fin_4",
+        "tern.radiator_1.fin_5",
+        "tern.radiator_1.fin_6",
+        "tern.radiator_1.fin_7",
+        "tern.radiator_1.fin_8",
+        "tern.radiator_1.fin_9",
+        "tern.radiator_1.fin_10",
+        "tern.radiator_1.fin_11",
+        "tern.p_drop_p.frame",
+        "tern.p_drop_p.leaf_-1",
+        "tern.p_drop_p.leaf_1",
+        "tern.p_drop_p.marker_-1",
+        "tern.p_drop_p.marker_1",
+        "tern.p_drop_s.frame",
+        "tern.p_drop_s.leaf_-1",
+        "tern.p_drop_s.leaf_1",
+        "tern.p_drop_s.marker_-1",
+        "tern.p_drop_s.marker_1",
+        "tern.p_hangar_pad.frame",
+        "tern.p_hangar_pad.leaf_-1",
+        "tern.p_hangar_pad.leaf_1",
+        "tern.p_hangar_pad.marker_-1",
+        "tern.p_hangar_pad.marker_1"
+      ],
+      "csg": [
+        "union hull.join_envelopes (2)",
+        "intersect hull.fit_command_rooms (1)",
+        "chamfer hull.rounded_bow_rim (6 edges, 350 mm)",
+        "union hull_cavity.join_envelopes (2)",
+        "intersect hull_cavity.fit_command_rooms (1)",
+        "chamfer hull_cavity.rounded_bow_rim (6 edges, 350 mm)",
+        "difference hollow_skin (1)",
+        "difference bridge_armor_break (1)",
+        "difference aft_armor_break (1)",
+        "difference service_band_-1_0 (1)",
+        "difference service_band_-1_1 (1)",
+        "difference service_band_-1_2 (1)",
+        "difference service_band_-1_3 (1)",
+        "difference service_band_-1_4 (1)",
+        "difference service_band_1_0 (1)",
+        "difference service_band_1_1 (1)",
+        "difference service_band_1_2 (1)",
+        "difference service_band_1_3 (1)",
+        "difference service_band_1_4 (1)",
+        "union p_bridge_window_p.rim_surface.join_envelopes (2)",
+        "intersect p_bridge_window_p.rim_surface.fit_command_rooms (1)",
+        "chamfer p_bridge_window_p.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
+        "intersect p_bridge_window_p.rim_surface (1)",
+        "union p_bridge_window_p.rim_back.join_envelopes (2)",
+        "intersect p_bridge_window_p.rim_back.fit_command_rooms (1)",
+        "chamfer p_bridge_window_p.rim_back.rounded_bow_rim (6 edges, 350 mm)",
+        "difference p_bridge_window_p.rim_back (1)",
+        "difference p_bridge_window_p.open_rim (1)",
+        "union p_bridge_window_s.rim_surface.join_envelopes (2)",
+        "intersect p_bridge_window_s.rim_surface.fit_command_rooms (1)",
+        "chamfer p_bridge_window_s.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
+        "intersect p_bridge_window_s.rim_surface (1)",
+        "union p_bridge_window_s.rim_back.join_envelopes (2)",
+        "intersect p_bridge_window_s.rim_back.fit_command_rooms (1)",
+        "chamfer p_bridge_window_s.rim_back.rounded_bow_rim (6 edges, 350 mm)",
+        "difference p_bridge_window_s.rim_back (1)",
+        "difference p_bridge_window_s.open_rim (1)",
+        "union p_ready_window.rim_surface.join_envelopes (2)",
+        "intersect p_ready_window.rim_surface.fit_command_rooms (1)",
+        "chamfer p_ready_window.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
+        "intersect p_ready_window.rim_surface (1)",
+        "union p_ready_window.rim_back.join_envelopes (2)",
+        "intersect p_ready_window.rim_back.fit_command_rooms (1)",
+        "chamfer p_ready_window.rim_back.rounded_bow_rim (6 edges, 350 mm)",
+        "difference p_ready_window.rim_back (1)",
+        "difference p_ready_window.open_rim (1)",
+        "union p_briefing_window.rim_surface.join_envelopes (2)",
+        "intersect p_briefing_window.rim_surface.fit_command_rooms (1)",
+        "chamfer p_briefing_window.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
+        "intersect p_briefing_window.rim_surface (1)",
+        "union p_briefing_window.rim_back.join_envelopes (2)",
+        "intersect p_briefing_window.rim_back.fit_command_rooms (1)",
+        "chamfer p_briefing_window.rim_back.rounded_bow_rim (6 edges, 350 mm)",
+        "difference p_briefing_window.rim_back (1)",
+        "difference p_briefing_window.open_rim (1)",
+        "union p_quarters_window_1.rim_surface.join_envelopes (2)",
+        "intersect p_quarters_window_1.rim_surface.fit_command_rooms (1)",
+        "chamfer p_quarters_window_1.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
+        "intersect p_quarters_window_1.rim_surface (1)",
+        "union p_quarters_window_1.rim_back.join_envelopes (2)",
+        "intersect p_quarters_window_1.rim_back.fit_command_rooms (1)",
+        "chamfer p_quarters_window_1.rim_back.rounded_bow_rim (6 edges, 350 mm)",
+        "difference p_quarters_window_1.rim_back (1)",
+        "difference p_quarters_window_1.open_rim (1)",
+        "union p_quarters_window_2.rim_surface.join_envelopes (2)",
+        "intersect p_quarters_window_2.rim_surface.fit_command_rooms (1)",
+        "chamfer p_quarters_window_2.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
+        "intersect p_quarters_window_2.rim_surface (1)",
+        "union p_quarters_window_2.rim_back.join_envelopes (2)",
+        "intersect p_quarters_window_2.rim_back.fit_command_rooms (1)",
+        "chamfer p_quarters_window_2.rim_back.rounded_bow_rim (6 edges, 350 mm)",
+        "difference p_quarters_window_2.rim_back (1)",
+        "difference p_quarters_window_2.open_rim (1)",
+        "union p_quarters_window_3.rim_surface.join_envelopes (2)",
+        "intersect p_quarters_window_3.rim_surface.fit_command_rooms (1)",
+        "chamfer p_quarters_window_3.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
+        "intersect p_quarters_window_3.rim_surface (1)",
+        "union p_quarters_window_3.rim_back.join_envelopes (2)",
+        "intersect p_quarters_window_3.rim_back.fit_command_rooms (1)",
+        "chamfer p_quarters_window_3.rim_back.rounded_bow_rim (6 edges, 350 mm)",
+        "difference p_quarters_window_3.rim_back (1)",
+        "difference p_quarters_window_3.open_rim (1)",
+        "union p_mess_window_1.rim_surface.join_envelopes (2)",
+        "intersect p_mess_window_1.rim_surface.fit_command_rooms (1)",
+        "chamfer p_mess_window_1.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
+        "intersect p_mess_window_1.rim_surface (1)",
+        "union p_mess_window_1.rim_back.join_envelopes (2)",
+        "intersect p_mess_window_1.rim_back.fit_command_rooms (1)",
+        "chamfer p_mess_window_1.rim_back.rounded_bow_rim (6 edges, 350 mm)",
+        "difference p_mess_window_1.rim_back (1)",
+        "difference p_mess_window_1.open_rim (1)",
+        "union p_mess_window_2.rim_surface.join_envelopes (2)",
+        "intersect p_mess_window_2.rim_surface.fit_command_rooms (1)",
+        "chamfer p_mess_window_2.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
+        "intersect p_mess_window_2.rim_surface (1)",
+        "union p_mess_window_2.rim_back.join_envelopes (2)",
+        "intersect p_mess_window_2.rim_back.fit_command_rooms (1)",
+        "chamfer p_mess_window_2.rim_back.rounded_bow_rim (6 edges, 350 mm)",
+        "difference p_mess_window_2.rim_back (1)",
+        "difference p_mess_window_2.open_rim (1)",
+        "union p_mess_window_3.rim_surface.join_envelopes (2)",
+        "intersect p_mess_window_3.rim_surface.fit_command_rooms (1)",
+        "chamfer p_mess_window_3.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
+        "intersect p_mess_window_3.rim_surface (1)",
+        "union p_mess_window_3.rim_back.join_envelopes (2)",
+        "intersect p_mess_window_3.rim_back.fit_command_rooms (1)",
+        "chamfer p_mess_window_3.rim_back.rounded_bow_rim (6 edges, 350 mm)",
+        "difference p_mess_window_3.rim_back (1)",
+        "difference p_mess_window_3.open_rim (1)",
+        "union p_medbay_window_1.rim_surface.join_envelopes (2)",
+        "intersect p_medbay_window_1.rim_surface.fit_command_rooms (1)",
+        "chamfer p_medbay_window_1.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
+        "intersect p_medbay_window_1.rim_surface (1)",
+        "union p_medbay_window_1.rim_back.join_envelopes (2)",
+        "intersect p_medbay_window_1.rim_back.fit_command_rooms (1)",
+        "chamfer p_medbay_window_1.rim_back.rounded_bow_rim (6 edges, 350 mm)",
+        "difference p_medbay_window_1.rim_back (1)",
+        "difference p_medbay_window_1.open_rim (1)",
+        "union p_medbay_window_2.rim_surface.join_envelopes (2)",
+        "intersect p_medbay_window_2.rim_surface.fit_command_rooms (1)",
+        "chamfer p_medbay_window_2.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
+        "intersect p_medbay_window_2.rim_surface (1)",
+        "union p_medbay_window_2.rim_back.join_envelopes (2)",
+        "intersect p_medbay_window_2.rim_back.fit_command_rooms (1)",
+        "chamfer p_medbay_window_2.rim_back.rounded_bow_rim (6 edges, 350 mm)",
+        "difference p_medbay_window_2.rim_back (1)",
+        "difference p_medbay_window_2.open_rim (1)",
+        "union p_damage_control_window_1.rim_surface.join_envelopes (2)",
+        "intersect p_damage_control_window_1.rim_surface.fit_command_rooms (1)",
+        "chamfer p_damage_control_window_1.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
+        "intersect p_damage_control_window_1.rim_surface (1)",
+        "union p_damage_control_window_1.rim_back.join_envelopes (2)",
+        "intersect p_damage_control_window_1.rim_back.fit_command_rooms (1)",
+        "chamfer p_damage_control_window_1.rim_back.rounded_bow_rim (6 edges, 350 mm)",
+        "difference p_damage_control_window_1.rim_back (1)",
+        "difference p_damage_control_window_1.open_rim (1)",
+        "union p_damage_control_window_2.rim_surface.join_envelopes (2)",
+        "intersect p_damage_control_window_2.rim_surface.fit_command_rooms (1)",
+        "chamfer p_damage_control_window_2.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
+        "intersect p_damage_control_window_2.rim_surface (1)",
+        "union p_damage_control_window_2.rim_back.join_envelopes (2)",
+        "intersect p_damage_control_window_2.rim_back.fit_command_rooms (1)",
+        "chamfer p_damage_control_window_2.rim_back.rounded_bow_rim (6 edges, 350 mm)",
+        "difference p_damage_control_window_2.rim_back (1)",
+        "difference p_damage_control_window_2.open_rim (1)",
+        "union p_life_support_window_1.rim_surface.join_envelopes (2)",
+        "intersect p_life_support_window_1.rim_surface.fit_command_rooms (1)",
+        "chamfer p_life_support_window_1.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
+        "intersect p_life_support_window_1.rim_surface (1)",
+        "union p_life_support_window_1.rim_back.join_envelopes (2)",
+        "intersect p_life_support_window_1.rim_back.fit_command_rooms (1)",
+        "chamfer p_life_support_window_1.rim_back.rounded_bow_rim (6 edges, 350 mm)",
+        "difference p_life_support_window_1.rim_back (1)",
+        "difference p_life_support_window_1.open_rim (1)",
+        "union p_life_support_window_2.rim_surface.join_envelopes (2)",
+        "intersect p_life_support_window_2.rim_surface.fit_command_rooms (1)",
+        "chamfer p_life_support_window_2.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
+        "intersect p_life_support_window_2.rim_surface (1)",
+        "union p_life_support_window_2.rim_back.join_envelopes (2)",
+        "intersect p_life_support_window_2.rim_back.fit_command_rooms (1)",
+        "chamfer p_life_support_window_2.rim_back.rounded_bow_rim (6 edges, 350 mm)",
+        "difference p_life_support_window_2.rim_back (1)",
+        "difference p_life_support_window_2.open_rim (1)",
+        "union p_cargo_window_1.rim_surface.join_envelopes (2)",
+        "intersect p_cargo_window_1.rim_surface.fit_command_rooms (1)",
+        "chamfer p_cargo_window_1.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
+        "intersect p_cargo_window_1.rim_surface (1)",
+        "union p_cargo_window_1.rim_back.join_envelopes (2)",
+        "intersect p_cargo_window_1.rim_back.fit_command_rooms (1)",
+        "chamfer p_cargo_window_1.rim_back.rounded_bow_rim (6 edges, 350 mm)",
+        "difference p_cargo_window_1.rim_back (1)",
+        "difference p_cargo_window_1.open_rim (1)",
+        "union p_cargo_window_2.rim_surface.join_envelopes (2)",
+        "intersect p_cargo_window_2.rim_surface.fit_command_rooms (1)",
+        "chamfer p_cargo_window_2.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
+        "intersect p_cargo_window_2.rim_surface (1)",
+        "union p_cargo_window_2.rim_back.join_envelopes (2)",
+        "intersect p_cargo_window_2.rim_back.fit_command_rooms (1)",
+        "chamfer p_cargo_window_2.rim_back.rounded_bow_rim (6 edges, 350 mm)",
+        "difference p_cargo_window_2.rim_back (1)",
+        "difference p_cargo_window_2.open_rim (1)",
+        "union p_shield_room_window_1.rim_surface.join_envelopes (2)",
+        "intersect p_shield_room_window_1.rim_surface.fit_command_rooms (1)",
+        "chamfer p_shield_room_window_1.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
+        "intersect p_shield_room_window_1.rim_surface (1)",
+        "union p_shield_room_window_1.rim_back.join_envelopes (2)",
+        "intersect p_shield_room_window_1.rim_back.fit_command_rooms (1)",
+        "chamfer p_shield_room_window_1.rim_back.rounded_bow_rim (6 edges, 350 mm)",
+        "difference p_shield_room_window_1.rim_back (1)",
+        "difference p_shield_room_window_1.open_rim (1)",
+        "union p_switchboard_window_1.rim_surface.join_envelopes (2)",
+        "intersect p_switchboard_window_1.rim_surface.fit_command_rooms (1)",
+        "chamfer p_switchboard_window_1.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
+        "intersect p_switchboard_window_1.rim_surface (1)",
+        "union p_switchboard_window_1.rim_back.join_envelopes (2)",
+        "intersect p_switchboard_window_1.rim_back.fit_command_rooms (1)",
+        "chamfer p_switchboard_window_1.rim_back.rounded_bow_rim (6 edges, 350 mm)",
+        "difference p_switchboard_window_1.rim_back (1)",
+        "difference p_switchboard_window_1.open_rim (1)",
+        "difference window_and_airlock_recesses (21)",
+        "difference nacelle_-1.recess (1)",
+        "difference nacelle_1.recess (1)",
+        "chamfer turret_chamfer_turret_dorsal (12 edges, 160 mm)",
+        "chamfer turret_chamfer_turret_ventral (12 edges, 160 mm)",
+        "chamfer turret_chamfer_turret_port (12 edges, 160 mm)",
+        "chamfer turret_chamfer_turret_stbd (12 edges, 160 mm)",
+        "difference main_engine_p.hollow_bell (1)",
+        "difference main_engine_s.hollow_bell (1)",
+        "chamfer service_spine_chamfer (12 edges, 180 mm)"
+      ],
+      "warp_center_y_m": 1.2,
+      "nacelle_length_m": 56.0,
+      "windows": [
+        {
+          "id": "p_bridge_window_p",
+          "room": "bridge",
+          "center_m": [
+            4.384,
+            5.0,
+            30.584
+          ],
+          "normal": [
+            0.7071,
+            0.0,
+            0.7071
+          ],
+          "size_m": [
+            2.0,
+            1.2
+          ],
+          "outer_center_m": [
+            4.610273361206055,
+            5.0,
+            30.810270309448242
+          ],
+          "outer_corners_m": [
+            [
+              3.903177261352539,
+              4.400000095367432,
+              31.51737403869629
+            ],
+            [
+              5.317373275756836,
+              4.400000095367432,
+              30.10317039489746
+            ],
+            [
+              5.317373275756836,
+              5.599999904632568,
+              30.10317039489746
+            ],
+            [
+              3.903177261352539,
+              5.599999904632568,
+              31.51737403869629
+            ]
+          ],
+          "inner_corners_m": [
+            [
+              3.7476112842559814,
+              4.400000095367432,
+              31.3618106842041
+            ],
+            [
+              5.161811351776123,
+              4.400000095367432,
+              29.94761085510254
+            ],
+            [
+              5.161810874938965,
+              5.599999904632568,
+              29.94761085510254
+            ],
+            [
+              3.7476110458374023,
+              5.599999904632568,
+              31.3618106842041
+            ]
+          ],
+          "rim_width_m": 0.12,
+          "max_depth_m": 0.4,
+          "depth_m": 0.3199970797409234,
+          "rim_material": "tern_rim",
+          "deck": "A"
+        },
+        {
+          "id": "p_bridge_window_s",
+          "room": "bridge",
+          "center_m": [
+            -4.384,
+            5.0,
+            30.584
+          ],
+          "normal": [
+            -0.7071,
+            0.0,
+            0.7071
+          ],
+          "size_m": [
+            2.0,
+            1.2
+          ],
+          "outer_center_m": [
+            -4.610279083251953,
+            5.0,
+            30.81027603149414
+          ],
+          "outer_corners_m": [
+            [
+              -5.317373275756836,
+              4.400000095367432,
+              30.10317039489746
+            ],
+            [
+              -3.9031734466552734,
+              4.400000095367432,
+              31.517370223999023
+            ],
+            [
+              -3.9031734466552734,
+              5.599999904632568,
+              31.517370223999023
+            ],
+            [
+              -5.317373275756836,
+              5.599999904632568,
+              30.10317039489746
+            ]
+          ],
+          "inner_corners_m": [
+            [
+              -5.161811351776123,
+              4.400000095367432,
+              29.94761085510254
+            ],
+            [
+              -3.7476112842559814,
+              4.400000095367432,
+              31.3618106842041
+            ],
+            [
+              -3.7476112842559814,
+              5.599999904632568,
+              31.3618106842041
+            ],
+            [
+              -5.161811351776123,
+              5.599999904632568,
+              29.94761085510254
+            ]
+          ],
+          "rim_width_m": 0.12,
+          "max_depth_m": 0.4,
+          "depth_m": 0.320005176398014,
+          "rim_material": "tern_rim",
+          "deck": "A"
+        },
+        {
+          "id": "p_ready_window",
+          "room": "ready_room",
+          "center_m": [
+            9.25,
+            5.0,
+            17.4
+          ],
+          "normal": [
+            0.9911,
+            0.0,
+            0.1334
+          ],
+          "size_m": [
+            2.0,
+            1.0
+          ],
+          "outer_center_m": [
+            9.567134857177734,
+            5.0,
+            17.442686080932617
+          ],
+          "outer_corners_m": [
+            [
+              9.433723449707031,
+              4.5,
+              18.43378448486328
+            ],
+            [
+              9.700557708740234,
+              4.5,
+              16.451589584350586
+            ],
+            [
+              9.700553894042969,
+              5.5,
+              16.451587677001953
+            ],
+            [
+              9.433719635009766,
+              5.5,
+              18.43378448486328
+            ]
+          ],
+          "inner_corners_m": [
+            [
+              9.215689659118652,
+              4.5,
+              18.404438018798828
+            ],
+            [
+              9.482522964477539,
+              4.5,
+              16.4222412109375
+            ],
+            [
+              9.482522964477539,
+              5.5,
+              16.4222412109375
+            ],
+            [
+              9.215689659118652,
+              5.5,
+              18.404438018798828
+            ]
+          ],
+          "rim_width_m": 0.12,
+          "max_depth_m": 0.4,
+          "depth_m": 0.3199947652293143,
+          "rim_material": "tern_rim",
+          "deck": "A"
+        },
+        {
+          "id": "p_briefing_window",
+          "room": "briefing_room",
+          "center_m": [
+            -9.25,
+            5.0,
+            17.4
+          ],
+          "normal": [
+            -0.9911,
+            0.0,
+            0.1334
+          ],
+          "size_m": [
+            2.0,
+            1.0
+          ],
+          "outer_center_m": [
+            -9.567138671875,
+            5.0,
+            17.442686080932617
+          ],
+          "outer_corners_m": [
+            [
+              -9.700555801391602,
+              4.5,
+              16.451587677001953
+            ],
+            [
+              -9.433719635009766,
+              4.5,
+              18.43378448486328
+            ],
+            [
+              -9.433719635009766,
+              5.5,
+              18.43378448486328
+            ],
+            [
+              -9.700555801391602,
+              5.5,
+              16.451587677001953
+            ]
+          ],
+          "inner_corners_m": [
+            [
+              -9.482522964477539,
+              4.5,
+              16.4222412109375
+            ],
+            [
+              -9.215689659118652,
+              4.5,
+              18.404438018798828
+            ],
+            [
+              -9.215689659118652,
+              5.5,
+              18.404438018798828
+            ],
+            [
+              -9.482523918151855,
+              5.5,
+              16.4222412109375
+            ]
+          ],
+          "rim_width_m": 0.12,
+          "max_depth_m": 0.4,
+          "depth_m": 0.31999854876679984,
+          "rim_material": "tern_rim",
+          "deck": "A"
+        },
+        {
+          "id": "p_quarters_window_1",
+          "room": "quarters",
+          "center_m": [
+            11.406667,
+            2.35,
+            10
+          ],
+          "normal": [
+            0.99326314,
+            0,
+            0.11588073
+          ],
+          "size_m": [
+            1.7,
+            0.8
+          ],
+          "outer_center_m": [
+            11.959146499633789,
+            2.3499999046325684,
+            10.06445598602295
+          ],
+          "outer_corners_m": [
+            [
+              11.860651016235352,
+              1.9499999284744263,
+              10.908730506896973
+            ],
+            [
+              12.05764389038086,
+              1.9499999284744263,
+              9.220182418823242
+            ],
+            [
+              12.057640075683594,
+              2.75,
+              9.220182418823242
+            ],
+            [
+              11.860645294189453,
+              2.75,
+              10.908729553222656
+            ]
+          ],
+          "inner_corners_m": [
+            [
+              11.64360237121582,
+              1.9499999284744263,
+              10.883407592773438
+            ],
+            [
+              11.840599060058594,
+              1.9499999284744263,
+              9.194860458374023
+            ],
+            [
+              11.840599060058594,
+              2.75,
+              9.194860458374023
+            ],
+            [
+              11.64360237121582,
+              2.75,
+              10.883407592773438
+            ]
+          ],
+          "rim_width_m": 0.12,
+          "max_depth_m": 0.65,
+          "depth_m": 0.5562269681544925,
+          "rim_material": "tern_rim",
+          "deck": "B"
+        },
+        {
+          "id": "p_quarters_window_2",
+          "room": "quarters",
+          "center_m": [
+            11.056667,
+            2.35,
+            13
+          ],
+          "normal": [
+            0.99326314,
+            0,
+            0.11588073
+          ],
+          "size_m": [
+            1.7,
+            0.8
+          ],
+          "outer_center_m": [
+            11.609148025512695,
+            2.3499999046325684,
+            13.06445598602295
+          ],
+          "outer_corners_m": [
+            [
+              11.51064682006836,
+              1.9499999284744263,
+              13.908729553222656
+            ],
+            [
+              11.707645416259766,
+              1.9499999284744263,
+              12.220182418823242
+            ],
+            [
+              11.707645416259766,
+              2.75,
+              12.220182418823242
+            ],
+            [
+              11.510648727416992,
+              2.75,
+              13.908730506896973
+            ]
+          ],
+          "inner_corners_m": [
+            [
+              11.293601989746094,
+              1.9499999284744263,
+              13.883407592773438
+            ],
+            [
+              11.490599632263184,
+              1.9499999284744263,
+              12.194860458374023
+            ],
+            [
+              11.490599632263184,
+              2.75,
+              12.194860458374023
+            ],
+            [
+              11.293601989746094,
+              2.75,
+              13.883407592773438
+            ]
+          ],
+          "rim_width_m": 0.12,
+          "max_depth_m": 0.65,
+          "depth_m": 0.5562279057936794,
+          "rim_material": "tern_rim",
+          "deck": "B"
+        },
+        {
+          "id": "p_quarters_window_3",
+          "room": "quarters",
+          "center_m": [
+            10.706666,
+            2.35,
+            16
+          ],
+          "normal": [
+            0.99326314,
+            0,
+            0.11588073
+          ],
+          "size_m": [
+            1.7,
+            0.8
+          ],
+          "outer_center_m": [
+            11.259147644042969,
+            2.3499999046325684,
+            16.064456939697266
+          ],
+          "outer_corners_m": [
+            [
+              11.160646438598633,
+              1.9499999284744263,
+              16.908729553222656
+            ],
+            [
+              11.357645034790039,
+              1.9499999284744263,
+              15.220183372497559
+            ],
+            [
+              11.357643127441406,
+              2.75,
+              15.220182418823242
+            ],
+            [
+              11.160646438598633,
+              2.75,
+              16.908729553222656
+            ]
+          ],
+          "inner_corners_m": [
+            [
+              10.943601608276367,
+              1.9499999284744263,
+              16.88340950012207
+            ],
+            [
+              11.140599250793457,
+              1.9499999284744263,
+              15.194860458374023
+            ],
+            [
+              11.140599250793457,
+              2.75,
+              15.194860458374023
+            ],
+            [
+              10.943601608276367,
+              2.75,
+              16.883407592773438
+            ]
+          ],
+          "rim_width_m": 0.12,
+          "max_depth_m": 0.65,
+          "depth_m": 0.5562289807280885,
+          "rim_material": "tern_rim",
+          "deck": "B"
+        },
+        {
+          "id": "p_mess_window_1",
+          "room": "mess",
+          "center_m": [
+            -11.406667,
+            2.35,
+            10
+          ],
+          "normal": [
+            -0.99326314,
+            0,
+            0.11588073
+          ],
+          "size_m": [
+            1.7,
+            0.8
+          ],
+          "outer_center_m": [
+            -11.959146499633789,
+            2.3499999046325684,
+            10.06445598602295
+          ],
+          "outer_corners_m": [
+            [
+              -12.057645797729492,
+              1.9499999284744263,
+              9.220183372497559
+            ],
+            [
+              -11.860649108886719,
+              1.9499999284744263,
+              10.908729553222656
+            ],
+            [
+              -11.860647201538086,
+              2.75,
+              10.908729553222656
+            ],
+            [
+              -12.057641983032227,
+              2.75,
+              9.220182418823242
+            ]
+          ],
+          "inner_corners_m": [
+            [
+              -11.840599060058594,
+              1.9499999284744263,
+              9.194860458374023
+            ],
+            [
+              -11.64360237121582,
+              1.9499999284744263,
+              10.883407592773438
+            ],
+            [
+              -11.64360237121582,
+              2.75,
+              10.883407592773438
+            ],
+            [
+              -11.840599060058594,
+              2.75,
+              9.194860458374023
+            ]
+          ],
+          "rim_width_m": 0.12,
+          "max_depth_m": 0.65,
+          "depth_m": 0.5562269681544925,
+          "rim_material": "tern_rim",
+          "deck": "B"
+        },
+        {
+          "id": "p_mess_window_2",
+          "room": "mess",
+          "center_m": [
+            -11.056667,
+            2.35,
+            13
+          ],
+          "normal": [
+            -0.99326314,
+            0,
+            0.11588073
+          ],
+          "size_m": [
+            1.7,
+            0.8
+          ],
+          "outer_center_m": [
+            -11.609148025512695,
+            2.3499999046325684,
+            13.06445598602295
+          ],
+          "outer_corners_m": [
+            [
+              -11.707645416259766,
+              1.9499999284744263,
+              12.220182418823242
+            ],
+            [
+              -11.510648727416992,
+              1.9499999284744263,
+              13.908730506896973
+            ],
+            [
+              -11.510648727416992,
+              2.75,
+              13.908730506896973
+            ],
+            [
+              -11.707647323608398,
+              2.75,
+              12.220183372497559
+            ]
+          ],
+          "inner_corners_m": [
+            [
+              -11.490599632263184,
+              1.9499999284744263,
+              12.194860458374023
+            ],
+            [
+              -11.293601989746094,
+              1.9499999284744263,
+              13.883407592773438
+            ],
+            [
+              -11.293601989746094,
+              2.75,
+              13.883407592773438
+            ],
+            [
+              -11.490599632263184,
+              2.75,
+              12.194860458374023
+            ]
+          ],
+          "rim_width_m": 0.12,
+          "max_depth_m": 0.65,
+          "depth_m": 0.5562279057936794,
+          "rim_material": "tern_rim",
+          "deck": "B"
+        },
+        {
+          "id": "p_mess_window_3",
+          "room": "mess",
+          "center_m": [
+            -10.706666,
+            2.35,
+            16
+          ],
+          "normal": [
+            -0.99326314,
+            0,
+            0.11588073
+          ],
+          "size_m": [
+            1.7,
+            0.8
+          ],
+          "outer_center_m": [
+            -11.259147644042969,
+            2.3499999046325684,
+            16.064456939697266
+          ],
+          "outer_corners_m": [
+            [
+              -11.357645034790039,
+              1.9499999284744263,
+              15.220183372497559
+            ],
+            [
+              -11.160646438598633,
+              1.9499999284744263,
+              16.908729553222656
+            ],
+            [
+              -11.160648345947266,
+              2.75,
+              16.908729553222656
+            ],
+            [
+              -11.357643127441406,
+              2.75,
+              15.220182418823242
+            ]
+          ],
+          "inner_corners_m": [
+            [
+              -11.140599250793457,
+              1.9499999284744263,
+              15.194860458374023
+            ],
+            [
+              -10.943601608276367,
+              1.9499999284744263,
+              16.88340950012207
+            ],
+            [
+              -10.943601608276367,
+              2.75,
+              16.883407592773438
+            ],
+            [
+              -11.140599250793457,
+              2.75,
+              15.194860458374023
+            ]
+          ],
+          "rim_width_m": 0.12,
+          "max_depth_m": 0.65,
+          "depth_m": 0.5562289807280885,
+          "rim_material": "tern_rim",
+          "deck": "B"
+        },
+        {
+          "id": "p_medbay_window_1",
+          "room": "medbay",
+          "center_m": [
+            9.965,
+            2.35,
+            21.5
+          ],
+          "normal": [
+            0.98360656,
+            0,
+            0.18032787
+          ],
+          "size_m": [
+            1.7,
+            0.8
+          ],
+          "outer_center_m": [
+            10.506790161132812,
+            2.3499999046325684,
+            21.599327087402344
+          ],
+          "outer_corners_m": [
+            [
+              10.353509902954102,
+              1.9499999284744263,
+              22.435392379760742
+            ],
+            [
+              10.66006851196289,
+              1.9499999284744263,
+              20.763261795043945
+            ],
+            [
+              10.66006851196289,
+              2.75,
+              20.763261795043945
+            ],
+            [
+              10.353507995605469,
+              2.75,
+              22.435392379760742
+            ]
+          ],
+          "inner_corners_m": [
+            [
+              10.140665054321289,
+              1.9499999284744263,
+              22.396371841430664
+            ],
+            [
+              10.447222709655762,
+              1.9499999284744263,
+              20.724241256713867
+            ],
+            [
+              10.447222709655762,
+              2.75,
+              20.724241256713867
+            ],
+            [
+              10.140665054321289,
+              2.75,
+              22.396371841430664
+            ]
+          ],
+          "rim_width_m": 0.12,
+          "max_depth_m": 0.65,
+          "depth_m": 0.5508196577248557,
+          "rim_material": "tern_rim",
+          "deck": "B"
+        },
+        {
+          "id": "p_medbay_window_2",
+          "room": "medbay",
+          "center_m": [
+            9.415,
+            2.35,
+            24.5
+          ],
+          "normal": [
+            0.98360656,
+            0,
+            0.18032787
+          ],
+          "size_m": [
+            1.7,
+            0.8
+          ],
+          "outer_center_m": [
+            9.956789016723633,
+            2.3499999046325684,
+            24.599327087402344
+          ],
+          "outer_corners_m": [
+            [
+              9.803510665893555,
+              1.9499999284744263,
+              25.435392379760742
+            ],
+            [
+              10.110067367553711,
+              1.9499999284744263,
+              23.763261795043945
+            ],
+            [
+              10.110069274902344,
+              2.75,
+              23.763261795043945
+            ],
+            [
+              9.803510665893555,
+              2.75,
+              25.435392379760742
+            ]
+          ],
+          "inner_corners_m": [
+            [
+              9.590665817260742,
+              1.9499999284744263,
+              25.396371841430664
+            ],
+            [
+              9.897222518920898,
+              1.9499999284744263,
+              23.724241256713867
+            ],
+            [
+              9.897222518920898,
+              2.75,
+              23.724241256713867
+            ],
+            [
+              9.590665817260742,
+              2.75,
+              25.396371841430664
+            ]
+          ],
+          "rim_width_m": 0.12,
+          "max_depth_m": 0.65,
+          "depth_m": 0.5508187108793997,
+          "rim_material": "tern_rim",
+          "deck": "B"
+        },
+        {
+          "id": "p_damage_control_window_1",
+          "room": "damage_control",
+          "center_m": [
+            -9.965,
+            2.35,
+            21.5
+          ],
+          "normal": [
+            -0.98360656,
+            0,
+            0.18032787
+          ],
+          "size_m": [
+            1.7,
+            0.8
+          ],
+          "outer_center_m": [
+            -10.506790161132812,
+            2.3499999046325684,
+            21.599327087402344
+          ],
+          "outer_corners_m": [
+            [
+              -10.660070419311523,
+              1.9499999284744263,
+              20.763263702392578
+            ],
+            [
+              -10.353509902954102,
+              1.9499999284744263,
+              22.435392379760742
+            ],
+            [
+              -10.353507995605469,
+              2.75,
+              22.435392379760742
+            ],
+            [
+              -10.66006851196289,
+              2.75,
+              20.763261795043945
+            ]
+          ],
+          "inner_corners_m": [
+            [
+              -10.447222709655762,
+              1.9499999284744263,
+              20.724241256713867
+            ],
+            [
+              -10.140665054321289,
+              1.9499999284744263,
+              22.396371841430664
+            ],
+            [
+              -10.140665054321289,
+              2.75,
+              22.396371841430664
+            ],
+            [
+              -10.447222709655762,
+              2.75,
+              20.724241256713867
+            ]
+          ],
+          "rim_width_m": 0.12,
+          "max_depth_m": 0.65,
+          "depth_m": 0.5508196577248557,
+          "rim_material": "tern_rim",
+          "deck": "B"
+        },
+        {
+          "id": "p_damage_control_window_2",
+          "room": "damage_control",
+          "center_m": [
+            -9.415,
+            2.35,
+            24.5
+          ],
+          "normal": [
+            -0.98360656,
+            0,
+            0.18032787
+          ],
+          "size_m": [
+            1.7,
+            0.8
+          ],
+          "outer_center_m": [
+            -9.956789016723633,
+            2.3499999046325684,
+            24.599327087402344
+          ],
+          "outer_corners_m": [
+            [
+              -10.110067367553711,
+              1.9499999284744263,
+              23.763261795043945
+            ],
+            [
+              -9.803510665893555,
+              1.9499999284744263,
+              25.435392379760742
+            ],
+            [
+              -9.803508758544922,
+              2.75,
+              25.435392379760742
+            ],
+            [
+              -10.110069274902344,
+              2.75,
+              23.763261795043945
+            ]
+          ],
+          "inner_corners_m": [
+            [
+              -9.897222518920898,
+              1.9499999284744263,
+              23.724241256713867
+            ],
+            [
+              -9.590665817260742,
+              1.9499999284744263,
+              25.396371841430664
+            ],
+            [
+              -9.590665817260742,
+              2.75,
+              25.396371841430664
+            ],
+            [
+              -9.897222518920898,
+              2.75,
+              23.724241256713867
+            ]
+          ],
+          "rim_width_m": 0.12,
+          "max_depth_m": 0.65,
+          "depth_m": 0.5508187108793997,
+          "rim_material": "tern_rim",
+          "deck": "B"
+        },
+        {
+          "id": "p_life_support_window_1",
+          "room": "life_support",
+          "center_m": [
+            11.406667,
+            -1.85,
+            10
+          ],
+          "normal": [
+            0.99326314,
+            0,
+            0.11588067
+          ],
+          "size_m": [
+            1.3,
+            0.9
+          ],
+          "outer_center_m": [
+            11.959148406982422,
+            -1.850000023841858,
+            10.06445598602295
+          ],
+          "outer_corners_m": [
+            [
+              11.88382339477539,
+              -2.299999952316284,
+              10.710077285766602
+            ],
+            [
+              12.034469604492188,
+              -2.299999952316284,
+              9.418834686279297
+            ],
+            [
+              12.034469604492188,
+              -1.4000000953674316,
+              9.418834686279297
+            ],
+            [
+              11.883827209472656,
+              -1.4000000953674316,
+              10.710078239440918
+            ]
+          ],
+          "inner_corners_m": [
+            [
+              11.666778564453125,
+              -2.299999952316284,
+              10.684755325317383
+            ],
+            [
+              11.817422866821289,
+              -2.299999952316284,
+              9.393512725830078
+            ],
+            [
+              11.817422866821289,
+              -1.4000000953674316,
+              9.393512725830078
+            ],
+            [
+              11.666778564453125,
+              -1.4000000953674316,
+              10.684755325317383
+            ]
+          ],
+          "rim_width_m": 0.12,
+          "max_depth_m": 0.65,
+          "depth_m": 0.5562288702209085,
+          "rim_material": "tern_rim",
+          "deck": "C"
+        },
+        {
+          "id": "p_life_support_window_2",
+          "room": "life_support",
+          "center_m": [
+            10.706667,
+            -1.85,
+            16
+          ],
+          "normal": [
+            0.99326314,
+            0,
+            0.11588067
+          ],
+          "size_m": [
+            1.3,
+            0.9
+          ],
+          "outer_center_m": [
+            11.259143829345703,
+            -1.850000023841858,
+            16.064455032348633
+          ],
+          "outer_corners_m": [
+            [
+              11.183826446533203,
+              -2.299999952316284,
+              16.71007537841797
+            ],
+            [
+              11.334470748901367,
+              -2.299999952316284,
+              15.418834686279297
+            ],
+            [
+              11.334468841552734,
+              -1.4000000953674316,
+              15.418834686279297
+            ],
+            [
+              11.183826446533203,
+              -1.4000000953674316,
+              16.71007537841797
+            ]
+          ],
+          "inner_corners_m": [
+            [
+              10.966778755187988,
+              -2.299999952316284,
+              16.68475341796875
+            ],
+            [
+              11.117423057556152,
+              -2.299999952316284,
+              15.393512725830078
+            ],
+            [
+              11.117423057556152,
+              -1.4000000953674316,
+              15.393512725830078
+            ],
+            [
+              10.966778755187988,
+              -1.4000000953674316,
+              16.68475341796875
+            ]
+          ],
+          "rim_width_m": 0.12,
+          "max_depth_m": 0.65,
+          "depth_m": 0.5562240179294543,
+          "rim_material": "tern_rim",
+          "deck": "C"
+        },
+        {
+          "id": "p_cargo_window_1",
+          "room": "cargo",
+          "center_m": [
+            -11.64,
+            -1.85,
+            7.3
+          ],
+          "normal": [
+            -1.0,
+            0,
+            -0.0
+          ],
+          "size_m": [
+            1.3,
+            0.9
+          ],
+          "outer_center_m": [
+            -12.200002670288086,
+            -1.850000023841858,
+            7.300000190734863
+          ],
+          "outer_corners_m": [
+            [
+              -12.200000762939453,
+              -2.299999952316284,
+              6.650000095367432
+            ],
+            [
+              -12.200000762939453,
+              -2.299999952316284,
+              7.950000286102295
+            ],
+            [
+              -12.19999885559082,
+              -1.4000000953674316,
+              7.950000286102295
+            ],
+            [
+              -12.19999885559082,
+              -1.4000000953674316,
+              6.650000095367432
+            ]
+          ],
+          "inner_corners_m": [
+            [
+              -11.979999542236328,
+              -2.299999952316284,
+              6.650000095367432
+            ],
+            [
+              -11.979999542236328,
+              -2.299999952316284,
+              7.950000286102295
+            ],
+            [
+              -11.979999542236328,
+              -1.4000000953674316,
+              7.950000286102295
+            ],
+            [
+              -11.979999542236328,
+              -1.4000000953674316,
+              6.650000095367432
+            ]
+          ],
+          "rim_width_m": 0.12,
+          "max_depth_m": 0.65,
+          "depth_m": 0.5600023183178597,
+          "rim_material": "tern_rim",
+          "deck": "C"
+        },
+        {
+          "id": "p_cargo_window_2",
+          "room": "cargo",
+          "center_m": [
+            -10.648333,
+            -1.85,
+            16.5
+          ],
+          "normal": [
+            -0.99326315,
+            0,
+            0.11588063
+          ],
+          "size_m": [
+            1.3,
+            0.9
+          ],
+          "outer_center_m": [
+            -11.200813293457031,
+            -1.850000023841858,
+            16.564456939697266
+          ],
+          "outer_corners_m": [
+            [
+              -11.276134490966797,
+              -2.299999952316284,
+              15.918834686279297
+            ],
+            [
+              -11.12548828125,
+              -2.299999952316284,
+              17.2100772857666
+            ],
+            [
+              -11.12548828125,
+              -1.4000000953674316,
+              17.2100772857666
+            ],
+            [
+              -11.276138305664062,
+              -1.4000000953674316,
+              15.918834686279297
+            ]
+          ],
+          "inner_corners_m": [
+            [
+              -11.059089660644531,
+              -2.299999952316284,
+              15.893512725830078
+            ],
+            [
+              -10.908445358276367,
+              -2.299999952316284,
+              17.184755325317383
+            ],
+            [
+              -10.908445358276367,
+              -1.4000000953674316,
+              17.184755325317383
+            ],
+            [
+              -11.059089660644531,
+              -1.4000000953674316,
+              15.893512725830078
+            ]
+          ],
+          "rim_width_m": 0.12,
+          "max_depth_m": 0.65,
+          "depth_m": 0.556228016301051,
+          "rim_material": "tern_rim",
+          "deck": "C"
+        },
+        {
+          "id": "p_shield_room_window_1",
+          "room": "shield_room",
+          "center_m": [
+            11.64,
+            -1.85,
+            3
+          ],
+          "normal": [
+            1.0,
+            0,
+            -0.0
+          ],
+          "size_m": [
+            1.3,
+            0.9
+          ],
+          "outer_center_m": [
+            12.200000762939453,
+            -1.850000023841858,
+            3.0
+          ],
+          "outer_corners_m": [
+            [
+              12.19999885559082,
+              -2.299999952316284,
+              3.6500000953674316
+            ],
+            [
+              12.200000762939453,
+              -2.299999952316284,
+              2.3499999046325684
+            ],
+            [
+              12.200000762939453,
+              -1.4000000953674316,
+              2.3499999046325684
+            ],
+            [
+              12.200000762939453,
+              -1.4000000953674316,
+              3.6500000953674316
+            ]
+          ],
+          "inner_corners_m": [
+            [
+              11.979999542236328,
+              -2.299999952316284,
+              3.6500000953674316
+            ],
+            [
+              11.979999542236328,
+              -2.299999952316284,
+              2.3499999046325684
+            ],
+            [
+              11.979999542236328,
+              -1.4000000953674316,
+              2.3499999046325684
+            ],
+            [
+              11.979999542236328,
+              -1.4000000953674316,
+              3.6500000953674316
+            ]
+          ],
+          "rim_width_m": 0.12,
+          "max_depth_m": 0.65,
+          "depth_m": 0.5600004290681285,
+          "rim_material": "tern_rim",
+          "deck": "C"
+        },
+        {
+          "id": "p_switchboard_window_1",
+          "room": "switchboard",
+          "center_m": [
+            -11.64,
+            -1.85,
+            3
+          ],
+          "normal": [
+            -1.0,
+            0,
+            -0.0
+          ],
+          "size_m": [
+            1.3,
+            0.9
+          ],
+          "outer_center_m": [
+            -12.200000762939453,
+            -1.850000023841858,
+            3.0
+          ],
+          "outer_corners_m": [
+            [
+              -12.200000762939453,
+              -2.299999952316284,
+              2.3499999046325684
+            ],
+            [
+              -12.19999885559082,
+              -2.299999952316284,
+              3.6500000953674316
+            ],
+            [
+              -12.200000762939453,
+              -1.4000000953674316,
+              3.6500000953674316
+            ],
+            [
+              -12.200000762939453,
+              -1.4000000953674316,
+              2.3499999046325684
+            ]
+          ],
+          "inner_corners_m": [
+            [
+              -11.979999542236328,
+              -2.299999952316284,
+              2.3499999046325684
+            ],
+            [
+              -11.979999542236328,
+              -2.299999952316284,
+              3.6500000953674316
+            ],
+            [
+              -11.979999542236328,
+              -1.4000000953674316,
+              3.6500000953674316
+            ],
+            [
+              -11.979999542236328,
+              -1.4000000953674316,
+              2.3499999046325684
+            ]
+          ],
+          "rim_width_m": 0.12,
+          "max_depth_m": 0.65,
+          "depth_m": 0.5600004290681285,
+          "rim_material": "tern_rim",
+          "deck": "C"
+        }
+      ]
+    },
+    "tern_lod1": {
+      "file": "tern_lod1.glb",
+      "triangles": 1290,
+      "triangle_budget": 3000,
+      "vertices": 2391,
+      "draw_calls": 1,
+      "dimensions_m": [
+        45.0,
+        18.04,
+        81.38
+      ],
+      "bounds_m": [
+        [
+          -22.5,
+          -8.02,
+          -44.2
+        ],
+        [
+          22.5,
+          10.02,
+          37.18
+        ]
+      ],
+      "embedded_images": 1,
+      "texture_bytes_with_mips": 5592404,
+      "sha256": "59c31ee3eb1df64bd823711996239bd326977314e06c3701450ebaf0b26b7c5b",
+      "bytes": 1485360,
+      "name": "SCS Tern",
+      "class": "Heron-class frigate",
+      "role": "Player ship",
+      "lod": 1,
+      "warp_pylons": 2,
+      "warp_nacelles": 2,
+      "assemblies": [
+        "tern_lod1.hull",
+        "tern_lod1.p_bridge_window_p.rim",
+        "tern_lod1.p_bridge_window_s.rim",
+        "tern_lod1.p_ready_window.rim",
+        "tern_lod1.p_briefing_window.rim",
+        "tern_lod1.warp_pylon_-1",
+        "tern_lod1.warp_nacelle_-1",
+        "tern_lod1.field_-1_-1",
+        "tern_lod1.field_frame_-1_-1",
+        "tern_lod1.field_-1_1",
+        "tern_lod1.field_frame_-1_1",
+        "tern_lod1.nacelle_spine_-1",
+        "tern_lod1.warp_pylon_1",
+        "tern_lod1.warp_nacelle_1",
+        "tern_lod1.field_1_-1",
+        "tern_lod1.field_frame_1_-1",
+        "tern_lod1.field_1_1",
+        "tern_lod1.field_frame_1_1",
+        "tern_lod1.nacelle_spine_1",
+        "tern_lod1.turret_dorsal.base",
+        "tern_lod1.turret_dorsal.head",
+        "tern_lod1.turret_dorsal.barrel_-1",
+        "tern_lod1.turret_dorsal.barrel_1",
+        "tern_lod1.turret_ventral.base",
+        "tern_lod1.turret_ventral.head",
+        "tern_lod1.turret_ventral.barrel_-1",
+        "tern_lod1.turret_ventral.barrel_1",
+        "tern_lod1.turret_port.base",
+        "tern_lod1.turret_port.head",
+        "tern_lod1.turret_port.barrel_-1",
+        "tern_lod1.turret_port.barrel_1",
+        "tern_lod1.turret_stbd.base",
+        "tern_lod1.turret_stbd.head",
+        "tern_lod1.turret_stbd.barrel_-1",
+        "tern_lod1.turret_stbd.barrel_1",
+        "tern_lod1.tube_1.mouth",
+        "tern_lod1.tube_1.bore",
+        "tern_lod1.tube_2.mouth",
+        "tern_lod1.tube_2.bore",
+        "tern_lod1.main_engine_p.bell",
+        "tern_lod1.main_engine_p.glow",
+        "tern_lod1.main_engine_s.bell",
+        "tern_lod1.main_engine_s.glow"
+      ],
+      "csg": [
+        "union hull.join_envelopes (2)",
+        "intersect hull.fit_command_rooms (1)",
+        "chamfer hull.rounded_bow_rim (6 edges, 350 mm)",
+        "union p_bridge_window_p.rim_surface.join_envelopes (2)",
+        "intersect p_bridge_window_p.rim_surface.fit_command_rooms (1)",
+        "chamfer p_bridge_window_p.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
+        "intersect p_bridge_window_p.rim_surface (1)",
+        "union p_bridge_window_p.rim_back.join_envelopes (2)",
+        "intersect p_bridge_window_p.rim_back.fit_command_rooms (1)",
+        "chamfer p_bridge_window_p.rim_back.rounded_bow_rim (6 edges, 350 mm)",
+        "difference p_bridge_window_p.rim_back (1)",
+        "difference p_bridge_window_p.open_rim (1)",
+        "union p_bridge_window_s.rim_surface.join_envelopes (2)",
+        "intersect p_bridge_window_s.rim_surface.fit_command_rooms (1)",
+        "chamfer p_bridge_window_s.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
+        "intersect p_bridge_window_s.rim_surface (1)",
+        "union p_bridge_window_s.rim_back.join_envelopes (2)",
+        "intersect p_bridge_window_s.rim_back.fit_command_rooms (1)",
+        "chamfer p_bridge_window_s.rim_back.rounded_bow_rim (6 edges, 350 mm)",
+        "difference p_bridge_window_s.rim_back (1)",
+        "difference p_bridge_window_s.open_rim (1)",
+        "union p_ready_window.rim_surface.join_envelopes (2)",
+        "intersect p_ready_window.rim_surface.fit_command_rooms (1)",
+        "chamfer p_ready_window.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
+        "intersect p_ready_window.rim_surface (1)",
+        "union p_ready_window.rim_back.join_envelopes (2)",
+        "intersect p_ready_window.rim_back.fit_command_rooms (1)",
+        "chamfer p_ready_window.rim_back.rounded_bow_rim (6 edges, 350 mm)",
+        "difference p_ready_window.rim_back (1)",
+        "difference p_ready_window.open_rim (1)",
+        "union p_briefing_window.rim_surface.join_envelopes (2)",
+        "intersect p_briefing_window.rim_surface.fit_command_rooms (1)",
+        "chamfer p_briefing_window.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
+        "intersect p_briefing_window.rim_surface (1)",
+        "union p_briefing_window.rim_back.join_envelopes (2)",
+        "intersect p_briefing_window.rim_back.fit_command_rooms (1)",
+        "chamfer p_briefing_window.rim_back.rounded_bow_rim (6 edges, 350 mm)",
+        "difference p_briefing_window.rim_back (1)",
+        "difference p_briefing_window.open_rim (1)",
+        "difference window_and_airlock_recesses (5)",
+        "difference main_engine_p.hollow_bell (1)",
+        "difference main_engine_s.hollow_bell (1)"
+      ],
+      "warp_center_y_m": 1.2,
+      "nacelle_length_m": 56.0,
+      "atlas": {
+        "px_per_m": 8.92,
+        "charts": 170,
+        "cover": 0.681,
+        "window_centres_checked": 20,
+        "file": "atlases/tern_lod1.png",
+        "px": 1024,
+        "emission_coverage": 0.03419,
+        "sha256": "092536a24900962941b5850bc1512a934414d4a869b5094d6a0b30ac5f8deeb5",
+        "bytes": 1380344
+      }
+    },
+    "tern_lod2": {
+      "file": "tern_lod2.glb",
+      "triangles": 496,
+      "triangle_budget": 600,
+      "vertices": 932,
+      "draw_calls": 1,
+      "dimensions_m": [
+        45.0,
+        14.0,
+        81
+      ],
+      "bounds_m": [
+        [
+          -22.5,
+          -5.8,
+          -44
+        ],
+        [
+          22.5,
+          8.2,
+          37
+        ]
+      ],
+      "embedded_images": 1,
+      "texture_bytes_with_mips": 1398100,
+      "sha256": "26bd64f5921ca1c8041c0e6de7dac362f5bacc223fb7016521de34334f71488b",
+      "bytes": 393888,
+      "name": "SCS Tern",
+      "class": "Heron-class frigate",
+      "role": "Player ship",
+      "lod": 2,
+      "warp_pylons": 2,
+      "warp_nacelles": 2,
+      "assemblies": [
+        "tern_lod2.hull",
+        "tern_lod2.warp_pylon_-1",
+        "tern_lod2.warp_nacelle_-1",
+        "tern_lod2.field_-1_-1",
+        "tern_lod2.field_-1_1",
+        "tern_lod2.warp_pylon_1",
+        "tern_lod2.warp_nacelle_1",
+        "tern_lod2.field_1_-1",
+        "tern_lod2.field_1_1"
+      ],
+      "csg": [
+        "union hull.join_envelopes (2)",
+        "intersect hull.fit_command_rooms (1)",
+        "chamfer hull.rounded_bow_rim (6 edges, 350 mm)"
+      ],
+      "warp_center_y_m": 1.2,
+      "nacelle_length_m": 56.0,
+      "atlas": {
+        "px_per_m": 4.25,
+        "charts": 49,
+        "cover": 0.551,
+        "window_centres_checked": 20,
+        "file": "atlases/tern_lod2.png",
+        "px": 512,
+        "emission_coverage": 0.03419,
+        "sha256": "ef3b32a21453c8ffa7d689313b7f55119ed9fcb6990a7541f8f9289fb6b110c7",
+        "bytes": 352035
+      }
+    },
+    "osprey": {
+      "file": "osprey.glb",
+      "triangles": 1248,
+      "triangle_budget": 12000,
+      "vertices": 2510,
+      "draw_calls": 7,
+      "dimensions_m": [
+        29.6,
+        9.71,
+        55.04
+      ],
+      "bounds_m": [
+        [
+          -14.8,
+          -5,
+          -27.04
+        ],
+        [
+          14.8,
+          4.71,
+          28
+        ]
+      ],
+      "embedded_images": 3,
+      "texture_bytes_with_mips": 22806532,
+      "sha256": "1077ddf19fc21279bca209bd4c8c39f644e7647255ff0db1f4106de066648df7",
+      "bytes": 5893092,
+      "name": "SCS Osprey",
+      "class": "Osprey-class courier",
+      "role": "Companion concept",
+      "lod": 0,
+      "warp_pylons": 2,
+      "warp_nacelles": 2,
+      "assemblies": [
+        "osprey.hull",
+        "osprey.belt_-1_1",
+        "osprey.stripe_-1_1",
+        "osprey.belt_1_1",
+        "osprey.stripe_1_1",
+        "osprey.belt_-1_2",
+        "osprey.stripe_-1_2",
+        "osprey.belt_1_2",
+        "osprey.stripe_1_2",
+        "osprey.belt_-1_3",
+        "osprey.stripe_-1_3",
+        "osprey.belt_1_3",
+        "osprey.stripe_1_3",
+        "osprey.belt_-1_4",
+        "osprey.stripe_-1_4",
+        "osprey.belt_1_4",
+        "osprey.stripe_1_4",
+        "osprey.warp_pylon_-1",
+        "osprey.pylon_identity_-1",
+        "osprey.warp_nacelle_-1",
+        "osprey.field_-1_-1",
+        "osprey.field_frame_-1_-1",
+        "osprey.field_-1_1",
+        "osprey.field_frame_-1_1",
+        "osprey.nacelle_spine_-1",
+        "osprey.nacelle_-1.service_band_0",
+        "osprey.nacelle_-1.service_band_1",
+        "osprey.nacelle_-1.service_band_2",
+        "osprey.nacelle_-1.service_band_3",
+        "osprey.nacelle_-1.service_band_4",
+        "osprey.nacelle_-1.intake",
+        "osprey.nacelle_-1.collector",
+        "osprey.warp_pylon_1",
+        "osprey.pylon_identity_1",
+        "osprey.warp_nacelle_1",
+        "osprey.field_1_-1",
+        "osprey.field_frame_1_-1",
+        "osprey.field_1_1",
+        "osprey.field_frame_1_1",
+        "osprey.nacelle_spine_1",
+        "osprey.nacelle_1.service_band_0",
+        "osprey.nacelle_1.service_band_1",
+        "osprey.nacelle_1.service_band_2",
+        "osprey.nacelle_1.service_band_3",
+        "osprey.nacelle_1.service_band_4",
+        "osprey.nacelle_1.intake",
+        "osprey.nacelle_1.collector",
+        "osprey.command_brow",
+        "osprey.bridge_glazing",
+        "osprey.impulse_-1",
+        "osprey.impulse_glow_-1",
+        "osprey.impulse_1",
+        "osprey.impulse_glow_1",
+        "osprey.dorsal_livery_-1_0",
+        "osprey.dorsal_livery_1_0",
+        "osprey.registration"
+      ],
+      "csg": [
+        "difference nacelle_-1.recess (1)",
+        "difference nacelle_1.recess (1)",
+        "difference command_brow_glazing (6)"
+      ],
+      "warp_center_y_m": -3.5,
+      "nacelle_length_m": 26.0
+    },
+    "shrike": {
+      "file": "shrike.glb",
+      "triangles": 1164,
+      "triangle_budget": 12000,
+      "vertices": 2333,
+      "draw_calls": 7,
+      "dimensions_m": [
+        34.2,
+        7.0,
+        52
+      ],
+      "bounds_m": [
+        [
+          -17.1,
+          -3.2,
+          -24
+        ],
+        [
+          17.1,
+          3.8,
+          28
+        ]
+      ],
+      "embedded_images": 3,
+      "texture_bytes_with_mips": 22806532,
+      "sha256": "73b3ee3d2b774485dca4e19223dfcfb3884404ebe7887af63f59e2e772cb8052",
+      "bytes": 5885516,
+      "name": "Shrike",
+      "class": "Shrike-class raider",
+      "role": "Companion concept",
+      "lod": 0,
+      "warp_pylons": 2,
+      "warp_nacelles": 2,
+      "assemblies": [
+        "shrike.hull",
+        "shrike.belt_-1_1",
+        "shrike.stripe_-1_1",
+        "shrike.belt_1_1",
+        "shrike.stripe_1_1",
+        "shrike.belt_-1_2",
+        "shrike.stripe_-1_2",
+        "shrike.belt_1_2",
+        "shrike.stripe_1_2",
+        "shrike.warp_pylon_-1",
+        "shrike.pylon_identity_-1",
+        "shrike.warp_nacelle_-1",
+        "shrike.field_-1_-1",
+        "shrike.field_frame_-1_-1",
+        "shrike.field_-1_1",
+        "shrike.field_frame_-1_1",
+        "shrike.nacelle_spine_-1",
+        "shrike.nacelle_-1.service_band_0",
+        "shrike.nacelle_-1.service_band_1",
+        "shrike.nacelle_-1.service_band_2",
+        "shrike.nacelle_-1.service_band_3",
+        "shrike.nacelle_-1.service_band_4",
+        "shrike.nacelle_-1.intake",
+        "shrike.nacelle_-1.collector",
+        "shrike.warp_pylon_1",
+        "shrike.pylon_identity_1",
+        "shrike.warp_nacelle_1",
+        "shrike.field_1_-1",
+        "shrike.field_frame_1_-1",
+        "shrike.field_1_1",
+        "shrike.field_frame_1_1",
+        "shrike.nacelle_spine_1",
+        "shrike.nacelle_1.service_band_0",
+        "shrike.nacelle_1.service_band_1",
+        "shrike.nacelle_1.service_band_2",
+        "shrike.nacelle_1.service_band_3",
+        "shrike.nacelle_1.service_band_4",
+        "shrike.nacelle_1.intake",
+        "shrike.nacelle_1.collector",
+        "shrike.command_brow",
+        "shrike.bridge_glazing",
+        "shrike.impulse_-1",
+        "shrike.impulse_glow_-1",
+        "shrike.impulse_1",
+        "shrike.impulse_glow_1",
+        "shrike.weapon_shoulder_-1",
+        "shrike.railgun_-1",
+        "shrike.weapon_shoulder_1",
+        "shrike.railgun_1",
+        "shrike.dorsal_livery_-1_0",
+        "shrike.dorsal_livery_1_0",
+        "shrike.registration"
+      ],
+      "csg": [
+        "difference nacelle_-1.recess (1)",
+        "difference nacelle_1.recess (1)",
+        "difference command_brow_glazing (6)"
+      ],
+      "warp_center_y_m": -1.0,
+      "nacelle_length_m": 22.0
+    }
+  },
+  "livery": {
+    "id": "copper",
+    "name": "Copper",
+    "texture": "tern_hull",
+    "accent_srgb": [
+      0.94,
+      0.37,
+      0.16
+    ]
+  },
+  "liveries": [
+    {
+      "id": "copper",
+      "name": "Copper",
+      "texture": "tern_hull",
+      "accent_srgb": [
+        0.94,
+        0.37,
+        0.16
+      ],
+      "directory": "."
+    },
+    {
+      "id": "cobalt",
+      "name": "Cyan",
+      "texture": "tern_hull_cobalt",
+      "accent_srgb": [
+        0.106,
+        0.722,
+        0.875
+      ],
+      "directory": "liveries/cobalt"
+    },
+    {
+      "id": "rescue",
+      "name": "Rescue",
+      "texture": "tern_hull_rescue",
+      "accent_srgb": [
+        0.86,
+        0.15,
+        0.09
+      ],
+      "directory": "liveries/rescue"
+    }
+  ],
+  "default_livery": "cobalt"
+}
