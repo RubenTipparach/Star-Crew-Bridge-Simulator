@@ -11,7 +11,7 @@ use sc_core::combat::bodies::Posture;
 use sc_core::combat::{self, Command, HelmMode, Outcome, Phase, Refusal, Station, TubeState};
 
 /// The protocol's version; a Hello with another is refused.
-pub const PROTOCOL: u16 = 1;
+pub const PROTOCOL: u16 = 2;
 /// The longest unreliable message, so it is one SCTP chunk in one datagram (netcode-and-sessions section 2).
 pub const MAX_UNRELIABLE: usize = 1200;
 /// The longest string field, in bytes.
