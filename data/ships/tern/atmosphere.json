@@ -63,7 +63,7 @@
     "initial_k": 294.15
   },
   "ventilation": {
-    "air_changes_per_hour": { "room": 10.0, "corridor": 8.0, "bay": 4.0, "crawlspace": 6.0, "airlock": 4.0, "pod": 20.0 },
+    "air_changes_per_hour": { "room": 10.0, "corridor": 8.0, "trunk": 8.0, "bay": 4.0, "crawlspace": 6.0, "airlock": 4.0, "pod": 20.0 },
     "air_changes_override": { "engineering": 15.0 },
     "damper_close_below_kpa": 85.0,
     "damper_trip_fraction_per_s": 0.0002,
@@ -197,7 +197,20 @@
     "system_damage_above_k": 423.15,
     "system_damage_pct_per_s_per_k": 0.01,
     "reactor_damage_factor": 0.2,
-    "extinguisher": { "discharge_s": 15.0, "hrr_cut_kw_per_s": 60.0, "locker": "damage_control", "locker_count": 6, "refill_s": 30.0, "agent_kg": 6.0, "cone_deg": 30.0, "reach_m": 3.0 },
+    "extinguisher": { "discharge_s": 15.0, "hrr_cut_kw_per_s": 60.0, "locker": "damage_control", "locker_count": 6, "refill_s": 30.0, "agent_kg": 6.0, "cone_deg": 30.0, "reach_m": 3.0, "bracket_restock_s": 15.0 },
+    "outbreaks": {
+      "owned_by": "openspec/changes/fire-spread",
+      "note": "Design 6b: fires nobody started, at fire-prone spots. While no outbreak fire burns (at most max_burning at once), the next breaks out a seeded draw from interval_s after the last went out (the first first_s after the start), at a seed_kw seed, on a spot drawn from those that can catch (requires_damaged: only while that station is damaged or disabled), never the last one again. A spot is at_m (x, z) or the middle of the first prop of its kind its room is furnished with. bracket_restock_s on the extinguisher is safety-points 3a.",
+      "first_s": 20.0,
+      "interval_s": [45.0, 90.0],
+      "max_burning": 1,
+      "points": [
+        { "id": "ob_bridge_tactical", "room": "bridge", "at_m": [-1.5, 28.45], "requires_damaged": "tactical", "cause": "tactical's damaged wiring, under its desk" },
+        { "id": "ob_mess_galley", "room": "mess", "at_m": [-6.3, 17.05], "cause": "cooking at the galley: burning fat spilled down the counter's front onto the deck" },
+        { "id": "ob_quarters_bunk", "room": "quarters", "prop": "bunk", "cause": "a reading lamp's frayed lead" },
+        { "id": "ob_port_turret_panel", "room": "port_turret", "prop": "local_panel", "cause": "an electrical fault in the turret's power panel" }
+      ]
+    },
     "suppression": {
       "inert_gas": { "compartments": ["magazine", "switchboard", "computer_core", "shield_room", "life_support"], "design_o2_fraction": 0.125, "time_s": 60.0, "soak_s": 600.0, "store": "reserve_n2" },
       "water_mist": { "compartments": ["engineering", "hangar", "drive"], "hrr_cut_kw_per_s": 100.0, "cooling_mw": 1.0, "duration_s": 60.0, "discharges": 2, "auto_above_kw": 1000.0, "confirm_s": 10.0 },
@@ -205,7 +218,7 @@
     },
     "cells": {
       "owned_by": "openspec/changes/fire-spread",
-      "note": "Design 1-2 and 5: every room's floor in square cells of size_m on the deck's x and z, each with the fuel class of the prop that covers its centre (props, fixtures), else bare. Bare cells take the room's fuel_mj_per_m2 the furnished ones leave, never below bare_min_mj_per_m2. A burning cell rises toward peak x f_O2 with time constant rise_s; an unburnt or knocked-down cell gathers dose (seconds of full exposure) from burning neighbours within two cells (q over the neighbour's peak, times neighbour_weights) and from the hot layer (0 at layer_preheat_k[0] rising to 1 at layer_preheat_k[1]), cooling by dose_cooling_per_s when nothing feeds it, and ignites at its class's dose_s at ignite_kw. A cell below out_below_kw goes out with agent_s of agent on it; with no burning neighbour for smoulder_s after that it is out and cold, and only a burning neighbour or a flashover lights it again (the hot layer preheats only unburnt cells, and only while something in the room burns). aim_height_m is how high over the floor a cone reaches a cell (the flames' base). flame_height_m is the flame drawn at ignition and at peak; smoke_layer_ppm the smoke a hot layer holds, which sets how far it reaches down.",
+      "note": "Design 1-2 and 5: every room's floor in square cells of size_m on the deck's x and z, each with the fuel class of the prop that covers its centre (props, fixtures), else bare. Bare cells take the room's fuel_mj_per_m2 the furnished ones leave, never below bare_min_mj_per_m2. A burning cell rises toward peak x f_O2 with time constant rise_s; an unburnt or knocked-down cell gathers dose (seconds of full exposure) from burning neighbours within two cells (q over the neighbour's peak, times neighbour_weights) and from the hot layer (0 at layer_preheat_k[0] rising to 1 at layer_preheat_k[1]), cooling by dose_cooling_per_s when nothing feeds it, and ignites at its class's dose_s at ignite_kw. A cell below out_below_kw goes out with agent_s of agent on it; with no burning neighbour for smoulder_s after that it is out and cold, and only a burning neighbour or a flashover lights it again (the hot layer preheats only unburnt cells, and only while something in the room burns). aim_height_m is how high over the floor a cone reaches a cell (the flames' base). flame_height_m is the flame drawn at ignition and at peak, standing on the top of a prop that covers its cell when that top is no higher than flame_on_props_below_m over the floor (a counter, a desk, a table; the cells do not see height, design 3); smoke_layer_ppm the smoke a hot layer holds, which sets how far it reaches down.",
       "tuned": "Dose figures and the hot layer's preheat range tuned by tools/mockups/fire_cases.mjs on 2026-10-09 so the quarters, door shut, 50 kW seed on a bunk passes 1 MW at 113 s (design 4): every class's dose doubled from the design's first figures, bedding 36 s (not 24) and bare deck 110 s (not 140), and the layer's preheat from 50 C to 180 C (not 100 C to 300 C). See openspec/changes/fire-spread/fire-cases.md.",
       "size_m": 0.5,
       "rise_s": 10.0,
@@ -218,6 +231,7 @@
       "layer_preheat_k": [323.15, 453.15],
       "bare_min_mj_per_m2": 20.0,
       "aim_height_m": 0.2,
+      "flame_on_props_below_m": 1.2,
       "flame_height_m": [0.3, 1.8],
       "smoke_layer_ppm": 1000.0,
       "classes": {
