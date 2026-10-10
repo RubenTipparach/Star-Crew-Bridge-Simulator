@@ -91,3 +91,9 @@ Newest last. What was done, what was found, on which machine and commit.
   Tactical bot, built from source there (4 min 45 s for `sc-bot` alone on the 4 GB Pi 5). Six rounds, six victories in
   49-70 s; 84 kbit/s down per client, nothing dropped. A prebuilt bundle served from Pi 1 was refused by Pi 2's session's
   permission check: the way to another machine is git and its own build.
+- **Pi 1's Wi-Fi dropped mid-drill** (15:16:26 to 15:18:29, "ssid-not-found"): the server lost all three clients,
+  Pi 2's first and the local ones too, since they reach it by its Wi-Fi address. The server held and automation
+  finished the round (a defeat). Both bots quit: a closed transport only showed after about 24 s, and `sc-bot` exited
+  on it. Now the session counts seconds since anything arrived (`Session::silent_s`), and `sc-bot` treats 5 s of it
+  (the server's own `SILENT_S`) or a closed connection as lost and tries again every 3 s as a fresh crew member;
+  checked by stopping a server under a bot and starting another (rejoined 3 s after the 5 s silence).
