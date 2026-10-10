@@ -6862,6 +6862,75 @@ window.MOCKUP_EXPORT_DECK = () => {
       car_room: car ? "lift_car" : null })) };
   return out;
 };
+// ------------------------------------------------------------------ light probes (light-baking design 16)
+// Ambient cubes for things that move, on a grid in each room's air, from the room's own bake scene: probeCube is the
+// irradiance function the walls take. tools/deck/export_deck.mjs asks for each room's key and bakes only the rooms its
+// probe cache (tools/deck/cache/deck-plan-probes.bin) does not hold under that key.
+const PROBE_SET = K.lightingData().bake.probes, PROBE_VERSION = 1;
+/** A room's probe grid: points spacing_m apart on all three axes over its brushes' box, the first wall_offset_m in. */
+function probeGrid(r) {
+  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  for (const b of r.comp.brushes) {
+    for (const [x, z] of b.poly) { lo[0] = Math.min(lo[0], x); hi[0] = Math.max(hi[0], x); lo[2] = Math.min(lo[2], z); hi[2] = Math.max(hi[2], z); }
+    lo[1] = Math.min(lo[1], b.y[0]); hi[1] = Math.max(hi[1], b.y[1]);
+  }
+  const sp = PROBE_SET.spacing_m, off = PROBE_SET.wall_offset_m, origin = lo.map((v) => v + off);
+  const dims = [0, 1, 2].map((k) => Math.max(1, Math.floor((hi[k] - off - origin[k]) / sp + 1e-6) + 1));
+  return { origin, spacing: sp, dims };
+}
+/** A room's probe key: its bake key, the probe settings, the gather ray count and this code's version. */
+function probeKey(r) {
+  const text = JSON.stringify({ v: PROBE_VERSION, bake: bakeKey(r), probes: PROBE_SET, rays: BAKE_SET.gather_rays, grid: probeGrid(r) });
+  const T = new Uint32Array(text.length);
+  for (let i = 0; i < text.length; i++) T[i] = text.charCodeAt(i);
+  return LBK.digest([T]);
+}
+/** gather_rays directions spread evenly over the sphere (a Fibonacci spiral), for the inside-a-prop test. */
+function sphereDirs(n) {
+  const out = [], ga = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < n; i++) {
+    const y = 1 - (2 * (i + 0.5)) / n, rr = Math.sqrt(1 - y * y), a = ga * i;
+    out.push([Math.cos(a) * rr, y, Math.sin(a) * rr]);
+  }
+  return out;
+}
+/** Bake one room's probes: { key, origin_m, spacing_m, dims, cubes (54 bytes a probe: axis +X -X +Y -Y +Z -Z, then
+ * state, then RGB, each the display multiplier 0-2 in a byte as the deck's vertex colours), valid (a byte a probe) }. */
+async function bakeProbes(r) {
+  const t0 = performance.now(), S = bakeScene(r);
+  await LBK.prepare(S);
+  const g = probeGrid(r), n = g.dims[0] * g.dims[1] * g.dims[2], cubes = new Uint8Array(n * 54), valid = new Uint8Array(n);
+  const dirs = sphereDirs(BAKE_SET.gather_rays), hit = {}, toByte = (d) => Math.max(0, Math.min(255, Math.round((d / 2) * 255)));
+  const roomKey = Array.from(r.comp.id).reduce((h, ch) => Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0, 2166136261);
+  let i = 0, invalid = 0;
+  for (let iz = 0; iz < g.dims[2]; iz++) for (let iy = 0; iy < g.dims[1]; iy++) for (let ix = 0; ix < g.dims[0]; ix++, i++) {
+    const p = [g.origin[0] + ix * g.spacing, g.origin[1] + iy * g.spacing, g.origin[2] + iz * g.spacing];
+    // Outside the room's air, or inside something (its rays mostly meet back faces): invalid; neighbours fill in.
+    let ok = !!K.brushAt(r.comp, p[0], p[1], p[2]);
+    if (ok) {
+      let back = 0;
+      for (const d of dirs) if (LBK.closest(S.bvh, p[0], p[1], p[2], d[0], d[1], d[2], 1e3, hit) && hit.back) back++;
+      ok = back <= PROBE_SET.invalid_backface_fraction * dirs.length;
+    }
+    if (!ok) { invalid++; continue; }
+    valid[i] = 1;
+    const cube = LBK.probeCube(S, p, LBK.hash3(BAKE_SET.seed, roomKey, i));
+    LBK.STATES.forEach((st, si) => LBK.cubeDisplay(S, cube, st).forEach((rgb, ax) => {
+      for (let k = 0; k < 3; k++) cubes[ax * 9 + si * 3 + k + i * 54] = toByte(rgb[k]);
+    }));
+    if ((i & 31) === 0) await new Promise((res) => setTimeout(res, 0));
+  }
+  return { key: probeKey(r), origin_m: g.origin, spacing_m: g.spacing, dims: g.dims, cubes, valid, invalid, ms: Math.round(performance.now() - t0) };
+}
+/** For tools/deck/export_deck.mjs: every room's probe key, by id. */
+window.MOCKUP_PROBE_KEYS = () => Object.fromEntries(rooms.map((r) => [r.comp.id, probeKey(r)]));
+/** For tools/deck/export_deck.mjs: one room's probes, baked here, with the arrays as base64. */
+window.MOCKUP_PROBE_ROOM = async (id) => {
+  const r = rooms.find((q) => q.comp.id === id);
+  if (!r) return null;
+  const o = await bakeProbes(r), b64 = (u) => { let s = ""; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); };
+  return Object.assign(o, { cubes: b64(o.cubes), valid: b64(o.valid) });
+};
 /** For tools: show a lighting state at once (tools/mockups/bake_ship.mjs shoots each view in the three). */
 window.MOCKUP_LIGHT = (k) => setLight(k, true);
 bakeLabel();

@@ -108,7 +108,8 @@ Built now so the ship has people in it; the rest of this design follows on the s
 - **Bodies:** a bot is a `sc-core::walk` body like a player's, stepped by the same code. Bodies do not collide with
   each other yet (section's "NPCs in the way" stands for the next step).
 - **Seen:** a figure about 1.8 m tall, low poly (about 100 triangles), its tunic in the department's colour, built
-  by `deckc` (a generator, CLAUDE.md 9) into the deck file; drawn once a bot.
+  by `deckc` (a generator, CLAUDE.md 9) into the deck file; drawn once a bot. Blocky figures stay the crew for now (owner, 2026-10-10: "for now
+  use blocky people"; `crew-characters`), lit by the light probes around them (`light-baking` section 16).
 - **Not yet:** jobs, watches, needs, orders, red alert, the network. The CPU cost: logged per frame for the bots'
   steps in the client; not measured on a Pi (CLAUDE.md 2).
 

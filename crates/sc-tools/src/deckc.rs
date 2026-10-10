@@ -17,8 +17,8 @@
 //!   its mesh in the screens' atlas, which is cut into square layers after every other layer, and the viewscreens.
 
 use sc_core::deck::{
-    self, DeckCompartment, DeckIndex, DeckTextures, DeckView, DeckWalk, WalkDoor, WalkHatch, WalkLadder, WalkLift,
-    WalkStart,
+    self, DeckCompartment, DeckIndex, DeckProbes, DeckTextures, DeckView, DeckWalk, WalkDoor, WalkHatch, WalkLadder,
+    WalkLift, WalkStart,
 };
 use sc_core::vertex::{pack_deck_vertex, DeckVertexIn};
 use serde::Deserialize;
@@ -98,6 +98,18 @@ struct Room {
     vertices: u32,
     files: RoomFiles,
     faces: Option<Faces>,
+    probes: Option<RoomProbes>,
+}
+/// A room's light probes (light-baking 16): the grid, then its cubes (54 bytes a probe) and valid flags (a byte a
+/// probe) in their files.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RoomProbes {
+    origin_m: [f64; 3],
+    spacing_m: f32,
+    dims: [u32; 3],
+    cubes: String,
+    valid: String,
 }
 /// A room's console faces: triangles textured from the screens' atlas, lit by the room's bake.
 #[derive(Deserialize)]
@@ -308,6 +320,8 @@ pub fn run(root: &Path, ship: &str) -> Result<String, String> {
     let mut indices: Vec<u32> = Vec::new();
     let mut comps = Vec::new();
     let mut tris = 0usize;
+    let mut probe_blob: Vec<u8> = Vec::new();
+    let mut probes_valid = 0usize;
     for r in &ex.rooms {
         let n = r.vertices as usize;
         let f = &r.files;
@@ -374,6 +388,28 @@ pub fn run(root: &Path, ship: &str) -> Result<String, String> {
         }
         let (vertex_offset, vertex_count, index_offset, index_count) = pack(&mut vertices, &mut indices, &ins, &r.id)?;
         tris += n / 3;
+        // Its light probes, each its 54 colour bytes then its valid flag (sc-core::probes).
+        let probes = match &r.probes {
+            None => None,
+            Some(p) => {
+                let count = p.dims.iter().map(|&d| d as usize).product::<usize>();
+                let cubes = std::fs::read(dir.join(&p.cubes)).map_err(|e| format!("{}: {e}", p.cubes))?;
+                let valid = std::fs::read(dir.join(&p.valid)).map_err(|e| format!("{}: {e}", p.valid))?;
+                if count == 0 || cubes.len() != count * 54 || valid.len() != count || valid.iter().any(|&v| v > 1) {
+                    return Err(format!("{}: its probes do not match their grid", r.id));
+                }
+                if !(p.spacing_m > 0.0 && p.spacing_m.is_finite()) || p.origin_m.iter().any(|x| !x.is_finite()) {
+                    return Err(format!("{}: its probe grid is not finite", r.id));
+                }
+                let first = (probe_blob.len() / sc_core::probes::PROBE_BYTES) as u64;
+                for (cube, v) in cubes.chunks_exact(54).zip(&valid) {
+                    probe_blob.extend_from_slice(cube);
+                    probe_blob.push(*v);
+                }
+                probes_valid += valid.iter().filter(|&&v| v == 1).count();
+                Some(DeckProbes { origin_m: p.origin_m, spacing_m: p.spacing_m, dims: p.dims, first })
+            }
+        };
         comps.push(DeckCompartment {
             id: r.id.clone(),
             name: r.name.clone(),
@@ -385,6 +421,7 @@ pub fn run(root: &Path, ship: &str) -> Result<String, String> {
             index_count,
             mover: r.mover,
             floor_m: None,
+            probes,
         });
     }
     // Bots' places (crew-npcs 7): each layout compartment's floor middle, set on the rooms above.
@@ -395,7 +432,8 @@ pub fn run(root: &Path, ship: &str) -> Result<String, String> {
     for c in comps.iter_mut() {
         c.floor_m = floor_middle(&layout, &c.id);
     }
-    // The crew figures (crew-npcs 7): one a department, flat-lit, feet at the origin.
+    // The crew figures (crew-npcs 7): one a department, their colours unlit albedo for the probes to light
+    // (light-baking 16), feet at the origin.
     let company: sc_core::crew::CompanyData = sc_core::data::parse(
         "data/crew/company.json",
         &std::fs::read_to_string(root.join("data/crew/company.json")).map_err(|e| e.to_string())?,
@@ -438,6 +476,7 @@ pub fn run(root: &Path, ship: &str) -> Result<String, String> {
             index_count,
             mover: 0,
             floor_m: None,
+            probes: None,
         });
     }
     // The space dock's frame (13b): one compartment a bay, in the deck `outside`, lit by the sun here.
@@ -498,6 +537,7 @@ pub fn run(root: &Path, ship: &str) -> Result<String, String> {
             index_count,
             mover: 0,
             floor_m: None,
+            probes: None,
         });
     }
     // The walk world: its triangles carried as they are, checked finite and whole.
@@ -528,14 +568,15 @@ pub fn run(root: &Path, ship: &str) -> Result<String, String> {
             lifts: w.lifts.clone(),
         },
         views: ex.views.clone(),
+        probe_count: (probe_blob.len() / sc_core::probes::PROBE_BYTES) as u64,
     };
-    let bytes = deck::write(&index, &vertices, &indices, &tex_blob, &walk_tris);
+    let bytes = deck::write(&index, &vertices, &indices, &tex_blob, &walk_tris, &probe_blob);
     deck::read(&bytes).map_err(|e| format!("the deck just written does not read back: {e}"))?;
     let out = root.join("compiled").join(format!("{ship}.deck"));
     std::fs::create_dir_all(out.parent().unwrap()).map_err(|e| e.to_string())?;
     std::fs::write(&out, &bytes).map_err(|e| format!("{}: {e}", out.display()))?;
     Ok(format!(
-        "{}: {} compartments, {} triangles, {} vertices ({:.1} MB), {} texture layers of {} px with {} mips ({:.1} MB), a walk world of {} triangles, {:.1} MB in all",
+        "{}: {} compartments, {} triangles, {} vertices ({:.1} MB), {} texture layers of {} px with {} mips ({:.1} MB), a walk world of {} triangles, {} light probes ({} valid, {:.2} MB), {:.1} MB in all",
         out.display(),
         index.compartments.len(),
         tris,
@@ -546,6 +587,9 @@ pub fn run(root: &Path, ship: &str) -> Result<String, String> {
         index.textures.mips,
         tex_blob.len() as f64 / 1e6,
         w.triangle_count,
+        index.probe_count,
+        probes_valid,
+        probe_blob.len() as f64 / 1e6,
         bytes.len() as f64 / 1e6
     ))
 }
