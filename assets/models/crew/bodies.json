@@ -1,0 +1,100 @@
+{
+  "schema": "starcrew.crew-bodies-manifest/1",
+  "built_by": "tools/blender/build_crew_bodies.py",
+  "table": "data/crew/bodies.json",
+  "budget": {
+    "triangles": 3000,
+    "bones": 30,
+    "materials": 1,
+    "hair_triangles": 520,
+    "tunic_triangles": 700,
+    "trousers_triangles": 420,
+    "boots_triangles": 200
+  },
+  "bodies": {
+    "captain_m": {
+      "triangles": 2930,
+      "bones": 30,
+      "materials": 1,
+      "textures": 0,
+      "colours": true,
+      "sha256": "087fa86385536c135892b3e0bde4d20c082688ab8801b9691479fdc16d4c219d",
+      "bytes": 153864,
+      "id": "captain_m",
+      "height_m": 1.8,
+      "head_m": 0.413,
+      "heads_tall": 4.36,
+      "role": "command"
+    },
+    "comms_f": {
+      "triangles": 2932,
+      "bones": 30,
+      "materials": 1,
+      "textures": 0,
+      "colours": true,
+      "sha256": "36006695061bcd01a54a094cbd95c07415f3b818e2631c68d25835ab8463ea2d",
+      "bytes": 177864,
+      "id": "comms_f",
+      "height_m": 1.7,
+      "head_m": 0.382,
+      "heads_tall": 4.45,
+      "role": "comms"
+    },
+    "engineer_m": {
+      "triangles": 2931,
+      "bones": 30,
+      "materials": 1,
+      "textures": 0,
+      "colours": true,
+      "sha256": "58d7b9d7530ec34426f8045db3454fd5edb084f425a971d3ab19fecd4945ff52",
+      "bytes": 173448,
+      "id": "engineer_m",
+      "height_m": 1.74,
+      "head_m": 0.384,
+      "heads_tall": 4.53,
+      "role": "engineering"
+    },
+    "helm_f": {
+      "triangles": 2931,
+      "bones": 30,
+      "materials": 1,
+      "textures": 0,
+      "colours": true,
+      "sha256": "310b29bb532c90afc05762780ba2c6213c3cda94ef5060672675b234d26aa68d",
+      "bytes": 174028,
+      "id": "helm_f",
+      "height_m": 1.68,
+      "head_m": 0.376,
+      "heads_tall": 4.47,
+      "role": "helm"
+    },
+    "science_f": {
+      "triangles": 2930,
+      "bones": 30,
+      "materials": 1,
+      "textures": 0,
+      "colours": true,
+      "sha256": "834afdbe782a6163448ea5796554aa931a493114b26ec84c944a228a68fc7cbb",
+      "bytes": 168180,
+      "id": "science_f",
+      "height_m": 1.64,
+      "head_m": 0.383,
+      "heads_tall": 4.28,
+      "role": "science"
+    },
+    "tactical_m": {
+      "triangles": 2929,
+      "bones": 30,
+      "materials": 1,
+      "textures": 0,
+      "colours": true,
+      "sha256": "6ba5d6e9e07d10b2078010911f68cf12cc41d0a8693f403ebe80293a72418273",
+      "bytes": 153292,
+      "id": "tactical_m",
+      "height_m": 1.78,
+      "head_m": 0.389,
+      "heads_tall": 4.58,
+      "role": "tactical"
+    }
+  }
+}

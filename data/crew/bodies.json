@@ -1,0 +1,105 @@
+{
+  "schema": "starcrew.crew-bodies/1",
+  "status": "Proposed (2026-10-10) by openspec/changes/crew-bodies: prototypes for the owner's review (\"better low poly characters ... exagerate portions a bit to make them look more cartoony\"). Read by tools/blender/build_crew_bodies.py.",
+  "_rules": [
+    "One row a crew body; the build writes assets/models/crew/<id>.glb and assets/models/crew/bodies.json (the manifest).",
+    "sex male or female; age_years 18-70; muscle and weight are MakeHuman's sliders, 0-1; height_m is the finished body's height, cartoon head included, at most the walk body's 1.80 m (data/crew/walk.json).",
+    "skin and hair_colour name colours in skin_tones_srgb and hair_colours_srgb; hair is a MakeHuman CC0 hair asset or null; eye_colour names a colour in eye_colours_srgb; role names a colour in role_srgb (the department, docs/mockups/lib/shipkit.js PALETTE.role).",
+    "cartoon: pose scales applied on the rig before it becomes the rest pose (design section 3). uniform scales the bone; along scales it along its length (Blender's bone Y); across scales it across (bone X and Z); they multiply.",
+    "regions: which colour each bone's skin takes (design section 4); every bone of the rig is in exactly one region.",
+    "budget: read back from the written glb. triangles at most 3,000, bones at most 30, one material, no texture (crew-on-deck 17).",
+    "Units: metres (_m), years (_years), sRGB components 0-1 (_srgb). An unknown key or a missing one stops the build with its path."
+  ],
+  "proxies": { "male": "male1591", "female": "female1605" },
+  "eyes": "low-poly",
+  "clothes": { "_comment": "MakeHuman CC0 garments fitted by MPFB's clothes service; the skin under them is deleted (each asset's delete group, then every body face whose bone region the garments cover). The suit's two loose pieces are the tunic (the upper) and the trousers (the lower). male_casualsuit02 is the long-sleeved top over trousers, the nearest uniform shape in the pack; MakeHuman fits any garment to either sex through its one base mesh.", "suit": "male_casualsuit02", "shoes": "shoes02" },
+  "style": "Pixar-like crew after the owner's references (2026-10-10, two 'Star Trek Pixar' fan cards): a big head on a short thick neck, eyes with whites, heavy brows, a broad chest, a black collar band and a chest badge, smooth shading. The shape only: no likeness, no Starfleet insignia (CLAUDE.md 15).",
+  "cartoon": {
+    "head": { "uniform": 1.70 },
+    "neck_01": { "along": 0.80, "across": 1.25 },
+    "hands": { "uniform": 1.45 },
+    "feet": { "uniform": 1.40 },
+    "clavicle": { "along": 1.25 },
+    "spine_03": { "across": 1.20 },
+    "spine_02": { "across": 1.10 },
+    "spine_01": { "across": 0.92 },
+    "upperarm": { "along": 0.95, "across": 1.20 },
+    "lowerarm": { "along": 0.95, "across": 1.15 },
+    "thigh": { "along": 0.86, "across": 1.15 },
+    "calf": { "along": 0.86, "across": 1.10 }
+  },
+  "regions": {
+    "skin": ["head", "neck_01", "hand", "thumb", "index", "middle", "ring", "pinky", "fingers"],
+    "tunic": ["spine_01", "spine_02", "spine_03", "clavicle", "upperarm", "lowerarm"],
+    "trousers": ["Root", "pelvis", "thigh", "calf"],
+    "boots": ["foot", "ball"],
+    "props": ["prop_hand", "prop_back"]
+  },
+  "region_srgb": {
+    "trousers": [0.17, 0.18, 0.21],
+    "boots": [0.07, 0.07, 0.08],
+    "collar": [0.05, 0.05, 0.06],
+    "badge": [0.92, 0.74, 0.30],
+    "sclera": [0.95, 0.94, 0.92],
+    "pupil": [0.03, 0.03, 0.04]
+  },
+  "eyebrows": "eyebrow001",
+  "eye_scale": 2.1,
+  "eye_forward_m": 0.007,
+  "brow_lift_m": 0.012,
+  "brow_forward_m": 0.008,
+  "_comment_eye_scale": "Big cartoon eyes (owner, 2026-10-10: \"just big eyes I think might make them fun\"): each eyeball scaled about its own centre, then moved eye_forward_m out of the socket, so the whole white shows past the lids; the brows rise brow_lift_m and come brow_forward_m forward to sit above the bigger eyes. Applied after the cartoon pose, before the body is scaled to its height.",
+  "collar_width_m": 0.035,
+  "_comment_collar": "The collar band: the tunic faces whose centres lie within collar_width_m of the tunic's neck opening (its open edge loop highest on the body).",
+  "iris_ratio": 0.55,
+  "pupil_ratio": 0.40,
+  "eye_segments": 12,
+  "_comment_eye_mesh": "The build replaces MPFB's low-poly eyeball (caps only at 0.20, 0.38, 0.71 and 0.92 of its width, so no face boundary at the references' ratios) with its own sphere of eye_segments sides: a pupil fan, a ring out to the iris's edge, a ring out to the equator and a fan behind, its rings exactly on the pupil and iris edges. 4 x eye_segments triangles an eye.",
+  "_comment_eye_ratio": "Off the owner's references (2026-10-10, estimated off the pictures): the iris is about 0.45 (the Kirk card) to 0.58 (Elsa) of the eye's width, the pupil about 0.4 of the iris. iris_ratio is the iris's width over the eyeball's, pupil_ratio the pupil's over the iris's. The build paints the eye faces whose centres lie within that cap of the eye's front (a cap of width ratio r has half-angle asin r) and prints what it painted, measured.",
+  "eye_colours_srgb": {
+    "brown": [0.30, 0.17, 0.08],
+    "hazel": [0.45, 0.33, 0.14],
+    "green": [0.22, 0.48, 0.30],
+    "blue": [0.20, 0.50, 0.78],
+    "grey": [0.45, 0.52, 0.58]
+  },
+  "badge": { "_comment": "A patch on the left chest: the tunic faces within radius_m of the front of the chest, out_m to the body's left and down_m below the top of spine_03.", "out_m": 0.10, "down_m": 0.02, "radius_m": 0.045 },
+  "skin_tones_srgb": {
+    "fair": [0.96, 0.82, 0.72],
+    "light": [0.90, 0.72, 0.58],
+    "medium": [0.78, 0.57, 0.42],
+    "tan": [0.66, 0.46, 0.32],
+    "brown": [0.48, 0.32, 0.22],
+    "deep": [0.32, 0.21, 0.15]
+  },
+  "hair_colours_srgb": {
+    "black": [0.06, 0.05, 0.05],
+    "dark_brown": [0.20, 0.12, 0.07],
+    "auburn": [0.48, 0.20, 0.10],
+    "blond": [0.86, 0.70, 0.40],
+    "grey": [0.62, 0.62, 0.64]
+  },
+  "role_srgb": {
+    "command": [0.949, 0.949, 0.949],
+    "helm": [0.310, 0.765, 0.969],
+    "tactical": [0.937, 0.325, 0.314],
+    "engineering": [1.0, 0.702, 0.0],
+    "science": [0.400, 0.733, 0.416],
+    "comms": [0.671, 0.278, 0.737]
+  },
+  "budget": { "triangles": 3000, "bones": 30, "materials": 1, "hair_triangles": 520, "tunic_triangles": 700, "trousers_triangles": 420, "boots_triangles": 200 },
+  "bodies": [
+    { "id": "captain_m", "sex": "male", "age_years": 46, "muscle": 0.55, "weight": 0.55, "height_m": 1.80,
+      "skin": "tan", "hair": "short02", "hair_colour": "grey", "role": "command", "eye_colour": "hazel" },
+    { "id": "helm_f", "sex": "female", "age_years": 27, "muscle": 0.45, "weight": 0.40, "height_m": 1.68,
+      "skin": "light", "hair": "ponytail01", "hair_colour": "auburn", "role": "helm", "eye_colour": "green" },
+    { "id": "engineer_m", "sex": "male", "age_years": 35, "muscle": 0.75, "weight": 0.70, "height_m": 1.74,
+      "skin": "deep", "hair": "short04", "hair_colour": "black", "role": "engineering", "eye_colour": "brown" },
+    { "id": "science_f", "sex": "female", "age_years": 52, "muscle": 0.40, "weight": 0.55, "height_m": 1.64,
+      "skin": "medium", "hair": "bob01", "hair_colour": "grey", "role": "science", "eye_colour": "blue" },
+    { "id": "tactical_m", "sex": "male", "age_years": 24, "muscle": 0.70, "weight": 0.45, "height_m": 1.78,
+      "skin": "brown", "hair": null, "hair_colour": "black", "role": "tactical", "eye_colour": "brown" },
+    { "id": "comms_f", "sex": "female", "age_years": 33, "muscle": 0.50, "weight": 0.50, "height_m": 1.70,
+      "skin": "fair", "hair": "braid01", "hair_colour": "blond", "role": "comms", "eye_colour": "blue" }
+  ]
+}

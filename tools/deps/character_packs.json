@@ -1,0 +1,31 @@
+{
+  "_comment": "The packs the crew body build may read (openspec/changes/crew-bodies, design section 2), each pinned by SHA-256. Copied from Undercity's tools/deps/character_packs.json (RubenTipparach/fps-game-demo at 4d0dd78, 2026-10-10) with only the two packs Star Crew uses: the MPFB 2 add-on and MakeHuman's CC0 system assets. The animation pack is not used: Star Crew bakes its own clips (crew-on-deck 17). tools/blender/build_crew_bodies.py finds a pack in $STARCREW_DEPS/packs, ~/.cache/starcrew/deps/packs or Undercity's ~/.cache/undercity/deps/packs (the same files), and downloads it from its url otherwise.",
+  "packs": [
+    {
+      "id": "mpfb",
+      "name": "MPFB 2.0.17, the MakeHuman plugin for Blender",
+      "author": "The MakeHuman team",
+      "file": "mpfb-2.0.17.zip",
+      "fetch": "http",
+      "url": "https://extensions.blender.org/download/sha256:4f0a879d64a39bf646fbf5f53601ac678855da329d650617dca5737548239a87/add-on-mpfb-v2.0.17.zip",
+      "page": "https://extensions.blender.org/add-ons/mpfb/",
+      "sha256": "4f0a879d64a39bf646fbf5f53601ac678855da329d650617dca5737548239a87",
+      "size_bytes": 45031536,
+      "licence": "code GPL-3.0-or-later; its data (base mesh, targets, rigs, weights) CC0; output unclaimed",
+      "licence_stated_in": "https://github.com/makehumancommunity/mpfb2/blob/master/LICENSE.md, and the extension listing (SPDX GPL-3.0-or-later for the code)"
+    },
+    {
+      "id": "makehuman_system_assets_cc0",
+      "name": "MakeHuman system assets, the CC0 pack (skins, eyes, brows, lashes, hair, proxies, clothes)",
+      "author": "The MakeHuman community",
+      "file": "makehuman_system_assets_cc0.zip",
+      "fetch": "http",
+      "url": "https://files2.makehumancommunity.org/asset_packs/makehuman_system_assets/makehuman_system_assets_cc0.zip",
+      "page": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html",
+      "sha256": "b542127a8e25547c7c29c19f2d1d2adb9a664c80396ecd694095dbc8028a0107",
+      "size_bytes": 280737770,
+      "licence": "CC0 1.0",
+      "licence_stated_in": "The pack page, which lists every asset in it with the licence CC0 (the page field), and MPFB's licence page, https://github.com/makehumancommunity/mpfb2/blob/master/LICENSE.md. Its 147 asset files carry no licence lines of their own, so the licence is checked per pack, not per file."
+    }
+  ]
+}
