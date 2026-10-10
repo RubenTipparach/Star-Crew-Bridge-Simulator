@@ -83,7 +83,7 @@ fn plot(cv: &Canvas, cx: &mut Ctx) {
     s.draw_base(&b);
     kit::scan_wrap(&b, cx, "tac", w, h - 52.0);
     kit::feed_cone(&b, cx, &s);
-    kit::shield_view(&b, cx, s.cx, s.cy, 1.25, s.yaw, s.el);
+    kit::shield_view(&b, cx, s.cx, s.cy, 1.25, s.yaw, s.el, None);
     for m in &v.missiles {
         let p = s.at(v3(*m));
         if p.inside {
@@ -103,7 +103,7 @@ fn plot(cv: &Canvas, cx: &mut Ctx) {
             b.seg(s.cx as f32, s.cy as f32, p.x as f32, p.y as f32, pen);
         }
     }
-    kit::scanner_contacts(&b, cx, &s);
+    kit::scanner_contacts(&b, cx, &s, false);
     kit::range_ctl(&b, cx, 8.0, 4.0, "tac");
     kit::scan_reset(&b, cx, w - 42.0, 4.0, "tac");
     let pre = [

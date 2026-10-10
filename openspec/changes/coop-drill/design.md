@@ -200,6 +200,11 @@ takes the address.
     Q and E roll, Z and C strafe to port and starboard and Space and Ctrl up and down while held. Tactical's: T lock,
     L load, G held to fire. Weapons free and the preset key are gone: each turret has its mode, the presets are the
     PLOT's buttons. Round trip and loss are on F3.
+  - **Five seats** (`console-parity` 10.2, owner 2026-10-10: "continue and do all stations"): Engineering, Science
+    and the Captain can be taken too (`--station engineering|science|captain`). Science scans, pings, tunes the shield
+    band and sets the shields; the Captain calls red alert, braces, takes the viewscreen and sends orders that the
+    stations acknowledge (Y); an empty seat runs its automation. Engineering is drawn unavailable until the power grid
+    is built.
 - **Debrief**: the result and the numbers, then back to the briefing.
 
 ## 6. The two-Pi test

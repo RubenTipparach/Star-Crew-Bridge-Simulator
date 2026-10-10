@@ -1388,7 +1388,7 @@ fn main() -> ExitCode {
     if let Some(server) = args.iter().position(|a| a == "--connect").and_then(|i| args.get(i + 1)).cloned() {
         let station = args.iter().position(|a| a == "--station").and_then(|i| args.get(i + 1));
         let Some(station) = station.map(String::as_str).and_then(sc_core::combat::Station::from_id) else {
-            eprintln!("sc-client: --connect needs --station helm or tactical");
+            eprintln!("sc-client: --connect needs --station helm, tactical, engineering, science or captain");
             return ExitCode::from(2);
         };
         let bot = args.iter().any(|a| a == "--bot");
@@ -1397,7 +1397,8 @@ fn main() -> ExitCode {
             .position(|a| a == "--name")
             .and_then(|i| args.get(i + 1))
             .cloned()
-            .unwrap_or_else(|| format!("{} officer{}", station.name(), if bot { " (bot)" } else { "" }));
+            // The server marks a bot in the crew list itself, so the name does not repeat it.
+            .unwrap_or_else(|| format!("{} officer", station.name()));
         let cfg = WindowConfig {
             title: "Star Crew: drill".into(),
             width: 1920,

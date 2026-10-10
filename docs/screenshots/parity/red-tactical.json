@@ -8,26 +8,27 @@
  ],
  "order": null,
  "alert": "red_alert",
- "clock_s": 791,
- "hull_pct": 99.44444444444444,
+ "red_alert": true,
+ "clock_s": 886,
+ "hull_pct": 98.99732339748408,
  "shield_ratio": [
   1,
   1,
-  0.13506920025169927,
-  0.13506920025169927,
-  0.32850696571484883,
+  0.12499999999999992,
+  0.12499999999999992,
+  0.12499999999999992,
   1
  ],
- "power_mw": 58.26311725922029,
+ "power_mw": 54.75529297815121,
  "reactor_up": true,
- "speed_mps": 116.64602318937393,
+ "speed_mps": 48.921511740702535,
  "fires": 2,
- "breaches": 1,
+ "breaches": 2,
  "q": [
-  0.0072657112906615836,
-  0.4386504023359931,
-  -0.8962074690365812,
-  0.06591817968479831
+  0.8153043974490645,
+  0.20490809660733172,
+  -0.5406459057234877,
+  0.031518503603567324
  ],
  "w": [
   0.10995574287564266,
@@ -40,14 +41,14 @@
   0
  ],
  "v_body": [
-  112.55309267098225,
-  30.608896615912176,
-  -1.091560373794002
+  42.90010771564351,
+  12.017092107032271,
+  20.21100112000846
  ],
  "speed_set": 250,
  "strafe": [
-  -9.26160428673029,
-  -16.264647860080004
+  -26.063810046762228,
+  31.57080378383398
  ],
  "stick": [
   0.7,
@@ -62,8 +63,8 @@
  "order_active": false,
  "plan": null,
  "preview": {
-  "time": 7.002112986520077,
-  "angle": 139.46191151822015
+  "time": 3.6024508497183696,
+  "angle": 44.99959837197821
  },
  "goal": null,
  "ap": "EVADE",
@@ -83,16 +84,16 @@
    "cls": "corvette",
    "iff": "hostile",
    "rel": [
-    -1301.9821784340363,
-    -515.9411888213631,
-    -2070.4187254943427
+    1817.4838745097609,
+    2399.4741785276783,
+    -1514.7922360810815
    ],
    "dir": [
-    -0.4390266299859247,
-    -0.7680627017295465,
-    0.46619234697183903
+    0.000570124539079786,
+    -0.5333393715930524,
+    -0.8459011701533095
    ],
-   "hull": 85.59999999999997,
+   "hull": 31.59999999999984,
    "scan": 0.35
   },
   {
@@ -100,14 +101,14 @@
    "cls": "fighter",
    "iff": "hostile",
    "rel": [
-    -1562.5519498385893,
-    -280.22445670894945,
-    3079.302357565983
+    1597.9673105565334,
+    1058.3380047235507,
+    -2706.4202888007057
    ],
    "dir": [
-    0.3960644995761648,
-    0.8737743875034145,
-    0.2822254983493066
+    -0.6892270068427258,
+    -0.4353600907301334,
+    -0.579161224908978
    ],
    "hull": 100,
    "scan": 0
@@ -117,14 +118,14 @@
    "cls": "freighter",
    "iff": "neutral",
    "rel": [
-    2124.9610177513478,
-    6528.036725662587,
-    5530.224684846505
+    -2482.496799308976,
+    3419.3483956774717,
+    -3586.2350055377237
    ],
    "dir": [
-    -0.4972362190751457,
-    -0.7376256842557575,
-    -0.4567980870867118
+    0.8052791587186583,
+    -0.08636799535885903,
+    -0.586571432914238
    ],
    "hull": 100,
    "scan": 1
@@ -134,23 +135,23 @@
    "cls": "corvette",
    "iff": "unknown",
    "rel": [
-    -13223.428031642467,
-    -8826.911895727153,
-    11607.969142760083
+    -337.6803228304743,
+    1945.327554977303,
+    -12145.35410237483
    ],
    "dir": [
-    0.5254521698498889,
-    0.44520081060933503,
-    -0.7250491400124782
+    0.34861591862430963,
+    0.3567826849965485,
+    0.8667024039244279
    ],
    "hull": 100,
    "scan": 0
   }
  ],
  "waypoint": [
-  -8322.059318822194,
-  -8894.13219068016,
-  -13336.061157699629
+  16916.88056900761,
+  6156.874965052369,
+  -9015.28983536964
  ],
  "target": "T1",
  "tubes_bear": false,
@@ -159,12 +160,22 @@
  "hits": [
   {
    "d": [
+    -0.13223400090870013,
+    0.5098184160809495,
+    0.8500584401253775
+   ],
+   "face": 4,
+   "age_s": 4.933333333336577,
+   "through": true
+  },
+  {
+   "d": [
     -0.9698463103929542,
     0.17364817766693036,
     0.17101007166283444
    ],
    "face": 3,
-   "age_s": 3.9999999999997726,
+   "age_s": 4.000000000003183,
    "through": true
   },
   {
@@ -174,7 +185,7 @@
     -0.33454618259663504
    ],
    "face": 2,
-   "age_s": 3.9999999999997726,
+   "age_s": 4.000000000003183,
    "through": true
   },
   {
@@ -184,7 +195,7 @@
     -0.1631759111665348
    ],
    "face": 3,
-   "age_s": 3.9999999999997726,
+   "age_s": 4.000000000003183,
    "through": true
   },
   {
@@ -194,17 +205,17 @@
     0.7094064799162223
    ],
    "face": 4,
-   "age_s": 3.9999999999997726,
-   "through": false
+   "age_s": 4.000000000003183,
+   "through": true
   }
  ],
  "flash_age_s": [
-  46.59999999999915,
-  46.59999999999915,
-  3.9999999999997726,
-  3.9999999999997726,
-  3.9999999999997726,
-  46.59999999999915
+  141.1499999999973,
+  141.1499999999973,
+  4.000000000003183,
+  4.000000000003183,
+  4.000000000003183,
+  141.1499999999973
  ],
  "feed": "FWD",
  "zoom": 1,
@@ -219,6 +230,10 @@
   "tac": {
    "yaw": 0,
    "dEl": 0
+  },
+  "sci": {
+   "yaw": 0,
+   "dEl": 0
   }
  },
  "feed_cam": {
@@ -230,20 +245,20 @@
    "short": "D",
    "mode": "AUTO",
    "op": "Kai",
-   "heat": 0.6884999999999828,
-   "aim_deg": 147.83627821231937,
-   "firing": false,
-   "cooling": true,
+   "heat": 0.8473333333332113,
+   "aim_deg": -129.80970744422999,
+   "firing": true,
+   "cooling": false,
    "ok": 1
   },
   {
    "short": "V",
    "mode": "AUTO",
    "op": null,
-   "heat": 0.9024999999999828,
-   "aim_deg": 147.83627821231937,
-   "firing": true,
-   "cooling": false,
+   "heat": 0.9433333333332111,
+   "aim_deg": -129.80970744422999,
+   "firing": false,
+   "cooling": true,
    "ok": 1
   },
   {
@@ -251,7 +266,7 @@
    "mode": "PD",
    "op": null,
    "heat": 0,
-   "aim_deg": -65.69660047593987,
+   "aim_deg": 270,
    "firing": false,
    "cooling": false,
    "ok": 1
@@ -260,9 +275,9 @@
    "short": "S",
    "mode": "AUTO",
    "op": null,
-   "heat": 0.16449999999998866,
-   "aim_deg": 147.83627821231937,
-   "firing": true,
+   "heat": 0.3653333333332264,
+   "aim_deg": 10.216756827821143,
+   "firing": false,
    "cooling": false,
    "ok": 1
   }
@@ -280,16 +295,16 @@
  "tube_load_s": 7.2,
  "magazine": 6,
  "magazine_slots": 6,
- "fire_ring": 0.8750120813601026,
- "fire_note": "88% HIT",
+ "fire_ring": 0.5343367809874977,
+ "fire_note": "53% HIT",
  "fire_ok": true,
  "tube_cone_deg": 5,
  "charge": [
   40,
   40,
-  5.402768010067971,
-  5.402768010067971,
-  13.140278628593954,
+  4.9999999999999964,
+  4.9999999999999964,
+  4.9999999999999964,
   40
  ],
  "cap": [
@@ -301,5 +316,481 @@
   40
  ],
  "preset": -1,
- "hold": null
+ "hold": null,
+ "t": 132.1499999999973,
+ "sci": {
+  "sel": "T1",
+  "scanning": false,
+  "ping": 0,
+  "cam": {
+   "yaw": 62,
+   "el": 24
+  },
+  "freq": "A",
+  "by": "Science"
+ },
+ "captain": {
+  "tab": "CMD",
+  "ship_sel": "engineering",
+  "braced": false,
+  "view_override": false,
+  "composer": {
+   "to": "helm",
+   "verb": null
+  },
+  "orders": [
+   {
+    "to": "helm",
+    "verb": "CHASE",
+    "state": "sent"
+   },
+   {
+    "to": "engineering",
+    "verb": "COMBAT",
+    "state": "done"
+   }
+  ],
+  "crew": [
+   {
+    "role": "helm",
+    "op": "Ana",
+    "order": true
+   },
+   {
+    "role": "tactical",
+    "op": "Ben",
+    "order": false
+   },
+   {
+    "role": "engineering",
+    "op": "Cleo",
+    "order": false
+   },
+   {
+    "role": "science",
+    "op": null,
+    "order": false
+   },
+   {
+    "role": "comms",
+    "op": null,
+    "order": false
+   },
+   {
+    "role": "flight_ops",
+    "op": null,
+    "order": false
+   }
+  ],
+  "rooms": [
+   {
+    "id": "bridge",
+    "word": "OK"
+   },
+   {
+    "id": "ready_room",
+    "word": "OK"
+   },
+   {
+    "id": "computer_core",
+    "word": "OK"
+   },
+   {
+    "id": "a_corridor",
+    "word": "OPEN TO SPACE"
+   },
+   {
+    "id": "dorsal_turret",
+    "word": "OK"
+   },
+   {
+    "id": "a_aft_passage",
+    "word": "OK"
+   },
+   {
+    "id": "torpedo_room",
+    "word": "OK"
+   },
+   {
+    "id": "medbay",
+    "word": "OK"
+   },
+   {
+    "id": "damage_control",
+    "word": "OK"
+   },
+   {
+    "id": "quarters",
+    "word": "OK"
+   },
+   {
+    "id": "mess",
+    "word": "OK"
+   },
+   {
+    "id": "port_turret",
+    "word": "OK"
+   },
+   {
+    "id": "stbd_turret",
+    "word": "OK"
+   },
+   {
+    "id": "b_spine",
+    "word": "OK"
+   },
+   {
+    "id": "hangar",
+    "word": "FIRE"
+   },
+   {
+    "id": "launch_bay_p",
+    "word": "OK"
+   },
+   {
+    "id": "launch_bay_s",
+    "word": "OPEN TO SPACE"
+   },
+   {
+    "id": "engineering",
+    "word": "OK"
+   },
+   {
+    "id": "drive",
+    "word": "OK"
+   },
+   {
+    "id": "c_spine",
+    "word": "OK"
+   },
+   {
+    "id": "magazine",
+    "word": "OK"
+   },
+   {
+    "id": "life_support",
+    "word": "OK"
+   },
+   {
+    "id": "cargo",
+    "word": "OK"
+   },
+   {
+    "id": "airlock",
+    "word": "OK"
+   },
+   {
+    "id": "shield_room",
+    "word": "OK"
+   },
+   {
+    "id": "switchboard",
+    "word": "OK"
+   },
+   {
+    "id": "pod_dorsal",
+    "word": "OK"
+   },
+   {
+    "id": "pod_ventral",
+    "word": "OK"
+   },
+   {
+    "id": "pod_port",
+    "word": "OK"
+   },
+   {
+    "id": "pod_stbd",
+    "word": "OK"
+   }
+  ],
+  "crew_at": [
+   {
+    "comp": "bridge",
+    "ok": true
+   },
+   {
+    "comp": "bridge",
+    "ok": true
+   },
+   {
+    "comp": "bridge",
+    "ok": true
+   },
+   {
+    "comp": "bridge",
+    "ok": true
+   },
+   {
+    "comp": "damage_control",
+    "ok": true
+   },
+   {
+    "comp": "damage_control",
+    "ok": true
+   }
+  ],
+  "room": {
+   "p_kpa": 101.14046763105219,
+   "po2_kpa": 21.141445958299077,
+   "t_k": 294.9828630560264,
+   "crew": 0
+  }
+ },
+ "eng": {
+  "rated_mw": 57.599999999999994,
+  "rx_out_mw": 48,
+  "bat_out_mw": 6.75529297815121,
+  "want_mw": 54.75566353728329,
+  "preset": "combat",
+  "groups": [
+   {
+    "id": "drive",
+    "name": "Impulse drive and RCS",
+    "want": 18,
+    "got": 18,
+    "sp": 0.75,
+    "prio": 3,
+    "max": 1.5,
+    "want_k": 0.75,
+    "got_k": 0.75,
+    "breaker": null
+   },
+   {
+    "id": "shields",
+    "name": "Shields",
+    "want": 15,
+    "got": 15,
+    "sp": 1.25,
+    "prio": 2,
+    "max": 1.5,
+    "want_k": 1.25,
+    "got_k": 1.25,
+    "breaker": null
+   },
+   {
+    "id": "turrets",
+    "name": "Turrets",
+    "want": 4.299999999999999,
+    "got": 4.299999999999999,
+    "sp": 1,
+    "prio": 2,
+    "max": 1.5,
+    "want_k": 0.26874999999999993,
+    "got_k": 0.26874999999999993,
+    "breaker": null
+   },
+   {
+    "id": "tubes",
+    "name": "Tubes and hoist",
+    "want": 0.001,
+    "got": 0.0006294408679017441,
+    "sp": 1,
+    "prio": 3,
+    "max": 1.5,
+    "want_k": 0.03333333333333333,
+    "got_k": 0.02098136226339147,
+    "breaker": null
+   },
+   {
+    "id": "sensors",
+    "name": "Sensors",
+    "want": 0.5,
+    "got": 0.5,
+    "sp": 0.6,
+    "prio": 2,
+    "max": 1.5,
+    "want_k": 0.16666666666666666,
+    "got_k": 0.16666666666666666,
+    "breaker": null
+   },
+   {
+    "id": "comms",
+    "name": "Comms",
+    "want": 0.13,
+    "got": 0.13,
+    "sp": 0.5,
+    "prio": 3,
+    "max": 1.5,
+    "want_k": 0.26,
+    "got_k": 0.26,
+    "breaker": null
+   },
+   {
+    "id": "life_support",
+    "name": "Life support",
+    "want": 0.5509249863357613,
+    "got": 0.5509249863357613,
+    "sp": 1,
+    "prio": 1,
+    "max": 1.5,
+    "want_k": 0.2648677818921929,
+    "got_k": 0.2648677818921929,
+    "breaker": null
+   },
+   {
+    "id": "gravity_dampers",
+    "name": "Gravity and dampers",
+    "want": 9.847492690051535,
+    "got": 9.847492690051535,
+    "sp": 1,
+    "prio": 2,
+    "max": 1.5,
+    "want_k": 0.820624390837628,
+    "got_k": 0.820624390837628,
+    "breaker": null
+   },
+   {
+    "id": "computer",
+    "name": "Computer core",
+    "want": 1.882,
+    "got": 1.882,
+    "sp": 1.25,
+    "prio": 1,
+    "max": 1.5,
+    "want_k": 1.2488387524883875,
+    "got_k": 1.2488387524883875,
+    "breaker": null
+   },
+   {
+    "id": "bays",
+    "name": "Bays and craft charging",
+    "want": 0.1,
+    "got": 0.1,
+    "sp": 1,
+    "prio": 3,
+    "max": 1.5,
+    "want_k": 0.013513513513513516,
+    "got_k": 0.013513513513513516,
+    "breaker": null
+   },
+   {
+    "id": "medbay",
+    "name": "Medbay",
+    "want": 0.008,
+    "got": 0.008,
+    "sp": 1,
+    "prio": 1,
+    "max": 1.5,
+    "want_k": 1,
+    "got_k": 1,
+    "breaker": null
+   },
+   {
+    "id": "cooling",
+    "name": "Cooling",
+    "want": 2.4019999999999997,
+    "got": 2.4019999999999997,
+    "sp": 1.2,
+    "prio": 0,
+    "max": 1.2,
+    "want_k": 1.0824543025334468,
+    "got_k": 1.0824543025334468,
+    "breaker": "closed"
+   }
+  ],
+  "preview": null,
+  "reactor": {
+   "up": true,
+   "throttle": 1,
+   "target": 1,
+   "p_e_mw": 48,
+   "mode": "auto",
+   "scram_cause": null,
+   "t_k": 577.4157624791904,
+   "warn_k": 750,
+   "scram_k": 820,
+   "throttle_max": 1.2
+  },
+  "armed_scram": false,
+  "cool": {
+   "mode": "auto",
+   "flow": 1.2,
+   "flow_kg_s": 888,
+   "chiller": 1,
+   "hot_k": 349.5609356751416,
+   "cold_k": 333.34934503343106,
+   "pumps": [
+    {
+     "name": "Coolant pump A",
+     "speed": 1.2,
+     "capability": 1,
+     "alloc_mw": 0.576,
+     "setpoint": 1.2
+    },
+    {
+     "name": "Coolant pump B",
+     "speed": 1.2,
+     "capability": 1,
+     "alloc_mw": 0.576,
+     "setpoint": 1.2
+    }
+   ],
+   "radiator_pumps": [
+    {
+     "name": "Radiator pump, port",
+     "speed": 1,
+     "capability": 1,
+     "alloc_mw": 0.6,
+     "setpoint": 1
+    },
+    {
+     "name": "Radiator pump, starboard",
+     "speed": 1,
+     "capability": 1,
+     "alloc_mw": 0.6,
+     "setpoint": 1
+    }
+   ],
+   "makeup_valve": 1,
+   "makeup_kg_s": 10,
+   "tanks": [
+    {
+     "name": "Coolant tank, port",
+     "kg": 1611.5,
+     "frac": 0.80575
+    },
+    {
+     "name": "Coolant tank, starboard",
+     "kg": 1611.5,
+     "frac": 0.80575
+    }
+   ],
+   "inventory": 0.9727027027026437,
+   "exchanger": 1,
+   "rad_mw": 49.97572820520614,
+   "rad_cap_mw": 49.97572820520614,
+   "rad_flow": 1,
+   "hot_band_k": [
+    335,
+    350
+   ],
+   "hot_warn_k": 370,
+   "limit_k": 380,
+   "heat_mw": 51.82521296342026,
+   "carry_mw": 47.952,
+   "pump_max": 1.2,
+   "rad_max": 1.2,
+   "makeup_max_kg_s": 10
+  },
+  "buses": {
+   "gen_p": true,
+   "gen_s": true,
+   "tie": true,
+   "eb_p": true,
+   "eb_s": true,
+   "np": true,
+   "ns": true,
+   "soc": 0.7325214079391681,
+   "cut": 1
+  },
+  "air": {
+   "status": [
+    0,
+    0,
+    0
+   ],
+   "worst": null
+  }
+ }
 }

@@ -32,31 +32,43 @@ pub const ENEMY_ID: u16 = 2;
 /// The longest player name, in characters (the lobby's).
 pub const MAX_NAME_CHARS: usize = 24;
 
-/// A station the drill uses.
+/// A player's name as the drill keeps it: no control characters, at most [`MAX_NAME_CHARS`]. The server applies it
+/// when a player joins and a client before it sends its hello, so a long name is shortened, not refused.
+pub fn clean_name(name: &str) -> String {
+    name.chars().filter(|c| !c.is_control()).take(MAX_NAME_CHARS).collect()
+}
+
+/// A bridge station (bridge-stations section 2, the drill's five).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Station {
     /// Flies the ship.
     Helm = 0,
     /// Locks, fires and sets the shields.
     Tactical = 1,
+    /// Runs the power grid (not simulated in the drill yet).
+    Engineering = 2,
+    /// Scans, pings, tunes and balances the shields.
+    Science = 3,
+    /// The condition, orders and the viewscreen.
+    Captain = 4,
 }
 
 impl Station {
-    /// Both, in seat order.
-    pub const ALL: [Station; 2] = [Station::Helm, Station::Tactical];
+    /// Every station, in seat order.
+    pub const ALL: [Station; 5] =
+        [Station::Helm, Station::Tactical, Station::Engineering, Station::Science, Station::Captain];
     /// From a data id (`helm`).
     pub fn from_id(id: &str) -> Option<Self> {
-        match id {
-            "helm" => Some(Self::Helm),
-            "tactical" => Some(Self::Tactical),
-            _ => None,
-        }
+        Self::ALL.into_iter().find(|s| s.id() == id)
     }
     /// The data id.
     pub fn id(self) -> &'static str {
         match self {
             Self::Helm => "helm",
             Self::Tactical => "tactical",
+            Self::Engineering => "engineering",
+            Self::Science => "science",
+            Self::Captain => "captain",
         }
     }
     /// What a screen calls it.
@@ -64,6 +76,9 @@ impl Station {
         match self {
             Self::Helm => "Helm",
             Self::Tactical => "Tactical",
+            Self::Engineering => "Engineering",
+            Self::Science => "Science",
+            Self::Captain => "Captain",
         }
     }
     /// From its wire byte.
@@ -379,14 +394,39 @@ pub enum Command {
     Load(u8),
     /// Tactical: fire a tube.
     Fire(u8),
+    /// Science: start or stop scanning the enemy.
+    Scan(bool),
+    /// Science: an active ping.
+    Ping,
+    /// Science: the shield's frequency band, 0-3 (A-D).
+    Freq(u8),
+    /// The captain: red alert on, or stand down.
+    Alert(bool),
+    /// The captain: brace on or off.
+    Brace(bool),
+    /// The captain: take the viewscreen with a camera (an index in [`FEEDS`]), or give it back.
+    Viewscreen(Option<u8>),
+    /// The captain: an order to a station, the verb by its index in that station's verbs (`data/stations.json`).
+    Order(Station, u8),
+    /// A station acknowledges the captain's newest order to it.
+    Ack(Station),
 }
 
+/// The viewscreen's cameras, by index (the consoles' camera pad).
+pub const FEEDS: [&str; 6] = ["TARGET", "FWD", "CHASE", "PORT", "AFT", "STBD"];
+
 impl Command {
-    /// The station that may issue it.
-    pub fn station(&self) -> Station {
+    /// Whether station `s` may issue it. The shield presets are Tactical's and Science's (weapons-and-shields 11).
+    pub fn may(&self, s: Station) -> bool {
         match self {
-            Self::Stick { .. } | Self::Strafe { .. } | Self::Helm(_) | Self::Orient(_) | Self::AllStop => Station::Helm,
-            _ => Station::Tactical,
+            Self::Stick { .. } | Self::Strafe { .. } | Self::Helm(_) | Self::Orient(_) | Self::AllStop => {
+                s == Station::Helm
+            }
+            Self::Lock(_) | Self::TurretMode(..) | Self::Load(_) | Self::Fire(_) => s == Station::Tactical,
+            Self::Preset(_) => matches!(s, Station::Tactical | Station::Science),
+            Self::Scan(_) | Self::Ping | Self::Freq(_) => s == Station::Science,
+            Self::Alert(_) | Self::Brace(_) | Self::Viewscreen(_) | Self::Order(..) => s == Station::Captain,
+            Self::Ack(to) => s == *to,
         }
     }
 }
@@ -699,6 +739,66 @@ pub fn off_bow_deg(pos: DVec3, rot: DQuat, target: DVec3) -> f64 {
     (rot * DVec3::Z).dot(to).clamp(-1.0, 1.0).acos().to_degrees()
 }
 
+/// An order from the captain (bridge-stations 5).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Order {
+    /// To whom.
+    pub to: Station,
+    /// The verb, by its index in that station's verbs.
+    pub verb: u8,
+    /// Acknowledged.
+    pub done: bool,
+    /// When it was sent, seconds into Engage.
+    pub at_s: f64,
+}
+
+/// The bridge's state beyond the ships: the condition, brace, the viewscreen, the orders, and Science's scan, ping
+/// and frequency band.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Bridge {
+    /// Red alert.
+    pub red_alert: bool,
+    pub braced: bool,
+    /// The captain's camera on every viewscreen, if taken (an index in [`FEEDS`]).
+    pub view: Option<u8>,
+    /// The last orders, newest first, at most [`MAX_ORDERS`].
+    pub orders: Vec<Order>,
+    /// How far Science's scan of the enemy has gone, 0-1.
+    pub scan: f64,
+    /// Science is scanning (a manned scan).
+    pub scanning: bool,
+    /// Seconds left of an active ping's ring.
+    pub ping_s: f64,
+    /// The Tern's shield band, 0-3 (A-D), and the seconds left of a retune.
+    pub band: u8,
+    pub retune_s: f64,
+    /// Who set the shields last: Tactical or Science.
+    pub shields_by: Station,
+    /// The captain's automation: when a hostile was last within its normal range, seconds into Engage.
+    pub hostile_near_s: f64,
+}
+
+/// The most orders the bridge keeps.
+pub const MAX_ORDERS: usize = 4;
+
+impl Default for Bridge {
+    fn default() -> Self {
+        Self {
+            red_alert: false,
+            braced: false,
+            view: None,
+            orders: Vec::with_capacity(MAX_ORDERS + 1),
+            scan: 0.0,
+            scanning: false,
+            ping_s: 0.0,
+            band: 0,
+            retune_s: 0.0,
+            shields_by: Station::Science,
+            hostile_near_s: f64::NEG_INFINITY,
+        }
+    }
+}
+
 /// The co-op drill: the authoritative state the server steps and every client renders.
 #[derive(Clone, Debug)]
 pub struct Drill {
@@ -726,6 +826,8 @@ pub struct Drill {
     pub players: Vec<Player>,
     /// This round's numbers.
     pub stats: Stats,
+    /// The bridge: condition, orders, viewscreen, scan, ping and band.
+    pub bridge: Bridge,
     events: Vec<DrillEvent>,
     queue: Vec<(Station, u64, Option<u8>, Command)>,
     arrivals: u64,
@@ -801,6 +903,7 @@ impl Drill {
             missiles: Vec::with_capacity(MAX_MISSILES),
             players: Vec::with_capacity(MAX_PLAYERS),
             stats: Stats::default(),
+            bridge: Bridge::default(),
             events: Vec::new(),
             queue: Vec::new(),
             arrivals: 0,
@@ -835,6 +938,7 @@ impl Drill {
         self.bolts.clear();
         self.missiles.clear();
         self.stats = Stats::default();
+        self.bridge = Bridge::default();
         self.outcome = Outcome::None;
         self.rng = Rng::for_purpose(self.round_seed(), 0, "fire");
         self.auto = automation::Memory::default();
@@ -857,7 +961,7 @@ impl Drill {
             return Err(Refusal::Full);
         }
         let slot = (0..MAX_PLAYERS as u8).find(|s| !self.players.iter().any(|p| p.slot == *s)).ok_or(Refusal::Full)?;
-        let name: String = name.chars().filter(|c| !c.is_control()).take(MAX_NAME_CHARS).collect();
+        let name = clean_name(name);
         self.players.push(Player { slot, name, station: None, ready: false, bot });
         self.players.sort_by_key(|p| p.slot);
         Ok(slot)
@@ -896,8 +1000,8 @@ impl Drill {
 
     /// Queue a player's command for the next tick, after checking the station and the values.
     pub fn command(&mut self, slot: u8, cmd: Command) -> Result<(), Refusal> {
-        let s = cmd.station();
-        if self.operator(s) != Operator::Player(slot) {
+        let s = self.players.iter().find(|p| p.slot == slot).and_then(|p| p.station).ok_or(Refusal::NotYourStation)?;
+        if !cmd.may(s) {
             return Err(Refusal::NotYourStation);
         }
         validate(&cmd)?;
@@ -924,8 +1028,8 @@ impl Drill {
         let mut queue = std::mem::take(&mut self.queue);
         queue.sort_by_key(|q| (q.0, q.1));
         if self.phase == Phase::Engage {
-            for (_, _, slot, cmd) in queue {
-                if let Err(reason) = self.apply(cmd) {
+            for (st, _, slot, cmd) in queue {
+                if let Err(reason) = self.apply(st, cmd) {
                     if let Some(slot) = slot {
                         self.events.push(DrillEvent::Refused { slot, reason });
                     }
@@ -949,6 +1053,7 @@ impl Drill {
             }
             Phase::Engage => {
                 self.run_automation();
+                self.bridge_tick();
                 self.engage_tick();
                 self.stats.engage_s += DT;
                 let ended = if !self.ships[1].alive {
@@ -981,27 +1086,83 @@ impl Drill {
     fn run_automation(&mut self) {
         let pic = self.picture();
         let t = self.phase_s;
+        let science_manned = self.operator(Station::Science) != Operator::Auto;
         for s in Station::ALL {
             if self.operator(s) != Operator::Auto || !self.data.mission.stations.iter().any(|id| id == s.id()) {
                 continue;
             }
             let profile = self.data.profile("automation").clone();
-            let cmds = match s {
+            let mut cmds = match s {
                 Station::Helm => automation::helm(&pic, &profile.helm, &self.data.tern_flight, &mut self.auto.helm, t),
                 Station::Tactical => {
-                    automation::tactical(&pic, &profile.tactical, &self.data, &mut self.auto.tactical, t)
+                    let mut c = automation::tactical(&pic, &profile.tactical, &self.data, &mut self.auto.tactical, t);
+                    // The shields are Science's when Science is manned (weapons-and-shields 11, "Automation").
+                    if science_manned {
+                        c.retain(|c| !matches!(c, Command::Preset(_)));
+                    }
+                    c
                 }
+                Station::Captain => {
+                    automation::captain(&pic, &self.bridge, &profile.captain, &mut self.auto.captain, t)
+                }
+                // Science's automation is its passive scan (in the tick); Engineering has no grid to run yet.
+                Station::Engineering | Station::Science => Vec::new(),
             };
+            // Every automation acknowledges its orders once it has had its reaction time.
+            let react = match s {
+                Station::Helm => profile.helm.reaction_s,
+                Station::Tactical => profile.tactical.reaction_s,
+                Station::Engineering => profile.engineering.reaction_s,
+                Station::Science => profile.science.reaction_s,
+                Station::Captain => profile.captain.reaction_s,
+            };
+            if self.bridge.orders.iter().any(|o| o.to == s && !o.done && t - o.at_s >= react) {
+                cmds.push(Command::Ack(s));
+            }
             for c in cmds {
                 // Automation's commands take the same path as a console's; a refusal is its own business.
-                let _ = self.apply(c);
+                let _ = self.apply(s, c);
             }
         }
     }
 
-    /// Apply a validated command to the Tern (the one path for players, bots and automation).
-    fn apply(&mut self, cmd: Command) -> Result<(), Refusal> {
+    /// The bridge's own clock: Science's scan (manned while scanning, or passive under automation), the ping's ring
+    /// and a retune running down.
+    fn bridge_tick(&mut self) {
+        let enemy_up = self.ships[1].active && self.ships[1].alive;
+        let manned = self.operator(Station::Science) != Operator::Auto;
+        let scan_s = self.data.tern_combat.sensors.map(|s| s.scan_s);
+        let b = &mut self.bridge;
+        if let (true, Some(scan_s)) = (enemy_up, scan_s) {
+            let rate = if manned {
+                if b.scanning {
+                    1.0 / scan_s
+                } else {
+                    0.0
+                }
+            } else {
+                1.0 / (scan_s * self.data.profile("automation").science.scan_factor)
+            };
+            b.scan = (b.scan + rate * DT).min(1.0);
+            if b.scan >= 1.0 {
+                b.scanning = false;
+            }
+        }
+        b.ping_s = (b.ping_s - DT).max(0.0);
+        b.retune_s = (b.retune_s - DT).max(0.0);
+        // When a hostile was last inside the captain's normal range, for the automation's stand-down.
+        let near = self.data.profile("automation").captain.normal_beyond_m;
+        if enemy_up && (self.ships[1].pos - self.ships[0].pos).length() <= near {
+            b.hostile_near_s = self.phase_s;
+        }
+    }
+
+    /// Apply a validated command from station `from` (the one path for players, bots and automation).
+    fn apply(&mut self, from: Station, cmd: Command) -> Result<(), Refusal> {
         validate(&cmd)?;
+        if let Some(r) = self.apply_bridge(cmd) {
+            return r;
+        }
         let lock_time = self.data.tern_combat.lock.time_s;
         let enemy_pos = self.ships[1].pos;
         let enemy_alive = self.ships[1].alive && self.ships[1].active;
@@ -1067,6 +1228,7 @@ impl Drill {
                 for (f, cap) in tern.faces.iter_mut().zip(p.faces_mj) {
                     *f = f.min(cap);
                 }
+                self.bridge.shields_by = from;
             }
             Command::Load(i) => {
                 let tubes = self.data.tern_combat.tubes.as_ref().ok_or(Refusal::NoSuch)?;
@@ -1113,8 +1275,67 @@ impl Drill {
                 self.stats.missiles_fired += 1;
                 self.events.push(DrillEvent::Launched { missile: id, owner: TERN_ID });
             }
+            _ => {}
         }
         Ok(())
+    }
+
+    /// Science's and the captain's commands, which act on the bridge rather than the ship; none for the rest.
+    fn apply_bridge(&mut self, cmd: Command) -> Option<Result<(), Refusal>> {
+        let enemy_up = self.ships[1].active && self.ships[1].alive;
+        let b = &mut self.bridge;
+        let r = match cmd {
+            Command::Scan(on) => {
+                b.scanning = on && enemy_up && b.scan < 1.0;
+                Ok(())
+            }
+            Command::Ping => match self.data.tern_combat.sensors {
+                Some(s) => {
+                    b.ping_s = s.ping_s;
+                    Ok(())
+                }
+                None => Err(Refusal::NoSuch),
+            },
+            Command::Freq(band) => match self.data.tern_shields.frequency {
+                Some(f) => {
+                    if band != b.band {
+                        b.band = band;
+                        b.retune_s = f.retune_s;
+                    }
+                    Ok(())
+                }
+                None => Err(Refusal::NoSuch),
+            },
+            Command::Alert(on) => {
+                b.red_alert = on;
+                Ok(())
+            }
+            Command::Brace(on) => {
+                b.braced = on;
+                Ok(())
+            }
+            Command::Viewscreen(v) => {
+                b.view = v;
+                Ok(())
+            }
+            Command::Order(to, verb) => {
+                if usize::from(verb) >= self.data.order_verbs(to).len() {
+                    Err(Refusal::NoSuch)
+                } else {
+                    b.orders.insert(0, Order { to, verb, done: false, at_s: self.phase_s });
+                    b.orders.truncate(MAX_ORDERS);
+                    Ok(())
+                }
+            }
+            Command::Ack(s) => {
+                if let Some(o) = b.orders.iter_mut().find(|o| o.to == s && !o.done) {
+                    o.done = true;
+                }
+                Ok(())
+            }
+            _ => return None,
+        };
+        Some(r)
     }
 
     fn enemy_ai(&mut self) {
@@ -1309,13 +1530,22 @@ impl Drill {
         }
     }
 
-    fn damage(&mut self, ti: usize, point: DVec3, dmg: f64) -> u8 {
+    /// A hit of `dmg` MJ at `point` on ship `ti` from a weapon on `band` (a missile has none): its face absorbs what it
+    /// can and the hull takes the rest. On the Tern the shield's band scales what the face loses (weapons-and-shields
+    /// 11: `match_factor` when the bands match, `retune_factor` while retuning); what it cannot absorb reaches the
+    /// hull at the hit's own size.
+    fn damage(&mut self, ti: usize, point: DVec3, dmg: f64, band: Option<u8>) -> u8 {
         let e = if ti == 0 { self.data.tern_shields.ellipsoid } else { self.data.enemy.shields.ellipsoid };
+        let k = match (ti, self.data.tern_shields.frequency) {
+            (0, Some(f)) if self.bridge.retune_s > 0.0 => f.retune_factor,
+            (0, Some(f)) if band == Some(self.bridge.band) => f.match_factor,
+            _ => 1.0,
+        };
         let ship = &mut self.ships[ti];
         let face = face_of(ship, &e, point);
-        let absorbed = ship.faces[usize::from(face)].min(dmg);
+        let absorbed = ship.faces[usize::from(face)].min(dmg * k);
         ship.faces[usize::from(face)] -= absorbed;
-        ship.hull -= dmg - absorbed;
+        ship.hull -= dmg - absorbed / k;
         if ti == 1 {
             self.stats.damage_dealt_mj += dmg;
         } else {
@@ -1347,7 +1577,9 @@ impl Drill {
                 }
             }
             if let Some(point) = hit {
-                let face = self.damage(ti, point, b.damage_mj);
+                let band = if b.owner == TERN_ID { &self.data.tern_combat.gun } else { &self.data.enemy.combat.gun };
+                let band = Some(self.data.gun(band).band_index());
+                let face = self.damage(ti, point, b.damage_mj, band);
                 if ti == 1 {
                     self.stats.tern_hits += 1;
                 } else {
@@ -1419,7 +1651,7 @@ impl Drill {
             if burst {
                 let dmg = md.warhead_mj * (1.0 - closest / md.blast_radius_m);
                 let point = target.pos + (pos - target.pos).normalize_or_zero() * closest;
-                self.damage(1, point, dmg);
+                self.damage(1, point, dmg, None);
                 self.stats.missile_hits += 1;
                 self.events.push(DrillEvent::Detonated { missile: id, pos, damage_mj: dmg });
                 self.missiles.swap_remove(i);
@@ -1477,6 +1709,9 @@ pub fn validate(cmd: &Command) -> Result<(), Refusal> {
                 Err(Refusal::BadValue)
             }
         }
+        Command::Freq(b) if b >= 4 => Err(Refusal::BadValue),
+        Command::Viewscreen(Some(v)) if usize::from(v) >= FEEDS.len() => Err(Refusal::BadValue),
+        Command::Order(Station::Captain, _) | Command::Ack(Station::Captain) => Err(Refusal::NoSuch),
         _ => Ok(()),
     }
 }
@@ -1633,7 +1868,7 @@ mod tests {
         let mut d = drill();
         let pos = d.ships[0].pos;
         let bow_point = pos + DVec3::Z * 10.0;
-        let face = d.damage(0, bow_point, 50.0);
+        let face = d.damage(0, bow_point, 50.0, None);
         assert_eq!(face, 0, "a hit ahead strikes the bow face");
         assert_eq!(d.ships[0].faces[0], 0.0);
         assert!((d.ships[0].hull - (d.data.tern_combat.hull_mj - 10.0)).abs() < 1e-9, "40 MJ absorbed, 10 to the hull");
@@ -1912,5 +2147,132 @@ mod tests {
         assert_eq!(shield_face(o, DVec3::from_array(e.axes_m)), 2);
         assert_eq!(shield_face(DVec3::new(0.0, 0.0, 50.0), DVec3::from_array(e.axes_m)), 0);
         assert_eq!(shield_face(DVec3::new(0.0, -12.0, 0.0), DVec3::from_array(e.axes_m)), 5);
+    }
+
+    /// A drill in Engage with a player at each of `stations`; their slots in the same order.
+    fn engaged_at(stations: &[Station]) -> (Drill, Vec<u8>) {
+        let mut d = drill();
+        let slots: Vec<u8> = stations
+            .iter()
+            .map(|s| {
+                let p = d.join(s.name(), false).unwrap();
+                d.claim(p, *s).unwrap();
+                d.set_ready(p, true).unwrap();
+                p
+            })
+            .collect();
+        run_to_engage(&mut d);
+        (d, slots)
+    }
+
+    #[test]
+    fn a_manned_scan_takes_scan_s_and_the_automation_one_and_a_half_times_as_long() {
+        let scan_s = DrillData::shipped().tern_combat.sensors.unwrap().scan_s;
+        let (mut d, s) = engaged_at(&[Station::Science]);
+        steps(&mut d, 1.0);
+        assert_eq!(d.bridge.scan, 0.0, "a manned Science scans only when told to");
+        d.command(s[0], Command::Scan(true)).unwrap();
+        steps(&mut d, scan_s / 2.0);
+        assert!((d.bridge.scan - 0.5).abs() < 0.02, "half a scan in half its time: {}", d.bridge.scan);
+        steps(&mut d, scan_s / 2.0 + 0.1);
+        assert_eq!(d.bridge.scan, 1.0);
+        assert!(!d.bridge.scanning, "a finished scan stops");
+        // Empty, Science's automation passive-scans at 1.5 times the time (bridge-stations 3).
+        let (mut d, _) = engaged_at(&[Station::Helm]);
+        steps(&mut d, scan_s);
+        assert!((d.bridge.scan - 1.0 / 1.5).abs() < 0.02, "automation's scan in scan_s: {}", d.bridge.scan);
+    }
+
+    #[test]
+    fn tactical_automation_leaves_the_shields_to_a_manned_science() {
+        let (mut d, s) = engaged_at(&[Station::Science]);
+        d.command(s[0], Command::Preset(1)).unwrap();
+        steps(&mut d, 8.0);
+        assert_eq!(d.ships[0].preset, 1, "the automation did not put its own preset back");
+        assert_eq!(d.bridge.shields_by, Station::Science);
+        let (mut d, _) = engaged_at(&[Station::Helm]);
+        d.ships[0].preset = 1;
+        steps(&mut d, 8.0);
+        assert_eq!(d.ships[0].preset, 0, "with Science empty, Tactical's automation sets the shields");
+        assert_eq!(d.bridge.shields_by, Station::Tactical);
+    }
+
+    #[test]
+    fn a_matching_band_spares_the_shield_and_a_retune_costs_it() {
+        let data = DrillData::shipped();
+        let f = data.tern_shields.frequency.unwrap();
+        let hound_band = data.gun(&data.enemy.combat.gun).band_index();
+        let face_loss = |band: u8, retune: bool| {
+            let mut d = drill();
+            d.bridge.band = band;
+            d.bridge.retune_s = if retune { f.retune_s } else { 0.0 };
+            let before = d.ships[0].faces[0];
+            d.damage(0, d.ships[0].pos + DVec3::Z * 60.0, 10.0, Some(hound_band));
+            before - d.ships[0].faces[0]
+        };
+        let other = (hound_band + 1) % 4;
+        assert!((face_loss(other, false) - 10.0).abs() < 1e-9);
+        assert!((face_loss(hound_band, false) - 10.0 * f.match_factor).abs() < 1e-9, "a matching band loses less");
+        assert!((face_loss(hound_band, true) - 10.0 * f.retune_factor).abs() < 1e-9, "retuning loses more");
+        // A retune is started by changing the band, and only Science may.
+        let (mut d, s) = engaged_at(&[Station::Science, Station::Helm]);
+        assert_eq!(d.command(s[1], Command::Freq(2)), Err(Refusal::NotYourStation));
+        d.command(s[0], Command::Freq(2)).unwrap();
+        d.step();
+        assert_eq!((d.bridge.band, d.bridge.retune_s > 0.0), (2, true));
+        steps(&mut d, f.retune_s + 0.1);
+        assert_eq!(d.bridge.retune_s, 0.0);
+    }
+
+    #[test]
+    fn the_captains_automation_calls_red_alert_when_a_hostile_closes() {
+        let (mut d, _) = engaged_at(&[Station::Helm]);
+        let p = d.data.profile("automation").captain.clone();
+        assert!(d.data.mission.enemy_start_m.iter().map(|v| v * v).sum::<f64>().sqrt() < p.red_within_m);
+        steps(&mut d, p.reaction_s + 0.1);
+        assert!(d.bridge.red_alert, "the Hound starts inside the red alert range");
+        // Manned, the condition is the captain's.
+        let (mut d, s) = engaged_at(&[Station::Captain]);
+        steps(&mut d, p.reaction_s + 0.1);
+        assert!(!d.bridge.red_alert, "a seated captain decides the condition");
+        d.command(s[0], Command::Alert(true)).unwrap();
+        d.step();
+        assert!(d.bridge.red_alert);
+    }
+
+    #[test]
+    fn an_order_waits_for_its_station_to_acknowledge_it() {
+        let (mut d, s) = engaged_at(&[Station::Captain, Station::Helm]);
+        assert_eq!(d.command(s[1], Command::Order(Station::Tactical, 0)), Err(Refusal::NotYourStation));
+        d.command(s[0], Command::Order(Station::Helm, 1)).unwrap();
+        d.command(s[0], Command::Order(Station::Tactical, 0)).unwrap();
+        d.step();
+        assert_eq!(d.bridge.orders.len(), 2);
+        assert_eq!((d.bridge.orders[0].to, d.bridge.orders[1].verb), (Station::Tactical, 1));
+        // Tactical is empty: its automation acknowledges after its reaction time. Helm waits for its player.
+        let react = d.data.profile("automation").tactical.reaction_s;
+        steps(&mut d, react + 0.1);
+        assert!(d.bridge.orders[0].done && !d.bridge.orders[1].done);
+        assert_eq!(d.command(s[0], Command::Ack(Station::Helm)), Err(Refusal::NotYourStation));
+        d.command(s[1], Command::Ack(Station::Helm)).unwrap();
+        d.step();
+        assert!(d.bridge.orders[1].done);
+        // A verb the station does not have is refused.
+        d.command(s[0], Command::Order(Station::Science, 9)).unwrap();
+        d.step();
+        assert_eq!(d.bridge.orders.len(), 2);
+    }
+
+    #[test]
+    fn the_captain_takes_the_viewscreen_and_gives_it_back() {
+        let (mut d, s) = engaged_at(&[Station::Captain]);
+        d.command(s[0], Command::Viewscreen(Some(4))).unwrap();
+        d.command(s[0], Command::Brace(true)).unwrap();
+        d.step();
+        assert_eq!((d.bridge.view, d.bridge.braced), (Some(4), true));
+        assert_eq!(d.command(s[0], Command::Viewscreen(Some(9))), Err(Refusal::BadValue));
+        d.command(s[0], Command::Viewscreen(None)).unwrap();
+        d.step();
+        assert_eq!(d.bridge.view, None);
     }
 }

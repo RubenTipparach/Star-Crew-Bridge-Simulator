@@ -39,4 +39,14 @@
 
 ## 5. The other stations
 
-- [ ] 5.1 Engineering, Science and Captain built from their mockups under the same check when their simulations exist.
+- [x] 5.1 Engineering, Science and the Captain drawn from their mockups under the same check: all eighteen shots
+  (design 10.1).
+- [x] 5.2 Five seats in the drill; Science's scan, ping, frequency band and shields; the Captain's red alert and its
+  automation, brace, the viewscreen and orders with acknowledgement; with tests (design 10.2).
+- [ ] 5.3 Engineering live, once the power grid, the reactor and its loop and the atmosphere are built in the engine
+  (`power-grid`, `reactor-cooling`, `life-support`).
+- [x] 5.4 The five-seat drill played through in the cloud session (victory in 69-71 s); the long-name drop and the
+  shield view's hit smear it found fixed in the mockup and the engine, with tests (design 10.3).
+- [ ] 5.5 The same five-seat drill on a Pi 5 (server and five headless clients), its captures and result committed
+  beside the cloud ones.
+- [ ] 5.6 The owner signs off the side-by-side captures of all five stations (section 10, "A screen is done").

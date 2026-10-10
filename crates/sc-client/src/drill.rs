@@ -498,16 +498,11 @@ impl App for DrillApp {
         // The console's view: the station this client holds (or wants), from the newest interpolated snapshot.
         let console_view = ships.as_ref().map(|(t, h, snap)| {
             let st = station.unwrap_or(self.args.station);
-            let op =
-                crew.iter()
-                    .find(|c| c.station == Some(st))
-                    .map(|c| if c.bot { "Bot".to_owned() } else { c.name.clone() });
-            let open = Station::ALL
+            let ops: Vec<(Station, String)> = crew
                 .iter()
-                .filter(|o| **o != st && !crew.iter().any(|c| c.station == Some(**o)))
-                .map(|o| o.id().to_owned())
+                .filter_map(|c| Some((c.station?, if c.bot { "Bot".to_owned() } else { c.name.clone() })))
                 .collect();
-            self.seat.view(st, t, h, snap, &self.data, op, open, self.time_s)
+            self.seat.view(st, t, h, snap, &self.data, &ops, self.time_s)
         });
         self.render_feed(ships.as_ref(), console_view.as_ref());
         let mut ask: Vec<UiAsk> = Vec::new();
@@ -723,10 +718,7 @@ fn briefing(ctx: &egui::Context, v: &UiView, snap: &Snapshot, ask: &mut Vec<UiAs
         }
         ui.add_space(10.0);
         let mine = v.station.unwrap_or(v.want);
-        let orders = match mine {
-            Station::Helm => &v.mission.orders.helm,
-            Station::Tactical => &v.mission.orders.tactical,
-        };
+        let orders = v.mission.orders.of(mine);
         label(ui, &format!("{} ORDERS", mine.name().to_uppercase()), 13.0, DIM);
         ui.label(RichText::new(orders).size(18.0).color(CYAN));
         ui.add_space(12.0);
