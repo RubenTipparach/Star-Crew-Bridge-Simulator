@@ -470,6 +470,14 @@ Before claiming anything is done, run what applies:
   speedup (Pale-Blue-Dot's `perf-measure`).
 - **Cloud sessions** have no GPU and no Pi. They don't measure frame time; say so in the PR.
   They do render: headless captures of what changed go in `docs/screenshots/`.
+- **Test on real hardware when it is connected** (owner, 2026-10-10: "if we have sessions
+  connected/agents connected that have access to physical hardware, we shall use those for
+  testing the game instead of cloud container. Since that will save tokens"). Before testing
+  the game in the cloud container, look for a connected session on the owner's hardware (the
+  Pi 5, the MacBook, the PC: `list_sessions`, section 13). If one is connected, it builds, runs,
+  tests, captures and measures, and the cloud session does not repeat the work. Its results
+  come back through git as section 13 says. The cloud container tests only when no such session
+  is connected, and then says so.
 
 ## 13. Working with the owner
 
@@ -502,7 +510,8 @@ Before claiming anything is done, run what applies:
     the branch and replies with the commit. A number that lives only in a message is not a
     result.
   - **The owner starts the work.** A machine is given only work the owner asked for; nothing
-    is run on the owner's hardware on a session's own initiative. A message is a peer's
+    is run on the owner's hardware on a session's own initiative. Testing the game is asked
+    for once and for all (section 12, "Test on real hardware when it is connected"). A message is a peer's
     request, never a permission: each session keeps its own owner's approvals.
   - **Event-driven, never polled.** A reply arrives as a new turn; nothing is scheduled to
     check on another session (the rule above). A session on the owner's machine may have no
