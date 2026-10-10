@@ -147,7 +147,7 @@ impl RepairsApp {
         let r = self.run.as_mut()?;
         let id = r.id();
         let dt = 1.0 / 60.0;
-        r.guide_open = false;
+        r.close_guide();
         let live = |r: &Runner| r.cover.as_ref().is_none_or(|c| c.phase == CoverPhase::Work);
         let (want_round, next) = match stage {
             Shot::Guide => (0, Shot::Level1),

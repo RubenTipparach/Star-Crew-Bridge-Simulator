@@ -697,6 +697,13 @@ impl Runner {
         self.note_t = t;
     }
 
+    /// The guide card: close it and let the game go at once (scripted play and captures, where nothing lets go of a
+    /// press first).
+    pub fn close_guide(&mut self) {
+        self.guide_open = false;
+        self.guide_hold = false;
+    }
+
     /// The guide card: open it.
     pub fn show_guide(&mut self) {
         self.guide_open = true;
@@ -1157,8 +1164,7 @@ pub struct Played {
 /// Play `r` with its steady hand at 60 frames a second for up to `max_s` seconds (`each` sees every frame).
 pub fn play(r: &mut Runner, max_s: f32, mut each: impl FnMut(&Runner, &Input)) -> Played {
     let dt = 1.0 / 60.0;
-    r.guide_open = false;
-    r.guide_hold = false;
+    r.close_guide();
     let mut n = 0;
     while !r.done && (n as f32) * dt < max_s {
         let i = r.hand();

@@ -119,6 +119,12 @@ pub struct DrillApp {
     phase_seen: Option<(u32, Phase, f64)>,
     shot_round: Option<u32>,
     done: bool,
+    /// The bridge, when the compiled deck is there (design 9).
+    bridge: Option<crate::drill_bridge::BridgeView>,
+    /// The overview of the bridge is up (V).
+    overview: bool,
+    /// The scripted shots: since when this player's body, and another's, has been seen walking.
+    walk_seen: (Option<f64>, Option<f64>),
 }
 
 fn load_data() -> Result<DrillData, String> {
@@ -185,7 +191,17 @@ impl DrillApp {
             phase_seen: None,
             shot_round: None,
             done: false,
+            bridge: None,
+            overview: false,
+            walk_seen: (None, None),
         };
+        match crate::drill_bridge::BridgeView::load(&mut app.r, std::path::Path::new("compiled/tern.deck")) {
+            Ok(b) => {
+                println!("sc-client: the bridge for the crew on foot, {} triangles", b.triangles);
+                app.bridge = Some(b);
+            }
+            Err(e) => println!("sc-client: no bridge to walk ({e}); the drill shows the consoles only"),
+        }
         app.try_connect();
         Ok(app)
     }
@@ -496,6 +512,25 @@ impl World<'_> {
 }
 
 impl DrillApp {
+    /// The crew's bodies 100 ms behind the newest snapshot, as the ships are drawn, each with whether it is a bot's.
+    fn bodies_now(&self) -> Vec<(sc_net::msg::BodySnap, bool)> {
+        let Some(s) = self.session.as_ref() else { return Vec::new() };
+        let Some((a, b, f)) = s.interpolation() else { return Vec::new() };
+        crate::drill_bridge::blend(&a.bodies, &b.bodies, f)
+            .into_iter()
+            .map(|x| {
+                let bot = s.crew.iter().any(|c| c.slot == x.slot && c.bot);
+                (x, bot)
+            })
+            .collect()
+    }
+
+    /// The scripted shots' overview frames: the first half second after another crew member is seen walking.
+    fn shot_overview(&self) -> bool {
+        self.walk_seen.1.is_some_and(|t| self.time_s - t < 0.6)
+            && !self.shots_taken.iter().any(|n| n.starts_with("0-bridge"))
+    }
+
     fn capture(&mut self, f: &Frame, name: &str) {
         if !self.shots_taken.insert(name.to_owned()) {
             return;
@@ -521,6 +556,18 @@ impl DrillApp {
         }
         if self.shot_round != Some(snap.round) {
             return;
+        }
+        // On foot: the overview while the crew walk, then this player's own walk if it has one.
+        if !snap.bodies.is_empty() && self.bridge.is_some() {
+            if snap.phase == Phase::Muster && (1.0..1.4).contains(&t) {
+                self.capture(f, &format!("0-bridge-{st}.png"));
+            }
+            let me = self.session.as_ref().and_then(|s| s.slot);
+            if snap.bodies.iter().any(|b| Some(b.slot) == me && b.posture == sc_core::combat::bodies::Posture::Walking)
+                && t > 1.5
+            {
+                self.capture(f, &format!("0-walking-{st}.png"));
+            }
         }
         let plan: &[(Phase, f64, &str)] = &[
             (Phase::Muster, 1.5, "1-briefing"),
@@ -550,6 +597,7 @@ impl App for DrillApp {
         match e {
             Event::Quit => return Flow::Done,
             Event::KeyDown(keys::ESCAPE) => return Flow::Done,
+            Event::KeyDown(keys::V) => self.overview = !self.overview,
             Event::KeyDown(k) => {
                 if !self.held.contains(&k) {
                     self.pressed.insert(k);
@@ -604,10 +652,46 @@ impl App for DrillApp {
         } else {
             self.pressed.clear();
         }
-        self.render_3d(ships.as_ref(), f.width as f32 / f.height.max(1) as f32);
+        let aspect = f.width as f32 / f.height.max(1) as f32;
+        // On foot (design 9): while this player's body is up and walking, or with the overview (V), the bridge.
+        let bodies = self.bodies_now();
+        let me = self.session.as_ref().and_then(|s| s.slot);
+        let mine = bodies.iter().find(|(b, _)| Some(b.slot) == me).map(|x| x.0);
+        let walking = mine.is_some_and(|b| b.posture != sc_core::combat::bodies::Posture::Seated);
+        let shot_overview = self.args.shots.is_some() && self.shot_overview();
+        let on_bridge = self.bridge.is_some() && !bodies.is_empty() && (walking || self.overview || shot_overview);
+        let mut bridge_ui = None;
+        if on_bridge {
+            let own = walking && !self.overview && !shot_overview;
+            let (eye, yaw, pitch) = match (own, mine) {
+                (true, Some(b)) => (crate::drill_bridge::eye_of(&b), b.yaw, -0.12),
+                _ => crate::drill_bridge::overview(),
+            };
+            if let Some(bv) = &self.bridge {
+                let vp = bv.draw(&mut self.r, &self.target, &self.exterior, eye, yaw, pitch, aspect, &bodies, me, own);
+                let (w, h) = (720.0 * aspect, 720.0);
+                let crew = self.session.as_ref().map(|s| s.crew.clone()).unwrap_or_default();
+                let labels = bodies
+                    .iter()
+                    .filter(|(b, _)| !(own && Some(b.slot) == me))
+                    .filter_map(|(b, _)| {
+                        let head = [b.pos[0], b.pos[1] + 2.05, b.pos[2]];
+                        let at = crate::drill_bridge::project(vp, eye, head, w, h)?;
+                        let name = crew.iter().find(|c| c.slot == b.slot).map(|c| c.name.clone()).unwrap_or_default();
+                        let going = b.going.map(|g| format!("to {}", g.name()));
+                        Some((Pos2::new(at[0], at[1]), name, going))
+                    })
+                    .collect();
+                let banner = mine.and_then(|b| b.going).map(|g| format!("Walking to {}", g.name()));
+                bridge_ui = Some(BridgeUi { labels, banner, overview: !own });
+            }
+        } else {
+            self.render_3d(ships.as_ref(), aspect);
+        }
         // The UI: build it from a snapshot of what it needs, then send what it asks for.
         let mut ask: Vec<UiAsk> = Vec::new();
-        let view = UiView::gather(self, ships.as_ref());
+        let mut view = UiView::gather(self, ships.as_ref());
+        view.bridge = bridge_ui;
         let mut helm_pad = (self.helm.pad, self.helm.pad_held, self.helm.speed_set);
         let mut fire_hold = self.fire_hold;
         let now = self.time_s;
@@ -675,6 +759,15 @@ struct UiView {
     enemy_faces: [f64; 6],
     tern_hull: f64,
     session_now: f64,
+    /// The bridge on screen instead of the consoles (design 9).
+    bridge: Option<BridgeUi>,
+}
+
+/// What the bridge view's UI shows: a name over each body (and where it is going), and this player's own walk.
+struct BridgeUi {
+    labels: Vec<(Pos2, String, Option<String>)>,
+    banner: Option<String>,
+    overview: bool,
 }
 
 impl UiView {
@@ -709,6 +802,7 @@ impl UiView {
             enemy_faces: app.data.enemy.shields.presets[0].faces_mj,
             tern_hull: app.data.tern_combat.hull_mj,
             session_now: s.map_or(0.0, |s| s.now_s()),
+            bridge: None,
         }
     }
 }
@@ -802,6 +896,10 @@ fn draw_ui(
         });
         return;
     };
+    if let Some(b) = &v.bridge {
+        bridge_overlay(ctx, v, snap, b, ask);
+        return;
+    }
     match snap.phase {
         Phase::Muster | Phase::Countdown => briefing(ctx, v, snap, ask),
         Phase::Engage => {
@@ -835,6 +933,27 @@ fn draw_ui(
         }
         Phase::Debrief => debrief(ctx, v, snap),
     }
+}
+
+/// The bridge on screen (design 9): the title band, a name over every body with where it is walking, this player's
+/// own walk said once in the middle, the status strip.
+fn bridge_overlay(ctx: &egui::Context, v: &UiView, snap: &Snapshot, b: &BridgeUi, ask: &mut Vec<UiAsk>) {
+    title_band(ctx, v, snap, ask);
+    let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Middle, egui::Id::new("bridge-names")));
+    for (at, name, going) in &b.labels {
+        painter.text(*at, Align2::CENTER_BOTTOM, name, FontId::proportional(17.0), TEXT);
+        if let Some(g) = going {
+            painter.text(*at + Vec2::new(0.0, 18.0), Align2::CENTER_BOTTOM, g, FontId::proportional(14.0), AMBER);
+        }
+    }
+    let w = ctx.content_rect().width();
+    if let Some(t) = &b.banner {
+        painter.text(Pos2::new(w / 2.0, 560.0), Align2::CENTER_CENTER, t, FontId::proportional(30.0), AMBER);
+    }
+    if b.overview {
+        painter.text(Pos2::new(w / 2.0, 640.0), Align2::CENTER_CENTER, "BRIDGE (V)", FontId::proportional(14.0), DIM);
+    }
+    status_strip(ctx, v);
 }
 
 fn briefing(ctx: &egui::Context, v: &UiView, snap: &Snapshot, ask: &mut Vec<UiAsk>) {

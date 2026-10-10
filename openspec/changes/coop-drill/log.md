@@ -69,3 +69,21 @@ Newest last. What was done, what was found, on which machine and commit.
 - **Network finding** (`docs/benchmarks/2026-10-10-coop-drill-lan/pi1.md`): 80 kbit/s down per client, exactly the
   budget, against the design's 75 estimate; 7-8 kbit/s up. The whole snapshot at 20 Hz and a reliable event per
   bolt are the cost. Server tick 0.014 ms median.
+
+## 2026-10-10, afternoon: the crew on foot (design 9)
+
+- The owner asked why the demo had no bots walking the ship, and said a bot should get up and walk to another
+  station when it needs to operate one. The drill had left "the walk to the seat" out on purpose (design 8); design 9
+  takes it up.
+- Bodies follow a path at the walk speed (kinematic, not the walk body's physics): the bridge is one deck and the
+  path comes from the walk grid, so a body never needs a collision response here. A player steering their own body
+  with W A S D will need the physics body; that is the ship walk's step, not this one.
+- `compiled/tern.deck` on Pi 1 was version 4 and the engine now reads 5: rebuilt with `sc-tools deckc` (6 min on the
+  Pi 5, 70 MB). The rebuild carries 0 light probes (the probe bake is its own step), so figures take the fallback
+  light.
+- The bridge's walk grid: 569 cells, built in 300 ms on the Pi 5 with the deck read; every seat-to-seat path found on
+  the grid. The muster point to the Helm seat is about 3 s, Helm to Tactical about 2 s with getting up and sitting.
+- Bodies cost 10 bytes each in the snapshot (slot, centimetre position, heading, posture, the station walked to).
+- The loopback test (`on_foot_a_lone_tactical_bot_walks_to_helm_and_a_second_bot_takes_tactical`): a bot that asked
+  for Tactical sits there, gets up after Helm has stood empty 5 s and walks to it; a second bot that asked for Helm
+  takes Tactical instead.

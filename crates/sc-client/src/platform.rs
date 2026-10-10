@@ -89,6 +89,8 @@ pub mod keys {
     pub const L: u32 = sdl::SDLK_L.0;
     /// R.
     pub const R: u32 = sdl::SDLK_R.0;
+    /// V: the drill's overview of the bridge.
+    pub const V: u32 = sdl::SDLK_V.0;
     /// Return (Enter).
     pub const RETURN: u32 = sdl::SDLK_RETURN.0;
     /// Backspace.

@@ -21,6 +21,7 @@
 //! fails if the body does not arrive where the route ends.
 
 mod drill;
+mod drill_bridge;
 mod first_light;
 mod lobby;
 mod repairs;
