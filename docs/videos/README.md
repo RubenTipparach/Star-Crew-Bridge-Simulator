@@ -20,7 +20,9 @@ copying and encoding the screen while it draws); the game itself held 26 FPS med
 ## `2026-10-10-crew-on-foot-pi5.mp4` (132 s, coop-drill design 9, task 6.4)
 
 Pi 1's screen (2560 x 1080), `sc-client --connect 192.168.0.210 --watch`: the bridge's overview from the bow end,
-looking aft over the seats to the muster point. Recorded with `wf-recorder` at 30 fps while the game drew. The server
+looking aft over the seats to the muster point. Recorded with `wf-recorder`, then re-encoded to H.264 High, yuv420p,
+1920 x 810 at a constant 30 fps (`ffmpeg -vf fps=30,scale=1920:-2,format=yuv420p -c:v libx264 -crf 23`):
+wf-recorder's own file was 4:4:4 at a variable rate, which most players show as black. The server
 was restarted first, so every body starts standing at the back. Commit 6c260b3, protocol 4.
 
 | Time | Shows |
