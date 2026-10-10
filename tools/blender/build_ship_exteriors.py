@@ -174,8 +174,8 @@ def fitted_hull(p, rows, layout, ship, name, role, inset=0, caps=None):
     return body
 
 
-def window_rim(p, rows, layout, portal, frame, depth, ship):
-    """Cut a thin ring from the actual hull profile, including every bevel crossing."""
+def window_rim(p, rows, layout, portal, frame, depth, ship, hull_surface=None):
+    """Cut a thin ring from the actual hull, including bevels and service recesses."""
     width, height = portal["size_m"]
     rim = ship["window_rim_m"]
     outward = Vector(portal["normal"])
@@ -185,7 +185,15 @@ def window_rim(p, rows, layout, portal, frame, depth, ship):
                  (width / 2 + rim, height / 2 + rim, depth + 3), role, frame)
     for operation, offset, label in [("INTERSECT", 0.015 + ship["window_rim_depth_m"], "rim_surface"),
                                      ("DIFFERENCE", 0.015, "rim_back")]:
-        surface = fitted_hull(p, rows, layout, ship, name + "." + label, role)
+        if hull_surface is None:
+            surface = fitted_hull(p, rows, layout, ship, name + "." + label, role)
+        else:
+            surface = hull_surface.copy()
+            surface.data = hull_surface.data.copy()
+            surface.name = p.name + "." + name + "." + label
+            p.coll.objects.link(surface)
+            for poly in surface.data.polygons:
+                poly.material_index = ROLES.index(role)
         shift = PROP_TO_BLENDER.to_3x3() @ (outward * offset)
         for vertex in surface.data.vertices:
             vertex.co += shift
@@ -405,7 +413,7 @@ def build(ship, level):
                         assert found, f"{portal['id']}: window corner misses inner skin"
                         assert (inner_skin-ray).length <= max_depth - skin + 0.002, f"{portal['id']}: deep liner"
                         inner_corners.append(list(P(inner_skin)))
-                window_rim(p, rows, layout, portal, frame, depth, ship)
+                window_rim(p, rows, layout, portal, frame, depth, ship, body if level == 0 else None)
                 if level == 0:
                     windows.append({"id": portal["id"], "room": portal["between"][0],
                                 "center_m": portal["center_m"], "normal": portal["normal"],
@@ -598,15 +606,15 @@ def surface_uv(ob, point, normal, role, rows, config, bounds):
             rect[1] + gutter + v * (rect[3] - rect[1] - 2 * gutter))
 
 
-def hero_uv(ob, point, normal, rows, bounds, config):
+def hero_uv(ob, point, normal, rows, bounds, config, upper_wall=False):
     """Artist-readable UV islands: hull deck, keel and wall."""
     za, zb = config["hero_atlas"]["longitudinal_range_m"]
     # Keep paint anchored when exterior sections are shortened or extended.
     longitudinal = (point.z - za) / (zb - za)
     # A tolerance keeps coplanar 45-degree triangles on the same island after CSG rounding.
     if abs(normal.z) > 0.85 or (abs(normal.y) <= 0.65 and abs(normal.z) > abs(normal.x) + 0.001):
-        # Use the solid ivory centre of the bow island, clear of its open arch-shaped margins.
-        rect = (0.84, 0.62, 0.918, 0.827)
+        # Dedicated front strip carries the side structure around the bow corners.
+        rect = config["hero_atlas"]["bow_face_uv"]
         u, v = (point.x + 12.2) / 24.4, (point.y + 5.8) / 14
     elif abs(normal.y) > 0.65:
         rect = (0.01, 0.08, 0.30, 0.99) if normal.y > 0 else (0.32, 0.08, 0.61, 0.99)
@@ -615,8 +623,9 @@ def hero_uv(ob, point, normal, rows, bounds, config):
     else:
         service_uv = config["hero_atlas"].get("side_service_uv")
         if service_uv:
-            # Anchor the generated strip to both actual recess edges, leaving the windows white.
-            return (float(np.interp(point.y, service_uv["height_m"], service_uv["u"])),
+            # The command wall unfolds separately so small service details retain their scale.
+            wall_uv = config["hero_atlas"]["command_wall_uv"] if upper_wall else service_uv
+            return (float(np.interp(point.y, wall_uv["height_m"], wall_uv["u"])),
                     float(np.interp(point.z, service_uv["station_m"], service_uv["v"])))
         rect = (0.63, 0.08, 0.745, 0.99)
         u, v = (point.y + 5.8) / 14, longitudinal
@@ -659,6 +668,10 @@ def prepare(p, ship, config):
         ob.data.color_attributes.active_color = colour
         for poly in ob.data.polygons:
             role = ROLES[poly.material_index]
+            wall_uv = config["hero_atlas"]["command_wall_uv"]
+            face_points = [points[i] for i in poly.vertices]
+            upper_wall = (min(v.y for v in face_points) >= wall_uv["height_m"][0] - .001
+                          and min(v.z for v in face_points) >= wall_uv["from_z_m"] - .001)
             row = config["materials"].get(role, config["materials"]["machinery"])
             fittings = ship.get("fittings_atlas", {}).get(role) if not (ob.get("hero_uv") and role == "bulkhead") else None
             tint = ship["livery_srgb"] if role == "accent" else row["tint_srgb"]
@@ -672,7 +685,7 @@ def prepare(p, ship, config):
                     uv[:] = surface_uv(ob, points[ob.data.loops[li].vertex_index], P(poly.normal),
                                        role, rows, config, bounds)
                 if ob.get("hero_uv") and role == "bulkhead":
-                    uv[:] = hero_uv(ob, points[ob.data.loops[li].vertex_index], P(poly.normal), rows, bounds, config)
+                    uv[:] = hero_uv(ob, points[ob.data.loops[li].vertex_index], P(poly.normal), rows, bounds, config, upper_wall)
                 elif fittings:
                     u, v, _, _ = assembly_uv(points[ob.data.loops[li].vertex_index], P(poly.normal), bounds)
                     gutter = config["hero_atlas"]["gutter_px"]/config["hero_atlas"]["px"]

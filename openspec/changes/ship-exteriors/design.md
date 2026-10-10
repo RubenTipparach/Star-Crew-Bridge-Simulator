@@ -2,6 +2,24 @@
 
 ## Shape and scope
 
+Mess-window correction (2026-10-10): lower the three mess-hall window centers from
+2.35 m to 1.50 m above the deck floor, retaining their 1.70 x 0.80 m openings and
+longitudinal spacing. Derive the exterior cutters, interior portals and inspection views
+from the same window recipe. Since the lower frames now cross the existing service
+recess, trace each rim against the actual carved hull so its returns stay fitted.
+Keep the same 12,000/3,000/600 triangle and 9/1/1 draw ceilings. Verify clear opening
+and frame rays, inside views, and the same lower window placement in both LOD bakes.
+
+Connected secondary structure correction (2026-10-10): the roof/side UV split leaves the
+grey shoulder channels ending against white vertical walls. Use targeted imagegen edits
+of the current atlas to carry dark grey service structure down the forward command walls,
+join it to the existing lower side channel through several broad upright returns, and
+carry the forward ends around the faceted bow. Keep the central bow armor pale and the
+physical window rims clear. Match the side and bow UV sampling at their shared edges,
+export the actual updated UV guide, then repaint the same connections in every livery.
+No extra geometry, material draws or texture dimensions are planned. Rebuild each LOD
+atlas from the corrected full model and verify window rays, UVs and actual rendered joins.
+
 Continuous subhull correction (2026-10-10): replace isolated grey side patches with one longitudinal service band per side, approximately Y = -1.0 to +1.5 m between the B/C window rows. Follow the actual hull facets from Z = -25 to +26 m, recessing the closed skin by 0.08 m. Keep at least 0.14 m pressure skin. Replace the former diagonal side cuts. Add short connected pipe runs, couplings, brackets and machinery modules within the grey service region; reserve clear space around every portal and warp attachment. Continue grey dorsal channels in the painted UV artwork. Use the existing generated atlas workflow, retain broad white armor and flat registration, and use the same mechanical design in all three liveries. Full-detail mechanical geometry has an additional allowance of 2,000 triangles within the existing 12,000 ceiling, no new materials, no new texture dimensions. Transfer mechanical detail through the existing 1,024/512 px LOD bakes, retaining 3,000/600 triangle ceilings and one draw each. Verify actual skin depth, window rays, no coplanar overlap and matching livery geometry, then inspect close side views, full ship views and both LODs before delivery.
 
 Angular armor and liveries (2026-10-10): retain the accepted rounded silhouette, but replace all curved painted panel lines with straight chamfered armor boundaries. White armor is broken by broad grey subhull areas. Add shallow 0.08 m recesses in the full-detail dorsal and aft-side skin, leaving at least 0.14 m of the 0.22 m shell; place them clear of windows and interior corners. Their depth is baked into reduced meshes. Remove the Tern registration box entirely. Paint SCS TERN and SC-084 directly into the hull UV atlas with no rectangle, frame or raised backing. Generate three original paintings against the actual exported UV guide: Copper, Cobalt and Rescue. Use the existing Material Maker image graph and export pipeline, one 1024 px source atlas per livery, and separately bake its 1024/512 px medium/distant atlases. Shared geometry and origins must agree across variants. The preview offers livery selection while retaining LOD, window and interior controls. Reuse the existing asset loader, budget HUD, builder and bake checks. Budget each variant within 12,000/3,000/600 triangles and nine/one/one material draws; loading the two extra livery sets adds at most 24 MiB of RGBA8 textures with mipmaps, keeping the preview below 96 MiB. Validate actual emitted geometry, all 460 opening/frame rays, no exterior overlap, identical geometry between liveries, inline content and image captures. These are design assets, with runtime integration still separate.
@@ -118,3 +136,17 @@ The global inline check also retains the documented deck-plan light-bake cache h
 failure. Engine tests were not reached, and no local web-build result is claimed.
 
 Delivered: Cyan is the initial preview selection. The stable `cobalt` ID now uses the generated `tern-service-cyan.png` painting and its saved edit prompt. Material Maker preserves its RGB and the packed hull has no emission. Fittings use sRGB [0.106, 0.722, 0.875]. Full/medium/distant files are 1,667,280 / 1,413,852 / 380,276 bytes, with 4,714 / 1,290 / 496 triangles and 6 / 1 / 1 draws. Cyan and the root catalog reproduce byte for byte. Triangle geometry, normals and UVs agree with Copper; four additional accent vertices arise from baked-color vertex sharing, without any extra triangles. The browser confirms Cyan on first load, all nine paint/LOD combinations, distinct baked textures, all deck controls and 460 window rays. Sixteen desktop captures and one phone capture were reviewed. Preview texture memory remains 78.17 MiB, and the fleet with interiors uses 83,072 triangles in 50 draws. OpenSpec passes all 42 items.
+
+Connected-structure and mess-window measurements: full/medium/distant Tern is 4,824 / 1,290 / 496 triangles with 6 / 1 / 1 material draws. The full model adds 110 triangles to fit the three lower window frames across the recessed skin. The furnished interior is 76,198 triangles; the visible fleet and interiors total 83,474 triangles and 50 draws, with unchanged 78.17 MiB textures. All three mess centers read back at Y = 1.50 m, against the room walls at Y = 0-3 m, and all 460 opening/frame rays pass for each livery. All nine livery/LOD combinations, deck menus and cutaways pass. RGB matches the Material Maker outputs and hull emission remains zero.
+
+Validation of the initial connected structure and centered mess windows: all three livery sets reproduce byte for byte, including their full models, both reduced models, atlases and manifests. The overlap check reports the unchanged 0.046 m2 in shared room railings/baseboards and no exterior overlap. Reviewed 47 desktop captures (36 livery/LOD views, six mess opening views, normal/red-alert mess interiors, side, pylons and initial Cyan view), plus the phone default. The inspection page's 16 inline blocks and budget marker are current. The hull RGB still matches Material Maker exactly, with zero emission. No Pi frame-time measurement is claimed.
+
+Initial connected revision full/medium/distant GLB sizes in bytes: Copper 1,660,140 / 1,404,140 / 379,840; Cyan 1,690,368 / 1,429,808 / 384,332; Rescue 1,662,340 / 1,401,204 / 378,488. All use 4,824 / 1,290 / 496 triangles and 6 / 1 / 1 material draws. The full fleet with furnished interiors is 83,474 triangles in 50 draws; decoded textures remain 78.17 MiB.
+
+## Owner correction: armor coverage
+
+The connected revision exposes too much grey on the command walls and forward corners. Restore broad ivory panels covering roughly three quarters of these visible wall regions. Retain a narrow continuous service band, sparse upright returns and fine conduits in the remaining grey. Replace the broad grey bow frame with slim edge channels and a large ivory face. Preserve roof armor, cyan paint, lettering, physical windows and model geometry. Use built-in imagegen to edit the UV painting, then the existing Material Maker and Blender pipeline for all three liveries and both reduced atlases. Geometry, draw calls and texture allocation stay unchanged. Review the Cyan full-detail bow and side before propagating the correction.
+
+Final armor-restored exports: Copper 1,629,836 / 1,379,176 / 374,936; Cyan 1,664,116 / 1,413,976 / 382,524; Rescue 1,633,596 / 1,379,344 / 375,144 bytes for full/medium/distant. All three sets reproduce byte for byte. Geometry remains 4,824 / 1,290 / 496 triangles and 6 / 1 / 1 draws. The preview confirms 460 window/frame rays per livery, every deck menu and cutaway, and all nine livery/LOD selections with distinct baked textures. The fleet with interiors still totals 83,474 triangles in 50 draws and 78.17 MiB textures. OpenSpec passes all 42 items.
+
+The final armor-restored review covers 47 desktop captures and the phone default: all three liveries at each LOD, bow and service close-ups, all six mess-window angles, both interior lighting states, side and pylons. The preview inline blocks and budget marker match their sources. Geometry is unchanged from the passing 0.046 m2 shared-interior overlap check.

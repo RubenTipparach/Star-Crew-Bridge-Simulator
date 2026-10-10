@@ -1,5 +1,14 @@
 # Textured ship exteriors
 
+Owner correction, mess-hall windows (2026-10-10): lower all three mess windows to
+the wall's middle height and keep their exterior openings and interior views aligned.
+
+Owner correction, connected secondary structure (2026-10-10): connect the grey roof
+channels across the stepped shoulders, upper walls and forward corners. Paint purposeful
+vertical service returns into the existing UV layout, align the bow-face margins with the
+side returns, and retain cyan identification paint, real windows and broad white armor.
+Update all liveries and both LOD textures, then inspect the marked joins from both sides.
+
 Owner preference, cyan blue (2026-10-10): repaint the blue livery cyan, match its fittings and both LOD textures, and open the inspection page in Cyan. Retain Copper and Rescue as alternatives.
 
 Owner correction, continuous subhull (2026-10-10): replace disconnected grey patches with a continuous exposed service segment. Run a recessed grey band along both sides between the lower window rows, with connected dorsal service channels. Add pipes, couplings and small mechanical blocks inside the grey areas while keeping the white armor calm. Repaint all three UV-guided liveries and rebake both LODs.
@@ -23,3 +32,5 @@ Latest correction: remove the added command shoulders and crown, erase the mispl
 Window-depth correction: fit the forward upper hull to the actual command rooms, reducing the 4.18 m bridge and 1.84 m side-room window tunnels to 0.32 m. Use continuous graphite returns and exact liner joins; retain room scale and the approved warp assemblies.
 
 Deliver deterministic textured GLBs, an editable Blender scene, source data and generator, a three.js inspection page and reviewed screenshots. Runtime loading, warp simulation and weapon collision changes remain proposed and require the separate implementation step in CLAUDE.md section 4.
+
+Owner correction: restore broad ivory armor on the forward side walls and bow corners. Keep connected grey channels narrow and subordinate, preserve the cyan identity paint, and retain the centered mess windows. Repaint the UV source, update all liveries and rebake both LODs.

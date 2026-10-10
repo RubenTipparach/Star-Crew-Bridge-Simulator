@@ -9,9 +9,9 @@
   "props": {
     "tern": {
       "file": "tern.glb",
-      "triangles": 4714,
+      "triangles": 4824,
       "triangle_budget": 12000,
-      "vertices": 9331,
+      "vertices": 9628,
       "draw_calls": 6,
       "dimensions_m": [
         45.0,
@@ -32,8 +32,8 @@
       ],
       "embedded_images": 3,
       "texture_bytes_with_mips": 5767164,
-      "sha256": "e8ae417f76369c29eccd4ce41a98e2850db8f25907d5c9f5ec4b6068890542ab",
-      "bytes": 1667280,
+      "sha256": "ca90257ab4727d6bf4b9a502f2a889b5cdc10bc0ef21f64e08ba18bc6ac2259c",
+      "bytes": 1664116,
       "name": "SCS Tern",
       "class": "Heron-class frigate",
       "role": "Player ship",
@@ -247,184 +247,64 @@
         "difference service_band_1_2 (1)",
         "difference service_band_1_3 (1)",
         "difference service_band_1_4 (1)",
-        "union p_bridge_window_p.rim_surface.join_envelopes (2)",
-        "intersect p_bridge_window_p.rim_surface.fit_command_rooms (1)",
-        "chamfer p_bridge_window_p.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
         "intersect p_bridge_window_p.rim_surface (1)",
-        "union p_bridge_window_p.rim_back.join_envelopes (2)",
-        "intersect p_bridge_window_p.rim_back.fit_command_rooms (1)",
-        "chamfer p_bridge_window_p.rim_back.rounded_bow_rim (6 edges, 350 mm)",
         "difference p_bridge_window_p.rim_back (1)",
         "difference p_bridge_window_p.open_rim (1)",
-        "union p_bridge_window_s.rim_surface.join_envelopes (2)",
-        "intersect p_bridge_window_s.rim_surface.fit_command_rooms (1)",
-        "chamfer p_bridge_window_s.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
         "intersect p_bridge_window_s.rim_surface (1)",
-        "union p_bridge_window_s.rim_back.join_envelopes (2)",
-        "intersect p_bridge_window_s.rim_back.fit_command_rooms (1)",
-        "chamfer p_bridge_window_s.rim_back.rounded_bow_rim (6 edges, 350 mm)",
         "difference p_bridge_window_s.rim_back (1)",
         "difference p_bridge_window_s.open_rim (1)",
-        "union p_ready_window.rim_surface.join_envelopes (2)",
-        "intersect p_ready_window.rim_surface.fit_command_rooms (1)",
-        "chamfer p_ready_window.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
         "intersect p_ready_window.rim_surface (1)",
-        "union p_ready_window.rim_back.join_envelopes (2)",
-        "intersect p_ready_window.rim_back.fit_command_rooms (1)",
-        "chamfer p_ready_window.rim_back.rounded_bow_rim (6 edges, 350 mm)",
         "difference p_ready_window.rim_back (1)",
         "difference p_ready_window.open_rim (1)",
-        "union p_briefing_window.rim_surface.join_envelopes (2)",
-        "intersect p_briefing_window.rim_surface.fit_command_rooms (1)",
-        "chamfer p_briefing_window.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
         "intersect p_briefing_window.rim_surface (1)",
-        "union p_briefing_window.rim_back.join_envelopes (2)",
-        "intersect p_briefing_window.rim_back.fit_command_rooms (1)",
-        "chamfer p_briefing_window.rim_back.rounded_bow_rim (6 edges, 350 mm)",
         "difference p_briefing_window.rim_back (1)",
         "difference p_briefing_window.open_rim (1)",
-        "union p_quarters_window_1.rim_surface.join_envelopes (2)",
-        "intersect p_quarters_window_1.rim_surface.fit_command_rooms (1)",
-        "chamfer p_quarters_window_1.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
         "intersect p_quarters_window_1.rim_surface (1)",
-        "union p_quarters_window_1.rim_back.join_envelopes (2)",
-        "intersect p_quarters_window_1.rim_back.fit_command_rooms (1)",
-        "chamfer p_quarters_window_1.rim_back.rounded_bow_rim (6 edges, 350 mm)",
         "difference p_quarters_window_1.rim_back (1)",
         "difference p_quarters_window_1.open_rim (1)",
-        "union p_quarters_window_2.rim_surface.join_envelopes (2)",
-        "intersect p_quarters_window_2.rim_surface.fit_command_rooms (1)",
-        "chamfer p_quarters_window_2.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
         "intersect p_quarters_window_2.rim_surface (1)",
-        "union p_quarters_window_2.rim_back.join_envelopes (2)",
-        "intersect p_quarters_window_2.rim_back.fit_command_rooms (1)",
-        "chamfer p_quarters_window_2.rim_back.rounded_bow_rim (6 edges, 350 mm)",
         "difference p_quarters_window_2.rim_back (1)",
         "difference p_quarters_window_2.open_rim (1)",
-        "union p_quarters_window_3.rim_surface.join_envelopes (2)",
-        "intersect p_quarters_window_3.rim_surface.fit_command_rooms (1)",
-        "chamfer p_quarters_window_3.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
         "intersect p_quarters_window_3.rim_surface (1)",
-        "union p_quarters_window_3.rim_back.join_envelopes (2)",
-        "intersect p_quarters_window_3.rim_back.fit_command_rooms (1)",
-        "chamfer p_quarters_window_3.rim_back.rounded_bow_rim (6 edges, 350 mm)",
         "difference p_quarters_window_3.rim_back (1)",
         "difference p_quarters_window_3.open_rim (1)",
-        "union p_mess_window_1.rim_surface.join_envelopes (2)",
-        "intersect p_mess_window_1.rim_surface.fit_command_rooms (1)",
-        "chamfer p_mess_window_1.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
         "intersect p_mess_window_1.rim_surface (1)",
-        "union p_mess_window_1.rim_back.join_envelopes (2)",
-        "intersect p_mess_window_1.rim_back.fit_command_rooms (1)",
-        "chamfer p_mess_window_1.rim_back.rounded_bow_rim (6 edges, 350 mm)",
         "difference p_mess_window_1.rim_back (1)",
         "difference p_mess_window_1.open_rim (1)",
-        "union p_mess_window_2.rim_surface.join_envelopes (2)",
-        "intersect p_mess_window_2.rim_surface.fit_command_rooms (1)",
-        "chamfer p_mess_window_2.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
         "intersect p_mess_window_2.rim_surface (1)",
-        "union p_mess_window_2.rim_back.join_envelopes (2)",
-        "intersect p_mess_window_2.rim_back.fit_command_rooms (1)",
-        "chamfer p_mess_window_2.rim_back.rounded_bow_rim (6 edges, 350 mm)",
         "difference p_mess_window_2.rim_back (1)",
         "difference p_mess_window_2.open_rim (1)",
-        "union p_mess_window_3.rim_surface.join_envelopes (2)",
-        "intersect p_mess_window_3.rim_surface.fit_command_rooms (1)",
-        "chamfer p_mess_window_3.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
         "intersect p_mess_window_3.rim_surface (1)",
-        "union p_mess_window_3.rim_back.join_envelopes (2)",
-        "intersect p_mess_window_3.rim_back.fit_command_rooms (1)",
-        "chamfer p_mess_window_3.rim_back.rounded_bow_rim (6 edges, 350 mm)",
         "difference p_mess_window_3.rim_back (1)",
         "difference p_mess_window_3.open_rim (1)",
-        "union p_medbay_window_1.rim_surface.join_envelopes (2)",
-        "intersect p_medbay_window_1.rim_surface.fit_command_rooms (1)",
-        "chamfer p_medbay_window_1.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
         "intersect p_medbay_window_1.rim_surface (1)",
-        "union p_medbay_window_1.rim_back.join_envelopes (2)",
-        "intersect p_medbay_window_1.rim_back.fit_command_rooms (1)",
-        "chamfer p_medbay_window_1.rim_back.rounded_bow_rim (6 edges, 350 mm)",
         "difference p_medbay_window_1.rim_back (1)",
         "difference p_medbay_window_1.open_rim (1)",
-        "union p_medbay_window_2.rim_surface.join_envelopes (2)",
-        "intersect p_medbay_window_2.rim_surface.fit_command_rooms (1)",
-        "chamfer p_medbay_window_2.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
         "intersect p_medbay_window_2.rim_surface (1)",
-        "union p_medbay_window_2.rim_back.join_envelopes (2)",
-        "intersect p_medbay_window_2.rim_back.fit_command_rooms (1)",
-        "chamfer p_medbay_window_2.rim_back.rounded_bow_rim (6 edges, 350 mm)",
         "difference p_medbay_window_2.rim_back (1)",
         "difference p_medbay_window_2.open_rim (1)",
-        "union p_damage_control_window_1.rim_surface.join_envelopes (2)",
-        "intersect p_damage_control_window_1.rim_surface.fit_command_rooms (1)",
-        "chamfer p_damage_control_window_1.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
         "intersect p_damage_control_window_1.rim_surface (1)",
-        "union p_damage_control_window_1.rim_back.join_envelopes (2)",
-        "intersect p_damage_control_window_1.rim_back.fit_command_rooms (1)",
-        "chamfer p_damage_control_window_1.rim_back.rounded_bow_rim (6 edges, 350 mm)",
         "difference p_damage_control_window_1.rim_back (1)",
         "difference p_damage_control_window_1.open_rim (1)",
-        "union p_damage_control_window_2.rim_surface.join_envelopes (2)",
-        "intersect p_damage_control_window_2.rim_surface.fit_command_rooms (1)",
-        "chamfer p_damage_control_window_2.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
         "intersect p_damage_control_window_2.rim_surface (1)",
-        "union p_damage_control_window_2.rim_back.join_envelopes (2)",
-        "intersect p_damage_control_window_2.rim_back.fit_command_rooms (1)",
-        "chamfer p_damage_control_window_2.rim_back.rounded_bow_rim (6 edges, 350 mm)",
         "difference p_damage_control_window_2.rim_back (1)",
         "difference p_damage_control_window_2.open_rim (1)",
-        "union p_life_support_window_1.rim_surface.join_envelopes (2)",
-        "intersect p_life_support_window_1.rim_surface.fit_command_rooms (1)",
-        "chamfer p_life_support_window_1.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
         "intersect p_life_support_window_1.rim_surface (1)",
-        "union p_life_support_window_1.rim_back.join_envelopes (2)",
-        "intersect p_life_support_window_1.rim_back.fit_command_rooms (1)",
-        "chamfer p_life_support_window_1.rim_back.rounded_bow_rim (6 edges, 350 mm)",
         "difference p_life_support_window_1.rim_back (1)",
         "difference p_life_support_window_1.open_rim (1)",
-        "union p_life_support_window_2.rim_surface.join_envelopes (2)",
-        "intersect p_life_support_window_2.rim_surface.fit_command_rooms (1)",
-        "chamfer p_life_support_window_2.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
         "intersect p_life_support_window_2.rim_surface (1)",
-        "union p_life_support_window_2.rim_back.join_envelopes (2)",
-        "intersect p_life_support_window_2.rim_back.fit_command_rooms (1)",
-        "chamfer p_life_support_window_2.rim_back.rounded_bow_rim (6 edges, 350 mm)",
         "difference p_life_support_window_2.rim_back (1)",
         "difference p_life_support_window_2.open_rim (1)",
-        "union p_cargo_window_1.rim_surface.join_envelopes (2)",
-        "intersect p_cargo_window_1.rim_surface.fit_command_rooms (1)",
-        "chamfer p_cargo_window_1.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
         "intersect p_cargo_window_1.rim_surface (1)",
-        "union p_cargo_window_1.rim_back.join_envelopes (2)",
-        "intersect p_cargo_window_1.rim_back.fit_command_rooms (1)",
-        "chamfer p_cargo_window_1.rim_back.rounded_bow_rim (6 edges, 350 mm)",
         "difference p_cargo_window_1.rim_back (1)",
         "difference p_cargo_window_1.open_rim (1)",
-        "union p_cargo_window_2.rim_surface.join_envelopes (2)",
-        "intersect p_cargo_window_2.rim_surface.fit_command_rooms (1)",
-        "chamfer p_cargo_window_2.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
         "intersect p_cargo_window_2.rim_surface (1)",
-        "union p_cargo_window_2.rim_back.join_envelopes (2)",
-        "intersect p_cargo_window_2.rim_back.fit_command_rooms (1)",
-        "chamfer p_cargo_window_2.rim_back.rounded_bow_rim (6 edges, 350 mm)",
         "difference p_cargo_window_2.rim_back (1)",
         "difference p_cargo_window_2.open_rim (1)",
-        "union p_shield_room_window_1.rim_surface.join_envelopes (2)",
-        "intersect p_shield_room_window_1.rim_surface.fit_command_rooms (1)",
-        "chamfer p_shield_room_window_1.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
         "intersect p_shield_room_window_1.rim_surface (1)",
-        "union p_shield_room_window_1.rim_back.join_envelopes (2)",
-        "intersect p_shield_room_window_1.rim_back.fit_command_rooms (1)",
-        "chamfer p_shield_room_window_1.rim_back.rounded_bow_rim (6 edges, 350 mm)",
         "difference p_shield_room_window_1.rim_back (1)",
         "difference p_shield_room_window_1.open_rim (1)",
-        "union p_switchboard_window_1.rim_surface.join_envelopes (2)",
-        "intersect p_switchboard_window_1.rim_surface.fit_command_rooms (1)",
-        "chamfer p_switchboard_window_1.rim_surface.rounded_bow_rim (6 edges, 350 mm)",
         "intersect p_switchboard_window_1.rim_surface (1)",
-        "union p_switchboard_window_1.rim_back.join_envelopes (2)",
-        "intersect p_switchboard_window_1.rim_back.fit_command_rooms (1)",
-        "chamfer p_switchboard_window_1.rim_back.rounded_bow_rim (6 edges, 350 mm)",
         "difference p_switchboard_window_1.rim_back (1)",
         "difference p_switchboard_window_1.open_rim (1)",
         "difference window_and_airlock_recesses (21)",
@@ -950,7 +830,7 @@
           "room": "mess",
           "center_m": [
             -11.406667,
-            2.35,
+            1.5,
             10
           ],
           "normal": [
@@ -963,57 +843,57 @@
             0.8
           ],
           "outer_center_m": [
-            -11.959146499633789,
-            2.3499999046325684,
-            10.06445598602295
+            -11.959144592285156,
+            1.5,
+            10.064455032348633
           ],
           "outer_corners_m": [
             [
+              -11.978719711303711,
+              1.100000023841858,
+              9.21097469329834
+            ],
+            [
+              -11.781723022460938,
+              1.100000023841858,
+              10.899521827697754
+            ],
+            [
+              -11.860651016235352,
+              1.899999976158142,
+              10.908730506896973
+            ],
+            [
               -12.057645797729492,
-              1.9499999284744263,
+              1.899999976158142,
               9.220183372497559
-            ],
-            [
-              -11.860649108886719,
-              1.9499999284744263,
-              10.908729553222656
-            ],
-            [
-              -11.860647201538086,
-              2.75,
-              10.908729553222656
-            ],
-            [
-              -12.057641983032227,
-              2.75,
-              9.220182418823242
             ]
           ],
           "inner_corners_m": [
             [
               -11.840599060058594,
-              1.9499999284744263,
+              1.100000023841858,
               9.194860458374023
             ],
             [
               -11.64360237121582,
-              1.9499999284744263,
+              1.100000023841858,
               10.883407592773438
             ],
             [
               -11.64360237121582,
-              2.75,
+              1.899999976158142,
               10.883407592773438
             ],
             [
               -11.840599060058594,
-              2.75,
+              1.899999976158142,
               9.194860458374023
             ]
           ],
           "rim_width_m": 0.12,
           "max_depth_m": 0.65,
-          "depth_m": 0.5562269681544925,
+          "depth_m": 0.5562249555736145,
           "rim_material": "tern_rim",
           "deck": "B"
         },
@@ -1022,7 +902,7 @@
           "room": "mess",
           "center_m": [
             -11.056667,
-            2.35,
+            1.5,
             13
           ],
           "normal": [
@@ -1035,57 +915,57 @@
             0.8
           ],
           "outer_center_m": [
-            -11.609148025512695,
-            2.3499999046325684,
-            13.06445598602295
+            -11.609146118164062,
+            1.5,
+            13.064455032348633
           ],
           "outer_corners_m": [
             [
+              -11.628719329833984,
+              1.100000023841858,
+              12.21097469329834
+            ],
+            [
+              -11.431724548339844,
+              1.100000023841858,
+              13.89952278137207
+            ],
+            [
+              -11.51064682006836,
+              1.899999976158142,
+              13.908729553222656
+            ],
+            [
               -11.707645416259766,
-              1.9499999284744263,
+              1.899999976158142,
               12.220182418823242
-            ],
-            [
-              -11.510648727416992,
-              1.9499999284744263,
-              13.908730506896973
-            ],
-            [
-              -11.510648727416992,
-              2.75,
-              13.908730506896973
-            ],
-            [
-              -11.707647323608398,
-              2.75,
-              12.220183372497559
             ]
           ],
           "inner_corners_m": [
             [
               -11.490599632263184,
-              1.9499999284744263,
+              1.100000023841858,
               12.194860458374023
             ],
             [
               -11.293601989746094,
-              1.9499999284744263,
+              1.100000023841858,
               13.883407592773438
             ],
             [
               -11.293601989746094,
-              2.75,
+              1.899999976158142,
               13.883407592773438
             ],
             [
               -11.490599632263184,
-              2.75,
+              1.899999976158142,
               12.194860458374023
             ]
           ],
           "rim_width_m": 0.12,
           "max_depth_m": 0.65,
-          "depth_m": 0.5562279057936794,
+          "depth_m": 0.5562259200059588,
           "rim_material": "tern_rim",
           "deck": "B"
         },
@@ -1094,7 +974,7 @@
           "room": "mess",
           "center_m": [
             -10.706666,
-            2.35,
+            1.5,
             16
           ],
           "normal": [
@@ -1108,50 +988,50 @@
           ],
           "outer_center_m": [
             -11.259147644042969,
-            2.3499999046325684,
+            1.5,
             16.064456939697266
           ],
           "outer_corners_m": [
             [
-              -11.357645034790039,
-              1.9499999284744263,
-              15.220183372497559
+              -11.27872085571289,
+              1.100000023841858,
+              15.210975646972656
+            ],
+            [
+              -11.08172607421875,
+              1.100000023841858,
+              16.89952278137207
             ],
             [
               -11.160646438598633,
-              1.9499999284744263,
+              1.899999976158142,
               16.908729553222656
             ],
             [
-              -11.160648345947266,
-              2.75,
-              16.908729553222656
-            ],
-            [
-              -11.357643127441406,
-              2.75,
-              15.220182418823242
+              -11.357646942138672,
+              1.899999976158142,
+              15.220183372497559
             ]
           ],
           "inner_corners_m": [
             [
               -11.140599250793457,
-              1.9499999284744263,
+              1.100000023841858,
               15.194860458374023
             ],
             [
               -10.943601608276367,
-              1.9499999284744263,
-              16.88340950012207
-            ],
-            [
-              -10.943601608276367,
-              2.75,
+              1.100000023841858,
               16.883407592773438
             ],
             [
+              -10.943601608276367,
+              1.899999976158142,
+              16.88340950012207
+            ],
+            [
               -11.140599250793457,
-              2.75,
+              1.899999976158142,
               15.194860458374023
             ]
           ],
@@ -1908,8 +1788,8 @@
       ],
       "embedded_images": 1,
       "texture_bytes_with_mips": 5592404,
-      "sha256": "760a71f2f89f17a3e754ec0c4432f279ce8543860b48d85fd58121444f98a587",
-      "bytes": 1413852,
+      "sha256": "6f3ffe19856706f357d0948ea731cacda8beaf93020a7adc5eefb616784ae242",
+      "bytes": 1413976,
       "name": "SCS Tern",
       "class": "Heron-class frigate",
       "role": "Player ship",
@@ -2015,8 +1895,8 @@
         "file": "atlases/tern_lod1.png",
         "px": 1024,
         "emission_coverage": 0.03419,
-        "sha256": "ba424ba9aa955f2a488d019af7e63a1ca141f4fc2e6ceb7eaa29fe65e5f8a52a",
-        "bytes": 1308833
+        "sha256": "a68d75e9032a988162325e523de1d679af5ffb6469f08aee7446fd063fcac5ea",
+        "bytes": 1308959
       }
     },
     "tern_lod2": {
@@ -2044,8 +1924,8 @@
       ],
       "embedded_images": 1,
       "texture_bytes_with_mips": 1398100,
-      "sha256": "4d33550dd0908500bc84ba8daf4ef07e238b42fe4a741c9ba11cad1523787d82",
-      "bytes": 380276,
+      "sha256": "3153e7b13acbff4522a7e712484bcfe5b00c3e5708d49c722c5cc5e327967c34",
+      "bytes": 382524,
       "name": "SCS Tern",
       "class": "Heron-class frigate",
       "role": "Player ship",
@@ -2078,8 +1958,8 @@
         "file": "atlases/tern_lod2.png",
         "px": 512,
         "emission_coverage": 0.03419,
-        "sha256": "ae8e073d0c0898d0172e17ec7c962e5a85813060e3302658e60eef77fb0621e9",
-        "bytes": 338424
+        "sha256": "410dd979dd69c6d5e51e8ad718b4b07863e1a1f9f62706309000be08efb13732",
+        "bytes": 340672
       }
     }
   },

@@ -89,6 +89,24 @@
 - [x] Match fittings, rebake both LOD textures and make Cyan the preferred preview livery.
 - [x] Inspect the cyan ship at all detail levels and verify exports, controls and budgets.
 
+## Owner correction: connected secondary structure
+
+- [x] Paint aligned grey returns from roof channels across walls and bow corners.
+- [x] Update all liveries and bake both lower-detail textures.
+- [x] Inspect both sides and forward joins; verify windows, model exports and budgets.
+
+## Owner correction: centered mess windows
+
+- [x] Lower the shared mess window centers and fit their exterior frames to the service recess.
+- [x] Rebuild all liveries and LODs; inspect the mess from inside and outside.
+- [x] Verify the actual window heights, clear openings and matching interior portals.
+
+## Owner correction: armor coverage
+
+- [x] Restore broad armor panels and narrow the exposed grey connections in the UV painting.
+- [x] Inspect the Cyan full-detail result, update all liveries and rebake LODs.
+- [x] Review final captures and verify window alignment, reproduction and budgets.
+
 ## Separate engine implementation
 
 - [ ] Review the exterior art with the owner.

@@ -30,6 +30,10 @@ The full-detail player exterior SHALL contain genuine window openings aligned to
 - **WHEN** the viewer selects deck B or C in the exterior preview
 - **THEN** ten deck B and six deck C windows open into the corresponding furnished compartments, with at most 0.65 m returns, and their frames and dark glazing remain visible in both lower-detail textures
 
+#### Scenario: Look out from the mess hall
+- **WHEN** the mess hall is viewed from inside or outside
+- **THEN** its three window centers sit 1.50 m above the floor, with 1.70 x 0.80 m clear openings and frames fitted to the actual exterior surface
+
 ### Requirement: Reusable player exterior
 The asset pipeline SHALL produce a textured exterior GLB for the Tern from its layout hull, with two named warp pylons and two separated warp nacelles in ship-local metres.
 
@@ -100,3 +104,11 @@ The player exterior SHALL retain its accepted silhouette while displaying angula
 - **WHEN** the Tern is inspected along either side or its dorsal service channels
 - **THEN** the exposed grey structure reads as connected longitudinal segments containing pipes, couplings and mechanical detail, with calm white armor around it and unobstructed windows
 - **AND** both lower-detail textures preserve the same service-band layout and mechanical detail
+
+#### Scenario: Follow the subhull around a deck edge
+- **WHEN** the forward roof, stepped side walls and bow corners are inspected together
+- **THEN** grey service structure continues across horizontal and vertical surfaces through aligned returns, with visible mechanical detail and unobstructed window openings
+
+#### Scenario: Armor remains the dominant forward surface
+- **WHEN** the Tern is viewed from either forward quarter in any livery
+- **THEN** broad ivory armor panels SHALL dominate the command walls and bow, with narrower grey service channels and sparse upright connections retained between them.

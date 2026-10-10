@@ -64,12 +64,14 @@ render is a commit of its own, with the contact sheet.
 
 ## Provenance
 
-The Tern hull and fittings use three built-in imagegen paintings, `sources/tern-service-copper.png`,
-`tern-service-cyan.png` and `tern-service-rescue.png`. Each has its complete prompt at the matching
-`tern-service-<livery>-prompt.txt` path. Copper repaints the previous armor atlas against the actual
-mesh wireframe; cyan and rescue are targeted livery edits of that painting. Cyan uses a second built-in imagegen edit of cobalt, recorded in `sources/tern-service-cyan-prompt.txt`; its stable graph and delivered texture filenames retain the `cobalt` suffix. All use angular
+The Tern hull and fittings use three built-in imagegen paintings, `sources/tern-connected-copper.png`,
+`tern-connected-cyan.png` and `tern-connected-rescue.png`. The initial connected Cyan edit is recorded
+in `tern-connected-cyan-prompt.txt`, its finer details in `tern-connected-refinement-prompt.txt`, and
+the restored broad armor panels in `tern-armor-coverage-prompt.txt`. Copper and Rescue are color edits
+of that revised Cyan painting; their exact prompts use the matching `tern-connected-<livery>-prompt.txt`
+paths. Cyan's stable graph and delivered texture filenames retain the `cobalt` suffix. All use angular
 white armor over continuous grey channels containing pipes, couplings and machinery, plus flat painted registration, with no illustrated
-windows. The shared `sources/tern-service-coverage-prompt.txt` records the subsequent ivory-padding edit. `sources/tern-uv-wireframe.png` and its mask come from actual mesh UV polygons in
+windows. `sources/tern-uv-wireframe.png` and its mask come from actual mesh UV polygons in
 `sources/tern-uv-layout.json`, rasterized by `exterior_uv_guide.py`. The hull's dorsal UV orientation
 makes lettering readable with the bow at image top. `ptex/tern_hull.ptex`, `tern_hull_cobalt.ptex`
 and `tern_hull_rescue.ptex` share one parameterized graph builder and render at 1024 px in Material
@@ -108,3 +110,5 @@ Copied from **fps-game-demo** (Undercity/Brushfire), revision **`f6cd25c`**, on 
 Every source material has its `.ptex` here; none exists only as an export. fps-game-demo's
 other graphs (concrete, brick wall, stone blocks, lava) and its procedural city materials are not
 used by Star Crew and were not copied.
+
+Connected secondary structure: `tern-connected-cyan-prompt.txt` adds aligned roof-to-wall returns and a dedicated bow-face strip against the actual UV guide. `tern-connected-refinement-prompt.txt` reduces the scale of the new conduits. The final `tern-armor-coverage-prompt.txt` restores broad ivory armor between slimmer grey connections. Copper and Rescue are color-only edits of that final Cyan atlas, each with its own saved prompt. The graph builder imports `tern-connected-{livery}.png`; all three 1024 px layers retain zero emission.

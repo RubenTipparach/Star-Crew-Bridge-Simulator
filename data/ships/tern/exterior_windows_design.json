@@ -5,7 +5,7 @@
   "max_depth_m": 0.65,
   "rooms": [
     {"room": "quarters", "outboard_from_x_m": 9, "window_z_m": [10, 13, 16], "window_y_m": 2.35, "size_m": [1.7, 0.8]},
-    {"room": "mess", "outboard_from_x_m": 9, "window_z_m": [10, 13, 16], "window_y_m": 2.35, "size_m": [1.7, 0.8]},
+    {"room": "mess", "outboard_from_x_m": 9, "window_z_m": [10, 13, 16], "window_y_m": 1.5, "size_m": [1.7, 0.8]},
     {"room": "medbay", "outboard_from_x_m": 7, "window_z_m": [21.5, 24.5], "window_y_m": 2.35, "size_m": [1.7, 0.8]},
     {"room": "damage_control", "outboard_from_x_m": 7, "window_z_m": [21.5, 24.5], "window_y_m": 2.35, "size_m": [1.7, 0.8]},
     {"room": "life_support", "outboard_from_x_m": 9, "window_z_m": [10, 16], "window_y_m": -1.85, "size_m": [1.3, 0.9]},

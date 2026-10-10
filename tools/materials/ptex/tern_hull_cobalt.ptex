@@ -7,7 +7,7 @@
    "to_port": 0
   }
  ],
- "label": "Tern Service Channels - Cyan",
+ "label": "Tern Connected Subhull - Cyan",
  "name": "Material",
  "node_position": {
   "x": 0,
@@ -21,7 +21,7 @@
     "y": 0
    },
    "parameters": {
-    "image": "../sources/tern-service-cyan.png"
+    "image": "../sources/tern-connected-cyan.png"
    },
    "type": "image"
   },
