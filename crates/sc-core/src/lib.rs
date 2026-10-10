@@ -16,6 +16,7 @@ pub mod exterior;
 pub mod lift;
 pub mod names;
 pub mod nav;
+pub mod probes;
 pub mod replay;
 pub mod rng;
 pub mod vertex;

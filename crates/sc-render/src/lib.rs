@@ -42,6 +42,8 @@ pub enum DeckProgram {
     Textured,
     /// Baked colours only (no texture fetch).
     Flat,
+    /// Albedo lit by an ambient cube of light probes (a crew figure; light-baking design 16).
+    Probe,
 }
 
 /// The width of a mesh's indices.
@@ -246,6 +248,7 @@ impl Renderer {
         let mut shaders = HashMap::new();
         shaders.insert(DeckProgram::Textured, sg::make_shader(&shaders::deck::deck_shader_desc(backend)));
         shaders.insert(DeckProgram::Flat, sg::make_shader(&shaders::deck::deck_flat_shader_desc(backend)));
+        shaders.insert(DeckProgram::Probe, sg::make_shader(&shaders::deck::deck_probe_shader_desc(backend)));
         let blit_shader = sg::make_shader(&shaders::blit::blit_shader_desc(backend));
         let mut blit = sg::PipelineDesc { shader: blit_shader, label: c"blit".as_ptr(), ..Default::default() };
         blit.depth.pixel_format = DEPTH_FORMAT;
@@ -595,6 +598,35 @@ impl Renderer {
             sg::apply_uniforms(shaders::deck::UB_DECK_FS_PARAMS, &sg::value_as_range(&fs));
         }
         sg::draw(first, count, 1);
+    }
+
+    /// Draw a mesh whose vertex colours are albedo, lit by an ambient cube (`cube`: display multipliers for a surface
+    /// facing +X, -X, +Y, -Y, +Z and -Z in the ship's frame), in the current 3D pass of `t`. `model` is the mesh's
+    /// rotation into the ship's frame (its translation is ignored), `mvp` its full transform.
+    pub fn draw_deck_probe(
+        &mut self,
+        t: &Target,
+        mesh: &Mesh,
+        mvp: glam::Mat4,
+        model: glam::Mat4,
+        cube: &[[f32; 3]; 6],
+        state_weights: [f32; 3],
+    ) {
+        let pip = self.deck_pipeline(DeckProgram::Probe, mesh.width, t.samples);
+        sg::apply_pipeline(pip);
+        let mut b = sg::Bindings::new();
+        b.vertex_buffers[0] = mesh.vbuf;
+        b.index_buffer = mesh.ibuf;
+        sg::apply_bindings(&b);
+        let u = shaders::deck::DeckProbeVsParams {
+            mvp: mvp.to_cols_array(),
+            model: model.to_cols_array(),
+            cube: cube.map(|c| [c[0], c[1], c[2], 0.0]),
+            state_weights: [state_weights[0], state_weights[1], state_weights[2], 0.0],
+            clip: [1.0e9, 0.0, 0.0, 0.0],
+        };
+        sg::apply_uniforms(shaders::deck::UB_DECK_PROBE_VS_PARAMS, &sg::value_as_range(&u));
+        sg::draw(0, mesh.index_count, 1);
     }
 
     /// End the current pass.

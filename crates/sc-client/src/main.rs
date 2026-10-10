@@ -216,6 +216,12 @@ const MAP_EXPLODE_M: f32 = 12.0;
 const MAP_CUT_M: f32 = 1.6;
 /// Figures are drawn this much larger on the map, so a body reads from across the ship.
 const MAP_FIGURE_SCALE: f32 = 3.0;
+/// `--shots` frames this many bots close up after the ship's poses (light-baking 16).
+const BOT_SHOTS: usize = 4;
+/// A bot close-up's camera stands this far in front of the bot, metres.
+const BOT_SHOT_M: f32 = 2.2;
+/// Where a figure takes its light probes: its chest, this far above its feet, metres (light-baking 16).
+const FIGURE_PROBE_HEIGHT_M: f64 = 1.0;
 
 /// A name over a marker on the map: where (0-1 across and down the screen), what, its colour.
 struct MapLabel {
@@ -292,6 +298,8 @@ enum Scene {
         rooms: Vec<Room>,
         /// A crew figure mesh for each department, by its index in the company.
         figures: Vec<(usize, Mesh)>,
+        /// Every compartment's light probes, which light the figures (light-baking 16).
+        probes: sc_core::probes::ProbeSet,
         outside: Option<Box<Outside>>,
         tex: TextureArray,
         panel_first: u32,
@@ -510,9 +518,18 @@ fn load_ship(
     // The outside: its data, and the bow camera's target (no MSAA: it is shown a fifth of the screen's size).
     let [bw, bh] = ext.viewscreen.target_px;
     let outside = Outside { bow: r.make_target(bw, bh, 1), views: d.index.views.clone(), data: ext.clone() };
+    let grids: Vec<_> = d.index.compartments.iter().filter_map(|c| d.probe_grid(c)).collect();
+    let probes = sc_core::probes::ProbeSet::new(&grids);
+    println!(
+        "sc-client: {} light probes in {} rooms ({:.2} MB)",
+        d.index.probe_count,
+        probes.len(),
+        d.probes.len() as f64 / 1e6
+    );
     let scene = Scene::Ship {
         rooms,
         figures,
+        probes,
         outside: Some(Box::new(outside)),
         tex,
         panel_first: t.panel_first,
@@ -553,7 +570,9 @@ impl Client {
             (scene, walker, cam, None)
         };
         // Headless shots: every pose (the ship) or one view (the test room), in each state; a walk test instead walks.
-        let poses = if matches!(scene, Scene::Ship { .. }) { POSES.len() } else { 1 };
+        // After the ship's poses, a close-up of each of the first BOT_SHOTS bots (light-baking 16: probe-lit figures).
+        let bot_shots = walker.as_ref().map_or(0, |w| w.crew.bots.len().min(BOT_SHOTS));
+        let poses = if matches!(scene, Scene::Ship { .. }) { POSES.len() + bot_shots } else { 1 };
         let shot_plan = if shots.is_some() && !walk_test && !lobby_test {
             (0..poses).flat_map(|p| (0..3).map(move |s| (p, s))).collect()
         } else {
@@ -755,19 +774,18 @@ impl Client {
             }
             let at = Vec3::new(feet[0], feet[1] + lift(k), feet[2]);
             if let Some((_, mesh)) = figures.iter().find(|(d, _)| *d == fig) {
-                let p = DeckParams {
-                    mvp: vp
-                        * Mat4::from_translation(at - eye)
-                        * Mat4::from_rotation_y(yaw)
-                        * Mat4::from_scale(Vec3::splat(MAP_FIGURE_SCALE)),
-                    state_weights: [1.0, 0.0, 0.0],
-                    flash_dir: Vec3::Z,
-                    flash: 0.0,
-                    panel_first: u32::MAX,
-                    panel_glow: 0.0,
-                    clip_y: f32::MAX,
-                };
-                self.r.draw_deck(&self.target, mesh, DeckProgram::Flat, &p, None);
+                // The map is a diagram: its figures take the fixed light, not a room's (light-baking 16).
+                let turn = Mat4::from_rotation_y(yaw);
+                let mvp =
+                    vp * Mat4::from_translation(at - eye) * turn * Mat4::from_scale(Vec3::splat(MAP_FIGURE_SCALE));
+                self.r.draw_deck_probe(
+                    &self.target,
+                    mesh,
+                    mvp,
+                    turn,
+                    &sc_core::probes::fallback_cube(),
+                    [1.0, 0.0, 0.0],
+                );
             }
             let head = vp * (at - eye + Vec3::Y * (MAP_FIGURE_SCALE * 1.9 + 0.6)).extend(1.0);
             if head.w > 0.0 {
@@ -1007,12 +1025,24 @@ impl App for Client {
             // Each shot: set the pose and state, settle 40 frames (the blend), then capture.
             let Some(&(p, s)) = self.shot_plan.first() else { return Flow::Done };
             self.want = s;
-            if matches!(self.scene, Scene::Ship { .. }) {
+            let bot = p.checked_sub(POSES.len());
+            if let (Some(k), Some(w)) = (bot, self.walker.as_ref()) {
+                // A bot close-up: the camera in front of it, facing it, following it as it walks.
+                let b = &w.crew.bots[k];
+                let (f, (sy, cy)) = (b.body.feet, b.yaw.sin_cos());
+                let pos = [f64::from(f[0] + sy * BOT_SHOT_M), f64::from(f[1]), f64::from(f[2] + cy * BOT_SHOT_M)];
+                self.cam = Camera::at(&("bot", pos, [-sy, -cy], -14.0));
+            } else if matches!(self.scene, Scene::Ship { .. }) {
                 self.cam = Camera::at(&POSES[p]);
             }
             self.shot_frame += 1;
             if self.shot_frame == 40 {
-                let pose = if matches!(self.scene, Scene::Ship { .. }) { POSES[p].0 } else { "first-light" };
+                let bot_name = bot.map(|k| format!("bot-{k}"));
+                let pose = match (&bot_name, matches!(self.scene, Scene::Ship { .. })) {
+                    (Some(n), _) => n.as_str(),
+                    (None, true) => POSES[p].0,
+                    (None, false) => "first-light",
+                };
                 shot_name = Some(format!("{pose}-{}.png", ["normal", "red-alert", "emergency"][s]));
                 self.shot_plan.remove(0);
                 self.shot_frame = 0;
@@ -1103,7 +1133,7 @@ impl App for Client {
         }
         self.r.begin_3d(&self.target, [0.004, 0.005, 0.012, 1.0]);
         match &self.scene {
-            Scene::Ship { rooms, figures, outside, tex, panel_first, panel_glow, .. } => {
+            Scene::Ship { rooms, figures, probes, outside, tex, panel_first, panel_glow, .. } => {
                 if let Some(o) = outside {
                     let px = 70f32.to_radians() / RENDER_3D.1 as f32;
                     self.r.draw_sky(&self.target, &o.sky(proj, view, px));
@@ -1132,26 +1162,28 @@ impl App for Client {
                     };
                     self.r.draw_deck(&self.target, mesh, DeckProgram::Textured, &p, Some(tex));
                 }
-                // The bot crew: a figure a bot, in its department's tunic, flat-lit (crew-npcs 7).
+                // The bot crew: a figure a bot, in its department's tunic (crew-npcs 7), lit by the light probes at
+                // its chest, 1.0 m above its feet (light-baking 16); where none is valid, by the figures' old light.
                 if let Some(wk) = self.walker.as_ref() {
                     for b in &wk.crew.bots {
                         let Some((_, mesh)) = figures.iter().find(|(d, _)| *d == b.member.department) else { continue };
                         let f = b.body.feet;
+                        let chest = [f64::from(f[0]), f64::from(f[1]) + FIGURE_PROBE_HEIGHT_M, f64::from(f[2])];
+                        let cube = probes.sample(chest, w).unwrap_or_else(sc_core::probes::fallback_cube);
                         let rel = Vec3::new(
                             (f64::from(f[0]) - self.cam.pos[0]) as f32,
                             (f64::from(f[1]) - self.cam.pos[1]) as f32,
                             (f64::from(f[2]) - self.cam.pos[2]) as f32,
                         );
-                        let p = DeckParams {
-                            mvp: proj * view * Mat4::from_translation(rel) * Mat4::from_rotation_y(b.yaw),
-                            state_weights: w,
-                            flash_dir: Vec3::Z,
-                            flash: 0.0,
-                            panel_first: u32::MAX,
-                            panel_glow: 0.0,
-                            clip_y: f32::MAX,
-                        };
-                        self.r.draw_deck(&self.target, mesh, DeckProgram::Flat, &p, None);
+                        let turn = Mat4::from_rotation_y(b.yaw);
+                        self.r.draw_deck_probe(
+                            &self.target,
+                            mesh,
+                            proj * view * Mat4::from_translation(rel) * turn,
+                            turn,
+                            &cube,
+                            w,
+                        );
                     }
                 }
                 // The viewscreens: the bow camera's picture on a quad 3 cm in front of each.

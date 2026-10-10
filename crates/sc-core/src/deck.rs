@@ -7,20 +7,21 @@
 //! the file: callers hand it bytes.
 //!
 //! Layout, little-endian: `"SCDK"`, the version (u32), the index's length in bytes (u32), the index as
-//! JSON (`DeckIndex`), then the blobs the index points into: vertices, indices (u32), texture mip levels, and the
-//! walk's triangles (nine f32 each: three corners in ship coordinates, metres).
+//! JSON (`DeckIndex`), then the blobs the index points into: vertices, indices (u32), texture mip levels, the
+//! walk's triangles (nine f32 each: three corners in ship coordinates, metres), and the light probes
+//! (`crate::probes::PROBE_BYTES` each).
 //!
 //! Version 3 (deck-pipeline 13b) adds a compartment's mover (the lift's car is a compartment of its own that moves),
 //! a lift's speed, door time and car, the viewscreens, and the first layer of the console screens' atlas. Version 4
 //! (crew-npcs 7) adds a compartment's floor centre, where a bot goes to work in it, and the crew figures (the deck
-//! `figure`).
+//! `figure`). Version 5 (light-baking 16) adds each compartment's light probe grid and the probes' blob.
 
 use serde::{Deserialize, Serialize};
 
 /// The file's magic number.
 pub const MAGIC: &[u8; 4] = b"SCDK";
 /// The format version this build reads and writes.
-pub const VERSION: u32 = 4;
+pub const VERSION: u32 = 5;
 
 /// One compartment's mesh in the file.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -47,6 +48,23 @@ pub struct DeckCompartment {
     /// The middle of its floor on its lowest deck, ship coordinates, metres: where a bot goes to work in it. None for
     /// what is not a room (the dock, the figures, the lift's car).
     pub floor_m: Option<[f32; 3]>,
+    /// Its light probes (light-baking 16): None for what has none (the dock, the figures, the lift's car).
+    pub probes: Option<DeckProbes>,
+}
+
+/// A compartment's light probe grid: points `spacing_m` apart on each axis from `origin_m`, `dims` on each axis,
+/// x fastest, then y, then z; its probes are `dims[0] * dims[1] * dims[2]` in the probe blob from `first`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct DeckProbes {
+    /// The first grid point, ship coordinates, metres.
+    pub origin_m: [f64; 3],
+    /// The distance between neighbouring points, metres.
+    pub spacing_m: f32,
+    /// Points on the x, y and z axes.
+    pub dims: [u32; 3],
+    /// Index of its first probe in the probe blob.
+    pub first: u64,
 }
 
 /// The texture array: square RGBA8 layers with a full mip chain, largest first.
@@ -197,6 +215,8 @@ pub struct DeckIndex {
     pub walk: DeckWalk,
     /// The viewscreens.
     pub views: Vec<DeckView>,
+    /// Probes in the probe blob.
+    pub probe_count: u64,
 }
 
 /// A deck file opened from its bytes.
@@ -211,6 +231,8 @@ pub struct Deck<'a> {
     pub textures: &'a [u8],
     /// The walk's triangles, nine little-endian f32 each.
     pub walk: &'a [u8],
+    /// The light probes, `crate::probes::PROBE_BYTES` each.
+    pub probes: &'a [u8],
 }
 
 /// The file could not be read: what was wrong.
@@ -225,7 +247,14 @@ impl std::fmt::Display for DeckError {
 impl std::error::Error for DeckError {}
 
 /// Write a deck file from its parts.
-pub fn write(index: &DeckIndex, vertices: &[u8], indices: &[u32], textures: &[u8], walk: &[f32]) -> Vec<u8> {
+pub fn write(
+    index: &DeckIndex,
+    vertices: &[u8],
+    indices: &[u32],
+    textures: &[u8],
+    walk: &[f32],
+    probes: &[u8],
+) -> Vec<u8> {
     let json = serde_json::to_vec(index).expect("the index serialises");
     let mut out = Vec::with_capacity(12 + json.len() + vertices.len() + indices.len() * 4 + textures.len());
     out.extend_from_slice(MAGIC);
@@ -240,6 +269,7 @@ pub fn write(index: &DeckIndex, vertices: &[u8], indices: &[u32], textures: &[u8
     for f in walk {
         out.extend_from_slice(&f.to_le_bytes());
     }
+    out.extend_from_slice(probes);
     out
 }
 
@@ -269,6 +299,7 @@ pub fn read(bytes: &[u8]) -> Result<Deck<'_>, DeckError> {
     let indices = take(index.index_count * 4, "the index blob")?;
     let textures = take(index.texture_bytes, "the texture blob")?;
     let walk = take(index.walk.triangle_count * 36, "the walk's triangles")?;
+    let probes = take(index.probe_count * crate::probes::PROBE_BYTES as u64, "the light probes")?;
     if walk.chunks_exact(4).any(|b| !f32::from_le_bytes(b.try_into().unwrap()).is_finite()) {
         return Err(e("the walk's triangles hold a non-finite number"));
     }
@@ -282,6 +313,16 @@ pub fn read(bytes: &[u8]) -> Result<Deck<'_>, DeckError> {
         }
         if c.origin_m.iter().any(|x| !x.is_finite()) {
             return Err(DeckError(format!("compartment {} has a non-finite origin", c.id)));
+        }
+        if let Some(p) = &c.probes {
+            let n = p.dims.iter().map(|&d| u64::from(d)).product::<u64>();
+            if n == 0
+                || p.first + n > index.probe_count
+                || !(p.spacing_m > 0.0 && p.spacing_m.is_finite())
+                || p.origin_m.iter().any(|x| !x.is_finite())
+            {
+                return Err(DeckError(format!("compartment {}'s probe grid is not usable", c.id)));
+            }
         }
     }
     for v in &index.views {
@@ -300,7 +341,7 @@ pub fn read(bytes: &[u8]) -> Result<Deck<'_>, DeckError> {
     if t.mip_offsets.len() != t.mips as usize || t.layers == 0 || t.layers > 256 {
         return Err(e("the texture index is inconsistent"));
     }
-    Ok(Deck { index, vertices, indices, textures, walk })
+    Ok(Deck { index, vertices, indices, textures, walk, probes })
 }
 
 impl Deck<'_> {
@@ -315,6 +356,18 @@ impl Deck<'_> {
             .chunks_exact(36)
             .map(|t| std::array::from_fn(|k| f32::from_le_bytes(t[k * 4..k * 4 + 4].try_into().unwrap())))
             .collect()
+    }
+    /// A compartment's probe grid, ready to sample, or None when it has none.
+    pub fn probe_grid(&self, c: &DeckCompartment) -> Option<crate::probes::ProbeGrid<'_>> {
+        let p = c.probes.as_ref()?;
+        let n = p.dims.iter().map(|&d| d as usize).product::<usize>();
+        let at = p.first as usize * crate::probes::PROBE_BYTES;
+        Some(crate::probes::ProbeGrid {
+            origin_m: p.origin_m,
+            spacing_m: p.spacing_m,
+            dims: p.dims,
+            data: &self.probes[at..at + n * crate::probes::PROBE_BYTES],
+        })
     }
     /// A compartment's vertex bytes.
     pub fn vertices_of(&self, c: &DeckCompartment) -> &[u8] {
@@ -342,6 +395,7 @@ mod tests {
                 index_count: 3,
                 mover: 0,
                 floor_m: None,
+                probes: Some(DeckProbes { origin_m: [0.5, 0.5, 0.5], spacing_m: 1.0, dims: [1, 1, 1], first: 0 }),
             }],
             textures: DeckTextures {
                 size_px: 1,
@@ -364,26 +418,36 @@ mod tests {
                 lifts: vec![],
             },
             views: vec![],
+            probe_count: 1,
         };
         (index, vec![7; 84], vec![0, 1, 2], vec![255; 4])
     }
     const TRI: [f32; 9] = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0];
+    const PROBE: [u8; crate::probes::PROBE_BYTES] = [128; crate::probes::PROBE_BYTES];
 
     #[test]
     fn a_deck_reads_back_as_written() {
         let (i, v, x, t) = tiny();
-        let bytes = write(&i, &v, &x, &t, &TRI);
+        let bytes = write(&i, &v, &x, &t, &TRI, &PROBE);
         let d = read(&bytes).unwrap();
         assert_eq!(d.index, i);
         assert_eq!(d.walk_triangles(), vec![TRI]);
         assert_eq!(d.indices_of(&i.compartments[0]), x);
         assert_eq!(d.vertices_of(&i.compartments[0]), &v[..]);
+        assert_eq!(d.probe_grid(&i.compartments[0]).unwrap().data, &PROBE[..]);
+    }
+
+    #[test]
+    fn a_probe_grid_running_past_the_blob_is_refused() {
+        let (mut i, v, x, t) = tiny();
+        i.compartments[0].probes.as_mut().unwrap().dims = [2, 1, 1];
+        assert!(read(&write(&i, &v, &x, &t, &TRI, &PROBE)).is_err(), "a grid must not read probes it does not have");
     }
 
     #[test]
     fn a_truncated_deck_is_refused() {
         let (i, v, x, t) = tiny();
-        let bytes = write(&i, &v, &x, &t, &TRI);
+        let bytes = write(&i, &v, &x, &t, &TRI, &PROBE);
         assert!(read(&bytes[..bytes.len() - 1]).is_err(), "a short file must not be read past its end");
     }
 
@@ -391,7 +455,7 @@ mod tests {
     fn a_compartment_pointing_outside_the_file_is_refused() {
         let (mut i, v, x, t) = tiny();
         i.compartments[0].vertex_count = 4;
-        assert!(read(&write(&i, &v, &x, &t, &TRI)).is_err());
+        assert!(read(&write(&i, &v, &x, &t, &TRI, &PROBE)).is_err());
     }
 
     #[test]
@@ -399,6 +463,6 @@ mod tests {
         let (i, v, x, t) = tiny();
         let mut bad = TRI;
         bad[4] = f32::NAN;
-        assert!(read(&write(&i, &v, &x, &t, &bad)).is_err(), "a NaN would poison the collision world");
+        assert!(read(&write(&i, &v, &x, &t, &bad, &PROBE)).is_err(), "a NaN would poison the collision world");
     }
 }
