@@ -8,9 +8,9 @@ The owner asked for implementation on 2026-10-10 (proposal). Progress and findin
 
 ## 2. Core
 
-- [ ] 2.1 `data/ships/tern/flight.json`, `shields.json`, `combat.json`, `data/weapons.json`, `data/enemies.json`, `data/stations.json`, `data/missions/drill-hound.json`, parsed and validated by `sc-core`.
-- [ ] 2.2 `sc-core::combat`: flight, shields and hull, turrets with the shared hit chance, bolts, Gannet missiles, the Hound, the mission's phases; a replay hash; tests (the hit chance predicts the hit rate; a drill with nobody aboard stays in Muster; bots win).
-- [ ] 2.3 `sc-core::automation`: helm and tactical at the `automation` and `bot` profiles, through the same commands.
+- [x] 2.1 `data/ships/tern/flight.json`, `shields.json`, `combat.json`, `data/weapons.json`, `data/enemies.json`, `data/stations.json`, `data/missions/drill-hound.json`, parsed and validated by `sc-core`.
+- [x] 2.2 `sc-core::combat`: flight, shields and hull, turrets with the shared hit chance, bolts, Gannet missiles, the Hound, the mission's phases; a replay hash; tests (the hit chance predicts the hit rate; a drill with nobody aboard stays in Muster; bots win).
+- [x] 2.3 `sc-core::automation`: helm and tactical at the `automation` and `bot` profiles, through the same commands.
 
 ## 3. Network
 

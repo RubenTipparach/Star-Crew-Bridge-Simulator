@@ -105,9 +105,10 @@ to 0 at 30 m from the closest approach. No point defence yet.
 
 ### 2.5 The Hound
 
-Approach to 1,800 m (WS's orbit), then orbit the Tern at 200 m/s (*placeholder*) with its turrets firing whenever
+Approach to 1,800 m (WS's orbit), then orbit the Tern at 200 m/s on an orbit whose axis leans 50 deg from the drill's up (both *placeholder*), so it passes above and below the Tern's plane, with its turrets firing whenever
 `P_hit >= 4 %`, its aim `sigma_base` 0.3 deg (WS's veteran Jackal). It fights to the end (WS's retreat at 25 % is
-later).
+later). Its turrets carry a heavy pulse cannon (2.6 MJ a bolt, 3 a second, *placeholder*) standing in for the
+Lance missiles it does not have yet; without it the Hound could not beat the Tern's shield regeneration (`log.md`).
 
 ## 3. `sc-core::automation`
 

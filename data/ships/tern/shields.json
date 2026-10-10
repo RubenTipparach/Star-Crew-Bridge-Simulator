@@ -1,0 +1,14 @@
+{
+  "schema": "starcrew.shields/1",
+  "_doc": "The Tern's shield faces and presets (openspec/changes/weapons-and-shields section 9; coop-drill design 2.2). Faces in order: bow (+Z), stern (-Z), port (+X), starboard (-X), dorsal (+Y), ventral (-Y). Every preset sums to the 240 MJ capacity; each face is held to 15-80 MJ. Regeneration is 0.25 x the generator's 12 MW, shared by the preset's caps.",
+  "shields": {
+    "regen_mj_s": 3.0,
+    "presets": [
+      { "id": "balanced", "name": "Balanced", "faces_mj": [40, 40, 40, 40, 40, 40] },
+      { "id": "bow", "name": "Bow", "faces_mj": [80, 15, 36, 36, 36, 37] },
+      { "id": "stern", "name": "Stern", "faces_mj": [15, 80, 36, 36, 36, 37] },
+      { "id": "port", "name": "Port", "faces_mj": [36, 36, 80, 15, 36, 37] },
+      { "id": "starboard", "name": "Starboard", "faces_mj": [36, 36, 15, 80, 36, 37] }
+    ]
+  }
+}
