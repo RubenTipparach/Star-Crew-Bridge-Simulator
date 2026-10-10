@@ -37,4 +37,4 @@ The owner asked for implementation on 2026-10-10 (proposal). Progress and findin
 - [x] 6.1 Bodies in `sc-core::combat`: seats from the layout, the walk order, stand and sit, automation while walking, the bot's relieve and reassign rules; tests on the bridge's walk world.
 - [x] 6.2 `sc-server` loads the deck's walk world and grid; bodies in the snapshot; the test over loopback with a lone bot walking to Helm.
 - [x] 6.3 The drill client: the bridge from the body's eye while walking, the crew's figures, "Walking to" on the console, `V` for the overview; captures.
-- [ ] 6.4 The demo video again, with the bots walking.
+- [x] 6.4 The demo video again, with the bots walking (`docs/videos/2026-10-10-crew-on-foot-pi5.mp4`).

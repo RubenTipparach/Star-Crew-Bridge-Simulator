@@ -16,3 +16,17 @@ copying and encoding the screen while it draws); the game itself held 26 FPS med
 | 0:45-1:07 | The Hound orbits above and below; the scanner shows it on its stalk; it breaks up at 0:57 (round time) |
 | 1:07-1:27 | The debrief: victory in 57 s, 190 of 580 turret hits, 4 of 4 missiles, hull 93 of 120 MJ |
 | 1:27-1:40 | The next round's briefing |
+
+## `2026-10-10-crew-on-foot-pi5.mp4` (132 s, coop-drill design 9, task 6.4)
+
+Pi 1's screen (2560 x 1080), `sc-client --connect 192.168.0.210 --watch`: the bridge's overview from the bow end,
+looking aft over the seats to the muster point. Recorded with `wf-recorder` at 30 fps while the game drew. The server
+was restarted first, so every body starts standing at the back. Commit 6c260b3, protocol 4.
+
+| Time | Shows |
+| --- | --- |
+| 0:00 | The empty bridge in Muster; the band names every station "auto" |
+| 0:04 | Lt. Arlo Venn (Pi 1's Helm bot) joins at the back, "to Helm" under his name, walks forward round the captain's chair and sits at Helm |
+| 0:10 | Alone and ready, he starts the round: Countdown, then Engage |
+| 1:06 | Ens. Dara Holt (Pi 2's Tactical bot, over the LAN) joins mid-fight at the back, "to Tactical", walks to the starboard seat and sits; Tactical leaves automation |
+| 2:00 | Round 0 ends: victory in 103 s, Tern hull 27 MJ |
