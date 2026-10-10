@@ -6,20 +6,26 @@
 
 A player SHALL start a repair by Use at the system's repair point while holding a kit, which docks the body at the
 point; the service face's cover, a textured plate, SHALL be unscrewed and lifted off in the 3D view, which SHALL
-show the machine's baked insides (a circuit board or wiring), never its mini-game. Only a click on the insides (or
-Use while they are pointed at) SHALL draw the mini-game over the live, darkened 3D view, and Esc SHALL put it back
-with the round paused. The job SHALL count as done only once the cover is screwed back on in 3D.
+show the machine's insides, its hardware modelled, never its mini-game. Where a part is faulty, the player SHALL
+pull it and fit a part of the same type and rating from the kit's pouch; a wrong part SHALL fail its test and come
+back out. With the right part in, a click on the open bay (or Use while it is pointed at) SHALL draw the mini-game,
+the calibration, over the live, darkened 3D view, and Esc SHALL put it back with the round paused. The job SHALL count as done only once the cover is screwed back on in 3D.
 
 #### Scenario: Docking at the coolant pump
 - **WHEN** a player holding a kit uses the damaged coolant pump's repair point
 - **THEN** the body kneels at the point, the camera frames the coupling guard, the player turns its four screws out
   on the pump in 3D and the guard lifts off, showing the motor's terminal box and wiring behind it
 
-#### Scenario: The faulty part opens the game
+#### Scenario: The faulty part comes out
 - **WHEN** the cover of a machine is off and the player clicks the faulty part among its hardware (the pump's
   scorched relay)
-- **THEN** the job's 2D game opens from that part
+- **THEN** the part lifts out of its seat into the kit's tray, beside the parts in the kit's pouch
 - **AND** a click on a sound part only says it tests fine
+
+#### Scenario: The right part, then calibration
+- **WHEN** the player pulls the pump's scorched 24 V DC relay and fits the 230 V AC relay from the pouch
+- **THEN** the part fails its test, comes back out to the pouch, and the game does not open
+- **AND** after the 24 V DC relay is fitted, a click anywhere in the open bay opens the pump game to calibrate it
 
 #### Scenario: Clicking the insides opens the game
 - **WHEN** the docked player clicks the wiring in the opened pump

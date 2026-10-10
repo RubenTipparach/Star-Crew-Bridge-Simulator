@@ -331,6 +331,7 @@ class Prop:
         self.stations = []      # the stations a variant is for (bridge_variants.json station ids)
         self.controls = []      # the hand controls modelled on it, in words, for the manifest
         self.recesses = []      # every recess cut: (label, frame, width, height, depth, floor role)
+        self.wear = None        # the wear (prop_atlas.json wear) its atlas bakes under: None takes its set's
         self.decor = []         # the prop's own details for its atlas bake: functions of a Detail, run first
         self.finish_of = {}     # a role baked in another finish than prop_atlas.json roles names
 
@@ -861,26 +862,48 @@ def _hull2(pts):
     return lo[:-1] + hi[:-1]
 
 
-def _min_rect(pts):
-    """The smallest-area rectangle round 2D points: (cos, sin) of its axis, its min corner and size in
-    that axis' frame. Rotating calipers over the hull's edges; ties keep the first edge."""
-    hull_pts = _hull2(pts)
-    best = None
-    cands = []
-    for i in range(len(hull_pts)):
-        a, b = hull_pts[i], hull_pts[(i + 1) % len(hull_pts)]
-        dx, dy = b[0] - a[0], b[1] - a[1]
-        ln = math.hypot(dx, dy)
-        if ln > 1e-9:
-            cands.append((dx / ln, dy / ln))
-    cands.append((1.0, 0.0))
-    for c, s in cands:
-        xs = [x * c + y * s for x, y in hull_pts or pts]
-        ys = [-x * s + y * c for x, y in hull_pts or pts]
+RECT_SLACK = 0.10   # a chart's rectangle may be this much bigger than the smallest, to keep its texels along its edges
+
+
+def _min_rect(pts, tris=None):
+    """The rectangle a chart is laid in, round 2D points: (cos, sin) of its axis, its min corner and size in
+    that axis' frame. The candidates are the directions of the hull's edges and of the chart's own triangle
+    edges (tris, 2D); of those within RECT_SLACK of the smallest area, the one along which (or square to which)
+    the most of the triangles' edge length runs wins, then the smaller, then the first. The smallest alone
+    lines a chart up with its hull, and an unfolded strip's hull can have a long edge spanning two faces at a
+    slant: the texels then run crooked across every face in it (repairs-on-deck 3e: the pump's terminal box,
+    3.2 degrees off)."""
+    hull_pts = _hull2(pts) or pts
+    segs = []
+    for poly in ([hull_pts] + list(tris or [])):
+        for i in range(len(poly)):
+            a, b = poly[i], poly[(i + 1) % len(poly)]
+            dx, dy = b[0] - a[0], b[1] - a[1]
+            ln = math.hypot(dx, dy)
+            if ln > 1e-9:
+                segs.append((dx / ln, dy / ln, ln, poly is hull_pts))
+    dirs, seen = [], set()
+    for ex, ey, _, _ in segs + [(1.0, 0.0, 1.0, True)]:
+        key = round(math.degrees(math.atan2(ey, ex)) % 90.0, 4) % 90.0
+        if key not in seen:
+            seen.add(key)
+            dirs.append((ex, ey))
+    weigh = [(ex, ey, ln) for ex, ey, ln, on_hull in segs if not on_hull] if tris else [(ex, ey, ln) for ex, ey, ln, _ in segs]
+    rows = []
+    for c, s in dirs:
+        xs = [x * c + y * s for x, y in hull_pts]
+        ys = [-x * s + y * c for x, y in hull_pts]
         area = (max(xs) - min(xs)) * (max(ys) - min(ys))
-        if best is None or area < best[0] - 1e-12:
-            best = (area, c, s, min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys))
-    return best[1:]
+        along = sum(ln for ex, ey, ln in weigh if abs(ex * c + ey * s) > 0.9999 or abs(ey * c - ex * s) > 0.9999)
+        rows.append((area, along, c, s, min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys)))
+    least = min(r[0] for r in rows)
+    best = None
+    for r in rows:
+        if r[0] > least * (1 + RECT_SLACK) + 1e-12:
+            continue
+        if best is None or r[1] > best[1] + 1e-9 or (abs(r[1] - best[1]) <= 1e-9 and r[0] < best[0] - 1e-12):
+            best = r
+    return best[2:]
 
 
 def _chart_mask(tris, k, margin):
@@ -983,7 +1006,7 @@ def _unfold(groups, bm, max_len):
             i = parent[i]
         return i
     def rect(pos):
-        r = _min_rect(list(pos.values()))
+        r = _min_rect(list(pos.values()))   # the area only: the join test does not need the texel axis
         return r[4] * r[5] if max(r[4], r[5]) <= max_len else float("inf")
 
     def tri_area(t):
@@ -1079,7 +1102,7 @@ def atlas_uv_at(p, A, side):
     seen_area = sum(sum(bm.faces[fi].calc_area() for fi in g["faces"]) for g in groups if not g["fixed"])
     max_len = 0.9 * side / min(top, 0.75 * math.sqrt(side * side / max(seen_area, 1e-9)))
     for g in _unfold(groups, bm, max_len):
-        c, s, x0, y0, w, h = _min_rect(list(g["pos"].values()))
+        c, s, x0, y0, w, h = _min_rect(list(g["pos"].values()), g["tris"])
         loc = {i: (a * c + b * s - x0, -a * s + b * c - y0) for i, (a, b) in g["pos"].items()}
         charts.append({"faces": g["faces"], "loc": loc,
                        "area": sum(bm.faces[fi].calc_area() for fi in g["faces"]),
@@ -2093,7 +2116,10 @@ def run(ps):
             facts = verify_glb(path, p)
             rel = A["atlas"]["dir"] + "/" + n + ".png"
             png = os.path.join(tmp, rel)
-            baked = bake_atlas(p, A, A["sets"][ps.name], png, p.atlas_uv["px"])
+            wear = p.wear or A["sets"][ps.name]
+            if wear not in A["wear"]:
+                raise SystemExit(f"[props] {n}: names no wear in {ATLAS_JSON}: {wear}")
+            baked = bake_atlas(p, A, wear, png, p.atlas_uv["px"])
             p.atlas = {"file": rel, "px": p.atlas_uv["px"], "px_per_m": p.atlas_uv["px_per_m"], "charts": p.atlas_uv["charts"],
                        "cover": p.atlas_uv["cover"], "glow": baked["glow"], "sha256": sha256(png), "bytes": os.path.getsize(png)}
             print(f"[props] {n}: atlas baked, {p.atlas['px_per_m']} px/m, glows on {baked['glow']:.1%}", flush=True)

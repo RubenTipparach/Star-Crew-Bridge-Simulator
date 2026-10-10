@@ -18,6 +18,10 @@
   contactor, relay and wires; the board's parts on a bare-board bake whose part list places them), the parts written
   to `service.json` as hit targets, the faulty one broken and smoking; `service-panels.html` lights a part under the
   pointer, says a sound one tests fine, and opens the 2D game from the faulty one; shots.
+- [x] 1.8 Design 3e prototypes: each bay's hardware its own prop on a mounting plate (the machine's atlas back to its
+  own colours), the faulty part a prop of its own; `service-panels.html` pulls it into the tray, fits a part from the
+  pouch (a wrong one fails its test and comes back), then the whole bay is the calibrate target that opens the 2D game;
+  shots.
 - [ ] 1.6 After the owner approves 1.5: the bays in the engineering props' builds, and the repair page docking at
   the side or back where they are.
 

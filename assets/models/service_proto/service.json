@@ -2,30 +2,61 @@
   "schema": "starcrew.service-bays/1",
   "built_by": "tools/blender/build_service_prototypes.py",
   "_rules": [
-    "Prop space of each machine (+Y up, +Z its front). cover_at_m is the centre of the cover's back when it is home in the rebate, normal out of the machine, up the cover's up; the cover's front is thickness_m along normal. screws_m are the screws' head undersides when driven home, on the face. shows is the bake the bay's recorded floor carries (none: a plain plate). hardware is every piece a click names (design 3d): its box in prop space; fault is the piece the job's repair starts from, game the 2D game it opens."
+    "Prop space of each machine (+Y up, +Z its front). cover_at_m is the centre of the cover's back when it is home in the rebate, normal out of the machine, up the cover's up; the cover's front is thickness_m along normal. screws_m are the screws' head undersides when driven home, on the face. shows is the bake the hardware is every piece a click names (design 3d): its box in the machine's prop space. hardware_prop is the prop the pieces stand on (design 3e), its origin at hardware_at_m with the bay's axes (x across, up, normal). slot is the faulty part's: at_m its origin in the hardware prop's space, broken the model seated there, fits the part (parts) that replaces it; pouch is what the kit carries. bay_box_m is the calibrate target; game the 2D game that calibrates the machine once the right part is in."
   ],
+  "parts": {
+    "relay_24vdc": {
+      "type": "Relay",
+      "rating": "24 V DC",
+      "model": "part_relay"
+    },
+    "relay_230vac": {
+      "type": "Relay",
+      "rating": "230 V AC",
+      "model": "part_relay"
+    },
+    "relay_12vdc": {
+      "type": "Relay",
+      "rating": "12 V DC",
+      "model": "part_relay"
+    },
+    "cap_470u_35v": {
+      "type": "Capacitor",
+      "rating": "470 \u00b5F 35 V",
+      "model": "part_cap"
+    },
+    "cap_470u_16v": {
+      "type": "Capacitor",
+      "rating": "470 \u00b5F 16 V",
+      "model": "part_cap"
+    },
+    "cap_47u_35v": {
+      "type": "Capacitor",
+      "rating": "47 \u00b5F 35 V",
+      "model": "part_cap"
+    }
+  },
   "machines": {
     "coolant_pump_svc": {
+      "label": "terminal box",
       "cover": "cover_pump",
-      "shows": null,
       "size_m": [
         0.38,
         0.32
       ],
       "thickness_m": 0.012,
-      "fault": "K1",
       "game": "pump",
       "hardware": [
         {
           "id": "X1",
           "label": "Terminal strip X1",
           "lo_m": [
-            0.488,
+            0.5,
             1.915,
             -0.13
           ],
           "hi_m": [
-            0.541,
+            0.553,
             1.99,
             0.13
           ],
@@ -35,12 +66,12 @@
           "id": "K1",
           "label": "Relay K1",
           "lo_m": [
-            0.488,
+            0.5,
             1.805,
             0.08
           ],
           "hi_m": [
-            0.551,
+            0.563,
             1.865,
             0.13
           ],
@@ -50,12 +81,12 @@
           "id": "KM1",
           "label": "Contactor KM1",
           "lo_m": [
-            0.488,
+            0.5,
             1.8025,
             0.0025
           ],
           "hi_m": [
-            0.556,
+            0.568,
             1.8675,
             0.0675
           ],
@@ -65,12 +96,12 @@
           "id": "F1",
           "label": "Fuse F1",
           "lo_m": [
-            0.488,
+            0.5,
             1.8,
             -0.058
           ],
           "hi_m": [
-            0.518,
+            0.53,
             1.87,
             -0.032
           ],
@@ -80,12 +111,12 @@
           "id": "F2",
           "label": "Fuse F2",
           "lo_m": [
-            0.488,
+            0.5,
             1.8,
             -0.093
           ],
           "hi_m": [
-            0.518,
+            0.53,
             1.87,
             -0.067
           ],
@@ -95,18 +126,58 @@
           "id": "F3",
           "label": "Fuse F3",
           "lo_m": [
-            0.488,
+            0.5,
             1.8,
             -0.128
           ],
           "hi_m": [
-            0.518,
+            0.53,
             1.87,
             -0.102
           ],
           "fault": false
         }
       ],
+      "hardware_prop": "coolant_pump_svc_hw",
+      "hardware_at_m": [
+        0.496,
+        1.799,
+        0.0
+      ],
+      "slot": {
+        "id": "K1",
+        "kind": "relay",
+        "at_m": [
+          -0.105,
+          0.006,
+          0.012
+        ],
+        "size_m": [
+          0.05,
+          0.06,
+          0.047
+        ],
+        "finish": "dark",
+        "broken": "part_relay_burnt",
+        "fits": "relay_24vdc"
+      },
+      "pouch": [
+        "relay_230vac",
+        "relay_24vdc",
+        "relay_12vdc"
+      ],
+      "bay_box_m": {
+        "lo_m": [
+          0.488,
+          1.795,
+          -0.155
+        ],
+        "hi_m": [
+          0.62,
+          2.045,
+          0.155
+        ]
+      },
       "cover_at_m": [
         0.608,
         1.92,
@@ -151,28 +222,27 @@
       ]
     },
     "local_panel_svc": {
+      "label": "valve board",
       "cover": "cover_panel",
-      "shows": "board_circuit",
       "size_m": [
         0.56,
         0.455
       ],
       "thickness_m": 0.012,
-      "fault": "C2",
       "game": "coolant",
       "hardware": [
         {
           "id": "U1",
           "label": "Processor U1",
           "lo_m": [
-            0.0219,
-            0.8204,
-            0.12
+            0.0204,
+            0.8228,
+            0.108
           ],
           "hi_m": [
-            0.0831,
-            0.8796,
-            0.132
+            0.0777,
+            0.8772,
+            0.12
           ],
           "fault": false
         },
@@ -180,14 +250,14 @@
           "id": "U2",
           "label": "Memory U2",
           "lo_m": [
-            -0.0919,
-            0.9109,
-            0.12
+            -0.0859,
+            0.9059,
+            0.108
           ],
           "hi_m": [
-            -0.0394,
-            0.9329,
-            0.132
+            -0.0368,
+            0.926,
+            0.12
           ],
           "fault": false
         },
@@ -195,14 +265,14 @@
           "id": "U3",
           "label": "Memory U3",
           "lo_m": [
-            -0.0919,
-            0.7798,
-            0.12
+            -0.0859,
+            0.7856,
+            0.108
           ],
           "hi_m": [
-            -0.0394,
-            0.8018,
-            0.132
+            -0.0368,
+            0.8058,
+            0.12
           ],
           "fault": false
         },
@@ -210,14 +280,14 @@
           "id": "U4",
           "label": "Valve driver U4",
           "lo_m": [
-            0.1592,
-            0.949,
-            0.12
+            0.1488,
+            0.9408,
+            0.108
           ],
           "hi_m": [
-            0.1907,
-            0.9795,
-            0.132
+            0.1783,
+            0.9687,
+            0.12
           ],
           "fault": false
         },
@@ -225,14 +295,14 @@
           "id": "Y1",
           "label": "Crystal Y1",
           "lo_m": [
-            0.0394,
-            0.7527,
-            0.12
+            0.0368,
+            0.7608,
+            0.108
           ],
           "hi_m": [
-            0.0656,
-            0.7628,
-            0.132
+            0.0613,
+            0.7701,
+            0.12
           ],
           "fault": false
         },
@@ -240,14 +310,14 @@
           "id": "Q1",
           "label": "Regulator Q1",
           "lo_m": [
-            -0.2188,
-            0.9008,
-            0.092
+            -0.2045,
+            0.8965,
+            0.08
           ],
           "hi_m": [
-            -0.1531,
-            0.9938,
-            0.132
+            -0.1431,
+            0.9819,
+            0.12
           ],
           "fault": false
         },
@@ -255,14 +325,14 @@
           "id": "L1",
           "label": "Inductor L1",
           "lo_m": [
-            -0.1584,
-            0.7942,
-            0.112
+            -0.148,
+            0.7988,
+            0.1
           ],
           "hi_m": [
-            -0.1304,
-            0.8212,
-            0.132
+            -0.1219,
+            0.8236,
+            0.12
           ],
           "fault": false
         },
@@ -270,14 +340,14 @@
           "id": "L2",
           "label": "Inductor L2",
           "lo_m": [
-            -0.1584,
-            0.7349,
-            0.112
+            -0.148,
+            0.7445,
+            0.1
           ],
           "hi_m": [
-            -0.1304,
-            0.762,
-            0.132
+            -0.1219,
+            0.7693,
+            0.12
           ],
           "fault": false
         },
@@ -285,14 +355,14 @@
           "id": "C1",
           "label": "Capacitor C1",
           "lo_m": [
-            -0.2091,
-            0.8255,
-            0.104
+            -0.1955,
+            0.8275,
+            0.092
           ],
           "hi_m": [
-            -0.1846,
+            -0.1726,
             0.8492,
-            0.132
+            0.12
           ],
           "fault": false
         },
@@ -300,14 +370,14 @@
           "id": "C2",
           "label": "Capacitor C2",
           "lo_m": [
-            -0.2091,
-            0.7832,
-            0.104
+            -0.1955,
+            0.7887,
+            0.092
           ],
           "hi_m": [
-            -0.1846,
-            0.8068,
-            0.132
+            -0.1726,
+            0.8104,
+            0.12
           ],
           "fault": true
         },
@@ -315,14 +385,14 @@
           "id": "C3",
           "label": "Capacitor C3",
           "lo_m": [
-            -0.2091,
-            0.7408,
-            0.104
+            -0.1955,
+            0.7499,
+            0.092
           ],
           "hi_m": [
-            -0.1846,
-            0.7645,
-            0.132
+            -0.1726,
+            0.7716,
+            0.12
           ],
           "fault": false
         },
@@ -330,14 +400,14 @@
           "id": "C4",
           "label": "Capacitor C4",
           "lo_m": [
-            0.1759,
-            0.8212,
-            0.104
+            0.1644,
+            0.8236,
+            0.092
           ],
           "hi_m": [
-            0.2004,
-            0.8449,
-            0.132
+            0.1873,
+            0.8453,
+            0.12
           ],
           "fault": false
         },
@@ -345,14 +415,14 @@
           "id": "C5",
           "label": "Capacitor C5",
           "lo_m": [
-            0.1759,
-            0.7747,
-            0.104
+            0.1644,
+            0.781,
+            0.092
           ],
           "hi_m": [
-            0.2004,
-            0.7984,
-            0.132
+            0.1873,
+            0.8027,
+            0.12
           ],
           "fault": false
         },
@@ -360,18 +430,58 @@
           "id": "J1",
           "label": "Header J1",
           "lo_m": [
-            -0.0963,
-            0.9955,
-            0.11
+            -0.09,
+            0.9834,
+            0.098
           ],
           "hi_m": [
             0.0,
-            1.0175,
-            0.132
+            1.0036,
+            0.12
           ],
           "fault": false
         }
       ],
+      "hardware_prop": "local_panel_svc_hw",
+      "hardware_at_m": [
+        0.0,
+        0.6615,
+        0.124
+      ],
+      "slot": {
+        "id": "C2",
+        "kind": "can",
+        "at_m": [
+          0.184,
+          0.1272,
+          0.004
+        ],
+        "size_m": [
+          0.0229,
+          0.0217,
+          0.02
+        ],
+        "finish": "blue",
+        "broken": "part_cap_bulged",
+        "fits": "cap_470u_35v"
+      },
+      "pouch": [
+        "cap_470u_16v",
+        "cap_47u_35v",
+        "cap_470u_35v"
+      ],
+      "bay_box_m": {
+        "lo_m": [
+          -0.245,
+          0.6575,
+          0.0
+        ],
+        "hi_m": [
+          0.245,
+          1.0425,
+          0.132
+        ]
+      },
       "cover_at_m": [
         0.0,
         0.85,

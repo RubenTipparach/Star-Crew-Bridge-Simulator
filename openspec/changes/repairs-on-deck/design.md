@@ -202,6 +202,64 @@ budgets are revisited when the bays move into them (task 1.6). Modelled parts si
 the kit's overlap check passes with no exception. The atlas texel (96 px per metre on the cabinet, 52 on the pump)
 blurs the smallest parts' wear into blotches: the owner judges that on the shots.
 
+### 3e. Swap the part, then calibrate (owner, 2026-10-10)
+
+The owner, on 3d's prototypes: "you open the panel, replace the part, but you have to put in the right part. Then you
+have to calibrate the device which can be done through the open panel. You can just click on the whole thing", and
+"Texture on the motor terminal box exterior doesn't seem to align right". So a repair with the cover off is two
+steps, both in the open bay, and the 2D game becomes the second:
+
+1. **Find the fault.** As 3d: pointing at a part names it, a sound one tests fine, the faulty one smokes and sparks.
+2. **Pull it.** A click on the faulty part lifts it out of its seat into the kit's tray, and the tray opens beside
+   the bay: the removed part's card, marked with its rating and "burnt", and the parts in the kit's pouch (section
+   1: it holds 3, taken from a parts bin in cargo).
+3. **Fit the right one.** A click on a pouch card seats that part in the empty slot. A part is the right one when its
+   type and rating are the removed part's: like for like, read off the old part's card, as a technician does. A
+   wrong one is seated, tested and fails: a spark, "Wrong part", and it comes back out to the pouch, marked. It
+   costs the time and nothing else (recommendation taken, ask only with screenshots: finding the part is the
+   puzzle, the fumble's 5% stays inside the games). With no right part in the pouch the player has to fetch one,
+   so the cover stays off and the job waits.
+4. **Calibrate.** With the right part in, the whole bay is one target: pointing anywhere in it outlines the opening
+   and names it "Calibrate", and a click opens the job's 2D game, which is the calibration (the pump's alignment, the
+   valves' trims). Its rounds land as section 1 says; the last one puts the cover back on.
+
+A job whose bay names no faulty part (a wear job, a disabled system with nothing burnt) goes straight to step 4.
+The prototypes give each machine three pouch parts, one of them right: the pump's relay K1 (24 V DC coil, against a
+230 V AC and a 12 V DC one) and the cabinet's capacitor C2 (470 uF 35 V, against 470 uF 16 V and 47 uF 35 V).
+
+**The hardware is its own prop.** 3d painted the hardware into the machine's atlas, and one atlas has one palette
+(48 colours, `prop_atlas.json`). The parts' blues, yellows, reds, copper and white took colours the casing's greys
+had, so the terminal box and the motor around it came out in pink and blue blotches, as the owner saw. So each bay's
+hardware is a prop of its own, with its own atlas: a mounting plate the size of the opening (the cabinet's carries
+the bare board bake on its face) and everything on it, placed in the bay from `service.json`. The machine's atlas is
+back to the machine's colours. The replaceable part is a prop of its own too, a new one and a broken one (the
+scorched relay with its lamp lit, the bulged capacitor), seated in its slot from `service.json` (`slot`), so it can
+come out and another go in. The relay's socket stays on the plate.
+
+**Data.** `service.json` per machine: `hardware_prop` and where it sits (`hardware_at_m`, with the bay's normal and
+up), `slot` (the part's id, its seat in the hardware prop's space and the model of its broken part), `parts` (the
+catalogue: type, rating and model of each part) and `pouch`; `bay_box_m` for the calibrate target. In the game the
+catalogue is `data/ships/tern/parts.json` and the slot's part is the job's (`repairs.json`).
+
+**Clean inside.** A closed box is clean inside, so the hardware and the parts bake under the crew spaces' wear (no rust,
+no streaks; a prop may name its own wear, `Prop.wear`); the working wear's rust on blue and grey paint quantized to
+purple in the hardware's own palette.
+
+**The crooked texture.** The owner, on the next build: "This texture still crooked". The terminal box's outer face had
+its texels turned 3.2 degrees off its edges. The atlas lays each chart in a rectangle, and the chart here was the box's
+face unfolded with its neighbours down the motor's stand, including a sloped chamfer, so its outline had a long edge
+across two faces at a slant; the smallest rectangle followed that edge. The kit (`hs_kit._min_rect`) now takes, of the
+rectangles within 10% of the smallest, the one most of the chart's own triangle edges run along or square to. The box
+face is square again (measured off the built glb). The other prop sets take the same rule at their next build; they are
+not rebuilt here (the cloud session's Blender is 4.5.4 against their 4.5.14, which changes their bytes regardless).
+
+**Pi 5 cost** (measured on the build, 2026-10-10). The machines are back to their own meshes: the pump 662 triangles,
+the cabinet 336. The hardware props: the pump's terminal box 828, the cabinet's board 718. The parts: a relay 12 (new
+or burnt), a capacitor 36 new and 56 bulged. A bay's hardware is one more draw while its cover is off (none while it is
+on: the cover hides it, and the deck culls it with the cover's state), and one atlas per prop as every prop has
+(256 x 256). A part is one draw while it is out of its seat or in the tray, and is drawn with the hardware's batch when
+seated. The plate stands 8 mm off the bay's floor, so its face is over 1 cm from it (CLAUDE.md 8).
+
 **The screen while docked.** The panel covers the middle of the screen (1280 x 720 on a 1920 x 1080 output, or 2/3
 of the height on any other). The docked 3D view keeps rendering around it, darkened 35%, with no blur (the Pi 5 does
 not pay for one): smoke rolling in, a fire spreading, a crewmate running past, the red-alert lighting. The machine
