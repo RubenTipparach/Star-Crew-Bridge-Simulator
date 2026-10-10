@@ -393,6 +393,14 @@ Adopted from Undercity section 8 and star-crew-64's UI text rules.
 
 - **Mockup first.** Get the owner's approval of a mockup before implementing any new screen,
   console or layout. Not needed for bug fixes or text fixes within an approved design.
+- **An engine screen looks like its approved mockup** (owner, 2026-10-10: "stations are not appearing the same as
+  their approved mockups. This is a problem"). The approved mockup is the screen's specification:
+  - every panel and control in the same place, with the same label, icon, colours and typeface;
+  - no control the mockup lacks (it goes into the mockup first, for approval);
+  - a control the engine cannot do yet drawn in the mockup's unavailable state.
+
+  A screen is done when the parity check passes and the owner has signed off side-by-side captures of the mockup
+  and the engine (`openspec/changes/console-parity`).
 - **Consoles are full-screen 2D when seated.** A player seated at a station sees the station's
   console UI; the bridge stays visible behind or beside it. Console UI is drawn by the engine's
   immediate-mode UI, not rendered into textures on the bridge every frame.

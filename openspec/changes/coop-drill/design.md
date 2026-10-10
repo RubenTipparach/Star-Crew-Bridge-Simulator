@@ -163,7 +163,8 @@ takes the address.
 
 - **Briefing** (Muster and Countdown): the drill's title, the situation, the objectives, this station's orders, the
   crew with their stations and ready marks, READY (a bot presses it after 3 s).
-- **Station console** (Engage): the `bridge-stations` 8.0 layout for the station over a 3D bow view: the sky, the
+- **Station console** (Engage). Superseded for the consoles' look by `console-parity` (owner, 2026-10-10: the drill's
+  consoles did not match the approved mockups); what follows is what the drill built: the `bridge-stations` 8.0 layout for the station over a 3D bow view: the sky, the
   Hound as a placeholder low-poly model (generated, about 200 triangles, flat-coloured by the deck program's baked
   colours with the sun as its flash light), bolts and missiles. The view's centre is lifted into the look band
   (y 32-272 lp) by shifting the projection. Remote bodies are drawn 100 ms in the past, interpolated between
