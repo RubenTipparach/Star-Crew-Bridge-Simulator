@@ -1525,6 +1525,7 @@ dependencies = [
  "glam 0.34.1",
  "png",
  "sc-core",
+ "sc-net",
  "sc-render",
  "sdl3-sys",
  "serde",

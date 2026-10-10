@@ -8,7 +8,7 @@ use sc_core::combat::data::{DrillData, DRILL_FILES};
 use sc_core::combat::Station;
 use sc_net::session::{Session, Stage};
 use sc_net::transport::Impair;
-use sc_server::bot::Bot;
+use sc_net::bot::Bot;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::path::PathBuf;
 use std::process::ExitCode;

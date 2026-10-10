@@ -5,8 +5,6 @@
 //! for every game). It is the core plus a network adapter: every rule is `sc-core::combat`'s; this file maps peers
 //! to players and messages to the drill's calls.
 
-pub mod bot;
-
 use std::collections::BTreeMap;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::atomic::Ordering;

@@ -5,6 +5,7 @@
 //! It holds no gameplay rule: messages carry intents and state that `sc-core` defines. sc-net depends on sc-core,
 //! never the other way.
 
+pub mod bot;
 pub mod link;
 pub mod msg;
 pub mod session;

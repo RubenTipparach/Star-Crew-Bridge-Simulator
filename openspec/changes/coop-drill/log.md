@@ -50,3 +50,14 @@ Newest last. What was done, what was found, on which machine and commit.
   (`netcode-and-sessions` section 2) was not built; now it is (`SILENT_S`), with a test that a client that stops
   sending loses its seat to automation within 6 s. Bots also claim their station in any phase now, so one that
   joins mid-fight takes over from automation at once instead of waiting for the next Muster.
+- The client's drill mode (tasks 4.1-4.3, Pi 1): `sc-client --connect HOST --station helm|tactical [--bot]` opens
+  the briefing, the station's console over the bow view and the debrief. Findings while building it:
+  - The Hound at fighting range (1.4-1.8 km) is about 15 px tall in the bow view: findable with a bracket, not
+    readable. A **target camera** inset in the look band (a camera feed, `bridge-stations` 8.0) keeps it about half
+    the inset tall at any range, drawn through the renderer's existing screen quad.
+  - The 3D target is 16:9; on the owner's 21:9 monitor it was stretched. The drill's projection now takes the
+    window's aspect, so the stretch cancels.
+  - The models' winding test caught the burst sphere inside out (it still drew, from its inner far side).
+  - The 140-triangle Hound is lit by the probe program's ambient cube built from the sun, so it turns into and out
+    of the light as it flies; bolts, missiles and bursts are flat emissive colours.
+  - The lobby's Join a crew still does not take an address (task 4.1 says so): `--connect` is the way in for now.

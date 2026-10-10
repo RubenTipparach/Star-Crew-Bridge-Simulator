@@ -3,13 +3,12 @@
 //! person would.
 //!
 //! One implementation for the headless `sc-bot`, the in-process test and the game client's `--bot` (CLAUDE.md
-//! 6.1). It lives with the server's crate because that crate already links the core and the network, and the
-//! client depends on it for this alone.
+//! 6.1). It lives beside the session it drives; it defines no rule: every decision is the core's automation.
 
 use sc_core::combat::automation::{self, Memory};
 use sc_core::combat::data::{DrillData, Profile};
 use sc_core::combat::{Phase, Station};
-use sc_net::session::{Session, Stage};
+use crate::session::{Session, Stage};
 
 /// A bot playing one station.
 pub struct Bot {
