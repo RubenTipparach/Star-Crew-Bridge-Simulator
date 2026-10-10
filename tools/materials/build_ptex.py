@@ -418,8 +418,26 @@ def exterior_surfaces():
 def fitted_tern_hull(livery="copper"):
     """Enhanced paint over linework projected on the actual player hull."""
     g = Graph("Tern Projected Plating - " + livery.title())
-    source = g.node("image", image=f"../sources/tern-projected-{livery}.png")
-    g.material(albedo=source, metallic_v=0.0, roughness_v=0.85)
+    source = g.node("image", image="../sources/tern-clean-finish.png")
+    mask = g.node("decompose", g.node("image", image="../sources/tern-projected-masks.png"))
+    # Keep the authored seam cores pinned after image enhancement. Livery covers seams.
+    exposed = g.math((mask, 1), g.math(g.grey(1), (mask, 0), op=SUB), op=MUL)
+    with open(os.path.join(HERE, "../../data/ships/tern/hull_paint_projection.json")) as f:
+        projection = json.load(f)
+    albedo = g.blend(g.color(projection["seam_srgb"]), source, exposed, mode=NORMAL_B)
+    with open(os.path.join(HERE, "../../data/ships/exteriors.json")) as f:
+        liveries = json.load(f)["liveries"]
+    color = next(row["paint_srgb"] for row in liveries
+                 if row["id"] == ("cobalt" if livery == "cyan" else livery))
+    # The enhanced finish is neutral. Reapply exact baked paint boundaries here.
+    # The separate fitting keeps its cyan guide so it inherits the selected color too.
+    rgba = g.node("decompose", source)
+    fitting_blue = g.math(g.math((rgba, 0), g.grey(.35), op=LT),
+                         g.math(g.math(g.grey(.5), (rgba, 1), op=LT),
+                                g.math(g.grey(.6), (rgba, 2), op=LT), op=MUL), op=MUL)
+    paint = g.math((mask, 0), fitting_blue, op=MAX)
+    albedo = g.blend(g.color(color), albedo, paint, mode=NORMAL_B)
+    g.material(albedo=albedo, metallic_v=0.0, roughness_v=0.85)
     return g
 
 

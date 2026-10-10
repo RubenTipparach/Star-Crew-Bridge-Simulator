@@ -178,3 +178,57 @@ OpenSpec passes all 42 items. No Pi performance measurement is claimed.
 
 Full / medium / distant GLB bytes: Copper 1,797,816 / 1,515,260 / 400,304;
 Cyan 1,878,028 / 1,563,048 / 407,632; Rescue 1,789,944 / 1,508,900 / 399,652.
+
+
+## Owner correction: aligned roof and wall seams
+
+The previous bake projected station seams on walls only, leaving the roof's older painted
+seams at different Z stations. This is visible where roof plates meet the shoulders. Remove
+those old fine seam lines from the retained finish artwork, then project each new station
+seam over the roof, bevel, walls and keel using the same ship-local coordinates. Keep the
+accepted white armor, existing mechanical channels, registration, cyan livery and geometry.
+The mask bake must include seams on all receiving surfaces. Inspect the unenhanced result
+in a dedicated aft-shoulder view before enhancing the finish. Keep projected boundaries
+fixed in the Material Maker graph and validate actual shared-edge UV samples, including
+seam crossings, rather than relying only on polygon centers. All three liveries inherit
+the same layout and both reduced atlases are rebaked. This correction adds no geometry,
+draw calls or runtime texture allocation; existing 3,834 / 1,290 / 496 triangles, 6 / 1 / 1
+material draws and 78.17 MiB preview textures remain the budget.
+
+
+## Owner refinement: clean connected paint and equator
+
+During seam review, the owner asked for cleaner paint, a restored equatorial grey subhull
+split, and completion of the cyan roof segment. Remove the centerline exclusion from the
+livery field so both halves meet across the roof. Apply opaque, clean livery color through
+the baked mask after finish enhancement so distressed edges cannot break the stripe. Retain
+subtle wear in white armor, without cracked or heavily chipped blue paint. Restore a narrow
+1.0 m equatorial service band (Y = -0.65 to +0.35 m) with a 0.04 m side recess and restrained
+small pipes. Its grey finish continues around the bow. Keep every window opening clear and
+retain the aligned seam layout. Recheck the actual full-model cost against 12,000 triangles,
+all windows, and the 1024/512 px LOD bakes. No extra runtime texture allocation or material
+draw is needed. The existing Hull detail view shows the equator; Seam joins adds an aft-shoulder inspection angle.
+
+## Connected paint validation, 2026-10-10
+
+The final 3D projection agrees with 440 actual surface samples. Each packed livery has
+25,681 sampled stripe-interior texels with 100% paint coverage and no hull emission.
+The seam check reads 64 receiving-face profiles at 32 shared edges; the largest paired
+center offset is 0.045 m, within the documented texel tolerance. The old committed texture
+fails this guard. Material Maker preserves the generated finish outside the authored masks.
+
+All eleven GLBs, six LOD atlases and three manifests reproduce byte for byte. Tern uses
+4,442 / 1,290 / 496 triangles and 6 / 1 / 1 material draws. The narrow equator adds 608
+full-detail triangles. The fleet with furnished interiors uses 83,092 triangles in 50 draws,
+with unchanged 78.17 MiB decoded textures. No Pi performance measurement is claimed.
+
+The preview passes 460 opening/frame rays per livery, twenty window menu entries, three
+cutaways and all nine livery/LOD combinations with distinct reduced textures. Reviewed
+57 desktop captures and the phone default: 45 livery/LOD views, six mess-window angles,
+two mess lighting states, side, pylons, the dedicated seam view and initial Cyan.
+The overlap check finds no exterior overlap; the existing shared room railing/baseboard
+pairs total 0.046 m2. The window patch, sixteen inline blocks and budget marker match their
+sources. OpenSpec passes all 42 items.
+
+Full / medium / distant GLB bytes: Copper 1,642,780 / 1,357,520 / 362,220;
+Cyan 1,641,148 / 1,356,536 / 361,880; Rescue 1,642,024 / 1,357,628 / 362,372.

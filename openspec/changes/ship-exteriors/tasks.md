@@ -114,6 +114,18 @@
 - [x] Enhance the surface finish, update all liveries and rebake both LODs.
 - [x] Validate windows, UV continuity, reproducible models and final captures.
 
+## Owner correction: aligned roof and wall seams
+
+- [x] Replace old painted roof seams with the shared projected station layout.
+- [x] Inspect shoulder joins in 3D and constrain enhancement to the baked boundaries.
+- [x] Update all liveries and LOD textures; verify shared-edge samples and captures.
+
+## Owner refinement: clean connected paint and equator
+
+- [x] Complete the cyan roof segment and lock clean paint edges to the 3D mask.
+- [x] Restore a narrow equatorial subhull band without obstructing windows.
+- [x] Review final seam, paint and equator views; rebake and verify every livery/LOD.
+
 ## Separate engine implementation
 
 - [ ] Review the exterior art with the owner.

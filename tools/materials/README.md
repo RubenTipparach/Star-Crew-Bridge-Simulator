@@ -32,20 +32,24 @@ ship-local seams and oblique livery bands, and bakes their color and region mask
 [`hull_paint_projection.json`](../../data/ships/tern/hull_paint_projection.json) owns the metre
 positions, widths and colors. The [editable Blender source](../../assets/models/exteriors/hull-paint-projection.blend),
 [unenhanced layout](sources/tern-projected-layout.png), [masks](sources/tern-projected-masks.png)
-and [3D inspection captures](../../docs/screenshots/exteriors-projection-layout/) are retained.
+and [3D inspection captures](../../docs/screenshots/exteriors-equator-layout/) are retained.
 The mask uses R for livery, G for seams and B for projected hull coverage. The bake checker
-compares 385 actual surface samples against the ship-local band field with zero mismatches.
+compares actual surface samples against the ship-local band field with zero mismatches.
 
-The source roof painting is retained in `tern-connected-cyan.png`; do not replace it with the
-new finished painting, which would make the projection depend on its own output. The current
-`exterior_uv_guide.py` exports mesh edges and island coverage as supporting guides, not as
-a replacement for authored linework. After the unenhanced layout was inspected in 3D,
-built-in imagegen enhanced its surface finish and made the two color variants. Material Maker
-exports the final paintings, then Blender bakes each reduced-detail atlas from the full model.
-`check_hull_projection.py` checks the generated colors against the retained stripe mask,
-confirms packaging preserves the rendered RGB, and rejects emissive hull paint. Run it after
-rendering and packaging the three graphs. The source, prompt, graph and resulting models are
-linked in the [asset README](../../assets/models/exteriors/README.md).
+The projection starts from the seam-free `tern-seamless-finish.png`, retaining machinery and
+registration while removing the obsolete roof seams. All roofs, bevels and walls receive the
+same station planes. The main hull paint extends to the centerline, with a narrow equatorial
+service belt excluded from the livery. `exterior_uv_guide.py` exports supporting mesh edges.
+After inspecting the layout in 3D, built-in imagegen produced `tern-clean-finish.png` with
+quieter ivory paint. The three graphs share this neutral finish and reapply exact seam and
+livery masks using the colors in `data/ships/exteriors.json`. Geometry and materials own the
+narrow physical service recess. Blender bakes each reduced atlas from the finished full model.
+
+`check_hull_projection.py` checks actual packed stripe color coverage, samples both receiving
+UV faces at 32 seam crossings, confirms Material Maker RGB is preserved, and rejects emissive
+hull paint. Disjoint similarly colored machinery is excluded from each seam's contiguous
+stroke. Run it after rendering and packaging the graphs. Sources, exact imagegen prompts,
+graphs and models are linked in the [asset README](../../assets/models/exteriors/README.md).
 
 The original [paint bitmap](sources/exterior-paint.png) was generated with the built-in image_gen tool. Its [complete prompt](sources/exterior-paint-prompt.txt) is committed beside it. The [exterior paint graph](ptex/exterior_paint.ptex) imports that bitmap as its editable albedo input. It supplies pearl and graphite ramps without a panel grid. Material Maker 1.4 rendered the graph at 2048 px using the owner's NVIDIA GPU; the existing post-process produced the two 128 px layers at 32 px/m. Existing layer indices remain stable; the new layers are 11 and 12, costing 174,760 bytes with mipmaps.
 
@@ -85,13 +89,12 @@ render is a commit of its own, with the contact sheet.
 
 ## Provenance
 
-The Tern hull and fittings use three built-in imagegen paintings, `sources/tern-projected-copper.png`,
-`tern-projected-cyan.png` and `tern-projected-rescue.png`, with their exact edit prompts beside
-them. Cyan enhances the inspected 3D-projected bake, and Copper and Rescue recolor that result.
-Their normalized UV layouts are shared. Side walls use white armor and narrow seams, with
-painted bands wrapping over roofs, bevels and vertical walls. Mechanical detail remains on
-the roof, underside and fittings. There are no illustrated windows. Cyan's stable graph and
-delivered texture filenames retain the `cobalt` suffix.
+The Tern hull and fittings use the built-in imagegen finish `sources/tern-clean-finish.png`,
+with its exact edit prompt beside it. The three Material Maker graphs apply Copper, Cyan and
+Rescue paint to the same projected mask. The source keeps only a cyan fitting guide outside
+the main hull islands, recolored by the graph. The calm white armor surrounds a narrow grey
+equator with small pipes. No illustrated windows cover the genuine apertures. Cyan's stable
+graph and delivered texture filenames retain the `cobalt` suffix.
 
 `sources/tern-uv-wireframe.png` and its mask come from actual mesh UV polygons in
 `sources/tern-uv-layout.json`, rasterized by `exterior_uv_guide.py`. The hull's dorsal UV orientation
@@ -133,4 +136,4 @@ Every source material has its `.ptex` here; none exists only as an export. fps-g
 other graphs (concrete, brick wall, stone blocks, lava) and its procedural city materials are not
 used by Star Crew and were not copied.
 
-Connected secondary structure: `tern-connected-cyan-prompt.txt` adds aligned roof-to-wall returns and a dedicated bow-face strip against the actual UV guide. `tern-connected-refinement-prompt.txt` reduces the scale of the new conduits. The final `tern-armor-coverage-prompt.txt` restores broad ivory armor between slimmer grey connections. Copper and Rescue are color-only edits of that final Cyan atlas, each with its own saved prompt. The graph builder imports `tern-connected-{livery}.png`; all three 1024 px layers retain zero emission.
+Historical connected secondary structure: `tern-connected-cyan-prompt.txt` adds aligned roof-to-wall returns and a dedicated bow-face strip against the actual UV guide. `tern-connected-refinement-prompt.txt` reduces the scale of the new conduits. The final `tern-armor-coverage-prompt.txt` restores broad ivory armor between slimmer grey connections. Copper and Rescue are color-only edits of that final Cyan atlas, each with its own saved prompt. That revision imported `tern-connected-{livery}.png`; all three 1024 px layers retain zero emission.

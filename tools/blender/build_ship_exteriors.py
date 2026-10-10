@@ -304,7 +304,7 @@ def service_breaks(ship, rows):
     ya, yb = band["y_m"]
     stations = [za] + [r[0] for r in rows if za < r[0] < zb] + [zb]
     return [{"id": f"service_band_{side}_{i}", "normal": [side, 0, 0],
-             "depth_m": band["depth_m"], "role": "bulkhead",
+             "depth_m": band["depth_m"], "role": "machinery",
              "polygon_m": [[ya, a], [yb, a], [yb, b], [ya, b]]}
             for side in (-1, 1) for i, (a, b) in enumerate(zip(stations, stations[1:]))]
 

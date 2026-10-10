@@ -18,6 +18,39 @@ import build_ship_exteriors as exterior
 from hs_kit import lin, P
 
 
+def shared_edge_probes(mesh, spec):
+    """Sample both receiving UV faces at authored seams crossing an actual shared edge."""
+    edges = {}
+    for face in mesh.polygons:
+        loops = list(face.loop_indices)
+        for ia, ib in zip(loops, loops[1:] + loops[:1]):
+            va, vb = mesh.loops[ia].vertex_index, mesh.loops[ib].vertex_index
+            key = tuple(sorted((va, vb)))
+            pair = [mesh.uv_layers.active.data[i].uv.copy() for i in (ia, ib)]
+            edges.setdefault(key, []).append(pair if va < vb else pair[::-1])
+    probes = []
+    for (ia, ib), faces in edges.items():
+        if len(faces) != 2 or max((a-b).length for a,b in zip(*faces)) < .001:
+            continue
+        a, b = [P(mesh.vertices[i].co) for i in (ia, ib)]
+        if abs(a.z-b.z) < 1:
+            continue
+        for z in spec["station_seams_z_m"]:
+            t = (z-a.z)/(b.z-a.z)
+            delta = .6/abs(b.z-a.z)
+            if not delta < t < 1-delta:
+                continue
+            center = a.lerp(b, t)
+            field = center.z - abs(center.x)*spec["stripe_axis"][0] + center.y*spec["stripe_axis"][1]
+            if abs(center.x) > spec["stripe_min_abs_x_m"] and any(lo-.6 < field < hi+.6 for lo,hi in spec["stripe_intervals_m"]):
+                continue  # Opaque livery intentionally covers the fine seam.
+            probes.append({"position_m": list(center), "station_m": z,
+                           "profiles_uv": [[list(u.lerp(v, t + step*delta))
+                                            for step in np.linspace(-1, 1, 81)] for u,v in faces]})
+    assert probes, "No UV-island joins crossed by panel seams"
+    return probes
+
+
 def validate_projection(mesh, image, spec):
     """Read the baked mask at real surface samples and compare its stripe membership."""
     width, height = image.size
@@ -31,12 +64,16 @@ def validate_projection(mesh, image, spec):
         field = position.z - abs(position.x) * spec["stripe_axis"][0] + position.y * spec["stripe_axis"][1]
         distances = [abs(field - edge) for interval in spec["stripe_intervals_m"] for edge in interval]
         # The few texels touching an edge are allowed to filter across that boundary.
+        if min(abs(position.y-edge) for edge in spec["equator_y_m"]) < .08:
+            continue
         if min(distances) < .3 or abs(abs(position.x) - spec["stripe_min_abs_x_m"]) < .3:
             continue
         uv = sum((mesh.uv_layers.active.data[i].uv for i in face.loop_indices), Vector((0, 0))) / len(face.loop_indices)
         pixel = pixels[min(height - 1, max(0, int(uv.y * height))),
                        min(width - 1, max(0, int(uv.x * width)))]
-        expected = abs(position.x) > spec["stripe_min_abs_x_m"] and any(a < field < b for a, b in spec["stripe_intervals_m"])
+        expected = (abs(position.x) > spec["stripe_min_abs_x_m"]
+                    and not spec["equator_y_m"][0] < position.y < spec["equator_y_m"][1]
+                    and any(a < field < b for a, b in spec["stripe_intervals_m"]))
         if (pixel[0] > .5) != expected:
             failures.append([list(position), list(uv), float(pixel[0]), expected])
         counts["stripe" if expected else "plate"] += 1
@@ -85,12 +122,14 @@ def projection_material(spec):
     links.new(geometry.outputs["Normal"], normal.inputs[0])
     wall = math("LESS_THAN", math("ABSOLUTE", normal.outputs["Z"]), .70)
 
+    # Station cuts are one 3D plane through roof, bevel, wall and keel.
     seam = 0
-    for axis, stations in [(y, spec["wall_seams_y_m"]), (z, spec["station_seams_z_m"])]:
+    for axis, stations, scope in [(y, spec["wall_seams_y_m"], wall),
+                                  (z, spec["station_seams_z_m"], 1)]:
         for station in stations:
             distance = math("ABSOLUTE", math("SUBTRACT", axis, station))
-            seam = math("MAXIMUM", seam, math("LESS_THAN", distance, spec["seam_width_m"] / 2))
-    seam = math("MULTIPLY", seam, wall)
+            line = math("MULTIPLY", math("LESS_THAN", distance, spec["seam_width_m"] / 2), scope)
+            seam = math("MAXIMUM", seam, line)
 
     # The same oblique plane crosses roof, bevel and side; there is no per-face offset.
     field = math("ADD", math("SUBTRACT", z, math("MULTIPLY", x, spec["stripe_axis"][0])),
@@ -100,16 +139,29 @@ def projection_material(spec):
         band = math("MULTIPLY", math("GREATER_THAN", field, lo), math("LESS_THAN", field, hi))
         stripe = math("MAXIMUM", stripe, band)
     stripe = math("MULTIPLY", stripe, math("GREATER_THAN", x, spec["stripe_min_abs_x_m"]))
+    equator = math("MULTIPLY", math("GREATER_THAN", y, spec["equator_y_m"][0]),
+                   math("LESS_THAN", y, spec["equator_y_m"][1]))
+    stripe = math("MULTIPLY", stripe, math("SUBTRACT", 1, equator))
 
     original = nodes.new("ShaderNodeTexImage")
     original.image = bpy.data.images.load(str(exterior.ROOT / spec["source_paint"]))
-    original.label = "Retained roof, underside and registration"
-    rgb = nodes.new("ShaderNodeSeparateColor")
-    links.new(original.outputs["Color"], rgb.inputs[0])
-    old_cyan = math("MULTIPLY", math("LESS_THAN", rgb.outputs["Red"], .15),
-                    math("MULTIPLY", math("GREATER_THAN", rgb.outputs["Green"], .22),
-                         math("GREATER_THAN", rgb.outputs["Blue"], .30)))
-    base = mix(math("MAXIMUM", wall, old_cyan), original.outputs["Color"], color(spec["plate_srgb"]))
+    original.label = "Seam-free generated finish, retained machinery and registration"
+    # The small front-cap island retains fittings outside the receiving hull UVs.
+    # Its receiving patch needs neutral paint before adding the new projected seams.
+    bow = math("GREATER_THAN", math("ABSOLUTE", normal.outputs["Y"]), .85)
+    base = mix(bow, original.outputs["Color"], color(spec["plate_srgb"]))
+    # Reuse the generated machinery finish in a narrow belt, at ship-local scale.
+    belt_uv = nodes.new("ShaderNodeCombineXYZ")
+    along = mix(bow, z, position.outputs["X"])
+    tile = math("FRACT", math("DIVIDE", along, spec["equator_repeat_m"]))
+    feed(math("ADD", .79, math("MULTIPLY", tile, .18)), belt_uv.inputs["X"])
+    height = math("DIVIDE", math("SUBTRACT", y, spec["equator_y_m"][0]),
+                  spec["equator_y_m"][1]-spec["equator_y_m"][0])
+    feed(math("ADD", .06, math("MULTIPLY", height, .13)), belt_uv.inputs["Y"])
+    belt_image = nodes.new("ShaderNodeTexImage")
+    belt_image.image = original.image
+    links.new(belt_uv.outputs[0], belt_image.inputs["Vector"])
+    base = mix(equator, base, belt_image.outputs["Color"])
     painted = mix(stripe, mix(seam, base, color(spec["seam_srgb"])), color(spec["stripe_srgb"]))
     emit = nodes.new("ShaderNodeEmission")
     links.new(painted, emit.inputs["Color"])
@@ -211,6 +263,9 @@ def main():
         image.file_format = "PNG"
         image.save()
     counts = validate_projection(target.data, mask, spec)
+    (folder / "tern-seam-probes.json").write_text(json.dumps({
+        "profile_half_length_z_m": .6, "probes": shared_edge_probes(target.data, spec),
+    }, indent=1) + "\n")
     (folder / "tern-projection-validation.json").write_text(json.dumps({
         "source": "data/ships/tern/hull_paint_projection.json", "samples": counts,
         "mismatches": 0, "boundary_clearance_m": .3,

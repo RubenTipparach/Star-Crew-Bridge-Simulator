@@ -51,7 +51,7 @@ The asset pipeline SHALL produce a textured exterior GLB for the Tern from its l
 
 #### Scenario: Inspect the quieter livery
 - **WHEN** the player ship is shown in full detail or either LOD
-- **THEN** broad warm-silver panels, subtle variation and restrained slate and livery-colored accents define the hull and fittings, with no continuous decorative side belt or dense generic mechanical pattern
+- **THEN** broad warm-silver panels, subtle variation and restrained slate and livery-colored accents define the hull and fittings, with a narrow grey equatorial service band and no dense generic mechanical pattern
 
 ### Requirement: Custom exterior and LOD textures
 The exterior assets SHALL use custom Material Maker paint textures without a repeating square panel grid, and medium and distant player models SHALL include distinct baked texture atlases from the detailed exterior.
@@ -107,9 +107,22 @@ The player exterior SHALL retain its accepted silhouette while displaying angula
 
 #### Scenario: Armor remains the dominant forward surface
 - **WHEN** the Tern is viewed from either forward quarter in any livery
-- **THEN** broad ivory armor panels SHALL cover the command walls and bow, separated by fine seams with no wide side service gaps or external side pipes.
+- **THEN** broad ivory armor panels SHALL cover the command walls and bow, separated by fine seams with only a narrow equatorial grey band and small recessed pipe detail.
 
 #### Scenario: Plate the sides and wrap the livery
 - **WHEN** the forward hull is viewed across roof and wall transitions
 - **THEN** normal ivory hull panels with narrow seams SHALL cover the side walls, and the livery stripe SHALL continue onto the vertical surfaces.
 - **AND** its layout SHALL originate from inspected 3D hull projections baked into UV space before texture enhancement and LOD baking.
+
+#### Scenario: Follow a panel seam across a roof edge
+- **WHEN** the roof, shoulder bevel and adjacent side wall are inspected together
+- **THEN** each transverse panel seam SHALL cross their shared edges at the same ship-local station without a jump or a second offset seam.
+- **AND** the actual baked seam crossings SHALL be checked through both receiving UV faces after texture enhancement.
+
+#### Scenario: Follow the complete livery segment
+- **WHEN** the Tern roof and side paint are inspected together
+- **THEN** the livery bands SHALL meet across the roof center and wrap onto both walls with clean opaque paint and aligned boundaries.
+
+#### Scenario: Inspect the equatorial split
+- **WHEN** the hull is viewed from either side or the bow
+- **THEN** a narrow grey service band SHALL divide the upper and lower armor without blocking windows or dominating the white plating.
