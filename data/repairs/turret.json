@@ -31,14 +31,41 @@
     ],
     "mistake": "The coupling slammed home: the bank arcs, 10 HP"
   },
-  "knobs": {},
+  "knobs": {
+    "shimmer_px": {
+      "base": 1.2,
+      "per_level": 1.3
+    },
+    "spot_tol_px": {
+      "base": 15,
+      "per_level": -1.5,
+      "min": 9
+    },
+    "size_tol_px": {
+      "base": 19,
+      "per_level": -1.5,
+      "min": 13
+    },
+    "band_lo_px_s": {
+      "base": 150,
+      "per_level": 15
+    },
+    "band_hi_px_s": {
+      "base": 430,
+      "per_level": -35
+    },
+    "band_min_width_px_s": {
+      "base": 120
+    }
+  },
   "min_round_s": [
-    0,
-    0,
-    0,
-    0,
-    0,
-    0
+    1.2,
+    1.3,
+    1.3,
+    1.3,
+    1.7,
+    1.6
   ],
-  "min_round_measured": false
+  "min_round_measured": false,
+  "_min_round_note": "Provisional (design 8): 40% of the scripted hand's fastest round at each level, over every state and four seeds, until people's play is measured."
 }

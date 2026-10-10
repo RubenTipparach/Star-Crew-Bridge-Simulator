@@ -31,14 +31,34 @@
     ],
     "mistake": "Hot leg past 370 K: an over-temperature warning"
   },
-  "knobs": {},
+  "knobs": {
+    "damaged_state_index": {
+      "levels": [
+        0,
+        1,
+        3
+      ]
+    },
+    "disabled_state_index": {
+      "levels": [
+        4,
+        2,
+        5,
+        1
+      ]
+    },
+    "hold_s": {
+      "base": 8
+    }
+  },
   "min_round_s": [
-    0,
-    0,
-    0,
-    0,
-    0,
-    0
+    3.4,
+    3.1,
+    3.1,
+    3.1,
+    3.1,
+    3.1
   ],
-  "min_round_measured": false
+  "min_round_measured": false,
+  "_min_round_note": "Provisional (design 8): 40% of the scripted hand's fastest round at each level, over every state and four seeds, until people's play is measured."
 }

@@ -40,14 +40,46 @@
     "fumble": 2,
     "rate_per_s": 4
   },
-  "knobs": {},
+  "knobs": {
+    "band_px": {
+      "base": 40
+    },
+    "tip_px": {
+      "base": 18
+    },
+    "seal_done_frac": {
+      "base": 0.95
+    },
+    "brush_px": {
+      "base": 50
+    },
+    "gel_done_frac": {
+      "base": 0.85
+    },
+    "snap_in_px": {
+      "base": 25
+    },
+    "snap_out_px": {
+      "base": 40
+    },
+    "yank_px": {
+      "base": 80
+    },
+    "spurt_s": {
+      "base": 0.42
+    },
+    "inhale_frac": {
+      "base": 0.45
+    }
+  },
   "min_round_s": [
-    0,
-    0,
-    0,
-    0,
-    0,
-    0
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.3
   ],
-  "min_round_measured": false
+  "min_round_measured": false,
+  "_min_round_note": "Provisional (design 8): 40% of the scripted hand's round at each level, until people's play is measured."
 }

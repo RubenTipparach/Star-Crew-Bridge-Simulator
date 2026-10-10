@@ -27,14 +27,32 @@
     ],
     "mistake": "A plug in the wrong socket: a spark, 5 HP"
   },
-  "knobs": {},
+  "knobs": {
+    "leads_count": {
+      "base": 3,
+      "per_level": 1,
+      "max": 5
+    },
+    "shapes_count": {
+      "base": 4,
+      "per_level": -1,
+      "min": 2
+    },
+    "fasteners_count": {
+      "levels": [
+        6,
+        8
+      ]
+    }
+  },
   "min_round_s": [
-    0,
-    0,
-    0,
-    0,
-    0,
-    0
+    1.7,
+    2.1,
+    2.4,
+    2.4,
+    2.4,
+    2.3
   ],
-  "min_round_measured": false
+  "min_round_measured": false,
+  "_min_round_note": "Provisional (design 8): 40% of the scripted hand's fastest round at each level, over every state and four seeds, until people's play is measured."
 }

@@ -31,14 +31,30 @@
     ],
     "mistake": "Gain in the hatched red: a crackle, the face drains"
   },
-  "knobs": {},
+  "knobs": {
+    "phase_tol_rad": {
+      "base": 0.24,
+      "per_level": -0.025,
+      "min": 0.14
+    },
+    "gain_tol_frac": {
+      "base": 0.13,
+      "per_level": -0.012,
+      "min": 0.08
+    },
+    "wander_rad_s": {
+      "base": 0.08,
+      "per_level": 0.06
+    }
+  },
   "min_round_s": [
-    0,
-    0,
-    0,
-    0,
-    0,
-    0
+    1.7,
+    1.6,
+    1.8,
+    1.8,
+    1.7,
+    1.9
   ],
-  "min_round_measured": false
+  "min_round_measured": false,
+  "_min_round_note": "Provisional (design 8): 40% of the scripted hand's fastest round at each level, over every state and four seeds, until people's play is measured."
 }

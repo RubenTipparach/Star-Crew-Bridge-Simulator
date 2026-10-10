@@ -17,10 +17,10 @@
 ## 3. In the engine
 
 - [ ] 3.1 Each game in the UI layer, at the repair points the layout names (the points: `repairs-on-deck` 3.2).
-- [ ] 3.2 Design 8: `sc-core::repair`, the job and the server's checks, with tests (with `repairs-on-deck` 3.1).
-- [ ] 3.3 Design 8: the data files (`data/repairs/`, `repairs.json`, `fumble_share_pct`), validated by `check-data`.
-- [ ] 3.4 Design 8: `sc-repairs`, the kit: frame, bar, cover screws, guide card and icons, input, shake.
-- [ ] 3.5 Design 8: every game in `sc-repairs::games`, played to the end by its hand in a test, with a fumble checked.
+- [x] 3.2 Design 8: `sc-core::repair`, the job and the server's checks, with tests (with `repairs-on-deck` 3.1).
+- [x] 3.3 Design 8: the data files (`data/repairs/`, `repairs.json`, `fumble_share_pct`), validated by `check-data`.
+- [x] 3.4 Design 8: `sc-repairs`, the kit: frame, bar, cover screws, guide card and icons, input, shake.
+- [x] 3.5 Design 8: every game in `sc-repairs::games`, played to the end by its hand in a test, with a fumble checked.
 - [ ] 3.6 Design 8: `sc-client --repairs`, the menu and the games; captures beside the mockups' shots.
 
 ## 4. Guides (owner, 2026-10-09)
@@ -39,4 +39,11 @@
 - [x] 6.2 `kit.js`: rounds land at once, the level passed to every game; the part move opens round 1.
 - [x] 6.3 Every game's knobs by level (design 1a's table); the alternating games (heads, chiller, conduits, turret,
   pipes, fighter, shuttle, biobed) play their whole game every round.
-- [ ] 6.4 `data/ships/tern/repairs.json` with the levels, validated; shots of a level 1 and a level 3 round per game.
+- [x] 6.4 The levels as data (design 8 put them in `data/repairs/<game>.json`, the jobs in `data/ships/tern/repairs.json`), validated; shots of a level 1 and a level 3 round per game in `docs/screenshots/engine/repairs/`.
+
+## 7. In the engine, after the port (2026-10-10)
+
+- [ ] 7.1 The kit takes the helpers the ports wrote for themselves (design 8a): ellipse, dashed ring, Bezier curves,
+  multi-stop gradients, a shape clip, the steady hand's pointer (`Hand` in `breakers.rs`), an offset dash.
+- [ ] 7.2 `min_round_s` measured from people's play (design 8: provisional now).
+- [ ] 7.3 The text's weight: egui's face has one; load the mockups' Barlow Semi Condensed as a TTF.

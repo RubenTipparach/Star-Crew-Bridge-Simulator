@@ -39,14 +39,31 @@
     "h": 589,
     "screws": 4
   },
-  "knobs": {},
+  "knobs": {
+    "band_frac": {
+      "base": 0.1,
+      "per_level": -0.015,
+      "min": 0.05
+    },
+    "wander_frac": {
+      "base": 0.01,
+      "per_level": 0.008,
+      "max": 0.04
+    },
+    "pull_frac": {
+      "base": 0,
+      "per_level": 0.05,
+      "max": 0.15
+    }
+  },
   "min_round_s": [
-    0,
-    0,
-    0,
-    0,
-    0,
-    0
+    1.9,
+    2.0,
+    1.9,
+    1.9,
+    2.1,
+    2.1
   ],
-  "min_round_measured": false
+  "min_round_measured": false,
+  "_min_round_note": "Provisional (design 8): 40% of the scripted hand's fastest round at each level, over every state and four seeds, until people's play is measured."
 }

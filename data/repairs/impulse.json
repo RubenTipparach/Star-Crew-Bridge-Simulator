@@ -44,13 +44,13 @@
     }
   },
   "min_round_s": [
-    2.8,
-    3.2,
-    2.8,
+    2.6,
+    2.5,
+    2.4,
     2.2,
-    2.8,
-    2.5
+    2.3,
+    2.2
   ],
   "min_round_measured": false,
-  "_min_round_note": "Provisional (design 8): 40% of the scripted hand's round at each level, until people's play is measured."
+  "_min_round_note": "Provisional (design 8): 40% of the scripted hand's fastest round at each level, over every state and four seeds, until people's play is measured."
 }

@@ -27,14 +27,45 @@
     ],
     "mistake": "Plasma or ring touches the wall: a heat spike"
   },
-  "knobs": {},
+  "knobs": {
+    "_note": "repair-minigames 1a: the core's load wanders faster and pushes harder each level; both holds grow a second a level; the ring's pull out of round is stronger and quicker.",
+    "drift_rad_s": {
+      "base": 0.3,
+      "per_level": 0.1
+    },
+    "drift_px_s": {
+      "base": 38,
+      "per_level": 14
+    },
+    "hold_s": {
+      "base": 5,
+      "per_level": 1
+    },
+    "ring_hold_s": {
+      "base": 4,
+      "per_level": 1
+    },
+    "ring_load_frac": {
+      "base": 0.55,
+      "per_level": 0.15
+    },
+    "ring_w1_rad_s": {
+      "base": 0.45,
+      "per_level": 0.1
+    },
+    "ring_w2_rad_s": {
+      "base": 0.37,
+      "per_level": 0.09
+    }
+  },
   "min_round_s": [
-    0,
-    0,
-    0,
-    0,
-    0,
-    0
+    3.6,
+    4.3,
+    5.1,
+    5.9,
+    6.7,
+    8.7
   ],
-  "min_round_measured": false
+  "min_round_measured": false,
+  "_min_round_note": "Provisional (design 8): 40% of the scripted hand's fastest round at each level, over every state and four seeds, until people's play is measured."
 }

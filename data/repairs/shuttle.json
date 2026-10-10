@@ -31,14 +31,35 @@
     ],
     "mistake": "Shutting the wrong valve: fuel mist in the bay"
   },
-  "knobs": {},
+  "knobs": {
+    "valves_count": {
+      "levels": [
+        4,
+        10
+      ]
+    },
+    "leak_depth_count": {
+      "base": 1,
+      "per_level": 1
+    },
+    "band_half_frac": {
+      "base": 0.09,
+      "per_level": -0.015,
+      "min": 0.045
+    },
+    "decay_frac_s": {
+      "base": 0.1,
+      "per_level": 0.025
+    }
+  },
   "min_round_s": [
-    0,
-    0,
-    0,
-    0,
-    0,
-    0
+    2.6,
+    2.9,
+    3.2,
+    3.3,
+    3.4,
+    3.6
   ],
-  "min_round_measured": false
+  "min_round_measured": false,
+  "_min_round_note": "Provisional (design 8): 40% of the scripted hand's fastest round at each level, over every state and four seeds, until people's play is measured."
 }

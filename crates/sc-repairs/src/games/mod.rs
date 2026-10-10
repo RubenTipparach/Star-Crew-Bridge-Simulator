@@ -195,31 +195,56 @@ pub mod tests {
         }
     }
 
+    /// Each ported game's hand's round times by level, over every state and the seeds in `SEEDS`: the fastest
+    /// round seen at each level.
+    fn fastest_rounds(id: &str) -> Vec<f32> {
+        let mut best = vec![f32::INFINITY; 6];
+        for state in State::ALL {
+            for seed in SEEDS {
+                let opts = Options { who: Who::Officer, state, combat: false, seed };
+                let mut r = Runner::new(make(id).expect("a game"), &data(), opts, true).expect("opens");
+                let p = play(&mut r, 900.0, |_, _| {});
+                assert!(p.done, "{id} {state:?} seed {seed}: {p:?}");
+                for (i, s) in p.round_s.iter().enumerate() {
+                    let l = (r.job.level_of_round(i as u32) as usize - 1).min(5);
+                    best[l] = best[l].min(*s);
+                }
+            }
+        }
+        best
+    }
+
+    /// The seeds the floor is checked over: the rounds' puzzles differ by seed, and an easy one is faster.
+    const SEEDS: [u64; 4] = [1, 2, 3, 4];
+
     #[test]
     fn a_ported_games_floor_never_refuses_a_steady_hand() {
         for id in IDS.iter().filter(|id| ported(id)) {
-            let mut r = open(id, State::Destroyed);
-            let p = play(&mut r, 900.0, |_, _| {});
-            assert!(p.done, "{id}: {p:?}");
-            for (i, s) in p.round_s.iter().enumerate() {
-                let floor = r.data.min_round(i as u32 + 1) as f32;
+            let f = data().games.get(*id).cloned().expect("a file");
+            for (i, s) in fastest_rounds(id).iter().enumerate() {
+                let floor = f.min_round(i as u32 + 1) as f32;
                 assert!(floor > 0.0, "{id}: min_round_s is filled in (design 8)");
-                assert!(*s >= floor, "{id} level {}: the hand's {s:.1} s is under the floor {floor}", i + 1);
+                assert!(
+                    s.is_infinite() || *s >= floor,
+                    "{id} level {}: the hand's {s:.2} s is under the floor {floor}",
+                    i + 1
+                );
             }
         }
     }
 
-    /// `cargo test -p sc-repairs round_times -- --ignored --nocapture`: each ported game's hand's round times by level,
-    /// and the provisional floor (40% of them, design 8).
+    /// `cargo test -p sc-repairs round_times -- --ignored --nocapture`: each ported game's fastest hand round by
+    /// level over every state and seed, and the provisional floor (40% of it, design 8).
     #[test]
     #[ignore]
     fn round_times() {
         for id in IDS.iter().filter(|id| ported(id)) {
-            let mut r = open(id, State::Destroyed);
-            let p = play(&mut r, 900.0, |_, _| {});
-            let floor: Vec<String> =
-                p.round_s.iter().map(|s| format!("{:.1}", (s * 0.4 * 10.0).floor() / 10.0)).collect();
-            println!("{id}: rounds {:?} s; min_round_s [{}]", p.round_s, floor.join(", "));
+            let best = fastest_rounds(id);
+            let floor: Vec<String> = best
+                .iter()
+                .map(|s| if s.is_finite() { format!("{:.1}", (s * 0.4 * 10.0).floor() / 10.0) } else { "-".into() })
+                .collect();
+            println!("{id}: fastest rounds {best:.2?} s; min_round_s [{}]", floor.join(", "));
         }
     }
 

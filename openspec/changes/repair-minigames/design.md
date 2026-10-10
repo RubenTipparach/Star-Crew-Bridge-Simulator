@@ -436,7 +436,26 @@ person's, marked provisional in its file.
 **The Pi 5 budget.** As section 7: one UI screen, a few thousand UI triangles in under 40 draws. Measured on the Pi
 when the games are in.
 
-## 7. The Pi 5 budget
+### 8a. As ported (2026-10-10)
+
+All twenty-four games are in `sc-repairs` (the heads are two, toilet and shower), each from its mockup by a scripted
+port, each played to the end by its steady hand from damaged, disabled and destroyed with no fumble, and each with a
+mistake checked to fumble. What the ports showed:
+
+- **The floor is per level over every state and seed.** A damaged job's first round has no part step and an easy
+  seed's puzzle is quicker, so `min_round_s` is 40% of the hand's fastest round at each level over the three states
+  and four seeds; a test checks no floor refuses the hand. The medic's rounds are wounds dealt in random order, so
+  its floor is one value, 0.3 s, under the fastest wound seen over 39 seeds.
+- **Level knobs are data; physics stay code.** The coolant loop's heat capacity and flows, the gravity field's
+  shape and the like are the machine, the same at every level, and stay named constants in the game's file.
+- **Hold times are knobs now.** The mockups sized a hold from the round's share at the officer's rate; 1a retired
+  that wait, so the coolant, gravity and pipes holds are knobs set near the mockups' damaged values.
+- **The kit gained two fixes** from the ports: the cover's hand presses afresh on each screw, and a pie sector pairs
+  its arcs. The ports wrote their own ellipse, dashed ring, Bezier curves, multi-stop gradients and shape clips;
+  those move into the kit next (task 7.1). The pen clips only to rectangles, so rounded clips are approximate.
+- **One face, one weight.** egui's built-in face has no bold; the mockups' 700 weight is lost until the Barlow face
+  is loaded (task 7.3). No ✓ or ▲ glyph: ticks and arrows are drawn.
+
 
 A mini-game is a UI screen: a few hundred to a few thousand UI triangles in a handful of draws, the 3D pass behind it
 as at a console. No texture beyond the UI's atlas. Not measured: a cloud session renders on a CPU (CLAUDE.md 2).

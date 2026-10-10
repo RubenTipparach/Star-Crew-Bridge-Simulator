@@ -144,6 +144,11 @@ impl Job {
         level_of(self.landed, self.max_level)
     }
 
+    /// The level round `round` (0 up) is played at.
+    pub fn level_of_round(&self, round: u32) -> u32 {
+        level_of(round, self.max_level)
+    }
+
     /// Every round landed.
     pub fn done(&self) -> bool {
         self.landed >= self.rounds

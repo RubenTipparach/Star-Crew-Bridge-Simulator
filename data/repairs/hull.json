@@ -31,14 +31,32 @@
     ],
     "mistake": "Welding too slow: it burns through, 2 HP"
   },
-  "knobs": {},
+  "knobs": {
+    "_note": "Design 1a: the good weld band (heat 0-1) is 0.35-0.85 at level 1, 0.015 off each end a level; the burn-through comes after 0.3 s over it, 0.015 s sooner a level.",
+    "cold_frac": {
+      "base": 0.35,
+      "per_level": 0.015,
+      "max": 0.425
+    },
+    "burn_frac": {
+      "base": 0.85,
+      "per_level": -0.015,
+      "min": 0.775
+    },
+    "burn_s": {
+      "base": 0.3,
+      "per_level": -0.015,
+      "min": 0.225
+    }
+  },
   "min_round_s": [
-    0,
-    0,
-    0,
-    0,
-    0,
-    0
+    12.0,
+    12.0,
+    12.0,
+    12.0,
+    12.0,
+    12.0
   ],
-  "min_round_measured": false
+  "min_round_measured": false,
+  "_min_round_note": "Provisional (design 8): 40% of the scripted hand's fastest round at each level, over every state and four seeds, until people's play is measured."
 }

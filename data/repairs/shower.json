@@ -23,14 +23,32 @@
     ],
     "mistake": "Opening on an open run: a loose joint, soaked"
   },
-  "knobs": {},
+  "knobs": {
+    "cols_count": {
+      "levels": [
+        5,
+        6,
+        6,
+        7
+      ]
+    },
+    "rows_count": {
+      "levels": [
+        4,
+        4,
+        5,
+        5
+      ]
+    }
+  },
   "min_round_s": [
-    0,
-    0,
-    0,
-    0,
-    0,
-    0
+    1.3,
+    2.6,
+    1.2,
+    2.4,
+    1.9,
+    2.1
   ],
-  "min_round_measured": false
+  "min_round_measured": false,
+  "_min_round_note": "Provisional (design 8): 40% of the scripted hand's fastest round at each level, over every state and four seeds, until people's play is measured."
 }

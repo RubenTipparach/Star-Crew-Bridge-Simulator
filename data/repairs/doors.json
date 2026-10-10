@@ -27,14 +27,29 @@
     ],
     "mistake": "The gauge past its limit: the crank slips, the leaf drops"
   },
-  "knobs": {},
+  "knobs": {
+    "turns_count": {
+      "base": 5,
+      "per_level": 1
+    },
+    "wave_gain_x": {
+      "base": 1.8,
+      "per_level": 0.6
+    },
+    "wave_gap_s": {
+      "base": 1.4,
+      "per_level": -0.2,
+      "min": 0.6
+    }
+  },
   "min_round_s": [
-    0,
-    0,
-    0,
-    0,
-    0,
-    0
+    2.8,
+    3.3,
+    4.2,
+    5.1,
+    6.4,
+    7.3
   ],
-  "min_round_measured": false
+  "min_round_measured": false,
+  "_min_round_note": "Provisional (design 8): 40% of the scripted hand's fastest round at each level, over every state and four seeds, until people's play is measured."
 }

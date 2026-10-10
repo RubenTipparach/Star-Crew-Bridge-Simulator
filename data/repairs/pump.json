@@ -39,14 +39,26 @@
     "h": 250,
     "screws": 4
   },
-  "knobs": {},
+  "knobs": {
+    "ring_px": {
+      "base": 20,
+      "per_level": -3,
+      "min": 10
+    },
+    "red_frac": {
+      "base": 0.25,
+      "per_level": 0.03,
+      "max": 0.36
+    }
+  },
   "min_round_s": [
-    0,
-    0,
-    0,
-    0,
-    0,
-    0
+    1.8,
+    1.8,
+    1.8,
+    1.9,
+    1.9,
+    1.9
   ],
-  "min_round_measured": false
+  "min_round_measured": false,
+  "_min_round_note": "Provisional (design 8): 40% of the scripted hand's fastest round at each level, over every state and four seeds, until people's play is measured."
 }

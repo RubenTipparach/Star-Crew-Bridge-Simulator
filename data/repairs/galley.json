@@ -27,14 +27,29 @@
     ],
     "mistake": "Past a band's top: paste everywhere, that column drains"
   },
-  "knobs": {},
+  "knobs": {
+    "band_half_frac": {
+      "base": 0.075,
+      "per_level": -0.01,
+      "min": 0.04
+    },
+    "feed_rate_frac_s": {
+      "base": 0.16,
+      "per_level": 0.03
+    },
+    "run_on_s": {
+      "base": 0.22,
+      "per_level": 0.06
+    }
+  },
   "min_round_s": [
-    0,
-    0,
-    0,
-    0,
-    0,
-    0
+    4.9,
+    4.5,
+    4.7,
+    5.1,
+    5.2,
+    5.6
   ],
-  "min_round_measured": false
+  "min_round_measured": false,
+  "_min_round_note": "Provisional (design 8): 40% of the scripted hand's fastest round at each level, over every state and four seeds, until people's play is measured."
 }
