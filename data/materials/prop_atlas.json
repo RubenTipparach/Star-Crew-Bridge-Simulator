@@ -15,7 +15,7 @@
     "crew": { "grime": 0.12, "grime_scale_per_m": 3.0, "crevice": 0.55, "crevice_m": 0.03, "edge": 0.45, "streaks": 0.06, "rust": 0.0 },
     "working": { "grime": 0.16, "grime_scale_per_m": 2.5, "crevice": 0.55, "crevice_m": 0.04, "edge": 0.55, "streaks": 0.12, "rust": 0.25 }
   },
-  "sets": { "bridge": "crew", "suite": "crew", "machinery": "working", "engineering": "working", "doors": "crew" },
+  "sets": { "bridge": "crew", "suite": "crew", "machinery": "working", "engineering": "working", "doors": "crew", "service_proto": "working" },
   "edge_metal_srgb": [0.66, 0.66, 0.64],
   "rust_srgb": [0.36, 0.19, 0.09],
   "roles": {
@@ -68,6 +68,7 @@
     "porcelain": { "kind": "laminate", "srgb": [0.88, 0.89, 0.88] },
     "lagging": { "kind": "brushed", "srgb": [0.72, 0.73, 0.74] },
     "magnet_red": { "kind": "paint", "srgb": [0.47, 0.07, 0.06] },
+    "machined": { "kind": "flat", "srgb": [0.56, 0.57, 0.58] },
     "fuel_orange": { "kind": "paint", "srgb": [0.90, 0.44, 0.10] },
     "frost": { "kind": "flat", "srgb": [0.90, 0.93, 0.96] },
     "door_leaf": { "kind": "paint", "srgb": [0.52, 0.51, 0.48] },

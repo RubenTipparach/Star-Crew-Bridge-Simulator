@@ -9,13 +9,18 @@
 //! Layout, little-endian: `"SCDK"`, the version (u32), the index's length in bytes (u32), the index as
 //! JSON (`DeckIndex`), then the blobs the index points into: vertices, indices (u32), texture mip levels, and the
 //! walk's triangles (nine f32 each: three corners in ship coordinates, metres).
+//!
+//! Version 3 (deck-pipeline 13b) adds a compartment's mover (the lift's car is a compartment of its own that moves),
+//! a lift's speed, door time and car, the viewscreens, and the first layer of the console screens' atlas. Version 4
+//! (crew-npcs 7) adds a compartment's floor centre, where a bot goes to work in it, and the crew figures (the deck
+//! `figure`).
 
 use serde::{Deserialize, Serialize};
 
 /// The file's magic number.
 pub const MAGIC: &[u8; 4] = b"SCDK";
 /// The format version this build reads and writes.
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 4;
 
 /// One compartment's mesh in the file.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -37,6 +42,11 @@ pub struct DeckCompartment {
     pub index_offset: u64,
     /// Its index count (three a triangle).
     pub index_count: u32,
+    /// The mover every vertex of it rides (0: static; the lift's car is 1), also in each vertex (`sc-core::vertex`).
+    pub mover: u8,
+    /// The middle of its floor on its lowest deck, ship coordinates, metres: where a bot goes to work in it. None for
+    /// what is not a room (the dock, the figures, the lift's car).
+    pub floor_m: Option<[f32; 3]>,
 }
 
 /// The texture array: square RGBA8 layers with a full mip chain, largest first.
@@ -55,6 +65,8 @@ pub struct DeckTextures {
     pub panel_first: u32,
     /// How bright the masks glow in the normal, red alert and emergency states.
     pub panel_glow: [f32; 3],
+    /// The first layer of the console screens' atlas (bridge-stations 11.6), after every other layer; `layers` when none.
+    pub screens_first: u32,
 }
 
 /// Where a walk starts: a floor point and the way the body faces in the plan.
@@ -121,8 +133,28 @@ pub struct WalkLift {
     pub poly: Vec<[f32; 2]>,
     /// The floors it stops at, metres.
     pub stops_m: Vec<f32>,
-    /// The car's floor, metres.
+    /// The car's floor where the deck draws it, metres.
     pub car_m: f32,
+    /// The car's speed between stops, metres a second.
+    pub speed_m_s: f32,
+    /// Seconds its doors take to open, and to close.
+    pub door_s: f32,
+    /// The compartment that is its car (a mover), if the deck draws one.
+    pub car_room: Option<String>,
+}
+
+/// A viewscreen: a screen on a wall showing the outside (deck-pipeline 13b).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct DeckView {
+    /// The layout's fixture id.
+    pub id: String,
+    /// The screen's centre, ship coordinates, metres.
+    pub center_m: [f32; 3],
+    /// Width and height, metres.
+    pub size_m: [f32; 2],
+    /// The way it faces in the plan, degrees about +Y (0: +z, the bow).
+    pub facing_yaw_deg: f32,
 }
 
 /// The walk world's index: the triangle count (the triangles are the last blob) and the entities.
@@ -163,6 +195,8 @@ pub struct DeckIndex {
     pub texture_bytes: u64,
     /// The walk world.
     pub walk: DeckWalk,
+    /// The viewscreens.
+    pub views: Vec<DeckView>,
 }
 
 /// A deck file opened from its bytes.
@@ -250,6 +284,18 @@ pub fn read(bytes: &[u8]) -> Result<Deck<'_>, DeckError> {
             return Err(DeckError(format!("compartment {} has a non-finite origin", c.id)));
         }
     }
+    for v in &index.views {
+        if v.center_m.iter().chain(&v.size_m).chain([&v.facing_yaw_deg]).any(|x| !x.is_finite()) {
+            return Err(DeckError(format!("viewscreen {} is not finite", v.id)));
+        }
+    }
+    for l in &index.walk.lifts {
+        if !(l.speed_m_s > 0.0 && l.speed_m_s.is_finite() && l.door_s >= 0.0 && l.door_s.is_finite())
+            || l.stops_m.is_empty()
+        {
+            return Err(e("a lift's speed, door time or stops are not usable"));
+        }
+    }
     let t = &index.textures;
     if t.mip_offsets.len() != t.mips as usize || t.layers == 0 || t.layers > 256 {
         return Err(e("the texture index is inconsistent"));
@@ -294,6 +340,8 @@ mod tests {
                 vertex_count: 3,
                 index_offset: 0,
                 index_count: 3,
+                mover: 0,
+                floor_m: None,
             }],
             textures: DeckTextures {
                 size_px: 1,
@@ -302,6 +350,7 @@ mod tests {
                 mip_offsets: vec![0],
                 panel_first: 0,
                 panel_glow: [1.0, 1.0, 0.3],
+                screens_first: 1,
             },
             vertex_bytes: 84,
             index_count: 3,
@@ -314,6 +363,7 @@ mod tests {
                 doors: vec![],
                 lifts: vec![],
             },
+            views: vec![],
         };
         (index, vec![7; 84], vec![0, 1, 2], vec![255; 4])
     }

@@ -2,7 +2,8 @@
 
 ## Context
 
-The owner, 2026-10-08: "maybe we can add NPCs that have jobs on the ship too."
+The owner, 2026-10-08: "maybe we can add NPCs that have jobs on the ship too.", and later that day: "we need to start
+populating the ship with crew members", "bot crews". Section 7 is the first version, built ahead of the job system.
 
 | Decided elsewhere | Where |
 | --- | --- |
@@ -82,6 +83,34 @@ costs (`reference-ship-tern` walk times). A closed pressure door or a breach cut
   on a task's start, not every tick. To measure on the 4 GB Pi server (CLAUDE.md 2).
 - Client: each NPC is a crew avatar (`crew-on-deck` 17), skinned, drawn only in the camera's room and
   its neighbours.
+
+## 7. The first version: a bot crew walking the ship (2026-10-08)
+
+Built now so the ship has people in it; the rest of this design follows on the same parts.
+
+- **The company** from `data/crew/company.json`: departments, how many of each with one player aboard (the table in
+  section 1: 2 command, 2 engineering, 2 deckhands, 1 medical, 1 security, 1 galley, so 9 bots and 3 berths spare),
+  each department's colour and the rooms it works in, and how long a bot stays at a place (seconds, a range).
+  Names come from the lobby's generator (`sc-core::names`) with the session seed, each bot's slot and the purpose
+  `crew_name`, so the same seed gives the same crew.
+- **Paths, first version: a walk grid.** Section 5's portal graph needs the compartments' brushes in the deck file,
+  which `deckc` does not carry yet. Until it does, `sc-core::nav` samples the walk world at load: a cell every 0.5 m
+  on each deck where a floor lies within a step of the deck's height and a body fits (a ray down for the floor, rays
+  across at knee and chest height between neighbours for walls), joined to its eight neighbours; ladders and the lift
+  join the decks. A path is an A* over the cells, smoothed by dropping cells a straight line clears. It is a rule (the
+  server will run it), so it is in the core, deterministic, with tests on a small world; its build time and memory
+  are logged at load.
+- **Places:** each room a department works in gives a place, the walkable cell nearest the middle of its floor
+  (`deckc` writes each compartment's floor centre and deck into the deck file from the layout).
+- **The loop:** a bot walks to a place in its department's rooms, stands there for its stay, then picks another,
+  every draw from its own seeded stream. Ladders and the lift: a path between decks goes by a ladder (the climb is the
+  body controller's, the same Use a player presses); the lift is left to players in this version.
+- **Bodies:** a bot is a `sc-core::walk` body like a player's, stepped by the same code. Bodies do not collide with
+  each other yet (section's "NPCs in the way" stands for the next step).
+- **Seen:** a figure about 1.8 m tall, low poly (about 100 triangles), its tunic in the department's colour, built
+  by `deckc` (a generator, CLAUDE.md 9) into the deck file; drawn once a bot.
+- **Not yet:** jobs, watches, needs, orders, red alert, the network. The CPU cost: logged per frame for the bots'
+  steps in the client; not measured on a Pi (CLAUDE.md 2).
 
 ## Risks / Trade-offs
 

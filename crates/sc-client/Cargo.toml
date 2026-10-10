@@ -12,7 +12,11 @@ sc-core.workspace = true
 sc-render.workspace = true
 sdl3-sys.workspace = true
 glam.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 png = "0.18"
+# The UI layer (lobby design 3): immediate-mode, pure Rust, drawn by sc-render's UI painter.
+egui = { version = "0.33", default-features = false, features = ["default_fonts"] }
 
 [lints]
 workspace = true

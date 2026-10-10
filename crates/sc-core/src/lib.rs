@@ -7,9 +7,15 @@
 //! (CLAUDE.md 6.2). Callers hand it text and elapsed seconds.
 
 pub mod arena;
+pub mod bots;
 pub mod clock;
+pub mod crew;
 pub mod data;
 pub mod deck;
+pub mod exterior;
+pub mod lift;
+pub mod names;
+pub mod nav;
 pub mod replay;
 pub mod rng;
 pub mod vertex;

@@ -1,0 +1,98 @@
+{
+  "schema": "starcrew.repair-covers/1",
+  "status": "Proposed (2026-10-09) by openspec/changes/repairs-on-deck, design 3b. Baked by tools/blender/build_repair_covers.py into assets/textures/repairs/cover_<finish>.png and interior_<kind>.png with assets/textures/repairs/covers.json; no engine code reads them yet.",
+  "_rules": [
+    "One cover is baked per finish and stretched by its UVs onto every service cover from 1.1 to 1.4 wide to high; the screw holes stay at their fractions of the plate, which covers.json records and the 3D screws are placed from.",
+    "size_m is the plate baked (x across, y up); out_px the layer it becomes, at the same pixels per metre both ways; the render is supersample times out_px, area-averaged down.",
+    "Colours and wear are the finish's own in data/materials/panels.json, and the light is its render block: a cover is a wall part.",
+    "interiors: what the opening shows with the cover off (design 3b), baked at the cover's size and density. colours_srgb and wear are the interiors' own (a circuit board has no wall paint and no rust); each kind's roles map the build's material roles to those colours, and a role a kind does not name is refused on its faces."
+  ],
+  "size_m": [0.56, 0.455],
+  "out_px": [256, 208],
+  "supersample": 4,
+  "colours": 48,
+  "finishes": [
+    "crew",
+    "working"
+  ],
+  "corner_m": 0.016,
+  "rim_w_m": 0.02,
+  "hazard_w_m": 0.024,
+  "screw": {
+    "inset_m": 0.042,
+    "hole_r_m": 0.0105,
+    "countersink_r_m": 0.017
+  },
+  "text": {
+    "label": "SERVICE",
+    "label_m": 0.062,
+    "note": "4 SCREWS",
+    "note_m": 0.024
+  },
+  "interiors": {
+    "colours_srgb": {
+      "dark": [0.045, 0.047, 0.05],
+      "board": [0.06, 0.22, 0.12],
+      "copper": [0.7, 0.5, 0.22],
+      "chip": [0.065, 0.068, 0.075],
+      "cap": [0.13, 0.24, 0.5],
+      "housing": [0.36, 0.38, 0.4],
+      "silk": [0.86, 0.88, 0.84],
+      "mount": [0.46, 0.47, 0.45],
+      "wire_black": [0.05, 0.05, 0.05],
+      "wire_red": [0.6, 0.1, 0.08],
+      "wire_blue": [0.12, 0.26, 0.56],
+      "wire_yellow": [0.78, 0.6, 0.12],
+      "status": [0.4, 1.0, 0.45],
+      "amber": [1.0, 0.56, 0.12],
+      "metal": [0.62, 0.6, 0.56],
+      "rust": [0.38, 0.17, 0.07],
+      "trace": [0.16, 0.45, 0.22],
+      "gold": [0.78, 0.62, 0.3],
+      "alu": [0.6, 0.61, 0.62]
+    },
+    "wear": {
+      "grime": 0.12,
+      "grime_scale_per_m": 6.0,
+      "crevice": 0.55,
+      "crevice_m": 0.015,
+      "edge": 0.15,
+      "streaks": 0.0,
+      "rust": 0.0
+    },
+    "kinds": {
+      "circuit": {
+        "roles": {
+          "machinery": "dark",
+          "bulkhead": "board",
+          "safety": "trace",
+          "trim": "gold",
+          "upholstery_panel": "chip",
+          "upholstery": "cap",
+          "paint2": "alu",
+          "stencil": "silk",
+          "rubber": "wire_black",
+          "walk": "wire_red",
+          "accent": "status",
+          "amber": "amber"
+        }
+      },
+      "wiring": {
+        "roles": {
+          "machinery": "dark",
+          "bulkhead": "mount",
+          "trim": "metal",
+          "upholstery_panel": "chip",
+          "upholstery": "wire_blue",
+          "paint2": "housing",
+          "stencil": "silk",
+          "rubber": "wire_black",
+          "walk": "wire_red",
+          "safety": "wire_yellow",
+          "accent": "status",
+          "amber": "amber"
+        }
+      }
+    }
+  }
+}

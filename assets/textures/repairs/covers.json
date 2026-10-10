@@ -1,0 +1,349 @@
+{
+  "schema": "starcrew.repair-covers-built/1",
+  "source": "data/materials/repair_covers.json",
+  "built_by": "tools/blender/build_repair_covers.py",
+  "size_m": [
+    0.56,
+    0.455
+  ],
+  "versions": {
+    "blender": "4.5.4 LTS",
+    "pillow": "12.3.0",
+    "numpy": "1.26.4"
+  },
+  "covers": {
+    "crew": {
+      "file": "assets/textures/repairs/cover_crew.png",
+      "px": [
+        256,
+        208
+      ],
+      "bytes": 25307,
+      "sha256": "b97a08952f2975e45f2a717860aed8e59fbe8871e0bdab4f86e3c1ca5a3e1d92",
+      "holes_uv": [
+        [
+          0.075,
+          0.09231
+        ],
+        [
+          0.925,
+          0.09231
+        ],
+        [
+          0.075,
+          0.90769
+        ],
+        [
+          0.925,
+          0.90769
+        ]
+      ]
+    },
+    "working": {
+      "file": "assets/textures/repairs/cover_working.png",
+      "px": [
+        256,
+        208
+      ],
+      "bytes": 28915,
+      "sha256": "500e5b850ee09fecc0d39d9fdb0991f2f45489081b0e7986933bca63b5cdf556",
+      "holes_uv": [
+        [
+          0.075,
+          0.09231
+        ],
+        [
+          0.925,
+          0.09231
+        ],
+        [
+          0.075,
+          0.90769
+        ],
+        [
+          0.925,
+          0.90769
+        ]
+      ]
+    }
+  },
+  "interiors": {
+    "circuit": {
+      "file": "assets/textures/repairs/interior_circuit.png",
+      "px": [
+        256,
+        208
+      ],
+      "bytes": 30158,
+      "sha256": "7905e31b4f8ae779c60f9c6a48fcec224c6a0219e435a9b6b75ba86e747c6f47"
+    },
+    "wiring": {
+      "file": "assets/textures/repairs/interior_wiring.png",
+      "px": [
+        256,
+        208
+      ],
+      "bytes": 28424,
+      "sha256": "c905ad53fdb181c9af362fda8861360251ac0f51dfd698b924d5ae62118611fc"
+    }
+  },
+  "boards": {
+    "circuit": {
+      "file": "assets/textures/repairs/board_circuit.png",
+      "px": [
+        256,
+        208
+      ],
+      "bytes": 28360,
+      "sha256": "0b6425bae93fbd4959058fa5b7522a9aa14f3c3a3b5a014feafc3ac839fc7ecd",
+      "frame_m": [
+        0.56,
+        0.455
+      ],
+      "parts": [
+        {
+          "id": "MH1",
+          "label": "Mounting screw",
+          "kind": "screw",
+          "x_m": -0.247,
+          "y_m": -0.1945,
+          "w_m": 0.009,
+          "h_m": 0.009,
+          "height_m": 0.003,
+          "finish": "bolt",
+          "click": false
+        },
+        {
+          "id": "MH2",
+          "label": "Mounting screw",
+          "kind": "screw",
+          "x_m": 0.247,
+          "y_m": -0.1945,
+          "w_m": 0.009,
+          "h_m": 0.009,
+          "height_m": 0.003,
+          "finish": "bolt",
+          "click": false
+        },
+        {
+          "id": "MH3",
+          "label": "Mounting screw",
+          "kind": "screw",
+          "x_m": -0.247,
+          "y_m": 0.1945,
+          "w_m": 0.009,
+          "h_m": 0.009,
+          "height_m": 0.003,
+          "finish": "bolt",
+          "click": false
+        },
+        {
+          "id": "MH4",
+          "label": "Mounting screw",
+          "kind": "screw",
+          "x_m": 0.247,
+          "y_m": 0.1945,
+          "w_m": 0.009,
+          "h_m": 0.009,
+          "height_m": 0.003,
+          "finish": "bolt",
+          "click": false
+        },
+        {
+          "id": "U1",
+          "label": "Processor U1",
+          "kind": "chip",
+          "x_m": -0.06,
+          "y_m": 0.0,
+          "w_m": 0.07,
+          "h_m": 0.07,
+          "height_m": 0.004,
+          "finish": "dark",
+          "click": true
+        },
+        {
+          "id": "U2",
+          "label": "Memory U2",
+          "kind": "chip",
+          "x_m": 0.075,
+          "y_m": 0.085,
+          "w_m": 0.06,
+          "h_m": 0.026,
+          "height_m": 0.004,
+          "finish": "dark",
+          "click": true
+        },
+        {
+          "id": "U3",
+          "label": "Memory U3",
+          "kind": "chip",
+          "x_m": 0.075,
+          "y_m": -0.07,
+          "w_m": 0.06,
+          "h_m": 0.026,
+          "height_m": 0.004,
+          "finish": "dark",
+          "click": true
+        },
+        {
+          "id": "U4",
+          "label": "Valve driver U4",
+          "kind": "chip",
+          "x_m": -0.2,
+          "y_m": 0.135,
+          "w_m": 0.036,
+          "h_m": 0.036,
+          "height_m": 0.004,
+          "finish": "dark",
+          "click": true
+        },
+        {
+          "id": "Y1",
+          "label": "Crystal Y1",
+          "kind": "chip",
+          "x_m": -0.06,
+          "y_m": -0.109,
+          "w_m": 0.03,
+          "h_m": 0.012,
+          "height_m": 0.004,
+          "finish": "steel",
+          "click": true
+        },
+        {
+          "id": "Q1",
+          "label": "Regulator Q1",
+          "kind": "heatsink",
+          "x_m": 0.2125,
+          "y_m": 0.115,
+          "w_m": 0.075,
+          "h_m": 0.11,
+          "height_m": 0.032,
+          "finish": "dark",
+          "click": true,
+          "fins": 10
+        },
+        {
+          "id": "L1",
+          "label": "Inductor L1",
+          "kind": "chip",
+          "x_m": 0.165,
+          "y_m": -0.05,
+          "w_m": 0.032,
+          "h_m": 0.032,
+          "height_m": 0.012,
+          "finish": "dark",
+          "click": true
+        },
+        {
+          "id": "L2",
+          "label": "Inductor L2",
+          "kind": "chip",
+          "x_m": 0.165,
+          "y_m": -0.12,
+          "w_m": 0.032,
+          "h_m": 0.032,
+          "height_m": 0.012,
+          "finish": "dark",
+          "click": true
+        },
+        {
+          "id": "C1",
+          "label": "Capacitor C1",
+          "kind": "can",
+          "x_m": 0.225,
+          "y_m": -0.015,
+          "w_m": 0.028,
+          "h_m": 0.028,
+          "height_m": 0.02,
+          "finish": "blue",
+          "click": true
+        },
+        {
+          "id": "C2",
+          "label": "Capacitor C2",
+          "kind": "can",
+          "x_m": 0.225,
+          "y_m": -0.065,
+          "w_m": 0.028,
+          "h_m": 0.028,
+          "height_m": 0.02,
+          "finish": "blue",
+          "click": true
+        },
+        {
+          "id": "C3",
+          "label": "Capacitor C3",
+          "kind": "can",
+          "x_m": 0.225,
+          "y_m": -0.115,
+          "w_m": 0.028,
+          "h_m": 0.028,
+          "height_m": 0.02,
+          "finish": "blue",
+          "click": true
+        },
+        {
+          "id": "C4",
+          "label": "Capacitor C4",
+          "kind": "can",
+          "x_m": -0.215,
+          "y_m": -0.02,
+          "w_m": 0.028,
+          "h_m": 0.028,
+          "height_m": 0.02,
+          "finish": "blue",
+          "click": true
+        },
+        {
+          "id": "C5",
+          "label": "Capacitor C5",
+          "kind": "can",
+          "x_m": -0.215,
+          "y_m": -0.075,
+          "w_m": 0.028,
+          "h_m": 0.028,
+          "height_m": 0.02,
+          "finish": "blue",
+          "click": true
+        },
+        {
+          "id": "J1",
+          "label": "Header J1",
+          "kind": "header",
+          "x_m": 0.055,
+          "y_m": 0.185,
+          "w_m": 0.11,
+          "h_m": 0.026,
+          "height_m": 0.014,
+          "finish": "dark",
+          "click": true,
+          "wires": 4
+        },
+        {
+          "id": "D1",
+          "label": "Power LED D1",
+          "kind": "chip",
+          "x_m": -0.2405,
+          "y_m": 0.176,
+          "w_m": 0.009,
+          "h_m": 0.008,
+          "height_m": 0.004,
+          "finish": "led_green",
+          "click": false
+        },
+        {
+          "id": "D2",
+          "label": "Activity LED D2",
+          "kind": "chip",
+          "x_m": -0.2255,
+          "y_m": 0.176,
+          "w_m": 0.009,
+          "h_m": 0.008,
+          "height_m": 0.004,
+          "finish": "led_amber",
+          "click": false
+        }
+      ]
+    }
+  }
+}

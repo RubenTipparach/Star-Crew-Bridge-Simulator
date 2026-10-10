@@ -9,5 +9,5 @@
 ## 2. Simulation (with `crew-on-deck`)
 
 - [ ] 2.1 `crew::heal_rate` with the tender, and tests: a tended bed heals 25 to 100 HP in 12.5 s; untended 37.5 s.
-- [ ] 2.2 The medkit: revive 2.0 s to 40 HP, field healing 4.0 HP/s to 75 HP, stabilize 3.0 s; doses and refill.
+- [ ] 2.2 The medkit: stabilize 2.0 s, field healing 4.0 HP/s to 75 HP for wounded bodies; doses and refill (owner's health rule, 2026-10-09).
 - [ ] 2.3 MEDIC calls on the crew panel, the console and the HUD.

@@ -14,16 +14,22 @@
 #      MATERIAL_MAKER_DIR is a Material Maker release (with material_maker.x86_64) or a source
 #      checkout run by a Godot 4.7 binary (GODOT, default "godot"). Material Maker writes
 #      <graph>_albedo.png, _normal.png, _orm.png and _emission.png at 2048 px.
+#      With no screen and no GPU (a Claude Code cloud session) it runs too: the
+#      material-maker-headless skill's setup.sh makes the patched checkout, the software Vulkan
+#      driver and Xvfb, and prints MM_DIR and GODOT; with no DISPLAY this script wraps the render
+#      in xvfb-run:
+#        eval "$(bash .claude/skills/material-maker-headless/scripts/setup.sh | grep ^export)"
+#        MATERIAL_MAKER_DIR=$MM_DIR tools/materials/export_materials.sh [graph ...]
 #
-#   2. --from-fps <fps-game-demo dir> (when Material Maker cannot run, as in a Claude Code cloud
-#      session: it needs Godot and a GPU, and release downloads are blocked there). Copies
+#   2. --from-fps <fps-game-demo dir> (the fallback when Material Maker cannot be fetched at all).
+#      Copies
 #      fps-game-demo's committed exports of the same graphs (game/textures/<graph>.png,
 #      _normal, _orm, _emission: Material Maker renders of the same .ptex files, already
 #      downsampled to 1024 px by fps's postprocess.py) into raw/, and records the fps revision in
 #      raw/SOURCE.txt. The 2026-10-05 layers were built this way, from fps-game-demo f6cd25c.
 #        tools/materials/export_materials.sh --from-fps /path/to/fps-game-demo
 #
-# Either way raw/ is cleared first, so it never mixes the two namings.
+# Either way raw/ is cleared first (all but raw/panels/), so it never mixes the two namings.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 RAW="$HERE/raw"
@@ -40,8 +46,10 @@ else
   mapfile -t graphs < <(python3 "$HERE/postprocess.py" --list-graphs)
 fi
 
-rm -rf "$RAW"
+# raw/panels/ is not ours: it holds the Blender panel renders (build_wall_panels.py), which
+# take about 45 minutes to remake, so only this script's own maps are cleared.
 mkdir -p "$RAW"
+find "$RAW" -mindepth 1 -maxdepth 1 ! -name panels -exec rm -rf {} +
 
 if [ -n "$FPS" ]; then
   TEX="$FPS/game/textures"
@@ -61,13 +69,17 @@ else
     [ -f "$HERE/ptex/$g.ptex" ] || { echo "no graph tools/materials/ptex/$g.ptex" >&2; exit 1; }
     files+=("$HERE/ptex/$g.ptex")
   done
+  # No screen: Material Maker renders on a RenderingDevice, which needs a (virtual) display.
+  xvfb=()
+  if [ -z "${DISPLAY:-}" ]; then xvfb=(xvfb-run -a -s "-screen 0 1280x800x24"); fi
   if [ -x "$MM/material_maker.x86_64" ]; then
-    "$MM/material_maker.x86_64" --export-material -o "$RAW" "${files[@]}"
+    "${xvfb[@]}" "$MM/material_maker.x86_64" --export-material -o "$RAW" "${files[@]}"
   else
     # Material Maker from a source checkout, run by a Godot 4.7 binary.
-    "${GODOT:-godot}" --path "$MM" --rendering-driver vulkan --export-material -o "$RAW" "${files[@]}"
+    "${xvfb[@]}" "${GODOT:-godot}" --path "$MM" --rendering-driver vulkan --export-material -o "$RAW" "${files[@]}"
   fi
-  echo "Material Maker render of tools/materials/ptex ($MM)" > "$RAW/SOURCE.txt"
+  rev="$(git -C "$MM" rev-parse --short HEAD 2>/dev/null || echo release)"
+  echo "Material Maker $rev render of tools/materials/ptex ($MM${xvfb:+, headless under Xvfb})" > "$RAW/SOURCE.txt"
 fi
 
 python3 "$HERE/postprocess.py" --raw "$RAW"

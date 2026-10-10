@@ -1,0 +1,51 @@
+{
+  "schema": "starcrew.exterior/1",
+  "_doc": "The outside of the ship while it lies in the space dock (openspec/changes/deck-pipeline, design section 13b; read by sc-core::exterior::ExteriorData). Directions are ship coordinates: +x port, +y up, +z the bow; any length. Colours are sRGB 0-1. The sky program (crates/sc-render/shaders/sky.glsl) draws the stars, the sun and the planet from them; deckc builds the dock's girders from `dock` into the deck file, and the client draws the bow camera's view onto every viewscreen from `viewscreen`.",
+  "sun": {
+    "dir": [-0.45, 0.55, 0.7],
+    "colour_srgb": [1.0, 0.96, 0.88],
+    "disc_deg": 0.8,
+    "glow": 0.35
+  },
+  "planet": {
+    "_doc": "A planet below the ship to port, filling a good part of the port windows: its centre's direction and the angle its disc spans from the centre to the limb.",
+    "dir": [0.78, -0.52, 0.18],
+    "radius_deg": 34.0,
+    "ocean_srgb": [0.05, 0.16, 0.34],
+    "land_srgb": [0.30, 0.34, 0.20],
+    "cloud_srgb": [0.92, 0.94, 0.97],
+    "atmosphere_srgb": [0.35, 0.62, 1.0],
+    "atmosphere_frac": 0.035,
+    "land_frac": 0.38,
+    "cloud_frac": 0.45,
+    "night": 0.03
+  },
+  "stars": {
+    "_doc": "density: the share of grid cells that hold a star (three grids of 3 sizes); brightness: the brightest star's value.",
+    "density": 0.07,
+    "brightness": 1.0
+  },
+  "dock": {
+    "_doc": "A frame of steel girders round the hull (the Tern is 84 m long, 24.4 m across and 13.8 m high): ring frames every ring_spacing_m along z, longitudinal girders at the corners and mid sides, cross braces on the sides, and a work light at each ring's inner corners. Built by deckc into compartments of the deck `outside`, each within one bay so its vertices stay in the deck vertex's +/-32 m.",
+    "center_m": [0.0, 1.0, 0.0],
+    "length_m": 120.0,
+    "width_m": 52.0,
+    "height_m": 40.0,
+    "ring_spacing_m": 20.0,
+    "girder_m": 1.4,
+    "brace_m": 0.6,
+    "light_m": 0.6,
+    "material": "hull_dark",
+    "steel_srgb": [0.62, 0.64, 0.66],
+    "light_srgb": [1.0, 0.86, 0.55],
+    "ambient": 0.10
+  },
+  "viewscreen": {
+    "_doc": "The bow camera: where it sits (just ahead of the hull's bow), the way it looks (ahead, turned a little to port and down so the planet's limb is in the corner), its vertical field of view and the target it renders into each frame, pixels.",
+    "camera_m": [0.0, 3.0, 43.0],
+    "look": [0.42, -0.22, 1.0],
+    "fov_deg": 50.0,
+    "target_px": [512, 256],
+    "scanlines": 0.08
+  }
+}

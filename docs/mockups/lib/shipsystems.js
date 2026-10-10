@@ -4,6 +4,11 @@
  * It implements, in one place, the formulas of three proposed OpenSpec changes so the
  * mockup shows what the designs say and nothing else:
  *   openspec/changes/power-grid      (the power solve, reactor, battery, heat and coolant)
+ *   openspec/changes/reactor-cooling (the Cooling group, pump speeds, the radiator pumps, the loop's
+ *                                     inventory and makeup, the two legs, the cooling automation, and the
+ *                                     coolant parts: eight pipe segments, two tanks and the exchanger with
+ *                                     their integrity, leaks, isolation and the bypass; coolantView is the
+ *                                     reactor system screen's read-only picture of them, design 6a)
  *   openspec/changes/life-support    (the atmosphere step, plant, pumps, crew effects)
  *   openspec/changes/damage-control  (fire, hit resolution, suppression)
  * Every tuning number comes from the proposed data files data/ships/<id>/power.json,
@@ -18,13 +23,24 @@
  * Designed but not implemented here (the designs say so): the magazine's cook-off, door
  * jams, remote control lost with the computer core, crew positions (crew are per
  * compartment, and a hit hurts them by the expected share of the room), damage control
- * teams, and the time-to-pressure and repair-time previews.
+ * teams, the time-to-pressure preview, and of reactor-cooling's coolant parts: a hit's march reaching them (they are
+ * damaged by damagePart), the leak's heat and steam into engineering and its scald. The repair-time preview is repairTime() (damage::repair_time's rates, without
+ * the walk). The damage map (ship-plan-view 6) reads conduitView, nodeView, breakers and repairTime, which change nothing.
  *
  * Geometry comes from the layout's brushes (starcrew.ship-layout/2: a compartment's air is the
  * union of convex prisms) through shipkit.js, the mockups' one reading of the layout: volumes,
  * floor areas, which compartment a point is in, portal frames. Shipkit must be loaded first:
  * in a page it is inlined before this file; in node, set globalThis.window = globalThis and
  * run shipkit.js, which touches no DOM until a page function is called.
+ *
+ * Fire on the floor (openspec/changes/fire-spread): when firespread.js is loaded before this file (and opts.cells is
+ * not false), a room's fire is its burning floor cells, and the room's heat release is their sum; the room model
+ * below stays the one authority for what that heat release does (oxygen, smoke, heat, damage, spread through doors)
+ * and caps it (oxygen, ceiling), scaling every cell together. Without firespread.js the room grows on its own
+ * t-squared line, as damage-control's table was measured. Extinguishers are aimed cones (useExtinguisher with
+ * "careful" or "careless", or a held one from newExtinguisher whose aim the page sets); venting is the captain's,
+ * with a warning before the dump opens (fire-spread design 6a), and ventPreview runs the same flow solve on a copy of
+ * the gas to say how long the room takes to empty.
  *
  * Classic script, no DOM: works in a page (window.ShipSystems) and in node (globalThis).
  * Units: SI. Pressure in Pa inside, kPa at the edges. Power in W inside, MW at the edges.
@@ -126,6 +142,12 @@
   }
   /** Whether point p (ship metres) is in compartment c's air: inside one of its brushes. */
   function inComp(c, p) { return kit().brushAt(c, p[0], p[1], p[2]) !== null; }
+  /** The point of segment ab nearest p. */
+  function closestOnSeg(p, a, b) {
+    const d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], l2 = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
+    const t = l2 > 1e-12 ? clamp(((p[0] - a[0]) * d[0] + (p[1] - a[1]) * d[1] + (p[2] - a[2]) * d[2]) / l2, 0, 1) : 0;
+    return [a[0] + d[0] * t, a[1] + d[1] * t, a[2] + d[2] * t];
+  }
   function segSegDist(p1, q1, p2, q2) {
     // Closest distance between segments p1q1 and p2q2 (Ericson, Real-Time Collision Detection 5.1.9).
     const d1 = [q1[0] - p1[0], q1[1] - p1[1], q1[2] - p1[2]], d2 = [q2[0] - p2[0], q2[1] - p2[1], q2[2] - p2[2]];
@@ -154,7 +176,8 @@
   /**
    * Build a ship's systems simulation from its layout and the three proposed data files.
    * opts.dt_s overrides the sub-step (default 1 / power.solve.substep_hz = 0.1 s);
-   * opts.seed is the session seed for every random choice.
+   * opts.seed is the session seed for every random choice; opts.health is data/crew/health.json (crew-on-deck 7: a body
+ * below its incapacitated threshold loses vitals), opts.fireItems FireSpread.placements, opts.cells false the cell model off.
    */
   function create(L, PW, AT, DM, opts) {
     opts = opts || {};
@@ -316,9 +339,22 @@
       t: 0, seed,
       alert: "normal",
       reactor: { mode: "auto", state: "running", throttle: PW.reactor.throttle_default * 0.6, target: PW.reactor.throttle_default, P_th: 0, P_e: 0,
-        T: 600, integrity: 100, fuel_kg: PW.reactor.fuel_load_kg, timers: { loop: 0, flow: 0, aux: 0 }, scramCause: null, ignition: 0, releaseReserve: false },
+        T: 600, integrity: 100, fuel_kg: PW.reactor.fuel_load_kg, timers: { loop: 0, aux: 0 }, scramCause: null, ignition: 0, releaseReserve: false, afterheatW: 0 },
       battery: { soc_mj: PW.battery.capacity_mj * PW.battery.initial_soc, out_mw: 0, in_mw: 0, health: 1 },
-      loop: { T: PW.coolant.initial_k, flow: 1, rad_mw: 0, in_mw: 0, radiatorHealth: 1, branchOpen: {} },
+      loop: { T: PW.coolant.initial_k, flow: 1, rad_mw: 0, in_mw: 0, radiatorHealth: 1, branchOpen: {},
+        // reactor-cooling: inventory (kg), the tanks' reserve, the hot leg, the radiator pumps' flow, the
+        // exchanger's capability (1 until its damage is modelled) and a leak hook (kg/s) for the pipe segments to come.
+        m_kg: PW.coolant.inventory_kg, tanks_kg: PW.coolant.tanks.map((t) => t.capacity_kg), hot_k: PW.coolant.initial_k,
+        rad_flow: 1, exchanger: 1, chiller: 1, leak_kg_s: 0, makeup_kg_s: 0,
+        // The coolant parts (reactor-cooling design 1-2): leak_kg_s above stays an outside hook (a page's own leak);
+        // the segments' and tanks' leaks are computed each step into seg_leak_kg_s and tank_leak_kg_s.
+        seg_leak_kg_s: 0, tank_leak_kg_s: 0, legs: { hot: 1, cold: 1 } },
+      // Each coolant part's integrity (percent) and, for a pipe segment, whether its valves isolate it.
+      coolantParts: {},
+      // The engineer's hand on the loop (reactor-cooling design 5): AUTO, or MANUAL with the chiller's share and the
+      // makeup valve set by hand (the pumps' speeds are their loads' setpoints either way).
+      cooling: { mode: "auto", chiller: 1, makeup: 0, timer: 0 },
+      groupBreaker: {}, // group id -> "closed" | "open" | "locked" (a group with feed_breaker, power-grid 5)
       setpoint: new Float64Array(loads.length).fill(1),
       priority: Int8Array.from(loads.map((l) => l.priority)),
       activity: {},
@@ -342,15 +378,34 @@
     };
     for (const g of PW.generators) st.genClosed[g.id] = true;
     for (const t of PW.ties) st.tieClosed[t.id] = !!t.closed;
-    for (const k of PW.conduits) st.conduit[k.id] = { health: 1, severed: false, breaker: true };
+    // cut: where a hit severed the conduit, [x, y, z] on its path (null while whole), for the damage map's break marker.
+    for (const k of PW.conduits) st.conduit[k.id] = { health: 1, severed: false, breaker: true, cut: null };
     for (const l of loads) if (l.heat && l.heat.to === "node") st.thermal[l.id] = { T: PW.coolant.initial_k + 5 };
     for (const l of loads) st.loop.branchOpen[l.id] = true;
+    // The coolant parts (reactor-cooling design 1): a missing block is an error, not a silent zero (CLAUDE.md 6.5).
+    if (!Array.isArray(PW.coolant.segments) || !PW.coolant.exchanger || !Number.isFinite(PW.coolant.isolated_leg_flow))
+      throw new Error("power.json coolant.segments, exchanger and isolated_leg_flow: missing (reactor-cooling design 1-2)");
+    if (!DM.coolant || !Number.isFinite(DM.coolant.leak_below_pct) || !Number.isFinite(DM.coolant.leak_kg_s_at_zero))
+      throw new Error("damage.json coolant.leak_below_pct and leak_kg_s_at_zero: missing (reactor-cooling design 2)");
+    for (const sg of PW.coolant.segments) st.coolantParts[sg.id] = { integrity: 100, isolated: false };
+    for (const t of PW.coolant.tanks) st.coolantParts[t.id] = { integrity: 100, isolated: false };
+    st.coolantParts[PW.coolant.exchanger.id] = { integrity: 100, isolated: false };
     st.reactor.T = PW.coolant.initial_k + 250;
     const FI = AT.fire;
+    // The rates fire-spread design 6a adds; a missing one is an error, not a silent zero (CLAUDE.md 6.5).
+    for (const [blk, keys] of [["hypoxia", ["harm_below_po2_kpa", "harm_full_po2_kpa", "harm_full_hp_per_s"]], ["heat", ["cold_harm_below_k", "cold_harm_hp_per_s_per_k"]]])
+      for (const k of keys) if (!Number.isFinite(AT.crew_effects[blk][k])) throw new Error(`atmosphere.json crew_effects.${blk}.${k}: missing (openspec/changes/fire-spread design 6a)`);
+    if (!FI.suppression.venting || !Number.isFinite(FI.suppression.venting.warning_s)) throw new Error("atmosphere.json fire.suppression.venting.warning_s: missing (fire-spread design 6a)");
     for (let i = 0; i < N; i++) {
       const fm2 = FI.fuel_mj_per_m2[comps[i].id] != null ? FI.fuel_mj_per_m2[comps[i].id] : FI.fuel_mj_per_m2_default;
       st.fire.push({ hrr: 0, fuel: fm2 * floor[i] * 1e6, ext: 0, mist: 0, mistLeft: FI.suppression.water_mist.discharges, inert: 0, prevP: P[i], out: 0 });
     }
+    // The cell model (fire-spread design 1-2), when firespread.js is loaded: opts.fireItems are FireSpread.placements
+    // (what stands where, and so where the fuel is); without them every cell is bare deck.
+    const FS = root.FireSpread && opts.cells !== false && FI.cells ? root.FireSpread.create(L, FI, { items: opts.fireItems || [], fuel_j: st.fire.map((f) => f.fuel) }) : null;
+    const EX = FI.extinguisher, VENT = FI.suppression.venting;
+    st.extinguishers = [];   // { comp, aim ("careful" | "careless" | { from, dir }), on, agent_kg, n, door, held }
+    st.vent = null;          // { comp, phase: "warning" | "venting", warn }
     function setActivity(a) { Object.assign(st.activity, a); }
     setActivity({ drive: 0.3, dampers: 0.2, rcs: 0.1, shield_regen: 0, turret_dorsal: 0, turret_ventral: 0, turret_port: 0, turret_stbd: 0,
       sensors_active: 0, comms: 0.2, hoist: 0, cradle_p: 0, cradle_s: 0, pad: 0 });
@@ -463,8 +518,9 @@
 
     function mayUseReserve(i) {
       const id = loads[i].id;
+      // The loop's pumps (core and radiator) may spend it while the reactor is down, as long as they stay vital.
       return id === "emergency_lighting" || (id.startsWith("reactor_aux") && st.reactor.state === "igniting") ||
-        (PW.coolant.pumps.indexOf(id) >= 0 && st.reactor.state !== "running");
+        ((PW.coolant.pumps.indexOf(id) >= 0 || PW.coolant.radiator_pumps.indexOf(id) >= 0) && st.reactor.state !== "running" && st.priority[i] === 0);
     }
     /** Demand per load from setpoints, activity, damage and breakers (MW). */
     function computeDemand(setpoints) {
@@ -482,6 +538,7 @@
         else if (l.activity === "airlock_pump") x = Math.min(st.airlock.pump_mw_want, l.nominal_mw * sp);
         else if (l.id.startsWith("reactor_aux") && st.reactor.state === "igniting") x = PW.reactor.restart.ignition_mw / 2;
         else if (l.id.startsWith("reactor_aux") && st.reactor.state === "scrammed") x = l.standby_mw;
+        else if (l.power_exponent) x = l.nominal_mw * Math.pow(sp, l.power_exponent); // a pump: its setpoint is its speed
         else {
           const a = l.activity ? (st.activity[l.activity] || 0) : 1;
           x = l.standby_mw + Math.max(0, l.nominal_mw * sp - l.standby_mw) * a;
@@ -491,8 +548,10 @@
       return d;
     }
     /** What a system can do at its integrity (damage-control's states): 1, integrity / nominal, or 0. */
-    function capability(i) {
-      const g = st.integrity[i], SY = DM.systems;
+    function capability(i) { return capOf(st.integrity[i]); }
+    /** The capability at integrity g (percent): the one rule for loads, coolant parts and anything else with integrity. */
+    function capOf(g) {
+      const SY = DM.systems;
       if (g < SY.disabled_below_pct) return 0;
       if (g < SY.nominal_from_pct) return g / SY.nominal_from_pct;
       return 1;
@@ -592,19 +651,216 @@
       let a = 0; for (const id of ["reactor_aux_p", "reactor_aux_s"]) a += st.alloc[loadIdx[id]];
       return clamp(a / PW.reactor.restart.ignition_mw, 0, 1);
     }
+    // ======================================================= the cooling loop (reactor-cooling)
+    /**
+     * A speed-law load's speed (0 to its setpoint_max): the speed its delivered power allows, power = nominal x
+     * capability x speed^exponent (computeDemand scales a damaged load's demand by its capability, so a damaged pump fed
+     * in full turns at its setpoint and moves capability x its flow; the capability is not counted twice).
+     */
+    function pumpSpeed(i) {
+      const l = loads[i], cap = capability(i);
+      if (!(l.nominal_mw > 0) || cap <= 0) return 0;
+      return Math.pow(Math.max(0, st.alloc[i] / (l.nominal_mw * cap)), 1 / (l.power_exponent || 1));
+    }
+    /** A set of pumps' flow: speed x capability x each one's share, summed (reactor-cooling design 2). */
+    function pumpsFlow(ids, share) { let f = 0; for (const id of ids) { const i = loadIdx[id]; f += pumpSpeed(i) * capability(i) * share; } return f; }
+    /** The loop's inventory as a fraction of full, and the cavitation it allows (1 from 80%, 0 at 60%). */
+    function cavitation() {
+      const C = PW.coolant, CV = C.cavitation;
+      return clamp((st.loop.m_kg / C.inventory_kg - CV.no_flow_below) / (CV.full_flow_from - CV.no_flow_below), 0, 1);
+    }
+    /**
+     * A leg's factor (reactor-cooling design 2): the worst capability of its segments; with one isolated, the leg runs
+     * through the bypass jumper round it at isolated_leg_flow, times the worst of the rest.
+     */
+    function legFactor(leg) {
+      const C = PW.coolant;
+      let worst = 1, isolated = false;
+      for (const sg of C.segments) {
+        if (sg.leg !== leg) continue;
+        const p = st.coolantParts[sg.id];
+        if (p.isolated) isolated = true; else worst = Math.min(worst, capOf(p.integrity));
+      }
+      return isolated ? C.isolated_leg_flow * worst : worst;
+    }
+    /** The loop's flow fraction: the core pumps, cavitation, the worse leg, and natural circulation when they stop. */
+    function loopFlow() {
+      const C = PW.coolant, loop = st.loop;
+      loop.legs.hot = legFactor("hot"); loop.legs.cold = legFactor("cold");
+      return Math.max(C.natural_circulation_flow, pumpsFlow(C.pumps, C.flow_per_pump) * cavitation() * Math.min(loop.legs.hot, loop.legs.cold));
+    }
+    /** A pipe segment's or tank's leak, kg/s (damage.json coolant): none at or above leak_below_pct, or isolated. */
+    function partLeak(id) {
+      const p = st.coolantParts[id], CL = DM.coolant;
+      if (!p || p.isolated || p.integrity >= CL.leak_below_pct || id === PW.coolant.exchanger.id) return 0;
+      return CL.leak_kg_s_at_zero * (CL.leak_below_pct - p.integrity) / CL.leak_below_pct;
+    }
+    /** The heat the loop's flow carries at the design rise, MW (40 MW at full flow): the second needle's scale. */
+    const carryMw = (flow) => flow * PW.coolant.design_flow_kg_s * PW.coolant.specific_heat_kj_per_kg_k * PW.coolant.automation.design_rise_k / 1000;
+    /**
+     * The loop's controls before the power solve: the makeup valve (AUTO opens it below auto_open_below and shuts it at
+     * full; MANUAL is the engineer's), the makeup pump's activity, and in AUTO every period_s the pumps' speeds
+     * (reactor-cooling design 5): the core pumps at the flow the heat needs at the design rise, never below
+     * pump_speed_min, up to their setpoint_max, and the radiator pumps at full. It reckons both core pumps whole, so a
+     * lost pump or a low loop is not made up for: a hurt loop under load drifts hot, and the engineer does better.
+     */
+    function stepCooling() {
+      const C = PW.coolant, A = C.automation, cl = st.cooling, loop = st.loop;
+      const frac = loop.m_kg / C.inventory_kg, tanks = loop.tanks_kg.reduce((a, b) => a + b, 0);
+      if (cl.mode === "auto") {
+        if (frac < C.makeup.auto_open_below) cl.autoMakeup = 1; else if (frac >= 1) cl.autoMakeup = 0;
+        loop.makeupValve = cl.autoMakeup || 0;
+      } else loop.makeupValve = cl.makeup;
+      st.activity.makeup = loop.makeupValve > 0 && frac < 1 && tanks > 0 ? 1 : 0;
+      if (cl.mode !== "auto") return;
+      cl.timer -= dt;
+      if (cl.timer > 0) return;
+      cl.timer = A.period_s;
+      const need = loop.in_mw / carryMw(1);
+      for (const id of C.pumps) { const i = loadIdx[id]; st.setpoint[i] = clamp(Math.max(A.pump_speed_min, need), 0, loads[i].setpoint_max); }
+      for (const id of C.radiator_pumps) st.setpoint[loadIdx[id]] = 1;
+    }
+    /** The engineer's hand on the loop: { mode, pumps, radiators (speeds), chiller (share through the exchanger), makeup (open) }. */
+    function setCooling(o) {
+      const C = PW.coolant, cl = st.cooling;
+      if (o.mode === "manual" && cl.mode !== "manual") { cl.chiller = st.loop.chiller; cl.makeup = st.loop.makeupValve || 0; }
+      if (o.mode === "auto" && cl.mode !== "auto") cl.timer = 0;
+      if (o.mode) cl.mode = o.mode;
+      const speed = (ids, v) => { for (const id of ids) { const i = loadIdx[id]; st.setpoint[i] = clamp(v, 0, loads[i].setpoint_max); } };
+      if (o.pumps != null) speed(C.pumps, o.pumps);
+      if (o.radiators != null) speed(C.radiator_pumps, o.radiators);
+      if (o.chiller != null) cl.chiller = clamp(o.chiller, 0, 1);
+      if (o.makeup != null) cl.makeup = o.makeup ? 1 : 0;
+    }
+    /** The loop as the engineering console shows it (preview = resolver: these are the step's own numbers). */
+    function coolantReadout() {
+      const C = PW.coolant, loop = st.loop;
+      const pumps = (ids) => ids.map((id) => { const i = loadIdx[id]; return { id, name: loads[i].name, setpoint: st.setpoint[i], speed: pumpSpeed(i), capability: capability(i), alloc_mw: st.alloc[i] }; });
+      return {
+        mode: st.cooling.mode, cold_k: loop.T, hot_k: loop.hot_k, flow: loop.flow, flow_kg_s: loop.flow * C.design_flow_kg_s,
+        heat_mw: loop.in_mw, carry_mw: carryMw(loop.flow), rad_mw: loop.rad_mw, rad_cap_mw: loop.rad_cap_mw, chiller: loop.chiller,
+        rad_flow: loop.rad_flow, exchanger: loop.exchanger, inventory: loop.m_kg / C.inventory_kg, m_kg: loop.m_kg,
+        tanks: C.tanks.map((t, k) => ({ id: t.id, name: t.name, kg: loop.tanks_kg[k], frac: loop.tanks_kg[k] / t.capacity_kg })),
+        makeup_valve: loop.makeupValve || 0, makeup_kg_s: loop.makeup_kg_s, pumps: pumps(C.pumps), radiator_pumps: pumps(C.radiator_pumps),
+        bands: C.bands, limit_k: PW.reactor.scram.loop_over_k,
+      };
+    }
+    /**
+     * The whole reactor system as its screen draws it (reactor-cooling design 6a), read from the state the step leaves:
+     * nothing here changes the ship, and the screen decides nothing for itself (CLAUDE.md 6.1). It is coolantReadout
+     * plus every part: { ...coolantReadout(), cavitation, legs: { hot, cold } (each leg's factor), leak_kg_s (the
+     * segments' and the outside hook's), tank_leak_kg_s, breaker ("closed" | "open" | "locked", the Cooling feed),
+     * cooling_mw and cooling_want_mw (the group's delivered and wanted power), core: { integrity, state, capability,
+     * throttle, p_th_mw, p_e_mw, blanket_k, scram_cause }, parts: [{ id, name, kind ("core" | "segment" | "tank" |
+     * "pump" | "radiator_pump" | "makeup" | "exchanger"), leg, index, integrity, state (damageState), capability, leak_kg_s,
+     * isolated, flow (the share of design flow through it now), temp_k, speed, setpoint, alloc_mw, want_mw, kg, frac,
+     * job (the repairTime job that mends it) }] }.
+     */
+    function coolantView() {
+      const C = PW.coolant, loop = st.loop, rx = st.reactor, base = coolantReadout();
+      const part = (o) => Object.assign({ leg: null, index: 0, leak_kg_s: 0, isolated: false, speed: null, setpoint: null, alloc_mw: 0, want_mw: 0, kg: null, frac: null }, o,
+        { state: damageState(o.integrity), capability: capOf(o.integrity) });
+      const parts = [];
+      parts.push(part({ id: PW.reactor.system, name: "Magnetic core", kind: "core", integrity: rx.integrity, flow: loop.flow, temp_k: rx.T, job: { kind: "reactor" } }));
+      const legIdx = { hot: 0, cold: 0 };
+      for (const sg of C.segments) {
+        const p = st.coolantParts[sg.id];
+        parts.push(part({ id: sg.id, name: sg.name, kind: "segment", leg: sg.leg, index: ++legIdx[sg.leg], integrity: p.integrity, isolated: p.isolated, leak_kg_s: partLeak(sg.id),
+          flow: p.isolated ? 0 : loop.flow, temp_k: sg.leg === "hot" ? loop.hot_k : loop.T, job: { kind: "coolant", id: sg.id } }));
+      }
+      C.tanks.forEach((t, k) => {
+        const p = st.coolantParts[t.id];
+        parts.push(part({ id: t.id, name: t.name, kind: "tank", index: k + 1, integrity: p.integrity, leak_kg_s: partLeak(t.id), kg: loop.tanks_kg[k], frac: loop.tanks_kg[k] / t.capacity_kg,
+          flow: loop.makeup_kg_s / C.design_flow_kg_s, temp_k: loop.T, job: { kind: "coolant", id: t.id } }));
+      });
+      const pumpPart = (id, kind, share, k) => {
+        const i = loadIdx[id];
+        return part({ id, name: loads[i].name, kind, index: k + 1, integrity: st.integrity[i], speed: pumpSpeed(i), setpoint: st.setpoint[i], alloc_mw: st.alloc[i], want_mw: st.want[i],
+          flow: pumpSpeed(i) * capOf(st.integrity[i]) * share, temp_k: kind === "pump" ? loop.T : null, job: { kind: "system", id } });
+      };
+      C.pumps.forEach((id, k) => parts.push(pumpPart(id, "pump", C.flow_per_pump, k)));
+      C.radiator_pumps.forEach((id, k) => parts.push(pumpPart(id, "radiator_pump", C.flow_per_radiator_pump, k)));
+      const mi = loadIdx[C.makeup.pump];
+      parts.push(part({ id: C.makeup.pump, name: loads[mi].name, kind: "makeup", integrity: st.integrity[mi], alloc_mw: st.alloc[mi], want_mw: st.want[mi],
+        flow: loop.makeup_kg_s / C.design_flow_kg_s, temp_k: loop.T, job: { kind: "system", id: C.makeup.pump } }));
+      const ex = st.coolantParts[C.exchanger.id];
+      parts.push(part({ id: C.exchanger.id, name: C.exchanger.name, kind: "exchanger", integrity: ex.integrity, flow: loop.flow * loop.chiller, temp_k: loop.hot_k,
+        job: { kind: "coolant", id: C.exchanger.id } }));
+      const g = PW.groups.find((x) => x.loads.indexOf(C.pumps[0]) >= 0);
+      let mw = 0, want = 0;
+      if (g) for (const id of g.loads) { mw += st.alloc[loadIdx[id]]; want += st.want[loadIdx[id]]; }
+      return Object.assign(base, {
+        cavitation: cavitation(), legs: { hot: loop.legs.hot, cold: loop.legs.cold }, leak_kg_s: loop.leak_kg_s + loop.seg_leak_kg_s, tank_leak_kg_s: loop.tank_leak_kg_s,
+        radiator_health: loop.radiatorHealth, breaker: g ? st.groupBreaker[g.id] || "closed" : "closed", group: g ? g.id : null, cooling_mw: mw, cooling_want_mw: want,
+        core: { integrity: rx.integrity, state: rx.state, capability: capOf(rx.integrity), throttle: rx.throttle, target: rx.target, p_th_mw: rx.P_th / MWW, p_e_mw: rx.P_e / MWW,
+          blanket_k: rx.T, blanket_scram_k: PW.reactor.heat.scram_k, scram_cause: rx.scramCause },
+        parts,
+      });
+    }
+    /** The integrity of any part the reactor system screen names: a coolant part, a load (a pump), or the core. */
+    function partIntegrity(id) {
+      if (st.coolantParts[id]) return st.coolantParts[id].integrity;
+      if (id === PW.reactor.system) return st.reactor.integrity;
+      if (loadIdx[id] != null) return st.integrity[loadIdx[id]];
+      return null;
+    }
+    function setPartIntegrity(id, g) {
+      g = clamp(g, 0, 100);
+      if (st.coolantParts[id]) st.coolantParts[id].integrity = g;
+      else if (id === PW.reactor.system) st.reactor.integrity = g;
+      else if (loadIdx[id] != null) st.integrity[loadIdx[id]] = g;
+      else return null;
+      return g;
+    }
+    /** Damage a part to at most pct integrity (a hit, or a scenario button). Returns its integrity, or null for no such part. */
+    function damagePart(id, pct) {
+      const g = partIntegrity(id);
+      if (g == null || !Number.isFinite(pct)) return null;
+      const out = setPartIntegrity(id, Math.min(g, pct));
+      log("Damage: " + id + " at " + out.toFixed(0) + "%");
+      return out;
+    }
+    /** Repair a part by pts integrity points, or to 100% with no pts (its repair job completed). Returns its integrity. */
+    function repairPart(id, pts) {
+      const g = partIntegrity(id);
+      if (g == null) return null;
+      const out = setPartIntegrity(id, pts == null ? 100 : g + pts);
+      log("Repaired: " + id + " at " + out.toFixed(0) + "%");
+      return out;
+    }
+    /** Close (on) or open the valves either side of a pipe segment (the pipe game's first step): isolated, it neither leaks nor carries. */
+    function isolateSegment(id, on) {
+      const p = st.coolantParts[id];
+      if (!p || !PW.coolant.segments.some((sg) => sg.id === id)) return false;
+      p.isolated = !!on; log((on ? "Isolated " : "Opened ") + id);
+      return true;
+    }
+    /** Open, close or lock open a group's feed breaker (power-grid 5): a locked breaker refuses to close until it is unlocked (opened). */
+    function setGroupBreaker(gid, state) {
+      const g = PW.groups.find((x) => x.id === gid);
+      if (!g || !g.feed_breaker) return "no breaker";
+      if (state === "closed" && st.groupBreaker[gid] === "locked") return "locked";
+      st.groupBreaker[gid] = state;
+      for (const id of g.loads) st.breakerOpen[loadIdx[id]] = state === "closed" ? 0 : 1;
+      log(g.name + " breaker " + state);
+      return "ok";
+    }
+
     const roomHeat = new Float64Array(NN);
     function stepHeat() {
       roomHeat.fill(0);
       const loop = st.loop, C = PW.coolant, RD = PW.radiators;
-      let flow = 0;
-      for (const id of C.pumps) { const i = loadIdx[id]; flow += (loads[i].nominal_mw > 0 ? st.alloc[i] / loads[i].nominal_mw : 0) * C.flow_per_pump * (st.integrity[i] / 100); }
-      loop.flow = clamp(flow, 0, 1);
+      loop.flow = loopFlow();
+      loop.rad_flow = pumpsFlow(C.radiator_pumps, C.flow_per_radiator_pump);
+      loop.exchanger = capOf(st.coolantParts[C.exchanger.id].integrity);
       let toLoop = 0;
       for (let i = 0; i < loads.length; i++) {
         const l = loads[i], h = l.heat; if (!h) continue;
         const aW = st.alloc[i] * MWW;
         const over = l.nominal_mw > 0 ? Math.max(0, st.alloc[i] / l.nominal_mw - 1) : 0;
         const q = h.fraction * aW * (1 + PW.overdrive.heat_factor * over);
+        // Overdrive wears any load (power-grid 8): 2% of integrity a minute at 150%, in proportion to over / 0.5.
+        if (over > 0) st.integrity[i] = Math.max(0, st.integrity[i] - dt * (PW.overdrive.wear_pct_per_min_at_150 / 60) * (over / 0.5));
         if (h.to === "loop") toLoop += q;
         else if (h.to === "room") roomHeat[idx[h.room]] += q;
         else if (h.to === "duct") roomHeat[DUCT] += q;
@@ -619,12 +875,13 @@
           toLoop += qLoop; if (room != null) roomHeat[room] += qRoom;
           // Over-temperature wears the system (damage-control applies the state).
           if (th.T > h.damage_k) st.integrity[i] = Math.max(0, st.integrity[i] - dt * (th.T - h.damage_k) * 0.01);
-          if (over > 0) st.integrity[i] = Math.max(0, st.integrity[i] - dt * (PW.overdrive.wear_pct_per_min_at_150 / 60) * (over / 0.5));
         }
       }
       // Reactor blanket.
       const rx = st.reactor, RH = PW.reactor.heat;
-      const waste = Math.max(0, rx.P_th - rx.P_e);
+      // Afterheat (reactor-cooling design 6b): a scrammed core keeps putting out a falling share of the power it had.
+      rx.afterheatW = rx.state === "running" ? 0 : rx.afterheatW * Math.exp(-dt / RH.afterheat_tau_s);
+      const waste = Math.max(0, rx.P_th - rx.P_e) + rx.afterheatW;
       const qRxLoop = RH.loop_kw_per_k * 1000 * loop.flow * (rx.T - loop.T);
       const eng = idx[L.systems.find((s) => s.id === PW.reactor.system).compartment];
       const qRxRoom = RH.room_w_per_k * (rx.T - T[eng]);
@@ -636,30 +893,49 @@
       // Radiators.
       const Tb4 = Math.pow(RD.background_k, 4);
       // Capacity by the fourth-power law; the bypass valve holds the loop near its nominal
-      // temperature when the heat is low, so the loop does not run cold at cruise.
-      loop.rad_cap_mw = (RD.rated_mw * loop.radiatorHealth * loop.flow * (Math.pow(loop.T, 4) - Tb4)) / (Math.pow(RD.rated_at_k, 4) - Tb4);
-      const open = RD.bypass_band_k > 0 ? clamp((loop.T - (C.nominal_k - RD.bypass_band_k)) / RD.bypass_band_k, 0, 1) : 1;
+      // temperature when the heat is low, so the loop does not run cold at cruise. The chiller (reactor-cooling design 2)
+      // passes it on through the exchanger's capability and the radiator pumps' flow; in MANUAL the engineer sets the
+      // share of the hot leg that goes through the exchanger instead of the bypass valve.
+      loop.rad_cap_mw = (RD.rated_mw * loop.radiatorHealth * loop.flow * loop.exchanger * loop.rad_flow * (Math.pow(loop.T, 4) - Tb4)) / (Math.pow(RD.rated_at_k, 4) - Tb4);
+      const open = st.cooling.mode === "manual" ? st.cooling.chiller : RD.bypass_band_k > 0 ? clamp((loop.T - (C.nominal_k - RD.bypass_band_k)) / RD.bypass_band_k, 0, 1) : 1;
+      loop.chiller = open;
       loop.rad_mw = Math.max(0, loop.rad_cap_mw) * open;
       loop.in_mw = toLoop / MWW;
-      loop.T += (dt * (toLoop - loop.rad_mw * MWW)) / (C.capacity_mj_per_k * MWW);
+      // Inventory: the makeup pump feeds the loop from the tanks while its valve is open and the loop is under full
+      // (at the share of its demand it gets); the leak hook takes it away (reactor-cooling design 2).
+      const mi = loadIdx[C.makeup.pump], tanks = loop.tanks_kg.reduce((a, b) => a + b, 0);
+      const mkSupply = st.demand[mi] > 1e-9 ? clamp(st.alloc[mi] / st.demand[mi], 0, 1) : 0;
+      const mk = Math.max(0, Math.min(C.makeup.max_kg_s * (loop.makeupValve || 0) * mkSupply * dt, tanks, C.inventory_kg - loop.m_kg));
+      if (mk > 0) for (let k = 0; k < loop.tanks_kg.length; k++) loop.tanks_kg[k] -= mk * (loop.tanks_kg[k] / tanks);
+      loop.makeup_kg_s = mk / dt;
+      // The parts' leaks (reactor-cooling design 2): a segment's from the loop, a tank's from its own reserve.
+      let segLeak = 0, tankLeak = 0;
+      for (const sg of C.segments) segLeak += partLeak(sg.id);
+      C.tanks.forEach((t, k) => { const q = Math.min(loop.tanks_kg[k], partLeak(t.id) * dt); loop.tanks_kg[k] -= q; tankLeak += q / dt; });
+      loop.seg_leak_kg_s = Math.min(segLeak, (loop.m_kg + mk) / dt); loop.tank_leak_kg_s = tankLeak;
+      loop.m_kg = clamp(loop.m_kg + mk - (loop.leak_kg_s + segLeak) * dt, 0, C.inventory_kg);
+      // The loop's heat capacity follows its inventory; the hot leg is the cold leg plus the heat the flow carries.
+      const cLoop = C.capacity_mj_per_k * MWW * Math.max(0.05, loop.m_kg / C.inventory_kg);
+      loop.T += (dt * (toLoop - loop.rad_mw * MWW)) / cLoop;
+      loop.hot_k = loop.T + toLoop / (loop.flow * C.design_flow_kg_s * C.specific_heat_kj_per_kg_k * 1000);
     }
     function checkScram() {
       const rx = st.reactor, SC = PW.reactor.scram;
       if (rx.state !== "running") return;
       const tm = rx.timers;
-      tm.loop = st.loop.T > SC.loop_over_k ? tm.loop + dt : 0;
-      tm.flow = st.loop.flow < SC.coolant_flow_below && rx.throttle > SC.coolant_check_above_throttle ? tm.flow + dt : 0;
+      tm.loop = st.loop.hot_k > SC.loop_over_k ? tm.loop + dt : 0; // the hot leg (reactor-cooling design 3)
       tm.aux = auxRatio() < SC.aux_supply_below ? tm.aux + dt : 0;
       let cause = null;
-      if (tm.loop >= SC.loop_over_hold_s) cause = "coolant loop over " + SC.loop_over_k + " K";
+      if (tm.loop >= SC.loop_over_hold_s) cause = "coolant hot leg over " + SC.loop_over_k + " K";
       else if (rx.T > PW.reactor.heat.scram_k) cause = "blanket over " + PW.reactor.heat.scram_k + " K";
-      else if (tm.flow >= SC.coolant_flow_hold_s) cause = "coolant flow below " + SC.coolant_flow_below * 100 + "%";
       else if (tm.aux >= SC.aux_supply_hold_s) cause = "auxiliaries below " + SC.aux_supply_below * 100 + "% supply";
       else if (rx.integrity < SC.integrity_below_pct) cause = "reactor integrity below " + SC.integrity_below_pct + "%";
       if (cause) scram(cause);
     }
     function scram(cause) {
-      const rx = st.reactor; rx.state = "scrammed"; rx.scramCause = cause; rx.throttle = 0; rx.P_th = 0; rx.timers = { loop: 0, flow: 0, aux: 0 };
+      // Low coolant flow is an alarm, not a cause (reactor-cooling design 6b): the core runs on and its blanket heats.
+      const rx = st.reactor; rx.state = "scrammed"; rx.scramCause = cause; rx.timers = { loop: 0, aux: 0 };
+      rx.afterheatW = PW.reactor.heat.afterheat_share * rx.P_th; rx.throttle = 0; rx.P_th = 0;
       log("SCRAM: " + cause);
     }
     /** The hands-on reset at the reactor panel: refused while a cause persists. */
@@ -928,6 +1204,7 @@
         }
         if (f.mist > 0) { f.mist -= dt; U[i] -= MIST.cooling_mw * MWW * dt; }
         derive();
+        if (FS) { stepFireCells(i); continue; }
         if (f.hrr <= 0) {
           // Spread: hot air with fuel and oxygen ignites (deterministic threshold).
           if (T[i] > FI.autoignition_k && f.fuel > 0 && fO2(i) > 0) { f.hrr = FI.seed_kw * 1000; log("Fire spreads into " + comps[i].name); }
@@ -935,7 +1212,8 @@
         }
         const max = FI.hrr_max_kw_per_m2 * 1000 * floor[i] * fO2(i) * (f.fuel > 0 ? 1 : 0);
         let cut = 0;
-        if (f.ext > 0) { cut += FI.extinguisher.hrr_cut_kw_per_s * 1000 * (f.extN || 1); f.ext -= dt; }
+        for (const e of st.extinguishers) if (e.comp === i && e.on && e.agent_kg > 1e-6) { cut += EX.hrr_cut_kw_per_s * 1000 * e.n; spend(e); }
+        if (f.ext > 0) f.ext -= dt;
         if (f.mist > 0) cut += MIST.hrr_cut_kw_per_s * 1000;
         if (cut > 0) f.hrr -= cut * dt;
         else if (f.hrr < max) f.hrr = Math.min(max, f.hrr + dt * 2 * Math.sqrt(alpha * f.hrr));
@@ -948,7 +1226,61 @@
         n[O2][i] -= o2; n[CO2][i] += FI.co2_mol_per_mol_o2 * o2; n[SMOKE][i] += y * o2;
         U[i] += f.hrr * dt; f.fuel -= f.hrr * dt;
       }
+      st.extinguishers = st.extinguishers.filter((e) => e.held || e.agent_kg > 1e-6);
       derive();
+    }
+    /** An extinguisher's agent for one step (0.4 kg a second: agent_kg over discharge_s); empty, it stops. */
+    function spend(e) { e.agent_kg -= (EX.agent_kg / EX.discharge_s) * dt; if (e.agent_kg <= 1e-6) { e.agent_kg = 0; e.on = false; } }
+    /** The way into a room a crew member comes by: its first door to a corridor (else its first door), [x, z]. */
+    function doorOf(i) {
+      const ps = kit().portalsOf(L, comps[i].id).filter((p) => Math.abs(p.normal[1]) < 0.5 && p.between.indexOf("space") < 0);
+      const other = (p) => comps[idx[p.between[0] === comps[i].id ? p.between[1] : p.between[0]]];
+      const p = ps.find((q) => (other(q) || {}).kind === "corridor") || ps[0];
+      if (p) return [p.center_m[0], p.center_m[2]];
+      const c = kit().center(comps[i]); return [c[0], c[2]];
+    }
+    /**
+     * One room's fire as its cells (fire-spread design 2 and 5): spread in from a neighbour at autoignition, the cells'
+     * step with the extinguishers' cones and the mist, then the room's caps (ceiling and decay, half its oxygen in a step)
+     * scaling every cell, then the chemistry exactly as the room model does it.
+     */
+    function stepFireCells(i) {
+      const f = st.fire[i], r = FS.rooms[i], MIST = FI.suppression.water_mist, fo = fO2(i), was = f.hrr;
+      if (f.hrr <= 0 && T[i] > FI.autoignition_k && f.fuel > 0 && fo > 0) {
+        // Spread: the new fire starts at the cell nearest the portal whose flow brought the heat in (the open one to
+        // the hottest neighbour).
+        let best = null;
+        for (const l of links) {
+          if (!l.mix || l.open <= 0 || (l.a !== i && l.b !== i)) continue;
+          const j = l.a === i ? l.b : l.a;
+          if (j !== SPACE && (!best || T[j] > T[best.j])) best = { l, j };
+        }
+        const at = best && best.l.center ? best.l.center : kit().center(comps[i]);
+        FS.seed(i, at[0], at[2], FI.seed_kw);
+        log("Fire spreads into " + comps[i].name);
+      }
+      const cuts = [];
+      for (const e of st.extinguishers) {
+        if (e.comp !== i || !e.on || e.agent_kg <= 1e-6) continue;
+        const aim = typeof e.aim === "string" ? FS.scriptedAim(i, e.aim, e.door || doorOf(i)) : e.aim;
+        cuts.push({ cells: aim ? FS.footprintCells(i, aim.from, aim.dir) : [], w_per_s: EX.hrr_cut_kw_per_s * 1000 * e.n });
+        e.lastAim = aim;
+        spend(e);
+      }
+      if (f.ext > 0) f.ext -= dt;
+      let hrr = FS.stepRoom(i, dt, { t_k: T[i], f_o2: fo, cuts, mist_w_per_s: f.mist > 0 ? MIST.hrr_cut_kw_per_s * 1000 : 0, wet: f.mist > 0 });
+      const max = FI.hrr_max_kw_per_m2 * 1000 * floor[i] * fo;
+      if (hrr > max) hrr = FS.scale(i, (hrr + ((max - hrr) * dt) / FI.decay_time_s) / hrr);
+      let o2 = (hrr * dt) / (FI.mj_per_mol_o2 * MWW);
+      if (o2 > 0.5 * n[O2][i]) { const k = (0.5 * n[O2][i]) / o2; hrr = FS.scale(i, k); o2 = (hrr * dt) / (FI.mj_per_mol_o2 * MWW); }
+      f.hrr = hrr;
+      if (was >= FI.out_below_kw * 1000 && hrr < FI.out_below_kw * 1000) log("Fire out in " + comps[i].name);
+      if (hrr > 0 || r.active) f.fuel = FS.fuelLeft(i);
+      if (hrr <= 0) return;
+      const x = n[O2][i] / Math.max(1e-9, ntot[i]);
+      const y = x < FI.starved_below_o2_fraction ? FI.smoke_mol_per_mol_o2_starved : FI.smoke_mol_per_mol_o2_ventilated;
+      n[O2][i] -= o2; n[CO2][i] += FI.co2_mol_per_mol_o2 * o2; n[SMOKE][i] += y * o2;
+      U[i] += hrr * dt;
     }
     /** Hot air damages what is in the room: systems, switchboards and (more slowly) the reactor. */
     function stepFireDamage() {
@@ -961,10 +1293,16 @@
         if (comps[i].id === L.systems.find((x) => x.id === PW.reactor.system).compartment) st.reactor.integrity = Math.max(0, st.reactor.integrity - pts * FI.reactor_damage_factor);
       }
     }
-    function ignite(compId, kw) {
+    /** A fire of kw (kW) in a room; at ([x, z]) is where, for the cell model (a hit's entry, a click), else the room's centre. */
+    function ignite(compId, kw, at) {
       const i = idx[compId], f = st.fire[i];
       if (f.fuel <= 0) return false;
-      f.hrr = Math.max(f.hrr, (kw || FI.seed_kw) * 1000);
+      if (FS) {
+        const c = at || (() => { const m = kit().center(comps[i]); return [m[0], m[2]]; })();
+        FS.seed(i, c[0], c[1], kw || FI.seed_kw);
+        let q = 0; const r = FS.rooms[i]; for (let k = 0; k < r.n; k++) if (r.state[k] === FS.BURNING) q += r.q[k];
+        f.hrr = q;
+      } else f.hrr = Math.max(f.hrr, (kw || FI.seed_kw) * 1000);
       log("Fire in " + comps[i].name + " (" + (f.hrr / 1000).toFixed(0) + " kW)");
       return true;
     }
@@ -1025,7 +1363,10 @@
         f.detect = f.hrr > WM.auto_above_kw * 1000 ? (f.detect || 0) + dt : 0;
         if (st.autoMist !== false && f.detect >= WM.confirm_s && f.mist <= 0 && f.mistLeft > 0) dischargeMist(comps[i].id);
       }
-      // Portal motion.
+      movePortals();
+    }
+    /** Portal motion: every door, vent, dump and valve toward its target at its own speed. */
+    function movePortals() {
       for (const l of links) {
         if (l.open === l.target) continue;
         const opening = l.open < l.target, time = opening ? l.move : l.moveClose;
@@ -1035,7 +1376,7 @@
     }
 
     // ======================================================= crew
-    const CE = AT.crew_effects, MET = AT.metabolism;
+    const CE = AT.crew_effects, MET = AT.metabolism, HE = opts.health || null;
     function addCrew(id, name, compId, o) {
       st.crew.push(Object.assign({ id, name, comp: idx[compId], working: false, suited: false, hp: 100, hyp: 0, hyc: 0, fed: 0, vac: 0, uncon: false, uncon_s: 0, dead: false, status: "ok", lastP: null }, o || {}));
     }
@@ -1057,6 +1398,8 @@
         if (po2 < H.tuc_table_po2_kpa_s[0][0]) { c.hyp += dt / lerpTable(H.tuc_table_po2_kpa_s, po2); }
         else if (po2 >= H.impaired_below_po2_kpa) c.hyp = Math.max(0, c.hyp - H.recover_per_s * dt);
         if (po2 < H.impaired_below_po2_kpa) impaired = true;
+        // Health lost as oxygen falls (fire-spread design 6a): 0 at harm_below_po2_kpa, harm_full_hp_per_s at harm_full_po2_kpa.
+        if (po2 < H.harm_below_po2_kpa) c.hp -= H.harm_full_hp_per_s * clamp((H.harm_below_po2_kpa - po2) / (H.harm_below_po2_kpa - H.harm_full_po2_kpa), 0, 1) * dt;
         // Hypercapnia.
         const HC = CE.hypercapnia;
         if (pco2 >= HC.tuc_table_pco2_kpa_s[0][0]) {
@@ -1071,13 +1414,20 @@
         const HT = CE.heat;
         if (T[i] > HT.harm_above_k) c.hp -= HT.harm_hp_per_s_per_k * (T[i] - HT.harm_above_k) * dt;
         if (T[i] > HT.impaired_above_k || T[i] < HT.cold_impaired_below_k) impaired = true;
-        if (T[i] < HT.cold_harm_below_k) c.hp -= HT.cold_harm_hp_per_s * dt;
+        if (T[i] < HT.cold_harm_below_k) c.hp -= HT.cold_harm_hp_per_s_per_k * (HT.cold_harm_below_k - T[i]) * dt;   // fire-spread 6a
         // Pressure.
         const PR = CE.pressure;
         if (pk < PR.armstrong_kpa) c.vac += dt / PR.vacuum_death_s; else c.vac = Math.max(0, c.vac - dt / PR.vacuum_death_s);
         if (pk < PR.impaired_below_kpa) impaired = true;
         if (c.lastP != null && (c.lastP - P[i]) / 1000 > PR.knockdown_drop_kpa_in_1s * dt) { c.hp -= PR.knockdown_hp * dt; }
         c.lastP = P[i];
+        // crew-on-deck 7 (opts.health, data/crew/health.json): below incapacitated_below_hp a body is down and its vitals
+        // fall on top of whatever still hurts it; nobody revives in the field.
+        if (HE) {
+          c.wounded = c.hp <= HE.wounded_at_or_below_hp;
+          c.incapacitated = c.hp < HE.incapacitated_below_hp;
+          if (c.incapacitated) c.hp -= HE.vitals_fall_hp_per_s * dt;
+        }
         const unc = c.hyp >= 1 || c.hyc >= 1 || c.fed >= 1 || c.hp <= 0;
         c.uncon = unc;
         if (unc) {
@@ -1134,7 +1484,7 @@
       const lo = [0, 1, 2].map((a) => Math.min(point[a], end[a])), hi = [0, 1, 2].map((a) => Math.max(point[a], end[a]));
       const candComps = []; for (let c = 0; c < N; c++) { const b = kit().bounds(comps[c]); if (b.x[0] <= hi[0] && b.x[1] >= lo[0] && b.y[0] <= hi[1] && b.y[1] >= lo[1] && b.z[0] <= hi[2] && b.z[1] >= lo[2]) candComps.push(c); }
       const compOn = (p) => { for (const c of candComps) if (inComp(comps[c], p)) return c; return SPACE; };
-      const sysPts = new Float64Array(loads.length), nodePts = {}, condE = {}, roomE = new Float64Array(N), roomLen = new Float64Array(N), roomR = new Float64Array(N);
+      const sysPts = new Float64Array(loads.length), nodePts = {}, condE = {}, condAt = {}, roomE = new Float64Array(N), roomLen = new Float64Array(N), roomR = new Float64Array(N), roomAt = [];
       let cur = SPACE, entered = false, s = 0;
       for (; s <= PG.march_max_m && E > 0.05; s += PG.march_step_m) {
         const p = [point[0] + dir[0] * s, point[1] + dir[1] * s, point[2] + dir[2] * s];
@@ -1154,6 +1504,7 @@
         if (c === SPACE || dE <= 0) continue;
         const r = PG.radius_m + PG.radius_per_sqrt_mj * Math.sqrt(E + dE);
         roomE[c] += dE; roomLen[c] += PG.march_step_m; roomR[c] = Math.max(roomR[c], r);
+        if (!roomAt[c]) roomAt[c] = p;   // where the march entered the room: a fire there starts under it (fire-spread 2)
         for (const li of candLoads) {
           const q = loads[li].center, d = Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]);
           if (d < r) sysPts[li] += DM.systems.points_per_mj * dE * (1 - d / r);
@@ -1165,9 +1516,14 @@
         }
         for (const k of candConduits) {
           if (k.route.indexOf(comps[c].id) < 0) continue;
-          let dmin = Infinity;
-          for (let q = 0; q + 1 < k.path_m.length; q++) dmin = Math.min(dmin, segSegDist(p, p, k.path_m[q], k.path_m[q + 1]));
-          if (dmin < r) condE[k.id] = (condE[k.id] || 0) + dE * (1 - dmin / r);
+          let dmin = Infinity, qmin = 0;
+          for (let q = 0; q + 1 < k.path_m.length; q++) { const d = segSegDist(p, p, k.path_m[q], k.path_m[q + 1]); if (d < dmin) { dmin = d; qmin = q; } }
+          if (dmin < r) {
+            const e = dE * (1 - dmin / r);
+            condE[k.id] = (condE[k.id] || 0) + e;
+            // Where the conduit took most of it: the cut, should it sever (the damage map draws the break there).
+            if (!condAt[k.id] || e > condAt[k.id].e) condAt[k.id] = { e, at: closestOnSeg(p, k.path_m[qmin], k.path_m[qmin + 1]) };
+          }
         }
       }
       for (let li = 0; li < loads.length; li++) if (sysPts[li] > 0.05) {
@@ -1184,14 +1540,14 @@
       for (const k of PW.conduits) {
         const e = condE[k.id]; if (!e) continue;
         const cs = st.conduit[k.id];
-        if (e >= DM.conduits.sever_mj) { cs.severed = true; out.conduits.push({ id: k.id, severed: true }); log("Conduit " + k.id + " severed"); }
+        if (e >= DM.conduits.sever_mj) { cs.severed = true; cs.cut = condAt[k.id].at; out.conduits.push({ id: k.id, severed: true, at: cs.cut }); log("Conduit " + k.id + " severed"); }
         else if (e >= DM.conduits.damage_mj) { cs.health = Math.min(cs.health, DM.conduits.damaged_capacity); out.conduits.push({ id: k.id, severed: false, health: cs.health }); }
       }
       for (let c = 0; c < N; c++) {
         const e = roomE[c]; if (e <= 0.01) continue;
         out.compartments.push({ id: comps[c].id, mj: e, radius_m: roomR[c] });
         const chance = Math.min(DM.fire.chance_max, DM.fire.chance_per_mj * e) * fO2(c);
-        if (hash32(seed, id, comps[c].id, "fire") < chance) { ignite(comps[c].id, FI.seed_kw + DM.fire.seed_kw_per_mj * e); out.fire.push(comps[c].id); }
+        if (hash32(seed, id, comps[c].id, "fire") < chance) { ignite(comps[c].id, FI.seed_kw + DM.fire.seed_kw_per_mj * e, roomAt[c] ? [roomAt[c][0], roomAt[c][2]] : null); out.fire.push(comps[c].id); }
         // Crew: the engine knows where each crew member stands (crew-on-deck) and applies the
         // same falloff as systems; this mockup has no positions, so every crew member in the
         // room takes the expected share: the fraction of the floor within r of the path.
@@ -1258,17 +1614,70 @@
       st.damperForced[compId] = false;
       st.fire[i].inert = IG.time_s + IG.soak_s; log("Inert gas flooding " + comps[i].name); return true;
     }
-    /** count crew discharging extinguishers at the same fire together (their cuts add). */
-    function useExtinguisher(compId, count) { const f = st.fire[idx[compId]]; f.ext = FI.extinguisher.discharge_s; f.extN = count || 1; log((count > 1 ? count + " extinguishers" : "Extinguisher") + " on the fire in " + comps[idx[compId]].name); }
-    function ventCompartment(compId) {
-      // Vent through the duct: shut the room's doors, isolate the duct, open this room's vent and the dump.
-      const vi = idx[compId];
-      for (const l of links) if ((l.a === vi || l.b === vi) && ["door", "pressure_door", "hatch", "ladder", "hoist"].indexOf(l.kind) >= 0) l.target = 0;
-      for (let i = 0; i < N; i++) st.damperForced[comps[i].id] = comps[i].id === compId;
-      setLink(GA.overboard_dump.id, 1);
-      log("Venting " + comps[idx[compId]].name + " overboard through the duct");
+    /**
+     * count crew discharging extinguishers at the same fire together (their cuts add). aim (the cell model): "careful"
+     * (the default: they sweep the burning cells nearest the door they came in by) or "careless" (at the room's centre).
+     */
+    function useExtinguisher(compId, count, aim) {
+      const i = idx[compId], f = st.fire[i];
+      f.ext = EX.discharge_s; f.extN = count || 1;
+      st.extinguishers.push({ comp: i, aim: aim || "careful", on: true, agent_kg: EX.agent_kg, n: count || 1, door: doorOf(i), held: false });
+      log((count > 1 ? count + " extinguishers" : "Extinguisher") + " on the fire in " + comps[i].name);
     }
-    function stopVent() { st.damperForced = {}; setLink(GA.overboard_dump.id, 0); }
+    /** An extinguisher a crew member carries (the walking player): the page sets comp (a compartment index), aim
+     * ({ from, dir }) and on (the trigger held) each frame; agent_kg is what is left (refill: set it to EX.agent_kg). */
+    function newExtinguisher() {
+      const e = { comp: -1, aim: null, on: false, agent_kg: EX.agent_kg, n: 1, door: null, held: true };
+      st.extinguishers.push(e); return e;
+    }
+    const VENT_DOORS = ["door", "pressure_door", "hatch", "ladder", "hoist"];
+    /**
+     * The captain's vent (fire-spread design 6a; damage-control 4): the room's doors and its damper shut at once and the
+     * room is warned for VENT.warning_s (klaxon, red strobe; its doors still open from inside on a press), then the
+     * duct is isolated, this room's vent opens and the dump opens. The board can only request it.
+     */
+    function ventCompartment(compId) {
+      const vi = idx[compId];
+      for (const l of links) if ((l.a === vi || l.b === vi) && VENT_DOORS.indexOf(l.kind) >= 0) { l.target = 0; l.manualHold = false; }
+      st.damperForced[compId] = false;
+      st.vent = { comp: vi, phase: "warning", warn: VENT.warning_s, t0: st.t };
+      log("Venting " + comps[vi].name + " in " + VENT.warning_s.toFixed(0) + " s: doors shut, klaxon");
+    }
+    function openDump(vi) {
+      for (const l of links) if ((l.a === vi || l.b === vi) && VENT_DOORS.indexOf(l.kind) >= 0) { l.target = 0; l.manualHold = false; }
+      for (let i = 0; i < N; i++) st.damperForced[comps[i].id] = i === vi;
+      setLink(GA.overboard_dump.id, 1);
+      log("Venting " + comps[vi].name + " overboard through the duct");
+    }
+    function stepVent() {
+      const v = st.vent;
+      if (!v || v.phase !== "warning") return;
+      v.warn -= dt;
+      if (v.warn <= 1e-9) { v.warn = 0; v.phase = "venting"; openDump(v.comp); }
+    }
+    function stopVent() { st.vent = null; st.damperForced = {}; setLink(GA.overboard_dump.id, 0); }
+    /**
+     * What the captain sees on arming a vent (fire-spread design 6a): who is in the room, the warning, and the seconds the
+     * room takes to fall to extinct_kpa once the dump opens, from the same flow solve run on a copy of the gas (doors
+     * shut, the duct isolated, this room's vent and the dump opening at their own speeds), which is then put back.
+     */
+    function ventPreview(compId) {
+      const i = idx[compId];
+      derive();
+      const save = { n: n.map((a) => a.slice()), U: U.slice(), links: links.map((l) => [l.open, l.target, l.G, l.F, l.flow]), lost: st.lostOverboard };
+      for (const l of links) if ((l.a === i || l.b === i) && VENT_DOORS.indexOf(l.kind) >= 0) { l.open = 0; l.target = 0; }
+      for (let k = 0; k < N; k++) links[ventOf[k]].target = k === i ? 1 : 0;
+      linkById[GA.overboard_dump.id].target = 1;
+      const end = FI.extinct_kpa * 1000;
+      let t = 0;
+      while (t < 900 && P[i] > end) { movePortals(); flowSolve(); t += dt; }
+      for (let k = 0; k < 4; k++) n[k].set(save.n[k]);
+      U.set(save.U); st.lostOverboard = save.lost;
+      links.forEach((l, k) => { [l.open, l.target, l.G, l.F, l.flow] = save.links[k]; });
+      derive();
+      return { compartment: compId, warning_s: VENT.warning_s, empty_s: t, total_s: VENT.warning_s + t, reached: P[i] > end ? t < 900 : true,
+        crew: st.crew.filter((c) => c.comp === i && !c.dead).map((c) => c.name) };
+    }
     /**
      * Open or close a door the way a crew member or the damage control board does: an opening
      * across more than the interlock's pressure difference is refused unless overridden.
@@ -1282,10 +1691,15 @@
       l.target = 1; l.manualHold = !!override; // a crew member passing does not hold it; the board's override does
       return "ok";
     }
-    /** Engineering's priority for a load (1 to 3); the vital class 0 is fixed. */
+    /**
+     * Engineering's priority for a load (1 to 3); the vital class 0 is fixed, except in a group whose priority_min is 0
+     * (Cooling, reactor-cooling design 6), whose loads go from 0 to 3 and back.
+     */
     function setPriority(loadId, p) {
-      const i = loadIdx[loadId]; if (i == null || loads[i].priority === 0) return false;
-      st.priority[i] = clamp(Math.round(p), 1, 3); return true;
+      const i = loadIdx[loadId]; if (i == null) return false;
+      const g = PW.groups.find((x) => x.loads.indexOf(loadId) >= 0), lo = g && g.priority_min != null ? g.priority_min : 1;
+      if (loads[i].priority < lo) return false;
+      st.priority[i] = clamp(Math.round(p), lo, 3); return true;
     }
     /** Apply a named preset from the data: setpoints by group. */
     function applyPreset(name) {
@@ -1299,13 +1713,122 @@
     }
     /** Repairs (damage-control): integrity points to a system, a conduit splice, a node rebuild. */
     function repairSystem(loadId, pts) { const i = loadIdx[loadId]; st.integrity[i] = clamp(st.integrity[i] + pts, 0, 100); return st.integrity[i]; }
-    function spliceConduit(id) { const c = st.conduit[id]; if (!c) return false; c.severed = false; c.health = Math.max(c.health, DM.repair.conduit_splice_capacity); return true; }
+    function spliceConduit(id) { const c = st.conduit[id]; if (!c) return false; c.severed = false; c.cut = null; c.health = Math.max(c.health, DM.repair.conduit_splice_capacity); return true; }
     function rebuildNode(id) { st.nodeHealth[id] = Math.max(st.nodeHealth[id] == null ? 1 : st.nodeHealth[id], DM.repair.node_rebuild_to); return true; }
     function log(msg) { st.log.push({ t: st.t, msg }); if (st.log.length > 200) st.log.shift(); }
 
+    // ======================================================= read-only views (ship-plan-view 6: the damage map)
+    // What the map draws, read from the state the solve and the hits leave: nothing here changes the ship, and the map
+    // never decides for itself whether a conduit is live or a box needs fixing (CLAUDE.md 6.1).
+    const nodeHp = (id) => (st.nodeHealth[id] == null ? 1 : st.nodeHealth[id]);
+    /** Whether a power node carries power now: an edge touching it carries flow, or a load on it is supplied. */
+    function nodeLive(id) {
+      if (nodeHp(id) <= 0) return false;
+      for (const k of PW.conduits) if ((k.between[0] === id || k.between[1] === id) && Math.abs(st.flows[k.id] || 0) > EPS) return true;
+      for (const t of PW.ties) if ((t.between[0] === id || t.between[1] === id) && Math.abs(st.flows[t.id] || 0) > EPS) return true;
+      for (const g of PW.generators) if (g.node === id && (st.flows[g.id] || 0) > EPS) return true;
+      if (PW.battery.node === id && (st.flows.battery_out || 0) > EPS) return true;
+      for (let i = 0; i < loads.length; i++) if (loads[i].node === id && st.alloc[i] > EPS) return true;
+      return false;
+    }
+    /**
+     * A conduit as the map draws it (power-grid 9): mw signed, positive from between[0] to between[1] (the solve's own
+     * edge flow); state "severed" (cut by a hit), "dead" (its breaker open, an end destroyed, or no power at either
+     * end) or "live" (carrying power, or energized and idle); health (its capacity's share left); breaker "closed" or
+     * "open"; cut, where a hit severed it ([x, y, z] on its path) or null.
+     */
+    function conduitView(id) {
+      const k = PW.conduits.find((x) => x.id === id), c = st.conduit[id];
+      if (!k || !c) return null;
+      const mw = st.flows[id] || 0;
+      let state = "live";
+      if (c.severed) state = "severed";
+      else if (!c.breaker || nodeHp(k.between[0]) <= 0 || nodeHp(k.between[1]) <= 0) state = "dead";
+      else if (Math.abs(mw) <= EPS && !(nodeLive(k.between[0]) && nodeLive(k.between[1]))) state = "dead";
+      return { id, name: k.name, mw, state, health: c.health, breaker: c.breaker ? "closed" : "open", cut: c.cut || null, capacity_mw: k.capacity_mw };
+    }
+    /** A switchboard section, panel or bus as the map draws it (power-grid 5): health 0-1 and state "sound", "damaged" or "destroyed". */
+    function nodeView(id) {
+      const h = nodeHp(id);
+      return { id, health: h, state: h <= 0 ? "destroyed" : h < 1 ? "damaged" : "sound", live: nodeLive(id) };
+    }
+    /**
+     * Every breaker, by the node whose box it stands in, and its state "closed", "open" (opened or tripped) or "locked"
+     * (locked open): a conduit's at its first end, a tie's at its first end, a generator's at its switchboard section,
+     * the battery's at its bus, a load's at its panel, a group's feed breaker (power-grid 5) at each of its loads'
+     * panels. [{ kind, id, name, node, state }]
+     */
+    function breakers() {
+      const out = [];
+      for (const k of PW.conduits) out.push({ kind: "conduit", id: k.id, name: k.name, node: k.between[0], state: st.conduit[k.id].breaker ? "closed" : "open" });
+      for (const t of PW.ties) out.push({ kind: "tie", id: t.id, name: t.name, node: t.between[0], state: st.tieClosed[t.id] ? "closed" : "open" });
+      for (const g of PW.generators) out.push({ kind: "generator", id: g.id, name: g.name, node: g.node, state: st.genClosed[g.id] ? "closed" : "open" });
+      out.push({ kind: "battery", id: "battery_out", name: "Battery", node: PW.battery.node, state: st.batteryBreaker ? "closed" : "open" });
+      const grouped = {};
+      for (const g of PW.groups) if (g.feed_breaker) {
+        const s = st.groupBreaker[g.id] || "closed", at = new Set(g.loads.map((id) => loads[loadIdx[id]].node));
+        for (const nd of at) out.push({ kind: "group", id: g.id, name: g.name, node: nd, state: s });
+        for (const id of g.loads) grouped[id] = true;
+      }
+      for (let i = 0; i < loads.length; i++) if (!grouped[loads[i].id] && st.breakerOpen[i]) out.push({ kind: "load", id: loads[i].id, name: loads[i].name, node: loads[i].node, state: "open" });
+      return out;
+    }
+    /**
+     * damage::repair_time (damage-control 6 and 6a): the time and the parts a job takes, the one rate the damage board
+     * previews and the repair spends. job: { kind: "system", id: a load id } | { kind: "reactor" }
+     * | { kind: "coolant", id: a pipe segment, tank or the exchanger (reactor-cooling design 1) } | { kind: "node", id }
+     * | { kind: "conduit", id } | { kind: "breach", id: a breach link id } | { kind: "hull", key: "span:face" }.
+     * who: "officer" (every player) or "rating" (the teams); hands: 1, or 2 working together (two_hands_factor times the
+     * faster). Returns { s, parts, kit, plates, eva, steps: [{ what, s }] }, or null when there is nothing to do, or
+     * { dock: true } for a damaged conduit (half its capacity until the dock). The walk to the job and suiting are not
+     * in it: this library has no crew-portal graph (crew-on-deck's walk times are the engine's).
+     */
+    function repairTime(job, who, hands) {
+      const RP = DM.repair, rate = RP.kit_pct_per_s[who || "officer"];
+      if (!Number.isFinite(rate)) throw new Error("damage.json repair.kit_pct_per_s." + who + ": missing");
+      const speed = (hands === 2 ? RP.two_hands_factor : 1), slow = RP.kit_pct_per_s.officer / rate; // fixed times are the officer's
+      const fixed = (s) => (s * slow) / speed, kit = (from, to) => (Math.max(0, to - from) / rate) / speed;
+      const res = (steps, parts, o) => Object.assign({ s: steps.reduce((a, x) => a + x.s, 0), parts, kit: false, plates: 0, eva: false, steps }, o || {});
+      const system = (g) => {
+        if (g >= 100) return null;
+        if (g <= 0) return res([{ what: "rebuild", s: fixed(RP.destroyed_rebuild_s) }, { what: "kit", s: kit(RP.destroyed_rebuild_to_pct, 100) }], RP.parts.destroyed_system, { kit: true });
+        return res([{ what: "kit", s: kit(g, 100) }], g < DM.systems.disabled_below_pct ? RP.parts.disabled_system : 0, { kit: true });
+      };
+      if (job.kind === "system") return system(st.integrity[loadIdx[job.id]]);
+      if (job.kind === "reactor") return system(st.reactor.integrity);
+      if (job.kind === "coolant") return st.coolantParts[job.id] ? system(st.coolantParts[job.id].integrity) : null;
+      if (job.kind === "node") {
+        const h = nodeHp(job.id);
+        if (h >= 1) return null;
+        if (h <= 0) return res([{ what: "rebuild", s: fixed(RP.node_rebuild_s) }, { what: "kit", s: kit(RP.node_rebuild_to * 100, 100) }], RP.parts.node_rebuild, { kit: true });
+        return res([{ what: "kit", s: kit(h * 100, 100) }], 0, { kit: true });
+      }
+      if (job.kind === "conduit") {
+        const c = st.conduit[job.id];
+        if (!c) return null;
+        if (c.severed) return res([{ what: "splice", s: fixed(RP.conduit_splice_s) }], RP.parts.conduit_splice);
+        return c.health < 1 ? { dock: true } : null;
+      }
+      if (job.kind === "breach") {
+        const l = linkById[job.id];
+        if (!l || !(l.area > 0)) return null;
+        const PT = DM.patch;
+        if (l.area <= PT.inside_max_m2) { const n = Math.ceil(l.area / PT.plate_m2 - 1e-9); return res([{ what: "plates", s: fixed(n * PT.inside_s_per_plate) }], 0, { plates: n }); }
+        return res([{ what: "eva", s: fixed(l.area * PT.eva_s_per_m2) }], 0, { eva: true });
+      }
+      if (job.kind === "hull") {
+        const g = st.hull[job.key] ? st.hull[job.key].integrity : 100;
+        if (g >= 100) return null;
+        return res([{ what: "eva", s: fixed((100 - g) / RP.hull_section_pct_per_s_eva) }], 0, { eva: true });
+      }
+      return null;
+    }
+
     // ======================================================= the sub-step
     function step() {
+      stepVent();
       stepAutomation();
+      stepCooling();
       stepPower();
       stepHeat();
       stepPlant();
@@ -1344,10 +1867,10 @@
       dt, L, PW, AT, DM, st, comps, N, DUCT, idx, vol, floor, extArea, adj, links, linkById, loads, loadIdx, stores, nodes, SPECIES,
       step, derive, solveGrid, gridSnapshot, computeDemand, solveWithDropout, previewSetpoint, previewGroup, scram, scramReset,
       resolveHit, hullHalfBeam, breach, patch, setLink, closeAllDoors, isolate, ignite, bayPumpdown, bayRepress,
-      dischargeMist, dischargeInert, useExtinguisher, gravityG, capability, damageState, auxRatio, ignitionRate,
-      operateDoor, setPriority, applyPreset, repressurize, repairSystem, spliceConduit, rebuildNode, fanRatio,
+      dischargeMist, dischargeInert, useExtinguisher, newExtinguisher, ventPreview, gravityG, capability, damageState, auxRatio, ignitionRate,
+      operateDoor, setPriority, applyPreset, setCooling, coolantReadout, coolantView, damagePart, repairPart, isolateSegment, partIntegrity, setGroupBreaker, pumpSpeed, repressurize, repairSystem, spliceConduit, rebuildNode, fanRatio,
       airlockCycleOut, airlockCycleIn, ventCompartment, stopVent, addCrew, setActivity, compartmentReadout, lighting,
-      receiverKpa, storeMol, fillStandard, log,
+      receiverKpa, storeMol, fillStandard, log, fs: FS, fO2, conduitView, nodeView, nodeLive, breakers, repairTime, hullSection,
       get P() { return P; }, get T() { return T; }, get n() { return n; }, get ntot() { return ntot; },
     };
   }

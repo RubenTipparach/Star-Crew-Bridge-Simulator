@@ -3,7 +3,7 @@
 ## Purpose
 
 The crew body in the ship's interior frame: how it moves, climbs and passes doors, what it can
-use and carry, how it is hurt, downed and revived, what the air, zero gravity and the dampers'
+use and carry, how it is hurt, incapacitated and rescued, what the air, zero gravity and the dampers'
 residual do to it, how long the Tern takes to cross on foot, and the avatar's geometry, animation
 and network form.
 
@@ -96,7 +96,7 @@ by the board's override.
 
 ### Requirement: Use is checked by the server within reach
 A body SHALL use a thing only when its eye is within 1.5 m of the thing's use point with a clear
-line through the deck's brushes, the body is not downed, climbing or floating without a hold, and
+line through the deck's brushes, the body is not incapacitated, climbing or floating without a hold, and
 its hands suit the use. The server SHALL decide every use; the client SHALL show the pending
 result at once.
 
@@ -107,7 +107,7 @@ result at once.
 ### Requirement: A body holds one thing
 A body SHALL hold at most one item, casualty or trolley. An extinguisher or repair kit SHALL leave
 movement unchanged; a patch kit or a casualty SHALL limit the body to 1.2 m/s with no running. A
-body that is knocked down or downed SHALL drop what it holds.
+body that is knocked down or incapacitated SHALL drop what it holds.
 
 #### Scenario: Knocked down with an extinguisher
 - **WHEN** a body spraying an extinguisher is knocked down by the residual
@@ -122,42 +122,58 @@ it, hold against a residual up to twice grip, and never leave the compartment it
 - **WHEN** a body releases a trolley rolling at 0.8 m/s
 - **THEN** the trolley stops within 0.8 s
 
-### Requirement: Downed bodies are revived by hand within a window
-A body SHALL be downed at 0 HP and SHALL have a 120 s stabilize window, shortened by 1 s for each
-HP of damage taken while down. A body with empty hands within 1.2 m that holds use for 5.0 s
-SHALL revive it at 25 HP. A body whose window has run out SHALL be critical and SHALL be revived
-only on a medbay bed. A downed body SHALL NOT block a doorway or a corridor.
+### Requirement: Wounded bodies move at half speed
+A body at or below 50 HP and at or above 20 HP SHALL be wounded and SHALL move at half its walking, running, ladder
+and stair speeds (`crew.json` `health.wounded_speed_scale`).
 
-#### Scenario: A quick revive
-- **WHEN** a teammate holds use for 5.0 s beside a body downed 30 s earlier in clean air
-- **THEN** the body gets up at 25 HP and can walk but not run
+#### Scenario: Hurt in a fire
+- **WHEN** a crew member walking at 2.4 m/s falls to 48 HP
+- **THEN** it walks at 1.2 m/s and runs at no more than 2.4 m/s
+
+### Requirement: Below 20 HP a body is incapacitated and its vitals fall
+A body below 20 HP SHALL be incapacitated: it SHALL NOT move or use anything, it SHALL lose 0.17 HP a second on top
+of any other harm until it is stabilized or reaches 0 HP, and at 0 HP it SHALL be critical. No one SHALL bring an
+incapacitated body back to its feet outside the medbay. An incapacitated body SHALL NOT block a doorway or a corridor.
+The same SHALL hold for players and NPC crew.
+
+#### Scenario: Left where they fell
+- **WHEN** a crew member falls to 19 HP in clean air and nobody comes
+- **THEN** it reaches 0 HP and becomes critical about 112 s later
 
 #### Scenario: Down in the heat
-- **WHEN** a downed body lies in 90 deg C air, which costs it 1.5 HP/s (`life-support`'s 0.05 HP/s per kelvin over 60 deg C)
-- **THEN** its stabilize window runs out after 48 s, and it becomes critical
+- **WHEN** an incapacitated body at 19 HP lies in 90 deg C air, which costs it 1.5 HP/s on top of its falling vitals
+- **THEN** it becomes critical after about 11 s
+
+### Requirement: A medkit stabilizes an incapacitated body
+A body holding a medkit with its other hand empty, within 1.2 m of an incapacitated body, that holds use for 5.0 s
+SHALL stabilize it for one dose: its vitals SHALL stop falling until it is hurt again. A stabilize SHALL give no HP.
+
+#### Scenario: Stabilized, then carried
+- **WHEN** a crew member stabilizes a body at 12 HP with a first aid kit and carries it to the medbay
+- **THEN** it is still at 12 HP when it reaches a bed
 
 ### Requirement: Every body down ends the mission
 The mission SHALL end as lost when every body aboard the ship and its craft, players' and NPC
-bodies alike, is downed or critical. No body SHALL die permanently; a body critical at the end of
+bodies alike, is incapacitated, stabilized or critical. No body SHALL die permanently; a body critical at the end of
 a mission SHALL carry a campaign injury that lowers its maximum HP to 80 until the next resupply.
 
 #### Scenario: The last body falls
-- **WHEN** the last standing body aboard is downed while every other body is downed or critical
+- **WHEN** the last standing body aboard is incapacitated while every other body is incapacitated or critical
 - **THEN** the mission ends as lost
 
 ### Requirement: Medbay beds heal
 A body on a medbay bed SHALL heal at 2.0 HP/s while the beds' load is powered and 0.5 HP/s while
-it is not, and SHALL stop taking damage from hypoxia, carbon dioxide and cold. A downed or critical
-body placed on a bed SHALL be revived at 25 HP after 20 s.
+it is not, and SHALL stop taking damage from hypoxia, carbon dioxide and cold. An incapacitated,
+stabilized or critical body placed on a bed SHALL be brought round at 25 HP after 20 s.
 
-#### Scenario: From a revive to full health
+#### Scenario: From the bed's 25 HP to full health
 - **WHEN** a body at 25 HP lies on a powered bed
 - **THEN** it reaches 100 HP after 37.5 s
 
 ### Requirement: The air acts on a body by name
 A body SHALL suffer hypoxia, hypercapnia, smoke, cold, heat, low pressure and vacuum exposure at
 `life-support`'s thresholds, doses and rates (`atmosphere.json` `crew_effects`), reading the values
-it computes for the compartment the body is in; a body SHALL be downed when one of its doses
+it computes for the compartment the body is in; a body SHALL be incapacitated when one of its doses
 reaches unconsciousness and SHALL turn critical at `life-support`'s death condition or when its
 stabilize window runs out. A body within 4 m of a breach in a venting compartment SHALL be pushed
 along the flow at up to 3 m/s unless it holds a handhold or is braced. Rates SHALL add when
@@ -165,11 +181,11 @@ effects stack, and the client SHALL name each active effect.
 
 #### Scenario: Thin air
 - **WHEN** a body stands in a compartment whose O2 partial pressure is 10 kPa
-- **THEN** it cannot run, its status line reads "Hypoxia", and it is downed after about 880 s there (`life-support`'s time of useful consciousness at 10 kPa)
+- **THEN** it cannot run, its status line reads "Hypoxia", and it is incapacitated after about 880 s there (`life-support`'s time of useful consciousness at 10 kPa)
 
 #### Scenario: Vacuum without a suit
 - **WHEN** a healthy unsuited body is in a compartment at 0.5 kPa
-- **THEN** it is downed in under 10 s
+- **THEN** it is incapacitated in under 10 s
 
 ### Requirement: EVA suits protect for a stated time
 A body SHALL don a suit at a locker in 20 s and doff it in 10 s. A suited body SHALL carry 1,800 s
@@ -229,7 +245,7 @@ its budget.
 ### Requirement: The client predicts its own body and nothing it does not decide
 The client SHALL predict its own body's walking, running, crouching, stairs, ladders, zero
 gravity movement and doors opening on approach through the movement function, and SHALL NOT
-predict the outcome of a use, a revive, a stumble, a knockdown or damage. A correction under 5 cm
+predict the outcome of a use, a stabilize, a stumble, a knockdown or damage. A correction under 5 cm
 SHALL blend over 100 ms and a larger one SHALL snap, as `netcode-and-sessions` sets.
 
 #### Scenario: A door the client thought was open

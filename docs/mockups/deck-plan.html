@@ -1358,6 +1358,7 @@ H4sIAAAAAAACA+y9V29ky5YmdqtOkem9YRW992Z7k0x6l5l05X0VK0kmTfnDquPNPfZ617d70I3WQDOS
    */
   function buildCompartment(THREE, L, comp, opts) {
     opts = opts || {};
+    const liftShaft = (L.fixtures || []).some((f) => f.kind === "lift" && f.compartment === comp.id);
     const D = opts.detailing || shipData("detailing");
     const detail = opts.detail !== false;
     const B = new Builder();
@@ -1425,9 +1426,10 @@ H4sIAAAAAAACA+y9V29ky5YmdqtOkem9YRW992Z7k0x6l5l05X0VK0kmTfnDquPNPfZ617d70I3WQDOS
         clear.push({ u0: u - f.width / 2, u1: u + f.width / 2, v0: w.y0, v1: top });
       }
 
-      // Ribs on fore-and-aft walls at the frames; stiffeners on athwartship walls between them.
+      // Ribs on fore-and-aft walls at the frames; stiffeners on athwartship walls between them. A lift's shaft keeps
+      // none: its car runs there (owner, 2026-10-08, in the engine: "theres also a metal bar in the back too").
       const ribs = [];
-      if (comp.kind !== "pod") {
+      if (comp.kind !== "pod" && !liftShaft) {
         const along = Math.abs(w.t[1]) >= Math.SQRT1_2;
         let stations;
         if (along) {
@@ -1613,8 +1615,9 @@ H4sIAAAAAAACA+y9V29ky5YmdqtOkem9YRW992Z7k0x6l5l05X0VK0kmTfnDquPNPfZ617d70I3WQDOS
           B.box("runner", c, alongZ ? [1, 0, 0] : [0, 0, 1], [0, 1, 0], alongZ ? [0, 0, 1] : [1, 0, 0], R.width_m / 2, R.raise_m / 2, (b - a) / 2, ["+v", "+u", "-u", "+w", "-w"]);
         }
       }
-      // Beams under the ceiling at the frames, butting the coves, split round tall systems and ceiling holes.
-      if (comp.kind !== "pod") {
+      // Beams under the ceiling at the frames, butting the coves, split round tall systems and ceiling holes; none in a
+      // lift's shaft.
+      if (comp.kind !== "pod" && !liftShaft) {
         const keep = systemsIn(L, comp.id).filter((s) => s.radius_m);
         for (const z of frameStations(D, z0, z1, F.end_clear_m + 0.05)) {
           const ch = chord(inner, 1, z);
@@ -3008,7 +3011,7 @@ H4sIAAAAAAACA+y9V29ky5YmdqtOkem9YRW992Z7k0x6l5l05X0VK0kmTfnDquPNPfZ617d70I3WQDOS
 <!-- INLINE shipkit END -->
 <!-- INLINE data:crew/walk BEGIN -->
 <script id="ship-data-walk" type="application/json">
-{"schema":"starcrew.walk/1","status":"Proposed (2026-10-08): openspec/changes/crew-on-deck sections 2-5 and 3a, deck-pipeline section 13a. Read by sc-core::walk and by docs/mockups/lib/shipwalk.js (inlined), so the engine and the mockups walk by the same numbers.","body":{"radius_m":0.25,"height_m":1.8,"eye_m":1.65,"step_m":0.35},"move":{"walk_m_s":1.8,"run_m_s":4.0,"back_scale":0.7,"stair_scale":0.7,"accel_m_s2":20.0,"stop_m_s2":30.0},"ladder":{"up_m_s":2.0,"down_m_s":2.5,"mount_s":0.15,"dismount_s":0.15,"reach_m":0.9},"side_hatch_s":0.6,"door":{"zone_m":3.0,"zone_side_m":0.5,"close_after_s":2.0,"open_s":0.6,"close_s":0.8,"pressure_open_s":2.0,"pressure_close_s":2.0,"passable":0.9,"thick_m":0.04},"controller":{"offset_m":0.02,"step_depth_m":0.15,"snap_m":0.4,"climb_deg":62.0,"slide_deg":70.0},"eye":{"tau_s":0.08,"lag_m":0.25},"gravity_m_s2":9.81,"fall_max_m_s":20.0,"jump":{"speed_m_s":3.0,"lift_s":0.12},"drop_m":0.4,"lift_call_m":1.8,"substep_s":0.008333333333333333}
+{"schema":"starcrew.walk/1","status":"Proposed (2026-10-08): openspec/changes/crew-on-deck sections 2-5 and 3a, deck-pipeline section 13a. Read by sc-core::walk and by docs/mockups/lib/shipwalk.js (inlined), so the engine and the mockups walk by the same numbers.","body":{"radius_m":0.25,"height_m":1.8,"eye_m":1.65,"step_m":0.35},"move":{"walk_m_s":2.4,"run_m_s":4.8,"back_scale":0.7,"stair_scale":0.7,"accel_m_s2":20.0,"stop_m_s2":30.0},"ladder":{"up_m_s":2.0,"down_m_s":2.5,"mount_s":0.15,"dismount_s":0.15,"reach_m":0.9},"side_hatch_s":0.6,"door":{"zone_m":3.0,"zone_side_m":0.5,"close_after_s":2.0,"open_s":0.6,"close_s":0.8,"pressure_open_s":2.0,"pressure_close_s":2.0,"passable":0.9,"thick_m":0.04},"controller":{"offset_m":0.02,"step_depth_m":0.15,"snap_m":0.4,"climb_deg":62.0,"slide_deg":70.0},"eye":{"tau_s":0.08,"lag_m":0.25},"gravity_m_s2":9.81,"fall_max_m_s":20.0,"jump":{"speed_m_s":3.0,"lift_s":0.12},"drop_m":0.4,"lift_call_m":1.8,"substep_s":0.008333333333333333}
 </script>
 <!-- INLINE data:crew/walk END -->
 <!-- INLINE lib:shipwalk BEGIN -->
@@ -3151,11 +3154,13 @@ H4sIAAAAAAACA+y9V29ky5YmdqtOkem9YRW992Z7k0x6l5l05X0VK0kmTfnDquPNPfZ617d70I3WQDOS
     const camera = o.camera, dom = o.dom, octree = o.octree;
     const ladders = o.ladders || [], lifts = (o.lifts || []).map((l) => Object.assign({ phase: "idle", t: 0, target: l.carY }, l));
     // Doors: { kind "door" | "pressure_door" | "lift", c [x, y, z] (the opening's centre), n [x, z] (its normal), w, h,
-    // name, set(open 0..1) }; a lift door also names its lift (an index into o.lifts) and stop (its floor's y).
+    // name, set(open 0..1) }; a lift door also names its lift (an index into o.lifts) and stop (its floor's y). The page
+    // may set a door's held (open whatever the walk says) or locked (shut) at any time.
     const doors = (o.doors || []).map((d) => Object.assign({ open: 0, target: 0, emptyT: Infinity, shown: -1 }, d));
     const pos = new THREE.Vector3(), cap = new Capsule(new THREE.Vector3(), new THREE.Vector3(), BODY.radius_m);
     const ray = new THREE.Ray(new THREE.Vector3(), new THREE.Vector3(0, -1, 0));
     const keys = {}, stick = { x: 0, y: 0 };
+    let speedK = 1;
     let yaw = 0, pitch = 0, vx = 0, vz = 0, vy = 0, grounded = true, jumpT = 0, stairT = 0, action = null, on = false, runToggle = false, eyeY = 0;
     // Rapier: the body is a kinematic capsule its character controller moves. A lift's car floor is no collider: inside
     // the shaft the feet are held on it (kccMove), because a separate box flush with the deck jammed the controller at
@@ -3273,6 +3278,10 @@ H4sIAAAAAAACA+y9V29ky5YmdqtOkem9YRW992Z7k0x6l5l05X0VK0kmTfnDquPNPfZ617d70I3WQDOS
           if (near) { d.emptyT = 0; d.target = 1; } else { d.emptyT += h; if (d.emptyT >= DOOR.close_after_s) d.target = 0; }
         }
         if (busy && d.open > 0) d.target = 1;   // a closing leaf stops and reopens for a body in the doorway; a shut one stays shut
+        // A page may hold a door: held open (the damage control board's override) or locked shut (an interlock with more
+        // pressure across it than its limit); a locked door does not open for a body (fire-spread design 6a).
+        if (d.held) d.target = 1;
+        if (d.locked) d.target = 0;
         const [up, down] = d.kind === "pressure_door" ? DOOR.pressure_s : DOOR.door_s;
         d.open = d.target > d.open ? Math.min(d.target, d.open + h / up) : Math.max(d.target, d.open - h / down);
         if (d.col) d.col.setEnabled(d.open < DOOR.passable);
@@ -3378,6 +3387,7 @@ H4sIAAAAAAACA+y9V29ky5YmdqtOkem9YRW992Z7k0x6l5l05X0VK0kmTfnDquPNPfZ617d70I3WQDOS
       if (mag > 1) { f /= mag; s /= mag; }
       let speed = keys.ShiftLeft || keys.ShiftRight || runToggle ? MOVE.run_m_s : MOVE.walk_m_s;
       if (f < -0.1) speed *= MOVE.back_scale;
+      speed *= speedK;   // a wounded body (crew-on-deck 7), set by the page
       if (stairT > 0 && !R) speed *= MOVE.stair_scale;   // Rapier's controller already slows the body on a slope
       const fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
       const tx = (fx * f + rx * s) * speed, tz = (fz * f + rz * s) * speed;
@@ -3638,6 +3648,8 @@ H4sIAAAAAAACA+y9V29ky5YmdqtOkem9YRW992Z7k0x6l5l05X0VK0kmTfnDquPNPfZ617d70I3WQDOS
       /** Tilt the view: radians, up positive, within the pitch limits. */
       look: (p) => { pitch = Math.max(-PITCH_MAX, Math.min(PITCH_MAX, p)); },
       refreshButtons: () => hud && hud.refresh(),
+      /** Scale walking and running speed (crew-on-deck 7: half speed when wounded); 1 is whole. */
+      setSpeedScale: (k) => { speedK = k; },
     };
   }
 
@@ -6811,12 +6823,26 @@ window.MOCKUP_EXPORT_DECK = () => {
   const arr = (img) => ({ size_px: img.width, layers: img.depth, rgba: b64(img.data) });
   const out = { ship: L.ship ? L.ship.id || "tern" : "tern", panel_first: pmats.panels.first, panel_glow: PANEL_GLOW,
     textures: { main: arr(pmats.texture.image), big: (pmats.big || []).map((B) => Object.assign({ base: B.base }, arr(B.texture.image))) }, rooms: [] };
+  // The engine (deck-pipeline 13b): the lift's room without its car, and the car as a room of its own that moves
+  // (mover 1); each room's console faces (bridge-stations 11.6) with the screens' atlas they sample.
+  const geoOut = (g) => ({ vertices: g.position.count, position: b64(g.position.array), normal: b64(g.normal.array),
+    uv: b64(g.surfUv.array), layer: b64(g.surfLayer.array), c0: b64(g.c0.array), c1: b64(g.c1.array), c2: b64(g.c2.array) });
   for (const r of rooms) {
-    const g = r.geo.attributes;
-    out.rooms.push({ id: r.comp.id, name: r.comp.name, deck: r.comp.decks[0], vertices: g.position.count,
-      position: b64(g.position.array), normal: b64(g.normal.array), uv: b64(g.surfUv.array), layer: b64(g.surfLayer.array),
-      c0: b64(g.c0.array), c1: b64(g.c1.array), c2: b64(g.c2.array) });
+    const geo = r.walkGeo || r.geo, room = Object.assign({ id: r.comp.id, name: r.comp.name, deck: r.comp.decks[0], mover: 0 }, geoOut(geo.attributes));
+    if (r.faceGeo) {
+      const f = r.faceGeo.attributes;
+      room.faces = { vertices: f.position.count, position: b64(f.position.array), normal: b64(f.normal.array), uv: b64(f.uv.array),
+        c0: b64(f.c0.array), c1: b64(f.c1.array), c2: b64(f.c2.array) };
+    }
+    out.rooms.push(room);
   }
+  if (car && LIFT) out.rooms.push(Object.assign({ id: "lift_car", name: "Lift car", deck: "A", mover: 1 }, geoOut(car.geometry.attributes)));
+  if (PK.SCREENS) {
+    const im = PK.SCREENS.texture.image;
+    out.textures.screens = { width_px: im.width, height_px: im.height, rgba: b64(im.data) };
+  }
+  out.views = (L.fixtures || []).filter((f) => f.kind === "viewscreen").map((f) => ({ id: f.id, center_m: f.center_m, size_m: f.size_m,
+    facing_yaw_deg: f.facing_yaw_deg || 0 }));
   // The walk (deck-pipeline 13a): the collision soup the deck plan's walk collides with, as one array of triangles in ship
   // coordinates, and what a body uses: where a walk starts, the ladders and hatches, the doors and the lift.
   const { soups, covers } = walkWorld();
@@ -6832,7 +6858,8 @@ window.MOCKUP_EXPORT_DECK = () => {
     ladders: walkLadders.map((l) => ({ x_m: l.x, z_m: l.z, lo_m: l.lo, hi_m: l.hi })),
     hatches: walkHatches.map((h) => ({ x_m: h.x, z_m: h.z, normal: h.n, sill_m: h.sill })),
     doors: walkDoors.map((d) => ({ id: d.id, kind: d.kind, center_m: d.c, normal: d.n, width_m: d.w, height_m: d.h })),
-    lifts: walkLifts.map((l) => ({ poly: l.poly, stops_m: l.stops, car_m: l.carY })) };
+    lifts: walkLifts.map((l) => ({ poly: l.poly, stops_m: l.stops, car_m: l.carY, speed_m_s: l.speed_m_s, door_s: l.door_s,
+      car_room: car ? "lift_car" : null })) };
   return out;
 };
 /** For tools: show a lighting state at once (tools/mockups/bake_ship.mjs shoots each view in the three). */

@@ -757,6 +757,56 @@ are the probe's (`engine-stack` 2.4), run on the hardware with the same `sc-tool
 today; the server will run every body (about eight). Memory and step time are reported by the client at
 load and in the headless run; the budget table gains a walk row when the probe has measured it.
 
+### 13b. The lift, the screens and the outside, in the engine (2026-10-08)
+
+The owner, playing the browser build: "fix all screens", "the view screen blank, needs a planet and space in the
+exterior, maybe space dock", "elevator not functioning, theres also a metal bar in the back too", "I need elevator
+buttons to go up and down!", and "we're no longer messing with the JS stuff, we're all in real life GLES web
+assembly now!". Everything below is built in the engine; the deck plan's kit stays only as the generator of the deck's
+geometry until `deckc` grows its own (task 2.x), and changes there are limited to what the export must carry.
+
+**What was wrong.** The exported lift room held its car, fixed at deck A, so the engine's car never moved and the
+other decks saw an empty shaft. The kit put the ship's frames (a rib on the shaft's back wall, a beam under its top) in
+the lift's shaft as in any room: that was the bar. The console faces, the starfield behind the windows and the
+viewscreen were separate meshes in the mockup and never reached the export; the windows were holes onto the clear
+colour.
+
+**The lift.**
+- The export carries the shaft without its car and the car as its own room, flagged as mover 1; `deckc` writes the
+  mover into the compartment and into each of its vertices (`sc-core::vertex`, the byte reserved for this). As built,
+  the car is one compartment and one draw, so the client moves it by that draw's translation (the car's height less
+  the height it was exported at) and the shader is unchanged; the vertex byte stays for movers that will share a draw
+  (door leaves). The shaft keeps no frames (the kit: no ribs or beams in a lift's compartment).
+- `sc-core::lift` owns the car: idle at a stop, its doors closing, moving at the fixture's speed (1.5 m/s), its doors
+  opening (2.0 s each way, `deck_access.json`). One rule for every caller, a player's key or a test's.
+- **Buttons.** In the car, E sends it one deck up and Q one deck down; at a landing, standing within 1.8 m of its door
+  (`walk.json` `lift_call_m`), E calls it. A line at the bottom of the screen names what E and Q do there (with the
+  UI layer, `lobby` 3; until then the browser page's key strip says it).
+- The walk: a landing's door is a wall unless the car stands there with its doors open; in the shaft the feet ride the
+  car's floor (13a), now wherever the car is.
+
+**The outside.** The ship lies in a space dock in orbit. A sky pass draws first, every frame, from the camera's
+direction: stars (a hashed field, 3 sizes), the sun, and a planet below the ship to port (a sphere lit by the sun with
+bands of cloud and an atmosphere's rim). Then the dock: a frame of girders round the hull, ring frames every 20 m with
+work lights. As built (`data/space/exterior.json`, `sc-tools` `dock.rs`): 120 x 52 x 40 m, because a bay must fit the
+deck vertex's +/-32 m about its centre; six bays, each a compartment of the deck `outside` in the deck file, textured
+with the hull's dark material and lit by the sun when `deckc` builds them, 1,392 triangles in six draws. The rooms draw over
+both, so the outside shows only through the windows' openings.
+
+**The viewscreen** shows a camera on the bow looking forward (as built: turned a little to port and down,
+`exterior.json` `viewscreen.look`, so the planet's limb is in the corner): the same sky and dock drawn into a 512 x 256 target each
+frame, then onto the viewscreen fixtures (`layout.json` fixtures of kind `viewscreen`, which the export now carries)
+as a quad 3 cm in front of each, with a faint scan line. Cost: one more pass of the sky and the dock at 512 x 256, and
+two triangles a viewscreen.
+
+**The console screens.** The export carries each room's console faces (the stations' console images on their screens,
+`bridge-stations` 11.6) and the screens' atlas; `deckc` appends the atlas to the texture array as 256 px layers (about
+8) after the panel layers, so a face glows by the alpha mask as the panels do, in the room's one draw.
+
+**The Pi 5 budget.** Sky: one full-screen triangle a frame at 1280 x 720 and one at 512 x 256, a few dozen ALU
+operations a pixel; dock: about 1,500 triangles twice; viewscreen and faces: a few hundred triangles and about 8 texture
+layers (0.7 MB with mips). Not measured: a cloud session renders on a CPU (CLAUDE.md 2).
+
 ## Risks / Trade-offs
 
 - **The kit can make every room look the same.** Mitigation: hero detail files for the bridge

@@ -224,6 +224,9 @@ repair buff of 3x of normal crew members".
   `crew-on-deck` says, multiplied in.
 - Recommendation taken (ask only with screenshots): players are the officers, and the rating's rate is
   unchanged, so a repair by a player is faster than before (1.8% a second against 1%).
+- **Revised 2026-10-09** (`repair-minigames` 1 and 1a, owner): a player's repair is rounds of a mini-game, each
+  landing its share at once, so the officer's rate no longer times a player's repair; the board shows a player's
+  rounds left. The rates above still time every repair made without a game (ratings, bots, teams).
 
 **Previews from the resolver.** The board's time to repair (`damage::repair_time(job, who)`) is the
 repair functions' own rates over the job's remaining work, plus the walk on the crew-portal graph

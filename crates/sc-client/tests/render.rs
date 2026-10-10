@@ -102,6 +102,7 @@ impl App for Test {
                 flash: *flash,
                 panel_first: u32::MAX,
                 panel_glow: 0.0,
+                clip_y: f32::MAX,
             };
             self.r.draw_deck(&self.target, mesh, *prog, &p, Some(&self.tex));
         }

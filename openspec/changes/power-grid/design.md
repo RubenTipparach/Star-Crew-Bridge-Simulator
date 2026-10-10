@@ -98,7 +98,6 @@ grid cannot take heats the blanket; the console shows "unused" MW when `0.6 P_th
 | --- | --- | ---: |
 | Coolant loop over-temperature | loop above 380 K | 2 s |
 | Blanket over-temperature | above 820 K | immediate |
-| Coolant flow lost | flow under 30% while the throttle is above 20% | 5 s |
 | Auxiliaries lost | both trains under 80% of their supply | 2 s |
 | Reactor damaged | integrity under 25% | immediate |
 
@@ -549,7 +548,7 @@ capacity stops startup with the file and field (CLAUDE.md 6.5).
 | `reactor.fuel_energy_mj_per_kg`, `fuel_load_kg` | 353,000,000, 4.0 |
 | `reactor.overdrive_wear_pct_per_min_at_max` | 1.0 |
 | `reactor.heat.*` | Blanket capacity (MJ/K), loop and room couplings (kW/K, W/K), warning and scram (K) |
-| `reactor.scram.*` | The five causes' thresholds and holds (section 3); `aux_rule` names the best-train rule |
+| `reactor.scram.*` | The four causes' thresholds and holds (section 3); `aux_rule` names the best-train rule |
 | `reactor.reset.*` | The fixture, hold (3 s), loop and blanket limits (K) |
 | `reactor.restart.*` | Ignition MW and s, starting throttle |
 | `battery.*` | System, node, capacity, initial charge, rates, efficiencies, reserve, `heat_to` |

@@ -1,0 +1,593 @@
+{
+  "schema": "starcrew.props/1",
+  "status": "Prototype (2026-10-09, 3e 2026-10-10) by tools/blender/build_service_prototypes.py, for the owner's review (repairs-on-deck design 3c-3e). Not the shipped engineering props: those are untouched until the owner approves these.",
+  "_rules": [
+    "This file is written by tools/blender/build_engineering_props.py; never edit it by hand. Rebuild, and the .glb files, the atlases and this file change together.",
+    "Metres. Prop space is the glTF frame: +Y up, +Z the prop's front (the side it is worked from), +X the right of someone facing it.",
+    "anchor says where the origin is. 'floor, centre of the back, on the wall plane' (a WALL prop): on the floor at the centre of its back, the back flat on a wall at z = 0 (the vacuum pump's wall is the reactor port it stands against). 'floor, centre of the footprint' (a FREE prop). control_desk keeps free_console's anchor (the floor at the centre of the pedestal's back). gantry_crane's origin is under the girder's centre at the hook's lowest point, its rails' top rail_top_m above; the valves' origin is on the floor under the pipe's centreline, the centreline centreline_m above.",
+    "Placing props: a FREE prop's anchor goes on the layout's floor point; a WALL prop's on the wall plane with its +Z into the room. operators_m are floor points where a crew member stands or sits to work it; control_desk's operators_m[0] is its seat, as free_console's.",
+    "ports are where pipes meet the prop: at_m the centre of the flange face (in prop space), dir the unit direction the pipe leaves in, dia_m the pipe's outside diameter. A flange is modelled at every port with its outer face on at_m, so a pipe drawn from at_m along dir butts onto it; the build checks each lies on a face facing dir. port_sections_m gives a port's section where it is not round (power_converter's bus_out: a 0.5 x 0.2 m busbar duct, dia_m its width).",
+    "Materials are roles: machinery, trim, bulkhead, hazard and light_panel are data/materials/materials.json layers (light_panel is emissive); screen is emissive and coloured by the page; accent (valve wheels, actuators, guards, rails) is tinted by the page with the station's colour (engineering's amber).",
+    "screens are the recess floors a page draws on: centre_m on the floor, normal out of it, up the in-plane direction of height_m. shows says what: console (a main screen image), upper (half 0 or 1 of an upper image) or keys.",
+    "atlas is the prop's own texture (glTF TEXCOORD_1), baked by tools/blender/hs_kit.py from data/materials/prop_atlas.json: every role in its finish (a prop's finish_of re-colours a role: lagging, magnet red, safety yellow, white cryogenic jackets) and the prop's details (lagging bands, gauges, stencils, placards, bolts, lamps). Its alpha is the glow mask.",
+    "UV0 is in metres, projected per face as shipkit.js worldUv does (x, z where |n.y| > 0.75, else the face's horizontal tangent and y); divide by the material's span_m.",
+    "Flat shaded (one normal per face), triangulated, one closed manifold solid per prop; faces against the floor or the wall are kept for the deck compiler to drop.",
+    "triangles is counted in the .glb; the build refuses a prop over budget_triangles. sha256 is the .glb's, from the Blender and exporter versions in generator: a second build with them writes the same bytes.",
+    "a screen with shows board_circuit is a hardware plate's board: the page lays that bake (assets/textures/repairs) on it; the parts on it are modelled (design 3d, 3e).",
+    "the <machine>_hw and part_* props bake under the crew wear (Prop.wear), clean inside a closed box; the machines and covers under the set's."
+  ],
+  "generator": {
+    "script": "tools/blender/build_service_prototypes.py",
+    "blender": "4.5.4 LTS",
+    "gltf_exporter": "4.5.49"
+  },
+  "props": {
+    "coolant_pump_svc": {
+      "file": "coolant_pump_svc.glb",
+      "presents": "Prototype (repairs-on-deck 3c, 3e): the coolant pump with its motor terminal box's lid bay built in",
+      "anchor": "floor, centre of the footprint",
+      "dimensions_m": [
+        1.6,
+        2.75,
+        1.6
+      ],
+      "bounds_m": {
+        "min": [
+          -0.8,
+          0.0,
+          -0.8
+        ],
+        "max": [
+          0.8,
+          2.75,
+          0.8
+        ]
+      },
+      "operators_m": [
+        [
+          1.2,
+          0.0,
+          0.0
+        ]
+      ],
+      "screens": [],
+      "ports": {
+        "discharge": {
+          "at_m": [
+            0.0,
+            0.7,
+            0.8
+          ],
+          "dir": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "dia_m": 0.45
+        },
+        "suction": {
+          "at_m": [
+            0.0,
+            0.7,
+            -0.8
+          ],
+          "dir": [
+            0.0,
+            0.0,
+            -1.0
+          ],
+          "dia_m": 0.45
+        }
+      },
+      "triangles": 662,
+      "budget_triangles": 800,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard",
+        "accent"
+      ],
+      "csg": [
+        "chamfer plate_edges (4 edges, 15 mm)",
+        "union casing_stand_motor (13)",
+        "union terminal_box (1)",
+        "difference lid_bay (6)"
+      ],
+      "sha256": "a63606c22912190f1e525d5e36d6c93a94c780a72280beb9d2f8ee03d8ce4c9d",
+      "atlas": {
+        "file": "atlas/coolant_pump_svc.png",
+        "px": 512,
+        "px_per_m": 115.25,
+        "charts": 70,
+        "cover": 0.658,
+        "glow": 0.0002,
+        "sha256": "e1c6e17976babbd085eafa5ee8800b38754adf6a36b52453bb419da77a94f0f1",
+        "bytes": 63947
+      }
+    },
+    "local_panel_svc": {
+      "file": "local_panel_svc.glb",
+      "presents": "Prototype (repairs-on-deck 3c, 3e): the local control cabinet with a service door bay in its back",
+      "anchor": "floor, centre of the back, on the wall plane",
+      "dimensions_m": [
+        0.85,
+        1.75,
+        0.5286
+      ],
+      "bounds_m": {
+        "min": [
+          -0.4,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.45,
+          1.75,
+          0.5286
+        ]
+      },
+      "operators_m": [
+        [
+          0.0,
+          0.0,
+          0.9
+        ]
+      ],
+      "screens": [
+        {
+          "label": "screen",
+          "shows": "console",
+          "centre_m": [
+            -0.13,
+            1.1707,
+            0.4258
+          ],
+          "normal": [
+            0.0,
+            0.3387,
+            0.9409
+          ],
+          "up": [
+            0.0,
+            0.9409,
+            -0.3387
+          ],
+          "width_m": 0.24,
+          "height_m": 0.13
+        }
+      ],
+      "triangles": 336,
+      "budget_triangles": 400,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "hazard",
+        "light_panel",
+        "screen",
+        "accent"
+      ],
+      "csg": [
+        "union bezels_estop_conduit (7)",
+        "difference screen (1)",
+        "difference door_bay (6)"
+      ],
+      "sha256": "651d1d7f1980a253703b4977e6929c0f6269d3e88d7bd4aa76df1caae9eb6825",
+      "atlas": {
+        "file": "atlas/local_panel_svc.png",
+        "px": 512,
+        "px_per_m": 128.0,
+        "charts": 33,
+        "cover": 0.313,
+        "glow": 0.0052,
+        "sha256": "8a1505074a98510f89bab6a874de8d23089afabc29b86c88247a6420449958bd",
+        "bytes": 20158
+      }
+    },
+    "coolant_pump_svc_hw": {
+      "file": "coolant_pump_svc_hw.glb",
+      "presents": "Prototype (repairs-on-deck 3e): the terminal box bay's hardware on its mounting plate",
+      "anchor": "the middle of the plate's bottom edge, the plate's rear face on z = 0",
+      "dimensions_m": [
+        0.302,
+        0.2579,
+        0.064
+      ],
+      "bounds_m": {
+        "min": [
+          -0.151,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.151,
+          0.2579,
+          0.064
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 828,
+      "budget_triangles": 1200,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead"
+      ],
+      "csg": [
+        "union terminal box_hardware (33)"
+      ],
+      "sha256": "43645ea45ebd588b31799d91b9dae563f1a1809f9805b86e6aa50e8fbced8e0f",
+      "atlas": {
+        "file": "atlas/coolant_pump_svc_hw.png",
+        "px": 256,
+        "px_per_m": 128.0,
+        "charts": 98,
+        "cover": 0.076,
+        "glow": 0.0,
+        "sha256": "69b15b781baa37d2a9fca40969caa61b2cdcee96a46bfe16010822d0a7b32f7b",
+        "bytes": 13773
+      }
+    },
+    "local_panel_svc_hw": {
+      "file": "local_panel_svc_hw.glb",
+      "presents": "Prototype (repairs-on-deck 3e): the valve board bay's hardware on its mounting plate",
+      "anchor": "the middle of the plate's bottom edge, the plate's rear face on z = 0",
+      "dimensions_m": [
+        0.482,
+        0.377,
+        0.036
+      ],
+      "bounds_m": {
+        "min": [
+          -0.241,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.241,
+          0.377,
+          0.036
+        ]
+      },
+      "operators_m": [],
+      "screens": [
+        {
+          "label": "board",
+          "shows": "board_circuit",
+          "centre_m": [
+            0.0,
+            0.1885,
+            0.003
+          ],
+          "normal": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "up": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "width_m": 0.458,
+          "height_m": 0.353
+        }
+      ],
+      "triangles": 718,
+      "budget_triangles": 1000,
+      "materials": [
+        "machinery",
+        "trim",
+        "screen"
+      ],
+      "csg": [
+        "difference board (1)",
+        "union valve board_hardware (28)"
+      ],
+      "sha256": "3fcfe26e6a9b8226bb764b63777af43b111dc7ee90af4a804b9f8c708807c6ac",
+      "atlas": {
+        "file": "atlas/local_panel_svc_hw.png",
+        "px": 256,
+        "px_per_m": 128.0,
+        "charts": 64,
+        "cover": 0.104,
+        "glow": 0.0034,
+        "sha256": "b71a6d07a40cd4bf737bbdd81253eaf2d9679037e132a1bd74e8f140e2649167",
+        "bytes": 7474
+      }
+    },
+    "part_relay": {
+      "file": "part_relay.glb",
+      "presents": "Prototype (repairs-on-deck 3e): the new relay of Relay K1",
+      "anchor": "the middle of its bottom edge, the face on its seat on z = 0",
+      "dimensions_m": [
+        0.05,
+        0.06,
+        0.047
+      ],
+      "bounds_m": {
+        "min": [
+          -0.025,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.025,
+          0.06,
+          0.047
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 12,
+      "budget_triangles": 40,
+      "materials": [
+        "trim"
+      ],
+      "csg": [],
+      "sha256": "78c5fed5fc535790c89c166f451c4614c8cf563c82a416631b9da28f3f2b9cd8",
+      "atlas": {
+        "file": "atlas/part_relay.png",
+        "px": 256,
+        "px_per_m": 128.0,
+        "charts": 3,
+        "cover": 0.003,
+        "glow": 0.0,
+        "sha256": "affb48aee0b146a13b9dc37abdba96903932f007717cd10cccb3a817f7a92d5f",
+        "bytes": 1830
+      }
+    },
+    "part_relay_burnt": {
+      "file": "part_relay_burnt.glb",
+      "presents": "Prototype (repairs-on-deck 3e): the broken relay of Relay K1",
+      "anchor": "the middle of its bottom edge, the face on its seat on z = 0",
+      "dimensions_m": [
+        0.05,
+        0.06,
+        0.047
+      ],
+      "bounds_m": {
+        "min": [
+          -0.025,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.025,
+          0.06,
+          0.047
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 12,
+      "budget_triangles": 40,
+      "materials": [
+        "trim"
+      ],
+      "csg": [],
+      "sha256": "db95a4635e155f99316bcec9940335b7504a37fc572f80375a67061f9c3688b9",
+      "atlas": {
+        "file": "atlas/part_relay_burnt.png",
+        "px": 256,
+        "px_per_m": 128.0,
+        "charts": 3,
+        "cover": 0.003,
+        "glow": 0.0,
+        "sha256": "1d94a7b794852cbfc7525f01380d417ed2e4710a6e803e5f456e5668f760e5a7",
+        "bytes": 1687
+      }
+    },
+    "part_cap": {
+      "file": "part_cap.glb",
+      "presents": "Prototype (repairs-on-deck 3e): the new can of Capacitor C2",
+      "anchor": "the middle of its bottom edge, the face on its seat on z = 0",
+      "dimensions_m": [
+        0.0228,
+        0.0217,
+        0.02
+      ],
+      "bounds_m": {
+        "min": [
+          -0.0114,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.0114,
+          0.0217,
+          0.02
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 36,
+      "budget_triangles": 80,
+      "materials": [
+        "trim"
+      ],
+      "csg": [],
+      "sha256": "328e4a61a5aa2992df9ec1dcc8372ec0a571862c80ecd1e5fb2c490478facbf0",
+      "atlas": {
+        "file": "atlas/part_cap.png",
+        "px": 256,
+        "px_per_m": 128.0,
+        "charts": 4,
+        "cover": 0.001,
+        "glow": 0.0,
+        "sha256": "fceebe2f322ef8bec1eba88352273d42a925aafaa32fa1fdb8524c73a6c68eb3",
+        "bytes": 1230
+      }
+    },
+    "part_cap_bulged": {
+      "file": "part_cap_bulged.glb",
+      "presents": "Prototype (repairs-on-deck 3e): the broken can of Capacitor C2",
+      "anchor": "the middle of its bottom edge, the face on its seat on z = 0",
+      "dimensions_m": [
+        0.0228,
+        0.0217,
+        0.026
+      ],
+      "bounds_m": {
+        "min": [
+          -0.0114,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.0114,
+          0.0217,
+          0.026
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 56,
+      "budget_triangles": 80,
+      "materials": [
+        "trim"
+      ],
+      "csg": [],
+      "sha256": "016e5fafa2897b04790f6fb2be82293c84876ce562d5d4f37ac9ff9198a57afb",
+      "atlas": {
+        "file": "atlas/part_cap_bulged.png",
+        "px": 256,
+        "px_per_m": 128.0,
+        "charts": 8,
+        "cover": 0.001,
+        "glow": 0.0,
+        "sha256": "f3240d93f5db34dec260e11befdd697a46413c46a619976022a87e9360e3f6fe",
+        "bytes": 1615
+      }
+    },
+    "cover_pump": {
+      "file": "cover_pump.glb",
+      "presents": "Prototype (repairs-on-deck 3c): the service cover of the terminal box bay, 0.38 x 0.32 m",
+      "anchor": "the middle of its bottom edge, at z = 0",
+      "dimensions_m": [
+        0.38,
+        0.32,
+        0.012
+      ],
+      "bounds_m": {
+        "min": [
+          -0.19,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.19,
+          0.32,
+          0.012
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 12,
+      "budget_triangles": 40,
+      "materials": [
+        "trim",
+        "bulkhead"
+      ],
+      "csg": [],
+      "sha256": "eb42e8f512b183c6d2a38c29aa889da9b2b656d34b642ffce1ca214b3e40e444",
+      "atlas": {
+        "file": "atlas/cover_pump.png",
+        "px": 256,
+        "px_per_m": 128.0,
+        "charts": 4,
+        "cover": 0.064,
+        "glow": 0.0,
+        "sha256": "dfdf1d46577cda4953d8d327b267106e7b1d55e4df0b25cea1ec0cfa0e8d3bcd",
+        "bytes": 3612
+      }
+    },
+    "cover_panel": {
+      "file": "cover_panel.glb",
+      "presents": "Prototype (repairs-on-deck 3c): the service cover of the valve board bay, 0.56 x 0.455 m",
+      "anchor": "the middle of its bottom edge, at z = 0",
+      "dimensions_m": [
+        0.56,
+        0.455,
+        0.012
+      ],
+      "bounds_m": {
+        "min": [
+          -0.28,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.28,
+          0.455,
+          0.012
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 12,
+      "budget_triangles": 40,
+      "materials": [
+        "trim",
+        "bulkhead"
+      ],
+      "csg": [],
+      "sha256": "ae463b3b763d7af17377c18ed769a374f81264fed8adab21e471d14a5b457c6e",
+      "atlas": {
+        "file": "atlas/cover_panel.png",
+        "px": 256,
+        "px_per_m": 128.0,
+        "charts": 4,
+        "cover": 0.132,
+        "glow": 0.0,
+        "sha256": "834a95bd97daa718098f70653efd34c98c94b90ac00a180f39d6ea7cac148aba",
+        "bytes": 5728
+      }
+    },
+    "service_screw": {
+      "file": "service_screw.glb",
+      "presents": "Prototype (repairs-on-deck 3c): a service cover's screw",
+      "anchor": "the shank's tip, on the floor",
+      "dimensions_m": [
+        0.014,
+        0.035,
+        0.014
+      ],
+      "bounds_m": {
+        "min": [
+          -0.007,
+          0.0,
+          -0.007
+        ],
+        "max": [
+          0.007,
+          0.035,
+          0.007
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 68,
+      "budget_triangles": 90,
+      "materials": [
+        "trim"
+      ],
+      "csg": [
+        "union shank (1)"
+      ],
+      "sha256": "81b2c4384803ffd41c3f3d45e37a9594398b473e88d804bda19f8fdc7ebb65a7",
+      "atlas": {
+        "file": "atlas/service_screw.png",
+        "px": 256,
+        "px_per_m": 128.0,
+        "charts": 13,
+        "cover": 0.0,
+        "glow": 0.0,
+        "sha256": "1d302c63d2e988601b75fd799e4f5e65e39b55ab1349961aeb97dc98c1c6be4c",
+        "bytes": 1653
+      }
+    }
+  }
+}

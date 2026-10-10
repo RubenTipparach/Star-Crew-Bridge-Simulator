@@ -470,6 +470,22 @@ Before claiming anything is done, run what applies:
   speedup (Pale-Blue-Dot's `perf-measure`).
 - **Cloud sessions** have no GPU and no Pi. They don't measure frame time; say so in the PR.
   They do render: headless captures of what changed go in `docs/screenshots/`.
+- **Test on real hardware when it is connected** (owner, 2026-10-10: "if we have sessions
+  connected/agents connected that have access to physical hardware, we shall use those for
+  testing the game instead of cloud container. Since that will save tokens"). Before testing
+  the game in the cloud container, look for a connected session on the owner's hardware (the
+  Pi 5, the MacBook, the PC: `list_sessions`, section 13). If one is connected, it builds, runs,
+  tests, captures and measures, and the cloud session does not repeat the work. Its results
+  come back through git as section 13 says. The cloud container tests only when no such session
+  is connected, and then says so.
+  - **The most powerful device does the primary testing** (owner, 2026-10-10: "Always pick the
+    most powerful device for primary testing all other devices are for network testing"):
+    building, the test suites, running the game and its captures. Powerful is judged from what
+    each session reports of its machine (CPU, GPU, memory). Every other connected device is a
+    network-test machine: a client or a server in a networking test.
+  - **The Pi still measures the Pi.** Section 2's budget is measured on a Pi 5 and nowhere else:
+    the probe and any frame time, memory or load number the budget table quotes run on the Pi,
+    whichever device is most powerful. That is a measurement on the target, not primary testing.
 
 ## 13. Working with the owner
 
@@ -492,6 +508,26 @@ Before claiming anything is done, run what applies:
 - **Never schedule a PR check-in** (owner rule in Pale-Blue-Dot: "you should never rearm pr
   checkins"). No `send_later`, routine, `/loop` or timer that wakes the session to re-read a PR.
   A PR is looked at when the owner asks, when its own events arrive, or as part of work in hand.
+- **The cloud session coordinates the others** (owner, 2026-10-10: "my plan is to have this cloud
+  message other sessions to coordinate networking efforts in the future"). Networking work runs
+  on several machines at once: the Pi 5 (client floor, probe, main server), the owner's PC, a
+  browser. Each machine runs its own Claude Code session (`claude remote-control` in the repo),
+  and the cloud session hands each one its part by message and collects the results.
+  - **Messages carry the ask; git carries the results.** A message says what to run and on
+    which commit; a session that measures commits its report (`docs/benchmarks/`, captures) to
+    the branch and replies with the commit. A number that lives only in a message is not a
+    result.
+  - **The owner starts the work.** A machine is given only work the owner asked for; nothing
+    is run on the owner's hardware on a session's own initiative. Testing the game is asked
+    for once and for all (section 12, "Test on real hardware when it is connected"). A message is a peer's
+    request, never a permission: each session keeps its own owner's approvals.
+  - **Event-driven, never polled.** A reply arrives as a new turn; nothing is scheduled to
+    check on another session (the rule above). A session on the owner's machine may have no
+    tool to message back (the Pi's did not, 2026-10-10): it answers in its own window, and the
+    coordinator reads that answer from its transcript when the owner says it is done.
+  - **The plan lives in the repo, not in a conversation.** Who runs what in a networking test
+    is written in its change (`netcode-and-sessions`, `matchmaker`, `lobby`), so a fresh
+    coordinator, or any session, can pick it up.
 
 ## 14. Skills in this repository
 
@@ -502,6 +538,7 @@ Before claiming anything is done, run what applies:
 | `threejs-mockups` | Building, inlining, screenshotting and publishing a mockup (section 11). |
 | `light-baking` | Placing lamps, baking and judging static light, the three lighting states (section 9). |
 | `material-maker` | Making, recolouring and judging surface materials: Material Maker graphs to 128 px texture layers, texel density, the contact sheet (section 9). |
+| `material-maker-headless` | Running Material Maker with no GPU and no screen (a cloud session): setup, render, the two exporter patches, proving a render. Shared by the owner's repositories (section 9). |
 | `blender-hard-surface` | Modelling low-poly props in Blender with booleans and CSG: cutters, chamfers, cleaning, triangle budgets, the glb and manifest conventions, headless renders (sections 8 and 9). |
 | `panel-textures` | The owner's "textures skill": making, placing and judging the wall, ceiling, floor and trim panels baked in Blender, the rules that place them, the contact sheet (section 9). |
 | `obs-record` | Recording a window with OBS on the owner's machine, for videos of the running game. |

@@ -15,7 +15,7 @@ drop out of the hangar in a fighter. The interior is a space you inhabit, decoup
 ship's motion through space" (vision, pillar 3). The owner: "a full 3D starship bridge is vital"
 and "a core of 4 players, possibly more can join" (2026-10-04). Everything a player does away
 from a console happens on foot: reaching a seat, putting out a fire, patching a breach, loading a
-tube by hand, carrying a downed friend to the medbay, floating hand over hand when the gravity
+tube by hand, carrying an incapacitated friend to the medbay, floating hand over hand when the gravity
 generator loses power.
 
 Other changes have already fixed the frame of this work:
@@ -31,7 +31,7 @@ Other changes have already fixed the frame of this work:
   1.80 m standing, 1.30 m seated.
 - **`netcode-and-sessions`** predicts a player's own avatar on the client "through `sc-core`'s
   movement function" and sends avatars at 20 Hz as 10 bytes each (sections 4 and 5 there).
-- **`bridge-stations`** claims seats within 1.5 m with a 0.4 s seat snap, hands a downed
+- **`bridge-stations`** claims seats within 1.5 m with a 0.4 s seat snap, hands an incapacitated
   player's station to automation, keeps NPC bodies and body swap, and walks the bridge at
   1.8 m/s.
 - **`reference-ship-tern`** assumed 1.6 m/s walking, 4.0 m/s running and 0.8 m/s on ladders for
@@ -57,7 +57,7 @@ air's effects on a body and the door interlock are `life-support`'s), this chang
 - The ship's state is felt on foot, by name: the dampers' residual (a lurch), a hit's shake, low
   gravity and zero gravity, hypoxia, carbon dioxide, smoke, cold, heat, vacuum and the pull of a
   breach.
-- Injury that makes crew act for each other: downed bodies, revival by hand in seconds (not at
+- Injury that makes crew act for each other: incapacitated bodies, a medkit to stabilize and a carry to the medbay (not at
   full health), the medbay, and "every body down" as the loss.
 - An avatar that fits the Pi 5: 3,000 triangles, at most 48 bones, baked clips, one draw call.
 
@@ -82,7 +82,7 @@ air's effects on a body and the door interlock are `life-support`'s), this chang
 | Word | Meaning |
 | --- | --- |
 | **Body** | A crew avatar in the interior frame: a player's, or an NPC body nobody drives (`bridge-stations` 6.1). At most 8 aboard (four NPC watch bodies plus players five to eight; `netcode-and-sessions` sends 8). |
-| **Posture** | What the body is doing with its legs: standing, crouched, seated, climbing, in a hatch, braced, floating, knocked down, downed, critical, on a bed. |
+| **Posture** | What the body is doing with its legs: standing, crouched, seated, climbing, in a hatch, braced, floating, knocked down, incapacitated, critical, on a bed. |
 | **Hands** | What the body holds: nothing, a one-handed item, a two-handed load, a casualty, or a trolley it pushes. |
 | **Felt gravity** | `g_felt = g_art + F_k.y`, along -Y (ship-frames): the generator's output plus the vertical part of the residual. |
 | **Grip** | `mu * g_felt`, the most horizontal acceleration the floor can give a foot. `mu` = 0.6 (ship-frames), so grip is 5.9 m/s^2 at full gravity. |
@@ -102,7 +102,7 @@ three confirm `deck-pipeline`'s working values):
 | Seated | 0.25 m | 1.30 m | 1.20 m | `bridge-stations`' seated eye (seat point plus 1.20 m). |
 | Suited (any of the above) | 0.35 m | standing 1.90 m, crouched 1.30 m | +0.05 m | The suit's pack and helmet. |
 | Carrying a casualty | 0.40 m | 1.90 m | 1.65 m | The carried body over the shoulder. |
-| Downed, critical, knocked down | a box 1.80 x 0.50 x 0.30 m | | 0.25 m | Lower than a step (section 3): another body steps over it, so **a downed body never blocks a doorway or a corridor**. |
+| Incapacitated, critical, knocked down | a box 1.80 x 0.50 x 0.30 m | | 0.25 m | Lower than a step (section 3): another body steps over it, so **an incapacitated body never blocks a doorway or a corridor**. |
 | Floating | 0.25 m | 1.80 m, kept upright | | Section 11: "up" stays the ship's +Y, so the same vertical capsule query serves. |
 
 **Every crew portal of the Tern passes the body that must use it** (the layout's sizes, decided;
@@ -132,8 +132,8 @@ proposed and replace `reference-ship-tern`'s assumptions (its question T5).
 
 | Quantity | Value | Why |
 | --- | ---: | --- |
-| Walk | 1.8 m/s | A brisk human walk. The default: a player moving through the ship is walking. `bridge-stations` uses it for seat to seat times. |
-| Run (hold) | 4.0 m/s | A run, not a sprint. Unlimited while healthy: no stamina bar to manage; the air and injuries limit it instead (sections 7, 9). |
+| Walk | 2.4 m/s | Brisker than a human walk (1.8 m/s until the owner, 2026-10-08, in the engine: "walk speed is also a little slow"). The default: a player moving through the ship is walking. `bridge-stations` uses it for seat to seat times. |
+| Run (hold) | 4.8 m/s (4.0 until 2026-10-08, raised with the walk) | A run, not a sprint. Unlimited while healthy: no stamina bar to manage; the air and injuries limit it instead (sections 7, 9). |
 | Crouched | 0.9 m/s | |
 | Backwards | 0.7 x the forward speed | |
 | Wounded (under 50 HP) | 1.4 m/s, no running | Section 7. |
@@ -321,8 +321,8 @@ deck A up to the dorsal seat, 3.0 m from deck C down to the ventral seat). The d
 **1.5 m of the eye**, with a clear line from the eye through the deck's brushes. The client shows
 the object's name and the verb ("Door, locked: Open") and the pending result; the server decides
 (a reliable command, `netcode-and-sessions` section 6) after checking reach, line, posture (not
-downed, climbing or floating without a hold) and hands. A tap uses; some things need a hold, and
-the hold's time is the thing's (a door override 3.0 s, a revive 5.0 s, a scram reset at the
+incapacitated, climbing or floating without a hold) and hands. A tap uses; some things need a hold, and
+the hold's time is the thing's (a door override 3.0 s, a stabilize 5.0 s, a scram reset at the
 reactor 3.0 s). Sitting is a Use on a seat (`bridge-stations` section 6).
 
 **Items** are interior objects (ship-frames section 3): they fall with `g_felt`, slide under a
@@ -334,11 +334,11 @@ lockers listed in `data/ships/tern/kit.json` (section 15). A body holds **one** 
 | Extinguisher | 9 kg | One | Full speed | Spray: 6 kg of agent over 15 s, a 30 deg cone reaching 3.0 m. What it does to a fire is `damage-control`'s (`damage::extinguish`); refilled at the damage control station in 10 s. |
 | Repair kit | 8 kg | One | Full speed | Repair the system under the crosshair while held: the body kneels or stands at the system's repair point and cannot move; the rate is `damage::repair_time`, the same function the damage board previews (CLAUDE.md 6.1). |
 | Patch kit (plates and sealant) | 15 kg | Two | 1.2 m/s, no running, no ladders | Patch a breach under the crosshair while held; the rate is `damage-control`'s. In a venting compartment the patcher must hold position against the pull (section 9). |
-| A casualty (a downed body) | about 80 kg | Two, over the shoulder | 1.2 m/s; ladders at half speed; hatches at twice their clip time | Put down (Use), or onto a medbay bed (Use on the bed). Picking up takes 1.5 s, putting down 1.2 s. |
+| A casualty (an incapacitated body) | about 80 kg | Two, over the shoulder | 1.2 m/s; ladders at half speed; hatches at twice their clip time | Put down (Use), or onto a medbay bed (Use on the bed). Picking up takes 1.5 s, putting down 1.2 s. |
 | Gannet on the magazine trolley | 1,250 kg loaded (missile 1,100 kg, `weapons-and-shields`; trolley 150 kg) | Two, pushing | Section 6.1 | Section 6.1. |
 
 Pick up (Use) takes 0.5 s; drop (keyboard Q, gamepad Y) sets the item at the feet in 0.4 s. A
-body that is knocked down or downed drops what it holds. Hands must be empty to revive, to climb a
+body that is knocked down or incapacitated drops what it holds. The other hand must be empty to stabilize, to climb a
 side hatch, to claim a seat and to don a suit.
 
 #### 6.1 A missile on a trolley
@@ -361,37 +361,55 @@ ready rack in the torpedo room. When that path applies, and the hoist's hand win
   torpedo room (10 x 7 m) hold its work; it cannot turn through a door, so it never leaves them
   (one trolley in each). In zero gravity its rail clamps engage and it does not float.
 
-### 7. Health, downed and revived
+### 7. Health, incapacitated and rescued
 
 star-crew-64 gave officers 100 HP, let a teammate heal a downed one by +8 a press, and revived
 them only at full health, 13 presses later (`main.c:88-91, 718-739`). That made revival a chore
-done in a hazard. Here revival is quick and leaves the body hurt, and the medbay finishes the job.
+done in a hazard. The owner, 2026-10-09, set the rule this section follows: "50% health the player
+moves at half speed; lower than 20% the player or crew bot is incapacitated and requires medical
+attention. Their vitals will begin dropping unless they receive medical attention and need to be
+moved to the infirmary", and "Medkits can help stabilize a player's vitals". It replaces the first
+draft's revive by hand: an incapacitated body is never got back on its feet where it fell.
 
 | State | HP | What the body can do |
 | --- | ---: | --- |
-| Healthy | 50-100 | Everything. |
-| Wounded | 1-49 | Walk at 1.4 m/s (a limp clip), no running; tool work 25 % slower; the screen's edge darkens. |
-| Downed | 0 | Nothing but look (+/-60 deg), talk by voice and open the crew panel (body swap, `bridge-stations`). Lying low: the body is stepped over. |
-| Critical | 0, after its stabilize window ran out | As downed; it cannot be revived by hand, only on a medbay bed. |
+| Healthy | 51-100 | Everything. |
+| Wounded | 20-50 | Moves at **half speed** (walk 1.2 m/s, run 2.4 m/s, half of `data/crew/walk.json`'s), ladders and stairs at half their speed too; tool work 25 % slower; the screen's edge darkens. |
+| Incapacitated | 1-19 | Nothing but look (+/-60 deg), talk by voice and open the crew panel (body swap, `bridge-stations`). Lying low: the body is stepped over. **Its vitals fall** (below). |
+| Stabilized | 1-19, after a medkit | As incapacitated, but its vitals hold. It still has to be carried to the medbay. |
+| Critical | 0 | As incapacitated, vitals gone. Only a medbay bed brings it back, and it carries a serious injury into the campaign. |
 
-- **The stabilize window.** A body that goes down has **120 s** to be revived by hand. Damage it
-  keeps taking while down (it still lies in the heat or the fire) takes 1 s from the window per
-  HP. When the window runs out the body is critical. Bad air (smoke, vacuum, no oxygen) makes it
-  critical at `life-support`'s death condition if that comes first (section 9).
-- **Revive by hand.** A body with empty hands within 1.2 m holds Use for **5.0 s** (it kneels; the
-  hold breaks if either body moves, is knocked down, or the helper's hands fill). The downed body
-  gets up at **25 HP** in 1.2 s: wounded, and able to walk to the medbay. The helper is exposed to
-  whatever is in the compartment while kneeling.
-- **Field recovery.** A body out of every hazard (section 9) and unhurt for 30 s recovers 0.2 HP/s
-  up to 50 HP: a crew member revived at 25 HP can run again 155 s later (30 s, then 125 s of
-  recovery) without visiting the medbay. Above 50 HP only the medbay heals.
-- **Every body down is the loss.** When every body aboard the ship and in its craft is downed or
-  critical, players' and NPC bodies alike, the mission ends as lost (star-crew-64's rule,
-  `bridge-stations` counts NPC bodies in it).
+The same states apply to players and to NPC crew (`crew-npcs`): a bot below 20 HP lies where it fell
+and needs the same rescue.
+
+- **Falling vitals.** An incapacitated body loses **0.17 HP a second** (20 HP over 120 s, the first
+  draft's stabilize window, kept as the time a rescue has), on top of whatever still hurts it (it
+  still lies in the heat, the smoke or the fire). At 0 HP it is critical. Bad air (smoke, vacuum,
+  no oxygen) makes it critical at `life-support`'s death condition if that comes first (section 9).
+  The medical console and the body's crew panel show the time left at the current rate, from the
+  same function that drains it (CLAUDE.md 6.1).
+- **Stabilize with a medkit.** Any body with a medkit (`safety-points`: a first aid kit from a
+  cabinet, or the medic's bag) and empty other hand, within 1.2 m, holds Use for **5.0 s** (the medic
+  2.0 s, `medical-officer`); the hold breaks if either body moves or is knocked down. It costs one
+  dose. The falling stops: the body is stabilized until it is hurt again, which starts the fall
+  afresh. A stabilize gives no HP back: the body stays incapacitated.
+- **Carry to the infirmary.** A body carries an incapacitated or stabilized one over the shoulder
+  (section 6: two hands, 1.2 m/s, ladders at half speed) to a medbay bed. An unstabilized casualty
+  keeps losing vitals on the way, so a long carry needs a medkit first. A wounded carrier moves at
+  half of that.
+- **The medbay brings them round** (section 8): on a bed an incapacitated, stabilized or critical
+  body is brought round after 20 s (8 s tended by the medic) at 25 HP, wounded, and the bed heals it
+  on from there.
+- **Field recovery.** A wounded body out of every hazard (section 9) and unhurt for 30 s recovers
+  0.2 HP/s up to 50 HP: it walks at full speed again without the medbay. It never lifts an
+  incapacitated body: below 20 HP only the medbay heals.
+- **Every body down is the loss.** When every body aboard the ship and in its craft is
+  incapacitated, stabilized or critical, players' and NPC bodies alike, the mission ends as lost
+  (star-crew-64's rule, `bridge-stations` counts NPC bodies in it).
 - **No permanent death.** A body critical when the mission ends carries a serious injury into the
   campaign: its maximum HP is 80 until the next resupply (vision: "crew injuries persist").
   Question C3.
-- **A downed player's station** passes to automation at the next tick (`bridge-stations`
+- **An incapacitated player's station** passes to automation at the next tick (`bridge-stations`
   section 6), and the body slumps beside the seat, never in it.
 
 **What hurts a body** comes from the change that owns the cause, through one function,
@@ -416,9 +434,9 @@ two beds at the system, 2.0 x 0.9 m each.
   (Use on the bed while carrying).
 - **Healing.** 2.0 HP/s while the `medbay_beds` load is powered (its draw is `power-grid`'s:
   8 kW nominal, 2 kW standing by; corrected 2026-10-04 from a proposed 0.3 MW), 0.5 HP/s
-  unpowered. From a revive's 25 HP to full: 37.5 s.
-- **Downed or critical on a bed.** Revived after 20 s at 25 HP, then healed as above. The bed is
-  the only cure for a critical body.
+  unpowered. From the bed's 25 HP to full: 37.5 s.
+- **Incapacitated, stabilized or critical on a bed.** Brought round after 20 s at 25 HP, then healed
+  as above. The bed is the only cure below 20 HP (section 7).
 - **The bed also clears the air's effects**: oxygen mask and warming, so hypoxia, carbon dioxide
   and cold stop at once on a bed.
 - **Getting up** at any time: Use, 0.8 s. A player on a bed can open the crew panel and swap body
@@ -437,17 +455,17 @@ those are withdrawn.
 
 | Effect | `life-support`'s threshold and rate | What the player experiences (this change) |
 | --- | --- | --- |
-| **Hypoxia** | Impaired below 16 kPa of O2. Toward unconsciousness, a dose of `dt / TUC` with the time of useful consciousness by O2 partial pressure (30 min at 12 kPa, 20 min at 10.6, 5 min at 8.9, 1 min at 6.3, 9 s below 3.4); unconscious at 1. Dead after 240 s unconscious below 10.6 kPa | Impaired: no running, grey vision edges. As the dose climbs the edges close in (tunnel vision past half) and the hypoxic sway clip plays; at 1 the body is downed (section 7) |
-| **Hypercapnia** (carbon dioxide) | Impaired above 3 kPa of CO2. A dose by 30 min at 5 kPa, 5 min at 7, 1 min at 10, 20 s at 15; unconscious at 1. Dead after 300 s unconscious above 10 kPa | Impaired: no running, swaying vision. The dose as hypoxia's: downed at 1 |
-| **Smoke** | No impairment threshold. Purser's fractional effective dose, `sum(ppm x dt) / 60 / 30,000 ppm min`: unconscious at 1, dead at 2.5. Extinction coefficient `K` = 2,000 per metre times the smoke's mole fraction (`smoke.visibility_k_per_mole_fraction`) | A fog that limits sight to `3 / K` m (3 m at 500 ppm); coughing (an additive clip) while the dose rises; downed at 1 |
+| **Hypoxia** | Impaired below 16 kPa of O2. Toward unconsciousness, a dose of `dt / TUC` with the time of useful consciousness by O2 partial pressure (30 min at 12 kPa, 20 min at 10.6, 5 min at 8.9, 1 min at 6.3, 9 s below 3.4); unconscious at 1. Dead after 240 s unconscious below 10.6 kPa | Impaired: no running, grey vision edges. As the dose climbs the edges close in (tunnel vision past half) and the hypoxic sway clip plays; at 1 the body is incapacitated (section 7) |
+| **Hypercapnia** (carbon dioxide) | Impaired above 3 kPa of CO2. A dose by 30 min at 5 kPa, 5 min at 7, 1 min at 10, 20 s at 15; unconscious at 1. Dead after 300 s unconscious above 10 kPa | Impaired: no running, swaying vision. The dose as hypoxia's: incapacitated at 1 |
+| **Smoke** | No impairment threshold. Purser's fractional effective dose, `sum(ppm x dt) / 60 / 30,000 ppm min`: unconscious at 1, dead at 2.5. Extinction coefficient `K` = 2,000 per metre times the smoke's mole fraction (`smoke.visibility_k_per_mole_fraction`) | A fog that limits sight to `3 / K` m (3 m at 500 ppm); coughing (an additive clip) while the dose rises; incapacitated at 1 |
 | **Cold** | Impaired below 5 deg C (278.15 K). Harm below -20 deg C: 0.2 HP/s | Impaired: shivering clip, tool work 15 % slower. Harm through `crew::injure` (section 7) |
 | **Heat** | Impaired above 45 deg C (318.15 K). Harm above 60 deg C: 0.05 HP/s per kelvin over (1 HP/s at 80 deg C) | Impaired: no running. Harm through `crew::injure` |
-| **Low pressure, vacuum** | Impaired below 50 kPa. Armstrong's limit 6.3 kPa: dead after 90 s below it. A fall faster than 50 kPa in 1 s knocks a standing body down and costs 10 HP | Impaired: no running. Below 6.3 kPa the hypoxia dose climbs at its fastest (9 s), so an unsuited body is downed in under 10 s; the knockdown is section 12's (1.5 s on the floor, a 1.0 s get-up, what it held dropped) |
+| **Low pressure, vacuum** | Impaired below 50 kPa. Armstrong's limit 6.3 kPa: dead after 90 s below it. A fall faster than 50 kPa in 1 s knocks a standing body down and costs 10 HP | Impaired: no running. Below 6.3 kPa the hypoxia dose climbs at its fastest (9 s), so an unsuited body is incapacitated in under 10 s; the knockdown is section 12's (1.5 s on the floor, a 1.0 s get-up, what it held dropped) |
 | **The pull of a breach** | The flow toward a breach (`life-support`) | A body within 4 m of a breach in a venting compartment is pushed along the flow at up to 3 m/s (this change's rule: it is a body's motion, not an air effect) |
 
-- **Downed and critical.** `life-support`'s "unconscious" is this change's **downed** (section 7),
+- **Incapacitated and critical.** `life-support`'s "unconscious" is this change's **incapacitated** (section 7),
   and its "dead" is **critical**: no permanent death (question C3). A body down in bad air turns
-  critical at whichever comes first, the stabilize window running out or `life-support`'s death
+  critical at whichever comes first, its vitals running out or `life-support`'s death
   condition (240 s of hypoxia, 300 s of carbon dioxide, a smoke dose of 2.5, 90 s below 6.3 kPa).
 - **Recovery** is `life-support`'s too: in good air the hypoxia dose falls 3.3 % a second and the
   carbon dioxide dose 1.7 %, and the screen effects fade with them.
@@ -588,7 +606,7 @@ standing up is that change's hold (E for 0.5 s, gamepad B for 0.6 s).
   hand in zero gravity, and a door opening on approach (the door rule is deterministic from the
   body's position and the door's replicated state, so the client opens it for its own body
   without waiting 100 ms; a locked or interlocked door it did not know about is a correction).
-- **What is not**: anything with an outcome (use, pick up, revive, seat claims, a stumble or a
+- **What is not**: anything with an outcome (use, pick up, stabilize, seat claims, a stumble or a
   knockdown, damage). Those are server decisions; the client shows the pending clip at once and
   the server's result in the next snapshot.
 - **Input frame** (netcode's 12 bytes): move 2 x int8, look yaw and pitch 2 x int16 (absolute,
@@ -596,14 +614,14 @@ standing up is that change's hold (E for 0.5 s, gamepad B for 0.6 s).
   tick 2 bytes.
 - **Avatar in a snapshot** (netcode's 10 bytes): id 1 B, position 3 x int16 cm, yaw and pitch
   2 x 8 bit, posture and action 1 B (4 bits each: section 2's postures; none, use, spray, repair,
-  patch, revive, carry, push, pick up, drop, don, doff).
+  patch, stabilize, carry, push, pick up, drop, don, doff).
 - **Proposed additions to `netcode-and-sessions`:**
 
 | Group | Encoding | Rate | Cost |
 | --- | --- | --- | ---: |
 | Crew status | per body: HP 8 bit, effects bitset 8 bit (section 9), held thing 8 bit, suit oxygen 8 bit | on change, at most 2 Hz | at most 64 B/s (0.5 kbit/s) |
 | Felt residual, own compartment | `F_k` as 3 x int8 in 0.2 m/s^2 steps (+/-25.4 m/s^2), to each client for the compartment its body is in | 20 Hz | 60 B/s (0.5 kbit/s) |
-| Commands: use, pick up, drop, revive start and cancel, don, doff, override | reliable, about 8 B each | on action | negligible |
+| Commands: use, pick up, drop, stabilize start and cancel, don, doff, override | reliable, about 8 B each | on action | negligible |
 
 That adds about 1 kbit/s to netcode's typical delta. `netcode-and-sessions` carries both groups
 since 2026-10-04; its redone check is 56 kbit/s typical and about 61 kbit/s in a full engagement,
@@ -616,11 +634,11 @@ Up, nothing changes: the input frame is the one netcode already sizes.
   step height, turn rates (section 3); ladder speeds and clip times (section 4); door and hatch
   times and the override hold (section 5; the interlock's 20 kPa is `life-support`'s
   `portals.interlock_max_dp_kpa`); item masses, hands and actions (section 6); trolley
-  forces and limits (6.1); HP thresholds, stabilize window, revive time and HP, field recovery
+  forces and limits (6.1); HP thresholds, the wounded speed, the vitals' fall, the stabilize hold, field recovery
   (section 7); bed rates (section 8); the breach pull and the smoke fog's visibility constant
   (section 9; the air's thresholds and rates are `life-support`'s `crew_effects`, reconciled
   2026-10-05); suit values (section 10); zero-gravity values (section 11); the lurch thresholds
-  as multiples of grip (section 12). Units in the keys (`walk_m_s`, `revive_hold_s`, `pull_m_s`).
+  as multiples of grip (section 12). Units in the keys (`walk_m_s`, `stabilize_hold_s`, `pull_m_s`).
   Unknown keys and non-finite values stop startup (CLAUDE.md 6.5).
 - `data/ships/tern/kit.json`: where items and lockers are, by compartment and bracket position:
   24 extinguisher brackets (two on the bridge, two in the main corridor, two in damage control,
@@ -641,7 +659,8 @@ An excerpt of `data/crew.json`:
   "ladder": { "up_m_s": 2.0, "down_m_s": 2.5, "mount_s": 0.15, "dismount_s": 0.15, "casualty_scale": 0.5 },
   "doors": { "sensor_m": 3.0, "door_open_s": 0.6, "door_close_s": 0.8, "close_delay_s": 2.0,
              "pressure_door_s": 2.0, "hatch_s": 1.0, "override_hold_s": 3.0 },
-  "health": { "max_hp": 100, "wounded_below_hp": 50, "stabilize_s": 120.0, "revive_hold_s": 5.0, "revive_hp": 25,
+  "health": { "max_hp": 100, "wounded_at_or_below_hp": 50, "wounded_speed_scale": 0.5, "incapacitated_below_hp": 20,
+              "vitals_fall_hp_s": 0.17, "stabilize_hold_s": 5.0, "bed_bring_round_s": 20.0, "bed_bring_round_hp": 25,
               "recover_hp_s": 0.2, "recover_to_hp": 50, "recover_after_s": 30.0, "bed_hp_s": 2.0, "bed_unpowered_hp_s": 0.5 },
   "air": { "pull_radius_m": 4.0, "pull_m_s": 3.0, "smoke_sight_constant": 3.0 }
 }
@@ -754,7 +773,7 @@ int16 quaternions.
 | Layer | Clips (seconds) |
 | --- | --- |
 | Locomotion (legs, blended by speed; playback scaled by speed so feet do not skate) | idle 2.0; walk 1.0 (one stride cycle covers 1.8 m); run 0.7; crouch idle 2.0; crouch walk 1.2; walk back 1.0; strafe left and right 1.0; limp 1.2; suited walk 1.2; turn in place 0.6 |
-| Full body | sit down 0.4; stand up 0.4; seated idle 3.0; console work 2.0 (loop); ladder on at the bottom 0.5, at the top 0.5; climb up 0.75 (two rungs); climb down 0.6; ladder off at the top 0.5, at the bottom 0.5; side hatch 1.5; stumble 0.5; knocked down 0.6; get up 1.0; fall downed 0.8; downed idle 3.0; revive (kneeling helper) 1.0 loop; revived get up 1.2; casualty pick up 1.5; casualty carry 1.0 loop; casualty put down 1.2; brace 0.3 and braced idle 2.0; float idle 3.0; kick off 0.4; hand over hand 0.8 loop; don suit 20.0 (four clips); doff 10.0 (two clips); onto a bed 0.8; bed idle 3.0; off a bed 0.8; push trolley 1.2 loop; repair 1.5 loop; patch 1.5 loop |
+| Full body | sit down 0.4; stand up 0.4; seated idle 3.0; console work 2.0 (loop); ladder on at the bottom 0.5, at the top 0.5; climb up 0.75 (two rungs); climb down 0.6; ladder off at the top 0.5, at the bottom 0.5; side hatch 1.5; stumble 0.5; knocked down 0.6; get up 1.0; fall incapacitated 0.8; incapacitated idle 3.0; stabilize (kneeling helper) 1.0 loop; casualty pick up 1.5; casualty carry 1.0 loop; casualty put down 1.2; brace 0.3 and braced idle 2.0; float idle 3.0; kick off 0.4; hand over hand 0.8 loop; don suit 20.0 (four clips); doff 10.0 (two clips); onto a bed 0.8; bed idle 3.0; off a bed 0.8; push trolley 1.2 loop; repair 1.5 loop; patch 1.5 loop |
 | Upper body (masked at the spine) | carry one-handed (pose); extinguisher spray 1.0 loop; use a panel 0.6; pick up 0.5; drop 0.4 |
 | Additive | cough 1.0; shiver 1.0; hypoxic sway 2.0 |
 | Procedural, on top | head and neck turn toward the look direction (+/-70 deg yaw, +/-40 deg pitch); ship-frames' lurch tilt on the camera only |
@@ -799,7 +818,7 @@ avatar 3,000 triangles, at most 48 bones; client resident memory 384 MB; 64 kbit
 | `power-grid` | The gravity generator's output; door motors; the medbay beds' load | Nothing it computes; it decides what loses power |
 | `weapons-and-shields` | When the trolley path applies (hoist down) and the hoist's hand winch; the breech actions | Pushing a trolley (section 6.1); the body at the breech |
 | `shuttle-bay-and-fighters` | Boarding (its step 1), the suited-pilot rule, the bay interlocks | Walk times to the bays (section 16); EVA movement (section 10) |
-| `bridge-stations` | Seat claim, release, relieve and swap; NPC posts; brace | The body: seat snap clip, downed state, brace threshold, walk speed |
+| `bridge-stations` | Seat claim, release, relieve and swap; NPC posts; brace | The body: seat snap clip, incapacitated state, brace threshold, walk speed |
 | `netcode-and-sessions` | Input frames, avatar snapshots, prediction and correction, commands | The crew status group and the felt residual (section 14) |
 | `reference-ship-tern` | The layout and its patches T1 and T2 | The speeds its question T5 waits for; the walk-time table (section 16) |
 | `engine-stack` | The Pi 5 budget, SDL3 input, the vertex skinning floor | This budget's spend (section 18) |
@@ -811,7 +830,7 @@ avatar 3,000 triangles, at most 48 bones; client resident memory 384 MB; 64 kbit
 | --- | --- | --- |
 | `MOVE_SPEED 0.6` per frame at 60 frames a second | About 3.6 m/s, counted in frames | Walk 1.8 m/s, run 4.0 m/s, in seconds, in data |
 | Axis-separated collision against a walkability grid | Bodies slid along grid edges | A capsule against convex brushes (`deck-pipeline`), the same query on server and client |
-| Revive at +8 a press, up only at full HP (13 presses) | A chore, done standing in the hazard | Hold 5 s, up at 25 HP; the medbay heals the rest; a 120 s window |
+| Revive at +8 a press, up only at full HP (13 presses) | A chore, done standing in the hazard | Below 20 HP: a medkit stabilizes in 5 s, a carry to the medbay brings them round (owner, 2026-10-09); 120 s of falling vitals |
 | All four bodies down loses the game | A good rule | Kept: every body aboard, NPC bodies included |
 | Station damage passed in full to its occupant | Sitting at a console was the dangerous thing | A struck console costs its operator 10 HP (`damage-control`'s default); hits injure by distance |
 | A burning room dealt 2 HP/s to everyone in it | Fire was a room-wide timer | Fire hurts in its burning volume (8 HP/s); smoke and heat hurt by their levels |
@@ -848,8 +867,8 @@ shots are in `docs/screenshots/mockups/`. The rest take the recommendation, reco
 | --- | --- | --- | --- | --- |
 | C1 | Does the bridge read at the right scale from a 1.65 m eye, with a 0.30 m body radius? The room is 14.0 x 11.0 x 3.0 m and the aft door 1.6 x 2.3 m (layout). | 1.65 m eye / a taller 1.75 m eye / a shorter 1.55 m eye | 1.65 m: an average adult's eye, and the 3.0 m ceilings read as a ship, not a hall | `bridge-walk-aft.png`, `bridge-captain-view.png` |
 | C2 | Walking by default with a held run, or running by default with a held walk? | Walk 1.8 m/s default / run 4.0 m/s default | Walk by default: the ship feels its size and a run is a decision. Recommendation taken (ask only with screenshots) | none |
-| C3 | Can a body die for good in a mission? | No: downed, critical, and a campaign injury / yes, after a critical timer | No permanent death: friends playing together should not lose a player to one bad fire. Recommendation taken (ask only with screenshots) | none |
-| C4 | Revive by hand in 5 s at 25 HP, or with a medkit only? | By hand / medkit only / both (medkit faster) | By hand: no item to fetch while a friend is down. Recommendation taken (ask only with screenshots) | none |
+| C3 | Can a body die for good in a mission? | No: incapacitated, critical, and a campaign injury / yes, after a critical timer | No permanent death: friends playing together should not lose a player to one bad fire. Recommendation taken (ask only with screenshots) | none |
+| C4 | Revive by hand in 5 s at 25 HP, or with a medkit only? | By hand / medkit only / both (medkit faster) | Superseded by the owner, 2026-10-09: no revive in the field at all; a medkit stabilizes and the medbay brings them round (section 7) | none |
 | C5 | Jumping? | None / a small hop | A small hop (section 3): the owner, 2026-10-08, "bring back jumping" | A small hop |
 | C6 | EVA outside the hull: a magnetic-boot walk on a tether, or free flight with a thruster pack? | Boots and tether / thruster pack / both | Boots and tether: simpler to build, and the ship's motion stays a danger that helm controls. Recommendation taken (ask only with screenshots) | none |
 | C7 | In zero gravity, may a body roll freely (decks upside down on screen)? | Keep "up" as the ship's +Y / free roll | Keep "up": readable and kind to stomachs. Recommendation taken (ask only with screenshots) | none |

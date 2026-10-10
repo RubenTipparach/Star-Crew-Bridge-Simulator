@@ -72,9 +72,9 @@ a player SHALL set 10-120%, and power the grid cannot take SHALL heat the blanke
 - **THEN** the automatic throttle settles near 56% instead of 100%, and the blanket stays below its
   warning temperature
 
-### Requirement: Scram has five causes and a hands-on reset
+### Requirement: Scram has four causes and a hands-on reset
 The reactor SHALL scram when the coolant loop exceeds 380 K for 2 s, the blanket exceeds 820 K,
-coolant flow is under 30% for 5 s with the throttle above 20%, neither auxiliary train has 80% of
+neither auxiliary train has 80% of
 its supply for 2 s, or its integrity is under 25%. Only the reactor panel in engineering SHALL reset
 a scram, by a 3 s hold, refused with its reason while the loop is at or above 350 K, the blanket at
 or above 700 K, or the reactor is damaged. After a reset the reactor SHALL ignite for 20 s on 8 MW,

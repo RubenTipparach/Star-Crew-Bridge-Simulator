@@ -62,4 +62,7 @@
 - [x] 7.6 The walk world exported with the deck (design section 13a): the deck plan's collision soup and walk entities in `MOCKUP_EXPORT_DECK`, carried by `export_deck.mjs`, packed by `deckc` into deck version 2, read with every range checked.
 - [x] 7.7 `sc-core::walk` on Rapier's character controller with `data/crew/walk.json` (read by `shipwalk.js` too); tests that read as sentences.
 - [x] 7.8 `sc-client` walks: on its feet on the bridge, F to fly, a scripted headless walk with shots in `docs/screenshots/engine/`.
+- [x] 7.9 The lift in the engine (design 13b): the car as mover 1, `sc-core::lift`, E and Q in the car and E at a landing, landing walls that follow the car; no frames in a lift's shaft. The walk test rides it A to C and back (`docs/screenshots/engine/lift-*.png`). The on-screen line naming E and Q waits for the UI layer (`lobby` 2.2).
+- [x] 7.10 The outside in the engine (13b): the sky (stars, sun, planet), the dock, the viewscreen's bow camera (`docs/screenshots/engine/bridge-viewscreen-*.png`, `bridge-port-window-*.png`).
+- [x] 7.11 The console faces in the engine (13b): exported with the screens' atlas, appended to the texture array by `deckc` (9 layers).
 
