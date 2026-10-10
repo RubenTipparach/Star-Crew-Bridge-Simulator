@@ -35,7 +35,7 @@
   const CELL_KEYS = {
     owned_by: "string", note: "?string", tuned: "?string", size_m: "number", rise_s: "number", ignite_kw: "number", out_below_kw: "number",
     agent_s: "number", smoulder_s: "number", dose_cooling_per_s: "number", neighbour_weights: "object", layer_preheat_k: "pair",
-    bare_min_mj_per_m2: "number", aim_height_m: "number", flame_height_m: "pair", smoke_layer_ppm: "number",
+    bare_min_mj_per_m2: "number", aim_height_m: "number", flame_height_m: "pair", flame_on_props_below_m: "number", smoke_layer_ppm: "number",
     classes: "object", props: "object", fixtures: "object",
   };
   const WEIGHT_KEYS = ["edge", "corner", "next_but_one"];
@@ -372,5 +372,91 @@
     };
   }
 
-  root.FireSpread = { version: 1, create, placements, footprint, validate, UNBURNT, BURNING, KNOCKED, BURNT, OUT };
+  // ------------------------------------------------------------------ outbreaks (design 6b)
+  const OB_KEYS = { owned_by: "string", note: "?string", first_s: "number", interval_s: "pair", max_burning: "number", points: "array" };
+  const OB_POINT_KEYS = ["id", "room", "at_m", "prop", "requires_damaged", "cause"];
+  /** Check fire.outbreaks against the layout (rooms) and the placements (a spot by prop needs one); throws on the first fault. */
+  function validateOutbreaks(L, FI, items) {
+    const O = FI.outbreaks, f = (k, what) => fail("fire.outbreaks" + (k ? "." + k : ""), what + " (design 6b)");
+    if (!O || typeof O !== "object") f("", "missing");
+    for (const k of Object.keys(O)) if (!(k in OB_KEYS)) f(k, "unknown key");
+    for (const [k, kind] of Object.entries(OB_KEYS)) {
+      const v = O[k];
+      if (kind[0] === "?") { if (v !== undefined && typeof v !== "string") f(k, "not text"); continue; }
+      if (v === undefined) f(k, "missing");
+      if (kind === "number" && !(finite(v) && v >= 0)) f(k, "not a number of zero or more");
+      if (kind === "pair" && !(Array.isArray(v) && v.length === 2 && v.every(finite) && v[0] > 0 && v[1] >= v[0])) f(k, "not [low, high] above zero");
+      if (kind === "array" && !(Array.isArray(v) && v.length)) f(k, "not a list of spots");
+    }
+    const ids = new Set(), rooms = new Set(L.compartments.map((c) => c.id));
+    O.points.forEach((p, i) => {
+      const at = `points[${i}]`;
+      for (const k of Object.keys(p)) if (OB_POINT_KEYS.indexOf(k) < 0) f(`${at}.${k}`, "unknown key");
+      if (typeof p.id !== "string" || ids.has(p.id)) f(`${at}.id`, "missing or used twice");
+      ids.add(p.id);
+      if (!rooms.has(p.room)) f(`${at}.room`, `names no compartment (${p.room})`);
+      if ((p.at_m === undefined) === (p.prop === undefined)) f(at, "give at_m or prop, one of them");
+      if (p.at_m !== undefined && !(Array.isArray(p.at_m) && p.at_m.length === 2 && p.at_m.every(finite))) f(`${at}.at_m`, "not [x, z]");
+      if (p.prop !== undefined && !(items || []).some((it) => it.room === p.room && it.prop === p.prop)) f(`${at}.prop`, `no ${p.prop} is placed in ${p.room}`);
+      if (p.requires_damaged !== undefined && typeof p.requires_damaged !== "string") f(`${at}.requires_damaged`, "not a station id");
+    });
+    return true;
+  }
+  /** FNV-1a 32 of text: the seed of a purpose (CLAUDE.md 6.4). */
+  function fnv(text) { let h = 0x811c9dc5; for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h >>> 0; }
+  /** mulberry32: a small seeded generator, 0-1. */
+  function rngOf(seed) { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  /**
+   * When and where fires break out on their own (design 6b). L: the layout; FI: atmosphere.json fire; items:
+   * placements(); seed: the session seed. Returns { points, step(t_s, can), force(t_s, can) }: points are the spots
+   * resolved to { id, room, x, z, requires_damaged, cause }; step returns the spot that catches at sim time t_s (seconds)
+   * or null; force breaks the next one out now, whatever the timer says; start(t_s, id) breaks that one out now. can: { burning(roomId) (an outbreak fire there
+   * still burns), damaged(stationId), fuel(point) (its cell can still catch) }. One draw from the generator per interval
+   * and per spot, in a fixed order, so the same seed breaks out the same fires (no Math.random).
+   */
+  function outbreaks(L, FI, items, seed) {
+    validateOutbreaks(L, FI, items);
+    const O = FI.outbreaks;
+    const points = O.points.map((p) => {
+      let x, z;
+      if (p.at_m) [x, z] = p.at_m;
+      else {
+        const it = items.find((q) => q.room === p.room && q.prop === p.prop);
+        x = it.poly.reduce((s, c) => s + c[0], 0) / it.poly.length; z = it.poly.reduce((s, c) => s + c[1], 0) / it.poly.length;
+      }
+      return { id: p.id, room: p.room, x, z, requires_damaged: p.requires_damaged || null, cause: p.cause || "" };
+    });
+    const rand = rngOf(fnv(String(seed) + "|outbreak"));
+    const draw = () => O.interval_s[0] + (O.interval_s[1] - O.interval_s[0]) * rand();
+    let waitUntil = O.first_s, last = null;
+    const active = [];   // spots whose fire still burns
+    function eligible(can) {
+      return points.filter((p) => p.id !== (last && last.id) && !active.includes(p) && !can.burning(p.room) &&
+        (!p.requires_damaged || can.damaged(p.requires_damaged)) && (!can.fuel || can.fuel(p)));
+    }
+    function catchOne(t, can) {
+      const list = eligible(can);
+      if (!list.length) return null;
+      const p = list[Math.min(list.length - 1, Math.floor(rand() * list.length))];
+      last = p; active.push(p);
+      waitUntil = active.length >= O.max_burning ? Infinity : t + draw();
+      return p;
+    }
+    function step(t, can) {
+      for (let i = active.length - 1; i >= 0; i--) if (!can.burning(active[i].room)) { active.splice(i, 1); waitUntil = Math.min(waitUntil, t + draw()); }
+      if (active.length >= O.max_burning || t < waitUntil) return null;
+      return catchOne(t, can);
+    }
+    /** Spot id catches now (a scenario, a shot), through the same bookkeeping as one the timer chose. */
+    function start(t, id) {
+      const p = points.find((q) => q.id === id);
+      if (!p) throw new Error(`firespread: no outbreak spot ${id}`);
+      last = p; if (!active.includes(p)) active.push(p);
+      waitUntil = active.length >= O.max_burning ? Infinity : t + draw();
+      return p;
+    }
+    return { points, step, start, force: (t, can) => catchOne(t, can), active: () => active.slice(), next_s: () => waitUntil };
+  }
+
+  root.FireSpread = { version: 1, create, placements, footprint, validate, validateOutbreaks, outbreaks, UNBURNT, BURNING, KNOCKED, BURNT, OUT };
 })(typeof window !== "undefined" ? window : globalThis);

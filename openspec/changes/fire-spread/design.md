@@ -67,7 +67,11 @@ Per step (`dt`, the room model's step):
 ## 3. What a player sees
 
 - **Flames** stand on burning cells, as tall as their `q` (0.3 m at ignition, 1.8 m at peak), leaning with the
-  room's flow toward an open door. Knocked-down cells smoulder (embers, no flame); burnt-out cells are charred.
+  room's flow toward an open door. A flame on a cell under something low (a counter, a desk, a table: its top no higher
+  than `fire.cells.flame_on_props_below_m`, 1.2 m) stands on its top, so a fire at the galley burns on the counter, not
+  inside it (2026-10-10, when the deck plan's outbreaks hid their first flames inside the props); taller things (bunks,
+  lockers, machinery) keep the flame on the floor in front of them. It changes the picture only: the cells still do
+  not see height. Knocked-down cells smoulder (embers, no flame); burnt-out cells are charred.
 - **The hot layer and smoke** gather under the ceiling and come down as the room's smoke rises: the layer's depth
   is the room's smoke over its volume, so a player standing up in a smoky room is in the dark, and crouching keeps
   their eyes under it. Visibility falls with the smoke, the same number that impairs the crew (`life-support`).
@@ -190,7 +194,7 @@ click on the board. This adds the fire nobody started: a fault at a place that i
   | Spot | Room | Where | Cause |
   | --- | --- | --- | --- |
   | `ob_bridge_tactical` | bridge | Under tactical's desk | Its damaged wiring: only while tactical is damaged or disabled (`repairs-on-deck` 3f) |
-  | `ob_mess_galley` | mess | The galley counter | Cooking |
+  | `ob_mess_galley` | mess | The deck in front of the galley counter | Cooking: burning fat spilled down the counter's front |
   | `ob_quarters_bunk` | quarters | A bunk | A reading lamp's frayed lead |
   | `ob_port_turret_panel` | port turret room | The turret's power panel | An electrical fault |
 
@@ -215,8 +219,14 @@ The rule that picks the spot and the time is `FireSpread.outbreaks` (one impleme
 harness); the flames, the spray, the safety points and their restock are `docs/mockups/lib/firefight.js`, moved there
 from `fire.html` so the two pages share them (CLAUDE.md 6.1).
 
-Recommendation taken (ask only with screenshots): the four spots, the 45-90 s interval, one outbreak at a time, and
-the bridge spot only while tactical is damaged.
+The deck plan runs the air over its patched layout (`command-suite`, `deck-access`, `armory`), whose stair towers and
+lift shaft are compartments of kind `trunk`. `atmosphere.json`'s ventilation listed no air changes for that kind, so
+their flow was not a number and it spread to every room through the open doors on the first step; a trunk now takes a
+corridor's 8 air changes an hour (`ventilation.air_changes_per_hour.trunk`). The base layout has no trunk, so
+`fire.html` and the harness are unchanged.
+
+Recommendation taken (ask only with screenshots): the four spots, the 45-90 s interval, one outbreak at a time, the
+bridge spot only while tactical is damaged, and a trunk ventilated as a corridor.
 
 ## 7. The Pi 5 budget
 

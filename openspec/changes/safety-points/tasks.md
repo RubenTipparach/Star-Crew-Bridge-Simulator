@@ -11,7 +11,7 @@
 
 - [ ] 2.1 `tools/blender/build_safety_props.py`: extinguisher, bracket, cabinet, sign within budget; glb and manifest.
 - [ ] 2.2 shipkit or propkit draws the points; `deck-plan.html` and `fire.html` show them; shots in `docs/screenshots/`.
-- [ ] 2.3 The mockups' points and their restock (3a) in one place, `docs/mockups/lib/firefight.js`, used by `fire.html` and `deck-plan.html`; shots.
+- [x] 2.3 The mockups' points and their restock (3a) in one place, `docs/mockups/lib/firefight.js`, used by `fire.html` and `deck-plan.html`; shots.
 
 ## 3. Engine
 

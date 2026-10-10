@@ -137,7 +137,7 @@
 <!-- INLINE data:tern/power END -->
 <!-- INLINE data:tern/atmosphere BEGIN -->
 <script id="ship-data-atmosphere" type="application/json">
-{"schema":"starcrew.ship-atmosphere/1","status":"PROPOSED by openspec/changes/life-support, with the fire block proposed by openspec/changes/damage-control (2026-10-04). No engine code reads this yet; the systems mockup does. Numbers are tuning proposals, not decisions.","ship":"tern","units":{"amount":"mol","pressure":"kPa unless the key says Pa","temperature":"K (kelvin)","volume":"m^3","area":"m^2","flow":"m^3/s for volume flow, mol/s for amount flow","power":"MW, or kW/W where the key says so","energy":"MJ, or J where the key says so"},"gas":{"gas_constant_j_per_mol_k":8.314,"cv_j_per_mol_k":20.79,"cp_j_per_mol_k":29.1,"gamma":1.4,"species":["o2","n2","co2","smoke"],"molar_mass_kg_per_mol":{"o2":0.032,"n2":0.028,"co2":0.044,"smoke":0.029}},"standard_air":{"pressure_kpa":101.3,"temperature_k":294.15,"mole_fraction":{"o2":0.209,"n2":0.7906,"co2":0.0004,"smoke":0.0}},"graph_additions":{"note":"Proposed additions to the one compartment graph. On acceptance they move into layout.json (a duct node and vent portals); until then the atmosphere step reads them from here.","duct":{"id":"duct","name":"Air duct trunk and plenum","volume_m3":40.0,"center_m":[3.0,-0.8,9.0]},"vent_area_m2_per_m3":0.0006,"vent_area_min_m2":0.02,"vent_area_max_m2":0.6,"overboard_dump":{"id":"duct_dump","area_m2":0.5,"open":false}},"portals":{"discharge_coefficient":{"door":0.65,"pressure_door":0.65,"hatch":0.62,"ladder":0.62,"hoist":0.62,"bay_door":0.7,"window":0.6,"breach":0.6,"vent":0.6,"dump":0.6,"valve":0.6},"default_open":{"door":false,"pressure_door":false,"hatch":false,"ladder":false,"hoist":false,"bay_door":false,"window":false},"default_open_note":"Doors, hatches and ladder hatches are closed unless a crew member is passing (they open on approach) or the damage control board holds them open: every compartment is its own pressure boundary.","move_time_s":{"door":0.6,"pressure_door":2.0,"hatch":1.0,"ladder":1.0,"hoist":2.0,"bay_door":4.0,"window":0.0,"vent":2.0,"dump":2.0,"valve":1.0},"move_time_override_s":{"p_hangar_pad":8.0},"close_time_s":{"door":0.8},"move_time_note":"Opening times; closing takes close_time_s where it is given, else the same time. Door, pressure door, hatch and ladder hatch times are crew-on-deck's (design section 5: doors 0.6 s open and 0.8 s close, pressure doors 2.0 s, hatches 1.0 s); the hoist, bay doors, vents, dump and valves are this file's. Reconciled 2026-10-05: crew-on-deck owns this.","auto_close_below_kpa":85.0,"auto_close_fall_kpa_per_s":1.0,"auto_close_kinds":["door","pressure_door","hatch","ladder","hoist"],"interlock_max_dp_kpa":20.0},"flow":{"linear_below_pa":20.0,"mixing_m3_s_per_m2":0.08,"buoyant_exchange_coefficient":0.22,"gravity_m_s2":9.81,"mixing_max_fraction":0.25,"min_pressure_pa":1.0},"thermal":{"fittings_j_per_k_m3":4000.0,"hull_u_w_per_m2_k":0.4,"hull_skin_k":250.0,"bulkhead_u_w_per_m2_k":5.0,"adjacency_gap_m":0.6,"initial_k":294.15},"ventilation":{"air_changes_per_hour":{"room":10.0,"corridor":8.0,"bay":4.0,"crawlspace":6.0,"airlock":4.0,"pod":20.0},"air_changes_override":{"engineering":15.0},"damper_close_below_kpa":85.0,"damper_trip_fraction_per_s":0.0002,"damper_reset_kpa":3.0,"damper_retry_s":30.0,"damper_falling_pa_per_s":10.0,"auto_repress_above_kpa":10.0,"damper_close_smoke_ppm":2000.0,"duct_low_kpa":85.0},"plant":{"o2_generator":{"max_mol_s":1.25,"energy_mj_per_mol":0.8,"water_kg_per_mol":0.036,"target_po2_kpa":21.2,"band_kpa":1.0},"co2_scrubbers":{"throughput_m3_s":4.0,"co2_efficiency":0.8,"smoke_efficiency":0.9,"max_mol_s":0.6},"thermal_control":{"supply_setpoint_k":293.15,"cooling_max_mw":1.2,"heating_max_mw":0.6,"pump_mw":0.15},"makeup":{"target_kpa":101.3,"start_below_kpa":100.3,"max_mol_s":40.0,"stop_if_duct_below_kpa":60.0}},"stores":[{"id":"reserve_n2","name":"Reserve nitrogen bottles","compartment":"cargo","species":"n2","mol":75000.0,"max_mol":75000.0},{"id":"reserve_o2","name":"Reserve oxygen bottles","compartment":"cargo","species":"o2","mol":20000.0,"max_mol":20000.0},{"id":"bay_receiver","name":"Bay air receiver","compartment":"hangar","volume_m3":60.0,"max_kpa":3000.0,"temperature_k":294.15,"initial_kpa":101.3}],"bay_pumps":{"system":"hangar_pumps","serves":["hangar","launch_bay_p","launch_bay_s"],"displacement_m3_s":24.0,"efficiency":0.6,"base_mw":0.1,"stop_kpa":5.0,"vent_valve_m2":0.1,"repress_max_mol_s":600.0,"interlock_unsuited_crew":true},"airlock":{"compartment":"airlock","inner":"p_airlock_inner","outer":"p_airlock_outer","pump_m3_s":2.0,"pump_into":"cargo","efficiency":0.6,"stop_kpa":5.0,"equalize_valve_m2":0.02},"metabolism":{"o2_mol_s_rest":0.000304,"co2_mol_s_rest":0.000264,"work_multiplier":2.5,"heat_w_rest":100.0,"heat_w_work":300.0},"crew_effects":{"hypoxia":{"impaired_below_po2_kpa":16.0,"tuc_table_po2_kpa_s":[[14.6,3600.0],[12.0,1800.0],[10.6,1200.0],[8.9,300.0],[7.9,180.0],[6.9,150.0],[6.3,60.0],[5.0,30.0],[3.9,15.0],[3.4,9.0],[0.0,9.0]],"recover_per_s":0.0333,"death_below_po2_kpa":10.6,"death_after_unconscious_s":240.0,"harm_below_po2_kpa":10.6,"harm_full_po2_kpa":6.3,"harm_full_hp_per_s":2.0,"harm_note":"Proposed by openspec/changes/fire-spread design 6a: health lost as oxygen falls, 0 HP/s at harm_below_po2_kpa rising in a straight line to harm_full_hp_per_s at harm_full_po2_kpa and below. The dose toward unconsciousness above is unchanged."},"hypercapnia":{"impaired_above_pco2_kpa":3.0,"tuc_table_pco2_kpa_s":[[5.0,1800.0],[7.0,300.0],[10.0,60.0],[15.0,20.0]],"recover_per_s":0.0167,"death_above_pco2_kpa":10.0,"death_after_unconscious_s":300.0},"smoke":{"incapacitating_ppm_min":30000.0,"lethal_fed":2.5,"visibility_k_per_mole_fraction":2000.0},"heat":{"impaired_above_k":318.15,"harm_above_k":333.15,"harm_hp_per_s_per_k":0.05,"cold_impaired_below_k":278.15,"cold_harm_below_k":278.15,"cold_harm_hp_per_s_per_k":0.04,"cold_note":"Proposed by openspec/changes/fire-spread design 6a: 0 HP/s above 5 C, rising 0.04 HP/s per kelvin below it (1.0 HP/s at -20 C). Replaces the flat 0.2 HP/s below -20 C."},"pressure":{"impaired_below_kpa":50.0,"armstrong_kpa":6.3,"vacuum_death_s":90.0,"knockdown_drop_kpa_in_1s":50.0,"knockdown_hp":10.0}},"fire":{"owned_by":"openspec/changes/damage-control","mj_per_mol_o2":0.419,"co2_mol_per_mol_o2":0.67,"smoke_mol_per_mol_o2_ventilated":0.02,"smoke_mol_per_mol_o2_starved":0.17,"starved_below_o2_fraction":0.15,"growth_alpha_kw_per_s2":0.047,"hrr_max_kw_per_m2":250.0,"fuel_mj_per_m2_default":150.0,"fuel_mj_per_m2":{"magazine":400.0,"cargo":300.0,"quarters":250.0,"mess":250.0,"engineering":120.0,"hangar":100.0,"drive":120.0,"switchboard":200.0,"computer_core":200.0},"extinct_o2_fraction":0.13,"full_o2_fraction":0.18,"extinct_kpa":20.0,"full_kpa":60.0,"seed_kw":50.0,"autoignition_k":573.15,"decay_time_s":10.0,"out_below_kw":5.0,"system_damage_above_k":423.15,"system_damage_pct_per_s_per_k":0.01,"reactor_damage_factor":0.2,"extinguisher":{"discharge_s":15.0,"hrr_cut_kw_per_s":60.0,"locker":"damage_control","locker_count":6,"refill_s":30.0,"agent_kg":6.0,"cone_deg":30.0,"reach_m":3.0},"suppression":{"inert_gas":{"compartments":["magazine","switchboard","computer_core","shield_room","life_support"],"design_o2_fraction":0.125,"time_s":60.0,"soak_s":600.0,"store":"reserve_n2"},"water_mist":{"compartments":["engineering","hangar","drive"],"hrr_cut_kw_per_s":100.0,"cooling_mw":1.0,"duration_s":60.0,"discharges":2,"auto_above_kw":1000.0,"confirm_s":10.0},"venting":{"owned_by":"openspec/changes/fire-spread","note":"Design 6a: the captain's guarded vent. Firing shuts the room's doors and damper and warns for warning_s (klaxon, red strobe; the doors open from inside on a press), then opens the dump. arm_window_s is bridge-stations 8.5's arm-then-fire window.","warning_s":5.0,"arm_window_s":3.0}},"cells":{"owned_by":"openspec/changes/fire-spread","note":"Design 1-2 and 5: every room's floor in square cells of size_m on the deck's x and z, each with the fuel class of the prop that covers its centre (props, fixtures), else bare. Bare cells take the room's fuel_mj_per_m2 the furnished ones leave, never below bare_min_mj_per_m2. A burning cell rises toward peak x f_O2 with time constant rise_s; an unburnt or knocked-down cell gathers dose (seconds of full exposure) from burning neighbours within two cells (q over the neighbour's peak, times neighbour_weights) and from the hot layer (0 at layer_preheat_k[0] rising to 1 at layer_preheat_k[1]), cooling by dose_cooling_per_s when nothing feeds it, and ignites at its class's dose_s at ignite_kw. A cell below out_below_kw goes out with agent_s of agent on it; with no burning neighbour for smoulder_s after that it is out and cold, and only a burning neighbour or a flashover lights it again (the hot layer preheats only unburnt cells, and only while something in the room burns). aim_height_m is how high over the floor a cone reaches a cell (the flames' base). flame_height_m is the flame drawn at ignition and at peak; smoke_layer_ppm the smoke a hot layer holds, which sets how far it reaches down.","tuned":"Dose figures and the hot layer's preheat range tuned by tools/mockups/fire_cases.mjs on 2026-10-09 so the quarters, door shut, 50 kW seed on a bunk passes 1 MW at 113 s (design 4): every class's dose doubled from the design's first figures, bedding 36 s (not 24) and bare deck 110 s (not 140), and the layer's preheat from 50 C to 180 C (not 100 C to 300 C). See openspec/changes/fire-spread/fire-cases.md.","size_m":0.5,"rise_s":10.0,"ignite_kw":5.0,"out_below_kw":1.0,"agent_s":20.0,"smoulder_s":30.0,"dose_cooling_per_s":0.02,"neighbour_weights":{"edge":1.0,"corner":0.7,"next_but_one":0.35},"layer_preheat_k":[323.15,453.15],"bare_min_mj_per_m2":20.0,"aim_height_m":0.2,"flame_height_m":[0.3,1.8],"smoke_layer_ppm":1000.0,"classes":{"bedding":{"fuel_mj_per_m2":500.0,"dose_s":36.0,"peak_kw_per_m2":250.0},"furniture":{"fuel_mj_per_m2":350.0,"dose_s":50.0,"peak_kw_per_m2":250.0},"cables":{"fuel_mj_per_m2":300.0,"dose_s":60.0,"peak_kw_per_m2":250.0},"stores":{"fuel_mj_per_m2":400.0,"dose_s":70.0,"peak_kw_per_m2":250.0},"machinery":{"fuel_mj_per_m2":150.0,"dose_s":120.0,"peak_kw_per_m2":250.0},"bare":{"dose_s":110.0,"peak_kw_per_m2":250.0}},"props":{"bunk":"bedding","med_bed":"bedding","mess_table":"furniture","galley_counter":"furniture","locker_bank":"furniture","workbench":"furniture","tool_board":"furniture","battery_bank":"machinery","power_converter":"machinery","ls_air_handler":"machinery","ls_scrubbers":"machinery","local_panel":"cables"},"fixtures":{"locker":"locker_bank"}}}}
+{"schema":"starcrew.ship-atmosphere/1","status":"PROPOSED by openspec/changes/life-support, with the fire block proposed by openspec/changes/damage-control (2026-10-04). No engine code reads this yet; the systems mockup does. Numbers are tuning proposals, not decisions.","ship":"tern","units":{"amount":"mol","pressure":"kPa unless the key says Pa","temperature":"K (kelvin)","volume":"m^3","area":"m^2","flow":"m^3/s for volume flow, mol/s for amount flow","power":"MW, or kW/W where the key says so","energy":"MJ, or J where the key says so"},"gas":{"gas_constant_j_per_mol_k":8.314,"cv_j_per_mol_k":20.79,"cp_j_per_mol_k":29.1,"gamma":1.4,"species":["o2","n2","co2","smoke"],"molar_mass_kg_per_mol":{"o2":0.032,"n2":0.028,"co2":0.044,"smoke":0.029}},"standard_air":{"pressure_kpa":101.3,"temperature_k":294.15,"mole_fraction":{"o2":0.209,"n2":0.7906,"co2":0.0004,"smoke":0.0}},"graph_additions":{"note":"Proposed additions to the one compartment graph. On acceptance they move into layout.json (a duct node and vent portals); until then the atmosphere step reads them from here.","duct":{"id":"duct","name":"Air duct trunk and plenum","volume_m3":40.0,"center_m":[3.0,-0.8,9.0]},"vent_area_m2_per_m3":0.0006,"vent_area_min_m2":0.02,"vent_area_max_m2":0.6,"overboard_dump":{"id":"duct_dump","area_m2":0.5,"open":false}},"portals":{"discharge_coefficient":{"door":0.65,"pressure_door":0.65,"hatch":0.62,"ladder":0.62,"hoist":0.62,"bay_door":0.7,"window":0.6,"breach":0.6,"vent":0.6,"dump":0.6,"valve":0.6},"default_open":{"door":false,"pressure_door":false,"hatch":false,"ladder":false,"hoist":false,"bay_door":false,"window":false},"default_open_note":"Doors, hatches and ladder hatches are closed unless a crew member is passing (they open on approach) or the damage control board holds them open: every compartment is its own pressure boundary.","move_time_s":{"door":0.6,"pressure_door":2.0,"hatch":1.0,"ladder":1.0,"hoist":2.0,"bay_door":4.0,"window":0.0,"vent":2.0,"dump":2.0,"valve":1.0},"move_time_override_s":{"p_hangar_pad":8.0},"close_time_s":{"door":0.8},"move_time_note":"Opening times; closing takes close_time_s where it is given, else the same time. Door, pressure door, hatch and ladder hatch times are crew-on-deck's (design section 5: doors 0.6 s open and 0.8 s close, pressure doors 2.0 s, hatches 1.0 s); the hoist, bay doors, vents, dump and valves are this file's. Reconciled 2026-10-05: crew-on-deck owns this.","auto_close_below_kpa":85.0,"auto_close_fall_kpa_per_s":1.0,"auto_close_kinds":["door","pressure_door","hatch","ladder","hoist"],"interlock_max_dp_kpa":20.0},"flow":{"linear_below_pa":20.0,"mixing_m3_s_per_m2":0.08,"buoyant_exchange_coefficient":0.22,"gravity_m_s2":9.81,"mixing_max_fraction":0.25,"min_pressure_pa":1.0},"thermal":{"fittings_j_per_k_m3":4000.0,"hull_u_w_per_m2_k":0.4,"hull_skin_k":250.0,"bulkhead_u_w_per_m2_k":5.0,"adjacency_gap_m":0.6,"initial_k":294.15},"ventilation":{"air_changes_per_hour":{"room":10.0,"corridor":8.0,"trunk":8.0,"bay":4.0,"crawlspace":6.0,"airlock":4.0,"pod":20.0},"air_changes_override":{"engineering":15.0},"damper_close_below_kpa":85.0,"damper_trip_fraction_per_s":0.0002,"damper_reset_kpa":3.0,"damper_retry_s":30.0,"damper_falling_pa_per_s":10.0,"auto_repress_above_kpa":10.0,"damper_close_smoke_ppm":2000.0,"duct_low_kpa":85.0},"plant":{"o2_generator":{"max_mol_s":1.25,"energy_mj_per_mol":0.8,"water_kg_per_mol":0.036,"target_po2_kpa":21.2,"band_kpa":1.0},"co2_scrubbers":{"throughput_m3_s":4.0,"co2_efficiency":0.8,"smoke_efficiency":0.9,"max_mol_s":0.6},"thermal_control":{"supply_setpoint_k":293.15,"cooling_max_mw":1.2,"heating_max_mw":0.6,"pump_mw":0.15},"makeup":{"target_kpa":101.3,"start_below_kpa":100.3,"max_mol_s":40.0,"stop_if_duct_below_kpa":60.0}},"stores":[{"id":"reserve_n2","name":"Reserve nitrogen bottles","compartment":"cargo","species":"n2","mol":75000.0,"max_mol":75000.0},{"id":"reserve_o2","name":"Reserve oxygen bottles","compartment":"cargo","species":"o2","mol":20000.0,"max_mol":20000.0},{"id":"bay_receiver","name":"Bay air receiver","compartment":"hangar","volume_m3":60.0,"max_kpa":3000.0,"temperature_k":294.15,"initial_kpa":101.3}],"bay_pumps":{"system":"hangar_pumps","serves":["hangar","launch_bay_p","launch_bay_s"],"displacement_m3_s":24.0,"efficiency":0.6,"base_mw":0.1,"stop_kpa":5.0,"vent_valve_m2":0.1,"repress_max_mol_s":600.0,"interlock_unsuited_crew":true},"airlock":{"compartment":"airlock","inner":"p_airlock_inner","outer":"p_airlock_outer","pump_m3_s":2.0,"pump_into":"cargo","efficiency":0.6,"stop_kpa":5.0,"equalize_valve_m2":0.02},"metabolism":{"o2_mol_s_rest":0.000304,"co2_mol_s_rest":0.000264,"work_multiplier":2.5,"heat_w_rest":100.0,"heat_w_work":300.0},"crew_effects":{"hypoxia":{"impaired_below_po2_kpa":16.0,"tuc_table_po2_kpa_s":[[14.6,3600.0],[12.0,1800.0],[10.6,1200.0],[8.9,300.0],[7.9,180.0],[6.9,150.0],[6.3,60.0],[5.0,30.0],[3.9,15.0],[3.4,9.0],[0.0,9.0]],"recover_per_s":0.0333,"death_below_po2_kpa":10.6,"death_after_unconscious_s":240.0,"harm_below_po2_kpa":10.6,"harm_full_po2_kpa":6.3,"harm_full_hp_per_s":2.0,"harm_note":"Proposed by openspec/changes/fire-spread design 6a: health lost as oxygen falls, 0 HP/s at harm_below_po2_kpa rising in a straight line to harm_full_hp_per_s at harm_full_po2_kpa and below. The dose toward unconsciousness above is unchanged."},"hypercapnia":{"impaired_above_pco2_kpa":3.0,"tuc_table_pco2_kpa_s":[[5.0,1800.0],[7.0,300.0],[10.0,60.0],[15.0,20.0]],"recover_per_s":0.0167,"death_above_pco2_kpa":10.0,"death_after_unconscious_s":300.0},"smoke":{"incapacitating_ppm_min":30000.0,"lethal_fed":2.5,"visibility_k_per_mole_fraction":2000.0},"heat":{"impaired_above_k":318.15,"harm_above_k":333.15,"harm_hp_per_s_per_k":0.05,"cold_impaired_below_k":278.15,"cold_harm_below_k":278.15,"cold_harm_hp_per_s_per_k":0.04,"cold_note":"Proposed by openspec/changes/fire-spread design 6a: 0 HP/s above 5 C, rising 0.04 HP/s per kelvin below it (1.0 HP/s at -20 C). Replaces the flat 0.2 HP/s below -20 C."},"pressure":{"impaired_below_kpa":50.0,"armstrong_kpa":6.3,"vacuum_death_s":90.0,"knockdown_drop_kpa_in_1s":50.0,"knockdown_hp":10.0}},"fire":{"owned_by":"openspec/changes/damage-control","mj_per_mol_o2":0.419,"co2_mol_per_mol_o2":0.67,"smoke_mol_per_mol_o2_ventilated":0.02,"smoke_mol_per_mol_o2_starved":0.17,"starved_below_o2_fraction":0.15,"growth_alpha_kw_per_s2":0.047,"hrr_max_kw_per_m2":250.0,"fuel_mj_per_m2_default":150.0,"fuel_mj_per_m2":{"magazine":400.0,"cargo":300.0,"quarters":250.0,"mess":250.0,"engineering":120.0,"hangar":100.0,"drive":120.0,"switchboard":200.0,"computer_core":200.0},"extinct_o2_fraction":0.13,"full_o2_fraction":0.18,"extinct_kpa":20.0,"full_kpa":60.0,"seed_kw":50.0,"autoignition_k":573.15,"decay_time_s":10.0,"out_below_kw":5.0,"system_damage_above_k":423.15,"system_damage_pct_per_s_per_k":0.01,"reactor_damage_factor":0.2,"extinguisher":{"discharge_s":15.0,"hrr_cut_kw_per_s":60.0,"locker":"damage_control","locker_count":6,"refill_s":30.0,"agent_kg":6.0,"cone_deg":30.0,"reach_m":3.0,"bracket_restock_s":15.0},"outbreaks":{"owned_by":"openspec/changes/fire-spread","note":"Design 6b: fires nobody started, at fire-prone spots. While no outbreak fire burns (at most max_burning at once), the next breaks out a seeded draw from interval_s after the last went out (the first first_s after the start), at a seed_kw seed, on a spot drawn from those that can catch (requires_damaged: only while that station is damaged or disabled), never the last one again. A spot is at_m (x, z) or the middle of the first prop of its kind its room is furnished with. bracket_restock_s on the extinguisher is safety-points 3a.","first_s":20.0,"interval_s":[45.0,90.0],"max_burning":1,"points":[{"id":"ob_bridge_tactical","room":"bridge","at_m":[-1.5,28.45],"requires_damaged":"tactical","cause":"tactical's damaged wiring, under its desk"},{"id":"ob_mess_galley","room":"mess","at_m":[-6.3,17.05],"cause":"cooking at the galley: burning fat spilled down the counter's front onto the deck"},{"id":"ob_quarters_bunk","room":"quarters","prop":"bunk","cause":"a reading lamp's frayed lead"},{"id":"ob_port_turret_panel","room":"port_turret","prop":"local_panel","cause":"an electrical fault in the turret's power panel"}]},"suppression":{"inert_gas":{"compartments":["magazine","switchboard","computer_core","shield_room","life_support"],"design_o2_fraction":0.125,"time_s":60.0,"soak_s":600.0,"store":"reserve_n2"},"water_mist":{"compartments":["engineering","hangar","drive"],"hrr_cut_kw_per_s":100.0,"cooling_mw":1.0,"duration_s":60.0,"discharges":2,"auto_above_kw":1000.0,"confirm_s":10.0},"venting":{"owned_by":"openspec/changes/fire-spread","note":"Design 6a: the captain's guarded vent. Firing shuts the room's doors and damper and warns for warning_s (klaxon, red strobe; the doors open from inside on a press), then opens the dump. arm_window_s is bridge-stations 8.5's arm-then-fire window.","warning_s":5.0,"arm_window_s":3.0}},"cells":{"owned_by":"openspec/changes/fire-spread","note":"Design 1-2 and 5: every room's floor in square cells of size_m on the deck's x and z, each with the fuel class of the prop that covers its centre (props, fixtures), else bare. Bare cells take the room's fuel_mj_per_m2 the furnished ones leave, never below bare_min_mj_per_m2. A burning cell rises toward peak x f_O2 with time constant rise_s; an unburnt or knocked-down cell gathers dose (seconds of full exposure) from burning neighbours within two cells (q over the neighbour's peak, times neighbour_weights) and from the hot layer (0 at layer_preheat_k[0] rising to 1 at layer_preheat_k[1]), cooling by dose_cooling_per_s when nothing feeds it, and ignites at its class's dose_s at ignite_kw. A cell below out_below_kw goes out with agent_s of agent on it; with no burning neighbour for smoulder_s after that it is out and cold, and only a burning neighbour or a flashover lights it again (the hot layer preheats only unburnt cells, and only while something in the room burns). aim_height_m is how high over the floor a cone reaches a cell (the flames' base). flame_height_m is the flame drawn at ignition and at peak, standing on the top of a prop that covers its cell when that top is no higher than flame_on_props_below_m over the floor (a counter, a desk, a table; the cells do not see height, design 3); smoke_layer_ppm the smoke a hot layer holds, which sets how far it reaches down.","tuned":"Dose figures and the hot layer's preheat range tuned by tools/mockups/fire_cases.mjs on 2026-10-09 so the quarters, door shut, 50 kW seed on a bunk passes 1 MW at 113 s (design 4): every class's dose doubled from the design's first figures, bedding 36 s (not 24) and bare deck 110 s (not 140), and the layer's preheat from 50 C to 180 C (not 100 C to 300 C). See openspec/changes/fire-spread/fire-cases.md.","size_m":0.5,"rise_s":10.0,"ignite_kw":5.0,"out_below_kw":1.0,"agent_s":20.0,"smoulder_s":30.0,"dose_cooling_per_s":0.02,"neighbour_weights":{"edge":1.0,"corner":0.7,"next_but_one":0.35},"layer_preheat_k":[323.15,453.15],"bare_min_mj_per_m2":20.0,"aim_height_m":0.2,"flame_on_props_below_m":1.2,"flame_height_m":[0.3,1.8],"smoke_layer_ppm":1000.0,"classes":{"bedding":{"fuel_mj_per_m2":500.0,"dose_s":36.0,"peak_kw_per_m2":250.0},"furniture":{"fuel_mj_per_m2":350.0,"dose_s":50.0,"peak_kw_per_m2":250.0},"cables":{"fuel_mj_per_m2":300.0,"dose_s":60.0,"peak_kw_per_m2":250.0},"stores":{"fuel_mj_per_m2":400.0,"dose_s":70.0,"peak_kw_per_m2":250.0},"machinery":{"fuel_mj_per_m2":150.0,"dose_s":120.0,"peak_kw_per_m2":250.0},"bare":{"dose_s":110.0,"peak_kw_per_m2":250.0}},"props":{"bunk":"bedding","med_bed":"bedding","mess_table":"furniture","galley_counter":"furniture","locker_bank":"furniture","workbench":"furniture","tool_board":"furniture","battery_bank":"machinery","power_converter":"machinery","ls_air_handler":"machinery","ls_scrubbers":"machinery","local_panel":"cables"},"fixtures":{"locker":"locker_bank"}}}}
 </script>
 <!-- INLINE data:tern/atmosphere END -->
 <!-- INLINE data:tern/damage BEGIN -->
@@ -4116,7 +4116,7 @@
   const CELL_KEYS = {
     owned_by: "string", note: "?string", tuned: "?string", size_m: "number", rise_s: "number", ignite_kw: "number", out_below_kw: "number",
     agent_s: "number", smoulder_s: "number", dose_cooling_per_s: "number", neighbour_weights: "object", layer_preheat_k: "pair",
-    bare_min_mj_per_m2: "number", aim_height_m: "number", flame_height_m: "pair", smoke_layer_ppm: "number",
+    bare_min_mj_per_m2: "number", aim_height_m: "number", flame_height_m: "pair", flame_on_props_below_m: "number", smoke_layer_ppm: "number",
     classes: "object", props: "object", fixtures: "object",
   };
   const WEIGHT_KEYS = ["edge", "corner", "next_but_one"];
@@ -4453,10 +4453,541 @@
     };
   }
 
-  root.FireSpread = { version: 1, create, placements, footprint, validate, UNBURNT, BURNING, KNOCKED, BURNT, OUT };
+  // ------------------------------------------------------------------ outbreaks (design 6b)
+  const OB_KEYS = { owned_by: "string", note: "?string", first_s: "number", interval_s: "pair", max_burning: "number", points: "array" };
+  const OB_POINT_KEYS = ["id", "room", "at_m", "prop", "requires_damaged", "cause"];
+  /** Check fire.outbreaks against the layout (rooms) and the placements (a spot by prop needs one); throws on the first fault. */
+  function validateOutbreaks(L, FI, items) {
+    const O = FI.outbreaks, f = (k, what) => fail("fire.outbreaks" + (k ? "." + k : ""), what + " (design 6b)");
+    if (!O || typeof O !== "object") f("", "missing");
+    for (const k of Object.keys(O)) if (!(k in OB_KEYS)) f(k, "unknown key");
+    for (const [k, kind] of Object.entries(OB_KEYS)) {
+      const v = O[k];
+      if (kind[0] === "?") { if (v !== undefined && typeof v !== "string") f(k, "not text"); continue; }
+      if (v === undefined) f(k, "missing");
+      if (kind === "number" && !(finite(v) && v >= 0)) f(k, "not a number of zero or more");
+      if (kind === "pair" && !(Array.isArray(v) && v.length === 2 && v.every(finite) && v[0] > 0 && v[1] >= v[0])) f(k, "not [low, high] above zero");
+      if (kind === "array" && !(Array.isArray(v) && v.length)) f(k, "not a list of spots");
+    }
+    const ids = new Set(), rooms = new Set(L.compartments.map((c) => c.id));
+    O.points.forEach((p, i) => {
+      const at = `points[${i}]`;
+      for (const k of Object.keys(p)) if (OB_POINT_KEYS.indexOf(k) < 0) f(`${at}.${k}`, "unknown key");
+      if (typeof p.id !== "string" || ids.has(p.id)) f(`${at}.id`, "missing or used twice");
+      ids.add(p.id);
+      if (!rooms.has(p.room)) f(`${at}.room`, `names no compartment (${p.room})`);
+      if ((p.at_m === undefined) === (p.prop === undefined)) f(at, "give at_m or prop, one of them");
+      if (p.at_m !== undefined && !(Array.isArray(p.at_m) && p.at_m.length === 2 && p.at_m.every(finite))) f(`${at}.at_m`, "not [x, z]");
+      if (p.prop !== undefined && !(items || []).some((it) => it.room === p.room && it.prop === p.prop)) f(`${at}.prop`, `no ${p.prop} is placed in ${p.room}`);
+      if (p.requires_damaged !== undefined && typeof p.requires_damaged !== "string") f(`${at}.requires_damaged`, "not a station id");
+    });
+    return true;
+  }
+  /** FNV-1a 32 of text: the seed of a purpose (CLAUDE.md 6.4). */
+  function fnv(text) { let h = 0x811c9dc5; for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h >>> 0; }
+  /** mulberry32: a small seeded generator, 0-1. */
+  function rngOf(seed) { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  /**
+   * When and where fires break out on their own (design 6b). L: the layout; FI: atmosphere.json fire; items:
+   * placements(); seed: the session seed. Returns { points, step(t_s, can), force(t_s, can) }: points are the spots
+   * resolved to { id, room, x, z, requires_damaged, cause }; step returns the spot that catches at sim time t_s (seconds)
+   * or null; force breaks the next one out now, whatever the timer says; start(t_s, id) breaks that one out now. can: { burning(roomId) (an outbreak fire there
+   * still burns), damaged(stationId), fuel(point) (its cell can still catch) }. One draw from the generator per interval
+   * and per spot, in a fixed order, so the same seed breaks out the same fires (no Math.random).
+   */
+  function outbreaks(L, FI, items, seed) {
+    validateOutbreaks(L, FI, items);
+    const O = FI.outbreaks;
+    const points = O.points.map((p) => {
+      let x, z;
+      if (p.at_m) [x, z] = p.at_m;
+      else {
+        const it = items.find((q) => q.room === p.room && q.prop === p.prop);
+        x = it.poly.reduce((s, c) => s + c[0], 0) / it.poly.length; z = it.poly.reduce((s, c) => s + c[1], 0) / it.poly.length;
+      }
+      return { id: p.id, room: p.room, x, z, requires_damaged: p.requires_damaged || null, cause: p.cause || "" };
+    });
+    const rand = rngOf(fnv(String(seed) + "|outbreak"));
+    const draw = () => O.interval_s[0] + (O.interval_s[1] - O.interval_s[0]) * rand();
+    let waitUntil = O.first_s, last = null;
+    const active = [];   // spots whose fire still burns
+    function eligible(can) {
+      return points.filter((p) => p.id !== (last && last.id) && !active.includes(p) && !can.burning(p.room) &&
+        (!p.requires_damaged || can.damaged(p.requires_damaged)) && (!can.fuel || can.fuel(p)));
+    }
+    function catchOne(t, can) {
+      const list = eligible(can);
+      if (!list.length) return null;
+      const p = list[Math.min(list.length - 1, Math.floor(rand() * list.length))];
+      last = p; active.push(p);
+      waitUntil = active.length >= O.max_burning ? Infinity : t + draw();
+      return p;
+    }
+    function step(t, can) {
+      for (let i = active.length - 1; i >= 0; i--) if (!can.burning(active[i].room)) { active.splice(i, 1); waitUntil = Math.min(waitUntil, t + draw()); }
+      if (active.length >= O.max_burning || t < waitUntil) return null;
+      return catchOne(t, can);
+    }
+    /** Spot id catches now (a scenario, a shot), through the same bookkeeping as one the timer chose. */
+    function start(t, id) {
+      const p = points.find((q) => q.id === id);
+      if (!p) throw new Error(`firespread: no outbreak spot ${id}`);
+      last = p; if (!active.includes(p)) active.push(p);
+      waitUntil = active.length >= O.max_burning ? Infinity : t + draw();
+      return p;
+    }
+    return { points, step, start, force: (t, can) => catchOne(t, can), active: () => active.slice(), next_s: () => waitUntil };
+  }
+
+  root.FireSpread = { version: 1, create, placements, footprint, validate, validateOutbreaks, outbreaks, UNBURNT, BURNING, KNOCKED, BURNT, OUT };
 })(typeof window !== "undefined" ? window : globalThis);
 </script>
 <!-- INLINE lib:firespread END -->
+<!-- INLINE lib:firefight BEGIN -->
+<script>
+/*
+ * firefight.js: fighting a fire on foot, in a mockup's first-person walk.
+ *
+ * What it owns: the player's side of openspec/changes/fire-spread (design 3, 5 and 6) and safety-points (1, 3 and 3a),
+ * in one place for every page that walks into a fire (CLAUDE.md 6.1): fire.html's deck B and deck-plan.html's whole
+ * ship. That is the safety points (an extinguisher in its bracket, a first aid cabinet and a glowing sign inside a
+ * room's main door) and their restock; taking an extinguisher; its nozzle, aim, spray and footprint ring; the flames on
+ * burning cells; and the smoke layer and the fog it makes in a room. It moved here from fire.html (2026-10-10) when the
+ * deck plan's walk gained fires, so the two pages cannot drift apart.
+ *
+ * It draws and handles input; it decides nothing about fire. The fire is lib/firespread.js inside lib/shipsystems.js,
+ * which this file reads (sim().fs, sim().links, compartmentReadout) and drives only through a held extinguisher
+ * (sim().newExtinguisher(): its room, aim and on). Every tuning number is data: atmosphere.json fire.cells and
+ * fire.extinguisher, bracket_restock_s included (CLAUDE.md 6.5). The bracket's restock runs on the simulation's clock.
+ *
+ * The safety points are placed here by the change's rule for the mockups only: tools/safety_points.py will own them
+ * (kit.json, safety-points tasks 1.2), and this placement goes. The models are low-poly stand-ins until
+ * tools/blender/build_safety_props.py (safety-points 5).
+ *
+ * Classic script (window.FireFight), after shipkit.js and firespread.js; three.js and its mergeGeometries are passed
+ * in. Units: SI, metres and seconds.
+ */
+(function (root) {
+  "use strict";
+
+  const SP_FROM_FRAME_M = 0.4, SP_GAP_M = 0.5, SP_OFF_WALL_M = 0.015;   // safety-points 1: beside the door, inside
+  const REACH_M = 1.3;           // how near a bracket a hand takes its extinguisher
+  const MAX_FLAMES = 256;        // fire-spread design 7
+  const NP = 220;                // spray particles
+  const RED = 0xb8231b, DARK = 0x1b1f24, WHITE = 0xd8dde2, GREEN = 0x18b05a, SIGN = 0xa8ffd0;
+
+  /**
+   * o: { K, L, DET, FI, sim: () => the ShipSystems, scene, camera, walk, mergeGeometries, items (FireSpread.placements),
+   * pointRooms (room ids that take a safety point at their main door), extraPoints ([{ id, room, at(d), into, t, d0,
+   * y0 }]), clip (clipping planes for the drawn parts, optional), blocked(room, x, z) (optional, a floor point a point's
+   * wall must keep clear; default: the items' footprints), floorAt(x, z, y) (optional: where a flame stands, for floors
+   * raised over the cells), covers ([{ room, poly, top_y }]: what stands on the floor, its plan footprint and its top's
+   * height, metres; a flame on a cell under one no taller than fire.cells.flame_on_props_below_m stands on its top),
+   * extraKit ({ near(pose), take() }, optional: another place to take one, fire.html's locker) }.
+   */
+  function create(THREE, o) {
+    const K = o.K, L = o.L, DET = o.DET, FI = o.FI, CELLS = FI.cells, EX = FI.extinguisher;
+    if (!(Number.isFinite(EX.bracket_restock_s) && EX.bracket_restock_s >= 0))
+      throw new Error("atmosphere.json fire.extinguisher.bracket_restock_s: missing or below zero (openspec/changes/safety-points design 3a)");
+    const scene = o.scene, camera = o.camera, sim = o.sim, clip = o.clip || [];
+    const walk = { pose: () => (typeof o.walk === "function" ? o.walk() : o.walk).pose() };   // the walk may be made after this
+    const items = o.items || [];
+    const blocked = o.blocked || ((room, x, z) => items.some((it) => it.room === room && K.insidePoly(it.poly, x, z)));
+    const F = { ext: null, carrying: false, sprayHeld: false, points: [] };
+    const own = [];   // every object this file adds to the scene
+    const add = (obj) => { scene.add(obj); own.push(obj); return obj; };
+
+    // ---------------------------------------------------------------- models
+    const VC = new THREE.MeshBasicMaterial({ vertexColors: true, clippingPlanes: clip });
+    /** A geometry painted one colour, darker on faces that look away from a light above and in front. */
+    function paint(g, hex, glow) {
+      g = g.index ? g.toNonIndexed() : g;
+      const c = new THREE.Color(hex), n = g.attributes.normal, a = new Float32Array(n.count * 3);
+      for (let i = 0; i < n.count; i++) { const k = glow ? 1 : 0.62 + 0.3 * Math.max(0, n.getY(i)) + 0.12 * Math.max(0, n.getZ(i)); a.set([c.r * k, c.g * k, c.b * k], i * 3); }
+      g.setAttribute("color", new THREE.BufferAttribute(a, 3));
+      for (const k of Object.keys(g.attributes)) if (!["position", "normal", "color"].includes(k)) g.deleteAttribute(k);
+      return g;
+    }
+    function extinguisherGeo(scale) {
+      const parts = [];
+      parts.push(paint(new THREE.CylinderGeometry(0.075 * scale, 0.075 * scale, 0.42 * scale, 10).translate(0, 0.21 * scale, 0), RED));
+      parts.push(paint(new THREE.SphereGeometry(0.075 * scale, 10, 4, 0, Math.PI * 2, 0, Math.PI / 2).translate(0, 0.42 * scale, 0), RED));
+      parts.push(paint(new THREE.BoxGeometry(0.04 * scale, 0.07 * scale, 0.1 * scale).translate(0, 0.5 * scale, 0.02 * scale), DARK));
+      parts.push(paint(new THREE.ConeGeometry(0.035 * scale, 0.16 * scale, 8).rotateX(Math.PI / 2).translate(0, 0.48 * scale, 0.14 * scale), DARK));
+      return o.mergeGeometries(parts);
+    }
+    function extinguisherModel(scale) { return new THREE.Mesh(extinguisherGeo(scale), VC); }
+
+    // ---------------------------------------------------------------- safety points (safety-points 1-2, 3a)
+    /** A room's main door: its widest door to a corridor, else (a room off another, the bridge) its widest door. */
+    function mainDoor(id) {
+      const doors = L.portals.filter((p) => p.kind === "door" && Math.abs(p.normal[1]) < 0.5 && p.between.includes(id) && !p.between.includes("space"));
+      const wide = (ps) => ps.sort((a, b) => b.size_m[0] - a.size_m[0])[0] || null;
+      return wide(doors.filter((p) => p.between.some((s) => s !== id && (K.compartment(L, s) || {}).kind === "corridor"))) || wide(doors);
+    }
+    for (const id of o.pointRooms || []) {
+      const p = mainDoor(id);
+      if (!p) continue;
+      const into = p.between[0] === id ? [-p.normal[0], -p.normal[2]] : [p.normal[0], p.normal[2]];   // the room's side of the wall
+      const along = p.size_m[0] / 2 + DET.door_frame.jamb_m + SP_FROM_FRAME_M;
+      const base = [p.center_m[0] + into[0] * SP_OFF_WALL_M, 0, p.center_m[2] + into[1] * SP_OFF_WALL_M];
+      // Along the wall, on the side whose 1 m beside the door is clear of the room's props (the latch side, the change
+      // says; the doors slide, so the clear side stands in for it).
+      const clear = (t) => [0.3, 0.6, 0.9, 1.2].every((e) => !blocked(id, base[0] + t[0] * (along + e) + into[0] * 0.35, base[2] + t[1] * (along + e) + into[1] * 0.35));
+      const t = [[-into[1], into[0]], [into[1], -into[0]]].find(clear) || [-into[1], into[0]];
+      F.points.push({ id: "sp_" + id, room: id, at: (d) => [base[0] + t[0] * d, base[2] + t[1] * d], into, t, d0: along + 0.15, y0: p.center_m[1] - p.size_m[1] / 2 });
+    }
+    for (const e of o.extraPoints || []) F.points.push(Object.assign({ y0: 0 }, e));
+    const FIXED = [];   // the points' brackets, cabinets, crosses and signs, merged into one mesh below
+    function onWall(g, sp, d, y, out) {
+      const [x, z] = sp.at(d);
+      g.rotateY(Math.atan2(sp.into[0], sp.into[1])); g.translate(x + sp.into[0] * out, sp.y0 + y, z + sp.into[1] * out);
+      return g;
+    }
+    // The restock's ghost: the extinguisher in its red at a quarter of its brightness, filling from the bottom up (3a).
+    const GHOST = new THREE.MeshBasicMaterial({ color: RED, transparent: true, opacity: 0.35, depthWrite: false, clippingPlanes: clip });
+    for (const sp of F.points) {
+      // The bracket's back plate and strap, the extinguisher (its handle at 1.1 m), the cabinet with its cross, the sign at 1.9 m.
+      FIXED.push(onWall(paint(new THREE.BoxGeometry(0.2, 0.5, 0.02), DARK), sp, sp.d0, 0.8, 0.01));
+      FIXED.push(onWall(paint(new THREE.BoxGeometry(0.19, 0.04, 0.17), DARK), sp, sp.d0, 0.78, 0.105));
+      const g = extinguisherGeo(1); g.rotateY(Math.atan2(sp.into[0], sp.into[1]));
+      const [ex, ez] = sp.at(sp.d0);
+      sp.ext = new THREE.Mesh(g, VC); sp.ext.position.set(ex + sp.into[0] * 0.1, sp.y0 + 0.58, ez + sp.into[1] * 0.1); add(sp.ext);
+      sp.ghost = new THREE.Mesh(g, GHOST); sp.ghost.position.copy(sp.ext.position); sp.ghost.visible = false; sp.ghost.renderOrder = 3; add(sp.ghost);
+      FIXED.push(onWall(paint(new THREE.BoxGeometry(0.45, 0.35, 0.14), WHITE), sp, sp.d0 + SP_GAP_M + 0.1, 1.25, 0.07));
+      for (const [w, h] of [[0.16, 0.05], [0.05, 0.16]]) FIXED.push(onWall(paint(new THREE.BoxGeometry(w, h, 0.012), GREEN, true), sp, sp.d0 + SP_GAP_M + 0.1, 1.25, 0.146));
+      FIXED.push(onWall(paint(new THREE.BoxGeometry(0.30, 0.15, 0.012), SIGN, true), sp, sp.d0 + SP_GAP_M / 2 + 0.05, 1.9, 0.006));
+      sp.pos = [ex + sp.into[0] * 0.4, ez + sp.into[1] * 0.4];
+      sp.has = true; sp.restock = 0;
+    }
+    if (FIXED.length) add(new THREE.Mesh(o.mergeGeometries(FIXED), VC));
+    /** Show a point as it is: its extinguisher, or the ghost filling toward the restock. */
+    function showPoint(sp) {
+      sp.ext.visible = sp.has;
+      sp.ghost.visible = !sp.has;
+      if (!sp.has) sp.ghost.scale.set(1, Math.max(0.02, 1 - sp.restock / Math.max(1e-6, EX.bracket_restock_s)), 1);
+    }
+    /** The restock (3a), on the simulation's clock: dt is simulated seconds. */
+    function tick(dt) {
+      for (const sp of F.points) {
+        if (sp.has) continue;
+        sp.restock = Math.max(0, sp.restock - dt);
+        if (sp.restock <= 0) sp.has = true;
+        showPoint(sp);
+      }
+    }
+
+    // ---------------------------------------------------------------- taking one
+    /** The kit within reach of the body: a point's extinguisher, or the page's extra place. */
+    function near() {
+      const p = walk.pose();
+      for (const sp of F.points) if (sp.has && Math.abs(p.y - sp.y0) < 1.2 && Math.hypot(sp.pos[0] - p.x, sp.pos[1] - p.z) < REACH_M) return { sp };
+      if (o.extraKit && o.extraKit.near(p)) return { extra: true };
+      return null;
+    }
+    /** Take the extinguisher in reach (E). A full one in hand is kept; a part-used one is put down for the full one. */
+    function take() {
+      const k = near();
+      if (!k || (F.carrying && F.ext.agent_kg >= EX.agent_kg - 1e-6)) return false;
+      if (k.sp) { k.sp.has = false; k.sp.restock = EX.bracket_restock_s; showPoint(k.sp); }
+      else o.extraKit.take();
+      F.carrying = true; F.ext.agent_kg = EX.agent_kg; handExt.visible = true;
+      return true;
+    }
+    /** True when E would take one now: one in reach, and the hand not already holding a full one. */
+    function canTake() { return !!near() && !(F.carrying && F.ext.agent_kg >= EX.agent_kg - 1e-6); }
+    /** A new simulation: a held extinguisher with nothing in it, every bracket full. */
+    function reset() {
+      F.ext = sim().newExtinguisher(); F.ext.agent_kg = 0; F.carrying = false; F.sprayHeld = false;
+      handExt.visible = false;
+      for (const sp of F.points) { sp.has = true; sp.restock = 0; showPoint(sp); }
+    }
+
+    // ---------------------------------------------------------------- flames: billboards on burning cells (one instanced draw)
+    const fGeo = new THREE.InstancedBufferGeometry();
+    fGeo.setAttribute("position", new THREE.Float32BufferAttribute([-0.5, 0, -1000, 0.5, 0, -1000, 0.5, 1, -1000, -0.5, 0, -1000, 0.5, 1, -1000, -0.5, 1, -1000], 3));
+    const fPos = new Float32Array(MAX_FLAMES * 3), fP = new Float32Array(MAX_FLAMES * 4), fL = new Float32Array(MAX_FLAMES * 3);
+    const fPosA = new THREE.InstancedBufferAttribute(fPos, 3), fPA = new THREE.InstancedBufferAttribute(fP, 4), fLA = new THREE.InstancedBufferAttribute(fL, 3);
+    for (const a of [fPosA, fPA, fLA]) a.setUsage(THREE.DynamicDrawUsage);
+    fGeo.setAttribute("iPos", fPosA); fGeo.setAttribute("iP", fPA); fGeo.setAttribute("iL", fLA);
+    fGeo.instanceCount = 0;
+    const flameU = { uTime: { value: 0 } };
+    const flameMat = new THREE.ShaderMaterial({
+      uniforms: flameU, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      vertexShader: `attribute vec3 iPos; attribute vec4 iP; attribute vec3 iL; uniform float uTime;
+        varying vec2 vUv; varying float vHeat; varying float vPhase; varying float vKind;
+        void main() {
+          vUv = vec2(position.x + 0.5, position.y);
+          vec3 toCam = cameraPosition - iPos; toCam.y = 0.0;
+          float l = length(toCam);
+          vec3 right = l > 1e-4 ? vec3(toCam.z, 0.0, -toCam.x) / l : vec3(1.0, 0.0, 0.0);
+          float y = position.y;
+          float sway = sin(uTime * 3.3 + iP.z * 6.28) * 0.07 * y * y;
+          vec3 w = iPos + right * (position.x * iP.x + sway) + vec3(0.0, y * iP.y, 0.0) + vec3(iL.x, 0.0, iL.y) * y * y * iP.y;
+          gl_Position = projectionMatrix * viewMatrix * vec4(w, 1.0);
+          vHeat = iP.w; vPhase = iP.z; vKind = iL.z;
+        }`,
+      fragmentShader: `uniform float uTime; varying vec2 vUv; varying float vHeat; varying float vPhase; varying float vKind;
+        float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+        float noise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+          return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y); }
+        float fbm(vec2 p) { float v = 0.0, a = 0.5; for (int i = 0; i < 4; i++) { v += a * noise(p); p *= 2.03; a *= 0.5; } return v; }
+        void main() {
+          vec2 uv = vUv;
+          if (vKind > 0.5) {
+            float n = fbm(vec2(uv.x * 5.0 + vPhase * 13.0, uv.y * 2.0 - uTime * 0.5));
+            float m = smoothstep(0.52, 0.8, n) * (1.0 - uv.y) * smoothstep(0.0, 0.2, uv.x) * smoothstep(1.0, 0.8, uv.x);
+            float fl = 0.55 + 0.45 * sin(uTime * 3.7 + vPhase * 21.0);
+            gl_FragColor = vec4(vec3(1.0, 0.22, 0.04) * m * fl * 1.4, 1.0);
+            return;
+          }
+          float t = uTime * 1.7 + vPhase * 7.0;
+          float n = fbm(vec2(uv.x * 3.0 + vPhase * 5.0, uv.y * 2.3 - t));
+          float n2 = fbm(vec2(uv.x * 6.5 - vPhase, uv.y * 4.5 - t * 1.6));
+          float x = (uv.x - 0.5) * 2.0;
+          float wy = mix(0.85, 0.06, pow(uv.y, 0.75));
+          float d = abs(x + (n - 0.5) * 0.8 * uv.y) / max(wy, 0.03);
+          float body = 1.0 - smoothstep(0.3, 1.0, d + (n2 - 0.5) * 0.7);
+          body *= smoothstep(1.0, 0.5, uv.y + (n - 0.5) * 0.5);
+          body *= smoothstep(0.0, 0.05, uv.y);
+          float core = body * (1.0 - smoothstep(0.0, 0.6, uv.y * 1.2 + d * 0.6));
+          vec3 col = mix(vec3(0.85, 0.1, 0.02), vec3(1.0, 0.5, 0.07), smoothstep(0.0, 0.7, body));
+          col = mix(col, vec3(1.0, 0.9, 0.55), core);
+          gl_FragColor = vec4(col * body * (0.6 + 0.5 * vHeat) * 1.25, 1.0);
+        }`,
+    });
+    const flameMesh = new THREE.Mesh(fGeo, flameMat);
+    flameMesh.frustumCulled = false; flameMesh.renderOrder = 4;
+    add(flameMesh);
+    // What stands on the floor, by room: a flame on a low prop's cell stands on its top (the cells do not see height).
+    const coversOf = {};
+    for (const c of o.covers || []) (coversOf[c.room] = coversOf[c.room] || []).push(c);
+    /** Where a room's flames lean: toward its open door with the most flow, [x, z] in metres per metre of flame. */
+    function leanOf(rid) {
+      const sys = sim(), i = sys.idx[rid];
+      let best = null;
+      for (const l of sys.links) {
+        if (!l.mix || l.open <= 0.05 || (l.a !== i && l.b !== i) || !l.center) continue;
+        if (!best || l.open > best.open) best = l;
+      }
+      if (!best) return [0, 0];
+      const c = sys.fs.centroid(rid);
+      if (!c) return [0, 0];
+      const dx = best.center[0] - c.x, dz = best.center[2] - c.z, d = Math.hypot(dx, dz) || 1;
+      return [(dx / d) * 0.35 * best.open, (dz / d) * 0.35 * best.open];
+    }
+    /** Flames on burning cells and embers on knocked-down ones, hottest first, in rooms (ids; every room when absent). */
+    function updateFlames(roomIds) {
+      const FS = sim().fs, list = [], embers = [];
+      const rooms = roomIds ? roomIds.map((id) => FS.byId[id]) : FS.rooms;
+      for (const fr of rooms) {
+        if (!fr || (!fr.active && fr.burning === 0)) continue;
+        const lean = leanOf(fr.id);
+        for (let k = 0; k < fr.n; k++) {
+          if (fr.state[k] === FS.BURNING) list.push([fr, k, lean]);
+          else if (fr.state[k] === FS.KNOCKED && fr.fuel[k] < fr.fuel0[k] * 0.999) embers.push([fr, k]);
+        }
+      }
+      list.sort((a, b) => b[0].q[b[1]] - a[0].q[a[1]]);
+      const base = (fr, k) => {
+        const y = o.floorAt ? o.floorAt(fr.x[k], fr.z[k], fr.y[k]) : fr.y[k];
+        let top = y;
+        for (const c of coversOf[fr.id] || []) if (c.top_y > top && c.top_y - y <= CELLS.flame_on_props_below_m && K.insidePoly(c.poly, fr.x[k], fr.z[k])) top = c.top_y;
+        return top;
+      };
+      let n = 0;
+      for (const [fr, k, lean] of list) {
+        if (n >= MAX_FLAMES) break;
+        const h = FS.flameHeight(fr.q[k], fr.peak[k]), heat = Math.min(1, fr.q[k] / fr.peak[k]);
+        const ph = ((fr.ri * 7919 + k * 104729) % 1000) / 1000;
+        fPos.set([fr.x[k] + (ph - 0.5) * 0.12, base(fr, k) + 0.01, fr.z[k] + (((ph * 7) % 1) - 0.5) * 0.12], n * 3);
+        fP.set([0.55 + 0.35 * heat, h, ph, heat], n * 4); fL.set([lean[0], lean[1], 0], n * 3); n++;
+      }
+      for (const [fr, k] of embers) {
+        if (n >= MAX_FLAMES) break;
+        const ph = ((fr.ri * 7919 + k * 104729) % 1000) / 1000;
+        fPos.set([fr.x[k], base(fr, k) + 0.02, fr.z[k]], n * 3); fP.set([0.5, 0.16, ph, 0.3], n * 4); fL.set([0, 0, 1], n * 3); n++;
+      }
+      fGeo.instanceCount = n;
+      fPosA.needsUpdate = fPA.needsUpdate = fLA.needsUpdate = true;
+      return n;
+    }
+
+    // ---------------------------------------------------------------- smoke: the layer under the ceiling, and the fog in it
+    const readout = (id) => sim().compartmentReadout(sim().idx[id]);
+    /** The smoke layer's depth in room r ({ id, floorY, top }), metres from the ceiling: the room's smoke gathered at smoke_layer_ppm (fire-spread 3). */
+    function layerDepth(r) {
+      const ppm = readout(r.id).smoke_ppm, H = r.top - r.floorY;
+      return Math.min(H, (H * ppm) / CELLS.smoke_layer_ppm);
+    }
+    /** Give room r ({ comp }) its smoke layer: one translucent quad of its tallest, largest brush (r.smoke, r.smokeTop). */
+    function addSmoke(r) {
+      const br = r.comp.brushes.reduce((m, b) => (b.y[1] >= m.y[1] && K.signedArea(b.poly) > K.signedArea(m.poly) ? b : m));
+      const shape = new THREE.Shape(br.poly.map((p) => new THREE.Vector2(p[0], p[1])));
+      const g = new THREE.ShapeGeometry(shape); g.rotateX(Math.PI / 2);
+      const m = new THREE.MeshBasicMaterial({ color: 0x1b1a19, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
+      const mesh = new THREE.Mesh(g, m); mesh.renderOrder = 6; mesh.visible = false;
+      add(mesh);
+      r.smoke = mesh; r.smokeTop = br.y[1];
+      return mesh;
+    }
+    /** Set room r's smoke layer: from the ceiling down by its smoke; on a board (seen from above) a tint of the layer's heat. */
+    function updateSmoke(r, board) {
+      const sys = sim(), i = sys.idx[r.id], depth = layerDepth(r), rd = readout(r.id), own = sys.fs.centroid(r.id);
+      const sm = r.smoke, m = sm.material, hot = Math.max(0, Math.min(1, (rd.t_k - 323.15) / 250));
+      const mist = sys.st.fire[i].mist > 0;
+      sm.visible = depth > 0.04 || (board && hot > 0.02) || mist;
+      sm.position.y = board ? Math.min(r.smokeTop - depth, 2.2) : r.smokeTop - depth;
+      if (mist) { m.color.setRGB(0.6, 0.85, 1.0); m.opacity = board ? 0.12 : 0.3; }
+      else if (board) { m.color.setRGB(0.25 + 0.75 * hot, 0.16 + 0.2 * hot, 0.1); m.opacity = Math.min(0.22, 0.05 + 0.17 * hot); }
+      else {
+        const glow = own ? Math.min(0.5, own.hrr / 2e6) : 0;
+        m.color.setRGB(0.012 + glow * 0.07, 0.011 + glow * 0.025, 0.01 + glow * 0.006);
+        m.opacity = Math.min(0.94, 0.68 + 0.3 * depth / 3);
+      }
+    }
+    /** The walk's fog in room r for an eye at height eye: in the layer the sight is 3 / K metres (crew-on-deck 9), below it clearer. */
+    function walkFog(r, eye, smokeK) {
+      const depth = layerDepth(r), bottom = r.smokeTop - depth, rd = readout(r.id);
+      const inLayer = eye > bottom;
+      const k = smokeK * (inLayer ? Math.max(rd.smoke_ppm, depth > 0.04 ? CELLS.smoke_layer_ppm : 0) : rd.smoke_ppm * 0.25) * 1e-6;
+      const far = k > 1e-6 ? Math.max(0.9, Math.min(80, 3 / k)) : 80;
+      if (!scene.fog) scene.fog = new THREE.Fog(0x0e0d0c, 0, 80);
+      scene.fog.far = far; scene.fog.near = Math.min(far * 0.15, 2);
+      scene.fog.color.setRGB(inLayer ? 0.07 : 0.04, inLayer ? 0.065 : 0.04, inLayer ? 0.06 : 0.045);
+      return far;
+    }
+
+    // ---------------------------------------------------------------- the spray, the footprint ring, the extinguisher in hand
+    const pGeo = new THREE.BufferGeometry(), pPos = new Float32Array(NP * 3), pAge = new Float32Array(NP).fill(1), pVel = new Float32Array(NP * 3);
+    pGeo.setAttribute("position", new THREE.BufferAttribute(pPos, 3)); pGeo.setAttribute("aAge", new THREE.BufferAttribute(pAge, 1));
+    const spray = new THREE.Points(pGeo, new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false,
+      vertexShader: `attribute float aAge; varying float vA; void main() { vA = aAge; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = (14.0 + 90.0 * aAge) * (1.0 / max(0.2, -mv.z)); gl_Position = projectionMatrix * mv; }`,
+      fragmentShader: `varying float vA; void main() { vec2 d = gl_PointCoord - 0.5; float r = dot(d, d); if (r > 0.25 || vA >= 1.0) discard; gl_FragColor = vec4(vec3(0.92, 0.95, 0.98), (1.0 - vA) * 0.42 * (1.0 - r * 4.0)); }`,
+    }));
+    spray.frustumCulled = false; spray.renderOrder = 7; add(spray);
+    let pNext = 0;
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.88, 1, 48), new THREE.MeshBasicMaterial({ color: 0xe8f4ff, transparent: true, opacity: 0.75, depthWrite: false, side: THREE.DoubleSide }));
+    ring.geometry.rotateX(-Math.PI / 2); ring.renderOrder = 5; ring.visible = false; add(ring);
+    const handExt = extinguisherModel(1.0);
+    handExt.scale.setScalar(0.75); handExt.position.set(0.34, -0.6, -0.78); handExt.rotation.set(0.25, -0.35, 0);
+    handExt.material = new THREE.MeshBasicMaterial({ vertexColors: true });
+    handExt.visible = false; camera.add(handExt);
+
+    /** The nozzle and the way it points: from the hand toward where the crosshair meets the floor (the flames' base). */
+    const _f = new THREE.Vector3(), _r = new THREE.Vector3();
+    function nozzleAim() {
+      camera.getWorldDirection(_f);
+      _r.set(1, 0, 0).applyQuaternion(camera.quaternion);
+      const from = [camera.position.x + _r.x * 0.22 + _f.x * 0.45, camera.position.y - 0.42, camera.position.z + _r.z * 0.22 + _f.z * 0.45];
+      const p = walk.pose(), base = p.y + CELLS.aim_height_m;
+      let to;
+      if (_f.y < -0.02) { const s = (base - camera.position.y) / _f.y; to = [camera.position.x + _f.x * s, base, camera.position.z + _f.z * s]; }
+      else to = [camera.position.x + _f.x * 4, camera.position.y + _f.y * 4, camera.position.z + _f.z * 4];
+      return { from, dir: [to[0] - from[0], to[1] - from[1], to[2] - from[2]], to };
+    }
+    function emitSpray(aim, dt) {
+      const d = Math.hypot(...aim.dir), u = aim.dir.map((x) => x / d);
+      const per = Math.round(dt * 260);
+      for (let k = 0; k < per; k++) {
+        const i = pNext; pNext = (pNext + 1) % NP;
+        const half = ((EX.cone_deg / 2) * Math.PI) / 180, a = Math.random() * Math.PI * 2, s = Math.sqrt(Math.random()) * Math.tan(half);   // visual only
+        const o1 = Math.abs(u[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
+        const b1 = [u[1] * o1[2] - u[2] * o1[1], u[2] * o1[0] - u[0] * o1[2], u[0] * o1[1] - u[1] * o1[0]], l1 = Math.hypot(...b1);
+        const e1 = b1.map((x) => x / l1), e2 = [u[1] * e1[2] - u[2] * e1[1], u[2] * e1[0] - u[0] * e1[2], u[0] * e1[1] - u[1] * e1[0]];
+        const v = [0, 1, 2].map((j) => (u[j] + (e1[j] * Math.cos(a) + e2[j] * Math.sin(a)) * s) * 6.5);
+        pPos.set(aim.from, i * 3); pVel.set(v, i * 3); pAge[i] = 0;
+      }
+    }
+    function stepSpray(dt, floorY) {
+      for (let i = 0; i < NP; i++) {
+        if (pAge[i] >= 1) continue;
+        pAge[i] = Math.min(1, pAge[i] + dt / 0.55);
+        for (let j = 0; j < 3; j++) pPos[i * 3 + j] += pVel[i * 3 + j] * dt;
+        pVel[i * 3] *= 0.93; pVel[i * 3 + 1] = pVel[i * 3 + 1] * 0.93 - 0.6 * dt; pVel[i * 3 + 2] *= 0.93;
+        if (pPos[i * 3 + 1] < floorY + 0.03) { pPos[i * 3 + 1] = floorY + 0.03; pVel[i * 3 + 1] = Math.abs(pVel[i * 3 + 1]) * 0.2; }
+      }
+      pGeo.attributes.position.needsUpdate = pGeo.attributes.aAge.needsUpdate = true;
+    }
+    /**
+     * The held extinguisher for this frame: its room (a compartment index, -1 for none), its aim from the camera, on
+     * while the trigger is held and agent is left; the spray and the footprint ring drawn. eye: the camera's height.
+     */
+    function aimFrame(dt, roomIdx, floorY, eye) {
+      const aim = F.carrying ? nozzleAim() : null, ext = F.ext;
+      ext.comp = roomIdx;
+      ext.aim = aim ? { from: aim.from, dir: aim.dir } : null;
+      ext.on = F.carrying && F.sprayHeld && ext.agent_kg > 0 && roomIdx >= 0;
+      if (ext.on) emitSpray(aim, dt);
+      stepSpray(dt, floorY);
+      ring.visible = !!(ext.on && aim && aim.to[1] < eye);
+      if (ring.visible) {
+        const dist = Math.hypot(...aim.dir), rad = dist * Math.tan(((EX.cone_deg / 2) * Math.PI) / 180);
+        ring.position.set(aim.to[0], aim.to[1] - CELLS.aim_height_m + 0.03, aim.to[2]);
+        ring.scale.set(rad, 1, rad);
+        ring.material.opacity = dist <= EX.reach_m ? 0.8 : 0.25;
+      }
+      return aim;
+    }
+    // ---------------------------------------------------------------- a small HUD, for a page with none of its own
+    // Glance first (CLAUDE.md 10): the take prompt (E and the extinguisher), the agent left as a ring round the
+    // extinguisher while one is held, and the alarm's banner (a flame and the room's name) when a fire breaks out.
+    let hudEl = null;
+    function hud() {
+      if (hudEl) return hudEl;
+      const css = document.createElement("style");
+      css.textContent = `
+.ff-take{position:fixed;left:50%;top:calc(50% + 40px);transform:translateX(-50%);z-index:60;pointer-events:none;padding:6px 12px;display:none;
+  background:rgba(6,9,14,.84);border:1px solid #2b3540;border-radius:6px;font:600 14px system-ui,sans-serif;color:#e8eef6;white-space:nowrap}
+.ff-take .k{display:inline-block;min-width:18px;padding:0 5px;margin-right:6px;border:1px solid #ff5a3a;border-radius:4px;color:#ff5a3a;text-align:center}
+.ff-agent{position:fixed;right:18px;bottom:64px;width:64px;height:64px;z-index:60;pointer-events:none;display:none}
+.ff-alarm{position:fixed;left:50%;top:12%;transform:translateX(-50%);z-index:66;pointer-events:none;font:700 22px system-ui,sans-serif;color:#ff6a3a;
+  text-shadow:0 2px 10px #000;opacity:0;transition:opacity .25s;white-space:nowrap}`;
+      document.head.appendChild(css);
+      const take = document.createElement("div"); take.className = "ff-take"; take.innerHTML = '<span class="k">E</span>Extinguisher';
+      const agent = document.createElement("div"); agent.className = "ff-agent";
+      const RL = 2 * Math.PI * 27;
+      agent.innerHTML = `<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="27" fill="rgba(6,9,14,.7)" stroke="#2a323c" stroke-width="5"/>` +
+        `<circle class="r" cx="32" cy="32" r="27" fill="none" stroke="#ff5a3a" stroke-width="5" stroke-linecap="round" transform="rotate(-90 32 32)" stroke-dasharray="0 ${RL.toFixed(1)}"/>` +
+        `<rect x="25" y="22" width="14" height="28" rx="5" fill="#ff5a3a"/><rect x="28" y="16" width="8" height="7" rx="2" fill="#ff5a3a"/><path d="M36 18 h7 l3 5" stroke="#ff5a3a" stroke-width="2.5" fill="none"/></svg>`;
+      const alarm = document.createElement("div"); alarm.className = "ff-alarm";
+      document.body.append(take, agent, alarm);
+      let alarmT = 0;
+      hudEl = {
+        update(dt, shown) {
+          take.style.display = shown && canTake() ? "block" : "none";
+          agent.style.display = shown && F.carrying ? "block" : "none";
+          if (F.carrying) {
+            const f = Math.max(0, Math.min(1, F.ext.agent_kg / EX.agent_kg));
+            agent.querySelector(".r").setAttribute("stroke-dasharray", `${(f * RL).toFixed(1)} ${RL.toFixed(1)}`);
+            agent.title = `agent ${F.ext.agent_kg.toFixed(1)} kg of ${EX.agent_kg} kg`;
+          }
+          alarmT = Math.max(0, alarmT - dt);
+          alarm.style.opacity = shown && alarmT > 0 ? "1" : "0";
+        },
+        /** The alarm's banner for seconds s: a flame and text (the room's name). */
+        alarm(text, sec) { alarm.innerHTML = `<svg viewBox="0 0 24 24" width="22" height="22" style="vertical-align:-3px;margin-right:8px"><path d="M12 2c1 4 6 6 6 12a6 6 0 0 1-12 0c0-3 2-5 3-7 0 2 1 3 2 3 0-3-1-5 1-8z" fill="#ff6a3a"/></svg>${text}`; alarmT = sec || 4; },
+      };
+      return hudEl;
+    }
+
+    /** Show or hide everything this file draws (a page's plan views, which clip by deck, hide it). */
+    function setVisible(v) { for (const ob of own) ob.layers.set(v ? 0 : 31); handExt.layers.set(v ? 0 : 31); }
+    /** Stop drawing the hand's part (leaving the walk). */
+    function stow() { ring.visible = false; handExt.visible = false; F.sprayHeld = false; }
+
+    return Object.assign(F, {
+      VC, paint, extinguisherGeo, extinguisherModel, handExt, ring, spray, flameMesh, flameU, flames: () => fGeo.instanceCount,
+      mainDoor, near, canTake, take, reset, hud, setVisible, tick, showPoint, nozzleAim, emitSpray, stepSpray, aimFrame, stow, updateFlames,
+      layerDepth, addSmoke, updateSmoke, walkFog,
+    });
+  }
+
+  root.FireFight = { version: 1, create };
+})(typeof window !== "undefined" ? window : globalThis);
+</script>
+<!-- INLINE lib:firefight END -->
 <!-- INLINE lib:shipsystems BEGIN -->
 <script>
 /*
@@ -6383,7 +6914,7 @@ import { Octree } from "three/addons/math/Octree.js";
 import { Capsule } from "three/addons/math/Capsule.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
-const K = window.ShipKit, FireSpread = window.FireSpread, ShipSystems = window.ShipSystems, ShipWalk = window.ShipWalk;
+const K = window.ShipKit, FireSpread = window.FireSpread, ShipSystems = window.ShipSystems, ShipWalk = window.ShipWalk, FireFight = window.FireFight;
 const L = K.layout(), DET = K.shipData("detailing");
 const PW = K.shipData("power"), AT = K.shipData("atmosphere"), DM = K.shipData("damage");
 const CREW_ROOMS = K.shipData("crew_rooms"), HEALTH = K.shipData("health");
@@ -6507,70 +7038,22 @@ const doors = LG.portals.filter((p) => p.kind === "door" && Math.abs(p.normal[1]
   return { id: p.id, p, w, h, n, t, leaves, set, c: [p.center_m[0], p.center_m[1], p.center_m[2]] };
 });
 
-// ------------------------------------------------------------------ safety points (openspec/changes/safety-points 1-2)
-// An extinguisher in its bracket and a first aid cabinet side by side inside every room's main door, under a glowing
-// sign; the spine takes one on its wall between the quarters' and the medbay's doors (the 10 m walk rule). Placed here
-// by the change's rule for this mockup only: tools/safety_points.py will own the points (kit.json), and this goes.
-const SP_FROM_FRAME_M = 0.4, SP_GAP_M = 0.5, SP_OFF_WALL_M = 0.015;
-function mainDoor(id) {
-  const ps = L.portals.filter((p) => p.kind === "door" && p.between.includes(id) && p.between.some((s) => s !== id && (K.compartment(L, s) || {}).kind === "corridor"));
-  return ps.sort((a, b) => b.size_m[0] - a.size_m[0])[0] || null;
-}
-const safety = [];
-for (const id of ["quarters", "mess", "medbay", "damage_control"]) {
-  const p = mainDoor(id);
-  if (!p) continue;
-  const into = p.between[0] === id ? [-p.normal[0], -p.normal[2]] : [p.normal[0], p.normal[2]];   // the room's side of the wall
-  const along = p.size_m[0] / 2 + DET.door_frame.jamb_m + SP_FROM_FRAME_M;
-  const base = [p.center_m[0] + into[0] * SP_OFF_WALL_M, 0, p.center_m[2] + into[1] * SP_OFF_WALL_M];
-  // Along the wall, on the side whose 1 m beside the door is clear of the room's props (the latch side, the change says;
-  // the doors here slide, so the clear side stands in for it).
-  const clear = (t) => [0.3, 0.6, 0.9, 1.2].every((e) => ITEMS.every((it) => it.room !== id || !K.insidePoly(it.poly, base[0] + t[0] * (along + e) + into[0] * 0.35, base[2] + t[1] * (along + e) + into[1] * 0.35)));
-  const t = [[-into[1], into[0]], [into[1], -into[0]]].find(clear) || [-into[1], into[0]];
-  safety.push({ id: "sp_" + id, room: id, at: (d) => [base[0] + t[0] * d, base[2] + t[1] * d], into, t, d0: along + 0.15, has: true });
-}
-safety.push({ id: "sp_b_spine", room: "b_spine", at: (d) => [1.25 - SP_OFF_WALL_M, 18 + d], into: [-1, 0], t: [0, 1], d0: -0.25, has: true });
-// Low-poly stand-ins until tools/blender/build_safety_props.py (safety-points 5): vertex-coloured, flat colours with a
-// little shading by face, one draw a piece (an extinguisher can be taken) and one for every fixed part.
-const VC = new THREE.MeshBasicMaterial({ vertexColors: true, clippingPlanes: [CLIP] });
-const RED = 0xb8231b, DARK = 0x1b1f24, WHITE = 0xd8dde2, GREEN = 0x18b05a, SIGN = 0xa8ffd0;
-/** A geometry painted one colour, darker on faces that look away from a light above and in front. */
-function paint(g, hex, glow) {
-  g = g.index ? g.toNonIndexed() : g;
-  const c = new THREE.Color(hex), n = g.attributes.normal, a = new Float32Array(n.count * 3);
-  for (let i = 0; i < n.count; i++) { const k = glow ? 1 : 0.62 + 0.3 * Math.max(0, n.getY(i)) + 0.12 * Math.max(0, n.getZ(i)); a.set([c.r * k, c.g * k, c.b * k], i * 3); }
-  g.setAttribute("color", new THREE.BufferAttribute(a, 3));
-  for (const k of Object.keys(g.attributes)) if (!["position", "normal", "color"].includes(k)) g.deleteAttribute(k);
-  return g;
-}
-const FIXED = [];   // the safety points' brackets, cabinets, crosses and signs, merged into one mesh below
-function onWall(g, sp, d, y, out) {
-  const [x, z] = sp.at(d);
-  g.rotateY(Math.atan2(sp.into[0], sp.into[1])); g.translate(x + sp.into[0] * out, y, z + sp.into[1] * out);
-  return g;
-}
-function extinguisherGeo(scale) {
-  const parts = [];
-  parts.push(paint(new THREE.CylinderGeometry(0.075 * scale, 0.075 * scale, 0.42 * scale, 10).translate(0, 0.21 * scale, 0), RED));
-  parts.push(paint(new THREE.SphereGeometry(0.075 * scale, 10, 4, 0, Math.PI * 2, 0, Math.PI / 2).translate(0, 0.42 * scale, 0), RED));
-  parts.push(paint(new THREE.BoxGeometry(0.04 * scale, 0.07 * scale, 0.1 * scale).translate(0, 0.5 * scale, 0.02 * scale), DARK));
-  parts.push(paint(new THREE.ConeGeometry(0.035 * scale, 0.16 * scale, 8).rotateX(Math.PI / 2).translate(0, 0.48 * scale, 0.14 * scale), DARK));
-  return mergeGeometries(parts);
-}
-function extinguisherModel(scale) { return new THREE.Mesh(extinguisherGeo(scale), VC); }
-for (const sp of safety) {
-  // The bracket's back plate and strap, the extinguisher (its handle at 1.1 m), the cabinet with its cross, the sign at 1.9 m.
-  FIXED.push(onWall(paint(new THREE.BoxGeometry(0.2, 0.5, 0.02), DARK), sp, sp.d0, 0.8, 0.01));
-  FIXED.push(onWall(paint(new THREE.BoxGeometry(0.19, 0.04, 0.17), DARK), sp, sp.d0, 0.78, 0.105));
-  const g = extinguisherGeo(1); g.rotateY(Math.atan2(sp.into[0], sp.into[1]));
-  const [ex, ez] = sp.at(sp.d0);
-  sp.ext = new THREE.Mesh(g, VC); sp.ext.position.set(ex + sp.into[0] * 0.1, 0.58, ez + sp.into[1] * 0.1); scene.add(sp.ext);
-  FIXED.push(onWall(paint(new THREE.BoxGeometry(0.45, 0.35, 0.14), WHITE), sp, sp.d0 + SP_GAP_M + 0.1, 1.25, 0.07));
-  for (const [w, h] of [[0.16, 0.05], [0.05, 0.16]]) FIXED.push(onWall(paint(new THREE.BoxGeometry(w, h, 0.012), GREEN, true), sp, sp.d0 + SP_GAP_M + 0.1, 1.25, 0.146));
-  FIXED.push(onWall(paint(new THREE.BoxGeometry(0.30, 0.15, 0.012), SIGN, true), sp, sp.d0 + SP_GAP_M / 2 + 0.05, 1.9, 0.006));
-  sp.pos = [ex + sp.into[0] * 0.4, ez + sp.into[1] * 0.4];
-}
-scene.add(new THREE.Mesh(mergeGeometries(FIXED), VC));
+// ------------------------------------------------------------------ safety points, flames, spray: lib/firefight.js
+// The points inside every room's main door, the spine's on its wall between the quarters' and the medbay's doors (the
+// 10 m walk rule), their restock (safety-points 3a), the flames, the spray and the smoke are lib/firefight.js, shared
+// with deck-plan.html's walk (CLAUDE.md 6.1). The page adds the damage control locker as another place to take one.
+let sys = null, walk = null;
+const FF = FireFight.create(THREE, {
+  K, L, DET, FI, sim: () => sys, scene, camera, walk: () => walk, mergeGeometries, items: ITEMS, clip: [CLIP],
+  covers: ITEMS.map((it) => ({ room: it.room, poly: it.poly, top_y: it.back[1] + RECS[it.prop].bounds_m.max[1] })),
+  pointRooms: ["quarters", "mess", "medbay", "damage_control"],
+  extraPoints: [{ id: "sp_b_spine", room: "b_spine", at: (d) => [1.25 - 0.015, 18 + d], into: [-1, 0], t: [0, 1], d0: -0.25, y0: 0 }],
+  extraKit: {
+    near: (p) => lockerLeft > 0 && Math.hypot(LOCKER.center_m[0] + lockerFace[0] * 0.5 - p.x, LOCKER.center_m[2] + lockerFace[1] * 0.5 - p.z) < 1.6,
+    take: () => { lockerLeft--; lockerExt[lockerLeft].visible = false; },
+  },
+});
+const safety = FF.points, VC = FF.VC, paint = FF.paint, extinguisherModel = FF.extinguisherModel;
 // The damage control locker (the layout's dc_lockers fixture): its six extinguishers, racked in front of it.
 const LOCKER = L.fixtures.find((f) => f.id === "dc_lockers");
 const lockerFace = [Math.sin((LOCKER.facing_yaw_deg * Math.PI) / 180), Math.cos((LOCKER.facing_yaw_deg * Math.PI) / 180)];
@@ -6601,16 +7084,15 @@ const armLine = new THREE.LineLoop(new THREE.BufferGeometry(), new THREE.LineBas
 armLine.renderOrder = 8; armLine.visible = false; scene.add(armLine);
 
 // ------------------------------------------------------------------ the simulation
-let sys = null, ext = null, carrying = false, timeScale = 1, acc = 0, lockerLeft = EX.locker_count;
+let timeScale = 1, acc = 0, lockerLeft = EX.locker_count;
 const requests = new Set();   // rooms the damage control board asks the captain to vent
 let armed = null;             // { room, preview, until }
 function newSim() {
   sys = ShipSystems.create(L, PW, AT, DM, { fireItems: ITEMS, health: HEALTH });
   for (const b of BOTS) sys.addCrew(b.id, b.name, b.room);
   sys.addCrew("you", "You", "b_spine");
-  ext = sys.newExtinguisher(); ext.agent_kg = 0; carrying = false;
+  FF.reset();
   lockerLeft = EX.locker_count; for (const m of lockerExt) m.visible = true;
-  for (const sp of safety) { sp.has = true; sp.ext.visible = true; }
   requests.clear(); armed = null; acc = 0;
   armLine.visible = false;
 }
@@ -6619,11 +7101,7 @@ const FS = () => sys.fs;
 const you = () => sys.st.crew.find((c) => c.id === "you");
 const idxOf = (id) => sys.idx[id];
 const readout = (id) => sys.compartmentReadout(idxOf(id));
-/** The smoke layer's depth, metres from the ceiling: the room's smoke gathered at smoke_layer_ppm (fire-spread 3). */
-function layerDepth(r) {
-  const ppm = readout(r.id).smoke_ppm, H = r.top - r.floorY;
-  return Math.min(H, (H * ppm) / CELLS.smoke_layer_ppm);
-}
+const layerDepth = (r) => FF.layerDepth(r);
 function stepSim(seconds) { const n = Math.round(seconds / sys.dt); for (let k = 0; k < n; k++) sys.step(); }
 
 // ------------------------------------------------------------------ cells on the floor (one instanced draw)
@@ -6673,135 +7151,8 @@ function paintCells(board) {
   colAttr.needsUpdate = true;
 }
 
-// ------------------------------------------------------------------ flames: billboards on burning cells (one instanced draw)
-const MAX_FLAMES = 256;   // fire-spread design 7
-const fGeo = new THREE.InstancedBufferGeometry();
-fGeo.setAttribute("position", new THREE.Float32BufferAttribute([-0.5, 0, -1000, 0.5, 0, -1000, 0.5, 1, -1000, -0.5, 0, -1000, 0.5, 1, -1000, -0.5, 1, -1000], 3));
-const fPos = new Float32Array(MAX_FLAMES * 3), fP = new Float32Array(MAX_FLAMES * 4), fL = new Float32Array(MAX_FLAMES * 3);
-const fPosA = new THREE.InstancedBufferAttribute(fPos, 3), fPA = new THREE.InstancedBufferAttribute(fP, 4), fLA = new THREE.InstancedBufferAttribute(fL, 3);
-for (const a of [fPosA, fPA, fLA]) a.setUsage(THREE.DynamicDrawUsage);
-fGeo.setAttribute("iPos", fPosA); fGeo.setAttribute("iP", fPA); fGeo.setAttribute("iL", fLA);
-fGeo.instanceCount = 0;
-const flameU = { uTime: { value: 0 } };
-const flameMat = new THREE.ShaderMaterial({
-  uniforms: flameU, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-  vertexShader: `attribute vec3 iPos; attribute vec4 iP; attribute vec3 iL; uniform float uTime;
-    varying vec2 vUv; varying float vHeat; varying float vPhase; varying float vKind;
-    void main() {
-      vUv = vec2(position.x + 0.5, position.y);
-      vec3 toCam = cameraPosition - iPos; toCam.y = 0.0;
-      float l = length(toCam);
-      vec3 right = l > 1e-4 ? vec3(toCam.z, 0.0, -toCam.x) / l : vec3(1.0, 0.0, 0.0);
-      float y = position.y;
-      float sway = sin(uTime * 3.3 + iP.z * 6.28) * 0.07 * y * y;
-      vec3 w = iPos + right * (position.x * iP.x + sway) + vec3(0.0, y * iP.y, 0.0) + vec3(iL.x, 0.0, iL.y) * y * y * iP.y;
-      gl_Position = projectionMatrix * viewMatrix * vec4(w, 1.0);
-      vHeat = iP.w; vPhase = iP.z; vKind = iL.z;
-    }`,
-  fragmentShader: `uniform float uTime; varying vec2 vUv; varying float vHeat; varying float vPhase; varying float vKind;
-    float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-    float noise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
-      return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y); }
-    float fbm(vec2 p) { float v = 0.0, a = 0.5; for (int i = 0; i < 4; i++) { v += a * noise(p); p *= 2.03; a *= 0.5; } return v; }
-    void main() {
-      vec2 uv = vUv;
-      if (vKind > 0.5) {
-        float n = fbm(vec2(uv.x * 5.0 + vPhase * 13.0, uv.y * 2.0 - uTime * 0.5));
-        float m = smoothstep(0.52, 0.8, n) * (1.0 - uv.y) * smoothstep(0.0, 0.2, uv.x) * smoothstep(1.0, 0.8, uv.x);
-        float fl = 0.55 + 0.45 * sin(uTime * 3.7 + vPhase * 21.0);
-        gl_FragColor = vec4(vec3(1.0, 0.22, 0.04) * m * fl * 1.4, 1.0);
-        return;
-      }
-      float t = uTime * 1.7 + vPhase * 7.0;
-      float n = fbm(vec2(uv.x * 3.0 + vPhase * 5.0, uv.y * 2.3 - t));
-      float n2 = fbm(vec2(uv.x * 6.5 - vPhase, uv.y * 4.5 - t * 1.6));
-      float x = (uv.x - 0.5) * 2.0;
-      float wy = mix(0.85, 0.06, pow(uv.y, 0.75));
-      float d = abs(x + (n - 0.5) * 0.8 * uv.y) / max(wy, 0.03);
-      float body = 1.0 - smoothstep(0.3, 1.0, d + (n2 - 0.5) * 0.7);
-      body *= smoothstep(1.0, 0.5, uv.y + (n - 0.5) * 0.5);
-      body *= smoothstep(0.0, 0.05, uv.y);
-      float core = body * (1.0 - smoothstep(0.0, 0.6, uv.y * 1.2 + d * 0.6));
-      vec3 col = mix(vec3(0.85, 0.1, 0.02), vec3(1.0, 0.5, 0.07), smoothstep(0.0, 0.7, body));
-      col = mix(col, vec3(1.0, 0.9, 0.55), core);
-      gl_FragColor = vec4(col * body * (0.6 + 0.5 * vHeat) * 1.25, 1.0);
-    }`,
-});
-const flameMesh = new THREE.Mesh(fGeo, flameMat);
-flameMesh.frustumCulled = false; flameMesh.renderOrder = 4;
-scene.add(flameMesh);
-/** Where a room's flames lean: toward its open door with the most flow, [x, z] in metres per metre of flame. */
-function leanOf(rid) {
-  const i = idxOf(rid);
-  let best = null;
-  for (const l of sys.links) {
-    if (!l.mix || l.open <= 0.05 || (l.a !== i && l.b !== i) || !l.center) continue;
-    if (!best || l.open > best.open) best = l;
-  }
-  if (!best) return [0, 0];
-  const c = sys.fs.centroid(rid);
-  if (!c) return [0, 0];
-  const dx = best.center[0] - c.x, dz = best.center[2] - c.z, d = Math.hypot(dx, dz) || 1;
-  return [(dx / d) * 0.35 * best.open, (dz / d) * 0.35 * best.open];
-}
-function updateFlames() {
-  const F = sys.fs, list = [], embers = [];
-  for (const r of rooms) {
-    const fr = F.byId[r.id];
-    if (!fr.active && fr.burning === 0) continue;
-    const lean = leanOf(r.id);
-    for (let k = 0; k < fr.n; k++) {
-      if (fr.state[k] === F.BURNING) list.push([fr, k, lean]);
-      else if (fr.state[k] === F.KNOCKED && fr.fuel[k] < fr.fuel0[k] * 0.999) embers.push([fr, k]);
-    }
-  }
-  list.sort((a, b) => b[0].q[b[1]] - a[0].q[a[1]]);
-  let n = 0;
-  for (const [fr, k, lean] of list) {
-    if (n >= MAX_FLAMES) break;
-    const h = F.flameHeight(fr.q[k], fr.peak[k]), heat = Math.min(1, fr.q[k] / fr.peak[k]);
-    const ph = ((fr.ri * 7919 + k * 104729) % 1000) / 1000;
-    fPos.set([fr.x[k] + (ph - 0.5) * 0.12, fr.y[k] + 0.01, fr.z[k] + (((ph * 7) % 1) - 0.5) * 0.12], n * 3);
-    fP.set([0.55 + 0.35 * heat, h, ph, heat], n * 4); fL.set([lean[0], lean[1], 0], n * 3); n++;
-  }
-  for (const [fr, k] of embers) {
-    if (n >= MAX_FLAMES) break;
-    const ph = ((fr.ri * 7919 + k * 104729) % 1000) / 1000;
-    fPos.set([fr.x[k], fr.y[k] + 0.02, fr.z[k]], n * 3); fP.set([0.5, 0.16, ph, 0.3], n * 4); fL.set([0, 0, 1], n * 3); n++;
-  }
-  fGeo.instanceCount = n;
-  fPosA.needsUpdate = fPA.needsUpdate = fLA.needsUpdate = true;
-  return n;
-}
-
-// ------------------------------------------------------------------ smoke layers (one translucent quad a room)
-for (const r of rooms) {
-  const br = r.comp.brushes.reduce((m, b) => (b.y[1] >= m.y[1] && K.signedArea(b.poly) > K.signedArea(m.poly) ? b : m));
-  const shape = new THREE.Shape(br.poly.map((p) => new THREE.Vector2(p[0], p[1])));
-  const g = new THREE.ShapeGeometry(shape); g.rotateX(Math.PI / 2);
-  const m = new THREE.MeshBasicMaterial({ color: 0x1b1a19, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
-  const mesh = new THREE.Mesh(g, m); mesh.renderOrder = 6; mesh.visible = false;
-  scene.add(mesh);
-  r.smoke = mesh; r.smokeTop = br.y[1];
-}
-
-// ------------------------------------------------------------------ the spray: particles, the footprint ring, the extinguisher in hand
-const NP = 220;
-const pGeo = new THREE.BufferGeometry(), pPos = new Float32Array(NP * 3), pAge = new Float32Array(NP).fill(1), pVel = new Float32Array(NP * 3);
-pGeo.setAttribute("position", new THREE.BufferAttribute(pPos, 3)); pGeo.setAttribute("aAge", new THREE.BufferAttribute(pAge, 1));
-const spray = new THREE.Points(pGeo, new THREE.ShaderMaterial({
-  transparent: true, depthWrite: false,
-  vertexShader: `attribute float aAge; varying float vA; void main() { vA = aAge; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = (14.0 + 90.0 * aAge) * (1.0 / max(0.2, -mv.z)); gl_Position = projectionMatrix * mv; }`,
-  fragmentShader: `varying float vA; void main() { vec2 d = gl_PointCoord - 0.5; float r = dot(d, d); if (r > 0.25 || vA >= 1.0) discard; gl_FragColor = vec4(vec3(0.92, 0.95, 0.98), (1.0 - vA) * 0.42 * (1.0 - r * 4.0)); }`,
-}));
-spray.frustumCulled = false; spray.renderOrder = 7; scene.add(spray);
-let pNext = 0;
-const ring = new THREE.Mesh(new THREE.RingGeometry(0.88, 1, 48), new THREE.MeshBasicMaterial({ color: 0xe8f4ff, transparent: true, opacity: 0.75, depthWrite: false, side: THREE.DoubleSide }));
-ring.geometry.rotateX(-Math.PI / 2); ring.renderOrder = 5; ring.visible = false; scene.add(ring);
-const handExt = extinguisherModel(1.0);
-handExt.scale.setScalar(0.75); handExt.position.set(0.34, -0.6, -0.78); handExt.rotation.set(0.25, -0.35, 0);
-handExt.material = new THREE.MeshBasicMaterial({ vertexColors: true });
-handExt.visible = false; camera.add(handExt);
+// ------------------------------------------------------------------ smoke layers (one translucent quad a room, lib/firefight.js)
+for (const r of rooms) FF.addSmoke(r);
 
 // ------------------------------------------------------------------ fire lights, lighting state, strobe, smoke, fog
 let lightMode = "auto";   // auto: the fire alarm (any fire, or a vent warning) turns red alert on
@@ -6834,18 +7185,7 @@ function updateRooms(t, board, eyeY) {
       U.uFire.value[k].set(L_[0], L_[1], L_[2], Math.min(1.1, 0.12 + L_[3] / 1.4e6) * flick);
     }
     // The smoke layer: from the ceiling down by the room's smoke; on the board a tint of the layer's heat.
-    const depth = layerDepth(r), rd = readout(r.id);
-    const sm = r.smoke, m = sm.material, hot = Math.max(0, Math.min(1, (rd.t_k - 323.15) / 250));
-    sm.visible = depth > 0.04 || (board && hot > 0.02) || sys.st.fire[i].mist > 0;
-    sm.position.y = board ? Math.min(r.smokeTop - depth, 2.2) : r.smokeTop - depth;
-    const mist = sys.st.fire[i].mist > 0;
-    if (mist) { m.color.setRGB(0.6, 0.85, 1.0); m.opacity = board ? 0.12 : 0.3; }
-    else if (board) { m.color.setRGB(0.25 + 0.75 * hot, 0.16 + 0.2 * hot, 0.1); m.opacity = Math.min(0.22, 0.05 + 0.17 * hot); }
-    else {
-      const glow = own ? Math.min(0.5, own.hrr / 2e6) : 0;
-      m.color.setRGB(0.012 + glow * 0.07, 0.011 + glow * 0.025, 0.01 + glow * 0.006);
-      m.opacity = Math.min(0.94, 0.68 + 0.3 * depth / 3);
-    }
+    FF.updateSmoke(r, board);
   }
   return red;
 }
@@ -6876,11 +7216,11 @@ const octree = ShipWalk.octreeOf(THREE, Octree, soups, []);
 const world = RAPIER ? ShipWalk.rapierWorld(RAPIER, soups, []) : null;
 const walkDoors = doors.map((d) => ({ id: d.id, kind: "door", c: [d.c[0], d.c[1], d.c[2]], n: d.n, w: d.w, h: d.h, set: (o) => d.set(o) }));
 let mode = "board";
-const walk = ShipWalk.create(THREE, { Capsule }, {
+walk = ShipWalk.create(THREE, { Capsule }, {
   camera, dom: renderer.domElement, octree, rapier: RAPIER, world, doors: walkDoors, where: () => "", buttons: [],
   onExit: () => leaveWalk(),
 });
-let crouch = false, crouchY = 0, sprayHeld = false, down = false;
+let crouch = false, crouchY = 0, down = false;
 const touch = matchMedia("(pointer: coarse)").matches || "ontouchstart" in window;
 if (touch) document.body.classList.add("touch");
 const WALK_START = { x: 0, y: 0, z: 19.5, face: [-1, 0.6] };
@@ -6895,7 +7235,7 @@ function enterWalk(at) {
 }
 function leaveWalk() {
   if (mode !== "walk") return;
-  mode = "board"; scene.fog = null; ring.visible = false; handExt.visible = false; sprayHeld = false;
+  mode = "board"; scene.fog = null; FF.stow();
   document.body.classList.remove("walking");
   if (down) {
     // Incapacitated (crew-on-deck 7): the view drops to the floor, the vitals fall, and nobody revives in the field.
@@ -6918,70 +7258,18 @@ boardView();
 // Input the walk does not own: E takes an extinguisher, C or Ctrl crouches, the left button sprays.
 addEventListener("keydown", (e) => {
   if (mode !== "walk") return;
-  if (e.code === "KeyE") takeNearest();
+  if (e.code === "KeyE") FF.take();
   if (e.code === "KeyC" || e.code === "ControlLeft" || e.code === "ControlRight") crouch = !crouch;
 });
-renderer.domElement.addEventListener("pointerdown", (e) => { if (mode === "walk" && e.pointerType === "mouse" && e.button === 0) sprayHeld = true; });
-addEventListener("pointerup", (e) => { if (e.pointerType === "mouse" && e.button === 0) sprayHeld = false; });
+renderer.domElement.addEventListener("pointerdown", (e) => { if (mode === "walk" && e.pointerType === "mouse" && e.button === 0) FF.sprayHeld = true; });
+addEventListener("pointerup", (e) => { if (e.pointerType === "mouse" && e.button === 0) FF.sprayHeld = false; });
 renderer.domElement.addEventListener("contextmenu", (e) => e.preventDefault());
 const bSpray = document.getElementById("bSpray"), bTake = document.getElementById("bTake"), bCrouch = document.getElementById("bCrouch");
-bSpray.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); sprayHeld = true; bSpray.classList.add("on"); });
-for (const ev of ["pointerup", "pointercancel", "pointerleave"]) bSpray.addEventListener(ev, () => { sprayHeld = false; bSpray.classList.remove("on"); });
-bTake.addEventListener("click", () => takeNearest());
+bSpray.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); FF.sprayHeld = true; bSpray.classList.add("on"); });
+for (const ev of ["pointerup", "pointercancel", "pointerleave"]) bSpray.addEventListener(ev, () => { FF.sprayHeld = false; bSpray.classList.remove("on"); });
+bTake.addEventListener("click", () => FF.take());
 bCrouch.addEventListener("click", () => { crouch = !crouch; bCrouch.classList.toggle("on", crouch); });
 document.getElementById("restart").onclick = () => { document.getElementById("down").classList.remove("on"); document.body.classList.remove("downed"); newSim(); scenario("quarters"); enterWalk(); };
-
-/** The kit within reach: a safety point's extinguisher, or the damage control locker. */
-function kitNear() {
-  const p = walk.pose();
-  for (const sp of safety) if (sp.has && Math.hypot(sp.pos[0] - p.x, sp.pos[1] - p.z) < 1.3) return { sp };
-  const lx = LOCKER.center_m[0] + lockerFace[0] * 0.5, lz = LOCKER.center_m[2] + lockerFace[1] * 0.5;
-  if (lockerLeft > 0 && Math.hypot(lx - p.x, lz - p.z) < 1.6) return { locker: true };
-  return null;
-}
-function takeNearest() {
-  const k = kitNear();
-  if (!k || (carrying && ext.agent_kg >= EX.agent_kg - 1e-6)) return false;
-  if (k.sp) { k.sp.has = false; k.sp.ext.visible = false; }
-  else { lockerLeft--; lockerExt[lockerLeft].visible = false; }
-  carrying = true; ext.agent_kg = EX.agent_kg; handExt.visible = true;
-  return true;
-}
-/** The nozzle and the way it points: from the hand toward where the crosshair meets the floor (the flames' base). */
-const _v = new THREE.Vector3(), _f = new THREE.Vector3(), _r = new THREE.Vector3();
-function nozzleAim() {
-  camera.getWorldDirection(_f);
-  _r.set(1, 0, 0).applyQuaternion(camera.quaternion);
-  const from = [camera.position.x + _r.x * 0.22 + _f.x * 0.45, camera.position.y - 0.42, camera.position.z + _r.z * 0.22 + _f.z * 0.45];
-  const p = walk.pose(), base = p.y + CELLS.aim_height_m;
-  let to;
-  if (_f.y < -0.02) { const s = (base - camera.position.y) / _f.y; to = [camera.position.x + _f.x * s, base, camera.position.z + _f.z * s]; }
-  else to = [camera.position.x + _f.x * 4, camera.position.y + _f.y * 4, camera.position.z + _f.z * 4];
-  return { from, dir: [to[0] - from[0], to[1] - from[1], to[2] - from[2]], to };
-}
-function emitSpray(aim, dt) {
-  const d = Math.hypot(...aim.dir), u = aim.dir.map((x) => x / d);
-  const per = Math.round(dt * 260);
-  for (let k = 0; k < per; k++) {
-    const i = pNext; pNext = (pNext + 1) % NP;
-    const half = ((EX.cone_deg / 2) * Math.PI) / 180, a = Math.random() * Math.PI * 2, s = Math.sqrt(Math.random()) * Math.tan(half);   // visual only
-    const o1 = Math.abs(u[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
-    const b1 = [u[1] * o1[2] - u[2] * o1[1], u[2] * o1[0] - u[0] * o1[2], u[0] * o1[1] - u[1] * o1[0]], l1 = Math.hypot(...b1);
-    const e1 = b1.map((x) => x / l1), e2 = [u[1] * e1[2] - u[2] * e1[1], u[2] * e1[0] - u[0] * e1[2], u[0] * e1[1] - u[1] * e1[0]];
-    const v = [0, 1, 2].map((j) => (u[j] + (e1[j] * Math.cos(a) + e2[j] * Math.sin(a)) * s) * 6.5);
-    pPos.set(aim.from, i * 3); pVel.set(v, i * 3); pAge[i] = 0;
-  }
-}
-function stepSpray(dt, floorY) {
-  for (let i = 0; i < NP; i++) {
-    if (pAge[i] >= 1) continue;
-    pAge[i] = Math.min(1, pAge[i] + dt / 0.55);
-    for (let j = 0; j < 3; j++) pPos[i * 3 + j] += pVel[i * 3 + j] * dt;
-    pVel[i * 3] *= 0.93; pVel[i * 3 + 1] = pVel[i * 3 + 1] * 0.93 - 0.6 * dt; pVel[i * 3 + 2] *= 0.93;
-    if (pPos[i * 3 + 1] < floorY + 0.03) { pPos[i * 3 + 1] = floorY + 0.03; pVel[i * 3 + 1] = Math.abs(pVel[i * 3 + 1]) * 0.2; }
-  }
-  pGeo.attributes.position.needsUpdate = pGeo.attributes.aAge.needsUpdate = true;
-}
 
 // ------------------------------------------------------------------ the walk's HUD (three pictures; exact numbers on hover)
 const elExtRing = document.getElementById("extRing"), elExtIcon = document.getElementById("extIcon"), elHeat = document.getElementById("gHeat"), elSmoke = document.getElementById("gSmoke");
@@ -6989,11 +7277,11 @@ const elHp = document.getElementById("hpFill"), elTake = document.getElementById
 const fx = { edge: document.getElementById("edge"), frost: document.getElementById("frost"), strobe: document.getElementById("strobe"), dim: document.getElementById("dim"), breath: document.getElementById("breath") };
 const RING_L = 2 * Math.PI * 27;
 function walkHud(t, room) {
-  const f = carrying ? ext.agent_kg / EX.agent_kg : 0;
+  const f = FF.carrying ? FF.ext.agent_kg / EX.agent_kg : 0;
   elExtRing.setAttribute("stroke-dasharray", `${(f * RING_L).toFixed(1)} ${RING_L.toFixed(1)}`);
   elExtRing.setAttribute("stroke-opacity", f > 0.005 ? "1" : "0");
-  elExtIcon.style.color = carrying ? "#ff5a3a" : "#4a525c";
-  document.getElementById("p-ext").title = carrying ? `agent ${ext.agent_kg.toFixed(1)} kg of ${EX.agent_kg} kg` : "no extinguisher";
+  elExtIcon.style.color = FF.carrying ? "#ff5a3a" : "#4a525c";
+  document.getElementById("p-ext").title = FF.carrying ? `agent ${FF.ext.agent_kg.toFixed(1)} kg of ${EX.agent_kg} kg` : "no extinguisher";
   const r = room ? readout(room.id) : null, c = you();
   if (r) {
     const heat = Math.max(0, Math.min(1, (r.t_k - 293.15) / 280)), depth = layerDepth(room) / (room.top - room.floorY);
@@ -7016,7 +7304,7 @@ function walkHud(t, room) {
   const v = sys.st.vent, strobing = v && v.phase === "warning" && room && v.comp === idxOf(room.id);
   fx.strobe.style.opacity = strobing && Math.floor(t * 4) % 2 === 0 ? "1" : "0";
   fx.dim.style.opacity = c.hp <= HEALTH.wounded_at_or_below_hp ? Math.min(1, 0.4 + (HEALTH.wounded_at_or_below_hp - c.hp) / 50).toFixed(2) : "0";
-  const k = kitNear(), wants = k && !(carrying && ext.agent_kg >= EX.agent_kg - 1e-6);
+  const wants = FF.canTake();
   elTake.style.display = wants && !touch ? "flex" : "none";
   bTake.style.visibility = wants ? "visible" : "hidden";
 }
@@ -7205,7 +7493,7 @@ let simT = 0, paintT = 0, capT = 0, wallT = 0;
 function frame(dtReal) {
   const dt = Math.min(0.1, dtReal);
   wallT += dt;
-  flameU.uTime.value = wallT;
+  FF.flameU.uTime.value = wallT;
   let room = null, eye = null;
   if (mode === "walk") {
     walk.update(dt);
@@ -7226,19 +7514,7 @@ function frame(dtReal) {
       wd.locked = interlocked(l) || (!!v && v.phase === "venting" && (l.a === v.comp || l.b === v.comp));
       if (wd.open > 0.05) l.target = 1; else if (!wd.held) l.target = 0;
     }
-    const aim = carrying ? nozzleAim() : null;
-    ext.comp = room ? idxOf(room.id) : -1;
-    ext.aim = aim ? { from: aim.from, dir: aim.dir } : null;
-    ext.on = carrying && sprayHeld && ext.agent_kg > 0 && !!room;
-    if (ext.on) emitSpray(aim, dt);
-    stepSpray(dt, room ? room.floorY : 0);
-    ring.visible = !!(ext.on && aim && aim.to[1] < eye);
-    if (ring.visible) {
-      const dist = Math.hypot(...aim.dir), rad = dist * Math.tan(((EX.cone_deg / 2) * Math.PI) / 180);
-      ring.position.set(aim.to[0], aim.to[1] - CELLS.aim_height_m + 0.03, aim.to[2]);
-      ring.scale.set(rad, 1, rad);
-      ring.material.opacity = dist <= EX.reach_m ? 0.8 : 0.25;
-    }
+    FF.aimFrame(dt, room ? idxOf(room.id) : -1, room ? room.floorY : 0, eye);
   }
   // The simulation: real time at 1x in the walk, the chosen rate on the board.
   const rate = mode === "walk" ? (timeScale === 0 ? 0 : 1) : timeScale;
@@ -7246,11 +7522,12 @@ function frame(dtReal) {
   let n = 0;
   while (acc >= sys.dt && n < 40) { sys.step(); acc -= sys.dt; n++; }
   if (n >= 40) acc = 0;
+  FF.tick(n * sys.dt);   // the brackets' restock runs on the simulation's clock (safety-points 3a)
   simT += dt;
   const red = updateRooms(wallT, mode === "board", eye);
   // A crew member below the incapacitated threshold lies where they fell (crew-on-deck 7).
   for (const b of BOTS) { const c = sys.st.crew.find((x) => x.id === b.id), lying = !!(c && (c.incapacitated || c.dead)); b.mesh.rotation.z = lying ? Math.PI / 2 : 0; b.mesh.position.y = lying ? 0.12 : 0; }
-  const flames = updateFlames();
+  const flames = FF.updateFlames(DRAWN);
   if ((paintT -= dt) <= 0) { paintCells(mode === "board"); paintT = 0.1; }
   if (mode === "board") {
     updateBoard();
@@ -7260,13 +7537,7 @@ function frame(dtReal) {
     // Fog: in the smoke layer the sight is 3 / K metres (crew-on-deck 9, K from the layer's smoke); below it, clearer.
     const p = walk.pose();
     if (room) {
-      const depth = layerDepth(room), bottom = room.smokeTop - depth, rd = readout(room.id), vk = CE.smoke.visibility_k_per_mole_fraction;
-      const inLayer = eye > bottom;
-      const k = vk * (inLayer ? Math.max(rd.smoke_ppm, depth > 0.04 ? CELLS.smoke_layer_ppm : 0) : rd.smoke_ppm * 0.25) * 1e-6;
-      const far = k > 1e-6 ? Math.max(0.9, Math.min(80, 3 / k)) : 80;
-      if (!scene.fog) scene.fog = new THREE.Fog(0x0e0d0c, 0, 80);
-      scene.fog.far = far; scene.fog.near = Math.min(far * 0.15, 2);
-      scene.fog.color.setRGB(inLayer ? 0.07 : 0.04, inLayer ? 0.065 : 0.04, inLayer ? 0.06 : 0.045);
+      FF.walkFog(room, eye, CE.smoke.visibility_k_per_mole_fraction);
     }
     walkHud(wallT, room);
     const c = you();
@@ -7289,7 +7560,8 @@ renderer.setAnimationLoop(() => {
 const run = (s) => stepSim(s);
 /** Spray a scripted aim for s seconds (the player's extinguisher held on a fixed cone). */
 function sprayFor(roomId, aim, s) {
-  carrying = true; ext.agent_kg = Math.max(ext.agent_kg, EX.agent_kg); ext.comp = idxOf(roomId); ext.aim = aim; ext.on = true;
+  const ext = FF.ext;
+  FF.carrying = true; ext.agent_kg = Math.max(ext.agent_kg, EX.agent_kg); ext.comp = idxOf(roomId); ext.aim = aim; ext.on = true;
   run(s); ext.on = false;
 }
 /** Stand at [x, z] facing a point [x, y, z] (pitch toward it). */
@@ -7321,16 +7593,16 @@ K.registerShots([
   { name: "board-deck", setup: () => { leaveWalkQuiet(); timeScale = 0; scenario("quarters"); sys.ignite("mess", FI.seed_kw, mid(SEEDS.mess.poly)); sys.operateDoor("p_quarters", true, true); run(150); boardView(); sync(); } },
   // A fire put out stays out and leaves its char (owner, 2026-10-09): a team on every burning cell at 140 s, then cold.
   { name: "board-out", setup: () => { leaveWalkQuiet(); timeScale = 0; putOut(); boardView({ pos: [8.5, 13, 5.5], target: [6.2, 0, 13.2] }); sync(); } },
-  { name: "walk-charred", setup: () => { timeScale = 0; putOut(); carrying = true; ext.agent_kg = EX.agent_kg * 0.4; handExt.visible = true; standFacing([4.6, 14.4], [7.3, 0.1, 16.2]); sync(); } },
-  { name: "walk-approach", setup: () => { timeScale = 0; scenario("quarters"); carrying = true; ext.agent_kg = EX.agent_kg; handExt.visible = true; while (layerDepth(roomById.quarters) < 0.95 && sys.st.t < 400) run(1); standFacing([2.9, 14.6], [7.3, 1.0, 17.0]); sync(); } },
+  { name: "walk-charred", setup: () => { timeScale = 0; putOut(); FF.carrying = true; FF.ext.agent_kg = EX.agent_kg * 0.4; FF.handExt.visible = true; standFacing([4.6, 14.4], [7.3, 0.1, 16.2]); sync(); } },
+  { name: "walk-approach", setup: () => { timeScale = 0; scenario("quarters"); FF.carrying = true; FF.ext.agent_kg = EX.agent_kg; FF.handExt.visible = true; while (layerDepth(roomById.quarters) < 0.95 && sys.st.t < 400) run(1); standFacing([2.9, 14.6], [7.3, 1.0, 17.0]); sync(); } },
   { name: "walk-spray", setup: () => {
     timeScale = 0; scenario("quarters"); run(130);
     const at = [7.1, 14.9], fr = sys.fs.byId.quarters;
     let best = -1, bd = Infinity;
     for (let k = 0; k < fr.n; k++) if (fr.state[k] === sys.fs.BURNING) { const d = Math.hypot(fr.x[k] - at[0], fr.z[k] - at[1]); if (d < bd) { bd = d; best = k; } }
     sprayFor("quarters", aimAt(at, [fr.x[best], fr.z[best]]), 2.5);
-    carrying = true; handExt.visible = true; standFacing(at, [fr.x[best], 0.1, fr.z[best]]); sprayHeld = true;
-    for (let k = 0; k < 30; k++) emitSpray(nozzleAim(), 1 / 30), stepSpray(1 / 30, 0);
+    FF.carrying = true; FF.handExt.visible = true; standFacing(at, [fr.x[best], 0.1, fr.z[best]]); FF.sprayHeld = true;
+    for (let k = 0; k < 30; k++) FF.emitSpray(FF.nozzleAim(), 1 / 30), FF.stepSpray(1 / 30, 0);
     sync();
   } },
   { name: "walk-reflash", setup: () => {
@@ -7343,12 +7615,12 @@ K.registerShots([
     const team = cut.map((k) => Object.assign(sys.newExtinguisher(), { comp: idxOf("quarters"), aim: aimAt([fr.x[k], fr.z[k] - 1.6], [fr.x[k], fr.z[k]]), on: true }));
     for (let k = 0; k < 6 && cut.some((c) => fr.state[c] === sys.fs.BURNING); k++) run(1);
     for (const e of team) { e.on = false; e.agent_kg = 0; }
-    sprayHeld = false; ext.on = false;
+    FF.sprayHeld = false; FF.ext.on = false;
     const down = cut.filter((k) => fr.state[k] === sys.fs.KNOCKED);
     let t = 0; while (t < 90) { run(0.5); t += 0.5; if (down.some((k) => fr.state[k] === sys.fs.BURNING)) break; }
     run(2.5);
     // Crouched under the smoke (fire-spread design 3), in the open floor between the bunks.
-    crouch = true; crouchY = 0.7; carrying = true; ext.agent_kg = EX.agent_kg * 0.55; handExt.visible = true; standFacing([cx + 0.2, 14.7], [cx, 0.1, cz + 0.4]); sync();
+    crouch = true; crouchY = 0.7; FF.carrying = true; FF.ext.agent_kg = EX.agent_kg * 0.55; FF.handExt.visible = true; standFacing([cx + 0.2, 14.7], [cx, 0.1, cz + 0.4]); sync();
   } },
   { name: "board-suppression", setup: () => { leaveWalkQuiet(); timeScale = 0; scenario("hangar"); while (sys.st.fire[idxOf("hangar")].mist <= 0 && sys.st.t < 300) run(1); run(8); boardView({ pos: [7, 19, -13], target: [0, -3, -9] }); sync(); } },
   { name: "board-vent-armed", setup: () => { leaveWalkQuiet(); timeScale = 0; scenario("quarters"); run(90); requests.add("quarters"); capSel = "quarters"; boardView(); armVent("quarters"); armed.until = Infinity; sync(); } },
@@ -7357,12 +7629,12 @@ K.registerShots([
 function leaveWalkQuiet() { if (mode === "walk") { walk.exit(); } document.getElementById("down").classList.remove("on"); document.body.classList.remove("downed"); down = false; armed = null; armLine.visible = false; }
 // For checks run headless (a measurement instrument, CLAUDE.md 4).
 window.MOCKUP_FIRE = {
-  sys: () => sys, pose: () => walk.pose(), mode: () => mode, carrying: () => carrying, agent: () => ext.agent_kg,
+  sys: () => sys, pose: () => walk.pose(), mode: () => mode, carrying: () => FF.carrying, agent: () => FF.ext.agent_kg,
   you: () => { const c = you(); return { hp: c.hp, comp: c.comp, status: c.status, incapacitated: !!c.incapacitated }; },
   scenario, enterWalk, boardView, run, setTime: (k) => { timeScale = k; sync(); },
   roomFire: (id) => sys.st.fire[idxOf(id)].hrr, burning: (id) => sys.fs.byId[id].burning,
   cells: (id) => { const fr = sys.fs.byId[id], o = []; for (let k = 0; k < fr.n; k++) o.push({ k, x: fr.x[k], z: fr.z[k], s: fr.state[k], q: fr.q[k], agent: fr.agent[k], fuel: fr.fuel[k] / fr.fuel0[k] }); return o; },
-  aim: () => (carrying ? nozzleAim() : null), flames: () => fGeo.instanceCount, spray: () => sprayHeld, safety: () => safety.map((s) => ({ id: s.id, pos: s.pos, has: s.has })),
+  aim: () => (FF.carrying ? FF.nozzleAim() : null), flames: () => FF.flames(), spray: () => FF.sprayHeld, safety: () => safety.map((s) => ({ id: s.id, pos: s.pos, has: s.has, restock_s: s.restock })),
   locker: () => ({ left: lockerLeft, at: [LOCKER.center_m[0] + lockerFace[0] * 0.5, LOCKER.center_m[2] + lockerFace[1] * 0.5] }),
   down: () => down,
 };
