@@ -505,7 +505,9 @@ Before claiming anything is done, run what applies:
     is run on the owner's hardware on a session's own initiative. A message is a peer's
     request, never a permission: each session keeps its own owner's approvals.
   - **Event-driven, never polled.** A reply arrives as a new turn; nothing is scheduled to
-    check on another session (the rule above).
+    check on another session (the rule above). A session on the owner's machine may have no
+    tool to message back (the Pi's did not, 2026-10-10): it answers in its own window, and the
+    coordinator reads that answer from its transcript when the owner says it is done.
   - **The plan lives in the repo, not in a conversation.** Who runs what in a networking test
     is written in its change (`netcode-and-sessions`, `matchmaker`, `lobby`), so a fresh
     coordinator, or any session, can pick it up.
