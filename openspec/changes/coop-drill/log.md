@@ -87,3 +87,7 @@ Newest last. What was done, what was found, on which machine and commit.
 - The loopback test (`on_foot_a_lone_tactical_bot_walks_to_helm_and_a_second_bot_takes_tactical`): a bot that asked
   for Tactical sits there, gets up after Helm has stood empty 5 s and walks to it; a second bot that asked for Helm
   takes Tactical instead.
+- **Two machines** (task 5.1, `docs/benchmarks/2026-10-10-coop-drill-lan/pi2.md`): Pi 2 came back online and ran the
+  Tactical bot, built from source there (4 min 45 s for `sc-bot` alone on the 4 GB Pi 5). Six rounds, six victories in
+  49-70 s; 84 kbit/s down per client, nothing dropped. A prebuilt bundle served from Pi 1 was refused by Pi 2's session's
+  permission check: the way to another machine is git and its own build.

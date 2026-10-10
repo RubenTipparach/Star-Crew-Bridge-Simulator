@@ -28,7 +28,7 @@ The owner asked for implementation on 2026-10-10 (proposal). Progress and findin
 
 ## 5. Two machines
 
-- [ ] 5.1 The Pi 5 8 GB hosts the server and the Helm bot; the Mac runs the Tactical bot; drills complete; numbers in `docs/benchmarks/2026-10-10-coop-drill-lan/`.
+- [x] 5.1 The Pi 5 8 GB hosts the server and the Helm bot; the Tactical bot runs on another machine (Pi 2, the 4 GB Pi 5, since the Mac has not answered); drills complete; numbers in `docs/benchmarks/2026-10-10-coop-drill-lan/pi2.md`.
 - [ ] 5.2 The same with `--loss 0.1 --delay-ms 50`.
 - [ ] 5.3 A demo video, each shot named.
 
