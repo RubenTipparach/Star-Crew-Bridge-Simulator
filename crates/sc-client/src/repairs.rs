@@ -50,6 +50,8 @@ pub struct RepairsApp {
     /// The scripted captures: the ported games left, and where the current one is.
     queue: Vec<&'static str>,
     shot: Option<(Shot, f32)>,
+    /// The menu's own capture is taken (the first frame of a capture run).
+    menu_shot: bool,
 }
 
 fn load() -> Result<RepairData, String> {
@@ -91,6 +93,7 @@ impl RepairsApp {
             shots,
             queue,
             shot: None,
+            menu_shot: false,
         };
         if let Some(id) = open {
             app.open(&id)?;
@@ -133,6 +136,10 @@ impl RepairsApp {
 
     /// The scripted captures: step the open game with its hand to the next shot. Returns a shot to take this frame.
     fn script(&mut self) -> Option<String> {
+        if !self.menu_shot {
+            self.menu_shot = true;
+            return Some("menu.png".into());
+        }
         if self.run.is_none() {
             let id = self.queue.pop()?;
             self.opts.state = State::Damaged;
@@ -338,30 +345,27 @@ impl MenuView<'_> {
             for id in games::IDS.iter().filter(|id| self.data.games.get(**id).is_some_and(|f| f.group == *grp)) {
                 let title = self.data.games.get(*id).map(|f| f.title.as_str()).unwrap_or(id);
                 let live = games::ported(id);
-                let (bw, bh) = (col_w - 14.0, 56.0);
+                let (bw, bh) = (col_w - 14.0, 44.0);
                 let over = i.over(gx, y, bw, bh);
-                g.round(
-                    gx,
-                    y,
-                    bw,
-                    bh,
-                    12.0,
-                    Some(if over { hex(0x1d2738) } else { c::PANEL }),
-                    Some((2.0, if live { hex(0x33445a) } else { c::LINE })),
-                );
-                g.text(title, gx + 14.0, y + 22.0, 18.0, if live { c::FG } else { c::DIM }, Align::Left);
-                g.text(
-                    if live { "Ready" } else { "Mockup only" },
-                    gx + 14.0,
-                    y + 42.0,
-                    13.0,
-                    if live { c::OK } else { rgba(111, 127, 148, 0.7) },
-                    Align::Left,
-                );
+                let edge = if live { hex(0x33445a) } else { c::LINE };
+                g.round(gx, y, bw, bh, 10.0, Some(if over { hex(0x1d2738) } else { c::PANEL }), Some((2.0, edge)));
+                // A fixed tile: the name is cut with an ellipsis, never let out of it (CLAUDE.md 10).
+                let room = bw - 28.0;
+                let mut name = title.to_owned();
+                if g.text_width(&name, 17.0) > room {
+                    while name.len() > 3 && g.text_width(&format!("{name}..."), 17.0) > room {
+                        name.pop();
+                    }
+                    name = format!("{}...", name.trim_end());
+                }
+                g.text(&name, gx + 14.0, y + bh / 2.0, 17.0, if live { c::FG } else { c::DIM }, Align::Left);
+                if !live {
+                    g.text("mockup", gx + bw - 10.0, y + bh / 2.0, 12.0, rgba(111, 127, 148, 0.8), Align::Right);
+                }
                 if i.pressed_in(gx, y, bw, bh) {
                     open = Some(*id);
                 }
-                y += bh + 10.0;
+                y += bh + 6.0;
             }
         }
         g.text(

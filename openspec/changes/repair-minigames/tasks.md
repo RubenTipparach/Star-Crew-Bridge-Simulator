@@ -21,7 +21,7 @@
 - [x] 3.3 Design 8: the data files (`data/repairs/`, `repairs.json`, `fumble_share_pct`), validated by `check-data`.
 - [x] 3.4 Design 8: `sc-repairs`, the kit: frame, bar, cover screws, guide card and icons, input, shake.
 - [x] 3.5 Design 8: every game in `sc-repairs::games`, played to the end by its hand in a test, with a fumble checked.
-- [ ] 3.6 Design 8: `sc-client --repairs`, the menu and the games; captures beside the mockups' shots.
+- [x] 3.6 Design 8: `sc-client --repairs`, the menu and the games; captures beside the mockups' shots.
 
 ## 4. Guides (owner, 2026-10-09)
 
