@@ -1,6 +1,6 @@
 {
   "schema": "starcrew.mission/1",
-  "_doc": "The first co-op drill (openspec/changes/coop-drill design 1). Text is what the briefing and debrief show. enemy_start_m is relative to the Tern, in its frame (+Z ahead). bot_ready_s is how long a bot client reads the briefing before it presses READY.",
+  "_doc": "The first co-op drill (openspec/changes/coop-drill design 1). Text is what the briefing and debrief show. enemy_start_m is relative to the Tern, in its frame (+Z ahead); waypoint_m is the relay at the Shoals, where the helm's COURSE flies, in the same frame. bot_ready_s is how long a bot client reads the briefing before it presses READY.",
   "id": "drill-hound",
   "title": "Drill 1: Hound at the Shoals",
   "situation": "A Hound corvette has been raiding the relay at the Shoals. The Tern is ordered to intercept and disable it before it reaches the relay.",
@@ -12,6 +12,7 @@
   "stations": ["helm", "tactical"],
   "enemy": "hound",
   "enemy_start_m": [400, 300, 6000],
+  "waypoint_m": [9000, 1500, 16000],
   "tern_start_speed_mps": 60,
   "countdown_s": 5,
   "engage_limit_s": 600,

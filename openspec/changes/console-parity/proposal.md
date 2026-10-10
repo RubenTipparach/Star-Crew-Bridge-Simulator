@@ -41,13 +41,15 @@ The cause is in how the drill was made, not in one line of code:
    the same places, with the same look. A control the mockup does not have is not added in the engine; it goes into
    the mockup first and is approved there. Where the engine cannot yet do what a control does, the control is still
    drawn, in the mockup's unavailable state.
-2. **One look from shared data.** The palette, the console style and the icons move into `data/ui/`. Both the mockup
-   and the engine read them, and the engine uses the mockup's typeface (`assets/fonts/barlow-semi-condensed`).
-3. **A check that compares the real artifacts:**
-   - Both the mockup and the engine write a layout manifest of one fixed console state: every panel and control, with
-     its kind, rectangle, label and icon.
-   - `tools/consoles/parity.py` compares the two and fails on a missing, moved, relabelled or extra control.
-   - A side-by-side capture of the same state goes to the owner for sign-off.
+2. **One look, read out of the mockup.** The colours, role colours and icons are read out of the mockup's own text
+   into `data/ui/console_style.json`, which the engine compiles in, and the engine uses the mockup's typeface
+   (`assets/fonts/barlow-semi-condensed`, made into TrueType by `tools/ui/fonts.py`). Both have a `--check`.
+3. **A check that compares the real pictures:**
+   - The mockup saves the state each of its named shots draws; the engine draws the same state with the drill's own
+     console code.
+   - `tools/consoles/compare.py` lays the two pictures side by side and fails when a region of the console is missing
+     part of what the mockup draws (a control missing, extra, recoloured or moved).
+   - The side-by-side pictures go to the owner for sign-off.
 
    The check runs in `scripts/check.sh`.
 4. **Helm and Tactical rebuilt to parity:**
@@ -60,12 +62,14 @@ The cause is in how the drill was made, not in one line of code:
 
 ## What it touches
 
-- `data/ui/palette.json`, `console_style.json` and `icons.json` (new). `docs/mockups/consoles.html` reads them
-  through `tools/mockups/inline.py`, and its pictures are unchanged.
-- `docs/mockups/consoles.html`: a `MOCKUP_LAYOUT()` hook that writes the layout manifest of a named state.
-- `crates/sc-client`: the console drawing moves out of `drill.rs` into a console module that follows the mockup;
-  `sc-client --console-layout <station> --state <name>` writes the engine's manifest.
-- `crates/sc-core/src/combat`: the commands and rules the missing controls need, with tests.
-- `tools/consoles/parity.py`, `tools/ui/icons.py` (rasterizes `icons.json` into an atlas the engine loads).
-- `CLAUDE.md` 10 and 12: the rule and the check's row.
-- `coop-drill`: its design 5 points here for the consoles' look.
+- `data/ui/console_style.json` (new), written by `tools/ui/console_style.py`; `assets/fonts/barlow-semi-condensed/*.ttf`
+  (new), written by `tools/ui/fonts.py`.
+- `docs/mockups/consoles.html`: `window.consoleState()`, the state a named shot draws. Its pictures are unchanged.
+- `crates/sc-client`: the console drawing moves out of `drill.rs` into `console/` and `vg.rs`, following the mockup;
+  `seat.rs` turns the drill's state into the console's; `sc-client --console-fixture` draws a saved state.
+- `crates/sc-render`: the viewscreen feed is drawn into the look band's rectangle under the UI.
+- `crates/sc-core/src/combat` and `crates/sc-net`: the commands and rules the missing controls need, with tests, and
+  protocol 2 to carry them.
+- `tools/consoles/parity.mjs`, `tools/consoles/compare.py`; steps 11-13 of `scripts/check.sh`.
+- `CLAUDE.md` 10 and 12: the rule and the check's rows.
+- `coop-drill`: its design points here for the consoles' look and for the rules added.

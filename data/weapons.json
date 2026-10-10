@@ -1,19 +1,21 @@
 {
   "schema": "starcrew.weapons/1",
-  "_doc": "Guns and missiles (openspec/changes/weapons-and-shields sections 1, 4 and 6; coop-drill design 2.3-2.4). A gun's bolt leaves at speed_mps plus its ship's velocity. sigma_rate_k is degrees of aim error per degree per second of the target's angular rate across the line of sight. A turret fires only when its hit chance is at least min_hit_chance.",
+  "_doc": "Guns and missiles (openspec/changes/weapons-and-shields sections 1, 4 and 6; coop-drill design 2.3-2.4). A gun's bolt leaves at speed_mps plus its ship's velocity. sigma_rate_k is degrees of aim error per degree per second of the target's angular rate across the line of sight. A turret fires only when its hit chance is at least min_hit_chance. Each bolt puts heat_per_bolt_mj into its turret's sink, which sheds heat_shed_mw; at heat_sink_mj the turret locks out until it is below heat_resume_frac of it (weapons-and-shields 2). The heavy pulse's shedding is a placeholder that matches its capacitor-limited rate, so the Hound's threat is what it was.",
   "guns": [
     {
       "id": "twin_pulse", "name": "Twin pulse cannon",
       "rate_hz": 4, "speed_mps": 1500, "life_s": 1.6, "damage_mj": 1.2,
       "capacitor_mj": 24, "charge_mw": 4, "draw_mj": 1.5,
-      "sigma_rate_k": 0.02, "min_hit_chance": 0.04
+      "sigma_rate_k": 0.02, "min_hit_chance": 0.04,
+      "heat_per_bolt_mj": 0.3, "heat_sink_mj": 9, "heat_shed_mw": 0.6, "heat_resume_frac": 0.6
     }
     ,{
       "id": "heavy_pulse", "name": "Heavy pulse cannon",
       "_doc": "Placeholder: the Hound's turrets carry its whole threat until its Lance missiles (weapons-and-shields 10) are built.",
       "rate_hz": 3, "speed_mps": 1400, "life_s": 1.8, "damage_mj": 2.6,
       "capacitor_mj": 30, "charge_mw": 5, "draw_mj": 2.0,
-      "sigma_rate_k": 0.02, "min_hit_chance": 0.04
+      "sigma_rate_k": 0.02, "min_hit_chance": 0.04,
+      "heat_per_bolt_mj": 0.3, "heat_sink_mj": 9, "heat_shed_mw": 0.8, "heat_resume_frac": 0.6
     }
   ],
   "missiles": [

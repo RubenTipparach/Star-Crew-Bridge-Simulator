@@ -59,108 +59,139 @@ Tactical, panel by panel:
   and the gap is visible rather than missing.
 - **Debug numbers** (round trip, loss, frame time) are not part of a console; they go on the F3 overlay.
 
-## 3. One look, from shared data
+## 3. One look, read out of the mockup (built)
 
-The look is data both sides read, so a colour, a radius or an icon is changed once (CLAUDE.md 6.1):
+The look is data the engine compiles in, and that data is read out of the mockup's own text, so there is one source
+(CLAUDE.md 6.1) and nothing to keep in step by hand. This replaces the first plan of three hand-made files that both
+sides would read: the mockup already holds the look, so a tool copies it out and a check holds the copy to it.
 
-- **`data/ui/palette.json`**: the console palette, the mockup's `C` (bg, panel, panel2, line, line2, text, dim,
-  faint, ok, warn, danger, alert, emergency, hostile, friendly, neutral, unknown) and the role colours
-  (`K.PALETTE.role`), sRGB hex.
-- **`data/ui/console_style.json`**:
-  - the canvas (1280 x 720 lp) and its bands (title 32, look 240, grid from y 280, status 32);
-  - the grid (12 columns of 96 lp, 4 rows of 94 lp, 8 lp gutters);
-  - the panel (radius 9, border 1, title tick 3 x 10 at 12, 9, title 13 px weight 700 letter-spacing 2);
-  - the button (radius 6, label sizes, the on, off and unavailable fills);
-  - the hold time (0.6 s).
-- **`data/ui/icons.json`**: the mockup's `ICONS` (24 x 24 SVG fragments, stroked), moved out of `consoles.html`.
-  - `tools/ui/icons.py` rasterizes them to an atlas (`assets/ui/icons.png`, 64 px a cell, white on transparent, with
-    mips) and its manifest. The engine tints a cell like egui text.
-  - The mockup keeps drawing them as SVG from the same file.
-- **The typeface:** Barlow Semi Condensed from `assets/fonts/barlow-semi-condensed` (the mockup's inlined `font:` block),
-  loaded into egui as the proportional family.
+- **`data/ui/console_style.json`** (`starcrew.console-style/1`), written by `tools/ui/console_style.py` from
+  `consoles.html` (`const C`, `const ICONS`) and `shipkit.js` (`PALETTE.role`): the 17 colour roles and 8 role colours
+  as sRGB hex, and every icon as its 24-unit SVG fragment. `--check` fails when the file is not what the mockup says.
+  The client compiles it in (`crates/sc-client/src/vg.rs`).
+- **Icons are drawn as vectors, not an atlas.** `vg.rs` parses each icon's SVG (paths with every command the icons
+  use, arcs included; circles, rects, lines, polylines) and strokes it 2 units wide with round caps and joins, as the
+  browser does. No texture, so no atlas tool and no 1.4 MB of texture: an icon costs its triangles.
+- **The typeface** is the mockup's Barlow Semi Condensed 600 and 700. `tools/ui/fonts.py` turns the two inlined woff2
+  files into TrueType for egui with the mockup's tabular figures and its kerning baked in (egui's ab_glyph reads only
+  a legacy `kern` table), `--check` holds them, and the client compiles them in. Text sizes are the mockup's pixel
+  sizes; letter spacing is egui's `extra_letter_spacing`; text coverage is linear, as the browser's.
+- **The geometry** (bands, the 104 x 102 lp grid, the panel's radius 9 and title tick, button radius 6) is the
+  mockup's numbers in `console/mod.rs` and `console/kit.rs`, each beside the mockup function it ports. They are held by
+  the picture check (section 4), not by a second data file.
 
-`tools/mockups/inline.py` gains `data:ui/*` blocks; `consoles.html` reads the three files instead of its own
-constants, and its shots must come out the same (pixel compared before and after, task 1.3).
+## 4. The check: the real pictures, compared (built)
 
-## 4. The check
+The first plan compared layout manifests (rectangles and labels written by both sides). What was built compares the
+pictures themselves, which also catches a wrong colour, a wrong icon or a control drawn wrong in the right place.
 
-A layout manifest is the list of what a console shows in one state:
-
-```json
-{ "schema": "starcrew.console-layout/1", "station": "helm", "state": "engage",
-  "items": [ { "id": "thrust", "kind": "panel", "rect": [8, 280, 304, 400], "title": "THRUST" },
-             { "id": "thrust.stop", "kind": "button", "rect": [22, 618, 276, 50], "label": "STOP", "icon": "stop" } ] }
-```
-
-- **The mockup's side.** `consoles.html` records every `panel()` and `button()` it draws (they are the mockup's only
-  drawers of panels and controls) and other controls by their `data-act`, `data-drag` or `data-hold` group and its
-  bounding box. `window.MOCKUP_LAYOUT(station, state)` returns the manifest; `tools/mockups/shoot.mjs --layout` writes
-  it to `docs/screenshots/consoles/layout/mockup-<station>-<state>.json`.
-- **The engine's side.** The console module records the same items as it draws them, by the same ids (the ids are
-  the mockup's `data-act` names). `sc-client --console-layout <station> --state <state>` writes
-  `engine-<station>-<state>.json`. The states are named scenarios: a fixed snapshot of the ship and its contacts, the
-  same numbers on both sides, from `data/consoles/states.json`.
-- **The comparison.** `tools/consoles/parity.py` matches items by id and fails when:
-  - a mockup item is missing in the engine;
-  - an item moved more than 4 lp, or its size differs by more than 4 lp;
-  - its label or icon differs;
-  - the engine has an item the mockup does not.
-
-  It prints a table per station. It runs in `scripts/check.sh`, so a console that drifts from its mockup fails CI.
-- **The picture.** The same states captured on both sides go on the comparison page, mockup and engine side by side,
-  for the owner to sign off. A console is done only when the check passes and the owner has signed off its pictures.
+- **The mockup's side.** `consoles.html` has `window.consoleState()`: the state its console is drawing (ship, contacts,
+  orders, turrets, tubes, the viewscreen camera, each number the panels show). `tools/consoles/parity.mjs` loads the
+  page headless, steps through the named shots in `window.MOCKUP_SHOTS` and writes, for each, `<shot>-mockup.png`
+  (1280 x 720) and `<shot>.json`, into `docs/screenshots/parity/`. Seven shots: `helm`, `helm-orient`, `helm-stick`,
+  `red-helm-evading`, `tactical`, `red-tactical`, `red-tactical-turned`.
+- **The engine's side.** `sc-client --headless --console-fixture <shot>.json --shots DIR` draws that state with the
+  drill's own console code (`console::paint`, the same call the drill makes) and writes `<shot>-engine.png`. It prints
+  the console's UI draw calls, vertices and indices.
+- **The comparison.** `tools/consoles/compare.py DIR` writes `<shot>-compare.png` (mockup, engine, difference) and
+  two numbers per region (title band, look band, each panel, status strip), leaving the viewscreen's inside out (the
+  engine shows its 3D feed there):
+  - *pixels*: the share differing by more than 48 in a channel; font smoothing alone leaves 1-8 %, so it says where to
+    look;
+  - *missing*: the share of the region's ink (pixels not its background, in either picture) where the two pictures,
+    each blurred by 2.5 px, differ by more than 32. It forgives smoothing and sub-pixel placement and nothing else.
+    Measured: 0-2.6 % on the seven shots; a panel's contents moved 2 px 7 %, 4 px 20 %, 6 px 29 %; a panel drawn
+    empty 86-94 %.
+- **In `scripts/check.sh`** (steps 11-13): the fonts and the style data are the mockup's, then every saved state is
+  drawn by the engine into a temporary folder and compared with `--max-pct 2.5 --max-missing 10`. A control missing,
+  extra, recoloured or moved by more than about 3 px fails it.
+- **The pictures for the owner.** The compare images and the live drill's captures go on the comparison page, mockup
+  and engine side by side. A console is done only when the check passes and the owner has signed off its pictures.
 
 ## 5. What the drill added, mapped to the approved controls
 
-These need no new mockup (recommendation taken, ask only with screenshots):
+These needed no new mockup (recommendation taken, ask only with screenshots):
 
-| Engine today | Becomes | Why |
+| Engine before | Built as | Why |
 | --- | --- | --- |
-| Target camera inset | The viewscreen strip showing the feed pad's TARGET view | The mockup's camera feed already is a target camera |
-| LOCK and RELOCK | Tap a target card to target it, as in the mockup; the selected card is the lock | Same command (`Command::Lock`) |
-| WEAPONS FREE bar | Each turret's mode: AUTO (free), HOLD; PD shown unavailable until point defence exists | The mockup's per-mount mode |
+| Target camera inset | The look band's viewscreen strip, showing the feed pad's camera (TARGET by default, as the mockup), rendered by the 3D renderer into the strip's rectangle under the UI | The mockup's camera feed already is a target camera |
+| LOCK and RELOCK | Tap a target card to target it; the selected card is the lock | Same command (`Command::Lock`) |
+| WEAPONS FREE bar | Each turret's mode, tapped round AUTO, TARGET, PD, HOLD | The mockup's per-mount mode |
 | Shield presets as words | The five icon buttons | The mockup's icons |
-| Tube LOAD and EMPTY words, "9 left" | Tube pills and magazine pips (one pip a missile in the magazine) | The mockup's pictures |
-| Drill header (mission name, BOT) | The mission name on the briefing and debrief only; the clock stays in the title band; a bot shows as the operator's name "Bot" in the status strip | The title band has no mission name |
-| Round trip and loss on the console | The F3 overlay | Not console content (section 2) |
+| Tube LOAD and EMPTY words, "9 left" | Tube pills and magazine pips | The mockup's pictures |
+| Drill header (mission name, BOT) | The title band as the mockup's; a bot shows as the operator "Bot" in the status strip | The title band has no mission name |
+| Round trip and loss on the console | A corner readout on F3 | Not console content (section 2) |
 | TARGET, LEVEL, STOP in Orient | LEVEL, FLIP, TARGET in Orient; STOP at the foot of Thrust | The mockup's places |
 
-## 6. What the missing controls need in the core
+## 6. What the missing controls needed in the core (built)
 
-Drawn first in their unavailable state (section 2), then made to work in this order, each with its tests in
-`sc-core::combat`:
+Each rule is in `sc-core::combat` with its test, and the server resolves it; the console's preview of it is the same
+function (CLAUDE.md 6.1).
 
-| Control | Core rule (from `flight-and-navigation`) | Order |
+| Control | Core rule as built | Test |
 | --- | --- | --- |
-| Strafe pad | Lateral and vertical set points, RCS acceleration 4 m/s^2, limit 50 m/s (FN 3) | 1 |
-| Orient thumbwheels, GO, FLIP | An attitude order slewed at the rate limits; GO shows its time; FLIP the reciprocal heading (FN 6a) | 2 |
-| Autopilot Hold, Course, Chase, Match, Evade | FN 5; Chase is today's Target mode, Hold today's set point | 3 |
-| Turret modes AUTO, HOLD, PD | AUTO and HOLD are today's weapons free per mount; PD waits for point defence | 4 |
-| Scanner range zoom and tilt | Display only (the plot's range and camera) | 1 |
-| Contact list | The snapshot carries every contact; the drill has one | 1 |
+| Strafe pad | `Command::Strafe`: lateral and vertical set points held to `strafe_max_mps` (50 m/s), reached at the drill's `tau_v_s` (see 8) | `the_strafe_pad_drifts_the_ship_sideways_to_its_set_point` |
+| Orient thumbwheels, GO, FLIP, LEVEL | `combat/attitude.rs`: heading, pitch and roll against the quaternion, the shortest single-axis slew at the rate and acceleration limits, held inside `held_deg` turning slower than `held_dps` (FN 6a). GO's seconds are `slew().time_s` | `an_attitude_order_turns_the_ship_there_in_about_its_planned_time_and_holds_it`, and the round trip, slew time and whole-degree tests in `attitude.rs` |
+| Autopilot HOLD, COURSE, CHASE, MATCH, EVADE | `HelmMode` (FN 5): HOLD flies the stick; COURSE puts the bow on the mission's waypoint (the relay, `waypoint_m`); CHASE on the target; MATCH takes its course and speed; EVADE throws set points up to `jink_mps` every `jink_period_s`, seeded from the round | `chase_puts_the_bow_on_the_target_and_course_on_the_waypoint`, `match_takes_the_targets_course_and_speed`, `evade_throws_jinks_from_the_round_seed_and_leaving_it_stops_them` |
+| Turret modes AUTO, TARGET, PD, HOLD | `TurretMode` per mount (WS 7). PD holds fire: the Hound carries no missiles | `a_turret_on_hold_never_fires_and_auto_fires_at_the_locked_target` |
+| Turret heat arcs | Each bolt heats its turret's sink; at `heat_sink_mj` it locks out until below `heat_resume_frac` (WS 2; `data/weapons.json`) | `heat_locks_a_turret_out_and_it_fires_again_when_cool` |
+| Four turret dials D V P S | The drill's turrets are the layout's four mounts (dorsal, ventral, port, starboard) at their `centre_m`, each bearing on the half of the sky it faces | `the_drills_turrets_are_the_layouts_four_mounts` |
+| The 3D shield plot | A hit's face is chosen on the shield ellipsoid (WS 11; `data/ships/tern/shields.json`) | `a_hit_on_the_port_side_forward_of_midships_is_port_not_bow` |
+| Scanner range zoom, tilt, contact list, camera pad | Display only: the client's seat state | `seat.rs` tests |
 
-## 7. How it is built and tested
+The network carries them: protocol 2 (`sc-net`) adds the strafe, attitude-order, helm-mode, turret-mode and camera
+fields to the commands and the snapshot.
 
-- **Order of work.**
-  1. The shared data and the mockup reading it.
-  2. The mockup's layout hook.
-  3. The parity tool.
-  4. The engine console module with Helm, then Tactical.
-  5. The core rules in section 6's order.
-- **Where it is tested** (CLAUDE.md 12). The cloud session writes the data, the mockup hook, the parity tool and the
-  code. The Mac, the most powerful connected device, builds, runs the parity check and takes the engine's captures;
-  its results come back through git. The Pi 5 measures the console's cost.
-- **Pi 5 budget.** The mockup states 6 UI draw calls a console (`bridge-stations` 8.7). The egui console must stay
-  inside the console's 16 draw calls:
-  - one icon atlas texture, 512 x 512 RGBA with mips, about 1.4 MB;
-  - the vector navball, joystick and shield bubble as tessellated meshes, a few thousand triangles.
+**Balance after the change.** Isolating each rule showed the RCS clamp of FN 4 (sideways velocity limited by thruster
+acceleration) cut the bots' wins from 8 of 8 seeds to 2; heat never triggered. The drill keeps its own drift model
+(section 8) and the bots win 8 of 8 again (a survey over 8 seeds while building it; `lan_drill` holds a victory).
 
-  Measured on the Pi before it is called done.
+## 7. How it was built and tested
+
+- **Where it was tested** (CLAUDE.md 12). No session on the owner's hardware was connected while this was built, so
+  the cloud container built it, ran the tests and the parity check, and rendered the captures on Mesa llvmpipe. The Mac
+  (the most powerful device) repeats the parity check when it is next connected; the Pi 5 measures the cost.
+- **The live drill.** A server and two bot clients ran the drill headless (won in 66 s); the clients' captures of both
+  consoles through every phase are in `docs/screenshots/engine/coop-drill-parity/`.
+- **Pi 5 budget (CLAUDE.md 2), not measured on a Pi.** A console draws in 8-10 UI draw calls (the budget's UI row is
+  10), with no texture but the font atlas. It is heavier in geometry than the first estimate: 26,000-28,000 vertices and
+  98,000-118,000 indices a frame (about 1.0 MB streamed a frame at egui's 20 bytes a vertex and 4 an index), most of it
+  the anti-aliased strokes of the navball, the joystick and the shield bubble. The UI's CPU share is 2 ms of the
+  client's 8; whether the tessellation fits it is the Pi's measurement to make, and if it does not, the first lever is
+  caching the static strokes (the grid, the panel frames, the navball's sphere) as one mesh between frames.
+
+## 8. Decisions taken
+
+Each is a recommendation taken under the owner's rule (ask only with screenshots); each is visible in the captures
+for the sign-off.
+
+| Decision | Why |
+| --- | --- |
+| The FIRE ring shows the lock's progress, and its note reads NO LOCK, LOCK n %, OUT OF CONE or LOCKED; it is green only when locked with the target in the tubes' 5 deg cone | The mockup's ring is a hit chance, but the Gannet has no hit-chance rule in WS yet; the lock is the number the crew acts on |
+| The turrets are the layout's four mounts, not the drill's two pairs | The mockup draws D V P S; the layout is the one source |
+| PD holds fire | The Hound carries no missiles |
+| Turrets start on HOLD; Tactical's automation sets AUTO in range and HOLD out of it | The mockup has no WEAPONS FREE; HOLD is the safe default |
+| Sideways velocity relaxes to its set point at the drill's `tau_v_s`; FN 4's RCS clamp is not built | It cut the bots' wins from 8 of 8 to 2 (section 6) |
+| COURSE's waypoint is the relay at the Shoals (`drill-hound.json` `waypoint_m`) | The drill has one place to go |
+| The Hound's hull bar is shown as scanned | The drill has no Science seat to scan it |
+| The alert state stays NORMAL in the drill | Nobody holds the captain's seat to set it |
+| The clock shows the engage time | The drill has no ship's clock |
+| The viewscreen feed is per seat | Each player picks their own camera, as the mockup's pad does |
+| Round trip and loss are an F3 corner readout | Section 2 |
+| The magazine shows 12 pips | The mockup's magazine |
+
+## 9. Status
+
+- **Built:** sections 3-6 for Helm and Tactical; the check runs in `scripts/check.sh`.
+- **Open:** the owner's sign-off of the side-by-side pictures (task 3.4); the Pi's measurement of the UI's cost; the
+  Mac's run of the check.
+- **Not built:** Engineering, Science and Captain. They exist only as mockups, because their simulations do not exist
+  in the engine yet; they are built from their mockups under the same check when they do.
 
 ## Risks / Trade-offs
 
-- **egui is not SVG.** Gradients, dashes and the mockup's 3D vector drawings (the navball, the joystick, the shield
-  bubble) need their own drawing code in Rust. The check compares positions, sizes, labels and icons, not pixels; the
-  pixels are the owner's sign-off on the pictures.
-- **The drill's play changes.** A Tactical without Weapons Free and Relock plays as the mockup intends (tap a card,
-  set each mount's mode). The drill's bot uses the same commands, so its numbers are re-measured after the change.
+- **egui is not SVG.** The mockup's gradients, dashes and 3D vector drawings are ported by hand into `vg.rs` and the
+  console modules. The picture check is what holds the port to the mockup; anti-aliasing still differs at the pixel
+  level (1-8 % of pixels by region), which the blurred score forgives and the owner judges on the pictures.
+- **A mockup change needs new pictures.** When the mockup changes, `parity.mjs` re-captures its shots and the engine
+  has to follow before the check passes. That is the point of the check.

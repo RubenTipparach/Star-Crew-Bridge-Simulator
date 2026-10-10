@@ -2,38 +2,55 @@
 
 ## ADDED Requirements
 
-### Requirement: An engine console shows what its approved mockup shows
+### Requirement: An engine console draws what its approved mockup draws
 
-Every console the engine draws SHALL show each panel and control of its approved mockup, in the same place within
-4 lp on the 1280 x 720 canvas, with the same label or icon, and SHALL show no control the mockup does not have. A
-control whose rule the engine does not have yet SHALL be drawn in the mockup's unavailable state.
+For every state the console mockup saves (`docs/screenshots/parity/<shot>.json`, written by
+`tools/consoles/parity.mjs` beside `<shot>-mockup.png`), the engine SHALL draw that state with the drill's own console
+code (`sc-client --console-fixture`), and `tools/consoles/compare.py` SHALL find no region of the console (title band,
+look band, each panel, status strip) with more than 10 % of its ink missing, and no shot with more than 2.5 % of its
+pixels differing. The viewscreen's inside SHALL be left out of the comparison. `scripts/check.sh` SHALL run the
+comparison.
 
-#### Scenario: Helm in the engage state
-- **WHEN** `tools/consoles/parity.py` compares the mockup's and the engine's layout manifests of Helm in the
-  `engage` state
-- **THEN** every mockup item is in the engine within 4 lp with its label and icon, the engine has no item the mockup
-  lacks, and the check passes
+#### Scenario: Helm and Tactical in the saved states
+- **WHEN** `scripts/check.sh` draws the seven saved states (`helm`, `helm-orient`, `helm-stick`, `red-helm-evading`,
+  `tactical`, `red-tactical`, `red-tactical-turned`) in the engine and compares them with the mockup's pictures
+- **THEN** every region is at most 10 % missing, every shot at most 2.5 % differing, and the check passes
 
-#### Scenario: A control the mockup does not have
-- **WHEN** the engine draws a Weapons Free bar that the approved Tactical mockup does not have
-- **THEN** the parity check fails and names it
+#### Scenario: A panel drawn empty
+- **WHEN** the engine's picture of Helm has its ORIENT panel drawn without its controls
+- **THEN** ORIENT is about 86 % missing and the check fails, naming the shot and the panel
 
-### Requirement: The consoles' look comes from shared data
+#### Scenario: A control moved
+- **WHEN** a panel's controls are drawn 4 lp from where the mockup draws them
+- **THEN** that panel is about 20 % missing and the check fails
 
-The console palette, the console style and the icons SHALL come from `data/ui/palette.json`,
-`data/ui/console_style.json` and `data/ui/icons.json`, read by both `docs/mockups/consoles.html` and the engine, and
-the engine SHALL draw console text in the mockup's typeface.
+### Requirement: The consoles' look is read out of the mockup
 
-#### Scenario: Changing a colour
-- **WHEN** the `warn` colour in `data/ui/palette.json` changes
-- **THEN** the mockup and the engine both draw it in the new colour, with no other file edited
+The console colours, the role colours and the icons SHALL be read out of `docs/mockups/consoles.html` and
+`docs/mockups/lib/shipkit.js` by `tools/ui/console_style.py` into `data/ui/console_style.json`, which the engine
+compiles in, and `tools/ui/console_style.py --check` SHALL fail when the file is not what the mockup says.
+
+#### Scenario: Changing a colour in the mockup
+- **WHEN** the `warn` colour in the mockup's `const C` changes and the data file is not regenerated
+- **THEN** `tools/ui/console_style.py --check` fails, and after the tool is rerun the engine draws the new colour with
+  no Rust edited
+
+### Requirement: The engine sets console text in the mockup's typeface
+
+The engine SHALL draw console text in Barlow Semi Condensed 600 and 700 with tabular figures and the face's kerning,
+from TrueType files that `tools/ui/fonts.py` writes from the mockup's inlined woff2 files, and
+`tools/ui/fonts.py --check` SHALL fail when a committed file is not what the tool writes.
+
+#### Scenario: The font files
+- **WHEN** `python3 tools/ui/fonts.py --check` runs
+- **THEN** both TrueType files match what the tool writes from the woff2 files, and it passes
 
 ### Requirement: A console is done only when its pictures are signed off
 
 An engine console SHALL be called done only when the parity check passes and the owner has signed off side-by-side
-captures of the mockup and the engine in the same named states.
+captures of the mockup and the engine in the same saved states.
 
 #### Scenario: The drill's consoles
 - **WHEN** Helm and Tactical are rebuilt
-- **THEN** the comparison page shows the mockup and the engine in each named state, and the change records the
-  owner's sign-off before its tasks are checked
+- **THEN** the comparison page shows the mockup and the engine in each saved state and in the live drill, and the
+  change records the owner's sign-off before task 3.4 is checked

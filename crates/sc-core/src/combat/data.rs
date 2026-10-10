@@ -27,6 +27,16 @@ pub struct FlightBlock {
     pub rate_limit_deg_s: [f64; 3],
     /// Angular accelerations [yaw, pitch, roll], in deg/s^2.
     pub ang_accel_deg_s2: [f64; 3],
+    /// The lateral and vertical speed set points' limit, in m/s (the strafe pad's edge).
+    pub strafe_max_mps: f64,
+    /// An attitude order is held inside this angle, in degrees.
+    pub held_deg: f64,
+    /// ... and turning slower than this, in deg/s.
+    pub held_dps: f64,
+    /// EVADE throws new lateral and vertical set points this often, in seconds.
+    pub jink_period_s: f64,
+    /// ... each up to this far either way, in m/s (held to the strafe limit).
+    pub jink_mps: f64,
 }
 
 impl FlightBlock {
@@ -37,6 +47,11 @@ impl FlightBlock {
         c.number(&format!("{at}.accel_rev_mps2"), self.accel_rev_mps2, 0.1, 500.0);
         c.number(&format!("{at}.tau_v_s"), self.tau_v_s, 0.05, 30.0);
         c.number(&format!("{at}.tau_w_s"), self.tau_w_s, 0.05, 30.0);
+        c.number(&format!("{at}.strafe_max_mps"), self.strafe_max_mps, 0.0, 1000.0);
+        c.number(&format!("{at}.held_deg"), self.held_deg, 0.01, 10.0);
+        c.number(&format!("{at}.held_dps"), self.held_dps, 0.01, 10.0);
+        c.number(&format!("{at}.jink_period_s"), self.jink_period_s, 0.5, 60.0);
+        c.number(&format!("{at}.jink_mps"), self.jink_mps, 0.0, 1000.0);
         for i in 0..3 {
             c.number(&format!("{at}.rate_limit_deg_s[{i}]"), self.rate_limit_deg_s[i], 0.1, 360.0);
             c.number(&format!("{at}.ang_accel_deg_s2[{i}]"), self.ang_accel_deg_s2[i], 0.1, 720.0);
@@ -73,10 +88,22 @@ pub struct ShieldPreset {
     pub faces_mj: [f64; 6],
 }
 
+/// The shield's shape: an ellipsoid in ship axes (weapons-and-shields section 11).
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct Ellipsoid {
+    /// Semi-axes along ship x (port), y (dorsal) and z (bow), metres.
+    pub axes_m: [f64; 3],
+    /// Its centre, ship axes, metres.
+    pub centre_m: [f64; 3],
+}
+
 /// A ship's shields (weapons-and-shields section 9).
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct ShieldBlock {
+    /// The shield's shape, which decides the face a hit strikes.
+    pub ellipsoid: Ellipsoid,
     /// Regeneration of all faces together, in MJ/s, shared by the preset's caps.
     pub regen_mj_s: f64,
     /// The presets; the first is the one a ship starts with.
@@ -85,6 +112,12 @@ pub struct ShieldBlock {
 
 impl ShieldBlock {
     fn check(&self, c: &mut Checks, at: &str) {
+        for (i, a) in self.ellipsoid.axes_m.iter().enumerate() {
+            c.number(&format!("{at}.ellipsoid.axes_m[{i}]"), *a, 0.5, 1000.0);
+        }
+        for (i, a) in self.ellipsoid.centre_m.iter().enumerate() {
+            c.number(&format!("{at}.ellipsoid.centre_m[{i}]"), *a, -1000.0, 1000.0);
+        }
         c.number(&format!("{at}.regen_mj_s"), self.regen_mj_s, 0.0, 1000.0);
         c.count(&format!("{at}.presets"), self.presets.len() as i64, 1, 16);
         for (i, p) in self.presets.iter().enumerate() {
@@ -118,16 +151,34 @@ impl Validate for ShieldsFile {
     }
 }
 
-/// Where a turret bears (the placeholder for weapons-and-shields' hull mask).
+/// Where a turret bears (the placeholder for weapons-and-shields' hull mask): the half of the sky its mount faces,
+/// from `-arc_overlap_deg` below the mount's plane to its zenith.
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Arc {
-    /// From `-arc_overlap_deg` of elevation up to +90 deg.
+    /// Facing +Y.
     Dorsal,
-    /// From `+arc_overlap_deg` of elevation down to -90 deg.
+    /// Facing -Y.
     Ventral,
+    /// Facing +X.
+    Port,
+    /// Facing -X.
+    Starboard,
     /// Everywhere.
     All,
+}
+
+impl Arc {
+    /// The mount's facing, ship axes (none for a turret that bears everywhere).
+    pub fn facing(self) -> Option<glam::DVec3> {
+        match self {
+            Arc::Dorsal => Some(glam::DVec3::Y),
+            Arc::Ventral => Some(glam::DVec3::NEG_Y),
+            Arc::Port => Some(glam::DVec3::X),
+            Arc::Starboard => Some(glam::DVec3::NEG_X),
+            Arc::All => None,
+        }
+    }
 }
 
 /// A turret's mount.
@@ -260,6 +311,14 @@ pub struct Gun {
     pub sigma_rate_k: f64,
     /// A turret fires only at or above this hit chance (0-1).
     pub min_hit_chance: f64,
+    /// Waste heat one bolt puts into the turret's sink, in MJ.
+    pub heat_per_bolt_mj: f64,
+    /// The sink: at this much heat the turret locks out, in MJ.
+    pub heat_sink_mj: f64,
+    /// What the sink sheds into the coolant, in MW.
+    pub heat_shed_mw: f64,
+    /// A locked-out turret fires again below this share of its sink (0-1).
+    pub heat_resume_frac: f64,
 }
 
 /// A missile (weapons-and-shields section 6).
@@ -318,6 +377,10 @@ impl Validate for WeaponsFile {
             c.number(&format!("{at}.draw_mj"), g.draw_mj, 0.0, 1e4);
             c.number(&format!("{at}.sigma_rate_k"), g.sigma_rate_k, 0.0, 10.0);
             c.number(&format!("{at}.min_hit_chance"), g.min_hit_chance, 0.0, 1.0);
+            c.number(&format!("{at}.heat_per_bolt_mj"), g.heat_per_bolt_mj, 0.0, 1e3);
+            c.number(&format!("{at}.heat_sink_mj"), g.heat_sink_mj, 0.01, 1e4);
+            c.number(&format!("{at}.heat_shed_mw"), g.heat_shed_mw, 0.0, 1e3);
+            c.number(&format!("{at}.heat_resume_frac"), g.heat_resume_frac, 0.0, 1.0);
         }
         for (i, m) in self.missiles.iter().enumerate() {
             let at = format!("missiles[{i}]");
@@ -497,6 +560,8 @@ pub struct MissionFile {
     pub enemy: String,
     /// Where the enemy starts, relative to the Tern in its frame, in metres.
     pub enemy_start_m: [f64; 3],
+    /// The waypoint the helm's COURSE flies to, relative to the Tern's start in its frame, in metres.
+    pub waypoint_m: [f64; 3],
     /// The Tern's forward speed at the start, in m/s.
     pub tern_start_speed_mps: f64,
     /// Countdown, in seconds.
@@ -522,6 +587,9 @@ impl Validate for MissionFile {
         }
         for (k, v) in self.enemy_start_m.iter().enumerate() {
             c.number(&format!("enemy_start_m[{k}]"), *v, -50_000.0, 50_000.0);
+        }
+        for (k, v) in self.waypoint_m.iter().enumerate() {
+            c.number(&format!("waypoint_m[{k}]"), *v, -100_000.0, 100_000.0);
         }
         c.number("tern_start_speed_mps", self.tern_start_speed_mps, -100.0, 400.0);
         c.number("countdown_s", self.countdown_s, 0.0, 120.0);

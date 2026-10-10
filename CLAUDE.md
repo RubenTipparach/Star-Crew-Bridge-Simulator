@@ -464,6 +464,8 @@ Before claiming anything is done, run what applies:
 | Mockups hold the current layout | `python3 tools/mockups/inline.py --check` |
 | Mockup screenshots | `node tools/mockups/shoot.mjs` |
 | No z-fighting in the mockups | `node tools/mockups/zfight.mjs docs/mockups/*.html` |
+| Console fonts and style are the mockup's | `python3 tools/ui/fonts.py --check`, `python3 tools/ui/console_style.py --check` |
+| Engine consoles match their mockup | `python3 tools/consoles/compare.py DIR --max-pct 2.5 --max-missing 10` on the mockup's saved states drawn by `sc-client --console-fixture` (`scripts/check.sh` step 13; `openspec/changes/console-parity` design 4) |
 | Engine, and every row above | `scripts/check.sh` (format, clippy with warnings as errors, the workspace's tests with the headless render tests, then the rows above, the shader modules and the engine data) |
 
 - **Know what is proven.** Distinguish implemented, validated and proposed work in docs, PRs

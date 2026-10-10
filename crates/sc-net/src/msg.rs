@@ -7,10 +7,10 @@
 //! caller drops and counts, never applies.
 
 use glam::{DQuat, DVec3};
-use sc_core::combat::{self, Command, HelmMode, Outcome, Phase, Refusal, Station, TubeState};
+use sc_core::combat::{self, Command, HelmMode, Outcome, Phase, Refusal, Station, TubeState, TurretMode};
 
 /// The protocol's version; a Hello with another is refused.
-pub const PROTOCOL: u16 = 1;
+pub const PROTOCOL: u16 = 2;
 /// The longest unreliable message, so it is one SCTP chunk in one datagram (netcode-and-sessions section 2).
 pub const MAX_UNRELIABLE: usize = 1200;
 /// The longest string field, in bytes.
@@ -272,8 +272,12 @@ pub struct ShipSnap {
     pub rates: DVec3,
     /// Speed set point, m/s.
     pub speed_set: f64,
-    /// Helm mode.
+    /// Strafe set points, lateral (to starboard) and vertical, m/s.
+    pub strafe: [f64; 2],
+    /// The autopilot.
     pub helm_mode: HelmMode,
+    /// The attitude order the helm holds, if any.
+    pub order: Option<DQuat>,
     /// Shield faces, MJ.
     pub faces: [f64; 6],
     /// Preset.
@@ -290,8 +294,6 @@ pub struct ShipSnap {
     pub lock_target: Option<u16>,
     /// The lock's progress (0-1).
     pub lock_frac: f64,
-    /// Weapons free.
-    pub weapons_free: bool,
 }
 
 /// A turret as a snapshot carries it.
@@ -305,6 +307,14 @@ pub struct TurretSnap {
     pub hit_chance: f64,
     /// Capacitor charge as a share of full (0-1).
     pub charge: f64,
+    /// Its mode.
+    pub mode: TurretMode,
+    /// Heat as a share of its sink (0-1).
+    pub heat: f64,
+    /// Locked out by heat.
+    pub cooling: bool,
+    /// It fired within the last two of its shot intervals.
+    pub firing: bool,
 }
 
 /// A missile in flight.
@@ -457,9 +467,10 @@ fn write_command(w: &mut Writer, c: &Command) {
             w.u8(4);
             w.u16(t.unwrap_or(0));
         }
-        Command::WeaponsFree(f) => {
+        Command::TurretMode(i, m) => {
             w.u8(5);
-            w.u8(u8::from(f));
+            w.u8(i);
+            w.u8(m as u8);
         }
         Command::Preset(i) => {
             w.u8(6);
@@ -472,6 +483,18 @@ fn write_command(w: &mut Writer, c: &Command) {
         Command::Fire(i) => {
             w.u8(8);
             w.u8(i);
+        }
+        Command::Strafe { lat_mps, vert_mps } => {
+            w.u8(9);
+            w.f32(lat_mps);
+            w.f32(vert_mps);
+        }
+        Command::Orient(o) => {
+            w.u8(10);
+            w.u8(u8::from(o.is_some()));
+            for v in o.unwrap_or([0.0; 3]) {
+                w.f32(v);
+            }
         }
     }
 }
@@ -490,10 +513,16 @@ fn read_command(r: &mut Reader) -> Result<Command, DecodeError> {
             0 => None,
             id => Some(id),
         }),
-        5 => Command::WeaponsFree(r.bool()?),
+        5 => Command::TurretMode(r.u8()?, TurretMode::from_u8(r.u8()?).ok_or(DecodeError("no such turret mode"))?),
         6 => Command::Preset(r.u8()?),
         7 => Command::Load(r.u8()?),
         8 => Command::Fire(r.u8()?),
+        9 => Command::Strafe { lat_mps: r.f32(-1000.0, 1000.0)?, vert_mps: r.f32(-1000.0, 1000.0)? },
+        10 => {
+            let some = r.bool()?;
+            let hpr = [r.f32(-720.0, 720.0)?, r.f32(-90.0, 90.0)?, r.f32(-720.0, 720.0)?];
+            Command::Orient(some.then_some(hpr))
+        }
         _ => return Err(DecodeError("no such command")),
     };
     Ok(c)
@@ -587,13 +616,18 @@ impl Snapshot {
         w.u8(self.ships.len() as u8);
         for s in &self.ships {
             w.u16(s.id);
-            w.u8(u8::from(s.active) | u8::from(s.alive) << 1 | u8::from(s.weapons_free) << 2);
+            w.u8(u8::from(s.active) | u8::from(s.alive) << 1 | u8::from(s.order.is_some()) << 2);
             w.v3_64(s.pos);
             w.quat(s.rot);
             w.v3_32(s.vel);
             w.v3_32(s.rates);
             w.f32(s.speed_set);
+            w.f32(s.strafe[0]);
+            w.f32(s.strafe[1]);
             w.u8(s.helm_mode as u8);
+            if let Some(q) = s.order {
+                w.quat(q);
+            }
             for f in s.faces {
                 w.f32(f);
             }
@@ -602,9 +636,11 @@ impl Snapshot {
             w.u8(s.turrets.len() as u8);
             for t in &s.turrets {
                 w.v3_32(t.aim);
-                w.u8(u8::from(t.bearing));
+                w.u8(u8::from(t.bearing) | u8::from(t.cooling) << 1 | u8::from(t.firing) << 2);
+                w.u8(t.mode as u8);
                 w.u8((t.hit_chance.clamp(0.0, 1.0) * 200.0).round() as u8);
                 w.u8((t.charge.clamp(0.0, 1.0) * 200.0).round() as u8);
+                w.u8((t.heat.clamp(0.0, 1.0) * 200.0).round() as u8);
             }
             w.u8(s.tubes.len() as u8);
             for (st, timer) in &s.tubes {
@@ -656,7 +692,9 @@ impl Snapshot {
             let vel = r.v3_32(VEL_LIM)?;
             let rates = r.v3_32(100.0)?;
             let speed_set = r.f32(-VEL_LIM, VEL_LIM)?;
+            let strafe = [r.f32(-VEL_LIM, VEL_LIM)?, r.f32(-VEL_LIM, VEL_LIM)?];
             let helm_mode = HelmMode::from_u8(r.u8()?).ok_or(DecodeError("no such helm mode"))?;
+            let order = if flags & 4 != 0 { Some(r.quat()?) } else { None };
             let mut faces = [0.0; 6];
             for f in &mut faces {
                 *f = r.f32(0.0, 1e6)?;
@@ -667,17 +705,26 @@ impl Snapshot {
             let mut turrets = Vec::with_capacity(nt);
             for _ in 0..nt {
                 let aim = r.v3_32(1.01)?;
-                let bearing = r.bool()?;
+                let tf = r.u8()?;
+                if tf > 7 {
+                    return Err(DecodeError("unknown turret flags"));
+                }
+                let mode = TurretMode::from_u8(r.u8()?).ok_or(DecodeError("no such turret mode"))?;
                 let hc = r.u8()?;
                 let ch = r.u8()?;
-                if hc > 200 || ch > 200 {
+                let ht = r.u8()?;
+                if hc > 200 || ch > 200 || ht > 200 {
                     return Err(DecodeError("a share is over 100 %"));
                 }
                 turrets.push(TurretSnap {
                     aim,
-                    bearing,
+                    bearing: tf & 1 != 0,
                     hit_chance: f64::from(hc) / 200.0,
                     charge: f64::from(ch) / 200.0,
+                    mode,
+                    heat: f64::from(ht) / 200.0,
+                    cooling: tf & 2 != 0,
+                    firing: tf & 4 != 0,
                 });
             }
             let nb = r.count(MAX_TUBES)?;
@@ -699,13 +746,14 @@ impl Snapshot {
                 id,
                 active: flags & 1 != 0,
                 alive: flags & 2 != 0,
-                weapons_free: flags & 4 != 0,
                 pos,
                 rot,
                 vel,
                 rates,
                 speed_set,
+                strafe,
                 helm_mode,
+                order,
                 faces,
                 preset,
                 hull,
@@ -743,8 +791,7 @@ impl Snapshot {
     /// The snapshot of a drill (the header is the caller's, per client).
     pub fn of(d: &combat::Drill) -> Self {
         let lock_time = [d.data.tern_combat.lock.time_s, d.data.enemy.combat.lock.time_s];
-        let caps =
-            [d.data.gun(&d.data.tern_combat.gun).capacitor_mj, d.data.gun(&d.data.enemy.combat.gun).capacitor_mj];
+        let guns = [d.data.gun(&d.data.tern_combat.gun), d.data.gun(&d.data.enemy.combat.gun)];
         let ships = d
             .ships
             .iter()
@@ -758,7 +805,9 @@ impl Snapshot {
                 vel: s.vel,
                 rates: s.rates,
                 speed_set: s.speed_set,
+                strafe: s.strafe,
                 helm_mode: s.helm_mode,
+                order: s.order,
                 faces: s.faces,
                 preset: s.preset,
                 hull: s.hull.max(0.0),
@@ -769,14 +818,17 @@ impl Snapshot {
                         aim: t.aim,
                         bearing: t.bearing,
                         hit_chance: t.hit_chance,
-                        charge: t.capacitor_mj / caps[i].max(1e-9),
+                        charge: t.capacitor_mj / guns[i].capacitor_mj.max(1e-9),
+                        mode: t.mode,
+                        heat: t.heat_mj / guns[i].heat_sink_mj.max(1e-9),
+                        cooling: t.cooling,
+                        firing: t.since_fire_s <= 2.0 / guns[i].rate_hz.max(1e-9),
                     })
                     .collect(),
                 tubes: s.tubes.iter().map(|t| (t.state, t.timer_s.max(0.0))).collect(),
                 magazine: s.magazine.min(255) as u8,
                 lock_target: s.lock_target,
                 lock_frac: if lock_time[i] > 0.0 { (s.lock_s / lock_time[i]).min(1.0) } else { 1.0 },
-                weapons_free: s.weapons_free,
             })
             .collect();
         let st = &d.stats;

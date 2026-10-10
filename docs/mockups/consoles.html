@@ -6747,6 +6747,43 @@ function scenario(name) {
     advance(20);
   }
 }
+/**
+ * The console's state for the engine's parity check (openspec/changes/console-parity, design 4): everything the
+ * helm and tactical consoles draw, in ship axes (+X port, +Y dorsal, +Z bow), metres, degrees and the numbers on
+ * screen. tools/consoles/parity.mjs saves it beside each named shot, and the engine draws the same picture from it
+ * (sc-client --console-fixture), so the two can be laid side by side. It reads the page; it changes nothing.
+ */
+window.consoleState = function () {
+  const S = stationDef(), vb = quat.rot(quat.conj(F.q), F.V), goal = F.orderActive ? F.order : attitudeGoal();
+  const preview = slewPlan(quat.fromEuler(F.oe.h, F.oe.p, F.oe.r)), qi = quat.conj(F.q);
+  const tgt = contact(G.target);
+  return {
+    station, word: S.word, role: S.role, op: S.op,
+    open: STATIONS.filter((o) => !o.op && o.id !== S.id).map((o) => o.id),
+    order: (newestOrderFor(S.id) || {}).verb || null,
+    alert: !reactorUp() ? "emergency" : st.alert === "red_alert" ? "red_alert" : "normal",
+    clock_s: Math.floor(G.t + 754),
+    hull_pct: hullPct(), shield_ratio: FACES.map((_, f) => shieldRatio(f)), power_mw: st.rxOut + st.batOut,
+    reactor_up: reactorUp(), speed_mps: v3.len(F.V), fires: fires(), breaches: breaches(),
+    q: quat.canon(F.q), w: F.w, wset: F.wset, v_body: vb, speed_set: F.speedSet, strafe: F.strafe, stick: stick(),
+    oe: F.oe, order_active: F.orderActive, plan: F.plan ? { time: F.plan.time, angle: F.plan.angle, held: F.plan.held } : null,
+    preview: { time: preview.time, angle: preview.angle }, goal: goal ? quat.canon(goal) : null, ap: G.ap,
+    flight: { rate_dps: FL.rate_dps, speed_min_mps: FL.speed_min_ms, speed_max_mps: FL.speed_max_ms, strafe_max_mps: FL.strafe_max_ms },
+    contacts: G.contacts.filter((c) => c.hull > 0).map((c) => ({ id: c.id, cls: c.cls, iff: c.iff, rel: relPos(c.p), dir: quat.rot(qi, c.dir), hull: c.hull, scan: c.scan })),
+    waypoint: relPos(G.wp), target: tgt && tgt.hull > 0 ? G.target : null, tubes_bear: tubesBear(),
+    missiles: G.missiles.map((m) => relPos(m.pos)),
+    inbound: G.inbound.map((m) => ({ d: m.d, t: m.t })),
+    hits: G.hitLog.map((h) => ({ d: h.d, face: h.face, age_s: G.t - h.t, through: h.through })),
+    flash_age_s: G.flash.map((t) => G.t - t),
+    feed: G.feed, zoom: G.zoom, nav_km: G.navRange, tac_km: G.tacRange, sci_km: G.sciRange,
+    scan_cam: { nav: G.scanCam.nav, tac: G.scanCam.tac }, feed_cam: G.feedViewCam,
+    turrets: G.turrets.map((t) => ({ short: t.short, mode: t.mode, op: t.op, heat: t.heat, aim_deg: t.aim, firing: t.firing, cooling: !!t.cooling, ok: works(t.load) })),
+    tubes: G.tubes.map((t) => ({ state: t.state, t: t.t })), tube_load_s: TUBE_LOAD_S, magazine: G.magazine, magazine_slots: 6,
+    fire_ring: missileHit(tgt), fire_note: `${Math.round(missileHit(tgt) * 100)}% HIT`, fire_ok: missileHit(tgt) > 0.5, tube_cone_deg: 5,
+    charge: G.charge, cap: FACES.map((_, f) => shieldCap(f)), preset: G.preset,
+    hold: HOLD.key ? { key: HOLD.key, k: clamp((now() - HOLD.t0) / HOLD_S, 0, 1) } : null,
+  };
+};
 window.MOCKUP_SHOTS = [
   { name: "helm", setup: () => { station = "helm"; render(); } },
   { name: "helm-stick", setup: () => { station = "helm"; F.orderActive = false; F.stickDrag = [0.7, -0.35, 0]; advance(15); render(); F.stickDrag = [0.7, -0.35, 0]; } },

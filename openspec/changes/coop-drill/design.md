@@ -17,9 +17,9 @@ and is replaced when its owning change is built. Progress and findings are in `l
 
 The drill repeats until the server stops, so a soak test is the same binary left running.
 
-**Why it needs both stations.** The turrets fire only at a locked target with weapons free (Tactical), and only the
-turrets whose arc holds the target fire (section 2.3): the dorsal pair above the ship's plane, the ventral pair below,
-all four within 10 deg of it, which Helm arranges. Missiles leave the bow tubes and their seeker takes a target only
+**Why it needs both stations.** The turrets fire only at a locked target, each by its mode (AUTO or TARGET; HOLD and
+PD hold fire; Tactical sets them), and only the turrets whose arc holds the target fire (section 2.3): each of the
+layout's four mounts (dorsal, ventral, port, starboard) bears on the half of the sky it faces, which Helm arranges. Missiles leave the bow tubes and their seeker takes a target only
 within 30 deg of the bow, which Helm arranges, once Tactical has locked, loaded and armed. The Hound's aim error grows
 with how fast the Tern crosses its line of sight (2.3), which Helm makes happen. Automation does none of the helm's
 part (BS:143: it holds heading and speed and never flies evasive) and never fires missiles (BS:144), so an empty
@@ -37,7 +37,10 @@ Both ships fly by the same function from their own `flight` block. A helm intent
 three stick axes in [-1, 1].
 
 - Forward speed approaches the set point with `tau_v`, the change per second limited to `accel_fwd` (up) and
-  `accel_rev` (down). The velocity's sideways part decays with the same `tau_v` (full assist cancels drift).
+  `accel_rev` (down). The velocity's sideways part decays with the same `tau_v` (full assist cancels drift), toward
+  the strafe set points when the helm gives them (lateral and vertical, each held to `strafe_max_mps`, 50 m/s; added
+  by `console-parity`). FN 4's RCS clamp on sideways acceleration is not built: it cut the bots' wins from 8 of 8
+  seeds to 2.
 - Each body rate approaches `stick x rate_limit` with `tau_w`, limited to the axis's angular acceleration.
 - The attitude quaternion integrates the body rates (semi-implicit Euler, normalized every tick).
 
@@ -54,6 +57,13 @@ The Hound's block is in `data/enemies.json` (*placeholder*: 300 m/s, 20 m/s^2, 3
 Helm orders (BS section 7, the subset): **Target** (bow on target: the stick is taken by a rate controller that turns
 the bow to the target, until the pilot moves the stick), **Level** (roll and pitch to zero), **All stop** (set point
 0). The flight rule, not the order, decides how fast it happens.
+
+Added by `console-parity` (its design 6), for the approved Helm console: an **attitude order** (heading, pitch and roll
+from the thumbwheels, slewed on the shortest single axis at the rate and acceleration limits and held inside
+`held_deg`, FN 6a; GO shows the slew's time from the same function; FLIP is the reciprocal heading) and the
+**autopilot** HOLD, COURSE (bow on the mission's waypoint, `waypoint_m`), CHASE (bow on the target; the old Target
+order), MATCH (the target's course and speed) and EVADE (set points up to `jink_mps` either way every
+`jink_period_s`, seeded from the round).
 
 ### 2.2 Shields and hull (WS section 9)
 
@@ -79,11 +89,18 @@ regeneration 1.5 MJ/s (*placeholder*).
 
 The twin pulse cannon (`data/weapons.json`, WS): 4 bolts/s, 1,500 m/s plus the ship's velocity, 1.6 s life (2,400 m),
 1.2 MJ a bolt, a capacitor of 24 MJ per turret charged at 4 MW, 1.5 MJ drawn per bolt (12 s at full rate, then the
-charge rate). Heat is later.
+charge rate). Heat is below.
 
-- **Arcs**, *placeholder* for WS's hull mask: a dorsal turret bears on targets from -10 deg to +90 deg of elevation
-  above the ship's plane, a ventral one from +10 deg to -90 deg. The Tern has two of each; the Hound two that bear
-  everywhere.
+- **Mounts and arcs** (as built by `console-parity`, design 6): the Tern's turrets are the layout's four mounts,
+  `turret_dorsal`, `turret_ventral`, `turret_port` and `turret_stbd`, at their `centre_m` (a test holds
+  `data/ships/tern/combat.json` to `layout.json`). Each bears on the half of the sky its mount faces, from
+  `arc_overlap_deg` past the mount's plane: the *placeholder* for WS's hull mask. The Hound has two that bear
+  everywhere. (First built as two dorsal and two ventral turrets.)
+- **Modes** (WS 7): AUTO and TARGET fire at the locked target (the drill has one hostile, so they act alike); PD fires
+  only at inbound missiles, so it holds fire here (the Hound carries none); HOLD holds fire. The Tern's turrets start on
+  HOLD.
+- **Heat** (WS 2): each bolt puts `heat_per_bolt_mj` into its turret's sink, which sheds `heat_shed_mw`; at
+  `heat_sink_mj` the turret locks out until it is below `heat_resume_frac` of it (`data/weapons.json`).
 - **Aim**: the lead solution for a target at constant velocity, then an angular error drawn from a 2D normal of
   `sigma_aim = sigma_base + k_rate x the target's angular rate across the line of sight` (WS: 0.15 deg and 0.02).
 - **Hit chance**: `P_hit = 1 - exp(-R^2 / (2 sigma^2))`, `sigma = range x sigma_aim` in radians, `R` the target's
@@ -117,8 +134,8 @@ Profiles in `data/stations.json`:
 
 | Profile | Helm | Tactical |
 | --- | --- | --- |
-| `automation` (an empty seat, BS:143-144) | reacts in 1.5 s; holds heading and speed; never evasive | reacts in 2.0 s; locks the nearest hostile, weapons free within 2,400 m; balanced shields; never missiles |
-| `bot` (a bot client, a decent player) | reacts in 0.3 s; bow on target at 1,500 m, weaving across the Hound's line of sight | reacts in 0.4 s; locks, weapons free, the preset facing the Hound, loads both tubes and fires when armed and in the cone |
+| `automation` (an empty seat, BS:143-144) | reacts in 1.5 s; holds heading and speed; never evasive | reacts in 2.0 s; locks the nearest hostile, turrets AUTO within 2,400 m and HOLD beyond; balanced shields; never missiles |
+| `bot` (a bot client, a decent player) | reacts in 0.3 s; bow on target at 1,500 m, weaving across the Hound's line of sight | reacts in 0.4 s; locks, turrets AUTO in range, the preset facing the Hound, loads both tubes and fires when armed and in the cone |
 
 Commands go through the same validation and apply path whoever sent them, so an empty seat, a bot and a person
 differ only in what they decide.
@@ -177,6 +194,12 @@ takes the address.
     with its hit ring). Keys BS: T lock, K weapons, S preset, L load, G fire.
   - Title band: station, drill, phase and clock, the other station as a chip that swaps to it. Status strip: hull,
     shields, round trip and loss.
+  - **Rebuilt by `console-parity`** (2026-10-10): both consoles are now the approved mockup's, panel for panel
+    (`console-parity` design 3-6), with the 3D view drawn only in the look band's viewscreen, from the camera the
+    seat's feed pad picks. Helm's keys are the mockup's: W and S the set point, X all stop, A and D yaw, R and F pitch,
+    Q and E roll, Z and C strafe to port and starboard and Space and Ctrl up and down while held. Tactical's: T lock,
+    L load, G held to fire. Weapons free and the preset key are gone: each turret has its mode, the presets are the
+    PLOT's buttons. Round trip and loss are on F3.
 - **Debrief**: the result and the numbers, then back to the briefing.
 
 ## 6. The two-Pi test

@@ -1,0 +1,264 @@
+{
+ "station": "helm",
+ "word": "HELM",
+ "role": "helm",
+ "op": "Ana",
+ "open": [
+  "science"
+ ],
+ "order": "CHASE",
+ "alert": "normal",
+ "clock_s": 754,
+ "hull_pct": 100,
+ "shield_ratio": [
+  0.9012499999999999,
+  0.9012499999999999,
+  0.9012499999999999,
+  0.9012499999999999,
+  0.9012499999999999,
+  0.9012499999999999
+ ],
+ "power_mw": 27.429427010726485,
+ "reactor_up": true,
+ "speed_mps": 140.00000000000003,
+ "fires": 0,
+ "breaches": 0,
+ "q": [
+  0.9848077530122081,
+  0,
+  -0.17364817766693036,
+  0
+ ],
+ "w": [
+  0,
+  0,
+  0
+ ],
+ "wset": [
+  0,
+  0,
+  0
+ ],
+ "v_body": [
+  7.105427357601002e-15,
+  0,
+  140.00000000000003
+ ],
+ "speed_set": 140,
+ "strafe": [
+  0,
+  0
+ ],
+ "stick": [
+  0,
+  0,
+  0
+ ],
+ "oe": {
+  "h": 45,
+  "p": 10,
+  "r": -30
+ },
+ "order_active": false,
+ "plan": null,
+ "preview": {
+  "time": 2.9989258684961793,
+  "angle": 41.68607856729581
+ },
+ "goal": null,
+ "ap": "HOLD",
+ "flight": {
+  "rate_dps": [
+   18,
+   18,
+   36
+  ],
+  "speed_min_mps": -100,
+  "speed_max_mps": 400,
+  "strafe_max_mps": 50
+ },
+ "contacts": [
+  {
+   "id": "T1",
+   "cls": "corvette",
+   "iff": "hostile",
+   "rel": [
+    -1892.2221290748203,
+    898.8218512058296,
+    9385.712529500845
+   ],
+   "dir": [
+    0.1174327906777888,
+    -0.07639729126540251,
+    -0.9901378659363231
+   ],
+   "hull": 100,
+   "scan": 0.35
+  },
+  {
+   "id": "T2",
+   "cls": "fighter",
+   "iff": "hostile",
+   "rel": [
+    8645.6697360588,
+    -1795.0102486286198,
+    4794.953321922141
+   ],
+   "dir": [
+    -0.8597284411046155,
+    0.16780835595905594,
+    -0.4823975157752649
+   ],
+   "hull": 100,
+   "scan": 0
+  },
+  {
+   "id": "N1",
+   "cls": "freighter",
+   "iff": "neutral",
+   "rel": [
+    -12039.82589100226,
+    300.00000000000006,
+    -949.0259901035179
+   ],
+   "dir": [
+    0.9848077530122082,
+    0,
+    0.17364817766693047
+   ],
+   "hull": 100,
+   "scan": 1
+  },
+  {
+   "id": "U1",
+   "cls": "corvette",
+   "iff": "unknown",
+   "rel": [
+    10926.197782807401,
+    2499.424304481329,
+    -16752.67801968076
+   ],
+   "dir": [
+    -0.4220390781009013,
+    -0.05233595624294384,
+    0.9050657237128572
+   ],
+   "hull": 100,
+   "scan": 0
+  }
+ ],
+ "waypoint": [
+  13929.555880283877,
+  1500.0000000000002,
+  11942.900642643519
+ ],
+ "target": "T1",
+ "tubes_bear": false,
+ "missiles": [],
+ "inbound": [],
+ "hits": [],
+ "flash_age_s": [
+  9.1,
+  9.1,
+  9.1,
+  9.1,
+  9.1,
+  9.1
+ ],
+ "feed": "FWD",
+ "zoom": 1,
+ "nav_km": 20,
+ "tac_km": 5,
+ "sci_km": 20,
+ "scan_cam": {
+  "nav": {
+   "yaw": 0,
+   "dEl": 0
+  },
+  "tac": {
+   "yaw": 0,
+   "dEl": 0
+  }
+ },
+ "feed_cam": {
+  "yaw": 40,
+  "el": 30
+ },
+ "turrets": [
+  {
+   "short": "D",
+   "mode": "AUTO",
+   "op": "Kai",
+   "heat": 0.19500000000000006,
+   "aim_deg": 0,
+   "firing": false,
+   "cooling": false,
+   "ok": 1
+  },
+  {
+   "short": "V",
+   "mode": "AUTO",
+   "op": null,
+   "heat": 0.09499999999999997,
+   "aim_deg": 180,
+   "firing": false,
+   "cooling": false,
+   "ok": 1
+  },
+  {
+   "short": "P",
+   "mode": "PD",
+   "op": null,
+   "heat": 0,
+   "aim_deg": 270,
+   "firing": false,
+   "cooling": false,
+   "ok": 1
+  },
+  {
+   "short": "S",
+   "mode": "AUTO",
+   "op": null,
+   "heat": 0.3949999999999999,
+   "aim_deg": 90,
+   "firing": false,
+   "cooling": false,
+   "ok": 1
+  }
+ ],
+ "tubes": [
+  {
+   "state": "READY",
+   "t": 0
+  },
+  {
+   "state": "LOADING",
+   "t": 3.1999999999999997
+  }
+ ],
+ "tube_load_s": 7.2,
+ "magazine": 6,
+ "magazine_slots": 6,
+ "fire_ring": 0.6615004566846678,
+ "fire_note": "66% HIT",
+ "fire_ok": true,
+ "tube_cone_deg": 5,
+ "charge": [
+  36.05,
+  36.05,
+  36.05,
+  36.05,
+  36.05,
+  36.05
+ ],
+ "cap": [
+  40,
+  40,
+  40,
+  40,
+  40,
+  40
+ ],
+ "preset": -1,
+ "hold": null
+}

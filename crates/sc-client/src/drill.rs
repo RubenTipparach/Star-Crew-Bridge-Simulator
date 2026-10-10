@@ -1,7 +1,8 @@
 //! The co-op drill in the client (openspec/changes/coop-drill design 5): connect to a drill server, read the
-//! briefing, sit at Helm or Tactical (the `bridge-stations` 8.0 layouts) over a 3D bow view in which the Hound is a
-//! placeholder model, then the debrief. `--bot` lets the station's automation play the seat at a player's
-//! competence, through the same commands the console sends.
+//! briefing, sit at Helm or Tactical, then the debrief. The station's console is its approved mockup's
+//! (`console`, openspec/changes/console-parity), its viewscreen showing the 3D feed in which the Hound is a
+//! placeholder model. `--bot` lets the station's automation play the seat at a player's competence, through the
+//! same commands the console sends.
 //!
 //! It is its own `App` beside the walkable ship because the drill is a separate game mode: nothing here walks a
 //! deck. Every rule it shows comes from `sc-core` (the hit chance, the lock, the tube timings), every number from
@@ -11,11 +12,11 @@ use std::collections::HashSet;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::path::PathBuf;
 
-use egui::{Align2, Color32, CornerRadius, FontId, Pos2, Rect, RichText, Sense, Stroke, StrokeKind, Vec2};
+use egui::{Align2, Color32, CornerRadius, Pos2, Rect, RichText, Stroke, Vec2};
 use glam::{DQuat, DVec3, Mat4, Quat, Vec3};
 use sc_client::platform::{keys, App, Event, Flow, Frame};
 use sc_core::combat::data::{DrillData, DRILL_FILES};
-use sc_core::combat::{Command, HelmMode, Outcome, Phase, Station, TubeState, ENEMY_ID, TERN_ID};
+use sc_core::combat::{Command, Outcome, Phase, Station, ENEMY_ID, TERN_ID};
 use sc_core::exterior::{normalized, ExteriorData};
 use sc_net::bot::Bot;
 use sc_net::msg::{ShipSnap, Snapshot};
@@ -23,13 +24,13 @@ use sc_net::session::{Session, Stage, Visual, INTERP_DELAY_S};
 use sc_net::transport::Impair;
 use sc_render::{DeckParams, DeckProgram, Indices, Mesh, Renderer, Target};
 
+use crate::console;
+use crate::seat::{Input, PointerEv, Seat, SeatAsk};
 use crate::ships3d;
 use crate::ui::Ui;
 
-/// The 3D target (engine-stack design 5).
-const RENDER_3D: (u32, u32) = (1280, 720);
-/// The target camera's inset (a camera feed, bridge-stations 8.0), pixels.
-const INSET: (u32, u32) = (448, 252);
+/// The viewscreen's feed, pixels: twice its 614 x 194 layout points, so it stays sharp up to 1440p.
+const FEED: (u32, u32) = (1228, 388);
 /// The console canvas, logical points (bridge-stations 8.0).
 const CANVAS: (f32, f32) = (1280.0, 720.0);
 
@@ -83,24 +84,17 @@ struct Boom {
     radius: f64,
 }
 
-#[derive(Default)]
-struct HelmControls {
-    speed_set: f64,
-    synced_round: Option<u32>,
-    pad: [f64; 2],
-    pad_held: bool,
-    last_send: f64,
-}
-
 /// The drill client.
 pub struct DrillApp {
     r: Renderer,
-    target: Target,
+    /// A black backdrop under the console (the output pass blits one).
+    blank: Target,
+    /// The viewscreen's feed.
+    feed: Target,
     ui: Ui,
     exterior: ExteriorData,
     data: DrillData,
     meshes: Meshes,
-    inset: Option<Target>,
     args: DrillArgs,
     addr: Option<SocketAddr>,
     session: Option<Session>,
@@ -112,9 +106,11 @@ pub struct DrillApp {
     booms: Vec<Boom>,
     held: HashSet<u32>,
     pressed: HashSet<u32>,
-    helm: HelmControls,
-    fire_hold: Option<(u8, f64)>,
-    face_hit: [f64; 6],
+    seat: Seat,
+    /// The pointer's events since the last frame, for the console.
+    pointer: Vec<PointerEv>,
+    /// F3: the link's round trip and loss in a corner (debug numbers are not console content).
+    show_net: bool,
     shots_taken: HashSet<String>,
     phase_seen: Option<(u32, Phase, f64)>,
     shot_round: Option<u32>,
@@ -140,8 +136,8 @@ impl DrillApp {
             std::fs::read_to_string("data/engine/render.json").map_err(|e| format!("data/engine/render.json: {e}"))?;
         let cfg = sc_core::data::parse("data/engine/render.json", &text).map_err(|e| e.to_string())?;
         let mut r = Renderer::new(&cfg);
-        let target = r.make_target(RENDER_3D.0, RENDER_3D.1, 4);
-        let inset = r.make_target(INSET.0, INSET.1, 1);
+        let blank = r.make_target(16, 16, 1);
+        let feed = r.make_target(FEED.0, FEED.1, 4);
         let text = std::fs::read_to_string("data/space/exterior.json")
             .map_err(|e| format!("data/space/exterior.json: {e}"))?;
         let exterior: ExteriorData =
@@ -161,12 +157,12 @@ impl DrillApp {
         let bot = args.bot.then(|| Bot::new(&data, args.station));
         let mut app = Self {
             r,
-            target,
+            blank,
+            feed,
             ui: Ui::new(),
             exterior,
             data,
             meshes,
-            inset: Some(inset),
             args,
             addr,
             session: None,
@@ -178,9 +174,9 @@ impl DrillApp {
             booms: Vec::new(),
             held: HashSet::new(),
             pressed: HashSet::new(),
-            helm: HelmControls::default(),
-            fire_hold: None,
-            face_hit: [-10.0; 6],
+            seat: Seat::default(),
+            pointer: Vec::new(),
+            show_net: false,
             shots_taken: HashSet::new(),
             phase_seen: None,
             shot_round: None,
@@ -240,6 +236,7 @@ impl DrillApp {
         let now = self.time_s;
         let tern_gun = self.data.gun(&self.data.tern_combat.gun).life_s;
         let enemy_gun = self.data.gun(&self.data.enemy.combat.gun).life_s;
+        let mut tern_hits = Vec::new();
         for v in s.drain_visuals() {
             match v {
                 Visual::Fired { bolt, owner, pos, vel } => self.bolts.push(VisBolt {
@@ -258,7 +255,8 @@ impl DrillApp {
                         self.booms.push(Boom { pos: at, t0: now - rtt / 2.0, dur: 0.35, radius: 4.0 });
                     }
                     if target == TERN_ID {
-                        self.face_hit[usize::from(face.min(5))] = now;
+                        let vel = self.bolts.iter().find(|b| b.id == bolt).map_or(DVec3::Z, |b| b.vel);
+                        tern_hits.push((face, vel));
                     }
                 }
                 Visual::Detonated { pos, damage_mj } => {
@@ -274,86 +272,14 @@ impl DrillApp {
                 }
             }
         }
+        if let Some(tern) = self.session.as_ref().and_then(|s| s.latest()).and_then(|s| s.ships.first().cloned()) {
+            for (face, vel) in tern_hits {
+                self.seat.hit(&tern, face, vel, now);
+            }
+        }
         let render_t = now - INTERP_DELAY_S;
         self.bolts.retain(|b| render_t - b.t0 < b.life_s && b.hit_at.is_none_or(|h| render_t < h));
         self.booms.retain(|b| render_t - b.t0 < b.dur);
-    }
-
-    fn console_input(&mut self, snap: &Snapshot, station: Station) {
-        let Some(s) = self.session.as_mut() else { return };
-        let tern = &snap.ships[0];
-        let pressed = std::mem::take(&mut self.pressed);
-        let now = self.time_s;
-        match station {
-            Station::Helm => {
-                if self.helm.synced_round != Some(snap.round) {
-                    self.helm.synced_round = Some(snap.round);
-                    self.helm.speed_set = tern.speed_set;
-                }
-                let f = &self.data.tern_flight;
-                if pressed.contains(&keys::W) {
-                    self.helm.speed_set = (self.helm.speed_set + 25.0).min(f.speed_max_mps);
-                }
-                if pressed.contains(&keys::S) {
-                    self.helm.speed_set = (self.helm.speed_set - 25.0).max(f.speed_min_mps);
-                }
-                if pressed.contains(&keys::BACKSPACE) {
-                    self.helm.speed_set = 0.0;
-                    s.command(Command::AllStop);
-                }
-                if pressed.contains(&keys::T) {
-                    s.command(Command::Helm(HelmMode::Target));
-                }
-                if pressed.contains(&keys::L) {
-                    s.command(Command::Helm(HelmMode::Level));
-                }
-                let axis = |p: u32, n: u32, held: &HashSet<u32>| {
-                    f64::from(u8::from(held.contains(&p))) - f64::from(u8::from(held.contains(&n)))
-                };
-                let (mut yaw, mut pitch) = (axis(keys::A, keys::D, &self.held), axis(keys::R, keys::F, &self.held));
-                let roll = axis(keys::E, keys::Q, &self.held);
-                if self.helm.pad_held {
-                    yaw = self.helm.pad[0];
-                    pitch = self.helm.pad[1];
-                }
-                if now - self.helm.last_send >= 0.05 {
-                    self.helm.last_send = now;
-                    s.command(Command::Stick { speed_set_mps: self.helm.speed_set, yaw, pitch, roll });
-                }
-            }
-            Station::Tactical => {
-                if pressed.contains(&keys::T) {
-                    s.command(Command::Lock(Some(ENEMY_ID)));
-                }
-                if pressed.contains(&keys::K) {
-                    s.command(Command::WeaponsFree(!tern.weapons_free));
-                }
-                if pressed.contains(&keys::S) {
-                    let n = self.data.tern_shields.presets.len() as u8;
-                    s.command(Command::Preset((tern.preset + 1) % n.max(1)));
-                }
-                if pressed.contains(&keys::L) {
-                    if let Some(i) = tern.tubes.iter().position(|t| t.0 == TubeState::Empty) {
-                        s.command(Command::Load(i as u8));
-                    }
-                }
-                if self.held.contains(&keys::G) {
-                    let armed = tern.tubes.iter().position(|t| t.0 == TubeState::Armed);
-                    match (self.fire_hold, armed) {
-                        (None, Some(i)) => self.fire_hold = Some((i as u8, now)),
-                        (Some((i, t0)), _) if now - t0 >= 0.6 => {
-                            s.command(Command::Fire(i));
-                            self.fire_hold = None;
-                            self.held.remove(&keys::G);
-                        }
-                        _ => {}
-                    }
-                } else if self.fire_hold.is_some_and(|(_, t0)| now - t0 < 0.6) && !self.held.contains(&keys::G) {
-                    // A key hold released early: nothing fires (bridge-stations: guarded controls).
-                    // The mouse hold on FIRE is handled in the console.
-                }
-            }
-        }
     }
 
     /// The camera on the Tern's bow: its eye in the system frame and its attitude.
@@ -364,31 +290,17 @@ impl DrillApp {
         }
     }
 
-    /// The bow view, then the target camera's inset in the look band. `aspect` is the window's, so the 16:9 target
-    /// stretched to any window keeps true proportions.
-    fn render_3d(&mut self, ships: Option<&(ShipSnap, ShipSnap, Snapshot)>, aspect: f32) {
+    /// The viewscreen's feed: from the bow, looking where the console's feed points (the mockup's feed camera:
+    /// 70 degrees across at zoom 1), into its own target, which the console draws in the viewscreen's frame.
+    fn render_feed(&mut self, ships: Option<&(ShipSnap, ShipSnap, Snapshot)>, view: Option<&console::ConsoleView>) {
         let (eye, rot) = Self::bow_eye(ships, self.time_s);
-        // The view's centre lifted into the look band (y 32-272 of 720): shift NDC y by (360 - 152) / 360.
-        let shift = Mat4::from_translation(Vec3::new(0.0, (360.0 - 152.0) / 360.0, 0.0));
-        let fov = 62f32.to_radians();
-        let proj = shift * glam::camera::rh::proj::opengl::perspective(fov, aspect, 1.0, 80_000.0);
-        let view =
-            glam::camera::rh::view::look_to_mat4(Vec3::ZERO, (rot * DVec3::Z).as_vec3(), (rot * DVec3::Y).as_vec3());
-        // The target camera: from the same eye, a narrow view that keeps the Hound about half the inset tall.
-        let inset = ships.and_then(|(t, h, _)| {
-            (h.active && h.alive).then(|| {
-                let to = h.pos - eye;
-                let d = to.length().max(1.0);
-                let fov = (2.0 * (40.0 / d).atan()).clamp(0.5f64.to_radians(), 50f64.to_radians()) as f32;
-                let proj = glam::camera::rh::proj::opengl::perspective(fov, 16.0 / 9.0, 1.0, 80_000.0);
-                let view = glam::camera::rh::view::look_to_mat4(
-                    Vec3::ZERO,
-                    to.as_vec3().normalize(),
-                    (t.rot * DVec3::Y).as_vec3(),
-                );
-                (proj, view, fov)
-            })
-        });
+        let (fwd, up, vfov) = match view {
+            Some(v) => self.seat.feed_camera(v, rot),
+            None => (rot * DVec3::Z, rot * DVec3::Y, 2.0 * (97.0f64 / (307.0 / 35f64.to_radians().tan())).atan()),
+        };
+        let proj =
+            glam::camera::rh::proj::opengl::perspective(vfov as f32, FEED.0 as f32 / FEED.1 as f32, 1.0, 80_000.0);
+        let view_m = glam::camera::rh::view::look_to_mat4(Vec3::ZERO, fwd.as_vec3(), up.as_vec3());
         let world = World {
             meshes: &self.meshes,
             exterior: &self.exterior,
@@ -396,24 +308,10 @@ impl DrillApp {
             booms: &self.booms,
             time_s: self.time_s,
         };
-        if let (Some((p, v, fov)), Some(it)) = (inset, self.inset.as_ref()) {
-            self.r.begin_3d(it, [0.0, 0.0, 0.0, 1.0]);
-            world.draw(&mut self.r, it, p, v, fov / INSET.1 as f32, eye, ships);
-            self.r.end_pass();
-        }
-        self.r.begin_3d(&self.target, [0.0, 0.0, 0.0, 1.0]);
-        world.draw(&mut self.r, &self.target, proj, view, fov / RENDER_3D.1 as f32, eye, ships);
-        if let (Some(_), Some(it)) = (inset, self.inset.as_ref()) {
-            // The inset's quad in the look band, left of centre: 384 x 216 lp at (16, 44) on the canvas.
-            let screen_w = 720.0 * aspect;
-            let x0 = (screen_w - CANVAS.0) / 2.0 + 16.0;
-            let (w, h, y0) = (384.0, 216.0, 44.0);
-            let cx = (x0 + w / 2.0) / screen_w * 2.0 - 1.0;
-            let cy = 1.0 - (y0 + h / 2.0) / 720.0 * 2.0;
-            let mvp = Mat4::from_translation(Vec3::new(cx, cy, 0.0))
-                * Mat4::from_scale(Vec3::new(w / screen_w, h / 720.0, 1.0));
-            self.r.draw_screen(&self.target, mvp, it, [0.0, INSET.1 as f32, 1.0, 0.0]);
-        }
+        self.r.begin_3d(&self.feed, [0.0, 0.0, 0.0, 1.0]);
+        world.draw(&mut self.r, &self.feed, proj, view_m, vfov as f32 / FEED.1 as f32, eye, ships);
+        self.r.end_pass();
+        self.r.begin_3d(&self.blank, [0.0, 0.0, 0.0, 1.0]);
         self.r.end_pass();
     }
 }
@@ -550,6 +448,7 @@ impl App for DrillApp {
         match e {
             Event::Quit => return Flow::Done,
             Event::KeyDown(keys::ESCAPE) => return Flow::Done,
+            Event::KeyDown(keys::F3) => self.show_net = !self.show_net,
             Event::KeyDown(k) => {
                 if !self.held.contains(&k) {
                     self.pressed.insert(k);
@@ -595,29 +494,65 @@ impl App for DrillApp {
             }
         }
         let station = self.session.as_ref().and_then(|s| s.station());
-        if let (Some(snap), Some(st), None) = (ships.as_ref().map(|x| x.2.clone()), station, self.bot.as_ref()) {
-            if snap.phase == Phase::Engage {
-                self.console_input(&snap, st);
-            } else {
-                self.pressed.clear();
-            }
-        } else {
-            self.pressed.clear();
-        }
-        self.render_3d(ships.as_ref(), f.width as f32 / f.height.max(1) as f32);
-        // The UI: build it from a snapshot of what it needs, then send what it asks for.
+        let crew = self.session.as_ref().map(|s| s.crew.clone()).unwrap_or_default();
+        // The console's view: the station this client holds (or wants), from the newest interpolated snapshot.
+        let console_view = ships.as_ref().map(|(t, h, snap)| {
+            let st = station.unwrap_or(self.args.station);
+            let op =
+                crew.iter()
+                    .find(|c| c.station == Some(st))
+                    .map(|c| if c.bot { "Bot".to_owned() } else { c.name.clone() });
+            let open = Station::ALL
+                .iter()
+                .filter(|o| **o != st && !crew.iter().any(|c| c.station == Some(**o)))
+                .map(|o| o.id().to_owned())
+                .collect();
+            self.seat.view(st, t, h, snap, &self.data, op, open, self.time_s)
+        });
+        self.render_feed(ships.as_ref(), console_view.as_ref());
         let mut ask: Vec<UiAsk> = Vec::new();
         let view = UiView::gather(self, ships.as_ref());
-        let mut helm_pad = (self.helm.pad, self.helm.pad_held, self.helm.speed_set);
-        let mut fire_hold = self.fire_hold;
-        let now = self.time_s;
+        let mut painted: Option<(console::kit::Hits, f32)> = None;
+        let mut pointer: Vec<PointerEv> = Vec::new();
+        let show_net = self.show_net;
         let frame = self.ui.run(&mut self.r, f, self.time_s, |ctx| {
-            draw_ui(ctx, &view, &mut ask, &mut helm_pad, &mut fire_hold, now);
+            if let Some(v) = console_view.as_ref() {
+                let hover = ctx.input(|i| i.pointer.hover_pos());
+                painted = Some(console::paint(ctx, v, true, hover));
+                ctx.input(|i| {
+                    for e in &i.events {
+                        match e {
+                            egui::Event::PointerButton {
+                                pos, button: egui::PointerButton::Primary, pressed, ..
+                            } => pointer.push(if *pressed { PointerEv::Press(*pos) } else { PointerEv::Release(*pos) }),
+                            egui::Event::PointerMoved(p) => pointer.push(PointerEv::Move(*p)),
+                            egui::Event::MouseWheel { delta, .. } if delta.y != 0.0 => {
+                                if let Some(p) = i.pointer.hover_pos() {
+                                    pointer.push(PointerEv::Scroll(p, delta.y > 0.0));
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                });
+            }
+            draw_ui(ctx, &view, &mut ask, show_net);
         });
-        self.helm.pad = helm_pad.0;
-        self.helm.pad_held = helm_pad.1;
-        self.helm.speed_set = helm_pad.2;
-        self.fire_hold = fire_hold;
+        self.pointer = pointer;
+        // The seated player's hands on the console, in Engage only (the briefing and debrief sit over it otherwise).
+        let engage = ships.as_ref().is_some_and(|x| x.2.phase == Phase::Engage);
+        let pressed = std::mem::take(&mut self.pressed);
+        if let (true, Some(st), None, Some((hits, scale)), Some(v), Some((t, h, _))) =
+            (engage, station, self.bot.as_ref(), painted.as_ref(), console_view.as_ref(), ships.as_ref())
+        {
+            let input = Input { events: std::mem::take(&mut self.pointer), held: self.held.clone(), pressed };
+            for a in self.seat.input(&input, hits, *scale, v, t, h, &self.data, st, self.time_s) {
+                match a {
+                    SeatAsk::Command(c) => ask.push(UiAsk::Command(c)),
+                    SeatAsk::Claim(s) => ask.push(UiAsk::Claim(s)),
+                }
+            }
+        }
         if let Some(s) = self.session.as_mut() {
             for a in ask {
                 match a {
@@ -628,7 +563,15 @@ impl App for DrillApp {
                 }
             }
         }
-        self.r.present_with_ui(&self.target, f.width, f.height, true, &frame.meshes(), frame.points);
+        // The viewscreen's feed in its window under the console, or black when there is no console yet.
+        let ppp = f.height as f32 / frame.points[1].max(1.0);
+        match console_view {
+            Some(_) => {
+                let at = console::viewscreen_px(frame.points, ppp);
+                self.r.present_with_ui_at(&self.feed, Some(at), f.width, f.height, true, &frame.meshes(), frame.points)
+            }
+            None => self.r.present_with_ui(&self.blank, f.width, f.height, true, &frame.meshes(), frame.points),
+        }
         self.scripted_shots(f);
         self.r.commit();
         if self.done {
@@ -646,7 +589,8 @@ enum UiAsk {
     Command(Command),
 }
 
-/// Everything the UI draws from, gathered before the UI closure borrows the renderer.
+/// Everything the briefing, the debrief and the F3 corner draw from, gathered before the UI closure borrows the
+/// renderer.
 struct UiView {
     error: Option<String>,
     stage: Option<Stage>,
@@ -658,29 +602,16 @@ struct UiView {
     crew: Vec<sc_net::msg::CrewEntry>,
     snap: Option<Snapshot>,
     tern: Option<ShipSnap>,
-    hound: Option<ShipSnap>,
     rtt_ms: Option<f64>,
     loss: f64,
     refused: Option<(String, f64)>,
-    face_hit: [f64; 6],
     mission: sc_core::combat::data::MissionFile,
-    presets: Vec<String>,
-    preset_caps: Vec<[f64; 6]>,
-    load_s: f64,
-    arm_s: f64,
-    seeker_deg: f64,
-    lock_s: f64,
-    enemy_name: String,
-    enemy_hull: f64,
-    enemy_faces: [f64; 6],
     tern_hull: f64,
-    session_now: f64,
 }
 
 impl UiView {
     fn gather(app: &DrillApp, ships: Option<&(ShipSnap, ShipSnap, Snapshot)>) -> Self {
         let s = app.session.as_ref();
-        let tubes = app.data.tern_combat.tubes.as_ref();
         Self {
             error: app.error.clone(),
             stage: s.map(|s| s.stage),
@@ -692,23 +623,11 @@ impl UiView {
             crew: s.map(|s| s.crew.clone()).unwrap_or_default(),
             snap: ships.map(|x| x.2.clone()),
             tern: ships.map(|x| x.0.clone()),
-            hound: ships.map(|x| x.1.clone()),
             rtt_ms: s.and_then(|s| s.rtt_ms),
             loss: s.map_or(0.0, |s| s.snapshot_loss()),
             refused: s.and_then(|s| s.refused.map(|(r, t)| (r.text().to_owned(), s.now_s() - t))),
-            face_hit: app.face_hit.map(|t| app.time_s - t),
             mission: app.data.mission.clone(),
-            presets: app.data.tern_shields.presets.iter().map(|p| p.name.clone()).collect(),
-            preset_caps: app.data.tern_shields.presets.iter().map(|p| p.faces_mj).collect(),
-            load_s: tubes.map_or(1.0, |t| t.load_s),
-            arm_s: tubes.map_or(1.0, |t| t.arm_s),
-            seeker_deg: tubes.map_or(30.0, |t| app.data.missile(&t.missile).seeker_half_angle_deg),
-            lock_s: app.data.tern_combat.lock.time_s,
-            enemy_name: app.data.enemy.name.clone(),
-            enemy_hull: app.data.enemy.combat.hull_mj,
-            enemy_faces: app.data.enemy.shields.presets[0].faces_mj,
             tern_hull: app.data.tern_combat.hull_mj,
-            session_now: s.map_or(0.0, |s| s.now_s()),
         }
     }
 }
@@ -750,46 +669,12 @@ fn panel(ctx: &egui::Context, id: &str, rect: Rect, title: &str, add: impl FnOnc
     });
 }
 
-/// A grid cell rectangle (bridge-stations 8.0: 12 columns of 96 lp, 4 rows of 94 lp, 8 lp gutters, from y 280).
-fn cell(col: f32, row: f32, w: f32, h: f32) -> Rect {
-    let (cw, rh, g) = (96.0, 94.0, 8.0);
-    let x0 = (CANVAS.0 - (12.0 * cw + 11.0 * g)) / 2.0;
-    Rect::from_min_size(
-        Pos2::new(x0 + col * (cw + g), 280.0 + row * (rh + g)),
-        Vec2::new(w * cw + (w - 1.0) * g, h * rh + (h - 1.0) * g),
-    )
-}
-
-fn arc(p: &egui::Painter, c: Pos2, r: f32, a0: f32, a1: f32, stroke: Stroke) {
-    let n = 24;
-    let pts: Vec<Pos2> = (0..=n)
-        .map(|i| {
-            let a = a0 + (a1 - a0) * i as f32 / n as f32;
-            c + Vec2::new(a.sin(), -a.cos()) * r
-        })
-        .collect();
-    p.add(egui::Shape::line(pts, stroke));
-}
-
-fn bar(p: &egui::Painter, r: Rect, frac: f64, colour: Color32) {
-    p.rect_filled(r, CornerRadius::same(3), Color32::from_rgb(28, 38, 50));
-    let w = r.width() * frac.clamp(0.0, 1.0) as f32;
-    p.rect_filled(Rect::from_min_size(r.min, Vec2::new(w, r.height())), CornerRadius::same(3), colour);
-}
-
 fn mmss(s: f64) -> String {
     let s = s.max(0.0) as u64;
     format!("{:02}:{:02}", s / 60, s % 60)
 }
 
-fn draw_ui(
-    ctx: &egui::Context,
-    v: &UiView,
-    ask: &mut Vec<UiAsk>,
-    helm: &mut ([f64; 2], bool, f64),
-    fire_hold: &mut Option<(u8, f64)>,
-    now: f64,
-) {
+fn draw_ui(ctx: &egui::Context, v: &UiView, ask: &mut Vec<UiAsk>, show_net: bool) {
     let Some(snap) = v.snap.as_ref() else {
         let text = match (&v.error, v.stage) {
             (Some(e), _) => e.to_string(),
@@ -805,35 +690,24 @@ fn draw_ui(
     match snap.phase {
         Phase::Muster | Phase::Countdown => briefing(ctx, v, snap, ask),
         Phase::Engage => {
-            title_band(ctx, v, snap, ask);
-            match v.station {
-                Some(Station::Helm) => helm_console(ctx, v, ask, helm),
-                Some(Station::Tactical) => tactical_console(ctx, v, ask, fire_hold, now),
-                None => {
-                    egui::Area::new(egui::Id::new("nostation"))
-                        .anchor(Align2::CENTER_BOTTOM, Vec2::new(0.0, -80.0))
-                        .show(ctx, |ui| {
-                            label(ui, "Your station is held; choose one above", 20.0, AMBER);
-                        });
-                }
-            }
-            status_strip(ctx, v);
-            target_bracket(ctx, v);
-            if v.hound.as_ref().is_some_and(|h| h.active && h.alive) {
-                let o = canvas_origin(ctx);
-                let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Foreground, egui::Id::new("inset")));
-                let r = Rect::from_min_size(o + Vec2::new(16.0, 44.0), Vec2::new(384.0, 216.0));
-                painter.rect_stroke(r, CornerRadius::same(4), Stroke::new(1.0_f32, EDGE), StrokeKind::Outside);
-                painter.text(
-                    r.min + Vec2::new(8.0, 6.0),
-                    Align2::LEFT_TOP,
-                    "TARGET CAM",
-                    FontId::proportional(12.0),
-                    DIM,
+            // A refused command says why, over the status strip, for a few seconds.
+            if let Some((why, age)) = v.refused.as_ref().filter(|r| r.1 < 3.0) {
+                let _ = age;
+                egui::Area::new(egui::Id::new("refused")).anchor(Align2::CENTER_BOTTOM, Vec2::new(0.0, -40.0)).show(
+                    ctx,
+                    |ui| {
+                        label(ui, why, 16.0, AMBER);
+                    },
                 );
             }
         }
         Phase::Debrief => debrief(ctx, v, snap),
+    }
+    if show_net {
+        egui::Area::new(egui::Id::new("net")).anchor(Align2::RIGHT_TOP, Vec2::new(-10.0, 40.0)).show(ctx, |ui| {
+            let rtt = v.rtt_ms.map_or("--".to_owned(), |r| format!("{r:.0} ms"));
+            label(ui, &format!("RTT {rtt}  LOSS {:.1}%", v.loss * 100.0), 13.0, DIM);
+        });
     }
 }
 
@@ -938,531 +812,4 @@ fn debrief(ctx: &egui::Context, v: &UiView, snap: &Snapshot) {
         ui.add_space(14.0);
         label(ui, &format!("Next drill in {:.0} s", (v.mission.debrief_s - snap.phase_s).max(0.0)), 18.0, AMBER);
     });
-}
-
-fn title_band(ctx: &egui::Context, v: &UiView, snap: &Snapshot, ask: &mut Vec<UiAsk>) {
-    let o = canvas_origin(ctx);
-    egui::Area::new(egui::Id::new("title")).fixed_pos(o).order(egui::Order::Middle).show(ctx, |ui| {
-        egui::Frame::new().fill(PANEL).inner_margin(egui::Margin::symmetric(14, 4)).show(ui, |ui| {
-            ui.set_min_size(Vec2::new(CANVAS.0 - 28.0, 24.0));
-            ui.set_max_size(Vec2::new(CANVAS.0 - 28.0, 24.0));
-            ui.horizontal(|ui| {
-                label(ui, &v.station.map_or("NO STATION".into(), |s| s.name().to_uppercase()), 20.0, AMBER);
-                label(ui, &v.mission.title, 15.0, DIM);
-                label(ui, &mmss(snap.phase_s), 18.0, TEXT);
-                if v.bot {
-                    label(ui, "BOT", 15.0, CYAN);
-                }
-                for s in Station::ALL {
-                    if Some(s) == v.station {
-                        continue;
-                    }
-                    let open = !v.crew.iter().any(|c| c.station == Some(s));
-                    let text = format!("{} {}", s.name(), if open { "AUTO" } else { "manned" });
-                    if ui
-                        .add_enabled(
-                            open && !v.bot,
-                            egui::Button::new(RichText::new(text).size(14.0)).corner_radius(CornerRadius::same(10)),
-                        )
-                        .clicked()
-                    {
-                        ask.push(UiAsk::Claim(s));
-                    }
-                }
-            });
-        });
-    });
-}
-
-fn status_strip(ctx: &egui::Context, v: &UiView) {
-    let o = canvas_origin(ctx);
-    let Some(t) = v.tern.as_ref() else { return };
-    egui::Area::new(egui::Id::new("status")).fixed_pos(o + Vec2::new(0.0, 690.0)).order(egui::Order::Middle).show(
-        ctx,
-        |ui| {
-            egui::Frame::new().fill(PANEL).inner_margin(egui::Margin::symmetric(14, 3)).show(ui, |ui| {
-                ui.set_min_size(Vec2::new(CANVAS.0 - 28.0, 24.0));
-                ui.set_max_size(Vec2::new(CANVAS.0 - 28.0, 24.0));
-                ui.horizontal(|ui| {
-                    label(ui, "HULL", 13.0, DIM);
-                    let (r, _) = ui.allocate_exact_size(Vec2::new(160.0, 12.0), Sense::hover());
-                    let frac = t.hull / v.tern_hull;
-                    bar(
-                        ui.painter(),
-                        r,
-                        frac,
-                        if frac > 0.5 {
-                            GREEN
-                        } else if frac > 0.25 {
-                            AMBER
-                        } else {
-                            RED
-                        },
-                    );
-                    label(ui, "SHIELDS", 13.0, DIM);
-                    let (r, _) = ui.allocate_exact_size(Vec2::new(160.0, 12.0), Sense::hover());
-                    let cap: f64 = v.preset_caps.get(usize::from(t.preset)).map_or(240.0, |c| c.iter().sum());
-                    bar(ui.painter(), r, t.faces.iter().sum::<f64>() / cap, CYAN);
-                    ui.add_space(20.0);
-                    let net = format!(
-                        "{} ms  {:.1} % lost",
-                        v.rtt_ms.map_or("?".into(), |r| format!("{r:.0}")),
-                        v.loss * 100.0
-                    );
-                    label(ui, &net, 14.0, if v.loss > 0.05 { AMBER } else { DIM });
-                    ui.add_space(20.0);
-                    for c in &v.crew {
-                        let st = c.station.map_or("-", |s| s.name());
-                        label(ui, &format!("{st}: {}", c.name), 14.0, DIM);
-                    }
-                    if let Some((r, age)) = &v.refused {
-                        if *age < 2.5 {
-                            label(ui, r, 15.0, RED);
-                        }
-                    }
-                });
-            });
-        },
-    );
-}
-
-/// A bracket on the Hound in the look band, so a ship 6 km out is found at a glance.
-fn target_bracket(ctx: &egui::Context, v: &UiView) {
-    let (Some(t), Some(h)) = (v.tern.as_ref(), v.hound.as_ref()) else { return };
-    if !h.active || !h.alive {
-        return;
-    }
-    let eye = t.pos + t.rot * DVec3::new(0.0, 3.0, 32.0);
-    let l = t.rot.inverse() * (h.pos - eye);
-    if l.z <= 1.0 {
-        return;
-    }
-    // The same projection as the 3D view: 62 deg vertical at the window's aspect, centre at y 152 lp.
-    let screen_w = ctx.content_rect().width();
-    let aspect = f64::from(screen_w / 720.0);
-    let f = 1.0 / (31f64.to_radians()).tan();
-    let ndc_x = -l.x / l.z * f / aspect;
-    let ndc_y = l.y / l.z * f;
-    let p = Pos2::new((screen_w / 2.0) * (1.0 + ndc_x as f32), 152.0 - 360.0 * ndc_y as f32);
-    if p.y < 32.0 || p.y > 272.0 || p.x < 0.0 || p.x > screen_w {
-        return;
-    }
-    let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Foreground, egui::Id::new("bracket")));
-    let colour = if t.lock_target == Some(h.id) && t.lock_frac >= 1.0 { RED } else { AMBER };
-    let s = 14.0;
-    for (dx, dy) in [(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)] {
-        let c = p + Vec2::new(dx * s, dy * s);
-        p_line(&painter, c, c + Vec2::new(-dx * 6.0, 0.0), colour);
-        p_line(&painter, c, c + Vec2::new(0.0, -dy * 6.0), colour);
-    }
-    painter.text(
-        p + Vec2::new(s + 6.0, -s),
-        Align2::LEFT_TOP,
-        format!("{:.1} km", (h.pos - t.pos).length() / 1000.0),
-        FontId::proportional(14.0),
-        colour,
-    );
-}
-
-fn p_line(p: &egui::Painter, a: Pos2, b: Pos2, c: Color32) {
-    p.line_segment([a, b], Stroke::new(2.0_f32, c));
-}
-
-/// Euler angles for the ORIENT panel: heading (deg, 0 along +Z, positive to port), pitch and roll.
-fn euler(q: DQuat) -> (f64, f64, f64) {
-    let f = q * DVec3::Z;
-    let port = q * DVec3::X;
-    let dorsal = q * DVec3::Y;
-    (f.x.atan2(f.z).to_degrees(), f.y.clamp(-1.0, 1.0).asin().to_degrees(), port.y.atan2(dorsal.y).to_degrees())
-}
-
-/// A contact's place on a scanner: top-down, bow up, starboard right.
-fn scanner_point(c: Pos2, scale: f32, local: DVec3) -> (Pos2, Pos2) {
-    let base = c + Vec2::new(-local.x as f32, -local.z as f32) * scale;
-    (base, base + Vec2::new(0.0, -local.y as f32 * scale * 0.6))
-}
-
-fn helm_console(ctx: &egui::Context, v: &UiView, ask: &mut Vec<UiAsk>, helm: &mut ([f64; 2], bool, f64)) {
-    let Some(t) = v.tern.as_ref() else { return };
-    let speed = t.vel.dot(t.rot * DVec3::Z);
-    panel(ctx, "thrust", cell(0.0, 0.0, 3.0, 4.0), "THRUST", |ui| {
-        // The set point the ship holds (the server's); the lever's drag changes what this console sends.
-        label(ui, &format!("{:.0} m/s", t.speed_set), 30.0, AMBER);
-        label(ui, &format!("now {speed:.0}"), 15.0, DIM);
-        let (r, resp) = ui
-            .allocate_exact_size(Vec2::new(ui.available_width(), ui.available_height() - 8.0), Sense::click_and_drag());
-        let p = ui.painter();
-        let track = Rect::from_center_size(r.center(), Vec2::new(46.0, r.height() - 16.0));
-        p.rect_filled(track, CornerRadius::same(6), Color32::from_rgb(22, 30, 42));
-        let y_of = |s: f64| track.bottom() - ((s + 100.0) / 500.0) as f32 * track.height();
-        for m in [-100.0, 0.0, 100.0, 200.0, 300.0, 400.0] {
-            let y = y_of(m);
-            p.line_segment([Pos2::new(track.left() - 8.0, y), Pos2::new(track.left(), y)], Stroke::new(1.0_f32, DIM));
-            p.text(
-                Pos2::new(track.left() - 12.0, y),
-                Align2::RIGHT_CENTER,
-                format!("{m:.0}"),
-                FontId::proportional(12.0),
-                DIM,
-            );
-        }
-        let set_y = y_of(t.speed_set);
-        p.rect_filled(
-            Rect::from_min_max(
-                Pos2::new(track.left(), set_y.min(y_of(0.0))),
-                Pos2::new(track.right(), set_y.max(y_of(0.0))),
-            ),
-            CornerRadius::same(4),
-            Color32::from_rgba_unmultiplied(242, 160, 70, 90),
-        );
-        p.rect_filled(
-            Rect::from_center_size(Pos2::new(track.center().x, set_y), Vec2::new(64.0, 10.0)),
-            CornerRadius::same(3),
-            AMBER,
-        );
-        let now_y = y_of(speed);
-        p.add(egui::Shape::convex_polygon(
-            vec![
-                Pos2::new(track.right() + 4.0, now_y),
-                Pos2::new(track.right() + 16.0, now_y - 7.0),
-                Pos2::new(track.right() + 16.0, now_y + 7.0),
-            ],
-            CYAN,
-            Stroke::NONE,
-        ));
-        if resp.dragged() || resp.clicked() {
-            if let Some(pos) = resp.interact_pointer_pos() {
-                let s = (track.bottom() - pos.y) / track.height() * 500.0 - 100.0;
-                helm.2 = ((f64::from(s) / 5.0).round() * 5.0).clamp(-100.0, 400.0);
-            }
-        }
-    });
-    panel(ctx, "scanner", cell(3.0, 0.0, 5.0, 4.0), "SCANNER", |ui| {
-        let (r, _) = ui.allocate_exact_size(ui.available_size(), Sense::hover());
-        let p = ui.painter();
-        let c = r.center();
-        let rad = r.height().min(r.width()) / 2.0 - 8.0;
-        let range_m = 5000.0;
-        let scale = rad / range_m as f32;
-        for k in [1000.0, 2500.0, 5000.0] {
-            p.circle_stroke(c, k as f32 * scale, Stroke::new(1.0_f32, EDGE));
-        }
-        // The seeker's cone off the bow (the tubes' ghost).
-        let half = (v.seeker_deg as f32).to_radians();
-        for s in [-1.0f32, 1.0] {
-            p.line_segment(
-                [c, c + Vec2::new((half * s).sin(), -(half * s).cos()) * rad],
-                Stroke::new(1.0_f32, Color32::from_rgba_unmultiplied(88, 200, 232, 110)),
-            );
-        }
-        p.add(egui::Shape::convex_polygon(
-            vec![c + Vec2::new(0.0, -10.0), c + Vec2::new(7.0, 8.0), c + Vec2::new(-7.0, 8.0)],
-            CYAN,
-            Stroke::NONE,
-        ));
-        if let Some(h) = v.hound.as_ref().filter(|h| h.active && h.alive) {
-            let l = t.rot.inverse() * (h.pos - t.pos);
-            let d = l.length();
-            let l = if d > range_m { l * (range_m / d) } else { l };
-            let (base, dot) = scanner_point(c, scale, l);
-            p.line_segment(
-                [base, dot],
-                Stroke::new(1.5_f32, if l.y >= 0.0 { RED } else { Color32::from_rgb(150, 60, 50) }),
-            );
-            p.circle_filled(dot, 6.0, RED);
-            p.text(
-                dot + Vec2::new(10.0, -8.0),
-                Align2::LEFT_BOTTOM,
-                format!("{:.1} km {}", d / 1000.0, if l.y >= 0.0 { "above" } else { "below" }),
-                FontId::proportional(15.0),
-                TEXT,
-            );
-        }
-    });
-    panel(ctx, "attitude", cell(8.0, 0.0, 4.0, 2.0), "ATTITUDE", |ui| {
-        let (r, resp) =
-            ui.allocate_exact_size(Vec2::new(ui.available_width(), ui.available_height()), Sense::click_and_drag());
-        let p = ui.painter();
-        let pad = Rect::from_center_size(r.center(), Vec2::splat(r.height().min(r.width()) - 4.0));
-        p.rect_stroke(pad, CornerRadius::same(6), Stroke::new(1.0_f32, EDGE), StrokeKind::Inside);
-        p.line_segment([pad.center_top(), pad.center_bottom()], Stroke::new(1.0_f32, EDGE));
-        p.line_segment([pad.left_center(), pad.right_center()], Stroke::new(1.0_f32, EDGE));
-        if resp.is_pointer_button_down_on() {
-            if let Some(pos) = resp.interact_pointer_pos() {
-                let d = (pos - pad.center()) / (pad.width() / 2.0);
-                helm.0 = [f64::from(-d.x).clamp(-1.0, 1.0), f64::from(-d.y).clamp(-1.0, 1.0)];
-                helm.1 = true;
-            }
-        } else {
-            helm.0 = [0.0, 0.0];
-            helm.1 = false;
-        }
-        let lim = 18f64.to_radians();
-        let rates = Vec2::new((-t.rates.y / lim) as f32, (t.rates.x / lim) as f32);
-        p.circle_filled(pad.center() + rates * (pad.width() / 2.0), 7.0, CYAN);
-        if helm.1 {
-            p.circle_stroke(
-                pad.center() + Vec2::new(-helm.0[0] as f32, -helm.0[1] as f32) * (pad.width() / 2.0),
-                10.0,
-                Stroke::new(2.0_f32, AMBER),
-            );
-        }
-    });
-    panel(ctx, "orient", cell(8.0, 2.0, 4.0, 2.0), "ORIENT", |ui| {
-        let (hd, pt, rl) = euler(t.rot);
-        label(ui, &format!("HDG {hd:+04.0}  PIT {pt:+03.0}  ROL {rl:+04.0}"), 18.0, TEXT);
-        label(ui, &format!("q {:+.3} {:+.3} {:+.3} {:+.3}", t.rot.w, t.rot.x, t.rot.y, t.rot.z), 13.0, DIM);
-        ui.horizontal(|ui| {
-            let on = |m: HelmMode| {
-                if t.helm_mode == m {
-                    Color32::from_rgb(30, 90, 120)
-                } else {
-                    Color32::from_rgb(34, 44, 58)
-                }
-            };
-            if ui.add(big_button("TARGET", Vec2::new(110.0, 44.0), on(HelmMode::Target))).clicked() {
-                ask.push(UiAsk::Command(Command::Helm(HelmMode::Target)));
-            }
-            if ui.add(big_button("LEVEL", Vec2::new(100.0, 44.0), on(HelmMode::Level))).clicked() {
-                ask.push(UiAsk::Command(Command::Helm(HelmMode::Level)));
-            }
-            if ui.add(big_button("STOP", Vec2::new(120.0, 52.0), Color32::from_rgb(150, 50, 40))).clicked() {
-                helm.2 = 0.0;
-                ask.push(UiAsk::Command(Command::AllStop));
-            }
-        });
-    });
-}
-
-fn tactical_console(
-    ctx: &egui::Context,
-    v: &UiView,
-    ask: &mut Vec<UiAsk>,
-    fire_hold: &mut Option<(u8, f64)>,
-    now: f64,
-) {
-    let Some(t) = v.tern.as_ref() else { return };
-    let hound = v.hound.as_ref().filter(|h| h.active && h.alive);
-    let locked = t.lock_target == Some(ENEMY_ID) && t.lock_frac >= 1.0;
-    panel(ctx, "targets", cell(0.0, 0.0, 3.0, 4.0), "TARGETS", |ui| {
-        let Some(h) = hound else {
-            label(ui, "No contact", 18.0, DIM);
-            return;
-        };
-        label(ui, &v.enemy_name, 18.0, TEXT);
-        label(ui, &format!("{:.2} km", (h.pos - t.pos).length() / 1000.0), 26.0, AMBER);
-        let (r, _) = ui.allocate_exact_size(Vec2::new(ui.available_width(), 120.0), Sense::hover());
-        let p = ui.painter();
-        let c = r.center();
-        p.circle_stroke(c, 46.0, Stroke::new(6.0_f32, Color32::from_rgb(28, 38, 50)));
-        arc(
-            p,
-            c,
-            46.0,
-            0.0,
-            std::f32::consts::TAU * t.lock_frac as f32,
-            Stroke::new(6.0_f32, if locked { RED } else { AMBER }),
-        );
-        p.text(
-            c,
-            Align2::CENTER_CENTER,
-            if locked {
-                "LOCK"
-            } else if t.lock_target.is_some() {
-                "..."
-            } else {
-                ""
-            },
-            FontId::proportional(18.0),
-            TEXT,
-        );
-        label(ui, "HULL", 12.0, DIM);
-        let (r, _) = ui.allocate_exact_size(Vec2::new(ui.available_width(), 12.0), Sense::hover());
-        bar(ui.painter(), r, h.hull / v.enemy_hull, RED);
-        label(ui, "SHIELDS", 12.0, DIM);
-        let (r, _) = ui.allocate_exact_size(Vec2::new(ui.available_width(), 12.0), Sense::hover());
-        bar(ui.painter(), r, h.faces.iter().sum::<f64>() / v.enemy_faces.iter().sum::<f64>().max(1.0), CYAN);
-        ui.add_space(6.0);
-        if ui
-            .add(big_button(
-                if t.lock_target.is_some() { "RELOCK" } else { "LOCK" },
-                Vec2::new(ui.available_width(), 48.0),
-                Color32::from_rgb(150, 70, 30),
-            ))
-            .clicked()
-        {
-            ask.push(UiAsk::Command(Command::Lock(Some(ENEMY_ID))));
-        }
-    });
-    panel(ctx, "plot", cell(3.0, 0.0, 5.0, 4.0), "SHIELDS", |ui| {
-        let (r, _) =
-            ui.allocate_exact_size(Vec2::new(ui.available_width(), ui.available_height() - 52.0), Sense::hover());
-        let p = ui.painter();
-        let c = r.center();
-        let rad = r.height().min(r.width()) / 2.0 - 14.0;
-        let caps = v.preset_caps.get(usize::from(t.preset)).copied().unwrap_or([40.0; 6]);
-        // Faces around the ship seen from above, bow up: bow, starboard (right), stern, port (left).
-        let quads = [
-            (0usize, 0.0f32),
-            (3, std::f32::consts::FRAC_PI_2),
-            (1, std::f32::consts::PI),
-            (2, -std::f32::consts::FRAC_PI_2),
-        ];
-        for (face, centre) in quads {
-            let frac = (t.faces[face] / caps[face].max(1.0)) as f32;
-            let hit = v.face_hit[face] < 0.4;
-            let colour = if hit {
-                Color32::WHITE
-            } else if frac < 0.25 {
-                RED
-            } else {
-                CYAN
-            };
-            arc(p, c, rad, centre - 0.7, centre + 0.7, Stroke::new(3.0_f32, EDGE));
-            arc(p, c, rad, centre - 0.7, centre - 0.7 + 1.4 * frac, Stroke::new(9.0_f32, colour));
-        }
-        for (k, face) in [(0.0f32, 4usize), (1.0, 5)] {
-            let frac = t.faces[face] / caps[face].max(1.0);
-            let br = Rect::from_min_size(
-                Pos2::new(r.right() - 16.0, r.top() + 10.0 + k * (r.height() / 2.0)),
-                Vec2::new(10.0, r.height() / 2.0 - 20.0),
-            );
-            p.rect_filled(br, CornerRadius::same(3), Color32::from_rgb(28, 38, 50));
-            let h = br.height() * frac.clamp(0.0, 1.0) as f32;
-            p.rect_filled(
-                Rect::from_min_max(Pos2::new(br.left(), br.bottom() - h), br.max),
-                CornerRadius::same(3),
-                if v.face_hit[face] < 0.4 { Color32::WHITE } else { CYAN },
-            );
-        }
-        p.add(egui::Shape::convex_polygon(
-            vec![c + Vec2::new(0.0, -16.0), c + Vec2::new(10.0, 14.0), c + Vec2::new(-10.0, 14.0)],
-            TEXT,
-            Stroke::NONE,
-        ));
-        if let Some(h) = hound {
-            let l = t.rot.inverse() * (h.pos - t.pos);
-            let dir = Vec2::new(-l.x as f32, -l.z as f32).normalized();
-            p.circle_filled(c + dir * (rad + 12.0), 7.0, RED);
-        }
-        ui.horizontal(|ui| {
-            for (i, name) in v.presets.iter().enumerate() {
-                let on = usize::from(t.preset) == i;
-                let fill = if on { Color32::from_rgb(30, 90, 120) } else { Color32::from_rgb(34, 44, 58) };
-                if ui
-                    .add(egui::Button::new(RichText::new(name).size(15.0)).min_size(Vec2::new(78.0, 34.0)).fill(fill))
-                    .clicked()
-                {
-                    ask.push(UiAsk::Command(Command::Preset(i as u8)));
-                }
-            }
-        });
-    });
-    panel(ctx, "turrets", cell(8.0, 0.0, 4.0, 2.0), "TURRETS", |ui| {
-        ui.horizontal(|ui| {
-            for tu in &t.turrets {
-                let (r, resp) = ui.allocate_exact_size(Vec2::new(54.0, 54.0), Sense::hover());
-                let p = ui.painter();
-                let c = r.center();
-                p.circle_stroke(c, 22.0, Stroke::new(3.0_f32, Color32::from_rgb(28, 38, 50)));
-                arc(
-                    p,
-                    c,
-                    22.0,
-                    0.0,
-                    std::f32::consts::TAU * tu.charge as f32,
-                    Stroke::new(3.0_f32, if tu.charge < 0.15 { AMBER } else { CYAN }),
-                );
-                let l = t.rot.inverse() * tu.aim;
-                let d = Vec2::new(-l.x as f32, -l.z as f32);
-                let d = if d.length() > 0.01 { d.normalized() } else { Vec2::new(0.0, -1.0) };
-                let firing = t.weapons_free && locked && tu.bearing;
-                p.line_segment(
-                    [c, c + d * 18.0],
-                    Stroke::new(
-                        3.0_f32,
-                        if firing {
-                            GREEN
-                        } else if tu.bearing {
-                            TEXT
-                        } else {
-                            DIM
-                        },
-                    ),
-                );
-                resp.on_hover_text(format!(
-                    "hit {:.0} %, charge {:.0} %, {}",
-                    tu.hit_chance * 100.0,
-                    tu.charge * 100.0,
-                    if tu.bearing { "bearing" } else { "blind" }
-                ));
-            }
-        });
-        let text = if t.weapons_free { "WEAPONS FREE" } else { "HOLD FIRE" };
-        let fill = if t.weapons_free { Color32::from_rgb(40, 120, 60) } else { Color32::from_rgb(110, 60, 40) };
-        if ui.add(big_button(text, Vec2::new(ui.available_width(), 44.0), fill)).clicked() {
-            ask.push(UiAsk::Command(Command::WeaponsFree(!t.weapons_free)));
-        }
-    });
-    panel(ctx, "tubes", cell(8.0, 2.0, 4.0, 2.0), "TUBES", |ui| {
-        ui.horizontal(|ui| {
-            for (state, timer) in &t.tubes {
-                let (r, _) = ui.allocate_exact_size(Vec2::new(86.0, 26.0), Sense::hover());
-                let (frac, colour, text) = match state {
-                    TubeState::Empty => (0.0, DIM, "EMPTY"),
-                    TubeState::Loading => (1.0 - timer / v.load_s.max(0.1), AMBER, "LOAD"),
-                    TubeState::Arming => (1.0 - timer / v.arm_s.max(0.1), AMBER, "ARM"),
-                    TubeState::Armed => (1.0, GREEN, "ARMED"),
-                };
-                bar(ui.painter(), r, frac, colour);
-                ui.painter().text(r.center(), Align2::CENTER_CENTER, text, FontId::proportional(13.0), Color32::BLACK);
-            }
-            label(ui, &format!("{} left", t.magazine), 14.0, DIM);
-        });
-        let off_bow = hound.map(|h| sc_core::combat::off_bow_deg(t.pos, t.rot, h.pos));
-        let in_cone = off_bow.is_some_and(|d| d <= v.seeker_deg);
-        let armed = t.tubes.iter().position(|x| x.0 == TubeState::Armed);
-        ui.horizontal(|ui| {
-            let empty = t.tubes.iter().position(|x| x.0 == TubeState::Empty);
-            if ui
-                .add_enabled(
-                    empty.is_some() && t.magazine > 0,
-                    big_button("LOAD", Vec2::new(90.0, 44.0), Color32::from_rgb(34, 44, 58)),
-                )
-                .clicked()
-            {
-                if let Some(i) = empty {
-                    ask.push(UiAsk::Command(Command::Load(i as u8)));
-                }
-            }
-            let ready = armed.is_some() && locked && in_cone;
-            let fill = if ready { Color32::from_rgb(180, 40, 30) } else { Color32::from_rgb(70, 40, 40) };
-            let resp = ui.add_enabled(armed.is_some(), big_button("FIRE", Vec2::new(150.0, 52.0), fill));
-            // Guarded: FIRE is held 0.6 s (bridge-stations 8.0).
-            if resp.is_pointer_button_down_on() {
-                match *fire_hold {
-                    None => *fire_hold = armed.map(|i| (i as u8, now)),
-                    Some((i, t0)) if now - t0 >= 0.6 => {
-                        ask.push(UiAsk::Command(Command::Fire(i)));
-                        *fire_hold = Some((i, f64::INFINITY));
-                    }
-                    _ => {}
-                }
-            } else if fire_hold.is_some_and(|(_, t0)| t0.is_infinite() || now - t0 < 0.6) {
-                *fire_hold = None;
-            }
-            let why = if armed.is_none() {
-                ""
-            } else if !locked {
-                "no lock"
-            } else if !in_cone {
-                "off bow"
-            } else {
-                "ready"
-            };
-            label(ui, why, 14.0, if ready { GREEN } else { AMBER });
-        });
-    });
-    let _ = v.lock_s;
-    let _ = v.session_now;
 }
