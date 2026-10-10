@@ -175,12 +175,56 @@ and heat drops". This answers `bridge-stations`' open "who may vent" (section 10
 Recommendation taken (ask only with screenshots): the 5 s warning with the doors opening from inside, the damage
 board's request without its own vent, and the harm rates above. They are data in `atmosphere.json` `crew_effects`.
 
+## 6b. Fires break out on their own (owner, 2026-10-10)
+
+The owner, 2026-10-10, after walking up to the damaged tactical console: "Fires can break out at some locations as
+well and extinguishers can be picked up nearby." Until now a fire started only from a hit, a flashover next door or a
+click on the board. This adds the fire nobody started: a fault at a place that is known to catch.
+
+- **Where: fire-prone spots, as ship data** (`atmosphere.json` `fire.outbreaks.points`). A spot is a point on a room's
+  floor with its cause: a galley (cooking), an electrical panel or a converter (a fault), a bunk (a frayed lamp), and a
+  damaged station's wiring. A spot names its place either by `at_m` (x and z, metres) or by a `prop` in its `room`,
+  meaning the middle of the first such prop the room is furnished with (`placements`, so it moves with the prop). The
+  Tern's first four:
+
+  | Spot | Room | Where | Cause |
+  | --- | --- | --- | --- |
+  | `ob_bridge_tactical` | bridge | Under tactical's desk | Its damaged wiring: only while tactical is damaged or disabled (`repairs-on-deck` 3f) |
+  | `ob_mess_galley` | mess | The galley counter | Cooking |
+  | `ob_quarters_bunk` | quarters | A bunk | A reading lamp's frayed lead |
+  | `ob_port_turret_panel` | port turret room | The turret's power panel | An electrical fault |
+
+- **Every spot is near an extinguisher.** A spot is in a room, and every room has a safety point inside its main door
+  (`safety-points` 1), restocked 15 s after it is emptied (`safety-points` 3a). The layout check will refuse a spot
+  more than 10 m's walk from a safety point once `kit.json` exists (`safety-points` 4).
+- **When: one at a time, at seeded intervals.** While the ship is running and no outbreak fire is burning, the next
+  breaks out `interval_s` after the last one went out, drawn evenly from [45, 90] s; the first comes `first_s` (20 s)
+  after the start. The spot is drawn from the ones that can catch now (a spot whose station must be damaged waits for
+  it), never the same spot twice running. The draws come from a generator seeded by the session seed and the purpose
+  `"outbreak"` (CLAUDE.md 6.4), so a replay has the same fires. `max_burning` (1) is how many outbreak fires may burn at
+  once: one, so the player meets them one at a time; a hit or a spread still starts fires whatever this says.
+- **What breaks out** is a seed of `seed_kw` (50 kW) at the spot's cell, the same seed a hit starts (section 2): from
+  there it grows, spreads and is put out by every rule above. A spot that has burnt out (no fuel left in its cell)
+  cannot catch again until the room is refitted.
+- **What the crew sees**: the fire alarm and the flames; where the spot is, nothing, until it catches. The damage
+  control board marks a spot only once it is burning.
+
+**In the mockups.** `deck-plan.html`'s walk runs the fire with `shipsystems.js` and `firespread.js` over the whole ship
+and breaks fires out at these spots; a walk button starts the next one now. `fire.html` keeps its scenario buttons.
+The rule that picks the spot and the time is `FireSpread.outbreaks` (one implementation for both pages and the
+harness); the flames, the spray, the safety points and their restock are `docs/mockups/lib/firefight.js`, moved there
+from `fire.html` so the two pages share them (CLAUDE.md 6.1).
+
+Recommendation taken (ask only with screenshots): the four spots, the 45-90 s interval, one outbreak at a time, and
+the bridge spot only while tactical is damaged.
+
 ## 7. The Pi 5 budget
 
 | Item | Cost | Against |
 | --- | --- | --- |
 | Cells, the whole ship | 6,400 x 16 B = 100 KB on the server; a room is stepped only while it burns or is hot | Server memory |
 | Simulation | At most a few rooms burning: about 500 cells x 9 neighbours a step, under 0.1 ms on a Cortex-A76 (estimate, to be measured by the probe) | Server step |
+| Outbreaks | A list of spots and one timer; a draw from the seeded generator when one breaks out | Negligible |
 | Network | A burning room sends its cells' states as 2 bits each and `q` as one byte each on change, at most 4 Hz: about 140 B a second for the quarters | `netcode-and-sessions` budget |
 | Flames | One instanced draw of billboards for the room in view, at most 256 quads (512 triangles) | Client draw calls and triangles |
 | Smoke and layer | One translucent quad a room, plus the fog the renderer already has | Client fill rate |

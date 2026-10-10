@@ -65,3 +65,23 @@ room's oxygen partial pressure and air temperature, each step, from the moment t
 #### Scenario: Caught in the quarters
 - **WHEN** the captain vents the quarters with a crew member inside who does not leave
 - **THEN** that crew member's health falls as the quarters' oxygen and temperature fall, and they are down before the room reaches 20 kPa's 90 s limit
+
+### Requirement: Fires break out at fire-prone spots
+
+The simulation SHALL start a fire of `seed_kw` at one of the ship's fire-prone spots (`fire.outbreaks.points`) when no
+outbreak fire is burning and a seeded interval drawn from `fire.outbreaks.interval_s` has passed since the last one
+went out, choosing among the spots that can catch now and never the spot that caught last. The draws SHALL come from a
+generator seeded by the session seed and the purpose, so the same seed breaks out the same fires at the same times.
+
+#### Scenario: The galley catches
+- **WHEN** the ship has run with no outbreak fire for the drawn interval and the mess galley is the spot drawn
+- **THEN** a 50 kW fire starts on the galley counter's cell and grows by the cell rules
+
+#### Scenario: Tactical's wiring only while it is damaged
+- **WHEN** tactical's console is repaired
+- **THEN** the spot under its desk is not drawn until the console is damaged again
+
+#### Scenario: A replay
+- **WHEN** two runs start with the same session seed and nobody fights the fires
+- **THEN** the same spots break out at the same times in both
+
