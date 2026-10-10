@@ -41,3 +41,7 @@ Newest last. What was done, what was found, on which machine and commit.
     them by label. Simpler for a first cut; the 8-byte header still rides on the unreliable ones.
   - `tests/lan_drill.rs`: a server and two bot clients over loopback WebRTC win the drill, and win it again with
     10 % loss and 50 ms of delay on the unreliable channels (19 s for both, the server at four times real speed).
+- `sc-bot`, the headless bot crew member (`sc-server/src/bot.rs`, shared with the test and, next, the client's
+  `--bot`). First real-time run on Pi 1, three processes over the LAN address 192.168.0.210: `sc-server` and two
+  `sc-bot`s. Round 0: victory in 70 s; Tern bolts 227/712 hit, Hound bolts 112/344, missiles 5/6, Tern hull 92 of
+  120 MJ; round trip 15 ms on one machine, no snapshot lost.

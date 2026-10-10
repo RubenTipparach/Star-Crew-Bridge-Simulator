@@ -3,11 +3,11 @@
 //! commands from a client) with nothing mocked. The server ticks four times faster than real time to keep the test
 //! short; the bots decide from snapshots exactly as on two machines.
 
-use sc_core::combat::automation::{self, Memory};
 use sc_core::combat::data::DrillData;
-use sc_core::combat::{Outcome, Phase, Station};
-use sc_net::session::{Session, Stage};
+use sc_core::combat::{Outcome, Station};
+use sc_net::session::Session;
 use sc_net::transport::Impair;
+use sc_server::bot::Bot;
 use sc_server::{DrillServer, ServerConfig};
 use std::time::{Duration, Instant};
 
@@ -16,17 +16,14 @@ fn play(impair: Impair, seed: u64) -> (DrillServer, Vec<Session>) {
     let cfg = ServerConfig { listen: "127.0.0.1:0".parse().unwrap(), host_ip: lo, impair, seed };
     let data = DrillData::shipped();
     let mut server = DrillServer::start(data.clone(), &cfg).unwrap();
-    let mut clients: Vec<(Session, Station, Memory)> = [Station::Helm, Station::Tactical]
+    let mut clients: Vec<(Session, Bot)> = [Station::Helm, Station::Tactical]
         .into_iter()
         .map(|s| {
-            (
-                Session::connect(server.addr(), s.name(), true, Some(s), Impair::default(), seed).unwrap(),
-                s,
-                Memory::default(),
-            )
+            let mut bot = Bot::new(&data, s);
+            bot.read_s = 0.2;
+            (Session::connect(server.addr(), s.name(), true, Some(s), Impair::default(), seed).unwrap(), bot)
         })
         .collect();
-    let bot = data.profile("bot").clone();
     let end = Instant::now() + Duration::from_secs(120);
     let mut next_tick = Instant::now();
     while Instant::now() < end && server.results.is_empty() {
@@ -35,26 +32,9 @@ fn play(impair: Impair, seed: u64) -> (DrillServer, Vec<Session>) {
             server.tick();
             next_tick += Duration::from_secs_f64(1.0 / 120.0);
         }
-        for (c, station, mem) in &mut clients {
+        for (c, bot) in &mut clients {
             c.update();
-            if c.stage != Stage::Joined {
-                continue;
-            }
-            if c.phase() == Some(Phase::Muster) && c.station() == Some(*station) && !c.ready() {
-                c.set_ready(true);
-            }
-            if c.phase() != Some(Phase::Engage) {
-                continue;
-            }
-            let Some(pic) = c.picture() else { continue };
-            let now = c.latest().map(|s| s.phase_s).unwrap_or(0.0);
-            let cmds = match station {
-                Station::Helm => automation::helm(&pic, &bot.helm, &data.tern_flight, &mut mem.helm, now),
-                Station::Tactical => automation::tactical(&pic, &bot.tactical, &data, &mut mem.tactical, now),
-            };
-            for cmd in cmds {
-                c.command(cmd);
-            }
+            bot.drive(c, &data);
         }
         std::thread::sleep(Duration::from_millis(1));
     }
