@@ -77,6 +77,16 @@ pub mod keys {
     pub const F: u32 = sdl::SDLK_F.0;
     /// M: the ship's map.
     pub const M: u32 = sdl::SDLK_M.0;
+    /// T.
+    pub const T: u32 = sdl::SDLK_T.0;
+    /// K.
+    pub const K: u32 = sdl::SDLK_K.0;
+    /// G.
+    pub const G: u32 = sdl::SDLK_G.0;
+    /// L.
+    pub const L: u32 = sdl::SDLK_L.0;
+    /// R.
+    pub const R: u32 = sdl::SDLK_R.0;
     /// Return (Enter).
     pub const RETURN: u32 = sdl::SDLK_RETURN.0;
     /// Backspace.

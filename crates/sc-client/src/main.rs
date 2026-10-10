@@ -20,8 +20,10 @@
 //! `--walk-test DIR` walks a scripted route from the bridge down both ladders to deck C, captures along it, and
 //! fails if the body does not arrive where the route ends.
 
+mod drill;
 mod first_light;
 mod lobby;
+mod ships3d;
 mod ui;
 
 use glam::{Mat4, Vec3};
@@ -1359,7 +1361,35 @@ fn main() -> ExitCode {
     let lobby_dir = value("--lobby-test");
     let lobby_test = lobby_dir.is_some();
     let shots = shots.or(walk_dir).or(lobby_dir);
-    if headless && shots.is_none() {
+    // The co-op drill (openspec/changes/coop-drill design 5): its own mode, joined by address.
+    if let Some(server) = args.iter().position(|a| a == "--connect").and_then(|i| args.get(i + 1)).cloned() {
+        let station = args.iter().position(|a| a == "--station").and_then(|i| args.get(i + 1));
+        let Some(station) = station.map(String::as_str).and_then(sc_core::combat::Station::from_id) else {
+            eprintln!("sc-client: --connect needs --station helm or tactical");
+            return ExitCode::from(2);
+        };
+        let bot = args.iter().any(|a| a == "--bot");
+        let name = args
+            .iter()
+            .position(|a| a == "--name")
+            .and_then(|i| args.get(i + 1))
+            .cloned()
+            .unwrap_or_else(|| format!("{} officer{}", station.name(), if bot { " (bot)" } else { "" }));
+        let cfg = WindowConfig {
+            title: "Star Crew: drill".into(),
+            width: 1920,
+            height: 1080,
+            fullscreen: !headless && !args.iter().any(|a| a == "--window"),
+            headless,
+            vsync: !headless,
+        };
+        let dargs = drill::DrillArgs { server, station, name, bot, shots };
+        return platform::run(cfg, move |gl| {
+            println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);
+            drill::DrillApp::new(dargs).map(|c| Box::new(c) as Box<dyn App>)
+        });
+    }
+    if headless && shots.is_none() && !args.iter().any(|a| a == "--connect") {
         eprintln!("sc-client: --headless needs --shots DIR (nothing would be seen)");
         return ExitCode::from(2);
     }
