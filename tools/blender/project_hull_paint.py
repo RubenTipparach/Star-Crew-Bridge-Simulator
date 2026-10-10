@@ -18,6 +18,40 @@ import build_ship_exteriors as exterior
 from hs_kit import lin, P
 
 
+def flat_band_probes(mesh, spec):
+    """Trace the actual upper skin at five X positions through each central band."""
+    mesh.calc_loop_triangles()
+    roofs = [tri for tri in mesh.loop_triangles if tri.normal.z > .9]
+    traces = []
+    for interval in spec["stripe_intervals_m"]:
+        for x in np.linspace(-spec["stripe_flat_half_width_m"] + .5,
+                             spec["stripe_flat_half_width_m"] - .5, 5):
+            samples = []
+            for z in np.linspace(interval[0] - 3, interval[1] + 5, 181):
+                hits = []
+                for tri in roofs:
+                    verts = [mesh.vertices[i].co for i in tri.vertices]
+                    a, b, c = [Vector((v.x, -v.y)) for v in verts]
+                    ab, ac, ap = b-a, c-a, Vector((x, z))-a
+                    det = ab.x*ac.y-ab.y*ac.x
+                    if abs(det) < 1e-8:
+                        continue
+                    u = (ap.x*ac.y-ap.y*ac.x)/det
+                    v = (ab.x*ap.y-ab.y*ap.x)/det
+                    if min(u, v, 1-u-v) < -1e-6:
+                        continue
+                    weights = (1-u-v, u, v)
+                    height = sum(w*p.z for w,p in zip(weights, verts))
+                    uv = sum((w*mesh.uv_layers.active.data[i].uv for w,i in zip(weights, tri.loops)), Vector((0, 0)))
+                    hits.append((height, list(uv)))
+                if hits:
+                    height, uv = max(hits, key=lambda hit: hit[0])
+                    samples.append({"z_m": float(z), "y_m": height, "uv": uv})
+            assert samples, "Flat-band probe missed the actual roof"
+            traces.append({"interval_m": interval, "x_m": float(x), "samples": samples})
+    return traces
+
+
 def shared_edge_probes(mesh, spec):
     """Sample both receiving UV faces at authored seams crossing an actual shared edge."""
     edges = {}
@@ -41,9 +75,6 @@ def shared_edge_probes(mesh, spec):
             if not delta < t < 1-delta:
                 continue
             center = a.lerp(b, t)
-            field = center.z - abs(center.x)*spec["stripe_axis"][0] + center.y*spec["stripe_axis"][1]
-            if abs(center.x) > spec["stripe_min_abs_x_m"] and any(lo-.6 < field < hi+.6 for lo,hi in spec["stripe_intervals_m"]):
-                continue  # Opaque livery intentionally covers the fine seam.
             probes.append({"position_m": list(center), "station_m": z,
                            "profiles_uv": [[list(u.lerp(v, t + step*delta))
                                             for step in np.linspace(-1, 1, 81)] for u,v in faces]})
@@ -61,18 +92,17 @@ def validate_projection(mesh, image, spec):
     failures = []
     for face in mesh.polygons:
         position = sum((P(mesh.vertices[i].co) for i in face.vertices), Vector()) / len(face.vertices)
-        field = position.z - abs(position.x) * spec["stripe_axis"][0] + position.y * spec["stripe_axis"][1]
+        field = position.z - max(abs(position.x), spec["stripe_flat_half_width_m"]) * spec["stripe_axis"][0] + position.y * spec["stripe_axis"][1]
         distances = [abs(field - edge) for interval in spec["stripe_intervals_m"] for edge in interval]
         # The few texels touching an edge are allowed to filter across that boundary.
         if min(abs(position.y-edge) for edge in spec["equator_y_m"]) < .08:
             continue
-        if min(distances) < .3 or abs(abs(position.x) - spec["stripe_min_abs_x_m"]) < .3:
+        if min(distances) < .3:
             continue
         uv = sum((mesh.uv_layers.active.data[i].uv for i in face.loop_indices), Vector((0, 0))) / len(face.loop_indices)
         pixel = pixels[min(height - 1, max(0, int(uv.y * height))),
                        min(width - 1, max(0, int(uv.x * width)))]
-        expected = (abs(position.x) > spec["stripe_min_abs_x_m"]
-                    and not spec["equator_y_m"][0] < position.y < spec["equator_y_m"][1]
+        expected = (not spec["equator_y_m"][0] < position.y < spec["equator_y_m"][1]
                     and any(a < field < b for a, b in spec["stripe_intervals_m"]))
         if (pixel[0] > .5) != expected:
             failures.append([list(position), list(uv), float(pixel[0]), expected])
@@ -131,14 +161,14 @@ def projection_material(spec):
             line = math("MULTIPLY", math("LESS_THAN", distance, spec["seam_width_m"] / 2), scope)
             seam = math("MAXIMUM", seam, line)
 
-    # The same oblique plane crosses roof, bevel and side; there is no per-face offset.
-    field = math("ADD", math("SUBTRACT", z, math("MULTIPLY", x, spec["stripe_axis"][0])),
+    # Flat center bridge with oblique outer shoulders, continuous over every hull face.
+    shoulder = math("MAXIMUM", x, spec["stripe_flat_half_width_m"])
+    field = math("ADD", math("SUBTRACT", z, math("MULTIPLY", shoulder, spec["stripe_axis"][0])),
                  math("MULTIPLY", y, spec["stripe_axis"][1]))
     stripe = 0
     for lo, hi in spec["stripe_intervals_m"]:
         band = math("MULTIPLY", math("GREATER_THAN", field, lo), math("LESS_THAN", field, hi))
         stripe = math("MAXIMUM", stripe, band)
-    stripe = math("MULTIPLY", stripe, math("GREATER_THAN", x, spec["stripe_min_abs_x_m"]))
     equator = math("MULTIPLY", math("GREATER_THAN", y, spec["equator_y_m"][0]),
                    math("LESS_THAN", y, spec["equator_y_m"][1]))
     stripe = math("MULTIPLY", stripe, math("SUBTRACT", 1, equator))
@@ -162,7 +192,7 @@ def projection_material(spec):
     belt_image.image = original.image
     links.new(belt_uv.outputs[0], belt_image.inputs["Vector"])
     base = mix(equator, base, belt_image.outputs["Color"])
-    painted = mix(stripe, mix(seam, base, color(spec["seam_srgb"])), color(spec["stripe_srgb"]))
+    painted = mix(seam, mix(stripe, base, color(spec["stripe_srgb"])), color(spec["seam_srgb"]))
     emit = nodes.new("ShaderNodeEmission")
     links.new(painted, emit.inputs["Color"])
     output = nodes.new("ShaderNodeOutputMaterial")
@@ -266,6 +296,9 @@ def main():
     (folder / "tern-seam-probes.json").write_text(json.dumps({
         "profile_half_length_z_m": .6, "probes": shared_edge_probes(target.data, spec),
     }, indent=1) + "\n")
+    (folder / "tern-flat-band-probes.json").write_text(json.dumps({
+        "traces": flat_band_probes(target.data, spec),
+    }, separators=(",", ":")) + "\n")
     (folder / "tern-projection-validation.json").write_text(json.dumps({
         "source": "data/ships/tern/hull_paint_projection.json", "samples": counts,
         "mismatches": 0, "boundary_clearance_m": .3,

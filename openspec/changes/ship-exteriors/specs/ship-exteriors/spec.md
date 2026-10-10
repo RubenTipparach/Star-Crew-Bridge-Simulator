@@ -121,8 +121,12 @@ The player exterior SHALL retain its accepted silhouette while displaying angula
 
 #### Scenario: Follow the complete livery segment
 - **WHEN** the Tern roof and side paint are inspected together
-- **THEN** the livery bands SHALL meet across the roof center and wrap onto both walls with clean opaque paint and aligned boundaries.
+- **THEN** the livery bands SHALL meet in a flat 9 m central segment with parallel edges, then wrap onto both walls with aligned boundaries and subtle paint variation.
 
 #### Scenario: Inspect the equatorial split
 - **WHEN** the hull is viewed from either side or the bow
 - **THEN** a narrow grey service band SHALL divide the upper and lower armor without blocking windows or dominating the white plating.
+
+#### Scenario: Paint follows the armor material
+- **WHEN** the livery is inspected close to the roof and wall joins
+- **THEN** panel seams and subtle surface finish SHALL remain visible through the painted area, with grey mechanical recesses retained.

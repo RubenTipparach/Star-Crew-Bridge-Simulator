@@ -1,8 +1,8 @@
 # Exterior design fleet
 
-The Tern uses broad white armor, a narrow grey equatorial split, and clean cyan bands that
+The Tern uses broad white armor, a narrow grey equatorial split, and textured cyan bands with flat central joins that
 connect across roofs, bevels and vertical walls. Open [the inspection page](../../../docs/mockups/ship-exteriors.html)
-and select **Hull detail** for the equator, **Seam joins** for aligned roof/wall linework, or a
+and select **Hull detail** for the equator, **Paint detail** for the flat band and finish, **Seam joins** for aligned linework, or a
 window to look into the furnished decks.
 Cyan is the default; Copper and Rescue use the same projected layout. The 1 m equatorial band has a 0.04 m side recess and small pipes. White armor remains dominant.
 
@@ -32,13 +32,15 @@ rooms fit inside the actual inner hull. Companion ships remain exterior concepts
 | Cyan (preferred) | [GLB](liveries/cobalt/tern.glb) | [GLB](liveries/cobalt/tern_lod1.glb) | [GLB](liveries/cobalt/tern_lod2.glb) |
 | Rescue | [GLB](liveries/rescue/tern.glb) | [GLB](liveries/rescue/tern_lod1.glb) | [GLB](liveries/rescue/tern_lod2.glb) |
 
-All three use the shared [clean finish](../../../tools/materials/sources/tern-clean-finish.png)
-and its [exact built-in imagegen prompt](../../../tools/materials/sources/tern-clean-finish-prompt.txt).
-Material Maker applies the selected paint color through the same baked mask.
+All three use the shared [neutral hull finish](../../../tools/materials/sources/tern-clean-finish.png)
+and the new [cyan pigment finish](../../../tools/materials/sources/tern-flat-painted-cyan.png),
+with its [exact built-in imagegen prompt](../../../tools/materials/sources/tern-flat-painted-cyan-prompt.txt).
+Material Maker carries its pigment variation into each selected color through the baked mask.
 
 [`project_hull_paint.py`](../../../tools/blender/project_hull_paint.py) projects seams and livery
 in ship-local metres on the actual model, then bakes them into UV space. The band field is
-Z - 0.6 |X| + 0.3 Y; two authored intervals cross both hull sides without per-face offsets.
+Z - 0.6 max(|X|, 4.5) + 0.3 Y. Each band has a flat 9 m center with parallel edges, then
+oblique shoulders continuing onto both sides without per-face offsets.
 The [projection data](../../../data/ships/tern/hull_paint_projection.json) owns their positions,
 the 0.14 m seams and paint colors. All walls share one height-based UV mapping.
 
@@ -48,7 +50,7 @@ Retained authoring artifacts:
 - [Unenhanced layout](../../../tools/materials/sources/tern-projected-layout.png) and
   [region masks](../../../tools/materials/sources/tern-projected-masks.png), baked at 2048 px.
   Mask R is livery, G is seams, B is projected hull coverage.
-- [3D layout inspection](../../../docs/screenshots/exteriors-equator-layout/ship-exteriors-livery-cobalt-0-service.png),
+- [3D layout inspection](../../../docs/screenshots/exteriors-flat-band-layout/ship-exteriors-livery-cobalt-0-service.png),
   captured before enhancement, with windows and stepped wall transitions visible.
 - Supporting [UV wireframe](../../../tools/materials/sources/tern-uv-wireframe.png),
   [island mask](../../../tools/materials/sources/tern-uv-mask.png) and
@@ -57,10 +59,11 @@ Retained authoring artifacts:
   [enhancement check](../../../tools/materials/sources/tern-enhancement-validation.json).
 
 Built-in imagegen cleans the ivory material finish on the inspected projection. Material Maker
-then reapplies the exact seam cores and opaque livery mask, keeping line positions and paint
-edges independent of generated wear. Both roof bands meet at the centerline. The shared source
+then applies generated pigment variation inside the exact mask, preserving dark machinery
+and putting the projected seams over the painted panels. Both roof bands have a flat join. The source
 is 1254 px; the graph renders at 1024 px. `tern-seamless-finish.png` is the retained seam-free
-input for projection, and `tern-clean-finish.png` is its enhanced output. This prevents a
+input for projection, and `tern-clean-finish.png` is the neutral armor finish. The cyan pigment image enhances the new
+flat-band projection; it is never fed back into the projector. This prevents a
 self-dependent bake. Registration is painted directly on the hull with no raised plate.
 There are no illustrated windows. Earlier paintings and prompts remain as design history.
 
@@ -167,3 +170,35 @@ sources. OpenSpec passes all 42 items.
 
 Full / medium / distant GLB bytes: Copper 1,642,780 / 1,357,520 / 362,220;
 Cyan 1,641,148 / 1,356,536 / 361,880; Rescue 1,642,024 / 1,357,628 / 362,372.
+
+## Flat band and paint finish correction, 2026-10-10
+
+The previous pointed join and uniform RGB coat were rejected. The revised projection has
+a 9 m flat central bridge with parallel edges and oblique outer shoulders. Imagegen enhanced
+the inspected layout into `tern-flat-painted-cyan.png`. Material Maker retains its pigment
+variation, keeps dark mechanical relief, and restores projected panel seams through the coat.
+The new Paint detail view frames the forward join; desktop controls still occupy separate rows.
+
+Ten traces on the actual upper hull verify the two baked flat joins. The previous arrow mask
+fails the same check. The projection agrees with 440 surface samples. All 17,278 sampled armor
+paint texels retain their livery color; seams and dark machinery are checked separately.
+The 5th-to-95th percentile channel ranges are 24 / 22 / 20 levels of 255 for Cyan / Copper /
+Rescue, rejecting the old uniform fill. All eighty seam profiles at forty shared edges pass,
+including seams within the painted regions; the largest paired offset remains 0.045 m.
+Material Maker RGB is preserved and hull emission is zero.
+
+All three livery sets, their LOD atlases and manifests reproduce byte for byte. Geometry and
+budget remain 4,442 / 1,290 / 496 triangles, 6 / 1 / 1 material draws and 78.17 MiB preview
+textures. The fleet with furnished interiors remains 83,092 triangles in 50 draws. Geometry
+is unchanged, so the preceding overlap result still applies. No Pi measurement is claimed.
+The window patch and 460 opening/frame rays pass, as do all twenty window menu entries,
+three cutaways, nine livery/LOD selections, distinct LOD textures and separate control rows.
+OpenSpec passes all 42 items and all sixteen exterior inline blocks match their sources.
+
+Full / medium / distant GLB bytes: Copper 1,703,472 / 1,392,612 / 370,412;
+Cyan 1,706,380 / 1,395,084 / 370,656; Rescue 1,703,972 / 1,394,100 / 370,996.
+
+Reviewed fifty desktop captures and the phone default, including forty-five livery/LOD views,
+the new Paint detail close-up, seams, side, pylons and initial Cyan. Paint detail and the Cyan
+hull close-up retain true-color PNGs because palette reduction obscured their pigment variation;
+the remaining captures use the normal screenshot palette compression.

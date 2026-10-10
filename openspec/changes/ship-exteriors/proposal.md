@@ -40,3 +40,5 @@ Owner correction: replace the still-wide side gaps with ordinary white hull plat
 Owner correction, 2026-10-10: align roof and wall panel seams across their shared bevels using one projected station layout, with explicit join checks after enhancement.
 
 Owner refinement: complete the roof stripe across its center, clean its finish with exact baked paint masks, and restore a narrow 1 m equatorial grey service band with small pipes. Preserve dominant white armor, real windows and the aligned roof/wall seams.
+
+Owner correction: replace the unwanted arrow tip with a flat connecting band, and restore real paint finish variation and visible panel seams within the cyan stripe.

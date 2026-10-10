@@ -232,3 +232,51 @@ sources. OpenSpec passes all 42 items.
 
 Full / medium / distant GLB bytes: Copper 1,642,780 / 1,357,520 / 362,220;
 Cyan 1,641,148 / 1,356,536 / 361,880; Rescue 1,642,024 / 1,357,628 / 362,372.
+
+## Owner correction: flat livery join and painted finish
+
+The preceding pass joined the two bands into an unwanted arrow tip and replaced their
+material detail with uniform RGB. Flatten the central 9 m of each projected band, retaining
+its oblique outer shoulders and continuity down the hull walls. Author this on the actual
+hull, bake the revised mask and inspect the straight central bridge before enhancement.
+Remove the uniform-color override: the final pigment must retain subtle generated finish
+variation and the armor's panel seams. Keep the grey equator and machinery unpainted.
+Mask edges still determine the silhouette; enhancement cannot invent an arrow or shift joins.
+All three liveries and both LOD bakes receive the correction. Geometry, draw calls and runtime
+texture dimensions stay unchanged: 4,442 / 1,290 / 496 triangles, 6 / 1 / 1 draws and 78.17 MiB
+preview textures. Review close roof and wall views before finalizing, then check the actual
+baked center-band boundaries and nonuniform paint pixels as well as seam continuity.
+
+The Paint detail camera presents the forward flat join and adjacent wall in one close view.
+
+## Flat band and paint finish correction, 2026-10-10
+
+The previous pointed join and uniform RGB coat were rejected. The revised projection has
+a 9 m flat central bridge with parallel edges and oblique outer shoulders. Imagegen enhanced
+the inspected layout into `tern-flat-painted-cyan.png`. Material Maker retains its pigment
+variation, keeps dark mechanical relief, and restores projected panel seams through the coat.
+The new Paint detail view frames the forward join; desktop controls still occupy separate rows.
+
+Ten traces on the actual upper hull verify the two baked flat joins. The previous arrow mask
+fails the same check. The projection agrees with 440 surface samples. All 17,278 sampled armor
+paint texels retain their livery color; seams and dark machinery are checked separately.
+The 5th-to-95th percentile channel ranges are 24 / 22 / 20 levels of 255 for Cyan / Copper /
+Rescue, rejecting the old uniform fill. All eighty seam profiles at forty shared edges pass,
+including seams within the painted regions; the largest paired offset remains 0.045 m.
+Material Maker RGB is preserved and hull emission is zero.
+
+All three livery sets, their LOD atlases and manifests reproduce byte for byte. Geometry and
+budget remain 4,442 / 1,290 / 496 triangles, 6 / 1 / 1 material draws and 78.17 MiB preview
+textures. The fleet with furnished interiors remains 83,092 triangles in 50 draws. Geometry
+is unchanged, so the preceding overlap result still applies. No Pi measurement is claimed.
+The window patch and 460 opening/frame rays pass, as do all twenty window menu entries,
+three cutaways, nine livery/LOD selections, distinct LOD textures and separate control rows.
+OpenSpec passes all 42 items and all sixteen exterior inline blocks match their sources.
+
+Full / medium / distant GLB bytes: Copper 1,703,472 / 1,392,612 / 370,412;
+Cyan 1,706,380 / 1,395,084 / 370,656; Rescue 1,703,972 / 1,394,100 / 370,996.
+
+Reviewed fifty desktop captures and the phone default, including forty-five livery/LOD views,
+the new Paint detail close-up, seams, side, pylons and initial Cyan. Paint detail and the Cyan
+hull close-up retain true-color PNGs because palette reduction obscured their pigment variation;
+the remaining captures use the normal screenshot palette compression.

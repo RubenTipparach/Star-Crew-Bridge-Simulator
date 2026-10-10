@@ -38,15 +38,17 @@ compares actual surface samples against the ship-local band field with zero mism
 
 The projection starts from the seam-free `tern-seamless-finish.png`, retaining machinery and
 registration while removing the obsolete roof seams. All roofs, bevels and walls receive the
-same station planes. The main hull paint extends to the centerline, with a narrow equatorial
+same station planes. The main hull paint has a flat 9 m central join, with a narrow equatorial
 service belt excluded from the livery. `exterior_uv_guide.py` exports supporting mesh edges.
 After inspecting the layout in 3D, built-in imagegen produced `tern-clean-finish.png` with
-quieter ivory paint. The three graphs share this neutral finish and reapply exact seam and
-livery masks using the colors in `data/ships/exteriors.json`. Geometry and materials own the
+quieter ivory paint. `tern-flat-painted-cyan.png` adds the pigment finish after inspection of
+the new flat-band layout. The three graphs preserve its tonal variation under the colors in
+`data/ships/exteriors.json`, retain dark mechanical relief, and apply seam cores over the paint. Geometry and materials own the
 narrow physical service recess. Blender bakes each reduced atlas from the finished full model.
 
 `check_hull_projection.py` checks actual packed stripe color coverage, samples both receiving
-UV faces at 32 seam crossings, confirms Material Maker RGB is preserved, and rejects emissive
+UV faces at shared seam crossings, measures ten real roof traces for the flat center edges,
+rejects uniform-color paint, confirms Material Maker RGB is preserved, and rejects emissive
 hull paint. Disjoint similarly colored machinery is excluded from each seam's contiguous
 stroke. Run it after rendering and packaging the graphs. Sources, exact imagegen prompts,
 graphs and models are linked in the [asset README](../../assets/models/exteriors/README.md).
@@ -90,8 +92,9 @@ render is a commit of its own, with the contact sheet.
 ## Provenance
 
 The Tern hull and fittings use the built-in imagegen finish `sources/tern-clean-finish.png`,
-with its exact edit prompt beside it. The three Material Maker graphs apply Copper, Cyan and
-Rescue paint to the same projected mask. The source keeps only a cyan fitting guide outside
+with its exact edit prompt beside it. The later `sources/tern-flat-painted-cyan.png` and its
+prompt provide pigment grain and scuffs for the flat central band. The three Material Maker
+graphs apply Copper, Cyan and Rescue paint to the same projected mask while retaining variation. The source keeps only a cyan fitting guide outside
 the main hull islands, recolored by the graph. The calm white armor surrounds a narrow grey
 equator with small pipes. No illustrated windows cover the genuine apertures. Cyan's stable
 graph and delivered texture filenames retain the `cobalt` suffix.

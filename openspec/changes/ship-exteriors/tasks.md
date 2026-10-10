@@ -126,6 +126,12 @@
 - [x] Restore a narrow equatorial subhull band without obstructing windows.
 - [x] Review final seam, paint and equator views; rebake and verify every livery/LOD.
 
+## Owner correction: flat painted band
+
+- [x] Project a straight central join across both bands and inspect it on the hull.
+- [x] Enhance the paint finish without erasing panel seams or coating the grey recesses.
+- [x] Rebuild all liveries and LODs; verify actual band shape, finish variation and captures.
+
 ## Separate engine implementation
 
 - [ ] Review the exterior art with the owner.

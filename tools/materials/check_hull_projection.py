@@ -10,6 +10,31 @@ ROOT = Path(__file__).resolve().parents[2]
 SOURCES = ROOT / "tools/materials/sources"
 
 
+def check_flat_bands(mask, projection):
+    """Read the baked band edges along real roof traces, including the centerline."""
+    traces = json.loads((SOURCES / "tern-flat-band-probes.json").read_text())["traces"]
+    pixels = np.asarray(mask)
+    bounds = {}
+    for trace in traces:
+        samples = trace["samples"]
+        uv = np.asarray([s["uv"] for s in samples])
+        x = np.clip((uv[:, 0]*pixels.shape[1]).astype(int), 0, pixels.shape[1]-1)
+        y = np.clip(((1-uv[:, 1])*pixels.shape[0]).astype(int), 0, pixels.shape[0]-1)
+        colored = pixels[y, x, 0] > 127
+        assert colored.any(), f"Band missing from actual roof at X={trace['x_m']} m"
+        # Remove the height term so a roof step cannot be mistaken for an arrow tip.
+        stations = np.asarray([s["z_m"] + s["y_m"]*projection["stripe_axis"][1]
+                               for s in samples])[colored]
+        edges = [float(stations.min()), float(stations.max())]
+        expected = np.asarray(trace["interval_m"]) + projection["stripe_flat_half_width_m"]*projection["stripe_axis"][0]
+        assert max(abs(np.asarray(edges)-expected)) < .18, f"Non-flat band at X={trace['x_m']} m: {edges}"
+        bounds.setdefault(tuple(trace["interval_m"]), []).append(edges)
+    spread = max(float(np.ptp(values, axis=0).max()) for values in bounds.values())
+    assert spread < .18, f"Central paint join has an arrow tip: edge spread {spread:.3f} m"
+    return {"roof_traces": len(traces), "central_width_m": 2*projection["stripe_flat_half_width_m"],
+            "max_edge_spread_m": spread, "edge_tolerance_m": .18}
+
+
 def check_seam_joins(packed, projection):
     """Read both UV profiles where projected seams cross real mesh edges."""
     probes = json.loads((SOURCES / "tern-seam-probes.json").read_text())
@@ -50,11 +75,13 @@ def check_seam_joins(packed, projection):
 def main():
     mask_path = SOURCES / "tern-projected-masks.png"
     mask = Image.open(mask_path).convert("RGB")
+    projection = json.loads((ROOT / "data/ships/tern/hull_paint_projection.json").read_text())
     report = {"mask_sha256": hashlib.sha256(mask_path.read_bytes()).hexdigest(),
-              "edge_clearance_texture_px": 4, "liveries": {}}
+              "edge_clearance_texture_px": 4, "flat_bands": check_flat_bands(mask, projection),
+              "liveries": {}}
     for livery, texture in [("cyan", "tern_hull_cobalt"), ("copper", "tern_hull"),
                              ("rescue", "tern_hull_rescue")]:
-        source_path = SOURCES / "tern-clean-finish.png"
+        source_path = SOURCES / "tern-flat-painted-cyan.png"
         source = Image.open(source_path).convert("RGB")
         packed = np.asarray(Image.open(ROOT / "assets/textures" / f"{texture}.png"))
         rgb = packed[:, :, :3].astype(float)
@@ -63,6 +90,10 @@ def main():
         # Ignore filtered boundary texels; visual inspection checks the exact joins.
         inside = np.asarray(Image.fromarray(band.astype("uint8") * 255)
                             .filter(ImageFilter.MinFilter(9))) > 0
+        neutral = np.asarray(Image.open(SOURCES / "tern-clean-finish.png").convert("RGB")
+                             .resize((packed.shape[1], packed.shape[0]), Image.Resampling.BILINEAR))
+        # Paint belongs on armor; panel joints and grey machinery keep their relief.
+        inside &= (neutral.min(axis=2) > 200) & (regions[:, :, 1] < 10)
         r, g, b = rgb.transpose(2, 0, 1)
         if livery == "cyan":
             colored = (g - r > 50) & (b - r > 60)
@@ -73,6 +104,8 @@ def main():
         assert inside.any(), "No projected stripe pixels sampled"
         coverage = float(colored[inside].mean())
         assert coverage > .98, f"{livery}: only {coverage:.1%} of the projected band retains paint"
+        finish_range = float(np.ptp(np.percentile(rgb[inside], [5, 95], axis=0), axis=0).max())
+        assert finish_range > 8, f"{livery}: paint finish is a uniform fill ({finish_range}/255 range)"
         rendered = np.asarray(Image.open(ROOT / "tools/materials/raw" / f"{texture}_albedo.png").convert("RGB"))
         assert np.array_equal(packed[:, :, :3], rendered), f"{livery}: Material Maker RGB changed"
         assert not packed[:, :, 3].any(), f"{livery}: hull paint emits light"
@@ -80,8 +113,9 @@ def main():
             "source_sha256": hashlib.sha256(source_path.read_bytes()).hexdigest(),
             "source_px": source.width, "stripe_interior_pixels": int(inside.sum()),
             "stripe_color_coverage": coverage, "material_maker_rgb_preserved": True,
+            "paint_finish_5_to_95_percentile_range": finish_range,
             "hull_emission_pixels": 0,
-            "seam_joins": check_seam_joins(packed, json.loads((ROOT / "data/ships/tern/hull_paint_projection.json").read_text())),
+            "seam_joins": check_seam_joins(packed, projection),
         }
     (SOURCES / "tern-enhancement-validation.json").write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report, indent=2))
