@@ -579,8 +579,33 @@
       dom.style.touchAction = "none";
       place();
     }
+    /** Hold the body where it is and give the mouse back (docked at a repair point, repairs-on-deck 3f): no input, no
+     * movement, the HUD hidden, and the page drives the camera; hold(false) hands the body back where it stood. */
+    let held = false;
+    function hold(v) {
+      if (!on || held === !!v) return;
+      held = !!v;
+      for (const k of Object.keys(keys)) keys[k] = false;
+      vx = vz = 0; ptr.clear(); stick.x = stick.y = 0;
+      if (held) {
+        removeEventListener("keydown", kd); removeEventListener("keyup", ku);
+        document.removeEventListener("mousemove", mm);
+        dom.removeEventListener("pointerdown", pd); dom.removeEventListener("pointermove", pm);
+        dom.removeEventListener("pointerup", pu); dom.removeEventListener("pointercancel", pu);
+        if (document.pointerLockElement === dom && document.exitPointerLock) document.exitPointerLock();
+        if (hud) hud.root.style.display = "none";
+      } else {
+        addEventListener("keydown", kd); addEventListener("keyup", ku);
+        document.addEventListener("mousemove", mm);
+        dom.addEventListener("pointerdown", pd); dom.addEventListener("pointermove", pm);
+        dom.addEventListener("pointerup", pu); dom.addEventListener("pointercancel", pu);
+        if (hud) hud.root.style.display = "";
+        place();
+      }
+    }
     function exit() {
       if (!on) return;
+      held = false;
       on = false;
       for (const d of doors) { d.open = d.target = 0; d.emptyT = Infinity; d.shown = 0; if (d.col) d.col.setEnabled(true); if (d.set) d.set(0); }
       removeEventListener("keydown", kd); removeEventListener("keyup", ku); removeEventListener("blur", blur);
@@ -598,7 +623,7 @@
     }
     /** Advance dt_s seconds (in steps of 1/120 s) and place the camera at the eye. */
     function update(dt) {
-      if (!on) return;
+      if (!on || held) return;
       dt = Math.min(dt, 0.1);
       const n = Math.max(1, Math.ceil(dt / SUBSTEP_S));
       for (let i = 0; i < n; i++) step(dt / n);
@@ -612,8 +637,10 @@
       hudTick(dt);
     }
     return {
-      enter, exit, update, use, keys, lifts, doors,
+      enter, exit, update, use, keys, lifts, doors, hold,
       active: () => on,
+      /** True while hold(true) has the body still. */
+      held: () => held,
       /** Where the body stands and looks: { x, y (feet), z, yaw, pitch, grounded, climbing, eye (the camera's height) }. */
       pose: () => ({ x: pos.x, y: pos.y, z: pos.z, yaw, pitch, grounded, climbing: !!action, eye: eyeY + BODY.eye_m }),
       /** True when a body can stand at (x, z) on a floor within a step of feet: nothing on top of the floor there

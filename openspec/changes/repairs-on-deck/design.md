@@ -300,8 +300,8 @@ free-standing desk (`free_console_tactical`), as a test in the deck plan's walk.
 
 | Band | The console | Its screen |
 | --- | --- | --- |
-| Damaged | Sparks burst from the seam under the desk every 1-4 s (seeded), with a short blue-white flash on whatever is near; burn marks on the desk, the screen's bezel and the deck in front | Flickers, with static bands across it |
-| Disabled | Sparks and a thin smoke from the back panel | Dark but for a dim static now and then |
+| Damaged | Sparks burst from the seam under the desk every 1-4 s (seeded), each with a puff of smoke and a short blue-white flash on whatever is near; a thin smoke rises off the seam all the time (owner, 2026-10-10: "Smoke and spark should come out of damaged stations"); burn marks on the desk, the screen's bezel and the deck in front | Flickers, with static bands across it |
+| Disabled | Sparks, and a thicker smoke from the seam and the back panel | Dark but for a dim static now and then |
 | Repaired | No sparks or smoke; the burn marks stay until the console is cleaned (a scar, not a state) | Boots: a flash, a moment of static, then its normal face |
 
 **Burn marks are decals**: scorch textures projected onto the surfaces they lie on (the desk top, the bezel, the

@@ -22,7 +22,7 @@
   own colours), the faulty part a prop of its own; `service-panels.html` pulls it into the tray, fits a part from the
   pouch (a wrong one fails its test and comes back), then the whole bay is the calibrate target that opens the 2D game;
   shots.
-- [ ] 1.9 Design 3f: tactical's console damaged in the deck plan's walk (sparks, scorch decals from
+- [x] 1.9 Design 3f: tactical's console damaged in the deck plan's walk (sparks and smoke, scorch decals from
   `tools/decals/build_decals.py`, the screen's static), docked, the cover, the burnt card pulled and the right one
   fitted, the conduits game, the screen booting; `lib/stationrepair.js`; shots.
 - [ ] 1.6 After the owner approves 1.5: the bays in the engineering props' builds, and the repair page docking at
