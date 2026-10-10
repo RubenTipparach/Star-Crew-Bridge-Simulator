@@ -288,6 +288,12 @@ impl Pen {
     /// The points of an arc round (x, y) from `a0` to `a1` radians (clockwise on screen when a1 > a0).
     pub fn arc_points(x: f32, y: f32, r: f32, a0: f32, a1: f32) -> Vec<[f32; 2]> {
         let n = (((a1 - a0).abs() * r.max(1.0) / 6.0).ceil() as usize).clamp(6, 128);
+        Self::arc_points_n(x, y, r, a0, a1, n)
+    }
+
+    /// As [`Pen::arc_points`], in exactly `n` steps (two arcs that must pair point for point).
+    pub fn arc_points_n(x: f32, y: f32, r: f32, a0: f32, a1: f32, n: usize) -> Vec<[f32; 2]> {
+        let n = n.max(1);
         (0..=n)
             .map(|i| {
                 let a = a0 + (a1 - a0) * i as f32 / n as f32;
@@ -307,7 +313,8 @@ impl Pen {
     pub fn sector(&self, x: f32, y: f32, r0: f32, r1: f32, a0: f32, a1: f32, fill: Color32) {
         let outer = Self::arc_points(x, y, r1, a0, a1);
         let n = outer.len();
-        let inner = Self::arc_points(x, y, r0.max(0.0), a0, a1);
+        // The inner arc point for point with the outer one, whatever its radius (a pie's is a single point, repeated).
+        let inner = Self::arc_points_n(x, y, r0.max(0.0), a0, a1, n - 1);
         let mut m = Mesh::default();
         let colour = self.col(fill);
         for p in outer.iter().chain(inner.iter()) {

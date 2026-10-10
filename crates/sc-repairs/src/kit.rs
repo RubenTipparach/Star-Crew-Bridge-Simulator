@@ -503,7 +503,8 @@ impl Cover {
     /// The steady hand on the cover: circle the next screw the right way.
     fn hand(&self, t: f32, dir: f32) -> Input {
         let goal = Self::goal();
-        let Some(s) = self.screws.iter().find(|s| s.turn < goal) else { return Input::default() };
+        let Some(i) = self.screws.iter().position(|s| s.turn < goal) else { return Input::default() };
+        let s = &self.screws[i];
         let a0 = dir * t * 7.0;
         let mut path = Vec::new();
         for k in 0..4 {
@@ -511,7 +512,8 @@ impl Cover {
             path.push([s.x + a.cos() * 24.0, s.y + a.sin() * 24.0]);
         }
         let last = path[path.len() - 1];
-        let pressed = self.grab.is_none();
+        // Press afresh on each screw: the grab stays on a finished one until a new press takes the next.
+        let pressed = self.grab != Some(i);
         Input { x: last[0], y: last[1], path, down: true, pressed, ..Input::default() }
     }
 
