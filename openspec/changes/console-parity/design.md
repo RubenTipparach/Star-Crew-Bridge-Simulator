@@ -182,11 +182,84 @@ for the sign-off.
 
 ## 9. Status
 
-- **Built:** sections 3-6 for Helm and Tactical; the check runs in `scripts/check.sh`.
+- **Built:** sections 3-6 for Helm and Tactical, and section 10 for Engineering, Science and the Captain: all five
+  consoles drawn as the mockup's eighteen shots, the check in `scripts/check.sh`; Science's and the Captain's rules in
+  the drill.
 - **Open:** the owner's sign-off of the side-by-side pictures (task 3.4); the Pi's measurement of the UI's cost; the
   Mac's run of the check.
-- **Not built:** Engineering, Science and Captain. They exist only as mockups, because their simulations do not exist
-  in the engine yet; they are built from their mockups under the same check when they do.
+- **Not built:** Engineering's simulation (the power grid, the reactor and its cooling loop, the atmosphere): its
+  console is drawn, and stays unavailable in the drill, until `power-grid`, `reactor-cooling` and `life-support` are
+  built in the engine.
+
+## 10. Every station (owner, 2026-10-10: "continue and do all stations")
+
+### 10.1 The look
+
+Engineering, Science and the Captain are ported from `engineering()`, `reactorLoop()`, `science()`, `captain()` and
+`captainShip()` exactly as Helm and Tactical were (section 3), into `console/engineering.rs`, `science.rs` and
+`captain.rs`. The mockup's `window.consoleState()` gains what they draw: `sci` (the picked contact, the scan, the
+ping, the shield view's camera, the frequency band, who set the shields), `captain` (the tab, the picked room, brace,
+the viewscreen, the order being written, the last orders, the crew rows, every compartment's state word, where the
+crew are and the picked room's air) and `eng` (the power solve's supply and demand, each load group's fader, the
+reactor, the cooling loop, the buses and the air), plus `t` (the clock the sweep, the pumps and the pipes move at) and
+`red_alert` (the look band's glow follows the captain's alert even on emergency power, as the mockup's does). The
+check (section 4) takes all eighteen of the mockup's shots; the captain's SHIP tab has its own regions.
+
+The captain's deck plans read the ship's one layout (`data/ships/tern/layout.json`, CLAUDE.md 8): hull sections,
+decks and each compartment's brushes, compiled in. The captain's order verbs are data in `data/stations.json`
+(bridge-stations 5, "The verbs per station are data"); `tools/ui/console_style.py --check` fails when the mockup's
+`ORDER_VERBS` and that file disagree.
+
+### 10.2 The seats in the drill
+
+The drill's mission lists all five stations; an empty one runs its automation (bridge-stations 3). Each rule below is
+in `sc-core::combat` with its test, its numbers in data, and the console's controls send the same commands a bot or
+the automation does.
+
+| Station | What works | Rule and source | Data |
+| --- | --- | --- | --- |
+| Science | SCAN the Hound: the scan rises from 0 to 1 in `scan_s`, 1.5 times as long under automation, which passive-scans when the seat is empty. Tactical's target card shows the hull from 30 % (the mockup's rule, replacing "shown as scanned"); a full scan names the Hound's weapon band in the contact's tip. | bridge-stations 3; weapons-and-shields 11 | `combat.json` `sensors.scan_s` 6 (the mockup's), `stations.json` `science.scan_factor` 1.5 |
+| Science | PING, held 0.6 s: a ring on the scanner for `ping_s`. "It reveals the ship": the Hound already knows where the Tern is, so nothing else follows in this drill. | bridge-stations 3 | `sensors.ping_s` 2 |
+| Science | The shield presets, as Tactical's (the same command); the console shows who set them last. Tactical's automation sets the shields only while Science is empty. | weapons-and-shields 11, "Automation" | |
+| Science | The frequency band A-D: a face loses `match_factor` of a hit whose weapon band matches, and `retune_factor` while retuning for `retune_s`. | weapons-and-shields 11 | `shields.json` `frequency`; `weapons.json` each gun's `band` |
+| Science | The viewscreen's camera and zoom, per seat (as every console's). | | |
+| Captain | RED ALERT, held 0.6 s, and STAND DOWN: every console's title band and look band. Empty, the automation calls red alert when a hostile comes within `red_within_m`, and normal `normal_after_s` after the last is beyond `normal_beyond_m`. | bridge-stations 3, "Captain" | `stations.json` `captain` |
+| Captain | BRACE, a toggle. It changes nothing in the drill: what it protects (standing crew, `crew-on-deck`) is not built. | bridge-stations 5 and 8 | |
+| Captain | SCREEN takes the viewscreen: every console's viewscreen shows the captain's camera until it is given back. | bridge-stations 3 | |
+| Captain | ORDERS: a station and a verb, SEND; the order shows in that station's title band, Acknowledge (Y) or a press on it marks it done, and the captain sees the tick. An empty station's automation acknowledges after its reaction time; it does not act on the order (bridge-stations 3 lists what each automation obeys; that is not built). | bridge-stations 5 | `stations.json` `orders` |
+| Captain | SHIP: the three decks with every compartment, the crew as dots (each seated player on the bridge). | | |
+| Engineering | Nothing yet: no power grid, reactor, cooling loop or atmosphere is simulated in the engine. The console is drawn in the mockup's unavailable state (section 2), its controls faint and inert, and the status strip's power reads `-- MW`. | | |
+
+Not built, and drawn as unavailable: the captain's room readouts (`--`) and SEND REPAIRS (no atmosphere or damage
+control), and all of Engineering. The mockup's weak-point ring on a fully scanned contact is drawn, but no design
+gives weak points a rule yet. Each is recommendation taken (ask only with screenshots).
+
+**Pi 5 budget.** No geometry or texture; the consoles stay at 8-10 UI draw calls, from 17,000 to 33,000 vertices a
+frame (Engineering the most, its faders and pipes). The snapshot grows by the bridge's state: about 30 bytes.
+
+### 10.3 What the live drill showed
+
+Five bot clients, one a station, against `sc-server` in the cloud session (`docs/screenshots/engine/coop-drill-all-stations`):
+victory in 69-71 s over four runs. It found three things the fixtures could not:
+
+- **A long name dropped the peer.** "Engineering officer (bot)" is 25 characters, one over `MAX_NAME_CHARS`, so the
+  hello failed to decode and the server never seated it. The session now cuts a name to the limit
+  (`combat::clean_name`) before it is sent, with a test; and a bot's default name no longer repeats "(bot)", which the
+  server already adds in the crew list.
+- **A fight's hits smeared Science's shield view.** The drill lands about 1.6 hits a second, so the 8 s the view keeps
+  holds a dozen from nearly one bearing: a dozen arrows and labels stacked into one smear, and, from the bow, past
+  the panel's edge. The mockup has the same flaw (its own fight fires far less often) and is fixed with it, a bug fix
+  inside the approved design (CLAUDE.md 10):
+  - one arrow a bearing: a hit within `HIT_MERGE_DEG` (10 degrees) of a newer one is not drawn again, so the arrow
+    takes the newest hit's colour (red when it went through) and label;
+  - a hit's label is held inside the view, as the faces' labels already were, and steps up 16 lp clear of the labels
+    before it (the mockup's `place`, which was written but never called);
+  - the engine cuts each line to the view by hand where the mockup's nested `<svg>` clips it, since a clip rectangle
+    is a UI draw call.
+  Tactical's small view takes the merge too. `kit.rs` tests both rules; the eighteen shots still pass the check.
+
+**Where it was tested.** In the cloud session, on lavapipe: what the consoles look like and that five seats play a
+drill through, never how fast (CLAUDE.md 12). The same drill on a Pi 5 is task 5.5.
 
 ## Risks / Trade-offs
 

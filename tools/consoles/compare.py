@@ -37,6 +37,10 @@ def grid(c, r, w, h):
 PANELS = {
     "helm": {"THRUST": grid(0, 0, 3, 4), "SCANNER": grid(3, 0, 5, 4), "ATTITUDE": grid(8, 0, 4, 2), "ORIENT": grid(8, 2, 4, 2)},
     "tactical": {"TARGETS": grid(0, 0, 3, 4), "PLOT": grid(3, 0, 5, 4), "TURRETS": grid(8, 0, 4, 2), "TUBES": grid(8, 2, 4, 2)},
+    "engineering": {"POWER": grid(0, 0, 6, 4), "REACTOR": grid(6, 0, 4, 4), "BUSES": grid(10, 0, 2, 2), "AIR": grid(10, 2, 2, 2)},
+    "science": {"SENSORS": grid(0, 0, 5, 4), "SHIELDS": grid(5, 0, 4, 4), "CONTACT": grid(9, 0, 3, 2), "SCREEN": grid(9, 2, 3, 2)},
+    "captain": {"SHIP": grid(0, 0, 5, 4), "CREW": grid(5, 0, 4, 2), "ALERT": grid(9, 0, 3, 2), "ORDERS": grid(5, 2, 7, 2)},
+    "captain/SHIP": {"DECK A": grid(0, 0, 6, 2), "DECK B": grid(6, 0, 6, 2), "DECK C": grid(0, 2, 6, 2), "ROOM": grid(6, 2, 6, 2)},
 }
 BANDS = {"title band": (0, 0, 1280, 32), "look band": (0, 32, 1280, 240), "status strip": (0, 688, 1280, 32)}
 VIEWSCREEN = (333, 53, 614, 194)
@@ -71,7 +75,10 @@ def main():
         state = d / f"{shot}.json"
         if not eng.exists() or not state.exists():
             continue
-        station = json.loads(state.read_text())["station"]
+        st = json.loads(state.read_text())
+        station = st["station"]
+        if station == "captain" and (st.get("captain") or {}).get("tab") == "SHIP":
+            station = "captain/SHIP"
         m = np.asarray(Image.open(mock).convert("RGB")).astype(np.int16)
         e = np.asarray(Image.open(eng).convert("RGB")).astype(np.int16)
         if m.shape != e.shape:

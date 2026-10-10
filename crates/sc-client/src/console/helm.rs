@@ -19,15 +19,22 @@ pub fn panel(cv: &Canvas, cx: &Ctx, title: &str, g: [f32; 4]) -> (Canvas, f32, f
 
 /// The diagonal hatch the mockup fills a reverse range with: stripes 4 wide every 8, at 45 degrees.
 pub fn hatch(cv: &Canvas, x: f32, y: f32, w: f32, h: f32, col: Color32) {
+    hatch_p(cv, x, y, w, h, col, 8.0, 4.0);
+}
+
+/// A diagonal hatch: an SVG pattern `period` square with a stripe `width` wide, turned 45 degrees, in the canvas's
+/// user space (so stripes line up across shapes, as the pattern's do). Engineering's shortfall is 6 and 3.
+#[allow(clippy::too_many_arguments)]
+pub fn hatch_p(cv: &Canvas, x: f32, y: f32, w: f32, h: f32, col: Color32, period: f32, width: f32) {
     if w <= 0.0 || h <= 0.0 {
         return;
     }
     let rect = [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
     let s2 = std::f32::consts::SQRT_2;
     let (lo, hi) = (x + y, x + w + y + h);
-    let mut k = (lo / (8.0 * s2)).floor() - 1.0;
-    while k * 8.0 * s2 < hi {
-        let (a, b) = (k * 8.0 * s2, (k * 8.0 + 4.0) * s2);
+    let mut k = (lo / (period * s2)).floor() - 1.0;
+    while k * period * s2 < hi {
+        let (a, b) = (k * period * s2, (k * period + width) * s2);
         let band: Vec<[f32; 2]> = clip_band(&rect, a, b);
         if band.len() >= 3 {
             cv.poly(&band, col);
@@ -169,7 +176,7 @@ fn scanner(cv: &Canvas, cx: &mut Ctx) {
     }
     kit::feed_cone(&b, cx, &s);
     kit::ship_glyph(&b, "corvette", "friendly", scx, scy, 22.0, s.hdg as f32, c.text.0, false);
-    kit::scanner_contacts(&b, cx, &s);
+    kit::scanner_contacts(&b, cx, &s, false);
     kit::range_ctl(&b, cx, 12.0, 6.0, "nav");
     kit::scan_reset(&b, cx, w - 46.0, 6.0, "nav");
     let aps = [

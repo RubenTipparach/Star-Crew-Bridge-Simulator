@@ -24,8 +24,10 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", ".
 const args = process.argv.slice(2);
 const opt = (name, dflt) => { const i = args.indexOf(name); return i >= 0 ? args.splice(i, 2)[1] : dflt; };
 const out = path.resolve(ROOT, opt("--out", "docs/screenshots/parity"));
-// The shots of the two consoles the engine has (helm and tactical), at rest, in use and in combat.
-const SHOTS = ["helm", "helm-stick", "helm-orient", "tactical", "red-helm-evading", "red-tactical", "red-tactical-turned"];
+// Every named shot of every console, at rest, in use and in combat.
+const SHOTS = ["helm", "helm-stick", "helm-orient", "tactical", "engineering", "engineering-cooling", "engineering-cooling-breaker",
+  "science", "captain", "red-helm-evading", "red-tactical", "red-science-target-feed", "red-science-shields", "red-engineering",
+  "red-captain", "red-captain-ship", "scram-engineering", "red-tactical-turned"];
 const only = opt("--only", null);
 const shots = only ? SHOTS.filter((s) => only.split(",").includes(s)) : SHOTS;
 

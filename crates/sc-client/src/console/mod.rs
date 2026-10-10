@@ -1,8 +1,9 @@
 //! The bridge consoles, drawn as their approved mockup draws them (CLAUDE.md 10; openspec/changes/console-parity).
 //!
-//! `docs/mockups/consoles.html` is the consoles' specification. This module is its helm and tactical consoles,
-//! ported function for function onto the [`vg`](crate::vg) canvas: the title band, the look band (the viewscreen,
-//! its camera widget and the navball), the four panels of each console on the 104 x 102 grid, and the status strip.
+//! `docs/mockups/consoles.html` is the consoles' specification. This module is its five consoles (helm, tactical,
+//! engineering, science and the captain's), ported function for function onto the [`vg`](crate::vg) canvas: the
+//! title band, the look band (the viewscreen, its camera widget and the navball), the four panels of each console on
+//! the 104 x 102 grid, and the status strip.
 //! Everything they show comes from one [`ConsoleView`], which is the mockup's own `window.consoleState()` in shape:
 //! the drill fills it from its snapshot every frame, and the parity check (`sc-client --console-fixture`) reads it
 //! from the file the mockup wrote, so the engine draws the mockup's exact moment beside the mockup's picture.
@@ -10,8 +11,11 @@
 //! Drawing records where each control is ([`Hits`]); the caller turns a press, a drag or a hold on one into an
 //! [`Act`], and the drill turns that into a command or a change to the console's own view.
 
+mod captain;
+mod engineering;
 mod helm;
 pub mod kit;
+mod science;
 mod tactical;
 
 use crate::vg::{self, alpha, rgba, Canvas, Pen, Xf, T};
@@ -100,12 +104,25 @@ pub struct ScanCam {
     pub d_el: f64,
 }
 
-/// The two scanners' cameras.
+/// The three scanners' cameras: helm's, tactical's and science's.
 #[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct ScanCams {
     pub nav: ScanCam,
     pub tac: ScanCam,
+    #[serde(default)]
+    pub sci: ScanCam,
+}
+
+impl ScanCams {
+    /// The camera of scanner `key` (nav, tac or sci).
+    pub fn of(&self, key: &str) -> ScanCam {
+        match key {
+            "nav" => self.nav,
+            "tac" => self.tac,
+            _ => self.sci,
+        }
+    }
 }
 
 /// A camera turned round the ship: yaw and elevation, degrees.
@@ -154,7 +171,255 @@ pub struct HoldView {
     pub k: f64,
 }
 
-/// Everything the helm and tactical consoles draw: the mockup's `window.consoleState()`, field for field.
+/// Science's own state: the contact it has picked, its scan and ping, and its shield view.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct SciView {
+    /// The contact picked for the CONTACT panel and its scan.
+    pub sel: Option<String>,
+    pub scanning: bool,
+    /// Seconds left of an active ping's ring (0: none).
+    pub ping: f64,
+    /// The SHIELDS panel's camera.
+    pub cam: Cam,
+    /// The shield's frequency band, A-D.
+    pub freq: String,
+    /// Who set the shields last: Science or Tactical.
+    pub by: String,
+}
+
+/// An order from the captain: to whom, what, and whether it is done (sent or done).
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct OrderView {
+    pub to: String,
+    pub verb: String,
+    pub state: String,
+}
+
+/// The order being written: to whom, and the verb picked.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct ComposerView {
+    pub to: String,
+    pub verb: Option<String>,
+}
+
+/// A row of the CREW panel: the station's role, who holds it (none: automation) and whether an order waits on it.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct CrewRow {
+    pub role: String,
+    pub op: Option<String>,
+    pub order: bool,
+}
+
+/// A compartment's state on the ship plan, by its layout id: OK, NO POWER, DAMAGED, SMOKE, FIRE or OPEN TO SPACE.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct RoomView {
+    pub id: String,
+    pub word: String,
+}
+
+/// Where a crew member is (a compartment's layout id) and whether they are well.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct CrewAt {
+    pub comp: Option<String>,
+    pub ok: bool,
+}
+
+/// The chosen compartment's air and crew, for the ROOM panel.
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct RoomReadout {
+    pub p_kpa: f64,
+    pub po2_kpa: f64,
+    pub t_k: f64,
+    pub crew: u32,
+}
+
+/// The captain's console: the CMD and SHIP tabs, the orders, the crew and every compartment.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct CapView {
+    /// CMD or SHIP.
+    pub tab: String,
+    /// The compartment picked on the SHIP tab.
+    pub ship_sel: String,
+    pub braced: bool,
+    /// The captain has taken the viewscreen.
+    pub view_override: bool,
+    pub composer: ComposerView,
+    /// The last orders, newest first.
+    pub orders: Vec<OrderView>,
+    pub crew: Vec<CrewRow>,
+    /// Every compartment's state, in the layout's order (none: nothing aboard simulates them).
+    pub rooms: Vec<RoomView>,
+    pub crew_at: Vec<CrewAt>,
+    /// The picked compartment's readings (none: no atmosphere is simulated).
+    pub room: Option<RoomReadout>,
+}
+
+/// A load group's fader (power-grid 5): MW wanted and delivered, its setpoint and priority, and its feed breaker.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct GroupView {
+    /// Its id, which is also its icon.
+    pub id: String,
+    pub name: String,
+    /// MW wanted and delivered.
+    pub want: f64,
+    pub got: f64,
+    /// Its setpoint, 0-max.
+    pub sp: f64,
+    /// 0 (never shed) to 3.
+    pub prio: u8,
+    /// The highest setpoint.
+    pub max: f64,
+    /// What it wants and gets on the setpoint's scale.
+    pub want_k: f64,
+    pub got_k: f64,
+    /// Its feed breaker, if it has one: closed, open or locked.
+    pub breaker: Option<String>,
+}
+
+/// A fader being dragged: the solve's answer at that setpoint, on the setpoint's scale.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct PreviewView {
+    pub gid: String,
+    pub sp: f64,
+    pub k: f64,
+}
+
+/// The reactor (power-grid 4).
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct ReactorView {
+    pub up: bool,
+    /// Throttle and its target, 0-throttle_max.
+    pub throttle: f64,
+    pub target: f64,
+    pub p_e_mw: f64,
+    /// auto or manual.
+    pub mode: String,
+    pub scram_cause: Option<String>,
+    /// The blanket's temperature, its warning and scram, K.
+    pub t_k: f64,
+    pub warn_k: f64,
+    pub scram_k: f64,
+    pub throttle_max: f64,
+}
+
+/// A pump: speed, what it can do, its power and setpoint.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct PumpView {
+    pub name: String,
+    pub speed: f64,
+    pub capability: f64,
+    pub alloc_mw: f64,
+    pub setpoint: f64,
+}
+
+/// A coolant tank.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct TankView {
+    pub name: String,
+    pub kg: f64,
+    pub frac: f64,
+}
+
+/// The reactor's cooling loop (reactor-cooling 5 and 6).
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct CoolView {
+    /// auto or manual.
+    pub mode: String,
+    /// Flow, a share of design, and in kg/s.
+    pub flow: f64,
+    pub flow_kg_s: f64,
+    /// The share of the hot leg through the chiller.
+    pub chiller: f64,
+    pub hot_k: f64,
+    pub cold_k: f64,
+    pub pumps: Vec<PumpView>,
+    pub radiator_pumps: Vec<PumpView>,
+    pub makeup_valve: f64,
+    pub makeup_kg_s: f64,
+    pub tanks: Vec<TankView>,
+    /// The loop's fill, a share of its inventory.
+    pub inventory: f64,
+    /// The exchanger's capability.
+    pub exchanger: f64,
+    pub rad_mw: f64,
+    pub rad_cap_mw: f64,
+    pub rad_flow: f64,
+    /// The hot leg's band and its warning, K.
+    pub hot_band_k: [f64; 2],
+    pub hot_warn_k: f64,
+    /// The loop's scram, K.
+    pub limit_k: f64,
+    /// Heat in and what the flow carries, MW.
+    pub heat_mw: f64,
+    pub carry_mw: f64,
+    /// The pumps' and radiator pumps' highest setpoints, and the makeup's most, kg/s.
+    pub pump_max: f64,
+    pub rad_max: f64,
+    pub makeup_max_kg_s: f64,
+}
+
+/// The one-line diagram's breakers and buses, and the battery.
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct BusesView {
+    pub gen_p: bool,
+    pub gen_s: bool,
+    pub tie: bool,
+    pub eb_p: bool,
+    pub eb_s: bool,
+    /// The two main buses are whole.
+    pub np: bool,
+    pub ns: bool,
+    /// The battery's charge, 0-1.
+    pub soc: f64,
+    /// Cables cut.
+    pub cut: u32,
+}
+
+/// The AIR panel: oxygen, carbon dioxide and temperature lamps (0 fine, 1 warning, 2 danger) and the worst room.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct AirView {
+    pub status: [u8; 3],
+    pub worst: Option<String>,
+}
+
+/// Engineering's console: the power solve, the reactor and its loop, the buses and the air.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct EngView {
+    /// The reactor's most, MW.
+    pub rated_mw: f64,
+    pub rx_out_mw: f64,
+    pub bat_out_mw: f64,
+    pub want_mw: f64,
+    /// cruise, combat, silent or emergency, or none after a hand on a fader.
+    pub preset: Option<String>,
+    pub groups: Vec<GroupView>,
+    pub preview: Option<PreviewView>,
+    pub reactor: ReactorView,
+    /// SCRAM pressed once: the next press confirms.
+    pub armed_scram: bool,
+    pub cool: CoolView,
+    pub buses: BusesView,
+    pub air: AirView,
+}
+
+/// Everything a console draws: the mockup's `window.consoleState()`, field for field.
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct ConsoleView {
@@ -170,8 +435,11 @@ pub struct ConsoleView {
     pub open: Vec<String>,
     /// The captain's newest order to this station.
     pub order: Option<String>,
-    /// normal, red_alert or emergency.
+    /// normal, red_alert or emergency: the title band's condition (emergency power over the alert).
     pub alert: String,
+    /// The captain's red alert, whatever the power: the look band's red glow.
+    #[serde(default)]
+    pub red_alert: bool,
     /// The clock in the title band, seconds.
     pub clock_s: f64,
     pub hull_pct: f64,
@@ -246,6 +514,18 @@ pub struct ConsoleView {
     /// The favoured face, or -1 balanced.
     pub preset: i32,
     pub hold: Option<HoldView>,
+    /// The clock the moving pictures are drawn at (the sweep, the pumps, the pipes' dashes), seconds.
+    #[serde(default)]
+    pub t: f64,
+    /// Science's state (none: the parity fixtures of a console that has none).
+    #[serde(default)]
+    pub sci: Option<SciView>,
+    /// The captain's state.
+    #[serde(default)]
+    pub captain: Option<CapView>,
+    /// Engineering's state (none: no power grid is simulated, and engineering's controls are unavailable).
+    #[serde(default)]
+    pub eng: Option<EngView>,
 }
 
 // ------------------------------------------------------------------------------------------------ math
@@ -465,6 +745,9 @@ pub fn draw(cv: &Canvas, cx: &mut Ctx) {
     look_band(&cv.at(0.0, 32.0), cx);
     match cx.v.station.as_str() {
         "helm" => helm::draw(cv, cx),
+        "engineering" => engineering::draw(cv, cx),
+        "science" => science::draw(cv, cx),
+        "captain" => captain::draw(cv, cx),
         _ => tactical::draw(cv, cx),
     }
     status_strip(&cv.at(0.0, 688.0), cx);
@@ -509,13 +792,26 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
     };
     cv.rect(0.0, 31.0, 1280.0, 1.0, 0.0, line, None);
     let mut x = 8.0;
-    {
-        let (w, r) = (v.word.as_str(), v.role.as_str());
+    // The station's own chip; the captain's two pages in its place.
+    let tabs: Vec<(String, String, bool, Option<String>)> = if v.station == "captain" {
+        let tab = v.captain.as_ref().map(|q| q.tab.as_str()).unwrap_or("CMD");
+        vec![
+            ("COMMAND".into(), "command".into(), tab == "CMD", Some("CMD".into())),
+            ("SHIP".into(), "command".into(), tab == "SHIP", Some("SHIP".into())),
+        ]
+    } else {
+        vec![(v.word.clone(), v.role.clone(), true, None)]
+    };
+    for (w, r, on, act) in tabs {
         let tw = 34.0 + w.chars().count() as f32 * 9.4;
-        let rc = role.of(r);
-        cv.rect(x, 4.0, tw, 24.0, 5.0, alpha(rc, 0x26 as f32 / 255.0), Some(Pen::new(1.0, rc)));
-        cv.icon(r, x + 13.0, 16.0, 14.0, rc);
-        cv.text(x + 25.0, 21.0, 13.0, c.text.0, w, T::default().ls(1.5).bold());
+        let rc = role.of(&r);
+        let (fill, stroke) = if on { (alpha(rc, 0x26 as f32 / 255.0), rc) } else { (Color32::TRANSPARENT, c.line2.0) };
+        cv.rect(x, 4.0, tw, 24.0, 5.0, fill, Some(Pen::new(1.0, stroke)));
+        cv.icon(&r, x + 13.0, 16.0, 14.0, if on { rc } else { c.dim.0 });
+        cv.text(x + 25.0, 21.0, 13.0, if on { c.text.0 } else { c.dim.0 }, &w, T::default().ls(1.5).bold());
+        if let Some(a) = act {
+            cx.hits.add(cv, x, 4.0, tw, 24.0, Some(kit::Hit::Act(Act::Tab(a))), None);
+        }
         x += tw + 6.0;
     }
     let mut open: Vec<(String, String, Option<String>)> = v
@@ -641,7 +937,7 @@ fn look_band(cv: &Canvas, cx: &mut Ctx) {
     cv.text(342.0, 38.0, 11.0, c.dim.0, &format!("VIEWSCREEN · {}", v.feed), T::default().ls(2.0));
     kit::feed_widget(cv, cx, 196.0, 10.0);
     kit::navball(cv, cx, 1046.0, 116.0, 76.0);
-    if v.alert == "red_alert" {
+    if v.red_alert {
         kit::vignette(cv, 1280.0, 240.0, c.alert.0, 0.35);
     }
 }

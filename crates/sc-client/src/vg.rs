@@ -107,6 +107,7 @@ struct StyleFile {
     colours: Palette,
     roles: Roles,
     icons: HashMap<String, String>,
+    order_verbs: std::collections::BTreeMap<String, Vec<[String; 2]>>,
 }
 
 /// One stroked piece of an icon, flattened in its 24-unit grid.
@@ -122,6 +123,8 @@ pub struct Style {
     pub c: Palette,
     pub role: Roles,
     icons: HashMap<String, Vec<IconPart>>,
+    /// The captain's orders to each station: [verb, icon], in the mockup's order.
+    pub order_verbs: std::collections::BTreeMap<String, Vec<[String; 2]>>,
 }
 
 /// The style, parsed once from the compiled-in `data/ui/console_style.json`.
@@ -131,7 +134,7 @@ pub fn style() -> &'static Style {
         let f: StyleFile = serde_json::from_str(include_str!("../../../data/ui/console_style.json"))
             .expect("data/ui/console_style.json is valid (tools/ui/console_style.py writes it)");
         let icons = f.icons.iter().map(|(k, v)| (k.clone(), parse_icon(v))).collect();
-        Style { c: f.colours, role: f.roles, icons }
+        Style { c: f.colours, role: f.roles, icons, order_verbs: f.order_verbs }
     })
 }
 

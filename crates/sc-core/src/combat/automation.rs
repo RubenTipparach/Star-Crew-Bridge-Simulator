@@ -6,8 +6,8 @@
 //! [`Picture`], which the server builds from the drill and a client builds from a snapshot, so it never needs more
 //! than a console shows.
 
-use super::data::{DrillData, FlightBlock, HelmProfile, TacticalProfile};
-use super::{off_bow_deg, steer_toward, Command, Drill, HelmMode, TubeState, TurretMode, ENEMY_ID};
+use super::data::{CaptainProfile, DrillData, FlightBlock, HelmProfile, TacticalProfile};
+use super::{off_bow_deg, steer_toward, Bridge, Command, Drill, HelmMode, TubeState, TurretMode, ENEMY_ID};
 use glam::{DQuat, DVec3};
 
 /// The Tern as a console sees her.
@@ -103,6 +103,40 @@ pub struct Memory {
     pub helm: HelmMemory,
     /// Tactical.
     pub tactical: TacticalMemory,
+    /// The captain.
+    pub captain: CaptainMemory,
+}
+
+/// When the captain's automation next decides.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct CaptainMemory {
+    /// Seconds into Engage.
+    pub next_s: f64,
+}
+
+/// The captain's automation (bridge-stations 3): auto-condition, nothing else. Red alert when a hostile comes within
+/// `red_within_m`; normal once every hostile has been beyond `normal_beyond_m` for `normal_after_s` (the
+/// hysteresis keeps it from flickering).
+pub fn captain(
+    pic: &Picture,
+    bridge: &Bridge,
+    p: &CaptainProfile,
+    mem: &mut CaptainMemory,
+    now_s: f64,
+) -> Vec<Command> {
+    if now_s < mem.next_s {
+        return Vec::new();
+    }
+    mem.next_s = now_s + p.reaction_s;
+    let range = pic.hostile.as_ref().map(|h| (h.pos - pic.own.pos).length());
+    if !bridge.red_alert && range.is_some_and(|r| r <= p.red_within_m) {
+        return vec![Command::Alert(true)];
+    }
+    let clear = range.is_none_or(|r| r > p.normal_beyond_m);
+    if bridge.red_alert && clear && now_s - bridge.hostile_near_s >= p.normal_after_s {
+        return vec![Command::Alert(false)];
+    }
+    Vec::new()
 }
 
 /// The helm's decisions at `now_s` (seconds into Engage). An `automation` profile holds heading and speed and

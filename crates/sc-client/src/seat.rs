@@ -8,14 +8,15 @@
 //! mockup's action name and from there to a `Command`: the same commands a bot or automation sends.
 
 use crate::console::kit::Hit;
-use crate::console::{self, Act, Cam, ConsoleView, ContactView, FlightView, HitView, HoldView, Hpr, PlanView};
-use crate::console::{ScanCam, ScanCams, TubeView, TurretView};
+use crate::console::{self, Act, Cam, CapView, ComposerView, ConsoleView, ContactView, CrewAt, CrewRow, FlightView};
+use crate::console::{HitView, HoldView, Hpr, OrderView, PlanView, ScanCam, ScanCams, SciView, TubeView, TurretView};
 use egui::{Pos2, Rect};
 use glam::{DQuat, DVec3};
 use sc_client::platform::keys;
 use sc_core::combat::attitude::{self, from_hpr, hpr_of, whole_deg};
 use sc_core::combat::data::DrillData;
-use sc_core::combat::{self as combat, Command, HelmMode, Station, TubeState, ENEMY_ID};
+use sc_core::combat::data::BANDS;
+use sc_core::combat::{self as combat, Command, HelmMode, Station, TubeState, ENEMY_ID, FEEDS};
 use sc_net::msg::{ShipSnap, Snapshot};
 use std::collections::HashSet;
 
@@ -28,6 +29,10 @@ pub const HOLD_S: f64 = 0.6;
 const HIT_SHOW_S: f64 = 8.0;
 /// The id the console's first hostile track takes.
 const TRACK: &str = "T1";
+/// The shield view's usual camera (the mockup's).
+const SHIELD_CAM: Cam = Cam { yaw: 62.0, el: 24.0 };
+/// The captain's CREW rows: the bridge's stations in the mockup's order.
+const CREW_ROLES: [&str; 6] = ["helm", "tactical", "engineering", "science", "comms", "flight_ops"];
 
 /// A drag in progress.
 struct Dragging {
@@ -54,6 +59,14 @@ pub struct Seat {
     zoom: f64,
     nav_km: f64,
     tac_km: f64,
+    sci_km: f64,
+    /// Science's picked contact, and its shield view's camera.
+    sci_sel: Option<String>,
+    shield_cam: Cam,
+    /// The captain's tab (CMD or SHIP), the room picked on the SHIP tab, and the order being written.
+    cap_tab: String,
+    ship_sel: String,
+    composer: (String, Option<String>),
     scan_cam: ScanCams,
     feed_cam: Cam,
     oe: Hpr,
@@ -90,6 +103,12 @@ impl Default for Seat {
             zoom: 1.0,
             nav_km: 20.0,
             tac_km: 5.0,
+            sci_km: 20.0,
+            sci_sel: Some(TRACK.into()),
+            shield_cam: SHIELD_CAM,
+            cap_tab: "CMD".into(),
+            ship_sel: "engineering".into(),
+            composer: ("helm".into(), None),
             scan_cam: ScanCams::default(),
             feed_cam: Cam { yaw: 40.0, el: 30.0 },
             oe: Hpr { h: 45.0, p: 10.0, r: -30.0 },
@@ -143,8 +162,8 @@ impl Seat {
         self.hits.retain(|h| now - h.t < HIT_SHOW_S);
     }
 
-    /// The console's view of the drill now. `op` is who sits at the station (a bot shows as "Bot"), `open` the
-    /// stations automation holds.
+    /// The console's view of the drill now. `ops` is who sits at each station (a bot shows as "Bot"); the rest are
+    /// held by automation, and this seat can swap to them.
     #[allow(clippy::too_many_arguments)]
     pub fn view(
         &mut self,
@@ -153,10 +172,16 @@ impl Seat {
         hound: &ShipSnap,
         snap: &Snapshot,
         data: &DrillData,
-        op: Option<String>,
-        open: Vec<String>,
+        ops: &[(Station, String)],
         now: f64,
     ) -> ConsoleView {
+        let op = ops.iter().find(|(s, _)| *s == station).map(|(_, n)| n.clone());
+        let open = Station::ALL
+            .iter()
+            .filter(|o| **o != station && !ops.iter().any(|(s, _)| s == *o))
+            .map(|o| o.id().to_owned())
+            .collect();
+        let br = &snap.bridge;
         if self.synced_round != Some(snap.round) {
             self.synced_round = Some(snap.round);
             self.speed_set = tern.speed_set;
@@ -197,8 +222,7 @@ impl Seat {
                 rel: arr(inv * (hound.pos - tern.pos)),
                 dir: arr(inv * (hound.rot * DVec3::Z)),
                 hull: hound.hull / data.enemy.combat.hull_mj.max(1e-9) * 100.0,
-                // No Science seat in the drill: the Hound's hull is known.
-                scan: 1.0,
+                scan: br.scan,
             }]
         } else {
             Vec::new()
@@ -258,14 +282,59 @@ impl Seat {
         };
         self.hits.retain(|h| now - h.t < HIT_SHOW_S);
         let stick = if is_helm { self.stick_now } else { [0.0; 3] };
+        let verb_of = |to: Station, i: u8| data.order_verbs(to).get(usize::from(i)).map(|v| v[0].clone());
+        let order =
+            br.orders.iter().find(|(to, _, done)| *to == station && !done).and_then(|(to, v, _)| verb_of(*to, *v));
+        // The captain's camera on every viewscreen while it is taken.
+        let feed = br.view.and_then(|i| FEEDS.get(usize::from(i))).map_or(self.feed.clone(), |f| (*f).to_owned());
+        let sci = SciView {
+            sel: self.sci_sel.clone(),
+            scanning: br.scanning,
+            ping: br.ping_s,
+            cam: self.shield_cam,
+            freq: BANDS[usize::from(br.band.min(3))].into(),
+            by: br.shields_by.unwrap_or(Station::Science).name().into(),
+        };
+        let captain = CapView {
+            tab: self.cap_tab.clone(),
+            ship_sel: self.ship_sel.clone(),
+            braced: br.braced,
+            view_override: br.view.is_some(),
+            composer: ComposerView { to: self.composer.0.clone(), verb: self.composer.1.clone() },
+            orders: br
+                .orders
+                .iter()
+                .filter_map(|(to, v, done)| {
+                    let verb = verb_of(*to, *v)?;
+                    Some(OrderView { to: to.id().into(), verb, state: if *done { "done" } else { "sent" }.into() })
+                })
+                .collect(),
+            crew: CREW_ROLES
+                .iter()
+                .map(|r| {
+                    let st = Station::from_id(r);
+                    CrewRow {
+                        role: (*r).into(),
+                        op: st.and_then(|st| ops.iter().find(|(s, _)| *s == st).map(|(_, n)| n.clone())),
+                        order: st.is_some_and(|st| br.orders.iter().any(|(to, _, done)| *to == st && !done)),
+                    }
+                })
+                .collect(),
+            // No compartment is simulated in the drill: every room reads OK, and the crew are seated on the bridge.
+            rooms: Vec::new(),
+            crew_at: ops.iter().map(|_| CrewAt { comp: Some("bridge".into()), ok: true }).collect(),
+            room: None,
+        };
+        let role = if station == Station::Captain { "command" } else { station.id() };
         ConsoleView {
             station: station.id().into(),
             word: station.id().to_uppercase(),
-            role: station.id().into(),
+            role: role.into(),
             op,
             open,
-            order: None,
-            alert: "normal".into(),
+            order,
+            alert: if br.red_alert { "red_alert" } else { "normal" }.into(),
+            red_alert: br.red_alert,
             clock_s: snap.phase_s,
             hull_pct: tern.hull / data.tern_combat.hull_mj.max(1e-9) * 100.0,
             shield_ratio: std::array::from_fn(|f| tern.faces[f] / caps[f].max(1e-9)),
@@ -305,11 +374,11 @@ impl Seat {
                 .map(|h| HitView { d: arr(h.d_local), face: h.face, age_s: now - h.t, through: h.through })
                 .collect(),
             flash_age_s: std::array::from_fn(|f| now - self.face_hit[f]),
-            feed: self.feed.clone(),
+            feed,
             zoom: self.zoom,
             nav_km: self.nav_km,
             tac_km: self.tac_km,
-            sci_km: 20.0,
+            sci_km: self.sci_km,
             scan_cam: self.scan_cam,
             feed_cam: self.feed_cam,
             turrets,
@@ -328,6 +397,11 @@ impl Seat {
                 .hold
                 .as_ref()
                 .map(|(k, t0, _)| HoldView { key: k.clone(), k: ((now - t0) / HOLD_S).clamp(0.0, 1.0) }),
+            t: now,
+            sci: Some(sci),
+            captain: Some(captain),
+            // No power grid in the drill yet: Engineering's console is unavailable (console-parity 10.2).
+            eng: None,
         }
     }
 
@@ -356,7 +430,11 @@ impl Seat {
                     out.push(SeatAsk::Claim(st));
                 }
             }
-            Act::Ack => {}
+            Act::Ack => {
+                if let Some(st) = Station::from_id(&v.station) {
+                    out.push(cmd(Command::Ack(st)));
+                }
+            }
             Act::AllStop => {
                 self.speed_set = 0.0;
                 self.strafe = [0.0; 2];
@@ -398,17 +476,19 @@ impl Seat {
                 }
             }
             Act::Range(key, d) => {
-                let km = if key == "nav" { &mut self.nav_km } else { &mut self.tac_km };
+                let km = match key {
+                    "nav" => &mut self.nav_km,
+                    "tac" => &mut self.tac_km,
+                    _ => &mut self.sci_km,
+                };
                 let i = RANGE_KM.iter().position(|r| (r - *km).abs() < 1e-9).unwrap_or(3) as i64;
                 *km = RANGE_KM[(i + i64::from(d)).clamp(0, RANGE_KM.len() as i64 - 1) as usize];
             }
-            Act::ScanReset(key) => {
-                if key == "nav" {
-                    self.scan_cam.nav = ScanCam::default();
-                } else {
-                    self.scan_cam.tac = ScanCam::default();
-                }
-            }
+            Act::ScanReset(key) => match key {
+                "nav" => self.scan_cam.nav = ScanCam::default(),
+                "tac" => self.scan_cam.tac = ScanCam::default(),
+                _ => self.scan_cam.sci = ScanCam::default(),
+            },
             Act::TMode(i) => {
                 if let Some(t) = tern.turrets.get(i) {
                     out.push(cmd(Command::TurretMode(i as u8, t.mode.next())));
@@ -427,7 +507,54 @@ impl Seat {
                     out.push(cmd(Command::Preset(i as u8)));
                 }
             }
-            Act::Feed(k) => self.feed = k,
+            Act::Feed(k) => {
+                // The captain's camera is everyone's while the viewscreen is taken.
+                if v.station == "captain" && v.captain.as_ref().is_some_and(|c| c.view_override) {
+                    if let Some(i) = FEEDS.iter().position(|f| *f == k) {
+                        out.push(cmd(Command::Viewscreen(Some(i as u8))));
+                    }
+                }
+                self.feed = k;
+            }
+            Act::SciSel(id) => self.sci_sel = Some(id),
+            Act::Scan => {
+                let scanning = v.sci.as_ref().is_some_and(|q| q.scanning);
+                out.push(cmd(Command::Scan(!scanning)));
+            }
+            Act::Freq => {
+                let band = v.sci.as_ref().and_then(|q| BANDS.iter().position(|b| *b == q.freq)).unwrap_or(0);
+                out.push(cmd(Command::Freq(((band + 1) % BANDS.len()) as u8)));
+            }
+            Act::ShieldView => self.shield_cam = SHIELD_CAM,
+            Act::Zoom(d) => self.zoom = (self.zoom * if d > 0 { 2.0 } else { 0.5 }).clamp(1.0, 8.0),
+            Act::Compose(r) => self.composer = (r, None),
+            Act::Verb(w) => self.composer.1 = Some(w),
+            Act::Send => {
+                if let (Some(to), Some(w)) = (Station::from_id(&self.composer.0), self.composer.1.take()) {
+                    if let Some(i) = data.order_verbs(to).iter().position(|x| x[0] == w) {
+                        out.push(cmd(Command::Order(to, i as u8)));
+                    }
+                }
+            }
+            Act::Brace => {
+                let braced = v.captain.as_ref().is_some_and(|c| c.braced);
+                out.push(cmd(Command::Brace(!braced)));
+            }
+            Act::ViewTake => {
+                let taken = v.captain.as_ref().is_some_and(|c| c.view_override);
+                let feed = FEEDS.iter().position(|f| *f == self.feed).unwrap_or(1) as u8;
+                out.push(cmd(Command::Viewscreen((!taken).then_some(feed))));
+            }
+            Act::Room(id) => self.ship_sel = id,
+            Act::Tab(t) => self.cap_tab = t,
+            // Engineering's and the captain's damage control are not simulated in the drill: drawn unavailable.
+            Act::Preset(_)
+            | Act::Prio(_)
+            | Act::GLock(_)
+            | Act::Scram
+            | Act::RxMode
+            | Act::CMode
+            | Act::OrderRepair => {}
         }
     }
 
@@ -476,10 +603,10 @@ impl Seat {
                     yaw: d.cam0.0 + f64::from(dx / r.width().max(1.0)) * 180.0,
                     d_el: (d.cam0.1 + f64::from(dy / r.height().max(1.0)) * 90.0).clamp(-60.0, 80.0),
                 };
-                if *key == "nav" {
-                    self.scan_cam.nav = cam;
-                } else {
-                    self.scan_cam.tac = cam;
+                match *key {
+                    "nav" => self.scan_cam.nav = cam,
+                    "tac" => self.scan_cam.tac = cam,
+                    _ => self.scan_cam.sci = cam,
                 }
             }
             Drag::FeedView => {
@@ -488,6 +615,15 @@ impl Seat {
                     el: (d.cam0.1 + f64::from(dy / r.height().max(1.0)) * 120.0).clamp(-85.0, 85.0),
                 };
             }
+            Drag::ShieldCam => {
+                // As the mockup: a drag across turns the view a full turn, up and down 120 degrees, held to +/-80.
+                self.shield_cam = Cam {
+                    yaw: d.cam0.0 + f64::from(dx / r.width().max(1.0)) * 360.0,
+                    el: (d.cam0.1 + f64::from(dy / r.height().max(1.0)) * 120.0).clamp(-80.0, 80.0),
+                };
+            }
+            // Engineering's faders and levers: no power grid in the drill (drawn unavailable, with no hits).
+            Drag::Fader(_) | Drag::Lever(_) => {}
         }
     }
 
@@ -518,9 +654,12 @@ impl Seat {
                         Some(Hit::Hold(k)) => self.hold = Some((k, now, false)),
                         Some(Hit::Drag(what)) => {
                             let cam0 = match &what {
-                                Drag::ScanCam("nav") => (self.scan_cam.nav.yaw, self.scan_cam.nav.d_el),
-                                Drag::ScanCam(_) => (self.scan_cam.tac.yaw, self.scan_cam.tac.d_el),
+                                Drag::ScanCam(key) => {
+                                    let c = self.scan_cam.of(key);
+                                    (c.yaw, c.d_el)
+                                }
                                 Drag::FeedView => (self.feed_cam.yaw, self.feed_cam.el),
+                                Drag::ShieldCam => (self.shield_cam.yaw, self.shield_cam.el),
                                 _ => (0.0, 0.0),
                             };
                             let v0 = match &what {
@@ -580,10 +719,15 @@ impl Seat {
         if let Some((k, t0, _)) = self.hold.clone() {
             if now - t0 >= HOLD_S {
                 self.hold = None;
-                if k == "fire" {
-                    if let Some(i) = tern.tubes.iter().position(|t| t.0 == TubeState::Armed) {
-                        out.push(SeatAsk::Command(Command::Fire(i as u8)));
+                match k.as_str() {
+                    "fire" => {
+                        if let Some(i) = tern.tubes.iter().position(|t| t.0 == TubeState::Armed) {
+                            out.push(SeatAsk::Command(Command::Fire(i as u8)));
+                        }
                     }
+                    "ping" => out.push(SeatAsk::Command(Command::Ping)),
+                    "redalert" => out.push(SeatAsk::Command(Command::Alert(!v.red_alert))),
+                    _ => {}
                 }
             }
         }
@@ -644,6 +788,17 @@ impl Seat {
                     self.hold = None;
                 }
             }
+            // The mockup's Q: scan.
+            Station::Science => {
+                if pressed.contains(&keys::Q) {
+                    self.act(Act::Scan, v, tern, hound, data, &mut out);
+                }
+            }
+            Station::Engineering | Station::Captain => {}
+        }
+        // Y acknowledges the captain's order, on any console.
+        if pressed.contains(&keys::Y) {
+            self.act(Act::Ack, v, tern, hound, data, &mut out);
         }
         out
     }
@@ -732,7 +887,7 @@ mod tests {
         }
         fn view(&mut self, now: f64) -> ConsoleView {
             let (t, h) = (self.snap.ships[0].clone(), self.snap.ships[1].clone());
-            self.seat.view(self.station, &t, &h, &self.snap, &self.data, None, vec![], now)
+            self.seat.view(self.station, &t, &h, &self.snap, &self.data, &[], now)
         }
         /// Feed pointer events and return the commands sent.
         fn input(&mut self, events: Vec<PointerEv>, now: f64) -> Vec<Command> {
@@ -793,6 +948,36 @@ mod tests {
             sent.contains(&Command::Strafe { lat_mps: m, vert_mps: m }),
             "the top right corner is full starboard and up: {sent:?}"
         );
+    }
+
+    #[test]
+    fn science_scans_on_its_button_and_tunes_the_band_up_one() {
+        let mut b = Bench::new(Station::Science);
+        assert_eq!(b.press(Hit::Act(Act::Scan), 1.0), vec![Command::Scan(true)]);
+        assert_eq!(b.press(Hit::Act(Act::Freq), 1.1), vec![Command::Freq(1)], "A steps to B");
+        let bow = b.data.tern_shields.presets.iter().position(|p| p.id == "bow").unwrap() as u8;
+        assert_eq!(b.press(Hit::Act(Act::Favour(0)), 1.2), vec![Command::Preset(bow)], "Science sets the shields too");
+    }
+
+    #[test]
+    fn the_captain_sends_the_composed_order_and_takes_the_viewscreen() {
+        let mut b = Bench::new(Station::Captain);
+        b.press(Hit::Act(Act::Compose("tactical".into())), 1.0);
+        b.press(Hit::Act(Act::Verb("HOLD FIRE".into())), 1.1);
+        let verb = b.data.order_verbs(Station::Tactical).iter().position(|v| v[0] == "HOLD FIRE").unwrap() as u8;
+        assert_eq!(b.press(Hit::Act(Act::Send), 1.2), vec![Command::Order(Station::Tactical, verb)]);
+        assert_eq!(b.press(Hit::Act(Act::ViewTake), 1.3), vec![Command::Viewscreen(Some(1))], "the seat's FWD camera");
+        assert_eq!(b.press(Hit::Act(Act::Brace), 1.4), vec![Command::Brace(true)]);
+    }
+
+    #[test]
+    fn engineering_draws_unavailable_with_nothing_to_press() {
+        let mut b = Bench::new(Station::Engineering);
+        let v = b.view(1.0);
+        assert!(v.eng.is_none(), "no power grid is simulated in the drill");
+        let hits = paint(&v);
+        let live = hits.regions.iter().filter(|r| r.rect.min.y > 280.0 && r.rect.max.y < 688.0 && r.hit.is_some());
+        assert_eq!(live.count(), 0, "every engineering control is inert");
     }
 
     #[test]

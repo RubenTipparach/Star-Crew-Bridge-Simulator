@@ -10,7 +10,7 @@ use glam::{DQuat, DVec3};
 use sc_core::combat::{self, Command, HelmMode, Outcome, Phase, Refusal, Station, TubeState, TurretMode};
 
 /// The protocol's version; a Hello with another is refused.
-pub const PROTOCOL: u16 = 2;
+pub const PROTOCOL: u16 = 3;
 /// The longest unreliable message, so it is one SCTP chunk in one datagram (netcode-and-sessions section 2).
 pub const MAX_UNRELIABLE: usize = 1200;
 /// The longest string field, in bytes.
@@ -351,6 +351,28 @@ pub struct StatsSnap {
     pub engage_s: f64,
 }
 
+/// The bridge's state beyond the ships: the condition, brace, the viewscreen, the orders, and Science's scan, ping
+/// and shield band (console-parity design 10.2).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct BridgeSnap {
+    pub red_alert: bool,
+    pub braced: bool,
+    /// The captain's camera on every viewscreen, an index in [`combat::FEEDS`].
+    pub view: Option<u8>,
+    /// The last orders, newest first: to, verb index, done.
+    pub orders: Vec<(Station, u8, bool)>,
+    /// Science's scan of the enemy (0-1), and whether a manned scan is running.
+    pub scan: f64,
+    pub scanning: bool,
+    /// Seconds left of an active ping's ring.
+    pub ping_s: f64,
+    /// The shield band (0-3) and the seconds left of a retune.
+    pub band: u8,
+    pub retune_s: f64,
+    /// Who set the shields last.
+    pub shields_by: Option<Station>,
+}
+
 /// The server's state at a tick (design 4.1): full, not a delta.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Snapshot {
@@ -372,6 +394,8 @@ pub struct Snapshot {
     pub missiles: Vec<MissileSnap>,
     /// This round's numbers.
     pub stats: StatsSnap,
+    /// The bridge.
+    pub bridge: BridgeSnap,
 }
 
 /// The server's messages on the command channel.
@@ -496,6 +520,36 @@ fn write_command(w: &mut Writer, c: &Command) {
                 w.f32(v);
             }
         }
+        Command::Scan(on) => {
+            w.u8(11);
+            w.u8(u8::from(on));
+        }
+        Command::Ping => w.u8(12),
+        Command::Freq(b) => {
+            w.u8(13);
+            w.u8(b);
+        }
+        Command::Alert(on) => {
+            w.u8(14);
+            w.u8(u8::from(on));
+        }
+        Command::Brace(on) => {
+            w.u8(15);
+            w.u8(u8::from(on));
+        }
+        Command::Viewscreen(v) => {
+            w.u8(16);
+            w.u8(v.unwrap_or(255));
+        }
+        Command::Order(to, verb) => {
+            w.u8(17);
+            w.u8(to as u8);
+            w.u8(verb);
+        }
+        Command::Ack(s) => {
+            w.u8(18);
+            w.u8(s as u8);
+        }
     }
 }
 
@@ -523,6 +577,20 @@ fn read_command(r: &mut Reader) -> Result<Command, DecodeError> {
             let hpr = [r.f32(-720.0, 720.0)?, r.f32(-90.0, 90.0)?, r.f32(-720.0, 720.0)?];
             Command::Orient(some.then_some(hpr))
         }
+        11 => Command::Scan(r.bool()?),
+        12 => Command::Ping,
+        13 => Command::Freq(r.u8()?),
+        14 => Command::Alert(r.bool()?),
+        15 => Command::Brace(r.bool()?),
+        16 => Command::Viewscreen(match r.u8()? {
+            255 => None,
+            v => Some(v),
+        }),
+        17 => {
+            let to = Station::from_u8(r.u8()?).ok_or(DecodeError("no such station"))?;
+            Command::Order(to, r.u8()?)
+        }
+        18 => Command::Ack(Station::from_u8(r.u8()?).ok_or(DecodeError("no such station"))?),
         _ => return Err(DecodeError("no such command")),
     };
     Ok(c)
@@ -664,6 +732,20 @@ impl Snapshot {
         w.f32(st.damage_dealt_mj);
         w.f32(st.damage_taken_mj);
         w.f32(st.engage_s);
+        let b = &self.bridge;
+        w.u8(u8::from(b.red_alert) | u8::from(b.braced) << 1 | u8::from(b.scanning) << 2);
+        w.u8(b.view.unwrap_or(255));
+        w.u8(b.orders.len() as u8);
+        for (to, verb, done) in &b.orders {
+            w.u8(*to as u8);
+            w.u8(*verb);
+            w.u8(u8::from(*done));
+        }
+        w.u8((b.scan.clamp(0.0, 1.0) * 200.0).round() as u8);
+        w.f32(b.ping_s);
+        w.u8(b.band);
+        w.f32(b.retune_s);
+        w.u8(station_byte(b.shields_by));
         w.0
     }
 
@@ -784,8 +866,46 @@ impl Snapshot {
             damage_taken_mj: r.f32(0.0, 1e9)?,
             engage_s: r.f32(0.0, 1e7)?,
         };
+        let flags = r.u8()?;
+        if flags > 7 {
+            return Err(DecodeError("unknown bridge flags"));
+        }
+        let view = match r.u8()? {
+            255 => None,
+            v if usize::from(v) < combat::FEEDS.len() => Some(v),
+            _ => return Err(DecodeError("no such viewscreen camera")),
+        };
+        let no = r.count(combat::MAX_ORDERS)?;
+        let mut orders = Vec::with_capacity(no);
+        for _ in 0..no {
+            let to = Station::from_u8(r.u8()?).ok_or(DecodeError("no such station"))?;
+            orders.push((to, r.u8()?, r.bool()?));
+        }
+        let sc = r.u8()?;
+        if sc > 200 {
+            return Err(DecodeError("a share is over 100 %"));
+        }
+        let ping_s = r.f32(0.0, 3600.0)?;
+        let band = r.u8()?;
+        if band > 3 {
+            return Err(DecodeError("no such band"));
+        }
+        let retune_s = r.f32(0.0, 3600.0)?;
+        let shields_by = read_station(&mut r)?;
+        let bridge = BridgeSnap {
+            red_alert: flags & 1 != 0,
+            braced: flags & 2 != 0,
+            scanning: flags & 4 != 0,
+            view,
+            orders,
+            scan: f64::from(sc) / 200.0,
+            ping_s,
+            band,
+            retune_s,
+            shields_by,
+        };
         r.done()?;
-        Ok(Self { header, tick, round, phase, phase_s, outcome, ships, missiles, stats })
+        Ok(Self { header, tick, round, phase, phase_s, outcome, ships, missiles, stats, bridge })
     }
 
     /// The snapshot of a drill (the header is the caller's, per client).
@@ -851,6 +971,21 @@ impl Snapshot {
                 damage_dealt_mj: st.damage_dealt_mj,
                 damage_taken_mj: st.damage_taken_mj,
                 engage_s: st.engage_s,
+            },
+            bridge: {
+                let b = &d.bridge;
+                BridgeSnap {
+                    red_alert: b.red_alert,
+                    braced: b.braced,
+                    view: b.view,
+                    orders: b.orders.iter().map(|o| (o.to, o.verb, o.done)).collect(),
+                    scan: b.scan,
+                    scanning: b.scanning,
+                    ping_s: b.ping_s,
+                    band: b.band,
+                    retune_s: b.retune_s,
+                    shields_by: Some(b.shields_by),
+                }
             },
         }
     }
@@ -1066,6 +1201,16 @@ mod tests {
         let mut b = vec![3u8, 200];
         b.extend_from_slice(&[0; 16]);
         assert_eq!(ServerMsg::decode(&b), Err(DecodeError("a count is over its cap")));
+    }
+
+    #[test]
+    fn a_bots_long_name_is_shortened_so_its_hello_decodes() {
+        // "Engineering officer (bot)" is one character over the limit: sent as it was, the hello failed to decode
+        // and the server dropped the peer (2026-10-10, the five-seat drill).
+        let name = combat::clean_name("Engineering officer (bot)");
+        assert_eq!(name.chars().count(), combat::MAX_NAME_CHARS);
+        let hello = ClientMsg::Hello { protocol: PROTOCOL, name, bot: true, station: Some(Station::Engineering) };
+        assert_eq!(ClientMsg::decode(&hello.encode()), Ok(hello));
     }
 
     #[test]

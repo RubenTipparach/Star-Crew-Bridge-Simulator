@@ -108,6 +108,19 @@ pub struct ShieldBlock {
     pub regen_mj_s: f64,
     /// The presets; the first is the one a ship starts with.
     pub presets: Vec<ShieldPreset>,
+    /// Frequency tuning, if the shield has it (weapons-and-shields 11).
+    #[serde(default)]
+    pub frequency: Option<FrequencyBlock>,
+}
+
+/// A shield's frequency bands (weapons-and-shields 11): a face loses `match_factor` of a hit whose weapon band
+/// matches the shield's, and `retune_factor` of every hit while it retunes for `retune_s`.
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct FrequencyBlock {
+    pub match_factor: f64,
+    pub retune_s: f64,
+    pub retune_factor: f64,
 }
 
 impl ShieldBlock {
@@ -120,6 +133,11 @@ impl ShieldBlock {
         }
         c.number(&format!("{at}.regen_mj_s"), self.regen_mj_s, 0.0, 1000.0);
         c.count(&format!("{at}.presets"), self.presets.len() as i64, 1, 16);
+        if let Some(f) = &self.frequency {
+            c.number(&format!("{at}.frequency.match_factor"), f.match_factor, 0.0, 1.0);
+            c.number(&format!("{at}.frequency.retune_s"), f.retune_s, 0.0, 60.0);
+            c.number(&format!("{at}.frequency.retune_factor"), f.retune_factor, 1.0, 4.0);
+        }
         for (i, p) in self.presets.iter().enumerate() {
             for (f, v) in p.faces_mj.iter().enumerate() {
                 c.number(&format!("{at}.presets[{i}].faces_mj[{f}]"), *v, 0.0, 10_000.0);
@@ -242,6 +260,18 @@ pub struct CombatBlock {
     pub tubes: Option<TubesBlock>,
     /// Locking.
     pub lock: LockBlock,
+    /// Sensors, if the ship has a science station to run them.
+    #[serde(default)]
+    pub sensors: Option<SensorsBlock>,
+}
+
+/// A ship's sensors: a full scan of a contact takes `scan_s` with Science manned; an active ping's ring lasts
+/// `ping_s`.
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct SensorsBlock {
+    pub scan_s: f64,
+    pub ping_s: f64,
 }
 
 impl CombatBlock {
@@ -265,6 +295,10 @@ impl CombatBlock {
         }
         c.number(&format!("{at}.lock.time_s"), self.lock.time_s, 0.0, 60.0);
         c.number(&format!("{at}.lock.range_m"), self.lock.range_m, 100.0, 1e6);
+        if let Some(s) = &self.sensors {
+            c.number(&format!("{at}.sensors.scan_s"), s.scan_s, 0.1, 600.0);
+            c.number(&format!("{at}.sensors.ping_s"), s.ping_s, 0.1, 60.0);
+        }
     }
 }
 
@@ -319,7 +353,19 @@ pub struct Gun {
     pub heat_shed_mw: f64,
     /// A locked-out turret fires again below this share of its sink (0-1).
     pub heat_resume_frac: f64,
+    /// Its frequency band, A-D (weapons-and-shields 11).
+    pub band: String,
 }
+
+impl Gun {
+    /// Its band as 0-3 (A-D).
+    pub fn band_index(&self) -> u8 {
+        BANDS.iter().position(|b| *b == self.band).unwrap_or(0) as u8
+    }
+}
+
+/// The shield frequency bands, by index.
+pub const BANDS: [&str; 4] = ["A", "B", "C", "D"];
 
 /// A missile (weapons-and-shields section 6).
 #[derive(Debug, Clone, Deserialize, PartialEq)]
@@ -381,6 +427,9 @@ impl Validate for WeaponsFile {
             c.number(&format!("{at}.heat_sink_mj"), g.heat_sink_mj, 0.01, 1e4);
             c.number(&format!("{at}.heat_shed_mw"), g.heat_shed_mw, 0.0, 1e3);
             c.number(&format!("{at}.heat_resume_frac"), g.heat_resume_frac, 0.0, 1.0);
+            if !BANDS.contains(&g.band.as_str()) {
+                c.equals(&format!("{at}.band"), &g.band, "A, B, C or D");
+            }
         }
         for (i, m) in self.missiles.iter().enumerate() {
             let at = format!("missiles[{i}]");
@@ -487,7 +536,39 @@ pub struct TacticalProfile {
     pub face_threat: bool,
 }
 
-/// A profile: both stations.
+/// How an engineer plays: with no power grid in the drill, it only acknowledges orders.
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct EngineeringProfile {
+    /// Seconds between decisions.
+    pub reaction_s: f64,
+}
+
+/// How a science officer plays.
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct ScienceProfile {
+    /// Seconds between decisions.
+    pub reaction_s: f64,
+    /// A scan takes this many times a manned scan's time.
+    pub scan_factor: f64,
+}
+
+/// How a captain plays: auto-condition (bridge-stations 3).
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct CaptainProfile {
+    /// Seconds between decisions.
+    pub reaction_s: f64,
+    /// Red alert when a hostile comes within this range, in metres.
+    pub red_within_m: f64,
+    /// Normal again once every hostile has been beyond this range, in metres...
+    pub normal_beyond_m: f64,
+    /// ...for this long, in seconds.
+    pub normal_after_s: f64,
+}
+
+/// A profile: every station.
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Profile {
@@ -497,6 +578,12 @@ pub struct Profile {
     pub helm: HelmProfile,
     /// Tactical.
     pub tactical: TacticalProfile,
+    /// Engineering.
+    pub engineering: EngineeringProfile,
+    /// Science.
+    pub science: ScienceProfile,
+    /// The captain.
+    pub captain: CaptainProfile,
 }
 
 /// `data/stations.json`.
@@ -507,6 +594,8 @@ pub struct StationsFile {
     pub schema: String,
     /// Profiles.
     pub profiles: Vec<Profile>,
+    /// The verbs the captain can send each station, [verb, icon], by station id (bridge-stations 5).
+    pub orders: std::collections::BTreeMap<String, Vec<[String; 2]>>,
 }
 
 impl Validate for StationsFile {
@@ -520,6 +609,28 @@ impl Validate for StationsFile {
             c.number(&format!("profiles[{i}].helm.weave_period_s"), p.helm.weave_period_s, 1.0, 600.0);
             c.number(&format!("profiles[{i}].tactical.reaction_s"), p.tactical.reaction_s, 0.0, 60.0);
             c.number(&format!("profiles[{i}].tactical.weapons_range_m"), p.tactical.weapons_range_m, 0.0, 1e5);
+            c.number(&format!("profiles[{i}].engineering.reaction_s"), p.engineering.reaction_s, 0.0, 60.0);
+            c.number(&format!("profiles[{i}].science.reaction_s"), p.science.reaction_s, 0.0, 60.0);
+            c.number(&format!("profiles[{i}].science.scan_factor"), p.science.scan_factor, 1.0, 10.0);
+            c.number(&format!("profiles[{i}].captain.reaction_s"), p.captain.reaction_s, 0.0, 60.0);
+            c.number(&format!("profiles[{i}].captain.red_within_m"), p.captain.red_within_m, 0.0, 1e6);
+            c.number(
+                &format!("profiles[{i}].captain.normal_beyond_m"),
+                p.captain.normal_beyond_m,
+                p.captain.red_within_m,
+                1e6,
+            );
+            c.number(&format!("profiles[{i}].captain.normal_after_s"), p.captain.normal_after_s, 0.0, 3600.0);
+        }
+        for (k, verbs) in &self.orders {
+            if !matches!(crate::combat::Station::from_id(k), Some(s) if s != crate::combat::Station::Captain) {
+                c.equals(&format!("orders.{k}"), k, "a station the captain orders");
+            }
+            c.count(&format!("orders.{k}"), verbs.len() as i64, 1, 6);
+            for (i, [verb, icon]) in verbs.iter().enumerate() {
+                c.count(&format!("orders.{k}[{i}] (verb characters)"), verb.chars().count() as i64, 1, 12);
+                c.count(&format!("orders.{k}[{i}] (icon characters)"), icon.chars().count() as i64, 1, 24);
+            }
         }
         for want in ["automation", "bot"] {
             let n = self.profiles.iter().filter(|p| p.id == want).count() as i64;
@@ -528,14 +639,29 @@ impl Validate for StationsFile {
     }
 }
 
-/// What a station is told in the briefing.
+/// What each station is told in the briefing.
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Orders {
-    /// Helm's orders.
     pub helm: String,
-    /// Tactical's orders.
     pub tactical: String,
+    pub engineering: String,
+    pub science: String,
+    pub captain: String,
+}
+
+impl Orders {
+    /// A station's orders.
+    pub fn of(&self, s: crate::combat::Station) -> &str {
+        use crate::combat::Station::*;
+        match s {
+            Helm => &self.helm,
+            Tactical => &self.tactical,
+            Engineering => &self.engineering,
+            Science => &self.science,
+            Captain => &self.captain,
+        }
+    }
 }
 
 /// `data/missions/<id>.json`.
@@ -579,10 +705,10 @@ impl Validate for MissionFile {
         c.equals("schema", &self.schema, "starcrew.mission/1");
         c.count("title (characters)", self.title.chars().count() as i64, 1, 60);
         c.count("objectives", self.objectives.len() as i64, 1, 6);
-        c.count("stations", self.stations.len() as i64, 1, 2);
+        c.count("stations", self.stations.len() as i64, 1, 5);
         for (i, s) in self.stations.iter().enumerate() {
             if crate::combat::Station::from_id(s).is_none() {
-                c.equals(&format!("stations[{i}]"), s, "helm or tactical");
+                c.equals(&format!("stations[{i}]"), s, "helm, tactical, engineering, science or captain");
             }
         }
         for (k, v) in self.enemy_start_m.iter().enumerate() {
@@ -701,5 +827,10 @@ impl DrillData {
     /// A profile by id (`automation` and `bot` are checked at load).
     pub fn profile(&self, id: &str) -> &Profile {
         self.stations.profiles.iter().find(|p| p.id == id).expect("checked at load")
+    }
+
+    /// The verbs the captain can send a station, [verb, icon] (none for a station the captain does not order).
+    pub fn order_verbs(&self, s: crate::combat::Station) -> &[[String; 2]] {
+        self.stations.orders.get(s.id()).map(Vec::as_slice).unwrap_or(&[])
     }
 }

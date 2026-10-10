@@ -7,9 +7,12 @@
   "objectives": ["Destroy the Hound", "Keep the Tern's hull above zero"],
   "orders": {
     "helm": "Close to turret range. Keep the Hound level with the ship so all four turrets bear, put the bow on it for missiles, and keep moving so it cannot aim.",
-    "tactical": "Lock the Hound, free the turrets, turn the strongest shield toward it, and fire Gannets when the bow is on it."
+    "tactical": "Lock the Hound, free the turrets, turn the strongest shield toward it, and fire Gannets when the bow is on it.",
+    "engineering": "The Tern's power grid is not in this drill yet. Watch the board; your console comes alive when the grid is built.",
+    "science": "Scan the Hound so Tactical sees its hull, find its weapons' band and tune the shields to it, and keep the shields facing its fire.",
+    "captain": "Call red alert, keep the crew on task with orders, and take the viewscreen when everyone needs to see the same thing."
   },
-  "stations": ["helm", "tactical"],
+  "stations": ["helm", "tactical", "engineering", "science", "captain"],
   "enemy": "hound",
   "enemy_start_m": [400, 300, 6000],
   "waypoint_m": [9000, 1500, 16000],

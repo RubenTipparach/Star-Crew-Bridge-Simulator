@@ -31,6 +31,29 @@ pub enum Act {
     Load(usize),
     Favour(i32),
     Feed(String),
+    /// Engineering: a power preset, a group's priority, a group's breaker lock, SCRAM, the reactor's and the loop's
+    /// modes.
+    Preset(String),
+    Prio(String),
+    GLock(String),
+    Scram,
+    RxMode,
+    CMode,
+    /// Science: pick a contact, scan it, step the shield's frequency, put the shield view back, zoom the viewscreen.
+    SciSel(String),
+    Scan,
+    Freq,
+    ShieldView,
+    Zoom(i32),
+    /// The captain: a station to write to, a verb, send; brace; take the viewscreen; a room on the plan; a tab.
+    Compose(String),
+    Verb(String),
+    Send,
+    Brace,
+    ViewTake,
+    Room(String),
+    Tab(String),
+    OrderRepair,
 }
 
 /// What a drag on a control turns (the mockup's `data-drag`).
@@ -43,6 +66,11 @@ pub enum Drag {
     Wheel(char),
     ScanCam(&'static str),
     FeedView,
+    /// Engineering: a load group's fader, one of the cooling loop's levers.
+    Fader(String),
+    Lever(String),
+    /// Science: the shield view's camera.
+    ShieldCam,
 }
 
 /// A control: pressed, dragged or held (the mockup's `data-hold`, 0.6 s).
@@ -251,7 +279,12 @@ pub struct At {
 
 impl Scan {
     pub fn new(v: &ConsoleView, w: f64, h: f64, key: &str, cy0: Option<f64>) -> Scan {
-        let (range_km, vw) = if key == "nav" { (v.nav_km, v.scan_cam.nav) } else { (v.tac_km, v.scan_cam.tac) };
+        let range_km = match key {
+            "nav" => v.nav_km,
+            "tac" => v.tac_km,
+            _ => v.sci_km,
+        };
+        let vw = v.scan_cam.of(key);
         let cx = w / 2.0;
         let cy = cy0.unwrap_or(h / 2.0 + 4.0);
         let r0 = w / 2.0 - 16.0;
@@ -320,7 +353,7 @@ pub fn scan_wrap(cv: &Canvas, cx: &mut Ctx, key: &'static str, w: f32, h: f32) {
 
 /// The scanner's reset: back to bow up.
 pub fn scan_reset(cv: &Canvas, cx: &mut Ctx, x: f32, y: f32, key: &'static str) {
-    let v = if key == "nav" { cx.v.scan_cam.nav } else { cx.v.scan_cam.tac };
+    let v = cx.v.scan_cam.of(key);
     let off = v.yaw == 0.0 && v.d_el == 0.0;
     button(
         cv,
@@ -345,8 +378,9 @@ pub fn range_km(rel: [f64; 3]) -> f64 {
     v3(rel).length() / 1000.0
 }
 
-/// Every live contact on a scanner, on its stalk, in its IFF colour; a press on one targets it.
-pub fn scanner_contacts(cv: &Canvas, cx: &mut Ctx, s: &Scan) {
+/// Every live contact on a scanner, on its stalk, in its IFF colour; a press on one targets it, or on Science's
+/// scanner (`sci`) picks it to scan.
+pub fn scanner_contacts(cv: &Canvas, cx: &mut Ctx, s: &Scan, sci: bool) {
     let v = cx.v;
     let mut list: Vec<(&super::ContactView, At)> =
         v.contacts.iter().filter(|k| k.hull > 0.0).map(|k| (k, s.at(v3(k.rel)))).filter(|(_, p)| p.inside).collect();
@@ -373,11 +407,35 @@ pub fn scanner_contacts(cv: &Canvas, cx: &mut Ctx, s: &Scan) {
         }
         let t = if km < 10.0 { format!("{km:.1} km") } else { format!("{} km", js_round(km)) };
         cv.text(lx + if el != 0 { 11.0 } else { 0.0 }, ly + 4.0, 12.0, col, &t, T::default().bold().ls(0.0));
-        let sel = Some(&k.id) == v.target.as_ref();
+        let sci_sel = v.sci.as_ref().and_then(|s| s.sel.as_ref());
+        let sel = Some(&k.id) == v.target.as_ref() || (v.station == "science" && Some(&k.id) == sci_sel);
         ship_glyph(cv, &k.cls, &k.iff, px, py, 18.0, rot, col, sel);
-        let tip = format!("{} · {:.1} km · elevation {}°", k.id, km, elev_of(v3(k.rel)).round() as i64);
-        cx.hits.add(cv, px - 11.0, py - 11.0, 22.0, 22.0, Some(Hit::Act(Act::Target(k.id.clone()))), Some(tip));
+        let elev = js_round(elev_of(v3(k.rel)));
+        let (tip, act) = if sci {
+            let name = if k.iff == "unknown" { "Unknown" } else { k.id.as_str() };
+            (format!("{name} · {km:.1} km · elevation {elev}°"), Act::SciSel(k.id.clone()))
+        } else {
+            (format!("{} · {:.1} km · elevation {}°", k.id, km, elev), Act::Target(k.id.clone()))
+        };
+        cx.hits.add(cv, px - 11.0, py - 11.0, 22.0, 22.0, Some(Hit::Act(act)), Some(tip));
     }
+}
+
+/// The mockup's `pol`: the point `r` from (cx, cy) at bearing `a` degrees (0 up, clockwise).
+pub fn pol(cx: f32, cy: f32, r: f32, a: f64) -> [f32; 2] {
+    let a = a.to_radians();
+    [cx + r * a.sin() as f32, cy - r * a.cos() as f32]
+}
+
+/// The mockup's `arcPath`: an SVG path along a circle from bearing a0 to a1 (degrees, 0 up, clockwise); a whole
+/// circle from 359.9 degrees on.
+pub fn arc_path(cx: f32, cy: f32, r: f32, a0: f64, a1: f64) -> String {
+    if a1 - a0 >= 359.9 {
+        return format!("M{} {cy}a{r} {r} 0 1 0 {} 0a{r} {r} 0 1 0 {} 0", cx - r, 2.0 * r, -2.0 * r);
+    }
+    let [x0, y0] = pol(cx, cy, r, a0);
+    let [x1, y1] = pol(cx, cy, r, a1);
+    format!("M{x0:.1} {y0:.1}A{r} {r} 0 {} 1 {x1:.1} {y1:.1}", if a1 - a0 > 180.0 { 1 } else { 0 })
 }
 
 /// JavaScript's `Math.round`: halves go up.
@@ -430,7 +488,11 @@ pub fn feed_cone(cv: &Canvas, cx: &mut Ctx, s: &Scan) {
 /// The range of a scanner: its number between - and +.
 pub fn range_ctl(cv: &Canvas, cx: &mut Ctx, x: f32, y: f32, key: &'static str) {
     let c = &vg::style().c;
-    let km = if key == "nav" { cx.v.nav_km } else { cx.v.tac_km };
+    let km = match key {
+        "nav" => cx.v.nav_km,
+        "tac" => cx.v.tac_km,
+        _ => cx.v.sci_km,
+    };
     button(
         cv,
         cx,
@@ -1059,6 +1121,9 @@ pub fn vignette(cv: &Canvas, w: f32, h: f32, col: Color32, a: f32) {
 
 // ------------------------------------------------------------------------------------------------ shields
 
+/// The faces' names in the hit rule's order, for tips.
+const FACE_NAMES: [&str; 6] = ["Bow", "Stern", "Port", "Starboard", "Dorsal", "Ventral"];
+
 /// The shield's bubble cut into patches along the faces' borders (the mockup's `makeBubble`): each patch keeps the face
 /// the hit rule gives its centre, and the borders between faces.
 pub struct Bubble {
@@ -1114,6 +1179,11 @@ fn mini_bubble() -> &'static Bubble {
     B.get_or_init(|| make_bubble(2, 4, 16))
 }
 
+fn big_bubble() -> &'static Bubble {
+    static B: OnceLock<Bubble> = OnceLock::new();
+    B.get_or_init(|| make_bubble(4, 8, 32))
+}
+
 /// The point of the shield ellipsoid in direction `d` from its centre.
 pub fn ellipsoid_point(d: DVec3) -> DVec3 {
     let a = tern().shield.axes;
@@ -1126,15 +1196,64 @@ fn ellipsoid_normal(o: DVec3) -> DVec3 {
     DVec3::new(o.x / (a.x * a.x), o.y / (a.y * a.y), o.z / (a.z * a.z)).normalize()
 }
 
-/// The ship inside its shield, in 3D (the mockup's `shieldView`, the plot's small one): hull panels lit and depth
-/// sorted between the bubble's far and near halves, each patch filled by its face's charge, the faces' borders,
-/// hostiles' directions, inbound missiles and the last 8 s of hits.
-pub fn shield_view(cv: &Canvas, cx: &mut Ctx, ox: f64, oy: f64, sc: f64, yaw: f64, el: f64) {
+/// Hits closer together than this, in degrees of bearing, are drawn as one arrow (the newest): the mockup's
+/// `HIT_MERGE_DEG`.
+pub const HIT_MERGE_DEG: f64 = 10.0;
+
+/// The hits drawn, oldest first: one a bearing, a hit within [`HIT_MERGE_DEG`] of a newer one left out, so a fight's
+/// dozen hits from one side read as the one arrow they are, in the newest hit's colour and with its label (the
+/// mockup's `shown`).
+fn shown_hits(hits: &[super::HitView]) -> Vec<&super::HitView> {
+    let merge = HIT_MERGE_DEG.to_radians().cos();
+    let mut shown: Vec<&super::HitView> = Vec::new();
+    for h in hits.iter().rev() {
+        let d = v3(h.d);
+        if !shown.iter().any(|q| v3(q.d).dot(d) > merge) {
+            shown.push(h);
+        }
+    }
+    shown.reverse();
+    shown
+}
+
+/// The part of the segment `a`-`b` inside `[0, w] x [0, h]` (Liang and Barsky), with how far along it from `a` the
+/// kept part starts, so a dash pattern keeps its phase.
+fn clip_to_rect(a: [f32; 2], b: [f32; 2], [w, h]: [f32; 2]) -> Option<([f32; 2], [f32; 2], f32)> {
+    let (dx, dy) = (b[0] - a[0], b[1] - a[1]);
+    let (mut t0, mut t1) = (0.0_f32, 1.0_f32);
+    for (p, q) in [(-dx, a[0]), (dx, w - a[0]), (-dy, a[1]), (dy, h - a[1])] {
+        if p == 0.0 {
+            if q < 0.0 {
+                return None;
+            }
+        } else {
+            let r = q / p;
+            if p < 0.0 {
+                t0 = t0.max(r);
+            } else {
+                t1 = t1.min(r);
+            }
+        }
+    }
+    (t0 < t1).then(|| {
+        let at = |t: f32| [a[0] + dx * t, a[1] + dy * t];
+        (at(t0), at(t1), t0 * dx.hypot(dy))
+    })
+}
+
+/// The ship inside its shield, in 3D (the mockup's `shieldView`): hull panels lit and depth sorted between the
+/// bubble's far and near halves, each patch filled by its face's charge, the faces' borders, hostiles' directions,
+/// inbound missiles and the last 8 s of hits, one arrow a bearing ([`HIT_MERGE_DEG`]). `big` (Science's, given the
+/// view's width and height) uses the finer bubble, names every face with its charge, marks the hits' angles and lets a
+/// face be pressed to favour it. The mockup draws the big view in an `<svg>` clipped to that size; here what reaches
+/// past it is cut to it by hand, since a clip rectangle is a UI draw call.
+#[allow(clippy::too_many_arguments)]
+pub fn shield_view(cv: &Canvas, cx: &mut Ctx, ox: f64, oy: f64, sc: f64, yaw: f64, el: f64, big: Option<[f32; 2]>) {
     let v = cx.v;
     let c = &vg::style().c;
     let b = cam_basis(yaw, el);
     let pr = |p: DVec3| [(ox + p.dot(b.r) * sc) as f32, (oy - p.dot(b.u) * sc) as f32];
-    let bub = mini_bubble();
+    let bub = if big.is_some() { big_bubble() } else { mini_bubble() };
     let light = (-b.f + DVec3::new(0.3, 0.8, 0.2)).normalize();
     let hull = &tern().hull;
     let mut hull_polys: Vec<(f64, Vec<[f32; 2]>, Color32, bool)> = Vec::new();
@@ -1205,18 +1324,89 @@ pub fn shield_view(cv: &Canvas, cx: &mut Ctx, ox: f64, oy: f64, sc: f64, yaw: f6
     for p in &near {
         patch(p);
     }
+    if big.is_some() {
+        // A press on a face favours it; the patches' boxes, nearest last, stand in for the polygons.
+        for p in far.iter().chain(near.iter()) {
+            let f = usize::from(p.2);
+            let (mut x0, mut y0, mut x1, mut y1) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
+            for q in &p.1 {
+                (x0, y0, x1, y1) = (x0.min(q[0]), y0.min(q[1]), x1.max(q[0]), y1.max(q[1]));
+            }
+            let tip = format!("{}: {:.0} of {:.0} MJ", FACE_NAMES[f], v.charge[f], v.cap[f]);
+            cx.hits.add(cv, x0, y0, x1 - x0, y1 - y0, Some(Hit::Act(Act::Favour(f as i32))), Some(tip));
+        }
+    }
     for (pa, pb) in near_edges {
         cv.seg(pa[0], pa[1], pb[0], pb[1], Pen::new(1.2, alpha(ec, 0.55)));
     }
+    let shown = shown_hits(&v.hits);
+    // A hit's label, held inside the view as the faces' labels are (the mockup's `hitLabel`).
+    let hit_label = |p: [f32; 2], [w, h]: [f32; 2]| [p[0].clamp(30.0, w - 30.0), (p[1] - 6.0).clamp(16.0, h - 4.0)];
+    // What the mockup's clip keeps: a segment cut to the view, a mark only while it is inside it.
+    let inside = |p: [f32; 2]| big.is_none_or(|[w, h]| (0.0..=w).contains(&p[0]) && (0.0..=h).contains(&p[1]));
+    let cut = |a: [f32; 2], b: [f32; 2]| match big {
+        Some(wh) => clip_to_rect(a, b, wh),
+        None => Some((a, b, 0.0)),
+    };
+    // Labels already down, and where a new one goes: up 16 lp at a time, at most 8 times, while it sits on one (the
+    // mockup's `placed` and `place`).
+    let mut placed: Vec<[f32; 2]> = Vec::new();
+    let place = |placed: &mut Vec<[f32; 2]>, x: f32, mut y: f32| {
+        for _ in 0..8 {
+            if !placed.iter().any(|q| (q[0] - x).abs() < 52.0 && (q[1] - y).abs() < 15.0) {
+                break;
+            }
+            y -= 16.0;
+        }
+        placed.push([x, y]);
+        y
+    };
+    if let Some([pw, _]) = big {
+        // Every face named on the model with its charge under the name; a face on the far side darker.
+        let axes = tern().shield.axes;
+        let dirs = [DVec3::Z, DVec3::NEG_Z, DVec3::X, DVec3::NEG_X, DVec3::Y, DVec3::NEG_Y];
+        let names = ["BOW", "STERN", "PORT", "STBD", "TOP", "BELOW"];
+        for (f, d) in dirs.iter().enumerate() {
+            let ax = [axes.z, axes.z, axes.x, axes.x, axes.y, axes.y][f];
+            let far_side = d.dot(b.f) > 0.05;
+            let k = if v.cap[f] > 1e-6 { v.charge[f] / v.cap[f] } else { 0.0 };
+            let (c0, p0) = (pr(DVec3::ZERO), pr(*d * ax));
+            let (sx, sy) = (p0[0] - c0[0], p0[1] - c0[1]);
+            let sl = sx.hypot(sy);
+            let mut p = if sl > 4.0 { [p0[0] + sx / sl * 14.0, p0[1] + sy / sl * 14.0] } else { p0 };
+            p[0] = p[0].clamp(30.0, pw - 30.0);
+            let ly = p[1] + 4.0;
+            placed.push([p[0], ly]);
+            let op = if far_side { 0.42 } else { 1.0 };
+            let col = alpha(ratio_col(k), op);
+            cv.text(p[0], ly, 12.0, col, names[f], T::mid().bold().ls(1.5));
+            cv.rect(p[0] - 16.0, ly + 4.0, 32.0, 4.0, 2.0, alpha(rgba(0x16202c, 1.0), op), None);
+            cv.rect(p[0] - 16.0, ly + 4.0, 32.0 * k.clamp(0.0, 1.0) as f32, 4.0, 2.0, col, None);
+            let tip = format!(
+                "{}: {:.0} of {:.0} MJ{}",
+                FACE_NAMES[f],
+                v.charge[f],
+                v.cap[f],
+                if far_side { " (far side)" } else { "" }
+            );
+            cx.hits.add(cv, p[0] - 24.0, ly - 12.0, 48.0, 22.0, None, Some(tip));
+        }
+    }
+    let bigf = big.is_some();
     for k in &v.contacts {
         if k.hull <= 0.0 || k.iff != "hostile" || range_km(k.rel) > v.sci_km {
             continue;
         }
         let d = v3(k.rel).normalize_or_zero();
         let e = ellipsoid_point(d);
-        let (a, bb) = (pr(e), pr(e + d * 34.0));
-        cv.seg(bb[0], bb[1], a[0], a[1], Pen::new(1.5, alpha(c.hostile.0, 0.8)).dash(4.0, 4.0, 0.0));
-        cv.circle(bb[0], bb[1], 2.5, c.hostile.0, None);
+        let (a, bb) = (pr(e), pr(e + d * if bigf { 48.0 } else { 34.0 }));
+        if let Some((p0, p1, off)) = cut(bb, a) {
+            cv.seg(p0[0], p0[1], p1[0], p1[1], Pen::new(1.5, alpha(c.hostile.0, 0.8)).dash(4.0, 4.0, off));
+        }
+        if !inside(bb) {
+            continue;
+        }
+        cv.circle(bb[0], bb[1], if bigf { 4.0 } else { 2.5 }, c.hostile.0, None);
         let tip = format!(
             "{}: {:03} {}{}",
             k.id,
@@ -1231,17 +1421,32 @@ pub fn shield_view(cv: &Canvas, cx: &mut Ctx, ox: f64, oy: f64, sc: f64, yaw: f6
         let e = ellipsoid_point(d);
         let (q, q2) = (pr(e + d * 20.0 * m.t), pr(e + d * (20.0 * m.t - 4.0)));
         let ang = (q2[0] - q[0]).atan2(-(q2[1] - q[1])).to_degrees();
-        cv.path("M0 -5L4 4L0 1L-4 4Z", Xf::tr(q[0], q[1]).rot(ang), Some(c.danger.0), None);
+        let arrow = if bigf { "M0 -8L6 6L0 2L-6 6Z" } else { "M0 -5L4 4L0 1L-4 4Z" };
+        if inside(q) {
+            cv.path(arrow, Xf::tr(q[0], q[1]).rot(ang), Some(c.danger.0), None);
+        }
     }
-    for hit in &v.hits {
+    for hit in shown {
         let age = (hit.age_s / 8.0) as f32;
         let d = v3(hit.d);
         let e = ellipsoid_point(d);
-        let (a, bb) = (pr(e), pr(e + d * 26.0));
+        let (a, bb) = (pr(e), pr(e + d * if bigf { 38.0 } else { 26.0 }));
         let col = alpha(if hit.through { c.danger.0 } else { c.warn.0 }, 1.0 - age);
         let ang = (a[0] - bb[0]).atan2(-(a[1] - bb[1])).to_degrees();
-        cv.seg(bb[0], bb[1], a[0], a[1], Pen::new(2.0, col));
-        cv.path("M0 0L-4 -7H4Z", Xf::tr(a[0], a[1]).rot(ang), Some(col), None);
+        if let Some((p0, p1, _)) = cut(bb, a) {
+            cv.seg(p0[0], p0[1], p1[0], p1[1], Pen::new(if bigf { 3.0 } else { 2.0 }, col));
+        }
+        let head = if bigf { "M0 0L-6 -10H6Z" } else { "M0 0L-4 -7H4Z" };
+        cv.path(head, Xf::tr(a[0], a[1]).rot(ang), Some(col), None);
+        if let Some(wh) = big {
+            let el = js_round(elev_of(d));
+            let t =
+                format!("{:03} {}{}", js_round(wrap360(brg_of(d))).rem_euclid(360), if el >= 0 { "+" } else { "" }, el);
+            // Pinned face labels stay; a hit's label steps up clear of them and of the hits' before it.
+            let [lx, ly0] = hit_label(bb, wh);
+            let ly = place(&mut placed, lx, ly0).max(16.0);
+            cv.text(lx, ly, 14.0, col, &t, T::mid().bold());
+        }
     }
 }
 
@@ -1384,4 +1589,34 @@ pub fn thumbwheel(cv: &Canvas, cx: &mut Ctx, x: f32, top: f32, hh: f32, value: f
         Some(Hit::Drag(Drag::Wheel(k))),
         Some(format!("{}: drag, scroll or tap, 1° a notch", word.to_lowercase())),
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn hit(brg_deg: f64, age_s: f64) -> super::super::HitView {
+        let r = brg_deg.to_radians();
+        super::super::HitView { d: [r.sin(), 0.0, r.cos()], face: 0, age_s, through: false }
+    }
+
+    #[test]
+    fn a_volley_from_one_bearing_is_drawn_as_its_newest_hit() {
+        // The five-seat drill landed about 13 hits in 8 s from the Hound's side, and their labels stacked into a smear
+        // past the panel's edge (2026-10-10).
+        let hits = [hit(10.0, 7.0), hit(14.0, 5.0), hit(90.0, 4.0), hit(12.0, 1.0), hit(17.0, 0.5)];
+        let shown = shown_hits(&hits);
+        let ages: Vec<f64> = shown.iter().map(|h| h.age_s).collect();
+        assert_eq!(ages, vec![4.0, 0.5], "one arrow for the bow volley, the newest, and one for the beam hit");
+    }
+
+    #[test]
+    fn a_segment_is_cut_to_the_view_and_keeps_its_dash_phase() {
+        let (a, b, off) = clip_to_rect([-20.0, 50.0], [80.0, 50.0], [400.0, 300.0]).expect("crosses the view");
+        assert_eq!((a, b), ([0.0, 50.0], [80.0, 50.0]));
+        assert!((off - 20.0).abs() < 1e-4, "the dash starts where the mockup's clipped one would, 20 lp in");
+        assert!(clip_to_rect([-20.0, 50.0], [-5.0, 60.0], [400.0, 300.0]).is_none(), "wholly outside: nothing drawn");
+        let (a, b, off) = clip_to_rect([10.0, 10.0], [20.0, 20.0], [400.0, 300.0]).expect("inside");
+        assert_eq!((a, b, off), ([10.0, 10.0], [20.0, 20.0], 0.0));
+    }
 }

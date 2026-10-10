@@ -109,7 +109,9 @@ impl Session {
         Ok(Self {
             net,
             stage: Stage::Connecting,
-            name: name.to_owned(),
+            // A name past the protocol's limit would make the server refuse the hello: shortened here, as the
+            // server would keep it ("Engineering officer (bot)" is 25 characters).
+            name: sc_core::combat::clean_name(name),
             bot,
             want: station,
             slot: None,
