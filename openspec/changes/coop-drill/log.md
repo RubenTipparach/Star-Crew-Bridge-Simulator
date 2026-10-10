@@ -97,3 +97,14 @@ Newest last. What was done, what was found, on which machine and commit.
   on it. Now the session counts seconds since anything arrived (`Session::silent_s`), and `sc-bot` treats 5 s of it
   (the server's own `SILENT_S`) or a closed connection as lost and tries again every 3 s as a fresh crew member;
   checked by stopping a server under a bot and starting another (rejoined 3 s after the 5 s silence).
+
+## 2026-10-10, evening: loss and delay (task 5.2, one machine)
+
+- Run on Pi 2 alone (`docs/benchmarks/2026-10-10-coop-drill-lan/pi2-impaired.md`): Pi 1 had no server up and Pi 2
+  cannot reach it by SSH, so the server and both bots ran on Pi 2. Pi 2 has no Node, so no compiled deck: straight
+  paths.
+- `--loss 0.1 --delay-ms 50` for 1500 s: 15 rounds, 15 victories, nothing dropped; hit rates and hull left match an
+  unimpaired 700 s run on the same seed (Tern 35.6 % against 34.8 %, hull mean 50 against 49 MJ).
+- The round trip the bots and F3 show leaves the delay out: Ping rides the reliable Command channel, which the
+  impairment does not touch. Snapshot age is not measured anywhere yet.
+- 5.2 stays open for the second machine.
