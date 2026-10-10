@@ -172,8 +172,12 @@ def block(kind):
             # A prop's own baked texture (ship-props design 4c), when its set's build has made one.
             if rec.get("atlas"):
                 atlases[key] = png_uri(os.path.join(base, rec["atlas"]["file"]))
-        text = json.dumps({"manifest": manifest, "models": models, "atlases": atlases}, separators=(",", ":"),
-                          ensure_ascii=False).replace("</", "<\\/")
+        block = {"manifest": manifest, "models": models, "atlases": atlases}
+        # A set's service bays (repairs-on-deck 3c: where each machine's cover and screws sit), when its build writes them.
+        if os.path.exists(os.path.join(base, "service.json")):
+            with open(os.path.join(base, "service.json"), encoding="utf-8") as f:
+                block["service"] = json.load(f)
+        text = json.dumps(block, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
         return f'\n<script id="ship-models-{name}" type="application/json">\n{text}\n</script>\n'
     if kind == "panels":
         with open(PANELS, encoding="utf-8") as f:

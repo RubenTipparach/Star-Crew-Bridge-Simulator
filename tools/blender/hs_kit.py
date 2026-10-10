@@ -1905,15 +1905,21 @@ def verify_glb(path, prop):
             problems.append(f"{name}: no TEXCOORD_1 (the atlas)")
         elif any(not (0.0 <= c <= 1.0) for uv in m["uv1"] for c in uv):
             problems.append(f"{name}: an atlas coordinate outside 0-1")
-    # Screens face the operator (+Z) or up: a flipped axis on export would turn them away. And
-    # every screen the manifest records lies on a screen face of the file, facing its way.
+    # Screens face the operator (+Z) or up: a flipped axis on export would turn them away. A service bay's
+    # floor (a screen recorded as showing an interior, repairs-on-deck 3c) is on the side or back a repair
+    # is worked from, so it may face any way; the next check still holds it to its recorded plane and
+    # direction, which a flipped axis would break. And every screen the manifest records lies on a screen
+    # face of the file, facing its way.
     planes = []
+    bays = [(Vector(sc["normal"]), Vector(sc["normal"]).dot(Vector(sc["centre_m"]))) for sc in prop.screens
+            if sc["shows"].startswith("interior_")]
     m = prims.get("screen", {"idx": [], "pos": []})
     for t in range(0, len(m["idx"]), 3):
         a, b, c = (Vector(m["pos"][k]) for k in m["idx"][t:t + 3])
         fn = (b - a).cross(c - a).normalized()
         planes.append((fn, fn.dot(a)))
-        if fn.z < -0.01:
+        on_bay = any(fn.dot(n) > 0.999 and abs(fn.dot(a) - d) < 1e-3 for n, d in bays)
+        if fn.z < -0.01 and not on_bay:
             problems.append(f"a screen faces away from the operator (normal {r3(fn)})")
     for sc in prop.screens:
         c, n = Vector(sc["centre_m"]), Vector(sc["normal"])

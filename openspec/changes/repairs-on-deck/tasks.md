@@ -11,6 +11,11 @@
 - [x] 1.4 Design 3b revised (owner: "an image of like wiring or circuit board behind the panel"): the machine's
   insides, a circuit board and a terminal box with its loom, baked by the same tool in place of the game stills
   (the stills and their capture tool removed); shots.
+- [x] 1.5 Design 3c prototypes: the coolant pump's terminal box and the valve cabinet's back door built into their
+  meshes (`tools/blender/build_service_prototypes.py`, `assets/models/service_proto/`), covers and screws as their
+  own props placed from `service.json`; `docs/mockups/service-panels.html` with shots.
+- [ ] 1.6 After the owner approves 1.5: the bays in the engineering props' builds, and the repair page docking at
+  the side or back where they are.
 
 ## 2. Data
 

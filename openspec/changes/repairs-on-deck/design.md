@@ -126,6 +126,44 @@ opens the panel by itself:
 
 A crewmate walking past an open machine sees its insides, a board or a loom, which says it is under repair.
 
+### 3c. Where the service panel is, and built into the machine (owner, 2026-10-09)
+
+The owner, on 3b's mockup: "The service panel should not be in front of the station like that. It should be on the
+side of a machine or found on the back if it's accessible. Just think about how machines are in real life. You have
+the machine and a service panel on the side or back", and "Did you integrate service panel 3d into the geometry".
+It had not been: 3a and 3b's cover was a box the page floated 2 cm in front of the prop, and the insides a picture
+laid on the prop's face; the prop's mesh had no opening. And: "We are still in design phase so do some quick
+prototypes rather than apply it to every object."
+
+**Where.** A service panel is where a real machine has one: on a side or the back, never on the face the machine is
+operated from (its screen, gauges and controls). It goes on a face with at least 0.9 m of clear floor in front of
+it, which is where the repair point stands, measured against the room and the other machines. Only a machine with no
+operating face and no other reachable side (a wall box) has it on its front. The two prototypes, measured in the
+layout:
+
+| Machine | Its operating face | The service panel | Clear floor there |
+| --- | --- | --- | --- |
+| Coolant pump A | none (worked from its walkway side, +X) | the motor's terminal box on its +X flank, 1.7-2.1 m up, worked standing: a real motor's wiring is in a box with a screwed lid on its side | 2.0 m |
+| Coolant valve board (a local control cabinet) | the sloped instrument face (+Z) | a door in the cabinet's back (-Z), 0.62-1.08 m up, its board 0.13 m in, worked kneeling | over 2.0 m |
+
+**Built into the geometry.** The machine's Blender build cuts the bay into its mesh: a real opening with walls, a
+rebate round it 6 mm deep that the cover sits in flush with the face around it, and the bay's floor, the back of the
+opening, recorded the way console screens are (`Prop.recess` with `shows`): its centre, normal, up and size go in the
+manifest, and the page shows the interior (3b's `interior_wiring` or `interior_circuit`) on it. The cover is its own
+prop, as a door leaf is: a plate that fits the rebate, with the cover's bake on its face (3b) and four holes, built
+to the bay's size. A screw is one small shared prop. Where the cover and its screws sit in the machine's prop space
+is written by the build into the set's `service.json`, so the page places them from the build, never by hand.
+
+**Prototypes only.** Two machines, built by `tools/blender/build_service_prototypes.py` into a prototype set
+(`assets/models/service_proto/`) from the engineering props' own builders, changed only by the bay; the shipped
+engineering props are untouched. `docs/mockups/service-panels.html` shows them turning on a stand: where the panel
+is against the operating face, the cover unscrewed and lifted off, the insides in the bay. Once the owner approves
+the prototypes, the bays move into the engineering props' builds and the repair page uses them (task 1.6).
+
+**Pi 5 cost.** A bay adds about 20 triangles to its machine (its walls and rebate), a cover about 40 and a screw
+24; the interior face is one of the machine's existing faces with the interior texture of 3b. No draw call is added
+for the bay; the cover and screws are one draw each while the cover is off its seat.
+
 **The screen while docked.** The panel covers the middle of the screen (1280 x 720 on a 1920 x 1080 output, or 2/3
 of the height on any other). The docked 3D view keeps rendering around it, darkened 35%, with no blur (the Pi 5 does
 not pay for one): smoke rolling in, a fire spreading, a crewmate running past, the red-alert lighting. The machine
