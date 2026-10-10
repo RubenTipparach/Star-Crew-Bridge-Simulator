@@ -16,7 +16,7 @@ use egui::{Align2, Color32, CornerRadius, Pos2, Rect, RichText, Stroke, Vec2};
 use glam::{DQuat, DVec3, Mat4, Quat, Vec3};
 use sc_client::platform::{keys, App, Event, Flow, Frame};
 use sc_core::combat::data::{DrillData, DRILL_FILES};
-use sc_core::combat::{Command, Outcome, Phase, Station, ENEMY_ID, TERN_ID};
+use sc_core::combat::{Command, Outcome, Phase, Station, ENEMY_ID, FEEDS, TERN_ID};
 use sc_core::exterior::{normalized, ExteriorData};
 use sc_net::bot::Bot;
 use sc_net::msg::{ShipSnap, Snapshot};
@@ -314,12 +314,24 @@ impl DrillApp {
     }
 
     /// The viewscreen's feed: from the bow, looking where the console's feed points (the mockup's feed camera:
-    /// 70 degrees across at zoom 1), into its own target, which the console draws in the viewscreen's frame.
+    /// 70 degrees across at zoom 1), into its own target, which the console draws in the viewscreen's frame. With no
+    /// console (on foot, the overview) it is the bridge's viewscreens' picture: the captain's camera while he holds
+    /// the viewscreen, forward otherwise.
     fn render_feed(&mut self, ships: Option<&(ShipSnap, ShipSnap, Snapshot)>, view: Option<&console::ConsoleView>) {
         let (eye, rot) = Self::bow_eye(ships, self.time_s);
         let (fwd, up, vfov) = match view {
             Some(v) => self.seat.feed_camera(v, rot),
-            None => (rot * DVec3::Z, rot * DVec3::Y, 2.0 * (97.0f64 / (307.0 / 35f64.to_radians().tan())).atan()),
+            None => {
+                let feed = ships
+                    .and_then(|(_, _, s)| s.bridge.view)
+                    .and_then(|i| FEEDS.get(usize::from(i)))
+                    .copied()
+                    .unwrap_or("FWD");
+                let target =
+                    ships.filter(|(_, h, _)| h.active && h.alive).map(|(t, h, _)| t.rot.inverse() * (h.pos - t.pos));
+                let b = console::feed_basis_for(feed, target);
+                (rot * b.f, rot * b.u, 2.0 * (97.0f64 / (307.0 / 35f64.to_radians().tan())).atan())
+            }
         };
         let proj =
             glam::camera::rh::proj::opengl::perspective(vfov as f32, FEED.0 as f32 / FEED.1 as f32, 1.0, 80_000.0);
@@ -363,7 +375,19 @@ impl World<'_> {
     ) {
         let sky = crate::sky_params(self.exterior, proj, view, px_rad);
         r.draw_sky(t, &sky);
-        let vp = proj * view;
+        self.draw_objects(r, t, proj * view, eye, ships);
+    }
+
+    /// The Hound, missiles, bolts and bursts alone (no sky), seen from `eye` through `vp` into `t`'s pass: the feed
+    /// draws them over its sky, the bridge through its windows.
+    fn draw_objects(
+        &self,
+        r: &mut Renderer,
+        t: &Target,
+        vp: Mat4,
+        eye: DVec3,
+        ships: Option<&(ShipSnap, ShipSnap, Snapshot)>,
+    ) {
         let rel = |p: DVec3| (p - eye).as_vec3();
         let flat = |mvp: Mat4| DeckParams {
             mvp,
@@ -566,7 +590,31 @@ impl App for DrillApp {
                 (true, Some(b)) => (crate::drill_bridge::eye_of(&b), b.yaw, -0.12),
                 _ => crate::drill_bridge::overview(),
             };
+            // The bridge's viewscreens show the feed: rendered first, in its own pass.
+            self.render_feed(ships.as_ref(), None);
             if let Some(bv) = &self.bridge {
+                let attitude = ships.as_ref().map_or(Quat::IDENTITY, |(t, _, _)| t.rot.as_quat());
+                let red = ships.as_ref().is_some_and(|(_, _, s)| s.bridge.red_alert);
+                // The bridge's eye in the system's frame, where the Hound, bolts and bursts are.
+                let eye_out = ships.as_ref().map(|(t, _, _)| t.pos + t.rot * DVec3::from_array(eye));
+                let world = World {
+                    meshes: &self.meshes,
+                    exterior: &self.exterior,
+                    bolts: &self.bolts,
+                    booms: &self.booms,
+                    time_s: self.time_s,
+                };
+                let seen = ships.as_ref();
+                let out = crate::drill_bridge::Outside {
+                    attitude,
+                    lighting: if red { [0.0, 1.0, 0.0] } else { [1.0, 0.0, 0.0] },
+                    screen: Some((&self.feed, self.exterior.viewscreen.scanlines as f32)),
+                    objects: Box::new(move |r, t, vp| {
+                        if let Some(e) = eye_out {
+                            world.draw_objects(r, t, vp, e, seen);
+                        }
+                    }),
+                };
                 let vp = bv.draw(
                     &mut self.r,
                     &self.bridge_target,
@@ -578,6 +626,7 @@ impl App for DrillApp {
                     &bodies,
                     me,
                     hide_me,
+                    out,
                 );
                 let (w, h) = (720.0 * aspect, 720.0);
                 let crew = self.session.as_ref().map(|s| s.crew.clone()).unwrap_or_default();

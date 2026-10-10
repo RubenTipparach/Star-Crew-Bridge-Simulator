@@ -872,12 +872,19 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
 /// The viewscreen's camera, in ship axes: forward, right and up (the mockup's `feedBasis`).
 pub fn feed_basis(v: &ConsoleView) -> Basis {
     let tgt = v.target.as_ref().and_then(|id| v.contacts.iter().find(|c| &c.id == id));
-    let f = match v.feed.as_str() {
+    feed_basis_for(&v.feed, tgt.map(|c| v3(c.rel)))
+}
+
+/// Where a camera of the viewscreen (`combat::FEEDS`) looks, in the ship's frame; `target` is the locked contact
+/// relative to the Tern in the ship's frame, which TARGET looks at (forward without one). The consoles' feed and the
+/// bridge's viewscreens both look this way.
+pub fn feed_basis_for(feed: &str, target: Option<DVec3>) -> Basis {
+    let f = match feed {
         "FWD" | "CHASE" => DVec3::Z,
         "AFT" => DVec3::NEG_Z,
         "PORT" => DVec3::X,
         "STBD" => DVec3::NEG_X,
-        _ => tgt.map(|c| v3(c.rel).normalize_or_zero()).unwrap_or(DVec3::Z),
+        _ => target.map(|t| t.normalize_or_zero()).filter(|t| *t != DVec3::ZERO).unwrap_or(DVec3::Z),
     };
     let mut r = f.cross(DVec3::Y);
     if r.length() < 1e-3 {
@@ -1025,6 +1032,18 @@ pub fn grid(col: f32, row: f32, w: f32, h: f32) -> [f32; 4] {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_viewscreen_camera_looks_its_own_way() {
+        let t = DVec3::new(300.0, 0.0, 400.0);
+        assert!((feed_basis_for("TARGET", Some(t)).f - t.normalize()).length() < 1e-9, "TARGET looks at the target");
+        assert_eq!(feed_basis_for("TARGET", None).f, DVec3::Z, "TARGET with nothing locked looks forward");
+        assert_eq!(feed_basis_for("AFT", Some(t)).f, DVec3::NEG_Z);
+        assert_eq!(feed_basis_for("PORT", None).f, DVec3::X);
+        assert_eq!(feed_basis_for("STBD", None).f, DVec3::NEG_X);
+        let b = feed_basis_for("FWD", None);
+        assert!(b.u.y > 0.99, "the picture is upright");
+    }
 
     #[test]
     fn euler_round_trips_through_the_quaternion() {

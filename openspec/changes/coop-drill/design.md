@@ -295,3 +295,20 @@ about 100 triangles each.
 **Tests.** A lone Tactical bot walks to Helm and wins; a player who claims a bot's seat relieves it and the bot walks
 to the other; a station is automated while its walker is on the way; a claim of a player's seat is refused; a body
 reaches a seat on the bridge's walk world in under 6 s.
+
+### 9.1 The outside from the bridge (owner, 2026-10-10)
+
+The owner, watching the drill: "the view screen is missing, it is not impolemented correctly it should be showing the
+view that the captain has selected", and "the windows should show the action going on outside". The bridge drawn on
+foot and in the overview (`sc-client/src/drill_bridge.rs`) now shows the fight, as `bridge-stations` 1 asks ("a
+viewscreen that shows the real exterior"):
+
+- **The viewscreen** at the bow carries the drill's feed: the captain's camera (`Bridge.view`, one of
+  `combat::FEEDS`) while he holds the viewscreen, forward otherwise; the feed's direction is the consoles' own
+  (`console::feed_basis_for`). It is drawn only from in front: the overview's eye is in the bow wall behind it.
+- **The windows** show the sky turned by the Tern's attitude, and the Hound, missiles, bolts and bursts, drawn after
+  the bridge with their depth squeezed into the last 0.0001 of the buffer, so only the windows let them through.
+- **Red alert** lights the bridge in its baked red-alert state.
+
+Cost on the Pi 5: the feed's pass (1228 x 388, already drawn when seated) is now also drawn on foot and in the
+overview, and the outside's few objects are drawn a second time in the bridge's pass.
