@@ -19,6 +19,9 @@ use sc_net::transport::{Chan, Impair, NetEvent, PeerId, ServerNet};
 
 /// Snapshots a second (netcode-and-sessions section 3).
 pub const SNAPSHOT_HZ: f64 = 20.0;
+/// A peer silent this long is dropped and its seat returns to automation (netcode-and-sessions section 2:
+/// "the server also drops a client silent for 5 s"). Every client pings once a second, so a live one never is.
+pub const SILENT_S: f64 = 5.0;
 
 /// What the server was started with.
 #[derive(Clone, Debug)]
@@ -39,6 +42,7 @@ struct Conn {
     snap: Link,
     dropped: u64,
     opened: Instant,
+    heard: Instant,
 }
 
 /// A round as the log records it.
@@ -111,7 +115,22 @@ impl DrillServer {
     /// Take in the network; returns lines worth logging.
     pub fn poll(&mut self) -> Vec<String> {
         let mut log = Vec::new();
-        for e in self.net.poll() {
+        let mut events = self.net.poll();
+        for e in &events {
+            if let NetEvent::Data(p, ..) = e {
+                if let Some(c) = self.conns.get_mut(p) {
+                    c.heard = Instant::now();
+                }
+            }
+        }
+        let silent: Vec<PeerId> =
+            self.conns.iter().filter(|(_, c)| c.heard.elapsed().as_secs_f64() > SILENT_S).map(|(p, _)| *p).collect();
+        for p in silent {
+            log.push(format!("peer {p} silent for {SILENT_S} s: dropped"));
+            self.net.close(p);
+            events.push(NetEvent::Closed(p));
+        }
+        for e in events {
             match e {
                 NetEvent::Open(p) => {
                     self.conns.insert(
@@ -122,6 +141,7 @@ impl DrillServer {
                             snap: Link::default(),
                             dropped: 0,
                             opened: Instant::now(),
+                            heard: Instant::now(),
                         },
                     );
                 }

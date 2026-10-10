@@ -45,3 +45,8 @@ Newest last. What was done, what was found, on which machine and commit.
   `--bot`). First real-time run on Pi 1, three processes over the LAN address 192.168.0.210: `sc-server` and two
   `sc-bot`s. Round 0: victory in 70 s; Tern bolts 227/712 hit, Hound bolts 112/344, missiles 5/6, Tern hull 92 of
   120 MJ; round trip 15 ms on one machine, no snapshot lost.
+- **Hardening finding.** A bot restarted on Pi 1 could not take the helm for 15 s: the dead process's connection
+  still held the seat until WebRTC's consent checks gave up on it. The design's 5 s silence rule
+  (`netcode-and-sessions` section 2) was not built; now it is (`SILENT_S`), with a test that a client that stops
+  sending loses its seat to automation within 6 s. Bots also claim their station in any phase now, so one that
+  joins mid-fight takes over from automation at once instead of waiting for the next Muster.

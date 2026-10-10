@@ -68,3 +68,31 @@ fn the_drill_survives_ten_percent_loss_and_fifty_ms_of_delay() {
         assert!((0.03..0.2).contains(&loss), "the client saw the impairment's loss on snapshots: {loss:.3}");
     }
 }
+
+#[test]
+fn a_client_that_goes_silent_loses_its_seat_to_automation_within_six_seconds() {
+    use sc_core::combat::Operator;
+    let lo = "127.0.0.1".parse().unwrap();
+    let cfg = ServerConfig { listen: "127.0.0.1:0".parse().unwrap(), host_ip: lo, impair: Impair::default(), seed: 3 };
+    let mut server = DrillServer::start(DrillData::shipped(), &cfg).unwrap();
+    let mut c = Session::connect(server.addr(), "Gone", false, Some(Station::Helm), Impair::default(), 3).unwrap();
+    let joined = Instant::now() + Duration::from_secs(10);
+    while Instant::now() < joined && server.drill.operator(Station::Helm) == Operator::Auto {
+        server.poll();
+        server.tick();
+        c.update();
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    assert_ne!(server.drill.operator(Station::Helm), Operator::Auto, "the client took the helm");
+    // The client stops updating: no pings, no sticks. Its socket stays open, as a hung process's would.
+    let t0 = Instant::now();
+    while t0.elapsed() < Duration::from_secs(8) && server.drill.operator(Station::Helm) != Operator::Auto {
+        server.poll();
+        server.tick();
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    let took = t0.elapsed().as_secs_f64();
+    assert_eq!(server.drill.operator(Station::Helm), Operator::Auto, "the seat went back to automation");
+    assert!(took < 6.5, "within the 5 s silence limit and a little, took {took:.1} s");
+    drop(c);
+}

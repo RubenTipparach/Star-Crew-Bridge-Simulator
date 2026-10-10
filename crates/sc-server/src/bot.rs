@@ -20,7 +20,7 @@ pub struct Bot {
     /// Seconds to read the briefing before READY.
     pub read_s: f64,
     muster_seen: Option<f64>,
-    claimed: bool,
+    claimed_at: f64,
 }
 
 impl Bot {
@@ -32,7 +32,7 @@ impl Bot {
             mem: Memory::default(),
             read_s: data.mission.bot_ready_s,
             muster_seen: None,
-            claimed: false,
+            claimed_at: f64::NEG_INFINITY,
         }
     }
 
@@ -41,17 +41,19 @@ impl Bot {
         if s.stage != Stage::Joined {
             return;
         }
+        // Take the station whenever it is not ours, in any phase: a bot that joins mid-fight takes over from
+        // automation at once. A refused claim (a person holds it) is retried every 2 s.
+        let now = s.now_s();
+        if s.station() != Some(self.station) {
+            if now - self.claimed_at >= 2.0 {
+                s.claim(self.station);
+                self.claimed_at = now;
+            }
+            return;
+        }
         match s.phase() {
             Some(Phase::Muster) => {
                 self.mem = Memory::default();
-                if s.station() != Some(self.station) {
-                    if !self.claimed {
-                        s.claim(self.station);
-                        self.claimed = true;
-                    }
-                    return;
-                }
-                let now = s.now_s();
                 let seen = *self.muster_seen.get_or_insert(now);
                 if !s.ready() && now - seen >= self.read_s {
                     s.set_ready(true);
@@ -59,7 +61,6 @@ impl Bot {
             }
             Some(Phase::Engage) => {
                 self.muster_seen = None;
-                self.claimed = false;
                 let Some(pic) = s.picture() else { return };
                 let now = s.latest().map(|x| x.phase_s).unwrap_or(0.0);
                 let cmds = match self.station {
@@ -74,10 +75,7 @@ impl Bot {
                     s.command(c);
                 }
             }
-            _ => {
-                self.muster_seen = None;
-                self.claimed = false;
-            }
+            _ => self.muster_seen = None,
         }
     }
 }
