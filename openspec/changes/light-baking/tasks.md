@@ -52,7 +52,7 @@ on is engine work, taken on a separate request once the owner has answered G1 to
 - [ ] 5.2 Door spill lights from the spill records.
 - [ ] 5.3 Probe sampling for avatars, craft and moving parts; the ambient-cube term in their shader.
 - [ ] 5.3a First step (design section 16): the probe grid per compartment baked by the deck plan with
-  `probeCube` and the back-face test, cached in `docs/mockups/cache/deck-plan-probes.bin`; the deck file's
+  `probeCube` and the back-face test, cached in `tools/deck/cache/deck-plan-probes.bin`; the deck file's
   probes (version 5); `sc_core::probes` sampling with tests; the `deck_probe` program; the bot figures lit by
   it, with captures of a bot in a lit and a dark room in three states.
 - [ ] 5.4 Power-loss flicker from `bake.json`, seeded from the session seed, compartment and tick.

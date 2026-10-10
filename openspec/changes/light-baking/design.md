@@ -695,7 +695,7 @@ lamp and at red alert. This step lights them from section 6's ambient cubes, mad
   rays are their own, beside the cube's gather rays, which `irradiance` does not report.
 - **The cache.** Probes cost each room its scene preparation (211 s for the ship in the last bake report)
   plus about 4 ms a probe, too long for every push's deploy. So they are cached like the light:
-  `docs/mockups/cache/deck-plan-probes.bin` (gzip: `"SCPR"`, a version, an index as JSON, then the
+  `tools/deck/cache/deck-plan-probes.bin` (gzip: `"SCPR"`, a version, an index as JSON, then the
   bytes), one entry a room, keyed by the room's bake key (section 15) and the probe settings. A room whose
   key matches takes its cached probes; any other is baked during the export, and
   `export_deck.mjs --write-probe-cache` writes the file back.
