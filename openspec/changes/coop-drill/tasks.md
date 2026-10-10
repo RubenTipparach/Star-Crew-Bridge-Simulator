@@ -24,7 +24,7 @@ The owner asked for implementation on 2026-10-10 (proposal). Progress and findin
 - [x] 4.1 `--connect`, `--station`, `--bot` (the lobby's Join a crew taking an address is still to do).
 - [x] 4.2 The briefing and debrief screens.
 - [x] 4.3 The Helm and Tactical consoles over the 3D bow view; the Hound's placeholder model; bolts and missiles; interpolation.
-- [ ] 4.4 Captures of each screen in `docs/screenshots/engine/coop-drill/`.
+- [x] 4.4 Captures of each screen in `docs/screenshots/engine/coop-drill/`.
 
 ## 5. Two machines
 
