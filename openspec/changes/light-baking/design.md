@@ -673,6 +673,57 @@ page (1.31 MB; the page is 13.2 MB, under the 16 MB an artifact allows).
 runtime lights over the bake, and portal spill light (sections 6, 7 and 9); power loss stays the
 lighting page's.
 
+### 16. Probes in the engine, first step (2026-10-10)
+
+The owner, 2026-10-10, after the MakeHuman crew were deleted: "for now use blocky people. implement
+light probes so the people get lit properly". The bot figures (`crew-npcs` 7) carry a light baked into
+their own vertices from one fixed direction, so a bot looks the same in a dark corridor, under a bridge
+lamp and at red alert. This step lights them from section 6's ambient cubes, made by the mockup baker
+(section 15) and carried into the engine the way the walls' light is.
+
+- **The grid.** Per compartment, over the bounding box of its brushes: points `probes.spacing_m` (1.0 m)
+  apart on all three axes, the first `probes.wall_offset_m` (0.5 m) in from the box's low corner, so a
+  2.5 m deck takes two layers, at 0.5 m and 1.5 m above its floor. A point inside no brush of the
+  compartment is outside its air and is stored invalid.
+- **The cube.** `lightbake.js`'s `probeCube` on the room's own bake scene, after the scene is prepared
+  as for its walls (`prepare`: the irradiance cache and its bounce): the same irradiance function, all
+  terms, for the three states. Each value is encoded as the walls' vertex colours are (the display
+  multiplier, 0 to 2, in a byte), 54 bytes a probe.
+- **Invalid probes.** From each point, `gather_rays` (48) rays spread evenly over the sphere (a seeded
+  Fibonacci spiral) are cast with the bake's BVH; a probe whose rays hit back faces more than
+  `probes.invalid_backface_fraction` (0.5) of the time is inside something and is stored invalid. These
+  rays are their own, beside the cube's gather rays, which `irradiance` does not report.
+- **The cache.** Probes cost each room its scene preparation (211 s for the ship in the last bake report)
+  plus about 4 ms a probe, too long for every push's deploy. So they are cached like the light:
+  `docs/mockups/cache/deck-plan-probes.bin` (gzip: `"SCPR"`, a version, an index as JSON, then the
+  bytes), one entry a room, keyed by the room's bake key (section 15) and the probe settings. A room whose
+  key matches takes its cached probes; any other is baked during the export, and
+  `export_deck.mjs --write-probe-cache` writes the file back.
+- **The deck file** (`deck-pipeline`'s `PROB`, version 5): each compartment names its grid (origin in
+  ship coordinates, spacing, the counts on each axis, and where its probes start), and one blob after the
+  walk's triangles holds every probe's 54 bytes then a byte that is 1 when it is valid.
+- **Sampling** is a rule in `sc-core` (`sc_core::probes`), tested headless. A body at a point takes the
+  grid whose box (grown half a spacing) holds the point, the eight probes around it, trilinear weights,
+  invalid probes skipped and the weights renormalized; then the three states blended by the same weights
+  the walls use. With no valid probe around it, it takes the fixed light the figures had before (the
+  fallback, below).
+- **The figures.** Each figure's vertex colour is now its albedo, unlit. A new program, `deck_probe`,
+  turns each vertex normal into the ship's frame (the bot's yaw), weights the six colours by the squared
+  normal (`n.x^2 * cube[+-X] + n.y^2 * cube[+-Y] + n.z^2 * cube[+-Z]`, section 6) and multiplies the
+  albedo. A bot is sampled at its chest, 1.0 m above its feet. The ship map (`M`) draws the figures with
+  the fallback cube: a diagram, not a room.
+- **The fallback cube** is the figures' old light, written as a cube: a key from above and the front,
+  `0.45 + 0.65 max(n . l, 0)` along each axis, `l = (0.3, 0.8, 0.52)`, times two.
+
+**Pi 5 cost:** about 55 bytes a probe of client memory (the count and the bytes are printed by `deckc`
+and at load); per bot per frame, eight lookups and a blend in the core (microseconds, not measured on a
+Pi); one uniform block of six colours per figure's draw; no new draw calls, no texture. Not measured on a
+Pi (CLAUDE.md 2).
+
+**Not in this step:** the dimmer and power loss (the client has no dimmer yet), runtime lights, the
+player's own body (first person, unseen), craft and door leaves, and the engine baker (section 10): the
+probes come from the mockup baker until `sc-tools bake` exists.
+
 ## Risks / Trade-offs
 
 - **Vertex lighting needs triangles where light is busy.** Big rooms with many fixtures
