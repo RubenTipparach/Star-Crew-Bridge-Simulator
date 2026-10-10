@@ -88,6 +88,8 @@ impl Ui {
         v.panel_fill = Color32::from_rgba_premultiplied(10, 14, 22, 235);
         v.window_fill = v.panel_fill;
         v.extreme_bg_color = Color32::from_rgb(4, 6, 10);
+        // Glyph coverage as alpha, unbrightened: the consoles' text then weighs what the mockup's does in a browser.
+        v.text_alpha_from_coverage = egui::epaint::AlphaFromCoverage::Linear;
         v.selection.bg_fill = Color32::from_rgb(204, 120, 40);
         v.widgets.inactive.weak_bg_fill = Color32::from_rgb(38, 46, 66);
         v.widgets.hovered.weak_bg_fill = Color32::from_rgb(70, 82, 120);
@@ -108,6 +110,7 @@ impl Ui {
             }
         }
         ctx.set_style(style);
+        crate::vg::install_fonts(&ctx);
         Self { ctx, events: Vec::new(), pointer: Pos2::ZERO, textures: HashMap::new(), text_on: false, win_to_pt: 1.0 }
     }
 

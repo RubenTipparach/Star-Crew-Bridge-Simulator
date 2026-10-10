@@ -51,6 +51,8 @@ pub mod keys {
     pub const N2: u32 = sdl::SDLK_2.0;
     /// The 3 key.
     pub const N3: u32 = sdl::SDLK_3.0;
+    /// F3.
+    pub const F3: u32 = sdl::SDLK_F3.0;
     /// F12.
     pub const F12: u32 = sdl::SDLK_F12.0;
     /// W.
@@ -87,6 +89,14 @@ pub mod keys {
     pub const L: u32 = sdl::SDLK_L.0;
     /// R.
     pub const R: u32 = sdl::SDLK_R.0;
+    /// X.
+    pub const X: u32 = sdl::SDLK_X.0;
+    /// Z.
+    pub const Z: u32 = sdl::SDLK_Z.0;
+    /// Y.
+    pub const Y: u32 = sdl::SDLK_Y.0;
+    /// Left control.
+    pub const LCTRL: u32 = sdl::SDLK_LCTRL.0;
     /// Return (Enter).
     pub const RETURN: u32 = sdl::SDLK_RETURN.0;
     /// Backspace.

@@ -11,4 +11,15 @@ condensed, so a word fits a small button, with clear digits.
 Fetched 2026-10-07. Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow),
 under the SIL Open Font License 1.1 (`OFL.txt`, from that repository). The pages carry the files
 inline (`tools/mockups/inline.py`, the `font:` kind), so a page published as one artifact needs
-no font server. Whether the engine's egui text uses this face is open (engine-stack).
+no font server.
+
+**The engine's copy** (openspec/changes/console-parity, design 3). The engine draws its consoles in this face, from
+TrueType files that `tools/ui/fonts.py` writes from the two woff2 above: the same outlines, the digits' cmap entries
+pointed at the tabular figures (the mockup's `tabular-nums`), and the GPOS kerning written as a legacy `kern` table,
+which is the only kerning egui's ab_glyph reads. `python3 tools/ui/fonts.py --check` fails when a committed file is not
+what the tool writes. The client compiles them in (`crates/sc-client/src/vg.rs`).
+
+| File | From | sha256 |
+| --- | --- | --- |
+| `semibold-600.ttf` | `semibold-600.woff2` | `45051a762dc521395768194ff83bf4632fd19256084b472ebecd0171e70d589d` |
+| `bold-700.ttf` | `bold-700.woff2` | `5eb144c1849374dbfe259ab4f6d8737d746f719622d6c8c463b2f2378daba5eb` |

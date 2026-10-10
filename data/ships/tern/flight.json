@@ -1,6 +1,6 @@
 {
   "schema": "starcrew.flight/1",
-  "_doc": "The Tern's flight under full assist (openspec/changes/flight-and-navigation section 4; built as far as openspec/changes/coop-drill design 2.1 needs: full assist only). Read by sc-core::combat. Axes ship-local: +X port, +Y dorsal, +Z bow; rates and accelerations are [yaw, pitch, roll].",
+  "_doc": "The Tern's flight under full assist (openspec/changes/flight-and-navigation section 4; built as far as openspec/changes/coop-drill design 2.1 needs: full assist only). Read by sc-core::combat. Axes ship-local: +X port, +Y dorsal, +Z bow; rates and accelerations are [yaw, pitch, roll]. Strafe set points (the helm's strafe pad) are held to strafe_max_mps and reached with tau_v_s (coop-drill design 2.1; FN section 4's RCS clamp is not the drill's yet); an attitude order is held inside held_deg turning slower than held_dps (FN 6a). EVADE throws new set points up to jink_mps either way every jink_period_s (the console mockup's numbers).",
   "flight": {
     "speed_min_mps": -100,
     "speed_max_mps": 400,
@@ -9,6 +9,11 @@
     "tau_v_s": 1.0,
     "tau_w_s": 0.25,
     "rate_limit_deg_s": [18, 18, 36],
-    "ang_accel_deg_s2": [12, 12, 30]
+    "ang_accel_deg_s2": [12, 12, 30],
+    "strafe_max_mps": 50,
+    "held_deg": 0.5,
+    "held_dps": 0.2,
+    "jink_period_s": 4,
+    "jink_mps": 40
   }
 }

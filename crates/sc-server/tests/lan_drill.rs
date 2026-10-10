@@ -5,9 +5,9 @@
 
 use sc_core::combat::data::DrillData;
 use sc_core::combat::{Outcome, Station};
+use sc_net::bot::Bot;
 use sc_net::session::Session;
 use sc_net::transport::Impair;
-use sc_net::bot::Bot;
 use sc_server::{DrillServer, ServerConfig};
 use std::time::{Duration, Instant};
 
