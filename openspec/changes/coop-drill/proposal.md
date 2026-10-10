@@ -16,8 +16,8 @@ scenario that exercises all of it with two people who must work together is one 
 ## What Changes
 
 - **A drill mission, `drill-hound`** (design section 1): the Tern meets one Hound corvette. Helm keeps it in the
-  turrets' arcs and the tubes' cone and flies to spoil its aim; Tactical locks it, frees the turrets, picks the shield
-  facing and loads and fires Gannet missiles. With both stations played it is won in about two minutes; left to
+  turrets' arcs and the tubes' cone and flies to spoil its aim; Tactical locks it, sets the turrets to fire, picks the
+  shield facing and loads and fires Gannet missiles. With both stations played it is won in about two minutes; left to
   automation it is slow and can be lost. A briefing comes first and a debrief after, then the drill resets.
 - **`sc-core::combat`** (section 2): the Tern's assisted flight, the Hound's, the twin pulse cannon's fire rule with
   the shared hit chance, six shield faces, Gannet missiles, and the mission's phases, at the 30 Hz tick, from data

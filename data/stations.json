@@ -1,51 +1,30 @@
 {
   "schema": "starcrew.stations/1",
-  "_doc": "How a station's automation plays (openspec/changes/bridge-stations section 3; coop-drill design 3). 'automation' holds a seat nobody holds, at the lower competence of bridge-stations: helm reacts in 1.5 s, holds heading and speed and never flies evasive; tactical reacts in 2.0 s and never fires missiles. 'bot' is a bot client playing the seat like a decent player. reaction_s is how often it decides; rate_frac the share of the rate limit it turns at; standoff_m the range a hunting helm keeps; weave_deg and weave_period_s how it crosses the enemy's line of sight. seats: getting up and sitting down, seconds (bridge-stations 6). bot_posts (coop-drill design 9): the stations a bot fills, most important first; a bot gets up for a more important station left empty, with nobody on the way, for reassign_s seconds.",
+  "_doc": "How a station's automation plays (openspec/changes/bridge-stations section 3; coop-drill design 3). 'automation' holds a seat nobody holds, at the lower competence of bridge-stations: helm reacts in 1.5 s, holds heading and speed and never flies evasive; tactical reacts in 2.0 s and never fires missiles; science passive-scans at 1.5 times a manned scan's time; the captain's automation is auto-condition only (red alert when a hostile comes within red_within_m, normal normal_after_s after the last is beyond normal_beyond_m). Every automation acknowledges an order after its reaction_s. 'bot' is a bot client playing the seat like a decent player. reaction_s is how often it decides; rate_frac the share of the rate limit it turns at; standoff_m the range a hunting helm keeps; weave_deg and weave_period_s how it crosses the enemy's line of sight. 'orders' are the verbs the captain can send each station, [verb, icon] (bridge-stations 5: the verbs per station are data), in the console mockup's order; tools/ui/console_style.py --check holds the mockup's ORDER_VERBS to them. seats: getting up and sitting down, seconds (bridge-stations 6). bot_posts (coop-drill design 9): the stations a bot fills, most important first; a bot gets up for a more important station left empty, with nobody on the way, for reassign_s seconds.",
   "profiles": [
     {
       "id": "automation",
-      "helm": {
-        "reaction_s": 1.5,
-        "rate_frac": 0.7,
-        "hunt": false,
-        "standoff_m": 1500,
-        "weave_deg": 0,
-        "weave_period_s": 20
-      },
-      "tactical": {
-        "reaction_s": 2.0,
-        "weapons_range_m": 2400,
-        "missiles": false,
-        "face_threat": false
-      }
+      "helm": { "reaction_s": 1.5, "rate_frac": 0.7, "hunt": false, "standoff_m": 1500, "weave_deg": 0, "weave_period_s": 20 },
+      "tactical": { "reaction_s": 2.0, "weapons_range_m": 2400, "missiles": false, "face_threat": false },
+      "engineering": { "reaction_s": 3.0 },
+      "science": { "reaction_s": 2.5, "scan_factor": 1.5 },
+      "captain": { "reaction_s": 1.0, "red_within_m": 15000, "normal_beyond_m": 25000, "normal_after_s": 60 }
     },
     {
       "id": "bot",
-      "helm": {
-        "reaction_s": 0.3,
-        "rate_frac": 1.0,
-        "hunt": true,
-        "standoff_m": 1500,
-        "weave_deg": 18,
-        "weave_period_s": 14
-      },
-      "tactical": {
-        "reaction_s": 0.4,
-        "weapons_range_m": 2400,
-        "missiles": true,
-        "face_threat": true
-      }
+      "helm": { "reaction_s": 0.3, "rate_frac": 1.0, "hunt": true, "standoff_m": 1500, "weave_deg": 18, "weave_period_s": 14 },
+      "tactical": { "reaction_s": 0.4, "weapons_range_m": 2400, "missiles": true, "face_threat": true },
+      "engineering": { "reaction_s": 0.5 },
+      "science": { "reaction_s": 0.5, "scan_factor": 1.0 },
+      "captain": { "reaction_s": 0.5, "red_within_m": 15000, "normal_beyond_m": 25000, "normal_after_s": 60 }
     }
   ],
-  "seats": {
-    "stand_s": 0.4,
-    "sit_s": 0.4
+  "orders": {
+    "helm": [["EVADE", "jink"], ["CHASE", "chase"], ["HOLD", "hold"], ["STOP", "stop"]],
+    "tactical": [["ENGAGE", "target"], ["HOLD FIRE", "lock"], ["LAUNCH", "flight_ops"]],
+    "engineering": [["COMBAT", "bolt"], ["CRUISE", "drive"], ["REPAIR", "wrench"]],
+    "science": [["SCAN", "scan"], ["PING", "ping"]]
   },
-  "bot_posts": {
-    "posts": [
-      "helm",
-      "tactical"
-    ],
-    "reassign_s": 5.0
-  }
+  "seats": { "stand_s": 0.4, "sit_s": 0.4 },
+  "bot_posts": { "posts": ["helm", "tactical", "engineering", "science", "captain"], "reassign_s": 5.0 }
 }

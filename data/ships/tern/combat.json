@@ -1,19 +1,20 @@
 {
   "schema": "starcrew.ship-combat/1",
-  "_doc": "What the Tern fights with in the coop-drill (openspec/changes/coop-drill design 2.2-2.4). hull_mj and hit_radius_m are placeholders: the hull is damage-control's, and the hit test becomes the shield ellipsoid of weapons-and-shields 9. Turret arcs are the placeholder for the hull mask (weapons-and-shields 2): dorsal bears from -10 to +90 deg of elevation, ventral from +10 to -90. Mount positions are ship-local metres.",
+  "_doc": "What the Tern fights with in the coop-drill (openspec/changes/coop-drill design 2.2-2.4). hull_mj and hit_radius_m are placeholders: the hull is damage-control's, and the hit test becomes the shield ellipsoid of weapons-and-shields 9. The turrets are the layout's four mounts (turret_dorsal, turret_ventral, turret_port, turret_stbd in data/ships/tern/layout.json, their centre_m here, a test holds the two together). Each arc is the placeholder for the hull mask (weapons-and-shields 3): the half of the sky its mount faces, from arc_overlap_deg below the mount's plane. Mount positions are ship-local metres. sensors: a full scan of a contact takes scan_s with Science manned (the console mockup's number) and an active ping's ring lasts ping_s.",
   "combat": {
     "hull_mj": 120,
     "hit_radius_m": 12,
     "gun": "twin_pulse",
     "aim_sigma_base_deg": 0.15,
     "turrets": [
-      { "id": "dorsal_fwd", "arc": "dorsal", "position_m": [0, 7, 12] },
-      { "id": "dorsal_aft", "arc": "dorsal", "position_m": [0, 7, -14] },
-      { "id": "ventral_fwd", "arc": "ventral", "position_m": [0, -5, 10] },
-      { "id": "ventral_aft", "arc": "ventral", "position_m": [0, -5, -12] }
+      { "id": "dorsal", "arc": "dorsal", "position_m": [0.0, 9.0, 2.0] },
+      { "id": "ventral", "arc": "ventral", "position_m": [0.0, -7.0, 3.0] },
+      { "id": "port", "arc": "port", "position_m": [13.5, 1.25, 4.0] },
+      { "id": "starboard", "arc": "starboard", "position_m": [-13.5, 1.25, 4.0] }
     ],
     "arc_overlap_deg": 10,
     "tubes": { "count": 2, "magazine": 12, "load_s": 18, "arm_s": 3, "missile": "gannet", "muzzle_m": [[2, 0, 28], [-2, 0, 28]] },
-    "lock": { "time_s": 2.0, "range_m": 10000 }
+    "lock": { "time_s": 2.0, "range_m": 10000 },
+    "sensors": { "scan_s": 6, "ping_s": 2 }
   }
 }

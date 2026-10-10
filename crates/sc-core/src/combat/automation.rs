@@ -6,8 +6,8 @@
 //! [`Picture`], which the server builds from the drill and a client builds from a snapshot, so it never needs more
 //! than a console shows.
 
-use super::data::{DrillData, FlightBlock, HelmProfile, TacticalProfile};
-use super::{off_bow_deg, steer_toward, Command, Drill, HelmMode, TubeState, ENEMY_ID};
+use super::data::{CaptainProfile, DrillData, FlightBlock, HelmProfile, TacticalProfile};
+use super::{off_bow_deg, steer_toward, Bridge, Command, Drill, HelmMode, TubeState, TurretMode, ENEMY_ID};
 use glam::{DQuat, DVec3};
 
 /// The Tern as a console sees her.
@@ -31,8 +31,8 @@ pub struct Own {
     pub lock_target: Option<u16>,
     /// Whether the lock is complete.
     pub locked: bool,
-    /// Whether the turrets are free.
-    pub weapons_free: bool,
+    /// Each turret's mode.
+    pub turret_modes: Vec<TurretMode>,
     /// Each tube's state.
     pub tubes: Vec<TubeState>,
     /// Missiles aboard, not counting the tubes.
@@ -75,7 +75,7 @@ impl Picture {
                 preset: t.preset,
                 lock_target: t.lock_target,
                 locked: t.lock_target.is_some() && t.lock_s >= d.data.tern_combat.lock.time_s,
-                weapons_free: t.weapons_free,
+                turret_modes: t.turrets.iter().map(|x| x.mode).collect(),
                 tubes: t.tubes.iter().map(|x| x.state).collect(),
                 magazine: t.magazine,
             },
@@ -103,6 +103,40 @@ pub struct Memory {
     pub helm: HelmMemory,
     /// Tactical.
     pub tactical: TacticalMemory,
+    /// The captain.
+    pub captain: CaptainMemory,
+}
+
+/// When the captain's automation next decides.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct CaptainMemory {
+    /// Seconds into Engage.
+    pub next_s: f64,
+}
+
+/// The captain's automation (bridge-stations 3): auto-condition, nothing else. Red alert when a hostile comes within
+/// `red_within_m`; normal once every hostile has been beyond `normal_beyond_m` for `normal_after_s` (the
+/// hysteresis keeps it from flickering).
+pub fn captain(
+    pic: &Picture,
+    bridge: &Bridge,
+    p: &CaptainProfile,
+    mem: &mut CaptainMemory,
+    now_s: f64,
+) -> Vec<Command> {
+    if now_s < mem.next_s {
+        return Vec::new();
+    }
+    mem.next_s = now_s + p.reaction_s;
+    let range = pic.hostile.as_ref().map(|h| (h.pos - pic.own.pos).length());
+    if !bridge.red_alert && range.is_some_and(|r| r <= p.red_within_m) {
+        return vec![Command::Alert(true)];
+    }
+    let clear = range.is_none_or(|r| r > p.normal_beyond_m);
+    if bridge.red_alert && clear && now_s - bridge.hostile_near_s >= p.normal_after_s {
+        return vec![Command::Alert(false)];
+    }
+    Vec::new()
 }
 
 /// The helm's decisions at `now_s` (seconds into Engage). An `automation` profile holds heading and speed and
@@ -150,8 +184,9 @@ pub fn preset_facing(data: &DrillData, rot: DQuat, to: DVec3) -> u8 {
     data.tern_shields.presets.iter().position(|p| p.id == id).unwrap_or(0) as u8
 }
 
-/// Tactical's decisions at `now_s`: lock the hostile, free the turrets in range, set the shields, and (when the
-/// profile allows missiles) keep the tubes loaded and fire when armed, locked and in the seeker's cone.
+/// Tactical's decisions at `now_s`: lock the hostile, set the turrets to AUTO in range and HOLD out of it, set the
+/// shields, and (when the profile allows missiles) keep the tubes loaded and fire when armed, locked and in the
+/// seeker's cone.
 pub fn tactical(
     pic: &Picture,
     p: &TacticalProfile,
@@ -171,9 +206,11 @@ pub fn tactical(
     }
     let to = h.pos - o.pos;
     let range = to.length();
-    let free = range <= p.weapons_range_m;
-    if o.weapons_free != free {
-        out.push(Command::WeaponsFree(free));
+    let want_mode = if range <= p.weapons_range_m { TurretMode::Auto } else { TurretMode::Hold };
+    for (i, m) in o.turret_modes.iter().enumerate() {
+        if *m != want_mode {
+            out.push(Command::TurretMode(i as u8, want_mode));
+        }
     }
     let want = if p.face_threat { preset_facing(data, o.rot, to) } else { 0 };
     if o.preset != want {

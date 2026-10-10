@@ -109,7 +109,9 @@ impl Session {
         Ok(Self {
             net,
             stage: Stage::Connecting,
-            name: name.to_owned(),
+            // A name past the protocol's limit would make the server refuse the hello: shortened here, as the
+            // server would keep it ("Engineering officer (bot)" is 25 characters).
+            name: sc_core::combat::clean_name(name),
             bot,
             want: station,
             slot: None,
@@ -287,7 +289,7 @@ impl Session {
                 preset: t.preset,
                 lock_target: t.lock_target,
                 locked: t.lock_target.is_some() && t.lock_frac >= 1.0,
-                weapons_free: t.weapons_free,
+                turret_modes: t.turrets.iter().map(|x| x.mode).collect(),
                 tubes: t.tubes.iter().map(|x| x.0).collect(),
                 magazine: u32::from(t.magazine),
             },

@@ -5642,12 +5642,25 @@ function shieldGeometry(cx, cy, sc, cam, B, P, BUBBLE) {
   SV_CACHE.set(key, geo);
   return geo;
 }
+/** Hits closer together than this, in degrees of bearing, are drawn as one arrow (the newest). */
+const HIT_MERGE_DEG = 10;
 function shieldView(cx, cy, sc, cam, o) {
   o = o || {};
   const B = camBasis(cam), P = (p) => [cx + v3.dot(p, B.r) * sc, cy - v3.dot(p, B.u) * sc, v3.dot(p, B.f)];
   const geo = shieldGeometry(cx, cy, sc, cam, B, P, o.big ? BUBBLE_BIG : BUBBLE_MINI);
   let s = "";
   const placed = [], place = (x, y) => { for (let i = 0; i < 8 && placed.some((q) => Math.abs(q[0] - x) < 52 && Math.abs(q[1] - y) < 15); i++) y -= 16; placed.push([x, y]); return y; };
+  // One arrow a bearing: a hit within HIT_MERGE_DEG of a newer one is not drawn again, so a fight's dozen hits from
+  // one side read as the one arrow they are, with the newest hit's colour and label.
+  const shown = [];
+  for (let i = G.hitLog.length - 1; i >= 0; i--) {
+    const h = G.hitLog[i];
+    if (!shown.some((q) => v3.dot(q.d, h.d) > Math.cos(HIT_MERGE_DEG * D2R))) shown.push(h);
+  }
+  shown.reverse();
+  // A hit's label, held inside the view as the faces' labels are, so a hit from beyond the panel's edge still names
+  // its angle.
+  const hitLabel = (b) => [clamp(b[0], 30, (o.w || 400) - 30), clamp(b[1] - 6, 16, (o.h || 300) - 4)];
   for (const p of geo.polys) {
     if (p.face == null) { s += p.svg; continue; }
     const f = p.face, k = shieldRatio(f), fl = Math.max(0, 1 - (G.t - G.flash[f]) / SH.flash_s);
@@ -5658,7 +5671,6 @@ function shieldView(cx, cy, sc, cam, o) {
   s += geo.edges;
   if (o.big) {
     // Every face named on the model with its charge under the name; a face on the far side darker.
-    for (const h of G.hitLog) { const b = P(v3.add(ellipsoidPoint(h.d), v3.mul(h.d, 38))); placed.push([b[0], b[1] - 6]); }
     const dirs = [[0, 0, 1], [0, 0, -1], [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0]], names = ["BOW", "STERN", "PORT", "STBD", "TOP", "BELOW"];
     dirs.forEach((d, f) => {
       const ax = [SH.axes_m[2], SH.axes_m[2], SH.axes_m[0], SH.axes_m[0], SH.axes_m[1], SH.axes_m[1]][f];
@@ -5667,6 +5679,7 @@ function shieldView(cx, cy, sc, cam, o) {
       const sx = p0[0] - c0[0], sy = p0[1] - c0[1], sl = Math.hypot(sx, sy), p = sl > 4 ? [p0[0] + (sx / sl) * 14, p0[1] + (sy / sl) * 14] : [p0[0], p0[1]];
       p[0] = clamp(p[0], 30, (o.w || 400) - 30);
       const ly = p[1] + 4;
+      placed.push([p[0], ly]);
       s += `<g opacity="${far ? 0.42 : 1}"${tipAttr(`${FACES[f]}: ${G.charge[f].toFixed(0)} of ${shieldCap(f).toFixed(0)} MJ${far ? " (far side)" : ""}`)}>`;
       s += text(p[0], ly, 12, ratioCol(k), names[f], { a: "middle", w: 700, ls: 1.5 });
       s += `<rect x="${p[0] - 16}" y="${ly + 4}" width="32" height="4" rx="2" fill="#16202c"/><rect x="${p[0] - 16}" y="${ly + 4}" width="${32 * clamp(k, 0, 1)}" height="4" rx="2" fill="${ratioCol(k)}"/></g>`;
@@ -5684,14 +5697,16 @@ function shieldView(cx, cy, sc, cam, o) {
     const ang = Math.atan2(q2[0] - q[0], -(q2[1] - q[1])) / D2R;
     s += `<g transform="translate(${q[0]},${q[1]}) rotate(${ang})"><path d="M0 -${o.big ? 8 : 5}L${o.big ? 6 : 4} ${o.big ? 6 : 4}L0 ${o.big ? 2 : 1}L-${o.big ? 6 : 4} ${o.big ? 6 : 4}Z" fill="${C.danger}"/></g>`;
   }
-  for (const h of G.hitLog) {
+  for (const h of shown) {
     const age = (G.t - h.t) / SH.hit_show_s, e = ellipsoidPoint(h.d), a = P(e), b = P(v3.add(e, v3.mul(h.d, o.big ? 38 : 26)));
     const col = h.through ? C.danger : C.warn, op = (1 - age).toFixed(2), ang = Math.atan2(a[0] - b[0], -(a[1] - b[1])) / D2R;
     s += `<g opacity="${op}"><path d="M${b[0]} ${b[1]}L${a[0]} ${a[1]}" stroke="${col}" stroke-width="${o.big ? 3 : 2}"/>`;
     s += `<g transform="translate(${a[0]},${a[1]}) rotate(${ang})"><path d="M0 0L-${o.big ? 6 : 4} -${o.big ? 10 : 7}H${o.big ? 6 : 4}Z" fill="${col}"/></g>`;
     if (o.big) {
       const el = Math.round(elevOf(h.d));
-      s += text(b[0], b[1] - 6, 14, col, `${String(Math.round(wrap360(brgOf(h.d)))).padStart(3, "0")} ${el >= 0 ? "+" : ""}${el}`, { a: "middle", w: 700 });
+      // Pinned face labels stay; a hit's label steps up clear of them and of the hits' before it.
+      const [lx, ly0] = hitLabel(b), ly = Math.max(16, place(lx, ly0));
+      s += text(lx, ly, 14, col, `${String(Math.round(wrap360(brgOf(h.d)))).padStart(3, "0")} ${el >= 0 ? "+" : ""}${el}`, { a: "middle", w: 700 });
     }
     s += "</g>";
   }
@@ -6291,16 +6306,8 @@ function engineering() {
     return b;
   });
   s += panel("AIR", grid(10, 2, 2, 2), (w, h) => {
-    const crewed = ["bridge", "mess", "quarters", "damage_control", "medbay", "engineering"];
-    let worst = null, wk = 0;
     const rows = [["air_o2", "O₂"], ["air_co2", "CO₂"], ["temp", "Temperature"]];
-    const status = [0, 0, 0];
-    for (const id of crewed) {
-      const r = sim.compartmentReadout(sim.idx[id]);
-      const lv = [r.po2_kpa < 12 ? 2 : r.po2_kpa < 17 ? 1 : 0, r.pco2_kpa > 2 ? 2 : r.pco2_kpa > 0.8 ? 1 : 0, r.t_k > 318 || r.t_k < 278 ? 2 : r.t_k > 303 || r.t_k < 286 ? 1 : 0];
-      lv.forEach((v, k) => (status[k] = Math.max(status[k], v)));
-      const m = Math.max(...lv); if (m > wk) { wk = m; worst = id; }
-    }
+    const { status, worst } = airStatus();
     let b = "";
     rows.forEach(([ic, tip], k) => {
       const col = [C.ok, C.warn, C.danger][status[k]], y = 12 + k * 40;
@@ -6311,6 +6318,23 @@ function engineering() {
     return b;
   });
   return s;
+}
+
+/**
+ * The AIR panel's three lamps: oxygen, carbon dioxide and temperature over the crewed compartments, each 0 (fine),
+ * 1 (warning) or 2 (danger), and the worst compartment's id.
+ */
+function airStatus() {
+  const crewed = ["bridge", "mess", "quarters", "damage_control", "medbay", "engineering"];
+  let worst = null, wk = 0;
+  const status = [0, 0, 0];
+  for (const id of crewed) {
+    const r = sim.compartmentReadout(sim.idx[id]);
+    const lv = [r.po2_kpa < 12 ? 2 : r.po2_kpa < 17 ? 1 : 0, r.pco2_kpa > 2 ? 2 : r.pco2_kpa > 0.8 ? 1 : 0, r.t_k > 318 || r.t_k < 278 ? 2 : r.t_k > 303 || r.t_k < 286 ? 1 : 0];
+    lv.forEach((v, k) => (status[k] = Math.max(status[k], v)));
+    const m = Math.max(...lv); if (m > wk) { wk = m; worst = id; }
+  }
+  return { status, worst };
 }
 
 // =================================================================== SCIENCE
@@ -6333,7 +6357,7 @@ function science() {
     // The ship and its six faces in 3D (weapons-and-shields 11). Drag to turn the view; press a face to favour it.
     const vh = h - 60;
     let b = `<g data-drag="shieldcam"><rect x="0" y="0" width="${w}" height="${vh}" fill="transparent"${tipAttr("Drag to turn the view; press a face to favour it")}/>`;
-    b += `<svg x="0" y="0" width="${w}" height="${vh}" style="position:static">` + shieldView(w / 2 + 10, vh / 2 + 6, 2.8, G.shieldCam, { big: true, w }) + "</svg></g>";
+    b += `<svg x="0" y="0" width="${w}" height="${vh}" style="position:static">` + shieldView(w / 2 + 10, vh / 2 + 6, 2.8, G.shieldCam, { big: true, w, h: vh }) + "</svg></g>";
     const pre = [["balance", "Balanced", -1], ["fwd", "Bow", 0], ["aft", "Stern", 1], ["port", "Port", 2], ["stbd", "Starboard", 3]];
     pre.forEach(([ic, tip, f], i) => { b += button({ x: 10 + i * 50, y: h - 52, w: 44, h: 42, icon: ic, act: `favour:${f}`, tip: `Shields: ${tip}`, is: 20, on: G.preset === f }); });
     b += button({ x: 268, y: h - 52, w: 44, h: 42, label: G.freq, act: "freq", tip: "Frequency band", fs: 18 });
@@ -6420,6 +6444,8 @@ function deckPlan(deck, x, y, w, h, o) {
   if (o.label) s += text(x + 4, y + 14, 13, C.dim, deck, { w: 700, ls: 2 });
   return s;
 }
+/** Who sits at each station, for the captain's CREW panel (null: automation). */
+const CREW_ROWS = [["helm", "Ana"], ["tactical", "Ben"], ["engineering", "Cleo"], ["science", null], ["comms", null], ["flight_ops", null]];
 function captain() {
   if (captainTab === "SHIP") return captainShip();
   let s = "";
@@ -6431,7 +6457,7 @@ function captain() {
     return b;
   });
   s += panel("CREW", grid(5, 0, 4, 2), (w, h) => {
-    const rows = [["helm", "Ana"], ["tactical", "Ben"], ["engineering", "Cleo"], ["science", null], ["comms", null], ["flight_ops", null]];
+    const rows = CREW_ROWS;
     const cw = (w - 20 - 6) / 2, ch = (h - 12 - 2 * 6) / 3;
     let b = "";
     rows.forEach(([r, op], i) => {
@@ -6746,6 +6772,90 @@ function scenario(name) {
     hitUs(dirOf(80, 10), 70, 101); hitUs(dirOf(250, 12), 80, 102); hitUs(dirOf(100, -20), 60, 103); hitUs(dirOf(330, 35), 30, 104);
     advance(20);
   }
+}
+/**
+ * The console's state for the engine's parity check (openspec/changes/console-parity, design 4): everything the
+ * helm and tactical consoles draw, in ship axes (+X port, +Y dorsal, +Z bow), metres, degrees and the numbers on
+ * screen. tools/consoles/parity.mjs saves it beside each named shot, and the engine draws the same picture from it
+ * (sc-client --console-fixture), so the two can be laid side by side. It reads the page; it changes nothing.
+ */
+window.consoleState = function () {
+  const S = stationDef(), vb = quat.rot(quat.conj(F.q), F.V), goal = F.orderActive ? F.order : attitudeGoal();
+  const preview = slewPlan(quat.fromEuler(F.oe.h, F.oe.p, F.oe.r)), qi = quat.conj(F.q);
+  const tgt = contact(G.target);
+  return {
+    station, word: S.word, role: S.role, op: S.op,
+    open: STATIONS.filter((o) => !o.op && o.id !== S.id).map((o) => o.id),
+    order: (newestOrderFor(S.id) || {}).verb || null,
+    alert: !reactorUp() ? "emergency" : st.alert === "red_alert" ? "red_alert" : "normal", red_alert: st.alert === "red_alert",
+    clock_s: Math.floor(G.t + 754),
+    hull_pct: hullPct(), shield_ratio: FACES.map((_, f) => shieldRatio(f)), power_mw: st.rxOut + st.batOut,
+    reactor_up: reactorUp(), speed_mps: v3.len(F.V), fires: fires(), breaches: breaches(),
+    q: quat.canon(F.q), w: F.w, wset: F.wset, v_body: vb, speed_set: F.speedSet, strafe: F.strafe, stick: stick(),
+    oe: F.oe, order_active: F.orderActive, plan: F.plan ? { time: F.plan.time, angle: F.plan.angle, held: F.plan.held } : null,
+    preview: { time: preview.time, angle: preview.angle }, goal: goal ? quat.canon(goal) : null, ap: G.ap,
+    flight: { rate_dps: FL.rate_dps, speed_min_mps: FL.speed_min_ms, speed_max_mps: FL.speed_max_ms, strafe_max_mps: FL.strafe_max_ms },
+    contacts: G.contacts.filter((c) => c.hull > 0).map((c) => ({ id: c.id, cls: c.cls, iff: c.iff, rel: relPos(c.p), dir: quat.rot(qi, c.dir), hull: c.hull, scan: c.scan })),
+    waypoint: relPos(G.wp), target: tgt && tgt.hull > 0 ? G.target : null, tubes_bear: tubesBear(),
+    missiles: G.missiles.map((m) => relPos(m.pos)),
+    inbound: G.inbound.map((m) => ({ d: m.d, t: m.t })),
+    hits: G.hitLog.map((h) => ({ d: h.d, face: h.face, age_s: G.t - h.t, through: h.through })),
+    flash_age_s: G.flash.map((t) => G.t - t),
+    feed: G.feed, zoom: G.zoom, nav_km: G.navRange, tac_km: G.tacRange, sci_km: G.sciRange,
+    scan_cam: { nav: G.scanCam.nav, tac: G.scanCam.tac, sci: G.scanCam.sci }, feed_cam: G.feedViewCam,
+    turrets: G.turrets.map((t) => ({ short: t.short, mode: t.mode, op: t.op, heat: t.heat, aim_deg: t.aim, firing: t.firing, cooling: !!t.cooling, ok: works(t.load) })),
+    tubes: G.tubes.map((t) => ({ state: t.state, t: t.t })), tube_load_s: TUBE_LOAD_S, magazine: G.magazine, magazine_slots: 6,
+    fire_ring: missileHit(tgt), fire_note: `${Math.round(missileHit(tgt) * 100)}% HIT`, fire_ok: missileHit(tgt) > 0.5, tube_cone_deg: 5,
+    charge: G.charge, cap: FACES.map((_, f) => shieldCap(f)), preset: G.preset,
+    hold: HOLD.key ? { key: HOLD.key, k: clamp((now() - HOLD.t0) / HOLD_S, 0, 1) } : null,
+    // The page's clock, which the moving pictures (the sweep, the pumps, the pipes' dashes) are drawn at.
+    t: G.t,
+    sci: { sel: G.sciSel, scanning: G.scanning, ping: G.ping, cam: G.shieldCam, freq: G.freq, by: G.shieldBy },
+    captain: consoleCaptain(), eng: consoleEngineering(),
+  };
+};
+/** The captain's part of consoleState: the two tabs, the orders, the crew and every compartment's state. */
+function consoleCaptain() {
+  const i = sim.idx[G.shipSel], r = sim.compartmentReadout(i);
+  return {
+    tab: captainTab, ship_sel: G.shipSel, braced: G.braced > 0, view_override: G.viewOverride,
+    composer: { to: G.composer.to, verb: G.composer.verb },
+    orders: G.orders.slice(0, 4).map((o) => ({ to: o.to, verb: o.verb, state: o.state })),
+    crew: CREW_ROWS.map(([role, op]) => ({ role, op, order: !!newestOrderFor(role) })),
+    rooms: sim.comps.map((c, k) => { const cs = compState(k); return { id: c.id, word: cs.word }; }),
+    crew_at: st.crew.map((cr) => ({ comp: cr.comp != null && cr.comp >= 0 && cr.comp < sim.N ? sim.comps[cr.comp].id : null, ok: cr.status === "ok" })),
+    room: { p_kpa: r.p_kpa, po2_kpa: r.po2_kpa, t_k: r.t_k, crew: st.crew.filter((x) => x.comp === i).length },
+  };
+}
+/** Engineering's part of consoleState: the power solve, the reactor and its loop, the buses and the air. */
+function consoleEngineering() {
+  let want = 0; for (let i = 0; i < LOADS.length; i++) want += st.want[i];
+  const R = st.reactor, cr = sim.coolantReadout(), air = airStatus();
+  const pump = (p) => ({ name: p.name, speed: p.speed, capability: p.capability, alloc_mw: p.alloc_mw, setpoint: p.setpoint });
+  return {
+    rated_mw: PW.reactor.thermal_rated_mw * PW.reactor.conversion_efficiency * PW.reactor.throttle_max,
+    rx_out_mw: st.rxOut, bat_out_mw: st.batOut, want_mw: want, preset: st.preset,
+    groups: GROUPS.map((g) => {
+      const gn = groupNow(g);
+      return { id: g.id, name: g.name, want: gn.want, got: gn.got, sp: gn.sp, prio: gn.prio, max: groupMax(g), want_k: groupK(g, gn.want), got_k: groupK(g, gn.got),
+        breaker: g.feed_breaker ? st.groupBreaker[g.id] || "closed" : null };
+    }),
+    preview: PREVIEW ? { gid: PREVIEW.gid, sp: PREVIEW.sp, k: groupK(GROUPS.find((g) => g.id === PREVIEW.gid), PREVIEW.r.alloc_mw) } : null,
+    reactor: { up: reactorUp(), throttle: R.throttle, target: R.target, p_e_mw: R.P_e / 1e6, mode: R.mode, scram_cause: R.scramCause ? String(R.scramCause) : null,
+      t_k: R.T, warn_k: PW.reactor.heat.warn_k, scram_k: PW.reactor.heat.scram_k, throttle_max: PW.reactor.throttle_max },
+    armed_scram: ARMED.key === "scram" && now() - ARMED.t < 3,
+    cool: { mode: cr.mode, flow: cr.flow, flow_kg_s: cr.flow_kg_s, chiller: cr.chiller, hot_k: cr.hot_k, cold_k: cr.cold_k,
+      pumps: cr.pumps.map(pump), radiator_pumps: cr.radiator_pumps.map(pump), makeup_valve: cr.makeup_valve, makeup_kg_s: cr.makeup_kg_s,
+      tanks: cr.tanks.map((t) => ({ name: t.name, kg: t.kg, frac: t.frac })), inventory: cr.inventory, exchanger: cr.exchanger,
+      rad_mw: cr.rad_mw, rad_cap_mw: cr.rad_cap_mw, rad_flow: cr.rad_flow, hot_band_k: cr.bands.hot_leg_k, hot_warn_k: cr.bands.hot_leg_warning_k,
+      limit_k: cr.limit_k, heat_mw: cr.heat_mw, carry_mw: cr.carry_mw,
+      pump_max: LOADS[loadAt(PW.coolant.pumps[0])].setpoint_max, rad_max: LOADS[loadAt(PW.coolant.radiator_pumps[0])].setpoint_max,
+      makeup_max_kg_s: PW.coolant.makeup.max_kg_s },
+    buses: { gen_p: st.genClosed.gen_p, gen_s: st.genClosed.gen_s, tie: st.tieClosed.bt_main, eb_p: st.tieClosed.eb_p, eb_s: st.tieClosed.eb_s,
+      np: (st.nodeHealth.msb_p == null ? 1 : st.nodeHealth.msb_p) > 0.05, ns: (st.nodeHealth.msb_s == null ? 1 : st.nodeHealth.msb_s) > 0.05,
+      soc: st.battery.soc_mj / PW.battery.capacity_mj, cut: Object.values(st.conduit).filter((c) => c.severed).length },
+    air: { status: air.status, worst: air.worst ? L.compartments.find((c) => c.id === air.worst).name.toUpperCase() : null },
+  };
 }
 window.MOCKUP_SHOTS = [
   { name: "helm", setup: () => { station = "helm"; render(); } },

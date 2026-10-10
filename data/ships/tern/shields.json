@@ -1,8 +1,10 @@
 {
   "schema": "starcrew.shields/1",
-  "_doc": "The Tern's shield faces and presets (openspec/changes/weapons-and-shields section 9; coop-drill design 2.2). Faces in order: bow (+Z), stern (-Z), port (+X), starboard (-X), dorsal (+Y), ventral (-Y). Every preset sums to the 240 MJ capacity; each face is held to 15-80 MJ. Regeneration is 0.25 x the generator's 12 MW, shared by the preset's caps.",
+  "_doc": "The Tern's shield faces and presets (openspec/changes/weapons-and-shields section 9; coop-drill design 2.2). Faces in order: bow (+Z), stern (-Z), port (+X), starboard (-X), dorsal (+Y), ventral (-Y). Every preset sums to the 240 MJ capacity; each face is held to 15-80 MJ. Regeneration is 0.25 x the generator's 12 MW, shared by the preset's caps. The ellipsoid is weapons-and-shields section 11's: the smallest that holds the hull loft, the mounts and the pods with 1 m to spare, and it decides the face a hit strikes (sc-core shield_face). frequency is weapons-and-shields 11's: a face loses match_factor of a hit whose weapon band matches the shield's, and retune_factor while the shield retunes for retune_s.",
   "shields": {
+    "ellipsoid": { "axes_m": [17.0, 13.0, 54.0], "centre_m": [0.0, 1.5, -2.0] },
     "regen_mj_s": 3.0,
+    "frequency": { "match_factor": 0.75, "retune_s": 4, "retune_factor": 1.25 },
     "presets": [
       { "id": "balanced", "name": "Balanced", "faces_mj": [40, 40, 40, 40, 40, 40] },
       { "id": "bow", "name": "Bow", "faces_mj": [80, 15, 36, 36, 36, 37] },

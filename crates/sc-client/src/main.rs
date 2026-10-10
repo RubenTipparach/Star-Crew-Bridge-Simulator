@@ -13,20 +13,24 @@
 //! then. A HUD names the officer and what E and Q do at a lift.
 //!
 //! Usage: sc-client [--window] [--deck compiled/tern.deck] [--headless --shots DIR] [--headless --walk-test DIR]
-//! [--headless --lobby-test DIR]
+//! [--headless --lobby-test DIR] [--console-fixture STATE.json --shots DIR]
 //!
 //! `--lobby-test DIR` shoots the lobby, rolls a name, shoots it again, beams aboard and shoots the bridge.
 //!
 //! `--walk-test DIR` walks a scripted route from the bridge down both ladders to deck C, captures along it, and
 //! fails if the body does not arrive where the route ends.
 
+mod console;
 mod drill;
 mod drill_bridge;
 mod first_light;
+mod fixture;
 mod lobby;
 mod repairs;
+mod seat;
 mod ships3d;
 mod ui;
+mod vg;
 
 use glam::{Mat4, Vec3};
 use sc_client::platform::{self, keys, App, Event, Flow, Frame, WindowConfig};
@@ -1363,6 +1367,25 @@ fn main() -> ExitCode {
     let lobby_dir = value("--lobby-test");
     let lobby_test = lobby_dir.is_some();
     let shots = shots.or(walk_dir).or(lobby_dir);
+    // The console parity check's engine side (openspec/changes/console-parity design 4): one state, one capture.
+    if let Some(state) = value("--console-fixture") {
+        let Some(dir) = shots.clone() else {
+            eprintln!("sc-client: --console-fixture needs --shots DIR");
+            return ExitCode::from(2);
+        };
+        let cfg = WindowConfig {
+            title: "Star Crew: console fixture".into(),
+            width: 1280,
+            height: 720,
+            fullscreen: false,
+            headless: true,
+            vsync: false,
+        };
+        return platform::run(cfg, move |gl| {
+            println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);
+            fixture::FixtureApp::new(state, dir).map(|c| Box::new(c) as Box<dyn App>)
+        });
+    }
     // The co-op drill (openspec/changes/coop-drill design 5): its own mode, joined by address.
     if let Some(server) = args.iter().position(|a| a == "--connect").and_then(|i| args.get(i + 1)).cloned() {
         // `--watch`: join with no station and watch the bridge (coop-drill design 9's overview).
@@ -1371,16 +1394,19 @@ fn main() -> ExitCode {
         let station = station.map(String::as_str).and_then(sc_core::combat::Station::from_id);
         let station = if watch { station.or(Some(sc_core::combat::Station::Helm)) } else { station };
         let Some(station) = station else {
-            eprintln!("sc-client: --connect needs --station helm or tactical (or --watch)");
+            eprintln!(
+                "sc-client: --connect needs --station helm, tactical, engineering, science or captain (or --watch)"
+            );
             return ExitCode::from(2);
         };
         let bot = args.iter().any(|a| a == "--bot");
+        // The server marks a bot in the crew list itself, so the name does not repeat it.
         let name =
             args.iter().position(|a| a == "--name").and_then(|i| args.get(i + 1)).cloned().unwrap_or_else(|| {
                 if watch {
                     "Observer".into()
                 } else {
-                    format!("{} officer{}", station.name(), if bot { " (bot)" } else { "" })
+                    format!("{} officer", station.name())
                 }
             });
         let cfg = WindowConfig {

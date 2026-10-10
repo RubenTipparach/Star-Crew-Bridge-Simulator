@@ -8,10 +8,10 @@
 
 use glam::{DQuat, DVec3};
 use sc_core::combat::bodies::Posture;
-use sc_core::combat::{self, Command, HelmMode, Outcome, Phase, Refusal, Station, TubeState};
+use sc_core::combat::{self, Command, HelmMode, Outcome, Phase, Refusal, Station, TubeState, TurretMode};
 
 /// The protocol's version; a Hello with another is refused.
-pub const PROTOCOL: u16 = 2;
+pub const PROTOCOL: u16 = 4;
 /// The longest unreliable message, so it is one SCTP chunk in one datagram (netcode-and-sessions section 2).
 pub const MAX_UNRELIABLE: usize = 1200;
 /// The longest string field, in bytes.
@@ -273,8 +273,12 @@ pub struct ShipSnap {
     pub rates: DVec3,
     /// Speed set point, m/s.
     pub speed_set: f64,
-    /// Helm mode.
+    /// Strafe set points, lateral (to starboard) and vertical, m/s.
+    pub strafe: [f64; 2],
+    /// The autopilot.
     pub helm_mode: HelmMode,
+    /// The attitude order the helm holds, if any.
+    pub order: Option<DQuat>,
     /// Shield faces, MJ.
     pub faces: [f64; 6],
     /// Preset.
@@ -291,8 +295,6 @@ pub struct ShipSnap {
     pub lock_target: Option<u16>,
     /// The lock's progress (0-1).
     pub lock_frac: f64,
-    /// Weapons free.
-    pub weapons_free: bool,
 }
 
 /// A turret as a snapshot carries it.
@@ -306,6 +308,14 @@ pub struct TurretSnap {
     pub hit_chance: f64,
     /// Capacitor charge as a share of full (0-1).
     pub charge: f64,
+    /// Its mode.
+    pub mode: TurretMode,
+    /// Heat as a share of its sink (0-1).
+    pub heat: f64,
+    /// Locked out by heat.
+    pub cooling: bool,
+    /// It fired within the last two of its shot intervals.
+    pub firing: bool,
 }
 
 /// A missile in flight.
@@ -342,6 +352,28 @@ pub struct StatsSnap {
     pub engage_s: f64,
 }
 
+/// The bridge's state beyond the ships: the condition, brace, the viewscreen, the orders, and Science's scan, ping
+/// and shield band (console-parity design 10.2).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct BridgeSnap {
+    pub red_alert: bool,
+    pub braced: bool,
+    /// The captain's camera on every viewscreen, an index in [`combat::FEEDS`].
+    pub view: Option<u8>,
+    /// The last orders, newest first: to, verb index, done.
+    pub orders: Vec<(Station, u8, bool)>,
+    /// Science's scan of the enemy (0-1), and whether a manned scan is running.
+    pub scan: f64,
+    pub scanning: bool,
+    /// Seconds left of an active ping's ring.
+    pub ping_s: f64,
+    /// The shield band (0-3) and the seconds left of a retune.
+    pub band: u8,
+    pub retune_s: f64,
+    /// Who set the shields last.
+    pub shields_by: Option<Station>,
+}
+
 /// The server's state at a tick (design 4.1): full, not a delta.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Snapshot {
@@ -363,6 +395,8 @@ pub struct Snapshot {
     pub missiles: Vec<MissileSnap>,
     /// This round's numbers.
     pub stats: StatsSnap,
+    /// The bridge.
+    pub bridge: BridgeSnap,
     /// The crew's bodies on the bridge (coop-drill design 9); empty in a drill with no bridge.
     pub bodies: Vec<BodySnap>,
 }
@@ -475,9 +509,10 @@ fn write_command(w: &mut Writer, c: &Command) {
             w.u8(4);
             w.u16(t.unwrap_or(0));
         }
-        Command::WeaponsFree(f) => {
+        Command::TurretMode(i, m) => {
             w.u8(5);
-            w.u8(u8::from(f));
+            w.u8(i);
+            w.u8(m as u8);
         }
         Command::Preset(i) => {
             w.u8(6);
@@ -490,6 +525,48 @@ fn write_command(w: &mut Writer, c: &Command) {
         Command::Fire(i) => {
             w.u8(8);
             w.u8(i);
+        }
+        Command::Strafe { lat_mps, vert_mps } => {
+            w.u8(9);
+            w.f32(lat_mps);
+            w.f32(vert_mps);
+        }
+        Command::Orient(o) => {
+            w.u8(10);
+            w.u8(u8::from(o.is_some()));
+            for v in o.unwrap_or([0.0; 3]) {
+                w.f32(v);
+            }
+        }
+        Command::Scan(on) => {
+            w.u8(11);
+            w.u8(u8::from(on));
+        }
+        Command::Ping => w.u8(12),
+        Command::Freq(b) => {
+            w.u8(13);
+            w.u8(b);
+        }
+        Command::Alert(on) => {
+            w.u8(14);
+            w.u8(u8::from(on));
+        }
+        Command::Brace(on) => {
+            w.u8(15);
+            w.u8(u8::from(on));
+        }
+        Command::Viewscreen(v) => {
+            w.u8(16);
+            w.u8(v.unwrap_or(255));
+        }
+        Command::Order(to, verb) => {
+            w.u8(17);
+            w.u8(to as u8);
+            w.u8(verb);
+        }
+        Command::Ack(s) => {
+            w.u8(18);
+            w.u8(s as u8);
         }
     }
 }
@@ -508,10 +585,30 @@ fn read_command(r: &mut Reader) -> Result<Command, DecodeError> {
             0 => None,
             id => Some(id),
         }),
-        5 => Command::WeaponsFree(r.bool()?),
+        5 => Command::TurretMode(r.u8()?, TurretMode::from_u8(r.u8()?).ok_or(DecodeError("no such turret mode"))?),
         6 => Command::Preset(r.u8()?),
         7 => Command::Load(r.u8()?),
         8 => Command::Fire(r.u8()?),
+        9 => Command::Strafe { lat_mps: r.f32(-1000.0, 1000.0)?, vert_mps: r.f32(-1000.0, 1000.0)? },
+        10 => {
+            let some = r.bool()?;
+            let hpr = [r.f32(-720.0, 720.0)?, r.f32(-90.0, 90.0)?, r.f32(-720.0, 720.0)?];
+            Command::Orient(some.then_some(hpr))
+        }
+        11 => Command::Scan(r.bool()?),
+        12 => Command::Ping,
+        13 => Command::Freq(r.u8()?),
+        14 => Command::Alert(r.bool()?),
+        15 => Command::Brace(r.bool()?),
+        16 => Command::Viewscreen(match r.u8()? {
+            255 => None,
+            v => Some(v),
+        }),
+        17 => {
+            let to = Station::from_u8(r.u8()?).ok_or(DecodeError("no such station"))?;
+            Command::Order(to, r.u8()?)
+        }
+        18 => Command::Ack(Station::from_u8(r.u8()?).ok_or(DecodeError("no such station"))?),
         _ => return Err(DecodeError("no such command")),
     };
     Ok(c)
@@ -605,13 +702,18 @@ impl Snapshot {
         w.u8(self.ships.len() as u8);
         for s in &self.ships {
             w.u16(s.id);
-            w.u8(u8::from(s.active) | u8::from(s.alive) << 1 | u8::from(s.weapons_free) << 2);
+            w.u8(u8::from(s.active) | u8::from(s.alive) << 1 | u8::from(s.order.is_some()) << 2);
             w.v3_64(s.pos);
             w.quat(s.rot);
             w.v3_32(s.vel);
             w.v3_32(s.rates);
             w.f32(s.speed_set);
+            w.f32(s.strafe[0]);
+            w.f32(s.strafe[1]);
             w.u8(s.helm_mode as u8);
+            if let Some(q) = s.order {
+                w.quat(q);
+            }
             for f in s.faces {
                 w.f32(f);
             }
@@ -620,9 +722,11 @@ impl Snapshot {
             w.u8(s.turrets.len() as u8);
             for t in &s.turrets {
                 w.v3_32(t.aim);
-                w.u8(u8::from(t.bearing));
+                w.u8(u8::from(t.bearing) | u8::from(t.cooling) << 1 | u8::from(t.firing) << 2);
+                w.u8(t.mode as u8);
                 w.u8((t.hit_chance.clamp(0.0, 1.0) * 200.0).round() as u8);
                 w.u8((t.charge.clamp(0.0, 1.0) * 200.0).round() as u8);
+                w.u8((t.heat.clamp(0.0, 1.0) * 200.0).round() as u8);
             }
             w.u8(s.tubes.len() as u8);
             for (st, timer) in &s.tubes {
@@ -646,6 +750,20 @@ impl Snapshot {
         w.f32(st.damage_dealt_mj);
         w.f32(st.damage_taken_mj);
         w.f32(st.engage_s);
+        let b = &self.bridge;
+        w.u8(u8::from(b.red_alert) | u8::from(b.braced) << 1 | u8::from(b.scanning) << 2);
+        w.u8(b.view.unwrap_or(255));
+        w.u8(b.orders.len() as u8);
+        for (to, verb, done) in &b.orders {
+            w.u8(*to as u8);
+            w.u8(*verb);
+            w.u8(u8::from(*done));
+        }
+        w.u8((b.scan.clamp(0.0, 1.0) * 200.0).round() as u8);
+        w.f32(b.ping_s);
+        w.u8(b.band);
+        w.f32(b.retune_s);
+        w.u8(station_byte(b.shields_by));
         w.u8(self.bodies.len() as u8);
         for b in &self.bodies {
             w.u8(b.slot);
@@ -684,7 +802,9 @@ impl Snapshot {
             let vel = r.v3_32(VEL_LIM)?;
             let rates = r.v3_32(100.0)?;
             let speed_set = r.f32(-VEL_LIM, VEL_LIM)?;
+            let strafe = [r.f32(-VEL_LIM, VEL_LIM)?, r.f32(-VEL_LIM, VEL_LIM)?];
             let helm_mode = HelmMode::from_u8(r.u8()?).ok_or(DecodeError("no such helm mode"))?;
+            let order = if flags & 4 != 0 { Some(r.quat()?) } else { None };
             let mut faces = [0.0; 6];
             for f in &mut faces {
                 *f = r.f32(0.0, 1e6)?;
@@ -695,17 +815,26 @@ impl Snapshot {
             let mut turrets = Vec::with_capacity(nt);
             for _ in 0..nt {
                 let aim = r.v3_32(1.01)?;
-                let bearing = r.bool()?;
+                let tf = r.u8()?;
+                if tf > 7 {
+                    return Err(DecodeError("unknown turret flags"));
+                }
+                let mode = TurretMode::from_u8(r.u8()?).ok_or(DecodeError("no such turret mode"))?;
                 let hc = r.u8()?;
                 let ch = r.u8()?;
-                if hc > 200 || ch > 200 {
+                let ht = r.u8()?;
+                if hc > 200 || ch > 200 || ht > 200 {
                     return Err(DecodeError("a share is over 100 %"));
                 }
                 turrets.push(TurretSnap {
                     aim,
-                    bearing,
+                    bearing: tf & 1 != 0,
                     hit_chance: f64::from(hc) / 200.0,
                     charge: f64::from(ch) / 200.0,
+                    mode,
+                    heat: f64::from(ht) / 200.0,
+                    cooling: tf & 2 != 0,
+                    firing: tf & 4 != 0,
                 });
             }
             let nb = r.count(MAX_TUBES)?;
@@ -727,13 +856,14 @@ impl Snapshot {
                 id,
                 active: flags & 1 != 0,
                 alive: flags & 2 != 0,
-                weapons_free: flags & 4 != 0,
                 pos,
                 rot,
                 vel,
                 rates,
                 speed_set,
+                strafe,
                 helm_mode,
+                order,
                 faces,
                 preset,
                 hull,
@@ -764,6 +894,44 @@ impl Snapshot {
             damage_taken_mj: r.f32(0.0, 1e9)?,
             engage_s: r.f32(0.0, 1e7)?,
         };
+        let flags = r.u8()?;
+        if flags > 7 {
+            return Err(DecodeError("unknown bridge flags"));
+        }
+        let view = match r.u8()? {
+            255 => None,
+            v if usize::from(v) < combat::FEEDS.len() => Some(v),
+            _ => return Err(DecodeError("no such viewscreen camera")),
+        };
+        let no = r.count(combat::MAX_ORDERS)?;
+        let mut orders = Vec::with_capacity(no);
+        for _ in 0..no {
+            let to = Station::from_u8(r.u8()?).ok_or(DecodeError("no such station"))?;
+            orders.push((to, r.u8()?, r.bool()?));
+        }
+        let sc = r.u8()?;
+        if sc > 200 {
+            return Err(DecodeError("a share is over 100 %"));
+        }
+        let ping_s = r.f32(0.0, 3600.0)?;
+        let band = r.u8()?;
+        if band > 3 {
+            return Err(DecodeError("no such band"));
+        }
+        let retune_s = r.f32(0.0, 3600.0)?;
+        let shields_by = read_station(&mut r)?;
+        let bridge = BridgeSnap {
+            red_alert: flags & 1 != 0,
+            braced: flags & 2 != 0,
+            scanning: flags & 4 != 0,
+            view,
+            orders,
+            scan: f64::from(sc) / 200.0,
+            ping_s,
+            band,
+            retune_s,
+            shields_by,
+        };
         let nb = r.count(combat::MAX_PLAYERS)?;
         let mut bodies = Vec::with_capacity(nb);
         for _ in 0..nb {
@@ -781,14 +949,13 @@ impl Snapshot {
             bodies.push(BodySnap { slot, pos, yaw, posture, going });
         }
         r.done()?;
-        Ok(Self { header, tick, round, phase, phase_s, outcome, ships, missiles, stats, bodies })
+        Ok(Self { header, tick, round, phase, phase_s, outcome, ships, missiles, stats, bridge, bodies })
     }
 
     /// The snapshot of a drill (the header is the caller's, per client).
     pub fn of(d: &combat::Drill) -> Self {
         let lock_time = [d.data.tern_combat.lock.time_s, d.data.enemy.combat.lock.time_s];
-        let caps =
-            [d.data.gun(&d.data.tern_combat.gun).capacitor_mj, d.data.gun(&d.data.enemy.combat.gun).capacitor_mj];
+        let guns = [d.data.gun(&d.data.tern_combat.gun), d.data.gun(&d.data.enemy.combat.gun)];
         let ships = d
             .ships
             .iter()
@@ -802,7 +969,9 @@ impl Snapshot {
                 vel: s.vel,
                 rates: s.rates,
                 speed_set: s.speed_set,
+                strafe: s.strafe,
                 helm_mode: s.helm_mode,
+                order: s.order,
                 faces: s.faces,
                 preset: s.preset,
                 hull: s.hull.max(0.0),
@@ -813,14 +982,17 @@ impl Snapshot {
                         aim: t.aim,
                         bearing: t.bearing,
                         hit_chance: t.hit_chance,
-                        charge: t.capacitor_mj / caps[i].max(1e-9),
+                        charge: t.capacitor_mj / guns[i].capacitor_mj.max(1e-9),
+                        mode: t.mode,
+                        heat: t.heat_mj / guns[i].heat_sink_mj.max(1e-9),
+                        cooling: t.cooling,
+                        firing: t.since_fire_s <= 2.0 / guns[i].rate_hz.max(1e-9),
                     })
                     .collect(),
                 tubes: s.tubes.iter().map(|t| (t.state, t.timer_s.max(0.0))).collect(),
                 magazine: s.magazine.min(255) as u8,
                 lock_target: s.lock_target,
                 lock_frac: if lock_time[i] > 0.0 { (s.lock_s / lock_time[i]).min(1.0) } else { 1.0 },
-                weapons_free: s.weapons_free,
             })
             .collect();
         let st = &d.stats;
@@ -848,6 +1020,21 @@ impl Snapshot {
                 damage_dealt_mj: st.damage_dealt_mj,
                 damage_taken_mj: st.damage_taken_mj,
                 engage_s: st.engage_s,
+            },
+            bridge: {
+                let b = &d.bridge;
+                BridgeSnap {
+                    red_alert: b.red_alert,
+                    braced: b.braced,
+                    view: b.view,
+                    orders: b.orders.iter().map(|o| (o.to, o.verb, o.done)).collect(),
+                    scan: b.scan,
+                    scanning: b.scanning,
+                    ping_s: b.ping_s,
+                    band: b.band,
+                    retune_s: b.retune_s,
+                    shields_by: Some(b.shields_by),
+                }
             },
         }
     }
@@ -1063,6 +1250,16 @@ mod tests {
         let mut b = vec![3u8, 200];
         b.extend_from_slice(&[0; 16]);
         assert_eq!(ServerMsg::decode(&b), Err(DecodeError("a count is over its cap")));
+    }
+
+    #[test]
+    fn a_bots_long_name_is_shortened_so_its_hello_decodes() {
+        // "Engineering officer (bot)" is one character over the limit: sent as it was, the hello failed to decode
+        // and the server dropped the peer (2026-10-10, the five-seat drill).
+        let name = combat::clean_name("Engineering officer (bot)");
+        assert_eq!(name.chars().count(), combat::MAX_NAME_CHARS);
+        let hello = ClientMsg::Hello { protocol: PROTOCOL, name, bot: true, station: Some(Station::Engineering) };
+        assert_eq!(ClientMsg::decode(&hello.encode()), Ok(hello));
     }
 
     #[test]

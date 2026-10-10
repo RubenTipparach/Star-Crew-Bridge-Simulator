@@ -22,7 +22,7 @@ Every station the drill uses SHALL be operated, when no player holds it, by `sc-
 
 #### Scenario: One player
 - **WHEN** one player holds Helm and nobody holds Tactical
-- **THEN** Tactical's automation locks the Hound and frees the turrets, and never fires a missile
+- **THEN** Tactical's automation locks the Hound and sets the turrets to AUTO, and never fires a missile
 
 ### Requirement: The hit chance a console shows is the hit rate
 

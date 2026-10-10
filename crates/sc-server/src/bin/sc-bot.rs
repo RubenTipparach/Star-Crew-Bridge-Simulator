@@ -2,7 +2,7 @@
 //! the LAN, takes a station and plays it with `sc-core`'s automation at the bot profile, printing a line for every
 //! phase and a summary each second it is engaged. The game client's `--bot` is the same bot with a screen.
 //!
-//! Usage: sc-bot --connect HOST[:7700] --station helm|tactical [--name N] [--root .] [--seconds S]
+//! Usage: sc-bot --connect HOST[:7700] --station helm|tactical|engineering|science|captain [--name N] [--root .] [--seconds S]
 
 use sc_core::combat::data::{DrillData, DRILL_FILES};
 use sc_core::combat::Station;
@@ -18,7 +18,7 @@ fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let value = |name: &str| args.iter().position(|a| a == name).and_then(|i| args.get(i + 1)).cloned();
     let Some(host) = value("--connect") else {
-        eprintln!("usage: sc-bot --connect HOST[:7700] --station helm|tactical [--name N] [--root .] [--seconds S]");
+        eprintln!("usage: sc-bot --connect HOST[:7700] --station helm|tactical|engineering|science|captain [--name N] [--root .] [--seconds S]");
         return ExitCode::from(2);
     };
     let host = if host.contains(':') { host } else { format!("{host}:7700") };
@@ -27,7 +27,7 @@ fn main() -> ExitCode {
         return ExitCode::from(2);
     };
     let Some(station) = value("--station").and_then(|s| Station::from_id(&s)) else {
-        eprintln!("sc-bot: --station helm or tactical");
+        eprintln!("sc-bot: --station helm, tactical, engineering, science or captain");
         return ExitCode::from(2);
     };
     let name = value("--name").unwrap_or_else(|| format!("{} bot", station.name()));
