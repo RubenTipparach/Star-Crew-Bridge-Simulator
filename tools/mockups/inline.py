@@ -52,6 +52,10 @@ tools/blender/build_repair_covers.py) into a <script id="ship-repairs" type="app
 block, { covers, images: { <file>: data URI } }, for pages that open a machine for a repair
 (repairs-on-deck design 3b).
 
+"decals" copies assets/textures/decals/decals.json with its images (the burn marks a damaged
+station wears, written by tools/decals/build_decals.py) into a <script id="ship-decals"
+type="application/json"> block, { decals, images: { <file>: data URI } } (repairs-on-deck 3f).
+
 --check rewrites nothing and fails when a page holds a stale copy, and also
 checks that shipkit's PI_BUDGET matches the budget marker in the engine-stack
 design (the table there is the source). Documentation tooling, standard library
@@ -82,7 +86,7 @@ PANELS = os.path.join(ROOT, "data", "materials", "panels.json")
 SCREENS = os.path.join(ROOT, "assets", "textures", "screens", "screens.json")
 CACHE = os.path.join(ROOT, "docs", "mockups", "cache")
 LIGHTBAKE = os.path.join(LIB, "lightbake.js")
-MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-9_-]+/[a-z0-9_-]+|bakecache:[a-z0-9_-]+|shipkit|materials|panels|screens|repairs|models:[a-z0-9_-]+|manifest:[a-z0-9_-]+|font:[a-z0-9_-]+) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
+MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-9_-]+/[a-z0-9_-]+|bakecache:[a-z0-9_-]+|shipkit|materials|panels|screens|repairs|decals|models:[a-z0-9_-]+|manifest:[a-z0-9_-]+|font:[a-z0-9_-]+) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
 
 
 def png_uri(path):
@@ -218,6 +222,13 @@ def block(kind):
         text = json.dumps({"covers": covers, "images": images}, separators=(",", ":"),
                           ensure_ascii=False).replace("</", "<\\/")
         return f'\n<script id="ship-repairs" type="application/json">\n{text}\n</script>\n'
+    if kind == "decals":
+        # The burn marks a damaged station wears (repairs-on-deck 3f), from tools/decals/build_decals.py.
+        with open(os.path.join(ROOT, "assets", "textures", "decals", "decals.json"), encoding="utf-8") as f:
+            decals = json.load(f)
+        images = {d["file"]: png_uri(os.path.join(ROOT, d["file"])) for d in sorted(decals["decals"].values(), key=lambda d: d["file"])}
+        text = json.dumps({"decals": decals, "images": images}, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
+        return f'\n<script id="ship-decals" type="application/json">\n{text}\n</script>\n'
     if kind == "materials":
         with open(MATERIALS, encoding="utf-8") as f:
             manifest = json.load(f)

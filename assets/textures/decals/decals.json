@@ -1,0 +1,31 @@
+{
+  "schema": "starcrew.decals/1",
+  "built_by": "tools/decals/build_decals.py",
+  "seed": 20261010,
+  "versions": {
+    "numpy": "2.4.6",
+    "pillow": "12.3.0"
+  },
+  "decals": {
+    "scorch_flat": {
+      "file": "assets/textures/decals/scorch_flat.png",
+      "px": [
+        256,
+        256
+      ],
+      "bytes": 53891,
+      "sha256": "1bc1d5546a1a073c3cf02d1af812652910ee2cf764349dcdc558404346ee0deb",
+      "vertical": false
+    },
+    "scorch_streak": {
+      "file": "assets/textures/decals/scorch_streak.png",
+      "px": [
+        256,
+        256
+      ],
+      "bytes": 50043,
+      "sha256": "f95c9a0d9a936c029b913df2b10584c1cc79d632918e61ff37dcd4aa364d3e64",
+      "vertical": true
+    }
+  }
+}
