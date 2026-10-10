@@ -371,6 +371,17 @@ becomes.
   design; the `material-maker` skill says how to make one and judge it on the contact sheet.
   Never write a procedural image generator that imitates a graph. Decals and screens are a
   small set of further textures, committed as PNG sources.
+- **Ship texture lines start on the 3D hull** (owner, 2026-10-10: "when drawing lines, draw
+  lines first projected on the 3d hull, then enhance the texture afterwards"). Place panel
+  seams, armor boundaries, service-channel edges and livery lines on the actual hull first.
+  Inspect their width, spacing and continuity across roof, wall, bevel and bow transitions
+  in 3D, with windows and other openings visible. Bake that projected linework and its
+  region masks into the model's UV atlas, retaining the editable projection source and
+  unenhanced bake. Use the bake as the locked layout for subsequent texture enhancement:
+  image generation adds material variation, wear and small details while preserving the
+  projected boundaries. The UV wireframe is a supporting guide, not the authored linework.
+  Check the enhanced texture on the hull for shifted lines or seams. All liveries inherit
+  the same projected layout; bake each LOD texture from the finished full-detail model.
 - **Walls, ceilings and trims are panels, modelled and baked in Blender** (owner, 2026-10-05,
   on the wall panel prototype: "Ooh now that is good. Walls and ceilings still look awkward
   update those as well using your new textures skill"). Never a grid of one tiled square: each

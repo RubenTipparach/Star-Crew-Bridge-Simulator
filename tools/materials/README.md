@@ -26,6 +26,12 @@ Needs Python 3 with numpy and Pillow (`pip install numpy pillow`).
 
 ## Custom exterior paint, 2026-10-10
 
+Ship linework now follows the owner's [3D projection workflow](../../CLAUDE.md#9-art-low-poly).
+The current `exterior_uv_guide.py` exports mesh edges and island coverage only. The delivered
+Tern paintings predate the projected-linework step; those UV guides are not a bake of authored
+panel lines. Future linework passes retain their hull projection source and unenhanced UV bake
+beside the enhanced texture, then use the existing Material Maker export and Blender LOD bakes.
+
 The original [paint bitmap](sources/exterior-paint.png) was generated with the built-in image_gen tool. Its [complete prompt](sources/exterior-paint-prompt.txt) is committed beside it. The [exterior paint graph](ptex/exterior_paint.ptex) imports that bitmap as its editable albedo input. It supplies pearl and graphite ramps without a panel grid. Material Maker 1.4 rendered the graph at 2048 px using the owner's NVIDIA GPU; the existing post-process produced the two 128 px layers at 32 px/m. Existing layer indices remain stable; the new layers are 11 and 12, costing 174,760 bytes with mipmaps.
 
 ```powershell
