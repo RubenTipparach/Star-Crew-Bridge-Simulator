@@ -67,9 +67,10 @@ point along the outward normal and its own spin, and a burst sphere.
 
 ## 7. The Hound's layout
 
-A corvette 30 m long in `data/enemies.json` (`layout`): five hull sections, seven rooms (bridge, magazine, reactor,
-hangar, port and starboard laser rooms, drive), loads (drive, reactor, shield generator, sensors, two banks, two tubes,
-two turrets, the hangar's launch), two nodes and four conduits. Its armour sections are its own spans x 6.
+A corvette 30 m long in `data/ships/hound/layout.json` (the work plan moved it out of `data/enemies.json`): five hull
+sections, seven rooms (bridge, magazine, reactor, hangar, port and starboard laser rooms, drive), loads (drive, reactor,
+shield generator, sensors, two banks, two tubes, two turrets, the hangar's launch), two nodes and four conduits. Its
+armour sections are its own spans x 6.
 
 ## 8. Cost
 

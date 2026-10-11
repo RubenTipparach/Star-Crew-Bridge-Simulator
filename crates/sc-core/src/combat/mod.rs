@@ -3279,6 +3279,28 @@ mod tests {
         assert_eq!(shield_face(DVec3::new(0.0, -12.0, 0.0), DVec3::from_array(e.axes_m)), 5);
     }
 
+    #[test]
+    fn the_hounds_shield_holds_its_hull_and_mounts_with_a_metre_to_spare() {
+        let d = DrillData::shipped();
+        let e = d.enemy.shields.ellipsoid;
+        let (axes, c) = (DVec3::from_array(e.axes_m) - DVec3::ONE, DVec3::from_array(e.centre_m));
+        let mut pts: Vec<DVec3> = Vec::new();
+        for q in &d.hound_layout.sections {
+            let (hb, t, b, ch) = (q.half_beam_m, q.top_m, q.bottom_m, q.chamfer_m);
+            for (x, y) in [(hb, t - ch), (hb - ch, t), (hb, b + ch), (hb - ch, b)] {
+                pts.extend([DVec3::new(x, y, q.z_m), DVec3::new(-x, y, q.z_m)]);
+            }
+        }
+        let cb = &d.enemy.combat;
+        pts.extend(cb.turrets.iter().map(|t| DVec3::from_array(t.position_m)));
+        pts.extend(cb.lasers.iter().flat_map(|l| l.banks.iter().map(|b| DVec3::from_array(b.position_m))));
+        pts.extend(cb.tubes.iter().flat_map(|t| t.muzzle_m.iter().map(|m| DVec3::from_array(*m))));
+        for p in pts {
+            assert!(((p - c) / axes).length() <= 1.0, "{p} is outside the Hound's shield less a metre");
+        }
+        assert!(e.axes_m[2] > 2.0 * e.axes_m[0], "a long ship's shield is long, not the sphere it was");
+    }
+
     /// A drill in Engage with a player at each of `stations`; their slots in the same order.
     fn engaged_at(stations: &[Station]) -> (Drill, Vec<u8>) {
         let mut d = drill();
