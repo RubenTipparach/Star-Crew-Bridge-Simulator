@@ -631,6 +631,16 @@ impl Seat {
         self.obj_open = false;
     }
 
+    /// Open or close OBJECTIVES (the drill's `--look-in`).
+    pub fn show_objectives(&mut self, open: bool) {
+        self.obj_open = open;
+    }
+
+    /// Show the captain's CMD or SHIP page.
+    pub fn set_captain_tab(&mut self, tab: &str) {
+        self.cap_tab = tab.to_owned();
+    }
+
     /// Whether the last `input` touched a control of the console: a press, a drag, a hold or a key, not the title
     /// band's own controls (single-player design 4: a press on an AUTO station's console takes it MANUAL).
     pub fn touched(&self) -> bool {

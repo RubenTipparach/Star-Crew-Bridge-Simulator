@@ -8,7 +8,7 @@
 
 ## 2. Build (on a request to build it)
 
-- [ ] 2.1 The grid line-of-sight walk in `sc-core`, with its tests.
-- [ ] 2.2 One nameplate routine in `sc-client`, drawn by the walk and the drill.
-- [ ] 2.3 (NPC) for bots and automation; the Names option read from `settings/options.json`.
-- [ ] 2.4 Captures of the walk and the drill in `docs/screenshots/engine/`, beside the mockup's.
+- [x] 2.1 The line of sight in `sc-core` (`WalkWorld::sees`, a ray cast; design 2 says why not the grid walk), with its tests.
+- [x] 2.2 One nameplate routine in `sc-client` (`nameplate.rs`), drawn by the walk and the drill, nearest on top.
+- [x] 2.3 (NPC) for bots and a single player's crew; the Names option read from `settings/options.json`.
+- [x] 2.4 Captures of the walk and the drill: `docs/screenshots/engine/nameplates-walk.jpg`, `nameplates-drill.jpg`.

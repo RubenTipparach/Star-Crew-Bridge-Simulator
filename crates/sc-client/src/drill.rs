@@ -71,6 +71,9 @@ pub struct DrillArgs {
     pub seed: u64,
     /// The hand-over test's folder: once the briefing shows, capture it and hand back to the menu.
     pub hand_test: Option<PathBuf>,
+    /// Single player: every this many seconds of the fight, look in on the next station's console through the crew
+    /// tabs, as a captain going round the bridge does (`--look-in S`, for recordings of a whole fight).
+    pub look_in: Option<f64>,
 }
 
 struct Meshes {
@@ -172,6 +175,9 @@ pub struct DrillApp {
     overview: bool,
     /// The scripted shots: since when this player's body, and another's, has been seen walking.
     walk_seen: (Option<f64>, Option<f64>),
+    /// The game menu on Esc (game-menu), and the options it sets.
+    menu: crate::game_menu::GameMenu,
+    options: crate::options::Options,
 }
 
 fn load_data() -> Result<DrillData, String> {
@@ -268,10 +274,13 @@ impl DrillApp {
             bridge: None,
             overview: args_watch,
             walk_seen: (None, None),
+            menu: Default::default(),
+            options: crate::options::Options::load(),
         };
         match crate::drill_bridge::BridgeView::load(&mut app.r, std::path::Path::new("compiled/tern.deck")) {
-            Ok(b) => {
+            Ok(mut b) => {
                 println!("sc-client: the bridge for the crew on foot, {} triangles", b.triangles);
+                b.fov_deg = app.options.fov_deg as f32;
                 app.bridge = Some(b);
             }
             Err(e) => println!("sc-client: no bridge to walk ({e}); the drill shows the consoles only"),
@@ -664,17 +673,46 @@ impl World<'_> {
 }
 
 impl DrillApp {
-    /// The crew's bodies 100 ms behind the newest snapshot, as the ships are drawn, each with whether it is a bot's.
-    fn bodies_now(&self) -> Vec<(sc_net::msg::BodySnap, bool)> {
+    /// The crew's bodies 100 ms behind the newest snapshot, as the ships are drawn, each with the division of the
+    /// station it holds (or walks to): what it wears (crew-uniforms 2).
+    fn bodies_now(&self) -> Vec<(sc_net::msg::BodySnap, String)> {
         let Some(s) = self.session.as_ref() else { return Vec::new() };
         let Some((a, b, f)) = s.interpolation() else { return Vec::new() };
         crate::drill_bridge::blend(&a.bodies, &b.bodies, f)
             .into_iter()
             .map(|x| {
-                let bot = s.crew.iter().any(|c| c.slot == x.slot && c.bot);
-                (x, bot)
+                let held = s.crew.iter().find(|c| c.slot == x.slot).and_then(|c| c.station).or(x.going);
+                let division = held.map_or("operations", |st| self.data.division_of(st)).to_owned();
+                (x, division)
             })
             .collect()
+    }
+
+    /// `--look-in`: in single player, during the fight, the console shown goes round the crewed stations every few
+    /// seconds by the crew tabs (the player's own seat between them), with the captain's ship plan, OBJECTIVES and the
+    /// bridge's overview on the way; the stations stay on AUTO, so their NPCs keep playing them.
+    fn look_in(&mut self, ships: Option<&(ShipSnap, ShipSnap, Snapshot)>) {
+        let (Some(every), Some(snap)) = (self.args.look_in, ships.map(|x| &x.2)) else { return };
+        let Some(host) = self.solo.as_ref() else { return };
+        if snap.phase != Phase::Engage || every <= 0.0 {
+            return;
+        }
+        let own = host.seat;
+        let mut stops: Vec<(Station, u8)> = vec![(own, 0), (own, 1)];
+        for n in &host.crew {
+            stops.push((n.station, 0));
+        }
+        stops.push((own, 2));
+        stops.push((own, 3));
+        let (st, what) = stops[(snap.phase_s / every) as usize % stops.len()];
+        self.show(st);
+        // The last stop is the bridge itself, from its overview: the crew at their seats, the fight through the windows.
+        self.overview = what == 3;
+        let seat = &mut self.seats[st as usize];
+        seat.show_objectives(what == 2);
+        if st == Station::Captain {
+            seat.set_captain_tab(if what == 1 { "SHIP" } else { "CMD" });
+        }
     }
 
     /// The scripted shots' overview frames: the first half second after another crew member is seen walking.
@@ -721,6 +759,11 @@ impl DrillApp {
                 self.capture(f, &format!("0-walking-{st}.png"));
             }
         }
+        // A scripted single-player run has no hands on READY: it presses it once the briefing is shot, as a bot does
+        // after reading it, and it goes out when the crew are seated.
+        if self.solo.is_some() && snap.phase == Phase::Muster && t >= 2.0 {
+            self.ready_held = true;
+        }
         let plan: &[(Phase, f64, &str)] = &[
             (Phase::Muster, 1.5, "1-briefing"),
             (Phase::Countdown, 2.0, "2-countdown"),
@@ -732,6 +775,16 @@ impl DrillApp {
         for (p, at, name) in plan {
             if snap.phase == *p && t >= *at {
                 self.capture(f, &format!("{name}-{st}.png"));
+            }
+        }
+        // The game menu over the console, opened and closed by the script (game-menu 2.5).
+        let menu_shot = format!("7-menu-{st}.png");
+        if snap.phase == Phase::Engage && (30.0..32.0).contains(&t) && !self.shots_taken.contains(&menu_shot) {
+            if !self.menu.open() {
+                self.menu.escape();
+            } else if t >= 30.5 {
+                self.capture(f, &menu_shot);
+                self.menu.escape();
             }
         }
         // Single player: the crew's tabs on the player's own console, then Tactical's console (or the first NPC's) on
@@ -779,17 +832,20 @@ impl App for DrillApp {
         self.ui.event(&e);
         match e {
             Event::Quit => return Flow::Done,
-            // Esc first closes OBJECTIVES over a console (objectives-tab 1), then leaves.
-            Event::KeyDown(keys::ESCAPE) if self.seats[self.console_station() as usize].objectives_open() => {
+            // Esc first closes OBJECTIVES over a console (objectives-tab 1), then opens or steps back through the
+            // game menu (game-menu 2.4).
+            Event::KeyDown(keys::ESCAPE)
+                if !self.menu.open() && self.seats[self.console_station() as usize].objectives_open() =>
+            {
                 let st = self.console_station() as usize;
                 self.seats[st].close_objectives();
             }
             Event::KeyDown(keys::ESCAPE) => {
-                if !self.args.menu {
-                    return Flow::Done;
-                }
-                crate::back_to_menu(None);
+                self.menu.escape();
+                self.held.clear();
             }
+            // While the menu is up, its keys are its own (the game underneath runs on, design 2).
+            Event::KeyDown(_) if self.menu.open() => {}
             Event::KeyDown(keys::V) => self.overview = !self.overview,
             Event::KeyDown(keys::F3) => self.show_net = !self.show_net,
             Event::KeyDown(k) => {
@@ -908,17 +964,28 @@ impl App for DrillApp {
                 );
                 let (w, h) = (720.0 * aspect, 720.0);
                 let crew = self.session.as_ref().map(|s| s.crew.clone()).unwrap_or_default();
+                // A name over every body (crew-nameplates 2): on screen and near; everyone on the bridge is in the one
+                // room, so no line-of-sight walk here. Off when Options says so.
+                let names = self.options.names;
                 let labels = bodies
                     .iter()
+                    .filter(|_| names)
                     .filter(|(b, _)| !(hide_me && Some(b.slot) == me))
                     .filter_map(|(b, _)| {
                         let head = [b.pos[0], b.pos[1] + 2.05, b.pos[2]];
+                        let dist = head.iter().zip(eye).map(|(a, e)| (f64::from(*a) - e).powi(2)).sum::<f64>().sqrt();
+                        let k = crate::nameplate::fade(dist as f32)?;
                         let at = crate::drill_bridge::project(vp, eye, head, w, h)?;
-                        let name = crew.iter().find(|c| c.slot == b.slot).map(|c| c.name.clone()).unwrap_or_default();
+                        let who = crew.iter().find(|c| c.slot == b.slot);
+                        let name = who.map(|c| c.name.clone()).unwrap_or_default();
                         let going = b.going.map(|g| format!("to {}", g.name()));
-                        Some((Pos2::new(at[0], at[1]), name, going))
+                        let npc = who.is_some_and(|c| c.bot);
+                        Some(Label { at: Pos2::new(at[0], at[1]), name, npc, going, k, dist })
                     })
-                    .collect();
+                    .collect::<Vec<Label>>();
+                // The farthest first, so a nearer plate is drawn over one behind it.
+                let mut labels = labels;
+                labels.sort_by(|a, b| b.dist.total_cmp(&a.dist));
                 let banner = mine.and_then(|b| b.going).map(|g| format!("Walking to {}", g.name()));
                 bridge_ui = Some(BridgeUi { labels, banner, overview: !own });
             }
@@ -962,6 +1029,9 @@ impl App for DrillApp {
         let mut painted: Option<(console::kit::Hits, f32)> = None;
         let mut pointer: Vec<PointerEv> = Vec::new();
         let show_net = self.show_net;
+        let place = format!("SCS Tern, {}", station.map_or("Bridge", |s| s.name()));
+        let mut menu_ask = None;
+        let (menu, options) = (&mut self.menu, &mut self.options);
         let frame = self.ui.run(&mut self.r, f, self.time_s, |ctx| {
             if let Some(v) = console_view.as_ref() {
                 let hover = ctx.input(|i| i.pointer.hover_pos());
@@ -984,11 +1054,23 @@ impl App for DrillApp {
                 });
             }
             draw_ui(ctx, &view, &mut ask, show_net);
+            menu_ask = menu.show(ctx, &place, options);
         });
         self.pointer = pointer;
+        if let Some(b) = self.bridge.as_mut() {
+            b.fov_deg = self.options.fov_deg as f32;
+        }
+        // Return to menu leaves the crew for the front menu (the station passes to automation, design 2); Exit closes
+        // the game. Each was asked Yes or No first.
+        match menu_ask {
+            Some(crate::game_menu::MenuAsk::Leave) if self.args.menu => crate::back_to_menu(None),
+            Some(crate::game_menu::MenuAsk::Leave | crate::game_menu::MenuAsk::Exit) => return Flow::Done,
+            _ => {}
+        }
         // The seated player's hands on the console, in Engage only (the briefing and debrief sit over it otherwise).
         let engage = ships.as_ref().is_some_and(|x| x.2.phase == Phase::Engage);
         let pressed = std::mem::take(&mut self.pressed);
+        let engage = engage && !self.menu.open();
         if let (true, Some(_), None, Some((hits, scale)), Some(v), Some((t, h, _))) =
             (engage, station, self.bot.as_ref(), painted.as_ref(), console_view.as_ref(), ships.as_ref())
         {
@@ -1068,6 +1150,7 @@ impl App for DrillApp {
             None => self.r.present_with_ui(&self.blank, f.width, f.height, true, &frame.meshes(), frame.points),
         }
         self.scripted_shots(f);
+        self.look_in(ships.as_ref());
         // The hand-over test: the game up with its briefing, then back to the menu.
         let briefing = self.session.as_ref().and_then(|s| s.latest()).is_some_and(|s| s.phase_s >= 1.0);
         if let (Some(dir), true) = (self.args.hand_test.clone(), briefing) {
@@ -1120,8 +1203,20 @@ struct UiView {
 }
 
 /// What the bridge view's UI shows: a name over each body (and where it is going), and this player's own walk.
+/// A name over a body: where its foot is on screen, the name, whether it is an NPC, where it walks to, and how much
+/// of it shows.
+struct Label {
+    at: Pos2,
+    name: String,
+    npc: bool,
+    going: Option<String>,
+    k: f32,
+    /// From the eye, metres.
+    dist: f64,
+}
+
 struct BridgeUi {
-    labels: Vec<(Pos2, String, Option<String>)>,
+    labels: Vec<Label>,
     banner: Option<String>,
     overview: bool,
 }
@@ -1252,11 +1347,8 @@ fn bridge_overlay(ctx: &egui::Context, v: &UiView, snap: &Snapshot, b: &BridgeUi
         })
         .collect();
     painter.text(Pos2::new(w - 16.0, 17.0), Align2::RIGHT_CENTER, held.join("   "), FontId::proportional(14.0), DIM);
-    for (at, name, going) in &b.labels {
-        painter.text(*at, Align2::CENTER_BOTTOM, name, FontId::proportional(17.0), TEXT);
-        if let Some(g) = going {
-            painter.text(*at + Vec2::new(0.0, 18.0), Align2::CENTER_BOTTOM, g, FontId::proportional(14.0), AMBER);
-        }
+    for l in &b.labels {
+        crate::nameplate::draw(&painter, l.at, &l.name, l.npc, l.going.as_deref(), l.k);
     }
     if let Some(t) = &b.banner {
         painter.text(Pos2::new(w / 2.0, 560.0), Align2::CENTER_CENTER, t, FontId::proportional(30.0), AMBER);

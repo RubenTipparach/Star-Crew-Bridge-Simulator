@@ -409,6 +409,17 @@ mod tests {
     }
 
     #[test]
+    fn a_wall_hides_a_name_and_the_doorway_does_not() {
+        let d = data();
+        let w = WalkWorld::new(&rooms(), &WalkEntities::default(), &d).expect("world");
+        assert!(w.sees([-5.0, 0.0, 2.0], [-2.0, 0.0, 6.0]), "across one room");
+        assert!(w.sees([-0.2, 0.0, 2.0], [-0.2, 0.0, 6.0]), "standing hard by the wall");
+        assert!(!w.sees([-5.0, 0.0, 2.0], [5.0, 0.0, 2.0]), "the wall between the rooms hides them");
+        assert!(w.sees([-4.0, 0.0, 7.6], [4.0, 0.0, 7.6]), "straight through the doorway");
+        assert!(w.sees([4.0, 0.0, 7.6], [-4.0, 0.0, 7.6]), "and back the other way");
+    }
+
+    #[test]
     fn a_ladder_joins_two_decks() {
         let d = data();
         let mut t = Vec::new();
@@ -422,5 +433,6 @@ mod tests {
             p.iter().any(|w| matches!(w, Waypoint::Climb { down: false, .. })),
             "the way up is the ladder, climbed up: {p:?}"
         );
+        assert!(!w.sees([-4.0, 0.0, -4.0], [-4.0, 3.5, -4.0]), "a person on the deck above is not named");
     }
 }

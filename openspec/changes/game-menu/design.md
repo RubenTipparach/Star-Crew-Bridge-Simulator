@@ -46,7 +46,7 @@ The same panel, a row each, a label and a control (CLAUDE.md 10):
 | Display | Full screen, Window | Full screen | `display` |
 | Names | On, Off | On | `names` (`crew-nameplates` 3) |
 | Look speed | A slider, 25 % to 200 % | 100 % (0.0025 rad per pixel) | `look_speed_pct` |
-| Field of view | A slider, 40 to 80 degrees | 50 degrees (`data/space/exterior.json`) | `fov_deg` |
+| Field of view | A slider, 40 to 80 degrees | 70 degrees, the eye's angle in the walk and on the bridge (50 is the viewscreen's camera in `data/space/exterior.json`; recommendation taken, ask only with screenshots) | `fov_deg` |
 | Back | Returns to the menu | | |
 
 Changes apply at once and are written to `settings/options.json` (the browser's storage later, like the officer).

@@ -8,6 +8,22 @@ The design is five changes, written up and validated on `feat/combat-2`:
 `laser-banks`, `armour-and-missiles`, `enemy-fighters`, `ship-damage`, `objectives-tab`. Read the one you build, and
 the owner's words in `laser-banks`' proposal and `ship-damage`'s.
 
+## Status, 2026-10-11
+
+Delegation stopped: the Mac's and Pi 2's sessions went quiet after their first commits, and the owner said "delegation
+failed so its up to you!". Pi 1 merged every branch with work on it (B, C, D's mockups, Pi 2's network report) and
+built the rest itself on `feat/combat-2`:
+
+| Stream | Done |
+| --- | --- |
+| A | Weapons, protocol 7, B and C wired into the fight; the Tern's damage on the wire and the captain's ship plan |
+| B | Merged; the Hound's shield fitted to its hull; the design's file name fixed |
+| C | Merged; fighters on screen, their hull and shield on the wire |
+| D | The engine consoles at parity with the Mac's approved mockups (both laser stations, the gunner's sight, DECOY and the magazine, OBJECTIVES on every console, the captain's CREW for seven stations); the objectives' kinds |
+
+Also built: the game menu on Esc with Options (`game-menu`), names over the crew with (NPC) (`crew-nameplates`), and
+the crew's division colours (`crew-uniforms`). Left: the whole-fight recording of the First Mission Gate.
+
 ## Workstreams
 
 | # | Who | Branch (from `feat/combat-2`) | Builds | Owns these files |

@@ -33,10 +33,13 @@ A name shows when all of these hold, tested each frame:
 
 1. **On screen.** The head point projects inside the view (the drill's `project` today).
 2. **Within 25 m** of the eye. From 20 m to 25 m it fades out linearly, so names don't pop.
-3. **In line of sight on the walk grid.** The eye and the head are on the same deck, and a straight walk across the
-   deck's grid cells (`sc-core::nav`, Bresenham over its 0.5 m cells, at most 50 steps at 25 m) crosses only walkable cells (a doorway is one).
-   That is the test for "not through a bulkhead" without reading the depth buffer, which a Pi 5 should not stall on.
-   A body on another deck (seen down a ladder well) is not named: recommendation taken (ask only with screenshots).
+3. **In line of sight.** The two are on the same deck (floors within 1.2 m) and a ray at chest height (1.3 m) from
+   one to the other meets nothing of the walk world (`WalkWorld::sees`, Rapier's ray cast on the collision the walk
+   already holds). That is the test for "not through a bulkhead" without reading the depth buffer, which a Pi 5 should
+   not stall on. Built first as a walk over the 0.5 m grid's cells, it hid a bot two metres away in plain view: the grid
+   marks the cells within a body's clearance of a wall unwalkable, so standing by a door frame blocked the line.
+   Recommendation taken (ask only with screenshots): the ray cast, with the grid walk's tests (a wall hides, a doorway
+   does not, another deck does not show). A body on another deck (seen down a ladder well) is not named.
 
 On the drill's bridge every body is in the one room, so step 3 is skipped there.
 
@@ -50,13 +53,13 @@ Options has a Names row, On or Off (`game-menu` 3), on by default and kept in `s
 | --- | --- |
 | Draw calls | 1: every plate is text and a band in one egui layer with one clip rectangle and the font atlas |
 | Triangles | 2 per glyph and 2 per band: about 1,000 for 16 plates of 28 characters |
-| CPU | At most 9 grid walks of 50 cells and 16 text layouts: well under 0.1 ms, to measure on the Pi with the probe |
+| CPU | At most 9 ray casts against the walk's collision and 16 text layouts: well under 0.1 ms, to measure on the Pi with the probe |
 | Memory | None held: the plates are built each frame from the snapshot and the crew list |
 | Network | None: names already travel in the crew list (`coop-drill`) and bot names from the session seed (`crew-npcs`) |
 
 ## 5. Checks
 
-- A unit test on the grid walk: a wall between two cells blocks the line, a doorway does not.
+- A unit test on the line of sight: a wall between two rooms hides a person, a doorway and a wall at your shoulder do not, another deck does.
 - A headless capture of the walk (`--shots`) with a bot in view shows its plate, saved in `docs/screenshots/engine/`.
 - A drill capture with an `sc-bot` aboard shows `(NPC)` after its name.
 

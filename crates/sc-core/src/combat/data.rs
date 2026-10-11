@@ -794,6 +794,9 @@ pub struct StationsFile {
     pub seat_ids: std::collections::BTreeMap<String, String>,
     /// When a bot gets up for another station (coop-drill design 9).
     pub bot_posts: BotPosts,
+    /// Each station's division, by station id: what the person holding it wears (crew-uniforms 2; the divisions are
+    /// `data/crew/company.json`'s).
+    pub divisions: std::collections::BTreeMap<String, String>,
 }
 
 /// Getting in and out of a seat, seconds (bridge-stations 6: a 0.4 s seat snap either way).
@@ -830,6 +833,11 @@ impl Validate for StationsFile {
         c.number("seats.stand_s", self.seats.stand_s, 0.0, 10.0);
         c.number("seats.sit_s", self.seats.sit_s, 0.0, 10.0);
         c.number("bot_posts.reassign_s", self.bot_posts.reassign_s, 0.0, 600.0);
+        for s in crate::combat::Station::ALL {
+            if !self.divisions.contains_key(s.id()) {
+                c.equals(&format!("divisions.{}", s.id()), "", "a division's id for every station");
+            }
+        }
         for (i, p) in self.bot_posts.posts.iter().enumerate() {
             if crate::combat::Station::from_id(p).is_none() {
                 c.equals(&format!("bot_posts.posts[{i}]"), p, "helm or tactical");
@@ -1222,6 +1230,11 @@ impl DrillData {
     /// A profile by id (`automation` and `bot` are checked at load).
     pub fn profile(&self, id: &str) -> &Profile {
         self.stations.profiles.iter().find(|p| p.id == id).expect("checked at load")
+    }
+
+    /// The division of whoever holds station `s` (crew-uniforms 2).
+    pub fn division_of(&self, s: crate::combat::Station) -> &str {
+        self.stations.divisions.get(s.id()).map_or("operations", String::as_str)
     }
 
     /// The layout id of a station's seat.

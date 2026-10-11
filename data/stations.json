@@ -33,6 +33,7 @@
     "gunner": [["FIGHTERS", "target"], ["HOLD FIRE", "lock"]]
   },
   "seat_ids": { "laser_port": "comms", "laser_stbd": "flight_ops", "gunner": "gunner_dorsal" },
+  "divisions": { "captain": "operations", "helm": "operations", "tactical": "operations", "laser_port": "operations", "laser_stbd": "operations", "gunner": "operations", "science": "science", "engineering": "engineering" },
   "seats": { "stand_s": 0.4, "sit_s": 0.4 },
   "bot_posts": { "posts": ["helm", "tactical", "engineering", "science", "captain"], "reassign_s": 5.0 }
 }

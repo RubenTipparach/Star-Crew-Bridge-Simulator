@@ -33,14 +33,15 @@ pub struct BridgeView {
     rooms: Vec<(Mesh, [f64; 3])>,
     /// The viewscreens on the command deck.
     views: Vec<DeckView>,
-    /// The figure players wear, and the one bots wear.
-    player: Option<Mesh>,
-    crew: Option<Mesh>,
+    /// The crew figures, one a division, by the division's id (crew-uniforms 3).
+    figures: Vec<(String, Mesh)>,
     tex: TextureArray,
     panel_first: u32,
     panel_glow: f32,
     /// Triangles drawn for the rooms.
     pub triangles: usize,
+    /// The eye's vertical field of view, degrees (Options, game-menu 3).
+    pub fov_deg: f32,
 }
 
 impl BridgeView {
@@ -57,12 +58,14 @@ impl BridgeView {
             })
             .collect();
         let tex = r.make_texture_array_mips(t.size_px, t.layers, &levels);
-        let (mut rooms, mut player, mut crew, mut triangles) = (Vec::new(), None, None, 0);
+        let (mut rooms, mut figures, mut triangles) = (Vec::new(), Vec::new(), 0);
         for c in &d.index.compartments {
             let idx = d.indices_of(c);
             match (c.deck.as_str(), c.id.as_str()) {
-                ("figure", "figure_player") => player = Some(r.make_mesh(d.vertices_of(c), Indices::U32(&idx))),
-                ("figure", "figure_command") => crew = Some(r.make_mesh(d.vertices_of(c), Indices::U32(&idx))),
+                ("figure", id) => figures.push((
+                    id.trim_start_matches("figure_").to_owned(),
+                    r.make_mesh(d.vertices_of(c), Indices::U32(&idx)),
+                )),
                 ("A", _) => {
                     triangles += idx.len() / 3;
                     rooms.push((r.make_mesh(d.vertices_of(c), Indices::U32(&idx)), c.origin_m));
@@ -78,7 +81,9 @@ impl BridgeView {
             .filter_map(|c| Some(f64::from(c.floor_m?[1])))
             .collect();
         let views = views_on(&d.index.views, &floors);
-        Ok(Self { rooms, views, player, crew, tex, panel_first: t.panel_first, panel_glow: t.panel_glow[0], triangles })
+        let fov_deg = crate::options::FOV_DEG[2] as f32;
+        let panel_glow = t.panel_glow[0];
+        Ok(Self { rooms, views, figures, tex, panel_first: t.panel_first, panel_glow, triangles, fov_deg })
     }
 
     /// Draw the bridge from `eye` (ship frame) looking along `yaw` (0 to the bow) and `pitch` into `t`, with the
@@ -95,12 +100,12 @@ impl BridgeView {
         yaw: f32,
         pitch: f32,
         aspect: f32,
-        bodies: &[(BodySnap, bool)],
+        bodies: &[(BodySnap, String)],
         me: Option<u8>,
         own_eye: bool,
         out: Outside<'_>,
     ) -> Mat4 {
-        let fov = 70f32.to_radians();
+        let fov = self.fov_deg.to_radians();
         let proj = glam::camera::rh::proj::opengl::perspective(fov, aspect, 0.05, 400.0);
         let dir = Vec3::new(yaw.sin() * pitch.cos(), pitch.sin(), yaw.cos() * pitch.cos());
         let view = glam::camera::rh::view::look_to_mat4(Vec3::ZERO, dir, Vec3::Y);
@@ -130,11 +135,11 @@ impl BridgeView {
             }
         }
         let cube = sc_core::probes::fallback_cube();
-        for (b, bot) in bodies {
+        for (b, division) in bodies {
             if own_eye && Some(b.slot) == me {
                 continue;
             }
-            let Some(mesh) = (if *bot { self.crew.as_ref() } else { self.player.as_ref() }).or(self.player.as_ref())
+            let Some(mesh) = self.figures.iter().find(|(d, _)| d == division).or(self.figures.first()).map(|(_, m)| m)
             else {
                 continue;
             };
