@@ -60,8 +60,9 @@ into the same file rather than a second one. That keeps one loader and one downl
 - **The file**: version 6 adds an optional `hull` to the index (origin, scale, its vertex and index ranges in the
   shared blobs, its parts, its two arrays' mip offsets in the texture blob). `sc-core::deck::read` checks every range
   as it does a compartment's. A ship without an exterior model compiles as before, without `hull`.
-- **Checks in `deckc`**: the triangle count is the manifest's, the bounds are the manifest's within 1 mm, and the
-  triangles fit the Pi 5 exterior budget (12,000, the engine-stack table); otherwise the compile stops.
+- **Checks in `deckc`**: the triangle count is the manifest's, the bounds are the manifest's within 6 mm (the manifest
+  rounds them to the centimetre), and the triangles fit the Pi 5 exterior budget (12,000, the engine-stack table);
+  otherwise the compile stops.
 
 ## 4. The draw
 

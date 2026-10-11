@@ -9,11 +9,11 @@ can look out the window na dsee their ship").
 
 ## 2. The hull in the engine
 
-- [ ] 2.1 `sc-tools/src/glb.rs`: the glTF binary reader and its tests on the committed model.
-- [ ] 2.2 The colour byte and the mip chain shared by the rooms and the hull.
-- [ ] 2.3 Deck file version 6: the optional hull in the index, its checks in `read`, a round-trip test.
-- [ ] 2.4 `deckc` compiles the hull from `props.json`'s default livery; manifest and budget checks; packing test.
-- [ ] 2.5 The client loads the hull and draws its six parts after the rooms, in the walk and on the drill's bridge.
+- [x] 2.1 `sc-tools/src/glb.rs`: the glTF binary reader and its tests on the committed model.
+- [x] 2.2 The colour byte and the mip chain shared by the rooms and the hull.
+- [x] 2.3 Deck file version 6: the optional hull in the index, its checks in `read`, a round-trip test.
+- [x] 2.4 `deckc` compiles the hull from `props.json`'s default livery; manifest and budget checks; packing test.
+- [x] 2.5 The client loads the hull and draws its six parts after the rooms, in the walk and on the drill's bridge.
 
 ## 3. The windows in the decks
 
