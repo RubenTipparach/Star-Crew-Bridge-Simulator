@@ -144,3 +144,9 @@
 - [x] Enhance the inspected projected joints to match the supplied plate-edge reference.
 - [x] Replace the uniform seam overlay and inspect the finish on the hull.
 - [x] Rebuild every livery and LOD; verify seam continuity, windows and final captures.
+
+## Owner refinement: ribbon border and deeper cyan
+
+- [x] Restore the darker cyan and project the thin white ribbon outline on the hull.
+- [x] Inspect the projection, finish the native material graphs and rebuild every livery/LOD.
+- [x] Check the white border, seam and paint continuity, windows, budgets and final captures.

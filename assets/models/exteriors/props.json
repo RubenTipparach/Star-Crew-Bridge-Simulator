@@ -32,8 +32,8 @@
       ],
       "embedded_images": 3,
       "texture_bytes_with_mips": 5767164,
-      "sha256": "6b31310864cdb105dd440424ca14106940f36c429d0f37b43665ddf577b40bf1",
-      "bytes": 1853552,
+      "sha256": "0d6e235ff9f6d7b7d47e92210a6cacba367d06a820d6de91a7d9c892f4d186c7",
+      "bytes": 1860252,
       "name": "SCS Tern",
       "class": "Heron-class frigate",
       "role": "Player ship",
@@ -1770,8 +1770,8 @@
       ],
       "embedded_images": 1,
       "texture_bytes_with_mips": 5592404,
-      "sha256": "13564369eeaa6f0977468001101ee83def63e8f6c89282c0040e066d18c42849",
-      "bytes": 1503112,
+      "sha256": "dceefab737e5c4cb187130b60fb46ee555b2c9d9ee0ed979fce09ab48e22bf90",
+      "bytes": 1509124,
       "name": "SCS Tern",
       "class": "Heron-class frigate",
       "role": "Player ship",
@@ -1877,8 +1877,8 @@
         "file": "atlases/tern_lod1.png",
         "px": 1024,
         "emission_coverage": 0.03386,
-        "sha256": "b42688ed73d198a5aa2ed26e5e30185b1252a73312786f3fee6b6ddaab3871f4",
-        "bytes": 1402416
+        "sha256": "56ebd408c00bec01dd358c3f7d36f80f8b05bd8139286e720447caeffc81d394",
+        "bytes": 1408426
       }
     },
     "tern_lod2": {
@@ -1906,8 +1906,8 @@
       ],
       "embedded_images": 1,
       "texture_bytes_with_mips": 1398100,
-      "sha256": "de97627dafa6fa0c16698d58eed21514315df81b6a2b1650d0e087328ad2cc28",
-      "bytes": 396428,
+      "sha256": "e90053c01e48b5d72fc494c39d7290806e0b3b6753cead8b24cb7c6d17464b0b",
+      "bytes": 397516,
       "name": "SCS Tern",
       "class": "Heron-class frigate",
       "role": "Player ship",
@@ -1940,8 +1940,8 @@
         "file": "atlases/tern_lod2.png",
         "px": 512,
         "emission_coverage": 0.03419,
-        "sha256": "baa6e43ca38c84060f0605ea264f901538384eee1a231517b0a7b0bbc98792ec",
-        "bytes": 354575
+        "sha256": "55809a85e9eb6e6553ef797204f6b7224c0e1c2670b457e01048113fcda737df",
+        "bytes": 355663
       }
     },
     "osprey": {
@@ -2176,14 +2176,14 @@
       "name": "Cyan",
       "texture": "tern_hull_cobalt",
       "accent_srgb": [
-        0.106,
-        0.722,
-        0.875
+        0.008,
+        0.655,
+        0.851
       ],
       "paint_srgb": [
-        0.106,
-        0.722,
-        0.875
+        0.008,
+        0.655,
+        0.851
       ],
       "directory": "liveries/cobalt"
     },

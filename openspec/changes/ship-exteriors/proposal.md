@@ -48,3 +48,8 @@ Owner correction: replace the unwanted arrow tip with a flat connecting band, an
 The new projected lines look drawn over the hull. Match the supplied earlier atlas
 with recessed joints, light plate lips and restrained wear along each boundary.
 Retain the aligned 3D layout, flat cyan joins, narrow equator and working windows.
+
+## Owner refinement: ribbon border and deeper cyan
+
+Restore the thin white outline on the ribbon and return Cyan toward the darker original
+finish. Keep the new integrated joints, flat central joins and continuous wrap.

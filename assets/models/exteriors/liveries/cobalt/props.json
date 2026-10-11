@@ -11,7 +11,7 @@
       "file": "tern.glb",
       "triangles": 4442,
       "triangle_budget": 12000,
-      "vertices": 8760,
+      "vertices": 8756,
       "draw_calls": 6,
       "dimensions_m": [
         45.0,
@@ -32,8 +32,8 @@
       ],
       "embedded_images": 3,
       "texture_bytes_with_mips": 5767164,
-      "sha256": "9b63070d0dd0c8205791de0ba0735ab89a3b511a0420155bd6f507f84dac4276",
-      "bytes": 1855780,
+      "sha256": "2608163d449246415742c6f329bd57ba2c72fd9f70e7cb38e9ff39a97300bc4b",
+      "bytes": 1858872,
       "name": "SCS Tern",
       "class": "Heron-class frigate",
       "role": "Player ship",
@@ -1770,8 +1770,8 @@
       ],
       "embedded_images": 1,
       "texture_bytes_with_mips": 5592404,
-      "sha256": "7a41c69d11d3b0e67e4e58e8171e823680fae6e12f14de55e5fa0fda26d4506d",
-      "bytes": 1504316,
+      "sha256": "6e887d7b4e5bbb9ef9313312ed2208b11a0ff3047545b1cac70e478f636a5aea",
+      "bytes": 1508808,
       "name": "SCS Tern",
       "class": "Heron-class frigate",
       "role": "Player ship",
@@ -1877,8 +1877,8 @@
         "file": "atlases/tern_lod1.png",
         "px": 1024,
         "emission_coverage": 0.03386,
-        "sha256": "c03e3de3069cb143f9dcdb408c682a558360ee7671f2094a41d428bd0a79aec5",
-        "bytes": 1403620
+        "sha256": "7dab0c1374d1a01ba65af7e3e78f82a2de94e3ab90b1b5dabae9842a49179e95",
+        "bytes": 1408110
       }
     },
     "tern_lod2": {
@@ -1906,8 +1906,8 @@
       ],
       "embedded_images": 1,
       "texture_bytes_with_mips": 1398100,
-      "sha256": "248d3d03e84ed5e01a8c87eef56d0e932c0ef60dfb1569c70fbb3aa0d7ff62b1",
-      "bytes": 396448,
+      "sha256": "0c684f1d4f00f09eaa9e9a9bc4841ec4314fb65cfceec08afef4721eb7279516",
+      "bytes": 397444,
       "name": "SCS Tern",
       "class": "Heron-class frigate",
       "role": "Player ship",
@@ -1940,8 +1940,8 @@
         "file": "atlases/tern_lod2.png",
         "px": 512,
         "emission_coverage": 0.03419,
-        "sha256": "637011b8bc84e056afa2b5bea23a717d81548de412563aebc18bb9675107ab3b",
-        "bytes": 354594
+        "sha256": "478320236ede3a63a49f4b548d7efc6309b255ac6a33aa30bcf63dd36a80f367",
+        "bytes": 355589
       }
     }
   },
@@ -1950,14 +1950,14 @@
     "name": "Cyan",
     "texture": "tern_hull_cobalt",
     "accent_srgb": [
-      0.106,
-      0.722,
-      0.875
+      0.008,
+      0.655,
+      0.851
     ],
     "paint_srgb": [
-      0.106,
-      0.722,
-      0.875
+      0.008,
+      0.655,
+      0.851
     ]
   }
 }

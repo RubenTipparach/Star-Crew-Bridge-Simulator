@@ -324,3 +324,46 @@ Reviewed fifty desktop captures and the phone default, including all forty-five
 livery/LOD views, Paint detail, seam joins, side and pylons. Paint detail and Cyan
 hull detail retain true-color screenshots to preserve the subtle finish; the others
 use the usual screenshot palette compression.
+
+## White ribbon outline and deeper cyan, 2026-10-10
+
+The earlier `tern-service-cyan.png` has median painted RGB 2 / 167 / 217; the current
+projection uses 27 / 184 / 223. Restore the earlier deeper cyan in the livery data and
+projection preview. Keep the pigment reference color separate from the chosen paint
+color so changing blue does not cancel itself during luminance normalization.
+
+Project a fine white pinstripe just inside both ribbon edges using the existing
+ship-local band field. Begin 0.16 m inside each edge with a 0.16 m white line; these
+are offsets along the authored projection field. It follows the flat join and side
+wrap continuously, without shifting the outer silhouette. Retain an editable Blender
+shader and a separate offline outline mask, inspect the projected line on the actual
+hull, then layer the existing generated pigment and joint finish through the native
+Material Maker graph. Panel joints and grey recesses retain their material. All three
+liveries receive the outline and both LODs are rebaked from the finished hull.
+
+No new runtime textures, draw calls or geometry. Decoded preview texture cost remains
+78.17 MiB; no Pi performance measurement is claimed.
+
+The three projection views were inspected before the native finish was applied. All
+three liveries retain the generated enamel variation and recessed joint material.
+Twenty border traces have a maximum center error of 0.024 m; all 205 sampled white
+outline texels per livery retain their white coat. The finished Cyan median is exactly
+RGB 2 / 167 / 217, matching the earlier source; the checker compares delivered colors
+to the selected livery. The full band/seam mask is byte-identical to the preceding
+revision, so the flat join, outer band edges and seam stations did not move.
+
+All eighty projected seam profiles, twenty-eight finished armor profiles per livery,
+1,584 varied joint-core texels, paint coverage and zero hull emission checks pass.
+All three native graphs and every livery/LOD model and atlas reproduce. Full / medium /
+distant GLB bytes: Copper 1,860,252 / 1,509,124 / 397,516; Cyan 1,858,872 / 1,508,808 /
+397,444; Rescue 1,858,520 / 1,509,388 / 397,744.
+
+The full fleet with interiors remains 83,092 triangles in 50 draws and 78.17 MiB of
+decoded textures. Tern remains 4,442 / 1,290 / 496 triangles in 6 / 1 / 1 draws.
+The existing geometry overlap result still applies. The window patch, 460 opening/
+frame rays, twenty window choices, three cutaways, nine livery/LOD selections and
+separate control rows pass. All sixteen inline blocks match; OpenSpec passes 42 items.
+
+Reviewed the three projection captures, fifty final desktop views and phone default.
+Paint detail and Cyan hull detail retain true-color captures; the other screenshots
+use normal palette compression. No Pi performance measurement is claimed.

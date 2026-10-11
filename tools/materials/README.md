@@ -33,7 +33,10 @@ ship-local seams and oblique livery bands, and bakes their color and region mask
 positions, widths and colors. The [editable Blender source](../../assets/models/exteriors/hull-paint-projection.blend),
 [unenhanced layout](sources/tern-projected-layout.png), [masks](sources/tern-projected-masks.png)
 and [3D inspection captures](../../docs/screenshots/exteriors-equator-layout/) are retained.
-The mask uses R for livery, G for seams and B for projected hull coverage. The bake checker
+The mask uses R for livery, G for seams and B for projected hull coverage.
+The separate `tern-projected-ribbon.png` uses R for the inset white outline, G for
+the full ribbon and B for receiving hull coverage. It is an offline authoring input;
+the outline is composited into each existing hull atlas. The bake checker
 compares actual surface samples against the ship-local band field with zero mismatches.
 
 The projection starts from the seam-free `tern-seamless-finish.png`, retaining machinery and
@@ -45,7 +48,7 @@ quieter ivory paint. The current `tern-integrated-joints.png` and its retained b
 imagegen prompt enhance those same projected boundaries with recessed cores, ivory lips
 and localized wear, matching the owner reference. `tern-flat-painted-cyan.png` adds the pigment finish after inspection of
 the new flat-band layout. The three graphs preserve its tonal variation under the colors in
-`data/ships/exteriors.json`, retain dark mechanical relief, and sample varied joint-core tones from the enhanced finish
+`data/ships/exteriors.json`, apply the fine white border, retain dark mechanical relief, and sample varied joint-core tones from the enhanced finish
 through the 3D seam mask. Seam-free source texels remove guide strokes over pipes.
 Geometry and materials own the
 narrow physical service recess. Blender bakes each reduced atlas from the finished full model.
@@ -145,3 +148,8 @@ other graphs (concrete, brick wall, stone blocks, lava) and its procedural city 
 used by Star Crew and were not copied.
 
 Historical connected secondary structure: `tern-connected-cyan-prompt.txt` adds aligned roof-to-wall returns and a dedicated bow-face strip against the actual UV guide. `tern-connected-refinement-prompt.txt` reduces the scale of the new conduits. The final `tern-armor-coverage-prompt.txt` restores broad ivory armor between slimmer grey connections. Copper and Rescue are color-only edits of that final Cyan atlas, each with its own saved prompt. That revision imported `tern-connected-{livery}.png`; all three 1024 px layers retain zero emission.
+
+The Cyan ribbon returns to the earlier `tern-service-cyan.png` shade, with median
+paint RGB 2 / 167 / 217. `pigment_reference_srgb` records the source painting color
+separately from the chosen livery, so normalization cannot cancel a color change.
+The ribbon border follows the same 3D field as the flat band and wraps onto walls.

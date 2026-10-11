@@ -1,6 +1,6 @@
 # Exterior design fleet
 
-The Tern uses broad white armor, a narrow grey equatorial split, and textured cyan bands with flat central joins that
+The Tern uses broad white armor, a narrow grey equatorial split, and deeper cyan bands with fine white outlines and flat central joins that
 connect across roofs, bevels and vertical walls. Recessed joints have light plate lips and localized wear. Open [the inspection page](../../../docs/mockups/ship-exteriors.html)
 and select **Hull detail** for the equator, **Paint detail** for the flat band and finish, **Seam joins** for aligned linework, or a
 window to look into the furnished decks.
@@ -216,3 +216,14 @@ Forty shared-edge crossings and twenty-eight finished armor profiles per livery 
 The flat-seam regression is rejected; 1,584 core texels now carry varied material.
 All model and atlas bytes reproduce. See the [design validation](../../../openspec/changes/ship-exteriors/design.md)
 for the current results and delivered sizes.
+
+## White ribbon outline and deeper cyan, 2026-10-10
+
+The ribbon has a fine white painted line just inside both edges, projected on the
+hull before applying the existing textured finish. The deeper Cyan matches the
+earlier atlas median RGB 2 / 167 / 217. Roof, bevel and wall edges share the same
+projection; integrated panel joints remain visible through the paint.
+
+- [Projected outline before enhancement](../../../docs/screenshots/exteriors-ribbon-layout/README.md)
+- [Offline outline mask](../../../tools/materials/sources/tern-projected-ribbon.png)
+- [Finished paint close-up](../../../docs/screenshots/mockups/ship-exteriors-tern-paint.png)

@@ -421,6 +421,7 @@ def fitted_tern_hull(livery="copper"):
     source = g.node("image", image="../sources/tern-integrated-joints.png")
     enhanced = g.node("decompose", g.node("image", image="../sources/tern-flat-painted-cyan.png"))
     mask = g.node("decompose", g.node("image", image="../sources/tern-projected-masks.png"))
+    ribbon = g.node("decompose", g.node("image", image="../sources/tern-projected-ribbon.png"))
     # The enhancement retains guide strokes over some pipes. Restore only those
     # mechanical texels from the seam-free painting, using the original 3D mask.
     mechanical = g.node("image", image="../sources/tern-seamless-finish.png")
@@ -444,11 +445,16 @@ def fitted_tern_hull(livery="copper"):
                                 g.math(g.grey(.6), (rgba, 2), op=LT), op=MUL), op=MUL)
     paint = g.math(g.math((mask, 0), armor, op=MUL), fitting_blue, op=MAX)
     # Sample the generated pigment finish, preserving variation instead of flat RGB.
-    shade = g.math((enhanced, 2), g.grey(projection["stripe_srgb"][2]), op=DIV)
+    shade = g.math((enhanced, 2), g.grey(projection["pigment_reference_srgb"][2]), op=DIV)
     shade = g.math(g.grey(1), g.math(g.math(shade, g.grey(1), op=SUB), g.grey(2), op=MUL), op=ADD)
     shade = g.math(g.math(shade, g.grey(.60), op=MAX), g.grey(1.12), op=MIN)
     coat = g.blend(g.color(color), shade, mode=MULTIPLY)
     albedo = g.blend(coat, source, paint, mode=NORMAL_B)
+    # The same ship-local projection places the fine white line on roofs and walls.
+    # Retain a little enamel variation, while joints and mechanics remain recessed.
+    border_shade = g.math(g.math(shade, g.grey(.96), op=MAX), g.grey(1.03), op=MIN)
+    border_coat = g.blend(g.color(projection["ribbon_border_srgb"]), border_shade, mode=MULTIPLY)
+    albedo = g.blend(border_coat, albedo, g.math((ribbon, 0), armor, op=MUL), mode=NORMAL_B)
     # Keep the narrow recess centered on the 3D projection, sampling its tone from
     # the generated finish. Its varied core sits inside the painted bevel and wear;
     # exposed machinery is excluded. No constant-color ruler stroke is applied.

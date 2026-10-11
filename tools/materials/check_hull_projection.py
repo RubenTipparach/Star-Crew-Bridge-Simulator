@@ -113,12 +113,39 @@ def check_joint_finish(packed):
     return {"armor_core_texels": int(cores.sum()), "core_5_to_95_percentile_range": spread}
 
 
+def check_ribbon_outline(outline, mask, projection):
+    """Trace both white borders on the real roof, using the retained 3D samples."""
+    pixels = np.asarray(outline)
+    assert np.array_equal(pixels[:, :, 1], np.asarray(mask)[:, :, 0]), "Ribbon and paint masks disagree"
+    assert np.all(pixels[:, :, 0].astype(int) <= pixels[:, :, 1].astype(int)+1), "White outline escaped the ribbon"
+    traces = json.loads((SOURCES / "tern-flat-band-probes.json").read_text())["traces"]
+    errors = []
+    for trace in traces:
+        uv = np.asarray([s["uv"] for s in trace["samples"]])
+        x = np.clip((uv[:, 0]*pixels.shape[1]).astype(int), 0, pixels.shape[1]-1)
+        y = np.clip(((1-uv[:, 1])*pixels.shape[0]).astype(int), 0, pixels.shape[0]-1)
+        hits = np.flatnonzero(pixels[y, x, 0] > 127)
+        runs = np.split(hits, np.flatnonzero(np.diff(hits) > 1)+1)
+        assert len(runs) == 2 and all(len(r) for r in runs), "Missing parallel ribbon outline"
+        stations = np.asarray([s["z_m"] + s["y_m"]*projection["stripe_axis"][1]
+                               for s in trace["samples"]])
+        inset = projection["ribbon_border_inset_m"] + projection["ribbon_border_width_m"]/2
+        expected = np.asarray(trace["interval_m"]) + [inset, -inset]
+        expected += projection["stripe_flat_half_width_m"]*projection["stripe_axis"][0]
+        errors.extend(abs(float(stations[run].mean())-edge) for run,edge in zip(runs, expected))
+    assert max(errors) < .10, f"White ribbon outline shifted: {max(errors):.3f} m"
+    return {"roof_border_traces": len(errors), "max_center_error_m": max(errors)}
+
+
 def main():
     mask_path = SOURCES / "tern-projected-masks.png"
     mask = Image.open(mask_path).convert("RGB")
+    outline = Image.open(SOURCES / "tern-projected-ribbon.png").convert("RGB")
     projection = json.loads((ROOT / "data/ships/tern/hull_paint_projection.json").read_text())
+    palette = json.loads((ROOT / "data/ships/exteriors.json").read_text())["liveries"]
     report = {"mask_sha256": hashlib.sha256(mask_path.read_bytes()).hexdigest(),
               "edge_clearance_texture_px": 4, "flat_bands": check_flat_bands(mask, projection),
+              "ribbon_outline": check_ribbon_outline(outline, mask, projection),
               "liveries": {}}
     for livery, texture in [("cyan", "tern_hull_cobalt"), ("copper", "tern_hull"),
                              ("rescue", "tern_hull_rescue")]:
@@ -127,6 +154,7 @@ def main():
         packed = np.asarray(Image.open(ROOT / "assets/textures" / f"{texture}.png"))
         rgb = packed[:, :, :3].astype(float)
         regions = np.asarray(mask.resize((packed.shape[1], packed.shape[0]), Image.Resampling.NEAREST))
+        border = np.asarray(outline.resize((packed.shape[1], packed.shape[0]), Image.Resampling.BILINEAR))[:, :, 0]
         band = (regions[:, :, 0] > 230) & (regions[:, :, 2] > 230)
         # Ignore filtered boundary texels; visual inspection checks the exact joins.
         inside = np.asarray(Image.fromarray(band.astype("uint8") * 255)
@@ -134,7 +162,7 @@ def main():
         neutral = np.asarray(Image.open(SOURCES / "tern-clean-finish.png").convert("RGB")
                              .resize((packed.shape[1], packed.shape[0]), Image.Resampling.BILINEAR))
         # Paint belongs on armor; panel joints and grey machinery keep their relief.
-        inside &= (neutral.min(axis=2) > 200) & (regions[:, :, 1] < 10)
+        inside &= (neutral.min(axis=2) > 200) & (regions[:, :, 1] < 10) & (border < 10)
         r, g, b = rgb.transpose(2, 0, 1)
         if livery == "cyan":
             colored = (g - r > 50) & (b - r > 60)
@@ -145,6 +173,15 @@ def main():
         assert inside.any(), "No projected stripe pixels sampled"
         coverage = float(colored[inside].mean())
         assert coverage > .98, f"{livery}: only {coverage:.1%} of the projected band retains paint"
+        median_color = np.median(rgb[inside], axis=0)
+        livery_id = "cobalt" if livery == "cyan" else livery
+        expected_color = np.asarray(next(row["paint_srgb"] for row in palette if row["id"] == livery_id))*255
+        assert max(abs(median_color-expected_color)) < 5, f"{livery}: delivered paint shade differs from the selected color"
+        white_sample = (border > 210) & (neutral.min(axis=2) > 230) & (regions[:, :, 1] < 10)
+        assert white_sample.sum() > 100, "Too few outline texels sampled"
+        white = (rgb.min(axis=2) > 185) & (np.ptp(rgb, axis=2) < 70)
+        white_coverage = float(white[white_sample].mean())
+        assert white_coverage > .98, f"{livery}: white outline missing ({white_coverage:.1%})"
         finish_range = float(np.ptp(np.percentile(rgb[inside], [5, 95], axis=0), axis=0).max())
         assert finish_range > 8, f"{livery}: paint finish is a uniform fill ({finish_range}/255 range)"
         rendered = np.asarray(Image.open(ROOT / "tools/materials/raw" / f"{texture}_albedo.png").convert("RGB"))
@@ -156,6 +193,8 @@ def main():
             "joint_source_sha256": hashlib.sha256((SOURCES / "tern-integrated-joints.png").read_bytes()).hexdigest(),
             "stripe_interior_pixels": int(inside.sum()),
             "stripe_color_coverage": coverage, "material_maker_rgb_preserved": True,
+            "stripe_median_rgb": median_color.tolist(),
+            "white_outline_texels": int(white_sample.sum()), "white_outline_coverage": white_coverage,
             "paint_finish_5_to_95_percentile_range": finish_range,
             "hull_emission_pixels": 0,
             "seam_joins": check_seam_joins(packed),

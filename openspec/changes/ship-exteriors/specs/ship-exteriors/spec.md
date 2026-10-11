@@ -135,3 +135,8 @@ The player exterior SHALL retain its accepted silhouette while displaying angula
 - **WHEN** the new seams are viewed close to the roof and wall transitions
 - **THEN** the aligned seams SHALL read as narrow recesses with light plate lips and localized wear, including through the colored paint.
 - **AND** a uniform grey line SHALL NOT overwrite the generated joint material or run across exposed pipes.
+
+#### Scenario: Inspect the ribbon border
+- **WHEN** the Tern ribbon is viewed across its flat join and roof-to-wall transition
+- **THEN** a fine white painted outline SHALL follow both ribbon edges continuously, retain the underlying joints, and avoid exposed mechanical recesses.
+- **AND** Cyan SHALL use the deeper earlier shade, with all liveries and their custom LOD bakes retaining the border.

@@ -13,9 +13,9 @@
     0.4
   ],
   "stripe_srgb": [
-    0.106,
-    0.722,
-    0.875
+    0.008,
+    0.655,
+    0.851
   ],
   "seam_width_m": 0.14,
   "wall_seams_y_m": [
@@ -55,5 +55,17 @@
     0.35
   ],
   "equator_repeat_m": 12,
-  "stripe_flat_half_width_m": 4.5
+  "stripe_flat_half_width_m": 4.5,
+  "pigment_reference_srgb": [
+    0.106,
+    0.722,
+    0.875
+  ],
+  "ribbon_border_inset_m": 0.16,
+  "ribbon_border_width_m": 0.16,
+  "ribbon_border_srgb": [
+    0.94,
+    0.96,
+    0.94
+  ]
 }

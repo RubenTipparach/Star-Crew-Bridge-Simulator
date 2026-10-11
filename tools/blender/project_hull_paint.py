@@ -165,13 +165,18 @@ def projection_material(spec):
     shoulder = math("MAXIMUM", x, spec["stripe_flat_half_width_m"])
     field = math("ADD", math("SUBTRACT", z, math("MULTIPLY", shoulder, spec["stripe_axis"][0])),
                  math("MULTIPLY", y, spec["stripe_axis"][1]))
-    stripe = 0
+    stripe, border = 0, 0
     for lo, hi in spec["stripe_intervals_m"]:
         band = math("MULTIPLY", math("GREATER_THAN", field, lo), math("LESS_THAN", field, hi))
         stripe = math("MAXIMUM", stripe, band)
+        distance = math("MINIMUM", math("SUBTRACT", field, lo), math("SUBTRACT", hi, field))
+        line = math("MULTIPLY", math("GREATER_THAN", distance, spec["ribbon_border_inset_m"]),
+                    math("LESS_THAN", distance, spec["ribbon_border_inset_m"] + spec["ribbon_border_width_m"]))
+        border = math("MAXIMUM", border, line)
     equator = math("MULTIPLY", math("GREATER_THAN", y, spec["equator_y_m"][0]),
                    math("LESS_THAN", y, spec["equator_y_m"][1]))
     stripe = math("MULTIPLY", stripe, math("SUBTRACT", 1, equator))
+    border = math("MULTIPLY", border, math("SUBTRACT", 1, equator))
 
     original = nodes.new("ShaderNodeTexImage")
     original.image = bpy.data.images.load(str(exterior.ROOT / spec["source_paint"]))
@@ -192,7 +197,9 @@ def projection_material(spec):
     belt_image.image = original.image
     links.new(belt_uv.outputs[0], belt_image.inputs["Vector"])
     base = mix(equator, base, belt_image.outputs["Color"])
-    painted = mix(seam, mix(stripe, base, color(spec["stripe_srgb"])), color(spec["seam_srgb"]))
+    painted = mix(stripe, base, color(spec["stripe_srgb"]))
+    painted = mix(border, painted, color(spec["ribbon_border_srgb"]))
+    painted = mix(seam, painted, color(spec["seam_srgb"]))
     emit = nodes.new("ShaderNodeEmission")
     links.new(painted, emit.inputs["Color"])
     output = nodes.new("ShaderNodeOutputMaterial")
@@ -201,11 +208,15 @@ def projection_material(spec):
     links.new(stripe, masks.inputs["Red"])
     links.new(seam, masks.inputs["Green"])
     masks.inputs["Blue"].default_value = 1
-    return mat, emit, painted, masks.outputs[0], original.image
+    ribbon = nodes.new("ShaderNodeCombineColor")
+    links.new(border, ribbon.inputs["Red"])
+    links.new(stripe, ribbon.inputs["Green"])
+    ribbon.inputs["Blue"].default_value = 1
+    return mat, emit, painted, masks.outputs[0], ribbon.outputs[0], original.image
 
 
 def main():
-    """Build the source hull once and retain its editable projection and two UV bakes."""
+    """Retain the actual hull projection, linework, region masks and ribbon border."""
     root = exterior.ROOT
     spec = json.loads((root / "data/ships/tern/hull_paint_projection.json").read_text())
     config = json.loads(exterior.CONFIG.read_text())
@@ -230,7 +241,7 @@ def main():
     bmesh.ops.delete(bm, geom=remove, context="FACES")
     bm.to_mesh(target.data)
     bm.free()
-    mat, emit, painted, masks, original = projection_material(spec)
+    mat, emit, painted, masks, ribbon, original = projection_material(spec)
     target.data.materials.clear()
     target.data.materials.append(mat)
     for face in target.data.polygons:
@@ -257,6 +268,8 @@ def main():
     unenhanced.colorspace_settings.name = "sRGB"
     mask = bpy.data.images.new("Tern projected region masks", width=spec["guide_px"], height=spec["guide_px"])
     mask.colorspace_settings.name = "Non-Color"
+    outline = bpy.data.images.new("Tern projected ribbon border", width=spec["guide_px"], height=spec["guide_px"])
+    outline.colorspace_settings.name = "Non-Color"
     bake = mat.node_tree.nodes.new("ShaderNodeTexImage")
     mat.node_tree.nodes.active = bake
     # Seed untouched fittings through Blender's own image sampling. A loaded image copy
@@ -285,7 +298,8 @@ def main():
     target.select_set(True)
     bpy.context.view_layer.objects.active = target
     for image, socket, filename in [(unenhanced, painted, "tern-projected-layout.png"),
-                                     (mask, masks, "tern-projected-masks.png")]:
+                                     (mask, masks, "tern-projected-masks.png"),
+                                     (outline, ribbon, "tern-projected-ribbon.png")]:
         mat.node_tree.links.new(socket, emit.inputs["Color"])
         bake.image = image
         bpy.ops.object.bake(type="EMIT")
