@@ -1702,7 +1702,9 @@
     const atl = [];
     if (typeof document !== "undefined") {
       for (const el of document.querySelectorAll('script[id^="ship-models-"]')) {
-        const set = el.id.slice("ship-models-".length), d = JSON.parse(el.textContent);
+        const set = el.id.slice("ship-models-".length);
+        if (opts.atlasSets && !opts.atlasSets.includes(set)) continue;
+        const d = JSON.parse(el.textContent);
         for (const [prop, uri] of Object.entries(d.atlases || {}).sort()) atl.push([`prop:${set}:${prop}`, uri]);
       }
     }

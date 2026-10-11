@@ -396,9 +396,12 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--raw", default=RAW_DIR, help="directory of raw maps (default tools/materials/raw)")
     ap.add_argument("--list-graphs", action="store_true", help="print the graphs materials.json uses and stop")
+    ap.add_argument("--only", nargs="+", help="rebuild these layers; use committed PNGs for the rest of the contact sheet")
     args = ap.parse_args()
 
     cfg, bake, mats = load_manifest()
+    if args.only and set(args.only) - {m["name"] for m in mats}:
+        fail("--only names an unknown material")
     if args.list_graphs:
         for g in sorted({m["source"]["graph"] for m in mats}):
             print(g)
@@ -414,9 +417,13 @@ def main():
 
     built = []
     for m in mats:
-        rgba, label = build_layer(m, args.raw, cfg, bake)
         path = os.path.join(TEXTURE_DIR, m["name"] + ".png")
-        save_png(Image.fromarray(rgba, "RGBA"), path)
+        if not args.only or m["name"] in args.only:
+            rgba, label = build_layer(m, args.raw, cfg, bake)
+            save_png(Image.fromarray(rgba, "RGBA"), path)
+        else:
+            rgba = np.asarray(Image.open(path).convert("RGBA"))
+            label = "committed layer"
         built.append((m, rgba, label, path))
 
     save_png(contact_sheet([(m, rgba) for m, rgba, _, _ in built], cfg), SHEET_PATH)

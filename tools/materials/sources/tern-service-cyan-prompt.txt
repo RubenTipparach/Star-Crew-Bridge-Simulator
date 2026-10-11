@@ -1,0 +1,5 @@
+Use case: precise-object-edit
+Asset type: production spaceship UV albedo texture atlas
+Input image: edit target, the current Tern service-channel cobalt livery atlas.
+Primary request: change ONLY the existing saturated royal-blue/cobalt painted identification stripes and accents to a clear medium-bright cyan blue, approximately sRGB #1BB8DF. It should read as cyan blue painted metal, not dark cobalt, green turquoise, or glowing light.
+Preserve every UV island silhouette, border, placement, size and orientation exactly. Preserve the off-white armor, grey exposed structure, pipework, equipment details, black background, fine wear, line widths and contrast. Keep the text SCS TERN and SC-084 exactly as it is. Keep all blank ivory padding and the full side rectangle. Do not add markings, windows, panel seams, reflections or lighting. Preserve the paint's existing subtle scratches and wear while changing its hue. No glow. This is a flat square albedo atlas for the same mesh, not a spaceship render. Output the full atlas at the original square aspect ratio without cropping or margins.
