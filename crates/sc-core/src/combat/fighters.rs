@@ -345,6 +345,10 @@ fn craft(f: &Fighter, stick: [f64; 3], speed_set: f64) -> Ship {
         magazine: 0,
         lock_target: None,
         lock_s: 0.0,
+        lasers: Vec::new(),
+        decoys: 0,
+        decoy_s: 0.0,
+        armour: [100.0; 6],
     }
 }
 
