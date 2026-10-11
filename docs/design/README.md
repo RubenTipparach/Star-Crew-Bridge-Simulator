@@ -7,8 +7,9 @@ OpenSpec changes; it is not a second source (CLAUDE.md section 3). Start with
 ## Survey
 
 Questions for the owner, with their options, a recommendation and an answer column:
-**https://claude.ai/artifact/D1C3ZBxsCjRHJC6HAvJFzJ** (a Claude Doc; the `owner-survey` skill says
-how it is kept). Keep editing it rather than starting another.
+**https://claude.ai/artifact/JQm65V7LHVWDJF8dPdZYqY** (survey 2, a Claude Doc; the `owner-survey` skill says how it is kept). Keep editing it rather
+than starting another. Survey 1, https://claude.ai/artifact/D1C3ZBxsCjRHJC6HAvJFzJ, closed on 2026-10-11 when it
+grew too long (owner: "survey too big, start new survey with new sections"); it keeps the answers given before then.
 
 ## The changes and their mockups
 

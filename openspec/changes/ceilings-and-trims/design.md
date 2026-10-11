@@ -228,6 +228,9 @@ had; no draw call.
 
 ## Open questions
 
+Survey 1 closed on 2026-10-11 with U1 unanswered. By its rule a blank is the recommendation accepted, so it stands as
+its recommendation below; a comment in survey 2 (https://claude.ai/artifact/JQm65V7LHVWDJF8dPdZYqY) reopens it.
+
 | Id | Question | Options | Recommendation | Shots |
 | --- | --- | --- | --- | --- |
 | U1 | Do the ceilings and trims now sit with the panel walls? | as built / with changes (say which) | As built | `wall-panels-*-after.png` once this lands, with before shots |

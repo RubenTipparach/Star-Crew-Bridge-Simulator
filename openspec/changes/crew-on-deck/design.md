@@ -863,6 +863,9 @@ Ids C (crew). Per CLAUDE.md 13 a question goes to the owner only with something 
 shots are in `docs/screenshots/mockups/`. The rest take the recommendation, recorded as
 "recommendation taken (ask only with screenshots)".
 
+C1 was answered in survey 1 and folded here on 2026-10-11: a 1.75 m eye, not the recommended 1.65 m ("1.75 is
+probably good"). The game still uses 1.65 m (`data/crew/walk.json`, `body.eye_m`); task 1.4 moves it.
+
 | Id | Question, and the fact it turns on | Options | Recommendation | Shot |
 | --- | --- | --- | --- | --- |
 | C1 | Does the bridge read at the right scale from a 1.65 m eye, with a 0.30 m body radius? The room is 14.0 x 11.0 x 3.0 m and the aft door 1.6 x 2.3 m (layout). | 1.65 m eye / a taller 1.75 m eye / a shorter 1.55 m eye | 1.65 m: an average adult's eye, and the 3.0 m ceilings read as a ship, not a hall | `bridge-walk-aft.png`, `bridge-captain-view.png` |

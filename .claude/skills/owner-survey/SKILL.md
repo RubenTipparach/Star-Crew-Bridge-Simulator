@@ -17,6 +17,18 @@ with a place to answer.
 The current survey's link is in `docs/design/README.md`, under "Survey". Keep editing it rather
 than starting another (CLAUDE.md section 13).
 
+When the owner finds it too long (2026-10-11: "survey too big, start new survey with new sections"),
+start the next one, as survey 2 was:
+
+1. Carry over only the sections still waiting on the owner, with their pictures (copy the old doc's
+   assets across; a blob's asset id comes from reading the blob).
+2. Record every row still blank in the old survey as its recommendation accepted (its own rule for a
+   blank), in the new survey's Already decided and in each change's `## Open questions`, with a
+   comment in the new survey as the way to reopen one.
+3. Move any answer that was given but never folded (survey 1 had four).
+4. Close the old survey with a note at its top linking the new one, and change the link in
+   `docs/design/README.md`.
+
 ## When to ask, and when not to
 
 The owner's latest word on this (Pale-Blue-Dot, 2026-09-29): "approve, dont ask me questions
@@ -57,6 +69,7 @@ the connector is available.
     engine-stack, M netcode-and-sessions, B bridge-stations, C crew-on-deck, P power-grid,
     L life-support, D damage-control, F ship-frames, W weapons-and-shields, H
     shuttle-bay-and-fighters, N flight-and-navigation, K deck-pipeline, G light-baking, T reference-ship-tern,
+    Q single-player, X front-menu, Z crew-nameplates and game-menu, J first-mission-gate,
     S surface-materials, V wall-panels, U ceilings-and-trims, R floor-panels, A command-suite, Y deck-access.
   - A question gives the fact it turns on, with its number and unit: "The hangar holds 1,682.4
     m^3 of air; pumping it down takes 207 seconds, venting it takes 3 seconds".

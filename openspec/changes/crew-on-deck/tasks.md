@@ -9,7 +9,7 @@ the write-up.
 - [x] 1.1 Proposal, design and spec deltas for `crew-on-deck`.
 - [x] 1.2 The walk-time table (design section 16) and the portal clearance table (section 2), computed from `data/ships/tern/layout.json`.
 - [ ] 1.3 Commit the walk-time script as `tools/walk_times.py` (a measurement instrument: it reads the layout and prints section 16's tables; no game code) and add the portal clearance check to `tools/layout_check.py`.
-- [ ] 1.4 Put question C1 in the owner survey with `bridge-walk-aft.png` and `bridge-captain-view.png`; record C2-C9 as recommendations taken; fold the answers back into this change.
+- [ ] 1.4 Put question C1 in the owner survey with `bridge-walk-aft.png` and `bridge-captain-view.png`; record C2-C9 as recommendations taken; fold the answers back into this change. C1 is answered (a 1.75 m eye, survey 1, folded 2026-10-11); left: `data/crew/walk.json` `body.eye_m` 1.65 to 1.75, with the walk captures retaken.
 - [ ] 1.5 Hand the proposed patches to their changes: the capsule and handhold rails and ladder deck hatches to `deck-pipeline`; the crew status group and felt residual to `netcode-and-sessions`; the speeds to `reference-ship-tern` (T5); kit and bed positions to `damage-control` and the layout.
 
 ## 2. Data
