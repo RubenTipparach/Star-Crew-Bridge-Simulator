@@ -14,11 +14,14 @@
 //! - identical vertices merged, in first-seen order (stable), behind 32-bit indices;
 //! - a full mip chain for the texture array (box filter), sampled nearest up close;
 //! - since 13b: a room's mover (the lift's car is a room of its own, mover 1), each room's console faces appended to
-//!   its mesh in the screens' atlas, which is cut into square layers after every other layer, and the viewscreens.
+//!   its mesh in the screens' atlas, which is cut into square layers after every other layer, and the viewscreens;
+//! - since tern-exterior 3: the ship's hull from its exterior model (`assets/models/exteriors/props.json`'s default
+//!   livery), read by `crate::glb` and packed with the same packer, colour byte and mip chain as the rooms, its
+//!   positions scaled to fit the vertex's +/-32 m, its textures in arrays of their own after the rooms'.
 
 use sc_core::deck::{
-    self, DeckCompartment, DeckIndex, DeckProbes, DeckTextures, DeckView, DeckWalk, WalkDoor, WalkHatch, WalkLadder,
-    WalkLift, WalkStart,
+    self, DeckCompartment, DeckHull, DeckIndex, DeckProbes, DeckTextures, DeckView, DeckWalk, HullArray, HullPart,
+    WalkDoor, WalkHatch, WalkLadder, WalkLift, WalkStart,
 };
 use sc_core::vertex::{pack_deck_vertex, DeckVertexIn};
 use serde::Deserialize;
@@ -181,6 +184,21 @@ fn shrink(src: &[u8], from: u32, to: u32) -> Vec<u8> {
     out
 }
 
+/// A texture array's mip chain: level 0 is `level0` (`layers` square RGBA8 layers of `size` px), each next level every
+/// layer box-filtered to half the size, down to 1 px.
+fn mip_chain(level0: Vec<u8>, size: u32, layers: u32) -> Vec<Vec<u8>> {
+    let mut levels = vec![level0];
+    let mut px = size;
+    while px > 1 {
+        let lb = (px * px * 4) as usize;
+        let last = levels.last().unwrap();
+        let next = (0..layers as usize).flat_map(|i| shrink(&last[i * lb..(i + 1) * lb], px, px / 2)).collect();
+        levels.push(next);
+        px /= 2;
+    }
+    levels
+}
+
 /// The middle of compartment `id`'s floor on its lowest deck: the centroid of the largest of its lowest brushes (each is
 /// a convex prism, so the centroid is inside it).
 fn floor_middle(layout: &serde_json::Value, id: &str) -> Option<[f32; 3]> {
@@ -303,17 +321,9 @@ pub fn run(root: &Path, ship: &str) -> Result<String, String> {
     // Mips: level k holds every layer at size >> k.
     let mut mip_offsets = Vec::new();
     let mut tex_blob = Vec::new();
-    let mut level = layers;
-    let mut px = size;
-    loop {
+    for level in mip_chain(layers, size, total_layers) {
         mip_offsets.push(tex_blob.len() as u64);
         tex_blob.extend_from_slice(&level);
-        if px == 1 {
-            break;
-        }
-        let lb = (px * px * 4) as usize;
-        level = (0..total_layers as usize).flat_map(|i| shrink(&level[i * lb..(i + 1) * lb], px, px / 2)).collect();
-        px /= 2;
     }
 
     let mut vertices: Vec<u8> = Vec::new();
@@ -540,6 +550,8 @@ pub fn run(root: &Path, ship: &str) -> Result<String, String> {
             probes: None,
         });
     }
+    // The hull from the ship's exterior model (tern-exterior 3), when it has one.
+    let hull = hull(root, ship, &mut vertices, &mut indices, &mut tex_blob)?;
     // The walk world: its triangles carried as they are, checked finite and whole.
     let w = &ex.walk;
     let walk_tris = floats(&dir, &w.triangles, w.triangle_count as usize * 9)?;
@@ -569,14 +581,24 @@ pub fn run(root: &Path, ship: &str) -> Result<String, String> {
         },
         views: ex.views.clone(),
         probe_count: (probe_blob.len() / sc_core::probes::PROBE_BYTES) as u64,
+        hull,
     };
     let bytes = deck::write(&index, &vertices, &indices, &tex_blob, &walk_tris, &probe_blob);
     deck::read(&bytes).map_err(|e| format!("the deck just written does not read back: {e}"))?;
     let out = root.join("compiled").join(format!("{ship}.deck"));
     std::fs::create_dir_all(out.parent().unwrap()).map_err(|e| e.to_string())?;
     std::fs::write(&out, &bytes).map_err(|e| format!("{}: {e}", out.display()))?;
+    let hull_note = match &index.hull {
+        Some(h) => format!(
+            ", a hull of {} triangles in {} parts from {}",
+            h.parts.iter().map(|p| p.count as usize / 3).sum::<usize>(),
+            h.parts.len(),
+            h.source
+        ),
+        None => String::new(),
+    };
     Ok(format!(
-        "{}: {} compartments, {} triangles, {} vertices ({:.1} MB), {} texture layers of {} px with {} mips ({:.1} MB), a walk world of {} triangles, {} light probes ({} valid, {:.2} MB), {:.1} MB in all",
+        "{}: {} compartments, {} triangles, {} vertices ({:.1} MB), {} texture layers of {} px with {} mips ({:.1} MB), a walk world of {} triangles, {} light probes ({} valid, {:.2} MB){hull_note}, {:.1} MB in all",
         out.display(),
         index.compartments.len(),
         tris,
@@ -592,4 +614,200 @@ pub fn run(root: &Path, ship: &str) -> Result<String, String> {
         probe_blob.len() as f64 / 1e6,
         bytes.len() as f64 / 1e6
     ))
+}
+
+/// The ship's hull from its exterior model (tern-exterior 3), packed into the shared blobs; None when
+/// `assets/models/exteriors/props.json` has no model for `ship`. The model is the manifest's default livery's full
+/// detail level; its triangle count and bounds must be the manifest's, and its triangles within the ship's exterior
+/// budget (`data/ships/exteriors.json`, the Pi 5 table's "Ship exterior" row).
+pub(crate) fn hull(
+    root: &Path,
+    ship: &str,
+    vertices: &mut Vec<u8>,
+    indices: &mut Vec<u32>,
+    tex_blob: &mut Vec<u8>,
+) -> Result<Option<DeckHull>, String> {
+    let read_json = |rel: &str| -> Result<serde_json::Value, String> {
+        let text = std::fs::read_to_string(root.join(rel)).map_err(|e| format!("{rel}: {e}"))?;
+        serde_json::from_str(&text).map_err(|e| format!("{rel}: {e}"))
+    };
+    let props = read_json("assets/models/exteriors/props.json")?;
+    if props["props"].get(ship).is_none() {
+        return Ok(None);
+    }
+    let livery = props["default_livery"].as_str().ok_or("props.json: no default_livery")?;
+    let dir = props["liveries"]
+        .as_array()
+        .and_then(|l| l.iter().find(|x| x["id"] == livery))
+        .and_then(|x| x["directory"].as_str())
+        .ok_or_else(|| format!("props.json: no directory for the livery {livery:?}"))?;
+    let base = format!("assets/models/exteriors/{dir}");
+    let manifest = read_json(&format!("{base}/props.json"))?;
+    let entry = &manifest["props"][ship];
+    let file = entry["file"].as_str().ok_or_else(|| format!("{base}/props.json: no file for {ship}"))?;
+    let source = format!("{base}/{file}");
+    let model = crate::glb::read(&root.join(&source))?;
+
+    // The checks: the manifest's triangles and bounds (rounded to the centimetre there), and the budget.
+    let want = entry["triangles"].as_u64().ok_or_else(|| format!("{base}/props.json: no triangles"))? as usize;
+    if model.triangles() != want {
+        return Err(format!("{source}: {} triangles, its manifest says {want}", model.triangles()));
+    }
+    let (lo, hi) = model.bounds();
+    for (k, corner) in [lo, hi].iter().enumerate() {
+        let m = &entry["bounds_m"][k];
+        for a in 0..3 {
+            let v = m[a].as_f64().ok_or_else(|| format!("{base}/props.json: bounds_m"))?;
+            if (f64::from(corner[a]) - v).abs() > 0.006 {
+                return Err(format!("{source}: bounds {lo:?} to {hi:?} differ from its manifest's"));
+            }
+        }
+    }
+    let ext = read_json("data/ships/exteriors.json")?;
+    let budget = ext["ships"]
+        .as_array()
+        .and_then(|s| s.iter().find(|x| x["id"] == ship))
+        .and_then(|x| x["budget_triangles"][0].as_u64())
+        .ok_or_else(|| format!("data/ships/exteriors.json: no budget_triangles for {ship}"))?;
+    if model.triangles() as u64 > budget {
+        return Err(format!("{source}: {} triangles, over the exterior budget of {budget}", model.triangles()));
+    }
+
+    // The frame: the centre of the bounds to the centimetre, and the smallest power of two that brings the farthest
+    // corner inside the vertex's +/-32 m.
+    let origin: [f64; 3] =
+        std::array::from_fn(|k| ((f64::from(lo[k]) + f64::from(hi[k])) / 2.0 * 100.0).round() / 100.0);
+    let reach = (0..3).map(|k| (f64::from(hi[k]) - origin[k]).max(origin[k] - f64::from(lo[k]))).fold(0.0, f64::max);
+    let mut scale = 1.0f32;
+    while reach / f64::from(scale) > 31.9 {
+        scale *= 2.0;
+    }
+
+    // The arrays: each image the model samples, in an array of its size, in the order first used.
+    let mut arrays: Vec<(u32, Vec<usize>)> = Vec::new(); // (size, images)
+    let mut place: HashMap<usize, (u32, u8)> = HashMap::new(); // image -> (array, layer)
+    for p in &model.primitives {
+        let Some(im) = p.image else { continue };
+        if place.contains_key(&im) {
+            continue;
+        }
+        let img = &model.images[im];
+        if img.width != img.height || !img.width.is_power_of_two() {
+            return Err(format!(
+                "{source}: image {} is {} x {} px, not a square power of two",
+                img.name, img.width, img.height
+            ));
+        }
+        let a = match arrays.iter().position(|(size, _)| *size == img.width) {
+            Some(a) => a,
+            None => {
+                arrays.push((img.width, Vec::new()));
+                arrays.len() - 1
+            }
+        };
+        arrays[a].1.push(im);
+        place.insert(im, (a as u32, (arrays[a].1.len() - 1) as u8));
+    }
+
+    // The mesh: every primitive's triangles in order, one vertex an index, merged by the packer.
+    let mut ins = Vec::new();
+    let mut parts = Vec::new();
+    for p in &model.primitives {
+        let (array, layer) = match p.image {
+            Some(im) => {
+                let (a, l) = place[&im];
+                (Some(a), l)
+            }
+            None => (None, 0),
+        };
+        parts.push(HullPart {
+            material: p.material.clone(),
+            first: ins.len() as u32,
+            count: p.indices.len() as u32,
+            array,
+        });
+        for &i in &p.indices {
+            let i = i as usize;
+            let c = p.colours[i];
+            let c = [color_byte(c[0]), color_byte(c[1]), color_byte(c[2]), 255];
+            ins.push(DeckVertexIn {
+                position_m: std::array::from_fn(|k| {
+                    ((f64::from(p.positions[i][k]) - origin[k]) / f64::from(scale)) as f32
+                }),
+                mover: 0,
+                layer,
+                normal: p.normals[i],
+                colors: [c, c, c],
+                uv: p.uvs[i],
+            });
+        }
+    }
+    let (vertex_offset, vertex_count, index_offset, index_count) = pack(vertices, indices, &ins, "the hull")?;
+
+    // Each array's layers and mips, after everything already in the texture blob.
+    let mut out_arrays = Vec::new();
+    for (size, images) in &arrays {
+        let level0: Vec<u8> = images.iter().flat_map(|&im| model.images[im].rgba.iter().copied()).collect();
+        let mut mip_offsets = Vec::new();
+        for level in mip_chain(level0, *size, images.len() as u32) {
+            mip_offsets.push(tex_blob.len() as u64);
+            tex_blob.extend_from_slice(&level);
+        }
+        out_arrays.push(HullArray { size_px: *size, layers: images.len() as u32, mip_offsets });
+    }
+    Ok(Some(DeckHull {
+        source,
+        origin_m: origin,
+        scale,
+        vertex_offset,
+        vertex_count,
+        index_offset,
+        index_count,
+        parts,
+        arrays: out_arrays,
+    }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn root() -> &'static Path {
+        Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../.."))
+    }
+
+    #[test]
+    fn the_tern_hull_compiles_within_two_millimetres_of_its_model() {
+        let (mut v, mut x, mut t) = (Vec::new(), Vec::new(), Vec::new());
+        let h = hull(root(), "tern", &mut v, &mut x, &mut t).unwrap().expect("the Tern has an exterior model");
+        assert_eq!(h.parts.len(), 6);
+        assert_eq!(h.parts.iter().map(|p| p.count as usize / 3).sum::<usize>(), 4440);
+        assert_eq!(h.scale, 2.0, "an 81.5 m hull needs half-size positions to fit +/-32 m");
+        let sizes: Vec<(u32, u32)> = h.arrays.iter().map(|a| (a.size_px, a.layers)).collect();
+        assert!(sizes.contains(&(1024, 1)) && sizes.contains(&(128, 2)), "the hull atlas and the two tiles: {sizes:?}");
+        assert!(h.parts.iter().filter(|p| p.array.is_none()).count() == 2, "the screens and light panels glow");
+        // Every corner, unpacked, against the model's own.
+        let model = crate::glb::read(&root().join(&h.source)).unwrap();
+        let mut k = 0usize;
+        for p in &model.primitives {
+            for &i in &p.indices {
+                let vi = x[h.index_offset as usize + k] as usize;
+                let b = &v[h.vertex_offset as usize + vi * 28..][..28];
+                for a in 0..3 {
+                    let q = i16::from_le_bytes([b[a * 2], b[a * 2 + 1]]);
+                    let m = f64::from(q) / 1024.0 * f64::from(h.scale) + h.origin_m[a];
+                    let d = (m - f64::from(p.positions[i as usize][a])).abs();
+                    assert!(d <= 0.002, "corner {k} axis {a} is {d} m off");
+                }
+                k += 1;
+            }
+        }
+    }
+
+    #[test]
+    fn a_ship_without_an_exterior_model_compiles_without_a_hull() {
+        let (mut v, mut x, mut t) = (Vec::new(), Vec::new(), Vec::new());
+        assert!(hull(root(), "hound", &mut v, &mut x, &mut t).unwrap().is_none());
+        assert!(v.is_empty() && x.is_empty() && t.is_empty());
+    }
 }

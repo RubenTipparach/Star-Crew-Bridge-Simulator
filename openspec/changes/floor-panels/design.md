@@ -177,6 +177,9 @@ Not measured on a Pi 5 (a cloud session has no GPU, CLAUDE.md 12). Shots before 
 
 ## Open questions
 
+Survey 1 closed on 2026-10-11 with R1 unanswered. By its rule a blank is the recommendation accepted, so it stands as
+its recommendation below; a comment in survey 2 (https://claude.ai/artifact/JQm65V7LHVWDJF8dPdZYqY) reopens it.
+
 | Id | Question | Options | Recommendation | Shots |
 | --- | --- | --- | --- | --- |
 | R1 | Do the floors, with their walkways, sit with the walls and ceilings? | as built / with changes | As built | `wall-panels-*-after.png` once this lands, with before shots |

@@ -544,6 +544,10 @@ interior), which is a task below.
 Ids F (frames). Questions with a shot go to the owner's survey; the rest are recommendations
 taken (ask only with screenshots, CLAUDE.md 13).
 
+Survey 1 closed on 2026-10-11 with F1, F2 and F3 unanswered. By its rule a blank is the recommendation accepted, so
+they stand as their recommendations below; a comment in survey 2 (https://claude.ai/artifact/JQm65V7LHVWDJF8dPdZYqY)
+reopens any of them.
+
 | Id | Question and the fact behind it | Options | Recommendation | Shot |
 | --- | --- | --- | --- | --- |
 | F1 | Should crew feel anything when the dampers are at full power? A throttle slam leaves 1.5 m/s^2 for 0.5 s through the dampers' lag. | (a) Yes: a brief sway and a 2 degree head tilt on slams and hits. (b) No: full dampers cancel everything except hits. | (a): it tells every crew member the ship is moving, without ever moving their feet. | `decoupling-split` |

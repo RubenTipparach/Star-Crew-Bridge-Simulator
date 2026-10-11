@@ -11,6 +11,7 @@ mod alloc;
 mod deckc;
 mod dock;
 mod figure;
+mod glb;
 mod walk_report;
 
 /// Every allocation is counted, for `walk-report`'s heap figures.

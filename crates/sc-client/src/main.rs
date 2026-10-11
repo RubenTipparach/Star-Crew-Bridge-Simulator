@@ -25,6 +25,7 @@ mod drill;
 mod drill_bridge;
 mod first_light;
 mod fixture;
+mod hull;
 mod lobby;
 mod options;
 mod repairs;
@@ -70,6 +71,12 @@ const POSES: &[(&str, [f64; 3], [f32; 2], f32)] = &[
     ("corridor-B", [0.0, 0.0, 15.0], [0.0, -1.0], -4.0),
     ("eng-mezzanine", [7.0, 0.0, -18.9], [-0.55, -1.0], 6.0),
     ("eng-lower", [0.0, -3.5, -18.9], [0.12, -1.0], 10.0),
+    // The hull (tern-exterior design 8): through the ready room's window aft onto the port pylon, then outside.
+    ("ready-room-window", [7.9, 3.5, 17.8], [0.8, -0.6], -16.0),
+    ("outside-port-bow", [38.0, 6.0, 62.0], [-0.55, -0.83], -8.0),
+    ("outside-starboard-bow", [-38.0, 6.0, 62.0], [0.55, -0.83], -8.0),
+    ("outside-port-aft", [45.0, 14.0, -80.0], [-0.45, 0.89], -10.0),
+    ("outside-above", [0.0, 60.0, 45.0], [0.0, -1.0], -45.0),
 ];
 
 /// The scripted walk of `--walk-test`: from the bridge's start aft through its door, down the command passage to
@@ -311,6 +318,8 @@ enum Scene {
         /// Every compartment's light probes, which light the figures (light-baking 16).
         probes: sc_core::probes::ProbeSet,
         outside: Option<Box<Outside>>,
+        /// The hull from the ship's exterior model (tern-exterior 4), drawn after the rooms.
+        hull: Option<Box<hull::HullView>>,
         tex: TextureArray,
         panel_first: u32,
         panel_glow: [f32; 3],
@@ -412,14 +421,7 @@ fn load_ship(
     let bytes = std::fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
     let d = sc_core::deck::read(&bytes).map_err(|e| format!("{}: {e}", path.display()))?;
     let t = &d.index.textures;
-    let levels: Vec<&[u8]> = (0..t.mips as usize)
-        .map(|k| {
-            let a = t.mip_offsets[k] as usize;
-            let b = t.mip_offsets.get(k + 1).map_or(d.textures.len(), |o| *o as usize);
-            &d.textures[a..b]
-        })
-        .collect();
-    let tex = r.make_texture_array_mips(t.size_px, t.layers, &levels);
+    let tex = r.make_texture_array_mips(t.size_px, t.layers, &d.texture_levels());
     let mut rooms = Vec::new();
     let mut figures = Vec::new();
     let mut triangles = 0;
@@ -538,11 +540,19 @@ fn load_ship(
         probes.len(),
         d.probes.len() as f64 / 1e6
     );
+    let hull = hull::HullView::load(r, &d).map(Box::new);
+    match &hull {
+        Some(h) => {
+            println!("sc-client: the hull from {}, {} triangles", d.index.hull.as_ref().unwrap().source, h.triangles)
+        }
+        None => println!("sc-client: the deck has no hull (no exterior model compiled)"),
+    }
     let scene = Scene::Ship {
         rooms,
         figures,
         probes,
         outside: Some(Box::new(outside)),
+        hull,
         tex,
         panel_first: t.panel_first,
         panel_glow: t.panel_glow,
@@ -1200,7 +1210,7 @@ impl App for Client {
         }
         self.r.begin_3d(&self.target, [0.004, 0.005, 0.012, 1.0]);
         match &self.scene {
-            Scene::Ship { rooms, figures, probes, outside, tex, panel_first, panel_glow, .. } => {
+            Scene::Ship { rooms, figures, probes, outside, hull, tex, panel_first, panel_glow, .. } => {
                 if let Some(o) = outside {
                     let px = 70f32.to_radians() / RENDER_3D.1 as f32;
                     self.r.draw_sky(&self.target, &o.sky(proj, view, px));
@@ -1252,6 +1262,10 @@ impl App for Client {
                             w,
                         );
                     }
+                }
+                // The hull (tern-exterior 4): after the rooms, so their walls hide most of it before it is shaded.
+                if let Some(h) = hull {
+                    h.draw(&mut self.r, &self.target, proj * view, self.cam.pos);
                 }
                 // The viewscreens: the bow camera's picture on a quad 3 cm in front of each.
                 if let Some(o) = outside {
