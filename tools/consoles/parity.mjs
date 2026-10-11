@@ -27,7 +27,8 @@ const out = path.resolve(ROOT, opt("--out", "docs/screenshots/parity"));
 // Every named shot of every console, at rest, in use and in combat.
 const SHOTS = ["helm", "helm-stick", "helm-orient", "tactical", "engineering", "engineering-cooling", "engineering-cooling-breaker",
   "science", "captain", "red-helm-evading", "red-tactical", "red-science-target-feed", "red-science-shields", "red-engineering",
-  "red-captain", "red-captain-ship", "scram-engineering", "red-tactical-turned"];
+  "red-captain", "red-captain-ship", "scram-engineering", "red-tactical-turned", "solo-helm", "solo-tactical-manual",
+  "red-solo-engineering"];
 const only = opt("--only", null);
 const shots = only ? SHOTS.filter((s) => only.split(",").includes(s)) : SHOTS;
 

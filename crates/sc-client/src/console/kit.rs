@@ -54,6 +54,10 @@ pub enum Act {
     Room(String),
     Tab(String),
     OrderRepair,
+    /// Single player: show a crewed station's console (or the player's own), and set the shown one's mode (AUTO:
+    /// true).
+    View(String),
+    Mode(bool),
 }
 
 /// What a drag on a control turns (the mockup's `data-drag`).

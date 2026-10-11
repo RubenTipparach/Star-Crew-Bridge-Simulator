@@ -86,6 +86,8 @@ pub struct Seat {
     last_send: f64,
     hits: Vec<RecentHit>,
     face_hit: [f64; 6],
+    /// This frame's input touched a control of the console (single player: an AUTO station's console taken over).
+    touched: bool,
 }
 
 /// Things the console asks the drill to do besides commands.
@@ -94,6 +96,12 @@ pub enum SeatAsk {
     Command(Command),
     /// Take the other station.
     Claim(Station),
+    /// Single player: show this station's console.
+    View(Station),
+    /// Single player: set the shown station's mode (AUTO: true).
+    Mode(bool),
+    /// A captain's page was chosen (single player: the player's own chip comes back to the captain's console).
+    Tab,
 }
 
 impl Default for Seat {
@@ -123,6 +131,7 @@ impl Default for Seat {
             last_send: 0.0,
             hits: Vec::new(),
             face_hit: [-1e9; 6],
+            touched: false,
         }
     }
 }
@@ -332,6 +341,7 @@ impl Seat {
             role: role.into(),
             op,
             open,
+            solo: None,
             order,
             alert: if br.red_alert { "red_alert" } else { "normal" }.into(),
             red_alert: br.red_alert,
@@ -403,6 +413,21 @@ impl Seat {
             // No power grid in the drill yet: Engineering's console is unavailable (console-parity 10.2).
             eng: None,
         }
+    }
+
+    /// Whether the last `input` touched a control of the console: a press, a drag, a hold or a key, not the title
+    /// band's own controls (single-player design 4: a press on an AUTO station's console takes it MANUAL).
+    pub fn touched(&self) -> bool {
+        self.touched
+    }
+
+    /// Keep the helm's set points the ship's while someone else flies it (single player: a station on AUTO), so the
+    /// first press after taking it over does not jump the speed.
+    pub fn follow(&mut self, tern: &ShipSnap) {
+        self.speed_set = tern.speed_set;
+        self.strafe = tern.strafe;
+        self.strafe_sent = tern.strafe;
+        self.stick_drag = [0.0; 3];
     }
 
     /// The viewscreen's camera: forward and up in the system frame, and the vertical field of view in radians for an
@@ -546,7 +571,16 @@ impl Seat {
                 out.push(cmd(Command::Viewscreen((!taken).then_some(feed))));
             }
             Act::Room(id) => self.ship_sel = id,
-            Act::Tab(t) => self.cap_tab = t,
+            Act::Tab(t) => {
+                self.cap_tab = t;
+                out.push(SeatAsk::Tab);
+            }
+            Act::View(id) => {
+                if let Some(st) = Station::from_id(&id) {
+                    out.push(SeatAsk::View(st));
+                }
+            }
+            Act::Mode(auto) => out.push(SeatAsk::Mode(auto)),
             // Engineering's and the captain's damage control are not simulated in the drill: drawn unavailable.
             Act::Preset(_)
             | Act::Prio(_)
@@ -645,10 +679,19 @@ impl Seat {
         use console::kit::Drag;
         let mut out = Vec::new();
         let fl = &data.tern_flight;
+        // A press on any control but the title band's own (show a console, its mode, the captain's pages, a swap), a
+        // drag, a hold or a key: the player's hands on this console (the mockup's soloTakeOver).
+        let band =
+            |h: &Option<Hit>| matches!(h, Some(Hit::Act(Act::View(_) | Act::Mode(_) | Act::Tab(_) | Act::Swap(_))));
+        let quiet = [keys::TAB, keys::M, keys::LSHIFT, keys::RSHIFT];
+        self.touched = ctx_input.pressed.iter().any(|k| !quiet.contains(k));
         for e in &ctx_input.events {
             match *e {
                 PointerEv::Press(p) => {
                     let Some(region) = hits.at(p) else { continue };
+                    if region.hit.is_some() && !band(&region.hit) {
+                        self.touched = true;
+                    }
                     match region.hit.clone() {
                         Some(Hit::Act(a)) => self.act(a, v, tern, hound, data, &mut out),
                         Some(Hit::Hold(k)) => self.hold = Some((k, now, false)),
@@ -901,7 +944,7 @@ mod tests {
             asks.into_iter()
                 .filter_map(|a| match a {
                     SeatAsk::Command(c) => Some(c),
-                    SeatAsk::Claim(_) => None,
+                    _ => None,
                 })
                 .filter(|c| !matches!(c, Command::Stick { .. }))
                 .collect()
@@ -994,6 +1037,31 @@ mod tests {
         let bow = b.data.tern_shields.presets.iter().position(|p| p.id == "bow").unwrap() as u8;
         assert_eq!(b.press(Hit::Act(Act::Favour(0)), 1.0), vec![Command::Preset(bow)]);
         assert_eq!(b.press(Hit::Act(Act::Target(TRACK.into())), 1.1), vec![Command::Lock(Some(ENEMY_ID))]);
+    }
+
+    #[test]
+    fn in_single_player_a_crew_tab_shows_its_console_and_only_a_control_touches_it() {
+        use crate::console::{CrewTab, SoloView};
+        let mut b = Bench::new(Station::Tactical);
+        let mut v = b.view(1.0);
+        let tab = |st: &str| CrewTab { station: st.into(), op: "Lt. Dal Varen".into(), auto: true, seated: true };
+        v.solo = Some(SoloView { seat: "helm".into(), crew: vec![tab("tactical"), tab("science")] });
+        let hits = paint(&v);
+        let (t, h) = (b.snap.ships[0].clone(), b.snap.ships[1].clone());
+        let mut press = |hit: Hit| {
+            let p = centre(&hits, &hit);
+            let input = Input { events: vec![PointerEv::Press(p), PointerEv::Release(p)], ..Default::default() };
+            let asks = b.seat.input(&input, &hits, 1.0, &v, &t, &h, &b.data, Station::Tactical, 1.0);
+            (asks, b.seat.touched())
+        };
+        let (asks, touched) = press(Hit::Act(Act::View("science".into())));
+        assert!(matches!(asks.as_slice(), [SeatAsk::View(Station::Science)]), "the crew tab asks to show Science");
+        assert!(!touched, "showing another console is not a hand on this one");
+        let (asks, touched) = press(Hit::Act(Act::Mode(false)));
+        assert!(matches!(asks.as_slice(), [SeatAsk::Mode(false)]), "the switch asks for MANUAL");
+        assert!(!touched, "the switch is the title band's, not the console's");
+        let (_, touched) = press(Hit::Act(Act::Target(TRACK.into())));
+        assert!(touched, "a target card is a hand on the console: on AUTO it takes the station MANUAL");
     }
 
     #[test]

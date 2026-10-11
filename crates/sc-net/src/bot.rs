@@ -9,6 +9,9 @@
 //! On foot (design 9, when the snapshot carries bodies) a claim is a walk, and the bot moves when it should: relieved
 //! by a player it walks to the most important station no one holds; sat at a less important station while a more
 //! important one stands empty, nobody on the way, for `bot_posts.reassign_s`, it gets up and goes there.
+//!
+//! On MANUAL (openspec/changes/single-player design 4) it stays: it walks, sits and readies as ever, and in a round
+//! it decides nothing and sends nothing, so the player can play its station through its session.
 
 use crate::session::{Session, Stage};
 use sc_core::combat::automation::{self, Memory};
@@ -34,6 +37,8 @@ pub struct Bot {
     next_s: f64,
     /// When a hostile was last inside the captain's normal range, for the captain's automation.
     hostile_near_s: f64,
+    /// MANUAL: seated and silent in a round (single player); AUTO when false.
+    pub manual: bool,
 }
 
 impl Bot {
@@ -52,6 +57,7 @@ impl Bot {
             claimed_at: f64::NEG_INFINITY,
             next_s: 0.0,
             hostile_near_s: f64::NEG_INFINITY,
+            manual: false,
         }
     }
 
@@ -92,6 +98,12 @@ impl Bot {
             }
             Some(Phase::Engage) => {
                 self.muster_seen = None;
+                if self.manual {
+                    // The player plays this station: nothing of its own, and back on AUTO it decides afresh.
+                    self.mem = Memory::default();
+                    self.next_s = 0.0;
+                    return;
+                }
                 let Some(pic) = s.picture() else { return };
                 let now = s.latest().map(|x| x.phase_s).unwrap_or(0.0);
                 let p = &self.profile;
