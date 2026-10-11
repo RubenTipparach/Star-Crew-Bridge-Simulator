@@ -41,6 +41,9 @@ Its data live in `data/weapons.json` (`lasers.<id>`) and each ship's combat file
   ARC (the ship from above with the bank's arc and the target in it or not), SPOT (the target's face the beam would
   meet: its shield as a ring, its armour as a plate, struck through when gone), and FIRE (the biggest control, its
   hit chance in its tooltip). The objectives tab is on it (`objectives-tab`).
+- **The captain's CREW panel** lists every station but the captain's: seven with the banks and the gunner, two to a
+  row in four rows, where it listed comms and flight ops before. Recommendation taken (ask only with screenshots):
+  `docs/screenshots/parity/captain-mockup.png` beside `captain-engine.png`.
 - **Automation** fires a bank when it is full and the hit chance is at least 0.5, or at the least charge when the spot
   it bears on has no armour and the chance is at least 0.35.
 
@@ -51,5 +54,6 @@ missiles` 4). Its AI turns a broadside toward the Tern while a bank is ready.
 
 ## 5. Cost
 
-One beam event per shot (two a ship every 30 s), two numbers a bank in the snapshot. On the client a beam is a line
+One beam event per shot (two a ship every 30 s), two numbers a bank in the snapshot, and each face's armour left (6 bytes a
+ship) for SPOT. On the client a beam is a line
 drawn for 0.4 s. The consoles add two screens.

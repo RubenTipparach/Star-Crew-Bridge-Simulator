@@ -9,6 +9,9 @@
 
 use crate::console::kit::Hit;
 use crate::console::{self, Act, Cam, CapView, ComposerView, ConsoleView, ContactView, CrewAt, CrewRow, FlightView};
+use crate::console::{
+    BeamAges, GunTarget, GunnerView, InboundView, LaserView, LasersView, ObjectiveRow, ObjectivesView,
+};
 use crate::console::{HitView, HoldView, Hpr, OrderView, PlanView, ScanCam, ScanCams, SciView, TubeView, TurretView};
 use egui::{Pos2, Rect};
 use glam::{DQuat, DVec3};
@@ -16,7 +19,10 @@ use sc_client::platform::keys;
 use sc_core::combat::attitude::{self, from_hpr, hpr_of, whole_deg};
 use sc_core::combat::data::DrillData;
 use sc_core::combat::data::BANDS;
-use sc_core::combat::{self as combat, Command, HelmMode, Station, TubeState, ENEMY_ID, FEEDS};
+use sc_core::combat::data::{ObjectiveFacts, ObjectiveKind, ObjectiveState};
+use sc_core::combat::{
+    self as combat, Command, HelmMode, Station, TubeState, ENEMY_ID, FEEDS, FIGHTER_IDS, GUNNER_TURRET,
+};
 use sc_net::msg::{ShipSnap, Snapshot};
 use std::collections::HashSet;
 
@@ -31,8 +37,24 @@ const HIT_SHOW_S: f64 = 8.0;
 const TRACK: &str = "T1";
 /// The shield view's usual camera (the mockup's).
 const SHIELD_CAM: Cam = Cam { yaw: 62.0, el: 24.0 };
-/// The captain's CREW rows: the bridge's stations in the mockup's order.
-const CREW_ROLES: [&str; 6] = ["helm", "tactical", "engineering", "science", "comms", "flight_ops"];
+/// How often the gunner's barrel is sent while it moves, seconds (the helm's stick's rate).
+const AIM_SEND_S: f64 = 0.05;
+/// A laser bank's charge falling by this share between snapshots is a shot (its beam shows on FIRE).
+const SHOT_DROP: f64 = 0.2;
+/// The shield faces' words, in their order.
+const FACE_WORDS: [&str; 6] = ["bow", "stern", "port", "starboard", "dorsal", "ventral"];
+
+/// The gunner's own state: the barrel (yaw to starboard and pitch up, degrees, ship axes), the target chosen, the
+/// trigger, and what was last sent.
+struct GunSeat {
+    yaw: f64,
+    pitch: f64,
+    chosen: usize,
+    trigger: bool,
+    sent: Option<(f64, f64)>,
+    sent_trigger: bool,
+    last_send: f64,
+}
 
 /// A drag in progress.
 struct Dragging {
@@ -88,6 +110,12 @@ pub struct Seat {
     face_hit: [f64; 6],
     /// This frame's input touched a control of the console (single player: an AUTO station's console taken over).
     touched: bool,
+    /// OBJECTIVES is open over the console (objectives-tab 1).
+    obj_open: bool,
+    gun: GunSeat,
+    /// Each laser bank's charge at the last view, and when each last fired (local time).
+    laser_charge: [f64; 2],
+    laser_shot: [f64; 2],
 }
 
 /// Things the console asks the drill to do besides commands.
@@ -132,6 +160,19 @@ impl Default for Seat {
             hits: Vec::new(),
             face_hit: [-1e9; 6],
             touched: false,
+            obj_open: false,
+            // The mockup's barrel: dead ahead, 20 degrees up.
+            gun: GunSeat {
+                yaw: 0.0,
+                pitch: 20.0,
+                chosen: 0,
+                trigger: false,
+                sent: None,
+                sent_trigger: false,
+                last_send: -1e9,
+            },
+            laser_charge: [0.0; 2],
+            laser_shot: [-1e9; 2],
         }
     }
 }
@@ -223,7 +264,7 @@ impl Seat {
             PlanView { time: p.time_s, angle: p.angle_deg, held: p.held }
         });
         let pv = attitude::slew(tern.rot, tern.rates, from_hpr(self.oe.h, self.oe.p, self.oe.r), fl);
-        let contacts: Vec<ContactView> = if hound_up {
+        let mut contacts: Vec<ContactView> = if hound_up {
             vec![ContactView {
                 id: TRACK.into(),
                 cls: "corvette".into(),
@@ -236,6 +277,21 @@ impl Seat {
         } else {
             Vec::new()
         };
+        // The Hound's fighters in flight, J1 and J2 (enemy-fighters 3), always known: they are close and fast.
+        let mut fighter_vel = Vec::new();
+        for f in &snap.fighters {
+            let n = FIGHTER_IDS.iter().position(|id| *id == f.id).map_or(0, |i| i + 1);
+            contacts.push(ContactView {
+                id: format!("J{n}"),
+                cls: "fighter".into(),
+                iff: "hostile".into(),
+                rel: arr(inv * (f.pos - tern.pos)),
+                dir: arr(inv * (f.rot * DVec3::Z)),
+                hull: f.hull * 100.0,
+                scan: 1.0,
+            });
+            fighter_vel.push((format!("J{n}"), f.vel, f.shield));
+        }
         let locked_on = tern.lock_target == Some(ENEMY_ID) && hound_up;
         let tubes_cfg = data.tern_combat.tubes.as_ref();
         let (load_s, arm_s) = tubes_cfg.map_or((1.0, 0.0), |t| (t.load_s, t.arm_s));
@@ -318,15 +374,14 @@ impl Seat {
                     Some(OrderView { to: to.id().into(), verb, state: if *done { "done" } else { "sent" }.into() })
                 })
                 .collect(),
-            crew: CREW_ROLES
+            // Every station but the captain's (combat 2: the laser banks and the gunner among them).
+            crew: Station::ALL
                 .iter()
-                .map(|r| {
-                    let st = Station::from_id(r);
-                    CrewRow {
-                        role: (*r).into(),
-                        op: st.and_then(|st| ops.iter().find(|(s, _)| *s == st).map(|(_, n)| n.clone())),
-                        order: st.is_some_and(|st| br.orders.iter().any(|(to, _, done)| *to == st && !done)),
-                    }
+                .filter(|st| **st != Station::Captain)
+                .map(|st| CrewRow {
+                    role: st.id().into(),
+                    op: ops.iter().find(|(s, _)| s == st).map(|(_, n)| n.clone()),
+                    order: br.orders.iter().any(|(to, _, done)| to == st && !done),
                 })
                 .collect(),
             // No compartment is simulated in the drill: every room reads OK, and the crew are seated on the bridge.
@@ -334,10 +389,27 @@ impl Seat {
             crew_at: ops.iter().map(|_| CrewAt { comp: Some("bridge".into()), ok: true }).collect(),
             room: None,
         };
-        let role = if station == Station::Captain { "command" } else { station.id() };
+        let (word, role) = console::station_word(station.id());
+        let lasers = self.lasers(tern, hound, data, locked_on, now);
+        let inbound: Vec<InboundView> = snap
+            .missiles
+            .iter()
+            .filter(|m| m.owner != tern.id)
+            .filter_map(|m| {
+                let rel = m.pos - tern.pos;
+                let dist = rel.length();
+                let closing = -rel.dot(m.vel - tern.vel) / dist.max(1e-9);
+                (closing > 1.0).then(|| InboundView { d: arr((inv * rel).normalize_or_zero()), t: dist / closing })
+            })
+            .collect();
+        let next_inbound_s = inbound.iter().map(|m| m.t).reduce(f64::min);
+        let gunner = self.gunner_view(&contacts, &fighter_vel, tern, hound, data);
+        let gun_turret = data.tern_combat.turrets.iter().position(|t| t.id == GUNNER_TURRET);
+        let gun_snap = gun_turret.and_then(|i| tern.turrets.get(i));
+        let objectives = objectives_view(snap, tern, hound, data);
         ConsoleView {
             station: station.id().into(),
-            word: station.id().to_uppercase(),
+            word: word.into(),
             role: role.into(),
             op,
             open,
@@ -377,7 +449,7 @@ impl Seat {
             target: locked_on.then(|| TRACK.into()),
             tubes_bear: in_cone,
             missiles: snap.missiles.iter().map(|m| arr(inv * (m.pos - tern.pos))).collect(),
-            inbound: Vec::new(),
+            inbound,
             hits: self
                 .hits
                 .iter()
@@ -412,7 +484,126 @@ impl Seat {
             captain: Some(captain),
             // No power grid in the drill yet: Engineering's console is unavailable (console-parity 10.2).
             eng: None,
+            decoys: u32::from(tern.decoys),
+            decoys_max: data.tern_combat.decoys.as_ref().map_or(0, |d| d.count),
+            decoy_age_s: if tern.decoy_on { 0.0 } else { 1e9 },
+            next_inbound_s,
+            laser_beam_age_s: lasers
+                .as_ref()
+                .map(|_| BeamAges { port: now - self.laser_shot[0], stbd: now - self.laser_shot[1] }),
+            lasers,
+            gunner,
+            gun_locked: gun_snap.is_some_and(|t| t.cooling),
+            objectives_open: self.obj_open,
+            objectives,
         }
+    }
+
+    /// Both laser banks' consoles, port first (laser-banks 3): what the snapshot says of each, its charging from the
+    /// data, and the face of the locked target its beam meets, with that face's shield and armour.
+    fn lasers(
+        &mut self,
+        tern: &ShipSnap,
+        hound: &ShipSnap,
+        data: &DrillData,
+        locked_on: bool,
+        now: f64,
+    ) -> Option<LasersView> {
+        let lz = data.laser(&data.tern_combat.lasers.as_ref()?.laser);
+        let (p, s) = (tern.lasers.first()?, tern.lasers.get(1)?);
+        for (k, l) in [p, s].iter().enumerate() {
+            if l.charge < self.laser_charge[k] - SHOT_DROP {
+                self.laser_shot[k] = now;
+            }
+            self.laser_charge[k] = l.charge;
+        }
+        // The Hound's face toward the Tern, by the shield's own face rule.
+        let spot = locked_on.then(|| {
+            let e = data.enemy.shields.ellipsoid;
+            let o = hound.rot.inverse() * (tern.pos - hound.pos) - DVec3::from_array(e.centre_m);
+            let f = usize::from(combat::shield_face(o, DVec3::from_array(e.axes_m)).min(5));
+            let presets = &data.enemy.shields.presets;
+            let cap = presets[usize::from(hound.preset).min(presets.len() - 1)].faces_mj[f];
+            (f, hound.faces[f] / cap.max(1e-9), hound.armour[f])
+        });
+        let view = |bank: &str, l: &sc_net::msg::LaserSnap| LaserView {
+            bank: bank.into(),
+            charge: l.charge,
+            secs_to_full: (1.0 - l.charge).max(0.0) * lz.capacitor_mj / lz.charge_mw.max(1e-9),
+            min_charge: lz.min_charge_frac,
+            bearing: l.bearing,
+            hit_chance: l.hit_chance,
+            spot_face: spot.map_or(String::new(), |(f, _, _)| FACE_WORDS[f].into()),
+            spot_shield: spot.map_or(0.0, |(_, k, _)| k),
+            spot_armour: spot.map_or(0.0, |(_, _, a)| a),
+            capability: 1.0,
+        };
+        Some(LasersView { port: view("port", p), stbd: view("stbd", s) })
+    }
+
+    /// The gunner's sight (enemy-fighters 3): hostiles within the laser banks' reach, fighters first, then the
+    /// nearest, each with where to aim (one step of lead for the bolt's speed).
+    fn gunner_view(
+        &mut self,
+        contacts: &[ContactView],
+        fighter_vel: &[(String, DVec3, f64)],
+        tern: &ShipSnap,
+        hound: &ShipSnap,
+        data: &DrillData,
+    ) -> Option<GunnerView> {
+        let i = data.tern_combat.turrets.iter().position(|t| t.id == GUNNER_TURRET)?;
+        let t = tern.turrets.get(i)?;
+        let reach_m = data.tern_combat.lasers.as_ref().map_or(8000.0, |l| data.laser(&l.laser).range_m);
+        let bolt = data.gun(&data.tern_combat.gun).speed_mps.max(1.0);
+        let inv = tern.rot.inverse();
+        let mut list: Vec<GunTarget> = contacts
+            .iter()
+            .filter(|c| c.hull > 0.0 && c.iff == "hostile" && DVec3::from_array(c.rel).length() < reach_m)
+            .map(|c| {
+                let (vel, shield) = match fighter_vel.iter().find(|(id, _, _)| *id == c.id) {
+                    Some((_, v, sh)) => (*v, *sh),
+                    None => {
+                        let presets = &data.enemy.shields.presets;
+                        let caps = presets[usize::from(hound.preset).min(presets.len() - 1)].faces_mj;
+                        let k = (0..6).map(|f| hound.faces[f] / caps[f].max(1e-9)).sum::<f64>() / 6.0;
+                        (hound.vel, k)
+                    }
+                };
+                let rel = DVec3::from_array(c.rel);
+                let rel_v = inv * (vel - tern.vel);
+                GunTarget {
+                    id: c.id.clone(),
+                    kind: c.cls.clone(),
+                    rel: c.rel,
+                    lead: arr(rel + rel_v * (rel.length() / bolt)),
+                    hull: c.hull / 100.0,
+                    shield,
+                }
+            })
+            .collect();
+        list.sort_by(|a, b| {
+            let f = |g: &GunTarget| u8::from(g.kind != "fighter");
+            f(a).cmp(&f(b)).then(DVec3::from_array(a.rel).length().total_cmp(&DVec3::from_array(b.rel).length()))
+        });
+        let chosen = (!list.is_empty()).then(|| self.gun.chosen.min(list.len() - 1));
+        Some(GunnerView {
+            aim: [self.gun.yaw, self.gun.pitch],
+            chosen,
+            capacitor: t.charge,
+            heat: t.heat,
+            trigger: self.gun.trigger,
+            targets: list,
+        })
+    }
+
+    /// OBJECTIVES is open over the console.
+    pub fn objectives_open(&self) -> bool {
+        self.obj_open
+    }
+
+    /// Close OBJECTIVES (Esc).
+    pub fn close_objectives(&mut self) {
+        self.obj_open = false;
     }
 
     /// Whether the last `input` touched a control of the console: a press, a drag, a hold or a key, not the title
@@ -451,6 +642,7 @@ impl Seat {
         let presets = &data.tern_shields.presets;
         match a {
             Act::Swap(id) => {
+                self.obj_open = false;
                 if let Some(st) = Station::from_id(&id) {
                     out.push(SeatAsk::Claim(st));
                 }
@@ -573,13 +765,25 @@ impl Seat {
             Act::Room(id) => self.ship_sel = id,
             Act::Tab(t) => {
                 self.cap_tab = t;
+                self.obj_open = false;
                 out.push(SeatAsk::Tab);
             }
             Act::View(id) => {
+                self.obj_open = false;
                 if let Some(st) = Station::from_id(&id) {
                     out.push(SeatAsk::View(st));
                 }
             }
+            Act::Obj => self.obj_open = !self.obj_open,
+            Act::ObjClose => self.obj_open = false,
+            Act::GunNext => {
+                let n = v.gunner.as_ref().map_or(0, |g| g.targets.len());
+                if n > 0 {
+                    self.gun.chosen = (self.gun.chosen.min(n - 1) + 1) % n;
+                }
+            }
+            Act::GunPick(i) => self.gun.chosen = i,
+            Act::Decoy => out.push(cmd(Command::Decoy)),
             Act::Mode(auto) => out.push(SeatAsk::Mode(auto)),
             // Engineering's and the captain's damage control are not simulated in the drill: drawn unavailable.
             Act::Preset(_)
@@ -656,6 +860,11 @@ impl Seat {
                     el: (d.cam0.1 + f64::from(dy / r.height().max(1.0)) * 120.0).clamp(-80.0, 80.0),
                 };
             }
+            // The sight: a drag across its width turns the barrel through the sight's 30 degrees.
+            Drag::GunAim => {
+                self.gun.yaw = console::wrap180(d.cam0.0 + f64::from(dx / r.width().max(1.0)) * 30.0);
+                self.gun.pitch = (d.cam0.1 - f64::from(dy / r.height().max(1.0)) * 15.4).clamp(-10.0, 80.0);
+            }
             // Engineering's faders and levers: no power grid in the drill (drawn unavailable, with no hits).
             Drag::Fader(_) | Drag::Lever(_) => {}
         }
@@ -703,6 +912,7 @@ impl Seat {
                                 }
                                 Drag::FeedView => (self.feed_cam.yaw, self.feed_cam.el),
                                 Drag::ShieldCam => (self.shield_cam.yaw, self.shield_cam.el),
+                                Drag::GunAim => (self.gun.yaw, self.gun.pitch),
                                 _ => (0.0, 0.0),
                             };
                             let v0 = match &what {
@@ -769,6 +979,8 @@ impl Seat {
                         }
                     }
                     "ping" => out.push(SeatAsk::Command(Command::Ping)),
+                    "lfire:port" => out.push(SeatAsk::Command(Command::LaserFire(0))),
+                    "lfire:stbd" => out.push(SeatAsk::Command(Command::LaserFire(1))),
                     "redalert" => out.push(SeatAsk::Command(Command::Alert(!v.red_alert))),
                     _ => {}
                 }
@@ -777,8 +989,44 @@ impl Seat {
         let held = &ctx_input.held;
         let pressed = &ctx_input.pressed;
         match station {
-            // The laser stations and the gunner's sight take their keys in their own consoles (stream D).
-            Station::LaserPort | Station::LaserStbd | Station::Gunner => {}
+            // A laser bank: G held fires it, as Tactical's G fires a tube.
+            Station::LaserPort | Station::LaserStbd => {
+                let key = if station == Station::LaserPort { "lfire:port" } else { "lfire:stbd" };
+                if pressed.contains(&keys::G) && self.hold.is_none() {
+                    self.hold = Some((key.into(), now, true));
+                }
+                if !held.contains(&keys::G) && self.hold.as_ref().is_some_and(|(_, _, key)| *key) {
+                    self.hold = None;
+                }
+            }
+            // The gunner (the mockup's keys): Tab steps the target, Space is the trigger, the arrows nudge the barrel
+            // a degree. The barrel is sent while it moves, and the trigger when it changes.
+            Station::Gunner => {
+                let shift = held.contains(&keys::LSHIFT) || held.contains(&keys::RSHIFT);
+                if pressed.contains(&keys::TAB) && !shift {
+                    self.act(Act::GunNext, v, tern, hound, data, &mut out);
+                }
+                self.gun.trigger = held.contains(&keys::SPACE);
+                for (k, dy, dp) in
+                    [(keys::LEFT, -1.0, 0.0), (keys::RIGHT, 1.0, 0.0), (keys::UP, 0.0, 1.0), (keys::DOWN, 0.0, -1.0)]
+                {
+                    if pressed.contains(&k) {
+                        self.gun.yaw = console::wrap180(self.gun.yaw + dy);
+                        self.gun.pitch = (self.gun.pitch + dp).clamp(-10.0, 80.0);
+                    }
+                }
+                let aim = (self.gun.yaw, self.gun.pitch);
+                if self.gun.sent != Some(aim) && now - self.gun.last_send >= AIM_SEND_S {
+                    self.gun.sent = Some(aim);
+                    self.gun.last_send = now;
+                    // The core's yaw is to port of the bow; the console's to starboard.
+                    out.push(SeatAsk::Command(Command::GunnerAim { yaw_deg: -aim.0, pitch_deg: aim.1 }));
+                }
+                if self.gun.trigger != self.gun.sent_trigger {
+                    self.gun.sent_trigger = self.gun.trigger;
+                    out.push(SeatAsk::Command(Command::GunnerTrigger(self.gun.trigger)));
+                }
+            }
             Station::Helm => {
                 if pressed.contains(&keys::W) {
                     self.speed_set = (self.speed_set + 10.0).min(fl.speed_max_mps);
@@ -847,6 +1095,37 @@ impl Seat {
         }
         out
     }
+}
+
+/// The OBJECTIVES panel's rows (objectives-tab 2), each measured by the mission's rule from the snapshot.
+fn objectives_view(snap: &Snapshot, tern: &ShipSnap, hound: &ShipSnap, data: &DrillData) -> Option<ObjectivesView> {
+    let m = &data.mission;
+    let enemy_hull = if hound.alive { hound.hull / data.enemy.combat.hull_mj.max(1e-9) } else { 0.0 };
+    let tern_hull = tern.hull / data.tern_combat.hull_mj.max(1e-9);
+    let facts = ObjectiveFacts { enemy_hull, tern_hull, fighters_down: snap.stats.fighters_down };
+    let rows = m
+        .objectives
+        .iter()
+        .map(|o| {
+            let (state, k) = o.measure(&facts);
+            let number = match o.kind {
+                Some(ObjectiveKind::Destroy) => Some(format!("{:.0}%", enemy_hull.clamp(0.0, 1.0) * 100.0)),
+                Some(ObjectiveKind::Survive) => Some(format!("{:.0}%", tern_hull.clamp(0.0, 1.0) * 100.0)),
+                Some(ObjectiveKind::DestroyFighters) => {
+                    let n = o.count.unwrap_or(1);
+                    Some(format!("{} / {n}", facts.fighters_down.min(n)))
+                }
+                None => None,
+            };
+            let state = match state {
+                ObjectiveState::Done => "done",
+                ObjectiveState::Failed => "failed",
+                ObjectiveState::Progress => "progress",
+            };
+            ObjectiveRow { words: o.words.clone(), state: state.into(), k, number }
+        })
+        .collect();
+    Some(ObjectivesView { title: m.title.clone(), clock_s: snap.phase_s, rows })
 }
 
 /// A pointer event on the console, in egui points.
@@ -1062,6 +1341,55 @@ mod tests {
         assert!(!touched, "the switch is the title band's, not the console's");
         let (_, touched) = press(Hit::Act(Act::Target(TRACK.into())));
         assert!(touched, "a target card is a hand on the console: on AUTO it takes the station MANUAL");
+    }
+
+    #[test]
+    fn a_full_hold_on_a_bearing_banks_fire_fires_that_bank() {
+        let mut b = Bench::new(Station::LaserStbd);
+        b.snap.ships[0].lasers[1] = sc_net::msg::LaserSnap { charge: 1.0, bearing: true, hit_chance: 0.7 };
+        let p = centre(&paint(&b.view(1.0)), &Hit::Hold("lfire:stbd".into()));
+        assert!(b.input(vec![PointerEv::Press(p)], 1.0).is_empty());
+        assert_eq!(b.input(vec![], 1.0 + HOLD_S), vec![Command::LaserFire(1)], "the starboard bank is bank 1");
+    }
+
+    #[test]
+    fn a_bank_with_nothing_in_its_arc_has_no_fire_to_hold() {
+        let mut b = Bench::new(Station::LaserPort);
+        b.snap.ships[0].lasers[0] = sc_net::msg::LaserSnap { charge: 1.0, bearing: false, hit_chance: 0.0 };
+        let hits = paint(&b.view(1.0));
+        assert!(!hits.regions.iter().any(|r| r.hit == Some(Hit::Hold("lfire:port".into()))), "FIRE is inert");
+    }
+
+    #[test]
+    fn decoy_throws_one_and_objectives_opens_over_the_panels() {
+        let mut b = Bench::new(Station::Tactical);
+        assert_eq!(b.press(Hit::Act(Act::Decoy), 1.0), vec![Command::Decoy]);
+        b.press(Hit::Act(Act::Obj), 1.1);
+        let v = b.view(1.2);
+        assert!(v.objectives_open);
+        let rows = &v.objectives.as_ref().unwrap().rows;
+        assert_eq!(rows.len(), 3, "the drill's three objectives");
+        assert_eq!(rows[2].number.as_deref(), Some("0 / 2"), "no fighter down yet");
+        let hits = paint(&v);
+        assert!(!hits.regions.iter().any(|r| r.hit == Some(Hit::Act(Act::Decoy))), "the panels are under it");
+        b.press(Hit::Act(Act::ObjClose), 1.3);
+        assert!(!b.view(1.4).objectives_open, "the station's own chip goes back");
+    }
+
+    #[test]
+    fn dragging_the_sight_to_the_right_sends_the_barrel_to_starboard() {
+        let mut b = Bench::new(Station::Gunner);
+        let hits = paint(&b.view(1.0));
+        let sight = hits.regions.iter().find(|r| r.hit == Some(Hit::Drag(Drag::GunAim))).unwrap();
+        let (p0, p1) = (sight.rect.center(), sight.rect.center() + egui::vec2(sight.rect.width() / 3.0, 0.0));
+        let sent = b.input(vec![PointerEv::Press(p0), PointerEv::Move(p1), PointerEv::Release(p1)], 1.0);
+        let aim = sent.iter().find_map(|c| match c {
+            Command::GunnerAim { yaw_deg, pitch_deg } => Some((*yaw_deg, *pitch_deg)),
+            _ => None,
+        });
+        let (yaw, pitch) = aim.expect("the barrel is sent");
+        assert!((yaw + 10.0).abs() < 1e-6, "a third of the sight is 10 degrees to starboard, port-positive: {yaw}");
+        assert_eq!(pitch, 20.0, "level drags keep the pitch");
     }
 
     #[test]

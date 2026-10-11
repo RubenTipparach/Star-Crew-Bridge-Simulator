@@ -169,6 +169,8 @@
       comms: 0xab47bc,
       flight_ops: 0x26c6da,
       gunner: 0xff7043,
+      // the laser banks' stations (laser-banks 3)
+      laser: 0xf06292,
     },
     // upholstery and bedding in the side rooms (command-suite): the captain's rooms, and the crew's
     furniture: { captain: 0x8a3b3b, crew: 0x3f5f88 },
@@ -4803,8 +4805,6 @@ const C = {
 };
 const hex = (n) => "#" + n.toString(16).padStart(6, "0");
 const ROLE = {}; for (const [k, v] of Object.entries(K.PALETTE.role)) ROLE[k] = hex(v);
-// The laser stations' colour (laser-banks 3), kept here until shipkit's palette gains a laser role.
-ROLE.laser = "#f06292";
 
 // Icons on a 24-unit grid, stroked. One picture per idea, the same picture on every console.
 const ICONS = {
@@ -5330,6 +5330,9 @@ const ORDER_VERBS = {
   tactical: [["ENGAGE", "target"], ["HOLD FIRE", "lock"], ["LAUNCH", "flight_ops"]],
   engineering: [["COMBAT", "bolt"], ["CRUISE", "drive"], ["REPAIR", "wrench"]],
   science: [["SCAN", "scan"], ["PING", "ping"]],
+  laser_port: [["FIRE", "target"], ["HOLD FIRE", "lock"]],
+  laser_stbd: [["FIRE", "target"], ["HOLD FIRE", "lock"]],
+  gunner: [["FIGHTERS", "target"], ["HOLD FIRE", "lock"]],
 };
 function sendOrder(to, verb) {
   G.orders.unshift({ to, verb, t: G.t, state: "sent" });
@@ -6569,7 +6572,9 @@ function deckPlan(deck, x, y, w, h, o) {
   return s;
 }
 /** Who sits at each station, for the captain's CREW panel (null: automation). */
-const CREW_ROWS = [["helm", "Ana"], ["tactical", "Ben"], ["engineering", "Cleo"], ["science", null], ["comms", null], ["flight_ops", null]];
+/** The CREW panel's rows: every station but the captain's, with who holds it (combat 2: the laser banks took the comms
+ * and flight-ops seats, and the gunner joined; laser-banks 3, enemy-fighters 3). */
+const CREW_ROWS = () => STATIONS.filter((o) => o.id !== "captain").map((o) => [o.id, o.op, o.role]);
 function captain() {
   if (captainTab === "SHIP") return captainShip();
   let s = "";
@@ -6581,13 +6586,13 @@ function captain() {
     return b;
   });
   s += panel("CREW", grid(5, 0, 4, 2), (w, h) => {
-    const rows = CREW_ROWS;
-    const cw = (w - 20 - 6) / 2, ch = (h - 12 - 2 * 6) / 3;
+    const rows = CREW_ROWS(), n = Math.ceil(rows.length / 2);
+    const cw = (w - 20 - 6) / 2, ch = (h - 12 - (n - 1) * 6) / n;
     let b = "";
-    rows.forEach(([r, op], i) => {
+    rows.forEach(([r, op, role], i) => {
       const x = 10 + (i % 2) * (cw + 6), y = 4 + Math.floor(i / 2) * (ch + 6), o = newestOrderFor(r);
       b += `<g data-act="compose:${r}"${tipAttr(`${r.replace("_", " ")}: ${op || "automation"}`)}><rect x="${x}" y="${y}" width="${cw}" height="${ch}" rx="7" fill="${C.panel2}" stroke="${C.line2}"/>`;
-      b += icon(r, x + 22, y + ch / 2, 22, ROLE[r]);
+      b += icon(role, x + 22, y + ch / 2, 22, ROLE[role]);
       b += op ? text(x + 42, y + ch / 2 + 6, 17, C.text, op) : icon("auto", x + 56, y + ch / 2, 18, C.dim);
       if (o) b += icon("dots", x + cw - 20, y + ch / 2, 18, C.warn);
       b += "</g>";
@@ -7251,7 +7256,7 @@ function consoleCaptain() {
     tab: captainTab, ship_sel: G.shipSel, braced: G.braced > 0, view_override: G.viewOverride,
     composer: { to: G.composer.to, verb: G.composer.verb },
     orders: G.orders.slice(0, 4).map((o) => ({ to: o.to, verb: o.verb, state: o.state })),
-    crew: CREW_ROWS.map(([role, op]) => ({ role, op, order: !!newestOrderFor(role) })),
+    crew: CREW_ROWS().map(([role, op]) => ({ role, op, order: !!newestOrderFor(role) })),
     rooms: sim.comps.map((c, k) => { const cs = compState(k); return { id: c.id, word: cs.word }; }),
     crew_at: st.crew.map((cr) => ({ comp: cr.comp != null && cr.comp >= 0 && cr.comp < sim.N ? sim.comps[cr.comp].id : null, ok: cr.status === "ok" })),
     room: { p_kpa: r.p_kpa, po2_kpa: r.po2_kpa, t_k: r.t_k, crew: st.crew.filter((x) => x.comp === i).length },

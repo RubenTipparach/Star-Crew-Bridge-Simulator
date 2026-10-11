@@ -189,6 +189,52 @@ fn turrets(cv: &Canvas, cx: &mut Ctx) {
     }
 }
 
+/// DECOY (armour-and-missiles 3): the countermeasures left, and the nearest inbound missile's seconds to impact, green
+/// in the window where a decoy works best and amber in the next.
+fn decoy(b: &Canvas, cx: &mut Ctx) {
+    let c = &vg::style().c;
+    let v = cx.v;
+    let d = decoy_data();
+    let lit = v.decoy_age_s < d.life_s;
+    let can = v.decoys > 0;
+    let ni = v.next_inbound_s;
+    let best = ni.is_some_and(|t| d.windows.first().is_some_and(|w| t >= w.from_s && t <= w.to_s));
+    let near = ni.is_some_and(|t| d.windows.last().is_some_and(|w| t <= w.to_s));
+    let tc = match ni {
+        None => c.faint.0,
+        Some(_) if best => c.ok.0,
+        Some(_) if near => c.warn.0,
+        Some(_) => c.dim.0,
+    };
+    let fill = if lit { alpha(c.ok.0, 0x26 as f32 / 255.0) } else { c.panel2.0 };
+    let pen = if lit || (best && can) {
+        Pen::new(if best && can { 2.0 } else { 1.2 }, c.ok.0)
+    } else {
+        Pen::new(1.2, c.line2.0)
+    };
+    b.rect(10.0, 130.0, 190.0, 36.0, 7.0, fill, Some(pen));
+    b.icon("decoy", 30.0, 148.0, 22.0, if can { c.text.0 } else { c.faint.0 });
+    for k in 0..v.decoys_max {
+        let f = if k < v.decoys { c.text.0 } else { rgba(0x1c2734, 1.0) };
+        b.rect(50.0 + k as f32 * 14.0, 141.0, 9.0, 14.0, 2.0, f, None);
+    }
+    if let Some(t) = ni {
+        b.text(192.0, 154.0, 17.0, tc, &format!("{t:.1} s"), T::end().bold());
+    }
+    let tip = if can { format!("Decoy: {} left", v.decoys) } else { "No decoys left".to_owned() };
+    cx.hits.add(b, 10.0, 130.0, 190.0, 36.0, can.then_some(Hit::Act(Act::Decoy)), Some(tip));
+}
+
+/// The Tern's countermeasure, from the shipped data.
+fn decoy_data() -> &'static sc_core::combat::data::DecoyData {
+    static D: std::sync::OnceLock<sc_core::combat::data::DecoyData> = std::sync::OnceLock::new();
+    D.get_or_init(|| {
+        let data = sc_core::combat::data::DrillData::shipped();
+        let id = data.tern_combat.decoys.as_ref().map_or("decoy_burst".to_owned(), |d| d.decoy.clone());
+        data.decoy(&id).clone()
+    })
+}
+
 fn tubes(cv: &Canvas, cx: &mut Ctx) {
     let c = &vg::style().c;
     let (b, w, h) = panel(cv, cx, "TUBES", grid(8.0, 2.0, 4.0, 2.0));
@@ -197,20 +243,20 @@ fn tubes(cv: &Canvas, cx: &mut Ctx) {
     let p = v.fire_ring;
     let ready = v.tubes.iter().any(|t| t.state == "READY");
     for (i, t) in v.tubes.iter().enumerate() {
-        let y = 8.0 + i as f32 * 52.0;
+        let y = 6.0 + i as f32 * 46.0;
         let col = match t.state.as_str() {
             "READY" => c.ok.0,
             "LOADING" => c.warn.0,
             _ => c.faint.0,
         };
-        b.rect(10.0, y, 190.0, 42.0, 21.0, rgba(0x101822, 1.0), Some(Pen::new(2.0, col)));
+        b.rect(10.0, y, 190.0, 38.0, 19.0, rgba(0x101822, 1.0), Some(Pen::new(2.0, col)));
         match t.state.as_str() {
             "LOADING" => {
                 let k = (t.t / v.tube_load_s).clamp(0.0, 1.0) as f32;
-                b.rect(14.0, y + 4.0, 182.0 * k, 34.0, 17.0, alpha(c.warn.0, 0.35), None);
+                b.rect(14.0, y + 4.0, 182.0 * k, 30.0, 15.0, alpha(c.warn.0, 0.35), None);
             }
-            "READY" => b.icon("tubes", 105.0, y + 21.0, 30.0, c.ok.0),
-            _ => b.icon("load", 105.0, y + 21.0, 22.0, if v.magazine > 0 { c.dim.0 } else { c.faint.0 }),
+            "READY" => b.icon("tubes", 105.0, y + 19.0, 28.0, c.ok.0),
+            _ => b.icon("load", 105.0, y + 19.0, 20.0, if v.magazine > 0 { c.dim.0 } else { c.faint.0 }),
         }
         let tip = match t.state.as_str() {
             "EMPTY" => "Load".to_owned(),
@@ -218,17 +264,18 @@ fn tubes(cv: &Canvas, cx: &mut Ctx) {
             _ => "Ready".to_owned(),
         };
         let hit = (t.state == "EMPTY" && v.magazine > 0).then_some(Hit::Act(Act::Load(i)));
-        cx.hits.add(&b, 10.0, y, 190.0, 42.0, hit, Some(tip));
+        cx.hits.add(&b, 10.0, y, 190.0, 38.0, hit, Some(tip));
     }
-    // The magazine's pips, in the mockup's band: six as drawn there, narrower when the ship carries more.
-    let slots = v.magazine_slots.max(1);
-    let pitch = if slots <= 6 { 32.0 } else { 192.0 / slots as f32 };
-    let pw = pitch * 0.75;
+    // The magazine: its rounds in rows of ten (armour-and-missiles 2).
+    let slots = v.magazine_slots;
     for k in 0..slots {
         let fill = if k < v.magazine { c.text.0 } else { rgba(0x1c2734, 1.0) };
-        b.rect(12.0 + k as f32 * pitch, h - 22.0, pw, 10.0, 3.0, fill, None);
+        b.rect(12.0 + (k % 10) as f32 * 19.0, 98.0 + (k / 10) as f32 * 13.0, 14.0, 8.0, 2.0, fill, None);
     }
-    cx.hits.add(&b, 12.0, h - 22.0, pitch * slots as f32, 10.0, None, Some("Missiles in the magazine".into()));
+    let rows = slots.div_ceil(10) as f32;
+    let tip = format!("Missiles in the magazine: {} of {slots}", v.magazine);
+    cx.hits.add(&b, 12.0, 98.0, 185.0, rows * 13.0 - 5.0, None, Some(tip));
+    decoy(&b, cx);
     let fx = 214.0;
     let fw = w - fx - 10.0;
     let (fcx, fcy) = (fx + fw / 2.0, h / 2.0 - 4.0);

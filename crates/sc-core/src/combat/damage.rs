@@ -761,6 +761,19 @@ pub fn hull_entry(l: &ShipLayout, p0: DVec3, p1: DVec3) -> Option<DVec3> {
     }
 }
 
+/// The shield faces' order (bow, stern, port, starboard, dorsal, ventral) as indices into [`FACES`].
+const SHIELD_ORDER: [usize; 6] = [4, 5, 2, 3, 0, 1];
+
+/// The armour left on each face, a share of full averaged over the spans, in the shield faces' order (bow, stern,
+/// port, starboard, dorsal, ventral): what a laser station's SPOT shows of the face its beam meets (laser-banks 3).
+pub fn face_armour(l: &ShipLayout, s: &DamageState) -> [f64; 6] {
+    let n = FACES.len();
+    let spans = l.spans().max(1);
+    SHIELD_ORDER.map(|f| {
+        (0..spans).map(|span| s.armour.get(span * n + f).copied().unwrap_or(100.0)).sum::<f64>() / spans as f64 / 100.0
+    })
+}
+
 /// The armour section a shot travelling along `dir` meets at `p`: (span, face). The span is the one `p` is in along
 /// the ship; the face is the side the shot's main axis comes from (the mockup's `hullSection`).
 pub fn section_of(l: &ShipLayout, p: DVec3, dir: DVec3) -> (usize, usize) {
@@ -1775,6 +1788,17 @@ mod tests {
         assert_eq!(s.armour.len(), 54);
         assert!(s.armour.iter().all(|&a| a == 100.0), "a ship starts with every section whole");
         assert_eq!(DamageState::new(&hound()).armour.len(), 24);
+    }
+
+    #[test]
+    fn a_stripped_dorsal_section_shows_on_the_dorsal_face_alone() {
+        let l = hound();
+        let mut s = DamageState::new(&l);
+        assert_eq!(face_armour(&l, &s), [1.0; 6], "a whole ship has every face's armour");
+        s.armour[FACES.iter().position(|f| *f == "dorsal").unwrap()] = 0.0;
+        let a = face_armour(&l, &s);
+        assert!((a[4] - (1.0 - 1.0 / l.spans() as f64)).abs() < 1e-12, "dorsal is the shield order's fifth: {a:?}");
+        assert!(a.iter().enumerate().all(|(i, k)| i == 4 || *k == 1.0), "no other face lost any: {a:?}");
     }
 
     #[test]

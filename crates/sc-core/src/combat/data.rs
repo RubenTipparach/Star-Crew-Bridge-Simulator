@@ -904,6 +904,74 @@ impl Orders {
     }
 }
 
+/// What measures an objective (objectives-tab 2).
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ObjectiveKind {
+    /// The ship named by `ship` destroyed.
+    Destroy,
+    /// The Tern's hull above zero to the end.
+    Survive,
+    /// `count` of the enemy's fighters shot down.
+    DestroyFighters,
+}
+
+/// One of a mission's objectives: its words, as the briefing and the OBJECTIVES tab read them, and what measures it
+/// (none: the words only).
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct Objective {
+    /// What the crew read.
+    pub words: String,
+    /// What measures it.
+    #[serde(default)]
+    pub kind: Option<ObjectiveKind>,
+    /// A destroy objective's ship: the mission's enemy class id.
+    #[serde(default)]
+    pub ship: Option<String>,
+    /// A destroy-fighters objective's number of fighters.
+    #[serde(default)]
+    pub count: Option<u32>,
+}
+
+/// Where an objective stands.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ObjectiveState {
+    Progress,
+    Done,
+    Failed,
+}
+
+/// What an objective is measured against: the enemy's and the Tern's hull as shares of full, and the fighters down.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ObjectiveFacts {
+    pub enemy_hull: f64,
+    pub tern_hull: f64,
+    pub fighters_down: u32,
+}
+
+impl Objective {
+    /// Where it stands and how far it has gone (0-1), the one rule the OBJECTIVES tab draws (objectives-tab 2).
+    pub fn measure(&self, f: &ObjectiveFacts) -> (ObjectiveState, f64) {
+        match self.kind {
+            Some(ObjectiveKind::Destroy) => {
+                let h = f.enemy_hull.clamp(0.0, 1.0);
+                (if h <= 0.0 { ObjectiveState::Done } else { ObjectiveState::Progress }, 1.0 - h)
+            }
+            Some(ObjectiveKind::Survive) => {
+                let h = f.tern_hull.clamp(0.0, 1.0);
+                (if h <= 0.0 { ObjectiveState::Failed } else { ObjectiveState::Progress }, h)
+            }
+            Some(ObjectiveKind::DestroyFighters) => {
+                let n = self.count.unwrap_or(1).max(1);
+                let k = (f64::from(f.fighters_down) / f64::from(n)).min(1.0);
+                (if f.fighters_down >= n { ObjectiveState::Done } else { ObjectiveState::Progress }, k)
+            }
+            None => (ObjectiveState::Progress, 0.0),
+        }
+    }
+}
+
 /// `data/missions/<id>.json`.
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -916,8 +984,8 @@ pub struct MissionFile {
     pub title: String,
     /// The situation, as the briefing reads it.
     pub situation: String,
-    /// The objectives.
-    pub objectives: Vec<String>,
+    /// The objectives (objectives-tab 2).
+    pub objectives: Vec<Objective>,
     /// Each station's orders.
     pub orders: Orders,
     /// The stations the drill uses, by id.
@@ -953,6 +1021,21 @@ impl Validate for MissionFile {
         c.number("muster_spacing_m", self.muster_spacing_m, 0.3, 3.0);
         c.count("title (characters)", self.title.chars().count() as i64, 1, 60);
         c.count("objectives", self.objectives.len() as i64, 1, 6);
+        for (i, o) in self.objectives.iter().enumerate() {
+            c.count(&format!("objectives[{i}].words (characters)"), o.words.chars().count() as i64, 1, 60);
+            match o.kind {
+                Some(ObjectiveKind::Destroy) => {
+                    c.equals(&format!("objectives[{i}].ship"), o.ship.as_deref().unwrap_or(""), &self.enemy)
+                }
+                Some(ObjectiveKind::DestroyFighters) => c.count(
+                    &format!("objectives[{i}].count"),
+                    i64::from(o.count.unwrap_or(0)),
+                    1,
+                    crate::combat::FIGHTER_IDS.len() as i64,
+                ),
+                Some(ObjectiveKind::Survive) | None => {}
+            }
+        }
         c.count("stations", self.stations.len() as i64, 1, crate::combat::Station::ALL.len() as i64);
         for (i, s) in self.stations.iter().enumerate() {
             if crate::combat::Station::from_id(s).is_none() {

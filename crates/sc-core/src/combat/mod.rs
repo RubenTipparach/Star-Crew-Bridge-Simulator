@@ -1873,7 +1873,7 @@ impl Drill {
     }
 
     /// Ship `si`'s insides (ship-damage).
-    fn layout(&self, si: usize) -> &damage::ShipLayout {
+    pub fn layout(&self, si: usize) -> &damage::ShipLayout {
         if si == 0 {
             &self.data.tern_layout
         } else {
@@ -2622,6 +2622,20 @@ mod tests {
         let d = DrillData::shipped();
         assert_eq!(d.mission.enemy, "hound");
         assert_eq!(d.tern_combat.turrets.len(), 4);
+    }
+
+    #[test]
+    fn each_objective_kind_is_measured_by_its_own_fact() {
+        use data::{ObjectiveFacts, ObjectiveState::*};
+        let obj = &DrillData::shipped().mission.objectives;
+        let f = ObjectiveFacts { enemy_hull: 0.4, tern_hull: 0.9, fighters_down: 1 };
+        let m: Vec<_> = obj.iter().map(|o| o.measure(&f)).collect();
+        assert_eq!(m[0], (Progress, 0.6), "the Hound at 40 % is 60 % of the way to destroyed");
+        assert_eq!(m[1], (Progress, 0.9), "survive reads the Tern's hull");
+        assert_eq!(m[2], (Progress, 0.5), "one fighter of two");
+        let end = ObjectiveFacts { enemy_hull: 0.0, tern_hull: 0.0, fighters_down: 2 };
+        let m: Vec<_> = obj.iter().map(|o| o.measure(&end).0).collect();
+        assert_eq!(m, vec![Done, Failed, Done]);
     }
 
     #[test]

@@ -349,10 +349,13 @@ impl DrillApp {
                 n.auto = !n.auto;
             }
         }
-        if pressed.contains(&keys::TAB) {
+        // On the gunner's sight Tab steps the target instead (the mockup's key); Shift+Tab still moves on.
+        let shift = self.held.contains(&keys::LSHIFT) || self.held.contains(&keys::RSHIFT);
+        let sight = self.shown.unwrap_or(host.seat) == Station::Gunner;
+        if pressed.contains(&keys::TAB) && (!sight || shift) {
             let ids: Vec<Station> = std::iter::once(host.seat).chain(host.crew.iter().map(|n| n.station)).collect();
             let at = ids.iter().position(|s| Some(*s) == self.shown).unwrap_or(0);
-            let back = self.held.contains(&keys::LSHIFT) || self.held.contains(&keys::RSHIFT);
+            let back = shift;
             let next = ids[(at + if back { ids.len() - 1 } else { 1 }) % ids.len()];
             self.show(next);
         }
@@ -776,6 +779,11 @@ impl App for DrillApp {
         self.ui.event(&e);
         match e {
             Event::Quit => return Flow::Done,
+            // Esc first closes OBJECTIVES over a console (objectives-tab 1), then leaves.
+            Event::KeyDown(keys::ESCAPE) if self.seats[self.console_station() as usize].objectives_open() => {
+                let st = self.console_station() as usize;
+                self.seats[st].close_objectives();
+            }
             Event::KeyDown(keys::ESCAPE) => {
                 if !self.args.menu {
                     return Flow::Done;
@@ -943,7 +951,9 @@ impl App for DrillApp {
                     .collect(),
             });
         }
-        if !on_bridge {
+        // The gunner's sight has no viewscreen (enemy-fighters 3): its console covers the screen.
+        let sight = console_view.as_ref().is_some_and(|v| v.station == "gunner");
+        if !on_bridge && !sight {
             self.render_feed(ships.as_ref(), console_view.as_ref());
         }
         let mut ask: Vec<UiAsk> = Vec::new();
@@ -1047,6 +1057,9 @@ impl App for DrillApp {
         match console_view {
             None if on_bridge => {
                 self.r.present_with_ui(&self.bridge_target, f.width, f.height, true, &frame.meshes(), frame.points)
+            }
+            Some(_) if sight => {
+                self.r.present_with_ui(&self.blank, f.width, f.height, true, &frame.meshes(), frame.points)
             }
             Some(_) => {
                 let at = console::viewscreen_px(frame.points, ppp);
@@ -1261,7 +1274,7 @@ fn briefing(ctx: &egui::Context, v: &UiView, snap: &Snapshot, ask: &mut Vec<UiAs
         ui.label(RichText::new(&v.mission.situation).size(17.0).color(TEXT));
         ui.add_space(8.0);
         for o in &v.mission.objectives {
-            label(ui, &format!("- {o}"), 17.0, TEXT);
+            label(ui, &format!("- {}", o.words), 17.0, TEXT);
         }
         ui.add_space(10.0);
         let mine = v.station.unwrap_or(v.want);

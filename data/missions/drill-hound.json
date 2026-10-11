@@ -1,12 +1,13 @@
 {
   "schema": "starcrew.mission/1",
-  "_doc": "The first co-op drill (openspec/changes/coop-drill design 1). Text is what the briefing and debrief show. enemy_start_m is relative to the Tern, in its frame (+Z ahead); waypoint_m is the relay at the Shoals, where the helm's COURSE flies, in the same frame. bot_ready_s is how long a bot client reads the briefing before it presses READY. muster_m is where the crew stand on the bridge before they walk to their seats (the back wall, deck A); muster_spacing_m between them.",
+  "_doc": "The first co-op drill (openspec/changes/coop-drill design 1). Text is what the briefing and debrief show. enemy_start_m is relative to the Tern, in its frame (+Z ahead); waypoint_m is the relay at the Shoals, where the helm's COURSE flies, in the same frame. bot_ready_s is how long a bot client reads the briefing before it presses READY. muster_m is where the crew stand on the bridge before they walk to their seats (the back wall, deck A); muster_spacing_m between them. Each objective has the words the briefing reads and a kind the OBJECTIVES tab measures (objectives-tab 2): destroy names the enemy class, destroy_fighters a count.",
   "id": "drill-hound",
   "title": "Drill 1: Hound at the Shoals",
   "situation": "A Hound corvette has been raiding the relay at the Shoals. The Tern is ordered to intercept and disable it before it reaches the relay.",
   "objectives": [
-    "Destroy the Hound",
-    "Keep the Tern's hull above zero"
+    { "words": "Destroy the Hound", "kind": "destroy", "ship": "hound" },
+    { "words": "Keep the Tern's hull above zero", "kind": "survive" },
+    { "words": "Shoot down both fighters", "kind": "destroy_fighters", "count": 2 }
   ],
   "orders": {
     "helm": "Close to turret range. Keep the Hound level with the ship so all four turrets bear, put the bow on it for missiles, and keep moving so it cannot aim.",

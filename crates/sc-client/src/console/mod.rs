@@ -13,8 +13,11 @@
 
 mod captain;
 mod engineering;
+mod gunner;
 mod helm;
 pub mod kit;
+mod laser;
+mod objectives;
 mod science;
 mod tactical;
 
@@ -442,6 +445,101 @@ pub struct SoloView {
     pub crew: Vec<CrewTab>,
 }
 
+/// A laser bank's console (laser-banks 3; the mockup's `laserView`).
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct LaserView {
+    /// port or stbd.
+    pub bank: String,
+    /// The capacitor's share of full.
+    pub charge: f64,
+    /// Seconds to full at its charging rate.
+    pub secs_to_full: f64,
+    /// The least share it fires from.
+    pub min_charge: f64,
+    /// Its arc holds the target, in range.
+    pub bearing: bool,
+    /// The chance a shot now hits.
+    pub hit_chance: f64,
+    /// The target's face a beam meets (bow, stern, port, starboard, dorsal or ventral; empty: no target), and that
+    /// face's shield and armour as shares of full.
+    pub spot_face: String,
+    pub spot_shield: f64,
+    pub spot_armour: f64,
+    /// How well the bank works (0-1).
+    pub capability: f64,
+}
+
+/// Both banks.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct LasersView {
+    pub port: LaserView,
+    pub stbd: LaserView,
+}
+
+/// Seconds since each bank last fired.
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct BeamAges {
+    pub port: f64,
+    pub stbd: f64,
+}
+
+/// A target in the gunner's sight.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct GunTarget {
+    pub id: String,
+    /// fighter or corvette.
+    pub kind: String,
+    /// Where it is and where to aim (one step of lead for the bolt's speed), ship axes, metres.
+    pub rel: [f64; 3],
+    pub lead: [f64; 3],
+    /// Hull and shield, shares of full.
+    pub hull: f64,
+    pub shield: f64,
+}
+
+/// The gunner's sight (enemy-fighters 3; the mockup's `gunnerView`).
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct GunnerView {
+    /// The barrel: yaw to starboard and pitch up, degrees, ship axes.
+    pub aim: [f64; 2],
+    /// The chosen target's index in `targets`.
+    pub chosen: Option<usize>,
+    /// The turret's capacitor and heat, shares of full.
+    pub capacitor: f64,
+    pub heat: f64,
+    pub trigger: bool,
+    /// Hostiles within 8 km, fighters first, then the nearest.
+    pub targets: Vec<GunTarget>,
+}
+
+/// One row of the OBJECTIVES panel.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct ObjectiveRow {
+    pub words: String,
+    /// progress, done or failed.
+    pub state: String,
+    /// How far it has gone, 0-1.
+    pub k: f64,
+    /// Its one number (none: words only).
+    pub number: Option<String>,
+}
+
+/// The OBJECTIVES panel (objectives-tab 2).
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct ObjectivesView {
+    pub title: String,
+    /// The fight's clock, seconds.
+    pub clock_s: f64,
+    pub rows: Vec<ObjectiveRow>,
+}
+
 /// Everything a console draws: the mockup's `window.consoleState()`, field for field.
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -551,6 +649,37 @@ pub struct ConsoleView {
     /// Engineering's state (none: no power grid is simulated, and engineering's controls are unavailable).
     #[serde(default)]
     pub eng: Option<EngView>,
+    /// Countermeasures left and carried, seconds since the last was thrown, and the nearest inbound missile's seconds
+    /// to impact (armour-and-missiles 3: Tactical's DECOY).
+    #[serde(default)]
+    pub decoys: u32,
+    #[serde(default)]
+    pub decoys_max: u32,
+    #[serde(default = "long_ago")]
+    pub decoy_age_s: f64,
+    #[serde(default)]
+    pub next_inbound_s: Option<f64>,
+    /// The laser banks (none: a fixture from before them).
+    #[serde(default)]
+    pub lasers: Option<LasersView>,
+    #[serde(default)]
+    pub laser_beam_age_s: Option<BeamAges>,
+    /// The gunner's sight.
+    #[serde(default)]
+    pub gunner: Option<GunnerView>,
+    /// The gunner's turret is locked out by heat.
+    #[serde(default)]
+    pub gun_locked: bool,
+    /// OBJECTIVES is open over the panels.
+    #[serde(default)]
+    pub objectives_open: bool,
+    #[serde(default)]
+    pub objectives: Option<ObjectivesView>,
+}
+
+/// A time long past, seconds: nothing thrown yet.
+fn long_ago() -> f64 {
+    1e9
 }
 
 // ------------------------------------------------------------------------------------------------ math
@@ -766,14 +895,26 @@ pub fn draw(cv: &Canvas, cx: &mut Ctx) {
         cv.rect(0.0, 0.0, 1280.0, 720.0, 0.0, c.bg.0, None);
     }
     title_band(&cv.at(0.0, 0.0), cx);
-    // Nothing in the look band reaches past it, so it takes no clip rectangle (each costs a UI draw call).
-    look_band(&cv.at(0.0, 32.0), cx);
-    match cx.v.station.as_str() {
-        "helm" => helm::draw(cv, cx),
-        "engineering" => engineering::draw(cv, cx),
-        "science" => science::draw(cv, cx),
-        "captain" => captain::draw(cv, cx),
-        _ => tactical::draw(cv, cx),
+    // The gunner's console is a sight, not panels, with no look band (enemy-fighters 3). OBJECTIVES opens over the
+    // four panels, or over the sight (objectives-tab 1).
+    let sight = cx.v.station == "gunner";
+    if !sight {
+        // Nothing in the look band reaches past it, so it takes no clip rectangle (each costs a UI draw call).
+        look_band(&cv.at(0.0, 32.0), cx);
+    }
+    if !cx.v.objectives_open || sight {
+        match cx.v.station.as_str() {
+            "helm" => helm::draw(cv, cx),
+            "engineering" => engineering::draw(cv, cx),
+            "science" => science::draw(cv, cx),
+            "captain" => captain::draw(cv, cx),
+            "laser_port" | "laser_stbd" => laser::draw(cv, cx),
+            "gunner" => gunner::draw(cv, cx),
+            _ => tactical::draw(cv, cx),
+        }
+    }
+    if cx.v.objectives_open {
+        objectives::draw(cv, cx);
     }
     status_strip(&cv.at(0.0, 688.0), cx);
     kit::tooltip(cv, cx);
@@ -784,12 +925,16 @@ pub fn accent(v: &ConsoleView) -> Color32 {
     vg::style().role.of(&v.role)
 }
 
-fn station_word(id: &str) -> (&'static str, &'static str) {
+/// A station's word on its chip and its role (for its colour and icon).
+pub fn station_word(id: &str) -> (&'static str, &'static str) {
     match id {
         "helm" => ("HELM", "helm"),
         "tactical" => ("TACTICAL", "tactical"),
         "engineering" => ("ENGINEERING", "engineering"),
         "science" => ("SCIENCE", "science"),
+        "laser_port" => ("LASER PORT", "laser"),
+        "laser_stbd" => ("LASER STBD", "laser"),
+        "gunner" => ("GUNNER", "gunner"),
         _ => ("CAPTAIN", "command"),
     }
 }
@@ -836,7 +981,10 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
         let back = solo.filter(|_| !home).map(|q| Act::View(q.seat.clone()));
         vec![(own_word.to_owned(), own_role.to_owned(), home, back)]
     };
-    for (w, r, on, act) in tabs {
+    for (w, r, on0, act0) in tabs {
+        // With OBJECTIVES open, the station's own chip is the way back (objectives-tab 1).
+        let on = on0 && !v.objectives_open;
+        let act = act0.or_else(|| v.objectives_open.then_some(Act::ObjClose));
         let tw = 34.0 + w.chars().count() as f32 * 9.4;
         let rc = role.of(&r);
         let (fill, stroke) = if on { (alpha(rc, 0x26 as f32 / 255.0), rc) } else { (Color32::TRANSPARENT, c.line2.0) };
@@ -844,7 +992,7 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
         cv.icon(&r, x + 13.0, 16.0, 14.0, if on { rc } else { c.dim.0 });
         cv.text(x + 25.0, 21.0, 13.0, if on { c.text.0 } else { c.dim.0 }, &w, T::default().ls(1.5).bold());
         if let Some(a) = act {
-            let tip = (solo.is_some() && !home).then(|| "Your console (Tab)".to_owned());
+            let tip = (solo.is_some() && !home && a != Act::ObjClose).then(|| "Your console (Tab)".to_owned());
             cx.hits.add(cv, x, 4.0, tw, 24.0, Some(kit::Hit::Act(a)), tip);
         }
         x += tw + 6.0;
@@ -911,18 +1059,33 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
             x += 2.0;
         }
     }
-    let mut open: Vec<(String, String, Option<String>)> = v
-        .open
-        .iter()
-        .map(|id| {
-            let (w, r) = station_word(id);
-            (w.to_owned(), r.to_owned(), Some(id.clone()))
-        })
-        .collect();
-    if solo.is_none() {
-        open.push(("COMMS".into(), "comms".into(), None));
-        open.push(("FLIGHT".into(), "flight_ops".into(), None));
+    // OBJECTIVES, after the station's own tabs and before the swap chips, on every station (objectives-tab 1).
+    {
+        let w = "OBJECTIVES";
+        let tw = 34.0 + w.len() as f32 * 9.4;
+        let on = v.objectives_open;
+        let (fill, stroke) =
+            if on { (alpha(c.text.0, 0x1f as f32 / 255.0), c.text.0) } else { (Color32::TRANSPARENT, c.line2.0) };
+        cv.rect(x, 4.0, tw, 24.0, 5.0, fill, Some(Pen::new(1.0, stroke)));
+        let col = if on { c.text.0 } else { c.dim.0 };
+        cv.icon("objectives", x + 13.0, 16.0, 14.0, col);
+        cv.text(x + 25.0, 21.0, 13.0, col, w, T::default().ls(1.5).bold());
+        cx.hits.add(cv, x, 4.0, tw, 24.0, Some(kit::Hit::Act(Act::Obj)), Some("Objectives".into()));
+        x += tw + 6.0;
     }
+    // The laser banks took the comms and flight-ops seats (laser-banks 3), so only the open stations are left to swap
+    // to; single player crews every station, so it has none.
+    let open: Vec<(String, String, Option<String>)> = if solo.is_some() {
+        Vec::new()
+    } else {
+        v.open
+            .iter()
+            .map(|id| {
+                let (w, r) = station_word(id);
+                (w.to_owned(), r.to_owned(), Some(id.clone()))
+            })
+            .collect()
+    };
     for (w, r, id) in open {
         let tw = 44.0 + w.chars().count() as f32 * 8.6;
         let on = id.is_some();

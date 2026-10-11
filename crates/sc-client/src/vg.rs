@@ -74,6 +74,8 @@ pub struct Roles {
     pub comms: Hex,
     pub flight_ops: Hex,
     pub gunner: Hex,
+    /// The laser banks' stations (laser-banks 3).
+    pub laser: Hex,
 }
 
 /// A colour written `#rrggbb` in the data, opaque.
@@ -149,6 +151,7 @@ impl Roles {
             "science" => self.science.0,
             "comms" => self.comms.0,
             "flight_ops" => self.flight_ops.0,
+            "laser" => self.laser.0,
             _ => self.gunner.0,
         }
     }

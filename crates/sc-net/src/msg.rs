@@ -11,7 +11,7 @@ use sc_core::combat::bodies::Posture;
 use sc_core::combat::{self, Command, HelmMode, Outcome, Phase, Refusal, Station, TubeState, TurretMode};
 
 /// The protocol's version; a Hello with another is refused.
-pub const PROTOCOL: u16 = 6;
+pub const PROTOCOL: u16 = 7;
 /// The longest unreliable message, so it is one SCTP chunk in one datagram (netcode-and-sessions section 2).
 pub const MAX_UNRELIABLE: usize = 1200;
 /// The longest string field, in bytes.
@@ -301,6 +301,9 @@ pub struct ShipSnap {
     pub decoys: u8,
     /// A decoy burst is out around it.
     pub decoy_on: bool,
+    /// The armour left on each face, a share of full, in the shield faces' order (laser-banks 3: a laser station's
+    /// SPOT).
+    pub armour: [f64; 6],
 }
 
 /// A laser bank as a snapshot carries it.
@@ -369,6 +372,8 @@ pub struct StatsSnap {
     pub damage_taken_mj: f64,
     /// Seconds of Engage.
     pub engage_s: f64,
+    /// The enemy's fighters shot down (objectives-tab 2).
+    pub fighters_down: u32,
 }
 
 /// The bridge's state beyond the ships: the condition, brace, the viewscreen, the orders, and Science's scan, ping
@@ -433,6 +438,9 @@ pub struct FighterSnap {
     pub rot: DQuat,
     /// Velocity.
     pub vel: DVec3,
+    /// Hull and shield, shares of full (the gunner's rings, enemy-fighters 3).
+    pub hull: f64,
+    pub shield: f64,
 }
 
 /// A crew member's body in a snapshot: 10 bytes (coop-drill design 9).
@@ -820,6 +828,9 @@ impl Snapshot {
             }
             w.u8(s.decoys);
             w.u8(u8::from(s.decoy_on));
+            for a in s.armour {
+                w.u8((a.clamp(0.0, 1.0) * 200.0).round() as u8);
+            }
         }
         w.u8(self.missiles.len() as u8);
         for m in &self.missiles {
@@ -835,6 +846,7 @@ impl Snapshot {
         w.f32(st.damage_dealt_mj);
         w.f32(st.damage_taken_mj);
         w.f32(st.engage_s);
+        w.u8(st.fighters_down.min(255) as u8);
         let b = &self.bridge;
         w.u8(u8::from(b.red_alert) | u8::from(b.braced) << 1 | u8::from(b.scanning) << 2);
         w.u8(b.view.unwrap_or(255));
@@ -865,6 +877,8 @@ impl Snapshot {
             w.v3_64(f.pos);
             w.quat(f.rot);
             w.v3_32(f.vel);
+            w.u8((f.hull.clamp(0.0, 1.0) * 200.0).round() as u8);
+            w.u8((f.shield.clamp(0.0, 1.0) * 200.0).round() as u8);
         }
         w.0
     }
@@ -956,6 +970,10 @@ impl Snapshot {
             }
             let decoys = r.u8()?;
             let decoy_on = r.bool()?;
+            let mut armour = [0.0; 6];
+            for a in &mut armour {
+                *a = share(r.u8()?)?;
+            }
             ships.push(ShipSnap {
                 id,
                 active: flags & 1 != 0,
@@ -979,6 +997,7 @@ impl Snapshot {
                 lasers,
                 decoys,
                 decoy_on,
+                armour,
             });
         }
         let nm = r.count(combat::MAX_MISSILES)?;
@@ -1005,6 +1024,7 @@ impl Snapshot {
             damage_dealt_mj: r.f32(0.0, 1e9)?,
             damage_taken_mj: r.f32(0.0, 1e9)?,
             engage_s: r.f32(0.0, 1e7)?,
+            fighters_down: u32::from(r.u8()?),
         };
         let flags = r.u8()?;
         if flags > 7 {
@@ -1063,7 +1083,11 @@ impl Snapshot {
         let nf = r.count(combat::FIGHTER_IDS.len())?;
         let mut fighters = Vec::with_capacity(nf);
         for _ in 0..nf {
-            fighters.push(FighterSnap { id: r.u16()?, pos: r.v3_64(POS_LIM)?, rot: r.quat()?, vel: r.v3_32(VEL_LIM)? });
+            let (id, pos, rot, vel) = (r.u16()?, r.v3_64(POS_LIM)?, r.quat()?, r.v3_32(VEL_LIM)?);
+            let share =
+                |v: u8| if v > 200 { Err(DecodeError("a share is over 100 %")) } else { Ok(f64::from(v) / 200.0) };
+            let (hull, shield) = (share(r.u8()?)?, share(r.u8()?)?);
+            fighters.push(FighterSnap { id, pos, rot, vel, hull, shield });
         }
         r.done()?;
         Ok(Self { header, tick, round, phase, phase_s, outcome, ships, missiles, stats, bridge, bodies, fighters })
@@ -1123,6 +1147,7 @@ impl Snapshot {
                     .collect(),
                 decoys: s.decoys.min(255) as u8,
                 decoy_on: s.decoy_s > 0.0,
+                armour: combat::damage::face_armour(d.layout(i), &d.damage[i]),
             })
             .collect();
         let st = &d.stats;
@@ -1143,7 +1168,14 @@ impl Snapshot {
                 .fighters
                 .iter()
                 .filter(|f| f.out())
-                .map(|f| FighterSnap { id: f.id, pos: f.pos, rot: f.rot, vel: f.vel })
+                .map(|f| FighterSnap {
+                    id: f.id,
+                    pos: f.pos,
+                    rot: f.rot,
+                    vel: f.vel,
+                    hull: f.hull_mj / d.data.fighter.hull_mj.max(1e-9),
+                    shield: f.shield_mj / d.data.fighter.shield_mj.max(1e-9),
+                })
                 .collect(),
             bodies: d
                 .bodies
@@ -1160,6 +1192,7 @@ impl Snapshot {
                 damage_dealt_mj: st.damage_dealt_mj,
                 damage_taken_mj: st.damage_taken_mj,
                 engage_s: st.engage_s,
+                fighters_down: st.fighters_down,
             },
             bridge: {
                 let b = &d.bridge;

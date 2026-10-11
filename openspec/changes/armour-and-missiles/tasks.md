@@ -4,4 +4,4 @@
 - [x] 2.1 Missiles for both ships (owner, target), 20 a ship, 60 s load; the Hound's tubes.
 - [x] 2.2 Countermeasures and their automation; point defence against missiles.
 - [x] 2.3 Armour by weapon in `ship-damage`'s hit.
-- [ ] 2.4 The tuning run; the snapshot; Tactical's TUBES and DECOY (mockup first); flares drawn.
+- [x] 2.4 The tuning run; the snapshot; Tactical's TUBES and DECOY (mockup first, at parity: `red-tactical-decoy`); flares drawn.
