@@ -1,0 +1,107 @@
+{
+  "geometry": [
+    {
+      "file": "assets\\models\\exteriors\\tern.glb",
+      "sides": [
+        {
+          "side": -1,
+          "fore_width_m": 4.14,
+          "aft_width_m": 2.208,
+          "aft_taper_m": 11.76,
+          "fore_taper_m": 3.36,
+          "longitudinal_px_per_m": 35.1086,
+          "shared_vertices_checked": 40
+        },
+        {
+          "side": 1,
+          "fore_width_m": 4.14,
+          "aft_width_m": 2.208,
+          "aft_taper_m": 11.76,
+          "fore_taper_m": 3.36,
+          "longitudinal_px_per_m": 35.1086,
+          "shared_vertices_checked": 40
+        }
+      ],
+      "texture_size_px": [
+        1024,
+        2048
+      ],
+      "texture_sha256": "5af11d3e0cd92e4471b04e92f4fced52fcc1e0d967d0e00710b60e4619485e95"
+    },
+    {
+      "file": "assets\\models\\exteriors\\liveries\\cobalt\\tern.glb",
+      "sides": [
+        {
+          "side": -1,
+          "fore_width_m": 4.14,
+          "aft_width_m": 2.208,
+          "aft_taper_m": 11.76,
+          "fore_taper_m": 3.36,
+          "longitudinal_px_per_m": 35.1086,
+          "shared_vertices_checked": 40
+        },
+        {
+          "side": 1,
+          "fore_width_m": 4.14,
+          "aft_width_m": 2.208,
+          "aft_taper_m": 11.76,
+          "fore_taper_m": 3.36,
+          "longitudinal_px_per_m": 35.1086,
+          "shared_vertices_checked": 40
+        }
+      ],
+      "texture_size_px": [
+        1024,
+        2048
+      ],
+      "texture_sha256": "5af11d3e0cd92e4471b04e92f4fced52fcc1e0d967d0e00710b60e4619485e95"
+    },
+    {
+      "file": "assets\\models\\exteriors\\liveries\\rescue\\tern.glb",
+      "sides": [
+        {
+          "side": -1,
+          "fore_width_m": 4.14,
+          "aft_width_m": 2.208,
+          "aft_taper_m": 11.76,
+          "fore_taper_m": 3.36,
+          "longitudinal_px_per_m": 35.1086,
+          "shared_vertices_checked": 40
+        },
+        {
+          "side": 1,
+          "fore_width_m": 4.14,
+          "aft_width_m": 2.208,
+          "aft_taper_m": 11.76,
+          "fore_taper_m": 3.36,
+          "longitudinal_px_per_m": 35.1086,
+          "shared_vertices_checked": 40
+        }
+      ],
+      "texture_size_px": [
+        1024,
+        2048
+      ],
+      "texture_sha256": "5af11d3e0cd92e4471b04e92f4fced52fcc1e0d967d0e00710b60e4619485e95"
+    }
+  ],
+  "preview": {
+    "rays": 460,
+    "budget": {
+      "triangles": 82992,
+      "drawCalls": 51,
+      "textureMB": 88.83332602183025
+    },
+    "interiorTriangles": 76100,
+    "raysByLivery": {
+      "copper": 460,
+      "cobalt": 460,
+      "rescue": 460
+    }
+  },
+  "regressions_rejected": [
+    "previous generic material",
+    "reversed shell",
+    "4.21 px per metre stretched UVs"
+  ]
+}

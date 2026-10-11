@@ -145,3 +145,13 @@ The player exterior SHALL retain its accepted silhouette while displaying angula
 - **WHEN** either side of Deck B is inspected across adjacent rooms
 - **THEN** all ten windows SHALL share a center 1.5 m above the floor and 0.8 m opening height, with aligned sills and heads.
 - **AND** the physical exterior frames, interior openings and custom LOD textures SHALL agree with that shared row.
+
+#### Scenario: Inspect nacelle direction and paint
+- **WHEN** the player ship's warp assemblies are viewed close up
+- **THEN** broad collectors SHALL face the bow and the longer taper SHALL face aft, with level supports and 56 m nacelle bodies.
+- **AND** a dedicated shared atlas SHALL provide at least 32 longitudinal px/m on the shell, using linework projected on the actual 3D surface before enhancement.
+- **AND** all liveries and custom LOD textures SHALL include the revised nacelle artwork.
+
+#### Scenario: Compile the dedicated atlas for the engine
+- **WHEN** the hull compiler loads a rectangular power-of-two nacelle image
+- **THEN** it SHALL expand the shorter axis into the existing square array format with exact pixel replication, preserving normalized UVs and checking the runtime texture allocation.

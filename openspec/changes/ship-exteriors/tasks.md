@@ -156,3 +156,10 @@
 - [x] Use one shared Deck B row for all ten real openings and matching interior portals.
 - [x] Refresh UV guides, rebuild every livery/LOD and inspect both sides and interiors.
 - [x] Verify row alignment, window rays, overlap, budgets and reproducible exports.
+
+## Owner correction: forward nacelles and crisp dedicated texture
+
+- [x] Reverse the long taper, broaden forward collectors and export actual UV linework.
+- [x] Inspect the projected model, generate dedicated artwork and package its native graph.
+- [x] Rebuild liveries and LODs; inspect close views and verify budgets.
+- [ ] Accommodate the rectangular atlas in latest main's hull compiler, verify and push the follow-up PR.

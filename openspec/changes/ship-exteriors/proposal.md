@@ -1,5 +1,9 @@
 # Textured ship exteriors
 
+Owner refinement, 2026-10-10: correct the apparent backward nacelle silhouette and
+replace its stretched general hull patch with dedicated UV-painted artwork. Keep
+the approved hull and level supports, and refresh all custom reduced-detail bakes.
+
 Owner correction, mess-hall windows (2026-10-10): lower all three mess windows to
 the wall's middle height and keep their exterior openings and interior views aligned.
 

@@ -415,6 +415,14 @@ def exterior_surfaces():
     return g
 
 
+def fitted_tern_nacelle():
+    """Dedicated neutral artwork painted over projected nacelle UV linework."""
+    g = Graph("Tern Nacelle and Level Support Paint")
+    source = g.node("image", image="../sources/tern-nacelle-finish.png")
+    g.material(albedo=source, metallic_v=0.0, roughness_v=0.85)
+    return g
+
+
 def fitted_tern_hull(livery="copper"):
     """Projected livery over generated recessed joints and worn armor lips."""
     g = Graph("Tern Integrated Armor Joints - " + livery.title())
@@ -465,6 +473,7 @@ def fitted_tern_hull(livery="copper"):
 
 
 GRAPHS = {
+    "tern_nacelle": fitted_tern_nacelle,
     "tern_hull": fitted_tern_hull,
     "tern_hull_cobalt": lambda: fitted_tern_hull("cyan"),
     "tern_hull_rescue": lambda: fitted_tern_hull("rescue"),

@@ -26,6 +26,24 @@ Needs Python 3 with numpy and Pillow (`pip install numpy pillow`).
 
 ## Custom exterior paint, 2026-10-10
 
+Nacelle refinement, 2026-10-11: [tern_nacelle.ptex](ptex/tern_nacelle.ptex) packages the
+dedicated neutral [generated painting](sources/tern-nacelle-finish.png) from built-in
+imagegen ([exact prompt](sources/tern-nacelle-prompt.txt)). The input is the
+[original projected painting template](sources/tern-nacelle-painting-template.png), built by
+`tools/blender/project_nacelle_paint.py` from the model's triangles and ship-local
+station planes. The wireframe and JSON retain the receiving polygons. The approved
+hull painting was a style reference. Final cap packing separates the collector from
+the rail; `tern-nacelle-projected-layout.png` and its wireframe show the delivered
+UVs. The original painting input remains alongside them. No Python-generated surface art is used.
+
+The 887 x 1774 px painting passes through a native 2048 px Material Maker render,
+then rectangular 1024 x 2048 packaging with zero emission. Its standalone RGBA8
+allocation, including mipmaps, is 10.67 MiB. It is shared by both nacelles and all
+liveries; livery accents remain separate geometry. This fitted exterior atlas uses
+the documented exterior-atlas workflow, rather than adding an interior array layer.
+Its shell receives 35.11 longitudinal texture px/m; original source detail is
+30.41 px/m. Full models and the six custom LOD atlases contain the new artwork.
+
 Ship linework follows the owner's [3D projection workflow](../../CLAUDE.md#9-art-low-poly).
 [`project_hull_paint.py`](../blender/project_hull_paint.py) builds the actual hull, projects
 ship-local seams and oblique livery bands, and bakes their color and region masks into its UVs.
