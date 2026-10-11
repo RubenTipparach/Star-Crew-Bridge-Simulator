@@ -13,11 +13,11 @@ the owner's words in `laser-banks`' proposal and `ship-damage`'s.
 | # | Who | Branch (from `feat/combat-2`) | Builds | Owns these files |
 | --- | --- | --- | --- | --- |
 | A | Pi 1 (coordinator) | `feat/combat-2` | `laser-banks` and `armour-and-missiles` in the core; the new stations and commands; the Hound's AI; automation and bots; the protocol; the server's seats; integrating B and C; the recordings | `sc-core/src/combat/mod.rs`, `automation.rs`, `data.rs`; `sc-net/*`; `sc-server/*`; `sc-client/src/seat.rs`, `drill.rs` |
-| B | The cloud session | `feat/ship-damage` | `ship-damage` design 1-5 and 7 as a pure module: the hull test, armour by weapon (`armour-and-missiles` 1), the march, the cascade, capability, fires and the two teams; the Hound's layout | `sc-core/src/combat/damage.rs` (new), `data/enemies.json` (`layout` block), `data/ships/tern/damage.json` (status) |
-| C | Pi 2 | `feat/fighters` | `enemy-fighters` design 1 and 4 as a pure module: the Jackal's state, flight, AI and guns; its data | `sc-core/src/combat/fighters.rs` (new), `data/enemies.json` (`fighter` block) |
+| B | The cloud session | `feat/ship-damage` | `ship-damage` design 1-5 and 7 as a pure module: the hull test, armour by weapon (`armour-and-missiles` 1), the march, the cascade, capability, fires and the two teams; the Hound's layout | `sc-core/src/combat/damage.rs` (new), `data/ships/hound/layout.json` (new: the Hound's hull, rooms, loads, nodes, conduits), `data/ships/tern/power.json` (laser and turret loads), `data/ships/tern/damage.json` (status) |
+| C | Pi 2 | `feat/fighters` | `enemy-fighters` design 1 and 4 as a pure module: the Jackal's state, flight, AI and guns; its data | `sc-core/src/combat/fighters.rs` (new), `data/fighters.json` (new: the Jackal) |
 | D | The Mac | `feat/combat-consoles` | The consoles: mockups first (`docs/mockups/consoles.html`) for LASER PORT and LASER STBD, the GUNNER sight, Tactical's DECOY and 20-missile magazine, and the OBJECTIVES tab on every station; then the engine consoles at parity; the objectives' kinds in the mission file | `sc-client/src/console/*` (new modules and the view structs), `docs/mockups/consoles.html`, `tools/consoles/*`, `data/missions/*.json` |
 
-Nobody edits another stream's files. A stream that needs a change in someone else's file says so in its commit message
+Nobody edits another stream's files. `data/enemies.json` is A's (its parser refuses unknown keys): B and C put their data in their own new files. A stream that needs a change in someone else's file says so in its commit message
 and in a message to Pi 1.
 
 ## The seams
@@ -26,8 +26,8 @@ and in a message to Pi 1.
 
 ```rust
 /// A ship's insides, loaded once: hull sections, rooms (brush prisms), loads (system, centre, node), nodes, conduits.
-pub struct ShipLayout { /* from layout.json + power.json for the Tern; enemies.json `layout` for the Hound */ }
-impl ShipLayout { pub fn tern(root: &Path) -> Result<Self, String>; pub fn from_enemy(data: &EnemyLayout) -> Result<Self, String>; }
+pub struct ShipLayout { /* from layout.json + power.json for the Tern; data/ships/hound/layout.json for the Hound */ }
+impl ShipLayout { pub fn tern(root: &Path) -> Result<Self, String>; pub fn hound(root: &Path) -> Result<Self, String>; }
 /// The live state: 54 (or the Hound's) armour sections, each load's integrity, node health, conduits, fires, teams.
 pub struct DamageState { .. }
 impl DamageState { pub fn new(l: &ShipLayout) -> Self; }
@@ -51,7 +51,7 @@ Pi 1 calls `hull_entry` and `resolve_hit` from the drill's hits, after the shiel
 ### C: `combat::fighters` (pure)
 
 ```rust
-pub struct FighterData { .. }               // enemies.json `fighter`
+pub struct FighterData { .. }               // data/fighters.json
 pub struct Fighter { pub id: u16, pub pos: DVec3, pub vel: DVec3, pub rot: DQuat, pub hull_mj: f64,
                      pub shield_mj: f64, pub alive: bool, pub state: FighterState, .. }
 pub struct Mothership { pub pos: DVec3, pub rot: DQuat, pub vel: DVec3 }      // where they launch
