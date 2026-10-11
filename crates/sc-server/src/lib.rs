@@ -311,6 +311,7 @@ impl DrillServer {
                 DrillEvent::Destroyed { ship } => ServerMsg::Destroyed(ship),
                 DrillEvent::Beam { owner, from, to, hit, .. } => ServerMsg::Beam { owner, from, to, hit },
                 DrillEvent::DecoyOut { ship } => ServerMsg::Decoy(ship),
+                DrillEvent::Burst { ship, pos, size } => ServerMsg::Burst { ship, pos, size },
                 // A fooled missile shows as its early burst or its miss.
                 DrillEvent::Fooled { .. } => continue,
                 DrillEvent::Phase { phase, outcome } => {

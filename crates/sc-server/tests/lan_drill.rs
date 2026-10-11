@@ -24,14 +24,15 @@ fn play(impair: Impair, seed: u64) -> (DrillServer, Vec<Session>) {
             (Session::connect(server.addr(), s.name(), true, Some(s), Impair::default(), seed).unwrap(), bot)
         })
         .collect();
-    let end = Instant::now() + Duration::from_secs(120);
+    let end = Instant::now() + Duration::from_secs(150);
     let mut next_tick = Instant::now();
     while Instant::now() < end && server.results.is_empty() {
         server.poll();
         if Instant::now() >= next_tick {
             server.tick();
-            // 8x real time: a fight runs 5-10 minutes (armour-and-missiles 6), the drill's limit 600 s.
-            next_tick += Duration::from_secs_f64(1.0 / 240.0);
+            // 6x real time: a fight runs 5-10 minutes (armour-and-missiles 6), the drill's limit 600 s; faster starves
+            // the clients on a Pi running the four tests at once.
+            next_tick += Duration::from_secs_f64(1.0 / 180.0);
         }
         for (c, bot) in &mut clients {
             c.update();

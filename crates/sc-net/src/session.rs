@@ -34,6 +34,13 @@ pub enum Visual {
     },
     /// A ship threw a countermeasure.
     Decoy(u16),
+    /// Something burst aboard a ship: a hit past its armour, a system destroyed, a cascade.
+    Burst {
+        /// Where, system frame.
+        pos: glam::DVec3,
+        /// Its size.
+        size: f64,
+    },
     /// A bolt left a turret.
     Fired {
         /// Id.
@@ -211,6 +218,7 @@ impl Session {
             ServerMsg::Destroyed(id) => self.visuals.push(Visual::Destroyed(id)),
             ServerMsg::Beam { owner, from, to, hit } => self.visuals.push(Visual::Beam { owner, from, to, hit }),
             ServerMsg::Decoy(id) => self.visuals.push(Visual::Decoy(id)),
+            ServerMsg::Burst { pos, size, .. } => self.visuals.push(Visual::Burst { pos, size }),
             ServerMsg::Launched { .. } | ServerMsg::Phase(..) => {}
             ServerMsg::Pong(ms) => {
                 let rtt = (now * 1000.0 - f64::from(ms)).max(0.0);

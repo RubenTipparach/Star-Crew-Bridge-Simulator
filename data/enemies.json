@@ -15,7 +15,7 @@
           { "id": "dorsal", "arc": "all", "position_m": [0, 3, 4] },
           { "id": "ventral", "arc": "all", "position_m": [0, -3, 4] }
         ],
-        "arc_overlap_deg": 10, "pd_range_m": 900, "pd_aim_sigma_deg": 1.0, "armour": { "armour_mj": 4, "section_mj": 40 },
+        "arc_overlap_deg": 10, "pd_range_m": 900, "pd_aim_sigma_deg": 1.0, "fighter_range_m": 2000,
         "lock": { "time_s": 0.0, "range_m": 10000 },
         "tubes": { "count": 2, "magazine": 20, "load_s": 60, "arm_s": 3, "missile": "gannet", "muzzle_m": [[1.5, 0, 14], [-1.5, 0, 14]] },
         "lasers": {

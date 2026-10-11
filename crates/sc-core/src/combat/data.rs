@@ -251,18 +251,6 @@ pub struct LasersBlock {
     pub banks: Vec<LaserMount>,
 }
 
-/// A ship's armour (armour-and-missiles 1): a plate a face until `ship-damage`'s sections land. The numbers are
-/// `damage.json`'s `hull`: a fresh plate absorbs up to `armour_mj` of a hit, and loses a hit's energy over
-/// `section_mj` (a missile's whole blast, a bolt's up to `armour_mj`) as points of integrity.
-#[derive(Debug, Clone, Copy, Deserialize, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct ArmourBlock {
-    /// What a fresh plate absorbs of one hit, MJ.
-    pub armour_mj: f64,
-    /// The energy that strips a plate, MJ.
-    pub section_mj: f64,
-}
-
 /// A ship's countermeasures.
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -304,6 +292,8 @@ pub struct CombatBlock {
     /// A turret's aim error against a missile, in degrees (1 sigma): a missile is small and fast, so point defence
     /// misses far more than it does at a ship (weapons-and-shields 9).
     pub pd_aim_sigma_deg: f64,
+    /// Turrets take fighters within this range after missiles, in metres (enemy-fighters 2).
+    pub fighter_range_m: f64,
     /// Missile tubes, if the ship has any.
     #[serde(default)]
     pub tubes: Option<TubesBlock>,
@@ -318,8 +308,6 @@ pub struct CombatBlock {
     /// Countermeasures, if the ship has any (armour-and-missiles 3).
     #[serde(default)]
     pub decoys: Option<DecoysBlock>,
-    /// Armour.
-    pub armour: ArmourBlock,
 }
 
 /// A ship's sensors: a full scan of a contact takes `scan_s` with Science manned; an active ping's ring lasts
@@ -340,8 +328,7 @@ impl CombatBlock {
         c.number(&format!("{at}.arc_overlap_deg"), self.arc_overlap_deg, 0.0, 90.0);
         c.number(&format!("{at}.pd_range_m"), self.pd_range_m, 0.0, 1e5);
         c.number(&format!("{at}.pd_aim_sigma_deg"), self.pd_aim_sigma_deg, 0.0, 30.0);
-        c.number(&format!("{at}.armour.armour_mj"), self.armour.armour_mj, 0.0, 1e4);
-        c.number(&format!("{at}.armour.section_mj"), self.armour.section_mj, 0.1, 1e5);
+        c.number(&format!("{at}.fighter_range_m"), self.fighter_range_m, 0.0, 1e5);
         for (i, t) in self.turrets.iter().enumerate() {
             for (k, v) in t.position_m.iter().enumerate() {
                 c.number(&format!("{at}.turrets[{i}].position_m[{k}]"), *v, -500.0, 500.0);
@@ -1007,28 +994,48 @@ pub struct DrillData {
     pub stations: StationsFile,
     /// The mission.
     pub mission: MissionFile,
+    /// The enemy's fighters (enemy-fighters 1).
+    pub fighter: crate::combat::fighters::FighterData,
+    /// The Tern's insides, for hits that break parts of it (ship-damage).
+    pub tern_layout: crate::combat::damage::ShipLayout,
+    /// The Hound's insides.
+    pub hound_layout: crate::combat::damage::ShipLayout,
+    /// The damage rules.
+    pub damage: crate::combat::damage::DamageData,
 }
 
+/// How many files [`DRILL_FILES`] names: the size of the array [`DrillData::parse`] takes.
+pub const DRILL_FILE_COUNT: usize = 11;
+
 /// The files a drill reads, relative to the repository's root, in the order [`DrillData::parse`] takes them.
-pub const DRILL_FILES: [&str; 6] = [
+pub const DRILL_FILES: [&str; DRILL_FILE_COUNT] = [
     "data/ships/tern/flight.json",
     "data/ships/tern/shields.json",
     "data/ships/tern/combat.json",
     "data/weapons.json",
     "data/enemies.json",
     "data/stations.json",
+    "data/fighters.json",
+    crate::combat::damage::TERN_FILES[0],
+    crate::combat::damage::TERN_FILES[1],
+    crate::combat::damage::TERN_FILES[2],
+    crate::combat::damage::HOUND_FILE,
 ];
 
 impl DrillData {
-    /// Parse the six files of [`DRILL_FILES`] (their texts, in that order) and a mission file, and check that
+    /// Parse the files of [`DRILL_FILES`] (their texts, in that order) and a mission file, and check that
     /// every id one names exists in another.
-    pub fn parse(texts: [&str; 6], mission_file: &str, mission_text: &str) -> Result<Self, DataError> {
+    pub fn parse(texts: [&str; DRILL_FILE_COUNT], mission_file: &str, mission_text: &str) -> Result<Self, DataError> {
         let flight: FlightFile = parse(DRILL_FILES[0], texts[0])?;
         let shields: ShieldsFile = parse(DRILL_FILES[1], texts[1])?;
         let combat: CombatFile = parse(DRILL_FILES[2], texts[2])?;
         let weapons: WeaponsFile = parse(DRILL_FILES[3], texts[3])?;
         let enemies: EnemiesFile = parse(DRILL_FILES[4], texts[4])?;
         let stations: StationsFile = parse(DRILL_FILES[5], texts[5])?;
+        let fighter = crate::combat::fighters::FighterData::parse(DRILL_FILES[6], texts[6])?;
+        let tern_layout = crate::combat::damage::ShipLayout::tern([texts[7], texts[8], texts[9]])?;
+        let damage = crate::combat::damage::DamageData::parse(texts[9])?;
+        let hound_layout = crate::combat::damage::ShipLayout::hound(texts[10])?;
         let mission: MissionFile = parse(mission_file, mission_text)?;
         let missing = |file: &str, field: &str, id: &str| DataError {
             file: file.to_owned(),
@@ -1071,6 +1078,10 @@ impl DrillData {
             enemy,
             stations,
             mission,
+            fighter,
+            tern_layout,
+            hound_layout,
+            damage,
         })
     }
 
@@ -1084,6 +1095,11 @@ impl DrillData {
                 include_str!("../../../../data/weapons.json"),
                 include_str!("../../../../data/enemies.json"),
                 include_str!("../../../../data/stations.json"),
+                include_str!("../../../../data/fighters.json"),
+                include_str!("../../../../data/ships/tern/layout.json"),
+                include_str!("../../../../data/ships/tern/power.json"),
+                include_str!("../../../../data/ships/tern/damage.json"),
+                include_str!("../../../../data/ships/hound/layout.json"),
             ],
             "data/missions/drill-hound.json",
             include_str!("../../../../data/missions/drill-hound.json"),

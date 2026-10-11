@@ -502,6 +502,15 @@ pub enum ServerMsg {
     },
     /// A ship threw a countermeasure (armour-and-missiles 3).
     Decoy(u16),
+    /// Something burst aboard a ship (ship-damage 6).
+    Burst {
+        /// The ship.
+        ship: u16,
+        /// Where, system frame.
+        pos: DVec3,
+        /// Its size: MJ past the armour, or integrity points.
+        size: f64,
+    },
     /// The phase changed.
     Phase(Phase, Outcome),
     /// The echo of a Ping.
@@ -1211,6 +1220,12 @@ impl ServerMsg {
                 w.u8(12);
                 w.u16(*id);
             }
+            Self::Burst { ship, pos, size } => {
+                w.u8(13);
+                w.u16(*ship);
+                w.v3_64(*pos);
+                w.f32(*size);
+            }
         }
         w.0
     }
@@ -1248,6 +1263,7 @@ impl ServerMsg {
             10 => Self::Pong(r.u32()?),
             11 => Self::Beam { owner: r.u16()?, from: r.v3_64(POS_LIM)?, to: r.v3_64(POS_LIM)?, hit: r.bool()? },
             12 => Self::Decoy(r.u16()?),
+            13 => Self::Burst { ship: r.u16()?, pos: r.v3_64(POS_LIM)?, size: r.f32(0.0, 1e6)? },
             _ => return Err(DecodeError("no such server message")),
         };
         if let Self::Hit { face, .. } = m {

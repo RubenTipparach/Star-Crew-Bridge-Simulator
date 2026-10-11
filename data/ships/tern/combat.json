@@ -15,7 +15,7 @@
     "arc_overlap_deg": 10,
     "pd_range_m": 900,
     "pd_aim_sigma_deg": 1.0,
-    "armour": { "armour_mj": 4, "section_mj": 40 },
+    "fighter_range_m": 2000,
     "tubes": { "count": 2, "magazine": 20, "load_s": 60, "arm_s": 3, "missile": "gannet", "muzzle_m": [[2, 0, 28], [-2, 0, 28]] },
     "lock": { "time_s": 2.0, "range_m": 10000 },
     "sensors": { "scan_s": 6, "ping_s": 2 },

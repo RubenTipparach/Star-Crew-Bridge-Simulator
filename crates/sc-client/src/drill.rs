@@ -143,7 +143,7 @@ pub struct DrillApp {
 fn load_data() -> Result<DrillData, String> {
     let read = |rel: &str| std::fs::read_to_string(rel).map_err(|e| format!("{rel}: {e}"));
     let t: Vec<String> = DRILL_FILES.iter().map(|f| read(f)).collect::<Result<_, _>>()?;
-    let arr: [&str; 6] = std::array::from_fn(|i| t[i].as_str());
+    let arr: [&str; sc_core::combat::data::DRILL_FILE_COUNT] = std::array::from_fn(|i| t[i].as_str());
     let m = "data/missions/drill-hound.json";
     DrillData::parse(arr, m, &read(m)?).map_err(|e| e.to_string())
 }
@@ -307,6 +307,11 @@ impl DrillApp {
                     if hit {
                         self.booms.push(Boom { pos: to, t0, dur: 0.6, radius: 15.0 });
                     }
+                }
+                Visual::Burst { pos, size } => {
+                    // A burst aboard: sized by the energy past the armour or the integrity a part lost.
+                    let radius = 3.0 + size.max(0.0).sqrt() * 1.5;
+                    self.booms.push(Boom { pos, t0: now - rtt / 2.0, dur: 0.9, radius });
                 }
                 Visual::Decoy(id) => {
                     // A ring of flares round the ship that threw it.

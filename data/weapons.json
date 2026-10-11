@@ -42,7 +42,7 @@
       "_doc": "openspec/changes/armour-and-missiles 3: a burst around the ship for life_s; each inbound missile within range_m rolls once, by its time to impact.",
       "life_s": 4, "range_m": 3000,
       "windows": [
-        { "from_s": 1, "to_s": 3, "pull_off": 0.6, "early": 0.25 },
+        { "from_s": 1, "to_s": 3, "pull_off": 0.45, "early": 0.2 },
         { "from_s": 3, "to_s": 6, "pull_off": 0.3, "early": 0.15 }
       ],
       "pull_off_else": 0.1, "early_else": 0.05
