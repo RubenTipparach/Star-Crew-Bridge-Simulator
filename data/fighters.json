@@ -1,0 +1,43 @@
+{
+  "schema": "starcrew.fighters/1",
+  "_doc": "The Jackal raider fighter (openspec/changes/enemy-fighters design 1 and 4; weapons-and-shields design 13). Parsed by sc-core combat::fighters. Hull, shield, flight top speed, acceleration and turn rate, the guns and the AI's distances are the design's; the hangar point, the exit speed, the assist's time constants, the jink, the fire cone and the AI's set-up and time-outs are placeholders. Positions are in the mothership's frame (+X port, +Y dorsal, +Z bow).",
+  "id": "jackal",
+  "name": "Jackal raider",
+  "hull_mj": 3.0,
+  "shield_mj": 4.0,
+  "shield_regen_mj_s": 0.5,
+  "hit_radius_m": 4.0,
+  "launch": {
+    "_doc": "The drill launches two after_engage_s into Engage; the second leaves spacing_s after the first.",
+    "after_engage_s": 20.0,
+    "spacing_s": 5.0,
+    "hangar_m": [0.0, -4.0, -12.0],
+    "exit_mps": 40.0
+  },
+  "flight": {
+    "speed_min_mps": 0, "speed_max_mps": 300, "accel_fwd_mps2": 60, "accel_rev_mps2": 60,
+    "tau_v_s": 0.5, "tau_w_s": 0.2, "rate_limit_deg_s": [90, 90, 90], "ang_accel_deg_s2": [360, 360, 360],
+    "strafe_max_mps": 40, "held_deg": 0.5, "held_dps": 0.2, "jink_period_s": 1.0, "jink_mps": 30
+  },
+  "guns": {
+    "damage_mj": 1.0,
+    "rate_hz": 6.0,
+    "speed_mps": 1200.0,
+    "life_s": 1.5,
+    "fire_cone_deg": 5.0
+  },
+  "ai": {
+    "orbit_m": 800.0,
+    "orbit_speed_mps": 180.0,
+    "orbit_radial_gain": 2.0,
+    "run_every_s": [12.0, 20.0],
+    "setup_m": 1500.0,
+    "setup_arrive_m": 300.0,
+    "setup_timeout_s": 20.0,
+    "run_speed_mps": 300.0,
+    "fire_from_m": 1200.0,
+    "fire_to_m": 300.0,
+    "run_timeout_s": 15.0,
+    "break_off_timeout_s": 10.0
+  }
+}
