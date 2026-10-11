@@ -1646,7 +1646,26 @@ impl Drill {
             }
             _ => return None,
         };
+        // The captain's REPAIR to Engineering raises the worst-damaged system for the teams (ship-damage 5).
+        if let (Command::Order(Station::Engineering, verb), Ok(())) = (cmd, r) {
+            let repair =
+                self.data.order_verbs(Station::Engineering).get(usize::from(verb)).is_some_and(|v| v[0] == "REPAIR");
+            if repair {
+                self.repair_priority = self.worst_system(0);
+            }
+        }
         Some(r)
+    }
+
+    /// Ship `si`'s most damaged system below nominal, by its system id (a load's own id where it names none).
+    fn worst_system(&self, si: usize) -> Option<String> {
+        let l = self.layout(si);
+        let nominal = self.data.damage.systems.nominal_from_pct;
+        let s = &self.damage[si];
+        (0..l.loads.len())
+            .filter(|&i| s.integrity[i] < nominal)
+            .min_by(|&a, &b| s.integrity[a].total_cmp(&s.integrity[b]))
+            .map(|i| if l.loads[i].system.is_empty() { l.loads[i].id.clone() } else { l.loads[i].system.clone() })
     }
 
     fn enemy_ai(&mut self) {
@@ -2875,6 +2894,20 @@ mod tests {
     }
 
     #[test]
+    fn the_captains_repair_order_raises_the_worst_damaged_system() {
+        let (mut d, _, _) = engaged();
+        let c = d.join("Captain", false).unwrap();
+        d.claim(c, Station::Captain).unwrap();
+        let l = d.data.tern_layout.clone();
+        let k = l.loads.iter().position(|x| x.id == "impulse_drive").unwrap();
+        d.damage[0].integrity[k] = 20.0;
+        let repair = d.data.order_verbs(Station::Engineering).iter().position(|v| v[0] == "REPAIR").unwrap();
+        d.command(c, Command::Order(Station::Engineering, repair as u8)).unwrap();
+        d.step();
+        assert_eq!(d.repair_priority.as_deref(), Some("impulse_drive"), "the teams go to the drive first");
+    }
+
+    #[test]
     #[ignore]
     fn debug_hit_at_the_drive() {
         let mut d = drill();
@@ -3029,6 +3062,53 @@ mod tests {
         for _ in 0..(s * TICK_HZ) as usize {
             d.step();
         }
+    }
+
+    #[test]
+    fn a_laser_bank_charges_from_empty_in_thirty_seconds() {
+        let (mut d, _, _) = engaged();
+        let w = d.data.laser(&d.data.tern_combat.lasers.as_ref().unwrap().laser).clone();
+        assert_eq!(d.ships[0].lasers[0].charge_mj, 0.0);
+        steps(&mut d, 29.0);
+        assert!(d.ships[0].lasers[0].charge_mj < w.capacitor_mj, "not full before 30 s");
+        steps(&mut d, 1.5);
+        assert!((d.ships[0].lasers[0].charge_mj - w.capacitor_mj).abs() < 1e-6, "full at 30 s");
+    }
+
+    #[test]
+    fn armour_stops_a_laser_until_it_is_stripped() {
+        let mut d = drill();
+        let (pos, hull) = (d.ships[1].pos, d.ships[1].hull);
+        let at = pos + DVec3::X * 30.0;
+        d.ships[1].faces = [0.0; 6];
+        d.hit_ship(1, at, -DVec3::X, 120.0, WeaponKind::Laser, None, 1.0);
+        assert_eq!(d.ships[1].hull, hull, "fresh armour holds the whole beam");
+        d.damage[1].armour.fill(0.0);
+        d.ships[1].faces = [0.0; 6];
+        d.hit_ship(1, at, -DVec3::X, 120.0, WeaponKind::Laser, None, 1.0);
+        assert!(d.ships[1].hull < hull, "with the armour gone the beam reaches the hull");
+    }
+
+    #[test]
+    fn a_tube_is_armed_sixty_three_seconds_after_loading() {
+        let (mut d, _, t) = engaged();
+        d.command(t, Command::Load(0)).unwrap();
+        d.step();
+        steps(&mut d, 62.0);
+        assert_ne!(d.ships[0].tubes[0].state, TubeState::Armed);
+        steps(&mut d, 1.5);
+        assert_eq!(d.ships[0].tubes[0].state, TubeState::Armed);
+        assert_eq!(d.ships[0].magazine, d.data.tern_combat.tubes.as_ref().unwrap().magazine - 1);
+    }
+
+    #[test]
+    fn a_decoy_in_a_missiles_last_seconds_fools_it_more_often() {
+        let d = DrillData::shipped();
+        let w = d.decoy("decoy_burst");
+        let late = w.chances(2.0);
+        let early = w.chances(8.0);
+        assert!(late.0 + late.1 > early.0 + early.1, "{late:?} against {early:?}");
+        assert!(late.0 + late.1 <= 1.0);
     }
 
     #[test]
