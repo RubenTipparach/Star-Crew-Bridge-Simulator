@@ -419,6 +419,29 @@ pub struct EngView {
     pub air: AirView,
 }
 
+/// A crewed station in single player: its NPC, its mode and whether the NPC is in the seat.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct CrewTab {
+    /// The station's id.
+    pub station: String,
+    /// The NPC's name, "Lt. Dal Varen".
+    pub op: String,
+    /// AUTO: the NPC plays it. MANUAL: it does what the player does on its console.
+    pub auto: bool,
+    /// The NPC is in the seat (a station works only then).
+    pub seated: bool,
+}
+
+/// Single player (openspec/changes/single-player design 5): the player's own seat and the crew at the others.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct SoloView {
+    /// The player's own station's id.
+    pub seat: String,
+    pub crew: Vec<CrewTab>,
+}
+
 /// Everything a console draws: the mockup's `window.consoleState()`, field for field.
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -433,6 +456,8 @@ pub struct ConsoleView {
     pub op: Option<String>,
     /// Stations with nobody at them, which this seat can swap to.
     pub open: Vec<String>,
+    /// Single player's crew (none: a multiplayer seat). `station` is then the console shown, any crewed station's.
+    pub solo: Option<SoloView>,
     /// The captain's newest order to this station.
     pub order: Option<String>,
     /// normal, red_alert or emergency: the title band's condition (emergency power over the alert).
@@ -792,15 +817,24 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
     };
     cv.rect(0.0, 31.0, 1280.0, 1.0, 0.0, line, None);
     let mut x = 8.0;
-    // The station's own chip; the captain's two pages in its place.
-    let tabs: Vec<(String, String, bool, Option<String>)> = if v.station == "captain" {
+    // The station's own chip; the captain's two pages in its place. In single player the own chip is the player's
+    // seat, lit while its console is shown, and a press on it comes back to it.
+    let solo = v.solo.as_ref();
+    let home = solo.is_none_or(|q| q.seat == v.station);
+    let (own_word, own_role) = match solo {
+        Some(q) => station_word(&q.seat),
+        None => (v.word.as_str(), v.role.as_str()),
+    };
+    let own_captain = solo.map_or(v.station == "captain", |q| q.seat == "captain");
+    let tabs: Vec<(String, String, bool, Option<Act>)> = if own_captain {
         let tab = v.captain.as_ref().map(|q| q.tab.as_str()).unwrap_or("CMD");
         vec![
-            ("COMMAND".into(), "command".into(), tab == "CMD", Some("CMD".into())),
-            ("SHIP".into(), "command".into(), tab == "SHIP", Some("SHIP".into())),
+            ("COMMAND".into(), "command".into(), home && tab == "CMD", Some(Act::Tab("CMD".into()))),
+            ("SHIP".into(), "command".into(), home && tab == "SHIP", Some(Act::Tab("SHIP".into()))),
         ]
     } else {
-        vec![(v.word.clone(), v.role.clone(), true, None)]
+        let back = solo.filter(|_| !home).map(|q| Act::View(q.seat.clone()));
+        vec![(own_word.to_owned(), own_role.to_owned(), home, back)]
     };
     for (w, r, on, act) in tabs {
         let tw = 34.0 + w.chars().count() as f32 * 9.4;
@@ -810,9 +844,72 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
         cv.icon(&r, x + 13.0, 16.0, 14.0, if on { rc } else { c.dim.0 });
         cv.text(x + 25.0, 21.0, 13.0, if on { c.text.0 } else { c.dim.0 }, &w, T::default().ls(1.5).bold());
         if let Some(a) = act {
-            cx.hits.add(cv, x, 4.0, tw, 24.0, Some(kit::Hit::Act(Act::Tab(a))), None);
+            let tip = (solo.is_some() && !home).then(|| "Your console (Tab)".to_owned());
+            cx.hits.add(cv, x, 4.0, tw, 24.0, Some(kit::Hit::Act(a)), tip);
         }
         x += tw + 6.0;
+    }
+    if let Some(q) = solo {
+        // A tab for each crewed station: its icon and its mode, a robot (AUTO) or a hand (MANUAL), dim while its NPC
+        // walks to the seat. Press one to show its console; the tab of the console shown is filled.
+        for t in &q.crew {
+            let (w, r) = station_word(&t.station);
+            let (on, rc) = (v.station == t.station, role.of(r));
+            let (fill, stroke) =
+                if on { (alpha(rc, 0x26 as f32 / 255.0), rc) } else { (Color32::TRANSPARENT, c.line2.0) };
+            cv.rect(x, 4.0, 52.0, 24.0, 5.0, fill, Some(Pen::new(1.0, stroke)));
+            cv.icon(r, x + 15.0, 16.0, 14.0, if t.seated { rc } else { c.faint.0 });
+            let mark = if t.auto { "auto" } else { "hand" };
+            cv.icon(mark, x + 37.0, 16.0, 14.0, if t.seated { c.text.0 } else { c.faint.0 });
+            let mut name = w.to_lowercase();
+            name[..1].make_ascii_uppercase();
+            let tip = format!(
+                "{name}: {}, on {}{}",
+                t.op,
+                if t.auto { "AUTO" } else { "MANUAL" },
+                if t.seated { "" } else { ", walking to the seat" }
+            );
+            cx.hits.add(cv, x, 4.0, 52.0, 24.0, Some(kit::Hit::Act(Act::View(t.station.clone()))), Some(tip));
+            x += 58.0;
+        }
+        // The mode switch of the console shown, when it is a crewed station's: its word (the captain's two pages, for
+        // the captain's console), then AUTO and MANUAL.
+        if let Some(t) = q.crew.iter().find(|t| t.station == v.station) {
+            if v.station == "captain" {
+                let tab = v.captain.as_ref().map(|q| q.tab.as_str()).unwrap_or("CMD");
+                for (w, page) in [("COMMAND", "CMD"), ("SHIP", "SHIP")] {
+                    let tw = 34.0 + w.chars().count() as f32 * 9.4;
+                    let (on, rc) = (tab == page, role.of("command"));
+                    let (fill, stroke) =
+                        if on { (alpha(rc, 0x26 as f32 / 255.0), rc) } else { (Color32::TRANSPARENT, c.line2.0) };
+                    cv.rect(x, 4.0, tw, 24.0, 5.0, fill, Some(Pen::new(1.0, stroke)));
+                    cv.icon("command", x + 13.0, 16.0, 14.0, if on { rc } else { c.dim.0 });
+                    cv.text(x + 25.0, 21.0, 13.0, if on { c.text.0 } else { c.dim.0 }, w, T::default().ls(1.5).bold());
+                    cx.hits.add(cv, x, 4.0, tw, 24.0, Some(kit::Hit::Act(Act::Tab(page.into()))), None);
+                    x += tw + 6.0;
+                }
+            } else {
+                cv.text(x + 4.0, 21.0, 13.0, role.of(&v.role), &v.word, T::default().ls(1.5).bold());
+                x += 14.0 + v.word.chars().count() as f32 * 9.4;
+            }
+            for (auto, w, ic, tw) in [(true, "AUTO", "auto", 76.0), (false, "MANUAL", "hand", 94.0)] {
+                let on = t.auto == auto;
+                let (fill, stroke) = if on {
+                    (alpha(c.text.0, 0x1f as f32 / 255.0), c.text.0)
+                } else {
+                    (Color32::TRANSPARENT, c.line2.0)
+                };
+                cv.rect(x, 4.0, tw, 24.0, 5.0, fill, Some(Pen::new(1.0, stroke)));
+                let col = if on { c.text.0 } else { c.dim.0 };
+                cv.icon(ic, x + 14.0, 16.0, 14.0, col);
+                cv.text(x + 26.0, 21.0, 13.0, col, w, T::default().ls(1.5).bold());
+                let tip =
+                    if auto { format!("{} runs it (M)", t.op) } else { format!("You run it, through {} (M)", t.op) };
+                cx.hits.add(cv, x, 4.0, tw, 24.0, Some(kit::Hit::Act(Act::Mode(auto))), Some(tip));
+                x += tw + 4.0;
+            }
+            x += 2.0;
+        }
     }
     let mut open: Vec<(String, String, Option<String>)> = v
         .open
@@ -822,8 +919,10 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
             (w.to_owned(), r.to_owned(), Some(id.clone()))
         })
         .collect();
-    open.push(("COMMS".into(), "comms".into(), None));
-    open.push(("FLIGHT".into(), "flight_ops".into(), None));
+    if solo.is_none() {
+        open.push(("COMMS".into(), "comms".into(), None));
+        open.push(("FLIGHT".into(), "flight_ops".into(), None));
+    }
     for (w, r, id) in open {
         let tw = 44.0 + w.chars().count() as f32 * 8.6;
         let on = id.is_some();
@@ -841,13 +940,6 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
         cx.hits.add(cv, x, 4.0, tw, 24.0, hit.map(kit::Hit::Act), Some(tip));
         x += tw + 6.0;
     }
-    if let Some(o) = &v.order {
-        cv.rect(470.0, 4.0, 300.0, 24.0, 5.0, alpha(c.warn.0, 0x1f as f32 / 255.0), Some(Pen::new(1.0, c.warn.0)));
-        cv.icon("command", 486.0, 16.0, 14.0, c.warn.0);
-        cv.text(500.0, 21.0, 13.0, c.text.0, &format!("CAPTAIN: {o}"), T::default().ls(1.5).bold());
-        cv.icon("check", 754.0, 16.0, 14.0, c.warn.0);
-        cx.hits.add(cv, 470.0, 4.0, 300.0, 24.0, Some(kit::Hit::Act(Act::Ack)), Some("Acknowledge (Y)".into()));
-    }
     let cond = if emerg {
         "EMERGENCY POWER"
     } else if red {
@@ -855,6 +947,16 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
     } else {
         "NORMAL"
     };
+    // The newest order to the station shown: at 470, or after the tabs when they reach past it, short of the condition.
+    if let Some(o) = &v.order {
+        let ox = x.max(470.0);
+        let ow = 300f32.min(1180.0 - cond.len() as f32 * 9.4 - 22.0 - 8.0 - ox);
+        cv.rect(ox, 4.0, ow, 24.0, 5.0, alpha(c.warn.0, 0x1f as f32 / 255.0), Some(Pen::new(1.0, c.warn.0)));
+        cv.icon("command", ox + 16.0, 16.0, 14.0, c.warn.0);
+        cv.text(ox + 30.0, 21.0, 13.0, c.text.0, &format!("CAPTAIN: {o}"), T::default().ls(1.5).bold());
+        cv.icon("check", ox + ow - 16.0, 16.0, 14.0, c.warn.0);
+        cx.hits.add(cv, ox, 4.0, ow, 24.0, Some(kit::Hit::Act(Act::Ack)), Some("Acknowledge (Y)".into()));
+    }
     let cc = if emerg {
         c.emergency.0
     } else if red {

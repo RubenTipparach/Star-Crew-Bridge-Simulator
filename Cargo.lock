@@ -1528,6 +1528,7 @@ dependencies = [
  "sc-net",
  "sc-render",
  "sc-repairs",
+ "sc-server",
  "sdl3-sys",
  "serde",
  "serde_json",
