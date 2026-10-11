@@ -11,7 +11,7 @@ use sc_core::combat::bodies::Posture;
 use sc_core::combat::{self, Command, HelmMode, Outcome, Phase, Refusal, Station, TubeState, TurretMode};
 
 /// The protocol's version; a Hello with another is refused.
-pub const PROTOCOL: u16 = 5;
+pub const PROTOCOL: u16 = 6;
 /// The longest unreliable message, so it is one SCTP chunk in one datagram (netcode-and-sessions section 2).
 pub const MAX_UNRELIABLE: usize = 1200;
 /// The longest string field, in bytes.
@@ -418,6 +418,21 @@ pub struct Snapshot {
     pub bridge: BridgeSnap,
     /// The crew's bodies on the bridge (coop-drill design 9); empty in a drill with no bridge.
     pub bodies: Vec<BodySnap>,
+    /// The enemy's fighters in flight (enemy-fighters 4).
+    pub fighters: Vec<FighterSnap>,
+}
+
+/// An enemy fighter in flight, as a snapshot carries it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct FighterSnap {
+    /// Its id (`combat::FIGHTER_IDS`).
+    pub id: u16,
+    /// Position, system frame.
+    pub pos: DVec3,
+    /// Attitude.
+    pub rot: DQuat,
+    /// Velocity.
+    pub vel: DVec3,
 }
 
 /// A crew member's body in a snapshot: 10 bytes (coop-drill design 9).
@@ -844,6 +859,13 @@ impl Snapshot {
             w.u8(b.posture as u8);
             w.u8(station_byte(b.going));
         }
+        w.u8(self.fighters.len() as u8);
+        for f in &self.fighters {
+            w.u16(f.id);
+            w.v3_64(f.pos);
+            w.quat(f.rot);
+            w.v3_32(f.vel);
+        }
         w.0
     }
 
@@ -1038,8 +1060,13 @@ impl Snapshot {
             let going = read_station(&mut r)?;
             bodies.push(BodySnap { slot, pos, yaw, posture, going });
         }
+        let nf = r.count(combat::FIGHTER_IDS.len())?;
+        let mut fighters = Vec::with_capacity(nf);
+        for _ in 0..nf {
+            fighters.push(FighterSnap { id: r.u16()?, pos: r.v3_64(POS_LIM)?, rot: r.quat()?, vel: r.v3_32(VEL_LIM)? });
+        }
         r.done()?;
-        Ok(Self { header, tick, round, phase, phase_s, outcome, ships, missiles, stats, bridge, bodies })
+        Ok(Self { header, tick, round, phase, phase_s, outcome, ships, missiles, stats, bridge, bodies, fighters })
     }
 
     /// The snapshot of a drill (the header is the caller's, per client).
@@ -1111,6 +1138,12 @@ impl Snapshot {
                 .missiles
                 .iter()
                 .map(|m| MissileSnap { id: m.id, owner: m.owner, pos: m.pos, vel: m.vel })
+                .collect(),
+            fighters: d
+                .fighters
+                .iter()
+                .filter(|f| f.out())
+                .map(|f| FighterSnap { id: f.id, pos: f.pos, rot: f.rot, vel: f.vel })
                 .collect(),
             bodies: d
                 .bodies

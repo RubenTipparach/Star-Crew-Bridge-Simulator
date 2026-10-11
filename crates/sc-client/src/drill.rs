@@ -61,6 +61,8 @@ pub struct DrillArgs {
 
 struct Meshes {
     hound: Mesh,
+    jackal: Mesh,
+    debris: Mesh,
     bolt_tern: Mesh,
     bolt_enemy: Mesh,
     missile: Mesh,
@@ -90,6 +92,15 @@ struct VisBeam {
 
 /// How long a beam shows, seconds.
 const BEAM_SHOW_S: f64 = 0.4;
+
+/// A piece thrown off a burst aboard a ship (ship-damage 6): it tumbles away and fades.
+struct Debris {
+    pos: DVec3,
+    vel: DVec3,
+    spin: Vec3,
+    t0: f64,
+    dur: f64,
+}
 
 struct Boom {
     pos: DVec3,
@@ -121,6 +132,7 @@ pub struct DrillApp {
     bolts: Vec<VisBolt>,
     beams: Vec<VisBeam>,
     booms: Vec<Boom>,
+    debris: Vec<Debris>,
     held: HashSet<u32>,
     pressed: HashSet<u32>,
     seat: Seat,
@@ -171,6 +183,8 @@ impl DrillApp {
         println!("sc-client: the Hound placeholder is {} triangles", hound.triangles());
         let meshes = Meshes {
             hound: mesh(&r, &hound),
+            jackal: mesh(&r, &ships3d::jackal()),
+            debris: mesh(&r, &ships3d::bolt([0.35, 0.33, 0.33])),
             bolt_tern: mesh(&r, &ships3d::bolt([0.6, 1.8, 2.0])),
             bolt_enemy: mesh(&r, &ships3d::bolt([2.0, 0.8, 0.4])),
             missile: mesh(&r, &ships3d::missile()),
@@ -200,6 +214,7 @@ impl DrillApp {
             bolts: Vec::new(),
             beams: Vec::new(),
             booms: Vec::new(),
+            debris: Vec::new(),
             held: HashSet::new(),
             pressed: HashSet::new(),
             seat: Seat::default(),
@@ -310,8 +325,29 @@ impl DrillApp {
                 }
                 Visual::Burst { pos, size } => {
                     // A burst aboard: sized by the energy past the armour or the integrity a part lost.
+                    let t0 = now - rtt / 2.0;
                     let radius = 3.0 + size.max(0.0).sqrt() * 1.5;
-                    self.booms.push(Boom { pos, t0: now - rtt / 2.0, dur: 0.9, radius });
+                    self.booms.push(Boom { pos, t0, dur: 0.9, radius });
+                    // Debris spun off the point: 6-20 pieces, out from the ship and tumbling.
+                    let out = self
+                        .ships_now()
+                        .map(|(t, h, _)| if (t.pos - pos).length() < (h.pos - pos).length() { t.pos } else { h.pos })
+                        .map_or(DVec3::Y, |c| (pos - c).normalize_or(DVec3::Y));
+                    let n = 6 + (size.max(0.0) / 4.0).min(14.0) as usize;
+                    for k in 0..n {
+                        let a = (k as f64 * 2.399 + t0 * 7.0).sin();
+                        let b = (k as f64 * 1.731 + t0 * 3.0).cos();
+                        let c = (k as f64 * 0.917 + t0 * 5.0).sin();
+                        let spray = (out + DVec3::new(a, b, c) * 0.8).normalize_or(out);
+                        let speed = 15.0 + 25.0 * ((k * 7 % 5) as f64 / 4.0);
+                        self.debris.push(Debris {
+                            pos,
+                            vel: spray * speed,
+                            spin: Vec3::new(a as f32, b as f32, c as f32) * 4.0,
+                            t0,
+                            dur: 2.0 + (k % 3) as f64 * 0.5,
+                        });
+                    }
                 }
                 Visual::Decoy(id) => {
                     // A ring of flares round the ship that threw it.
@@ -331,6 +367,12 @@ impl DrillApp {
                     }
                 }
                 Visual::Destroyed(id) => {
+                    // A fighter goes up where it was.
+                    let fighter =
+                        self.ships_now().and_then(|(_, _, s)| s.fighters.iter().find(|f| f.id == id).map(|f| f.pos));
+                    if let Some(pos) = fighter {
+                        self.booms.push(Boom { pos, t0: now, dur: 1.2, radius: 20.0 });
+                    }
                     if id == ENEMY_ID {
                         if let Some((_, h, _)) = self.ships_now() {
                             self.booms.push(Boom { pos: h.pos, t0: now, dur: 2.5, radius: 70.0 });
@@ -386,6 +428,7 @@ impl DrillApp {
             bolts: &self.bolts,
             beams: &self.beams,
             booms: &self.booms,
+            debris: &self.debris,
             time_s: self.time_s,
         };
         self.r.begin_3d(&self.feed, [0.0, 0.0, 0.0, 1.0]);
@@ -403,6 +446,7 @@ struct World<'a> {
     bolts: &'a [VisBolt],
     beams: &'a [VisBeam],
     booms: &'a [Boom],
+    debris: &'a [Debris],
     time_s: f64,
 }
 
@@ -457,6 +501,18 @@ impl World<'_> {
                 let model = Mat4::from_rotation_translation(q, rel(hound.pos));
                 r.draw_deck_probe(t, &self.meshes.hound, vp * model, Mat4::from_quat(q), &cube, [1.0, 0.0, 0.0]);
             }
+            // The enemy's fighters (enemy-fighters 4), lit like the Hound.
+            for f in &snap.fighters {
+                let sun = Vec3::from_array(normalized(self.exterior.sun.dir));
+                let axes = [Vec3::X, -Vec3::X, Vec3::Y, -Vec3::Y, Vec3::Z, -Vec3::Z];
+                let cube = axes.map(|a| {
+                    let s = a.dot(sun).max(0.0);
+                    [0.2 + 1.3 * s, 0.2 + 1.25 * s, 0.22 + 1.15 * s]
+                });
+                let q = Quat::from_xyzw(f.rot.x as f32, f.rot.y as f32, f.rot.z as f32, f.rot.w as f32);
+                let model = Mat4::from_rotation_translation(q, rel(f.pos));
+                r.draw_deck_probe(t, &self.meshes.jackal, vp * model, Mat4::from_quat(q), &cube, [1.0, 0.0, 0.0]);
+            }
             for m in &snap.missiles {
                 let dir = m.vel.normalize_or(DVec3::Z).as_vec3();
                 let model = Mat4::from_rotation_translation(Quat::from_rotation_arc(Vec3::Z, dir), rel(m.pos))
@@ -488,6 +544,16 @@ impl World<'_> {
                 rel((b.from + b.to) * 0.5),
             ) * Mat4::from_scale(Vec3::new(40.0, 40.0, len));
             r.draw_deck(t, &self.meshes.beam, DeckProgram::Flat, &flat(vp * model), None);
+        }
+        for p in self.debris {
+            let age = render_t - p.t0;
+            if !(0.0..p.dur).contains(&age) {
+                continue;
+            }
+            let at = p.pos + p.vel * age;
+            let turn = Quat::from_scaled_axis(p.spin * age as f32);
+            let model = Mat4::from_rotation_translation(turn, rel(at)) * Mat4::from_scale(Vec3::new(9.0, 9.0, 2.5));
+            r.draw_deck(t, &self.meshes.debris, DeckProgram::Flat, &flat(vp * model), None);
         }
         for b in self.booms {
             let k = ((render_t - b.t0) / b.dur).clamp(0.0, 1.0);
@@ -627,6 +693,7 @@ impl App for DrillApp {
                     self.bolts.clear();
                     self.beams.clear();
                     self.booms.clear();
+                    self.debris.clear();
                 }
                 println!("sc-client: round {round} {p:?}");
             }
@@ -662,6 +729,7 @@ impl App for DrillApp {
                     bolts: &self.bolts,
                     beams: &self.beams,
                     booms: &self.booms,
+                    debris: &self.debris,
                     time_s: self.time_s,
                 };
                 let seen = ships.as_ref();
