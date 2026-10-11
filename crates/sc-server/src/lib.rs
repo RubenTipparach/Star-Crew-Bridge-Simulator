@@ -19,6 +19,10 @@ use sc_net::transport::{Chan, Impair, NetEvent, PeerId, ServerNet};
 
 /// Snapshots a second (netcode-and-sessions section 3).
 pub const SNAPSHOT_HZ: f64 = 20.0;
+/// The power grid rides in every this-many snapshots (2 Hz, power-grid 14), and in every other one while
+/// Engineering drags a fader, so its ghost keeps up with the hand.
+pub const POWER_EVERY: u64 = 10;
+pub const POWER_PREVIEW_EVERY: u64 = 2;
 /// A peer silent this long is dropped and its seat returns to automation (netcode-and-sessions section 2:
 /// "the server also drops a client silent for 5 s"). Every client pings once a second, so a live one never is.
 pub const SILENT_S: f64 = 5.0;
@@ -69,6 +73,8 @@ pub struct DrillServer {
     net: ServerNet,
     conns: BTreeMap<PeerId, Conn>,
     snap_acc: f64,
+    /// Snapshots sent: the power grid rides in some (POWER_EVERY).
+    snaps_sent: u64,
     crew_dirty: bool,
     /// Rounds finished.
     pub results: Vec<RoundResult>,
@@ -89,6 +95,7 @@ impl DrillServer {
             net,
             conns: BTreeMap::new(),
             snap_acc: 0.0,
+            snaps_sent: 0,
             crew_dirty: false,
             results: Vec::new(),
             tick_ms: Vec::with_capacity(1024),
@@ -347,6 +354,11 @@ impl DrillServer {
         if self.snap_acc >= 1.0 {
             self.snap_acc -= 1.0;
             let mut s = Snapshot::of(&self.drill);
+            self.snaps_sent += 1;
+            let every = if self.drill.power_preview.is_some() { POWER_PREVIEW_EVERY } else { POWER_EVERY };
+            if self.snaps_sent % every != 0 {
+                s.power = None;
+            }
             for (p, c) in self.conns.iter_mut() {
                 if c.slot.is_some() {
                     s.header = c.snap.next_header();

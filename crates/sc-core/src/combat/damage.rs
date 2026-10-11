@@ -12,6 +12,7 @@
 //! Every number is `damage.json`'s.
 
 use crate::data::{parse, Checks, DataError, Validate};
+use crate::power::PowerFile;
 use crate::repair::data::DamageRepair;
 use crate::rng::Rng;
 use glam::DVec3;
@@ -69,8 +70,8 @@ pub struct DamageData {
     pub systems: SystemRules,
     /// Power nodes.
     pub nodes: NodeRules,
-    /// `reactor-cooling`'s leaks (not read here).
-    pub coolant: Value,
+    /// `reactor-cooling`'s leaks, which the power module reads (`crate::power`).
+    pub coolant: CoolantLeakRules,
     /// The owner's cascade (`ship-damage` 3).
     pub cascade: CascadeRules,
     /// Conduits.
@@ -151,6 +152,32 @@ pub struct SystemRules {
     pub nominal_from_pct: f64,
     /// Below this it does nothing, percent.
     pub disabled_below_pct: f64,
+    /// Words.
+    pub note: Option<String>,
+}
+
+impl SystemRules {
+    /// What a part at `integrity` can do, 0-1 (`damage-control` 2): 1 at nominal or above, integrity / nominal
+    /// between, 0 when disabled. The one rule for every load, coolant pipe and tank (CLAUDE.md 6.1).
+    pub fn capability(&self, integrity: f64) -> f64 {
+        if integrity < self.disabled_below_pct {
+            0.0
+        } else if integrity < self.nominal_from_pct {
+            integrity / self.nominal_from_pct
+        } else {
+            1.0
+        }
+    }
+}
+
+/// A coolant pipe segment's or tank's leak (`reactor-cooling` design 2).
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct CoolantLeakRules {
+    /// Below this integrity a part leaks, percent.
+    pub leak_below_pct: f64,
+    /// What a part at 0 % leaks, kg/s.
+    pub leak_kg_s_at_zero: f64,
     /// Words.
     pub note: Option<String>,
 }
@@ -366,6 +393,11 @@ pub struct Room {
 }
 
 impl Room {
+    /// Its floor area: its brushes' footprints summed (shipkit's `measure`), square metres.
+    pub fn floor_m2(&self) -> f64 {
+        self.brushes.iter().map(|b| signed_area(&b.poly)).sum()
+    }
+
     /// Whether `p` is in this room's air.
     pub fn contains(&self, p: DVec3) -> bool {
         p.cmpge(self.lo - DVec3::splat(EPS)).all()
@@ -1112,26 +1144,25 @@ fn cascade(
 /// What a load at `integrity` can do, 0-1 (`damage-control` 2): 1 at nominal or above, integrity / nominal between,
 /// 0 when disabled.
 pub fn load_capability(cfg: &DamageData, integrity: f64) -> f64 {
-    let r = &cfg.systems;
-    if integrity < r.disabled_below_pct {
-        0.0
-    } else if integrity < r.nominal_from_pct {
-        integrity / r.nominal_from_pct
-    } else {
-        1.0
-    }
+    cfg.systems.capability(integrity)
 }
 
 /// Capability 0-1 of a system by its layout id (the drill reads "impulse_drive", "shield_generator", "laser_port",
 /// "turret_dorsal" ...): the mean of its loads' (the reactor has two trains). A system with no load aboard is 1;
 /// [`ShipLayout::has_system`] tells the two apart.
 pub fn capability(l: &ShipLayout, s: &DamageState, cfg: &DamageData, system: &str) -> f64 {
+    capability_by(l, system, |i| load_capability(cfg, s.integrity[i]))
+}
+
+/// The mean of `of(i)` over a system's loads `i` (1 with none aboard): [`capability`], or with the power grid
+/// simulated, how well each load works (`crate::power::PowerState::works`).
+pub fn capability_by(l: &ShipLayout, system: &str, of: impl Fn(usize) -> f64) -> f64 {
     let (sum, n) = l
         .loads
         .iter()
         .enumerate()
         .filter(|(_, ld)| ld.system == system || ld.id == system)
-        .fold((0.0, 0u32), |(sum, n), (i, _)| (sum + load_capability(cfg, s.integrity[i]), n + 1));
+        .fold((0.0, 0u32), |(sum, n), (i, _)| (sum + of(i), n + 1));
     if n == 0 {
         1.0
     } else {
@@ -1656,82 +1687,6 @@ struct MountFile {
     facing: [f64; 3],
     weapon: Option<String>,
     crew_seat: Option<String>,
-}
-
-/// `power.json`: its nodes, conduits and loads are typed; the rest is `power-grid`'s.
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-#[allow(dead_code)] // typed so that an unknown or misspelt key is refused; not every field is read here
-struct PowerFile {
-    schema: String,
-    status: String,
-    ship: String,
-    units: Value,
-    solve: Value,
-    reactor: Value,
-    battery: Value,
-    nodes: Vec<PowerNodeFile>,
-    generators: Value,
-    ties: Value,
-    conduits: Vec<PowerConduitFile>,
-    loads: Vec<PowerLoadFile>,
-    groups: Value,
-    presets: Value,
-    lighting: Value,
-    coolant: Value,
-    radiators: Value,
-    overdrive: Value,
-}
-
-impl Validate for PowerFile {
-    fn validate(&self, c: &mut Checks) {
-        c.equals("schema", &self.schema, "starcrew.ship-power/1");
-    }
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-#[allow(dead_code)] // typed so that an unknown or misspelt key is refused; not every field is read here
-struct PowerNodeFile {
-    id: String,
-    name: String,
-    kind: String,
-    compartment: String,
-    center_m: [f64; 3],
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-#[allow(dead_code)] // typed so that an unknown or misspelt key is refused; not every field is read here
-struct PowerConduitFile {
-    id: String,
-    name: String,
-    between: [String; 2],
-    capacity_mw: f64,
-    route: Vec<String>,
-    path_m: Vec<[f64; 3]>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-#[allow(dead_code)] // typed so that an unknown or misspelt key is refused; not every field is read here
-struct PowerLoadFile {
-    id: String,
-    name: String,
-    system: Option<String>,
-    mount: Option<String>,
-    node: String,
-    priority: u32,
-    nominal_mw: f64,
-    standby_mw: f64,
-    setpoint_max: f64,
-    min_ratio: f64,
-    power_exponent: Option<f64>,
-    activity: Option<String>,
-    center_m: Option<[f64; 3]>,
-    heat: Value,
-    under: String,
-    over: String,
 }
 
 /// `data/ships/hound/layout.json` (`starcrew.combat-layout/1`): a ship's insides for combat damage, for a ship with

@@ -1,6 +1,6 @@
 {
   "schema": "starcrew.ship-power/1",
-  "status": "PROPOSED by openspec/changes/power-grid (2026-10-04). No engine code reads this yet; the systems mockup does. Numbers are tuning proposals, not decisions.",
+  "status": "PROPOSED by openspec/changes/power-grid (2026-10-04). The engine reads it (sc-core::power, in the drill since 2026-10-11) and so do the mockups' library. Numbers are tuning proposals, not decisions.",
   "ship": "tern",
   "units": {
     "power": "MW (megawatts)",
@@ -130,19 +130,19 @@
       "route": ["switchboard", "c_spine", "life_support"], "path_m": [[-4.5, -1.0, 2.0], [-1.1, -1.6, 2.5], [1.0, -1.6, 13.0], [3.0, -0.9, 13.0]] }
   ],
   "loads": [
-    { "id": "reactor_aux_p", "name": "Reactor auxiliaries, port", "system": "reactor", "node": "msb_p", "priority": 0,
+    { "id": "reactor_aux_p", "name": "Reactor auxiliaries, port", "system": "reactor", "center_m": [5.5, 0.0, -24.0], "node": "msb_p", "priority": 0,
       "nominal_mw": 1.0, "standby_mw": 0.3, "setpoint_max": 1.0, "min_ratio": 0.0,
       "heat": { "to": "loop", "fraction": 1.0 },
       "under": "Two full trains (port and starboard): the reactor scrams when neither train has had 80% of its supply for 2 s. Ignition runs at the pace the two trains' supply allows.", "over": "Not adjustable." },
-    { "id": "reactor_aux_s", "name": "Reactor auxiliaries, starboard", "system": "reactor", "node": "msb_s", "priority": 0,
+    { "id": "reactor_aux_s", "name": "Reactor auxiliaries, starboard", "system": "reactor", "center_m": [-5.5, 0.0, -24.0], "node": "msb_s", "priority": 0,
       "nominal_mw": 1.0, "standby_mw": 0.3, "setpoint_max": 1.0, "min_ratio": 0.0,
       "heat": { "to": "loop", "fraction": 1.0 },
       "under": "As the port half.", "over": "Not adjustable." },
-    { "id": "coolant_pump_a", "name": "Coolant pump A", "system": "coolant_pumps", "node": "msb_p", "priority": 0,
+    { "id": "coolant_pump_a", "name": "Coolant pump A", "system": "coolant_pumps", "center_m": [6.5, -3.5, -29.0], "node": "msb_p", "priority": 0,
       "nominal_mw": 0.4, "standby_mw": 0.4, "setpoint_max": 1.2, "min_ratio": 0.0, "power_exponent": 2.0,
       "heat": { "to": "loop", "fraction": 1.0 },
       "under": "Its setpoint is its speed; the speed it runs at is the one its supply allows. Loop flow falls in proportion; each pump is half the flow.", "over": "Up to 120% speed: 1.2 times its flow for 1.44 times its power, with heat and wear (reactor-cooling design 6)." },
-    { "id": "coolant_pump_b", "name": "Coolant pump B", "system": "coolant_pumps", "node": "msb_s", "priority": 0,
+    { "id": "coolant_pump_b", "name": "Coolant pump B", "system": "coolant_pumps", "center_m": [-6.5, -3.5, -29.0], "node": "msb_s", "priority": 0,
       "nominal_mw": 0.4, "standby_mw": 0.4, "setpoint_max": 1.2, "min_ratio": 0.0, "power_exponent": 2.0,
       "heat": { "to": "loop", "fraction": 1.0 },
       "under": "As pump A.", "over": "As pump A." },
@@ -376,6 +376,7 @@
   },
   "overdrive": {
     "heat_factor": 1.0,
-    "wear_pct_per_min_at_150": 2.0
+    "wear_pct_per_min_at_150": 2.0,
+    "heat_wear_pct_per_s_per_k": 0.01
   }
 }

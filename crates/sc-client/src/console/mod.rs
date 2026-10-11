@@ -419,7 +419,8 @@ pub struct EngView {
     pub armed_scram: bool,
     pub cool: CoolView,
     pub buses: BusesView,
-    pub air: AirView,
+    /// The air (none: no atmosphere is simulated, and the panel is drawn unavailable).
+    pub air: Option<AirView>,
 }
 
 /// A crewed station in single player: its NPC, its mode and whether the NPC is in the seat.
@@ -1264,7 +1265,12 @@ fn status_strip(cv: &Canvas, cx: &mut Ctx) {
         Some(pw) => {
             cv.icon("bolt", 330.0, 16.0, 16.0, if v.reactor_up { c.text.0 } else { c.emergency.0 });
             cv.text(344.0, 21.0, 14.0, c.text.0, &format!("{pw:.1} MW"), T::default());
-            cx.hits.add(cv, 322.0, 4.0, 90.0, 24.0, None, Some("Power in use".into()));
+            // The mockup's tip: the battery's share when it gives any.
+            let tip = match v.eng.as_ref().filter(|e| e.bat_out_mw > 0.05) {
+                Some(e) => format!("Reactor {:.1} MW, battery {:.1} MW", e.rx_out_mw, e.bat_out_mw),
+                None => "Power in use".to_owned(),
+            };
+            cx.hits.add(cv, 322.0, 4.0, 90.0, 24.0, None, Some(tip));
         }
         None => {
             // Unavailable: the drill simulates no power grid yet (CLAUDE.md 10, a control's unavailable state).

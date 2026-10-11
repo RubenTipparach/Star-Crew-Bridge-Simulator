@@ -8,10 +8,10 @@
 
 use glam::{DQuat, DVec3};
 use sc_core::combat::bodies::Posture;
-use sc_core::combat::{self, Command, HelmMode, Outcome, Phase, Refusal, Station, TubeState, TurretMode};
+use sc_core::combat::{self, Command, HelmMode, Outcome, Phase, PowerCmd, Refusal, Station, TubeState, TurretMode};
 
 /// The protocol's version; a Hello with another is refused.
-pub const PROTOCOL: u16 = 7;
+pub const PROTOCOL: u16 = 8;
 /// The longest unreliable message, so it is one SCTP chunk in one datagram (netcode-and-sessions section 2).
 pub const MAX_UNRELIABLE: usize = 1200;
 /// The longest string field, in bytes.
@@ -427,6 +427,301 @@ pub struct Snapshot {
     pub fighters: Vec<FighterSnap>,
     /// The Tern's insides (ship-damage 2.5): the captain's ship plan and the status strip's fires and breaches.
     pub damage: DamageSnap,
+    /// The Tern's power grid and cooling (power-grid 4): Engineering's console. The server sends it in some
+    /// snapshots only (power-grid 14: 2 Hz, faster while a fader is dragged); a client keeps the last.
+    pub power: Option<PowerSnap>,
+}
+
+/// A load group's fader as a snapshot carries it.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct GroupSnap {
+    /// Its setpoint, 0-2.
+    pub sp: f64,
+    /// 0 (never shed) to 3.
+    pub prio: u8,
+    /// Its feed breaker: 0 closed, 1 open, 2 locked open.
+    pub breaker: u8,
+    /// MW wanted and delivered.
+    pub want_mw: f64,
+    pub got_mw: f64,
+}
+
+/// The Tern's power grid and cooling as a snapshot carries them (power-grid 4, reactor-cooling 5): what
+/// Engineering's console draws beyond the client's own `power.json`. About 330 bytes.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct PowerSnap {
+    /// The preset applied, by its index in `PowerData::presets` (none: a hand on a fader since).
+    pub preset: Option<u8>,
+    /// Each group, in `power.json`'s order.
+    pub groups: Vec<GroupSnap>,
+    /// The reactor: 0 running, 1 scrammed, 2 igniting; on AUTO; its throttle and target; its electric output, MW;
+    /// its blanket, K; why it scrammed (`power::ScramCause` as its number, 0 none).
+    pub rx_state: u8,
+    pub rx_auto: bool,
+    pub throttle: f64,
+    pub target: f64,
+    pub p_e_mw: f64,
+    pub blanket_k: f64,
+    pub scram_cause: u8,
+    /// What the reactor and the battery give, and what every load wants, MW.
+    pub rx_out_mw: f64,
+    pub bat_out_mw: f64,
+    pub want_mw: f64,
+    /// The battery's charge, a share of its capacity.
+    pub soc: f64,
+    /// The loop: on AUTO; its flow and the chiller's share; its legs, K; heat in, rejected and the radiators' most,
+    /// MW; the radiator pumps' flow; the exchanger's capability; its fill; the makeup valve and its flow, kg/s.
+    pub cool_auto: bool,
+    pub flow: f64,
+    pub chiller: f64,
+    pub hot_k: f64,
+    pub cold_k: f64,
+    pub heat_mw: f64,
+    pub rad_mw: f64,
+    pub rad_cap_mw: f64,
+    pub rad_flow: f64,
+    pub exchanger: f64,
+    pub inventory: f64,
+    pub makeup_valve: f64,
+    pub makeup_kg_s: f64,
+    /// Each coolant tank, kg.
+    pub tanks_kg: Vec<f64>,
+    /// Each pump, the core pumps' then the radiator pumps': setpoint, speed, MW delivered.
+    pub pumps: Vec<[f64; 3]>,
+    /// The generators' breakers, then the ties', closed.
+    pub switches: Vec<bool>,
+    /// Each node whole.
+    pub nodes_up: Vec<bool>,
+    /// Conduits cut through.
+    pub cut: u8,
+    /// A fader being dragged on Engineering: group, setpoint, and the solve's MW wanted and delivered there.
+    pub preview: Option<(u8, f64, f64, f64)>,
+}
+
+impl PowerSnap {
+    /// What a client is sent of the drill's grid.
+    pub fn of(d: &combat::Drill) -> Self {
+        use sc_core::power::{Breaker, Mode, ReactorState};
+        let (pd, p) = (&d.data.power, &d.power);
+        let c = &pd.file.coolant;
+        let integrity = &d.damage[0].integrity;
+        let groups = pd
+            .group_loads
+            .iter()
+            .enumerate()
+            .map(|(g, ls)| {
+                let (want_mw, got_mw) = ls.iter().fold((0.0, 0.0), |(w, x), &k| (w + p.want[k], x + p.alloc[k]));
+                GroupSnap {
+                    sp: ls.first().map_or(0.0, |&k| p.setpoint[k]),
+                    prio: p.group_priority(pd, g),
+                    breaker: match p.group_breaker[g] {
+                        Breaker::Closed => 0,
+                        Breaker::Open => 1,
+                        Breaker::Locked => 2,
+                    },
+                    want_mw,
+                    got_mw,
+                }
+            })
+            .collect();
+        let pumps = c
+            .pumps
+            .iter()
+            .chain(&c.radiator_pumps)
+            .filter_map(|id| pd.load(id))
+            .map(|i| [p.setpoint[i], p.pump_speed(pd, integrity, i), p.alloc[i]])
+            .collect();
+        let rx = &p.reactor;
+        Self {
+            preset: p.preset.as_deref().and_then(|n| pd.presets().iter().position(|x| *x == n)).map(|i| i as u8),
+            groups,
+            rx_state: match rx.state {
+                ReactorState::Running => 0,
+                ReactorState::Scrammed => 1,
+                ReactorState::Igniting => 2,
+            },
+            rx_auto: rx.mode == Mode::Auto,
+            throttle: rx.throttle,
+            target: rx.target,
+            p_e_mw: rx.p_e_w / 1e6,
+            blanket_k: rx.t_k,
+            scram_cause: rx.scram_cause.map_or(0, |c| c as u8),
+            rx_out_mw: p.rx_out,
+            bat_out_mw: p.bat_out,
+            want_mw: p.totals().0,
+            soc: p.battery.soc_mj / pd.file.battery.capacity_mj.max(1e-9),
+            cool_auto: p.cooling.mode == Mode::Auto,
+            flow: p.lp.flow,
+            chiller: p.lp.chiller,
+            hot_k: p.lp.hot_k,
+            cold_k: p.lp.t_k,
+            heat_mw: p.lp.in_mw,
+            rad_mw: p.lp.rad_mw,
+            rad_cap_mw: p.lp.rad_cap_mw,
+            rad_flow: p.lp.rad_flow,
+            exchanger: p.lp.exchanger,
+            inventory: p.lp.m_kg / c.inventory_kg.max(1e-9),
+            makeup_valve: p.lp.makeup_valve,
+            makeup_kg_s: p.lp.makeup_kg_s,
+            tanks_kg: p.lp.tanks_kg.clone(),
+            pumps,
+            switches: p.gen_closed.iter().chain(&p.tie_closed).copied().collect(),
+            nodes_up: d.damage[0].node_health.iter().map(|h| *h > 0.0).collect(),
+            cut: d.damage[0].conduits.iter().filter(|k| k.severed).count().min(255) as u8,
+            preview: d.power_preview,
+        }
+    }
+
+    fn write(&self, w: &mut Writer) {
+        w.u8(self.preset.unwrap_or(255));
+        w.u8(self.groups.len().min(MAX_LIST) as u8);
+        for g in self.groups.iter().take(MAX_LIST) {
+            w.f32(g.sp);
+            w.u8(g.prio);
+            w.u8(g.breaker);
+            w.f32(g.want_mw);
+            w.f32(g.got_mw);
+        }
+        w.u8(self.rx_state);
+        w.u8(u8::from(self.rx_auto));
+        for v in [self.throttle, self.target, self.p_e_mw, self.blanket_k] {
+            w.f32(v);
+        }
+        w.u8(self.scram_cause);
+        for v in [self.rx_out_mw, self.bat_out_mw, self.want_mw, self.soc] {
+            w.f32(v);
+        }
+        w.u8(u8::from(self.cool_auto));
+        for v in [
+            self.flow,
+            self.chiller,
+            self.hot_k,
+            self.cold_k,
+            self.heat_mw,
+            self.rad_mw,
+            self.rad_cap_mw,
+            self.rad_flow,
+            self.exchanger,
+            self.inventory,
+            self.makeup_valve,
+            self.makeup_kg_s,
+        ] {
+            w.f32(v);
+        }
+        w.u8(self.tanks_kg.len().min(MAX_LIST) as u8);
+        for v in self.tanks_kg.iter().take(MAX_LIST) {
+            w.f32(*v);
+        }
+        w.u8(self.pumps.len().min(MAX_LIST) as u8);
+        for p in self.pumps.iter().take(MAX_LIST) {
+            for v in p {
+                w.f32(*v);
+            }
+        }
+        for list in [&self.switches, &self.nodes_up] {
+            w.u8(list.len().min(MAX_LIST) as u8);
+            for b in list.iter().take(MAX_LIST) {
+                w.u8(u8::from(*b));
+            }
+        }
+        w.u8(self.cut);
+        match self.preview {
+            Some((g, sp, want, got)) => {
+                w.u8(g);
+                for v in [sp, want, got] {
+                    w.f32(v);
+                }
+            }
+            None => w.u8(255),
+        }
+    }
+
+    fn read(r: &mut Reader) -> Result<Self, DecodeError> {
+        const MW: f64 = 1e4;
+        const K: f64 = 1e5;
+        let preset = match r.u8()? {
+            255 => None,
+            v => Some(v),
+        };
+        let ng = r.count(MAX_LIST)?;
+        let mut groups = Vec::with_capacity(ng);
+        for _ in 0..ng {
+            let sp = r.f32(0.0, 2.0)?;
+            let prio = r.u8()?;
+            let breaker = r.u8()?;
+            if prio > 3 || breaker > 2 {
+                return Err(DecodeError("no such priority or breaker state"));
+            }
+            groups.push(GroupSnap { sp, prio, breaker, want_mw: r.f32(0.0, MW)?, got_mw: r.f32(0.0, MW)? });
+        }
+        let rx_state = r.u8()?;
+        if rx_state > 2 {
+            return Err(DecodeError("no such reactor state"));
+        }
+        let rx_auto = r.bool()?;
+        let (throttle, target, p_e_mw, blanket_k) =
+            (r.f32(0.0, 2.0)?, r.f32(0.0, 2.0)?, r.f32(0.0, MW)?, r.f32(0.0, K)?);
+        let scram_cause = r.u8()?;
+        let (rx_out_mw, bat_out_mw, want_mw, soc) =
+            (r.f32(0.0, MW)?, r.f32(0.0, MW)?, r.f32(0.0, MW)?, r.f32(0.0, 1.0)?);
+        let cool_auto = r.bool()?;
+        let mut f = [0.0; 12];
+        for (k, v) in f.iter_mut().enumerate() {
+            // Temperatures and MW may be large; shares stay within 0-2.
+            *v = r.f32(if (4..=6).contains(&k) { -MW } else { 0.0 }, if matches!(k, 2..=7 | 11) { K } else { 2.0 })?;
+        }
+        let nt = r.count(MAX_LIST)?;
+        let tanks_kg = (0..nt).map(|_| r.f32(0.0, 1e7)).collect::<Result<_, _>>()?;
+        let np = r.count(MAX_LIST)?;
+        let mut pumps = Vec::with_capacity(np);
+        for _ in 0..np {
+            pumps.push([r.f32(0.0, 2.0)?, r.f32(0.0, 2.0)?, r.f32(0.0, MW)?]);
+        }
+        let mut flags = || -> Result<Vec<bool>, DecodeError> {
+            let n = r.count(MAX_LIST)?;
+            (0..n).map(|_| r.bool()).collect()
+        };
+        let (switches, nodes_up) = (flags()?, flags()?);
+        let cut = r.u8()?;
+        let preview = match r.u8()? {
+            255 => None,
+            g => Some((g, r.f32(0.0, 2.0)?, r.f32(0.0, MW)?, r.f32(0.0, MW)?)),
+        };
+        Ok(Self {
+            preset,
+            groups,
+            rx_state,
+            rx_auto,
+            throttle,
+            target,
+            p_e_mw,
+            blanket_k,
+            scram_cause,
+            rx_out_mw,
+            bat_out_mw,
+            want_mw,
+            soc,
+            cool_auto,
+            flow: f[0],
+            chiller: f[1],
+            hot_k: f[2],
+            cold_k: f[3],
+            heat_mw: f[4],
+            rad_mw: f[5],
+            rad_cap_mw: f[6],
+            rad_flow: f[7],
+            exchanger: f[8],
+            inventory: f[9],
+            makeup_valve: f[10],
+            makeup_kg_s: f[11],
+            tanks_kg,
+            pumps,
+            switches,
+            nodes_up,
+            cut,
+            preview,
+        })
+    }
 }
 
 /// An enemy fighter in flight, as a snapshot carries it.
@@ -686,7 +981,81 @@ fn write_command(w: &mut Writer, c: &Command) {
             w.u8(22);
             w.u8(u8::from(on));
         }
+        Command::Power(p) => {
+            w.u8(23);
+            write_power(w, p);
+        }
     }
+}
+
+/// Engineering's command: an op byte, then its arguments.
+fn write_power(w: &mut Writer, p: PowerCmd) {
+    match p {
+        PowerCmd::Preset(i) => {
+            w.u8(1);
+            w.u8(i);
+        }
+        PowerCmd::Group(g, sp) => {
+            w.u8(2);
+            w.u8(g);
+            w.f32(sp);
+        }
+        PowerCmd::Preview(ask) => {
+            w.u8(3);
+            w.u8(ask.map_or(255, |a| a.0));
+            w.f32(ask.map_or(0.0, |a| a.1));
+        }
+        PowerCmd::Prio(g) => {
+            w.u8(4);
+            w.u8(g);
+        }
+        PowerCmd::Breaker(g) => {
+            w.u8(5);
+            w.u8(g);
+        }
+        PowerCmd::Lock(g) => {
+            w.u8(6);
+            w.u8(g);
+        }
+        PowerCmd::Switch(k) => {
+            w.u8(7);
+            w.u8(k);
+        }
+        PowerCmd::Scram => w.u8(8),
+        PowerCmd::ReactorAuto(on) => {
+            w.u8(9);
+            w.u8(u8::from(on));
+        }
+        PowerCmd::CoolingAuto(on) => {
+            w.u8(10);
+            w.u8(u8::from(on));
+        }
+        PowerCmd::Lever(k, v) => {
+            w.u8(11);
+            w.u8(k);
+            w.f32(v);
+        }
+    }
+}
+
+fn read_power(r: &mut Reader) -> Result<PowerCmd, DecodeError> {
+    Ok(match r.u8()? {
+        1 => PowerCmd::Preset(r.u8()?),
+        2 => PowerCmd::Group(r.u8()?, r.f32(0.0, 2.0)?),
+        3 => {
+            let (g, sp) = (r.u8()?, r.f32(0.0, 2.0)?);
+            PowerCmd::Preview((g != 255).then_some((g, sp)))
+        }
+        4 => PowerCmd::Prio(r.u8()?),
+        5 => PowerCmd::Breaker(r.u8()?),
+        6 => PowerCmd::Lock(r.u8()?),
+        7 => PowerCmd::Switch(r.u8()?),
+        8 => PowerCmd::Scram,
+        9 => PowerCmd::ReactorAuto(r.bool()?),
+        10 => PowerCmd::CoolingAuto(r.bool()?),
+        11 => PowerCmd::Lever(r.u8()?, r.f32(0.0, 2.0)?),
+        _ => return Err(DecodeError("no such power command")),
+    })
 }
 
 fn read_command(r: &mut Reader) -> Result<Command, DecodeError> {
@@ -731,6 +1100,7 @@ fn read_command(r: &mut Reader) -> Result<Command, DecodeError> {
         20 => Command::Decoy,
         21 => Command::GunnerAim { yaw_deg: r.f32(-360.0, 360.0)?, pitch_deg: r.f32(-90.0, 90.0)? },
         22 => Command::GunnerTrigger(r.bool()?),
+        23 => Command::Power(read_power(r)?),
         _ => return Err(DecodeError("no such command")),
     };
     Ok(c)
@@ -933,6 +1303,13 @@ impl Snapshot {
         for (room, working) in dm.teams.iter().take(MAX_LIST) {
             w.u8(room.unwrap_or(255));
             w.u8(u8::from(*working));
+        }
+        match &self.power {
+            Some(p) => {
+                w.u8(1);
+                p.write(&mut w);
+            }
+            None => w.u8(0),
         }
         w.0
     }
@@ -1164,6 +1541,7 @@ impl Snapshot {
             teams.push(((room != 255).then_some(room), r.bool()?));
         }
         let damage = DamageSnap { integrity, fires, breaches, teams };
+        let power = if r.bool()? { Some(PowerSnap::read(&mut r)?) } else { None };
         r.done()?;
         Ok(Self {
             header,
@@ -1179,6 +1557,7 @@ impl Snapshot {
             bodies,
             fighters,
             damage,
+            power,
         })
     }
 
@@ -1255,6 +1634,7 @@ impl Snapshot {
                 .map(|m| MissileSnap { id: m.id, owner: m.owner, pos: m.pos, vel: m.vel })
                 .collect(),
             damage: DamageSnap::of(d.layout(0), &d.damage[0]),
+            power: Some(PowerSnap::of(d)),
             fighters: d
                 .fighters
                 .iter()
@@ -1487,6 +1867,33 @@ mod tests {
     }
 
     #[test]
+    fn the_power_grid_round_trips_and_rides_in_some_snapshots_only() {
+        let mut d = engaged();
+        d.power_preview = Some((1, 1.25, 15.0, 12.5));
+        let s = Snapshot::of(&d);
+        let b = s.encode();
+        assert!(b.len() <= MAX_UNRELIABLE, "a snapshot with the grid is {} bytes; it must fit one datagram", b.len());
+        let back = Snapshot::decode(&b).unwrap();
+        let (a, z) = (s.power.as_ref().unwrap(), back.power.as_ref().unwrap());
+        assert_eq!(
+            (a.preset, a.rx_state, a.rx_auto, a.scram_cause, a.cut),
+            (z.preset, z.rx_state, z.rx_auto, z.scram_cause, z.cut)
+        );
+        assert_eq!((&a.switches, &a.nodes_up), (&z.switches, &z.nodes_up));
+        assert_eq!(a.groups.len(), d.data.power.file.groups.len());
+        for (g, h) in a.groups.iter().zip(&z.groups) {
+            assert!((g.got_mw - h.got_mw).abs() < 1e-4 && g.prio == h.prio && g.breaker == h.breaker);
+        }
+        assert!((a.cold_k - z.cold_k).abs() < 1e-3 && (a.soc - z.soc).abs() < 1e-6, "numbers travel as f32");
+        assert_eq!(z.preview.map(|p| p.0), Some(1), "the dragged fader's answer travels with it");
+        let mut bare = s.clone();
+        bare.power = None;
+        let size = bare.encode().len();
+        assert!(size + 250 < b.len(), "the grid is most of the difference: {size} against {}", b.len());
+        assert_eq!(Snapshot::decode(&bare.encode()).unwrap().power, None);
+    }
+
+    #[test]
     fn every_client_message_round_trips() {
         let msgs = [
             ClientMsg::Hello {
@@ -1501,6 +1908,18 @@ mod tests {
             ClientMsg::Command(Command::Lock(None)),
             ClientMsg::Command(Command::Stick { speed_set_mps: 120.0, yaw: 0.5, pitch: -0.25, roll: 0.0 }),
             ClientMsg::Ping(12345),
+            ClientMsg::Command(Command::Power(PowerCmd::Preset(1))),
+            ClientMsg::Command(Command::Power(PowerCmd::Group(3, 1.25))),
+            ClientMsg::Command(Command::Power(PowerCmd::Preview(Some((2, 0.5))))),
+            ClientMsg::Command(Command::Power(PowerCmd::Preview(None))),
+            ClientMsg::Command(Command::Power(PowerCmd::Prio(11))),
+            ClientMsg::Command(Command::Power(PowerCmd::Breaker(11))),
+            ClientMsg::Command(Command::Power(PowerCmd::Lock(11))),
+            ClientMsg::Command(Command::Power(PowerCmd::Switch(2))),
+            ClientMsg::Command(Command::Power(PowerCmd::Scram)),
+            ClientMsg::Command(Command::Power(PowerCmd::ReactorAuto(false))),
+            ClientMsg::Command(Command::Power(PowerCmd::CoolingAuto(true))),
+            ClientMsg::Command(Command::Power(PowerCmd::Lever(2, 0.75))),
         ];
         for m in msgs {
             assert_eq!(ClientMsg::decode(&m.encode()).unwrap(), m);

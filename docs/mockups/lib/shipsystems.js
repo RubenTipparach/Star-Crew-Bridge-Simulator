@@ -874,7 +874,7 @@
           th.T += (dt * (q - qLoop - qRoom)) / (h.capacity_mj_per_k * MWW);
           toLoop += qLoop; if (room != null) roomHeat[room] += qRoom;
           // Over-temperature wears the system (damage-control applies the state).
-          if (th.T > h.damage_k) st.integrity[i] = Math.max(0, st.integrity[i] - dt * (th.T - h.damage_k) * 0.01);
+          if (th.T > h.damage_k) st.integrity[i] = Math.max(0, st.integrity[i] - dt * (th.T - h.damage_k) * PW.overdrive.heat_wear_pct_per_s_per_k);
         }
       }
       // Reactor blanket.

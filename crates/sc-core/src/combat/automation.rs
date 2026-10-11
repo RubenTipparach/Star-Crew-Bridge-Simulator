@@ -6,8 +6,10 @@
 //! [`Picture`], which the server builds from the drill and a client builds from a snapshot, so it never needs more
 //! than a console shows.
 
-use super::data::{CaptainProfile, DrillData, FlightBlock, HelmProfile, TacticalProfile};
-use super::{off_bow_deg, steer_toward, Bridge, Command, Drill, HelmMode, TubeState, TurretMode, ENEMY_ID};
+use super::data::{CaptainProfile, DrillData, EngineeringProfile, FlightBlock, HelmProfile, TacticalProfile};
+use super::{
+    off_bow_deg, steer_toward, Bridge, Command, Drill, HelmMode, PowerCmd, Station, TubeState, TurretMode, ENEMY_ID,
+};
 use glam::{DQuat, DVec3};
 
 /// The Tern as a console sees her.
@@ -105,6 +107,54 @@ pub struct Memory {
     pub tactical: TacticalMemory,
     /// The captain.
     pub captain: CaptainMemory,
+    /// Engineering.
+    pub engineering: EngineeringMemory,
+}
+
+/// What Engineering's automation last answered: the condition it set the grid for, and since when the bridge has
+/// been at another.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct EngineeringMemory {
+    /// The condition its preset is for (red alert: true), none before its first.
+    pub alert: Option<bool>,
+    /// When the condition last differed from it, seconds into Engage.
+    pub since_s: Option<f64>,
+}
+
+/// Engineering's automation (bridge-stations 3, `power.json` presets' note): after its reaction time, the combat
+/// preset on red alert and cruise when it ends, and the preset a COMBAT or CRUISE order names. Shedding by priority
+/// is the solve's, and the reactor follows the load on its own AUTO. It never scrams, vents, closes a locked breaker
+/// or sheds life support or the computer core.
+pub fn engineering(
+    bridge: &Bridge,
+    data: &DrillData,
+    p: &EngineeringProfile,
+    mem: &mut EngineeringMemory,
+    now_s: f64,
+) -> Vec<Command> {
+    let presets = data.power.presets();
+    let preset = |name: &str| presets.iter().position(|n| n.eq_ignore_ascii_case(name)).map(|i| i as u8);
+    let mut out = Vec::new();
+    if mem.alert != Some(bridge.red_alert) {
+        let since = *mem.since_s.get_or_insert(now_s);
+        if now_s - since >= p.reaction_s {
+            mem.alert = Some(bridge.red_alert);
+            mem.since_s = None;
+            out.extend(
+                preset(if bridge.red_alert { "combat" } else { "cruise" }).map(|i| Command::Power(PowerCmd::Preset(i))),
+            );
+        }
+    }
+    // The captain's order to it, once it has had its reaction time (its acknowledgement is the drill's rule).
+    let verbs = data.order_verbs(Station::Engineering);
+    if let Some(o) =
+        bridge.orders.iter().find(|o| o.to == Station::Engineering && !o.done && now_s - o.at_s >= p.reaction_s)
+    {
+        if let Some(i) = verbs.get(usize::from(o.verb)).and_then(|v| preset(&v[0])) {
+            out.push(Command::Power(PowerCmd::Preset(i)));
+        }
+    }
+    out
 }
 
 /// When the captain's automation next decides.

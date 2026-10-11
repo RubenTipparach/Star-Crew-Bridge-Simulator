@@ -221,6 +221,9 @@ pub struct TubesBlock {
     pub magazine: u32,
     /// Seconds to load a tube.
     pub load_s: f64,
+    /// Seconds to load it by hand crank with no power (weapons-and-shields 7: the crank's 40 s in place of the
+    /// autoloader's 18 s); none: a ship whose tubes are not on a simulated grid.
+    pub crank_load_s: Option<f64>,
     /// Seconds to arm a loaded tube.
     pub arm_s: f64,
     /// The missile's id in `data/weapons.json`.
@@ -338,6 +341,9 @@ impl CombatBlock {
             c.count(&format!("{at}.tubes.count"), i64::from(t.count), 1, 8);
             c.count(&format!("{at}.tubes.magazine"), i64::from(t.magazine), 0, 255);
             c.number(&format!("{at}.tubes.load_s"), t.load_s, 0.0, 600.0);
+            if let Some(k) = t.crank_load_s {
+                c.number(&format!("{at}.tubes.crank_load_s"), k, t.load_s, 3600.0);
+            }
             c.number(&format!("{at}.tubes.arm_s"), t.arm_s, 0.0, 600.0);
             c.count(&format!("{at}.tubes.muzzle_m"), t.muzzle_m.len() as i64, i64::from(t.count), i64::from(t.count));
         }
@@ -1102,10 +1108,12 @@ pub struct DrillData {
     pub hound_layout: crate::combat::damage::ShipLayout,
     /// The damage rules.
     pub damage: crate::combat::damage::DamageData,
+    /// The Tern's power grid and cooling (power-grid, reactor-cooling).
+    pub power: crate::power::PowerData,
 }
 
 /// How many files [`DRILL_FILES`] names: the size of the array [`DrillData::parse`] takes.
-pub const DRILL_FILE_COUNT: usize = 11;
+pub const DRILL_FILE_COUNT: usize = 12;
 
 /// The files a drill reads, relative to the repository's root, in the order [`DrillData::parse`] takes them.
 pub const DRILL_FILES: [&str; DRILL_FILE_COUNT] = [
@@ -1120,7 +1128,26 @@ pub const DRILL_FILES: [&str; DRILL_FILE_COUNT] = [
     crate::combat::damage::TERN_FILES[1],
     crate::combat::damage::TERN_FILES[2],
     crate::combat::damage::HOUND_FILE,
+    "data/ships/tern/atmosphere.json",
 ];
+
+/// `atmosphere.json`'s `thermal.initial_k`: a room's air temperature until life support runs, K. The rest of the
+/// file is `life-support`'s.
+fn room_temperature(file: &str, text: &str) -> Result<f64, DataError> {
+    let v: serde_json::Value = serde_json::from_str(text).map_err(|e| DataError {
+        file: file.to_owned(),
+        field: String::new(),
+        message: e.to_string(),
+    })?;
+    v.pointer("/thermal/initial_k")
+        .and_then(serde_json::Value::as_f64)
+        .filter(|k| (150.0..400.0).contains(k))
+        .ok_or_else(|| DataError {
+            file: file.to_owned(),
+            field: "thermal.initial_k".into(),
+            message: "must be a temperature from 150 to 400 K".into(),
+        })
+}
 
 impl DrillData {
     /// Parse the files of [`DRILL_FILES`] (their texts, in that order) and a mission file, and check that
@@ -1136,6 +1163,10 @@ impl DrillData {
         let tern_layout = crate::combat::damage::ShipLayout::tern([texts[7], texts[8], texts[9]])?;
         let damage = crate::combat::damage::DamageData::parse(texts[9])?;
         let hound_layout = crate::combat::damage::ShipLayout::hound(texts[10])?;
+        // The air is not simulated in the drill: a room stays at the atmosphere's starting temperature.
+        let room_k = room_temperature(DRILL_FILES[11], texts[11])?;
+        let floors = tern_layout.rooms.iter().map(|r| (r.id.clone(), r.floor_m2())).collect();
+        let power = crate::power::PowerData::parse(texts[8], &damage, room_k, &floors)?;
         let mission: MissionFile = parse(mission_file, mission_text)?;
         let missing = |file: &str, field: &str, id: &str| DataError {
             file: file.to_owned(),
@@ -1187,6 +1218,7 @@ impl DrillData {
             tern_layout,
             hound_layout,
             damage,
+            power,
         })
     }
 
@@ -1205,6 +1237,7 @@ impl DrillData {
                 include_str!("../../../../data/ships/tern/power.json"),
                 include_str!("../../../../data/ships/tern/damage.json"),
                 include_str!("../../../../data/ships/hound/layout.json"),
+                include_str!("../../../../data/ships/tern/atmosphere.json"),
             ],
             "data/missions/drill-hound.json",
             include_str!("../../../../data/missions/drill-hound.json"),

@@ -14,6 +14,7 @@ use crate::console::{
 use crate::console::{
     BeamAges, GunTarget, GunnerView, InboundView, LaserView, LasersView, ObjectiveRow, ObjectivesView,
 };
+use crate::console::{BusesView, CoolView, EngView, GroupView, PreviewView, PumpView, ReactorView, TankView};
 use crate::console::{HitView, HoldView, Hpr, OrderView, PlanView, ScanCam, ScanCams, SciView, TubeView, TurretView};
 use egui::{Pos2, Rect};
 use glam::{DQuat, DVec3};
@@ -24,9 +25,9 @@ use sc_core::combat::data::DrillData;
 use sc_core::combat::data::BANDS;
 use sc_core::combat::data::{ObjectiveFacts, ObjectiveKind, ObjectiveState};
 use sc_core::combat::{
-    self as combat, Command, HelmMode, Station, TubeState, ENEMY_ID, FEEDS, FIGHTER_IDS, GUNNER_TURRET,
+    self as combat, Command, HelmMode, PowerCmd, Station, TubeState, ENEMY_ID, FEEDS, FIGHTER_IDS, GUNNER_TURRET,
 };
-use sc_net::msg::{ShipSnap, Snapshot};
+use sc_net::msg::{PowerSnap, ShipSnap, Snapshot};
 use std::collections::HashSet;
 
 /// The scanners' range ladder, km: 5 km steps from 5 to 100 (bridge-stations 8.0).
@@ -34,6 +35,8 @@ const RANGE_KM: [f64; 20] =
     [5., 10., 15., 20., 25., 30., 35., 40., 45., 50., 55., 60., 65., 70., 75., 80., 85., 90., 95., 100.];
 /// How long a guarded control is held before it acts (bridge-stations 8.5).
 pub const HOLD_S: f64 = 0.6;
+/// How long SCRAM stays armed for its confirming tap, seconds (the mockup's `ARMED`).
+const ARM_S: f64 = 3.0;
 /// How long a hit on the Tern's shield is drawn (weapons-and-shields 11: the last 8 s of hits).
 const HIT_SHOW_S: f64 = 8.0;
 /// The id the console's first hostile track takes.
@@ -119,6 +122,13 @@ pub struct Seat {
     /// Each laser bank's charge at the last view, and when each last fired (local time).
     laser_charge: [f64; 2],
     laser_shot: [f64; 2],
+    /// Engineering: the fader in hand (its group and setpoint) and the one last asked of the server; the lever in
+    /// hand (its index in `combat::LEVERS` and value) and the one last sent; when SCRAM was armed.
+    fader: Option<(usize, f64)>,
+    fader_sent: Option<(usize, f64)>,
+    lever: Option<(u8, f64)>,
+    lever_sent: Option<(u8, f64)>,
+    armed_scram: Option<f64>,
 }
 
 /// Things the console asks the drill to do besides commands.
@@ -176,6 +186,11 @@ impl Default for Seat {
             },
             laser_charge: [0.0; 2],
             laser_shot: [-1e9; 2],
+            fader: None,
+            fader_sent: None,
+            lever: None,
+            lever_sent: None,
+            armed_scram: None,
         }
     }
 }
@@ -445,8 +460,8 @@ impl Seat {
             clock_s: snap.phase_s,
             hull_pct: tern.hull / data.tern_combat.hull_mj.max(1e-9) * 100.0,
             shield_ratio: std::array::from_fn(|f| tern.faces[f] / caps[f].max(1e-9)),
-            power_mw: None,
-            reactor_up: true,
+            power_mw: snap.power.as_ref().map(|p| p.rx_out_mw + p.bat_out_mw),
+            reactor_up: snap.power.as_ref().is_none_or(|p| p.rx_state == 0),
             speed_mps: tern.vel.length(),
             fires: dm.fires.len() as u32,
             breaches: dm.breaches.len() as u32,
@@ -507,8 +522,8 @@ impl Seat {
             t: now,
             sci: Some(sci),
             captain: Some(captain),
-            // No power grid in the drill yet: Engineering's console is unavailable (console-parity 10.2).
-            eng: None,
+            // Engineering's console waits for the first snapshot with the grid in it (power-grid 14: 2 Hz).
+            eng: snap.power.as_ref().map(|p| self.eng(p, snap, data, now)),
             decoys: u32::from(tern.decoys),
             decoys_max: data.tern_combat.decoys.as_ref().map_or(0, |d| d.count),
             decoy_age_s: if tern.decoy_on { 0.0 } else { 1e9 },
@@ -521,6 +536,135 @@ impl Seat {
             gun_locked: gun_snap.is_some_and(|t| t.cooling),
             objectives_open: self.obj_open,
             objectives,
+        }
+    }
+
+    /// Engineering's console (power-grid 4, reactor-cooling 5; the mockup's `consoleEngineering`): the snapshot's
+    /// grid with the client's own `power.json` for names, limits and scales. A dragged fader shows the server's solve
+    /// at its setpoint, the last answer for that group while the next is on its way.
+    fn eng(&self, p: &PowerSnap, snap: &Snapshot, data: &DrillData, now: f64) -> EngView {
+        let pd = &data.power;
+        let f = &pd.file;
+        let groups = f
+            .groups
+            .iter()
+            .enumerate()
+            .map(|(g, gr)| {
+                let s = p.groups.get(g).copied().unwrap_or_default();
+                GroupView {
+                    id: gr.id.clone(),
+                    name: gr.name.clone(),
+                    want: s.want_mw,
+                    got: s.got_mw,
+                    sp: s.sp,
+                    prio: s.prio,
+                    max: pd.group_max(g),
+                    want_k: pd.group_k(g, s.want_mw),
+                    got_k: pd.group_k(g, s.got_mw),
+                    breaker: (gr.feed_breaker == Some(true))
+                        .then(|| ["closed", "open", "locked"][usize::from(s.breaker.min(2))].to_owned()),
+                }
+            })
+            .collect();
+        let preview = self.fader.map(|(g, sp)| {
+            let got = match p.preview {
+                Some((pg, _, _, got)) if usize::from(pg) == g => got,
+                _ => p.groups.get(g).map_or(0.0, |s| s.got_mw),
+            };
+            PreviewView { gid: f.groups[g].id.clone(), sp, k: pd.group_k(g, got) }
+        });
+        let integrity = |k: usize| f64::from(snap.damage.integrity.get(k).copied().unwrap_or(100));
+        let c = &f.coolant;
+        let pump = |n: usize, id: &String| {
+            let k = pd.load(id).unwrap_or(0);
+            let [setpoint, speed, alloc_mw] = p.pumps.get(n).copied().unwrap_or_default();
+            PumpView {
+                name: pd.loads[k].name.clone(),
+                speed,
+                capability: data.damage.systems.capability(integrity(k)),
+                alloc_mw,
+                setpoint,
+            }
+        };
+        let np = c.pumps.len();
+        let max_of = |ids: &[String]| ids.first().and_then(|id| pd.load(id)).map_or(1.0, |k| pd.loads[k].setpoint_max);
+        let switch = |id: &str| {
+            let k = f
+                .generators
+                .iter()
+                .position(|g| g.id == id)
+                .or_else(|| f.ties.iter().position(|t| t.id == id).map(|k| k + f.generators.len()));
+            k.and_then(|k| p.switches.get(k).copied()).unwrap_or(false)
+        };
+        let node_up = |id: &str| pd.node(id).and_then(|k| p.nodes_up.get(k).copied()).unwrap_or(true);
+        EngView {
+            rated_mw: f.reactor.thermal_rated_mw * f.reactor.conversion_efficiency * f.reactor.throttle_max,
+            rx_out_mw: p.rx_out_mw,
+            bat_out_mw: p.bat_out_mw,
+            want_mw: p.want_mw,
+            preset: p.preset.and_then(|i| pd.presets().get(usize::from(i)).map(|n| (*n).to_owned())),
+            groups,
+            preview,
+            reactor: ReactorView {
+                up: p.rx_state == 0,
+                throttle: p.throttle,
+                target: p.target,
+                p_e_mw: p.p_e_mw,
+                mode: if p.rx_auto { "auto" } else { "manual" }.into(),
+                scram_cause: sc_core::power::ScramCause::from_u8(p.scram_cause).map(|c| c.words(pd)),
+                t_k: p.blanket_k,
+                warn_k: f.reactor.heat.warn_k,
+                scram_k: f.reactor.heat.scram_k,
+                throttle_max: f.reactor.throttle_max,
+            },
+            armed_scram: self.armed_scram.is_some_and(|t| now - t < ARM_S),
+            cool: CoolView {
+                mode: if p.cool_auto { "auto" } else { "manual" }.into(),
+                flow: p.flow,
+                flow_kg_s: p.flow * c.design_flow_kg_s,
+                chiller: p.chiller,
+                hot_k: p.hot_k,
+                cold_k: p.cold_k,
+                pumps: c.pumps.iter().enumerate().map(|(n, id)| pump(n, id)).collect(),
+                radiator_pumps: c.radiator_pumps.iter().enumerate().map(|(n, id)| pump(np + n, id)).collect(),
+                makeup_valve: p.makeup_valve,
+                makeup_kg_s: p.makeup_kg_s,
+                tanks: c
+                    .tanks
+                    .iter()
+                    .enumerate()
+                    .map(|(k, t)| {
+                        let kg = p.tanks_kg.get(k).copied().unwrap_or(0.0);
+                        TankView { name: t.name.clone(), kg, frac: kg / t.capacity_kg.max(1e-9) }
+                    })
+                    .collect(),
+                inventory: p.inventory,
+                exchanger: p.exchanger,
+                rad_mw: p.rad_mw,
+                rad_cap_mw: p.rad_cap_mw,
+                rad_flow: p.rad_flow,
+                hot_band_k: c.bands.hot_leg_k,
+                hot_warn_k: c.bands.hot_leg_warning_k,
+                limit_k: f.reactor.scram.loop_over_k,
+                heat_mw: p.heat_mw,
+                carry_mw: pd.carry_mw(p.flow),
+                pump_max: max_of(&c.pumps),
+                rad_max: max_of(&c.radiator_pumps),
+                makeup_max_kg_s: c.makeup.max_kg_s,
+            },
+            buses: BusesView {
+                gen_p: switch("gen_p"),
+                gen_s: switch("gen_s"),
+                tie: switch("bt_main"),
+                eb_p: switch("eb_p"),
+                eb_s: switch("eb_s"),
+                np: node_up("msb_p"),
+                ns: node_up("msb_s"),
+                soc: p.soc,
+                cut: u32::from(p.cut),
+            },
+            // The air is not simulated in the drill: the AIR panel is drawn unavailable.
+            air: None,
         }
     }
 
@@ -820,14 +964,36 @@ impl Seat {
             Act::GunPick(i) => self.gun.chosen = i,
             Act::Decoy => out.push(cmd(Command::Decoy)),
             Act::Mode(auto) => out.push(SeatAsk::Mode(auto)),
-            // Engineering's and the captain's damage control are not simulated in the drill: drawn unavailable.
-            Act::Preset(_)
-            | Act::Prio(_)
-            | Act::GLock(_)
-            | Act::Scram
-            | Act::RxMode
-            | Act::CMode
-            | Act::OrderRepair => {}
+            Act::Preset(id) => {
+                if let Some(i) = data.power.presets().iter().position(|p| *p == id) {
+                    out.push(cmd(Command::Power(PowerCmd::Preset(i as u8))));
+                }
+            }
+            Act::Prio(gid) => {
+                if let Some(g) = data.power.file.groups.iter().position(|g| g.id == gid) {
+                    out.push(cmd(Command::Power(PowerCmd::Prio(g as u8))));
+                }
+            }
+            Act::GLock(gid) => {
+                if let Some(g) = data.power.file.groups.iter().position(|g| g.id == gid) {
+                    out.push(cmd(Command::Power(PowerCmd::Lock(g as u8))));
+                }
+            }
+            // SCRAM: a tap arms it, a second within ARM_S confirms (bridge-stations 8.5).
+            Act::Scram => match self.armed_scram.take() {
+                Some(t) if v.t - t < ARM_S => out.push(cmd(Command::Power(PowerCmd::Scram))),
+                _ => self.armed_scram = Some(v.t),
+            },
+            Act::RxMode => {
+                let auto = v.eng.as_ref().is_some_and(|e| e.reactor.mode == "auto");
+                out.push(cmd(Command::Power(PowerCmd::ReactorAuto(!auto))));
+            }
+            Act::CMode => {
+                let auto = v.eng.as_ref().is_some_and(|e| e.cool.mode == "auto");
+                out.push(cmd(Command::Power(PowerCmd::CoolingAuto(!auto))));
+            }
+            // The captain's damage control is not simulated in the drill: drawn unavailable.
+            Act::OrderRepair => {}
         }
     }
 
@@ -839,8 +1005,9 @@ impl Seat {
         }
     }
 
-    fn drag_to(&mut self, p: Pos2, s: f32, fl: &sc_core::combat::data::FlightBlock) {
+    fn drag_to(&mut self, p: Pos2, s: f32, data: &DrillData) {
         use console::kit::Drag;
+        let fl = &data.tern_flight;
         let Some(d) = self.drag.as_mut() else { return };
         let r = d.track;
         let ky = f64::from((r.max.y - p.y) / r.height().max(1e-3));
@@ -900,8 +1067,30 @@ impl Seat {
                 self.gun.yaw = console::wrap180(d.cam0.0 + f64::from(dx / r.width().max(1.0)) * 30.0);
                 self.gun.pitch = (d.cam0.1 - f64::from(dy / r.height().max(1.0)) * 15.4).clamp(-10.0, 80.0);
             }
-            // Engineering's faders and levers: no power grid in the drill (drawn unavailable, with no hits).
-            Drag::Fader(_) | Drag::Lever(_) => {}
+            // A fader: the track runs from 0 to the group's highest setpoint, in 5 % steps; the server answers with
+            // its solve there, and the release sets it (the mockup's `dragTo` and pointerup).
+            Drag::Fader(gid) => {
+                if let Some(g) = data.power.file.groups.iter().position(|g| &g.id == gid) {
+                    let max = data.power.group_max(g);
+                    self.fader = Some((g, ((ky * max * 20.0).round() / 20.0).clamp(0.0, max)));
+                }
+            }
+            // A lever on the loop takes it by hand (reactor-cooling design 5), in 5 % steps.
+            Drag::Lever(key) => {
+                if let Some(k) = combat::LEVERS.iter().position(|l| l == key) {
+                    let c = &data.power.file.coolant;
+                    let ids = match k {
+                        0 => Some(&c.pumps),
+                        1 => Some(&c.radiator_pumps),
+                        _ => None,
+                    };
+                    let max = ids
+                        .and_then(|ids| ids.first())
+                        .and_then(|id| data.power.load(id))
+                        .map_or(1.0, |i| data.power.loads[i].setpoint_max);
+                    self.lever = Some((k as u8, ((ky * max * 20.0).round() / 20.0).clamp(0.0, max)));
+                }
+            }
         }
     }
 
@@ -957,17 +1146,25 @@ impl Seat {
                                 _ => 0.0,
                             };
                             let side = if p.x < region.rect.center().x { -1.0 } else { 1.0 };
-                            let immediate = matches!(what, Drag::Throttle | Drag::Strafe | Drag::Joy | Drag::Flip);
+                            let immediate = matches!(
+                                what,
+                                Drag::Throttle
+                                    | Drag::Strafe
+                                    | Drag::Joy
+                                    | Drag::Flip
+                                    | Drag::Fader(_)
+                                    | Drag::Lever(_)
+                            );
                             self.drag =
                                 Some(Dragging { what, p0: p, track: region.track, cam0, v0, side, moved: false });
                             if immediate {
-                                self.drag_to(p, s, fl);
+                                self.drag_to(p, s, data);
                             }
                         }
                         None => {}
                     }
                 }
-                PointerEv::Move(p) => self.drag_to(p, s, fl),
+                PointerEv::Move(p) => self.drag_to(p, s, data),
                 PointerEv::Release(p) => {
                     if let Some(d) = self.drag.take() {
                         match d.what {
@@ -976,6 +1173,13 @@ impl Seat {
                                 self.stick_drag[1] = 0.0;
                             }
                             Drag::Flip => self.stick_drag[2] = 0.0,
+                            Drag::Fader(_) => {
+                                if let Some((g, sp)) = self.fader.take() {
+                                    out.push(SeatAsk::Command(Command::Power(PowerCmd::Group(g as u8, sp))));
+                                }
+                                self.fader_sent = None;
+                            }
+                            Drag::Lever(_) => self.lever = None,
                             // A thumbwheel tapped, not turned: its top half turns it up a degree, its bottom down.
                             Drag::Wheel(k) if !d.moved => {
                                 self.step_wheel(k, if p.y < d.track.center().y { 1.0 } else { -1.0 })
@@ -1017,8 +1221,37 @@ impl Seat {
                     "lfire:port" => out.push(SeatAsk::Command(Command::LaserFire(0))),
                     "lfire:stbd" => out.push(SeatAsk::Command(Command::LaserFire(1))),
                     "redalert" => out.push(SeatAsk::Command(Command::Alert(!v.red_alert))),
-                    _ => {}
+                    // Engineering's breakers: a group's feed, or a switch on the one-line diagram.
+                    k => {
+                        let f = &data.power.file;
+                        let cmd = if let Some(gid) = k.strip_prefix("gbrk:") {
+                            f.groups.iter().position(|g| g.id == gid).map(|g| PowerCmd::Breaker(g as u8))
+                        } else if let Some(id) = k.strip_prefix("brk:") {
+                            f.generators
+                                .iter()
+                                .position(|g| g.id == id)
+                                .or_else(|| f.ties.iter().position(|t| t.id == id).map(|t| t + f.generators.len()))
+                                .map(|k| PowerCmd::Switch(k as u8))
+                        } else {
+                            None
+                        };
+                        if let Some(c) = cmd {
+                            out.push(SeatAsk::Command(Command::Power(c)));
+                        }
+                    }
                 }
+            }
+        }
+        // A fader in hand asks the server for its solve at each new setpoint; a lever is sent as it moves.
+        if self.fader.is_some() && self.fader != self.fader_sent {
+            self.fader_sent = self.fader;
+            let ask = self.fader.map(|(g, sp)| (g as u8, sp));
+            out.push(SeatAsk::Command(Command::Power(PowerCmd::Preview(ask))));
+        }
+        if self.lever.is_some() && self.lever != self.lever_sent {
+            self.lever_sent = self.lever;
+            if let Some((k, v)) = self.lever {
+                out.push(SeatAsk::Command(Command::Power(PowerCmd::Lever(k, v))));
             }
         }
         let held = &ctx_input.held;
@@ -1330,13 +1563,48 @@ mod tests {
     }
 
     #[test]
-    fn engineering_draws_unavailable_with_nothing_to_press() {
+    fn engineering_draws_the_grid_from_the_snapshot() {
         let mut b = Bench::new(Station::Engineering);
         let v = b.view(1.0);
-        assert!(v.eng.is_none(), "no power grid is simulated in the drill");
+        let e = v.eng.as_ref().expect("the drill simulates the power grid");
+        assert_eq!(e.groups.len(), b.data.power.file.groups.len(), "a fader a group");
+        assert_eq!(e.preset.as_deref(), Some("cruise"), "the ship starts at cruise");
+        assert!(e.rx_out_mw > 10.0 && e.reactor.up, "the reactor carries the ship: {:.1} MW", e.rx_out_mw);
+        assert!(e.air.is_none(), "the air is not simulated in the drill: AIR is drawn unavailable");
         let hits = paint(&v);
-        let live = hits.regions.iter().filter(|r| r.rect.min.y > 280.0 && r.rect.max.y < 688.0 && r.hit.is_some());
-        assert_eq!(live.count(), 0, "every engineering control is inert");
+        assert!(hits.regions.iter().any(|r| r.hit == Some(Hit::Act(Act::Preset("combat".into())))), "COMBAT is live");
+    }
+
+    #[test]
+    fn engineering_presses_send_the_grid_commands() {
+        let mut b = Bench::new(Station::Engineering);
+        let pd = &b.data.power;
+        let combat = pd.presets().iter().position(|p| *p == "combat").unwrap() as u8;
+        let shields = pd.file.groups.iter().position(|g| g.id == "shields").unwrap() as u8;
+        assert_eq!(
+            b.press(Hit::Act(Act::Preset("combat".into())), 1.0),
+            vec![Command::Power(PowerCmd::Preset(combat))]
+        );
+        assert_eq!(b.press(Hit::Act(Act::Prio("shields".into())), 1.1), vec![Command::Power(PowerCmd::Prio(shields))]);
+        assert_eq!(b.press(Hit::Act(Act::RxMode), 1.2), vec![Command::Power(PowerCmd::ReactorAuto(false))]);
+        assert!(b.press(Hit::Act(Act::Scram), 1.3).is_empty(), "the first tap on SCRAM only arms it");
+        assert!(b.view(1.4).eng.unwrap().armed_scram, "armed: the button reads CONFIRM");
+        assert_eq!(b.press(Hit::Act(Act::Scram), 1.5), vec![Command::Power(PowerCmd::Scram)], "the second confirms");
+    }
+
+    #[test]
+    fn dragging_a_fader_asks_for_its_ghost_and_letting_go_sets_it() {
+        let mut b = Bench::new(Station::Engineering);
+        let hits = paint(&b.view(1.0));
+        let fader = hits.regions.iter().find(|r| r.hit == Some(Hit::Drag(Drag::Fader("drive".into())))).unwrap();
+        let g = b.data.power.file.groups.iter().position(|g| g.id == "drive").unwrap() as u8;
+        let mid = fader.track.center();
+        let sent = b.input(vec![PointerEv::Press(mid)], 1.0);
+        let Some(Command::Power(PowerCmd::Preview(Some((pg, sp))))) = sent.first().copied() else { panic!("{sent:?}") };
+        assert_eq!(pg, g);
+        assert!((sp - b.data.power.group_max(usize::from(g)) / 2.0).abs() < 0.051, "half the travel: {sp}");
+        let sent = b.input(vec![PointerEv::Release(mid)], 1.1);
+        assert_eq!(sent, vec![Command::Power(PowerCmd::Group(g, sp))], "letting go sets the fader where the ghost was");
     }
 
     #[test]

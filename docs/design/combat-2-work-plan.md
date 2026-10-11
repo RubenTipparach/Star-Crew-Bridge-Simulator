@@ -22,7 +22,12 @@ built the rest itself on `feat/combat-2`:
 | D | The engine consoles at parity with the Mac's approved mockups (both laser stations, the gunner's sight, DECOY and the magazine, OBJECTIVES on every console, the captain's CREW for seven stations); the objectives' kinds |
 
 Also built: the game menu on Esc with Options (`game-menu`), names over the crew with (NPC) (`crew-nameplates`), and
-the crew's division colours (`crew-uniforms`). Left: the whole-fight recording of the First Mission Gate.
+the crew's division colours (`crew-uniforms`), and the power grid in the fight (`power-grid` design 12a): the
+reactor, battery, cooling loop and every load simulated at 10 Hz, every Tern system working with its integrity and its
+power, Engineering's console live with its presets, faders, priorities, breakers, SCRAM and the loop's levers, and
+the grid's mockup on the floor plan and as a one-line diagram (`docs/mockups/power-grid.html`). Left from the First
+Mission Gate: the lobby and chat, the mission choice and warp out (designed, the mission-room mockup awaiting the
+owner), and the whole gate recorded on two machines.
 
 ## Workstreams
 

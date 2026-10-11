@@ -76,6 +76,13 @@ gravity generator, the bridge's consoles, the tubes) with one or two fires, and 
 `two_bots_at_helm_and_tactical_win_the_drill` now holds the Tern hurt in every fight and a system broken in five of
 six.
 
+With the power grid in the drill (`power-grid` design 12a, the same day) the combat preset wants more than the reactor
+gives, and on Engineering's automation the drive is shed whenever the guns and shields draw together. Seeds 1-8 with
+bots at Helm and Tactical: 3 victories in 448-551 s, 1 defeat, and 4 fights run to the 600 s limit with the Hound at
+18-70 of its 250 MJ. The test is now `two_bots_at_helm_and_tactical_take_the_hound_to_the_wire_with_engineering_on_automation`:
+at least half won, every fight 4-10 minutes, the Hound below 60 % in every one. A player at Engineering is what turns
+it (recommendation taken, ask only with screenshots: the drill stays winnable without one).
+
 ## 7. Cost
 
 Up to 16 missiles in flight and two decoys; each missile in the snapshot gains its owner and target (4 bytes).

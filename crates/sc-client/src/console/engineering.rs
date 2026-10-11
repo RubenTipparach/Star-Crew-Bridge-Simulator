@@ -842,9 +842,14 @@ fn buses(cv: &Canvas, cx: &mut Ctx, e: &EngView) {
 fn air(cv: &Canvas, cx: &mut Ctx, e: &EngView) {
     let c = &vg::style().c;
     let (b, w, h) = panel(cv, cx, "AIR", grid(10.0, 2.0, 2.0, 2.0));
+    let Some(air) = &e.air else {
+        air_unavailable(&b, w);
+        cx.hits.add(&b, 0.0, 0.0, w, h, None, Some("Not simulated in this drill: the air is not built yet".into()));
+        return;
+    };
     let rows = [("air_o2", "O₂"), ("air_co2", "CO₂"), ("temp", "Temperature")];
     for (k, (ic, tip)) in rows.iter().enumerate() {
-        let st = e.air.status[k];
+        let st = air.status[k];
         let col = [c.ok.0, c.warn.0, c.danger.0][usize::from(st.min(2))];
         let y = 12.0 + k as f32 * 40.0;
         b.rect(
@@ -860,8 +865,18 @@ fn air(cv: &Canvas, cx: &mut Ctx, e: &EngView) {
         b.icon(if st > 0 { "bang" } else { "check" }, w - 36.0, y + 16.0, 18.0, col);
         cx.hits.add(&b, 12.0, y, w - 24.0, 32.0, None, Some((*tip).into()));
     }
-    if let Some(worst) = &e.air.worst {
+    if let Some(worst) = &air.worst {
         b.text(w / 2.0, h - 10.0, 13.0, c.warn.0, worst, T::mid().ls(1.0));
+    }
+}
+
+/// The AIR panel's three lamps with nothing to read: faint outlines.
+fn air_unavailable(b: &Canvas, w: f32) {
+    let c = &vg::style().c;
+    for (k, ic) in ["air_o2", "air_co2", "temp"].iter().enumerate() {
+        let y = 12.0 + k as f32 * 40.0;
+        b.rect(12.0, y, w - 24.0, 32.0, 7.0, Color32::TRANSPARENT, Some(Pen::new(1.0, c.line2.0)));
+        b.icon(ic, 36.0, y + 16.0, 20.0, c.faint.0);
     }
 }
 
@@ -945,13 +960,7 @@ fn unavailable(cv: &Canvas, cx: &mut Ctx) {
                 );
             }
             "BUSES" => b.icon("bolt", w / 2.0, 18.0, 18.0, c.faint.0),
-            _ => {
-                for (k, ic) in ["air_o2", "air_co2", "temp"].iter().enumerate() {
-                    let y = 12.0 + k as f32 * 40.0;
-                    b.rect(12.0, y, w - 24.0, 32.0, 7.0, Color32::TRANSPARENT, Some(Pen::new(1.0, c.line2.0)));
-                    b.icon(ic, 36.0, y + 16.0, 20.0, c.faint.0);
-                }
-            }
+            _ => air_unavailable(&b, w),
         }
         cx.hits.add(&b, 0.0, 0.0, w, h, None, Some(tip.into()));
     }

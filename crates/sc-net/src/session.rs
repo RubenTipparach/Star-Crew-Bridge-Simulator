@@ -183,8 +183,12 @@ impl Session {
                     Err(_) => self.dropped += 1,
                 },
                 NetEvent::Data(_, Chan::Snapshot, d) => match Snapshot::decode(&d) {
-                    Ok(s) => {
+                    Ok(mut s) => {
                         if self.snap_link.receive(&s.header) {
+                            // The power grid rides in some snapshots only: the rest carry the last one on.
+                            if s.power.is_none() {
+                                s.power = self.snaps.back().and_then(|(_, p)| p.power.clone());
+                            }
                             self.snaps.push_back((now, s));
                             while self.snaps.len() > 40 {
                                 self.snaps.pop_front();
