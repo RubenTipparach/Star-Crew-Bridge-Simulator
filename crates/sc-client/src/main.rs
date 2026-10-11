@@ -12,8 +12,10 @@
 //! It opens on the lobby (openspec/changes/lobby): name your officer, pick a station, Beam aboard; the ship loads
 //! then. A HUD names the officer and what E and Q do at a lift.
 //!
-//! Usage: sc-client [--window] [--deck compiled/tern.deck] [--headless --shots DIR] [--headless --walk-test DIR]
-//! [--headless --lobby-test DIR] [--console-fixture STATE.json --shots DIR]
+//! Usage: sc-client [--window] [--deck compiled/tern.deck] [--headless --shots DIR [--poses a,b]]
+//! [--headless --walk-test DIR] [--headless --lobby-test DIR] [--console-fixture STATE.json --shots DIR]
+//!
+//! `--poses a,b` limits the headless shots to the named poses (no bot close-ups), each in the three states.
 //!
 //! `--lobby-test DIR` shoots the lobby, rolls a name, shoots it again, beams aboard and shoots the bridge.
 //!
@@ -71,8 +73,13 @@ const POSES: &[(&str, [f64; 3], [f32; 2], f32)] = &[
     ("corridor-B", [0.0, 0.0, 15.0], [0.0, -1.0], -4.0),
     ("eng-mezzanine", [7.0, 0.0, -18.9], [-0.55, -1.0], 6.0),
     ("eng-lower", [0.0, -3.5, -18.9], [0.12, -1.0], 10.0),
-    // The hull (tern-exterior design 8): through the ready room's window aft onto the port pylon, then outside.
+    // The hull (tern-exterior design 8): through the windows aft onto the pylons and nacelles, then outside.
     ("ready-room-window", [7.9, 3.5, 17.8], [0.8, -0.6], -16.0),
+    ("quarters-window", [8.0, 0.0, 11.8], [1.0, -0.12], -6.0),
+    ("quarters-window-aft", [9.4, 0.0, 13.6], [0.75, -0.66], -2.0),
+    ("mess-window", [-4.6, 0.0, 11.6], [-1.0, 0.0], -6.0),
+    ("medbay-window", [4.8, 0.0, 23.0], [1.0, 0.0], -6.0),
+    ("life-support-window", [9.0, -3.5, 12.5], [0.7, -0.7], 10.0),
     ("outside-port-bow", [38.0, 6.0, 62.0], [-0.55, -0.83], -8.0),
     ("outside-starboard-bow", [-38.0, 6.0, 62.0], [0.55, -0.83], -8.0),
     ("outside-port-aft", [45.0, 14.0, -80.0], [-0.45, 0.89], -10.0),
@@ -563,6 +570,16 @@ fn load_ship(
 }
 
 impl Client {
+    /// `--poses a,b`: keep only the named poses' shots (no bot close-ups); an unknown name is an error.
+    fn only_poses(&mut self, names: &str) -> Result<(), String> {
+        let want: Vec<&str> = names.split(',').collect();
+        if let Some(n) = want.iter().find(|n| !POSES.iter().any(|p| p.0 == **n)) {
+            return Err(format!("--poses: no pose named {n}"));
+        }
+        self.shot_plan.retain(|&(p, _)| p < POSES.len() && want.contains(&POSES[p].0));
+        Ok(())
+    }
+
     fn new(deck: PathBuf, shots: Option<PathBuf>, walk_test: bool, lobby_test: bool) -> Result<Self, String> {
         let text =
             std::fs::read_to_string("data/engine/render.json").map_err(|e| format!("data/engine/render.json: {e}"))?;
@@ -1611,10 +1628,14 @@ fn main() -> ExitCode {
     };
     // `--hand-over-test DIR`: the menu, Beam aboard into single player, Esc back to the menu, a capture of each.
     let hand_test = value("--hand-over-test");
+    let only_poses = args.iter().position(|a| a == "--poses").and_then(|i| args.get(i + 1)).cloned();
     platform::run(cfg, move |gl| {
         println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);
         let mut c = Client::new(deck, if hand_test.is_some() { None } else { shots }, walk_test, lobby_test)?;
         c.hand_test = hand_test.map(|d| (d, false, 0));
+        if let Some(names) = &only_poses {
+            c.only_poses(names)?;
+        }
         Ok(Box::new(c) as Box<dyn App>)
     })
 }

@@ -28,6 +28,8 @@ fi
 echo ok
 step "6. ship layouts"
 python3 tools/layout_check.py
+# The window patch is current and every window meets the exterior model's aperture (tern-exterior design 6).
+python3 tools/exterior_windows.py --check
 step "7. mockups hold the current layout"
 python3 tools/mockups/inline.py --check
 step "8. shader modules match their sources"
