@@ -78,3 +78,12 @@ Per hit: one hull test (up to 120 steps), one march (up to 120 steps over the sy
 hundred hits that pass a shield. The snapshot gains the Tern's load integrities (one byte each), its burning and
 breached rooms (one byte each) and its two teams (two bytes each): under 80 bytes. The Hound's insides stay on the
 server; what the crew see of them is each face's armour (`laser-banks` 5).
+
+## 9. After the fight (first-mission-gate step 13)
+
+The fight's end does not end the damage. Through the debrief the Tern's fires burn and its two teams keep working,
+by the same `tick` as in the fight, and the ship plan shows them doing it. The next drill starts once `debrief_s` has
+passed and the ship is put right (no fire, every system at nominal or better), or at `debrief_max_s` whatever is left
+(`data/missions/drill-hound.json`: 20 s and 240 s). The debrief panel says what is still being repaired, then the
+time to the next drill. The hull's structure is not repaired here: that is `hull-repair`'s, a yard's work.
+

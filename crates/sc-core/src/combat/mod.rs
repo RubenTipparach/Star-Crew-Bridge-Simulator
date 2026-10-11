@@ -1395,7 +1395,10 @@ impl Drill {
                 }
             }
             Phase::Debrief => {
-                if self.phase_s >= self.data.mission.debrief_s {
+                // The teams keep working after the fight (ship-damage 9): the next drill waits for them.
+                self.damage_tick();
+                let m = &self.data.mission;
+                if self.phase_s >= m.debrief_s && (self.put_right() || self.phase_s >= m.debrief_max_s) {
                     self.round += 1;
                     self.reset_round();
                     for p in &mut self.players {
@@ -1823,6 +1826,13 @@ impl Drill {
                 }
             }
         }
+    }
+
+    /// The Tern is put right after a fight (ship-damage 9): no fire burns and every system is at nominal or better.
+    pub fn put_right(&self) -> bool {
+        let s = &self.damage[0];
+        let nominal = self.data.damage.systems.nominal_from_pct;
+        s.fires.is_empty() && s.integrity.iter().all(|v| *v >= nominal)
     }
 
     /// Ship `si`'s structural hull loses `mj`; at zero it is destroyed.
@@ -3257,6 +3267,30 @@ mod tests {
         assert!(d.ships[0].turrets[k].since_fire_s >= before + 28.9, "no bolt while it reloads");
         steps(&mut d, 1.5);
         assert_eq!(d.ships[0].turrets[k].rounds, 100, "reloaded: a hundred rounds again");
+    }
+
+    #[test]
+    fn the_next_drill_waits_for_the_teams_to_put_the_ship_right() {
+        let (mut d, _, _) = engaged();
+        let k = d.data.tern_layout.loads.iter().position(|x| x.id == "impulse_drive").unwrap();
+        d.damage[0].integrity[k] = 30.0;
+        d.ships[1].hull = 0.0;
+        d.ships[1].alive = false;
+        while d.phase == Phase::Engage {
+            d.step();
+        }
+        assert_eq!(d.phase, Phase::Debrief);
+        assert!(!d.put_right(), "the drive is still broken when the fight ends");
+        let debrief_s = d.data.mission.debrief_s;
+        steps(&mut d, debrief_s + 1.0);
+        assert_eq!(d.phase, Phase::Debrief, "the debrief waits while the teams work");
+        let mut t = debrief_s + 1.0;
+        while d.phase == Phase::Debrief && t < d.data.mission.debrief_max_s + 1.0 {
+            d.step();
+            t += DT;
+        }
+        assert_eq!(d.phase, Phase::Muster, "then the next drill");
+        assert!(t < d.data.mission.debrief_max_s, "the teams fixed the drive before the longest debrief: {t:.0} s");
     }
 
     #[test]

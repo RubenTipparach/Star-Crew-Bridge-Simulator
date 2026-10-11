@@ -1016,8 +1016,10 @@ pub struct MissionFile {
     pub countdown_s: f64,
     /// Engage ends with the enemy withdrawn after this many seconds.
     pub engage_limit_s: f64,
-    /// Debrief, in seconds.
+    /// Debrief, in seconds: the least it lasts.
     pub debrief_s: f64,
+    /// The most a debrief lasts while the teams put the ship right (ship-damage 9), seconds.
+    pub debrief_max_s: f64,
     /// How long a bot client reads the briefing, in seconds.
     pub bot_ready_s: f64,
     /// Where the crew start and stand with no station: compartments of the Tern's layout, one a crew member in turn,
@@ -1070,6 +1072,7 @@ impl Validate for MissionFile {
         c.number("countdown_s", self.countdown_s, 0.0, 120.0);
         c.number("engage_limit_s", self.engage_limit_s, 10.0, 7200.0);
         c.number("debrief_s", self.debrief_s, 1.0, 600.0);
+        c.number("debrief_max_s", self.debrief_max_s, self.debrief_s, 1800.0);
         c.number("bot_ready_s", self.bot_ready_s, 0.0, 120.0);
     }
 }

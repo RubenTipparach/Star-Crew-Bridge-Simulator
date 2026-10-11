@@ -1199,6 +1199,8 @@ struct UiView {
     refused: Option<(String, f64)>,
     mission: sc_core::combat::data::MissionFile,
     tern_hull: f64,
+    /// A system at or above this integrity is at nominal (ship-damage 9: the debrief waits for it).
+    nominal_pct: f64,
     /// The bridge on screen instead of the consoles (design 9).
     bridge: Option<BridgeUi>,
     /// Single player: READY pressed, waiting for the crew to sit.
@@ -1243,6 +1245,7 @@ impl UiView {
             refused: s.and_then(|s| s.refused.map(|(r, t)| (r.text().to_owned(), s.now_s() - t))),
             mission: app.data.mission.clone(),
             tern_hull: app.data.tern_combat.hull_mj,
+            nominal_pct: app.data.damage.systems.nominal_from_pct,
             bridge: None,
             ready_held: app.ready_held,
         }
@@ -1431,6 +1434,15 @@ fn briefing(ctx: &egui::Context, v: &UiView, snap: &Snapshot, ask: &mut Vec<UiAs
     });
 }
 
+/// An "s" for more than one.
+fn plural(n: usize) -> &'static str {
+    if n == 1 {
+        ""
+    } else {
+        "s"
+    }
+}
+
 fn debrief(ctx: &egui::Context, v: &UiView, snap: &Snapshot) {
     let rect = Rect::from_min_size(Pos2::new(290.0, 120.0), Vec2::new(700.0, 460.0));
     let (head, colour) = match snap.outcome {
@@ -1462,7 +1474,29 @@ fn debrief(ctx: &egui::Context, v: &UiView, snap: &Snapshot) {
                 label(ui, &val, 20.0, TEXT);
             });
         }
+        // The teams put the ship right before the next drill (ship-damage 9).
+        let hurt = snap.damage.integrity.iter().filter(|i| f64::from(**i) < v.nominal_pct).count();
+        let fires = snap.damage.fires.len();
+        let repairs = match (hurt, fires) {
+            (0, 0) => "Ship put right".to_owned(),
+            (h, 0) => format!("Repairing {h} system{}", plural(h)),
+            (0, f) => format!("Fighting {f} fire{}", plural(f)),
+            (h, f) => format!("Repairing {h} system{}, fighting {f} fire{}", plural(h), plural(f)),
+        };
+        ui.horizontal(|ui| {
+            ui.add_sized(
+                Vec2::new(200.0, 26.0),
+                egui::Label::new(RichText::new("Damage control").size(18.0).color(DIM)),
+            );
+            label(ui, &repairs, 20.0, if hurt + fires == 0 { GREEN } else { AMBER });
+        });
         ui.add_space(14.0);
-        label(ui, &format!("Next drill in {:.0} s", (v.mission.debrief_s - snap.phase_s).max(0.0)), 18.0, AMBER);
+        let next = if hurt + fires == 0 {
+            (v.mission.debrief_s - snap.phase_s).max(0.0)
+        } else {
+            (v.mission.debrief_max_s - snap.phase_s).max(0.0)
+        };
+        let when = if hurt + fires == 0 { "Next drill in" } else { "Next drill at the latest in" };
+        label(ui, &format!("{when} {next:.0} s"), 18.0, AMBER);
     });
 }

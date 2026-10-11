@@ -14,3 +14,4 @@
   breaches and teams in the snapshot; `room_states` and `team_room` in the core; the plan's rooms, the teams as crew
   dots, and the status strip's fires and breaches.
 - [ ] 2.6 A recording: a hit breaking a system, a fire, a team fixing it.
+- [x] 2.7 After the fight: the teams repair through the debrief, the next drill waits for them (design 9); the debrief panel says what is being repaired.

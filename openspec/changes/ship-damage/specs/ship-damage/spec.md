@@ -27,3 +27,13 @@ Damage-control teams SHALL go to fires and damaged systems and restore them over
 #### Scenario: A repair
 - **WHEN** a system is disabled and a team reaches it
 - **THEN** its integrity rises until it is back at nominal
+
+### Requirement: The ship is put right after the fight
+
+After a fight the damage-control teams SHALL keep repairing and fighting fires through the debrief, and the next drill
+SHALL NOT start before the ship is put right (no fire, every system at nominal) or the debrief's longest time is up.
+
+#### Scenario: A victory with a system broken
+- **WHEN** the Hound is destroyed while the Tern's impulse drive is at 30 %
+- **THEN** the debrief lasts until a team has brought the drive back to nominal, and the plan shows it doing so
+
