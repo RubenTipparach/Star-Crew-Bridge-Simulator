@@ -7,6 +7,14 @@
   function validateWindows(THREE, model, interior) {
     model.updateMatrixWorld(true);
     let rays=0;
+    // Adjacent lower-deck rooms share one row, including the sill and head.
+    for(const deck of ["B","C"]){
+      const row=interior.windows.filter(w=>w.deck===deck),first=row[0];
+      for(const w of row)for(const edge of [-.5,.5]){
+        if(Math.abs(w.center_m[1]+edge*w.size_m[1]-first.center_m[1]-edge*first.size_m[1])>.001)
+          throw new Error(`${w.id}: deck ${deck} window row has misaligned sill or head`);
+      }
+    }
     for(const w of interior.windows){
       if(!(w.depth_m>=0&&w.depth_m<=w.max_depth_m))throw new Error(`${w.id}: excessive hull-to-room depth`);
       const p=interior.L.portals.find(p=>p.id===w.id);

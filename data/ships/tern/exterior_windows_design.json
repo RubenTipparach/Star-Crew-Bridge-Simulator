@@ -3,15 +3,19 @@
   "status": "Exterior art preview additions to the existing rooms; not applied to the runtime layout.",
   "clearance_m": 0.56,
   "max_depth_m": 0.65,
+  "window_rows": {
+    "B": {"center_above_floor_m": 1.5, "size_m": [1.7, 0.8]},
+    "C": {"center_above_floor_m": 1.65, "size_m": [1.3, 0.9]}
+  },
   "rooms": [
-    {"room": "quarters", "outboard_from_x_m": 9, "window_z_m": [10, 13, 16], "window_y_m": 2.35, "size_m": [1.7, 0.8]},
-    {"room": "mess", "outboard_from_x_m": 9, "window_z_m": [10, 13, 16], "window_y_m": 1.5, "size_m": [1.7, 0.8]},
-    {"room": "medbay", "outboard_from_x_m": 7, "window_z_m": [21.5, 24.5], "window_y_m": 2.35, "size_m": [1.7, 0.8]},
-    {"room": "damage_control", "outboard_from_x_m": 7, "window_z_m": [21.5, 24.5], "window_y_m": 2.35, "size_m": [1.7, 0.8]},
-    {"room": "life_support", "outboard_from_x_m": 9, "window_z_m": [10, 16], "window_y_m": -1.85, "size_m": [1.3, 0.9]},
-    {"room": "cargo", "outboard_from_x_m": 9, "window_z_m": [7.3, 16.5], "window_y_m": -1.85, "size_m": [1.3, 0.9]},
-    {"room": "shield_room", "outboard_from_x_m": 9, "window_z_m": [3], "window_y_m": -1.85, "size_m": [1.3, 0.9]},
-    {"room": "switchboard", "outboard_from_x_m": 9, "window_z_m": [3], "window_y_m": -1.85, "size_m": [1.3, 0.9]}
+    {"room": "quarters", "outboard_from_x_m": 9, "window_z_m": [10, 13, 16]},
+    {"room": "mess", "outboard_from_x_m": 9, "window_z_m": [10, 13, 16]},
+    {"room": "medbay", "outboard_from_x_m": 7, "window_z_m": [21.5, 24.5]},
+    {"room": "damage_control", "outboard_from_x_m": 7, "window_z_m": [21.5, 24.5]},
+    {"room": "life_support", "outboard_from_x_m": 9, "window_z_m": [10, 16]},
+    {"room": "cargo", "outboard_from_x_m": 9, "window_z_m": [7.3, 16.5]},
+    {"room": "shield_room", "outboard_from_x_m": 9, "window_z_m": [3]},
+    {"room": "switchboard", "outboard_from_x_m": 9, "window_z_m": [3]}
   ],
   "furnishings": [
     {"room": "quarters", "prop": "bed", "set": "suite", "back_m": [3.2, 0, 8.1], "yaw_deg": 0},

@@ -367,3 +367,40 @@ separate control rows pass. All sixteen inline blocks match; OpenSpec passes 42 
 Reviewed the three projection captures, fifty final desktop views and phone default.
 Paint detail and Cyan hull detail retain true-color captures; the other screenshots
 use normal palette compression. No Pi performance measurement is claimed.
+
+## Level middle-deck windows, 2026-10-10
+
+The mess uses center Y = 1.5 m; quarters, medbay and damage control still use 2.35 m.
+All ten Deck B apertures already have the same 1.7 m by 0.8 m size. Use one authored
+window row per deck instead of duplicated per-room heights: Deck B centers 1.5 m
+above its floor, with sill/head at 1.1 / 1.9 m. Deck C retains its existing placement.
+Generate the interior portals and exterior cuts from that shared row. Derive preview
+camera targets from the actual windows and validate common sill/head heights against
+the delivered mesh openings, including a negative check using the previous mixed row.
+
+Refresh the actual UV guide and projection masks for the moved openings, retaining
+the accepted paint layout and finish. Rebuild all liveries and custom LOD bakes.
+Inspect both side rows, the furnished interiors and reduced detail levels, then run
+layout, window-ray, overlap, export reproduction, inline and OpenSpec checks.
+No additional materials, textures or windows are planned. Triangle counts will be
+remeasured within the existing 12,000 / 3,000 / 600 ceilings and 6 / 1 / 1 draws;
+decoded texture allocation remains 78.17 MiB. No Pi performance claim is made.
+
+Verification: all ten delivered Deck B windows have center/sill/head Y = 1.50 / 1.10 /
+1.90 m, and 460 actual opening/frame rays pass per livery. Reintroducing the former
+2.35 m damage-control window is rejected by the common-row guard. Layout and furnishing
+bounds pass. The three livery sets and both custom reduced atlases reproduce byte for byte.
+Full / medium / distant GLB bytes: Copper 1,859,368 / 1,509,728 / 397,812; Cyan
+1,857,940 / 1,509,232 / 397,716; Rescue 1,857,612 / 1,509,936 / 397,964.
+
+The new cut triangulation uses 4,440 / 1,290 / 496 exterior triangles in 6 / 1 / 1 draws.
+Furnished interiors use 76,100 triangles; the complete fleet preview uses 82,992 in 50
+draws. Decoded textures remain 78.17 MiB. The overlap check finds no exterior fighting
+surfaces; existing interior trim overlap remains 0.046 m2, below the 0.1 m2 ceiling.
+Projected paint, white outline and joint checks pass, including the unchanged deeper
+Cyan median RGB 2 / 167 / 217. All sixteen inline blocks and all 42 OpenSpec items pass.
+
+Reviewed the projection, both side rows, all four affected room interiors, seventy-one
+registered captures across liveries/LODs and window views, plus desktop and phone defaults.
+The preview retains all twenty window choices and three deck cutaways. No Pi speed claim
+is made; these are delivered art and preview checks.

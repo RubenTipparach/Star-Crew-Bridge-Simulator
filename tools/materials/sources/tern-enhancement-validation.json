@@ -1,5 +1,5 @@
 {
-  "mask_sha256": "deb6775397df597b29c68be38ef5991c5e573697066217fef66f04b193817cf8",
+  "mask_sha256": "9f766269485f7f1fee6188f85c500863e8e58c258b7bf66d19035a69ca53603d",
   "edge_clearance_texture_px": 4,
   "flat_bands": {
     "roof_traces": 10,
@@ -38,8 +38,8 @@
         "position_tolerance": "1.4 texels per receiving face, minimum 0.16 m"
       },
       "joint_finish": {
-        "armor_core_texels": 1584,
-        "core_5_to_95_percentile_range": 20.0
+        "armor_core_texels": 1613,
+        "core_5_to_95_percentile_range": 22.0
       }
     },
     "copper": {
@@ -68,8 +68,8 @@
         "position_tolerance": "1.4 texels per receiving face, minimum 0.16 m"
       },
       "joint_finish": {
-        "armor_core_texels": 1584,
-        "core_5_to_95_percentile_range": 20.0
+        "armor_core_texels": 1613,
+        "core_5_to_95_percentile_range": 22.0
       }
     },
     "rescue": {
@@ -98,8 +98,8 @@
         "position_tolerance": "1.4 texels per receiving face, minimum 0.16 m"
       },
       "joint_finish": {
-        "armor_core_texels": 1584,
-        "core_5_to_95_percentile_range": 20.0
+        "armor_core_texels": 1613,
+        "core_5_to_95_percentile_range": 22.0
       }
     }
   }

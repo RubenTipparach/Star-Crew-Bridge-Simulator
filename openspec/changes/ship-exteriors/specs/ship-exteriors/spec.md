@@ -140,3 +140,8 @@ The player exterior SHALL retain its accepted silhouette while displaying angula
 - **WHEN** the Tern ribbon is viewed across its flat join and roof-to-wall transition
 - **THEN** a fine white painted outline SHALL follow both ribbon edges continuously, retain the underlying joints, and avoid exposed mechanical recesses.
 - **AND** Cyan SHALL use the deeper earlier shade, with all liveries and their custom LOD bakes retaining the border.
+
+#### Scenario: Follow the middle-deck window row
+- **WHEN** either side of Deck B is inspected across adjacent rooms
+- **THEN** all ten windows SHALL share a center 1.5 m above the floor and 0.8 m opening height, with aligned sills and heads.
+- **AND** the physical exterior frames, interior openings and custom LOD textures SHALL agree with that shared row.

@@ -12,7 +12,7 @@ design mockup; the Rust renderer does not load them yet.
 
 | Model | Design | Triangles | Ceiling | Material draws |
 | --- | --- | ---: | ---: | ---: |
-| [tern.glb](tern.glb) | Player frigate, level swept pylons and 56 m nacelles | 4,442 | 12,000 | 6 |
+| [tern.glb](tern.glb) | Player frigate, level swept pylons and 56 m nacelles | 4,440 | 12,000 | 6 |
 | [tern_lod1.glb](tern_lod1.glb) | Medium detail, custom 1024 px atlas | 1,290 | 3,000 | 1 |
 | [tern_lod2.glb](tern_lod2.glb) | Distant detail, custom 512 px atlas | 496 | 600 | 1 |
 | [osprey.glb](osprey.glb) | Broad-bow courier, low drives, teal livery | 1,248 | 12,000 | 7 |
@@ -93,10 +93,13 @@ PNG alpha encodes emission, so ordinary image viewers can show transparent pixel
 Twenty genuine apertures connect with the same metre-scale interiors shown in the preview:
 four on A, ten on B and six on C. Pale 0.12 m frames surround the openings. The command shell is
 0.22 m thick, with 0.10 m clearance to the room wall, giving 0.32 m window returns. Lower-deck
-returns measure 0.551-0.560 m. Mess window centers are 1.50 m above the floor, with unchanged
-1.70 x 0.80 m openings. The interior camera targets the authored middle window.
+returns measure 0.551-0.560 m. All ten Deck B windows share a center 1.50 m above the floor,
+with 1.70 x 0.80 m openings, sills at 1.10 m and heads at 1.90 m. The quarters, mess, medbay
+and damage-control rooms use the same authored row. Interior cameras target the real windows.
+Compare the [port](../../../docs/screenshots/exteriors-window-row/port.png) and
+[starboard](../../../docs/screenshots/exteriors-window-row/starboard.png) rows.
 
-The [window design](../../../data/ships/tern/exterior_windows_design.json) owns stations and
+The [window design](../../../data/ships/tern/exterior_windows_design.json) owns shared deck rows, stations and
 42 furnishings. Its [generator](../../../tools/exterior_windows.py) validates the
 [preview patch](../../../data/ships/tern/exterior_windows.json) against layout and prop bounds.
 Eighteen rooms and corridors are shown, with deck selectors, window views, cutaways and
@@ -106,8 +109,8 @@ and transparent glass batches. No opaque window pictures cover the openings.
 ## Budget and validation
 
 The restored narrow service recess and pipes add 608 full-detail triangles. Tern now uses
-4,442 / 1,290 / 496 triangles and 6 / 1 / 1 material draws. The fleet with furnished interiors
-uses 83,092 triangles in 50 draws. Decoded textures with mipmaps remain 78.17 MiB against the
+4,440 / 1,290 / 496 triangles and 6 / 1 / 1 material draws. The fleet with furnished interiors
+uses 82,992 triangles in 50 draws. Decoded textures with mipmaps remain 78.17 MiB against the
 96 MiB scene ceiling; the exterior library alone is 57.83 MiB. These are asset counts, not
 Pi frame-time measurements. Runtime rotation will need an adaptation of the fixed sun bake.
 Warp animation, damage meshes, turret articulation, attachment collision and weapon/shield
@@ -117,7 +120,7 @@ occlusion updates remain separate engine work.
 
 Use Blender 4.4.3 with the dependencies described by the exterior builder, plus Material Maker
 1.4, Python with Pillow/NumPy/fontTools/Brotli, and Node with Playwright/Chromium. Rebuild the
-projection only when editing its authored layout, and inspect it before enhancing its texture:
+projection when editing its authored layout or receiving hull geometry, and inspect it before enhancing its texture:
 
 ```powershell
 blender -b --factory-startup --python-use-system-env -P tools/blender/project_hull_paint.py

@@ -53,3 +53,9 @@ Retain the aligned 3D layout, flat cyan joins, narrow equator and working window
 
 Restore the thin white outline on the ribbon and return Cyan toward the darker original
 finish. Keep the new integrated joints, flat central joins and continuous wrap.
+
+## Owner correction: level middle-deck windows
+
+The mess windows are centered at 1.5 m while the other Deck B windows remain at 2.35 m.
+Align all ten to the centered mess row, including real hull cuts, frames, interior
+portals and the reduced-detail texture bakes.

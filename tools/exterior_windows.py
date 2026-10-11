@@ -1,6 +1,6 @@
 """Generate the exterior preview's lower-deck window patch from the real room outlines.
 
-The design recipe owns selected walls, window stations and furnishing placements. This tool
+The design recipe owns selected walls, shared deck rows, window stations and furnishings. This tool
 extends only outboard vertices to the hull service margin, derives portals from those walls,
 and validates the resulting layout through the existing layout checker. Runtime is untouched.
 Run python tools/exterior_windows.py [--check].
@@ -31,6 +31,11 @@ def generate():
     patch["furnishings"] = design["furnishings"]
     for spec in design["rooms"]:
         room = copy.deepcopy(next(c for c in layout["compartments"] if c["id"] == spec["room"]))
+        assert not {"window_y_m", "size_m"}.intersection(spec), "Window height and size belong to the shared deck row"
+        assert len(room["decks"]) == 1, f"{room['id']}: window row requires one deck"
+        deck = next(d for d in layout["decks"] if d["id"] == room["decks"][0])
+        row = design["window_rows"][deck["id"]]
+        window_y = round(deck["floor_y_m"] + row["center_above_floor_m"], 6)
         threshold = spec["outboard_from_x_m"]
         for brush in room["brushes"]:
             points = []
@@ -62,8 +67,8 @@ def generate():
             assert candidates, f"{room['id']}: no outboard wall at {z} m"
             _, x, n = max(candidates)
             patch["portals"].append({"id": f"p_{room['id']}_window_{i+1}", "kind": "window", "between": [room["id"], "space"],
-                                     "center_m": [round(x,6), spec["window_y_m"], z], "normal": [round(n[0],8), 0, round(n[1],8)],
-                                     "size_m": spec["size_m"], "max_depth_m": design["max_depth_m"], "bake_only_lods": True})
+                                     "center_m": [round(x,6), window_y, z], "normal": [round(n[0],8), 0, round(n[1],8)],
+                                     "size_m": row["size_m"], "max_depth_m": design["max_depth_m"], "bake_only_lods": True})
     patch_layout(layout, patch)
     ok, report = run_layout_check(layout)
     assert ok, report

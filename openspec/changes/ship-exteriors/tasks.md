@@ -150,3 +150,9 @@
 - [x] Restore the darker cyan and project the thin white ribbon outline on the hull.
 - [x] Inspect the projection, finish the native material graphs and rebuild every livery/LOD.
 - [x] Check the white border, seam and paint continuity, windows, budgets and final captures.
+
+## Owner correction: level middle-deck windows
+
+- [x] Use one shared Deck B row for all ten real openings and matching interior portals.
+- [x] Refresh UV guides, rebuild every livery/LOD and inspect both sides and interiors.
+- [x] Verify row alignment, window rays, overlap, budgets and reproducible exports.
