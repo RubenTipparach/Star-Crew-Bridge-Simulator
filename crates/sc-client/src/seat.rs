@@ -8,7 +8,9 @@
 //! mockup's action name and from there to a `Command`: the same commands a bot or automation sends.
 
 use crate::console::kit::Hit;
-use crate::console::{self, Act, Cam, CapView, ComposerView, ConsoleView, ContactView, CrewAt, CrewRow, FlightView};
+use crate::console::{
+    self, Act, Cam, CapView, ComposerView, ConsoleView, ContactView, CrewAt, CrewRow, FlightView, RoomView,
+};
 use crate::console::{
     BeamAges, GunTarget, GunnerView, InboundView, LaserView, LasersView, ObjectiveRow, ObjectivesView,
 };
@@ -17,6 +19,7 @@ use egui::{Pos2, Rect};
 use glam::{DQuat, DVec3};
 use sc_client::platform::keys;
 use sc_core::combat::attitude::{self, from_hpr, hpr_of, whole_deg};
+use sc_core::combat::damage::{self, RoomState};
 use sc_core::combat::data::DrillData;
 use sc_core::combat::data::BANDS;
 use sc_core::combat::data::{ObjectiveFacts, ObjectiveKind, ObjectiveState};
@@ -360,6 +363,15 @@ impl Seat {
             freq: BANDS[usize::from(br.band.min(3))].into(),
             by: br.shields_by.unwrap_or(Station::Science).name().into(),
         };
+        let tl = &data.tern_layout;
+        let dm = &snap.damage;
+        let room_states = damage::room_states(
+            tl,
+            &data.damage,
+            &dm.integrity.iter().map(|v| f64::from(*v)).collect::<Vec<_>>(),
+            &dm.fires.iter().map(|r| usize::from(*r)).collect::<Vec<_>>(),
+            &dm.breaches.iter().map(|r| usize::from(*r)).collect::<Vec<_>>(),
+        );
         let captain = CapView {
             tab: self.cap_tab.clone(),
             ship_sel: self.ship_sel.clone(),
@@ -384,9 +396,22 @@ impl Seat {
                     order: br.orders.iter().any(|(to, _, done)| to == st && !done),
                 })
                 .collect(),
-            // No compartment is simulated in the drill: every room reads OK, and the crew are seated on the bridge.
-            rooms: Vec::new(),
-            crew_at: ops.iter().map(|_| CrewAt { comp: Some("bridge".into()), ok: true }).collect(),
+            // Each room by the Tern's damage (ship-damage 2.5); the crew seated on the bridge and the damage-control
+            // teams where they are. No air is simulated in the drill, so the ROOM panel's readings are unavailable.
+            rooms: room_states
+                .iter()
+                .zip(&tl.rooms)
+                .filter(|(st, _)| **st != RoomState::Ok)
+                .map(|(st, r)| RoomView { id: r.id.clone(), word: st.word().into() })
+                .collect(),
+            crew_at: ops
+                .iter()
+                .map(|_| CrewAt { comp: Some("bridge".into()), ok: true })
+                .chain(snap.damage.teams.iter().flat_map(|(room, _)| {
+                    let comp = room.and_then(|r| tl.rooms.get(usize::from(r))).map(|r| r.id.clone());
+                    (0..data.damage.teams.members).map(move |_| CrewAt { comp: comp.clone(), ok: true })
+                }))
+                .collect(),
             room: None,
         };
         let (word, role) = console::station_word(station.id());
@@ -423,8 +448,8 @@ impl Seat {
             power_mw: None,
             reactor_up: true,
             speed_mps: tern.vel.length(),
-            fires: 0,
-            breaches: 0,
+            fires: dm.fires.len() as u32,
+            breaches: dm.breaches.len() as u32,
             q: console::quat_arr(tern.rot),
             w: arr(tern.rates),
             wset: arr(wset),
@@ -1390,6 +1415,19 @@ mod tests {
         let (yaw, pitch) = aim.expect("the barrel is sent");
         assert!((yaw + 10.0).abs() < 1e-6, "a third of the sight is 10 degrees to starboard, port-positive: {yaw}");
         assert_eq!(pitch, 20.0, "level drags keep the pitch");
+    }
+
+    #[test]
+    fn a_fire_in_the_snapshot_burns_on_the_captains_plan_and_the_status_strip() {
+        let mut b = Bench::new(Station::Captain);
+        let eng = b.data.tern_layout.room("engineering").expect("the Tern has an engineering room") as u8;
+        b.snap.damage.fires = vec![eng];
+        let v = b.view(1.0);
+        let rooms = &v.captain.as_ref().unwrap().rooms;
+        assert!(rooms.iter().any(|r| r.id == "engineering" && r.word == "FIRE"), "{rooms:?}");
+        assert_eq!(v.fires, 1);
+        let teams = b.data.damage.teams.count * b.data.damage.teams.members;
+        assert_eq!(v.captain.as_ref().unwrap().crew_at.len(), teams as usize, "the teams' members are on the plan");
     }
 
     #[test]

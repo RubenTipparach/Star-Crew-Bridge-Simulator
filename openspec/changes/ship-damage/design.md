@@ -75,4 +75,6 @@ armour sections are its own spans x 6.
 ## 8. Cost
 
 Per hit: one hull test (up to 120 steps), one march (up to 120 steps over the systems in reach). A fight has a few
-hundred hits that pass a shield. The snapshot gains each ship's system integrities (one byte each), fires and teams.
+hundred hits that pass a shield. The snapshot gains the Tern's load integrities (one byte each), its burning and
+breached rooms (one byte each) and its two teams (two bytes each): under 80 bytes. The Hound's insides stay on the
+server; what the crew see of them is each face's armour (`laser-banks` 5).

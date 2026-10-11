@@ -10,5 +10,7 @@
 - [x] 2.3a The captain's REPAIR order passed to `tick` as its priority: workstream A.
 - [x] 2.4 The Hound's layout, in `data/ships/hound/layout.json` (`starcrew.combat-layout/1`; the work plan moved it
   out of `data/enemies.json`), read by `ShipLayout::hound` (workstream B).
-- [ ] 2.5 Snapshot and events (`sc-net`); debris and the SHIP plan (`sc-client`).
+- [x] 2.5 Snapshot and events (`sc-net`); debris and the SHIP plan (`sc-client`): the Tern's integrities, fires,
+  breaches and teams in the snapshot; `room_states` and `team_room` in the core; the plan's rooms, the teams as crew
+  dots, and the status strip's fires and breaches.
 - [ ] 2.6 A recording: a hit breaking a system, a fire, a team fixing it.

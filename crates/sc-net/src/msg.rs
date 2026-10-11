@@ -425,6 +425,8 @@ pub struct Snapshot {
     pub bodies: Vec<BodySnap>,
     /// The enemy's fighters in flight (enemy-fighters 4).
     pub fighters: Vec<FighterSnap>,
+    /// The Tern's insides (ship-damage 2.5): the captain's ship plan and the status strip's fires and breaches.
+    pub damage: DamageSnap,
 }
 
 /// An enemy fighter in flight, as a snapshot carries it.
@@ -441,6 +443,40 @@ pub struct FighterSnap {
     /// Hull and shield, shares of full (the gunner's rings, enemy-fighters 3).
     pub hull: f64,
     pub shield: f64,
+}
+
+/// A ship's insides as a snapshot carries them, by the indices of its damage layout (`combat::damage::ShipLayout`).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct DamageSnap {
+    /// Each load's integrity, percent.
+    pub integrity: Vec<u8>,
+    /// The rooms burning.
+    pub fires: Vec<u8>,
+    /// The rooms breached.
+    pub breaches: Vec<u8>,
+    /// Each damage-control team: the room it is in (none: between rooms), and whether it is working there.
+    pub teams: Vec<(Option<u8>, bool)>,
+}
+
+impl DamageSnap {
+    /// What a client is sent of `s` on layout `l`.
+    pub fn of(l: &combat::damage::ShipLayout, s: &combat::damage::DamageState) -> Self {
+        let mut fires: Vec<u8> = s.fires.iter().map(|f| f.room.min(254) as u8).collect();
+        fires.dedup();
+        let mut breaches: Vec<u8> = s.breaches.iter().map(|b| b.room.min(254) as u8).collect();
+        breaches.sort_unstable();
+        breaches.dedup();
+        Self {
+            integrity: s.integrity.iter().map(|v| v.clamp(0.0, 100.0).round() as u8).collect(),
+            fires,
+            breaches,
+            teams: s
+                .teams
+                .iter()
+                .map(|t| (combat::damage::team_room(l, t).map(|r| r.min(254) as u8), t.working))
+                .collect(),
+        }
+    }
 }
 
 /// A crew member's body in a snapshot: 10 bytes (coop-drill design 9).
@@ -545,6 +581,8 @@ const MAX_TURRETS: usize = 16;
 const MAX_TUBES: usize = 8;
 /// The most laser banks a ship has.
 const MAX_LASERS: usize = 4;
+/// The most entries in a list of the damage snapshot (rooms and loads are indexed by a byte).
+const MAX_LIST: usize = 255;
 
 fn station_byte(s: Option<Station>) -> u8 {
     s.map(|s| s as u8).unwrap_or(255)
@@ -880,6 +918,22 @@ impl Snapshot {
             w.u8((f.hull.clamp(0.0, 1.0) * 200.0).round() as u8);
             w.u8((f.shield.clamp(0.0, 1.0) * 200.0).round() as u8);
         }
+        let dm = &self.damage;
+        w.u8(dm.integrity.len().min(MAX_LIST) as u8);
+        for v in dm.integrity.iter().take(MAX_LIST) {
+            w.u8(*v);
+        }
+        for list in [&dm.fires, &dm.breaches] {
+            w.u8(list.len().min(MAX_LIST) as u8);
+            for r in list.iter().take(MAX_LIST) {
+                w.u8(*r);
+            }
+        }
+        w.u8(dm.teams.len().min(MAX_LIST) as u8);
+        for (room, working) in dm.teams.iter().take(MAX_LIST) {
+            w.u8(room.unwrap_or(255));
+            w.u8(u8::from(*working));
+        }
         w.0
     }
 
@@ -1089,8 +1143,43 @@ impl Snapshot {
             let (hull, shield) = (share(r.u8()?)?, share(r.u8()?)?);
             fighters.push(FighterSnap { id, pos, rot, vel, hull, shield });
         }
+        let ni = r.count(MAX_LIST)?;
+        let mut integrity = Vec::with_capacity(ni);
+        for _ in 0..ni {
+            let v = r.u8()?;
+            if v > 100 {
+                return Err(DecodeError("an integrity is over 100 %"));
+            }
+            integrity.push(v);
+        }
+        let mut rooms = || -> Result<Vec<u8>, DecodeError> {
+            let n = r.count(MAX_LIST)?;
+            (0..n).map(|_| r.u8()).collect()
+        };
+        let (fires, breaches) = (rooms()?, rooms()?);
+        let nt = r.count(MAX_LIST)?;
+        let mut teams = Vec::with_capacity(nt);
+        for _ in 0..nt {
+            let room = r.u8()?;
+            teams.push(((room != 255).then_some(room), r.bool()?));
+        }
+        let damage = DamageSnap { integrity, fires, breaches, teams };
         r.done()?;
-        Ok(Self { header, tick, round, phase, phase_s, outcome, ships, missiles, stats, bridge, bodies, fighters })
+        Ok(Self {
+            header,
+            tick,
+            round,
+            phase,
+            phase_s,
+            outcome,
+            ships,
+            missiles,
+            stats,
+            bridge,
+            bodies,
+            fighters,
+            damage,
+        })
     }
 
     /// The snapshot of a drill (the header is the caller's, per client).
@@ -1164,6 +1253,7 @@ impl Snapshot {
                 .iter()
                 .map(|m| MissileSnap { id: m.id, owner: m.owner, pos: m.pos, vel: m.vel })
                 .collect(),
+            damage: DamageSnap::of(d.layout(0), &d.damage[0]),
             fighters: d
                 .fighters
                 .iter()
@@ -1375,6 +1465,24 @@ mod tests {
         assert_eq!(back.ships.len(), 2);
         assert_eq!(back.ships[0].pos, s.ships[0].pos, "positions travel as f64");
         assert!((back.ships[1].hull - s.ships[1].hull).abs() < 1e-3);
+    }
+
+    #[test]
+    fn a_hurt_burning_ship_with_its_teams_out_round_trips_and_still_fits() {
+        let mut d = engaged();
+        let st = &mut d.damage[0];
+        st.integrity.iter_mut().step_by(3).for_each(|v| *v = 37.4);
+        st.fires = (0..6).map(combat::damage::Fire::new).collect();
+        st.breaches = vec![combat::damage::Breach { room: 4, area_m2: 0.3 }; 3];
+        let s = Snapshot::of(&d);
+        let b = s.encode();
+        assert!(b.len() <= MAX_UNRELIABLE, "a snapshot of a hurt ship is {} bytes; it must fit one datagram", b.len());
+        let back = Snapshot::decode(&b).unwrap();
+        assert_eq!(back.damage, s.damage);
+        assert_eq!(back.damage.integrity[0], 37, "integrity travels as whole percent");
+        assert_eq!(back.damage.fires.len(), 6);
+        assert_eq!(back.damage.breaches, vec![4], "three holes in one room are one room open to space");
+        assert_eq!(back.damage.teams.len(), d.data.damage.teams.count as usize);
     }
 
     #[test]

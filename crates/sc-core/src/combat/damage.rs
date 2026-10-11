@@ -761,6 +761,69 @@ pub fn hull_entry(l: &ShipLayout, p0: DVec3, p1: DVec3) -> Option<DVec3> {
     }
 }
 
+/// A room's state on the captain's ship plan (`ship-damage` 2.5), worst first when several hold.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RoomState {
+    /// Nothing wrong that the drill simulates.
+    Ok,
+    /// A system in it below nominal.
+    Damaged,
+    /// A breach in it.
+    OpenToSpace,
+    /// Burning.
+    Fire,
+}
+
+impl RoomState {
+    /// The plan's word for it (the console mockup's `compState`).
+    pub fn word(self) -> &'static str {
+        match self {
+            Self::Ok => "OK",
+            Self::Damaged => "DAMAGED",
+            Self::OpenToSpace => "OPEN TO SPACE",
+            Self::Fire => "FIRE",
+        }
+    }
+}
+
+/// Each room's state from what a client is sent of a ship's insides: each load's integrity (0-100), the rooms burning
+/// and the rooms breached. A fire outranks a breach, a breach a damaged system.
+pub fn room_states(
+    l: &ShipLayout,
+    cfg: &DamageData,
+    integrity: &[f64],
+    fires: &[usize],
+    breaches: &[usize],
+) -> Vec<RoomState> {
+    (0..l.rooms.len())
+        .map(|r| {
+            if fires.contains(&r) {
+                RoomState::Fire
+            } else if breaches.contains(&r) {
+                RoomState::OpenToSpace
+            } else if l.rooms[r]
+                .loads
+                .iter()
+                .any(|&k| integrity.get(k).copied().unwrap_or(100.0) < cfg.systems.nominal_from_pct)
+            {
+                RoomState::Damaged
+            } else {
+                RoomState::Ok
+            }
+        })
+        .collect()
+}
+
+/// The room a team is in: its job's while it works there, else the room holding where it stands (none: between
+/// rooms, or at a mount outside).
+pub fn team_room(l: &ShipLayout, t: &Team) -> Option<usize> {
+    match t.job {
+        Some(Job::Fire(room)) if t.working => Some(room),
+        Some(Job::Repair(k)) if t.working => l.loads.get(k).and_then(|ld| ld.room),
+        _ => l.rooms.iter().position(|r| r.contains(t.at)),
+    }
+}
+
 /// The shield faces' order (bow, stern, port, starboard, dorsal, ventral) as indices into [`FACES`].
 const SHIELD_ORDER: [usize; 6] = [4, 5, 2, 3, 0, 1];
 
@@ -1799,6 +1862,28 @@ mod tests {
         let a = face_armour(&l, &s);
         assert!((a[4] - (1.0 - 1.0 / l.spans() as f64)).abs() < 1e-12, "dorsal is the shield order's fifth: {a:?}");
         assert!(a.iter().enumerate().all(|(i, k)| i == 4 || *k == 1.0), "no other face lost any: {a:?}");
+    }
+
+    #[test]
+    fn a_burning_breached_room_reads_fire_and_a_hurt_system_reads_damaged() {
+        let (l, cfg) = tern();
+        let k = (0..l.loads.len()).find(|&k| l.loads[k].room.is_some()).expect("a load inside a room");
+        let room = l.loads[k].room.unwrap();
+        let mut integrity = vec![100.0; l.loads.len()];
+        let st = room_states(&l, &cfg, &integrity, &[], &[]);
+        assert!(st.iter().all(|s| *s == RoomState::Ok), "a whole ship is all OK");
+        integrity[k] = cfg.systems.nominal_from_pct - 1.0;
+        assert_eq!(room_states(&l, &cfg, &integrity, &[], &[])[room], RoomState::Damaged);
+        assert_eq!(room_states(&l, &cfg, &integrity, &[], &[room])[room], RoomState::OpenToSpace);
+        assert_eq!(room_states(&l, &cfg, &integrity, &[room], &[room])[room], RoomState::Fire, "fire is the worst");
+    }
+
+    #[test]
+    fn a_team_at_home_is_in_its_home_room() {
+        let (l, _) = tern();
+        let s = DamageState::new(&l);
+        let home = team_room(&l, &s.teams[0]).expect("the teams wait in a room");
+        assert_eq!(l.rooms[home].id, "damage_control", "damage.json's teams.home");
     }
 
     #[test]
