@@ -1,6 +1,6 @@
 {
   "schema": "starcrew.ship-damage/1",
-  "status": "PROPOSED by openspec/changes/damage-control (2026-10-04). No engine code reads this yet; the systems mockup does. Numbers are tuning proposals, not decisions.",
+  "status": "Used by the drill (openspec/changes/ship-damage, sc-core::combat::damage): the hit, the march, the cascade, fires and the teams. The rest is damage-control's (2026-10-04), read by the systems mockup and the repair rules. Numbers are tuning proposals, not decisions.",
   "ship": "tern",
   "units": {
     "energy": "MJ (megajoules)",
@@ -46,6 +46,13 @@
     "leak_kg_s_at_zero": 20.0,
     "note": "reactor-cooling design 2: a coolant pipe segment or tank below leak_below_pct integrity leaks leak_kg_s_at_zero x (leak_below_pct - integrity) / leak_below_pct kg/s: a segment at 0% leaks 20 kg/s, the loop's 11.1 t in under 10 minutes; a tank leaks its own reserve. An isolated segment does not leak. The parts' capability follows systems (power.json coolant.segments, tanks and exchanger)."
   },
+  "cascade": {
+    "surge_share": 0.6,
+    "step_factor": 0.5,
+    "max_steps": 4,
+    "min_points": 1.0,
+    "note": "ship-damage 3 (the owner's): a hit that takes points from a system already below nominal sends surge_share of those points into its power node; from a node the surge goes to every other load on it and through each unsevered conduit to the node at its far end, times step_factor at each step. Every component it reaches takes its share once (a node as points / 100 of its health). The hit system's node always passes it on; any other component passes it on only if it was below nominal before the surge. It stops after max_steps or below min_points."
+  },
   "conduits": {
     "sever_mj": 1.0,
     "damage_mj": 0.3,
@@ -55,6 +62,10 @@
     "chance_per_mj": 0.1,
     "chance_max": 0.6,
     "seed_kw_per_mj": 100.0,
+    "burn_pct_per_s": 0.4,
+    "burn_hull_mj_per_s": 0.05,
+    "spread_after_s": 90.0,
+    "put_out_s": 20.0,
     "note": "Per compartment a hit deposits energy in: ignition chance min(chance_max, chance_per_mj x E) times the room's oxygen factor, decided by a seeded hash of (session seed, hit id, compartment id). The fire starts at fire.seed_kw (atmosphere.json) plus seed_kw_per_mj x E."
   },
   "crew": {
@@ -119,6 +130,7 @@
     "ladder_down_m_s": 1.0,
     "suit_up_s": 20.0,
     "dispatch_delay_s": 5.0,
+    "path_factor": 1.4,
     "enter_below_kpa_needs_suit": 50.0,
     "refuse_fire_above_kw_without_suit": 2000.0,
     "note": "NPC damage control teams are crew bodies (crew-on-deck): they walk the crew-portal graph, carry a kit, an extinguisher or plates, take the same harm as players, and can die. Their speeds (walk, run, suited, ladders up and down) and suit donning time are crew-on-deck's (design sections 3, 4 and 10), repeated here until data/crew.json exists and teams read it. Reconciled 2026-10-05: crew-on-deck owns this (was walk 1.6 m/s, ladders 0.8 m/s both ways, suit-up 30 s)."
