@@ -69,7 +69,7 @@
 <!-- INLINE data:tern/atmosphere END -->
 <!-- INLINE data:tern/damage BEGIN -->
 <script id="ship-data-damage" type="application/json">
-{"schema":"starcrew.ship-damage/1","status":"PROPOSED by openspec/changes/damage-control (2026-10-04). No engine code reads this yet; the systems mockup does. Numbers are tuning proposals, not decisions.","ship":"tern","units":{"energy":"MJ (megajoules)","length":"m","area":"m^2","time":"s","integrity":"percent of a system's full health, 0 to 100","rate":"percent per second where the key says pct_per_s"},"hull":{"armour_mj":4.0,"section_mj":40.0,"faces":["dorsal","ventral","port","starboard","bow","stern"],"note":"A hull section is a span between two of the layout's hull sections times one of six faces (9 spans x 6 faces = 54). A fresh section absorbs up to armour_mj of each hit, scaled by its integrity; each hit takes min(E, armour_mj) / section_mj x 100 points of integrity from it."},"breach":{"m2_per_mj":0.02,"min_m2":0.002,"max_m2":2.0,"note":"A hit whose energy passes the armour opens a breach in the first compartment it enters, sized by the energy left: 1 MJ past the armour makes 0.02 m^2, 50 MJ makes 1 m^2."},"propagation":{"march_step_m":0.25,"march_max_m":30.0,"decay_m":4.0,"bulkhead_mj":1.5,"radius_m":1.5,"radius_per_sqrt_mj":0.3,"note":"Energy past the armour marches along the hit direction in steps of march_step_m. Each step deposits dE = E (1 - exp(-step / decay_m)) at its point; a target within r = radius_m + radius_per_sqrt_mj x sqrt(E) of that point takes points_per_mj x dE x (1 - d / r). Each bulkhead crossed costs bulkhead_mj."},"systems":{"points_per_mj":10.0,"nominal_from_pct":75.0,"disabled_below_pct":25.0,"note":"Integrity points taken are summed over the march steps (see propagation). Capability is 1 at or above nominal_from_pct, integrity / nominal_from_pct between the two thresholds, 0 below disabled_below_pct; 0 integrity is destroyed."},"nodes":{"destroyed_below":0.25,"note":"A switchboard section, panel or bus loses health as a system does (points / 100); below destroyed_below it carries nothing until rebuilt."},"coolant":{"leak_below_pct":75.0,"leak_kg_s_at_zero":20.0,"note":"reactor-cooling design 2: a coolant pipe segment or tank below leak_below_pct integrity leaks leak_kg_s_at_zero x (leak_below_pct - integrity) / leak_below_pct kg/s: a segment at 0% leaks 20 kg/s, the loop's 11.1 t in under 10 minutes; a tank leaks its own reserve. An isolated segment does not leak. The parts' capability follows systems (power.json coolant.segments, tanks and exchanger)."},"conduits":{"sever_mj":1.0,"damage_mj":0.3,"damaged_capacity":0.5},"fire":{"chance_per_mj":0.1,"chance_max":0.6,"seed_kw_per_mj":100.0,"note":"Per compartment a hit deposits energy in: ignition chance min(chance_max, chance_per_mj x E) times the room's oxygen factor, decided by a seeded hash of (session seed, hit id, compartment id). The fire starts at fire.seed_kw (atmosphere.json) plus seed_kw_per_mj x E."},"crew":{"hp_per_mj":15.0,"share":0.3,"note":"A crew member near the path loses hp_per_mj x share x the energy deposited near them, with the systems falloff (100 hit points is full health). Without crew positions (the mockup), each crew member in the room takes the room total times the fraction of its floor within r of the path."},"repair":{"kit_pct_per_s":{"officer":1.8,"rating":0.6},"kit_locker":"damage_control","kits_in_locker":6,"parts_store":"cargo","parts_on_board":24,"parts":{"disabled_system":1,"destroyed_system":3,"conduit_splice":1,"node_rebuild":4},"disabled_to_pct":25.0,"destroyed_rebuild_s":180.0,"destroyed_rebuild_to_pct":25.0,"conduit_splice_s":30.0,"conduit_splice_capacity":0.5,"node_rebuild_s":120.0,"node_rebuild_to":0.5,"hull_section_pct_per_s_eva":0.5,"two_hands_factor":1.6},"patch":{"plate_m2":0.25,"plates_in_locker":12,"inside_s_per_plate":15.0,"inside_max_m2":1.0,"eva_s_per_m2":60.0,"eva_max_m2":4.0,"group_holes_by_hull_section":true,"note":"A crew member patches a breach from inside with plates (cabin pressure presses a plate onto the hole), up to inside_max_m2; a larger breach is closed from outside by a suited crew member through the airlock. Holes through one hull section into one compartment are patched together: one plate per plate_m2 of their total area."},"doors":{"jam_points":25.0,"repair_s":30.0,"note":"A portal within a hit's reach that takes jam_points (as a system would) jams where it is: it neither opens nor closes until a crew member with a kit frees it (repair_s), or a drop door is cranked by hand (shuttle-bay-and-fighters)."},"cook_off":{"compartment":"magazine","air_above_k":473.15,"hold_s":60.0,"hit_mj_within_m":[10.0,2.0],"warhead_mj":60.0,"next_check_s":30.0,"note":"A missile in the racks cooks off when the magazine's air has been above air_above_k for hold_s, or a hit deposits hit_mj_within_m[0] MJ within hit_mj_within_m[1] m of the racks; it is resolved as a hit of warhead_mj from inside at the racks, and the next missile checks again next_check_s later. Not in the mockup's library."},"remote_control":{"needs_computer_ratio":0.5,"note":"Breakers, dampers, doors and suppression are operated from the bridge and the damage control board only while the computer core has at least this supply ratio; otherwise only at the switchboards, the doors and the system itself."},"teams":{"count":2,"members":2,"home":"damage_control","walk_m_s":1.8,"run_m_s":4.0,"suited_m_s":1.5,"ladder_up_m_s":0.8,"ladder_down_m_s":1.0,"suit_up_s":20.0,"dispatch_delay_s":5.0,"enter_below_kpa_needs_suit":50.0,"refuse_fire_above_kw_without_suit":2000.0,"note":"NPC damage control teams are crew bodies (crew-on-deck): they walk the crew-portal graph, carry a kit, an extinguisher or plates, take the same harm as players, and can die. Their speeds (walk, run, suited, ladders up and down) and suit donning time are crew-on-deck's (design sections 3, 4 and 10), repeated here until data/crew.json exists and teams read it. Reconciled 2026-10-05: crew-on-deck owns this (was walk 1.6 m/s, ladders 0.8 m/s both ways, suit-up 30 s)."}}
+{"schema":"starcrew.ship-damage/1","status":"PROPOSED by openspec/changes/damage-control (2026-10-04). No engine code reads this yet; the systems mockup does. Numbers are tuning proposals, not decisions.","ship":"tern","units":{"energy":"MJ (megajoules)","length":"m","area":"m^2","time":"s","integrity":"percent of a system's full health, 0 to 100","rate":"percent per second where the key says pct_per_s"},"hull":{"armour_mj":4.0,"section_mj":40.0,"faces":["dorsal","ventral","port","starboard","bow","stern"],"note":"A hull section is a span between two of the layout's hull sections times one of six faces (9 spans x 6 faces = 54). A fresh section absorbs up to armour_mj of each hit, scaled by its integrity; each hit takes min(E, armour_mj) / section_mj x 100 points of integrity from it."},"breach":{"m2_per_mj":0.02,"min_m2":0.002,"max_m2":2.0,"note":"A hit whose energy passes the armour opens a breach in the first compartment it enters, sized by the energy left: 1 MJ past the armour makes 0.02 m^2, 50 MJ makes 1 m^2."},"propagation":{"march_step_m":0.25,"march_max_m":30.0,"decay_m":4.0,"bulkhead_mj":1.5,"radius_m":1.5,"radius_per_sqrt_mj":0.3,"note":"Energy past the armour marches along the hit direction in steps of march_step_m. Each step deposits dE = E (1 - exp(-step / decay_m)) at its point; a target within r = radius_m + radius_per_sqrt_mj x sqrt(E) of that point takes points_per_mj x dE x (1 - d / r). Each bulkhead crossed costs bulkhead_mj."},"systems":{"points_per_mj":10.0,"nominal_from_pct":75.0,"disabled_below_pct":25.0,"note":"Integrity points taken are summed over the march steps (see propagation). Capability is 1 at or above nominal_from_pct, integrity / nominal_from_pct between the two thresholds, 0 below disabled_below_pct; 0 integrity is destroyed."},"nodes":{"destroyed_below":0.25,"note":"A switchboard section, panel or bus loses health as a system does (points / 100); below destroyed_below it carries nothing until rebuilt."},"coolant":{"leak_below_pct":75.0,"leak_kg_s_at_zero":20.0,"note":"reactor-cooling design 2: a coolant pipe segment or tank below leak_below_pct integrity leaks leak_kg_s_at_zero x (leak_below_pct - integrity) / leak_below_pct kg/s: a segment at 0% leaks 20 kg/s, the loop's 11.1 t in under 10 minutes; a tank leaks its own reserve. An isolated segment does not leak. The parts' capability follows systems (power.json coolant.segments, tanks and exchanger)."},"conduits":{"sever_mj":1.0,"damage_mj":0.3,"damaged_capacity":0.5},"fire":{"chance_per_mj":0.1,"chance_max":0.6,"seed_kw_per_mj":100.0,"note":"Per compartment a hit deposits energy in: ignition chance min(chance_max, chance_per_mj x E) times the room's oxygen factor, decided by a seeded hash of (session seed, hit id, compartment id). The fire starts at fire.seed_kw (atmosphere.json) plus seed_kw_per_mj x E."},"crew":{"hp_per_mj":15.0,"share":0.3,"note":"A crew member near the path loses hp_per_mj x share x the energy deposited near them, with the systems falloff (100 hit points is full health). Without crew positions (the mockup), each crew member in the room takes the room total times the fraction of its floor within r of the path."},"repair":{"kit_pct_per_s":{"officer":1.8,"rating":0.6},"kit_locker":"damage_control","kits_in_locker":6,"parts_store":"cargo","parts_on_board":24,"parts":{"disabled_system":1,"destroyed_system":3,"conduit_splice":1,"node_rebuild":4},"disabled_to_pct":25.0,"destroyed_rebuild_s":180.0,"destroyed_rebuild_to_pct":25.0,"conduit_splice_s":30.0,"conduit_splice_capacity":0.5,"node_rebuild_s":120.0,"node_rebuild_to":0.5,"hull_section_pct_per_s_eva":0.5,"two_hands_factor":1.6,"fumble_share_pct":5.0},"patch":{"plate_m2":0.25,"plates_in_locker":12,"inside_s_per_plate":15.0,"inside_max_m2":1.0,"eva_s_per_m2":60.0,"eva_max_m2":4.0,"group_holes_by_hull_section":true,"note":"A crew member patches a breach from inside with plates (cabin pressure presses a plate onto the hole), up to inside_max_m2; a larger breach is closed from outside by a suited crew member through the airlock. Holes through one hull section into one compartment are patched together: one plate per plate_m2 of their total area."},"doors":{"jam_points":25.0,"repair_s":30.0,"note":"A portal within a hit's reach that takes jam_points (as a system would) jams where it is: it neither opens nor closes until a crew member with a kit frees it (repair_s), or a drop door is cranked by hand (shuttle-bay-and-fighters)."},"cook_off":{"compartment":"magazine","air_above_k":473.15,"hold_s":60.0,"hit_mj_within_m":[10.0,2.0],"warhead_mj":60.0,"next_check_s":30.0,"note":"A missile in the racks cooks off when the magazine's air has been above air_above_k for hold_s, or a hit deposits hit_mj_within_m[0] MJ within hit_mj_within_m[1] m of the racks; it is resolved as a hit of warhead_mj from inside at the racks, and the next missile checks again next_check_s later. Not in the mockup's library."},"remote_control":{"needs_computer_ratio":0.5,"note":"Breakers, dampers, doors and suppression are operated from the bridge and the damage control board only while the computer core has at least this supply ratio; otherwise only at the switchboards, the doors and the system itself."},"teams":{"count":2,"members":2,"home":"damage_control","walk_m_s":1.8,"run_m_s":4.0,"suited_m_s":1.5,"ladder_up_m_s":0.8,"ladder_down_m_s":1.0,"suit_up_s":20.0,"dispatch_delay_s":5.0,"enter_below_kpa_needs_suit":50.0,"refuse_fire_above_kw_without_suit":2000.0,"note":"NPC damage control teams are crew bodies (crew-on-deck): they walk the crew-portal graph, carry a kit, an extinguisher or plates, take the same harm as players, and can die. Their speeds (walk, run, suited, ladders up and down) and suit donning time are crew-on-deck's (design sections 3, 4 and 10), repeated here until data/crew.json exists and teams read it. Reconciled 2026-10-05: crew-on-deck owns this (was walk 1.6 m/s, ladders 0.8 m/s both ways, suit-up 30 s)."}}
 </script>
 <!-- INLINE data:tern/damage END -->
 <!-- INLINE shipkit BEGIN -->
@@ -4830,6 +4830,7 @@ const ICONS = {
   speed: '<path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 18l5-6"/>',
   person: '<circle cx="12" cy="7" r="3.5"/><path d="M5 21c0-4 3-7 7-7s7 3 7 7"/>',
   auto: '<rect x="5" y="8" width="14" height="11" rx="2.5"/><path d="M12 4v4M9.5 13h0M14.5 13h0" stroke-width="3"/>',
+  hand: '<path d="M8 13V6a1.5 1.5 0 0 1 3 0v5M11 11V4.5a1.5 1.5 0 0 1 3 0V11M14 11V6a1.5 1.5 0 0 1 3 0v6"/><path d="M17 9.5a1.5 1.5 0 0 1 3 0V15a7 7 0 0 1-7 7h-1.5a6.5 6.5 0 0 1-5.4-2.9L3.5 15.6a1.5 1.5 0 0 1 2.5-1.7L8 16.5"/>',
   target: '<circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/>',
   eye: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
   stop: '<path d="M8 3h8l5 5v8l-5 5H8l-5-5V8z"/><path d="M8 12h8"/>',
@@ -5260,6 +5261,18 @@ const STATIONS = [
   { id: "captain", role: "command", word: "CAPTAIN", op: "You" },
 ];
 let station = "helm", captainTab = "CMD";
+// Single player (openspec/changes/single-player design 4 and 5): null, or the player's own seat and the NPC at every
+// other station, each on AUTO (the NPC plays it) or MANUAL (the NPC does what the player does on its console).
+// `station` is then the console shown, which may be any crewed station's.
+let SOLO = null;
+const SOLO_NAMES = { helm: "Lt. Ira Solen", tactical: "Lt. Dal Varen", engineering: "Lt. Mae Okoro", science: "Lt. Tov Arran", captain: "Lt. Rhea Castel" };
+function soloOn(seat) {
+  SOLO = { seat, crew: STATIONS.filter((o) => o.id !== seat).map((o) => ({ id: o.id, op: SOLO_NAMES[o.id], mode: "auto", seated: true })) };
+  station = seat;
+}
+const soloCrew = (id) => SOLO && SOLO.crew.find((c) => c.id === id);
+/** A press on an AUTO station's console takes it to MANUAL: the NPC hands over (single-player design 4). */
+function soloTakeOver() { const c = soloCrew(station); if (c && c.mode === "auto") c.mode = "manual"; }
 const stationDef = () => STATIONS.find((s) => s.id === station);
 const accent = () => ROLE[stationDef().role];
 const now = () => performance.now() / 1000;
@@ -5305,18 +5318,58 @@ function titleBand() {
   let s = `<svg width="1280" height="32" viewBox="0 0 1280 32">`;
   s += `<rect width="1280" height="32" fill="${emerg ? "#2b1a08" : red ? "#3a0c10" : "#0a0f16"}"/>`;
   s += `<rect y="31" width="1280" height="1" fill="${emerg ? C.emergency : red ? C.alert : C.line}"/>`;
-  // The station's own chip (the captain's two pages), then the open stations: press one to swap to it.
-  const tabs = S.id === "captain" ? [["COMMAND", "command", captainTab === "CMD", "tab:CMD"], ["SHIP", "command", captainTab === "SHIP", "tab:SHIP"]] : [[S.word, S.role, true, null]];
+  // The station's own chip (the captain's two pages), then the open stations: press one to swap to it. In single
+  // player the own chip is the player's seat, lit while its console is shown, and a press on it comes back to it.
+  const own = SOLO ? STATIONS.find((o) => o.id === SOLO.seat) : S, home = !SOLO || station === SOLO.seat;
+  const tabs = own.id === "captain" ? [["COMMAND", "command", home && captainTab === "CMD", "tab:CMD"], ["SHIP", "command", home && captainTab === "SHIP", "tab:SHIP"]]
+    : [[own.word, own.role, home, SOLO && !home ? `view:${own.id}` : null]];
   let x = 8;
   for (const [w, r, on, act] of tabs) {
     const tw = 34 + w.length * 9.4;
-    s += `<g ${act ? `data-act="${act}"` : ""}>`;
+    s += `<g ${act ? `data-act="${act}"` : ""}${tipAttr(SOLO && !home && act ? "Your console (Tab)" : null)}>`;
     s += `<rect x="${x}" y="4" width="${tw}" height="24" rx="5" fill="${on ? ROLE[r] + "26" : "transparent"}" stroke="${on ? ROLE[r] : C.line2}"/>`;
     s += icon(r, x + 13, 16, 14, on ? ROLE[r] : C.dim);
     s += text(x + 25, 21, 13, on ? C.text : C.dim, w, { ls: 1.5, w: 700 }) + "</g>";
     x += tw + 6;
   }
-  const open = STATIONS.filter((o) => !o.op && o.id !== S.id).map((o) => [o.word, o.role, o.id]).concat([["COMMS", "comms", null], ["FLIGHT", "flight_ops", null]]);
+  if (SOLO) {
+    // Single player: a tab for each crewed station, its icon and its mode, a robot (AUTO) or a hand (MANUAL), dim while
+    // its NPC walks to the seat. Press one to show its console; the tab of the console shown is filled.
+    for (const c of SOLO.crew) {
+      const o = STATIONS.find((q) => q.id === c.id), on = station === c.id, rc = ROLE[o.role], auto = c.mode === "auto";
+      const tip = `${o.word[0] + o.word.slice(1).toLowerCase()}: ${c.op}, on ${auto ? "AUTO" : "MANUAL"}${c.seated ? "" : ", walking to the seat"}`;
+      s += `<g data-act="view:${c.id}"${tipAttr(tip)}>`;
+      s += `<rect x="${x}" y="4" width="52" height="24" rx="5" fill="${on ? rc + "26" : "transparent"}" stroke="${on ? rc : C.line2}"/>`;
+      s += icon(o.role, x + 15, 16, 14, c.seated ? rc : C.faint);
+      s += icon(auto ? "auto" : "hand", x + 37, 16, 14, c.seated ? C.text : C.faint) + "</g>";
+      x += 58;
+    }
+    // The mode switch of the console shown, when it is a crewed station's: its word (the captain's two pages, for the
+    // captain's console), then AUTO and MANUAL.
+    const c = soloCrew(station);
+    if (c) {
+      if (S.id === "captain") {
+        for (const [w, tab] of [["COMMAND", "CMD"], ["SHIP", "SHIP"]]) {
+          const tw = 34 + w.length * 9.4, on = captainTab === tab, rc = ROLE.command;
+          s += `<g data-act="tab:${tab}"><rect x="${x}" y="4" width="${tw}" height="24" rx="5" fill="${on ? rc + "26" : "transparent"}" stroke="${on ? rc : C.line2}"/>`;
+          s += icon("command", x + 13, 16, 14, on ? rc : C.dim) + text(x + 25, 21, 13, on ? C.text : C.dim, w, { ls: 1.5, w: 700 }) + "</g>";
+          x += tw + 6;
+        }
+      } else {
+        s += text(x + 4, 21, 13, ROLE[S.role], S.word, { ls: 1.5, w: 700 });
+        x += 14 + S.word.length * 9.4;
+      }
+      for (const [m, w, ic, tw] of [["auto", "AUTO", "auto", 76], ["manual", "MANUAL", "hand", 94]]) {
+        const on = c.mode === m;
+        s += `<g data-act="mode:${m}"${tipAttr(m === "auto" ? `${c.op} runs it (M)` : `You run it, through ${c.op} (M)`)}>`;
+        s += `<rect x="${x}" y="4" width="${tw}" height="24" rx="5" fill="${on ? C.text + "1f" : "transparent"}" stroke="${on ? C.text : C.line2}"/>`;
+        s += icon(ic, x + 14, 16, 14, on ? C.text : C.dim) + text(x + 26, 21, 13, on ? C.text : C.dim, w, { ls: 1.5, w: 700 }) + "</g>";
+        x += tw + 4;
+      }
+      x += 2;
+    }
+  }
+  const open = SOLO ? [] : STATIONS.filter((o) => !o.op && o.id !== S.id).map((o) => [o.word, o.role, o.id]).concat([["COMMS", "comms", null], ["FLIGHT", "flight_ops", null]]);
   for (const [w, r, id] of open) {
     const tw = 44 + w.length * 8.6;
     s += `<g ${id ? `data-act="swap:${id}"` : ""}${tipAttr(id ? `${w.toLowerCase()} is open: swap to it` : `${w.toLowerCase()} is open (its console is not in this mockup yet)`)}>`;
@@ -5325,15 +5378,16 @@ function titleBand() {
     s += `<path d="M${x + tw - 15} ${12}h8l-3 -3M${x + tw - 7} ${20}h-8l3 3" fill="none" stroke="${id ? C.text : C.faint}" stroke-width="1.5"/></g>`;
     x += tw + 6;
   }
-  // The newest order to this station.
-  const o = newestOrderFor(S.id);
-  if (o) {
-    s += `<g data-act="ack"${tipAttr("Acknowledge (Y)")}><rect x="470" y="4" width="300" height="24" rx="5" fill="${C.warn}1f" stroke="${C.warn}"/>`;
-    s += icon("command", 486, 16, 14, C.warn) + text(500, 21, 13, C.text, `CAPTAIN: ${o.verb}`, { ls: 1.5, w: 700 });
-    s += icon("check", 754, 16, 14, C.warn) + "</g>";
-  }
   const cond = emerg ? "EMERGENCY POWER" : red ? "RED ALERT" : "NORMAL";
   const cc = emerg ? C.emergency : red ? C.alert : C.ok;
+  // The newest order to the station shown: at 470, or after the tabs when they reach past it, and short of the condition.
+  const o = newestOrderFor(S.id);
+  if (o) {
+    const ox = Math.max(470, x), ow = Math.min(300, 1180 - cond.length * 9.4 - 22 - 8 - ox);
+    s += `<g data-act="ack"${tipAttr("Acknowledge (Y)")}><rect x="${ox}" y="4" width="${ow}" height="24" rx="5" fill="${C.warn}1f" stroke="${C.warn}"/>`;
+    s += icon("command", ox + 16, 16, 14, C.warn) + text(ox + 30, 21, 13, C.text, `CAPTAIN: ${o.verb}`, { ls: 1.5, w: 700 });
+    s += icon("check", ox + ow - 16, 16, 14, C.warn) + "</g>";
+  }
   s += `<rect x="${1180 - cond.length * 9.4 - 22}" y="4" width="${cond.length * 9.4 + 22}" height="24" rx="5" fill="${cc}22" stroke="${cc}"/>`;
   s += text(1180 - 10, 21, 13, cc, cond, { a: "end", ls: 1.5, w: 700 });
   const t = Math.floor(G.t + 754);
@@ -6573,8 +6627,10 @@ window.addEventListener("resize", fit);
 function act(a, ev) {
   const [k, v, w] = a.split(":");
   const S = station;
-  if (k === "tab") captainTab = v;
+  if (k === "tab") { captainTab = v; if (SOLO && SOLO.seat === "captain") station = "captain"; }
   if (k === "swap") station = v;
+  if (k === "view") station = v;
+  if (k === "mode") { const c = soloCrew(station); if (c) c.mode = v; }
   if (k === "ack") { const o = newestOrderFor(S); if (o) o.state = "done"; }
   if (k === "allstop") { F.speedSet = 0; F.strafe = [0, 0]; G.ap = "HOLD"; }
   if (k === "ap") { if (G.ap === "EVADE" && v !== "EVADE") F.strafe = [0, 0]; G.ap = v; if (v !== "HOLD" && v !== "EVADE") F.orderActive = false; }
@@ -6674,6 +6730,7 @@ function dragTo(e) {
 }
 CONSOLE.addEventListener("pointerdown", (e) => {
   const a = e.target.closest("[data-act]"), d = e.target.closest("[data-drag]"), h = e.target.closest("[data-hold]");
+  if ((d || h || (a && !/^(view|mode|tab|swap):/.test(a.dataset.act))) && SOLO) soloTakeOver();
   // A press on a face inside the shield view favours it; a drag that starts there turns the view.
   if (d && !(a && d.contains(a) && d.dataset.drag !== "shieldcam")) {
     const [kind, arg] = d.dataset.drag.split(":");
@@ -6709,6 +6766,14 @@ window.addEventListener("pointerup", (e) => {
 const HELD_KEYS = new Set(["a", "d", "r", "f", "q", "e", "z", "c", " ", "control"]);
 window.addEventListener("keydown", (e) => {
   const k = e.key.toLowerCase();
+  if (SOLO) {
+    // Tab and Shift+Tab step through the consoles (the player's own first), M changes the shown station's mode, and
+    // any other key on an AUTO station's console takes it MANUAL.
+    const ids = [SOLO.seat, ...SOLO.crew.map((c) => c.id)];
+    if (k === "tab") { e.preventDefault(); station = ids[(ids.indexOf(station) + (e.shiftKey ? ids.length - 1 : 1)) % ids.length]; render(); return; }
+    if (k === "m") { const c = soloCrew(station); if (c) c.mode = c.mode === "auto" ? "manual" : "auto"; render(); return; }
+    if (k !== "shift") soloTakeOver();
+  }
   if (station === "helm") {
     if (HELD_KEYS.has(k)) { F.keys.add(k); e.preventDefault(); }
     if (k === "w") F.speedSet = clamp(F.speedSet + 10, FL.speed_min_ms, FL.speed_max_ms);
@@ -6785,7 +6850,8 @@ window.consoleState = function () {
   const tgt = contact(G.target);
   return {
     station, word: S.word, role: S.role, op: S.op,
-    open: STATIONS.filter((o) => !o.op && o.id !== S.id).map((o) => o.id),
+    open: SOLO ? [] : STATIONS.filter((o) => !o.op && o.id !== S.id).map((o) => o.id),
+    solo: SOLO ? { seat: SOLO.seat, crew: SOLO.crew.map((c) => ({ station: c.id, op: c.op, auto: c.mode === "auto", seated: c.seated })) } : null,
     order: (newestOrderFor(S.id) || {}).verb || null,
     alert: !reactorUp() ? "emergency" : st.alert === "red_alert" ? "red_alert" : "normal", red_alert: st.alert === "red_alert",
     clock_s: Math.floor(G.t + 754),
@@ -6880,7 +6946,12 @@ window.MOCKUP_SHOTS = [
   { name: "red-captain-ship", setup: () => { scenario("combat"); station = "captain"; captainTab = "SHIP"; G.shipSel = "engineering"; render(); } },
   { name: "scram-engineering", setup: () => { scenario("combat"); sim.scram("manual"); advance(30); station = "engineering"; render(); } },
   { name: "red-tactical-turned", setup: () => { scenario("combat"); station = "tactical"; HOLD.key = null; G.scanCam.tac = { yaw: 70, dEl: 18 }; render(); } },
-].map((shot) => ({ name: shot.name, setup: () => { PAUSED = true; undoCoolingShot(); shot.setup(); render(); } }));
+  // Single player (single-player design 5): the player at Helm with a crew of four, all on AUTO; then Tactical's
+  // console shown and taken MANUAL while Science's NPC is still walking to the seat; then Engineering's on AUTO in combat.
+  { name: "solo-helm", setup: () => { soloOn("helm"); render(); } },
+  { name: "solo-tactical-manual", setup: () => { soloOn("helm"); station = "tactical"; soloCrew("tactical").mode = "manual"; soloCrew("science").seated = false; HOLD.key = null; render(); } },
+  { name: "red-solo-engineering", setup: () => { scenario("combat"); soloOn("helm"); station = "engineering"; render(); } },
+].map((shot) => ({ name: shot.name, setup: () => { PAUSED = true; undoCoolingShot(); SOLO = null; shot.setup(); render(); } }));
 
 fit(); render();
 requestAnimationFrame(frame);

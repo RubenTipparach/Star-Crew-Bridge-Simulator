@@ -7,6 +7,10 @@
 //! It is its own `App` beside the walkable ship because the drill is a separate game mode: nothing here walks a
 //! deck. Every rule it shows comes from `sc-core` (the hit chance, the lock, the tube timings), every number from
 //! the snapshot; the client decides nothing a console could not.
+//!
+//! Single player (openspec/changes/single-player) is the same drill with its server inside the client and an NPC at
+//! every other station ([`crate::solo`]): the player can show any crewed station's console from their seat, and play
+//! one on MANUAL through its NPC's session.
 
 use std::collections::HashSet;
 use std::net::{SocketAddr, ToSocketAddrs};
@@ -49,6 +53,8 @@ pub struct DrillArgs {
     pub server: String,
     /// The station to take.
     pub station: Station,
+    /// The player asked for Any: the first of the drill's `bot_posts` (Helm) is taken instead of `station`.
+    pub any: bool,
     /// The officer's name.
     pub name: String,
     /// Whether the station's automation plays it.
@@ -57,6 +63,14 @@ pub struct DrillArgs {
     pub shots: Option<PathBuf>,
     /// Join with no station and watch the bridge from its overview (`--watch`).
     pub watch: bool,
+    /// Host the drill here with an NPC crew (single player, `--solo`); `server` is then unused.
+    pub solo: bool,
+    /// Esc goes back to the front menu (a game started from it) rather than closing the program.
+    pub menu: bool,
+    /// The session's seed: the NPCs' names.
+    pub seed: u64,
+    /// The hand-over test's folder: once the briefing shows, capture it and hand back to the menu.
+    pub hand_test: Option<PathBuf>,
 }
 
 struct Meshes {
@@ -110,7 +124,15 @@ pub struct DrillApp {
     booms: Vec<Boom>,
     held: HashSet<u32>,
     pressed: HashSet<u32>,
-    seat: Seat,
+    /// A console's own state for each station (`Station as usize`): the player's seat, and in single player every
+    /// crewed station's console they show.
+    seats: Vec<Seat>,
+    /// Single player: the server and the NPC crew.
+    solo: Option<crate::solo::SoloHost>,
+    /// Single player: the crewed station whose console is shown, or none for the player's own.
+    shown: Option<Station>,
+    /// Single player: READY pressed while the crew still walk to their seats; sent once they sit (design 4).
+    ready_held: bool,
     /// The pointer's events since the last frame, for the console.
     pointer: Vec<PointerEv>,
     /// F3: the link's round trip and loss in a corner (debug numbers are not console content).
@@ -163,6 +185,22 @@ impl DrillApp {
             missile: mesh(&r, &ships3d::missile()),
             burst: mesh(&r, &ships3d::burst()),
         };
+        let mut args = args;
+        if args.any {
+            args.station = data.stations.bot_posts.stations().first().copied().unwrap_or(Station::Helm);
+        }
+        let solo = if args.solo {
+            let names: sc_core::names::NameData = std::fs::read_to_string("data/crew/names.json")
+                .map_err(|e| format!("data/crew/names.json: {e}"))
+                .and_then(|t| sc_core::data::parse("data/crew/names.json", &t).map_err(|e| e.to_string()))?;
+            let (_, seat) = crate::solo::roster(&data, args.station);
+            args.station = seat;
+            let host = crate::solo::SoloHost::start(&data, seat, &names, args.seed, crate::solo::bridge(&data))?;
+            args.server = host.addr().to_string();
+            Some(host)
+        } else {
+            None
+        };
         let host = if args.server.contains(':') { args.server.clone() } else { format!("{}:7700", args.server) };
         let addr = host.to_socket_addrs().ok().and_then(|mut a| a.find(SocketAddr::is_ipv4));
         let bot = args.bot.then(|| Bot::new(&data, args.station));
@@ -187,7 +225,10 @@ impl DrillApp {
             booms: Vec::new(),
             held: HashSet::new(),
             pressed: HashSet::new(),
-            seat: Seat::default(),
+            seats: Station::ALL.iter().map(|_| Seat::default()).collect(),
+            solo,
+            shown: None,
+            ready_held: false,
             pointer: Vec::new(),
             show_net: false,
             shots_taken: HashSet::new(),
@@ -231,6 +272,59 @@ impl DrillApp {
                 self.error = Some(e);
                 self.retry_at = self.time_s + 3.0;
             }
+        }
+    }
+
+    /// The station whose console is on screen: the one held (or wanted), or in single player the crewed one shown.
+    fn console_station(&self) -> Station {
+        let own = self.session.as_ref().and_then(Session::station).unwrap_or(self.args.station);
+        if self.solo.is_some() {
+            self.shown.unwrap_or(own)
+        } else {
+            own
+        }
+    }
+
+    /// Single player: show `st`'s console (the player's own for their seat). Leaving the helm's console lets its
+    /// stick go, unless its NPC flies it: a key held while switching would otherwise hold the turn.
+    fn show(&mut self, st: Station) {
+        let Some(host) = self.solo.as_mut() else { return };
+        let next = if st == host.seat || host.npc(st).is_none() { None } else { Some(st) };
+        let was = self.shown.unwrap_or(host.seat);
+        if next == self.shown {
+            return;
+        }
+        if was == Station::Helm {
+            let speed = self.seats[Station::Helm as usize].speed_set;
+            let neutral = Command::Stick { speed_set_mps: speed, yaw: 0.0, pitch: 0.0, roll: 0.0 };
+            match host.npc(Station::Helm).map(|n| n.auto) {
+                None => {
+                    if let Some(s) = self.session.as_mut() {
+                        s.command(neutral);
+                    }
+                }
+                Some(false) => host.command_as(Station::Helm, neutral),
+                Some(true) => {}
+            }
+        }
+        self.shown = next;
+    }
+
+    /// Single player: Tab and Shift+Tab step through the consoles, the player's own first; M changes the shown one's
+    /// mode.
+    fn solo_keys(&mut self, pressed: &HashSet<u32>) {
+        let Some(host) = self.solo.as_mut() else { return };
+        if pressed.contains(&keys::M) {
+            if let Some(n) = self.shown.and_then(|st| host.npc_mut(st)) {
+                n.auto = !n.auto;
+            }
+        }
+        if pressed.contains(&keys::TAB) {
+            let ids: Vec<Station> = std::iter::once(host.seat).chain(host.crew.iter().map(|n| n.station)).collect();
+            let at = ids.iter().position(|s| Some(*s) == self.shown).unwrap_or(0);
+            let back = self.held.contains(&keys::LSHIFT) || self.held.contains(&keys::RSHIFT);
+            let next = ids[(at + if back { ids.len() - 1 } else { 1 }) % ids.len()];
+            self.show(next);
         }
     }
 
@@ -297,7 +391,9 @@ impl DrillApp {
         }
         if let Some(tern) = self.session.as_ref().and_then(|s| s.latest()).and_then(|s| s.ships.first().cloned()) {
             for (face, vel) in tern_hits {
-                self.seat.hit(&tern, face, vel, now);
+                for seat in &mut self.seats {
+                    seat.hit(&tern, face, vel, now);
+                }
             }
         }
         let render_t = now - INTERP_DELAY_S;
@@ -318,7 +414,7 @@ impl DrillApp {
     fn render_feed(&mut self, ships: Option<&(ShipSnap, ShipSnap, Snapshot)>, view: Option<&console::ConsoleView>) {
         let (eye, rot) = Self::bow_eye(ships, self.time_s);
         let (fwd, up, vfov) = match view {
-            Some(v) => self.seat.feed_camera(v, rot),
+            Some(v) => self.seats[self.console_station() as usize].feed_camera(v, rot),
             None => (rot * DVec3::Z, rot * DVec3::Y, 2.0 * (97.0f64 / (307.0 / 35f64.to_radians().tan())).atan()),
         };
         let proj =
@@ -487,6 +583,37 @@ impl DrillApp {
                 self.capture(f, &format!("{name}-{st}.png"));
             }
         }
+        // Single player: the crew's tabs on the player's own console, then Tactical's console (or the first NPC's) on
+        // AUTO, then taken MANUAL, then back to AUTO and the player's own.
+        let other = self.solo.as_ref().and_then(|h| h.npc(Station::Tactical).or(h.crew.first())).map(|n| n.station);
+        if let (Some(other), Phase::Engage) = (other, snap.phase) {
+            let own = self.args.station;
+            let o = other.id();
+            let set = |app: &mut Self, auto: bool| {
+                if let Some(n) = app.solo.as_mut().and_then(|h| h.npc_mut(other)) {
+                    n.auto = auto;
+                }
+            };
+            if (8.0..10.0).contains(&t) {
+                self.show(own);
+                if t >= 8.5 {
+                    self.capture(f, &format!("s1-solo-{st}.png"));
+                }
+            } else if (10.0..12.0).contains(&t) {
+                self.show(other);
+                if t >= 11.0 {
+                    self.capture(f, &format!("s2-solo-{o}-auto.png"));
+                }
+            } else if (12.0..14.5).contains(&t) {
+                set(self, false);
+                if t >= 13.5 {
+                    self.capture(f, &format!("s3-solo-{o}-manual.png"));
+                }
+            } else if (14.5..15.0).contains(&t) {
+                set(self, true);
+                self.show(own);
+            }
+        }
         // Done once a whole fight has been shot: the last engage shot, then its debrief.
         if self.shots_taken.iter().any(|n| n.starts_with("5-engage")) && snap.phase == Phase::Debrief && t >= 2.0 {
             self.shots_taken.remove(&format!("6-debrief-{st}.png"));
@@ -501,7 +628,12 @@ impl App for DrillApp {
         self.ui.event(&e);
         match e {
             Event::Quit => return Flow::Done,
-            Event::KeyDown(keys::ESCAPE) => return Flow::Done,
+            Event::KeyDown(keys::ESCAPE) => {
+                if !self.args.menu {
+                    return Flow::Done;
+                }
+                crate::back_to_menu(None);
+            }
             Event::KeyDown(keys::V) => self.overview = !self.overview,
             Event::KeyDown(keys::F3) => self.show_net = !self.show_net,
             Event::KeyDown(k) => {
@@ -521,8 +653,18 @@ impl App for DrillApp {
     fn frame(&mut self, f: &Frame) -> Flow {
         let dt = f.elapsed_s.clamp(0.0, 0.1);
         self.time_s += dt;
+        if let Some(h) = self.solo.as_mut() {
+            h.step(dt, &self.data);
+        }
         if self.session.is_none() && self.time_s >= self.retry_at {
             self.try_connect();
+        }
+        // READY waits for the crew to sit, so a round starts with every seat filled (single-player design 4).
+        if self.ready_held && self.solo.as_ref().is_some_and(crate::solo::SoloHost::all_seated) {
+            if let Some(s) = self.session.as_ref() {
+                s.set_ready(true);
+                self.ready_held = false;
+            }
         }
         if let Some(s) = self.session.as_mut() {
             s.update();
@@ -597,15 +739,33 @@ impl App for DrillApp {
             }
         }
         let crew = self.session.as_ref().map(|s| s.crew.clone()).unwrap_or_default();
-        // The console's view: the station this client holds (or wants), from the newest interpolated snapshot.
-        let console_view = ships.as_ref().filter(|_| !on_bridge).map(|(t, h, snap)| {
-            let st = station.unwrap_or(self.args.station);
+        // The console's view: the station this client holds (or wants), from the newest interpolated snapshot; in
+        // single player the crewed station shown, with the crew's tabs.
+        let st = self.console_station();
+        let solo = self.solo.is_some();
+        let mut console_view = ships.as_ref().filter(|_| !on_bridge).map(|(t, h, snap)| {
             let ops: Vec<(Station, String)> = crew
                 .iter()
-                .filter_map(|c| Some((c.station?, if c.bot { "Bot".to_owned() } else { c.name.clone() })))
+                .filter_map(|c| Some((c.station?, if c.bot && !solo { "Bot".to_owned() } else { c.name.clone() })))
                 .collect();
-            self.seat.view(st, t, h, snap, &self.data, &ops, self.time_s)
+            self.seats[st as usize].view(st, t, h, snap, &self.data, &ops, self.time_s)
         });
+        if let (Some(v), Some(host)) = (console_view.as_mut(), self.solo.as_ref()) {
+            v.open.clear();
+            v.solo = Some(console::SoloView {
+                seat: host.seat.id().into(),
+                crew: host
+                    .crew
+                    .iter()
+                    .map(|n| console::CrewTab {
+                        station: n.station.id().into(),
+                        op: n.name.clone(),
+                        auto: n.auto,
+                        seated: n.seated(),
+                    })
+                    .collect(),
+            });
+        }
         if !on_bridge {
             self.render_feed(ships.as_ref(), console_view.as_ref());
         }
@@ -642,24 +802,66 @@ impl App for DrillApp {
         // The seated player's hands on the console, in Engage only (the briefing and debrief sit over it otherwise).
         let engage = ships.as_ref().is_some_and(|x| x.2.phase == Phase::Engage);
         let pressed = std::mem::take(&mut self.pressed);
-        if let (true, Some(st), None, Some((hits, scale)), Some(v), Some((t, h, _))) =
+        if let (true, Some(_), None, Some((hits, scale)), Some(v), Some((t, h, _))) =
             (engage, station, self.bot.as_ref(), painted.as_ref(), console_view.as_ref(), ships.as_ref())
         {
+            self.solo_keys(&pressed);
             let input = Input { events: std::mem::take(&mut self.pointer), held: self.held.clone(), pressed };
-            for a in self.seat.input(&input, hits, *scale, v, t, h, &self.data, st, self.time_s) {
+            let seat = &mut self.seats[st as usize];
+            let asks = seat.input(&input, hits, *scale, v, t, h, &self.data, st, self.time_s);
+            // A crewed station's console in single player: on AUTO its NPC plays it, and a touch takes it MANUAL
+            // (design 4); on MANUAL what the player does goes out as its NPC's.
+            let npc_auto = self.solo.as_mut().and_then(|host| host.npc_mut(st)).map(|n| {
+                if n.auto && seat.touched() {
+                    n.auto = false;
+                }
+                n.auto
+            });
+            if npc_auto == Some(true) {
+                seat.follow(t);
+            }
+            for a in asks {
                 match a {
-                    SeatAsk::Command(c) => ask.push(UiAsk::Command(c)),
-                    SeatAsk::Claim(s) => ask.push(UiAsk::Claim(s)),
+                    SeatAsk::Command(c) => match npc_auto {
+                        None => ask.push(UiAsk::Command(c)),
+                        Some(false) => ask.push(UiAsk::As(st, c)),
+                        Some(true) => {}
+                    },
+                    SeatAsk::Claim(s) if !solo => ask.push(UiAsk::Claim(s)),
+                    SeatAsk::Claim(_) => {}
+                    SeatAsk::View(s) => self.show(s),
+                    SeatAsk::Mode(auto) => {
+                        if let Some(n) = self.solo.as_mut().and_then(|host| host.npc_mut(st)) {
+                            n.auto = auto;
+                        }
+                    }
+                    SeatAsk::Tab => {
+                        if let Some(seat) = self.solo.as_ref().map(|host| host.seat) {
+                            self.show(seat);
+                        }
+                    }
                 }
             }
         }
-        if let Some(s) = self.session.as_mut() {
-            for a in ask {
-                match a {
-                    UiAsk::Claim(st) => s.claim(st),
-                    UiAsk::Ready(r) => s.set_ready(r),
-                    UiAsk::Command(c) if self.bot.is_none() => s.command(c),
-                    UiAsk::Command(_) => {}
+        for a in ask {
+            match a {
+                UiAsk::As(st, c) => {
+                    if let Some(host) = self.solo.as_mut() {
+                        host.command_as(st, c);
+                    }
+                }
+                UiAsk::Ready(true) if self.solo.as_ref().is_some_and(|h| !h.all_seated()) => self.ready_held = true,
+                a => {
+                    let Some(s) = self.session.as_mut() else { continue };
+                    match a {
+                        UiAsk::Claim(st) => s.claim(st),
+                        UiAsk::Ready(r) => {
+                            self.ready_held = false;
+                            s.set_ready(r);
+                        }
+                        UiAsk::Command(c) if self.bot.is_none() => s.command(c),
+                        UiAsk::Command(_) | UiAsk::As(..) => {}
+                    }
                 }
             }
         }
@@ -676,6 +878,15 @@ impl App for DrillApp {
             None => self.r.present_with_ui(&self.blank, f.width, f.height, true, &frame.meshes(), frame.points),
         }
         self.scripted_shots(f);
+        // The hand-over test: the game up with its briefing, then back to the menu.
+        let briefing = self.session.as_ref().and_then(|s| s.latest()).is_some_and(|s| s.phase_s >= 1.0);
+        if let (Some(dir), true) = (self.args.hand_test.clone(), briefing) {
+            self.args.hand_test = None;
+            if !crate::capture_to(f, &dir, "hand-over-2-game.png") {
+                return Flow::Fail;
+            }
+            crate::back_to_menu(Some(dir));
+        }
         self.r.commit();
         if self.done {
             Flow::Done
@@ -690,6 +901,8 @@ enum UiAsk {
     Claim(Station),
     Ready(bool),
     Command(Command),
+    /// Single player: a command for a MANUAL station, sent through its NPC's session.
+    As(Station, Command),
 }
 
 /// Everything the briefing, the debrief and the F3 corner draw from, gathered before the UI closure borrows the
@@ -712,6 +925,8 @@ struct UiView {
     tern_hull: f64,
     /// The bridge on screen instead of the consoles (design 9).
     bridge: Option<BridgeUi>,
+    /// Single player: READY pressed, waiting for the crew to sit.
+    ready_held: bool,
 }
 
 /// What the bridge view's UI shows: a name over each body (and where it is going), and this player's own walk.
@@ -741,6 +956,7 @@ impl UiView {
             mission: app.data.mission.clone(),
             tern_hull: app.data.tern_combat.hull_mj,
             bridge: None,
+            ready_held: app.ready_held,
         }
     }
 }
@@ -908,7 +1124,13 @@ fn briefing(ctx: &egui::Context, v: &UiView, snap: &Snapshot, ask: &mut Vec<UiAs
                 let left = (v.mission.countdown_s - snap.phase_s).ceil().max(0.0);
                 label(ui, &format!("ENGAGING IN {left:.0}"), 30.0, AMBER);
             } else {
-                let text = if v.ready { "READY" } else { "MARK READY" };
+                let text = if v.ready {
+                    "READY"
+                } else if v.ready_held {
+                    "CREW SITTING"
+                } else {
+                    "MARK READY"
+                };
                 let fill = if v.ready { Color32::from_rgb(40, 120, 60) } else { Color32::from_rgb(170, 100, 30) };
                 if ui
                     .add_enabled(v.station.is_some() && !v.bot, big_button(text, Vec2::new(220.0, 52.0), fill))
