@@ -1217,7 +1217,8 @@ impl Snapshot {
                         charge: t.capacitor_mj / guns[i].capacitor_mj.max(1e-9),
                         mode: t.mode,
                         heat: t.heat_mj / guns[i].heat_sink_mj.max(1e-9),
-                        cooling: t.cooling,
+                        // Locked out by heat, or reloading after its rounds (both draw as cooling).
+                        cooling: t.cooling || t.reload_s > 0.0,
                         firing: t.since_fire_s <= 2.0 / guns[i].rate_hz.max(1e-9),
                     })
                     .collect(),

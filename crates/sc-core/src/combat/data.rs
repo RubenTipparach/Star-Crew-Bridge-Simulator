@@ -417,6 +417,10 @@ pub struct Gun {
     /// The share of a bolt's damage that counts against a ship (enemy-fighters 2: cannons wear shields slowly); a
     /// fighter or a missile takes it in full.
     pub capital_factor: f64,
+    /// Bolts a turret fires before it must reload, and the reload, seconds (owner, 2026-10-11: "limited to 100 shots
+    /// with a 30 second cooldown").
+    pub rounds: u32,
+    pub reload_s: f64,
 }
 
 impl Gun {
@@ -571,6 +575,8 @@ impl Validate for WeaponsFile {
                 c.equals(&format!("{at}.band"), &g.band, "A, B, C or D");
             }
             c.number(&format!("{at}.capital_factor"), g.capital_factor, 0.0, 1.0);
+            c.count(&format!("{at}.rounds"), i64::from(g.rounds), 1, 100_000);
+            c.number(&format!("{at}.reload_s"), g.reload_s, 0.0, 600.0);
         }
         for (i, l) in self.lasers.iter().enumerate() {
             let at = format!("lasers[{i}]");

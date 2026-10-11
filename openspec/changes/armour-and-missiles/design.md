@@ -46,20 +46,35 @@ nearest inbound missile is 1.2-2.5 s out and none was thrown in the last 4 s.
 
 ## 4. Point defence
 
-A turret on AUTO or PD fires first at an inbound missile within 1,200 m (any hit kills it, a 3 m radius), then
-(`enemy-fighters`) at a fighter within 2,000 m, then at the locked ship.
+Point defence is the twin pulse cannon turrets (the Tern's four, the Hound's two): a turret on AUTO or PD fires first
+at an inbound missile within `pd_range_m` (900 m; any hit kills it), then (`enemy-fighters`) at a fighter within
+2,000 m, then at the locked ship.
+
+**Rounds** (owner, 2026-10-11: "they should be limited to 100shots with a 30 second cooldown"): every turret fires
+100 bolts, then reloads for 30 s before it fires again (`rounds`, `reload_s` on the gun in `data/weapons.json`), on
+both ships. A reloading turret draws as cooling on Tactical's TURRETS. Before this, point defence never ran dry and
+shot down 75-100 % of the Hound's missiles, so almost nothing reached the Tern's hull.
 
 ## 5. The enemy
 
 The Hound has the Tern's automation for Tactical: it locks, loads both tubes, fires when armed and the seeker sees,
-throws decoys, and its turrets defend. Both ships' missiles are aimed at a ship's centre; the face and section hit
-follow from the geometry.
+throws decoys, and its turrets defend. A missile aims at a point on its target's long axis, drawn at launch along the
+middle four fifths of the hull (`Missile::aim_m`), so hits land from bow to stern; aimed at the centre, they all
+burst amidships around the Tern's hangar and broke only its pumps and pad. The face and section hit follow from the
+geometry.
 
 ## 6. Tuning
 
 A headless run of whole fights with automation on both sides (`sc-core` test, 20 seeds) reports the fight's length,
 the hits by weapon and the systems broken. The target is a fight of 5-10 minutes that the Tern wins about two in three
 with its crew on automation.
+
+Measured 2026-10-11 with bots at Helm and Tactical, seeds 1-8 (`tuning_report`), after the rounds and the aim points:
+every fight a victory in 376-513 s; the Hound lands 4-8 of 10-16 missiles; the Tern ends with 61-260 of 400 MJ of
+hull; at the worst moment 1-7 systems are below nominal at once (the reactor's auxiliaries, the coolant pumps, the
+gravity generator, the bridge's consoles, the tubes) with one or two fires, and the teams bring them back. The test
+`two_bots_at_helm_and_tactical_win_the_drill` now holds the Tern hurt in every fight and a system broken in five of
+six.
 
 ## 7. Cost
 
