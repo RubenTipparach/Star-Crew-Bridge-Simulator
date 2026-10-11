@@ -14,14 +14,16 @@
 //! Version 3 (deck-pipeline 13b) adds a compartment's mover (the lift's car is a compartment of its own that moves),
 //! a lift's speed, door time and car, the viewscreens, and the first layer of the console screens' atlas. Version 4
 //! (crew-npcs 7) adds a compartment's floor centre, where a bot goes to work in it, and the crew figures (the deck
-//! `figure`). Version 5 (light-baking 16) adds each compartment's light probe grid and the probes' blob.
+//! `figure`). Version 5 (light-baking 16) adds each compartment's light probe grid and the probes' blob. Version 6
+//! (tern-exterior 3) adds the ship's hull from its exterior model: its mesh in the vertex and index blobs, scaled to fit
+//! the vertex's range, its parts, and its own texture arrays after the rooms' in the texture blob.
 
 use serde::{Deserialize, Serialize};
 
 /// The file's magic number.
 pub const MAGIC: &[u8; 4] = b"SCDK";
 /// The format version this build reads and writes.
-pub const VERSION: u32 = 5;
+pub const VERSION: u32 = 6;
 
 /// One compartment's mesh in the file.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -193,6 +195,57 @@ pub struct DeckWalk {
     pub lifts: Vec<WalkLift>,
 }
 
+/// The ship's hull, from its exterior model (tern-exterior 3): one mesh in the shared blobs, drawn in parts.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct DeckHull {
+    /// The model it was compiled from, for the record.
+    pub source: String,
+    /// The mesh frame's origin in ship coordinates, metres: a vertex position times `scale` is relative to it.
+    pub origin_m: [f64; 3],
+    /// What a stored position is multiplied by to give metres (the hull is longer than the vertex's +/-32 m).
+    pub scale: f32,
+    /// Byte offset of its vertices in the vertex blob.
+    pub vertex_offset: u64,
+    /// Its vertex count.
+    pub vertex_count: u32,
+    /// Offset, in indices, of its indices in the index blob (relative to its own first vertex).
+    pub index_offset: u64,
+    /// Its index count.
+    pub index_count: u32,
+    /// Its parts, one a material, in the model's order.
+    pub parts: Vec<HullPart>,
+    /// Its texture arrays.
+    pub arrays: Vec<HullArray>,
+}
+
+/// One material's triangles of the hull.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct HullPart {
+    /// The model's material name.
+    pub material: String,
+    /// Its first index, within the hull's indices.
+    pub first: u32,
+    /// Its index count (three a triangle).
+    pub count: u32,
+    /// The texture array it samples (an index into `DeckHull::arrays`); None for a glowing part, whose colour is its
+    /// light.
+    pub array: Option<u32>,
+}
+
+/// One of the hull's texture arrays: square RGBA8 layers with a full mip chain, largest first.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct HullArray {
+    /// Width and height of a layer's top level, pixels.
+    pub size_px: u32,
+    /// Layers.
+    pub layers: u32,
+    /// Byte offset of each mip level (all layers of it) in the texture blob.
+    pub mip_offsets: Vec<u64>,
+}
+
 /// The file's index.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -217,6 +270,8 @@ pub struct DeckIndex {
     pub views: Vec<DeckView>,
     /// Probes in the probe blob.
     pub probe_count: u64,
+    /// The ship's hull from its exterior model, when it has one.
+    pub hull: Option<DeckHull>,
 }
 
 /// A deck file opened from its bytes.
@@ -341,10 +396,90 @@ pub fn read(bytes: &[u8]) -> Result<Deck<'_>, DeckError> {
     if t.mip_offsets.len() != t.mips as usize || t.layers == 0 || t.layers > 256 {
         return Err(e("the texture index is inconsistent"));
     }
+    for (k, &off) in t.mip_offsets.iter().enumerate() {
+        let px = u64::from((t.size_px >> k).max(1));
+        if off + px * px * 4 * u64::from(t.layers) > index.texture_bytes {
+            return Err(e("a mip level of the rooms' texture array runs past the texture blob"));
+        }
+    }
+    if let Some(h) = &index.hull {
+        check_hull(h, &index)?;
+    }
     Ok(Deck { index, vertices, indices, textures, walk, probes })
 }
 
+/// Every range the hull names lies inside the file, and its numbers are usable.
+fn check_hull(h: &DeckHull, index: &DeckIndex) -> Result<(), DeckError> {
+    let e = |m: &str| DeckError(format!("the hull: {m}"));
+    let v_end = h.vertex_offset + u64::from(h.vertex_count) * crate::vertex::DECK_VERTEX_BYTES as u64;
+    if v_end > index.vertex_bytes || h.index_offset + u64::from(h.index_count) > index.index_count {
+        return Err(e("its mesh points outside the file"));
+    }
+    if !(h.scale > 0.0 && h.scale.is_finite()) || h.origin_m.iter().any(|x| !x.is_finite()) {
+        return Err(e("its scale or origin is not usable"));
+    }
+    for p in &h.parts {
+        if p.count % 3 != 0 || u64::from(p.first) + u64::from(p.count) > u64::from(h.index_count) {
+            return Err(DeckError(format!("the hull: part {} lies outside its indices", p.material)));
+        }
+        if p.array.is_some_and(|a| a as usize >= h.arrays.len()) {
+            return Err(DeckError(format!("the hull: part {} samples a missing array", p.material)));
+        }
+    }
+    for a in &h.arrays {
+        if a.layers == 0 || a.layers > 256 || !a.size_px.is_power_of_two() {
+            return Err(e("a texture array's size is not usable"));
+        }
+        if a.mip_offsets.len() != a.size_px.trailing_zeros() as usize + 1 {
+            return Err(e("a texture array's mip chain is not whole"));
+        }
+        for (k, &off) in a.mip_offsets.iter().enumerate() {
+            let px = u64::from((a.size_px >> k).max(1));
+            if off + px * px * 4 * u64::from(a.layers) > index.texture_bytes {
+                return Err(e("a texture array runs past the texture blob"));
+            }
+        }
+    }
+    Ok(())
+}
+
 impl Deck<'_> {
+    /// The rooms' texture array as its mip levels, largest first, each exactly its layers' bytes (the hull's arrays
+    /// follow it in the blob).
+    pub fn texture_levels(&self) -> Vec<&[u8]> {
+        let t = &self.index.textures;
+        t.mip_offsets
+            .iter()
+            .enumerate()
+            .map(|(k, &off)| {
+                let px = (t.size_px >> k).max(1) as usize;
+                &self.textures[off as usize..off as usize + px * px * 4 * t.layers as usize]
+            })
+            .collect()
+    }
+    /// The hull's indices, as u32 relative to its own first vertex (empty when the ship has no hull).
+    pub fn hull_indices(&self) -> Vec<u32> {
+        let Some(h) = &self.index.hull else { return Vec::new() };
+        let s = &self.indices[h.index_offset as usize * 4..(h.index_offset as usize + h.index_count as usize) * 4];
+        s.chunks_exact(4).map(|b| u32::from_le_bytes(b.try_into().unwrap())).collect()
+    }
+    /// The hull's vertex bytes (empty when the ship has no hull).
+    pub fn hull_vertices(&self) -> &[u8] {
+        let Some(h) = &self.index.hull else { return &[] };
+        &self.vertices[h.vertex_offset as usize
+            ..h.vertex_offset as usize + h.vertex_count as usize * crate::vertex::DECK_VERTEX_BYTES]
+    }
+    /// One of the hull's texture arrays as its mip levels, largest first.
+    pub fn hull_array_levels(&self, a: &HullArray) -> Vec<&[u8]> {
+        a.mip_offsets
+            .iter()
+            .enumerate()
+            .map(|(k, &off)| {
+                let px = (a.size_px >> k).max(1) as usize;
+                &self.textures[off as usize..off as usize + px * px * 4 * a.layers as usize]
+            })
+            .collect()
+    }
     /// A compartment's indices, as u32 relative to its own first vertex.
     pub fn indices_of(&self, c: &DeckCompartment) -> Vec<u32> {
         let s = &self.indices[c.index_offset as usize * 4..(c.index_offset as usize + c.index_count as usize) * 4];
@@ -419,6 +554,7 @@ mod tests {
             },
             views: vec![],
             probe_count: 1,
+            hull: None,
         };
         (index, vec![7; 84], vec![0, 1, 2], vec![255; 4])
     }
@@ -435,6 +571,56 @@ mod tests {
         assert_eq!(d.indices_of(&i.compartments[0]), x);
         assert_eq!(d.vertices_of(&i.compartments[0]), &v[..]);
         assert_eq!(d.probe_grid(&i.compartments[0]).unwrap().data, &PROBE[..]);
+    }
+
+    /// The tiny deck with a hull: its one triangle again, a glowing part and a textured part on a 2 px array.
+    fn with_hull() -> (DeckIndex, Vec<u8>, Vec<u32>, Vec<u8>) {
+        let (mut i, v, mut x, mut t) = tiny();
+        x.extend([0, 1, 2, 2, 1, 0]);
+        i.index_count = 9;
+        let first = t.len() as u64;
+        t.extend(vec![200; 2 * 2 * 4 + 4]);
+        i.texture_bytes = t.len() as u64;
+        i.hull = Some(DeckHull {
+            source: "test.glb".into(),
+            origin_m: [0.0, 1.0, -3.5],
+            scale: 2.0,
+            vertex_offset: 0,
+            vertex_count: 3,
+            index_offset: 3,
+            index_count: 6,
+            parts: vec![
+                HullPart { material: "glow".into(), first: 0, count: 3, array: None },
+                HullPart { material: "skin".into(), first: 3, count: 3, array: Some(0) },
+            ],
+            arrays: vec![HullArray { size_px: 2, layers: 1, mip_offsets: vec![first, first + 16] }],
+        });
+        (i, v, x, t)
+    }
+
+    #[test]
+    fn a_deck_with_a_hull_reads_back_as_written() {
+        let (i, v, x, t) = with_hull();
+        let bytes = write(&i, &v, &x, &t, &TRI, &PROBE);
+        let d = read(&bytes).unwrap();
+        assert_eq!(d.index, i);
+        assert_eq!(d.hull_indices(), vec![0, 1, 2, 2, 1, 0]);
+        assert_eq!(d.hull_vertices(), &v[..]);
+        let levels = d.hull_array_levels(&i.hull.as_ref().unwrap().arrays[0]);
+        assert_eq!(levels.iter().map(|l| l.len()).collect::<Vec<_>>(), vec![16, 4], "2 px then 1 px, RGBA8");
+    }
+
+    #[test]
+    fn a_hull_pointing_outside_the_file_is_refused() {
+        let (mut i, v, x, t) = with_hull();
+        i.hull.as_mut().unwrap().parts[1].count = 6;
+        assert!(read(&write(&i, &v, &x, &t, &TRI, &PROBE)).is_err(), "a part past the hull's indices");
+        let (mut i, v, x, t) = with_hull();
+        i.hull.as_mut().unwrap().arrays[0].mip_offsets[1] = 1_000;
+        assert!(read(&write(&i, &v, &x, &t, &TRI, &PROBE)).is_err(), "a mip level past the texture blob");
+        let (mut i, v, x, t) = with_hull();
+        i.hull.as_mut().unwrap().scale = 0.0;
+        assert!(read(&write(&i, &v, &x, &t, &TRI, &PROBE)).is_err(), "a scale of zero");
     }
 
     #[test]

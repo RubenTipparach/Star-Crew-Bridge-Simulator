@@ -463,6 +463,10 @@ control's raked outer wall, facing in, and the positions below are the layout's 
 Ids D (damage control). Questions with a shot go to the owner's survey with the shot beside them;
 the rest are recommendations taken (ask only with screenshots, CLAUDE.md 13).
 
+Survey 1 closed on 2026-10-11 with D2 and D6 unanswered. By its rule a blank is the recommendation accepted, so they
+stand as their recommendation below; a comment in survey 2 (https://claude.ai/artifact/JQm65V7LHVWDJF8dPdZYqY) reopens
+any of them.
+
 | Id | Question and the fact it turns on | Options | Recommendation | Shot |
 | --- | --- | --- | --- | --- |
 | D1 | Are damage control teams crew bodies? `bridge-stations` left it here. | (a) Two teams of two NPC bodies that walk, suit, work and can die. (b) Abstract teams: a timer per job. | (a): the ship is a place and the danger is real for everyone. | none: recommendation taken (ask only with screenshots) |

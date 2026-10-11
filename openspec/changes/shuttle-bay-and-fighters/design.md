@@ -335,6 +335,10 @@ compartment air group). **Memory**: fixed slots for three craft and two pods.
 Ids H (hangar). Questions with a shot go to the owner's survey; the rest are recommendations taken
 (ask only with screenshots, CLAUDE.md 13).
 
+Survey 1 closed on 2026-10-11 with H1 and H2 unanswered. By its rule a blank is the recommendation accepted, so they
+stand as their recommendation below; a comment in survey 2 (https://claude.ai/artifact/JQm65V7LHVWDJF8dPdZYqY) reopens
+any of them.
+
 | Id | Question and the fact behind it | Options | Recommendation | Shot |
 | --- | --- | --- | --- | --- |
 | H1 | What do fighters do with no pilot? | (a) Fly as drones at reduced competence, launched only on an order. (b) Stay docked. (c) Launch themselves in combat. | (a) | `fighter-drop` |

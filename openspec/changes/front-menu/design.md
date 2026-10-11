@@ -87,4 +87,4 @@ again. Leaving the drill (Esc) hands back to the menu.
 
 | Id | Question | Recommendation | Status |
 | --- | --- | --- | --- |
-| Z1 | Approve the four buttons and their pages (the captures) | Approve | In the survey with the screenshots (https://claude.ai/artifact/5psUXejMotW8sZbTYno5Nb) |
+| X1 | Approve the four buttons and their pages (the captures) | Approve | In survey 2 with the screenshots (https://claude.ai/artifact/JQm65V7LHVWDJF8dPdZYqY) |

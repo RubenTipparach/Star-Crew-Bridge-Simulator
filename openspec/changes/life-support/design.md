@@ -460,6 +460,10 @@ compartment graph holds every link that moves air:
 Ids L (life support). Questions with a shot go to the owner's survey with the shot beside them; the
 rest are recommendations taken (ask only with screenshots, CLAUDE.md 13).
 
+Survey 1 closed on 2026-10-11 with L1, L2, L3 and L6 unanswered. By its rule a blank is the recommendation accepted,
+so they stand as their recommendations below; a comment in survey 2 (https://claude.ai/artifact/JQm65V7LHVWDJF8dPdZYqY)
+reopens any of them.
+
 | Id | Question and the fact it turns on | Options | Recommendation | Shot |
 | --- | --- | --- | --- | --- |
 | L1 | Are doors shut by default? Shut, a breach costs one room; open, a 1 m^2 breach anywhere would take the whole ship's air (408,600 mol, time constant about 82 s, the v1 run's 74 s scaled by the air aboard) to Armstrong's limit in about 3.9 minutes. | (a) Shut unless someone passes or the board holds them, open on approach. (b) Open, closing on an alarm only. | (a). | `atmosphere-normal` |

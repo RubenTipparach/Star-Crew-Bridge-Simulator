@@ -25,6 +25,8 @@ pub struct BridgeView {
     tex: TextureArray,
     panel_first: u32,
     panel_glow: f32,
+    /// The hull (tern-exterior 4): the bow's rim and the forward hull through the bridge's windows.
+    hull: Option<crate::hull::HullView>,
     /// Triangles drawn for the rooms.
     pub triangles: usize,
 }
@@ -35,14 +37,7 @@ impl BridgeView {
         let bytes = std::fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
         let d = sc_core::deck::read(&bytes).map_err(|e| format!("{}: {e}", path.display()))?;
         let t = &d.index.textures;
-        let levels: Vec<&[u8]> = (0..t.mips as usize)
-            .map(|k| {
-                let a = t.mip_offsets[k] as usize;
-                let b = t.mip_offsets.get(k + 1).map_or(d.textures.len(), |o| *o as usize);
-                &d.textures[a..b]
-            })
-            .collect();
-        let tex = r.make_texture_array_mips(t.size_px, t.layers, &levels);
+        let tex = r.make_texture_array_mips(t.size_px, t.layers, &d.texture_levels());
         let (mut rooms, mut player, mut crew, mut triangles) = (Vec::new(), None, None, 0);
         for c in &d.index.compartments {
             let idx = d.indices_of(c);
@@ -56,7 +51,8 @@ impl BridgeView {
                 _ => {}
             }
         }
-        Ok(Self { rooms, player, crew, tex, panel_first: t.panel_first, panel_glow: t.panel_glow[0], triangles })
+        let hull = crate::hull::HullView::load(r, &d);
+        Ok(Self { rooms, player, crew, tex, panel_first: t.panel_first, panel_glow: t.panel_glow[0], hull, triangles })
     }
 
     /// Draw the bridge from `eye` (ship frame) looking along `yaw` (0 to the bow) and `pitch` into `t`, with the
@@ -95,6 +91,9 @@ impl BridgeView {
                 clip_y: f32::MAX,
             };
             r.draw_deck(t, mesh, DeckProgram::Textured, &p, Some(&self.tex));
+        }
+        if let Some(h) = &self.hull {
+            h.draw(r, t, proj * view, eye);
         }
         let cube = sc_core::probes::fallback_cube();
         for (b, bot) in bodies {

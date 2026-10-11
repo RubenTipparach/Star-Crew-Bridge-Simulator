@@ -829,6 +829,10 @@ layers (0.7 MB with mips). Not measured: a cloud session renders on a CPU (CLAUD
 Questions go to the owner only with something to look at (CLAUDE.md 13). Rows marked
 "recommendation taken" have no picture to judge and proceed on the recommendation.
 
+Survey 1 closed on 2026-10-11 with K1, K2, K3 and K4 unanswered. By its rule a blank is the recommendation accepted,
+so they stand as their recommendations below; a comment in survey 2 (https://claude.ai/artifact/JQm65V7LHVWDJF8dPdZYqY)
+reopens any of them.
+
 | Id | Question and fact | Options | Recommendation | Mockup shot |
 | --- | --- | --- | --- | --- |
 | K1 | How thick are walls between compartments? The layout's air brushes touch (1,849.9 m^2 of shared wall, counting each side); insetting costs 231 m^3 (2.4 %) and 11 % of each corridor (v2 plan, 2026-10-05; was 1,667 m^2 and 208 m^3). The launch bays' ceilings, which dropped from 3.5 m to 3.0 m under the gallery slab on the v1 boxes, are 3.0 m in the layout since v2 | a. zero-thickness partitions with proud door frames; b. inset half a wall; c. move the brushes apart | a; keep the core's volumes as the layout's brushes | `deck-plan-deck-B-plan` (partitions drawn as single lines) |

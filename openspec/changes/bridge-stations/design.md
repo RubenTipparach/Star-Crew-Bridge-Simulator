@@ -1385,6 +1385,14 @@ Per CLAUDE.md 13, a question goes to the owner only with something to look at; t
 `docs/screenshots/mockups/`. The rest take the recommendation, recorded here as "recommendation
 taken (ask only with screenshots)".
 
+Survey 1 closed on 2026-10-11 with B12 unanswered. By its rule a blank is the recommendation accepted, so it stands as
+its recommendation below; a comment in survey 2 (https://claude.ai/artifact/JQm65V7LHVWDJF8dPdZYqY) reopens it.
+
+Answered in survey 1 and folded here on 2026-10-11: B4 as recommended ("recommended"); B5, shields belong to Science
+and Tactical keeps offensive weapons and targeting, to be revisited ("we'll come back to this later. shields belong in
+the science section, tactical is offensive weapons and targetting"); B6 NPC bodies ("npc bodies recommenedde"); B13
+approved (owner, 2026-10-10: "stations are not appearing the same as their approved mockups").
+
 | Id | Question, and the fact it turns on | Options | Recommendation | Shot |
 | --- | --- | --- | --- | --- |
 | B1 | The side stations (engineering, science, comms, flight ops) face the walls, so the viewscreen is 118-135 deg behind them. Keep the layout and swivel their look band toward the screen, or turn engineering and science to face the bow (yaw 0) so the screen is 45 deg to one side? | Keep wall-facing with a swivelled look band / turn engineering and science forward | Keep wall-facing: the captain sees every console over its operator's shoulder, the centre stays open, and the look band already shows the screen. **Answered 2026-10-06** (owner, in the survey): "yup, they have to integrate as part of the wall.": wall-facing, each side station built into the wall (11a's wall banks, kept by `command-suite`) | `bridge-engineering-console.png`, `bridge-alt-forward-wings.png` |

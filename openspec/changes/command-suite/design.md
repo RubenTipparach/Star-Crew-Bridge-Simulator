@@ -390,6 +390,10 @@ Per CLAUDE.md 13 a question goes to the owner only with something to look at. Th
 `docs/screenshots/mockups/command-deck-*.png`. The rest take the recommendation, recorded here as
 "recommendation taken (ask only with screenshots)".
 
+Survey 1 closed on 2026-10-11 with A1 and A5 unanswered. By its rule a blank is the recommendation accepted, so they
+stand as their recommendation below; a comment in survey 2 (https://claude.ai/artifact/JQm65V7LHVWDJF8dPdZYqY) reopens
+any of them.
+
 | Id | Question, and the fact it turns on | Options | Recommendation | Shot |
 | --- | --- | --- | --- | --- |
 | A1 | The side rooms as drawn: the ready room to port with the quarters behind it, the briefing room to starboard with the core behind it, the head and the bridge locker aft. Each side room is 44-67 m^2; the ship gains 459.9 m^3 of air | As drawn / swap port and starboard / give the head's place to an officer's cabin / other | As drawn: the captain's rooms are together on one side, the room the whole crew uses on the other | `command-deck-cutaway.png`, `command-deck-ready-room.png`, `command-deck-briefing-room.png`, `command-deck-quarters.png` |
