@@ -138,3 +138,9 @@
 - [ ] Load these exterior assets in the Rust renderer in a separate implementation request.
 - [ ] Update weapon occlusion and shields to account for the chosen attachments.
 - [ ] Measure exterior rendering and memory on a Pi 5.
+
+## Owner correction: integrated panel joints
+
+- [x] Enhance the inspected projected joints to match the supplied plate-edge reference.
+- [x] Replace the uniform seam overlay and inspect the finish on the hull.
+- [x] Rebuild every livery and LOD; verify seam continuity, windows and final captures.

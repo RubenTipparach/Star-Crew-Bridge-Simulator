@@ -1,7 +1,7 @@
 # Exterior design fleet
 
 The Tern uses broad white armor, a narrow grey equatorial split, and textured cyan bands with flat central joins that
-connect across roofs, bevels and vertical walls. Open [the inspection page](../../../docs/mockups/ship-exteriors.html)
+connect across roofs, bevels and vertical walls. Recessed joints have light plate lips and localized wear. Open [the inspection page](../../../docs/mockups/ship-exteriors.html)
 and select **Hull detail** for the equator, **Paint detail** for the flat band and finish, **Seam joins** for aligned linework, or a
 window to look into the furnished decks.
 Cyan is the default; Copper and Rescue use the same projected layout. The 1 m equatorial band has a 0.04 m side recess and small pipes. White armor remains dominant.
@@ -32,7 +32,8 @@ rooms fit inside the actual inner hull. Companion ships remain exterior concepts
 | Cyan (preferred) | [GLB](liveries/cobalt/tern.glb) | [GLB](liveries/cobalt/tern_lod1.glb) | [GLB](liveries/cobalt/tern_lod2.glb) |
 | Rescue | [GLB](liveries/rescue/tern.glb) | [GLB](liveries/rescue/tern_lod1.glb) | [GLB](liveries/rescue/tern_lod2.glb) |
 
-All three use the shared [neutral hull finish](../../../tools/materials/sources/tern-clean-finish.png)
+All three use the shared [integrated armor joints](../../../tools/materials/sources/tern-integrated-joints.png)
+([exact built-in imagegen prompt](../../../tools/materials/sources/tern-integrated-joints-prompt.txt))
 and the new [cyan pigment finish](../../../tools/materials/sources/tern-flat-painted-cyan.png),
 with its [exact built-in imagegen prompt](../../../tools/materials/sources/tern-flat-painted-cyan-prompt.txt).
 Material Maker carries its pigment variation into each selected color through the baked mask.
@@ -202,3 +203,16 @@ Reviewed fifty desktop captures and the phone default, including forty-five live
 the new Paint detail close-up, seams, side, pylons and initial Cyan. Paint detail and the Cyan
 hull close-up retain true-color PNGs because palette reduction obscured their pigment variation;
 the remaining captures use the normal screenshot palette compression.
+
+## Integrated armor joints, 2026-10-10
+
+The latest joint finish follows the owner reference: narrow recessed cores, ivory edge
+lips and localized wear. Material Maker samples core variation from the generated
+finish through the existing 3D mask and restores machinery from the seam-free source.
+All liveries and both LOD atlases are rebuilt. The painted band shape, hull geometry,
+windows and 78.17 MiB preview texture allocation remain unchanged.
+
+Forty shared-edge crossings and twenty-eight finished armor profiles per livery pass.
+The flat-seam regression is rejected; 1,584 core texels now carry varied material.
+All model and atlas bytes reproduce. See the [design validation](../../../openspec/changes/ship-exteriors/design.md)
+for the current results and delivered sizes.

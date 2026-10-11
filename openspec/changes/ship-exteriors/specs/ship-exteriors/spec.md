@@ -130,3 +130,8 @@ The player exterior SHALL retain its accepted silhouette while displaying angula
 #### Scenario: Paint follows the armor material
 - **WHEN** the livery is inspected close to the roof and wall joins
 - **THEN** panel seams and subtle surface finish SHALL remain visible through the painted area, with grey mechanical recesses retained.
+
+#### Scenario: Panel joints belong to the armor
+- **WHEN** the new seams are viewed close to the roof and wall transitions
+- **THEN** the aligned seams SHALL read as narrow recesses with light plate lips and localized wear, including through the colored paint.
+- **AND** a uniform grey line SHALL NOT overwrite the generated joint material or run across exposed pipes.

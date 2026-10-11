@@ -32,8 +32,8 @@
       ],
       "embedded_images": 3,
       "texture_bytes_with_mips": 5767164,
-      "sha256": "aafc4246bd989aba1698f300d8d8fe74909733fa8f808d36293d8f39c49f6cd8",
-      "bytes": 1703972,
+      "sha256": "f02573deca27ea603c10700b9a15c30b3add3317c3707a207a505cc3eb99011e",
+      "bytes": 1853340,
       "name": "SCS Tern",
       "class": "Heron-class frigate",
       "role": "Player ship",
@@ -1770,8 +1770,8 @@
       ],
       "embedded_images": 1,
       "texture_bytes_with_mips": 5592404,
-      "sha256": "7b61eb0a58fc6fa58f7e06c158b4ffdaf3c600e8d383434b5a8396e0cf07f750",
-      "bytes": 1394100,
+      "sha256": "44605d1696635d3158259c4dc45ce17ca9dc317bc9c22ce11719f6cb8b19e3b7",
+      "bytes": 1503852,
       "name": "SCS Tern",
       "class": "Heron-class frigate",
       "role": "Player ship",
@@ -1877,8 +1877,8 @@
         "file": "atlases/tern_lod1.png",
         "px": 1024,
         "emission_coverage": 0.03386,
-        "sha256": "4ba815aa7968e8eac1bc77b47cdd2dfc7dd25485f5022a68feb02a5da76ba500",
-        "bytes": 1293402
+        "sha256": "496c9974c9ec8b7261a30259931e8ac4b201e18853653a3dc4bc6305281e1a2c",
+        "bytes": 1403154
       }
     },
     "tern_lod2": {
@@ -1906,8 +1906,8 @@
       ],
       "embedded_images": 1,
       "texture_bytes_with_mips": 1398100,
-      "sha256": "ba61e33b71712728da40b6435fe721b1de917420fd89440cc6ece292ced891fe",
-      "bytes": 370996,
+      "sha256": "b9947ff3e46ea9afe44415b81309a25db7e9946245883c5a2d4472346c96e874",
+      "bytes": 396700,
       "name": "SCS Tern",
       "class": "Heron-class frigate",
       "role": "Player ship",
@@ -1940,8 +1940,8 @@
         "file": "atlases/tern_lod2.png",
         "px": 512,
         "emission_coverage": 0.03419,
-        "sha256": "4b9cafe5f3388126b1126189877aa3aeb0e731a8c214ace600daaca4370d3003",
-        "bytes": 329141
+        "sha256": "512b31a4e43f12befda1cfbc51d05f8c32298f9af234a569263f5254b8dcbde2",
+        "bytes": 354846
       }
     }
   },

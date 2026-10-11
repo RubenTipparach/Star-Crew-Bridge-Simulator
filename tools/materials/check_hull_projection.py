@@ -35,41 +35,82 @@ def check_flat_bands(mask, projection):
             "max_edge_spread_m": spread, "edge_tolerance_m": .18}
 
 
-def check_seam_joins(packed, projection):
-    """Read both UV profiles where projected seams cross real mesh edges."""
+def check_seam_joins(packed):
+    """Check all geometric crossings, and textured cores where they cross armor.
+
+    Exposed pipes no longer carry painted seam strokes. Classify armor using the
+    retained seam-free painting, independently of the enhanced joint's color.
+    """
     probes = json.loads((SOURCES / "tern-seam-probes.json").read_text())
-    target = np.asarray(projection["seam_srgb"])
     rgb = packed[:, :, :3].astype(float) / 255
+    mask = np.asarray(Image.open(SOURCES / "tern-projected-masks.png").convert("RGB")) / 255
+    original = np.asarray(Image.open(SOURCES / "tern-seamless-finish.png").convert("RGB")) / 255
     offsets = np.linspace(-probes["profile_half_length_z_m"],
                           probes["profile_half_length_z_m"], 81)
-    errors, separations = [], []
+
+    def sample(image, uv):
+        x = np.clip((uv[:, 0]*image.shape[1]).astype(int), 0, image.shape[1]-1)
+        y = np.clip(((1-uv[:, 1])*image.shape[0]).astype(int), 0, image.shape[0]-1)
+        return image[y, x]
+
+    def stroke_center(candidates):
+        assert len(candidates), "Projected armor joint has no recessed core"
+        strokes = np.split(candidates, np.flatnonzero(np.diff(candidates) > 1) + 1)
+        stroke = min(strokes, key=lambda group: abs(offsets[group].mean()))
+        return float(offsets[stroke].mean())
+
+    mask_separations, armor_offsets, core_colors = [], [], []
     for probe in probes["probes"]:
         centers, tolerances = [], []
         for profile in probe["profiles_uv"]:
             uv = np.asarray(profile)
-            x = np.clip((uv[:, 0] * rgb.shape[1]).astype(int), 0, rgb.shape[1]-1)
-            y = np.clip(((1-uv[:, 1]) * rgb.shape[0]).astype(int), 0, rgb.shape[0]-1)
-            difference = np.max(abs(rgb[y, x] - target), axis=1)
-            error = float(difference.min())
-            errors.append(error)
-            assert error < .09, f"Missing seam at {probe['position_m']}: RGB error {error:.3f}"
-            candidates = np.flatnonzero(difference <= error + .012)
-            # A nearby pipe can share the seam color. Locate a contiguous stroke;
-            # averaging disjoint strokes invents a center in the white space.
-            strokes = np.split(candidates, np.flatnonzero(np.diff(candidates) > 1) + 1)
-            stroke = min(strokes, key=lambda group: abs(offsets[group].mean()))
-            center = float(offsets[stroke].mean())
             pixels = max(abs((uv[-1]-uv[0]) * [rgb.shape[1], rgb.shape[0]]))
-            tolerance = max(.16, 1.4 * (offsets[-1]-offsets[0]) / max(pixels, 1))
-            assert abs(center) <= tolerance, f"Seam shifted from {probe['position_m']} by {center:.3f} m"
+            tolerance = max(.16, 1.4*(offsets[-1]-offsets[0])/max(pixels, 1))
+            center = stroke_center(np.flatnonzero(sample(mask, uv)[:, 1] > .5))
+            assert abs(center) <= tolerance, f"Projected seam shifted at {probe['position_m']}"
             centers.append(center)
             tolerances.append(tolerance)
+            armor = sample(original, uv).min(axis=1)
+            # At a mechanical boundary there need not be a seam on both sides.
+            # Broad armor profiles must still contain the actual shaded recess.
+            if armor[40] < .75 or (armor > .75).mean() < .8:
+                continue
+            colors = sample(rgb, uv)
+            luminance = colors @ np.asarray([.2126, .7152, .0722])
+            neutral = colors.max(axis=1)-colors.min(axis=1) < .13
+            core = np.flatnonzero(neutral & (luminance >= .23) & (luminance <= .52))
+            painted_center = stroke_center(core)
+            assert abs(painted_center) <= tolerance, (
+                f"Enhanced joint shifted from {probe['position_m']} by {painted_center:.3f} m")
+            armor_offsets.append(abs(painted_center))
+            core_colors.append(colors[np.argmin(abs(offsets-painted_center))])
         separation = abs(centers[0]-centers[1])
         assert separation <= sum(tolerances), f"Seam jumps across edge at {probe['position_m']}"
-        separations.append(separation)
-    return {"shared_edge_crossings": len(separations), "receiving_face_profiles": len(errors),
-            "max_seam_rgb_error": max(errors), "max_join_offset_m": max(separations),
+        mask_separations.append(separation)
+    assert len(armor_offsets) >= 20, "Too few finished armor joints checked"
+    variation = float(np.ptp(np.asarray(core_colors), axis=0).max()*255)
+    assert variation > 10, "Joint cores have been replaced with a uniform color"
+    return {"shared_edge_crossings": len(mask_separations),
+            "projected_face_profiles": 2*len(mask_separations),
+            "finished_armor_profiles": len(armor_offsets),
+            "max_projected_join_offset_m": max(mask_separations),
+            "max_finished_core_offset_m": max(armor_offsets),
+            "core_channel_range": variation,
             "position_tolerance": "1.4 texels per receiving face, minimum 0.16 m"}
+
+
+def check_joint_finish(packed):
+    """Reject constant seam fills on independently classified ivory armor."""
+    size = (packed.shape[1], packed.shape[0])
+    mask = np.asarray(Image.open(SOURCES / "tern-projected-masks.png").convert("RGB")
+                      .resize(size, Image.Resampling.BILINEAR))
+    original = np.asarray(Image.open(SOURCES / "tern-seamless-finish.png").convert("RGB")
+                          .resize(size, Image.Resampling.BILINEAR))
+    cores = (mask[:, :, 1] > 210) & (mask[:, :, 2] > 230) & (original.min(axis=2) > 220)
+    assert cores.sum() >= 100, "Too few armor seam texels to judge their finish"
+    spread = float(np.ptp(np.percentile(packed[:, :, :3][cores], [5, 95], axis=0), axis=0).max())
+    assert spread > 8, f"Joint material is a uniform line ({spread}/255 range)"
+    return {"armor_core_texels": int(cores.sum()), "core_5_to_95_percentile_range": spread}
 
 
 def main():
@@ -111,11 +152,14 @@ def main():
         assert not packed[:, :, 3].any(), f"{livery}: hull paint emits light"
         report["liveries"][livery] = {
             "source_sha256": hashlib.sha256(source_path.read_bytes()).hexdigest(),
-            "source_px": source.width, "stripe_interior_pixels": int(inside.sum()),
+            "source_px": source.width,
+            "joint_source_sha256": hashlib.sha256((SOURCES / "tern-integrated-joints.png").read_bytes()).hexdigest(),
+            "stripe_interior_pixels": int(inside.sum()),
             "stripe_color_coverage": coverage, "material_maker_rgb_preserved": True,
             "paint_finish_5_to_95_percentile_range": finish_range,
             "hull_emission_pixels": 0,
-            "seam_joins": check_seam_joins(packed, projection),
+            "seam_joins": check_seam_joins(packed),
+            "joint_finish": check_joint_finish(packed),
         }
     (SOURCES / "tern-enhancement-validation.json").write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report, indent=2))

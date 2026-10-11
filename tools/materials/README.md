@@ -41,16 +41,21 @@ registration while removing the obsolete roof seams. All roofs, bevels and walls
 same station planes. The main hull paint has a flat 9 m central join, with a narrow equatorial
 service belt excluded from the livery. `exterior_uv_guide.py` exports supporting mesh edges.
 After inspecting the layout in 3D, built-in imagegen produced `tern-clean-finish.png` with
-quieter ivory paint. `tern-flat-painted-cyan.png` adds the pigment finish after inspection of
+quieter ivory paint. The current `tern-integrated-joints.png` and its retained built-in
+imagegen prompt enhance those same projected boundaries with recessed cores, ivory lips
+and localized wear, matching the owner reference. `tern-flat-painted-cyan.png` adds the pigment finish after inspection of
 the new flat-band layout. The three graphs preserve its tonal variation under the colors in
-`data/ships/exteriors.json`, retain dark mechanical relief, and apply seam cores over the paint. Geometry and materials own the
+`data/ships/exteriors.json`, retain dark mechanical relief, and sample varied joint-core tones from the enhanced finish
+through the 3D seam mask. Seam-free source texels remove guide strokes over pipes.
+Geometry and materials own the
 narrow physical service recess. Blender bakes each reduced atlas from the finished full model.
 
 `check_hull_projection.py` checks actual packed stripe color coverage, samples both receiving
 UV faces at shared seam crossings, measures ten real roof traces for the flat center edges,
 rejects uniform-color paint, confirms Material Maker RGB is preserved, and rejects emissive
-hull paint. Disjoint similarly colored machinery is excluded from each seam's contiguous
-stroke. Run it after rendering and packaging the graphs. Sources, exact imagegen prompts,
+hull paint. All eighty projected profiles are checked; twenty-eight broad armor profiles
+also verify the finished varied recess. Mechanical boundaries are classified using the
+retained seam-free source, since pipes no longer receive plate-seam strokes. Run it after rendering and packaging the graphs. Sources, exact imagegen prompts,
 graphs and models are linked in the [asset README](../../assets/models/exteriors/README.md).
 
 The original [paint bitmap](sources/exterior-paint.png) was generated with the built-in image_gen tool. Its [complete prompt](sources/exterior-paint-prompt.txt) is committed beside it. The [exterior paint graph](ptex/exterior_paint.ptex) imports that bitmap as its editable albedo input. It supplies pearl and graphite ramps without a panel grid. Material Maker 1.4 rendered the graph at 2048 px using the owner's NVIDIA GPU; the existing post-process produced the two 128 px layers at 32 px/m. Existing layer indices remain stable; the new layers are 11 and 12, costing 174,760 bytes with mipmaps.

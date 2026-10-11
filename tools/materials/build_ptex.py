@@ -416,11 +416,19 @@ def exterior_surfaces():
 
 
 def fitted_tern_hull(livery="copper"):
-    """Projected paint with generated pigment variation and retained armor relief."""
-    g = Graph("Tern Painted Flat Band - " + livery.title())
-    source = g.node("image", image="../sources/tern-clean-finish.png")
+    """Projected livery over generated recessed joints and worn armor lips."""
+    g = Graph("Tern Integrated Armor Joints - " + livery.title())
+    source = g.node("image", image="../sources/tern-integrated-joints.png")
     enhanced = g.node("decompose", g.node("image", image="../sources/tern-flat-painted-cyan.png"))
     mask = g.node("decompose", g.node("image", image="../sources/tern-projected-masks.png"))
+    # The enhancement retains guide strokes over some pipes. Restore only those
+    # mechanical texels from the seam-free painting, using the original 3D mask.
+    mechanical = g.node("image", image="../sources/tern-seamless-finish.png")
+    original = g.node("decompose", mechanical)
+    original_value = g.math(g.math((original, 0), (original, 1), op=MIN), (original, 2), op=MIN)
+    original_armor = g.math(g.math(original_value, g.grey(.55), op=SUB), g.grey(.2), op=DIV, clamp=True)
+    repair = g.math((mask, 1), g.math(g.grey(1), original_armor, op=SUB), op=MUL)
+    source = g.blend(mechanical, source, repair, mode=NORMAL_B)
     with open(os.path.join(HERE, "../../data/ships/tern/hull_paint_projection.json")) as f:
         projection = json.load(f)
     with open(os.path.join(HERE, "../../data/ships/exteriors.json")) as f:
@@ -441,8 +449,11 @@ def fitted_tern_hull(livery="copper"):
     shade = g.math(g.math(shade, g.grey(.60), op=MAX), g.grey(1.12), op=MIN)
     coat = g.blend(g.color(color), shade, mode=MULTIPLY)
     albedo = g.blend(coat, source, paint, mode=NORMAL_B)
-    # Panel joints remain visible through paint on the same exact projected stations.
-    albedo = g.blend(g.color(projection["seam_srgb"]), albedo, (mask, 1), mode=NORMAL_B)
+    # Keep the narrow recess centered on the 3D projection, sampling its tone from
+    # the generated finish. Its varied core sits inside the painted bevel and wear;
+    # exposed machinery is excluded. No constant-color ruler stroke is applied.
+    joint = g.colorize((rgba, 1), grad((0, "#434740"), (1, "#77776f")))
+    albedo = g.blend(joint, albedo, g.math((mask, 1), original_armor, op=MUL), mode=NORMAL_B)
     g.material(albedo=albedo, metallic_v=0.0, roughness_v=0.85)
     return g
 

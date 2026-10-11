@@ -280,3 +280,47 @@ Reviewed fifty desktop captures and the phone default, including forty-five live
 the new Paint detail close-up, seams, side, pylons and initial Cyan. Paint detail and the Cyan
 hull close-up retain true-color PNGs because palette reduction obscured their pigment variation;
 the remaining captures use the normal screenshot palette compression.
+
+## Integrated panel joint finish, 2026-10-10
+
+Replace the constant grey seam overlay with generated material detail on the already
+projected boundaries. The retained flat-band projection and inspected Paint detail
+capture are the layout reference before enhancement. Enhance the neutral atlas with
+small recessed dark cores, light edge lips and restrained grime/chipping beside the
+joints, matching the owner reference. Keep seams straight and at their existing UV
+positions. Machinery must not receive a line painted across its pipes. Material Maker
+uses the enhanced neutral art and preserves its dark joints through every color coat;
+there is no uniform seam-color overwrite. A narrow core samples varied tones from the
+enhanced surface through the retained 3D mask, keeping its center aligned. Restore pipe
+texels from the seam-free source where the enhancement retained a guide stroke.
+Check the finished UV profiles on real shared
+mesh edges, inspect close views and all livery/LOD combinations, and rebake both LODs.
+
+This changes offline bitmap sources only. Geometry, draw counts, atlas dimensions and
+78.17 MiB preview texture allocation remain unchanged; no Pi speed claim is made.
+
+The finished graph retains generated edge lips and wear, using the 3D mask only to
+center a narrow varied recess on armor. The source painting supplies its color variation;
+no runtime material, texture slot, geometry or normal map is added. Historical clean,
+seam-free and pigment sources are retained.
+
+Verification: all eighty projected profiles at forty shared edges still agree. Twenty-eight
+broad armor profiles per livery contain the finished recess within the existing tolerance
+(1.4 texels, minimum 0.16 m); maximum finished core offset is 0.1275 m. Mechanical faces
+are classified from the pre-enhancement seam-free atlas and no longer require a painted
+plate joint. Across 1,584 armor-core texels, the 5th-to-95th percentile range is 20 levels
+of 255. The former flat-color version from d73ac4b has zero range and is rejected by the
+same guard. Paint coverage is 99.32% / 99.45% / 99.33% for Cyan / Copper / Rescue,
+with localized joint wear accounting for the remainder. All ten flat-band roof traces pass.
+
+All three livery sets and both reduced atlases reproduce byte for byte. Full / medium /
+distant GLB bytes: Copper 1,853,552 / 1,503,112 / 396,428; Cyan 1,855,780 / 1,504,316 /
+396,448; Rescue 1,853,340 / 1,503,852 / 396,700. Decoded texture cost is unchanged.
+The window patch, 460 opening/frame rays, twenty menu entries, three deck cutaways,
+nine livery/LOD selections, separate controls and distinct LOD textures pass. OpenSpec
+passes all 42 items. Geometry is unchanged, so the preceding overlap result still applies.
+
+Reviewed fifty desktop captures and the phone default, including all forty-five
+livery/LOD views, Paint detail, seam joins, side and pylons. Paint detail and Cyan
+hull detail retain true-color screenshots to preserve the subtle finish; the others
+use the usual screenshot palette compression.
