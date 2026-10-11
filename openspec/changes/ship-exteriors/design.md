@@ -459,3 +459,28 @@ Rust formatting passes. Strict Clippy encounters main's existing `nonminimal_boo
 at `crates/sc-core/src/combat/mod.rs:1061`; that source is unchanged from main.
 Targeted Clippy passes with only that known lint allowed. The merged OpenSpec check
 passes all 48 items. The source branch includes main at `57bc0d7`.
+
+### Owner refinement: blunt shoulder channel termination
+
+The painted machinery exposure beside the registration tapers to a needle on the
+outer shoulder. Replace the pointed ends with matching white armor and bound the
+remaining exposure by the existing Z = 2 m and Z = 11 m station joints. Author the correction
+on the real hull, mirrored on both sides, then bake its UV mask. Reuse the approved
+generated armor finish through the native Material Maker graph; preserve the
+registration, projected panel joints, cyan ribbon, equator and dedicated nacelles.
+Inspect the actual shoulder above and from the side, and rebake all livery LODs.
+This material refinement adds no triangles, runtime textures or draws. Existing
+4,440 / 1,290 / 496 triangle and 7 / 1 / 1 draw budgets remain unchanged.
+
+Verified both shoulder ends in 22 captures, including old-texture comparisons on
+identical geometry. The real exported UVs and embedded textures pass 360 samples
+across nine models; the former pointed model fails the regression guard. All nine
+models and six LOD atlases reproduce. Only 6,253-6,254 texels per 1024 px hull atlas
+change (about 0.60 percent), all inside the projected correction. The mask repeats
+byte for byte. The new plate sampling retains the source texel scale.
+
+Window/frame rays remain 460 per livery, and the preview remains 82,992 triangles,
+51 draws and 88.83 MiB. Existing aligned seams, deeper cyan, white border and flat
+ribbon joins pass their artifact checks. All eight sc-tools tests and 48 OpenSpec
+items pass. No new Pi performance claim is made. Captures and measurements live in
+`docs/screenshots/exteriors-shoulder/README.md`.

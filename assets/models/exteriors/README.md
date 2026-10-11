@@ -8,6 +8,11 @@ Select **Drive detail** for the broad forward collector and dedicated nacelle pa
 or **Warp pylons** for the whole level assembly and its tapered rear end.
 Cyan is the default; Copper and Rescue use the same projected layout. The 1 m equatorial band has a 0.04 m side recess and small pipes. White armor remains dominant.
 
+The shoulder channel beside the registration now ends at panel joints instead of
+pointed grey wedges. See the [before/after shoulder review](../../../docs/screenshots/exteriors-shoulder/README.md).
+Its [editable 3D projection](shoulder-armor-projection.blend) produces an offline mask;
+the existing Material Maker graphs reuse matching generated armor beneath it.
+
 Open [fleet.blend](fleet.blend) for the editable Copper fleet, or the livery folders for their
 packed Blender sources. All GLBs embed their textures. The engine's deck compiler now loads
 the default Cyan full model; the HTML preview also exposes the other liveries and LODs.

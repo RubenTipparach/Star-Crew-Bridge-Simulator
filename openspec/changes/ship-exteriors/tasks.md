@@ -164,3 +164,9 @@
 - [x] Rebuild liveries and LODs; inspect close views and verify budgets.
 - [x] Accommodate the rectangular atlas in latest main's hull compiler and verify the delivered model.
 - [x] Complete final branch review and prepare the verified follow-up PR.
+
+## Owner refinement: blunt shoulder channel termination
+
+- [x] Project the correction on the actual shoulder and inspect its UV bake in 3D.
+- [x] Reuse matching armor finish, rebuild all liveries/LODs and inspect both sides.
+- [x] Validate continuity, unchanged budgets and reproducible assets; push the refinement.

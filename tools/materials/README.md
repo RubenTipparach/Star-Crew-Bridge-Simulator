@@ -24,6 +24,14 @@ python3 tools/materials/postprocess.py                                  # rebuil
 
 Needs Python 3 with numpy and Pillow (`pip install numpy pillow`).
 
+Shoulder refinement, 2026-10-11: `tools/blender/project_shoulder_armor.py` bakes
+`sources/tern-shoulder-armor-mask.png` on the actual hull. The native hull graphs
+sample clear armor from the approved `tern-seamless-finish.png` at its existing texel scale through that mask,
+then apply the existing projected seams and livery. Both channel ends meet panel
+joints, without a pointed grey sliver. The source painting is retained unchanged;
+the mask is offline authoring data and adds no runtime allocation. See the
+[shoulder review](../../docs/screenshots/exteriors-shoulder/README.md).
+
 ## Custom exterior paint, 2026-10-10
 
 Nacelle refinement, 2026-10-11: [tern_nacelle.ptex](ptex/tern_nacelle.ptex) packages the

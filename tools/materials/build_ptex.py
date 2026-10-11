@@ -426,20 +426,33 @@ def fitted_tern_nacelle():
 def fitted_tern_hull(livery="copper"):
     """Projected livery over generated recessed joints and worn armor lips."""
     g = Graph("Tern Integrated Armor Joints - " + livery.title())
+    with open(os.path.join(HERE, "../../data/ships/tern/hull_paint_projection.json")) as f:
+        projection = json.load(f)
+    cap = projection["shoulder_termination"]
+    shoulder = g.node("decompose", g.node("image", image="../sources/tern-shoulder-armor-mask.png"))
+    mechanical = g.node("image", image="../sources/tern-seamless-finish.png")
     source = g.node("image", image="../sources/tern-integrated-joints.png")
+    # Sample approved clear armor, avoiding registration and preexisting panel lines.
+    # Its new boundaries and joints come from the actual 3D projection.
+    # R is coverage, G the forward cap, B the port cap. Native transform maps use
+    # 2*input-1, allowing opposite X offsets and a forward-only Y offset at 1:1 scale.
+    tx = g.math(g.grey(1), (shoulder, 2), op=SUB)
+    ty = g.math(g.grey(.5), g.math((shoulder, 1), g.grey(.5), op=MUL), op=ADD)
+    plate = g.node("transform", mechanical, tx, ty, scale_x=1, scale_y=1,
+                   translate_x=cap["armor_sample_translate_x"],
+                   translate_y=cap["armor_sample_translate_y"], rotate=0, repeat=False)
+    source = g.blend(plate, source, (shoulder, 0), mode=NORMAL_B)
     enhanced = g.node("decompose", g.node("image", image="../sources/tern-flat-painted-cyan.png"))
     mask = g.node("decompose", g.node("image", image="../sources/tern-projected-masks.png"))
     ribbon = g.node("decompose", g.node("image", image="../sources/tern-projected-ribbon.png"))
     # The enhancement retains guide strokes over some pipes. Restore only those
     # mechanical texels from the seam-free painting, using the original 3D mask.
-    mechanical = g.node("image", image="../sources/tern-seamless-finish.png")
+    mechanical = g.blend(plate, mechanical, (shoulder, 0), mode=NORMAL_B)
     original = g.node("decompose", mechanical)
     original_value = g.math(g.math((original, 0), (original, 1), op=MIN), (original, 2), op=MIN)
     original_armor = g.math(g.math(original_value, g.grey(.55), op=SUB), g.grey(.2), op=DIV, clamp=True)
     repair = g.math((mask, 1), g.math(g.grey(1), original_armor, op=SUB), op=MUL)
     source = g.blend(mechanical, source, repair, mode=NORMAL_B)
-    with open(os.path.join(HERE, "../../data/ships/tern/hull_paint_projection.json")) as f:
-        projection = json.load(f)
     with open(os.path.join(HERE, "../../data/ships/exteriors.json")) as f:
         liveries = json.load(f)["liveries"]
     color = next(row["paint_srgb"] for row in liveries

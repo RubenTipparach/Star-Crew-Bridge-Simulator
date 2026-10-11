@@ -156,3 +156,8 @@ The player exterior SHALL retain its accepted silhouette while displaying angula
 - **WHEN** the hull compiler loads a rectangular power-of-two nacelle image
 - **THEN** it SHALL expand the shorter axis into the existing square array format with exact pixel replication, preserving normalized UVs.
 - **AND** the build review SHALL report the resulting runtime texture allocation against the scene budget.
+
+#### Scenario: Inspect the shoulder channel ends
+- **WHEN** either shoulder beside the registration is viewed from above or from the side
+- **THEN** matching white armor SHALL cover the pointed subhull slivers, leaving a blunt channel between the existing Z = 2 m and Z = 11 m panel joints.
+- **AND** both sides, every livery and each custom LOD bake SHALL retain those terminations without adding geometry or a runtime texture.
