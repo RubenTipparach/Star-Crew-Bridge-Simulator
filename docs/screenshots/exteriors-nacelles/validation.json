@@ -103,5 +103,19 @@
     "previous generic material",
     "reversed shell",
     "4.21 px per metre stretched UVs"
-  ]
+  ],
+  "engine": {
+    "sc_tools_tests_passed": 8,
+    "runtime_hull_texture_bytes": 28136784,
+    "runtime_hull_texture_mib": 26.833328247070312,
+    "room_texture_bytes_reference": 58400000,
+    "combined_texture_mib_estimate": 82.52790832519531,
+    "scene_ceiling_mib": 96,
+    "full_runtime_deck_rebuilt": false,
+    "pi_timing_measured": false,
+    "format_check": "passed",
+    "strict_clippy": "blocked by pre-existing sc-core nonminimal_bool at combat/mod.rs:1061",
+    "targeted_clippy": "passed with only that existing lint allowed"
+  },
+  "openspec_items_passed": 48
 }

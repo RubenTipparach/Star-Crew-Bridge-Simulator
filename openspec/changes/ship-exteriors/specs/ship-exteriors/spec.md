@@ -154,4 +154,5 @@ The player exterior SHALL retain its accepted silhouette while displaying angula
 
 #### Scenario: Compile the dedicated atlas for the engine
 - **WHEN** the hull compiler loads a rectangular power-of-two nacelle image
-- **THEN** it SHALL expand the shorter axis into the existing square array format with exact pixel replication, preserving normalized UVs and checking the runtime texture allocation.
+- **THEN** it SHALL expand the shorter axis into the existing square array format with exact pixel replication, preserving normalized UVs.
+- **AND** the build review SHALL report the resulting runtime texture allocation against the scene budget.

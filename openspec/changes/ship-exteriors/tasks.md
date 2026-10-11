@@ -135,7 +135,7 @@
 ## Separate engine implementation
 
 - [ ] Review the exterior art with the owner.
-- [ ] Load these exterior assets in the Rust renderer in a separate implementation request.
+- [x] Load the default Cyan exterior in the Rust renderer through `tern-exterior` and the deck compiler.
 - [ ] Update weapon occlusion and shields to account for the chosen attachments.
 - [ ] Measure exterior rendering and memory on a Pi 5.
 
@@ -162,4 +162,5 @@
 - [x] Reverse the long taper, broaden forward collectors and export actual UV linework.
 - [x] Inspect the projected model, generate dedicated artwork and package its native graph.
 - [x] Rebuild liveries and LODs; inspect close views and verify budgets.
-- [ ] Accommodate the rectangular atlas in latest main's hull compiler, verify and push the follow-up PR.
+- [x] Accommodate the rectangular atlas in latest main's hull compiler and verify the delivered model.
+- [x] Complete final branch review and prepare the verified follow-up PR.

@@ -449,3 +449,13 @@ and frame rays pass per livery, with all twenty choices, three cutaways and nine
 livery/LOD selections working. The complete preview uses 82,992 triangles, 51 draws
 and 88.83 MiB. Exterior fighting surfaces are absent; existing interior trim overlap
 is 0.046 m2. Main hull paint, seams, deeper cyan and the white outline remain validated.
+
+Engine compatibility verification: all eight `sc-tools` tests pass, including the
+delivered Cyan GLB, packed geometry within 2 mm and rectangular paint expansion in
+both orientations. The compiler reports 28,136,784 bytes (26.8333 MiB) for the hull's
+texture arrays including mips. The combined 82.53 MiB estimate uses main's previously
+measured 58.4 MB rooms; a complete runtime deck was not regenerated for this art update.
+Rust formatting passes. Strict Clippy encounters main's existing `nonminimal_bool`
+at `crates/sc-core/src/combat/mod.rs:1061`; that source is unchanged from main.
+Targeted Clippy passes with only that known lint allowed. The merged OpenSpec check
+passes all 48 items. The source branch includes main at `57bc0d7`.

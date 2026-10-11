@@ -29,6 +29,12 @@ textures with mipmaps. The 96 MiB scene ceiling is retained. These are asset cou
 not Pi frame-time measurements. All three liveries pass 460 real window/frame rays.
 Exterior overlap is zero; the existing interior trim overlap remains 0.046 m2.
 
+The engine compiler reads the revised Cyan GLB and expands the rectangular image
+into its existing square array format. Eight tool tests pass; the actual compiled
+hull textures use 28,136,784 bytes (26.8333 MiB) including mips. With main's previously
+measured 58.4 MB room array, the combined estimate is 82.53 MiB. This is not a fresh
+whole-deck rebuild or Pi measurement. The views here are from the HTML preview.
+
 Reproduce the focused captures after rebuilding and inlining the models:
 
 ```powershell

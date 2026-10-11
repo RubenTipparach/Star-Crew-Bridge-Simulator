@@ -9,8 +9,8 @@ or **Warp pylons** for the whole level assembly and its tapered rear end.
 Cyan is the default; Copper and Rescue use the same projected layout. The 1 m equatorial band has a 0.04 m side recess and small pipes. White armor remains dominant.
 
 Open [fleet.blend](fleet.blend) for the editable Copper fleet, or the livery folders for their
-packed Blender sources. All GLBs embed their textures. These are delivered art assets and a
-design mockup; the Rust renderer does not load them yet.
+packed Blender sources. All GLBs embed their textures. The engine's deck compiler now loads
+the default Cyan full model; the HTML preview also exposes the other liveries and LODs.
 
 | Model | Design | Triangles | Ceiling | Material draws |
 | --- | --- | ---: | ---: | ---: |
@@ -133,6 +133,9 @@ The restored narrow service recess and pipes add 608 full-detail triangles. Tern
 uses 82,992 triangles in 51 draws. Decoded textures with mipmaps use 88.83 MiB against the
 96 MiB scene ceiling; the exterior library alone is 68.50 MiB. These are asset counts, not
 Pi frame-time measurements. Runtime rotation will need an adaptation of the fixed sun bake.
+The engine's existing square-array format expands the nacelle texture to 2048 x 2048 with
+exact pixel replication during compilation. The full Cyan hull's runtime maps therefore
+cost 26.83 MiB, separate from the preview's all-livery allocation. Normalized UVs stay intact.
 Warp animation, damage meshes, turret articulation, attachment collision and weapon/shield
 occlusion updates remain separate engine work.
 
