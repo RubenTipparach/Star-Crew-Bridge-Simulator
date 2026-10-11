@@ -26,8 +26,13 @@ const opt = (name, dflt) => { const i = args.indexOf(name); return i >= 0 ? args
 const out = path.resolve(ROOT, opt("--out", "docs/screenshots/parity"));
 // Every named shot of every console, at rest, in use and in combat.
 const SHOTS = ["helm", "helm-stick", "helm-orient", "tactical", "engineering", "engineering-cooling", "engineering-cooling-breaker",
-  "science", "captain", "red-helm-evading", "red-tactical", "red-science-target-feed", "red-science-shields", "red-engineering",
-  "red-captain", "red-captain-ship", "scram-engineering", "red-tactical-turned"];
+  "science", "captain",
+  // Combat 2 (docs/design/combat-2-work-plan.md, workstream D): the laser banks, the gunner's sight, objectives. The shots
+  // play in order on one page, so these come before the combat scenario and the red ones before the scram.
+  "laser-port", "laser-stbd", "gunner", "objectives-helm",
+  "red-helm-evading", "red-tactical", "red-science-target-feed", "red-science-shields", "red-engineering",
+  "red-captain", "red-captain-ship", "red-laser", "red-gunner-firing", "red-tactical-decoy", "red-objectives-gunner",
+  "scram-engineering", "red-tactical-turned"];
 const only = opt("--only", null);
 const shots = only ? SHOTS.filter((s) => only.split(",").includes(s)) : SHOTS;
 

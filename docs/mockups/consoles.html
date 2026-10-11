@@ -4803,6 +4803,8 @@ const C = {
 };
 const hex = (n) => "#" + n.toString(16).padStart(6, "0");
 const ROLE = {}; for (const [k, v] of Object.entries(K.PALETTE.role)) ROLE[k] = hex(v);
+// The laser stations' colour (laser-banks 3), kept here until shipkit's palette gains a laser role.
+ROLE.laser = "#f06292";
 
 // Icons on a 24-unit grid, stroked. One picture per idea, the same picture on every console.
 const ICONS = {
@@ -4870,6 +4872,11 @@ const ICONS = {
   science: '<circle cx="12" cy="13" r="2"/><path d="M6.3 7.3a8 8 0 0 0 0 11.4M17.7 7.3a8 8 0 0 1 0 11.4"/>',
   command: '<path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/>',
   flight_ops: '<path d="M12 2l3 8 7 3-7 1-3 8-3-8-7-1 7-3z"/>',
+  laser: '<rect x="2" y="9" width="6" height="6" rx="1"/><path d="M8 12h14M17 8.5l3.5 3.5-3.5 3.5"/>',
+  gunner: '<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/><circle cx="12" cy="12" r="2"/>',
+  objectives: '<path d="M10 6h11M10 12h11M10 18h11"/><path d="M3 6l1.5 1.5L7 4.5M3 12l1.5 1.5L7 10.5"/><circle cx="5" cy="18" r="1.5"/>',
+  decoy: '<circle cx="12" cy="12" r="2"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3"/>',
+  cross: '<path d="M6 6l12 12M18 6L6 18"/>',
 };
 const D2R = Math.PI / 180;
 const clamp = (x, a, b) => (x < a ? a : x > b ? b : x);
@@ -5030,7 +5037,7 @@ const G = {
     { id: "port", short: "P", load: "turret_port", arc: [190, 350], mode: "PD", op: null, heat: 0, aim: 270, firing: false },
     { id: "stbd", short: "S", load: "turret_stbd", arc: [10, 170], mode: "AUTO", op: null, heat: 0.4, aim: 90, firing: false },
   ],
-  tubes: [{ state: "READY", t: 0 }, { state: "LOADING", t: 3.1 }], magazine: 6, missiles: [], inbound: [],
+  tubes: [{ state: "READY", t: 0 }, { state: "LOADING", t: 31 }], magazine: 18, missiles: [], inbound: [],
   // Shield faces in weapons-and-shields' order: bow, stern, port, starboard, dorsal, ventral.
   weight: [1, 1, 1, 1, 1, 1], charge: [36, 36, 36, 36, 36, 36], flash: [-9, -9, -9, -9, -9, -9], hitLog: [],
   freq: "A", shieldBy: "Science", preset: -1, shieldCam: { yaw: 62, el: 24 }, feedViewCam: { yaw: 40, el: 30 },
@@ -5042,7 +5049,39 @@ const G = {
   lastFire: 0, hits: 0, shipSel: "engineering",
 };
 const FACES = ["bow", "stern", "port", "starboard", "dorsal", "ventral"];
-const TUBE_LOAD_S = 7.2;
+/** A tube loads in 60 s and arms in 3 (armour-and-missiles 2). */
+const TUBE_LOAD_S = 63;
+const MAGAZINE = 20;
+
+// ---- Combat 2 (laser-banks, armour-and-missiles, enemy-fighters, objectives-tab): the page's stand-ins ----
+/** A laser bank (laser-banks 1): 150 MJ, charged at 5 MW (empty to full in 30 s), fires from 40%, out to 8 km, over its
+ * broadside half of the sky and 10 degrees past the keel line. The grid is not simulated yet, so it charges at its rate. */
+const LZ = { cap_mj: 150, charge_mw: 5, min_k: 0.4, range_m: 8000, past_keel_deg: 10, beam_s: 0.4 };
+G.lasers = { port: { id: "port", word: "LASER PORT", side: 1, mj: 96, beam: -9 }, stbd: { id: "stbd", word: "LASER STBD", side: -1, mj: 42, beam: -9 } };
+/** The Hound's faces, in our order: shield and armour as fractions of full (armour-and-missiles 1). */
+Object.assign(G.contacts.find((c) => c.id === "T1"), { shield: [0.8, 0.9, 0.55, 0.7, 0.85, 0.9], armour: [1, 1, 0.6, 1, 1, 1] });
+/** The gunner's sight (enemy-fighters 3): the barrel's aim in ship axes (yaw to starboard, pitch up, degrees), its
+ * capacitor and heat as fractions, the chosen target's index in gunTargets(). */
+G.gun = { yaw: 0, pitch: 20, chosen: 0, cap: 1, heat: 0.1, trigger: false, locked: false };
+const BOLT_MPS = 1500; // data/weapons.json: the turret's bolt
+/** Countermeasures (armour-and-missiles 3): five a ship, a burst that lasts 4 s. */
+G.decoys = 5; G.decoyT = -9;
+const DECOYS = 5, DECOY_S = 4;
+G.objOpen = false;
+/** The fight's clock starts this long before the page opens. */
+const FIGHT_T0_S = -134;
+/**
+ * The drill's objectives with the kinds objectives-tab design 2 adds to data/missions/drill-hound.json (destroy with a
+ * ship, survive, destroy_fighters with a count), so the console can measure them. A copy until the mission file has them.
+ */
+const MISSION = {
+  title: "Drill 1: Hound at the Shoals",
+  objectives: [
+    { words: "Destroy the Hound", kind: "destroy", ship: "T1" },
+    { words: "Keep the Tern's hull above zero", kind: "survive" },
+    { words: "Shoot down both fighters", kind: "destroy_fighters", count: 2 },
+  ],
+};
 /** The scanners' range ladder, km: 5 km steps from 5 to 100 (bridge-stations 8.0, "The scanner"). */
 const RANGE_KM = Array.from({ length: 20 }, (_, i) => 5 * (i + 1));
 const RANGE_OF = { nav: "navRange", tac: "tacRange", sci: "sciRange" };
@@ -5226,6 +5265,7 @@ function stepGame(dt) {
   if (G.scanning && sc) { sc.scan = Math.min(1, sc.scan + (dt / 6) * works("sensors")); if (sc.scan >= 1) G.scanning = false; }
   if (G.ping > 0) { G.ping -= dt; for (const c of G.contacts) if (c.iff === "unknown" && rangeKm(c) < G.sciRange) { c.iff = "neutral"; c.scan = Math.max(c.scan, 0.2); } }
   for (const c of G.contacts) if (c.hull <= 0 && G.target === c.id) G.target = (G.contacts.find((x) => x.hull > 0 && x.iff === "hostile") || {}).id || null;
+  stepCombat2(dt);
 }
 /**
  * A hit from direction d (ship axes, toward the attacker): the face it strikes takes what it can,
@@ -5258,6 +5298,11 @@ const STATIONS = [
   { id: "engineering", role: "engineering", word: "ENGINEERING", op: "Cleo" },
   { id: "science", role: "science", word: "SCIENCE", op: null },
   { id: "captain", role: "command", word: "CAPTAIN", op: "You" },
+  // Combat 2: the laser banks at the comms and flight-ops seats (laser-banks 3), the gunner in the dorsal pod
+  // (enemy-fighters 3). The starboard bank is open: its automation fires it.
+  { id: "laser_port", role: "laser", word: "LASER PORT", op: "Dev" },
+  { id: "laser_stbd", role: "laser", word: "LASER STBD", op: null },
+  { id: "gunner", role: "gunner", word: "GUNNER", op: "Kai" },
 ];
 let station = "helm", captainTab = "CMD";
 const stationDef = () => STATIONS.find((s) => s.id === station);
@@ -5308,7 +5353,9 @@ function titleBand() {
   // The station's own chip (the captain's two pages), then the open stations: press one to swap to it.
   const tabs = S.id === "captain" ? [["COMMAND", "command", captainTab === "CMD", "tab:CMD"], ["SHIP", "command", captainTab === "SHIP", "tab:SHIP"]] : [[S.word, S.role, true, null]];
   let x = 8;
-  for (const [w, r, on, act] of tabs) {
+  for (const [w, r, on0, act0] of tabs) {
+    // With OBJECTIVES open, the station's own chip is the way back (objectives-tab 1).
+    const on = on0 && !G.objOpen, act = act0 || (G.objOpen ? "objclose" : null);
     const tw = 34 + w.length * 9.4;
     s += `<g ${act ? `data-act="${act}"` : ""}>`;
     s += `<rect x="${x}" y="4" width="${tw}" height="24" rx="5" fill="${on ? ROLE[r] + "26" : "transparent"}" stroke="${on ? ROLE[r] : C.line2}"/>`;
@@ -5316,7 +5363,16 @@ function titleBand() {
     s += text(x + 25, 21, 13, on ? C.text : C.dim, w, { ls: 1.5, w: 700 }) + "</g>";
     x += tw + 6;
   }
-  const open = STATIONS.filter((o) => !o.op && o.id !== S.id).map((o) => [o.word, o.role, o.id]).concat([["COMMS", "comms", null], ["FLIGHT", "flight_ops", null]]);
+  // OBJECTIVES, after the station's own tabs and before the swap chips, on every station (objectives-tab 1).
+  {
+    const w = "OBJECTIVES", tw = 34 + w.length * 9.4, on = G.objOpen;
+    s += `<g data-act="obj"${tipAttr("Objectives")}>`;
+    s += `<rect x="${x}" y="4" width="${tw}" height="24" rx="5" fill="${on ? C.text + "1f" : "transparent"}" stroke="${on ? C.text : C.line2}"/>`;
+    s += icon("objectives", x + 13, 16, 14, on ? C.text : C.dim) + text(x + 25, 21, 13, on ? C.text : C.dim, w, { ls: 1.5, w: 700 }) + "</g>";
+    x += tw + 6;
+  }
+  // The laser banks took the comms and flight-ops seats (laser-banks 3), so only the open stations are left to swap to.
+  const open = STATIONS.filter((o) => !o.op && o.id !== S.id).map((o) => [o.word, o.role, o.id]);
   for (const [w, r, id] of open) {
     const tw = 44 + w.length * 8.6;
     s += `<g ${id ? `data-act="swap:${id}"` : ""}${tipAttr(id ? `${w.toLowerCase()} is open: swap to it` : `${w.toLowerCase()} is open (its console is not in this mockup yet)`)}>`;
@@ -5328,9 +5384,11 @@ function titleBand() {
   // The newest order to this station.
   const o = newestOrderFor(S.id);
   if (o) {
-    s += `<g data-act="ack"${tipAttr("Acknowledge (Y)")}><rect x="470" y="4" width="300" height="24" rx="5" fill="${C.warn}1f" stroke="${C.warn}"/>`;
-    s += icon("command", 486, 16, 14, C.warn) + text(500, 21, 13, C.text, `CAPTAIN: ${o.verb}`, { ls: 1.5, w: 700 });
-    s += icon("check", 754, 16, 14, C.warn) + "</g>";
+    // After the chips, never under them: the chips grew by OBJECTIVES.
+    const ox = Math.max(470, x + 8);
+    s += `<g data-act="ack"${tipAttr("Acknowledge (Y)")}><rect x="${ox}" y="4" width="300" height="24" rx="5" fill="${C.warn}1f" stroke="${C.warn}"/>`;
+    s += icon("command", ox + 16, 16, 14, C.warn) + text(ox + 30, 21, 13, C.text, `CAPTAIN: ${o.verb}`, { ls: 1.5, w: 700 });
+    s += icon("check", ox + 284, 16, 14, C.warn) + "</g>";
   }
   const cond = emerg ? "EMERGENCY POWER" : red ? "RED ALERT" : "NORMAL";
   const cc = emerg ? C.emergency : red ? C.alert : C.ok;
@@ -6061,15 +6119,28 @@ function tactical() {
     let b = "";
     const c = contact(G.target), p = missileHit(c), ready = G.tubes.findIndex((t) => t.state === "READY");
     G.tubes.forEach((t, i) => {
-      const y = 8 + i * 52, col = t.state === "READY" ? C.ok : t.state === "LOADING" ? C.warn : C.faint;
+      const y = 6 + i * 46, col = t.state === "READY" ? C.ok : t.state === "LOADING" ? C.warn : C.faint;
       b += `<g ${t.state === "EMPTY" && G.magazine > 0 ? `data-act="load:${i}"` : ""}${tipAttr(t.state === "EMPTY" ? "Load" : t.state === "LOADING" ? `Loading, ${(TUBE_LOAD_S - t.t).toFixed(0)} s` : "Ready")}>`;
-      b += `<rect x="10" y="${y}" width="190" height="42" rx="21" fill="#101822" stroke="${col}" stroke-width="2"/>`;
-      if (t.state === "LOADING") b += `<rect x="14" y="${y + 4}" width="${182 * (t.t / TUBE_LOAD_S)}" height="34" rx="17" fill="${C.warn}" opacity="0.35"/>`;
-      if (t.state === "READY") b += icon("tubes", 105, y + 21, 30, C.ok);
-      if (t.state === "EMPTY") b += icon("load", 105, y + 21, 22, G.magazine ? C.dim : C.faint);
+      b += `<rect x="10" y="${y}" width="190" height="38" rx="19" fill="#101822" stroke="${col}" stroke-width="2"/>`;
+      if (t.state === "LOADING") b += `<rect x="14" y="${y + 4}" width="${182 * (t.t / TUBE_LOAD_S)}" height="30" rx="15" fill="${C.warn}" opacity="0.35"/>`;
+      if (t.state === "READY") b += icon("tubes", 105, y + 19, 28, C.ok);
+      if (t.state === "EMPTY") b += icon("load", 105, y + 19, 20, G.magazine ? C.dim : C.faint);
       b += "</g>";
     });
-    for (let k = 0; k < 6; k++) b += `<rect x="${12 + k * 32}" y="${h - 22}" width="24" height="10" rx="3" fill="${k < G.magazine ? C.text : "#1c2734"}"${tipAttr("Missiles in the magazine")}/>`;
+    // The magazine: twenty rounds, two rows of ten (armour-and-missiles 2).
+    b += `<g${tipAttr(`Missiles in the magazine: ${G.magazine} of ${MAGAZINE}`)}>`;
+    for (let k = 0; k < MAGAZINE; k++) b += `<rect x="${12 + (k % 10) * 19}" y="${98 + Math.floor(k / 10) * 13}" width="14" height="8" rx="2" fill="${k < G.magazine ? C.text : "#1c2734"}"/>`;
+    b += "</g>";
+    // DECOY: five a ship, a 4 s burst; best in an inbound missile's last three seconds (armour-and-missiles 3), so the
+    // nearest inbound's time to impact is the number beside it, green in that window.
+    const ni = nextInbound(), lit = G.t - G.decoyT < DECOY_S, dcan = G.decoys > 0;
+    const best = ni != null && ni >= 1 && ni <= 3, tc = ni == null ? C.faint : best ? C.ok : ni <= 6 ? C.warn : C.dim;
+    b += `<g ${dcan ? `data-act="decoy"` : ""}${tipAttr(dcan ? `Decoy: ${G.decoys} left` : "No decoys left")}>`;
+    b += `<rect x="10" y="130" width="190" height="36" rx="7" fill="${lit ? C.ok + "26" : C.panel2}" stroke="${lit ? C.ok : best && dcan ? C.ok : C.line2}" stroke-width="${best && dcan ? 2 : 1.2}"/>`;
+    b += icon("decoy", 30, 148, 22, dcan ? C.text : C.faint);
+    for (let k = 0; k < DECOYS; k++) b += `<rect x="${50 + k * 14}" y="141" width="9" height="14" rx="2" fill="${k < G.decoys ? C.text : "#1c2734"}"/>`;
+    if (ni != null) b += text(192, 154, 17, tc, `${ni.toFixed(1)} s`, { a: "end", w: 700 });
+    b += "</g>";
     // FIRE: hold 0.6 s. Its ring shows the chance to hit, computed by the rule that resolves it.
     const fx = 214, fw = w - fx - 10, cxF = fx + fw / 2, cyF = h / 2 - 4;
     const can = ready >= 0 && c && c.iff === "hostile";
@@ -6519,9 +6590,281 @@ function captainShip() {
   return s;
 }
 
+// =================================================================== COMBAT 2: lasers, the gunner, decoys, objectives
+/** Whether bank b bears on the target: a hostile in its broadside half of the sky (10 degrees past the keel) and range. */
+function laserBears(b) {
+  const c = contact(G.target);
+  if (!c || c.hull <= 0 || c.iff !== "hostile") return false;
+  const d = v3.norm(relPos(c.p));
+  return b.side * d[0] >= -Math.sin(LZ.past_keel_deg * D2R) && rangeKm(c) * 1000 <= LZ.range_m;
+}
+/** The page's stand-in for the laser's hit chance (laser-banks 2: the cannons' rule with the laser's sigma). */
+function laserHit(c) { return c ? clamp(0.92 - rangeKm(c) * 0.06, 0.15, 0.92) * (c.cls === "fighter" ? 0.4 : 1) : 0; }
+/** The target's face toward the Tern (the face a beam from us meets), by the face rule in the target's own axes. */
+function targetFace(c) {
+  const fwd = v3.norm(c.dir), port = v3.norm(v3.cross([0, 1, 0], fwd)), up = v3.cross(fwd, port);
+  const v = v3.norm(v3.sub(F.P, c.p)), x = v3.dot(v, port), y = v3.dot(v, up), z = v3.dot(v, fwd);
+  if (Math.abs(z) >= 2 / 3) return z > 0 ? 0 : 1;
+  return Math.abs(x) >= Math.abs(y) ? (x > 0 ? 2 : 3) : y > 0 ? 4 : 5;
+}
+/** The spot a beam would meet: the face, its shield and its armour as fractions. A fighter has one shield and no armour. */
+function spotOf(c) {
+  const face = targetFace(c);
+  return { face, shield: c.shield ? c.shield[face] : c.shieldK || 0, armour: c.armour ? c.armour[face] : 0 };
+}
+/** What a laser console draws (the seam's LaserView, docs/design/combat-2-work-plan.md). */
+function laserView(id) {
+  const b = G.lasers[id], c = contact(G.target), sp = c && c.hull > 0 ? spotOf(c) : null;
+  return {
+    bank: id, charge: b.mj / LZ.cap_mj, secs_to_full: (LZ.cap_mj - b.mj) / LZ.charge_mw, min_charge: LZ.min_k,
+    bearing: laserBears(b), hit_chance: laserHit(c), spot_face: sp ? FACES[sp.face] : "", spot_shield: sp ? sp.shield : 0,
+    spot_armour: sp ? sp.armour : 0, capability: 1,
+  };
+}
+/** Fire bank id (laser-banks 2): the whole capacitor in one beam; on a hit the face's shield takes it first, and what
+ * passes stops at any armour left there, or reaches the hull. The shield's 60 MJ a face is the page's stand-in. */
+function fireLaser(id) {
+  const b = G.lasers[id], c = contact(G.target);
+  if (!c || !laserBears(b) || b.mj < LZ.min_k * LZ.cap_mj) return;
+  const e = b.mj; b.mj = 0; b.beam = G.t;
+  if (hash("laser", id, G.n) >= laserHit(c)) return;
+  const sp = spotOf(c), cap = 60, take = Math.min(sp.shield * cap, e), pass = e - take;
+  if (c.shield) c.shield[sp.face] = Math.max(0, c.shield[sp.face] - take / cap); else c.shieldK = Math.max(0, (c.shieldK || 0) - take / cap);
+  if (pass > 0 && sp.armour <= 0.01) c.hull = Math.max(0, c.hull - pass * 0.15);
+}
+function laserConsole(id) {
+  const b = G.lasers[id], v = laserView(id), c = contact(G.target);
+  let s = "";
+  s += panel("CHARGE", grid(0, 0, 3, 4), (w, h) => {
+    // The capacitor filling, the least charge to fire as a dashed line across it, and the seconds to full.
+    const bw = 84, bx = w / 2 - bw / 2, by = 14, bh = h - 96, k = v.charge, col = k >= LZ.min_k ? C.ok : C.warn;
+    let o = `<g${tipAttr(`${Math.round(b.mj)} of ${LZ.cap_mj} MJ · fires from ${Math.round(LZ.min_k * 100)}%`)}>`;
+    o += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="10" fill="#101822" stroke="${C.line2}"/>`;
+    o += `<rect x="${bx + 4}" y="${by + 4 + (bh - 8) * (1 - k)}" width="${bw - 8}" height="${(bh - 8) * k}" rx="7" fill="${col}" opacity="${k >= 0.999 ? 1 : 0.8}"/>`;
+    const my = by + 4 + (bh - 8) * (1 - LZ.min_k);
+    o += `<path d="M${bx - 12} ${my}H${bx + bw + 12}" stroke="${C.text}" stroke-width="2" stroke-dasharray="6 4"/></g>`;
+    if (k >= 0.999) o += icon("check", w / 2, h - 44, 34, C.ok);
+    else o += text(w / 2, h - 32, 34, C.text, `${Math.ceil(v.secs_to_full)} s`, { a: "middle", w: 700 });
+    return o;
+  });
+  s += panel("ARC", grid(3, 0, 3, 4), (w, h) => {
+    // The Tern from above, bow up: the bank's half of the sky out to 8 km, and the target in it or not.
+    const cx = w / 2, cy = h / 2 - 6, R = Math.min(w, h) / 2 - 22;
+    const a0 = b.side > 0 ? 180 - LZ.past_keel_deg : -LZ.past_keel_deg, a1 = a0 + 180 + 2 * LZ.past_keel_deg;
+    let o = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${C.line2}"/>`;
+    o += `<path d="${wedge(cx, cy, R, a0, a1)}" fill="${ROLE.laser}1f" stroke="${ROLE.laser}" stroke-width="1.5"/>`;
+    o += shipGlyph({ cls: "corvette", iff: "friendly" }, cx, cy, 36, 0, C.text);
+    if (c && c.hull > 0) {
+      const brg = brgOf(relPos(c.p)), rk = Math.min(1, (rangeKm(c) * 1000) / LZ.range_m), [px, py] = pol(cx, cy, R * Math.max(0.3, rk), brg);
+      const col = v.bearing ? C.hostile : C.faint;
+      o += `<path d="M${cx} ${cy}L${px.toFixed(1)} ${py.toFixed(1)}" stroke="${col}" stroke-width="${v.bearing ? 2.5 : 1.5}" stroke-dasharray="${v.bearing ? "none" : "3 5"}"/>`;
+      o += `<g${tipAttr(`${c.id} · ${rangeKm(c).toFixed(1)} km${v.bearing ? "" : " · outside this bank's arc"}`)}>` + shipGlyph(c, px, py, 28, 0, col, !v.bearing) + "</g>";
+    }
+    return o;
+  });
+  s += panel("SPOT", grid(6, 0, 3, 4), (w, h) => {
+    // The face the beam would meet: its shield as a ring, its armour as a plate, struck through when gone.
+    const cx = w / 2, cy = h / 2 - 18, R = Math.min(w, h) / 2 - 44;
+    if (!c || c.hull <= 0) return icon("target", cx, cy, 48, C.faint);
+    const sp = spotOf(c), sc = ratioCol(sp.shield), gone = sp.armour <= 0.01;
+    let o = `<g${tipAttr(`${c.id}, ${FACES[sp.face]} face: shield ${Math.round(sp.shield * 100)}%, armour ${Math.round(sp.armour * 100)}%`)}>`;
+    o += `<path d="${arcPath(cx, cy, R, 0, 359.99)}" stroke="#1c2734" stroke-width="12" fill="none"/>`;
+    if (sp.shield > 0.005) o += `<path d="${arcPath(cx, cy, R, 0, 360 * sp.shield)}" stroke="${sc}" stroke-width="12" fill="none"/>`;
+    const pw = R * 1.1, ph = R * 0.8, px = cx - pw / 2, py = cy - ph / 2;
+    if (!gone) {
+      o += `<rect x="${px}" y="${py}" width="${pw}" height="${ph}" rx="6" fill="#101822" stroke="${C.dim}" stroke-width="2"/>`;
+      o += `<rect x="${px + 4}" y="${py + 4 + (ph - 8) * (1 - sp.armour)}" width="${pw - 8}" height="${(ph - 8) * sp.armour}" rx="4" fill="${C.text}" opacity="0.75"/>`;
+    } else {
+      o += `<rect x="${px}" y="${py}" width="${pw}" height="${ph}" rx="6" fill="none" stroke="${C.danger}" stroke-width="2" stroke-dasharray="7 5"/>`;
+      o += `<path d="M${px} ${py + ph}L${px + pw} ${py}" stroke="${C.danger}" stroke-width="3"/>` + icon("hull", cx, cy, 30, C.danger);
+    }
+    o += text(cx, h - 24, 17, C.dim, FACES[sp.face].toUpperCase(), { a: "middle", ls: 2, w: 700 });
+    return o + "</g>";
+  });
+  s += panel("FIRE", grid(9, 0, 3, 4), (w, h) => {
+    // The biggest control: hold to fire. Its ring is the chance to hit; the number is in its tooltip (laser-banks 3).
+    const can = v.bearing && v.charge >= LZ.min_k, cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2 - 26, p = v.hit_chance;
+    const why = !c || c.hull <= 0 ? "No target" : !v.bearing ? "Target outside this bank's arc" : !can ? `Charging: fires from ${Math.round(LZ.min_k * 100)}%` : `Hold to fire · ${Math.round(p * 100)}% to hit`;
+    let o = `<path d="${arcPath(cx, cy, R, 0, 359.99)}" stroke="#1c2734" stroke-width="10" fill="none"/>`;
+    if (can) o += `<path d="${arcPath(cx, cy, R, 0, 360 * p)}" stroke="${p > 0.5 ? C.ok : C.warn}" stroke-width="10" fill="none"/>`;
+    o += `<g ${can ? `data-hold="lfire:${id}"` : ""}${tipAttr(why)}><circle cx="${cx}" cy="${cy}" r="${R - 14}" fill="${can ? "#3a0d14" : C.panel2}" stroke="${can ? C.danger : C.line2}" stroke-width="2"/>`;
+    if (HOLD.key === `lfire:${id}`) o += `<circle cx="${cx}" cy="${cy}" r="${(R - 14) * clamp((now() - HOLD.t0) / HOLD_S, 0, 1)}" fill="${C.danger}" opacity="0.4"/>`;
+    if (G.t - b.beam < LZ.beam_s) o += `<circle cx="${cx}" cy="${cy}" r="${R - 14}" fill="${ROLE.laser}" opacity="0.5"/>`;
+    o += text(cx, cy + 11, 32, can ? C.text : C.faint, "FIRE", { a: "middle", w: 700, ls: 3 });
+    return o + "</g>";
+  });
+  return s;
+}
+/** The gunner's targets: hostiles within 8 km, fighters first, then the nearest. */
+function gunTargets() {
+  return G.contacts.filter((c) => c.hull > 0 && c.iff === "hostile" && rangeKm(c) < 8)
+    .sort((a, b) => (a.cls === "fighter" ? 0 : 1) - (b.cls === "fighter" ? 0 : 1) || rangeKm(a) - rangeKm(b));
+}
+/** Where to aim at c, in ship axes, metres: where it will be when a bolt fired now reaches it (one step of lead). */
+function leadOf(c) {
+  const rel = relPos(c.p), relV = quat.rot(quat.conj(F.q), v3.sub(v3.mul(c.dir, c.v), F.V));
+  return v3.add(rel, v3.mul(relV, v3.len(rel) / BOLT_MPS));
+}
+/** The barrel's axes: f along it, r to the right on the sight, u up; ship axes. */
+function gunBasis() {
+  const y = G.gun.yaw * D2R, p = G.gun.pitch * D2R, f = [-Math.sin(y) * Math.cos(p), Math.sin(p), Math.cos(y) * Math.cos(p)];
+  const r = v3.norm(v3.cross(f, [0, 1, 0])), u = v3.cross(r, f);
+  return { f, r, u };
+}
+/** Degrees between the barrel and the lead on c. */
+const gunError = (c) => Math.acos(clamp(v3.dot(gunBasis().f, v3.norm(leadOf(c))), -1, 1)) / D2R;
+/** A target's shield as one fraction: a fighter's, or the mean of a ship's faces. */
+const shieldOf = (c) => (c.shield ? c.shield.reduce((a, b) => a + b, 0) / c.shield.length : c.shieldK || 0);
+const AIM_OK_DEG = 1.2;
+/** What the sight draws (the seam's GunnerView). */
+function gunnerView() {
+  const g = G.gun, list = gunTargets();
+  return {
+    aim: [g.yaw, g.pitch], chosen: list.length ? Math.min(g.chosen, list.length - 1) : null, capacitor: g.cap, heat: g.heat, trigger: g.trigger,
+    targets: list.map((c) => ({ id: c.id, kind: c.cls, rel: relPos(c.p), lead: leadOf(c), hull: c.hull / 100, shield: shieldOf(c) })),
+  };
+}
+/**
+ * The gunner's console is a sight, not panels (enemy-fighters 3, bridge-stations 10.11): the view along the barrel at
+ * 30 degrees, the chosen target ringed with its hull (left) and shield (right) as arcs, the lead pip, the capacitor and
+ * heat as two bars, TAB for the next target. Drag to aim, hold Space to fire.
+ */
+function gunner() {
+  const g = G.gun, B = gunBasis(), foc = 640 / Math.tan(15 * D2R), qi = quat.conj(F.q), list = gunTargets(), cx = 640, cy = 300;
+  const chosen = list.length ? list[Math.min(g.chosen, list.length - 1)] : null;
+  const proj = (d) => { const z = v3.dot(d, B.f); if (z <= 0.01) return null; return [cx + (v3.dot(d, B.r) / z) * foc, cy - (v3.dot(d, B.u) / z) * foc]; };
+  const inside = (p) => p && p[0] > 0 && p[0] < 1280 && p[1] > 0 && p[1] < 656;
+  let s = `<svg y="32" width="1280" height="656" viewBox="0 0 1280 656" style="top:32px">`;
+  s += `<defs><radialGradient id="gv" cx="0.5" cy="0.46" r="0.72"><stop offset="0.62" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.9"/></radialGradient></defs>`;
+  s += `<g data-drag="gunaim"><rect width="1280" height="656" fill="#020306"/>`;
+  for (const st0 of STARS) { const p = proj(quat.rot(qi, st0.d)); if (inside(p)) s += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${st0.big ? 1.6 : 0.9}" fill="#cfd8e6" opacity="${st0.lum.toFixed(2)}"/>`; }
+  for (const c of G.contacts) {
+    if (c.hull <= 0 || c.iff === "unknown") continue;
+    const rel = relPos(c.p), p = proj(rel);
+    if (!inside(p)) continue;
+    s += shipGlyph(c, p[0], p[1], clamp((c.cls === "fighter" ? 48000 : 120000) / v3.len(rel), 8, 90), 0, C[c.iff]);
+  }
+  // Bolts while the trigger is held: two tracers from the barrel toward the sight's centre.
+  const firing = g.trigger && g.cap > 0.02 && !g.locked;
+  if (firing) for (const sx of [560, 720]) s += `<path d="M${sx} 656L${(cx + (sx - cx) * 0.18).toFixed(0)} ${cy + 40}" stroke="${ROLE.gunner}" stroke-width="3" stroke-dasharray="26 34" opacity="0.85"/>`;
+  let aimOk = false;
+  if (chosen) {
+    const p = proj(relPos(chosen.p)), lp = proj(leadOf(chosen)), R = 44;
+    aimOk = gunError(chosen) < AIM_OK_DEG;
+    if (inside(p)) {
+      const hk = chosen.hull / 100, sk = shieldOf(chosen);
+      s += `<g${tipAttr(`${chosen.id} · ${rangeKm(chosen).toFixed(1)} km · hull ${Math.round(chosen.hull)}% · shield ${Math.round(sk * 100)}%`)}>`;
+      s += `<circle cx="${p[0]}" cy="${p[1]}" r="${R}" fill="none" stroke="${C.hostile}" stroke-width="2"/>`;
+      s += `<path d="${arcPath(p[0], p[1], R + 9, 200, 340)}" stroke="#1c2734" stroke-width="6" fill="none"/><path d="${arcPath(p[0], p[1], R + 9, 20, 160)}" stroke="#1c2734" stroke-width="6" fill="none"/>`;
+      if (hk > 0.005) s += `<path d="${arcPath(p[0], p[1], R + 9, 200, 200 + 140 * hk)}" stroke="${hk > 0.5 ? C.ok : hk > 0.2 ? C.warn : C.danger}" stroke-width="6" fill="none"/>`;
+      if (sk > 0.005) s += `<path d="${arcPath(p[0], p[1], R + 9, 160 - 140 * sk, 160)}" stroke="#8fd3ff" stroke-width="6" fill="none"/>`;
+      s += text(p[0], p[1] - R - 20, 15, C.text, chosen.id, { a: "middle", w: 700, ls: 1.5 }) + "</g>";
+      if (inside(lp)) {
+        s += `<path d="M${p[0]} ${p[1]}L${lp[0].toFixed(1)} ${lp[1].toFixed(1)}" stroke="${C.hostile}" stroke-width="1.2" stroke-dasharray="3 4" opacity="0.8"/>`;
+        s += `<path d="M${lp[0].toFixed(1)} ${(lp[1] - 9).toFixed(1)}l9 9l-9 9l-9 -9z" fill="${aimOk ? C.ok : C.hostile}" stroke="#020306" stroke-width="1.5"${tipAttr("Aim here")}/>`;
+      }
+    } else {
+      // Off the sight: an arrow at the edge toward it.
+      const d = relPos(chosen.p), ax = v3.dot(d, B.r), ay = v3.dot(d, B.u), a = Math.atan2(ax, ay) / D2R, [ex, ey] = pol(cx, cy, 250, a);
+      s += `<g transform="translate(${ex.toFixed(1)},${ey.toFixed(1)}) rotate(${a.toFixed(1)})"${tipAttr(`${chosen.id} is off the sight`)}><path d="M0 -18L14 8H-14Z" fill="${C.hostile}"/></g>`;
+    }
+  }
+  // The reticle: the barrel's line, green when it is on the lead.
+  const rc = aimOk ? C.ok : ROLE.gunner;
+  s += `<circle cx="${cx}" cy="${cy}" r="22" fill="none" stroke="${rc}" stroke-width="2"/><circle cx="${cx}" cy="${cy}" r="2.5" fill="${rc}"/>`;
+  s += `<path d="M${cx - 46} ${cy}h16M${cx + 30} ${cy}h16M${cx} ${cy - 46}v16M${cx} ${cy + 30}v16" stroke="${rc}" stroke-width="2"/>`;
+  s += `<rect width="1280" height="656" fill="url(#gv)" pointer-events="none"/>`;
+  // Capacitor and heat, two bars at the lower left.
+  const cc = g.cap > 0.3 ? C.ok : C.warn, hc = g.locked ? C.danger : g.heat > 0.7 ? C.warn : C.ok;
+  s += `<g${tipAttr(`Capacitor ${Math.round(g.cap * 100)}%`)}>` + icon("bolt", 52, 430, 20, cc) + bar(41, 448, 22, 170, g.cap, cc, true) + "</g>";
+  s += `<g${tipAttr(g.locked ? "Too hot: cooling" : `Heat ${Math.round(g.heat * 100)}%`)}>` + icon("temp", 96, 430, 20, hc) + bar(85, 448, 22, 170, g.heat, hc, true);
+  if (g.locked) s += `<path d="M85 448l22 170M107 448l-22 170" stroke="${C.danger}" stroke-width="2"/>`;
+  s += "</g>";
+  // TAB, and the targets it steps through.
+  s += button({ x: 470, y: 590, w: 110, h: 44, icon: "target", label: "TAB", act: "gnext", tip: "Next target (Tab)", is: 20, off: list.length < 2 });
+  list.slice(0, 5).forEach((c, i) => {
+    const on = c === chosen, col = C[c.iff];
+    s += `<g data-act="gpick:${i}"${tipAttr(`${c.id} · ${rangeKm(c).toFixed(1)} km`)}><rect x="${592 + i * 76}" y="590" width="68" height="44" rx="7" fill="${on ? col + "26" : C.panel2}" stroke="${on ? col : C.line2}" stroke-width="${on ? 2 : 1.2}"/>`;
+    s += shipGlyph(c, 612 + i * 76, 612, 18, 0, col) + text(645 + i * 76, 618, 15, C.text, c.id, { a: "middle", w: 700 }) + "</g>";
+  });
+  PANEL_OUT.push(s + "</g></svg>");
+}
+/** The nearest inbound missile's seconds to impact, or null. */
+function nextInbound() { let t = null; for (const m of G.inbound) if (!m.dead && (t == null || m.t < t)) t = m.t; return t; }
+/** A decoy (armour-and-missiles 3): each inbound missile rolls once by its time to impact: pulled off, set off early, or not fooled. */
+function throwDecoy() {
+  if (G.decoys <= 0) return;
+  G.decoys--; G.decoyT = G.t;
+  for (const m of G.inbound) {
+    const [pull, early] = m.t >= 1 && m.t <= 3 ? [0.6, 0.25] : m.t > 3 && m.t <= 6 ? [0.3, 0.15] : [0.1, 0.05];
+    if (hash("decoy", m.n, G.decoys) < pull + early) m.dead = true;
+  }
+}
+/** The objectives' rows as the panel shows them (the seam's ObjectiveView): state done, failed or progress, k 0-1. */
+function objectiveView() {
+  const rows = MISSION.objectives.map((o) => {
+    if (o.kind === "destroy") { const c = contact(o.ship), hl = c ? c.hull : 0; return { words: o.words, state: hl <= 0 ? "done" : "progress", k: 1 - hl / 100, number: `${Math.round(hl)}%` }; }
+    if (o.kind === "survive") { const hp = hullPct(); return { words: o.words, state: hp <= 0 ? "failed" : "progress", k: hp / 100, number: `${Math.round(hp)}%` }; }
+    if (o.kind === "destroy_fighters") {
+      const n = G.contacts.filter((c) => c.jackal && c.hull <= 0).length;
+      return { words: o.words, state: n >= o.count ? "done" : "progress", k: Math.min(1, n / o.count), number: `${Math.min(n, o.count)} / ${o.count}` };
+    }
+    return { words: o.words, state: "progress", k: 0, number: null };
+  });
+  return { title: MISSION.title, clock_s: Math.max(0, G.t - FIGHT_T0_S), rows };
+}
+/** OBJECTIVES (objectives-tab 2): over the four panels, or over the sight. At most six rows, one number each. */
+function objectivesPanel() {
+  const ov = objectiveView();
+  panel("OBJECTIVES", grid(0, 0, 12, 4), (w, h) => {
+    const t = Math.floor(ov.clock_s);
+    let o = text(24, 40, 26, C.text, ov.title, { w: 700 }) + text(w - 24, 40, 26, C.dim, `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`, { a: "end" });
+    o += `<rect x="24" y="58" width="${w - 48}" height="1" fill="${C.line}"/>`;
+    ov.rows.slice(0, 6).forEach((r, i) => {
+      const y = 78 + i * 82, mx = 60, my = y + 34, col = r.state === "done" ? C.ok : r.state === "failed" ? C.danger : C.text;
+      o += `<rect x="20" y="${y}" width="${w - 40}" height="68" rx="8" fill="${C.panel2}" stroke="${r.state === "progress" ? C.line2 : col}"/>`;
+      if (r.state === "done") o += `<circle cx="${mx}" cy="${my}" r="22" fill="${C.ok}"/>` + icon("check", mx, my, 26, C.bg, { sw: 3 });
+      else if (r.state === "failed") o += `<circle cx="${mx}" cy="${my}" r="22" fill="${C.danger}"/>` + icon("cross", mx, my, 24, C.bg, { sw: 3 });
+      else {
+        o += `<path d="${arcPath(mx, my, 20, 0, 359.99)}" stroke="#1c2734" stroke-width="6" fill="none"/>`;
+        if (r.k > 0.005) o += `<path d="${arcPath(mx, my, 20, 0, 360 * clamp(r.k, 0, 1))}" stroke="${accent()}" stroke-width="6" fill="none"/>`;
+      }
+      o += text(100, my + 8, 24, r.state === "progress" ? C.text : col, r.words);
+      if (r.number) o += text(w - 44, my + 10, 30, col, r.number, { a: "end", w: 700 });
+    });
+    return o;
+  });
+}
+/** Combat 2's stand-ins, each game step: the banks charge, the gun fires or recovers. */
+function stepCombat2(dt) {
+  for (const b of Object.values(G.lasers)) b.mj = Math.min(LZ.cap_mj, b.mj + LZ.charge_mw * dt);
+  const g = G.gun, list = gunTargets(), c = list[Math.min(g.chosen, Math.max(0, list.length - 1))];
+  if (g.trigger && g.cap > 0.02 && !g.locked) {
+    g.cap = Math.max(0, g.cap - 0.3 * dt); g.heat = Math.min(1, g.heat + 0.18 * dt);
+    if (c && gunError(c) < AIM_OK_DEG && hash("gun", c.id, G.n) < 2.5 * dt) {
+      // A cannon wears a shield down and does little to a ship behind it (laser-banks proposal); a fighter has one shield.
+      if (c.shield) { const f = targetFace(c); if (c.shield[f] > 0.01) c.shield[f] = Math.max(0, c.shield[f] - 0.01); else c.hull = Math.max(0, c.hull - 0.5); }
+      else if ((c.shieldK || 0) > 0.01) c.shieldK = Math.max(0, c.shieldK - 0.04); else c.hull = Math.max(0, c.hull - 4);
+    }
+  } else { g.cap = Math.min(1, g.cap + 0.12 * dt); g.heat = Math.max(0, g.heat - 0.08 * dt); }
+  if (g.heat >= 1) g.locked = true;
+  if (g.locked && g.heat < 0.4) g.locked = false;
+}
+/** The Hound's two Jackals out (enemy-fighters 1), placed for the gunner's shots: ship axes from the Tern, metres. */
+function launchFighters() {
+  const at = (v) => v3.add(F.P, quat.rot(F.q, v));
+  retireFighters();
+  G.contacts.push({ id: "J1", cls: "fighter", iff: "hostile", p: at([-700, 900, 2600]), dir: quat.rot(F.q, v3.norm([0.9, 0.1, -0.3])), v: 300, hull: 100, scan: 1, shieldK: 0.7, jackal: true });
+  G.contacts.push({ id: "J2", cls: "fighter", iff: "hostile", p: at([1200, 1500, 3800]), dir: quat.rot(F.q, v3.norm([-0.6, -0.2, -0.7])), v: 320, hull: 100, scan: 1, shieldK: 0.5, jackal: true });
+}
+/** Takes the Jackals off again, so a shot that did not launch them sees the page it always did. */
+function retireFighters() { G.contacts = G.contacts.filter((c) => !c.jackal); if (!contact(G.target)) G.target = "T1"; }
+/** Points the barrel along a ship-axes direction, off it by (dyaw, dpitch) degrees. */
+function aimGun(d, dyaw, dpitch) { G.gun.yaw = brgOf(d) + (dyaw || 0); G.gun.pitch = clamp(elevOf(d) + (dpitch || 0), -10, 80); }
+
 // =================================================================== frame and input
 const CONSOLE = document.getElementById("console"), TIP = document.getElementById("tip");
-const DRAW = { helm, tactical, engineering, science, captain };
+const DRAW = { helm, tactical, engineering, science, captain, laser_port: () => laserConsole("port"), laser_stbd: () => laserConsole("stbd"), gunner };
 /**
  * Draw the console. Each band and panel is its own region, rebuilt only when its picture
  * changed: a plot that moves is redrawn every frame, a row of buttons that did not change is
@@ -6530,9 +6873,11 @@ const DRAW = { helm, tactical, engineering, science, captain };
 let PANEL_OUT = [], REGIONS = [], regionsFor = "";
 function render() {
   PANEL_OUT = [];
-  DRAW[station]();
-  const parts = [titleBand(), lookBand(), ...PANEL_OUT, statusStrip()];
-  const key = station + "|" + captainTab;
+  // OBJECTIVES opens over the four panels; on the gunner's sight it opens over the sight (objectives-tab 1).
+  if (!G.objOpen || station === "gunner") DRAW[station]();
+  if (G.objOpen) objectivesPanel();
+  const parts = [titleBand(), ...(station === "gunner" ? [] : [lookBand()]), ...PANEL_OUT, statusStrip()];
+  const key = station + "|" + captainTab + "|" + G.objOpen;
   if (key !== regionsFor || parts.length !== REGIONS.length) {
     CONSOLE.textContent = "";
     REGIONS = parts.map(() => { const d = document.createElement("div"); CONSOLE.appendChild(d); d._html = null; return d; });
@@ -6548,7 +6893,7 @@ function renderBar() {
   const key = station + "|" + st.alert;
   if (key === barFor) return;
   barFor = key;
-  const panels = { helm: 4, tactical: 4, engineering: 4, science: 4, captain: 4 }[station];
+  const panels = { helm: 4, tactical: 4, engineering: 4, science: 4, captain: 4, laser_port: 4, laser_stbd: 4, gunner: 1 }[station];
   bar.innerHTML = `<b>Consoles</b>` + STATIONS.map((s) => `<button data-st="${s.id}" class="${s.id === station ? "on" : ""}" style="${s.id === station ? `border-color:${ROLE[s.role]};color:${ROLE[s.role]}` : ""}">${s.word}</button>`).join("") +
     `<span class="sep"></span><button data-ev="red" class="${st.alert === "red_alert" ? "on" : ""}">Red alert</button><button data-ev="hit">Hit us</button><button data-ev="scram">Scram</button><button data-ev="reset">Reset</button>` +
     `<span class="cost">Pi 5: ${panels + 2} UI draw calls (bridge-stations 8.7) · a 2D mockup, not a Pi measurement</span>`;
@@ -6573,8 +6918,13 @@ window.addEventListener("resize", fit);
 function act(a, ev) {
   const [k, v, w] = a.split(":");
   const S = station;
-  if (k === "tab") captainTab = v;
-  if (k === "swap") station = v;
+  if (k === "tab") { captainTab = v; G.objOpen = false; }
+  if (k === "swap") { station = v; G.objOpen = false; }
+  if (k === "obj") G.objOpen = !G.objOpen;
+  if (k === "objclose") G.objOpen = false;
+  if (k === "gnext") { const l = gunTargets(); if (l.length) G.gun.chosen = (Math.min(G.gun.chosen, l.length - 1) + 1) % l.length; }
+  if (k === "gpick") G.gun.chosen = +v;
+  if (k === "decoy") throwDecoy();
   if (k === "ack") { const o = newestOrderFor(S); if (o) o.state = "done"; }
   if (k === "allstop") { F.speedSet = 0; F.strafe = [0, 0]; G.ap = "HOLD"; }
   if (k === "ap") { if (G.ap === "EVADE" && v !== "EVADE") F.strafe = [0, 0]; G.ap = v; if (v !== "HOLD" && v !== "EVADE") F.orderActive = false; }
@@ -6635,6 +6985,7 @@ function holdDone(key) {
     const i = G.tubes.findIndex((t) => t.state === "READY"), c = contact(G.target);
     if (i >= 0 && c) { G.tubes[i].state = "EMPTY"; G.missiles.push({ pos: F.P.slice(), target: c.id, chance: missileHit(c), n: ++G.hits }); }
   }
+  if (k === "lfire") fireLaser(v);
   if (k === "ping") G.ping = 2;
   if (k === "redalert") setAlert(st.alert !== "red_alert");
   if (k === "brk") { if (v.startsWith("gen")) st.genClosed[v] = !st.genClosed[v]; else st.tieClosed[v] = !st.tieClosed[v]; }
@@ -6657,6 +7008,8 @@ function dragTo(e) {
   if (DRAG.kind === "shieldcam") {
     G.shieldCam = { yaw: DRAG.cam.yaw + ((e.clientX - DRAG.x0) / r.width) * 360, el: clamp(DRAG.cam.el + ((e.clientY - DRAG.y0) / r.height) * 120, -80, 80) };
   }
+  // The sight: a drag across its width turns the barrel through the sight's 30 degrees.
+  if (DRAG.kind === "gunaim") { G.gun.yaw = wrap180(DRAG.cam.yaw + ((e.clientX - DRAG.x0) / r.width) * 30); G.gun.pitch = clamp(DRAG.cam.pitch - ((e.clientY - DRAG.y0) / r.height) * 15.4, -10, 80); }
   if (DRAG.kind === "feedview") {
     G.feedViewCam = { yaw: DRAG.cam.yaw + ((e.clientX - DRAG.x0) / r.width) * 180, el: clamp(DRAG.cam.el + ((e.clientY - DRAG.y0) / r.height) * 120, -85, 85) };
   }
@@ -6670,21 +7023,21 @@ function dragTo(e) {
     const sp = clamp(Math.round(ky * gmax * 20) / 20, 0, gmax); // the track runs from 0 to the group's highest setpoint
     PREVIEW = { gid: DRAG.arg, sp, r: sim.previewGroup(DRAG.arg, sp) };
   }
-  if (DRAG.kind !== "joy" && DRAG.kind !== "flip" && DRAG.kind !== "shieldcam" && DRAG.kind !== "feedview" && DRAG.kind !== "scancam") render();
+  if (DRAG.kind !== "joy" && DRAG.kind !== "flip" && DRAG.kind !== "shieldcam" && DRAG.kind !== "feedview" && DRAG.kind !== "scancam" && DRAG.kind !== "gunaim") render();
 }
 CONSOLE.addEventListener("pointerdown", (e) => {
   const a = e.target.closest("[data-act]"), d = e.target.closest("[data-drag]"), h = e.target.closest("[data-hold]");
   // A press on a face inside the shield view favours it; a drag that starts there turns the view.
   if (d && !(a && d.contains(a) && d.dataset.drag !== "shieldcam")) {
     const [kind, arg] = d.dataset.drag.split(":");
-    DRAG = { kind, arg, rect: d.getBoundingClientRect(), x0: e.clientX, y0: e.clientY, cam: { ...(kind === "feedview" ? G.feedViewCam : kind === "scancam" ? G.scanCam[arg] : G.shieldCam) }, act: a && d.contains(a) ? a.dataset.act : null };
+    DRAG = { kind, arg, rect: d.getBoundingClientRect(), x0: e.clientX, y0: e.clientY, cam: { ...(kind === "gunaim" ? G.gun : kind === "feedview" ? G.feedViewCam : kind === "scancam" ? G.scanCam[arg] : G.shieldCam) }, act: a && d.contains(a) ? a.dataset.act : null };
     if (kind === "fader" || kind === "throttle" || kind === "strafe" || kind === "lever") DRAG.rect = d.querySelector("rect").getBoundingClientRect();
     // Widths in lp of what each drag measures against, to turn screen pixels into lp.
     DRAG.wlp = { joy: 148, flip: 80, wheel: 52 }[kind] || 1;
     if (kind === "wheel") DRAG.v0 = F.oe[arg];
     if (kind === "flip") { const rr = d.getBoundingClientRect(); DRAG.side = e.clientX < rr.left + rr.width / 2 ? -1 : 1; }
     CONSOLE.setPointerCapture(e.pointerId);
-    if (kind !== "shieldcam" && kind !== "feedview" && kind !== "scancam" && kind !== "wheel") dragTo(e);
+    if (kind !== "shieldcam" && kind !== "feedview" && kind !== "scancam" && kind !== "wheel" && kind !== "gunaim") dragTo(e);
     return;
   }
   if (h) { HOLD.key = h.dataset.hold; HOLD.t0 = now(); render(); return; }
@@ -6717,10 +7070,18 @@ window.addEventListener("keydown", (e) => {
   }
   if (station === "tactical" && k === "t") { const l = G.contacts.filter((c) => c.hull > 0); G.target = l[(l.findIndex((c) => c.id === G.target) + 1) % l.length].id; }
   if (station === "science" && k === "q") act("scan");
+  // The gunner: Tab steps the target, Space is the trigger, the arrows nudge the barrel a degree.
+  if (station === "gunner") {
+    if (k === "tab") { act("gnext"); e.preventDefault(); }
+    if (k === " ") { G.gun.trigger = true; e.preventDefault(); }
+    const nudge = { arrowleft: [-1, 0], arrowright: [1, 0], arrowup: [0, 1], arrowdown: [0, -1] }[k];
+    if (nudge) { G.gun.yaw = wrap180(G.gun.yaw + nudge[0]); G.gun.pitch = clamp(G.gun.pitch + nudge[1], -10, 80); e.preventDefault(); }
+  }
+  if (k === "escape") act("objclose");
   if (k === "y") act("ack");
   render();
 });
-window.addEventListener("keyup", (e) => { F.keys.delete(e.key.toLowerCase()); });
+window.addEventListener("keyup", (e) => { const k = e.key.toLowerCase(); F.keys.delete(k); if (k === " ") G.gun.trigger = false; });
 // The scroll wheel: a notch turns a thumbwheel one degree, or steps a scanner's range.
 CONSOLE.addEventListener("wheel", (e) => {
   const el = e.target.closest && e.target.closest("[data-wheel]");
@@ -6731,7 +7092,7 @@ CONSOLE.addEventListener("wheel", (e) => {
   if (k === "range") stepRange(v, -d);
   render();
 }, { passive: false });
-window.addEventListener("blur", () => F.keys.clear());
+window.addEventListener("blur", () => { F.keys.clear(); G.gun.trigger = false; });
 
 // The clock, in seconds and fixed steps (CLAUDE.md 6.4): the ship's systems at their 10 Hz,
 // the page's stand-ins (flight, contacts, weapons) at 60 Hz so what moves on screen moves
@@ -6751,7 +7112,7 @@ let PAUSED = false;
 function frame() {
   const t = now(), d = Math.min(0.25, t - last); last = t;
   if (!PAUSED) advanceTime(d);
-  if (!DRAG || DRAG.kind === "joy" || DRAG.kind === "flip" || DRAG.kind === "shieldcam" || DRAG.kind === "feedview" || DRAG.kind === "scancam") render();
+  if (!DRAG || DRAG.kind === "joy" || DRAG.kind === "flip" || DRAG.kind === "shieldcam" || DRAG.kind === "feedview" || DRAG.kind === "scancam" || DRAG.kind === "gunaim") render();
   requestAnimationFrame(frame);
 }
 
@@ -6804,7 +7165,11 @@ window.consoleState = function () {
     feed: G.feed, zoom: G.zoom, nav_km: G.navRange, tac_km: G.tacRange, sci_km: G.sciRange,
     scan_cam: { nav: G.scanCam.nav, tac: G.scanCam.tac, sci: G.scanCam.sci }, feed_cam: G.feedViewCam,
     turrets: G.turrets.map((t) => ({ short: t.short, mode: t.mode, op: t.op, heat: t.heat, aim_deg: t.aim, firing: t.firing, cooling: !!t.cooling, ok: works(t.load) })),
-    tubes: G.tubes.map((t) => ({ state: t.state, t: t.t })), tube_load_s: TUBE_LOAD_S, magazine: G.magazine, magazine_slots: 6,
+    tubes: G.tubes.map((t) => ({ state: t.state, t: t.t })), tube_load_s: TUBE_LOAD_S, magazine: G.magazine, magazine_slots: MAGAZINE,
+    // Combat 2: the seam's views (docs/design/combat-2-work-plan.md, "D: the consoles' views").
+    decoys: G.decoys, decoys_max: DECOYS, decoy_age_s: G.t - G.decoyT, next_inbound_s: nextInbound(),
+    lasers: { port: laserView("port"), stbd: laserView("stbd") }, laser_beam_age_s: { port: G.t - G.lasers.port.beam, stbd: G.t - G.lasers.stbd.beam },
+    gunner: gunnerView(), gun_locked: G.gun.locked, objectives_open: G.objOpen, objectives: objectiveView(),
     fire_ring: missileHit(tgt), fire_note: `${Math.round(missileHit(tgt) * 100)}% HIT`, fire_ok: missileHit(tgt) > 0.5, tube_cone_deg: 5,
     charge: G.charge, cap: FACES.map((_, f) => shieldCap(f)), preset: G.preset,
     hold: HOLD.key ? { key: HOLD.key, k: clamp((now() - HOLD.t0) / HOLD_S, 0, 1) } : null,
@@ -6871,6 +7236,14 @@ window.MOCKUP_SHOTS = [
   { name: "engineering-cooling-breaker", setup: () => { station = "engineering"; st.loop.leak_kg_s = 0; sim.setGroupBreaker("cooling", "open"); COOL_SHOT = true; advance(45); render(); } },
   { name: "science", setup: () => { station = "science"; render(); } },
   { name: "captain", setup: () => { station = "captain"; captainTab = "CMD"; render(); } },
+  // Combat 2 (docs/design/combat-2-work-plan.md, workstream D). The port bank charging, the Hound off its side.
+  { name: "laser-port", setup: () => { station = "laser_port"; G.lasers.port.mj = 96; render(); } },
+  // The starboard bank under its least charge: the Hound bears, but FIRE waits.
+  { name: "laser-stbd", setup: () => { station = "laser_stbd"; G.lasers.stbd.mj = 30; render(); } },
+  // The sight: both fighters out, the nearer chosen, the barrel just off its lead.
+  { name: "gunner", setup: () => { launchFighters(); station = "gunner"; G.gun.chosen = 0; aimGun(leadOf(gunTargets()[0]), -2.5, 1.5); render(); } },
+  // OBJECTIVES open on the helm at rest.
+  { name: "objectives-helm", setup: () => { station = "helm"; G.objOpen = true; render(); } },
   { name: "red-helm-evading", setup: () => { scenario("combat"); station = "helm"; act("ap:EVADE"); advance(20); render(); } },
   { name: "red-tactical", setup: () => { scenario("combat"); station = "tactical"; HOLD.key = null; render(); } },
   { name: "red-science-target-feed", setup: () => { scenario("combat"); G.feed = "TARGET"; station = "science"; render(); } },
@@ -6878,9 +7251,18 @@ window.MOCKUP_SHOTS = [
   { name: "red-engineering", setup: () => { scenario("combat"); station = "engineering"; render(); } },
   { name: "red-captain", setup: () => { scenario("combat"); station = "captain"; captainTab = "CMD"; render(); } },
   { name: "red-captain-ship", setup: () => { scenario("combat"); station = "captain"; captainTab = "SHIP"; G.shipSel = "engineering"; render(); } },
+  // Red alert, a bank full and bearing (whichever bears after the fight so far), and missiles have stripped the armour
+  // from the face it meets.
+  { name: "red-laser", setup: () => { scenario("combat"); const c = contact("T1"); c.armour[targetFace(c)] = 0; c.shield[targetFace(c)] = 0.3; G.target = "T1"; const b = laserBears(G.lasers.stbd) ? G.lasers.stbd : G.lasers.port; station = `laser_${b.id}`; b.mj = LZ.cap_mj; render(); } },
+  // Red alert, the trigger held on the lead: the capacitor low and the barrel hot.
+  { name: "red-gunner-firing", setup: () => { scenario("combat"); launchFighters(); station = "gunner"; G.gun.chosen = 0; aimGun(leadOf(gunTargets()[0]), 0.3, 0); Object.assign(G.gun, { trigger: true, cap: 0.32, heat: 0.78 }); render(); } },
+  // Tactical at red alert: a missile 2.2 s out, in the decoy's best window; 18 rounds in the magazine.
+  { name: "red-tactical-decoy", setup: () => { scenario("combat"); station = "tactical"; HOLD.key = null; G.inbound = [{ d: v3.norm([-0.5, 0.15, 0.85]), t: 2.2, n: 901 }]; render(); } },
+  // Red alert on the sight: one fighter down, OBJECTIVES open over the sight.
+  { name: "red-objectives-gunner", setup: () => { scenario("combat"); launchFighters(); contact("J2").hull = 0; station = "gunner"; G.objOpen = true; render(); } },
   { name: "scram-engineering", setup: () => { scenario("combat"); sim.scram("manual"); advance(30); station = "engineering"; render(); } },
   { name: "red-tactical-turned", setup: () => { scenario("combat"); station = "tactical"; HOLD.key = null; G.scanCam.tac = { yaw: 70, dEl: 18 }; render(); } },
-].map((shot) => ({ name: shot.name, setup: () => { PAUSED = true; undoCoolingShot(); shot.setup(); render(); } }));
+].map((shot) => ({ name: shot.name, setup: () => { PAUSED = true; undoCoolingShot(); G.objOpen = false; G.gun.trigger = false; retireFighters(); shot.setup(); render(); } }));
 
 fit(); render();
 requestAnimationFrame(frame);
