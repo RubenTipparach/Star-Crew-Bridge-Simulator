@@ -357,6 +357,8 @@ pub struct Room {
     pub hi: DVec3,
     /// A point well inside it: its largest brush's centroid at mid height (shipkit's `center`); where a team goes.
     pub centre: DVec3,
+    /// The same point on its largest brush's floor: where a person stands.
+    pub floor: DVec3,
     /// The rooms a portal joins it to, in the layout's order: where a fire spreads.
     pub neighbours: Vec<usize>,
     /// The loads inside it: what a fire there burns.
@@ -1507,7 +1509,8 @@ fn build(p: Parts) -> Result<ShipLayout, DataError> {
             cz += (u[1] + v[1]) * w;
         }
         let centre = DVec3::new(cx / (6.0 * area), 0.5 * (b.y[0] + b.y[1]), cz / (6.0 * area));
-        rooms.push(Room { id, brushes, lo: blo, hi: bhi, centre, neighbours: Vec::new(), loads: Vec::new() });
+        let floor = DVec3::new(centre.x, b.y[0], centre.z);
+        rooms.push(Room { id, brushes, lo: blo, hi: bhi, centre, floor, neighbours: Vec::new(), loads: Vec::new() });
     }
     let room_of = |file: &str, field: &str, id: &str, rooms: &[Room]| {
         rooms.iter().position(|r| r.id == id).ok_or_else(|| err(file, field, names(id)))

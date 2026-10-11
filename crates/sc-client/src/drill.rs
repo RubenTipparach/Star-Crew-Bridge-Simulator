@@ -964,8 +964,8 @@ impl App for DrillApp {
                 );
                 let (w, h) = (720.0 * aspect, 720.0);
                 let crew = self.session.as_ref().map(|s| s.crew.clone()).unwrap_or_default();
-                // A name over every body (crew-nameplates 2): on screen and near; everyone on the bridge is in the one
-                // room, so no line-of-sight walk here. Off when Options says so.
+                // A name over every body (crew-nameplates 2): on screen, near and in sight (the crew start about the
+                // ship, so walls and decks hide some). Off when Options says so.
                 let names = self.options.names;
                 let labels = bodies
                     .iter()
@@ -975,6 +975,9 @@ impl App for DrillApp {
                         let head = [b.pos[0], b.pos[1] + 2.05, b.pos[2]];
                         let dist = head.iter().zip(eye).map(|(a, e)| (f64::from(*a) - e).powi(2)).sum::<f64>().sqrt();
                         let k = crate::nameplate::fade(dist as f32)?;
+                        if !bv.sees(eye, b.pos) {
+                            return None;
+                        }
                         let at = crate::drill_bridge::project(vp, eye, head, w, h)?;
                         let who = crew.iter().find(|c| c.slot == b.slot);
                         let name = who.map(|c| c.name.clone()).unwrap_or_default();

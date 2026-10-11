@@ -7,13 +7,21 @@
 
 use crate::combat::Station;
 
-/// Where a body can be: a seat, or its place at the muster point at the back of the bridge.
+/// Where a body can be: a seat, or its own muster place, somewhere aboard.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Spot {
     /// A station's seat.
     Seat(Station),
-    /// The back of the bridge, where a body with no station stands.
+    /// Where a body with no station stands: its own place among the ship's muster places, so the crew start spread
+    /// through the ship (owner, 2026-10-11: "spread them throughout the ship not all in one spot").
     Muster,
+}
+
+/// A place a path joins: a seat, or one of the muster places.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Place {
+    Seat(Station),
+    Muster(usize),
 }
 
 /// What a body is doing.
@@ -21,7 +29,7 @@ pub enum Spot {
 pub enum Posture {
     /// In a seat.
     Seated = 0,
-    /// Standing at the muster point.
+    /// Standing at its muster place.
     Standing = 1,
     /// Getting up from a seat.
     Rising = 2,
@@ -38,14 +46,14 @@ impl Posture {
     }
 }
 
-/// The bridge the drill's crew walk on: its seats, the muster point and the paths between them.
+/// What the drill's crew walk on: the bridge's seats, the muster places about the ship and the paths between them.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Bridge {
     /// Each station's seat in the ship frame (metres) and the way it faces (radians about +Y, 0 to the bow).
     pub seats: Vec<(Station, [f32; 3], f32)>,
-    /// The muster point at the back of the bridge.
-    pub muster: [f32; 3],
-    /// Between bodies standing at the muster point, metres.
+    /// The muster places, ship frame, metres: slot `k` stands at place `k` modulo their number.
+    pub musters: Vec<[f32; 3]>,
+    /// Between bodies sharing a muster place, metres.
     pub spacing_m: f32,
     /// The walk speed, m/s (`data/crew/walk.json`).
     pub walk_m_s: f32,
@@ -53,7 +61,7 @@ pub struct Bridge {
     pub stand_s: f32,
     /// Sitting down, seconds.
     pub sit_s: f32,
-    paths: Vec<(Spot, Spot, Vec<[f32; 3]>)>,
+    paths: Vec<(Place, Place, Vec<[f32; 3]>)>,
 }
 
 impl Bridge {
@@ -62,19 +70,22 @@ impl Bridge {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         seats: Vec<(Station, [f32; 3], f32)>,
-        muster: [f32; 3],
+        musters: Vec<[f32; 3]>,
         spacing_m: f32,
         walk_m_s: f32,
         stand_s: f32,
         sit_s: f32,
         mut route: impl FnMut([f32; 3], [f32; 3]) -> Vec<[f32; 3]>,
     ) -> Self {
-        let mut b = Self { seats, muster, spacing_m, walk_m_s, stand_s, sit_s, paths: Vec::new() };
-        let spots: Vec<Spot> = b.seats.iter().map(|s| Spot::Seat(s.0)).chain([Spot::Muster]).collect();
-        for &a in &spots {
-            for &z in &spots {
-                if a != z {
-                    let (pa, pz) = (b.at(a, None), b.at(z, None));
+        let musters = if musters.is_empty() { vec![[0.0; 3]] } else { musters };
+        let mut b = Self { seats, musters, spacing_m, walk_m_s, stand_s, sit_s, paths: Vec::new() };
+        let places: Vec<Place> =
+            b.seats.iter().map(|s| Place::Seat(s.0)).chain((0..b.musters.len()).map(Place::Muster)).collect();
+        for &a in &places {
+            for &z in &places {
+                // Seat to seat, and between a muster place and a seat; never between two muster places.
+                if a != z && !matches!((a, z), (Place::Muster(_), Place::Muster(_))) {
+                    let (pa, pz) = (b.place(a), b.place(z));
                     let mut p = route(pa, pz);
                     if p.first() != Some(&pa) {
                         p.insert(0, pa);
@@ -93,23 +104,39 @@ impl Bridge {
     #[allow(clippy::too_many_arguments)]
     pub fn straight(
         seats: Vec<(Station, [f32; 3], f32)>,
-        muster: [f32; 3],
+        musters: Vec<[f32; 3]>,
         spacing_m: f32,
         walk_m_s: f32,
         stand_s: f32,
         sit_s: f32,
     ) -> Self {
-        Self::new(seats, muster, spacing_m, walk_m_s, stand_s, sit_s, |a, b| vec![a, b])
+        Self::new(seats, musters, spacing_m, walk_m_s, stand_s, sit_s, |a, b| vec![a, b])
     }
 
-    /// Where `spot` is; at the muster point, slot `slot`'s own place in the line.
-    pub fn at(&self, spot: Spot, slot: Option<u8>) -> [f32; 3] {
+    /// Where a place is.
+    fn place(&self, p: Place) -> [f32; 3] {
+        match p {
+            Place::Seat(s) => self.seats.iter().find(|x| x.0 == s).map_or(self.musters[0], |x| x.1),
+            Place::Muster(k) => self.musters[k.min(self.musters.len() - 1)],
+        }
+    }
+
+    /// The place `spot` is for slot `slot`: its seat, or its own muster place.
+    fn place_of(&self, spot: Spot, slot: Option<u8>) -> Place {
         match spot {
-            Spot::Seat(s) => self.seats.iter().find(|x| x.0 == s).map_or(self.muster, |x| x.1),
+            Spot::Seat(s) => Place::Seat(s),
+            Spot::Muster => Place::Muster(usize::from(slot.unwrap_or(0)) % self.musters.len()),
+        }
+    }
+
+    /// Where `spot` is for slot `slot`; at a muster place it shares, a step aside for each body before it there.
+    pub fn at(&self, spot: Spot, slot: Option<u8>) -> [f32; 3] {
+        let p = self.place(self.place_of(spot, slot));
+        match spot {
+            Spot::Seat(_) => p,
             Spot::Muster => {
-                let k = f32::from(slot.unwrap_or(0) % 8);
-                let off = (k - 3.5) * self.spacing_m;
-                [self.muster[0] + off, self.muster[1], self.muster[2]]
+                let k = usize::from(slot.unwrap_or(0)) / self.musters.len();
+                [p[0] + k as f32 * self.spacing_m, p[1], p[2]]
             }
         }
     }
@@ -128,7 +155,8 @@ impl Bridge {
 
     /// The path from one spot to another for `slot`: its own muster place at either end.
     pub fn path(&self, from: Spot, to: Spot, slot: u8) -> Vec<[f32; 3]> {
-        let mut p = self.paths.iter().find(|x| x.0 == from && x.1 == to).map(|x| x.2.clone()).unwrap_or_default();
+        let (a, z) = (self.place_of(from, Some(slot)), self.place_of(to, Some(slot)));
+        let mut p = self.paths.iter().find(|x| x.0 == a && x.1 == z).map(|x| x.2.clone()).unwrap_or_default();
         if from == Spot::Muster {
             p.insert(0, self.at(Spot::Muster, Some(slot)));
         }
@@ -286,16 +314,30 @@ impl CrewBody {
 pub(crate) mod tests {
     use super::*;
 
-    /// The Tern's bridge seats (layout.json) and muster point, straight paths.
+    /// The Tern's bridge seats (layout.json) and a muster place at the back of the bridge, straight paths.
     pub fn bridge() -> Bridge {
         Bridge::straight(
             vec![(Station::Helm, [1.8, 3.5, 28.2], 0.0), (Station::Tactical, [-1.8, 3.5, 28.2], 0.0)],
-            [0.0, 3.5, 21.2],
+            vec![[0.0, 3.5, 21.2]],
             0.9,
             2.4,
             0.4,
             0.4,
         )
+    }
+
+    #[test]
+    fn each_slot_starts_at_its_own_place_until_the_places_run_out() {
+        let seats = vec![(Station::Helm, [1.8, 3.5, 28.2], 0.0)];
+        let places = vec![[0.0, 3.5, 21.2], [-6.0, 0.0, 12.0], [4.0, -3.5, -20.0]];
+        let b = Bridge::straight(seats, places.clone(), 0.9, 2.4, 0.4, 0.4);
+        for slot in 0..3u8 {
+            assert_eq!(b.at(Spot::Muster, Some(slot)), places[usize::from(slot)], "slot {slot} has a place to itself");
+        }
+        assert_eq!(b.at(Spot::Muster, Some(4)), [-6.0 + 0.9, 0.0, 12.0], "the fifth shares the second's, a step aside");
+        let p = b.path(Spot::Muster, Spot::Seat(Station::Helm), 2);
+        assert_eq!(p.first(), Some(&places[2]), "slot 2 walks from its own place");
+        assert_eq!(p.last(), Some(&[1.8, 3.5, 28.2]));
     }
 
     #[test]

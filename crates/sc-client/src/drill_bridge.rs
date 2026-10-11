@@ -27,10 +27,19 @@ const OUTSIDE_FAR_M: f32 = 80_000.0;
 /// The depth the outside is squeezed into, at the back of the depth buffer (window depth 1 - this to 1): drawn after
 /// the bridge, it shows only where no part of the bridge is in front, which is through the windows.
 const OUTSIDE_DEPTH: f32 = 0.0001;
+/// A deck is drawn while its floor is no more than this far below the eye, or this far above it, metres: the eye's
+/// own deck and the one above (a ladder's well), never the decks under its floor.
+const SEE_BELOW_M: f64 = 4.5;
+const SEE_ABOVE_M: f64 = 2.5;
+/// The eye above the floor it stands on, metres (a standing person's, near enough for the overview's eye too).
+const EYE_FLOOR_M: f64 = 1.6;
 
-/// The command deck and the crew's figures.
+/// The ship's decks and the crew's figures: the bridge, and the rest of the ship the crew walk up from.
 pub struct BridgeView {
-    rooms: Vec<(Mesh, [f64; 3])>,
+    /// Every room of the decks: its mesh, its origin and its deck's floor height (metres).
+    rooms: Vec<(Mesh, [f64; 3], f64)>,
+    /// The walk's collision, for whether one person sees another (crew-nameplates 2).
+    world: Option<sc_core::walk::WalkWorld>,
     /// The viewscreens on the command deck.
     views: Vec<DeckView>,
     /// The crew figures, one a division, by the division's id (crew-uniforms 3).
@@ -45,7 +54,7 @@ pub struct BridgeView {
 }
 
 impl BridgeView {
-    /// Load deck A's rooms and the figures from the compiled deck at `path`.
+    /// Load the decks' rooms, the figures and the walk's collision from the compiled deck at `path`.
     pub fn load(r: &mut Renderer, path: &Path) -> Result<Self, String> {
         let bytes = std::fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
         let d = sc_core::deck::read(&bytes).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -58,6 +67,10 @@ impl BridgeView {
             })
             .collect();
         let tex = r.make_texture_array_mips(t.size_px, t.layers, &levels);
+        // Each deck's floor height, from its rooms' floors.
+        let deck_floor = |deck: &str| {
+            d.index.compartments.iter().filter(|c| c.deck == deck).find_map(|c| c.floor_m).map(|f| f64::from(f[1]))
+        };
         let (mut rooms, mut figures, mut triangles) = (Vec::new(), Vec::new(), 0);
         for c in &d.index.compartments {
             let idx = d.indices_of(c);
@@ -66,13 +79,28 @@ impl BridgeView {
                     id.trim_start_matches("figure_").to_owned(),
                     r.make_mesh(d.vertices_of(c), Indices::U32(&idx)),
                 )),
-                ("A", _) => {
-                    triangles += idx.len() / 3;
-                    rooms.push((r.make_mesh(d.vertices_of(c), Indices::U32(&idx)), c.origin_m));
+                ("outside", _) => {}
+                (deck, _) => {
+                    if deck == "A" {
+                        triangles += idx.len() / 3;
+                    }
+                    let floor = deck_floor(deck).unwrap_or(c.origin_m[1]);
+                    rooms.push((r.make_mesh(d.vertices_of(c), Indices::U32(&idx)), c.origin_m, floor));
                 }
-                _ => {}
             }
         }
+        let walk_text =
+            std::fs::read_to_string("data/crew/walk.json").map_err(|e| format!("data/crew/walk.json: {e}"))?;
+        let walk: sc_core::walk::WalkData =
+            sc_core::data::parse("data/crew/walk.json", &walk_text).map_err(|e| e.to_string())?;
+        let w = &d.index.walk;
+        let ents = sc_core::walk::WalkEntities {
+            ladders: w.ladders.clone(),
+            hatches: w.hatches.clone(),
+            doors: w.doors.clone(),
+            lifts: w.lifts.clone(),
+        };
+        let world = sc_core::walk::WalkWorld::new(&d.walk_triangles(), &ents, &walk).ok();
         let floors: Vec<f64> = d
             .index
             .compartments
@@ -83,7 +111,14 @@ impl BridgeView {
         let views = views_on(&d.index.views, &floors);
         let fov_deg = crate::options::FOV_DEG[2] as f32;
         let panel_glow = t.panel_glow[0];
-        Ok(Self { rooms, views, figures, tex, panel_first: t.panel_first, panel_glow, triangles, fov_deg })
+        Ok(Self { rooms, world, views, figures, tex, panel_first: t.panel_first, panel_glow, triangles, fov_deg })
+    }
+
+    /// Whether a person whose feet are at `to` is in sight from the eye at `eye` (ship frame, metres): a ray at chest
+    /// height through the walk's collision (`WalkWorld::sees`); true when no collision was loaded.
+    pub fn sees(&self, eye: [f64; 3], to: [f32; 3]) -> bool {
+        let from = [eye[0] as f32, (eye[1] - EYE_FLOOR_M) as f32, eye[2] as f32];
+        self.world.as_ref().is_none_or(|w| w.sees(from, to))
     }
 
     /// Draw the bridge from `eye` (ship frame) looking along `yaw` (0 to the bow) and `pitch` into `t`, with the
@@ -114,7 +149,9 @@ impl BridgeView {
         r.begin_3d(t, [0.004, 0.005, 0.012, 1.0]);
         r.draw_sky(t, &crate::sky_params(ext, proj, view_out, fov / 720.0));
         let w = out.lighting;
-        for (mesh, o) in &self.rooms {
+        // The eye's deck and the one above it (a ladder's well looks up): the decks below are under its floor.
+        let near = |f: &f64| (eye[1] - SEE_BELOW_M..=eye[1] + SEE_ABOVE_M).contains(f);
+        for (mesh, o, _) in self.rooms.iter().filter(|(_, _, f)| near(f)) {
             let rel = Vec3::new((o[0] - eye[0]) as f32, (o[1] - eye[1]) as f32, (o[2] - eye[2]) as f32);
             let p = DeckParams {
                 mvp: proj * view * Mat4::from_translation(rel),

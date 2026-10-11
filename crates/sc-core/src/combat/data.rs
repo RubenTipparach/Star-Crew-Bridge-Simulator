@@ -1014,18 +1014,18 @@ pub struct MissionFile {
     pub debrief_s: f64,
     /// How long a bot client reads the briefing, in seconds.
     pub bot_ready_s: f64,
-    /// Where the crew muster on the bridge, ship frame, metres (coop-drill design 9).
-    pub muster_m: [f64; 3],
-    /// Between bodies standing there, metres.
+    /// Where the crew start and stand with no station: compartments of the Tern's layout, one a crew member in turn,
+    /// so they start spread through the ship and walk to their seats (owner, 2026-10-11: "spread them throughout the
+    /// ship not all in one spot"; coop-drill design 9).
+    pub muster_rooms: Vec<String>,
+    /// Between bodies sharing a muster room, metres.
     pub muster_spacing_m: f64,
 }
 
 impl Validate for MissionFile {
     fn validate(&self, c: &mut Checks) {
         c.equals("schema", &self.schema, "starcrew.mission/1");
-        for (i, v) in self.muster_m.iter().enumerate() {
-            c.number(&format!("muster_m[{i}]"), *v, -500.0, 500.0);
-        }
+        c.count("muster_rooms", self.muster_rooms.len() as i64, 1, 16);
         c.number("muster_spacing_m", self.muster_spacing_m, 0.3, 3.0);
         c.count("title (characters)", self.title.chars().count() as i64, 1, 60);
         c.count("objectives", self.objectives.len() as i64, 1, 6);
@@ -1133,6 +1133,11 @@ impl DrillData {
             field: field.to_owned(),
             message: format!("names {id:?}, which no file defines"),
         };
+        for (i, r) in mission.muster_rooms.iter().enumerate() {
+            if tern_layout.room(r).is_none() {
+                return Err(missing(mission_file, &format!("muster_rooms[{i}]"), r));
+            }
+        }
         let enemy = enemies
             .classes
             .iter()
@@ -1230,6 +1235,16 @@ impl DrillData {
     /// A profile by id (`automation` and `bot` are checked at load).
     pub fn profile(&self, id: &str) -> &Profile {
         self.stations.profiles.iter().find(|p| p.id == id).expect("checked at load")
+    }
+
+    /// Where each muster room's people stand: its floor's middle, ship frame, metres (in the mission's order).
+    pub fn muster_places(&self) -> Vec<[f32; 3]> {
+        self.mission
+            .muster_rooms
+            .iter()
+            .filter_map(|r| self.tern_layout.room(r))
+            .map(|k| self.tern_layout.rooms[k].floor.as_vec3().to_array())
+            .collect()
     }
 
     /// The division of whoever holds station `s` (crew-uniforms 2).

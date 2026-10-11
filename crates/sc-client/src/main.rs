@@ -484,28 +484,9 @@ fn load_ship(
     let eye_y = w.start.at_m[1];
     let lifts = w.lifts.iter().map(|l| (Lift::new(&l.stops_m, l.speed_m_s, l.door_s, l.car_m), l.car_m)).collect();
     // The bot crew (crew-npcs 7): the walk grid on the decks the lift stops at, the company from the session seed.
-    let mut decks: Vec<f32> = w.lifts.iter().flat_map(|l| l.stops_m.iter().copied()).collect();
-    if decks.is_empty() {
-        decks = w.ladders.iter().flat_map(|l| [l.lo_m, l.hi_m]).collect();
-    }
-    decks.sort_by(f32::total_cmp);
-    decks.dedup_by(|a, b| (*a - *b).abs() < 0.1);
-    let tris = d.walk_triangles();
-    let mut bounds = [f32::MAX, f32::MAX, f32::MIN, f32::MIN];
-    for t in &tris {
-        for k in 0..3 {
-            bounds = [
-                bounds[0].min(t[k * 3]),
-                bounds[1].min(t[k * 3 + 2]),
-                bounds[2].max(t[k * 3]),
-                bounds[3].max(t[k * 3 + 2]),
-            ];
-        }
-    }
     let t0 = std::time::Instant::now();
-    let shafts: Vec<Vec<[f32; 2]>> = w.lifts.iter().map(|l| l.poly.clone()).collect();
     // `decks` stays with the walker: the map stacks them.
-    let grid = NavGrid::build(&world, &decks, bounds, &w.ladders, &shafts);
+    let (grid, decks) = NavGrid::for_ship(&world, w, &d.walk_triangles());
     println!(
         "sc-client: walk grid of {} walkable cells on {} decks built in {:.0} ms",
         grid.walkable(),

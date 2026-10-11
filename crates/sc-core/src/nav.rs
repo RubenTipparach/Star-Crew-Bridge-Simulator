@@ -169,6 +169,31 @@ impl NavGrid {
         g
     }
 
+    /// The grid over a whole ship's walk (`deck.walk`, its triangles `tris`): every deck a lift stops at (else every
+    /// ladder's ends), over the walk's whole plan, joined by its ladders, with no cell in a lift's shaft. Returns it
+    /// and the decks' floor heights, lowest first. The walk's bots and the drill's crew on foot path on this one grid.
+    pub fn for_ship(world: &WalkWorld, walk: &crate::deck::DeckWalk, tris: &[[f32; 9]]) -> (Self, Vec<f32>) {
+        let mut decks: Vec<f32> = walk.lifts.iter().flat_map(|l| l.stops_m.iter().copied()).collect();
+        if decks.is_empty() {
+            decks = walk.ladders.iter().flat_map(|l| [l.lo_m, l.hi_m]).collect();
+        }
+        decks.sort_by(f32::total_cmp);
+        decks.dedup_by(|a, b| (*a - *b).abs() < 0.1);
+        let mut bounds = [f32::MAX, f32::MAX, f32::MIN, f32::MIN];
+        for t in tris {
+            for k in 0..3 {
+                bounds = [
+                    bounds[0].min(t[k * 3]),
+                    bounds[1].min(t[k * 3 + 2]),
+                    bounds[2].max(t[k * 3]),
+                    bounds[3].max(t[k * 3 + 2]),
+                ];
+            }
+        }
+        let shafts: Vec<Vec<[f32; 2]>> = walk.lifts.iter().map(|l| l.poly.clone()).collect();
+        (Self::build(world, &decks, bounds, &walk.ladders, &shafts), decks)
+    }
+
     /// Walkable cells, for reports.
     pub fn walkable(&self) -> usize {
         self.floor.iter().filter(|y| !y.is_nan()).count()
@@ -216,6 +241,42 @@ impl NavGrid {
     /// The walkable point nearest `p` within `reach_m`, if any.
     pub fn snap(&self, p: [f32; 3], reach_m: f32) -> Option<[f32; 3]> {
         self.nearest(p, reach_m).map(|c| self.point(c))
+    }
+
+    /// The walkable point on `p`'s deck nearest `p` within `reach_m` that a walk from `from` reaches: a room's floor,
+    /// never a pocket the grid cannot leave (a table top, a corner boxed in by furniture), if any.
+    pub fn snap_joined(&self, p: [f32; 3], reach_m: f32, from: [f32; 3]) -> Option<[f32; 3]> {
+        let start = self.nearest(from, 1.5)?;
+        let mut joined = vec![false; self.floor.len()];
+        joined[start] = true;
+        let (mut stack, mut nb) = (vec![start], Vec::new());
+        while let Some(c) = stack.pop() {
+            self.neighbours(c, &mut nb);
+            for &(n, _, _) in &nb {
+                if !joined[n] {
+                    joined[n] = true;
+                    stack.push(n);
+                }
+            }
+        }
+        let d = self.deck_of(p[1]);
+        let r = (reach_m / CELL_M).ceil() as i64;
+        let (cx, cz) = (((p[0] - self.x0) / CELL_M).round() as i64, ((p[2] - self.z0) / CELL_M).round() as i64);
+        let mut best: Option<(f32, usize)> = None;
+        for iz in (cz - r).max(0)..=(cz + r).min(self.nz as i64 - 1) {
+            for ix in (cx - r).max(0)..=(cx + r).min(self.nx as i64 - 1) {
+                let c = idx(self.nx, self.nz, d, ix as usize, iz as usize);
+                if !joined[c] {
+                    continue;
+                }
+                let q = self.point(c);
+                let dist = (q[0] - p[0]).hypot(q[2] - p[2]);
+                if dist <= reach_m && best.is_none_or(|(bd, bc)| dist < bd || (dist == bd && c < bc)) {
+                    best = Some((dist, c));
+                }
+            }
+        }
+        best.map(|(_, c)| self.point(c))
     }
 
     fn neighbours(&self, c: usize, out: &mut Vec<(usize, f32, bool)>) {
@@ -417,6 +478,21 @@ mod tests {
         assert!(!w.sees([-5.0, 0.0, 2.0], [5.0, 0.0, 2.0]), "the wall between the rooms hides them");
         assert!(w.sees([-4.0, 0.0, 7.6], [4.0, 0.0, 7.6]), "straight through the doorway");
         assert!(w.sees([4.0, 0.0, 7.6], [-4.0, 0.0, 7.6]), "and back the other way");
+    }
+
+    #[test]
+    fn a_place_walled_off_from_the_start_snaps_to_floor_the_walk_reaches() {
+        let d = data();
+        let mut t = Vec::new();
+        quad(&mut t, [-10.0, 0.0, 0.0], [-10.0, 0.0, 10.0], [10.0, 0.0, 10.0], [10.0, 0.0, 0.0]);
+        quad(&mut t, [0.0, 0.0, 0.0], [0.0, 3.0, 0.0], [0.0, 3.0, 10.0], [0.0, 0.0, 10.0]);
+        let w = WalkWorld::new(&t, &WalkEntities::default(), &d).expect("world");
+        let g = NavGrid::build(&w, &[0.0], [-10.0, 0.0, 10.0, 10.0], &[], &[]);
+        let p = g.snap([1.0, 0.0, 5.0], 2.0).expect("the walled-off room has floor");
+        assert!(p[0] > 0.0, "a plain snap stays in the room behind the wall: {p:?}");
+        let q = g.snap_joined([1.0, 0.0, 5.0], 2.0, [-5.0, 0.0, 5.0]).expect("floor the walk reaches, across the wall");
+        assert!(q[0] < 0.0, "the joined snap is on the start's side: {q:?}");
+        assert_eq!(g.snap_joined([8.0, 0.0, 5.0], 2.0, [-5.0, 0.0, 5.0]), None, "nothing joined within reach");
     }
 
     #[test]

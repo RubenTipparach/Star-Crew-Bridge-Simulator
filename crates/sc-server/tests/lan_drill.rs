@@ -112,7 +112,7 @@ fn bridge(data: &DrillData) -> sc_core::combat::bodies::Bridge {
     let m = &data.mission;
     sc_core::combat::bodies::Bridge::straight(
         vec![(Station::Helm, [1.8, 3.5, 28.2], 0.0), (Station::Tactical, [-1.8, 3.5, 28.2], 0.0)],
-        [m.muster_m[0] as f32, m.muster_m[1] as f32, m.muster_m[2] as f32],
+        data.muster_places(),
         m.muster_spacing_m as f32,
         2.4,
         data.stations.seats.stand_s as f32,
@@ -180,6 +180,15 @@ fn on_foot_a_lone_tactical_bot_walks_to_helm_and_a_second_bot_takes_tactical() {
     );
     let second_slot = clients.get(1).and_then(|c| c.0.slot).expect("a second bot joined");
     assert_eq!(server.drill.operator(Station::Tactical), Operator::Player(second_slot), "{seen:?}");
+    // The walks themselves, by the bridge's own clock (the crew start in rooms about the ship), the bots' wait before
+    // they get up for an empty post, and 25 s for the readings and the two joins (handshakes in real time, at four
+    // times the drill's speed).
+    use sc_core::combat::bodies::Spot;
+    let b = bridge(&data);
+    let walks = b.walk_time(Spot::Muster, Spot::Seat(Station::Tactical), first)
+        + b.walk_time(Spot::Seat(Station::Tactical), Spot::Seat(Station::Helm), first)
+        + b.walk_time(Spot::Muster, Spot::Seat(Station::Tactical), second_slot);
     let s = f64::from(ticks) / 30.0;
-    assert!(s < 40.0, "all of it inside 40 s of drill time: {s:.1}");
+    let slack = data.stations.bot_posts.reassign_s + 25.0;
+    assert!(s < f64::from(walks) + slack, "inside the walks ({walks:.1} s) and {slack:.0} s of drill time: {s:.1}");
 }

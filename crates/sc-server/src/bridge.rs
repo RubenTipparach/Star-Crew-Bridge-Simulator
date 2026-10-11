@@ -39,6 +39,9 @@ fn seats(root: &Path, data: &DrillData, stations: &[Station]) -> Result<Vec<(Sta
         .collect()
 }
 
+/// How far from a muster room's middle its people may stand, on floor joined to the bridge, metres.
+const MUSTER_REACH_M: f32 = 6.0;
+
 /// Build the bridge; `deck`, the compiled deck, for paths that go round the chairs. Returns it and a line for the log.
 pub fn load(data: &DrillData, root: &Path, deck: Option<&Path>) -> Result<(Bridge, String), String> {
     let stations: Vec<Station> = data.mission.stations.iter().filter_map(|s| Station::from_id(s)).collect();
@@ -47,7 +50,7 @@ pub fn load(data: &DrillData, root: &Path, deck: Option<&Path>) -> Result<(Bridg
     let text = std::fs::read_to_string(root.join(rel)).map_err(|e| format!("{rel}: {e}"))?;
     let walk: WalkData = sc_core::data::parse(rel, &text).map_err(|e| e.to_string())?;
     let m = &data.mission;
-    let muster = [m.muster_m[0] as f32, m.muster_m[1] as f32, m.muster_m[2] as f32];
+    let musters = data.muster_places();
     let (sp, ws, st, si) = (
         m.muster_spacing_m as f32,
         walk.r#move.walk_m_s as f32,
@@ -55,7 +58,7 @@ pub fn load(data: &DrillData, root: &Path, deck: Option<&Path>) -> Result<(Bridg
         data.stations.seats.sit_s as f32,
     );
     let Some(deck) = deck.filter(|d| d.exists()) else {
-        return Ok((Bridge::straight(seats, muster, sp, ws, st, si), "straight paths (no compiled deck)".into()));
+        return Ok((Bridge::straight(seats, musters, sp, ws, st, si), "straight paths (no compiled deck)".into()));
     };
     let t0 = std::time::Instant::now();
     let bytes = std::fs::read(deck).map_err(|e| format!("{}: {e}", deck.display()))?;
@@ -69,12 +72,15 @@ pub fn load(data: &DrillData, root: &Path, deck: Option<&Path>) -> Result<(Bridg
     };
     let tris = d.walk_triangles();
     let world = WalkWorld::new(&tris, &ents, &walk)?;
-    // The bridge's deck only, over the bridge and a margin: the drill never leaves it.
-    let (y, z0, z1) = (muster[1], muster[2].min(seats.iter().map(|s| s.1[2]).fold(f32::MAX, f32::min)) - 3.0, 34.0);
-    let shafts: Vec<Vec<[f32; 2]>> = w.lifts.iter().map(|l| l.poly.clone()).collect();
-    let grid = NavGrid::build(&world, &[y], [-10.0, z0, 10.0, z1], &[], &shafts);
+    // The whole ship: the crew start in rooms on every deck and walk up to the bridge by its ladders. Each muster place
+    // stands on the nearest floor joined to the bridge's seats (a room's middle may be under a table, or on one).
+    let (grid, decks) = NavGrid::for_ship(&world, w, &tris);
+    let musters: Vec<[f32; 3]> = match seats.first() {
+        Some(seat) => musters.iter().map(|p| grid.snap_joined(*p, MUSTER_REACH_M, seat.1).unwrap_or(*p)).collect(),
+        None => musters,
+    };
     let mut straight = 0;
-    let bridge = Bridge::new(seats, muster, sp, ws, st, si, |a, b| match grid.path(&world, a, b) {
+    let bridge = Bridge::new(seats, musters, sp, ws, st, si, |a, b| match grid.path(&world, a, b) {
         Some(p) => p
             .iter()
             .map(|w| match *w {
@@ -88,8 +94,9 @@ pub fn load(data: &DrillData, root: &Path, deck: Option<&Path>) -> Result<(Bridg
         }
     });
     let how = format!(
-        "paths on the walk grid ({} cells, {:.0} ms){}",
+        "paths on the walk grid ({} cells on {} decks, {:.0} ms){}",
         grid.walkable(),
+        decks.len(),
         t0.elapsed().as_secs_f64() * 1000.0,
         if straight > 0 { format!(", {straight} straight where the grid found no way") } else { String::new() }
     );
