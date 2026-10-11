@@ -1930,9 +1930,7 @@ mod tests {
     fn the_surge_stops_after_four_steps_and_below_a_point() {
         let (l, cfg) = tern();
         let mut s = DamageState::new(&l);
-        for h in &mut s.node_health {
-            *h = 0.5;
-        }
+        s.node_health.fill(0.5);
         let o2 = load(&l, "o2_generator");
         s.integrity[o2] = 50.0;
         let (mut taken, mut bursts) = (vec![0.0; l.loads.len()], Vec::new());
