@@ -14,7 +14,7 @@ use sc_core::nav::{NavGrid, Waypoint};
 use sc_core::walk::{WalkData, WalkEntities, WalkWorld};
 
 /// A station's seat from `data/ships/tern/layout.json`: where and which way.
-fn seats(root: &Path, stations: &[Station]) -> Result<Vec<(Station, [f32; 3], f32)>, String> {
+fn seats(root: &Path, data: &DrillData, stations: &[Station]) -> Result<Vec<(Station, [f32; 3], f32)>, String> {
     let rel = "data/ships/tern/layout.json";
     let text = std::fs::read_to_string(root.join(rel)).map_err(|e| format!("{rel}: {e}"))?;
     let v: serde_json::Value = serde_json::from_str(&text).map_err(|e| format!("{rel}: {e}"))?;
@@ -24,8 +24,8 @@ fn seats(root: &Path, stations: &[Station]) -> Result<Vec<(Station, [f32; 3], f3
         .map(|s| {
             let e = list
                 .iter()
-                .find(|e| e["id"].as_str() == Some(s.id()))
-                .ok_or_else(|| format!("{rel}: stations: no {:?}", s.id()))?;
+                .find(|e| e["id"].as_str() == Some(data.seat_id(*s)))
+                .ok_or_else(|| format!("{rel}: stations: no {:?}", data.seat_id(*s)))?;
             let n = |x: &serde_json::Value| x.as_f64().filter(|f| f.is_finite());
             let p =
                 e["seat_m"].as_array().filter(|a| a.len() == 3).ok_or_else(|| format!("{rel}: {}.seat_m", s.id()))?;
@@ -42,7 +42,7 @@ fn seats(root: &Path, stations: &[Station]) -> Result<Vec<(Station, [f32; 3], f3
 /// Build the bridge; `deck`, the compiled deck, for paths that go round the chairs. Returns it and a line for the log.
 pub fn load(data: &DrillData, root: &Path, deck: Option<&Path>) -> Result<(Bridge, String), String> {
     let stations: Vec<Station> = data.mission.stations.iter().filter_map(|s| Station::from_id(s)).collect();
-    let seats = seats(root, &stations)?;
+    let seats = seats(root, data, &stations)?;
     let rel = "data/crew/walk.json";
     let text = std::fs::read_to_string(root.join(rel)).map_err(|e| format!("{rel}: {e}"))?;
     let walk: WalkData = sc_core::data::parse(rel, &text).map_err(|e| e.to_string())?;

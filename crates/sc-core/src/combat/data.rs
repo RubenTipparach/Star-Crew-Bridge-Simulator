@@ -229,6 +229,50 @@ pub struct TubesBlock {
     pub muzzle_m: Vec<[f64; 3]>,
 }
 
+/// A laser bank's mount (laser-banks 1).
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct LaserMount {
+    /// A stable id: its system's id in the ship's power data (`laser_port`).
+    pub id: String,
+    /// Where it bears.
+    pub arc: Arc,
+    /// Its emitter, ship-local metres.
+    pub position_m: [f64; 3],
+}
+
+/// A ship's laser banks.
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct LasersBlock {
+    /// The weapon's id in `data/weapons.json` (`lasers`).
+    pub laser: String,
+    /// The banks, port first.
+    pub banks: Vec<LaserMount>,
+}
+
+/// A ship's armour (armour-and-missiles 1): a plate a face until `ship-damage`'s sections land. The numbers are
+/// `damage.json`'s `hull`: a fresh plate absorbs up to `armour_mj` of a hit, and loses a hit's energy over
+/// `section_mj` (a missile's whole blast, a bolt's up to `armour_mj`) as points of integrity.
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct ArmourBlock {
+    /// What a fresh plate absorbs of one hit, MJ.
+    pub armour_mj: f64,
+    /// The energy that strips a plate, MJ.
+    pub section_mj: f64,
+}
+
+/// A ship's countermeasures.
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct DecoysBlock {
+    /// The countermeasure's id in `data/weapons.json` (`decoys`).
+    pub decoy: String,
+    /// How many it carries.
+    pub count: u32,
+}
+
 /// How a ship locks a target.
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -255,6 +299,11 @@ pub struct CombatBlock {
     pub turrets: Vec<TurretMount>,
     /// How far past the ship's plane a dorsal or ventral turret still bears, in degrees.
     pub arc_overlap_deg: f64,
+    /// Point defence takes inbound missiles within this range, in metres (armour-and-missiles 4).
+    pub pd_range_m: f64,
+    /// A turret's aim error against a missile, in degrees (1 sigma): a missile is small and fast, so point defence
+    /// misses far more than it does at a ship (weapons-and-shields 9).
+    pub pd_aim_sigma_deg: f64,
     /// Missile tubes, if the ship has any.
     #[serde(default)]
     pub tubes: Option<TubesBlock>,
@@ -263,6 +312,14 @@ pub struct CombatBlock {
     /// Sensors, if the ship has a science station to run them.
     #[serde(default)]
     pub sensors: Option<SensorsBlock>,
+    /// Laser banks, if the ship has any (laser-banks).
+    #[serde(default)]
+    pub lasers: Option<LasersBlock>,
+    /// Countermeasures, if the ship has any (armour-and-missiles 3).
+    #[serde(default)]
+    pub decoys: Option<DecoysBlock>,
+    /// Armour.
+    pub armour: ArmourBlock,
 }
 
 /// A ship's sensors: a full scan of a contact takes `scan_s` with Science manned; an active ping's ring lasts
@@ -281,6 +338,10 @@ impl CombatBlock {
         c.number(&format!("{at}.aim_sigma_base_deg"), self.aim_sigma_base_deg, 0.0, 30.0);
         c.count(&format!("{at}.turrets"), self.turrets.len() as i64, 0, 16);
         c.number(&format!("{at}.arc_overlap_deg"), self.arc_overlap_deg, 0.0, 90.0);
+        c.number(&format!("{at}.pd_range_m"), self.pd_range_m, 0.0, 1e5);
+        c.number(&format!("{at}.pd_aim_sigma_deg"), self.pd_aim_sigma_deg, 0.0, 30.0);
+        c.number(&format!("{at}.armour.armour_mj"), self.armour.armour_mj, 0.0, 1e4);
+        c.number(&format!("{at}.armour.section_mj"), self.armour.section_mj, 0.1, 1e5);
         for (i, t) in self.turrets.iter().enumerate() {
             for (k, v) in t.position_m.iter().enumerate() {
                 c.number(&format!("{at}.turrets[{i}].position_m[{k}]"), *v, -500.0, 500.0);
@@ -298,6 +359,17 @@ impl CombatBlock {
         if let Some(s) = &self.sensors {
             c.number(&format!("{at}.sensors.scan_s"), s.scan_s, 0.1, 600.0);
             c.number(&format!("{at}.sensors.ping_s"), s.ping_s, 0.1, 60.0);
+        }
+        if let Some(l) = &self.lasers {
+            c.count(&format!("{at}.lasers.banks"), l.banks.len() as i64, 1, 4);
+            for (i, b) in l.banks.iter().enumerate() {
+                for (k, v) in b.position_m.iter().enumerate() {
+                    c.number(&format!("{at}.lasers.banks[{i}].position_m[{k}]"), *v, -500.0, 500.0);
+                }
+            }
+        }
+        if let Some(d) = &self.decoys {
+            c.count(&format!("{at}.decoys.count"), i64::from(d.count), 0, 50);
         }
     }
 }
@@ -355,6 +427,9 @@ pub struct Gun {
     pub heat_resume_frac: f64,
     /// Its frequency band, A-D (weapons-and-shields 11).
     pub band: String,
+    /// The share of a bolt's damage that counts against a ship (enemy-fighters 2: cannons wear shields slowly); a
+    /// fighter or a missile takes it in full.
+    pub capital_factor: f64,
 }
 
 impl Gun {
@@ -395,6 +470,80 @@ pub struct MissileData {
     pub warhead_mj: f64,
     /// The distance at which the warhead's damage reaches zero, in metres.
     pub blast_radius_m: f64,
+    /// Its radius for a point-defence bolt, in metres (armour-and-missiles 4).
+    pub hit_radius_m: f64,
+    /// The share of its blast a shield face meets; the rest goes on (armour-and-missiles 1).
+    pub shield_share: f64,
+    /// How fast its body turns toward the target while its seeker sees, degrees a second.
+    pub turn_deg_s: f64,
+}
+
+/// A laser bank's weapon (laser-banks 1-2).
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct LaserData {
+    /// A stable id.
+    pub id: String,
+    /// What a console calls it.
+    pub name: String,
+    /// The bank's capacitor, in MJ: a shot spends all of it.
+    pub capacitor_mj: f64,
+    /// Its charge rate, in MW (MJ/s).
+    pub charge_mw: f64,
+    /// The least share of a full capacitor it fires with (0-1).
+    pub min_charge_frac: f64,
+    /// Its reach, in metres.
+    pub range_m: f64,
+    /// Aim error with the target still, in degrees (1 sigma).
+    pub sigma_base_deg: f64,
+    /// Aim error per angular rate of the target: degrees of sigma per deg/s.
+    pub sigma_rate_k: f64,
+    /// How long a client draws the beam, in seconds.
+    pub beam_s: f64,
+}
+
+/// One window of a countermeasure's effect, by the missile's time to impact (armour-and-missiles 3).
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct DecoyWindow {
+    /// The window's start, seconds to impact.
+    pub from_s: f64,
+    /// Its end.
+    pub to_s: f64,
+    /// The chance the missile is pulled off (0-1).
+    pub pull_off: f64,
+    /// The chance it is set off early (0-1).
+    pub early: f64,
+}
+
+/// A countermeasure (armour-and-missiles 3).
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct DecoyData {
+    /// A stable id.
+    pub id: String,
+    /// What a console calls it.
+    pub name: String,
+    /// How long the decoy burst lasts, in seconds.
+    pub life_s: f64,
+    /// Missiles within this range of the ship see it, in metres.
+    pub range_m: f64,
+    /// The windows, by time to impact.
+    pub windows: Vec<DecoyWindow>,
+    /// Outside every window: the chance of a pull-off...
+    pub pull_off_else: f64,
+    /// ...and of an early burst.
+    pub early_else: f64,
+}
+
+impl DecoyData {
+    /// The chances (pulled off, set off early) for a missile `tti_s` seconds from impact.
+    pub fn chances(&self, tti_s: f64) -> (f64, f64) {
+        self.windows
+            .iter()
+            .find(|w| tti_s >= w.from_s && tti_s < w.to_s)
+            .map_or((self.pull_off_else, self.early_else), |w| (w.pull_off, w.early))
+    }
 }
 
 /// `data/weapons.json`.
@@ -407,6 +556,10 @@ pub struct WeaponsFile {
     pub guns: Vec<Gun>,
     /// Missiles.
     pub missiles: Vec<MissileData>,
+    /// Laser banks' weapons.
+    pub lasers: Vec<LaserData>,
+    /// Countermeasures.
+    pub decoys: Vec<DecoyData>,
 }
 
 impl Validate for WeaponsFile {
@@ -430,6 +583,30 @@ impl Validate for WeaponsFile {
             if !BANDS.contains(&g.band.as_str()) {
                 c.equals(&format!("{at}.band"), &g.band, "A, B, C or D");
             }
+            c.number(&format!("{at}.capital_factor"), g.capital_factor, 0.0, 1.0);
+        }
+        for (i, l) in self.lasers.iter().enumerate() {
+            let at = format!("lasers[{i}]");
+            c.number(&format!("{at}.capacitor_mj"), l.capacitor_mj, 1.0, 1e5);
+            c.number(&format!("{at}.charge_mw"), l.charge_mw, 0.01, 1e4);
+            c.number(&format!("{at}.min_charge_frac"), l.min_charge_frac, 0.0, 1.0);
+            c.number(&format!("{at}.range_m"), l.range_m, 100.0, 1e6);
+            c.number(&format!("{at}.sigma_base_deg"), l.sigma_base_deg, 0.0, 10.0);
+            c.number(&format!("{at}.sigma_rate_k"), l.sigma_rate_k, 0.0, 10.0);
+            c.number(&format!("{at}.beam_s"), l.beam_s, 0.01, 10.0);
+        }
+        for (i, d) in self.decoys.iter().enumerate() {
+            let at = format!("decoys[{i}]");
+            c.number(&format!("{at}.life_s"), d.life_s, 0.1, 60.0);
+            c.number(&format!("{at}.range_m"), d.range_m, 10.0, 1e5);
+            c.number(&format!("{at}.pull_off_else"), d.pull_off_else, 0.0, 1.0);
+            c.number(&format!("{at}.early_else"), d.early_else, 0.0, 1.0);
+            for (k, w) in d.windows.iter().enumerate() {
+                c.number(&format!("{at}.windows[{k}].from_s"), w.from_s, 0.0, 600.0);
+                c.number(&format!("{at}.windows[{k}].to_s"), w.to_s, w.from_s, 600.0);
+                c.number(&format!("{at}.windows[{k}].pull_off"), w.pull_off, 0.0, 1.0);
+                c.number(&format!("{at}.windows[{k}].early"), w.early, 0.0, 1.0 - w.pull_off);
+            }
         }
         for (i, m) in self.missiles.iter().enumerate() {
             let at = format!("missiles[{i}]");
@@ -443,6 +620,9 @@ impl Validate for WeaponsFile {
             c.number(&format!("{at}.seeker_half_angle_deg"), m.seeker_half_angle_deg, 1.0, 180.0);
             c.number(&format!("{at}.warhead_mj"), m.warhead_mj, 0.0, 1e5);
             c.number(&format!("{at}.blast_radius_m"), m.blast_radius_m, 0.1, 1e4);
+            c.number(&format!("{at}.hit_radius_m"), m.hit_radius_m, 0.1, 100.0);
+            c.number(&format!("{at}.shield_share"), m.shield_share, 0.0, 1.0);
+            c.number(&format!("{at}.turn_deg_s"), m.turn_deg_s, 0.0, 3600.0);
         }
     }
 }
@@ -568,6 +748,26 @@ pub struct CaptainProfile {
     pub normal_after_s: f64,
 }
 
+/// A laser station's automation (laser-banks 3).
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct LaserProfile {
+    /// Seconds between decisions.
+    pub reaction_s: f64,
+    /// Fires a full bank at or above this hit chance (0-1).
+    pub full_min_hit_chance: f64,
+    /// Fires at the least charge, when the spot it bears on has no armour, at or above this chance (0-1).
+    pub bare_min_hit_chance: f64,
+}
+
+/// The gunner's automation: the turret on AUTO (enemy-fighters 3).
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct GunnerProfile {
+    /// Seconds between decisions.
+    pub reaction_s: f64,
+}
+
 /// A profile: every station.
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -584,6 +784,10 @@ pub struct Profile {
     pub science: ScienceProfile,
     /// The captain.
     pub captain: CaptainProfile,
+    /// The laser stations.
+    pub lasers: LaserProfile,
+    /// The gunner.
+    pub gunner: GunnerProfile,
 }
 
 /// `data/stations.json`.
@@ -598,6 +802,9 @@ pub struct StationsFile {
     pub orders: std::collections::BTreeMap<String, Vec<[String; 2]>>,
     /// Getting in and out of a seat (bridge-stations 6).
     pub seats: SeatTimes,
+    /// A station's seat in the ship's layout where its id differs from the station's (laser-banks 3: the laser
+    /// stations take the comms and flight-ops seats; enemy-fighters 3: the gunner the dorsal pod's).
+    pub seat_ids: std::collections::BTreeMap<String, String>,
     /// When a bot gets up for another station (coop-drill design 9).
     pub bot_posts: BotPosts,
 }
@@ -688,6 +895,9 @@ pub struct Orders {
     pub engineering: String,
     pub science: String,
     pub captain: String,
+    pub laser_port: String,
+    pub laser_stbd: String,
+    pub gunner: String,
 }
 
 impl Orders {
@@ -700,6 +910,9 @@ impl Orders {
             Engineering => &self.engineering,
             Science => &self.science,
             Captain => &self.captain,
+            LaserPort => &self.laser_port,
+            LaserStbd => &self.laser_stbd,
+            Gunner => &self.gunner,
         }
     }
 }
@@ -753,10 +966,14 @@ impl Validate for MissionFile {
         c.number("muster_spacing_m", self.muster_spacing_m, 0.3, 3.0);
         c.count("title (characters)", self.title.chars().count() as i64, 1, 60);
         c.count("objectives", self.objectives.len() as i64, 1, 6);
-        c.count("stations", self.stations.len() as i64, 1, 5);
+        c.count("stations", self.stations.len() as i64, 1, crate::combat::Station::ALL.len() as i64);
         for (i, s) in self.stations.iter().enumerate() {
             if crate::combat::Station::from_id(s).is_none() {
-                c.equals(&format!("stations[{i}]"), s, "helm, tactical, engineering, science or captain");
+                c.equals(
+                    &format!("stations[{i}]"),
+                    s,
+                    "helm, tactical, engineering, science, captain, laser_port, laser_stbd or gunner",
+                );
             }
         }
         for (k, v) in self.enemy_start_m.iter().enumerate() {
@@ -829,9 +1046,21 @@ impl DrillData {
                 return Err(missing(file, "combat.gun", gun));
             }
         }
-        if let Some(t) = &combat.combat.tubes {
-            if !weapons.missiles.iter().any(|m| m.id == t.missile) {
-                return Err(missing(DRILL_FILES[2], "combat.tubes.missile", &t.missile));
+        for (file, block) in [(DRILL_FILES[2], &combat.combat), (DRILL_FILES[4], &enemy.combat)] {
+            if let Some(t) = &block.tubes {
+                if !weapons.missiles.iter().any(|m| m.id == t.missile) {
+                    return Err(missing(file, "combat.tubes.missile", &t.missile));
+                }
+            }
+            if let Some(l) = &block.lasers {
+                if !weapons.lasers.iter().any(|w| w.id == l.laser) {
+                    return Err(missing(file, "combat.lasers.laser", &l.laser));
+                }
+            }
+            if let Some(d) = &block.decoys {
+                if !weapons.decoys.iter().any(|w| w.id == d.decoy) {
+                    return Err(missing(file, "combat.decoys.decoy", &d.decoy));
+                }
             }
         }
         Ok(Self {
@@ -872,9 +1101,33 @@ impl DrillData {
         self.weapons.missiles.iter().find(|m| m.id == id).expect("checked at load")
     }
 
+    /// A laser bank's weapon by id (checked at load).
+    pub fn laser(&self, id: &str) -> &LaserData {
+        self.weapons.lasers.iter().find(|l| l.id == id).expect("checked at load")
+    }
+
+    /// A countermeasure by id (checked at load).
+    pub fn decoy(&self, id: &str) -> &DecoyData {
+        self.weapons.decoys.iter().find(|d| d.id == id).expect("checked at load")
+    }
+
+    /// A ship's combat block: the Tern's (0) or the enemy's (1).
+    pub fn combat_of(&self, ship: usize) -> &CombatBlock {
+        if ship == 0 {
+            &self.tern_combat
+        } else {
+            &self.enemy.combat
+        }
+    }
+
     /// A profile by id (`automation` and `bot` are checked at load).
     pub fn profile(&self, id: &str) -> &Profile {
         self.stations.profiles.iter().find(|p| p.id == id).expect("checked at load")
+    }
+
+    /// The layout id of a station's seat.
+    pub fn seat_id(&self, s: crate::combat::Station) -> &str {
+        self.stations.seat_ids.get(s.id()).map_or(s.id(), String::as_str)
     }
 
     /// The verbs the captain can send a station, [verb, icon] (none for a station the captain does not order).

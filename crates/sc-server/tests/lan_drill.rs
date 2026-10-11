@@ -30,7 +30,8 @@ fn play(impair: Impair, seed: u64) -> (DrillServer, Vec<Session>) {
         server.poll();
         if Instant::now() >= next_tick {
             server.tick();
-            next_tick += Duration::from_secs_f64(1.0 / 120.0);
+            // 8x real time: a fight runs 5-10 minutes (armour-and-missiles 6), the drill's limit 600 s.
+            next_tick += Duration::from_secs_f64(1.0 / 240.0);
         }
         for (c, bot) in &mut clients {
             c.update();

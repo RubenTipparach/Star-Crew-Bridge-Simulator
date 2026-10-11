@@ -4,7 +4,7 @@
 
 - [x] 1.1 Proposal, design and spec delta from the owner's "I want to always see peoples name in the game" and "show if they are (npc)" (2026-10-10).
 - [x] 1.2 Mockup states 1 and 2 in `docs/mockups/game-menu.html`, over engine captures.
-- [ ] 1.3 The owner approves the mockup.
+- [x] 1.3 The owner approves the mockup (2026-10-10: "Approve menu", the names and Esc-menu mockup).
 
 ## 2. Build (on a request to build it)
 

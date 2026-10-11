@@ -309,6 +309,10 @@ impl DrillServer {
                 DrillEvent::Launched { missile, .. } => ServerMsg::Launched { missile },
                 DrillEvent::Detonated { missile, pos, damage_mj } => ServerMsg::Detonated { missile, pos, damage_mj },
                 DrillEvent::Destroyed { ship } => ServerMsg::Destroyed(ship),
+                DrillEvent::Beam { owner, from, to, hit, .. } => ServerMsg::Beam { owner, from, to, hit },
+                DrillEvent::DecoyOut { ship } => ServerMsg::Decoy(ship),
+                // A fooled missile shows as its early burst or its miss.
+                DrillEvent::Fooled { .. } => continue,
                 DrillEvent::Phase { phase, outcome } => {
                     log.push(format!("round {} phase {phase:?}", self.drill.round));
                     if phase == sc_core::combat::Phase::Debrief {

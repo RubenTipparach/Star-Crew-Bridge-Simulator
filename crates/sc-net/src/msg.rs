@@ -11,7 +11,7 @@ use sc_core::combat::bodies::Posture;
 use sc_core::combat::{self, Command, HelmMode, Outcome, Phase, Refusal, Station, TubeState, TurretMode};
 
 /// The protocol's version; a Hello with another is refused.
-pub const PROTOCOL: u16 = 4;
+pub const PROTOCOL: u16 = 5;
 /// The longest unreliable message, so it is one SCTP chunk in one datagram (netcode-and-sessions section 2).
 pub const MAX_UNRELIABLE: usize = 1200;
 /// The longest string field, in bytes.
@@ -295,6 +295,23 @@ pub struct ShipSnap {
     pub lock_target: Option<u16>,
     /// The lock's progress (0-1).
     pub lock_frac: f64,
+    /// Laser banks, port first (laser-banks).
+    pub lasers: Vec<LaserSnap>,
+    /// Countermeasures left (armour-and-missiles 3).
+    pub decoys: u8,
+    /// A decoy burst is out around it.
+    pub decoy_on: bool,
+}
+
+/// A laser bank as a snapshot carries it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LaserSnap {
+    /// Its capacitor's share of full (0-1).
+    pub charge: f64,
+    /// Whether its arc holds the locked target.
+    pub bearing: bool,
+    /// The chance a shot now hits (0-1).
+    pub hit_chance: f64,
 }
 
 /// A turret as a snapshot carries it.
@@ -323,6 +340,8 @@ pub struct TurretSnap {
 pub struct MissileSnap {
     /// Id.
     pub id: u16,
+    /// The ship that fired it.
+    pub owner: u16,
     /// Position.
     pub pos: DVec3,
     /// Velocity.
@@ -470,6 +489,19 @@ pub enum ServerMsg {
     },
     /// A ship was destroyed.
     Destroyed(u16),
+    /// A laser bank fired (laser-banks 2).
+    Beam {
+        /// The ship.
+        owner: u16,
+        /// From the emitter, system frame.
+        from: DVec3,
+        /// To where it struck or passed.
+        to: DVec3,
+        /// Whether it struck.
+        hit: bool,
+    },
+    /// A ship threw a countermeasure (armour-and-missiles 3).
+    Decoy(u16),
     /// The phase changed.
     Phase(Phase, Outcome),
     /// The echo of a Ping.
@@ -479,6 +511,8 @@ pub enum ServerMsg {
 const MAX_SHIPS: usize = 2;
 const MAX_TURRETS: usize = 16;
 const MAX_TUBES: usize = 8;
+/// The most laser banks a ship has.
+const MAX_LASERS: usize = 4;
 
 fn station_byte(s: Option<Station>) -> u8 {
     s.map(|s| s as u8).unwrap_or(255)
@@ -568,6 +602,20 @@ fn write_command(w: &mut Writer, c: &Command) {
             w.u8(18);
             w.u8(s as u8);
         }
+        Command::LaserFire(b) => {
+            w.u8(19);
+            w.u8(b);
+        }
+        Command::Decoy => w.u8(20),
+        Command::GunnerAim { yaw_deg, pitch_deg } => {
+            w.u8(21);
+            w.f32(yaw_deg);
+            w.f32(pitch_deg);
+        }
+        Command::GunnerTrigger(on) => {
+            w.u8(22);
+            w.u8(u8::from(on));
+        }
     }
 }
 
@@ -609,6 +657,10 @@ fn read_command(r: &mut Reader) -> Result<Command, DecodeError> {
             Command::Order(to, r.u8()?)
         }
         18 => Command::Ack(Station::from_u8(r.u8()?).ok_or(DecodeError("no such station"))?),
+        19 => Command::LaserFire(r.u8()?),
+        20 => Command::Decoy,
+        21 => Command::GunnerAim { yaw_deg: r.f32(-360.0, 360.0)?, pitch_deg: r.f32(-90.0, 90.0)? },
+        22 => Command::GunnerTrigger(r.bool()?),
         _ => return Err(DecodeError("no such command")),
     };
     Ok(c)
@@ -736,10 +788,19 @@ impl Snapshot {
             w.u8(s.magazine);
             w.u16(s.lock_target.unwrap_or(0));
             w.u8((s.lock_frac.clamp(0.0, 1.0) * 200.0).round() as u8);
+            w.u8(s.lasers.len() as u8);
+            for l in &s.lasers {
+                w.u8((l.charge.clamp(0.0, 1.0) * 200.0).round() as u8);
+                w.u8(u8::from(l.bearing));
+                w.u8((l.hit_chance.clamp(0.0, 1.0) * 200.0).round() as u8);
+            }
+            w.u8(s.decoys);
+            w.u8(u8::from(s.decoy_on));
         }
         w.u8(self.missiles.len() as u8);
         for m in &self.missiles {
             w.u16(m.id);
+            w.u16(m.owner);
             w.v3_64(m.pos);
             w.v3_32(m.vel);
         }
@@ -852,6 +913,18 @@ impl Snapshot {
             if lf > 200 {
                 return Err(DecodeError("a share is over 100 %"));
             }
+            let share =
+                |v: u8| if v > 200 { Err(DecodeError("a share is over 100 %")) } else { Ok(f64::from(v) / 200.0) };
+            let nl = r.count(MAX_LASERS)?;
+            let mut lasers = Vec::with_capacity(nl);
+            for _ in 0..nl {
+                let charge = share(r.u8()?)?;
+                let bearing = r.bool()?;
+                let hit_chance = share(r.u8()?)?;
+                lasers.push(LaserSnap { charge, bearing, hit_chance });
+            }
+            let decoys = r.u8()?;
+            let decoy_on = r.bool()?;
             ships.push(ShipSnap {
                 id,
                 active: flags & 1 != 0,
@@ -872,12 +945,20 @@ impl Snapshot {
                 magazine,
                 lock_target,
                 lock_frac: f64::from(lf) / 200.0,
+                lasers,
+                decoys,
+                decoy_on,
             });
         }
         let nm = r.count(combat::MAX_MISSILES)?;
         let mut missiles = Vec::with_capacity(nm);
         for _ in 0..nm {
-            missiles.push(MissileSnap { id: r.u16()?, pos: r.v3_64(POS_LIM)?, vel: r.v3_32(VEL_LIM)? });
+            missiles.push(MissileSnap {
+                id: r.u16()?,
+                owner: r.u16()?,
+                pos: r.v3_64(POS_LIM)?,
+                vel: r.v3_32(VEL_LIM)?,
+            });
         }
         let mut c = [0u32; 6];
         for v in &mut c {
@@ -955,6 +1036,8 @@ impl Snapshot {
     /// The snapshot of a drill (the header is the caller's, per client).
     pub fn of(d: &combat::Drill) -> Self {
         let lock_time = [d.data.tern_combat.lock.time_s, d.data.enemy.combat.lock.time_s];
+        let laser_cap: [f64; 2] =
+            [0, 1].map(|k| d.data.combat_of(k).lasers.as_ref().map_or(1.0, |l| d.data.laser(&l.laser).capacitor_mj));
         let guns = [d.data.gun(&d.data.tern_combat.gun), d.data.gun(&d.data.enemy.combat.gun)];
         let ships = d
             .ships
@@ -993,6 +1076,17 @@ impl Snapshot {
                 magazine: s.magazine.min(255) as u8,
                 lock_target: s.lock_target,
                 lock_frac: if lock_time[i] > 0.0 { (s.lock_s / lock_time[i]).min(1.0) } else { 1.0 },
+                lasers: s
+                    .lasers
+                    .iter()
+                    .map(|l| LaserSnap {
+                        charge: l.charge_mj / laser_cap[i].max(1e-9),
+                        bearing: l.bearing,
+                        hit_chance: l.hit_chance,
+                    })
+                    .collect(),
+                decoys: s.decoys.min(255) as u8,
+                decoy_on: s.decoy_s > 0.0,
             })
             .collect();
         let st = &d.stats;
@@ -1004,7 +1098,11 @@ impl Snapshot {
             phase_s: d.phase_s,
             outcome: d.outcome,
             ships,
-            missiles: d.missiles.iter().map(|m| MissileSnap { id: m.id, pos: m.pos, vel: m.vel }).collect(),
+            missiles: d
+                .missiles
+                .iter()
+                .map(|m| MissileSnap { id: m.id, owner: m.owner, pos: m.pos, vel: m.vel })
+                .collect(),
             bodies: d
                 .bodies
                 .iter()
@@ -1102,6 +1200,17 @@ impl ServerMsg {
                 w.u8(10);
                 w.u32(*t);
             }
+            Self::Beam { owner, from, to, hit } => {
+                w.u8(11);
+                w.u16(*owner);
+                w.v3_64(*from);
+                w.v3_64(*to);
+                w.u8(u8::from(*hit));
+            }
+            Self::Decoy(id) => {
+                w.u8(12);
+                w.u16(*id);
+            }
         }
         w.0
     }
@@ -1137,6 +1246,8 @@ impl ServerMsg {
                 Outcome::from_u8(r.u8()?).ok_or(DecodeError("no such outcome"))?,
             ),
             10 => Self::Pong(r.u32()?),
+            11 => Self::Beam { owner: r.u16()?, from: r.v3_64(POS_LIM)?, to: r.v3_64(POS_LIM)?, hit: r.bool()? },
+            12 => Self::Decoy(r.u16()?),
             _ => return Err(DecodeError("no such server message")),
         };
         if let Self::Hit { face, .. } = m {

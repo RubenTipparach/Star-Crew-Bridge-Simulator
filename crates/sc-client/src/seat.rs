@@ -734,6 +734,8 @@ impl Seat {
         let held = &ctx_input.held;
         let pressed = &ctx_input.pressed;
         match station {
+            // The laser stations and the gunner's sight take their keys in their own consoles (stream D).
+            Station::LaserPort | Station::LaserStbd | Station::Gunner => {}
             Station::Helm => {
                 if pressed.contains(&keys::W) {
                     self.speed_set = (self.speed_set + 10.0).min(fl.speed_max_mps);

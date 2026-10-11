@@ -4,7 +4,7 @@
 
 - [x] 1.1 Proposal, design and spec delta from the owner's "esc should bring up a menu to return to menu, options, or exit" (2026-10-10).
 - [x] 1.2 Mockup states 3, 4 and 5 in `docs/mockups/game-menu.html`, over engine captures.
-- [ ] 1.3 The owner approves the mockup.
+- [x] 1.3 The owner approves the mockup (2026-10-10: "Approve menu").
 
 ## 2. Build (on a request to build it)
 

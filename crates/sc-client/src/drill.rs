@@ -65,6 +65,7 @@ struct Meshes {
     bolt_enemy: Mesh,
     missile: Mesh,
     burst: Mesh,
+    beam: Mesh,
 }
 
 struct VisBolt {
@@ -78,6 +79,17 @@ struct VisBolt {
     /// Local time it struck, if it did.
     hit_at: Option<f64>,
 }
+
+/// A laser beam as drawn: a stretched bolt from the emitter to where it struck or passed (laser-banks 2).
+struct VisBeam {
+    from: DVec3,
+    to: DVec3,
+    /// Local time it fired.
+    t0: f64,
+}
+
+/// How long a beam shows, seconds.
+const BEAM_SHOW_S: f64 = 0.4;
 
 struct Boom {
     pos: DVec3,
@@ -107,6 +119,7 @@ pub struct DrillApp {
     bot: Option<Bot>,
     time_s: f64,
     bolts: Vec<VisBolt>,
+    beams: Vec<VisBeam>,
     booms: Vec<Boom>,
     held: HashSet<u32>,
     pressed: HashSet<u32>,
@@ -162,6 +175,7 @@ impl DrillApp {
             bolt_enemy: mesh(&r, &ships3d::bolt([2.0, 0.8, 0.4])),
             missile: mesh(&r, &ships3d::missile()),
             burst: mesh(&r, &ships3d::burst()),
+            beam: mesh(&r, &ships3d::bolt([2.0, 0.6, 1.3])),
         };
         let host = if args.server.contains(':') { args.server.clone() } else { format!("{}:7700", args.server) };
         let addr = host.to_socket_addrs().ok().and_then(|mut a| a.find(SocketAddr::is_ipv4));
@@ -184,6 +198,7 @@ impl DrillApp {
             bot,
             time_s: 0.0,
             bolts: Vec::new(),
+            beams: Vec::new(),
             booms: Vec::new(),
             held: HashSet::new(),
             pressed: HashSet::new(),
@@ -286,6 +301,30 @@ impl DrillApp {
                     let radius = if damage_mj > 0.0 { 30.0 } else { 12.0 };
                     self.booms.push(Boom { pos, t0: now - rtt / 2.0, dur: 1.2, radius });
                 }
+                Visual::Beam { from, to, hit, .. } => {
+                    let t0 = now - rtt / 2.0;
+                    self.beams.push(VisBeam { from, to, t0 });
+                    if hit {
+                        self.booms.push(Boom { pos: to, t0, dur: 0.6, radius: 15.0 });
+                    }
+                }
+                Visual::Decoy(id) => {
+                    // A ring of flares round the ship that threw it.
+                    if let Some((t, h, _)) = self.ships_now() {
+                        let ship = if id == TERN_ID { t } else { h };
+                        for k in 0..6 {
+                            let a = k as f64 * std::f64::consts::TAU / 6.0;
+                            let off =
+                                ship.rot * DVec3::new(a.cos() * 40.0, (k % 2) as f64 * 15.0 - 7.0, a.sin() * 40.0);
+                            self.booms.push(Boom {
+                                pos: ship.pos + off,
+                                t0: now + k as f64 * 0.15,
+                                dur: 3.0,
+                                radius: 6.0,
+                            });
+                        }
+                    }
+                }
                 Visual::Destroyed(id) => {
                     if id == ENEMY_ID {
                         if let Some((_, h, _)) = self.ships_now() {
@@ -340,6 +379,7 @@ impl DrillApp {
             meshes: &self.meshes,
             exterior: &self.exterior,
             bolts: &self.bolts,
+            beams: &self.beams,
             booms: &self.booms,
             time_s: self.time_s,
         };
@@ -356,6 +396,7 @@ struct World<'a> {
     meshes: &'a Meshes,
     exterior: &'a ExteriorData,
     bolts: &'a [VisBolt],
+    beams: &'a [VisBeam],
     booms: &'a [Boom],
     time_s: f64,
 }
@@ -430,6 +471,18 @@ impl World<'_> {
                 * Mat4::from_scale(Vec3::new(6.0, 6.0, 20.0));
             let m = if b.owner == TERN_ID { &self.meshes.bolt_tern } else { &self.meshes.bolt_enemy };
             r.draw_deck(t, m, DeckProgram::Flat, &flat(vp * model), None);
+        }
+        for b in self.beams {
+            if render_t - b.t0 > BEAM_SHOW_S || render_t < b.t0 {
+                continue;
+            }
+            let d = b.to - b.from;
+            let len = d.length().max(1.0) as f32;
+            let model = Mat4::from_rotation_translation(
+                Quat::from_rotation_arc(Vec3::Z, d.normalize_or(DVec3::Z).as_vec3()),
+                rel((b.from + b.to) * 0.5),
+            ) * Mat4::from_scale(Vec3::new(40.0, 40.0, len));
+            r.draw_deck(t, &self.meshes.beam, DeckProgram::Flat, &flat(vp * model), None);
         }
         for b in self.booms {
             let k = ((render_t - b.t0) / b.dur).clamp(0.0, 1.0);
@@ -567,6 +620,7 @@ impl App for DrillApp {
                 self.phase_seen = Some((round, p, self.time_s));
                 if p == Phase::Muster {
                     self.bolts.clear();
+                    self.beams.clear();
                     self.booms.clear();
                 }
                 println!("sc-client: round {round} {p:?}");
@@ -601,6 +655,7 @@ impl App for DrillApp {
                     meshes: &self.meshes,
                     exterior: &self.exterior,
                     bolts: &self.bolts,
+                    beams: &self.beams,
                     booms: &self.booms,
                     time_s: self.time_s,
                 };

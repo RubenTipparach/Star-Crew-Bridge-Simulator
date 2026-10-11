@@ -109,6 +109,21 @@ impl Bot {
                         automation::captain(&pic, &bridge, &p.captain, &mut self.mem.captain, now)
                     }
                     Station::Engineering | Station::Science => Vec::new(),
+                    // A laser station fires its bank by the server's own rule (laser-banks 3).
+                    Station::LaserPort | Station::LaserStbd => {
+                        let bank = station.laser_bank().map_or(0, usize::from);
+                        let l = s.latest().and_then(|x| x.ships.first().and_then(|t| t.lasers.get(bank)).copied());
+                        match l {
+                            Some(l)
+                                if sc_core::combat::laser_should_fire(l.charge, l.bearing, l.hit_chance, &p.lasers) =>
+                            {
+                                vec![Command::LaserFire(bank as u8)]
+                            }
+                            _ => Vec::new(),
+                        }
+                    }
+                    // The gunner's turret stays on AUTO under a bot.
+                    Station::Gunner => Vec::new(),
                 };
                 // The other stations, and every station's orders, at the profile's reaction time.
                 let react = match station {
@@ -117,6 +132,8 @@ impl Bot {
                     Station::Engineering => p.engineering.reaction_s,
                     Station::Science => p.science.reaction_s,
                     Station::Captain => p.captain.reaction_s,
+                    Station::LaserPort | Station::LaserStbd => p.lasers.reaction_s,
+                    Station::Gunner => p.gunner.reaction_s,
                 };
                 if now >= self.next_s {
                     self.next_s = now + react;

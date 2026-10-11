@@ -13,9 +13,12 @@
     "tactical": "Lock the Hound, free the turrets, turn the strongest shield toward it, and fire Gannets when the bow is on it.",
     "engineering": "The Tern's power grid is not in this drill yet. Watch the board; your console comes alive when the grid is built.",
     "science": "Scan the Hound so Tactical sees its hull, find its weapons' band and tune the shields to it, and keep the shields facing its fire.",
-    "captain": "Call red alert, keep the crew on task with orders, and take the viewscreen when everyone needs to see the same thing."
+    "captain": "Call red alert, keep the crew on task with orders, and take the viewscreen when everyone needs to see the same thing.",
+    "laser_port": "Keep the port bank charged and fire it when the Hound is on the port side. A shot breaks its shield; where its armour is gone, it breaks the ship.",
+    "laser_stbd": "Keep the starboard bank charged and fire it when the Hound is on the starboard side. A shot breaks its shield; where its armour is gone, it breaks the ship.",
+    "gunner": "Take the dorsal turret and shoot down the Hound's fighters before they reach our turrets and banks."
   },
-  "stations": ["helm", "tactical", "engineering", "science", "captain"],
+  "stations": ["helm", "tactical", "engineering", "science", "captain", "laser_port", "laser_stbd", "gunner"],
   "enemy": "hound",
   "enemy_start_m": [400, 300, 6000],
   "waypoint_m": [9000, 1500, 16000],

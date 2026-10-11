@@ -21,6 +21,19 @@ pub const INTERP_DELAY_S: f64 = 0.1;
 /// A visual event the client draws (bolts and explosions are drawn, not sent as state).
 #[derive(Clone, Debug, PartialEq)]
 pub enum Visual {
+    /// A laser bank fired.
+    Beam {
+        /// The ship.
+        owner: u16,
+        /// From, system frame.
+        from: glam::DVec3,
+        /// To.
+        to: glam::DVec3,
+        /// Whether it struck.
+        hit: bool,
+    },
+    /// A ship threw a countermeasure.
+    Decoy(u16),
     /// A bolt left a turret.
     Fired {
         /// Id.
@@ -196,6 +209,8 @@ impl Session {
             ServerMsg::Hit { bolt, target, face, .. } => self.visuals.push(Visual::Hit { bolt, target, face }),
             ServerMsg::Detonated { pos, damage_mj, .. } => self.visuals.push(Visual::Detonated { pos, damage_mj }),
             ServerMsg::Destroyed(id) => self.visuals.push(Visual::Destroyed(id)),
+            ServerMsg::Beam { owner, from, to, hit } => self.visuals.push(Visual::Beam { owner, from, to, hit }),
+            ServerMsg::Decoy(id) => self.visuals.push(Visual::Decoy(id)),
             ServerMsg::Launched { .. } | ServerMsg::Phase(..) => {}
             ServerMsg::Pong(ms) => {
                 let rtt = (now * 1000.0 - f64::from(ms)).max(0.0);
