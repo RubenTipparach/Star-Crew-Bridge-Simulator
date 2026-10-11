@@ -9,7 +9,9 @@
 pub mod attitude;
 pub mod automation;
 pub mod bodies;
+pub mod damage;
 pub mod data;
+pub mod fighters;
 
 use crate::replay::ReplayHash;
 use crate::rng::Rng;
