@@ -3,11 +3,12 @@
 # keep CI thin). It pushes to https://ruben-tipparach.itch.io/star-crew-bridge-simulator when the repository
 # secret BUTLER_API_KEY is set; without it, it builds, keeps the folder as a workflow artifact and pushes nothing.
 name: web build
-# Every commit, on every branch, is built and pushed (owner, 2026-10-08: "go ahead and deploy after every
-# commit to this repo"); the newest push wins.
+# Only a merge to main is built and pushed (owner, 2026-10-10: "modify deploy only on merge to master";
+# the default branch is main). Branch pushes deploy nothing; a manual run still works. The newest push wins.
 on:
   workflow_dispatch:
   push:
+    branches: [main]
 concurrency:
   group: web-build
   cancel-in-progress: true

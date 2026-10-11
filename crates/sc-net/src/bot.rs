@@ -1,0 +1,208 @@
+//! A bot crew member (openspec/changes/coop-drill design 3): a client session whose seat is played by
+//! `sc-core::combat::automation` at the `bot` profile, deciding from snapshots and sending console commands like a
+//! person would.
+//!
+//! One implementation for the headless `sc-bot`, the in-process test and the game client's `--bot` (CLAUDE.md
+//! 6.1). It lives beside the session it drives; it defines no rule: every decision is the core's automation, and
+//! where that automation is passive (Science's scan) it sends the command a player would.
+//!
+//! On foot (design 9, when the snapshot carries bodies) a claim is a walk, and the bot moves when it should: relieved
+//! by a player it walks to the most important station no one holds; sat at a less important station while a more
+//! important one stands empty, nobody on the way, for `bot_posts.reassign_s`, it gets up and goes there.
+//!
+//! On MANUAL (openspec/changes/single-player design 4) it stays: it walks, sits and readies as ever, and in a round
+//! it decides nothing and sends nothing, so the player can play its station through its session.
+
+use crate::session::{Session, Stage};
+use sc_core::combat::automation::{self, Memory};
+use sc_core::combat::bodies::Posture;
+use sc_core::combat::data::{DrillData, Profile};
+use sc_core::combat::{Bridge, Command, Phase, Station};
+
+/// A bot playing one station.
+pub struct Bot {
+    /// The station it asked for when it joined.
+    pub station: Station,
+    profile: Profile,
+    posts: Vec<Station>,
+    reassign_s: f64,
+    empty_since: [Option<f64>; Station::ALL.len()],
+    playing: Option<Station>,
+    mem: Memory,
+    /// Seconds to read the briefing before READY.
+    pub read_s: f64,
+    muster_seen: Option<f64>,
+    claimed_at: f64,
+    /// When the bot next decides at a station the core's automation has no function for (its reaction time).
+    next_s: f64,
+    /// When a hostile was last inside the captain's normal range, for the captain's automation.
+    hostile_near_s: f64,
+    /// MANUAL: seated and silent in a round (single player); AUTO when false.
+    pub manual: bool,
+}
+
+impl Bot {
+    /// A bot for `station`, with the drill's `bot` profile.
+    pub fn new(data: &DrillData, station: Station) -> Self {
+        Self {
+            station,
+            profile: data.profile("bot").clone(),
+            posts: data.stations.bot_posts.stations(),
+            reassign_s: data.stations.bot_posts.reassign_s,
+            empty_since: [None; Station::ALL.len()],
+            playing: None,
+            mem: Memory::default(),
+            read_s: data.mission.bot_ready_s,
+            muster_seen: None,
+            claimed_at: f64::NEG_INFINITY,
+            next_s: 0.0,
+            hostile_near_s: f64::NEG_INFINITY,
+            manual: false,
+        }
+    }
+
+    /// Decide and send, given the session's newest state. Call every frame after `session.update()`.
+    pub fn drive(&mut self, s: &mut Session, data: &DrillData) {
+        if s.stage != Stage::Joined {
+            return;
+        }
+        let now = s.now_s();
+        let on_foot = s.latest().is_some_and(|x| !x.bodies.is_empty());
+        if on_foot {
+            if !self.walk(s, now) {
+                return;
+            }
+        } else if s.station() != Some(self.station) {
+            // Take the station whenever it is not ours, in any phase: a bot that joins mid-fight takes over from
+            // automation at once. A refused claim (a person holds it) is retried every 2 s.
+            if now - self.claimed_at >= 2.0 {
+                s.claim(self.station);
+                self.claimed_at = now;
+            }
+            return;
+        }
+        let Some(station) = s.station() else { return };
+        if self.playing != Some(station) {
+            self.playing = Some(station);
+            self.mem = Memory::default();
+        }
+        match s.phase() {
+            Some(Phase::Muster) => {
+                self.mem = Memory::default();
+                self.next_s = 0.0;
+                self.hostile_near_s = f64::NEG_INFINITY;
+                let seen = *self.muster_seen.get_or_insert(now);
+                if !s.ready() && now - seen >= self.read_s {
+                    s.set_ready(true);
+                }
+            }
+            Some(Phase::Engage) => {
+                self.muster_seen = None;
+                if self.manual {
+                    // The player plays this station: nothing of its own, and back on AUTO it decides afresh.
+                    self.mem = Memory::default();
+                    self.next_s = 0.0;
+                    return;
+                }
+                let Some(pic) = s.picture() else { return };
+                let now = s.latest().map(|x| x.phase_s).unwrap_or(0.0);
+                let p = &self.profile;
+                let mut cmds = match station {
+                    Station::Helm => automation::helm(&pic, &p.helm, &data.tern_flight, &mut self.mem.helm, now),
+                    Station::Tactical => automation::tactical(&pic, &p.tactical, data, &mut self.mem.tactical, now),
+                    Station::Captain => {
+                        // The captain's auto-condition, from what the snapshot shows.
+                        let range = pic.hostile.as_ref().map(|h| (h.pos - pic.own.pos).length());
+                        if range.is_some_and(|r| r <= p.captain.normal_beyond_m) {
+                            self.hostile_near_s = now;
+                        }
+                        let red_alert = s.latest().is_some_and(|x| x.bridge.red_alert);
+                        let bridge = Bridge { red_alert, hostile_near_s: self.hostile_near_s, ..Bridge::default() };
+                        automation::captain(&pic, &bridge, &p.captain, &mut self.mem.captain, now)
+                    }
+                    Station::Engineering | Station::Science => Vec::new(),
+                };
+                // The other stations, and every station's orders, at the profile's reaction time.
+                let react = match station {
+                    Station::Helm => p.helm.reaction_s,
+                    Station::Tactical => p.tactical.reaction_s,
+                    Station::Engineering => p.engineering.reaction_s,
+                    Station::Science => p.science.reaction_s,
+                    Station::Captain => p.captain.reaction_s,
+                };
+                if now >= self.next_s {
+                    self.next_s = now + react;
+                    if let Some(b) = s.latest().map(|x| x.bridge.clone()) {
+                        if b.orders.iter().any(|(to, _, done)| *to == station && !done) {
+                            cmds.push(Command::Ack(station));
+                        }
+                        match station {
+                            // Science scans the hostile until the scan is done.
+                            Station::Science if b.scan < 1.0 && !b.scanning && pic.hostile.is_some() => {
+                                cmds.push(Command::Scan(true));
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+                for c in cmds {
+                    s.command(c);
+                }
+            }
+            _ => self.muster_seen = None,
+        }
+    }
+
+    /// On foot: decide where to be. Returns whether the bot is seated at a station and should play it.
+    fn walk(&mut self, s: &mut Session, now: f64) -> bool {
+        let Some(snap) = s.latest() else { return false };
+        let me = s.slot;
+        let mine = snap.bodies.iter().find(|b| Some(b.slot) == me).copied();
+        let still = |p: Posture| p == Posture::Seated || p == Posture::Standing;
+        if mine.is_none_or(|b| b.going.is_some() || !still(b.posture)) {
+            return false;
+        }
+        let held = |st: Station| s.crew.iter().any(|c| Some(c.slot) != me && c.station == Some(st));
+        let walked = |st: Station| snap.bodies.iter().any(|b| Some(b.slot) != me && b.going == Some(st));
+        let free = |st: Station| !held(st) && !walked(st);
+        let phase = snap.phase;
+        match s.station() {
+            Some(cur) => {
+                // A more important station empty, nobody on the way, for long enough: get up and go.
+                let rank = self.posts.iter().position(|p| *p == cur).unwrap_or(self.posts.len());
+                let mut go = None;
+                for (i, p) in self.posts.iter().enumerate() {
+                    let k = *p as usize;
+                    if i < rank && free(*p) {
+                        let since = *self.empty_since[k].get_or_insert(now);
+                        if go.is_none() && now - since >= self.reassign_s && phase != Phase::Countdown {
+                            go = Some(*p);
+                        }
+                    } else {
+                        self.empty_since[k] = None;
+                    }
+                }
+                if let Some(p) = go {
+                    if now - self.claimed_at >= 2.0 {
+                        s.claim(p);
+                        self.claimed_at = now;
+                        self.empty_since = [None; Station::ALL.len()];
+                    }
+                    return false;
+                }
+                true
+            }
+            None => {
+                // Not seated: the station asked for if it is free, else the most important free post.
+                let pick = std::iter::once(self.station).chain(self.posts.iter().copied()).find(|p| free(*p));
+                if let Some(p) = pick {
+                    if now - self.claimed_at >= 2.0 {
+                        s.claim(p);
+                        self.claimed_at = now;
+                    }
+                }
+                false
+            }
+        }
+    }
+}

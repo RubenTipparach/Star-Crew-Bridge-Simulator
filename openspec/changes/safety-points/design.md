@@ -43,13 +43,35 @@ Tern: about 30 points (the tool's count is the number; this is an estimate).
 | Item | Mass | Hands | Doses | Its action | Refill |
 | --- | ---: | --- | ---: | --- | --- |
 | First aid kit | 3 kg | One | 3 | Stabilize an incapacitated body: hold Use within 1.2 m for 5.0 s, one dose (`crew-on-deck` 7). Gives no HP. | At the medbay cabinet, 4 s; a kit put back in a cabinet empty stays empty |
-| Extinguisher | 9 kg | One | 15 s of agent | `crew-on-deck` 6; where it lands, `fire-spread` 5 | At damage control, 10 s |
+| Extinguisher | 9 kg | One | 15 s of agent | `crew-on-deck` 6; where it lands, `fire-spread` 5 | At damage control, 10 s; a bracket restocks itself 15 s after its extinguisher is taken (3a) |
 
 - **Taking and returning.** Use on a bracket or cabinet takes its kit (0.5 s); Use with the same kind of item in hand
   puts it back (0.5 s). Kits are items (`crew-on-deck` 6): carried, dropped, persisted with the ship (CLAUDE.md 7).
 - **Bots.** NPC crew and damage control teams take kits from the nearest point by walk, the same rule as players
   (`crew-npcs`); the medic bot uses its bag.
-- **Restock.** Between missions every point is restocked; during one, only the refill stations refill.
+- **Restock.** Between missions every point is restocked. During one, a first aid cabinet is refilled only at the
+  refill stations; an extinguisher bracket restocks itself (3a).
+
+## 3a. A bracket restocks in 15 s (owner, 2026-10-10)
+
+The owner, 2026-10-10: "Once an extinguisher is picked up a 15 second cool down replenishes it." So a bracket is never
+empty for long: the fire next door is always one extinguisher away, however many have been taken.
+
+- **The rule.** When an extinguisher is taken from a bracket, the bracket starts a timer of 15 s
+  (`fire.extinguisher.bracket_restock_s`); when it runs out a full extinguisher is in the bracket again. Taking it
+  starts the timer again. Putting an extinguisher back in an empty bracket fills it at once and stops the timer.
+- **What is restocked** is the bracket, not the one taken: the extinguisher in a crew member's hand keeps what it has
+  left and goes on being an item (`crew-on-deck` 6). So the ship's extinguishers grow in number while crew carry them
+  off; that is accepted, since one hand holds one (taking another drops the first where you stand).
+- **Glance first.** An empty bracket shows the timer as a ghost of the extinguisher filling from the bottom up, in the
+  extinguisher's red at a quarter of its brightness; nothing to read. Full, it is the extinguisher again.
+- **The damage control locker** keeps its six and its refill station as before: it is where an extinguisher in hand is
+  refilled (10 s), and it does not restock itself.
+- **Engine and network.** The server owns the timer (a bracket's restock time, 4 bytes); the restock is a reliable
+  event of about 8 bytes, like a take.
+
+Recommendation taken (ask only with screenshots): the timer starts on the take, the locker does not restock, and a
+bracket restocks whether or not anyone is near it.
 
 ## 4. Data and checks
 
@@ -59,7 +81,7 @@ Tern: about 30 points (the tool's count is the number; this is an estimate).
 {
   "schema": "starcrew.kit/1",
   "items": {
-    "extinguisher": { "mass_kg": 9.0, "hands": 1, "agent_kg": 6.0, "discharge_s": 15.0, "refill_at": "damage_control", "refill_s": 10.0 },
+    "extinguisher": { "mass_kg": 9.0, "hands": 1, "agent_kg": 6.0, "discharge_s": 15.0, "refill_at": "damage_control", "refill_s": 10.0, "bracket_restock_s": 15.0 },
     "first_aid_kit": { "mass_kg": 3.0, "hands": 1, "doses": 3, "refill_at": "medbay", "refill_s": 4.0 }
   },
   "points": [
@@ -92,7 +114,7 @@ Tern: about 30 points (the tool's count is the number; this is an estimate).
 | --- | --- | --- |
 | Static props | About 30 points x 90 triangles (bracket, cabinet, sign) = 2,700 triangles, in the deck's own batches: no draw call added | Deck triangles |
 | Items | About 30 extinguishers and 30 kits, 120 and 30 triangles, one instanced draw per kind in view | 2 draw calls |
-| Server | 60 items with a pose and a holder; the dose and agent counts, 8 bytes each | Negligible |
+| Server | 60 items with a pose and a holder; the dose and agent counts, 8 bytes each; a restock timer per bracket, 4 bytes | Negligible |
 | Network | An item's take, drop and refill are reliable events of about 8 bytes | Negligible |
 
 ## Risks / Trade-offs

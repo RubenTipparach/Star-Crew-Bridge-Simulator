@@ -12,3 +12,6 @@ __pycache__/
 # Exported and compiled game data (tools/deck/export_deck.mjs, sc-tools deckc): rebuilt, never committed
 /build/
 /compiled/
+# Written by tools/consoles/compare.py from the committed mockup and engine pictures.
+docs/screenshots/parity/*-compare.png
+docs/screenshots/parity/parity-report.json

@@ -9,6 +9,8 @@
 - [x] 1.5 `docs/mockups/fire.html`: walk and board views (design 6), normal and red alert, Pi cost; inlined by `tools/mockups/inline.py`.
 - [x] 1.5a Venting as the captain's call (design 6a): the guarded vent with its preview of who is inside, the 5 s warning, harm as oxygen and heat fall; the mockup's vent and the harness's vented case.
 - [ ] 1.6 Shots in `docs/screenshots/fire/` (taken 2026-10-09); published for the owner.
+- [x] 1.7 Design 6b: `fire.outbreaks` in `atmosphere.json`, `FireSpread.outbreaks` (seeded, validated), `lib/firefight.js`
+  (flames, spray, safety points) moved out of `fire.html`, and outbreaks in `deck-plan.html`'s walk; shots.
 
 ## 2. Engine (after the owner has played it)
 

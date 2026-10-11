@@ -10,6 +10,10 @@ publish.workspace = true
 [dependencies]
 sc-core.workspace = true
 sc-render.workspace = true
+sc-net.workspace = true
+# The drill server as a library: a single-player game hosts it on loopback (openspec/changes/single-player).
+sc-server.workspace = true
+sc-repairs.workspace = true
 sdl3-sys.workspace = true
 glam.workspace = true
 serde.workspace = true

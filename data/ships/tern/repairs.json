@@ -1,0 +1,198 @@
+{
+  "schema": "starcrew.ship-repairs/1",
+  "_doc": "repairs-on-deck 5: the Tern's repair jobs, each a game, a place in the layout (or 'any' for a door or a breach wherever it is, 'outside' for EVA) and the players who can work it at once. The repair points themselves come from the props' builds (repairs-on-deck 2).",
+  "jobs": [
+    {
+      "id": "gravity_generator",
+      "game": "gravity",
+      "place": "cargo",
+      "workers": 2
+    },
+    {
+      "id": "galley_synthesizer",
+      "game": "galley",
+      "place": "mess",
+      "workers": 1
+    },
+    {
+      "id": "co2_scrubbers",
+      "game": "scrubbers",
+      "place": "life_support",
+      "workers": 2
+    },
+    {
+      "id": "swift_port",
+      "game": "fighter",
+      "place": "launch_bay_p",
+      "workers": 1
+    },
+    {
+      "id": "swift_starboard",
+      "game": "fighter",
+      "place": "launch_bay_s",
+      "workers": 1
+    },
+    {
+      "id": "petrel",
+      "game": "shuttle",
+      "place": "hangar",
+      "workers": 1
+    },
+    {
+      "id": "reactor_core",
+      "game": "reactor",
+      "place": "engineering",
+      "workers": 2
+    },
+    {
+      "id": "impulse_1",
+      "game": "impulse",
+      "place": "drive",
+      "workers": 1
+    },
+    {
+      "id": "impulse_2",
+      "game": "impulse",
+      "place": "drive",
+      "workers": 1
+    },
+    {
+      "id": "warp_pylon_port",
+      "game": "pylons",
+      "place": "outside",
+      "workers": 1
+    },
+    {
+      "id": "warp_pylon_starboard",
+      "game": "pylons",
+      "place": "outside",
+      "workers": 1
+    },
+    {
+      "id": "toilet_1",
+      "game": "toilet",
+      "place": "quarters",
+      "workers": 1
+    },
+    {
+      "id": "shower_1",
+      "game": "shower",
+      "place": "quarters",
+      "workers": 1
+    },
+    {
+      "id": "biobed_1",
+      "game": "biobed",
+      "place": "medbay",
+      "workers": 1
+    },
+    {
+      "id": "biobed_2",
+      "game": "biobed",
+      "place": "medbay",
+      "workers": 1
+    },
+    {
+      "id": "turret_dorsal_fwd",
+      "game": "turret",
+      "place": "turret_access_dorsal_fwd",
+      "workers": 1
+    },
+    {
+      "id": "turret_dorsal_aft",
+      "game": "turret",
+      "place": "turret_access_dorsal_aft",
+      "workers": 1
+    },
+    {
+      "id": "turret_ventral_fwd",
+      "game": "turret",
+      "place": "turret_access_ventral_fwd",
+      "workers": 1
+    },
+    {
+      "id": "turret_ventral_aft",
+      "game": "turret",
+      "place": "turret_access_ventral_aft",
+      "workers": 1
+    },
+    {
+      "id": "tube_port",
+      "game": "tubes",
+      "place": "torpedo_room",
+      "workers": 1
+    },
+    {
+      "id": "tube_starboard",
+      "game": "tubes",
+      "place": "torpedo_room",
+      "workers": 1
+    },
+    {
+      "id": "shield_generator",
+      "game": "shields",
+      "place": "shield_room",
+      "workers": 2
+    },
+    {
+      "id": "sensor_array",
+      "game": "sensors",
+      "place": "computer_core",
+      "workers": 1
+    },
+    {
+      "id": "conduit_run",
+      "game": "conduits",
+      "place": "engineering",
+      "workers": 1
+    },
+    {
+      "id": "switchboard",
+      "game": "breakers",
+      "place": "engineering",
+      "workers": 2
+    },
+    {
+      "id": "door_jammed",
+      "game": "doors",
+      "place": "any",
+      "workers": 1
+    },
+    {
+      "id": "hull_breach",
+      "game": "hull",
+      "place": "any",
+      "workers": 1
+    },
+    {
+      "id": "coolant_panel",
+      "game": "coolant",
+      "place": "engineering",
+      "workers": 1
+    },
+    {
+      "id": "coolant_runs",
+      "game": "pipes",
+      "place": "engineering",
+      "workers": 1
+    },
+    {
+      "id": "coolant_pump_a",
+      "game": "pump",
+      "place": "engineering",
+      "workers": 1
+    },
+    {
+      "id": "coolant_pump_b",
+      "game": "pump",
+      "place": "engineering",
+      "workers": 1
+    },
+    {
+      "id": "chiller",
+      "game": "chiller",
+      "place": "engineering",
+      "workers": 1
+    }
+  ]
+}

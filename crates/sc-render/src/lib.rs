@@ -42,6 +42,8 @@ pub enum DeckProgram {
     Textured,
     /// Baked colours only (no texture fetch).
     Flat,
+    /// Albedo lit by an ambient cube of light probes (a crew figure; light-baking design 16).
+    Probe,
 }
 
 /// The width of a mesh's indices.
@@ -246,6 +248,7 @@ impl Renderer {
         let mut shaders = HashMap::new();
         shaders.insert(DeckProgram::Textured, sg::make_shader(&shaders::deck::deck_shader_desc(backend)));
         shaders.insert(DeckProgram::Flat, sg::make_shader(&shaders::deck::deck_flat_shader_desc(backend)));
+        shaders.insert(DeckProgram::Probe, sg::make_shader(&shaders::deck::deck_probe_shader_desc(backend)));
         let blit_shader = sg::make_shader(&shaders::blit::blit_shader_desc(backend));
         let mut blit = sg::PipelineDesc { shader: blit_shader, label: c"blit".as_ptr(), ..Default::default() };
         blit.depth.pixel_format = DEPTH_FORMAT;
@@ -597,6 +600,35 @@ impl Renderer {
         sg::draw(first, count, 1);
     }
 
+    /// Draw a mesh whose vertex colours are albedo, lit by an ambient cube (`cube`: display multipliers for a surface
+    /// facing +X, -X, +Y, -Y, +Z and -Z in the ship's frame), in the current 3D pass of `t`. `model` is the mesh's
+    /// rotation into the ship's frame (its translation is ignored), `mvp` its full transform.
+    pub fn draw_deck_probe(
+        &mut self,
+        t: &Target,
+        mesh: &Mesh,
+        mvp: glam::Mat4,
+        model: glam::Mat4,
+        cube: &[[f32; 3]; 6],
+        state_weights: [f32; 3],
+    ) {
+        let pip = self.deck_pipeline(DeckProgram::Probe, mesh.width, t.samples);
+        sg::apply_pipeline(pip);
+        let mut b = sg::Bindings::new();
+        b.vertex_buffers[0] = mesh.vbuf;
+        b.index_buffer = mesh.ibuf;
+        sg::apply_bindings(&b);
+        let u = shaders::deck::DeckProbeVsParams {
+            mvp: mvp.to_cols_array(),
+            model: model.to_cols_array(),
+            cube: cube.map(|c| [c[0], c[1], c[2], 0.0]),
+            state_weights: [state_weights[0], state_weights[1], state_weights[2], 0.0],
+            clip: [1.0e9, 0.0, 0.0, 0.0],
+        };
+        sg::apply_uniforms(shaders::deck::UB_DECK_PROBE_VS_PARAMS, &sg::value_as_range(&u));
+        sg::draw(0, mesh.index_count, 1);
+    }
+
     /// End the current pass.
     pub fn end_pass(&mut self) {
         sg::end_pass();
@@ -643,6 +675,23 @@ impl Renderer {
         meshes: &[UiMesh<'_>],
         points: [f32; 2],
     ) {
+        self.present_with_ui_at(t, None, width, height, linear, meshes, points);
+    }
+
+    /// As `present_with_ui`, with `t` drawn into `at` (x, y from the top left, width, height, in output pixels) on a
+    /// black output instead of over all of it: a console's camera feed sits under the UI in its own window, at no
+    /// UI draw call.
+    #[allow(clippy::too_many_arguments)]
+    pub fn present_with_ui_at(
+        &mut self,
+        t: &Target,
+        at: Option<[i32; 4]>,
+        width: u32,
+        height: u32,
+        linear: bool,
+        meshes: &[UiMesh<'_>],
+        points: [f32; 2],
+    ) {
         // The UI's triangles, all meshes in one vertex and one index write (a transient buffer is written once a
         // frame, before it is bound), the indices offset to their mesh's first vertex.
         let mut verts: Vec<UiVertex> = Vec::new();
@@ -674,8 +723,9 @@ impl Renderer {
                 size: 0,
             });
         }
-        self.output_pass(t, width, height, linear);
+        self.output_pass_at(t, at, width, height, linear);
         if !draws.is_empty() {
+            sg::apply_viewport(0, 0, width as i32, height as i32, true);
             sg::apply_pipeline(self.ui.pipeline);
             let u = shaders::ui::UiVsParams { screen: [2.0 / points[0], 2.0 / points[1], 0.0, 0.0] };
             sg::apply_uniforms(shaders::ui::UB_UI_VS_PARAMS, &sg::value_as_range(&u));
@@ -710,8 +760,14 @@ impl Renderer {
 
     /// Begin the output pass and blit `t` over it; the pass stays open.
     fn output_pass(&mut self, t: &Target, width: u32, height: u32, linear: bool) {
+        self.output_pass_at(t, None, width, height, linear);
+    }
+
+    /// Begin the output pass and blit `t` over it, or into `at` on black; the pass stays open.
+    fn output_pass_at(&mut self, t: &Target, at: Option<[i32; 4]>, width: u32, height: u32, linear: bool) {
         let mut action = sg::PassAction::new();
-        action.colors[0].load_action = sg::LoadAction::Dontcare;
+        action.colors[0].load_action = if at.is_some() { sg::LoadAction::Clear } else { sg::LoadAction::Dontcare };
+        action.colors[0].clear_value = sg::Color { r: 0.0, g: 0.0, b: 0.0, a: 1.0 };
         action.depth.load_action = sg::LoadAction::Dontcare;
         let swapchain = sg::Swapchain {
             width: width as i32,
@@ -723,6 +779,9 @@ impl Renderer {
             ..Default::default()
         };
         sg::begin_pass(&sg::Pass { action, swapchain, label: c"output".as_ptr(), ..Default::default() });
+        if let Some([x, y, w, h]) = at {
+            sg::apply_viewport(x, y, w.max(1), h.max(1), true);
+        }
         sg::apply_pipeline(self.blit);
         let mut b = sg::Bindings::new();
         b.views[shaders::blit::VIEW_TEX] = t.texture;

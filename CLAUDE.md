@@ -72,11 +72,12 @@ From the owner's brief, 2026-10-04. Quotes are the owner's words.
   use webrtc if posible to do multiplayer on web and desktop"). A browser build is a playtest
   target, never the measure of the game's speed (`engine-stack` section 10a,
   `netcode-and-sessions`, `matchmaker`).
-- **Every commit is deployed to itch.io** (owner, 2026-10-08: "go ahead and deploy after every commit to
-  this repo"). `.github/workflows/web.yml` builds the engine for the browser and pushes it with butler
-  (`BUTLER_API_KEY`, a repository secret) to https://ruben-tipparach.itch.io/star-crew-bridge-simulator;
-  `tools/web/release.sh` is the same thing by hand (`engine-stack` 10b). A push that breaks that build is a
-  broken deploy: run `tools/web/build.sh` before pushing engine changes.
+- **Every merge to main is deployed to itch.io** (owner, 2026-10-10: "modify deploy only on merge to
+  master", replacing 2026-10-08's "deploy after every commit"). `.github/workflows/web.yml` builds the
+  engine for the browser and pushes it with butler (`BUTLER_API_KEY`, a repository secret) to
+  https://ruben-tipparach.itch.io/star-crew-bridge-simulator;
+  `tools/web/release.sh` is the same thing by hand (`engine-stack` 10b). A merge that breaks that build is a
+  broken deploy: run `tools/web/build.sh` before merging engine changes.
 - **The engine is the game now** (owner, 2026-10-08: "continue building the game to run on actual engine
   rather than js"). The three.js mockups stay the design tool; new gameplay is built in the Rust engine.
 - **Documentation and mockups first.** "First we need to do some extreme documentation and
@@ -403,6 +404,14 @@ Adopted from Undercity section 8 and star-crew-64's UI text rules.
 
 - **Mockup first.** Get the owner's approval of a mockup before implementing any new screen,
   console or layout. Not needed for bug fixes or text fixes within an approved design.
+- **An engine screen looks like its approved mockup** (owner, 2026-10-10: "stations are not appearing the same as
+  their approved mockups. This is a problem"). The approved mockup is the screen's specification:
+  - every panel and control in the same place, with the same label, icon, colours and typeface;
+  - no control the mockup lacks (it goes into the mockup first, for approval);
+  - a control the engine cannot do yet drawn in the mockup's unavailable state.
+
+  A screen is done when the parity check passes and the owner has signed off side-by-side captures of the mockup
+  and the engine (`openspec/changes/console-parity`).
 - **Consoles are full-screen 2D when seated.** A player seated at a station sees the station's
   console UI; the bridge stays visible behind or beside it. Console UI is drawn by the engine's
   immediate-mode UI, not rendered into textures on the bridge every frame.
@@ -466,6 +475,8 @@ Before claiming anything is done, run what applies:
 | Mockups hold the current layout | `python3 tools/mockups/inline.py --check` |
 | Mockup screenshots | `node tools/mockups/shoot.mjs` |
 | No z-fighting in the mockups | `node tools/mockups/zfight.mjs docs/mockups/*.html` |
+| Console fonts and style are the mockup's | `python3 tools/ui/fonts.py --check`, `python3 tools/ui/console_style.py --check` |
+| Engine consoles match their mockup | `python3 tools/consoles/compare.py DIR --max-pct 2.5 --max-missing 10` on the mockup's saved states drawn by `sc-client --console-fixture` (`scripts/check.sh` step 13; `openspec/changes/console-parity` design 4) |
 | Engine, and every row above | `scripts/check.sh` (format, clippy with warnings as errors, the workspace's tests with the headless render tests, then the rows above, the shader modules and the engine data) |
 
 - **Know what is proven.** Distinguish implemented, validated and proposed work in docs, PRs

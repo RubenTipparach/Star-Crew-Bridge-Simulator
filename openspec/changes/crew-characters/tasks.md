@@ -1,3 +1,10 @@
+# Tasks: crew characters
+
+## 0. Original requirements
+
+- [x] 0.1 Retain the original owner brief and rejected MakeHuman prototype history.
+- [x] 0.2 Keep existing blocky figures aboard until explicit screenshot approval.
+
 ## 1. Build review assets
 
 - [x] 1.1 Add validated character data with proportions, eye ratios and pending status.
@@ -32,6 +39,10 @@
 ## 2. Adoption, after explicit screenshot approval
 
 - [ ] 2.1 Record owner approval against named character screenshots.
-- [ ] 2.2 Integrate approved assets with the engine and mockups, retaining blocky fallback.
+- [ ] 2.2 Integrate approved assets with the engine and mockups, retaining blocky fallback, department colors and LOD 1/2.
 - [ ] 2.3 Sample/interpolate live deck light probes and validate in-engine captures.
 - [ ] 2.4 Measure the adopted avatars on a Pi 5 and promote proven spec requirements.
+
+## Remaining visual comparison
+
+- [ ] Render the stylized model beside the blocky figure at night in a probe-lit room for owner review.

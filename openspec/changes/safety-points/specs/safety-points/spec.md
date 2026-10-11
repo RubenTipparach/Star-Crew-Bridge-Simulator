@@ -27,3 +27,17 @@ give no HP, and SHALL be refilled only at the medbay cabinet.
 #### Scenario: The fourth casualty
 - **WHEN** a crew member has stabilized three bodies with one first aid kit
 - **THEN** the kit is empty and a fourth stabilize needs another kit or a refill at the medbay
+
+### Requirement: An emptied bracket restocks in 15 s
+
+When an extinguisher is taken from a safety point's bracket, the bracket SHALL hold a full extinguisher again
+`fire.extinguisher.bracket_restock_s` (15 s) later, and SHALL show the time left as a ghost extinguisher filling from
+the bottom up while it is empty. The extinguisher taken SHALL keep the agent it has.
+
+#### Scenario: Taking the quarters' extinguisher
+- **WHEN** a crew member takes the extinguisher from the quarters' bracket
+- **THEN** the bracket is empty, and 15 s later it holds a full extinguisher, whatever the one taken has left
+
+#### Scenario: Putting one back
+- **WHEN** a crew member puts an extinguisher into an empty bracket before its 15 s are up
+- **THEN** the bracket holds that extinguisher at once and its timer stops

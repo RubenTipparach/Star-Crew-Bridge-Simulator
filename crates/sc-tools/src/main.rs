@@ -40,7 +40,24 @@ fn check_data(root: &Path) -> Result<usize, String> {
         }
         .map_err(|e| e.to_string())?;
     }
-    Ok(files.len())
+    // The drill's files are cross-checked together: an id one names must exist in another.
+    let read = |rel: &str| std::fs::read_to_string(root.join(rel)).map_err(|e| format!("{rel}: cannot be read: {e}"));
+    let drill = sc_core::combat::data::DRILL_FILES.map(read);
+    let drill = drill.into_iter().collect::<Result<Vec<String>, String>>()?;
+    let missions = ["data/missions/drill-hound.json"];
+    for m in missions {
+        let texts: [&str; 6] = std::array::from_fn(|i| drill[i].as_str());
+        sc_core::combat::data::DrillData::parse(texts, m, &read(m)?).map_err(|e| e.to_string())?;
+    }
+    // The repair files: the rules, the kit's rates, the Tern's jobs, and each game the jobs name (repair-minigames 8).
+    let mut ids: Vec<String> = std::fs::read_dir(root.join("data/repairs"))
+        .map_err(|e| format!("data/repairs: cannot be read: {e}"))?
+        .filter_map(|e| e.ok()?.file_name().into_string().ok()?.strip_suffix(".json").map(str::to_owned))
+        .filter(|id| id != "rules")
+        .collect();
+    ids.sort();
+    sc_core::repair::data::RepairData::load(&ids, read)?;
+    Ok(files.len() + drill.len() + missions.len() + 3 + ids.len())
 }
 
 fn main() -> ExitCode {

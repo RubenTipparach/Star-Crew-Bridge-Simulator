@@ -13,16 +13,26 @@
 //! then. A HUD names the officer and what E and Q do at a lift.
 //!
 //! Usage: sc-client [--window] [--deck compiled/tern.deck] [--headless --shots DIR] [--headless --walk-test DIR]
-//! [--headless --lobby-test DIR]
+//! [--headless --lobby-test DIR] [--console-fixture STATE.json --shots DIR]
 //!
 //! `--lobby-test DIR` shoots the lobby, rolls a name, shoots it again, beams aboard and shoots the bridge.
 //!
 //! `--walk-test DIR` walks a scripted route from the bridge down both ladders to deck C, captures along it, and
 //! fails if the body does not arrive where the route ends.
 
+mod console;
+mod drill;
+mod drill_bridge;
 mod first_light;
+mod fixture;
 mod lobby;
+mod options;
+mod repairs;
+mod seat;
+mod ships3d;
+mod solo;
 mod ui;
+mod vg;
 
 use glam::{Mat4, Vec3};
 use sc_client::platform::{self, keys, App, Event, Flow, Frame, WindowConfig};
@@ -216,6 +226,12 @@ const MAP_EXPLODE_M: f32 = 12.0;
 const MAP_CUT_M: f32 = 1.6;
 /// Figures are drawn this much larger on the map, so a body reads from across the ship.
 const MAP_FIGURE_SCALE: f32 = 3.0;
+/// `--shots` frames this many bots close up after the ship's poses (light-baking 16).
+const BOT_SHOTS: usize = 4;
+/// A bot close-up's camera stands this far in front of the bot, metres.
+const BOT_SHOT_M: f32 = 2.2;
+/// Where a figure takes its light probes: its chest, this far above its feet, metres (light-baking 16).
+const FIGURE_PROBE_HEIGHT_M: f64 = 1.0;
 
 /// A name over a marker on the map: where (0-1 across and down the screen), what, its colour.
 struct MapLabel {
@@ -292,6 +308,8 @@ enum Scene {
         rooms: Vec<Room>,
         /// A crew figure mesh for each department, by its index in the company.
         figures: Vec<(usize, Mesh)>,
+        /// Every compartment's light probes, which light the figures (light-baking 16).
+        probes: sc_core::probes::ProbeSet,
         outside: Option<Box<Outside>>,
         tex: TextureArray,
         panel_first: u32,
@@ -343,6 +361,8 @@ struct Client {
     exterior: ExteriorData,
     /// `--lobby-test`: frames the lobby has run.
     lobby_test: Option<u32>,
+    /// `--hand-over-test`: where its captures go, whether this menu is the one come back to, and its frames.
+    hand_test: Option<(PathBuf, bool, u32)>,
     /// The ship map while it is open (M).
     map: Option<MapView>,
     /// The names over the map's markers this frame.
@@ -510,9 +530,18 @@ fn load_ship(
     // The outside: its data, and the bow camera's target (no MSAA: it is shown a fifth of the screen's size).
     let [bw, bh] = ext.viewscreen.target_px;
     let outside = Outside { bow: r.make_target(bw, bh, 1), views: d.index.views.clone(), data: ext.clone() };
+    let grids: Vec<_> = d.index.compartments.iter().filter_map(|c| d.probe_grid(c)).collect();
+    let probes = sc_core::probes::ProbeSet::new(&grids);
+    println!(
+        "sc-client: {} light probes in {} rooms ({:.2} MB)",
+        d.index.probe_count,
+        probes.len(),
+        d.probes.len() as f64 / 1e6
+    );
     let scene = Scene::Ship {
         rooms,
         figures,
+        probes,
         outside: Some(Box::new(outside)),
         tex,
         panel_first: t.panel_first,
@@ -553,7 +582,9 @@ impl Client {
             (scene, walker, cam, None)
         };
         // Headless shots: every pose (the ship) or one view (the test room), in each state; a walk test instead walks.
-        let poses = if matches!(scene, Scene::Ship { .. }) { POSES.len() } else { 1 };
+        // After the ship's poses, a close-up of each of the first BOT_SHOTS bots (light-baking 16: probe-lit figures).
+        let bot_shots = walker.as_ref().map_or(0, |w| w.crew.bots.len().min(BOT_SHOTS));
+        let poses = if matches!(scene, Scene::Ship { .. }) { POSES.len() + bot_shots } else { 1 };
         let shot_plan = if shots.is_some() && !walk_test && !lobby_test {
             (0..poses).flat_map(|p| (0..3).map(move |s| (p, s))).collect()
         } else {
@@ -585,6 +616,7 @@ impl Client {
             deck,
             exterior,
             lobby_test: lobby_test.then_some(0),
+            hand_test: None,
             map: None,
             map_labels: Vec::new(),
         })
@@ -596,13 +628,35 @@ impl Client {
         self.time_s += dt;
         let mut shot = None;
         let mut beam = false;
+        let mut solo_now = false;
+        // The hand-over test: the menu, Beam aboard into single player, and (once handed back) the menu again.
+        if let Some((dir, back, n)) = self.hand_test.as_mut() {
+            *n += 1;
+            match (*n, *back) {
+                (10, false) => shot = Some("hand-over-1-menu.png"),
+                (11, false) => solo_now = true,
+                (10, true) => shot = Some("hand-over-3-back.png"),
+                (11.., true) => {
+                    let _ = dir;
+                    return Flow::Done;
+                }
+                _ => {}
+            }
+        }
         if let (Some(n), Some(l)) = (self.lobby_test.as_mut(), self.lobby.as_mut()) {
             *n += 1;
+            // The four buttons, Multiplayer, Options, then Single Player's officer panel, a roll and Tour.
             match *n {
-                20 => shot = Some("lobby-1.png"),
-                21 => l.roll(),
-                40 => shot = Some("lobby-2-rolled.png"),
-                41 => beam = true,
+                20 => shot = Some("menu-1-main.png"),
+                21 => l.page = lobby::Page::Multi,
+                40 => shot = Some("menu-2-multi.png"),
+                41 => l.page = lobby::Page::Options,
+                60 => shot = Some("menu-3-options.png"),
+                61 => l.page = lobby::Page::Single,
+                80 => shot = Some("lobby-1.png"),
+                81 => l.roll(),
+                100 => shot = Some("lobby-2-rolled.png"),
+                101 => beam = true,
                 _ => {}
             }
         }
@@ -643,7 +697,35 @@ impl Client {
                 action = l.ui(ctx);
             }
         });
-        if beam || action == lobby::LobbyAction::BeamAboard {
+        // In the browser Beam aboard tours the ship: it cannot host a game yet (single-player design 7).
+        let web = cfg!(target_os = "emscripten");
+        let action = if solo_now { lobby::LobbyAction::Solo } else { action };
+        let hand_dir = self.hand_test.as_ref().map(|h| h.0.clone());
+        match action {
+            lobby::LobbyAction::Quit => return Flow::Done,
+            lobby::LobbyAction::Solo | lobby::LobbyAction::Join if !(web && action == lobby::LobbyAction::Solo) => {
+                let l = self.lobby.as_ref().ok_or("no lobby");
+                let Ok(l) = l else { return Flow::Fail };
+                l.keep();
+                let station = lobby::station_of(l.officer.station);
+                let args = drill::DrillArgs {
+                    server: l.officer.server.trim().to_owned(),
+                    station: station.unwrap_or(sc_core::combat::Station::Helm),
+                    any: station.is_none(),
+                    name: l.title(),
+                    bot: false,
+                    shots: None,
+                    watch: false,
+                    solo: action == lobby::LobbyAction::Solo,
+                    menu: true,
+                    seed: l.seed(),
+                    hand_test: hand_dir,
+                };
+                platform::hand_over(move |_| drill::DrillApp::new(args).map(|c| Box::new(c) as Box<dyn App>));
+            }
+            _ => {}
+        }
+        if beam || action == lobby::LobbyAction::Tour || (web && action == lobby::LobbyAction::Solo) {
             self.beaming = 1;
         }
         // The beaming frame: the panel gives way to one line.
@@ -666,7 +748,11 @@ impl Client {
         };
         self.r.present_with_ui(&self.target, f.width, f.height, true, &frame.meshes(), frame.points);
         if let Some(n) = shot {
-            if let Some(fl) = self.capture(f, n) {
+            if let Some((dir, _, _)) = &self.hand_test {
+                if !capture_to(f, dir, n) {
+                    return Flow::Fail;
+                }
+            } else if let Some(fl) = self.capture(f, n) {
                 return fl;
             }
         }
@@ -755,19 +841,18 @@ impl Client {
             }
             let at = Vec3::new(feet[0], feet[1] + lift(k), feet[2]);
             if let Some((_, mesh)) = figures.iter().find(|(d, _)| *d == fig) {
-                let p = DeckParams {
-                    mvp: vp
-                        * Mat4::from_translation(at - eye)
-                        * Mat4::from_rotation_y(yaw)
-                        * Mat4::from_scale(Vec3::splat(MAP_FIGURE_SCALE)),
-                    state_weights: [1.0, 0.0, 0.0],
-                    flash_dir: Vec3::Z,
-                    flash: 0.0,
-                    panel_first: u32::MAX,
-                    panel_glow: 0.0,
-                    clip_y: f32::MAX,
-                };
-                self.r.draw_deck(&self.target, mesh, DeckProgram::Flat, &p, None);
+                // The map is a diagram: its figures take the fixed light, not a room's (light-baking 16).
+                let turn = Mat4::from_rotation_y(yaw);
+                let mvp =
+                    vp * Mat4::from_translation(at - eye) * turn * Mat4::from_scale(Vec3::splat(MAP_FIGURE_SCALE));
+                self.r.draw_deck_probe(
+                    &self.target,
+                    mesh,
+                    mvp,
+                    turn,
+                    &sc_core::probes::fallback_cube(),
+                    [1.0, 0.0, 0.0],
+                );
             }
             let head = vp * (at - eye + Vec3::Y * (MAP_FIGURE_SCALE * 1.9 + 0.6)).extend(1.0);
             if head.w > 0.0 {
@@ -972,15 +1057,15 @@ impl App for Client {
             let n = *n;
             // Aboard: shoot the bridge; open the map and shoot it whole; then deck B alone (ship-plan-view 4.4).
             match n {
-                120 | 200 | 240 => self.capture_next = true,
-                121 => {
+                180 | 260 | 300 => self.capture_next = true,
+                181 => {
                     let _ = self.event(Event::KeyDown(keys::M));
                 }
-                201 => {
+                261 => {
                     let _ = self.event(Event::KeyDown(keys::TAB));
                     let _ = self.event(Event::KeyDown(keys::TAB));
                 }
-                241.. => return Flow::Done,
+                301.. => return Flow::Done,
                 _ => {}
             }
         }
@@ -1007,12 +1092,24 @@ impl App for Client {
             // Each shot: set the pose and state, settle 40 frames (the blend), then capture.
             let Some(&(p, s)) = self.shot_plan.first() else { return Flow::Done };
             self.want = s;
-            if matches!(self.scene, Scene::Ship { .. }) {
+            let bot = p.checked_sub(POSES.len());
+            if let (Some(k), Some(w)) = (bot, self.walker.as_ref()) {
+                // A bot close-up: the camera in front of it, facing it, following it as it walks.
+                let b = &w.crew.bots[k];
+                let (f, (sy, cy)) = (b.body.feet, b.yaw.sin_cos());
+                let pos = [f64::from(f[0] + sy * BOT_SHOT_M), f64::from(f[1]), f64::from(f[2] + cy * BOT_SHOT_M)];
+                self.cam = Camera::at(&("bot", pos, [-sy, -cy], -14.0));
+            } else if matches!(self.scene, Scene::Ship { .. }) {
                 self.cam = Camera::at(&POSES[p]);
             }
             self.shot_frame += 1;
             if self.shot_frame == 40 {
-                let pose = if matches!(self.scene, Scene::Ship { .. }) { POSES[p].0 } else { "first-light" };
+                let bot_name = bot.map(|k| format!("bot-{k}"));
+                let pose = match (&bot_name, matches!(self.scene, Scene::Ship { .. })) {
+                    (Some(n), _) => n.as_str(),
+                    (None, true) => POSES[p].0,
+                    (None, false) => "first-light",
+                };
                 shot_name = Some(format!("{pose}-{}.png", ["normal", "red-alert", "emergency"][s]));
                 self.shot_plan.remove(0);
                 self.shot_frame = 0;
@@ -1103,7 +1200,7 @@ impl App for Client {
         }
         self.r.begin_3d(&self.target, [0.004, 0.005, 0.012, 1.0]);
         match &self.scene {
-            Scene::Ship { rooms, figures, outside, tex, panel_first, panel_glow, .. } => {
+            Scene::Ship { rooms, figures, probes, outside, tex, panel_first, panel_glow, .. } => {
                 if let Some(o) = outside {
                     let px = 70f32.to_radians() / RENDER_3D.1 as f32;
                     self.r.draw_sky(&self.target, &o.sky(proj, view, px));
@@ -1132,26 +1229,28 @@ impl App for Client {
                     };
                     self.r.draw_deck(&self.target, mesh, DeckProgram::Textured, &p, Some(tex));
                 }
-                // The bot crew: a figure a bot, in its department's tunic, flat-lit (crew-npcs 7).
+                // The bot crew: a figure a bot, in its department's tunic (crew-npcs 7), lit by the light probes at
+                // its chest, 1.0 m above its feet (light-baking 16); where none is valid, by the figures' old light.
                 if let Some(wk) = self.walker.as_ref() {
                     for b in &wk.crew.bots {
                         let Some((_, mesh)) = figures.iter().find(|(d, _)| *d == b.member.department) else { continue };
                         let f = b.body.feet;
+                        let chest = [f64::from(f[0]), f64::from(f[1]) + FIGURE_PROBE_HEIGHT_M, f64::from(f[2])];
+                        let cube = probes.sample(chest, w).unwrap_or_else(sc_core::probes::fallback_cube);
                         let rel = Vec3::new(
                             (f64::from(f[0]) - self.cam.pos[0]) as f32,
                             (f64::from(f[1]) - self.cam.pos[1]) as f32,
                             (f64::from(f[2]) - self.cam.pos[2]) as f32,
                         );
-                        let p = DeckParams {
-                            mvp: proj * view * Mat4::from_translation(rel) * Mat4::from_rotation_y(b.yaw),
-                            state_weights: w,
-                            flash_dir: Vec3::Z,
-                            flash: 0.0,
-                            panel_first: u32::MAX,
-                            panel_glow: 0.0,
-                            clip_y: f32::MAX,
-                        };
-                        self.r.draw_deck(&self.target, mesh, DeckProgram::Flat, &p, None);
+                        let turn = Mat4::from_rotation_y(b.yaw);
+                        self.r.draw_deck_probe(
+                            &self.target,
+                            mesh,
+                            proj * view * Mat4::from_translation(rel) * turn,
+                            turn,
+                            &cube,
+                            w,
+                        );
                     }
                 }
                 // The viewscreens: the bow camera's picture on a quad 3 cm in front of each.
@@ -1316,6 +1415,38 @@ impl App for Client {
     }
 }
 
+/// Hand the window back to the front menu (front-menu design 5): Esc in a game started from it. `hand_test`: the
+/// hand-over test's folder, for the menu come back to.
+pub fn back_to_menu(hand_test: Option<PathBuf>) {
+    platform::hand_over(move |_| {
+        let mut c = Client::new(PathBuf::from("compiled/tern.deck"), None, false, false)?;
+        c.hand_test = hand_test.map(|d| (d, true, 0));
+        Ok(Box::new(c) as Box<dyn App>)
+    });
+}
+
+/// Write this frame's output to `dir/name` (the hand-over test's shots); whether it was written (a failure is said).
+pub fn capture_to(f: &Frame, dir: &std::path::Path, name: &str) -> bool {
+    let px = sc_render::read_output(f.width, f.height);
+    match sc_client::capture::write_png(&dir.join(name), f.width, f.height, &px) {
+        Ok(()) => {
+            println!("sc-client: wrote {}", dir.join(name).display());
+            true
+        }
+        Err(e) => {
+            eprintln!("sc-client: {e}");
+            false
+        }
+    }
+}
+
+/// Show the window as Options' Display says, now (front-menu design 4). The browser's page decides its own.
+pub fn platform_display(d: options::Display) {
+    if !cfg!(target_os = "emscripten") {
+        platform::set_fullscreen(d == options::Display::Fullscreen);
+    }
+}
+
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let value = |name: &str| args.iter().position(|a| a == name).and_then(|i| args.get(i + 1)).map(PathBuf::from);
@@ -1327,7 +1458,127 @@ fn main() -> ExitCode {
     let lobby_dir = value("--lobby-test");
     let lobby_test = lobby_dir.is_some();
     let shots = shots.or(walk_dir).or(lobby_dir);
-    if headless && shots.is_none() {
+    // The console parity check's engine side (openspec/changes/console-parity design 4): one state, one capture.
+    if let Some(state) = value("--console-fixture") {
+        let Some(dir) = shots.clone() else {
+            eprintln!("sc-client: --console-fixture needs --shots DIR");
+            return ExitCode::from(2);
+        };
+        let cfg = WindowConfig {
+            title: "Star Crew: console fixture".into(),
+            width: 1280,
+            height: 720,
+            fullscreen: false,
+            headless: true,
+            vsync: false,
+        };
+        return platform::run(cfg, move |gl| {
+            println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);
+            fixture::FixtureApp::new(state, dir).map(|c| Box::new(c) as Box<dyn App>)
+        });
+    }
+    // The co-op drill (openspec/changes/coop-drill design 5): its own mode, joined by address.
+    if let Some(server) = args.iter().position(|a| a == "--connect").and_then(|i| args.get(i + 1)).cloned() {
+        // `--watch`: join with no station and watch the bridge (coop-drill design 9's overview).
+        let watch = args.iter().any(|a| a == "--watch");
+        let station = args.iter().position(|a| a == "--station").and_then(|i| args.get(i + 1));
+        let station = station.map(String::as_str).and_then(sc_core::combat::Station::from_id);
+        let station = if watch { station.or(Some(sc_core::combat::Station::Helm)) } else { station };
+        let Some(station) = station else {
+            eprintln!(
+                "sc-client: --connect needs --station helm, tactical, engineering, science or captain (or --watch)"
+            );
+            return ExitCode::from(2);
+        };
+        let bot = args.iter().any(|a| a == "--bot");
+        // The server marks a bot in the crew list itself, so the name does not repeat it.
+        let name =
+            args.iter().position(|a| a == "--name").and_then(|i| args.get(i + 1)).cloned().unwrap_or_else(|| {
+                if watch {
+                    "Observer".into()
+                } else {
+                    format!("{} officer", station.name())
+                }
+            });
+        let cfg = WindowConfig {
+            title: "Star Crew: drill".into(),
+            width: 1920,
+            height: 1080,
+            fullscreen: !headless && !args.iter().any(|a| a == "--window"),
+            headless,
+            vsync: !headless,
+        };
+        let dargs = drill::DrillArgs {
+            server,
+            station,
+            name,
+            bot: bot && !watch,
+            shots,
+            watch,
+            any: false,
+            solo: false,
+            menu: false,
+            seed: 0,
+            hand_test: None,
+        };
+        return platform::run(cfg, move |gl| {
+            println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);
+            drill::DrillApp::new(dargs).map(|c| Box::new(c) as Box<dyn App>)
+        });
+    }
+    // Single player without the menu (openspec/changes/single-player): `--solo [--station S] [--bot] [--shots DIR]`;
+    // `--bot` lets the player's own station play itself, for captures of a whole round.
+    if args.iter().any(|a| a == "--solo") {
+        let station = args.iter().position(|a| a == "--station").and_then(|i| args.get(i + 1));
+        let station = station.map(String::as_str).and_then(sc_core::combat::Station::from_id);
+        let name = args.iter().position(|a| a == "--name").and_then(|i| args.get(i + 1)).cloned();
+        let cfg = WindowConfig {
+            title: "Star Crew: single player".into(),
+            width: 1920,
+            height: 1080,
+            fullscreen: !headless && !args.iter().any(|a| a == "--window"),
+            headless,
+            vsync: !headless,
+        };
+        let dargs = drill::DrillArgs {
+            server: String::new(),
+            station: station.unwrap_or(sc_core::combat::Station::Helm),
+            any: station.is_none(),
+            name: name.unwrap_or_else(|| "Lt. Player".into()),
+            bot: args.iter().any(|a| a == "--bot"),
+            shots,
+            watch: false,
+            solo: true,
+            menu: false,
+            seed: 7,
+            hand_test: None,
+        };
+        return platform::run(cfg, move |gl| {
+            println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);
+            drill::DrillApp::new(dargs).map(|c| Box::new(c) as Box<dyn App>)
+        });
+    }
+    // The repair games (openspec/changes/repair-minigames design 8): their own mode, a menu with no ship.
+    if let Some(i) = args.iter().position(|a| a == "--repairs") {
+        let open = args.get(i + 1).filter(|a| !a.starts_with("--")).cloned();
+        let cfg = WindowConfig {
+            title: "Star Crew: repairs".into(),
+            width: 1920,
+            height: 1080,
+            fullscreen: !headless && !args.iter().any(|a| a == "--window"),
+            headless,
+            vsync: !headless,
+        };
+        if headless && shots.is_none() {
+            eprintln!("sc-client: --headless needs --shots DIR (nothing would be seen)");
+            return ExitCode::from(2);
+        }
+        return platform::run(cfg, move |gl| {
+            println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);
+            repairs::RepairsApp::new(open, shots).map(|c| Box::new(c) as Box<dyn App>)
+        });
+    }
+    if headless && shots.is_none() && !args.iter().any(|a| a == "--connect" || a == "--hand-over-test") {
         eprintln!("sc-client: --headless needs --shots DIR (nothing would be seen)");
         return ExitCode::from(2);
     }
@@ -1336,12 +1587,20 @@ fn main() -> ExitCode {
         // In the browser the window is the page's canvas, sized by the page (engine-stack design 10a).
         width: if cfg!(target_os = "emscripten") { 1280 } else { 1920 },
         height: if cfg!(target_os = "emscripten") { 720 } else { 1080 },
-        fullscreen: !headless && !args.iter().any(|a| a == "--window") && !cfg!(target_os = "emscripten"),
+        // Full screen unless Options says a window (front-menu design 4), or `--window` asks for one.
+        fullscreen: !headless
+            && !args.iter().any(|a| a == "--window")
+            && !cfg!(target_os = "emscripten")
+            && options::Options::load().display == options::Display::Fullscreen,
         headless,
         vsync: !headless,
     };
+    // `--hand-over-test DIR`: the menu, Beam aboard into single player, Esc back to the menu, a capture of each.
+    let hand_test = value("--hand-over-test");
     platform::run(cfg, move |gl| {
         println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);
-        Client::new(deck, shots, walk_test, lobby_test).map(|c| Box::new(c) as Box<dyn App>)
+        let mut c = Client::new(deck, if hand_test.is_some() { None } else { shots }, walk_test, lobby_test)?;
+        c.hand_test = hand_test.map(|d| (d, false, 0));
+        Ok(Box::new(c) as Box<dyn App>)
     })
 }

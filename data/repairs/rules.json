@@ -1,0 +1,23 @@
+{
+  "schema": "starcrew.repair-rules/1",
+  "_doc": "repair-minigames design 1 and 2: a job's rounds and start by state; three fumbles in a round restart it; round n is played at level min(n, max_level). The kit's rates and a fumble's cost are damage.json's repair block.",
+  "states": {
+    "damaged": {
+      "start_pct": 25.0,
+      "rounds": 3,
+      "part": false
+    },
+    "disabled": {
+      "start_pct": 12.0,
+      "rounds": 4,
+      "part": true
+    },
+    "destroyed": {
+      "start_pct": 0.0,
+      "rounds": 6,
+      "part": true
+    }
+  },
+  "fumbles_per_round": 3,
+  "max_level": 6
+}

@@ -1,0 +1,15 @@
+[package]
+name = "sc-repairs"
+description = "The repair mini-games (repair-minigames design 8): the kit and one game a file, egui shapes over sc-core's job, no GL or SDL."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+sc-core.workspace = true
+egui = { version = "0.33", default-features = false, features = ["default_fonts"] }
+
+[lints]
+workspace = true

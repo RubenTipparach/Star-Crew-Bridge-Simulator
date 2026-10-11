@@ -1,0 +1,57 @@
+{
+  "schema": "starcrew.repair-game/1",
+  "id": "conduits",
+  "title": "Electrical conduits",
+  "place": "Anywhere a conduit runs",
+  "group": "Engineering",
+  "hazard": {
+    "text": "Crossed pair: spark, 5 HP, breaker tripped",
+    "hp": 5,
+    "radius_m": 1
+  },
+  "down": "Loads beyond it are cut (power-grid)",
+  "guide": {
+    "steps": [
+      {
+        "icon": "sweep",
+        "text": "Drag along to strip burns"
+      },
+      {
+        "icon": "plug",
+        "text": "Join colours before the clamp"
+      },
+      {
+        "icon": "drag",
+        "text": "Reroute: draw round the burn"
+      }
+    ],
+    "mistake": "A crossed pair: a spark, 5 HP, the breaker trips"
+  },
+  "knobs": {
+    "pairs_count": {
+      "base": 3,
+      "per_level": 1,
+      "max": 6
+    },
+    "clamp_s": {
+      "base": 13,
+      "per_level": -1,
+      "min": 8
+    },
+    "bulkheads_count": {
+      "base": 10,
+      "per_level": 3,
+      "max": 24
+    }
+  },
+  "min_round_s": [
+    1.9,
+    2.3,
+    2.8,
+    4.2,
+    4.2,
+    4.1
+  ],
+  "min_round_measured": false,
+  "_min_round_note": "Provisional (design 8): 40% of the scripted hand's fastest round at each level, over every state and four seeds, until people's play is measured."
+}

@@ -1,0 +1,79 @@
+{
+  "schema": "starcrew.repair-game/1",
+  "id": "pylons",
+  "title": "Warp pylons",
+  "place": "Outside, the dorsal pylon (EVA only)",
+  "group": "Outside and doors",
+  "hazard": {
+    "text": "The tether snaps you back",
+    "hp": 0,
+    "radius_m": 0
+  },
+  "down": "No warp jump; not repairable in combat (design 5)",
+  "guide": {
+    "steps": [
+      {
+        "icon": "tap",
+        "text": "Tap a handhold in reach"
+      },
+      {
+        "icon": "rhythm",
+        "text": "Clip the hook as it passes"
+      },
+      {
+        "icon": "order",
+        "text": "Unbolt in the lit order"
+      },
+      {
+        "icon": "drag",
+        "text": "Push the new segment in"
+      }
+    ],
+    "mistake": "A clip missed: the tether snaps you back"
+  },
+  "knobs": {
+    "clip_window_s": {
+      "base": 3.4,
+      "per_level": -0.4,
+      "min": 1.8
+    },
+    "swing_period_s": {
+      "base": 1.4,
+      "per_level": -0.12,
+      "min": 0.9
+    },
+    "segment_out_count": {
+      "base": 2,
+      "per_level": 1
+    },
+    "bolts_count": {
+      "levels": [
+        6,
+        8
+      ]
+    },
+    "drift_px_s2": {
+      "base": 16,
+      "per_level": 7
+    },
+    "drift_bias_px_s2": {
+      "base": 4,
+      "per_level": 3
+    },
+    "seat_tol_px": {
+      "base": 8,
+      "per_level": -1,
+      "min": 4
+    }
+  },
+  "min_round_s": [
+    2.8,
+    3.1,
+    3.3,
+    3.2,
+    3.2,
+    3.2
+  ],
+  "min_round_measured": false,
+  "_min_round_note": "Provisional (design 8): 40% of the scripted hand's fastest round at each level, over every state and four seeds, until people's play is measured."
+}

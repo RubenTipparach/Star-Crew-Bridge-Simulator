@@ -289,6 +289,58 @@ within that, the round resumes where it was; later, the next dock starts it agai
 
 The round pauses as for leaving.
 
+### 3f. A damaged bridge station, walked up to (owner, 2026-10-10)
+
+The owner: "can you implement a js test for me to fix a station?", then "say I'm in fps mode, walk up to a damaged
+station that is sparking and has burn marks (decals) on them". A bridge station is a repair point like a machine:
+`damage-control` 6a already says "a damaged bridge console is repaired at the console". This is the first one, tactical's
+free-standing desk (`free_console_tactical`), as a test in the deck plan's walk.
+
+**What the room shows**, by the station's band (section 4's table, for a console):
+
+| Band | The console | Its screen |
+| --- | --- | --- |
+| Damaged | Sparks burst from the seam under the desk every 1-4 s (seeded), each with a puff of smoke and a short blue-white flash on whatever is near; a thin smoke rises off the seam all the time (owner, 2026-10-10: "Smoke and spark should come out of damaged stations"); burn marks on the desk, the screen's bezel and the deck in front | Flickers, with static bands across it |
+| Disabled | Sparks, and a thicker smoke from the seam and the back panel | Dark but for a dim static now and then |
+| Repaired | No sparks or smoke; the burn marks stay until the console is cleaned (a scar, not a state) | Boots: a flash, a moment of static, then its normal face |
+
+**Burn marks are decals**: scorch textures projected onto the surfaces they lie on (the desk top, the bezel, the
+deck), never a texture of the console's own. A decal is the surface's triangles under it, cut to the decal's box,
+lifted 2 mm along the surface's normal and drawn after the room with polygon offset, so it never shares a plane with
+the surface it marks (CLAUDE.md 8). The scorch textures are committed PNGs (CLAUDE.md 9, "decals and screens are a
+small set of further textures"), written by a committed generator, `tools/decals/build_decals.py`, from a seed:
+`scorch_flat` (a burn round a hot spot) and `scorch_streak` (the same with soot carried upward, for a vertical face).
+`assets/textures/decals/decals.json` holds each file's size and sha256; `tools/mockups/inline.py` inlines them (the
+`decals` block).
+
+**The repair**, as 3e at a console:
+
+1. **Walk up.** The prompt names the station and its state ("Tactical console: Repair, damaged"); E within 1.2 m
+   docks. The body kneels behind the desk, where the console's service panel is: low on the pedestal's back (the
+   operator's side has the chair in the way).
+2. **The cover.** Four screws, turned out by dragging round each one anticlockwise (3a), the plate leans on the
+   pedestal.
+3. **Pull the burnt card.** Behind it is the console's card cage on a circuit board; the faulty card (the signal
+   processor) is scorched and smoking. A click pulls it into the tray: "Signal processor SP-4, burnt".
+4. **Fit the right one.** The pouch holds three cards: SP-4 (the right one), SP-2 and a power card PS-4. A wrong one is
+   seated, fails its test with a spark ("Wrong part") and comes back out (3e).
+5. **Calibrate.** The whole bay is the target; a click opens the conduits game (`repairs/conduits.js`): strip the
+   burnt wiring and splice it colour to colour, the console's own fault. Its rounds land as section 1 says.
+6. **Done.** The cover goes back on, the screen boots, the sparks stop. Esc at any point stands up; the job keeps
+   what is done (section 3).
+
+**In the deck plan** (`docs/mockups/deck-plan.html`, the walk the owner already uses): the bridge's tactical console
+is damaged when the page opens with `#station` (or the walk's "Damage tactical" button); walking up to it and E runs
+the steps above in place, over the live bridge. The walk holds still while docked (`ShipWalk`'s `hold`), so the
+mouse is free for the screws and the parts, and comes back where it was. The flow lives in
+`docs/mockups/lib/stationrepair.js`, not in the page, so another page can dock at a station the same way.
+`repairs-on-deck.html` and `service-panels.html` each still carry their own copy of the docking code (3a-3e); moving
+them onto the lib is a follow-up (CLAUDE.md 6.1: the duplication is reported, not grown).
+
+**Pi 5 cost.** Decals: two 256 x 256 RGBA layers of the texture array (0.35 MB with mips each), and a few dozen
+triangles a mark, drawn in one batch after the room. Sparks: section 10's particle batch. The screen's static: a
+quad over the console's screen with the UI atlas, while damaged. Not measured on a Pi (CLAUDE.md 2).
+
 ## 4. What the room sees and hears
 
 A repair is a thing that happens in the room, not on a private screen.

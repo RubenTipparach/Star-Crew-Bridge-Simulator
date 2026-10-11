@@ -1,0 +1,65 @@
+{
+  "schema": "starcrew.repair-game/1",
+  "id": "shuttle",
+  "title": "Shuttle",
+  "place": "Hangar, the Petrel on its pad",
+  "group": "Hangar",
+  "hazard": {
+    "text": "Fuel mist: the bay's fire risk rises",
+    "hp": 0,
+    "radius_m": 0
+  },
+  "down": "The Petrel cannot launch",
+  "guide": {
+    "steps": [
+      {
+        "icon": "sweep",
+        "text": "Sniff along the lines"
+      },
+      {
+        "icon": "valve",
+        "text": "Shut the valve tank-side"
+      },
+      {
+        "icon": "drag",
+        "text": "Drag the patch on"
+      },
+      {
+        "icon": "band",
+        "text": "Reopen, pump in the green"
+      }
+    ],
+    "mistake": "Shutting the wrong valve: fuel mist in the bay"
+  },
+  "knobs": {
+    "valves_count": {
+      "levels": [
+        4,
+        10
+      ]
+    },
+    "leak_depth_count": {
+      "base": 1,
+      "per_level": 1
+    },
+    "band_half_frac": {
+      "base": 0.09,
+      "per_level": -0.015,
+      "min": 0.045
+    },
+    "decay_frac_s": {
+      "base": 0.1,
+      "per_level": 0.025
+    }
+  },
+  "min_round_s": [
+    2.6,
+    2.9,
+    3.2,
+    3.3,
+    3.4,
+    3.6
+  ],
+  "min_round_measured": false,
+  "_min_round_note": "Provisional (design 8): 40% of the scripted hand's fastest round at each level, over every state and four seeds, until people's play is measured."
+}

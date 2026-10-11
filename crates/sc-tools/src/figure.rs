@@ -3,16 +3,17 @@
 //! `figure`, one a department. The client draws one a bot with the flat program, its feet at the origin and its
 //! front facing +z.
 //!
-//! Seven boxes, 84 triangles: legs, torso, arms, neck, head, and a badge on the chest so the front reads. Light is
-//! baked from above and the front, so it reads anywhere on the decks.
+//! Seven boxes, 84 triangles: legs, torso, arms, neck, head, and a badge on the chest so the front reads. Its colours
+//! are unlit albedo: the client lights it from the light probes around it (openspec/changes/light-baking, design
+//! section 16), or from `sc_core::probes::fallback_cube` where there are none.
 
-/// One triangle corner: position (metres, feet at the origin), normal, and the baked colour (a linear multiplier).
+/// One triangle corner: position (metres, feet at the origin), normal, and the albedo (linear).
 pub struct FigureVertex {
     /// Position, metres.
     pub position_m: [f32; 3],
     /// Unit normal.
     pub normal: [f32; 3],
-    /// Baked colour, linear, 0-2.
+    /// Albedo, linear, 0-1.
     pub colour: [f32; 3],
 }
 
@@ -21,13 +22,8 @@ const SKIN: [f32; 3] = [0.55, 0.36, 0.24];
 const HAIR: [f32; 3] = [0.03, 0.02, 0.015];
 const BADGE: [f32; 3] = [0.9, 0.7, 0.25];
 
-/// An axis-aligned box from `lo` to `hi`, wound counter-clockwise seen from outside, lit from above and the front.
+/// An axis-aligned box from `lo` to `hi`, wound counter-clockwise seen from outside, in one albedo.
 fn cuboid(out: &mut Vec<FigureVertex>, lo: [f32; 3], hi: [f32; 3], colour: [f32; 3]) {
-    let light = |n: [f32; 3]| {
-        let l = [0.3f32, 0.8, 0.52];
-        let k = 0.45 + 0.65 * (n[0] * l[0] + n[1] * l[1] + n[2] * l[2]).max(0.0);
-        colour.map(|c| (c * k * 2.0).min(2.0))
-    };
     let (x0, y0, z0, x1, y1, z1) = (lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]);
     // Each face: normal and four corners counter-clockwise seen from outside.
     let faces: [([f32; 3], [[f32; 3]; 4]); 6] = [
@@ -39,9 +35,8 @@ fn cuboid(out: &mut Vec<FigureVertex>, lo: [f32; 3], hi: [f32; 3], colour: [f32;
         ([0.0, 0.0, -1.0], [[x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0]]),
     ];
     for (n, q) in faces {
-        let c = light(n);
         for i in [0, 1, 2, 0, 2, 3] {
-            out.push(FigureVertex { position_m: q[i], normal: n, colour: c });
+            out.push(FigureVertex { position_m: q[i], normal: n, colour });
         }
     }
 }

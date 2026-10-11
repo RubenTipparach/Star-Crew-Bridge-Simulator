@@ -51,6 +51,10 @@ pub mod keys {
     pub const N2: u32 = sdl::SDLK_2.0;
     /// The 3 key.
     pub const N3: u32 = sdl::SDLK_3.0;
+    /// F1: a repair game's guide card.
+    pub const F1: u32 = sdl::SDLK_F1.0;
+    /// F3.
+    pub const F3: u32 = sdl::SDLK_F3.0;
     /// F12.
     pub const F12: u32 = sdl::SDLK_F12.0;
     /// W.
@@ -71,12 +75,34 @@ pub mod keys {
     pub const C: u32 = sdl::SDLK_C.0;
     /// Left shift.
     pub const LSHIFT: u32 = sdl::SDLK_LSHIFT.0;
+    /// Right shift.
+    pub const RSHIFT: u32 = sdl::SDLK_RSHIFT.0;
     /// Tab.
     pub const TAB: u32 = sdl::SDLK_TAB.0;
     /// F: walk or fly.
     pub const F: u32 = sdl::SDLK_F.0;
     /// M: the ship's map.
     pub const M: u32 = sdl::SDLK_M.0;
+    /// T.
+    pub const T: u32 = sdl::SDLK_T.0;
+    /// K.
+    pub const K: u32 = sdl::SDLK_K.0;
+    /// G.
+    pub const G: u32 = sdl::SDLK_G.0;
+    /// L.
+    pub const L: u32 = sdl::SDLK_L.0;
+    /// R.
+    pub const R: u32 = sdl::SDLK_R.0;
+    /// V: the drill's overview of the bridge.
+    pub const V: u32 = sdl::SDLK_V.0;
+    /// X.
+    pub const X: u32 = sdl::SDLK_X.0;
+    /// Z.
+    pub const Z: u32 = sdl::SDLK_Z.0;
+    /// Y.
+    pub const Y: u32 = sdl::SDLK_Y.0;
+    /// Left control.
+    pub const LCTRL: u32 = sdl::SDLK_LCTRL.0;
     /// Return (Enter).
     pub const RETURN: u32 = sdl::SDLK_RETURN.0;
     /// Backspace.
@@ -191,6 +217,7 @@ type MakeApp = Box<dyn FnOnce(&GlInfo) -> Result<Box<dyn App>, String>>;
 struct State {
     window: *mut sdl::SDL_Window,
     context: sdl::SDL_GLContext,
+    info: GlInfo,
     app: Box<dyn App>,
     last_ns: u64,
     index: u64,
@@ -198,6 +225,8 @@ struct State {
 
 thread_local! {
     static PENDING: RefCell<Option<(WindowConfig, MakeApp)>> = const { RefCell::new(None) };
+    /// The app to hand the window to once the running one's callback returns (`hand_over`).
+    static NEXT: RefCell<Option<MakeApp>> = const { RefCell::new(None) };
     static WINDOW: std::cell::Cell<*mut sdl::SDL_Window> = const { std::cell::Cell::new(std::ptr::null_mut()) };
 }
 
@@ -228,6 +257,52 @@ fn gl_string(name: u32) -> String {
     } else {
         // SAFETY: a non-null result is a nul-terminated string owned by GL.
         unsafe { CStr::from_ptr(p.cast()).to_string_lossy().into_owned() }
+    }
+}
+
+/// Hand the window to another app (the menu to a game and back, openspec/changes/front-menu design 5). Call from the
+/// running app's callback and return `Flow::Continue`: once the callback returns, the running app is dropped (its
+/// renderer shuts sokol down) and `make` builds the next in the same window and GL context. A `make` that fails ends
+/// the program with its error, as a failed start does.
+pub fn hand_over(make: impl FnOnce(&GlInfo) -> Result<Box<dyn App>, String> + 'static) {
+    NEXT.with(|n| *n.borrow_mut() = Some(Box::new(make)));
+}
+
+/// Set the window full screen or windowed now (Options' Display, front-menu design 4). Does nothing before the window
+/// exists.
+pub fn set_fullscreen(on: bool) {
+    let w = WINDOW.with(std::cell::Cell::get);
+    if !w.is_null() {
+        // SAFETY: the window is alive between app_init and app_quit, and this runs on the main thread.
+        unsafe { sdl::SDL_SetWindowFullscreen(w, on) };
+    }
+}
+
+/// Swap in the app `hand_over` asked for, if any: the old one goes first, so only one renderer is ever set up.
+fn take_hand_over(s: &mut State) -> Flow {
+    let Some(make) = NEXT.with(|n| n.borrow_mut().take()) else { return Flow::Continue };
+    drop(std::mem::replace(&mut s.app, Box::new(Handing)));
+    match make(&s.info) {
+        Ok(app) => {
+            s.app = app;
+            // The next frame's elapsed time starts now, not at the old app's last frame.
+            // SAFETY: SDL_GetTicksNS has no preconditions once SDL is initialised.
+            s.last_ns = unsafe { sdl::SDL_GetTicksNS() };
+            Flow::Continue
+        }
+        Err(e) => {
+            eprintln!("sc-client: {e}");
+            Flow::Fail
+        }
+    }
+}
+
+/// The app in the window for the moment between dropping one and making the next.
+struct Handing;
+
+impl App for Handing {
+    fn frame(&mut self, _: &Frame) -> Flow {
+        Flow::Continue
     }
 }
 
@@ -266,7 +341,7 @@ unsafe extern "C" fn app_init(appstate: *mut *mut c_void, _argc: c_int, _argv: *
                 // SAFETY: SDL_GetTicksNS has no preconditions once SDL is initialised.
                 let last_ns = unsafe { sdl::SDL_GetTicksNS() };
                 WINDOW.with(|c| c.set(window));
-                let state = Box::new(State { window, context, app, last_ns, index: 0 });
+                let state = Box::new(State { window, context, info, app, last_ns, index: 0 });
                 // SAFETY: appstate is SDL's slot for our state; it hands it back to every callback.
                 unsafe { *appstate = Box::into_raw(state).cast() };
                 sdl::SDL_APP_CONTINUE
@@ -355,7 +430,10 @@ unsafe extern "C" fn app_iterate(appstate: *mut c_void) -> sdl::SDL_AppResult {
     });
     // SAFETY: as above.
     unsafe { sdl::SDL_GL_SwapWindow(s.window) };
-    result(flow)
+    if flow != Flow::Continue {
+        return result(flow);
+    }
+    result(take_hand_over(s))
 }
 
 unsafe extern "C" fn app_event(appstate: *mut c_void, event: *mut sdl::SDL_Event) -> sdl::SDL_AppResult {
@@ -403,6 +481,10 @@ unsafe extern "C" fn app_event(appstate: *mut c_void, event: *mut sdl::SDL_Event
         let r = s.app.event(ev);
         if r != Flow::Continue {
             return result(r);
+        }
+        // An event that hands the window over ends this batch: the rest belong to the old app.
+        if NEXT.with(|n| n.borrow().is_some()) {
+            return result(take_hand_over(s));
         }
     }
     sdl::SDL_APP_CONTINUE

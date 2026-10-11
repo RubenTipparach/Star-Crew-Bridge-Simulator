@@ -9,6 +9,11 @@ publish.workspace = true
 
 [dependencies]
 sc-core.workspace = true
+glam.workspace = true
+serde_json.workspace = true
+# WebRTC data channels, sans I/O (netcode-and-sessions section 2), with the pure Rust crypto backend so the Pi
+# needs no OpenSSL or C toolchain for it.
+str0m = { version = "=0.24.1", default-features = false, features = ["rust-crypto"] }
 
 [lints]
 workspace = true
