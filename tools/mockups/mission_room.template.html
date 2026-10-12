@@ -1,0 +1,228 @@
+<!doctype html>
+<!--
+  Star Crew mockup: the room before the fight with crew chat (openspec/changes/crew-chat), the captain's mission list,
+  Helm's JUMP and the end screen (openspec/changes/missions). A flat 2D page over engine captures, drawn at the
+  engine's 1920 x 1080 in its UI colours (sc-client drill.rs) and egui's default typeface (Ubuntu Light, under the
+  Ubuntu Font Licence); the consoles' parts in their own typeface's place (Barlow Semi Condensed is the console's).
+  Built by tools/mockups/mission_room.py from tools/mockups/mission_room.template.html; edit the template, never the page.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mission Room</title>
+<style>
+  @font-face { font-family: "Ubuntu Light"; src: url(__FONT__); }
+  :root {
+    --bg: #05070d; --fg: #e8eef5; --dim: #8a98a8; --line: #2b3540; --accent: #48d6ff;
+    --text: rgb(222,230,238); --udim: rgb(128,146,164); --amber: rgb(242,160,70); --cyan: rgb(88,200,232);
+    --green: rgb(112,204,122); --red: rgb(232,82,70); --lilac: rgb(190,160,230); --pale: rgb(200,212,230);
+    --btn: rgb(34,44,58); --panel: rgba(10,16,26,0.91); --edge: rgb(44,62,82);
+    --helm: #4fc3f7; --tactical: #ef5350; --engineering: #ffb300; --science: #66bb6a; --command: #f2f2f2;
+    --laser: #f06292; --gunner: #ff7043;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #05070d; } }
+  :root[data-theme="dark"] { --bg: #05070d; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 system-ui, sans-serif; }
+  header { padding: 14px 16px 6px; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header p { margin: 4px 0 0; color: var(--dim); max-width: 1100px; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 16px; }
+  .tabs button { background: #18202a; color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; font: inherit; cursor: pointer; }
+  .tabs button.on { border-color: var(--accent); color: var(--accent); }
+  .frame { padding: 0 16px; }
+  .fit { position: relative; width: 100%; max-width: 1600px; aspect-ratio: 16 / 9; overflow: hidden; border: 1px solid var(--line); }
+  .stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; background: #000;
+           font-family: "Ubuntu Light", sans-serif; color: var(--text); }
+  .stage img.bg { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+  .veil { position: absolute; inset: 0; background: rgba(0,0,0,0.5); }
+  .panel { position: absolute; background: var(--panel); border: 1px solid var(--edge); border-radius: 9px; padding: 15px 18px; box-sizing: border-box; }
+  .cap { color: var(--udim); font-size: 19px; letter-spacing: 0.06em; margin: 0 0 6px; }
+  .big { font-size: 45px; color: var(--amber); margin: 0 0 4px; }
+  .sit { font-size: 25px; color: var(--text); margin: 0 0 14px; max-width: 1080px; }
+  .li { font-size: 25px; margin: 2px 0; }
+  .orders { font-size: 27px; color: var(--cyan); margin: 4px 0 16px; max-width: 1080px; }
+  .crew { font-size: 23px; margin: 3px 0; display: flex; gap: 14px; white-space: nowrap; }
+  .crew .st { width: 140px; color: var(--udim); }
+  .crew .ok { color: var(--green); font-size: 20px; }
+  .crew .rd { color: var(--amber); font-size: 20px; }
+  .crew .npc { color: var(--udim); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; background: var(--btn); color: var(--text); font-size: 24px; }
+  .mission { display: flex; align-items: center; gap: 20px; margin: 6px 0 14px; padding: 10px 14px; background: rgba(34,44,58,0.6); border: 1px solid var(--edge); border-radius: 8px; width: 1060px; box-sizing: border-box; }
+  .mission .lab { color: var(--udim); font-size: 19px; letter-spacing: 0.06em; width: 120px; }
+  .mission .t { font-size: 27px; flex: 1; }
+  .mission .btn { width: 170px; height: 48px; background: rgb(30,90,120); }
+  .chat { position: absolute; display: flex; flex-direction: column; }
+  .chat .lines { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 7px; overflow: hidden; }
+  .line { font-size: 22px; line-height: 1.3; }
+  .line .who { font-weight: normal; }
+  .line .npc { color: var(--udim); }
+  .line.dc .who { color: var(--amber); }
+  .field { margin-top: 12px; height: 50px; border-radius: 8px; background: rgb(18,24,34); border: 1px solid var(--edge); display: flex; align-items: center; padding: 0 14px; font-size: 22px; color: var(--udim); }
+  .field b { font-weight: normal; color: var(--text); }
+  .list .m { padding: 16px 18px; border-radius: 10px; background: var(--btn); margin-bottom: 12px; }
+  .list .m.on { outline: 2px solid var(--cyan); background: rgb(24,52,70); }
+  .list .m .t { font-size: 29px; }
+  .list .m .s { font-size: 21px; color: var(--udim); margin-top: 3px; }
+  .list .m .tag { float: right; font-size: 20px; color: var(--cyan); }
+  .strip { position: absolute; left: 24px; bottom: 140px; display: flex; flex-direction: column; gap: 6px; }
+  .strip .line { background: rgba(6,10,16,0.6); border-radius: 6px; padding: 3px 11px; font-size: 25px; }
+  .tbline { position: absolute; top: 9px; height: 38px; display: flex; align-items: center; padding: 0 12px; border-radius: 6px;
+            background: rgba(6,10,16,0.55); font-size: 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .jump { position: absolute; border-radius: 10px; box-sizing: border-box; }
+  .chip { position: absolute; top: 7px; height: 36px; border-radius: 7px; border: 1.5px solid var(--lilac); color: var(--lilac);
+          display: flex; align-items: center; padding: 0 14px; font: 600 20px/1 system-ui, sans-serif; letter-spacing: 0.12em; background: rgba(190,160,230,0.14); }
+  .end h2 { margin: 0; font-size: 60px; font-weight: normal; color: var(--green); }
+  .end .row2 { display: flex; font-size: 26px; margin: 5px 0; }
+  .end .row2 .k { width: 300px; color: var(--udim); }
+  .mark { display: inline-flex; width: 34px; height: 34px; border-radius: 17px; align-items: center; justify-content: center; font-size: 22px; margin-right: 14px; color: #0b1018; }
+  .note { padding: 10px 16px 18px; color: var(--dim); max-width: 1100px; }
+  .note b { color: var(--fg); font-weight: 600; }
+  .cost { padding: 0 16px 24px; color: var(--dim); font-size: 13px; }
+  .state { display: none; }
+  .state.on { display: block; }
+</style>
+</head>
+<body>
+<header>
+  <h1>The room, crew chat, the mission list, warp out</h1>
+  <p>Mockup for the OpenSpec changes <code>crew-chat</code> and <code>missions</code>, drawn over engine captures at the
+  engine's 1920 x 1080 in its UI colours and typeface. The First Mission Gate (owner, 2026-10-10): "Everyone joins a
+  lobby room and chats", the bots say what they are doing, "the captain picks a mission", "warp out ends the
+  scenario".</p>
+</header>
+<div class="tabs" id="tabs"></div>
+<div class="frame"><div class="fit" id="fit"><div class="stage" id="stage">
+
+  <div class="state" data-name="1 The room" data-note="&lt;b&gt;The room before the fight.&lt;/b&gt; Muster's briefing, as today, with a MISSION row under the title and a CHAT column at the right: the crew's lines and the NPCs' (NPC), a field to type in, Enter sends. Who has each station and who is READY stay where they are. Two machines: Lt. Player on Pi 1, Ens. Dara Holt on Pi 2.">
+    <img class="bg" src="__CAPTAIN__" alt="">
+    <div class="veil"></div>
+    <div class="panel" style="left:60px;top:80px;width:1800px;height:920px">
+      <div class="cap">BRIEFING</div>
+      <div class="big">Drill 1: Hound at the Shoals</div>
+      <div class="mission"><span class="lab">MISSION</span><span class="t">Drill 1: Hound at the Shoals</span><span class="btn">CHANGE</span></div>
+      <div class="sit">A Hound corvette has been raiding the relay at the Shoals. The Tern is ordered to intercept and disable it before it reaches the relay.</div>
+      <div class="li">- Destroy the Hound</div><div class="li">- Keep the Tern's hull above zero</div><div class="li">- Shoot down both fighters</div>
+      <div class="cap" style="margin-top:14px">CAPTAIN ORDERS</div>
+      <div class="orders">Call red alert, keep the crew on task with orders, and take the viewscreen when everyone needs to see the same thing.</div>
+      <div class="cap">CREW</div>
+      <div style="display:grid;grid-template-columns:540px 540px;column-gap:20px">
+        <div class="crew"><span class="st">Captain</span><span>Lt. Player</span><span class="ok">READY</span></div>
+        <div class="crew"><span class="st">Science</span><span>Lt. Xa'lensha <span class="npc">(NPC)</span></span><span class="ok">READY</span></div>
+        <div class="crew"><span class="st">Helm</span><span>Lt. Sil Saren <span class="npc">(NPC)</span></span><span class="ok">READY</span></div>
+        <div class="crew"><span class="st">Laser port</span><span>Lt. Kiya Ashberg <span class="npc">(NPC)</span></span><span class="ok">READY</span></div>
+        <div class="crew"><span class="st">Tactical</span><span>Ens. Dara Holt</span><span class="rd">reading</span></div>
+        <div class="crew"><span class="st">Laser stbd</span><span>Lt. Ni'lenru <span class="npc">(NPC)</span></span><span class="ok">READY</span></div>
+        <div class="crew"><span class="st">Engineering</span><span>Lt. Elaya Corregan <span class="npc">(NPC)</span></span><span class="ok">READY</span></div>
+        <div class="crew"><span class="st">Gunner</span><span>Lt. Haro Lundivan <span class="npc">(NPC)</span></span><span class="ok">READY</span></div>
+      </div>
+      <div style="position:absolute;left:18px;bottom:22px;display:flex;gap:10px">
+        <span class="btn" style="width:220px;height:62px;background:rgb(40,120,60)">READY</span>
+      </div>
+      <div class="chat" style="left:1190px;top:15px;width:590px;height:885px">
+        <div class="cap">CHAT</div>
+        <div class="lines">
+          <div class="line"><span class="who" style="color:var(--helm)">Lt. Sil Saren <span class="npc">(NPC)</span>:</span> At Helm</div>
+          <div class="line"><span class="who" style="color:var(--engineering)">Lt. Elaya Corregan <span class="npc">(NPC)</span>:</span> At Engineering</div>
+          <div class="line"><span class="who" style="color:var(--command)">Lt. Player:</span> Evening all. Dara, you're on Tactical from Pi 2?</div>
+          <div class="line"><span class="who" style="color:var(--tactical)">Ens. Dara Holt:</span> Yes, reading the briefing now</div>
+          <div class="line"><span class="who" style="color:var(--science)">Lt. Xa'lensha <span class="npc">(NPC)</span>:</span> At Science</div>
+          <div class="line"><span class="who" style="color:var(--gunner)">Lt. Haro Lundivan <span class="npc">(NPC)</span>:</span> At Gunner</div>
+          <div class="line"><span class="who" style="color:var(--command)">Lt. Player:</span> Fighters first, then the Hound. Ready when you are</div>
+        </div>
+        <div class="field"><b>Ens. Dara Holt:</b>&nbsp;Locking the Hound as soon as we engage|</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="state" data-name="2 The captain picks" data-note="&lt;b&gt;The captain's CHANGE opens the mission list&lt;/b&gt; over the briefing: every mission the server has, its title and one line. Only the captain's seat can pick (in single player, the player), only in Muster and before anyone is READY; the pick briefs everyone on it. The Grabon raider is the demo mission's enemy.">
+    <img class="bg" src="__CAPTAIN__" alt="">
+    <div class="veil"></div>
+    <div class="panel list" style="left:460px;top:200px;width:1000px;height:560px">
+      <div class="cap">MISSIONS</div>
+      <div class="m"><span class="tag"></span><div class="t">Drill 1: Hound at the Shoals</div><div class="s">A Hound corvette and its two fighters, raiding the relay at the Shoals</div></div>
+      <div class="m on"><span class="tag">PICKED</span><div class="t">Demo: The Grabon Raider</div><div class="s">A Grabon raider strips the derelict relay at Kessan's Reach. Drive it off, then jump home.</div></div>
+      <div style="display:flex;gap:12px;margin-top:22px">
+        <span class="btn" style="width:240px;height:58px;background:rgb(30,90,120)">BRIEF THE CREW</span>
+        <span class="btn" style="width:160px;height:58px">BACK</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="state" data-name="3 Chat on foot" data-note="&lt;b&gt;On foot&lt;/b&gt;, the last three lines at the bottom left, each fading 8 s after it came; T opens the field. The NPCs speak as a player types: one line for each thing they do that changes the ship, at most one each 3 s.">
+    <img class="bg" src="__WALKING__" alt="">
+    <div class="strip">
+      <div class="line"><span class="who" style="color:var(--helm)">Lt. Sil Saren <span class="npc">(NPC)</span>:</span> At Helm</div>
+      <div class="line"><span class="who" style="color:var(--command)">Lt. Player:</span> On my way to the chair</div>
+      <div class="line"><span class="who" style="color:var(--laser)">Lt. Kiya Ashberg <span class="npc">(NPC)</span>:</span> At Laser port</div>
+    </div>
+  </div>
+
+  <div class="state" data-name="4 Chat at a console" data-note="&lt;b&gt;At a console&lt;/b&gt;, the newest line sits for 8 s in the title band's free space, never over a panel (CLAUDE.md 10). T opens the chat over the look band's left side, twelve lines and the field; Enter sends, Esc closes it. Damage control's teams speak as Damage control.">
+    <img class="bg" src="__CAPTAIN__" alt="">
+    <div class="tbline" style="left:1110px;width:520px"><span style="color:var(--amber)">Damage control:</span>&nbsp;Fire out in the medbay</div>
+    <div class="panel" style="left:16px;top:60px;width:465px;height:340px;padding:12px 14px">
+      <div class="lines" style="display:flex;flex-direction:column;gap:5px">
+        <div class="line" style="font-size:19px"><span style="color:var(--tactical)">Ens. Dara Holt:</span> Locked. Missile away</div>
+        <div class="line" style="font-size:19px"><span style="color:var(--science)">Lt. Xa'lensha <span class="npc">(NPC)</span>:</span> Shields to band C</div>
+        <div class="line" style="font-size:19px"><span style="color:var(--amber)">Damage control:</span> Team to the medbay</div>
+        <div class="line" style="font-size:19px"><span style="color:var(--gunner)">Lt. Haro Lundivan <span class="npc">(NPC)</span>:</span> Fighter down</div>
+        <div class="line" style="font-size:19px"><span style="color:var(--amber)">Damage control:</span> Fire out in the medbay</div>
+      </div>
+      <div class="field" style="height:42px;font-size:19px;margin-top:10px"><b>Lt. Player:</b>&nbsp;Good shooting|</div>
+    </div>
+  </div>
+
+  <div class="state" data-name="5 Helm: JUMP" data-note="&lt;b&gt;Warp out.&lt;/b&gt; The captain orders JUMP; Helm holds JUMP (0.6 s, a guarded control) beside STOP on its THRUST panel. The drive spins up for 10 s: the ring fills, and every console's title band says JUMP and the seconds left. STOP, or a hostile closing inside 2 km, cancels it. It needs the drive above a quarter. At the end the Tern jumps and the mission ends.">
+    <img class="bg" src="__HELM__" alt="">
+    <div style="position:absolute;left:50px;top:926px;width:416px;height:78px;background:#0e141d"></div>
+    <div class="jump" style="left:50px;top:926px;width:236px;height:76px;border:2px solid var(--red);display:flex;align-items:center;gap:14px;padding-left:20px;color:var(--red);font:600 24px system-ui;letter-spacing:.1em"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M7.5 12h9"/></svg>STOP</div>
+    <div class="jump" style="left:296px;top:926px;width:170px;height:76px;border:2px solid var(--lilac);color:var(--lilac);font:600 24px system-ui;letter-spacing:.1em;display:flex;align-items:center;justify-content:center;background:linear-gradient(90deg, rgba(190,160,230,0.35) 30%, transparent 30%)">JUMP 7 s</div>
+    <div class="chip" style="left:1380px">JUMP 7 s</div>
+  </div>
+
+  <div class="state" data-name="6 The end" data-note="&lt;b&gt;The end screen&lt;/b&gt;, after the jump, over every console and the bridge: the outcome (MISSION COMPLETE, green; ESCAPED, amber, a jump before the enemy is beaten; THE TERN IS LOST, red), the objectives with their marks, the fight's numbers, the ship as it jumped, and two buttons.">
+    <img class="bg" src="__BRIDGE__" alt="">
+    <div class="veil"></div>
+    <div class="panel end" style="left:360px;top:110px;width:1200px;height:860px;padding:28px 34px">
+      <h2>MISSION COMPLETE</h2>
+      <div style="font-size:27px;color:var(--udim);margin:2px 0 22px">Demo: The Grabon Raider &middot; jumped home at 9:42</div>
+      <div class="li"><span class="mark" style="background:var(--green)">&#10003;</span>Destroy the raider</div>
+      <div class="li"><span class="mark" style="background:var(--green)">&#10003;</span>Keep the Tern's hull above zero</div>
+      <div class="li" style="margin-bottom:22px"><span class="mark" style="background:var(--green)">&#10003;</span>Jump out</div>
+      <div class="row2"><span class="k">Time</span><span>9:42</span></div>
+      <div class="row2"><span class="k">Missile hits</span><span>9 of 16</span></div>
+      <div class="row2"><span class="k">Damage dealt</span><span>5,210 MJ</span></div>
+      <div class="row2"><span class="k">Damage taken</span><span>3,040 MJ</span></div>
+      <div class="row2"><span class="k">Hull</span><span>212 of 400 MJ</span></div>
+      <div class="row2"><span class="k">Systems</span><span style="color:var(--green)">all at nominal</span></div>
+      <div style="position:absolute;left:34px;bottom:30px;display:flex;gap:14px">
+        <span class="btn" style="width:280px;height:62px;background:rgb(30,90,120)">NEXT MISSION</span>
+        <span class="btn" style="width:280px;height:62px">RETURN TO MENU</span>
+      </div>
+    </div>
+  </div>
+
+</div></div></div>
+<div class="note" id="note"></div>
+<div class="cost">UI cost on the Pi 5 (designs, not measurements): the room's chat and list are part of its one egui panel; at a
+console the chat line is one more text in the title band and the open chat one panel (1-2 draw calls); the end screen
+is one panel. The jump's streak is one full-screen quad for a second. A desktop frame rate is not a Pi measurement.</div>
+<script>
+  const states = [...document.querySelectorAll('.state')];
+  const tabs = document.getElementById('tabs'), note = document.getElementById('note');
+  function show(i) {
+    states.forEach((s, k) => s.classList.toggle('on', k === i));
+    [...tabs.children].forEach((b, k) => b.classList.toggle('on', k === i));
+    const t = document.createElement('textarea'); t.innerHTML = states[i].dataset.note; note.innerHTML = t.value;
+    try { history.replaceState(null, '', '#' + (i + 1)); } catch (e) {}
+  }
+  states.forEach((s, i) => { const b = document.createElement('button'); b.textContent = s.dataset.name; b.onclick = () => show(i); tabs.appendChild(b); });
+  const fit = document.getElementById('fit'), stage = document.getElementById('stage');
+  function scale() { stage.style.transform = 'scale(' + fit.clientWidth / 1920 + ')'; }
+  new ResizeObserver(scale).observe(fit); scale();
+  const h = parseInt(location.hash.slice(1), 10);
+  show(h >= 1 && h <= states.length ? h - 1 : 0);
+</script>
+</body>
+</html>

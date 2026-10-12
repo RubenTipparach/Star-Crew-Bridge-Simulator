@@ -12,8 +12,10 @@
 //! It opens on the lobby (openspec/changes/lobby): name your officer, pick a station, Beam aboard; the ship loads
 //! then. A HUD names the officer and what E and Q do at a lift.
 //!
-//! Usage: sc-client [--window] [--deck compiled/tern.deck] [--headless --shots DIR] [--headless --walk-test DIR]
-//! [--headless --lobby-test DIR] [--console-fixture STATE.json --shots DIR]
+//! Usage: sc-client [--window] [--deck compiled/tern.deck] [--headless --shots DIR [--poses a,b]]
+//! [--headless --walk-test DIR] [--headless --lobby-test DIR] [--console-fixture STATE.json --shots DIR]
+//!
+//! `--poses a,b` limits the headless shots to the named poses (no bot close-ups), each in the three states.
 //!
 //! `--lobby-test DIR` shoots the lobby, rolls a name, shoots it again, beams aboard and shoots the bridge.
 //!
@@ -25,8 +27,10 @@ mod drill;
 mod drill_bridge;
 mod first_light;
 mod fixture;
+mod game_menu;
 mod hull;
 mod lobby;
+mod nameplate;
 mod options;
 mod repairs;
 mod seat;
@@ -57,8 +61,6 @@ const STATE_BLEND_S: f32 = 0.5;
 const EYE_M: f64 = 1.65;
 /// Flying speed, metres a second, and with Shift.
 const SPEED_M_S: (f64, f64) = (3.0, 9.0);
-/// Radians of turn a pixel of mouse motion.
-const LOOK_RAD_PX: f32 = 0.0025;
 
 /// Named views for headless shots and the start: floor position (metres), facing in the plan, pitch (degrees).
 /// The same viewpoints as the deck plan's walk shots (docs/mockups/deck-plan.html), so the two compare.
@@ -71,8 +73,13 @@ const POSES: &[(&str, [f64; 3], [f32; 2], f32)] = &[
     ("corridor-B", [0.0, 0.0, 15.0], [0.0, -1.0], -4.0),
     ("eng-mezzanine", [7.0, 0.0, -18.9], [-0.55, -1.0], 6.0),
     ("eng-lower", [0.0, -3.5, -18.9], [0.12, -1.0], 10.0),
-    // The hull (tern-exterior design 8): through the ready room's window aft onto the port pylon, then outside.
+    // The hull (tern-exterior design 8): through the windows aft onto the pylons and nacelles, then outside.
     ("ready-room-window", [7.9, 3.5, 17.8], [0.8, -0.6], -16.0),
+    ("quarters-window", [8.0, 0.0, 11.8], [1.0, -0.12], -6.0),
+    ("quarters-window-aft", [9.4, 0.0, 13.6], [0.75, -0.66], -2.0),
+    ("mess-window", [-4.6, 0.0, 11.6], [-1.0, 0.0], -6.0),
+    ("medbay-window", [4.8, 0.0, 23.0], [1.0, 0.0], -6.0),
+    ("life-support-window", [9.0, -3.5, 12.5], [0.7, -0.7], 10.0),
     ("outside-port-bow", [38.0, 6.0, 62.0], [-0.55, -0.83], -8.0),
     ("outside-starboard-bow", [-38.0, 6.0, 62.0], [0.55, -0.83], -8.0),
     ("outside-port-aft", [45.0, 14.0, -80.0], [-0.45, 0.89], -10.0),
@@ -376,6 +383,13 @@ struct Client {
     map: Option<MapView>,
     /// The names over the map's markers this frame.
     map_labels: Vec<MapLabel>,
+    /// The game menu on Esc (game-menu) and the options it sets.
+    menu: game_menu::GameMenu,
+    options: options::Options,
+    /// The names over the bots in view this frame (crew-nameplates): where on screen (shares of it), name, how much.
+    walk_names: Vec<([f32; 2], String, f32)>,
+    /// The game menu's Exit was chosen: the next frame ends the game.
+    quit: bool,
 }
 
 /// Load the deck at `deck`, or first light's test room when there is none (refused for a test that needs the ship),
@@ -479,28 +493,9 @@ fn load_ship(
     let eye_y = w.start.at_m[1];
     let lifts = w.lifts.iter().map(|l| (Lift::new(&l.stops_m, l.speed_m_s, l.door_s, l.car_m), l.car_m)).collect();
     // The bot crew (crew-npcs 7): the walk grid on the decks the lift stops at, the company from the session seed.
-    let mut decks: Vec<f32> = w.lifts.iter().flat_map(|l| l.stops_m.iter().copied()).collect();
-    if decks.is_empty() {
-        decks = w.ladders.iter().flat_map(|l| [l.lo_m, l.hi_m]).collect();
-    }
-    decks.sort_by(f32::total_cmp);
-    decks.dedup_by(|a, b| (*a - *b).abs() < 0.1);
-    let tris = d.walk_triangles();
-    let mut bounds = [f32::MAX, f32::MAX, f32::MIN, f32::MIN];
-    for t in &tris {
-        for k in 0..3 {
-            bounds = [
-                bounds[0].min(t[k * 3]),
-                bounds[1].min(t[k * 3 + 2]),
-                bounds[2].max(t[k * 3]),
-                bounds[3].max(t[k * 3 + 2]),
-            ];
-        }
-    }
     let t0 = std::time::Instant::now();
-    let shafts: Vec<Vec<[f32; 2]>> = w.lifts.iter().map(|l| l.poly.clone()).collect();
     // `decks` stays with the walker: the map stacks them.
-    let grid = NavGrid::build(&world, &decks, bounds, &w.ladders, &shafts);
+    let (grid, decks) = NavGrid::for_ship(&world, w, &d.walk_triangles());
     println!(
         "sc-client: walk grid of {} walkable cells on {} decks built in {:.0} ms",
         grid.walkable(),
@@ -516,14 +511,15 @@ fn load_ship(
         d.index.compartments.iter().filter_map(|c| c.floor_m.map(|f| (c.id.clone(), f))).collect();
     let crew = Crew::new(&company, company.bots(&names, session_seed, 1), &rooms_at, &grid, session_seed, &data);
     println!("sc-client: {} bot crew aboard", crew.bots.len());
-    // The player's figure is index `departments.len()` (deckc's "player"), the map's own marker.
+    // A figure a division (crew-uniforms 3), by the division's index; the player's is index `divisions.len()`
+    // (deckc's "player"), the map's own marker.
     let figures: Vec<(usize, Mesh)> = figures
         .into_iter()
         .filter_map(|(id, m)| {
             let i = if id == "player" {
-                Some(company.departments.len())
+                Some(company.divisions.len())
             } else {
-                company.departments.iter().position(|dep| dep.id == id)
+                company.divisions.iter().position(|dv| dv.id == id)
             };
             i.map(|i| (i, m))
         })
@@ -563,6 +559,16 @@ fn load_ship(
 }
 
 impl Client {
+    /// `--poses a,b`: keep only the named poses' shots (no bot close-ups); an unknown name is an error.
+    fn only_poses(&mut self, names: &str) -> Result<(), String> {
+        let want: Vec<&str> = names.split(',').collect();
+        if let Some(n) = want.iter().find(|n| !POSES.iter().any(|p| p.0 == **n)) {
+            return Err(format!("--poses: no pose named {n}"));
+        }
+        self.shot_plan.retain(|&(p, _)| p < POSES.len() && want.contains(&POSES[p].0));
+        Ok(())
+    }
+
     fn new(deck: PathBuf, shots: Option<PathBuf>, walk_test: bool, lobby_test: bool) -> Result<Self, String> {
         let text =
             std::fs::read_to_string("data/engine/render.json").map_err(|e| format!("data/engine/render.json: {e}"))?;
@@ -629,6 +635,10 @@ impl Client {
             hand_test: None,
             map: None,
             map_labels: Vec::new(),
+            menu: Default::default(),
+            options: options::Options::load(),
+            walk_names: Vec::new(),
+            quit: false,
         })
     }
 
@@ -730,6 +740,7 @@ impl Client {
                     menu: true,
                     seed: l.seed(),
                     hand_test: hand_dir,
+                    look_in: None,
                 };
                 platform::hand_over(move |_| drill::DrillApp::new(args).map(|c| Box::new(c) as Box<dyn App>));
             }
@@ -830,19 +841,20 @@ impl Client {
             self.r.draw_deck(&self.target, &room.mesh, DeckProgram::Textured, &p, Some(tex));
         }
         // Bodies: every bot in its department's figure, the player in theirs, drawn large; names over them.
-        let deps = &wk.company.departments;
         let mut bodies: Vec<([f32; 3], f32, usize, String, egui::Color32, bool)> = wk
             .crew
             .bots
             .iter()
             .map(|b| {
-                let c = deps[b.member.department].colour_srgb;
+                let dv = wk.company.division_of(b.member.department);
+                let c = wk.company.divisions[dv].colour_srgb;
                 let col = egui::Color32::from_rgb((c[0] * 255.0) as u8, (c[1] * 255.0) as u8, (c[2] * 255.0) as u8);
-                (b.body.feet, b.yaw, b.member.department, b.member.name.clone(), col, false)
+                (b.body.feet, b.yaw, dv, b.member.name.clone(), col, false)
             })
             .collect();
         let me = self.officer.as_ref().map_or_else(|| "You".to_owned(), |(t, _)| t.clone());
-        bodies.push((wk.body.feet, self.cam.yaw, deps.len(), me, egui::Color32::from_rgb(255, 184, 77), true));
+        let own = wk.company.divisions.len();
+        bodies.push((wk.body.feet, self.cam.yaw, own, me, egui::Color32::from_rgb(255, 184, 77), true));
         let vp = proj * view;
         for (feet, yaw, fig, name, colour, own) in bodies {
             let k = deck_of_y(feet[1]);
@@ -879,6 +891,41 @@ impl Client {
         }
     }
 
+    /// The names over the bots this player can see (crew-nameplates 2): on screen, within 25 m, and in line of sight
+    /// across the walk grid on the same deck; every one of them an NPC. None while flying, on the map, or with Names
+    /// off.
+    fn names_in_view(&self, vp: Mat4) -> Vec<([f32; 2], String, f32)> {
+        let Some(w) = self.walker.as_ref().filter(|_| self.options.names && !self.flying && self.map.is_none()) else {
+            return Vec::new();
+        };
+        let eye = self.cam.pos;
+        // The floor under the eye: where the line of sight starts.
+        let under = [eye[0] as f32, (eye[1] - w.data.body.eye_m) as f32, eye[2] as f32];
+        let mut named = w
+            .crew
+            .bots
+            .iter()
+            .filter_map(|b| {
+                let f = b.body.feet;
+                let head = [f64::from(f[0]), f64::from(f[1]) + 2.05, f64::from(f[2])];
+                let rel = Vec3::new((head[0] - eye[0]) as f32, (head[1] - eye[1]) as f32, (head[2] - eye[2]) as f32);
+                let k = nameplate::fade(rel.length())?;
+                let c = vp * rel.extend(1.0);
+                if c.w <= 0.01 {
+                    return None;
+                }
+                let (x, y) = (c.x / c.w, c.y / c.w);
+                if x.abs() > 1.0 || y.abs() > 1.0 || !w.world.sees(under, f) {
+                    return None;
+                }
+                Some((rel.length(), [(x + 1.0) / 2.0, (1.0 - y) / 2.0], b.member.name.clone(), k))
+            })
+            .collect::<Vec<_>>();
+        // The farthest first, so a nearer plate is drawn over one behind it.
+        named.sort_by(|a, b| b.0.total_cmp(&a.0));
+        named.into_iter().map(|(_, at, name, k)| (at, name, k)).collect()
+    }
+
     /// The HUD aboard: who you are, and what E and Q do where you stand; on the map, its title and the names over the
     /// markers.
     fn hud(&mut self, f: &Frame) -> ui::UiFrame {
@@ -892,10 +939,28 @@ impl Client {
                 format!("DECK {}", (b'A' + (n - 1 - k) as u8) as char)
             }
         });
+        let names = std::mem::take(&mut self.walk_names);
+        let place = match self.walker.as_ref() {
+            Some(w) => {
+                let n = w.decks.len();
+                let k = w.decks.iter().rposition(|h| w.body.feet[1] >= h - 0.5).unwrap_or(0);
+                format!("SCS Tern, Deck {}", (b'A' + (n - 1 - k) as u8) as char)
+            }
+            None => "SCS Tern".to_owned(),
+        };
+        let mut menu_ask = None;
+        let (menu, options) = (&mut self.menu, &mut self.options);
         let frame = self.ui.run(&mut self.r, f, self.time_s, |ctx| {
             if let Some(deck) = &map_deck {
                 map_overlay(ctx, deck, &labels);
             }
+            let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Background, egui::Id::new("walk-names")));
+            let screen = ctx.content_rect();
+            for (at, name, k) in &names {
+                let p = egui::pos2(screen.min.x + at[0] * screen.width(), screen.min.y + at[1] * screen.height());
+                nameplate::draw(&painter, p, name, true, None, *k);
+            }
+            menu_ask = menu.show(ctx, &place, options);
 
             if let Some((title, station)) = &officer {
                 egui::Area::new(egui::Id::new("officer"))
@@ -924,6 +989,17 @@ impl Client {
             }
         });
         self.map_labels = labels;
+        self.walk_names = names;
+        // Resume takes the mouse back; Return to menu leaves for the front menu; Exit closes the game.
+        match menu_ask {
+            Some(game_menu::MenuAsk::Resume) => {
+                self.captured = true;
+                platform::capture_mouse(true);
+            }
+            Some(game_menu::MenuAsk::Leave) => back_to_menu(None),
+            Some(game_menu::MenuAsk::Exit) => self.quit = true,
+            None => {}
+        }
         frame
     }
 
@@ -1058,6 +1134,9 @@ impl Client {
 
 impl App for Client {
     fn frame(&mut self, f: &Frame) -> Flow {
+        if self.quit {
+            return Flow::Done;
+        }
         if self.lobby.is_some() {
             return self.lobby_frame(f);
         }
@@ -1148,11 +1227,12 @@ impl App for Client {
         }
         let view = glam::camera::rh::view::look_to_mat4(Vec3::ZERO, self.cam.dir(), Vec3::Y);
         let proj = glam::camera::rh::proj::opengl::perspective(
-            70f32.to_radians(),
+            (self.options.fov_deg as f32).to_radians(),
             RENDER_3D.0 as f32 / RENDER_3D.1 as f32,
             0.05,
             300.0,
         );
+        self.walk_names = self.names_in_view(proj * view);
         let w = self.weights;
         // The bow camera's view first, in its own pass: the sky and the dock, for the viewscreens (13b).
         if let Scene::Ship { rooms, outside: Some(o), tex, panel_first, panel_glow, .. } = &self.scene {
@@ -1243,7 +1323,8 @@ impl App for Client {
                 // its chest, 1.0 m above its feet (light-baking 16); where none is valid, by the figures' old light.
                 if let Some(wk) = self.walker.as_ref() {
                     for b in &wk.crew.bots {
-                        let Some((_, mesh)) = figures.iter().find(|(d, _)| *d == b.member.department) else { continue };
+                        let dv = wk.company.division_of(b.member.department);
+                        let Some((_, mesh)) = figures.iter().find(|(d, _)| *d == dv) else { continue };
                         let f = b.body.feet;
                         let chest = [f64::from(f[0]), f64::from(f[1]) + FIGURE_PROBE_HEIGHT_M, f64::from(f[2])];
                         let cube = probes.sample(chest, w).unwrap_or_else(sc_core::probes::fallback_cube);
@@ -1343,13 +1424,15 @@ impl App for Client {
         }
         match e {
             Event::Quit => return Flow::Done,
+            // Esc opens the game menu, or steps back through it (game-menu 2.4); opening it lets go of the mouse.
             Event::KeyDown(keys::ESCAPE) => {
-                if !self.captured {
-                    return Flow::Done;
-                }
+                self.menu.escape();
+                self.held.clear();
                 self.captured = false;
                 platform::capture_mouse(false);
             }
+            // While the menu is up, its input is the UI's (the ship runs on underneath, design 2).
+            _ if self.menu.open() => self.ui.event(&e),
             // On the map, Tab steps through the decks: all, then each from the top.
             Event::KeyDown(keys::TAB) if self.map.is_some() => {
                 let n = self.walker.as_ref().map_or(3, |w| w.decks.len());
@@ -1379,9 +1462,10 @@ impl App for Client {
                 }
             }
             Event::MouseMotion(dx, dy) if self.captured && self.map.is_some() => {
+                let k = self.options.look_rad_px();
                 if let Some(m) = self.map.as_mut() {
-                    m.yaw -= dx * LOOK_RAD_PX;
-                    m.pitch = (m.pitch + dy * LOOK_RAD_PX).clamp(0.1, 1.5);
+                    m.yaw -= dx * k;
+                    m.pitch = (m.pitch + dy * k).clamp(0.1, 1.5);
                 }
             }
             Event::MouseDown => {
@@ -1389,8 +1473,9 @@ impl App for Client {
                 platform::capture_mouse(true);
             }
             Event::MouseMotion(dx, dy) if self.captured => {
-                self.cam.yaw -= dx * LOOK_RAD_PX;
-                self.cam.pitch = (self.cam.pitch - dy * LOOK_RAD_PX).clamp(-1.5, 1.5);
+                let k = self.options.look_rad_px();
+                self.cam.yaw -= dx * k;
+                self.cam.pitch = (self.cam.pitch - dy * k).clamp(-1.5, 1.5);
             }
             Event::KeyDown(keys::N1) => self.want = 0,
             Event::KeyDown(keys::N2) => self.want = 1,
@@ -1534,13 +1619,15 @@ fn main() -> ExitCode {
             menu: false,
             seed: 0,
             hand_test: None,
+            look_in: None,
         };
         return platform::run(cfg, move |gl| {
             println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);
             drill::DrillApp::new(dargs).map(|c| Box::new(c) as Box<dyn App>)
         });
     }
-    // Single player without the menu (openspec/changes/single-player): `--solo [--station S] [--bot] [--shots DIR]`;
+    // Single player without the menu (openspec/changes/single-player): `--solo [--station S] [--bot] [--shots DIR]
+    // [--look-in S]`;
     // `--bot` lets the player's own station play itself, for captures of a whole round.
     if args.iter().any(|a| a == "--solo") {
         let station = args.iter().position(|a| a == "--station").and_then(|i| args.get(i + 1));
@@ -1566,6 +1653,11 @@ fn main() -> ExitCode {
             menu: false,
             seed: 7,
             hand_test: None,
+            look_in: args
+                .iter()
+                .position(|a| a == "--look-in")
+                .and_then(|i| args.get(i + 1))
+                .and_then(|v| v.parse::<f64>().ok()),
         };
         return platform::run(cfg, move |gl| {
             println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);
@@ -1611,10 +1703,14 @@ fn main() -> ExitCode {
     };
     // `--hand-over-test DIR`: the menu, Beam aboard into single player, Esc back to the menu, a capture of each.
     let hand_test = value("--hand-over-test");
+    let only_poses = args.iter().position(|a| a == "--poses").and_then(|i| args.get(i + 1)).cloned();
     platform::run(cfg, move |gl| {
         println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);
         let mut c = Client::new(deck, if hand_test.is_some() { None } else { shots }, walk_test, lobby_test)?;
         c.hand_test = hand_test.map(|d| (d, false, 0));
+        if let Some(names) = &only_poses {
+            c.only_poses(names)?;
+        }
         Ok(Box::new(c) as Box<dyn App>)
     })
 }

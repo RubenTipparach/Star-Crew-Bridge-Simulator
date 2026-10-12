@@ -215,11 +215,16 @@ mod tests {
             schema: "starcrew.company/1".into(),
             berths: 2,
             stay_s: [1.0, 1.0],
+            divisions: vec![crate::crew::Division {
+                id: "engineering".into(),
+                name: "Engineering".into(),
+                colour_srgb: [0.78, 0.22, 0.18],
+            }],
             departments: vec![Department {
                 id: "engineering".into(),
                 name: "Engineering".into(),
                 count: 1,
-                colour_srgb: [0.5; 3],
+                division: "engineering".into(),
                 rooms: vec!["west".into(), "east".into()],
             }],
         };

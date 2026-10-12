@@ -530,6 +530,49 @@ the reset is refused ("loop too hot") for 170 s while the pumps cool the loop on
 the reactor carries on through the starboard section at 30 MW, the battery bridges 24.8 MW for 30 s,
 then priority 3 drops and priority 2 runs at 68% until the section is rebuilt.
 
+### 12a. In the drill: the engine's grid (2026-10-11)
+
+`sc-core::power` is the port of the mockups' library (`gridSnapshot`, `solveGrid`, `solveWithDropout`, `stepPower`,
+`stepCooling`, `stepHeat`, `checkScram`, in the library's step order). It reads `power.json` through one typed
+`PowerFile`, which the damage module now reads too (one reading of the file), and the capability rule is one function
+(`SystemRules::capability`) for the damage state and the grid. The tests pin the walkthroughs: cruise is 22.4 MW at
+47 % (section 12's 21.2 MW at 44 % plus the 1.2 MW of radiator pumps `reactor-cooling` added since), the port trunk cut
+loses nothing, a preview equals the next solve for every group across its travel, the solve is deterministic, a
+reset is refused while the loop is hot, and a reset reactor ignites and runs again.
+
+How the drill drives it:
+
+- **Every system works with its integrity and its power**: the fight reads a Tern system as its capability times the
+  share of its demand it gets (the console mockup's `works`). The Hound has no grid and reads damage alone.
+- **Activity is what the fight asks**: the drive's and the dampers' activity is the push the helm asks for (the speed
+  error over its time constant, as a share of the drive's most), the RCS's the stick's largest axis, a turret's 1 while
+  it fires, a laser bank's 1 while it charges, a tube's while it loads, the sensors' while Science scans or pings,
+  shield regeneration while a face is below its cap. The mockup took the drive's from the push it achieved, with a
+  5 % floor: in the drill a drive shed to nothing then asked only for standby and never got its power back. Asking
+  for the push the helm wants keeps the shortfall on the console's POWER panel, where engineering can act on it.
+- **Tubes load by hand when unpowered** (`weapons-and-shields` 7, P5): a tube's power stretches its loading time as
+  1 / supply, never slower than the hand crank (`combat.json` `tubes.crank_load_s`, 82 s: the drill's 60 s load with
+  the crank's 40 s in place of the autoloader's 18 s). Only damage stops a tube.
+- **Turret capacitors charge with what the turret works at** (section 6's table), the Hound's by its damage.
+- **The air, comms and the bays are not simulated in the drill**: their plants ask for nothing, a room stays at the
+  atmosphere's starting temperature (`atmosphere.json` `thermal.initial_k`), and Engineering's AIR panel is drawn
+  unavailable rather than showing lamps the simulation does not drive.
+- **Engineering's automation** (`bridge-stations` 3): after its 3 s reaction, the combat preset on red alert and
+  cruise when it ends, and the preset a captain's COMBAT or CRUISE order names. The solve sheds by priority; the
+  reactor follows the load on AUTO.
+- **The bay crew at the reactor panel**: once a reset would be taken and one auxiliary train can carry the reactor
+  (its capability at least the scram rule's 80 %), they hold the reset for its 3 s plus Engineering's reaction and the
+  ignition starts. While neither train can, they call the repair teams to the reactor first. Without that rule the
+  drill's crews reset into the same fault: the reactor ignited, scrammed again in 2 s, and the failed ignitions spent
+  the restart reserve until the ship went dark.
+- **The redundant pairs are apart** (`power.json`): the two auxiliary trains sit beside the reactor on their own
+  switchboard sections' sides (x = +5.5 and -5.5 m) and the two core coolant pumps on their own sides of the pump
+  room. Both trains had stood at the reactor's one point, so every hit there broke both and scrammed the ship.
+- **Engineering's console in the engine**: the server sends the grid in every tenth snapshot (2 Hz, about 330 bytes,
+  section 14) and in every other one while a fader is dragged; a client keeps the last. A dragged fader asks the
+  server for the solve at its setpoint (`PowerCmd::Preview`) and draws the answer as the ghost; letting go sets it.
+  Clients never run the solve (preview = resolver, section 11).
+
 ### 13. The data: `data/ships/tern/power.json`
 
 Units are in the keys or in the file's `units` block. A missing optional field takes the code
@@ -540,7 +583,7 @@ capacity stops startup with the file and field (CLAUDE.md 6.5).
 | Field | Meaning |
 | --- | --- |
 | `solve.substep_hz` | Sub-steps a second (10) |
-| `solve.quanta_rounds`, `solve.epsilon_mw`, `solve.dropout_resolves` | Rounds per phase (3), tolerance (0.0005 MW), re-solves after drop-out (1) |
+| `solve.quanta_rounds`, `solve.epsilon_mw`, `solve.dropout_resolves` | Rounds per phase (3), tolerance (0.000001 MW: a pod's lights draw 24 W, power-routing; was 0.0005 MW), re-solves after drop-out (1) |
 | `reactor.system` | The layout system it is (`reactor`) |
 | `reactor.thermal_rated_mw`, `conversion_efficiency` | 80 MW, 0.6 |
 | `reactor.throttle_min`, `throttle_max`, `throttle_default` | 0.1, 1.2, 1.0 |
@@ -643,6 +686,22 @@ in `docs/screenshots/mockups/`:
 | `systems` (default) | Cruise, normal lighting: conduits by MW, the allocation bars, the bus table |
 | `power-overview` | Combat, red alert, 60 s in: the battery bridging 8.2 MW, every conduit's load, priorities and setpoints |
 | `power-severed` | The port trunk cut aft and midships in combat: the starboard trunk carrying the ship, the hangar and the port launch bay on emergency lighting |
+
+`docs/mockups/power-grid.html` (the owner, 2026-10-11: "Power grid should have a mock up as well. I would like to see
+the power grid in the ship floor plan and as a electric diagram"; since the same day Engineering's expanded schematic,
+`power-routing` design 3a), awaiting the owner's review (`power-grid-*.png`):
+
+| Shot | Shows |
+| --- | --- |
+| `power-grid-3d-cruise` | 3D: the decks pulled apart, a conduit box in every room, the runs, the spares dotted, every load's feeder in green; 39 of 42 runs live |
+| `power-grid-3d-rerouted` | The dorsal turret room's feed cut and the spare through the aft passage closed |
+| `power-grid-3d-tripped` | One run over the limit: TRIPPED, the ship dark past the switchboards, factory settings in 6 s |
+| `power-grid-3d-deck-c` | Deck C alone, the deck the owner looked at |
+| `power-grid-2d-cruise` | 2D: the simplified graph, a node a box, each box's loads as bars |
+| `power-grid-2d-rerouted` | The cut feed and the spare carrying the turret round the long way |
+| `power-grid-2d-tripped` | The trip in the graph |
+| `power-grid-phone-3d`, `power-grid-phone-2d` | Both views on a phone held upright |
+| `consoles-engineering`, `consoles-red-engineering` | Engineering's console: BUSES become SCHEMATIC, with EXPAND and the live runs |
 
 ## Open questions
 

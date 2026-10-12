@@ -1,0 +1,38 @@
+{
+  "extends": "panels.json",
+  "design": "grabon",
+  "status": "Grabon interior review: angular armored bays, bronze structure and ember lighting",
+  "source": {"generator_version": "grabon-1", "design_script": "tools/blender/grabon_panel_designs.py"},
+  "layers": {"dir": "assets/textures/grabon-panels"},
+  "rule": {"seed": 37},
+  "finishes": {
+    "crew": {
+      "colours_srgb": {
+        "plate": [0.38,0.27,0.40], "paint2": [0.24,0.15,0.26], "dark": [0.055,0.043,0.060],
+        "metal": [0.61,0.43,0.26], "walk": [0.33,0.28,0.32], "rubber": [0.055,0.035,0.04],
+        "hazard_a": [0.87,0.34,0.085], "hazard_b": [0.08,0.05,0.07], "safety": [0.9,0.38,0.09],
+        "stencil": [0.68,0.51,0.36], "light": [1.0,0.67,0.32], "amber": [1.0,0.35,0.055], "status": [1.0,0.52,0.09],
+        "rust": [0.25,0.11,0.08], "ui_bg": [0.06,0.02,0.02], "ui_dim": [0.34,0.1,0.04],
+        "ui_fg": [1.0,0.43,0.08], "ui_hi": [1.0,0.79,0.36], "ui_alert": [1.0,0.12,0.04]
+      },
+      "ceiling": {"colours_srgb": {"plate": [0.30,0.24,0.31], "paint2": [0.19,0.13,0.21], "metal": [0.48,0.34,0.23]}},
+      "floor": {"colours_srgb": {"plate": [0.23,0.20,0.23], "paint2": [0.16,0.12,0.17], "metal": [0.47,0.35,0.25], "walk": [0.36,0.29,0.31]}},
+      "trims": {"colours_srgb": {"plate": [0.21,0.13,0.23], "paint2": [0.14,0.08,0.16], "metal": [0.53,0.36,0.22]}},
+      "modules": {"plate": {"weight": 5}, "screen": {"weight": 1}, "pipes": {"weight": 2}}
+    },
+    "working": {
+      "colours_srgb": {
+        "plate": [0.29,0.20,0.30], "paint2": [0.18,0.12,0.20], "dark": [0.045,0.035,0.05],
+        "metal": [0.55,0.37,0.22], "walk": [0.29,0.24,0.26], "rubber": [0.045,0.029,0.038],
+        "hazard_a": [0.88,0.32,0.07], "hazard_b": [0.07,0.04,0.06], "safety": [0.90,0.34,0.06],
+        "stencil": [0.64,0.42,0.25], "light": [1.0,0.61,0.24], "amber": [1.0,0.30,0.04], "status": [1.0,0.45,0.06],
+        "rust": [0.28,0.12,0.08], "ui_bg": [0.055,0.018,0.02], "ui_dim": [0.33,0.09,0.03],
+        "ui_fg": [1.0,0.37,0.055], "ui_hi": [1.0,0.73,0.26], "ui_alert": [1.0,0.09,0.025]
+      },
+      "ceiling": {"colours_srgb": {"plate": [0.26,0.19,0.28], "paint2": [0.17,0.10,0.18], "metal": [0.46,0.30,0.20]}},
+      "floor": {"colours_srgb": {"plate": [0.20,0.16,0.20], "paint2": [0.14,0.10,0.15], "metal": [0.43,0.30,0.19], "walk": [0.31,0.24,0.26]}},
+      "trims": {"colours_srgb": {"plate": [0.19,0.11,0.20], "paint2": [0.12,0.065,0.13], "metal": [0.48,0.31,0.19]}},
+      "modules": {"plate": {"weight": 4}, "pipes": {"weight": 3}, "ribbed": {"weight": 2}}
+    }
+  }
+}

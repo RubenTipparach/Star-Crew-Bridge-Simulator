@@ -16,6 +16,7 @@
  *
  * Usage: node tools/mockups/shoot.mjs [page.html ...] [--out docs/screenshots/mockups]
  *        [--size 1440x900] [--only shotName[,shotName...]] [--wait seconds]
+ *        (a shot may carry its own viewport: { name, viewport: { width, height }, setup })
  *        (--only takes names, comma separated; a name ending in * takes every shot it starts)
  */
 import { createRequire } from "node:module";
@@ -80,6 +81,8 @@ for (const file of pages) {
   catch (_) { errors.push("MOCKUP_READY was never set"); }
   await frames(page, 20);
   const shots = await page.evaluate(() => (window.MOCKUP_SHOTS || []).map((s) => s.name));
+  // A shot may name its own viewport (a phone held upright, say): { name, viewport: { width, height }, setup }.
+  const views = await page.evaluate(() => (window.MOCKUP_SHOTS || []).map((s) => s.viewport || null));
   const taken = [];
   if (!only) {
     const out = path.join(outDir, `${name}.png`);
@@ -88,6 +91,11 @@ for (const file of pages) {
   }
   for (let i = 0; i < shots.length; i++) {
     if (!wanted(shots[i])) continue;
+    const v = views[i] || { width: W, height: H };
+    if (v.width !== page.viewportSize().width || v.height !== page.viewportSize().height) {
+      await page.setViewportSize(v);
+      await frames(page, 10);
+    }
     await page.evaluate((i) => Promise.resolve(window.MOCKUP_SHOTS[i].setup()), i);
     await frames(page, 45);
     const out = path.join(outDir, `${name}-${shots[i]}.png`);

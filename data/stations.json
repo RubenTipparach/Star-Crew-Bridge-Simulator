@@ -8,7 +8,9 @@
       "tactical": { "reaction_s": 2.0, "weapons_range_m": 2400, "missiles": false, "face_threat": false },
       "engineering": { "reaction_s": 3.0 },
       "science": { "reaction_s": 2.5, "scan_factor": 1.5 },
-      "captain": { "reaction_s": 1.0, "red_within_m": 15000, "normal_beyond_m": 25000, "normal_after_s": 60 }
+      "captain": { "reaction_s": 1.0, "red_within_m": 15000, "normal_beyond_m": 25000, "normal_after_s": 60 },
+      "lasers": { "reaction_s": 1.0, "full_min_hit_chance": 0.5, "bare_min_hit_chance": 0.35 },
+      "gunner": { "reaction_s": 1.0 }
     },
     {
       "id": "bot",
@@ -16,15 +18,22 @@
       "tactical": { "reaction_s": 0.4, "weapons_range_m": 2400, "missiles": true, "face_threat": true },
       "engineering": { "reaction_s": 0.5 },
       "science": { "reaction_s": 0.5, "scan_factor": 1.0 },
-      "captain": { "reaction_s": 0.5, "red_within_m": 15000, "normal_beyond_m": 25000, "normal_after_s": 60 }
+      "captain": { "reaction_s": 0.5, "red_within_m": 15000, "normal_beyond_m": 25000, "normal_after_s": 60 },
+      "lasers": { "reaction_s": 0.6, "full_min_hit_chance": 0.5, "bare_min_hit_chance": 0.35 },
+      "gunner": { "reaction_s": 0.6 }
     }
   ],
   "orders": {
     "helm": [["EVADE", "jink"], ["CHASE", "chase"], ["HOLD", "hold"], ["STOP", "stop"]],
     "tactical": [["ENGAGE", "target"], ["HOLD FIRE", "lock"], ["LAUNCH", "flight_ops"]],
     "engineering": [["COMBAT", "bolt"], ["CRUISE", "drive"], ["REPAIR", "wrench"]],
-    "science": [["SCAN", "scan"], ["PING", "ping"]]
+    "science": [["SCAN", "scan"], ["PING", "ping"]],
+    "laser_port": [["FIRE", "target"], ["HOLD FIRE", "lock"]],
+    "laser_stbd": [["FIRE", "target"], ["HOLD FIRE", "lock"]],
+    "gunner": [["FIGHTERS", "target"], ["HOLD FIRE", "lock"]]
   },
+  "seat_ids": { "laser_port": "comms", "laser_stbd": "flight_ops", "gunner": "gunner_dorsal" },
+  "divisions": { "captain": "operations", "helm": "operations", "tactical": "operations", "laser_port": "operations", "laser_stbd": "operations", "gunner": "operations", "science": "science", "engineering": "engineering" },
   "seats": { "stand_s": 0.4, "sit_s": 0.4 },
   "bot_posts": { "posts": ["helm", "tactical", "engineering", "science", "captain"], "reassign_s": 5.0 }
 }

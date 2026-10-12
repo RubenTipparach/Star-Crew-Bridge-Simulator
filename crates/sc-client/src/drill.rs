@@ -20,7 +20,7 @@ use egui::{Align2, Color32, CornerRadius, Pos2, Rect, RichText, Stroke, Vec2};
 use glam::{DQuat, DVec3, Mat4, Quat, Vec3};
 use sc_client::platform::{keys, App, Event, Flow, Frame};
 use sc_core::combat::data::{DrillData, DRILL_FILES};
-use sc_core::combat::{Command, Outcome, Phase, Station, ENEMY_ID, TERN_ID};
+use sc_core::combat::{Command, Outcome, Phase, Station, ENEMY_ID, FEEDS, TERN_ID};
 use sc_core::exterior::{normalized, ExteriorData};
 use sc_net::bot::Bot;
 use sc_net::msg::{ShipSnap, Snapshot};
@@ -71,14 +71,20 @@ pub struct DrillArgs {
     pub seed: u64,
     /// The hand-over test's folder: once the briefing shows, capture it and hand back to the menu.
     pub hand_test: Option<PathBuf>,
+    /// Single player: every this many seconds of the fight, look in on the next station's console through the crew
+    /// tabs, as a captain going round the bridge does (`--look-in S`, for recordings of a whole fight).
+    pub look_in: Option<f64>,
 }
 
 struct Meshes {
     hound: Mesh,
+    jackal: Mesh,
+    debris: Mesh,
     bolt_tern: Mesh,
     bolt_enemy: Mesh,
     missile: Mesh,
     burst: Mesh,
+    beam: Mesh,
 }
 
 struct VisBolt {
@@ -91,6 +97,26 @@ struct VisBolt {
     life_s: f64,
     /// Local time it struck, if it did.
     hit_at: Option<f64>,
+}
+
+/// A laser beam as drawn: a stretched bolt from the emitter to where it struck or passed (laser-banks 2).
+struct VisBeam {
+    from: DVec3,
+    to: DVec3,
+    /// Local time it fired.
+    t0: f64,
+}
+
+/// How long a beam shows, seconds.
+const BEAM_SHOW_S: f64 = 0.4;
+
+/// A piece thrown off a burst aboard a ship (ship-damage 6): it tumbles away and fades.
+struct Debris {
+    pos: DVec3,
+    vel: DVec3,
+    spin: Vec3,
+    t0: f64,
+    dur: f64,
 }
 
 struct Boom {
@@ -121,7 +147,9 @@ pub struct DrillApp {
     bot: Option<Bot>,
     time_s: f64,
     bolts: Vec<VisBolt>,
+    beams: Vec<VisBeam>,
     booms: Vec<Boom>,
+    debris: Vec<Debris>,
     held: HashSet<u32>,
     pressed: HashSet<u32>,
     /// A console's own state for each station (`Station as usize`): the player's seat, and in single player every
@@ -147,12 +175,15 @@ pub struct DrillApp {
     overview: bool,
     /// The scripted shots: since when this player's body, and another's, has been seen walking.
     walk_seen: (Option<f64>, Option<f64>),
+    /// The game menu on Esc (game-menu), and the options it sets.
+    menu: crate::game_menu::GameMenu,
+    options: crate::options::Options,
 }
 
 fn load_data() -> Result<DrillData, String> {
     let read = |rel: &str| std::fs::read_to_string(rel).map_err(|e| format!("{rel}: {e}"));
     let t: Vec<String> = DRILL_FILES.iter().map(|f| read(f)).collect::<Result<_, _>>()?;
-    let arr: [&str; 6] = std::array::from_fn(|i| t[i].as_str());
+    let arr: [&str; sc_core::combat::data::DRILL_FILE_COUNT] = std::array::from_fn(|i| t[i].as_str());
     let m = "data/missions/drill-hound.json";
     DrillData::parse(arr, m, &read(m)?).map_err(|e| e.to_string())
 }
@@ -180,10 +211,13 @@ impl DrillApp {
         println!("sc-client: the Hound placeholder is {} triangles", hound.triangles());
         let meshes = Meshes {
             hound: mesh(&r, &hound),
+            jackal: mesh(&r, &ships3d::jackal()),
+            debris: mesh(&r, &ships3d::bolt([0.35, 0.33, 0.33])),
             bolt_tern: mesh(&r, &ships3d::bolt([0.6, 1.8, 2.0])),
             bolt_enemy: mesh(&r, &ships3d::bolt([2.0, 0.8, 0.4])),
             missile: mesh(&r, &ships3d::missile()),
             burst: mesh(&r, &ships3d::burst()),
+            beam: mesh(&r, &ships3d::bolt([2.0, 0.6, 1.3])),
         };
         let mut args = args;
         if args.any {
@@ -222,7 +256,9 @@ impl DrillApp {
             bot,
             time_s: 0.0,
             bolts: Vec::new(),
+            beams: Vec::new(),
             booms: Vec::new(),
+            debris: Vec::new(),
             held: HashSet::new(),
             pressed: HashSet::new(),
             seats: Station::ALL.iter().map(|_| Seat::default()).collect(),
@@ -238,10 +274,13 @@ impl DrillApp {
             bridge: None,
             overview: args_watch,
             walk_seen: (None, None),
+            menu: Default::default(),
+            options: crate::options::Options::load(),
         };
         match crate::drill_bridge::BridgeView::load(&mut app.r, std::path::Path::new("compiled/tern.deck")) {
-            Ok(b) => {
+            Ok(mut b) => {
                 println!("sc-client: the bridge for the crew on foot, {} triangles", b.triangles);
+                b.fov_deg = app.options.fov_deg as f32;
                 app.bridge = Some(b);
             }
             Err(e) => println!("sc-client: no bridge to walk ({e}); the drill shows the consoles only"),
@@ -319,10 +358,13 @@ impl DrillApp {
                 n.auto = !n.auto;
             }
         }
-        if pressed.contains(&keys::TAB) {
+        // On the gunner's sight Tab steps the target instead (the mockup's key); Shift+Tab still moves on.
+        let shift = self.held.contains(&keys::LSHIFT) || self.held.contains(&keys::RSHIFT);
+        let sight = self.shown.unwrap_or(host.seat) == Station::Gunner;
+        if pressed.contains(&keys::TAB) && (!sight || shift) {
             let ids: Vec<Station> = std::iter::once(host.seat).chain(host.crew.iter().map(|n| n.station)).collect();
             let at = ids.iter().position(|s| Some(*s) == self.shown).unwrap_or(0);
-            let back = self.held.contains(&keys::LSHIFT) || self.held.contains(&keys::RSHIFT);
+            let back = shift;
             let next = ids[(at + if back { ids.len() - 1 } else { 1 }) % ids.len()];
             self.show(next);
         }
@@ -380,7 +422,63 @@ impl DrillApp {
                     let radius = if damage_mj > 0.0 { 30.0 } else { 12.0 };
                     self.booms.push(Boom { pos, t0: now - rtt / 2.0, dur: 1.2, radius });
                 }
+                Visual::Beam { from, to, hit, .. } => {
+                    let t0 = now - rtt / 2.0;
+                    self.beams.push(VisBeam { from, to, t0 });
+                    if hit {
+                        self.booms.push(Boom { pos: to, t0, dur: 0.6, radius: 15.0 });
+                    }
+                }
+                Visual::Burst { pos, size } => {
+                    // A burst aboard: sized by the energy past the armour or the integrity a part lost.
+                    let t0 = now - rtt / 2.0;
+                    let radius = 3.0 + size.max(0.0).sqrt() * 1.5;
+                    self.booms.push(Boom { pos, t0, dur: 0.9, radius });
+                    // Debris spun off the point: 6-20 pieces, out from the ship and tumbling.
+                    let out = self
+                        .ships_now()
+                        .map(|(t, h, _)| if (t.pos - pos).length() < (h.pos - pos).length() { t.pos } else { h.pos })
+                        .map_or(DVec3::Y, |c| (pos - c).normalize_or(DVec3::Y));
+                    let n = 6 + (size.max(0.0) / 4.0).min(14.0) as usize;
+                    for k in 0..n {
+                        let a = (k as f64 * 2.399 + t0 * 7.0).sin();
+                        let b = (k as f64 * 1.731 + t0 * 3.0).cos();
+                        let c = (k as f64 * 0.917 + t0 * 5.0).sin();
+                        let spray = (out + DVec3::new(a, b, c) * 0.8).normalize_or(out);
+                        let speed = 15.0 + 25.0 * ((k * 7 % 5) as f64 / 4.0);
+                        self.debris.push(Debris {
+                            pos,
+                            vel: spray * speed,
+                            spin: Vec3::new(a as f32, b as f32, c as f32) * 4.0,
+                            t0,
+                            dur: 2.0 + (k % 3) as f64 * 0.5,
+                        });
+                    }
+                }
+                Visual::Decoy(id) => {
+                    // A ring of flares round the ship that threw it.
+                    if let Some((t, h, _)) = self.ships_now() {
+                        let ship = if id == TERN_ID { t } else { h };
+                        for k in 0..6 {
+                            let a = k as f64 * std::f64::consts::TAU / 6.0;
+                            let off =
+                                ship.rot * DVec3::new(a.cos() * 40.0, (k % 2) as f64 * 15.0 - 7.0, a.sin() * 40.0);
+                            self.booms.push(Boom {
+                                pos: ship.pos + off,
+                                t0: now + k as f64 * 0.15,
+                                dur: 3.0,
+                                radius: 6.0,
+                            });
+                        }
+                    }
+                }
                 Visual::Destroyed(id) => {
+                    // A fighter goes up where it was.
+                    let fighter =
+                        self.ships_now().and_then(|(_, _, s)| s.fighters.iter().find(|f| f.id == id).map(|f| f.pos));
+                    if let Some(pos) = fighter {
+                        self.booms.push(Boom { pos, t0: now, dur: 1.2, radius: 20.0 });
+                    }
                     if id == ENEMY_ID {
                         if let Some((_, h, _)) = self.ships_now() {
                             self.booms.push(Boom { pos: h.pos, t0: now, dur: 2.5, radius: 70.0 });
@@ -410,12 +508,24 @@ impl DrillApp {
     }
 
     /// The viewscreen's feed: from the bow, looking where the console's feed points (the mockup's feed camera:
-    /// 70 degrees across at zoom 1), into its own target, which the console draws in the viewscreen's frame.
+    /// 70 degrees across at zoom 1), into its own target, which the console draws in the viewscreen's frame. With no
+    /// console (on foot, the overview) it is the bridge's viewscreens' picture: the captain's camera while he holds
+    /// the viewscreen, forward otherwise.
     fn render_feed(&mut self, ships: Option<&(ShipSnap, ShipSnap, Snapshot)>, view: Option<&console::ConsoleView>) {
         let (eye, rot) = Self::bow_eye(ships, self.time_s);
         let (fwd, up, vfov) = match view {
             Some(v) => self.seats[self.console_station() as usize].feed_camera(v, rot),
-            None => (rot * DVec3::Z, rot * DVec3::Y, 2.0 * (97.0f64 / (307.0 / 35f64.to_radians().tan())).atan()),
+            None => {
+                let feed = ships
+                    .and_then(|(_, _, s)| s.bridge.view)
+                    .and_then(|i| FEEDS.get(usize::from(i)))
+                    .copied()
+                    .unwrap_or("FWD");
+                let target =
+                    ships.filter(|(_, h, _)| h.active && h.alive).map(|(t, h, _)| t.rot.inverse() * (h.pos - t.pos));
+                let b = console::feed_basis_for(feed, target);
+                (rot * b.f, rot * b.u, 2.0 * (97.0f64 / (307.0 / 35f64.to_radians().tan())).atan())
+            }
         };
         let proj =
             glam::camera::rh::proj::opengl::perspective(vfov as f32, FEED.0 as f32 / FEED.1 as f32, 1.0, 80_000.0);
@@ -424,7 +534,9 @@ impl DrillApp {
             meshes: &self.meshes,
             exterior: &self.exterior,
             bolts: &self.bolts,
+            beams: &self.beams,
             booms: &self.booms,
+            debris: &self.debris,
             time_s: self.time_s,
         };
         self.r.begin_3d(&self.feed, [0.0, 0.0, 0.0, 1.0]);
@@ -440,7 +552,9 @@ struct World<'a> {
     meshes: &'a Meshes,
     exterior: &'a ExteriorData,
     bolts: &'a [VisBolt],
+    beams: &'a [VisBeam],
     booms: &'a [Boom],
+    debris: &'a [Debris],
     time_s: f64,
 }
 
@@ -459,7 +573,19 @@ impl World<'_> {
     ) {
         let sky = crate::sky_params(self.exterior, proj, view, px_rad);
         r.draw_sky(t, &sky);
-        let vp = proj * view;
+        self.draw_objects(r, t, proj * view, eye, ships);
+    }
+
+    /// The Hound, missiles, bolts and bursts alone (no sky), seen from `eye` through `vp` into `t`'s pass: the feed
+    /// draws them over its sky, the bridge through its windows.
+    fn draw_objects(
+        &self,
+        r: &mut Renderer,
+        t: &Target,
+        vp: Mat4,
+        eye: DVec3,
+        ships: Option<&(ShipSnap, ShipSnap, Snapshot)>,
+    ) {
         let rel = |p: DVec3| (p - eye).as_vec3();
         let flat = |mvp: Mat4| DeckParams {
             mvp,
@@ -483,6 +609,18 @@ impl World<'_> {
                 let model = Mat4::from_rotation_translation(q, rel(hound.pos));
                 r.draw_deck_probe(t, &self.meshes.hound, vp * model, Mat4::from_quat(q), &cube, [1.0, 0.0, 0.0]);
             }
+            // The enemy's fighters (enemy-fighters 4), lit like the Hound.
+            for f in &snap.fighters {
+                let sun = Vec3::from_array(normalized(self.exterior.sun.dir));
+                let axes = [Vec3::X, -Vec3::X, Vec3::Y, -Vec3::Y, Vec3::Z, -Vec3::Z];
+                let cube = axes.map(|a| {
+                    let s = a.dot(sun).max(0.0);
+                    [0.2 + 1.3 * s, 0.2 + 1.25 * s, 0.22 + 1.15 * s]
+                });
+                let q = Quat::from_xyzw(f.rot.x as f32, f.rot.y as f32, f.rot.z as f32, f.rot.w as f32);
+                let model = Mat4::from_rotation_translation(q, rel(f.pos));
+                r.draw_deck_probe(t, &self.meshes.jackal, vp * model, Mat4::from_quat(q), &cube, [1.0, 0.0, 0.0]);
+            }
             for m in &snap.missiles {
                 let dir = m.vel.normalize_or(DVec3::Z).as_vec3();
                 let model = Mat4::from_rotation_translation(Quat::from_rotation_arc(Vec3::Z, dir), rel(m.pos))
@@ -503,6 +641,28 @@ impl World<'_> {
             let m = if b.owner == TERN_ID { &self.meshes.bolt_tern } else { &self.meshes.bolt_enemy };
             r.draw_deck(t, m, DeckProgram::Flat, &flat(vp * model), None);
         }
+        for b in self.beams {
+            if render_t - b.t0 > BEAM_SHOW_S || render_t < b.t0 {
+                continue;
+            }
+            let d = b.to - b.from;
+            let len = d.length().max(1.0) as f32;
+            let model = Mat4::from_rotation_translation(
+                Quat::from_rotation_arc(Vec3::Z, d.normalize_or(DVec3::Z).as_vec3()),
+                rel((b.from + b.to) * 0.5),
+            ) * Mat4::from_scale(Vec3::new(40.0, 40.0, len));
+            r.draw_deck(t, &self.meshes.beam, DeckProgram::Flat, &flat(vp * model), None);
+        }
+        for p in self.debris {
+            let age = render_t - p.t0;
+            if !(0.0..p.dur).contains(&age) {
+                continue;
+            }
+            let at = p.pos + p.vel * age;
+            let turn = Quat::from_scaled_axis(p.spin * age as f32);
+            let model = Mat4::from_rotation_translation(turn, rel(at)) * Mat4::from_scale(Vec3::new(9.0, 9.0, 2.5));
+            r.draw_deck(t, &self.meshes.debris, DeckProgram::Flat, &flat(vp * model), None);
+        }
         for b in self.booms {
             let k = ((render_t - b.t0) / b.dur).clamp(0.0, 1.0);
             let radius = (b.radius * k.sqrt()).max(0.5) as f32;
@@ -513,17 +673,46 @@ impl World<'_> {
 }
 
 impl DrillApp {
-    /// The crew's bodies 100 ms behind the newest snapshot, as the ships are drawn, each with whether it is a bot's.
-    fn bodies_now(&self) -> Vec<(sc_net::msg::BodySnap, bool)> {
+    /// The crew's bodies 100 ms behind the newest snapshot, as the ships are drawn, each with the division of the
+    /// station it holds (or walks to): what it wears (crew-uniforms 2).
+    fn bodies_now(&self) -> Vec<(sc_net::msg::BodySnap, String)> {
         let Some(s) = self.session.as_ref() else { return Vec::new() };
         let Some((a, b, f)) = s.interpolation() else { return Vec::new() };
         crate::drill_bridge::blend(&a.bodies, &b.bodies, f)
             .into_iter()
             .map(|x| {
-                let bot = s.crew.iter().any(|c| c.slot == x.slot && c.bot);
-                (x, bot)
+                let held = s.crew.iter().find(|c| c.slot == x.slot).and_then(|c| c.station).or(x.going);
+                let division = held.map_or("operations", |st| self.data.division_of(st)).to_owned();
+                (x, division)
             })
             .collect()
+    }
+
+    /// `--look-in`: in single player, during the fight, the console shown goes round the crewed stations every few
+    /// seconds by the crew tabs (the player's own seat between them), with the captain's ship plan, OBJECTIVES and the
+    /// bridge's overview on the way; the stations stay on AUTO, so their NPCs keep playing them.
+    fn look_in(&mut self, ships: Option<&(ShipSnap, ShipSnap, Snapshot)>) {
+        let (Some(every), Some(snap)) = (self.args.look_in, ships.map(|x| &x.2)) else { return };
+        let Some(host) = self.solo.as_ref() else { return };
+        if snap.phase != Phase::Engage || every <= 0.0 {
+            return;
+        }
+        let own = host.seat;
+        let mut stops: Vec<(Station, u8)> = vec![(own, 0), (own, 1)];
+        for n in &host.crew {
+            stops.push((n.station, 0));
+        }
+        stops.push((own, 2));
+        stops.push((own, 3));
+        let (st, what) = stops[(snap.phase_s / every) as usize % stops.len()];
+        self.show(st);
+        // The last stop is the bridge itself, from its overview: the crew at their seats, the fight through the windows.
+        self.overview = what == 3;
+        let seat = &mut self.seats[st as usize];
+        seat.show_objectives(what == 2);
+        if st == Station::Captain {
+            seat.set_captain_tab(if what == 1 { "SHIP" } else { "CMD" });
+        }
     }
 
     /// The scripted shots' overview frames: the first half second after another crew member is seen walking.
@@ -570,6 +759,11 @@ impl DrillApp {
                 self.capture(f, &format!("0-walking-{st}.png"));
             }
         }
+        // A scripted single-player run has no hands on READY: it presses it once the briefing is shot, as a bot does
+        // after reading it, and it goes out when the crew are seated.
+        if self.solo.is_some() && snap.phase == Phase::Muster && t >= 2.0 {
+            self.ready_held = true;
+        }
         let plan: &[(Phase, f64, &str)] = &[
             (Phase::Muster, 1.5, "1-briefing"),
             (Phase::Countdown, 2.0, "2-countdown"),
@@ -581,6 +775,16 @@ impl DrillApp {
         for (p, at, name) in plan {
             if snap.phase == *p && t >= *at {
                 self.capture(f, &format!("{name}-{st}.png"));
+            }
+        }
+        // The game menu over the console, opened and closed by the script (game-menu 2.5).
+        let menu_shot = format!("7-menu-{st}.png");
+        if snap.phase == Phase::Engage && (30.0..32.0).contains(&t) && !self.shots_taken.contains(&menu_shot) {
+            if !self.menu.open() {
+                self.menu.escape();
+            } else if t >= 30.5 {
+                self.capture(f, &menu_shot);
+                self.menu.escape();
             }
         }
         // Single player: the crew's tabs on the player's own console, then Tactical's console (or the first NPC's) on
@@ -628,12 +832,20 @@ impl App for DrillApp {
         self.ui.event(&e);
         match e {
             Event::Quit => return Flow::Done,
-            Event::KeyDown(keys::ESCAPE) => {
-                if !self.args.menu {
-                    return Flow::Done;
-                }
-                crate::back_to_menu(None);
+            // Esc first closes OBJECTIVES over a console (objectives-tab 1), then opens or steps back through the
+            // game menu (game-menu 2.4).
+            Event::KeyDown(keys::ESCAPE)
+                if !self.menu.open() && self.seats[self.console_station() as usize].objectives_open() =>
+            {
+                let st = self.console_station() as usize;
+                self.seats[st].close_objectives();
             }
+            Event::KeyDown(keys::ESCAPE) => {
+                self.menu.escape();
+                self.held.clear();
+            }
+            // While the menu is up, its keys are its own (the game underneath runs on, design 2).
+            Event::KeyDown(_) if self.menu.open() => {}
             Event::KeyDown(keys::V) => self.overview = !self.overview,
             Event::KeyDown(keys::F3) => self.show_net = !self.show_net,
             Event::KeyDown(k) => {
@@ -685,7 +897,9 @@ impl App for DrillApp {
                 self.phase_seen = Some((round, p, self.time_s));
                 if p == Phase::Muster {
                     self.bolts.clear();
+                    self.beams.clear();
                     self.booms.clear();
+                    self.debris.clear();
                 }
                 println!("sc-client: round {round} {p:?}");
             }
@@ -708,7 +922,33 @@ impl App for DrillApp {
                 (true, Some(b)) => (crate::drill_bridge::eye_of(&b), b.yaw, -0.12),
                 _ => crate::drill_bridge::overview(),
             };
+            // The bridge's viewscreens show the feed: rendered first, in its own pass.
+            self.render_feed(ships.as_ref(), None);
             if let Some(bv) = &self.bridge {
+                let attitude = ships.as_ref().map_or(Quat::IDENTITY, |(t, _, _)| t.rot.as_quat());
+                let red = ships.as_ref().is_some_and(|(_, _, s)| s.bridge.red_alert);
+                // The bridge's eye in the system's frame, where the Hound, bolts and bursts are.
+                let eye_out = ships.as_ref().map(|(t, _, _)| t.pos + t.rot * DVec3::from_array(eye));
+                let world = World {
+                    meshes: &self.meshes,
+                    exterior: &self.exterior,
+                    bolts: &self.bolts,
+                    beams: &self.beams,
+                    booms: &self.booms,
+                    debris: &self.debris,
+                    time_s: self.time_s,
+                };
+                let seen = ships.as_ref();
+                let out = crate::drill_bridge::Outside {
+                    attitude,
+                    lighting: if red { [0.0, 1.0, 0.0] } else { [1.0, 0.0, 0.0] },
+                    screen: Some((&self.feed, self.exterior.viewscreen.scanlines as f32)),
+                    objects: Box::new(move |r, t, vp| {
+                        if let Some(e) = eye_out {
+                            world.draw_objects(r, t, vp, e, seen);
+                        }
+                    }),
+                };
                 let vp = bv.draw(
                     &mut self.r,
                     &self.bridge_target,
@@ -720,20 +960,35 @@ impl App for DrillApp {
                     &bodies,
                     me,
                     hide_me,
+                    out,
                 );
                 let (w, h) = (720.0 * aspect, 720.0);
                 let crew = self.session.as_ref().map(|s| s.crew.clone()).unwrap_or_default();
+                // A name over every body (crew-nameplates 2): on screen, near and in sight (the crew start about the
+                // ship, so walls and decks hide some). Off when Options says so.
+                let names = self.options.names;
                 let labels = bodies
                     .iter()
+                    .filter(|_| names)
                     .filter(|(b, _)| !(hide_me && Some(b.slot) == me))
                     .filter_map(|(b, _)| {
                         let head = [b.pos[0], b.pos[1] + 2.05, b.pos[2]];
+                        let dist = head.iter().zip(eye).map(|(a, e)| (f64::from(*a) - e).powi(2)).sum::<f64>().sqrt();
+                        let k = crate::nameplate::fade(dist as f32)?;
+                        if !bv.sees(eye, b.pos) {
+                            return None;
+                        }
                         let at = crate::drill_bridge::project(vp, eye, head, w, h)?;
-                        let name = crew.iter().find(|c| c.slot == b.slot).map(|c| c.name.clone()).unwrap_or_default();
+                        let who = crew.iter().find(|c| c.slot == b.slot);
+                        let name = who.map(|c| c.name.clone()).unwrap_or_default();
                         let going = b.going.map(|g| format!("to {}", g.name()));
-                        Some((Pos2::new(at[0], at[1]), name, going))
+                        let npc = who.is_some_and(|c| c.bot);
+                        Some(Label { at: Pos2::new(at[0], at[1]), name, npc, going, k, dist })
                     })
-                    .collect();
+                    .collect::<Vec<Label>>();
+                // The farthest first, so a nearer plate is drawn over one behind it.
+                let mut labels = labels;
+                labels.sort_by(|a, b| b.dist.total_cmp(&a.dist));
                 let banner = mine.and_then(|b| b.going).map(|g| format!("Walking to {}", g.name()));
                 bridge_ui = Some(BridgeUi { labels, banner, overview: !own });
             }
@@ -766,7 +1021,9 @@ impl App for DrillApp {
                     .collect(),
             });
         }
-        if !on_bridge {
+        // The gunner's sight has no viewscreen (enemy-fighters 3): its console covers the screen.
+        let sight = console_view.as_ref().is_some_and(|v| v.station == "gunner");
+        if !on_bridge && !sight {
             self.render_feed(ships.as_ref(), console_view.as_ref());
         }
         let mut ask: Vec<UiAsk> = Vec::new();
@@ -775,6 +1032,9 @@ impl App for DrillApp {
         let mut painted: Option<(console::kit::Hits, f32)> = None;
         let mut pointer: Vec<PointerEv> = Vec::new();
         let show_net = self.show_net;
+        let place = format!("SCS Tern, {}", station.map_or("Bridge", |s| s.name()));
+        let mut menu_ask = None;
+        let (menu, options) = (&mut self.menu, &mut self.options);
         let frame = self.ui.run(&mut self.r, f, self.time_s, |ctx| {
             if let Some(v) = console_view.as_ref() {
                 let hover = ctx.input(|i| i.pointer.hover_pos());
@@ -797,11 +1057,23 @@ impl App for DrillApp {
                 });
             }
             draw_ui(ctx, &view, &mut ask, show_net);
+            menu_ask = menu.show(ctx, &place, options);
         });
         self.pointer = pointer;
+        if let Some(b) = self.bridge.as_mut() {
+            b.fov_deg = self.options.fov_deg as f32;
+        }
+        // Return to menu leaves the crew for the front menu (the station passes to automation, design 2); Exit closes
+        // the game. Each was asked Yes or No first.
+        match menu_ask {
+            Some(crate::game_menu::MenuAsk::Leave) if self.args.menu => crate::back_to_menu(None),
+            Some(crate::game_menu::MenuAsk::Leave | crate::game_menu::MenuAsk::Exit) => return Flow::Done,
+            _ => {}
+        }
         // The seated player's hands on the console, in Engage only (the briefing and debrief sit over it otherwise).
         let engage = ships.as_ref().is_some_and(|x| x.2.phase == Phase::Engage);
         let pressed = std::mem::take(&mut self.pressed);
+        let engage = engage && !self.menu.open();
         if let (true, Some(_), None, Some((hits, scale)), Some(v), Some((t, h, _))) =
             (engage, station, self.bot.as_ref(), painted.as_ref(), console_view.as_ref(), ships.as_ref())
         {
@@ -871,6 +1143,9 @@ impl App for DrillApp {
             None if on_bridge => {
                 self.r.present_with_ui(&self.bridge_target, f.width, f.height, true, &frame.meshes(), frame.points)
             }
+            Some(_) if sight => {
+                self.r.present_with_ui(&self.blank, f.width, f.height, true, &frame.meshes(), frame.points)
+            }
             Some(_) => {
                 let at = console::viewscreen_px(frame.points, ppp);
                 self.r.present_with_ui_at(&self.feed, Some(at), f.width, f.height, true, &frame.meshes(), frame.points)
@@ -878,6 +1153,7 @@ impl App for DrillApp {
             None => self.r.present_with_ui(&self.blank, f.width, f.height, true, &frame.meshes(), frame.points),
         }
         self.scripted_shots(f);
+        self.look_in(ships.as_ref());
         // The hand-over test: the game up with its briefing, then back to the menu.
         let briefing = self.session.as_ref().and_then(|s| s.latest()).is_some_and(|s| s.phase_s >= 1.0);
         if let (Some(dir), true) = (self.args.hand_test.clone(), briefing) {
@@ -923,6 +1199,8 @@ struct UiView {
     refused: Option<(String, f64)>,
     mission: sc_core::combat::data::MissionFile,
     tern_hull: f64,
+    /// A system at or above this integrity is at nominal (ship-damage 9: the debrief waits for it).
+    nominal_pct: f64,
     /// The bridge on screen instead of the consoles (design 9).
     bridge: Option<BridgeUi>,
     /// Single player: READY pressed, waiting for the crew to sit.
@@ -930,8 +1208,20 @@ struct UiView {
 }
 
 /// What the bridge view's UI shows: a name over each body (and where it is going), and this player's own walk.
+/// A name over a body: where its foot is on screen, the name, whether it is an NPC, where it walks to, and how much
+/// of it shows.
+struct Label {
+    at: Pos2,
+    name: String,
+    npc: bool,
+    going: Option<String>,
+    k: f32,
+    /// From the eye, metres.
+    dist: f64,
+}
+
 struct BridgeUi {
-    labels: Vec<(Pos2, String, Option<String>)>,
+    labels: Vec<Label>,
     banner: Option<String>,
     overview: bool,
 }
@@ -955,6 +1245,7 @@ impl UiView {
             refused: s.and_then(|s| s.refused.map(|(r, t)| (r.text().to_owned(), s.now_s() - t))),
             mission: app.data.mission.clone(),
             tern_hull: app.data.tern_combat.hull_mj,
+            nominal_pct: app.data.damage.systems.nominal_from_pct,
             bridge: None,
             ready_held: app.ready_held,
         }
@@ -1062,11 +1353,8 @@ fn bridge_overlay(ctx: &egui::Context, v: &UiView, snap: &Snapshot, b: &BridgeUi
         })
         .collect();
     painter.text(Pos2::new(w - 16.0, 17.0), Align2::RIGHT_CENTER, held.join("   "), FontId::proportional(14.0), DIM);
-    for (at, name, going) in &b.labels {
-        painter.text(*at, Align2::CENTER_BOTTOM, name, FontId::proportional(17.0), TEXT);
-        if let Some(g) = going {
-            painter.text(*at + Vec2::new(0.0, 18.0), Align2::CENTER_BOTTOM, g, FontId::proportional(14.0), AMBER);
-        }
+    for l in &b.labels {
+        crate::nameplate::draw(&painter, l.at, &l.name, l.npc, l.going.as_deref(), l.k);
     }
     if let Some(t) = &b.banner {
         painter.text(Pos2::new(w / 2.0, 560.0), Align2::CENTER_CENTER, t, FontId::proportional(30.0), AMBER);
@@ -1084,7 +1372,7 @@ fn briefing(ctx: &egui::Context, v: &UiView, snap: &Snapshot, ask: &mut Vec<UiAs
         ui.label(RichText::new(&v.mission.situation).size(17.0).color(TEXT));
         ui.add_space(8.0);
         for o in &v.mission.objectives {
-            label(ui, &format!("- {o}"), 17.0, TEXT);
+            label(ui, &format!("- {}", o.words), 17.0, TEXT);
         }
         ui.add_space(10.0);
         let mine = v.station.unwrap_or(v.want);
@@ -1146,6 +1434,15 @@ fn briefing(ctx: &egui::Context, v: &UiView, snap: &Snapshot, ask: &mut Vec<UiAs
     });
 }
 
+/// An "s" for more than one.
+fn plural(n: usize) -> &'static str {
+    if n == 1 {
+        ""
+    } else {
+        "s"
+    }
+}
+
 fn debrief(ctx: &egui::Context, v: &UiView, snap: &Snapshot) {
     let rect = Rect::from_min_size(Pos2::new(290.0, 120.0), Vec2::new(700.0, 460.0));
     let (head, colour) = match snap.outcome {
@@ -1177,7 +1474,29 @@ fn debrief(ctx: &egui::Context, v: &UiView, snap: &Snapshot) {
                 label(ui, &val, 20.0, TEXT);
             });
         }
+        // The teams put the ship right before the next drill (ship-damage 9).
+        let hurt = snap.damage.integrity.iter().filter(|i| f64::from(**i) < v.nominal_pct).count();
+        let fires = snap.damage.fires.len();
+        let repairs = match (hurt, fires) {
+            (0, 0) => "Ship put right".to_owned(),
+            (h, 0) => format!("Repairing {h} system{}", plural(h)),
+            (0, f) => format!("Fighting {f} fire{}", plural(f)),
+            (h, f) => format!("Repairing {h} system{}, fighting {f} fire{}", plural(h), plural(f)),
+        };
+        ui.horizontal(|ui| {
+            ui.add_sized(
+                Vec2::new(200.0, 26.0),
+                egui::Label::new(RichText::new("Damage control").size(18.0).color(DIM)),
+            );
+            label(ui, &repairs, 20.0, if hurt + fires == 0 { GREEN } else { AMBER });
+        });
         ui.add_space(14.0);
-        label(ui, &format!("Next drill in {:.0} s", (v.mission.debrief_s - snap.phase_s).max(0.0)), 18.0, AMBER);
+        let next = if hurt + fires == 0 {
+            (v.mission.debrief_s - snap.phase_s).max(0.0)
+        } else {
+            (v.mission.debrief_max_s - snap.phase_s).max(0.0)
+        };
+        let when = if hurt + fires == 0 { "Next drill in" } else { "Next drill at the latest in" };
+        label(ui, &format!("{when} {next:.0} s"), 18.0, AMBER);
     });
 }

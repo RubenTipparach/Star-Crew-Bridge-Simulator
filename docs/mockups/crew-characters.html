@@ -71,7 +71,7 @@
 <!-- INLINE data:crew/characters END -->
 <!-- INLINE data:crew/company BEGIN -->
 <script id="ship-data-company" type="application/json">
-{"schema":"starcrew.company/1","_doc":"The Tern's bot crew (openspec/changes/crew-npcs, design 1 and 7; read by sc-core::crew::CompanyData). Departments in the order bots leave as players join (the last first). `count` is with one player aboard; `rooms` are layout compartment ids the department works in; a bot walks between places in them and stays at each for a time drawn from `stay_s`. `colour_srgb` is the tunic (sRGB 0-1), also the department's marker on the map (ship-plan-view).","berths":12,"stay_s":[8.0,25.0],"departments":[{"id":"command","name":"Command","count":2,"colour_srgb":[0.78,0.25,0.2],"rooms":["bridge","ready_room","computer_core","a_corridor"]},{"id":"engineering","name":"Engineering","count":2,"colour_srgb":[0.85,0.63,0.2],"rooms":["engineering","switchboard","life_support","shield_room"]},{"id":"deckhands","name":"Deckhands","count":2,"colour_srgb":[0.47,0.56,0.24],"rooms":["magazine","hangar","cargo","torpedo_room"]},{"id":"medical","name":"Medical","count":1,"colour_srgb":[0.22,0.66,0.64],"rooms":["medbay","b_spine"]},{"id":"security","name":"Security","count":1,"colour_srgb":[0.3,0.38,0.58],"rooms":["b_spine","c_spine","a_corridor","damage_control"]},{"id":"galley","name":"Galley","count":1,"colour_srgb":[0.86,0.86,0.82],"rooms":["mess","quarters"]}]}
+{"schema":"starcrew.company/1","_doc":"The Tern's bot crew (openspec/changes/crew-npcs, design 1 and 7; read by sc-core::crew::CompanyData). Departments in the order bots leave as players join (the last first). `count` is with one player aboard; `rooms` are layout compartment ids the department works in; a bot walks between places in them and stays at each for a time drawn from `stay_s`. `division` is the department's division, whose `colour_srgb` is its tunic (sRGB 0-1) and its marker on the map (ship-plan-view): operations gold, science blue, engineering red, support green, from the owner (2026-10-11, openspec/changes/crew-uniforms).","berths":12,"stay_s":[8.0,25.0],"divisions":[{"id":"operations","name":"Operations","colour_srgb":[0.86,0.66,0.18]},{"id":"science","name":"Science","colour_srgb":[0.22,0.42,0.78]},{"id":"engineering","name":"Engineering","colour_srgb":[0.78,0.22,0.18]},{"id":"support","name":"Support","colour_srgb":[0.3,0.6,0.3]}],"departments":[{"id":"command","name":"Command","count":2,"division":"operations","rooms":["bridge","ready_room","computer_core","a_corridor"]},{"id":"engineering","name":"Engineering","count":2,"division":"engineering","rooms":["engineering","switchboard","life_support","shield_room"]},{"id":"deckhands","name":"Deckhands","count":2,"division":"support","rooms":["magazine","hangar","cargo","torpedo_room"]},{"id":"medical","name":"Medical","count":1,"division":"science","rooms":["medbay","b_spine"]},{"id":"security","name":"Security","count":1,"division":"operations","rooms":["b_spine","c_spine","a_corridor","damage_control"]},{"id":"galley","name":"Galley","count":1,"division":"support","rooms":["mess","quarters"]}]}
 </script>
 <!-- INLINE data:crew/company END -->
 <!-- INLINE models:crew_review BEGIN -->
@@ -176,6 +176,8 @@
       comms: 0xab47bc,
       flight_ops: 0x26c6da,
       gunner: 0xff7043,
+      // the laser banks' stations (laser-banks 3)
+      laser: 0xf06292,
     },
     // upholstery and bedding in the side rooms (command-suite): the captain's rooms, and the crew's
     furniture: { captain: 0x8a3b3b, crew: 0x3f5f88 },

@@ -1,21 +1,25 @@
 {
   "schema": "starcrew.mission/1",
-  "_doc": "The first co-op drill (openspec/changes/coop-drill design 1). Text is what the briefing and debrief show. enemy_start_m is relative to the Tern, in its frame (+Z ahead); waypoint_m is the relay at the Shoals, where the helm's COURSE flies, in the same frame. bot_ready_s is how long a bot client reads the briefing before it presses READY. muster_m is where the crew stand on the bridge before they walk to their seats (the back wall, deck A); muster_spacing_m between them.",
+  "_doc": "The first co-op drill (openspec/changes/coop-drill design 1). Text is what the briefing and debrief show. enemy_start_m is relative to the Tern, in its frame (+Z ahead); waypoint_m is the relay at the Shoals, where the helm's COURSE flies, in the same frame. bot_ready_s is how long a bot client reads the briefing before it presses READY. The debrief lasts debrief_s, and up to debrief_max_s while the damage-control teams put the ship right (ship-damage 9). muster_rooms are the compartments the crew start in, one each in turn, so they start spread through the ship and walk to their seats (owner, 2026-10-11); muster_spacing_m between two sharing a room. Each objective has the words the briefing reads and a kind the OBJECTIVES tab measures (objectives-tab 2): destroy names the enemy class, destroy_fighters a count.",
   "id": "drill-hound",
   "title": "Drill 1: Hound at the Shoals",
   "situation": "A Hound corvette has been raiding the relay at the Shoals. The Tern is ordered to intercept and disable it before it reaches the relay.",
   "objectives": [
-    "Destroy the Hound",
-    "Keep the Tern's hull above zero"
+    { "words": "Destroy the Hound", "kind": "destroy", "ship": "hound" },
+    { "words": "Keep the Tern's hull above zero", "kind": "survive" },
+    { "words": "Shoot down both fighters", "kind": "destroy_fighters", "count": 2 }
   ],
   "orders": {
     "helm": "Close to turret range. Keep the Hound level with the ship so all four turrets bear, put the bow on it for missiles, and keep moving so it cannot aim.",
     "tactical": "Lock the Hound, free the turrets, turn the strongest shield toward it, and fire Gannets when the bow is on it.",
     "engineering": "The Tern's power grid is not in this drill yet. Watch the board; your console comes alive when the grid is built.",
     "science": "Scan the Hound so Tactical sees its hull, find its weapons' band and tune the shields to it, and keep the shields facing its fire.",
-    "captain": "Call red alert, keep the crew on task with orders, and take the viewscreen when everyone needs to see the same thing."
+    "captain": "Call red alert, keep the crew on task with orders, and take the viewscreen when everyone needs to see the same thing.",
+    "laser_port": "Keep the port bank charged and fire it when the Hound is on the port side. A shot breaks its shield; where its armour is gone, it breaks the ship.",
+    "laser_stbd": "Keep the starboard bank charged and fire it when the Hound is on the starboard side. A shot breaks its shield; where its armour is gone, it breaks the ship.",
+    "gunner": "Take the dorsal turret and shoot down the Hound's fighters before they reach our turrets and banks."
   },
-  "stations": ["helm", "tactical", "engineering", "science", "captain"],
+  "stations": ["helm", "tactical", "engineering", "science", "captain", "laser_port", "laser_stbd", "gunner"],
   "enemy": "hound",
   "enemy_start_m": [400, 300, 6000],
   "waypoint_m": [9000, 1500, 16000],
@@ -23,7 +27,8 @@
   "countdown_s": 5,
   "engage_limit_s": 600,
   "debrief_s": 20,
+  "debrief_max_s": 240,
   "bot_ready_s": 3,
-  "muster_m": [0.0, 3.5, 21.2],
+  "muster_rooms": ["quarters", "mess", "engineering", "medbay", "damage_control", "ready_room", "life_support", "a_corridor"],
   "muster_spacing_m": 0.9
 }

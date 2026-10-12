@@ -17,14 +17,16 @@ can look out the window na dsee their ship").
 
 ## 3. The windows in the decks
 
-- [ ] 3.1 `tools/exterior_windows.py` generates through the runtime chain (command suite, deck access, engineering,
+- [x] 3.1 `tools/exterior_windows.py` generates through the runtime chain (command suite, deck access, engineering,
   armory) and its `--check` holds the windows to the model's apertures; in `scripts/check.sh`.
-- [ ] 3.2 The deck plan applies the patch last; `tools/mockups/inline.py` inlines it; the layout check passes with it.
-- [ ] 3.3 The eight rooms baked again (rooms and light probes), the caches rewritten, the deck exported and compiled.
+- [x] 3.2 The deck plan applies the patch last; `tools/mockups/inline.py` inlines it; the layout check passes with it.
+- [x] 3.3 The eight rooms baked again (rooms and light probes), the caches rewritten, the deck exported and compiled.
+- [x] 3.4 `tools/crew_rooms.py` checks its furniture with the windows applied (nothing taller than a sill in the metre
+  in front of a window); the quarters' two locker banks move off the hull side to the bunk island's ends.
 
 ## 4. Verification
 
-- [ ] 4.1 Headless captures in `docs/screenshots/exterior/` (design 8), looked at before they are shown.
-- [ ] 4.2 `scripts/check.sh` passes.
+- [x] 4.1 Headless captures in `docs/screenshots/exterior/` (design 8), looked at before they are shown.
+- [x] 4.2 `scripts/check.sh` passes.
 - [ ] 4.3 The Pi 5 measures the walk's frame time and memory with the hull (owner, on hardware).
 - [ ] 4.4 The owner signs off the captures (O1, survey 2).

@@ -1,0 +1,108 @@
+{
+  "schema": "starcrew.combat-layout/1",
+  "_doc": "The Hound's insides for combat damage (openspec/changes/ship-damage design 7; docs/design/combat-2-work-plan.md, workstream B): its hull, rooms, power loads, nodes and conduits, so a hit can break its drive, its banks and its hangar. The Hound has no deck plan: this is the whole of its interior. Frame and units as the Tern's layout: metres, +X port, +Y dorsal, +Z bow; the origin is the ship's centre, where the drill puts it. Rooms are convex prisms ('poly' is the footprint, [x, z] corners with positive signed area; 'y' is [floor, ceiling]). A load names its capability id ('system', else its own id), its power node and where it is. Its turrets sit where data/enemies.json puts them. Numbers are a first set.",
+  "ship": "hound",
+  "hull": {
+    "_doc": "Octagonal cross-sections lofted linearly along Z, as the Tern's: chamfer_m cuts each corner at 45 degrees. 30 m long; four spans, so 24 armour sections.",
+    "sections": [
+      {"z_m": 15.0, "half_beam_m": 1.2, "top_m": 1.2, "bottom_m": -1.0, "chamfer_m": 0.4},
+      {"z_m": 9.0, "half_beam_m": 3.4, "top_m": 2.4, "bottom_m": -2.0, "chamfer_m": 0.8},
+      {"z_m": 0.0, "half_beam_m": 4.4, "top_m": 2.7, "bottom_m": -2.4, "chamfer_m": 1.0},
+      {"z_m": -9.0, "half_beam_m": 4.2, "top_m": 2.6, "bottom_m": -2.2, "chamfer_m": 1.0},
+      {"z_m": -15.0, "half_beam_m": 3.2, "top_m": 2.0, "bottom_m": -1.6, "chamfer_m": 0.8}
+    ]
+  },
+  "rooms": [
+    {
+      "id": "bridge",
+      "name": "Bridge",
+      "brushes": [{"y": [-1.2, 1.4], "poly": [[-2.0, 6.0], [2.0, 6.0], [2.0, 11.0], [-2.0, 11.0]]}]
+    },
+    {
+      "id": "magazine",
+      "name": "Magazine",
+      "brushes": [{"y": [-1.6, 1.6], "poly": [[-1.4, 2.0], [1.4, 2.0], [1.4, 6.0], [-1.4, 6.0]]}]
+    },
+    {
+      "id": "port_laser",
+      "name": "Port laser room",
+      "brushes": [{"y": [-1.4, 1.6], "poly": [[1.6, -4.0], [3.4, -4.0], [3.4, 4.0], [1.6, 4.0]]}]
+    },
+    {
+      "id": "stbd_laser",
+      "name": "Starboard laser room",
+      "brushes": [{"y": [-1.4, 1.6], "poly": [[-3.4, -4.0], [-1.6, -4.0], [-1.6, 4.0], [-3.4, 4.0]]}]
+    },
+    {
+      "id": "reactor",
+      "name": "Reactor room",
+      "brushes": [{"y": [-1.6, 1.6], "poly": [[-1.4, -4.0], [1.4, -4.0], [1.4, 2.0], [-1.4, 2.0]]}]
+    },
+    {
+      "id": "hangar",
+      "name": "Hangar",
+      "brushes": [{"y": [-1.6, 1.6], "poly": [[-3.0, -10.0], [3.0, -10.0], [3.0, -4.0], [-3.0, -4.0]]}]
+    },
+    {
+      "id": "drive",
+      "name": "Drive room",
+      "brushes": [{"y": [-1.3, 1.3], "poly": [[-2.2, -14.0], [2.2, -14.0], [2.2, -10.0], [-2.2, -10.0]]}]
+    }
+  ],
+  "portals": [
+    {"id": "p_bridge", "between": ["bridge", "magazine"]},
+    {"id": "p_magazine", "between": ["magazine", "reactor"]},
+    {"id": "p_port", "between": ["reactor", "port_laser"]},
+    {"id": "p_stbd", "between": ["reactor", "stbd_laser"]},
+    {"id": "p_hangar", "between": ["reactor", "hangar"]},
+    {"id": "p_drive", "between": ["hangar", "drive"]}
+  ],
+  "nodes": [
+    {"id": "node_fwd", "room": "magazine", "center_m": [0.6, 0.8, 4.0]},
+    {"id": "node_aft", "room": "reactor", "center_m": [0.6, 0.8, -2.0]}
+  ],
+  "loads": [
+    {"id": "impulse_drive", "node": "node_aft", "center_m": [0.0, 0.0, -12.0]},
+    {"id": "reactor", "node": "node_aft", "center_m": [0.0, 0.0, -1.0]},
+    {"id": "shield_generator", "node": "node_aft", "center_m": [-0.8, -1.0, 0.5]},
+    {"id": "sensor_array", "node": "node_fwd", "center_m": [0.0, 0.4, 10.5]},
+    {"id": "laser_port", "node": "node_aft", "center_m": [2.5, 0.0, 0.0]},
+    {"id": "laser_stbd", "node": "node_aft", "center_m": [-2.5, 0.0, 0.0]},
+    {"id": "tube_1", "node": "node_fwd", "center_m": [0.8, 0.0, 5.0]},
+    {"id": "tube_2", "node": "node_fwd", "center_m": [-0.8, 0.0, 5.0]},
+    {"id": "turret_dorsal", "node": "node_fwd", "center_m": [0.0, 3.0, 4.0]},
+    {"id": "turret_ventral", "node": "node_fwd", "center_m": [0.0, -3.0, 4.0]},
+    {"id": "hangar_launch", "node": "node_aft", "center_m": [0.0, -1.0, -7.0]}
+  ],
+  "conduits": [
+    {
+      "id": "k_spine",
+      "between": ["node_aft", "node_fwd"],
+      "route": ["reactor", "magazine"],
+      "path_m": [[0.6, 0.8, -2.0], [0.6, 1.3, -2.0], [0.6, 1.3, 4.0], [0.6, 0.8, 4.0]]
+    },
+    {
+      "id": "k_keel",
+      "between": ["node_aft", "node_fwd"],
+      "route": ["reactor", "magazine"],
+      "path_m": [[0.6, 0.8, -2.0], [0.0, -1.3, -2.0], [0.0, -1.3, 4.0], [0.6, 0.8, 4.0]]
+    },
+    {
+      "id": "k_port",
+      "between": ["node_aft", "node_fwd"],
+      "route": ["reactor", "port_laser", "magazine"],
+      "path_m": [[0.6, 0.8, -2.0], [2.0, 1.3, -2.0], [2.0, 1.3, 3.5], [1.0, 1.3, 3.5], [0.6, 0.8, 4.0]]
+    },
+    {
+      "id": "k_stbd",
+      "between": ["node_aft", "node_fwd"],
+      "route": ["reactor", "stbd_laser", "magazine"],
+      "path_m": [[0.6, 0.8, -2.0], [-2.0, 1.3, -2.0], [-2.0, 1.3, 3.5], [-1.0, 1.3, 3.5], [0.6, 0.8, 4.0]]
+    }
+  ],
+  "teams": {
+    "_doc": "Its damage-control teams, by damage.json's rules: how many, and the room they wait in.",
+    "count": 2,
+    "home": "reactor"
+  }
+}

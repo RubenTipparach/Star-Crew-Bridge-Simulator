@@ -9,8 +9,11 @@
 pub mod attitude;
 pub mod automation;
 pub mod bodies;
+pub mod damage;
 pub mod data;
+pub mod fighters;
 
+use crate::power;
 use crate::replay::ReplayHash;
 use crate::rng::Rng;
 use data::{Arc, CombatBlock, DrillData, FlightBlock, ShieldBlock};
@@ -26,6 +29,11 @@ pub const MAX_PLAYERS: usize = 8;
 pub const MAX_BOLTS: usize = 256;
 /// The most missiles in flight at once.
 pub const MAX_MISSILES: usize = 16;
+
+/// The enemy fighters' ids in every message (enemy-fighters 1).
+pub const FIGHTER_IDS: [u16; 2] = [10, 11];
+/// The turret the gunner holds, by its mount's id (enemy-fighters 3: the dorsal pod's).
+pub const GUNNER_TURRET: &str = "dorsal";
 /// The Tern's id in every message.
 pub const TERN_ID: u16 = 1;
 /// The enemy's id.
@@ -39,25 +47,40 @@ pub fn clean_name(name: &str) -> String {
     name.chars().filter(|c| !c.is_control()).take(MAX_NAME_CHARS).collect()
 }
 
-/// A bridge station (bridge-stations section 2, the drill's five).
+/// A bridge station (bridge-stations section 2): the drill's five, the two laser banks' stations (laser-banks 3) and
+/// the dorsal turret's gunner (enemy-fighters 3).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Station {
     /// Flies the ship.
     Helm = 0,
     /// Locks, fires and sets the shields.
     Tactical = 1,
-    /// Runs the power grid (not simulated in the drill yet).
+    /// Runs the power grid and the reactor's loop.
     Engineering = 2,
     /// Scans, pings, tunes and balances the shields.
     Science = 3,
     /// The condition, orders and the viewscreen.
     Captain = 4,
+    /// The port laser bank (laser-banks 3).
+    LaserPort = 5,
+    /// The starboard laser bank.
+    LaserStbd = 6,
+    /// The dorsal turret by hand (enemy-fighters 3).
+    Gunner = 7,
 }
 
 impl Station {
     /// Every station, in seat order.
-    pub const ALL: [Station; 5] =
-        [Station::Helm, Station::Tactical, Station::Engineering, Station::Science, Station::Captain];
+    pub const ALL: [Station; 8] = [
+        Station::Helm,
+        Station::Tactical,
+        Station::Engineering,
+        Station::Science,
+        Station::Captain,
+        Station::LaserPort,
+        Station::LaserStbd,
+        Station::Gunner,
+    ];
     /// From a data id (`helm`).
     pub fn from_id(id: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|s| s.id() == id)
@@ -70,6 +93,9 @@ impl Station {
             Self::Engineering => "engineering",
             Self::Science => "science",
             Self::Captain => "captain",
+            Self::LaserPort => "laser_port",
+            Self::LaserStbd => "laser_stbd",
+            Self::Gunner => "gunner",
         }
     }
     /// What a screen calls it.
@@ -80,6 +106,17 @@ impl Station {
             Self::Engineering => "Engineering",
             Self::Science => "Science",
             Self::Captain => "Captain",
+            Self::LaserPort => "Laser port",
+            Self::LaserStbd => "Laser stbd",
+            Self::Gunner => "Gunner",
+        }
+    }
+    /// The laser bank a station fires, by its index in the ship's banks.
+    pub fn laser_bank(self) -> Option<u8> {
+        match self {
+            Self::LaserPort => Some(0),
+            Self::LaserStbd => Some(1),
+            _ => None,
         }
     }
     /// From its wire byte.
@@ -233,6 +270,39 @@ pub struct Turret {
     pub cooling: bool,
     /// Seconds since it last fired.
     pub since_fire_s: f64,
+    /// Held by the gunner (enemy-fighters 3): it fires along `manual_aim` while `trigger` is held.
+    pub manual: bool,
+    /// The gunner's aim, a unit vector in the ship's frame.
+    pub manual_aim: DVec3,
+    /// The gunner's trigger.
+    pub trigger: bool,
+    /// Bolts left before it must reload, and the seconds of reload left (0: not reloading).
+    pub rounds: u32,
+    pub reload_s: f64,
+}
+
+/// A laser bank's state (laser-banks 1).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LaserBank {
+    /// Its capacitor, MJ.
+    pub charge_mj: f64,
+    /// Whether its arc holds the locked target.
+    pub bearing: bool,
+    /// The chance a shot now hits (0-1), the number its console shows.
+    pub hit_chance: f64,
+    /// Seconds since it last fired.
+    pub since_fire_s: f64,
+}
+
+/// What a hit came from: it decides what armour does (armour-and-missiles 1).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WeaponKind {
+    /// A cannon bolt.
+    Cannon,
+    /// A laser bank's beam.
+    Laser,
+    /// A missile's blast.
+    Missile,
 }
 
 /// Which side a ship fights for.
@@ -289,6 +359,12 @@ pub struct Ship {
     pub lock_target: Option<u16>,
     /// Seconds the lock has been building.
     pub lock_s: f64,
+    /// Laser banks, port first (laser-banks).
+    pub lasers: Vec<LaserBank>,
+    /// Countermeasures left (armour-and-missiles 3).
+    pub decoys: u32,
+    /// Seconds left of the decoy burst around it, if one is out.
+    pub decoy_s: f64,
 }
 
 impl Ship {
@@ -332,6 +408,14 @@ pub struct Missile {
     pub age_s: f64,
     /// Where it was relative to the target at the end of the last tick.
     pub rel_prev: DVec3,
+    /// Pulled off by a decoy: it flies on blind and destroys itself at the end of its life.
+    pub fooled: bool,
+    /// Where its body points, a unit vector: it starts as the launcher's bow, its motor pushes along it, its seeker
+    /// looks along it, and it turns toward the target at its turn rate while the seeker sees.
+    pub heading: DVec3,
+    /// Where on the target it aims, in the target's frame: a point on its long axis, drawn at launch along the middle
+    /// four fifths of its hull, so hits land from bow to stern and not all amidships (ship-damage 1: parts of the ship).
+    pub aim_m: DVec3,
 }
 
 /// Who operates a station.
@@ -411,7 +495,56 @@ pub enum Command {
     Order(Station, u8),
     /// A station acknowledges the captain's newest order to it.
     Ack(Station),
+    /// A laser station: fire its bank (0 port, 1 starboard).
+    LaserFire(u8),
+    /// Tactical: throw a countermeasure.
+    Decoy,
+    /// The gunner: the barrel's direction in the ship's frame, degrees (yaw to port of the bow, pitch up).
+    GunnerAim {
+        /// Yaw, degrees.
+        yaw_deg: f64,
+        /// Pitch, degrees.
+        pitch_deg: f64,
+    },
+    /// The gunner: the trigger held or let go.
+    GunnerTrigger(bool),
+    /// Engineering: the power grid and the reactor's loop (power-grid 2.10).
+    Power(PowerCmd),
 }
+
+/// Engineering's hands on the power grid (power-grid 5, reactor-cooling 5), as the console mockup's controls.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum PowerCmd {
+    /// A preset, by its index in [`crate::power::PowerData::presets`].
+    Preset(u8),
+    /// A group's fader let go at a setpoint.
+    Group(u8, f64),
+    /// A fader being dragged at a setpoint: the server answers with the solve's own result (none: let go).
+    Preview(Option<(u8, f64)>),
+    /// A tap on a group's priority.
+    Prio(u8),
+    /// A group's feed breaker held: open it, or close it.
+    Breaker(u8),
+    /// The lock beside an open breaker: lock it open, or unlock it.
+    Lock(u8),
+    /// A switch on the one-line diagram held: a generator's breaker, then a tie's.
+    Switch(u8),
+    /// SCRAM, confirmed.
+    Scram,
+    /// The reactor on AUTO (true) or MANUAL.
+    ReactorAuto(bool),
+    /// The loop on AUTO (true) or MANUAL.
+    CoolingAuto(bool),
+    /// A lever on the loop ([`LEVERS`]) to a value: a speed, a share, or the makeup valve shut (0) or open (1).
+    Lever(u8, f64),
+    /// A node's conduit box switched on (true) or off, by its index in `power.json`'s nodes (power-routing 1).
+    Box(u8, bool),
+    /// A conduit closed (true) or opened at its box, by its index in `power.json`'s conduits.
+    Run(u8, bool),
+}
+
+/// The loop's levers, by index: the core pumps' speed, the radiator pumps', the chiller's share, the makeup valve.
+pub const LEVERS: [&str; 4] = ["pumps", "radiators", "chiller", "makeup"];
 
 /// The viewscreen's cameras, by index (the consoles' camera pad).
 pub const FEEDS: [&str; 6] = ["TARGET", "FWD", "CHASE", "PORT", "AFT", "STBD"];
@@ -428,6 +561,10 @@ impl Command {
             Self::Scan(_) | Self::Ping | Self::Freq(_) => s == Station::Science,
             Self::Alert(_) | Self::Brace(_) | Self::Viewscreen(_) | Self::Order(..) => s == Station::Captain,
             Self::Ack(to) => s == *to,
+            Self::LaserFire(b) => s.laser_bank() == Some(*b),
+            Self::Decoy => s == Station::Tactical,
+            Self::GunnerAim { .. } | Self::GunnerTrigger(_) => s == Station::Gunner,
+            Self::Power(_) => s == Station::Engineering,
         }
     }
 }
@@ -457,6 +594,10 @@ pub enum Refusal {
     WrongPhase = 10,
     /// The body is on its way somewhere already (coop-drill design 9).
     Walking = 11,
+    /// The laser bank holds less than its least charge (laser-banks 1).
+    NotCharged = 12,
+    /// The system is too damaged to work (ship-damage 4).
+    Damaged = 13,
 }
 
 impl Refusal {
@@ -475,6 +616,8 @@ impl Refusal {
             Full,
             WrongPhase,
             Walking,
+            NotCharged,
+            Damaged,
         ]
         .into_iter()
         .find(|r| *r as u8 == v)
@@ -493,6 +636,8 @@ impl Refusal {
             Self::Full => "Crew is full",
             Self::WrongPhase => "Not now",
             Self::Walking => "On the way",
+            Self::Damaged => "Damaged",
+            Self::NotCharged => "Not charged",
         }
     }
 }
@@ -557,6 +702,42 @@ pub enum DrillEvent {
         /// Why.
         reason: Refusal,
     },
+    /// A laser bank fired (laser-banks 2).
+    Beam {
+        /// The ship.
+        owner: u16,
+        /// The bank's index.
+        bank: u8,
+        /// From the emitter, system frame.
+        from: DVec3,
+        /// To where it struck, or where it passed, system frame.
+        to: DVec3,
+        /// Whether it struck.
+        hit: bool,
+        /// Its energy, MJ.
+        energy_mj: f64,
+    },
+    /// Something burst aboard a ship: a hit past its armour, a system destroyed, a cascade (ship-damage 6).
+    Burst {
+        /// The ship.
+        ship: u16,
+        /// Where, system frame.
+        pos: DVec3,
+        /// Its size: MJ past the armour, or integrity points.
+        size: f64,
+    },
+    /// A ship threw a countermeasure (armour-and-missiles 3).
+    DecoyOut {
+        /// The ship.
+        ship: u16,
+    },
+    /// A decoy pulled a missile off, or set it off early.
+    Fooled {
+        /// The missile.
+        missile: u16,
+        /// Set off early, rather than pulled off.
+        early: bool,
+    },
     /// A player relieved a bot at a station; the bot is getting up (design 9).
     Relieved {
         /// The bot's slot.
@@ -587,6 +768,51 @@ pub struct Stats {
     pub damage_taken_mj: f64,
     /// Seconds of Engage.
     pub engage_s: f64,
+    /// Laser shots the Tern fired, and of those, hits.
+    pub tern_laser_shots: u32,
+    /// Its laser hits.
+    pub tern_laser_hits: u32,
+    /// Laser shots the enemy fired.
+    pub enemy_laser_shots: u32,
+    /// Its laser hits.
+    pub enemy_laser_hits: u32,
+    /// Missiles the enemy fired.
+    pub enemy_missiles_fired: u32,
+    /// The enemy's missiles that did damage.
+    pub enemy_missile_hits: u32,
+    /// Countermeasures thrown, both ships.
+    pub decoys_thrown: u32,
+    /// Missiles a decoy fooled, both ways.
+    pub missiles_fooled: u32,
+    /// The enemy's fighters destroyed.
+    pub fighters_down: u32,
+}
+
+/// A flight block with its thrust and turning scaled by the drive's capability (ship-damage 4).
+fn scaled_flight(f: &data::FlightBlock, k: f64) -> data::FlightBlock {
+    let k = k.clamp(0.0, 1.0);
+    let mut g = f.clone();
+    g.accel_fwd_mps2 *= k;
+    g.accel_rev_mps2 *= k;
+    g.rate_limit_deg_s = g.rate_limit_deg_s.map(|v| v * k);
+    g.ang_accel_deg_s2 = g.ang_accel_deg_s2.map(|v| v * k);
+    g
+}
+
+/// A tube's system id in a ship's layout: `tube_1` for tube 0.
+fn tube_system(i: u8) -> String {
+    format!("tube_{}", u32::from(i) + 1)
+}
+
+/// A turret's load id in a ship's layout: `turret_dorsal` for the mount `dorsal` (`turret_stbd` for `starboard`).
+fn turret_system(mount: &str) -> String {
+    format!("turret_{}", if mount == "starboard" { "stbd" } else { mount })
+}
+
+/// Whether a laser bank should fire (laser-banks 3): full, bearing, and a good enough shot. The server's automation,
+/// the enemy and a bot client all decide by this one rule.
+pub fn laser_should_fire(charge_frac: f64, bearing: bool, hit_chance: f64, p: &data::LaserProfile) -> bool {
+    bearing && charge_frac >= 1.0 - 1e-6 && hit_chance >= p.full_min_hit_chance
 }
 
 /// The chance a bolt passes within `radius_m` of the aim point, for an aim error of `sigma_rad` (a 2D normal, one
@@ -851,9 +1077,26 @@ pub struct Drill {
     pub on_foot: Option<bodies::Bridge>,
     /// Every crew member's body, by slot order.
     pub bodies: Vec<bodies::CrewBody>,
+    /// The enemy's fighters (enemy-fighters 1).
+    pub fighters: Vec<fighters::Fighter>,
+    /// Each ship's insides, the Tern's then the Hound's: armour, systems, fires, teams (ship-damage).
+    pub damage: [damage::DamageState; 2],
+    /// The captain's raised repair, a system's id (ship-damage 5).
+    pub repair_priority: Option<String>,
+    /// The Tern's power grid and cooling (power-grid, reactor-cooling).
+    pub power: power::PowerState,
+    /// A fader being dragged on Engineering, and the solve's answer: group, setpoint, MW wanted and delivered.
+    pub power_preview: Option<(u8, f64, f64, f64)>,
+    power_ask: Option<(u8, f64)>,
+    /// Seconds simulated toward the power grid's next sub-step.
+    power_s: f64,
+    /// Seconds the bay's crew have held the reactor panel's reset (power-grid 3).
+    reset_held_s: f64,
+    hits: u64,
 }
 
-fn new_ship(id: u16, side: Side, combat: &CombatBlock, shields: &ShieldBlock, gun_capacitor_mj: f64) -> Ship {
+fn new_ship(id: u16, side: Side, combat: &CombatBlock, shields: &ShieldBlock, gun: &data::Gun) -> Ship {
+    let gun_capacitor_mj = gun.capacitor_mj;
     Ship {
         id,
         side,
@@ -884,6 +1127,11 @@ fn new_ship(id: u16, side: Side, combat: &CombatBlock, shields: &ShieldBlock, gu
                 heat_mj: 0.0,
                 cooling: false,
                 since_fire_s: f64::INFINITY,
+                manual: false,
+                manual_aim: DVec3::Z,
+                trigger: false,
+                rounds: gun.rounds,
+                reload_s: 0.0,
             })
             .collect(),
         tubes: combat
@@ -894,18 +1142,30 @@ fn new_ship(id: u16, side: Side, combat: &CombatBlock, shields: &ShieldBlock, gu
         magazine: combat.tubes.as_ref().map(|t| t.magazine).unwrap_or(0),
         lock_target: None,
         lock_s: 0.0,
+        lasers: combat
+            .lasers
+            .as_ref()
+            .map(|l| {
+                l.banks
+                    .iter()
+                    .map(|_| LaserBank { charge_mj: 0.0, bearing: false, hit_chance: 0.0, since_fire_s: f64::INFINITY })
+                    .collect()
+            })
+            .unwrap_or_default(),
+        decoys: combat.decoys.as_ref().map(|d| d.count).unwrap_or(0),
+        decoy_s: 0.0,
     }
 }
 
 impl Drill {
     /// A drill in Muster, with the ships at their start.
     pub fn new(data: DrillData, seed: u64) -> Self {
-        let tern_cap = data.gun(&data.tern_combat.gun).capacitor_mj;
-        let enemy_cap = data.gun(&data.enemy.combat.gun).capacitor_mj;
         let ships = [
-            new_ship(TERN_ID, Side::Tern, &data.tern_combat, &data.tern_shields, tern_cap),
-            new_ship(ENEMY_ID, Side::Enemy, &data.enemy.combat, &data.enemy.shields, enemy_cap),
+            new_ship(TERN_ID, Side::Tern, &data.tern_combat, &data.tern_shields, data.gun(&data.tern_combat.gun)),
+            new_ship(ENEMY_ID, Side::Enemy, &data.enemy.combat, &data.enemy.shields, data.gun(&data.enemy.combat.gun)),
         ];
+        let damage = [damage::DamageState::new(&data.tern_layout), damage::DamageState::new(&data.hound_layout)];
+        let power = power::PowerState::new(&data.power);
         let mut d = Self {
             data,
             seed,
@@ -929,6 +1189,15 @@ impl Drill {
             auto: automation::Memory::default(),
             on_foot: None,
             bodies: Vec::new(),
+            fighters: Vec::new(),
+            damage,
+            repair_priority: None,
+            power,
+            power_preview: None,
+            power_ask: None,
+            power_s: 0.0,
+            reset_held_s: 0.0,
+            hits: 0,
         };
         d.reset_round();
         d
@@ -940,10 +1209,10 @@ impl Drill {
 
     /// Put the ships at their start for a new round.
     fn reset_round(&mut self) {
-        let tern_cap = self.data.gun(&self.data.tern_combat.gun).capacitor_mj;
-        let enemy_cap = self.data.gun(&self.data.enemy.combat.gun).capacitor_mj;
-        self.ships[0] = new_ship(TERN_ID, Side::Tern, &self.data.tern_combat, &self.data.tern_shields, tern_cap);
-        self.ships[1] = new_ship(ENEMY_ID, Side::Enemy, &self.data.enemy.combat, &self.data.enemy.shields, enemy_cap);
+        let d = &self.data;
+        let tern = new_ship(TERN_ID, Side::Tern, &d.tern_combat, &d.tern_shields, d.gun(&d.tern_combat.gun));
+        let enemy = new_ship(ENEMY_ID, Side::Enemy, &d.enemy.combat, &d.enemy.shields, d.gun(&d.enemy.combat.gun));
+        self.ships = [tern, enemy];
         let m = &self.data.mission;
         self.ships[0].speed_set = m.tern_start_speed_mps;
         self.ships[0].vel = DVec3::Z * m.tern_start_speed_mps;
@@ -960,6 +1229,15 @@ impl Drill {
         self.outcome = Outcome::None;
         self.rng = Rng::for_purpose(self.round_seed(), 0, "fire");
         self.auto = automation::Memory::default();
+        self.fighters.clear();
+        self.damage =
+            [damage::DamageState::new(&self.data.tern_layout), damage::DamageState::new(&self.data.hound_layout)];
+        self.repair_priority = None;
+        self.power = power::PowerState::new(&self.data.power);
+        self.power_preview = None;
+        self.power_ask = None;
+        self.power_s = 0.0;
+        self.reset_held_s = 0.0;
     }
 
     fn set_phase(&mut self, phase: Phase) {
@@ -1128,6 +1406,7 @@ impl Drill {
         self.tick += 1;
         self.phase_s += DT;
         self.step_bodies();
+        self.power_tick();
         // Commands, by station, then arrival (CLAUDE.md 6.4).
         let mut queue = std::mem::take(&mut self.queue);
         queue.sort_by_key(|q| (q.0, q.1));
@@ -1175,7 +1454,10 @@ impl Drill {
                 }
             }
             Phase::Debrief => {
-                if self.phase_s >= self.data.mission.debrief_s {
+                // The teams keep working after the fight (ship-damage 9): the next drill waits for them.
+                self.damage_tick();
+                let m = &self.data.mission;
+                if self.phase_s >= m.debrief_s && (self.put_right() || self.phase_s >= m.debrief_max_s) {
                     self.round += 1;
                     self.reset_round();
                     for p in &mut self.players {
@@ -1209,9 +1491,42 @@ impl Drill {
                 Station::Captain => {
                     automation::captain(&pic, &self.bridge, &profile.captain, &mut self.auto.captain, t)
                 }
-                // Science's automation is its passive scan (in the tick); Engineering has no grid to run yet.
-                Station::Engineering | Station::Science => Vec::new(),
+                Station::Engineering => {
+                    let mut c = automation::engineering(
+                        &self.bridge,
+                        &self.data,
+                        &profile.engineering,
+                        &mut self.auto.engineering,
+                        t,
+                    );
+                    c.extend(self.engineering_reroute(profile.engineering.reaction_s, t));
+                    c
+                }
+                // Science's automation is its passive scan (in the tick).
+                Station::Science => Vec::new(),
+                // A laser station fires its bank by the rule the enemy uses (laser-banks 3).
+                Station::LaserPort | Station::LaserStbd => {
+                    let bank = s.laser_bank().map_or(0, usize::from);
+                    if self.laser_wanted(0, bank, &profile.lasers) {
+                        vec![Command::LaserFire(bank as u8)]
+                    } else {
+                        Vec::new()
+                    }
+                }
+                // Unmanned, the gunner's turret is on AUTO: it lets go of the hand.
+                Station::Gunner => {
+                    if let Some(k) = self.gunner_turret() {
+                        let tr = &mut self.ships[0].turrets[k];
+                        tr.manual = false;
+                        tr.trigger = false;
+                    }
+                    Vec::new()
+                }
             };
+            // Tactical throws a countermeasure by the rule the enemy uses (armour-and-missiles 3).
+            if s == Station::Tactical && self.decoy_wanted(0) {
+                cmds.push(Command::Decoy);
+            }
             // Every automation acknowledges its orders once it has had its reaction time.
             let react = match s {
                 Station::Helm => profile.helm.reaction_s,
@@ -1219,6 +1534,8 @@ impl Drill {
                 Station::Engineering => profile.engineering.reaction_s,
                 Station::Science => profile.science.reaction_s,
                 Station::Captain => profile.captain.reaction_s,
+                Station::LaserPort | Station::LaserStbd => profile.lasers.reaction_s,
+                Station::Gunner => profile.gunner.reaction_s,
             };
             if self.bridge.orders.iter().any(|o| o.to == s && !o.done && t - o.at_s >= react) {
                 cmds.push(Command::Ack(s));
@@ -1267,8 +1584,6 @@ impl Drill {
         if let Some(r) = self.apply_bridge(cmd) {
             return r;
         }
-        let lock_time = self.data.tern_combat.lock.time_s;
-        let enemy_pos = self.ships[1].pos;
         let enemy_alive = self.ships[1].alive && self.ships[1].active;
         let tern = &mut self.ships[0];
         match cmd {
@@ -1334,54 +1649,213 @@ impl Drill {
                 }
                 self.bridge.shields_by = from;
             }
-            Command::Load(i) => {
-                let tubes = self.data.tern_combat.tubes.as_ref().ok_or(Refusal::NoSuch)?;
-                let tube = tern.tubes.get_mut(usize::from(i)).ok_or(Refusal::NoSuch)?;
-                if tube.state != TubeState::Empty {
-                    return Err(Refusal::TubeNotReady);
-                }
-                if tern.magazine == 0 {
-                    return Err(Refusal::MagazineEmpty);
-                }
-                tern.magazine -= 1;
-                *tube = Tube { state: TubeState::Loading, timer_s: tubes.load_s };
+            Command::Load(i) => return self.load_tube(0, i),
+            Command::Fire(i) => return self.fire_tube(0, i),
+            Command::LaserFire(b) => return self.fire_laser(0, b),
+            Command::Decoy => return self.throw_decoy(0),
+            Command::GunnerAim { yaw_deg, pitch_deg } => {
+                let k = self.gunner_turret().ok_or(Refusal::NoSuch)?;
+                let (y, p) = (yaw_deg.to_radians(), pitch_deg.to_radians());
+                let t = &mut self.ships[0].turrets[k];
+                t.manual = true;
+                t.manual_aim = DVec3::new(y.sin() * p.cos(), p.sin(), y.cos() * p.cos());
             }
-            Command::Fire(i) => {
-                let tubes = self.data.tern_combat.tubes.clone().ok_or(Refusal::NoSuch)?;
-                let missile = self.data.missile(&tubes.missile).clone();
-                let tube = *tern.tubes.get(usize::from(i)).ok_or(Refusal::NoSuch)?;
-                if tube.state != TubeState::Armed {
-                    return Err(Refusal::TubeNotReady);
-                }
-                if tern.lock_target != Some(ENEMY_ID) || tern.lock_s < lock_time || !enemy_alive {
-                    return Err(Refusal::NotLocked);
-                }
-                if off_bow_deg(tern.pos, tern.rot, enemy_pos) > missile.seeker_half_angle_deg {
-                    return Err(Refusal::OutOfCone);
-                }
-                if self.missiles.len() >= MAX_MISSILES {
-                    return Err(Refusal::TubeNotReady);
-                }
-                tern.tubes[usize::from(i)] = Tube { state: TubeState::Empty, timer_s: 0.0 };
-                let muzzle = tern.pos + tern.rot * DVec3::from_array(tubes.muzzle_m[usize::from(i)]);
-                let vel = tern.vel + tern.forward() * missile.eject_mps;
-                let id = self.next_missile;
-                self.next_missile = self.next_missile.wrapping_add(1).max(1);
-                self.missiles.push(Missile {
-                    id,
-                    owner: TERN_ID,
-                    target: ENEMY_ID,
-                    pos: muzzle,
-                    vel,
-                    age_s: 0.0,
-                    rel_prev: muzzle - enemy_pos,
-                });
-                self.stats.missiles_fired += 1;
-                self.events.push(DrillEvent::Launched { missile: id, owner: TERN_ID });
+            Command::GunnerTrigger(on) => {
+                let k = self.gunner_turret().ok_or(Refusal::NoSuch)?;
+                let t = &mut self.ships[0].turrets[k];
+                t.manual = true;
+                t.trigger = on;
             }
+            Command::Power(p) => return self.apply_power(p),
             _ => {}
         }
         Ok(())
+    }
+
+    /// Engineering's command on the grid (the console mockup's `act`, `holdDone` and `dragTo`).
+    fn apply_power(&mut self, cmd: PowerCmd) -> Result<(), Refusal> {
+        use power::{Breaker, Mode};
+        let d = &self.data.power;
+        let p = &mut self.power;
+        let groups = d.file.groups.len();
+        let group = |g: u8| (usize::from(g) < groups).then_some(usize::from(g)).ok_or(Refusal::NoSuch);
+        let ok = |done: bool| if done { Ok(()) } else { Err(Refusal::NoSuch) };
+        match cmd {
+            PowerCmd::Preset(i) => {
+                let name = *d.presets().get(usize::from(i)).ok_or(Refusal::NoSuch)?;
+                ok(p.apply_preset(d, name))
+            }
+            PowerCmd::Group(g, sp) => {
+                let g = group(g)?;
+                p.set_group(d, g, sp.min(d.group_max(g)));
+                self.power_ask = None;
+                self.power_preview = None;
+                Ok(())
+            }
+            PowerCmd::Preview(ask) => {
+                if let Some((g, _)) = ask {
+                    group(g)?;
+                }
+                self.power_ask = ask;
+                if ask.is_none() {
+                    self.power_preview = None;
+                }
+                Ok(())
+            }
+            PowerCmd::Prio(g) => ok(p.cycle_priority(d, group(g)?)),
+            PowerCmd::Breaker(g) => {
+                let g = group(g)?;
+                let next = if p.group_breaker[g] == Breaker::Closed { Breaker::Open } else { Breaker::Closed };
+                ok(p.set_group_breaker(d, g, next))
+            }
+            PowerCmd::Lock(g) => {
+                let g = group(g)?;
+                match p.group_breaker[g] {
+                    Breaker::Closed => Err(Refusal::NoSuch),
+                    Breaker::Open => ok(p.set_group_breaker(d, g, Breaker::Locked)),
+                    Breaker::Locked => ok(p.set_group_breaker(d, g, Breaker::Open)),
+                }
+            }
+            PowerCmd::Switch(k) => ok(p.toggle_switch(d, usize::from(k))),
+            PowerCmd::Scram => {
+                if p.reactor.state != power::ReactorState::Running {
+                    return Err(Refusal::WrongPhase);
+                }
+                p.scram(d, power::ScramCause::Manual);
+                Ok(())
+            }
+            PowerCmd::ReactorAuto(auto) => {
+                p.set_reactor(d, if auto { Mode::Auto } else { Mode::Manual }, None);
+                Ok(())
+            }
+            PowerCmd::CoolingAuto(auto) => {
+                p.set_cooling(d, Some(if auto { Mode::Auto } else { Mode::Manual }), None, None, None, None);
+                Ok(())
+            }
+            PowerCmd::Box(k, on) => ok(p.set_box(usize::from(k), on)),
+            PowerCmd::Run(k, closed) => ok(p.set_conduit(usize::from(k), closed)),
+            PowerCmd::Lever(k, v) => {
+                // A hand on a lever takes the loop from its automation (reactor-cooling design 5).
+                let m = Some(Mode::Manual);
+                match k {
+                    0 => p.set_cooling(d, m, Some(v), None, None, None),
+                    1 => p.set_cooling(d, m, None, Some(v), None, None),
+                    2 => p.set_cooling(d, m, None, None, Some(v), None),
+                    _ => p.set_cooling(d, m, None, None, None, Some(v >= 0.5)),
+                }
+                Ok(())
+            }
+        }
+    }
+
+    /// Engineering's automation routing round a cut (power-routing 3): once a spare run would bring power back to a
+    /// dark room, for its reaction time, it closes it.
+    fn engineering_reroute(&mut self, reaction_s: f64, t: f64) -> Option<Command> {
+        let s = &self.damage[0];
+        let k = self.power.reroute(&self.data.power, &s.node_health, &s.conduits);
+        let mem = &mut self.auto.engineering;
+        match k {
+            None => {
+                mem.reroute_since = None;
+                None
+            }
+            Some(k) => {
+                let since = *mem.reroute_since.get_or_insert(t);
+                (t - since >= reaction_s).then(|| {
+                    mem.reroute_since = None;
+                    Command::Power(PowerCmd::Run(k as u8, true))
+                })
+            }
+        }
+    }
+
+    /// What the fight asks of each load (power-grid 7, the console mockup's `activity`): the push and the turn the
+    /// helm asks for, shields regenerating, turrets firing, banks charging, tubes loading, the sensors pinging or
+    /// scanning. The helm's request, not the push it got, so a starved drive keeps asking and the console shows the
+    /// shortfall. The air, comms and the bays are not simulated in the drill: they ask for nothing.
+    fn power_activity(&self) -> std::collections::BTreeMap<String, f64> {
+        let mut a = std::collections::BTreeMap::new();
+        if self.phase != Phase::Engage || !self.ships[0].alive {
+            return a;
+        }
+        let t = &self.ships[0];
+        let on = |b: bool| f64::from(u8::from(b));
+        let fl = &self.data.tern_flight;
+        let want = (t.speed_set.clamp(fl.speed_min_mps, fl.speed_max_mps) - t.vel.dot(t.forward())) / fl.tau_v_s;
+        let push = (want.abs() / if want >= 0.0 { fl.accel_fwd_mps2 } else { fl.accel_rev_mps2 }).min(1.0);
+        a.insert("drive".to_owned(), push);
+        a.insert("dampers".to_owned(), push);
+        a.insert("rcs".to_owned(), t.stick.iter().fold(0.0_f64, |m, v| m.max(v.abs())).min(1.0));
+        let sh = &self.data.tern_shields;
+        let caps = sh.presets[usize::from(t.preset).min(sh.presets.len() - 1)].faces_mj;
+        a.insert("shield_regen".to_owned(), on(t.faces.iter().zip(caps).any(|(f, c)| *f < c - 1e-9)));
+        let gun = self.data.gun(&self.data.tern_combat.gun);
+        for (m, tr) in self.data.tern_combat.turrets.iter().zip(&t.turrets) {
+            a.insert(turret_system(&m.id), on(tr.since_fire_s < 1.0 / gun.rate_hz.max(1e-9) + DT));
+        }
+        if let Some(l) = &self.data.tern_combat.lasers {
+            let w = self.data.laser(&l.laser);
+            for (m, b) in l.banks.iter().zip(&t.lasers) {
+                a.insert(m.id.clone(), on(b.charge_mj < w.capacitor_mj - 1e-9));
+            }
+        }
+        let loading = |s: &Tube| s.state == TubeState::Loading;
+        a.insert("hoist".to_owned(), on(t.tubes.iter().any(loading)));
+        for (i, tb) in t.tubes.iter().enumerate() {
+            a.insert(tube_system(i as u8), on(loading(tb)));
+        }
+        a.insert("sensors_active".to_owned(), on(self.bridge.ping_s > 0.0 || self.bridge.scanning));
+        a
+    }
+
+    /// The power grid's sub-steps due this tick (power-grid 2), the fader's preview, and the bay crew at the reactor
+    /// panel: once the reset would be taken and a train can carry the reactor, they hold it for its time plus
+    /// Engineering's reaction and reset; while neither train can, they call the repair teams to the reactor.
+    fn power_tick(&mut self) {
+        self.power_s += DT;
+        let act = self.power_activity();
+        let d = &self.data.power;
+        let dt = d.dt();
+        let hold = d.file.reactor.reset.hold_s + self.data.profile("automation").engineering.reaction_s;
+        while self.power_s >= dt - 1e-9 {
+            self.power_s -= dt;
+            let s = &mut self.damage[0];
+            let mut ship = power::Ship {
+                integrity: &mut s.integrity,
+                node_health: &s.node_health,
+                conduits: &s.conduits,
+                activity: &act,
+            };
+            self.power.step(d, &mut ship);
+            // A run open at its box carries no surge either (power-routing 1): the damage state mirrors the switches.
+            for (c, closed) in s.conduits.iter_mut().zip(&self.power.conduit_breaker) {
+                c.open = !closed;
+            }
+            let scrammed = self.power.reactor.state == power::ReactorState::Scrammed;
+            let hold_up = self.power.trains_hold(d, &s.integrity);
+            if scrammed && !hold_up {
+                self.repair_priority = Some(d.file.reactor.system.clone());
+            }
+            if scrammed && hold_up && self.power.reset_refusal(d).is_none() {
+                self.reset_held_s += dt;
+                if self.reset_held_s >= hold {
+                    let _ = self.power.scram_reset(d);
+                    self.reset_held_s = 0.0;
+                }
+            } else {
+                self.reset_held_s = 0.0;
+            }
+            if let Some((g, sp)) = self.power_ask {
+                let ship = power::Ship {
+                    integrity: &mut s.integrity,
+                    node_health: &s.node_health,
+                    conduits: &s.conduits,
+                    activity: &act,
+                };
+                let (want, got) = self.power.preview_group(d, &ship, usize::from(g), sp);
+                self.power_preview = Some((g, sp, want, got));
+            }
+        }
     }
 
     /// Science's and the captain's commands, which act on the bridge rather than the ship; none for the rest.
@@ -1439,7 +1913,26 @@ impl Drill {
             }
             _ => return None,
         };
+        // The captain's REPAIR to Engineering raises the worst-damaged system for the teams (ship-damage 5).
+        if let (Command::Order(Station::Engineering, verb), Ok(())) = (cmd, r) {
+            let repair =
+                self.data.order_verbs(Station::Engineering).get(usize::from(verb)).is_some_and(|v| v[0] == "REPAIR");
+            if repair {
+                self.repair_priority = self.worst_system(0);
+            }
+        }
         Some(r)
+    }
+
+    /// Ship `si`'s most damaged system below nominal, by its system id (a load's own id where it names none).
+    fn worst_system(&self, si: usize) -> Option<String> {
+        let l = self.layout(si);
+        let nominal = self.data.damage.systems.nominal_from_pct;
+        let s = &self.damage[si];
+        (0..l.loads.len())
+            .filter(|&i| s.integrity[i] < nominal)
+            .min_by(|&a, &b| s.integrity[a].total_cmp(&s.integrity[b]))
+            .map(|i| if l.loads[i].system.is_empty() { l.loads[i].id.clone() } else { l.loads[i].system.clone() })
     }
 
     fn enemy_ai(&mut self) {
@@ -1451,8 +1944,11 @@ impl Drill {
         let r = tern.pos - enemy.pos;
         let range = r.length().max(1.0);
         let rh = r / range;
-        let (desired, speed) = if range > ai.orbit_m * 1.3 {
-            (rh, ai.approach_speed_mps)
+        // A tube armed and a lock held: the nose on the Tern for the seeker (armour-and-missiles 5), as the Tern's
+        // helm does for its tubes.
+        let missile_run = enemy.tubes.iter().any(|t| t.state == TubeState::Armed) && enemy.magazine + 2 > 0;
+        let (desired, speed) = if range > ai.orbit_m * 1.3 || missile_run {
+            (rh, ai.approach_speed_mps.min(ai.orbit_speed_mps * 1.5))
         } else {
             let axis = DQuat::from_rotation_x(ai.orbit_tilt_deg.to_radians()) * DVec3::Y;
             let tangent = rh.cross(axis).normalize_or(DVec3::X);
@@ -1499,8 +1995,9 @@ impl Drill {
     fn engage_tick(&mut self) {
         self.helm_tick();
         self.enemy_ai();
-        let tf = self.data.tern_flight.clone();
-        let ef = self.data.enemy.flight.clone();
+        // A damaged drive pushes and turns with what is left of it (ship-damage 4).
+        let tf = scaled_flight(&self.data.tern_flight, self.capability(0, "impulse_drive"));
+        let ef = scaled_flight(&self.data.enemy.flight, self.capability(1, "impulse_drive"));
         if self.ships[0].alive {
             fly(&mut self.ships[0], &tf, DT);
         }
@@ -1508,108 +2005,589 @@ impl Drill {
             fly(&mut self.ships[1], &ef, DT);
         }
         self.locks_and_tubes();
+        self.lasers_tick();
+        self.enemy_weapons();
         self.shields();
         for (shooter, target) in [(0usize, 1usize), (1, 0)] {
             self.turrets(shooter, target);
         }
+        self.fighters_tick();
         self.bolts_step();
         self.missiles_step();
+        self.damage_tick();
     }
 
-    fn locks_and_tubes(&mut self) {
-        let enemy = (self.ships[1].pos, self.ships[1].alive && self.ships[1].active);
-        let lock = self.data.tern_combat.lock.clone();
-        let arm_s = self.data.tern_combat.tubes.as_ref().map(|t| t.arm_s).unwrap_or(0.0);
-        let tern = &mut self.ships[0];
-        if tern.lock_target == Some(ENEMY_ID) {
-            if enemy.1 && (enemy.0 - tern.pos).length() <= lock.range_m {
-                tern.lock_s = (tern.lock_s + DT).min(lock.time_s);
-            } else {
-                tern.lock_s = 0.0;
+    /// The enemy's fighters (enemy-fighters 1, 4): launched from a working hangar, flown by their AI at the Tern's
+    /// turrets and laser banks; their shots become bolts with the enemy's aim error.
+    fn fighters_tick(&mut self) {
+        let fd = self.data.fighter.clone();
+        let hound_up = self.ships[1].alive && self.ships[1].active;
+        if self.fighters.is_empty()
+            && hound_up
+            && self.phase_s >= fd.launch.after_engage_s
+            && self.capability(1, "hangar_launch") > 0.0
+        {
+            let h = &self.ships[1];
+            let m = fighters::Mothership { pos: h.pos, rot: h.rot, vel: h.vel };
+            self.fighters = fighters::launch(&m, &fd, FIGHTER_IDS);
+        }
+        if self.fighters.iter().all(|f| !f.alive) {
+            return;
+        }
+        let t = &self.ships[0];
+        let mut parts: Vec<DVec3> =
+            self.data.tern_combat.turrets.iter().map(|m| DVec3::from_array(m.position_m)).collect();
+        if let Some(l) = &self.data.tern_combat.lasers {
+            parts.extend(l.banks.iter().map(|b| DVec3::from_array(b.position_m)));
+        }
+        let prey = fighters::Prey { pos: t.pos, rot: t.rot, vel: t.vel, parts: &parts };
+        let range = self.data.tern_combat.fighter_range_m;
+        let threatened: Vec<bool> = self.fighters.iter().map(|f| (f.pos - prey.pos).length() <= range).collect();
+        let shots = fighters::step(&mut self.fighters, &fd, &prey, &threatened, DT, &mut self.rng);
+        let sigma = self.data.enemy.combat.aim_sigma_base_deg.to_radians();
+        for shot in shots {
+            if self.bolts.len() >= MAX_BOLTS {
+                break;
+            }
+            let from = self.fighters.iter().find(|f| f.id == shot.owner).map_or(DVec3::ZERO, |f| f.vel);
+            let gun = shot.vel - from;
+            let dir = scatter(&mut self.rng, gun.normalize_or(DVec3::Z), sigma);
+            let id = self.next_bolt;
+            self.next_bolt = self.next_bolt.wrapping_add(1).max(1);
+            let bolt = Bolt {
+                id,
+                owner: shot.owner,
+                pos: shot.pos,
+                vel: from + dir * gun.length(),
+                life_s: shot.life_s,
+                damage_mj: shot.damage_mj,
+            };
+            self.events.push(DrillEvent::Fired { bolt: id, owner: bolt.owner, pos: bolt.pos, vel: bolt.vel });
+            self.stats.enemy_shots += 1;
+            self.bolts.push(bolt);
+        }
+    }
+
+    /// Fires burn and spread, teams travel and repair, for both ships (ship-damage 5).
+    fn damage_tick(&mut self) {
+        for si in 0..2 {
+            if !(self.ships[si].alive && self.ships[si].active) {
+                continue;
+            }
+            let l = if si == 0 { &self.data.tern_layout } else { &self.data.hound_layout };
+            let priority = if si == 0 { self.repair_priority.as_deref() } else { None };
+            let ev = damage::tick(l, &mut self.damage[si], &self.data.damage, DT, priority);
+            for e in ev {
+                if let damage::DamageEvent::HullBurned { mj } = e {
+                    self.hull_loss(si, mj);
+                }
             }
         }
-        for t in &mut tern.tubes {
-            match t.state {
-                TubeState::Loading | TubeState::Arming => {
-                    t.timer_s -= DT;
-                    if t.timer_s <= 0.0 {
-                        *t = if t.state == TubeState::Loading {
-                            Tube { state: TubeState::Arming, timer_s: arm_s }
-                        } else {
-                            Tube { state: TubeState::Armed, timer_s: 0.0 }
-                        };
-                    }
+    }
+
+    /// The Tern is put right after a fight (ship-damage 9): no fire burns and every system is at nominal or better.
+    pub fn put_right(&self) -> bool {
+        let s = &self.damage[0];
+        let nominal = self.data.damage.systems.nominal_from_pct;
+        s.fires.is_empty() && s.integrity.iter().all(|v| *v >= nominal)
+    }
+
+    /// Ship `si`'s structural hull loses `mj`; at zero it is destroyed.
+    fn hull_loss(&mut self, si: usize, mj: f64) {
+        let ship = &mut self.ships[si];
+        ship.hull -= mj;
+        if ship.hull <= 0.0 && ship.alive {
+            ship.hull = 0.0;
+            ship.alive = false;
+            self.events.push(DrillEvent::Destroyed { ship: ship.id });
+        }
+    }
+
+    /// Locks build for both ships; tubes load and arm (armour-and-missiles 2); decoy bursts run down.
+    fn locks_and_tubes(&mut self) {
+        for si in 0..2 {
+            let ti = 1 - si;
+            // Damaged sensors lock more slowly; destroyed, not at all (ship-damage 4).
+            let sensors = self.capability(si, "sensor_array");
+            let (t_id, t_pos, t_up) =
+                (self.ships[ti].id, self.ships[ti].pos, self.ships[ti].alive && self.ships[ti].active);
+            let combat = self.data.combat_of(si);
+            let lock = combat.lock.clone();
+            let arm_s = combat.tubes.as_ref().map(|t| t.arm_s).unwrap_or(0.0);
+            let rates: Vec<f64> = (0..self.ships[si].tubes.len()).map(|i| self.loading_rate(si, i as u8)).collect();
+            let ship = &mut self.ships[si];
+            if ship.lock_target == Some(t_id) {
+                if t_up && (t_pos - ship.pos).length() <= lock.range_m {
+                    ship.lock_s = (ship.lock_s + DT * sensors).min(lock.time_s);
+                } else {
+                    ship.lock_s = 0.0;
                 }
-                TubeState::Empty | TubeState::Armed => {}
+            }
+            ship.decoy_s = (ship.decoy_s - DT).max(0.0);
+            for (t, rate) in ship.tubes.iter_mut().zip(&rates) {
+                match t.state {
+                    TubeState::Loading | TubeState::Arming => {
+                        t.timer_s -= DT * if t.state == TubeState::Loading { *rate } else { 1.0 };
+                        if t.timer_s <= 0.0 {
+                            *t = if t.state == TubeState::Loading {
+                                Tube { state: TubeState::Arming, timer_s: arm_s }
+                            } else {
+                                Tube { state: TubeState::Armed, timer_s: 0.0 }
+                            };
+                        }
+                    }
+                    TubeState::Empty | TubeState::Armed => {}
+                }
+            }
+        }
+    }
+
+    /// The Tern's turret the gunner holds: the dorsal one (enemy-fighters 3).
+    fn gunner_turret(&self) -> Option<usize> {
+        self.data.tern_combat.turrets.iter().position(|t| t.id == GUNNER_TURRET)
+    }
+
+    /// Ship `si`'s insides (ship-damage).
+    pub fn layout(&self, si: usize) -> &damage::ShipLayout {
+        if si == 0 {
+            &self.data.tern_layout
+        } else {
+            &self.data.hound_layout
+        }
+    }
+
+    /// The capability (0-1) of system or load `id` aboard ship `si` (ship-damage 4); 1 for a part it does not have.
+    pub fn capability(&self, si: usize, id: &str) -> f64 {
+        if si == 0 {
+            // The Tern's grid is simulated: a system works with its integrity and the power it gets.
+            let (d, s) = (&self.data.power, &self.damage[0]);
+            return damage::capability_by(&self.data.tern_layout, id, |i| self.power.works(d, s.integrity[i], i));
+        }
+        self.damage_capability(si, id)
+    }
+
+    /// Capability 0-1 of a system by its damage alone: what a crew can still work by hand without power (a tube's
+    /// hand crank, weapons-and-shields 7).
+    pub fn damage_capability(&self, si: usize, id: &str) -> f64 {
+        damage::capability(self.layout(si), &self.damage[si], &self.data.damage, id)
+    }
+
+    /// How fast ship `si`'s tube `i` loads, a share of its powered rate: its supply (reload time as 1 / supply,
+    /// power-grid 6), never slower than the crew's hand crank (weapons-and-shields 7). A ship with no grid loads at 1.
+    fn loading_rate(&self, si: usize, i: u8) -> f64 {
+        let Some(t) = self.data.combat_of(si).tubes.as_ref() else { return 1.0 };
+        if si != 0 {
+            return 1.0;
+        }
+        let crank = t.crank_load_s.map_or(0.0, |c| t.load_s / c.max(1e-9));
+        let supply = self.data.power.load(&tube_system(i)).map_or(1.0, |k| self.power.supply(k));
+        supply.max(crank)
+    }
+
+    /// Whether ship `si` holds a full lock on the other ship.
+    fn locked(&self, si: usize) -> bool {
+        let ti = 1 - si;
+        let t = &self.ships[ti];
+        self.ships[si].lock_target == Some(t.id)
+            && t.alive
+            && t.active
+            && self.ships[si].lock_s >= self.data.combat_of(si).lock.time_s
+    }
+
+    /// Load tube `i` of ship `si` from its magazine (the Tern's Tactical and the enemy alike).
+    fn load_tube(&mut self, si: usize, i: u8) -> Result<(), Refusal> {
+        let tubes = self.data.combat_of(si).tubes.clone().ok_or(Refusal::NoSuch)?;
+        if self.damage_capability(si, &tube_system(i)) <= 0.0 {
+            return Err(Refusal::Damaged);
+        }
+        let ship = &mut self.ships[si];
+        let tube = ship.tubes.get_mut(usize::from(i)).ok_or(Refusal::NoSuch)?;
+        if tube.state != TubeState::Empty {
+            return Err(Refusal::TubeNotReady);
+        }
+        if ship.magazine == 0 {
+            return Err(Refusal::MagazineEmpty);
+        }
+        ship.magazine -= 1;
+        *tube = Tube { state: TubeState::Loading, timer_s: tubes.load_s };
+        Ok(())
+    }
+
+    /// Fire tube `i` of ship `si` at the other ship, which it must hold locked and inside its missile's seeker cone.
+    fn fire_tube(&mut self, si: usize, i: u8) -> Result<(), Refusal> {
+        let ti = 1 - si;
+        let tubes = self.data.combat_of(si).tubes.clone().ok_or(Refusal::NoSuch)?;
+        let missile = self.data.missile(&tubes.missile).clone();
+        let tube = *self.ships[si].tubes.get(usize::from(i)).ok_or(Refusal::NoSuch)?;
+        if self.damage_capability(si, &tube_system(i)) <= 0.0 {
+            return Err(Refusal::Damaged);
+        }
+        if tube.state != TubeState::Armed {
+            return Err(Refusal::TubeNotReady);
+        }
+        if !self.locked(si) {
+            return Err(Refusal::NotLocked);
+        }
+        let (t_id, t_pos, t_rot) = (self.ships[ti].id, self.ships[ti].pos, self.ships[ti].rot);
+        let secs = &self.layout(ti).sections;
+        let (lo, hi) = secs.iter().fold((f64::MAX, f64::MIN), |(lo, hi), q| (lo.min(q.z_m), hi.max(q.z_m)));
+        let aim_m = DVec3::new(0.0, 0.0, lo + (hi - lo) * (0.1 + 0.8 * self.rng.next_f64()));
+        let aim = t_pos + t_rot * aim_m;
+        let ship = &mut self.ships[si];
+        if off_bow_deg(ship.pos, ship.rot, t_pos) > missile.seeker_half_angle_deg {
+            return Err(Refusal::OutOfCone);
+        }
+        if self.missiles.len() >= MAX_MISSILES {
+            return Err(Refusal::TubeNotReady);
+        }
+        ship.tubes[usize::from(i)] = Tube { state: TubeState::Empty, timer_s: 0.0 };
+        let muzzle = ship.pos + ship.rot * DVec3::from_array(tubes.muzzle_m[usize::from(i)]);
+        let vel = ship.vel + ship.forward() * missile.eject_mps;
+        let owner = ship.id;
+        let id = self.next_missile;
+        self.next_missile = self.next_missile.wrapping_add(1).max(1);
+        self.missiles.push(Missile {
+            id,
+            owner,
+            target: t_id,
+            pos: muzzle,
+            vel,
+            age_s: 0.0,
+            rel_prev: muzzle - aim,
+            fooled: false,
+            heading: ship.forward(),
+            aim_m,
+        });
+        if si == 0 {
+            self.stats.missiles_fired += 1;
+        } else {
+            self.stats.enemy_missiles_fired += 1;
+        }
+        self.events.push(DrillEvent::Launched { missile: id, owner });
+        Ok(())
+    }
+
+    /// Laser banks charge, and each one's bearing and hit chance on the other ship (laser-banks 1-2).
+    fn lasers_tick(&mut self) {
+        for si in 0..2 {
+            let ti = 1 - si;
+            let combat = self.data.combat_of(si).clone();
+            let Some(block) = combat.lasers else { continue };
+            let w = self.data.laser(&block.laser).clone();
+            let radius = self.data.combat_of(ti).hit_radius_m;
+            let locked = self.locked(si);
+            let (s_pos, s_rot, s_vel, s_up) = (
+                self.ships[si].pos,
+                self.ships[si].rot,
+                self.ships[si].vel,
+                self.ships[si].alive && self.ships[si].active,
+            );
+            let (t_pos, t_vel) = (self.ships[ti].pos, self.ships[ti].vel);
+            let reactor = self.capability(si, "reactor");
+            let bank_caps: Vec<f64> = block.banks.iter().map(|m| self.capability(si, &m.id)).collect();
+            for (k, mount) in block.banks.iter().enumerate() {
+                let b = &mut self.ships[si].lasers[k];
+                b.since_fire_s += DT;
+                // A damaged bank or reactor charges with what is left of it (ship-damage 4).
+                if s_up {
+                    b.charge_mj = (b.charge_mj + w.charge_mw * reactor * bank_caps[k] * DT).min(w.capacitor_mj);
+                }
+                let emitter = s_pos + s_rot * DVec3::from_array(mount.position_m);
+                let rel = t_pos - emitter;
+                let range = rel.length().max(1.0);
+                b.bearing = locked && arc_bears(mount.arc, s_rot.inverse() * rel, combat.arc_overlap_deg);
+                let across = (t_vel - s_vel).reject_from(rel / range).length();
+                let rate_deg_s = (across / range).to_degrees();
+                let sigma = (w.sigma_base_deg + w.sigma_rate_k * rate_deg_s).to_radians();
+                b.hit_chance = if b.bearing && range <= w.range_m { hit_chance(range, sigma, radius) } else { 0.0 };
+            }
+        }
+    }
+
+    /// Fire bank `bank` of ship `si`: its whole capacitor in one beam that arrives at once (laser-banks 2).
+    fn fire_laser(&mut self, si: usize, bank: u8) -> Result<(), Refusal> {
+        let ti = 1 - si;
+        let block = self.data.combat_of(si).lasers.clone().ok_or(Refusal::NoSuch)?;
+        let mount = block.banks.get(usize::from(bank)).ok_or(Refusal::NoSuch)?.clone();
+        let w = self.data.laser(&block.laser).clone();
+        let b = *self.ships[si].lasers.get(usize::from(bank)).ok_or(Refusal::NoSuch)?;
+        if self.capability(si, &mount.id) <= 0.0 {
+            return Err(Refusal::Damaged);
+        }
+        if b.charge_mj < w.min_charge_frac * w.capacitor_mj {
+            return Err(Refusal::NotCharged);
+        }
+        if !self.locked(si) {
+            return Err(Refusal::NotLocked);
+        }
+        if !b.bearing {
+            return Err(Refusal::OutOfCone);
+        }
+        let ship = &self.ships[si];
+        let emitter = ship.pos + ship.rot * DVec3::from_array(mount.position_m);
+        let (t_pos, radius) = (self.ships[ti].pos, self.data.combat_of(ti).hit_radius_m);
+        let dir = (t_pos - emitter).normalize_or(DVec3::Z);
+        let range = (t_pos - emitter).length();
+        if range > w.range_m {
+            return Err(Refusal::OutOfCone);
+        }
+        let hit = self.rng.next_f64() < b.hit_chance;
+        let energy = b.charge_mj;
+        let l = &mut self.ships[si].lasers[usize::from(bank)];
+        l.charge_mj = 0.0;
+        l.since_fire_s = 0.0;
+        let owner = self.ships[si].id;
+        let to = if hit {
+            // The beam meets the near side of the target along its line.
+            let point = t_pos - dir * radius * 0.8;
+            self.hit_ship(ti, point, dir, energy, WeaponKind::Laser, None, 1.0);
+            point
+        } else {
+            let off = scatter(&mut self.rng, dir, (radius * 3.0 / range.max(1.0)).atan());
+            emitter + off * w.range_m
+        };
+        if si == 0 {
+            self.stats.tern_laser_shots += 1;
+            self.stats.tern_laser_hits += u32::from(hit);
+        } else {
+            self.stats.enemy_laser_shots += 1;
+            self.stats.enemy_laser_hits += u32::from(hit);
+        }
+        self.events.push(DrillEvent::Beam { owner, bank, from: emitter, to, hit, energy_mj: energy });
+        Ok(())
+    }
+
+    /// Whether bank `bank` of ship `si` should fire now (laser-banks 3; the Tern's automation and the enemy alike).
+    fn laser_wanted(&self, si: usize, bank: usize, p: &data::LaserProfile) -> bool {
+        let Some(block) = self.data.combat_of(si).lasers.as_ref() else { return false };
+        let w = self.data.laser(&block.laser);
+        let Some(b) = self.ships[si].lasers.get(bank) else { return false };
+        laser_should_fire(b.charge_mj / w.capacitor_mj.max(1e-9), b.bearing, b.hit_chance, p)
+    }
+
+    /// Throw one of ship `si`'s countermeasures: every inbound missile within its reach rolls once, by its time to
+    /// impact (armour-and-missiles 3).
+    fn throw_decoy(&mut self, si: usize) -> Result<(), Refusal> {
+        let block = self.data.combat_of(si).decoys.clone().ok_or(Refusal::NoSuch)?;
+        let d = self.data.decoy(&block.decoy).clone();
+        let ship = &mut self.ships[si];
+        if ship.decoys == 0 {
+            return Err(Refusal::MagazineEmpty);
+        }
+        if ship.decoy_s > 0.0 {
+            return Err(Refusal::TubeNotReady);
+        }
+        ship.decoys -= 1;
+        ship.decoy_s = d.life_s;
+        let (id, pos, vel) = (ship.id, ship.pos, ship.vel);
+        self.stats.decoys_thrown += 1;
+        self.events.push(DrillEvent::DecoyOut { ship: id });
+        let mut i = 0;
+        while i < self.missiles.len() {
+            let m = self.missiles[i];
+            let rel = pos - m.pos;
+            let dist = rel.length();
+            if m.target != id || m.fooled || dist > d.range_m {
+                i += 1;
+                continue;
+            }
+            let closing = (m.vel - vel).dot(rel / dist.max(1e-6)).max(1.0);
+            let (off, early) = d.chances(dist / closing);
+            let roll = self.rng.next_f64();
+            if roll < off {
+                self.missiles[i].fooled = true;
+                self.stats.missiles_fooled += 1;
+                self.events.push(DrillEvent::Fooled { missile: m.id, early: false });
+                i += 1;
+            } else if roll < off + early {
+                self.stats.missiles_fooled += 1;
+                self.events.push(DrillEvent::Fooled { missile: m.id, early: true });
+                self.events.push(DrillEvent::Detonated { missile: m.id, pos: m.pos, damage_mj: 0.0 });
+                self.missiles.swap_remove(i);
+            } else {
+                i += 1;
+            }
+        }
+        Ok(())
+    }
+
+    /// Whether ship `si` should throw a countermeasure now: one left, none out, and the nearest missile at it
+    /// 1.2-2.5 s from impact (armour-and-missiles 3; the Tern's automation and the enemy alike).
+    fn decoy_wanted(&self, si: usize) -> bool {
+        let s = &self.ships[si];
+        if s.decoys == 0 || s.decoy_s > 0.0 || self.data.combat_of(si).decoys.is_none() {
+            return false;
+        }
+        self.missiles.iter().filter(|m| m.target == s.id && !m.fooled).any(|m| {
+            let rel = s.pos - m.pos;
+            let closing = (m.vel - s.vel).dot(rel.normalize_or_zero()).max(1.0);
+            (1.2..=2.5).contains(&(rel.length() / closing))
+        })
+    }
+
+    /// The enemy's weapons: the Tern's tactics, by the same rules (armour-and-missiles 5, laser-banks 4).
+    fn enemy_weapons(&mut self) {
+        if !(self.ships[1].alive && self.ships[1].active) {
+            return;
+        }
+        for i in 0..self.ships[1].tubes.len() as u8 {
+            let state = self.ships[1].tubes[usize::from(i)].state;
+            if state == TubeState::Empty {
+                let _ = self.load_tube(1, i);
+            } else if state == TubeState::Armed {
+                let _ = self.fire_tube(1, i);
+            }
+        }
+        if self.decoy_wanted(1) {
+            let _ = self.throw_decoy(1);
+        }
+        let p = self.data.profile("automation").lasers.clone();
+        for k in 0..self.ships[1].lasers.len() {
+            if self.laser_wanted(1, k, &p) {
+                let _ = self.fire_laser(1, k as u8);
             }
         }
     }
 
     fn shields(&mut self) {
+        // A damaged generator regenerates with what is left of it (ship-damage 4).
+        let generator = [self.capability(0, "shield_generator"), self.capability(1, "shield_generator")];
         for (i, ship) in self.ships.iter_mut().enumerate() {
             let block = if i == 0 { &self.data.tern_shields } else { &self.data.enemy.shields };
             let caps = block.presets[usize::from(ship.preset).min(block.presets.len() - 1)].faces_mj;
             let total: f64 = caps.iter().sum::<f64>().max(1e-9);
             for (f, cap) in ship.faces.iter_mut().zip(caps) {
-                *f = (*f + block.regen_mj_s * cap / total * DT).min(cap);
+                *f = (*f + block.regen_mj_s * generator[i] * cap / total * DT).min(cap);
             }
         }
     }
 
     fn turrets(&mut self, si: usize, ti: usize) {
-        let combat = if si == 0 { self.data.tern_combat.clone() } else { self.data.enemy.combat.clone() };
+        let combat = self.data.combat_of(si).clone();
         let gun = self.data.gun(&combat.gun).clone();
-        let target_radius =
-            if ti == 0 { self.data.tern_combat.hit_radius_m } else { self.data.enemy.combat.hit_radius_m };
-        let (shooter, target) = (&self.ships[si], &self.ships[ti]);
-        // AUTO and TARGET fire at the designated target once it is locked; PD only at inbound missiles, and the drill's
-        // enemy carries none; HOLD never.
-        let can_fire = shooter.alive
-            && shooter.active
-            && target.alive
-            && target.active
-            && shooter.lock_target == Some(target.id)
-            && shooter.lock_s >= combat.lock.time_s;
-        let (s_pos, s_rot, s_vel, t_pos, t_vel) = (shooter.pos, shooter.rot, shooter.vel, target.pos, target.vel);
+        let target_radius = self.data.combat_of(ti).hit_radius_m;
+        let can_fire = self.ships[si].alive && self.ships[si].active && self.locked(si);
+        let (s_pos, s_rot, s_vel, s_id) =
+            (self.ships[si].pos, self.ships[si].rot, self.ships[si].vel, self.ships[si].id);
+        let (t_pos, t_vel) = (self.ships[ti].pos, self.ships[ti].vel);
+        // Point defence (armour-and-missiles 4): missiles at this ship, within its reach, not already fooled.
+        let missile_radius =
+            self.data.combat_of(ti).tubes.as_ref().map_or(1.0, |t| self.data.missile(&t.missile).hit_radius_m);
+        let inbound: Vec<(DVec3, DVec3)> = self
+            .missiles
+            .iter()
+            .filter(|m| m.target == s_id && !m.fooled && (m.pos - s_pos).length() <= combat.pd_range_m)
+            .map(|m| (m.pos, m.vel))
+            .collect();
+        // The Tern's turrets take fighters after missiles (enemy-fighters 2).
+        let fighter_radius = self.data.fighter.hit_radius_m;
+        let near_fighters: Vec<(DVec3, DVec3)> = if si == 0 {
+            self.fighters
+                .iter()
+                .filter(|f| f.out() && (f.pos - s_pos).length() <= combat.fighter_range_m)
+                .map(|f| (f.pos, f.vel))
+                .collect()
+        } else {
+            Vec::new()
+        };
+        // A broken turret does not fire (ship-damage 4); a damaged or starved one charges with what it has
+        // (power-grid 6).
+        let caps: Vec<f64> = combat.turrets.iter().map(|m| self.capability(si, &turret_system(&m.id))).collect();
+        let working: Vec<bool> = caps.iter().map(|c| *c > 0.0).collect();
         let mut fired = Vec::new();
         for (k, mount) in combat.turrets.iter().enumerate() {
             let turret = &mut self.ships[si].turrets[k];
-            turret.capacitor_mj = (turret.capacitor_mj + gun.charge_mw * DT).min(gun.capacitor_mj);
+            turret.capacitor_mj = (turret.capacitor_mj + gun.charge_mw * caps[k] * DT).min(gun.capacitor_mj);
             turret.cooldown_s = (turret.cooldown_s - DT).max(-DT);
             turret.since_fire_s += DT;
+            // Out of rounds, it reloads, then has its rounds again.
+            if turret.reload_s > 0.0 {
+                turret.reload_s -= DT;
+                if turret.reload_s <= 0.0 {
+                    turret.reload_s = 0.0;
+                    turret.rounds = gun.rounds;
+                }
+            }
             // The sink sheds into the coolant; full, it locks the turret out until it cools to its resume share.
             turret.heat_mj = (turret.heat_mj - gun.heat_shed_mw * DT).max(0.0);
             if turret.cooling && turret.heat_mj < gun.heat_resume_frac * gun.heat_sink_mj {
                 turret.cooling = false;
             }
             let muzzle = s_pos + s_rot * DVec3::from_array(mount.position_m);
-            turret.bearing = arc_bears(mount.arc, s_rot.inverse() * (t_pos - muzzle), combat.arc_overlap_deg);
-            let Some(aim) = lead(t_pos - muzzle, t_vel - s_vel, gun.speed_mps) else {
-                turret.hit_chance = 0.0;
-                continue;
-            };
-            let sigma_rad = (combat.aim_sigma_base_deg + gun.sigma_rate_k * aim.angular_rate_deg_s).to_radians();
-            let p = if aim.time_s <= gun.life_s { hit_chance(aim.range_m, sigma_rad, target_radius) } else { 0.0 };
-            turret.aim = aim.dir;
-            turret.hit_chance = p;
-            let mode_fires = matches!(turret.mode, TurretMode::Auto | TurretMode::Target);
-            if can_fire
-                && mode_fires
+            let ready = working[k]
                 && !turret.cooling
-                && turret.bearing
-                && p >= gun.min_hit_chance
+                && turret.rounds > 0
                 && turret.capacitor_mj >= gun.draw_mj
-                && turret.cooldown_s <= 0.0
-                && self.bolts.len() + fired.len() < MAX_BOLTS
-            {
-                turret.capacitor_mj -= gun.draw_mj;
-                turret.cooldown_s += 1.0 / gun.rate_hz;
-                turret.since_fire_s = 0.0;
-                turret.heat_mj += gun.heat_per_bolt_mj;
-                if turret.heat_mj >= gun.heat_sink_mj {
-                    turret.cooling = true;
+                && turret.cooldown_s <= 0.0;
+            let base_sigma = combat.aim_sigma_base_deg;
+            // The gunner's hand (enemy-fighters 3): along the aim while the trigger is held, at half the sigma.
+            let shot = if turret.manual {
+                let dir = (s_rot * turret.manual_aim).normalize_or(s_rot * DVec3::Z);
+                turret.aim = dir;
+                turret.bearing = arc_bears(mount.arc, turret.manual_aim, combat.arc_overlap_deg);
+                (turret.trigger && turret.bearing && ready).then_some((dir, (base_sigma * 0.5).to_radians()))
+            } else {
+                // AUTO and PD take an inbound missile first; AUTO and TARGET fire at the locked ship.
+                let pd = matches!(turret.mode, TurretMode::Auto | TurretMode::Pd);
+                let missile = if pd {
+                    inbound
+                        .iter()
+                        .filter(|(p, _)| arc_bears(mount.arc, s_rot.inverse() * (*p - muzzle), combat.arc_overlap_deg))
+                        .min_by(|a, b| (a.0 - muzzle).length().total_cmp(&(b.0 - muzzle).length()))
+                } else {
+                    None
+                };
+                let fighter = if pd && missile.is_none() {
+                    near_fighters
+                        .iter()
+                        .filter(|(p, _)| arc_bears(mount.arc, s_rot.inverse() * (*p - muzzle), combat.arc_overlap_deg))
+                        .min_by(|a, b| (a.0 - muzzle).length().total_cmp(&(b.0 - muzzle).length()))
+                } else {
+                    None
+                };
+                // A missile is small and fast: the turret's aim error against one is its point-defence sigma.
+                let (aim_pos, aim_vel, radius, fires, sigma_base) = match (missile, fighter) {
+                    (Some(&(p, v)), _) => (p, v, missile_radius, true, combat.pd_aim_sigma_deg),
+                    (None, Some(&(p, v))) => (p, v, fighter_radius, true, base_sigma),
+                    (None, None) => (
+                        t_pos,
+                        t_vel,
+                        target_radius,
+                        can_fire && matches!(turret.mode, TurretMode::Auto | TurretMode::Target),
+                        base_sigma,
+                    ),
+                };
+                turret.bearing = arc_bears(mount.arc, s_rot.inverse() * (aim_pos - muzzle), combat.arc_overlap_deg);
+                match lead(aim_pos - muzzle, aim_vel - s_vel, gun.speed_mps) {
+                    Some(aim) => {
+                        let sigma_rad = (sigma_base + gun.sigma_rate_k * aim.angular_rate_deg_s).to_radians();
+                        let p = if aim.time_s <= gun.life_s { hit_chance(aim.range_m, sigma_rad, radius) } else { 0.0 };
+                        turret.aim = aim.dir;
+                        turret.hit_chance = p;
+                        (fires && turret.bearing && p >= gun.min_hit_chance && ready).then_some((aim.dir, sigma_rad))
+                    }
+                    None => {
+                        turret.hit_chance = 0.0;
+                        None
+                    }
                 }
-                fired.push((muzzle, aim.dir, sigma_rad));
+            };
+            if let Some((dir, sigma)) = shot {
+                if self.bolts.len() + fired.len() < MAX_BOLTS {
+                    let turret = &mut self.ships[si].turrets[k];
+                    turret.capacitor_mj -= gun.draw_mj;
+                    turret.cooldown_s += 1.0 / gun.rate_hz;
+                    turret.since_fire_s = 0.0;
+                    turret.heat_mj += gun.heat_per_bolt_mj;
+                    if turret.heat_mj >= gun.heat_sink_mj {
+                        turret.cooling = true;
+                    }
+                    turret.rounds = turret.rounds.saturating_sub(1);
+                    if turret.rounds == 0 {
+                        turret.reload_s = gun.reload_s;
+                    }
+                    fired.push((muzzle, dir, sigma));
+                }
             }
         }
         for (muzzle, dir, sigma) in fired {
@@ -1618,7 +2596,7 @@ impl Drill {
             self.next_bolt = self.next_bolt.wrapping_add(1).max(1);
             let bolt = Bolt {
                 id,
-                owner: self.ships[si].id,
+                owner: s_id,
                 pos: muzzle,
                 vel: s_vel + d * gun.speed_mps,
                 life_s: gun.life_s,
@@ -1634,56 +2612,134 @@ impl Drill {
         }
     }
 
-    /// A hit of `dmg` MJ at `point` on ship `ti` from a weapon on `band` (a missile has none): its face absorbs what it
-    /// can and the hull takes the rest. On the Tern the shield's band scales what the face loses (weapons-and-shields
-    /// 11: `match_factor` when the bands match, `retune_factor` while retuning); what it cannot absorb reaches the
-    /// hull at the hit's own size.
-    fn damage(&mut self, ti: usize, point: DVec3, dmg: f64, band: Option<u8>) -> u8 {
+    /// A hit of `dmg` MJ arriving at `point` along `dir` on ship `ti`, from `weapon` on `band` (a gun's; none for a
+    /// missile or a laser). The shield's face there holds what it can of `shield_share` of the hit: a cannon bolt
+    /// counts at its gun's `capital_factor` (the caller applies it), a missile's blast meets the face at its
+    /// `shield_share` (armour-and-missiles 1), and on the Tern the shield's band scales what the face loses
+    /// (weapons-and-shields 11). What passes goes on into the ship (`after_shield`). Returns the face.
+    #[allow(clippy::too_many_arguments)]
+    fn hit_ship(
+        &mut self,
+        ti: usize,
+        point: DVec3,
+        dir: DVec3,
+        dmg: f64,
+        weapon: WeaponKind,
+        band: Option<u8>,
+        shield_share: f64,
+    ) -> u8 {
         let e = if ti == 0 { self.data.tern_shields.ellipsoid } else { self.data.enemy.shields.ellipsoid };
         let k = match (ti, self.data.tern_shields.frequency) {
             (0, Some(f)) if self.bridge.retune_s > 0.0 => f.retune_factor,
-            (0, Some(f)) if band == Some(self.bridge.band) => f.match_factor,
+            (0, Some(f)) if band.is_some() && band == Some(self.bridge.band) => f.match_factor,
             _ => 1.0,
         };
         let ship = &mut self.ships[ti];
         let face = face_of(ship, &e, point);
-        let absorbed = ship.faces[usize::from(face)].min(dmg * k);
+        let meets = dmg * shield_share;
+        let absorbed = ship.faces[usize::from(face)].min(meets * k);
         ship.faces[usize::from(face)] -= absorbed;
-        ship.hull -= dmg - absorbed / k;
+        let rest = dmg - absorbed / k;
         if ti == 1 {
             self.stats.damage_dealt_mj += dmg;
         } else {
             self.stats.damage_taken_mj += dmg;
         }
-        if ship.hull <= 0.0 && ship.alive {
-            ship.hull = 0.0;
-            ship.alive = false;
-            self.events.push(DrillEvent::Destroyed { ship: ship.id });
+        if rest > 1e-9 {
+            self.after_shield(ti, point, dir, rest, weapon);
         }
         face
+    }
+
+    /// What passed a shield goes into the ship (ship-damage 1-3): the path is taken into the ship's frame, meets its
+    /// hull (a shot that passes the shield bubble can still miss the hull itself), and the armour section there, the
+    /// march inside and the cascade decide what breaks; what passes the armour also comes off the structural hull.
+    fn after_shield(&mut self, ti: usize, point: DVec3, dir: DVec3, energy_mj: f64, weapon: WeaponKind) {
+        let (pos, rot) = (self.ships[ti].pos, self.ships[ti].rot);
+        let inv = rot.inverse();
+        let p = inv * (point - pos);
+        let d = match weapon {
+            WeaponKind::Missile => (DVec3::new(0.0, 0.0, p.z) - p).normalize_or(-p.normalize_or(DVec3::Z)),
+            WeaponKind::Cannon | WeaponKind::Laser => (inv * dir).normalize_or(-p.normalize_or(DVec3::Z)),
+        };
+        let l = if ti == 0 { &self.data.tern_layout } else { &self.data.hound_layout };
+        let entry = match weapon {
+            // A blast drives straight in, toward the ship's long axis beneath it.
+            WeaponKind::Missile => damage::hull_entry(l, p, DVec3::new(0.0, 0.0, p.z)),
+            WeaponKind::Cannon | WeaponKind::Laser => damage::hull_entry(l, p - d * 40.0, p + d * 120.0),
+        };
+        let Some(entry) = entry else { return };
+        self.hits += 1;
+        let w = match weapon {
+            WeaponKind::Cannon => damage::Weapon::Cannon,
+            WeaponKind::Laser => damage::Weapon::Laser,
+            WeaponKind::Missile => damage::Weapon::Missile,
+        };
+        let seed = self.round_seed();
+        let out =
+            damage::resolve_hit(l, &mut self.damage[ti], &self.data.damage, entry, d, energy_mj, w, self.hits, seed);
+        let id = self.ships[ti].id;
+        if out.passed_mj > 0.0 {
+            self.events.push(DrillEvent::Burst { ship: id, pos: pos + rot * entry, size: out.passed_mj });
+        }
+        for (at, size) in &out.bursts {
+            self.events.push(DrillEvent::Burst { ship: id, pos: pos + rot * *at, size: *size });
+        }
+        self.hull_loss(ti, out.passed_mj);
     }
 
     fn bolts_step(&mut self) {
         let radii = [self.data.tern_combat.hit_radius_m, self.data.enemy.combat.hit_radius_m];
         let mut i = 0;
-        while i < self.bolts.len() {
+        'bolts: while i < self.bolts.len() {
             let b = self.bolts[i];
-            let ti = if b.owner == TERN_ID { 1 } else { 0 };
-            let t = &self.ships[ti];
-            let mut hit = None;
-            if t.alive && t.active {
-                let p0 = b.pos - t.pos;
-                let d = (b.vel - t.vel) * DT;
+            let step = |pos: DVec3, vel: DVec3, radius: f64| -> Option<DVec3> {
+                let p0 = b.pos - pos;
+                let d = (b.vel - vel) * DT;
                 let u = if d.length_squared() > 0.0 { (-p0.dot(d) / d.length_squared()).clamp(0.0, 1.0) } else { 0.0 };
                 let closest = p0 + d * u;
-                if closest.length() <= radii[ti] {
-                    hit = Some(t.pos + closest);
+                (closest.length() <= radius).then_some(pos + closest)
+            };
+            // A missile in the bolt's path is killed by it (point defence, armour-and-missiles 4).
+            for k in 0..self.missiles.len() {
+                let m = self.missiles[k];
+                let mi = if m.owner == TERN_ID { 0 } else { 1 };
+                let radius =
+                    self.data.combat_of(mi).tubes.as_ref().map_or(1.0, |t| self.data.missile(&t.missile).hit_radius_m);
+                if m.owner != b.owner && step(m.pos, m.vel, radius).is_some() {
+                    self.events.push(DrillEvent::Detonated { missile: m.id, pos: m.pos, damage_mj: 0.0 });
+                    self.missiles.swap_remove(k);
+                    self.bolts.swap_remove(i);
+                    continue 'bolts;
                 }
             }
+            // The Tern's bolts strike fighters at full damage (enemy-fighters 2).
+            if b.owner == TERN_ID {
+                let radius = self.data.fighter.hit_radius_m;
+                if let Some(k) = self.fighters.iter().position(|f| f.out() && step(f.pos, f.vel, radius).is_some()) {
+                    let fd = self.data.fighter.clone();
+                    let f = &mut self.fighters[k];
+                    let id = f.id;
+                    let down = fighters::hit(f, &fd, b.damage_mj);
+                    self.stats.tern_hits += 1;
+                    self.events.push(DrillEvent::Hit { bolt: b.id, target: id, face: 0, damage_mj: b.damage_mj });
+                    if down {
+                        self.stats.fighters_down += 1;
+                        self.events.push(DrillEvent::Destroyed { ship: id });
+                    }
+                    self.bolts.swap_remove(i);
+                    continue;
+                }
+            }
+            let ti = if b.owner == TERN_ID { 1 } else { 0 };
+            let t = &self.ships[ti];
+            let hit = if t.alive && t.active { step(t.pos, t.vel, radii[ti]) } else { None };
             if let Some(point) = hit {
-                let band = if b.owner == TERN_ID { &self.data.tern_combat.gun } else { &self.data.enemy.combat.gun };
-                let band = Some(self.data.gun(band).band_index());
-                let face = self.damage(ti, point, b.damage_mj, band);
+                let gun = if b.owner == TERN_ID { &self.data.tern_combat.gun } else { &self.data.enemy.combat.gun };
+                let gun = self.data.gun(gun);
+                let (band, factor) = (Some(gun.band_index()), gun.capital_factor);
+                let dir = b.vel.normalize_or(DVec3::Z);
+                let face = self.hit_ship(ti, point, dir, b.damage_mj * factor, WeaponKind::Cannon, band, 1.0);
                 if ti == 1 {
                     self.stats.tern_hits += 1;
                 } else {
@@ -1693,7 +2749,7 @@ impl Drill {
                     bolt: b.id,
                     target: self.ships[ti].id,
                     face,
-                    damage_mj: b.damage_mj,
+                    damage_mj: b.damage_mj * factor,
                 });
                 self.bolts.swap_remove(i);
                 continue;
@@ -1710,11 +2766,20 @@ impl Drill {
     }
 
     fn missiles_step(&mut self) {
-        let Some(tubes) = self.data.tern_combat.tubes.clone() else { return };
-        let md = self.data.missile(&tubes.missile).clone();
         let mut i = 0;
         while i < self.missiles.len() {
-            let target = &self.ships[1];
+            let m0 = self.missiles[i];
+            let si = if m0.owner == TERN_ID { 0 } else { 1 };
+            let ti = 1 - si;
+            let Some(tubes) = self.data.combat_of(si).tubes.clone() else {
+                self.missiles.swap_remove(i);
+                continue;
+            };
+            let md = self.data.missile(&tubes.missile).clone();
+            let target = &self.ships[ti];
+            let (t_vel, t_up) = (target.vel, target.alive && target.active);
+            // It homes on its aim point on the target, not the target's middle.
+            let t_pos = target.pos + target.rot * self.missiles[i].aim_m;
             let m = &mut self.missiles[i];
             m.age_s += DT;
             let motor = if m.age_s < md.boost_s {
@@ -1724,16 +2789,26 @@ impl Drill {
             } else {
                 0.0
             };
-            let along = m.vel.normalize_or(DVec3::Z);
-            let mut acc = along * motor;
-            let los = target.pos - m.pos;
-            let seeing = target.alive
-                && target.active
-                && along.dot(los.normalize_or_zero()).clamp(-1.0, 1.0).acos().to_degrees() <= md.seeker_half_angle_deg;
+            let los = t_pos - m.pos;
+            let seeing = !m.fooled
+                && t_up
+                && m.heading.dot(los.normalize_or_zero()).clamp(-1.0, 1.0).acos().to_degrees()
+                    <= md.seeker_half_angle_deg;
+            if seeing {
+                // The body turns toward the target at its turn rate.
+                let to = los.normalize_or(m.heading);
+                let angle = m.heading.dot(to).clamp(-1.0, 1.0).acos();
+                if angle > 1e-9 {
+                    let step = (md.turn_deg_s.to_radians() * DT).min(angle);
+                    let axis = m.heading.cross(to).normalize_or(DVec3::Y);
+                    m.heading = (DQuat::from_axis_angle(axis, step) * m.heading).normalize();
+                }
+            }
+            let mut acc = m.heading * motor;
             if seeing {
                 // Proportional navigation: a = N Vc (Omega x los), limited to the motor's (or the sustain's) push.
                 let r2 = los.length_squared().max(1.0);
-                let v_rel = target.vel - m.vel;
+                let v_rel = t_vel - m.vel;
                 let omega = los.cross(v_rel) / r2;
                 let closing = -los.dot(v_rel) / r2.sqrt();
                 let lat = (omega.cross(los.normalize_or_zero())) * (md.nav_gain * closing);
@@ -1741,7 +2816,7 @@ impl Drill {
             }
             m.vel += acc * DT;
             m.pos += m.vel * DT;
-            let rel_now = m.pos - target.pos;
+            let rel_now = m.pos - t_pos;
             let seg = rel_now - m.rel_prev;
             let u = if seg.length_squared() > 0.0 {
                 (-m.rel_prev.dot(seg) / seg.length_squared()).clamp(0.0, 1.0)
@@ -1750,16 +2825,21 @@ impl Drill {
             };
             let closest = (m.rel_prev + seg * u).length();
             m.rel_prev = rel_now;
-            let (id, pos, age) = (m.id, m.pos, m.age_s);
-            let burst = target.alive && target.active && closest <= md.blast_radius_m && (u < 1.0 || closest < 2.0);
+            let (id, pos, age, fooled, vel) = (m.id, m.pos, m.age_s, m.fooled, m.vel);
+            let burst = !fooled && t_up && closest <= md.blast_radius_m && (u < 1.0 || closest < 2.0);
             if burst {
                 let dmg = md.warhead_mj * (1.0 - closest / md.blast_radius_m);
-                let point = target.pos + (pos - target.pos).normalize_or_zero() * closest;
-                self.damage(1, point, dmg, None);
-                self.stats.missile_hits += 1;
+                let point = t_pos + (pos - t_pos).normalize_or_zero() * closest;
+                let dir = (t_pos - point).normalize_or(vel.normalize_or(DVec3::Z));
+                self.hit_ship(ti, point, dir, dmg, WeaponKind::Missile, None, md.shield_share);
+                if si == 0 {
+                    self.stats.missile_hits += 1;
+                } else {
+                    self.stats.enemy_missile_hits += 1;
+                }
                 self.events.push(DrillEvent::Detonated { missile: id, pos, damage_mj: dmg });
                 self.missiles.swap_remove(i);
-            } else if age >= md.life_s || !target.alive {
+            } else if age >= md.life_s || !t_up {
                 self.events.push(DrillEvent::Detonated { missile: id, pos, damage_mj: 0.0 });
                 self.missiles.swap_remove(i);
             } else {
@@ -1816,6 +2896,24 @@ pub fn validate(cmd: &Command) -> Result<(), Refusal> {
                 Err(Refusal::BadValue)
             }
         }
+        Command::GunnerAim { yaw_deg, pitch_deg } => {
+            if yaw_deg.is_finite() && pitch_deg.is_finite() && yaw_deg.abs() <= 360.0 && pitch_deg.abs() <= 90.0 {
+                Ok(())
+            } else {
+                Err(Refusal::BadValue)
+            }
+        }
+        Command::Power(PowerCmd::Group(_, sp) | PowerCmd::Preview(Some((_, sp))))
+            if !sp.is_finite() || !(0.0..=2.0).contains(&sp) =>
+        {
+            Err(Refusal::BadValue)
+        }
+        Command::Power(PowerCmd::Lever(k, v))
+            if usize::from(k) >= LEVERS.len() || !v.is_finite() || !(0.0..=2.0).contains(&v) =>
+        {
+            Err(Refusal::BadValue)
+        }
+        Command::LaserFire(b) if b >= 4 => Err(Refusal::BadValue),
         Command::Freq(b) if b >= 4 => Err(Refusal::BadValue),
         Command::Viewscreen(Some(v)) if usize::from(v) >= FEEDS.len() => Err(Refusal::BadValue),
         Command::Order(Station::Captain, _) | Command::Ack(Station::Captain) => Err(Refusal::NoSuch),
@@ -1856,6 +2954,20 @@ mod tests {
         let d = DrillData::shipped();
         assert_eq!(d.mission.enemy, "hound");
         assert_eq!(d.tern_combat.turrets.len(), 4);
+    }
+
+    #[test]
+    fn each_objective_kind_is_measured_by_its_own_fact() {
+        use data::{ObjectiveFacts, ObjectiveState::*};
+        let obj = &DrillData::shipped().mission.objectives;
+        let f = ObjectiveFacts { enemy_hull: 0.4, tern_hull: 0.9, fighters_down: 1 };
+        let m: Vec<_> = obj.iter().map(|o| o.measure(&f)).collect();
+        assert_eq!(m[0], (Progress, 0.6), "the Hound at 40 % is 60 % of the way to destroyed");
+        assert_eq!(m[1], (Progress, 0.9), "survive reads the Tern's hull");
+        assert_eq!(m[2], (Progress, 0.5), "one fighter of two");
+        let end = ObjectiveFacts { enemy_hull: 0.0, tern_hull: 0.0, fighters_down: 2 };
+        let m: Vec<_> = obj.iter().map(|o| o.measure(&end).0).collect();
+        assert_eq!(m, vec![Done, Failed, Done]);
     }
 
     #[test]
@@ -1975,15 +3087,34 @@ mod tests {
         let mut d = drill();
         let pos = d.ships[0].pos;
         let bow_point = pos + DVec3::Z * 10.0;
-        let face = d.damage(0, bow_point, 50.0, None);
+        let face = d.hit_ship(0, bow_point, -DVec3::Z, 50.0, WeaponKind::Cannon, None, 1.0);
         assert_eq!(face, 0, "a hit ahead strikes the bow face");
         assert_eq!(d.ships[0].faces[0], 0.0);
-        assert!((d.ships[0].hull - (d.data.tern_combat.hull_mj - 10.0)).abs() < 1e-9, "40 MJ absorbed, 10 to the hull");
+        // 40 MJ held by the shield; of the 10 that pass, the bow's armour holds 4 and the hull takes 6.
+        assert!((d.ships[0].hull - (d.data.tern_combat.hull_mj - 6.0)).abs() < 1e-9, "6 MJ reach the hull");
+        let worn = d.damage[0].armour.iter().copied().fold(f64::INFINITY, f64::min);
+        assert!((worn - 90.0).abs() < 1e-9, "a bolt's 4 MJ take 10 points of the bow section's armour: {worn}");
     }
 
     /// A drill played to its end: each seat held by a bot client (the `bot` profile through the same commands a
     /// console sends) or, when false, left to the server's automation.
+    /// The worst of a fight for the Tern: the most fires at once, and the most systems below nominal at once.
+    #[derive(Default)]
+    struct Worst {
+        fires: usize,
+        hurt: usize,
+        /// Integrity points the Tern's systems lost over the fight, and won back.
+        lost: f64,
+        mended: f64,
+        /// Each system's lowest integrity.
+        lowest: Vec<f64>,
+    }
+
     fn crew_drill(helm_bot: bool, tactical_bot: bool, seed: u64) -> Drill {
+        crew_drill_worst(helm_bot, tactical_bot, seed).0
+    }
+
+    fn crew_drill_worst(helm_bot: bool, tactical_bot: bool, seed: u64) -> (Drill, Worst) {
         let mut d = Drill::new(DrillData::shipped(), seed);
         // A player in Muster starts the drill; a seat a bot does not play is given back to automation at Engage.
         let h = d.join("Helm", true).unwrap();
@@ -2001,7 +3132,24 @@ mod tests {
         }
         let bot = d.data.profile("bot").clone();
         let mut mem = automation::Memory::default();
+        let mut worst = Worst::default();
+        let nominal = d.data.damage.systems.nominal_from_pct;
+        let mut before = d.damage[0].integrity.clone();
+        worst.lowest = before.clone();
         while d.phase == Phase::Engage {
+            for (b, v) in before.iter_mut().zip(&d.damage[0].integrity) {
+                if *v < *b {
+                    worst.lost += *b - *v;
+                } else {
+                    worst.mended += *v - *b;
+                }
+                *b = *v;
+            }
+            worst.fires = worst.fires.max(d.damage[0].fires.len());
+            for (lo, v) in worst.lowest.iter_mut().zip(&d.damage[0].integrity) {
+                *lo = lo.min(*v);
+            }
+            worst.hurt = worst.hurt.max(d.damage[0].integrity.iter().filter(|v| **v < nominal).count());
             let pic = d.picture();
             let now = d.phase_s;
             if helm_bot {
@@ -2016,28 +3164,376 @@ mod tests {
             }
             d.step();
         }
-        d
+        (d, worst)
     }
 
     #[test]
-    fn two_bots_at_helm_and_tactical_win_the_drill() {
-        for seed in [1, 2, 3] {
-            let d = crew_drill(true, true, seed);
-            assert_eq!(d.outcome, Outcome::Victory, "seed {seed}: {:?}", d.stats);
+    fn two_bots_at_helm_and_tactical_take_the_hound_to_the_wire_with_engineering_on_automation() {
+        // With the power grid (power-grid 12a) the combat preset wants more than the reactor gives (question P1:
+        // engineering manages the crunch); on automation the drive is shed when the guns and shields draw together, so
+        // a crew with no engineer wins some and runs others to the limit. A player at Engineering is what turns it.
+        let (mut damaged, mut broken, mut won) = (0, 0, 0);
+        let hound_hull = DrillData::shipped().enemy.combat.hull_mj;
+        for seed in 1..=6 {
+            let (d, worst) = crew_drill_worst(true, true, seed);
+            won += usize::from(d.outcome == Outcome::Victory);
+            // The owner, 2026-10-10: "this battle show go on much longer"; armour-and-missiles 6: 5-10 minutes.
             assert!(
-                d.stats.engage_s < 300.0,
-                "seed {seed}: a crew wins inside five minutes, took {:.0} s",
+                (240.0..=d.data.mission.engage_limit_s + 0.5).contains(&d.stats.engage_s),
+                "seed {seed}: a fight runs 4-10 minutes, took {:.0} s",
                 d.stats.engage_s
+            );
+            assert!(
+                d.ships[1].hull < 0.6 * hound_hull,
+                "seed {seed}: the crew takes the Hound well down: {:?}",
+                d.stats
+            );
+            damaged += usize::from(d.ships[0].hull < d.data.tern_combat.hull_mj);
+            broken += usize::from(worst.hurt > 0);
+        }
+        // With the conduit boxes (power-routing 4) a hit in the forward switchboard room cuts the bow off: on
+        // automation the bots win fewer; the drill stays winnable without an engineer.
+        assert!(won >= 1, "the bots can still win with Engineering on automation: {won} of 6");
+        // The owner, 2026-10-11: "the enemy should be damaging your ship", "people fixing the ship along the way".
+        assert_eq!(damaged, 6, "the Hound damages the Tern's hull in every fight");
+        assert!(broken >= 5, "and puts a system below nominal in nearly every fight: {broken} of 6");
+    }
+
+    /// The fight's numbers over seeds, for tuning (armour-and-missiles 6): `cargo test -p sc-core tuning -- --ignored
+    /// --nocapture`.
+    #[test]
+    #[ignore]
+    fn tuning_report() {
+        for (label, helm, tac) in [("bots", true, true), ("automation", false, false)] {
+            for seed in 1..=8 {
+                let (d, worst) = crew_drill_worst(helm, tac, seed);
+                let s = d.stats;
+                println!(
+                    "{label} seed {seed}: {:?} in {:.0} s; Tern hull {:.0}, Hound hull {:.0}; lasers {}/{} vs {}/{}; \
+                     missiles {}/{} vs {}/{}; decoys {} fooled {}; armour stripped T {} H {}; fighters down {}; Tern systems below 25 % {}, \
+                     below 75 % {}; at worst {} fires, {} systems below nominal; points lost {:.0}, mended {:.0}",
+                    d.outcome,
+                    s.engage_s,
+                    d.ships[0].hull,
+                    d.ships[1].hull,
+                    s.tern_laser_hits,
+                    s.tern_laser_shots,
+                    s.enemy_laser_hits,
+                    s.enemy_laser_shots,
+                    s.missile_hits,
+                    s.missiles_fired,
+                    s.enemy_missile_hits,
+                    s.enemy_missiles_fired,
+                    s.decoys_thrown,
+                    s.missiles_fooled,
+                    d.damage[0].armour.iter().filter(|a| **a < 1.0).count(),
+                    d.damage[1].armour.iter().filter(|a| **a < 1.0).count(),
+                    s.fighters_down,
+                    d.damage[0].integrity.iter().filter(|v| **v < 25.0).count(),
+                    d.damage[0].integrity.iter().filter(|v| **v < 75.0).count(),
+                    worst.fires,
+                    worst.hurt,
+                    worst.lost,
+                    worst.mended,
+                );
+                let hurt: Vec<String> = d
+                    .data
+                    .tern_layout
+                    .loads
+                    .iter()
+                    .zip(&worst.lowest)
+                    .filter(|(_, v)| **v < 95.0)
+                    .map(|(l, v)| format!("{} {v:.0}", l.id))
+                    .collect();
+                println!("    hurt: {hurt:?}");
+            }
+        }
+    }
+
+    /// The Tern's grid through a fight with bots at Helm and Tactical, every 30 s: `cargo test -p sc-core --release
+    /// power_in_the_fight -- --ignored --nocapture`.
+    #[test]
+    #[ignore]
+    fn power_in_the_fight() {
+        let seeds: Vec<u64> = std::env::var("SEEDS")
+            .ok()
+            .map_or(vec![1, 2, 3, 4], |v| v.split(',').filter_map(|x| x.parse().ok()).collect());
+        for seed in seeds {
+            let mut d = Drill::new(DrillData::shipped(), seed);
+            let h = d.join("Helm", true).unwrap();
+            let t = d.join("Tactical", true).unwrap();
+            d.claim(h, Station::Helm).unwrap();
+            d.claim(t, Station::Tactical).unwrap();
+            d.set_ready(h, true).unwrap();
+            d.set_ready(t, true).unwrap();
+            run_to_engage(&mut d);
+            let bot = d.data.profile("bot").clone();
+            let mut mem = automation::Memory::default();
+            let mut next = 0.0;
+            let mut was = d.power.reactor.state;
+            while d.phase == Phase::Engage {
+                if d.power.reactor.state != was {
+                    was = d.power.reactor.state;
+                    let aux: Vec<String> = ["reactor_aux_p", "reactor_aux_s"]
+                        .iter()
+                        .filter_map(|id| d.data.power.load(id))
+                        .map(|k| {
+                            format!("{:.0}% {:.2}/{:.2}", d.damage[0].integrity[k], d.power.alloc[k], d.power.demand[k])
+                        })
+                        .collect();
+                    println!(
+                        "seed {seed} t {:>5.1} reactor {:?} cause {:?} aux {aux:?} soc {:.0} loop {:.0} blanket {:.0}",
+                        d.phase_s,
+                        was,
+                        d.power.reactor.scram_cause,
+                        d.power.battery.soc_mj,
+                        d.power.lp.t_k,
+                        d.power.reactor.t_k
+                    );
+                }
+                let pic = d.picture();
+                let now = d.phase_s;
+                for c in automation::helm(&pic, &bot.helm, &d.data.tern_flight, &mut mem.helm, now) {
+                    let _ = d.command(h, c);
+                }
+                for c in automation::tactical(&pic, &bot.tactical, &d.data, &mut mem.tactical, now) {
+                    let _ = d.command(t, c);
+                }
+                d.step();
+                if d.phase_s >= next {
+                    next += 30.0;
+                    let p = &d.power;
+                    let (want, got) = p.totals();
+                    let dark: Vec<&str> = d
+                        .data
+                        .power
+                        .loads
+                        .iter()
+                        .enumerate()
+                        .filter(|(i, l)| l.file.is_some() && p.demand[*i] > 1e-6 && p.alloc[*i] < 1e-6)
+                        .map(|(_, l)| l.id.as_str())
+                        .collect();
+                    let cut: Vec<&str> = d
+                        .data
+                        .power
+                        .file
+                        .conduits
+                        .iter()
+                        .zip(&d.damage[0].conduits)
+                        .filter(|(_, c)| c.severed)
+                        .map(|(k, _)| k.id.as_str())
+                        .collect();
+                    println!(
+                        "    dark {dark:?} cut {cut:?} live {} trips {}",
+                        {
+                            let s0 = &d.damage[0];
+                            d.power
+                                .reached(&d.data.power, &s0.node_health, &s0.conduits)
+                                .iter()
+                                .filter(|r| !**r)
+                                .count()
+                        },
+                        p.trips
+                    );
+                    let short: Vec<String> = d
+                        .data
+                        .power
+                        .file
+                        .groups
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(g, gr)| {
+                            let (w, x) = d.data.power.group_loads[g]
+                                .iter()
+                                .fold((0.0, 0.0), |(w, x), &k| (w + p.want[k], x + p.alloc[k]));
+                            (w > 0.05).then(|| format!("{} {x:.1}/{w:.1}", gr.id))
+                        })
+                        .collect();
+                    println!(
+                        "seed {seed} t {:>4.0} {:?} {:?} want {want:5.1} got {got:5.1} rx {:.2} bat {:4.1} soc {:4.0} loop {:.0}/{:.0} drive {:.2} shields {:.2} | {}",
+                        d.phase_s,
+                        p.preset,
+                        p.reactor.state,
+                        p.reactor.throttle,
+                        p.bat_out,
+                        p.battery.soc_mj,
+                        p.lp.t_k,
+                        p.lp.hot_k,
+                        d.capability(0, "impulse_drive"),
+                        d.capability(0, "shield_generator"),
+                        short.join(", ")
+                    );
+                }
+            }
+            println!("seed {seed}: {:?} in {:.0} s", d.outcome, d.stats.engage_s);
+        }
+    }
+
+    /// Where the Hound's missiles end, over the tuning seeds with bots at Helm and Tactical: hit, fooled by a decoy,
+    /// shot down near the Tern, or lost far from it.
+    #[test]
+    #[ignore]
+    fn missile_fates() {
+        for seed in 1..=8u64 {
+            let mut d = Drill::new(DrillData::shipped(), seed);
+            let h = d.join("Helm", true).unwrap();
+            let t = d.join("Tactical", true).unwrap();
+            d.claim(h, Station::Helm).unwrap();
+            d.claim(t, Station::Tactical).unwrap();
+            d.set_ready(h, true).unwrap();
+            d.set_ready(t, true).unwrap();
+            run_to_engage(&mut d);
+            let bot = d.data.profile("bot").clone();
+            let mut mem = automation::Memory::default();
+            let mut ours = std::collections::BTreeMap::new();
+            let (mut hit, mut fooled, mut near, mut far) = (0, 0, 0, 0);
+            while d.phase == Phase::Engage {
+                let pic = d.picture();
+                let now = d.phase_s;
+                for c in automation::helm(&pic, &bot.helm, &d.data.tern_flight, &mut mem.helm, now) {
+                    let _ = d.command(h, c);
+                }
+                for c in automation::tactical(&pic, &bot.tactical, &d.data, &mut mem.tactical, now) {
+                    let _ = d.command(t, c);
+                }
+                d.step();
+                for m in &d.missiles {
+                    if m.owner == ENEMY_ID {
+                        let r = (m.pos - d.ships[0].pos).length();
+                        let e = ours.entry(m.id).or_insert((f64::MAX, false));
+                        e.0 = e.0.min(r);
+                    }
+                }
+                for e in d.drain_events() {
+                    match e {
+                        DrillEvent::Fooled { missile, .. } if ours.contains_key(&missile) => {
+                            ours.get_mut(&missile).unwrap().1 = true;
+                            fooled += 1;
+                        }
+                        DrillEvent::Detonated { missile, damage_mj, .. } if ours.contains_key(&missile) => {
+                            let (closest, was_fooled) = ours[&missile];
+                            if damage_mj > 0.0 {
+                                hit += 1;
+                            } else if !was_fooled && closest < 1500.0 {
+                                near += 1;
+                                println!(
+                                    "  seed {seed} missile {missile} ended {closest:.0} m from the Tern at its closest"
+                                );
+                            } else if !was_fooled {
+                                far += 1;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            println!(
+                "seed {seed}: {} launched; hit {hit}, fooled {fooled}, shot down near {near}, lost far {far}",
+                ours.len()
             );
         }
     }
 
     #[test]
-    fn left_to_automation_the_drill_is_lost() {
-        // The drill is a co-op test: automation alone (bridge-stations' lower competence) must not win it.
+    #[ignore]
+    fn debug_enemy_missiles() {
+        let mut d = Drill::new(DrillData::shipped(), 1);
+        let h = d.join("Helm", false).unwrap();
+        d.claim(h, Station::Helm).unwrap();
+        d.set_ready(h, true).unwrap();
+        run_to_engage(&mut d);
+        let mut shot_down = 0;
+        let mut expired = 0;
+        let mut closest = std::collections::HashMap::new();
+        let mut lowest = vec![100.0f64; d.data.tern_layout.loads.len()];
+        let mut fires = 0;
+        for _ in 0..(TICK_HZ as usize * 300) {
+            d.step();
+            for (lo, v) in lowest.iter_mut().zip(&d.damage[0].integrity) {
+                *lo = lo.min(*v);
+            }
+            fires = fires.max(d.damage[0].fires.len());
+            for m in &d.missiles {
+                if m.owner == ENEMY_ID {
+                    let r = (m.pos - d.ships[0].pos).length();
+                    let e = closest.entry(m.id).or_insert(f64::MAX);
+                    *e = e.min(r);
+                }
+            }
+            for e in d.drain_events() {
+                if let DrillEvent::Detonated { missile, damage_mj, .. } = e {
+                    if closest.contains_key(&missile) && damage_mj == 0.0 {
+                        if closest[&missile] < 1500.0 {
+                            shot_down += 1
+                        } else {
+                            expired += 1
+                        }
+                    }
+                }
+            }
+        }
+        let low: Vec<String> = d
+            .data
+            .tern_layout
+            .loads
+            .iter()
+            .zip(&lowest)
+            .filter(|(_, v)| **v < 75.0)
+            .map(|(l, v)| format!("{} {:.0}", l.id, v))
+            .collect();
+        println!("Tern systems that fell below 75 %: {low:?}; fires seen {fires}; hull {:.0}", d.ships[0].hull);
+        let mut c: Vec<_> = closest.values().map(|v| *v as i64).collect();
+        c.sort();
+        println!("enemy missiles {} closest approaches {:?}; ended near {shot_down}, far {expired}", c.len(), c);
+    }
+
+    #[test]
+    fn the_captains_repair_order_raises_the_worst_damaged_system() {
+        let (mut d, _, _) = engaged();
+        let c = d.join("Captain", false).unwrap();
+        d.claim(c, Station::Captain).unwrap();
+        let l = d.data.tern_layout.clone();
+        let k = l.loads.iter().position(|x| x.id == "impulse_drive").unwrap();
+        d.damage[0].integrity[k] = 20.0;
+        let repair = d.data.order_verbs(Station::Engineering).iter().position(|v| v[0] == "REPAIR").unwrap();
+        d.command(c, Command::Order(Station::Engineering, repair as u8)).unwrap();
+        d.step();
+        assert_eq!(d.repair_priority.as_deref(), Some("impulse_drive"), "the teams go to the drive first");
+    }
+
+    #[test]
+    #[ignore]
+    fn debug_hit_at_the_drive() {
+        let mut d = drill();
+        let l = d.data.tern_layout.clone();
+        let k = l.loads.iter().position(|x| x.id == "impulse_drive").unwrap();
+        let c = l.loads[k].centre;
+        println!("drive centre {c:?}");
+        // A missile's blast below the drive, aimed at the ship's middle.
+        let below = d.ships[0].pos + d.ships[0].rot * (c + DVec3::new(0.0, -12.0, 0.0));
+        let dir = (d.ships[0].pos - below).normalize();
+        d.ships[0].faces = [0.0; 6];
+        let before = d.damage[0].integrity.clone();
+        d.hit_ship(0, below, dir, 50.0, WeaponKind::Missile, None, 0.5);
+        let hit: Vec<String> = l
+            .loads
+            .iter()
+            .zip(before.iter().zip(&d.damage[0].integrity))
+            .filter(|(_, (a, b))| (*a - *b).abs() > 1e-9)
+            .map(|(x, (a, b))| format!("{} {a:.0}->{b:.0}", x.id))
+            .collect();
+        let hull = d.ships[0].hull;
+        println!("hull {hull:.1}; systems hit {hit:?}; events {:?}", d.drain_events());
+    }
+
+    #[test]
+    fn left_to_automation_the_drill_is_not_won() {
+        // The drill is a co-op test: automation alone (bridge-stations' lower competence) must not win it. It never
+        // fires a missile, so the Hound's armour is never stripped and its lasers never reach its hull.
         for seed in [1, 2, 3] {
             let d = crew_drill(false, false, seed);
-            assert_eq!(d.outcome, Outcome::Defeat, "seed {seed}: {:?}", d.stats);
+            assert_ne!(d.outcome, Outcome::Victory, "seed {seed}: {:?}", d.stats);
+            assert!(d.ships[0].hull < d.data.tern_combat.hull_mj, "seed {seed}: the Hound damages the Tern");
         }
     }
 
@@ -2074,7 +3570,11 @@ mod tests {
     fn a_debrief_leads_to_a_new_muster_with_the_crew_unready() {
         let mut d = crew_drill(true, true, 4);
         assert_eq!(d.phase, Phase::Debrief);
-        for _ in 0..(TICK_HZ as usize * 30) {
+        // The debrief waits for the teams to put the ship right, at most its longest.
+        for _ in 0..(TICK_HZ * (d.data.mission.debrief_max_s + 1.0)) as usize {
+            if d.phase != Phase::Debrief {
+                break;
+            }
             d.step();
         }
         assert_eq!(d.phase, Phase::Muster);
@@ -2160,6 +3660,186 @@ mod tests {
         for _ in 0..(s * TICK_HZ) as usize {
             d.step();
         }
+    }
+
+    #[test]
+    fn a_turret_out_of_rounds_holds_fire_for_its_reload_then_has_them_all_again() {
+        // The owner, 2026-10-11: "limited to 100 shots with a 30 second cooldown".
+        let (mut d, _, t) = engaged();
+        d.command(t, Command::Lock(Some(ENEMY_ID))).unwrap();
+        let gun = d.data.gun(&d.data.tern_combat.gun).clone();
+        assert_eq!((gun.rounds, gun.reload_s), (100, 30.0));
+        assert!(d.ships[0].turrets.iter().all(|t| t.rounds == 100), "a turret starts with every round");
+        // The dorsal turret on its last round, the Hound close and bearing: it fires it and reloads.
+        let k = 0;
+        d.ships[0].turrets[k].rounds = 1;
+        d.ships[0].turrets[k].mode = TurretMode::Target;
+        d.ships[1].pos = d.ships[0].pos + d.ships[0].rot * DVec3::new(0.0, 600.0, 400.0);
+        d.ships[1].vel = d.ships[0].vel;
+        let mut fired = 0;
+        for _ in 0..(TICK_HZ as usize * 20) {
+            d.ships[1].pos = d.ships[0].pos + d.ships[0].rot * DVec3::new(0.0, 600.0, 400.0);
+            d.ships[1].vel = d.ships[0].vel;
+            d.step();
+            fired += d.drain_events().iter().filter(|e| matches!(e, DrillEvent::Fired { owner: TERN_ID, .. })).count();
+            if d.ships[0].turrets[k].rounds == 0 {
+                break;
+            }
+        }
+        assert_eq!(d.ships[0].turrets[k].rounds, 0, "the last round went");
+        assert!((d.ships[0].turrets[k].reload_s - 30.0).abs() < 0.1, "and it reloads for 30 s");
+        assert!(fired >= 1);
+        let before = d.ships[0].turrets[k].since_fire_s;
+        steps(&mut d, 29.0);
+        assert!(d.ships[0].turrets[k].since_fire_s >= before + 28.9, "no bolt while it reloads");
+        steps(&mut d, 1.5);
+        assert_eq!(d.ships[0].turrets[k].rounds, 100, "reloaded: a hundred rounds again");
+    }
+
+    #[test]
+    fn the_next_drill_waits_for_the_teams_to_put_the_ship_right() {
+        let (mut d, _, _) = engaged();
+        let k = d.data.tern_layout.loads.iter().position(|x| x.id == "impulse_drive").unwrap();
+        d.damage[0].integrity[k] = 30.0;
+        d.ships[1].hull = 0.0;
+        d.ships[1].alive = false;
+        while d.phase == Phase::Engage {
+            d.step();
+        }
+        assert_eq!(d.phase, Phase::Debrief);
+        assert!(!d.put_right(), "the drive is still broken when the fight ends");
+        let debrief_s = d.data.mission.debrief_s;
+        steps(&mut d, debrief_s + 1.0);
+        assert_eq!(d.phase, Phase::Debrief, "the debrief waits while the teams work");
+        let mut t = debrief_s + 1.0;
+        while d.phase == Phase::Debrief && t < d.data.mission.debrief_max_s + 1.0 {
+            d.step();
+            t += DT;
+        }
+        assert_eq!(d.phase, Phase::Muster, "then the next drill");
+        assert!(t < d.data.mission.debrief_max_s, "the teams fixed the drive before the longest debrief: {t:.0} s");
+    }
+
+    #[test]
+    fn engineering_automation_sets_the_combat_preset_on_red_alert_and_cruise_after() {
+        // A player holds the captain's chair, so the condition is the test's alone.
+        let (mut d, _) = engaged_at(&[Station::Helm, Station::Captain]);
+        let reaction = d.data.profile("automation").engineering.reaction_s;
+        d.bridge.red_alert = true;
+        steps(&mut d, reaction + 0.5);
+        assert_eq!(d.power.preset.as_deref(), Some("combat"), "red alert: the combat preset after {reaction} s");
+        let shields = d.data.power.file.groups.iter().position(|g| g.id == "shields").unwrap();
+        let k = d.data.power.group_loads[shields][0];
+        assert_eq!(d.power.setpoint[k], d.data.power.preset_setpoint("combat", "shields").unwrap());
+        d.bridge.red_alert = false;
+        steps(&mut d, reaction + 0.5);
+        assert_eq!(d.power.preset.as_deref(), Some("cruise"), "and cruise when it ends");
+    }
+
+    #[test]
+    fn a_player_at_engineering_runs_the_grid_and_the_automation_lets_it_be() {
+        let (mut d, s) = engaged_at(&[Station::Engineering]);
+        let e = s[0];
+        let drive = d.data.power.file.groups.iter().position(|g| g.id == "drive").unwrap() as u8;
+        d.command(e, Command::Power(PowerCmd::Preview(Some((drive, 0.5))))).unwrap();
+        steps(&mut d, 0.5);
+        let (g, sp, want, got) = d.power_preview.expect("the server answers a dragged fader");
+        assert_eq!((g, sp), (drive, 0.5));
+        assert!(got <= want + 1e-9 && want > 0.0, "{got} of {want} MW");
+        d.command(e, Command::Power(PowerCmd::Group(drive, 0.5))).unwrap();
+        d.bridge.red_alert = true;
+        steps(&mut d, 5.0);
+        let k = d.data.power.group_loads[usize::from(drive)][0];
+        assert_eq!(d.power.setpoint[k], 0.5, "the player's fader holds: no automation on a manned station");
+        assert_eq!(d.power.preset, None, "a hand on a fader breaks the preset");
+        assert!(d.power_preview.is_none(), "letting go ends the preview");
+        assert_eq!(
+            d.command(e, Command::Power(PowerCmd::Group(drive, f64::NAN))),
+            Err(Refusal::BadValue),
+            "a setpoint that is not a number stops at the edge"
+        );
+    }
+
+    #[test]
+    fn engineering_automation_closes_a_spare_round_a_cut_feed() {
+        // power-routing 3: the dorsal turret's room loses its feed; the automation brings power round the aft passage.
+        let (mut d, _) = engaged_at(&[Station::Helm, Station::Captain]);
+        let pd = d.data.power.clone();
+        let (cut, spare) = (
+            pd.file.conduits.iter().position(|k| k.id == "r_dorsal_fwd").unwrap(),
+            pd.file.conduits.iter().position(|k| k.id == "r_dorsal_aft").unwrap(),
+        );
+        d.damage[0].conduits[cut] = damage::ConduitState { health: 0.0, severed: true, open: false };
+        steps(&mut d, 1.0);
+        assert!(!d.power.conduit_breaker[spare], "not before its reaction time");
+        let reaction = d.data.profile("automation").engineering.reaction_s;
+        steps(&mut d, reaction + 0.5);
+        assert!(d.power.conduit_breaker[spare], "the spare through the aft passage is closed");
+        assert!(!d.damage[0].conduits[spare].open, "and the damage state knows it carries power");
+        steps(&mut d, 0.5);
+        let turret = pd.load("turret_dorsal").unwrap();
+        assert!(d.power.supply(turret) > 0.99, "the dorsal turret has its power back");
+    }
+
+    #[test]
+    fn a_ship_with_no_power_cannot_push_or_raise_her_shields() {
+        let (mut d, _) = engaged_at(&[Station::Helm]);
+        steps(&mut d, 1.0);
+        assert!(d.capability(0, "impulse_drive") > 0.99, "a powered drive works");
+        // The reactor scrammed and the battery flat: nothing feeds the grid.
+        d.power.scram(&d.data.power, power::ScramCause::Manual);
+        d.power.battery.soc_mj = 0.0;
+        d.power.lp.t_k = d.data.power.file.reactor.reset.loop_below_k + 20.0;
+        steps(&mut d, 1.0);
+        assert!(d.capability(0, "impulse_drive") < 0.01, "a starved drive: {}", d.capability(0, "impulse_drive"));
+        assert!(d.capability(0, "shield_generator") < 0.01, "and no shields");
+    }
+
+    #[test]
+    fn a_laser_bank_charges_from_empty_in_thirty_seconds() {
+        let (mut d, _, _) = engaged();
+        let w = d.data.laser(&d.data.tern_combat.lasers.as_ref().unwrap().laser).clone();
+        assert_eq!(d.ships[0].lasers[0].charge_mj, 0.0);
+        steps(&mut d, 29.0);
+        assert!(d.ships[0].lasers[0].charge_mj < w.capacitor_mj, "not full before 30 s");
+        steps(&mut d, 1.5);
+        assert!((d.ships[0].lasers[0].charge_mj - w.capacitor_mj).abs() < 1e-6, "full at 30 s");
+    }
+
+    #[test]
+    fn armour_stops_a_laser_until_it_is_stripped() {
+        let mut d = drill();
+        let (pos, hull) = (d.ships[1].pos, d.ships[1].hull);
+        let at = pos + DVec3::X * 30.0;
+        d.ships[1].faces = [0.0; 6];
+        d.hit_ship(1, at, -DVec3::X, 120.0, WeaponKind::Laser, None, 1.0);
+        assert_eq!(d.ships[1].hull, hull, "fresh armour holds the whole beam");
+        d.damage[1].armour.fill(0.0);
+        d.ships[1].faces = [0.0; 6];
+        d.hit_ship(1, at, -DVec3::X, 120.0, WeaponKind::Laser, None, 1.0);
+        assert!(d.ships[1].hull < hull, "with the armour gone the beam reaches the hull");
+    }
+
+    #[test]
+    fn a_tube_is_armed_sixty_three_seconds_after_loading() {
+        let (mut d, _, t) = engaged();
+        d.command(t, Command::Load(0)).unwrap();
+        d.step();
+        steps(&mut d, 62.0);
+        assert_ne!(d.ships[0].tubes[0].state, TubeState::Armed);
+        steps(&mut d, 1.5);
+        assert_eq!(d.ships[0].tubes[0].state, TubeState::Armed);
+        assert_eq!(d.ships[0].magazine, d.data.tern_combat.tubes.as_ref().unwrap().magazine - 1);
+    }
+
+    #[test]
+    fn a_decoy_in_a_missiles_last_seconds_fools_it_more_often() {
+        let d = DrillData::shipped();
+        let w = d.decoy("decoy_burst");
+        let late = w.chances(2.0);
+        let early = w.chances(8.0);
+        assert!(late.0 + late.1 > early.0 + early.1, "{late:?} against {early:?}");
+        assert!(late.0 + late.1 <= 1.0);
     }
 
     #[test]
@@ -2316,6 +3996,28 @@ mod tests {
         assert_eq!(shield_face(DVec3::new(0.0, -12.0, 0.0), DVec3::from_array(e.axes_m)), 5);
     }
 
+    #[test]
+    fn the_hounds_shield_holds_its_hull_and_mounts_with_a_metre_to_spare() {
+        let d = DrillData::shipped();
+        let e = d.enemy.shields.ellipsoid;
+        let (axes, c) = (DVec3::from_array(e.axes_m) - DVec3::ONE, DVec3::from_array(e.centre_m));
+        let mut pts: Vec<DVec3> = Vec::new();
+        for q in &d.hound_layout.sections {
+            let (hb, t, b, ch) = (q.half_beam_m, q.top_m, q.bottom_m, q.chamfer_m);
+            for (x, y) in [(hb, t - ch), (hb - ch, t), (hb, b + ch), (hb - ch, b)] {
+                pts.extend([DVec3::new(x, y, q.z_m), DVec3::new(-x, y, q.z_m)]);
+            }
+        }
+        let cb = &d.enemy.combat;
+        pts.extend(cb.turrets.iter().map(|t| DVec3::from_array(t.position_m)));
+        pts.extend(cb.lasers.iter().flat_map(|l| l.banks.iter().map(|b| DVec3::from_array(b.position_m))));
+        pts.extend(cb.tubes.iter().flat_map(|t| t.muzzle_m.iter().map(|m| DVec3::from_array(*m))));
+        for p in pts {
+            assert!(((p - c) / axes).length() <= 1.0, "{p} is outside the Hound's shield less a metre");
+        }
+        assert!(e.axes_m[2] > 2.0 * e.axes_m[0], "a long ship's shield is long, not the sphere it was");
+    }
+
     /// A drill in Engage with a player at each of `stations`; their slots in the same order.
     fn engaged_at(stations: &[Station]) -> (Drill, Vec<u8>) {
         let mut d = drill();
@@ -2374,7 +4076,7 @@ mod tests {
             d.bridge.band = band;
             d.bridge.retune_s = if retune { f.retune_s } else { 0.0 };
             let before = d.ships[0].faces[0];
-            d.damage(0, d.ships[0].pos + DVec3::Z * 60.0, 10.0, Some(hound_band));
+            d.hit_ship(0, d.ships[0].pos + DVec3::Z * 60.0, -DVec3::Z, 10.0, WeaponKind::Cannon, Some(hound_band), 1.0);
             before - d.ships[0].faces[0]
         };
         let other = (hound_band + 1) % 4;

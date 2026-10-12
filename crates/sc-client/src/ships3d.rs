@@ -99,6 +99,30 @@ fn ring(z: f32, w: f32, h: f32, y: f32) -> Vec<[f32; 3]> {
 
 /// The Hound corvette, about 38 m long: a hexagonal hull tapering to a beak, swept fins, a dorsal tower, twin
 /// engines. Albedo colours; ship-local axes +X port, +Y dorsal, +Z bow.
+/// The Jackal raider (enemy-fighters 1): a delta wing 8 m long, its albedo lit like the Hound's.
+pub fn jackal() -> MeshBuilder {
+    let mut m = MeshBuilder::default();
+    let (hull, dark, glow) = ([0.40, 0.38, 0.36], [0.2, 0.19, 0.2], [1.9, 0.8, 0.3]);
+    let nose = [0.0, 0.0, 4.0];
+    let (top, bot) = ([0.0, 0.8, -2.0], [0.0, -0.6, -2.0]);
+    let (lw, rw) = ([4.0, 0.0, -3.5], [-4.0, 0.0, -3.5]);
+    let tail = [0.0, 0.0, -3.0];
+    // Upper and lower faces of the wing and body.
+    m.tri(nose, lw, top, hull);
+    m.tri(nose, top, rw, hull);
+    m.tri(nose, bot, lw, dark);
+    m.tri(nose, rw, bot, dark);
+    m.tri(top, lw, tail, hull);
+    m.tri(top, tail, rw, hull);
+    m.tri(bot, tail, lw, dark);
+    m.tri(bot, rw, tail, dark);
+    // A fin and the engine's glow.
+    m.tri([0.0, 0.8, -2.0], [0.0, 1.8, -3.6], [0.0, 0.4, -3.2], hull);
+    m.tri([0.0, 0.8, -2.0], [0.0, 0.4, -3.2], [0.0, 1.8, -3.6], hull);
+    m.quad([0.5, 0.4, -3.05], [-0.5, 0.4, -3.05], [-0.5, -0.3, -3.05], [0.5, -0.3, -3.05], glow);
+    m
+}
+
 pub fn hound() -> MeshBuilder {
     let mut m = MeshBuilder::default();
     let hull = [0.42, 0.40, 0.38];
