@@ -181,6 +181,9 @@ Unmeasured on a Pi: whether nearest magnification with trilinear minification on
 
 Questions go to the owner only with something to look at (CLAUDE.md 13).
 
+Survey 1 closed on 2026-10-11 with S1 unanswered. By its rule a blank is the recommendation accepted, so it stands as
+its recommendation below; a comment in survey 2 (https://claude.ai/artifact/JQm65V7LHVWDJF8dPdZYqY) reopens it.
+
 | Id | Question | Options | Recommendation | Shots |
 | --- | --- | --- | --- | --- |
 | S1 | The texture density and look | a. 128 px at 64 px per metre (crisp texels); b. 256 px at 128 px per metre (finer; 11.5 MB with the wall panels' 22 layers) | b, changed 2026-10-05 after the wall panel prototype: at 64 px per metre a panel's screen, keys and vents turn to blocks at arm's length, and 11.5 MB is 12 % of the 96 MB budget (was a: the low-poly look, 1 %) | Survey S1: `wall-panels-corridor-after` against `-after-64px`, and the same for engineering |

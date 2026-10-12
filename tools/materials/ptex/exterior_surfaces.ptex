@@ -1,0 +1,58 @@
+{
+ "connections": [
+  {
+   "from": "image_0",
+   "from_port": 0,
+   "to": "Material",
+   "to_port": 0
+  }
+ ],
+ "label": "Exterior Fitted Surface Atlas",
+ "name": "Material",
+ "node_position": {
+  "x": 0,
+  "y": 0
+ },
+ "nodes": [
+  {
+   "name": "image_0",
+   "node_position": {
+    "x": 220,
+    "y": 0
+   },
+   "parameters": {
+    "image": "../sources/exterior-surfaces.png"
+   },
+   "type": "image"
+  },
+  {
+   "export_paths": {},
+   "name": "Material",
+   "node_position": {
+    "x": 440,
+    "y": 0
+   },
+   "parameters": {
+    "albedo_color": {
+     "a": 1.0,
+     "b": 1,
+     "g": 1,
+     "r": 1,
+     "type": "Color"
+    },
+    "ao": 1.0,
+    "depth_scale": 0.0,
+    "emission_energy": 1.0,
+    "flags_transparent": false,
+    "metallic": 0.0,
+    "normal": 1.0,
+    "roughness": 0.85,
+    "size": 11,
+    "sss": 0.0
+   },
+   "type": "material"
+  }
+ ],
+ "parameters": {},
+ "type": "graph"
+}

@@ -748,6 +748,10 @@ Questions go to the owner only with something to look at (CLAUDE.md 13); the sho
 `docs/screenshots/mockups/`. The rest take the recommendation, recorded as "recommendation taken
 (ask only with screenshots)".
 
+Survey 1 closed on 2026-10-11 with G1, G2, G3 and G4 unanswered. By its rule a blank is the recommendation accepted,
+so they stand as their recommendations below; a comment in survey 2 (https://claude.ai/artifact/JQm65V7LHVWDJF8dPdZYqY)
+reopens any of them.
+
 | Id | Question, and the fact it turns on | Options | Recommendation | Shot |
 | --- | --- | --- | --- | --- |
 | G1 | How is baked light stored? Adaptive vertex light and a 0.25 m lightmap look the same at playing distance; vertex light costs triangles (bridge +2,500 on the v1 boxes, about +4,400 on the v2 plan), a lightmap costs a texture fetch per pixel, a second UV and an atlas (bridge 252 KB) | a. vertex colours on the deck mesh; b. vertex colours with adaptive subdivision; c. lightmaps everywhere; d. hybrid: b, with lightmaps in named large rooms | **b**, as CLAUDE.md 9 already says; c and d stay measured fallbacks | `lighting-split-vertex-vs-lightmap.png`, `lighting-split-vertex-vs-lightmap-room.png`, `lighting-split-deck-mesh-vs-adaptive.png`, `lighting-bridge-vertex.png`, `lighting-bridge-lightmap.png` |

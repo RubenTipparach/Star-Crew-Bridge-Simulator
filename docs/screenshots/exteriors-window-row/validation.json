@@ -1,0 +1,70 @@
+{
+  "windows": [
+    {
+      "id": "p_quarters_window_1",
+      "center_y_m": 1.5,
+      "sill_y_m": 1.1,
+      "head_y_m": 1.9
+    },
+    {
+      "id": "p_quarters_window_2",
+      "center_y_m": 1.5,
+      "sill_y_m": 1.1,
+      "head_y_m": 1.9
+    },
+    {
+      "id": "p_quarters_window_3",
+      "center_y_m": 1.5,
+      "sill_y_m": 1.1,
+      "head_y_m": 1.9
+    },
+    {
+      "id": "p_mess_window_1",
+      "center_y_m": 1.5,
+      "sill_y_m": 1.1,
+      "head_y_m": 1.9
+    },
+    {
+      "id": "p_mess_window_2",
+      "center_y_m": 1.5,
+      "sill_y_m": 1.1,
+      "head_y_m": 1.9
+    },
+    {
+      "id": "p_mess_window_3",
+      "center_y_m": 1.5,
+      "sill_y_m": 1.1,
+      "head_y_m": 1.9
+    },
+    {
+      "id": "p_medbay_window_1",
+      "center_y_m": 1.5,
+      "sill_y_m": 1.1,
+      "head_y_m": 1.9
+    },
+    {
+      "id": "p_medbay_window_2",
+      "center_y_m": 1.5,
+      "sill_y_m": 1.1,
+      "head_y_m": 1.9
+    },
+    {
+      "id": "p_damage_control_window_1",
+      "center_y_m": 1.5,
+      "sill_y_m": 1.1,
+      "head_y_m": 1.9
+    },
+    {
+      "id": "p_damage_control_window_2",
+      "center_y_m": 1.5,
+      "sill_y_m": 1.1,
+      "head_y_m": 1.9
+    }
+  ],
+  "rays_by_livery": {
+    "copper": 460,
+    "cobalt": 460,
+    "rescue": 460
+  },
+  "previous_mixed_row_rejected": true
+}

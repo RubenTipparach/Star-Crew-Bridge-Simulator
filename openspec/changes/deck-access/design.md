@@ -250,6 +250,9 @@ With `command-suite`'s task 2, in the same rerun:
 Per CLAUDE.md 13, a question goes to the owner only with something to look at. The shots are
 `docs/screenshots/mockups/deck-plan-access-*.png`.
 
+Survey 1 closed on 2026-10-11 with Y1 unanswered. By its rule a blank is the recommendation accepted, so it stands as
+its recommendation below; a comment in survey 2 (https://claude.ai/artifact/JQm65V7LHVWDJF8dPdZYqY) reopens it.
+
 | Id | Question, and the fact it turns on | Options | Recommendation | Shot |
 | --- | --- | --- | --- | --- |
 | Y1 | The ways up and down as drawn: a spiral stair tower each side of the spine, a lift by the bridge door, scuttles from the ready room and the briefing room, six second doors. With them no single lost compartment cuts the bridge off from anything but a dead end; today losing the command passage cuts off all 28 rooms | As drawn / without the lift / towers at the ship's sides instead / other | As drawn | `deck-plan-access-exploded.png`, `deck-plan-access-towers-deck-C.png`, `deck-plan-access-port-tower.png`, `deck-plan-access-lift.png`, `deck-plan-access-deck-B-plan.png` |

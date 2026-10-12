@@ -1,0 +1,293 @@
+{
+  "scope": "Both shoulder-channel terminations beside the registration",
+  "source_mask": "tools/materials/sources/tern-shoulder-armor-mask.png",
+  "mask_sha256": "e822bc80424508aacf9086df832e7965146f486b4f8773838f0c88c2458e0c00",
+  "mask_reproduced": true,
+  "surface_samples": 360,
+  "models": [
+    {
+      "file": "assets/models/exteriors/tern.glb",
+      "sides": [
+        {
+          "side": -1,
+          "armor_min_rgb": 233.67,
+          "forward_armor_min_rgb": 233.67,
+          "channel_median_rgb": 45.0,
+          "reference_armor_rgb": 240.5,
+          "samples": 20
+        },
+        {
+          "side": 1,
+          "armor_min_rgb": 233.33,
+          "forward_armor_min_rgb": 238.67,
+          "channel_median_rgb": 56.5,
+          "reference_armor_rgb": 240.83,
+          "samples": 20
+        }
+      ]
+    },
+    {
+      "file": "assets/models/exteriors/tern_lod1.glb",
+      "sides": [
+        {
+          "side": -1,
+          "armor_min_rgb": 221.33,
+          "forward_armor_min_rgb": 223.67,
+          "channel_median_rgb": 46.33,
+          "reference_armor_rgb": 226.83,
+          "samples": 20
+        },
+        {
+          "side": 1,
+          "armor_min_rgb": 166.33,
+          "forward_armor_min_rgb": 172.67,
+          "channel_median_rgb": 37.0,
+          "reference_armor_rgb": 171.0,
+          "samples": 20
+        }
+      ]
+    },
+    {
+      "file": "assets/models/exteriors/tern_lod2.glb",
+      "sides": [
+        {
+          "side": -1,
+          "armor_min_rgb": 220.0,
+          "forward_armor_min_rgb": 225.0,
+          "channel_median_rgb": 51.17,
+          "reference_armor_rgb": 227.17,
+          "samples": 20
+        },
+        {
+          "side": 1,
+          "armor_min_rgb": 166.33,
+          "forward_armor_min_rgb": 171.67,
+          "channel_median_rgb": 39.5,
+          "reference_armor_rgb": 170.17,
+          "samples": 20
+        }
+      ]
+    },
+    {
+      "file": "assets/models/exteriors/liveries/cobalt/tern.glb",
+      "sides": [
+        {
+          "side": -1,
+          "armor_min_rgb": 233.67,
+          "forward_armor_min_rgb": 233.67,
+          "channel_median_rgb": 45.0,
+          "reference_armor_rgb": 240.5,
+          "samples": 20
+        },
+        {
+          "side": 1,
+          "armor_min_rgb": 233.33,
+          "forward_armor_min_rgb": 238.67,
+          "channel_median_rgb": 56.5,
+          "reference_armor_rgb": 240.83,
+          "samples": 20
+        }
+      ]
+    },
+    {
+      "file": "assets/models/exteriors/liveries/cobalt/tern_lod1.glb",
+      "sides": [
+        {
+          "side": -1,
+          "armor_min_rgb": 221.33,
+          "forward_armor_min_rgb": 223.67,
+          "channel_median_rgb": 46.33,
+          "reference_armor_rgb": 226.83,
+          "samples": 20
+        },
+        {
+          "side": 1,
+          "armor_min_rgb": 166.33,
+          "forward_armor_min_rgb": 172.67,
+          "channel_median_rgb": 37.0,
+          "reference_armor_rgb": 171.0,
+          "samples": 20
+        }
+      ]
+    },
+    {
+      "file": "assets/models/exteriors/liveries/cobalt/tern_lod2.glb",
+      "sides": [
+        {
+          "side": -1,
+          "armor_min_rgb": 220.0,
+          "forward_armor_min_rgb": 225.0,
+          "channel_median_rgb": 51.17,
+          "reference_armor_rgb": 227.17,
+          "samples": 20
+        },
+        {
+          "side": 1,
+          "armor_min_rgb": 166.33,
+          "forward_armor_min_rgb": 171.67,
+          "channel_median_rgb": 39.5,
+          "reference_armor_rgb": 170.17,
+          "samples": 20
+        }
+      ]
+    },
+    {
+      "file": "assets/models/exteriors/liveries/rescue/tern.glb",
+      "sides": [
+        {
+          "side": -1,
+          "armor_min_rgb": 233.67,
+          "forward_armor_min_rgb": 233.67,
+          "channel_median_rgb": 45.0,
+          "reference_armor_rgb": 240.5,
+          "samples": 20
+        },
+        {
+          "side": 1,
+          "armor_min_rgb": 233.33,
+          "forward_armor_min_rgb": 238.67,
+          "channel_median_rgb": 56.5,
+          "reference_armor_rgb": 240.83,
+          "samples": 20
+        }
+      ]
+    },
+    {
+      "file": "assets/models/exteriors/liveries/rescue/tern_lod1.glb",
+      "sides": [
+        {
+          "side": -1,
+          "armor_min_rgb": 221.33,
+          "forward_armor_min_rgb": 223.67,
+          "channel_median_rgb": 46.33,
+          "reference_armor_rgb": 226.83,
+          "samples": 20
+        },
+        {
+          "side": 1,
+          "armor_min_rgb": 166.33,
+          "forward_armor_min_rgb": 172.67,
+          "channel_median_rgb": 37.0,
+          "reference_armor_rgb": 171.0,
+          "samples": 20
+        }
+      ]
+    },
+    {
+      "file": "assets/models/exteriors/liveries/rescue/tern_lod2.glb",
+      "sides": [
+        {
+          "side": -1,
+          "armor_min_rgb": 220.0,
+          "forward_armor_min_rgb": 225.0,
+          "channel_median_rgb": 51.17,
+          "reference_armor_rgb": 227.17,
+          "samples": 20
+        },
+        {
+          "side": 1,
+          "armor_min_rgb": 166.33,
+          "forward_armor_min_rgb": 171.67,
+          "channel_median_rgb": 39.5,
+          "reference_armor_rgb": 170.17,
+          "samples": 20
+        }
+      ]
+    }
+  ],
+  "negative_regression": {
+    "previous_commit": "a445c98",
+    "previous_model_rejected": true
+  },
+  "texture_scope": {
+    "tern_hull": {
+      "changed_texels": 6254,
+      "outside_mask": 0
+    },
+    "tern_hull_cobalt": {
+      "changed_texels": 6254,
+      "outside_mask": 0
+    },
+    "tern_hull_rescue": {
+      "changed_texels": 6253,
+      "outside_mask": 0
+    }
+  },
+  "all_nine_model_bytes_reproduced": true,
+  "all_six_lod_atlases_reproduced": true,
+  "preview": {
+    "rays": 460,
+    "budget": {
+      "triangles": 82992,
+      "drawCalls": 51,
+      "textureMB": 88.83332602183025
+    },
+    "interiorTriangles": 76100,
+    "raysByLivery": {
+      "copper": 460,
+      "cobalt": 460,
+      "rescue": 460
+    }
+  },
+  "cargo_sc_tools": {
+    "passed": 8,
+    "failed": 0
+  },
+  "openspec": {
+    "passed": 48,
+    "failed": 0
+  },
+  "pi_timing_measured": false,
+  "captures": [
+    "before-cobalt-0-port-above.png",
+    "before-cobalt-0-starboard-above.png",
+    "cobalt-0-port-above.png",
+    "cobalt-0-port-side.png",
+    "cobalt-0-starboard-above.png",
+    "cobalt-0-starboard-side.png",
+    "cobalt-1-port-above.png",
+    "cobalt-1-starboard-above.png",
+    "cobalt-2-port-above.png",
+    "cobalt-2-starboard-above.png",
+    "comparison.png",
+    "copper-0-port-above.png",
+    "copper-0-starboard-above.png",
+    "copper-1-port-above.png",
+    "copper-1-starboard-above.png",
+    "copper-2-port-above.png",
+    "copper-2-starboard-above.png",
+    "rescue-0-port-above.png",
+    "rescue-0-starboard-above.png",
+    "rescue-1-port-above.png",
+    "rescue-1-starboard-above.png",
+    "rescue-2-port-above.png",
+    "rescue-2-starboard-above.png"
+  ],
+  "capture_lod_visibility_asserted": true,
+  "distinct_lod_captures_verified": true,
+  "capture_sha256": {
+    "before-cobalt-0-port-above.png": "7641f00b064144325853eafab1f5dd6a3b622f06193a9a726dfa8373a6a76b7d",
+    "before-cobalt-0-starboard-above.png": "fd40d2214168c2377cf3a223dc0e3826494725aed6feef73b7afce7fbf0223de",
+    "cobalt-0-port-above.png": "50fb9e44a184bd5a44defb59ce69aabdd7aa299525e1e1e28c5b827f5c0e2a35",
+    "cobalt-0-port-side.png": "175cd4407d2ef256124aeef08217367843706ccef2ab24edb37493bd00a24476",
+    "cobalt-0-starboard-above.png": "c7ba4bca3ec3041d460ae8f6d4d28647a479ee1294e221a5b66bb57cc1f0950f",
+    "cobalt-0-starboard-side.png": "45df8e5dd7dc6adc4535248972d29bb8d2353330559c4eed735f44eeb97e577d",
+    "cobalt-1-port-above.png": "831bbd37efca3efbbc01f26d55f7e3c2501aae86f0ebc5d89c2dc6546f3c10ba",
+    "cobalt-1-starboard-above.png": "679933463f99f4531a1573df1ac509ddf5cc31258e47d725da06db09f02f8450",
+    "cobalt-2-port-above.png": "bed0a1961cbeca5861c290281f695288de3b47e5a0c2f76e809a9abc80441603",
+    "cobalt-2-starboard-above.png": "7cadc544143ebc29a4f1933a3809bf113759a5a603754e5465afd526cdeb72a8",
+    "comparison.png": "431b2c075fb77b82b45e8fa492f1fb81ccf3b1f5a94f8cbadb775136a05a95d1",
+    "copper-0-port-above.png": "f89cb63f863c3a4944c432c5c9f7f515b3b3a99cf8f37bb983fff573b0e23ad0",
+    "copper-0-starboard-above.png": "cd48e1a2135071e7fc362a3018628d7bf6222eb8de3e2dc9e561d02b26b3efc4",
+    "copper-1-port-above.png": "c2bb0ca6dc0ccaeb1dd0ed2d03c7681b15d7228a218d1776a3cf098ab149bd2f",
+    "copper-1-starboard-above.png": "66a8066d01b3b1c92942f022349751db9e2e175e60e1b248f9f850a241c05dc4",
+    "copper-2-port-above.png": "733f4e81d512dac04b07ce63d772a606c3ada8d3f57092c792bed002ab9010c4",
+    "copper-2-starboard-above.png": "43f4a4f12731ab922d3687111bf0f096f4a24215bab25176ebd10e4a2429dd53",
+    "rescue-0-port-above.png": "58084cd81d9478ad6fd6ea210a55509b90aeaeb12672b4f337f46f79462fd2f6",
+    "rescue-0-starboard-above.png": "1a1739a690d9f14a7ab62310e84fe9e719217ba23755d0de9d9b7d9a0b87b145",
+    "rescue-1-port-above.png": "0ae4b5eea6e3802e1710cff709fa996b7b61dc09ad18b3db6cad84c99cd266f0",
+    "rescue-1-starboard-above.png": "293debce64b724186000f06892d1e29f267243dce6bf26ed66a627f0e167e84a",
+    "rescue-2-port-above.png": "77423be3a52d27fb9f7da42ab83de124584cba2f60c9565e4c4863b38630b3e0",
+    "rescue-2-starboard-above.png": "9e57839ab0b0dec1d88e1cfd6974cefc18849ce9e651e1b3afaa471892835a1a"
+  }
+}

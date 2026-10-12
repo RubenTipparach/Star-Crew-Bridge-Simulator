@@ -708,6 +708,10 @@ the power grid in the ship floor plan and as a electric diagram"; since the same
 Ids P (power). Questions with a shot go to the owner's survey with the shot beside them; the rest
 are recommendations taken (ask only with screenshots, CLAUDE.md 13).
 
+Survey 1 closed on 2026-10-11 with P1, P2 and P3 unanswered. By its rule a blank is the recommendation accepted, so
+they stand as their recommendations below; a comment in survey 2 (https://claude.ai/artifact/JQm65V7LHVWDJF8dPdZYqY)
+reopens any of them.
+
 | Id | Question and the fact it turns on | Options | Recommendation | Shot |
 | --- | --- | --- | --- | --- |
 | P1 | Should combat fit in the reactor? The combat preset wants 56.2 MW against 48 MW: the battery bridges 124 s, then the drive gets a third of its thrust. | (a) As designed: combat is a power crunch that engineering manages. (b) A smaller combat preset that fits 48 MW. (c) A bigger reactor. | (a): it is the zero-sum moment, and it gives engineering its job. | `power-overview` |

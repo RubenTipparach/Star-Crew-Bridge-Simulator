@@ -1,0 +1,511 @@
+{
+  "schema": "starcrew.characters/1",
+  "_doc": "Original cartoon review characters, built by tools/blender/build_crew_characters.py. Dimensions are metres before height fitting. Multipliers exaggerate the shared silhouette. Department colours come from company.json. Pending characters never replace crew-npcs figures. UV0 stores geometric part tags for file measurements; colour is palette albedo, with no texture.",
+  "budget": {
+    "triangles": 3000,
+    "bones": 30,
+    "materials": 1,
+    "draw_calls": 1
+  },
+  "proportions": {
+    "head_scale": 1.32,
+    "hand_scale": 1.28,
+    "foot_scale": 1.22,
+    "neck_length_scale": 0.6,
+    "shoulder_width_scale": 0.9,
+    "waist_width_scale": 0.8,
+    "leg_length_scale": 0.88
+  },
+  "anatomy_m": {
+    "head_width": 0.43,
+    "head_depth": 0.34,
+    "head_height": 0.43,
+    "neck_radius": 0.083,
+    "neck_length": 0.095,
+    "chest_width": 0.53,
+    "chest_depth": 0.26,
+    "torso_length": 0.44,
+    "waist_width": 0.39,
+    "waist_depth": 0.23,
+    "hip_width": 0.4,
+    "leg_length": 0.7,
+    "leg_spacing": 0.116,
+    "leg_radius": 0.077,
+    "boot_height": 0.21,
+    "foot_width": 0.14,
+    "foot_length": 0.235,
+    "hand_width": 0.12,
+    "hand_depth": 0.1,
+    "hand_height": 0.16,
+    "arm_radius": 0.062,
+    "arm_length": 0.48
+  },
+  "garments_m": {
+    "clearance": 0.018,
+    "hem_height": 0.033,
+    "cuff_height": 0.029,
+    "collar_height": 0.042,
+    "collar_thickness": 0.012,
+    "boot_sole_height": 0.025,
+    "badge_width": 0.044,
+    "badge_height": 0.058,
+    "badge_depth": 0.012
+  },
+  "face": {
+    "eye_width_face_ratio": 0.2,
+    "eye_height_width_ratio": 1.1,
+    "iris_width_eye_ratio": 0.55,
+    "pupil_width_iris_ratio": 0.4,
+    "eye_spacing_face_ratio": 0.225,
+    "eye_height_head_ratio": 0.565,
+    "eye_bulge_m": 0.01,
+    "eyelid_margin_m": 0.004,
+    "brow_width_eye_ratio": 1.16,
+    "brow_thickness_m": 0.023,
+    "nose_width_m": 0.038,
+    "nose_depth_m": 0.041,
+    "mouth_width_m": 0.098,
+    "mouth_thickness_m": 0.006,
+    "ear_width_m": 0.068,
+    "ear_height_m": 0.112,
+    "hair_clearance_m": 0.012
+  },
+  "topology": {
+    "head_sides": 20,
+    "body_sides": 10,
+    "limb_sides": 8,
+    "eye_sides": 16,
+    "detail_sides": 8
+  },
+  "palette_srgb": {
+    "trousers": [
+      0.13,
+      0.17,
+      0.22
+    ],
+    "boots": [
+      0.075,
+      0.1,
+      0.14
+    ],
+    "trim": [
+      0.08,
+      0.12,
+      0.16
+    ],
+    "seam": [
+      0.29,
+      0.34,
+      0.39
+    ],
+    "eye_white": [
+      0.96,
+      0.96,
+      0.91
+    ],
+    "pupil": [
+      0.035,
+      0.045,
+      0.06
+    ],
+    "badge": [
+      0.78,
+      0.84,
+      0.82
+    ],
+    "mouth": [
+      0.3,
+      0.12,
+      0.105
+    ]
+  },
+  "preview_cubes_linear": {
+    "_doc": "Illustrative offline six-face irradiance, ordered +X,-X,+Y,-Y,+Z,-Z in game axes. These are review probes, not compiled deck probes or a Pi measurement.",
+    "normal": [
+      [
+        0.68,
+        0.72,
+        0.82
+      ],
+      [
+        0.5,
+        0.55,
+        0.66
+      ],
+      [
+        0.98,
+        0.94,
+        0.86
+      ],
+      [
+        0.28,
+        0.31,
+        0.38
+      ],
+      [
+        0.82,
+        0.85,
+        0.9
+      ],
+      [
+        0.4,
+        0.44,
+        0.54
+      ]
+    ],
+    "red_alert": [
+      [
+        0.68,
+        0.1,
+        0.075
+      ],
+      [
+        0.4,
+        0.045,
+        0.035
+      ],
+      [
+        0.96,
+        0.16,
+        0.1
+      ],
+      [
+        0.22,
+        0.025,
+        0.02
+      ],
+      [
+        0.74,
+        0.12,
+        0.09
+      ],
+      [
+        0.32,
+        0.045,
+        0.04
+      ]
+    ],
+    "emergency": [
+      [
+        0.12,
+        0.2,
+        0.24
+      ],
+      [
+        0.075,
+        0.1,
+        0.14
+      ],
+      [
+        0.24,
+        0.4,
+        0.43
+      ],
+      [
+        0.035,
+        0.055,
+        0.075
+      ],
+      [
+        0.19,
+        0.31,
+        0.34
+      ],
+      [
+        0.055,
+        0.09,
+        0.12
+      ]
+    ]
+  },
+  "characters": [
+    {
+      "id": "command_01",
+      "department": "command",
+      "approval": "pending",
+      "height_m": 1.8,
+      "build_scale": 1.05,
+      "skin_srgb": [
+        0.73,
+        0.49,
+        0.34
+      ],
+      "hair_srgb": [
+        0.18,
+        0.12,
+        0.09
+      ],
+      "iris_srgb": [
+        0.28,
+        0.49,
+        0.6
+      ],
+      "hair_style": "swept",
+      "sex": "male"
+    },
+    {
+      "id": "command_02",
+      "department": "command",
+      "approval": "pending",
+      "height_m": 1.72,
+      "build_scale": 1.05,
+      "skin_srgb": [
+        0.73,
+        0.49,
+        0.34
+      ],
+      "hair_srgb": [
+        0.18,
+        0.12,
+        0.09
+      ],
+      "iris_srgb": [
+        0.28,
+        0.49,
+        0.6
+      ],
+      "hair_style": "bob",
+      "sex": "female"
+    },
+    {
+      "id": "engineering_01",
+      "department": "engineering",
+      "approval": "pending",
+      "height_m": 1.76,
+      "build_scale": 1.1,
+      "skin_srgb": [
+        0.38,
+        0.23,
+        0.17
+      ],
+      "hair_srgb": [
+        0.075,
+        0.065,
+        0.055
+      ],
+      "iris_srgb": [
+        0.52,
+        0.38,
+        0.2
+      ],
+      "hair_style": "crop",
+      "sex": "male"
+    },
+    {
+      "id": "engineering_02",
+      "department": "engineering",
+      "approval": "pending",
+      "height_m": 1.68,
+      "build_scale": 1.1,
+      "skin_srgb": [
+        0.38,
+        0.23,
+        0.17
+      ],
+      "hair_srgb": [
+        0.075,
+        0.065,
+        0.055
+      ],
+      "iris_srgb": [
+        0.52,
+        0.38,
+        0.2
+      ],
+      "hair_style": "bob",
+      "sex": "female"
+    },
+    {
+      "id": "deckhands_01",
+      "department": "deckhands",
+      "approval": "pending",
+      "height_m": 1.84,
+      "build_scale": 0.98,
+      "skin_srgb": [
+        0.78,
+        0.59,
+        0.43
+      ],
+      "hair_srgb": [
+        0.38,
+        0.17,
+        0.09
+      ],
+      "iris_srgb": [
+        0.37,
+        0.52,
+        0.37
+      ],
+      "hair_style": "swept",
+      "sex": "male"
+    },
+    {
+      "id": "deckhands_02",
+      "department": "deckhands",
+      "approval": "pending",
+      "height_m": 1.76,
+      "build_scale": 0.98,
+      "skin_srgb": [
+        0.78,
+        0.59,
+        0.43
+      ],
+      "hair_srgb": [
+        0.38,
+        0.17,
+        0.09
+      ],
+      "iris_srgb": [
+        0.37,
+        0.52,
+        0.37
+      ],
+      "hair_style": "bob",
+      "sex": "female"
+    },
+    {
+      "id": "medical_01",
+      "department": "medical",
+      "approval": "pending",
+      "height_m": 1.72,
+      "build_scale": 0.94,
+      "skin_srgb": [
+        0.64,
+        0.4,
+        0.27
+      ],
+      "hair_srgb": [
+        0.105,
+        0.085,
+        0.08
+      ],
+      "iris_srgb": [
+        0.27,
+        0.46,
+        0.56
+      ],
+      "hair_style": "crop",
+      "sex": "male"
+    },
+    {
+      "id": "medical_02",
+      "department": "medical",
+      "approval": "pending",
+      "height_m": 1.64,
+      "build_scale": 0.94,
+      "skin_srgb": [
+        0.64,
+        0.4,
+        0.27
+      ],
+      "hair_srgb": [
+        0.105,
+        0.085,
+        0.08
+      ],
+      "iris_srgb": [
+        0.27,
+        0.46,
+        0.56
+      ],
+      "hair_style": "bob",
+      "sex": "female"
+    },
+    {
+      "id": "security_01",
+      "department": "security",
+      "approval": "pending",
+      "height_m": 1.82,
+      "build_scale": 1.08,
+      "skin_srgb": [
+        0.53,
+        0.34,
+        0.25
+      ],
+      "hair_srgb": [
+        0.13,
+        0.12,
+        0.13
+      ],
+      "iris_srgb": [
+        0.33,
+        0.41,
+        0.5
+      ],
+      "hair_style": "crop",
+      "sex": "male"
+    },
+    {
+      "id": "security_02",
+      "department": "security",
+      "approval": "pending",
+      "height_m": 1.74,
+      "build_scale": 1.08,
+      "skin_srgb": [
+        0.53,
+        0.34,
+        0.25
+      ],
+      "hair_srgb": [
+        0.13,
+        0.12,
+        0.13
+      ],
+      "iris_srgb": [
+        0.33,
+        0.41,
+        0.5
+      ],
+      "hair_style": "bob",
+      "sex": "female"
+    },
+    {
+      "id": "galley_01",
+      "department": "galley",
+      "approval": "pending",
+      "height_m": 1.7,
+      "build_scale": 1.02,
+      "skin_srgb": [
+        0.84,
+        0.64,
+        0.51
+      ],
+      "hair_srgb": [
+        0.55,
+        0.58,
+        0.58
+      ],
+      "iris_srgb": [
+        0.28,
+        0.48,
+        0.51
+      ],
+      "hair_style": "swept",
+      "sex": "male"
+    },
+    {
+      "id": "galley_02",
+      "department": "galley",
+      "approval": "pending",
+      "height_m": 1.62,
+      "build_scale": 1.02,
+      "skin_srgb": [
+        0.84,
+        0.64,
+        0.51
+      ],
+      "hair_srgb": [
+        0.55,
+        0.58,
+        0.58
+      ],
+      "iris_srgb": [
+        0.28,
+        0.48,
+        0.51
+      ],
+      "hair_style": "bob",
+      "sex": "female"
+    }
+  ]
+}

@@ -21,7 +21,7 @@ in the wall-panels design asks the owner which way panels are made from now on.
 
 Run (from anywhere), with Pillow installed beside bpy (pip install bpy pillow):
   <python with the bpy module> tools/blender/build_wall_panels.py [--only crew_plate,working_strips,...]
-      [--samples N] [--post-only] [--no-sheet] [--reuse-built]
+      [--samples N] [--post-only] [--no-sheet] [--reuse-built] [--report-only]
   --only       render only these targets (<finish>_<module>, <finish>_strips, <finish>_ui, <finish>_keys,
                <finish>_ceiling_<module>, <finish>_floor_<module>, <finish>_trims, <finish>_platforms,
                <finish>_floor_edges, upholstery_channel, upholstery_panel);
@@ -29,6 +29,7 @@ Run (from anywhere), with Pillow installed beside bpy (pip install bpy pillow):
   --samples    override render.samples (a quick look; the committed layers use panels.json's)
   --post-only  skip rendering; rebuild the layers and the sheet from tools/materials/raw/panels
   --no-sheet   skip the contact sheet
+  --report-only  validate committed PNGs and refresh layer metadata without changing their pixels
   --reuse-built  post-process: a layer (or UI image) whose raw renders are missing is taken from its
                committed PNGs as they are, so a session can add or rebuild a few layers without first
                rendering all of them (the raw renders are not in git); the manifest and the sheet still
@@ -2704,11 +2705,7 @@ def post(D, sheet=True):
     if reused:
         print(f"[panels] --reuse-built: {len(reused)} layers and images taken from their committed PNGs, unchanged: "
               + ", ".join(reused))
-    for root, _, names in os.walk(out_dir):
-        for n in sorted(names):
-            if n.endswith(".png"):
-                p = os.path.join(root, n)
-                files[os.path.relpath(p, out_dir)] = {"sha256": sha256(p), "bytes": os.path.getsize(p)}
+    files = panel_files(out_dir)
     report(D, layers, files, out_dir)
     if sheet:
         contact_sheet(D, layers)
@@ -2737,6 +2734,17 @@ def all_layers(D):
     for item in UPHOLSTERY:
         out.append(("upholstery", f"upholstery_{item}", D["upholstery"]["layers"][item], False))
     return out
+
+
+def panel_files(out_dir):
+    """Read actual PNG hashes under canonical forward-slash artifact paths."""
+    files = {}
+    for root, _, names in os.walk(out_dir):
+        for name in sorted(names):
+            if name.endswith(".png"):
+                path = os.path.join(root, name)
+                files[os.path.relpath(path, out_dir).replace(os.sep, "/")] = {"sha256": sha256(path), "bytes": os.path.getsize(path)}
+    return files
 
 
 def report(D, layers, files, out_dir):
@@ -3122,6 +3130,7 @@ def parse_args():
     ap.add_argument("--samples", type=int, default=None)
     ap.add_argument("--post-only", action="store_true")
     ap.add_argument("--no-sheet", action="store_true")
+    ap.add_argument("--report-only", action="store_true", help="Validate committed PNGs and refresh layer metadata without rendering or changing images")
     ap.add_argument("--reuse-built", action="store_true",
                     help="post: a layer whose raw renders are missing is taken from its committed PNGs, unchanged")
     return ap.parse_args(argv)
@@ -3152,6 +3161,13 @@ def main():
     global REUSE
     REUSE = args.reuse_built
     D = load_panels()
+    if args.report_only:
+        out_dir = os.path.join(ROOT, D["layers"]["dir"])
+        layers = {(stem, px): committed(os.path.join(out_dir, str(px), stem + ".png"))
+                  for _, stem, _, _ in all_layers(D) for px in D["layers"]["sizes_px"]}
+        files = panel_files(out_dir)
+        report(D, layers, files, out_dir)
+        return
     if not args.post_only:
         only = set(args.only.split(",")) if args.only else None
         samples = args.samples or D["render"]["samples"]
