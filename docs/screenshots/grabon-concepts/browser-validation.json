@@ -1,0 +1,106 @@
+{
+  "base_commit": "7653f7a",
+  "status": "pass",
+  "views": [
+    {
+      "ship": "shrike",
+      "stage": "hull",
+      "triangles": 1964,
+      "draw_calls": 1,
+      "texture_mib": 1.0833330154418945,
+      "extent_m": [
+        60.71,
+        10.615,
+        53.08
+      ]
+    },
+    {
+      "ship": "shrike",
+      "stage": "cutaway",
+      "deck": "A",
+      "triangles": 1750,
+      "draw_calls": 11,
+      "rooms": 7
+    },
+    {
+      "ship": "shrike",
+      "stage": "cutaway",
+      "deck": "B",
+      "triangles": 1488,
+      "draw_calls": 9,
+      "rooms": 7
+    },
+    {
+      "ship": "vark",
+      "stage": "hull",
+      "triangles": 2092,
+      "draw_calls": 1,
+      "texture_mib": 1.0833330154418945,
+      "extent_m": [
+        61.44,
+        10.615,
+        67.63
+      ]
+    },
+    {
+      "ship": "vark",
+      "stage": "cutaway",
+      "deck": "A",
+      "triangles": 2002,
+      "draw_calls": 11,
+      "rooms": 7
+    },
+    {
+      "ship": "vark",
+      "stage": "cutaway",
+      "deck": "B",
+      "triangles": 1918,
+      "draw_calls": 11,
+      "rooms": 9
+    },
+    {
+      "ship": "gorath",
+      "stage": "hull",
+      "triangles": 2080,
+      "draw_calls": 1,
+      "texture_mib": 1.0833330154418945,
+      "extent_m": [
+        68.34,
+        14.215,
+        57.93
+      ]
+    },
+    {
+      "ship": "gorath",
+      "stage": "cutaway",
+      "deck": "A",
+      "triangles": 1756,
+      "draw_calls": 11,
+      "rooms": 7
+    },
+    {
+      "ship": "gorath",
+      "stage": "cutaway",
+      "deck": "B",
+      "triangles": 1964,
+      "draw_calls": 10,
+      "rooms": 8
+    },
+    {
+      "ship": "gorath",
+      "stage": "cutaway",
+      "deck": "C",
+      "triangles": 1734,
+      "draw_calls": 9,
+      "rooms": 7
+    }
+  ],
+  "mobile": [
+    "shrike-hull-plan.png",
+    "vark-hull-plan.png",
+    "gorath-hull-plan.png",
+    "vark-fit-plan.png",
+    "shrike-fit-cutaway.png"
+  ],
+  "errors": []
+}

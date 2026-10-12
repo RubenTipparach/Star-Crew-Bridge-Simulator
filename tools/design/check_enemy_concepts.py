@@ -45,7 +45,8 @@ def check(data):
             b = r['brushes'][0];p=b['poly'];y0,y1=b['y']
             assert signed_area(p)>0 and is_convex(p), f"{s['id']}/{r['id']}: invalid room polygon"
             assert y1-y0 >= 2.8-1e-6, f"{r['id']}: insufficient headroom"
-            hull = next(z for z in s['hull_zones'] if z['deck']==r['decks'][0])
+            zones = [z for z in s['hull_zones'] if z['deck']==r['decks'][0]]
+            hull = next((z for z in zones if z['id']==r['envelope']), zones[0])
             # Corners alone cannot prove that a room avoids a concave hull notch.
             # Sample every room edge at 0.25 m intervals as well.
             samples=[]
@@ -107,8 +108,9 @@ def check(data):
 
 
 if __name__=='__main__':
-    ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('--out',type=Path);args=ap.parse_args()
-    report=check(json.loads((ROOT/'data/ships/enemy-concepts/layouts.json').read_text()))
+    ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('--out',type=Path)
+    ap.add_argument('--faction', choices=['grabon','federation'], default='grabon');args=ap.parse_args()
+    report=check(json.loads((ROOT/f'data/ships/{args.faction}-concepts/layouts.json').read_text()))
     if args.out:args.out.parent.mkdir(parents=True,exist_ok=True);args.out.write_text(json.dumps(report,indent=2)+'\n')
     for s in report['studies']:
         print(f"{s['ship']}: {len(s['rooms'])} connected rooms, {s['changed_rooms']} fitted, {s['area_m2']} m2, {s['minimum_hull_clearance_m']:.2f} m minimum hull clearance, two fighters fit")

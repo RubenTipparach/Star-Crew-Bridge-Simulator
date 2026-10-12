@@ -1,4 +1,4 @@
-"""Fit the retained initial Hound study rooms to their authored hull envelopes.
+"""Fit retained faction study rooms to their authored hull envelopes.
 
 The catalogue owns the initial polygons, hulls and room roles. This documentation
 tool clips only outer edges, records the fitted polygons, and locates simple scale
@@ -12,7 +12,6 @@ import math
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-CATALOG = ROOT / 'data/ships/enemy-concepts/layouts.json'
 
 
 def clip(poly, envelope, margin):
@@ -69,7 +68,7 @@ def fit(data):
                     z0 = min(p[1] for p in b['poly'])
                     z1 = max(p[1] for p in b['poly'])
                     z = z0 + min(2.2, (z1-z0)/2)
-                    put('person', [0, y, z], [.5, 1.8, .4])
+                    put('person', [cx, y, z], [.5, 1.8, .4])
             elif r['id'] == 'bunks':
                 # Two-tier bunk footprints. The layout checker checks the boxes,
                 # not an assumed room size, after the hull trims the corners.
@@ -101,15 +100,17 @@ def fit(data):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--check', action='store_true')
+    parser.add_argument('--faction', choices=['grabon', 'federation'], default='grabon')
     args = parser.parse_args()
-    data = json.loads(CATALOG.read_text(encoding='utf-8'))
+    catalog = ROOT / f'data/ships/{args.faction}-concepts/layouts.json'
+    data = json.loads(catalog.read_text(encoding='utf-8'))
     fitted = fit(data)
     if args.check:
         if fitted != data:
             raise SystemExit('Fitted concept catalogue is stale; run fit_enemy_concepts.py')
         print('Three fitted concept layouts reproduce from the retained first plans.')
     else:
-        CATALOG.write_text(json.dumps(fitted, indent=2)+'\n', encoding='utf-8')
+        catalog.write_text(json.dumps(fitted, indent=2)+'\n', encoding='utf-8')
         print('Wrote three fitted layouts; original polygons retained.')
 
 

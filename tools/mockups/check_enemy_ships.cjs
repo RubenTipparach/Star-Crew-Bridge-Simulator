@@ -1,12 +1,13 @@
-/* Review instrument for the delivered Hound study HTML. Checks actual rendered
+/* Review instrument for faction study HTML. Checks actual rendered
    budgets, source freshness, stage/deck controls, camera controls and mobile UI. */
 const fs=require('fs'),path=require('path'),assert=require('assert/strict');
 const {pathToFileURL}=require('url');
 const {chromium}=require('playwright');
 const ROOT=path.resolve(__dirname,'../..');
-const out=path.join(ROOT,'docs/screenshots/enemy-concepts');
-const file=path.join(ROOT,'docs/mockups/enemy-ships.html');
-const source=JSON.parse(fs.readFileSync(path.join(ROOT,'data/ships/enemy-concepts/layouts.json'),'utf8'));
+const faction=process.argv[2]||'grabon';assert(['grabon','federation'].includes(faction));
+const out=path.join(ROOT,`docs/screenshots/${faction}-concepts`);
+const file=path.join(ROOT,`docs/mockups/${faction==='federation'?'federation-ships':'enemy-ships'}.html`);
+const source=JSON.parse(fs.readFileSync(path.join(ROOT,`data/ships/${faction}-concepts/layouts.json`),'utf8'));
 const frames=(p,n=5)=>p.evaluate(n=>new Promise(resolve=>{let k=0;function f(){if(++k>=n)resolve();else requestAnimationFrame(f);}requestAnimationFrame(f);}),n);
 
 (async()=>{
@@ -47,10 +48,18 @@ const frames=(p,n=5)=>p.evaluate(n=>new Promise(resolve=>{let k=0;function f(){i
         assert.equal(cost.rooms,count);assert(cost.triangles<=12000&&cost.draw_calls<=120);report.views.push(cost);
       }
       await page.click('#alert');assert.equal(await page.evaluate(()=>ENEMY_VIEW.state.lighting),'red_alert');await page.click('#normal');
+      await page.click(`[data-deck="${ship.layout.decks[0].id}"]`);
+      const centered=await page.evaluate(()=>{
+        const v=SHIP_VIEW,lo=[Infinity,Infinity,Infinity],hi=[-Infinity,-Infinity,-Infinity];
+        v.scene.traverse(o=>{const a=o.geometry?.attributes.position;if(!a)return;for(let i=0;i<a.count;i++)[a.getX(i),a.getY(i),a.getZ(i)].forEach((q,k)=>{lo[k]=Math.min(lo[k],q);hi[k]=Math.max(hi[k],q);});});
+        return v.controls.target.toArray().every((q,k)=>Math.abs(q-(lo[k]+hi[k])/2)<.01);
+      });
+      assert(centered,'Switching 3D decks must recenter on the selected deck');
     }
     await page.setViewportSize({width:390,height:844});await frames(page);
     fs.mkdirSync(path.join(out,'mobile'),{recursive:true});
-    const mobileStates=[['pursuer','hull','B','plan'],['splitjaw','hull','B','plan'],['bulwark','hull','C','plan'],['splitjaw','fit','B','plan'],['pursuer','fit','A','cutaway']];
+    const [first,second]=source.ships;
+    const mobileStates=[...source.ships.map(s=>[s.id,'hull',s.layout.decks.at(-1).id,'plan']),[second.id,'fit',second.layout.decks.at(-1).id,'plan'],[first.id,'fit','A','cutaway']];
     for(const [ship,stage,deck,mode] of mobileStates){
       await page.evaluate(args=>ENEMY_VIEW.show(...args),[ship,stage,deck,mode]);await frames(page);
       const bad=await page.evaluate(()=>{
@@ -61,8 +70,24 @@ const frames=(p,n=5)=>p.evaluate(n=>new Promise(resolve=>{let k=0;function f(){i
         return out;
       });
       assert.deepEqual(bad,[],`${ship}/${stage}: controls must fit on a phone`);
+      if(stage==='hull'){
+        const clipped=await page.evaluate(()=>{
+          const {scene,camera}=SHIP_VIEW,v=camera.position.clone();let outside=0;
+          scene.updateMatrixWorld(true);camera.updateMatrixWorld(true);
+          scene.traverse(o=>{if(!o.isMesh)return;const a=o.geometry.attributes.position;for(let i=0;i<a.count;i++){
+            v.fromBufferAttribute(a,i).applyMatrix4(o.matrixWorld).project(camera);
+            if(Math.abs(v.x)>1||Math.abs(v.y)>1)outside++;
+          }});return outside;
+        });
+        assert.equal(clipped,0,`${ship}: the complete hull must fit in the phone viewport`);
+      }
       const name=`${ship}-${stage}-${mode}.png`;await page.screenshot({path:path.join(out,'mobile',name)});report.mobile.push(name);
     }
+    // Shared URLs must reopen the actual selected 3D deck, not just its 2D plan.
+    await page.reload();await page.waitForFunction(()=>window.MOCKUP_READY);
+    assert.equal(await page.evaluate(()=>ENEMY_VIEW.state.mode),'cutaway');
+    assert.equal(await page.evaluate(()=>ENEMY_VIEW.state.deck),'A');
+    assert.equal(await page.locator('header a').count(),1,'Faction navigation is present');
     assert.deepEqual(errors,[],'The delivered viewer must not log browser errors');
     fs.writeFileSync(path.join(out,'browser-validation.json'),JSON.stringify(report,null,2)+'\n');
     console.log(JSON.stringify(report,null,2));
