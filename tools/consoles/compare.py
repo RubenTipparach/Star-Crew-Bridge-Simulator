@@ -41,6 +41,11 @@ PANELS = {
     "science": {"SENSORS": grid(0, 0, 5, 4), "SHIELDS": grid(5, 0, 4, 4), "CONTACT": grid(9, 0, 3, 2), "SCREEN": grid(9, 2, 3, 2)},
     "captain": {"SHIP": grid(0, 0, 5, 4), "CREW": grid(5, 0, 4, 2), "ALERT": grid(9, 0, 3, 2), "ORDERS": grid(5, 2, 7, 2)},
     "captain/SHIP": {"DECK A": grid(0, 0, 6, 2), "DECK B": grid(6, 0, 6, 2), "DECK C": grid(0, 2, 6, 2), "ROOM": grid(6, 2, 6, 2)},
+    # Combat 2 (laser-banks 3, enemy-fighters 3, objectives-tab 1): both banks' console, the gunner's sight (no look
+    # band: the sight is everything between the bands), and OBJECTIVES open over any console.
+    "laser": {"CHARGE": grid(0, 0, 3, 4), "ARC": grid(3, 0, 3, 4), "SPOT": grid(6, 0, 3, 4), "FIRE": grid(9, 0, 3, 4)},
+    "gunner": {"SIGHT": (0, 32, 1280, 656)},
+    "objectives": {"OBJECTIVES": grid(0, 0, 12, 4)},
 }
 BANDS = {"title band": (0, 0, 1280, 32), "look band": (0, 32, 1280, 240), "status strip": (0, 688, 1280, 32)}
 VIEWSCREEN = (333, 53, 614, 194)
@@ -79,6 +84,10 @@ def main():
         station = st["station"]
         if station == "captain" and (st.get("captain") or {}).get("tab") == "SHIP":
             station = "captain/SHIP"
+        if station in ("laser_port", "laser_stbd"):
+            station = "laser"
+        if st.get("objectives_open") and station != "gunner":
+            station = "objectives"
         m = np.asarray(Image.open(mock).convert("RGB")).astype(np.int16)
         e = np.asarray(Image.open(eng).convert("RGB")).astype(np.int16)
         if m.shape != e.shape:
@@ -89,6 +98,8 @@ def main():
         mask[y : y + h, x : x + w] = False
         bad = (diff > a.threshold) & mask
         regions = dict(BANDS)
+        if station == "gunner":
+            del regions["look band"]
         regions.update(PANELS.get(station, {}))
         mb = np.asarray(Image.open(mock).convert("RGB").filter(ImageFilter.GaussianBlur(BLUR_PX))).astype(np.int16)
         eb = np.asarray(Image.open(eng).convert("RGB").filter(ImageFilter.GaussianBlur(BLUR_PX))).astype(np.int16)

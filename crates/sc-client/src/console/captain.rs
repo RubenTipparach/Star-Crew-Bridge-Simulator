@@ -245,11 +245,14 @@ fn crew(cv: &Canvas, cx: &mut Ctx, cap: &CapView) {
     let st = vg::style();
     let c = &st.c;
     let (b, w, h) = panel(cv, cx, "CREW", grid(5.0, 0.0, 4.0, 2.0));
-    let (cw, ch) = ((w - 20.0 - 6.0) / 2.0, (h - 12.0 - 2.0 * 6.0) / 3.0);
+    // Every station but the captain's, two to a row (combat 2: seven of them).
+    let n = cap.crew.len().div_ceil(2).max(1) as f32;
+    let (cw, ch) = ((w - 20.0 - 6.0) / 2.0, (h - 12.0 - (n - 1.0) * 6.0) / n);
     for (i, row) in cap.crew.iter().enumerate() {
         let (x, y) = (10.0 + (i % 2) as f32 * (cw + 6.0), 4.0 + (i / 2) as f32 * (ch + 6.0));
+        let role = super::station_word(&row.role).1;
         b.rect(x, y, cw, ch, 7.0, c.panel2.0, Some(Pen::new(1.0, c.line2.0)));
-        b.icon(&row.role, x + 22.0, y + ch / 2.0, 22.0, st.role.of(&row.role));
+        b.icon(role, x + 22.0, y + ch / 2.0, 22.0, st.role.of(role));
         match &row.op {
             Some(op) => {
                 b.text(x + 42.0, y + ch / 2.0 + 6.0, 17.0, c.text.0, op, T::default());

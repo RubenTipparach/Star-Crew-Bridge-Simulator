@@ -1,0 +1,104 @@
+# Design: power-routing
+
+## Context
+
+`power-grid` gave the Tern four switchboard sections, an emergency bus and nine distribution panels, with every load
+hanging off a panel. On the grid mockup's floor plan (2026-10-11) the owner saw the loads as loose dots and most panels
+bunched on decks B and C, and asked for a grid that connects everything through breaker boxes throughout the ship,
+boxes that route power when switched, and a protection that trips the ship when too many conduits are live and
+brings it back at its factory settings.
+
+## Decisions
+
+### 1. A conduit box in every room, runs through the doorways, a feeder to every load
+
+`tools/power/boxes.py` derives them from `layout.json` and the hand-authored part of `power.json`, by the rules in
+`power.json` `distribution`; `--check` fails when the file is stale. It never edits a hand-authored node, trunk or tie.
+
+- **Boxes.** A room with a switchboard section or a distribution panel uses it as its box. Every other room gets one
+  (`bx_<room>`, kind `box`): on the wall beside the doorway its feed comes in by, 1.2 m along the wall from the
+  doorway's centre (clear of the frame), 0.3 m off the wall, 1.3 m over the floor. 20 new boxes; every one of the 30
+  rooms has a box.
+- **Runs.** One conduit through every doorway between two rooms (`r_<doorway>`, 29 of them), box to box under the
+  ceilings (0.35 m under, or under the next deck in a room taller than a deck), unless a trunk or a tie already joins
+  the two rooms' nodes. Windows and doors to space carry none.
+- **Factory configuration.** Breadth first from the rooms with switchboards and panels, in the layout's order of rooms
+  and doorways: the doorway each other room is first reached by is its feed, closed at the factory (20 runs). The other
+  9 doorway runs are spares, open: the routes an engineer closes to bring power round a cut.
+- **Ratings.** A feed run is rated for everything beyond it (each load at its `setpoint_max`, each room's lights)
+  times 1.25, rounded up to 5, 10, 15, 20, 30 or 40 MW: the shield room's feed is 30 MW, a turret pod's 10 MW, the
+  bridge's 5 MW. A spare takes 10 MW or the larger feed rating of its two rooms, so a spare can carry what it replaces.
+- **Loads and lights.** Every load in a room is wired to that room's box (its panel where the room has one), with a
+  feeder from the box under the ceiling to the load (`feeder_m`). The sensors and the comms array, outside every room,
+  keep their panels. Each box lights its own room (30 lighting loads, the same 29.3 kW).
+
+### 2. Switching and the trip
+
+- **A box switched off** passes nothing: its loads get nothing, and neither does anything fed only through it. Switched
+  on, it passes power again. Hand-authored switchboards and panels are boxes too.
+- **A run** (a conduit or a tie) is closed or opened at its box. It is **live** when it is closed, not severed, and both
+  its boxes are on.
+- **The trip** (the owner: "Too many conduits open can cause the ship to shut down temporarily and reset the
+  configuration to factory settings"). "Open" is read as switched on, carrying power (recommendation taken, ask only
+  with screenshots). Every live run adds its charging current to the main protection, which allows `max_live_runs`
+  (42) at once; the factory configuration is 39 (15 trunks, 4 ties, 20 feeds). One more trips the grid: every box but
+  the switchboard sections and the emergency bus switched off and every run opened, for `trip_dark_s` (8 s). The
+  switchboards' own loads keep their power through it, so the reactor's auxiliaries and the coolant pumps run on and
+  a trip does not scram the reactor. Nothing can be switched while the ship is dark. Then every switch returns to its
+  factory setting: every box on, every run as the factory left it, and the grid comes back.
+- A severed run is not live, so a cut makes room for a spare.
+- **A run open at its box carries no surge**: the damage cascade stops at it as at a severed one (`ship-damage` 3).
+  The damage state mirrors the grid's switches each sub-step.
+
+### 3. Engineering's automation routes round a cut
+
+When a switched-on box with a load (or an island of them joined by closed runs) is cut off from the generators' and
+the battery's nodes, and closing a spare would join it to the powered grid within the protection's limit, Engineering's
+automation closes the first such spare, in the data's order, after its reaction time (3 s). It never closes a spare
+that would trip the grid. A player at Engineering will route from the console once its routing view is approved.
+
+### 3a. The engineer's schematic (owner, 2026-10-11)
+
+The owner: "Engineer will have a view of the schematics on the side. But can click on an expand button to see the 3d
+schematic in full screen. They can toggle between 2d and 3d view. 2d is a simplified graph view".
+
+- **On the side**: Engineering's BUSES panel (2 x 2 cells, the one-line diagram and the battery) becomes SCHEMATIC: the
+  2D graph in small (the switchboards, the trunks, the battery and the live-run count against the limit) with an
+  EXPAND button. The console keeps its four panels (`bridge-stations` 8.0).
+- **Full screen**: EXPAND opens the schematic over the console, with a 2D / 3D toggle and COLLAPSE back. 3D: the decks
+  in perspective at their heights, an orbit camera, rooms as translucent floors, the boxes, runs, spares and feeders
+  where they are. 2D: the simplified graph: boxes as nodes, runs as edges (spares dashed), each box's loads as bars
+  under it, laid out for reading, not to scale. In both, a tap switches a box or a run, the live runs show against the
+  limit, and a trip shows its countdown.
+- The full-screen schematic is `docs/mockups/power-grid.html`; the side panel is drawn in `consoles.html`. Both wait
+  for the owner's approval before the engine builds them (CLAUDE.md 10).
+
+### 4. What it does to the fight (2026-10-11, bots at Helm and Tactical, Engineering on automation, seeds 1-8)
+
+2 victories (in 454 and 514 s), 3 defeats, 3 fights to the 600 s limit with the Hound at 72-108 of its 250 MJ. The
+losing fights turn on the forward switchboard room: the two forward switchboard sections and the emergency bus share it,
+nine trunks end there, and the spine's spares run past it, so one hit (seed 2, 270 s) severed 15 conduits at once and
+starved the bow (the shields at 5.6 of 15 MW). The bot test now holds the drill winnable without an engineer (a win in
+six), every fight 4-10 minutes, and the Hound below 60 % in every one.
+
+### 5. Pi 5 budget
+
+20 nodes and 29 conduits more in the solve (34 nodes, 44 conduits): the augmenting paths stay breadth first over a
+graph that small, well inside the sub-step's estimate (`power-grid` 14). The live count and the reroute check walk the
+same graph once a sub-step. No new network traffic until the console's routing view: the switches will ride in the grid
+snapshot at 2 Hz (a bit a box and a run, 10 bytes).
+
+## Risks / Trade-offs
+
+- **The forward switchboard room is a single point of failure** (section 4). Splitting it into port and starboard rooms
+  is a layout change to `reference-ship-tern`: open question R1.
+- **One feed a room until a spare is closed**: rooms with one doorway (the bridge, the shield room, the pods) have no
+  spare, so a cut there waits for the repair teams. Runs through walls between rooms with no doorway would give them
+  one; not built.
+- **A player at Engineering cannot route yet**: the console's routing view is a new screen and waits for its mockup.
+
+## Open questions
+
+| Id | Question | Options | Recommendation | Shot |
+| --- | --- | --- | --- | --- |
+| R1 | Split the forward switchboard room, so one hit cannot cut the bow off? | (a) As it is: a hit there is the ship's weak spot. (b) Port and starboard switchboard rooms on deck C, the emergency bus with one. | (b) | `power-grid.html`, its "Port switchboard lost" and "Both trunks cut" scenarios |

@@ -17,6 +17,7 @@ pub mod exterior;
 pub mod lift;
 pub mod names;
 pub mod nav;
+pub mod power;
 pub mod probes;
 pub mod repair;
 pub mod replay;

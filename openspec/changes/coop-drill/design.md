@@ -251,7 +251,12 @@ once; the deck's walk triangles, not its pictures. A body is seated, standing up
 this drill; the other bridge seats are places to stand, not stations here.
 
 **Joining.** A player starts seated at the station they claimed at muster (BS 6, way 4: "every player with a
-reservation starts seated at it"); a player with no station stands at the back of the bridge.
+reservation starts seated at it"); a player with no station stands at their muster place. The muster places are
+compartments about the ship (`muster_rooms` in the mission: quarters, mess, engineering, medbay, damage control, the
+ready room, life support, deck A's corridor), one a crew member in turn, so the crew start spread through the ship and
+walk up to the bridge by its ladders on the whole ship's walk grid (owner, 2026-10-11: "When you spawn in characters
+please spread them throughout the ship not all in one spot"). Each place stands on the nearest floor joined to the
+bridge (`NavGrid::snap_joined`), and the drill's view draws the eye's deck and the one above it.
 
 **Changing station** (BS 6, way 2: stand, walk, sit):
 
@@ -270,7 +275,7 @@ in the drill client, its own step.
 **When a bot moves** (its `bot` profile in `data/stations.json`, recommendation taken):
 
 - **Relieved:** a player claims the bot's seat. The bot gets up and walks to the most important station no player
-  holds (the profile's `posts` order: Helm, then Tactical), or, with none free, to the back of the bridge.
+  holds (the profile's `posts` order: Helm, then Tactical), or, with none free, to its muster place.
 - **Needed elsewhere:** a station that matters more than the bot's own is empty for `reassign_s` (5 s) with no one
   walking to it, and the bot's own is worth less. The drill's numbers say Helm first: a Helm bot with Tactical on
   automation won 35 of 42 rounds, a Tactical bot alone loses every round (log.md). So a lone bot at Tactical gets
@@ -295,3 +300,20 @@ about 100 triangles each.
 **Tests.** A lone Tactical bot walks to Helm and wins; a player who claims a bot's seat relieves it and the bot walks
 to the other; a station is automated while its walker is on the way; a claim of a player's seat is refused; a body
 reaches a seat on the bridge's walk world in under 6 s.
+
+### 9.1 The outside from the bridge (owner, 2026-10-10)
+
+The owner, watching the drill: "the view screen is missing, it is not impolemented correctly it should be showing the
+view that the captain has selected", and "the windows should show the action going on outside". The bridge drawn on
+foot and in the overview (`sc-client/src/drill_bridge.rs`) now shows the fight, as `bridge-stations` 1 asks ("a
+viewscreen that shows the real exterior"):
+
+- **The viewscreen** at the bow carries the drill's feed: the captain's camera (`Bridge.view`, one of
+  `combat::FEEDS`) while he holds the viewscreen, forward otherwise; the feed's direction is the consoles' own
+  (`console::feed_basis_for`). It is drawn only from in front: the overview's eye is in the bow wall behind it.
+- **The windows** show the sky turned by the Tern's attitude, and the Hound, missiles, bolts and bursts, drawn after
+  the bridge with their depth squeezed into the last 0.0001 of the buffer, so only the windows let them through.
+- **Red alert** lights the bridge in its baked red-alert state.
+
+Cost on the Pi 5: the feed's pass (1228 x 388, already drawn when seated) is now also drawn on foot and in the
+overview, and the outside's few objects are drawn a second time in the bridge's pass.

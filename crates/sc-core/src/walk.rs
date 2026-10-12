@@ -24,6 +24,11 @@ use rapier3d::parry::query::ShapeCastOptions;
 use rapier3d::prelude::*;
 use serde::Deserialize;
 
+/// Two people's floors further apart than this are on different decks for [`WalkWorld::sees`], metres.
+const SEE_DECK_M: f32 = 1.2;
+/// The height over the floor a line of sight is tested at: a person's chest, metres.
+const SEE_CHEST_M: f32 = 1.3;
+
 /// `data/crew/walk.json` (`starcrew.walk/1`): the walk's numbers, units in the keys.
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -414,6 +419,22 @@ impl WalkWorld {
     pub fn cast(&self, from: [f32; 3], dir: [f32; 3], max_m: f32) -> Option<f32> {
         let ray = Ray::new(Vector::new(from[0], from[1], from[2]), Vector::new(dir[0], dir[1], dir[2]));
         self.queries().cast_ray(&ray, max_m, true).map(|(_, toi)| toi)
+    }
+
+    /// Whether one person sees another, from feet to feet (crew-nameplates 2: a name shows in line of sight, never
+    /// through a bulkhead): on the same deck (floors within a step and a half of each other), and a ray at chest
+    /// height between them meets nothing of the walk world. Low furniture does not hide a person; a doorway does not.
+    pub fn sees(&self, from: [f32; 3], to: [f32; 3]) -> bool {
+        if (from[1] - to[1]).abs() > SEE_DECK_M {
+            return false;
+        }
+        let a = [from[0], from[1] + SEE_CHEST_M, from[2]];
+        let d = [to[0] - from[0], to[1] - from[1], to[2] - from[2]];
+        let len = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
+        if len < 1e-3 {
+            return true;
+        }
+        self.cast(a, [d[0] / len, d[1] / len, d[2] / len], len).is_none()
     }
 
     /// The first floor straight down from `(x, from, z)`, or `None`.

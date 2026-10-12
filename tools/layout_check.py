@@ -406,6 +406,12 @@ def main(argv):
     if not paths:
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         paths = sorted(glob.glob(os.path.join(root, "data", "ships", "*", "layout.json")))
+        # A combat layout (a ship with no deck plan, the Hound's) is checked by its reader in sc-core
+        # (combat::damage), which `cargo test` runs; this tool checks deck plans.
+        combat = [p for p in paths if json.load(open(p, encoding="utf-8")).get("schema", "").startswith("starcrew.combat-layout/")]
+        for p in combat:
+            print(f"{p}: a combat layout, checked by sc-core's combat::damage reader, not here")
+        paths = [p for p in paths if p not in combat]
     ok = all([check(p, quiet) for p in paths])
     return 0 if ok else 1
 

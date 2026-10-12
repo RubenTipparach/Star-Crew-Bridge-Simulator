@@ -379,7 +379,12 @@
     for (const g of PW.generators) st.genClosed[g.id] = true;
     for (const t of PW.ties) st.tieClosed[t.id] = !!t.closed;
     // cut: where a hit severed the conduit, [x, y, z] on its path (null while whole), for the damage map's break marker.
-    for (const k of PW.conduits) st.conduit[k.id] = { health: 1, severed: false, breaker: true, cut: null };
+    // A conduit starts at its factory setting (power-routing 1): closed, unless it is a spare route.
+    for (const k of PW.conduits) st.conduit[k.id] = { health: 1, severed: false, breaker: k.factory_closed !== false, cut: null };
+    // Every node's box switched on (power-routing 1); the main protection's trip (power-routing 2).
+    st.boxOn = {};
+    for (const nd of PW.nodes) st.boxOn[nd.id] = true;
+    st.routing = { trip_s: 0, trips: 0 };
     for (const l of loads) if (l.heat && l.heat.to === "node") st.thermal[l.id] = { T: PW.coolant.initial_k + 5 };
     for (const l of loads) st.loop.branchOpen[l.id] = true;
     // The coolant parts (reactor-cooling design 1): a missing block is an error, not a silent zero (CLAUDE.md 6.5).
@@ -431,7 +436,8 @@
       const reserve = rx.releaseReserve ? 0 : B.restart_reserve_mj;
       const lim = (e) => Math.max(0, Math.min(B.discharge_max_mw * st.battery.health, (e * B.discharge_efficiency) / dt));
       const batAvail = lim(st.battery.soc_mj - reserve), batAvailAll = lim(st.battery.soc_mj);
-      const nh = (id) => (st.nodeHealth[id] == null ? 1 : st.nodeHealth[id]);
+      // A node whose box is switched off passes nothing, as a destroyed one (power-routing 1).
+      const nh = (id) => (st.boxOn[id] === false ? 0 : st.nodeHealth[id] == null ? 1 : st.nodeHealth[id]);
       const eRx = add("reactor", S, RX, rxAvail, true, "source");
       const eBat = add("battery", S, BAT, 0, true, "source");
       add("battery_out", BAT, pIdx[B.node], st.batteryBreaker ? 1e9 : 0, true, "battery");
@@ -528,7 +534,7 @@
       for (let i = 0; i < loads.length; i++) {
         const l = loads[i];
         const sp = Math.min(setpoints[i], l.setpoint_max);
-        if (sp <= 0 || st.breakerOpen[i] || st.nodeHealth[l.node] === 0) continue;
+        if (sp <= 0 || st.breakerOpen[i] || st.nodeHealth[l.node] === 0 || st.boxOn[l.node] === false) continue;
         const cap = capability(i);
         if (cap <= 0) continue;
         let x;
@@ -874,7 +880,7 @@
           th.T += (dt * (q - qLoop - qRoom)) / (h.capacity_mj_per_k * MWW);
           toLoop += qLoop; if (room != null) roomHeat[room] += qRoom;
           // Over-temperature wears the system (damage-control applies the state).
-          if (th.T > h.damage_k) st.integrity[i] = Math.max(0, st.integrity[i] - dt * (th.T - h.damage_k) * 0.01);
+          if (th.T > h.damage_k) st.integrity[i] = Math.max(0, st.integrity[i] - dt * (th.T - h.damage_k) * PW.overdrive.heat_wear_pct_per_s_per_k);
         }
       }
       // Reactor blanket.
@@ -1723,7 +1729,7 @@
     const nodeHp = (id) => (st.nodeHealth[id] == null ? 1 : st.nodeHealth[id]);
     /** Whether a power node carries power now: an edge touching it carries flow, or a load on it is supplied. */
     function nodeLive(id) {
-      if (nodeHp(id) <= 0) return false;
+      if (nodeHp(id) <= 0 || st.boxOn[id] === false) return false;
       for (const k of PW.conduits) if ((k.between[0] === id || k.between[1] === id) && Math.abs(st.flows[k.id] || 0) > EPS) return true;
       for (const t of PW.ties) if ((t.between[0] === id || t.between[1] === id) && Math.abs(st.flows[t.id] || 0) > EPS) return true;
       for (const g of PW.generators) if (g.node === id && (st.flows[g.id] || 0) > EPS) return true;
@@ -1743,14 +1749,14 @@
       const mw = st.flows[id] || 0;
       let state = "live";
       if (c.severed) state = "severed";
-      else if (!c.breaker || nodeHp(k.between[0]) <= 0 || nodeHp(k.between[1]) <= 0) state = "dead";
+      else if (!c.breaker || nodeHp(k.between[0]) <= 0 || nodeHp(k.between[1]) <= 0 || st.boxOn[k.between[0]] === false || st.boxOn[k.between[1]] === false) state = "dead";
       else if (Math.abs(mw) <= EPS && !(nodeLive(k.between[0]) && nodeLive(k.between[1]))) state = "dead";
-      return { id, name: k.name, mw, state, health: c.health, breaker: c.breaker ? "closed" : "open", cut: c.cut || null, capacity_mw: k.capacity_mw };
+      return { id, name: k.name, mw, state, health: c.health, breaker: c.breaker ? "closed" : "open", cut: c.cut || null, capacity_mw: k.capacity_mw, spare: k.factory_closed === false };
     }
     /** A switchboard section, panel or bus as the map draws it (power-grid 5): health 0-1 and state "sound", "damaged" or "destroyed". */
     function nodeView(id) {
       const h = nodeHp(id);
-      return { id, health: h, state: h <= 0 ? "destroyed" : h < 1 ? "damaged" : "sound", live: nodeLive(id) };
+      return { id, health: h, state: h <= 0 ? "destroyed" : h < 1 ? "damaged" : "sound", live: nodeLive(id), on: st.boxOn[id] !== false };
     }
     /**
      * Every breaker, by the node whose box it stands in, and its state "closed", "open" (opened or tripped) or "locked"
@@ -1824,8 +1830,63 @@
       return null;
     }
 
+    // ======================================================= ROUTING (power-routing 1-2; sc-core power::step_routing)
+    const RT = PW.routing;
+    /** The runs live now: conduits and ties closed, whole, with both their boxes on. */
+    function liveRuns() {
+      const on = (id) => st.boxOn[id] !== false;
+      let n = 0;
+      for (const k of PW.conduits) { const c = st.conduit[k.id]; if (c.breaker && !c.severed && on(k.between[0]) && on(k.between[1])) n++; }
+      for (const t of PW.ties) if (st.tieClosed[t.id] && on(t.between[0]) && on(t.between[1])) n++;
+      return n;
+    }
+    /** Every box on, every run at its factory setting. */
+    function factoryReset() {
+      for (const nd of PW.nodes) st.boxOn[nd.id] = true;
+      for (const k of PW.conduits) st.conduit[k.id].breaker = k.factory_closed !== false;
+      for (const t of PW.ties) st.tieClosed[t.id] = !!t.closed;
+    }
+    /** The main protection, at the start of each sub-step: a trip's dark time running out restores the factory
+     *  configuration; more live runs than it allows trips the grid. */
+    function stepRouting() {
+      if (!RT) return;
+      const R = st.routing;
+      if (R.trip_s > 0) {
+        R.trip_s -= dt;
+        if (R.trip_s <= 1e-9) { R.trip_s = 0; factoryReset(); log("Grid restored: factory configuration"); }
+        return;
+      }
+      if (liveRuns() > RT.max_live_runs) {
+        R.trip_s = RT.trip_dark_s; R.trips++;
+        for (const nd of PW.nodes) st.boxOn[nd.id] = RT.kept_on_trip.indexOf(nd.kind) >= 0;
+        for (const k of PW.conduits) st.conduit[k.id].breaker = false;
+        for (const t of PW.ties) st.tieClosed[t.id] = false;
+        log("Main protection tripped: too many live runs");
+      }
+    }
+    /** Switch a node's box on or off; refused (false) while the grid is tripped dark. */
+    function setBox(id, on) {
+      if (st.routing.trip_s > 0 || !(id in st.boxOn)) return false;
+      st.boxOn[id] = !!on; log((on ? "Box on: " : "Box off: ") + id);
+      return true;
+    }
+    /** Close or open a run (a conduit or a tie) at its box; refused (false) while the grid is tripped dark. */
+    function setRun(id, closed) {
+      if (st.routing.trip_s > 0) return false;
+      if (st.conduit[id]) st.conduit[id].breaker = !!closed;
+      else if (id in st.tieClosed) st.tieClosed[id] = !!closed;
+      else return false;
+      log((closed ? "Run closed: " : "Run opened: ") + id);
+      return true;
+    }
+    /** The protection as a console shows it: live runs against the limit, the dark seconds left, trips so far. */
+    function routingView() {
+      return { live: liveRuns(), limit: RT ? RT.max_live_runs : Infinity, trip_s: st.routing.trip_s, tripped: st.routing.trip_s > 0, trips: st.routing.trips, dark_s: RT ? RT.trip_dark_s : 0 };
+    }
+
     // ======================================================= the sub-step
     function step() {
+      stepRouting();
       stepVent();
       stepAutomation();
       stepCooling();
@@ -1871,6 +1932,7 @@
       operateDoor, setPriority, applyPreset, setCooling, coolantReadout, coolantView, damagePart, repairPart, isolateSegment, partIntegrity, setGroupBreaker, pumpSpeed, repressurize, repairSystem, spliceConduit, rebuildNode, fanRatio,
       airlockCycleOut, airlockCycleIn, ventCompartment, stopVent, addCrew, setActivity, compartmentReadout, lighting,
       receiverKpa, storeMol, fillStandard, log, fs: FS, fO2, conduitView, nodeView, nodeLive, breakers, repairTime, hullSection,
+      setBox, setRun, liveRuns, routingView, factoryReset,
       get P() { return P; }, get T() { return T; }, get n() { return n; }, get ntot() { return ntot; },
     };
   }

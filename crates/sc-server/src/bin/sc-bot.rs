@@ -43,7 +43,7 @@ fn main() -> ExitCode {
     let read = |rel: &str| std::fs::read_to_string(root.join(rel)).map_err(|e| format!("{rel}: {e}"));
     let data = (|| {
         let t: Vec<String> = DRILL_FILES.iter().map(|f| read(f)).collect::<Result<_, _>>()?;
-        let arr: [&str; 6] = std::array::from_fn(|i| t[i].as_str());
+        let arr: [&str; sc_core::combat::data::DRILL_FILE_COUNT] = std::array::from_fn(|i| t[i].as_str());
         let m = "data/missions/drill-hound.json";
         DrillData::parse(arr, m, &read(m)?).map_err(|e| e.to_string())
     })();

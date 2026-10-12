@@ -36,6 +36,7 @@ step "8. shader modules match their sources"
 python3 tools/sokol_shaders.py --check
 step "9. engine data"
 cargo run -q -p sc-tools -- check-data .
+python3 tools/power/boxes.py --check
 step "10. lighting data"
 python3 tools/lighting_check.py
 step "11. console fonts are the mockup's"

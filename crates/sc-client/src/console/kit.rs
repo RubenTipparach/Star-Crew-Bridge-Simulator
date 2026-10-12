@@ -58,6 +58,14 @@ pub enum Act {
     /// true).
     View(String),
     Mode(bool),
+    /// Every station: open OBJECTIVES, or go back to the console (objectives-tab 1).
+    Obj,
+    ObjClose,
+    /// The gunner: the next target, or the one on a target's card (enemy-fighters 3).
+    GunNext,
+    GunPick(usize),
+    /// Tactical: throw a decoy (armour-and-missiles 3).
+    Decoy,
 }
 
 /// What a drag on a control turns (the mockup's `data-drag`).
@@ -75,6 +83,8 @@ pub enum Drag {
     Lever(String),
     /// Science: the shield view's camera.
     ShieldCam,
+    /// The gunner: a drag across the sight turns the barrel (enemy-fighters 3).
+    GunAim,
 }
 
 /// A control: pressed, dragged or held (the mockup's `data-hold`, 0.6 s).
@@ -1102,14 +1112,21 @@ fn text_rot(cv: &Canvas, x: f32, y: f32, size: f32, col: Color32, s: &str, t: T,
 
 /// The red alert's vignette: the band's edges washed in the alert colour (a radial gradient from 55% out).
 pub fn vignette(cv: &Canvas, w: f32, h: f32, col: Color32, a: f32) {
+    vignette_at(cv, w, h, col, a, [0.5, 0.5], 0.75, 0.55);
+}
+
+/// An SVG radial gradient over a `w` x `h` box in its own units: centred at `c` (shares of the box), radius `r` (a
+/// share), clear out to `from` of the radius, then rising to `a` of `col` at the radius and beyond.
+#[allow(clippy::too_many_arguments)]
+pub fn vignette_at(cv: &Canvas, w: f32, h: f32, col: Color32, a: f32, c: [f32; 2], r: f32, from: f32) {
     let (nx, ny) = (40, 12);
     let mut verts = Vec::new();
     let mut idx = Vec::new();
     for j in 0..=ny {
         for i in 0..=nx {
             let (u, vv) = (i as f32 / nx as f32, j as f32 / ny as f32);
-            let t = ((u - 0.5) / 0.75).hypot((vv - 0.5) / 0.75);
-            let k = ((t - 0.55) / 0.45).clamp(0.0, 1.0) * a;
+            let t = ((u - c[0]) / r).hypot((vv - c[1]) / r);
+            let k = ((t - from) / (1.0 - from)).clamp(0.0, 1.0) * a;
             verts.push(([u * w, vv * h], alpha(col, k)));
         }
     }

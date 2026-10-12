@@ -12,7 +12,7 @@ use sc_core::names::{NameData, NAME_MAX_CHARS};
 use sc_core::rng::Rng;
 use serde::{Deserialize, Serialize};
 
-use crate::options::{Display, Options};
+use crate::options::Options;
 
 /// The stations a player can ask for, in the order the lobby shows them (`bridge-stations`).
 pub const STATIONS: [&str; 8] = ["Captain", "Helm", "Tactical", "Engineering", "Science", "Comms", "Flight ops", "Any"];
@@ -366,11 +366,11 @@ impl Lobby {
         action
     }
 
-    /// Options (front-menu design 4): Display, applied at once and kept.
+    /// Options (front-menu design 4, game-menu 3): its rows, applied at once and kept.
     fn options_page(&mut self, ctx: &egui::Context) {
         let mut back = false;
-        let mut set = None;
-        Self::panel(ctx, "options", Vec2::new(520.0, 180.0), |ui| {
+        let options = &mut self.options;
+        Self::panel(ctx, "options", Vec2::new(560.0, 300.0), |ui| {
             ui.horizontal(|ui| {
                 if ui.add(egui::Button::new(RichText::new("BACK").color(PALE)).corner_radius(14.0)).clicked() {
                     back = true;
@@ -379,26 +379,8 @@ impl Lobby {
                 ui.label(RichText::new("OPTIONS").size(20.0).color(LILAC).strong());
             });
             ui.add_space(18.0);
-            ui.horizontal(|ui| {
-                ui.add_sized(Vec2::new(120.0, 40.0), egui::Label::new(RichText::new("Display").size(18.0).color(PALE)));
-                for (word, d) in [("Full screen", Display::Fullscreen), ("Window", Display::Window)] {
-                    let on = self.options.display == d;
-                    let b =
-                        egui::Button::new(RichText::new(word).size(16.0).color(if on { Color32::BLACK } else { PALE }))
-                            .min_size(Vec2::new(150.0, 40.0))
-                            .corner_radius(20.0)
-                            .fill(if on { LILAC } else { SLATE });
-                    if ui.add(b).clicked() && !on {
-                        set = Some(d);
-                    }
-                }
-            });
+            options.rows(ui);
         });
-        if let Some(d) = set {
-            self.options.display = d;
-            self.options.keep();
-            crate::platform_display(d);
-        }
         if back {
             self.page = Page::Main;
         }

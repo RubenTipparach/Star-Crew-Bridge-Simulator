@@ -1,0 +1,146 @@
+<!doctype html>
+<!--
+  Star Crew mockup: the nameplates (openspec/changes/crew-nameplates) and the game menu on Esc
+  (openspec/changes/game-menu). A flat 2D page over engine captures, drawn at the engine's 1920 x 1080 in its UI
+  colours (sc-client drill.rs, lobby.rs) and egui's default typeface (Ubuntu Light, under the Ubuntu Font Licence).
+  Built by tools/mockups/game_menu.py from tools/mockups/game_menu.template.html; edit the template, never this page.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nameplates and Game Menu</title>
+<style>
+  @font-face { font-family: "Ubuntu Light"; src: url(__FONT__) format("truetype"); }
+  :root {
+    --bg: #05070d; --fg: #e8eef5; --dim: #8a98a8; --line: #2b3540; --accent: #48d6ff;
+    --text: rgb(222,230,238); --udim: rgb(128,146,164); --amber: rgb(242,160,70); --lilac: rgb(190,160,230);
+    --pale: rgb(200,212,230); --btn: rgb(38,46,66); --panel: rgba(10,16,26,0.91); --edge: rgb(44,62,82);
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #05070d; } }
+  :root[data-theme="dark"] { --bg: #05070d; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 system-ui, sans-serif; }
+  header { padding: 14px 16px 6px; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header p { margin: 4px 0 0; color: var(--dim); max-width: 1100px; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 16px; }
+  .tabs button { background: #18202a; color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; font: inherit; cursor: pointer; }
+  .tabs button.on { border-color: var(--accent); color: var(--accent); }
+  .frame { padding: 0 16px; }
+  .fit { position: relative; width: 100%; max-width: 1600px; aspect-ratio: 16 / 9; overflow: hidden; border: 1px solid var(--line); }
+  .stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; background: #000;
+           font-family: "Ubuntu Light", sans-serif; color: var(--text); }
+  .stage img.bg { position: absolute; left: 0; width: 1920px; }
+  .veil { position: absolute; inset: 0; background: rgba(0,0,0,0.5); }
+  .plate { position: absolute; transform: translate(-50%, -100%); text-align: center; white-space: nowrap; }
+  .plate .band { display: inline-block; background: rgba(6,10,16,0.6); border-radius: 6px; padding: 1px 9px 2px; font-size: 20px; }
+  .plate .npc { color: var(--udim); }
+  .plate .going { display: block; color: var(--amber); font-size: 16px; margin-top: 1px; }
+  .menu { position: absolute; background: var(--panel); border: 1px solid var(--edge); border-radius: 18px; padding: 22px; box-sizing: border-box; }
+  .menu h2 { margin: 0; color: var(--amber); font-weight: normal; font-size: 20px; letter-spacing: 0.04em; }
+  .menu .where { color: var(--udim); font-size: 17px; margin: 2px 0 18px; }
+  .row { height: 58px; margin-bottom: 12px; border-radius: 14px; background: var(--btn); color: var(--pale); font-size: 24px;
+         display: flex; align-items: center; padding: 0 20px; box-sizing: border-box; }
+  .row.focus { background: var(--lilac); color: #10131c; }
+  .row .ask { flex: 1; }
+  .row .yn { background: #1a2130; color: var(--pale); border-radius: 12px; padding: 6px 18px; margin-left: 10px; font-size: 21px; }
+  .row .yn.focus { background: var(--lilac); color: #10131c; }
+  .opt { display: flex; align-items: center; height: 58px; margin-bottom: 10px; }
+  .opt .lab { width: 190px; color: var(--udim); font-size: 21px; }
+  .seg { display: flex; gap: 8px; }
+  .seg span { background: var(--btn); color: var(--pale); border-radius: 18px; padding: 9px 22px; font-size: 21px; }
+  .seg span.on { background: var(--lilac); color: #10131c; }
+  .slider { position: relative; width: 250px; height: 8px; border-radius: 4px; background: var(--btn); }
+  .slider i { position: absolute; left: 0; top: 0; height: 8px; border-radius: 4px; background: var(--lilac); }
+  .slider b { position: absolute; top: -9px; width: 26px; height: 26px; border-radius: 13px; background: var(--pale); transform: translateX(-50%); }
+  .val { margin-left: 22px; font-size: 21px; color: var(--text); }
+  .note { padding: 10px 16px 18px; color: var(--dim); max-width: 1100px; }
+  .note b { color: var(--fg); font-weight: 600; }
+  .cost { padding: 0 16px 24px; color: var(--dim); font-size: 13px; }
+  .state { display: none; }
+  .state.on { display: block; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Nameplates and the game menu</h1>
+  <p>Mockup for the OpenSpec changes <code>crew-nameplates</code> and <code>game-menu</code>, drawn over engine captures at
+  the engine's 1920 x 1080 in its UI colours and typeface. The owner, 2026-10-10: "I want to always see peoples name in
+  the game", "show if they are (npc)", "esc should bring up a menu to return to menu, options, or exit".</p>
+</header>
+<div class="tabs" id="tabs"></div>
+<div class="frame"><div class="fit" id="fit"><div class="stage" id="stage">
+
+  <div class="state" data-name="1 Names: walk" data-note="&lt;b&gt;Walking.&lt;/b&gt; Every crew member in sight gets a name, with (NPC) after a bot's. Shown within 25 m and in line of sight on the deck, fading out from 20 m; never through a bulkhead. Capture: the walk, a command NPC 3 m ahead (seed 7).">
+    <img class="bg" style="top:0" src="__WALK__" alt="">
+    <div class="plate" style="left:960px;top:262px"><span class="band">Sassa Kesaley <span class="npc">(NPC)</span></span></div>
+  </div>
+
+  <div class="state" data-name="2 Names: drill" data-note="&lt;b&gt;The co-op drill.&lt;/b&gt; Both bodies are sc-bot crew, so both read (NPC); a player's name stands alone. The amber line says where a body is walking, as today. Capture: Pi 1's watch window, 2026-10-10, old labels erased.">
+    <img class="bg" style="top:135px" src="__DRILL__" alt="">
+    <div class="plate" style="left:668px;top:363px"><span class="band">Ens. Dara Holt <span class="npc">(NPC)</span></span><span class="going">to Tactical</span></div>
+    <div class="plate" style="left:1251px;top:398px"><span class="band">Lt. Arlo Venn <span class="npc">(NPC)</span></span></div>
+  </div>
+
+  <div class="state" data-name="3 Esc: menu" data-note="&lt;b&gt;Esc opens the menu&lt;/b&gt; and lets go of the mouse; Esc again, or Resume, closes it. Nothing pauses: the ship is shared. Up and Down, Enter, a pad's d-pad and A, or the mouse.">
+    <img class="bg" style="top:0" src="__WALK__" alt="">
+    <div class="plate" style="left:960px;top:262px"><span class="band">Sassa Kesaley <span class="npc">(NPC)</span></span></div>
+    <div class="veil"></div>
+    <div class="menu" style="left:720px;top:300px;width:480px;height:420px">
+      <h2>MENU</h2><div class="where">SCS Tern, Deck A</div>
+      <div class="row focus">Resume</div>
+      <div class="row">Options</div>
+      <div class="row">Return to menu</div>
+      <div class="row">Exit</div>
+    </div>
+  </div>
+
+  <div class="state" data-name="4 Esc: seated, leaving" data-note="&lt;b&gt;Seated at Helm, Return to menu chosen.&lt;/b&gt; The row asks once, Yes or No, with No in focus. Yes leaves the crew for the lobby and Helm goes to automation. Exit asks the same way.">
+    <img class="bg" style="top:0" src="__HELM__" alt="">
+    <div class="veil"></div>
+    <div class="menu" style="left:720px;top:300px;width:480px;height:420px">
+      <h2>MENU</h2><div class="where">SCS Tern, Helm</div>
+      <div class="row">Resume</div>
+      <div class="row">Options</div>
+      <div class="row"><span class="ask">Leave the ship?</span><span class="yn">Yes</span><span class="yn focus">No</span></div>
+      <div class="row">Exit</div>
+    </div>
+  </div>
+
+  <div class="state" data-name="5 Options" data-note="&lt;b&gt;Options.&lt;/b&gt; A label and a control a row. Changes apply at once and are kept in settings/options.json. Volume is left out until the game has sound.">
+    <img class="bg" style="top:0" src="__WALK__" alt="">
+    <div class="plate" style="left:960px;top:262px"><span class="band">Sassa Kesaley <span class="npc">(NPC)</span></span></div>
+    <div class="veil"></div>
+    <div class="menu" style="left:660px;top:270px;width:600px;height:480px">
+      <h2>OPTIONS</h2><div class="where">SCS Tern, Deck A</div>
+      <div class="opt"><span class="lab">Display</span><span class="seg"><span class="on">Full screen</span><span>Window</span></span></div>
+      <div class="opt"><span class="lab">Names</span><span class="seg"><span class="on">On</span><span>Off</span></span></div>
+      <div class="opt"><span class="lab">Look speed</span><span class="slider"><i style="width:43%"></i><b style="left:43%"></b></span><span class="val">100 %</span></div>
+      <div class="opt"><span class="lab">Field of view</span><span class="slider"><i style="width:25%"></i><b style="left:25%"></b></span><span class="val">50&deg;</span></div>
+      <div class="row focus" style="margin-top:12px;width:200px">Back</div>
+    </div>
+  </div>
+
+</div></div></div>
+<div class="note" id="note"></div>
+<div class="cost">UI cost on the Pi 5 (designs, not measurements): the nameplates are one draw call (one egui layer, one clip
+rectangle, the font atlas), about 1,000 triangles for 16 names; the menu is 1-2 draw calls and under 1,500 triangles
+while open, none while closed. A desktop frame rate is not a Pi measurement.</div>
+<script>
+  const states = [...document.querySelectorAll('.state')];
+  const tabs = document.getElementById('tabs'), note = document.getElementById('note');
+  function show(i) {
+    states.forEach((s, k) => s.classList.toggle('on', k === i));
+    [...tabs.children].forEach((b, k) => b.classList.toggle('on', k === i));
+    const t = document.createElement('textarea'); t.innerHTML = states[i].dataset.note; note.innerHTML = t.value;
+    try { history.replaceState(null, '', '#' + (i + 1)); } catch (e) {}
+  }
+  states.forEach((s, i) => { const b = document.createElement('button'); b.textContent = s.dataset.name; b.onclick = () => show(i); tabs.appendChild(b); });
+  const fit = document.getElementById('fit'), stage = document.getElementById('stage');
+  function scale() { stage.style.transform = 'scale(' + fit.clientWidth / 1920 + ')'; }
+  new ResizeObserver(scale).observe(fit); scale();
+  const h = parseInt(location.hash.slice(1), 10);
+  show(h >= 1 && h <= states.length ? h - 1 : 0);
+</script>
+</body>
+</html>

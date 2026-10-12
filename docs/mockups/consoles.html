@@ -59,7 +59,7 @@
 <!-- INLINE layout:tern END -->
 <!-- INLINE data:tern/power BEGIN -->
 <script id="ship-data-power" type="application/json">
-{"schema":"starcrew.ship-power/1","status":"PROPOSED by openspec/changes/power-grid (2026-10-04). No engine code reads this yet; the systems mockup does. Numbers are tuning proposals, not decisions.","ship":"tern","units":{"power":"MW (megawatts)","energy":"MJ (megajoules)","temperature":"K (kelvin)","heat_capacity":"MJ/K","conductance":"kW/K for loop couplings, W/K for room couplings","time":"s","position":"metres, ship-local, as layout.json"},"solve":{"substep_hz":10,"quanta_rounds":3,"epsilon_mw":0.0005,"dropout_resolves":1},"reactor":{"system":"reactor","fuel":"deuterium and helium-3","thermal_rated_mw":80.0,"conversion_efficiency":0.6,"throttle_min":0.1,"throttle_max":1.2,"throttle_default":1.0,"ramp_up_per_s":0.02,"ramp_down_per_s":0.1,"fuel_energy_mj_per_kg":353000000.0,"fuel_load_kg":4.0,"overdrive_wear_pct_per_min_at_max":1.0,"heat":{"capacity_mj_per_k":10.0,"loop_kw_per_k":110.0,"room_w_per_k":250.0,"warn_k":750.0,"scram_k":820.0,"afterheat_share":0.06,"afterheat_tau_s":180.0},"scram":{"loop_over_k":380.0,"loop_over_hold_s":2.0,"aux_supply_below":0.8,"aux_rule":"best train: max over the two trains of supply / need","aux_supply_hold_s":2.0,"integrity_below_pct":25.0},"reset":{"fixture":"reactor_panel","hold_s":3.0,"loop_below_k":350.0,"blanket_below_k":700.0},"restart":{"ignition_mw":8.0,"ignition_s":20.0,"start_throttle":0.1}},"battery":{"system":"battery_bank","node":"eb","capacity_mj":1800.0,"initial_soc":0.9,"discharge_max_mw":30.0,"charge_max_mw":12.0,"charge_efficiency":0.95,"discharge_efficiency":0.95,"restart_reserve_mj":350.0,"heat_to":"loop"},"nodes":[{"id":"msb_p","name":"Main switchboard, port section","kind":"switchboard","compartment":"engineering","center_m":[7.5,0.5,-20.6]},{"id":"msb_s","name":"Main switchboard, starboard section","kind":"switchboard","compartment":"engineering","center_m":[-7.5,0.5,-21.0]},{"id":"fsb_p","name":"Forward switchboard, port section","kind":"switchboard","compartment":"switchboard","center_m":[-2.4,-1.0,4.2]},{"id":"fsb_s","name":"Forward switchboard, starboard section","kind":"switchboard","compartment":"switchboard","center_m":[-2.4,-1.0,5.2]},{"id":"eb","name":"Emergency bus","kind":"emergency_bus","compartment":"switchboard","center_m":[-4.5,-1.0,2.0]},{"id":"dp_drive","name":"Drive panel","kind":"panel","compartment":"drive","center_m":[0.0,2.5,-34.0]},{"id":"dp_hangar_p","name":"Hangar port panel","kind":"panel","compartment":"hangar","center_m":[8.0,2.6,-8.0]},{"id":"dp_hangar_s","name":"Hangar starboard panel","kind":"panel","compartment":"hangar","center_m":[-8.0,2.6,-8.0]},{"id":"dp_port","name":"Port turret panel","kind":"panel","compartment":"port_turret","center_m":[6.0,2.6,4.0]},{"id":"dp_stbd","name":"Starboard turret panel","kind":"panel","compartment":"stbd_turret","center_m":[-6.0,2.6,4.0]},{"id":"dp_a","name":"Command deck panel","kind":"panel","compartment":"a_corridor","center_m":[0.6,6.2,10.5]},{"id":"dp_b_fwd","name":"Main deck forward panel","kind":"panel","compartment":"b_spine","center_m":[0.8,2.7,22.0]},{"id":"dp_c_fwd","name":"Lower deck forward panel","kind":"panel","compartment":"c_spine","center_m":[0.8,-0.8,9.0]},{"id":"dp_ls","name":"Life support panel","kind":"panel","compartment":"life_support","center_m":[3.0,-0.8,12.0]}],"generators":[{"id":"gen_p","name":"Reactor generator, port","node":"msb_p","capacity_mw":30.0},{"id":"gen_s","name":"Reactor generator, starboard","node":"msb_s","capacity_mw":30.0}],"ties":[{"id":"bt_main","name":"Main bus tie","between":["msb_p","msb_s"],"capacity_mw":40.0,"closed":true},{"id":"bt_fwd","name":"Forward cross-tie","between":["fsb_p","fsb_s"],"capacity_mw":30.0,"closed":true},{"id":"eb_p","name":"Emergency feed, port","between":["fsb_p","eb"],"capacity_mw":15.0,"closed":true},{"id":"eb_s","name":"Emergency feed, starboard","between":["fsb_s","eb"],"capacity_mw":15.0,"closed":true}],"conduits":[{"id":"k_drive_p","name":"Drive feeder, port","between":["msb_p","dp_drive"],"capacity_mw":20.0,"route":["engineering","drive"],"path_m":[[8.6,2.0,-20.6],[8.6,5.0,-20.6],[8.6,5.0,-29.6],[6.2,5.0,-29.6],[6.2,5.0,-31.45],[0.5,5.0,-31.45],[0.5,2.5,-31.45],[0.5,2.5,-34.0]]},{"id":"k_drive_s","name":"Drive feeder, starboard","between":["msb_s","dp_drive"],"capacity_mw":20.0,"route":["engineering","drive"],"path_m":[[-8.6,2.0,-21.45],[-8.6,5.0,-21.45],[-8.6,5.0,-29.6],[-6.2,5.0,-29.6],[-6.2,5.0,-31.45],[-0.5,5.0,-31.45],[-0.5,2.5,-31.45],[-0.5,2.5,-34.0]]},{"id":"k_aft_p","name":"Port main trunk, aft","between":["msb_p","dp_hangar_p"],"capacity_mw":30.0,"route":["engineering","hangar"],"path_m":[[8.6,2.0,-20.15],[8.6,2.7,-20.15],[8.6,2.7,-18.75],[7.75,2.7,-18.75],[7.75,2.7,-18.0],[8.0,2.6,-8.0]]},{"id":"k_aft_s","name":"Starboard main trunk, aft","between":["msb_s","dp_hangar_s"],"capacity_mw":30.0,"route":["engineering","hangar"],"path_m":[[-8.6,2.0,-20.55],[-8.6,2.7,-20.55],[-8.6,2.7,-18.75],[-7.75,2.7,-18.75],[-7.75,2.7,-18.0],[-8.0,2.6,-8.0]]},{"id":"k_mid_p","name":"Port main trunk, midships","between":["dp_hangar_p","dp_port"],"capacity_mw":30.0,"route":["hangar","port_turret"],"path_m":[[8.0,2.6,-8.0],[8.0,2.6,-2.5],[8.0,2.6,1.0],[6.0,2.6,4.0]]},{"id":"k_mid_s","name":"Starboard main trunk, midships","between":["dp_hangar_s","dp_stbd"],"capacity_mw":30.0,"route":["hangar","stbd_turret"],"path_m":[[-8.0,2.6,-8.0],[-8.0,2.6,-2.5],[-8.0,2.6,1.0],[-6.0,2.6,4.0]]},{"id":"k_fwd_p","name":"Port main trunk, forward","between":["dp_port","fsb_p"],"capacity_mw":30.0,"route":["port_turret","shield_room","c_spine","switchboard"],"path_m":[[6.0,2.6,4.0],[4.5,2.6,3.0],[4.5,-0.8,3.0],[1.5,-0.8,3.0],[-1.5,-0.8,3.5],[-2.4,-1.0,4.2]]},{"id":"k_fwd_s","name":"Starboard main trunk, forward","between":["dp_stbd","fsb_s"],"capacity_mw":30.0,"route":["stbd_turret","switchboard"],"path_m":[[-6.0,2.6,4.0],[-4.5,2.6,5.5],[-4.5,-0.8,5.5],[-2.4,-1.0,5.2]]},{"id":"k_a_fwd","name":"Command deck feeder, forward","between":["fsb_p","dp_a"],"capacity_mw":8.0,"route":["switchboard","c_spine","b_spine","a_corridor"],"path_m":[[-2.4,-1.0,4.2],[-0.8,-0.8,6.0],[-0.8,-0.8,11.3],[-0.6,2.7,11.3],[-0.6,6.2,11.3],[0.6,6.2,10.5]]},{"id":"k_a_aft","name":"Command deck feeder, aft","between":["msb_s","dp_a"],"capacity_mw":8.0,"route":["engineering","a_aft_passage","dorsal_turret","a_corridor"],"path_m":[[-8.6,2.0,-21.0],[-8.6,2.95,-21.0],[-8.6,2.95,-18.75],[-6.8,2.95,-18.75],[-6.8,6.2,-18.75],[0.6,6.2,-18.75],[0.6,6.2,-18.0],[0.6,6.2,0.0],[0.6,6.2,4.0],[0.6,6.2,10.5]]},{"id":"k_b_fwd","name":"Main deck forward feeder","between":["fsb_s","dp_b_fwd"],"capacity_mw":12.0,"route":["switchboard","c_spine","b_spine"],"path_m":[[-2.4,-1.0,5.2],[-0.9,-0.8,6.5],[-0.9,-0.8,11.6],[-0.9,2.7,11.6],[0.8,2.7,13.0],[0.8,2.7,22.0]]},{"id":"k_c_fwd_p","name":"Lower deck feeder, port","between":["fsb_p","dp_c_fwd"],"capacity_mw":30.0,"route":["switchboard","c_spine"],"path_m":[[-2.4,-1.0,4.2],[-1.0,-0.9,4.0],[0.8,-0.9,8.0],[0.8,-0.8,9.0]]},{"id":"k_c_fwd_s","name":"Lower deck feeder, starboard","between":["fsb_s","dp_c_fwd"],"capacity_mw":30.0,"route":["switchboard","c_spine"],"path_m":[[-2.4,-1.0,5.2],[-1.0,-1.4,5.6],[0.6,-1.4,9.0],[0.8,-0.8,9.0]]},{"id":"k_ls_n","name":"Life support feeder, normal","between":["fsb_p","dp_ls"],"capacity_mw":6.0,"route":["switchboard","c_spine","life_support"],"path_m":[[-2.4,-1.0,4.2],[-1.1,-1.1,5.0],[0.9,-1.1,12.0],[3.0,-0.8,12.0]]},{"id":"k_ls_e","name":"Life support feeder, emergency","between":["eb","dp_ls"],"capacity_mw":3.0,"route":["switchboard","c_spine","life_support"],"path_m":[[-4.5,-1.0,2.0],[-1.1,-1.6,2.5],[1.0,-1.6,13.0],[3.0,-0.9,13.0]]}],"loads":[{"id":"reactor_aux_p","name":"Reactor auxiliaries, port","system":"reactor","node":"msb_p","priority":0,"nominal_mw":1.0,"standby_mw":0.3,"setpoint_max":1.0,"min_ratio":0.0,"heat":{"to":"loop","fraction":1.0},"under":"Two full trains (port and starboard): the reactor scrams when neither train has had 80% of its supply for 2 s. Ignition runs at the pace the two trains' supply allows.","over":"Not adjustable."},{"id":"reactor_aux_s","name":"Reactor auxiliaries, starboard","system":"reactor","node":"msb_s","priority":0,"nominal_mw":1.0,"standby_mw":0.3,"setpoint_max":1.0,"min_ratio":0.0,"heat":{"to":"loop","fraction":1.0},"under":"As the port half.","over":"Not adjustable."},{"id":"coolant_pump_a","name":"Coolant pump A","system":"coolant_pumps","node":"msb_p","priority":0,"nominal_mw":0.4,"standby_mw":0.4,"setpoint_max":1.2,"min_ratio":0.0,"power_exponent":2.0,"heat":{"to":"loop","fraction":1.0},"under":"Its setpoint is its speed; the speed it runs at is the one its supply allows. Loop flow falls in proportion; each pump is half the flow.","over":"Up to 120% speed: 1.2 times its flow for 1.44 times its power, with heat and wear (reactor-cooling design 6)."},{"id":"coolant_pump_b","name":"Coolant pump B","system":"coolant_pumps","node":"msb_s","priority":0,"nominal_mw":0.4,"standby_mw":0.4,"setpoint_max":1.2,"min_ratio":0.0,"power_exponent":2.0,"heat":{"to":"loop","fraction":1.0},"under":"As pump A.","over":"As pump A."},{"id":"radiator_pump_p","name":"Radiator pump, port","system":null,"node":"dp_drive","priority":0,"nominal_mw":0.6,"standby_mw":0.6,"setpoint_max":1.2,"min_ratio":0.0,"power_exponent":2.0,"center_m":[5.2,0.6,-32.8],"heat":{"to":"loop","fraction":1.0},"under":"Its setpoint is its speed. Radiator rejection falls in proportion; each pump is half the radiators' flow (reactor-cooling design 2).","over":"As the core pumps."},{"id":"radiator_pump_s","name":"Radiator pump, starboard","system":null,"node":"dp_drive","priority":0,"nominal_mw":0.6,"standby_mw":0.6,"setpoint_max":1.2,"min_ratio":0.0,"power_exponent":2.0,"center_m":[-5.2,0.6,-32.8],"heat":{"to":"loop","fraction":1.0},"under":"As the port pump.","over":"As the core pumps."},{"id":"makeup_pump","name":"Coolant makeup pump","system":"coolant_pumps","node":"msb_s","priority":0,"nominal_mw":0.05,"standby_mw":0.0,"setpoint_max":1.0,"min_ratio":0.0,"activity":"makeup","heat":{"to":"loop","fraction":1.0},"under":"Makeup flow from the tanks in proportion to supply.","over":"Not adjustable."},{"id":"emergency_lighting","name":"Emergency lighting","system":null,"node":"eb","priority":0,"nominal_mw":0.0049,"standby_mw":0.0049,"setpoint_max":1.0,"min_ratio":0.0,"center_m":[-4.5,-1.0,2.6],"heat":{"to":"none","fraction":0.0},"under":"Below 50%: compartments with no normal lighting go dark.","over":"Not adjustable."},{"id":"computer","name":"Computer core","system":"computer","node":"dp_a","priority":1,"nominal_mw":1.5,"standby_mw":1.5,"setpoint_max":1.5,"min_ratio":0.5,"heat":{"to":"node","fraction":0.95,"capacity_mj_per_k":4.3,"loop_kw_per_k":47.5,"room_w_per_k":30.0,"warn_k":363.0,"damage_k":393.0},"under":"Automation competence falls with supply; below 50% every automated station stops and targeting solutions are lost.","over":"Automation reaction time shortens by up to a third."},{"id":"bridge_consoles","name":"Bridge consoles","system":null,"node":"dp_a","priority":1,"nominal_mw":0.007,"standby_mw":0.007,"setpoint_max":1.0,"min_ratio":0.5,"center_m":[0.0,4.5,26.0],"heat":{"to":"room","fraction":1.0,"room":"bridge"},"under":"Below 50%: the bridge stations go dark; the engineering bay console and the damage control board still work.","over":"Not adjustable."},{"id":"o2_generator","name":"Oxygen generator","system":"o2_generator","node":"dp_ls","priority":1,"nominal_mw":1.0,"standby_mw":0.005,"setpoint_max":1.5,"min_ratio":0.0,"activity":"o2_output","heat":{"to":"node","fraction":0.3,"capacity_mj_per_k":0.9,"loop_kw_per_k":10.0,"room_w_per_k":20.0,"warn_k":363.0,"damage_k":393.0},"under":"Oxygen output in proportion to supply.","over":"Output up to 1.5 times rated, with heat and wear."},{"id":"co2_scrubbers","name":"CO2 scrubbers","system":"co2_scrubbers","node":"dp_ls","priority":1,"nominal_mw":0.25,"standby_mw":0.25,"setpoint_max":1.5,"min_ratio":0.0,"heat":{"to":"loop","fraction":1.0},"under":"CO2 and smoke removal in proportion to supply.","over":"Removal up to 1.5 times rated."},{"id":"air_handler","name":"Air handler fans","system":"air_handler","node":"dp_ls","priority":1,"nominal_mw":0.08,"standby_mw":0.08,"setpoint_max":1.25,"min_ratio":0.2,"heat":{"to":"duct","fraction":1.0},"under":"Circulation in proportion to supply; below 20% the fans stop and every vent damper springs shut.","over":"Circulation up to 1.25 times rated."},{"id":"thermal_control","name":"Thermal control","system":"thermal_control","node":"dp_ls","priority":1,"nominal_mw":0.75,"standby_mw":0.15,"setpoint_max":1.0,"min_ratio":0.0,"activity":"heater","heat":{"to":"none","fraction":0.0},"under":"Cabin cooling and heating in proportion to supply.","over":"Not adjustable."},{"id":"medbay","name":"Medbay beds","system":"medbay_beds","node":"dp_b_fwd","priority":1,"nominal_mw":0.008,"standby_mw":0.002,"setpoint_max":1.5,"min_ratio":0.25,"heat":{"to":"room","fraction":1.0,"room":"medbay"},"under":"Healing and revival in proportion to supply; below 25% the beds stop.","over":"Healing up to 1.5 times faster."},{"id":"shield_generator","name":"Shield generator","system":"shield_generator","node":"dp_c_fwd","priority":2,"nominal_mw":12.0,"standby_mw":2.0,"setpoint_max":1.5,"min_ratio":0.25,"activity":"shield_regen","heat":{"to":"node","fraction":0.35,"capacity_mj_per_k":12.6,"loop_kw_per_k":140.0,"room_w_per_k":40.0,"warn_k":363.0,"damage_k":393.0},"under":"Face regeneration and capacity in proportion to supply; below 25% the faces collapse.","over":"Regeneration up to 1.5 times, with heat."},{"id":"turret_dorsal","name":"Dorsal turret","mount":"turret_dorsal","node":"dp_a","priority":2,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.2,"activity":"turret_dorsal","heat":{"to":"node","fraction":0.4,"capacity_mj_per_k":4.8,"loop_kw_per_k":53.3,"room_w_per_k":25.0,"room":"pod_dorsal","warn_k":363.0,"damage_k":393.0},"under":"Capacitor charge rate in proportion to supply (4 MW nominal against 6 MW of sustained fire); below 20% it cannot fire.","over":"Up to 1.5 times the rate of fire, with heat."},{"id":"turret_ventral","name":"Ventral turret","mount":"turret_ventral","node":"dp_c_fwd","priority":2,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.2,"activity":"turret_ventral","heat":{"to":"node","fraction":0.4,"capacity_mj_per_k":4.8,"loop_kw_per_k":53.3,"room_w_per_k":25.0,"room":"pod_ventral","warn_k":363.0,"damage_k":393.0},"under":"As the dorsal turret.","over":"As the dorsal turret."},{"id":"turret_port","name":"Port turret","mount":"turret_port","node":"dp_port","priority":2,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.2,"activity":"turret_port","heat":{"to":"node","fraction":0.4,"capacity_mj_per_k":4.8,"loop_kw_per_k":53.3,"room_w_per_k":25.0,"room":"pod_port","warn_k":363.0,"damage_k":393.0},"under":"As the dorsal turret.","over":"As the dorsal turret."},{"id":"turret_stbd","name":"Starboard turret","mount":"turret_stbd","node":"dp_stbd","priority":2,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.2,"activity":"turret_stbd","heat":{"to":"node","fraction":0.4,"capacity_mj_per_k":4.8,"loop_kw_per_k":53.3,"room_w_per_k":25.0,"room":"pod_stbd","warn_k":363.0,"damage_k":393.0},"under":"As the dorsal turret.","over":"As the dorsal turret."},{"id":"sensors","name":"Sensor array","system":"sensor_array","node":"dp_b_fwd","priority":2,"nominal_mw":3.0,"standby_mw":0.5,"setpoint_max":1.5,"min_ratio":0.15,"activity":"sensors_active","heat":{"to":"node","fraction":0.5,"capacity_mj_per_k":4.5,"loop_kw_per_k":50.0,"room_w_per_k":0.0,"warn_k":363.0,"damage_k":393.0},"under":"Active range grows as the square root of supply; at standby only passive contacts.","over":"Range up to 1.22 times (square root of 1.5)."},{"id":"inertial_dampers","name":"Inertial dampers","system":"inertial_dampers","node":"dp_drive","priority":2,"nominal_mw":8.0,"standby_mw":2.0,"setpoint_max":1.5,"min_ratio":0.1,"activity":"dampers","heat":{"to":"node","fraction":0.5,"capacity_mj_per_k":12.0,"loop_kw_per_k":133.3,"room_w_per_k":40.0,"warn_k":363.0,"damage_k":393.0},"under":"The share of the ship's acceleration the crew feel is 1 minus supply/demand; past 0.5 g felt, crew are knocked down.","over":"Absorbs manoeuvres up to 1.5 times the rated acceleration."},{"id":"gravity_generator","name":"Gravity generator","system":"gravity_generator","node":"dp_c_fwd","priority":2,"nominal_mw":4.0,"standby_mw":4.0,"setpoint_max":1.25,"min_ratio":0.3,"heat":{"to":"node","fraction":0.5,"capacity_mj_per_k":6.0,"loop_kw_per_k":66.7,"room_w_per_k":40.0,"warn_k":363.0,"damage_k":393.0},"under":"Gravity in g equals supply ratio; below 30% the field drops to zero (free fall).","over":"Up to 1.25 g: crew move 10% slower."},{"id":"impulse_drive","name":"Impulse drive","system":"impulse_drive","node":"dp_drive","priority":3,"nominal_mw":16.0,"standby_mw":0.2,"setpoint_max":1.5,"min_ratio":0.1,"activity":"drive","heat":{"to":"node","fraction":0.15,"capacity_mj_per_k":7.2,"loop_kw_per_k":80.0,"room_w_per_k":60.0,"warn_k":363.0,"damage_k":393.0},"under":"Thrust in proportion to supply.","over":"Up to 1.5 times rated thrust, with heat and wear."},{"id":"rcs_aft","name":"RCS, aft block","system":null,"node":"dp_drive","priority":3,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.1,"activity":"rcs","center_m":[0.0,1.0,-39.0],"heat":{"to":"node","fraction":0.3,"capacity_mj_per_k":3.6,"loop_kw_per_k":40.0,"room_w_per_k":20.0,"room":"drive","warn_k":363.0,"damage_k":393.0},"under":"Turn rate in proportion to the weaker block's supply.","over":"Up to 1.5 times turn rate."},{"id":"rcs_fwd","name":"RCS, forward block","system":null,"node":"dp_b_fwd","priority":3,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.1,"activity":"rcs","center_m":[0.0,1.0,32.5],"heat":{"to":"node","fraction":0.3,"capacity_mj_per_k":3.6,"loop_kw_per_k":40.0,"room_w_per_k":20.0,"room":"torpedo_room","warn_k":363.0,"damage_k":393.0},"under":"As the aft block.","over":"As the aft block."},{"id":"missile_hoist","name":"Missile hoist and loaders","system":"magazine_racks","node":"dp_b_fwd","priority":3,"nominal_mw":0.03,"standby_mw":0.001,"setpoint_max":1.5,"min_ratio":0.2,"activity":"hoist","heat":{"to":"room","fraction":1.0,"room":"magazine"},"under":"Reload time grows as 1/supply; unpowered, crew load by hand crank (weapons-and-shields).","over":"Reload up to 1.5 times faster."},{"id":"comms","name":"Comms array","system":"comms_array","node":"dp_a","priority":3,"nominal_mw":0.5,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.2,"activity":"comms","heat":{"to":"node","fraction":0.5,"capacity_mj_per_k":0.75,"loop_kw_per_k":8.3,"room_w_per_k":0.0,"warn_k":363.0,"damage_k":393.0},"under":"Range in proportion to supply; below 20% only short-range voice.","over":"Range up to 1.5 times."},{"id":"hangar_pumps","name":"Bay pumps","system":"hangar_pumps","node":"dp_hangar_s","priority":3,"nominal_mw":6.0,"standby_mw":0.0,"setpoint_max":1.0,"min_ratio":0.0,"activity":"bay_pumps","heat":{"to":"node","fraction":0.4,"capacity_mj_per_k":7.2,"loop_kw_per_k":80.0,"room_w_per_k":40.0,"warn_k":363.0,"damage_k":393.0},"under":"Pumping speed in proportion to supply.","over":"Not adjustable."},{"id":"airlock_pump","name":"Airlock pump","system":null,"node":"dp_c_fwd","priority":3,"nominal_mw":0.15,"standby_mw":0.0,"setpoint_max":1.0,"min_ratio":0.0,"activity":"airlock_pump","center_m":[-9.5,-2.5,12.0],"heat":{"to":"room","fraction":1.0,"room":"cargo"},"under":"Pumping speed in proportion to supply.","over":"Not adjustable."},{"id":"cradle_p","name":"Port launch cradle","system":"cradle_p","node":"dp_hangar_p","priority":3,"nominal_mw":0.6,"standby_mw":0.05,"setpoint_max":1.5,"min_ratio":0.2,"activity":"cradle_p","heat":{"to":"loop","fraction":0.3},"under":"Release charge time grows as 1/supply.","over":"Charges up to 1.5 times faster."},{"id":"cradle_s","name":"Starboard launch cradle","system":"cradle_s","node":"dp_hangar_s","priority":3,"nominal_mw":0.6,"standby_mw":0.05,"setpoint_max":1.5,"min_ratio":0.2,"activity":"cradle_s","heat":{"to":"loop","fraction":0.3},"under":"As the port cradle.","over":"As the port cradle."},{"id":"shuttle_pad","name":"Shuttle lift pad","system":"shuttle_pad","node":"dp_hangar_p","priority":3,"nominal_mw":0.05,"standby_mw":0.0,"setpoint_max":1.0,"min_ratio":0.2,"activity":"pad","heat":{"to":"room","fraction":1.0,"room":"hangar"},"under":"Lift speed in proportion to supply.","over":"Not adjustable."}],"groups":[{"id":"drive","name":"Impulse drive and RCS","loads":["impulse_drive","rcs_aft","rcs_fwd"]},{"id":"shields","name":"Shields","loads":["shield_generator"]},{"id":"turrets","name":"Turrets","loads":["turret_dorsal","turret_ventral","turret_port","turret_stbd"]},{"id":"tubes","name":"Tubes and hoist","loads":["missile_hoist"]},{"id":"sensors","name":"Sensors","loads":["sensors"]},{"id":"comms","name":"Comms","loads":["comms"]},{"id":"life_support","name":"Life support","loads":["o2_generator","co2_scrubbers","air_handler","thermal_control"]},{"id":"gravity_dampers","name":"Gravity and dampers","loads":["gravity_generator","inertial_dampers"]},{"id":"computer","name":"Computer core","loads":["computer","bridge_consoles"]},{"id":"bays","name":"Bays and craft charging","loads":["hangar_pumps","airlock_pump","cradle_p","cradle_s","shuttle_pad"]},{"id":"medbay","name":"Medbay","loads":["medbay"]},{"id":"cooling","name":"Cooling","loads":["coolant_pump_a","coolant_pump_b","radiator_pump_p","radiator_pump_s","makeup_pump"],"priority_min":0,"feed_breaker":true,"note":"reactor-cooling design 6: the twelfth group, 2.05 MW at full speed. Its setpoint is the pumps' speed, 0-120% (120% is overdrive). Its loads are priority 0 (never shed) by default, and priority_min 0 lets engineering lower them to 1-3 and back, which lets load shedding take them. feed_breaker: one breaker on the group's feed, opened or locked open from the console; open, it stops every pump in the group and the loop falls to its natural circulation."}],"presets":{"note":"Setpoints by group (1.0 is nominal; 0 switches the group off; above 1 is overdrive). Groups not named keep 1.0. Automated engineering applies combat on red alert and cruise on its end (bridge-stations).","cruise":{"drive":1.0,"shields":1.0,"turrets":1.0,"tubes":1.0,"sensors":1.0,"comms":1.0,"gravity_dampers":1.0,"computer":1.0,"bays":1.0},"combat":{"drive":0.75,"shields":1.25,"turrets":1.0,"tubes":1.0,"sensors":0.6,"comms":0.5,"gravity_dampers":1.0,"computer":1.25,"bays":1.0},"silent":{"drive":0.2,"shields":0.2,"turrets":0.0,"tubes":1.0,"sensors":0.17,"comms":0.2,"gravity_dampers":1.0,"computer":1.0,"bays":0.0},"emergency":{"drive":0.3,"shields":0.5,"turrets":0.5,"tubes":1.0,"sensors":0.17,"comms":0.2,"gravity_dampers":0.8,"computer":1.0,"bays":0.0}},"lighting":{"priority":1,"normal_w_per_m2":12.0,"emergency_w_per_m2":2.0,"normal_below_ratio":0.5,"panels":{"msb_s":["engineering"],"dp_drive":["drive"],"dp_hangar_p":["hangar","launch_bay_p"],"dp_hangar_s":["launch_bay_s"],"dp_port":["port_turret","pod_port","quarters"],"dp_stbd":["stbd_turret","pod_stbd","mess"],"dp_a":["bridge","ready_room","computer_core","a_corridor","dorsal_turret","pod_dorsal","a_aft_passage"],"dp_b_fwd":["torpedo_room","medbay","damage_control","b_spine"],"dp_c_fwd":["c_spine","magazine","cargo","airlock","shield_room","pod_ventral","switchboard"],"dp_ls":["life_support"]}},"coolant":{"system":"coolant_pumps","fluid":"water and glycol, pressurized","capacity_mj_per_k":40.0,"nominal_k":330.0,"initial_k":325.0,"warn_k":360.0,"pumps":["coolant_pump_a","coolant_pump_b"],"flow_per_pump":0.5,"design_flow_kg_s":740.0,"design_flow_note":"40 MW at a 15 K rise in water and glycol (3.6 kJ/kg K); the console shows flow as this times the flow fraction","specific_heat_kj_per_kg_k":3.6,"radiator_pumps":["radiator_pump_p","radiator_pump_s"],"flow_per_radiator_pump":0.5,"natural_circulation_flow":0.05,"flow_alarm_below":0.3,"inventory_kg":11100.0,"tanks":[{"id":"tank_p","name":"Coolant tank, port","capacity_kg":2000.0},{"id":"tank_s","name":"Coolant tank, starboard","capacity_kg":2000.0}],"segments":[{"id":"seg_hot_1","name":"Hot leg pipe 1","leg":"hot"},{"id":"seg_hot_2","name":"Hot leg pipe 2","leg":"hot"},{"id":"seg_hot_3","name":"Hot leg pipe 3","leg":"hot"},{"id":"seg_hot_4","name":"Hot leg pipe 4","leg":"hot"},{"id":"seg_cold_1","name":"Cold leg pipe 1","leg":"cold"},{"id":"seg_cold_2","name":"Cold leg pipe 2","leg":"cold"},{"id":"seg_cold_3","name":"Cold leg pipe 3","leg":"cold"},{"id":"seg_cold_4","name":"Cold leg pipe 4","leg":"cold"}],"segments_note":"reactor-cooling design 1-2: the loop's eight pipe segments, numbered from the core along the flow (the hot leg from the core to the chiller, the cold leg from the chiller back to the core). Each is a part with integrity (damage.json coolant). A leg carries flow x its worst segment's capability; an isolated segment carries nothing and its leg runs through the bypass jumper round it at isolated_leg_flow.","isolated_leg_flow":0.5,"exchanger":{"id":"chiller","name":"Heat exchanger (chiller)"},"makeup":{"pump":"makeup_pump","max_kg_s":10.0,"auto_open_below":0.95},"cavitation":{"full_flow_from":0.8,"no_flow_below":0.6},"bands":{"hot_leg_k":[335.0,350.0],"cold_leg_k":[320.0,335.0],"hot_leg_warning_k":370.0},"automation":{"period_s":3.0,"design_rise_k":15.0,"pump_speed_min":1.0},"cooling_note":"reactor-cooling design 2, 3, 5 and 6. Speed-law loads (power_exponent) draw nominal_mw x speed^power_exponent, their standby_mw unused, and run at the speed their supply allows. flow = max(natural_circulation_flow, core pumps' speed x capability x flow_per_pump, summed, x cavitation); cavitation = clamp((m_loop / inventory_kg - no_flow_below) / (full_flow_from - no_flow_below), 0, 1). C_loop = capacity_mj_per_k x m_loop / inventory_kg. Hot leg = loop temperature + heat into the loop / (flow x design_flow_kg_s x specific heat); it is the one the loop scram reads. Radiator rejection gains the exchanger's capability and the radiator pumps' speed x capability x flow_per_radiator_pump, summed. Automation every period_s: core pumps at the flow the heat needs at design_rise_k, never below pump_speed_min (the mockup keeps power-grid's full-flow walkthroughs), up to 1.2; radiator pumps at full; the bypass holds the cold leg by radiators.bypass_band_k (325-330 K, design 5's 327 K); makeup opens below auto_open_below and shuts at full. Pipe segments, leaks and the exchanger's damage (design 1-2): flow gains x min over the two legs of the leg's factor (its worst segment's capability, or isolated_leg_flow x the worst of the rest when one is isolated); the exchanger's capability is its integrity's (damage.json systems); segments and tanks leak by damage.json coolant."},"radiators":{"system":"radiators","rated_mw":40.0,"rated_at_k":330.0,"background_k":4.0,"bypass_band_k":5.0,"law":"capacity = rated_mw * health * flow * exchanger * radiator_pumps * (T^4 - Tb^4) / (rated_at_k^4 - Tb^4); rejected = capacity * chiller, where chiller (the share of the hot leg through the exchanger) is clamp((T - (coolant.nominal_k - bypass_band_k)) / bypass_band_k, 0, 1) in AUTO and the engineer's in MANUAL; exchanger and radiator_pumps as coolant.cooling_note (reactor-cooling design 2)","note":"Fictional rating, stated as such: a physical radiator rejecting 40 MW at 330 K would need about 60,000 m^2. See design.md, Heat, and open question P4."},"overdrive":{"heat_factor":1.0,"wear_pct_per_min_at_150":2.0}}
+{"schema":"starcrew.ship-power/1","status":"PROPOSED by openspec/changes/power-grid (2026-10-04). The engine reads it (sc-core::power, in the drill since 2026-10-11) and so do the mockups' library. Numbers are tuning proposals, not decisions.","ship":"tern","units":{"power":"MW (megawatts)","energy":"MJ (megajoules)","temperature":"K (kelvin)","heat_capacity":"MJ/K","conductance":"kW/K for loop couplings, W/K for room couplings","time":"s","position":"metres, ship-local, as layout.json"},"solve":{"substep_hz":10,"quanta_rounds":3,"epsilon_mw":1e-06,"dropout_resolves":1},"reactor":{"system":"reactor","fuel":"deuterium and helium-3","thermal_rated_mw":80.0,"conversion_efficiency":0.6,"throttle_min":0.1,"throttle_max":1.2,"throttle_default":1.0,"ramp_up_per_s":0.02,"ramp_down_per_s":0.1,"fuel_energy_mj_per_kg":353000000.0,"fuel_load_kg":4.0,"overdrive_wear_pct_per_min_at_max":1.0,"heat":{"capacity_mj_per_k":10.0,"loop_kw_per_k":110.0,"room_w_per_k":250.0,"warn_k":750.0,"scram_k":820.0,"afterheat_share":0.06,"afterheat_tau_s":180.0},"scram":{"loop_over_k":380.0,"loop_over_hold_s":2.0,"aux_supply_below":0.8,"aux_rule":"best train: max over the two trains of supply / need","aux_supply_hold_s":2.0,"integrity_below_pct":25.0},"reset":{"fixture":"reactor_panel","hold_s":3.0,"loop_below_k":350.0,"blanket_below_k":700.0},"restart":{"ignition_mw":8.0,"ignition_s":20.0,"start_throttle":0.1}},"battery":{"system":"battery_bank","node":"eb","capacity_mj":1800.0,"initial_soc":0.9,"discharge_max_mw":30.0,"charge_max_mw":12.0,"charge_efficiency":0.95,"discharge_efficiency":0.95,"restart_reserve_mj":350.0,"heat_to":"loop"},"nodes":[{"id":"msb_p","name":"Main switchboard, port section","kind":"switchboard","compartment":"engineering","center_m":[7.5,0.5,-20.6]},{"id":"msb_s","name":"Main switchboard, starboard section","kind":"switchboard","compartment":"engineering","center_m":[-7.5,0.5,-21.0]},{"id":"fsb_p","name":"Forward switchboard, port section","kind":"switchboard","compartment":"switchboard","center_m":[-2.4,-1.0,4.2]},{"id":"fsb_s","name":"Forward switchboard, starboard section","kind":"switchboard","compartment":"switchboard","center_m":[-2.4,-1.0,5.2]},{"id":"eb","name":"Emergency bus","kind":"emergency_bus","compartment":"switchboard","center_m":[-4.5,-1.0,2.0]},{"id":"dp_drive","name":"Drive panel","kind":"panel","compartment":"drive","center_m":[0.0,2.5,-34.0]},{"id":"dp_hangar_p","name":"Hangar port panel","kind":"panel","compartment":"hangar","center_m":[8.0,2.6,-8.0]},{"id":"dp_hangar_s","name":"Hangar starboard panel","kind":"panel","compartment":"hangar","center_m":[-8.0,2.6,-8.0]},{"id":"dp_port","name":"Port turret panel","kind":"panel","compartment":"port_turret","center_m":[6.0,2.6,4.0]},{"id":"dp_stbd","name":"Starboard turret panel","kind":"panel","compartment":"stbd_turret","center_m":[-6.0,2.6,4.0]},{"id":"dp_a","name":"Command deck panel","kind":"panel","compartment":"a_corridor","center_m":[0.6,6.2,10.5]},{"id":"dp_b_fwd","name":"Main deck forward panel","kind":"panel","compartment":"b_spine","center_m":[0.8,2.7,22.0]},{"id":"dp_c_fwd","name":"Lower deck forward panel","kind":"panel","compartment":"c_spine","center_m":[0.8,-0.8,9.0]},{"id":"dp_ls","name":"Life support panel","kind":"panel","compartment":"life_support","center_m":[3.0,-0.8,12.0]},{"id":"bx_bridge","name":"Conduit box, bridge","kind":"box","compartment":"bridge","center_m":[1.2,4.8,20.3]},{"id":"bx_ready_room","name":"Conduit box, captain's ready room","kind":"box","compartment":"ready_room","center_m":[1.55,4.8,15.8]},{"id":"bx_computer_core","name":"Conduit box, computer core","kind":"box","compartment":"computer_core","center_m":[-1.55,4.8,18.2]},{"id":"bx_dorsal_turret","name":"Conduit box, dorsal turret access","kind":"box","compartment":"dorsal_turret","center_m":[0.0,4.8,3.7]},{"id":"bx_a_aft_passage","name":"Conduit box, aft passage","kind":"box","compartment":"a_aft_passage","center_m":[0.0,4.8,-17.7]},{"id":"bx_torpedo_room","name":"Conduit box, torpedo room","kind":"box","compartment":"torpedo_room","center_m":[1.2,1.3,26.3]},{"id":"bx_medbay","name":"Conduit box, medbay","kind":"box","compartment":"medbay","center_m":[1.55,1.3,20.8]},{"id":"bx_damage_control","name":"Conduit box, damage control","kind":"box","compartment":"damage_control","center_m":[-1.55,1.3,23.2]},{"id":"bx_quarters","name":"Conduit box, crew quarters","kind":"box","compartment":"quarters","center_m":[1.55,1.3,12.8]},{"id":"bx_mess","name":"Conduit box, mess","kind":"box","compartment":"mess","center_m":[-1.55,1.3,15.2]},{"id":"bx_launch_bay_p","name":"Conduit box, port launch bay","kind":"box","compartment":"launch_bay_p","center_m":[5.3,-2.2,-6.2]},{"id":"bx_launch_bay_s","name":"Conduit box, starboard launch bay","kind":"box","compartment":"launch_bay_s","center_m":[-5.3,-2.2,-6.2]},{"id":"bx_magazine","name":"Conduit box, magazine","kind":"box","compartment":"magazine","center_m":[1.2,-2.2,20.3]},{"id":"bx_cargo","name":"Conduit box, cargo and stores","kind":"box","compartment":"cargo","center_m":[-1.55,-2.2,16.2]},{"id":"bx_airlock","name":"Conduit box, airlock","kind":"box","compartment":"airlock","center_m":[-8.9,-2.2,13.2]},{"id":"bx_shield_room","name":"Conduit box, shield generator","kind":"box","compartment":"shield_room","center_m":[1.55,-2.2,3.8]},{"id":"bx_pod_dorsal","name":"Conduit box, dorsal turret pod","kind":"box","compartment":"pod_dorsal","center_m":[0.0,7.8,1.05]},{"id":"bx_pod_ventral","name":"Conduit box, ventral turret pod","kind":"box","compartment":"pod_ventral","center_m":[0.0,-5.7,2.05]},{"id":"bx_pod_port","name":"Conduit box, port turret pod","kind":"box","compartment":"pod_port","center_m":[11.3,1.3,4.0]},{"id":"bx_pod_stbd","name":"Conduit box, starboard turret pod","kind":"box","compartment":"pod_stbd","center_m":[-11.3,1.3,4.0]}],"generators":[{"id":"gen_p","name":"Reactor generator, port","node":"msb_p","capacity_mw":30.0},{"id":"gen_s","name":"Reactor generator, starboard","node":"msb_s","capacity_mw":30.0}],"ties":[{"id":"bt_main","name":"Main bus tie","between":["msb_p","msb_s"],"capacity_mw":40.0,"closed":true},{"id":"bt_fwd","name":"Forward cross-tie","between":["fsb_p","fsb_s"],"capacity_mw":30.0,"closed":true},{"id":"eb_p","name":"Emergency feed, port","between":["fsb_p","eb"],"capacity_mw":15.0,"closed":true},{"id":"eb_s","name":"Emergency feed, starboard","between":["fsb_s","eb"],"capacity_mw":15.0,"closed":true}],"conduits":[{"id":"k_drive_p","name":"Drive feeder, port","between":["msb_p","dp_drive"],"capacity_mw":20.0,"route":["engineering","drive"],"path_m":[[8.6,2.0,-20.6],[8.6,5.0,-20.6],[8.6,5.0,-29.6],[6.2,5.0,-29.6],[6.2,5.0,-31.45],[0.5,5.0,-31.45],[0.5,2.5,-31.45],[0.5,2.5,-34.0]]},{"id":"k_drive_s","name":"Drive feeder, starboard","between":["msb_s","dp_drive"],"capacity_mw":20.0,"route":["engineering","drive"],"path_m":[[-8.6,2.0,-21.45],[-8.6,5.0,-21.45],[-8.6,5.0,-29.6],[-6.2,5.0,-29.6],[-6.2,5.0,-31.45],[-0.5,5.0,-31.45],[-0.5,2.5,-31.45],[-0.5,2.5,-34.0]]},{"id":"k_aft_p","name":"Port main trunk, aft","between":["msb_p","dp_hangar_p"],"capacity_mw":30.0,"route":["engineering","hangar"],"path_m":[[8.6,2.0,-20.15],[8.6,2.7,-20.15],[8.6,2.7,-18.75],[7.75,2.7,-18.75],[7.75,2.7,-18.0],[8.0,2.6,-8.0]]},{"id":"k_aft_s","name":"Starboard main trunk, aft","between":["msb_s","dp_hangar_s"],"capacity_mw":30.0,"route":["engineering","hangar"],"path_m":[[-8.6,2.0,-20.55],[-8.6,2.7,-20.55],[-8.6,2.7,-18.75],[-7.75,2.7,-18.75],[-7.75,2.7,-18.0],[-8.0,2.6,-8.0]]},{"id":"k_mid_p","name":"Port main trunk, midships","between":["dp_hangar_p","dp_port"],"capacity_mw":30.0,"route":["hangar","port_turret"],"path_m":[[8.0,2.6,-8.0],[8.0,2.6,-2.5],[8.0,2.6,1.0],[6.0,2.6,4.0]]},{"id":"k_mid_s","name":"Starboard main trunk, midships","between":["dp_hangar_s","dp_stbd"],"capacity_mw":30.0,"route":["hangar","stbd_turret"],"path_m":[[-8.0,2.6,-8.0],[-8.0,2.6,-2.5],[-8.0,2.6,1.0],[-6.0,2.6,4.0]]},{"id":"k_fwd_p","name":"Port main trunk, forward","between":["dp_port","fsb_p"],"capacity_mw":30.0,"route":["port_turret","shield_room","c_spine","switchboard"],"path_m":[[6.0,2.6,4.0],[4.5,2.6,3.0],[4.5,-0.8,3.0],[1.5,-0.8,3.0],[-1.5,-0.8,3.5],[-2.4,-1.0,4.2]]},{"id":"k_fwd_s","name":"Starboard main trunk, forward","between":["dp_stbd","fsb_s"],"capacity_mw":30.0,"route":["stbd_turret","switchboard"],"path_m":[[-6.0,2.6,4.0],[-4.5,2.6,5.5],[-4.5,-0.8,5.5],[-2.4,-1.0,5.2]]},{"id":"k_a_fwd","name":"Command deck feeder, forward","between":["fsb_p","dp_a"],"capacity_mw":8.0,"route":["switchboard","c_spine","b_spine","a_corridor"],"path_m":[[-2.4,-1.0,4.2],[-0.8,-0.8,6.0],[-0.8,-0.8,11.3],[-0.6,2.7,11.3],[-0.6,6.2,11.3],[0.6,6.2,10.5]]},{"id":"k_a_aft","name":"Command deck feeder, aft","between":["msb_s","dp_a"],"capacity_mw":8.0,"route":["engineering","a_aft_passage","dorsal_turret","a_corridor"],"path_m":[[-8.6,2.0,-21.0],[-8.6,2.95,-21.0],[-8.6,2.95,-18.75],[-6.8,2.95,-18.75],[-6.8,6.2,-18.75],[0.6,6.2,-18.75],[0.6,6.2,-18.0],[0.6,6.2,0.0],[0.6,6.2,4.0],[0.6,6.2,10.5]]},{"id":"k_b_fwd","name":"Main deck forward feeder","between":["fsb_s","dp_b_fwd"],"capacity_mw":12.0,"route":["switchboard","c_spine","b_spine"],"path_m":[[-2.4,-1.0,5.2],[-0.9,-0.8,6.5],[-0.9,-0.8,11.6],[-0.9,2.7,11.6],[0.8,2.7,13.0],[0.8,2.7,22.0]]},{"id":"k_c_fwd_p","name":"Lower deck feeder, port","between":["fsb_p","dp_c_fwd"],"capacity_mw":30.0,"route":["switchboard","c_spine"],"path_m":[[-2.4,-1.0,4.2],[-1.0,-0.9,4.0],[0.8,-0.9,8.0],[0.8,-0.8,9.0]]},{"id":"k_c_fwd_s","name":"Lower deck feeder, starboard","between":["fsb_s","dp_c_fwd"],"capacity_mw":30.0,"route":["switchboard","c_spine"],"path_m":[[-2.4,-1.0,5.2],[-1.0,-1.4,5.6],[0.6,-1.4,9.0],[0.8,-0.8,9.0]]},{"id":"k_ls_n","name":"Life support feeder, normal","between":["fsb_p","dp_ls"],"capacity_mw":6.0,"route":["switchboard","c_spine","life_support"],"path_m":[[-2.4,-1.0,4.2],[-1.1,-1.1,5.0],[0.9,-1.1,12.0],[3.0,-0.8,12.0]]},{"id":"k_ls_e","name":"Life support feeder, emergency","between":["eb","dp_ls"],"capacity_mw":3.0,"route":["switchboard","c_spine","life_support"],"path_m":[[-4.5,-1.0,2.0],[-1.1,-1.6,2.5],[1.0,-1.6,13.0],[3.0,-0.9,13.0]]},{"id":"r_bridge_aft","name":"Run through bridge aft","between":["bx_bridge","dp_a"],"capacity_mw":5.0,"route":["bridge","a_corridor"],"factory_closed":true,"path_m":[[1.2,4.8,20.3],[1.2,6.65,20.3],[0.0,6.65,20.0],[0.0,6.15,20.0],[0.6,6.15,10.5],[0.6,6.2,10.5]]},{"id":"r_ready","name":"Run through ready","between":["bx_ready_room","dp_a"],"capacity_mw":5.0,"route":["ready_room","a_corridor"],"factory_closed":true,"path_m":[[1.55,4.8,15.8],[1.55,6.15,15.8],[1.25,6.15,17.0],[0.6,6.15,10.5],[0.6,6.2,10.5]]},{"id":"r_core","name":"Run through core","between":["bx_computer_core","dp_a"],"capacity_mw":5.0,"route":["computer_core","a_corridor"],"factory_closed":true,"path_m":[[-1.55,4.8,18.2],[-1.55,6.15,18.2],[-1.25,6.15,17.0],[0.6,6.15,10.5],[0.6,6.2,10.5]]},{"id":"r_dorsal_fwd","name":"Run through dorsal fwd","between":["dp_a","bx_dorsal_turret"],"capacity_mw":10.0,"route":["a_corridor","dorsal_turret"],"factory_closed":true,"path_m":[[0.6,6.2,10.5],[0.6,6.15,10.5],[0.0,6.15,4.0],[0.0,6.15,3.7],[0.0,4.8,3.7]]},{"id":"r_dorsal_aft","name":"Run through dorsal aft","between":["bx_dorsal_turret","bx_a_aft_passage"],"capacity_mw":10.0,"route":["dorsal_turret","a_aft_passage"],"factory_closed":false,"path_m":[[0.0,4.8,3.7],[0.0,6.15,3.7],[0.0,6.15,0.0],[0.0,6.15,-17.7],[0.0,4.8,-17.7]]},{"id":"r_aft_eng","name":"Run through aft eng","between":["bx_a_aft_passage","msb_p"],"capacity_mw":5.0,"route":["a_aft_passage","engineering"],"factory_closed":true,"path_m":[[0.0,4.8,-17.7],[0.0,6.15,-17.7],[0.0,6.15,-18.0],[0.0,-0.35,-18.0],[7.5,-0.35,-20.6],[7.5,0.5,-20.6]]},{"id":"r_pod_dorsal","name":"Run through pod dorsal","between":["bx_dorsal_turret","bx_pod_dorsal"],"capacity_mw":10.0,"route":["dorsal_turret","pod_dorsal"],"factory_closed":true,"path_m":[[0.0,4.8,3.7],[0.0,6.15,3.7],[0.0,6.15,2.0],[0.0,8.65,2.0],[0.0,8.65,1.05],[0.0,7.8,1.05]]},{"id":"r_ladder_ab","name":"Run through ladder ab","between":["dp_a","dp_b_fwd"],"capacity_mw":10.0,"route":["a_corridor","b_spine"],"factory_closed":false,"path_m":[[0.6,6.2,10.5],[0.6,6.15,10.5],[0.0,6.15,11.0],[0.0,2.65,11.0],[0.8,2.65,22.0],[0.8,2.7,22.0]]},{"id":"r_torpedo","name":"Run through torpedo","between":["dp_b_fwd","bx_torpedo_room"],"capacity_mw":10.0,"route":["b_spine","torpedo_room"],"factory_closed":true,"path_m":[[0.8,2.7,22.0],[0.8,2.65,22.0],[0.0,2.65,26.0],[1.2,2.65,26.3],[1.2,1.3,26.3]]},{"id":"r_medbay","name":"Run through medbay","between":["bx_medbay","dp_b_fwd"],"capacity_mw":5.0,"route":["medbay","b_spine"],"factory_closed":true,"path_m":[[1.55,1.3,20.8],[1.55,2.65,20.8],[1.25,2.65,22.0],[0.8,2.65,22.0],[0.8,2.7,22.0]]},{"id":"r_damage_control","name":"Run through damage control","between":["bx_damage_control","dp_b_fwd"],"capacity_mw":5.0,"route":["damage_control","b_spine"],"factory_closed":true,"path_m":[[-1.55,1.3,23.2],[-1.55,2.65,23.2],[-1.25,2.65,22.0],[0.8,2.65,22.0],[0.8,2.7,22.0]]},{"id":"r_quarters","name":"Run through quarters","between":["bx_quarters","dp_b_fwd"],"capacity_mw":5.0,"route":["quarters","b_spine"],"factory_closed":true,"path_m":[[1.55,1.3,12.8],[1.55,2.65,12.8],[1.25,2.65,14.0],[0.8,2.65,22.0],[0.8,2.7,22.0]]},{"id":"r_mess","name":"Run through mess","between":["bx_mess","dp_b_fwd"],"capacity_mw":5.0,"route":["mess","b_spine"],"factory_closed":true,"path_m":[[-1.55,1.3,15.2],[-1.55,2.65,15.2],[-1.25,2.65,14.0],[0.8,2.65,22.0],[0.8,2.7,22.0]]},{"id":"r_port_turret","name":"Run through port turret","between":["dp_port","dp_b_fwd"],"capacity_mw":10.0,"route":["port_turret","b_spine"],"factory_closed":false,"path_m":[[6.0,2.6,4.0],[6.0,2.65,4.0],[1.25,2.65,4.0],[0.8,2.65,22.0],[0.8,2.7,22.0]]},{"id":"r_stbd_turret","name":"Run through stbd turret","between":["dp_stbd","dp_b_fwd"],"capacity_mw":10.0,"route":["stbd_turret","b_spine"],"factory_closed":false,"path_m":[[-6.0,2.6,4.0],[-6.0,2.65,4.0],[-1.25,2.65,4.0],[0.8,2.65,22.0],[0.8,2.7,22.0]]},{"id":"r_pod_port","name":"Run through pod port","between":["dp_port","bx_pod_port"],"capacity_mw":10.0,"route":["port_turret","pod_port"],"factory_closed":true,"path_m":[[6.0,2.6,4.0],[6.0,2.65,4.0],[11.0,2.65,4.0],[11.0,2.15,4.0],[11.3,2.15,4.0],[11.3,1.3,4.0]]},{"id":"r_pod_stbd","name":"Run through pod stbd","between":["dp_stbd","bx_pod_stbd"],"capacity_mw":10.0,"route":["stbd_turret","pod_stbd"],"factory_closed":true,"path_m":[[-6.0,2.6,4.0],[-6.0,2.65,4.0],[-11.0,2.65,4.0],[-11.0,2.15,4.0],[-11.3,2.15,4.0],[-11.3,1.3,4.0]]},{"id":"r_spine_hangar","name":"Run through spine hangar","between":["dp_b_fwd","dp_hangar_p"],"capacity_mw":10.0,"route":["b_spine","hangar"],"factory_closed":false,"path_m":[[0.8,2.7,22.0],[0.8,2.65,22.0],[0.0,2.65,0.0],[8.0,2.65,-8.0],[8.0,2.6,-8.0]]},{"id":"r_ladder_bc","name":"Run through ladder bc","between":["dp_b_fwd","dp_c_fwd"],"capacity_mw":10.0,"route":["b_spine","c_spine"],"factory_closed":false,"path_m":[[0.8,2.7,22.0],[0.8,2.65,22.0],[0.0,2.65,11.0],[0.0,-0.85,11.0],[0.8,-0.85,9.0],[0.8,-0.8,9.0]]},{"id":"r_hoist","name":"Run through hoist","between":["bx_torpedo_room","bx_magazine"],"capacity_mw":10.0,"route":["torpedo_room","magazine"],"factory_closed":false,"path_m":[[1.2,1.3,26.3],[1.2,2.65,26.3],[0.0,2.65,28.0],[0.0,-0.85,28.0],[1.2,-0.85,20.3],[1.2,-2.2,20.3]]},{"id":"r_hangar_c","name":"Run through hangar c","between":["dp_c_fwd","dp_hangar_p"],"capacity_mw":10.0,"route":["c_spine","hangar"],"factory_closed":false,"path_m":[[0.8,-0.8,9.0],[0.8,-0.85,9.0],[0.0,-0.85,0.0],[0.0,2.65,0.0],[8.0,2.65,-8.0],[8.0,2.6,-8.0]]},{"id":"r_bay_p","name":"Run through bay p","between":["dp_hangar_p","bx_launch_bay_p"],"capacity_mw":5.0,"route":["hangar","launch_bay_p"],"factory_closed":true,"path_m":[[8.0,2.6,-8.0],[8.0,2.65,-8.0],[5.0,2.65,-5.0],[5.0,-0.85,-5.0],[5.3,-0.85,-6.2],[5.3,-2.2,-6.2]]},{"id":"r_bay_s","name":"Run through bay s","between":["dp_hangar_s","bx_launch_bay_s"],"capacity_mw":5.0,"route":["hangar","launch_bay_s"],"factory_closed":true,"path_m":[[-8.0,2.6,-8.0],[-8.0,2.65,-8.0],[-5.0,2.65,-5.0],[-5.0,-0.85,-5.0],[-5.3,-0.85,-6.2],[-5.3,-2.2,-6.2]]},{"id":"r_magazine","name":"Run through magazine","between":["dp_c_fwd","bx_magazine"],"capacity_mw":5.0,"route":["c_spine","magazine"],"factory_closed":true,"path_m":[[0.8,-0.8,9.0],[0.8,-0.85,9.0],[0.0,-0.85,20.0],[1.2,-0.85,20.3],[1.2,-2.2,20.3]]},{"id":"r_life_support","name":"Run through life support","between":["dp_ls","dp_c_fwd"],"capacity_mw":10.0,"route":["life_support","c_spine"],"factory_closed":false,"path_m":[[3.0,-0.8,12.0],[3.0,-0.85,12.0],[1.25,-0.85,15.0],[0.8,-0.85,9.0],[0.8,-0.8,9.0]]},{"id":"r_cargo","name":"Run through cargo","between":["bx_cargo","dp_c_fwd"],"capacity_mw":10.0,"route":["cargo","c_spine"],"factory_closed":true,"path_m":[[-1.55,-2.2,16.2],[-1.55,-0.85,16.2],[-1.25,-0.85,15.0],[0.8,-0.85,9.0],[0.8,-0.8,9.0]]},{"id":"r_airlock_inner","name":"Run through airlock inner","between":["bx_cargo","bx_airlock"],"capacity_mw":5.0,"route":["cargo","airlock"],"factory_closed":true,"path_m":[[-1.55,-2.2,16.2],[-1.55,-0.85,16.2],[-8.6,-0.85,12.0],[-8.9,-0.85,13.2],[-8.9,-2.2,13.2]]},{"id":"r_shield","name":"Run through shield","between":["bx_shield_room","dp_c_fwd"],"capacity_mw":30.0,"route":["shield_room","c_spine"],"factory_closed":true,"path_m":[[1.55,-2.2,3.8],[1.55,-0.85,3.8],[1.25,-0.85,5.0],[0.8,-0.85,9.0],[0.8,-0.8,9.0]]},{"id":"r_pod_ventral","name":"Run through pod ventral","between":["dp_c_fwd","bx_pod_ventral"],"capacity_mw":10.0,"route":["c_spine","pod_ventral"],"factory_closed":true,"path_m":[[0.8,-0.8,9.0],[0.8,-0.85,9.0],[0.0,-0.85,3.0],[0.0,-3.85,3.0],[0.0,-3.85,2.05],[0.0,-5.7,2.05]]}],"loads":[{"id":"reactor_aux_p","name":"Reactor auxiliaries, port","system":"reactor","center_m":[5.5,0.0,-24.0],"node":"msb_p","priority":0,"nominal_mw":1.0,"standby_mw":0.3,"setpoint_max":1.0,"min_ratio":0.0,"heat":{"to":"loop","fraction":1.0},"under":"Two full trains (port and starboard): the reactor scrams when neither train has had 80% of its supply for 2 s. Ignition runs at the pace the two trains' supply allows.","over":"Not adjustable.","feeder_m":[[7.5,0.5,-20.6],[7.5,-0.35,-20.6],[5.5,-0.35,-24.0],[5.5,0.0,-24.0]]},{"id":"reactor_aux_s","name":"Reactor auxiliaries, starboard","system":"reactor","center_m":[-5.5,0.0,-24.0],"node":"msb_s","priority":0,"nominal_mw":1.0,"standby_mw":0.3,"setpoint_max":1.0,"min_ratio":0.0,"heat":{"to":"loop","fraction":1.0},"under":"As the port half.","over":"Not adjustable.","feeder_m":[[-7.5,0.5,-21.0],[-7.5,-0.35,-21.0],[-5.5,-0.35,-24.0],[-5.5,0.0,-24.0]]},{"id":"coolant_pump_a","name":"Coolant pump A","system":"coolant_pumps","center_m":[6.5,-3.5,-29.0],"node":"msb_p","priority":0,"nominal_mw":0.4,"standby_mw":0.4,"setpoint_max":1.2,"min_ratio":0.0,"power_exponent":2.0,"heat":{"to":"loop","fraction":1.0},"under":"Its setpoint is its speed; the speed it runs at is the one its supply allows. Loop flow falls in proportion; each pump is half the flow.","over":"Up to 120% speed: 1.2 times its flow for 1.44 times its power, with heat and wear (reactor-cooling design 6).","feeder_m":[[7.5,0.5,-20.6],[7.5,-0.35,-20.6],[6.5,-0.35,-29.0],[6.5,-3.5,-29.0]]},{"id":"coolant_pump_b","name":"Coolant pump B","system":"coolant_pumps","center_m":[-6.5,-3.5,-29.0],"node":"msb_s","priority":0,"nominal_mw":0.4,"standby_mw":0.4,"setpoint_max":1.2,"min_ratio":0.0,"power_exponent":2.0,"heat":{"to":"loop","fraction":1.0},"under":"As pump A.","over":"As pump A.","feeder_m":[[-7.5,0.5,-21.0],[-7.5,-0.35,-21.0],[-6.5,-0.35,-29.0],[-6.5,-3.5,-29.0]]},{"id":"radiator_pump_p","name":"Radiator pump, port","system":null,"node":"dp_drive","priority":0,"nominal_mw":0.6,"standby_mw":0.6,"setpoint_max":1.2,"min_ratio":0.0,"power_exponent":2.0,"center_m":[5.2,0.6,-32.8],"heat":{"to":"loop","fraction":1.0},"under":"Its setpoint is its speed. Radiator rejection falls in proportion; each pump is half the radiators' flow (reactor-cooling design 2).","over":"As the core pumps.","feeder_m":[[0.0,2.5,-34.0],[0.0,2.65,-34.0],[5.2,2.65,-32.8],[5.2,0.6,-32.8]]},{"id":"radiator_pump_s","name":"Radiator pump, starboard","system":null,"node":"dp_drive","priority":0,"nominal_mw":0.6,"standby_mw":0.6,"setpoint_max":1.2,"min_ratio":0.0,"power_exponent":2.0,"center_m":[-5.2,0.6,-32.8],"heat":{"to":"loop","fraction":1.0},"under":"As the port pump.","over":"As the core pumps.","feeder_m":[[0.0,2.5,-34.0],[0.0,2.65,-34.0],[-5.2,2.65,-32.8],[-5.2,0.6,-32.8]]},{"id":"makeup_pump","name":"Coolant makeup pump","system":"coolant_pumps","node":"msb_s","priority":0,"nominal_mw":0.05,"standby_mw":0.0,"setpoint_max":1.0,"min_ratio":0.0,"activity":"makeup","heat":{"to":"loop","fraction":1.0},"under":"Makeup flow from the tanks in proportion to supply.","over":"Not adjustable.","feeder_m":[[-7.5,0.5,-21.0],[-7.5,-0.35,-21.0],[-6.5,-0.35,-29.0],[-6.5,-3.5,-29.0]]},{"id":"emergency_lighting","name":"Emergency lighting","system":null,"node":"eb","priority":0,"nominal_mw":0.0049,"standby_mw":0.0049,"setpoint_max":1.0,"min_ratio":0.0,"center_m":[-4.5,-1.0,2.6],"heat":{"to":"none","fraction":0.0},"under":"Below 50%: compartments with no normal lighting go dark.","over":"Not adjustable.","feeder_m":[[-4.5,-1.0,2.0],[-4.5,-0.85,2.0],[-4.5,-0.85,2.6],[-4.5,-1.0,2.6]]},{"id":"computer","name":"Computer core","system":"computer","node":"bx_computer_core","priority":1,"nominal_mw":1.5,"standby_mw":1.5,"setpoint_max":1.5,"min_ratio":0.5,"heat":{"to":"node","fraction":0.95,"capacity_mj_per_k":4.3,"loop_kw_per_k":47.5,"room_w_per_k":30.0,"warn_k":363.0,"damage_k":393.0},"under":"Automation competence falls with supply; below 50% every automated station stops and targeting solutions are lost.","over":"Automation reaction time shortens by up to a third.","feeder_m":[[-1.55,4.8,18.2],[-1.55,6.15,18.2],[-5.0,6.15,17.0],[-5.0,3.5,17.0]]},{"id":"bridge_consoles","name":"Bridge consoles","system":null,"node":"bx_bridge","priority":1,"nominal_mw":0.007,"standby_mw":0.007,"setpoint_max":1.0,"min_ratio":0.5,"center_m":[0.0,4.5,26.0],"heat":{"to":"room","fraction":1.0,"room":"bridge"},"under":"Below 50%: the bridge stations go dark; the engineering bay console and the damage control board still work.","over":"Not adjustable.","feeder_m":[[1.2,4.8,20.3],[1.2,6.65,20.3],[0.0,6.65,26.0],[0.0,4.5,26.0]]},{"id":"o2_generator","name":"Oxygen generator","system":"o2_generator","node":"dp_ls","priority":1,"nominal_mw":1.0,"standby_mw":0.005,"setpoint_max":1.5,"min_ratio":0.0,"activity":"o2_output","heat":{"to":"node","fraction":0.3,"capacity_mj_per_k":0.9,"loop_kw_per_k":10.0,"room_w_per_k":20.0,"warn_k":363.0,"damage_k":393.0},"under":"Oxygen output in proportion to supply.","over":"Output up to 1.5 times rated, with heat and wear.","feeder_m":[[3.0,-0.8,12.0],[3.0,-0.85,12.0],[6.5,-0.85,17.0],[6.5,-3.5,17.0]]},{"id":"co2_scrubbers","name":"CO2 scrubbers","system":"co2_scrubbers","node":"dp_ls","priority":1,"nominal_mw":0.25,"standby_mw":0.25,"setpoint_max":1.5,"min_ratio":0.0,"heat":{"to":"loop","fraction":1.0},"under":"CO2 and smoke removal in proportion to supply.","over":"Removal up to 1.5 times rated.","feeder_m":[[3.0,-0.8,12.0],[3.0,-0.85,12.0],[6.5,-0.85,11.0],[6.5,-3.5,11.0]]},{"id":"air_handler","name":"Air handler fans","system":"air_handler","node":"dp_ls","priority":1,"nominal_mw":0.08,"standby_mw":0.08,"setpoint_max":1.25,"min_ratio":0.2,"heat":{"to":"duct","fraction":1.0},"under":"Circulation in proportion to supply; below 20% the fans stop and every vent damper springs shut.","over":"Circulation up to 1.25 times rated.","feeder_m":[[3.0,-0.8,12.0],[3.0,-0.85,12.0],[3.0,-0.85,8.0],[3.0,-3.5,8.0]]},{"id":"thermal_control","name":"Thermal control","system":"thermal_control","node":"dp_ls","priority":1,"nominal_mw":0.75,"standby_mw":0.15,"setpoint_max":1.0,"min_ratio":0.0,"activity":"heater","heat":{"to":"none","fraction":0.0},"under":"Cabin cooling and heating in proportion to supply.","over":"Not adjustable.","feeder_m":[[3.0,-0.8,12.0],[3.0,-0.85,12.0],[3.0,-0.85,18.5],[3.0,-3.5,18.5]]},{"id":"medbay","name":"Medbay beds","system":"medbay_beds","node":"bx_medbay","priority":1,"nominal_mw":0.008,"standby_mw":0.002,"setpoint_max":1.5,"min_ratio":0.25,"heat":{"to":"room","fraction":1.0,"room":"medbay"},"under":"Healing and revival in proportion to supply; below 25% the beds stop.","over":"Healing up to 1.5 times faster.","feeder_m":[[1.55,1.3,20.8],[1.55,2.65,20.8],[4.5,2.65,22.0],[4.5,0.0,22.0]]},{"id":"shield_generator","name":"Shield generator","system":"shield_generator","node":"bx_shield_room","priority":2,"nominal_mw":12.0,"standby_mw":2.0,"setpoint_max":1.5,"min_ratio":0.25,"activity":"shield_regen","heat":{"to":"node","fraction":0.35,"capacity_mj_per_k":12.6,"loop_kw_per_k":140.0,"room_w_per_k":40.0,"warn_k":363.0,"damage_k":393.0},"under":"Face regeneration and capacity in proportion to supply; below 25% the faces collapse.","over":"Regeneration up to 1.5 times, with heat.","feeder_m":[[1.55,-2.2,3.8],[1.55,-0.85,3.8],[4.2,-0.85,3.0],[4.2,-3.5,3.0]]},{"id":"turret_dorsal","name":"Dorsal turret","mount":"turret_dorsal","node":"bx_pod_dorsal","priority":2,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.2,"activity":"turret_dorsal","heat":{"to":"node","fraction":0.4,"capacity_mj_per_k":4.8,"loop_kw_per_k":53.3,"room_w_per_k":25.0,"room":"pod_dorsal","warn_k":363.0,"damage_k":393.0},"under":"Capacitor charge rate in proportion to supply (4 MW nominal against 6 MW of sustained fire); below 20% it cannot fire.","over":"Up to 1.5 times the rate of fire, with heat.","feeder_m":[[0.0,7.8,1.05],[0.0,8.65,1.05],[0.0,8.65,2.0],[0.0,9.0,2.0]]},{"id":"turret_ventral","name":"Ventral turret","mount":"turret_ventral","node":"bx_pod_ventral","priority":2,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.2,"activity":"turret_ventral","heat":{"to":"node","fraction":0.4,"capacity_mj_per_k":4.8,"loop_kw_per_k":53.3,"room_w_per_k":25.0,"room":"pod_ventral","warn_k":363.0,"damage_k":393.0},"under":"As the dorsal turret.","over":"As the dorsal turret.","feeder_m":[[0.0,-5.7,2.05],[0.0,-3.85,2.05],[0.0,-3.85,3.0],[0.0,-7.0,3.0]]},{"id":"turret_port","name":"Port turret","mount":"turret_port","node":"bx_pod_port","priority":2,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.2,"activity":"turret_port","heat":{"to":"node","fraction":0.4,"capacity_mj_per_k":4.8,"loop_kw_per_k":53.3,"room_w_per_k":25.0,"room":"pod_port","warn_k":363.0,"damage_k":393.0},"under":"As the dorsal turret.","over":"As the dorsal turret.","feeder_m":[[11.3,1.3,4.0],[11.3,2.15,4.0],[13.5,2.15,4.0],[13.5,1.25,4.0]]},{"id":"turret_stbd","name":"Starboard turret","mount":"turret_stbd","node":"bx_pod_stbd","priority":2,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.2,"activity":"turret_stbd","heat":{"to":"node","fraction":0.4,"capacity_mj_per_k":4.8,"loop_kw_per_k":53.3,"room_w_per_k":25.0,"room":"pod_stbd","warn_k":363.0,"damage_k":393.0},"under":"As the dorsal turret.","over":"As the dorsal turret.","feeder_m":[[-11.3,1.3,4.0],[-11.3,2.15,4.0],[-13.5,2.15,4.0],[-13.5,1.25,4.0]]},{"id":"sensors","name":"Sensor array","system":"sensor_array","node":"dp_b_fwd","priority":2,"nominal_mw":3.0,"standby_mw":0.5,"setpoint_max":1.5,"min_ratio":0.15,"activity":"sensors_active","heat":{"to":"node","fraction":0.5,"capacity_mj_per_k":4.5,"loop_kw_per_k":50.0,"room_w_per_k":0.0,"warn_k":363.0,"damage_k":393.0},"under":"Active range grows as the square root of supply; at standby only passive contacts.","over":"Range up to 1.22 times (square root of 1.5).","feeder_m":[[0.8,2.7,22.0],[0.8,2.65,22.0],[0.0,2.65,41.5],[0.0,1.0,41.5]]},{"id":"inertial_dampers","name":"Inertial dampers","system":"inertial_dampers","node":"dp_drive","priority":2,"nominal_mw":8.0,"standby_mw":2.0,"setpoint_max":1.5,"min_ratio":0.1,"activity":"dampers","heat":{"to":"node","fraction":0.5,"capacity_mj_per_k":12.0,"loop_kw_per_k":133.3,"room_w_per_k":40.0,"warn_k":363.0,"damage_k":393.0},"under":"The share of the ship's acceleration the crew feel is 1 minus supply/demand; past 0.5 g felt, crew are knocked down.","over":"Absorbs manoeuvres up to 1.5 times the rated acceleration.","feeder_m":[[0.0,2.5,-34.0],[0.0,2.65,-34.0],[4.0,2.65,-34.0],[4.0,0.0,-34.0]]},{"id":"gravity_generator","name":"Gravity generator","system":"gravity_generator","node":"bx_cargo","priority":2,"nominal_mw":4.0,"standby_mw":4.0,"setpoint_max":1.25,"min_ratio":0.3,"heat":{"to":"node","fraction":0.5,"capacity_mj_per_k":6.0,"loop_kw_per_k":66.7,"room_w_per_k":40.0,"warn_k":363.0,"damage_k":393.0},"under":"Gravity in g equals supply ratio; below 30% the field drops to zero (free fall).","over":"Up to 1.25 g: crew move 10% slower.","feeder_m":[[-1.55,-2.2,16.2],[-1.55,-0.85,16.2],[-6.5,-0.85,17.5],[-6.5,-3.5,17.5]]},{"id":"impulse_drive","name":"Impulse drive","system":"impulse_drive","node":"dp_drive","priority":3,"nominal_mw":16.0,"standby_mw":0.2,"setpoint_max":1.5,"min_ratio":0.1,"activity":"drive","heat":{"to":"node","fraction":0.15,"capacity_mj_per_k":7.2,"loop_kw_per_k":80.0,"room_w_per_k":60.0,"warn_k":363.0,"damage_k":393.0},"under":"Thrust in proportion to supply.","over":"Up to 1.5 times rated thrust, with heat and wear.","feeder_m":[[0.0,2.5,-34.0],[0.0,2.65,-34.0],[0.0,2.65,-37.0],[0.0,1.5,-37.0]]},{"id":"rcs_aft","name":"RCS, aft block","system":null,"node":"dp_drive","priority":3,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.1,"activity":"rcs","center_m":[0.0,1.0,-39.0],"heat":{"to":"node","fraction":0.3,"capacity_mj_per_k":3.6,"loop_kw_per_k":40.0,"room_w_per_k":20.0,"room":"drive","warn_k":363.0,"damage_k":393.0},"under":"Turn rate in proportion to the weaker block's supply.","over":"Up to 1.5 times turn rate.","feeder_m":[[0.0,2.5,-34.0],[0.0,2.65,-34.0],[0.0,2.65,-39.0],[0.0,1.0,-39.0]]},{"id":"rcs_fwd","name":"RCS, forward block","system":null,"node":"bx_torpedo_room","priority":3,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.1,"activity":"rcs","center_m":[0.0,1.0,32.5],"heat":{"to":"node","fraction":0.3,"capacity_mj_per_k":3.6,"loop_kw_per_k":40.0,"room_w_per_k":20.0,"room":"torpedo_room","warn_k":363.0,"damage_k":393.0},"under":"As the aft block.","over":"As the aft block.","feeder_m":[[1.2,1.3,26.3],[1.2,2.65,26.3],[0.0,2.65,32.5],[0.0,1.0,32.5]]},{"id":"missile_hoist","name":"Missile hoist and loaders","system":"magazine_racks","node":"bx_magazine","priority":3,"nominal_mw":0.03,"standby_mw":0.001,"setpoint_max":1.5,"min_ratio":0.2,"activity":"hoist","heat":{"to":"room","fraction":1.0,"room":"magazine"},"under":"Reload time grows as 1/supply; unpowered, crew load by hand crank (weapons-and-shields).","over":"Reload up to 1.5 times faster.","feeder_m":[[1.2,-2.2,20.3],[1.2,-0.85,20.3],[0.0,-0.85,25.0],[0.0,-3.5,25.0]]},{"id":"tube_1","name":"Tube 1 loader","system":"tube_1","node":"bx_torpedo_room","priority":3,"nominal_mw":0.05,"standby_mw":0.005,"setpoint_max":1.5,"min_ratio":0.2,"activity":"tube_1","heat":{"to":"room","fraction":1.0,"room":"torpedo_room"},"under":"Its tube loads and fires only while the loader works (ship-damage 4).","over":"As the hoist.","feeder_m":[[1.2,1.3,26.3],[1.2,2.65,26.3],[2.0,2.65,31.0],[2.0,1.5,31.0]]},{"id":"tube_2","name":"Tube 2 loader","system":"tube_2","node":"bx_torpedo_room","priority":3,"nominal_mw":0.05,"standby_mw":0.005,"setpoint_max":1.5,"min_ratio":0.2,"activity":"tube_2","heat":{"to":"room","fraction":1.0,"room":"torpedo_room"},"under":"As tube 1.","over":"As the hoist.","feeder_m":[[1.2,1.3,26.3],[1.2,2.65,26.3],[-2.0,2.65,31.0],[-2.0,1.5,31.0]]},{"id":"laser_port","name":"Laser bank, port","system":null,"node":"dp_port","priority":2,"nominal_mw":5.0,"standby_mw":0.05,"setpoint_max":1.0,"min_ratio":0.0,"activity":"laser_port","center_m":[9.5,1.5,1.5],"heat":{"to":"loop","fraction":1.0},"under":"Charges its 150 MJ capacitor at 5 MW times supply (laser-banks 1); damaged, at its capability (ship-damage 4).","over":"No overdrive.","feeder_m":[[6.0,2.6,4.0],[6.0,2.65,4.0],[9.5,2.65,1.5],[9.5,1.5,1.5]]},{"id":"laser_stbd","name":"Laser bank, starboard","system":null,"node":"dp_stbd","priority":2,"nominal_mw":5.0,"standby_mw":0.05,"setpoint_max":1.0,"min_ratio":0.0,"activity":"laser_stbd","center_m":[-9.5,1.5,1.5],"heat":{"to":"loop","fraction":1.0},"under":"As the port bank.","over":"No overdrive.","feeder_m":[[-6.0,2.6,4.0],[-6.0,2.65,4.0],[-9.5,2.65,1.5],[-9.5,1.5,1.5]]},{"id":"comms","name":"Comms array","system":"comms_array","node":"dp_a","priority":3,"nominal_mw":0.5,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.2,"activity":"comms","heat":{"to":"node","fraction":0.5,"capacity_mj_per_k":0.75,"loop_kw_per_k":8.3,"room_w_per_k":0.0,"warn_k":363.0,"damage_k":393.0},"under":"Range in proportion to supply; below 20% only short-range voice.","over":"Range up to 1.5 times.","feeder_m":[[0.6,6.2,10.5],[0.6,6.15,10.5],[0.0,6.15,14.0],[0.0,8.0,14.0]]},{"id":"hangar_pumps","name":"Bay pumps","system":"hangar_pumps","node":"dp_hangar_s","priority":3,"nominal_mw":6.0,"standby_mw":0.0,"setpoint_max":1.0,"min_ratio":0.0,"activity":"bay_pumps","heat":{"to":"node","fraction":0.4,"capacity_mj_per_k":7.2,"loop_kw_per_k":80.0,"room_w_per_k":40.0,"warn_k":363.0,"damage_k":393.0},"under":"Pumping speed in proportion to supply.","over":"Not adjustable.","feeder_m":[[-8.0,2.6,-8.0],[-8.0,2.65,-8.0],[-4.0,2.65,-2.0],[-4.0,-3.5,-2.0]]},{"id":"airlock_pump","name":"Airlock pump","system":null,"node":"bx_airlock","priority":3,"nominal_mw":0.15,"standby_mw":0.0,"setpoint_max":1.0,"min_ratio":0.0,"activity":"airlock_pump","center_m":[-9.5,-2.5,12.0],"heat":{"to":"room","fraction":1.0,"room":"cargo"},"under":"Pumping speed in proportion to supply.","over":"Not adjustable.","feeder_m":[[-8.9,-2.2,13.2],[-8.9,-0.85,13.2],[-9.5,-0.85,12.0],[-9.5,-2.5,12.0]]},{"id":"cradle_p","name":"Port launch cradle","system":"cradle_p","node":"bx_launch_bay_p","priority":3,"nominal_mw":0.6,"standby_mw":0.05,"setpoint_max":1.5,"min_ratio":0.2,"activity":"cradle_p","heat":{"to":"loop","fraction":0.3},"under":"Release charge time grows as 1/supply.","over":"Charges up to 1.5 times faster.","feeder_m":[[5.3,-2.2,-6.2],[5.3,-0.85,-6.2],[7.75,-0.85,-10.0],[7.75,-3.5,-10.0]]},{"id":"cradle_s","name":"Starboard launch cradle","system":"cradle_s","node":"bx_launch_bay_s","priority":3,"nominal_mw":0.6,"standby_mw":0.05,"setpoint_max":1.5,"min_ratio":0.2,"activity":"cradle_s","heat":{"to":"loop","fraction":0.3},"under":"As the port cradle.","over":"As the port cradle.","feeder_m":[[-5.3,-2.2,-6.2],[-5.3,-0.85,-6.2],[-7.75,-0.85,-10.0],[-7.75,-3.5,-10.0]]},{"id":"shuttle_pad","name":"Shuttle lift pad","system":"shuttle_pad","node":"dp_hangar_p","priority":3,"nominal_mw":0.05,"standby_mw":0.0,"setpoint_max":1.0,"min_ratio":0.2,"activity":"pad","heat":{"to":"room","fraction":1.0,"room":"hangar"},"under":"Lift speed in proportion to supply.","over":"Not adjustable.","feeder_m":[[8.0,2.6,-8.0],[8.0,2.65,-8.0],[0.0,2.65,-10.0],[0.0,-3.5,-10.0]]}],"groups":[{"id":"drive","name":"Impulse drive and RCS","loads":["impulse_drive","rcs_aft","rcs_fwd"]},{"id":"shields","name":"Shields","loads":["shield_generator"]},{"id":"turrets","name":"Turrets","loads":["turret_dorsal","turret_ventral","turret_port","turret_stbd"]},{"id":"tubes","name":"Tubes and hoist","loads":["missile_hoist","tube_1","tube_2"]},{"id":"sensors","name":"Sensors","loads":["sensors"]},{"id":"comms","name":"Comms","loads":["comms"]},{"id":"life_support","name":"Life support","loads":["o2_generator","co2_scrubbers","air_handler","thermal_control"]},{"id":"gravity_dampers","name":"Gravity and dampers","loads":["gravity_generator","inertial_dampers"]},{"id":"computer","name":"Computer core","loads":["computer","bridge_consoles"]},{"id":"bays","name":"Bays and craft charging","loads":["hangar_pumps","airlock_pump","cradle_p","cradle_s","shuttle_pad"]},{"id":"medbay","name":"Medbay","loads":["medbay"]},{"id":"cooling","name":"Cooling","loads":["coolant_pump_a","coolant_pump_b","radiator_pump_p","radiator_pump_s","makeup_pump"],"priority_min":0,"feed_breaker":true,"note":"reactor-cooling design 6: the twelfth group, 2.05 MW at full speed. Its setpoint is the pumps' speed, 0-120% (120% is overdrive). Its loads are priority 0 (never shed) by default, and priority_min 0 lets engineering lower them to 1-3 and back, which lets load shedding take them. feed_breaker: one breaker on the group's feed, opened or locked open from the console; open, it stops every pump in the group and the loop falls to its natural circulation."}],"presets":{"note":"Setpoints by group (1.0 is nominal; 0 switches the group off; above 1 is overdrive). Groups not named keep 1.0. Automated engineering applies combat on red alert and cruise on its end (bridge-stations).","cruise":{"drive":1.0,"shields":1.0,"turrets":1.0,"tubes":1.0,"sensors":1.0,"comms":1.0,"gravity_dampers":1.0,"computer":1.0,"bays":1.0},"combat":{"drive":0.75,"shields":1.25,"turrets":1.0,"tubes":1.0,"sensors":0.6,"comms":0.5,"gravity_dampers":1.0,"computer":1.25,"bays":1.0},"silent":{"drive":0.2,"shields":0.2,"turrets":0.0,"tubes":1.0,"sensors":0.17,"comms":0.2,"gravity_dampers":1.0,"computer":1.0,"bays":0.0},"emergency":{"drive":0.3,"shields":0.5,"turrets":0.5,"tubes":1.0,"sensors":0.17,"comms":0.2,"gravity_dampers":0.8,"computer":1.0,"bays":0.0}},"lighting":{"priority":1,"normal_w_per_m2":12.0,"emergency_w_per_m2":2.0,"normal_below_ratio":0.5,"panels":{"bx_bridge":["bridge"],"bx_ready_room":["ready_room"],"bx_computer_core":["computer_core"],"dp_a":["a_corridor"],"bx_dorsal_turret":["dorsal_turret"],"bx_a_aft_passage":["a_aft_passage"],"bx_torpedo_room":["torpedo_room"],"bx_medbay":["medbay"],"bx_damage_control":["damage_control"],"bx_quarters":["quarters"],"bx_mess":["mess"],"dp_port":["port_turret"],"dp_stbd":["stbd_turret"],"dp_b_fwd":["b_spine"],"dp_hangar_p":["hangar"],"bx_launch_bay_p":["launch_bay_p"],"bx_launch_bay_s":["launch_bay_s"],"msb_s":["engineering"],"dp_drive":["drive"],"dp_c_fwd":["c_spine"],"bx_magazine":["magazine"],"dp_ls":["life_support"],"bx_cargo":["cargo"],"bx_airlock":["airlock"],"bx_shield_room":["shield_room"],"fsb_p":["switchboard"],"bx_pod_dorsal":["pod_dorsal"],"bx_pod_ventral":["pod_ventral"],"bx_pod_port":["pod_port"],"bx_pod_stbd":["pod_stbd"]}},"distribution":{"box_height_m":1.3,"box_beside_door_m":1.2,"box_into_room_m":0.3,"run_below_ceiling_m":0.35,"ratings_mw":[5,10,15,20,30,40],"rating_margin":1.25,"spare_mw":10,"note":"power-routing design 1: tools/power/boxes.py places a conduit box in every room without a switchboard or panel, beside the doorway its feed comes in by, box_height_m over the floor and box_into_room_m off the wall; runs go run_below_ceiling_m under the ceiling (or under the next deck in a taller room). A feed run's rating is its rooms' most (every load at its setpoint_max, the lights) times rating_margin, rounded up to ratings_mw; a spare run takes spare_mw or the larger feed rating of its two rooms."},"routing":{"max_live_runs":42,"trip_dark_s":8.0,"kept_on_trip":["switchboard","emergency_bus"],"note":"power-routing design 2: a run (conduit or tie) is live when it is closed, not severed and both its nodes are switched on. The main protection allows max_live_runs at once (the factory configuration is 39); one more trips the grid: every node but the kinds in kept_on_trip is switched off and every run opened for trip_dark_s, then every switch returns to its factory setting. The owner, 2026-10-11: \"Too many conduits open can cause the ship to shut down temporarily and reset the configuration to factory settings\"."},"coolant":{"system":"coolant_pumps","fluid":"water and glycol, pressurized","capacity_mj_per_k":40.0,"nominal_k":330.0,"initial_k":325.0,"warn_k":360.0,"pumps":["coolant_pump_a","coolant_pump_b"],"flow_per_pump":0.5,"design_flow_kg_s":740.0,"design_flow_note":"40 MW at a 15 K rise in water and glycol (3.6 kJ/kg K); the console shows flow as this times the flow fraction","specific_heat_kj_per_kg_k":3.6,"radiator_pumps":["radiator_pump_p","radiator_pump_s"],"flow_per_radiator_pump":0.5,"natural_circulation_flow":0.05,"flow_alarm_below":0.3,"inventory_kg":11100.0,"tanks":[{"id":"tank_p","name":"Coolant tank, port","capacity_kg":2000.0},{"id":"tank_s","name":"Coolant tank, starboard","capacity_kg":2000.0}],"segments":[{"id":"seg_hot_1","name":"Hot leg pipe 1","leg":"hot"},{"id":"seg_hot_2","name":"Hot leg pipe 2","leg":"hot"},{"id":"seg_hot_3","name":"Hot leg pipe 3","leg":"hot"},{"id":"seg_hot_4","name":"Hot leg pipe 4","leg":"hot"},{"id":"seg_cold_1","name":"Cold leg pipe 1","leg":"cold"},{"id":"seg_cold_2","name":"Cold leg pipe 2","leg":"cold"},{"id":"seg_cold_3","name":"Cold leg pipe 3","leg":"cold"},{"id":"seg_cold_4","name":"Cold leg pipe 4","leg":"cold"}],"segments_note":"reactor-cooling design 1-2: the loop's eight pipe segments, numbered from the core along the flow (the hot leg from the core to the chiller, the cold leg from the chiller back to the core). Each is a part with integrity (damage.json coolant). A leg carries flow x its worst segment's capability; an isolated segment carries nothing and its leg runs through the bypass jumper round it at isolated_leg_flow.","isolated_leg_flow":0.5,"exchanger":{"id":"chiller","name":"Heat exchanger (chiller)"},"makeup":{"pump":"makeup_pump","max_kg_s":10.0,"auto_open_below":0.95},"cavitation":{"full_flow_from":0.8,"no_flow_below":0.6},"bands":{"hot_leg_k":[335.0,350.0],"cold_leg_k":[320.0,335.0],"hot_leg_warning_k":370.0},"automation":{"period_s":3.0,"design_rise_k":15.0,"pump_speed_min":1.0},"cooling_note":"reactor-cooling design 2, 3, 5 and 6. Speed-law loads (power_exponent) draw nominal_mw x speed^power_exponent, their standby_mw unused, and run at the speed their supply allows. flow = max(natural_circulation_flow, core pumps' speed x capability x flow_per_pump, summed, x cavitation); cavitation = clamp((m_loop / inventory_kg - no_flow_below) / (full_flow_from - no_flow_below), 0, 1). C_loop = capacity_mj_per_k x m_loop / inventory_kg. Hot leg = loop temperature + heat into the loop / (flow x design_flow_kg_s x specific heat); it is the one the loop scram reads. Radiator rejection gains the exchanger's capability and the radiator pumps' speed x capability x flow_per_radiator_pump, summed. Automation every period_s: core pumps at the flow the heat needs at design_rise_k, never below pump_speed_min (the mockup keeps power-grid's full-flow walkthroughs), up to 1.2; radiator pumps at full; the bypass holds the cold leg by radiators.bypass_band_k (325-330 K, design 5's 327 K); makeup opens below auto_open_below and shuts at full. Pipe segments, leaks and the exchanger's damage (design 1-2): flow gains x min over the two legs of the leg's factor (its worst segment's capability, or isolated_leg_flow x the worst of the rest when one is isolated); the exchanger's capability is its integrity's (damage.json systems); segments and tanks leak by damage.json coolant."},"radiators":{"system":"radiators","rated_mw":40.0,"rated_at_k":330.0,"background_k":4.0,"bypass_band_k":5.0,"law":"capacity = rated_mw * health * flow * exchanger * radiator_pumps * (T^4 - Tb^4) / (rated_at_k^4 - Tb^4); rejected = capacity * chiller, where chiller (the share of the hot leg through the exchanger) is clamp((T - (coolant.nominal_k - bypass_band_k)) / bypass_band_k, 0, 1) in AUTO and the engineer's in MANUAL; exchanger and radiator_pumps as coolant.cooling_note (reactor-cooling design 2)","note":"Fictional rating, stated as such: a physical radiator rejecting 40 MW at 330 K would need about 60,000 m^2. See design.md, Heat, and open question P4."},"overdrive":{"heat_factor":1.0,"wear_pct_per_min_at_150":2.0,"heat_wear_pct_per_s_per_k":0.01}}
 </script>
 <!-- INLINE data:tern/power END -->
 <!-- INLINE data:tern/atmosphere BEGIN -->
@@ -69,7 +69,7 @@
 <!-- INLINE data:tern/atmosphere END -->
 <!-- INLINE data:tern/damage BEGIN -->
 <script id="ship-data-damage" type="application/json">
-{"schema":"starcrew.ship-damage/1","status":"PROPOSED by openspec/changes/damage-control (2026-10-04). No engine code reads this yet; the systems mockup does. Numbers are tuning proposals, not decisions.","ship":"tern","units":{"energy":"MJ (megajoules)","length":"m","area":"m^2","time":"s","integrity":"percent of a system's full health, 0 to 100","rate":"percent per second where the key says pct_per_s"},"hull":{"armour_mj":4.0,"section_mj":40.0,"faces":["dorsal","ventral","port","starboard","bow","stern"],"note":"A hull section is a span between two of the layout's hull sections times one of six faces (9 spans x 6 faces = 54). A fresh section absorbs up to armour_mj of each hit, scaled by its integrity; each hit takes min(E, armour_mj) / section_mj x 100 points of integrity from it."},"breach":{"m2_per_mj":0.02,"min_m2":0.002,"max_m2":2.0,"note":"A hit whose energy passes the armour opens a breach in the first compartment it enters, sized by the energy left: 1 MJ past the armour makes 0.02 m^2, 50 MJ makes 1 m^2."},"propagation":{"march_step_m":0.25,"march_max_m":30.0,"decay_m":4.0,"bulkhead_mj":1.5,"radius_m":1.5,"radius_per_sqrt_mj":0.3,"note":"Energy past the armour marches along the hit direction in steps of march_step_m. Each step deposits dE = E (1 - exp(-step / decay_m)) at its point; a target within r = radius_m + radius_per_sqrt_mj x sqrt(E) of that point takes points_per_mj x dE x (1 - d / r). Each bulkhead crossed costs bulkhead_mj."},"systems":{"points_per_mj":10.0,"nominal_from_pct":75.0,"disabled_below_pct":25.0,"note":"Integrity points taken are summed over the march steps (see propagation). Capability is 1 at or above nominal_from_pct, integrity / nominal_from_pct between the two thresholds, 0 below disabled_below_pct; 0 integrity is destroyed."},"nodes":{"destroyed_below":0.25,"note":"A switchboard section, panel or bus loses health as a system does (points / 100); below destroyed_below it carries nothing until rebuilt."},"coolant":{"leak_below_pct":75.0,"leak_kg_s_at_zero":20.0,"note":"reactor-cooling design 2: a coolant pipe segment or tank below leak_below_pct integrity leaks leak_kg_s_at_zero x (leak_below_pct - integrity) / leak_below_pct kg/s: a segment at 0% leaks 20 kg/s, the loop's 11.1 t in under 10 minutes; a tank leaks its own reserve. An isolated segment does not leak. The parts' capability follows systems (power.json coolant.segments, tanks and exchanger)."},"conduits":{"sever_mj":1.0,"damage_mj":0.3,"damaged_capacity":0.5},"fire":{"chance_per_mj":0.1,"chance_max":0.6,"seed_kw_per_mj":100.0,"note":"Per compartment a hit deposits energy in: ignition chance min(chance_max, chance_per_mj x E) times the room's oxygen factor, decided by a seeded hash of (session seed, hit id, compartment id). The fire starts at fire.seed_kw (atmosphere.json) plus seed_kw_per_mj x E."},"crew":{"hp_per_mj":15.0,"share":0.3,"note":"A crew member near the path loses hp_per_mj x share x the energy deposited near them, with the systems falloff (100 hit points is full health). Without crew positions (the mockup), each crew member in the room takes the room total times the fraction of its floor within r of the path."},"repair":{"kit_pct_per_s":{"officer":1.8,"rating":0.6},"kit_locker":"damage_control","kits_in_locker":6,"parts_store":"cargo","parts_on_board":24,"parts":{"disabled_system":1,"destroyed_system":3,"conduit_splice":1,"node_rebuild":4},"disabled_to_pct":25.0,"destroyed_rebuild_s":180.0,"destroyed_rebuild_to_pct":25.0,"conduit_splice_s":30.0,"conduit_splice_capacity":0.5,"node_rebuild_s":120.0,"node_rebuild_to":0.5,"hull_section_pct_per_s_eva":0.5,"two_hands_factor":1.6,"fumble_share_pct":5.0},"patch":{"plate_m2":0.25,"plates_in_locker":12,"inside_s_per_plate":15.0,"inside_max_m2":1.0,"eva_s_per_m2":60.0,"eva_max_m2":4.0,"group_holes_by_hull_section":true,"note":"A crew member patches a breach from inside with plates (cabin pressure presses a plate onto the hole), up to inside_max_m2; a larger breach is closed from outside by a suited crew member through the airlock. Holes through one hull section into one compartment are patched together: one plate per plate_m2 of their total area."},"doors":{"jam_points":25.0,"repair_s":30.0,"note":"A portal within a hit's reach that takes jam_points (as a system would) jams where it is: it neither opens nor closes until a crew member with a kit frees it (repair_s), or a drop door is cranked by hand (shuttle-bay-and-fighters)."},"cook_off":{"compartment":"magazine","air_above_k":473.15,"hold_s":60.0,"hit_mj_within_m":[10.0,2.0],"warhead_mj":60.0,"next_check_s":30.0,"note":"A missile in the racks cooks off when the magazine's air has been above air_above_k for hold_s, or a hit deposits hit_mj_within_m[0] MJ within hit_mj_within_m[1] m of the racks; it is resolved as a hit of warhead_mj from inside at the racks, and the next missile checks again next_check_s later. Not in the mockup's library."},"remote_control":{"needs_computer_ratio":0.5,"note":"Breakers, dampers, doors and suppression are operated from the bridge and the damage control board only while the computer core has at least this supply ratio; otherwise only at the switchboards, the doors and the system itself."},"teams":{"count":2,"members":2,"home":"damage_control","walk_m_s":1.8,"run_m_s":4.0,"suited_m_s":1.5,"ladder_up_m_s":0.8,"ladder_down_m_s":1.0,"suit_up_s":20.0,"dispatch_delay_s":5.0,"enter_below_kpa_needs_suit":50.0,"refuse_fire_above_kw_without_suit":2000.0,"note":"NPC damage control teams are crew bodies (crew-on-deck): they walk the crew-portal graph, carry a kit, an extinguisher or plates, take the same harm as players, and can die. Their speeds (walk, run, suited, ladders up and down) and suit donning time are crew-on-deck's (design sections 3, 4 and 10), repeated here until data/crew.json exists and teams read it. Reconciled 2026-10-05: crew-on-deck owns this (was walk 1.6 m/s, ladders 0.8 m/s both ways, suit-up 30 s)."}}
+{"schema":"starcrew.ship-damage/1","status":"Used by the drill (openspec/changes/ship-damage, sc-core::combat::damage): the hit, the march, the cascade, fires and the teams. The rest is damage-control's (2026-10-04), read by the systems mockup and the repair rules. Numbers are tuning proposals, not decisions.","ship":"tern","units":{"energy":"MJ (megajoules)","length":"m","area":"m^2","time":"s","integrity":"percent of a system's full health, 0 to 100","rate":"percent per second where the key says pct_per_s"},"hull":{"armour_mj":4.0,"section_mj":40.0,"faces":["dorsal","ventral","port","starboard","bow","stern"],"note":"A hull section is a span between two of the layout's hull sections times one of six faces (9 spans x 6 faces = 54). A fresh section absorbs up to armour_mj of each hit, scaled by its integrity; each hit takes min(E, armour_mj) / section_mj x 100 points of integrity from it."},"breach":{"m2_per_mj":0.02,"min_m2":0.002,"max_m2":2.0,"note":"A hit whose energy passes the armour opens a breach in the first compartment it enters, sized by the energy left: 1 MJ past the armour makes 0.02 m^2, 50 MJ makes 1 m^2."},"propagation":{"march_step_m":0.25,"march_max_m":30.0,"decay_m":10.0,"bulkhead_mj":1.5,"radius_m":1.5,"radius_per_sqrt_mj":0.3,"note":"Energy past the armour marches along the hit direction in steps of march_step_m. Each step deposits dE = E (1 - exp(-step / decay_m)) at its point; a target within r = radius_m + radius_per_sqrt_mj x sqrt(E) of that point takes points_per_mj x dE x (1 - d / r). Each bulkhead crossed costs bulkhead_mj."},"systems":{"points_per_mj":10.0,"nominal_from_pct":75.0,"disabled_below_pct":25.0,"note":"Integrity points taken are summed over the march steps (see propagation). Capability is 1 at or above nominal_from_pct, integrity / nominal_from_pct between the two thresholds, 0 below disabled_below_pct; 0 integrity is destroyed."},"nodes":{"destroyed_below":0.25,"note":"A switchboard section, panel or bus loses health as a system does (points / 100); below destroyed_below it carries nothing until rebuilt."},"coolant":{"leak_below_pct":75.0,"leak_kg_s_at_zero":20.0,"note":"reactor-cooling design 2: a coolant pipe segment or tank below leak_below_pct integrity leaks leak_kg_s_at_zero x (leak_below_pct - integrity) / leak_below_pct kg/s: a segment at 0% leaks 20 kg/s, the loop's 11.1 t in under 10 minutes; a tank leaks its own reserve. An isolated segment does not leak. The parts' capability follows systems (power.json coolant.segments, tanks and exchanger)."},"cascade":{"surge_share":0.6,"step_factor":0.5,"max_steps":4,"min_points":1.0,"note":"ship-damage 3 (the owner's): a hit that takes points from a system already below nominal sends surge_share of those points into its power node; from a node the surge goes to every other load on it and through each unsevered conduit to the node at its far end, times step_factor at each step. Every component it reaches takes its share once (a node as points / 100 of its health). The hit system's node always passes it on; any other component passes it on only if it was below nominal before the surge. It stops after max_steps or below min_points."},"conduits":{"sever_mj":1.0,"damage_mj":0.3,"damaged_capacity":0.5},"fire":{"chance_per_mj":0.1,"chance_max":0.6,"seed_kw_per_mj":100.0,"burn_pct_per_s":0.4,"burn_hull_mj_per_s":0.05,"spread_after_s":90.0,"put_out_s":20.0,"note":"Per compartment a hit deposits energy in: ignition chance min(chance_max, chance_per_mj x E) times the room's oxygen factor, decided by a seeded hash of (session seed, hit id, compartment id). The fire starts at fire.seed_kw (atmosphere.json) plus seed_kw_per_mj x E."},"crew":{"hp_per_mj":15.0,"share":0.3,"note":"A crew member near the path loses hp_per_mj x share x the energy deposited near them, with the systems falloff (100 hit points is full health). Without crew positions (the mockup), each crew member in the room takes the room total times the fraction of its floor within r of the path."},"repair":{"kit_pct_per_s":{"officer":1.8,"rating":0.6},"kit_locker":"damage_control","kits_in_locker":6,"parts_store":"cargo","parts_on_board":24,"parts":{"disabled_system":1,"destroyed_system":3,"conduit_splice":1,"node_rebuild":4},"disabled_to_pct":25.0,"destroyed_rebuild_s":180.0,"destroyed_rebuild_to_pct":25.0,"conduit_splice_s":30.0,"conduit_splice_capacity":0.5,"node_rebuild_s":120.0,"node_rebuild_to":0.5,"hull_section_pct_per_s_eva":0.5,"two_hands_factor":1.6,"fumble_share_pct":5.0},"patch":{"plate_m2":0.25,"plates_in_locker":12,"inside_s_per_plate":15.0,"inside_max_m2":1.0,"eva_s_per_m2":60.0,"eva_max_m2":4.0,"group_holes_by_hull_section":true,"note":"A crew member patches a breach from inside with plates (cabin pressure presses a plate onto the hole), up to inside_max_m2; a larger breach is closed from outside by a suited crew member through the airlock. Holes through one hull section into one compartment are patched together: one plate per plate_m2 of their total area."},"doors":{"jam_points":25.0,"repair_s":30.0,"note":"A portal within a hit's reach that takes jam_points (as a system would) jams where it is: it neither opens nor closes until a crew member with a kit frees it (repair_s), or a drop door is cranked by hand (shuttle-bay-and-fighters)."},"cook_off":{"compartment":"magazine","air_above_k":473.15,"hold_s":60.0,"hit_mj_within_m":[10.0,2.0],"warhead_mj":60.0,"next_check_s":30.0,"note":"A missile in the racks cooks off when the magazine's air has been above air_above_k for hold_s, or a hit deposits hit_mj_within_m[0] MJ within hit_mj_within_m[1] m of the racks; it is resolved as a hit of warhead_mj from inside at the racks, and the next missile checks again next_check_s later. Not in the mockup's library."},"remote_control":{"needs_computer_ratio":0.5,"note":"Breakers, dampers, doors and suppression are operated from the bridge and the damage control board only while the computer core has at least this supply ratio; otherwise only at the switchboards, the doors and the system itself."},"teams":{"count":2,"members":2,"home":"damage_control","walk_m_s":1.8,"run_m_s":4.0,"suited_m_s":1.5,"ladder_up_m_s":0.8,"ladder_down_m_s":1.0,"suit_up_s":20.0,"dispatch_delay_s":5.0,"path_factor":1.4,"enter_below_kpa_needs_suit":50.0,"refuse_fire_above_kw_without_suit":2000.0,"note":"NPC damage control teams are crew bodies (crew-on-deck): they walk the crew-portal graph, carry a kit, an extinguisher or plates, take the same harm as players, and can die. Their speeds (walk, run, suited, ladders up and down) and suit donning time are crew-on-deck's (design sections 3, 4 and 10), repeated here until data/crew.json exists and teams read it. Reconciled 2026-10-05: crew-on-deck owns this (was walk 1.6 m/s, ladders 0.8 m/s both ways, suit-up 30 s)."}}
 </script>
 <!-- INLINE data:tern/damage END -->
 <!-- INLINE shipkit BEGIN -->
@@ -169,6 +169,8 @@
       comms: 0xab47bc,
       flight_ops: 0x26c6da,
       gunner: 0xff7043,
+      // the laser banks' stations (laser-banks 3)
+      laser: 0xf06292,
     },
     // upholstery and bedding in the side rooms (command-suite): the captain's rooms, and the crew's
     furniture: { captain: 0x8a3b3b, crew: 0x3f5f88 },
@@ -3283,7 +3285,12 @@
     for (const g of PW.generators) st.genClosed[g.id] = true;
     for (const t of PW.ties) st.tieClosed[t.id] = !!t.closed;
     // cut: where a hit severed the conduit, [x, y, z] on its path (null while whole), for the damage map's break marker.
-    for (const k of PW.conduits) st.conduit[k.id] = { health: 1, severed: false, breaker: true, cut: null };
+    // A conduit starts at its factory setting (power-routing 1): closed, unless it is a spare route.
+    for (const k of PW.conduits) st.conduit[k.id] = { health: 1, severed: false, breaker: k.factory_closed !== false, cut: null };
+    // Every node's box switched on (power-routing 1); the main protection's trip (power-routing 2).
+    st.boxOn = {};
+    for (const nd of PW.nodes) st.boxOn[nd.id] = true;
+    st.routing = { trip_s: 0, trips: 0 };
     for (const l of loads) if (l.heat && l.heat.to === "node") st.thermal[l.id] = { T: PW.coolant.initial_k + 5 };
     for (const l of loads) st.loop.branchOpen[l.id] = true;
     // The coolant parts (reactor-cooling design 1): a missing block is an error, not a silent zero (CLAUDE.md 6.5).
@@ -3335,7 +3342,8 @@
       const reserve = rx.releaseReserve ? 0 : B.restart_reserve_mj;
       const lim = (e) => Math.max(0, Math.min(B.discharge_max_mw * st.battery.health, (e * B.discharge_efficiency) / dt));
       const batAvail = lim(st.battery.soc_mj - reserve), batAvailAll = lim(st.battery.soc_mj);
-      const nh = (id) => (st.nodeHealth[id] == null ? 1 : st.nodeHealth[id]);
+      // A node whose box is switched off passes nothing, as a destroyed one (power-routing 1).
+      const nh = (id) => (st.boxOn[id] === false ? 0 : st.nodeHealth[id] == null ? 1 : st.nodeHealth[id]);
       const eRx = add("reactor", S, RX, rxAvail, true, "source");
       const eBat = add("battery", S, BAT, 0, true, "source");
       add("battery_out", BAT, pIdx[B.node], st.batteryBreaker ? 1e9 : 0, true, "battery");
@@ -3432,7 +3440,7 @@
       for (let i = 0; i < loads.length; i++) {
         const l = loads[i];
         const sp = Math.min(setpoints[i], l.setpoint_max);
-        if (sp <= 0 || st.breakerOpen[i] || st.nodeHealth[l.node] === 0) continue;
+        if (sp <= 0 || st.breakerOpen[i] || st.nodeHealth[l.node] === 0 || st.boxOn[l.node] === false) continue;
         const cap = capability(i);
         if (cap <= 0) continue;
         let x;
@@ -3778,7 +3786,7 @@
           th.T += (dt * (q - qLoop - qRoom)) / (h.capacity_mj_per_k * MWW);
           toLoop += qLoop; if (room != null) roomHeat[room] += qRoom;
           // Over-temperature wears the system (damage-control applies the state).
-          if (th.T > h.damage_k) st.integrity[i] = Math.max(0, st.integrity[i] - dt * (th.T - h.damage_k) * 0.01);
+          if (th.T > h.damage_k) st.integrity[i] = Math.max(0, st.integrity[i] - dt * (th.T - h.damage_k) * PW.overdrive.heat_wear_pct_per_s_per_k);
         }
       }
       // Reactor blanket.
@@ -4627,7 +4635,7 @@
     const nodeHp = (id) => (st.nodeHealth[id] == null ? 1 : st.nodeHealth[id]);
     /** Whether a power node carries power now: an edge touching it carries flow, or a load on it is supplied. */
     function nodeLive(id) {
-      if (nodeHp(id) <= 0) return false;
+      if (nodeHp(id) <= 0 || st.boxOn[id] === false) return false;
       for (const k of PW.conduits) if ((k.between[0] === id || k.between[1] === id) && Math.abs(st.flows[k.id] || 0) > EPS) return true;
       for (const t of PW.ties) if ((t.between[0] === id || t.between[1] === id) && Math.abs(st.flows[t.id] || 0) > EPS) return true;
       for (const g of PW.generators) if (g.node === id && (st.flows[g.id] || 0) > EPS) return true;
@@ -4647,14 +4655,14 @@
       const mw = st.flows[id] || 0;
       let state = "live";
       if (c.severed) state = "severed";
-      else if (!c.breaker || nodeHp(k.between[0]) <= 0 || nodeHp(k.between[1]) <= 0) state = "dead";
+      else if (!c.breaker || nodeHp(k.between[0]) <= 0 || nodeHp(k.between[1]) <= 0 || st.boxOn[k.between[0]] === false || st.boxOn[k.between[1]] === false) state = "dead";
       else if (Math.abs(mw) <= EPS && !(nodeLive(k.between[0]) && nodeLive(k.between[1]))) state = "dead";
-      return { id, name: k.name, mw, state, health: c.health, breaker: c.breaker ? "closed" : "open", cut: c.cut || null, capacity_mw: k.capacity_mw };
+      return { id, name: k.name, mw, state, health: c.health, breaker: c.breaker ? "closed" : "open", cut: c.cut || null, capacity_mw: k.capacity_mw, spare: k.factory_closed === false };
     }
     /** A switchboard section, panel or bus as the map draws it (power-grid 5): health 0-1 and state "sound", "damaged" or "destroyed". */
     function nodeView(id) {
       const h = nodeHp(id);
-      return { id, health: h, state: h <= 0 ? "destroyed" : h < 1 ? "damaged" : "sound", live: nodeLive(id) };
+      return { id, health: h, state: h <= 0 ? "destroyed" : h < 1 ? "damaged" : "sound", live: nodeLive(id), on: st.boxOn[id] !== false };
     }
     /**
      * Every breaker, by the node whose box it stands in, and its state "closed", "open" (opened or tripped) or "locked"
@@ -4728,8 +4736,63 @@
       return null;
     }
 
+    // ======================================================= ROUTING (power-routing 1-2; sc-core power::step_routing)
+    const RT = PW.routing;
+    /** The runs live now: conduits and ties closed, whole, with both their boxes on. */
+    function liveRuns() {
+      const on = (id) => st.boxOn[id] !== false;
+      let n = 0;
+      for (const k of PW.conduits) { const c = st.conduit[k.id]; if (c.breaker && !c.severed && on(k.between[0]) && on(k.between[1])) n++; }
+      for (const t of PW.ties) if (st.tieClosed[t.id] && on(t.between[0]) && on(t.between[1])) n++;
+      return n;
+    }
+    /** Every box on, every run at its factory setting. */
+    function factoryReset() {
+      for (const nd of PW.nodes) st.boxOn[nd.id] = true;
+      for (const k of PW.conduits) st.conduit[k.id].breaker = k.factory_closed !== false;
+      for (const t of PW.ties) st.tieClosed[t.id] = !!t.closed;
+    }
+    /** The main protection, at the start of each sub-step: a trip's dark time running out restores the factory
+     *  configuration; more live runs than it allows trips the grid. */
+    function stepRouting() {
+      if (!RT) return;
+      const R = st.routing;
+      if (R.trip_s > 0) {
+        R.trip_s -= dt;
+        if (R.trip_s <= 1e-9) { R.trip_s = 0; factoryReset(); log("Grid restored: factory configuration"); }
+        return;
+      }
+      if (liveRuns() > RT.max_live_runs) {
+        R.trip_s = RT.trip_dark_s; R.trips++;
+        for (const nd of PW.nodes) st.boxOn[nd.id] = RT.kept_on_trip.indexOf(nd.kind) >= 0;
+        for (const k of PW.conduits) st.conduit[k.id].breaker = false;
+        for (const t of PW.ties) st.tieClosed[t.id] = false;
+        log("Main protection tripped: too many live runs");
+      }
+    }
+    /** Switch a node's box on or off; refused (false) while the grid is tripped dark. */
+    function setBox(id, on) {
+      if (st.routing.trip_s > 0 || !(id in st.boxOn)) return false;
+      st.boxOn[id] = !!on; log((on ? "Box on: " : "Box off: ") + id);
+      return true;
+    }
+    /** Close or open a run (a conduit or a tie) at its box; refused (false) while the grid is tripped dark. */
+    function setRun(id, closed) {
+      if (st.routing.trip_s > 0) return false;
+      if (st.conduit[id]) st.conduit[id].breaker = !!closed;
+      else if (id in st.tieClosed) st.tieClosed[id] = !!closed;
+      else return false;
+      log((closed ? "Run closed: " : "Run opened: ") + id);
+      return true;
+    }
+    /** The protection as a console shows it: live runs against the limit, the dark seconds left, trips so far. */
+    function routingView() {
+      return { live: liveRuns(), limit: RT ? RT.max_live_runs : Infinity, trip_s: st.routing.trip_s, tripped: st.routing.trip_s > 0, trips: st.routing.trips, dark_s: RT ? RT.trip_dark_s : 0 };
+    }
+
     // ======================================================= the sub-step
     function step() {
+      stepRouting();
       stepVent();
       stepAutomation();
       stepCooling();
@@ -4775,6 +4838,7 @@
       operateDoor, setPriority, applyPreset, setCooling, coolantReadout, coolantView, damagePart, repairPart, isolateSegment, partIntegrity, setGroupBreaker, pumpSpeed, repressurize, repairSystem, spliceConduit, rebuildNode, fanRatio,
       airlockCycleOut, airlockCycleIn, ventCompartment, stopVent, addCrew, setActivity, compartmentReadout, lighting,
       receiverKpa, storeMol, fillStandard, log, fs: FS, fO2, conduitView, nodeView, nodeLive, breakers, repairTime, hullSection,
+      setBox, setRun, liveRuns, routingView, factoryReset,
       get P() { return P; }, get T() { return T; }, get n() { return n; }, get ntot() { return ntot; },
     };
   }
@@ -4808,6 +4872,8 @@ const ROLE = {}; for (const [k, v] of Object.entries(K.PALETTE.role)) ROLE[k] = 
 
 // Icons on a 24-unit grid, stroked. One picture per idea, the same picture on every console.
 const ICONS = {
+  expand: '<path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/>',
+  runs: '<circle cx="5" cy="12" r="2.5"/><circle cx="19" cy="12" r="2.5"/><path d="M7.5 12h9"/>',
   drive: '<path d="M4 6l6 6-6 6M12 6l6 6-6 6"/>',
   shields: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>',
   turrets: '<circle cx="12" cy="15" r="5"/><path d="M12 10V2M5 21h14"/>',
@@ -4873,6 +4939,11 @@ const ICONS = {
   science: '<circle cx="12" cy="13" r="2"/><path d="M6.3 7.3a8 8 0 0 0 0 11.4M17.7 7.3a8 8 0 0 1 0 11.4"/>',
   command: '<path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/>',
   flight_ops: '<path d="M12 2l3 8 7 3-7 1-3 8-3-8-7-1 7-3z"/>',
+  laser: '<rect x="2" y="9" width="6" height="6" rx="1"/><path d="M8 12h14M17 8.5l3.5 3.5-3.5 3.5"/>',
+  gunner: '<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/><circle cx="12" cy="12" r="2"/>',
+  objectives: '<path d="M10 6h11M10 12h11M10 18h11"/><path d="M3 6l1.5 1.5L7 4.5M3 12l1.5 1.5L7 10.5"/><circle cx="5" cy="18" r="1.5"/>',
+  decoy: '<circle cx="12" cy="12" r="2"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3"/>',
+  cross: '<path d="M6 6l12 12M18 6L6 18"/>',
 };
 const D2R = Math.PI / 180;
 const clamp = (x, a, b) => (x < a ? a : x > b ? b : x);
@@ -5033,7 +5104,7 @@ const G = {
     { id: "port", short: "P", load: "turret_port", arc: [190, 350], mode: "PD", op: null, heat: 0, aim: 270, firing: false },
     { id: "stbd", short: "S", load: "turret_stbd", arc: [10, 170], mode: "AUTO", op: null, heat: 0.4, aim: 90, firing: false },
   ],
-  tubes: [{ state: "READY", t: 0 }, { state: "LOADING", t: 3.1 }], magazine: 6, missiles: [], inbound: [],
+  tubes: [{ state: "READY", t: 0 }, { state: "LOADING", t: 31 }], magazine: 18, missiles: [], inbound: [],
   // Shield faces in weapons-and-shields' order: bow, stern, port, starboard, dorsal, ventral.
   weight: [1, 1, 1, 1, 1, 1], charge: [36, 36, 36, 36, 36, 36], flash: [-9, -9, -9, -9, -9, -9], hitLog: [],
   freq: "A", shieldBy: "Science", preset: -1, shieldCam: { yaw: 62, el: 24 }, feedViewCam: { yaw: 40, el: 30 },
@@ -5045,7 +5116,39 @@ const G = {
   lastFire: 0, hits: 0, shipSel: "engineering",
 };
 const FACES = ["bow", "stern", "port", "starboard", "dorsal", "ventral"];
-const TUBE_LOAD_S = 7.2;
+/** A tube loads in 60 s and arms in 3 (armour-and-missiles 2). */
+const TUBE_LOAD_S = 63;
+const MAGAZINE = 20;
+
+// ---- Combat 2 (laser-banks, armour-and-missiles, enemy-fighters, objectives-tab): the page's stand-ins ----
+/** A laser bank (laser-banks 1): 150 MJ, charged at 5 MW (empty to full in 30 s), fires from 40%, out to 8 km, over its
+ * broadside half of the sky and 10 degrees past the keel line. The grid is not simulated yet, so it charges at its rate. */
+const LZ = { cap_mj: 150, charge_mw: 5, min_k: 0.4, range_m: 8000, past_keel_deg: 10, beam_s: 0.4 };
+G.lasers = { port: { id: "port", word: "LASER PORT", side: 1, mj: 96, beam: -9 }, stbd: { id: "stbd", word: "LASER STBD", side: -1, mj: 42, beam: -9 } };
+/** The Hound's faces, in our order: shield and armour as fractions of full (armour-and-missiles 1). */
+Object.assign(G.contacts.find((c) => c.id === "T1"), { shield: [0.8, 0.9, 0.55, 0.7, 0.85, 0.9], armour: [1, 1, 0.6, 1, 1, 1] });
+/** The gunner's sight (enemy-fighters 3): the barrel's aim in ship axes (yaw to starboard, pitch up, degrees), its
+ * capacitor and heat as fractions, the chosen target's index in gunTargets(). */
+G.gun = { yaw: 0, pitch: 20, chosen: 0, cap: 1, heat: 0.1, trigger: false, locked: false };
+const BOLT_MPS = 1500; // data/weapons.json: the turret's bolt
+/** Countermeasures (armour-and-missiles 3): five a ship, a burst that lasts 4 s. */
+G.decoys = 5; G.decoyT = -9;
+const DECOYS = 5, DECOY_S = 4;
+G.objOpen = false;
+/** The fight's clock starts this long before the page opens. */
+const FIGHT_T0_S = -134;
+/**
+ * The drill's objectives with the kinds objectives-tab design 2 adds to data/missions/drill-hound.json (destroy with a
+ * ship, survive, destroy_fighters with a count), so the console can measure them. A copy until the mission file has them.
+ */
+const MISSION = {
+  title: "Drill 1: Hound at the Shoals",
+  objectives: [
+    { words: "Destroy the Hound", kind: "destroy", ship: "T1" },
+    { words: "Keep the Tern's hull above zero", kind: "survive" },
+    { words: "Shoot down both fighters", kind: "destroy_fighters", count: 2 },
+  ],
+};
 /** The scanners' range ladder, km: 5 km steps from 5 to 100 (bridge-stations 8.0, "The scanner"). */
 const RANGE_KM = Array.from({ length: 20 }, (_, i) => 5 * (i + 1));
 const RANGE_OF = { nav: "navRange", tac: "tacRange", sci: "sciRange" };
@@ -5229,6 +5332,7 @@ function stepGame(dt) {
   if (G.scanning && sc) { sc.scan = Math.min(1, sc.scan + (dt / 6) * works("sensors")); if (sc.scan >= 1) G.scanning = false; }
   if (G.ping > 0) { G.ping -= dt; for (const c of G.contacts) if (c.iff === "unknown" && rangeKm(c) < G.sciRange) { c.iff = "neutral"; c.scan = Math.max(c.scan, 0.2); } }
   for (const c of G.contacts) if (c.hull <= 0 && G.target === c.id) G.target = (G.contacts.find((x) => x.hull > 0 && x.iff === "hostile") || {}).id || null;
+  stepCombat2(dt);
 }
 /**
  * A hit from direction d (ship axes, toward the attacker): the face it strikes takes what it can,
@@ -5261,6 +5365,11 @@ const STATIONS = [
   { id: "engineering", role: "engineering", word: "ENGINEERING", op: "Cleo" },
   { id: "science", role: "science", word: "SCIENCE", op: null },
   { id: "captain", role: "command", word: "CAPTAIN", op: "You" },
+  // Combat 2: the laser banks at the comms and flight-ops seats (laser-banks 3), the gunner in the dorsal pod
+  // (enemy-fighters 3). The starboard bank is open: its automation fires it.
+  { id: "laser_port", role: "laser", word: "LASER PORT", op: "Dev" },
+  { id: "laser_stbd", role: "laser", word: "LASER STBD", op: null },
+  { id: "gunner", role: "gunner", word: "GUNNER", op: "Kai" },
 ];
 let station = "helm", captainTab = "CMD";
 // Single player (openspec/changes/single-player design 4 and 5): null, or the player's own seat and the NPC at every
@@ -5269,7 +5378,8 @@ let station = "helm", captainTab = "CMD";
 let SOLO = null;
 const SOLO_NAMES = { helm: "Lt. Ira Solen", tactical: "Lt. Dal Varen", engineering: "Lt. Mae Okoro", science: "Lt. Tov Arran", captain: "Lt. Rhea Castel" };
 function soloOn(seat) {
-  SOLO = { seat, crew: STATIONS.filter((o) => o.id !== seat).map((o) => ({ id: o.id, op: SOLO_NAMES[o.id], mode: "auto", seated: true })) };
+  // The crew of the single-player design: the five stations it names (the combat 2 seats are not in it yet).
+  SOLO = { seat, crew: STATIONS.filter((o) => o.id !== seat && SOLO_NAMES[o.id]).map((o) => ({ id: o.id, op: SOLO_NAMES[o.id], mode: "auto", seated: true })) };
   station = seat;
 }
 const soloCrew = (id) => SOLO && SOLO.crew.find((c) => c.id === id);
@@ -5286,6 +5396,9 @@ const ORDER_VERBS = {
   tactical: [["ENGAGE", "target"], ["HOLD FIRE", "lock"], ["LAUNCH", "flight_ops"]],
   engineering: [["COMBAT", "bolt"], ["CRUISE", "drive"], ["REPAIR", "wrench"]],
   science: [["SCAN", "scan"], ["PING", "ping"]],
+  laser_port: [["FIRE", "target"], ["HOLD FIRE", "lock"]],
+  laser_stbd: [["FIRE", "target"], ["HOLD FIRE", "lock"]],
+  gunner: [["FIGHTERS", "target"], ["HOLD FIRE", "lock"]],
 };
 function sendOrder(to, verb) {
   G.orders.unshift({ to, verb, t: G.t, state: "sent" });
@@ -5326,7 +5439,9 @@ function titleBand() {
   const tabs = own.id === "captain" ? [["COMMAND", "command", home && captainTab === "CMD", "tab:CMD"], ["SHIP", "command", home && captainTab === "SHIP", "tab:SHIP"]]
     : [[own.word, own.role, home, SOLO && !home ? `view:${own.id}` : null]];
   let x = 8;
-  for (const [w, r, on, act] of tabs) {
+  for (const [w, r, on0, act0] of tabs) {
+    // With OBJECTIVES open, the station's own chip is the way back (objectives-tab 1).
+    const on = on0 && !G.objOpen, act = act0 || (G.objOpen ? "objclose" : null);
     const tw = 34 + w.length * 9.4;
     s += `<g ${act ? `data-act="${act}"` : ""}${tipAttr(SOLO && !home && act ? "Your console (Tab)" : null)}>`;
     s += `<rect x="${x}" y="4" width="${tw}" height="24" rx="5" fill="${on ? ROLE[r] + "26" : "transparent"}" stroke="${on ? ROLE[r] : C.line2}"/>`;
@@ -5371,7 +5486,16 @@ function titleBand() {
       x += 2;
     }
   }
-  const open = SOLO ? [] : STATIONS.filter((o) => !o.op && o.id !== S.id).map((o) => [o.word, o.role, o.id]).concat([["COMMS", "comms", null], ["FLIGHT", "flight_ops", null]]);
+  // OBJECTIVES, after the station's own tabs and before the swap chips, on every station (objectives-tab 1).
+  {
+    const w = "OBJECTIVES", tw = 34 + w.length * 9.4, on = G.objOpen;
+    s += `<g data-act="obj"${tipAttr("Objectives")}>`;
+    s += `<rect x="${x}" y="4" width="${tw}" height="24" rx="5" fill="${on ? C.text + "1f" : "transparent"}" stroke="${on ? C.text : C.line2}"/>`;
+    s += icon("objectives", x + 13, 16, 14, on ? C.text : C.dim) + text(x + 25, 21, 13, on ? C.text : C.dim, w, { ls: 1.5, w: 700 }) + "</g>";
+    x += tw + 6;
+  }
+  // The laser banks took the comms and flight-ops seats (laser-banks 3), so only the open stations are left to swap to.
+  const open = SOLO ? [] : STATIONS.filter((o) => !o.op && o.id !== S.id).map((o) => [o.word, o.role, o.id]);
   for (const [w, r, id] of open) {
     const tw = 44 + w.length * 8.6;
     s += `<g ${id ? `data-act="swap:${id}"` : ""}${tipAttr(id ? `${w.toLowerCase()} is open: swap to it` : `${w.toLowerCase()} is open (its console is not in this mockup yet)`)}>`;
@@ -6117,15 +6241,28 @@ function tactical() {
     let b = "";
     const c = contact(G.target), p = missileHit(c), ready = G.tubes.findIndex((t) => t.state === "READY");
     G.tubes.forEach((t, i) => {
-      const y = 8 + i * 52, col = t.state === "READY" ? C.ok : t.state === "LOADING" ? C.warn : C.faint;
+      const y = 6 + i * 46, col = t.state === "READY" ? C.ok : t.state === "LOADING" ? C.warn : C.faint;
       b += `<g ${t.state === "EMPTY" && G.magazine > 0 ? `data-act="load:${i}"` : ""}${tipAttr(t.state === "EMPTY" ? "Load" : t.state === "LOADING" ? `Loading, ${(TUBE_LOAD_S - t.t).toFixed(0)} s` : "Ready")}>`;
-      b += `<rect x="10" y="${y}" width="190" height="42" rx="21" fill="#101822" stroke="${col}" stroke-width="2"/>`;
-      if (t.state === "LOADING") b += `<rect x="14" y="${y + 4}" width="${182 * (t.t / TUBE_LOAD_S)}" height="34" rx="17" fill="${C.warn}" opacity="0.35"/>`;
-      if (t.state === "READY") b += icon("tubes", 105, y + 21, 30, C.ok);
-      if (t.state === "EMPTY") b += icon("load", 105, y + 21, 22, G.magazine ? C.dim : C.faint);
+      b += `<rect x="10" y="${y}" width="190" height="38" rx="19" fill="#101822" stroke="${col}" stroke-width="2"/>`;
+      if (t.state === "LOADING") b += `<rect x="14" y="${y + 4}" width="${182 * (t.t / TUBE_LOAD_S)}" height="30" rx="15" fill="${C.warn}" opacity="0.35"/>`;
+      if (t.state === "READY") b += icon("tubes", 105, y + 19, 28, C.ok);
+      if (t.state === "EMPTY") b += icon("load", 105, y + 19, 20, G.magazine ? C.dim : C.faint);
       b += "</g>";
     });
-    for (let k = 0; k < 6; k++) b += `<rect x="${12 + k * 32}" y="${h - 22}" width="24" height="10" rx="3" fill="${k < G.magazine ? C.text : "#1c2734"}"${tipAttr("Missiles in the magazine")}/>`;
+    // The magazine: twenty rounds, two rows of ten (armour-and-missiles 2).
+    b += `<g${tipAttr(`Missiles in the magazine: ${G.magazine} of ${MAGAZINE}`)}>`;
+    for (let k = 0; k < MAGAZINE; k++) b += `<rect x="${12 + (k % 10) * 19}" y="${98 + Math.floor(k / 10) * 13}" width="14" height="8" rx="2" fill="${k < G.magazine ? C.text : "#1c2734"}"/>`;
+    b += "</g>";
+    // DECOY: five a ship, a 4 s burst; best in an inbound missile's last three seconds (armour-and-missiles 3), so the
+    // nearest inbound's time to impact is the number beside it, green in that window.
+    const ni = nextInbound(), lit = G.t - G.decoyT < DECOY_S, dcan = G.decoys > 0;
+    const best = ni != null && ni >= 1 && ni <= 3, tc = ni == null ? C.faint : best ? C.ok : ni <= 6 ? C.warn : C.dim;
+    b += `<g ${dcan ? `data-act="decoy"` : ""}${tipAttr(dcan ? `Decoy: ${G.decoys} left` : "No decoys left")}>`;
+    b += `<rect x="10" y="130" width="190" height="36" rx="7" fill="${lit ? C.ok + "26" : C.panel2}" stroke="${lit ? C.ok : best && dcan ? C.ok : C.line2}" stroke-width="${best && dcan ? 2 : 1.2}"/>`;
+    b += icon("decoy", 30, 148, 22, dcan ? C.text : C.faint);
+    for (let k = 0; k < DECOYS; k++) b += `<rect x="${50 + k * 14}" y="141" width="9" height="14" rx="2" fill="${k < G.decoys ? C.text : "#1c2734"}"/>`;
+    if (ni != null) b += text(192, 154, 17, tc, `${ni.toFixed(1)} s`, { a: "end", w: 700 });
+    b += "</g>";
     // FIRE: hold 0.6 s. Its ring shows the chance to hit, computed by the rule that resolves it.
     const fx = 214, fw = w - fx - 10, cxF = fx + fw / 2, cyF = h / 2 - 4;
     const can = ready >= 0 && c && c.iff === "hostile";
@@ -6340,8 +6477,9 @@ function engineering() {
     return b;
   });
   s += panel("REACTOR", grid(6, 0, 4, 4), reactorLoop);
-  s += panel("BUSES", grid(10, 0, 2, 2), (w, h) => {
-    // The one-line diagram, simplified: reactor to two main buses, the tie, the battery's bus.
+  s += panel("SCHEMATIC", grid(10, 0, 2, 2), (w, h) => {
+    // The schematic on the side (power-routing 3a): the one-line diagram, simplified: reactor to two main buses, the
+    // tie, the battery's bus; EXPAND opens the full-screen schematic (2D graph and 3D, power-grid.html).
     const live = (on) => (on ? C.ok : C.faint);
     const gp = st.genClosed.gen_p, gs = st.genClosed.gen_s, tie = st.tieClosed.bt_main, ep = st.tieClosed.eb_p, es = st.tieClosed.eb_s;
     const np = (st.nodeHealth.msb_p == null ? 1 : st.nodeHealth.msb_p) > 0.05, ns = (st.nodeHealth.msb_s == null ? 1 : st.nodeHealth.msb_s) > 0.05;
@@ -6359,6 +6497,12 @@ function engineering() {
     b += bar(w / 2 - 8, 135, 46, 10, soc, soc > 0.3 ? C.ok : C.warn) + "</g>";
     const cut = Object.values(st.conduit).filter((c) => c.severed).length;
     if (cut) b += `<g${tipAttr("Cables cut: damage control splices them")}>` + icon("breach", 18, h - 14, 14, C.danger) + text(30, h - 9, 13, C.danger, String(cut)) + "</g>";
+    // The live runs against the protection's limit (power-routing 2): the number the engineer routes by.
+    const rv = sim.routingView(), full = rv.live >= rv.limit, rc = rv.tripped ? C.danger : full ? C.warn : C.dim;
+    b += `<g${tipAttr(rv.tripped ? `Tripped: factory settings in ${Math.ceil(rv.trip_s)} s` : `Live runs: ${rv.live} of the ${rv.limit} the protection allows`)}>`;
+    b += icon("runs", w - 66, h - 14, 14, rc) + text(w - 12, h - 9, 13, rc, rv.tripped ? `${Math.ceil(rv.trip_s)} s` : `${rv.live}/${rv.limit}`, { a: "end" }) + "</g>";
+    // EXPAND: the schematic full screen.
+    b += `<g data-act="expand"${tipAttr("Expand the schematic")}><rect x="${w - 34}" y="2" width="28" height="28" rx="5" fill="${C.panel2}" stroke="${C.line2}"/>` + icon("expand", w - 20, 16, 16, C.text) + "</g>";
     return b;
   });
   s += panel("AIR", grid(10, 2, 2, 2), (w, h) => {
@@ -6501,7 +6645,9 @@ function deckPlan(deck, x, y, w, h, o) {
   return s;
 }
 /** Who sits at each station, for the captain's CREW panel (null: automation). */
-const CREW_ROWS = [["helm", "Ana"], ["tactical", "Ben"], ["engineering", "Cleo"], ["science", null], ["comms", null], ["flight_ops", null]];
+/** The CREW panel's rows: every station but the captain's, with who holds it (combat 2: the laser banks took the comms
+ * and flight-ops seats, and the gunner joined; laser-banks 3, enemy-fighters 3). */
+const CREW_ROWS = () => STATIONS.filter((o) => o.id !== "captain").map((o) => [o.id, o.op, o.role]);
 function captain() {
   if (captainTab === "SHIP") return captainShip();
   let s = "";
@@ -6513,13 +6659,13 @@ function captain() {
     return b;
   });
   s += panel("CREW", grid(5, 0, 4, 2), (w, h) => {
-    const rows = CREW_ROWS;
-    const cw = (w - 20 - 6) / 2, ch = (h - 12 - 2 * 6) / 3;
+    const rows = CREW_ROWS(), n = Math.ceil(rows.length / 2);
+    const cw = (w - 20 - 6) / 2, ch = (h - 12 - (n - 1) * 6) / n;
     let b = "";
-    rows.forEach(([r, op], i) => {
+    rows.forEach(([r, op, role], i) => {
       const x = 10 + (i % 2) * (cw + 6), y = 4 + Math.floor(i / 2) * (ch + 6), o = newestOrderFor(r);
       b += `<g data-act="compose:${r}"${tipAttr(`${r.replace("_", " ")}: ${op || "automation"}`)}><rect x="${x}" y="${y}" width="${cw}" height="${ch}" rx="7" fill="${C.panel2}" stroke="${C.line2}"/>`;
-      b += icon(r, x + 22, y + ch / 2, 22, ROLE[r]);
+      b += icon(role, x + 22, y + ch / 2, 22, ROLE[role]);
       b += op ? text(x + 42, y + ch / 2 + 6, 17, C.text, op) : icon("auto", x + 56, y + ch / 2, 18, C.dim);
       if (o) b += icon("dots", x + cw - 20, y + ch / 2, 18, C.warn);
       b += "</g>";
@@ -6575,9 +6721,281 @@ function captainShip() {
   return s;
 }
 
+// =================================================================== COMBAT 2: lasers, the gunner, decoys, objectives
+/** Whether bank b bears on the target: a hostile in its broadside half of the sky (10 degrees past the keel) and range. */
+function laserBears(b) {
+  const c = contact(G.target);
+  if (!c || c.hull <= 0 || c.iff !== "hostile") return false;
+  const d = v3.norm(relPos(c.p));
+  return b.side * d[0] >= -Math.sin(LZ.past_keel_deg * D2R) && rangeKm(c) * 1000 <= LZ.range_m;
+}
+/** The page's stand-in for the laser's hit chance (laser-banks 2: the cannons' rule with the laser's sigma). */
+function laserHit(c) { return c ? clamp(0.92 - rangeKm(c) * 0.06, 0.15, 0.92) * (c.cls === "fighter" ? 0.4 : 1) : 0; }
+/** The target's face toward the Tern (the face a beam from us meets), by the face rule in the target's own axes. */
+function targetFace(c) {
+  const fwd = v3.norm(c.dir), port = v3.norm(v3.cross([0, 1, 0], fwd)), up = v3.cross(fwd, port);
+  const v = v3.norm(v3.sub(F.P, c.p)), x = v3.dot(v, port), y = v3.dot(v, up), z = v3.dot(v, fwd);
+  if (Math.abs(z) >= 2 / 3) return z > 0 ? 0 : 1;
+  return Math.abs(x) >= Math.abs(y) ? (x > 0 ? 2 : 3) : y > 0 ? 4 : 5;
+}
+/** The spot a beam would meet: the face, its shield and its armour as fractions. A fighter has one shield and no armour. */
+function spotOf(c) {
+  const face = targetFace(c);
+  return { face, shield: c.shield ? c.shield[face] : c.shieldK || 0, armour: c.armour ? c.armour[face] : 0 };
+}
+/** What a laser console draws (the seam's LaserView, docs/design/combat-2-work-plan.md). */
+function laserView(id) {
+  const b = G.lasers[id], c = contact(G.target), sp = c && c.hull > 0 ? spotOf(c) : null;
+  return {
+    bank: id, charge: b.mj / LZ.cap_mj, secs_to_full: (LZ.cap_mj - b.mj) / LZ.charge_mw, min_charge: LZ.min_k,
+    bearing: laserBears(b), hit_chance: laserHit(c), spot_face: sp ? FACES[sp.face] : "", spot_shield: sp ? sp.shield : 0,
+    spot_armour: sp ? sp.armour : 0, capability: 1,
+  };
+}
+/** Fire bank id (laser-banks 2): the whole capacitor in one beam; on a hit the face's shield takes it first, and what
+ * passes stops at any armour left there, or reaches the hull. The shield's 60 MJ a face is the page's stand-in. */
+function fireLaser(id) {
+  const b = G.lasers[id], c = contact(G.target);
+  if (!c || !laserBears(b) || b.mj < LZ.min_k * LZ.cap_mj) return;
+  const e = b.mj; b.mj = 0; b.beam = G.t;
+  if (hash("laser", id, G.n) >= laserHit(c)) return;
+  const sp = spotOf(c), cap = 60, take = Math.min(sp.shield * cap, e), pass = e - take;
+  if (c.shield) c.shield[sp.face] = Math.max(0, c.shield[sp.face] - take / cap); else c.shieldK = Math.max(0, (c.shieldK || 0) - take / cap);
+  if (pass > 0 && sp.armour <= 0.01) c.hull = Math.max(0, c.hull - pass * 0.15);
+}
+function laserConsole(id) {
+  const b = G.lasers[id], v = laserView(id), c = contact(G.target);
+  let s = "";
+  s += panel("CHARGE", grid(0, 0, 3, 4), (w, h) => {
+    // The capacitor filling, the least charge to fire as a dashed line across it, and the seconds to full.
+    const bw = 84, bx = w / 2 - bw / 2, by = 14, bh = h - 96, k = v.charge, col = k >= LZ.min_k ? C.ok : C.warn;
+    let o = `<g${tipAttr(`${Math.round(b.mj)} of ${LZ.cap_mj} MJ · fires from ${Math.round(LZ.min_k * 100)}%`)}>`;
+    o += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="10" fill="#101822" stroke="${C.line2}"/>`;
+    o += `<rect x="${bx + 4}" y="${by + 4 + (bh - 8) * (1 - k)}" width="${bw - 8}" height="${(bh - 8) * k}" rx="7" fill="${col}" opacity="${k >= 0.999 ? 1 : 0.8}"/>`;
+    const my = by + 4 + (bh - 8) * (1 - LZ.min_k);
+    o += `<path d="M${bx - 12} ${my}H${bx + bw + 12}" stroke="${C.text}" stroke-width="2" stroke-dasharray="6 4"/></g>`;
+    if (k >= 0.999) o += icon("check", w / 2, h - 44, 34, C.ok);
+    else o += text(w / 2, h - 32, 34, C.text, `${Math.ceil(v.secs_to_full)} s`, { a: "middle", w: 700 });
+    return o;
+  });
+  s += panel("ARC", grid(3, 0, 3, 4), (w, h) => {
+    // The Tern from above, bow up: the bank's half of the sky out to 8 km, and the target in it or not.
+    const cx = w / 2, cy = h / 2 - 6, R = Math.min(w, h) / 2 - 22;
+    const a0 = b.side > 0 ? 180 - LZ.past_keel_deg : -LZ.past_keel_deg, a1 = a0 + 180 + 2 * LZ.past_keel_deg;
+    let o = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${C.line2}"/>`;
+    o += `<path d="${wedge(cx, cy, R, a0, a1)}" fill="${ROLE.laser}1f" stroke="${ROLE.laser}" stroke-width="1.5"/>`;
+    o += shipGlyph({ cls: "corvette", iff: "friendly" }, cx, cy, 36, 0, C.text);
+    if (c && c.hull > 0) {
+      const brg = brgOf(relPos(c.p)), rk = Math.min(1, (rangeKm(c) * 1000) / LZ.range_m), [px, py] = pol(cx, cy, R * Math.max(0.3, rk), brg);
+      const col = v.bearing ? C.hostile : C.faint;
+      o += `<path d="M${cx} ${cy}L${px.toFixed(1)} ${py.toFixed(1)}" stroke="${col}" stroke-width="${v.bearing ? 2.5 : 1.5}" stroke-dasharray="${v.bearing ? "none" : "3 5"}"/>`;
+      o += `<g${tipAttr(`${c.id} · ${rangeKm(c).toFixed(1)} km${v.bearing ? "" : " · outside this bank's arc"}`)}>` + shipGlyph(c, px, py, 28, 0, col, !v.bearing) + "</g>";
+    }
+    return o;
+  });
+  s += panel("SPOT", grid(6, 0, 3, 4), (w, h) => {
+    // The face the beam would meet: its shield as a ring, its armour as a plate, struck through when gone.
+    const cx = w / 2, cy = h / 2 - 18, R = Math.min(w, h) / 2 - 44;
+    if (!c || c.hull <= 0) return icon("target", cx, cy, 48, C.faint);
+    const sp = spotOf(c), sc = ratioCol(sp.shield), gone = sp.armour <= 0.01;
+    let o = `<g${tipAttr(`${c.id}, ${FACES[sp.face]} face: shield ${Math.round(sp.shield * 100)}%, armour ${Math.round(sp.armour * 100)}%`)}>`;
+    o += `<path d="${arcPath(cx, cy, R, 0, 359.99)}" stroke="#1c2734" stroke-width="12" fill="none"/>`;
+    if (sp.shield > 0.005) o += `<path d="${arcPath(cx, cy, R, 0, 360 * sp.shield)}" stroke="${sc}" stroke-width="12" fill="none"/>`;
+    const pw = R * 1.1, ph = R * 0.8, px = cx - pw / 2, py = cy - ph / 2;
+    if (!gone) {
+      o += `<rect x="${px}" y="${py}" width="${pw}" height="${ph}" rx="6" fill="#101822" stroke="${C.dim}" stroke-width="2"/>`;
+      o += `<rect x="${px + 4}" y="${py + 4 + (ph - 8) * (1 - sp.armour)}" width="${pw - 8}" height="${(ph - 8) * sp.armour}" rx="4" fill="${C.text}" opacity="0.75"/>`;
+    } else {
+      o += `<rect x="${px}" y="${py}" width="${pw}" height="${ph}" rx="6" fill="none" stroke="${C.danger}" stroke-width="2" stroke-dasharray="7 5"/>`;
+      o += `<path d="M${px} ${py + ph}L${px + pw} ${py}" stroke="${C.danger}" stroke-width="3"/>` + icon("hull", cx, cy, 30, C.danger);
+    }
+    o += text(cx, h - 24, 17, C.dim, FACES[sp.face].toUpperCase(), { a: "middle", ls: 2, w: 700 });
+    return o + "</g>";
+  });
+  s += panel("FIRE", grid(9, 0, 3, 4), (w, h) => {
+    // The biggest control: hold to fire. Its ring is the chance to hit; the number is in its tooltip (laser-banks 3).
+    const can = v.bearing && v.charge >= LZ.min_k, cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2 - 26, p = v.hit_chance;
+    const why = !c || c.hull <= 0 ? "No target" : !v.bearing ? "Target outside this bank's arc" : !can ? `Charging: fires from ${Math.round(LZ.min_k * 100)}%` : `Hold to fire · ${Math.round(p * 100)}% to hit`;
+    let o = `<path d="${arcPath(cx, cy, R, 0, 359.99)}" stroke="#1c2734" stroke-width="10" fill="none"/>`;
+    if (can) o += `<path d="${arcPath(cx, cy, R, 0, 360 * p)}" stroke="${p > 0.5 ? C.ok : C.warn}" stroke-width="10" fill="none"/>`;
+    o += `<g ${can ? `data-hold="lfire:${id}"` : ""}${tipAttr(why)}><circle cx="${cx}" cy="${cy}" r="${R - 14}" fill="${can ? "#3a0d14" : C.panel2}" stroke="${can ? C.danger : C.line2}" stroke-width="2"/>`;
+    if (HOLD.key === `lfire:${id}`) o += `<circle cx="${cx}" cy="${cy}" r="${(R - 14) * clamp((now() - HOLD.t0) / HOLD_S, 0, 1)}" fill="${C.danger}" opacity="0.4"/>`;
+    if (G.t - b.beam < LZ.beam_s) o += `<circle cx="${cx}" cy="${cy}" r="${R - 14}" fill="${ROLE.laser}" opacity="0.5"/>`;
+    o += text(cx, cy + 11, 32, can ? C.text : C.faint, "FIRE", { a: "middle", w: 700, ls: 3 });
+    return o + "</g>";
+  });
+  return s;
+}
+/** The gunner's targets: hostiles within 8 km, fighters first, then the nearest. */
+function gunTargets() {
+  return G.contacts.filter((c) => c.hull > 0 && c.iff === "hostile" && rangeKm(c) < 8)
+    .sort((a, b) => (a.cls === "fighter" ? 0 : 1) - (b.cls === "fighter" ? 0 : 1) || rangeKm(a) - rangeKm(b));
+}
+/** Where to aim at c, in ship axes, metres: where it will be when a bolt fired now reaches it (one step of lead). */
+function leadOf(c) {
+  const rel = relPos(c.p), relV = quat.rot(quat.conj(F.q), v3.sub(v3.mul(c.dir, c.v), F.V));
+  return v3.add(rel, v3.mul(relV, v3.len(rel) / BOLT_MPS));
+}
+/** The barrel's axes: f along it, r to the right on the sight, u up; ship axes. */
+function gunBasis() {
+  const y = G.gun.yaw * D2R, p = G.gun.pitch * D2R, f = [-Math.sin(y) * Math.cos(p), Math.sin(p), Math.cos(y) * Math.cos(p)];
+  const r = v3.norm(v3.cross(f, [0, 1, 0])), u = v3.cross(r, f);
+  return { f, r, u };
+}
+/** Degrees between the barrel and the lead on c. */
+const gunError = (c) => Math.acos(clamp(v3.dot(gunBasis().f, v3.norm(leadOf(c))), -1, 1)) / D2R;
+/** A target's shield as one fraction: a fighter's, or the mean of a ship's faces. */
+const shieldOf = (c) => (c.shield ? c.shield.reduce((a, b) => a + b, 0) / c.shield.length : c.shieldK || 0);
+const AIM_OK_DEG = 1.2;
+/** What the sight draws (the seam's GunnerView). */
+function gunnerView() {
+  const g = G.gun, list = gunTargets();
+  return {
+    aim: [g.yaw, g.pitch], chosen: list.length ? Math.min(g.chosen, list.length - 1) : null, capacitor: g.cap, heat: g.heat, trigger: g.trigger,
+    targets: list.map((c) => ({ id: c.id, kind: c.cls, rel: relPos(c.p), lead: leadOf(c), hull: c.hull / 100, shield: shieldOf(c) })),
+  };
+}
+/**
+ * The gunner's console is a sight, not panels (enemy-fighters 3, bridge-stations 10.11): the view along the barrel at
+ * 30 degrees, the chosen target ringed with its hull (left) and shield (right) as arcs, the lead pip, the capacitor and
+ * heat as two bars, TAB for the next target. Drag to aim, hold Space to fire.
+ */
+function gunner() {
+  const g = G.gun, B = gunBasis(), foc = 640 / Math.tan(15 * D2R), qi = quat.conj(F.q), list = gunTargets(), cx = 640, cy = 300;
+  const chosen = list.length ? list[Math.min(g.chosen, list.length - 1)] : null;
+  const proj = (d) => { const z = v3.dot(d, B.f); if (z <= 0.01) return null; return [cx + (v3.dot(d, B.r) / z) * foc, cy - (v3.dot(d, B.u) / z) * foc]; };
+  const inside = (p) => p && p[0] > 0 && p[0] < 1280 && p[1] > 0 && p[1] < 656;
+  let s = `<svg y="32" width="1280" height="656" viewBox="0 0 1280 656" style="top:32px">`;
+  s += `<defs><radialGradient id="gv" cx="0.5" cy="0.46" r="0.72"><stop offset="0.62" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.9"/></radialGradient></defs>`;
+  s += `<g data-drag="gunaim"><rect width="1280" height="656" fill="#020306"/>`;
+  for (const st0 of STARS) { const p = proj(quat.rot(qi, st0.d)); if (inside(p)) s += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${st0.big ? 1.6 : 0.9}" fill="#cfd8e6" opacity="${st0.lum.toFixed(2)}"/>`; }
+  for (const c of G.contacts) {
+    if (c.hull <= 0 || c.iff === "unknown") continue;
+    const rel = relPos(c.p), p = proj(rel);
+    if (!inside(p)) continue;
+    s += shipGlyph(c, p[0], p[1], clamp((c.cls === "fighter" ? 48000 : 120000) / v3.len(rel), 8, 90), 0, C[c.iff]);
+  }
+  // Bolts while the trigger is held: two tracers from the barrel toward the sight's centre.
+  const firing = g.trigger && g.cap > 0.02 && !g.locked;
+  if (firing) for (const sx of [560, 720]) s += `<path d="M${sx} 656L${(cx + (sx - cx) * 0.18).toFixed(0)} ${cy + 40}" stroke="${ROLE.gunner}" stroke-width="3" stroke-dasharray="26 34" opacity="0.85"/>`;
+  let aimOk = false;
+  if (chosen) {
+    const p = proj(relPos(chosen.p)), lp = proj(leadOf(chosen)), R = 44;
+    aimOk = gunError(chosen) < AIM_OK_DEG;
+    if (inside(p)) {
+      const hk = chosen.hull / 100, sk = shieldOf(chosen);
+      s += `<g${tipAttr(`${chosen.id} · ${rangeKm(chosen).toFixed(1)} km · hull ${Math.round(chosen.hull)}% · shield ${Math.round(sk * 100)}%`)}>`;
+      s += `<circle cx="${p[0]}" cy="${p[1]}" r="${R}" fill="none" stroke="${C.hostile}" stroke-width="2"/>`;
+      s += `<path d="${arcPath(p[0], p[1], R + 9, 200, 340)}" stroke="#1c2734" stroke-width="6" fill="none"/><path d="${arcPath(p[0], p[1], R + 9, 20, 160)}" stroke="#1c2734" stroke-width="6" fill="none"/>`;
+      if (hk > 0.005) s += `<path d="${arcPath(p[0], p[1], R + 9, 200, 200 + 140 * hk)}" stroke="${hk > 0.5 ? C.ok : hk > 0.2 ? C.warn : C.danger}" stroke-width="6" fill="none"/>`;
+      if (sk > 0.005) s += `<path d="${arcPath(p[0], p[1], R + 9, 160 - 140 * sk, 160)}" stroke="#8fd3ff" stroke-width="6" fill="none"/>`;
+      s += text(p[0], p[1] - R - 20, 15, C.text, chosen.id, { a: "middle", w: 700, ls: 1.5 }) + "</g>";
+      if (inside(lp)) {
+        s += `<path d="M${p[0]} ${p[1]}L${lp[0].toFixed(1)} ${lp[1].toFixed(1)}" stroke="${C.hostile}" stroke-width="1.2" stroke-dasharray="3 4" opacity="0.8"/>`;
+        s += `<path d="M${lp[0].toFixed(1)} ${(lp[1] - 9).toFixed(1)}l9 9l-9 9l-9 -9z" fill="${aimOk ? C.ok : C.hostile}" stroke="#020306" stroke-width="1.5"${tipAttr("Aim here")}/>`;
+      }
+    } else {
+      // Off the sight: an arrow at the edge toward it.
+      const d = relPos(chosen.p), ax = v3.dot(d, B.r), ay = v3.dot(d, B.u), a = Math.atan2(ax, ay) / D2R, [ex, ey] = pol(cx, cy, 250, a);
+      s += `<g transform="translate(${ex.toFixed(1)},${ey.toFixed(1)}) rotate(${a.toFixed(1)})"${tipAttr(`${chosen.id} is off the sight`)}><path d="M0 -18L14 8H-14Z" fill="${C.hostile}"/></g>`;
+    }
+  }
+  // The reticle: the barrel's line, green when it is on the lead.
+  const rc = aimOk ? C.ok : ROLE.gunner;
+  s += `<circle cx="${cx}" cy="${cy}" r="22" fill="none" stroke="${rc}" stroke-width="2"/><circle cx="${cx}" cy="${cy}" r="2.5" fill="${rc}"/>`;
+  s += `<path d="M${cx - 46} ${cy}h16M${cx + 30} ${cy}h16M${cx} ${cy - 46}v16M${cx} ${cy + 30}v16" stroke="${rc}" stroke-width="2"/>`;
+  s += `<rect width="1280" height="656" fill="url(#gv)" pointer-events="none"/>`;
+  // Capacitor and heat, two bars at the lower left.
+  const cc = g.cap > 0.3 ? C.ok : C.warn, hc = g.locked ? C.danger : g.heat > 0.7 ? C.warn : C.ok;
+  s += `<g${tipAttr(`Capacitor ${Math.round(g.cap * 100)}%`)}>` + icon("bolt", 52, 430, 20, cc) + bar(41, 448, 22, 170, g.cap, cc, true) + "</g>";
+  s += `<g${tipAttr(g.locked ? "Too hot: cooling" : `Heat ${Math.round(g.heat * 100)}%`)}>` + icon("temp", 96, 430, 20, hc) + bar(85, 448, 22, 170, g.heat, hc, true);
+  if (g.locked) s += `<path d="M85 448l22 170M107 448l-22 170" stroke="${C.danger}" stroke-width="2"/>`;
+  s += "</g>";
+  // TAB, and the targets it steps through.
+  s += button({ x: 470, y: 590, w: 110, h: 44, icon: "target", label: "TAB", act: "gnext", tip: "Next target (Tab)", is: 20, off: list.length < 2 });
+  list.slice(0, 5).forEach((c, i) => {
+    const on = c === chosen, col = C[c.iff];
+    s += `<g data-act="gpick:${i}"${tipAttr(`${c.id} · ${rangeKm(c).toFixed(1)} km`)}><rect x="${592 + i * 76}" y="590" width="68" height="44" rx="7" fill="${on ? col + "26" : C.panel2}" stroke="${on ? col : C.line2}" stroke-width="${on ? 2 : 1.2}"/>`;
+    s += shipGlyph(c, 612 + i * 76, 612, 18, 0, col) + text(645 + i * 76, 618, 15, C.text, c.id, { a: "middle", w: 700 }) + "</g>";
+  });
+  PANEL_OUT.push(s + "</g></svg>");
+}
+/** The nearest inbound missile's seconds to impact, or null. */
+function nextInbound() { let t = null; for (const m of G.inbound) if (!m.dead && (t == null || m.t < t)) t = m.t; return t; }
+/** A decoy (armour-and-missiles 3): each inbound missile rolls once by its time to impact: pulled off, set off early, or not fooled. */
+function throwDecoy() {
+  if (G.decoys <= 0) return;
+  G.decoys--; G.decoyT = G.t;
+  for (const m of G.inbound) {
+    const [pull, early] = m.t >= 1 && m.t <= 3 ? [0.6, 0.25] : m.t > 3 && m.t <= 6 ? [0.3, 0.15] : [0.1, 0.05];
+    if (hash("decoy", m.n, G.decoys) < pull + early) m.dead = true;
+  }
+}
+/** The objectives' rows as the panel shows them (the seam's ObjectiveView): state done, failed or progress, k 0-1. */
+function objectiveView() {
+  const rows = MISSION.objectives.map((o) => {
+    if (o.kind === "destroy") { const c = contact(o.ship), hl = c ? c.hull : 0; return { words: o.words, state: hl <= 0 ? "done" : "progress", k: 1 - hl / 100, number: `${Math.round(hl)}%` }; }
+    if (o.kind === "survive") { const hp = hullPct(); return { words: o.words, state: hp <= 0 ? "failed" : "progress", k: hp / 100, number: `${Math.round(hp)}%` }; }
+    if (o.kind === "destroy_fighters") {
+      const n = G.contacts.filter((c) => c.jackal && c.hull <= 0).length;
+      return { words: o.words, state: n >= o.count ? "done" : "progress", k: Math.min(1, n / o.count), number: `${Math.min(n, o.count)} / ${o.count}` };
+    }
+    return { words: o.words, state: "progress", k: 0, number: null };
+  });
+  return { title: MISSION.title, clock_s: Math.max(0, G.t - FIGHT_T0_S), rows };
+}
+/** OBJECTIVES (objectives-tab 2): over the four panels, or over the sight. At most six rows, one number each. */
+function objectivesPanel() {
+  const ov = objectiveView();
+  panel("OBJECTIVES", grid(0, 0, 12, 4), (w, h) => {
+    const t = Math.floor(ov.clock_s);
+    let o = text(24, 40, 26, C.text, ov.title, { w: 700 }) + text(w - 24, 40, 26, C.dim, `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`, { a: "end" });
+    o += `<rect x="24" y="58" width="${w - 48}" height="1" fill="${C.line}"/>`;
+    ov.rows.slice(0, 6).forEach((r, i) => {
+      const y = 78 + i * 82, mx = 60, my = y + 34, col = r.state === "done" ? C.ok : r.state === "failed" ? C.danger : C.text;
+      o += `<rect x="20" y="${y}" width="${w - 40}" height="68" rx="8" fill="${C.panel2}" stroke="${r.state === "progress" ? C.line2 : col}"/>`;
+      if (r.state === "done") o += `<circle cx="${mx}" cy="${my}" r="22" fill="${C.ok}"/>` + icon("check", mx, my, 26, C.bg, { sw: 3 });
+      else if (r.state === "failed") o += `<circle cx="${mx}" cy="${my}" r="22" fill="${C.danger}"/>` + icon("cross", mx, my, 24, C.bg, { sw: 3 });
+      else {
+        o += `<path d="${arcPath(mx, my, 20, 0, 359.99)}" stroke="#1c2734" stroke-width="6" fill="none"/>`;
+        if (r.k > 0.005) o += `<path d="${arcPath(mx, my, 20, 0, 360 * clamp(r.k, 0, 1))}" stroke="${accent()}" stroke-width="6" fill="none"/>`;
+      }
+      o += text(100, my + 8, 24, r.state === "progress" ? C.text : col, r.words);
+      if (r.number) o += text(w - 44, my + 10, 30, col, r.number, { a: "end", w: 700 });
+    });
+    return o;
+  });
+}
+/** Combat 2's stand-ins, each game step: the banks charge, the gun fires or recovers. */
+function stepCombat2(dt) {
+  for (const b of Object.values(G.lasers)) b.mj = Math.min(LZ.cap_mj, b.mj + LZ.charge_mw * dt);
+  const g = G.gun, list = gunTargets(), c = list[Math.min(g.chosen, Math.max(0, list.length - 1))];
+  if (g.trigger && g.cap > 0.02 && !g.locked) {
+    g.cap = Math.max(0, g.cap - 0.3 * dt); g.heat = Math.min(1, g.heat + 0.18 * dt);
+    if (c && gunError(c) < AIM_OK_DEG && hash("gun", c.id, G.n) < 2.5 * dt) {
+      // A cannon wears a shield down and does little to a ship behind it (laser-banks proposal); a fighter has one shield.
+      if (c.shield) { const f = targetFace(c); if (c.shield[f] > 0.01) c.shield[f] = Math.max(0, c.shield[f] - 0.01); else c.hull = Math.max(0, c.hull - 0.5); }
+      else if ((c.shieldK || 0) > 0.01) c.shieldK = Math.max(0, c.shieldK - 0.04); else c.hull = Math.max(0, c.hull - 4);
+    }
+  } else { g.cap = Math.min(1, g.cap + 0.12 * dt); g.heat = Math.max(0, g.heat - 0.08 * dt); }
+  if (g.heat >= 1) g.locked = true;
+  if (g.locked && g.heat < 0.4) g.locked = false;
+}
+/** The Hound's two Jackals out (enemy-fighters 1), placed for the gunner's shots: ship axes from the Tern, metres. */
+function launchFighters() {
+  const at = (v) => v3.add(F.P, quat.rot(F.q, v));
+  retireFighters();
+  G.contacts.push({ id: "J1", cls: "fighter", iff: "hostile", p: at([-700, 900, 2600]), dir: quat.rot(F.q, v3.norm([0.9, 0.1, -0.3])), v: 300, hull: 100, scan: 1, shieldK: 0.7, jackal: true });
+  G.contacts.push({ id: "J2", cls: "fighter", iff: "hostile", p: at([1200, 1500, 3800]), dir: quat.rot(F.q, v3.norm([-0.6, -0.2, -0.7])), v: 320, hull: 100, scan: 1, shieldK: 0.5, jackal: true });
+}
+/** Takes the Jackals off again, so a shot that did not launch them sees the page it always did. */
+function retireFighters() { G.contacts = G.contacts.filter((c) => !c.jackal); if (!contact(G.target)) G.target = "T1"; }
+/** Points the barrel along a ship-axes direction, off it by (dyaw, dpitch) degrees. */
+function aimGun(d, dyaw, dpitch) { G.gun.yaw = brgOf(d) + (dyaw || 0); G.gun.pitch = clamp(elevOf(d) + (dpitch || 0), -10, 80); }
+
 // =================================================================== frame and input
 const CONSOLE = document.getElementById("console"), TIP = document.getElementById("tip");
-const DRAW = { helm, tactical, engineering, science, captain };
+const DRAW = { helm, tactical, engineering, science, captain, laser_port: () => laserConsole("port"), laser_stbd: () => laserConsole("stbd"), gunner };
 /**
  * Draw the console. Each band and panel is its own region, rebuilt only when its picture
  * changed: a plot that moves is redrawn every frame, a row of buttons that did not change is
@@ -6586,9 +7004,11 @@ const DRAW = { helm, tactical, engineering, science, captain };
 let PANEL_OUT = [], REGIONS = [], regionsFor = "";
 function render() {
   PANEL_OUT = [];
-  DRAW[station]();
-  const parts = [titleBand(), lookBand(), ...PANEL_OUT, statusStrip()];
-  const key = station + "|" + captainTab;
+  // OBJECTIVES opens over the four panels; on the gunner's sight it opens over the sight (objectives-tab 1).
+  if (!G.objOpen || station === "gunner") DRAW[station]();
+  if (G.objOpen) objectivesPanel();
+  const parts = [titleBand(), ...(station === "gunner" ? [] : [lookBand()]), ...PANEL_OUT, statusStrip()];
+  const key = station + "|" + captainTab + "|" + G.objOpen;
   if (key !== regionsFor || parts.length !== REGIONS.length) {
     CONSOLE.textContent = "";
     REGIONS = parts.map(() => { const d = document.createElement("div"); CONSOLE.appendChild(d); d._html = null; return d; });
@@ -6604,7 +7024,7 @@ function renderBar() {
   const key = station + "|" + st.alert;
   if (key === barFor) return;
   barFor = key;
-  const panels = { helm: 4, tactical: 4, engineering: 4, science: 4, captain: 4 }[station];
+  const panels = { helm: 4, tactical: 4, engineering: 4, science: 4, captain: 4, laser_port: 4, laser_stbd: 4, gunner: 1 }[station];
   bar.innerHTML = `<b>Consoles</b>` + STATIONS.map((s) => `<button data-st="${s.id}" class="${s.id === station ? "on" : ""}" style="${s.id === station ? `border-color:${ROLE[s.role]};color:${ROLE[s.role]}` : ""}">${s.word}</button>`).join("") +
     `<span class="sep"></span><button data-ev="red" class="${st.alert === "red_alert" ? "on" : ""}">Red alert</button><button data-ev="hit">Hit us</button><button data-ev="scram">Scram</button><button data-ev="reset">Reset</button>` +
     `<span class="cost">Pi 5: ${panels + 2} UI draw calls (bridge-stations 8.7) · a 2D mockup, not a Pi measurement</span>`;
@@ -6629,10 +7049,15 @@ window.addEventListener("resize", fit);
 function act(a, ev) {
   const [k, v, w] = a.split(":");
   const S = station;
-  if (k === "tab") { captainTab = v; if (SOLO && SOLO.seat === "captain") station = "captain"; }
-  if (k === "swap") station = v;
-  if (k === "view") station = v;
+  if (k === "tab") { captainTab = v; G.objOpen = false; if (SOLO && SOLO.seat === "captain") station = "captain"; }
+  if (k === "swap") { station = v; G.objOpen = false; }
+  if (k === "view") { station = v; G.objOpen = false; }
   if (k === "mode") { const c = soloCrew(station); if (c) c.mode = v; }
+  if (k === "obj") G.objOpen = !G.objOpen;
+  if (k === "objclose") G.objOpen = false;
+  if (k === "gnext") { const l = gunTargets(); if (l.length) G.gun.chosen = (Math.min(G.gun.chosen, l.length - 1) + 1) % l.length; }
+  if (k === "gpick") G.gun.chosen = +v;
+  if (k === "decoy") throwDecoy();
   if (k === "ack") { const o = newestOrderFor(S); if (o) o.state = "done"; }
   if (k === "allstop") { F.speedSet = 0; F.strafe = [0, 0]; G.ap = "HOLD"; }
   if (k === "ap") { if (G.ap === "EVADE" && v !== "EVADE") F.strafe = [0, 0]; G.ap = v; if (v !== "HOLD" && v !== "EVADE") F.orderActive = false; }
@@ -6657,6 +7082,8 @@ function act(a, ev) {
   if (k === "glock") { const cur = st.groupBreaker[v] || "closed"; if (cur !== "closed") sim.setGroupBreaker(v, cur === "locked" ? "open" : "locked"); }
   if (k === "cmode") sim.setCooling({ mode: st.cooling.mode === "auto" ? "manual" : "auto" });
   if (k === "scram") { if (ARMED.key === "scram" && now() - ARMED.t < 3) { sim.scram("manual"); ARMED.key = null; } else ARMED = { key: "scram", t: now() }; }
+  // The full-screen schematic is its own mockup page (power-routing 3a): beside this page on disk, published apart.
+  if (k === "expand") window.open(location.protocol === "file:" ? "power-grid.html" : "https://claude.ai/artifact/3UFmRzVAzLpZ2UQGPpFvCc", "_blank");
   if (k === "rxmode") st.reactor.mode = st.reactor.mode === "auto" ? "manual" : "auto";
   if (k === "sci") G.sciSel = v;
   if (k === "scan") G.scanning = !G.scanning;
@@ -6693,6 +7120,7 @@ function holdDone(key) {
     const i = G.tubes.findIndex((t) => t.state === "READY"), c = contact(G.target);
     if (i >= 0 && c) { G.tubes[i].state = "EMPTY"; G.missiles.push({ pos: F.P.slice(), target: c.id, chance: missileHit(c), n: ++G.hits }); }
   }
+  if (k === "lfire") fireLaser(v);
   if (k === "ping") G.ping = 2;
   if (k === "redalert") setAlert(st.alert !== "red_alert");
   if (k === "brk") { if (v.startsWith("gen")) st.genClosed[v] = !st.genClosed[v]; else st.tieClosed[v] = !st.tieClosed[v]; }
@@ -6715,6 +7143,8 @@ function dragTo(e) {
   if (DRAG.kind === "shieldcam") {
     G.shieldCam = { yaw: DRAG.cam.yaw + ((e.clientX - DRAG.x0) / r.width) * 360, el: clamp(DRAG.cam.el + ((e.clientY - DRAG.y0) / r.height) * 120, -80, 80) };
   }
+  // The sight: a drag across its width turns the barrel through the sight's 30 degrees.
+  if (DRAG.kind === "gunaim") { G.gun.yaw = wrap180(DRAG.cam.yaw + ((e.clientX - DRAG.x0) / r.width) * 30); G.gun.pitch = clamp(DRAG.cam.pitch - ((e.clientY - DRAG.y0) / r.height) * 15.4, -10, 80); }
   if (DRAG.kind === "feedview") {
     G.feedViewCam = { yaw: DRAG.cam.yaw + ((e.clientX - DRAG.x0) / r.width) * 180, el: clamp(DRAG.cam.el + ((e.clientY - DRAG.y0) / r.height) * 120, -85, 85) };
   }
@@ -6728,7 +7158,7 @@ function dragTo(e) {
     const sp = clamp(Math.round(ky * gmax * 20) / 20, 0, gmax); // the track runs from 0 to the group's highest setpoint
     PREVIEW = { gid: DRAG.arg, sp, r: sim.previewGroup(DRAG.arg, sp) };
   }
-  if (DRAG.kind !== "joy" && DRAG.kind !== "flip" && DRAG.kind !== "shieldcam" && DRAG.kind !== "feedview" && DRAG.kind !== "scancam") render();
+  if (DRAG.kind !== "joy" && DRAG.kind !== "flip" && DRAG.kind !== "shieldcam" && DRAG.kind !== "feedview" && DRAG.kind !== "scancam" && DRAG.kind !== "gunaim") render();
 }
 CONSOLE.addEventListener("pointerdown", (e) => {
   const a = e.target.closest("[data-act]"), d = e.target.closest("[data-drag]"), h = e.target.closest("[data-hold]");
@@ -6736,14 +7166,14 @@ CONSOLE.addEventListener("pointerdown", (e) => {
   // A press on a face inside the shield view favours it; a drag that starts there turns the view.
   if (d && !(a && d.contains(a) && d.dataset.drag !== "shieldcam")) {
     const [kind, arg] = d.dataset.drag.split(":");
-    DRAG = { kind, arg, rect: d.getBoundingClientRect(), x0: e.clientX, y0: e.clientY, cam: { ...(kind === "feedview" ? G.feedViewCam : kind === "scancam" ? G.scanCam[arg] : G.shieldCam) }, act: a && d.contains(a) ? a.dataset.act : null };
+    DRAG = { kind, arg, rect: d.getBoundingClientRect(), x0: e.clientX, y0: e.clientY, cam: { ...(kind === "gunaim" ? G.gun : kind === "feedview" ? G.feedViewCam : kind === "scancam" ? G.scanCam[arg] : G.shieldCam) }, act: a && d.contains(a) ? a.dataset.act : null };
     if (kind === "fader" || kind === "throttle" || kind === "strafe" || kind === "lever") DRAG.rect = d.querySelector("rect").getBoundingClientRect();
     // Widths in lp of what each drag measures against, to turn screen pixels into lp.
     DRAG.wlp = { joy: 148, flip: 80, wheel: 52 }[kind] || 1;
     if (kind === "wheel") DRAG.v0 = F.oe[arg];
     if (kind === "flip") { const rr = d.getBoundingClientRect(); DRAG.side = e.clientX < rr.left + rr.width / 2 ? -1 : 1; }
     CONSOLE.setPointerCapture(e.pointerId);
-    if (kind !== "shieldcam" && kind !== "feedview" && kind !== "scancam" && kind !== "wheel") dragTo(e);
+    if (kind !== "shieldcam" && kind !== "feedview" && kind !== "scancam" && kind !== "wheel" && kind !== "gunaim") dragTo(e);
     return;
   }
   if (h) { HOLD.key = h.dataset.hold; HOLD.t0 = now(); render(); return; }
@@ -6784,10 +7214,18 @@ window.addEventListener("keydown", (e) => {
   }
   if (station === "tactical" && k === "t") { const l = G.contacts.filter((c) => c.hull > 0); G.target = l[(l.findIndex((c) => c.id === G.target) + 1) % l.length].id; }
   if (station === "science" && k === "q") act("scan");
+  // The gunner: Tab steps the target, Space is the trigger, the arrows nudge the barrel a degree.
+  if (station === "gunner") {
+    if (k === "tab") { act("gnext"); e.preventDefault(); }
+    if (k === " ") { G.gun.trigger = true; e.preventDefault(); }
+    const nudge = { arrowleft: [-1, 0], arrowright: [1, 0], arrowup: [0, 1], arrowdown: [0, -1] }[k];
+    if (nudge) { G.gun.yaw = wrap180(G.gun.yaw + nudge[0]); G.gun.pitch = clamp(G.gun.pitch + nudge[1], -10, 80); e.preventDefault(); }
+  }
+  if (k === "escape") act("objclose");
   if (k === "y") act("ack");
   render();
 });
-window.addEventListener("keyup", (e) => { F.keys.delete(e.key.toLowerCase()); });
+window.addEventListener("keyup", (e) => { const k = e.key.toLowerCase(); F.keys.delete(k); if (k === " ") G.gun.trigger = false; });
 // The scroll wheel: a notch turns a thumbwheel one degree, or steps a scanner's range.
 CONSOLE.addEventListener("wheel", (e) => {
   const el = e.target.closest && e.target.closest("[data-wheel]");
@@ -6798,7 +7236,7 @@ CONSOLE.addEventListener("wheel", (e) => {
   if (k === "range") stepRange(v, -d);
   render();
 }, { passive: false });
-window.addEventListener("blur", () => F.keys.clear());
+window.addEventListener("blur", () => { F.keys.clear(); G.gun.trigger = false; });
 
 // The clock, in seconds and fixed steps (CLAUDE.md 6.4): the ship's systems at their 10 Hz,
 // the page's stand-ins (flight, contacts, weapons) at 60 Hz so what moves on screen moves
@@ -6818,7 +7256,7 @@ let PAUSED = false;
 function frame() {
   const t = now(), d = Math.min(0.25, t - last); last = t;
   if (!PAUSED) advanceTime(d);
-  if (!DRAG || DRAG.kind === "joy" || DRAG.kind === "flip" || DRAG.kind === "shieldcam" || DRAG.kind === "feedview" || DRAG.kind === "scancam") render();
+  if (!DRAG || DRAG.kind === "joy" || DRAG.kind === "flip" || DRAG.kind === "shieldcam" || DRAG.kind === "feedview" || DRAG.kind === "scancam" || DRAG.kind === "gunaim") render();
   requestAnimationFrame(frame);
 }
 
@@ -6872,7 +7310,11 @@ window.consoleState = function () {
     feed: G.feed, zoom: G.zoom, nav_km: G.navRange, tac_km: G.tacRange, sci_km: G.sciRange,
     scan_cam: { nav: G.scanCam.nav, tac: G.scanCam.tac, sci: G.scanCam.sci }, feed_cam: G.feedViewCam,
     turrets: G.turrets.map((t) => ({ short: t.short, mode: t.mode, op: t.op, heat: t.heat, aim_deg: t.aim, firing: t.firing, cooling: !!t.cooling, ok: works(t.load) })),
-    tubes: G.tubes.map((t) => ({ state: t.state, t: t.t })), tube_load_s: TUBE_LOAD_S, magazine: G.magazine, magazine_slots: 6,
+    tubes: G.tubes.map((t) => ({ state: t.state, t: t.t })), tube_load_s: TUBE_LOAD_S, magazine: G.magazine, magazine_slots: MAGAZINE,
+    // Combat 2: the seam's views (docs/design/combat-2-work-plan.md, "D: the consoles' views").
+    decoys: G.decoys, decoys_max: DECOYS, decoy_age_s: G.t - G.decoyT, next_inbound_s: nextInbound(),
+    lasers: { port: laserView("port"), stbd: laserView("stbd") }, laser_beam_age_s: { port: G.t - G.lasers.port.beam, stbd: G.t - G.lasers.stbd.beam },
+    gunner: gunnerView(), gun_locked: G.gun.locked, objectives_open: G.objOpen, objectives: objectiveView(),
     fire_ring: missileHit(tgt), fire_note: `${Math.round(missileHit(tgt) * 100)}% HIT`, fire_ok: missileHit(tgt) > 0.5, tube_cone_deg: 5,
     charge: G.charge, cap: FACES.map((_, f) => shieldCap(f)), preset: G.preset,
     hold: HOLD.key ? { key: HOLD.key, k: clamp((now() - HOLD.t0) / HOLD_S, 0, 1) } : null,
@@ -6889,7 +7331,7 @@ function consoleCaptain() {
     tab: captainTab, ship_sel: G.shipSel, braced: G.braced > 0, view_override: G.viewOverride,
     composer: { to: G.composer.to, verb: G.composer.verb },
     orders: G.orders.slice(0, 4).map((o) => ({ to: o.to, verb: o.verb, state: o.state })),
-    crew: CREW_ROWS.map(([role, op]) => ({ role, op, order: !!newestOrderFor(role) })),
+    crew: CREW_ROWS().map(([role, op]) => ({ role, op, order: !!newestOrderFor(role) })),
     rooms: sim.comps.map((c, k) => { const cs = compState(k); return { id: c.id, word: cs.word }; }),
     crew_at: st.crew.map((cr) => ({ comp: cr.comp != null && cr.comp >= 0 && cr.comp < sim.N ? sim.comps[cr.comp].id : null, ok: cr.status === "ok" })),
     room: { p_kpa: r.p_kpa, po2_kpa: r.po2_kpa, t_k: r.t_k, crew: st.crew.filter((x) => x.comp === i).length },
@@ -6939,6 +7381,14 @@ window.MOCKUP_SHOTS = [
   { name: "engineering-cooling-breaker", setup: () => { station = "engineering"; st.loop.leak_kg_s = 0; sim.setGroupBreaker("cooling", "open"); COOL_SHOT = true; advance(45); render(); } },
   { name: "science", setup: () => { station = "science"; render(); } },
   { name: "captain", setup: () => { station = "captain"; captainTab = "CMD"; render(); } },
+  // Combat 2 (docs/design/combat-2-work-plan.md, workstream D). The port bank charging, the Hound off its side.
+  { name: "laser-port", setup: () => { station = "laser_port"; G.lasers.port.mj = 96; render(); } },
+  // The starboard bank under its least charge: the Hound bears, but FIRE waits.
+  { name: "laser-stbd", setup: () => { station = "laser_stbd"; G.lasers.stbd.mj = 30; render(); } },
+  // The sight: both fighters out, the nearer chosen, the barrel just off its lead.
+  { name: "gunner", setup: () => { launchFighters(); station = "gunner"; G.gun.chosen = 0; aimGun(leadOf(gunTargets()[0]), -2.5, 1.5); render(); } },
+  // OBJECTIVES open on the helm at rest.
+  { name: "objectives-helm", setup: () => { station = "helm"; G.objOpen = true; render(); } },
   { name: "red-helm-evading", setup: () => { scenario("combat"); station = "helm"; act("ap:EVADE"); advance(20); render(); } },
   { name: "red-tactical", setup: () => { scenario("combat"); station = "tactical"; HOLD.key = null; render(); } },
   { name: "red-science-target-feed", setup: () => { scenario("combat"); G.feed = "TARGET"; station = "science"; render(); } },
@@ -6946,6 +7396,15 @@ window.MOCKUP_SHOTS = [
   { name: "red-engineering", setup: () => { scenario("combat"); station = "engineering"; render(); } },
   { name: "red-captain", setup: () => { scenario("combat"); station = "captain"; captainTab = "CMD"; render(); } },
   { name: "red-captain-ship", setup: () => { scenario("combat"); station = "captain"; captainTab = "SHIP"; G.shipSel = "engineering"; render(); } },
+  // Red alert, a bank full and bearing (whichever bears after the fight so far), and missiles have stripped the armour
+  // from the face it meets.
+  { name: "red-laser", setup: () => { scenario("combat"); const c = contact("T1"); c.armour[targetFace(c)] = 0; c.shield[targetFace(c)] = 0.3; G.target = "T1"; const b = laserBears(G.lasers.stbd) ? G.lasers.stbd : G.lasers.port; station = `laser_${b.id}`; b.mj = LZ.cap_mj; render(); } },
+  // Red alert, the trigger held on the lead: the capacitor low and the barrel hot.
+  { name: "red-gunner-firing", setup: () => { scenario("combat"); launchFighters(); station = "gunner"; G.gun.chosen = 0; aimGun(leadOf(gunTargets()[0]), 0.3, 0); Object.assign(G.gun, { trigger: true, cap: 0.32, heat: 0.78 }); render(); } },
+  // Tactical at red alert: a missile 2.2 s out, in the decoy's best window; 18 rounds in the magazine.
+  { name: "red-tactical-decoy", setup: () => { scenario("combat"); station = "tactical"; HOLD.key = null; G.inbound = [{ d: v3.norm([-0.5, 0.15, 0.85]), t: 2.2, n: 901 }]; render(); } },
+  // Red alert on the sight: one fighter down, OBJECTIVES open over the sight.
+  { name: "red-objectives-gunner", setup: () => { scenario("combat"); launchFighters(); contact("J2").hull = 0; station = "gunner"; G.objOpen = true; render(); } },
   { name: "scram-engineering", setup: () => { scenario("combat"); sim.scram("manual"); advance(30); station = "engineering"; render(); } },
   { name: "red-tactical-turned", setup: () => { scenario("combat"); station = "tactical"; HOLD.key = null; G.scanCam.tac = { yaw: 70, dEl: 18 }; render(); } },
   // Single player (single-player design 5): the player at Helm with a crew of four, all on AUTO; then Tactical's
@@ -6953,7 +7412,7 @@ window.MOCKUP_SHOTS = [
   { name: "solo-helm", setup: () => { soloOn("helm"); render(); } },
   { name: "solo-tactical-manual", setup: () => { soloOn("helm"); station = "tactical"; soloCrew("tactical").mode = "manual"; soloCrew("science").seated = false; HOLD.key = null; render(); } },
   { name: "red-solo-engineering", setup: () => { scenario("combat"); soloOn("helm"); station = "engineering"; render(); } },
-].map((shot) => ({ name: shot.name, setup: () => { PAUSED = true; undoCoolingShot(); SOLO = null; shot.setup(); render(); } }));
+].map((shot) => ({ name: shot.name, setup: () => { PAUSED = true; undoCoolingShot(); SOLO = null; G.objOpen = false; G.gun.trigger = false; retireFighters(); shot.setup(); render(); } }));
 
 fit(); render();
 requestAnimationFrame(frame);

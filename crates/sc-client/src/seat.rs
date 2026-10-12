@@ -8,16 +8,26 @@
 //! mockup's action name and from there to a `Command`: the same commands a bot or automation sends.
 
 use crate::console::kit::Hit;
-use crate::console::{self, Act, Cam, CapView, ComposerView, ConsoleView, ContactView, CrewAt, CrewRow, FlightView};
+use crate::console::{
+    self, Act, Cam, CapView, ComposerView, ConsoleView, ContactView, CrewAt, CrewRow, FlightView, RoomView,
+};
+use crate::console::{
+    BeamAges, GunTarget, GunnerView, InboundView, LaserView, LasersView, ObjectiveRow, ObjectivesView,
+};
+use crate::console::{BusesView, CoolView, EngView, GroupView, PreviewView, PumpView, ReactorView, TankView};
 use crate::console::{HitView, HoldView, Hpr, OrderView, PlanView, ScanCam, ScanCams, SciView, TubeView, TurretView};
 use egui::{Pos2, Rect};
 use glam::{DQuat, DVec3};
 use sc_client::platform::keys;
 use sc_core::combat::attitude::{self, from_hpr, hpr_of, whole_deg};
+use sc_core::combat::damage::{self, RoomState};
 use sc_core::combat::data::DrillData;
 use sc_core::combat::data::BANDS;
-use sc_core::combat::{self as combat, Command, HelmMode, Station, TubeState, ENEMY_ID, FEEDS};
-use sc_net::msg::{ShipSnap, Snapshot};
+use sc_core::combat::data::{ObjectiveFacts, ObjectiveKind, ObjectiveState};
+use sc_core::combat::{
+    self as combat, Command, HelmMode, PowerCmd, Station, TubeState, ENEMY_ID, FEEDS, FIGHTER_IDS, GUNNER_TURRET,
+};
+use sc_net::msg::{PowerSnap, ShipSnap, Snapshot};
 use std::collections::HashSet;
 
 /// The scanners' range ladder, km: 5 km steps from 5 to 100 (bridge-stations 8.0).
@@ -25,14 +35,32 @@ const RANGE_KM: [f64; 20] =
     [5., 10., 15., 20., 25., 30., 35., 40., 45., 50., 55., 60., 65., 70., 75., 80., 85., 90., 95., 100.];
 /// How long a guarded control is held before it acts (bridge-stations 8.5).
 pub const HOLD_S: f64 = 0.6;
+/// How long SCRAM stays armed for its confirming tap, seconds (the mockup's `ARMED`).
+const ARM_S: f64 = 3.0;
 /// How long a hit on the Tern's shield is drawn (weapons-and-shields 11: the last 8 s of hits).
 const HIT_SHOW_S: f64 = 8.0;
 /// The id the console's first hostile track takes.
 const TRACK: &str = "T1";
 /// The shield view's usual camera (the mockup's).
 const SHIELD_CAM: Cam = Cam { yaw: 62.0, el: 24.0 };
-/// The captain's CREW rows: the bridge's stations in the mockup's order.
-const CREW_ROLES: [&str; 6] = ["helm", "tactical", "engineering", "science", "comms", "flight_ops"];
+/// How often the gunner's barrel is sent while it moves, seconds (the helm's stick's rate).
+const AIM_SEND_S: f64 = 0.05;
+/// A laser bank's charge falling by this share between snapshots is a shot (its beam shows on FIRE).
+const SHOT_DROP: f64 = 0.2;
+/// The shield faces' words, in their order.
+const FACE_WORDS: [&str; 6] = ["bow", "stern", "port", "starboard", "dorsal", "ventral"];
+
+/// The gunner's own state: the barrel (yaw to starboard and pitch up, degrees, ship axes), the target chosen, the
+/// trigger, and what was last sent.
+struct GunSeat {
+    yaw: f64,
+    pitch: f64,
+    chosen: usize,
+    trigger: bool,
+    sent: Option<(f64, f64)>,
+    sent_trigger: bool,
+    last_send: f64,
+}
 
 /// A drag in progress.
 struct Dragging {
@@ -88,6 +116,19 @@ pub struct Seat {
     face_hit: [f64; 6],
     /// This frame's input touched a control of the console (single player: an AUTO station's console taken over).
     touched: bool,
+    /// OBJECTIVES is open over the console (objectives-tab 1).
+    obj_open: bool,
+    gun: GunSeat,
+    /// Each laser bank's charge at the last view, and when each last fired (local time).
+    laser_charge: [f64; 2],
+    laser_shot: [f64; 2],
+    /// Engineering: the fader in hand (its group and setpoint) and the one last asked of the server; the lever in
+    /// hand (its index in `combat::LEVERS` and value) and the one last sent; when SCRAM was armed.
+    fader: Option<(usize, f64)>,
+    fader_sent: Option<(usize, f64)>,
+    lever: Option<(u8, f64)>,
+    lever_sent: Option<(u8, f64)>,
+    armed_scram: Option<f64>,
 }
 
 /// Things the console asks the drill to do besides commands.
@@ -132,6 +173,24 @@ impl Default for Seat {
             hits: Vec::new(),
             face_hit: [-1e9; 6],
             touched: false,
+            obj_open: false,
+            // The mockup's barrel: dead ahead, 20 degrees up.
+            gun: GunSeat {
+                yaw: 0.0,
+                pitch: 20.0,
+                chosen: 0,
+                trigger: false,
+                sent: None,
+                sent_trigger: false,
+                last_send: -1e9,
+            },
+            laser_charge: [0.0; 2],
+            laser_shot: [-1e9; 2],
+            fader: None,
+            fader_sent: None,
+            lever: None,
+            lever_sent: None,
+            armed_scram: None,
         }
     }
 }
@@ -223,7 +282,7 @@ impl Seat {
             PlanView { time: p.time_s, angle: p.angle_deg, held: p.held }
         });
         let pv = attitude::slew(tern.rot, tern.rates, from_hpr(self.oe.h, self.oe.p, self.oe.r), fl);
-        let contacts: Vec<ContactView> = if hound_up {
+        let mut contacts: Vec<ContactView> = if hound_up {
             vec![ContactView {
                 id: TRACK.into(),
                 cls: "corvette".into(),
@@ -236,6 +295,21 @@ impl Seat {
         } else {
             Vec::new()
         };
+        // The Hound's fighters in flight, J1 and J2 (enemy-fighters 3), always known: they are close and fast.
+        let mut fighter_vel = Vec::new();
+        for f in &snap.fighters {
+            let n = FIGHTER_IDS.iter().position(|id| *id == f.id).map_or(0, |i| i + 1);
+            contacts.push(ContactView {
+                id: format!("J{n}"),
+                cls: "fighter".into(),
+                iff: "hostile".into(),
+                rel: arr(inv * (f.pos - tern.pos)),
+                dir: arr(inv * (f.rot * DVec3::Z)),
+                hull: f.hull * 100.0,
+                scan: 1.0,
+            });
+            fighter_vel.push((format!("J{n}"), f.vel, f.shield));
+        }
         let locked_on = tern.lock_target == Some(ENEMY_ID) && hound_up;
         let tubes_cfg = data.tern_combat.tubes.as_ref();
         let (load_s, arm_s) = tubes_cfg.map_or((1.0, 0.0), |t| (t.load_s, t.arm_s));
@@ -304,6 +378,15 @@ impl Seat {
             freq: BANDS[usize::from(br.band.min(3))].into(),
             by: br.shields_by.unwrap_or(Station::Science).name().into(),
         };
+        let tl = &data.tern_layout;
+        let dm = &snap.damage;
+        let room_states = damage::room_states(
+            tl,
+            &data.damage,
+            &dm.integrity.iter().map(|v| f64::from(*v)).collect::<Vec<_>>(),
+            &dm.fires.iter().map(|r| usize::from(*r)).collect::<Vec<_>>(),
+            &dm.breaches.iter().map(|r| usize::from(*r)).collect::<Vec<_>>(),
+        );
         let captain = CapView {
             tab: self.cap_tab.clone(),
             ship_sel: self.ship_sel.clone(),
@@ -318,26 +401,55 @@ impl Seat {
                     Some(OrderView { to: to.id().into(), verb, state: if *done { "done" } else { "sent" }.into() })
                 })
                 .collect(),
-            crew: CREW_ROLES
+            // Every station but the captain's (combat 2: the laser banks and the gunner among them).
+            crew: Station::ALL
                 .iter()
-                .map(|r| {
-                    let st = Station::from_id(r);
-                    CrewRow {
-                        role: (*r).into(),
-                        op: st.and_then(|st| ops.iter().find(|(s, _)| *s == st).map(|(_, n)| n.clone())),
-                        order: st.is_some_and(|st| br.orders.iter().any(|(to, _, done)| *to == st && !done)),
-                    }
+                .filter(|st| **st != Station::Captain)
+                .map(|st| CrewRow {
+                    role: st.id().into(),
+                    op: ops.iter().find(|(s, _)| s == st).map(|(_, n)| n.clone()),
+                    order: br.orders.iter().any(|(to, _, done)| to == st && !done),
                 })
                 .collect(),
-            // No compartment is simulated in the drill: every room reads OK, and the crew are seated on the bridge.
-            rooms: Vec::new(),
-            crew_at: ops.iter().map(|_| CrewAt { comp: Some("bridge".into()), ok: true }).collect(),
+            // Each room by the Tern's damage (ship-damage 2.5); the crew seated on the bridge and the damage-control
+            // teams where they are. No air is simulated in the drill, so the ROOM panel's readings are unavailable.
+            rooms: room_states
+                .iter()
+                .zip(&tl.rooms)
+                .filter(|(st, _)| **st != RoomState::Ok)
+                .map(|(st, r)| RoomView { id: r.id.clone(), word: st.word().into() })
+                .collect(),
+            crew_at: ops
+                .iter()
+                .map(|_| CrewAt { comp: Some("bridge".into()), ok: true })
+                .chain(snap.damage.teams.iter().flat_map(|(room, _)| {
+                    let comp = room.and_then(|r| tl.rooms.get(usize::from(r))).map(|r| r.id.clone());
+                    (0..data.damage.teams.members).map(move |_| CrewAt { comp: comp.clone(), ok: true })
+                }))
+                .collect(),
             room: None,
         };
-        let role = if station == Station::Captain { "command" } else { station.id() };
+        let (word, role) = console::station_word(station.id());
+        let lasers = self.lasers(tern, hound, data, locked_on, now);
+        let inbound: Vec<InboundView> = snap
+            .missiles
+            .iter()
+            .filter(|m| m.owner != tern.id)
+            .filter_map(|m| {
+                let rel = m.pos - tern.pos;
+                let dist = rel.length();
+                let closing = -rel.dot(m.vel - tern.vel) / dist.max(1e-9);
+                (closing > 1.0).then(|| InboundView { d: arr((inv * rel).normalize_or_zero()), t: dist / closing })
+            })
+            .collect();
+        let next_inbound_s = inbound.iter().map(|m| m.t).reduce(f64::min);
+        let gunner = self.gunner_view(&contacts, &fighter_vel, tern, hound, data);
+        let gun_turret = data.tern_combat.turrets.iter().position(|t| t.id == GUNNER_TURRET);
+        let gun_snap = gun_turret.and_then(|i| tern.turrets.get(i));
+        let objectives = objectives_view(snap, tern, hound, data);
         ConsoleView {
             station: station.id().into(),
-            word: station.id().to_uppercase(),
+            word: word.into(),
             role: role.into(),
             op,
             open,
@@ -348,11 +460,11 @@ impl Seat {
             clock_s: snap.phase_s,
             hull_pct: tern.hull / data.tern_combat.hull_mj.max(1e-9) * 100.0,
             shield_ratio: std::array::from_fn(|f| tern.faces[f] / caps[f].max(1e-9)),
-            power_mw: None,
-            reactor_up: true,
+            power_mw: snap.power.as_ref().map(|p| p.rx_out_mw + p.bat_out_mw),
+            reactor_up: snap.power.as_ref().is_none_or(|p| p.rx_state == 0),
             speed_mps: tern.vel.length(),
-            fires: 0,
-            breaches: 0,
+            fires: dm.fires.len() as u32,
+            breaches: dm.breaches.len() as u32,
             q: console::quat_arr(tern.rot),
             w: arr(tern.rates),
             wset: arr(wset),
@@ -377,7 +489,7 @@ impl Seat {
             target: locked_on.then(|| TRACK.into()),
             tubes_bear: in_cone,
             missiles: snap.missiles.iter().map(|m| arr(inv * (m.pos - tern.pos))).collect(),
-            inbound: Vec::new(),
+            inbound,
             hits: self
                 .hits
                 .iter()
@@ -410,9 +522,267 @@ impl Seat {
             t: now,
             sci: Some(sci),
             captain: Some(captain),
-            // No power grid in the drill yet: Engineering's console is unavailable (console-parity 10.2).
-            eng: None,
+            // Engineering's console waits for the first snapshot with the grid in it (power-grid 14: 2 Hz).
+            eng: snap.power.as_ref().map(|p| self.eng(p, snap, data, now)),
+            decoys: u32::from(tern.decoys),
+            decoys_max: data.tern_combat.decoys.as_ref().map_or(0, |d| d.count),
+            decoy_age_s: if tern.decoy_on { 0.0 } else { 1e9 },
+            next_inbound_s,
+            laser_beam_age_s: lasers
+                .as_ref()
+                .map(|_| BeamAges { port: now - self.laser_shot[0], stbd: now - self.laser_shot[1] }),
+            lasers,
+            gunner,
+            gun_locked: gun_snap.is_some_and(|t| t.cooling),
+            objectives_open: self.obj_open,
+            objectives,
         }
+    }
+
+    /// Engineering's console (power-grid 4, reactor-cooling 5; the mockup's `consoleEngineering`): the snapshot's
+    /// grid with the client's own `power.json` for names, limits and scales. A dragged fader shows the server's solve
+    /// at its setpoint, the last answer for that group while the next is on its way.
+    fn eng(&self, p: &PowerSnap, snap: &Snapshot, data: &DrillData, now: f64) -> EngView {
+        let pd = &data.power;
+        let f = &pd.file;
+        let groups = f
+            .groups
+            .iter()
+            .enumerate()
+            .map(|(g, gr)| {
+                let s = p.groups.get(g).copied().unwrap_or_default();
+                GroupView {
+                    id: gr.id.clone(),
+                    name: gr.name.clone(),
+                    want: s.want_mw,
+                    got: s.got_mw,
+                    sp: s.sp,
+                    prio: s.prio,
+                    max: pd.group_max(g),
+                    want_k: pd.group_k(g, s.want_mw),
+                    got_k: pd.group_k(g, s.got_mw),
+                    breaker: (gr.feed_breaker == Some(true))
+                        .then(|| ["closed", "open", "locked"][usize::from(s.breaker.min(2))].to_owned()),
+                }
+            })
+            .collect();
+        let preview = self.fader.map(|(g, sp)| {
+            let got = match p.preview {
+                Some((pg, _, _, got)) if usize::from(pg) == g => got,
+                _ => p.groups.get(g).map_or(0.0, |s| s.got_mw),
+            };
+            PreviewView { gid: f.groups[g].id.clone(), sp, k: pd.group_k(g, got) }
+        });
+        let integrity = |k: usize| f64::from(snap.damage.integrity.get(k).copied().unwrap_or(100));
+        let c = &f.coolant;
+        let pump = |n: usize, id: &String| {
+            let k = pd.load(id).unwrap_or(0);
+            let [setpoint, speed, alloc_mw] = p.pumps.get(n).copied().unwrap_or_default();
+            PumpView {
+                name: pd.loads[k].name.clone(),
+                speed,
+                capability: data.damage.systems.capability(integrity(k)),
+                alloc_mw,
+                setpoint,
+            }
+        };
+        let np = c.pumps.len();
+        let max_of = |ids: &[String]| ids.first().and_then(|id| pd.load(id)).map_or(1.0, |k| pd.loads[k].setpoint_max);
+        let switch = |id: &str| {
+            let k = f
+                .generators
+                .iter()
+                .position(|g| g.id == id)
+                .or_else(|| f.ties.iter().position(|t| t.id == id).map(|k| k + f.generators.len()));
+            k.and_then(|k| p.switches.get(k).copied()).unwrap_or(false)
+        };
+        let node_up = |id: &str| pd.node(id).and_then(|k| p.nodes_up.get(k).copied()).unwrap_or(true);
+        EngView {
+            rated_mw: f.reactor.thermal_rated_mw * f.reactor.conversion_efficiency * f.reactor.throttle_max,
+            rx_out_mw: p.rx_out_mw,
+            bat_out_mw: p.bat_out_mw,
+            want_mw: p.want_mw,
+            preset: p.preset.and_then(|i| pd.presets().get(usize::from(i)).map(|n| (*n).to_owned())),
+            groups,
+            preview,
+            reactor: ReactorView {
+                up: p.rx_state == 0,
+                throttle: p.throttle,
+                target: p.target,
+                p_e_mw: p.p_e_mw,
+                mode: if p.rx_auto { "auto" } else { "manual" }.into(),
+                scram_cause: sc_core::power::ScramCause::from_u8(p.scram_cause).map(|c| c.words(pd)),
+                t_k: p.blanket_k,
+                warn_k: f.reactor.heat.warn_k,
+                scram_k: f.reactor.heat.scram_k,
+                throttle_max: f.reactor.throttle_max,
+            },
+            armed_scram: self.armed_scram.is_some_and(|t| now - t < ARM_S),
+            cool: CoolView {
+                mode: if p.cool_auto { "auto" } else { "manual" }.into(),
+                flow: p.flow,
+                flow_kg_s: p.flow * c.design_flow_kg_s,
+                chiller: p.chiller,
+                hot_k: p.hot_k,
+                cold_k: p.cold_k,
+                pumps: c.pumps.iter().enumerate().map(|(n, id)| pump(n, id)).collect(),
+                radiator_pumps: c.radiator_pumps.iter().enumerate().map(|(n, id)| pump(np + n, id)).collect(),
+                makeup_valve: p.makeup_valve,
+                makeup_kg_s: p.makeup_kg_s,
+                tanks: c
+                    .tanks
+                    .iter()
+                    .enumerate()
+                    .map(|(k, t)| {
+                        let kg = p.tanks_kg.get(k).copied().unwrap_or(0.0);
+                        TankView { name: t.name.clone(), kg, frac: kg / t.capacity_kg.max(1e-9) }
+                    })
+                    .collect(),
+                inventory: p.inventory,
+                exchanger: p.exchanger,
+                rad_mw: p.rad_mw,
+                rad_cap_mw: p.rad_cap_mw,
+                rad_flow: p.rad_flow,
+                hot_band_k: c.bands.hot_leg_k,
+                hot_warn_k: c.bands.hot_leg_warning_k,
+                limit_k: f.reactor.scram.loop_over_k,
+                heat_mw: p.heat_mw,
+                carry_mw: pd.carry_mw(p.flow),
+                pump_max: max_of(&c.pumps),
+                rad_max: max_of(&c.radiator_pumps),
+                makeup_max_kg_s: c.makeup.max_kg_s,
+            },
+            buses: BusesView {
+                gen_p: switch("gen_p"),
+                gen_s: switch("gen_s"),
+                tie: switch("bt_main"),
+                eb_p: switch("eb_p"),
+                eb_s: switch("eb_s"),
+                np: node_up("msb_p"),
+                ns: node_up("msb_s"),
+                soc: p.soc,
+                cut: u32::from(p.cut),
+            },
+            // The air is not simulated in the drill: the AIR panel is drawn unavailable.
+            air: None,
+        }
+    }
+
+    /// Both laser banks' consoles, port first (laser-banks 3): what the snapshot says of each, its charging from the
+    /// data, and the face of the locked target its beam meets, with that face's shield and armour.
+    fn lasers(
+        &mut self,
+        tern: &ShipSnap,
+        hound: &ShipSnap,
+        data: &DrillData,
+        locked_on: bool,
+        now: f64,
+    ) -> Option<LasersView> {
+        let lz = data.laser(&data.tern_combat.lasers.as_ref()?.laser);
+        let (p, s) = (tern.lasers.first()?, tern.lasers.get(1)?);
+        for (k, l) in [p, s].iter().enumerate() {
+            if l.charge < self.laser_charge[k] - SHOT_DROP {
+                self.laser_shot[k] = now;
+            }
+            self.laser_charge[k] = l.charge;
+        }
+        // The Hound's face toward the Tern, by the shield's own face rule.
+        let spot = locked_on.then(|| {
+            let e = data.enemy.shields.ellipsoid;
+            let o = hound.rot.inverse() * (tern.pos - hound.pos) - DVec3::from_array(e.centre_m);
+            let f = usize::from(combat::shield_face(o, DVec3::from_array(e.axes_m)).min(5));
+            let presets = &data.enemy.shields.presets;
+            let cap = presets[usize::from(hound.preset).min(presets.len() - 1)].faces_mj[f];
+            (f, hound.faces[f] / cap.max(1e-9), hound.armour[f])
+        });
+        let view = |bank: &str, l: &sc_net::msg::LaserSnap| LaserView {
+            bank: bank.into(),
+            charge: l.charge,
+            secs_to_full: (1.0 - l.charge).max(0.0) * lz.capacitor_mj / lz.charge_mw.max(1e-9),
+            min_charge: lz.min_charge_frac,
+            bearing: l.bearing,
+            hit_chance: l.hit_chance,
+            spot_face: spot.map_or(String::new(), |(f, _, _)| FACE_WORDS[f].into()),
+            spot_shield: spot.map_or(0.0, |(_, k, _)| k),
+            spot_armour: spot.map_or(0.0, |(_, _, a)| a),
+            capability: 1.0,
+        };
+        Some(LasersView { port: view("port", p), stbd: view("stbd", s) })
+    }
+
+    /// The gunner's sight (enemy-fighters 3): hostiles within the laser banks' reach, fighters first, then the
+    /// nearest, each with where to aim (one step of lead for the bolt's speed).
+    fn gunner_view(
+        &mut self,
+        contacts: &[ContactView],
+        fighter_vel: &[(String, DVec3, f64)],
+        tern: &ShipSnap,
+        hound: &ShipSnap,
+        data: &DrillData,
+    ) -> Option<GunnerView> {
+        let i = data.tern_combat.turrets.iter().position(|t| t.id == GUNNER_TURRET)?;
+        let t = tern.turrets.get(i)?;
+        let reach_m = data.tern_combat.lasers.as_ref().map_or(8000.0, |l| data.laser(&l.laser).range_m);
+        let bolt = data.gun(&data.tern_combat.gun).speed_mps.max(1.0);
+        let inv = tern.rot.inverse();
+        let mut list: Vec<GunTarget> = contacts
+            .iter()
+            .filter(|c| c.hull > 0.0 && c.iff == "hostile" && DVec3::from_array(c.rel).length() < reach_m)
+            .map(|c| {
+                let (vel, shield) = match fighter_vel.iter().find(|(id, _, _)| *id == c.id) {
+                    Some((_, v, sh)) => (*v, *sh),
+                    None => {
+                        let presets = &data.enemy.shields.presets;
+                        let caps = presets[usize::from(hound.preset).min(presets.len() - 1)].faces_mj;
+                        let k = (0..6).map(|f| hound.faces[f] / caps[f].max(1e-9)).sum::<f64>() / 6.0;
+                        (hound.vel, k)
+                    }
+                };
+                let rel = DVec3::from_array(c.rel);
+                let rel_v = inv * (vel - tern.vel);
+                GunTarget {
+                    id: c.id.clone(),
+                    kind: c.cls.clone(),
+                    rel: c.rel,
+                    lead: arr(rel + rel_v * (rel.length() / bolt)),
+                    hull: c.hull / 100.0,
+                    shield,
+                }
+            })
+            .collect();
+        list.sort_by(|a, b| {
+            let f = |g: &GunTarget| u8::from(g.kind != "fighter");
+            f(a).cmp(&f(b)).then(DVec3::from_array(a.rel).length().total_cmp(&DVec3::from_array(b.rel).length()))
+        });
+        let chosen = (!list.is_empty()).then(|| self.gun.chosen.min(list.len() - 1));
+        Some(GunnerView {
+            aim: [self.gun.yaw, self.gun.pitch],
+            chosen,
+            capacitor: t.charge,
+            heat: t.heat,
+            trigger: self.gun.trigger,
+            targets: list,
+        })
+    }
+
+    /// OBJECTIVES is open over the console.
+    pub fn objectives_open(&self) -> bool {
+        self.obj_open
+    }
+
+    /// Close OBJECTIVES (Esc).
+    pub fn close_objectives(&mut self) {
+        self.obj_open = false;
+    }
+
+    /// Open or close OBJECTIVES (the drill's `--look-in`).
+    pub fn show_objectives(&mut self, open: bool) {
+        self.obj_open = open;
+    }
+
+    /// Show the captain's CMD or SHIP page.
+    pub fn set_captain_tab(&mut self, tab: &str) {
+        self.cap_tab = tab.to_owned();
     }
 
     /// Whether the last `input` touched a control of the console: a press, a drag, a hold or a key, not the title
@@ -451,6 +821,7 @@ impl Seat {
         let presets = &data.tern_shields.presets;
         match a {
             Act::Swap(id) => {
+                self.obj_open = false;
                 if let Some(st) = Station::from_id(&id) {
                     out.push(SeatAsk::Claim(st));
                 }
@@ -573,22 +944,56 @@ impl Seat {
             Act::Room(id) => self.ship_sel = id,
             Act::Tab(t) => {
                 self.cap_tab = t;
+                self.obj_open = false;
                 out.push(SeatAsk::Tab);
             }
             Act::View(id) => {
+                self.obj_open = false;
                 if let Some(st) = Station::from_id(&id) {
                     out.push(SeatAsk::View(st));
                 }
             }
+            Act::Obj => self.obj_open = !self.obj_open,
+            Act::ObjClose => self.obj_open = false,
+            Act::GunNext => {
+                let n = v.gunner.as_ref().map_or(0, |g| g.targets.len());
+                if n > 0 {
+                    self.gun.chosen = (self.gun.chosen.min(n - 1) + 1) % n;
+                }
+            }
+            Act::GunPick(i) => self.gun.chosen = i,
+            Act::Decoy => out.push(cmd(Command::Decoy)),
             Act::Mode(auto) => out.push(SeatAsk::Mode(auto)),
-            // Engineering's and the captain's damage control are not simulated in the drill: drawn unavailable.
-            Act::Preset(_)
-            | Act::Prio(_)
-            | Act::GLock(_)
-            | Act::Scram
-            | Act::RxMode
-            | Act::CMode
-            | Act::OrderRepair => {}
+            Act::Preset(id) => {
+                if let Some(i) = data.power.presets().iter().position(|p| *p == id) {
+                    out.push(cmd(Command::Power(PowerCmd::Preset(i as u8))));
+                }
+            }
+            Act::Prio(gid) => {
+                if let Some(g) = data.power.file.groups.iter().position(|g| g.id == gid) {
+                    out.push(cmd(Command::Power(PowerCmd::Prio(g as u8))));
+                }
+            }
+            Act::GLock(gid) => {
+                if let Some(g) = data.power.file.groups.iter().position(|g| g.id == gid) {
+                    out.push(cmd(Command::Power(PowerCmd::Lock(g as u8))));
+                }
+            }
+            // SCRAM: a tap arms it, a second within ARM_S confirms (bridge-stations 8.5).
+            Act::Scram => match self.armed_scram.take() {
+                Some(t) if v.t - t < ARM_S => out.push(cmd(Command::Power(PowerCmd::Scram))),
+                _ => self.armed_scram = Some(v.t),
+            },
+            Act::RxMode => {
+                let auto = v.eng.as_ref().is_some_and(|e| e.reactor.mode == "auto");
+                out.push(cmd(Command::Power(PowerCmd::ReactorAuto(!auto))));
+            }
+            Act::CMode => {
+                let auto = v.eng.as_ref().is_some_and(|e| e.cool.mode == "auto");
+                out.push(cmd(Command::Power(PowerCmd::CoolingAuto(!auto))));
+            }
+            // The captain's damage control is not simulated in the drill: drawn unavailable.
+            Act::OrderRepair => {}
         }
     }
 
@@ -600,8 +1005,9 @@ impl Seat {
         }
     }
 
-    fn drag_to(&mut self, p: Pos2, s: f32, fl: &sc_core::combat::data::FlightBlock) {
+    fn drag_to(&mut self, p: Pos2, s: f32, data: &DrillData) {
         use console::kit::Drag;
+        let fl = &data.tern_flight;
         let Some(d) = self.drag.as_mut() else { return };
         let r = d.track;
         let ky = f64::from((r.max.y - p.y) / r.height().max(1e-3));
@@ -656,8 +1062,35 @@ impl Seat {
                     el: (d.cam0.1 + f64::from(dy / r.height().max(1.0)) * 120.0).clamp(-80.0, 80.0),
                 };
             }
-            // Engineering's faders and levers: no power grid in the drill (drawn unavailable, with no hits).
-            Drag::Fader(_) | Drag::Lever(_) => {}
+            // The sight: a drag across its width turns the barrel through the sight's 30 degrees.
+            Drag::GunAim => {
+                self.gun.yaw = console::wrap180(d.cam0.0 + f64::from(dx / r.width().max(1.0)) * 30.0);
+                self.gun.pitch = (d.cam0.1 - f64::from(dy / r.height().max(1.0)) * 15.4).clamp(-10.0, 80.0);
+            }
+            // A fader: the track runs from 0 to the group's highest setpoint, in 5 % steps; the server answers with
+            // its solve there, and the release sets it (the mockup's `dragTo` and pointerup).
+            Drag::Fader(gid) => {
+                if let Some(g) = data.power.file.groups.iter().position(|g| &g.id == gid) {
+                    let max = data.power.group_max(g);
+                    self.fader = Some((g, ((ky * max * 20.0).round() / 20.0).clamp(0.0, max)));
+                }
+            }
+            // A lever on the loop takes it by hand (reactor-cooling design 5), in 5 % steps.
+            Drag::Lever(key) => {
+                if let Some(k) = combat::LEVERS.iter().position(|l| l == key) {
+                    let c = &data.power.file.coolant;
+                    let ids = match k {
+                        0 => Some(&c.pumps),
+                        1 => Some(&c.radiator_pumps),
+                        _ => None,
+                    };
+                    let max = ids
+                        .and_then(|ids| ids.first())
+                        .and_then(|id| data.power.load(id))
+                        .map_or(1.0, |i| data.power.loads[i].setpoint_max);
+                    self.lever = Some((k as u8, ((ky * max * 20.0).round() / 20.0).clamp(0.0, max)));
+                }
+            }
         }
     }
 
@@ -703,6 +1136,7 @@ impl Seat {
                                 }
                                 Drag::FeedView => (self.feed_cam.yaw, self.feed_cam.el),
                                 Drag::ShieldCam => (self.shield_cam.yaw, self.shield_cam.el),
+                                Drag::GunAim => (self.gun.yaw, self.gun.pitch),
                                 _ => (0.0, 0.0),
                             };
                             let v0 = match &what {
@@ -712,17 +1146,25 @@ impl Seat {
                                 _ => 0.0,
                             };
                             let side = if p.x < region.rect.center().x { -1.0 } else { 1.0 };
-                            let immediate = matches!(what, Drag::Throttle | Drag::Strafe | Drag::Joy | Drag::Flip);
+                            let immediate = matches!(
+                                what,
+                                Drag::Throttle
+                                    | Drag::Strafe
+                                    | Drag::Joy
+                                    | Drag::Flip
+                                    | Drag::Fader(_)
+                                    | Drag::Lever(_)
+                            );
                             self.drag =
                                 Some(Dragging { what, p0: p, track: region.track, cam0, v0, side, moved: false });
                             if immediate {
-                                self.drag_to(p, s, fl);
+                                self.drag_to(p, s, data);
                             }
                         }
                         None => {}
                     }
                 }
-                PointerEv::Move(p) => self.drag_to(p, s, fl),
+                PointerEv::Move(p) => self.drag_to(p, s, data),
                 PointerEv::Release(p) => {
                     if let Some(d) = self.drag.take() {
                         match d.what {
@@ -731,6 +1173,13 @@ impl Seat {
                                 self.stick_drag[1] = 0.0;
                             }
                             Drag::Flip => self.stick_drag[2] = 0.0,
+                            Drag::Fader(_) => {
+                                if let Some((g, sp)) = self.fader.take() {
+                                    out.push(SeatAsk::Command(Command::Power(PowerCmd::Group(g as u8, sp))));
+                                }
+                                self.fader_sent = None;
+                            }
+                            Drag::Lever(_) => self.lever = None,
                             // A thumbwheel tapped, not turned: its top half turns it up a degree, its bottom down.
                             Drag::Wheel(k) if !d.moved => {
                                 self.step_wheel(k, if p.y < d.track.center().y { 1.0 } else { -1.0 })
@@ -769,14 +1218,83 @@ impl Seat {
                         }
                     }
                     "ping" => out.push(SeatAsk::Command(Command::Ping)),
+                    "lfire:port" => out.push(SeatAsk::Command(Command::LaserFire(0))),
+                    "lfire:stbd" => out.push(SeatAsk::Command(Command::LaserFire(1))),
                     "redalert" => out.push(SeatAsk::Command(Command::Alert(!v.red_alert))),
-                    _ => {}
+                    // Engineering's breakers: a group's feed, or a switch on the one-line diagram.
+                    k => {
+                        let f = &data.power.file;
+                        let cmd = if let Some(gid) = k.strip_prefix("gbrk:") {
+                            f.groups.iter().position(|g| g.id == gid).map(|g| PowerCmd::Breaker(g as u8))
+                        } else if let Some(id) = k.strip_prefix("brk:") {
+                            f.generators
+                                .iter()
+                                .position(|g| g.id == id)
+                                .or_else(|| f.ties.iter().position(|t| t.id == id).map(|t| t + f.generators.len()))
+                                .map(|k| PowerCmd::Switch(k as u8))
+                        } else {
+                            None
+                        };
+                        if let Some(c) = cmd {
+                            out.push(SeatAsk::Command(Command::Power(c)));
+                        }
+                    }
                 }
+            }
+        }
+        // A fader in hand asks the server for its solve at each new setpoint; a lever is sent as it moves.
+        if self.fader.is_some() && self.fader != self.fader_sent {
+            self.fader_sent = self.fader;
+            let ask = self.fader.map(|(g, sp)| (g as u8, sp));
+            out.push(SeatAsk::Command(Command::Power(PowerCmd::Preview(ask))));
+        }
+        if self.lever.is_some() && self.lever != self.lever_sent {
+            self.lever_sent = self.lever;
+            if let Some((k, v)) = self.lever {
+                out.push(SeatAsk::Command(Command::Power(PowerCmd::Lever(k, v))));
             }
         }
         let held = &ctx_input.held;
         let pressed = &ctx_input.pressed;
         match station {
+            // A laser bank: G held fires it, as Tactical's G fires a tube.
+            Station::LaserPort | Station::LaserStbd => {
+                let key = if station == Station::LaserPort { "lfire:port" } else { "lfire:stbd" };
+                if pressed.contains(&keys::G) && self.hold.is_none() {
+                    self.hold = Some((key.into(), now, true));
+                }
+                if !held.contains(&keys::G) && self.hold.as_ref().is_some_and(|(_, _, key)| *key) {
+                    self.hold = None;
+                }
+            }
+            // The gunner (the mockup's keys): Tab steps the target, Space is the trigger, the arrows nudge the barrel
+            // a degree. The barrel is sent while it moves, and the trigger when it changes.
+            Station::Gunner => {
+                let shift = held.contains(&keys::LSHIFT) || held.contains(&keys::RSHIFT);
+                if pressed.contains(&keys::TAB) && !shift {
+                    self.act(Act::GunNext, v, tern, hound, data, &mut out);
+                }
+                self.gun.trigger = held.contains(&keys::SPACE);
+                for (k, dy, dp) in
+                    [(keys::LEFT, -1.0, 0.0), (keys::RIGHT, 1.0, 0.0), (keys::UP, 0.0, 1.0), (keys::DOWN, 0.0, -1.0)]
+                {
+                    if pressed.contains(&k) {
+                        self.gun.yaw = console::wrap180(self.gun.yaw + dy);
+                        self.gun.pitch = (self.gun.pitch + dp).clamp(-10.0, 80.0);
+                    }
+                }
+                let aim = (self.gun.yaw, self.gun.pitch);
+                if self.gun.sent != Some(aim) && now - self.gun.last_send >= AIM_SEND_S {
+                    self.gun.sent = Some(aim);
+                    self.gun.last_send = now;
+                    // The core's yaw is to port of the bow; the console's to starboard.
+                    out.push(SeatAsk::Command(Command::GunnerAim { yaw_deg: -aim.0, pitch_deg: aim.1 }));
+                }
+                if self.gun.trigger != self.gun.sent_trigger {
+                    self.gun.sent_trigger = self.gun.trigger;
+                    out.push(SeatAsk::Command(Command::GunnerTrigger(self.gun.trigger)));
+                }
+            }
             Station::Helm => {
                 if pressed.contains(&keys::W) {
                     self.speed_set = (self.speed_set + 10.0).min(fl.speed_max_mps);
@@ -845,6 +1363,37 @@ impl Seat {
         }
         out
     }
+}
+
+/// The OBJECTIVES panel's rows (objectives-tab 2), each measured by the mission's rule from the snapshot.
+fn objectives_view(snap: &Snapshot, tern: &ShipSnap, hound: &ShipSnap, data: &DrillData) -> Option<ObjectivesView> {
+    let m = &data.mission;
+    let enemy_hull = if hound.alive { hound.hull / data.enemy.combat.hull_mj.max(1e-9) } else { 0.0 };
+    let tern_hull = tern.hull / data.tern_combat.hull_mj.max(1e-9);
+    let facts = ObjectiveFacts { enemy_hull, tern_hull, fighters_down: snap.stats.fighters_down };
+    let rows = m
+        .objectives
+        .iter()
+        .map(|o| {
+            let (state, k) = o.measure(&facts);
+            let number = match o.kind {
+                Some(ObjectiveKind::Destroy) => Some(format!("{:.0}%", enemy_hull.clamp(0.0, 1.0) * 100.0)),
+                Some(ObjectiveKind::Survive) => Some(format!("{:.0}%", tern_hull.clamp(0.0, 1.0) * 100.0)),
+                Some(ObjectiveKind::DestroyFighters) => {
+                    let n = o.count.unwrap_or(1);
+                    Some(format!("{} / {n}", facts.fighters_down.min(n)))
+                }
+                None => None,
+            };
+            let state = match state {
+                ObjectiveState::Done => "done",
+                ObjectiveState::Failed => "failed",
+                ObjectiveState::Progress => "progress",
+            };
+            ObjectiveRow { words: o.words.clone(), state: state.into(), k, number }
+        })
+        .collect();
+    Some(ObjectivesView { title: m.title.clone(), clock_s: snap.phase_s, rows })
 }
 
 /// A pointer event on the console, in egui points.
@@ -1014,13 +1563,48 @@ mod tests {
     }
 
     #[test]
-    fn engineering_draws_unavailable_with_nothing_to_press() {
+    fn engineering_draws_the_grid_from_the_snapshot() {
         let mut b = Bench::new(Station::Engineering);
         let v = b.view(1.0);
-        assert!(v.eng.is_none(), "no power grid is simulated in the drill");
+        let e = v.eng.as_ref().expect("the drill simulates the power grid");
+        assert_eq!(e.groups.len(), b.data.power.file.groups.len(), "a fader a group");
+        assert_eq!(e.preset.as_deref(), Some("cruise"), "the ship starts at cruise");
+        assert!(e.rx_out_mw > 10.0 && e.reactor.up, "the reactor carries the ship: {:.1} MW", e.rx_out_mw);
+        assert!(e.air.is_none(), "the air is not simulated in the drill: AIR is drawn unavailable");
         let hits = paint(&v);
-        let live = hits.regions.iter().filter(|r| r.rect.min.y > 280.0 && r.rect.max.y < 688.0 && r.hit.is_some());
-        assert_eq!(live.count(), 0, "every engineering control is inert");
+        assert!(hits.regions.iter().any(|r| r.hit == Some(Hit::Act(Act::Preset("combat".into())))), "COMBAT is live");
+    }
+
+    #[test]
+    fn engineering_presses_send_the_grid_commands() {
+        let mut b = Bench::new(Station::Engineering);
+        let pd = &b.data.power;
+        let combat = pd.presets().iter().position(|p| *p == "combat").unwrap() as u8;
+        let shields = pd.file.groups.iter().position(|g| g.id == "shields").unwrap() as u8;
+        assert_eq!(
+            b.press(Hit::Act(Act::Preset("combat".into())), 1.0),
+            vec![Command::Power(PowerCmd::Preset(combat))]
+        );
+        assert_eq!(b.press(Hit::Act(Act::Prio("shields".into())), 1.1), vec![Command::Power(PowerCmd::Prio(shields))]);
+        assert_eq!(b.press(Hit::Act(Act::RxMode), 1.2), vec![Command::Power(PowerCmd::ReactorAuto(false))]);
+        assert!(b.press(Hit::Act(Act::Scram), 1.3).is_empty(), "the first tap on SCRAM only arms it");
+        assert!(b.view(1.4).eng.unwrap().armed_scram, "armed: the button reads CONFIRM");
+        assert_eq!(b.press(Hit::Act(Act::Scram), 1.5), vec![Command::Power(PowerCmd::Scram)], "the second confirms");
+    }
+
+    #[test]
+    fn dragging_a_fader_asks_for_its_ghost_and_letting_go_sets_it() {
+        let mut b = Bench::new(Station::Engineering);
+        let hits = paint(&b.view(1.0));
+        let fader = hits.regions.iter().find(|r| r.hit == Some(Hit::Drag(Drag::Fader("drive".into())))).unwrap();
+        let g = b.data.power.file.groups.iter().position(|g| g.id == "drive").unwrap() as u8;
+        let mid = fader.track.center();
+        let sent = b.input(vec![PointerEv::Press(mid)], 1.0);
+        let Some(Command::Power(PowerCmd::Preview(Some((pg, sp))))) = sent.first().copied() else { panic!("{sent:?}") };
+        assert_eq!(pg, g);
+        assert!((sp - b.data.power.group_max(usize::from(g)) / 2.0).abs() < 0.051, "half the travel: {sp}");
+        let sent = b.input(vec![PointerEv::Release(mid)], 1.1);
+        assert_eq!(sent, vec![Command::Power(PowerCmd::Group(g, sp))], "letting go sets the fader where the ghost was");
     }
 
     #[test]
@@ -1060,6 +1644,68 @@ mod tests {
         assert!(!touched, "the switch is the title band's, not the console's");
         let (_, touched) = press(Hit::Act(Act::Target(TRACK.into())));
         assert!(touched, "a target card is a hand on the console: on AUTO it takes the station MANUAL");
+    }
+
+    #[test]
+    fn a_full_hold_on_a_bearing_banks_fire_fires_that_bank() {
+        let mut b = Bench::new(Station::LaserStbd);
+        b.snap.ships[0].lasers[1] = sc_net::msg::LaserSnap { charge: 1.0, bearing: true, hit_chance: 0.7 };
+        let p = centre(&paint(&b.view(1.0)), &Hit::Hold("lfire:stbd".into()));
+        assert!(b.input(vec![PointerEv::Press(p)], 1.0).is_empty());
+        assert_eq!(b.input(vec![], 1.0 + HOLD_S), vec![Command::LaserFire(1)], "the starboard bank is bank 1");
+    }
+
+    #[test]
+    fn a_bank_with_nothing_in_its_arc_has_no_fire_to_hold() {
+        let mut b = Bench::new(Station::LaserPort);
+        b.snap.ships[0].lasers[0] = sc_net::msg::LaserSnap { charge: 1.0, bearing: false, hit_chance: 0.0 };
+        let hits = paint(&b.view(1.0));
+        assert!(!hits.regions.iter().any(|r| r.hit == Some(Hit::Hold("lfire:port".into()))), "FIRE is inert");
+    }
+
+    #[test]
+    fn decoy_throws_one_and_objectives_opens_over_the_panels() {
+        let mut b = Bench::new(Station::Tactical);
+        assert_eq!(b.press(Hit::Act(Act::Decoy), 1.0), vec![Command::Decoy]);
+        b.press(Hit::Act(Act::Obj), 1.1);
+        let v = b.view(1.2);
+        assert!(v.objectives_open);
+        let rows = &v.objectives.as_ref().unwrap().rows;
+        assert_eq!(rows.len(), 3, "the drill's three objectives");
+        assert_eq!(rows[2].number.as_deref(), Some("0 / 2"), "no fighter down yet");
+        let hits = paint(&v);
+        assert!(!hits.regions.iter().any(|r| r.hit == Some(Hit::Act(Act::Decoy))), "the panels are under it");
+        b.press(Hit::Act(Act::ObjClose), 1.3);
+        assert!(!b.view(1.4).objectives_open, "the station's own chip goes back");
+    }
+
+    #[test]
+    fn dragging_the_sight_to_the_right_sends_the_barrel_to_starboard() {
+        let mut b = Bench::new(Station::Gunner);
+        let hits = paint(&b.view(1.0));
+        let sight = hits.regions.iter().find(|r| r.hit == Some(Hit::Drag(Drag::GunAim))).unwrap();
+        let (p0, p1) = (sight.rect.center(), sight.rect.center() + egui::vec2(sight.rect.width() / 3.0, 0.0));
+        let sent = b.input(vec![PointerEv::Press(p0), PointerEv::Move(p1), PointerEv::Release(p1)], 1.0);
+        let aim = sent.iter().find_map(|c| match c {
+            Command::GunnerAim { yaw_deg, pitch_deg } => Some((*yaw_deg, *pitch_deg)),
+            _ => None,
+        });
+        let (yaw, pitch) = aim.expect("the barrel is sent");
+        assert!((yaw + 10.0).abs() < 1e-6, "a third of the sight is 10 degrees to starboard, port-positive: {yaw}");
+        assert_eq!(pitch, 20.0, "level drags keep the pitch");
+    }
+
+    #[test]
+    fn a_fire_in_the_snapshot_burns_on_the_captains_plan_and_the_status_strip() {
+        let mut b = Bench::new(Station::Captain);
+        let eng = b.data.tern_layout.room("engineering").expect("the Tern has an engineering room") as u8;
+        b.snap.damage.fires = vec![eng];
+        let v = b.view(1.0);
+        let rooms = &v.captain.as_ref().unwrap().rooms;
+        assert!(rooms.iter().any(|r| r.id == "engineering" && r.word == "FIRE"), "{rooms:?}");
+        assert_eq!(v.fires, 1);
+        let teams = b.data.damage.teams.count * b.data.damage.teams.members;
+        assert_eq!(v.captain.as_ref().unwrap().crew_at.len(), teams as usize, "the teams' members are on the plan");
     }
 
     #[test]

@@ -442,7 +442,7 @@ pub fn run(root: &Path, ship: &str) -> Result<String, String> {
     for c in comps.iter_mut() {
         c.floor_m = floor_middle(&layout, &c.id);
     }
-    // The crew figures (crew-npcs 7): one a department, their colours unlit albedo for the probes to light
+    // The crew figures (crew-npcs 7, crew-uniforms 3): one a division, their colours unlit albedo for the probes to light
     // (light-baking 16), feet at the origin.
     let company: sc_core::crew::CompanyData = sc_core::data::parse(
         "data/crew/company.json",
@@ -450,14 +450,8 @@ pub fn run(root: &Path, ship: &str) -> Result<String, String> {
     )
     .map_err(|e| e.to_string())?;
     // The player's own figure on the map (ship-plan-view 5): white and amber, set apart from every department.
-    let player = sc_core::crew::Department {
-        id: "player".into(),
-        name: "Player".into(),
-        count: 0,
-        colour_srgb: [1.0, 0.72, 0.3],
-        rooms: Vec::new(),
-    };
-    for d in company.departments.iter().chain(std::iter::once(&player)) {
+    let player = sc_core::crew::Division { id: "player".into(), name: "Player".into(), colour_srgb: [1.0, 0.72, 0.3] };
+    for d in company.divisions.iter().chain(std::iter::once(&player)) {
         let tunic = sc_core::exterior::linear(d.colour_srgb);
         let ins: Vec<DeckVertexIn> = crate::figure::build(tunic)
             .iter()

@@ -47,7 +47,7 @@ fn check_data(root: &Path) -> Result<usize, String> {
     let drill = drill.into_iter().collect::<Result<Vec<String>, String>>()?;
     let missions = ["data/missions/drill-hound.json"];
     for m in missions {
-        let texts: [&str; 6] = std::array::from_fn(|i| drill[i].as_str());
+        let texts: [&str; sc_core::combat::data::DRILL_FILE_COUNT] = std::array::from_fn(|i| drill[i].as_str());
         sc_core::combat::data::DrillData::parse(texts, m, &read(m)?).map_err(|e| e.to_string())?;
     }
     // The repair files: the rules, the kit's rates, the Tern's jobs, and each game the jobs name (repair-minigames 8).

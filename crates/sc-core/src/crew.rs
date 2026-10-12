@@ -8,6 +8,18 @@ use crate::data::{Checks, Validate};
 use crate::names::NameData;
 use serde::Deserialize;
 
+/// A division: what a crew member wears (openspec/changes/crew-uniforms 1).
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct Division {
+    /// Its id.
+    pub id: String,
+    /// Its name.
+    pub name: String,
+    /// The tunic and the map marker, sRGB 0-1.
+    pub colour_srgb: [f64; 3],
+}
+
 /// A department.
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -18,8 +30,8 @@ pub struct Department {
     pub name: String,
     /// Bots in it with one player aboard.
     pub count: u32,
-    /// The tunic and the map marker, sRGB 0-1.
-    pub colour_srgb: [f64; 3],
+    /// Its division's id: what its people wear.
+    pub division: String,
     /// The layout compartments it works in.
     pub rooms: Vec<String>,
 }
@@ -34,6 +46,8 @@ pub struct CompanyData {
     pub berths: u32,
     /// How long a bot stays at a place, seconds: least and most.
     pub stay_s: [f64; 2],
+    /// The divisions, each a tunic colour.
+    pub divisions: Vec<Division>,
     /// The departments, in the order bots leave as players join (the last first).
     pub departments: Vec<Department>,
 }
@@ -46,10 +60,16 @@ impl Validate for CompanyData {
         c.number("stay_s[1]", self.stay_s[1], self.stay_s[0], 600.0);
         let total: u32 = self.departments.iter().map(|d| d.count).sum();
         c.count("departments (bots with one player)", i64::from(total), 0, i64::from(self.berths) - 1);
+        c.count("divisions", self.divisions.len() as i64, 1, 8);
+        for (i, d) in self.divisions.iter().enumerate() {
+            for (k, v) in d.colour_srgb.iter().enumerate() {
+                c.number(&format!("divisions[{i}].colour_srgb[{k}]"), *v, 0.0, 1.0);
+            }
+        }
         for (i, d) in self.departments.iter().enumerate() {
             c.count(&format!("departments[{i}].rooms"), d.rooms.len() as i64, 1, 64);
-            for (k, v) in d.colour_srgb.iter().enumerate() {
-                c.number(&format!("departments[{i}].colour_srgb[{k}]"), *v, 0.0, 1.0);
+            if self.division(&d.division).is_none() {
+                c.equals(&format!("departments[{i}].division"), &d.division, "a division's id");
             }
         }
     }
@@ -67,6 +87,17 @@ pub struct CrewMember {
 }
 
 impl CompanyData {
+    /// The division with id `id`.
+    pub fn division(&self, id: &str) -> Option<&Division> {
+        self.divisions.iter().find(|d| d.id == id)
+    }
+
+    /// The index of department `dep`'s division (checked at load, so always one).
+    pub fn division_of(&self, dep: usize) -> usize {
+        let id = self.departments.get(dep).map_or("", |d| d.division.as_str());
+        self.divisions.iter().position(|d| d.id == id).unwrap_or(0)
+    }
+
     /// The bot crew for `players` players in the session seeded `session_seed`: the table's counts, less one bot for
     /// each player past the first, taken from the last department first (crew-npcs 1). Slots start after the
     /// players' berths, so a bot's name never depends on how many bots there are.
@@ -93,6 +124,24 @@ impl CompanyData {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_department_and_every_station_wears_a_division_the_company_has() {
+        let company: CompanyData =
+            crate::data::parse("data/crew/company.json", include_str!("../../../data/crew/company.json")).unwrap();
+        let data = crate::combat::data::DrillData::shipped();
+        for s in crate::combat::Station::ALL {
+            let d = data.division_of(s);
+            assert!(company.division(d).is_some(), "{} wears {d}, which company.json does not have", s.id());
+        }
+        for (i, dep) in company.departments.iter().enumerate() {
+            assert_eq!(company.divisions[company.division_of(i)].id, dep.division);
+        }
+        let colour = |s| company.division(data.division_of(s)).unwrap().colour_srgb;
+        use crate::combat::Station::*;
+        assert_ne!(colour(Helm), colour(Science), "the owner's gold and blue");
+        assert_ne!(colour(Science), colour(Engineering), "blue and red");
+    }
     use crate::data::parse;
 
     fn company() -> CompanyData {
