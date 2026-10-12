@@ -107,6 +107,9 @@ schematic in full screen. They can toggle between 2d and 3d view. 2d is a simpli
   are drawn each in its own lane across their bundle, 0.7 m apart (closer in a bundle wider than 5 m, each narrowed to
   fit its lane), fanning out of their box and rejoining at each corner. Where a hit cut or damaged one, its mark sits
   on its own lane. The board in 2D needs none: its traces are placed apart by hand (3c).
+- **The run under the pointer, lit** (the owner: "hilight line as I hover over them"): in both views the run or feeder
+  under the pointer (on a phone, the one last tapped) is drawn brighter, on top, with a white glow its whole length, so
+  it can be followed through a bundle, across a deck and between decks.
 - **One colour for electricity** (the owner: "black lines dont make sense to me at all, it should be lit up", "why not
   just use all yellow or all green? its the same concept, electric flowing"): every run, feeder, closed switch, box
   that is on and system with its power is yellow, wider the more a run carries. Its dashes run the way the power

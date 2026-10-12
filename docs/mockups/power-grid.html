@@ -5441,15 +5441,15 @@ const overlay = { transparent: true, depthWrite: false, side: THREE.DoubleSide }
 const edgeMat = new THREE.ShaderMaterial({
   ...overlay,
   uniforms: { uTime: { value: 0 } },
-  vertexShader: "attribute float aDist; attribute vec3 aCol; attribute float aState; attribute float aDir; attribute float aRate;\n" +
-    "varying float vDist; varying vec3 vCol; varying float vState; varying float vDir; varying float vRate;\n" +
-    "void main() { vDist = aDist; vCol = aCol; vState = aState; vDir = aDir; vRate = aRate; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
-  fragmentShader: "uniform float uTime; varying float vDist; varying vec3 vCol; varying float vState; varying float vDir; varying float vRate;\n" +
+  vertexShader: "attribute float aDist; attribute vec3 aCol; attribute float aState; attribute float aDir; attribute float aRate; attribute float aHi;\n" +
+    "varying float vDist; varying vec3 vCol; varying float vState; varying float vDir; varying float vRate; varying float vHi;\n" +
+    "void main() { vDist = aDist; vCol = aCol; vState = aState; vDir = aDir; vRate = aRate; vHi = aHi; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+  fragmentShader: "uniform float uTime; varying float vDist; varying vec3 vCol; varying float vState; varying float vDir; varying float vRate; varying float vHi;\n" +
     "void main() { vec3 c = vCol;\n" +
     "  if (vState < 0.5) { if (vRate > 0.01) { float ph = fract((vDist - uTime * 3.0 * vDir) / 2.2); c = ph < 0.6 ? c : c * 0.5; } }\n" +
     "  else if (vState < 1.5) { if (fract(vDist / 1.2) > 0.5) discard; }\n" +
     "  else if (vState > 2.5) { if (fract(vDist / 2.0) > 0.35) discard; }\n" +
-    "  gl_FragColor = vec4(c, 1.0); }",
+    "  gl_FragColor = vec4(mix(c, vec3(1.0), 0.4 * vHi), 1.0); }",
 });
 // Markers (boxes, loads, the reactor, the battery, cuts): one instanced quad turned to face the camera, drawn as a
 // square, a circle or a diamond, filled to a level (a load's supply), hatched above it when short, hollow when
@@ -5474,6 +5474,51 @@ const markMat = new THREE.ShaderMaterial({
     "  gl_FragColor = vec4(c, 1.0); }",
 });
 
+/** A run's ribbon along a path of ship points, for the decks shown: two crossed strips a segment (one widened across,
+ *  one widened up), segment i wOf(i) wide. { V: [x, y, z, distance along], segs: the segments drawn }. */
+function ribbon(pts, wOf) {
+  const V = [], segs = [], up = new THREE.Vector3(0, 1, 0);
+  let dist = 0;
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const a = new THREE.Vector3(...P3(pts[i])), b = new THREE.Vector3(...P3(pts[i + 1]));
+    const d = b.clone().sub(a), len = d.length();
+    if (len < 0.01) continue;
+    if (!(shownPt(pts[i]) && shownPt(pts[i + 1]))) { dist += len; continue; }
+    d.divideScalar(len);
+    const vertical = Math.abs(d.y) > 0.7;
+    const n1 = vertical ? new THREE.Vector3(1, 0, 0) : d.clone().cross(up).normalize();
+    const n2 = vertical ? new THREE.Vector3(0, 0, 1) : up.clone();
+    for (const n of [n1, n2]) {
+      const o = n.clone().multiplyScalar(wOf(i) / 2);
+      const q = [[a.clone().add(o), dist], [b.clone().add(o), dist + len], [b.clone().sub(o), dist + len], [a.clone().add(o), dist], [b.clone().sub(o), dist + len], [a.clone().sub(o), dist]];
+      for (const [p, dd] of q) V.push([p.x, p.y, p.z, dd]);
+    }
+    segs.push([pts[i], pts[i + 1]]);
+    dist += len;
+  }
+  return { V, segs };
+}
+// The run under the pointer, lit (power-routing 3a; the owner: "hilight line as I hover over them"): its ribbon
+// brightened, and a white glow its whole length under it.
+let hover3 = null, halo = null;
+const haloMat = new THREE.MeshBasicMaterial({ color: 0xffffff, ...overlay, opacity: 0.38 });
+function setHover3(id) {
+  if (!PL || id === hover3) return;
+  const hi = PL.edges.geometry.attributes.aHi;
+  const mark = (rid, v) => { const r = PL.edgeRanges[rid]; if (r) for (let j = r[0]; j < r[0] + r[1]; j++) hi.setX(j, v); };
+  if (hover3) mark(hover3, 0);
+  if (halo) { scene.remove(halo); halo.geometry.dispose(); halo = null; }
+  hover3 = id;
+  if (id && lanes()[id]) {
+    mark(id, 1);
+    const Ld = lanes()[id], rb = ribbon(Ld.pts, (i) => Ld.ws[i] + 0.6), g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(rb.V.flatMap((v) => [v[0], v[1], v[2]]), 3));
+    halo = new THREE.Mesh(g, haloMat);
+    halo.renderOrder = 1.5;
+    scene.add(halo);
+  }
+  hi.needsUpdate = true;
+}
 /** Everything the 3D view draws, for the decks shown: the floors (one mesh), their outlines and the hull at each deck
  *  (one line set), every run and feeder (one ribbon mesh) and every marker (one instanced mesh). */
 let PL = null;
@@ -5481,6 +5526,8 @@ const shownDeck = (k) => deckIso == null || k === deckIso;
 const shownPt = (p) => shownDeck(deckOfY(p[1]));
 function buildPlan() {
   if (PL) for (const m of [PL.floors, PL.outlines, PL.edges, PL.marks]) { scene.remove(m); m.geometry.dispose(); if (m.material !== edgeMat && m.material !== markMat) m.material.dispose(); }
+  if (halo) { scene.remove(halo); halo.geometry.dispose(); halo = null; }
+  hover3 = null;
   const roomRanges = [];
   const floors = (() => {
     const pos = [];
@@ -5538,29 +5585,11 @@ function buildPlan() {
   const RIBBONS = Object.values(lanes());
   const edges = (() => {
     const V = [];
-    const up = new THREE.Vector3(0, 1, 0);
     RIBBONS.forEach((r) => {
-      const start = V.length, segs = [];
-      let dist = 0;
-      for (let i = 0; i + 1 < r.pts.length; i++) {
-        const a = new THREE.Vector3(...P3(r.pts[i])), b = new THREE.Vector3(...P3(r.pts[i + 1]));
-        const d = b.clone().sub(a), len = d.length();
-        if (len < 0.01) continue;
-        if (!(shownPt(r.pts[i]) && shownPt(r.pts[i + 1]))) { dist += len; continue; }
-        d.divideScalar(len);
-        const vertical = Math.abs(d.y) > 0.7;
-        const n1 = vertical ? new THREE.Vector3(1, 0, 0) : d.clone().cross(up).normalize();
-        const n2 = vertical ? new THREE.Vector3(0, 0, 1) : up.clone();
-        for (const n of [n1, n2]) {
-          const o = n.clone().multiplyScalar(r.ws[i] / 2);
-          const q = [[a.clone().add(o), dist], [b.clone().add(o), dist + len], [b.clone().sub(o), dist + len], [a.clone().add(o), dist], [b.clone().sub(o), dist + len], [a.clone().sub(o), dist]];
-          for (const [p, dd] of q) V.push([p.x, p.y, p.z, dd]);
-        }
-        segs.push([r.pts[i], r.pts[i + 1]]);
-        dist += len;
-      }
+      const start = V.length, rb = ribbon(r.pts, (i) => r.ws[i]);
+      for (const v of rb.V) V.push(v);
       edgeRanges[r.id] = [start, V.length - start];
-      edgeSegs[r.id] = segs;
+      edgeSegs[r.id] = rb.segs;
     });
     const n = V.length, g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.Float32BufferAttribute(V.flatMap((v) => [v[0], v[1], v[2]]), 3));
@@ -5569,6 +5598,7 @@ function buildPlan() {
     g.setAttribute("aState", new THREE.Float32BufferAttribute(new Float32Array(n), 1));
     g.setAttribute("aDir", new THREE.Float32BufferAttribute(new Float32Array(n), 1));
     g.setAttribute("aRate", new THREE.Float32BufferAttribute(new Float32Array(n), 1));
+    g.setAttribute("aHi", new THREE.Float32BufferAttribute(new Float32Array(n), 1));
     const m = new THREE.Mesh(g, edgeMat);
     m.renderOrder = 2;
     scene.add(m);
@@ -5729,7 +5759,7 @@ function roomAt3D(cx, cy) {
   return i < 0 ? null : L.compartments[i].id;
 }
 canvas.addEventListener("pointermove", (e) => { if (e.pointerType === "mouse" && e.buttons === 0) pick(e.clientX, e.clientY, false); });
-canvas.addEventListener("pointerleave", (e) => { if (e.pointerType === "mouse") hideTip(); });
+canvas.addEventListener("pointerleave", (e) => { if (e.pointerType === "mouse") { hideTip(); setHover3(null); } });
 
 const TAG_SIDE = { fsb_p: "l", bx_pod_dorsal: "l" };
 // The view's words: each deck's letter (tap it to show that deck alone, again for every deck), the switchboards' and
@@ -5833,7 +5863,8 @@ function pick(cx, cy, tap) {
   };
   if (!best) near(EDGE_IDS, "edge");
   if (!best) near([...FEED_LOADS.map((i) => "f:" + LOADS[i].id), ...ALT_LOADS.map((i) => "a:" + LOADS[i].id)], "feeder");
-  if (!best) { hideTip(); return; }
+  if (!best) { hideTip(); setHover3(null); return; }
+  setHover3(best.kind === "edge" || best.kind === "feeder" ? best.id : null);
   let note = "";
   const feedOf = (best.kind === "load" || best.kind === "feeder") && best.i != null && LOADS[best.i].alt_node ? LOADS[best.i].id : null;
   const switchable = best.kind === "node" || (best.kind === "edge" && isRun(best.id)) || feedOf;
@@ -5956,6 +5987,8 @@ function pad(p, q, col) {
   return `<path d="${pathD(pts)}Z" fill="${col}"/>`;
 }
 let phase = {};
+/** The trace under the pointer (on a phone, the one last tapped), lit (power-routing 3a). */
+let hover2 = null;
 /** How fast every trace's dashes run, points a second, whatever it carries (power-routing 3a). */
 const FLOW_PX_S = 36;
 /** The point at a share of a polyline's length, and the segment it is on. */
@@ -5996,16 +6029,18 @@ function drawTrace(id, dt) {
   const live = e.state === "live", open = onBottom(e);
   const col = e.state === "severed" ? C.danger : open ? PCB.bottom : e.state === "dead" ? PCB.copperOff : C.power;
   const tip = `${e.name}: ${f1(Math.abs(e.mw))} of ${f1(e.rated)} MW, ${e.state}${e.spare ? " (a spare route)" : ""}${e.health < 1 && e.state !== "severed" ? `, damaged: at most ${f1(e.cap)} MW` : ""}${e.run ? `; tap to ${e.closed ? "open" : "close"} it` : ""}`;
-  let s = `<g${tipA(tip)}${e.run ? actA("run:" + id) + ' class="tap"' : ""}>`;
+  const hi = id === hover2;
+  let s = `<g data-edge="${id}"${tipA(tip)}${e.run ? actA("run:" + id) + ' class="tap"' : ""}>`;
   s += `<path d="${pathD(path)}" stroke="transparent" stroke-width="14" fill="none"/>`;
-  if (open) s += `<path d="${pathD(path)}" stroke="${col}" stroke-width="${w}" fill="none" stroke-dasharray="6 5" stroke-linejoin="round" opacity="0.8"/>`;
+  if (hi) s += `<path d="${pathD(path)}" stroke="#ffffff" stroke-opacity="0.42" stroke-width="${w + 10}" fill="none" stroke-linejoin="round" stroke-linecap="round"/>`;
+  if (open) s += `<path d="${pathD(path)}" stroke="${hi ? mixCol(col, "#ffffff", 0.35) : col}" stroke-width="${w + (hi ? 0.8 : 0)}" fill="none" stroke-dasharray="6 5" stroke-linejoin="round" opacity="${hi ? 1 : 0.8}"/>`;
   else for (const pc of pieces(id)) {
     if (pc.bottom) {
       s += `<path d="${pathD(pc.pts)}" stroke="${col}" stroke-width="1.6" fill="none" stroke-dasharray="2 3" opacity="0.7"/>`;
       for (const v of pc.vias) s += via(v[0], v[1], col);
       continue;
     }
-    s += `<path d="${pathD(pc.pts)}" stroke="${col}" stroke-width="${w}" fill="none" stroke-linejoin="round" stroke-linecap="round" opacity="${live ? 0.55 : 0.9}"/>`;
+    s += `<path d="${pathD(pc.pts)}" stroke="${hi ? mixCol(col, "#ffffff", 0.35) : col}" stroke-width="${w}" fill="none" stroke-linejoin="round" stroke-linecap="round" opacity="${live && !hi ? 0.55 : 0.95}"/>`;
     if (live && Math.abs(e.mw) > 1e-3) {
       phase[id] = ((phase[id] || 0) + dt * FLOW_PX_S * Math.sign(e.mw)) % 2000;
       s += `<path d="${pathD(pc.pts)}" stroke="${col}" stroke-width="${w}" fill="none" stroke-dasharray="12 7" stroke-dashoffset="${(-phase[id]).toFixed(1)}" stroke-linejoin="round"/>`;
@@ -6174,6 +6209,8 @@ function drawDiagram(dt) {
   s += drawBurns();
   // The bottom layer first (the spares), then the copper on top, the heavier last so it lies over the lighter.
   const order = EDGE_IDS.filter((id) => PATH[id]).sort((a, b) => (isSpare(b) - isSpare(a)) || (edgeNow(a).rated - edgeNow(b).rated));
+  // The lit trace last, over everything it crosses.
+  if (hover2 && order.includes(hover2)) { order.splice(order.indexOf(hover2), 1); order.push(hover2); }
   for (const id of order) s += drawTrace(id, dt);
   for (const n of PW.nodes) s += drawPart(n.id);
   s += drawReactor() + drawBattery() + drawHitStars();
@@ -6221,10 +6258,12 @@ STAGE.addEventListener("pointermove", (e) => {
     ddrag.moved = true; DZ.ox = ddrag.ox + (e.clientX - ddrag.x); DZ.oy = ddrag.oy + (e.clientY - ddrag.y); applyDiagram(); hideTip(); return;
   }
   if (e.pointerType === "mouse") {
-    const t = document.elementFromPoint(e.clientX, e.clientY), el = t && t.closest && t.closest("[data-tip]");
+    const t = document.elementFromPoint(e.clientX, e.clientY), el = t && t.closest && t.closest("[data-tip]"), ed = t && t.closest && t.closest("[data-edge]");
+    hover2 = ed ? ed.dataset.edge : null;
     if (el) showTip(e.clientX, e.clientY, `<div class="d">${el.dataset.tip}</div>`); else hideTip();
   }
 });
+STAGE.addEventListener("pointerleave", (e) => { if (e.pointerType === "mouse") hover2 = null; });
 const dEnd = (e) => {
   const wasDrag = ddrag, wasPinch = dpinch;
   dptr.delete(e.pointerId);
@@ -6234,7 +6273,8 @@ const dEnd = (e) => {
   // A tap: switch what it lands on (a box or a run), and show its numbers.
   const t = document.elementFromPoint(e.clientX, e.clientY);
   if (hitArmed) { const r = t && t.closest && t.closest("[data-room]"); if (r) hitRoom(r.dataset.room, e.clientX, e.clientY); return; }
-  const a = t && t.closest && t.closest("[data-act]"), tipEl = t && t.closest && t.closest("[data-tip]");
+  const a = t && t.closest && t.closest("[data-act]"), tipEl = t && t.closest && t.closest("[data-tip]"), ed = t && t.closest && t.closest("[data-edge]");
+  hover2 = ed ? ed.dataset.edge : null;
   let note = "";
   if (a) { const [kind, id] = a.dataset.act.split(":"); if (!toggle(kind, id)) note = "<div class='d' style='color:#ff4757'>tripped: nothing switches until it resets</div>"; else { status(); drawDiagram(0); } }
   const again = document.elementFromPoint(e.clientX, e.clientY), el2 = again && again.closest && again.closest("[data-tip]");
@@ -6252,7 +6292,7 @@ function setView(v) {
   LABELS.style.display = v === "3d" ? "block" : "none";
   STAGE.style.display = v === "2d" ? "block" : "none";
   document.getElementById("legend").style.visibility = v === "3d" ? "visible" : "hidden";
-  hideTip(); bar(); layoutTop(); frameCamera(); fitDiagram(); labelsDirty = true;
+  hideTip(); setHover3(null); hover2 = null; bar(); layoutTop(); frameCamera(); fitDiagram(); labelsDirty = true;
 }
 /** The left column (landscape): the title block, the status strip under it, the legend under that. */
 function placeLegend() {
