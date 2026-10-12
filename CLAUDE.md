@@ -11,6 +11,14 @@ tool's default, this file wins. They were adapted from the owner's other project
 (Pale-Blue-Dot, the Undercity/Brushfire `fps-game-demo` and `star-crew-64`), and every rule
 taken from there says so. See `docs/analysis/` for what was learned from each.
 
+> **THE LAW: one game, played on foot** (owner, 2026-10-12: "this is a requuired law, imprinted
+> into claude md"). The player is a body in the 3D ship and walks it to do everything: to a station
+> to sit and open its console, to a machine or box to repair it, to a fire to put it out, to injured
+> crew to pick them up, carry them to the medbay and heal them. Nothing is reached from a menu
+> without the walk, and every playtest shows the walking. It outranks every other rule here, every
+> design and every plan; section 1 ("One game") and section 12 ("A playtest shows the game as it is
+> played") give its detail.
+
 **This file is the only copy of these rules.** `AGENTS.md` is a pointer to it and must stay
 one. Write a rule here, never there. Two files that have to agree are two files that won't, and
 the one that is wrong is always the one nobody is reading. `openspec/config.yaml` points here
