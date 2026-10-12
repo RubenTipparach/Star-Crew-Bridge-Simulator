@@ -28,3 +28,21 @@ every occupied main deck, with openings aligned to their actual floor heights.
 - **WHEN** the access view is selected
 - **THEN** the stairs, floor openings, ladder and elevator shaft are visible together
 - **AND** calling the elevator moves its car to the selected deck height
+
+### Requirement: Grabon interior identity
+Grabon interiors SHALL use their own modeled and Blender-baked panel designs,
+angular furniture and warm fixture lighting, distinct from Federation interiors.
+
+#### Scenario: Owner enters a Grabon room
+- **WHEN** an interior view is selected
+- **THEN** Grabon wall, ceiling, floor and trim designs are visible at crew scale
+- **AND** normal and red-alert lighting are inspectable
+
+### Requirement: Windows connect to occupied decks
+Each detailed ship SHALL have symmetric, deck-aligned windows that open onto
+the same furnished rooms shown in the fitted interior review.
+
+#### Scenario: Owner looks through a window
+- **WHEN** an exterior window is inspected up close
+- **THEN** its modeled opening and shallow reveal expose the corresponding room
+- **AND** the hull, service pipes and interior walls do not obstruct its aperture

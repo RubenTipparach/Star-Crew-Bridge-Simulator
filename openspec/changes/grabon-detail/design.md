@@ -44,7 +44,7 @@ uses the room fixtures and shared bake, with normal and red-alert review states.
 ## Budget and verification
 
 The scene ceiling remains 200,000 triangles, 300 draws and 96 MiB textures from
-engine-stack/design.md. Target at most 16,000 triangles per detailed hull,
+engine-stack/design.md. Target at most 18,000 triangles per detailed hull,
 60,000 per visible deck and 120 draws. The projection guides are 2048 px; image
 generation returned 1254 px enhanced atlases, each costing 7.998 MiB with mips.
 Only the selected hull's texture is resident; panel textures
@@ -80,7 +80,7 @@ Restore the original UVs onto editable source assemblies before CSG, so the
 generated paint survives unchanged on remaining armor. Use existing Material
 Maker graphite for the newly modeled machinery. All cuts are authored in hull
 space. Retain named cutters and source assemblies in the finished Blender file.
-The revised export may use four materials, at most 16,000 triangles and the
+The revised export may use four materials, at most 18,000 triangles and the
 existing atlas plus one 128 px material texture. Inspect actual exported GLBs
 from the aft, side and upper quarter; check symmetry, centers and overlaps.
 
@@ -96,11 +96,63 @@ Move the two full-size fighters inward and forward inside the shortened hangar.
 Apply the same footprint transform to the native lower armor and hangar fittings
 after restoring their painted UVs; rebuild its recessed service belt from the
 new footprint. Remove roof equipment that the overhanging upper hull encloses.
-No extra materials or textures are required. Keep the existing 16,000-triangle
-hull ceiling, four draws and measured texture allocation. Inspect the exterior
+No extra materials or textures are required for the footprint revision. Keep
+four draws and measured texture allocation. Inspect the exterior
 and lower deck, and check room fit, access, mesh integrity and coplanar overlap.
 
-## Review results
+## Grabon interior identity and windows
+
+The current detailed ships reuse Federation working-space panels and furniture,
+and their exported hulls have no openings onto those rooms. The owner requests
+distinct Grabon interiors and windows using the Claude texture workflow.
+
+Use the panel-textures skill's existing Blender pipeline: modeled relief and
+CSG recesses, orthographic Cycles beauty and emission renders, linear-light
+downsampling, a 48-color palette and 128/256 px layers. Add a Grabon catalogue
+that inherits shared placement and bake rules while supplying its own modeled
+panel designs and palette. Keep Federation assets byte-identical. Grabon walls
+use interlocking plum armor, diagonal braces, bronze clamps, recessed pipe banks
+and orange lamps. Ceilings use angular crossmembers and narrow light channels;
+floors use broad charcoal tread plates and inset amber route markers. Add faction
+console and seat silhouettes, rather than relying on recolored Federation props.
+
+Keep the approved ship silhouettes, including Gorath's inset bottom tier.
+Derive symmetric window pairs from actual outboard room walls. Maintain a shared
+eye-level row on each deck, narrow glazing and shallow reveals. Fit window rooms
+to the pressure envelope where needed; preserve room access and full crew scale.
+The same portal records cut interior walls and native exterior armor, including
+the recessed subhull. Hollow the exterior shells and reserve armor around each
+opening so pipes cannot cross the view. Inspect actual GLB openings with rays.
+Sample each aperture and frame from 2 m outside the hull, within the space
+between the hull and Gorath's outboard wing fittings. Clear attached service
+hardware through that approach. Distant wings remain visible outside the glass.
+Union the overlapping hull tiers into one pressure skin before carving the
+joined room air volumes. Separate hollow tiers leave overlapping interior caps.
+When furnished rooms are present, reuse their corridor floors and ladders;
+the isolated access presentation supplies those surfaces only for its own view.
+
+Use the same furnished room builder inside the exterior preview and in cutaways.
+Provide window close views and an interior view with ceilings. Fixture positions
+and colors come from Grabon detail data. Reuse the shared lighting and panel
+renderers; compare normal and red-alert states. No per-pixel lights, PBR or
+normal maps. The texture pack replaces the Federation pack in this viewer;
+keep the 96 MiB texture and 200,000 triangle scene ceilings, 120 draws per deck,
+and 18,000 exterior triangles per ship. The additional 2,000-triangle hull
+reservation covers fitted window frames and joined service hardware at their
+openings. Validate measured costs against the unchanged scene ceilings.
+
+Before delivery, inspect the panel contact sheet, all three hulls through their
+windows, furnished deck cutaways and eye-level rooms. Check portals, furniture,
+symmetry, unobstructed window rays, UVs, emission, mesh integrity and overlaps.
+Rebuild changed assets twice and compare their hashes; inline and push PR 25.
+
+The room preview reuses ShipKit's direct vertex-light review path, with 1 m
+subdivision on room surfaces. Cycles supplies panel relief shadows, wear and
+emission. This pass does not claim the engine's planned occlusion and bounce
+bake. The existing FreeCam owns walking and eye-level looking; the room's
+brushes and furniture footprints constrain movement at a 1.65 m eye height.
+
+## Review results before the window pass
 
 The revised hulls have 9,728, 12,328 and 13,712 triangles, each in four draws.
 The detailed viewer allocates 59.08 MiB of texture storage including mipmaps.
@@ -114,3 +166,22 @@ The overlap check covers each hull's individual triangles, every deck and the
 three access views. The final 13 states have zero coplanar overlap. The browser
 check verifies finite geometry, budgets, exported sun lighting, elevator travel
 and phone controls. Captures and reports live in docs/screenshots/grabon-detail.
+
+## Window and interior review results
+
+The delivered hulls have 16 / 14 / 20 real windows and 10,870 / 13,566 / 16,406
+triangles. All 1,150 aperture, frame and neighboring-skin rays pass against the
+exported GLBs. Deck rows share a 1.45 m center and 0.66 m height. All native
+meshes are closed, with finite UVs and colors, mirrored geometry and four materials.
+
+The Grabon collection has 61 panel layers at two resolutions and four UI images.
+All 126 PNG hashes match an independent Cycles render. Its four furniture props
+and all three native hull GLBs also pass identical-hash rebuilds. Existing
+Federation panels and furniture are unchanged.
+
+With furnished rooms included, the largest hull view is 68,218 triangles and
+33 draws; the largest deck is 13,495 triangles and the deck maximum is 15 draws.
+Texture storage is 55.75 MiB including mipmaps. Sixteen overlap states cover the
+native exteriors, full furnished interiors, all seven decks and access assemblies;
+all have zero measured coplanar overlap. Room views retain ceilings, provide a
+65-degree field of view and place the walking camera 1.65 m above the floor.

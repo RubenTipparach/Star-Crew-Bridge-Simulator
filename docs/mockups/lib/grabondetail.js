@@ -3,14 +3,29 @@
 (function(){
  'use strict';
  async function prepare(T,K,GLTFLoader){
-  const base=await K.loadMaterials(T),mats=await K.loadPanels(T,base,{px:256});
-  const props=await PropKit.create(T,K,GLTFLoader,mats,{sets:['bridge','machinery']});
+  const cfg=K.shipData('interior');
+  const base=await K.loadMaterials(T),mats=await K.loadPanels(T,base,{px:256,atlasSets:['grabon_furniture','machinery']});
+  base.texture.dispose();
+  const props=await PropKit.create(T,K,GLTFLoader,mats,{sets:['grabon_furniture','machinery']});
   const pack=JSON.parse(document.getElementById('ship-models-grabon').textContent),hulls={};
   for(const [id,uri] of Object.entries(pack.models)){
    const buf=Uint8Array.from(atob(uri.split(',')[1]),c=>c.charCodeAt(0)).buffer;
    hulls[id]=(await new Promise((res,rej)=>new GLTFLoader().parse(buf,'',res,rej))).scene;
   }
-  let activeHull=null,liftCar=null,liftGoal=0,lastTime=0,api=null;
+  let activeHull=null,liftCar=null,liftGoal=0,lastTime=0,api=null,insideRoom='bridge',exterior=null,free=null;
+  const merge=(a,b)=>{for(const [k,v] of Object.entries(b))if(v&&typeof v==='object'&&!Array.isArray(v))merge(a[k]||(a[k]={}),v);else a[k]=structuredClone(v);return a;};
+  const detailing=()=>merge(structuredClone(K.shipData('detailing')),cfg.detailing);
+  function dressRoom(ctx,r,built,parts){K.subdivideParts(parts,cfg.lighting.subdivision_m,['floor','wall','ceiling','cove']);}
+  function lightRoom(ctx,r,built,geo){
+   const tint=new T.Color(...cfg.lighting.lamp_tint_srgb).convertSRGBToLinear();
+   const lamps=built.lamps.map(l=>({...l,color:[tint.r,tint.g,tint.b]}));
+   K.bakeDirect(T,geo,lamps,ctx.state.lighting,{gain:cfg.lighting.gain});
+   if(ctx.state.lighting==='normal'){
+    K.paintRole(geo,'lamp',tint.clone().multiplyScalar(1.4));
+    K.paintRole(geo,'status',new T.Color(...cfg.furniture.screen_srgb).convertSRGBToLinear().multiplyScalar(1.4));
+   }
+   if(mats._roomsMaterial?.userData.panelGlow)mats._roomsMaterial.userData.panelGlow.value=K.panelsData().manifest.glow[ctx.state.lighting];
+  }
   const textureBytes=Math.max(...Object.values(pack.manifest.props).map(p=>p.texture_bytes_with_mips));
   function geometry(B,ctx,lamps=[]){
    const g=K.geometryOf(T,B.parts,mats,K.finishOf({finish:'working'},K.shipData('detailing')));
@@ -18,10 +33,10 @@
    const mesh=new T.Mesh(g,K.surfaceMaterial(T,mats,{lit:false}));ctx.model.add(mesh);return mesh;
   }
   function furnish(ctx,r,parts){
-   const table={console:'free_console',seat:'crew_chair',bunk:'bunk',bed:'med_bed',table:'mess_table'};
+   const table={console:'grabon_console',seat:'grabon_chair',bunk:'grabon_bunk',bed:'med_bed',table:'grabon_table'};
    const machines={reactor:'shield_generator',drive:'impulse_drive',magazine:'magazine_rack',life_support:'ls_tanks',stbd_laser:'missile_tube',port_laser:'missile_tube',tubes:'missile_tube',computers:'switchboard'};
    for(const f of ctx.state.ship.furnishings.filter(f=>f.room===r.id&&f.kind!=='person')){
-    const kind=table[f.kind]||machines[r.id]||'battery_bank',P={};props.placeProp(P,kind,[0,0,0],f.kind==='bunk'?90:0,'engineering',{wall:false,accent:new T.Color('#d07639')});
+    const kind=table[f.kind]||machines[r.id]||'battery_bank',P={};props.placeProp(P,kind,[0,0,0],0,'engineering',{wall:false,accent:new T.Color('#d07639')});
     const all=Object.values(P).flatMap(p=>p.position),lo=[Infinity,Infinity,Infinity],hi=lo.map(()=>-Infinity);
     for(let i=0;i<all.length;i++) {const k=i%3;lo[k]=Math.min(lo[k],all[i]);hi[k]=Math.max(hi[k],all[i]);}
     const scale=Math.min(...f.size_m.map((q,k)=>q/(hi[k]-lo[k])));
@@ -30,7 +45,7 @@
    }
    for(const f of ctx.state.ship.craft.filter(f=>f.room===r.id)){const P={};props.placeProp(P,'swift_fighter',[f.center_m[0],f.center_m[1]+.03,f.center_m[2]],f.yaw_deg,'tactical',{wall:false});for(const [role,part] of Object.entries(P)){if(role==='screen'&&!part.glow)part.glow=Array(part.position.length/3).fill(1);parts['detail_'+Object.keys(parts).length+'_'+role]=part;}}
   }
-  function access(ctx,whole=false){
+  function access(ctx,whole=false,roomsPresent=false){
    const s=ctx.state.ship,A=s.access,L=ctx.layout,deck=L.decks.find(d=>d.id===ctx.state.deck),floor=deck.floor_y_m;
    const B=new K.Builder(),X=[1,0,0],Y=[0,1,0],Z=[0,0,1],faces=['+u','-u','+v','-v','+w','-w'];
    const stair=structuredClone(A.stair),fl=stair.floors_y_m;
@@ -77,12 +92,16 @@
     const x0=lx-lw/2,x1=lx+lw/2,z0=lz-ld/2,z1=lz+ld/2;
     for(const d of L.decks){
      const y=d.floor_y_m,holes=y?[[[x0,z0],[x1,z0],[x1,z1],[x0,z1]]]:[];
-     B.flat(T,'floor',[[-1.2,-6.3],[1.2,-6.3],[1.2,2],[-1.2,2]],holes,y,1);
-     for(const z of [-6.3,2])B.pipe('railing',[-1.18,y+1.0,z],[1.18,y+1.0,z],.026,6);
+     if(!roomsPresent){
+      B.flat(T,'floor',[[-1.2,-6.3],[1.2,-6.3],[1.2,2],[-1.2,2]],holes,y,1);
+      for(const z of [-6.3,2])B.pipe('railing',[-1.18,y+1.0,z],[1.18,y+1.0,z],.026,6);
+     }
     }
     const topY=fl.at(-1)+1;
-    for(const x of [x0+.08,x1-.08])B.pipe('ladder',[x,.08,z0+.08],[x,topY,z0+.08],.025,6);
-    for(let y=.2;y<topY;y+=.3)B.pipe('ladder',[x0+.11,y,z0+.08],[x1-.11,y,z0+.08],.023,6);
+    if(!roomsPresent){
+     for(const x of [x0+.08,x1-.08])B.pipe('ladder',[x,.08,z0+.08],[x,topY,z0+.08],.025,6);
+     for(let y=.2;y<topY;y+=.3)B.pipe('ladder',[x0+.11,y,z0+.08],[x1-.11,y,z0+.08],.023,6);
+    }
    }
    // These open landings have world UVs, so use the tiling deck material.
    // Fitted room floors use the panel builder's bounded atlas coordinates.
@@ -91,13 +110,24 @@
    geometry(B,ctx,lamps);
   }
   function build(ctx){
-   liftCar=null;
+   liftCar=null;exterior=null;
    if(ctx.state.stage==='hull'){
     const id=ctx.state.ship.id;
     if(activeHull&&activeHull!==id)hulls[activeHull].traverse(o=>{if(o.isMesh){o.material.map?.dispose();}});
     activeHull=id;
     const source=hulls[id];source.traverse(o=>{if(o.isMesh&&o.material.map)o.material.map.needsUpdate=true;});
-    const clone=source.clone(true);clone.traverse(o=>{if(o.isMesh){o.geometry=o.geometry.clone();o.material.side=T.FrontSide;}});ctx.model.add(clone);return true;
+    const clone=source.clone(true);clone.name='Grabon exterior';clone.traverse(o=>{if(o.isMesh){o.geometry=o.geometry.clone();o.material.side=T.FrontSide;o.userData.exterior=true;}});ctx.model.add(clone);exterior=clone;
+    const windows=pack.manifest.props[id].exterior_refit.windows;
+    for(const r of ctx.layout.compartments)ShipConcepts.buildRoom(ctx,r);
+    liftGoal=ctx.layout.decks.at(-1).floor_y_m;
+    access(ctx,true,true);
+    ctx.model.add(ExteriorInterior.windowReveals(T,windows,{color:0x59464c,glass:0xe6b174,opacity:.035}));
+    return true;
+   }
+   if(ctx.state.stage==='fit'&&ctx.state.mode==='interior'){
+    const rooms=ctx.layout.compartments.filter(r=>r.decks.includes(ctx.state.deck)&&r.kind!=='trunk');
+    const room=rooms.find(r=>r.id===insideRoom)||rooms.find(r=>r.id==='bridge')||rooms.find(r=>r.id==='mess')||rooms.find(r=>r.group!=='route')||rooms[0];
+    insideRoom=room.id;ShipConcepts.buildRoom(ctx,room);return true;
    }
    if(ctx.state.stage==='fit'&&ctx.state.mode==='access'){
     liftGoal=ctx.layout.decks.find(d=>d.id===ctx.state.deck).floor_y_m;
@@ -111,8 +141,18 @@
    if(dims){const stats=document.querySelectorAll('#stats b');stats[0].textContent=dims[2].toFixed(1)+' m';stats[1].textContent=dims[0].toFixed(1)+' m';}
    document.getElementById('viewlabel').querySelector('small').textContent=state.stage==='hull'?'Painted armor / service fittings / detailed engines':state.mode==='access'?'Stairs / ladder / elevator':'Textured interiors / connected deck access';
    if(state.mode==='access'&&state.stage==='fit')document.getElementById('viewlabel').querySelector('b').textContent='03 / DECK ACCESS';
+   controls.minDistance=state.mode==='interior'?.1:1;
    if(state.stage==='fit'){
     const b=document.createElement('button');b.textContent='Deck access';b.dataset.mode='access';b.setAttribute('aria-pressed',state.mode==='access');b.onclick=()=>show(state.ship.id,'fit',state.deck,'access');view.prepend(b);
+    const inside=document.createElement('button');inside.textContent='Inside';inside.dataset.mode='interior';inside.setAttribute('aria-pressed',state.mode==='interior');inside.onclick=()=>{insideRoom=state.selected||insideRoom;show(state.ship.id,'fit',state.deck,'interior');eyeCamera();};view.append(inside);
+    if(state.mode==='interior'){
+     a.roomInfo(insideRoom);view.querySelector('[data-camera="orbit"]').textContent='Eye level';
+     const select=document.createElement('select');select.id='room-select';select.setAttribute('aria-label','Interior room');
+     for(const r of state.ship.layout.compartments.filter(r=>r.decks.includes(state.deck)&&r.kind!=='trunk')){const o=document.createElement('option');o.value=r.id;o.textContent=r.name;o.selected=r.id===insideRoom;select.append(o);}
+     select.onchange=()=>{insideRoom=select.value;update();eyeCamera();};view.append(select);
+     document.getElementById('viewlabel').querySelector('b').textContent='03 / '+state.ship.layout.compartments.find(r=>r.id===insideRoom).name.toUpperCase();
+     document.getElementById('hint').innerHTML='Drag to look / WASD or arrows to walk<br>Scroll to step / choose a room above';
+    }
    }
    let lift=document.getElementById('lift-controls');if(lift)lift.remove();
    if(state.mode==='access'&&state.stage==='fit'){
@@ -129,6 +169,13 @@
     };view.append(b);
    }
    if(state.stage==='hull'){
+    document.getElementById('normal').disabled=document.getElementById('alert').disabled=false;
+    const peek=document.createElement('button'),picker=document.createElement('select');
+    peek.textContent='Windows';peek.dataset.detail='windows';picker.id='window-select';picker.hidden=true;picker.setAttribute('aria-label','Exterior window');
+    for(const [i,w] of pack.manifest.props[state.ship.id].exterior_refit.windows.entries()){
+     const r=state.ship.layout.compartments.find(r=>r.id===w.room),o=document.createElement('option');o.value=w.id;o.textContent=w.deck+' / '+r.name+' / '+(i+1);picker.append(o);
+    }
+    peek.onclick=()=>{picker.hidden=false;windowCamera(picker.value);};picker.onchange=()=>windowCamera(picker.value);view.append(peek,picker);
     const b=document.createElement('button');b.textContent='Detail';b.dataset.detail='hull';b.onclick=()=>{const h=state.ship.hull_zones.find(z=>z.id==='head'),z=h.poly.reduce((v,p)=>v+p[1]/h.poly.length,0),y=(h.y_m[0]+h.y_m[1])/2;controls.target.set(0,y,z);camera.position.set(24,y+20,z+29);controls.update();};view.append(b);
     for(const mode of ['Rear','Armor']){
      const b=document.createElement('button');b.textContent=mode;b.dataset.detail=mode.toLowerCase();b.onclick=()=>{
@@ -138,13 +185,66 @@
     }
    }
   }
+  function eyeCamera(){
+   const {state,camera,controls}=api,r=state.ship.layout.compartments.find(r=>r.id===insideRoom),b=r.brushes[0],xs=b.poly.map(p=>p[0]),zs=b.poly.map(p=>p[1]);
+   const x=(Math.min(...xs)+Math.max(...xs))/2,z=(Math.min(...zs)+Math.max(...zs))/2,y=b.y[0]+1.65;
+   let spawn=[x,z-Math.min(2,(Math.max(...zs)-Math.min(...zs))*.2)];
+   if(!walkable(...spawn)){
+    const candidates=[];for(let a=Math.min(...xs)+.3;a<Math.max(...xs);a+=.4)for(let b=Math.min(...zs)+.3;b<Math.max(...zs);b+=.4)if(walkable(a,b))candidates.push([a,b]);
+    candidates.sort((a,b)=>Math.hypot(a[0]-spawn[0],a[1]-spawn[1])-Math.hypot(b[0]-spawn[0],b[1]-spawn[1]));
+    if(!candidates.length)throw new Error(r.id+': no clear standing view');spawn=candidates[0];
+   }
+   let look=[x+.5,Math.max(...zs)-.4];
+   if(r.id!=='bridge'){
+    // Face an open aisle rather than the back of the nearest bunk or cabinet.
+    let best=-1;
+    for(let i=0;i<16;i++){
+     const angle=i*Math.PI/8,dx=Math.sin(angle),dz=Math.cos(angle);let reach=.2;
+     while(reach<8&&walkable(spawn[0]+dx*reach,spawn[1]+dz*reach))reach+=.2;
+     if(reach>best){best=reach;look=[spawn[0]+dx*4,spawn[1]+dz*4];}
+    }
+   }
+   camera.position.set(spawn[0],y,spawn[1]);controls.target.set(look[0],y-.1,look[1]);controls.update();
+   free?.setLook({walk:true});
+  }
+  function windowCamera(id){
+   const {state,camera,controls}=api,windows=pack.manifest.props[state.ship.id].exterior_refit.windows;
+   const w=windows.find(w=>w.id===id)||windows.find(w=>w.id==='window_bridge_bow_-1')||windows[0],c=new T.Vector3(...w.center_m),n=new T.Vector3(...w.normal);
+   camera.position.copy(c).addScaledVector(n,w.depth_m+2.1);controls.target.copy(c).addScaledVector(n,-2);controls.update();
+   document.getElementById('viewlabel').querySelector('small').textContent=w.deck+' / '+state.ship.layout.compartments.find(r=>r.id===w.room).name+' / hull window';
+   api.roomInfo(w.room);
+  }
   function frame(){const now=performance.now(),dt=Math.min(.05,(now-lastTime)/1000);lastTime=now;if(!liftCar)return;const goal=liftGoal-liftCar.userData.floorOrigin,delta=goal-liftCar.position.y;liftCar.position.y+=Math.sign(delta)*Math.min(Math.abs(delta),dt*1.5);}
   const cameraDirection=(state,view)=>state.mode==='access'&&state.stage==='fit'&&view==='orbit'?[-.93,.55,.9]:null;
-  return {mats,textureBytes,build,furnish,access,decorate,frame,cameraDirection,get lift(){return {car:liftCar,goal:liftGoal};}};
+  function cameraPoints(state){
+   if(state.stage!=='hull'||!exterior)return null;
+   const points=[];exterior.updateMatrixWorld(true);
+   exterior.traverse(o=>{if(o.isMesh){const p=o.geometry.attributes.position;for(let i=0;i<p.count;i++)points.push(new T.Vector3().fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld));}});
+   return points;
+  }
+  const setCamera=(state,view)=>{
+   const inside=state.stage==='fit'&&state.mode==='interior';
+   api.camera.fov=inside?65:36;api.camera.updateProjectionMatrix();
+   if(inside&&view==='orbit'){eyeCamera();return true;}return false;
+  };
+  const floorAt=()=>api.state.ship.layout.compartments.find(r=>r.id===insideRoom).brushes[0].y[0];
+  const walkable=(x,z)=>{
+   const s=api.state.ship,r=s.layout.compartments.find(r=>r.id===insideRoom);
+   if(!r.brushes.some(b=>K.insidePoly(b.poly,x,z,-.24)))return false;
+   return ![...s.furnishings,...s.craft].filter(f=>f.room===r.id&&f.kind!=='person').some(f=>Math.abs(x-f.center_m[0])<f.size_m[0]/2+.20&&Math.abs(z-f.center_m[2])<f.size_m[2]/2+.20);
+  };
+  const validateWindows=()=>ExteriorInterior.validateWindows(T,exterior,{L:api.state.ship.layout,windows:pack.manifest.props[api.state.ship.id].exterior_refit.windows},api.state.ship.layout.decks.map(d=>d.id),cfg.window_inspection_distance_m);
+  return {mats,textureBytes,build,furnish,access,decorate,frame,cameraDirection,cameraPoints,setCamera,detailing,dressRoom,lightRoom,eyeCamera,windowCamera,validateWindows,floorAt,walkable,bindCamera:f=>{free=f;},get exterior(){return exterior;},get windows(){return pack.manifest.props[api.state.ship.id].exterior_refit.windows;},get lift(){return {car:liftCar,goal:liftGoal};}};
  }
  function registerShots(){
   const v=SHIP_VIEW;
   for(const s of v.data.ships){
+   MOCKUP_SHOTS.push({name:'windows-'+s.id,setup:()=>{v.show(s.id,'hull');document.querySelector('[data-detail="windows"]').click();}});
+   for(const light of ['normal','red_alert'])MOCKUP_SHOTS.push({name:'inside-'+s.id+'-'+light,setup:()=>{v.show(s.id,'fit','A','interior',light);GRABON_DETAIL.eyeCamera();}});
+   for(const room of ['mess','bunks','reactor'])MOCKUP_SHOTS.push({name:room+'-'+s.id,setup:()=>{
+    const r=s.layout.compartments.find(r=>r.id===room);v.show(s.id,'fit',r.decks[0],'interior');
+    const select=document.getElementById('room-select');select.value=room;select.dispatchEvent(new Event('change'));
+   }});
    MOCKUP_SHOTS.push({name:'access-'+s.id,setup:()=>v.show(s.id,'fit',s.layout.decks.at(-1).id,'access')});
    MOCKUP_SHOTS.push({name:'close-'+s.id,setup:()=>{v.show(s.id,'hull');document.querySelector('[data-detail="hull"]').click();}});
    for(const mode of ['rear','armor'])MOCKUP_SHOTS.push({name:mode+'-'+s.id,setup:()=>{v.show(s.id,'hull');document.querySelector('[data-detail="'+mode+'"]').click();}});

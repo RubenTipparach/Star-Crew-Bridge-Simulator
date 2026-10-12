@@ -2,8 +2,8 @@
   "status": "pass",
   "comparison": "Independent Blender processes with identical committed inputs",
   "ships": {
-    "shrike": "032dcb50002a4c1caa62f2139d46825bab8f2ab251b3b0863f3d4aff330ca555",
-    "vark": "9ab3c6268fda2a8061223a120b5c2a8eadfe3263275d25b598d25a4c6605bca8",
-    "gorath": "3096eced96519616f472832fbe670e2485128bd30f87c3fe5f04287f45aac953"
+    "shrike": "0c6e1b4d4e89290c01a2598c9eda9f1c7f67e164a797e2fd0fa7d243d1a199d4",
+    "vark": "68ff029183f0fffc9007190f557226ecbf784b645c01427369d682c75ddf9bcb",
+    "gorath": "2dfd966b1f05de4677b7a66b86d940f27932bba12b045b4a2325491423cf8960"
   }
 }

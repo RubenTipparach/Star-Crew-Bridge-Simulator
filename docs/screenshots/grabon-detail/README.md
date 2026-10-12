@@ -1,62 +1,76 @@
 # Detailed Grabon ship review
 
 [Open the interactive review](../../mockups/grabon-ships.html).
-Select Shrike, Vark or Gorath, then use **Hull** for the exterior or
-**Fitted plan > 3D cutaway** for the furnished decks. Select a room and press
-**Room** to inspect its textures and equipment. **Deck access** exposes the
-stairs, ladders and elevators together. **CALL LIFT A/B/C** moves the car to
-that floor. **Rear** shows impulse placement and symmetry; **Armor** shows the
-connected service channels. Drag to orbit, right-drag to pan, and scroll to zoom.
+Choose Shrike, Vark or Gorath:
 
-All three retain purple armor and orange markings. Gorath's central impulse
-sits at x=0 m, y=5.2 m, Vark has a visible central exhaust, and Shrike's projecting
-aft cubes are removed. Hull geometry and UVs mirror about the keel. Recessed
-1.10 m service belts connect to aft roof channels, with modeled pipes, elbows,
-couplings and junction boxes. Each hull retains its generated paint atlas. Interior
-walls and floors use the existing Blender-baked panel set; consoles, chairs,
-bunks, medical beds, machinery and fighters use the shared textured models.
+- **Hull > Windows** opens a selector for every exterior window. Orbit and zoom
+  to look through its glass into the furnished room.
+- **Fitted plan > Inside** shows the selected room with its ceiling. Choose a
+  room from the dropdown, drag to look, and use WASD, arrows or scroll to move.
+  The camera stands 1.65 m above the floor and stays clear of walls and furniture.
+- **3D cutaway** exposes a whole furnished deck. Select a room, then **Room**
+  to inspect it. **Deck access** shows stairs, ladders and elevators together;
+  **CALL LIFT A/B/C** moves the car to that floor.
+- **Rear** shows impulse placement; **Armor** shows the recessed service channels.
+  **Normal** and **Red alert** compare interior lighting.
 
-Gorath's bottom tier is now 20.16 m wide and 28.24 m long, inside the 25.6 x
-32.1 m engineering tier above. The lower rooms and two full-size fighter berths
-fit the inset hull. Deck heights and all three access methods are retained.
+The interiors use a separate Grabon texture collection and four new furniture
+models: interlocking plum armor, diagonal bronze stays, dark tread floors,
+guarded amber lamps, tapered consoles, faceted chairs, armored bunks and mess
+tables. The Claude panel-textures workflow models relief in Blender, renders
+Cycles beauty and emission, then downsamples in linear light to 256/128 px with
+a 48-color palette. Federation panel assets are unchanged. Shared engineering,
+medical and fighter assets remain where their functions fit.
+
+The 50 windows are actual hull openings, connected to the same rooms used by
+the interior viewer: 16 on Shrike, 14 on Vark and 20 on Gorath. Every deck has
+a level row centered 1.45 m above its floor, with 0.66 m tall glazing. Measured
+surface corners fit the shallow liners and frames to the tapered hull. Armor
+surrounds and cleared service pipes keep the openings unobstructed.
+
+The approved purple/orange exteriors, centered impulse units and recessed
+machinery belts remain. Gorath's bottom tier is 20.16 x 28.24 m beneath its
+25.6 x 32.1 m engineering tier. All 58 rooms are reachable and each ship retains
+two full-size fighter berths, stairs, ladders and elevator access.
 
 - [Hull comparison](hulls-overview.png)
-- [Shrike rear](review/grabon-ships-rear-shrike.png), [armor](review/grabon-ships-armor-shrike.png)
-- [Vark rear](review/grabon-ships-rear-vark.png), [armor](review/grabon-ships-armor-vark.png)
-- [Gorath rear](review/grabon-ships-rear-gorath.png), [armor](review/grabon-ships-armor-gorath.png)
-- [All seven furnished deck cutaways](decks-overview.png)
+- [All seven furnished decks](decks-overview.png)
 - [Stairs, ladders and elevators](access-overview.png)
-- [Interior close views](interiors-overview.png)
-- [Normal and red-alert captures](review/)
-- [Editable Blender sources and GLBs](../../../assets/models/grabon/README.md)
-- [Texture guides, UV wireframes and generation prompt](../../../assets/textures/grabon/GENERATION.md)
-- [Detailed layouts](../../../data/ships/grabon-detailed/layouts.json)
+- [Eye-level interiors and windows](interiors-overview.png)
+- [Individual normal and red-alert captures](review/)
+- [Grabon panel contact sheet](../materials/grabon-panels-contact-sheet.png)
+- [Exterior Blender sources and GLBs](../../../assets/models/grabon/README.md)
+- [New interior panels](../../../assets/textures/grabon-panels/README.md)
+- [New furniture and atlases](../../../assets/models/grabon_furniture/README.md)
+- [Layouts](../../../data/ships/grabon-detailed/layouts.json) and
+  [interior/window settings](../../../data/ships/grabon-detailed/interior.json)
 
-The three hulls use 9,728 / 12,328 / 13,712 triangles and four draws each.
-The largest visible deck is
-10,184 triangles; the maximum draw count is 15. All 58 rooms are reachable,
-with 0.18 m stair risers, about 0.31 m going at the walking line, 3.54 m clearance
-between flights, and a 1.30 m bypass beside the ladders. Every main deck has a
-stair landing and lift entrance. The live HUD reports visible triangles, draw
-calls and 59.08 MiB texture storage including mipmaps. These counts are design
-costs, not Pi performance measurements.
+The exterior hulls use 10,870 / 13,566 / 16,406 triangles in four materials each.
+With all furnished rooms visible, the largest whole ship is 68,218 triangles
+and 33 draws. The largest deck is 13,495 triangles; no deck exceeds 15 draws.
+The viewer reports 55.75 MiB of texture storage including mipmaps. These are
+asset costs, not Pi performance measurements.
 
-Validation artifacts: [layout and scale](layout-validation.json),
-[actual geometry, floor holes, lift travel and UI](browser-validation.json),
-[exported materials, mesh topology and hashes](exterior-validation.json),
-[repeatable GLB rebuild](rebuild-validation.json),
-[coplanar overlap](overlap-validation.txt). All 13 hull/deck/access states have
-zero measured overlap. The browser check also verifies the floor remains solid
-beside every upper-deck ladder hole, impulse center and height, removed Shrike
-boxes, and exact mirrored geometry/UV coordinates in the exported GLBs.
-The rough Grabon and Federation
-viewers retain their shared renderer and pass their layout and capture checks.
+Validation covers 1,150 window rays, aligned deck rows, mirrored hull geometry
+and UVs, native mesh integrity, furniture scale, clear standing views, ladder
+holes and their solid bypasses, elevator travel and phone controls. All 52
+selectable rooms have clear standing views; keyboard walking passes on all
+three ships. All 16
+native hull, furnished interior, deck and access overlap states have zero
+measured coplanar overlap. The panel pack's 126 PNGs, four furniture assets
+and three hull GLBs reproduce with identical hashes in repeat builds.
 
-These are detailed review assets and animated preview mechanisms. They have
-not been adopted by the game engine. Interiors remain editable layout data
-and shared geometry builders; the exported GLBs contain the exterior hulls.
+Reports: [layout](layout-validation.json), [browser](browser-validation.json),
+[native export](exterior-validation.json), [GLB rebuild](rebuild-validation.json),
+[texture rebuild](texture-rebuild-validation.json), [overlap](overlap-validation.txt).
 
-To repeat the checks from the repository root, with Playwright available:
+These are review assets. Rooms use the shared direct vertex-light preview,
+with 1 m surface subdivision; Cycles supplies panel relief shadows and emission.
+The preview does not implement the planned engine room bounce/occlusion bake.
+Interiors remain editable layout data and shared builders; exported hull GLBs
+contain the exterior. Engine integration is separate from this review.
+
+To repeat the checks, with Blender and Playwright available:
 
 ```powershell
 python tools/design/check_grabon_detail.py

@@ -32,10 +32,19 @@ def run():
             if min(a['y'][1],b['y'][1])-max(a['y'][0],b['y'][0])>1e-6:
                 assert not polys_overlap(a['poly'],b['poly']),(s['id'],r['id'],q['id'],'overlapping volume')
         graph={k:set() for k in rooms}
+        windows=[p for p in L['portals'] if p['kind']=='window']
+        assert len(windows)>=12,(s['id'],'not enough occupied deck windows')
+        for d in L['decks']:
+            row=[p for p in windows if d['id'] in rooms[p['between'][0]]['decks']]
+            assert row,(s['id'],d['id'],'no deck windows')
+            assert all(abs(p['center_m'][1]-d['floor_y_m']-1.45)<1e-6 and p['size_m'][1]==.66 for p in row),(s['id'],'misaligned windows')
+        for p in windows:
+            assert any(all(abs(a-b)<1e-6 for a,b in zip(q['center_m'],[-p['center_m'][0],*p['center_m'][1:]])) and q['size_m']==p['size_m'] for q in windows),(s['id'],p['id'],'unpaired window')
         for p in L['portals']:
-            a,b=p['between'];graph[a].add(b);graph[b].add(a)
+            a,b=p['between']
+            if b!='space':graph[a].add(b);graph[b].add(a)
             x,y,z=p['center_m'];w,h=p['size_m'];n=p['normal']
-            for room in [rooms[a],rooms[b]]:
+            for room in [rooms[k] for k in (a,b) if k!='space']:
                 if abs(n[1])>.5:
                     assert all(any(inside_poly(br['poly'],x+dx,z+dz) for br in room['brushes']) for dx in [-w/2,w/2] for dz in [-h/2,h/2]),(s['id'],p['id'],'ladder fit')
                 else:
@@ -71,7 +80,7 @@ def run():
             lower_dimensions={'lower_width_length_m':spans(lower),'upper_width_length_m':spans(upper)}
             for a,b in itertools.combinations(s['craft'],2):
                 assert any(abs(a['center_m'][k]-b['center_m'][k])>=(a['size_m'][k]+b['size_m'][k])/2+.6 for k in (0,2)),'Keep a clear aisle between fighter berths'
-        report.append({'ship':s['id'],'rooms':len(rooms),'brushes':len(brushes),'reachable':len(seen),'decks':len(floors),
+        report.append({'ship':s['id'],'rooms':len(rooms),'windows':len(windows),'brushes':len(brushes),'reachable':len(seen),'decks':len(floors),
                        'stair_rise_m':rises[0],'stair_going_m':round(going,3),'flight_headroom_m':headroom,'ladder_bypass_width_m':1.3,'fighter_berths':len(s['craft'])})
         if lower_dimensions:report[-1]['tier_dimensions']=lower_dimensions
     return {'status':'pass','ships':report}

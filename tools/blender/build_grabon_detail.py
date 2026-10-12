@@ -199,14 +199,14 @@ def finish(s):
         tint=mat.get('vertex_tint',[1,1,1])
         for i in poly.loop_indices:col.data[i].color=(*(shade*v for v in tint),1)
     bpy.ops.object.select_all(action='DESELECT');ob.hide_set(False);ob.select_set(True)
-    ob.data.calc_loop_triangles();tris=len(ob.data.loop_triangles);assert tris<=16000,(s['id'],tris)
+    ob.data.calc_loop_triangles();tris=len(ob.data.loop_triangles);assert tris<=18000,(s['id'],tris)
     vertices=[PROP_TO_BLENDER.inverted()@v.co for v in ob.data.vertices]
     bounds=[[round(min(v[k] for v in vertices),4),round(max(v[k] for v in vertices),4)] for k in range(3)]
     # The direct color output exports as KHR_materials_unlit with COLOR_0 lighting.
     l.new(mix.outputs[0],out.inputs['Surface'])
     bpy.ops.export_scene.gltf(filepath=str(OUT/(s['id']+'.glb')),use_selection=True,export_format='GLB',export_yup=True,export_animations=False,export_vertex_color='ACTIVE',export_all_vertex_colors=False)
     bpy.ops.wm.save_as_mainfile(filepath=str(OUT/(s['id']+'.blend')))
-    return {'file':s['id']+'.glb','triangles':tris,'budget_triangles':16000,'texture':str(path.relative_to(ROOT)).replace('\\','/'),
+    return {'file':s['id']+'.glb','triangles':tris,'budget_triangles':18000,'texture':str(path.relative_to(ROOT)).replace('\\','/'),
             'texture_px':list(tex.size),'texture_bytes_with_mips':int((tex.size[0]*tex.size[1]+128*128)*4*4/3),
             'exterior_refit':refit_facts,
             'bounds_m':bounds,'dimensions_m':[round(b-a,4) for a,b in bounds],

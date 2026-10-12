@@ -1,0 +1,25 @@
+{
+  "schema": "starcrew.grabon-interior/1",
+  "window_center_above_floor_m": 1.45,
+  "window_height_m": 0.66,
+  "window_width_m": 1.35,
+  "window_rim_m": 0.10,
+  "window_max_depth_m": 1.35,
+  "window_service_clearance_m": 2.05,
+  "window_inspection_distance_m": 2.0,
+  "pressure_skin_m": 0.16,
+  "bridge_wall_margin_m": 0.48,
+  "window_rooms": {
+    "shrike": [["bunks","mess"],["magazine","life_support"],["hangar","hangar"]],
+    "vark": [["bunks","mess"],["magazine","life_support"],["stbd_hangar","port_hangar"]],
+    "gorath": [["computers","medical"],["bunks","mess"],["stores","flight_control"],["hangar","hangar"]]
+  },
+  "detailing": {
+    "frames": {"spacing_m": 2.4, "rib_width_m": 0.30, "rib_depth_m": 0.18},
+    "cove": {"size_m": 0.23, "tall_size_m": 0.23},
+    "lamps": {"panel_m": [0.62,0.28], "corridor_panel_m": [0.55,0.22]},
+    "window_frame": {"frame_m": 0.10, "proud_m": 0.055}
+  },
+  "lighting": {"lamp_tint_srgb": [1.0,0.96,0.93], "gain": 0.65, "subdivision_m": 1.0},
+  "furniture": {"screen_srgb": [1.0,0.43,0.10]}
+}

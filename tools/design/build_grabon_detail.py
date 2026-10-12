@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools'))
 from layout_check import inside_poly, signed_area
 from fit_enemy_concepts import clip
+from grabon_windows import fit_windows
 
 
 def half(poly, axis, value, sign):
@@ -52,6 +53,7 @@ def rect_poly(r):
 def build():
     data=json.loads((ROOT/'data/ships/grabon-concepts/layouts.json').read_text())
     exterior=json.loads((ROOT/'data/ships/grabon-detailed/exterior.json').read_text())
+    interior=json.loads((ROOT/'data/ships/grabon-detailed/interior.json').read_text())
     data['collection']='Grabon detailed ships';data['detail_level']='detailed'
     for s in data['ships']:
         L=s['layout'];decks=sorted(L['decks'],key=lambda d:d['floor_y_m'])
@@ -125,10 +127,12 @@ def build():
                 lower_room,upper_room=sorted([a,b],key=lambda r:r['brushes'][0]['y'][0])
                 portal['center_m'][1]=(max(br['y'][1] for br in lower_room['brushes'])+min(br['y'][0] for br in upper_room['brushes']))/2
         s['access']={'stair':stair,'lift':lift,'shaft_rects':dict(shafts)}
+        fit_windows(s,interior)
         # Refit scale furniture into the remaining room union. Keep berth and crew
         # counts; reject a room when no placement exists rather than drop its prop.
         placed={}
         for f in s['furnishings']:
+            if f['kind']=='seat':f['size_m']=[.70,1.22,.64]
             if f['kind']=='bunk':f['size_m']=[1.0,2.0,2.2]
             r=rooms[f['room']];w,h,l=f['size_m'];x,y,z=f['center_m']
             def fits(xx,zz):

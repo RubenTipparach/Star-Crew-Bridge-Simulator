@@ -13,6 +13,7 @@ from mathutils import Vector, Matrix
 
 from hs_kit import Prop, PROP_TO_BLENDER, apply_modifiers, lin, make_materials
 from build_ship_exteriors import merge_copies
+from grabon_window_refit import reserve_armor, open_windows
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -97,10 +98,18 @@ def refit(ship, old, armor):
         lower_index=next(i for i,z in enumerate(ship['hull_zones']) if z['id']==lower['zone'])
     for src in list(bpy.data.collections['Editable assemblies'].objects):
         points = [PROP_TO_BLENDER.inverted() @ (src.matrix_world @ v.co) for v in src.data.vertices]
+        roof_part=any(tag in src.name for tag in ('hatch_','service_trough','coolant_run'))
+        def enclosed(zone):
+            poly=zone['poly']
+            return all(zone['y_m'][0]<v.y<zone['y_m'][1] and all(
+                (b[0]-a[0])*(v.z-a[1])-(b[1]-a[1])*(v.x-a[0])>0
+                for a,b in zip(poly,poly[1:]+poly[:1])) for v in points)
+        if roof_part and any(enclosed(z) for z in ship['hull_zones']):
+            buried_roof.append(src.name)
+            continue
         resize_lower=False
         if lower:
             # Roof fittings would be sealed inside the upper tier after the inset.
-            roof_part=any(tag in src.name for tag in ('hatch_','service_trough','coolant_run'))
             if roof_part and all(source_zone['y_m'][1]<v.y<source_zone['y_m'][1]+.4 for v in points):
                 buried_roof.append(src.name)
                 continue
@@ -205,6 +214,7 @@ def refit(ship, old, armor):
         z0, z1 = min(v[1] for v in poly), max(v[1] for v in poly)
         width = max(abs(v[0]) for v in poly)
         cut = box(zone['id']+'_belt_cutter', [0,y,(z0+z1)/2], [width*2+2,height,z1-z0+2], keep=False)
+        reserve_armor(p,cut,zone,ship,assign,graphite)
         p.cut(ob, zone['id']+'_continuous_belt', [cut])
         back = p.prism(zone['id']+'_subhull', inset(poly,depth), 'y', y-height/2-.06, y+height/2+.06, 'machinery')
         assign(back, graphite)
@@ -264,9 +274,11 @@ def refit(ship, old, armor):
             box('heat_vane', [side*w*.245,y+dy,z-.22], [w*.43,.055,.25], steel, .015)
     box('impulse_divider', [0,y,z-.09], [.20,h-.52,.56], steel, .035)
     facts = {'impulse_center_m':[0,y,z], 'impulse_size_m':[w,h,.88], 'removed_engine_parts':len(removed), 'service_belts':bands}
+    facts['removed_enclosed_roof_parts']=len(buried_roof)
     if lower:
         facts['lower_hull']={'resized_parts':lower_parts,'removed_buried_roof_parts':buried_roof,
                              'scale_xz':lower['scale_xz'],'offset_z_m':lower['offset_z_m']}
+    facts['windows']=open_windows(ship,p,objects,assign,graphite,steel,inset)
 
     # New equipment uses metre-projected graphite, while surviving armor keeps
     # its authored atlas. Mirror the retained port finish onto the starboard side.

@@ -4,6 +4,7 @@
     {
       "ship": "shrike",
       "rooms": 16,
+      "windows": 16,
       "brushes": 22,
       "reachable": 16,
       "decks": 2,
@@ -16,6 +17,7 @@
     {
       "ship": "vark",
       "rooms": 18,
+      "windows": 14,
       "brushes": 24,
       "reachable": 18,
       "decks": 2,
@@ -28,6 +30,7 @@
     {
       "ship": "gorath",
       "rooms": 24,
+      "windows": 20,
       "brushes": 34,
       "reachable": 24,
       "decks": 3,

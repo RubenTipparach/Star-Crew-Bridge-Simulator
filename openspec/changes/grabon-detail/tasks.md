@@ -21,3 +21,11 @@
 - [x] Inset the lower hull and refit its rooms and fighter berths.
 - [x] Rebuild the native model and inspect the exterior and lower deck.
 - [x] Validate the revision, update the review and push the existing PR.
+
+## Grabon windows and interior identity
+
+- [x] Model and bake a separate Grabon interior panel collection and furniture.
+- [x] Fit deck-aligned windows to real rooms and cut the native hulls.
+- [x] Show furnished rooms through the windows and add interior review views.
+- [x] Inspect textures, lighting, geometry and every ship's interior/exterior.
+- [x] Validate artifacts, update documentation and push the existing PR.

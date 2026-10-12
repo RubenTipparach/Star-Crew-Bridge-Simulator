@@ -6,11 +6,11 @@
       "stage": "hull",
       "deck": "A",
       "mode": "plan",
-      "triangles": 9728,
-      "draws": 4,
-      "texture_mib": 59.08156394958496,
+      "triangles": 42211,
+      "draws": 25,
+      "texture_mib": 55.74822998046875,
       "nonfinite": 0,
-      "stair_vertices": 0,
+      "stair_vertices": 228,
       "ladder_openings": [],
       "sun_range": [
         0.4399938963912413,
@@ -46,17 +46,20 @@
           ]
         ],
         "impulse_vertices": 1536,
+        "windows": 16,
+        "window_rays": 368,
         "unmatched_mirror_vertices": 0
-      }
+      },
+      "interior": null
     },
     {
       "ship": "shrike",
       "stage": "fit",
       "deck": "A",
       "mode": "cutaway",
-      "triangles": 8446,
+      "triangles": 9646,
       "draws": 15,
-      "texture_mib": 59.08156394958496,
+      "texture_mib": 55.74822998046875,
       "nonfinite": 0,
       "stair_vertices": 228,
       "ladder_openings": [
@@ -67,21 +70,42 @@
         }
       ],
       "sun_range": null,
-      "exterior": null
+      "exterior": null,
+      "interior": null
     },
     {
       "ship": "shrike",
       "stage": "fit",
       "deck": "B",
       "mode": "cutaway",
-      "triangles": 9176,
+      "triangles": 11668,
       "draws": 13,
-      "texture_mib": 59.08156394958496,
+      "texture_mib": 55.74822998046875,
       "nonfinite": 0,
       "stair_vertices": 228,
       "ladder_openings": [],
       "sun_range": null,
-      "exterior": null
+      "exterior": null,
+      "interior": null
+    },
+    {
+      "ship": "shrike",
+      "stage": "fit",
+      "deck": "A",
+      "mode": "interior",
+      "triangles": 3166,
+      "draws": 1,
+      "texture_mib": 55.74822998046875,
+      "nonfinite": 0,
+      "stair_vertices": 0,
+      "ladder_openings": [],
+      "sun_range": null,
+      "exterior": null,
+      "interior": {
+        "ceiling_vertices": 1692,
+        "eye_height_m": 1.65,
+        "clear_spawn": true
+      }
     },
     {
       "ship": "shrike",
@@ -90,23 +114,24 @@
       "mode": "access",
       "triangles": 1022,
       "draws": 2,
-      "texture_mib": 59.08156394958496,
+      "texture_mib": 55.74822998046875,
       "nonfinite": 0,
       "stair_vertices": 228,
       "ladder_openings": [],
       "sun_range": null,
-      "exterior": null
+      "exterior": null,
+      "interior": null
     },
     {
       "ship": "vark",
       "stage": "hull",
       "deck": "A",
       "mode": "plan",
-      "triangles": 12328,
-      "draws": 4,
-      "texture_mib": 59.08156394958496,
+      "triangles": 52009,
+      "draws": 27,
+      "texture_mib": 55.74822998046875,
       "nonfinite": 0,
-      "stair_vertices": 0,
+      "stair_vertices": 228,
       "ladder_openings": [],
       "sun_range": [
         0.4399938963912413,
@@ -142,17 +167,20 @@
           ]
         ],
         "impulse_vertices": 1536,
+        "windows": 14,
+        "window_rays": 322,
         "unmatched_mirror_vertices": 0
-      }
+      },
+      "interior": null
     },
     {
       "ship": "vark",
       "stage": "fit",
       "deck": "A",
       "mode": "cutaway",
-      "triangles": 9204,
+      "triangles": 11182,
       "draws": 15,
-      "texture_mib": 59.08156394958496,
+      "texture_mib": 55.74822998046875,
       "nonfinite": 0,
       "stair_vertices": 228,
       "ladder_openings": [
@@ -163,21 +191,42 @@
         }
       ],
       "sun_range": null,
-      "exterior": null
+      "exterior": null,
+      "interior": null
     },
     {
       "ship": "vark",
       "stage": "fit",
       "deck": "B",
       "mode": "cutaway",
-      "triangles": 10184,
+      "triangles": 13495,
       "draws": 15,
-      "texture_mib": 59.08156394958496,
+      "texture_mib": 55.74822998046875,
       "nonfinite": 0,
       "stair_vertices": 228,
       "ladder_openings": [],
       "sun_range": null,
-      "exterior": null
+      "exterior": null,
+      "interior": null
+    },
+    {
+      "ship": "vark",
+      "stage": "fit",
+      "deck": "A",
+      "mode": "interior",
+      "triangles": 1650,
+      "draws": 1,
+      "texture_mib": 55.74822998046875,
+      "nonfinite": 0,
+      "stair_vertices": 0,
+      "ladder_openings": [],
+      "sun_range": null,
+      "exterior": null,
+      "interior": {
+        "ceiling_vertices": 1191,
+        "eye_height_m": 1.65,
+        "clear_spawn": true
+      }
     },
     {
       "ship": "vark",
@@ -186,23 +235,24 @@
       "mode": "access",
       "triangles": 1022,
       "draws": 2,
-      "texture_mib": 59.08156394958496,
+      "texture_mib": 55.74822998046875,
       "nonfinite": 0,
       "stair_vertices": 228,
       "ladder_openings": [],
       "sun_range": null,
-      "exterior": null
+      "exterior": null,
+      "interior": null
     },
     {
       "ship": "gorath",
       "stage": "hull",
       "deck": "A",
       "mode": "plan",
-      "triangles": 13712,
-      "draws": 4,
-      "texture_mib": 59.08156394958496,
+      "triangles": 68218,
+      "draws": 33,
+      "texture_mib": 55.74822998046875,
       "nonfinite": 0,
-      "stair_vertices": 0,
+      "stair_vertices": 456,
       "ladder_openings": [],
       "sun_range": [
         0.4399938963912413,
@@ -238,17 +288,20 @@
           ]
         ],
         "impulse_vertices": 1536,
+        "windows": 20,
+        "window_rays": 460,
         "unmatched_mirror_vertices": 0
-      }
+      },
+      "interior": null
     },
     {
       "ship": "gorath",
       "stage": "fit",
       "deck": "A",
       "mode": "cutaway",
-      "triangles": 8458,
+      "triangles": 10889,
       "draws": 15,
-      "texture_mib": 59.08156394958496,
+      "texture_mib": 55.74822998046875,
       "nonfinite": 0,
       "stair_vertices": 228,
       "ladder_openings": [
@@ -259,16 +312,17 @@
         }
       ],
       "sun_range": null,
-      "exterior": null
+      "exterior": null,
+      "interior": null
     },
     {
       "ship": "gorath",
       "stage": "fit",
       "deck": "B",
       "mode": "cutaway",
-      "triangles": 10036,
+      "triangles": 13040,
       "draws": 14,
-      "texture_mib": 59.08156394958496,
+      "texture_mib": 55.74822998046875,
       "nonfinite": 0,
       "stair_vertices": 228,
       "ladder_openings": [
@@ -279,21 +333,42 @@
         }
       ],
       "sun_range": null,
-      "exterior": null
+      "exterior": null,
+      "interior": null
     },
     {
       "ship": "gorath",
       "stage": "fit",
       "deck": "C",
       "mode": "cutaway",
-      "triangles": 7700,
+      "triangles": 9879,
       "draws": 13,
-      "texture_mib": 59.08156394958496,
+      "texture_mib": 55.74822998046875,
       "nonfinite": 0,
       "stair_vertices": 228,
       "ladder_openings": [],
       "sun_range": null,
-      "exterior": null
+      "exterior": null,
+      "interior": null
+    },
+    {
+      "ship": "gorath",
+      "stage": "fit",
+      "deck": "A",
+      "mode": "interior",
+      "triangles": 5381,
+      "draws": 1,
+      "texture_mib": 55.74822998046875,
+      "nonfinite": 0,
+      "stair_vertices": 0,
+      "ladder_openings": [],
+      "sun_range": null,
+      "exterior": null,
+      "interior": {
+        "ceiling_vertices": 3870,
+        "eye_height_m": 1.6499999999999995,
+        "clear_spawn": true
+      }
     },
     {
       "ship": "gorath",
@@ -302,12 +377,85 @@
       "mode": "access",
       "triangles": 1796,
       "draws": 2,
-      "texture_mib": 59.08156394958496,
+      "texture_mib": 55.74822998046875,
       "nonfinite": 0,
       "stair_vertices": 456,
       "ladder_openings": [],
       "sun_range": null,
-      "exterior": null
+      "exterior": null,
+      "interior": null
+    }
+  ],
+  "room_navigation": [
+    {
+      "ship": "shrike",
+      "rooms": [
+        "A_route",
+        "bunks",
+        "mess",
+        "stbd_laser",
+        "port_laser",
+        "neck_route",
+        "bridge",
+        "B_route",
+        "reactor",
+        "drive",
+        "magazine",
+        "life_support",
+        "tubes",
+        "hangar"
+      ],
+      "keyboard_walk": true
+    },
+    {
+      "ship": "vark",
+      "rooms": [
+        "A_route",
+        "bunks",
+        "mess",
+        "stbd_laser",
+        "port_laser",
+        "neck_route",
+        "bridge",
+        "B_route",
+        "reactor",
+        "drive",
+        "magazine",
+        "life_support",
+        "tubes",
+        "flight_route",
+        "stbd_hangar",
+        "port_hangar"
+      ],
+      "keyboard_walk": true
+    },
+    {
+      "ship": "gorath",
+      "rooms": [
+        "A_route",
+        "computers",
+        "medical",
+        "stbd_laser",
+        "port_laser",
+        "neck_route",
+        "bridge",
+        "B_route",
+        "reactor",
+        "drive",
+        "bunks",
+        "mess",
+        "magazine",
+        "life_support",
+        "tubes",
+        "C_route",
+        "workshop",
+        "cargo",
+        "stores",
+        "flight_control",
+        "service",
+        "hangar"
+      ],
+      "keyboard_walk": true
     }
   ],
   "errors": []
