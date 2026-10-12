@@ -16,8 +16,10 @@ ties, loads), by the rules in power.json's `distribution` block, this writes:
 - runs through walls and decks: every box with fewer than `min_runs_per_box` runs (trunks, ties, doorway runs) gets a
   spare to the nearest box in a room that shares a wall or a deck with its own (the owner, 2026-10-11: "panels should
   connect to at least 2 other panels"), else to the nearest box in another room;
-- every load's node (its room's box, or the switchboard or panel in its room) and its feeder, the run from that box
-  to the load;
+- every system's feeds (the owner, 2026-10-11: "systems should be connected to 2 or more panels, so we can swap with
+  a different route, it should generally connect to the nearest panel"): its `node`, the nearest panel, and its
+  `alt_node`, the next nearest, each with its feeder from that panel to the system (`feeder_m`, `alt_feeder_m`); a
+  room's lights stay on its own box;
 - the lighting panels: each room lit by its own box.
 
 It never edits a hand-authored node, trunk or tie, and it is idempotent: generated entries are recognised by their
@@ -274,19 +276,22 @@ def generate(layout, power):
         cands = nodes_in.get(room, [])
         return min(cands, key=lambda n: math.dist(n["center_m"], near)) if cands else None
 
-    # Each load's node: the box of the room it stands in (or its panel there); a load outside every room keeps its own.
-    load_node = {}
+    # Each system's feeds: the nearest panels as wiring runs, not as the crow flies: its own room's first, then its own
+    # deck's, then the nearest deck's, nearest first (ties by id).
+    load_node, alt_node = {}, {}
     for l in power["loads"]:
         c = load_center(layout, l)
         room = room_of_point(layout, c)
-        if room is None:
-            load_node[l["id"]] = l["node"]
-            continue
-        current = node_by_id.get(l["node"])
-        if room in nodes_in and current is not None and current["compartment"] == room:
-            load_node[l["id"]] = l["node"]
-        else:
-            load_node[l["id"]] = box_for(room, c)["id"]
+        floor = floor_brush(rooms[room], c)["y"][0] if room else c[1]
+
+        def key(n, room=room, floor=floor, c=c):
+            decks_off = round(abs(node_brush(n)["y"][0] - floor) / deck_m)
+            return (n["compartment"] != room, decks_off, math.dist(n["center_m"], c), n["id"])
+
+        near = sorted(all_nodes, key=key)
+        load_node[l["id"]] = near[0]["id"]
+        if rules["feeds_per_system"] >= 2:
+            alt_node[l["id"]] = near[1]["id"]
     # Lighting: each room lit by its own node.
     area = {}
     for c in layout["compartments"]:
@@ -407,16 +412,21 @@ def generate(layout, power):
         if k["capacity_mw"] is None:
             ra, rb = k["route"]
             k["capacity_mw"] = max(float(rules["spare_mw"]), feed_rating.get(ra, 0.0), feed_rating.get(rb, 0.0))
-    # Feeders: from the load's node, under its ceiling, over the load, down to it.
-    feeders = {}
-    for l in power["loads"]:
-        n = node_by_id[load_node[l["id"]]]
-        c = load_center(layout, l)
+    # Feeders: from the panel, under its ceiling, over the system, down to it.
+    def feeder(node_id, c):
+        n = node_by_id[node_id]
         h = run_height(node_brush(n), rules, deck_m)
         a = n["center_m"]
-        feeders[l["id"]] = dedupe([pt(a), pt([a[0], h, a[2]]), pt([c[0], h, c[2]]), pt(c)])
+        return dedupe([pt(a), pt([a[0], h, a[2]]), pt([c[0], h, c[2]]), pt(c)])
+
+    feeders, alt_feeders = {}, {}
+    for l in power["loads"]:
+        c = load_center(layout, l)
+        feeders[l["id"]] = feeder(load_node[l["id"]], c)
+        if l["id"] in alt_node:
+            alt_feeders[l["id"]] = feeder(alt_node[l["id"]], c)
     return {"boxes": [boxes[r] for r in room_order if r in boxes], "runs": runs, "load_node": load_node,
-            "feeders": feeders, "panels": panels}
+            "alt_node": alt_node, "feeders": feeders, "alt_feeders": alt_feeders, "panels": panels}
 
 
 def fmt(v):
@@ -490,7 +500,10 @@ def rewrite(text, gen):
             assert last.endswith("}"), (lid, last[-80:])
             last = last[:-1].rstrip().rstrip(",")
         block[-1] = last + ","
-        block.append(f'      "feeder_m": {fmt(gen["feeders"][lid])} }}' + ("," if comma else ""))
+        tail = f'      "feeder_m": {fmt(gen["feeders"][lid])}'
+        if lid in gen["alt_node"]:
+            tail += f', "alt_node": {fmt(gen["alt_node"][lid])}, "alt_feeder_m": {fmt(gen["alt_feeders"][lid])}'
+        block.append(tail + " }" + ("," if comma else ""))
         lines = lines[:a] + block + lines[b + 1 :]
     # Lighting panels.
     s = next(i for i, l in enumerate(lines) if l.startswith('    "panels": {'))

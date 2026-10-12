@@ -541,6 +541,8 @@ pub enum PowerCmd {
     Box(u8, bool),
     /// A conduit closed (true) or opened at its box, by its index in `power.json`'s conduits.
     Run(u8, bool),
+    /// A system swapped to its second feed (true) or back, by its index in `power.json`'s loads.
+    Feed(u8, bool),
 }
 
 /// The loop's levers, by index: the core pumps' speed, the radiator pumps', the chiller's share, the makeup valve.
@@ -1734,6 +1736,7 @@ impl Drill {
             }
             PowerCmd::Box(k, on) => ok(p.set_box(usize::from(k), on)),
             PowerCmd::Run(k, closed) => ok(p.set_conduit(usize::from(k), closed)),
+            PowerCmd::Feed(k, alt) => ok(p.set_feed(d, usize::from(k), alt)),
             PowerCmd::Lever(k, v) => {
                 // A hand on a lever takes the loop from its automation (reactor-cooling design 5).
                 let m = Some(Mode::Manual);
@@ -1752,18 +1755,22 @@ impl Drill {
     /// dark room, for its reaction time, it closes it.
     fn engineering_reroute(&mut self, reaction_s: f64, t: f64) -> Option<Command> {
         let s = &self.damage[0];
-        let k = self.power.reroute(&self.data.power, &s.node_health, &s.conduits);
+        // A system whose panel is dark swaps to its other feed first: it costs no live run.
+        let swap = self.power.transfer(&self.data.power, &s.node_health, &s.conduits);
+        let k = if swap.is_some() { None } else { self.power.reroute(&self.data.power, &s.node_health, &s.conduits) };
+        let cmd = |k: usize| Command::Power(PowerCmd::Run(k as u8, true));
+        let act = swap.map(|i| Command::Power(PowerCmd::Feed(i as u8, !self.power.on_alt[i]))).or(k.map(cmd));
         let mem = &mut self.auto.engineering;
-        match k {
+        match act {
             None => {
                 mem.reroute_since = None;
                 None
             }
-            Some(k) => {
+            Some(c) => {
                 let since = *mem.reroute_since.get_or_insert(t);
                 (t - since >= reaction_s).then(|| {
                     mem.reroute_since = None;
-                    Command::Power(PowerCmd::Run(k as u8, true))
+                    c
                 })
             }
         }
@@ -3183,11 +3190,9 @@ mod tests {
                 "seed {seed}: a fight runs 4-10 minutes, took {:.0} s",
                 d.stats.engage_s
             );
-            assert!(
-                d.ships[1].hull < 0.6 * hound_hull,
-                "seed {seed}: the crew takes the Hound well down: {:?}",
-                d.stats
-            );
+            // Runs bundle at their panels, so one hit there can cut a room's every way in (power-routing 4, question
+            // R2): the Hound is hurt in every fight, not always taken down.
+            assert!(d.ships[1].hull < 0.9 * hound_hull, "seed {seed}: the crew damages the Hound: {:?}", d.stats);
             damaged += usize::from(d.ships[0].hull < d.data.tern_combat.hull_mj);
             broken += usize::from(worst.hurt > 0);
         }
@@ -3772,13 +3777,29 @@ mod tests {
         d.damage[0].conduits[cut] = damage::ConduitState { health: 0.0, severed: true, open: false };
         steps(&mut d, 1.0);
         assert!(!d.power.conduit_breaker[spare], "not before its reaction time");
+        // First the comms array, whose panel the cut darkens too, swaps to its other feed (no live run spent); a
+        // reaction later the spare goes in for the turret, which has no lit panel to swap to.
         let reaction = d.data.profile("automation").engineering.reaction_s;
-        steps(&mut d, reaction + 0.5);
+        steps(&mut d, 2.0 * reaction + 0.5);
+        assert!(d.power.on_alt[pd.load("comms").unwrap()], "the comms array is on its other feed");
         assert!(d.power.conduit_breaker[spare], "the spare through the aft passage is closed");
         assert!(!d.damage[0].conduits[spare].open, "and the damage state knows it carries power");
         steps(&mut d, 0.5);
         let turret = pd.load("turret_dorsal").unwrap();
         assert!(d.power.supply(turret) > 0.99, "the dorsal turret has its power back");
+    }
+
+    #[test]
+    fn engineering_automation_swaps_a_dark_system_to_its_other_feed() {
+        let (mut d, _) = engaged_at(&[Station::Helm, Station::Captain]);
+        let pd = d.data.power.clone();
+        let cut = pd.file.conduits.iter().position(|k| k.id == "r_shield").unwrap();
+        d.damage[0].conduits[cut] = damage::ConduitState { health: 0.0, severed: true, open: false };
+        let reaction = d.data.profile("automation").engineering.reaction_s;
+        steps(&mut d, reaction + 1.0);
+        let shields = pd.load("shield_generator").unwrap();
+        assert!(d.power.on_alt[shields], "the shield generator is swapped to its other panel");
+        assert!(d.power.supply(shields) > 0.99, "and has its power");
     }
 
     #[test]

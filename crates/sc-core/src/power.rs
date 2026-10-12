@@ -58,6 +58,8 @@ pub struct Distribution {
     pub spare_mw: f64,
     /// Every box joined to at least this many others: runs through walls and decks make up the rest.
     pub min_runs_per_box: u32,
+    /// Panels each system is wired to: its node (the nearest) and, with 2, its `alt_node` (the next nearest).
+    pub feeds_per_system: u32,
     /// Two rooms touch where their walls run within this of each other for at least `min_shared_wall_m`, metres.
     pub adjacent_gap_m: f64,
     pub min_shared_wall_m: f64,
@@ -256,6 +258,9 @@ pub struct PowerLoad {
     pub over: String,
     /// Its feeder: the run from its node's box to it, ship frame, metres (power-routing 1).
     pub feeder_m: Option<Vec<[f64; 3]>>,
+    /// Its second feed (power-routing 1): the next nearest panel, and the feeder from it.
+    pub alt_node: Option<String>,
+    pub alt_feeder_m: Option<Vec<[f64; 3]>>,
 }
 
 /// Where a load's heat goes: the loop, a room, the duct, the lights' rooms, its own thermal node, or nowhere.
@@ -419,6 +424,8 @@ pub struct Load {
     pub heat: LoadHeat,
     /// Its index in the file's loads (none: a lighting panel, which damage does not break).
     pub file: Option<usize>,
+    /// Its second feed's node's index, if it has one.
+    pub alt: Option<usize>,
 }
 
 /// The ship's power, loaded and indexed once.
@@ -469,6 +476,7 @@ impl PowerData {
                 activity: l.activity.clone(),
                 heat: l.heat.clone(),
                 file: Some(i),
+                alt: l.alt_node.as_deref().map(|n| node_of(n, format!("loads.{i}.alt_node"))).transpose()?,
             });
         }
         // Lighting, one load a panel, from the floor area it lights (normal lighting).
@@ -499,6 +507,7 @@ impl PowerData {
                     room: None,
                 },
                 file: None,
+                alt: None,
             });
         }
         let mut group_loads = Vec::new();
@@ -755,6 +764,8 @@ pub struct PowerState {
     pub conduit_breaker: Vec<bool>,
     /// Each node's box switched on (power-routing 1): off, nothing passes it and nothing it feeds is supplied.
     pub box_on: Vec<bool>,
+    /// Each load swapped to its second feed (power-routing 1; the factory feeds every load from its node).
+    pub on_alt: Vec<bool>,
     /// Seconds the grid has left dark after a trip (power-routing 2); 0 when it is not tripped.
     pub trip_s: f64,
     /// Trips since the ship started.
@@ -911,6 +922,7 @@ impl PowerState {
             gen_closed: vec![true; f.generators.len()],
             conduit_breaker: f.conduits.iter().map(|k| k.factory_closed.unwrap_or(true)).collect(),
             box_on: vec![true; f.nodes.len()],
+            on_alt: vec![false; d.loads.len()],
             trip_s: 0.0,
             trips: 0,
             battery_breaker: true,
@@ -1080,7 +1092,7 @@ impl PowerState {
                         if want <= eps {
                             continue;
                         }
-                        let got = grid.push_to(NOFF + d.loads[i].node, want, eps);
+                        let got = grid.push_to(NOFF + self.node_of(d, i), want, eps);
                         alloc[i] += got;
                         if got < want - eps {
                             blocked[i] = true;
@@ -1110,7 +1122,8 @@ impl PowerState {
         let mut out = vec![0.0; d.loads.len()];
         for (i, l) in d.loads.iter().enumerate() {
             let sp = setpoints[i].min(l.setpoint_max);
-            let node_dead = !self.box_on[l.node] || ship.node_health.get(l.node).is_some_and(|h| *h <= 0.0);
+            let fed = self.node_of(d, i);
+            let node_dead = !self.box_on[fed] || ship.node_health.get(fed).is_some_and(|h| *h <= 0.0);
             if sp <= 0.0 || self.breaker_open[i] || node_dead {
                 continue;
             }
@@ -1228,6 +1241,7 @@ impl PowerState {
 
     /// Every box on, every run at its factory setting.
     pub fn factory_reset(&mut self, d: &PowerData) {
+        self.on_alt.iter_mut().for_each(|a| *a = false);
         self.box_on.iter_mut().for_each(|b| *b = true);
         for (k, c) in d.file.conduits.iter().enumerate() {
             self.conduit_breaker[k] = c.factory_closed.unwrap_or(true);
@@ -1350,7 +1364,8 @@ impl PowerState {
         }
         let wants = |k: usize| {
             island[k] != usize::MAX
-                && d.loads.iter().any(|l| l.nominal_mw > 0.0 && island.get(l.node) == Some(&island[k]))
+                && (0..d.loads.len())
+                    .any(|i| d.loads[i].nominal_mw > 0.0 && island.get(self.node_of(d, i)) == Some(&island[k]))
         };
         if !(0..n).any(wants) {
             return None;
@@ -1391,6 +1406,34 @@ impl PowerState {
         }
         self.box_on[node] = on;
         true
+    }
+
+    /// The node load `i` draws from now: its own, or its second feed's once swapped.
+    pub fn node_of(&self, d: &PowerData, i: usize) -> usize {
+        match (self.on_alt[i], d.loads[i].alt) {
+            (true, Some(a)) => a,
+            _ => d.loads[i].node,
+        }
+    }
+
+    /// Swap load `i` to its second feed (true) or back (none while dark, or for a load with one feed).
+    pub fn set_feed(&mut self, d: &PowerData, i: usize, alt: bool) -> bool {
+        if self.trip_s > 0.0 || d.loads.get(i).and_then(|l| l.alt).is_none() {
+            return false;
+        }
+        self.on_alt[i] = alt;
+        true
+    }
+
+    /// A system to swap to its other feed (power-routing 3, Engineering's automation): the first, in the data's
+    /// order, whose panel now gets no power while its other panel does.
+    pub fn transfer(&self, d: &PowerData, node_health: &[f64], conduits: &[ConduitState]) -> Option<usize> {
+        let reached = self.reached(d, node_health, conduits);
+        (0..d.loads.len()).find(|&i| {
+            let Some(alt) = d.loads[i].alt else { return false };
+            let (now, other) = if self.on_alt[i] { (alt, d.loads[i].node) } else { (d.loads[i].node, alt) };
+            !reached[now] && reached[other]
+        })
     }
 
     /// Close or open conduit `k` at its box (none while the grid is tripped dark).
@@ -2168,6 +2211,58 @@ mod tests {
         for (k, j) in joined.iter().enumerate() {
             assert!(j.len() >= 2, "{} is joined to {:?}", d.nodes[k], j);
         }
+    }
+
+    #[test]
+    fn every_system_has_two_feeds_the_nearest_first() {
+        // The owner, 2026-10-11: "systems should be connected to 2 or more panels, so we can swap with a different
+        // route, it should generally connect to the nearest panel".
+        let d = data();
+        for l in &d.file.loads {
+            let alt = l.alt_node.as_ref().unwrap_or_else(|| panic!("{} has one feed", l.id));
+            assert_ne!(alt, &l.node, "{}'s two feeds are two panels", l.id);
+            assert!(l.alt_feeder_m.is_some(), "{} has a feeder from its second panel", l.id);
+        }
+        let shield = d.file.loads.iter().find(|l| l.id == "shield_generator").unwrap();
+        assert_eq!(shield.node, "bx_shield_room", "the shield generator is fed from its own room's panel");
+    }
+
+    #[test]
+    fn the_reactor_feeds_five_panels() {
+        // The owner, 2026-10-11: "reactor should connect to 4 -5 panels, since it is a critical resource".
+        let d = data();
+        let fed: std::collections::BTreeSet<&str> = d.file.generators.iter().map(|g| g.node.as_str()).collect();
+        assert_eq!(fed.len(), 5, "{fed:?}");
+        let mut s = PowerState::new(&d);
+        run(&d, &mut s, &cruise(), 30.0);
+        assert_eq!(s.reactor.state, ReactorState::Running);
+        let k = d.file.generators.iter().position(|g| g.id == "gen_p").unwrap();
+        s.gen_closed[k] = false;
+        let k = d.file.generators.iter().position(|g| g.id == "gen_s").unwrap();
+        s.gen_closed[k] = false;
+        run(&d, &mut s, &cruise(), 30.0);
+        let (want, got) = s.totals();
+        assert!(
+            (want - got).abs() < 0.05,
+            "both generators open, the other three feeds carry the ship: {got:.1} of {want:.1} MW"
+        );
+    }
+
+    #[test]
+    fn a_system_swapped_to_its_second_feed_draws_from_that_panel() {
+        let d = data();
+        let act = cruise();
+        let mut s = PowerState::new(&d);
+        let mut w = Whole::new(&d);
+        let shields = d.load("shield_generator").unwrap();
+        w.conduits[conduit(&d, "r_shield")] = ConduitState { health: 0.0, severed: true, open: false };
+        w.step(&d, &mut s, &act, 2.0);
+        assert!(s.alloc[shields] < 1e-9, "the shield room's feed is cut");
+        assert_eq!(s.transfer(&d, &w.nodes, &w.conduits), Some(shields), "its other panel has power: swap it");
+        assert!(s.set_feed(&d, shields, true));
+        assert_eq!(d.nodes[s.node_of(&d, shields)], "fsb_p", "fed from the forward switchboard now");
+        w.step(&d, &mut s, &act, 2.0);
+        assert!(s.supply(shields) > 0.99, "and it has its power back");
     }
 
     #[test]

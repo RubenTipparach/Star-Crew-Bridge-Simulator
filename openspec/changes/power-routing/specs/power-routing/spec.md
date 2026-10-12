@@ -20,6 +20,23 @@ has a second way for its power to come.
 - **WHEN** the bridge's doorway run is cut
 - **THEN** a spare through its wall to the computer core or the ready room can feed it
 
+### Requirement: Every system has two feeds, the nearest first
+
+Every system SHALL be wired to two panels: its nearest (its own room's, else its deck's) and the next nearest, fed from
+the first at the factory and swappable to the second. A system swapped SHALL draw from its second panel only.
+
+#### Scenario: Swap round a cut
+- **WHEN** the shield room's feed is severed and the shield generator is swapped to its second feed
+- **THEN** it is supplied from the forward switchboard's port section
+
+### Requirement: The reactor feeds five panels
+
+The reactor SHALL feed five panels, each through its own breaker, so the ship is carried with any two of them open.
+
+#### Scenario: Both generators open
+- **WHEN** both generators' breakers are open at cruise
+- **THEN** the three reactor feeds carry every load
+
 ### Requirement: Boxes and runs route power
 
 A box switched off SHALL pass no power, and a run SHALL carry power only while it is closed, whole, and both its boxes
@@ -44,6 +61,10 @@ switchable, the switchboards' own loads still supplied; then every switch SHALL 
 
 With Engineering on automation, a switched-on box with a load cut off from every source SHALL be reconnected by
 closing a spare run after the automation's reaction time, never past the protection's limit.
+
+#### Scenario: A dark panel's system
+- **WHEN** a system's panel loses its power and its other panel has power
+- **THEN** after the automation's reaction time the system is swapped to its other feed
 
 #### Scenario: A cut feed
 - **WHEN** a hit severs the only closed run into a room with loads and a spare reaches it

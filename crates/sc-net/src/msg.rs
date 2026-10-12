@@ -1045,6 +1045,11 @@ fn write_power(w: &mut Writer, p: PowerCmd) {
             w.u8(k);
             w.u8(u8::from(closed));
         }
+        PowerCmd::Feed(k, alt) => {
+            w.u8(14);
+            w.u8(k);
+            w.u8(u8::from(alt));
+        }
     }
 }
 
@@ -1066,6 +1071,7 @@ fn read_power(r: &mut Reader) -> Result<PowerCmd, DecodeError> {
         11 => PowerCmd::Lever(r.u8()?, r.f32(0.0, 2.0)?),
         12 => PowerCmd::Box(r.u8()?, r.bool()?),
         13 => PowerCmd::Run(r.u8()?, r.bool()?),
+        14 => PowerCmd::Feed(r.u8()?, r.bool()?),
         _ => return Err(DecodeError("no such power command")),
     })
 }
@@ -1934,6 +1940,7 @@ mod tests {
             ClientMsg::Command(Command::Power(PowerCmd::Lever(2, 0.75))),
             ClientMsg::Command(Command::Power(PowerCmd::Box(20, false))),
             ClientMsg::Command(Command::Power(PowerCmd::Run(40, true))),
+            ClientMsg::Command(Command::Power(PowerCmd::Feed(15, true))),
         ];
         for m in msgs {
             assert_eq!(ClientMsg::decode(&m.encode()).unwrap(), m);

@@ -32,6 +32,19 @@ brings it back at its factory settings.
   room to life support (a second upstream: the life support panel hangs off the forward switchboard's port section and
   the emergency bus, the shield room off the C spine) and down to the ventral pod, the dorsal pod to the A corridor, the
   side pods to their hangar panels. Every panel now joins 2 to 7 others, 3.6 on average.
+- **Every system on two panels** (the owner, 2026-10-11: "systems should be connected to 2 or more panels, so we can
+  swap with a different route, it should generally connect to the nearest panel"). Each system's `node` is its nearest
+  panel as wiring runs, not as the crow flies: its own room's first, then its own deck's, then the nearest deck's,
+  nearest first; its `alt_node` is the next. Each has a feeder (`feeder_m`, `alt_feeder_m`). The factory feeds every
+  system from its node; an engineer swaps it to the other, and Engineering's automation swaps a system whose panel is
+  dark to one that has power before it spends a live run on a spare (a swap is not a run, so it never counts against
+  the protection). Examples: each reactor train and coolant pump cross-fed from the other main switchboard section; the
+  shield generator from its room's box or straight from the forward switchboard's port section; each laser bank from
+  its turret room or its pod. A room's lights stay on its own box: a box off puts its room on emergency light.
+- **The reactor on five panels** (the owner: "reactor should connect to 4 -5 panels, since it is a critical resource
+  to power the ship"): the two generators on the main switchboard's sections (30 MW each), and three reactor feeds to
+  the drive panel and the two hangar panels (20 MW each), every one with its breaker. With both generators' breakers
+  open the three feeds still carry the ship at cruise.
 - **Factory configuration.** Breadth first from the rooms with switchboards and panels, in the layout's order of rooms
   and doorways: the doorway each other room is first reached by is its feed, closed at the factory (20 runs). The other
   9 doorway runs and the 14 runs through walls and decks are spares, open (23): the routes an engineer closes to bring
@@ -84,11 +97,23 @@ schematic in full screen. They can toggle between 2d and 3d view. 2d is a simpli
 - The full-screen schematic is `docs/mockups/power-grid.html`; the side panel is drawn in `consoles.html`. Both wait
   for the owner's approval before the engine builds them (CLAUDE.md 10).
 
+### 3b. The rooms overlay (owner, 2026-10-11)
+
+The owner: "in your mockup add the ability to overlay rooms, so that if panels are turned off the lights in that room
+go to emergency". The schematic's ROOMS toggle fills every room with the light the simulation gives it (lit by its own
+box, red alert, emergency light, dark) and names the rooms off their own light; on the 2D graph every box carries a lamp
+in its room's light and the overlay tints the box. A box switched off, or one nothing reaches, puts its room on the
+emergency bus's light (the library's `lighting`, the same rule the engine's lighting states will read).
+
 ### 4. What it does to the fight (2026-10-11, bots at Helm and Tactical, Engineering on automation, seeds 1-8)
 
 With the doorway runs alone: 2 victories (in 454 and 514 s), 3 defeats, 3 fights to the 600 s limit with the Hound at
 72-108 of its 250 MJ. With every panel joined to at least two others the automation has more ways round a cut: 3
-victories (509-541 s), 2 defeats, 3 to the limit with the Hound at 6-128 MJ. The
+victories (509-541 s), 2 defeats, 3 to the limit with the Hound at 6-128 MJ. With every system on two feeds and the
+reactor on five panels: 2 victories (438 and 541 s), 5 defeats, 1 to the limit. The runs all start at their panels, so
+they bundle there: in seed 3 one hit by the B spine's panel severed its trunk and 14 runs at once, every way into the
+rooms forward of it, and later hits took the main trunks (question R2). The bot test now holds a win in six, every
+fight 4-10 minutes, and the Hound damaged in every one. The
 losing fights turn on the forward switchboard room: the two forward switchboard sections and the emergency bus share it,
 nine trunks end there, and the spine's spares run past it, so one hit (seed 2, 270 s) severed 15 conduits at once and
 starved the bow (the shields at 5.6 of 15 MW). The bot test now holds the drill winnable without an engineer (a win in
@@ -114,4 +139,5 @@ snapshot at 2 Hz (a bit a box and a run, 10 bytes).
 
 | Id | Question | Options | Recommendation | Shot |
 | --- | --- | --- | --- | --- |
+| R2 | One hit at a panel severs every run bundled there (the damage march takes each conduit its reach touches). Should runs leaving a panel be harder to cut? | (a) As it is: a hit at a panel is a hit on everything it feeds. (b) Armoured runs within 2 m of a panel: a conduit takes a share of a hit by its length inside the reach. (c) Runs leave a panel in two bundles, port and starboard, so a hit takes one. | (c): it is how the trunks already run, and the routing game keeps its spares | `power-grid.html`, its 3D view at a panel |
 | R1 | Split the forward switchboard room, so one hit cannot cut the bow off? | (a) As it is: a hit there is the ship's weak spot. (b) Port and starboard switchboard rooms on deck C, the emergency bus with one. | (b) | `power-grid.html`, its "Port switchboard lost" and "Both trunks cut" scenarios |

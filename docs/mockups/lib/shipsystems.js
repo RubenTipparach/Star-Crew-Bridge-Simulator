@@ -383,6 +383,8 @@
     for (const k of PW.conduits) st.conduit[k.id] = { health: 1, severed: false, breaker: k.factory_closed !== false, cut: null };
     // Every node's box switched on (power-routing 1); the main protection's trip (power-routing 2).
     st.boxOn = {};
+    // Each system's feed (power-routing 1): from its node, or swapped to its alt_node (by load id; absent: its node).
+    st.onAlt = {};
     for (const nd of PW.nodes) st.boxOn[nd.id] = true;
     st.routing = { trip_s: 0, trips: 0 };
     for (const l of loads) if (l.heat && l.heat.to === "node") st.thermal[l.id] = { T: PW.coolant.initial_k + 5 };
@@ -507,7 +509,7 @@
               if (blocked[i]) continue;
               const want = lam * (demand[i] - alloc[i]);
               if (want <= EPS) continue;
-              const got = pushTo(grid, pIdx[loads[i].node], want);
+              const got = pushTo(grid, pIdx[nodeOf(i)], want);
               alloc[i] += got;
               if (got < want - EPS) { blocked[i] = 1; short = true; }
             }
@@ -534,7 +536,8 @@
       for (let i = 0; i < loads.length; i++) {
         const l = loads[i];
         const sp = Math.min(setpoints[i], l.setpoint_max);
-        if (sp <= 0 || st.breakerOpen[i] || st.nodeHealth[l.node] === 0 || st.boxOn[l.node] === false) continue;
+        const fed = nodeOf(i);
+        if (sp <= 0 || st.breakerOpen[i] || st.nodeHealth[fed] === 0 || st.boxOn[fed] === false) continue;
         const cap = capability(i);
         if (cap <= 0) continue;
         let x;
@@ -1734,7 +1737,7 @@
       for (const t of PW.ties) if ((t.between[0] === id || t.between[1] === id) && Math.abs(st.flows[t.id] || 0) > EPS) return true;
       for (const g of PW.generators) if (g.node === id && (st.flows[g.id] || 0) > EPS) return true;
       if (PW.battery.node === id && (st.flows.battery_out || 0) > EPS) return true;
-      for (let i = 0; i < loads.length; i++) if (loads[i].node === id && st.alloc[i] > EPS) return true;
+      for (let i = 0; i < loads.length; i++) if (nodeOf(i) === id && st.alloc[i] > EPS) return true;
       return false;
     }
     /**
@@ -1842,6 +1845,7 @@
     }
     /** Every box on, every run at its factory setting. */
     function factoryReset() {
+      st.onAlt = {};
       for (const nd of PW.nodes) st.boxOn[nd.id] = true;
       for (const k of PW.conduits) st.conduit[k.id].breaker = k.factory_closed !== false;
       for (const t of PW.ties) st.tieClosed[t.id] = !!t.closed;
@@ -1877,6 +1881,15 @@
       else if (id in st.tieClosed) st.tieClosed[id] = !!closed;
       else return false;
       log((closed ? "Run closed: " : "Run opened: ") + id);
+      return true;
+    }
+    /** The panel load i draws from now: its node, or its alt_node once swapped. */
+    function nodeOf(i) { const l = loads[i]; return st.onAlt[l.id] && l.alt_node ? l.alt_node : l.node; }
+    /** Swap a system to its other feed (true: its alt_node); refused (false) while dark or with no second feed. */
+    function setFeed(id, alt) {
+      const i = loadIdx[id];
+      if (st.routing.trip_s > 0 || i == null || !loads[i].alt_node) return false;
+      st.onAlt[id] = !!alt; log(loads[i].name + (alt ? ": fed from " + loads[i].alt_node : ": fed from " + loads[i].node));
       return true;
     }
     /** The protection as a console shows it: live runs against the limit, the dark seconds left, trips so far. */
@@ -1932,7 +1945,7 @@
       operateDoor, setPriority, applyPreset, setCooling, coolantReadout, coolantView, damagePart, repairPart, isolateSegment, partIntegrity, setGroupBreaker, pumpSpeed, repressurize, repairSystem, spliceConduit, rebuildNode, fanRatio,
       airlockCycleOut, airlockCycleIn, ventCompartment, stopVent, addCrew, setActivity, compartmentReadout, lighting,
       receiverKpa, storeMol, fillStandard, log, fs: FS, fO2, conduitView, nodeView, nodeLive, breakers, repairTime, hullSection,
-      setBox, setRun, liveRuns, routingView, factoryReset,
+      setBox, setRun, setFeed, nodeOf, liveRuns, routingView, factoryReset,
       get P() { return P; }, get T() { return T; }, get n() { return n; }, get ntot() { return ntot; },
     };
   }
