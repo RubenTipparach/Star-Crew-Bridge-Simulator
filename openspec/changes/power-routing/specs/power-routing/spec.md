@@ -11,6 +11,15 @@ through the doorways, and every load in a room SHALL be wired to its room's box.
 - **WHEN** the grid is drawn on the floor plan
 - **THEN** every load has a feeder to a box, and every box a run to another box
 
+### Requirement: Every panel connects to at least two others
+
+Every conduit box, switchboard section and panel SHALL be joined by runs or ties to at least two others, so every room
+has a second way for its power to come.
+
+#### Scenario: A room with one door
+- **WHEN** the bridge's doorway run is cut
+- **THEN** a spare through its wall to the computer core or the ready room can feed it
+
 ### Requirement: Boxes and runs route power
 
 A box switched off SHALL pass no power, and a run SHALL carry power only while it is closed, whole, and both its boxes

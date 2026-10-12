@@ -56,6 +56,11 @@ pub struct Distribution {
     pub ratings_mw: Vec<f64>,
     pub rating_margin: f64,
     pub spare_mw: f64,
+    /// Every box joined to at least this many others: runs through walls and decks make up the rest.
+    pub min_runs_per_box: u32,
+    /// Two rooms touch where their walls run within this of each other for at least `min_shared_wall_m`, metres.
+    pub adjacent_gap_m: f64,
+    pub min_shared_wall_m: f64,
     pub note: String,
 }
 
@@ -2141,6 +2146,27 @@ mod tests {
         run(&d, &mut s, &cruise(), 10.0);
         for (i, l) in d.loads.iter().enumerate().filter(|(_, l)| l.id.starts_with("lights_")) {
             assert!(s.alloc[i] > 0.0 && s.supply(i) > 0.99, "{} gets {} of {} MW", l.id, s.alloc[i], s.demand[i]);
+        }
+    }
+
+    #[test]
+    fn every_panel_connects_to_at_least_two_others() {
+        // The owner, 2026-10-11: "there should be a panel in every room, panels should connect to at least 2 other
+        // panels", so a room always has a second way for its power to come.
+        let d = data();
+        let mut joined: Vec<std::collections::BTreeSet<&str>> = vec![Default::default(); d.nodes.len()];
+        for (a, b) in d
+            .file
+            .conduits
+            .iter()
+            .map(|k| (&k.between[0], &k.between[1]))
+            .chain(d.file.ties.iter().map(|t| (&t.between[0], &t.between[1])))
+        {
+            joined[d.node(a).unwrap()].insert(b);
+            joined[d.node(b).unwrap()].insert(a);
+        }
+        for (k, j) in joined.iter().enumerate() {
+            assert!(j.len() >= 2, "{} is joined to {:?}", d.nodes[k], j);
         }
     }
 

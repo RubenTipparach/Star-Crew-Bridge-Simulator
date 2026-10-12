@@ -22,9 +22,20 @@ brings it back at its factory settings.
 - **Runs.** One conduit through every doorway between two rooms (`r_<doorway>`, 29 of them), box to box under the
   ceilings (0.35 m under, or under the next deck in a room taller than a deck), unless a trunk or a tie already joins
   the two rooms' nodes. Windows and doors to space carry none.
+- **At least two other panels each** (the owner, 2026-10-11: "there should be a panel in every room, panels should
+  connect to at least 2 other panels, giving you some ideas for re routing power"). Every box joined to fewer than
+  `min_runs_per_box` (2) other boxes by trunks, ties and doorway runs gets a spare to the nearest box in a room that
+  touches its own: through a shared wall (walls within 0.8 m of each other for at least 1 m) on the same deck first, else
+  through a deck (one room over the other), else along the hull to the nearest box on the nearest deck. 14 such runs:
+  the bridge to the computer core and the ready room, medbay and damage control to the torpedo room, the quarters to
+  medbay, the mess to damage control, each launch bay to the far hangar panel, the airlock up to the mess, the shield
+  room to life support (a second upstream: the life support panel hangs off the forward switchboard's port section and
+  the emergency bus, the shield room off the C spine) and down to the ventral pod, the dorsal pod to the A corridor, the
+  side pods to their hangar panels. Every panel now joins 2 to 7 others, 3.6 on average.
 - **Factory configuration.** Breadth first from the rooms with switchboards and panels, in the layout's order of rooms
   and doorways: the doorway each other room is first reached by is its feed, closed at the factory (20 runs). The other
-  9 doorway runs are spares, open: the routes an engineer closes to bring power round a cut.
+  9 doorway runs and the 14 runs through walls and decks are spares, open (23): the routes an engineer closes to bring
+  power round a cut.
 - **Ratings.** A feed run is rated for everything beyond it (each load at its `setpoint_max`, each room's lights)
   times 1.25, rounded up to 5, 10, 15, 20, 30 or 40 MW: the shield room's feed is 30 MW, a turret pod's 10 MW, the
   bridge's 5 MW. A spare takes 10 MW or the larger feed rating of its two rooms, so a spare can carry what it replaces.
@@ -75,7 +86,9 @@ schematic in full screen. They can toggle between 2d and 3d view. 2d is a simpli
 
 ### 4. What it does to the fight (2026-10-11, bots at Helm and Tactical, Engineering on automation, seeds 1-8)
 
-2 victories (in 454 and 514 s), 3 defeats, 3 fights to the 600 s limit with the Hound at 72-108 of its 250 MJ. The
+With the doorway runs alone: 2 victories (in 454 and 514 s), 3 defeats, 3 fights to the 600 s limit with the Hound at
+72-108 of its 250 MJ. With every panel joined to at least two others the automation has more ways round a cut: 3
+victories (509-541 s), 2 defeats, 3 to the limit with the Hound at 6-128 MJ. The
 losing fights turn on the forward switchboard room: the two forward switchboard sections and the emergency bus share it,
 nine trunks end there, and the spine's spares run past it, so one hit (seed 2, 270 s) severed 15 conduits at once and
 starved the bow (the shields at 5.6 of 15 MW). The bot test now holds the drill winnable without an engineer (a win in

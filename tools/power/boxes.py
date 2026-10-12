@@ -13,6 +13,9 @@ ties, loads), by the rules in power.json's `distribution` block, this writes:
   a tie already joins the two rooms' nodes; the runs that feed a room for the first time from the powered rooms
   (breadth first from the switchboards' and panels' rooms) are closed at the factory, the rest are spare routes,
   open;
+- runs through walls and decks: every box with fewer than `min_runs_per_box` runs (trunks, ties, doorway runs) gets a
+  spare to the nearest box in a room that shares a wall or a deck with its own (the owner, 2026-10-11: "panels should
+  connect to at least 2 other panels"), else to the nearest box in another room;
 - every load's node (its room's box, or the switchboard or panel in its room) and its feeder, the run from that box
   to the load;
 - the lighting panels: each room lit by its own box.
@@ -134,6 +137,57 @@ def place_box(room, portal, rules, deck_m):
         ix, iz = -ix, -iz
     inset = rules["box_into_room_m"]
     return [bx + ix * inset, b["y"][0] + rules["box_height_m"], bz + iz * inset], b
+
+
+def shared_wall(a, b, gap, min_len):
+    """Where two footprints on a deck share a wall: the middle of the longest stretch along which an edge of one runs
+    within `gap` of an edge of the other, parallel, for at least `min_len`; None when they share none."""
+    best = None
+    for pa in (a, b):
+        pb = b if pa is a else a
+        for i in range(len(pa)):
+            p0, p1 = pa[i], pa[(i + 1) % len(pa)]
+            ex, ez = p1[0] - p0[0], p1[1] - p0[1]
+            el = math.hypot(ex, ez)
+            if el < 1e-6:
+                continue
+            ux, uz = ex / el, ez / el
+            for j in range(len(pb)):
+                q0, q1 = pb[j], pb[(j + 1) % len(pb)]
+                fx, fz = q1[0] - q0[0], q1[1] - q0[1]
+                fl = math.hypot(fx, fz)
+                if fl < 1e-6 or abs(ux * fz / fl - uz * fx / fl) > 0.1:
+                    continue
+                d0 = abs((q0[0] - p0[0]) * -uz + (q0[1] - p0[1]) * ux)
+                d1 = abs((q1[0] - p0[0]) * -uz + (q1[1] - p0[1]) * ux)
+                if max(d0, d1) > gap:
+                    continue
+                t0 = (q0[0] - p0[0]) * ux + (q0[1] - p0[1]) * uz
+                t1 = (q1[0] - p0[0]) * ux + (q1[1] - p0[1]) * uz
+                lo, hi = max(0.0, min(t0, t1)), min(el, max(t0, t1))
+                if hi - lo >= min_len and (best is None or hi - lo > best[0]):
+                    t = (lo + hi) / 2
+                    best = (hi - lo, (p0[0] + ux * t, p0[1] + uz * t))
+    return best[1] if best else None
+
+
+def adjacency(room_a, room_b, rules):
+    """How two rooms touch: ("wall", the shared wall's middle [x, z], the deck's floor y) for rooms side by side on a
+    deck, ("deck", a point [x, z] in both footprints, None) for one over the other; None when they do not touch."""
+    gap, min_len = rules["adjacent_gap_m"], rules["min_shared_wall_m"]
+    for ba in room_a["brushes"]:
+        for bb in room_b["brushes"]:
+            overlap = min(ba["y"][1], bb["y"][1]) - max(ba["y"][0], bb["y"][0])
+            if overlap > 1.0:
+                at = shared_wall(ba["poly"], bb["poly"], gap, min_len)
+                if at:
+                    return ("wall", at, max(ba["y"][0], bb["y"][0]))
+            elif abs(ba["y"][1] - bb["y"][0]) < gap or abs(bb["y"][1] - ba["y"][0]) < gap:
+                inside = [p for p in ba["poly"] if inside_convex(bb["poly"], p[0], p[1])]
+                inside += [p for p in bb["poly"] if inside_convex(ba["poly"], p[0], p[1])]
+                if len(inside) >= 2:
+                    return ("deck", (sum(p[0] for p in inside) / len(inside), sum(p[1] for p in inside) / len(inside)), None)
+    return None
 
 
 def run_height(brush, rules, deck_m):
@@ -298,6 +352,57 @@ def generate(layout, power):
         runs.append({"id": RUN + p["id"][2:] if p["id"].startswith("p_") else RUN + p["id"],
                      "name": "Run through " + p["id"][2:].replace("_", " "), "between": [na["id"], nb["id"]],
                      "capacity_mw": cap, "route": [ra, rb], "path_m": path, "factory_closed": tree})
+    # Runs through walls and decks: every node joined to fewer other nodes than the rule gets spares to its
+    # neighbours' boxes.
+    pairs = set()
+    for k in hand_conduits + power["ties"] + runs:
+        pairs.add(frozenset(k["between"]))
+    degree = {n["id"]: sum(1 for p in pairs if n["id"] in p) for n in all_nodes}
+    touch = {}
+    for i, ra in enumerate(room_order):
+        for rb in room_order[i + 1 :]:
+            t = adjacency(rooms[ra], rooms[rb], rules)
+            if t:
+                touch[(ra, rb)] = t
+                touch[(rb, ra)] = t
+    for n in all_nodes:
+        ra = n["compartment"]
+        while degree[n["id"]] < rules["min_runs_per_box"]:
+            def cands(adjacent_only):
+                out = []
+                for rb in room_order:
+                    if rb == ra or (adjacent_only and (ra, rb) not in touch):
+                        continue
+                    for m in [boxes[rb]] if rb in boxes else nodes_in.get(rb, []):
+                        if frozenset((n["id"], m["id"])) not in pairs:
+                            # The same deck first, then the nearest deck, then the nearest box.
+                            decks_off = round(abs(node_brush(n)["y"][0] - node_brush(m)["y"][0]) / deck_m)
+                            out.append((decks_off, math.dist(n["center_m"], m["center_m"]), m["id"], m, rb))
+                return sorted(out, key=lambda c: (c[0], c[1], c[2]))
+            found = cands(True) or cands(False)
+            if not found:
+                break
+            _, _, _, m, rb = found[0]
+            t = touch.get((ra, rb))
+            ha, hb = run_height(node_brush(n), rules, deck_m), run_height(node_brush(m), rules, deck_m)
+            a, b = n["center_m"], m["center_m"]
+            if t and t[0] == "wall":
+                (wx, wz), h = t[1], min(ha, hb)
+                path = [pt(a), pt([a[0], ha, a[2]]), pt([wx, h, wz]), pt([b[0], hb, b[2]]), pt(b)]
+                how, word = "wall", "through the wall"
+            elif t:
+                wx, wz = t[1]
+                path = [pt(a), pt([a[0], ha, a[2]]), pt([wx, ha, wz]), pt([wx, hb, wz]), pt([b[0], hb, b[2]]), pt(b)]
+                how, word = "deck", "through the deck"
+            else:
+                path = [pt(a), pt([a[0], ha, a[2]]), pt([b[0], hb, b[2]]), pt(b)]
+                how, word = "hull", "along the hull"
+            runs.append({"id": f"{RUN}{how}_{ra}_{rb}", "name": f"Run {word}, {ra.replace('_', ' ')} to {rb.replace('_', ' ')}",
+                         "between": [n["id"], m["id"]], "capacity_mw": None, "route": [ra, rb], "path_m": dedupe(path),
+                         "factory_closed": False})
+            degree[n["id"]] += 1
+            degree[m["id"]] += 1
+            pairs.add(frozenset((n["id"], m["id"])))
     for k in runs:
         if k["capacity_mw"] is None:
             ra, rb = k["route"]
@@ -412,7 +517,7 @@ def main():
     live = sum(1 for k in power["conduits"] if not k["id"].startswith(RUN) and k.get("factory_closed", True))
     live += sum(1 for t in power["ties"] if t["closed"]) + sum(1 for k in gen["runs"] if k["factory_closed"])
     spare = sum(1 for k in gen["runs"] if not k["factory_closed"])
-    summary = (f"{len(gen['boxes'])} boxes, {len(gen['runs'])} doorway runs ({spare} spare), "
+    summary = (f"{len(gen['boxes'])} boxes, {len(gen['runs'])} runs through doorways, walls and decks ({spare} spare), "
                f"{live} runs live at the factory, limit {power['routing']['max_live_runs']}")
     if a.check:
         if out != text:
