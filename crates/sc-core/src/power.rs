@@ -181,6 +181,8 @@ pub struct RestartRules {
 pub struct BatteryRules {
     pub system: String,
     pub node: String,
+    /// Where its link to its node runs, along the ship's axes (power-routing 3a; written by tools/power/boxes.py).
+    pub path_m: Option<Vec<[f64; 3]>>,
     pub capacity_mj: f64,
     pub initial_soc: f64,
     pub discharge_max_mw: f64,
@@ -209,6 +211,9 @@ pub struct Generator {
     pub name: String,
     pub node: String,
     pub capacity_mw: f64,
+    /// Where it runs, from the reactor to its node along the ship's axes (power-routing 3a; written by
+    /// tools/power/boxes.py). The schematic draws it; the solve does not read it.
+    pub path_m: Option<Vec<[f64; 3]>>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -219,6 +224,8 @@ pub struct Tie {
     pub between: [String; 2],
     pub capacity_mw: f64,
     pub closed: bool,
+    /// Where it runs, end to end along the ship's axes (power-routing 3a; written by tools/power/boxes.py).
+    pub path_m: Option<Vec<[f64; 3]>>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

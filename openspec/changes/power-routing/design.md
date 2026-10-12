@@ -110,6 +110,16 @@ schematic in full screen. They can toggle between 2d and 3d view. 2d is a simpli
 - **The run under the pointer, lit** (the owner: "hilight line as I hover over them"): in both views the run or feeder
   under the pointer (on a phone, the one last tapped) is drawn brighter, on top, with a white glow its whole length, so
   it can be followed through a bundle, across a deck and between decks.
+- **Every run along the ship's axes** (the owner, of the 3D view: "we've got lots of diagonal lines here that just take
+  shortest distance", "they look messy and unorganized"): every path, the runs', the trunks', the feeders', the
+  reactor's feeds', the ties' and the battery link's, runs as cable trays do, along x, y and z only. A leg that changes
+  height keeps level at its higher end (under the ceilings) and rises or drops at its lower end's spot; a level leg that
+  changes both x and z runs fore and aft on whichever end is nearer the centreline (the corridors and spines) and
+  athwartships at the other; a leg out to a wall's crossing and straight back is cut short. `tools/power/boxes.py`
+  writes the generated paths so (`orthogonal`), and the generators', ties' and battery's `path_m`, which they had none
+  of (drawn as straight lines until now); `--check` fails on a hand-authored trunk off the axes (the twelve that were
+  were straightened by the same rule). The paths are where hits find conduits (`ship-damage`), so the drill's damage
+  moves with them.
 - **Lines in 3D drawn like the board's** (the owner, of the 3D view: "outline is buggy on the coreners, fix these",
   "node connections should look nice like the schematic, these lines are kind of ames"): every corner of a run cut at
   45 degrees (as the board's traces, 3c), each line a flat stroke facing the camera with round joins (no notches, no

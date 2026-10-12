@@ -20,9 +20,15 @@ ties, loads), by the rules in power.json's `distribution` block, this writes:
   a different route, it should generally connect to the nearest panel"): its `node`, the nearest panel, and its
   `alt_node`, the next nearest, each with its feeder from that panel to the system (`feeder_m`, `alt_feeder_m`); a
   room's lights stay on its own box;
-- the lighting panels: each room lit by its own box.
+- the lighting panels: each room lit by its own box;
+- where the reactor's feeds, the bus ties and the battery's link run (`path_m` on each generator, tie and the battery),
+  from end to end under the ceilings.
 
-It never edits a hand-authored node, trunk or tie, and it is idempotent: generated entries are recognised by their
+Every path it writes runs along the ship's axes (the owner, 2026-10-12: "we've got lots of diagonal lines here that
+just take shortest distance", "they look messy and unorganized"): see `orthogonal`. `--check` also fails on a
+hand-authored trunk with a leg off the axes.
+
+It never edits a hand-authored node, trunk or tie (but for a generator's or tie's `path_m`), and it is idempotent: generated entries are recognised by their
 id prefixes and written again. `--check` fails when power.json is not what the rules give.
 
 Usage: python3 tools/power/boxes.py [--ship tern] [--check]
@@ -197,6 +203,42 @@ def run_height(brush, rules, deck_m):
     return min(brush["y"][1], brush["y"][0] + deck_m) - rules["run_below_ceiling_m"]
 
 
+def orthogonal(path, tol=0.02):
+    """The path with every leg along the ship's axes, as cable trays run (power-routing 3a). A leg that changes height
+    keeps level at its higher end (runs stay under the ceilings) and rises or drops at its lower end's spot. A level leg
+    that changes both x and z runs fore and aft on whichever end is nearer the centreline (the corridors and spines)
+    and athwartships at the other. A leg that goes out and back along one line (to a wall's crossing and back) is cut
+    short, and points along a straight leg are dropped."""
+    out = [pt(path[0])]
+    for b in path[1:]:
+        a = out[-1]
+        legs = [(a, b)]
+        if abs(b[1] - a[1]) > tol and (abs(b[0] - a[0]) > tol or abs(b[2] - a[2]) > tol):
+            mid = [b[0], a[1], b[2]] if b[1] < a[1] else [a[0], b[1], a[2]]
+            legs = [(a, mid), (mid, b)]
+        for p, q in legs:
+            if abs(q[0] - p[0]) > tol and abs(q[2] - p[2]) > tol:
+                out.append(pt([p[0], p[1], q[2]] if abs(p[0]) <= abs(q[0]) else [q[0], p[1], p[2]]))
+            out.append(pt(q))
+    out = dedupe(out)
+    axis = lambda u: [abs(x) > tol for x in u]
+    i = 1
+    while i + 1 < len(out):
+        a, b, c = out[i - 1], out[i], out[i + 1]
+        u, v = [b[k] - a[k] for k in range(3)], [c[k] - b[k] for k in range(3)]
+        if axis(u) == axis(v) and sum(axis(u)) == 1:
+            del out[i]
+            i = max(1, i - 1)
+        else:
+            i += 1
+    return dedupe(out)
+
+
+def off_axis(path, tol=0.02):
+    """The legs of a path that change more than one of x, y and z."""
+    return [(a, b) for a, b in zip(path, path[1:]) if sum(abs(b[k] - a[k]) > tol for k in range(3)) > 1]
+
+
 def dedupe(path):
     out = []
     for p in path:
@@ -352,8 +394,8 @@ def generate(layout, power):
             cap = None
         ha, hb = run_height(node_brush(na), rules, deck_m), run_height(node_brush(nb), rules, deck_m)
         a, b, c = na["center_m"], nb["center_m"], p["center_m"]
-        path = dedupe([pt(a), pt([a[0], ha, a[2]]), pt([c[0], ha, c[2]]), pt([c[0], hb, c[2]]), pt([b[0], hb, b[2]]),
-                       pt(b)])
+        path = orthogonal(dedupe([pt(a), pt([a[0], ha, a[2]]), pt([c[0], ha, c[2]]), pt([c[0], hb, c[2]]),
+                                  pt([b[0], hb, b[2]]), pt(b)]))
         runs.append({"id": RUN + p["id"][2:] if p["id"].startswith("p_") else RUN + p["id"],
                      "name": "Run through " + p["id"][2:].replace("_", " "), "between": [na["id"], nb["id"]],
                      "capacity_mw": cap, "route": [ra, rb], "path_m": path, "factory_closed": tree})
@@ -403,7 +445,7 @@ def generate(layout, power):
                 path = [pt(a), pt([a[0], ha, a[2]]), pt([b[0], hb, b[2]]), pt(b)]
                 how, word = "hull", "along the hull"
             runs.append({"id": f"{RUN}{how}_{ra}_{rb}", "name": f"Run {word}, {ra.replace('_', ' ')} to {rb.replace('_', ' ')}",
-                         "between": [n["id"], m["id"]], "capacity_mw": None, "route": [ra, rb], "path_m": dedupe(path),
+                         "between": [n["id"], m["id"]], "capacity_mw": None, "route": [ra, rb], "path_m": orthogonal(path),
                          "factory_closed": False})
             degree[n["id"]] += 1
             degree[m["id"]] += 1
@@ -417,7 +459,7 @@ def generate(layout, power):
         n = node_by_id[node_id]
         h = run_height(node_brush(n), rules, deck_m)
         a = n["center_m"]
-        return dedupe([pt(a), pt([a[0], h, a[2]]), pt([c[0], h, c[2]]), pt(c)])
+        return orthogonal(dedupe([pt(a), pt([a[0], h, a[2]]), pt([c[0], h, c[2]]), pt(c)]))
 
     feeders, alt_feeders = {}, {}
     for l in power["loads"]:
@@ -425,8 +467,22 @@ def generate(layout, power):
         feeders[l["id"]] = feeder(load_node[l["id"]], c)
         if l["id"] in alt_node:
             alt_feeders[l["id"]] = feeder(alt_node[l["id"]], c)
+    # The reactor's feeds, the ties and the battery's link: from end to end at each end's run height, or at the end's
+    # own height where it stands above that (the reactor in a room two decks tall: no drop to the tray and back up).
+    def between(a, b):
+        ha = max(a[1], run_height(floor_brush(rooms[room_of_point(layout, a)], a), rules, deck_m))
+        hb = max(b[1], run_height(floor_brush(rooms[room_of_point(layout, b)], b), rules, deck_m))
+        return orthogonal(dedupe([pt(a), pt([a[0], ha, a[2]]), pt([b[0], hb, b[2]]), pt(b)]))
+
+    sys_at = {s["id"]: s["center_m"] for s in layout["systems"]}
+    gen_paths = {g["id"]: between(sys_at[power["reactor"]["system"]], node_by_id[g["node"]]["center_m"])
+                 for g in power["generators"]}
+    tie_paths = {t["id"]: between(node_by_id[t["between"][0]]["center_m"], node_by_id[t["between"][1]]["center_m"])
+                 for t in power["ties"]}
+    battery_path = between(sys_at[power["battery"]["system"]], node_by_id[power["battery"]["node"]]["center_m"])
     return {"boxes": [boxes[r] for r in room_order if r in boxes], "runs": runs, "load_node": load_node,
-            "alt_node": alt_node, "feeders": feeders, "alt_feeders": alt_feeders, "panels": panels}
+            "alt_node": alt_node, "feeders": feeders, "alt_feeders": alt_feeders, "panels": panels,
+            "gen_paths": gen_paths, "tie_paths": tie_paths, "battery_path": battery_path}
 
 
 def fmt(v):
@@ -505,6 +561,20 @@ def rewrite(text, gen):
             tail += f', "alt_node": {fmt(gen["alt_node"][lid])}, "alt_feeder_m": {fmt(gen["alt_feeders"][lid])}'
         block.append(tail + " }" + ("," if comma else ""))
         lines = lines[:a] + block + lines[b + 1 :]
+    # The generators' and ties' paths, at the end of each one's line.
+    for key, paths, keys in (("generators", gen["gen_paths"], ["id", "name", "node", "capacity_mw"]),
+                             ("ties", gen["tie_paths"], ["id", "name", "between", "capacity_mw", "closed"])):
+        s, e = array_span(key)
+        src = {d["id"]: d for d in json.loads("\n".join(["["] + [l.rstrip().rstrip(",") + "," for l in lines[s + 1 : e]])[:-1] + "]")}
+        body = [entry_line({**src[i], "path_m": paths[i]}, keys + ["path_m"]) for i in paths]
+        lines = lines[: s + 1] + [l + ("," if j + 1 < len(body) else "") for j, l in enumerate(body)] + lines[e:]
+    # The battery's link: its own line in the battery block, after its node.
+    s = next(i for i, l in enumerate(lines) if l.startswith('  "battery": {'))
+    e = next(i for i in range(s + 1, len(lines)) if lines[i].startswith("  }"))
+    lines = lines[:s] + [l for l in lines[s:e] if not l.strip().startswith('"path_m"')] + lines[e:]
+    e = next(i for i in range(s + 1, len(lines)) if lines[i].startswith("  }"))
+    at = next(i for i in range(s + 1, e) if lines[i].strip().startswith('"node"'))
+    lines.insert(at + 1, f'    "path_m": {fmt(gen["battery_path"])},')
     # Lighting panels.
     s = next(i for i, l in enumerate(lines) if l.startswith('    "panels": {'))
     e = next(i for i in range(s + 1, len(lines)) if lines[i].startswith("    }"))
@@ -532,6 +602,12 @@ def main():
     spare = sum(1 for k in gen["runs"] if not k["factory_closed"])
     summary = (f"{len(gen['boxes'])} boxes, {len(gen['runs'])} runs through doorways, walls and decks ({spare} spare), "
                f"{live} runs live at the factory, limit {power['routing']['max_live_runs']}")
+    crooked = [k["id"] for k in power["conduits"] if not k["id"].startswith(RUN) and off_axis(k["path_m"])]
+    if crooked:
+        print(f"{pp.relative_to(ROOT)}: hand-authored paths off the ship's axes (power-routing 3a): {', '.join(crooked)}",
+              file=sys.stderr)
+        if a.check:
+            return 1
     if a.check:
         if out != text:
             print(f"{pp.relative_to(ROOT)}: stale; run tools/power/boxes.py", file=sys.stderr)
