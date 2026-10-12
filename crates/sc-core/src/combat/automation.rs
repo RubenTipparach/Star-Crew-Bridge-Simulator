@@ -119,6 +119,8 @@ pub struct EngineeringMemory {
     pub alert: Option<bool>,
     /// When the condition last differed from it, seconds into Engage.
     pub since_s: Option<f64>,
+    /// Since when a spare run would bring power back to a dark room (power-routing 3).
+    pub reroute_since: Option<f64>,
 }
 
 /// Engineering's automation (bridge-stations 3, `power.json` presets' note): after its reaction time, the combat

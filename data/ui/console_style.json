@@ -32,6 +32,8 @@
   "laser": "#f06292"
  },
  "icons": {
+  "expand": "<path d=\"M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7\"/>",
+  "runs": "<circle cx=\"5\" cy=\"12\" r=\"2.5\"/><circle cx=\"19\" cy=\"12\" r=\"2.5\"/><path d=\"M7.5 12h9\"/>",
   "drive": "<path d=\"M4 6l6 6-6 6M12 6l6 6-6 6\"/>",
   "shields": "<path d=\"M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z\"/>",
   "turrets": "<circle cx=\"12\" cy=\"15\" r=\"5\"/><path d=\"M12 10V2M5 21h14\"/>",

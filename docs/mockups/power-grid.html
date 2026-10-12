@@ -1,16 +1,18 @@
 <!doctype html>
 <!--
-  power-grid.html: the Tern's power grid on the ship's floor plan and as a one-line electrical diagram
-  (openspec/changes/power-grid; the owner, 2026-10-11: "Power grid should have a mock up as well. I would like to see
-  the power grid in the ship floor plan and as a electric diagram").
+  power-grid.html: Engineering's expanded schematic, the Tern's power grid in 3D and as a simplified 2D graph
+  (openspec/changes/power-grid and power-routing; the owner, 2026-10-11: "I would like to see the power grid in the
+  ship floor plan and as a electric diagram", "Conduits are placed in breaker boxes throughout the ship", "Conduit
+  boxes can be turned on or off to route power through the ship", "Engineer will have a view of the schematics on the
+  side. But can click on an expand button to see the 3d schematic in full screen. They can toggle between 2d and 3d
+  view. 2d is a simplified graph view").
 
-  PLAN: the three decks from above, stacked A over B over C, bow to the right and port up. Every room from the
-  layout, tinted by the light the simulation gives it (normal, red alert, emergency, dark); every power node at its
-  center_m; every conduit along its path_m, as wide as it is rated and as bright as the share of that it carries,
-  its dashes running the way the power flows; each load where it stands, filled to the share of its demand it gets.
-  DIAGRAM: the same grid as a one-line diagram: the reactor and its two generator breakers, the main switchboard's two
-  sections and their tie, the trunks to the forward switchboard, the emergency bus with the battery, every panel with
-  its loads as bars (wanted against delivered) and their priority.
+  3D: the decks in perspective at their heights (pulled apart by default), an orbit camera, rooms as translucent
+  floors tinted by their light, a conduit box in every room, every run (spares dashed until closed) and every load's
+  feeder where it is. 2D: the same grid as a graph: switchboards and panels as cards, room boxes as chips, runs as
+  edges, each box's loads as bars. In both a tap switches a box or a run; the live runs show against the protection's
+  limit, and one too many trips the grid dark until it resets to its factory settings. COLLAPSE returns to the
+  console's side panel (consoles.html, Engineering's SCHEMATIC).
 
   Every number comes from docs/mockups/lib/shipsystems.js (the mockups' one simulation: the solve, the flows, the
   breakers, nodeView and conduitView); this page computes nothing of its own. Nothing in it is engine code. Never
@@ -36,8 +38,12 @@
   @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --bg: #04060a; } }
   :root[data-theme="dark"] { --bg: #04060a; }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font: 14px/1.3 var(--font); overflow: hidden; }
+  /* One row that scrolls sideways on a narrow screen (a phone), so it never grows over the view. */
   #bar { position: fixed; left: 0; right: 0; top: 0; height: 44px; display: flex; align-items: center; gap: 6px; padding: 0 12px;
-    background: var(--chrome); border-bottom: 1px solid var(--line); z-index: 25; overflow-x: auto; white-space: nowrap; box-sizing: border-box; }
+    background: var(--chrome); border-bottom: 1px solid var(--line); z-index: 25; overflow-x: auto; overflow-y: hidden; white-space: nowrap;
+    box-sizing: border-box; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  #bar::-webkit-scrollbar { display: none; }
+  #bar button { flex: none; }
   #bar b { font-weight: 700; letter-spacing: .06em; margin-right: 6px; color: var(--power); }
   #bar button { background: #151d28; color: var(--fg); border: 1px solid var(--line); border-radius: 5px; padding: 6px 10px;
     font: 600 13px var(--font); letter-spacing: .04em; cursor: pointer; }
@@ -45,18 +51,29 @@
   #bar .sep { width: 1px; height: 24px; background: var(--line); margin: 0 4px; flex: none; }
   #bar .lab { color: var(--dim); font-size: 12px; margin-left: 2px; }
   #plan { position: fixed; left: 0; top: 44px; touch-action: none; }
-  #stage { position: fixed; left: 0; right: 0; top: 44px; bottom: 0; display: none; }
+  #stage { position: fixed; left: 0; right: 0; top: 44px; bottom: 0; display: none; overflow: hidden; touch-action: none; cursor: grab; }
+  #diagram .tap { cursor: pointer; }
   #diagram { position: absolute; width: 1280px; height: 720px; transform-origin: 0 0; user-select: none; -webkit-user-select: none; }
   #diagram svg { display: block; }
   #labels { position: fixed; left: 0; top: 44px; right: 0; bottom: 0; pointer-events: none; z-index: 5; overflow: hidden; }
   #labels div { position: absolute; white-space: nowrap; text-shadow: 0 0 3px #000, 0 0 6px #000; }
-  #labels .deck { font: 700 30px/1 var(--font); color: #ffb84d; transform: translate(-100%, -50%); }
+  #labels .deck { font: 700 26px/1 var(--font); color: #ffb84d; transform: translate(-50%, -50%); pointer-events: auto; cursor: pointer;
+    background: rgba(8, 12, 18, 0.7); border: 1px solid #3a2f1c; border-radius: 6px; padding: 4px 8px; text-align: center; }
+  #labels .deck.on { color: var(--accent); border-color: var(--accent); }
+  body.portrait #labels .deck { font-size: 19px; padding: 3px 6px; }
+  body.portrait #labels .deck small { font-size: 10px; }
+  #collapse { position: fixed; right: 12px; top: 54px; z-index: 30; display: flex; align-items: center; gap: 6px; padding: 7px 12px;
+    background: #151d28; color: var(--fg); border: 1px solid var(--line); border-radius: 6px; font: 700 13px var(--font);
+    letter-spacing: .08em; cursor: pointer; }
+  #collapse:hover, #collapse:focus-visible { border-color: var(--accent); color: var(--accent); outline: none; }
   #labels .deck small { display: block; font: 600 12px/1.2 var(--font); color: #a8946e; letter-spacing: .06em; }
   #labels .node { font: 700 11px/1 var(--font); color: #ffe7a8; letter-spacing: .05em; transform: translate(-50%, 6px); }
   #labels .node.tl { transform: translate(-100%, -50%); }
+  #labels .node.box { font-size: 10px; color: #c9b98a; }
+  #labels .deck.v { transform: translate(-50%, -100%); text-align: center; }
   #labels .node.tr { transform: translate(0, -50%); }
   #labels .room { font: 600 11px/1 var(--font); color: #6f7f94; transform: translate(-50%, -50%); }
-  #status { position: fixed; left: 12px; top: 54px; width: 316px; box-sizing: border-box; justify-content: space-between; z-index: 20; display: flex; gap: 10px; align-items: center; background: var(--panel);
+  #status { position: fixed; left: 12px; top: 54px; width: 316px; box-sizing: border-box; justify-content: space-between; z-index: 20; display: flex; flex-wrap: wrap; row-gap: 6px; gap: 10px; align-items: center; background: var(--panel);
     border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; font: 700 15px/1 var(--font); letter-spacing: .03em; }
   #status .k { display: flex; align-items: center; gap: 6px; }
   #status svg { display: block; }
@@ -72,7 +89,15 @@
   #tip .d { color: #9fb0c0; }
   .mockup-title { max-width: 316px !important; top: 54px !important; }
   #status .alert { position: absolute; left: 0; right: 0; top: -1px; height: 4px; padding: 0; border-radius: 8px 8px 0 0; background: var(--danger); }
+  #tripb { position: fixed; left: 50%; transform: translateX(-50%); z-index: 30; display: none; pointer-events: none; text-align: center;
+    background: rgba(40, 6, 10, 0.92); border: 2px solid var(--danger); border-radius: 8px; padding: 6px 18px; color: #fff;
+    font: 700 22px/1.1 var(--font); letter-spacing: .12em; }
+  #tripb small { display: block; font: 600 13px/1.3 var(--font); letter-spacing: .04em; color: #ffb3ba; }
+  /* The shared "show closed panels" pill sits over the bar's first row by default: here it waits above the status strip. */
+  .mk-show { top: auto !important; bottom: 92px !important; }
   @media (max-width: 760px) { .legend { width: 260px; } #status { top: auto; bottom: 12px; } }
+  body.portrait #status { top: auto !important; bottom: 12px; left: 12px; right: 12px; width: auto; }
+  body.portrait .legend { width: min(300px, calc(100vw - 24px)); }
 </style>
 <script type="importmap">
 { "imports": {
@@ -87,7 +112,7 @@
 <!-- INLINE layout:tern END -->
 <!-- INLINE data:tern/power BEGIN -->
 <script id="ship-data-power" type="application/json">
-{"schema":"starcrew.ship-power/1","status":"PROPOSED by openspec/changes/power-grid (2026-10-04). The engine reads it (sc-core::power, in the drill since 2026-10-11) and so do the mockups' library. Numbers are tuning proposals, not decisions.","ship":"tern","units":{"power":"MW (megawatts)","energy":"MJ (megajoules)","temperature":"K (kelvin)","heat_capacity":"MJ/K","conductance":"kW/K for loop couplings, W/K for room couplings","time":"s","position":"metres, ship-local, as layout.json"},"solve":{"substep_hz":10,"quanta_rounds":3,"epsilon_mw":0.0005,"dropout_resolves":1},"reactor":{"system":"reactor","fuel":"deuterium and helium-3","thermal_rated_mw":80.0,"conversion_efficiency":0.6,"throttle_min":0.1,"throttle_max":1.2,"throttle_default":1.0,"ramp_up_per_s":0.02,"ramp_down_per_s":0.1,"fuel_energy_mj_per_kg":353000000.0,"fuel_load_kg":4.0,"overdrive_wear_pct_per_min_at_max":1.0,"heat":{"capacity_mj_per_k":10.0,"loop_kw_per_k":110.0,"room_w_per_k":250.0,"warn_k":750.0,"scram_k":820.0,"afterheat_share":0.06,"afterheat_tau_s":180.0},"scram":{"loop_over_k":380.0,"loop_over_hold_s":2.0,"aux_supply_below":0.8,"aux_rule":"best train: max over the two trains of supply / need","aux_supply_hold_s":2.0,"integrity_below_pct":25.0},"reset":{"fixture":"reactor_panel","hold_s":3.0,"loop_below_k":350.0,"blanket_below_k":700.0},"restart":{"ignition_mw":8.0,"ignition_s":20.0,"start_throttle":0.1}},"battery":{"system":"battery_bank","node":"eb","capacity_mj":1800.0,"initial_soc":0.9,"discharge_max_mw":30.0,"charge_max_mw":12.0,"charge_efficiency":0.95,"discharge_efficiency":0.95,"restart_reserve_mj":350.0,"heat_to":"loop"},"nodes":[{"id":"msb_p","name":"Main switchboard, port section","kind":"switchboard","compartment":"engineering","center_m":[7.5,0.5,-20.6]},{"id":"msb_s","name":"Main switchboard, starboard section","kind":"switchboard","compartment":"engineering","center_m":[-7.5,0.5,-21.0]},{"id":"fsb_p","name":"Forward switchboard, port section","kind":"switchboard","compartment":"switchboard","center_m":[-2.4,-1.0,4.2]},{"id":"fsb_s","name":"Forward switchboard, starboard section","kind":"switchboard","compartment":"switchboard","center_m":[-2.4,-1.0,5.2]},{"id":"eb","name":"Emergency bus","kind":"emergency_bus","compartment":"switchboard","center_m":[-4.5,-1.0,2.0]},{"id":"dp_drive","name":"Drive panel","kind":"panel","compartment":"drive","center_m":[0.0,2.5,-34.0]},{"id":"dp_hangar_p","name":"Hangar port panel","kind":"panel","compartment":"hangar","center_m":[8.0,2.6,-8.0]},{"id":"dp_hangar_s","name":"Hangar starboard panel","kind":"panel","compartment":"hangar","center_m":[-8.0,2.6,-8.0]},{"id":"dp_port","name":"Port turret panel","kind":"panel","compartment":"port_turret","center_m":[6.0,2.6,4.0]},{"id":"dp_stbd","name":"Starboard turret panel","kind":"panel","compartment":"stbd_turret","center_m":[-6.0,2.6,4.0]},{"id":"dp_a","name":"Command deck panel","kind":"panel","compartment":"a_corridor","center_m":[0.6,6.2,10.5]},{"id":"dp_b_fwd","name":"Main deck forward panel","kind":"panel","compartment":"b_spine","center_m":[0.8,2.7,22.0]},{"id":"dp_c_fwd","name":"Lower deck forward panel","kind":"panel","compartment":"c_spine","center_m":[0.8,-0.8,9.0]},{"id":"dp_ls","name":"Life support panel","kind":"panel","compartment":"life_support","center_m":[3.0,-0.8,12.0]}],"generators":[{"id":"gen_p","name":"Reactor generator, port","node":"msb_p","capacity_mw":30.0},{"id":"gen_s","name":"Reactor generator, starboard","node":"msb_s","capacity_mw":30.0}],"ties":[{"id":"bt_main","name":"Main bus tie","between":["msb_p","msb_s"],"capacity_mw":40.0,"closed":true},{"id":"bt_fwd","name":"Forward cross-tie","between":["fsb_p","fsb_s"],"capacity_mw":30.0,"closed":true},{"id":"eb_p","name":"Emergency feed, port","between":["fsb_p","eb"],"capacity_mw":15.0,"closed":true},{"id":"eb_s","name":"Emergency feed, starboard","between":["fsb_s","eb"],"capacity_mw":15.0,"closed":true}],"conduits":[{"id":"k_drive_p","name":"Drive feeder, port","between":["msb_p","dp_drive"],"capacity_mw":20.0,"route":["engineering","drive"],"path_m":[[8.6,2.0,-20.6],[8.6,5.0,-20.6],[8.6,5.0,-29.6],[6.2,5.0,-29.6],[6.2,5.0,-31.45],[0.5,5.0,-31.45],[0.5,2.5,-31.45],[0.5,2.5,-34.0]]},{"id":"k_drive_s","name":"Drive feeder, starboard","between":["msb_s","dp_drive"],"capacity_mw":20.0,"route":["engineering","drive"],"path_m":[[-8.6,2.0,-21.45],[-8.6,5.0,-21.45],[-8.6,5.0,-29.6],[-6.2,5.0,-29.6],[-6.2,5.0,-31.45],[-0.5,5.0,-31.45],[-0.5,2.5,-31.45],[-0.5,2.5,-34.0]]},{"id":"k_aft_p","name":"Port main trunk, aft","between":["msb_p","dp_hangar_p"],"capacity_mw":30.0,"route":["engineering","hangar"],"path_m":[[8.6,2.0,-20.15],[8.6,2.7,-20.15],[8.6,2.7,-18.75],[7.75,2.7,-18.75],[7.75,2.7,-18.0],[8.0,2.6,-8.0]]},{"id":"k_aft_s","name":"Starboard main trunk, aft","between":["msb_s","dp_hangar_s"],"capacity_mw":30.0,"route":["engineering","hangar"],"path_m":[[-8.6,2.0,-20.55],[-8.6,2.7,-20.55],[-8.6,2.7,-18.75],[-7.75,2.7,-18.75],[-7.75,2.7,-18.0],[-8.0,2.6,-8.0]]},{"id":"k_mid_p","name":"Port main trunk, midships","between":["dp_hangar_p","dp_port"],"capacity_mw":30.0,"route":["hangar","port_turret"],"path_m":[[8.0,2.6,-8.0],[8.0,2.6,-2.5],[8.0,2.6,1.0],[6.0,2.6,4.0]]},{"id":"k_mid_s","name":"Starboard main trunk, midships","between":["dp_hangar_s","dp_stbd"],"capacity_mw":30.0,"route":["hangar","stbd_turret"],"path_m":[[-8.0,2.6,-8.0],[-8.0,2.6,-2.5],[-8.0,2.6,1.0],[-6.0,2.6,4.0]]},{"id":"k_fwd_p","name":"Port main trunk, forward","between":["dp_port","fsb_p"],"capacity_mw":30.0,"route":["port_turret","shield_room","c_spine","switchboard"],"path_m":[[6.0,2.6,4.0],[4.5,2.6,3.0],[4.5,-0.8,3.0],[1.5,-0.8,3.0],[-1.5,-0.8,3.5],[-2.4,-1.0,4.2]]},{"id":"k_fwd_s","name":"Starboard main trunk, forward","between":["dp_stbd","fsb_s"],"capacity_mw":30.0,"route":["stbd_turret","switchboard"],"path_m":[[-6.0,2.6,4.0],[-4.5,2.6,5.5],[-4.5,-0.8,5.5],[-2.4,-1.0,5.2]]},{"id":"k_a_fwd","name":"Command deck feeder, forward","between":["fsb_p","dp_a"],"capacity_mw":8.0,"route":["switchboard","c_spine","b_spine","a_corridor"],"path_m":[[-2.4,-1.0,4.2],[-0.8,-0.8,6.0],[-0.8,-0.8,11.3],[-0.6,2.7,11.3],[-0.6,6.2,11.3],[0.6,6.2,10.5]]},{"id":"k_a_aft","name":"Command deck feeder, aft","between":["msb_s","dp_a"],"capacity_mw":8.0,"route":["engineering","a_aft_passage","dorsal_turret","a_corridor"],"path_m":[[-8.6,2.0,-21.0],[-8.6,2.95,-21.0],[-8.6,2.95,-18.75],[-6.8,2.95,-18.75],[-6.8,6.2,-18.75],[0.6,6.2,-18.75],[0.6,6.2,-18.0],[0.6,6.2,0.0],[0.6,6.2,4.0],[0.6,6.2,10.5]]},{"id":"k_b_fwd","name":"Main deck forward feeder","between":["fsb_s","dp_b_fwd"],"capacity_mw":12.0,"route":["switchboard","c_spine","b_spine"],"path_m":[[-2.4,-1.0,5.2],[-0.9,-0.8,6.5],[-0.9,-0.8,11.6],[-0.9,2.7,11.6],[0.8,2.7,13.0],[0.8,2.7,22.0]]},{"id":"k_c_fwd_p","name":"Lower deck feeder, port","between":["fsb_p","dp_c_fwd"],"capacity_mw":30.0,"route":["switchboard","c_spine"],"path_m":[[-2.4,-1.0,4.2],[-1.0,-0.9,4.0],[0.8,-0.9,8.0],[0.8,-0.8,9.0]]},{"id":"k_c_fwd_s","name":"Lower deck feeder, starboard","between":["fsb_s","dp_c_fwd"],"capacity_mw":30.0,"route":["switchboard","c_spine"],"path_m":[[-2.4,-1.0,5.2],[-1.0,-1.4,5.6],[0.6,-1.4,9.0],[0.8,-0.8,9.0]]},{"id":"k_ls_n","name":"Life support feeder, normal","between":["fsb_p","dp_ls"],"capacity_mw":6.0,"route":["switchboard","c_spine","life_support"],"path_m":[[-2.4,-1.0,4.2],[-1.1,-1.1,5.0],[0.9,-1.1,12.0],[3.0,-0.8,12.0]]},{"id":"k_ls_e","name":"Life support feeder, emergency","between":["eb","dp_ls"],"capacity_mw":3.0,"route":["switchboard","c_spine","life_support"],"path_m":[[-4.5,-1.0,2.0],[-1.1,-1.6,2.5],[1.0,-1.6,13.0],[3.0,-0.9,13.0]]}],"loads":[{"id":"reactor_aux_p","name":"Reactor auxiliaries, port","system":"reactor","center_m":[5.5,0.0,-24.0],"node":"msb_p","priority":0,"nominal_mw":1.0,"standby_mw":0.3,"setpoint_max":1.0,"min_ratio":0.0,"heat":{"to":"loop","fraction":1.0},"under":"Two full trains (port and starboard): the reactor scrams when neither train has had 80% of its supply for 2 s. Ignition runs at the pace the two trains' supply allows.","over":"Not adjustable."},{"id":"reactor_aux_s","name":"Reactor auxiliaries, starboard","system":"reactor","center_m":[-5.5,0.0,-24.0],"node":"msb_s","priority":0,"nominal_mw":1.0,"standby_mw":0.3,"setpoint_max":1.0,"min_ratio":0.0,"heat":{"to":"loop","fraction":1.0},"under":"As the port half.","over":"Not adjustable."},{"id":"coolant_pump_a","name":"Coolant pump A","system":"coolant_pumps","center_m":[6.5,-3.5,-29.0],"node":"msb_p","priority":0,"nominal_mw":0.4,"standby_mw":0.4,"setpoint_max":1.2,"min_ratio":0.0,"power_exponent":2.0,"heat":{"to":"loop","fraction":1.0},"under":"Its setpoint is its speed; the speed it runs at is the one its supply allows. Loop flow falls in proportion; each pump is half the flow.","over":"Up to 120% speed: 1.2 times its flow for 1.44 times its power, with heat and wear (reactor-cooling design 6)."},{"id":"coolant_pump_b","name":"Coolant pump B","system":"coolant_pumps","center_m":[-6.5,-3.5,-29.0],"node":"msb_s","priority":0,"nominal_mw":0.4,"standby_mw":0.4,"setpoint_max":1.2,"min_ratio":0.0,"power_exponent":2.0,"heat":{"to":"loop","fraction":1.0},"under":"As pump A.","over":"As pump A."},{"id":"radiator_pump_p","name":"Radiator pump, port","system":null,"node":"dp_drive","priority":0,"nominal_mw":0.6,"standby_mw":0.6,"setpoint_max":1.2,"min_ratio":0.0,"power_exponent":2.0,"center_m":[5.2,0.6,-32.8],"heat":{"to":"loop","fraction":1.0},"under":"Its setpoint is its speed. Radiator rejection falls in proportion; each pump is half the radiators' flow (reactor-cooling design 2).","over":"As the core pumps."},{"id":"radiator_pump_s","name":"Radiator pump, starboard","system":null,"node":"dp_drive","priority":0,"nominal_mw":0.6,"standby_mw":0.6,"setpoint_max":1.2,"min_ratio":0.0,"power_exponent":2.0,"center_m":[-5.2,0.6,-32.8],"heat":{"to":"loop","fraction":1.0},"under":"As the port pump.","over":"As the core pumps."},{"id":"makeup_pump","name":"Coolant makeup pump","system":"coolant_pumps","node":"msb_s","priority":0,"nominal_mw":0.05,"standby_mw":0.0,"setpoint_max":1.0,"min_ratio":0.0,"activity":"makeup","heat":{"to":"loop","fraction":1.0},"under":"Makeup flow from the tanks in proportion to supply.","over":"Not adjustable."},{"id":"emergency_lighting","name":"Emergency lighting","system":null,"node":"eb","priority":0,"nominal_mw":0.0049,"standby_mw":0.0049,"setpoint_max":1.0,"min_ratio":0.0,"center_m":[-4.5,-1.0,2.6],"heat":{"to":"none","fraction":0.0},"under":"Below 50%: compartments with no normal lighting go dark.","over":"Not adjustable."},{"id":"computer","name":"Computer core","system":"computer","node":"dp_a","priority":1,"nominal_mw":1.5,"standby_mw":1.5,"setpoint_max":1.5,"min_ratio":0.5,"heat":{"to":"node","fraction":0.95,"capacity_mj_per_k":4.3,"loop_kw_per_k":47.5,"room_w_per_k":30.0,"warn_k":363.0,"damage_k":393.0},"under":"Automation competence falls with supply; below 50% every automated station stops and targeting solutions are lost.","over":"Automation reaction time shortens by up to a third."},{"id":"bridge_consoles","name":"Bridge consoles","system":null,"node":"dp_a","priority":1,"nominal_mw":0.007,"standby_mw":0.007,"setpoint_max":1.0,"min_ratio":0.5,"center_m":[0.0,4.5,26.0],"heat":{"to":"room","fraction":1.0,"room":"bridge"},"under":"Below 50%: the bridge stations go dark; the engineering bay console and the damage control board still work.","over":"Not adjustable."},{"id":"o2_generator","name":"Oxygen generator","system":"o2_generator","node":"dp_ls","priority":1,"nominal_mw":1.0,"standby_mw":0.005,"setpoint_max":1.5,"min_ratio":0.0,"activity":"o2_output","heat":{"to":"node","fraction":0.3,"capacity_mj_per_k":0.9,"loop_kw_per_k":10.0,"room_w_per_k":20.0,"warn_k":363.0,"damage_k":393.0},"under":"Oxygen output in proportion to supply.","over":"Output up to 1.5 times rated, with heat and wear."},{"id":"co2_scrubbers","name":"CO2 scrubbers","system":"co2_scrubbers","node":"dp_ls","priority":1,"nominal_mw":0.25,"standby_mw":0.25,"setpoint_max":1.5,"min_ratio":0.0,"heat":{"to":"loop","fraction":1.0},"under":"CO2 and smoke removal in proportion to supply.","over":"Removal up to 1.5 times rated."},{"id":"air_handler","name":"Air handler fans","system":"air_handler","node":"dp_ls","priority":1,"nominal_mw":0.08,"standby_mw":0.08,"setpoint_max":1.25,"min_ratio":0.2,"heat":{"to":"duct","fraction":1.0},"under":"Circulation in proportion to supply; below 20% the fans stop and every vent damper springs shut.","over":"Circulation up to 1.25 times rated."},{"id":"thermal_control","name":"Thermal control","system":"thermal_control","node":"dp_ls","priority":1,"nominal_mw":0.75,"standby_mw":0.15,"setpoint_max":1.0,"min_ratio":0.0,"activity":"heater","heat":{"to":"none","fraction":0.0},"under":"Cabin cooling and heating in proportion to supply.","over":"Not adjustable."},{"id":"medbay","name":"Medbay beds","system":"medbay_beds","node":"dp_b_fwd","priority":1,"nominal_mw":0.008,"standby_mw":0.002,"setpoint_max":1.5,"min_ratio":0.25,"heat":{"to":"room","fraction":1.0,"room":"medbay"},"under":"Healing and revival in proportion to supply; below 25% the beds stop.","over":"Healing up to 1.5 times faster."},{"id":"shield_generator","name":"Shield generator","system":"shield_generator","node":"dp_c_fwd","priority":2,"nominal_mw":12.0,"standby_mw":2.0,"setpoint_max":1.5,"min_ratio":0.25,"activity":"shield_regen","heat":{"to":"node","fraction":0.35,"capacity_mj_per_k":12.6,"loop_kw_per_k":140.0,"room_w_per_k":40.0,"warn_k":363.0,"damage_k":393.0},"under":"Face regeneration and capacity in proportion to supply; below 25% the faces collapse.","over":"Regeneration up to 1.5 times, with heat."},{"id":"turret_dorsal","name":"Dorsal turret","mount":"turret_dorsal","node":"dp_a","priority":2,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.2,"activity":"turret_dorsal","heat":{"to":"node","fraction":0.4,"capacity_mj_per_k":4.8,"loop_kw_per_k":53.3,"room_w_per_k":25.0,"room":"pod_dorsal","warn_k":363.0,"damage_k":393.0},"under":"Capacitor charge rate in proportion to supply (4 MW nominal against 6 MW of sustained fire); below 20% it cannot fire.","over":"Up to 1.5 times the rate of fire, with heat."},{"id":"turret_ventral","name":"Ventral turret","mount":"turret_ventral","node":"dp_c_fwd","priority":2,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.2,"activity":"turret_ventral","heat":{"to":"node","fraction":0.4,"capacity_mj_per_k":4.8,"loop_kw_per_k":53.3,"room_w_per_k":25.0,"room":"pod_ventral","warn_k":363.0,"damage_k":393.0},"under":"As the dorsal turret.","over":"As the dorsal turret."},{"id":"turret_port","name":"Port turret","mount":"turret_port","node":"dp_port","priority":2,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.2,"activity":"turret_port","heat":{"to":"node","fraction":0.4,"capacity_mj_per_k":4.8,"loop_kw_per_k":53.3,"room_w_per_k":25.0,"room":"pod_port","warn_k":363.0,"damage_k":393.0},"under":"As the dorsal turret.","over":"As the dorsal turret."},{"id":"turret_stbd","name":"Starboard turret","mount":"turret_stbd","node":"dp_stbd","priority":2,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.2,"activity":"turret_stbd","heat":{"to":"node","fraction":0.4,"capacity_mj_per_k":4.8,"loop_kw_per_k":53.3,"room_w_per_k":25.0,"room":"pod_stbd","warn_k":363.0,"damage_k":393.0},"under":"As the dorsal turret.","over":"As the dorsal turret."},{"id":"sensors","name":"Sensor array","system":"sensor_array","node":"dp_b_fwd","priority":2,"nominal_mw":3.0,"standby_mw":0.5,"setpoint_max":1.5,"min_ratio":0.15,"activity":"sensors_active","heat":{"to":"node","fraction":0.5,"capacity_mj_per_k":4.5,"loop_kw_per_k":50.0,"room_w_per_k":0.0,"warn_k":363.0,"damage_k":393.0},"under":"Active range grows as the square root of supply; at standby only passive contacts.","over":"Range up to 1.22 times (square root of 1.5)."},{"id":"inertial_dampers","name":"Inertial dampers","system":"inertial_dampers","node":"dp_drive","priority":2,"nominal_mw":8.0,"standby_mw":2.0,"setpoint_max":1.5,"min_ratio":0.1,"activity":"dampers","heat":{"to":"node","fraction":0.5,"capacity_mj_per_k":12.0,"loop_kw_per_k":133.3,"room_w_per_k":40.0,"warn_k":363.0,"damage_k":393.0},"under":"The share of the ship's acceleration the crew feel is 1 minus supply/demand; past 0.5 g felt, crew are knocked down.","over":"Absorbs manoeuvres up to 1.5 times the rated acceleration."},{"id":"gravity_generator","name":"Gravity generator","system":"gravity_generator","node":"dp_c_fwd","priority":2,"nominal_mw":4.0,"standby_mw":4.0,"setpoint_max":1.25,"min_ratio":0.3,"heat":{"to":"node","fraction":0.5,"capacity_mj_per_k":6.0,"loop_kw_per_k":66.7,"room_w_per_k":40.0,"warn_k":363.0,"damage_k":393.0},"under":"Gravity in g equals supply ratio; below 30% the field drops to zero (free fall).","over":"Up to 1.25 g: crew move 10% slower."},{"id":"impulse_drive","name":"Impulse drive","system":"impulse_drive","node":"dp_drive","priority":3,"nominal_mw":16.0,"standby_mw":0.2,"setpoint_max":1.5,"min_ratio":0.1,"activity":"drive","heat":{"to":"node","fraction":0.15,"capacity_mj_per_k":7.2,"loop_kw_per_k":80.0,"room_w_per_k":60.0,"warn_k":363.0,"damage_k":393.0},"under":"Thrust in proportion to supply.","over":"Up to 1.5 times rated thrust, with heat and wear."},{"id":"rcs_aft","name":"RCS, aft block","system":null,"node":"dp_drive","priority":3,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.1,"activity":"rcs","center_m":[0.0,1.0,-39.0],"heat":{"to":"node","fraction":0.3,"capacity_mj_per_k":3.6,"loop_kw_per_k":40.0,"room_w_per_k":20.0,"room":"drive","warn_k":363.0,"damage_k":393.0},"under":"Turn rate in proportion to the weaker block's supply.","over":"Up to 1.5 times turn rate."},{"id":"rcs_fwd","name":"RCS, forward block","system":null,"node":"dp_b_fwd","priority":3,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.1,"activity":"rcs","center_m":[0.0,1.0,32.5],"heat":{"to":"node","fraction":0.3,"capacity_mj_per_k":3.6,"loop_kw_per_k":40.0,"room_w_per_k":20.0,"room":"torpedo_room","warn_k":363.0,"damage_k":393.0},"under":"As the aft block.","over":"As the aft block."},{"id":"missile_hoist","name":"Missile hoist and loaders","system":"magazine_racks","node":"dp_b_fwd","priority":3,"nominal_mw":0.03,"standby_mw":0.001,"setpoint_max":1.5,"min_ratio":0.2,"activity":"hoist","heat":{"to":"room","fraction":1.0,"room":"magazine"},"under":"Reload time grows as 1/supply; unpowered, crew load by hand crank (weapons-and-shields).","over":"Reload up to 1.5 times faster."},{"id":"tube_1","name":"Tube 1 loader","system":"tube_1","node":"dp_b_fwd","priority":3,"nominal_mw":0.05,"standby_mw":0.005,"setpoint_max":1.5,"min_ratio":0.2,"activity":"tube_1","heat":{"to":"room","fraction":1.0,"room":"torpedo_room"},"under":"Its tube loads and fires only while the loader works (ship-damage 4).","over":"As the hoist."},{"id":"tube_2","name":"Tube 2 loader","system":"tube_2","node":"dp_b_fwd","priority":3,"nominal_mw":0.05,"standby_mw":0.005,"setpoint_max":1.5,"min_ratio":0.2,"activity":"tube_2","heat":{"to":"room","fraction":1.0,"room":"torpedo_room"},"under":"As tube 1.","over":"As the hoist."},{"id":"laser_port","name":"Laser bank, port","system":null,"node":"dp_port","priority":2,"nominal_mw":5.0,"standby_mw":0.05,"setpoint_max":1.0,"min_ratio":0.0,"activity":"laser_port","center_m":[9.5,1.5,1.5],"heat":{"to":"loop","fraction":1.0},"under":"Charges its 150 MJ capacitor at 5 MW times supply (laser-banks 1); damaged, at its capability (ship-damage 4).","over":"No overdrive."},{"id":"laser_stbd","name":"Laser bank, starboard","system":null,"node":"dp_stbd","priority":2,"nominal_mw":5.0,"standby_mw":0.05,"setpoint_max":1.0,"min_ratio":0.0,"activity":"laser_stbd","center_m":[-9.5,1.5,1.5],"heat":{"to":"loop","fraction":1.0},"under":"As the port bank.","over":"No overdrive."},{"id":"comms","name":"Comms array","system":"comms_array","node":"dp_a","priority":3,"nominal_mw":0.5,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.2,"activity":"comms","heat":{"to":"node","fraction":0.5,"capacity_mj_per_k":0.75,"loop_kw_per_k":8.3,"room_w_per_k":0.0,"warn_k":363.0,"damage_k":393.0},"under":"Range in proportion to supply; below 20% only short-range voice.","over":"Range up to 1.5 times."},{"id":"hangar_pumps","name":"Bay pumps","system":"hangar_pumps","node":"dp_hangar_s","priority":3,"nominal_mw":6.0,"standby_mw":0.0,"setpoint_max":1.0,"min_ratio":0.0,"activity":"bay_pumps","heat":{"to":"node","fraction":0.4,"capacity_mj_per_k":7.2,"loop_kw_per_k":80.0,"room_w_per_k":40.0,"warn_k":363.0,"damage_k":393.0},"under":"Pumping speed in proportion to supply.","over":"Not adjustable."},{"id":"airlock_pump","name":"Airlock pump","system":null,"node":"dp_c_fwd","priority":3,"nominal_mw":0.15,"standby_mw":0.0,"setpoint_max":1.0,"min_ratio":0.0,"activity":"airlock_pump","center_m":[-9.5,-2.5,12.0],"heat":{"to":"room","fraction":1.0,"room":"cargo"},"under":"Pumping speed in proportion to supply.","over":"Not adjustable."},{"id":"cradle_p","name":"Port launch cradle","system":"cradle_p","node":"dp_hangar_p","priority":3,"nominal_mw":0.6,"standby_mw":0.05,"setpoint_max":1.5,"min_ratio":0.2,"activity":"cradle_p","heat":{"to":"loop","fraction":0.3},"under":"Release charge time grows as 1/supply.","over":"Charges up to 1.5 times faster."},{"id":"cradle_s","name":"Starboard launch cradle","system":"cradle_s","node":"dp_hangar_s","priority":3,"nominal_mw":0.6,"standby_mw":0.05,"setpoint_max":1.5,"min_ratio":0.2,"activity":"cradle_s","heat":{"to":"loop","fraction":0.3},"under":"As the port cradle.","over":"As the port cradle."},{"id":"shuttle_pad","name":"Shuttle lift pad","system":"shuttle_pad","node":"dp_hangar_p","priority":3,"nominal_mw":0.05,"standby_mw":0.0,"setpoint_max":1.0,"min_ratio":0.2,"activity":"pad","heat":{"to":"room","fraction":1.0,"room":"hangar"},"under":"Lift speed in proportion to supply.","over":"Not adjustable."}],"groups":[{"id":"drive","name":"Impulse drive and RCS","loads":["impulse_drive","rcs_aft","rcs_fwd"]},{"id":"shields","name":"Shields","loads":["shield_generator"]},{"id":"turrets","name":"Turrets","loads":["turret_dorsal","turret_ventral","turret_port","turret_stbd"]},{"id":"tubes","name":"Tubes and hoist","loads":["missile_hoist","tube_1","tube_2"]},{"id":"sensors","name":"Sensors","loads":["sensors"]},{"id":"comms","name":"Comms","loads":["comms"]},{"id":"life_support","name":"Life support","loads":["o2_generator","co2_scrubbers","air_handler","thermal_control"]},{"id":"gravity_dampers","name":"Gravity and dampers","loads":["gravity_generator","inertial_dampers"]},{"id":"computer","name":"Computer core","loads":["computer","bridge_consoles"]},{"id":"bays","name":"Bays and craft charging","loads":["hangar_pumps","airlock_pump","cradle_p","cradle_s","shuttle_pad"]},{"id":"medbay","name":"Medbay","loads":["medbay"]},{"id":"cooling","name":"Cooling","loads":["coolant_pump_a","coolant_pump_b","radiator_pump_p","radiator_pump_s","makeup_pump"],"priority_min":0,"feed_breaker":true,"note":"reactor-cooling design 6: the twelfth group, 2.05 MW at full speed. Its setpoint is the pumps' speed, 0-120% (120% is overdrive). Its loads are priority 0 (never shed) by default, and priority_min 0 lets engineering lower them to 1-3 and back, which lets load shedding take them. feed_breaker: one breaker on the group's feed, opened or locked open from the console; open, it stops every pump in the group and the loop falls to its natural circulation."}],"presets":{"note":"Setpoints by group (1.0 is nominal; 0 switches the group off; above 1 is overdrive). Groups not named keep 1.0. Automated engineering applies combat on red alert and cruise on its end (bridge-stations).","cruise":{"drive":1.0,"shields":1.0,"turrets":1.0,"tubes":1.0,"sensors":1.0,"comms":1.0,"gravity_dampers":1.0,"computer":1.0,"bays":1.0},"combat":{"drive":0.75,"shields":1.25,"turrets":1.0,"tubes":1.0,"sensors":0.6,"comms":0.5,"gravity_dampers":1.0,"computer":1.25,"bays":1.0},"silent":{"drive":0.2,"shields":0.2,"turrets":0.0,"tubes":1.0,"sensors":0.17,"comms":0.2,"gravity_dampers":1.0,"computer":1.0,"bays":0.0},"emergency":{"drive":0.3,"shields":0.5,"turrets":0.5,"tubes":1.0,"sensors":0.17,"comms":0.2,"gravity_dampers":0.8,"computer":1.0,"bays":0.0}},"lighting":{"priority":1,"normal_w_per_m2":12.0,"emergency_w_per_m2":2.0,"normal_below_ratio":0.5,"panels":{"msb_s":["engineering"],"dp_drive":["drive"],"dp_hangar_p":["hangar","launch_bay_p"],"dp_hangar_s":["launch_bay_s"],"dp_port":["port_turret","pod_port","quarters"],"dp_stbd":["stbd_turret","pod_stbd","mess"],"dp_a":["bridge","ready_room","computer_core","a_corridor","dorsal_turret","pod_dorsal","a_aft_passage"],"dp_b_fwd":["torpedo_room","medbay","damage_control","b_spine"],"dp_c_fwd":["c_spine","magazine","cargo","airlock","shield_room","pod_ventral","switchboard"],"dp_ls":["life_support"]}},"coolant":{"system":"coolant_pumps","fluid":"water and glycol, pressurized","capacity_mj_per_k":40.0,"nominal_k":330.0,"initial_k":325.0,"warn_k":360.0,"pumps":["coolant_pump_a","coolant_pump_b"],"flow_per_pump":0.5,"design_flow_kg_s":740.0,"design_flow_note":"40 MW at a 15 K rise in water and glycol (3.6 kJ/kg K); the console shows flow as this times the flow fraction","specific_heat_kj_per_kg_k":3.6,"radiator_pumps":["radiator_pump_p","radiator_pump_s"],"flow_per_radiator_pump":0.5,"natural_circulation_flow":0.05,"flow_alarm_below":0.3,"inventory_kg":11100.0,"tanks":[{"id":"tank_p","name":"Coolant tank, port","capacity_kg":2000.0},{"id":"tank_s","name":"Coolant tank, starboard","capacity_kg":2000.0}],"segments":[{"id":"seg_hot_1","name":"Hot leg pipe 1","leg":"hot"},{"id":"seg_hot_2","name":"Hot leg pipe 2","leg":"hot"},{"id":"seg_hot_3","name":"Hot leg pipe 3","leg":"hot"},{"id":"seg_hot_4","name":"Hot leg pipe 4","leg":"hot"},{"id":"seg_cold_1","name":"Cold leg pipe 1","leg":"cold"},{"id":"seg_cold_2","name":"Cold leg pipe 2","leg":"cold"},{"id":"seg_cold_3","name":"Cold leg pipe 3","leg":"cold"},{"id":"seg_cold_4","name":"Cold leg pipe 4","leg":"cold"}],"segments_note":"reactor-cooling design 1-2: the loop's eight pipe segments, numbered from the core along the flow (the hot leg from the core to the chiller, the cold leg from the chiller back to the core). Each is a part with integrity (damage.json coolant). A leg carries flow x its worst segment's capability; an isolated segment carries nothing and its leg runs through the bypass jumper round it at isolated_leg_flow.","isolated_leg_flow":0.5,"exchanger":{"id":"chiller","name":"Heat exchanger (chiller)"},"makeup":{"pump":"makeup_pump","max_kg_s":10.0,"auto_open_below":0.95},"cavitation":{"full_flow_from":0.8,"no_flow_below":0.6},"bands":{"hot_leg_k":[335.0,350.0],"cold_leg_k":[320.0,335.0],"hot_leg_warning_k":370.0},"automation":{"period_s":3.0,"design_rise_k":15.0,"pump_speed_min":1.0},"cooling_note":"reactor-cooling design 2, 3, 5 and 6. Speed-law loads (power_exponent) draw nominal_mw x speed^power_exponent, their standby_mw unused, and run at the speed their supply allows. flow = max(natural_circulation_flow, core pumps' speed x capability x flow_per_pump, summed, x cavitation); cavitation = clamp((m_loop / inventory_kg - no_flow_below) / (full_flow_from - no_flow_below), 0, 1). C_loop = capacity_mj_per_k x m_loop / inventory_kg. Hot leg = loop temperature + heat into the loop / (flow x design_flow_kg_s x specific heat); it is the one the loop scram reads. Radiator rejection gains the exchanger's capability and the radiator pumps' speed x capability x flow_per_radiator_pump, summed. Automation every period_s: core pumps at the flow the heat needs at design_rise_k, never below pump_speed_min (the mockup keeps power-grid's full-flow walkthroughs), up to 1.2; radiator pumps at full; the bypass holds the cold leg by radiators.bypass_band_k (325-330 K, design 5's 327 K); makeup opens below auto_open_below and shuts at full. Pipe segments, leaks and the exchanger's damage (design 1-2): flow gains x min over the two legs of the leg's factor (its worst segment's capability, or isolated_leg_flow x the worst of the rest when one is isolated); the exchanger's capability is its integrity's (damage.json systems); segments and tanks leak by damage.json coolant."},"radiators":{"system":"radiators","rated_mw":40.0,"rated_at_k":330.0,"background_k":4.0,"bypass_band_k":5.0,"law":"capacity = rated_mw * health * flow * exchanger * radiator_pumps * (T^4 - Tb^4) / (rated_at_k^4 - Tb^4); rejected = capacity * chiller, where chiller (the share of the hot leg through the exchanger) is clamp((T - (coolant.nominal_k - bypass_band_k)) / bypass_band_k, 0, 1) in AUTO and the engineer's in MANUAL; exchanger and radiator_pumps as coolant.cooling_note (reactor-cooling design 2)","note":"Fictional rating, stated as such: a physical radiator rejecting 40 MW at 330 K would need about 60,000 m^2. See design.md, Heat, and open question P4."},"overdrive":{"heat_factor":1.0,"wear_pct_per_min_at_150":2.0,"heat_wear_pct_per_s_per_k":0.01}}
+{"schema":"starcrew.ship-power/1","status":"PROPOSED by openspec/changes/power-grid (2026-10-04). The engine reads it (sc-core::power, in the drill since 2026-10-11) and so do the mockups' library. Numbers are tuning proposals, not decisions.","ship":"tern","units":{"power":"MW (megawatts)","energy":"MJ (megajoules)","temperature":"K (kelvin)","heat_capacity":"MJ/K","conductance":"kW/K for loop couplings, W/K for room couplings","time":"s","position":"metres, ship-local, as layout.json"},"solve":{"substep_hz":10,"quanta_rounds":3,"epsilon_mw":1e-06,"dropout_resolves":1},"reactor":{"system":"reactor","fuel":"deuterium and helium-3","thermal_rated_mw":80.0,"conversion_efficiency":0.6,"throttle_min":0.1,"throttle_max":1.2,"throttle_default":1.0,"ramp_up_per_s":0.02,"ramp_down_per_s":0.1,"fuel_energy_mj_per_kg":353000000.0,"fuel_load_kg":4.0,"overdrive_wear_pct_per_min_at_max":1.0,"heat":{"capacity_mj_per_k":10.0,"loop_kw_per_k":110.0,"room_w_per_k":250.0,"warn_k":750.0,"scram_k":820.0,"afterheat_share":0.06,"afterheat_tau_s":180.0},"scram":{"loop_over_k":380.0,"loop_over_hold_s":2.0,"aux_supply_below":0.8,"aux_rule":"best train: max over the two trains of supply / need","aux_supply_hold_s":2.0,"integrity_below_pct":25.0},"reset":{"fixture":"reactor_panel","hold_s":3.0,"loop_below_k":350.0,"blanket_below_k":700.0},"restart":{"ignition_mw":8.0,"ignition_s":20.0,"start_throttle":0.1}},"battery":{"system":"battery_bank","node":"eb","capacity_mj":1800.0,"initial_soc":0.9,"discharge_max_mw":30.0,"charge_max_mw":12.0,"charge_efficiency":0.95,"discharge_efficiency":0.95,"restart_reserve_mj":350.0,"heat_to":"loop"},"nodes":[{"id":"msb_p","name":"Main switchboard, port section","kind":"switchboard","compartment":"engineering","center_m":[7.5,0.5,-20.6]},{"id":"msb_s","name":"Main switchboard, starboard section","kind":"switchboard","compartment":"engineering","center_m":[-7.5,0.5,-21.0]},{"id":"fsb_p","name":"Forward switchboard, port section","kind":"switchboard","compartment":"switchboard","center_m":[-2.4,-1.0,4.2]},{"id":"fsb_s","name":"Forward switchboard, starboard section","kind":"switchboard","compartment":"switchboard","center_m":[-2.4,-1.0,5.2]},{"id":"eb","name":"Emergency bus","kind":"emergency_bus","compartment":"switchboard","center_m":[-4.5,-1.0,2.0]},{"id":"dp_drive","name":"Drive panel","kind":"panel","compartment":"drive","center_m":[0.0,2.5,-34.0]},{"id":"dp_hangar_p","name":"Hangar port panel","kind":"panel","compartment":"hangar","center_m":[8.0,2.6,-8.0]},{"id":"dp_hangar_s","name":"Hangar starboard panel","kind":"panel","compartment":"hangar","center_m":[-8.0,2.6,-8.0]},{"id":"dp_port","name":"Port turret panel","kind":"panel","compartment":"port_turret","center_m":[6.0,2.6,4.0]},{"id":"dp_stbd","name":"Starboard turret panel","kind":"panel","compartment":"stbd_turret","center_m":[-6.0,2.6,4.0]},{"id":"dp_a","name":"Command deck panel","kind":"panel","compartment":"a_corridor","center_m":[0.6,6.2,10.5]},{"id":"dp_b_fwd","name":"Main deck forward panel","kind":"panel","compartment":"b_spine","center_m":[0.8,2.7,22.0]},{"id":"dp_c_fwd","name":"Lower deck forward panel","kind":"panel","compartment":"c_spine","center_m":[0.8,-0.8,9.0]},{"id":"dp_ls","name":"Life support panel","kind":"panel","compartment":"life_support","center_m":[3.0,-0.8,12.0]},{"id":"bx_bridge","name":"Conduit box, bridge","kind":"box","compartment":"bridge","center_m":[1.2,4.8,20.3]},{"id":"bx_ready_room","name":"Conduit box, captain's ready room","kind":"box","compartment":"ready_room","center_m":[1.55,4.8,15.8]},{"id":"bx_computer_core","name":"Conduit box, computer core","kind":"box","compartment":"computer_core","center_m":[-1.55,4.8,18.2]},{"id":"bx_dorsal_turret","name":"Conduit box, dorsal turret access","kind":"box","compartment":"dorsal_turret","center_m":[0.0,4.8,3.7]},{"id":"bx_a_aft_passage","name":"Conduit box, aft passage","kind":"box","compartment":"a_aft_passage","center_m":[0.0,4.8,-17.7]},{"id":"bx_torpedo_room","name":"Conduit box, torpedo room","kind":"box","compartment":"torpedo_room","center_m":[1.2,1.3,26.3]},{"id":"bx_medbay","name":"Conduit box, medbay","kind":"box","compartment":"medbay","center_m":[1.55,1.3,20.8]},{"id":"bx_damage_control","name":"Conduit box, damage control","kind":"box","compartment":"damage_control","center_m":[-1.55,1.3,23.2]},{"id":"bx_quarters","name":"Conduit box, crew quarters","kind":"box","compartment":"quarters","center_m":[1.55,1.3,12.8]},{"id":"bx_mess","name":"Conduit box, mess","kind":"box","compartment":"mess","center_m":[-1.55,1.3,15.2]},{"id":"bx_launch_bay_p","name":"Conduit box, port launch bay","kind":"box","compartment":"launch_bay_p","center_m":[5.3,-2.2,-6.2]},{"id":"bx_launch_bay_s","name":"Conduit box, starboard launch bay","kind":"box","compartment":"launch_bay_s","center_m":[-5.3,-2.2,-6.2]},{"id":"bx_magazine","name":"Conduit box, magazine","kind":"box","compartment":"magazine","center_m":[1.2,-2.2,20.3]},{"id":"bx_cargo","name":"Conduit box, cargo and stores","kind":"box","compartment":"cargo","center_m":[-1.55,-2.2,16.2]},{"id":"bx_airlock","name":"Conduit box, airlock","kind":"box","compartment":"airlock","center_m":[-8.9,-2.2,13.2]},{"id":"bx_shield_room","name":"Conduit box, shield generator","kind":"box","compartment":"shield_room","center_m":[1.55,-2.2,3.8]},{"id":"bx_pod_dorsal","name":"Conduit box, dorsal turret pod","kind":"box","compartment":"pod_dorsal","center_m":[0.0,7.8,1.05]},{"id":"bx_pod_ventral","name":"Conduit box, ventral turret pod","kind":"box","compartment":"pod_ventral","center_m":[0.0,-5.7,2.05]},{"id":"bx_pod_port","name":"Conduit box, port turret pod","kind":"box","compartment":"pod_port","center_m":[11.3,1.3,4.0]},{"id":"bx_pod_stbd","name":"Conduit box, starboard turret pod","kind":"box","compartment":"pod_stbd","center_m":[-11.3,1.3,4.0]}],"generators":[{"id":"gen_p","name":"Reactor generator, port","node":"msb_p","capacity_mw":30.0},{"id":"gen_s","name":"Reactor generator, starboard","node":"msb_s","capacity_mw":30.0}],"ties":[{"id":"bt_main","name":"Main bus tie","between":["msb_p","msb_s"],"capacity_mw":40.0,"closed":true},{"id":"bt_fwd","name":"Forward cross-tie","between":["fsb_p","fsb_s"],"capacity_mw":30.0,"closed":true},{"id":"eb_p","name":"Emergency feed, port","between":["fsb_p","eb"],"capacity_mw":15.0,"closed":true},{"id":"eb_s","name":"Emergency feed, starboard","between":["fsb_s","eb"],"capacity_mw":15.0,"closed":true}],"conduits":[{"id":"k_drive_p","name":"Drive feeder, port","between":["msb_p","dp_drive"],"capacity_mw":20.0,"route":["engineering","drive"],"path_m":[[8.6,2.0,-20.6],[8.6,5.0,-20.6],[8.6,5.0,-29.6],[6.2,5.0,-29.6],[6.2,5.0,-31.45],[0.5,5.0,-31.45],[0.5,2.5,-31.45],[0.5,2.5,-34.0]]},{"id":"k_drive_s","name":"Drive feeder, starboard","between":["msb_s","dp_drive"],"capacity_mw":20.0,"route":["engineering","drive"],"path_m":[[-8.6,2.0,-21.45],[-8.6,5.0,-21.45],[-8.6,5.0,-29.6],[-6.2,5.0,-29.6],[-6.2,5.0,-31.45],[-0.5,5.0,-31.45],[-0.5,2.5,-31.45],[-0.5,2.5,-34.0]]},{"id":"k_aft_p","name":"Port main trunk, aft","between":["msb_p","dp_hangar_p"],"capacity_mw":30.0,"route":["engineering","hangar"],"path_m":[[8.6,2.0,-20.15],[8.6,2.7,-20.15],[8.6,2.7,-18.75],[7.75,2.7,-18.75],[7.75,2.7,-18.0],[8.0,2.6,-8.0]]},{"id":"k_aft_s","name":"Starboard main trunk, aft","between":["msb_s","dp_hangar_s"],"capacity_mw":30.0,"route":["engineering","hangar"],"path_m":[[-8.6,2.0,-20.55],[-8.6,2.7,-20.55],[-8.6,2.7,-18.75],[-7.75,2.7,-18.75],[-7.75,2.7,-18.0],[-8.0,2.6,-8.0]]},{"id":"k_mid_p","name":"Port main trunk, midships","between":["dp_hangar_p","dp_port"],"capacity_mw":30.0,"route":["hangar","port_turret"],"path_m":[[8.0,2.6,-8.0],[8.0,2.6,-2.5],[8.0,2.6,1.0],[6.0,2.6,4.0]]},{"id":"k_mid_s","name":"Starboard main trunk, midships","between":["dp_hangar_s","dp_stbd"],"capacity_mw":30.0,"route":["hangar","stbd_turret"],"path_m":[[-8.0,2.6,-8.0],[-8.0,2.6,-2.5],[-8.0,2.6,1.0],[-6.0,2.6,4.0]]},{"id":"k_fwd_p","name":"Port main trunk, forward","between":["dp_port","fsb_p"],"capacity_mw":30.0,"route":["port_turret","shield_room","c_spine","switchboard"],"path_m":[[6.0,2.6,4.0],[4.5,2.6,3.0],[4.5,-0.8,3.0],[1.5,-0.8,3.0],[-1.5,-0.8,3.5],[-2.4,-1.0,4.2]]},{"id":"k_fwd_s","name":"Starboard main trunk, forward","between":["dp_stbd","fsb_s"],"capacity_mw":30.0,"route":["stbd_turret","switchboard"],"path_m":[[-6.0,2.6,4.0],[-4.5,2.6,5.5],[-4.5,-0.8,5.5],[-2.4,-1.0,5.2]]},{"id":"k_a_fwd","name":"Command deck feeder, forward","between":["fsb_p","dp_a"],"capacity_mw":8.0,"route":["switchboard","c_spine","b_spine","a_corridor"],"path_m":[[-2.4,-1.0,4.2],[-0.8,-0.8,6.0],[-0.8,-0.8,11.3],[-0.6,2.7,11.3],[-0.6,6.2,11.3],[0.6,6.2,10.5]]},{"id":"k_a_aft","name":"Command deck feeder, aft","between":["msb_s","dp_a"],"capacity_mw":8.0,"route":["engineering","a_aft_passage","dorsal_turret","a_corridor"],"path_m":[[-8.6,2.0,-21.0],[-8.6,2.95,-21.0],[-8.6,2.95,-18.75],[-6.8,2.95,-18.75],[-6.8,6.2,-18.75],[0.6,6.2,-18.75],[0.6,6.2,-18.0],[0.6,6.2,0.0],[0.6,6.2,4.0],[0.6,6.2,10.5]]},{"id":"k_b_fwd","name":"Main deck forward feeder","between":["fsb_s","dp_b_fwd"],"capacity_mw":12.0,"route":["switchboard","c_spine","b_spine"],"path_m":[[-2.4,-1.0,5.2],[-0.9,-0.8,6.5],[-0.9,-0.8,11.6],[-0.9,2.7,11.6],[0.8,2.7,13.0],[0.8,2.7,22.0]]},{"id":"k_c_fwd_p","name":"Lower deck feeder, port","between":["fsb_p","dp_c_fwd"],"capacity_mw":30.0,"route":["switchboard","c_spine"],"path_m":[[-2.4,-1.0,4.2],[-1.0,-0.9,4.0],[0.8,-0.9,8.0],[0.8,-0.8,9.0]]},{"id":"k_c_fwd_s","name":"Lower deck feeder, starboard","between":["fsb_s","dp_c_fwd"],"capacity_mw":30.0,"route":["switchboard","c_spine"],"path_m":[[-2.4,-1.0,5.2],[-1.0,-1.4,5.6],[0.6,-1.4,9.0],[0.8,-0.8,9.0]]},{"id":"k_ls_n","name":"Life support feeder, normal","between":["fsb_p","dp_ls"],"capacity_mw":6.0,"route":["switchboard","c_spine","life_support"],"path_m":[[-2.4,-1.0,4.2],[-1.1,-1.1,5.0],[0.9,-1.1,12.0],[3.0,-0.8,12.0]]},{"id":"k_ls_e","name":"Life support feeder, emergency","between":["eb","dp_ls"],"capacity_mw":3.0,"route":["switchboard","c_spine","life_support"],"path_m":[[-4.5,-1.0,2.0],[-1.1,-1.6,2.5],[1.0,-1.6,13.0],[3.0,-0.9,13.0]]},{"id":"r_bridge_aft","name":"Run through bridge aft","between":["bx_bridge","dp_a"],"capacity_mw":5.0,"route":["bridge","a_corridor"],"factory_closed":true,"path_m":[[1.2,4.8,20.3],[1.2,6.65,20.3],[0.0,6.65,20.0],[0.0,6.15,20.0],[0.6,6.15,10.5],[0.6,6.2,10.5]]},{"id":"r_ready","name":"Run through ready","between":["bx_ready_room","dp_a"],"capacity_mw":5.0,"route":["ready_room","a_corridor"],"factory_closed":true,"path_m":[[1.55,4.8,15.8],[1.55,6.15,15.8],[1.25,6.15,17.0],[0.6,6.15,10.5],[0.6,6.2,10.5]]},{"id":"r_core","name":"Run through core","between":["bx_computer_core","dp_a"],"capacity_mw":5.0,"route":["computer_core","a_corridor"],"factory_closed":true,"path_m":[[-1.55,4.8,18.2],[-1.55,6.15,18.2],[-1.25,6.15,17.0],[0.6,6.15,10.5],[0.6,6.2,10.5]]},{"id":"r_dorsal_fwd","name":"Run through dorsal fwd","between":["dp_a","bx_dorsal_turret"],"capacity_mw":10.0,"route":["a_corridor","dorsal_turret"],"factory_closed":true,"path_m":[[0.6,6.2,10.5],[0.6,6.15,10.5],[0.0,6.15,4.0],[0.0,6.15,3.7],[0.0,4.8,3.7]]},{"id":"r_dorsal_aft","name":"Run through dorsal aft","between":["bx_dorsal_turret","bx_a_aft_passage"],"capacity_mw":10.0,"route":["dorsal_turret","a_aft_passage"],"factory_closed":false,"path_m":[[0.0,4.8,3.7],[0.0,6.15,3.7],[0.0,6.15,0.0],[0.0,6.15,-17.7],[0.0,4.8,-17.7]]},{"id":"r_aft_eng","name":"Run through aft eng","between":["bx_a_aft_passage","msb_p"],"capacity_mw":5.0,"route":["a_aft_passage","engineering"],"factory_closed":true,"path_m":[[0.0,4.8,-17.7],[0.0,6.15,-17.7],[0.0,6.15,-18.0],[0.0,-0.35,-18.0],[7.5,-0.35,-20.6],[7.5,0.5,-20.6]]},{"id":"r_pod_dorsal","name":"Run through pod dorsal","between":["bx_dorsal_turret","bx_pod_dorsal"],"capacity_mw":10.0,"route":["dorsal_turret","pod_dorsal"],"factory_closed":true,"path_m":[[0.0,4.8,3.7],[0.0,6.15,3.7],[0.0,6.15,2.0],[0.0,8.65,2.0],[0.0,8.65,1.05],[0.0,7.8,1.05]]},{"id":"r_ladder_ab","name":"Run through ladder ab","between":["dp_a","dp_b_fwd"],"capacity_mw":10.0,"route":["a_corridor","b_spine"],"factory_closed":false,"path_m":[[0.6,6.2,10.5],[0.6,6.15,10.5],[0.0,6.15,11.0],[0.0,2.65,11.0],[0.8,2.65,22.0],[0.8,2.7,22.0]]},{"id":"r_torpedo","name":"Run through torpedo","between":["dp_b_fwd","bx_torpedo_room"],"capacity_mw":10.0,"route":["b_spine","torpedo_room"],"factory_closed":true,"path_m":[[0.8,2.7,22.0],[0.8,2.65,22.0],[0.0,2.65,26.0],[1.2,2.65,26.3],[1.2,1.3,26.3]]},{"id":"r_medbay","name":"Run through medbay","between":["bx_medbay","dp_b_fwd"],"capacity_mw":5.0,"route":["medbay","b_spine"],"factory_closed":true,"path_m":[[1.55,1.3,20.8],[1.55,2.65,20.8],[1.25,2.65,22.0],[0.8,2.65,22.0],[0.8,2.7,22.0]]},{"id":"r_damage_control","name":"Run through damage control","between":["bx_damage_control","dp_b_fwd"],"capacity_mw":5.0,"route":["damage_control","b_spine"],"factory_closed":true,"path_m":[[-1.55,1.3,23.2],[-1.55,2.65,23.2],[-1.25,2.65,22.0],[0.8,2.65,22.0],[0.8,2.7,22.0]]},{"id":"r_quarters","name":"Run through quarters","between":["bx_quarters","dp_b_fwd"],"capacity_mw":5.0,"route":["quarters","b_spine"],"factory_closed":true,"path_m":[[1.55,1.3,12.8],[1.55,2.65,12.8],[1.25,2.65,14.0],[0.8,2.65,22.0],[0.8,2.7,22.0]]},{"id":"r_mess","name":"Run through mess","between":["bx_mess","dp_b_fwd"],"capacity_mw":5.0,"route":["mess","b_spine"],"factory_closed":true,"path_m":[[-1.55,1.3,15.2],[-1.55,2.65,15.2],[-1.25,2.65,14.0],[0.8,2.65,22.0],[0.8,2.7,22.0]]},{"id":"r_port_turret","name":"Run through port turret","between":["dp_port","dp_b_fwd"],"capacity_mw":10.0,"route":["port_turret","b_spine"],"factory_closed":false,"path_m":[[6.0,2.6,4.0],[6.0,2.65,4.0],[1.25,2.65,4.0],[0.8,2.65,22.0],[0.8,2.7,22.0]]},{"id":"r_stbd_turret","name":"Run through stbd turret","between":["dp_stbd","dp_b_fwd"],"capacity_mw":10.0,"route":["stbd_turret","b_spine"],"factory_closed":false,"path_m":[[-6.0,2.6,4.0],[-6.0,2.65,4.0],[-1.25,2.65,4.0],[0.8,2.65,22.0],[0.8,2.7,22.0]]},{"id":"r_pod_port","name":"Run through pod port","between":["dp_port","bx_pod_port"],"capacity_mw":10.0,"route":["port_turret","pod_port"],"factory_closed":true,"path_m":[[6.0,2.6,4.0],[6.0,2.65,4.0],[11.0,2.65,4.0],[11.0,2.15,4.0],[11.3,2.15,4.0],[11.3,1.3,4.0]]},{"id":"r_pod_stbd","name":"Run through pod stbd","between":["dp_stbd","bx_pod_stbd"],"capacity_mw":10.0,"route":["stbd_turret","pod_stbd"],"factory_closed":true,"path_m":[[-6.0,2.6,4.0],[-6.0,2.65,4.0],[-11.0,2.65,4.0],[-11.0,2.15,4.0],[-11.3,2.15,4.0],[-11.3,1.3,4.0]]},{"id":"r_spine_hangar","name":"Run through spine hangar","between":["dp_b_fwd","dp_hangar_p"],"capacity_mw":10.0,"route":["b_spine","hangar"],"factory_closed":false,"path_m":[[0.8,2.7,22.0],[0.8,2.65,22.0],[0.0,2.65,0.0],[8.0,2.65,-8.0],[8.0,2.6,-8.0]]},{"id":"r_ladder_bc","name":"Run through ladder bc","between":["dp_b_fwd","dp_c_fwd"],"capacity_mw":10.0,"route":["b_spine","c_spine"],"factory_closed":false,"path_m":[[0.8,2.7,22.0],[0.8,2.65,22.0],[0.0,2.65,11.0],[0.0,-0.85,11.0],[0.8,-0.85,9.0],[0.8,-0.8,9.0]]},{"id":"r_hoist","name":"Run through hoist","between":["bx_torpedo_room","bx_magazine"],"capacity_mw":10.0,"route":["torpedo_room","magazine"],"factory_closed":false,"path_m":[[1.2,1.3,26.3],[1.2,2.65,26.3],[0.0,2.65,28.0],[0.0,-0.85,28.0],[1.2,-0.85,20.3],[1.2,-2.2,20.3]]},{"id":"r_hangar_c","name":"Run through hangar c","between":["dp_c_fwd","dp_hangar_p"],"capacity_mw":10.0,"route":["c_spine","hangar"],"factory_closed":false,"path_m":[[0.8,-0.8,9.0],[0.8,-0.85,9.0],[0.0,-0.85,0.0],[0.0,2.65,0.0],[8.0,2.65,-8.0],[8.0,2.6,-8.0]]},{"id":"r_bay_p","name":"Run through bay p","between":["dp_hangar_p","bx_launch_bay_p"],"capacity_mw":5.0,"route":["hangar","launch_bay_p"],"factory_closed":true,"path_m":[[8.0,2.6,-8.0],[8.0,2.65,-8.0],[5.0,2.65,-5.0],[5.0,-0.85,-5.0],[5.3,-0.85,-6.2],[5.3,-2.2,-6.2]]},{"id":"r_bay_s","name":"Run through bay s","between":["dp_hangar_s","bx_launch_bay_s"],"capacity_mw":5.0,"route":["hangar","launch_bay_s"],"factory_closed":true,"path_m":[[-8.0,2.6,-8.0],[-8.0,2.65,-8.0],[-5.0,2.65,-5.0],[-5.0,-0.85,-5.0],[-5.3,-0.85,-6.2],[-5.3,-2.2,-6.2]]},{"id":"r_magazine","name":"Run through magazine","between":["dp_c_fwd","bx_magazine"],"capacity_mw":5.0,"route":["c_spine","magazine"],"factory_closed":true,"path_m":[[0.8,-0.8,9.0],[0.8,-0.85,9.0],[0.0,-0.85,20.0],[1.2,-0.85,20.3],[1.2,-2.2,20.3]]},{"id":"r_life_support","name":"Run through life support","between":["dp_ls","dp_c_fwd"],"capacity_mw":10.0,"route":["life_support","c_spine"],"factory_closed":false,"path_m":[[3.0,-0.8,12.0],[3.0,-0.85,12.0],[1.25,-0.85,15.0],[0.8,-0.85,9.0],[0.8,-0.8,9.0]]},{"id":"r_cargo","name":"Run through cargo","between":["bx_cargo","dp_c_fwd"],"capacity_mw":10.0,"route":["cargo","c_spine"],"factory_closed":true,"path_m":[[-1.55,-2.2,16.2],[-1.55,-0.85,16.2],[-1.25,-0.85,15.0],[0.8,-0.85,9.0],[0.8,-0.8,9.0]]},{"id":"r_airlock_inner","name":"Run through airlock inner","between":["bx_cargo","bx_airlock"],"capacity_mw":5.0,"route":["cargo","airlock"],"factory_closed":true,"path_m":[[-1.55,-2.2,16.2],[-1.55,-0.85,16.2],[-8.6,-0.85,12.0],[-8.9,-0.85,13.2],[-8.9,-2.2,13.2]]},{"id":"r_shield","name":"Run through shield","between":["bx_shield_room","dp_c_fwd"],"capacity_mw":30.0,"route":["shield_room","c_spine"],"factory_closed":true,"path_m":[[1.55,-2.2,3.8],[1.55,-0.85,3.8],[1.25,-0.85,5.0],[0.8,-0.85,9.0],[0.8,-0.8,9.0]]},{"id":"r_pod_ventral","name":"Run through pod ventral","between":["dp_c_fwd","bx_pod_ventral"],"capacity_mw":10.0,"route":["c_spine","pod_ventral"],"factory_closed":true,"path_m":[[0.8,-0.8,9.0],[0.8,-0.85,9.0],[0.0,-0.85,3.0],[0.0,-3.85,3.0],[0.0,-3.85,2.05],[0.0,-5.7,2.05]]}],"loads":[{"id":"reactor_aux_p","name":"Reactor auxiliaries, port","system":"reactor","center_m":[5.5,0.0,-24.0],"node":"msb_p","priority":0,"nominal_mw":1.0,"standby_mw":0.3,"setpoint_max":1.0,"min_ratio":0.0,"heat":{"to":"loop","fraction":1.0},"under":"Two full trains (port and starboard): the reactor scrams when neither train has had 80% of its supply for 2 s. Ignition runs at the pace the two trains' supply allows.","over":"Not adjustable.","feeder_m":[[7.5,0.5,-20.6],[7.5,-0.35,-20.6],[5.5,-0.35,-24.0],[5.5,0.0,-24.0]]},{"id":"reactor_aux_s","name":"Reactor auxiliaries, starboard","system":"reactor","center_m":[-5.5,0.0,-24.0],"node":"msb_s","priority":0,"nominal_mw":1.0,"standby_mw":0.3,"setpoint_max":1.0,"min_ratio":0.0,"heat":{"to":"loop","fraction":1.0},"under":"As the port half.","over":"Not adjustable.","feeder_m":[[-7.5,0.5,-21.0],[-7.5,-0.35,-21.0],[-5.5,-0.35,-24.0],[-5.5,0.0,-24.0]]},{"id":"coolant_pump_a","name":"Coolant pump A","system":"coolant_pumps","center_m":[6.5,-3.5,-29.0],"node":"msb_p","priority":0,"nominal_mw":0.4,"standby_mw":0.4,"setpoint_max":1.2,"min_ratio":0.0,"power_exponent":2.0,"heat":{"to":"loop","fraction":1.0},"under":"Its setpoint is its speed; the speed it runs at is the one its supply allows. Loop flow falls in proportion; each pump is half the flow.","over":"Up to 120% speed: 1.2 times its flow for 1.44 times its power, with heat and wear (reactor-cooling design 6).","feeder_m":[[7.5,0.5,-20.6],[7.5,-0.35,-20.6],[6.5,-0.35,-29.0],[6.5,-3.5,-29.0]]},{"id":"coolant_pump_b","name":"Coolant pump B","system":"coolant_pumps","center_m":[-6.5,-3.5,-29.0],"node":"msb_s","priority":0,"nominal_mw":0.4,"standby_mw":0.4,"setpoint_max":1.2,"min_ratio":0.0,"power_exponent":2.0,"heat":{"to":"loop","fraction":1.0},"under":"As pump A.","over":"As pump A.","feeder_m":[[-7.5,0.5,-21.0],[-7.5,-0.35,-21.0],[-6.5,-0.35,-29.0],[-6.5,-3.5,-29.0]]},{"id":"radiator_pump_p","name":"Radiator pump, port","system":null,"node":"dp_drive","priority":0,"nominal_mw":0.6,"standby_mw":0.6,"setpoint_max":1.2,"min_ratio":0.0,"power_exponent":2.0,"center_m":[5.2,0.6,-32.8],"heat":{"to":"loop","fraction":1.0},"under":"Its setpoint is its speed. Radiator rejection falls in proportion; each pump is half the radiators' flow (reactor-cooling design 2).","over":"As the core pumps.","feeder_m":[[0.0,2.5,-34.0],[0.0,2.65,-34.0],[5.2,2.65,-32.8],[5.2,0.6,-32.8]]},{"id":"radiator_pump_s","name":"Radiator pump, starboard","system":null,"node":"dp_drive","priority":0,"nominal_mw":0.6,"standby_mw":0.6,"setpoint_max":1.2,"min_ratio":0.0,"power_exponent":2.0,"center_m":[-5.2,0.6,-32.8],"heat":{"to":"loop","fraction":1.0},"under":"As the port pump.","over":"As the core pumps.","feeder_m":[[0.0,2.5,-34.0],[0.0,2.65,-34.0],[-5.2,2.65,-32.8],[-5.2,0.6,-32.8]]},{"id":"makeup_pump","name":"Coolant makeup pump","system":"coolant_pumps","node":"msb_s","priority":0,"nominal_mw":0.05,"standby_mw":0.0,"setpoint_max":1.0,"min_ratio":0.0,"activity":"makeup","heat":{"to":"loop","fraction":1.0},"under":"Makeup flow from the tanks in proportion to supply.","over":"Not adjustable.","feeder_m":[[-7.5,0.5,-21.0],[-7.5,-0.35,-21.0],[-6.5,-0.35,-29.0],[-6.5,-3.5,-29.0]]},{"id":"emergency_lighting","name":"Emergency lighting","system":null,"node":"eb","priority":0,"nominal_mw":0.0049,"standby_mw":0.0049,"setpoint_max":1.0,"min_ratio":0.0,"center_m":[-4.5,-1.0,2.6],"heat":{"to":"none","fraction":0.0},"under":"Below 50%: compartments with no normal lighting go dark.","over":"Not adjustable.","feeder_m":[[-4.5,-1.0,2.0],[-4.5,-0.85,2.0],[-4.5,-0.85,2.6],[-4.5,-1.0,2.6]]},{"id":"computer","name":"Computer core","system":"computer","node":"bx_computer_core","priority":1,"nominal_mw":1.5,"standby_mw":1.5,"setpoint_max":1.5,"min_ratio":0.5,"heat":{"to":"node","fraction":0.95,"capacity_mj_per_k":4.3,"loop_kw_per_k":47.5,"room_w_per_k":30.0,"warn_k":363.0,"damage_k":393.0},"under":"Automation competence falls with supply; below 50% every automated station stops and targeting solutions are lost.","over":"Automation reaction time shortens by up to a third.","feeder_m":[[-1.55,4.8,18.2],[-1.55,6.15,18.2],[-5.0,6.15,17.0],[-5.0,3.5,17.0]]},{"id":"bridge_consoles","name":"Bridge consoles","system":null,"node":"bx_bridge","priority":1,"nominal_mw":0.007,"standby_mw":0.007,"setpoint_max":1.0,"min_ratio":0.5,"center_m":[0.0,4.5,26.0],"heat":{"to":"room","fraction":1.0,"room":"bridge"},"under":"Below 50%: the bridge stations go dark; the engineering bay console and the damage control board still work.","over":"Not adjustable.","feeder_m":[[1.2,4.8,20.3],[1.2,6.65,20.3],[0.0,6.65,26.0],[0.0,4.5,26.0]]},{"id":"o2_generator","name":"Oxygen generator","system":"o2_generator","node":"dp_ls","priority":1,"nominal_mw":1.0,"standby_mw":0.005,"setpoint_max":1.5,"min_ratio":0.0,"activity":"o2_output","heat":{"to":"node","fraction":0.3,"capacity_mj_per_k":0.9,"loop_kw_per_k":10.0,"room_w_per_k":20.0,"warn_k":363.0,"damage_k":393.0},"under":"Oxygen output in proportion to supply.","over":"Output up to 1.5 times rated, with heat and wear.","feeder_m":[[3.0,-0.8,12.0],[3.0,-0.85,12.0],[6.5,-0.85,17.0],[6.5,-3.5,17.0]]},{"id":"co2_scrubbers","name":"CO2 scrubbers","system":"co2_scrubbers","node":"dp_ls","priority":1,"nominal_mw":0.25,"standby_mw":0.25,"setpoint_max":1.5,"min_ratio":0.0,"heat":{"to":"loop","fraction":1.0},"under":"CO2 and smoke removal in proportion to supply.","over":"Removal up to 1.5 times rated.","feeder_m":[[3.0,-0.8,12.0],[3.0,-0.85,12.0],[6.5,-0.85,11.0],[6.5,-3.5,11.0]]},{"id":"air_handler","name":"Air handler fans","system":"air_handler","node":"dp_ls","priority":1,"nominal_mw":0.08,"standby_mw":0.08,"setpoint_max":1.25,"min_ratio":0.2,"heat":{"to":"duct","fraction":1.0},"under":"Circulation in proportion to supply; below 20% the fans stop and every vent damper springs shut.","over":"Circulation up to 1.25 times rated.","feeder_m":[[3.0,-0.8,12.0],[3.0,-0.85,12.0],[3.0,-0.85,8.0],[3.0,-3.5,8.0]]},{"id":"thermal_control","name":"Thermal control","system":"thermal_control","node":"dp_ls","priority":1,"nominal_mw":0.75,"standby_mw":0.15,"setpoint_max":1.0,"min_ratio":0.0,"activity":"heater","heat":{"to":"none","fraction":0.0},"under":"Cabin cooling and heating in proportion to supply.","over":"Not adjustable.","feeder_m":[[3.0,-0.8,12.0],[3.0,-0.85,12.0],[3.0,-0.85,18.5],[3.0,-3.5,18.5]]},{"id":"medbay","name":"Medbay beds","system":"medbay_beds","node":"bx_medbay","priority":1,"nominal_mw":0.008,"standby_mw":0.002,"setpoint_max":1.5,"min_ratio":0.25,"heat":{"to":"room","fraction":1.0,"room":"medbay"},"under":"Healing and revival in proportion to supply; below 25% the beds stop.","over":"Healing up to 1.5 times faster.","feeder_m":[[1.55,1.3,20.8],[1.55,2.65,20.8],[4.5,2.65,22.0],[4.5,0.0,22.0]]},{"id":"shield_generator","name":"Shield generator","system":"shield_generator","node":"bx_shield_room","priority":2,"nominal_mw":12.0,"standby_mw":2.0,"setpoint_max":1.5,"min_ratio":0.25,"activity":"shield_regen","heat":{"to":"node","fraction":0.35,"capacity_mj_per_k":12.6,"loop_kw_per_k":140.0,"room_w_per_k":40.0,"warn_k":363.0,"damage_k":393.0},"under":"Face regeneration and capacity in proportion to supply; below 25% the faces collapse.","over":"Regeneration up to 1.5 times, with heat.","feeder_m":[[1.55,-2.2,3.8],[1.55,-0.85,3.8],[4.2,-0.85,3.0],[4.2,-3.5,3.0]]},{"id":"turret_dorsal","name":"Dorsal turret","mount":"turret_dorsal","node":"bx_pod_dorsal","priority":2,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.2,"activity":"turret_dorsal","heat":{"to":"node","fraction":0.4,"capacity_mj_per_k":4.8,"loop_kw_per_k":53.3,"room_w_per_k":25.0,"room":"pod_dorsal","warn_k":363.0,"damage_k":393.0},"under":"Capacitor charge rate in proportion to supply (4 MW nominal against 6 MW of sustained fire); below 20% it cannot fire.","over":"Up to 1.5 times the rate of fire, with heat.","feeder_m":[[0.0,7.8,1.05],[0.0,8.65,1.05],[0.0,8.65,2.0],[0.0,9.0,2.0]]},{"id":"turret_ventral","name":"Ventral turret","mount":"turret_ventral","node":"bx_pod_ventral","priority":2,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.2,"activity":"turret_ventral","heat":{"to":"node","fraction":0.4,"capacity_mj_per_k":4.8,"loop_kw_per_k":53.3,"room_w_per_k":25.0,"room":"pod_ventral","warn_k":363.0,"damage_k":393.0},"under":"As the dorsal turret.","over":"As the dorsal turret.","feeder_m":[[0.0,-5.7,2.05],[0.0,-3.85,2.05],[0.0,-3.85,3.0],[0.0,-7.0,3.0]]},{"id":"turret_port","name":"Port turret","mount":"turret_port","node":"bx_pod_port","priority":2,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.2,"activity":"turret_port","heat":{"to":"node","fraction":0.4,"capacity_mj_per_k":4.8,"loop_kw_per_k":53.3,"room_w_per_k":25.0,"room":"pod_port","warn_k":363.0,"damage_k":393.0},"under":"As the dorsal turret.","over":"As the dorsal turret.","feeder_m":[[11.3,1.3,4.0],[11.3,2.15,4.0],[13.5,2.15,4.0],[13.5,1.25,4.0]]},{"id":"turret_stbd","name":"Starboard turret","mount":"turret_stbd","node":"bx_pod_stbd","priority":2,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.2,"activity":"turret_stbd","heat":{"to":"node","fraction":0.4,"capacity_mj_per_k":4.8,"loop_kw_per_k":53.3,"room_w_per_k":25.0,"room":"pod_stbd","warn_k":363.0,"damage_k":393.0},"under":"As the dorsal turret.","over":"As the dorsal turret.","feeder_m":[[-11.3,1.3,4.0],[-11.3,2.15,4.0],[-13.5,2.15,4.0],[-13.5,1.25,4.0]]},{"id":"sensors","name":"Sensor array","system":"sensor_array","node":"dp_b_fwd","priority":2,"nominal_mw":3.0,"standby_mw":0.5,"setpoint_max":1.5,"min_ratio":0.15,"activity":"sensors_active","heat":{"to":"node","fraction":0.5,"capacity_mj_per_k":4.5,"loop_kw_per_k":50.0,"room_w_per_k":0.0,"warn_k":363.0,"damage_k":393.0},"under":"Active range grows as the square root of supply; at standby only passive contacts.","over":"Range up to 1.22 times (square root of 1.5).","feeder_m":[[0.8,2.7,22.0],[0.8,2.65,22.0],[0.0,2.65,41.5],[0.0,1.0,41.5]]},{"id":"inertial_dampers","name":"Inertial dampers","system":"inertial_dampers","node":"dp_drive","priority":2,"nominal_mw":8.0,"standby_mw":2.0,"setpoint_max":1.5,"min_ratio":0.1,"activity":"dampers","heat":{"to":"node","fraction":0.5,"capacity_mj_per_k":12.0,"loop_kw_per_k":133.3,"room_w_per_k":40.0,"warn_k":363.0,"damage_k":393.0},"under":"The share of the ship's acceleration the crew feel is 1 minus supply/demand; past 0.5 g felt, crew are knocked down.","over":"Absorbs manoeuvres up to 1.5 times the rated acceleration.","feeder_m":[[0.0,2.5,-34.0],[0.0,2.65,-34.0],[4.0,2.65,-34.0],[4.0,0.0,-34.0]]},{"id":"gravity_generator","name":"Gravity generator","system":"gravity_generator","node":"bx_cargo","priority":2,"nominal_mw":4.0,"standby_mw":4.0,"setpoint_max":1.25,"min_ratio":0.3,"heat":{"to":"node","fraction":0.5,"capacity_mj_per_k":6.0,"loop_kw_per_k":66.7,"room_w_per_k":40.0,"warn_k":363.0,"damage_k":393.0},"under":"Gravity in g equals supply ratio; below 30% the field drops to zero (free fall).","over":"Up to 1.25 g: crew move 10% slower.","feeder_m":[[-1.55,-2.2,16.2],[-1.55,-0.85,16.2],[-6.5,-0.85,17.5],[-6.5,-3.5,17.5]]},{"id":"impulse_drive","name":"Impulse drive","system":"impulse_drive","node":"dp_drive","priority":3,"nominal_mw":16.0,"standby_mw":0.2,"setpoint_max":1.5,"min_ratio":0.1,"activity":"drive","heat":{"to":"node","fraction":0.15,"capacity_mj_per_k":7.2,"loop_kw_per_k":80.0,"room_w_per_k":60.0,"warn_k":363.0,"damage_k":393.0},"under":"Thrust in proportion to supply.","over":"Up to 1.5 times rated thrust, with heat and wear.","feeder_m":[[0.0,2.5,-34.0],[0.0,2.65,-34.0],[0.0,2.65,-37.0],[0.0,1.5,-37.0]]},{"id":"rcs_aft","name":"RCS, aft block","system":null,"node":"dp_drive","priority":3,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.1,"activity":"rcs","center_m":[0.0,1.0,-39.0],"heat":{"to":"node","fraction":0.3,"capacity_mj_per_k":3.6,"loop_kw_per_k":40.0,"room_w_per_k":20.0,"room":"drive","warn_k":363.0,"damage_k":393.0},"under":"Turn rate in proportion to the weaker block's supply.","over":"Up to 1.5 times turn rate.","feeder_m":[[0.0,2.5,-34.0],[0.0,2.65,-34.0],[0.0,2.65,-39.0],[0.0,1.0,-39.0]]},{"id":"rcs_fwd","name":"RCS, forward block","system":null,"node":"bx_torpedo_room","priority":3,"nominal_mw":4.0,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.1,"activity":"rcs","center_m":[0.0,1.0,32.5],"heat":{"to":"node","fraction":0.3,"capacity_mj_per_k":3.6,"loop_kw_per_k":40.0,"room_w_per_k":20.0,"room":"torpedo_room","warn_k":363.0,"damage_k":393.0},"under":"As the aft block.","over":"As the aft block.","feeder_m":[[1.2,1.3,26.3],[1.2,2.65,26.3],[0.0,2.65,32.5],[0.0,1.0,32.5]]},{"id":"missile_hoist","name":"Missile hoist and loaders","system":"magazine_racks","node":"bx_magazine","priority":3,"nominal_mw":0.03,"standby_mw":0.001,"setpoint_max":1.5,"min_ratio":0.2,"activity":"hoist","heat":{"to":"room","fraction":1.0,"room":"magazine"},"under":"Reload time grows as 1/supply; unpowered, crew load by hand crank (weapons-and-shields).","over":"Reload up to 1.5 times faster.","feeder_m":[[1.2,-2.2,20.3],[1.2,-0.85,20.3],[0.0,-0.85,25.0],[0.0,-3.5,25.0]]},{"id":"tube_1","name":"Tube 1 loader","system":"tube_1","node":"bx_torpedo_room","priority":3,"nominal_mw":0.05,"standby_mw":0.005,"setpoint_max":1.5,"min_ratio":0.2,"activity":"tube_1","heat":{"to":"room","fraction":1.0,"room":"torpedo_room"},"under":"Its tube loads and fires only while the loader works (ship-damage 4).","over":"As the hoist.","feeder_m":[[1.2,1.3,26.3],[1.2,2.65,26.3],[2.0,2.65,31.0],[2.0,1.5,31.0]]},{"id":"tube_2","name":"Tube 2 loader","system":"tube_2","node":"bx_torpedo_room","priority":3,"nominal_mw":0.05,"standby_mw":0.005,"setpoint_max":1.5,"min_ratio":0.2,"activity":"tube_2","heat":{"to":"room","fraction":1.0,"room":"torpedo_room"},"under":"As tube 1.","over":"As the hoist.","feeder_m":[[1.2,1.3,26.3],[1.2,2.65,26.3],[-2.0,2.65,31.0],[-2.0,1.5,31.0]]},{"id":"laser_port","name":"Laser bank, port","system":null,"node":"dp_port","priority":2,"nominal_mw":5.0,"standby_mw":0.05,"setpoint_max":1.0,"min_ratio":0.0,"activity":"laser_port","center_m":[9.5,1.5,1.5],"heat":{"to":"loop","fraction":1.0},"under":"Charges its 150 MJ capacitor at 5 MW times supply (laser-banks 1); damaged, at its capability (ship-damage 4).","over":"No overdrive.","feeder_m":[[6.0,2.6,4.0],[6.0,2.65,4.0],[9.5,2.65,1.5],[9.5,1.5,1.5]]},{"id":"laser_stbd","name":"Laser bank, starboard","system":null,"node":"dp_stbd","priority":2,"nominal_mw":5.0,"standby_mw":0.05,"setpoint_max":1.0,"min_ratio":0.0,"activity":"laser_stbd","center_m":[-9.5,1.5,1.5],"heat":{"to":"loop","fraction":1.0},"under":"As the port bank.","over":"No overdrive.","feeder_m":[[-6.0,2.6,4.0],[-6.0,2.65,4.0],[-9.5,2.65,1.5],[-9.5,1.5,1.5]]},{"id":"comms","name":"Comms array","system":"comms_array","node":"dp_a","priority":3,"nominal_mw":0.5,"standby_mw":0.1,"setpoint_max":1.5,"min_ratio":0.2,"activity":"comms","heat":{"to":"node","fraction":0.5,"capacity_mj_per_k":0.75,"loop_kw_per_k":8.3,"room_w_per_k":0.0,"warn_k":363.0,"damage_k":393.0},"under":"Range in proportion to supply; below 20% only short-range voice.","over":"Range up to 1.5 times.","feeder_m":[[0.6,6.2,10.5],[0.6,6.15,10.5],[0.0,6.15,14.0],[0.0,8.0,14.0]]},{"id":"hangar_pumps","name":"Bay pumps","system":"hangar_pumps","node":"dp_hangar_s","priority":3,"nominal_mw":6.0,"standby_mw":0.0,"setpoint_max":1.0,"min_ratio":0.0,"activity":"bay_pumps","heat":{"to":"node","fraction":0.4,"capacity_mj_per_k":7.2,"loop_kw_per_k":80.0,"room_w_per_k":40.0,"warn_k":363.0,"damage_k":393.0},"under":"Pumping speed in proportion to supply.","over":"Not adjustable.","feeder_m":[[-8.0,2.6,-8.0],[-8.0,2.65,-8.0],[-4.0,2.65,-2.0],[-4.0,-3.5,-2.0]]},{"id":"airlock_pump","name":"Airlock pump","system":null,"node":"bx_airlock","priority":3,"nominal_mw":0.15,"standby_mw":0.0,"setpoint_max":1.0,"min_ratio":0.0,"activity":"airlock_pump","center_m":[-9.5,-2.5,12.0],"heat":{"to":"room","fraction":1.0,"room":"cargo"},"under":"Pumping speed in proportion to supply.","over":"Not adjustable.","feeder_m":[[-8.9,-2.2,13.2],[-8.9,-0.85,13.2],[-9.5,-0.85,12.0],[-9.5,-2.5,12.0]]},{"id":"cradle_p","name":"Port launch cradle","system":"cradle_p","node":"bx_launch_bay_p","priority":3,"nominal_mw":0.6,"standby_mw":0.05,"setpoint_max":1.5,"min_ratio":0.2,"activity":"cradle_p","heat":{"to":"loop","fraction":0.3},"under":"Release charge time grows as 1/supply.","over":"Charges up to 1.5 times faster.","feeder_m":[[5.3,-2.2,-6.2],[5.3,-0.85,-6.2],[7.75,-0.85,-10.0],[7.75,-3.5,-10.0]]},{"id":"cradle_s","name":"Starboard launch cradle","system":"cradle_s","node":"bx_launch_bay_s","priority":3,"nominal_mw":0.6,"standby_mw":0.05,"setpoint_max":1.5,"min_ratio":0.2,"activity":"cradle_s","heat":{"to":"loop","fraction":0.3},"under":"As the port cradle.","over":"As the port cradle.","feeder_m":[[-5.3,-2.2,-6.2],[-5.3,-0.85,-6.2],[-7.75,-0.85,-10.0],[-7.75,-3.5,-10.0]]},{"id":"shuttle_pad","name":"Shuttle lift pad","system":"shuttle_pad","node":"dp_hangar_p","priority":3,"nominal_mw":0.05,"standby_mw":0.0,"setpoint_max":1.0,"min_ratio":0.2,"activity":"pad","heat":{"to":"room","fraction":1.0,"room":"hangar"},"under":"Lift speed in proportion to supply.","over":"Not adjustable.","feeder_m":[[8.0,2.6,-8.0],[8.0,2.65,-8.0],[0.0,2.65,-10.0],[0.0,-3.5,-10.0]]}],"groups":[{"id":"drive","name":"Impulse drive and RCS","loads":["impulse_drive","rcs_aft","rcs_fwd"]},{"id":"shields","name":"Shields","loads":["shield_generator"]},{"id":"turrets","name":"Turrets","loads":["turret_dorsal","turret_ventral","turret_port","turret_stbd"]},{"id":"tubes","name":"Tubes and hoist","loads":["missile_hoist","tube_1","tube_2"]},{"id":"sensors","name":"Sensors","loads":["sensors"]},{"id":"comms","name":"Comms","loads":["comms"]},{"id":"life_support","name":"Life support","loads":["o2_generator","co2_scrubbers","air_handler","thermal_control"]},{"id":"gravity_dampers","name":"Gravity and dampers","loads":["gravity_generator","inertial_dampers"]},{"id":"computer","name":"Computer core","loads":["computer","bridge_consoles"]},{"id":"bays","name":"Bays and craft charging","loads":["hangar_pumps","airlock_pump","cradle_p","cradle_s","shuttle_pad"]},{"id":"medbay","name":"Medbay","loads":["medbay"]},{"id":"cooling","name":"Cooling","loads":["coolant_pump_a","coolant_pump_b","radiator_pump_p","radiator_pump_s","makeup_pump"],"priority_min":0,"feed_breaker":true,"note":"reactor-cooling design 6: the twelfth group, 2.05 MW at full speed. Its setpoint is the pumps' speed, 0-120% (120% is overdrive). Its loads are priority 0 (never shed) by default, and priority_min 0 lets engineering lower them to 1-3 and back, which lets load shedding take them. feed_breaker: one breaker on the group's feed, opened or locked open from the console; open, it stops every pump in the group and the loop falls to its natural circulation."}],"presets":{"note":"Setpoints by group (1.0 is nominal; 0 switches the group off; above 1 is overdrive). Groups not named keep 1.0. Automated engineering applies combat on red alert and cruise on its end (bridge-stations).","cruise":{"drive":1.0,"shields":1.0,"turrets":1.0,"tubes":1.0,"sensors":1.0,"comms":1.0,"gravity_dampers":1.0,"computer":1.0,"bays":1.0},"combat":{"drive":0.75,"shields":1.25,"turrets":1.0,"tubes":1.0,"sensors":0.6,"comms":0.5,"gravity_dampers":1.0,"computer":1.25,"bays":1.0},"silent":{"drive":0.2,"shields":0.2,"turrets":0.0,"tubes":1.0,"sensors":0.17,"comms":0.2,"gravity_dampers":1.0,"computer":1.0,"bays":0.0},"emergency":{"drive":0.3,"shields":0.5,"turrets":0.5,"tubes":1.0,"sensors":0.17,"comms":0.2,"gravity_dampers":0.8,"computer":1.0,"bays":0.0}},"lighting":{"priority":1,"normal_w_per_m2":12.0,"emergency_w_per_m2":2.0,"normal_below_ratio":0.5,"panels":{"bx_bridge":["bridge"],"bx_ready_room":["ready_room"],"bx_computer_core":["computer_core"],"dp_a":["a_corridor"],"bx_dorsal_turret":["dorsal_turret"],"bx_a_aft_passage":["a_aft_passage"],"bx_torpedo_room":["torpedo_room"],"bx_medbay":["medbay"],"bx_damage_control":["damage_control"],"bx_quarters":["quarters"],"bx_mess":["mess"],"dp_port":["port_turret"],"dp_stbd":["stbd_turret"],"dp_b_fwd":["b_spine"],"dp_hangar_p":["hangar"],"bx_launch_bay_p":["launch_bay_p"],"bx_launch_bay_s":["launch_bay_s"],"msb_s":["engineering"],"dp_drive":["drive"],"dp_c_fwd":["c_spine"],"bx_magazine":["magazine"],"dp_ls":["life_support"],"bx_cargo":["cargo"],"bx_airlock":["airlock"],"bx_shield_room":["shield_room"],"fsb_p":["switchboard"],"bx_pod_dorsal":["pod_dorsal"],"bx_pod_ventral":["pod_ventral"],"bx_pod_port":["pod_port"],"bx_pod_stbd":["pod_stbd"]}},"distribution":{"box_height_m":1.3,"box_beside_door_m":1.2,"box_into_room_m":0.3,"run_below_ceiling_m":0.35,"ratings_mw":[5,10,15,20,30,40],"rating_margin":1.25,"spare_mw":10,"note":"power-routing design 1: tools/power/boxes.py places a conduit box in every room without a switchboard or panel, beside the doorway its feed comes in by, box_height_m over the floor and box_into_room_m off the wall; runs go run_below_ceiling_m under the ceiling (or under the next deck in a taller room). A feed run's rating is its rooms' most (every load at its setpoint_max, the lights) times rating_margin, rounded up to ratings_mw; a spare run takes spare_mw or the larger feed rating of its two rooms."},"routing":{"max_live_runs":42,"trip_dark_s":8.0,"kept_on_trip":["switchboard","emergency_bus"],"note":"power-routing design 2: a run (conduit or tie) is live when it is closed, not severed and both its nodes are switched on. The main protection allows max_live_runs at once (the factory configuration is 39); one more trips the grid: every node but the kinds in kept_on_trip is switched off and every run opened for trip_dark_s, then every switch returns to its factory setting. The owner, 2026-10-11: \"Too many conduits open can cause the ship to shut down temporarily and reset the configuration to factory settings\"."},"coolant":{"system":"coolant_pumps","fluid":"water and glycol, pressurized","capacity_mj_per_k":40.0,"nominal_k":330.0,"initial_k":325.0,"warn_k":360.0,"pumps":["coolant_pump_a","coolant_pump_b"],"flow_per_pump":0.5,"design_flow_kg_s":740.0,"design_flow_note":"40 MW at a 15 K rise in water and glycol (3.6 kJ/kg K); the console shows flow as this times the flow fraction","specific_heat_kj_per_kg_k":3.6,"radiator_pumps":["radiator_pump_p","radiator_pump_s"],"flow_per_radiator_pump":0.5,"natural_circulation_flow":0.05,"flow_alarm_below":0.3,"inventory_kg":11100.0,"tanks":[{"id":"tank_p","name":"Coolant tank, port","capacity_kg":2000.0},{"id":"tank_s","name":"Coolant tank, starboard","capacity_kg":2000.0}],"segments":[{"id":"seg_hot_1","name":"Hot leg pipe 1","leg":"hot"},{"id":"seg_hot_2","name":"Hot leg pipe 2","leg":"hot"},{"id":"seg_hot_3","name":"Hot leg pipe 3","leg":"hot"},{"id":"seg_hot_4","name":"Hot leg pipe 4","leg":"hot"},{"id":"seg_cold_1","name":"Cold leg pipe 1","leg":"cold"},{"id":"seg_cold_2","name":"Cold leg pipe 2","leg":"cold"},{"id":"seg_cold_3","name":"Cold leg pipe 3","leg":"cold"},{"id":"seg_cold_4","name":"Cold leg pipe 4","leg":"cold"}],"segments_note":"reactor-cooling design 1-2: the loop's eight pipe segments, numbered from the core along the flow (the hot leg from the core to the chiller, the cold leg from the chiller back to the core). Each is a part with integrity (damage.json coolant). A leg carries flow x its worst segment's capability; an isolated segment carries nothing and its leg runs through the bypass jumper round it at isolated_leg_flow.","isolated_leg_flow":0.5,"exchanger":{"id":"chiller","name":"Heat exchanger (chiller)"},"makeup":{"pump":"makeup_pump","max_kg_s":10.0,"auto_open_below":0.95},"cavitation":{"full_flow_from":0.8,"no_flow_below":0.6},"bands":{"hot_leg_k":[335.0,350.0],"cold_leg_k":[320.0,335.0],"hot_leg_warning_k":370.0},"automation":{"period_s":3.0,"design_rise_k":15.0,"pump_speed_min":1.0},"cooling_note":"reactor-cooling design 2, 3, 5 and 6. Speed-law loads (power_exponent) draw nominal_mw x speed^power_exponent, their standby_mw unused, and run at the speed their supply allows. flow = max(natural_circulation_flow, core pumps' speed x capability x flow_per_pump, summed, x cavitation); cavitation = clamp((m_loop / inventory_kg - no_flow_below) / (full_flow_from - no_flow_below), 0, 1). C_loop = capacity_mj_per_k x m_loop / inventory_kg. Hot leg = loop temperature + heat into the loop / (flow x design_flow_kg_s x specific heat); it is the one the loop scram reads. Radiator rejection gains the exchanger's capability and the radiator pumps' speed x capability x flow_per_radiator_pump, summed. Automation every period_s: core pumps at the flow the heat needs at design_rise_k, never below pump_speed_min (the mockup keeps power-grid's full-flow walkthroughs), up to 1.2; radiator pumps at full; the bypass holds the cold leg by radiators.bypass_band_k (325-330 K, design 5's 327 K); makeup opens below auto_open_below and shuts at full. Pipe segments, leaks and the exchanger's damage (design 1-2): flow gains x min over the two legs of the leg's factor (its worst segment's capability, or isolated_leg_flow x the worst of the rest when one is isolated); the exchanger's capability is its integrity's (damage.json systems); segments and tanks leak by damage.json coolant."},"radiators":{"system":"radiators","rated_mw":40.0,"rated_at_k":330.0,"background_k":4.0,"bypass_band_k":5.0,"law":"capacity = rated_mw * health * flow * exchanger * radiator_pumps * (T^4 - Tb^4) / (rated_at_k^4 - Tb^4); rejected = capacity * chiller, where chiller (the share of the hot leg through the exchanger) is clamp((T - (coolant.nominal_k - bypass_band_k)) / bypass_band_k, 0, 1) in AUTO and the engineer's in MANUAL; exchanger and radiator_pumps as coolant.cooling_note (reactor-cooling design 2)","note":"Fictional rating, stated as such: a physical radiator rejecting 40 MW at 330 K would need about 60,000 m^2. See design.md, Heat, and open question P4."},"overdrive":{"heat_factor":1.0,"wear_pct_per_min_at_150":2.0,"heat_wear_pct_per_s_per_k":0.01}}
 </script>
 <!-- INLINE data:tern/power END -->
 <!-- INLINE data:tern/atmosphere BEGIN -->
@@ -3311,7 +3336,12 @@
     for (const g of PW.generators) st.genClosed[g.id] = true;
     for (const t of PW.ties) st.tieClosed[t.id] = !!t.closed;
     // cut: where a hit severed the conduit, [x, y, z] on its path (null while whole), for the damage map's break marker.
-    for (const k of PW.conduits) st.conduit[k.id] = { health: 1, severed: false, breaker: true, cut: null };
+    // A conduit starts at its factory setting (power-routing 1): closed, unless it is a spare route.
+    for (const k of PW.conduits) st.conduit[k.id] = { health: 1, severed: false, breaker: k.factory_closed !== false, cut: null };
+    // Every node's box switched on (power-routing 1); the main protection's trip (power-routing 2).
+    st.boxOn = {};
+    for (const nd of PW.nodes) st.boxOn[nd.id] = true;
+    st.routing = { trip_s: 0, trips: 0 };
     for (const l of loads) if (l.heat && l.heat.to === "node") st.thermal[l.id] = { T: PW.coolant.initial_k + 5 };
     for (const l of loads) st.loop.branchOpen[l.id] = true;
     // The coolant parts (reactor-cooling design 1): a missing block is an error, not a silent zero (CLAUDE.md 6.5).
@@ -3363,7 +3393,8 @@
       const reserve = rx.releaseReserve ? 0 : B.restart_reserve_mj;
       const lim = (e) => Math.max(0, Math.min(B.discharge_max_mw * st.battery.health, (e * B.discharge_efficiency) / dt));
       const batAvail = lim(st.battery.soc_mj - reserve), batAvailAll = lim(st.battery.soc_mj);
-      const nh = (id) => (st.nodeHealth[id] == null ? 1 : st.nodeHealth[id]);
+      // A node whose box is switched off passes nothing, as a destroyed one (power-routing 1).
+      const nh = (id) => (st.boxOn[id] === false ? 0 : st.nodeHealth[id] == null ? 1 : st.nodeHealth[id]);
       const eRx = add("reactor", S, RX, rxAvail, true, "source");
       const eBat = add("battery", S, BAT, 0, true, "source");
       add("battery_out", BAT, pIdx[B.node], st.batteryBreaker ? 1e9 : 0, true, "battery");
@@ -3460,7 +3491,7 @@
       for (let i = 0; i < loads.length; i++) {
         const l = loads[i];
         const sp = Math.min(setpoints[i], l.setpoint_max);
-        if (sp <= 0 || st.breakerOpen[i] || st.nodeHealth[l.node] === 0) continue;
+        if (sp <= 0 || st.breakerOpen[i] || st.nodeHealth[l.node] === 0 || st.boxOn[l.node] === false) continue;
         const cap = capability(i);
         if (cap <= 0) continue;
         let x;
@@ -4655,7 +4686,7 @@
     const nodeHp = (id) => (st.nodeHealth[id] == null ? 1 : st.nodeHealth[id]);
     /** Whether a power node carries power now: an edge touching it carries flow, or a load on it is supplied. */
     function nodeLive(id) {
-      if (nodeHp(id) <= 0) return false;
+      if (nodeHp(id) <= 0 || st.boxOn[id] === false) return false;
       for (const k of PW.conduits) if ((k.between[0] === id || k.between[1] === id) && Math.abs(st.flows[k.id] || 0) > EPS) return true;
       for (const t of PW.ties) if ((t.between[0] === id || t.between[1] === id) && Math.abs(st.flows[t.id] || 0) > EPS) return true;
       for (const g of PW.generators) if (g.node === id && (st.flows[g.id] || 0) > EPS) return true;
@@ -4675,14 +4706,14 @@
       const mw = st.flows[id] || 0;
       let state = "live";
       if (c.severed) state = "severed";
-      else if (!c.breaker || nodeHp(k.between[0]) <= 0 || nodeHp(k.between[1]) <= 0) state = "dead";
+      else if (!c.breaker || nodeHp(k.between[0]) <= 0 || nodeHp(k.between[1]) <= 0 || st.boxOn[k.between[0]] === false || st.boxOn[k.between[1]] === false) state = "dead";
       else if (Math.abs(mw) <= EPS && !(nodeLive(k.between[0]) && nodeLive(k.between[1]))) state = "dead";
-      return { id, name: k.name, mw, state, health: c.health, breaker: c.breaker ? "closed" : "open", cut: c.cut || null, capacity_mw: k.capacity_mw };
+      return { id, name: k.name, mw, state, health: c.health, breaker: c.breaker ? "closed" : "open", cut: c.cut || null, capacity_mw: k.capacity_mw, spare: k.factory_closed === false };
     }
     /** A switchboard section, panel or bus as the map draws it (power-grid 5): health 0-1 and state "sound", "damaged" or "destroyed". */
     function nodeView(id) {
       const h = nodeHp(id);
-      return { id, health: h, state: h <= 0 ? "destroyed" : h < 1 ? "damaged" : "sound", live: nodeLive(id) };
+      return { id, health: h, state: h <= 0 ? "destroyed" : h < 1 ? "damaged" : "sound", live: nodeLive(id), on: st.boxOn[id] !== false };
     }
     /**
      * Every breaker, by the node whose box it stands in, and its state "closed", "open" (opened or tripped) or "locked"
@@ -4756,8 +4787,63 @@
       return null;
     }
 
+    // ======================================================= ROUTING (power-routing 1-2; sc-core power::step_routing)
+    const RT = PW.routing;
+    /** The runs live now: conduits and ties closed, whole, with both their boxes on. */
+    function liveRuns() {
+      const on = (id) => st.boxOn[id] !== false;
+      let n = 0;
+      for (const k of PW.conduits) { const c = st.conduit[k.id]; if (c.breaker && !c.severed && on(k.between[0]) && on(k.between[1])) n++; }
+      for (const t of PW.ties) if (st.tieClosed[t.id] && on(t.between[0]) && on(t.between[1])) n++;
+      return n;
+    }
+    /** Every box on, every run at its factory setting. */
+    function factoryReset() {
+      for (const nd of PW.nodes) st.boxOn[nd.id] = true;
+      for (const k of PW.conduits) st.conduit[k.id].breaker = k.factory_closed !== false;
+      for (const t of PW.ties) st.tieClosed[t.id] = !!t.closed;
+    }
+    /** The main protection, at the start of each sub-step: a trip's dark time running out restores the factory
+     *  configuration; more live runs than it allows trips the grid. */
+    function stepRouting() {
+      if (!RT) return;
+      const R = st.routing;
+      if (R.trip_s > 0) {
+        R.trip_s -= dt;
+        if (R.trip_s <= 1e-9) { R.trip_s = 0; factoryReset(); log("Grid restored: factory configuration"); }
+        return;
+      }
+      if (liveRuns() > RT.max_live_runs) {
+        R.trip_s = RT.trip_dark_s; R.trips++;
+        for (const nd of PW.nodes) st.boxOn[nd.id] = RT.kept_on_trip.indexOf(nd.kind) >= 0;
+        for (const k of PW.conduits) st.conduit[k.id].breaker = false;
+        for (const t of PW.ties) st.tieClosed[t.id] = false;
+        log("Main protection tripped: too many live runs");
+      }
+    }
+    /** Switch a node's box on or off; refused (false) while the grid is tripped dark. */
+    function setBox(id, on) {
+      if (st.routing.trip_s > 0 || !(id in st.boxOn)) return false;
+      st.boxOn[id] = !!on; log((on ? "Box on: " : "Box off: ") + id);
+      return true;
+    }
+    /** Close or open a run (a conduit or a tie) at its box; refused (false) while the grid is tripped dark. */
+    function setRun(id, closed) {
+      if (st.routing.trip_s > 0) return false;
+      if (st.conduit[id]) st.conduit[id].breaker = !!closed;
+      else if (id in st.tieClosed) st.tieClosed[id] = !!closed;
+      else return false;
+      log((closed ? "Run closed: " : "Run opened: ") + id);
+      return true;
+    }
+    /** The protection as a console shows it: live runs against the limit, the dark seconds left, trips so far. */
+    function routingView() {
+      return { live: liveRuns(), limit: RT ? RT.max_live_runs : Infinity, trip_s: st.routing.trip_s, tripped: st.routing.trip_s > 0, trips: st.routing.trips, dark_s: RT ? RT.trip_dark_s : 0 };
+    }
+
     // ======================================================= the sub-step
     function step() {
+      stepRouting();
       stepVent();
       stepAutomation();
       stepCooling();
@@ -4803,6 +4889,7 @@
       operateDoor, setPriority, applyPreset, setCooling, coolantReadout, coolantView, damagePart, repairPart, isolateSegment, partIntegrity, setGroupBreaker, pumpSpeed, repressurize, repairSystem, spliceConduit, rebuildNode, fanRatio,
       airlockCycleOut, airlockCycleIn, ventCompartment, stopVent, addCrew, setActivity, compartmentReadout, lighting,
       receiverKpa, storeMol, fillStandard, log, fs: FS, fO2, conduitView, nodeView, nodeLive, breakers, repairTime, hullSection,
+      setBox, setRun, liveRuns, routingView, factoryReset,
       get P() { return P; }, get T() { return T; }, get n() { return n; }, get ntot() { return ntot; },
     };
   }
@@ -4819,16 +4906,19 @@
 <div id="status"></div>
 <div class="legend" id="legend"></div>
 <div id="tip"></div>
+<div id="tripb"></div>
+<button id="collapse" type="button" data-tip="Collapse: back to the Engineering console's side panel"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M10 14l-7 7M14 10l7-7"/></svg>CONSOLE</button>
 <script type="module">
 import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 const K = window.ShipKit, SS = window.ShipSystems;
 const L = K.layout();
 const PW = K.shipData("power"), AT = K.shipData("atmosphere"), DM = K.shipData("damage");
 const title = K.titleBlock({
-  title: "Power grid: plan and diagram",
-  subtitle: `${L.ship.name}: the reactor, buses, trunks, panels and every load, on the floor plan and as a one-line diagram, live on the mockups' power simulation`,
-  change: "power-grid",
+  title: "Engineering: power schematic",
+  subtitle: `${L.ship.name}: the expanded schematic of the Engineering console. 3D: the decks at their heights, a conduit box in every room, the runs between them and every load's feeder. 2D: the same grid as a simplified graph. Tap a box or a run to switch it; too many live runs trip the grid`,
+  change: "power-grid, power-routing",
 });
 const hud = K.budgetHud({ note: "the plan view; the diagram is console UI (immediate mode), not 3D" });
 window.MOCKUP_BUDGET = () => hud.read();
@@ -4837,7 +4927,7 @@ window.MOCKUP_BUDGET = () => hud.read();
 const C = {
   bg: "#070a0f", panel: "#0c121a", panel2: "#121a25", line: "#1f2a37", line2: "#2a3747",
   text: "#e8eef6", dim: "#6f7f94", faint: "#3a4859",
-  ok: "#3ddc84", warn: "#ffc542", danger: "#ff4757", alert: "#ff2a2a", emergency: "#ff8a1c", power: "#ffd36b",
+  ok: "#3ddc84", warn: "#ffc542", danger: "#ff4757", alert: "#ff2a2a", emergency: "#ff8a1c", power: "#ffd36b", spare: "#5f8fb3",
 };
 const clamp = (x, a, b) => (x < a ? a : x > b ? b : x);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -4849,27 +4939,34 @@ function mixCol(a, b, k) {
   const ch = (sh) => Math.round(((pa >> sh) & 255) * (1 - k) + ((pb >> sh) & 255) * k);
   return "#" + ((ch(16) << 16) | (ch(8) << 8) | ch(0)).toString(16).padStart(6, "0");
 }
-/** A live conduit's colour: dim when it idles, the power colour as it nears its rating. */
+/** A live run's colour: dim when it idles, the power colour as it nears its rating. */
 const flowCol = (share) => mixCol("#4d5866", C.power, clamp(Math.pow(share, 0.6), 0, 1));
 
-// Short names for the plan's tags and the diagram's cards (UI words; the full names are power.json's, on hover).
+// Short names for the tags and the diagram's cards (UI words; the full names are power.json's, on hover).
 const SHORT = {
   msb_p: "MSB P", msb_s: "MSB S", fsb_p: "FSB P", fsb_s: "FSB S", eb: "EMERG", dp_drive: "DRIVE", dp_hangar_p: "HANGAR P",
   dp_hangar_s: "HANGAR S", dp_port: "PORT", dp_stbd: "STBD", dp_a: "DECK A", dp_b_fwd: "B FWD", dp_c_fwd: "C FWD", dp_ls: "LIFE SUP",
+  bx_bridge: "BRIDGE", bx_ready_room: "READY", bx_computer_core: "CORE", bx_dorsal_turret: "DORSAL", bx_a_aft_passage: "AFT PASS",
+  bx_torpedo_room: "TORPEDO", bx_medbay: "MEDBAY", bx_damage_control: "DC", bx_quarters: "QUARTERS", bx_mess: "MESS",
+  bx_launch_bay_p: "BAY P", bx_launch_bay_s: "BAY S", bx_magazine: "MAGAZINE", bx_cargo: "CARGO", bx_airlock: "AIRLOCK",
+  bx_shield_room: "SHIELDS", bx_pod_dorsal: "POD D", bx_pod_ventral: "POD V", bx_pod_port: "POD P", bx_pod_stbd: "POD S",
 };
-const nodeName = (id) => (PW.nodes.find((n) => n.id === id) || { name: id }).name;
+const NODE = Object.fromEntries(PW.nodes.map((n) => [n.id, n]));
+const nodeName = (id) => (NODE[id] || { name: id }).name;
+const isBox = (id) => NODE[id] && NODE[id].kind === "box";
 
 // =================================================================== the simulation (shipsystems.js, 10 Hz sub-steps)
 // The walkthroughs' activities (power-grid design 12): cruise, and combat with helm at 75% thrust, the dampers at 60%,
 // RCS at 50%, the shields regenerating, three turrets firing and an active scan (systems.html's copies).
 const CRUISE_ACT = { drive: 0.3, dampers: 0.2, rcs: 0.1, shield_regen: 0, turret_dorsal: 0, turret_ventral: 0, turret_port: 0, turret_stbd: 0, sensors_active: 0, comms: 0.2, hoist: 0 };
 const COMBAT_ACT = { drive: 0.75, dampers: 0.6, rcs: 0.5, shield_regen: 1, turret_dorsal: 1, turret_ventral: 1, turret_port: 1, turret_stbd: 0, sensors_active: 1, comms: 0.5, hoist: 1 };
-let sim, st;
+let sim, st, script = [];
 const run = (s) => { for (let i = 0, n = Math.round(s / sim.dt); i < n; i++) sim.step(); };
 /** A fresh ship, warmed up 300 s at cruise (the walkthroughs' start: battery full). */
 function fresh() {
   sim = SS.create(L, PW, AT, DM, { seed: 5 });
   st = sim.st;
+  script = [];
   sim.applyPreset("cruise");
   sim.setActivity(CRUISE_ACT);
   run(300);
@@ -4881,6 +4978,12 @@ function sever(id) {
   c.severed = true; c.cut = k.path_m[Math.floor((k.path_m.length - 1) / 2)];
   sim.log("Conduit " + id + " severed");
 }
+/** The spare routes, open at the factory (power-routing 1). */
+const SPARES = PW.conduits.filter((k) => k.factory_closed === false).map((k) => k.id);
+/** The dorsal turret's feed cut, and the spare round the aft passage closed: fed from engineering the long way. */
+function reroute() { sever("r_dorsal_fwd"); run(4); sim.setRun("r_dorsal_aft", true); run(4); }
+/** Spares closed one at a time until the main protection trips (shots: at once; the button: a second apart). */
+function overloadNow() { for (const id of SPARES) { if (st.routing.trip_s > 0) break; sim.setRun(id, true); run(0.3); } }
 const SCENARIOS = [
   ["Cruise", () => fresh()],
   ["Combat", () => { fresh(); combat(); run(30); }],
@@ -4888,12 +4991,15 @@ const SCENARIOS = [
   ["Both trunks cut", () => { fresh(); combat(); run(60); sever("k_mid_p"); sever("k_mid_s"); run(30); }],
   ["Port switchboard lost", () => { fresh(); combat(); run(60); st.nodeHealth.msb_p = 0; sim.log("Main switchboard, port section destroyed"); run(10); }],
   ["Scram", () => { fresh(); combat(); run(60); sim.scram("manual"); run(10); }],
+  ["Reroute", () => { fresh(); combat(); run(30); reroute(); }],
+  ["Overload", () => { fresh(); speed = Math.max(speed, 1); script = SPARES.map((id, i) => ({ at: st.t + 1 + i * 1.2, fn: () => sim.setRun(id, true) })); }],
 ];
 let scenario = 0;
 fresh();
 
-// What the page reads of the state (no formula of its own: the solve's demand, allocation and flows).
+// What the page reads of the state (no formula of its own: the solve's demand, allocation and flows, the routing view).
 const LOADS = sim.loads, LIDX = sim.loadIdx;
+const FEED_LOADS = LOADS.map((l, i) => i).filter((i) => Array.isArray(LOADS[i].feeder_m));
 function loadNow(i) {
   const want = st.want[i] || 0, got = st.alloc[i] || 0, dem = st.demand[i] || 0;
   const supply = dem > 1e-6 ? clamp(got / dem, 0, 1) : st.dropped[i] ? 0 : 1;
@@ -4908,98 +5014,138 @@ function loadState(n) {
   return { col: C.ok, mode: 0, fill: 1 };
 }
 const nodeState = (id) => sim.nodeView(id);
-const nodeCol = (v) => (v.state === "destroyed" ? C.danger : v.state === "damaged" ? C.warn : v.live ? C.power : C.faint);
-/** Every grid edge the plan and the diagram draw: generators, ties, the battery's link and the conduits. */
+/** A box as a switch: filled on (power colour when it carries power, grey when nothing reaches it), hollow off,
+ *  crossed when destroyed. */
+function boxLook(id) {
+  const v = nodeState(id);
+  if (v.state === "destroyed") return { col: C.danger, mode: 3, v };
+  if (!v.on) return { col: C.warn, mode: 2, v };
+  return { col: v.live ? (v.state === "damaged" ? C.warn : C.power) : C.faint, mode: 0, v };
+}
+const isRun = (id) => !!st.conduit[id] || id in st.tieClosed;
+/** Every run and source edge the plan and the diagram draw: state live, dead, open (its switch open), severed. */
 function edgeNow(id) {
   if (st.conduit[id]) {
     const v = sim.conduitView(id);
-    return { id, name: v.name, mw: v.mw, cap: v.capacity_mw * v.health, rated: v.capacity_mw, state: v.state, breaker: v.breaker === "closed" };
+    const state = v.state === "severed" ? "severed" : v.breaker === "open" ? "open" : v.state;
+    return { id, name: v.name, mw: v.mw, cap: v.capacity_mw * v.health, rated: v.capacity_mw, state, closed: v.breaker === "closed", spare: v.spare, run: true };
   }
   const g = PW.generators.find((x) => x.id === id);
   if (g) {
     const f = st.flows[id] || 0, on = !!st.genClosed[id], live = Math.abs(f) > 1e-4;
-    return { id, name: g.name, mw: f, cap: g.capacity_mw, rated: g.capacity_mw, state: on && (live || st.reactor.state === "running") ? "live" : "dead", breaker: on };
+    return { id, name: g.name, mw: f, cap: g.capacity_mw, rated: g.capacity_mw, state: on && (live || st.reactor.state === "running") ? "live" : "dead", closed: on };
   }
   const t = PW.ties.find((x) => x.id === id);
   if (t) {
-    const f = st.flows[id] || 0, on = !!st.tieClosed[id], ends = t.between.every((n) => nodeState(n).state !== "destroyed");
-    return { id, name: t.name, mw: f, cap: t.capacity_mw, rated: t.capacity_mw, state: on && ends ? "live" : "dead", breaker: on };
+    const f = st.flows[id] || 0, on = !!st.tieClosed[id], ends = t.between.every((n) => nodeState(n).state !== "destroyed" && nodeState(n).on);
+    return { id, name: t.name, mw: f, cap: t.capacity_mw, rated: t.capacity_mw, state: !on ? "open" : ends ? "live" : "dead", closed: on, run: true };
   }
   // The battery's link to its bus.
   const f = st.flows.battery_out || 0, on = !!st.batteryBreaker;
-  return { id, name: "Battery to the emergency bus", mw: f - (st.battery.in_mw || 0), cap: PW.battery.discharge_max_mw, rated: PW.battery.discharge_max_mw, state: on ? "live" : "dead", breaker: on };
+  return { id, name: "Battery to the emergency bus", mw: f - (st.battery.in_mw || 0), cap: PW.battery.discharge_max_mw, rated: PW.battery.discharge_max_mw, state: on ? "live" : "dead", closed: on };
+}
+/** A load's feeder: live while the load draws, idle while its box is live and it wants nothing, dead otherwise. */
+function feederNow(i) {
+  const l = LOADS[i], n = loadNow(i), b = nodeState(l.node);
+  const state = n.got > 1e-6 ? "live" : b.on && b.live && n.off ? "idle" : "dead";
+  return { id: "f:" + l.id, name: l.name + ": feeder", mw: n.got, rated: Math.max(1e-6, l.nominal_mw * l.setpoint_max), state };
 }
 const EDGE_IDS = [...PW.generators.map((g) => g.id), ...PW.ties.map((t) => t.id), "battery_out", ...PW.conduits.map((k) => k.id)];
+/** Switch what a tap lands on: a box on or off, a run closed or open (nothing while the grid is tripped). */
+function toggle(kind, id) {
+  if (kind === "box") return sim.setBox(id, !nodeState(id).on);
+  if (kind === "run" && isRun(id)) return sim.setRun(id, !edgeNow(id).closed);
+  return false;
+}
 
-// =================================================================== the bar, the status strip, the legend
-const BAR = document.getElementById("bar");
-let view = "plan", deckSel = "all", speed = 1;
+// =================================================================== the bar, the status strip, the legend, the trip banner
+const BAR = document.getElementById("bar"), COLLAPSE = document.getElementById("collapse");
+let view = "3d", speed = 1;
 function bar() {
-  const b = (label, on, fn, cls) => { const e = document.createElement("button"); e.textContent = label; if (on) e.classList.add("on"); if (cls) e.className += " " + cls; e.onclick = fn; return e; };
+  const b = (label, on, fn) => { const e = document.createElement("button"); e.textContent = label; if (on) e.classList.add("on"); e.onclick = fn; return e; };
   const sep = () => { const s = document.createElement("span"); s.className = "sep"; return s; };
   const lab = (t) => { const s = document.createElement("span"); s.className = "lab"; s.textContent = t; return s; };
+  const keep = BAR.scrollLeft;
   BAR.innerHTML = "<b>POWER GRID</b>";
-  BAR.append(b("Plan", view === "plan", () => setView("plan")), b("Diagram", view === "diagram", () => setView("diagram")), sep());
-  if (view === "plan") {
-    BAR.append(lab("Deck"));
-    for (const d of ["all", "A", "B", "C"]) BAR.append(b(d === "all" ? "All" : d, deckSel === d, () => { deckSel = d; fitPlan(); bar(); }));
-    BAR.append(sep());
-  }
+  BAR.append(b("3D", view === "3d", () => setView("3d")), b("2D", view === "2d", () => setView("2d")), sep());
+  if (view === "3d") {
+    BAR.append(b("Home", false, () => homeView()));
+    BAR.append(b(spread > 1 ? "True heights" : "Decks apart", false, () => { spread = spread > 1 ? 1 : spreadFor(); buildPlan(); updatePlan(); homeView(); bar(); }));
+    if (deckIso != null) BAR.append(b("All decks", false, () => { deckIso = null; buildPlan(); updatePlan(); homeView(); bar(); }));
+  } else BAR.append(b(PORTRAIT && !DZ.whole ? "Whole" : "Fit", false, () => { DZ.whole = PORTRAIT ? !DZ.whole : false; fitDiagram(); bar(); }));
+  BAR.append(sep());
   SCENARIOS.forEach(([name, fn], i) => BAR.append(b(name, scenario === i, () => { scenario = i; fn(); bar(); })));
   BAR.append(sep(), lab("Time"));
   for (const [l, s] of [["Pause", 0], ["1x", 1], ["16x", 16]]) BAR.append(b(l, speed === s, () => { speed = s; bar(); }));
+  BAR.scrollLeft = keep;
 }
 const SVGI = {
   core: '<circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="9" stroke-dasharray="3 2.5"/>',
   battery: '<rect x="3" y="7" width="16" height="10" rx="2"/><path d="M21 10v4"/>',
   bolt: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+  switch: '<circle cx="5" cy="16" r="2"/><circle cx="19" cy="16" r="2"/><path d="M7 15L18 7"/>',
 };
 const svgIcon = (name, s, col) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${SVGI[name]}</svg>`;
-const STATUS = document.getElementById("status");
+const STATUS = document.getElementById("status"), TRIPB = document.getElementById("tripb");
 function status() {
   let want = 0, got = 0;
   for (let i = 0; i < LOADS.length; i++) { want += st.want[i]; got += st.alloc[i]; }
-  const rx = st.reactor, up = rx.state === "running";
+  const rx = st.reactor, up = rx.state === "running", rv = sim.routingView();
   const soc = st.battery.soc_mj / PW.battery.capacity_mj;
+  const rcol = rv.tripped ? C.danger : rv.live >= rv.limit ? C.warn : C.text;
   STATUS.innerHTML =
     (st.alert === "red_alert" ? `<span class="alert" data-tip="Red alert"></span>` : "") +
     `<span class="k" data-tip="Reactor: ${esc(rx.state)}, throttle ${pct(rx.throttle)}">${svgIcon("core", 20, up ? C.ok : C.danger)}${up ? pct(rx.throttle) : rx.state === "igniting" ? "IGNITE" : "SCRAM"}</span>` +
     `<span class="k" data-tip="Battery: ${st.battery.soc_mj.toFixed(0)} of ${PW.battery.capacity_mj} MJ, reserve ${PW.battery.restart_reserve_mj} MJ">${svgIcon("battery", 20, st.battery.out_mw > 0.05 ? C.warn : C.ok)}${pct(soc)}</span>` +
-    `<span class="k" data-tip="Delivered of wanted">${svgIcon("bolt", 20, got < want - 0.05 ? C.danger : C.power)}${f1(got)} / ${f1(want)} MW</span>`;
+    `<span class="k" data-tip="Delivered of wanted">${svgIcon("bolt", 20, got < want - 0.05 ? C.danger : C.power)}${f1(got)} / ${f1(want)} MW</span>` +
+    `<span class="k" style="color:${rcol}" data-tip="Live runs against what the main protection allows; one more trips the grid">${svgIcon("switch", 20, rcol)}${rv.tripped ? "TRIPPED" : `${rv.live} / ${rv.limit}`}</span>`;
+  TRIPB.style.display = rv.tripped ? "block" : "none";
+  if (rv.tripped) TRIPB.innerHTML = `TRIPPED<small>factory settings in ${Math.ceil(rv.trip_s)} s</small>`;
 }
 function legend() {
   const sw = (inner, w = 34) => `<svg width="${w}" height="18" viewBox="0 0 ${w} 18">${inner}</svg>`;
   const row = (icon, t) => `<div class="row">${icon}<span>${t}</span></div>`;
   const dot = (fill, col, hatch) => sw(`<circle cx="17" cy="9" r="7" fill="${C.bg}" stroke="${col}" stroke-width="2"/>` + (fill ? `<path d="M10 ${9 + 7 - 14 * fill}h14v${14 * fill}h-14z" fill="${col}" clip-path="circle(7px at 17px 9px)"/>` : "") + (hatch ? `<path d="M12 4l4 0M11 7l8 0" stroke="${col}" stroke-width="1.5" opacity="0.6"/>` : ""));
   document.getElementById("legend").innerHTML =
-    `<div class="h">NODES</div>` +
-    row(sw(`<rect x="9" y="1" width="16" height="16" fill="${C.power}" stroke="${C.power}"/>`), "Switchboard section, live") +
-    row(sw(`<rect x="11" y="3" width="12" height="12" fill="${C.power}" stroke="${C.power}"/>`), "Distribution panel") +
-    row(sw(`<rect x="11" y="3" width="12" height="12" fill="${C.bg}" stroke="${C.faint}" stroke-width="2"/>`), "Dead: no power") +
+    `<div class="h">BOXES (tap to switch)</div>` +
+    row(sw(`<rect x="9" y="1" width="16" height="16" fill="${C.power}" stroke="${C.power}"/>`), "Switchboard or panel, on") +
+    row(sw(`<rect x="11" y="3" width="12" height="12" fill="${C.power}" stroke="${C.power}"/>`), "Conduit box, on") +
+    row(sw(`<rect x="11" y="3" width="12" height="12" fill="${C.faint}" stroke="${C.faint}"/>`), "On, nothing reaches it") +
+    row(sw(`<rect x="11" y="3" width="12" height="12" fill="${C.bg}" stroke="${C.warn}" stroke-width="2"/>`), "Switched off") +
     row(sw(`<rect x="10" y="2" width="14" height="14" fill="${C.bg}" stroke="${C.danger}" stroke-width="2"/><path d="M12 4l10 10M22 4L12 14" stroke="${C.danger}" stroke-width="2"/>`), "Destroyed") +
-    `<div class="h">CONDUITS</div>` +
-    row(sw(`<path d="M1 9h32" stroke="${C.power}" stroke-width="5" stroke-dasharray="6 3"/>`), "Width: rating. Brightness: load. Dashes run with the flow") +
-    row(sw(`<path d="M1 9h32" stroke="#4d5866" stroke-width="3"/>`), "Live, idle") +
-    row(sw(`<path d="M1 9h32" stroke="${C.faint}" stroke-width="3" stroke-dasharray="3 3"/>`), "Dead: open breaker or no source") +
+    `<div class="h">RUNS (tap to switch)</div>` +
+    row(sw(`<path d="M1 9h32" stroke="${C.power}" stroke-width="5" stroke-dasharray="6 3"/>`), "Live: width its rating, brightness its load") +
+    row(sw(`<path d="M1 9h32" stroke="${C.spare}" stroke-width="3" stroke-dasharray="3 6"/>`), "Open: a spare route, or switched off") +
+    row(sw(`<path d="M1 9h32" stroke="${C.faint}" stroke-width="3" stroke-dasharray="3 3"/>`), "Dead: nothing reaches it") +
     row(sw(`<path d="M1 9h32" stroke="${C.danger}" stroke-width="4"/><path d="M13 3l8 12M21 3l-8 12" stroke="#fff" stroke-width="2"/>`), "Severed") +
-    row(sw(`<circle cx="17" cy="9" r="5" fill="none" stroke="${C.power}" stroke-width="2"/><path d="M17 1v4M17 13v4" stroke="${C.power}" stroke-width="2"/>`), "Riser to another deck") +
+    row(sw(`<path d="M1 9h32" stroke="${C.ok}" stroke-width="1.5"/>`), "Feeder: a box to its load") +
     `<div class="h">LOADS</div>` +
-    row(dot(1, C.ok), "Supplied") + row(dot(0.45, C.warn, true), "Short: filled to its share") + row(dot(0, C.danger), "Dropped: shed or cut off") + row(dot(0, C.faint), "Off: nothing wanted now") +
+    row(dot(1, C.ok), "Supplied") + row(dot(0.45, C.warn, true), "Short: filled to its share") + row(dot(0, C.danger), "Dropped or cut off") + row(dot(0, C.faint), "Off: nothing wanted now") +
     `<div class="h">ROOMS</div>` +
     row(sw(`<rect x="2" y="2" width="14" height="14" fill="#4a4e57"/><rect x="18" y="2" width="14" height="14" fill="#5a1f24"/>`), "Normal light, red alert") +
     row(sw(`<rect x="2" y="2" width="14" height="14" fill="#5a3a1c"/><rect x="18" y="2" width="14" height="14" fill="#14171c"/>`), "Emergency light, dark");
 }
 
-// =================================================================== PLAN: the decks from above (three.js, orthographic)
-// Map space: u = z (bow to the right), v = x (port up), each deck its own band: A on top, then B, then C.
+// =================================================================== 3D: the decks at their heights (three.js, perspective, orbit camera)
+// The ship in its own frame: +X port, +Y up, +Z bow. Rooms are translucent floors at their heights; boxes, runs, spares
+// and feeders stand where they are (a run between decks is a real vertical riser). Floors, outlines, runs and markers
+// are drawn as overlays in that order without writing depth, so a run under a floor still shows through it: an x-ray
+// schematic, not a render of the ship. Drag to turn, wheel or pinch to zoom, two fingers to pan; tap a deck's letter to
+// show it alone.
 const DECKS = L.decks.slice().sort((a, b) => b.floor_y_m - a.floor_y_m);
 /** The deck a ship point stands on: the highest floor at or under it (a point 0.3 m under a floor is still on it). */
 const deckOfY = (y) => { const k = DECKS.findIndex((d) => d.floor_y_m <= y + 0.3); return k < 0 ? DECKS.length - 1 : k; };
 let X0 = Infinity, X1 = -Infinity, Z0 = Infinity, Z1 = -Infinity;
 for (const c of L.compartments) for (const b of c.brushes) for (const p of b.poly) { X0 = Math.min(X0, p[0]); X1 = Math.max(X1, p[0]); Z0 = Math.min(Z0, p[1]); Z1 = Math.max(Z1, p[1]); }
-const BAND = X1 - X0 + 3.5, XM = (X0 + X1) / 2;
-const bandV = (k) => -k * BAND;
-const mapUV = (p, k = deckOfY(p[1])) => [p[2], p[0] - XM + bandV(k), k];
+let PORTRAIT = innerHeight > innerWidth * 1.05;
+let deckIso = null;   // null: every deck; else the index of the deck shown alone
+// Decks apart (the default) or at their true heights: apart, each deck keeps its own heights and only the gaps between
+// the decks' floors stretch, so a run under a ceiling stays with its deck and a riser between decks reads as one.
+const spreadFor = () => (PORTRAIT ? 9 : 5);
+let spread = spreadFor();
+const Y = (y) => { const f = DECKS[deckOfY(y)].floor_y_m; return f * spread + (y - f); };
+/** A ship point where the 3D view draws it. */
+const P3 = (p) => [p[0], Y(p[1]), p[2]];
 
 const canvas = document.createElement("canvas");
 canvas.id = "plan";
@@ -5009,82 +5155,34 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x04060a);
 window.MOCKUP_SCENE = scene;
-const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -50, 50);
-camera.position.set(0, 0, 10);
+const camera = new THREE.PerspectiveCamera(36, 1, 0.5, 3000);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = false; controls.screenSpacePanning = true; controls.minDistance = 6; controls.maxDistance = 420;
+controls.rotateSpeed = 0.7; controls.zoomSpeed = 1.1;
+const TARGET = new THREE.Vector3(0, -0.5, (Z0 + Z1) / 2);
+/** The view from above and aft, a little to port, fitted to the ship (or the deck shown alone). */
+function homeView() {
+  // From starboard, above and a little aft: the bow to the right, as in the 2D graph, the decks stacked as bands.
+  // A phone held upright looks from further aft, so the ship's length shortens and the stack fills the tall screen.
+  // A deck shown alone is seen from well above, its rooms open to the eye.
+  const dir = (deckIso != null ? new THREE.Vector3(-0.38, 0.88, -0.28) : PORTRAIT ? new THREE.Vector3(-0.42, 0.42, -0.8) : new THREE.Vector3(-0.8, 0.5, -0.33)).normalize();
+  const R = Math.hypot((X1 - X0) / 2, deckIso == null ? 4 + 3.5 * spread : 3, (Z1 - Z0) / 2) * (PORTRAIT ? 0.8 : 1.0);
+  const vf = THREE.MathUtils.degToRad(camera.fov), hf = 2 * Math.atan(Math.tan(vf / 2) * camera.aspect);
+  const dist = R / Math.sin(Math.min(vf, hf) / 2);
+  const t = TARGET.clone();
+  if (deckIso != null) t.y = Y(DECKS[deckIso].floor_y_m + 0.1);
+  controls.target.copy(t);
+  camera.position.copy(t).addScaledVector(dir, dist);
+  camera.near = Math.max(0.5, dist / 200); camera.far = dist * 6; camera.updateProjectionMatrix();
+  controls.update();
+  labelsDirty = true;
+}
+let labelsDirty = true;
+controls.addEventListener("change", () => { labelsDirty = true; hideTip(); });
 const linearRGB = (hex) => { const c = new THREE.Color(); c.set(hex); return c; };
 
-// The rooms: one mesh of floors (one draw), a brush drawn on its deck when its floor is that deck's (a room's upper
-// prisms are its walls, not a floor). Each room's vertices take the colour of the light the simulation gives it.
 const ROOM_TINT = { normal: "#40454e", red_alert: "#5a1f24", emergency: "#4f3519", dark: "#14171c" };
-const roomRanges = [];
-const floors = (() => {
-  const pos = [], ranges = [];
-  let lift = 0;
-  L.compartments.forEach((c, i) => {
-    const start = pos.length / 3;
-    for (const b of c.brushes) {
-      const k = deckOfY(b.y[0]);
-      if (Math.abs(b.y[0] - DECKS[k].floor_y_m) > 1.0) continue;
-      lift += 0.006;   // no two floors on one plane (CLAUDE.md 8)
-      for (let t = 1; t + 1 < b.poly.length; t++) for (const q of [b.poly[0], b.poly[t], b.poly[t + 1]]) pos.push(q[1], q[0] - XM + bandV(k), -0.2 + lift);
-    }
-    ranges.push([start, pos.length / 3 - start]);
-  });
-  const g = new THREE.BufferGeometry();
-  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-  g.setAttribute("color", new THREE.Float32BufferAttribute(new Float32Array(pos.length), 3));
-  // Both faces: the plan swaps x and z, which turns every floor's winding over.
-  const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide }));
-  scene.add(m);
-  roomRanges.push(...ranges);
-  return m;
-})();
-// Walls, as each drawn brush's outline, and the hull's line at each deck (one draw).
-const outlines = (() => {
-  const pos = [], col = [];
-  const seg = (a, b, c) => { pos.push(a[0], a[1], 0.5, b[0], b[1], 0.5); col.push(...c, ...c); };
-  const wall = linearRGB("#7b8796").toArray(), hull = linearRGB("#3b4757").toArray();
-  for (const c of L.compartments) for (const b of c.brushes) {
-    const k = deckOfY(b.y[0]);
-    if (Math.abs(b.y[0] - DECKS[k].floor_y_m) > 1.0) continue;
-    for (let i = 0; i < b.poly.length; i++) {
-      const p = b.poly[i], q = b.poly[(i + 1) % b.poly.length];
-      seg([p[1], p[0] - XM + bandV(k)], [q[1], q[0] - XM + bandV(k)], wall);
-    }
-  }
-  DECKS.forEach((d, k) => {
-    const y = d.floor_y_m + 1.6;
-    let prev = null;
-    for (let z = Z0 - 2; z <= Z1 + 2; z += 0.5) {
-      const h = K.hullHalfWidth(L, y, z);
-      if (h > 0 && prev) { seg([prev[0], prev[1] - XM + bandV(k)], [z, h - XM + bandV(k)], hull); seg([prev[0], -prev[1] - XM + bandV(k)], [z, -h - XM + bandV(k)], hull); }
-      prev = h > 0 ? [z, h] : null;
-    }
-  });
-  const g = new THREE.BufferGeometry();
-  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-  g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
-  const m = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ vertexColors: true }));
-  scene.add(m);
-  return m;
-})();
-
-// The grid's edges as ribbons along their runs: width by rating, colour by the share of it carried, dashes running
-// with the flow (aDir), grey dashes when dead, red when severed. A run that changes deck leaves a riser ring at both
-// ends. One draw for every edge.
-const edgeMat = new THREE.ShaderMaterial({
-  uniforms: { uTime: { value: 0 } },
-  vertexShader: "attribute float aDist; attribute vec3 aCol; attribute float aState; attribute float aDir; attribute float aRate;\n" +
-    "varying float vDist; varying vec3 vCol; varying float vState; varying float vDir; varying float vRate;\n" +
-    "void main() { vDist = aDist; vCol = aCol; vState = aState; vDir = aDir; vRate = aRate; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
-  fragmentShader: "uniform float uTime; varying float vDist; varying vec3 vCol; varying float vState; varying float vDir; varying float vRate;\n" +
-    "void main() { vec3 c = vCol;\n" +
-    "  if (vState < 0.5) { if (vRate > 0.01) { float ph = fract((vDist - uTime * (1.5 + 6.0 * vRate) * vDir) / 2.2); c = ph < 0.6 ? c : c * 0.5; } }\n" +
-    "  else if (vState < 1.5) { if (fract(vDist / 1.2) > 0.5) discard; }\n" +
-    "  gl_FragColor = vec4(c, 1.0); }",
-  side: THREE.DoubleSide,
-});
-const nodeById = Object.fromEntries(PW.nodes.map((n) => [n.id, n]));
+const nodeById = NODE;
 const sysPos = (id) => L.systems.find((s) => s.id === id).center_m;
 /** Each edge's run in the ship: a conduit's path_m; a generator from the reactor to its section; a tie between its ends. */
 function runOf(id) {
@@ -5096,48 +5194,34 @@ function runOf(id) {
   if (t) return [nodeById[t.between[0]].center_m, nodeById[t.between[1]].center_m];
   return [sysPos(PW.battery.system), nodeById[PW.battery.node].center_m];
 }
-const edgeRanges = {}, edgeSegs = {}, risers = [];
-const edges = (() => {
-  const V = [];
-  EDGE_IDS.forEach((id, ei) => {
-    const pts = runOf(id).map((p) => mapUV(p));
-    const rated = edgeNow(id).rated, w = 0.22 + 0.5 * clamp(rated / 40, 0, 1);
-    const start = V.length, segs = [];
-    let dist = 0;
-    for (let i = 0; i + 1 < pts.length; i++) {
-      const a = pts[i], b = pts[i + 1];
-      if (a[2] !== b[2]) { risers.push({ id, at: [a[0], a[1]] }, { id, at: [b[0], b[1]] }); continue; }
-      const du = b[0] - a[0], dv = b[1] - a[1], len = Math.hypot(du, dv);
-      if (len < 0.01) continue;
-      const nu = (-dv / len) * w / 2, nv = (du / len) * w / 2, z = 0.6 + ei * 0.006;   // each run its own plane: two runs side by side in a passage never fight
-      for (const [p, d] of [[[a[0] + nu, a[1] + nv], dist], [[b[0] + nu, b[1] + nv], dist + len], [[b[0] - nu, b[1] - nv], dist + len], [[a[0] + nu, a[1] + nv], dist], [[b[0] - nu, b[1] - nv], dist + len], [[a[0] - nu, a[1] - nv], dist]]) V.push([p[0], p[1], z, d]);
-      segs.push([a, b]);
-      dist += len;
-    }
-    edgeRanges[id] = [start, V.length - start];
-    edgeSegs[id] = segs;
-  });
-  const n = V.length, g = new THREE.BufferGeometry();
-  g.setAttribute("position", new THREE.Float32BufferAttribute(V.flatMap((v) => [v[0], v[1], v[2]]), 3));
-  g.setAttribute("aDist", new THREE.Float32BufferAttribute(V.map((v) => v[3]), 1));
-  g.setAttribute("aCol", new THREE.Float32BufferAttribute(new Float32Array(n * 3), 3));
-  g.setAttribute("aState", new THREE.Float32BufferAttribute(new Float32Array(n), 1));
-  g.setAttribute("aDir", new THREE.Float32BufferAttribute(new Float32Array(n), 1));
-  g.setAttribute("aRate", new THREE.Float32BufferAttribute(new Float32Array(n), 1));
-  const m = new THREE.Mesh(g, edgeMat);
-  m.renderOrder = 2;
-  scene.add(m);
-  return m;
-})();
-
-// Markers (nodes, loads, the reactor, the battery, risers, cuts): one instanced quad drawn as a square, a circle or
-// a diamond, filled to a level (a load's supply), hatched above it when short, hollow when dropped or dead, crossed
-// when destroyed or cut. One draw.
+// Runs and feeders as crossed ribbons (one widened across, one widened up, so a run reads from any side): width by
+// rating (a feeder thin), colour by the share carried, dashes running with the flow, grey dashes when dead, sparse blue
+// dashes when open, red when severed. One draw for every run and feeder.
+const overlay = { transparent: true, depthWrite: false, side: THREE.DoubleSide };
+const edgeMat = new THREE.ShaderMaterial({
+  ...overlay,
+  uniforms: { uTime: { value: 0 } },
+  vertexShader: "attribute float aDist; attribute vec3 aCol; attribute float aState; attribute float aDir; attribute float aRate;\n" +
+    "varying float vDist; varying vec3 vCol; varying float vState; varying float vDir; varying float vRate;\n" +
+    "void main() { vDist = aDist; vCol = aCol; vState = aState; vDir = aDir; vRate = aRate; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+  fragmentShader: "uniform float uTime; varying float vDist; varying vec3 vCol; varying float vState; varying float vDir; varying float vRate;\n" +
+    "void main() { vec3 c = vCol;\n" +
+    "  if (vState < 0.5) { if (vRate > 0.01) { float ph = fract((vDist - uTime * (1.5 + 6.0 * vRate) * vDir) / 2.2); c = ph < 0.6 ? c : c * 0.5; } }\n" +
+    "  else if (vState < 1.5) { if (fract(vDist / 1.2) > 0.5) discard; }\n" +
+    "  else if (vState > 2.5) { if (fract(vDist / 2.0) > 0.35) discard; }\n" +
+    "  gl_FragColor = vec4(c, 1.0); }",
+});
+// Markers (boxes, loads, the reactor, the battery, cuts): one instanced quad turned to face the camera, drawn as a
+// square, a circle or a diamond, filled to a level (a load's supply), hatched above it when short, hollow when
+// dropped, off or dead, crossed when destroyed or cut. One draw.
 const markMat = new THREE.ShaderMaterial({
+  ...overlay,
   vertexShader: "attribute vec3 iCol; attribute float iShape; attribute float iFill; attribute float iMode;\n" +
     "varying vec2 vUv; varying vec3 vCol; varying float vShape; varying float vFill; varying float vMode;\n" +
     "void main() { vUv = position.xy; vCol = iCol; vShape = iShape; vFill = iFill; vMode = iMode;\n" +
-    "  gl_Position = projectionMatrix * viewMatrix * modelMatrix * instanceMatrix * vec4(position, 1.0); }",
+    "  vec4 c = modelViewMatrix * vec4(instanceMatrix[3].xyz, 1.0);\n" +
+    "  c.xy += position.xy * length(instanceMatrix[0].xyz);\n" +
+    "  gl_Position = projectionMatrix * c; }",
   fragmentShader: "varying vec2 vUv; varying vec3 vCol; varying float vShape; varying float vFill; varying float vMode;\n" +
     "void main() { vec2 q = vUv; float d = vShape < 0.5 ? max(abs(q.x), abs(q.y)) : vShape < 1.5 ? length(q) : (abs(q.x) + abs(q.y)) * 0.7071;\n" +
     "  if (d > 0.5) discard; vec3 bg = vec3(0.016, 0.024, 0.035); vec3 c;\n" +
@@ -5149,164 +5233,271 @@ const markMat = new THREE.ShaderMaterial({
     "  else { c = bg; if (vMode > 0.5 && fract((gl_FragCoord.x + gl_FragCoord.y) / 7.0) < 0.42) c = mix(bg, vCol, 0.6); }\n" +
     "  gl_FragColor = vec4(c, 1.0); }",
 });
-const MARKS = [];   // { kind, id, at: [u, v], size, shape }
-const markOf = {};
-const addMark = (m) => { markOf[m.kind + ":" + m.id] = MARKS.length; MARKS.push(m); };
-{
-  const [ru, rv] = mapUV(sysPos(PW.reactor.system));
-  addMark({ kind: "reactor", id: PW.reactor.system, at: [ru, rv], size: 4.4, shape: 1 });
-  const [bu, bv] = mapUV(sysPos(PW.battery.system));
-  addMark({ kind: "battery", id: PW.battery.system, at: [bu, bv], size: 2.2, shape: 0 });
+
+/** Everything the 3D view draws, for the decks shown: the floors (one mesh), their outlines and the hull at each deck
+ *  (one line set), every run and feeder (one ribbon mesh) and every marker (one instanced mesh). */
+let PL = null;
+const shownDeck = (k) => deckIso == null || k === deckIso;
+const shownPt = (p) => shownDeck(deckOfY(p[1]));
+function buildPlan() {
+  if (PL) for (const m of [PL.floors, PL.outlines, PL.edges, PL.marks]) { scene.remove(m); m.geometry.dispose(); if (m.material !== edgeMat && m.material !== markMat) m.material.dispose(); }
+  const roomRanges = [];
+  const floors = (() => {
+    const pos = [];
+    let lift = 0;
+    L.compartments.forEach((c) => {
+      const start = pos.length / 3;
+      for (const b of c.brushes) {
+        const k = deckOfY(b.y[0]);
+        if (!shownDeck(k)) continue;
+        lift += 0.002;
+        for (let t = 1; t + 1 < b.poly.length; t++) for (const q of [b.poly[0], b.poly[t], b.poly[t + 1]]) pos.push(q[0], Y(b.y[0]) + lift, q[1]);
+      }
+      roomRanges.push([start, pos.length / 3 - start]);
+    });
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute("color", new THREE.Float32BufferAttribute(new Float32Array(pos.length), 3));
+    const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, ...overlay, opacity: 0.55 }));
+    m.renderOrder = 0;
+    scene.add(m);
+    return m;
+  })();
+  // Walls, as each floor's outline, and the hull's line at each deck (one draw).
+  const outlines = (() => {
+    const pos = [], col = [];
+    const seg = (a, b, c) => { pos.push(...a, ...b); col.push(...c, ...c); };
+    const wall = linearRGB("#7b8796").toArray(), hull = linearRGB("#34404f").toArray();
+    for (const c of L.compartments) for (const b of c.brushes) {
+      if (!shownDeck(deckOfY(b.y[0]))) continue;
+      for (let i = 0; i < b.poly.length; i++) {
+        const p = b.poly[i], q = b.poly[(i + 1) % b.poly.length];
+        seg([p[0], Y(b.y[0]), p[1]], [q[0], Y(b.y[0]), q[1]], wall);
+      }
+    }
+    DECKS.forEach((d, k) => {
+      if (!shownDeck(k)) return;
+      const y = d.floor_y_m + 1.6;
+      let prev = null;
+      for (let z = Z0 - 2; z <= Z1 + 2; z += 0.5) {
+        const h = K.hullHalfWidth(L, y, z);
+        const fy = Y(d.floor_y_m);
+        if (h > 0 && prev) { seg([prev[1], fy, prev[0]], [h, fy, z], hull); seg([-prev[1], fy, prev[0]], [-h, fy, z], hull); }
+        prev = h > 0 ? [z, h] : null;
+      }
+    });
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+    const m = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ vertexColors: true, ...overlay }));
+    m.renderOrder = 1;
+    scene.add(m);
+    return m;
+  })();
+  const edgeRanges = {}, edgeSegs = {};
+  const RIBBONS = [...EDGE_IDS.map((id) => ({ id, pts: runOf(id), w: 0.2 + 0.4 * clamp(edgeNow(id).rated / 40, 0, 1) })),
+    ...FEED_LOADS.map((i) => ({ id: "f:" + LOADS[i].id, pts: LOADS[i].feeder_m, w: 0.11 }))];
+  const edges = (() => {
+    const V = [];
+    const up = new THREE.Vector3(0, 1, 0);
+    RIBBONS.forEach((r) => {
+      const start = V.length, segs = [];
+      let dist = 0;
+      for (let i = 0; i + 1 < r.pts.length; i++) {
+        const a = new THREE.Vector3(...P3(r.pts[i])), b = new THREE.Vector3(...P3(r.pts[i + 1]));
+        const d = b.clone().sub(a), len = d.length();
+        if (len < 0.01) continue;
+        if (!(shownPt(r.pts[i]) && shownPt(r.pts[i + 1]))) { dist += len; continue; }
+        d.divideScalar(len);
+        const vertical = Math.abs(d.y) > 0.7;
+        const n1 = vertical ? new THREE.Vector3(1, 0, 0) : d.clone().cross(up).normalize();
+        const n2 = vertical ? new THREE.Vector3(0, 0, 1) : up.clone();
+        for (const n of [n1, n2]) {
+          const o = n.clone().multiplyScalar(r.w / 2);
+          const q = [[a.clone().add(o), dist], [b.clone().add(o), dist + len], [b.clone().sub(o), dist + len], [a.clone().add(o), dist], [b.clone().sub(o), dist + len], [a.clone().sub(o), dist]];
+          for (const [p, dd] of q) V.push([p.x, p.y, p.z, dd]);
+        }
+        segs.push([r.pts[i], r.pts[i + 1]]);
+        dist += len;
+      }
+      edgeRanges[r.id] = [start, V.length - start];
+      edgeSegs[r.id] = segs;
+    });
+    const n = V.length, g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(V.flatMap((v) => [v[0], v[1], v[2]]), 3));
+    g.setAttribute("aDist", new THREE.Float32BufferAttribute(V.map((v) => v[3]), 1));
+    g.setAttribute("aCol", new THREE.Float32BufferAttribute(new Float32Array(n * 3), 3));
+    g.setAttribute("aState", new THREE.Float32BufferAttribute(new Float32Array(n), 1));
+    g.setAttribute("aDir", new THREE.Float32BufferAttribute(new Float32Array(n), 1));
+    g.setAttribute("aRate", new THREE.Float32BufferAttribute(new Float32Array(n), 1));
+    const m = new THREE.Mesh(g, edgeMat);
+    m.renderOrder = 2;
+    scene.add(m);
+    return m;
+  })();
+  const MARKS = [];   // { kind, id, at: [x, y, z], size, shape }
+  const add = (m) => { if (m.kind === "cut" || shownPt(m.at)) MARKS.push(m); };
+  add({ kind: "reactor", id: PW.reactor.system, at: sysPos(PW.reactor.system), size: 3.2, shape: 1 });
+  add({ kind: "battery", id: PW.battery.system, at: sysPos(PW.battery.system), size: 1.6, shape: 0 });
+  LOADS.forEach((l, i) => { if (!l.id.startsWith("lights_")) add({ kind: "load", id: l.id, i, at: l.center, size: 0.95, shape: 1 }); });
   for (const n of PW.nodes) {
-    const [u, v] = mapUV(n.center_m);
-    addMark({ kind: "node", id: n.id, at: [u, v], size: n.kind === "switchboard" ? 2.0 : n.kind === "emergency_bus" ? 1.8 : 1.4, shape: n.kind === "emergency_bus" ? 2 : 0 });
+    const size = n.kind === "switchboard" ? 1.6 : n.kind === "emergency_bus" ? 1.4 : n.kind === "box" ? 0.95 : 1.15;
+    add({ kind: "node", id: n.id, at: n.center_m, size, shape: n.kind === "emergency_bus" ? 2 : 0 });
   }
-  LOADS.forEach((l, i) => {
-    if (l.id.startsWith("lights_")) return;   // a panel's room lights are the rooms' own tint
-    const [u, v] = mapUV(l.center);
-    addMark({ kind: "load", id: l.id, i, at: [u, v], size: 1.4, shape: 1 });
-  });
-  risers.forEach((r, k) => addMark({ kind: "riser", id: r.id + "#" + k, edge: r.id, at: r.at, size: 1.2, shape: 1 }));
-  for (const k of PW.conduits) addMark({ kind: "cut", id: k.id, at: [0, 0], size: 0, shape: 0 });
+  for (const k of PW.conduits) add({ kind: "cut", id: k.id, at: [0, 0, 0], size: 0, shape: 0 });
+  const marks = (() => {
+    const g = new THREE.PlaneGeometry(1, 1);
+    const n = MARKS.length;
+    g.setAttribute("iCol", new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3));
+    g.setAttribute("iShape", new THREE.InstancedBufferAttribute(new Float32Array(MARKS.map((m) => m.shape)), 1));
+    g.setAttribute("iFill", new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
+    g.setAttribute("iMode", new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
+    const m = new THREE.InstancedMesh(g, markMat, n);
+    m.frustumCulled = false;
+    m.renderOrder = 3;
+    scene.add(m);
+    return m;
+  })();
+  PL = { floors, outlines, edges, marks, roomRanges, edgeRanges, edgeSegs, MARKS };
+  labelsDirty = true;
 }
-const marks = (() => {
-  const g = new THREE.PlaneGeometry(1, 1);
-  const n = MARKS.length;
-  g.setAttribute("iCol", new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3));
-  g.setAttribute("iShape", new THREE.InstancedBufferAttribute(new Float32Array(MARKS.map((m) => m.shape)), 1));
-  g.setAttribute("iFill", new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
-  g.setAttribute("iMode", new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
-  const m = new THREE.InstancedMesh(g, markMat, n);
-  m.frustumCulled = false;
-  m.renderOrder = 3;
-  scene.add(m);
-  return m;
-})();
 const dummy = new THREE.Object3D();
 function setMark(k, at, size, colHex, fill, mode) {
-  dummy.position.set(at[0], at[1], 1 + k * 0.006);   // each marker its own plane, 6 mm apart, later ones on top (cuts last)
+  const q = P3(at);
+  dummy.position.set(q[0], q[1], q[2]);
   dummy.scale.set(size || 1e-4, size || 1e-4, 1);
   dummy.updateMatrix();
-  marks.setMatrixAt(k, dummy.matrix);
-  const c = linearRGB(colHex), a = marks.geometry.attributes;
+  PL.marks.setMatrixAt(k, dummy.matrix);
+  const c = linearRGB(colHex), a = PL.marks.geometry.attributes;
   a.iCol.setXYZ(k, c.r, c.g, c.b); a.iFill.setX(k, fill); a.iMode.setX(k, mode);
 }
-
-/** Write the simulation's state into the plan's attributes (the rooms' light, every edge, every marker). */
+const STATE_N = { live: 0, idle: 0, dead: 1, severed: 2, open: 3 };
+/** Write the simulation's state into the view's attributes (the rooms' light, every run and feeder, every marker). */
 function updatePlan() {
-  const fc = floors.geometry.attributes.color;
-  roomRanges.forEach(([s, n], i) => { const c = linearRGB(ROOM_TINT[sim.lighting(i)] || ROOM_TINT.dark); for (let j = s; j < s + n; j++) fc.setXYZ(j, c.r, c.g, c.b); });
+  const fc = PL.floors.geometry.attributes.color;
+  PL.roomRanges.forEach(([s, n], i) => { const c = linearRGB(ROOM_TINT[sim.lighting(i)] || ROOM_TINT.dark); for (let j = s; j < s + n; j++) fc.setXYZ(j, c.r, c.g, c.b); });
   fc.needsUpdate = true;
-  const ga = edges.geometry.attributes;
-  const edgeLook = {};
+  const ga = PL.edges.geometry.attributes;
+  const paint = (id, col, stt, dir, rate) => {
+    const c = linearRGB(col), [s, n] = PL.edgeRanges[id];
+    for (let j = s; j < s + n; j++) { ga.aCol.setXYZ(j, c.r, c.g, c.b); ga.aState.setX(j, stt); ga.aDir.setX(j, dir); ga.aRate.setX(j, rate); }
+  };
   for (const id of EDGE_IDS) {
-    const e = edgeNow(id), share = e.cap > 0 ? clamp(Math.abs(e.mw) / e.rated, 0, 1) : 0;
-    const col = e.state === "severed" ? C.danger : e.state === "dead" ? C.faint : flowCol(share);
-    const stt = e.state === "severed" ? 2 : e.state === "dead" ? 1 : 0, dir = e.mw >= 0 ? 1 : -1;
-    edgeLook[id] = col;
-    const c = linearRGB(col), [s, n] = edgeRanges[id];
-    for (let j = s; j < s + n; j++) { ga.aCol.setXYZ(j, c.r, c.g, c.b); ga.aState.setX(j, stt); ga.aDir.setX(j, dir); ga.aRate.setX(j, Math.abs(e.mw) > 1e-3 ? share : 0); }
+    const e = edgeNow(id), share = e.rated > 0 ? clamp(Math.abs(e.mw) / e.rated, 0, 1) : 0;
+    const col = e.state === "severed" ? C.danger : e.state === "open" ? C.spare : e.state === "dead" ? C.faint : flowCol(share);
+    paint(id, col, STATE_N[e.state], e.mw >= 0 ? 1 : -1, Math.abs(e.mw) > 1e-3 && e.state === "live" ? share : 0);
+  }
+  for (const i of FEED_LOADS) {
+    const f = feederNow(i), s = loadState(loadNow(i));
+    const col = f.state === "dead" ? C.faint : f.state === "idle" ? "#4d5866" : s.col;
+    paint(f.id, col, STATE_N[f.state], 1, f.state === "live" ? clamp(f.mw / f.rated, 0.05, 1) : 0);
   }
   for (const k of ["aCol", "aState", "aDir", "aRate"]) ga[k].needsUpdate = true;
-  MARKS.forEach((m, k) => {
+  PL.MARKS.forEach((m, k) => {
     if (m.kind === "reactor") { const up = st.reactor.state === "running"; setMark(k, m.at, m.size, up ? C.ok : st.reactor.state === "igniting" ? C.warn : C.danger, up ? clamp(st.reactor.throttle, 0, 1) : 0, up ? 0 : 1); }
     else if (m.kind === "battery") { const out = st.battery.out_mw > 0.05; setMark(k, m.at, m.size, out ? C.warn : C.ok, st.battery.soc_mj / PW.battery.capacity_mj, out ? 1 : 0); }
-    else if (m.kind === "node") { const v = nodeState(m.id); setMark(k, m.at, m.size, nodeCol(v), 1, v.state === "destroyed" ? 3 : v.live ? 0 : 2, 1.2); }
-    else if (m.kind === "load") { const s = loadState(loadNow(m.i)); setMark(k, m.at, m.size, s.col, s.fill, s.mode, 1.1); }
-    else if (m.kind === "riser") setMark(k, m.at, m.size, edgeLook[m.edge], 0, 2, 1.05);
+    else if (m.kind === "node") { const b = boxLook(m.id); setMark(k, m.at, m.size, b.col, 1, b.mode); }
+    else if (m.kind === "load") { const s = loadState(loadNow(m.i)); setMark(k, m.at, m.size, s.col, s.fill, s.mode); }
     else if (m.kind === "cut") {
       const c = st.conduit[m.id];
-      if (c && c.severed && c.cut) { const [u, v] = mapUV(c.cut); m.at = [u, v]; setMark(k, m.at, 1.6, C.danger, 0, 4, 1.3); } else setMark(k, m.at, 0, C.danger, 0, 0);
+      if (c && c.severed && c.cut && shownPt(c.cut)) { m.at = c.cut; setMark(k, m.at, 1.3, C.danger, 0, 4); } else setMark(k, m.at, 0, C.danger, 0, 0);
     }
   });
-  marks.instanceMatrix.needsUpdate = true;
-  for (const k of ["iCol", "iFill", "iMode"]) marks.geometry.attributes[k].needsUpdate = true;
+  PL.marks.instanceMatrix.needsUpdate = true;
+  for (const k of ["iCol", "iFill", "iMode"]) PL.marks.geometry.attributes[k].needsUpdate = true;
 }
 
-// The plan's camera: fit the bands shown into the screen beside the title column, then wheel to zoom and drag to pan.
-const VIEW = { s: 0.1, cu: 0, cv: 0 };
-let W = 0, H = 0;
-const leftCol = () => (innerWidth > 760 && title.style.display !== "none" ? 344 : 12);
-function fitPlan() {
-  const ks = deckSel === "all" ? [0, 1, 2] : [DECKS.findIndex((d) => d.id === deckSel)];
-  const u0 = Z0 - 3, u1 = Z1 + 3, v1 = bandV(ks[0]) + (X1 - XM) + 1.5, v0 = bandV(ks[ks.length - 1]) - (XM - X0) - 1.5;
-  const ax0 = leftCol() + 112, ax1 = W - 16, ay0 = 10, ay1 = H - 16;   // canvas pixels (the canvas starts under the bar)
-  VIEW.s = Math.max((u1 - u0) / (ax1 - ax0), (v1 - v0) / (ay1 - ay0));
-  // Left-aligned in the area (the Pi meter sits at the bottom right), centred top to bottom.
-  VIEW.cu = u0 + ((ax0 + ax1) / 2 - ax0) * VIEW.s;
-  VIEW.cv = (v0 + v1) / 2;
-  VIEW.ax = (ax0 + ax1) / 2; VIEW.ay = (ay0 + ay1) / 2;
-  applyView();
-}
-function applyView() {
-  const s = VIEW.s;
-  camera.left = VIEW.cu - VIEW.ax * s; camera.right = VIEW.cu + (W - VIEW.ax) * s;
-  camera.top = VIEW.cv + VIEW.ay * s; camera.bottom = VIEW.cv - (H - VIEW.ay) * s;
+let W = 0, H = 0, BH = 44;
+const leftCol = () => (!PORTRAIT && innerWidth > 760 && !title.classList.contains("mk-closed") ? 344 : 0);
+/** The camera's frame: centred on the free area (right of the left column in landscape, above the status strip in
+ *  portrait), so the ship sits where nothing covers it. */
+function frameCamera() {
+  const lc = leftCol(), sb = PORTRAIT ? STATUS.offsetHeight + 24 : 0;
+  camera.aspect = Math.max(0.2, (W - lc) / Math.max(1, H - sb));
+  if (lc || sb) camera.setViewOffset(W + lc, H + sb, 0, sb, W, H); else camera.clearViewOffset();
   camera.updateProjectionMatrix();
 }
-const toMap = (px, py) => [camera.left + px * VIEW.s, camera.top - py * VIEW.s];
-const toScreen = (u, v) => [(u - camera.left) / VIEW.s, (camera.top - v) / VIEW.s];
-function resize() {
-  W = innerWidth; H = innerHeight - 44;
-  renderer.setSize(W, H);
-  fitPlan();
-  fitDiagram();
+const _v = new THREE.Vector3();
+/** A ship point on the screen (canvas pixels) and its depth: [x, y, z] with z over 1 behind the camera. */
+function screenOf(p) { const q = P3(p); _v.set(q[0], q[1], q[2]).project(camera); return [((_v.x + 1) / 2) * W, ((1 - _v.y) / 2) * H, _v.z]; }
+/** Pixels a metre at point p. */
+function pxPerM(p) {
+  const q = P3(p), d = camera.position.distanceTo(_v.set(q[0], q[1], q[2]));
+  return (H / 2) / (Math.max(0.01, d) * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
 }
-let drag = null;
-canvas.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, y: e.clientY, cu: VIEW.cu, cv: VIEW.cv, moved: false }; canvas.setPointerCapture(e.pointerId); });
-canvas.addEventListener("pointermove", (e) => {
-  if (drag && (drag.moved || Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 4)) {
-    drag.moved = true; VIEW.cu = drag.cu - (e.clientX - drag.x) * VIEW.s; VIEW.cv = drag.cv + (e.clientY - drag.y) * VIEW.s; applyView(); hideTip(); return;
-  }
-  planTip(e.clientX, e.clientY);
+/** The view's top below the bar, and every fixed element placed from it. */
+function layoutTop() {
+  BH = Math.max(44, BAR.offsetHeight);
+  for (const el of [canvas, document.getElementById("labels"), STAGE]) el.style.top = BH + "px";
+  TRIPB.style.top = BH + 12 + "px";
+  COLLAPSE.style.top = BH + 10 + "px";
+  title.style.setProperty("top", BH + 10 + "px", "important");
+}
+function resize() {
+  PORTRAIT = innerHeight > innerWidth * 1.05;
+  document.body.classList.toggle("portrait", PORTRAIT);
+  layoutTop();
+  W = innerWidth; H = innerHeight - BH;
+  renderer.setSize(W, H);
+  frameCamera();
+  const want = spread > 1 ? spreadFor() : 1;
+  if (!PL || want !== spread) { spread = want; buildPlan(); homeView(); }
+  fitDiagram();
+  labelsDirty = true;
+}
+// A tap (a press that barely moves) switches a box or a run and shows its numbers; the orbit camera takes the rest.
+let press = null;
+canvas.addEventListener("pointerdown", (e) => { press = { x: e.clientX, y: e.clientY, t: performance.now(), n: (press && press.n) || 0 }; });
+canvas.addEventListener("pointerup", (e) => {
+  if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) < 6 && performance.now() - press.t < 500) pick(e.clientX, e.clientY, true);
+  press = null;
 });
-canvas.addEventListener("pointerup", (e) => { if (drag && !drag.moved) planTip(e.clientX, e.clientY); drag = null; });
-canvas.addEventListener("pointerleave", () => hideTip());
-canvas.addEventListener("wheel", (e) => {
-  e.preventDefault();
-  const [u, v] = toMap(e.clientX, e.clientY - 44), f = Math.exp(e.deltaY * 0.0012);
-  VIEW.s = clamp(VIEW.s * f, 0.01, 0.4);
-  VIEW.cu = u - (e.clientX - VIEW.ax) * VIEW.s; VIEW.cv = v + (e.clientY - 44 - VIEW.ay) * VIEW.s;
-  applyView();
-}, { passive: false });
+canvas.addEventListener("pointermove", (e) => { if (e.pointerType === "mouse" && e.buttons === 0) pick(e.clientX, e.clientY, false); });
+canvas.addEventListener("pointerleave", (e) => { if (e.pointerType === "mouse") hideTip(); });
 
-const TAG_SIDE = { fsb_p: "l" };
-// The plan's words: each deck's letter, the nodes' short names, and (one deck shown) the rooms' names.
+const TAG_SIDE = { fsb_p: "l", bx_pod_dorsal: "l" };
+// The view's words: each deck's letter (tap it to show that deck alone, again for every deck), the switchboards' and
+// panels' short names, and the boxes' when a deck is shown alone or the camera is close.
 const LABELS = document.getElementById("labels");
 function labels() {
+  camera.updateMatrixWorld();   // the camera may have moved since the last frame drew it
   let h = "";
-  const put = (cls, u, v, html) => { const [x, y] = toScreen(u, v); if (x > -60 && x < W + 60 && y > -20 && y < H + 20) h += `<div class="${cls}" style="left:${x.toFixed(0)}px;top:${y.toFixed(0)}px">${html}</div>`; };
-  const shown = deckSel === "all" ? [0, 1, 2] : [DECKS.findIndex((d) => d.id === deckSel)];
-  for (const k of shown) put("deck", Z0 - 4, bandV(k), `${DECKS[k].id}<small>${esc(DECKS[k].name.toUpperCase())}</small>`);
-  const big = 1 / VIEW.s > 11;
+  const put = (cls, p, html, attrs = "") => {
+    let [x, y, z] = screenOf(p);
+    // A deck's letter stays on the screen, whatever the camera does.
+    if (cls.startsWith("deck")) { x = clamp(x, 56, W - 56); y = clamp(y, 30, H - 30); }
+    if (z < 1 && x > -60 && x < W + 60 && y > -20 && y < H + 20) h += `<div class="${cls}" style="left:${x.toFixed(0)}px;top:${y.toFixed(0)}px"${attrs}>${html}</div>`;
+  };
+  DECKS.forEach((d, k) => {
+    if (!shownDeck(k)) return;
+    put("deck" + (deckIso === k ? " on" : ""), [0, d.floor_y_m + 0.1, Z0 - 9], `${d.id}<small>${esc(d.name.toUpperCase())}</small>`, ` data-deck="${k}"`);
+  });
+  const close = camera.position.distanceTo(controls.target) < 55 || deckIso != null;
   for (const n of PW.nodes) {
-    const [u, v, k] = mapUV(n.center_m);
-    if (!shown.includes(k)) continue;
-    // The forward switchboard's two sections and the emergency bus stand a metre or two apart: their tags go aside.
-    const side = TAG_SIDE[n.id];
-    if (side === "l") put("node tl", u - 1.3, v + 0.3, SHORT[n.id]);
-    else if (side === "r") put("node tr", u + 1.3, v + 0.3, SHORT[n.id]);
-    else put("node", u, v - 1.0, SHORT[n.id] || n.id);
-  }
-  if (big) for (const c of L.compartments) {
-    const b = c.brushes.find((x) => Math.abs(x.y[0] - DECKS[deckOfY(x.y[0])].floor_y_m) <= 1.0);
-    if (!b) continue;
-    const k = deckOfY(b.y[0]);
-    if (!shown.includes(k)) continue;
-    const cx = b.poly.reduce((a, p) => a + p[0], 0) / b.poly.length, cz = b.poly.reduce((a, p) => a + p[1], 0) / b.poly.length;
-    put("room", cz, cx - XM + bandV(k) - 1.6, esc(c.name));
+    if (isBox(n.id) && !close) continue;
+    if (!shownPt(n.center_m)) continue;
+    const cls = isBox(n.id) ? "node box" : "node";
+    put(cls + (TAG_SIDE[n.id] === "l" ? " tl" : ""), n.center_m, SHORT[n.id] || n.id);
   }
   LABELS.innerHTML = h;
+  labelsDirty = false;
 }
+LABELS.addEventListener("click", (e) => {
+  const d = e.target.closest && e.target.closest("[data-deck]");
+  if (!d) return;
+  const k = Number(d.dataset.deck);
+  deckIso = deckIso === k ? null : k;
+  buildPlan(); updatePlan(); homeView(); bar();
+});
 
-// =================================================================== tooltips (exact numbers on hover, never at rest)
+// =================================================================== tooltips (exact numbers on hover or tap, never at rest)
 const TIP = document.getElementById("tip");
 function showTip(x, y, html) {
   TIP.innerHTML = html; TIP.style.display = "block";
   const w = TIP.offsetWidth, h = TIP.offsetHeight;
-  TIP.style.left = Math.min(innerWidth - w - 6, x + 14) + "px"; TIP.style.top = Math.min(innerHeight - h - 6, y + 16) + "px";
+  TIP.style.left = clamp(x + 14, 4, innerWidth - w - 6) + "px"; TIP.style.top = clamp(y + 16, BH + 4, innerHeight - h - 6) + "px";
 }
-function hideTip() { TIP.style.display = "none"; }
+function hideTip() { if (TIP) TIP.style.display = "none"; }
 const line = (t) => `<div class="d">${t}</div>`;
 function tipFor(kind, id, i) {
   if (kind === "reactor") { const r = st.reactor; return `<div class="n">Fusion reactor</div>` + line(`${r.state}, ${r.mode}, throttle ${pct(r.throttle)}`) + line(`${f1(r.P_e / 1e6)} MW electric, blanket ${r.T.toFixed(0)} K`) + (r.scramCause ? line(`scram: ${esc(r.scramCause)}`) : ""); }
@@ -5314,61 +5505,95 @@ function tipFor(kind, id, i) {
   if (kind === "node") {
     const v = nodeState(id); let got = 0, want = 0;
     LOADS.forEach((l, j) => { if (l.node === id) { got += st.alloc[j]; want += st.want[j]; } });
-    return `<div class="n">${esc(nodeName(id))}</div>` + line(`${v.state}, ${v.live ? "live" : "dead"}, health ${pct(v.health)}`) + line(`its loads: ${mw(got)} of ${mw(want)}`);
+    return `<div class="n">${esc(nodeName(id))}</div>` + line(`${v.on ? "on" : "switched off"}, ${v.state}${v.on ? (v.live ? ", live" : ", nothing reaches it") : ""}`) + line(`its loads: ${mw(got)} of ${mw(want)}`) + line("tap to switch it " + (v.on ? "off" : "on"));
   }
-  if (kind === "load") {
+  if (kind === "load" || kind === "feeder") {
     const l = LOADS[i], n = loadNow(i);
-    return `<div class="n">${esc(l.name)}</div>` + line(`priority ${n.prio}${n.prio === 0 ? " (never shed)" : ""}, on ${esc(SHORT[l.node] || l.node)}`) +
+    return `<div class="n">${esc(l.name)}${kind === "feeder" ? ": feeder" : ""}</div>` + line(`priority ${n.prio}${n.prio === 0 ? " (never shed)" : ""}, from ${esc(SHORT[l.node] || l.node)}`) +
       line(n.off ? "off: nothing wanted" : `${mw(n.got)} of ${mw(n.want)} (${pct(n.supply)})${n.dropped ? ", dropped" : ""}`) + line(`integrity ${pct(n.cap)}${n.open ? ", breaker open" : ""}`);
   }
   const e = edgeNow(id);
-  return `<div class="n">${esc(e.name)}</div>` + line(`${f1(Math.abs(e.mw))} of ${f1(e.rated)} MW, ${e.state}`) + line(`breaker ${e.breaker ? "closed" : "open"}`);
+  return `<div class="n">${esc(e.name)}</div>` + line(`${f1(Math.abs(e.mw))} of ${f1(e.rated)} MW, ${e.state}${e.spare ? " (a spare route)" : ""}`) + line(e.run ? `${e.closed ? "closed" : "open"}: tap to ${e.closed ? "open" : "close"} it` : `breaker ${e.closed ? "closed" : "open"}`);
 }
-function planTip(cx, cy) {
-  const [u, v] = toMap(cx, cy - 44), r = 7 * VIEW.s;
+const TRIP_NOTE = "<div class='d' style='color:#ff4757'>tripped: nothing switches until it resets</div>";
+/** What is under a point of the 3D view (on the screen): a marker first, then a run, then a feeder. A tap switches a
+ *  box or a run. */
+function pick(cx, cy, tap) {
+  camera.updateMatrixWorld();
+  const x = cx, y = cy - BH, r = tap ? 16 : 9;
   let best = null, bd = Infinity;
-  MARKS.forEach((m) => {
-    if (!m.size || m.kind === "riser" || m.kind === "cut") return;
-    const d = Math.hypot(m.at[0] - u, m.at[1] - v) - m.size / 2;
+  PL.MARKS.forEach((m) => {
+    if (!m.size || m.kind === "cut") return;
+    const [sx, sy, sz] = screenOf(m.at);
+    if (sz >= 1) return;
+    const d = Math.hypot(sx - x, sy - y) - (m.size / 2) * pxPerM(m.at);
     if (d < r && d < bd) { bd = d; best = m; }
   });
-  if (!best) for (const id of EDGE_IDS) for (const [a, b] of edgeSegs[id]) {
-    const du = b[0] - a[0], dv = b[1] - a[1], t = clamp(((u - a[0]) * du + (v - a[1]) * dv) / (du * du + dv * dv || 1), 0, 1);
-    const d = Math.hypot(a[0] + du * t - u, a[1] + dv * t - v);
-    if (d < r && d < bd) { bd = d; best = { kind: "edge", id }; }
+  const near = (ids, kind) => {
+    for (const id of ids) for (const [a, b] of PL.edgeSegs[id] || []) {
+      const [ax, ay, az] = screenOf(a), [bx, by, bz] = screenOf(b);
+      if (az >= 1 || bz >= 1) continue;
+      const du = bx - ax, dv = by - ay, t = clamp(((x - ax) * du + (y - ay) * dv) / (du * du + dv * dv || 1), 0, 1);
+      const d = Math.hypot(ax + du * t - x, ay + dv * t - y);
+      if (d < r && d < bd) { bd = d; best = kind === "feeder" ? { kind, id, i: LIDX[id.slice(2)] } : { kind, id }; }
+    }
+  };
+  if (!best) near(EDGE_IDS, "edge");
+  if (!best) near(FEED_LOADS.map((i) => "f:" + LOADS[i].id), "feeder");
+  if (!best) { hideTip(); return; }
+  let note = "";
+  const switchable = best.kind === "node" || (best.kind === "edge" && isRun(best.id));
+  if (tap && switchable) {
+    if (toggle(best.kind === "node" ? "box" : "run", best.id)) { status(); updatePlan(); } else note = TRIP_NOTE;
   }
-  if (best) showTip(cx, cy, tipFor(best.kind, best.id, best.i)); else hideTip();
+  showTip(cx, cy, tipFor(best.kind, best.id, best.i) + note);
 }
 document.addEventListener("mousemove", (e) => {
-  if (e.target === canvas) return;
+  if (e.target === canvas || (e.target.closest && e.target.closest("#stage"))) return;
   const t = e.target.closest && e.target.closest("[data-tip]");
   if (t) showTip(e.clientX, e.clientY, `<div class="d">${t.dataset.tip}</div>`);
-  else if (TIP.style.display === "block" && !e.target.closest("#diagram")) hideTip();
+  else if (TIP.style.display === "block") hideTip();
 });
 
-// =================================================================== DIAGRAM: the one-line diagram (SVG, 1280 x 720 lp)
-// Port runs along the top and starboard along the bottom, aft on the left and forward on the right, as the plan.
+// =================================================================== DIAGRAM: the one-line diagram (SVG, 1600 x 900 lp)
+// Port along the top and starboard along the bottom, aft on the left and forward on the right, as the plan. The
+// switchboards and panels are cards with their own loads; each room's box is a chip with its switch, its loads and
+// its feed run; spare routes run dashed between them. Wheel or pinch to zoom, drag to pan, tap to switch.
 const STAGE = document.getElementById("stage"), DIAG = document.getElementById("diagram");
+const DW = 1600, DH = 900;
+DIAG.style.width = DW + "px"; DIAG.style.height = DH + "px";
 const CARD = {
-  msb_p: [260, 120, "c"], msb_s: [260, 600, "c"], dp_hangar_p: [500, 120, "c"], dp_drive: [430, 360, "c"], dp_hangar_s: [500, 600, "c"],
-  dp_port: [740, 120, "c"], dp_stbd: [740, 600, "c"], fsb_p: [965, 210, "c"], eb: [930, 360, "c"], fsb_s: [965, 510, "c"],
-  dp_a: [1090, 70, "l"], dp_ls: [1090, 250, "l"], dp_c_fwd: [1090, 430, "l"], dp_b_fwd: [1090, 620, "l"],
+  msb_p: [270, 200, "c"], msb_s: [270, 730, "c"], dp_hangar_p: [490, 200, "c"], dp_drive: [430, 465, "c"], dp_hangar_s: [490, 730, "c"],
+  dp_port: [720, 200, "c"], dp_stbd: [720, 730, "c"], fsb_p: [930, 330, "c"], eb: [922, 465, "c"], fsb_s: [930, 600, "c"],
+  dp_a: [1090, 120, "l"], dp_ls: [1090, 300, "l"], dp_b_fwd: [1090, 455, "l"], dp_c_fwd: [1090, 700, "l"],
 };
-const REACTOR = { x: 80, y: 360, r: 46 }, BATT = { x: 790, y: 360, w: 74, h: 44 };
-const CARD_H = 70, BAR_W = 11, BAR_GAP = 6, BAR_H = 30;
-/** The loads each card carries: on its node, vital first (priority order), its room lights last. */
+const CHIP = {
+  bx_a_aft_passage: [270, 94, "c"], bx_launch_bay_p: [490, 94, "c"], bx_pod_port: [720, 94, "c"],
+  bx_launch_bay_s: [490, 850, "c"], bx_pod_stbd: [720, 850, "c"],
+  bx_bridge: [1264, 50, "l"], bx_ready_room: [1264, 100, "l"], bx_computer_core: [1264, 150, "l"], bx_dorsal_turret: [1264, 200, "l"], bx_pod_dorsal: [1264, 250, "l"],
+  bx_torpedo_room: [1264, 345, "l"], bx_medbay: [1264, 395, "l"], bx_damage_control: [1264, 445, "l"], bx_quarters: [1264, 495, "l"], bx_mess: [1264, 545, "l"],
+  bx_magazine: [1264, 640, "l"], bx_cargo: [1264, 690, "l"], bx_airlock: [1264, 740, "l"], bx_shield_room: [1264, 790, "l"], bx_pod_ventral: [1264, 840, "l"],
+};
+for (const n of PW.nodes) if (!CARD[n.id] && !CHIP[n.id]) console.error("power-grid.html: no place on the diagram for node " + n.id);
+const REACTOR = { x: 80, y: 465, r: 46 }, BATT = { x: 770, y: 465, w: 74, h: 44 };
+const CARD_H = 70, BAR_W = 11, BAR_GAP = 6, BAR_H = 30, CHIP_H = 42, CBAR_W = 8, CBAR_GAP = 4, CBAR_H = 15;
+/** The loads each card or chip carries: on its node, vital first (priority order), its room lights last. */
 const ON = {};
 for (const n of PW.nodes) ON[n.id] = LOADS.map((l, i) => i).filter((i) => LOADS[i].node === n.id).sort((a, b) => (LOADS[a].id.startsWith("lights_") - LOADS[b].id.startsWith("lights_")) || (LOADS[a].priority - LOADS[b].priority) || a - b);
 const box = {};
 for (const [id, [x, y, al]] of Object.entries(CARD)) {
   const w = Math.max(id === "eb" ? 70 : 104, 22 + ON[id].length * (BAR_W + BAR_GAP));
   const x0 = al === "l" ? x : x - w / 2;
-  box[id] = { x0, x1: x0 + w, y0: y - CARD_H / 2, y1: y + CARD_H / 2, cx: x0 + w / 2, cy: y, w };
+  box[id] = { x0, x1: x0 + w, y0: y - CARD_H / 2, y1: y + CARD_H / 2, cx: x0 + w / 2, cy: y, w, chip: false };
+}
+for (const [id, [x, y, al]] of Object.entries(CHIP)) {
+  const w = Math.max(30 + (SHORT[id] || id).length * 7.6, 30 + ON[id].length * (CBAR_W + CBAR_GAP)) + 6;
+  const x0 = al === "l" ? x : x - w / 2;
+  box[id] = { x0, x1: x0 + w, y0: y - CHIP_H / 2, y1: y + CHIP_H / 2, cx: x0 + w / 2, cy: y, w, chip: true };
 }
 const R = (id, dy = 0) => [box[id].x1, box[id].cy + dy], Lf = (id, dy = 0) => [box[id].x0, box[id].cy + dy];
 const T = (id, dx = 0) => [box[id].cx + dx, box[id].y0], B = (id, dx = 0) => [box[id].cx + dx, box[id].y1];
-const at = (id, x) => [x, 0];
-/** Each edge's route, from between[0] to between[1] (the sign of its flow); a point with a null coordinate takes the one before it. */
+/** Each edge's route on the diagram, from its between[0] to its between[1] (the sign of its flow). */
 const ROUTE = {
   gen_p: [[REACTOR.x, REACTOR.y - REACTOR.r], [REACTOR.x, box.msb_p.cy], Lf("msb_p")],
   gen_s: [[REACTOR.x, REACTOR.y + REACTOR.r], [REACTOR.x, box.msb_s.cy], Lf("msb_s")],
@@ -5385,16 +5610,46 @@ const ROUTE = {
   k_mid_s: [R("dp_hangar_s"), Lf("dp_stbd")],
   k_fwd_p: [R("dp_port"), [box.fsb_p.cx, box.dp_port.cy], T("fsb_p")],
   k_fwd_s: [R("dp_stbd"), [box.fsb_s.cx, box.dp_stbd.cy], B("fsb_s")],
-  k_a_fwd: [R("fsb_p", -22), [1050, box.fsb_p.cy - 22], [1050, box.dp_a.cy], Lf("dp_a")],
-  k_ls_n: [R("fsb_p", 0), [1070, box.fsb_p.cy], [1070, box.dp_ls.cy - 12], Lf("dp_ls", -12)],
-  k_c_fwd_p: [R("fsb_p", 22), [1035, box.fsb_p.cy + 22], [1035, box.dp_c_fwd.cy - 12], Lf("dp_c_fwd", -12)],
-  k_c_fwd_s: [R("fsb_s", -12), [1060, box.fsb_s.cy - 12], [1060, box.dp_c_fwd.cy + 12], Lf("dp_c_fwd", 12)],
-  k_b_fwd: [R("fsb_s", 18), [box.dp_b_fwd.cx, box.fsb_s.cy + 18], T("dp_b_fwd")],
-  k_ls_e: [R("eb"), [1080, box.eb.cy], [1080, box.dp_ls.cy + 14], Lf("dp_ls", 14)],
-  k_a_aft: [B("msb_s", -30), [box.msb_s.cx - 30, 704], [1262, 704], [1262, box.dp_a.cy], R("dp_a")],
+  k_a_fwd: [R("fsb_p", -22), [1000, box.fsb_p.cy - 22], [1000, box.dp_a.cy], Lf("dp_a")],
+  k_ls_n: [R("fsb_p", 0), [1015, box.fsb_p.cy], [1015, box.dp_ls.cy - 12], Lf("dp_ls", -12)],
+  k_c_fwd_p: [R("fsb_p", 22), [1030, box.fsb_p.cy + 22], [1030, box.dp_c_fwd.cy - 12], Lf("dp_c_fwd", -12)],
+  k_ls_e: [R("eb"), [1045, box.eb.cy], [1045, box.dp_ls.cy + 12], Lf("dp_ls", 12)],
+  k_b_fwd: [R("fsb_s", 12), [1060, box.fsb_s.cy + 12], [1060, box.dp_b_fwd.cy + 12], Lf("dp_b_fwd", 12)],
+  k_c_fwd_s: [R("fsb_s", -12), [1075, box.fsb_s.cy - 12], [1075, box.dp_c_fwd.cy + 12], Lf("dp_c_fwd", 12)],
+  k_a_aft: [Lf("msb_s", -20), [150, box.msb_s.cy - 20], [150, 44], [box.dp_a.cx - 20, 44], T("dp_a", -20)],
+  // Spare routes (power-routing 1), dashed until closed.
+  r_dorsal_aft: [T("bx_a_aft_passage"), [box.bx_a_aft_passage.cx, 58], [1252, 58], [1252, box.bx_dorsal_turret.cy], Lf("bx_dorsal_turret")],
+  r_ladder_ab: [Lf("dp_a", 20), [1083, box.dp_a.cy + 20], [1083, box.dp_b_fwd.cy - 12], Lf("dp_b_fwd", -12)],
+  r_ladder_bc: [B("dp_b_fwd", 30), T("dp_c_fwd", 30)],
+  r_life_support: [R("dp_ls", 0), [1205, box.dp_ls.cy], [1205, box.dp_c_fwd.cy + 30], R("dp_c_fwd", 30)],
+  r_port_turret: [B("dp_port", 30), [box.dp_port.cx + 30, 395], [box.dp_b_fwd.cx - 20, 395], T("dp_b_fwd", -20)],
+  r_stbd_turret: [T("dp_stbd", 30), [box.dp_stbd.cx + 30, 525], [box.dp_b_fwd.cx - 20, 525], B("dp_b_fwd", -20)],
+  r_spine_hangar: [B("dp_hangar_p", 30), [box.dp_hangar_p.cx + 30, 380], [box.dp_b_fwd.cx - 38, 380], T("dp_b_fwd", -38)],
+  r_hangar_c: [B("dp_hangar_p", -30), [box.dp_hangar_p.cx - 30, 300], [600, 300], [600, 560], [box.dp_c_fwd.cx - 40, 560], T("dp_c_fwd", -40)],
+  r_hoist: [R("bx_torpedo_room"), [1592, box.bx_torpedo_room.cy], [1592, box.bx_magazine.cy], R("bx_magazine")],
 };
+/** A run's route, turned to run from its between[0] (so its dashes and its flow's sign agree). */
+function orient(id, pts, from) { const k = PW.conduits.find((x) => x.id === id); return k && k.between[0] !== from ? pts.slice().reverse() : pts; }
+const runBetween = (a, b) => PW.conduits.find((k) => (k.between[0] === a && k.between[1] === b) || (k.between[0] === b && k.between[1] === a));
+// The chips' feeds: a column of chips beside a forward panel takes a bus each off the panel's right side; a chip above
+// or below a card hangs straight off it; a chained chip (a pod behind its turret room, the airlock behind cargo) hangs
+// off the chip before it, round the right.
+const COLUMN = { dp_a: ["bx_bridge", "bx_ready_room", "bx_computer_core", "bx_dorsal_turret"], dp_b_fwd: ["bx_torpedo_room", "bx_medbay", "bx_damage_control", "bx_quarters", "bx_mess"], dp_c_fwd: ["bx_magazine", "bx_cargo", "bx_shield_room", "bx_pod_ventral"] };
+for (const [p, chips] of Object.entries(COLUMN)) chips.forEach((c, k) => {
+  const r = runBetween(p, c); if (!r) return;
+  const dy = (k - (chips.length - 1) / 2) * 14, bx = 1214 + k * 8;
+  ROUTE[r.id] = orient(r.id, [R(p, dy), [bx, box[p].cy + dy], [bx, box[c].cy], Lf(c)], p);
+});
+for (const [p, c] of [["msb_p", "bx_a_aft_passage"], ["dp_hangar_p", "bx_launch_bay_p"], ["dp_port", "bx_pod_port"]]) { const r = runBetween(p, c); if (r) ROUTE[r.id] = orient(r.id, [T(p), B(c)], p); }
+for (const [p, c] of [["dp_hangar_s", "bx_launch_bay_s"], ["dp_stbd", "bx_pod_stbd"]]) { const r = runBetween(p, c); if (r) ROUTE[r.id] = orient(r.id, [B(p), T(c)], p); }
+for (const [p, c] of [["bx_dorsal_turret", "bx_pod_dorsal"], ["bx_cargo", "bx_airlock"]]) {
+  const r = runBetween(p, c); if (!r) continue;
+  const x = Math.max(box[p].x1, box[c].x1) + 14;
+  ROUTE[r.id] = orient(r.id, [R(p), [x, box[p].cy], [x, box[c].cy], R(c)], p);
+}
+for (const id of EDGE_IDS) if (!ROUTE[id]) { console.warn("power-grid.html: no diagram route for " + id); }
 const pathD = (pts) => "M" + pts.map((p) => p[0].toFixed(1) + " " + p[1].toFixed(1)).join("L");
-/** Where on a route a label or a breaker goes: the middle of its longest run, or a distance from its start. */
+/** Where on a route a label or a switch goes: the middle of its longest run, or a distance from its start. */
 function along(pts, d) {
   for (let i = 0; i + 1 < pts.length; i++) {
     const a = pts[i], b = pts[i + 1], l = Math.hypot(b[0] - a[0], b[1] - a[1]);
@@ -5408,27 +5663,41 @@ function longest(pts) {
   for (let i = 0; i + 1 < pts.length; i++) { const l = Math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]); if (l > bl) { bl = l; best = i; ad = acc; } acc += l; }
   return along(pts, ad + bl / 2);
 }
-const BREAKER_AT = { gen_p: 0.22, gen_s: 0.22, bt_main: 0.25, bt_fwd: 0.25, eb_p: 0.3, eb_s: 0.3, battery_out: 0.3 };
 const routeLen = (pts) => pts.slice(1).reduce((a, p, i) => a + Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]), 0);
+/** Where a run's switch sits: the trunks' at their fixed share of the way; a chip's feed beside the chip. */
+const SWITCH_AT = { gen_p: 0.22, gen_s: 0.22, bt_main: 0.25, bt_fwd: 0.25, eb_p: 0.3, eb_s: 0.3, battery_out: 0.3 };
 let phase = {};
 const DEFS = `<defs><pattern id="hatchR" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2.5" height="6" fill="${C.danger}" opacity="0.75"/></pattern>` +
-  `<pattern id="hatchA" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2.5" height="6" fill="${C.warn}" opacity="0.55"/></pattern>` +
   `<radialGradient id="redvig" cx="50%" cy="50%" r="75%"><stop offset="60%" stop-color="${C.alert}" stop-opacity="0"/><stop offset="100%" stop-color="${C.alert}" stop-opacity="0.22"/></radialGradient></defs>`;
-const txt = (x, y, s, col, str, o = {}) => `<text x="${x}" y="${y}" font-size="${s}" fill="${col}" text-anchor="${o.a || "start"}" font-weight="${o.w || 700}" letter-spacing="${o.ls == null ? 0.6 : o.ls}" dominant-baseline="${o.b || "alphabetic"}" font-family="Barlow Semi Condensed, Arial Narrow, sans-serif">${esc(str)}</text>`;
+const txt = (x, y, s, col, str, o = {}) => `<text x="${x}" y="${y}" font-size="${s}" fill="${col}" text-anchor="${o.a || "start"}" font-weight="${o.w || 700}" letter-spacing="${o.ls == null ? 0.6 : o.ls}" font-family="Barlow Semi Condensed, Arial Narrow, sans-serif">${esc(str)}</text>`;
 const tipA = (t) => ` data-tip="${esc(t)}"`;
-function breakerSq(x, y, on, tip) {
-  return `<g${tipA(tip)}><rect x="${x - 8}" y="${y - 8}" width="16" height="16" rx="2" fill="${on ? C.ok : C.bg}" stroke="${on ? C.ok : C.warn}" stroke-width="2.4"/>` +
-    (on ? "" : `<path d="M${x - 5} ${y + 5}L${x + 5} ${y - 5}" stroke="${C.warn}" stroke-width="2.4"/>`) + `</g>`;
+const actA = (a) => ` data-act="${a}"`;
+/** A switch on a run: filled closed, hollow and slashed open (blue for a spare left open, amber for a run opened). */
+function switchSq(x, y, closed, spare, tip, act) {
+  const col = closed ? C.ok : spare ? C.spare : C.warn;
+  return `<g${tipA(tip)}${act ? actA(act) : ""} class="tap"><rect x="${x - 11}" y="${y - 11}" width="22" height="22" fill="transparent"/><rect x="${x - 7}" y="${y - 7}" width="14" height="14" rx="2" fill="${closed ? C.ok : C.bg}" stroke="${col}" stroke-width="2.2"/>` +
+    (closed ? "" : `<path d="M${x - 4.5} ${y + 4.5}L${x + 4.5} ${y - 4.5}" stroke="${col}" stroke-width="2.2"/>`) + `</g>`;
+}
+/** A box's own switch: filled on, hollow off, crossed destroyed. */
+function boxSq(id, x, y) {
+  const b = boxLook(id), v = b.v;
+  const fill = b.mode === 0 ? b.col : C.bg;
+  let s = `<g${tipA(`${nodeName(id)}: ${v.on ? "on" : "switched off"}, tap to switch it ${v.on ? "off" : "on"}`)}${actA("box:" + id)} class="tap"><rect x="${x - 12}" y="${y - 12}" width="24" height="24" fill="transparent"/>`;
+  s += `<rect x="${x - 7}" y="${y - 7}" width="14" height="14" rx="2" fill="${fill}" stroke="${b.col}" stroke-width="2.2"/>`;
+  if (b.mode === 3) s += `<path d="M${x - 5} ${y - 5}l10 10M${x + 5} ${y - 5}l-10 10" stroke="${C.danger}" stroke-width="2"/>`;
+  return s + "</g>";
 }
 function drawEdge(id, dt) {
-  const pts = ROUTE[id], e = edgeNow(id), share = e.rated > 0 ? clamp(Math.abs(e.mw) / e.rated, 0, 1) : 0;
+  const pts = ROUTE[id]; if (!pts) return "";
+  const e = edgeNow(id), share = e.rated > 0 ? clamp(Math.abs(e.mw) / e.rated, 0, 1) : 0;
   const d = pathD(pts), w = 3 + 7 * share;
-  const col = e.state === "severed" ? C.danger : e.state === "dead" ? C.faint : flowCol(share);
+  const col = e.state === "severed" ? C.danger : e.state === "open" ? C.spare : e.state === "dead" ? C.faint : flowCol(share);
   // A dark casing first, so a later line crossing an earlier one reads as a crossing, never a junction.
-  let s = `<g${tipA(`${e.name}: ${f1(Math.abs(e.mw))} of ${f1(e.rated)} MW, ${e.state}`)}>`;
-  s += `<path d="${d}" stroke="${C.bg}" stroke-width="${w + 7}" fill="none" stroke-linejoin="round"/>`;
-  s += `<path d="${d}" stroke="transparent" stroke-width="16" fill="none"/>`;
-  if (e.state === "dead") s += `<path d="${d}" stroke="${col}" stroke-width="3" fill="none" stroke-dasharray="5 5" stroke-linejoin="round"/>`;
+  let s = `<g${tipA(`${e.name}: ${f1(Math.abs(e.mw))} of ${f1(e.rated)} MW, ${e.state}${e.spare ? " (spare route)" : ""}`)}${e.run ? actA("run:" + id) : ""}>`;
+  s += `<path d="${d}" stroke="${C.bg}" stroke-width="${w + 6}" fill="none" stroke-linejoin="round"/>`;
+  s += `<path d="${d}" stroke="transparent" stroke-width="14" fill="none"/>`;
+  if (e.state === "dead") s += `<path d="${d}" stroke="${col}" stroke-width="2.5" fill="none" stroke-dasharray="5 5" stroke-linejoin="round"/>`;
+  else if (e.state === "open") s += `<path d="${d}" stroke="${col}" stroke-width="2.5" fill="none" stroke-dasharray="3 7" stroke-linejoin="round" opacity="0.85"/>`;
   else {
     s += `<path d="${d}" stroke="${col}" stroke-opacity="${e.state === "severed" ? 1 : 0.5}" stroke-width="${w}" fill="none" stroke-linejoin="round"/>`;
     if (e.state === "live" && Math.abs(e.mw) > 1e-3) {
@@ -5440,42 +5709,58 @@ function drawEdge(id, dt) {
   if (e.state === "severed") {
     const [x, y] = longest(pts);
     s += `<g${tipA(`${e.name}: severed`)}><circle cx="${x}" cy="${y}" r="11" fill="${C.bg}" stroke="${C.danger}" stroke-width="2.5"/><path d="M${x - 6} ${y - 6}l12 12M${x + 6} ${y - 6}l-12 12" stroke="#fff" stroke-width="2.5"/></g>`;
-  } else if (e.state === "live" && Math.abs(e.mw) >= 0.05) {
+  } else if (e.state === "live" && Math.abs(e.mw) >= 0.3) {
     const [x, y, vert] = longest(pts), str = f1(Math.abs(e.mw));
-    s += vert ? txt(x + 9, y + 5, 14, share > 0.02 ? C.power : C.dim, str) : txt(x, y - 9, 14, share > 0.02 ? C.power : C.dim, str, { a: "middle" });
+    s += vert ? txt(x + 9, y + 5, 13, share > 0.02 ? C.power : C.dim, str) : txt(x, y - 8, 13, share > 0.02 ? C.power : C.dim, str, { a: "middle" });
   }
-  const k = BREAKER_AT[id];
-  const [bx, by] = k != null ? along(pts, routeLen(pts) * k) : along(pts, 16);
-  s += breakerSq(bx, by, e.breaker, `${e.name} breaker: ${e.breaker ? "closed" : "open"}`);
+  const len = routeLen(pts), toChip = id.startsWith("r_") && (box[PW.conduits.find((k) => k.id === id).between[1]] || {}).chip;
+  const at = SWITCH_AT[id] != null ? len * SWITCH_AT[id] : id.startsWith("r_") && !e.spare ? (toChip ? len - 20 : len / 2) : id.startsWith("r_") ? len / 2 : 16;
+  const [bx, by] = along(pts, at);
+  s += switchSq(bx, by, e.closed, e.spare, `${e.name}: ${e.closed ? "closed" : "open"}${e.run ? `, tap to ${e.closed ? "open" : "close"} it` : ""}`, e.run ? "run:" + id : null);
   return s;
 }
-function drawCard(id) {
-  const b = box[id], v = nodeState(id), col = nodeCol(v);
-  const dead = v.state === "destroyed" || !v.live;
-  let s = `<g${tipA(`${nodeName(id)}: ${v.state}, ${v.live ? "live" : "dead"}`)}>`;
-  s += `<rect x="${b.x0}" y="${b.y0}" width="${b.w}" height="${CARD_H}" rx="6" fill="${C.panel}" stroke="${v.state === "sound" ? C.line2 : col}" stroke-width="${v.state === "sound" ? 1.2 : 2.4}"/>`;
-  // The bus: a bar along the top, live in the power colour.
-  s += `<rect x="${b.x0 + 6}" y="${b.y0 + 5}" width="${b.w - 12}" height="5" rx="2" fill="${dead ? C.faint : col}"/>`;
-  s += txt(b.x0 + 8, b.y0 + 25, 14, dead ? C.dim : C.text, SHORT[id] || id);
-  if (v.state === "destroyed") s += `<rect x="${b.x0}" y="${b.y0}" width="${b.w}" height="${CARD_H}" rx="6" fill="url(#hatchR)"/><path d="M${b.x0 + 8} ${b.y0 + 8}L${b.x1 - 8} ${b.y1 - 8}M${b.x1 - 8} ${b.y0 + 8}L${b.x0 + 8} ${b.y1 - 8}" stroke="${C.danger}" stroke-width="3"/>`;
-  s += "</g>";
+function bars(id, x0, y0, bw, gap, bh) {
+  let s = "";
   ON[id].forEach((i, n) => {
     const l = LOADS[i], ln = loadNow(i), ls = loadState(ln);
-    const x = b.x0 + 10 + n * (BAR_W + BAR_GAP), y = b.y0 + 31;
+    const x = x0 + n * (bw + gap), y = y0;
     const fill = ln.off ? 0 : ls.fill;
     let g = `<g${tipA(`${l.name}: ${ln.off ? "off" : `${mw(ln.got)} of ${mw(ln.want)}`}${ln.dropped ? ", dropped" : ""}, priority ${ln.prio}`)}>`;
-    g += `<rect x="${x - 2}" y="${y - 2}" width="${BAR_W + 4}" height="${BAR_H + 12}" fill="transparent"/>`;
-    g += `<rect x="${x}" y="${y}" width="${BAR_W}" height="${BAR_H}" rx="2" fill="#16202c" stroke="${ls.col}" stroke-width="1.4"${ln.off ? ' stroke-dasharray="3 2"' : ""}/>`;
-    if (ls.mode === 1) g += `<rect x="${x}" y="${y}" width="${BAR_W}" height="${BAR_H * (1 - fill)}" fill="url(#hatchR)"/>`;
-    if (fill > 0) g += `<rect x="${x}" y="${y + BAR_H * (1 - fill)}" width="${BAR_W}" height="${BAR_H * fill}" rx="2" fill="${ls.col}"/>`;
-    if (ln.dropped) g += `<path d="M${x + 1} ${y + 1}L${x + BAR_W - 1} ${y + BAR_H - 1}" stroke="${C.danger}" stroke-width="2"/>`;
+    g += `<rect x="${x - 2}" y="${y - 2}" width="${bw + 4}" height="${bh + 10}" fill="transparent"/>`;
+    g += `<rect x="${x}" y="${y}" width="${bw}" height="${bh}" rx="2" fill="#16202c" stroke="${ls.col}" stroke-width="1.3"${ln.off ? ' stroke-dasharray="3 2"' : ""}/>`;
+    if (ls.mode === 1) g += `<rect x="${x}" y="${y}" width="${bw}" height="${bh * (1 - fill)}" fill="url(#hatchR)"/>`;
+    if (fill > 0) g += `<rect x="${x}" y="${y + bh * (1 - fill)}" width="${bw}" height="${bh * fill}" rx="2" fill="${ls.col}"/>`;
+    if (ln.dropped) g += `<path d="M${x + 1} ${y + 1}L${x + bw - 1} ${y + bh - 1}" stroke="${C.danger}" stroke-width="2"/>`;
     // Priority: a ring for 0 (never shed), then three, two or one pip (the more pips, the later it is shed).
-    const py = y + BAR_H + 5, cx = x + BAR_W / 2;
-    if (ln.prio === 0) g += `<circle cx="${cx}" cy="${py}" r="3" fill="none" stroke="${C.dim}" stroke-width="1.4"/>`;
-    else for (let p = 0; p < 4 - ln.prio; p++) g += `<circle cx="${cx - (3 - ln.prio) * 2 + p * 4}" cy="${py}" r="1.5" fill="${C.dim}"/>`;
+    const py = y + bh + 5, cx = x + bw / 2;
+    if (ln.prio === 0) g += `<circle cx="${cx}" cy="${py}" r="2.6" fill="none" stroke="${C.dim}" stroke-width="1.3"/>`;
+    else for (let p = 0; p < 4 - ln.prio; p++) g += `<circle cx="${cx - (3 - ln.prio) * 1.8 + p * 3.6}" cy="${py}" r="1.3" fill="${C.dim}"/>`;
     s += g + "</g>";
   });
   return s;
+}
+function drawCard(id) {
+  const b = box[id], v = nodeState(id), look = boxLook(id);
+  const dead = v.state === "destroyed" || !v.live;
+  let s = `<g${tipA(`${nodeName(id)}: ${v.on ? "on" : "switched off"}, ${v.state}, ${v.live ? "live" : "dead"}`)}>`;
+  s += `<rect x="${b.x0}" y="${b.y0}" width="${b.w}" height="${CARD_H}" rx="6" fill="${C.panel}" stroke="${v.state === "sound" && v.on ? C.line2 : look.col}" stroke-width="${v.state === "sound" && v.on ? 1.2 : 2.4}"/>`;
+  // The bus: a bar along the top, live in the power colour.
+  s += `<rect x="${b.x0 + 6}" y="${b.y0 + 5}" width="${b.w - 32}" height="5" rx="2" fill="${dead ? C.faint : look.col}"/>`;
+  s += txt(b.x0 + 8, b.y0 + 25, 14, dead ? C.dim : C.text, SHORT[id] || id);
+  if (v.state === "destroyed") s += `<rect x="${b.x0}" y="${b.y0}" width="${b.w}" height="${CARD_H}" rx="6" fill="url(#hatchR)"/><path d="M${b.x0 + 8} ${b.y0 + 8}L${b.x1 - 8} ${b.y1 - 8}M${b.x1 - 8} ${b.y0 + 8}L${b.x0 + 8} ${b.y1 - 8}" stroke="${C.danger}" stroke-width="3"/>`;
+  s += "</g>";
+  s += boxSq(id, b.x1 - 13, b.y0 + 13);
+  return s + bars(id, b.x0 + 10, b.y0 + 31, BAR_W, BAR_GAP, BAR_H);
+}
+function drawChip(id) {
+  const b = box[id], v = nodeState(id), look = boxLook(id);
+  const on = v.on && v.live;
+  let s = `<g${tipA(`${nodeName(id)}: ${v.on ? "on" : "switched off"}${v.on ? (v.live ? ", live" : ", nothing reaches it") : ""}`)}>`;
+  s += `<rect x="${b.x0}" y="${b.y0}" width="${b.w}" height="${CHIP_H}" rx="5" fill="${C.panel}" stroke="${v.on && v.state === "sound" ? (on ? C.line2 : C.faint) : look.col}" stroke-width="${v.on && v.state === "sound" ? 1.2 : 2}"/>`;
+  s += txt(b.x0 + 28, b.y0 + 15, 13, on ? C.text : C.dim, SHORT[id] || id);
+  s += "</g>";
+  s += boxSq(id, b.x0 + 13, b.cy);
+  return s + bars(id, b.x0 + 28, b.y0 + 20, CBAR_W, CBAR_GAP, CBAR_H);
 }
 function drawReactor() {
   const r = st.reactor, up = r.state === "running", { x, y } = REACTOR;
@@ -5506,103 +5791,168 @@ function drawSupply() {
   let want = 0, got = 0;
   for (let i = 0; i < LOADS.length; i++) { want += st.want[i]; got += st.alloc[i]; }
   const rated = PW.reactor.thermal_rated_mw * PW.reactor.conversion_efficiency, max = Math.max(want, rated) * 1.05;
-  const x0 = 340, x1 = 960, y = 16, k = (v) => x0 + ((x1 - x0) * v) / max;
+  const x0 = 400, x1 = 1000, y = 6, k = (v) => x0 + ((x1 - x0) * v) / max;
   const rx = Math.min(got, st.rxOut || 0);
   let s = `<g${tipA(`Delivered ${f1(got)} of ${f1(want)} MW wanted; the reactor gives at most ${f1(rated)} MW`)}>`;
-  s += `<rect x="${x0}" y="${y}" width="${x1 - x0}" height="20" rx="4" fill="#16202c"/>`;
-  s += `<rect x="${x0}" y="${y}" width="${k(rx) - x0}" height="20" rx="4" fill="${C.ok}"/>`;
-  if (got > rx + 0.05) s += `<rect x="${k(rx)}" y="${y}" width="${k(got) - k(rx)}" height="20" fill="${C.warn}"/>`;
-  if (want > got + 0.05) s += `<rect x="${k(got)}" y="${y}" width="${k(want) - k(got)}" height="20" fill="url(#hatchR)"/>`;
-  s += `<path d="M${k(rated)} ${y - 4}V${y + 24}" stroke="${C.text}" stroke-width="2"/>`;
-  s += txt(x0 - 10, y + 15, 15, C.text, `${f1(got)}`, { a: "end" }) + txt(x1 + 10, y + 15, 15, want > got + 0.05 ? C.danger : C.dim, `of ${f1(want)} MW`);
+  s += `<rect x="${x0}" y="${y}" width="${x1 - x0}" height="18" rx="4" fill="#16202c"/>`;
+  s += `<rect x="${x0}" y="${y}" width="${k(rx) - x0}" height="18" rx="4" fill="${C.ok}"/>`;
+  if (got > rx + 0.05) s += `<rect x="${k(rx)}" y="${y}" width="${k(got) - k(rx)}" height="18" fill="${C.warn}"/>`;
+  if (want > got + 0.05) s += `<rect x="${k(got)}" y="${y}" width="${k(want) - k(got)}" height="18" fill="url(#hatchR)"/>`;
+  s += `<path d="M${k(rated)} ${y - 3}V${y + 21}" stroke="${C.text}" stroke-width="2"/>`;
+  s += txt(x0 - 10, y + 14, 15, C.text, `${f1(got)}`, { a: "end" }) + txt(x1 + 10, y + 14, 15, want > got + 0.05 ? C.danger : C.dim, `of ${f1(want)} MW`);
   return s + "</g>";
 }
 function drawDiagram(dt) {
-  let s = `<svg width="1280" height="720" viewBox="0 0 1280 720">${DEFS}<rect width="1280" height="720" fill="${C.bg}"/>`;
-  if (st.alert === "red_alert") s += `<rect width="1280" height="720" fill="url(#redvig)"/><rect x="1" y="1" width="1278" height="718" fill="none" stroke="${C.alert}" stroke-width="2" opacity="0.6"/>`;
+  let s = `<svg width="${DW}" height="${DH}" viewBox="0 0 ${DW} ${DH}">${DEFS}<rect width="${DW}" height="${DH}" fill="${C.bg}"/>`;
+  if (st.alert === "red_alert") s += `<rect width="${DW}" height="${DH}" fill="url(#redvig)"/><rect x="1" y="1" width="${DW - 2}" height="${DH - 2}" fill="none" stroke="${C.alert}" stroke-width="2" opacity="0.6"/>`;
   s += drawSupply();
-  // Edges first, the trunks before the feeders, so the feeders cross over them.
-  for (const id of ["k_a_aft", "bt_main", "bt_fwd", ...EDGE_IDS.filter((x) => !["k_a_aft", "bt_main", "bt_fwd"].includes(x))]) s += drawEdge(id, dt);
+  // Spares first (under), then the trunks, then the rest, so the live lines cross over the open ones.
+  const order = [...SPARES, "k_a_aft", "bt_main", "bt_fwd", ...EDGE_IDS.filter((x) => !SPARES.includes(x) && !["k_a_aft", "bt_main", "bt_fwd"].includes(x))];
+  for (const id of order) s += drawEdge(id, dt);
   for (const id of Object.keys(CARD)) s += drawCard(id);
+  for (const id of Object.keys(CHIP)) s += drawChip(id);
   s += drawReactor() + drawBattery();
-  s += txt(REACTOR.x + REACTOR.r + 10, REACTOR.y + 5, 13, C.dim, "REACTOR") + txt(BATT.x, BATT.y + BATT.h / 2 + 18, 13, C.dim, "BATTERY", { a: "middle" });
+  s += txt(REACTOR.x - 30, REACTOR.y + REACTOR.r + 20, 13, C.dim, "REACTOR") + txt(BATT.x, BATT.y + BATT.h / 2 + 18, 13, C.dim, "BATTERY", { a: "middle" });
   DIAG.innerHTML = s + "</svg>";
 }
-let DSCALE = 1;
+// The diagram's view: fitted to the stage, then zoomed (wheel, pinch) and panned (drag) on top of the fit.
+// A phone held upright opens it at the screen's height, aft end first (pan along it); Fit shows it whole.
+const DZ = { z: 1, ox: 0, oy: 0, base: 1, bx: 0, by: 0, whole: false };
 function fitDiagram() {
-  const ax0 = leftCol() + 8, ax1 = innerWidth - 12, ay0 = 10, ay1 = innerHeight - 44 - 12;   // stage pixels
-  DSCALE = Math.min((ax1 - ax0) / 1280, (ay1 - ay0) / 720);
-  DIAG.style.transform = `translate(${ax0}px, ${ay0}px) scale(${DSCALE})`;
+  const ax0 = PORTRAIT ? 6 : leftCol() + 8, ax1 = innerWidth - 8, ay0 = 8, ay1 = innerHeight - BH - (PORTRAIT ? STATUS.offsetHeight + 24 : 12);
+  DZ.base = Math.min((ax1 - ax0) / DW, (ay1 - ay0) / DH);
+  DZ.bx = ax0 + ((ax1 - ax0) - DW * DZ.base) / 2; DZ.by = ay0 + (PORTRAIT ? ((ay1 - ay0) - DH * DZ.base) / 2 : 0);
+  DZ.z = 1; DZ.ox = 0; DZ.oy = 0;
+  if (PORTRAIT && !DZ.whole) {
+    DZ.z = clamp((ay1 - ay0) / DH / DZ.base, 1, 8);
+    DZ.ox = ax0 - DZ.bx; DZ.oy = ay0 - DZ.by;
+  }
+  applyDiagram();
 }
-DIAG.addEventListener("mousemove", (e) => {
-  const t = e.target.closest && e.target.closest("[data-tip]");
-  if (t) showTip(e.clientX, e.clientY, `<div class="d">${t.dataset.tip}</div>`); else hideTip();
+function applyDiagram() { DIAG.style.transform = `translate(${DZ.bx + DZ.ox}px, ${DZ.by + DZ.oy}px) scale(${DZ.base * DZ.z})`; }
+function diagZoomAt(cx, cy, f) {
+  const sx = cx, sy = cy - BH, s0 = DZ.base * DZ.z;
+  const z = clamp(DZ.z * f, 1, 8), s1 = DZ.base * z;
+  // Keep the diagram point under the pointer where it is.
+  const px = (sx - DZ.bx - DZ.ox) / s0, py = (sy - DZ.by - DZ.oy) / s0;
+  DZ.z = z; DZ.ox = sx - DZ.bx - px * s1; DZ.oy = sy - DZ.by - py * s1;
+  if (z === 1) { DZ.ox = 0; DZ.oy = 0; }
+  applyDiagram();
+}
+const dptr = new Map();
+let ddrag = null, dpinch = null;
+STAGE.addEventListener("pointerdown", (e) => {
+  dptr.set(e.pointerId, [e.clientX, e.clientY]);
+  STAGE.setPointerCapture(e.pointerId);
+  if (dptr.size === 2) { const [a, b] = [...dptr.values()]; dpinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), z: DZ.z, mid: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2] }; ddrag = null; }
+  else ddrag = { x: e.clientX, y: e.clientY, ox: DZ.ox, oy: DZ.oy, moved: false };
 });
-DIAG.addEventListener("pointerdown", (e) => {
-  const t = e.target.closest && e.target.closest("[data-tip]");
-  if (t) showTip(e.clientX, e.clientY, `<div class="d">${t.dataset.tip}</div>`);
+STAGE.addEventListener("pointermove", (e) => {
+  if (dptr.has(e.pointerId)) dptr.set(e.pointerId, [e.clientX, e.clientY]);
+  if (dpinch && dptr.size === 2) {
+    const [a, b] = [...dptr.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+    diagZoomAt(dpinch.mid[0], dpinch.mid[1], clamp(dpinch.z * (d / Math.max(1, dpinch.d)), 1, 8) / DZ.z); hideTip(); return;
+  }
+  if (ddrag && (ddrag.moved || Math.hypot(e.clientX - ddrag.x, e.clientY - ddrag.y) > 6)) {
+    ddrag.moved = true; DZ.ox = ddrag.ox + (e.clientX - ddrag.x); DZ.oy = ddrag.oy + (e.clientY - ddrag.y); applyDiagram(); hideTip(); return;
+  }
+  if (e.pointerType === "mouse") {
+    const t = document.elementFromPoint(e.clientX, e.clientY), el = t && t.closest && t.closest("[data-tip]");
+    if (el) showTip(e.clientX, e.clientY, `<div class="d">${el.dataset.tip}</div>`); else hideTip();
+  }
 });
+const dEnd = (e) => {
+  const wasDrag = ddrag, wasPinch = dpinch;
+  dptr.delete(e.pointerId);
+  if (dptr.size < 2) dpinch = null;
+  if (dptr.size === 0) ddrag = null;
+  if (e.type !== "pointerup" || !wasDrag || wasDrag.moved || wasPinch) return;
+  // A tap: switch what it lands on (a box or a run), and show its numbers.
+  const t = document.elementFromPoint(e.clientX, e.clientY);
+  const a = t && t.closest && t.closest("[data-act]"), tipEl = t && t.closest && t.closest("[data-tip]");
+  let note = "";
+  if (a) { const [kind, id] = a.dataset.act.split(":"); if (!toggle(kind, id)) note = "<div class='d' style='color:#ff4757'>tripped: nothing switches until it resets</div>"; else { status(); drawDiagram(0); } }
+  const again = document.elementFromPoint(e.clientX, e.clientY), el2 = again && again.closest && again.closest("[data-tip]");
+  if (el2 || tipEl) showTip(e.clientX, e.clientY, `<div class="d">${(el2 || tipEl).dataset.tip}</div>` + note); else hideTip();
+};
+STAGE.addEventListener("pointerup", dEnd);
+STAGE.addEventListener("pointercancel", dEnd);
+STAGE.addEventListener("wheel", (e) => { e.preventDefault(); diagZoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.0012)); }, { passive: false });
 
 // =================================================================== views, the loop, the shots
 function setView(v) {
   view = v;
-  canvas.style.display = v === "plan" ? "block" : "none";
-  LABELS.style.display = v === "plan" ? "block" : "none";
-  STAGE.style.display = v === "diagram" ? "block" : "none";
-  document.getElementById("legend").style.visibility = v === "plan" ? "visible" : "hidden";
-  hideTip(); bar(); fitPlan(); fitDiagram();
+  canvas.style.display = v === "3d" ? "block" : "none";
+  LABELS.style.display = v === "3d" ? "block" : "none";
+  STAGE.style.display = v === "2d" ? "block" : "none";
+  document.getElementById("legend").style.visibility = v === "3d" ? "visible" : "hidden";
+  hideTip(); bar(); layoutTop(); frameCamera(); fitDiagram(); labelsDirty = true;
 }
-/** The left column: the title block, the status strip under it, the legend under that. */
+/** The left column (landscape): the title block, the status strip under it, the legend under that. */
 function placeLegend() {
-  const lg = document.getElementById("legend"), r = title.getBoundingClientRect(), hidden = getComputedStyle(title).display === "none" || r.height === 0;
-  if (innerWidth > 760) STATUS.style.top = (hidden ? 54 : r.bottom + 8) + "px";
+  const lg = document.getElementById("legend");
+  if (PORTRAIT || innerWidth <= 760) { lg.style.top = BH + 10 + "px"; return; }
+  const r = title.getBoundingClientRect(), hidden = getComputedStyle(title).display === "none" || r.height === 0;
+  STATUS.style.top = (hidden ? BH + 10 : r.bottom + 8) + "px";
   lg.style.top = (STATUS.getBoundingClientRect().bottom + 8) + "px";
 }
-addEventListener("resize", () => { resize(); placeLegend(); });
+// COLLAPSE: on the console this schematic folds back into Engineering's side panel; here it says so.
+COLLAPSE.addEventListener("click", (e) => {
+  const r = COLLAPSE.getBoundingClientRect();
+  showTip(r.left - 230, r.bottom, `<div class="n">Collapse</div><div class="d">Back to the Engineering console, where this schematic is its side panel</div>`);
+  e.stopPropagation();
+});
+addEventListener("resize", () => { resize(); placeLegend(); frameCamera(); });
 legend();
+bar();
 resize();
-setView("plan");
-let acc = 0, last = performance.now(), first = true, slow = 0;
+setView("3d");
+let acc = 0, last = performance.now(), first = true, slow = 0, wasLeft = -1;
 renderer.setAnimationLoop(() => {
   const now = performance.now(), dt = Math.min(0.1, (now - last) / 1000);
   last = now;
   acc += dt * speed;
   let n = 0;
-  while (acc >= sim.dt && n < 400) { sim.step(); acc -= sim.dt; n++; }
+  while (acc >= sim.dt && n < 400) {
+    sim.step(); acc -= sim.dt; n++;
+    while (script.length && script[0].at <= st.t) script.shift().fn();
+  }
   if (n >= 400) acc = 0;
   edgeMat.uniforms.uTime.value += dt;
-  if ((slow += dt) > 0.1 || first) { slow = 0; status(); placeLegend(); if (view === "plan") labels(); }
-  if (view === "plan") {
+  if ((slow += dt) > 0.1 || first) {
+    slow = 0; status(); placeLegend();
+    // A panel closed or opened moves the free area: the camera's frame follows it.
+    if (leftCol() !== wasLeft) { wasLeft = leftCol(); frameCamera(); fitDiagram(); labelsDirty = true; }
+  }
+  if (view === "3d") {
     updatePlan();
+    if (labelsDirty) labels();
     hud.beginFrame(renderer);
-    // One deck shown: the others are cut off at its band's edges (the scissor), as a deck tab means.
-    renderer.setScissorTest(false);
-    renderer.setClearColor(0x04060a);
-    renderer.clear();
-    if (deckSel !== "all") {
-      const k = DECKS.findIndex((d) => d.id === deckSel);
-      const [, yTop] = toScreen(0, bandV(k) + (X1 - XM) + BAND * 0.08), [, yBot] = toScreen(0, bandV(k) - (XM - X0) - BAND * 0.08);
-      renderer.setScissor(0, H - yBot, W, yBot - yTop);
-      renderer.setScissorTest(true);
-    }
     renderer.render(scene, camera);
-    renderer.setScissorTest(false);
     hud.endFrame(renderer);
   } else drawDiagram(dt);
   if (first) { first = false; K.markReady(); placeLegend(); }
 });
 /** A shot: a fresh scenario run a fixed number of steps, then held still (time paused) so it is the same every run. */
-const shot = (v, deck, fn) => () => { speed = 0; deckSel = deck; scenario = -1; fn(); setView(v); status(); updatePlan(); labels(); drawDiagram(0.3); };
+const shot = (v, fn, opts = {}) => () => {
+  if (opts.phone) for (const el of document.querySelectorAll(".mockup-title, .pi-budget, .legend")) el.classList.add("mk-closed");
+  speed = 0; scenario = -1; fn();
+  deckIso = opts.deck == null ? null : opts.deck;
+  spread = spreadFor(); buildPlan(); DZ.whole = false; setView(v); homeView(); status(); updatePlan(); labels(); drawDiagram(0.3);
+};
+const tripped = () => { fresh(); overloadNow(); run(2); };
+const rerouted = () => { fresh(); combat(); run(30); reroute(); };
+const PHONE = { width: 412, height: 915 };
 K.registerShots([
-  { name: "plan-cruise", setup: shot("plan", "all", () => { scenario = 0; fresh(); }) },
-  { name: "plan-combat", setup: shot("plan", "all", () => { fresh(); combat(); run(150); }) },
-  { name: "plan-trunk-cut", setup: shot("plan", "all", () => { fresh(); combat(); run(60); sever("k_mid_p"); run(10); }) },
-  { name: "plan-deck-b-cut", setup: shot("plan", "B", () => { fresh(); combat(); run(60); sever("k_mid_p"); run(10); }) },
-  { name: "diagram-cruise", setup: shot("diagram", "all", () => fresh()) },
-  { name: "diagram-combat", setup: shot("diagram", "all", () => { fresh(); combat(); run(150); }) },
-  { name: "diagram-switchboard-lost", setup: shot("diagram", "all", () => { fresh(); combat(); run(60); st.nodeHealth.msb_p = 0; run(10); }) },
-  { name: "diagram-both-cut", setup: shot("diagram", "all", () => { fresh(); combat(); run(60); sever("k_mid_p"); sever("k_mid_s"); run(30); }) },
-  { name: "diagram-scram", setup: shot("diagram", "all", () => { fresh(); combat(); run(60); sim.scram("manual"); run(10); }) },
+  { name: "3d-cruise", setup: shot("3d", () => { scenario = 0; fresh(); }) },
+  { name: "3d-rerouted", setup: shot("3d", rerouted) },
+  { name: "3d-tripped", setup: shot("3d", tripped) },
+  { name: "3d-deck-c", setup: shot("3d", () => fresh(), { deck: 2 }) },
+  { name: "2d-cruise", setup: shot("2d", () => fresh()) },
+  { name: "2d-rerouted", setup: shot("2d", rerouted) },
+  { name: "2d-tripped", setup: shot("2d", tripped) },
+  { name: "phone-3d", viewport: PHONE, setup: shot("3d", () => fresh(), { phone: true }) },
+  { name: "phone-2d", viewport: PHONE, setup: shot("2d", () => fresh(), { phone: true }) },
 ]);
 </script>
 </body>

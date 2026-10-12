@@ -81,7 +81,9 @@ gives, and on Engineering's automation the drive is shed whenever the guns and s
 bots at Helm and Tactical: 3 victories in 448-551 s, 1 defeat, and 4 fights run to the 600 s limit with the Hound at
 18-70 of its 250 MJ. The test is now `two_bots_at_helm_and_tactical_take_the_hound_to_the_wire_with_engineering_on_automation`:
 at least half won, every fight 4-10 minutes, the Hound below 60 % in every one. A player at Engineering is what turns
-it (recommendation taken, ask only with screenshots: the drill stays winnable without one).
+it (recommendation taken, ask only with screenshots: the drill stays winnable without one). With the conduit boxes
+(`power-routing` design 4, the same day) a hit in the forward switchboard room can cut the bow off: 2 victories, 3
+defeats, 3 fights to the limit; the test holds a win in six.
 
 ## 7. Cost
 

@@ -38,6 +38,36 @@ pub struct PowerFile {
     pub coolant: Coolant,
     pub radiators: Radiators,
     pub overdrive: Overdrive,
+    /// The conduit boxes' generator's rules (`tools/power/boxes.py`; power-routing 1).
+    pub distribution: Distribution,
+    /// The main protection's limit on live runs and the trip (power-routing 2).
+    pub routing: Routing,
+}
+
+/// The rules `tools/power/boxes.py` places the conduit boxes, runs and feeders by. The engine reads the result, not
+/// these; they are typed so that a misspelt key stops startup.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Distribution {
+    pub box_height_m: f64,
+    pub box_beside_door_m: f64,
+    pub box_into_room_m: f64,
+    pub run_below_ceiling_m: f64,
+    pub ratings_mw: Vec<f64>,
+    pub rating_margin: f64,
+    pub spare_mw: f64,
+    pub note: String,
+}
+
+/// The main protection (power-routing 2): how many runs may be live at once, how long a trip keeps the grid dark,
+/// and which node kinds stay on through it.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Routing {
+    pub max_live_runs: u32,
+    pub trip_dark_s: f64,
+    pub kept_on_trip: Vec<String>,
+    pub note: String,
 }
 
 impl Validate for PowerFile {
@@ -49,6 +79,7 @@ impl Validate for PowerFile {
         c.number("battery.capacity_mj", self.battery.capacity_mj, 0.0, 1e6);
         c.number("battery.restart_reserve_mj", self.battery.restart_reserve_mj, 0.0, self.battery.capacity_mj);
         c.number("coolant.inventory_kg", self.coolant.inventory_kg, 1.0, 1e7);
+        c.number("routing.trip_dark_s", self.routing.trip_dark_s, 0.0, 600.0);
         for (i, g) in self.generators.iter().enumerate() {
             c.number(&format!("generators.{i}.capacity_mw"), g.capacity_mw, 0.0, 1e4);
         }
@@ -192,6 +223,8 @@ pub struct PowerConduit {
     pub capacity_mw: f64,
     pub route: Vec<String>,
     pub path_m: Vec<[f64; 3]>,
+    /// Closed in the factory configuration (power-routing 1; none: closed). A spare route is open.
+    pub factory_closed: Option<bool>,
 }
 
 /// A load: what it draws and where its heat goes.
@@ -216,6 +249,8 @@ pub struct PowerLoad {
     pub heat: LoadHeat,
     pub under: String,
     pub over: String,
+    /// Its feeder: the run from its node's box to it, ship frame, metres (power-routing 1).
+    pub feeder_m: Option<Vec<[f64; 3]>>,
 }
 
 /// Where a load's heat goes: the loop, a room, the duct, the lights' rooms, its own thermal node, or nowhere.
@@ -488,6 +523,14 @@ impl PowerData {
                 return Err(err("coolant".into(), format!("names the pump {id:?}, which no load is")));
             }
         }
+        let factory = file.conduits.iter().filter(|k| k.factory_closed.unwrap_or(true)).count()
+            + file.ties.iter().filter(|t| t.closed).count();
+        if factory > file.routing.max_live_runs as usize {
+            return Err(err(
+                "routing.max_live_runs".into(),
+                format!("is {} but the factory configuration has {factory} runs live", file.routing.max_live_runs),
+            ));
+        }
         Ok(Self {
             file,
             loads,
@@ -705,6 +748,12 @@ pub struct PowerState {
     pub tie_closed: Vec<bool>,
     pub gen_closed: Vec<bool>,
     pub conduit_breaker: Vec<bool>,
+    /// Each node's box switched on (power-routing 1): off, nothing passes it and nothing it feeds is supplied.
+    pub box_on: Vec<bool>,
+    /// Seconds the grid has left dark after a trip (power-routing 2); 0 when it is not tripped.
+    pub trip_s: f64,
+    /// Trips since the ship started.
+    pub trips: u32,
     pub battery_breaker: bool,
     pub reactor: Reactor,
     pub battery: Battery,
@@ -855,7 +904,10 @@ impl PowerState {
             group_breaker: vec![Breaker::Closed; f.groups.len()],
             tie_closed: f.ties.iter().map(|t| t.closed).collect(),
             gen_closed: vec![true; f.generators.len()],
-            conduit_breaker: vec![true; f.conduits.len()],
+            conduit_breaker: f.conduits.iter().map(|k| k.factory_closed.unwrap_or(true)).collect(),
+            box_on: vec![true; f.nodes.len()],
+            trip_s: 0.0,
+            trips: 0,
             battery_breaker: true,
             reactor: Reactor {
                 mode: Mode::Auto,
@@ -944,7 +996,10 @@ impl PowerState {
         let lim = |e: f64| (b.discharge_max_mw * self.battery.health).min(e * b.discharge_efficiency / dt).max(0.0);
         let bat_avail = lim(self.battery.soc_mj - reserve);
         let bat_avail_all = lim(self.battery.soc_mj);
-        let nh = |id: &str| d.node(id).and_then(|k| ship.node_health.get(k).copied()).unwrap_or(1.0);
+        let nh = |id: &str| {
+            d.node(id)
+                .map_or(1.0, |k| if self.box_on[k] { ship.node_health.get(k).copied().unwrap_or(1.0) } else { 0.0 })
+        };
         let p = |id: &str| NOFF + d.node(id).unwrap_or(0);
         let e_rx = add(S, RX, rx_avail, true);
         let e_bat = add(S, BAT, 0.0, true);
@@ -1050,7 +1105,7 @@ impl PowerState {
         let mut out = vec![0.0; d.loads.len()];
         for (i, l) in d.loads.iter().enumerate() {
             let sp = setpoints[i].min(l.setpoint_max);
-            let node_dead = ship.node_health.get(l.node).is_some_and(|h| *h <= 0.0);
+            let node_dead = !self.box_on[l.node] || ship.node_health.get(l.node).is_some_and(|h| *h <= 0.0);
             if sp <= 0.0 || self.breaker_open[i] || node_dead {
                 continue;
             }
@@ -1136,11 +1191,210 @@ impl PowerState {
     /// mockup's `stepCooling`, `stepPower`, `stepHeat`, `checkScram`, in its order).
     pub fn step(&mut self, d: &PowerData, ship: &mut Ship) {
         let dt = d.dt();
+        self.step_routing(d, ship, dt);
         self.step_cooling(d, dt);
         self.step_power(d, ship, dt);
         self.step_heat(d, ship, dt);
         self.check_scram(d, dt);
         self.t_s += dt;
+    }
+
+    /// The main protection (power-routing 2): a trip's dark time running out restores the factory configuration;
+    /// more live runs than it allows trips the grid.
+    fn step_routing(&mut self, d: &PowerData, ship: &Ship, dt: f64) {
+        if self.trip_s > 0.0 {
+            self.trip_s -= dt;
+            if self.trip_s <= 1e-9 {
+                self.trip_s = 0.0;
+                self.factory_reset(d);
+            }
+            return;
+        }
+        if self.live_runs(d, ship) > d.file.routing.max_live_runs as usize {
+            self.trip_s = d.file.routing.trip_dark_s;
+            self.trips += 1;
+            for (k, n) in d.file.nodes.iter().enumerate() {
+                self.box_on[k] = d.file.routing.kept_on_trip.contains(&n.kind);
+            }
+            self.conduit_breaker.iter_mut().for_each(|b| *b = false);
+            self.tie_closed.iter_mut().for_each(|b| *b = false);
+        }
+    }
+
+    /// Every box on, every run at its factory setting.
+    pub fn factory_reset(&mut self, d: &PowerData) {
+        self.box_on.iter_mut().for_each(|b| *b = true);
+        for (k, c) in d.file.conduits.iter().enumerate() {
+            self.conduit_breaker[k] = c.factory_closed.unwrap_or(true);
+        }
+        for (k, t) in d.file.ties.iter().enumerate() {
+            self.tie_closed[k] = t.closed;
+        }
+    }
+
+    /// The runs live now (power-routing 2): conduits and ties closed, whole, with both their boxes on.
+    pub fn live_runs(&self, d: &PowerData, ship: &Ship) -> usize {
+        let on = |id: &str| d.node(id).is_some_and(|k| self.box_on[k]);
+        let conduits = d.file.conduits.iter().enumerate().filter(|(k, c)| {
+            self.conduit_breaker[*k]
+                && !ship.conduits.get(*k).is_some_and(|s| s.severed)
+                && on(&c.between[0])
+                && on(&c.between[1])
+        });
+        let ties = d
+            .file
+            .ties
+            .iter()
+            .enumerate()
+            .filter(|(k, t)| self.tie_closed[*k] && on(&t.between[0]) && on(&t.between[1]));
+        conduits.count() + ties.count()
+    }
+
+    /// The nodes power reaches from the generators' and the battery's nodes over live runs, given each node's health
+    /// and each conduit's state.
+    pub fn reached(&self, d: &PowerData, node_health: &[f64], conduits: &[ConduitState]) -> Vec<bool> {
+        let n = d.nodes.len();
+        let up = |k: usize| self.box_on[k] && node_health.get(k).is_none_or(|h| *h > 0.0);
+        let mut edges: Vec<(usize, usize)> = Vec::new();
+        for (k, c) in d.file.conduits.iter().enumerate() {
+            let whole = conduits.get(k).is_none_or(|s| !s.severed && s.health > 0.0);
+            if self.conduit_breaker[k] && whole {
+                if let (Some(a), Some(b)) = (d.node(&c.between[0]), d.node(&c.between[1])) {
+                    edges.push((a, b));
+                }
+            }
+        }
+        for (k, t) in d.file.ties.iter().enumerate() {
+            if self.tie_closed[k] {
+                if let (Some(a), Some(b)) = (d.node(&t.between[0]), d.node(&t.between[1])) {
+                    edges.push((a, b));
+                }
+            }
+        }
+        let mut seen = vec![false; n];
+        let mut stack: Vec<usize> = d
+            .file
+            .generators
+            .iter()
+            .map(|g| g.node.as_str())
+            .chain(std::iter::once(d.file.battery.node.as_str()))
+            .filter_map(|id| d.node(id))
+            .filter(|&k| up(k))
+            .collect();
+        for &k in &stack {
+            seen[k] = true;
+        }
+        while let Some(u) = stack.pop() {
+            for &(a, b) in &edges {
+                let v = if a == u {
+                    b
+                } else if b == u {
+                    a
+                } else {
+                    continue;
+                };
+                if !seen[v] && up(v) {
+                    seen[v] = true;
+                    stack.push(v);
+                }
+            }
+        }
+        seen
+    }
+
+    /// A spare run to close (power-routing 3, Engineering's automation): the first open, whole conduit, in the
+    /// data's order, from a node power reaches to a switched-on node it does not that feeds a load, while one more
+    /// live run stays within the protection's limit.
+    pub fn reroute(&self, d: &PowerData, node_health: &[f64], conduits: &[ConduitState]) -> Option<usize> {
+        let reached = self.reached(d, node_health, conduits);
+        let n = d.nodes.len();
+        let up = |k: usize| self.box_on[k] && node_health.get(k).is_none_or(|h| *h > 0.0);
+        let whole = |k: usize| conduits.get(k).is_none_or(|s| !s.severed && s.health > 0.0);
+        // The dark islands: switched-on nodes power does not reach, joined by closed whole runs; one wants power
+        // when a load on any of its nodes does.
+        let mut links: Vec<(usize, usize)> = Vec::new();
+        for (k, c) in d.file.conduits.iter().enumerate() {
+            if self.conduit_breaker[k] && whole(k) {
+                if let (Some(a), Some(b)) = (d.node(&c.between[0]), d.node(&c.between[1])) {
+                    links.push((a, b));
+                }
+            }
+        }
+        let mut island = vec![usize::MAX; n];
+        for start in 0..n {
+            if reached[start] || !up(start) || island[start] != usize::MAX {
+                continue;
+            }
+            island[start] = start;
+            let mut stack = vec![start];
+            while let Some(u) = stack.pop() {
+                for &(a, b) in &links {
+                    let v = if a == u {
+                        b
+                    } else if b == u {
+                        a
+                    } else {
+                        continue;
+                    };
+                    if !reached[v] && up(v) && island[v] == usize::MAX {
+                        island[v] = start;
+                        stack.push(v);
+                    }
+                }
+            }
+        }
+        let wants = |k: usize| {
+            island[k] != usize::MAX
+                && d.loads.iter().any(|l| l.nominal_mw > 0.0 && island.get(l.node) == Some(&island[k]))
+        };
+        if !(0..n).any(wants) {
+            return None;
+        }
+        let on = |id: &str| d.node(id).is_some_and(|k| self.box_on[k]);
+        let live = d
+            .file
+            .conduits
+            .iter()
+            .enumerate()
+            .filter(|(k, c)| {
+                self.conduit_breaker[*k]
+                    && !conduits.get(*k).is_some_and(|s| s.severed)
+                    && on(&c.between[0])
+                    && on(&c.between[1])
+            })
+            .count()
+            + d.file
+                .ties
+                .iter()
+                .enumerate()
+                .filter(|(k, t)| self.tie_closed[*k] && on(&t.between[0]) && on(&t.between[1]))
+                .count();
+        if live + 1 > d.file.routing.max_live_runs as usize {
+            return None;
+        }
+        d.file.conduits.iter().enumerate().find_map(|(k, c)| {
+            let (a, b) = (d.node(&c.between[0])?, d.node(&c.between[1])?);
+            let bridges = (reached[a] && wants(b)) || (reached[b] && wants(a));
+            (!self.conduit_breaker[k] && whole(k) && bridges).then_some(k)
+        })
+    }
+
+    /// Switch node `node`'s box on or off (none while the grid is tripped dark).
+    pub fn set_box(&mut self, node: usize, on: bool) -> bool {
+        if self.trip_s > 0.0 || node >= self.box_on.len() {
+            return false;
+        }
+        self.box_on[node] = on;
+        true
+    }
+
+    /// Close or open conduit `k` at its box (none while the grid is tripped dark).
+    pub fn set_conduit(&mut self, k: usize, closed: bool) -> bool {
+        if self.trip_s > 0.0 || k >= self.conduit_breaker.len() {
+            return false;
+        }
+        self.conduit_breaker[k] = closed;
+        true
     }
 
     fn step_power(&mut self, d: &PowerData, ship: &Ship, dt: f64) {
@@ -1547,6 +1801,9 @@ impl PowerState {
 
     /// Toggle a switch on the one-line diagram: a generator's breaker (`0..generators`), then a tie's.
     pub fn toggle_switch(&mut self, d: &PowerData, k: usize) -> bool {
+        if self.trip_s > 0.0 {
+            return false;
+        }
         let g = d.file.generators.len();
         if k < g {
             self.gen_closed[k] = !self.gen_closed[k];
@@ -1674,7 +1931,7 @@ mod tests {
         let file_loads = d.file.loads.len();
         let mut integrity = vec![100.0; file_loads];
         let nodes = vec![1.0; d.nodes.len()];
-        let conduits = vec![ConduitState { health: 1.0, severed: false }; d.file.conduits.len()];
+        let conduits = vec![ConduitState { health: 1.0, severed: false, open: false }; d.file.conduits.len()];
         for _ in 0..(secs / d.dt()) as usize {
             let mut ship = Ship { integrity: &mut integrity, node_health: &nodes, conduits: &conduits, activity: act };
             s.step(d, &mut ship);
@@ -1705,7 +1962,7 @@ mod tests {
         let shields = d.file.groups.iter().position(|g| g.id == "shields").unwrap();
         let mut integrity = vec![100.0; d.file.loads.len()];
         let nodes = vec![1.0; d.nodes.len()];
-        let conduits = vec![ConduitState { health: 1.0, severed: false }; d.file.conduits.len()];
+        let conduits = vec![ConduitState { health: 1.0, severed: false, open: false }; d.file.conduits.len()];
         let ship = Ship { integrity: &mut integrity, node_health: &nodes, conduits: &conduits, activity: &act };
         let (want, got) = s.preview_group(&d, &ship, shields, 1.5);
         let mut s2 = s.clone();
@@ -1737,8 +1994,8 @@ mod tests {
         let k = d.file.conduits.iter().position(|c| c.id == "k_mid_p").expect("the port trunk midships");
         let mut integrity = vec![100.0; d.file.loads.len()];
         let nodes = vec![1.0; d.nodes.len()];
-        let mut conduits = vec![ConduitState { health: 1.0, severed: false }; d.file.conduits.len()];
-        conduits[k] = ConduitState { health: 0.0, severed: true };
+        let mut conduits = vec![ConduitState { health: 1.0, severed: false, open: false }; d.file.conduits.len()];
+        conduits[k] = ConduitState { health: 0.0, severed: true, open: false };
         let ship = Ship { integrity: &mut integrity, node_health: &nodes, conduits: &conduits, activity: &act };
         let r = s.solve(&d, &ship, &s.setpoint);
         for (i, l) in d.loads.iter().enumerate() {
@@ -1786,7 +2043,7 @@ mod tests {
         run(&d, &mut s, &act, 10.0);
         let mut integrity = vec![100.0; d.file.loads.len()];
         let nodes = vec![1.0; d.nodes.len()];
-        let conduits = vec![ConduitState { health: 1.0, severed: false }; d.file.conduits.len()];
+        let conduits = vec![ConduitState { health: 1.0, severed: false, open: false }; d.file.conduits.len()];
         for g in 0..d.file.groups.len() {
             for k in 0..=6 {
                 let sp = d.group_max(g) * f64::from(k) / 6.0;
@@ -1811,13 +2068,164 @@ mod tests {
         let mut integrity = vec![100.0; d.file.loads.len()];
         let mut nodes = vec![1.0; d.nodes.len()];
         nodes[d.node("msb_p").unwrap()] = 0.0;
-        let conduits = vec![ConduitState { health: 1.0, severed: false }; d.file.conduits.len()];
+        let conduits = vec![ConduitState { health: 1.0, severed: false, open: false }; d.file.conduits.len()];
         for _ in 0..(20.0 / d.dt()) as usize {
             let mut ship = Ship { integrity: &mut integrity, node_health: &nodes, conduits: &conduits, activity: &act };
             s.step(&d, &mut ship);
         }
         assert_eq!(s.reactor.state, ReactorState::Running, "scrammed: {:?}", s.reactor.scram_cause);
         assert_eq!(s.alloc[d.load("reactor_aux_p").unwrap()], 0.0, "the port train is dark");
+    }
+
+    /// A whole ship: every load, node and conduit sound.
+    struct Whole {
+        integrity: Vec<f64>,
+        nodes: Vec<f64>,
+        conduits: Vec<ConduitState>,
+    }
+
+    impl Whole {
+        fn new(d: &PowerData) -> Self {
+            Self {
+                integrity: vec![100.0; d.file.loads.len()],
+                nodes: vec![1.0; d.nodes.len()],
+                conduits: vec![ConduitState { health: 1.0, severed: false, open: false }; d.file.conduits.len()],
+            }
+        }
+        fn step(&mut self, d: &PowerData, s: &mut PowerState, act: &BTreeMap<String, f64>, secs: f64) {
+            for _ in 0..(secs / d.dt()).round() as usize {
+                let mut ship = Ship {
+                    integrity: &mut self.integrity,
+                    node_health: &self.nodes,
+                    conduits: &self.conduits,
+                    activity: act,
+                };
+                s.step(d, &mut ship);
+            }
+        }
+        fn live(&mut self, d: &PowerData, s: &PowerState, act: &BTreeMap<String, f64>) -> usize {
+            let ship = Ship {
+                integrity: &mut self.integrity,
+                node_health: &self.nodes,
+                conduits: &self.conduits,
+                activity: act,
+            };
+            s.live_runs(d, &ship)
+        }
+    }
+
+    fn conduit(d: &PowerData, id: &str) -> usize {
+        d.file.conduits.iter().position(|k| k.id == id).unwrap_or_else(|| panic!("no conduit {id}"))
+    }
+
+    #[test]
+    fn every_room_has_a_box_and_every_load_a_feeder_from_it() {
+        // power-routing 1: "a power grid needs to connect everything together".
+        let dd = crate::combat::data::DrillData::shipped();
+        let d = &dd.power;
+        for r in &dd.tern_layout.rooms {
+            assert!(d.file.nodes.iter().any(|n| n.compartment == r.id), "{} has no box", r.id);
+        }
+        for l in &d.file.loads {
+            let f = l.feeder_m.as_ref().unwrap_or_else(|| panic!("{} has no feeder", l.id));
+            let n = &d.file.nodes[d.node(&l.node).unwrap()];
+            assert_eq!(f[0], n.center_m, "{}'s feeder starts at its box", l.id);
+        }
+    }
+
+    #[test]
+    fn every_room_is_lit_at_cruise() {
+        // power-routing 1: each box lights its own room, down to a pod's 24 W; none is under the solve's tolerance.
+        let d = data();
+        let mut s = PowerState::new(&d);
+        run(&d, &mut s, &cruise(), 10.0);
+        for (i, l) in d.loads.iter().enumerate().filter(|(_, l)| l.id.starts_with("lights_")) {
+            assert!(s.alloc[i] > 0.0 && s.supply(i) > 0.99, "{} gets {} of {} MW", l.id, s.alloc[i], s.demand[i]);
+        }
+    }
+
+    #[test]
+    fn the_factory_configuration_is_under_the_protections_limit() {
+        let d = data();
+        let s = PowerState::new(&d);
+        let mut w = Whole::new(&d);
+        let live = w.live(&d, &s, &cruise());
+        assert_eq!(live, 39, "the trunks, the ties and one feed into every room");
+        assert!(live < d.file.routing.max_live_runs as usize);
+    }
+
+    #[test]
+    fn a_box_switched_off_darkens_what_it_feeds() {
+        let d = data();
+        let act = cruise();
+        let mut s = PowerState::new(&d);
+        let mut w = Whole::new(&d);
+        w.step(&d, &mut s, &act, 10.0);
+        let shields = d.load("shield_generator").unwrap();
+        assert!(s.supply(shields) > 0.99);
+        assert!(s.set_box(d.node("bx_shield_room").unwrap(), false));
+        w.step(&d, &mut s, &act, 1.0);
+        assert!(s.alloc[shields] < 1e-9, "the shield room's box is off: its generator has nothing");
+        s.set_box(d.node("bx_shield_room").unwrap(), true);
+        w.step(&d, &mut s, &act, 1.0);
+        assert!(s.supply(shields) > 0.99, "and on again it has its power back");
+    }
+
+    #[test]
+    fn a_spare_run_closed_routes_power_round_a_cut_feed() {
+        let d = data();
+        let act = cruise();
+        let mut s = PowerState::new(&d);
+        let mut w = Whole::new(&d);
+        let turret = d.load("turret_dorsal").unwrap();
+        w.conduits[conduit(&d, "r_dorsal_fwd")] = ConduitState { health: 0.0, severed: true, open: false };
+        w.step(&d, &mut s, &act, 2.0);
+        assert!(s.alloc[turret] < 1e-9, "the dorsal turret's only feed is cut");
+        assert!(s.set_conduit(conduit(&d, "r_dorsal_aft"), true), "close the spare through the aft passage");
+        w.step(&d, &mut s, &act, 2.0);
+        assert!(s.supply(turret) > 0.99, "the turret is fed from engineering the long way round");
+    }
+
+    #[test]
+    fn the_reroute_closes_the_spare_that_reaches_a_cut_off_box() {
+        let d = data();
+        let s = PowerState::new(&d);
+        let mut w = Whole::new(&d);
+        assert_eq!(s.reroute(&d, &w.nodes, &w.conduits), None, "nothing is cut off");
+        w.conduits[conduit(&d, "r_dorsal_fwd")] = ConduitState { health: 0.0, severed: true, open: false };
+        let k = s.reroute(&d, &w.nodes, &w.conduits).expect("the dorsal turret's room is cut off");
+        assert_eq!(d.file.conduits[k].id, "r_dorsal_aft", "the spare through the aft passage reaches it");
+    }
+
+    #[test]
+    fn too_many_live_runs_trip_the_grid_dark_then_it_comes_back_at_its_factory_settings() {
+        // The owner, 2026-10-11: "Too many conduits open can cause the ship to shut down temporarily and reset the
+        // configuration to factory settings".
+        let d = data();
+        let act = cruise();
+        let mut s = PowerState::new(&d);
+        let mut w = Whole::new(&d);
+        w.step(&d, &mut s, &act, 10.0);
+        let spares: Vec<usize> =
+            (0..d.file.conduits.len()).filter(|&k| d.file.conduits[k].factory_closed == Some(false)).collect();
+        let room = d.file.routing.max_live_runs as usize - w.live(&d, &s, &act);
+        for &k in &spares[..room] {
+            s.set_conduit(k, true);
+        }
+        w.step(&d, &mut s, &act, 1.0);
+        assert_eq!(s.trips, 0, "at the limit the grid holds");
+        s.set_conduit(spares[room], true);
+        w.step(&d, &mut s, &act, 0.2);
+        assert_eq!(s.trips, 1, "one run more trips it");
+        let (shields, aux) = (d.load("shield_generator").unwrap(), d.load("reactor_aux_p").unwrap());
+        assert!(s.alloc[shields] < 1e-9, "dark past the switchboards");
+        assert!(s.supply(aux) > 0.99, "the switchboards' own loads keep their power");
+        assert_eq!(s.reactor.state, ReactorState::Running, "so the reactor runs on");
+        assert!(!s.set_conduit(spares[0], false), "nothing can be switched while it is dark");
+        w.step(&d, &mut s, &act, d.file.routing.trip_dark_s + 0.5);
+        assert_eq!(s.trip_s, 0.0);
+        assert!(spares.iter().all(|&k| !s.conduit_breaker[k]), "every spare open again: the factory settings");
+        assert!(s.supply(shields) > 0.99, "and the ship has its power back");
     }
 
     #[test]

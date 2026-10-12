@@ -583,7 +583,7 @@ capacity stops startup with the file and field (CLAUDE.md 6.5).
 | Field | Meaning |
 | --- | --- |
 | `solve.substep_hz` | Sub-steps a second (10) |
-| `solve.quanta_rounds`, `solve.epsilon_mw`, `solve.dropout_resolves` | Rounds per phase (3), tolerance (0.0005 MW), re-solves after drop-out (1) |
+| `solve.quanta_rounds`, `solve.epsilon_mw`, `solve.dropout_resolves` | Rounds per phase (3), tolerance (0.000001 MW: a pod's lights draw 24 W, power-routing; was 0.0005 MW), re-solves after drop-out (1) |
 | `reactor.system` | The layout system it is (`reactor`) |
 | `reactor.thermal_rated_mw`, `conversion_efficiency` | 80 MW, 0.6 |
 | `reactor.throttle_min`, `throttle_max`, `throttle_default` | 0.1, 1.2, 1.0 |
@@ -688,20 +688,20 @@ in `docs/screenshots/mockups/`:
 | `power-severed` | The port trunk cut aft and midships in combat: the starboard trunk carrying the ship, the hangar and the port launch bay on emergency lighting |
 
 `docs/mockups/power-grid.html` (the owner, 2026-10-11: "Power grid should have a mock up as well. I would like to see
-the power grid in the ship floor plan and as a electric diagram"): the same simulation on the three deck plans and as a
-one-line electrical diagram, awaiting the owner's review (`power-grid-*.png`):
+the power grid in the ship floor plan and as a electric diagram"; since the same day Engineering's expanded schematic,
+`power-routing` design 3a), awaiting the owner's review (`power-grid-*.png`):
 
 | Shot | Shows |
 | --- | --- |
-| `power-grid-plan-cruise` | The three decks from above, A over B over C: every node, conduit and load where it stands; 22 of 22 MW, the reactor at 47 % |
-| `power-grid-plan-combat` | Red alert, 150 s into combat: the battery at its reserve, priority 3 shed, short loads hatched |
-| `power-grid-plan-trunk-cut` | `k_mid_p` severed and marked; the starboard chain carries the ship |
-| `power-grid-plan-deck-b-cut` | Deck B alone with the rooms named, the same cut |
-| `power-grid-diagram-cruise` | The one-line diagram: reactor, generator breakers, the main switchboard's sections and tie, the trunks, the forward switchboard, the emergency bus and the battery, every panel's loads as bars with their priority |
-| `power-grid-diagram-combat` | 48 of 58 MW: the shortfall hatched on the supply strip, shed loads struck |
-| `power-grid-diagram-switchboard-lost` | The port main switchboard section destroyed: its generator dead, the reactor held to 30 MW, the battery giving 26 MW |
-| `power-grid-diagram-both-cut` | Both midships trunks cut: the forward ship on `k_a_aft`'s 8 MW and the battery |
-| `power-grid-diagram-scram` | Scrammed: the battery at its 30 MW limit carrying the ship |
+| `power-grid-3d-cruise` | 3D: the decks pulled apart, a conduit box in every room, the runs, the spares dotted, every load's feeder in green; 39 of 42 runs live |
+| `power-grid-3d-rerouted` | The dorsal turret room's feed cut and the spare through the aft passage closed |
+| `power-grid-3d-tripped` | One run over the limit: TRIPPED, the ship dark past the switchboards, factory settings in 6 s |
+| `power-grid-3d-deck-c` | Deck C alone, the deck the owner looked at |
+| `power-grid-2d-cruise` | 2D: the simplified graph, a node a box, each box's loads as bars |
+| `power-grid-2d-rerouted` | The cut feed and the spare carrying the turret round the long way |
+| `power-grid-2d-tripped` | The trip in the graph |
+| `power-grid-phone-3d`, `power-grid-phone-2d` | Both views on a phone held upright |
+| `consoles-engineering`, `consoles-red-engineering` | Engineering's console: BUSES become SCHEMATIC, with EXPAND and the live runs |
 
 ## Open questions
 

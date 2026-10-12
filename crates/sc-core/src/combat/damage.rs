@@ -450,6 +450,8 @@ pub struct Conduit {
     pub route: Vec<usize>,
     /// Its run, corner to corner.
     pub path: Vec<DVec3>,
+    /// Open at its box in the factory configuration (a spare route, power-routing 1).
+    pub factory_open: bool,
 }
 
 /// A ship's insides, loaded once: hull sections, rooms (brush prisms), loads (system, centre, node), nodes,
@@ -525,6 +527,7 @@ impl ShipLayout {
                     between: k.between.clone(),
                     route: k.route.clone(),
                     path: k.path_m.clone(),
+                    factory_open: k.factory_closed == Some(false),
                 })
                 .collect(),
             teams: rules.teams.count,
@@ -561,6 +564,7 @@ impl ShipLayout {
                     between: k.between.clone(),
                     route: k.route.clone(),
                     path: k.path_m.clone(),
+                    factory_open: false,
                 })
                 .collect(),
             teams: f.teams.count,
@@ -672,6 +676,8 @@ pub struct ConduitState {
     pub health: f64,
     /// Cut through: it carries nothing, and no surge.
     pub severed: bool,
+    /// Open at its box (power-routing 1): it carries nothing, and no surge. The power grid's switch, mirrored here.
+    pub open: bool,
 }
 
 /// A hole a hit opened.
@@ -710,7 +716,11 @@ impl DamageState {
             armour: vec![100.0; l.spans() * FACES.len()],
             integrity: vec![100.0; l.loads.len()],
             node_health: vec![1.0; l.nodes.len()],
-            conduits: vec![ConduitState { health: 1.0, severed: false }; l.conduits.len()],
+            conduits: l
+                .conduits
+                .iter()
+                .map(|c| ConduitState { health: 1.0, severed: false, open: c.factory_open })
+                .collect(),
             fires: Vec::new(),
             breaches: Vec::new(),
             teams: vec![Team { at: l.home, job: None, eta_s: 0.0, working: false, work_s: 0.0 }; l.teams],
@@ -1040,7 +1050,7 @@ pub fn resolve_hit(
     for (ci, &ce) in cond_e.iter().enumerate() {
         let k = &mut s.conduits[ci];
         if ce >= cfg.conduits.sever_mj {
-            *k = ConduitState { health: 0.0, severed: true };
+            *k = ConduitState { health: 0.0, severed: true, open: k.open };
         } else if ce >= cfg.conduits.damage_mj {
             k.health = k.health.min(cfg.conduits.damaged_capacity);
         }
@@ -1121,7 +1131,7 @@ fn cascade(
                 }
                 for &ci in &l.nodes[n].conduits {
                     let far = if l.conduits[ci].ends[0] == n { l.conduits[ci].ends[1] } else { l.conduits[ci].ends[0] };
-                    if !s.conduits[ci].severed && !node_seen[far] {
+                    if !s.conduits[ci].severed && !s.conduits[ci].open && !node_seen[far] {
                         queue.push_back((Part::Node(far), next, step + 1));
                     }
                 }
@@ -1436,6 +1446,7 @@ struct ConduitIn {
     between: [String; 2],
     route: Vec<String>,
     path: Vec<[f64; 3]>,
+    factory_open: bool,
 }
 
 /// A ship's insides as read, before ids become indices.
@@ -1578,7 +1589,7 @@ fn build(p: Parts) -> Result<ShipLayout, DataError> {
         loads.push(Load { id: l.id, system: l.system, node, centre, room });
     }
     let mut conduits = Vec::with_capacity(p.conduits.len());
-    for (i, ConduitIn { id, between: [a, b], route, path }) in p.conduits.into_iter().enumerate() {
+    for (i, ConduitIn { id, between: [a, b], route, path, factory_open }) in p.conduits.into_iter().enumerate() {
         let field = format!("conduits.{i}");
         let ends =
             [node_of(&format!("{field}.between"), &a, &nodes)?, node_of(&format!("{field}.between"), &b, &nodes)?];
@@ -1595,7 +1606,7 @@ fn build(p: Parts) -> Result<ShipLayout, DataError> {
         for e in ends {
             nodes[e].conduits.push(i);
         }
-        conduits.push(Conduit { id, ends, route, path });
+        conduits.push(Conduit { id, ends, route, path, factory_open });
     }
     let home = rooms[room_of(tf, "teams.home", &p.home, &rooms)?].centre;
     Ok(ShipLayout { ship: p.ship, sections, rooms, loads, nodes, conduits, teams: p.teams as usize, home, lo, hi })
