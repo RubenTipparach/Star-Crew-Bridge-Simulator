@@ -94,6 +94,18 @@ schematic in full screen. They can toggle between 2d and 3d view. 2d is a simpli
   where they are. 2D: the simplified graph: boxes as nodes, runs as edges (spares dashed), each box's loads as bars
   under it, laid out for reading, not to scale. In both, a tap switches a box or a run, the live runs show against the
   limit, and a trip shows its countdown.
+- **The 2D graph by deck** (the owner: "group 2d view by deck", "show how each deck is connected to each other", "im
+  not sure i can read that 2d preiview you have there, too much overlappying", "when multiple lines cross the decks
+  dont hesitate to show multiple parallels"): a band a deck, A over B over C, each deck one row of its boxes in order
+  along the ship, evenly spaced so nothing covers anything. A run inside a deck is an arc over its row (a spare, open,
+  a dotted arc under it), higher the longer it spans, so arcs cross but never lie on one another; each box's runs
+  leave it from their own points along its edge. A run between decks is its own line from box to box across the gap,
+  side by side with the others; the gap names its two decks and counts their runs and how many carry power.
+- **One colour for electricity** (the owner: "black lines dont make sense to me at all, it should be lit up", "why not
+  just use all yellow or all green? its the same concept, electric flowing"): every run, feeder, closed switch, box
+  that is on and system with its power is yellow, wider the more a run carries, its dashes faster. The other colours
+  are for trouble only: orange hatched short, red cut or dropped, blue an open spare, grey nothing reaches it, a dim
+  outline switched off.
 - The full-screen schematic is `docs/mockups/power-grid.html`; the side panel is drawn in `consoles.html`. Both wait
   for the owner's approval before the engine builds them (CLAUDE.md 10).
 
