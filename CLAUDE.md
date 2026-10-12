@@ -15,7 +15,11 @@ taken from there says so. See `docs/analysis/` for what was learned from each.
 > into claude md"). The player is a body in the 3D ship and walks it to do everything: to a station
 > to sit and open its console, to a machine or box to repair it, to a fire to put it out, to injured
 > crew to pick them up, carry them to the medbay and heal them. Nothing is reached from a menu
-> without the walk, and every playtest shows the walking. It outranks every other rule here, every
+> without the walk, and every playtest shows the walking. **Maximum immersion** ("we must go for
+> maximumum immersion"): first person throughout, through the body's own eyes; the camera sits down
+> with the body and the console comes up from the desk it sat at, and it rises with the body when it
+> stands; the ship around the player keeps running and is seen, never a cut to a menu or a black
+> screen between walking and working. It outranks every other rule here, every
 > design and every plan; section 1 ("One game") and section 12 ("A playtest shows the game as it is
 > played") give its detail.
 
