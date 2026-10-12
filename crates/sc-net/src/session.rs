@@ -294,6 +294,16 @@ impl Session {
         self.net.send(Chan::Command, ClientMsg::Claim(s).encode());
     }
 
+    /// The player's walk put their body here (feet, ship frame, metres; facing, radians).
+    pub fn walked(&self, pos: [f32; 3], yaw: f32) {
+        self.net.send(Chan::Command, ClientMsg::Walk { pos, yaw }.encode());
+    }
+
+    /// Get up from the seat.
+    pub fn stand(&self) {
+        self.net.send(Chan::Command, ClientMsg::Stand.encode());
+    }
+
     /// Ready, or not.
     pub fn set_ready(&self, r: bool) {
         self.net.send(Chan::Command, ClientMsg::Ready(r).encode());

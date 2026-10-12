@@ -811,14 +811,23 @@ pub struct StationsFile {
     pub divisions: std::collections::BTreeMap<String, String>,
 }
 
-/// Getting in and out of a seat, seconds (bridge-stations 6: a 0.4 s seat snap either way).
+/// Getting in and out of a seat (bridge-stations 6: a 0.4 s seat snap either way; a player sits only standing within
+/// 1.5 m of the seat point).
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct SeatTimes {
-    /// Getting up.
+    /// Getting up, seconds.
     pub stand_s: f64,
-    /// Sitting down.
+    /// Sitting down, seconds.
     pub sit_s: f64,
+    /// How near the seat point a player's feet must be to sit, across the floor, metres.
+    pub reach_m: f64,
+    /// And how near in height: the seat's own deck, metres.
+    pub reach_dy_m: f64,
+    /// Where a body stands when it gets up: this far behind the seat point, metres.
+    pub stand_back_m: f64,
+    /// How long Stand is held to get up, seconds (a tap does nothing while seated).
+    pub stand_hold_s: f64,
 }
 
 /// A bot's posts (coop-drill design 9): the stations it fills, most important first, and how long a more important
@@ -844,6 +853,10 @@ impl Validate for StationsFile {
         c.equals("schema", &self.schema, "starcrew.stations/1");
         c.number("seats.stand_s", self.seats.stand_s, 0.0, 10.0);
         c.number("seats.sit_s", self.seats.sit_s, 0.0, 10.0);
+        c.number("seats.reach_m", self.seats.reach_m, 0.1, 5.0);
+        c.number("seats.reach_dy_m", self.seats.reach_dy_m, 0.1, 3.0);
+        c.number("seats.stand_back_m", self.seats.stand_back_m, 0.0, 3.0);
+        c.number("seats.stand_hold_s", self.seats.stand_hold_s, 0.0, 5.0);
         c.number("bot_posts.reassign_s", self.bot_posts.reassign_s, 0.0, 600.0);
         for s in crate::combat::Station::ALL {
             if !self.divisions.contains_key(s.id()) {

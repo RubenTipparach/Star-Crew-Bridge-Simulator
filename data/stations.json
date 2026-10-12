@@ -34,6 +34,6 @@
   },
   "seat_ids": { "laser_port": "comms", "laser_stbd": "flight_ops", "gunner": "gunner_dorsal" },
   "divisions": { "captain": "operations", "helm": "operations", "tactical": "operations", "laser_port": "operations", "laser_stbd": "operations", "gunner": "operations", "science": "science", "engineering": "engineering" },
-  "seats": { "stand_s": 0.4, "sit_s": 0.4 },
+  "seats": { "stand_s": 0.4, "sit_s": 0.4, "reach_m": 1.5, "reach_dy_m": 1.0, "stand_back_m": 0.7, "stand_hold_s": 0.5 },
   "bot_posts": { "posts": ["helm", "tactical", "engineering", "science", "captain"], "reassign_s": 5.0 }
 }

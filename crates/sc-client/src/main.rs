@@ -31,7 +31,9 @@ mod game_menu;
 mod hull;
 mod lobby;
 mod nameplate;
+mod onfoot;
 mod options;
+mod playtest;
 mod repairs;
 mod seat;
 mod ships3d;
@@ -43,11 +45,9 @@ use glam::{Mat4, Vec3};
 use sc_client::platform::{self, keys, App, Event, Flow, Frame, WindowConfig};
 use sc_core::bots::Crew;
 use sc_core::crew::CompanyData;
-use sc_core::deck::{DeckView, WalkDoor};
+use sc_core::deck::DeckView;
 use sc_core::exterior::{linear, normalized, ExteriorData};
-use sc_core::lift::Lift;
-use sc_core::nav::NavGrid;
-use sc_core::walk::{self, Body, Input, WalkData, WalkEntities, WalkWorld};
+use sc_core::walk::{Body, Input};
 use sc_render::{DeckParams, DeckProgram, Indices, Mesh, Renderer, SkyParams, Target, TextureArray};
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -130,69 +130,25 @@ const ROUTE: &[Leg] = &[
 /// Where the route must end, ship coordinates (deck C's spine aft of the trunk), and how near.
 const ROUTE_END: ([f32; 3], f32) = ([0.0, -3.5, 6.0], 0.3);
 
-/// A body on the decks and the eye that follows it.
+/// The tour's walk: a body on the decks (`onfoot`, the game's own) and the tour's bot crew.
 struct Walker {
-    world: WalkWorld,
-    data: WalkData,
-    body: Body,
-    eye_y: f32,
-    /// Each lift's car, and the floor height its room was drawn at in the deck.
-    lifts: Vec<(Lift, f32)>,
-    /// The doors, for the lift landings a call reaches.
-    doors: Vec<WalkDoor>,
-    /// The walk grid the bots path on (crew-npcs 7).
-    grid: NavGrid,
+    foot: onfoot::OnFoot,
     /// The bot crew.
     crew: Crew,
     /// Their departments.
     company: CompanyData,
-    /// The decks' floor heights, lowest first (C, B, A on the Tern), metres.
-    decks: Vec<f32>,
 }
 
-impl Walker {
-    /// E and Q for the lifts: in a car, up and down a deck; at a landing, E calls the car. True when a key was taken.
-    fn lift_keys(&mut self, up: bool, down: bool) -> bool {
-        if !up && !down {
-            return false;
-        }
-        let f = self.body.feet;
-        if let Some(i) = self.world.lift_index_at(f[0], f[2]) {
-            let l = &mut self.lifts[i].0;
-            if up {
-                l.up();
-            } else {
-                l.down();
-            }
-            return true;
-        }
-        let reach = self.data.lift_call_m as f32;
-        if let (true, Some((i, stop))) = (up, self.world.landing_near(f[0], f[1], f[2], reach, &self.doors)) {
-            let l = &mut self.lifts[i].0;
-            let (s, _) = l.nearest_stop(stop);
-            l.send(s);
-            return true;
-        }
-        false
+impl std::ops::Deref for Walker {
+    type Target = onfoot::OnFoot;
+    fn deref(&self) -> &onfoot::OnFoot {
+        &self.foot
     }
+}
 
-    /// What E and Q do where the body stands: in a lift's car, or at a landing.
-    fn prompt(&self) -> Option<&'static str> {
-        let f = self.body.feet;
-        if self.world.lift_index_at(f[0], f[2]).is_some() {
-            return Some("E  Up        Q  Down");
-        }
-        let reach = self.data.lift_call_m as f32;
-        self.world.landing_near(f[0], f[1], f[2], reach, &self.doors).map(|_| "E  Call lift")
-    }
-
-    /// Run the cars `dt` seconds and tell the walk world where they are.
-    fn step_lifts(&mut self, dt: f32) {
-        for (i, (l, _)) in self.lifts.iter_mut().enumerate() {
-            l.step(dt);
-            let open = (l.doors_open() > 0.9).then(|| l.stops()[l.stop()]);
-            self.world.set_lift(i, l.car_y, open);
-        }
+impl std::ops::DerefMut for Walker {
+    fn deref_mut(&mut self) -> &mut onfoot::OnFoot {
+        &mut self.foot
     }
 }
 
@@ -469,39 +425,9 @@ fn load_ship(
         triangles,
         t.layers
     );
-    // The walk world (deck-pipeline 13a) and the walk's numbers.
-    let text = std::fs::read_to_string("data/crew/walk.json").map_err(|e| format!("data/crew/walk.json: {e}"))?;
-    let data: WalkData = sc_core::data::parse("data/crew/walk.json", &text).map_err(|e| e.to_string())?;
+    // The walk world (deck-pipeline 13a), the walk's numbers, the lifts and the walk grid: the game's own walk.
+    let foot = onfoot::OnFoot::from_deck(&d)?;
     let w = &d.index.walk;
-    let ents = WalkEntities {
-        ladders: w.ladders.clone(),
-        hatches: w.hatches.clone(),
-        doors: w.doors.clone(),
-        lifts: w.lifts.clone(),
-    };
-    let t0 = std::time::Instant::now();
-    let world = WalkWorld::new(&d.walk_triangles(), &ents, &data)?;
-    println!(
-        "sc-client: walk world of {} triangles built in {:.0} ms; {} ladders, {} hatches, {} doors",
-        world.triangles,
-        t0.elapsed().as_secs_f64() * 1000.0,
-        w.ladders.len(),
-        w.hatches.len(),
-        w.doors.len()
-    );
-    let body = Body::at_start(&w.start, &data);
-    let eye_y = w.start.at_m[1];
-    let lifts = w.lifts.iter().map(|l| (Lift::new(&l.stops_m, l.speed_m_s, l.door_s, l.car_m), l.car_m)).collect();
-    // The bot crew (crew-npcs 7): the walk grid on the decks the lift stops at, the company from the session seed.
-    let t0 = std::time::Instant::now();
-    // `decks` stays with the walker: the map stacks them.
-    let (grid, decks) = NavGrid::for_ship(&world, w, &d.walk_triangles());
-    println!(
-        "sc-client: walk grid of {} walkable cells on {} decks built in {:.0} ms",
-        grid.walkable(),
-        decks.len(),
-        t0.elapsed().as_secs_f64() * 1000.0
-    );
     let read = |p: &str| std::fs::read_to_string(p).map_err(|e| format!("{p}: {e}"));
     let company: CompanyData =
         sc_core::data::parse("data/crew/company.json", &read("data/crew/company.json")?).map_err(|e| e.to_string())?;
@@ -509,7 +435,8 @@ fn load_ship(
         sc_core::data::parse("data/crew/names.json", &read("data/crew/names.json")?).map_err(|e| e.to_string())?;
     let rooms_at: Vec<(String, [f32; 3])> =
         d.index.compartments.iter().filter_map(|c| c.floor_m.map(|f| (c.id.clone(), f))).collect();
-    let crew = Crew::new(&company, company.bots(&names, session_seed, 1), &rooms_at, &grid, session_seed, &data);
+    let crew =
+        Crew::new(&company, company.bots(&names, session_seed, 1), &rooms_at, &foot.grid, session_seed, &foot.data);
     println!("sc-client: {} bot crew aboard", crew.bots.len());
     // A figure a division (crew-uniforms 3), by the division's index; the player's is index `divisions.len()`
     // (deckc's "player"), the map's own marker.
@@ -524,7 +451,7 @@ fn load_ship(
             i.map(|i| (i, m))
         })
         .collect();
-    let walker = Walker { world, data, body, eye_y, lifts, doors: w.doors.clone(), grid, crew, company, decks };
+    let walker = Walker { foot, crew, company };
     // The outside: its data, and the bow camera's target (no MSAA: it is shown a fifth of the screen's size).
     let [bw, bh] = ext.viewscreen.target_px;
     let outside = Outside { bow: r.make_target(bw, bh, 1), views: d.index.views.clone(), data: ext.clone() };
@@ -740,7 +667,7 @@ impl Client {
                     menu: true,
                     seed: l.seed(),
                     hand_test: hand_dir,
-                    look_in: None,
+                    playtest: false,
                 };
                 platform::hand_over(move |_| drill::DrillApp::new(args).map(|c| Box::new(c) as Box<dyn App>));
             }
@@ -930,7 +857,7 @@ impl Client {
     /// markers.
     fn hud(&mut self, f: &Frame) -> ui::UiFrame {
         let officer = self.officer.clone();
-        let prompt = self.walker.as_ref().filter(|_| !self.flying && self.map.is_none()).and_then(Walker::prompt);
+        let prompt = self.walker.as_ref().filter(|_| !self.flying && self.map.is_none()).and_then(|w| w.foot.prompt());
         let labels = std::mem::take(&mut self.map_labels);
         let map_deck = self.map.as_ref().map(|m| match m.deck {
             None => "ALL DECKS".to_owned(),
@@ -1006,25 +933,11 @@ impl Client {
     /// One step of the body from the keys (or the walk test's steering), and the camera on its eye.
     fn walk(&mut self, dt: f64, steer: Option<Input>) {
         let Some(w) = self.walker.as_mut() else { return };
-        let k = |c: u32| if self.held.contains(&c) { 1.0 } else { 0.0 };
-        let input = steer.unwrap_or(Input {
-            forward: k(keys::W) - k(keys::S),
-            right: k(keys::D) - k(keys::A),
-            yaw: self.cam.yaw,
-            run: self.held.contains(&keys::LSHIFT),
-            jump: self.pressed.contains(&keys::SPACE),
-            use_: self.pressed.contains(&keys::E) || self.pressed.contains(&keys::Q),
-            down: self.pressed.contains(&keys::Q),
-        });
-        // E and Q work the lift first (in its car, or at a landing); otherwise they climb.
-        let lift = steer.is_none() && w.lift_keys(self.pressed.contains(&keys::E), self.pressed.contains(&keys::Q));
-        let input = if lift { Input { use_: false, down: false, ..input } } else { input };
+        let lift_keys = steer.is_none();
+        let input = steer.unwrap_or_else(|| onfoot::OnFoot::keys_input(&self.held, &self.pressed, self.cam.yaw));
         self.pressed.clear();
-        w.step_lifts(dt as f32);
-        w.body.step(&w.world, &w.data, &input, dt);
-        w.eye_y = walk::eye_follow(w.eye_y, w.body.feet[1], dt as f32, &w.data, w.body.climbing());
-        let f = w.body.feet;
-        self.cam.pos = [f64::from(f[0]), f64::from(w.eye_y) + w.data.body.eye_m, f64::from(f[2])];
+        w.step(input, lift_keys, dt);
+        self.cam.pos = w.eye();
     }
 
     /// The walk test's next move: steering toward a leg's point, a use, or a shot. Returns the input, the shot
@@ -1215,7 +1128,8 @@ impl App for Client {
         }
         // The bot crew walk whatever the player is doing (walking, flying, a test's route).
         if let Some(w) = self.walker.as_mut() {
-            w.crew.step(&w.world, &w.grid, &w.data, dt as f32);
+            let Walker { foot, crew, .. } = w;
+            crew.step(&foot.world, &foot.grid, &foot.data, dt as f32);
         }
         let step = (dt as f32 / STATE_BLEND_S).min(1.0);
         for (k, w) in self.weights.iter_mut().enumerate() {
@@ -1619,7 +1533,7 @@ fn main() -> ExitCode {
             menu: false,
             seed: 0,
             hand_test: None,
-            look_in: None,
+            playtest: false,
         };
         return platform::run(cfg, move |gl| {
             println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);
@@ -1627,8 +1541,8 @@ fn main() -> ExitCode {
         });
     }
     // Single player without the menu (openspec/changes/single-player): `--solo [--station S] [--bot] [--shots DIR]
-    // [--look-in S]`;
-    // `--bot` lets the player's own station play itself, for captures of a whole round.
+    // [--playtest]`; `--bot` lets the player's own station play itself, for captures of a whole round; `--playtest`
+    // plays it on foot, a scripted player walking the ship to its stations (`playtest`, CLAUDE.md 12).
     if args.iter().any(|a| a == "--solo") {
         let station = args.iter().position(|a| a == "--station").and_then(|i| args.get(i + 1));
         let station = station.map(String::as_str).and_then(sc_core::combat::Station::from_id);
@@ -1653,11 +1567,7 @@ fn main() -> ExitCode {
             menu: false,
             seed: 7,
             hand_test: None,
-            look_in: args
-                .iter()
-                .position(|a| a == "--look-in")
-                .and_then(|i| args.get(i + 1))
-                .and_then(|v| v.parse::<f64>().ok()),
+            playtest: args.iter().any(|a| a == "--playtest"),
         };
         return platform::run(cfg, move |gl| {
             println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);

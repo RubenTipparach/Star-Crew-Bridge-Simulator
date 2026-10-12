@@ -25,6 +25,9 @@ pub const TICK_HZ: f64 = 30.0;
 pub const DT: f64 = 1.0 / TICK_HZ;
 /// The most players a drill takes (netcode-and-sessions section 8).
 pub const MAX_PLAYERS: usize = 8;
+/// The most one walk message may move a body, metres: a ladder's climb or a lift's run between two messages, never a
+/// jump across the ship (a guard on the wire, not a rule of the walk: the walk is `sc-core::walk`'s).
+pub const WALK_STEP_MAX_M: f32 = 6.0;
 /// The most bolts in flight at once; a turret that would spawn past it does not fire.
 pub const MAX_BOLTS: usize = 256;
 /// The most missiles in flight at once.
@@ -600,6 +603,8 @@ pub enum Refusal {
     NotCharged = 12,
     /// The system is too damaged to work (ship-damage 4).
     Damaged = 13,
+    /// The body is not standing within reach of that seat: walk there (bridge-stations 6).
+    TooFar = 14,
 }
 
 impl Refusal {
@@ -620,6 +625,7 @@ impl Refusal {
             Walking,
             NotCharged,
             Damaged,
+            TooFar,
         ]
         .into_iter()
         .find(|r| *r as u8 == v)
@@ -638,6 +644,7 @@ impl Refusal {
             Self::Full => "Crew is full",
             Self::WrongPhase => "Not now",
             Self::Walking => "On the way",
+            Self::TooFar => "Walk to the seat",
             Self::Damaged => "Damaged",
             Self::NotCharged => "Not charged",
         }
@@ -1263,7 +1270,12 @@ impl Drill {
         self.players.push(Player { slot, name, station: None, ready: false, bot });
         self.players.sort_by_key(|p| p.slot);
         if let Some(b) = &self.on_foot {
-            self.bodies.push(bodies::CrewBody::at_muster(slot, b));
+            let mut body = bodies::CrewBody::at_muster(slot, b);
+            // A player's body is theirs to walk (the law: one game, played on foot); a bot's follows its paths.
+            if !bot {
+                body.set_free();
+            }
+            self.bodies.push(body);
             self.bodies.sort_by_key(|b| b.slot);
         }
         Ok(slot)
@@ -1271,7 +1283,17 @@ impl Drill {
 
     /// Put the crew on foot on `bridge` (design 9): every body to the muster point, every station to automation.
     pub fn set_bridge(&mut self, bridge: bodies::Bridge) {
-        self.bodies = self.players.iter().map(|p| bodies::CrewBody::at_muster(p.slot, &bridge)).collect();
+        self.bodies = self
+            .players
+            .iter()
+            .map(|p| {
+                let mut b = bodies::CrewBody::at_muster(p.slot, &bridge);
+                if !p.bot {
+                    b.set_free();
+                }
+                b
+            })
+            .collect();
         for p in &mut self.players {
             p.station = None;
         }
@@ -1333,6 +1355,10 @@ impl Drill {
         if me_station == Some(s) {
             return Ok(());
         }
+        // A player sits only where they walked to: standing within reach of the seat, on its deck.
+        if body.free() && bridge.seat_within_reach(body.pos) != Some(s) {
+            return Err(Refusal::TooFar);
+        }
         if self.bodies.iter().any(|b| b.slot != slot && b.walking_to() == Some(s)) {
             return Err(Refusal::StationTaken);
         }
@@ -1356,6 +1382,42 @@ impl Drill {
         if let Some(b) = self.bodies.iter_mut().find(|b| b.slot == slot) {
             b.go(bodies::Spot::Seat(s), &bridge);
         }
+        Ok(())
+    }
+
+    /// A player gets up (hold E, bridge-stations 6 and 8.6): the body stands behind the seat and is theirs to walk;
+    /// the station goes to automation at once.
+    pub fn stand(&mut self, slot: u8) -> Result<(), Refusal> {
+        let Some(bridge) = self.on_foot.clone() else { return Err(Refusal::NoSuch) };
+        if self.players.iter().any(|p| p.slot == slot && p.bot) {
+            return Err(Refusal::NotYourStation);
+        }
+        let body = self.bodies.iter_mut().find(|b| b.slot == slot).ok_or(Refusal::NotYourStation)?;
+        if body.posture != bodies::Posture::Seated {
+            return Err(Refusal::Walking);
+        }
+        body.go(bodies::Spot::Free, &bridge);
+        if let Some(p) = self.player_mut(slot) {
+            p.station = None;
+        }
+        Ok(())
+    }
+
+    /// A player's walk moved their body (the client's walk on the walk world, `sc-core::walk`, is where it can go):
+    /// taken while the body is theirs to walk and the step is no jump across the ship.
+    pub fn walked(&mut self, slot: u8, pos: [f32; 3], yaw: f32) -> Result<(), Refusal> {
+        if !(pos.iter().all(|v| v.is_finite()) && yaw.is_finite()) {
+            return Err(Refusal::BadValue);
+        }
+        let body = self.bodies.iter_mut().find(|b| b.slot == slot).ok_or(Refusal::NotYourStation)?;
+        if !body.free() {
+            return Err(Refusal::Walking);
+        }
+        let d = pos.iter().zip(body.pos).map(|(a, b)| (a - b) * (a - b)).sum::<f32>().sqrt();
+        if d > WALK_STEP_MAX_M {
+            return Err(Refusal::BadValue);
+        }
+        body.walked(pos, yaw);
         Ok(())
     }
 
@@ -3604,22 +3666,58 @@ mod tests {
         panic!("it never happened");
     }
 
+    /// Walk a player's body to `to` as its client would: walk messages of at most 2 m, a tick apart.
+    fn walk_body(d: &mut Drill, slot: u8, to: [f32; 3]) {
+        for _ in 0..400 {
+            let at = d.body(slot).expect("a body").pos;
+            let v = [to[0] - at[0], to[1] - at[1], to[2] - at[2]];
+            let len = v.iter().map(|x| x * x).sum::<f32>().sqrt();
+            if len < 1e-4 {
+                return;
+            }
+            let k = (2.0 / len).min(1.0);
+            d.walked(slot, [at[0] + v[0] * k, at[1] + v[1] * k, at[2] + v[2] * k], 0.0).expect("a step of the walk");
+            d.step();
+        }
+        panic!("the walk never arrived");
+    }
+
+    /// The law (CLAUDE.md): a player walks to a station and sits there; nothing sits them from across the ship.
     #[test]
-    fn on_foot_a_claim_is_a_walk_and_the_station_is_automated_until_the_body_sits() {
+    fn a_player_walks_to_a_seat_sits_within_reach_and_stands_up_on_their_feet() {
         let mut d = on_foot();
         let a = d.join("Ens. Holt", false).expect("joins");
-        d.claim(a, Station::Helm).expect("a walk order");
-        assert_eq!(d.operator(Station::Helm), Operator::Auto, "automation holds helm while the body walks");
-        assert_eq!(d.body(a).and_then(|b| b.walking_to()), Some(Station::Helm));
-        assert_eq!(d.claim(a, Station::Tactical), Err(Refusal::Walking), "one walk at a time");
+        assert!(d.body(a).is_some_and(|b| b.free()), "a player joins on foot, theirs to walk");
+        assert_eq!(d.claim(a, Station::Helm), Err(Refusal::TooFar), "the muster place is metres from the helm seat");
+        assert_eq!(d.operator(Station::Helm), Operator::Auto);
+        let helm = [1.8, 3.5, 28.2];
+        walk_body(&mut d, a, [helm[0], helm[1], helm[2] - 1.2]);
+        d.claim(a, Station::Helm).expect("standing 1.2 m behind the seat, in reach");
         let t = walk_until(&mut d, |d| d.operator(Station::Helm) == Operator::Player(a));
-        assert!(t > 2.0 && t < 6.0, "the muster point to the helm seat is a few seconds' walk: {t}");
+        assert!(t < 1.5, "a step and the 0.4 s sit: {t}");
         assert_eq!(d.body(a).map(|b| b.posture), Some(bodies::Posture::Seated));
-        // Changing station: up, across, down.
-        d.claim(a, Station::Tactical).expect("a walk order");
+        assert_eq!(d.walked(a, helm, 0.0), Err(Refusal::Walking), "a seated body is not walked");
+        // Up: the station to automation at once, the body on its feet behind the seat.
+        d.stand(a).expect("stands");
         assert_eq!(d.operator(Station::Helm), Operator::Auto, "the seat left goes to automation at once");
-        let t = walk_until(&mut d, |d| d.operator(Station::Tactical) == Operator::Player(a));
-        assert!(t > 1.5 && t < 4.0, "seat to seat across the bridge: {t}");
+        walk_until(&mut d, |d| d.body(a).is_some_and(|b| b.free()));
+        let p = d.body(a).unwrap().pos;
+        assert!((p[2] - (helm[2] - 0.7)).abs() < 1e-4 && (p[0] - helm[0]).abs() < 1e-4, "behind the seat: {p:?}");
+        // Across the bridge to tactical: too far from where it stood up, in reach once walked there.
+        assert_eq!(d.claim(a, Station::Tactical), Err(Refusal::TooFar));
+        walk_body(&mut d, a, [-1.8, 3.5, 27.4]);
+        d.claim(a, Station::Tactical).expect("in reach");
+        walk_until(&mut d, |d| d.operator(Station::Tactical) == Operator::Player(a));
+    }
+
+    #[test]
+    fn a_walk_message_cannot_carry_a_body_across_the_ship() {
+        let mut d = on_foot();
+        let a = d.join("Ens. Holt", false).expect("joins");
+        let at = d.body(a).unwrap().pos;
+        assert_eq!(d.walked(a, [at[0], at[1], at[2] + 20.0], 0.0), Err(Refusal::BadValue), "20 m in one message");
+        assert_eq!(d.walked(a, [f32::NAN, 0.0, 0.0], 0.0), Err(Refusal::BadValue));
+        assert_eq!(d.body(a).unwrap().pos, at, "nothing moved");
     }
 
     #[test]
@@ -3630,12 +3728,15 @@ mod tests {
         let other = d.join("Ens. Rook", false).expect("joins");
         d.claim(bot, Station::Helm).expect("walks");
         walk_until(&mut d, |d| d.operator(Station::Helm) == Operator::Player(bot));
+        walk_body(&mut d, me, [1.8, 3.5, 27.0]);
+        walk_body(&mut d, other, [1.2, 3.5, 27.2]);
         d.claim(me, Station::Helm).expect("a player relieves a bot");
         assert!(d.drain_events().iter().any(|e| matches!(e, DrillEvent::Relieved { slot, .. } if *slot == bot)));
         assert_eq!(d.player(bot).and_then(|p| p.station), None, "the bot is up");
         assert_eq!(d.claim(other, Station::Helm), Err(Refusal::StationTaken), "someone is on the way");
         walk_until(&mut d, |d| d.operator(Station::Helm) == Operator::Player(me));
         assert_eq!(d.claim(other, Station::Helm), Err(Refusal::StationTaken), "a player's seat");
+        walk_until(&mut d, |d| d.body(bot).is_some_and(|b| !b.busy()));
         assert_eq!(d.claim(bot, Station::Helm), Err(Refusal::StationTaken), "a bot never relieves a player");
     }
 

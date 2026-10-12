@@ -844,14 +844,15 @@ impl Seat {
         self.obj_open = false;
     }
 
-    /// Open or close OBJECTIVES (the drill's `--look-in`).
-    pub fn show_objectives(&mut self, open: bool) {
-        self.obj_open = open;
-    }
-
-    /// Show the captain's CMD or SHIP page.
-    pub fn set_captain_tab(&mut self, tab: &str) {
-        self.cap_tab = tab.to_owned();
+    /// Open or close Engineering's schematic, in 3D or on the board, its 3D camera turned `turn_deg` from where it
+    /// opens (the playtest's player at the console, `crate::playtest`).
+    pub fn show_schematic(&mut self, open: bool, three_d: bool, turn_deg: f64) {
+        self.schem_open = open;
+        self.schem_3d = three_d;
+        self.schem_cam[0] = SCHEM_CAM[0] + turn_deg;
+        if open {
+            self.obj_open = false;
+        }
     }
 
     /// Whether the last `input` touched a control of the console: a press, a drag, a hold or a key, not the title
@@ -1608,6 +1609,26 @@ mod tests {
         hits.unwrap()
     }
 
+    /// The console's UI tessellated as the game draws it at 1920 x 1080 (1.5 pixels a point): its vertices and indices.
+    fn tessellated(v: &ConsoleView) -> (usize, usize) {
+        let ctx = egui::Context::default();
+        crate::vg::install_fonts(&ctx);
+        let mut raw = egui::RawInput {
+            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(1280.0, 720.0))),
+            ..Default::default()
+        };
+        if let Some(vp) = raw.viewports.get_mut(&raw.viewport_id) {
+            vp.native_pixels_per_point = Some(1.5);
+        }
+        let out = ctx.run(raw, |ctx| {
+            let _ = console::paint(ctx, v, false, None);
+        });
+        ctx.tessellate(out.shapes, out.pixels_per_point).iter().fold((0, 0), |a, p| match &p.primitive {
+            egui::epaint::Primitive::Mesh(m) => (a.0 + m.vertices.len(), a.1 + m.indices.len()),
+            _ => a,
+        })
+    }
+
     fn centre(hits: &Hits, want: &Hit) -> Pos2 {
         hits.regions
             .iter()
@@ -1809,6 +1830,37 @@ mod tests {
         assert!(v.eng.as_ref().unwrap().buses.thumb.is_some(), "the panel draws the board in small");
         b.press(Hit::Act(Act::SchemBoard), 4.3);
         assert!(!b.view(4.4).schem.unwrap().three_d, "a tap on the board in small opens it on the board");
+    }
+
+    /// A fight's frame of the schematic in 3D, every run live, passed the UI's first buffers and lost its status strip
+    /// and legend (power-routing 6.9; at 1920 x 1080 it took 207,882 indices of 196,608): each view stays under 60% of
+    /// them, room for the crew tabs and whatever is added.
+    #[test]
+    fn the_schematic_fits_the_uis_buffers_with_room_to_spare() {
+        let mut b = Bench::new(Station::Engineering);
+        for three_d in [true, false] {
+            b.seat.show_schematic(true, three_d, 0.0);
+            let v = b.view(1.0);
+            assert!(v.schem.as_ref().is_some_and(|s| s.live > 0), "a grid with live runs, the heaviest picture");
+            let (verts, idx) = tessellated(&v);
+            assert!(verts > 20_000, "the whole picture tessellated ({verts} vertices)");
+            let (vk, ik) =
+                (verts as f64 / sc_render::UI_MAX_VERTICES as f64, idx as f64 / sc_render::UI_MAX_INDICES as f64);
+            assert!(vk < 0.6 && ik < 0.6, "3D {three_d}: {verts} vertices ({vk:.2}), {idx} indices ({ik:.2})");
+        }
+    }
+
+    #[test]
+    fn the_playtest_opens_the_schematic_in_3d_and_on_the_board() {
+        let mut b = Bench::new(Station::Engineering);
+        b.seat.show_schematic(true, true, 12.0);
+        let sv = b.view(1.0).schem.expect("the tour opens the schematic");
+        assert!(sv.three_d);
+        assert!((sv.cam[0] - (SCHEM_CAM[0] + 12.0)).abs() < 1e-9, "turned from where it opens");
+        b.seat.show_schematic(true, false, 0.0);
+        assert!(!b.view(1.1).schem.unwrap().three_d, "then the board");
+        b.seat.show_schematic(false, false, 0.0);
+        assert!(b.view(1.2).schem.is_none(), "and back to the console's panels");
     }
 
     /// The schematic's states for the engine's shots: written as console fixtures (the engineering fixture with the

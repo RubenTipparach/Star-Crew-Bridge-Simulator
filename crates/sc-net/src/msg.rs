@@ -11,7 +11,7 @@ use sc_core::combat::bodies::Posture;
 use sc_core::combat::{self, Command, HelmMode, Outcome, Phase, PowerCmd, Refusal, Station, TubeState, TurretMode};
 
 /// The protocol's version; a Hello with another is refused.
-pub const PROTOCOL: u16 = 9;
+pub const PROTOCOL: u16 = 10;
 /// The longest unreliable message, so it is one SCTP chunk in one datagram (netcode-and-sessions section 2).
 pub const MAX_UNRELIABLE: usize = 1200;
 /// The longest string field, in bytes.
@@ -259,6 +259,16 @@ pub enum ClientMsg {
     Command(Command),
     /// A round-trip probe; the server echoes it.
     Ping(u32),
+    /// The player walked their body here (the law: one game, played on foot): its feet, ship frame, metres, and the
+    /// way it faces, radians about +Y. The client's walk on the walk world is where it can go; the drill checks the step.
+    Walk {
+        /// Feet, ship frame, metres.
+        pos: [f32; 3],
+        /// Facing, radians.
+        yaw: f32,
+    },
+    /// Get up from the seat (hold E): the body stands behind it, the station goes to automation.
+    Stand,
 }
 
 /// A client's message on the input channel: the helm's stick, newest wins.
@@ -1284,6 +1294,14 @@ impl ClientMsg {
                 w.u8(5);
                 w.u32(*t);
             }
+            Self::Walk { pos, yaw } => {
+                w.u8(6);
+                for v in pos {
+                    w.f32(f64::from(*v));
+                }
+                w.f32(f64::from(*yaw));
+            }
+            Self::Stand => w.u8(7),
         }
         w.0
     }
@@ -1302,6 +1320,15 @@ impl ClientMsg {
             3 => Self::Ready(r.bool()?),
             4 => Self::Command(read_command(&mut r)?),
             5 => Self::Ping(r.u32()?),
+            6 => {
+                // The Tern is about 80 m long; the guard is the ship frame's reach, not the ship's.
+                let mut pos = [0.0f32; 3];
+                for v in &mut pos {
+                    *v = r.f32(-1000.0, 1000.0)? as f32;
+                }
+                Self::Walk { pos, yaw: r.f32(-100.0, 100.0)? as f32 }
+            }
+            7 => Self::Stand,
             _ => return Err(DecodeError("no such client message")),
         };
         r.done()?;
@@ -2126,6 +2153,8 @@ mod tests {
             ClientMsg::Command(Command::Power(PowerCmd::Box(20, false))),
             ClientMsg::Command(Command::Power(PowerCmd::Run(40, true))),
             ClientMsg::Command(Command::Power(PowerCmd::Feed(15, true))),
+            ClientMsg::Walk { pos: [1.5, 3.5, -12.25], yaw: 0.5 },
+            ClientMsg::Stand,
         ];
         for m in msgs {
             assert_eq!(ClientMsg::decode(&m.encode()).unwrap(), m);

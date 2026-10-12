@@ -298,6 +298,17 @@ engine builds them as the mockups draw them (CLAUDE.md 10; `console-parity` 2).
   `the_schematic_views_its_shots_are_drawn_from`, which writes the engine's shots' fixtures when `SC_SCHEM_FIXTURES`
   names a folder (`docs/screenshots/engine/schematic/`). The SCHEMATIC panel passes the console parity check in all
   six Engineering states.
+- **6.8 Recording a fight (withdrawn 2026-10-12).** A `--look-in` tour that cut from console to console was built and
+  recorded, and rejected: "yourrv ideo is JUST the dashboards, which DOES NOT MEET MY REQUIREMENTS" (the law in
+  CLAUDE.md). Recordings are made with `--playtest`, a player walking to Engineering and sitting there
+  (`coop-drill` 9.2); the seat's `show_schematic` stays, for that player at the console.
+- **6.9 The UI's buffers (fixed 2026-10-12).** The first take showed the schematic in 3D with every run live losing its
+  status strip, legend, 3D / 2D switch and the status bar: the renderer's UI buffers held 65,536 vertices and 196,608
+  indices, and the 3D view alone took 53,853 and 207,882 at 1920 x 1080 (48,744 and 185,556 at 1280 x 720), so the
+  meshes painted after it were cut. Fewer round joins saved 2% (tried, not kept). The buffers are doubled
+  (`sc_render::UI_MAX_VERTICES` 131,072, `UI_MAX_INDICES` 393,216): 4.1 MB of the Pi 5's 64 MB of vertex and index
+  buffers, 2 MB more; the UI's triangles are what they were (about 69,000 at 1080p in 3D, of the frame's 200,000).
+  Test: `the_schematic_fits_the_uis_buffers_with_room_to_spare` (each view under 60% of both, at 1080p).
 
 ## Risks / Trade-offs
 

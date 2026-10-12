@@ -232,9 +232,12 @@ impl DrillServer {
                                 mission: self.drill.data.mission.id.clone(),
                             },
                         );
+                        // A bot walks to its station; a player on foot walks there themselves (the law), so a station
+                        // out of their reach is no refusal, only where they are headed.
                         if let Some(st) = station {
-                            if let Err(r) = self.drill.claim(s, st) {
-                                self.send(p, &ServerMsg::Refused(r));
+                            match self.drill.claim(s, st) {
+                                Ok(()) | Err(Refusal::TooFar) => {}
+                                Err(r) => self.send(p, &ServerMsg::Refused(r)),
                             }
                         }
                         self.crew_dirty = true;
@@ -277,6 +280,18 @@ impl DrillServer {
             }
             (_, ClientMsg::Ping(t)) => {
                 self.send(p, &ServerMsg::Pong(t));
+                None
+            }
+            // The player's own walk: refused steps are dropped (the next one from where the walk is will do).
+            (Some(s), ClientMsg::Walk { pos, yaw }) => {
+                let _ = self.drill.walked(s, pos, yaw);
+                None
+            }
+            (Some(s), ClientMsg::Stand) => {
+                match self.drill.stand(s) {
+                    Ok(()) => self.crew_dirty = true,
+                    Err(r) => self.send(p, &ServerMsg::Refused(r)),
+                }
                 None
             }
             _ => None,
