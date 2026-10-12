@@ -187,6 +187,22 @@ The owner: "I also want to visualize damage here too", "create a button to simul
   - The status strip counts the systems offline, by damage or for want of power, and names them on hover.
 - **Repairs** stay with the damage control mockups; Cruise brings the ship back new.
 
+### 3e. Subsystems colour-coded (owner, 2026-10-11)
+
+The owner: "color code subsystems: Life Support, weapons, shields, misc", "on the electrcial grid I mean".
+
+- **Four families, in data.** `data/ships/tern/subsystems.json` puts every system in one: life support (the life
+  support group: oxygen, scrubbers, air handler, thermal control), weapons (the turrets, the tubes and hoist, the laser
+  banks), shields (the shield generator) and misc (everything else: drive, sensors, comms, computer, gravity, bays,
+  medbay, cooling, the reactor's auxiliaries, lights). Green, violet, cyan and white: none of them a colour the
+  schematic already uses (yellow power, orange short, red trouble, steel blue an open spare, grey dead).
+- **What takes the colour.** A system: its light on its part in 2D, its marker in 3D, filled in its family's colour
+  (to its supply's level in 3D). Its supply moves to its rim: its family's colour with its power, orange short, red
+  dropped or cut off, grey when it wants nothing; damage stays the red rim and diamonds of 3d. A feeder (a box to one
+  system) in 3D carries its system's family colour while it carries power, so the grid shows where each family draws
+  from; dead or open it stays grey or blue. The runs between boxes carry every family's power and stay yellow (3a).
+- **The key.** In 3D the legend's SUBSYSTEMS rows; in 2D a key in silkscreen on the board, in deck C's empty aft corner.
+
 ### 4. What it does to the fight (2026-10-11, bots at Helm and Tactical, Engineering on automation, seeds 1-8)
 
 With the doorway runs alone: 2 victories (in 454 and 514 s), 3 defeats, 3 fights to the 600 s limit with the Hound at

@@ -1,0 +1,12 @@
+{
+  "schema": "starcrew.subsystems/1",
+  "status": "Proposed (2026-10-11) by openspec/changes/power-routing design 3e: the Tern's systems in four families, coloured on Engineering's power schematic (the owner: \"color code subsystems: Life Support, weapons, shields, misc\", \"on the electrcial grid I mean\"). Read by docs/mockups/power-grid.html; the engine's console will read it once the schematic is approved.",
+  "ship": "tern",
+  "units": "a family takes every load of the power.json groups it names and the loads it names; colour is #rrggbb. A load in no family is the default family's.",
+  "families": [
+    {"id": "life_support", "name": "Life support", "colour": "#3ddc84", "groups": ["life_support"], "loads": []},
+    {"id": "weapons", "name": "Weapons", "colour": "#b98cff", "groups": ["turrets", "tubes"], "loads": ["laser_port", "laser_stbd"]},
+    {"id": "shields", "name": "Shields", "colour": "#3fd2ff", "groups": ["shields"], "loads": []},
+    {"id": "misc", "name": "Misc", "colour": "#e6edf5", "groups": [], "loads": [], "default": true}
+  ]
+}

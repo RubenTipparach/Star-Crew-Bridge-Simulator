@@ -84,7 +84,7 @@
   #status svg { display: block; }
   #status .alert { color: #fff; background: #7a1218; border-radius: 4px; padding: 3px 7px; font-size: 13px; }
   .legend { position: fixed; left: 12px; z-index: 20; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
-    width: 316px; box-sizing: border-box; font: 600 13px/1.25 var(--font); }
+    width: 316px; box-sizing: border-box; font: 600 13px/1.25 var(--font); overflow-y: auto; }
   .legend .row { display: flex; align-items: center; gap: 8px; height: 22px; }
   .legend svg { flex: none; display: block; }
   .legend .h { color: var(--dim); font-size: 12px; letter-spacing: .06em; margin: 4px 0 2px; }
@@ -140,6 +140,11 @@
 {"schema":"starcrew.power-board/1","status":"Proposed (2026-10-11) by openspec/changes/power-routing design 3c: Engineering's 2D schematic drawn as a circuit board, every part and trace placed by hand. Read by docs/mockups/power-grid.html; the engine's console will read it once the schematic is approved.","ship":"tern","units":"layout points on the board; a part is [centre x, centre y, width, height]; a trace is its points from the pad on its first end (between[0], or the reactor or the battery for a generator or the battery's link) to the pad on its other, every segment at 0, 45 or 90 degrees","board":{"w":1640,"h":1120,"x":[120,1625],"chamfer":12},"layers":[{"deck":"A","y":[40,290]},{"deck":"B","y":[350,770]},{"deck":"C","y":[830,1110]}],"parts":{"bx_a_aft_passage":[410,170,96,36],"bx_pod_dorsal":[720,105,96,36],"bx_dorsal_turret":[720,170,96,36],"dp_a":[1000,170,112,44],"bx_ready_room":[1220,105,96,36],"bx_computer_core":[1220,235,96,36],"bx_bridge":[1400,170,96,36],"dp_drive":[275,560,112,44],"reactor":[410,560,76,76],"msb_p":[410,455,112,44],"msb_s":[410,665,112,44],"dp_hangar_p":[640,465,112,44],"dp_hangar_s":[640,655,112,44],"dp_port":[860,465,112,44],"dp_stbd":[860,655,112,44],"bx_pod_port":[830,395,96,36],"bx_pod_stbd":[830,725,96,36],"bx_quarters":[1080,465,96,36],"bx_mess":[1080,655,96,36],"dp_b_fwd":[1200,560,112,44],"bx_medbay":[1360,465,96,36],"bx_damage_control":[1360,655,96,36],"bx_torpedo_room":[1490,560,96,36],"bx_launch_bay_s":[610,895,96,36],"bx_launch_bay_p":[750,895,96,36],"fsb_s":[900,895,112,44],"fsb_p":[1050,895,112,44],"eb":[975,975,100,44],"battery":[975,1050,84,40],"dp_ls":[1120,975,112,44],"dp_c_fwd":[1260,895,112,44],"bx_shield_room":[1420,895,96,36],"bx_pod_ventral":[1290,1055,96,36],"bx_cargo":[1420,1055,96,36],"bx_magazine":[1550,975,96,36],"bx_airlock":[1550,1055,96,36]},"traces":{"r_dorsal_fwd":[[944,170],[768,170]],"r_dorsal_aft":[[672,170],[458,170]],"r_pod_dorsal":[[720,152],[720,123]],"r_hull_pod_dorsal_a_corridor":[[768,105],[965,105],[965,148]],"r_bridge_aft":[[1056,170],[1352,170]],"r_ready":[[1040,148],[1040,105],[1172,105]],"r_core":[[1040,192],[1040,235],[1172,235]],"r_wall_ready_room_bridge":[[1268,105],[1400,105],[1400,152]],"r_wall_bridge_computer_core":[[1400,188],[1400,235],[1268,235]],"r_aft_eng":[[410,188],[410,433]],"k_a_aft":[[995,148],[995,60],[155,60],[155,735],[410,735],[410,687]],"k_a_fwd":[[1015,192],[1015,265],[1590,265],[1590,845],[1080,845],[1080,873]],"r_ladder_ab":[[975,192],[975,405],[1200,405],[1200,538]],"rf_drive":[[372,560],[331,560]],"gen_p":[[410,522],[410,477]],"gen_s":[[410,598],[410,643]],"rf_hangar_p":[[437,533],[491,479],[584,479]],"rf_hangar_s":[[437,587],[491,641],[584,641]],"bt_main":[[354,445],[185,445],[185,675],[354,675]],"k_drive_p":[[354,465],[275,465],[275,538]],"k_drive_s":[[354,655],[275,655],[275,582]],"k_aft_p":[[466,455],[584,455]],"k_aft_s":[[466,665],[584,665]],"k_mid_p":[[696,465],[804,465]],"k_mid_s":[[696,655],[804,655]],"r_pod_port":[[830,443],[830,413]],"r_pod_stbd":[[830,677],[830,707]],"r_hull_pod_port_hangar":[[782,395],[660,395],[660,443]],"r_hull_pod_stbd_hangar":[[782,725],[660,725],[660,677]],"r_port_turret":[[880,487],[880,548],[1144,548]],"r_stbd_turret":[[880,633],[880,572],[1144,572]],"r_spine_hangar":[[1144,560],[620,560],[620,487]],"r_quarters":[[1170,538],[1170,465],[1128,465]],"r_mess":[[1170,582],[1170,655],[1128,655]],"r_medbay":[[1230,538],[1230,465],[1312,465]],"r_damage_control":[[1230,582],[1230,655],[1312,655]],"r_torpedo":[[1256,560],[1442,560]],"r_wall_quarters_medbay":[[1080,447],[1080,428],[1360,428],[1360,447]],"r_wall_mess_damage_control":[[1060,673],[1060,695],[1360,695],[1360,673]],"r_wall_medbay_torpedo_room":[[1408,465],[1490,465],[1490,542]],"r_wall_damage_control_torpedo_room":[[1408,655],[1490,655],[1490,578]],"k_fwd_p":[[916,477],[1000,477],[1000,873]],"k_fwd_s":[[900,677],[900,873]],"k_b_fwd":[[1200,582],[1200,745],[945,745],[945,873]],"r_bay_p":[[680,487],[680,515],[750,585],[750,877]],"r_bay_s":[[610,677],[610,877]],"r_ladder_bc":[[1256,575],[1290,575],[1290,873]],"r_hoist":[[1510,578],[1510,957]],"r_hangar_c":[[640,487],[640,530],[1270,530],[1270,873]],"r_wall_launch_bay_p_hangar":[[685,677],[685,905],[702,905]],"r_wall_launch_bay_s_hangar":[[600,487],[600,500],[545,555],[545,905],[562,905]],"r_deck_airlock_mess":[[1100,673],[1100,712],[1485,712],[1485,1015],[1580,1015],[1580,1037]],"bt_fwd":[[956,895],[994,895]],"eb_s":[[935,917],[935,953]],"eb_p":[[1015,917],[1015,953]],"battery_out":[[975,1030],[975,997]],"k_c_fwd_p":[[1106,895],[1204,895]],"k_c_fwd_s":[[844,905],[815,905],[815,1095],[1222,1095],[1222,917]],"k_ls_n":[[1085,917],[1085,953]],"k_ls_e":[[1025,975],[1064,975]],"r_shield":[[1316,885],[1372,885]],"r_pod_ventral":[[1265,917],[1265,1037]],"r_magazine":[[1316,907],[1340,907],[1368,935],[1550,935],[1550,957]],"r_cargo":[[1305,917],[1305,942],[1400,1037]],"r_airlock_inner":[[1468,1055],[1502,1055]],"r_life_support":[[1176,965],[1190,965],[1190,908],[1204,908]],"r_wall_shield_room_life_support":[[1150,997],[1150,1010],[1440,1010],[1440,913]],"r_deck_pod_ventral_shield_room":[[1325,1037],[1325,1022],[1460,1022],[1460,913]]}}
 </script>
 <!-- INLINE data:tern/power_board END -->
+<!-- INLINE data:tern/subsystems BEGIN -->
+<script id="ship-data-subsystems" type="application/json">
+{"schema":"starcrew.subsystems/1","status":"Proposed (2026-10-11) by openspec/changes/power-routing design 3e: the Tern's systems in four families, coloured on Engineering's power schematic (the owner: \"color code subsystems: Life Support, weapons, shields, misc\", \"on the electrcial grid I mean\"). Read by docs/mockups/power-grid.html; the engine's console will read it once the schematic is approved.","ship":"tern","units":"a family takes every load of the power.json groups it names and the loads it names; colour is #rrggbb. A load in no family is the default family's.","families":[{"id":"life_support","name":"Life support","colour":"#3ddc84","groups":["life_support"],"loads":[]},{"id":"weapons","name":"Weapons","colour":"#b98cff","groups":["turrets","tubes"],"loads":["laser_port","laser_stbd"]},{"id":"shields","name":"Shields","colour":"#3fd2ff","groups":["shields"],"loads":[]},{"id":"misc","name":"Misc","colour":"#e6edf5","groups":[],"loads":[],"default":true}]}
+</script>
+<!-- INLINE data:tern/subsystems END -->
 <!-- INLINE shipkit BEGIN -->
 <script>
 /*
@@ -4984,7 +4989,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 const K = window.ShipKit, SS = window.ShipSystems;
 const L = K.layout();
-const PW = K.shipData("power"), AT = K.shipData("atmosphere"), DM = K.shipData("damage"), BOARD = K.shipData("power_board");
+const PW = K.shipData("power"), AT = K.shipData("atmosphere"), DM = K.shipData("damage"), BOARD = K.shipData("power_board"), SUB = K.shipData("subsystems");
 const title = K.titleBlock({
   title: "Engineering: power schematic",
   subtitle: `${L.ship.name}: the expanded schematic of the Engineering console. 3D: the decks at their heights, a conduit box in every room, the runs between them and every load's feeder. 2D: the same grid as a circuit board, a board a deck, placed by hand. Tap a box or a run to switch it; too many live runs trip the grid`,
@@ -5096,6 +5101,18 @@ fresh();
 
 // What the page reads of the state (no formula of its own: the solve's demand, allocation and flows, the routing view).
 const LOADS = sim.loads, LIDX = sim.loadIdx;
+// Each system's family (power-routing 3e; the owner: "color code subsystems: Life Support, weapons, shields, misc"):
+// subsystems.json's, by its groups in power.json and its own loads; a system in none is the default family's.
+const FAMILY = {};
+{
+  const def = SUB.families.find((f) => f.default);
+  for (const l of LOADS) FAMILY[l.id] = def;
+  for (const f of SUB.families) {
+    for (const g of f.groups) for (const id of (PW.groups.find((x) => x.id === g) || { loads: [] }).loads) FAMILY[id] = f;
+    for (const id of f.loads) FAMILY[id] = f;
+  }
+}
+const famOf = (i) => FAMILY[LOADS[i].id];
 const FEED_LOADS = LOADS.map((l, i) => i).filter((i) => Array.isArray(LOADS[i].feeder_m));
 /** The systems with a second feed (power-routing 1: every system wired to two panels). */
 const ALT_LOADS = LOADS.map((l, i) => i).filter((i) => Array.isArray(LOADS[i].alt_feeder_m));
@@ -5112,6 +5129,12 @@ function loadState(n) {
   if (n.dropped || n.supply < 0.005) return { col: C.danger, mode: 2, fill: 0 };
   if (n.supply < 0.98) return { col: C.emergency, mode: 1, fill: n.supply };
   return { col: C.power, mode: 0, fill: 1 };
+}
+/** A system's look (power-routing 3e): filled in its family's colour, its supply on its rim (its family's colour
+ *  with its power, orange short, red dropped or cut off, grey wanting nothing). */
+function sysLook(i) {
+  const s = loadState(loadNow(i)), fam = famOf(i).colour;
+  return { fam, rim: s.col === C.power ? fam : s.col, mode: s.mode, fill: s.fill, hollow: s.mode === 2 };
 }
 const nodeState = (id) => sim.nodeView(id);
 /** A box as a switch: filled on (power colour when it carries power, grey when nothing reaches it), hollow off,
@@ -5252,6 +5275,8 @@ function legend() {
   const sw = (inner, w = 34) => `<svg width="${w}" height="18" viewBox="0 0 ${w} 18">${inner}</svg>`;
   const row = (icon, t) => `<div class="row">${icon}<span>${t}</span></div>`;
   const dot = (fill, col, hatch) => sw(`<circle cx="17" cy="9" r="7" fill="${C.bg}" stroke="${col}" stroke-width="2"/>` + (fill ? `<path d="M10 ${9 + 7 - 14 * fill}h14v${14 * fill}h-14z" fill="${col}" clip-path="circle(7px at 17px 9px)"/>` : "") + (hatch ? `<path d="M12 4l4 0M11 7l8 0" stroke="${col}" stroke-width="1.5" opacity="0.6"/>` : ""));
+  const misc = SUB.families.find((f) => f.default).colour;
+  const sysDot = (fill, rim, hatch) => sw(`<circle cx="17" cy="9" r="7" fill="${C.bg}" stroke="${rim}" stroke-width="2.5"/>` + (fill ? `<path d="M10 ${9 + 7 - 14 * fill}h14v${14 * fill}h-14z" fill="${misc}" clip-path="circle(6px at 17px 9px)"/>` : `<circle cx="17" cy="9" r="2.4" fill="${misc}"/>`) + (hatch ? `<path d="M12 4l4 0M11 7l8 0" stroke="${misc}" stroke-width="1.5" opacity="0.6"/>` : ""));
   document.getElementById("legend").innerHTML =
     `<div class="h">BOXES (tap to switch)</div>` +
     row(sw(`<rect x="9" y="1" width="16" height="16" fill="${C.power}" stroke="${C.power}"/>`), "Switchboard or panel, on") +
@@ -5264,9 +5289,11 @@ function legend() {
     row(sw(`<path d="M1 9h32" stroke="${C.spare}" stroke-width="3" stroke-dasharray="3 6"/>`), "Open: a spare route, or switched off") +
     row(sw(`<path d="M1 9h32" stroke="${C.faint}" stroke-width="3" stroke-dasharray="3 3"/>`), "Dead: nothing reaches it") +
     row(sw(`<path d="M1 9h32" stroke="${C.danger}" stroke-width="4"/><path d="M13 3l8 12M21 3l-8 12" stroke="#fff" stroke-width="2"/>`), "Severed") +
-    row(sw(`<path d="M1 9h32" stroke="${C.power}" stroke-width="1.5"/>`), "Feeder: a box to its system") +
-    `<div class="h">LOADS</div>` +
-    row(dot(1, C.power), "Has its power") + row(dot(0.45, C.emergency, true), "Short: filled to its share") + row(dot(0, C.danger), "Dropped or cut off") + row(dot(0, C.faint), "Off: nothing wanted now") +
+    row(sw(`<path d="M1 9h32" stroke="${SUB.families[0].colour}" stroke-width="1.5"/>`), "Feeder: a box to its system, in its colour") +
+    `<div class="h">SUBSYSTEMS (filled in their colour)</div>` +
+    [0, 2].map((k) => `<div class="row">${SUB.families.slice(k, k + 2).map((f) => `${sw(`<circle cx="17" cy="9" r="7" fill="${f.colour}"/>`)}<span style="width:104px">${esc(f.name)}</span>`).join("")}</div>`).join("") +
+    `<div class="h">SUPPLY (a system's rim)</div>` +
+    row(sysDot(1, C.emergency, true), "Short: filled to its share") + row(sysDot(0, C.danger), "Dropped or cut off") + row(sysDot(0, C.faint), "Off: nothing wanted now") +
     `<div class="h">DAMAGE (Hit room)</div>` +
     row(sw(`<circle cx="17" cy="9" r="7" fill="none" stroke="${C.danger}" stroke-width="2.5"/>`), "Hit: where it came through the hull") +
     row(sw(`<rect x="10" y="2" width="14" height="14" fill="${C.power}" stroke="${C.danger}" stroke-width="3"/><circle cx="29" cy="9" r="4" fill="${C.power}" stroke="${C.danger}" stroke-width="2"/>`), "Box or system damaged: a red rim") +
@@ -5667,7 +5694,8 @@ function updatePlan() {
   }
   for (const [list, alt] of [[FEED_LOADS, false], [ALT_LOADS, true]]) for (const i of list) {
     const f = feederNow(i, alt), s = loadState(loadNow(i));
-    const col = f.state === "open" ? C.spare : f.state === "dead" ? C.faint : f.state === "idle" ? C.power : s.col;
+    // A feeder in its system's family colour while it carries (or could carry) power (power-routing 3e).
+    const col = f.state === "open" ? C.spare : f.state === "dead" ? C.faint : f.state === "idle" || s.col === C.power ? famOf(i).colour : s.col;
     paint(f.id, col, STATE_N[f.state], 1, f.state === "live" ? clamp(f.mw / f.rated, 0.05, 1) : 0);
   }
   for (const k of ["aCol", "aState", "aDir", "aRate"]) ga[k].needsUpdate = true;
@@ -5679,7 +5707,7 @@ function updatePlan() {
       // Damage (power-routing 3d): damaged a red rim round its supply; offline a red diamond, crossed when destroyed.
       const s = loadState(loadNow(m.i)), ds = sim.damageState(st.integrity[m.i]);
       if (ds === "disabled" || ds === "destroyed") setMark(k, m.at, m.size * 1.2, C.danger, 0, ds === "destroyed" ? 3 : 2, { shape: 2 });
-      else setMark(k, m.at, m.size, s.col, s.fill, s.mode, { shape: 1, rim: ds === "damaged" ? C.danger : s.col });
+      else { const y = sysLook(m.i); setMark(k, m.at, m.size, y.fam, y.fill, y.mode, { shape: 1, rim: ds === "damaged" ? C.danger : y.rim }); }
     }
     else if (m.kind === "cut") {
       const c = st.conduit[m.id];
@@ -5826,7 +5854,7 @@ function tipFor(kind, id, i) {
   if (kind === "load" || kind === "feeder") {
     const l = LOADS[i], n = loadNow(i);
     const from = sim.nodeOf(i), other = from === l.node ? l.alt_node : l.node;
-    return `<div class="n">${esc(l.name)}${kind === "feeder" ? ": feeder" : ""}</div>` + line(`priority ${n.prio}${n.prio === 0 ? " (never shed)" : ""}, fed from ${esc(SHORT[from] || from)}`) +
+    return `<div class="n">${esc(l.name)}${kind === "feeder" ? ": feeder" : ""}</div>` + line(`${esc(famOf(i).name)}, priority ${n.prio}${n.prio === 0 ? " (never shed)" : ""}, fed from ${esc(SHORT[from] || from)}`) +
       line(n.off ? "off: nothing wanted" : `${mw(n.got)} of ${mw(n.want)} (${pct(n.supply)})${n.dropped ? ", dropped" : ""}`) + line(`integrity ${Math.round(st.integrity[i])}%, ${damageWord(i)}${n.open ? ", breaker open" : ""}`) +
       (other ? line(`tap to swap its feed to ${esc(SHORT[other] || other)}`) : "");
   }
@@ -6076,13 +6104,13 @@ function drawPart(id) {
   ON[id].forEach((i, k) => {
     const l = LOADS[i], ln = loadNow(i), ls = loadState(ln), x = p.x0 + 12 + k * 10, y = p.y1 - 9;
     const other = l.alt_node ? (onAlt(i) ? l.node : l.alt_node) : null, from = sim.nodeOf(i);
-    const fill = ln.off ? PCB.hole : ls.mode === 2 ? PCB.hole : ls.col;
+    const fam = famOf(i), hollow = ln.off || ls.mode === 2, fill = hollow ? PCB.hole : fam.colour, ring = ls.col === C.power ? fam.colour : ls.col;
     const ds = sim.damageState(st.integrity[i]), down = ds === "disabled" || ds === "destroyed";
-    s += `<g${tipA(`${l.name}: ${ln.off ? "off" : `${mw(ln.got)} of ${mw(ln.want)}`}${ln.dropped ? ", dropped" : ""}, fed from ${SHORT[from] || from}, ${damageWord(i)}${other ? `; tap to swap to ${SHORT[other] || other}` : ""}`)}${other ? actA("feed:" + l.id) + ' class="tap"' : ""}>`;
+    s += `<g${tipA(`${l.name} (${fam.name}): ${ln.off ? "off" : `${mw(ln.got)} of ${mw(ln.want)}`}${ln.dropped ? ", dropped" : ""}, fed from ${SHORT[from] || from}, ${damageWord(i)}${other ? `; tap to swap to ${SHORT[other] || other}` : ""}`)}${other ? actA("feed:" + l.id) + ' class="tap"' : ""}>`;
     s += `<rect x="${x - 5}" y="${y - 5}" width="10" height="10" fill="transparent"/>`;
     // Damage (power-routing 3d): offline a red diamond (crossed destroyed); damaged a red rim round its supply.
     if (down) s += `<path d="M${x} ${y - 4.6}l4.6 4.6-4.6 4.6-4.6-4.6z" fill="${PCB.hole}" stroke="${C.danger}" stroke-width="1.4"/>` + (ds === "destroyed" ? `<path d="M${x - 2.2} ${y - 2.2}l4.4 4.4M${x + 2.2} ${y - 2.2}l-4.4 4.4" stroke="${C.danger}" stroke-width="1.2"/>` : "");
-    else s += `<circle cx="${x}" cy="${y}" r="3.4" fill="${fill}" stroke="${ds === "damaged" ? C.danger : ls.col}" stroke-width="${ds === "damaged" ? 1.8 : 1.2}"/>`;
+    else s += `<circle cx="${x}" cy="${y}" r="3.4" fill="${fill}" stroke="${ds === "damaged" ? C.danger : ring}" stroke-width="${ds === "damaged" || ring !== fam.colour ? 1.8 : 1.2}"/>` + (hollow ? `<circle cx="${x}" cy="${y}" r="1.3" fill="${fam.colour}"/>` : "");
     if (onAlt(i)) s += `<circle cx="${x}" cy="${y}" r="5.4" fill="none" stroke="${PCB.bottom}" stroke-width="1.2"/>`;
     s += "</g>";
   });
@@ -6181,6 +6209,22 @@ function drawBoards() {
   }
   return s;
 }
+/** The subsystems' key in silkscreen (power-routing 3e), in deck C's empty aft corner: each family's light, and what a
+ *  light's rim says. */
+function drawKey() {
+  const C3 = BOARD.layers.find((l) => l.deck === "C"), x0 = BOARD.board.x[0] + 52, y0 = C3.y[0] + 46;
+  let s = `<rect x="${x0 - 16}" y="${y0 - 24}" width="380" height="132" rx="4" fill="none" stroke="${PCB.silkDim}" stroke-width="1.2" stroke-dasharray="4 3"/>`;
+  s += txt(x0, y0, 13, PCB.silk, "SUBSYSTEMS", { ls: 1.6 });
+  SUB.families.forEach((f, k) => {
+    const x = x0 + (k % 2) * 180, y = y0 + 30 + Math.floor(k / 2) * 28;
+    s += `<circle cx="${x + 7}" cy="${y - 4}" r="7" fill="${f.colour}"/>` + txt(x + 22, y + 1, 13, PCB.silk, f.name.toUpperCase(), { ls: 1 });
+  });
+  const y = y0 + 96;
+  s += `<circle cx="${x0 + 7}" cy="${y - 4}" r="6" fill="${PCB.hole}" stroke="${C.emergency}" stroke-width="2"/><circle cx="${x0 + 7}" cy="${y - 4}" r="2.2" fill="${PCB.silk}"/>` + txt(x0 + 20, y + 1, 11, PCB.silkDim, "SHORT", { ls: 1 });
+  s += `<circle cx="${x0 + 90}" cy="${y - 4}" r="6" fill="${PCB.hole}" stroke="${C.danger}" stroke-width="2"/><circle cx="${x0 + 90}" cy="${y - 4}" r="2.2" fill="${PCB.silk}"/>` + txt(x0 + 103, y + 1, 11, PCB.silkDim, "NO POWER", { ls: 1 });
+  s += `<path d="M${x0 + 192} ${y - 10}l6 6-6 6-6-6z" fill="${PCB.hole}" stroke="${C.danger}" stroke-width="1.6"/>` + txt(x0 + 206, y + 1, 11, PCB.silkDim, "OFFLINE (DAMAGE)", { ls: 1 });
+  return s;
+}
 /** The strip along the top: power delivered from the reactor and the battery against what the loads want. */
 function drawSupply() {
   let want = 0, got = 0;
@@ -6206,7 +6250,7 @@ function drawDiagram(dt) {
   if (st.alert === "red_alert") s += `<rect width="${DW}" height="${DH}" fill="url(#redvig)"/>`;
   s += drawSupply() + drawBoards();
   for (const Ly of BOARD.layers) s += `<rect x="${BOARD.board.x[0]}" y="${Ly.y[0]}" width="${BOARD.board.x[1] - BOARD.board.x[0]}" height="${Ly.y[1] - Ly.y[0]}" rx="14" fill="url(#pcbgrid)"/>`;
-  s += drawBurns();
+  s += drawKey() + drawBurns();
   // The bottom layer first (the spares), then the copper on top, the heavier last so it lies over the lighter.
   const order = EDGE_IDS.filter((id) => PATH[id]).sort((a, b) => (isSpare(b) - isSpare(a)) || (edgeNow(a).rated - edgeNow(b).rated));
   // The lit trace last, over everything it crosses.
@@ -6301,6 +6345,7 @@ function placeLegend() {
   const r = title.getBoundingClientRect(), hidden = getComputedStyle(title).display === "none" || r.height === 0;
   STATUS.style.top = (hidden ? BH + 10 : r.bottom + 8) + "px";
   lg.style.top = (STATUS.getBoundingClientRect().bottom + 8) + "px";
+  lg.style.maxHeight = Math.max(120, innerHeight - STATUS.getBoundingClientRect().bottom - 20) + "px";
 }
 // COLLAPSE: on the console this schematic folds back into Engineering's side panel; here it says so.
 COLLAPSE.addEventListener("click", (e) => {
