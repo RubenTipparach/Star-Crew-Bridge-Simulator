@@ -133,6 +133,25 @@ separate part step, and a destroyed system's 6 rebuild steps then 3):
 | Disabled (under 25%) | 4, the first opening with the spare part | 1 to 4 |
 | Destroyed (0%) | 6, the first opening with the parts | 1 to 6 |
 
+## 2a. Panel boxes (owner, 2026-10-12)
+
+The owner: "Do you have panel box repairs mini games? We probably need like three mock that up first if don't have
+fixing panel box stuff". `power-routing` put a conduit box in every room and made every box, panel and switchboard
+section a node a hit damages or destroys (`ship-damage` 2, `damage.json` `nodes`). The switchboard's breakers game
+fixes the main switchboard; nothing fixed the rest. Three games, one for each kind of box, so every damaged node has
+its own repair (recommendation taken, ask only with screenshots: one game a kind, the main switchboard's sections
+keep the breakers game):
+
+| Box (where) | The game | A round is | Fumble and hazard | Each level turns up |
+| --- | --- | --- | --- | --- |
+| **Conduit box** (every room's, `bx_`) | Terminal block: the box's burnt terminal strip, rebuilt. Land each wire tail in the terminal its sleeve numbers (colour helps at first), then torque each terminal's screw into the green band of the wrench's gauge | Every wire landed and torqued | A wire in the wrong terminal: a spark, 5 HP. A screw over the red: stripped, it is redone | Wires 4, one more a level to 8; colours repeat from level 3 (read the sleeve); the green band 18% wide, 2% narrower a level (floor 8%); the gauge faster |
+| **Distribution panel** (`dp_`: drive, hangars, turrets, decks A, B forward, C forward, life support) | Load restore: main switch up, then close the panel's ways one at a time, each with its inrush spike on the ammeter, never past the trip line; wait for a spike to settle before the next | Every good way closed (from level 3 a burnt way is tagged out, not closed) | Over the trip line: the panel trips, every way opens. Closing the burnt way: a spark, 5 HP | Ways 4, one more a level to 8; inrush 2.0 times the way's load, +0.3 a level; settling 0.8 s, +0.2 a level; a burnt way from level 3 |
+| **Forward switchboard and the emergency bus** (`fsb_`, `eb`) | Insulation test: isolate the bus and see it dead, test each outgoing way with the insulation tester (probe on, hold TEST until the needle settles), scrub the carbon tracking off the way that reads low (each track fades over a few strokes), test it again, close up | Every way reading high, the bus closed | Testing before the bus is dead: a shock, 5 HP. Closing up on a low reading: a flash, 5 HP | Ways 5, one more a level to 8; two faults from level 3; the needle steadier later (a longer hold); more and longer tracks, each a stroke or so more to scrub |
+
+Their spare parts (a disabled box's first round): a new terminal strip clipped onto the rail; a new main switch
+fitted in its slot; a new bushing pressed onto the bus. The engine ports them after the owner approves the mockups
+(`repairs.html`, Engineering column), with their `data/repairs/<id>.json` like the others.
+
 ## 3. The medic's treatment
 
 The medic (`medical-officer`) treats a body on a bed or in the field on one screen:
