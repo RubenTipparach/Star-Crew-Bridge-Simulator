@@ -1,0 +1,15 @@
+{
+  "schema": "starcrew.crew-shoulder-review/1",
+  "_doc": "Independent shoulder stress poses, applied to the imported game rig. Angles are degrees about armature rest axes. These are validation poses, not exported animation clips.",
+  "max_contour_turn_deg": 75,
+  "contour_height_fraction": [0.76, 0.98],
+  "contour_width_fraction": [0.45, 1.0],
+  "poses": [
+    {"name":"Lowered","bones":{"upper_arm_L":[0,15,0],"upper_arm_R":[0,-15,0]},"curl_deg":0},
+    {"name":"Rest","bones":{},"curl_deg":0},
+    {"name":"Half raised","bones":{"clavicle_L":[0,-5,0],"clavicle_R":[0,5,0],"upper_arm_L":[0,-20,0],"upper_arm_R":[0,20,0]},"curl_deg":0},
+    {"name":"Horizontal","bones":{"clavicle_L":[0,-10,0],"clavicle_R":[0,10,0],"upper_arm_L":[0,-60,0],"upper_arm_R":[0,60,0]},"curl_deg":0},
+    {"name":"Raised","bones":{"clavicle_L":[0,-20,0],"clavicle_R":[0,20,0],"upper_arm_L":[0,-94,0],"upper_arm_R":[0,94,0]},"curl_deg":0},
+    {"name":"Forward","bones":{"upper_arm_L":[-80,0,0],"upper_arm_R":[-80,0,0],"forearm_L":[-10,0,0],"forearm_R":[-10,0,0]},"curl_deg":0}
+  ]
+}

@@ -1,156 +1,156 @@
 {
   "schema": "starcrew.crew-viewer-captures/1",
   "page": "docs/mockups/crew-characters.html",
-  "page_sha256": "af3a6fe769e1a693a20dd2ba2e043fb582c84b13f49a6ac3bfb07afee9c9c006",
+  "page_sha256": "f0534a92a360b69f23f5d1a9400794316683344fa138b4fe117646d9c666cde1",
   "owner_approval": "pending",
   "renderer": "headless Chromium SwiftShader",
   "pi_measurement": false,
   "models": {
-    "command_01": "0d3ae4b10fbe55333a929d28f0b68b966746cabbd1a7b635bf0bd17c50e39e7c",
-    "command_02": "234c5ed1b22de62a50e1e7f8b66f5e667f29b2fd529cc589bb3045bb49479c63",
-    "engineering_01": "7f4c4b7850e2f0458bb85d2f448c43e1c27809c92570610a79dff44fa66cc6f4",
-    "engineering_02": "0b4331b95931b6090ed405c1d7a47312151f9caa0af9438b29b747d578fb963c",
-    "deckhands_01": "825af535263bd332ca84e0bde4f3bc41b2dd0b0df8679fab438eae63868b32d9",
-    "deckhands_02": "f28833efab1b50ba959aa3688f37a119b967de9b82034d400e0fcd09cf4351ca",
-    "medical_01": "b54529e379310174cb6d7f5befcead8623cbb4fbe5a545e683a6b79ffe216a18",
-    "medical_02": "c7f9c0bc93395c447a10a0b30b134f2ab77853c17aa2f6f0aa57802f4c4b245f",
-    "security_01": "1cd8be937efb1a95922df66fa3b85b0c6951a3288fa23324f68b9f13db70e6fc",
-    "security_02": "f28d2b752d86eb9f9f8235a70aef7ceed1ba43e18514a5da3a7188f1f1f6e81b",
-    "galley_01": "3c44b4f73bb2f58378d51dcd8e22c1355ac3355ab8ee7fdb0d63210860b5285e",
-    "galley_02": "0d72942bc15936896c3c90fd530d770e57dd03f8e335e26255a2e0261218b066"
+    "command_01": "47d866b8884f588d46866ddb9856b2747fd5c7a909406657f7773546aa2bac87",
+    "command_02": "d2e3a0a31cf2b23749a6c53c7c22c4e5e650977037111a06b59f1d3e52bb9ee2",
+    "engineering_01": "e2270ad21d3f82caa53a74cc1a342af84039239d11953eb296fed9f610802e75",
+    "engineering_02": "edef697ca8092fb1244eade467c0c25c5dbe65c9129d2116f4ac94a90994ae3e",
+    "deckhands_01": "adac248e566095b73f85215992484c7908bdbecb89dcab828b571c6a262f1006",
+    "deckhands_02": "c064a6b7992885c0c89abba2bf20674fad06d06824632bec77c45c46e7705a49",
+    "medical_01": "693ec35bf77a3f655703f000edc8b7a8c5f43b22ae90916f813fa8ee7fe430bf",
+    "medical_02": "2f517970e90b7d4358e4da79fca9c9356d26bb7a55594f1edd674826c7f52b35",
+    "security_01": "e25d50fe810ae038fb4e063f4ecf6450a82cb376f8d172371cffac17eac338e0",
+    "security_02": "20d66c0f56134b5b5954579e30d0c56562f5f160a9cfd133976df3c1635951c7",
+    "galley_01": "d8a5c61d811bd122d29018c649832c44b0d66567deb3db4be5a039a4a6a3f8c9",
+    "galley_02": "eb0137a1bab47df9026d9fd492bb72adbb77651b7abbaa5f27553a439a953b0c"
   },
   "screenshots": [
     {
       "file": "docs/screenshots/mockups/crew-characters-back.png",
       "width": 1440,
       "height": 900,
-      "sha256": "db03519d60bc3832382931d682e2d16a2c1688c8eb4e2e7b85592f87ebb763b9",
+      "sha256": "3b6514a3c2b8c9e17ca0bd7a5be2bc9d1a2ac89ed6f873f8697a4dcf8888205c",
       "inspected": true
     },
     {
       "file": "docs/screenshots/mockups/crew-characters-emergency.png",
       "width": 1440,
       "height": 900,
-      "sha256": "7158a29f07f2f05294c682e9449830659b0e53bfee555e2fe5e052dbe4fccc1c",
+      "sha256": "546481ff1e79b53d33b605468f5e1e91e7e95c8f9e4caa801a08d5dd7c720409",
       "inspected": true
     },
     {
       "file": "docs/screenshots/mockups/crew-characters-eyes.png",
       "width": 1440,
       "height": 900,
-      "sha256": "54a25f21941bb289a8871cf077bcd6f2d7cbf8c5c726686389a9ef7cdcd31949",
+      "sha256": "0911bf04c7d6d002204b8363a280ec2e836f381e9165e2bc04b93def565d368b",
       "inspected": true
     },
     {
       "file": "docs/screenshots/mockups/crew-characters-female-lineup.png",
       "width": 1440,
       "height": 900,
-      "sha256": "33d10da2aa0c5b8240e2b6465fcea0804a71b475e58a94bbc1f3759f8c643aa2",
+      "sha256": "3d1aa7cba83a76770fdc95bfe855de6edd63704a5248e02a78670d8e50f58183",
       "inspected": true
     },
     {
       "file": "docs/screenshots/mockups/crew-characters-hair.png",
       "width": 1440,
       "height": 900,
-      "sha256": "664ecb68b288af897aee212750919e66b09d43599b5f47789f2867566852724d",
+      "sha256": "61681b4ab262dccbd4d20ca9b8a13ffec5e81d17e3c170bc58b9d75d98c35904",
       "inspected": true
     },
     {
       "file": "docs/screenshots/mockups/crew-characters-lineup.png",
       "width": 1440,
       "height": 900,
-      "sha256": "98fd38f26fd7e0ad7f517ab78fcd138b95db45b33b476c524f7386f6810f5693",
+      "sha256": "3fbb958b6aac022186ce17c133fbdd92b93b9d41b620c5d182fd53ac87b1f694",
       "inspected": true
     },
     {
       "file": "docs/screenshots/mockups/crew-characters-mobile.png",
       "width": 390,
       "height": 844,
-      "sha256": "c0ea7d8fc47eca4af17ba0d767b0806171b4d6987e7d47eb12d4ca89a81761c2",
+      "sha256": "f7bc70849ec915a033ec6864a6bc911e04d9e35c1b42ec652fb9e1437d9c46d3",
       "inspected": true
     },
     {
       "file": "docs/screenshots/mockups/crew-characters-reach.png",
       "width": 1440,
       "height": 900,
-      "sha256": "1421479c3291e228f025bf96eb9a85df4054c92f501d0f78bcedc7e9fb2d2da4",
+      "sha256": "86eee16ac1e237570cc676623660c571e7894d22367fd883ce1968fe5b7591c0",
       "inspected": true
     },
     {
       "file": "docs/screenshots/mockups/crew-characters-red-alert.png",
       "width": 1440,
       "height": 900,
-      "sha256": "ae1ad185ee39a9827ef47ec057d5486b31b41d4fad63b736e1fe620814287e07",
+      "sha256": "b6203364f99623724c931a84a492047545174c02f1f73572432094124929729a",
       "inspected": true
     },
     {
       "file": "docs/screenshots/mockups/crew-characters-seated.png",
       "width": 1440,
       "height": 900,
-      "sha256": "4107484cdc49c1341f6ecbee6246ee1d6aaed5bbe745962699127402cc1ce1b6",
+      "sha256": "83c6f2d8aa15fd8d8302742e451bc1d349ec3cde35101b22f9d70903e555f638",
       "inspected": true
     },
     {
       "file": "docs/screenshots/mockups/crew-characters-side.png",
       "width": 1440,
       "height": 900,
-      "sha256": "9a3aa96b08a5ec4194f5b334b8c37cc15be712816acc24aa9e2717484ac5b7e2",
+      "sha256": "9d585a4960517eb94efc9054bf44eecf550bc4073242140d103b87fa3967db4e",
       "inspected": true
     },
     {
       "file": "docs/screenshots/mockups/crew-characters-skeleton.png",
       "width": 1440,
       "height": 900,
-      "sha256": "9c8de8aa8f0e26781eda4993bf64732ba3abf7c3e6e9bf4162243a6b29a6f3e2",
+      "sha256": "ca749e6f3ff98ce907f3debe894cd3c9687b92965036744a8bbb98fcc477878e",
       "inspected": true
     },
     {
       "file": "docs/screenshots/mockups/crew-characters-walk.png",
       "width": 1440,
       "height": 900,
-      "sha256": "738cdf3925c748e8f275cf8dc5a6a122c28a054632ed2684cde977e31093ada9",
+      "sha256": "95551360f7b50bd1166ef47cdec6786e3b18d855792d9bad9bc63c74a192d7e0",
       "inspected": true
     },
     {
       "file": "docs/screenshots/mockups/crew-characters-wave.png",
       "width": 1440,
       "height": 900,
-      "sha256": "a2d34cae07ccea5236649cc7ec333f261d6b07e1f88f7311a993257977c1006b",
+      "sha256": "2a384c55bf40c30f2f1bbe8f15b9d36b08acb00be1a2112857a2ff3fd5e1888e",
       "inspected": true
     },
     {
       "file": "docs/screenshots/mockups/crew-characters-wireframe.png",
       "width": 1440,
       "height": 900,
-      "sha256": "552594eb6d5751180aa2937636bb20bf2313b0ab83468b842f778f67aacfba10",
+      "sha256": "a53e73d9d49c560b8e120c7f3c207ce31e275a1ee885262a4d73d8350abff675",
       "inspected": true
     },
     {
       "file": "docs/screenshots/mockups/crew-characters.png",
       "width": 1440,
       "height": 900,
-      "sha256": "4ef1a969a2ac197846379985ea61b07b7678ed019b5c2550eaccc750a1272fb6",
+      "sha256": "ec5980ea3c112b1e9fcb5531c380f3659b6e290b512db81ce6b7cdbeef657c21",
       "inspected": true
     },
     {
       "file": "docs/screenshots/crew-characters/mobile-viewer/crew-characters-eyes.png",
       "width": 390,
       "height": 844,
-      "sha256": "109828ca2845ce5aa795504ac303628d8a05181d17c9eb2559ed74def035e241",
+      "sha256": "523c64f137517e09a1bf56d3ad745fbfd8c87aa4a9c7263d84e1f438b55dfadd",
       "inspected": true
     },
     {
       "file": "docs/screenshots/crew-characters/mobile-viewer/crew-characters-lineup.png",
       "width": 390,
       "height": 844,
-      "sha256": "8f880025831c247e0b1ba893662704218bb1bdc58ee61001efd73c78e9072f56",
+      "sha256": "028366980680cb988bf5a230e83a75dbebd0b915f9fd7c236bc24e82e1ec6817",
       "inspected": true
     },
     {
       "file": "docs/screenshots/crew-characters/mobile-viewer/rig.png",
       "width": 390,
       "height": 844,
-      "sha256": "3966d98a0c6765aedfdf53ad1e4a63f7e5f63ba4049ce2b26d23ae5b8f8c7b52",
+      "sha256": "d7b9984daf4464539101b65f7aab84d8b2ac28707dcdfa94c9fc57ff62139e78",
       "inspected": true
     }
   ]

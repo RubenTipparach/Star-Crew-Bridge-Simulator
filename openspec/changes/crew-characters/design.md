@@ -3,7 +3,52 @@
 Written before the generator, 2026-10-10. The owner's request authorizes building
 the models; screenshot approval separately authorizes replacing figures aboard.
 
+Current status, 2026-10-10: game adoption is on hold at the owner's request.
+The complete review package is retained. A later request to resume adoption and
+explicit screenshot approval are required before replacing crew aboard.
+
 ## Source and shape
+
+### Shoulder edge flow repair, requested 2026-10-10
+
+The owner identified the angular inner-arm notch that the previous visual review
+missed. The sleeve is welded, but its first ring meets a rectangular torso opening
+in one coarse strip. The lower opening has a sharp corner and every attachment
+vertex carries the same chest/upper-arm blend. Connectivity and intersection
+tests alone do not establish a useful deformation surface.
+
+Primary references consulted for this repair:
+- [Autodesk: Checking the model topology](https://www.autodesk.com/learn/ondemand/tutorial/checking-the-model-topology):
+  follow the natural muscle lines and place enough loops around bending regions
+  to avoid sharp, stretched surfaces.
+- [Autodesk: Weighting the Character's Upper Half](https://download.autodesk.com/us/3dsmax/2012tutorials/files/GUID-5FC55910-D704-47E8-A11A-2DC9A2B8BA3-86.htm):
+  distribute shoulder influence between collarbone and upper arm, retain even
+  loop spacing, and work through several poses when adjusting weights.
+
+Add two eight-vertex socket loops per shoulder, shape and locally relax the
+armhole/inner-arm transition, and retain quad strips in the authoring mesh.
+Grade chest, clavicle and upper-arm weights around the opening so the underarm
+does not move as one uniformly weighted ring. Keep the hidden arm fitted inside
+the resulting sleeve. Topology and weighting controls remain in anatomy data.
+Remove one redundant hidden upper-arm skin ring per side to allocate the detail
+to the visible bend. This costs 32 net additional triangles, reaching 2,972 per avatar, with the existing
+30 deform bones and one material/draw. Global subdivision is not needed.
+
+Review close-ups with authoring edges and front/back shaded views. Test lowered,
+horizontal and raised arms as well as forward reach on both body variants,
+including garment self intersections and skin coverage. Add a geometric check
+of the underarm contour so the old sharp notch is not accepted just because the
+surface is connected. Rebuild all twelve rigs and refresh the HTML review page
+after the representative shoulders pass. All approval gates remain pending.
+
+The exported middle-depth contour must turn by at most 75 degrees at any sampled
+inner-arm corner. The rejected male/female meshes measured approximately 110/102
+degrees; the revised command variants measure approximately 62/61 degrees.
+Six additional arm poses from `data/crew/shoulder_review.json` exercise both arms
+on all twelve exported rigs, adding 72 checks to the 360 baked-clip samples.
+The 75-degree ceiling is a local acceptance limit for this stylized asset, not a
+universal modelling rule. Visual review of the shaded and authoring-edge sheets
+remains required.
 
 ### Narrower body revision, requested 2026-10-10
 
@@ -169,15 +214,16 @@ render exported files and inspect the captures; run OpenSpec and the dash check.
 ## Built review evidence (2026-10-10)
 
 Twelve pending GLBs are built in `assets/models/crew_review/`: a male and female
-for each of six departments. Each exported file contains 2,940 triangles, 30
+for each of six departments. Each exported file contains 2,972 triangles, 30
 bones, one material and one indexed primitive. Both eyes measure 0.550000
 iris/eye and 0.400000 pupil/iris.
 
 The exported tunic and trousers are each one connected closed surface. At rest
-and in all 360 exported pose samples, the checks find no garment self
+and in all 360 exported clip samples and 72 additional shoulder stress poses,
+the checks find no garment self
 intersections, visible tunic/trouser intersections or hair/scalp intersections.
 The waist check excludes internal horizontal closure caps, identified in the
-bind pose. Each sample also checks 1,972 covered-skin points. These sampled
+bind pose. Each sample also checks 1,828 covered-skin points. These sampled
 motions pass; arbitrary poses still require review.
 
 The twelve source `.blend` files pass all 48 hand/foot IK target and pole checks.
@@ -186,15 +232,16 @@ clips preserve their loops and keyed floor contact. A second build reproduces
 every GLB and the measured manifest byte for byte; editable `.blend` binary
 identity is not claimed.
 
-The twelve animated files total 6,053,176 bytes; the largest binary buffer
-is 397,888 bytes including animation tracks. These are artifact sizes, not
+The twelve animated files total 6,067,768 bytes; the largest binary buffer
+is 399,104 bytes including animation tracks. These are artifact sizes, not
 measured runtime allocations. A skeleton overlay adds one review draw per visible
 avatar. Runtime ship geometry is unchanged pending approval.
 
-Eight deliberately invalid exported files are rejected: excess triangles,
+Nine deliberately invalid exported files are rejected: excess triangles,
 incorrect iris and pupil ratios, covered skin outside the tunic, an extra
-material, hair intersecting the scalp, trousers crossing the hem, and a closed
-but disconnected garment island. Results and artifact hashes are in
+material, hair intersecting the scalp, trousers crossing the hem, a closed
+but disconnected garment island, and a connected but sharply pinched underarm.
+Results and artifact hashes are in
 `docs/screenshots/crew-characters/validation.json` and `rig-validation.json`.
 
 The review package and regeneration commands are
@@ -232,7 +279,7 @@ handing over the page. Approval and engine integration stay pending.
 
 Browser verification opens the page from disk in headless Chromium. Every
 selection renders the character's manifest triangles plus the 192-triangle
-plinth, in two draws (one avatar and one plinth). The lineup is 17,832 triangles
+plinth, in two draws (one avatar and one plinth). The lineup is 18,024 triangles
 in seven draws. Downloads match the original GLB bytes. All camera presets,
 orbit, pan, zoom, auto rotation, wireframe, three lighting states and panel
 close/restore pass. Actual skinned vertex positions verify clip deformation,

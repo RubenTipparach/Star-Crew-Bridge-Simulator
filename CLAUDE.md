@@ -354,6 +354,11 @@ becomes.
 
 ## 9. Art: low poly
 
+- **Keep the cartoon crew assets; game adoption is on hold** (owner, 2026-10-10:
+  "lets not use this in the game right now but keep all assets"). Preserve the
+  `crew_review` models, editable Blender rigs, source data and generators, review
+  viewer, screenshots and validation reports. Crew aboard stay blocky. Resume
+  adoption only on a later owner request; screenshot approval still applies.
 - **Low poly, textured, lit by the bake.** No normal maps, no PBR, no per-pixel lighting
   beyond an emissive term. Lighting is baked into vertex colours, with one set per lighting
   state (normal, red alert, emergency power) blended by a per-compartment uniform, and it
