@@ -102,6 +102,11 @@ schematic in full screen. They can toggle between 2d and 3d view. 2d is a simpli
   a dotted arc under it), higher the longer it spans, so arcs cross but never lie on one another; each box's runs
   leave it from their own points along its edge. A run between decks is its own line from box to box across the gap,
   side by side with the others; the gap names its two decks and counts their runs and how many carry power.
+- **Runs sharing a route, side by side in 3D** (the owner, with a shot of the 3D view: "you might wanna serpeate lines
+  when they overlap"): runs and feeders that lie along one another (the same ceiling, the same riser between decks)
+  are drawn each in its own lane across their bundle, 0.7 m apart (closer in a bundle wider than 5 m, each narrowed to
+  fit its lane), fanning out of their box and rejoining at each corner. Where a hit cut or damaged one, its mark sits
+  on its own lane. The board in 2D needs none: its traces are placed apart by hand (3c).
 - **One colour for electricity** (the owner: "black lines dont make sense to me at all, it should be lit up", "why not
   just use all yellow or all green? its the same concept, electric flowing"): every run, feeder, closed switch, box
   that is on and system with its power is yellow, wider the more a run carries. Its dashes run the way the power
