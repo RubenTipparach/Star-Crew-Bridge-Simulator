@@ -104,6 +104,11 @@ def build():
         raise SystemExit(f"parse came up short: {len(data['icons'])} icons, {len(data['colours'])} colours")
     # The captain's verbs are game data (data/stations.json, which sc-core validates orders against); the console
     # draws the mockup's. They are one list in two files, so the two are compared, not trusted (CLAUDE.md 6.6).
+    # The SCHEMATIC panel draws the board in small with the schematic's colours: consoles.html's copy must be the
+    # schematic's own (power-routing 6.2).
+    sch = data["schematic"]
+    if hexes(page, "const PCB = {") != sch["pcb"] or '"' + sch["power"] + '"' not in page.split("const POWER_YELLOW = ", 1)[1].split(";", 1)[0]:
+        raise SystemExit("consoles.html's PCB or POWER_YELLOW differ from power-grid.html's PCB and C.power")
     game = json.loads(STATIONS.read_text())["orders"]
     if game != data["order_verbs"]:
         raise SystemExit(f"the mockup's ORDER_VERBS and {STATIONS.relative_to(ROOT)} 'orders' differ:\n"

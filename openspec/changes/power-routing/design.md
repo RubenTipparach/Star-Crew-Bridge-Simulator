@@ -88,7 +88,14 @@ schematic in full screen. They can toggle between 2d and 3d view. 2d is a simpli
 
 - **On the side**: Engineering's BUSES panel (2 x 2 cells, the one-line diagram and the battery) becomes SCHEMATIC: the
   2D graph in small (the switchboards, the trunks, the battery and the live-run count against the limit) with an
-  EXPAND button. The console keeps its four panels (`bridge-stations` 8.0).
+  EXPAND button. The console keeps its four panels (`bridge-stations` 8.0). First built as the one-line diagram; since
+  2026-10-12 the board itself in small (the owner: "Thembnaul representation of the 2d schematic in that was there
+  previously would be great on the engineering station"): the three boards, every trace in its state (live yellow,
+  dead copper, an open spare thin blue, cut red), every part (lit, nothing reaching it, off, destroyed, a damaged one
+  with a red rim), the reactor and the battery, with the battery's charge, the cables cut and the live runs beside it.
+  A tap on the board opens the schematic on the board; EXPAND opens it in 3D. The one-line diagram's breakers move to
+  the schematic: a tie is a run there (a tap), and a generator's breaker is held on its trace (0.6 s, guarded as the
+  one-line's were).
 - **Full screen**: EXPAND opens the schematic over the console, with a 2D / 3D toggle and COLLAPSE back. 3D: the decks
   in perspective at their heights, an orbit camera, rooms as translucent floors, the boxes, runs, spares and feeders
   where they are. 2D: the simplified graph: boxes as nodes, runs as edges (spares dashed), each box's loads as bars
@@ -256,9 +263,11 @@ engine builds them as the mockups draw them (CLAUDE.md 10; `console-parity` 2).
   live runs, the limit, and the trip's seconds left. About 300 bytes (305 measured), a snapshot with it about 815. The
   client carries the last one on, as the grid. The reached nodes (power reaching each box, the core's `reached`) ride
   with them, a bit each, so the client never works out a rule of the grid's itself.
-- **6.2 The side panel.** Engineering's BUSES (`grid(10, 0, 2, 2)`) becomes the mockup's SCHEMATIC: the one-line diagram
-  as before, the live runs against the limit (the trip's seconds while tripped), and EXPAND. The parity fixtures are
-  drawn again from `consoles.html`, which now writes the panel's live, limit and trip.
+- **6.2 The side panel.** Engineering's BUSES (`grid(10, 0, 2, 2)`) becomes the mockup's SCHEMATIC: the board in small
+  (3a), the battery, the live runs against the limit (the trip's seconds while tripped), and EXPAND. The parity
+  fixtures are drawn again from `consoles.html`, which writes the panel's live, limit and trip and each edge's and
+  node's state for the board (`thumb`: an edge live 0, dead 1, open 2, cut 3; a node lit 0, nothing reaching it 1, off
+  2, destroyed 3, plus 8 when damaged), so the engine draws the same picture from the same codes.
 - **6.3 The schematic, full screen.** EXPAND opens it over the console's canvas (1280 x 720), as OBJECTIVES does; CONSOLE
   (collapse) closes it. Its top right holds the 3D / 2D switch and CONSOLE; its top left the status strip (the reactor,
   the battery, delivered of wanted, the live runs, the systems offline); in 3D the legend under it. Every tap is the

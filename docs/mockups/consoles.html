@@ -72,6 +72,11 @@
 {"schema":"starcrew.ship-damage/1","status":"Used by the drill (openspec/changes/ship-damage, sc-core::combat::damage): the hit, the march, the cascade, fires and the teams. The rest is damage-control's (2026-10-04), read by the systems mockup and the repair rules. Numbers are tuning proposals, not decisions.","ship":"tern","units":{"energy":"MJ (megajoules)","length":"m","area":"m^2","time":"s","integrity":"percent of a system's full health, 0 to 100","rate":"percent per second where the key says pct_per_s"},"hull":{"armour_mj":4.0,"section_mj":40.0,"faces":["dorsal","ventral","port","starboard","bow","stern"],"note":"A hull section is a span between two of the layout's hull sections times one of six faces (9 spans x 6 faces = 54). A fresh section absorbs up to armour_mj of each hit, scaled by its integrity; each hit takes min(E, armour_mj) / section_mj x 100 points of integrity from it."},"breach":{"m2_per_mj":0.02,"min_m2":0.002,"max_m2":2.0,"note":"A hit whose energy passes the armour opens a breach in the first compartment it enters, sized by the energy left: 1 MJ past the armour makes 0.02 m^2, 50 MJ makes 1 m^2."},"propagation":{"march_step_m":0.25,"march_max_m":30.0,"decay_m":10.0,"bulkhead_mj":1.5,"radius_m":1.5,"radius_per_sqrt_mj":0.3,"note":"Energy past the armour marches along the hit direction in steps of march_step_m. Each step deposits dE = E (1 - exp(-step / decay_m)) at its point; a target within r = radius_m + radius_per_sqrt_mj x sqrt(E) of that point takes points_per_mj x dE x (1 - d / r). Each bulkhead crossed costs bulkhead_mj."},"systems":{"points_per_mj":10.0,"nominal_from_pct":75.0,"disabled_below_pct":25.0,"note":"Integrity points taken are summed over the march steps (see propagation). Capability is 1 at or above nominal_from_pct, integrity / nominal_from_pct between the two thresholds, 0 below disabled_below_pct; 0 integrity is destroyed."},"nodes":{"destroyed_below":0.25,"note":"A switchboard section, panel or bus loses health as a system does (points / 100); below destroyed_below it carries nothing until rebuilt."},"coolant":{"leak_below_pct":75.0,"leak_kg_s_at_zero":20.0,"note":"reactor-cooling design 2: a coolant pipe segment or tank below leak_below_pct integrity leaks leak_kg_s_at_zero x (leak_below_pct - integrity) / leak_below_pct kg/s: a segment at 0% leaks 20 kg/s, the loop's 11.1 t in under 10 minutes; a tank leaks its own reserve. An isolated segment does not leak. The parts' capability follows systems (power.json coolant.segments, tanks and exchanger)."},"cascade":{"surge_share":0.6,"step_factor":0.5,"max_steps":4,"min_points":1.0,"note":"ship-damage 3 (the owner's): a hit that takes points from a system already below nominal sends surge_share of those points into its power node; from a node the surge goes to every other load on it and through each unsevered conduit to the node at its far end, times step_factor at each step. Every component it reaches takes its share once (a node as points / 100 of its health). The hit system's node always passes it on; any other component passes it on only if it was below nominal before the surge. It stops after max_steps or below min_points."},"conduits":{"sever_mj":1.0,"damage_mj":0.3,"damaged_capacity":0.5},"fire":{"chance_per_mj":0.1,"chance_max":0.6,"seed_kw_per_mj":100.0,"burn_pct_per_s":0.4,"burn_hull_mj_per_s":0.05,"spread_after_s":90.0,"put_out_s":20.0,"note":"Per compartment a hit deposits energy in: ignition chance min(chance_max, chance_per_mj x E) times the room's oxygen factor, decided by a seeded hash of (session seed, hit id, compartment id). The fire starts at fire.seed_kw (atmosphere.json) plus seed_kw_per_mj x E."},"crew":{"hp_per_mj":15.0,"share":0.3,"note":"A crew member near the path loses hp_per_mj x share x the energy deposited near them, with the systems falloff (100 hit points is full health). Without crew positions (the mockup), each crew member in the room takes the room total times the fraction of its floor within r of the path."},"repair":{"kit_pct_per_s":{"officer":1.8,"rating":0.6},"kit_locker":"damage_control","kits_in_locker":6,"parts_store":"cargo","parts_on_board":24,"parts":{"disabled_system":1,"destroyed_system":3,"conduit_splice":1,"node_rebuild":4},"disabled_to_pct":25.0,"destroyed_rebuild_s":180.0,"destroyed_rebuild_to_pct":25.0,"conduit_splice_s":30.0,"conduit_splice_capacity":0.5,"node_rebuild_s":120.0,"node_rebuild_to":0.5,"hull_section_pct_per_s_eva":0.5,"two_hands_factor":1.6,"fumble_share_pct":5.0},"patch":{"plate_m2":0.25,"plates_in_locker":12,"inside_s_per_plate":15.0,"inside_max_m2":1.0,"eva_s_per_m2":60.0,"eva_max_m2":4.0,"group_holes_by_hull_section":true,"note":"A crew member patches a breach from inside with plates (cabin pressure presses a plate onto the hole), up to inside_max_m2; a larger breach is closed from outside by a suited crew member through the airlock. Holes through one hull section into one compartment are patched together: one plate per plate_m2 of their total area."},"doors":{"jam_points":25.0,"repair_s":30.0,"note":"A portal within a hit's reach that takes jam_points (as a system would) jams where it is: it neither opens nor closes until a crew member with a kit frees it (repair_s), or a drop door is cranked by hand (shuttle-bay-and-fighters)."},"cook_off":{"compartment":"magazine","air_above_k":473.15,"hold_s":60.0,"hit_mj_within_m":[10.0,2.0],"warhead_mj":60.0,"next_check_s":30.0,"note":"A missile in the racks cooks off when the magazine's air has been above air_above_k for hold_s, or a hit deposits hit_mj_within_m[0] MJ within hit_mj_within_m[1] m of the racks; it is resolved as a hit of warhead_mj from inside at the racks, and the next missile checks again next_check_s later. Not in the mockup's library."},"remote_control":{"needs_computer_ratio":0.5,"note":"Breakers, dampers, doors and suppression are operated from the bridge and the damage control board only while the computer core has at least this supply ratio; otherwise only at the switchboards, the doors and the system itself."},"teams":{"count":2,"members":2,"home":"damage_control","walk_m_s":1.8,"run_m_s":4.0,"suited_m_s":1.5,"ladder_up_m_s":0.8,"ladder_down_m_s":1.0,"suit_up_s":20.0,"dispatch_delay_s":5.0,"path_factor":1.4,"enter_below_kpa_needs_suit":50.0,"refuse_fire_above_kw_without_suit":2000.0,"note":"NPC damage control teams are crew bodies (crew-on-deck): they walk the crew-portal graph, carry a kit, an extinguisher or plates, take the same harm as players, and can die. Their speeds (walk, run, suited, ladders up and down) and suit donning time are crew-on-deck's (design sections 3, 4 and 10), repeated here until data/crew.json exists and teams read it. Reconciled 2026-10-05: crew-on-deck owns this (was walk 1.6 m/s, ladders 0.8 m/s both ways, suit-up 30 s)."}}
 </script>
 <!-- INLINE data:tern/damage END -->
+<!-- INLINE data:tern/power_board BEGIN -->
+<script id="ship-data-power_board" type="application/json">
+{"schema":"starcrew.power-board/1","status":"Proposed (2026-10-11) by openspec/changes/power-routing design 3c: Engineering's 2D schematic drawn as a circuit board, every part and trace placed by hand. Read by docs/mockups/power-grid.html; the engine's console will read it once the schematic is approved.","ship":"tern","units":"layout points on the board; a part is [centre x, centre y, width, height], its label the silkscreen name on it; a trace is its points from the pad on its first end (between[0], or the reactor or the battery for a generator or the battery's link) to the pad on its other, every segment at 0, 45 or 90 degrees","board":{"w":1640,"h":1120,"x":[120,1625],"chamfer":12},"layers":[{"deck":"A","y":[40,290]},{"deck":"B","y":[350,770]},{"deck":"C","y":[830,1110]}],"parts":{"bx_a_aft_passage":[410,170,96,36],"bx_pod_dorsal":[720,105,96,36],"bx_dorsal_turret":[720,170,96,36],"dp_a":[1000,170,112,44],"bx_ready_room":[1220,105,96,36],"bx_computer_core":[1220,235,96,36],"bx_bridge":[1400,170,96,36],"dp_drive":[275,560,112,44],"reactor":[410,560,76,76],"msb_p":[410,455,112,44],"msb_s":[410,665,112,44],"dp_hangar_p":[640,465,112,44],"dp_hangar_s":[640,655,112,44],"dp_port":[860,465,112,44],"dp_stbd":[860,655,112,44],"bx_pod_port":[830,395,96,36],"bx_pod_stbd":[830,725,96,36],"bx_quarters":[1080,465,96,36],"bx_mess":[1080,655,96,36],"dp_b_fwd":[1200,560,112,44],"bx_medbay":[1360,465,96,36],"bx_damage_control":[1360,655,96,36],"bx_torpedo_room":[1490,560,96,36],"bx_launch_bay_s":[610,895,96,36],"bx_launch_bay_p":[750,895,96,36],"fsb_s":[900,895,112,44],"fsb_p":[1050,895,112,44],"eb":[975,975,100,44],"battery":[975,1050,84,40],"dp_ls":[1120,975,112,44],"dp_c_fwd":[1260,895,112,44],"bx_shield_room":[1420,895,96,36],"bx_pod_ventral":[1290,1055,96,36],"bx_cargo":[1420,1055,96,36],"bx_magazine":[1550,975,96,36],"bx_airlock":[1550,1055,96,36]},"labels":{"bx_a_aft_passage":"AFT PASS","bx_pod_dorsal":"POD D","bx_dorsal_turret":"DORSAL","dp_a":"DECK A","bx_ready_room":"READY","bx_computer_core":"CORE","bx_bridge":"BRIDGE","dp_drive":"DRIVE","reactor":"REACTOR","msb_p":"MSB P","msb_s":"MSB S","dp_hangar_p":"HANGAR P","dp_hangar_s":"HANGAR S","dp_port":"PORT","dp_stbd":"STBD","bx_pod_port":"POD P","bx_pod_stbd":"POD S","bx_quarters":"QUARTERS","bx_mess":"MESS","dp_b_fwd":"B FWD","bx_medbay":"MEDBAY","bx_damage_control":"DC","bx_torpedo_room":"TORPEDO","bx_launch_bay_s":"BAY S","bx_launch_bay_p":"BAY P","fsb_s":"FSB S","fsb_p":"FSB P","eb":"EMERG","battery":"BATTERY","dp_ls":"LIFE SUP","dp_c_fwd":"C FWD","bx_shield_room":"SHIELDS","bx_pod_ventral":"POD V","bx_cargo":"CARGO","bx_magazine":"MAGAZINE","bx_airlock":"AIRLOCK"},"traces":{"r_dorsal_fwd":[[944,170],[768,170]],"r_dorsal_aft":[[672,170],[458,170]],"r_pod_dorsal":[[720,152],[720,123]],"r_hull_pod_dorsal_a_corridor":[[768,105],[965,105],[965,148]],"r_bridge_aft":[[1056,170],[1352,170]],"r_ready":[[1040,148],[1040,105],[1172,105]],"r_core":[[1040,192],[1040,235],[1172,235]],"r_wall_ready_room_bridge":[[1268,105],[1400,105],[1400,152]],"r_wall_bridge_computer_core":[[1400,188],[1400,235],[1268,235]],"r_aft_eng":[[410,188],[410,433]],"k_a_aft":[[995,148],[995,60],[155,60],[155,735],[410,735],[410,687]],"k_a_fwd":[[1015,192],[1015,265],[1590,265],[1590,845],[1080,845],[1080,873]],"r_ladder_ab":[[975,192],[975,405],[1200,405],[1200,538]],"rf_drive":[[372,560],[331,560]],"gen_p":[[410,522],[410,477]],"gen_s":[[410,598],[410,643]],"rf_hangar_p":[[437,533],[491,479],[584,479]],"rf_hangar_s":[[437,587],[491,641],[584,641]],"bt_main":[[354,445],[185,445],[185,675],[354,675]],"k_drive_p":[[354,465],[275,465],[275,538]],"k_drive_s":[[354,655],[275,655],[275,582]],"k_aft_p":[[466,455],[584,455]],"k_aft_s":[[466,665],[584,665]],"k_mid_p":[[696,465],[804,465]],"k_mid_s":[[696,655],[804,655]],"r_pod_port":[[830,443],[830,413]],"r_pod_stbd":[[830,677],[830,707]],"r_hull_pod_port_hangar":[[782,395],[660,395],[660,443]],"r_hull_pod_stbd_hangar":[[782,725],[660,725],[660,677]],"r_port_turret":[[880,487],[880,548],[1144,548]],"r_stbd_turret":[[880,633],[880,572],[1144,572]],"r_spine_hangar":[[1144,560],[620,560],[620,487]],"r_quarters":[[1170,538],[1170,465],[1128,465]],"r_mess":[[1170,582],[1170,655],[1128,655]],"r_medbay":[[1230,538],[1230,465],[1312,465]],"r_damage_control":[[1230,582],[1230,655],[1312,655]],"r_torpedo":[[1256,560],[1442,560]],"r_wall_quarters_medbay":[[1080,447],[1080,428],[1360,428],[1360,447]],"r_wall_mess_damage_control":[[1060,673],[1060,695],[1360,695],[1360,673]],"r_wall_medbay_torpedo_room":[[1408,465],[1490,465],[1490,542]],"r_wall_damage_control_torpedo_room":[[1408,655],[1490,655],[1490,578]],"k_fwd_p":[[916,477],[1000,477],[1000,873]],"k_fwd_s":[[900,677],[900,873]],"k_b_fwd":[[1200,582],[1200,745],[945,745],[945,873]],"r_bay_p":[[680,487],[680,515],[750,585],[750,877]],"r_bay_s":[[610,677],[610,877]],"r_ladder_bc":[[1256,575],[1290,575],[1290,873]],"r_hoist":[[1510,578],[1510,957]],"r_hangar_c":[[640,487],[640,530],[1270,530],[1270,873]],"r_wall_launch_bay_p_hangar":[[685,677],[685,905],[702,905]],"r_wall_launch_bay_s_hangar":[[600,487],[600,500],[545,555],[545,905],[562,905]],"r_deck_airlock_mess":[[1100,673],[1100,712],[1485,712],[1485,1015],[1580,1015],[1580,1037]],"bt_fwd":[[956,895],[994,895]],"eb_s":[[935,917],[935,953]],"eb_p":[[1015,917],[1015,953]],"battery_out":[[975,1030],[975,997]],"k_c_fwd_p":[[1106,895],[1204,895]],"k_c_fwd_s":[[844,905],[815,905],[815,1095],[1222,1095],[1222,917]],"k_ls_n":[[1085,917],[1085,953]],"k_ls_e":[[1025,975],[1064,975]],"r_shield":[[1316,885],[1372,885]],"r_pod_ventral":[[1265,917],[1265,1037]],"r_magazine":[[1316,907],[1340,907],[1368,935],[1550,935],[1550,957]],"r_cargo":[[1305,917],[1305,942],[1400,1037]],"r_airlock_inner":[[1468,1055],[1502,1055]],"r_life_support":[[1176,965],[1190,965],[1190,908],[1204,908]],"r_wall_shield_room_life_support":[[1150,997],[1150,1010],[1440,1010],[1440,913]],"r_deck_pod_ventral_shield_room":[[1325,1037],[1325,1022],[1460,1022],[1460,913]]}}
+</script>
+<!-- INLINE data:tern/power_board END -->
 <!-- INLINE shipkit BEGIN -->
 <script>
 /*
@@ -4908,6 +4913,12 @@
 const K = window.ShipKit, SS = window.ShipSystems;
 const L = K.layout();
 const PW = K.shipData("power"), AT = K.shipData("atmosphere"), DM = K.shipData("damage");
+// Engineering's schematic board (power-routing 3c): the SCHEMATIC panel draws it in small.
+const BOARD = K.shipData("power_board");
+// The board's colours: the schematic's own (power-grid.html's const PCB, which console_style.json reads; the tool checks
+// this copy against it).
+const PCB = { mask: "#0c2219", maskEdge: "#2f5a45", silk: "#d6e2dc", silkDim: "#7f978c", copperOff: "#7a6747", bottom: "#4f8fb8", hole: "#05100b", body: "#11161a" };
+const POWER_YELLOW = "#ffd36b";
 
 // =================================================================== look and words
 // Colour roles (bridge-stations 8.3). Colour always says the same thing on every console, and
@@ -6531,21 +6542,13 @@ function engineering() {
   s += panel("SCHEMATIC", grid(10, 0, 2, 2), (w, h) => {
     // The schematic on the side (power-routing 3a): the one-line diagram, simplified: reactor to two main buses, the
     // tie, the battery's bus; EXPAND opens the full-screen schematic (2D graph and 3D, power-grid.html).
-    const live = (on) => (on ? C.ok : C.faint);
-    const gp = st.genClosed.gen_p, gs = st.genClosed.gen_s, tie = st.tieClosed.bt_main, ep = st.tieClosed.eb_p, es = st.tieClosed.eb_s;
-    const np = (st.nodeHealth.msb_p == null ? 1 : st.nodeHealth.msb_p) > 0.05, ns = (st.nodeHealth.msb_s == null ? 1 : st.nodeHealth.msb_s) > 0.05;
-    let b = icon("bolt", w / 2, 18, 18, reactorUp() ? C.text : C.emergency);
-    b += `<path d="M${w / 2} 28V38M44 38H${w - 44}M44 38V60M${w - 44} 38V60" stroke="${live(reactorUp())}" stroke-width="3" fill="none"/>`;
-    const brk = (x, y, on, id, tip) => `<g data-hold="brk:${id}"${tipAttr(tip + (on ? ": hold to open" : ": hold to close"))}><rect x="${x - 10}" y="${y - 10}" width="20" height="20" rx="3" fill="${on ? C.ok : "none"}" stroke="${on ? C.ok : C.warn}" stroke-width="2.5"/>${HOLD.key === "brk:" + id ? `<rect x="${x - 10}" y="${y - 10}" width="${20 * clamp((now() - HOLD.t0) / HOLD_S, 0, 1)}" height="20" fill="${C.warn}" opacity="0.6"/>` : ""}</g>`;
-    b += brk(44, 64, gp, "gen_p", "Port generator breaker") + brk(w - 44, 64, gs, "gen_s", "Starboard generator breaker");
-    const bus = (x, ok, on) => `<rect x="${x - 34}" y="84" width="68" height="10" rx="3" fill="${ok ? (on ? C.ok : C.faint) : C.danger}"/>` + (ok ? "" : icon("bang", x, 104, 14, C.danger));
-    b += bus(44, np, gp) + bus(w - 44, ns, gs);
-    b += `<path d="M78 89H${w - 78}" stroke="${live(tie)}" stroke-width="3" stroke-dasharray="${tie ? "0" : "4 4"}"/>` + brk(w / 2, 89, tie, "bt_main", "Bus tie");
-    b += `<path d="M44 94V120H${w - 44}V94" stroke="${C.faint}" stroke-width="2" fill="none"/>` + brk(70, 120, ep, "eb_p", "Emergency bus, port") + brk(w - 70, 120, es, "eb_s", "Emergency bus, starboard");
+    // The board in small (power-routing 3a, the owner, 2026-10-12: "Thembnaul representation of the 2d schematic"): a
+    // tap on it opens the schematic on the board.
+    let b = `<g data-act="board"${tipAttr("The schematic: tap to open it on the board")}>` + boardThumb(8, 36, w - 16, h - 60) + "</g>";
     // The battery's charge (from the reactor panel, which now holds the cooling loop): a fill beside its icon.
     const soc = st.battery.soc_mj / PW.battery.capacity_mj;
-    b += `<g${tipAttr(`Battery ${Math.round(soc * 100)}%`)}>` + icon("battery", w / 2 - 22, 140, 18, st.batOut > 0.05 ? C.emergency : C.dim);
-    b += bar(w / 2 - 8, 135, 46, 10, soc, soc > 0.3 ? C.ok : C.warn) + "</g>";
+    b += `<g${tipAttr(`Battery ${Math.round(soc * 100)}%`)}>` + icon("battery", 22, 16, 18, st.batOut > 0.05 ? C.emergency : C.dim);
+    b += bar(36, 11, 70, 10, soc, soc > 0.3 ? C.ok : C.warn) + "</g>";
     const cut = Object.values(st.conduit).filter((c) => c.severed).length;
     if (cut) b += `<g${tipAttr("Cables cut: damage control splices them")}>` + icon("breach", 18, h - 14, 14, C.danger) + text(30, h - 9, 13, C.danger, String(cut)) + "</g>";
     // The live runs against the protection's limit (power-routing 2): the number the engineer routes by.
@@ -6568,6 +6571,66 @@ function engineering() {
     if (worst) b += text(w / 2, h - 10, 13, C.warn, L.compartments.find((c) => c.id === worst).name.toUpperCase(), { a: "middle", ls: 1 });
     return b;
   });
+  return s;
+}
+
+/** Each edge's state for the board in small (power-routing 6.2), in the schematic's order (generators, ties, the
+ *  battery's link, conduits): live 0, dead 1, open 2, cut 3; each node's: lit 0, nothing reaching it 1, off 2, destroyed
+ *  3, plus 8 when damaged. The library's views decide them (its conduitView and nodeView). */
+function routeCodes() {
+  const ok = (n) => { const v = sim.nodeView(n); return v.on && v.state !== "destroyed"; };
+  const edges = [];
+  for (const g of PW.generators) edges.push(st.genClosed[g.id] && (Math.abs(st.flows[g.id] || 0) > 1e-4 || st.reactor.state === "running") ? 0 : 1);
+  for (const t of PW.ties) edges.push(!st.tieClosed[t.id] ? 2 : t.between.every(ok) ? 0 : 1);
+  edges.push(ok(PW.battery.node) ? 0 : 1);
+  for (const k of PW.conduits) { const v = sim.conduitView(k.id); edges.push(v.state === "severed" ? 3 : v.breaker === "open" ? 2 : v.state === "dead" ? 1 : 0); }
+  const nodes = PW.nodes.map((n) => { const v = sim.nodeView(n.id); return (v.state === "destroyed" ? 3 : !v.on ? 2 : !v.live ? 1 : 0) + (v.state === "damaged" ? 8 : 0); });
+  return { edges, nodes };
+}
+/** The polyline with every corner sharper than about 60 degrees cut at 45 (the schematic's chamfer). */
+function chamferPath(pts, c) {
+  const out = [pts[0]];
+  for (let i = 1; i + 1 < pts.length; i++) {
+    const [a, b, d] = [pts[i - 1], pts[i], pts[i + 1]], u = [b[0] - a[0], b[1] - a[1]], v = [d[0] - b[0], d[1] - b[1]];
+    const lu = Math.hypot(...u), lv = Math.hypot(...v);
+    if (lu < 1e-6 || lv < 1e-6 || Math.abs((u[0] * v[0] + u[1] * v[1]) / (lu * lv)) > 0.5) { out.push(b); continue; }
+    const k = Math.min(c, lu / 2, lv / 2);
+    out.push([b[0] - (u[0] / lu) * k, b[1] - (u[1] / lu) * k], [b[0] + (v[0] / lv) * k, b[1] + (v[1] / lv) * k]);
+  }
+  out.push(pts[pts.length - 1]);
+  return out;
+}
+/** The schematic's board in small in the box (x, y, w, h): the boards, every trace in its state (live yellow, dead
+ *  copper, an open spare thin blue, cut red), every part (lit, nothing reaching it faint, off dim, destroyed red, a
+ *  damaged one with a red rim), the reactor and the battery. */
+function boardThumb(x, y, w, h) {
+  const fr = BOARD.board, k = Math.min(w / fr.w, h / fr.h), ox = x + (w - fr.w * k) / 2, oy = y + (h - fr.h * k) / 2;
+  const P = (p) => `${(ox + p[0] * k).toFixed(1)} ${(oy + p[1] * k).toFixed(1)}`;
+  const code = routeCodes();
+  let s = "";
+  for (const L of BOARD.layers) s += `<rect x="${ox + fr.x[0] * k}" y="${oy + L.y[0] * k}" width="${(fr.x[1] - fr.x[0]) * k}" height="${(L.y[1] - L.y[0]) * k}" rx="2" fill="${PCB.mask}" stroke="${PCB.maskEdge}" stroke-width="1"/>`;
+  const ids = [...PW.generators.map((g) => g.id), ...PW.ties.map((t) => t.id), "battery_out", ...PW.conduits.map((c) => c.id)];
+  const rated = (id) => (PW.generators.find((g) => g.id === id) || PW.ties.find((t) => t.id === id) || PW.conduits.find((c) => c.id === id) || { capacity_mw: PW.battery.discharge_max_mw }).capacity_mw;
+  // The open ones first (the bottom layer), then the copper.
+  for (const pass of [true, false]) ids.forEach((id, i) => {
+    const c = code.edges[i], open = c === 2;
+    if (open !== pass || !BOARD.traces[id]) return;
+    const col = c === 3 ? C.danger : open ? PCB.bottom : c === 1 ? PCB.copperOff : POWER_YELLOW;
+    const sw = open ? 0.8 : c === 3 ? 1.4 : clamp((2.4 + 4.6 * clamp(rated(id) / 40, 0, 1)) * k * 2, 0.9, 1.6);
+    s += `<path d="M${chamferPath(BOARD.traces[id], fr.chamfer).map(P).join("L")}" stroke="${col}" stroke-width="${sw}" fill="none" stroke-linejoin="round" opacity="${open ? 0.7 : 1}"/>`;
+  });
+  PW.nodes.forEach((n, i) => {
+    const p = BOARD.parts[n.id];
+    if (!p) return;
+    const c = code.nodes[i] & 7, hurt = code.nodes[i] >= 8;
+    const fill = c === 3 ? C.danger : c === 2 ? PCB.hole : PCB.body;
+    const edge = hurt ? C.danger : c === 0 ? PCB.silk : c === 1 ? C.faint : C.dim;
+    s += `<rect x="${ox + (p[0] - p[2] / 2) * k}" y="${oy + (p[1] - p[3] / 2) * k}" width="${p[2] * k}" height="${p[3] * k}" rx="0.8" fill="${fill}" stroke="${edge}" stroke-width="${hurt ? 1.2 : 0.8}"/>`;
+  });
+  const r = BOARD.parts.reactor, up = st.reactor.state === "running";
+  s += `<circle cx="${ox + r[0] * k}" cy="${oy + r[1] * k}" r="${(r[2] / 2) * k}" fill="${PCB.body}" stroke="${up ? POWER_YELLOW : C.danger}" stroke-width="1.2"/>`;
+  const bt = BOARD.parts.battery;
+  s += `<rect x="${ox + (bt[0] - bt[2] / 2) * k}" y="${oy + (bt[1] - bt[3] / 2) * k}" width="${bt[2] * k}" height="${bt[3] * k}" rx="0.8" fill="${st.batOut > 0.05 ? C.emergency : POWER_YELLOW}"/>`;
   return s;
 }
 
@@ -7134,7 +7197,8 @@ function act(a, ev) {
   if (k === "cmode") sim.setCooling({ mode: st.cooling.mode === "auto" ? "manual" : "auto" });
   if (k === "scram") { if (ARMED.key === "scram" && now() - ARMED.t < 3) { sim.scram("manual"); ARMED.key = null; } else ARMED = { key: "scram", t: now() }; }
   // The full-screen schematic is its own mockup page (power-routing 3a): beside this page on disk, published apart.
-  if (k === "expand") window.open(location.protocol === "file:" ? "power-grid.html" : "https://claude.ai/artifact/3UFmRzVAzLpZ2UQGPpFvCc", "_blank");
+  // EXPAND opens it in 3D, a tap on the board in small opens it on the board (#2d).
+  if (k === "expand" || k === "board") window.open((location.protocol === "file:" ? "power-grid.html" : "https://claude.ai/artifact/3UFmRzVAzLpZ2UQGPpFvCc") + (k === "board" ? "#2d" : ""), "_blank");
   if (k === "rxmode") st.reactor.mode = st.reactor.mode === "auto" ? "manual" : "auto";
   if (k === "sci") G.sciSel = v;
   if (k === "scan") G.scanning = !G.scanning;
@@ -7415,7 +7479,7 @@ function consoleEngineering() {
     buses: { gen_p: st.genClosed.gen_p, gen_s: st.genClosed.gen_s, tie: st.tieClosed.bt_main, eb_p: st.tieClosed.eb_p, eb_s: st.tieClosed.eb_s,
       np: (st.nodeHealth.msb_p == null ? 1 : st.nodeHealth.msb_p) > 0.05, ns: (st.nodeHealth.msb_s == null ? 1 : st.nodeHealth.msb_s) > 0.05,
       soc: st.battery.soc_mj / PW.battery.capacity_mj, cut: Object.values(st.conduit).filter((c) => c.severed).length,
-      live: sim.routingView().live, limit: sim.routingView().limit, trip_s: sim.routingView().trip_s },
+      live: sim.routingView().live, limit: sim.routingView().limit, trip_s: sim.routingView().trip_s, thumb: routeCodes() },
     air: { status: air.status, worst: air.worst ? L.compartments.find((c) => c.id === air.worst).name.toUpperCase() : null },
   };
 }

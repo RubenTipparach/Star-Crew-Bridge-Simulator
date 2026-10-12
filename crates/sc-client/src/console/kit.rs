@@ -70,6 +70,8 @@ pub enum Act {
     /// the board; switch a node's box, open or close a conduit, a tie's breaker, swap a load's feed (by index in
     /// `power.json`'s nodes, conduits, ties, and the power data's loads).
     Schem(bool),
+    /// Open the schematic on the board (a tap on the SCHEMATIC panel's board in small).
+    SchemBoard,
     SchemDim(bool),
     SchemBox(usize),
     SchemRun(usize),

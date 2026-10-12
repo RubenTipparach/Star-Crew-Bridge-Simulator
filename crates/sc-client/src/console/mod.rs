@@ -377,7 +377,7 @@ pub struct CoolView {
 }
 
 /// The one-line diagram's breakers and buses, and the battery.
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct BusesView {
     pub gen_p: bool,
@@ -400,6 +400,9 @@ pub struct BusesView {
     pub limit: u32,
     #[serde(default)]
     pub trip_s: f64,
+    /// The board in small (power-routing 6.2): each edge's and node's state (none: a fixture from before it).
+    #[serde(default)]
+    pub thumb: Option<schematic::ThumbView>,
 }
 
 /// The AIR panel: oxygen, carbon dioxide and temperature lamps (0 fine, 1 warning, 2 danger) and the worst room.

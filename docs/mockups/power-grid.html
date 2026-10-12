@@ -5785,7 +5785,26 @@ function resize() {
 }
 // A tap (a press that barely moves) switches a box or a run and shows its numbers; the orbit camera takes the rest.
 let press = null;
-canvas.addEventListener("pointerdown", (e) => { press = { x: e.clientX, y: e.clientY, t: performance.now(), n: (press && press.n) || 0 }; });
+canvas.addEventListener("pointerdown", (e) => {
+  press = { x: e.clientX, y: e.clientY, t: performance.now(), n: (press && press.n) || 0 };
+  // A generator's run under the pointer: hold it to switch its breaker.
+  const g = genAt3D(e.clientX, e.clientY);
+  if (g) holdStart("gen:" + g, e.clientX, e.clientY);
+});
+canvas.addEventListener("pointermove", (e) => holdMove(e.clientX, e.clientY));
+/** The generator whose run is under a point of the 3D view, if one is within 12 pixels. */
+function genAt3D(cx, cy) {
+  camera.updateMatrixWorld();
+  const x = cx, y = cy - BH;
+  let best = null, bd = 12;
+  for (const g of PW.generators) for (const [a, b] of PL.edgeSegs[g.id] || []) {
+    const [ax, ay, az] = screenOf(a), [bx, by, bz] = screenOf(b);
+    if (az >= 1 || bz >= 1) continue;
+    const du = bx - ax, dv = by - ay, t = clamp(((x - ax) * du + (y - ay) * dv) / (du * du + dv * dv || 1), 0, 1), d = Math.hypot(ax + du * t - x, ay + dv * t - y);
+    if (d < bd) { bd = d; best = g.id; }
+  }
+  return best;
+}
 canvas.addEventListener("pointerup", (e) => {
   if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) < 6 && performance.now() - press.t < 500) {
     if (hitArmed) { const room = roomAt3D(e.clientX, e.clientY); if (room) hitRoom(room, e.clientX, e.clientY); }
@@ -6068,15 +6087,29 @@ function damageBand(id, spot, w) {
   const ux = (q[0] - p[0]) / l, uy = (q[1] - p[1]) / l, a = [spot.at[0] - ux * 10, spot.at[1] - uy * 10], b = [spot.at[0] + ux * 10, spot.at[1] + uy * 10];
   return `<path d="${pathD([a, b])}" stroke="${C.danger}" stroke-width="${w + 8}" opacity="0.4"/><path d="${pathD([a, b])}" stroke="url(#hatchR)" stroke-width="${w + 8}"/>`;
 }
+// A generator's breaker, held (power-routing 3a: the one-line diagram's breakers moved here from the side panel, guarded
+// as they were): HOLD_S on its trace or its run switches it.
+const HOLD_S = 0.6;
+let HOLD = null;   // { key, t0, x, y }
+const isGen = (id) => PW.generators.some((g) => g.id === id);
+function holdStart(key, x, y) { HOLD = { key, t0: performance.now(), x, y }; }
+function holdMove(x, y) { if (HOLD && Math.hypot(x - HOLD.x, y - HOLD.y) > 6) HOLD = null; }
+function holdStep() {
+  if (!HOLD || performance.now() - HOLD.t0 < HOLD_S * 1000) return;
+  const id = HOLD.key.split(":")[1];
+  if (st.routing.trip_s <= 0) { st.genClosed[id] = !st.genClosed[id]; sim.log(`${id} breaker ${st.genClosed[id] ? "closed" : "opened"}`); run(0.1); status(); if (PL) updatePlan(); }
+  HOLD = null;
+}
 function drawTrace(id, dt) {
   const path = PATH[id];
   if (!path) return "";
   const e = edgeNow(id), w = traceW(id);
   const live = e.state === "live", open = onBottom(e);
   const col = e.state === "severed" ? C.danger : open ? PCB.bottom : e.state === "dead" ? PCB.copperOff : C.power;
-  const tip = `${e.name}: ${f1(Math.abs(e.mw))} of ${f1(e.rated)} MW, ${e.state}${e.spare ? " (a spare route)" : ""}${e.health < 1 && e.state !== "severed" ? `, damaged: at most ${f1(e.cap)} MW` : ""}${e.run ? `; tap to ${e.closed ? "open" : "close"} it` : ""}`;
+  const gen = isGen(id);
+  const tip = `${e.name}: ${f1(Math.abs(e.mw))} of ${f1(e.rated)} MW, ${e.state}${e.spare ? " (a spare route)" : ""}${e.health < 1 && e.state !== "severed" ? `, damaged: at most ${f1(e.cap)} MW` : ""}${e.run ? `; tap to ${e.closed ? "open" : "close"} it` : gen ? `; hold to ${e.closed ? "open" : "close"} its breaker` : ""}`;
   const hi = id === hover2;
-  let s = `<g data-edge="${id}"${tipA(tip)}${e.run ? actA("run:" + id) + ' class="tap"' : ""}>`;
+  let s = `<g data-edge="${id}"${tipA(tip)}${e.run ? actA("run:" + id) + ' class="tap"' : gen ? ` data-hold="gen:${id}" class="tap"` : ""}>`;
   s += `<path d="${pathD(path)}" stroke="transparent" stroke-width="14" fill="none"/>`;
   if (hi) s += `<path d="${pathD(path)}" stroke="#ffffff" stroke-opacity="0.42" stroke-width="${w + 10}" fill="none" stroke-linejoin="round" stroke-linecap="round"/>`;
   if (open) s += `<path d="${pathD(path)}" stroke="${hi ? mixCol(col, "#ffffff", 0.35) : col}" stroke-width="${w + (hi ? 0.8 : 0)}" fill="none" stroke-dasharray="6 5" stroke-linejoin="round" opacity="${hi ? 1 : 0.8}"/>`;
@@ -6095,6 +6128,10 @@ function drawTrace(id, dt) {
   for (const v of edgeVias(id)) s += via(v[0], v[1], col);
   if (!open) s += pad(path[0], path[1], col) + pad(path[path.length - 1], path[path.length - 2], col);
   if (e.health < 1 && e.state !== "severed") s += damageBand(id, boardSpot(id, e.hit_at), w);
+  if (HOLD && HOLD.key === "gen:" + id) {
+    const m = along(path, 0.5).at, k = clamp((performance.now() - HOLD.t0) / (HOLD_S * 1000), 0, 1);
+    s += `<circle cx="${m[0]}" cy="${m[1]}" r="${4 + 10 * k}" fill="${C.warn}" opacity="0.5"/>`;
+  }
   if (e.state === "severed") {
     const m = boardSpot(id, e.cut).at;
     s += `<circle cx="${m[0]}" cy="${m[1]}" r="9" fill="${PCB.mask}" stroke="${C.danger}" stroke-width="2"/><path d="M${m[0] - 5} ${m[1] - 5}l10 10M${m[0] + 5} ${m[1] - 5}l-10 10" stroke="#fff" stroke-width="2"/>`;
@@ -6305,12 +6342,15 @@ function diagZoomAt(cx, cy, f) {
 const dptr = new Map();
 let ddrag = null, dpinch = null;
 STAGE.addEventListener("pointerdown", (e) => {
+  const held = e.target.closest && e.target.closest("[data-hold]");
+  if (held) holdStart(held.dataset.hold, e.clientX, e.clientY);
   dptr.set(e.pointerId, [e.clientX, e.clientY]);
   STAGE.setPointerCapture(e.pointerId);
   if (dptr.size === 2) { const [a, b] = [...dptr.values()]; dpinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), z: DZ.z, mid: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2] }; ddrag = null; }
   else ddrag = { x: e.clientX, y: e.clientY, ox: DZ.ox, oy: DZ.oy, moved: false };
 });
 STAGE.addEventListener("pointermove", (e) => {
+  holdMove(e.clientX, e.clientY);
   if (dptr.has(e.pointerId)) dptr.set(e.pointerId, [e.clientX, e.clientY]);
   if (dpinch && dptr.size === 2) {
     const [a, b] = [...dptr.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]);
@@ -6375,7 +6415,9 @@ addEventListener("resize", () => { resize(); placeLegend(); frameCamera(); });
 legend();
 bar();
 resize();
-setView("3d");
+// #2d opens it on the board (the SCHEMATIC panel's board in small, tapped); else in 3D.
+setView(location.hash === "#2d" ? "2d" : "3d");
+addEventListener("pointerup", () => { HOLD = null; });
 let acc = 0, last = performance.now(), first = true, slow = 0, wasLeft = -1;
 renderer.setAnimationLoop(() => {
   const now = performance.now(), dt = Math.min(0.1, (now - last) / 1000);
@@ -6389,6 +6431,7 @@ renderer.setAnimationLoop(() => {
   if (n >= 400) acc = 0;
   LINE_U.uTime.value += dt;
   LINE_U.uRes.value.set(W, H);
+  holdStep();
   if ((slow += dt) > 0.1 || first) {
     slow = 0; status(); placeLegend();
     // A panel closed or opened moves the free area: the camera's frame follows it.

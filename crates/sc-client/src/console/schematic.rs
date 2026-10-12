@@ -71,6 +71,132 @@ pub struct SchemView {
     pub want_mw: f64,
 }
 
+/// The board in small on the SCHEMATIC panel (power-routing 6.2): each edge's state in `PowerData::edge_count`'s order
+/// (live 0, dead 1, open 2, cut 3) and each node's (lit 0, nothing reaching it 1, off 2, destroyed 3, plus 8 when
+/// damaged). The mockup writes the same codes, so the two draw the same picture.
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct ThumbView {
+    pub edges: Vec<u8>,
+    pub nodes: Vec<u8>,
+}
+
+/// The board in small's codes from the schematic's state.
+pub fn thumb(v: &SchemView) -> ThumbView {
+    let s = data();
+    let edges = (0..s.edges.len())
+        .map(|k| match edge_state(s, v, k) {
+            St::Live => 0,
+            St::Dead => 1,
+            St::Open => 2,
+            St::Cut => 3,
+        })
+        .collect();
+    let nodes = (0..s.pd.nodes.len())
+        .map(|n| {
+            let h = v.node_health.get(n).copied().unwrap_or(1.0);
+            let base = if h <= 0.0 {
+                3
+            } else if !v.box_on.get(n).copied().unwrap_or(true) {
+                2
+            } else if !v.reached.get(n).copied().unwrap_or(true) {
+                1
+            } else {
+                0
+            };
+            base + if h > 0.0 && h < 1.0 - 1e-6 { 8 } else { 0 }
+        })
+        .collect();
+    ThumbView { edges, nodes }
+}
+
+/// The schematic's board in small in the box (x, y, w, h) on `b` (the mockup's `boardThumb`): the boards, every trace in
+/// its state (live yellow, dead copper, an open spare thin blue, cut red), every part (lit, nothing reaching it faint,
+/// off dim, destroyed red, a damaged one with a red rim), the reactor and the battery.
+pub fn board_thumb(b: &Canvas, [x, y, w, h]: [f32; 4], t: &ThumbView, rx_up: bool, bat_out: bool) {
+    let c = &vg::style().c;
+    let sc = &vg::style().schem;
+    let pcb = &sc.pcb;
+    let s = data();
+    let fr = &s.board.board;
+    let (bw, bh) = (fr.w as f32, fr.h as f32);
+    let k = (w / bw).min(h / bh);
+    let (ox, oy) = (x + (w - bw * k) / 2.0, y + (h - bh * k) / 2.0);
+    let (bx0, bx1) = (fr.x[0] as f32, fr.x[1] as f32);
+    for l in &s.board.layers {
+        let (y0, y1) = (l.y[0] as f32, l.y[1] as f32);
+        b.rect(
+            ox + bx0 * k,
+            oy + y0 * k,
+            (bx1 - bx0) * k,
+            (y1 - y0) * k,
+            2.0,
+            pcb.mask.0,
+            Some(Pen::new(1.0, pcb.mask_edge.0)),
+        );
+    }
+    // The open ones first (the bottom layer), then the copper.
+    for pass in [true, false] {
+        for (i, e) in s.edges.iter().enumerate() {
+            let code = t.edges.get(i).copied().unwrap_or(0);
+            let open = code == 2;
+            if open != pass {
+                continue;
+            }
+            let (col, sw) = match code {
+                3 => (c.danger.0, 1.4),
+                2 => (alpha(pcb.bottom.0, 0.7), 0.8),
+                1 => (pcb.copper_off.0, 0.0),
+                _ => (sc.power.0, 0.0),
+            };
+            let sw = if sw > 0.0 {
+                sw
+            } else {
+                ((2.4 + 4.6 * (e.rated / 40.0).clamp(0.0, 1.0)) as f32 * k * 2.0).clamp(0.9, 1.6)
+            };
+            let pts: Vec<[f32; 2]> = e.trace.iter().map(|p| [ox + p[0] * k, oy + p[1] * k]).collect();
+            b.polyline(&pts, Pen::new(sw, col).round());
+        }
+    }
+    for (n, id) in s.pd.nodes.iter().enumerate() {
+        let Some(p) = s.board.parts.get(id) else { continue };
+        let code = t.nodes.get(n).copied().unwrap_or(0);
+        let (st, hurt) = (code & 7, code >= 8);
+        let fill = match st {
+            3 => c.danger.0,
+            2 => pcb.hole.0,
+            _ => pcb.body.0,
+        };
+        let edge = if hurt {
+            c.danger.0
+        } else {
+            match st {
+                0 => pcb.silk.0,
+                1 => c.faint.0,
+                _ => c.dim.0,
+            }
+        };
+        let (pw, ph) = (p[2] as f32 * k, p[3] as f32 * k);
+        let (px, py) = (ox + p[0] as f32 * k - pw / 2.0, oy + p[1] as f32 * k - ph / 2.0);
+        b.rect(px, py, pw, ph, 0.8, fill, Some(Pen::new(if hurt { 1.2 } else { 0.8 }, edge)));
+    }
+    if let Some(r) = s.board.parts.get("reactor") {
+        let col = if rx_up { sc.power.0 } else { c.danger.0 };
+        b.circle(
+            ox + r[0] as f32 * k,
+            oy + r[1] as f32 * k,
+            r[2] as f32 / 2.0 * k,
+            pcb.body.0,
+            Some(Pen::new(1.2, col)),
+        );
+    }
+    if let Some(bt) = s.board.parts.get("battery") {
+        let (pw, ph) = (bt[2] as f32 * k, bt[3] as f32 * k);
+        let col = if bat_out { c.emergency.0 } else { sc.power.0 };
+        b.rect(ox + bt[0] as f32 * k - pw / 2.0, oy + bt[1] as f32 * k - ph / 2.0, pw, ph, 0.8, col, None);
+    }
+}
+
 // ------------------------------------------------------------------------------------------------ the static data
 
 /// An edge's kind and its index among its kind in `power.json`.
@@ -719,6 +845,8 @@ fn edge_tip(e: &Edge, st: St, flow: f64, damaged: bool) -> String {
     }
     if edge_act(e).is_some() {
         t += if st == St::Open { "; tap to close it" } else { "; tap to open it" };
+    } else if matches!(e.kind, Kind::Gen(_)) {
+        t += if st == St::Live { "; hold to open its breaker" } else { "; hold to close its breaker" };
     }
     t
 }
@@ -1290,9 +1418,23 @@ fn trace(b: &Canvas, cx: &mut Ctx, s: &Static, v: &SchemView, k: usize, st: St, 
         b.seg(mid[0] + 5.0, mid[1] - 5.0, mid[0] - 5.0, mid[1] + 5.0, Pen::new(2.0, Color32::WHITE));
     }
     let tip = edge_tip(e, st, flow, damaged);
-    let hit = edge_act(e).map(Hit::Tap);
+    let hit = edge_hit(s, e);
+    if let Some(Hit::Hold(key)) = &hit {
+        if let Some(hv) = cx.v.hold.as_ref().filter(|h| h.key == *key) {
+            b.circle(mid[0], mid[1], 4.0 + 10.0 * hv.k.clamp(0.0, 1.0) as f32, alpha(c.warn.0, 0.5), None);
+        }
+    }
     for wseg in e.trace.windows(2) {
         cx.hits.add_seg(b, wseg[0], wseg[1], 7.0, hit.clone(), Some(tip.clone()));
+    }
+}
+
+/// What a press on an edge does: a run or a tie switches on a tap; a generator's breaker is held (power-routing 3a: the
+/// one-line diagram's breakers, guarded as they were, the seat's `brk:` hold).
+fn edge_hit(s: &Static, e: &Edge) -> Option<Hit> {
+    match e.kind {
+        Kind::Gen(g) => Some(Hit::Hold(format!("brk:{}", s.pd.file.generators[g].id))),
+        _ => edge_act(e).map(Hit::Tap),
     }
 }
 
@@ -1621,7 +1763,7 @@ fn ship3d(cv: &Canvas, cx: &mut Ctx, s: &Static, v: &SchemView) {
         col: Color32,
         st: St,
         flow: f64,
-        hit: Option<Act>,
+        hit: Option<Hit>,
         tip: String,
     }
     let mut lines: Vec<Line> = Vec::new();
@@ -1643,7 +1785,7 @@ fn ship3d(cv: &Canvas, cx: &mut Ctx, s: &Static, v: &SchemView) {
         };
         let flow = v.flows.get(k).copied().unwrap_or(0.0);
         let damaged = matches!(e.kind, Kind::Conduit(cn) if v.damaged.get(cn).copied().unwrap_or(false));
-        lines.push(Line { pts, w, col, st, flow, hit: edge_act(e), tip: edge_tip(e, st, flow, damaged) });
+        lines.push(Line { pts, w, col, st, flow, hit: edge_hit(s, e), tip: edge_tip(e, st, flow, damaged) });
     }
     for fd in &s.feeders {
         let Some((pts, w)) = project(&fd.lane, &fd.ws) else { continue };
@@ -1676,7 +1818,7 @@ fn ship3d(cv: &Canvas, cx: &mut Ctx, s: &Static, v: &SchemView) {
         let tip =
             format!("{}: feeder from {from}{}", ld.name, if ld.alt.is_some() { "; tap to swap its feed" } else { "" });
         let flow = if st == St::Live && wants.is_some_and(|x| x > 0.005) { 1.0 } else { 0.0 };
-        lines.push(Line { pts, w: w.min(2.4), col, st, flow, hit: ld.alt.map(|_| Act::SchemFeed(i)), tip });
+        lines.push(Line { pts, w: w.min(2.4), col, st, flow, hit: ld.alt.map(|_| Hit::Tap(Act::SchemFeed(i))), tip });
     }
     // The line under the pointer is lit.
     let ptr = cx.pointer.map(|p| [(p.x - cv.o.x) / cv.s, (p.y - cv.o.y) / cv.s]);
@@ -1720,7 +1862,7 @@ fn ship3d(cv: &Canvas, cx: &mut Ctx, s: &Static, v: &SchemView) {
             St::Cut => g.polyline(&l.pts, Pen::new(l.w, col).round()),
         }
         for w in l.pts.windows(2) {
-            cx.hits.add_seg(cv, w[0], w[1], 6.0, l.hit.clone().map(Hit::Tap), Some(l.tip.clone()));
+            cx.hits.add_seg(cv, w[0], w[1], 6.0, l.hit.clone(), Some(l.tip.clone()));
         }
     }
     // The cuts and the damaged runs: a mark halfway along each (the snapshot does not say where a hit took it).

@@ -729,6 +729,8 @@ impl Seat {
                 live: snap.route.as_ref().map_or(0, |r| u32::from(r.live)),
                 limit: snap.route.as_ref().map_or(f.routing.max_live_runs, |r| u32::from(r.limit)),
                 trip_s: snap.route.as_ref().map_or(0.0, |r| r.trip_s),
+                // The board in small (power-routing 6.2), from the same state the schematic draws.
+                thumb: snap.route.as_ref().map(|r| crate::console::schematic::thumb(&self.schem(p, r, snap, data))),
             },
             // The air is not simulated in the drill: the AIR panel is drawn unavailable.
             air: None,
@@ -1063,8 +1065,15 @@ impl Seat {
             Act::OrderRepair => {}
             // Engineering's schematic (power-routing 6.3): open and close it, 3D or the board, and its switches, each
             // the reverse of what the last snapshot showed (the server refuses while the grid is tripped).
+            // EXPAND opens it in 3D, a tap on the board in small on the board; CONSOLE closes it.
             Act::Schem(open) => {
                 self.schem_open = open;
+                self.schem_3d |= open;
+                self.obj_open = false;
+            }
+            Act::SchemBoard => {
+                self.schem_open = true;
+                self.schem_3d = false;
                 self.obj_open = false;
             }
             Act::SchemDim(three) => self.schem_3d = three,
@@ -1785,8 +1794,21 @@ mod tests {
             b.input(vec![PointerEv::Press(c), PointerEv::Release(c)], 1.9),
             vec![Command::Power(PowerCmd::Feed(i as u8, true))]
         );
-        b.press(Hit::Act(Act::Schem(false)), 2.0);
-        assert!(b.view(2.1).schem.is_none(), "CONSOLE goes back to the panels");
+        // A generator's breaker is held on its trace (the side panel's one-line breakers moved here).
+        let gen = hits.regions.iter().find(|r| r.hit == Some(Hit::Hold("brk:gen_p".into()))).expect("gen_p's trace");
+        let Some((g0, g1, _)) = gen.seg else { panic!("a trace's region is a line") };
+        let g = g0 + (g1 - g0) * 0.5;
+        assert!(b.input(vec![PointerEv::Press(g)], 3.0).is_empty(), "held, not yet");
+        let sent = b.input(vec![], 3.0 + HOLD_S + 0.05);
+        assert_eq!(sent, vec![Command::Power(PowerCmd::Switch(0))], "held long enough, the port generator's breaker");
+        b.input(vec![PointerEv::Release(g)], 3.8);
+        b.press(Hit::Act(Act::Schem(false)), 4.0);
+        assert!(b.view(4.1).schem.is_none(), "CONSOLE goes back to the panels");
+        // The board in small on the side panel opens the schematic on the board.
+        let v = b.view(4.2);
+        assert!(v.eng.as_ref().unwrap().buses.thumb.is_some(), "the panel draws the board in small");
+        b.press(Hit::Act(Act::SchemBoard), 4.3);
+        assert!(!b.view(4.4).schem.unwrap().three_d, "a tap on the board in small opens it on the board");
     }
 
     /// The schematic's states for the engine's shots: written as console fixtures (the engineering fixture with the
@@ -1822,6 +1844,10 @@ mod tests {
         assert!(hurt.severed[cond("k_mid_p")] && hurt.damaged[cond("r_shield")] && !hurt.box_on[node("bx_medbay")]);
         assert!(!hurt.reached[node("bx_medbay")], "a box switched off is not reached");
         let Ok(dir) = std::env::var("SC_SCHEM_FIXTURES") else { return };
+        // The side panel's board in small, hurt.
+        let mut v = base.clone();
+        v["eng"]["buses"]["thumb"] = serde_json::to_value(crate::console::schematic::thumb(&hurt)).unwrap();
+        std::fs::write(std::path::Path::new(&dir).join("panel-hurt.json"), serde_json::to_string(&v).unwrap()).unwrap();
         for (name, sv, three) in [
             ("schem-3d", &cruise, true),
             ("schem-2d", &cruise, false),
