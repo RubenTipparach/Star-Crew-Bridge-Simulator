@@ -275,8 +275,20 @@ engine builds them as the mockups draw them (CLAUDE.md 10; `console-parity` 2).
   its lane with its corners cut (the mockup's lanes and chamfer, ported), drawn as round-joined strokes on a dark
   outline (the console's vector canvas strokes them so, no new GPU pass), the markers, the cut and damage marks; a drag
   orbits, the wheel zooms.
-- **6.6 What waits.** The hit's star and ring (the drill would have to keep its last hits), the rooms overlay (the
-  engine's room lighting is not on the wire), and portrait phones (the console is landscape).
+- **6.6 What waits.** The hit's star and ring (the drill would have to keep its last hits), the ROOMS toggle with
+  the rooms' names (the 3D floors already take the light the routing gives them: lit, red alert, emergency, dark),
+  where on a run a hit cut it (the mark sits halfway along it), and portrait phones (the console is landscape).
+- **6.7 Built (2026-10-12).** `console/schematic.rs` draws both views from `SchemView`, which the seat builds from the
+  grid's and the routing's snapshots; `kit::Hit::Tap` acts on release, so a press that moves turns or moves the view
+  (`Drag::SchemCam`, `Drag::SchemPan`; the wheel zooms); `kit::Region` takes a line's distance test for runs. Its
+  colours are read out of `power-grid.html` into `console_style.json` (`schematic`) by `tools/ui/console_style.py`,
+  so the mockup stays the one source. The board's labels moved into `power_board.json` (`labels`), which the mockup
+  now reads as well. Cost on the console: 7 UI draw calls, about 48,000 vertices in 3D and 40,000 on the board (the
+  Pi 5's budget is 200,000 triangles). Tests: `expand_opens_the_schematic_and_its_taps_switch_the_grid` (EXPAND, a tap
+  on a run, a box and a light, a drag that turns the view and sends nothing, CONSOLE) and
+  `the_schematic_views_its_shots_are_drawn_from`, which writes the engine's shots' fixtures when `SC_SCHEM_FIXTURES`
+  names a folder (`docs/screenshots/engine/schematic/`). The SCHEMATIC panel passes the console parity check in all
+  six Engineering states.
 
 ## Risks / Trade-offs
 

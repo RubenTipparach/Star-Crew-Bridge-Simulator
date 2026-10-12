@@ -1,6 +1,6 @@
 //! The engineering console (the mockup's `engineering()` and `reactorLoop()`): POWER (supply against demand, a fader
 //! a load group with its priority and feed breaker, the four presets), REACTOR (the core at the top of its cooling
-//! loop, SCRAM and the reactor's mode, the two needles, the loop's four levers and its AUTO), BUSES (the one-line
+//! loop, SCRAM and the reactor's mode, the two needles, the loop's four levers and its AUTO), SCHEMATIC (the one-line
 //! diagram and the battery) and AIR (three lamps).
 //!
 //! Everything it draws is [`EngView`]: the power grid's, the reactor's and the loop's own numbers. Where nothing aboard
@@ -770,11 +770,13 @@ fn thousands(x: f64) -> String {
     }
 }
 
-// ------------------------------------------------------------------------------------------------ BUSES
+// ------------------------------------------------------------------------------------------------ SCHEMATIC
 
+/// The schematic on the side (power-routing 3a and 6.2; the mockup's SCHEMATIC panel): the one-line diagram, the
+/// battery, the cables cut, the live runs against the limit, and EXPAND to the full-screen schematic.
 fn buses(cv: &Canvas, cx: &mut Ctx, e: &EngView) {
     let c = &vg::style().c;
-    let (b, w, h) = panel(cv, cx, "BUSES", grid(10.0, 0.0, 2.0, 2.0));
+    let (b, w, h) = panel(cv, cx, "SCHEMATIC", grid(10.0, 0.0, 2.0, 2.0));
     let bs = &e.buses;
     let live = |on: bool| if on { c.ok.0 } else { c.faint.0 };
     let up = e.reactor.up;
@@ -835,6 +837,28 @@ fn buses(cv: &Canvas, cx: &mut Ctx, e: &EngView) {
         b.text(30.0, h - 9.0, 13.0, c.danger.0, &bs.cut.to_string(), T::default());
         cx.hits.add(&b, 10.0, h - 22.0, 34.0, 18.0, None, Some("Cables cut: damage control splices them".into()));
     }
+    // The live runs against the protection's limit (power-routing 2): the number the engineer routes by.
+    let tripped = bs.trip_s > 0.0;
+    let rc = if tripped {
+        c.danger.0
+    } else if bs.live >= bs.limit {
+        c.warn.0
+    } else {
+        c.dim.0
+    };
+    b.icon("runs", w - 66.0, h - 14.0, 14.0, rc);
+    let n = if tripped { format!("{} s", bs.trip_s.ceil()) } else { format!("{}/{}", bs.live, bs.limit) };
+    b.text(w - 12.0, h - 9.0, 13.0, rc, &n, T::end());
+    let tip = if tripped {
+        format!("Tripped: factory settings in {} s", bs.trip_s.ceil())
+    } else {
+        format!("Live runs: {} of the {} the protection allows", bs.live, bs.limit)
+    };
+    cx.hits.add(&b, w - 74.0, h - 22.0, 66.0, 18.0, None, Some(tip));
+    // EXPAND: the schematic full screen.
+    b.rect(w - 34.0, 2.0, 28.0, 28.0, 5.0, c.panel2.0, Some(Pen::new(1.0, c.line2.0)));
+    b.icon("expand", w - 20.0, 16.0, 16.0, c.text.0);
+    cx.hits.add(&b, w - 34.0, 2.0, 28.0, 28.0, Some(Hit::Act(Act::Schem(true))), Some("Expand the schematic".into()));
 }
 
 // ------------------------------------------------------------------------------------------------ AIR
@@ -890,7 +914,7 @@ fn unavailable(cv: &Canvas, cx: &mut Ctx) {
     for (title, g) in [
         ("POWER", grid(0.0, 0.0, 6.0, 4.0)),
         ("REACTOR", grid(6.0, 0.0, 4.0, 4.0)),
-        ("BUSES", grid(10.0, 0.0, 2.0, 2.0)),
+        ("SCHEMATIC", grid(10.0, 0.0, 2.0, 2.0)),
         ("AIR", grid(10.0, 2.0, 2.0, 2.0)),
     ] {
         let (b, w, h) = panel(cv, cx, title, g);
@@ -959,7 +983,7 @@ fn unavailable(cv: &Canvas, cx: &mut Ctx) {
                     },
                 );
             }
-            "BUSES" => b.icon("bolt", w / 2.0, 18.0, 18.0, c.faint.0),
+            "SCHEMATIC" => b.icon("bolt", w / 2.0, 18.0, 18.0, c.faint.0),
             _ => air_unavailable(&b, w),
         }
         cx.hits.add(&b, 0.0, 0.0, w, h, None, Some(tip.into()));

@@ -7414,7 +7414,8 @@ function consoleEngineering() {
       makeup_max_kg_s: PW.coolant.makeup.max_kg_s },
     buses: { gen_p: st.genClosed.gen_p, gen_s: st.genClosed.gen_s, tie: st.tieClosed.bt_main, eb_p: st.tieClosed.eb_p, eb_s: st.tieClosed.eb_s,
       np: (st.nodeHealth.msb_p == null ? 1 : st.nodeHealth.msb_p) > 0.05, ns: (st.nodeHealth.msb_s == null ? 1 : st.nodeHealth.msb_s) > 0.05,
-      soc: st.battery.soc_mj / PW.battery.capacity_mj, cut: Object.values(st.conduit).filter((c) => c.severed).length },
+      soc: st.battery.soc_mj / PW.battery.capacity_mj, cut: Object.values(st.conduit).filter((c) => c.severed).length,
+      live: sim.routingView().live, limit: sim.routingView().limit, trip_s: sim.routingView().trip_s },
     air: { status: air.status, worst: air.worst ? L.compartments.find((c) => c.id === air.worst).name.toUpperCase() : null },
   };
 }

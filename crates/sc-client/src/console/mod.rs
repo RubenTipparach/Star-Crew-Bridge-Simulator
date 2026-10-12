@@ -18,6 +18,7 @@ mod helm;
 pub mod kit;
 mod laser;
 mod objectives;
+pub mod schematic;
 mod science;
 mod tactical;
 
@@ -391,6 +392,14 @@ pub struct BusesView {
     pub soc: f64,
     /// Cables cut.
     pub cut: u32,
+    /// The runs live, the main protection's limit, and the seconds left dark after a trip (power-routing 2): the
+    /// SCHEMATIC panel's count (0: a fixture from before the routing).
+    #[serde(default)]
+    pub live: u32,
+    #[serde(default)]
+    pub limit: u32,
+    #[serde(default)]
+    pub trip_s: f64,
 }
 
 /// The AIR panel: oxygen, carbon dioxide and temperature lamps (0 fine, 1 warning, 2 danger) and the worst room.
@@ -674,6 +683,9 @@ pub struct ConsoleView {
     /// OBJECTIVES is open over the panels.
     #[serde(default)]
     pub objectives_open: bool,
+    /// Engineering's schematic, open full screen (power-routing 6.3).
+    #[serde(default)]
+    pub schem: Option<schematic::SchemView>,
     #[serde(default)]
     pub objectives: Option<ObjectivesView>,
 }
@@ -902,6 +914,13 @@ pub fn draw(cv: &Canvas, cx: &mut Ctx) {
     if !sight {
         // Nothing in the look band reaches past it, so it takes no clip rectangle (each costs a UI draw call).
         look_band(&cv.at(0.0, 32.0), cx);
+    }
+    // Engineering's schematic opens over the look band and the panels (power-routing 6.3).
+    if let Some(sv) = cx.v.schem.as_ref().filter(|_| cx.v.station == "engineering" && !cx.v.objectives_open) {
+        schematic::draw(cv, cx, sv);
+        status_strip(&cv.at(0.0, 688.0), cx);
+        kit::tooltip(cv, cx);
+        return;
     }
     if !cx.v.objectives_open || sight {
         match cx.v.station.as_str() {

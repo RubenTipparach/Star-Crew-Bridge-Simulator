@@ -110,6 +110,44 @@ struct StyleFile {
     roles: Roles,
     icons: HashMap<String, String>,
     order_verbs: std::collections::BTreeMap<String, Vec<[String; 2]>>,
+    schematic: SchemStyle,
+}
+
+/// Engineering's schematic's own colours (power-routing 6; `power-grid.html`'s `C.power`, `C.spare`, `PCB` and
+/// `ROOM_TINT`).
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SchemStyle {
+    pub power: Hex,
+    pub spare: Hex,
+    pub pcb: PcbStyle,
+    pub room_tint: RoomTint,
+}
+
+/// The circuit board's colours: the solder mask and its edge, the silkscreen bright and dim, copper with nothing on it,
+/// the bottom layer, a drilled hole, a chip's body.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
+pub struct PcbStyle {
+    pub mask: Hex,
+    pub mask_edge: Hex,
+    pub silk: Hex,
+    pub silk_dim: Hex,
+    pub copper_off: Hex,
+    pub bottom: Hex,
+    pub hole: Hex,
+    pub body: Hex,
+}
+
+/// A room's floor by its light, in the 3D schematic.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RoomTint {
+    pub normal: Hex,
+    pub red_alert: Hex,
+    pub emergency: Hex,
+    pub dark: Hex,
 }
 
 /// One stroked piece of an icon, flattened in its 24-unit grid.
@@ -127,6 +165,8 @@ pub struct Style {
     icons: HashMap<String, Vec<IconPart>>,
     /// The captain's orders to each station: [verb, icon], in the mockup's order.
     pub order_verbs: std::collections::BTreeMap<String, Vec<[String; 2]>>,
+    /// Engineering's schematic's colours.
+    pub schem: SchemStyle,
 }
 
 /// The style, parsed once from the compiled-in `data/ui/console_style.json`.
@@ -136,7 +176,7 @@ pub fn style() -> &'static Style {
         let f: StyleFile = serde_json::from_str(include_str!("../../../data/ui/console_style.json"))
             .expect("data/ui/console_style.json is valid (tools/ui/console_style.py writes it)");
         let icons = f.icons.iter().map(|(k, v)| (k.clone(), parse_icon(v))).collect();
-        Style { c: f.colours, role: f.roles, icons, order_verbs: f.order_verbs }
+        Style { c: f.colours, role: f.roles, icons, order_verbs: f.order_verbs, schem: f.schematic }
     })
 }
 

@@ -22,5 +22,6 @@ pub mod probes;
 pub mod repair;
 pub mod replay;
 pub mod rng;
+pub mod schematic;
 pub mod vertex;
 pub mod walk;
