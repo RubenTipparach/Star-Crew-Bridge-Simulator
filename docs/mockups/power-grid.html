@@ -66,6 +66,11 @@
     background: #151d28; color: var(--fg); border: 1px solid var(--line); border-radius: 6px; font: 700 13px var(--font);
     letter-spacing: .08em; cursor: pointer; }
   #collapse:hover, #collapse:focus-visible { border-color: var(--accent); color: var(--accent); outline: none; }
+  /* The view switch (power-routing 3a: "they can toggle between 2d and 3d view"): big, beside CONSOLE. */
+  #viewsw { position: fixed; top: 54px; z-index: 30; display: flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  #viewsw button { background: #151d28; color: var(--dim); border: 0; padding: 7px 16px; font: 700 15px var(--font); letter-spacing: .1em; cursor: pointer; }
+  #viewsw button + button { border-left: 1px solid var(--line); }
+  #viewsw button.on { background: #12324a; color: var(--accent); }
   #labels .deck small { display: block; font: 600 12px/1.2 var(--font); color: #a8946e; letter-spacing: .06em; }
   #labels .node { font: 700 11px/1 var(--font); color: #ffe7a8; letter-spacing: .05em; transform: translate(-50%, 6px); }
   #labels .node.tl { transform: translate(-100%, -50%); }
@@ -4922,6 +4927,7 @@
 <div class="legend" id="legend"></div>
 <div id="tip"></div>
 <div id="tripb"></div>
+<div id="viewsw"><button type="button" data-v="3d" data-tip="The ship in 3D">3D</button><button type="button" data-v="2d" data-tip="The simplified graph">2D</button></div>
 <button id="collapse" type="button" data-tip="Collapse: back to the Engineering console's side panel"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M10 14l-7 7M14 10l7-7"/></svg>CONSOLE</button>
 <script type="module">
 import * as THREE from "three";
@@ -4955,7 +4961,10 @@ function mixCol(a, b, k) {
   return "#" + ((ch(16) << 16) | (ch(8) << 8) | ch(0)).toString(16).padStart(6, "0");
 }
 /** A live run's colour: dim when it idles, the power colour as it nears its rating. */
-const flowCol = (share) => mixCol("#4d5866", C.power, clamp(Math.pow(share, 0.6), 0, 1));
+// Every working run is lit (the owner, 2026-10-11: "black lines dont make sense to me at all, it should be lit up",
+// "by default all lines should be working"): amber when it carries little, bright yellow near its rating. Only a run
+// nothing reaches is grey, an open one blue, a severed one red.
+const flowCol = (share) => mixCol("#e0902c", C.power, clamp(Math.pow(share, 0.5), 0, 1));
 
 // Short names for the tags and the diagram's cards (UI words; the full names are power.json's, on hover).
 const SHORT = {
@@ -5082,7 +5091,8 @@ function toggle(kind, id) {
 }
 
 // =================================================================== the bar, the status strip, the legend, the trip banner
-const BAR = document.getElementById("bar"), COLLAPSE = document.getElementById("collapse");
+const BAR = document.getElementById("bar"), COLLAPSE = document.getElementById("collapse"), VIEWSW = document.getElementById("viewsw");
+VIEWSW.addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) { setView(b.dataset.v); layoutTop(); } });
 let view = "3d", speed = 1;
 // The rooms overlay (the owner, 2026-10-11: "add the ability to overlay rooms, so that if panels are turned off the
 // lights in that room go to emergency"): every room filled with the light the simulation gives it.
@@ -5141,7 +5151,7 @@ function legend() {
     row(sw(`<rect x="11" y="3" width="12" height="12" fill="${C.bg}" stroke="${C.warn}" stroke-width="2"/>`), "Switched off") +
     row(sw(`<rect x="10" y="2" width="14" height="14" fill="${C.bg}" stroke="${C.danger}" stroke-width="2"/><path d="M12 4l10 10M22 4L12 14" stroke="${C.danger}" stroke-width="2"/>`), "Destroyed") +
     `<div class="h">RUNS (tap to switch)</div>` +
-    row(sw(`<path d="M1 9h32" stroke="${C.power}" stroke-width="5" stroke-dasharray="6 3"/>`), "Live: width its rating, brightness its load") +
+    row(sw(`<path d="M1 9h16" stroke="#e0902c" stroke-width="5"/><path d="M17 9h16" stroke="${C.power}" stroke-width="5"/>`), "Working: amber idle, yellow under load") +
     row(sw(`<path d="M1 9h32" stroke="${C.spare}" stroke-width="3" stroke-dasharray="3 6"/>`), "Open: a spare route, or switched off") +
     row(sw(`<path d="M1 9h32" stroke="${C.faint}" stroke-width="3" stroke-dasharray="3 3"/>`), "Dead: nothing reaches it") +
     row(sw(`<path d="M1 9h32" stroke="${C.danger}" stroke-width="4"/><path d="M13 3l8 12M21 3l-8 12" stroke="#fff" stroke-width="2"/>`), "Severed") +
@@ -5422,7 +5432,7 @@ function updatePlan() {
   }
   for (const [list, alt] of [[FEED_LOADS, false], [ALT_LOADS, true]]) for (const i of list) {
     const f = feederNow(i, alt), s = loadState(loadNow(i));
-    const col = f.state === "open" ? C.spare : f.state === "dead" ? C.faint : f.state === "idle" ? "#4d5866" : s.col;
+    const col = f.state === "open" ? C.spare : f.state === "dead" ? C.faint : f.state === "idle" ? "#2f9a62" : s.col;
     paint(f.id, col, STATE_N[f.state], 1, f.state === "live" ? clamp(f.mw / f.rated, 0.05, 1) : 0);
   }
   for (const k of ["aCol", "aState", "aDir", "aRate"]) ga[k].needsUpdate = true;
@@ -5464,6 +5474,8 @@ function layoutTop() {
   for (const el of [canvas, document.getElementById("labels"), STAGE]) el.style.top = BH + "px";
   TRIPB.style.top = BH + 12 + "px";
   COLLAPSE.style.top = BH + 10 + "px";
+  VIEWSW.style.top = BH + 10 + "px";
+  VIEWSW.style.right = COLLAPSE.offsetWidth + 22 + "px";
   title.style.setProperty("top", BH + 10 + "px", "important");
 }
 function resize() {
@@ -5972,6 +5984,7 @@ STAGE.addEventListener("wheel", (e) => { e.preventDefault(); diagZoomAt(e.client
 // =================================================================== views, the loop, the shots
 function setView(v) {
   view = v;
+  for (const b of VIEWSW.querySelectorAll("button")) b.classList.toggle("on", b.dataset.v === v);
   canvas.style.display = v === "3d" ? "block" : "none";
   LABELS.style.display = v === "3d" ? "block" : "none";
   STAGE.style.display = v === "2d" ? "block" : "none";
