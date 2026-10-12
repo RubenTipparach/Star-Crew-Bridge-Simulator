@@ -47,6 +47,8 @@ pub struct BridgeView {
     tex: TextureArray,
     panel_first: u32,
     panel_glow: f32,
+    /// The hull (tern-exterior 4): the bow's rim and the forward hull through the bridge's windows.
+    hull: Option<crate::hull::HullView>,
     /// Triangles drawn for the rooms.
     pub triangles: usize,
     /// The eye's vertical field of view, degrees (Options, game-menu 3).
@@ -59,14 +61,7 @@ impl BridgeView {
         let bytes = std::fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
         let d = sc_core::deck::read(&bytes).map_err(|e| format!("{}: {e}", path.display()))?;
         let t = &d.index.textures;
-        let levels: Vec<&[u8]> = (0..t.mips as usize)
-            .map(|k| {
-                let a = t.mip_offsets[k] as usize;
-                let b = t.mip_offsets.get(k + 1).map_or(d.textures.len(), |o| *o as usize);
-                &d.textures[a..b]
-            })
-            .collect();
-        let tex = r.make_texture_array_mips(t.size_px, t.layers, &levels);
+        let tex = r.make_texture_array_mips(t.size_px, t.layers, &d.texture_levels());
         // Each deck's floor height, from its rooms' floors.
         let deck_floor = |deck: &str| {
             d.index.compartments.iter().filter(|c| c.deck == deck).find_map(|c| c.floor_m).map(|f| f64::from(f[1]))
@@ -111,7 +106,8 @@ impl BridgeView {
         let views = views_on(&d.index.views, &floors);
         let fov_deg = crate::options::FOV_DEG[2] as f32;
         let panel_glow = t.panel_glow[0];
-        Ok(Self { rooms, world, views, figures, tex, panel_first: t.panel_first, panel_glow, triangles, fov_deg })
+        let hull = crate::hull::HullView::load(r, &d);
+        Ok(Self { rooms, world, views, figures, tex, panel_first: t.panel_first, panel_glow, hull, triangles, fov_deg })
     }
 
     /// Whether a person whose feet are at `to` is in sight from the eye at `eye` (ship frame, metres): a ray at chest
@@ -163,6 +159,10 @@ impl BridgeView {
                 clip_y: f32::MAX,
             };
             r.draw_deck(t, mesh, DeckProgram::Textured, &p, Some(&self.tex));
+        }
+        // The hull (tern-exterior 4): after the rooms, so their walls hide most of it before it is shaded.
+        if let Some(h) = &self.hull {
+            h.draw(r, t, proj * view, eye);
         }
         // The viewscreens: the feed's picture on a quad 3 cm in front of each, as the walk draws them.
         if let Some((feed, scanlines)) = out.screen {

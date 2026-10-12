@@ -124,4 +124,4 @@ The browser has no UDP sockets and no threads, so it cannot host the drill this 
 | --- | --- | --- | --- |
 | Q1 | A press on an AUTO station's console takes it to MANUAL | Yes, the NPC hands over | Recommendation taken (ask only with screenshots) |
 | Q2 | The browser tours the ship until it can host | Yes | Recommendation taken (ask only with screenshots) |
-| Q3 | Approve the crew tabs and the switch (the captures beside the mockup) | Approve | In the survey with the screenshots (https://claude.ai/artifact/5psUXejMotW8sZbTYno5Nb) |
+| Q3 | Approve the crew tabs and the switch (the captures beside the mockup) | Approve | In survey 2 with the screenshots (https://claude.ai/artifact/JQm65V7LHVWDJF8dPdZYqY) |

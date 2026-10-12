@@ -580,6 +580,10 @@ gallery extension and the scuttle's frame).
 Questions go to the owner only with something to look at (CLAUDE.md 13). Rows without a shot
 proceed on the recommendation ("recommendation taken, ask only with screenshots").
 
+Survey 1 closed on 2026-10-11 with T1 and T6 unanswered. By its rule a blank is the recommendation accepted, so they
+stand as their recommendation below; a comment in survey 2 (https://claude.ai/artifact/JQm65V7LHVWDJF8dPdZYqY) reopens
+any of them.
+
 | Id | Question and fact | Options | Recommendation | Mockup shot |
 | --- | --- | --- | --- | --- |
 | T1 | The hangar's galleries meet the landing only at a corner, so deck B's route aft over the launch bays starts in engineering | a. extend the galleries forward 2 m to the landing; b. leave them as engineering's balconies | a: the through-hangar route from the helm to the engineering console drops from 42.2 s to 35.9 s (`crew-on-deck`'s speeds on the v2 plan, 2026-10-05, was 41.7 s to 35.4 s; corrected 2026-10-04 from 47.2 s to 36.9 s at the first assumed speeds) | `deck-plan-deck-B-plan` |

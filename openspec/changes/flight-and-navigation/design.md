@@ -490,6 +490,9 @@ drive and the dampers (inside the `drive` box):
 Ids N (navigation). Questions with a shot go to the owner's survey; the rest are recommendations taken
 (ask only with screenshots, CLAUDE.md 13).
 
+Survey 1 closed on 2026-10-11 with N3 unanswered. By its rule a blank is the recommendation accepted, so it stands as
+its recommendation below; a comment in survey 2 (https://claude.ai/artifact/JQm65V7LHVWDJF8dPdZYqY) reopens it.
+
 | Id | Question and the fact behind it | Options | Recommendation | Shot |
 | --- | --- | --- | --- | --- |
 | N1 | How does the ship cross a system? 1 AU at 1.5 g takes about two days. | (a) Jump drive with spool, alignment and mass lock. (b) Cruise drive. (c) Both. | (a): every station has a job in a jump, and nothing moves fast near anything | none: recommendation taken (ask only with screenshots) |

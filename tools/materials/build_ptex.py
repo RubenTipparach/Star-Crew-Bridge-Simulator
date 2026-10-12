@@ -399,7 +399,99 @@ def rust_metal():
     return g
 
 
+def exterior_paint():
+    """Original generated brushed paint, with no panel grid. Image remains an editable graph input."""
+    g = Graph("Exterior Pearl Paint")
+    source = g.node("image", image="../sources/exterior-paint.png")
+    g.material(albedo=source, metallic_v=0.0, roughness_v=0.85)
+    return g
+
+
+def exterior_surfaces():
+    """Generated fitted ship artwork; four UV regions, not a repeating array layer."""
+    g = Graph("Exterior Fitted Surface Atlas")
+    source = g.node("image", image="../sources/exterior-surfaces.png")
+    g.material(albedo=source, metallic_v=0.0, roughness_v=0.85)
+    return g
+
+
+def fitted_tern_nacelle():
+    """Dedicated neutral artwork painted over projected nacelle UV linework."""
+    g = Graph("Tern Nacelle and Level Support Paint")
+    source = g.node("image", image="../sources/tern-nacelle-finish.png")
+    g.material(albedo=source, metallic_v=0.0, roughness_v=0.85)
+    return g
+
+
+def fitted_tern_hull(livery="copper"):
+    """Projected livery over generated recessed joints and worn armor lips."""
+    g = Graph("Tern Integrated Armor Joints - " + livery.title())
+    with open(os.path.join(HERE, "../../data/ships/tern/hull_paint_projection.json")) as f:
+        projection = json.load(f)
+    cap = projection["shoulder_termination"]
+    shoulder = g.node("decompose", g.node("image", image="../sources/tern-shoulder-armor-mask.png"))
+    mechanical = g.node("image", image="../sources/tern-seamless-finish.png")
+    source = g.node("image", image="../sources/tern-integrated-joints.png")
+    # Sample approved clear armor, avoiding registration and preexisting panel lines.
+    # Its new boundaries and joints come from the actual 3D projection.
+    # R is coverage, G the forward cap, B the port cap. Native transform maps use
+    # 2*input-1, allowing opposite X offsets and a forward-only Y offset at 1:1 scale.
+    tx = g.math(g.grey(1), (shoulder, 2), op=SUB)
+    ty = g.math(g.grey(.5), g.math((shoulder, 1), g.grey(.5), op=MUL), op=ADD)
+    plate = g.node("transform", mechanical, tx, ty, scale_x=1, scale_y=1,
+                   translate_x=cap["armor_sample_translate_x"],
+                   translate_y=cap["armor_sample_translate_y"], rotate=0, repeat=False)
+    source = g.blend(plate, source, (shoulder, 0), mode=NORMAL_B)
+    enhanced = g.node("decompose", g.node("image", image="../sources/tern-flat-painted-cyan.png"))
+    mask = g.node("decompose", g.node("image", image="../sources/tern-projected-masks.png"))
+    ribbon = g.node("decompose", g.node("image", image="../sources/tern-projected-ribbon.png"))
+    # The enhancement retains guide strokes over some pipes. Restore only those
+    # mechanical texels from the seam-free painting, using the original 3D mask.
+    mechanical = g.blend(plate, mechanical, (shoulder, 0), mode=NORMAL_B)
+    original = g.node("decompose", mechanical)
+    original_value = g.math(g.math((original, 0), (original, 1), op=MIN), (original, 2), op=MIN)
+    original_armor = g.math(g.math(original_value, g.grey(.55), op=SUB), g.grey(.2), op=DIV, clamp=True)
+    repair = g.math((mask, 1), g.math(g.grey(1), original_armor, op=SUB), op=MUL)
+    source = g.blend(mechanical, source, repair, mode=NORMAL_B)
+    with open(os.path.join(HERE, "../../data/ships/exteriors.json")) as f:
+        liveries = json.load(f)["liveries"]
+    color = next(row["paint_srgb"] for row in liveries
+                 if row["id"] == ("cobalt" if livery == "cyan" else livery))
+    rgba = g.node("decompose", source)
+    # Dark mechanical recesses retain their neutral metal; bright armor receives paint.
+    value = g.math(g.math((rgba, 0), (rgba, 1), op=MIN), (rgba, 2), op=MIN)
+    armor = g.math(g.math(value, g.grey(.55), op=SUB), g.grey(.2), op=DIV, clamp=True)
+    fitting_blue = g.math(g.math((rgba, 0), g.grey(.35), op=LT),
+                         g.math(g.math(g.grey(.5), (rgba, 1), op=LT),
+                                g.math(g.grey(.6), (rgba, 2), op=LT), op=MUL), op=MUL)
+    paint = g.math(g.math((mask, 0), armor, op=MUL), fitting_blue, op=MAX)
+    # Sample the generated pigment finish, preserving variation instead of flat RGB.
+    shade = g.math((enhanced, 2), g.grey(projection["pigment_reference_srgb"][2]), op=DIV)
+    shade = g.math(g.grey(1), g.math(g.math(shade, g.grey(1), op=SUB), g.grey(2), op=MUL), op=ADD)
+    shade = g.math(g.math(shade, g.grey(.60), op=MAX), g.grey(1.12), op=MIN)
+    coat = g.blend(g.color(color), shade, mode=MULTIPLY)
+    albedo = g.blend(coat, source, paint, mode=NORMAL_B)
+    # The same ship-local projection places the fine white line on roofs and walls.
+    # Retain a little enamel variation, while joints and mechanics remain recessed.
+    border_shade = g.math(g.math(shade, g.grey(.96), op=MAX), g.grey(1.03), op=MIN)
+    border_coat = g.blend(g.color(projection["ribbon_border_srgb"]), border_shade, mode=MULTIPLY)
+    albedo = g.blend(border_coat, albedo, g.math((ribbon, 0), armor, op=MUL), mode=NORMAL_B)
+    # Keep the narrow recess centered on the 3D projection, sampling its tone from
+    # the generated finish. Its varied core sits inside the painted bevel and wear;
+    # exposed machinery is excluded. No constant-color ruler stroke is applied.
+    joint = g.colorize((rgba, 1), grad((0, "#434740"), (1, "#77776f")))
+    albedo = g.blend(joint, albedo, g.math((mask, 1), original_armor, op=MUL), mode=NORMAL_B)
+    g.material(albedo=albedo, metallic_v=0.0, roughness_v=0.85)
+    return g
+
+
 GRAPHS = {
+    "tern_nacelle": fitted_tern_nacelle,
+    "tern_hull": fitted_tern_hull,
+    "tern_hull_cobalt": lambda: fitted_tern_hull("cyan"),
+    "tern_hull_rescue": lambda: fitted_tern_hull("rescue"),
+    "exterior_surfaces": exterior_surfaces,
+    "exterior_paint": exterior_paint,
     "tech_panel": tech_panel,
     "ceiling_tiles": ceiling_tiles,
     "floor_tiles": floor_tiles,
@@ -408,6 +500,8 @@ GRAPHS = {
     "light_panel": light_panel,
     "rust_metal": rust_metal,
 }
+
+
 
 
 # ----------------------------------------------------------------------------

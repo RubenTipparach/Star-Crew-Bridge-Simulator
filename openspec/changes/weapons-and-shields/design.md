@@ -571,6 +571,10 @@ bytes), all fixed pools.
 Ids W (weapons). Questions with a shot go to the owner's survey; the rest are recommendations
 taken (ask only with screenshots, CLAUDE.md 13).
 
+Survey 1 closed on 2026-10-11 with W1, W2 and W3 unanswered. By its rule a blank is the recommendation accepted, so
+they stand as their recommendations below; a comment in survey 2 (https://claude.ai/artifact/JQm65V7LHVWDJF8dPdZYqY)
+reopens any of them.
+
 | Id | Question and the fact behind it | Options | Recommendation | Shot |
 | --- | --- | --- | --- | --- |
 | W1 | How much better is a gunner than automation? Automation hits a straight-flying Jackal at 800 m 14% of the time per bolt. | (a) Automation as specified (0.15 deg plus 0.02 x angular rate, 0.5 s reaction). (b) Weaker automation (double the error). (c) Stronger. | (a), tuned after playtests with the calibration test holding. | `gunner-view` |
