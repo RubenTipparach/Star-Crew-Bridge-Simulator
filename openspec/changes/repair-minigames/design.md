@@ -88,7 +88,7 @@ level 6. In the mockups the knobs are constants in each game's script; in the en
 | Shield generator | Match a face's wave by phase and gain | Phase tolerance 0.24, 0.025 less a level; gain 0.13, 0.012 less; wander +0.06 a level |
 | Sensors | Find the return, clean the trace | A false return from level 2; the true return 70 px wide, 8 px less a level (floor 42); filter tolerance 0.15, 0.02 less a level (floor 0.08); noisier sky |
 | Electrical conduits | Strip the burns, join the pairs; a disabled job reroutes round its burnt box every round too | Pairs 3, one more a level to 6; the clamp closes sooner; the reroute's map busier |
-| Switchboard and breakers | Rack out, fit the rated fuse, rack in on green | Cartridges to choose from 3, 4 from level 3; the synchro light faster (+0.35 rad/s a level) and its green window shorter (0.34, 0.04 less a level, floor 0.16) |
+| Switchboard and breakers | Rack out, fuses adding up to exactly the bus, rack in on green (2b) | Cartridges in the tray 5, one more a level to 8; the synchro light faster (+0.35 rad/s a level) and its green window shorter (0.34, 0.04 less a level, floor 0.16) |
 | Doors | Crank the leaf against the waves | Turns 5, one more a level; waves stronger (+0.6 a level) |
 | Hull plating | Cut, drop the plate, weld, bolt: a new plate each round | The good weld band 0.35-0.85, 0.015 off each end a level; burn-through after 0.3 s over it, 0.015 s sooner a level |
 | Coolant balance | Both legs into their bands against the reactor's state | Damaged: cruise, surge, then pump B lost; disabled: a leak, overdrive, a radiator pump down, then a surge |
@@ -121,7 +121,7 @@ points (`ship-interactables` 2), so each is its own job with its own game. The o
 | **Shield generator** (deck C, under the drive) | Six emitter segments on a ring each hum at a frequency; match each segment's wave to the ring's master wave by phase and size | One face's emitter matched | A segment over-driven: a crackle, that face's charge drains | `weapons-and-shields` 11: that face is down |
 | **Sensors** (the sensor bay and the dish) | Align the array: sweep a dish across a noisy sky to find the strongest return, then filter the noise with three band sliders until the contact's blip is clean | Azimuth and elevation, then the filter | Driven past a stop: the dish jams for a step | Science and tactical lose range (`bridge-stations`) |
 | **Electrical conduits** (anywhere a conduit runs: walls, ceilings, the switchboards) | Splice: strip the burnt length, then join the wire pairs colour to colour before the clamp closes, and route around a burnt junction box by drawing the new run on the conduit map | One splice, or one reroute | A crossed pair: a bang, a spark (5 HP), the breaker trips | `power-grid`: the loads beyond it are cut |
-| **Switchboard and breakers** (main switchboard) | Rack the breaker out, replace the fuse cartridge by its rating (the label matches the bus), rack it back in and close it on a green synchro light | One breaker | Closed on red: an arc flash (10 HP); a cartridge of the wrong rating blows as it seats (recommendation taken (ask only with screenshots): otherwise every cartridge could be tried for free) | `power-grid` |
+| **Switchboard and breakers** (main switchboard) | Rack the breaker out; its holder takes three cartridges in parallel whose ratings add up to exactly the bus's (A + B + C = D, section 2b); rack it back in and close it on a green synchro light | One breaker | Closed on red: an arc flash (10 HP); over the bus the fuses blow as they seat and the holder empties | `power-grid` |
 | **Doors** (any door, jammed) | Hand-crank the leaf: turn the crank against a resistance that comes in waves, never past the slip | One door | Slipped: the leaf drops back | The door is stuck |
 
 Seventeen systems; the medic's game is section 3. A job's rounds by its state (revised 2026-10-09, section 1a; was a
@@ -151,6 +151,33 @@ keep the breakers game):
 Their spare parts (a disabled box's first round): a new terminal strip clipped onto the rail; a new main switch
 fitted in its slot; a new bushing pressed onto the bus. The engine ports them after the owner approves the mockups
 (`repairs.html`, Engineering column), with their `data/repairs/<id>.json` like the others.
+
+The owner's approval is asked in survey 2, section "Panel box repairs", with screenshots beside each:
+
+| # | Question | Recommendation |
+| --- | --- | --- |
+| RM1 | Approve the conduit box's terminal block game | Approve |
+| RM2 | Approve the distribution panel's load restore game | Approve |
+| RM3 | Approve the switchboard insulation game | Approve |
+
+### 2b. The owner's notes on them (2026-10-12)
+
+The owner played them: "conduit box: the screw should be on the bottom so wires dont overlap it", "distribution panel,
+needle is moving the wront way", "tool tip on switchboard insulation not helping, cant complete this puizzle. alot of
+these tool tuips are copy paste", "switch board and breakers should be an addition problem, A + B +C = D and exactly
+D, too less nothing happens, too much it fails and you reset", and of the menu "these needs its own group too". Done
+in the mockups (`repairs.html`):
+
+| Note | Change |
+| --- | --- |
+| The screw under the wires | A terminal's entry is at its top, where the wire comes down from the gland; its screw at its foot. |
+| The needle the wrong way | The ammeter's needle reads the settled load and only climbs as ways close; the inrush rides above it as an amber arc that shrinks away (a needle that jumped and sank back read as the load falling). The trip still counts both. |
+| The insulation test could not be finished | The reading is taken the moment the needle settles, still held (a release a moment early read nothing and said nothing); the next thing to touch pulses (the isolator, the probe and its lug, TEST, a LOW way's tracking); each track fades over a few strokes. |
+| Copy-paste guides | A guide step's picture may be the game's own parts (`pic`, the kit), and the card takes five steps: the five Electrical games now show their isolator, probe, lug, TEST, bushing, terminals, wrench gauge, main switch, ways and TAG, fuses and synchroscope. The other games' cards still use the shared icons: next. |
+| Switchboard and breakers, an addition | The breaker's holder takes three cartridges in parallel; the bus plate says D; the sum of the fitted ones shows under it against D. Under D nothing happens: the breaker will not rack in. Over D the fuses blow as they seat, a fumble, and the holder empties. Exactly D, and it racks in. The tray holds five, one more a step to eight; the bus is three of them added up. |
+| Their own group | **Electrical**: conduits, switchboard and breakers, conduit box, distribution panel, switchboard insulation (in the engine's menu too). |
+
+The engine's breakers game is the earlier design until the owner approves this one.
 
 ## 3. The medic's treatment
 

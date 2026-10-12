@@ -11,21 +11,54 @@
  * has more ways (4 to 8), a bigger inrush and a slower settling. A disabled panel's first round fits a new main switch:
  * drag it from the crate into its slot.
  */
+// The guide's pictures (repair-minigames 6g): this game's own parts, in the card's 100 px box about the origin.
+/** MAIN up: the switch's handle rises in its slot under the finger and turns green. */
+function boxloadPicMain(g, t, K) {
+  const D = K.draw, u = Math.min(1, ((t * 0.6) % 1) * 1.4), y = 26 - 52 * u;
+  D.round(g, -26, -48, 52, 96, 8); g.fillStyle = "#0b1017"; g.fill(); g.lineWidth = 2; g.strokeStyle = "#3a4656"; g.stroke();
+  D.round(g, -20, y - 12, 40, 24, 5); g.fillStyle = u >= 1 ? K.C.ok : "#c8c2b4"; g.fill();
+  D.arrowHead(g, 40, -30, -Math.PI / 2, K.C.amber, 9); D.line(g, [[40, 30], [40, -24]], K.C.amber, 3);
+  D.finger(g, 0, y);
+}
+/** A way closed: its toggle flips up, the needle steps up, and an amber arc rides above it and shrinks away. */
+function boxloadPicWay(g, t, K) {
+  const D = K.draw, u = (t * 0.45) % 1, on = u > 0.15, surge = on ? Math.exp(-(u - 0.15) * 6) : 0;
+  const A0 = (-220 * Math.PI) / 180, A1 = (40 * Math.PI) / 180, ang = (k) => A0 + (A1 - A0) * k;
+  const cx = 10, cy = -6, r = 34, base = 0.3, load = on ? 0.48 : base;
+  g.beginPath(); g.arc(cx, cy, r, A0, A1); g.strokeStyle = "#1d2738"; g.lineWidth = 10; g.stroke();
+  g.beginPath(); g.arc(cx, cy, r, A0, ang(load)); g.strokeStyle = "rgba(232,238,246,0.35)"; g.lineWidth = 10; g.stroke();
+  if (surge > 0.03) { g.beginPath(); g.arc(cx, cy, r, ang(load), ang(load + 0.4 * surge)); g.strokeStyle = K.C.amber; g.lineWidth = 10; g.stroke(); }
+  D.line(g, [[cx, cy], [cx + Math.cos(ang(load)) * (r - 4), cy + Math.sin(ang(load)) * (r - 4)]], K.C.fg, 3);
+  D.round(g, -48, 14, 22, 36, 4); g.fillStyle = "#d8cfb8"; g.fill();
+  D.round(g, -43, on ? 18 : 32, 12, 14, 3); g.fillStyle = on ? K.C.ok : "#1b1f26"; g.fill();
+  if (u < 0.3) D.finger(g, -37, 32);
+}
+/** The scorched way: tap its TAG and leave it off. */
+function boxloadPicTag(g, t, K) {
+  const D = K.draw, tagged = (t * 0.5) % 1 > 0.5;
+  const sc = g.createRadialGradient(-8, -8, 2, -8, -8, 30); sc.addColorStop(0, "rgba(0,0,0,0.9)"); sc.addColorStop(1, "rgba(0,0,0,0)");
+  D.round(g, -24, -40, 32, 56, 5); g.fillStyle = "#d8cfb8"; g.fill(); g.fillStyle = sc; g.fillRect(-34, -48, 52, 72);
+  D.round(g, -18, -10, 20, 18, 3); g.fillStyle = "#1b1f26"; g.fill();
+  D.round(g, -30, 26, 44, 20, 4); g.fillStyle = tagged ? K.C.danger : "#0c121a"; g.fill(); g.lineWidth = 2; g.strokeStyle = K.C.danger; g.stroke();
+  D.text(g, "TAG", -8, 36, 12, tagged ? "#fff" : K.C.danger, "center", 700);
+  if (!tagged) D.finger(g, -8, 36);
+}
+
 RepairKit.register({
   id: "boxload",
   title: "Distribution panel",
   place: "Each deck's distribution panels",
-  group: "Engineering",
+  group: "Electrical",
   hazard: "Over the trip line: the panel trips",
   guide: {
     steps: [
       { icon: "screw", text: "Unscrew the cover", cover: true },
-      { icon: "drag", text: "Main switch up" },
-      { icon: "tap", text: "Close the ways, one by one" },
-      { icon: "band", text: "Let each surge settle" },
+      { pic: boxloadPicMain, text: "Drag MAIN up" },
+      { pic: boxloadPicWay, text: "Tap a way, wait for the amber to go" },
+      { pic: boxloadPicTag, text: "Scorched way: tap TAG, leave it off" },
     ],
-    mistake: "Over the trip line, the panel trips; a burnt way sparks, 5 HP",
-    now: (q) => ({ main: 1, ways: q.surging ? 3 : 2 })[q.phase] ?? -1,
+    mistake: "Amber past 100 A: the panel trips, all off. A scorched way: a spark, 5 HP",
+    now: (q) => ({ main: 1, ways: q.burnt >= 0 && !q.tagged && q.closed >= q.n - 2 ? 3 : 2 })[q.phase] ?? -1,
   },
   down: "The rooms and systems it feeds lose their power (power-routing)",
   panel: { x: 100, y: 96, w: 660, h: 604, screws: 6 },
@@ -39,7 +72,7 @@ RepairKit.register({
     const NAMES = ["LIGHTS", "AIR", "CONSOLES", "PUMP", "TURRET", "HOIST", "GALLEY", "MEDBAY"];
     const T = 100, MAXA = 125;                                   // the trip line and the meter's end, A
     const A0 = (-220 * Math.PI) / 180, A1 = (40 * Math.PI) / 180;
-    let phase, part, slot, main, mainY, grab, n, ways, burnt, tagged, sel, m, tau, amps, peak, trips, flash, spark, time;
+    let phase, part, slot, main, mainY, grab, n, ways, burnt, tagged, sel, m, tau, amps, load, trips, flash, spark, time;
 
     const wayX = (i) => WAYS.x0 + 30 + (i * (WAYS.x1 - WAYS.x0 - 60)) / Math.max(1, n - 1);
     const ang = (a) => A0 + (A1 - A0) * Math.min(1, a / MAXA);
@@ -74,7 +107,7 @@ RepairKit.register({
         for (let i = names.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [names[i], names[j]] = [names[j], names[i]]; }
         ways = a.map((x, i) => ({ a: Math.round(x * 10) / 10, name: names[i], on: false, since: 0 }));
         burnt = level >= 3 ? Math.floor(r() * n) : -1;
-        tagged = false; main = false; mainY = MAIN.y0; grab = false; sel = 0; amps = 0; peak = 0; trips = 0; flash = 0; spark = null; time = 0;
+        tagged = false; main = false; mainY = MAIN.y0; grab = false; sel = 0; amps = 0; load = 0; trips = 0; flash = 0; spark = null; time = 0;
       },
       peek() { return { phase, n, closed: ways.filter((w) => w.on).length, amps, T, burnt, tagged, surging: surge() > 1, wayX, tagBox, main, ways: ways.map((w) => ({ a: w.a, on: w.on })) }; },
       update(dt, input) {
@@ -83,7 +116,11 @@ RepairKit.register({
         if (spark) { spark.t -= dt; if (spark.t <= 0) spark = null; }
         for (const w of ways) if (w.on) w.since += dt;
         amps = main ? steady() + surge() : 0;
-        peak = Math.max(peak * Math.exp(-dt / 1.5), amps);
+        // The needle reads the settled load and only climbs as ways close (owner, 2026-10-12: "needle is moving the
+        // wrong way": a needle that jumped to the inrush and sank back read as the load falling); the inrush rides
+        // above it as an amber arc that shrinks away. The trip still counts both.
+        const want = main ? steady() : 0;
+        load = want < load ? want : load + (want - load) * (1 - Math.exp(-dt / 0.12));
         if (amps > T) { trip(); return; }
         if (phase === "part") {
           // The part: the new main switch, from the crate into its slot.
@@ -169,7 +206,7 @@ RepairKit.register({
             g.moveTo(spark.x + Math.cos(a) * 6, spark.y + Math.sin(a) * 6); g.lineTo(spark.x + Math.cos(a) * rr, spark.y + Math.sin(a) * rr); g.stroke();
           }
         }
-        // The ammeter: its scale, the trip line and the red past it, the needle, the last peak, the reading.
+        // The ammeter: its scale, the trip line and the red past it, the load, the inrush, the needle, the reading.
         D.panel(g, 800, 110, 420, 420, 18, "#0c121a");
         D.text(g, "PANEL CURRENT", 830, 140, 18, C.dim, "left", 700);
         g.beginPath(); g.arc(METER.x, METER.y, METER.r, A0, A1); g.strokeStyle = "#1d2738"; g.lineWidth = 24; g.stroke();
@@ -183,13 +220,14 @@ RepairKit.register({
         const tq = ang(T);
         g.beginPath(); g.moveTo(METER.x + Math.cos(tq) * (METER.r - 22), METER.y + Math.sin(tq) * (METER.r - 22)); g.lineTo(METER.x + Math.cos(tq) * (METER.r + 22), METER.y + Math.sin(tq) * (METER.r + 22));
         g.strokeStyle = C.danger; g.lineWidth = 5; g.stroke();
-        const pq = ang(peak);
-        D.disc(g, METER.x + Math.cos(pq) * (METER.r + 22), METER.y + Math.sin(pq) * (METER.r + 22), 6, C.amber);
-        const nq = ang(amps);
+        // The settled load as a fill along the scale, the inrush as an amber arc on from it (wait for it to go).
+        if (load > 0.2) { g.beginPath(); g.arc(METER.x, METER.y, METER.r, A0, ang(load)); g.strokeStyle = "rgba(232,238,246,0.35)"; g.lineWidth = 24; g.stroke(); }
+        if (amps - load > 0.5) { g.beginPath(); g.arc(METER.x, METER.y, METER.r, ang(load), ang(amps)); g.strokeStyle = amps > T * 0.9 ? C.danger : C.amber; g.lineWidth = 24; g.stroke(); }
+        const nq = ang(load);
         g.beginPath(); g.moveTo(METER.x, METER.y); g.lineTo(METER.x + Math.cos(nq) * (METER.r - 8), METER.y + Math.sin(nq) * (METER.r - 8));
-        g.strokeStyle = amps > T * 0.9 ? C.danger : C.fg; g.lineWidth = 5; g.lineCap = "round"; g.stroke(); g.lineCap = "butt";
+        g.strokeStyle = C.fg; g.lineWidth = 5; g.lineCap = "round"; g.stroke(); g.lineCap = "butt";
         D.disc(g, METER.x, METER.y, 12, "#566273");
-        D.text(g, `${amps.toFixed(0)} A`, METER.x, METER.y + 78, 38, amps > T * 0.9 ? C.danger : C.fg, "center", 700);
+        D.text(g, `${load.toFixed(0)} A`, METER.x, METER.y + 78, 38, C.fg, "center", 700);
         D.text(g, `${ways.filter((w) => w.on).length} / ${n - (burnt >= 0 ? 1 : 0)} WAYS`, 830, 505, 20, C.fg, "left", 700);
         // The crate with the spare main switch.
         if (part) {

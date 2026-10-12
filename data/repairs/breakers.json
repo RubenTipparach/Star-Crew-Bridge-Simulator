@@ -3,7 +3,7 @@
   "id": "breakers",
   "title": "Switchboard and breakers",
   "place": "Main switchboard",
-  "group": "Engineering",
+  "group": "Electrical",
   "hazard": {
     "text": "Arc flash: 10 HP",
     "hp": 10,

@@ -5,27 +5,71 @@
  * The bus open: its isolator and the LIVE lamp at the top, its outgoing ways below (each a bushing with a lug), and the
  * insulation tester on the right, its probe on a lead. Isolate the bus (drag the isolator down, or Space) and see the
  * lamp go dark. Put the probe on a way's lug (drag it, or left and right) and hold TEST (the button, or hold Space)
- * until the needle settles: a good way reads high, a faulty one low. Scrub the carbon tracking off a low way's bushing
+ * until the needle settles: the reading is taken there, a good way high, a faulty one low. Scrub the carbon tracking off a low way's bushing
  * (drag back and forth across it, a few strokes a track, or hold Space), then test it again. When every way reads high, close the bus (drag the isolator up,
  * or Space). Testing before the bus is dead is a fumble: a shock, 5 HP. Closing up on a low or untested way is a
  * fumble: a flash, 5 HP. Each level has more ways (5 to 8), two faults from level 3, a needle that takes longer to
  * settle and more tracking. A disabled bus's first round fits a new bushing: drag it from the crate onto the empty way.
  */
+// The guide's pictures (repair-minigames 6g): this game's own parts, in the card's 100 px box about the origin.
+/** Isolate: the isolator's handle comes down to OPEN and the LIVE lamp goes dark. */
+function boxmeggerPicIsolate(g, t, K) {
+  const D = K.draw, u = Math.min(1, ((t * 0.55) % 1) * 1.4), y = -22 + 44 * u;
+  D.round(g, -44, -46, 46, 92, 7); g.fillStyle = "#0b1017"; g.fill(); g.lineWidth = 2; g.strokeStyle = "#3a4656"; g.stroke();
+  D.round(g, -38, y - 11, 34, 22, 5); g.fillStyle = u >= 1 ? "#c8c2b4" : K.C.danger; g.fill();
+  D.disc(g, 26, -18, 14, u >= 1 ? "#2a2f36" : K.C.danger); D.ring(g, 26, -18, 14, "#566273", 2);
+  D.text(g, u >= 1 ? "DEAD" : "LIVE", 26, 10, 12, u >= 1 ? K.C.dim : K.C.danger, "center", 700);
+  D.finger(g, -21, y);
+}
+/** Test: the red probe goes onto a way's copper lug, the finger holds TEST, the needle climbs and settles. */
+function boxmeggerPicTest(g, t, K) {
+  const D = K.draw, u = (t * 0.4) % 1, m = Math.min(1, u * 3), k = u > 0.35 ? Math.min(0.85, (u - 0.35) * 2.2) : 0;
+  g.fillStyle = "#3a2a1a"; g.fillRect(-36, -50, 6, 22); D.disc(g, -33, -26, 7, K.C.copper);
+  for (let j = 0; j < 3; j++) { D.round(g, -46, -16 + j * 15, 26, 12, 6); g.fillStyle = "#d8cfb8"; g.fill(); }
+  const px = -33 + 30 * (1 - m), py = -26 - 4 + 20 * (1 - m);
+  D.round(g, px - 4, py - 22, 8, 18, 3); g.fillStyle = K.C.danger; g.fill(); D.line(g, [[px, py - 4], [px, py + 2]], "#e8eef6", 2);
+  const A0 = (-210 * Math.PI) / 180, A1 = (30 * Math.PI) / 180, ang = (q) => A0 + (A1 - A0) * q;
+  g.beginPath(); g.arc(20, -14, 24, A0, A1); g.strokeStyle = "#1d2738"; g.lineWidth = 7; g.stroke();
+  g.beginPath(); g.arc(20, -14, 24, ang(0.75), A1); g.strokeStyle = K.C.ok; g.lineWidth = 7; g.stroke();
+  D.line(g, [[20, -14], [20 + Math.cos(ang(k)) * 20, -14 + Math.sin(ang(k)) * 20]], K.C.fg, 3);
+  D.disc(g, 22, 34, 15, k > 0 ? "#7a1a22" : K.C.danger); D.text(g, "TEST", 22, 34, 9, "#fff", "center", 700);
+  if (u > 0.33) D.finger(g, 22, 34);
+}
+/** Scrub: the finger rubs back and forth over a LOW way's bushing and the black tracking fades. */
+function boxmeggerPicScrub(g, t, K) {
+  const D = K.draw, u = (t * 0.35) % 1, fade = Math.min(1, u * 1.3);
+  for (let j = 0; j < 6; j++) { D.round(g, -18 + (j % 2) * 3, -46 + j * 15, 36 - (j % 2) * 6, 12, 6); g.fillStyle = "#d8cfb8"; g.fill(); }
+  g.globalAlpha = 1 - 0.85 * fade;
+  D.line(g, [[-6, -34], [2, -24], [-4, -12], [4, 0], [0, 12]], "#120c06", 4);
+  g.globalAlpha = 1;
+  D.round(g, 22, 34, 30, 16, 4); g.fillStyle = K.C.danger; g.fill(); D.text(g, "LOW", 37, 42, 10, "#06090e", "center", 700);
+  D.finger(g, 14 * Math.sin(t * 9), -26 + 34 * ((t * 0.7) % 1));
+}
+/** Close up: every way reads OK, the isolator's handle goes back up. */
+function boxmeggerPicClose(g, t, K) {
+  const D = K.draw, u = Math.min(1, ((t * 0.55) % 1) * 1.4), y = 22 - 44 * u;
+  D.round(g, -44, -46, 46, 92, 7); g.fillStyle = "#0b1017"; g.fill(); g.lineWidth = 2; g.strokeStyle = "#3a4656"; g.stroke();
+  D.round(g, -38, y - 11, 34, 22, 5); g.fillStyle = u >= 1 ? K.C.danger : "#c8c2b4"; g.fill();
+  for (let j = 0; j < 3; j++) { D.round(g, 12, -38 + j * 26, 34, 18, 4); g.fillStyle = K.C.ok; g.fill(); D.text(g, "OK", 29, -29 + j * 26, 10, "#06090e", "center", 700); }
+  D.finger(g, -21, y);
+}
+
 RepairKit.register({
   id: "boxmegger",
   title: "Switchboard insulation",
   place: "The forward switchboard and the emergency bus",
-  group: "Engineering",
+  group: "Electrical",
   hazard: "Testing a live bus: a shock, 5 HP",
   guide: {
     steps: [
       { icon: "screw", text: "Unscrew the cover", cover: true },
-      { icon: "drag", text: "Isolate, see it dead" },
-      { icon: "hold", text: "Test each way, hold TEST" },
-      { icon: "sweep", text: "Scrub the low one, test again" },
+      { pic: boxmeggerPicIsolate, text: "Drag the isolator down: DEAD" },
+      { pic: boxmeggerPicTest, text: "Red probe on a lug, hold TEST" },
+      { pic: boxmeggerPicScrub, text: "LOW: rub the black marks off, test again" },
+      { pic: boxmeggerPicClose, text: "All OK: isolator back up" },
     ],
-    mistake: "Testing a live bus: a shock, 5 HP; closing on a low way: a flash, 5 HP",
-    now: (q) => ({ isolate: 1, test: q.scrubbing ? 3 : 2, close: 1 })[q.phase] ?? -1,
+    mistake: "TEST while LIVE: a shock, 5 HP. Closing with a LOW way: a flash, 5 HP",
+    now: (q) => ({ isolate: 1, test: q.results.some((r) => r === "low") ? 3 : 2, close: 4 })[q.phase] ?? -1,
   },
   down: "The bow's switchboard section or the emergency bus is out (power-routing)",
   panel: { x: 100, y: 96, w: 640, h: 604, screws: 6 },
@@ -43,7 +87,7 @@ RepairKit.register({
     const TRACK_R = 20;                                           // how near a track the scrubbing pointer must pass, px
     const A0 = (-210 * Math.PI) / 180, A1 = (30 * Math.PI) / 180;
     let phase, part, bush, n, ways, iso, isoY, grab, dead, deadT, probe, probing, sel, needle, testT, scrubbing, flash, spark, time, tau;
-    let scrubPx, scrubS, last;
+    let scrubPx, scrubS, last, readT = 0;
 
     const wayX = (i) => WAYS.x0 + 30 + (i * (WAYS.x1 - WAYS.x0 - 60)) / Math.max(1, n - 1);
     // The dial is logarithmic: 0.1 MOhm at its start, 1000 at its end.
@@ -86,6 +130,7 @@ RepairKit.register({
       update(dt, input) {
         time += dt;
         flash = Math.max(0, flash - dt * 1.6);
+        readT = Math.max(0, readT - dt);
         if (spark) { spark.t -= dt; if (spark.t <= 0) spark = null; }
         if (!iso && !dead) { deadT += dt; if (deadT > 0.4) dead = true; }
         if (phase === "part") {
@@ -167,12 +212,10 @@ RepairKit.register({
           const target = dialK(good(w) ? w.high : 0.2 + 0.4 * Math.abs(Math.sin(probe.way + 1)));
           testT += dt;
           needle += (target - needle) * (1 - Math.exp(-dt / tau)) + Math.sin(time * 23) * 0.004 * Math.exp(-testT);
-          if (!holding) {
-            probing = false;
-            // Read only once the needle has settled.
-            if (Math.abs(needle - target) < 0.03) w.result = good(w) ? "high" : "low";
-            needle = 0;
-          }
+          // The reading is taken the moment the needle settles, still held (owner, 2026-10-12: "cant complete this
+          // puzzle": a release a moment early read nothing and said nothing).
+          if (Math.abs(needle - target) < 0.03 && w.result !== (good(w) ? "high" : "low")) { w.result = good(w) ? "high" : "low"; readT = 0.8; }
+          if (!holding) { probing = false; needle = 0; }
         }
         if (ways.every((x) => x.result === "high")) phase = "close";
       },
@@ -253,6 +296,28 @@ RepairKit.register({
           D.panel(g, CRATE.x, CRATE.y, CRATE.w, CRATE.h, 10, "#2b2014", "#5a4426");
           D.text(g, "SPARE BUSHING", CRATE.x + CRATE.w / 2, CRATE.y + 18, 15, C.dim, "center", 700);
           if (!bush.set) for (let k = 0; k < 3; k++) { D.round(g, bush.x - 24 + (k % 2) * 4, bush.y - 32 + k * 23, 48 - (k % 2) * 8, 20, 9); g.fillStyle = "#d8cfb8"; g.fill(); }
+        }
+        // The next thing to touch, pulsing as the kit's next fastener does: the isolator and its way, the probe and the
+        // lug to put it on, TEST, or a LOW way's tracking to scrub. One at a time.
+        const pulse = (x, y, r) => D.ring(g, x, y, r + 5 + 3 * Math.sin(t * 6), C.accent, 3);
+        if (phase === "isolate" || phase === "close") {
+          const hx = ISO.x + ISO.w / 2, dir = phase === "isolate" ? 1 : -1;
+          pulse(hx, isoY, 42);
+          if (!grab) KIT.draw.arrowHead(g, hx, isoY + dir * 62, (dir * Math.PI) / 2, C.accent, 12);
+        } else if (phase === "test" && dead && !probing && !probe.held) {
+          const on = probe.way >= 0 ? ways[probe.way] : null;
+          const dirty = ways.findIndex((x) => x.result === "low" && !good(x));
+          const next = ways.findIndex((x) => x.result === null);
+          if (on && on.result === null) pulse(TEST.x, TEST.y, TEST.r);
+          else if (dirty >= 0) {
+            g.setLineDash([8, 6]); D.round(g, wayX(dirty) - 32, WAYS.top - 6, 64, WAYS.h + 12, 26);
+            g.lineWidth = 3; g.strokeStyle = `rgba(79,195,247,${0.6 + 0.4 * Math.sin(t * 6)})`; g.stroke(); g.setLineDash([]);
+          } else if (next >= 0) { pulse(probe.x, probe.y - 24, 24); pulse(wayX(next), WAYS.lug, 12); }
+        }
+        // A reading just taken: its result box flashes.
+        if (readT > 0 && probe.way >= 0) {
+          const x = wayX(probe.way), ry = WAYS.top + WAYS.h + 26;
+          D.round(g, x - 32, ry - 22, 64, 44, 9); g.lineWidth = 3; g.strokeStyle = `rgba(232,238,246,${readT})`; g.stroke();
         }
         if (spark) {
           for (let k = 0; k < 10; k++) {

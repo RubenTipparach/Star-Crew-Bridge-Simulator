@@ -11,19 +11,44 @@
  * wires (4 to 8), colours that repeat from level 3 (read the sleeve, not the colour), a narrower green band and a faster
  * gauge. A disabled box's first round fits the new strip: drag it from the crate onto the rail.
  */
+// The guide's pictures (repair-minigames 6g): this game's own parts, in the card's 100 px box about the origin.
+/** Land a wire: its numbered sleeve comes down onto the terminal tagged with the same number. */
+function boxtermPicLand(g, t, K) {
+  const D = K.draw, u = Math.min(1, ((t * 0.5) % 1) * 1.5), x = -30 + 30 * u, y = -46 + 34 * u;
+  for (const [tx, n] of [[-30, 2], [0, 3], [30, 1]]) {
+    D.round(g, tx - 12, -8, 24, 42, 4); g.fillStyle = "#c8c2b4"; g.fill();
+    D.disc(g, tx, -2, 4, "#1b1f26"); D.disc(g, tx, 22, 6, "#9aa3ae");
+    D.round(g, tx - 9, 38, 18, 14, 3); g.fillStyle = "#eef1f4"; g.fill(); D.text(g, String(n), tx, 45, 11, "#10151c", "center", 700);
+  }
+  g.strokeStyle = "#3ddc84"; g.lineWidth = 4; g.beginPath(); g.moveTo(-40, -58); g.quadraticCurveTo(-40, -30, x, y - 12); g.stroke();
+  D.round(g, x - 9, y - 26, 18, 16, 3); g.fillStyle = "#eef1f4"; g.fill(); D.text(g, "3", x, y - 18, 11, "#10151c", "center", 700);
+  D.finger(g, x + 10, y - 18);
+}
+/** Torque: hold the screw at the terminal's foot; the gauge's needle climbs into the green, let go there. */
+function boxtermPicTorque(g, t, K) {
+  const D = K.draw, u = (t * 0.5) % 1, k = Math.min(0.62, u * 1.2);
+  const A0 = (-210 * Math.PI) / 180, A1 = (30 * Math.PI) / 180, ang = (q) => A0 + (A1 - A0) * q;
+  g.beginPath(); g.arc(0, -16, 30, A0, A1); g.strokeStyle = "#1d2738"; g.lineWidth = 9; g.stroke();
+  g.beginPath(); g.arc(0, -16, 30, ang(0.5), ang(0.68)); g.strokeStyle = K.C.ok; g.lineWidth = 9; g.stroke();
+  D.line(g, [[0, -16], [Math.cos(ang(k)) * 26, -16 + Math.sin(ang(k)) * 26]], K.C.fg, 3);
+  D.round(g, -14, 20, 28, 34, 4); g.fillStyle = "#c8c2b4"; g.fill();
+  D.disc(g, 0, 42, 8, k >= 0.5 ? K.C.ok : "#9aa3ae");
+  if (u < 0.55) D.finger(g, 0, 42);
+}
+
 RepairKit.register({
   id: "boxterm",
   title: "Conduit box",
   place: "Every room's conduit box",
-  group: "Engineering",
+  group: "Electrical",
   hazard: "Wrong terminal: a spark, 5 HP",
   guide: {
     steps: [
       { icon: "screw", text: "Unscrew the cover", cover: true },
-      { icon: "match", text: "Each wire to its number" },
-      { icon: "hold", text: "Torque into the green" },
+      { pic: boxtermPicLand, text: "Drag each wire to the terminal with its number" },
+      { pic: boxtermPicTorque, text: "Hold a screw, let go in the green" },
     ],
-    mistake: "A wire in the wrong terminal: a spark, 5 HP; past the red, the screw strips",
+    mistake: "Wrong number: a spark, 5 HP. Held past the green into red: the screw strips",
     now: (q) => ({ land: 1, torque: 2 })[q.phase] ?? -1,
   },
   down: "Its room's loads and lights are cut (power-routing)",
@@ -41,8 +66,10 @@ RepairKit.register({
     let phase, part, strip, n, wires, terms, held, sel, needle, torquing, band, rate, flash, spark, time;
 
     const termX = (i) => RAIL.x0 + 40 + (i * (RAIL.x1 - RAIL.x0 - 80)) / Math.max(1, n - 1);
-    const screw = (i) => ({ x: termX(i), y: TERM.top + 16 });
-    const entry = (i) => ({ x: termX(i), y: TERM.top + 46 });
+    // The wire comes down from the gland into the entry at the terminal's top; the screw sits under it, at the bottom,
+    // so no landed wire crosses a screw (owner, 2026-10-12: "the screw should be on the bottom so wires dont overlap it").
+    const entry = (i) => ({ x: termX(i), y: TERM.top + 22 });
+    const screw = (i) => ({ x: termX(i), y: TERM.top + TERM.h - 26 });
     const ang = (k) => A0 + (A1 - A0) * k;
 
     function wirePath(g, w, ex, ey, width) {
@@ -114,7 +141,7 @@ RepairKit.register({
           }
           if (held >= 0 && input.released) {
             w0 = held;
-            drop = KIT.nearest(terms.map((t, i) => (t.wire < 0 ? [entry(i).x, entry(i).y - 30] : null)), input.x, input.y, 50);
+            drop = KIT.nearest(terms.map((t, i) => (t.wire < 0 ? [entry(i).x, entry(i).y - 6] : null)), input.x, input.y, 50);
           }
           if (w0 < 0) return;
           held = -1;
@@ -175,7 +202,7 @@ RepairKit.register({
             const x = termX(i), tm = terms[i], sel_ = (phase === "land" || phase === "torque") && sel === i;
             D.round(g, x - TERM.w / 2, TERM.top, TERM.w, TERM.h, 5); g.fillStyle = "#c8c2b4"; g.fill();
             g.lineWidth = sel_ ? 3 : 1.5; g.strokeStyle = sel_ ? C.accent : "#7d7564"; g.stroke();
-            D.disc(g, x, TERM.top + 46, 9, "#1b1f26");                         // the wire's entry
+            D.disc(g, x, entry(i).y, 9, "#1b1f26");                            // the wire's entry
             // The screw: its slot turned as it is torqued; green once done, amber when loose.
             const sx = screw(i).x, sy = screw(i).y;
             D.disc(g, sx, sy, 13, tm.torqued ? C.ok : tm.loose ? C.amber : "#9aa3ae");
