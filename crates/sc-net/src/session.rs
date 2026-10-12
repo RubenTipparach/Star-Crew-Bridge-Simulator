@@ -189,6 +189,9 @@ impl Session {
                             if s.power.is_none() {
                                 s.power = self.snaps.back().and_then(|(_, p)| p.power.clone());
                             }
+                            if s.route.is_none() {
+                                s.route = self.snaps.back().and_then(|(_, p)| p.route.clone());
+                            }
                             self.snaps.push_back((now, s));
                             while self.snaps.len() > 40 {
                                 self.snaps.pop_front();

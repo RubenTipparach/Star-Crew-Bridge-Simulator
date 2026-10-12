@@ -242,6 +242,42 @@ graph that small, well inside the sub-step's estimate (`power-grid` 14). The liv
 same graph once a sub-step. No new network traffic until the console's routing view: the switches will ride in the grid
 snapshot at 2 Hz (a bit a box and a run, 10 bytes).
 
+### 6. In the game (owner, 2026-10-12: "This is really cool. Let's get this implemented in game")
+
+The owner approved the schematic (`power-grid.html`, version 13) and the side panel (`consoles.html` SCHEMATIC). The
+engine builds them as the mockups draw them (CLAUDE.md 10; `console-parity` 2).
+
+- **6.1 The routing state on the wire** (protocol 9). A `RouteSnap` beside `PowerSnap` in the snapshot, sent at 2 Hz
+  in the snapshots between the grid's (tick 5 of every 10), so neither pushes a snapshot past one datagram (1200 bytes;
+  a snapshot with the grid measured 880): each node's box on (a bit) and health (a byte), each conduit closed, severed
+  and damaged (a bit each), each system on its second feed (a bit), the flow on every edge (the generators', the ties',
+  the battery's link and every conduit's, a signed 16-bit hundredth of a MW, for its direction, whether it carries and
+  the tooltip), each load's supply (a byte: a 250th of what it wants, or 255 wanting nothing) and dropped (a bit), the
+  live runs, the limit, and the trip's seconds left. About 300 bytes (305 measured), a snapshot with it about 815. The
+  client carries the last one on, as the grid. The reached nodes (power reaching each box, the core's `reached`) ride
+  with them, a bit each, so the client never works out a rule of the grid's itself.
+- **6.2 The side panel.** Engineering's BUSES (`grid(10, 0, 2, 2)`) becomes the mockup's SCHEMATIC: the one-line diagram
+  as before, the live runs against the limit (the trip's seconds while tripped), and EXPAND. The parity fixtures are
+  drawn again from `consoles.html`, which now writes the panel's live, limit and trip.
+- **6.3 The schematic, full screen.** EXPAND opens it over the console's canvas (1280 x 720), as OBJECTIVES does; CONSOLE
+  (collapse) closes it. Its top right holds the 3D / 2D switch and CONSOLE; its top left the status strip (the reactor,
+  the battery, delivered of wanted, the live runs, the systems offline); in 3D the legend under it. Every tap is the
+  mockup's: a part's switch or a 3D box switches the box (`PowerCmd::Box`), a trace or a run opens or closes it
+  (`PowerCmd::Run`), a system's light or marker swaps its feed (`PowerCmd::Feed`); nothing switches while tripped (the
+  server refuses; the banner says so). Hover lights the run under the pointer and shows its tooltip.
+- **6.4 2D: the board.** `power_board.json` and `subsystems.json` are client data (read with the drill's files,
+  validated by `sc-tools check-data`): the boards, the traces with their corners cut, pads, the vias at the boards'
+  edges and the hops, the spares on the bottom layer, the chips with their switches, lamps and system lights in their
+  families' colours, the reactor, the battery, the supply strip and the silkscreen key, every flow at one speed. The
+  board burns under a room whose systems, boxes or runs are damaged (the engine keeps no hit history, so the hit's star
+  waits; see below); damage marks as 3d.
+- **6.5 3D: the ship.** The decks pulled apart as in the mockup, the rooms' floors and walls, every run and feeder in
+  its lane with its corners cut (the mockup's lanes and chamfer, ported), drawn as round-joined strokes on a dark
+  outline (the console's vector canvas strokes them so, no new GPU pass), the markers, the cut and damage marks; a drag
+  orbits, the wheel zooms.
+- **6.6 What waits.** The hit's star and ring (the drill would have to keep its last hits), the rooms overlay (the
+  engine's room lighting is not on the wire), and portrait phones (the console is landscape).
+
 ## Risks / Trade-offs
 
 - **The forward switchboard room is a single point of failure** (section 4). Splitting it into port and starboard rooms

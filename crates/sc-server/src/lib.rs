@@ -359,6 +359,11 @@ impl DrillServer {
             if self.snaps_sent % every != 0 {
                 s.power = None;
             }
+            // The routing rides half way between the grid's (power-routing 6.1): odd, so never beside it, even while
+            // a fader's preview sends the grid every other snapshot.
+            if self.snaps_sent % POWER_EVERY != POWER_EVERY / 2 {
+                s.route = None;
+            }
             for (p, c) in self.conns.iter_mut() {
                 if c.slot.is_some() {
                     s.header = c.snap.next_header();

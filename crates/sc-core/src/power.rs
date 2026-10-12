@@ -573,6 +573,12 @@ impl PowerData {
         self.nodes.iter().position(|n| n == id)
     }
 
+    /// How many edges the schematic draws, in [`Solved::flows`]'s order: the generators, the ties, the battery's link,
+    /// the conduits.
+    pub fn edge_count(&self) -> usize {
+        self.file.generators.len() + self.file.ties.len() + 1 + self.file.conduits.len()
+    }
+
     /// The sub-step, seconds.
     pub fn dt(&self) -> f64 {
         1.0 / self.file.solve.substep_hz
@@ -798,6 +804,8 @@ pub struct PowerState {
     /// Each load's thermal node, K (the loads whose heat goes to a node).
     pub thermal: Vec<f64>,
     pub battery_loss_w: f64,
+    /// The flow on every edge after the last solve, MW ([`Solved::flows`]): what Engineering's schematic draws.
+    pub flows: Vec<f64>,
     /// Heat that went into rooms and the duct, W (the air is not simulated: counted, not warming).
     pub room_heat_w: f64,
     /// Seconds simulated.
@@ -814,6 +822,10 @@ pub struct Solved {
     pub rx_out: f64,
     pub bat_out: f64,
     pub charge: f64,
+    /// The flow on every edge, MW, in the schematic's order ([`PowerData::edge_count`]): each generator's (from the
+    /// reactor), each tie's and each conduit's (from its first end to its second, so signed), the battery's link (to
+    /// its node) after the ties.
+    pub flows: Vec<f64>,
 }
 
 /// The activities that are megawatts wanted, not a 0-1 share: the oxygen plant's, the heater's, the bay's and the
@@ -824,6 +836,9 @@ const S: usize = 0;
 const RX: usize = 1;
 const BAT: usize = 2;
 const NOFF: usize = 3;
+/// The grid's edge for the battery's link to its node, and its first generator's (then the ties', the conduits').
+const E_BAT_LINK: usize = 2;
+const E_FIRST: usize = 3;
 
 #[derive(Debug, Clone)]
 struct Edge {
@@ -989,6 +1004,7 @@ impl PowerState {
             charge: 0.0,
             thermal,
             battery_loss_w: 0.0,
+            flows: vec![0.0; d.edge_count()],
             room_heat_w: 0.0,
             t_s: 0.0,
         };
@@ -1028,6 +1044,7 @@ impl PowerState {
         let e_rx = add(S, RX, rx_avail, true);
         let e_bat = add(S, BAT, 0.0, true);
         let bat_out = add(BAT, p(&b.node), if self.battery_breaker { 1e9 } else { 0.0 }, true);
+        debug_assert_eq!(bat_out, E_BAT_LINK, "the battery's link is the grid's third edge (edge_flows reads it)");
         for (k, g) in f.generators.iter().enumerate() {
             let ok = self.gen_closed[k] && nh(&g.node) > 0.0;
             add(RX, p(&g.node), if ok { g.capacity_mw } else { 0.0 }, true);
@@ -1185,10 +1202,25 @@ impl PowerState {
             if !any {
                 break;
             }
-            let mut grid = self.grid(d, ship, dt);
+            grid = self.grid(d, ship, dt);
             res = self.solve_grid(d, &mut grid, &demand);
         }
-        Solved { demand, want, alloc: res.0, dropped, rx_out: res.1, bat_out: res.2, charge: res.3 }
+        let flows = Self::edge_flows(d, &grid);
+        Solved { demand, want, alloc: res.0, dropped, rx_out: res.1, bat_out: res.2, charge: res.3, flows }
+    }
+
+    /// Each edge's flow out of a solved grid, in [`Solved::flows`]'s order. The grid holds the reactor's and the
+    /// battery's source edges, then the battery's link ([`E_BAT_LINK`]), then the generators, ties and conduits.
+    fn edge_flows(d: &PowerData, g: &Grid) -> Vec<f64> {
+        let f = &d.file;
+        let (ng, nt) = (f.generators.len(), f.ties.len());
+        let at = |k: usize| g.edges.get(k).map_or(0.0, |e| e.f);
+        let mut out = Vec::with_capacity(d.edge_count());
+        out.extend((0..ng).map(|k| at(E_FIRST + k)));
+        out.extend((0..nt).map(|k| at(E_FIRST + ng + k)));
+        out.push(at(E_BAT_LINK));
+        out.extend((0..f.conduits.len()).map(|k| at(E_FIRST + ng + nt + k)));
+        out
     }
 
     /// A group's fader dragged to `sp`: what its loads would want and get (the console's ghost), MW.
@@ -1260,10 +1292,15 @@ impl PowerState {
 
     /// The runs live now (power-routing 2): conduits and ties closed, whole, with both their boxes on.
     pub fn live_runs(&self, d: &PowerData, ship: &Ship) -> usize {
+        self.live_runs_of(d, ship.conduits)
+    }
+
+    /// [`Self::live_runs`] over the conduits' states alone (what a snapshot reads, with no [`Ship`] to hand).
+    pub fn live_runs_of(&self, d: &PowerData, conduits: &[ConduitState]) -> usize {
         let on = |id: &str| d.node(id).is_some_and(|k| self.box_on[k]);
         let conduits = d.file.conduits.iter().enumerate().filter(|(k, c)| {
             self.conduit_breaker[*k]
-                && !ship.conduits.get(*k).is_some_and(|s| s.severed)
+                && !conduits.get(*k).is_some_and(|s| s.severed)
                 && on(&c.between[0])
                 && on(&c.between[1])
         });
@@ -1492,6 +1529,7 @@ impl PowerState {
         self.want = res.want;
         self.alloc = res.alloc;
         self.dropped = res.dropped;
+        self.flows = res.flows;
         let rx = &mut self.reactor;
         rx.fuel_kg = (rx.fuel_kg - rx.p_th_w * dt / (rc.fuel_energy_mj_per_kg * 1e6)).max(0.0);
         if rx.state == ReactorState::Running && rx.throttle > 1.0 {
@@ -2297,6 +2335,31 @@ mod tests {
         s.set_box(d.node("bx_shield_room").unwrap(), true);
         w.step(&d, &mut s, &act, 1.0);
         assert!(s.supply(shields) > 0.99, "and on again it has its power back");
+    }
+
+    #[test]
+    fn every_edge_carries_its_flow_for_the_schematic() {
+        // Engineering's schematic draws each edge's flow (power-routing 6.1): what the generators give is what the
+        // reactor delivers, a cut run carries nothing, and the spare closed round it carries the turret's power.
+        let d = data();
+        let act = cruise();
+        let mut s = PowerState::new(&d);
+        let mut w = Whole::new(&d);
+        w.step(&d, &mut s, &act, 5.0);
+        assert_eq!(s.flows.len(), d.edge_count());
+        let ng = d.file.generators.len();
+        let gens: f64 = s.flows[..ng].iter().sum();
+        assert!((gens - s.rx_out).abs() < 1e-6, "the generators carry the reactor's {} MW, not {gens}", s.rx_out);
+        let edge = |id: &str| d.file.generators.len() + d.file.ties.len() + 1 + conduit(&d, id);
+        w.conduits[conduit(&d, "r_dorsal_fwd")] = ConduitState { health: 0.0, severed: true, open: false };
+        s.set_conduit(conduit(&d, "r_dorsal_aft"), true);
+        w.step(&d, &mut s, &act, 2.0);
+        assert!(s.flows[edge("r_dorsal_fwd")].abs() < 1e-9, "a cut run carries nothing");
+        let turret = s.alloc[d.load("turret_dorsal").unwrap()];
+        assert!(
+            s.flows[edge("r_dorsal_aft")].abs() >= turret - 1e-6,
+            "the spare carries at least the turret's {turret} MW"
+        );
     }
 
     #[test]

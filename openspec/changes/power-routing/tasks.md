@@ -42,3 +42,14 @@
 - [ ] 4.2 Owner review of the mockup's shots; question R1.
 - [ ] 4.3 After approval: Engineering's routing view in `consoles.html`, then in the engine, with the switches in the
   grid snapshot.
+
+## 5. In the game (design 6)
+
+- [x] 5.1 `RouteSnap` in the snapshot (protocol 9), sent between the grid's; round trip and size tests.
+- [ ] 5.2 Engineering's SCHEMATIC side panel with EXPAND and the live runs; parity fixtures redrawn.
+- [ ] 5.3 The full-screen schematic: open and close, the 2D / 3D switch, the status strip, taps to `Box`, `Run`, `Feed`.
+- [ ] 5.4 2D: the board from `power_board.json`, families from `subsystems.json` (client data, `check-data`).
+- [ ] 5.5 3D: the decks, lanes, chamfered runs, markers, orbit and zoom.
+- [ ] 5.6 Hover lighting the run under the pointer; damage marks; the trip banner.
+- [ ] 5.7 Engine shots beside the mockup's; the owner's sign-off.
+
