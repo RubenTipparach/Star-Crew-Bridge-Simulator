@@ -1,0 +1,82 @@
+[
+  {
+    "ship": "pursuer",
+    "stage": "hull",
+    "deck": null,
+    "status": "pass",
+    "output": "docs\\mockups\\enemy-ships.html: 1560 triangles, 0 fighting pairs of surfaces, 0.000 m2",
+    "errors": ""
+  },
+  {
+    "ship": "splitjaw",
+    "stage": "hull",
+    "deck": null,
+    "status": "pass",
+    "output": "docs\\mockups\\enemy-ships.html: 1568 triangles, 0 fighting pairs of surfaces, 0.000 m2",
+    "errors": ""
+  },
+  {
+    "ship": "bulwark",
+    "stage": "hull",
+    "deck": null,
+    "status": "pass",
+    "output": "docs\\mockups\\enemy-ships.html: 1692 triangles, 0 fighting pairs of surfaces, 0.000 m2",
+    "errors": ""
+  },
+  {
+    "ship": "pursuer",
+    "stage": "fit",
+    "deck": "A",
+    "status": "pass",
+    "output": "docs\\mockups\\enemy-ships.html: 1344 triangles, 0 fighting pairs of surfaces, 0.000 m2",
+    "errors": ""
+  },
+  {
+    "ship": "pursuer",
+    "stage": "fit",
+    "deck": "B",
+    "status": "pass",
+    "output": "docs\\mockups\\enemy-ships.html: 1944 triangles, 0 fighting pairs of surfaces, 0.000 m2",
+    "errors": ""
+  },
+  {
+    "ship": "splitjaw",
+    "stage": "fit",
+    "deck": "A",
+    "status": "pass",
+    "output": "docs\\mockups\\enemy-ships.html: 1224 triangles, 0 fighting pairs of surfaces, 0.000 m2",
+    "errors": ""
+  },
+  {
+    "ship": "splitjaw",
+    "stage": "fit",
+    "deck": "B",
+    "status": "pass",
+    "output": "docs\\mockups\\enemy-ships.html: 2828 triangles, 0 fighting pairs of surfaces, 0.000 m2",
+    "errors": ""
+  },
+  {
+    "ship": "bulwark",
+    "stage": "fit",
+    "deck": "A",
+    "status": "pass",
+    "output": "docs\\mockups\\enemy-ships.html: 868 triangles, 0 fighting pairs of surfaces, 0.000 m2",
+    "errors": ""
+  },
+  {
+    "ship": "bulwark",
+    "stage": "fit",
+    "deck": "B",
+    "status": "pass",
+    "output": "docs\\mockups\\enemy-ships.html: 2400 triangles, 0 fighting pairs of surfaces, 0.000 m2",
+    "errors": ""
+  },
+  {
+    "ship": "bulwark",
+    "stage": "fit",
+    "deck": "C",
+    "status": "pass",
+    "output": "docs\\mockups\\enemy-ships.html: 1626 triangles, 0 fighting pairs of surfaces, 0.000 m2",
+    "errors": ""
+  }
+]

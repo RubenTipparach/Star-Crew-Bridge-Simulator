@@ -1,0 +1,106 @@
+{
+  "base_commit": "7653f7a",
+  "status": "pass",
+  "views": [
+    {
+      "ship": "pursuer",
+      "stage": "hull",
+      "triangles": 1560,
+      "draw_calls": 1,
+      "texture_mib": 1.0833330154418945,
+      "extent_m": [
+        29.216,
+        10.603,
+        45.13
+      ]
+    },
+    {
+      "ship": "pursuer",
+      "stage": "cutaway",
+      "deck": "A",
+      "triangles": 1344,
+      "draw_calls": 8,
+      "rooms": 6
+    },
+    {
+      "ship": "pursuer",
+      "stage": "cutaway",
+      "deck": "B",
+      "triangles": 1944,
+      "draw_calls": 11,
+      "rooms": 9
+    },
+    {
+      "ship": "splitjaw",
+      "stage": "hull",
+      "triangles": 1568,
+      "draw_calls": 1,
+      "texture_mib": 1.0833330154418945,
+      "extent_m": [
+        32.97,
+        10.753,
+        53.31
+      ]
+    },
+    {
+      "ship": "splitjaw",
+      "stage": "cutaway",
+      "deck": "A",
+      "triangles": 1224,
+      "draw_calls": 8,
+      "rooms": 6
+    },
+    {
+      "ship": "splitjaw",
+      "stage": "cutaway",
+      "deck": "B",
+      "triangles": 2828,
+      "draw_calls": 12,
+      "rooms": 10
+    },
+    {
+      "ship": "bulwark",
+      "stage": "hull",
+      "triangles": 1692,
+      "draw_calls": 1,
+      "texture_mib": 1.0833330154418945,
+      "extent_m": [
+        38.12,
+        14.44,
+        45.48
+      ]
+    },
+    {
+      "ship": "bulwark",
+      "stage": "cutaway",
+      "deck": "A",
+      "triangles": 868,
+      "draw_calls": 6,
+      "rooms": 4
+    },
+    {
+      "ship": "bulwark",
+      "stage": "cutaway",
+      "deck": "B",
+      "triangles": 2400,
+      "draw_calls": 10,
+      "rooms": 8
+    },
+    {
+      "ship": "bulwark",
+      "stage": "cutaway",
+      "deck": "C",
+      "triangles": 1626,
+      "draw_calls": 8,
+      "rooms": 6
+    }
+  ],
+  "mobile": [
+    "pursuer-hull-plan.png",
+    "splitjaw-hull-plan.png",
+    "bulwark-hull-plan.png",
+    "splitjaw-fit-plan.png",
+    "pursuer-fit-cutaway.png"
+  ],
+  "errors": []
+}
