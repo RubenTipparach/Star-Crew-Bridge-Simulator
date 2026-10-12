@@ -516,6 +516,11 @@ Before claiming anything is done, run what applies:
 
 ## 13. Working with the owner
 
+- **Use the original repository folder for all work** (owner, 2026-10-12).
+  Commit current work and create or switch branches in the same checkout.
+  Do not create a separate clone or worktree unless the owner explicitly asks.
+  Concept work belongs together in one branch in this folder.
+
 - **End every reply with the artifact links** (owner rule in Pale-Blue-Dot and Undercity:
   "always give me links to artifacts generated or updated since last prompt at end of
   messages"). Every reply ends with a short list: each claude.ai artifact published,
