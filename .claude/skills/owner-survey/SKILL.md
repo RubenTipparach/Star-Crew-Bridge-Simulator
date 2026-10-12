@@ -70,7 +70,8 @@ the connector is available.
     L life-support, D damage-control, F ship-frames, W weapons-and-shields, H
     shuttle-bay-and-fighters, N flight-and-navigation, K deck-pipeline, G light-baking, T reference-ship-tern,
     Q single-player, X front-menu, Z crew-nameplates and game-menu, J first-mission-gate,
-    S surface-materials, V wall-panels, U ceilings-and-trims, R floor-panels, A command-suite, Y deck-access.
+    S surface-materials, V wall-panels, U ceilings-and-trims, R floor-panels, A command-suite, Y deck-access,
+    O tern-exterior and warp-pylons.
   - A question gives the fact it turns on, with its number and unit: "The hangar holds 1,682.4
     m^3 of air; pumping it down takes 207 seconds, venting it takes 3 seconds".
   - Options are short and separated by " / ".

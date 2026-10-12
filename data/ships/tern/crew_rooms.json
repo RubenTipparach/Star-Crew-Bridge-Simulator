@@ -82,24 +82,24 @@
    "prop": "locker_bank",
    "set": "suite",
    "back_m": [
-    10.396,
+    6.4,
     0.0,
-    12.2
+    11.43
    ],
-   "yaw_deg": -96.84,
-   "note": "lockers on the hull side"
+   "yaw_deg": 180.0,
+   "note": "lockers on the aft end of the bunk island"
   },
   {
    "room": "quarters",
    "prop": "locker_bank",
    "set": "suite",
    "back_m": [
-    10.084,
+    6.4,
     0.0,
-    14.8
+    13.57
    ],
-   "yaw_deg": -96.84,
-   "note": "lockers on the hull side"
+   "yaw_deg": 0.0,
+   "note": "lockers on the forward end of the bunk island"
   },
   {
    "room": "mess",
