@@ -703,6 +703,8 @@ the power grid in the ship floor plan and as a electric diagram"; since the same
 | `power-grid-3d-rooms-panel-off` | The rooms overlay with the medbay's box switched off: the medbay on emergency light |
 | `power-grid-2d-rooms-panel-off` | The same on the board: every part's room lamp, the overlay's tint |
 | `power-grid-2d-feed-swapped` | The shield room's feed cut and the shield generator swapped to the forward switchboard |
+| `power-grid-3d-room-hit` | HIT ROOM (`power-routing` 3d) twice in combat, the shield room and the port turret pod: red rings where the hits came in, the cuts, the damaged boxes and systems, 3 offline |
+| `power-grid-2d-room-hit` | The same on the board: the burns, a red star at each room hit, cracked parts with their health, the runs cut and damaged |
 | `power-grid-phone-3d`, `power-grid-phone-2d` | Both views on a phone held upright |
 | `consoles-engineering`, `consoles-red-engineering` | Engineering's console: BUSES become SCHEMATIC, with EXPAND and the live runs |
 

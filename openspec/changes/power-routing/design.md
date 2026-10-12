@@ -104,7 +104,9 @@ schematic in full screen. They can toggle between 2d and 3d view. 2d is a simpli
   side by side with the others; the gap names its two decks and counts their runs and how many carry power.
 - **One colour for electricity** (the owner: "black lines dont make sense to me at all, it should be lit up", "why not
   just use all yellow or all green? its the same concept, electric flowing"): every run, feeder, closed switch, box
-  that is on and system with its power is yellow, wider the more a run carries, its dashes faster. The other colours
+  that is on and system with its power is yellow, wider the more a run carries. Its dashes run the way the power
+  flows, every trace at the same speed (the owner: "why are some line flowing faster than others? it should all be the
+  same rate"): how much a run carries is its width alone. The other colours
   are for trouble only: orange hatched short, red cut or dropped, blue an open spare, grey nothing reaches it, a dim
   outline switched off.
 - The full-screen schematic is `docs/mockups/power-grid.html`; the side panel is drawn in `consoles.html`. Both wait
@@ -153,6 +155,29 @@ the first board: "Beautiful!".
 - **What stays the same.** Every tap and colour of 3a and 3b: tap a part's switch to switch its box, a trace to open or
   close its run, a system's LED to swap its feed; the room lamps and the rooms overlay; the gap between two boards
   counts its traces and the live ones.
+
+### 3d. Damage on the schematic (owner, 2026-10-11)
+
+The owner: "I also want to visualize damage here too", "create a button to simulate room damage and systems offline".
+
+- **HIT ROOM.** A button on the bar arms a hit; the next tap on a room (in 3D its floor or anything in it, in 2D its
+  part) hits that room once and disarms. The hit is the library's one hit rule (`resolveHit`, `ship-damage`: armour,
+  breach, the energy marching inward through rooms, systems, boxes and conduits within its reach, fire), with a
+  Gannet's warhead (60 MJ, `data/weapons.json`). It comes in through the hull face (port, starboard, dorsal or ventral)
+  whose path reaches the room first, through the fewest other rooms (`ShipSystems.hitInto`), so a tap on a corridor
+  hits the corridor and not the cabin beside it. What the march does past the room is the model's: a hit by a panel
+  cuts the runs bundled there (question R2).
+- **What shows, in both views** (red is trouble, the colour language of 3a; damage adds shapes, not colours):
+  - Where it hit: in 2D the board burnt under every room the hit reached, darker the more energy the room took, and a
+    red star at the room it entered; in 3D a red ring where it entered.
+  - A box damaged: a red rim, its health in red after its name; destroyed, crossed as before.
+  - A run damaged (half its rating left, `damage.json` conduits): a red hatched band on the trace, or a red diamond on
+    the 3D run, where the hit reached it; severed, red and crossed as before, now at the room where it was cut (a
+    spare severed stays a thin dashed line on the bottom layer, red).
+  - A system damaged: a red rim round its light; offline (disabled, below 25 %), a red hollow diamond; destroyed, a red
+    crossed diamond. Its supply keeps its own look inside (yellow, orange short, red dropped).
+  - The status strip counts the systems offline, by damage or for want of power, and names them on hover.
+- **Repairs** stay with the damage control mockups; Cruise brings the ship back new.
 
 ### 4. What it does to the fight (2026-10-11, bots at Helm and Tactical, Engineering on automation, seeds 1-8)
 

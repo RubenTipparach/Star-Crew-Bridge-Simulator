@@ -5374,9 +5374,10 @@
     };
     for (const g of PW.generators) st.genClosed[g.id] = true;
     for (const t of PW.ties) st.tieClosed[t.id] = !!t.closed;
-    // cut: where a hit severed the conduit, [x, y, z] on its path (null while whole), for the damage map's break marker.
+    // cut: where a hit severed the conduit, [x, y, z] on its path (null while whole), for the damage map's break marker;
+    // hit_at: where a hit last took it, severed or damaged (the schematic's damage marks, power-routing 3d).
     // A conduit starts at its factory setting (power-routing 1): closed, unless it is a spare route.
-    for (const k of PW.conduits) st.conduit[k.id] = { health: 1, severed: false, breaker: k.factory_closed !== false, cut: null };
+    for (const k of PW.conduits) st.conduit[k.id] = { health: 1, severed: false, breaker: k.factory_closed !== false, cut: null, hit_at: null };
     // Every node's box switched on (power-routing 1); the main protection's trip (power-routing 2).
     st.boxOn = {};
     // Each system's feed (power-routing 1): from its node, or swapped to its alt_node (by load id; absent: its node).
@@ -6545,8 +6546,8 @@
       for (const k of PW.conduits) {
         const e = condE[k.id]; if (!e) continue;
         const cs = st.conduit[k.id];
-        if (e >= DM.conduits.sever_mj) { cs.severed = true; cs.cut = condAt[k.id].at; out.conduits.push({ id: k.id, severed: true, at: cs.cut }); log("Conduit " + k.id + " severed"); }
-        else if (e >= DM.conduits.damage_mj) { cs.health = Math.min(cs.health, DM.conduits.damaged_capacity); out.conduits.push({ id: k.id, severed: false, health: cs.health }); }
+        if (e >= DM.conduits.sever_mj) { cs.severed = true; cs.cut = cs.hit_at = condAt[k.id].at; out.conduits.push({ id: k.id, severed: true, at: cs.cut }); log("Conduit " + k.id + " severed"); }
+        else if (e >= DM.conduits.damage_mj) { cs.health = Math.min(cs.health, DM.conduits.damaged_capacity); cs.hit_at = condAt[k.id].at; out.conduits.push({ id: k.id, severed: false, health: cs.health, at: cs.hit_at }); }
       }
       for (let c = 0; c < N; c++) {
         const e = roomE[c]; if (e <= 0.01) continue;
@@ -6564,6 +6565,43 @@
       }
       log("Hit " + energy_mj + " MJ at " + key + ": " + out.compartments.map((c) => c.id).join(", "));
       return out;
+    }
+    /**
+     * Where a hit aimed at a room comes in (power-routing 3d): through the hull face, port, starboard, dorsal or
+     * ventral, whose path through the room's middle crosses the fewest other rooms before it, then runs longest inside
+     * it (so the room takes most of the hit). { point, dir } for resolveHit, or null for no such room. The middle is its
+     * largest brush's, at the height a hit at a room's people and systems would take (1.5 m over its floor, or half its
+     * height).
+     */
+    function hitInto(compId) {
+      const c = comps.find((x) => x.id === compId);
+      if (!c) return null;
+      const area = (poly) => Math.abs(poly.reduce((a, p, i) => { const q = poly[(i + 1) % poly.length]; return a + p[0] * q[1] - q[0] * p[1]; }, 0)) / 2;
+      const br = c.brushes.reduce((a, b) => (area(b.poly) > area(a.poly) ? b : a));
+      let x = br.poly.reduce((a, p) => a + p[0], 0) / br.poly.length, z = br.poly.reduce((a, p) => a + p[1], 0) / br.poly.length;
+      const y = br.y[0] + Math.min(1.5, (br.y[1] - br.y[0]) / 2);
+      // A room whose middle falls outside it (an L): halfway from its first corner to the middle, inside.
+      if (!inComp(c, [x, y, z])) { x = (x + br.poly[0][0]) / 2; z = (z + br.poly[0][1]) / 2; }
+      const h = hullHalfBeam(z), STEP = 0.25;
+      const faces = [{ point: [h.hw + 0.5, y, z], dir: [-1, 0, 0] }, { point: [-h.hw - 0.5, y, z], dir: [1, 0, 0] },
+        { point: [x, h.top + 0.5, z], dir: [0, -1, 0] }, { point: [x, h.bottom - 0.5, z], dir: [0, 1, 0] }];
+      let best = null;
+      for (const f of faces) {
+        const len = Math.abs(f.dir[0] ? f.point[0] - x : f.point[1] - y), passed = new Set(), at = (s) => compAt([f.point[0] + f.dir[0] * s, f.point[1] + f.dir[1] * s, f.point[2] + f.dir[2] * s]);
+        let reach = null;
+        for (let s = 0; s <= len + STEP; s += STEP) {
+          const i = at(s);
+          if (i === SPACE) continue;
+          if (comps[i].id === compId) { reach = s; break; }
+          passed.add(i);
+        }
+        if (reach == null) continue;
+        let inside = 0;
+        while (inside < PG.march_max_m && at(reach + inside) !== SPACE && comps[at(reach + inside)].id === compId) inside += STEP;
+        const score = passed.size * 1000 - inside + reach * 0.01;
+        if (!best || score < best.score) best = { point: f.point, dir: f.dir, score };
+      }
+      return best ? { point: best.point, dir: best.dir } : { point: faces[0].point, dir: faces[0].dir };
     }
     function hullHalfBeam(z) {
       const secs = L.hull.sections.slice().sort((a, b) => a.z_m - b.z_m);
@@ -6740,7 +6778,7 @@
      * A conduit as the map draws it (power-grid 9): mw signed, positive from between[0] to between[1] (the solve's own
      * edge flow); state "severed" (cut by a hit), "dead" (its breaker open, an end destroyed, or no power at either
      * end) or "live" (carrying power, or energized and idle); health (its capacity's share left); breaker "closed" or
-     * "open"; cut, where a hit severed it ([x, y, z] on its path) or null.
+     * "open"; cut, where a hit severed it ([x, y, z] on its path) or null; hit_at, where a hit last took it or null.
      */
     function conduitView(id) {
       const k = PW.conduits.find((x) => x.id === id), c = st.conduit[id];
@@ -6750,7 +6788,7 @@
       if (c.severed) state = "severed";
       else if (!c.breaker || nodeHp(k.between[0]) <= 0 || nodeHp(k.between[1]) <= 0 || st.boxOn[k.between[0]] === false || st.boxOn[k.between[1]] === false) state = "dead";
       else if (Math.abs(mw) <= EPS && !(nodeLive(k.between[0]) && nodeLive(k.between[1]))) state = "dead";
-      return { id, name: k.name, mw, state, health: c.health, breaker: c.breaker ? "closed" : "open", cut: c.cut || null, capacity_mw: k.capacity_mw, spare: k.factory_closed === false };
+      return { id, name: k.name, mw, state, health: c.health, breaker: c.breaker ? "closed" : "open", cut: c.cut || null, hit_at: c.hit_at || null, capacity_mw: k.capacity_mw, spare: k.factory_closed === false };
     }
     /** A switchboard section, panel or bus as the map draws it (power-grid 5): health 0-1 and state "sound", "damaged" or "destroyed". */
     function nodeView(id) {
@@ -6936,7 +6974,7 @@
     return {
       dt, L, PW, AT, DM, st, comps, N, DUCT, idx, vol, floor, extArea, adj, links, linkById, loads, loadIdx, stores, nodes, SPECIES,
       step, derive, solveGrid, gridSnapshot, computeDemand, solveWithDropout, previewSetpoint, previewGroup, scram, scramReset,
-      resolveHit, hullHalfBeam, breach, patch, setLink, closeAllDoors, isolate, ignite, bayPumpdown, bayRepress,
+      resolveHit, hitInto, hullHalfBeam, breach, patch, setLink, closeAllDoors, isolate, ignite, bayPumpdown, bayRepress,
       dischargeMist, dischargeInert, useExtinguisher, newExtinguisher, ventPreview, gravityG, capability, damageState, auxRatio, ignitionRate,
       operateDoor, setPriority, applyPreset, setCooling, coolantReadout, coolantView, damagePart, repairPart, isolateSegment, partIntegrity, setGroupBreaker, pumpSpeed, repressurize, repairSystem, spliceConduit, rebuildNode, fanRatio,
       airlockCycleOut, airlockCycleIn, ventCompartment, stopVent, addCrew, setActivity, compartmentReadout, lighting,

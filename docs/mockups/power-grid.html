@@ -98,6 +98,11 @@
     background: rgba(40, 6, 10, 0.92); border: 2px solid var(--danger); border-radius: 8px; padding: 6px 18px; color: #fff;
     font: 700 22px/1.1 var(--font); letter-spacing: .12em; }
   #tripb small { display: block; font: 600 13px/1.3 var(--font); letter-spacing: .04em; color: #ffb3ba; }
+  #hitb { position: fixed; left: 50%; transform: translateX(-50%); z-index: 30; display: none; pointer-events: none; text-align: center;
+    background: rgba(40, 6, 10, 0.92); border: 2px dashed var(--danger); border-radius: 8px; padding: 6px 18px; color: #fff;
+    font: 700 18px/1.1 var(--font); letter-spacing: .1em; }
+  #hitb small { display: block; font: 600 13px/1.3 var(--font); letter-spacing: .04em; color: #ffb3ba; }
+  body.arming #plan, body.arming #stage { cursor: crosshair; }
   /* The shared "show closed panels" pill sits over the bar's first row by default: here it waits above the status strip. */
   .mk-show { top: auto !important; bottom: 92px !important; }
   @media (max-width: 760px) { .legend { width: 260px; } #status { top: auto; bottom: 12px; } }
@@ -3347,9 +3352,10 @@
     };
     for (const g of PW.generators) st.genClosed[g.id] = true;
     for (const t of PW.ties) st.tieClosed[t.id] = !!t.closed;
-    // cut: where a hit severed the conduit, [x, y, z] on its path (null while whole), for the damage map's break marker.
+    // cut: where a hit severed the conduit, [x, y, z] on its path (null while whole), for the damage map's break marker;
+    // hit_at: where a hit last took it, severed or damaged (the schematic's damage marks, power-routing 3d).
     // A conduit starts at its factory setting (power-routing 1): closed, unless it is a spare route.
-    for (const k of PW.conduits) st.conduit[k.id] = { health: 1, severed: false, breaker: k.factory_closed !== false, cut: null };
+    for (const k of PW.conduits) st.conduit[k.id] = { health: 1, severed: false, breaker: k.factory_closed !== false, cut: null, hit_at: null };
     // Every node's box switched on (power-routing 1); the main protection's trip (power-routing 2).
     st.boxOn = {};
     // Each system's feed (power-routing 1): from its node, or swapped to its alt_node (by load id; absent: its node).
@@ -4518,8 +4524,8 @@
       for (const k of PW.conduits) {
         const e = condE[k.id]; if (!e) continue;
         const cs = st.conduit[k.id];
-        if (e >= DM.conduits.sever_mj) { cs.severed = true; cs.cut = condAt[k.id].at; out.conduits.push({ id: k.id, severed: true, at: cs.cut }); log("Conduit " + k.id + " severed"); }
-        else if (e >= DM.conduits.damage_mj) { cs.health = Math.min(cs.health, DM.conduits.damaged_capacity); out.conduits.push({ id: k.id, severed: false, health: cs.health }); }
+        if (e >= DM.conduits.sever_mj) { cs.severed = true; cs.cut = cs.hit_at = condAt[k.id].at; out.conduits.push({ id: k.id, severed: true, at: cs.cut }); log("Conduit " + k.id + " severed"); }
+        else if (e >= DM.conduits.damage_mj) { cs.health = Math.min(cs.health, DM.conduits.damaged_capacity); cs.hit_at = condAt[k.id].at; out.conduits.push({ id: k.id, severed: false, health: cs.health, at: cs.hit_at }); }
       }
       for (let c = 0; c < N; c++) {
         const e = roomE[c]; if (e <= 0.01) continue;
@@ -4537,6 +4543,43 @@
       }
       log("Hit " + energy_mj + " MJ at " + key + ": " + out.compartments.map((c) => c.id).join(", "));
       return out;
+    }
+    /**
+     * Where a hit aimed at a room comes in (power-routing 3d): through the hull face, port, starboard, dorsal or
+     * ventral, whose path through the room's middle crosses the fewest other rooms before it, then runs longest inside
+     * it (so the room takes most of the hit). { point, dir } for resolveHit, or null for no such room. The middle is its
+     * largest brush's, at the height a hit at a room's people and systems would take (1.5 m over its floor, or half its
+     * height).
+     */
+    function hitInto(compId) {
+      const c = comps.find((x) => x.id === compId);
+      if (!c) return null;
+      const area = (poly) => Math.abs(poly.reduce((a, p, i) => { const q = poly[(i + 1) % poly.length]; return a + p[0] * q[1] - q[0] * p[1]; }, 0)) / 2;
+      const br = c.brushes.reduce((a, b) => (area(b.poly) > area(a.poly) ? b : a));
+      let x = br.poly.reduce((a, p) => a + p[0], 0) / br.poly.length, z = br.poly.reduce((a, p) => a + p[1], 0) / br.poly.length;
+      const y = br.y[0] + Math.min(1.5, (br.y[1] - br.y[0]) / 2);
+      // A room whose middle falls outside it (an L): halfway from its first corner to the middle, inside.
+      if (!inComp(c, [x, y, z])) { x = (x + br.poly[0][0]) / 2; z = (z + br.poly[0][1]) / 2; }
+      const h = hullHalfBeam(z), STEP = 0.25;
+      const faces = [{ point: [h.hw + 0.5, y, z], dir: [-1, 0, 0] }, { point: [-h.hw - 0.5, y, z], dir: [1, 0, 0] },
+        { point: [x, h.top + 0.5, z], dir: [0, -1, 0] }, { point: [x, h.bottom - 0.5, z], dir: [0, 1, 0] }];
+      let best = null;
+      for (const f of faces) {
+        const len = Math.abs(f.dir[0] ? f.point[0] - x : f.point[1] - y), passed = new Set(), at = (s) => compAt([f.point[0] + f.dir[0] * s, f.point[1] + f.dir[1] * s, f.point[2] + f.dir[2] * s]);
+        let reach = null;
+        for (let s = 0; s <= len + STEP; s += STEP) {
+          const i = at(s);
+          if (i === SPACE) continue;
+          if (comps[i].id === compId) { reach = s; break; }
+          passed.add(i);
+        }
+        if (reach == null) continue;
+        let inside = 0;
+        while (inside < PG.march_max_m && at(reach + inside) !== SPACE && comps[at(reach + inside)].id === compId) inside += STEP;
+        const score = passed.size * 1000 - inside + reach * 0.01;
+        if (!best || score < best.score) best = { point: f.point, dir: f.dir, score };
+      }
+      return best ? { point: best.point, dir: best.dir } : { point: faces[0].point, dir: faces[0].dir };
     }
     function hullHalfBeam(z) {
       const secs = L.hull.sections.slice().sort((a, b) => a.z_m - b.z_m);
@@ -4713,7 +4756,7 @@
      * A conduit as the map draws it (power-grid 9): mw signed, positive from between[0] to between[1] (the solve's own
      * edge flow); state "severed" (cut by a hit), "dead" (its breaker open, an end destroyed, or no power at either
      * end) or "live" (carrying power, or energized and idle); health (its capacity's share left); breaker "closed" or
-     * "open"; cut, where a hit severed it ([x, y, z] on its path) or null.
+     * "open"; cut, where a hit severed it ([x, y, z] on its path) or null; hit_at, where a hit last took it or null.
      */
     function conduitView(id) {
       const k = PW.conduits.find((x) => x.id === id), c = st.conduit[id];
@@ -4723,7 +4766,7 @@
       if (c.severed) state = "severed";
       else if (!c.breaker || nodeHp(k.between[0]) <= 0 || nodeHp(k.between[1]) <= 0 || st.boxOn[k.between[0]] === false || st.boxOn[k.between[1]] === false) state = "dead";
       else if (Math.abs(mw) <= EPS && !(nodeLive(k.between[0]) && nodeLive(k.between[1]))) state = "dead";
-      return { id, name: k.name, mw, state, health: c.health, breaker: c.breaker ? "closed" : "open", cut: c.cut || null, capacity_mw: k.capacity_mw, spare: k.factory_closed === false };
+      return { id, name: k.name, mw, state, health: c.health, breaker: c.breaker ? "closed" : "open", cut: c.cut || null, hit_at: c.hit_at || null, capacity_mw: k.capacity_mw, spare: k.factory_closed === false };
     }
     /** A switchboard section, panel or bus as the map draws it (power-grid 5): health 0-1 and state "sound", "damaged" or "destroyed". */
     function nodeView(id) {
@@ -4909,7 +4952,7 @@
     return {
       dt, L, PW, AT, DM, st, comps, N, DUCT, idx, vol, floor, extArea, adj, links, linkById, loads, loadIdx, stores, nodes, SPECIES,
       step, derive, solveGrid, gridSnapshot, computeDemand, solveWithDropout, previewSetpoint, previewGroup, scram, scramReset,
-      resolveHit, hullHalfBeam, breach, patch, setLink, closeAllDoors, isolate, ignite, bayPumpdown, bayRepress,
+      resolveHit, hitInto, hullHalfBeam, breach, patch, setLink, closeAllDoors, isolate, ignite, bayPumpdown, bayRepress,
       dischargeMist, dischargeInert, useExtinguisher, newExtinguisher, ventPreview, gravityG, capability, damageState, auxRatio, ignitionRate,
       operateDoor, setPriority, applyPreset, setCooling, coolantReadout, coolantView, damagePart, repairPart, isolateSegment, partIntegrity, setGroupBreaker, pumpSpeed, repressurize, repairSystem, spliceConduit, rebuildNode, fanRatio,
       airlockCycleOut, airlockCycleIn, ventCompartment, stopVent, addCrew, setActivity, compartmentReadout, lighting,
@@ -4932,6 +4975,7 @@
 <div class="legend" id="legend"></div>
 <div id="tip"></div>
 <div id="tripb"></div>
+<div id="hitb"></div>
 <div id="viewsw"><button type="button" data-v="3d" data-tip="The ship in 3D">3D</button><button type="button" data-v="2d" data-tip="The schematic as a circuit board, a board a deck">2D</button></div>
 <button id="collapse" type="button" data-tip="Collapse: back to the Engineering console's side panel"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M10 14l-7 7M14 10l7-7"/></svg>CONSOLE</button>
 <script type="module">
@@ -4968,8 +5012,9 @@ function mixCol(a, b, k) {
 /** A live run's colour: dim when it idles, the power colour as it nears its rating. */
 // One colour for electricity (the owner, 2026-10-11: "black lines dont make sense to me at all, it should be lit up",
 // "why not just use all yellow or all green? its the same concept, electric flowing"): every run, feeder, closed
-// switch, box on and system with its power is yellow; how much a run carries is its width and how fast its dashes run.
-// The other colours are only for trouble: orange hatched short, red cut or dropped, blue an open spare, grey nothing
+// switch, box on and system with its power is yellow; how much a run carries is its width. Its dashes run the way the
+// power flows, every trace at the same speed (the owner: "why are some line flowing faster than others? it should all
+// be the same rate"). The other colours are only for trouble: orange hatched short, red cut or dropped, blue an open spare, grey nothing
 // reaches it.
 const flowCol = () => C.power;
 
@@ -4998,6 +5043,7 @@ function fresh() {
   sim = SS.create(L, PW, AT, DM, { seed: 5 });
   st = sim.st;
   script = [];
+  HITS = [];
   sim.applyPreset("cruise");
   sim.setActivity(CRUISE_ACT);
   run(300);
@@ -5008,6 +5054,24 @@ function sever(id) {
   const k = PW.conduits.find((x) => x.id === id), c = st.conduit[id];
   c.severed = true; c.cut = k.path_m[Math.floor((k.path_m.length - 1) / 2)];
   sim.log("Conduit " + id + " severed");
+}
+// HIT ROOM (power-routing 3d; the owner: "create a button to simulate room damage and systems offline"): one hit with a
+// Gannet's warhead (data/weapons.json missiles, 60 MJ) into the room tapped, through the hull face that reaches it first
+// (ShipSystems.hitInto), resolved by the library's one hit rule. HITS keeps what each did, for the burns and the rings.
+const HIT_MJ = 60;
+let HITS = [], hitArmed = false;
+function strike(room) {
+  const aim = sim.hitInto(room);
+  if (!aim) return null;
+  const out = sim.resolveHit(aim.point, aim.dir, HIT_MJ);
+  // Its ring: where its path first meets a room (the hull there), not out in space over a narrower deck.
+  let at = aim.point;
+  for (let d = 0; d < 40; d += 0.25) {
+    const q = aim.point.map((v, a) => v + aim.dir[a] * d);
+    if (L.compartments.some((c) => K.brushAt(c, q[0], q[1], q[2]) !== null)) { at = q; break; }
+  }
+  HITS.push({ room, entered: out.breach ? out.breach.compartment : room, at, out });
+  return out;
 }
 /** The spare routes, open at the factory (power-routing 1). */
 const SPARES = PW.conduits.filter((k) => k.factory_closed === false).map((k) => k.id);
@@ -5051,12 +5115,12 @@ function loadState(n) {
 }
 const nodeState = (id) => sim.nodeView(id);
 /** A box as a switch: filled on (power colour when it carries power, grey when nothing reaches it), hollow off,
- *  crossed when destroyed. */
+ *  crossed when destroyed (damaged: a red rim, power-routing 3d, drawn by each view). */
 function boxLook(id) {
   const v = nodeState(id);
   if (v.state === "destroyed") return { col: C.danger, mode: 3, v };
   if (!v.on) return { col: C.dim, mode: 2, v };
-  return { col: v.live ? (v.state === "damaged" ? C.emergency : C.power) : C.faint, mode: 0, v };
+  return { col: v.live ? C.power : C.faint, mode: 0, v };
 }
 const isRun = (id) => !!st.conduit[id] || id in st.tieClosed;
 /** Every run and source edge the plan and the diagram draw: state live, dead, open (its switch open), severed. */
@@ -5064,7 +5128,7 @@ function edgeNow(id) {
   if (st.conduit[id]) {
     const v = sim.conduitView(id);
     const state = v.state === "severed" ? "severed" : v.breaker === "open" ? "open" : v.state;
-    return { id, name: v.name, mw: v.mw, cap: v.capacity_mw * v.health, rated: v.capacity_mw, state, closed: v.breaker === "closed", spare: v.spare, run: true };
+    return { id, name: v.name, mw: v.mw, cap: v.capacity_mw * v.health, rated: v.capacity_mw, state, closed: v.breaker === "closed", spare: v.spare, run: true, health: v.health, cut: v.cut, hit_at: v.hit_at };
   }
   const g = PW.generators.find((x) => x.id === id);
   if (g) {
@@ -5119,6 +5183,7 @@ function bar() {
   } else BAR.append(b(PORTRAIT && !DZ.whole ? "Whole" : "Fit", false, () => { DZ.whole = PORTRAIT ? !DZ.whole : false; fitDiagram(); bar(); }));
   BAR.append(sep());
   SCENARIOS.forEach(([name, fn], i) => BAR.append(b(name, scenario === i, () => { scenario = i; fn(); bar(); })));
+  BAR.append(sep(), b(hitArmed ? "Cancel hit" : "Hit room", hitArmed, () => armHit(!hitArmed)));
   BAR.append(sep(), lab("Time"));
   for (const [l, s] of [["Pause", 0], ["1x", 1], ["16x", 16]]) BAR.append(b(l, speed === s, () => { speed = s; bar(); }));
   BAR.scrollLeft = keep;
@@ -5128,9 +5193,44 @@ const SVGI = {
   battery: '<rect x="3" y="7" width="16" height="10" rx="2"/><path d="M21 10v4"/>',
   bolt: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
   switch: '<circle cx="5" cy="16" r="2"/><circle cx="19" cy="16" r="2"/><path d="M7 15L18 7"/>',
+  offline: '<path d="M12 2l10 10-10 10L2 12z"/><path d="M12 7v6M12 16.5v.5"/>',
 };
 const svgIcon = (name, s, col) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${SVGI[name]}</svg>`;
-const STATUS = document.getElementById("status"), TRIPB = document.getElementById("tripb");
+const STATUS = document.getElementById("status"), TRIPB = document.getElementById("tripb"), HITB = document.getElementById("hitb");
+/** Arm or disarm HIT ROOM: armed, the next tap on a room hits it. */
+function armHit(on) {
+  hitArmed = on;
+  document.body.classList.toggle("arming", on);
+  HITB.style.display = on ? "block" : "none";
+  HITB.innerHTML = `TAP A ROOM<small>a ${HIT_MJ} MJ warhead hits it through the nearest hull</small>`;
+  hideTip(); bar();
+}
+/** Hit a room from a tap, and say what the hit did. */
+function hitRoom(room, cx, cy) {
+  const out = strike(room);
+  armHit(false);
+  if (!out) return;
+  run(0.1); status(); if (PL) updatePlan(); drawDiagram(0);
+  const name = (id) => (L.compartments.find((c) => c.id === id) || { name: id }).name;
+  const face = out.hull.section.split(":")[1];
+  const sys = out.systems.filter((x) => !x.id.startsWith("lights_")), offline = sys.filter((x) => x.integrity < DM.systems.disabled_below_pct);
+  const cut = out.conduits.filter((x) => x.severed).length, hurt = out.conduits.length - cut;
+  showTip(cx, cy, `<div class="n">Hit: ${esc(name(room))}</div>` + line(`${HIT_MJ} MJ through the ${face} hull, ${f1(out.hull.absorbed_mj)} MJ to the armour`) +
+    line(`rooms: ${out.compartments.map((c) => esc(name(c.id))).join(", ") || "none"}`) +
+    line(`systems hit: ${sys.length}${offline.length ? `, ${offline.length} offline` : ""}`) + line(`runs severed: ${cut}, damaged: ${hurt}`) +
+    ((out.nodes || []).length ? line(`boxes hit: ${out.nodes.map((n) => `${esc(SHORT[n.id] || n.id)} ${pct(n.health)}`).join(", ")}`) : ""));
+}
+/** The systems offline: disabled or destroyed by damage, or wanting power and getting none. */
+function offlineNow() {
+  const out = [];
+  LOADS.forEach((l, i) => {
+    if (l.id.startsWith("lights_")) return;
+    const ds = sim.damageState(st.integrity[i]), n = loadNow(i);
+    if (ds === "disabled" || ds === "destroyed") out.push(`${l.name} (${ds})`);
+    else if (!n.off && (n.dropped || n.supply < 0.005)) out.push(`${l.name} (no power)`);
+  });
+  return out;
+}
 function status() {
   let want = 0, got = 0;
   for (let i = 0; i < LOADS.length; i++) { want += st.want[i]; got += st.alloc[i]; }
@@ -5143,6 +5243,8 @@ function status() {
     `<span class="k" data-tip="Battery: ${st.battery.soc_mj.toFixed(0)} of ${PW.battery.capacity_mj} MJ, reserve ${PW.battery.restart_reserve_mj} MJ">${svgIcon("battery", 20, st.battery.out_mw > 0.05 ? C.emergency : C.power)}${pct(soc)}</span>` +
     `<span class="k" data-tip="Delivered of wanted">${svgIcon("bolt", 20, got < want - 0.05 ? C.danger : C.power)}${f1(got)} / ${f1(want)} MW</span>` +
     `<span class="k" style="color:${rcol}" data-tip="Live runs against what the main protection allows; one more trips the grid">${svgIcon("switch", 20, rcol)}${rv.tripped ? "TRIPPED" : `${rv.live} / ${rv.limit}`}</span>`;
+  const off = offlineNow();
+  if (off.length) STATUS.innerHTML += `<span class="k" style="color:${C.danger}" data-tip="Offline: ${esc(off.join(", "))}">${svgIcon("offline", 20, C.danger)}${off.length} offline</span>`;
   TRIPB.style.display = rv.tripped ? "block" : "none";
   if (rv.tripped) TRIPB.innerHTML = `TRIPPED<small>factory settings in ${Math.ceil(rv.trip_s)} s</small>`;
 }
@@ -5165,6 +5267,12 @@ function legend() {
     row(sw(`<path d="M1 9h32" stroke="${C.power}" stroke-width="1.5"/>`), "Feeder: a box to its system") +
     `<div class="h">LOADS</div>` +
     row(dot(1, C.power), "Has its power") + row(dot(0.45, C.emergency, true), "Short: filled to its share") + row(dot(0, C.danger), "Dropped or cut off") + row(dot(0, C.faint), "Off: nothing wanted now") +
+    `<div class="h">DAMAGE (Hit room)</div>` +
+    row(sw(`<circle cx="17" cy="9" r="7" fill="none" stroke="${C.danger}" stroke-width="2.5"/>`), "Hit: where it came through the hull") +
+    row(sw(`<rect x="10" y="2" width="14" height="14" fill="${C.power}" stroke="${C.danger}" stroke-width="3"/><circle cx="29" cy="9" r="4" fill="${C.power}" stroke="${C.danger}" stroke-width="2"/>`), "Box or system damaged: a red rim") +
+    row(sw(`<path d="M1 9h32" stroke="${C.power}" stroke-width="4"/><path d="M17 3l6 6-6 6-6-6z" fill="${C.bg}" stroke="${C.danger}" stroke-width="2"/>`), "Run damaged: half its rating left") +
+    row(sw(`<path d="M17 1l8 8-8 8-8-8z" fill="${C.bg}" stroke="${C.danger}" stroke-width="2"/>`), "System offline: disabled by damage") +
+    row(sw(`<path d="M17 1l8 8-8 8-8-8z" fill="${C.bg}" stroke="${C.danger}" stroke-width="2"/><path d="M14 6l6 6M20 6l-6 6" stroke="${C.danger}" stroke-width="1.6"/>`), "System destroyed") +
     `<div class="h">ROOMS${roomsOn ? " (overlay)" : ""}</div>` +
     row(sw(`<rect x="2" y="2" width="14" height="14" fill="${(roomsOn ? LIGHT : ROOM_TINT).normal}"/><rect x="18" y="2" width="14" height="14" fill="${(roomsOn ? LIGHT : ROOM_TINT).red_alert}"/>`), "Lit by its panel, red alert") +
     row(sw(`<rect x="2" y="2" width="14" height="14" fill="${(roomsOn ? LIGHT : ROOM_TINT).emergency}"/><rect x="18" y="2" width="14" height="14" fill="${(roomsOn ? LIGHT : ROOM_TINT).dark}" stroke="#3a4859"/>`), "Emergency light (its panel off or dead), dark");
@@ -5243,8 +5351,8 @@ function runOf(id) {
   return [sysPos(PW.battery.system), nodeById[PW.battery.node].center_m];
 }
 // Runs and feeders as crossed ribbons (one widened across, one widened up, so a run reads from any side): width by
-// rating (a feeder thin), colour by the share carried, dashes running with the flow, grey dashes when dead, sparse blue
-// dashes when open, red when severed. One draw for every run and feeder.
+// rating (a feeder thin), dashes running with the flow, every run at the same speed (power-routing 3a), grey dashes when
+// dead, sparse blue dashes when open, red when severed. One draw for every run and feeder.
 const overlay = { transparent: true, depthWrite: false, side: THREE.DoubleSide };
 const edgeMat = new THREE.ShaderMaterial({
   ...overlay,
@@ -5254,27 +5362,27 @@ const edgeMat = new THREE.ShaderMaterial({
     "void main() { vDist = aDist; vCol = aCol; vState = aState; vDir = aDir; vRate = aRate; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
   fragmentShader: "uniform float uTime; varying float vDist; varying vec3 vCol; varying float vState; varying float vDir; varying float vRate;\n" +
     "void main() { vec3 c = vCol;\n" +
-    "  if (vState < 0.5) { if (vRate > 0.01) { float ph = fract((vDist - uTime * (1.5 + 6.0 * vRate) * vDir) / 2.2); c = ph < 0.6 ? c : c * 0.5; } }\n" +
+    "  if (vState < 0.5) { if (vRate > 0.01) { float ph = fract((vDist - uTime * 3.0 * vDir) / 2.2); c = ph < 0.6 ? c : c * 0.5; } }\n" +
     "  else if (vState < 1.5) { if (fract(vDist / 1.2) > 0.5) discard; }\n" +
     "  else if (vState > 2.5) { if (fract(vDist / 2.0) > 0.35) discard; }\n" +
     "  gl_FragColor = vec4(c, 1.0); }",
 });
 // Markers (boxes, loads, the reactor, the battery, cuts): one instanced quad turned to face the camera, drawn as a
 // square, a circle or a diamond, filled to a level (a load's supply), hatched above it when short, hollow when
-// dropped, off or dead, crossed when destroyed or cut. One draw.
+// dropped, off or dead, crossed when destroyed or cut; a rim of its own colour (red: damaged, power-routing 3d). One draw.
 const markMat = new THREE.ShaderMaterial({
   ...overlay,
-  vertexShader: "attribute vec3 iCol; attribute float iShape; attribute float iFill; attribute float iMode;\n" +
-    "varying vec2 vUv; varying vec3 vCol; varying float vShape; varying float vFill; varying float vMode;\n" +
-    "void main() { vUv = position.xy; vCol = iCol; vShape = iShape; vFill = iFill; vMode = iMode;\n" +
+  vertexShader: "attribute vec3 iCol; attribute vec3 iRim; attribute float iShape; attribute float iFill; attribute float iMode;\n" +
+    "varying vec2 vUv; varying vec3 vCol; varying vec3 vRim; varying float vShape; varying float vFill; varying float vMode;\n" +
+    "void main() { vUv = position.xy; vCol = iCol; vRim = iRim; vShape = iShape; vFill = iFill; vMode = iMode;\n" +
     "  vec4 c = modelViewMatrix * vec4(instanceMatrix[3].xyz, 1.0);\n" +
     "  c.xy += position.xy * length(instanceMatrix[0].xyz);\n" +
     "  gl_Position = projectionMatrix * c; }",
-  fragmentShader: "varying vec2 vUv; varying vec3 vCol; varying float vShape; varying float vFill; varying float vMode;\n" +
+  fragmentShader: "varying vec2 vUv; varying vec3 vCol; varying vec3 vRim; varying float vShape; varying float vFill; varying float vMode;\n" +
     "void main() { vec2 q = vUv; float d = vShape < 0.5 ? max(abs(q.x), abs(q.y)) : vShape < 1.5 ? length(q) : (abs(q.x) + abs(q.y)) * 0.7071;\n" +
     "  if (d > 0.5) discard; vec3 bg = vec3(0.016, 0.024, 0.035); vec3 c;\n" +
-    "  float rim = vMode > 1.5 ? 0.2 : 0.12;\n" +
-    "  if (0.5 - d < rim) c = vCol;\n" +
+    "  float rim = vMode > 1.5 || distance(vRim, vCol) > 0.01 ? 0.2 : 0.12;\n" +
+    "  if (0.5 - d < rim) c = vRim;\n" +
     "  else if (vMode > 2.5) { float x = min(abs(q.x - q.y), abs(q.x + q.y)); c = x < 0.1 ? vCol : bg; }\n" +
     "  else if (vMode > 1.5) c = bg;\n" +
     "  else if (q.y + 0.5 <= vFill) c = vCol;\n" +
@@ -5386,6 +5494,7 @@ function buildPlan() {
   })();
   const MARKS = [];   // { kind, id, at: [x, y, z], size, shape }
   const add = (m) => { if (m.kind === "cut" || shownPt(m.at)) MARKS.push(m); };
+  const HIT_RINGS = 8;
   add({ kind: "reactor", id: PW.reactor.system, at: sysPos(PW.reactor.system), size: 3.2, shape: 1 });
   add({ kind: "battery", id: PW.battery.system, at: sysPos(PW.battery.system), size: 1.6, shape: 0 });
   LOADS.forEach((l, i) => { if (!l.id.startsWith("lights_")) add({ kind: "load", id: l.id, i, at: l.center, size: 0.95, shape: 1 }); });
@@ -5394,10 +5503,13 @@ function buildPlan() {
     add({ kind: "node", id: n.id, at: n.center_m, size, shape: n.kind === "emergency_bus" ? 2 : 0 });
   }
   for (const k of PW.conduits) add({ kind: "cut", id: k.id, at: [0, 0, 0], size: 0, shape: 0 });
+  // The last HIT_RINGS hits, each a red ring where it came through the hull.
+  for (let j = 0; j < HIT_RINGS; j++) MARKS.push({ kind: "hit", n: j, at: [0, 0, 0], size: 0, shape: 1 });
   const marks = (() => {
     const g = new THREE.PlaneGeometry(1, 1);
     const n = MARKS.length;
     g.setAttribute("iCol", new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3));
+    g.setAttribute("iRim", new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3));
     g.setAttribute("iShape", new THREE.InstancedBufferAttribute(new Float32Array(MARKS.map((m) => m.shape)), 1));
     g.setAttribute("iFill", new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
     g.setAttribute("iMode", new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
@@ -5411,7 +5523,8 @@ function buildPlan() {
   labelsDirty = true;
 }
 const dummy = new THREE.Object3D();
-function setMark(k, at, size, colHex, fill, mode) {
+/** A marker: o.rim its rim's colour (its own by default), o.shape 0 square, 1 circle, 2 diamond (unchanged if not given). */
+function setMark(k, at, size, colHex, fill, mode, o = {}) {
   const q = P3(at);
   dummy.position.set(q[0], q[1], q[2]);
   dummy.scale.set(size || 1e-4, size || 1e-4, 1);
@@ -5419,6 +5532,9 @@ function setMark(k, at, size, colHex, fill, mode) {
   PL.marks.setMatrixAt(k, dummy.matrix);
   const c = linearRGB(colHex), a = PL.marks.geometry.attributes;
   a.iCol.setXYZ(k, c.r, c.g, c.b); a.iFill.setX(k, fill); a.iMode.setX(k, mode);
+  const r = o.rim ? linearRGB(o.rim) : c;
+  a.iRim.setXYZ(k, r.r, r.g, r.b);
+  if (o.shape != null) a.iShape.setX(k, o.shape);
 }
 const STATE_N = { live: 0, idle: 0, dead: 1, severed: 2, open: 3 };
 /** Write the simulation's state into the view's attributes (the rooms' light, every run and feeder, every marker). */
@@ -5446,15 +5562,26 @@ function updatePlan() {
   PL.MARKS.forEach((m, k) => {
     if (m.kind === "reactor") { const up = st.reactor.state === "running"; setMark(k, m.at, m.size, up ? C.power : st.reactor.state === "igniting" ? C.emergency : C.danger, up ? clamp(st.reactor.throttle, 0, 1) : 0, up ? 0 : 1); }
     else if (m.kind === "battery") { const out = st.battery.out_mw > 0.05; setMark(k, m.at, m.size, out ? C.emergency : C.power, st.battery.soc_mj / PW.battery.capacity_mj, out ? 1 : 0); }
-    else if (m.kind === "node") { const b = boxLook(m.id); setMark(k, m.at, m.size, b.col, 1, b.mode); }
-    else if (m.kind === "load") { const s = loadState(loadNow(m.i)); setMark(k, m.at, m.size, s.col, s.fill, s.mode); }
+    else if (m.kind === "node") { const b = boxLook(m.id); setMark(k, m.at, m.size, b.col, 1, b.mode, { rim: b.v.state === "damaged" ? C.danger : b.col }); }
+    else if (m.kind === "load") {
+      // Damage (power-routing 3d): damaged a red rim round its supply; offline a red diamond, crossed when destroyed.
+      const s = loadState(loadNow(m.i)), ds = sim.damageState(st.integrity[m.i]);
+      if (ds === "disabled" || ds === "destroyed") setMark(k, m.at, m.size * 1.2, C.danger, 0, ds === "destroyed" ? 3 : 2, { shape: 2 });
+      else setMark(k, m.at, m.size, s.col, s.fill, s.mode, { shape: 1, rim: ds === "damaged" ? C.danger : s.col });
+    }
     else if (m.kind === "cut") {
       const c = st.conduit[m.id];
-      if (c && c.severed && c.cut && shownPt(c.cut)) { m.at = c.cut; setMark(k, m.at, 1.3, C.danger, 0, 4); } else setMark(k, m.at, 0, C.danger, 0, 0);
+      if (c && c.severed && c.cut && shownPt(c.cut)) { m.at = c.cut; setMark(k, m.at, 1.3, C.danger, 0, 4, { shape: 0 }); }
+      else if (c && !c.severed && c.health < 1 && c.hit_at && shownPt(c.hit_at)) { m.at = c.hit_at; setMark(k, m.at, 1.1, C.danger, 0, 2, { shape: 2 }); }
+      else setMark(k, m.at, 0, C.danger, 0, 0);
+    }
+    else if (m.kind === "hit") {
+      const h = HITS[HITS.length - 1 - m.n];
+      if (h && shownPt(h.at)) { m.at = h.at; setMark(k, m.at, 2.8, C.danger, 0, 2, { shape: 1 }); } else setMark(k, m.at, 0, C.danger, 0, 0);
     }
   });
   PL.marks.instanceMatrix.needsUpdate = true;
-  for (const k of ["iCol", "iFill", "iMode"]) PL.marks.geometry.attributes[k].needsUpdate = true;
+  for (const k of ["iCol", "iRim", "iShape", "iFill", "iMode"]) PL.marks.geometry.attributes[k].needsUpdate = true;
 }
 
 let W = 0, H = 0, BH = 44;
@@ -5480,6 +5607,7 @@ function layoutTop() {
   BH = Math.max(44, BAR.offsetHeight);
   for (const el of [canvas, document.getElementById("labels"), STAGE]) el.style.top = BH + "px";
   TRIPB.style.top = BH + 12 + "px";
+  HITB.style.top = BH + 12 + "px";
   COLLAPSE.style.top = BH + 10 + "px";
   VIEWSW.style.top = BH + 10 + "px";
   VIEWSW.style.right = COLLAPSE.offsetWidth + 22 + "px";
@@ -5501,9 +5629,23 @@ function resize() {
 let press = null;
 canvas.addEventListener("pointerdown", (e) => { press = { x: e.clientX, y: e.clientY, t: performance.now(), n: (press && press.n) || 0 }; });
 canvas.addEventListener("pointerup", (e) => {
-  if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) < 6 && performance.now() - press.t < 500) pick(e.clientX, e.clientY, true);
+  if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) < 6 && performance.now() - press.t < 500) {
+    if (hitArmed) { const room = roomAt3D(e.clientX, e.clientY); if (room) hitRoom(room, e.clientX, e.clientY); }
+    else pick(e.clientX, e.clientY, true);
+  }
   press = null;
 });
+/** The room under a point of the 3D view: the nearest floor the pointer's ray meets. */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+function roomAt3D(cx, cy) {
+  camera.updateMatrixWorld();
+  ndc.set((cx / W) * 2 - 1, -((cy - BH) / H) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const hit = ray.intersectObject(PL.floors, false)[0];
+  if (!hit) return null;
+  const i = PL.roomRanges.findIndex(([s0, n]) => hit.face.a >= s0 && hit.face.a < s0 + n);
+  return i < 0 ? null : L.compartments[i].id;
+}
 canvas.addEventListener("pointermove", (e) => { if (e.pointerType === "mouse" && e.buttons === 0) pick(e.clientX, e.clientY, false); });
 canvas.addEventListener("pointerleave", (e) => { if (e.pointerType === "mouse") hideTip(); });
 
@@ -5567,19 +5709,24 @@ function tipFor(kind, id, i) {
   if (kind === "node") {
     const v = nodeState(id); let got = 0, want = 0;
     LOADS.forEach((l, j) => { if (l.node === id) { got += st.alloc[j]; want += st.want[j]; } });
-    return `<div class="n">${esc(nodeName(id))}</div>` + line(`${v.on ? "on" : "switched off"}, ${v.state}${v.on ? (v.live ? ", live" : ", nothing reaches it") : ""}`) + line(`its loads: ${mw(got)} of ${mw(want)}`) + line("tap to switch it " + (v.on ? "off" : "on"));
+    return `<div class="n">${esc(nodeName(id))}</div>` + line(`${v.on ? "on" : "switched off"}, ${v.state}${v.state !== "sound" ? ` (${pct(v.health)})` : ""}${v.on ? (v.live ? ", live" : ", nothing reaches it") : ""}`) + line(`its loads: ${mw(got)} of ${mw(want)}`) + line("tap to switch it " + (v.on ? "off" : "on"));
   }
   if (kind === "load" || kind === "feeder") {
     const l = LOADS[i], n = loadNow(i);
     const from = sim.nodeOf(i), other = from === l.node ? l.alt_node : l.node;
     return `<div class="n">${esc(l.name)}${kind === "feeder" ? ": feeder" : ""}</div>` + line(`priority ${n.prio}${n.prio === 0 ? " (never shed)" : ""}, fed from ${esc(SHORT[from] || from)}`) +
-      line(n.off ? "off: nothing wanted" : `${mw(n.got)} of ${mw(n.want)} (${pct(n.supply)})${n.dropped ? ", dropped" : ""}`) + line(`integrity ${pct(n.cap)}${n.open ? ", breaker open" : ""}`) +
+      line(n.off ? "off: nothing wanted" : `${mw(n.got)} of ${mw(n.want)} (${pct(n.supply)})${n.dropped ? ", dropped" : ""}`) + line(`integrity ${Math.round(st.integrity[i])}%, ${damageWord(i)}${n.open ? ", breaker open" : ""}`) +
       (other ? line(`tap to swap its feed to ${esc(SHORT[other] || other)}`) : "");
   }
   const e = edgeNow(id);
-  return `<div class="n">${esc(e.name)}</div>` + line(`${f1(Math.abs(e.mw))} of ${f1(e.rated)} MW, ${e.state}${e.spare ? " (a spare route)" : ""}`) + line(e.run ? `${e.closed ? "closed" : "open"}: tap to ${e.closed ? "open" : "close"} it` : `breaker ${e.closed ? "closed" : "open"}`);
+  return `<div class="n">${esc(e.name)}</div>` + line(`${f1(Math.abs(e.mw))} of ${f1(e.rated)} MW, ${e.state}${e.spare ? " (a spare route)" : ""}`) + (e.health < 1 && e.state !== "severed" ? line(`damaged: carries at most ${f1(e.cap)} MW`) : "") + line(e.run ? `${e.closed ? "closed" : "open"}: tap to ${e.closed ? "open" : "close"} it` : `breaker ${e.closed ? "closed" : "open"}`);
 }
 const TRIP_NOTE = "<div class='d' style='color:#ff4757'>tripped: nothing switches until it resets</div>";
+/** A system's damage in words: nominal, damaged (working less well), disabled or destroyed (offline). */
+function damageWord(i) {
+  const ds = sim.damageState(st.integrity[i]);
+  return ds === "nominal" ? "nominal" : ds === "damaged" ? `damaged, ${pct(sim.capability(i))} of its work` : `${ds}: offline`;
+}
 /** What is under a point of the 3D view (on the screen): a marker first, then a run, then a feeder. A tap switches a
  *  box or a run. */
 function pick(cx, cy, tap) {
@@ -5587,7 +5734,7 @@ function pick(cx, cy, tap) {
   const x = cx, y = cy - BH, r = tap ? 16 : 9;
   let best = null, bd = Infinity;
   PL.MARKS.forEach((m) => {
-    if (!m.size || m.kind === "cut") return;
+    if (!m.size || m.kind === "cut" || m.kind === "hit") return;
     const [sx, sy, sz] = screenOf(m.at);
     if (sz >= 1) return;
     const d = Math.hypot(sx - x, sy - y) - (m.size / 2) * pxPerM(m.at);
@@ -5643,7 +5790,9 @@ const tipA = (t) => ` data-tip="${esc(t)}"`;
 const actA = (a) => ` data-act="${a}"`;
 const isSpare = (id) => (PW.conduits.find((k) => k.id === id) || {}).factory_closed === false;
 /** A trace's width: power traces widest, by the run's rating (a feeder of 5 MW thin, a 40 MW tie wide). */
-const traceW = (id) => { const e = edgeNow(id); return e.state === "open" ? 1.8 : 2.4 + 4.6 * clamp(e.rated / 40, 0, 1); };
+const traceW = (id) => { const e = edgeNow(id); return onBottom(e) ? 1.8 : 2.4 + 4.6 * clamp(e.rated / 40, 0, 1); };
+/** A trace on the bottom layer: an open run, or one severed while open (a spare cut stays a spare, in red). */
+const onBottom = (e) => e.state === "open" || (e.state === "severed" && !e.closed);
 /** The polyline with every corner cut at 45 degrees (a 90 degree corner loses `c` each way; a 45 one is kept). */
 function chamfer(pts, c) {
   const out = [pts[0]];
@@ -5725,13 +5874,46 @@ function pad(p, q, col) {
   return `<path d="${pathD(pts)}Z" fill="${col}"/>`;
 }
 let phase = {};
+/** How fast every trace's dashes run, points a second, whatever it carries (power-routing 3a). */
+const FLOW_PX_S = 36;
+/** The point at a share of a polyline's length, and the segment it is on. */
+function along(path, share) {
+  const len = path.slice(1).reduce((a, q, i) => a + Math.hypot(q[0] - path[i][0], q[1] - path[i][1]), 0);
+  let left = len * share;
+  for (let i = 0; i + 1 < path.length; i++) {
+    const p = path[i], q = path[i + 1], l = Math.hypot(q[0] - p[0], q[1] - p[1]);
+    if (left <= l || i + 2 === path.length) { const t = l ? Math.min(1, left / l) : 0; return { at: [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t], seg: i }; }
+    left -= l;
+  }
+  return { at: path[0], seg: 0 };
+}
+/** Where on a trace a hit took it: the point nearest the parts of the room it was hit in (power-routing 3d), or its
+ *  middle when the room has no part on the board. */
+function boardSpot(id, p3) {
+  const path = PATH[id], room = p3 && L.compartments.find((c) => K.brushAt(c, p3[0], p3[1], p3[2], 0.5) !== null), r = room && ROOM_AT[room.id];
+  if (!r) return along(path, 0.5);
+  let best = null;
+  for (let i = 0; i + 1 < path.length; i++) {
+    const p = path[i], q = path[i + 1], du = q[0] - p[0], dv = q[1] - p[1];
+    const t = clamp(((r.x - p[0]) * du + (r.y - p[1]) * dv) / (du * du + dv * dv || 1), 0, 1), at = [p[0] + du * t, p[1] + dv * t];
+    const d = Math.hypot(at[0] - r.x, at[1] - r.y);
+    if (!best || d < best.d) best = { at, seg: i, d };
+  }
+  return best;
+}
+/** A damaged run's mark on its trace: a red hatched sleeve 20 points long where the hit took it. */
+function damageBand(id, spot, w) {
+  const path = PATH[id], p = path[spot.seg], q = path[spot.seg + 1], l = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1;
+  const ux = (q[0] - p[0]) / l, uy = (q[1] - p[1]) / l, a = [spot.at[0] - ux * 10, spot.at[1] - uy * 10], b = [spot.at[0] + ux * 10, spot.at[1] + uy * 10];
+  return `<path d="${pathD([a, b])}" stroke="${C.danger}" stroke-width="${w + 8}" opacity="0.4"/><path d="${pathD([a, b])}" stroke="url(#hatchR)" stroke-width="${w + 8}"/>`;
+}
 function drawTrace(id, dt) {
   const path = PATH[id];
   if (!path) return "";
   const e = edgeNow(id), w = traceW(id);
-  const live = e.state === "live", open = e.state === "open";
+  const live = e.state === "live", open = onBottom(e);
   const col = e.state === "severed" ? C.danger : open ? PCB.bottom : e.state === "dead" ? PCB.copperOff : C.power;
-  const tip = `${e.name}: ${f1(Math.abs(e.mw))} of ${f1(e.rated)} MW, ${e.state}${e.spare ? " (a spare route)" : ""}${e.run ? `; tap to ${e.closed ? "open" : "close"} it` : ""}`;
+  const tip = `${e.name}: ${f1(Math.abs(e.mw))} of ${f1(e.rated)} MW, ${e.state}${e.spare ? " (a spare route)" : ""}${e.health < 1 && e.state !== "severed" ? `, damaged: at most ${f1(e.cap)} MW` : ""}${e.run ? `; tap to ${e.closed ? "open" : "close"} it` : ""}`;
   let s = `<g${tipA(tip)}${e.run ? actA("run:" + id) + ' class="tap"' : ""}>`;
   s += `<path d="${pathD(path)}" stroke="transparent" stroke-width="14" fill="none"/>`;
   if (open) s += `<path d="${pathD(path)}" stroke="${col}" stroke-width="${w}" fill="none" stroke-dasharray="6 5" stroke-linejoin="round" opacity="0.8"/>`;
@@ -5743,15 +5925,15 @@ function drawTrace(id, dt) {
     }
     s += `<path d="${pathD(pc.pts)}" stroke="${col}" stroke-width="${w}" fill="none" stroke-linejoin="round" stroke-linecap="round" opacity="${live ? 0.55 : 0.9}"/>`;
     if (live && Math.abs(e.mw) > 1e-3) {
-      const share = e.rated > 0 ? clamp(Math.abs(e.mw) / e.rated, 0, 1) : 0;
-      phase[id] = ((phase[id] || 0) + dt * (12 + 60 * share) * Math.sign(e.mw)) % 2000;
+      phase[id] = ((phase[id] || 0) + dt * FLOW_PX_S * Math.sign(e.mw)) % 2000;
       s += `<path d="${pathD(pc.pts)}" stroke="${col}" stroke-width="${w}" fill="none" stroke-dasharray="12 7" stroke-dashoffset="${(-phase[id]).toFixed(1)}" stroke-linejoin="round"/>`;
     }
   }
   for (const v of edgeVias(id)) s += via(v[0], v[1], col);
   if (!open) s += pad(path[0], path[1], col) + pad(path[path.length - 1], path[path.length - 2], col);
+  if (e.health < 1 && e.state !== "severed") s += damageBand(id, boardSpot(id, e.hit_at), w);
   if (e.state === "severed") {
-    const m = path[Math.floor(path.length / 2)];
+    const m = boardSpot(id, e.cut).at;
     s += `<circle cx="${m[0]}" cy="${m[1]}" r="9" fill="${PCB.mask}" stroke="${C.danger}" stroke-width="2"/><path d="M${m[0] - 5} ${m[1] - 5}l10 10M${m[0] + 5} ${m[1] - 5}l-10 10" stroke="#fff" stroke-width="2"/>`;
   }
   return s + "</g>";
@@ -5764,9 +5946,11 @@ function lamp(id, x, y) {
 /** A part as a chip: its body, its name in silkscreen, its switch, its room's lamp, an LED a system it feeds (tap one
  *  to swap its feed). */
 function drawPart(id) {
-  const p = PART[id], v = nodeState(id), look = boxLook(id), box = NODE[id].kind === "box";
-  let s = `<g${tipA(`${nodeName(id)}: ${v.on ? "on" : "switched off"}${v.on ? (v.live ? ", live" : ", nothing reaches it") : ""}`)}>`;
-  s += `<rect x="${p.x0}" y="${p.y0}" width="${p.w}" height="${p.h}" rx="${box ? 3 : 4}" fill="${roomsOn ? `${LIGHT[roomLight(NODE[id].compartment)]}2e` : PCB.body}" stroke="${v.on && v.live ? PCB.silk : look.col}" stroke-width="${v.state === "sound" && v.on ? 1.1 : 2}"/>`;
+  const p = PART[id], v = nodeState(id), look = boxLook(id), box = NODE[id].kind === "box", hurt = v.state !== "sound";
+  let s = `<g${tipA(`${nodeName(id)}: ${v.on ? "on" : "switched off"}${hurt ? `, ${v.state} (${pct(v.health)})` : ""}${v.on ? (v.live ? ", live" : ", nothing reaches it") : ""}`)}>`;
+  s += `<rect x="${p.x0}" y="${p.y0}" width="${p.w}" height="${p.h}" rx="${box ? 3 : 4}" fill="${v.state === "destroyed" ? "#0b0606" : roomsOn ? `${LIGHT[roomLight(NODE[id].compartment)]}2e` : PCB.body}" stroke="${hurt ? C.danger : v.on && v.live ? PCB.silk : look.col}" stroke-width="${v.state === "sound" && v.on ? 1.1 : 2}"/>`;
+  // Damage (power-routing 3d): a crack across the chip and its health in red, bottom right.
+  if (hurt) s += `<path d="M${p.x0 + p.w * 0.6} ${p.y0}l-6 ${p.h * 0.35}l8 ${p.h * 0.2}l-7 ${p.h * 0.45}" stroke="${C.danger}" stroke-width="1.2" fill="none" opacity="0.8"/>` + txt(p.x1 - 5, p.y1 - 5, 10, C.danger, pct(v.health), { a: "end" });
   // Pin one's notch, and the pins along the long sides as a chip has.
   s += `<circle cx="${p.x0 + 6}" cy="${p.y0 + 6}" r="1.8" fill="${PCB.silkDim}"/>`;
   for (let x = p.x0 + 10; x < p.x1 - 6; x += 10) s += `<rect x="${x}" y="${p.y0 - 3}" width="4" height="3" fill="${PCB.silkDim}"/><rect x="${x}" y="${p.y1}" width="4" height="3" fill="${PCB.silkDim}"/>`;
@@ -5776,11 +5960,57 @@ function drawPart(id) {
     const l = LOADS[i], ln = loadNow(i), ls = loadState(ln), x = p.x0 + 12 + k * 10, y = p.y1 - 9;
     const other = l.alt_node ? (onAlt(i) ? l.node : l.alt_node) : null, from = sim.nodeOf(i);
     const fill = ln.off ? PCB.hole : ls.mode === 2 ? PCB.hole : ls.col;
-    s += `<g${tipA(`${l.name}: ${ln.off ? "off" : `${mw(ln.got)} of ${mw(ln.want)}`}${ln.dropped ? ", dropped" : ""}, fed from ${SHORT[from] || from}${other ? `; tap to swap to ${SHORT[other] || other}` : ""}`)}${other ? actA("feed:" + l.id) + ' class="tap"' : ""}>`;
-    s += `<rect x="${x - 5}" y="${y - 5}" width="10" height="10" fill="transparent"/><circle cx="${x}" cy="${y}" r="3.4" fill="${fill}" stroke="${ls.col}" stroke-width="1.2"/>`;
+    const ds = sim.damageState(st.integrity[i]), down = ds === "disabled" || ds === "destroyed";
+    s += `<g${tipA(`${l.name}: ${ln.off ? "off" : `${mw(ln.got)} of ${mw(ln.want)}`}${ln.dropped ? ", dropped" : ""}, fed from ${SHORT[from] || from}, ${damageWord(i)}${other ? `; tap to swap to ${SHORT[other] || other}` : ""}`)}${other ? actA("feed:" + l.id) + ' class="tap"' : ""}>`;
+    s += `<rect x="${x - 5}" y="${y - 5}" width="10" height="10" fill="transparent"/>`;
+    // Damage (power-routing 3d): offline a red diamond (crossed destroyed); damaged a red rim round its supply.
+    if (down) s += `<path d="M${x} ${y - 4.6}l4.6 4.6-4.6 4.6-4.6-4.6z" fill="${PCB.hole}" stroke="${C.danger}" stroke-width="1.4"/>` + (ds === "destroyed" ? `<path d="M${x - 2.2} ${y - 2.2}l4.4 4.4M${x + 2.2} ${y - 2.2}l-4.4 4.4" stroke="${C.danger}" stroke-width="1.2"/>` : "");
+    else s += `<circle cx="${x}" cy="${y}" r="3.4" fill="${fill}" stroke="${ds === "damaged" ? C.danger : ls.col}" stroke-width="${ds === "damaged" ? 1.8 : 1.2}"/>`;
     if (onAlt(i)) s += `<circle cx="${x}" cy="${y}" r="5.4" fill="none" stroke="${PCB.bottom}" stroke-width="1.2"/>`;
     s += "</g>";
   });
+  return `<g data-room="${NODE[id].compartment}">${s}</g>`;
+}
+/** A system's room (the reactor's and the battery's parts hit the room they stand in). */
+const sysRoom = (sys) => (L.systems.find((x) => x.id === sys) || {}).compartment;
+/** Each room's place on the board: the box round its parts (a room's burn and its hit's star go there). */
+const ROOM_AT = {};
+{
+  const at = {};
+  const put = (room, id) => { if (room && PART[id]) (at[room] = at[room] || []).push(PART[id]); };
+  for (const n of PW.nodes) put(n.compartment, n.id);
+  put(sysRoom(PW.reactor.system), "reactor");
+  put(sysRoom(PW.battery.system), "battery");
+  for (const [room, ps] of Object.entries(at)) {
+    const x0 = Math.min(...ps.map((q) => q.x0)), x1 = Math.max(...ps.map((q) => q.x1)), y0 = Math.min(...ps.map((q) => q.y0)), y1 = Math.max(...ps.map((q) => q.y1));
+    ROOM_AT[room] = { x: (x0 + x1) / 2, y: (y0 + y1) / 2, rx: (x1 - x0) / 2, ry: (y1 - y0) / 2 };
+  }
+}
+/** Where hits burnt the board (power-routing 3d): under every room a hit reached, darker the more energy it took there.
+ *  Two offset blotches a room, so the burn is ragged, not a disc. */
+function drawBurns() {
+  let s = "";
+  HITS.forEach((h, k) => {
+    for (const c of h.out.compartments) {
+      const r = ROOM_AT[c.id];
+      if (!r) continue;
+      const g = 14 + 5 * Math.sqrt(c.mj), op = clamp(0.6 + c.mj / 25, 0.6, 1), j = ((k * 7 + c.id.length * 13) % 9) - 4;
+      s += `<ellipse cx="${r.x}" cy="${r.y}" rx="${r.rx + g}" ry="${r.ry + g}" fill="url(#burn)" opacity="${op.toFixed(2)}"/>`;
+      s += `<ellipse cx="${r.x + j * 3}" cy="${r.y - j * 2}" rx="${(r.rx + g) * 0.7}" ry="${(r.ry + g) * 0.8}" fill="url(#burn)" opacity="${(op * 0.8).toFixed(2)}"/>`;
+    }
+  });
+  return s;
+}
+/** Each hit's star at the room it came into (the last on top). */
+function drawHitStars() {
+  let s = "";
+  for (const h of HITS) {
+    const r = ROOM_AT[h.entered] || ROOM_AT[h.room];
+    if (!r) continue;
+    const x = r.x + r.rx + 2, y = r.y - r.ry - 2, pts = [];
+    for (let i = 0; i < 16; i++) { const a = (i * Math.PI) / 8, rr = i % 2 ? 5 : 12; pts.push([x + rr * Math.cos(a), y + rr * Math.sin(a)]); }
+    s += `<g${tipA(`Hit: ${HIT_MJ} MJ into the ${(L.compartments.find((c) => c.id === h.room) || {}).name}, through the ${h.out.hull.section.split(":")[1]} hull`)}><path d="${pathD(pts)}Z" fill="${C.danger}" stroke="#fff" stroke-width="1.2"/></g>`;
+  }
   return s;
 }
 /** A box's own switch: filled on, hollow off, crossed destroyed (the part's corner). */
@@ -5796,18 +6026,19 @@ function drawReactor() {
   const col = up ? C.power : r.state === "igniting" ? C.emergency : C.danger, k = clamp(r.throttle / PW.reactor.throttle_max, 0, 1);
   const a = -220 + 260 * k, rad = (deg) => (deg * Math.PI) / 180;
   const arc = (a0, a1, rr) => { const p0 = [x + rr * Math.cos(rad(a0)), y + rr * Math.sin(rad(a0))], p1 = [x + rr * Math.cos(rad(a1)), y + rr * Math.sin(rad(a1))]; return `M${p0[0].toFixed(1)} ${p0[1].toFixed(1)}A${rr} ${rr} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${p1[0].toFixed(1)} ${p1[1].toFixed(1)}`; };
-  let s = `<g${tipA(`Fusion reactor: ${r.state}, ${r.mode}, ${f1(r.P_e / 1e6)} MW electric`)}>`;
+  let s = `<g data-room="${sysRoom(PW.reactor.system)}"${tipA(`Fusion reactor: ${r.state}, ${r.mode}, ${f1(r.P_e / 1e6)} MW electric, integrity ${Math.round(r.integrity)}%`)}>`;
   s += `<circle cx="${x}" cy="${y}" r="${R}" fill="${PCB.body}" stroke="${col}" stroke-width="2.4"/>`;
   s += `<path d="${arc(-220, 40, R - 9)}" stroke="#1c2734" stroke-width="7" fill="none" stroke-linecap="round"/>`;
   if (up) s += `<path d="${arc(-220, a, R - 9)}" stroke="${col}" stroke-width="7" fill="none" stroke-linecap="round"/>`;
   s += txt(x, y + 5, 15, up ? C.text : col, up ? pct(r.throttle) : r.state === "igniting" ? "IGNITE" : "SCRAM", { a: "middle" });
+  if (r.integrity < 100) s += `<circle cx="${x}" cy="${y}" r="${R + 3}" fill="none" stroke="${C.danger}" stroke-width="2" stroke-dasharray="5 3"/>`;
   // Its name in the gauge's open bottom: every side of the part carries a trace.
   s += txt(x, y + 26, 8.5, PCB.silk, "REACTOR", { a: "middle", ls: 1 });
   return s + "</g>";
 }
 function drawBattery() {
   const b = st.battery, p = PART.battery, soc = b.soc_mj / PW.battery.capacity_mj, out = b.out_mw > 0.05, col = out ? C.emergency : C.power;
-  let s = `<g${tipA(`Battery: ${b.soc_mj.toFixed(0)} of ${PW.battery.capacity_mj} MJ, ${out ? `giving ${f1(b.out_mw)} MW` : b.in_mw > 0.05 ? `charging ${f1(b.in_mw)} MW` : "idle"}`)}>`;
+  let s = `<g data-room="${sysRoom(PW.battery.system) || NODE[PW.battery.node].compartment}"${tipA(`Battery: ${b.soc_mj.toFixed(0)} of ${PW.battery.capacity_mj} MJ, ${out ? `giving ${f1(b.out_mw)} MW` : b.in_mw > 0.05 ? `charging ${f1(b.in_mw)} MW` : "idle"}`)}>`;
   s += `<rect x="${p.x0}" y="${p.y0}" width="${p.w}" height="${p.h}" rx="4" fill="${PCB.body}" stroke="${col}" stroke-width="2"/>`;
   for (let i = 0; i < 5; i++) { const cx = p.x0 + 8 + i * ((p.w - 16) / 5); s += `<rect x="${cx}" y="${p.y0 + 8}" width="${(p.w - 16) / 5 - 3}" height="${p.h - 16}" rx="1.5" fill="${i / 5 < soc ? col : PCB.hole}"/>`; }
   s += txt(p.cx, p.y1 + 13, 11, PCB.silk, `BATTERY ${pct(soc)}`, { a: "middle", ls: 1.2 });
@@ -5851,17 +6082,19 @@ function drawSupply() {
 }
 const DEFS = `<defs><pattern id="hatchR" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2.5" height="6" fill="${C.danger}" opacity="0.75"/></pattern>` +
   `<pattern id="pcbgrid" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r="0.9" fill="#1d3a2e"/></pattern>` +
+  `<radialGradient id="burn"><stop offset="0%" stop-color="#000000" stop-opacity="1"/><stop offset="50%" stop-color="#1a0d05" stop-opacity="0.92"/><stop offset="78%" stop-color="#4a2e0c" stop-opacity="0.55"/><stop offset="100%" stop-color="#4a2e0c" stop-opacity="0"/></radialGradient>` +
   `<radialGradient id="redvig" cx="50%" cy="50%" r="75%"><stop offset="60%" stop-color="${C.alert}" stop-opacity="0"/><stop offset="100%" stop-color="${C.alert}" stop-opacity="0.22"/></radialGradient></defs>`;
 function drawDiagram(dt) {
   let s = `<svg width="${DW}" height="${DH}" viewBox="0 0 ${DW} ${DH}">${DEFS}<rect width="${DW}" height="${DH}" fill="${C.bg}"/>`;
   if (st.alert === "red_alert") s += `<rect width="${DW}" height="${DH}" fill="url(#redvig)"/>`;
   s += drawSupply() + drawBoards();
   for (const Ly of BOARD.layers) s += `<rect x="${BOARD.board.x[0]}" y="${Ly.y[0]}" width="${BOARD.board.x[1] - BOARD.board.x[0]}" height="${Ly.y[1] - Ly.y[0]}" rx="14" fill="url(#pcbgrid)"/>`;
+  s += drawBurns();
   // The bottom layer first (the spares), then the copper on top, the heavier last so it lies over the lighter.
   const order = EDGE_IDS.filter((id) => PATH[id]).sort((a, b) => (isSpare(b) - isSpare(a)) || (edgeNow(a).rated - edgeNow(b).rated));
   for (const id of order) s += drawTrace(id, dt);
   for (const n of PW.nodes) s += drawPart(n.id);
-  s += drawReactor() + drawBattery();
+  s += drawReactor() + drawBattery() + drawHitStars();
   DIAG.innerHTML = s + "</svg>";
 }
 // The diagram's view: fitted to the stage, then zoomed (wheel, pinch) and panned (drag) on top of the fit.
@@ -5918,6 +6151,7 @@ const dEnd = (e) => {
   if (e.type !== "pointerup" || !wasDrag || wasDrag.moved || wasPinch) return;
   // A tap: switch what it lands on (a box or a run), and show its numbers.
   const t = document.elementFromPoint(e.clientX, e.clientY);
+  if (hitArmed) { const r = t && t.closest && t.closest("[data-room]"); if (r) hitRoom(r.dataset.room, e.clientX, e.clientY); return; }
   const a = t && t.closest && t.closest("[data-act]"), tipEl = t && t.closest && t.closest("[data-tip]");
   let note = "";
   if (a) { const [kind, id] = a.dataset.act.split(":"); if (!toggle(kind, id)) note = "<div class='d' style='color:#ff4757'>tripped: nothing switches until it resets</div>"; else { status(); drawDiagram(0); } }
@@ -5993,6 +6227,8 @@ const shot = (v, fn, opts = {}) => () => {
 };
 const tripped = () => { fresh(); overloadNow(); run(2); };
 const rerouted = () => { fresh(); combat(); run(30); reroute(); };
+/** Two hits in combat (power-routing 3d): the shield room, by the forward switchboard, and the port turret pod. */
+const roomHits = () => { fresh(); combat(); run(30); strike("shield_room"); run(3); strike("pod_port"); run(6); };
 const PHONE = { width: 412, height: 915 };
 K.registerShots([
   { name: "3d-cruise", setup: shot("3d", () => { scenario = 0; fresh(); }) },
@@ -6005,6 +6241,8 @@ K.registerShots([
   { name: "3d-rooms-panel-off", setup: shot("3d", () => { fresh(); sim.setBox("bx_medbay", false); run(2); roomsOn = true; }) },
   { name: "2d-rooms-panel-off", setup: shot("2d", () => { fresh(); sim.setBox("bx_medbay", false); run(2); roomsOn = true; }) },
   { name: "2d-feed-swapped", setup: shot("2d", () => { fresh(); sever("r_shield"); run(2); sim.setFeed("shield_generator", true); run(2); }) },
+  { name: "3d-room-hit", setup: shot("3d", roomHits) },
+  { name: "2d-room-hit", setup: shot("2d", roomHits) },
   { name: "phone-3d", viewport: PHONE, setup: shot("3d", () => fresh(), { phone: true }) },
   { name: "phone-2d", viewport: PHONE, setup: shot("2d", () => fresh(), { phone: true }) },
 ]);

@@ -36,6 +36,7 @@
   the live count, a trip, portrait phones, COLLAPSE.
 - [x] 4.1b The rooms overlay in the schematic (design 3b), swapping a system's feed by tap.
 - [x] 4.1c The 2D schematic as a circuit board placed by hand in `power_board.json` (design 3c).
+- [x] 4.1d Damage on the schematic and HIT ROOM (design 3d); every flowing trace at one speed (design 3a).
 - [ ] 4.1a Engineering's side panel in `consoles.html`: BUSES becomes SCHEMATIC with EXPAND (design 3a).
 - [ ] 4.2 Owner review of the mockup's shots; question R1.
 - [ ] 4.3 After approval: Engineering's routing view in `consoles.html`, then in the engine, with the switches in the
