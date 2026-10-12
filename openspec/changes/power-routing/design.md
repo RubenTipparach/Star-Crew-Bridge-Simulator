@@ -110,6 +110,12 @@ schematic in full screen. They can toggle between 2d and 3d view. 2d is a simpli
 - **The run under the pointer, lit** (the owner: "hilight line as I hover over them"): in both views the run or feeder
   under the pointer (on a phone, the one last tapped) is drawn brighter, on top, with a white glow its whole length, so
   it can be followed through a bundle, across a deck and between decks.
+- **Lines in 3D drawn like the board's** (the owner, of the 3D view: "outline is buggy on the coreners, fix these",
+  "node connections should look nice like the schematic, these lines are kind of ames"): every corner of a run cut at
+  45 degrees (as the board's traces, 3c), each line a flat stroke facing the camera with round joins (no notches, no
+  overlaps), as wide as its rating at the camera's distance but never under 1.4 or over 9 pixels, on a thin dark
+  outline that keeps crossing and bundled lines apart. The lit run's outline turns white and wider, one piece its whole
+  length.
 - **One colour for electricity** (the owner: "black lines dont make sense to me at all, it should be lit up", "why not
   just use all yellow or all green? its the same concept, electric flowing"): every run, feeder, closed switch, box
   that is on and system with its power is yellow, wider the more a run carries. Its dashes run the way the power
@@ -198,10 +204,12 @@ The owner: "color code subsystems: Life Support, weapons, shields, misc", "on th
   schematic already uses (yellow power, orange short, red trouble, steel blue an open spare, grey dead).
 - **What takes the colour.** A system: its light on its part in 2D, its marker in 3D, filled in its family's colour
   (to its supply's level in 3D). Its supply moves to its rim: its family's colour with its power, orange short, red
-  dropped or cut off, grey when it wants nothing; damage stays the red rim and diamonds of 3d. A feeder (a box to one
-  system) in 3D carries its system's family colour while it carries power, so the grid shows where each family draws
-  from; dead or open it stays grey or blue. The runs between boxes carry every family's power and stay yellow (3a).
-- **The key.** In 3D the legend's SUBSYSTEMS rows; in 2D a key in silkscreen on the board, in deck C's empty aft corner.
+  dropped or cut off, grey when it wants nothing; damage stays the red rim and diamonds of 3d. Only the systems: every
+  line stays electricity's yellow (3a), the feeders too (the owner, of feeders drawn in their system's colour: "oh keep
+  those yellow", "the node being colored is right, the lines not so much").
+- **The key.** In 3D the legend's SUBSYSTEMS rows, and its feeder row saying what a feeder is (the owner, of the
+  feeders: "what are these white dashed lines? its not documented"): a panel to one system, its dashes moving while it
+  draws. In 2D a key in silkscreen on the board, in deck C's empty aft corner (the board draws no feeders).
 
 ### 4. What it does to the fight (2026-10-11, bots at Helm and Tactical, Engineering on automation, seeds 1-8)
 

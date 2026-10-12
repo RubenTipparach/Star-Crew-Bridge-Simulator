@@ -5289,8 +5289,8 @@ function legend() {
     row(sw(`<path d="M1 9h32" stroke="${C.spare}" stroke-width="3" stroke-dasharray="3 6"/>`), "Open: a spare route, or switched off") +
     row(sw(`<path d="M1 9h32" stroke="${C.faint}" stroke-width="3" stroke-dasharray="3 3"/>`), "Dead: nothing reaches it") +
     row(sw(`<path d="M1 9h32" stroke="${C.danger}" stroke-width="4"/><path d="M13 3l8 12M21 3l-8 12" stroke="#fff" stroke-width="2"/>`), "Severed") +
-    row(sw(`<path d="M1 9h32" stroke="${SUB.families[0].colour}" stroke-width="1.5"/>`), "Feeder: a box to its system, in its colour") +
-    `<div class="h">SUBSYSTEMS (filled in their colour)</div>` +
+    row(sw(`<path d="M1 9h32" stroke="${C.power}" stroke-width="2" stroke-dasharray="6 3"/>`), "Feeder: a panel to one system, dashes moving while it draws") +
+    `<div class="h">SUBSYSTEMS (each system in its colour)</div>` +
     [0, 2].map((k) => `<div class="row">${SUB.families.slice(k, k + 2).map((f) => `${sw(`<circle cx="17" cy="9" r="7" fill="${f.colour}"/>`)}<span style="width:104px">${esc(f.name)}</span>`).join("")}</div>`).join("") +
     `<div class="h">SUPPLY (a system's rim)</div>` +
     row(sysDot(1, C.emergency, true), "Short: filled to its share") + row(sysDot(0, C.danger), "Dropped or cut off") + row(sysDot(0, C.faint), "Off: nothing wanted now") +
@@ -5444,9 +5444,27 @@ function lanes() {
     }
     if (last.off.lengthSq() > 0) push(last.b.clone().addScaledVector(last.d, -Math.min(FAN_M, last.len * 0.3)).add(last.off), last.w);
     push(last.b, last.w);
-    LANED[r.id] = { id: r.id, pts, ws, w: r.w };
+    LANED[r.id] = { id: r.id, ...chamfer3(pts, ws, CHAMFER_M), w: r.w };
   }
   return LANED;
+}
+/** A 3D run with every corner sharper than 20 degrees cut (a right angle at 45, as the board's traces, power-routing
+ *  3a), each cut CHAMFER_M along both sides or half the shorter: { pts, ws } (ws[i] the width of the segment from
+ *  pts[i]; a cut takes the narrower of its two). */
+const CHAMFER_M = 0.6;
+function chamfer3(pts, ws, c) {
+  const out = [pts[0]], wo = [];
+  for (let i = 1; i + 1 < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i], d = pts[i + 1];
+    const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], v = [d[0] - b[0], d[1] - b[1], d[2] - b[2]];
+    const lu = Math.hypot(...u), lv = Math.hypot(...v);
+    if (lu < 1e-6 || lv < 1e-6 || (u[0] * v[0] + u[1] * v[1] + u[2] * v[2]) / (lu * lv) > 0.94) { out.push(b); wo.push(ws[i - 1]); continue; }
+    const k = Math.min(c, lu / 2, lv / 2);
+    out.push([b[0] - (u[0] / lu) * k, b[1] - (u[1] / lu) * k, b[2] - (u[2] / lu) * k]); wo.push(ws[i - 1]);
+    out.push([b[0] + (v[0] / lv) * k, b[1] + (v[1] / lv) * k, b[2] + (v[2] / lv) * k]); wo.push(Math.min(ws[i - 1], ws[i]));
+  }
+  out.push(pts[pts.length - 1]); wo.push(ws[pts.length - 2]);
+  return { pts: out, ws: wo };
 }
 /** The point on a run's lane nearest a point of its route (a cut's mark sits on its own lane). */
 function onLane(id, p) {
@@ -5461,23 +5479,43 @@ function onLane(id, p) {
   }
   return best;
 }
-// Runs and feeders as crossed ribbons (one widened across, one widened up, so a run reads from any side): width by
-// rating (a feeder thin), dashes running with the flow, every run at the same speed (power-routing 3a), grey dashes when
-// dead, sparse blue dashes when open, red when severed. One draw for every run and feeder.
+// Runs and feeders drawn like the board's traces (power-routing 3a): each segment a flat stroke facing the camera, one
+// instanced quad widened on the screen, with round ends so two segments join round at a corner. Width by rating (a
+// feeder thin) at the camera's distance, LINE_PX[0] to LINE_PX[1] pixels; dashes running with the flow, every run at the
+// same speed; grey dashes when dead, sparse blue dashes when open, red when severed. Two draws: first an outline under
+// every working run (dark, CASE_PX a side; white and LIT_PX wider under the run under the pointer), then the lines.
 const overlay = { transparent: true, depthWrite: false, side: THREE.DoubleSide };
-const edgeMat = new THREE.ShaderMaterial({
-  ...overlay,
-  uniforms: { uTime: { value: 0 } },
-  vertexShader: "attribute float aDist; attribute vec3 aCol; attribute float aState; attribute float aDir; attribute float aRate; attribute float aHi;\n" +
-    "varying float vDist; varying vec3 vCol; varying float vState; varying float vDir; varying float vRate; varying float vHi;\n" +
-    "void main() { vDist = aDist; vCol = aCol; vState = aState; vDir = aDir; vRate = aRate; vHi = aHi; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
-  fragmentShader: "uniform float uTime; varying float vDist; varying vec3 vCol; varying float vState; varying float vDir; varying float vRate; varying float vHi;\n" +
-    "void main() { vec3 c = vCol;\n" +
-    "  if (vState < 0.5) { if (vRate > 0.01) { float ph = fract((vDist - uTime * 3.0 * vDir) / 2.2); c = ph < 0.6 ? c : c * 0.5; } }\n" +
-    "  else if (vState < 1.5) { if (fract(vDist / 1.2) > 0.5) discard; }\n" +
-    "  else if (vState > 2.5) { if (fract(vDist / 2.0) > 0.35) discard; }\n" +
-    "  gl_FragColor = vec4(mix(c, vec3(1.0), 0.4 * vHi), 1.0); }",
-});
+const LINE_PX = [1.4, 9], CASE_PX = 1.3, LIT_PX = 2.8;
+const LINE_U = { uTime: { value: 0 }, uRes: { value: new THREE.Vector2(1, 1) }, uCase: { value: new THREE.Color(0, 0, 0) }, uLit: { value: new THREE.Color(1, 1, 1) } };
+const LINE_VS = "attribute vec3 iA; attribute vec3 iB; attribute float iDa; attribute float iDb; attribute float iW;\n" +
+  "attribute vec3 iCol; attribute float iState; attribute float iDir; attribute float iRate; attribute float iHi;\n" +
+  "uniform vec2 uRes; uniform float uPass;\n" +
+  "varying vec2 vSeg; varying float vL; varying float vHw; varying float vDist; varying vec3 vCol; varying float vState; varying float vDir; varying float vRate; varying float vHi;\n" +
+  "void main() {\n" +
+  "  vec4 a = projectionMatrix * modelViewMatrix * vec4(iA, 1.0), b = projectionMatrix * modelViewMatrix * vec4(iB, 1.0);\n" +
+  "  if (a.w < 0.05 || b.w < 0.05) { gl_Position = vec4(0.0, 0.0, -2.0, 1.0); return; }\n" +
+  "  vec2 h = 0.5 * uRes, sa = a.xy / a.w * h, sb = b.xy / b.w * h, d = sb - sa;\n" +
+  "  float L = length(d); vec2 t = L > 0.001 ? d / L : vec2(1.0, 0.0), n = vec2(-t.y, t.x);\n" +
+  "  float w = clamp(iW * projectionMatrix[1][1] * h.y * 2.0 / (a.w + b.w), " + LINE_PX[0].toFixed(2) + ", " + LINE_PX[1].toFixed(2) + ");\n" +
+  "  float hw = 0.5 * w + (uPass < 0.5 ? " + CASE_PX.toFixed(2) + " + " + LIT_PX.toFixed(2) + " * iHi : 0.0);\n" +
+  "  float e = position.y; vec4 c = mix(a, b, e);\n" +
+  "  vec2 s = mix(sa, sb, e) + n * position.x * hw + t * (e * 2.0 - 1.0) * hw;\n" +
+  "  gl_Position = vec4(s / h * c.w, c.z, c.w);\n" +
+  "  vSeg = vec2(e * L + (e * 2.0 - 1.0) * hw, position.x * hw); vL = L; vHw = hw; vDist = mix(iDa, iDb, e);\n" +
+  "  vCol = iCol; vState = iState; vDir = iDir; vRate = iRate; vHi = iHi; }";
+const LINE_FS = "uniform float uTime; uniform float uPass; uniform vec3 uCase; uniform vec3 uLit;\n" +
+  "varying vec2 vSeg; varying float vL; varying float vHw; varying float vDist; varying vec3 vCol; varying float vState; varying float vDir; varying float vRate; varying float vHi;\n" +
+  "void main() {\n" +
+  "  float x = vSeg.x, y = vSeg.y, r = x < 0.0 ? length(vec2(x, y)) : x > vL ? length(vec2(x - vL, y)) : abs(y);\n" +
+  "  if (r > vHw) discard;\n" +
+  "  if (uPass < 0.5) { if (vHi < 0.5 && vState > 0.5) discard; gl_FragColor = vec4(vHi > 0.5 ? uLit : uCase, 1.0); return; }\n" +
+  "  vec3 c = vCol;\n" +
+  "  if (vState < 0.5) { if (vRate > 0.01) { float ph = fract((vDist - uTime * 3.0 * vDir) / 2.2); c = ph < 0.6 ? c : c * 0.62; } }\n" +
+  "  else if (vState < 1.5) { if (fract(vDist / 1.2) > 0.5) discard; }\n" +
+  "  else if (vState > 2.5) { if (fract(vDist / 2.0) > 0.35) discard; }\n" +
+  "  gl_FragColor = vec4(mix(c, vec3(1.0), 0.25 * vHi), 1.0); }";
+const lineMat = new THREE.ShaderMaterial({ ...overlay, uniforms: { ...LINE_U, uPass: { value: 1 } }, vertexShader: LINE_VS, fragmentShader: LINE_FS });
+const caseMat = new THREE.ShaderMaterial({ ...overlay, uniforms: { ...LINE_U, uPass: { value: 0 } }, vertexShader: LINE_VS, fragmentShader: LINE_FS });
 // Markers (boxes, loads, the reactor, the battery, cuts): one instanced quad turned to face the camera, drawn as a
 // square, a circle or a diamond, filled to a level (a load's supply), hatched above it when short, hollow when
 // dropped, off or dead, crossed when destroyed or cut; a rim of its own colour (red: damaged, power-routing 3d). One draw.
@@ -5501,49 +5539,29 @@ const markMat = new THREE.ShaderMaterial({
     "  gl_FragColor = vec4(c, 1.0); }",
 });
 
-/** A run's ribbon along a path of ship points, for the decks shown: two crossed strips a segment (one widened across,
- *  one widened up), segment i wOf(i) wide. { V: [x, y, z, distance along], segs: the segments drawn }. */
-function ribbon(pts, wOf) {
-  const V = [], segs = [], up = new THREE.Vector3(0, 1, 0);
+/** A run's segments as the 3D view draws them, for the decks shown: inst [ax, ay, az, bx, by, bz, from, to, width] each
+ *  (view points, metres along the run, width in metres) and segs [ship point, ship point] each (for picking). */
+function lineSegs(pts, ws) {
+  const inst = [], segs = [];
   let dist = 0;
   for (let i = 0; i + 1 < pts.length; i++) {
-    const a = new THREE.Vector3(...P3(pts[i])), b = new THREE.Vector3(...P3(pts[i + 1]));
-    const d = b.clone().sub(a), len = d.length();
-    if (len < 0.01) continue;
-    if (!(shownPt(pts[i]) && shownPt(pts[i + 1]))) { dist += len; continue; }
-    d.divideScalar(len);
-    const vertical = Math.abs(d.y) > 0.7;
-    const n1 = vertical ? new THREE.Vector3(1, 0, 0) : d.clone().cross(up).normalize();
-    const n2 = vertical ? new THREE.Vector3(0, 0, 1) : up.clone();
-    for (const n of [n1, n2]) {
-      const o = n.clone().multiplyScalar(wOf(i) / 2);
-      const q = [[a.clone().add(o), dist], [b.clone().add(o), dist + len], [b.clone().sub(o), dist + len], [a.clone().add(o), dist], [b.clone().sub(o), dist + len], [a.clone().sub(o), dist]];
-      for (const [p, dd] of q) V.push([p.x, p.y, p.z, dd]);
-    }
-    segs.push([pts[i], pts[i + 1]]);
+    const a = P3(pts[i]), b = P3(pts[i + 1]), len = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+    if (len < 0.005) continue;
+    if (shownPt(pts[i]) && shownPt(pts[i + 1])) { inst.push([...a, ...b, dist, dist + len, ws[i]]); segs.push([pts[i], pts[i + 1]]); }
     dist += len;
   }
-  return { V, segs };
+  return { inst, segs };
 }
-// The run under the pointer, lit (power-routing 3a; the owner: "hilight line as I hover over them"): its ribbon
-// brightened, and a white glow its whole length under it.
-let hover3 = null, halo = null;
-const haloMat = new THREE.MeshBasicMaterial({ color: 0xffffff, ...overlay, opacity: 0.38 });
+// The run under the pointer, lit (power-routing 3a; the owner: "hilight line as I hover over them"): its line
+// brightened, its outline white and wider, one piece its whole length.
+let hover3 = null;
 function setHover3(id) {
   if (!PL || id === hover3) return;
-  const hi = PL.edges.geometry.attributes.aHi;
+  const hi = PL.edges.geometry.attributes.iHi;
   const mark = (rid, v) => { const r = PL.edgeRanges[rid]; if (r) for (let j = r[0]; j < r[0] + r[1]; j++) hi.setX(j, v); };
   if (hover3) mark(hover3, 0);
-  if (halo) { scene.remove(halo); halo.geometry.dispose(); halo = null; }
   hover3 = id;
-  if (id && lanes()[id]) {
-    mark(id, 1);
-    const Ld = lanes()[id], rb = ribbon(Ld.pts, (i) => Ld.ws[i] + 0.6), g = new THREE.BufferGeometry();
-    g.setAttribute("position", new THREE.Float32BufferAttribute(rb.V.flatMap((v) => [v[0], v[1], v[2]]), 3));
-    halo = new THREE.Mesh(g, haloMat);
-    halo.renderOrder = 1.5;
-    scene.add(halo);
-  }
+  if (id) mark(id, 1);
   hi.needsUpdate = true;
 }
 /** Everything the 3D view draws, for the decks shown: the floors (one mesh), their outlines and the hull at each deck
@@ -5552,9 +5570,9 @@ let PL = null;
 const shownDeck = (k) => deckIso == null || k === deckIso;
 const shownPt = (p) => shownDeck(deckOfY(p[1]));
 function buildPlan() {
-  if (PL) for (const m of [PL.floors, PL.outlines, PL.edges, PL.marks]) { scene.remove(m); m.geometry.dispose(); if (m.material !== edgeMat && m.material !== markMat) m.material.dispose(); }
-  if (halo) { scene.remove(halo); halo.geometry.dispose(); halo = null; }
+  if (PL) for (const m of [PL.floors, PL.outlines, PL.edges, PL.casing, PL.marks]) { scene.remove(m); m.geometry.dispose(); if (![lineMat, caseMat, markMat].includes(m.material)) m.material.dispose(); }
   hover3 = null;
+  LINE_U.uCase.value.copy(linearRGB("#05080b")); LINE_U.uLit.value.copy(linearRGB("#eef3f8"));
   const roomRanges = [];
   const floors = (() => {
     const pos = [];
@@ -5611,25 +5629,30 @@ function buildPlan() {
   const edgeRanges = {}, edgeSegs = {};
   const RIBBONS = Object.values(lanes());
   const edges = (() => {
-    const V = [];
+    const I = [];
     RIBBONS.forEach((r) => {
-      const start = V.length, rb = ribbon(r.pts, (i) => r.ws[i]);
-      for (const v of rb.V) V.push(v);
-      edgeRanges[r.id] = [start, V.length - start];
-      edgeSegs[r.id] = rb.segs;
+      const ls = lineSegs(r.pts, r.ws);
+      edgeRanges[r.id] = [I.length, ls.inst.length];
+      for (const q of ls.inst) I.push(q);
+      edgeSegs[r.id] = ls.segs;
     });
-    const n = V.length, g = new THREE.BufferGeometry();
-    g.setAttribute("position", new THREE.Float32BufferAttribute(V.flatMap((v) => [v[0], v[1], v[2]]), 3));
-    g.setAttribute("aDist", new THREE.Float32BufferAttribute(V.map((v) => v[3]), 1));
-    g.setAttribute("aCol", new THREE.Float32BufferAttribute(new Float32Array(n * 3), 3));
-    g.setAttribute("aState", new THREE.Float32BufferAttribute(new Float32Array(n), 1));
-    g.setAttribute("aDir", new THREE.Float32BufferAttribute(new Float32Array(n), 1));
-    g.setAttribute("aRate", new THREE.Float32BufferAttribute(new Float32Array(n), 1));
-    g.setAttribute("aHi", new THREE.Float32BufferAttribute(new Float32Array(n), 1));
-    const m = new THREE.Mesh(g, edgeMat);
-    m.renderOrder = 2;
-    scene.add(m);
-    return m;
+    const n = I.length, g = new THREE.InstancedBufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute([-1, 0, 0, 1, 0, 0, -1, 1, 0, 1, 1, 0], 3));
+    g.setIndex([0, 1, 2, 2, 1, 3]);
+    const at = (name, size, data) => g.setAttribute(name, new THREE.InstancedBufferAttribute(data, size));
+    at("iA", 3, new Float32Array(I.flatMap((q) => q.slice(0, 3))));
+    at("iB", 3, new Float32Array(I.flatMap((q) => q.slice(3, 6))));
+    at("iDa", 1, new Float32Array(I.map((q) => q[6])));
+    at("iDb", 1, new Float32Array(I.map((q) => q[7])));
+    at("iW", 1, new Float32Array(I.map((q) => q[8])));
+    at("iCol", 3, new Float32Array(n * 3));
+    for (const k of ["iState", "iDir", "iRate", "iHi"]) at(k, 1, new Float32Array(n));
+    g.instanceCount = n;
+    const casing = new THREE.Mesh(g, caseMat), core = new THREE.Mesh(g, lineMat);
+    casing.frustumCulled = core.frustumCulled = false;
+    casing.renderOrder = 1.9; core.renderOrder = 2;
+    scene.add(casing, core);
+    return { core, casing };
   })();
   const MARKS = [];   // { kind, id, at: [x, y, z], size, shape }
   const add = (m) => { if (m.kind === "cut" || shownPt(m.at)) MARKS.push(m); };
@@ -5658,7 +5681,7 @@ function buildPlan() {
     scene.add(m);
     return m;
   })();
-  PL = { floors, outlines, edges, marks, roomRanges, edgeRanges, edgeSegs, MARKS };
+  PL = { floors, outlines, edges: edges.core, casing: edges.casing, marks, roomRanges, edgeRanges, edgeSegs, MARKS };
   labelsDirty = true;
 }
 const dummy = new THREE.Object3D();
@@ -5685,7 +5708,7 @@ function updatePlan() {
   const ga = PL.edges.geometry.attributes;
   const paint = (id, col, stt, dir, rate) => {
     const c = linearRGB(col), [s, n] = PL.edgeRanges[id];
-    for (let j = s; j < s + n; j++) { ga.aCol.setXYZ(j, c.r, c.g, c.b); ga.aState.setX(j, stt); ga.aDir.setX(j, dir); ga.aRate.setX(j, rate); }
+    for (let j = s; j < s + n; j++) { ga.iCol.setXYZ(j, c.r, c.g, c.b); ga.iState.setX(j, stt); ga.iDir.setX(j, dir); ga.iRate.setX(j, rate); }
   };
   for (const id of EDGE_IDS) {
     const e = edgeNow(id), share = e.rated > 0 ? clamp(Math.abs(e.mw) / e.rated, 0, 1) : 0;
@@ -5694,11 +5717,11 @@ function updatePlan() {
   }
   for (const [list, alt] of [[FEED_LOADS, false], [ALT_LOADS, true]]) for (const i of list) {
     const f = feederNow(i, alt), s = loadState(loadNow(i));
-    // A feeder in its system's family colour while it carries (or could carry) power (power-routing 3e).
-    const col = f.state === "open" ? C.spare : f.state === "dead" ? C.faint : f.state === "idle" || s.col === C.power ? famOf(i).colour : s.col;
+    // A feeder is electricity, yellow like every run; only its system takes its family's colour (power-routing 3e).
+    const col = f.state === "open" ? C.spare : f.state === "dead" ? C.faint : f.state === "idle" ? C.power : s.col;
     paint(f.id, col, STATE_N[f.state], 1, f.state === "live" ? clamp(f.mw / f.rated, 0.05, 1) : 0);
   }
-  for (const k of ["aCol", "aState", "aDir", "aRate"]) ga[k].needsUpdate = true;
+  for (const k of ["iCol", "iState", "iDir", "iRate"]) ga[k].needsUpdate = true;
   PL.MARKS.forEach((m, k) => {
     if (m.kind === "reactor") { const up = st.reactor.state === "running"; setMark(k, m.at, m.size, up ? C.power : st.reactor.state === "igniting" ? C.emergency : C.danger, up ? clamp(st.reactor.throttle, 0, 1) : 0, up ? 0 : 1); }
     else if (m.kind === "battery") { const out = st.battery.out_mw > 0.05; setMark(k, m.at, m.size, out ? C.emergency : C.power, st.battery.soc_mj / PW.battery.capacity_mj, out ? 1 : 0); }
@@ -6369,7 +6392,8 @@ renderer.setAnimationLoop(() => {
     while (script.length && script[0].at <= st.t) script.shift().fn();
   }
   if (n >= 400) acc = 0;
-  edgeMat.uniforms.uTime.value += dt;
+  LINE_U.uTime.value += dt;
+  LINE_U.uRes.value.set(W, H);
   if ((slow += dt) > 0.1 || first) {
     slow = 0; status(); placeLegend();
     // A panel closed or opened moves the free area: the camera's frame follows it.
