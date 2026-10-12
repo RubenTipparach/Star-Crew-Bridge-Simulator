@@ -35,12 +35,35 @@ const frames=(page,n=12)=>page.evaluate(n=>new Promise(resolve=>{let k=0;const f
       }return false;};
       holes.push({id:portal.id,open:!covered(portal.center_m[0],portal.center_m[2]),bypass:covered(.6,portal.center_m[2])});
      }
-     let lightRange=null;if(v.state.stage==='hull')v.scene.traverse(o=>{if(o.isMesh&&o.material.map){const c=o.geometry.attributes.color;let lo=1,hi=0;for(let i=0;i<c.count;i++){const n=c.getX(i);lo=Math.min(lo,n);hi=Math.max(hi,n);}lightRange=[lo,hi];}});
-     return {ship:v.state.ship.id,stage:v.state.stage,deck:v.state.deck,mode:v.state.mode,triangles:v.renderer.info.render.triangles,draws:v.renderer.info.render.calls,texture_mib:MOCKUP_BUDGET().textureMB,nonfinite:bad,stair_vertices:roles.stair||0,ladder_openings:holes,sun_range:lightRange};
+     let lightRange=null,exterior=null;
+     if(v.state.stage==='hull'){
+      const vertices=[],emitter=[],positions=[];v.scene.updateMatrixWorld(true);
+      v.scene.traverse(o=>{if(!o.isMesh)return;const g=o.geometry,p=g.attributes.position,uv=g.attributes.uv;
+       if(o.material.map){const c=g.attributes.color;let lo=1,hi=0;for(let i=0;i<c.count;i++){const n=c.getX(i);lo=Math.min(lo,n);hi=Math.max(hi,n);}lightRange=[lo,hi];}
+       for(let i=0;i<p.count;i++){
+        const q=v.camera.position.clone().set(p.getX(i),p.getY(i),p.getZ(i)).applyMatrix4(o.matrixWorld);
+        const point=[q.x,q.y,q.z];positions.push(point);
+        if(o.material.name==='Impulse emitters')emitter.push(point);
+        vertices.push([...point,uv?uv.getX(i):0,uv?uv.getY(i):0,o.material.name]);
+       }
+      });
+      const key=a=>a.map(n=>typeof n==='number'?Number(n.toFixed(3)):n).join('|'),set=new Set(vertices.map(key));
+      const bounds=a=>[0,1,2].map(k=>[Math.min(...a.map(p=>p[k])),Math.max(...a.map(p=>p[k]))]);
+      exterior={bounds_m:bounds(positions),impulse_bounds_m:bounds(emitter),impulse_vertices:emitter.length,
+       unmatched_mirror_vertices:vertices.filter(a=>!set.has(key([-a[0],...a.slice(1)]))).length};
+     }
+     return {ship:v.state.ship.id,stage:v.state.stage,deck:v.state.deck,mode:v.state.mode,triangles:v.renderer.info.render.triangles,draws:v.renderer.info.render.calls,texture_mib:MOCKUP_BUDGET().textureMB,nonfinite:bad,stair_vertices:roles.stair||0,ladder_openings:holes,sun_range:lightRange,exterior};
     });
     assert.equal(facts.nonfinite,0,JSON.stringify(facts));assert(facts.triangles<=60000);assert(facts.draws<=120);assert(facts.texture_mib<=96);
     for(const hole of facts.ladder_openings)assert(hole.open&&hole.bypass,'Actual upper floor must have a ladder hole and solid bypass: '+JSON.stringify(hole));
     if(facts.sun_range)assert(facts.sun_range[0]<.6&&facts.sun_range[1]>.85,'Exported hull must carry its fixed sun lighting in COLOR_0');
+    if(facts.exterior){
+     const e=facts.exterior;assert(e.impulse_vertices>100,'Each hull must have a modeled central impulse aperture');
+     const center=e.impulse_bounds_m.map(([a,b])=>(a+b)/2);assert(Math.abs(center[0])<.001,'Impulse must sit on the centerline');
+     assert(Math.abs(center[1]-(ship.id==='gorath'?5.2:5.15))<.001,'Impulse must sit at the middle tier height');
+     assert.equal(e.unmatched_mirror_vertices,0,'Exported geometry and UVs must mirror exactly');
+     if(ship.id==='shrike')assert(e.bounds_m[2][0]>-22.5,'Shrike must not retain its projecting aft engine cubes');
+    }
     if(mode==='access')assert(facts.stair_vertices>=200,'Stairs must have actual tread geometry');report.views.push(facts);
    }
    await page.click('[data-lift="A"]');await page.waitForTimeout(5200);

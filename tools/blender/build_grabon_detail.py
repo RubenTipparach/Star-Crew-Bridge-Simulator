@@ -180,49 +180,36 @@ def maps(s):
 def finish(s):
     bpy.ops.wm.open_mainfile(filepath=str(OUT/(s['id']+'-projection.blend')))
     ob=bpy.data.objects[s['id']+'_hull'];bpy.context.view_layer.objects.active=ob
-    # The aft engine cleats must clear the bay's horizontal seams. Translate
-    # each connected fitting, preserving its locked UV island and painted edges.
-    adjacency=[set() for _ in ob.data.vertices]
-    for e in ob.data.edges:
-        a,b=e.vertices;adjacency[a].add(b);adjacency[b].add(a)
-    remaining=set(range(len(ob.data.vertices)))
-    while remaining:
-        group={remaining.pop()};todo=list(group)
-        while todo:
-            near=adjacency[todo.pop()]&remaining;remaining-=near;group|=near;todo.extend(near)
-        vs=[ob.data.vertices[i].co for i in group]
-        size=[max(v[k] for v in vs)-min(v[k] for v in vs) for k in range(3)]
-        if all(abs(size[k]-[.1,.7,.46][k])<.001 for k in range(3)):
-            cz=-(min(v[1] for v in vs)+max(v[1] for v in vs))/2
-            if any(abs(cz-f['center_m'][2]-.25*f['size_m'][2])<.001 for f in s['fittings'] if f['kind']=='engine'):
-                for i in group:ob.data.vertices[i].co.y+=.1
-    for src in bpy.data.objects:
-        if 'engine_cleat' in src.name:
-            vs=[src.matrix_world@Vector(v) for v in src.bound_box];cz=-(min(v[1] for v in vs)+max(v[1] for v in vs))/2
-            if any(abs(cz-f['center_m'][2]-.25*f['size_m'][2])<.001 for f in s['fittings'] if f['kind']=='engine'):src.location.y+=.1
-    ob.data.update()
     path=TEX/(s['id']+'-enhanced.png');assert path.exists(),path
     tex=bpy.data.images.load(str(path));tex.pack()
-    m=bpy.data.materials.new('Grabon painted hull');m.use_nodes=True;n=m.node_tree.nodes;l=m.node_tree.links;n.clear()
+    m=bpy.data.materials.new('Grabon painted hull');m.use_nodes=True;m.use_backface_culling=True;n=m.node_tree.nodes;l=m.node_tree.links;n.clear()
     out=n.new('ShaderNodeOutputMaterial');emit=n.new('ShaderNodeEmission');im=n.new('ShaderNodeTexImage');im.image=tex;im.interpolation='Linear'
     vc=n.new('ShaderNodeVertexColor');vc.layer_name='Sun';mix=n.new('ShaderNodeMixRGB');mix.blend_type='MULTIPLY';mix.inputs[0].default_value=1
     l.new(im.outputs['Color'],mix.inputs[1]);l.new(vc.outputs['Color'],mix.inputs[2]);l.new(mix.outputs[0],emit.inputs['Color']);l.new(emit.outputs[0],out.inputs['Surface'])
-    # Export base albedo through an unlit material and fixed sun vertex colours.
-    ob.data.materials.clear();ob.data.materials.append(m)
+    # Refit the editable assemblies while preserving their enhanced paint UVs.
+    from grabon_exterior_refit import refit
+    ob,refit_facts=refit(s,ob,m)
+    bpy.context.view_layer.objects.active=ob
     # COLOR_0 must contain the light bake, not a primitive's old white tint.
     for attr in list(ob.data.color_attributes):ob.data.color_attributes.remove(attr)
     sun=B([-.45,.82,.34]).normalized();col=ob.data.color_attributes.new(name='Sun',type='FLOAT_COLOR',domain='CORNER')
     for poly in ob.data.polygons:
-        poly.material_index=0;shade=.44+.56*max(0,poly.normal.dot(sun))
-        for i in poly.loop_indices:col.data[i].color=(shade,shade,shade,1)
+        mat=ob.data.materials[poly.material_index]
+        shade=1 if mat.get('fullbright') else .44+.56*max(0,poly.normal.dot(sun))
+        tint=mat.get('vertex_tint',[1,1,1])
+        for i in poly.loop_indices:col.data[i].color=(*(shade*v for v in tint),1)
     bpy.ops.object.select_all(action='DESELECT');ob.hide_set(False);ob.select_set(True)
     ob.data.calc_loop_triangles();tris=len(ob.data.loop_triangles);assert tris<=16000,(s['id'],tris)
+    vertices=[PROP_TO_BLENDER.inverted()@v.co for v in ob.data.vertices]
+    bounds=[[round(min(v[k] for v in vertices),4),round(max(v[k] for v in vertices),4)] for k in range(3)]
     # The direct color output exports as KHR_materials_unlit with COLOR_0 lighting.
     l.new(mix.outputs[0],out.inputs['Surface'])
     bpy.ops.export_scene.gltf(filepath=str(OUT/(s['id']+'.glb')),use_selection=True,export_format='GLB',export_yup=True,export_animations=False,export_vertex_color='ACTIVE',export_all_vertex_colors=False)
     bpy.ops.wm.save_as_mainfile(filepath=str(OUT/(s['id']+'.blend')))
     return {'file':s['id']+'.glb','triangles':tris,'budget_triangles':16000,'texture':str(path.relative_to(ROOT)).replace('\\','/'),
-            'texture_px':list(tex.size),'texture_bytes_with_mips':int(tex.size[0]*tex.size[1]*4*4/3),
+            'texture_px':list(tex.size),'texture_bytes_with_mips':int((tex.size[0]*tex.size[1]+128*128)*4*4/3),
+            'exterior_refit':refit_facts,
+            'bounds_m':bounds,'dimensions_m':[round(b-a,4) for a,b in bounds],
             'sha256':hashlib.sha256((OUT/(s['id']+'.glb')).read_bytes()).hexdigest()}
 
 

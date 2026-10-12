@@ -1,0 +1,11 @@
+{
+  "service_belt_height_m": 1.10,
+  "service_recess_m": 0.26,
+  "pipe_radius_m": 0.065,
+  "roof_channel_width_m": 1.45,
+  "ships": {
+    "shrike": {"impulse_zone": "command", "impulse_width_m": 8.6, "impulse_height_m": 1.9, "remove_old_engines": true},
+    "vark": {"impulse_zone": "command", "impulse_width_m": 9.6, "impulse_height_m": 1.9, "remove_old_engines": false},
+    "gorath": {"impulse_zone": "engineering", "impulse_width_m": 11.4, "impulse_height_m": 2.1, "remove_old_engines": false}
+  }
+}

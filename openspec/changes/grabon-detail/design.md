@@ -58,10 +58,36 @@ changes. Capture each hull, every deck, access assemblies, close material views
 and phone views. Inspect screenshots before delivery. Validate OpenSpec and
 inlining before pushing the existing review branch and PR.
 
+## Aft propulsion and exposed structure revision
+
+Owner review requests central impulse exhausts, removal of Shrike's projecting
+engine boxes, mirrored aft detailing, and more connected armor breaks like Tern.
+Keep the occupied hull envelopes and purple/orange paint. Fit a shallow central
+impulse cassette to the aft command tier on Shrike and Vark and the engineering
+tier on Gorath. Gorath's exhaust axis is at x=0 m, y=5.2 m. Keep hangar doors
+below the exhaust and Vark/Gorath's outboard pods. Remove Shrike's two old boxes.
+Use mirrored emitter cells, graphite throats and steel heat vanes, rather than
+painting an exhaust over a hangar door. Mirror the outboard pods' UV finish too.
+
+Cut continuous 1.10 m service belts into the body, command, engineering and head
+armor. Recess their graphite backing 0.26 m. Two longitudinal roof channels on
+the command/engineering tier turn down its aft face and meet that belt. Keep
+machinery within the original armor envelope, with angular ends, small pipes,
+couplings and junction boxes. Existing occupied interior dimensions stay intact.
+These are exterior review shells, not interior collision meshes.
+
+Restore the original UVs onto editable source assemblies before CSG, so the
+generated paint survives unchanged on remaining armor. Use existing Material
+Maker graphite for the newly modeled machinery. All cuts are authored in hull
+space. Retain named cutters and source assemblies in the finished Blender file.
+The revised export may use four materials, at most 16,000 triangles and the
+existing atlas plus one 128 px material texture. Inspect actual exported GLBs
+from the aft, side and upper quarter; check symmetry, centers and overlaps.
+
 ## Review results
 
-The three exported hulls have 7,232, 7,360 and 8,312 triangles, each in one draw.
-The detailed viewer allocates 59.00 MiB of texture storage including mipmaps.
+The revised hulls have 9,728, 12,328 and 14,564 triangles, each in four draws.
+The detailed viewer allocates 59.08 MiB of texture storage including mipmaps.
 The layouts have 16, 18 and 24 connected rooms, including access shafts, and
 retain two fighter berths each. Ladders have a 1.30 m corridor bypass. Shaft
 ends meet the existing z=-2 m bulkhead so no inaccessible room slivers remain.

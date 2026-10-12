@@ -107,6 +107,8 @@
   }
   function decorate(a){
    api=a;const {state,show,update,setCamera,camera,controls}=a,view=document.getElementById('viewtools');
+   const dims=pack.manifest.props[state.ship.id].dimensions_m;
+   if(dims){const stats=document.querySelectorAll('#stats b');stats[0].textContent=dims[2].toFixed(1)+' m';stats[1].textContent=dims[0].toFixed(1)+' m';}
    document.getElementById('viewlabel').querySelector('small').textContent=state.stage==='hull'?'Painted armor / service fittings / detailed engines':state.mode==='access'?'Stairs / ladder / elevator':'Textured interiors / connected deck access';
    if(state.mode==='access'&&state.stage==='fit')document.getElementById('viewlabel').querySelector('b').textContent='03 / DECK ACCESS';
    if(state.stage==='fit'){
@@ -128,6 +130,12 @@
    }
    if(state.stage==='hull'){
     const b=document.createElement('button');b.textContent='Detail';b.dataset.detail='hull';b.onclick=()=>{const h=state.ship.hull_zones.find(z=>z.id==='head'),z=h.poly.reduce((v,p)=>v+p[1]/h.poly.length,0),y=(h.y_m[0]+h.y_m[1])/2;controls.target.set(0,y,z);camera.position.set(24,y+20,z+29);controls.update();};view.append(b);
+    for(const mode of ['Rear','Armor']){
+     const b=document.createElement('button');b.textContent=mode;b.dataset.detail=mode.toLowerCase();b.onclick=()=>{
+      const h=state.ship.hull_zones.find(z=>z.id==='body'),aft=Math.min(...h.poly.map(p=>p[1]));
+      controls.target.set(0,4,aft+9);camera.position.set(...(mode==='Rear'?[0,8,aft-85]:[31,29,aft-29]));controls.update();
+     };view.append(b);
+    }
    }
   }
   function frame(){const now=performance.now(),dt=Math.min(.05,(now-lastTime)/1000);lastTime=now;if(!liftCar)return;const goal=liftGoal-liftCar.userData.floorOrigin,delta=goal-liftCar.position.y;liftCar.position.y+=Math.sign(delta)*Math.min(Math.abs(delta),dt*1.5);}
@@ -139,6 +147,7 @@
   for(const s of v.data.ships){
    MOCKUP_SHOTS.push({name:'access-'+s.id,setup:()=>v.show(s.id,'fit',s.layout.decks.at(-1).id,'access')});
    MOCKUP_SHOTS.push({name:'close-'+s.id,setup:()=>{v.show(s.id,'hull');document.querySelector('[data-detail="hull"]').click();}});
+   for(const mode of ['rear','armor'])MOCKUP_SHOTS.push({name:mode+'-'+s.id,setup:()=>{v.show(s.id,'hull');document.querySelector('[data-detail="'+mode+'"]').click();}});
    MOCKUP_SHOTS.push({name:'bridge-'+s.id,setup:()=>{v.show(s.id,'fit','A','cutaway');document.querySelectorAll('#viewtools button').forEach(b=>{if(b.textContent==='Room')b.click();});}});
   }
  }

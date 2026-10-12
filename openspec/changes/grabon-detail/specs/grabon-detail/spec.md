@@ -9,6 +9,12 @@ orange livery, authored UV textures and connected deck interiors.
 - **THEN** its textured hull, fitted decks and complete vertical access are inspectable
 - **AND** the rough concept remains available for comparison
 
+#### Scenario: Owner inspects aft propulsion and armor breaks
+- **WHEN** a detailed ship is viewed from behind or above
+- **THEN** a central, mirrored impulse exhaust is visible above the hangar
+- **AND** Shrike has no projecting engine cubes
+- **AND** continuous recessed machinery belts meet the aft roof channels
+
 ### Requirement: Three vertical access methods
 Every ship SHALL contain stairs with landings, a ladder and an elevator serving
 every occupied main deck, with openings aligned to their actual floor heights.

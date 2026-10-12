@@ -4,39 +4,229 @@
   "props": {
     "shrike": {
       "file": "shrike.glb",
-      "triangles": 7232,
+      "triangles": 9728,
       "budget_triangles": 16000,
       "texture": "assets/textures/grabon/shrike-enhanced.png",
       "texture_px": [
         1254,
         1254
       ],
-      "texture_bytes_with_mips": 8386752,
-      "sha256": "5dd5d8330fe1fdf4cf781ac888346fb357fff9108d90dfebac34d5488493a71c"
+      "texture_bytes_with_mips": 8474133,
+      "exterior_refit": {
+        "impulse_center_m": [
+          0,
+          5.15,
+          -17.520000000000003
+        ],
+        "impulse_size_m": [
+          8.6,
+          1.9,
+          0.88
+        ],
+        "removed_engine_parts": 60,
+        "service_belts": [
+          {
+            "zone": "body",
+            "center_y_m": 1.525,
+            "height_m": 1.1,
+            "recess_m": 0.26
+          },
+          {
+            "zone": "command",
+            "center_y_m": 5.15,
+            "height_m": 1.1,
+            "recess_m": 0.26
+          },
+          {
+            "zone": "head",
+            "center_y_m": 5.225,
+            "height_m": 1.1,
+            "recess_m": 0.26
+          }
+        ],
+        "mirrored_uv_faces": 3114,
+        "csg_steps": [
+          "difference body_continuous_belt (1)",
+          "difference command_continuous_belt (1)",
+          "difference roof_and_aft_return_-1 (2)",
+          "difference roof_and_aft_return_1 (2)",
+          "difference head_continuous_belt (1)",
+          "difference open_impulse_throat (1)"
+        ]
+      },
+      "bounds_m": [
+        [
+          -30.355,
+          30.355
+        ],
+        [
+          -1.95,
+          8.665
+        ],
+        [
+          -21.92,
+          26.5
+        ]
+      ],
+      "dimensions_m": [
+        60.71,
+        10.615,
+        48.42
+      ],
+      "sha256": "032dcb50002a4c1caa62f2139d46825bab8f2ab251b3b0863f3d4aff330ca555"
     },
     "vark": {
       "file": "vark.glb",
-      "triangles": 7360,
+      "triangles": 12328,
       "budget_triangles": 16000,
       "texture": "assets/textures/grabon/vark-enhanced.png",
       "texture_px": [
         1254,
         1254
       ],
-      "texture_bytes_with_mips": 8386752,
-      "sha256": "2ba24bfa72f4531fafc4d7ff8990e8b8cbbd4f339ab1e4de0458d8ed8fddaa89"
+      "texture_bytes_with_mips": 8474133,
+      "exterior_refit": {
+        "impulse_center_m": [
+          0,
+          5.15,
+          -20.42
+        ],
+        "impulse_size_m": [
+          9.6,
+          1.9,
+          0.88
+        ],
+        "removed_engine_parts": 0,
+        "service_belts": [
+          {
+            "zone": "body",
+            "center_y_m": 1.525,
+            "height_m": 1.1,
+            "recess_m": 0.26
+          },
+          {
+            "zone": "command",
+            "center_y_m": 5.15,
+            "height_m": 1.1,
+            "recess_m": 0.26
+          },
+          {
+            "zone": "head",
+            "center_y_m": 5.225,
+            "height_m": 1.1,
+            "recess_m": 0.26
+          }
+        ],
+        "mirrored_uv_faces": 3976,
+        "csg_steps": [
+          "difference body_continuous_belt (1)",
+          "difference command_continuous_belt (1)",
+          "difference roof_and_aft_return_-1 (2)",
+          "difference roof_and_aft_return_1 (2)",
+          "difference head_continuous_belt (1)",
+          "difference open_impulse_throat (1)"
+        ]
+      },
+      "bounds_m": [
+        [
+          -30.755,
+          30.755
+        ],
+        [
+          -1.95,
+          8.665
+        ],
+        [
+          -28.13,
+          39.5
+        ]
+      ],
+      "dimensions_m": [
+        61.51,
+        10.615,
+        67.63
+      ],
+      "sha256": "9ab3c6268fda2a8061223a120b5c2a8eadfe3263275d25b598d25a4c6605bca8"
     },
     "gorath": {
       "file": "gorath.glb",
-      "triangles": 8312,
+      "triangles": 14564,
       "budget_triangles": 16000,
       "texture": "assets/textures/grabon/gorath-enhanced.png",
       "texture_px": [
         1254,
         1254
       ],
-      "texture_bytes_with_mips": 8386752,
-      "sha256": "7b24b059f7f22f150d090862b1fd10d0a4fed34f1a07a57004dd2ae6dfd82e30"
+      "texture_bytes_with_mips": 8474133,
+      "exterior_refit": {
+        "impulse_center_m": [
+          0,
+          5.2,
+          -19.92
+        ],
+        "impulse_size_m": [
+          11.4,
+          2.1,
+          0.88
+        ],
+        "removed_engine_parts": 0,
+        "service_belts": [
+          {
+            "zone": "engineering",
+            "center_y_m": 5.2,
+            "height_m": 1.1,
+            "recess_m": 0.26
+          },
+          {
+            "zone": "body",
+            "center_y_m": 1.525,
+            "height_m": 1.1,
+            "recess_m": 0.26
+          },
+          {
+            "zone": "command",
+            "center_y_m": 8.75,
+            "height_m": 1.1,
+            "recess_m": 0.26
+          },
+          {
+            "zone": "head",
+            "center_y_m": 8.825000000000001,
+            "height_m": 1.1,
+            "recess_m": 0.26
+          }
+        ],
+        "mirrored_uv_faces": 4616,
+        "csg_steps": [
+          "difference engineering_continuous_belt (1)",
+          "difference roof_and_aft_return_-1 (2)",
+          "difference roof_and_aft_return_1 (2)",
+          "difference body_continuous_belt (1)",
+          "difference command_continuous_belt (1)",
+          "difference head_continuous_belt (1)",
+          "difference open_impulse_throat (1)"
+        ]
+      },
+      "bounds_m": [
+        [
+          -34.205,
+          34.205
+        ],
+        [
+          -1.95,
+          12.265
+        ],
+        [
+          -25.43,
+          32.5
+        ]
+      ],
+      "dimensions_m": [
+        68.41,
+        14.215,
+        57.93
+      ],
+      "sha256": "5d46bf687faf90c42aa90dab90db77b6b656cb71b84165be4dabdadb7308099d"
     }
   }
 }
