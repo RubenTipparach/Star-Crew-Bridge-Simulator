@@ -135,7 +135,7 @@
 ## Separate engine implementation
 
 - [ ] Review the exterior art with the owner.
-- [ ] Load these exterior assets in the Rust renderer in a separate implementation request.
+- [x] Load the default Cyan exterior in the Rust renderer through `tern-exterior` and the deck compiler.
 - [ ] Update weapon occlusion and shields to account for the chosen attachments.
 - [ ] Measure exterior rendering and memory on a Pi 5.
 
@@ -156,3 +156,17 @@
 - [x] Use one shared Deck B row for all ten real openings and matching interior portals.
 - [x] Refresh UV guides, rebuild every livery/LOD and inspect both sides and interiors.
 - [x] Verify row alignment, window rays, overlap, budgets and reproducible exports.
+
+## Owner correction: forward nacelles and crisp dedicated texture
+
+- [x] Reverse the long taper, broaden forward collectors and export actual UV linework.
+- [x] Inspect the projected model, generate dedicated artwork and package its native graph.
+- [x] Rebuild liveries and LODs; inspect close views and verify budgets.
+- [x] Accommodate the rectangular atlas in latest main's hull compiler and verify the delivered model.
+- [x] Complete final branch review and prepare the verified follow-up PR.
+
+## Owner refinement: blunt shoulder channel termination
+
+- [x] Project the correction on the actual shoulder and inspect its UV bake in 3D.
+- [x] Reuse matching armor finish, rebuild all liveries/LODs and inspect both sides.
+- [x] Validate continuity, unchanged budgets and reproducible assets; push the refinement.

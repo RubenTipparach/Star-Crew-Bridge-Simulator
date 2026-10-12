@@ -83,10 +83,12 @@ def at(rows, z):
 
 def setup_materials(config):
     """Use original Material Maker RGB with baked vertex colour and opaque glTF materials."""
-    for role in ROLES + ("registration", "tern_hull", "tern_rim"):
+    for role in ROLES + ("registration", "tern_hull", "tern_rim", "tern_nacelle"):
         row = config["materials"].get(role, config["materials"]["machinery"])
         if role in ("tern_hull", "tern_rim"):
             row = {"texture": config["hero_atlas"]["texture"], "tint_srgb": [1, 1, 1]}
+        if role == "tern_nacelle":
+            row = {"texture": config["nacelle_atlas"]["texture"], "tint_srgb": [1, 1, 1]}
         mat = bpy.data.materials.new(role)
         mat.use_nodes = True
         mat.use_backface_culling = True
@@ -465,28 +467,37 @@ def build(ship, level):
             p.hull(f"pylon_identity_{side}", inset, "accent")
         x, y, z = side * nc["x_m"], nc["y_m"], nc["z_m"]
         length, width, height = nc["length_m"], nc["half_width_m"], nc["half_height_m"]
-        spec = [(-0.5, 0.56), (-0.40, 1.0), (0.29, 1.0), (0.44, 0.85), (0.5, 0.52)]
+        spec = nc.get("profile_t_scale", [(-0.5, 0.56), (-0.40, 1.0), (0.29, 1.0), (0.44, 0.85), (0.5, 0.52)])
         rings = [(z + length * t, [(x + xx, y + yy) for xx, yy in profile(width * scale, height * scale, -height * scale, 0.5 * scale)])
                  for t, scale in spec]
-        nacelle = loft(p, f"warp_nacelle_{side}", rings, ["bulkhead"] * 8, ("machinery", "accent"))
+        nacelle = loft(p, f"warp_nacelle_{side}", rings, ["bulkhead"] * 8,
+                       ("machinery", "machinery" if nc.get("dedicated_paint") else "accent"))
+        field_z = z + nc.get("field_center_t", -0.05) * length
         for outer in (-1, 1):
-            box(p, f"field_{side}_{outer}", (x + outer * (width + 0.14), y, z - 0.05 * length),
+            box(p, f"field_{side}_{outer}", (x + outer * (width + 0.14), y, field_z),
                 (0.12, 0.62, length * 0.59), "screen")
             if level < 2:
-                box(p, f"field_frame_{side}_{outer}", (x + outer * (width + 0.02), y, z - 0.05 * length),
+                box(p, f"field_frame_{side}_{outer}", (x + outer * (width + 0.02), y, field_z),
                     (0.12, 1.00, length * 0.65), "machinery")
         if level < 2:
-            box(p, f"nacelle_spine_{side}", (x, y + height + 0.1, z - length * 0.07),
+            box(p, f"nacelle_spine_{side}", (x, y + height + 0.1, field_z if nc.get("dedicated_paint") else z - length * .07),
                 (1.1, 0.18, length * 0.62), "machinery")
         if level == 0:
             for k in range(5):
-                box(p, f"nacelle_{side}.service_band_{k}", (x, y + height + 0.23, z - 0.27 * length + k * length * 0.09),
+                band_z = field_z + (k - 2) * length * .09 if nc.get("dedicated_paint") else z - .27 * length + k * length * .09
+                box(p, f"nacelle_{side}.service_band_{k}", (x, y + height + 0.23, band_z),
                     (width * 1.3, 0.12, 0.3), "trim")
-            intake = revolve(p, f"nacelle_{side}.intake", [(0.9, z + length * 0.50), (1.0, z + length * 0.52)],
+            radius = nc.get("collector_radius_m", 1.0)
+            dedicated = nc.get("dedicated_paint")
+            intake_spec = [(radius, .498), (radius * .96, .515)] if dedicated else [(.9, .50), (1, .52)]
+            intake = revolve(p, f"nacelle_{side}.intake", [(r, z + length * t) for r, t in intake_spec],
                              "accent", "z", (x, y), sides=10)
+            inner = radius * .76 if dedicated else .66
             p.cut(intake, f"nacelle_{side}.recess", [revolve(p, f"intake_cutter_{side}",
-                  [(0.66, z + length * 0.51), (0.66, z + length * 0.54)], "machinery", "z", (x, y), sides=10)])
-            revolve(p, f"nacelle_{side}.collector", [(0.64, z + length * 0.508), (0.64, z + length * 0.512)],
+                  [(inner, z + length * (.504 if dedicated else .51)), (inner, z + length * .54)], "machinery", "z", (x, y), sides=10)])
+            glow = radius * .74 if dedicated else .64
+            revolve(p, f"nacelle_{side}.collector", [(glow, z + length * (.506 if dedicated else .508)),
+                    (glow, z + length * (.508 if dedicated else .512))],
                     "light_panel", "z", (x, y), sides=10)
     if level < 2:
         # Command brow and low dorsal armour spine follow the existing loft height.
@@ -645,6 +656,52 @@ def export_hero_guide(objects, config):
     print(f"UV GUIDE: {len(faces)} real mesh faces", flush=True)
 
 
+def nacelle_region(ob, normal, ship):
+    """Select the dedicated atlas island by assembly and actual face direction."""
+    if not ship["nacelle"].get("dedicated_paint"):
+        return None
+    name = ob.name
+    if "warp_nacelle_" in name:
+        return ("fore" if normal.z > 0 else "aft") if abs(normal.z) > .95 else "shell"
+    if "warp_pylon_" in name:
+        return "support" if abs(normal.y) > .9 else "fittings"
+    if "nacelle_spine_" in name or "field_frame_" in name:
+        return "rail"
+    if "service_band_" in name:
+        return "fittings"
+    return None
+
+
+def nacelle_uv(ob, point, normal, bounds, center, region, ship, config):
+    """Unwrap the octagonal shell with one perimeter seam and metric longitudinal UVs."""
+    rect = config["nacelle_atlas"]["regions"][region]
+    if region == "shell":
+        nc = ship["nacelle"]
+        base = [Vector(v) for v in profile(nc["half_width_m"], nc["half_height_m"], -nc["half_height_m"], .5)]
+        edges = [(a, b - a) for a, b in zip(base, base[1:] + base[:1])]
+        lengths = [edge.length for _, edge in edges]
+
+        def cross_section(v):
+            station = (v.z - nc["z_m"]) / nc["length_m"]
+            pairs = nc["profile_t_scale"]
+            scale = np.interp(station, [t for t, _ in pairs], [s for _, s in pairs])
+            return Vector(((v.x - math.copysign(nc["x_m"], v.x)) / scale, (v.y - nc["y_m"]) / scale))
+
+        middle = cross_section(center)
+        distances = [(middle - (a + edge * max(0, min(1, (middle - a).dot(edge) / edge.length_squared)))).length
+                     for a, edge in edges]
+        index = min(range(8), key=distances.__getitem__)
+        a, edge = edges[index]
+        t = max(0, min(1, (cross_section(point) - a).dot(edge) / edge.length_squared))
+        u = (sum(lengths[:index]) + t * lengths[index]) / sum(lengths)
+        v = (point.z - nc["z_m"]) / nc["length_m"] + .5
+    else:
+        u, v, _, _ = assembly_uv(point, normal, bounds)
+        if region == "support" and point.x < 0:
+            u = 1 - u
+    return rect[0] + u * (rect[2] - rect[0]), rect[1] + v * (rect[3] - rect[1])
+
+
 def prepare(p, ship, config):
     """Clean and validate each closed assembly, project UVs, and bake the fixed sun per face."""
     objects = [o for o in p.coll.objects if o.type == "MESH"]
@@ -668,6 +725,8 @@ def prepare(p, ship, config):
         projection = ob.data.attributes.new(name="HullProjection", type="BOOLEAN", domain="FACE")
         for poly in ob.data.polygons:
             role = ROLES[poly.material_index]
+            warp_region = nacelle_region(ob, P(poly.normal), ship)
+            face_center = sum((points[i] for i in poly.vertices), Vector()) / len(poly.vertices)
             projection.data[poly.index].value = bool(ob.get("hero_uv") and role == "bulkhead")
             row = config["materials"].get(role, config["materials"]["machinery"])
             fittings = ship.get("fittings_atlas", {}).get(role) if not (ob.get("hero_uv") and role == "bulkhead") else None
@@ -688,7 +747,16 @@ def prepare(p, ship, config):
                     gutter = config["hero_atlas"]["gutter_px"]/config["hero_atlas"]["px"]
                     uv[:] = (fittings[0]+gutter+u*(fittings[2]-fittings[0]-2*gutter),
                              fittings[1]+gutter+v*(fittings[3]-fittings[1]-2*gutter))
-            if (ob.get("hero_uv") and role == "bulkhead") or fittings:
+                if warp_region:
+                    uv[:] = nacelle_uv(ob, points[ob.data.loops[li].vertex_index], P(poly.normal),
+                                       bounds, face_center, warp_region, ship, config)
+                    colour.data[li].color = (brightness, brightness, brightness, 1)
+            if warp_region:
+                painted = bpy.data.materials["tern_nacelle"]
+                if painted not in list(ob.data.materials):
+                    ob.data.materials.append(painted)
+                poly.material_index = list(ob.data.materials).index(painted)
+            elif (ob.get("hero_uv") and role == "bulkhead") or fittings:
                 painted = bpy.data.materials["tern_rim" if ob.name.endswith(".rim") else "tern_hull"]
                 if painted not in list(ob.data.materials):
                     ob.data.materials.append(painted)

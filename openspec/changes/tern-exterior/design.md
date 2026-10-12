@@ -27,7 +27,7 @@ dock are what lie outside it).
 | Fact | Value | From |
 | --- | --- | --- |
 | File | `liveries/cobalt/tern.glb`, the full model in the Cyan livery | `props.json` `default_livery` "cobalt" (the owner's preferred, README "Cyan (preferred)") |
-| Triangles | 4,440 in six primitives (materials) | `props.json`; counted again by `deckc` |
+| Triangles | 4,440 in seven primitives (materials) | `props.json`; counted again by `deckc` |
 | Materials | `tern_hull` (2,647 triangles) and `tern_rim` (648) on the 1024 px hull atlas; `hazard` (713) on the 128 px graphite; `accent` (132) on the 128 px pearl; `light_panel` (156) and `screen` (144) untextured, their colour their glow | the glb's materials, `KHR_materials_unlit` |
 | Light | The sun baked into `COLOR_0` (16-bit, linear, 0.24-0.99 on the hull) | the README: fixed sun, unlit materials, no normal maps |
 | Frame | Metres, +x port, +y up, +z bow; origin the layout's; bounds x -22.5..22.5, y -8.02..10.02, z -44.2..37.27 | `props.json` `axes`, `bounds_m` |
@@ -38,6 +38,16 @@ The pylons' roots are on the hull's flanks at about z 2-8 m, swept out to |x| 16
 to z -44 m at |x| 16-22.4 m, centred 1.2 m above deck B's floor (measured from the glb's vertices).
 
 ## 3. The compile: the hull joins the deck file
+
+Nacelle artwork update, 2026-10-11 (`ship-exteriors`): the full model now has seven
+material parts and four images. Its dedicated nacelle image is 1024 x 2048 px.
+`deckc` accepts power-of-two rectangles, expands the shorter axis by exact pixel
+replication to the longer dimension, then uses the existing square-array mip chain.
+Normalized UVs and the client renderer stay unchanged. The new 2048 px square layer
+costs 21.33 MiB, bringing the complete runtime hull texture allocation to 26.83 MiB.
+With the previously measured 58.4 MB room array, the texture estimate is about
+82.53 MiB against 96 MiB. The HTML preview uses the rectangular image directly and
+reports its own separate allocation. No Pi timing claim is made.
 
 `deckc` already compiles the ship's render data into `compiled/<ship>.deck`; the hull is the ship's too, so it goes
 into the same file rather than a second one. That keeps one loader and one download: the browser build, CI and
@@ -53,7 +63,7 @@ into the same file rather than a second one. That keeps one loader and one downl
   `c^(1/2.2) / 2`, the rule the rooms' bake uses, from one shared function (it moves out of `deckc` for both). The
   three state sets are the same colour: the outside does not follow the interior's red alert. Texture coordinates are
   the glb's (within +/-11 spans); the layer is the texture's place in its array.
-- **Textures**: two arrays beside the rooms' one, each with a full box-filter mip chain from the same shared code as
+- **Textures**: three arrays beside the rooms' one, each with a full box-filter mip chain from the same shared code as
   the rooms': `atlas` (1024 px, one layer: the hull) and `tiles` (128 px, two layers: graphite, pearl).
 - **Parts**: one index range per primitive, with its program: the deck's textured program on `atlas` or `tiles`, or
   the deck's flat program for the two glowing materials.
@@ -66,7 +76,7 @@ into the same file rather than a second one. That keeps one loader and one downl
 
 ## 4. The draw
 
-- The client builds one mesh for the hull and the two texture arrays when it loads the deck, and draws the hull's six
+- The client builds one mesh for the hull and the three texture arrays when it loads the deck, and draws the hull's seven
   parts after the rooms, every frame, in the walk and on the drill's bridge: model matrix = translate(origin minus the
   camera, the frames rule) times scale. Drawn after the rooms, the depth test throws away almost every hull pixel
   behind a wall before it is shaded.
@@ -115,9 +125,9 @@ facing within 1 degree, and every aperture has its window. It reads the real art
 | Cost | Amount | Against |
 | --- | --- | --- |
 | Triangles | 4,440 when any window or the outside is in view; the walk draws every room every frame today, so 4,440 every frame | Ship exterior 12,000 (LODs 3,000 and 600); 200,000 a frame |
-| Draw calls | 6 | 300 a frame |
-| Texture memory | 5.59 MB (the 1024 px atlas with mips) + 0.17 MB (two 128 px tiles) = 5.76 MB | 96 MB; the rooms' array is 58.4 MB (the Mac's deck rebuild, 2026-10-10) |
-| Buffers | 8,738 vertices x 28 B = 0.24 MB, 13,320 indices x 4 B = 0.05 MB | 64 MB |
+| Draw calls | 7 | 300 a frame |
+| Texture memory | 26.83 MiB including the expanded nacelle atlas and all mip levels | 96 MiB; the rooms' array is 58.4 MB (the Mac's deck rebuild, 2026-10-10) |
+| Buffers | 8,730 vertices x 28 B = 0.24 MB, 13,320 indices x 4 B = 0.05 MB | 64 MB |
 | Rooms | 8 rooms 191 m^3 larger; no new lights; the compiled rooms gain 881 triangles (175,611 to 176,492) and 2 texture layers (64.1 to 64.8 MB) | `tools/exterior_windows.py`, `deckc` |
 
 Overdraw: the hull is drawn after the rooms and mostly fails the depth test behind their walls; through a window, a
@@ -126,7 +136,7 @@ Pi measures it when the change is built.
 
 ## 8. Checks and captures
 
-- `glb.rs`: the committed glb reads to six primitives, 4,440 triangles and the manifest's bounds; a truncated file
+- `glb.rs`: the committed glb reads to seven primitives, 4,440 triangles and the manifest's bounds; a truncated file
   and an unknown accessor type are errors.
 - `sc-core::deck`: a version 6 file with a hull round-trips; a hull range past the blob, a part past the hull's
   indices, a mip offset past the texture blob are refused.

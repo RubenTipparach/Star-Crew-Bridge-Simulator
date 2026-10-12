@@ -4,15 +4,22 @@ The Tern uses broad white armor, a narrow grey equatorial split, and deeper cyan
 connect across roofs, bevels and vertical walls. Recessed joints have light plate lips and localized wear. Open [the inspection page](../../../docs/mockups/ship-exteriors.html)
 and select **Hull detail** for the equator, **Paint detail** for the flat band and finish, **Seam joins** for aligned linework, or a
 window to look into the furnished decks.
+Select **Drive detail** for the broad forward collector and dedicated nacelle paint,
+or **Warp pylons** for the whole level assembly and its tapered rear end.
 Cyan is the default; Copper and Rescue use the same projected layout. The 1 m equatorial band has a 0.04 m side recess and small pipes. White armor remains dominant.
 
+The shoulder channel beside the registration now ends at panel joints instead of
+pointed grey wedges. See the [before/after shoulder review](../../../docs/screenshots/exteriors-shoulder/README.md).
+Its [editable 3D projection](shoulder-armor-projection.blend) produces an offline mask;
+the existing Material Maker graphs reuse matching generated armor beneath it.
+
 Open [fleet.blend](fleet.blend) for the editable Copper fleet, or the livery folders for their
-packed Blender sources. All GLBs embed their textures. These are delivered art assets and a
-design mockup; the Rust renderer does not load them yet.
+packed Blender sources. All GLBs embed their textures. The engine's deck compiler now loads
+the default Cyan full model; the HTML preview also exposes the other liveries and LODs.
 
 | Model | Design | Triangles | Ceiling | Material draws |
 | --- | --- | ---: | ---: | ---: |
-| [tern.glb](tern.glb) | Player frigate, level swept pylons and 56 m nacelles | 4,440 | 12,000 | 6 |
+| [tern.glb](tern.glb) | Player frigate, level swept pylons and 56 m nacelles | 4,440 | 12,000 | 7 |
 | [tern_lod1.glb](tern_lod1.glb) | Medium detail, custom 1024 px atlas | 1,290 | 3,000 | 1 |
 | [tern_lod2.glb](tern_lod2.glb) | Distant detail, custom 512 px atlas | 496 | 600 | 1 |
 | [osprey.glb](osprey.glb) | Broad-bow courier, low drives, teal livery | 1,248 | 12,000 | 7 |
@@ -25,6 +32,24 @@ outline, with faceted corners and a 0.35 m rim bevel. The torpedo room, magazine
 rooms fit inside the actual inner hull. Companion ships remain exterior concepts.
 
 ## Paint sources and liveries
+
+The nacelles now use a dedicated neutral [1024 x 2048 atlas](../../textures/tern_nacelle.png),
+shared across both sides and all liveries. Its [generated artwork](../../../tools/materials/sources/tern-nacelle-finish.png)
+was made with built-in imagegen using the [saved prompt](../../../tools/materials/sources/tern-nacelle-prompt.txt).
+The [native graph](../../../tools/materials/ptex/tern_nacelle.ptex) renders at 2048 px square;
+packaging resamples the normalized UV domain to the rectangular texture and sets emission to zero.
+The source painting is 887 x 1774 px, about 30.4 original longitudinal px/m; the delivered UVs
+allocate 35.11 px/m, versus about 3.8 in the old small hull-fitting patch.
+
+[`project_nacelle_paint.py`](../../../tools/blender/project_nacelle_paint.py) intersects station
+planes with the actual mesh before exporting the [projected layout](../../../tools/materials/sources/tern-nacelle-projected-layout.png)
+and [UV wireframe](../../../tools/materials/sources/tern-nacelle-uv-wireframe.png). The shell wraps
+continuously around its eight facets; support, rail and cap islands have dedicated artwork.
+Forward width is 4.14 m, aft width 2.208 m. The long 11.76 m taper faces aft; the front chamfer
+spans 3.36 m. Support sweep, 56 m bodies and the Y = 1.2 m centerline stay fixed.
+The [original painting template](../../../tools/materials/sources/tern-nacelle-painting-template.png)
+is retained separately; final cap UV packing removes its overlap with the rail.
+See the [review captures and measurements](../../../docs/screenshots/exteriors-nacelles/README.md).
 
 | Livery | Full model | Medium model | Distant model |
 | --- | --- | --- | --- |
@@ -76,7 +101,7 @@ vertex color; materials use `KHR_materials_unlit`, with no normal maps or runtim
 
 Each livery has distinct 1024 px medium and 512 px distant atlases, baked from its finished full
 model at twice the final resolution and reduced in linear light. They preserve paint, windows,
-registration and machinery at 8.92 / 4.25 px/m. Temporary dark window backings exist during the
+registration and machinery at 8.94 / 4.33 px/m. Temporary dark window backings exist during the
 bake only. Embedded atlas pixels match the standalone PNGs. The liveries share triangle geometry,
 normals, UVs and openings; vertex packing may differ with accent colors. Each has its own manifest,
 packed Blender scene and atlases. The preview shares textures only when their actual hashes match.
@@ -112,10 +137,13 @@ and transparent glass batches. No opaque window pictures cover the openings.
 ## Budget and validation
 
 The restored narrow service recess and pipes add 608 full-detail triangles. Tern now uses
-4,440 / 1,290 / 496 triangles and 6 / 1 / 1 material draws. The fleet with furnished interiors
-uses 82,992 triangles in 50 draws. Decoded textures with mipmaps remain 78.17 MiB against the
-96 MiB scene ceiling; the exterior library alone is 57.83 MiB. These are asset counts, not
+4,440 / 1,290 / 496 triangles and 7 / 1 / 1 material draws. The fleet with furnished interiors
+uses 82,992 triangles in 51 draws. Decoded textures with mipmaps use 88.83 MiB against the
+96 MiB scene ceiling; the exterior library alone is 68.50 MiB. These are asset counts, not
 Pi frame-time measurements. Runtime rotation will need an adaptation of the fixed sun bake.
+The engine's existing square-array format expands the nacelle texture to 2048 x 2048 with
+exact pixel replication during compilation. The full Cyan hull's runtime maps therefore
+cost 26.83 MiB, separate from the preview's all-livery allocation. Normalized UVs stay intact.
 Warp animation, damage meshes, turret articulation, attachment collision and weapon/shield
 occlusion updates remain separate engine work.
 
@@ -134,6 +162,8 @@ The committed generated paintings are the final art inputs. For existing artwork
 ```powershell
 python tools/materials/build_ptex.py
 python tools/materials/export_graph.py tern_hull tern_hull_cobalt tern_hull_rescue --material-maker C:/Users/santi/repos/material_maker_1_4_windows/material_maker.exe --size 1024
+python tools/materials/export_graph.py tern_nacelle --material-maker C:/Users/santi/repos/material_maker_1_4_windows/material_maker.exe --size 2048
+python -c "from tools.materials.exterior_decals import pack_surfaces; pack_surfaces('tern_nacelle',2048,False,(1024,2048))"
 python -c "from tools.materials.exterior_decals import pack_surfaces; [pack_surfaces(n,1024,False) for n in ['tern_hull','tern_hull_cobalt','tern_hull_rescue']]"
 python tools/materials/check_hull_projection.py
 python tools/exterior_windows.py --check
@@ -142,6 +172,7 @@ foreach ($livery in @("copper", "cobalt", "rescue")) {
     blender -b --factory-startup --python-use-system-env -P tools/blender/build_ship_exteriors.py -- --livery $livery --check
 }
 python tools/materials/exterior_uv_guide.py
+blender -b --factory-startup --python-use-system-env -P tools/blender/check_exterior_nacelles.py --
 python tools/mockups/inline.py docs/mockups/ship-exteriors.html
 node tools/mockups/shoot.mjs docs/mockups/ship-exteriors.html
 node tools/mockups/zfight.mjs docs/mockups/ship-exteriors.html --setup "window.EXTERIOR_VIEW.show('fleet')"

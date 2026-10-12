@@ -39,7 +39,7 @@
       },
       "joint_finish": {
         "armor_core_texels": 1613,
-        "core_5_to_95_percentile_range": 22.0
+        "core_5_to_95_percentile_range": 23.0
       }
     },
     "copper": {
@@ -69,7 +69,7 @@
       },
       "joint_finish": {
         "armor_core_texels": 1613,
-        "core_5_to_95_percentile_range": 22.0
+        "core_5_to_95_percentile_range": 23.0
       }
     },
     "rescue": {
@@ -77,7 +77,7 @@
       "source_px": 1254,
       "joint_source_sha256": "0c0bd0e6d2eab9acd2548c6d5b721a17eab6d1d4f7d82d8bf5f060d80b56c54e",
       "stripe_interior_pixels": 17038,
-      "stripe_color_coverage": 0.9932503815001761,
+      "stripe_color_coverage": 0.9933090738349571,
       "material_maker_rgb_preserved": true,
       "stripe_median_rgb": [
         255.0,
@@ -99,7 +99,7 @@
       },
       "joint_finish": {
         "armor_core_texels": 1613,
-        "core_5_to_95_percentile_range": 22.0
+        "core_5_to_95_percentile_range": 23.0
       }
     }
   }

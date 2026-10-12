@@ -404,3 +404,83 @@ Reviewed the projection, both side rows, all four affected room interiors, seven
 registered captures across liveries/LODs and window views, plus desktop and phone defaults.
 The preview retains all twenty window choices and three deck cutaways. No Pi speed claim
 is made; these are delivered art and preview checks.
+
+## Forward-facing nacelles and dedicated paint, 2026-10-10
+
+The forward (+Z) nacelle ends taper over 11.76 m into tiny collectors. Their entire
+56 m length shares roughly 215 texels from a general hull fitting, only 3.8 px/m.
+Keep the level swept supports and 56 m length, move the long taper aft, and give
+the bow a broad chamfered collector. Preserve the main hull, paint and window rows.
+
+Unwrap each nacelle continuously around its octagonal perimeter. Share one neutral
+1024 x 2048 texture across both nacelles and all three liveries, with separate
+support, rail and end-cap islands. The shell uses about 35 px/m along its length.
+Project panel stations on the actual 3D mesh and export those lines with the real
+UV wireframe before generating the painted finish. Native Material Maker packaging
+retains the artwork; existing accent assemblies retain livery color. Rebake LODs.
+
+The added RGBA8 image with mips costs 10.67 MiB and one full-detail material draw.
+Expected preview allocation is 88.83 MiB, below 96 MiB. Retain triangle ceilings
+12,000 / 3,000 / 600 and draw ceilings 9 / 1 / 1. Verify exported UV density and
+fore/aft shape, inspect close views and LODs, and check windows, overlap and export
+reproduction. These are asset counts, not Pi frame-time measurements.
+
+Latest-main compatibility, 2026-10-11: the newly merged `tern-exterior` compiler now
+loads the default Cyan model and requires square texture-array layers. Keep the
+authoring atlas rectangular, and expand its shorter axis with exact nearest pixel
+replication when compiling the engine's square layer. Normalized UVs stay unchanged.
+This uses the existing array format and renderer; the 2048 px square runtime layer
+costs 21.33 MiB with mips, compared with 10.67 MiB in the HTML preview. Add a compiler
+regression check for rectangular image expansion and update its delivered-art counts
+to seven parts and four images. The runtime hull uses about 26.83 MiB with its older
+maps; add this to the runtime rooms' measured allocation rather than the preview's
+all-livery allocation. Keep the complete runtime texture allocation under 96 MiB.
+
+Final asset verification: full/medium/distant geometry is 4,440 / 1,290 / 496 triangles
+in 7 / 1 / 1 material draws. All livery models and six LOD atlases reproduce; the native
+Material Maker graph and rectangular packaging reproduce. Each side's exported shell
+has 35.11 longitudinal texture px/m, 4.14 / 2.208 m fore/aft widths and 3.36 / 11.76 m
+fore/aft tapers. Original generated detail is 30.41 px/m. The checker rejects reversed
+geometry, stretched UVs and the former general material, and checks atlas regions for
+overlap. The collector island was repacked after close-up inspection.
+
+Reviewed 27 final livery/LOD views plus desktop and mobile defaults. All 460 window
+and frame rays pass per livery, with all twenty choices, three cutaways and nine
+livery/LOD selections working. The complete preview uses 82,992 triangles, 51 draws
+and 88.83 MiB. Exterior fighting surfaces are absent; existing interior trim overlap
+is 0.046 m2. Main hull paint, seams, deeper cyan and the white outline remain validated.
+
+Engine compatibility verification: all eight `sc-tools` tests pass, including the
+delivered Cyan GLB, packed geometry within 2 mm and rectangular paint expansion in
+both orientations. The compiler reports 28,136,784 bytes (26.8333 MiB) for the hull's
+texture arrays including mips. The combined 82.53 MiB estimate uses main's previously
+measured 58.4 MB rooms; a complete runtime deck was not regenerated for this art update.
+Rust formatting passes. Strict Clippy encounters main's existing `nonminimal_bool`
+at `crates/sc-core/src/combat/mod.rs:1061`; that source is unchanged from main.
+Targeted Clippy passes with only that known lint allowed. The merged OpenSpec check
+passes all 48 items. The source branch includes main at `57bc0d7`.
+
+### Owner refinement: blunt shoulder channel termination
+
+The painted machinery exposure beside the registration tapers to a needle on the
+outer shoulder. Replace the pointed ends with matching white armor and bound the
+remaining exposure by the existing Z = 2 m and Z = 11 m station joints. Author the correction
+on the real hull, mirrored on both sides, then bake its UV mask. Reuse the approved
+generated armor finish through the native Material Maker graph; preserve the
+registration, projected panel joints, cyan ribbon, equator and dedicated nacelles.
+Inspect the actual shoulder above and from the side, and rebake all livery LODs.
+This material refinement adds no triangles, runtime textures or draws. Existing
+4,440 / 1,290 / 496 triangle and 7 / 1 / 1 draw budgets remain unchanged.
+
+Verified both shoulder ends in 22 captures, including old-texture comparisons on
+identical geometry. The real exported UVs and embedded textures pass 360 samples
+across nine models; the former pointed model fails the regression guard. All nine
+models and six LOD atlases reproduce. Only 6,253-6,254 texels per 1024 px hull atlas
+change (about 0.60 percent), all inside the projected correction. The mask repeats
+byte for byte. The new plate sampling retains the source texel scale.
+
+Window/frame rays remain 460 per livery, and the preview remains 82,992 triangles,
+51 draws and 88.83 MiB. Existing aligned seams, deeper cyan, white border and flat
+ribbon joins pass their artifact checks. All eight sc-tools tests and 48 OpenSpec
+items pass. No new Pi performance claim is made. Captures and measurements live in
+`docs/screenshots/exteriors-shoulder/README.md`.

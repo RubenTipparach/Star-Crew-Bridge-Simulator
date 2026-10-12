@@ -692,16 +692,17 @@ pub(crate) fn hull(
             continue;
         }
         let img = &model.images[im];
-        if img.width != img.height || !img.width.is_power_of_two() {
+        if !img.width.is_power_of_two() || !img.height.is_power_of_two() {
             return Err(format!(
-                "{source}: image {} is {} x {} px, not a square power of two",
+                "{source}: image {} is {} x {} px, dimensions must be powers of two",
                 img.name, img.width, img.height
             ));
         }
-        let a = match arrays.iter().position(|(size, _)| *size == img.width) {
+        let square_size = img.width.max(img.height);
+        let a = match arrays.iter().position(|(size, _)| *size == square_size) {
             Some(a) => a,
             None => {
-                arrays.push((img.width, Vec::new()));
+                arrays.push((square_size, Vec::new()));
                 arrays.len() - 1
             }
         };
@@ -747,7 +748,7 @@ pub(crate) fn hull(
     // Each array's layers and mips, after everything already in the texture blob.
     let mut out_arrays = Vec::new();
     for (size, images) in &arrays {
-        let level0: Vec<u8> = images.iter().flat_map(|&im| model.images[im].rgba.iter().copied()).collect();
+        let level0: Vec<u8> = images.iter().flat_map(|&im| square_hull_image(&model.images[im])).collect();
         let mut mip_offsets = Vec::new();
         for level in mip_chain(level0, *size, images.len() as u32) {
             mip_offsets.push(tex_blob.len() as u64);
@@ -768,6 +769,25 @@ pub(crate) fn hull(
     }))
 }
 
+/// Expand a rectangular power-of-two image into the renderer's square layer without changing normalized UVs.
+/// Exact pixel replication retains every source texel; the shared mip builder filters only after expansion.
+fn square_hull_image(image: &crate::glb::Image) -> Vec<u8> {
+    let size = image.width.max(image.height) as usize;
+    let width = image.width as usize;
+    let height = image.height as usize;
+    if width == height {
+        return image.rgba.clone();
+    }
+    let mut square = Vec::with_capacity(size * size * 4);
+    for y in 0..size {
+        for x in 0..size {
+            let source = ((y * height / size) * width + x * width / size) * 4;
+            square.extend_from_slice(&image.rgba[source..source + 4]);
+        }
+    }
+    square
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -780,11 +800,13 @@ mod tests {
     fn the_tern_hull_compiles_within_two_millimetres_of_its_model() {
         let (mut v, mut x, mut t) = (Vec::new(), Vec::new(), Vec::new());
         let h = hull(root(), "tern", &mut v, &mut x, &mut t).unwrap().expect("the Tern has an exterior model");
-        assert_eq!(h.parts.len(), 6);
+        assert_eq!(h.parts.len(), 7);
         assert_eq!(h.parts.iter().map(|p| p.count as usize / 3).sum::<usize>(), 4440);
         assert_eq!(h.scale, 2.0, "an 81.5 m hull needs half-size positions to fit +/-32 m");
         let sizes: Vec<(u32, u32)> = h.arrays.iter().map(|a| (a.size_px, a.layers)).collect();
         assert!(sizes.contains(&(1024, 1)) && sizes.contains(&(128, 2)), "the hull atlas and the two tiles: {sizes:?}");
+        assert!(sizes.contains(&(2048, 1)), "the rectangular nacelle paint expands into one square layer: {sizes:?}");
+        println!("Compiled hull texture allocation: {} bytes ({:.4} MiB)", t.len(), t.len() as f64 / 1048576.0);
         assert!(h.parts.iter().filter(|p| p.array.is_none()).count() == 2, "the screens and light panels glow");
         // Every corner, unpacked, against the model's own.
         let model = crate::glb::read(&root().join(&h.source)).unwrap();
@@ -809,5 +831,22 @@ mod tests {
         let (mut v, mut x, mut t) = (Vec::new(), Vec::new(), Vec::new());
         assert!(hull(root(), "hound", &mut v, &mut x, &mut t).unwrap().is_none());
         assert!(v.is_empty() && x.is_empty() && t.is_empty());
+    }
+
+    #[test]
+    fn rectangular_hull_paint_preserves_each_normalized_texel() {
+        for (width, height, expected) in [
+            (2, 4, vec![0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7]),
+            (4, 2, vec![0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 6, 7, 4, 5, 6, 7]),
+            (4, 4, (0..16).collect()),
+        ] {
+            let rgba = (0..width * height).flat_map(|i| [i as u8, 20, 30, 0]).collect();
+            let image = crate::glb::Image { name: "paint".into(), width, height, rgba };
+            let square = square_hull_image(&image);
+            let size = width.max(height);
+            assert_eq!(square.len(), (size * size * 4) as usize);
+            assert_eq!(square.chunks_exact(4).map(|p| p[0]).collect::<Vec<_>>(), expected);
+            assert!(square.chunks_exact(4).all(|p| p[1..] == [20, 30, 0]), "RGBA channels stay intact");
+        }
     }
 }

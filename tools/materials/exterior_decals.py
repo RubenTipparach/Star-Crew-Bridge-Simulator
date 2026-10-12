@@ -15,11 +15,15 @@ from fontTools.ttLib import TTFont
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def pack_surfaces(name, size, window_emission=True):
+def pack_surfaces(name, size, window_emission=True, output_size=None):
     """Package actual Material Maker RGB unchanged, with cyan window emission in alpha."""
     source = ROOT / "tools/materials/raw" / (name + "_albedo.png")
     image = Image.open(source).convert("RGBA")
     assert image.size == (size, size), f"{name}: expected {size} px"
+    if output_size:
+        # Native graph rendering is square; rectangular UV atlases retain their
+        # full normalized domain at the declared texture allocation.
+        image = image.resize(tuple(output_size), Image.Resampling.LANCZOS)
     pixels = np.array(image)
     rgb = pixels[:, :, :3].astype(np.float32)
     r, g, b = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
@@ -57,6 +61,8 @@ def main():
     config = json.loads((ROOT / "data/ships/exteriors.json").read_text())
     for livery in config["liveries"]:
         pack_surfaces(livery["texture"], config["hero_atlas"]["px"], window_emission=False)
+    atlas = config["nacelle_atlas"]
+    pack_surfaces(atlas["texture"], max(atlas["size_px"]), False, atlas["size_px"])
 
 
 if __name__ == "__main__":

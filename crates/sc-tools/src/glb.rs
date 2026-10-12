@@ -327,17 +327,20 @@ mod tests {
     #[test]
     fn the_tern_reads_as_its_manifest_says() {
         let g = read(&tern()).expect("the committed model reads");
-        assert_eq!(g.primitives.len(), 6, "six materials, six primitives");
+        assert_eq!(g.primitives.len(), 7, "seven materials, including dedicated nacelle paint");
         assert_eq!(g.triangles(), 4440, "props.json: 4,440 triangles");
         let (lo, hi) = g.bounds();
         let want = ([-22.5, -8.02, -44.2], [22.5, 10.02, 37.27]);
         for k in 0..3 {
             assert!((lo[k] - want.0[k]).abs() < 0.006 && (hi[k] - want.1[k]).abs() < 0.006, "bounds {lo:?} {hi:?}");
         }
-        assert_eq!(g.images.len(), 3);
+        assert_eq!(g.images.len(), 4);
         let hull = g.primitives.iter().find(|p| p.material == "tern_hull").expect("the hull's primitive");
         let im = &g.images[hull.image.expect("the hull is textured")];
         assert_eq!((im.width, im.height, im.rgba.len()), (1024, 1024, 1024 * 1024 * 4));
+        let nacelle = g.primitives.iter().find(|p| p.material == "tern_nacelle").expect("the dedicated nacelle paint");
+        let im = &g.images[nacelle.image.expect("the nacelle is textured")];
+        assert_eq!((im.width, im.height, im.rgba.len()), (1024, 2048, 1024 * 2048 * 4));
         assert!(g.primitives.iter().any(|p| p.image.is_none()), "the glowing materials have no texture");
     }
 

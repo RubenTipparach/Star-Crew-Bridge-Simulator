@@ -11,8 +11,8 @@
       "file": "tern.glb",
       "triangles": 4440,
       "triangle_budget": 12000,
-      "vertices": 8738,
-      "draw_calls": 6,
+      "vertices": 8730,
+      "draw_calls": 7,
       "dimensions_m": [
         45.0,
         18.04,
@@ -30,10 +30,10 @@
           37.27
         ]
       ],
-      "embedded_images": 3,
-      "texture_bytes_with_mips": 5767164,
-      "sha256": "fa2233abab89aaf91d5b0de9c6ccf24a0e353962bd5d5f7d83faed95ce90c0ca",
-      "bytes": 1857612,
+      "embedded_images": 4,
+      "texture_bytes_with_mips": 16951976,
+      "sha256": "427011f501fc0fc12652e279de94846fc62294a6af1dff0cc9e11aa8c3c061b7",
+      "bytes": 4227036,
       "name": "SCS Tern",
       "class": "Heron-class frigate",
       "role": "Player ship",
@@ -1770,8 +1770,8 @@
       ],
       "embedded_images": 1,
       "texture_bytes_with_mips": 5592404,
-      "sha256": "bfafe6a3ac2e2cc4844877e07739d18c39731f40748a3134203863a7b18f3501",
-      "bytes": 1509936,
+      "sha256": "5e5c5cf5639d54029138105f1d79ef1ba7179df202a73a55899f82161da46837",
+      "bytes": 1637236,
       "name": "SCS Tern",
       "class": "Heron-class frigate",
       "role": "Player ship",
@@ -1870,15 +1870,15 @@
       "warp_center_y_m": 1.2,
       "nacelle_length_m": 56.0,
       "atlas": {
-        "px_per_m": 8.92,
-        "charts": 170,
-        "cover": 0.681,
+        "px_per_m": 8.94,
+        "charts": 177,
+        "cover": 0.684,
         "window_centres_checked": 20,
         "file": "atlases/tern_lod1.png",
         "px": 1024,
-        "emission_coverage": 0.03386,
-        "sha256": "38a4e1f681337e99395edb3471d44ea70fcf2aaa90d6982dbaad971063c9d0a8",
-        "bytes": 1409237
+        "emission_coverage": 0.03553,
+        "sha256": "5330b390eff565c87349fadf5fcce67abd652db3796d257dda35cdb7d88187cb",
+        "bytes": 1536538
       }
     },
     "tern_lod2": {
@@ -1906,8 +1906,8 @@
       ],
       "embedded_images": 1,
       "texture_bytes_with_mips": 1398100,
-      "sha256": "9f01c3e6705e1206d9f7d5fbabadd093547fc02f58c89fbce28b259d127a898b",
-      "bytes": 397964,
+      "sha256": "144b66842c582007635751e7da0b5085d3a7e047b897e815d486955ee59c975b",
+      "bytes": 427240,
       "name": "SCS Tern",
       "class": "Heron-class frigate",
       "role": "Player ship",
@@ -1933,15 +1933,15 @@
       "warp_center_y_m": 1.2,
       "nacelle_length_m": 56.0,
       "atlas": {
-        "px_per_m": 4.25,
-        "charts": 49,
-        "cover": 0.551,
+        "px_per_m": 4.33,
+        "charts": 56,
+        "cover": 0.573,
         "window_centres_checked": 20,
         "file": "atlases/tern_lod2.png",
         "px": 512,
-        "emission_coverage": 0.03419,
-        "sha256": "48ff1512c23428f94e6c72eb771fb192847af496124a2092d60b0b28db98a341",
-        "bytes": 356112
+        "emission_coverage": 0.03319,
+        "sha256": "ccde77d4e6ce80f88763cb9369c38ab31421d28667eb6b9cf6f20b19814a5f27",
+        "bytes": 385387
       }
     }
   },
