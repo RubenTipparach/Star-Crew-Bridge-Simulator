@@ -89,11 +89,17 @@ centres, facings and sizes (bridge port and starboard 2.0 x 1.2 m at 45 degrees,
 - **The rooms grow to the hull at their windows.** The generator moves each room's outboard walls to the hull's
   service margin (0.56 m from the skin) so a window is a short opening, not a tunnel: quarters and mess grow to
   11.64 m from the centre line (from 10.9), medbay and damage control to 10.47 m (from 9.7), life support, cargo, the
-  shield room and the switchboard to 11.64 m (from 10.6). About 296 m^3 of air in all; `tools/layout_check.py`
-  reports the exact figures with the patch applied.
-- **The rooms keep their own fit-out.** The patch's `furnishings` are the preview's furniture; the deck plan keeps its
-  own (bunks, galley, racks), which `applyPatch` already ignores. The captures check no fitting stands in front of a
-  window.
+  shield room and the switchboard to 11.64 m (from 10.6). Measured on the runtime rooms (after deck access): 191 m^3
+  of air in all, quarters and mess 22.7 m^3 each, medbay and damage control 19.4, life support 40.6, cargo 28.2, the
+  shield room and the switchboard 19.3 each.
+- **The preview's furniture moves clear of the stair towers.** Four groups the preview placed where deck access puts
+  a stair tower move outboard (the forward pair of quarters beds, both mess tables with their chairs) or back onto the
+  tower's wall (life support's three racks); the generator checks every piece stays in its room.
+- **The rooms keep their own fit-out, clear of the windows.** The patch's `furnishings` are the preview's furniture;
+  the deck plan keeps its own (bunks, galley, racks), which `applyPatch` already ignores. `tools/crew_rooms.py` checks
+  its furniture with the windows applied: nothing taller than a window's sill (1.1 m above deck B) stands in the
+  metre of floor in front of it. The quarters' two locker banks stood on the old hull side, in front of windows 2
+  and 3; they move to the two ends of the room's bunk island (recommendation taken, ask only with screenshots).
 - **Baked again.** The eight rooms' shapes change, so their bake cache keys change and the export bakes them and their
   light probes again; the cache files are rewritten in the same commit.
 
@@ -112,7 +118,7 @@ facing within 1 degree, and every aperture has its window. It reads the real art
 | Draw calls | 6 | 300 a frame |
 | Texture memory | 5.59 MB (the 1024 px atlas with mips) + 0.17 MB (two 128 px tiles) = 5.76 MB | 96 MB; the rooms' array is 58.4 MB (the Mac's deck rebuild, 2026-10-10) |
 | Buffers | 8,738 vertices x 28 B = 0.24 MB, 13,320 indices x 4 B = 0.05 MB | 64 MB |
-| Rooms | 8 rooms about 296 m^3 larger; no new lights | layout check |
+| Rooms | 8 rooms 191 m^3 larger; no new lights; the compiled rooms gain 881 triangles (175,611 to 176,492) and 2 texture layers (64.1 to 64.8 MB) | `tools/exterior_windows.py`, `deckc` |
 
 Overdraw: the hull is drawn after the rooms and mostly fails the depth test behind their walls; through a window, a
 pixel shows one hull surface or the sky. A desktop or cloud frame time says nothing about the Pi (CLAUDE.md 2): the
@@ -143,6 +149,6 @@ Pi measures it when the change is built.
 
 | Id | Question | Recommendation | Status |
 | --- | --- | --- | --- |
-| O1 | The hull seen from the windows and from outside: approve the captures | Approve | In survey 2 with the captures once built |
+| O1 | The hull seen from the windows and from outside: approve the captures | Approve | Asked in survey 2 (2026-10-11), with the captures and the review page |
 | O2 | The Cyan livery in the game | Cyan, the model's default and the owner's preferred | Recommendation taken (ask only with screenshots) |
-| O3 | The eight lower-deck rooms grow outboard to their windows (about 296 m^3) | Grow them, as the window design does | Recommendation taken (ask only with screenshots) |
+| O3 | The eight lower-deck rooms grow outboard to their windows (191 m^3) | Grow them, as the window design does | Recommendation taken (ask only with screenshots) |

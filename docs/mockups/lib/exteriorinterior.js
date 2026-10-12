@@ -59,7 +59,9 @@
   /** Build the same furnished rooms as command-deck, without opaque scenery over its windows. */
   async function create(THREE, K, GLTFLoader, scene, windows) {
     const W = K.shipData("exterior_windows"), S0 = K.shipData("command_suite"), D = K.shipData("detailing");
-    const S = {...S0,furnishings:[...S0.furnishings,...W.furnishings]}, L = K.applyPatch(K.applyPatch(K.layout(), S), W);
+    // The runtime chain (the suite, then deck access) and the windows last, as the deck plan applies them (tern-exterior 5).
+    const A = K.shipData("deck_access");
+    const S = {...S0,furnishings:[...S0.furnishings,...W.furnishings]}, L = K.applyPatch(K.applyPatch(K.applyPatch(K.layout(), S), A), W);
     const base = await K.loadMaterials(THREE);
     const mats = await K.loadPanels(THREE, base, { px: 128, atlasSets: ["bridge", "suite"] });
     base.texture.dispose();

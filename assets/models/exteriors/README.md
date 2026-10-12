@@ -100,8 +100,11 @@ Compare the [port](../../../docs/screenshots/exteriors-window-row/port.png) and
 [starboard](../../../docs/screenshots/exteriors-window-row/starboard.png) rows.
 
 The [window design](../../../data/ships/tern/exterior_windows_design.json) owns shared deck rows, stations and
-42 furnishings. Its [generator](../../../tools/exterior_windows.py) validates the
-[preview patch](../../../data/ships/tern/exterior_windows.json) against layout and prop bounds.
+42 furnishings. Its [generator](../../../tools/exterior_windows.py) writes the
+[window patch](../../../data/ships/tern/exterior_windows.json) from the runtime rooms (after deck access) and validates
+it against layout and prop bounds. The deck plan applies the patch last, so the game's rooms have every window, and
+`--check` holds each window to its aperture in this model (`openspec/changes/tern-exterior`). The furnishings are
+this preview's; the game's rooms keep the deck plan's own.
 Eighteen rooms and corridors are shown, with deck selectors, window views, cutaways and
 normal/red-alert lighting. Actual portal corners join the inner skin through combined liners
 and transparent glass batches. No opaque window pictures cover the openings.

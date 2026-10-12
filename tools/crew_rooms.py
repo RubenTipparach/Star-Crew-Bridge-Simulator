@@ -11,7 +11,9 @@ It lives in tools/ beside tools/command_suite.py because it is the same kind of 
 written and checked by a script, and it uses that script's checks rather than a copy (CLAUDE.md 6.1):
 every piece inside its room and clear of every door's zone, no two pieces overlapping. It checks on the
 layout as it stands, with the command suite, and with deck access (the stair towers, the lift and the second
-doors take floor and add doors), so the furniture fits whichever the owner keeps.
+doors take floor and add doors), so the furniture fits whichever the owner keeps; and with the exterior model's
+windows (data/ships/tern/exterior_windows.json, applied last), where nothing taller than a window's sill may
+stand in the metre of floor in front of it (openspec/changes/tern-exterior design 5).
 Documentation tooling (CLAUDE.md section 4), standard library only.
 
 Usage: python3 tools/crew_rooms.py [--check]
@@ -67,18 +69,18 @@ def piece(room, prop, back, yaw, note):
 def furnishings():
     F = []
     # Crew quarters (deck B, port): twelve berths in six two-tier bunks, for eight crew and the four of the damage
-    # control teams (owner, 2026-10-08: "should have more bunks in crew quarters"), and lockers on the hull side. The
-    # walls are full (the doors from the stair tower, the turret room and the spine), so two stand back to back in
-    # the middle of the room, 2 cm apart, between aisles of 1.6 m and 2.1 m.
+    # control teams (owner, 2026-10-08: "should have more bunks in crew quarters"), and lockers. The walls are full
+    # (the doors from the stair tower, the turret room and the spine, and the hull side's three windows), so two
+    # bunks stand back to back in the middle of the room, 2 cm apart, between aisles of 1.6 m and 2.1 m, and the
+    # lockers close the island's two ends, clear of the windows (tern-exterior: they stood on the hull side before).
     F.append(piece("quarters", "bunk", [5.0, FLOOR_B, 18.0], 180.0, "two berths on the forward wall"))
     F.append(piece("quarters", "bunk", [7.3, FLOOR_B, 18.0], 180.0, "two berths on the forward wall"))
     F.append(piece("quarters", "bunk", [8.0, FLOOR_B, 8.0], 0.0, "two berths on the aft wall, clear of the door from the turret room"))
     F.append(piece("quarters", "bunk", [1.25, FLOOR_B, 16.4], 90.0, "two berths on the corridor wall, forward of the door"))
     F.append(piece("quarters", "bunk", [6.39, FLOOR_B, 12.5], -90.0, "two berths in the middle of the room, facing the stair tower"))
     F.append(piece("quarters", "bunk", [6.41, FLOOR_B, 12.5], 90.0, "two berths in the middle of the room, facing the hull"))
-    for t, note in ((0.42, "lockers on the hull side"), (0.68, "lockers on the hull side")):
-        back, yaw = on_slant((10.9, 8.0), (9.7, 18.0), t)
-        F.append(piece("quarters", "locker_bank", back, yaw, note))
+    F.append(piece("quarters", "locker_bank", [6.4, FLOOR_B, 11.43], 180.0, "lockers on the aft end of the bunk island"))
+    F.append(piece("quarters", "locker_bank", [6.4, FLOOR_B, 13.57], 0.0, "lockers on the forward end of the bunk island"))
     # Mess (deck B, starboard): the galley on the forward wall, two tables of four.
     F.append(piece("mess", "galley_counter", [-6.5, FLOOR_B, 18.0], 180.0, "the galley, on the forward wall"))
     F.append(piece("mess", "mess_table", [-6.0, FLOOR_B, 12.0], 0.0, "a table for four"))
@@ -129,6 +131,44 @@ def footprints():
     return fp
 
 
+# The floor in front of a window that nothing taller than its sill may stand on, metres (tern-exterior design 5).
+WINDOW_VIEW_M = 1.0
+WINDOWS = os.path.join(ROOT, "data", "ships", "tern", "exterior_windows.json")
+
+
+def piece_height(f):
+    """A piece's height in metres: its set's built bounds, else the brief."""
+    path = os.path.join(ROOT, "assets", "models", f["set"], "props.json")
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as fh:
+            rec = json.load(fh)["props"].get(f["prop"])
+        if rec:
+            return rec["bounds_m"]["max"][1] - rec["bounds_m"]["min"][1]
+    if f["prop"] in BRIEF:
+        return BRIEF[f["prop"]][0][1]
+    return CS.BRIEF[f["prop"]][1]
+
+
+def window_problems(L, F, fp):
+    """Pieces taller than a window's sill standing in the metre of floor in front of it."""
+    problems = []
+    for p in L["portals"]:
+        if p["kind"] != "window":
+            continue
+        room = p["between"][0]
+        comp = next(c for c in L["compartments"] if c["id"] == room)
+        sill = p["center_m"][1] - p["size_m"][1] / 2 - min(b["y"][0] for b in comp["brushes"])
+        (nx, _, nz), (cx, _, cz), hw = p["normal"], p["center_m"], p["size_m"][0] / 2
+        a, b = (cx - nz * hw, cz + nx * hw), (cx + nz * hw, cz - nx * hw)
+        zone = [a, b, (b[0] - nx * WINDOW_VIEW_M, b[1] - nz * WINDOW_VIEW_M), (a[0] - nx * WINDOW_VIEW_M, a[1] - nz * WINDOW_VIEW_M)]
+        if CS.layout_check.signed_area(zone) < 0:
+            zone.reverse()
+        for f in F:
+            if f["room"] == room and piece_height(f) > sill and CS.layout_check.polys_overlap(CS.corners(f, fp), zone):
+                problems.append(f"{f['prop']} at {f['back_m']} stands in front of window {p['id']}")
+    return problems
+
+
 # Keep clear: the scuttle ladders' floor under the hatches (deck access), a 1.2 m square.
 KEEP_CLEAR = [("damage_control", -7.6, 19.2), ("medbay", 7.6, 19.2)]
 
@@ -137,9 +177,14 @@ def checks(F):
     fp = footprints()
     problems = []
     _, LS, LA = DA.build()
-    for name, L in (("today", copy.deepcopy(CS.L0)), ("with the suite", LS), ("with deck access", LA)):
+    LW = copy.deepcopy(LA)
+    with open(WINDOWS, encoding="utf-8") as f:
+        CS.patch_layout(LW, json.load(f))
+    for name, L in (("today", copy.deepcopy(CS.L0)), ("with the suite", LS), ("with deck access", LA), ("with the windows", LW)):
         for p in CS.check_furniture(L, F, fp):
             problems.append(f"{name}: {p}")
+    for p in window_problems(LW, F, fp):
+        problems.append(f"with the windows: {p}")
     for room, x, z in KEEP_CLEAR:
         sq = [(x - 0.6, z - 0.6), (x + 0.6, z - 0.6), (x + 0.6, z + 0.6), (x - 0.6, z + 0.6)]
         for f in F:
