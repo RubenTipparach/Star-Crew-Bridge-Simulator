@@ -15,3 +15,9 @@
 - [x] Cut connected armor belts and roof channels with recessed machinery.
 - [x] Inspect exported rear, side and quarter views and validate the assets.
 - [x] Update the review, editable models, documentation and existing PR.
+
+## Gorath bottom deck revision
+
+- [x] Inset the lower hull and refit its rooms and fighter berths.
+- [x] Rebuild the native model and inspect the exterior and lower deck.
+- [x] Validate the revision, update the review and push the existing PR.

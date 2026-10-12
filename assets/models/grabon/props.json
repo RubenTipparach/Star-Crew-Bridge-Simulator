@@ -150,7 +150,7 @@
     },
     "gorath": {
       "file": "gorath.glb",
-      "triangles": 14564,
+      "triangles": 13712,
       "budget_triangles": 16000,
       "texture": "assets/textures/grabon/gorath-enhanced.png",
       "texture_px": [
@@ -196,7 +196,48 @@
             "recess_m": 0.26
           }
         ],
-        "mirrored_uv_faces": 4616,
+        "lower_hull": {
+          "resized_parts": [
+            "gorath.part_1",
+            "gorath.part_71",
+            "gorath.part_72",
+            "gorath.part_73",
+            "gorath.part_74",
+            "gorath.part_75",
+            "gorath.part_76"
+          ],
+          "removed_buried_roof_parts": [
+            "gorath.hatch_frame.004",
+            "gorath.hatch_lid.004",
+            "gorath.hatch_handle.004",
+            "gorath.hatch_clamp.008",
+            "gorath.hatch_clamp.009",
+            "gorath.hatch_frame.005",
+            "gorath.hatch_lid.005",
+            "gorath.hatch_handle.005",
+            "gorath.hatch_clamp.010",
+            "gorath.hatch_clamp.011",
+            "gorath.hatch_frame.006",
+            "gorath.hatch_lid.006",
+            "gorath.hatch_handle.006",
+            "gorath.hatch_clamp.012",
+            "gorath.hatch_clamp.013",
+            "gorath.hatch_frame.007",
+            "gorath.hatch_lid.007",
+            "gorath.hatch_handle.007",
+            "gorath.hatch_clamp.014",
+            "gorath.hatch_clamp.015",
+            "gorath.service_trough.001",
+            "gorath.coolant_run.002",
+            "gorath.coolant_run.003"
+          ],
+          "scale_xz": [
+            0.8,
+            0.8
+          ],
+          "offset_z_m": 0.8
+        },
+        "mirrored_uv_faces": 4331,
         "csg_steps": [
           "difference engineering_continuous_belt (1)",
           "difference roof_and_aft_return_-1 (2)",
@@ -226,7 +267,7 @@
         14.215,
         57.93
       ],
-      "sha256": "5d46bf687faf90c42aa90dab90db77b6b656cb71b84165be4dabdadb7308099d"
+      "sha256": "3096eced96519616f472832fbe670e2485128bd30f87c3fe5f04287f45aac953"
     }
   }
 }

@@ -84,9 +84,25 @@ The revised export may use four materials, at most 16,000 triangles and the
 existing atlas plus one 128 px material texture. Inspect actual exported GLBs
 from the aft, side and upper quarter; check symmetry, centers and overlaps.
 
+## Gorath lower deck inset
+
+Reduce Gorath's body footprint to 80 percent of its former width and length,
+then move it 0.8 m forward. The bottom tier becomes 20.16 m wide and 28.24 m
+long, wholly inside the engineering tier above (25.6 m wide and 32.1 m long).
+Keep its height, centered upper impulse, access shafts and upper decks intact.
+Refit lower rooms against the revised envelope with the existing 0.85 m margin.
+Move the two full-size fighters inward and forward inside the shortened hangar.
+
+Apply the same footprint transform to the native lower armor and hangar fittings
+after restoring their painted UVs; rebuild its recessed service belt from the
+new footprint. Remove roof equipment that the overhanging upper hull encloses.
+No extra materials or textures are required. Keep the existing 16,000-triangle
+hull ceiling, four draws and measured texture allocation. Inspect the exterior
+and lower deck, and check room fit, access, mesh integrity and coplanar overlap.
+
 ## Review results
 
-The revised hulls have 9,728, 12,328 and 14,564 triangles, each in four draws.
+The revised hulls have 9,728, 12,328 and 13,712 triangles, each in four draws.
 The detailed viewer allocates 59.08 MiB of texture storage including mipmaps.
 The layouts have 16, 18 and 24 connected rooms, including access shafts, and
 retain two fighter berths each. Ladders have a 1.30 m corridor bypass. Shaft

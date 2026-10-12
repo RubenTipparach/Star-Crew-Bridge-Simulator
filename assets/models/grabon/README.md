@@ -7,6 +7,10 @@ exhaust. Geometry and UVs mirror about the keel. Open the
 [interactive review](../../../docs/mockups/grabon-ships.html) for their textured
 interiors and working elevator previews.
 
+Gorath's bottom deck is inset beneath the engineering tier: 20.16 x 28.24 m
+against 25.6 x 32.1 m above. Its full-height rooms and two fighter berths fit
+the smaller footprint; the centered impulse and deck access retain their positions.
+
 Each ship has an exterior `.glb`, an editable `.blend` with the enhanced atlas
 packed, and a `-projection.blend` retaining the original assemblies, UVs and
 projected paint. The finished `.blend` also retains named CSG cutters and the
@@ -21,7 +25,7 @@ by the shared ShipKit builders in the HTML review.
 |---|---:|---:|
 | Shrike | 9,728 | 1,254 x 1,254 px |
 | Vark | 12,328 | 1,254 x 1,254 px |
-| Gorath | 14,564 | 1,254 x 1,254 px |
+| Gorath | 13,712 | 1,254 x 1,254 px |
 
 The manifest records file hashes, triangle ceilings and texture memory including
 mips. These are review assets, pending owner approval before engine adoption.
@@ -43,5 +47,7 @@ run only `--finish`, then inline the preview. The finish pass reads
 `data/ships/grabon-detailed/exterior.json`, restores the atlas UVs onto editable
 assemblies, cuts the machinery openings, fits central impulse units and mirrors
 the port geometry and UVs onto starboard. Retained aft engine cleats move 0.10 m
-clear of the bay-door trim. The [texture sources and prompt](../../textures/grabon/GENERATION.md)
+clear of the bay-door trim. Gorath's lower armor and bay fittings use the same
+footprint transform as its derived layout, retaining the original painted UVs.
+Its enclosed lower-roof fittings are removed. The [texture sources and prompt](../../textures/grabon/GENERATION.md)
 include projection PNGs, material masks, actual UV wireframes and enhanced atlases.

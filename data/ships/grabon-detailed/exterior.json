@@ -6,6 +6,9 @@
   "ships": {
     "shrike": {"impulse_zone": "command", "impulse_width_m": 8.6, "impulse_height_m": 1.9, "remove_old_engines": true},
     "vark": {"impulse_zone": "command", "impulse_width_m": 9.6, "impulse_height_m": 1.9, "remove_old_engines": false},
-    "gorath": {"impulse_zone": "engineering", "impulse_width_m": 11.4, "impulse_height_m": 2.1, "remove_old_engines": false}
+    "gorath": {
+      "impulse_zone": "engineering", "impulse_width_m": 11.4, "impulse_height_m": 2.1, "remove_old_engines": false,
+      "lower_hull": {"zone": "body", "scale_xz": [0.8, 0.8], "offset_z_m": 0.8, "fighter_centers_xz_m": [[-4.35, -13.55], [4.35, -13.55]]}
+    }
   }
 }

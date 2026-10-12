@@ -61,8 +61,19 @@ def run():
         for kind in ['stairs','lift']:
             assert len([p for p in L['portals'] if kind in p['between']])==len(floors)
         assert len([p for p in L['portals'] if p['kind']=='ladder'])==len(floors)-1
+        lower_dimensions=None
+        if s['id']=='gorath':
+            lower=next(z for z in s['hull_zones'] if z['id']=='body')
+            upper=next(z for z in s['hull_zones'] if z['id']=='engineering')
+            spans=lambda zone:[round(max(v[k] for v in zone['poly'])-min(v[k] for v in zone['poly']),6) for k in (0,1)]
+            assert all(inside_poly(upper['poly'],*v) for v in lower['poly']),'Gorath bottom footprint must be inside the upper tier'
+            assert all(a<b for a,b in zip(spans(lower),spans(upper))),'Gorath bottom must be narrower and shorter'
+            lower_dimensions={'lower_width_length_m':spans(lower),'upper_width_length_m':spans(upper)}
+            for a,b in itertools.combinations(s['craft'],2):
+                assert any(abs(a['center_m'][k]-b['center_m'][k])>=(a['size_m'][k]+b['size_m'][k])/2+.6 for k in (0,2)),'Keep a clear aisle between fighter berths'
         report.append({'ship':s['id'],'rooms':len(rooms),'brushes':len(brushes),'reachable':len(seen),'decks':len(floors),
                        'stair_rise_m':rises[0],'stair_going_m':round(going,3),'flight_headroom_m':headroom,'ladder_bypass_width_m':1.3,'fighter_berths':len(s['craft'])})
+        if lower_dimensions:report[-1]['tier_dimensions']=lower_dimensions
     return {'status':'pass','ships':report}
 
 

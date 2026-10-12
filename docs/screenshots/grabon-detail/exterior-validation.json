@@ -19,11 +19,21 @@
     },
     {
       "id": "gorath",
-      "triangles": 14564,
+      "triangles": 13712,
       "materials": 4,
       "nonmanifold_edges": 0,
       "degenerate_faces": 0,
-      "sha256": "5d46bf687faf90c42aa90dab90db77b6b656cb71b84165be4dabdadb7308099d"
+      "sha256": "3096eced96519616f472832fbe670e2485128bd30f87c3fe5f04287f45aac953",
+      "lower_hull_bounds_xz_m": [
+        [
+          -10.08,
+          10.08
+        ],
+        [
+          -18.96,
+          9.28
+        ]
+      ]
     }
   ]
 }

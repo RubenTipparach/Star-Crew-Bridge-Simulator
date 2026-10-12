@@ -15,6 +15,11 @@ orange livery, authored UV textures and connected deck interiors.
 - **AND** Shrike has no projecting engine cubes
 - **AND** continuous recessed machinery belts meet the aft roof channels
 
+#### Scenario: Owner reviews Gorath's lower tier
+- **WHEN** Gorath is viewed from the side or above
+- **THEN** the bottom deck is narrower and shorter than the engineering deck above
+- **AND** its fitted rooms, access shafts and two fighter berths remain inside its hull
+
 ### Requirement: Three vertical access methods
 Every ship SHALL contain stairs with landings, a ladder and an elevator serving
 every occupied main deck, with openings aligned to their actual floor heights.

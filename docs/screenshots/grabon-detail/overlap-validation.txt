@@ -23,7 +23,7 @@ vark / fit / B / access
 docs\mockups\grabon-ships.html: 1022 triangles, 0 fighting pairs of surfaces, 0.000 m2
 
 gorath / hull / A / plan
-docs\mockups\grabon-ships.html: 14564 triangles, 0 fighting pairs of surfaces, 0.000 m2
+docs\mockups\grabon-ships.html: 13712 triangles, 0 fighting pairs of surfaces, 0.000 m2
 
 gorath / fit / A / cutaway
 docs\mockups\grabon-ships.html: 8458 triangles, 0 fighting pairs of surfaces, 0.000 m2
@@ -32,7 +32,7 @@ gorath / fit / B / cutaway
 docs\mockups\grabon-ships.html: 10036 triangles, 0 fighting pairs of surfaces, 0.000 m2
 
 gorath / fit / C / cutaway
-docs\mockups\grabon-ships.html: 8360 triangles, 0 fighting pairs of surfaces, 0.000 m2
+docs\mockups\grabon-ships.html: 7700 triangles, 0 fighting pairs of surfaces, 0.000 m2
 
 gorath / fit / C / access
 docs\mockups\grabon-ships.html: 1796 triangles, 0 fighting pairs of surfaces, 0.000 m2

@@ -89,8 +89,23 @@ def refit(ship, old, armor):
     objects = []
     engines = [f for f in ship['fittings'] if f['kind'] == 'engine']
     removed = []
+    lower=cfg.get('lower_hull')
+    lower_parts=[];buried_roof=[]
+    if lower:
+        source_zone=ship['lower_hull_refit']['source_zone']
+        source_bay=ship['lower_hull_refit']['source_bay']
+        lower_index=next(i for i,z in enumerate(ship['hull_zones']) if z['id']==lower['zone'])
     for src in list(bpy.data.collections['Editable assemblies'].objects):
         points = [PROP_TO_BLENDER.inverted() @ (src.matrix_world @ v.co) for v in src.data.vertices]
+        resize_lower=False
+        if lower:
+            # Roof fittings would be sealed inside the upper tier after the inset.
+            roof_part=any(tag in src.name for tag in ('hatch_','service_trough','coolant_run'))
+            if roof_part and all(source_zone['y_m'][1]<v.y<source_zone['y_m'][1]+.4 for v in points):
+                buried_roof.append(src.name)
+                continue
+            bay_part=all(all(abs(v[k]-source_bay['center_m'][k])<=source_bay['size_m'][k]/2+.1 for k in range(3)) for v in points)
+            resize_lower=src.name==ship['id']+'.part_'+str(lower_index) or bay_part
         engine_part = 'engine_' in src.name or any(
             all(all(abs(v[k]-f['center_m'][k]) <= f['size_m'][k]/2+.65 for k in range(3)) for v in points)
             for f in engines)
@@ -113,6 +128,13 @@ def refit(ship, old, armor):
         ob.data.materials.append(armor)
         for face in ob.data.polygons:
             face.material_index = 0
+        if resize_lower:
+            sx,sz=lower['scale_xz'];dz=lower['offset_z_m']
+            inverse=ob.matrix_world.inverted()
+            for vertex,point in zip(ob.data.vertices,points):
+                vertex.co=inverse@B([point.x*sx,point.y,point.z*sz+dz])
+            ob.data.update()
+            lower_parts.append(src.name)
         if 'engine_cleat' in src.name:
             cz=sum(v[2] for v in points)/len(points)
             if any(abs(cz-f['center_m'][2]-.25*f['size_m'][2])<.001 for f in engines):
@@ -242,6 +264,9 @@ def refit(ship, old, armor):
             box('heat_vane', [side*w*.245,y+dy,z-.22], [w*.43,.055,.25], steel, .015)
     box('impulse_divider', [0,y,z-.09], [.20,h-.52,.56], steel, .035)
     facts = {'impulse_center_m':[0,y,z], 'impulse_size_m':[w,h,.88], 'removed_engine_parts':len(removed), 'service_belts':bands}
+    if lower:
+        facts['lower_hull']={'resized_parts':lower_parts,'removed_buried_roof_parts':buried_roof,
+                             'scale_xz':lower['scale_xz'],'offset_z_m':lower['offset_z_m']}
 
     # New equipment uses metre-projected graphite, while surviving armor keeps
     # its authored atlas. Mirror the retained port finish onto the starboard side.

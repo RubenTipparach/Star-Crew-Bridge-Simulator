@@ -16,6 +16,10 @@ couplings and junction boxes. Each hull retains its generated paint atlas. Inter
 walls and floors use the existing Blender-baked panel set; consoles, chairs,
 bunks, medical beds, machinery and fighters use the shared textured models.
 
+Gorath's bottom tier is now 20.16 m wide and 28.24 m long, inside the 25.6 x
+32.1 m engineering tier above. The lower rooms and two full-size fighter berths
+fit the inset hull. Deck heights and all three access methods are retained.
+
 - [Hull comparison](hulls-overview.png)
 - [Shrike rear](review/grabon-ships-rear-shrike.png), [armor](review/grabon-ships-armor-shrike.png)
 - [Vark rear](review/grabon-ships-rear-vark.png), [armor](review/grabon-ships-armor-vark.png)
@@ -28,7 +32,7 @@ bunks, medical beds, machinery and fighters use the shared textured models.
 - [Texture guides, UV wireframes and generation prompt](../../../assets/textures/grabon/GENERATION.md)
 - [Detailed layouts](../../../data/ships/grabon-detailed/layouts.json)
 
-The three hulls use 9,728 / 12,328 / 14,564 triangles and four draws each.
+The three hulls use 9,728 / 12,328 / 13,712 triangles and four draws each.
 The largest visible deck is
 10,184 triangles; the maximum draw count is 15. All 58 rooms are reachable,
 with 0.18 m stair risers, about 0.31 m going at the walking line, 3.54 m clearance

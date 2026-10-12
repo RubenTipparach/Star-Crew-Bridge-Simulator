@@ -12,6 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools'))
 from layout_check import inside_poly, signed_area
+from fit_enemy_concepts import clip
 
 
 def half(poly, axis, value, sign):
@@ -50,10 +51,30 @@ def rect_poly(r):
 
 def build():
     data=json.loads((ROOT/'data/ships/grabon-concepts/layouts.json').read_text())
+    exterior=json.loads((ROOT/'data/ships/grabon-detailed/exterior.json').read_text())
     data['collection']='Grabon detailed ships';data['detail_level']='detailed'
     for s in data['ships']:
         L=s['layout'];decks=sorted(L['decks'],key=lambda d:d['floor_y_m'])
         floors=[d['floor_y_m'] for d in decks];top=floors[-1]+2.8
+        lower=exterior['ships'][s['id']].get('lower_hull')
+        if lower:
+            zone=next(z for z in s['hull_zones'] if z['id']==lower['zone'])
+            bay=next(f for f in s['fittings'] if f['kind']=='baydoor')
+            # Retain the original bounds for identifying the native painted parts.
+            s['lower_hull_refit']={'source_zone':copy.deepcopy(zone),'source_bay':copy.deepcopy(bay)}
+            sx,sz=lower['scale_xz'];dz=lower['offset_z_m']
+            zone['poly']=[[round(x*sx,6),round(z*sz+dz,6)] for x,z in zone['poly']]
+            s['fit_envelopes'][zone['id']]=copy.deepcopy(zone['poly'])
+            bay['center_m'][0]=round(bay['center_m'][0]*sx,6);bay['center_m'][2]=round(bay['center_m'][2]*sz+dz,6)
+            bay['size_m'][0]=round(bay['size_m'][0]*sx,6);bay['size_m'][2]=round(bay['size_m'][2]*sz,6)
+            for room in L['compartments']:
+                if room['envelope']==zone['id']:
+                    for brush in room['brushes']:
+                        brush['poly']=clip(brush['poly'],zone['poly'],s['fit_margin_m'])
+                        assert len(brush['poly'])>=3,(s['id'],room['id'],'lower hull erased room')
+            assert len(s['craft'])==len(lower['fighter_centers_xz_m'])
+            for craft,(x,z) in zip(s['craft'],lower['fighter_centers_xz_m']):
+                craft['center_m'][0]=x;craft['center_m'][2]=z
         # Meet the existing bulkhead at z=-2, avoiding inaccessible slivers of
         # the adjacent reactor and life-support rooms behind their wall ribs.
         shafts=[('stairs',[-5.7,-6.3,-1.2,-2.0]),('lift',[1.2,-2.0,4.4,1.0])]
@@ -101,8 +122,8 @@ def build():
                 # Center the aperture in the slab so both adjoining room shells
                 # recognize its opening, including these 0.8 m deck structures.
                 a,b=(rooms[id] for id in portal['between'])
-                lower,upper=sorted([a,b],key=lambda r:r['brushes'][0]['y'][0])
-                portal['center_m'][1]=(max(br['y'][1] for br in lower['brushes'])+min(br['y'][0] for br in upper['brushes']))/2
+                lower_room,upper_room=sorted([a,b],key=lambda r:r['brushes'][0]['y'][0])
+                portal['center_m'][1]=(max(br['y'][1] for br in lower_room['brushes'])+min(br['y'][0] for br in upper_room['brushes']))/2
         s['access']={'stair':stair,'lift':lift,'shaft_rects':dict(shafts)}
         # Refit scale furniture into the remaining room union. Keep berth and crew
         # counts; reject a room when no placement exists rather than drop its prop.
@@ -131,6 +152,9 @@ def build():
         s['adjustments']=['Dedicated shaft volumes are cut out of adjacent rooms.',
                           'Relocated doors preserve clear corridor approaches.',
                           'Furnishings are refitted around the access towers.']
+        if lower:
+            s['notes'][-1]='Two full-size fighter berths fit inside the inset bottom deck.'
+            s['adjustments'].append('The bottom hull is narrower and shorter than the engineering deck; its rooms and hangar are refitted.')
     return data
 
 
