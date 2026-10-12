@@ -24,8 +24,8 @@ tips and external engines are uninhabited equipment.
 - Gorath: broad hammer-shaped command pod, armored neck, high engineering core,
   thick wing shoulders and paired heavy engines. Three decks and twelve crew.
 
-Use olive and charcoal armor with small oxide-red areas and warm red-orange
-exhausts. Simple faceted plates, structural ribs and recessed-looking dark panel
+Use purple armor with dark plum secondary plating, burnt-orange liveries and
+warm orange exhausts. Simple faceted plates, structural ribs and recessed-looking dark panel
 bands establish scale. These are rough Material Maker surfaces, not final UV art.
 Surface boundaries and accents are authored in hull coordinates. No federation
 white/cyan paint, saucer mass or stacked passenger-deck silhouette is carried over.
@@ -49,6 +49,16 @@ The scene budget remains 200,000 triangles, 300 draws and 96 MiB, sourced from
 engine-stack/design.md. Existing texture layers are reused. No game runtime
 allocation or simulation/network cost is added. Browser counts are not a Pi 5
 performance measurement.
+
+The owner requested purple armor with red or orange liveries after reviewing
+the first hull concepts. Use burnt orange for the livery contrast.
+This color revision retains the geometry, layouts and texture allocation above.
+
+Center Gorath's paired thrusters vertically on the main hull: raise both engine
+centers from 3.13 m to 5.2 m, near the hull's 5.25 m vertical midpoint. The existing
+swept wings still meet the lower engine casings. Keep the room plans and engine
+dimensions intact; this translation adds no triangles, draws or texture memory.
+Inspect side and rear views and rerun the hull surface check after moving them.
 
 ## Review results, 2026-10-12
 

@@ -2773,11 +2773,11 @@
         "stations": []
       },
       "colors": {
-        "armor": "#899e6a",
-        "secondary": "#717c62",
-        "accent": "#98442d",
-        "edge": "#a1a67c",
-        "glow": "#f1582d"
+        "armor": "#9976bd",
+        "secondary": "#625174",
+        "accent": "#d07639",
+        "edge": "#b5a0c9",
+        "glow": "#ff7935"
       },
       "fit_margin_m": 0.85,
       "height_m": 10.6
@@ -5789,11 +5789,11 @@
         "stations": []
       },
       "colors": {
-        "armor": "#839264",
-        "secondary": "#717c62",
-        "accent": "#98442d",
-        "edge": "#a1a67c",
-        "glow": "#f1582d"
+        "armor": "#8b68b1",
+        "secondary": "#625174",
+        "accent": "#d07639",
+        "edge": "#b5a0c9",
+        "glow": "#ff7935"
       },
       "fit_margin_m": 0.85,
       "height_m": 10.6
@@ -6434,7 +6434,7 @@
           "kind": "engine",
           "center_m": [
             -31.5,
-            3.1300000000000003,
+            5.2,
             -17.3
           ],
           "size_m": [
@@ -6753,7 +6753,7 @@
           "kind": "engine",
           "center_m": [
             31.5,
-            3.1300000000000003,
+            5.2,
             -17.3
           ],
           "size_m": [
@@ -9496,11 +9496,11 @@
         "stations": []
       },
       "colors": {
-        "armor": "#829c85",
-        "secondary": "#717c62",
-        "accent": "#98442d",
-        "edge": "#a1a67c",
-        "glow": "#f1582d"
+        "armor": "#9276ae",
+        "secondary": "#625174",
+        "accent": "#d07639",
+        "edge": "#b5a0c9",
+        "glow": "#ff7935"
       },
       "fit_margin_m": 0.85,
       "height_m": 14.2

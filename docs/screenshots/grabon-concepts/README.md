@@ -24,7 +24,12 @@ rooms fitted to their head, neck and body envelopes. The delivered catalogue
 retains both sets of polygons. These are rough material and scale studies, with
 simple furniture. Thin outer wings contain equipment, not walkable decks.
 
+The hull palette is purple with dark plum secondary plating and burnt-orange
+liveries. Gorath's thruster centers are raised to 5.2 m, near the main hull's
+vertical midpoint, with the swept wings meeting the lower engine casings.
+
 - [Hull and silhouette comparison](hulls-overview.png)
+- [Gorath side](review/enemy-ships-side-gorath.png) and [rear](review/enemy-ships-rear-gorath.png)
 - [All fitted plans](plans-overview.png)
 - [All 3D deck cutaways](cutaways-overview.png)
 - [Red-alert views](alert-overview.png)
