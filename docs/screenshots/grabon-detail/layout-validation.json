@@ -1,0 +1,41 @@
+{
+  "status": "pass",
+  "ships": [
+    {
+      "ship": "shrike",
+      "rooms": 16,
+      "brushes": 22,
+      "reachable": 16,
+      "decks": 2,
+      "stair_rise_m": 0.18,
+      "stair_going_m": 0.31,
+      "flight_headroom_m": 3.54,
+      "ladder_bypass_width_m": 1.3,
+      "fighter_berths": 2
+    },
+    {
+      "ship": "vark",
+      "rooms": 18,
+      "brushes": 24,
+      "reachable": 18,
+      "decks": 2,
+      "stair_rise_m": 0.18,
+      "stair_going_m": 0.31,
+      "flight_headroom_m": 3.54,
+      "ladder_bypass_width_m": 1.3,
+      "fighter_berths": 2
+    },
+    {
+      "ship": "gorath",
+      "rooms": 24,
+      "brushes": 34,
+      "reachable": 24,
+      "decks": 3,
+      "stair_rise_m": 0.18,
+      "stair_going_m": 0.31,
+      "flight_headroom_m": 3.54,
+      "ladder_bypass_width_m": 1.3,
+      "fighter_berths": 2
+    }
+  ]
+}

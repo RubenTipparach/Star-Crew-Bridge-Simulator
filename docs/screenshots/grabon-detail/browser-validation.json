@@ -1,0 +1,208 @@
+{
+  "status": "pass",
+  "views": [
+    {
+      "ship": "shrike",
+      "stage": "hull",
+      "deck": "A",
+      "mode": "plan",
+      "triangles": 7232,
+      "draws": 1,
+      "texture_mib": 58.998230934143066,
+      "nonfinite": 0,
+      "stair_vertices": 0,
+      "ladder_openings": [],
+      "sun_range": [
+        0.4399938963912413,
+        0.9905241474021516
+      ]
+    },
+    {
+      "ship": "shrike",
+      "stage": "fit",
+      "deck": "A",
+      "mode": "cutaway",
+      "triangles": 8446,
+      "draws": 15,
+      "texture_mib": 58.998230934143066,
+      "nonfinite": 0,
+      "stair_vertices": 228,
+      "ladder_openings": [
+        {
+          "id": "ladder_BA",
+          "open": true,
+          "bypass": true
+        }
+      ],
+      "sun_range": null
+    },
+    {
+      "ship": "shrike",
+      "stage": "fit",
+      "deck": "B",
+      "mode": "cutaway",
+      "triangles": 9176,
+      "draws": 13,
+      "texture_mib": 58.998230934143066,
+      "nonfinite": 0,
+      "stair_vertices": 228,
+      "ladder_openings": [],
+      "sun_range": null
+    },
+    {
+      "ship": "shrike",
+      "stage": "fit",
+      "deck": "B",
+      "mode": "access",
+      "triangles": 1022,
+      "draws": 2,
+      "texture_mib": 58.998230934143066,
+      "nonfinite": 0,
+      "stair_vertices": 228,
+      "ladder_openings": [],
+      "sun_range": null
+    },
+    {
+      "ship": "vark",
+      "stage": "hull",
+      "deck": "A",
+      "mode": "plan",
+      "triangles": 7360,
+      "draws": 1,
+      "texture_mib": 58.998230934143066,
+      "nonfinite": 0,
+      "stair_vertices": 0,
+      "ladder_openings": [],
+      "sun_range": [
+        0.4399938963912413,
+        0.9905851834897383
+      ]
+    },
+    {
+      "ship": "vark",
+      "stage": "fit",
+      "deck": "A",
+      "mode": "cutaway",
+      "triangles": 9204,
+      "draws": 15,
+      "texture_mib": 58.998230934143066,
+      "nonfinite": 0,
+      "stair_vertices": 228,
+      "ladder_openings": [
+        {
+          "id": "ladder_BA",
+          "open": true,
+          "bypass": true
+        }
+      ],
+      "sun_range": null
+    },
+    {
+      "ship": "vark",
+      "stage": "fit",
+      "deck": "B",
+      "mode": "cutaway",
+      "triangles": 10184,
+      "draws": 15,
+      "texture_mib": 58.998230934143066,
+      "nonfinite": 0,
+      "stair_vertices": 228,
+      "ladder_openings": [],
+      "sun_range": null
+    },
+    {
+      "ship": "vark",
+      "stage": "fit",
+      "deck": "B",
+      "mode": "access",
+      "triangles": 1022,
+      "draws": 2,
+      "texture_mib": 58.998230934143066,
+      "nonfinite": 0,
+      "stair_vertices": 228,
+      "ladder_openings": [],
+      "sun_range": null
+    },
+    {
+      "ship": "gorath",
+      "stage": "hull",
+      "deck": "A",
+      "mode": "plan",
+      "triangles": 8312,
+      "draws": 1,
+      "texture_mib": 58.998230934143066,
+      "nonfinite": 0,
+      "stair_vertices": 0,
+      "ladder_openings": [],
+      "sun_range": [
+        0.4399938963912413,
+        0.990249485008011
+      ]
+    },
+    {
+      "ship": "gorath",
+      "stage": "fit",
+      "deck": "A",
+      "mode": "cutaway",
+      "triangles": 8458,
+      "draws": 15,
+      "texture_mib": 58.998230934143066,
+      "nonfinite": 0,
+      "stair_vertices": 228,
+      "ladder_openings": [
+        {
+          "id": "ladder_BA",
+          "open": true,
+          "bypass": true
+        }
+      ],
+      "sun_range": null
+    },
+    {
+      "ship": "gorath",
+      "stage": "fit",
+      "deck": "B",
+      "mode": "cutaway",
+      "triangles": 10036,
+      "draws": 14,
+      "texture_mib": 58.998230934143066,
+      "nonfinite": 0,
+      "stair_vertices": 228,
+      "ladder_openings": [
+        {
+          "id": "ladder_CB",
+          "open": true,
+          "bypass": true
+        }
+      ],
+      "sun_range": null
+    },
+    {
+      "ship": "gorath",
+      "stage": "fit",
+      "deck": "C",
+      "mode": "cutaway",
+      "triangles": 8360,
+      "draws": 13,
+      "texture_mib": 58.998230934143066,
+      "nonfinite": 0,
+      "stair_vertices": 228,
+      "ladder_openings": [],
+      "sun_range": null
+    },
+    {
+      "ship": "gorath",
+      "stage": "fit",
+      "deck": "C",
+      "mode": "access",
+      "triangles": 1796,
+      "draws": 2,
+      "texture_mib": 58.998230934143066,
+      "nonfinite": 0,
+      "stair_vertices": 456,
+      "ladder_openings": [],
+      "sun_range": null
+    }
+  ],
+  "errors": []
+}

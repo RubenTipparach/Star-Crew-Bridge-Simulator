@@ -9,10 +9,10 @@
   const svgPoints = p => p.map(v=>v[1]+','+(-v[0])).join(' ');
   const text = s => String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
 
-  async function start(THREE, OrbitControls) {
+  async function start(THREE, OrbitControls, detail=null) {
     const K=window.ShipKit, data=K.shipData('layouts');
-    const mats=await K.loadMaterials(THREE);
-    const hud=K.budgetHud({textureBytes:mats.bytes,note:'Concept geometry; no game or Pi timing claim.'});
+    const mats=detail?.mats||await K.loadMaterials(THREE);
+    const hud=K.budgetHud({textureBytes:mats.bytes+(detail?.textureBytes||0),note:'Design review; no game or Pi timing claim.'});
     const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
     renderer.setPixelRatio(Math.min(devicePixelRatio,2));
     $('canvas').appendChild(renderer.domElement);
@@ -80,13 +80,14 @@
     function rebuild(){
       scene.remove(model);model.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.isLine)o.material.dispose();});
       model=new THREE.Group();scene.add(model);
-      if(window.ShipConcepts.buildModel)window.ShipConcepts.buildModel({THREE,K,state,layout:layout(),model,mats});
+      const ctx={THREE,K,state,layout:layout(),model,mats,detail};
+      if(!detail?.build(ctx)&&window.ShipConcepts.buildModel)window.ShipConcepts.buildModel(ctx);
     }
     function setCamera(view='orbit'){
       const box=new THREE.Box3().setFromObject(model),target=new THREE.Vector3(0,2,0);
       if(box.isEmpty()){camera.position.set(45,40,45);controls.target.copy(target);controls.update();return;}
       box.getCenter(target);
-      const direction=new THREE.Vector3(...(view==='top'?[0,1,.0001]:view==='side'?[1,.02,0]:[.93,.83,.9])).normalize();
+      const direction=new THREE.Vector3(...(detail?.cameraDirection?.(state,view)||(view==='top'?[0,1,.0001]:view==='side'?[1,.02,0]:[.93,.83,.9]))).normalize();
       const right=new THREE.Vector3().crossVectors(new THREE.Vector3(0,1,0),direction).normalize();
       const up=new THREE.Vector3().crossVectors(direction,right).normalize();
       const tan=Math.tan(camera.fov*Math.PI/360);let distance=1;
@@ -109,8 +110,8 @@
       $('deckbar').innerHTML=L.decks.map(d=>`<button data-deck="${d.id}" aria-pressed="${d.id===state.deck}">${d.id} / ${d.name}</button>`).join('')+`<span class="eyebrow">FLOOR +${deck.floor_y_m.toFixed(1)} m</span>`;
       $('deckbar').style.display=state.stage==='hull'?'none':'flex';
       document.querySelectorAll('[data-deck]').forEach(b=>b.onclick=()=>{state.deck=b.dataset.deck;state.selected=null;update();setCamera();});
-      const is3d=state.stage==='hull'||state.mode==='cutaway';
-      $('viewtools').innerHTML=(state.stage==='fit'?`<button data-mode="plan" aria-pressed="${!is3d}">Plan</button><button data-mode="cutaway" aria-pressed="${is3d}">3D cutaway</button>`:'')+(is3d?'<button data-camera="orbit">Orbit</button><button data-camera="top">Top</button><button data-camera="side">Side</button>':'');
+      const is3d=state.stage==='hull'||state.mode!=='plan';
+      $('viewtools').innerHTML=(state.stage==='fit'?`<button data-mode="plan" aria-pressed="${state.mode==='plan'}">Plan</button><button data-mode="cutaway" aria-pressed="${state.mode==='cutaway'}">3D cutaway</button>`:'')+(is3d?'<button data-camera="orbit">Orbit</button><button data-camera="top">Top</button><button data-camera="side">Side</button>':'');
       document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{state.mode=b.dataset.mode;update();setCamera();});
       document.querySelectorAll('[data-camera]').forEach(b=>b.onclick=()=>setCamera(b.dataset.camera));
       $('legend').innerHTML=Object.entries(data.palette).map(([k,c])=>`<span><i style="--tone:${c}"></i>${k}</span>`).join('');$('legend').style.display=is3d?'none':'';
@@ -122,6 +123,7 @@
       $('compare').disabled=state.stage!=='fit'||is3d;
       $('compare').setAttribute('aria-pressed',state.compare);
       roomInfo(state.selected);drawPlan();
+      detail?.decorate({state,show,update,setCamera,camera,controls,model});
     }
     function update(){rebuild();renderUI();history.replaceState(null,'','#'+[state.ship.id,state.stage,state.deck,state.mode].join('/'));}
     function show(id,stage='hull',deck=null,mode=null,lighting='normal'){
@@ -155,7 +157,7 @@
       const hit=ray.intersectObject(model,true).find(h=>h.object.userData.compartment);if(hit)roomInfo(hit.object.userData.compartment);
     });
     let first=true;
-    renderer.setAnimationLoop(()=>{controls.update();hud.beginFrame(renderer);if(state.stage==='hull'||state.mode==='cutaway')renderer.render(scene,camera);hud.endFrame(renderer);if(first){first=false;$('loading').remove();K.markReady();}});
+    renderer.setAnimationLoop(()=>{detail?.frame();controls.update();hud.beginFrame(renderer);if(state.stage==='hull'||state.mode!=='plan')renderer.render(scene,camera);hud.endFrame(renderer);if(first){first=false;$('loading').remove();K.markReady();}});
   }
   /** Offset each polygon edge inward. Concave corners retain their authored join. */
   function inset(poly,d){
@@ -285,32 +287,36 @@
   }
   /** Open-top deck, using the same ShipKit shells and real doorway cuts as the plans. */
   function buildCutaway(ctx){
-    const {THREE:T,K,state,layout:L,model,mats}=ctx,s=state.ship;
+    const {THREE:T,K,state,layout:L,model,mats,detail}=ctx,s=state.ship;
     if(state.mode!=='cutaway')return;
     const D=structuredClone(K.shipData('detailing'));D.cove.size_m=0;D.cove.tall_size_m=0;
-    for(const finish of Object.values(D.finishes))if(typeof finish==='object')finish.wall='exterior_pearl';
+    if(!detail)for(const finish of Object.values(D.finishes))if(typeof finish==='object')finish.wall='exterior_pearl';
     const selected=L.compartments.filter(r=>r.decks.includes(state.deck)),deck=L.decks.find(d=>d.id===state.deck);
     const e=[];const add=(geo,color,material='exterior_pearl')=>e.push({geo,color,material});
     const cube=(c,size,color,material='exterior_pearl')=>{const g=new T.BoxGeometry(...size);g.translate(...c);add(g,color,material);};
     const baked=mats._roomsMaterial||(mats._roomsMaterial=K.surfaceMaterial(T,mats,{lit:false}));
     for(const r of selected){
-      const built=K.buildCompartment(T,L,r,{detail:false,detailing:D});
-      const parts={};for(const role of ['floor','wall','cove'])if(built.parts[role])parts[role]=built.parts[role];
+      const viewRoom=detail&&r.kind==='trunk'?{...r,brushes:r.brushes.map(b=>({...b,y:[deck.floor_y_m,deck.floor_y_m+2.8]}))}:r;
+      const built=K.buildCompartment(T,L,viewRoom,{detail:!!detail,panels:!!detail,detailing:D});
+      const parts={};for(const role of (detail?Object.keys(built.parts).filter(k=>!['ceiling','beam','cove'].includes(k)):['floor','wall','cove']))if(built.parts[role])parts[role]=built.parts[role];
+      if(detail&&r.kind==='trunk')delete parts.floor;
+      if(detail)delete parts.baseboard;
+      detail?.furnish(ctx,r,parts);
       const geo=K.geometryOf(T,parts,mats,K.finishOf(r,D));
       K.bakeDirect(T,geo,built.lamps,state.lighting);
       const mesh=new T.Mesh(geo,baked);mesh.userData.compartment=r.id;mesh.name=r.name;model.add(mesh);
       // These are the same lamp points that light the shell, retained above the cut.
       const lamp=state.lighting==='red_alert'?'#c74739':'#e2d7b4';
-      for(const light of built.lamps)cube(light.p,[.42,.08,.12],lamp,'light_panel');
+      if(!detail)for(const light of built.lamps)cube(light.p,[.42,.08,.12],lamp,'light_panel');
     }
     let sectionOffset=0;
     for(const z of s.hull_zones.filter(z=>z.deck===state.deck)){
       sectionOffset+=.015;
-      add(prism(T,z.poly,deck.floor_y_m-.30-sectionOffset,deck.floor_y_m-.07-sectionOffset,.04),s.colors.secondary,'exterior_graphite');
+      if(!detail)add(prism(T,z.poly,deck.floor_y_m-.30-sectionOffset,deck.floor_y_m-.07-sectionOffset,.04),s.colors.secondary,'exterior_graphite');
       const points=z.poly.concat([z.poly[0]]).map(v=>new T.Vector3(v[0],deck.floor_y_m+.03+sectionOffset,v[1]));
       const line=new T.Line(new T.BufferGeometry().setFromPoints(points),new T.LineBasicMaterial({color:0x849da6}));line.name='Hull section';model.add(line);
     }
-    for(const f of s.furnishings.filter(f=>selected.some(r=>r.id===f.room))){
+    for(const f of s.furnishings.filter(f=>(!detail||f.kind==='person')&&selected.some(r=>r.id===f.room))){
       const [x,y,z]=f.center_m,[w,h,l]=f.size_m;
       if(f.kind==='person'){
         const color='#e9b25e';
@@ -328,7 +334,7 @@
         cube([x,y+h/2,z],[w,h,l],color,f.kind==='machine'?'machinery':'exterior_pearl');
       }
     }
-    for(const f of s.craft.filter(f=>selected.some(r=>r.id===f.room))){
+    for(const f of s.craft.filter(f=>!detail&&selected.some(r=>r.id===f.room))){
       const [x,y,z]=f.center_m,sign=f.yaw_deg===180?-1:1;
       const poly=[[0,4],[-4,-3.5],[0,-2],[4,-3.5]].map(([a,b])=>[x+a,z+b*sign]);
       if(sign===1)poly.reverse();
@@ -337,6 +343,7 @@
       cube([x,y+.55,z-3.1*sign],[1.2,.3,.15],'#e2ac72','light_panel');
     }
     for(const p of L.portals){
+      if(detail)continue;
       if(!selected.some(r=>p.between.includes(r.id)))continue;
       const [x,y,z]=p.center_m;
       if(Math.abs(p.normal[1])>.5){
@@ -352,6 +359,7 @@
       }
     }
     model.add(batch(T,K,mats,e));
+    detail?.access(ctx);
   }
   window.ShipConcepts={start,area,bounds,center,inset,prism,batch,buildModel,buildCutaway};
 })();

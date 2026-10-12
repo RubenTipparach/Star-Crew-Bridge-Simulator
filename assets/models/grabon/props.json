@@ -1,0 +1,42 @@
+{
+  "schema": "starcrew.props/1",
+  "generator": "tools/blender/build_grabon_detail.py",
+  "props": {
+    "shrike": {
+      "file": "shrike.glb",
+      "triangles": 7232,
+      "budget_triangles": 16000,
+      "texture": "assets/textures/grabon/shrike-enhanced.png",
+      "texture_px": [
+        1254,
+        1254
+      ],
+      "texture_bytes_with_mips": 8386752,
+      "sha256": "5dd5d8330fe1fdf4cf781ac888346fb357fff9108d90dfebac34d5488493a71c"
+    },
+    "vark": {
+      "file": "vark.glb",
+      "triangles": 7360,
+      "budget_triangles": 16000,
+      "texture": "assets/textures/grabon/vark-enhanced.png",
+      "texture_px": [
+        1254,
+        1254
+      ],
+      "texture_bytes_with_mips": 8386752,
+      "sha256": "2ba24bfa72f4531fafc4d7ff8990e8b8cbbd4f339ab1e4de0458d8ed8fddaa89"
+    },
+    "gorath": {
+      "file": "gorath.glb",
+      "triangles": 8312,
+      "budget_triangles": 16000,
+      "texture": "assets/textures/grabon/gorath-enhanced.png",
+      "texture_px": [
+        1254,
+        1254
+      ],
+      "texture_bytes_with_mips": 8386752,
+      "sha256": "7b24b059f7f22f150d090862b1fd10d0a4fed34f1a07a57004dd2ae6dfd82e30"
+    }
+  }
+}
