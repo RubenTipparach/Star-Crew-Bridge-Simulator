@@ -96,7 +96,8 @@ schematic in full screen. They can toggle between 2d and 3d view. 2d is a simpli
   limit, and a trip shows its countdown.
 - **The 2D graph by deck** (the owner: "group 2d view by deck", "show how each deck is connected to each other", "im
   not sure i can read that 2d preiview you have there, too much overlappying", "when multiple lines cross the decks
-  dont hesitate to show multiple parallels"): a band a deck, A over B over C, each deck one row of its boxes in order
+  dont hesitate to show multiple parallels"; drawn since as a circuit board, 3c, which keeps a board a deck and the
+  parallels between them): a band a deck, A over B over C, each deck one row of its boxes in order
   along the ship, evenly spaced so nothing covers anything. A run inside a deck is an arc over its row (a spare, open,
   a dotted arc under it), higher the longer it spans, so arcs cross but never lie on one another; each box's runs
   leave it from their own points along its edge. A run between decks is its own line from box to box across the gap,
@@ -116,6 +117,42 @@ go to emergency". The schematic's ROOMS toggle fills every room with the light t
 box, red alert, emergency light, dark) and names the rooms off their own light; on the 2D graph every box carries a lamp
 in its room's light and the overlay tints the box. A box switched off, or one nothing reaches, puts its room on the
 emergency bus's light (the library's `lighting`, the same rule the engine's lighting states will read).
+
+### 3c. The 2D schematic as a circuit board (owner, 2026-10-11)
+
+The owner: "2d power grid should have that circuit board look. Maybe look up to make those online. I'm not sure how you
+can programmatically place the tracer lines. Id expect you to be able to visually do that yourself". The owner then saw
+the first board: "Beautiful!".
+
+- **Placed by hand, kept in data.** Every part and every trace is in `data/ships/tern/power_board.json`
+  (`starcrew.power-board/1`): a part is its centre and size on the board, a trace its points from pad to pad. Nothing
+  is laid out by code; the mockup reads the file, and the engine's console will read the same file once the schematic is
+  approved. A run added to `power.json` with no trace on the board is reported in the console log.
+- **The look, from PCB practice** ([TI layout guidance](https://www.ti.com/document-viewer/lit/html/SLLA284G/GUID-70A502C2-0DE5-4A92-8C3A-BE16D8AB564C),
+  [Flux, routing techniques](https://www.flux.ai/p/blog/pcb-routing-techniques),
+  [Circuits DIY, routing tips](https://www.circuits-diy.com/beginners-guide-to-pcb-routing-tips-best-practices/),
+  [ALLPCB, routing strategies](https://www.allpcb.com/ar-SA/allelectrohub/mastering-pcb-routing-top-strategies-for-efficient-designs),
+  [All About Circuits forum, design practices](https://forum.allaboutcircuits.com/threads/design-practices-for-pcbs.129181/)):
+  a green solder-mask board a deck with mounting holes in its corners; traces only at 0, 45 and 90 degrees with every
+  corner cut at 45; power traces widest (a trace's width by its run's rating, 5 MW thin, 40 MW wide); a pad where a
+  trace meets a part; a via where a trace leaves its board; the parts as chips with their names in white silkscreen.
+- **Two layers.** A working run is copper on the top layer, yellow, with its flow moving along it as before (3a). A
+  spare, open, runs on the bottom layer: thin, blue, dashed, free to cross anything. Where two top-layer traces must
+  cross, the lighter one drops through two vias to the bottom layer and back, as a lighter trace is routed under a
+  heavier one.
+- **How it was routed.** The hub first: the reactor in the middle of deck B with the main switchboard's port section
+  above it, the starboard section below, the drive aft and the hangar panels forward, so its five feeds and the two
+  generators leave it on five sides and cross nothing; the main bus tie runs round the drive. Port panels on deck B's
+  top row, starboard on its bottom row. The traces between decks run straight across the gap, never along it: the A
+  deck trunks run round the board's edges (aft to the main switchboard, forward to the forward switchboard), and the
+  port feeders reach deck C through the gap between the turret rooms and the crew rooms. On deck C the forward
+  switchboard's sections sit side by side with the emergency bus and the battery under them, life support between the
+  bus and the C panel, and the C panel's rooms forward. Two crossings are left, each a hop: the port launch bay's feed
+  under the starboard hangar trunk, and the B spine's feed under the port forward feeder. A check while routing:
+  nothing crosses a part or a mounting hole, no two traces run closer than 9 points side by side.
+- **What stays the same.** Every tap and colour of 3a and 3b: tap a part's switch to switch its box, a trace to open or
+  close its run, a system's LED to swap its feed; the room lamps and the rooms overlay; the gap between two boards
+  counts its traces and the live ones.
 
 ### 4. What it does to the fight (2026-10-11, bots at Helm and Tactical, Engineering on automation, seeds 1-8)
 

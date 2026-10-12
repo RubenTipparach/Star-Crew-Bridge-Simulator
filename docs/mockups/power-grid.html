@@ -130,6 +130,11 @@
 {"schema":"starcrew.ship-damage/1","status":"Used by the drill (openspec/changes/ship-damage, sc-core::combat::damage): the hit, the march, the cascade, fires and the teams. The rest is damage-control's (2026-10-04), read by the systems mockup and the repair rules. Numbers are tuning proposals, not decisions.","ship":"tern","units":{"energy":"MJ (megajoules)","length":"m","area":"m^2","time":"s","integrity":"percent of a system's full health, 0 to 100","rate":"percent per second where the key says pct_per_s"},"hull":{"armour_mj":4.0,"section_mj":40.0,"faces":["dorsal","ventral","port","starboard","bow","stern"],"note":"A hull section is a span between two of the layout's hull sections times one of six faces (9 spans x 6 faces = 54). A fresh section absorbs up to armour_mj of each hit, scaled by its integrity; each hit takes min(E, armour_mj) / section_mj x 100 points of integrity from it."},"breach":{"m2_per_mj":0.02,"min_m2":0.002,"max_m2":2.0,"note":"A hit whose energy passes the armour opens a breach in the first compartment it enters, sized by the energy left: 1 MJ past the armour makes 0.02 m^2, 50 MJ makes 1 m^2."},"propagation":{"march_step_m":0.25,"march_max_m":30.0,"decay_m":10.0,"bulkhead_mj":1.5,"radius_m":1.5,"radius_per_sqrt_mj":0.3,"note":"Energy past the armour marches along the hit direction in steps of march_step_m. Each step deposits dE = E (1 - exp(-step / decay_m)) at its point; a target within r = radius_m + radius_per_sqrt_mj x sqrt(E) of that point takes points_per_mj x dE x (1 - d / r). Each bulkhead crossed costs bulkhead_mj."},"systems":{"points_per_mj":10.0,"nominal_from_pct":75.0,"disabled_below_pct":25.0,"note":"Integrity points taken are summed over the march steps (see propagation). Capability is 1 at or above nominal_from_pct, integrity / nominal_from_pct between the two thresholds, 0 below disabled_below_pct; 0 integrity is destroyed."},"nodes":{"destroyed_below":0.25,"note":"A switchboard section, panel or bus loses health as a system does (points / 100); below destroyed_below it carries nothing until rebuilt."},"coolant":{"leak_below_pct":75.0,"leak_kg_s_at_zero":20.0,"note":"reactor-cooling design 2: a coolant pipe segment or tank below leak_below_pct integrity leaks leak_kg_s_at_zero x (leak_below_pct - integrity) / leak_below_pct kg/s: a segment at 0% leaks 20 kg/s, the loop's 11.1 t in under 10 minutes; a tank leaks its own reserve. An isolated segment does not leak. The parts' capability follows systems (power.json coolant.segments, tanks and exchanger)."},"cascade":{"surge_share":0.6,"step_factor":0.5,"max_steps":4,"min_points":1.0,"note":"ship-damage 3 (the owner's): a hit that takes points from a system already below nominal sends surge_share of those points into its power node; from a node the surge goes to every other load on it and through each unsevered conduit to the node at its far end, times step_factor at each step. Every component it reaches takes its share once (a node as points / 100 of its health). The hit system's node always passes it on; any other component passes it on only if it was below nominal before the surge. It stops after max_steps or below min_points."},"conduits":{"sever_mj":1.0,"damage_mj":0.3,"damaged_capacity":0.5},"fire":{"chance_per_mj":0.1,"chance_max":0.6,"seed_kw_per_mj":100.0,"burn_pct_per_s":0.4,"burn_hull_mj_per_s":0.05,"spread_after_s":90.0,"put_out_s":20.0,"note":"Per compartment a hit deposits energy in: ignition chance min(chance_max, chance_per_mj x E) times the room's oxygen factor, decided by a seeded hash of (session seed, hit id, compartment id). The fire starts at fire.seed_kw (atmosphere.json) plus seed_kw_per_mj x E."},"crew":{"hp_per_mj":15.0,"share":0.3,"note":"A crew member near the path loses hp_per_mj x share x the energy deposited near them, with the systems falloff (100 hit points is full health). Without crew positions (the mockup), each crew member in the room takes the room total times the fraction of its floor within r of the path."},"repair":{"kit_pct_per_s":{"officer":1.8,"rating":0.6},"kit_locker":"damage_control","kits_in_locker":6,"parts_store":"cargo","parts_on_board":24,"parts":{"disabled_system":1,"destroyed_system":3,"conduit_splice":1,"node_rebuild":4},"disabled_to_pct":25.0,"destroyed_rebuild_s":180.0,"destroyed_rebuild_to_pct":25.0,"conduit_splice_s":30.0,"conduit_splice_capacity":0.5,"node_rebuild_s":120.0,"node_rebuild_to":0.5,"hull_section_pct_per_s_eva":0.5,"two_hands_factor":1.6,"fumble_share_pct":5.0},"patch":{"plate_m2":0.25,"plates_in_locker":12,"inside_s_per_plate":15.0,"inside_max_m2":1.0,"eva_s_per_m2":60.0,"eva_max_m2":4.0,"group_holes_by_hull_section":true,"note":"A crew member patches a breach from inside with plates (cabin pressure presses a plate onto the hole), up to inside_max_m2; a larger breach is closed from outside by a suited crew member through the airlock. Holes through one hull section into one compartment are patched together: one plate per plate_m2 of their total area."},"doors":{"jam_points":25.0,"repair_s":30.0,"note":"A portal within a hit's reach that takes jam_points (as a system would) jams where it is: it neither opens nor closes until a crew member with a kit frees it (repair_s), or a drop door is cranked by hand (shuttle-bay-and-fighters)."},"cook_off":{"compartment":"magazine","air_above_k":473.15,"hold_s":60.0,"hit_mj_within_m":[10.0,2.0],"warhead_mj":60.0,"next_check_s":30.0,"note":"A missile in the racks cooks off when the magazine's air has been above air_above_k for hold_s, or a hit deposits hit_mj_within_m[0] MJ within hit_mj_within_m[1] m of the racks; it is resolved as a hit of warhead_mj from inside at the racks, and the next missile checks again next_check_s later. Not in the mockup's library."},"remote_control":{"needs_computer_ratio":0.5,"note":"Breakers, dampers, doors and suppression are operated from the bridge and the damage control board only while the computer core has at least this supply ratio; otherwise only at the switchboards, the doors and the system itself."},"teams":{"count":2,"members":2,"home":"damage_control","walk_m_s":1.8,"run_m_s":4.0,"suited_m_s":1.5,"ladder_up_m_s":0.8,"ladder_down_m_s":1.0,"suit_up_s":20.0,"dispatch_delay_s":5.0,"path_factor":1.4,"enter_below_kpa_needs_suit":50.0,"refuse_fire_above_kw_without_suit":2000.0,"note":"NPC damage control teams are crew bodies (crew-on-deck): they walk the crew-portal graph, carry a kit, an extinguisher or plates, take the same harm as players, and can die. Their speeds (walk, run, suited, ladders up and down) and suit donning time are crew-on-deck's (design sections 3, 4 and 10), repeated here until data/crew.json exists and teams read it. Reconciled 2026-10-05: crew-on-deck owns this (was walk 1.6 m/s, ladders 0.8 m/s both ways, suit-up 30 s)."}}
 </script>
 <!-- INLINE data:tern/damage END -->
+<!-- INLINE data:tern/power_board BEGIN -->
+<script id="ship-data-power_board" type="application/json">
+{"schema":"starcrew.power-board/1","status":"Proposed (2026-10-11) by openspec/changes/power-routing design 3c: Engineering's 2D schematic drawn as a circuit board, every part and trace placed by hand. Read by docs/mockups/power-grid.html; the engine's console will read it once the schematic is approved.","ship":"tern","units":"layout points on the board; a part is [centre x, centre y, width, height]; a trace is its points from the pad on its first end (between[0], or the reactor or the battery for a generator or the battery's link) to the pad on its other, every segment at 0, 45 or 90 degrees","board":{"w":1640,"h":1120,"x":[120,1625],"chamfer":12},"layers":[{"deck":"A","y":[40,290]},{"deck":"B","y":[350,770]},{"deck":"C","y":[830,1110]}],"parts":{"bx_a_aft_passage":[410,170,96,36],"bx_pod_dorsal":[720,105,96,36],"bx_dorsal_turret":[720,170,96,36],"dp_a":[1000,170,112,44],"bx_ready_room":[1220,105,96,36],"bx_computer_core":[1220,235,96,36],"bx_bridge":[1400,170,96,36],"dp_drive":[275,560,112,44],"reactor":[410,560,76,76],"msb_p":[410,455,112,44],"msb_s":[410,665,112,44],"dp_hangar_p":[640,465,112,44],"dp_hangar_s":[640,655,112,44],"dp_port":[860,465,112,44],"dp_stbd":[860,655,112,44],"bx_pod_port":[830,395,96,36],"bx_pod_stbd":[830,725,96,36],"bx_quarters":[1080,465,96,36],"bx_mess":[1080,655,96,36],"dp_b_fwd":[1200,560,112,44],"bx_medbay":[1360,465,96,36],"bx_damage_control":[1360,655,96,36],"bx_torpedo_room":[1490,560,96,36],"bx_launch_bay_s":[610,895,96,36],"bx_launch_bay_p":[750,895,96,36],"fsb_s":[900,895,112,44],"fsb_p":[1050,895,112,44],"eb":[975,975,100,44],"battery":[975,1050,84,40],"dp_ls":[1120,975,112,44],"dp_c_fwd":[1260,895,112,44],"bx_shield_room":[1420,895,96,36],"bx_pod_ventral":[1290,1055,96,36],"bx_cargo":[1420,1055,96,36],"bx_magazine":[1550,975,96,36],"bx_airlock":[1550,1055,96,36]},"traces":{"r_dorsal_fwd":[[944,170],[768,170]],"r_dorsal_aft":[[672,170],[458,170]],"r_pod_dorsal":[[720,152],[720,123]],"r_hull_pod_dorsal_a_corridor":[[768,105],[965,105],[965,148]],"r_bridge_aft":[[1056,170],[1352,170]],"r_ready":[[1040,148],[1040,105],[1172,105]],"r_core":[[1040,192],[1040,235],[1172,235]],"r_wall_ready_room_bridge":[[1268,105],[1400,105],[1400,152]],"r_wall_bridge_computer_core":[[1400,188],[1400,235],[1268,235]],"r_aft_eng":[[410,188],[410,433]],"k_a_aft":[[995,148],[995,60],[155,60],[155,735],[410,735],[410,687]],"k_a_fwd":[[1015,192],[1015,265],[1590,265],[1590,845],[1080,845],[1080,873]],"r_ladder_ab":[[975,192],[975,405],[1200,405],[1200,538]],"rf_drive":[[372,560],[331,560]],"gen_p":[[410,522],[410,477]],"gen_s":[[410,598],[410,643]],"rf_hangar_p":[[437,533],[491,479],[584,479]],"rf_hangar_s":[[437,587],[491,641],[584,641]],"bt_main":[[354,445],[185,445],[185,675],[354,675]],"k_drive_p":[[354,465],[275,465],[275,538]],"k_drive_s":[[354,655],[275,655],[275,582]],"k_aft_p":[[466,455],[584,455]],"k_aft_s":[[466,665],[584,665]],"k_mid_p":[[696,465],[804,465]],"k_mid_s":[[696,655],[804,655]],"r_pod_port":[[830,443],[830,413]],"r_pod_stbd":[[830,677],[830,707]],"r_hull_pod_port_hangar":[[782,395],[660,395],[660,443]],"r_hull_pod_stbd_hangar":[[782,725],[660,725],[660,677]],"r_port_turret":[[880,487],[880,548],[1144,548]],"r_stbd_turret":[[880,633],[880,572],[1144,572]],"r_spine_hangar":[[1144,560],[620,560],[620,487]],"r_quarters":[[1170,538],[1170,465],[1128,465]],"r_mess":[[1170,582],[1170,655],[1128,655]],"r_medbay":[[1230,538],[1230,465],[1312,465]],"r_damage_control":[[1230,582],[1230,655],[1312,655]],"r_torpedo":[[1256,560],[1442,560]],"r_wall_quarters_medbay":[[1080,447],[1080,428],[1360,428],[1360,447]],"r_wall_mess_damage_control":[[1060,673],[1060,695],[1360,695],[1360,673]],"r_wall_medbay_torpedo_room":[[1408,465],[1490,465],[1490,542]],"r_wall_damage_control_torpedo_room":[[1408,655],[1490,655],[1490,578]],"k_fwd_p":[[916,477],[1000,477],[1000,873]],"k_fwd_s":[[900,677],[900,873]],"k_b_fwd":[[1200,582],[1200,745],[945,745],[945,873]],"r_bay_p":[[680,487],[680,515],[750,585],[750,877]],"r_bay_s":[[610,677],[610,877]],"r_ladder_bc":[[1256,575],[1290,575],[1290,873]],"r_hoist":[[1510,578],[1510,957]],"r_hangar_c":[[640,487],[640,530],[1270,530],[1270,873]],"r_wall_launch_bay_p_hangar":[[685,677],[685,905],[702,905]],"r_wall_launch_bay_s_hangar":[[600,487],[600,500],[545,555],[545,905],[562,905]],"r_deck_airlock_mess":[[1100,673],[1100,712],[1485,712],[1485,1015],[1580,1015],[1580,1037]],"bt_fwd":[[956,895],[994,895]],"eb_s":[[935,917],[935,953]],"eb_p":[[1015,917],[1015,953]],"battery_out":[[975,1030],[975,997]],"k_c_fwd_p":[[1106,895],[1204,895]],"k_c_fwd_s":[[844,905],[815,905],[815,1095],[1222,1095],[1222,917]],"k_ls_n":[[1085,917],[1085,953]],"k_ls_e":[[1025,975],[1064,975]],"r_shield":[[1316,885],[1372,885]],"r_pod_ventral":[[1265,917],[1265,1037]],"r_magazine":[[1316,907],[1340,907],[1368,935],[1550,935],[1550,957]],"r_cargo":[[1305,917],[1305,942],[1400,1037]],"r_airlock_inner":[[1468,1055],[1502,1055]],"r_life_support":[[1176,965],[1190,965],[1190,908],[1204,908]],"r_wall_shield_room_life_support":[[1150,997],[1150,1010],[1440,1010],[1440,913]],"r_deck_pod_ventral_shield_room":[[1325,1037],[1325,1022],[1460,1022],[1460,913]]}}
+</script>
+<!-- INLINE data:tern/power_board END -->
 <!-- INLINE shipkit BEGIN -->
 <script>
 /*
@@ -4927,7 +4932,7 @@
 <div class="legend" id="legend"></div>
 <div id="tip"></div>
 <div id="tripb"></div>
-<div id="viewsw"><button type="button" data-v="3d" data-tip="The ship in 3D">3D</button><button type="button" data-v="2d" data-tip="The simplified graph">2D</button></div>
+<div id="viewsw"><button type="button" data-v="3d" data-tip="The ship in 3D">3D</button><button type="button" data-v="2d" data-tip="The schematic as a circuit board, a board a deck">2D</button></div>
 <button id="collapse" type="button" data-tip="Collapse: back to the Engineering console's side panel"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M10 14l-7 7M14 10l7-7"/></svg>CONSOLE</button>
 <script type="module">
 import * as THREE from "three";
@@ -4935,10 +4940,10 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 const K = window.ShipKit, SS = window.ShipSystems;
 const L = K.layout();
-const PW = K.shipData("power"), AT = K.shipData("atmosphere"), DM = K.shipData("damage");
+const PW = K.shipData("power"), AT = K.shipData("atmosphere"), DM = K.shipData("damage"), BOARD = K.shipData("power_board");
 const title = K.titleBlock({
   title: "Engineering: power schematic",
-  subtitle: `${L.ship.name}: the expanded schematic of the Engineering console. 3D: the decks at their heights, a conduit box in every room, the runs between them and every load's feeder. 2D: the same grid as a simplified graph. Tap a box or a run to switch it; too many live runs trip the grid`,
+  subtitle: `${L.ship.name}: the expanded schematic of the Engineering console. 3D: the decks at their heights, a conduit box in every room, the runs between them and every load's feeder. 2D: the same grid as a circuit board, a board a deck, placed by hand. Tap a box or a run to switch it; too many live runs trip the grid`,
   change: "power-grid, power-routing",
 });
 const hud = K.budgetHud({ note: "the plan view; the diagram is console UI (immediate mode), not 3D" });
@@ -5616,313 +5621,247 @@ document.addEventListener("mousemove", (e) => {
   else if (TIP.style.display === "block") hideTip();
 });
 
-// =================================================================== DIAGRAM: the graph by deck (SVG)
-// The owner, 2026-10-11: "group 2d view by deck", "show how each deck is connected to each other". A band a deck, A
-// over B over C. In each band every switchboard, panel and box stands where its room is along the ship (aft left, bow
-// right) and across it (port up), pushed apart where they would overlap; the reactor and the battery where they are.
-// A run inside a deck stays in its band; a run between decks crosses the gap between their bands, and each gap counts
-// the runs that join its two decks and how many carry power. Not to scale: a graph to read; the 3D view is the ship.
-// Wheel or pinch to zoom, drag to pan, tap to switch.
+// =================================================================== 2D: the schematic as a circuit board (SVG)
+// The owner, 2026-10-11: "2d power grid should have that circuit board look", "I'd expect you to be able to visually
+// do that yourself". Every part and every trace is placed by hand in data/ships/tern/power_board.json: a board a deck
+// (A over B over C), traces at 0, 45 and 90 degrees with their corners cut at 45, pads where they meet a part. A
+// working run is copper carrying power (yellow, wider the more it is rated); a spare, open, runs on the bottom layer
+// (blue, thin). A trace leaving its deck goes through a via on each board's edge; where two live traces must cross, the
+// lighter one drops through two vias to the bottom layer and back (PCB practice: 45 degree bends, power traces
+// widest, vias only where a layer changes). Every part is a chip with an LED a system it feeds.
 const STAGE = document.getElementById("stage"), DIAG = document.getElementById("diagram");
-// Each deck is one row, its boxes in order along the ship (aft left, bow right), evenly spaced so nothing covers
-// anything. A run inside a deck is an arc over its row (a spare, open, an arc under it), so lines cross but never lie
-// on top of each other; a run between decks is a line from box to box across the gap, several between the same two
-// boxes side by side (the owner: "when multiple lines cross the decks dont hesitate to show multiple parallels").
-const CARD_H = 64, BAR_W = 11, BAR_GAP = 6, BAR_H = 22, CHIP_H = 42, CBAR_W = 8, CBAR_GAP = 4, CBAR_H = 15;
-/** The loads each card or chip carries: on its node, vital first (priority order), its room lights last. */
+const DW = BOARD.board.w, DH = BOARD.board.h;
+DIAG.style.width = DW + "px"; DIAG.style.height = DH + "px";
+const PCB = { mask: "#0c2219", maskEdge: "#2f5a45", silk: "#d6e2dc", silkDim: "#7f978c", copperOff: "#7a6747", bottom: "#4f8fb8", hole: "#05100b", body: "#11161a" };
+/** The loads each part carries: on its node, vital first (priority order), its room lights last. */
 const ON = {};
 for (const n of PW.nodes) ON[n.id] = LOADS.map((l, i) => i).filter((i) => LOADS[i].node === n.id).sort((a, b) => (LOADS[a].id.startsWith("lights_") - LOADS[b].id.startsWith("lights_")) || (LOADS[a].priority - LOADS[b].priority) || a - b);
-const ITEMS = [];   // { id, at, w, h, chip }
-for (const n of PW.nodes) {
-  if (n.kind === "box") ITEMS.push({ id: n.id, at: n.center_m, w: Math.max(30 + (SHORT[n.id] || n.id).length * 7.6, 30 + ON[n.id].length * (CBAR_W + CBAR_GAP)) + 22, h: CHIP_H, chip: true });
-  else ITEMS.push({ id: n.id, at: n.center_m, w: Math.max(n.id === "eb" ? 76 : 104, 22 + ON[n.id].length * (BAR_W + BAR_GAP)), h: CARD_H, chip: false });
-}
-ITEMS.push({ id: "reactor", at: sysPos(PW.reactor.system), w: 96, h: 96, chip: false });
-ITEMS.push({ id: "battery", at: sysPos(PW.battery.system), w: 92, h: 56, chip: false });
-const ROWS = DECKS.map((d, k) => ITEMS.filter((it) => deckOfY(it.at[1]) === k).sort((a, b) => a.at[2] - b.at[2] || b.at[0] - a.at[0] || (a.id < b.id ? -1 : 1)));
-const GAP_X = 26, LEFT = 128, ARC_UP = 170, ARC_DOWN = 120, ROW_H = 96, BAND_GAP = 70, TOP = 44;
-const BAND_H = ARC_UP + ROW_H + ARC_DOWN;
-const DW = Math.max(1600, ...ROWS.map((r) => LEFT + 24 + r.reduce((w, it) => w + it.w + GAP_X, 0)));
-const RIGHT = DW - 22;
-const DH = TOP + DECKS.length * BAND_H + (DECKS.length - 1) * BAND_GAP + 12;
-const bandTop = (k) => TOP + k * (BAND_H + BAND_GAP);
-const rowY = (k) => bandTop(k) + ARC_UP + ROW_H / 2;
-DIAG.style.width = DW + "px"; DIAG.style.height = DH + "px";
-const box = {};
-ROWS.forEach((row, k) => {
-  // Spread the row over the width: the gaps share what the boxes leave.
-  const used = row.reduce((w, it) => w + it.w, 0), gap = Math.max(GAP_X, (RIGHT - LEFT - 20 - used) / Math.max(1, row.length));
-  let x = LEFT + 10 + gap / 2;
-  for (const it of row) {
-    const cx = x + it.w / 2, cy = rowY(k);
-    box[it.id] = { k, cx, cy, w: it.w, h: it.h, chip: it.chip, x0: cx - it.w / 2, x1: cx + it.w / 2, y0: cy - it.h / 2, y1: cy + it.h / 2 };
-    x += it.w + gap;
-  }
-});
-const REACTOR = { x: box.reactor.cx, y: box.reactor.cy, r: 40 }, BATT = { x: box.battery.cx, y: box.battery.cy, w: 74, h: 40 };
-/** Each edge's two ends on the graph, its between[0] first (the sign of its flow). */
-const ENDS = {};
-for (const g of PW.generators) ENDS[g.id] = ["reactor", g.node];
-for (const t of PW.ties) ENDS[t.id] = [t.between[0], t.between[1]];
-ENDS.battery_out = ["battery", PW.battery.node];
-for (const k of PW.conduits) ENDS[k.id] = [k.between[0], k.between[1]];
-const crossDeck = (id) => ENDS[id] && box[ENDS[id][0]] && box[ENDS[id][1]] && box[ENDS[id][0]].k !== box[ENDS[id][1]].k;
-const isSpare = (id) => (PW.conduits.find((k) => k.id === id) || {}).factory_closed === false;
-// Where each edge leaves each box: its arcs over the top (or under the bottom for spares), its deck links out of the
-// side facing the other deck, spread along that side in the order of where they go, so no two start at one point.
-const ATTACH = {};
-{
-  const sides = {};   // "id|top" -> [{ edge, x of the other end }]
-  const side = (id, which, edge, ox) => (sides[id + "|" + which] = sides[id + "|" + which] || []).push({ edge, ox });
-  for (const id of EDGE_IDS) {
-    const e = ENDS[id];
-    if (!e || !box[e[0]] || !box[e[1]]) { console.warn("power-grid.html: no place on the graph for " + id); continue; }
-    const [A, B] = [box[e[0]], box[e[1]]];
-    if (A.k === B.k) { const w = isSpare(id) ? "bottom" : "top"; side(e[0], w, id, B.cx); side(e[1], w, id, A.cx); }
-    else { side(e[0], B.k > A.k ? "bottom" : "top", id, B.cx); side(e[1], A.k > B.k ? "bottom" : "top", id, A.cx); }
-  }
-  for (const [key, list] of Object.entries(sides)) {
-    const [id, which] = key.split("|"), b = box[id];
-    list.sort((p, q) => p.ox - q.ox || (p.edge < q.edge ? -1 : 1));
-    list.forEach((it, i) => {
-      const x = b.x0 + 8 + ((b.w - 16) * (i + 0.5)) / list.length;
-      ATTACH[it.edge + "|" + id] = [x, which === "top" ? b.y0 : b.y1];
-    });
-  }
-}
-/** An arc between two points of a row, over it (up) or under it, as a polyline. */
-function arc(p, q, up, h) {
-  const pts = [], n = 18;
-  for (let i = 0; i <= n; i++) {
-    const t = i / n, x = p[0] + (q[0] - p[0]) * t, y = p[1] + (q[1] - p[1]) * t;
-    pts.push([x, y + (up ? -1 : 1) * h * Math.sin(Math.PI * t)]);
-  }
-  return pts;
-}
-const ROUTE = {};
-for (const id of EDGE_IDS) {
-  const e = ENDS[id];
-  if (!e || !box[e[0]] || !box[e[1]]) continue;
-  const A = box[e[0]], B = box[e[1]], pa = ATTACH[id + "|" + e[0]], pb = ATTACH[id + "|" + e[1]];
-  if (A.k === B.k) {
-    const up = !isSpare(id), room = up ? ARC_UP - 14 : ARC_DOWN - 14;
-    // Higher for a longer span, so the arcs nest; each its own height by its length.
-    const h = clamp(18 + Math.abs(pb[0] - pa[0]) * 0.16, 18, room);
-    ROUTE[id] = arc(pa, pb, up, h);
-  } else {
-    // Between decks: straight down (or up) from the box a little, across the gap, into the other box.
-    const dir = B.k > A.k ? 1 : -1;
-    ROUTE[id] = [pa, [pa[0], pa[1] + dir * 14], [pb[0], pb[1] - dir * 14], pb];
-  }
-}
-/** The bands, a deck each, and between them how many runs join the two decks and how many carry power now. */
-function drawBands() {
-  let s = "";
-  DECKS.forEach((d, k) => {
-    const y0 = bandTop(k);
-    s += `<rect x="12" y="${y0}" width="${DW - 24}" height="${BAND_H}" rx="10" fill="#0a0f16" stroke="${C.line}"/>`;
-    s += txt(62, y0 + BAND_H / 2 + 8, 46, "#ffb84d", d.id, { a: "middle" }) + txt(62, y0 + BAND_H / 2 + 30, 11, "#a8946e", d.name.toUpperCase(), { a: "middle", w: 600, ls: 1 });
-  });
-  for (let k = 0; k + 1 < DECKS.length; k++) {
-    // Every run that crosses this gap: between these two decks, or two decks apart through it.
-    const links = EDGE_IDS.filter((id) => crossDeck(id) && Math.min(box[ENDS[id][0]].k, box[ENDS[id][1]].k) <= k && Math.max(box[ENDS[id][0]].k, box[ENDS[id][1]].k) > k);
-    const live = links.filter((id) => edgeNow(id).state === "live").length, y = bandTop(k) + BAND_H + BAND_GAP / 2;
-    s += `<g${tipA(`Deck ${DECKS[k].id} to deck ${DECKS[k + 1].id}: ${links.length} runs, ${live} carrying power`)}>`;
-    s += txt(62, y - 2, 14, live ? C.power : C.danger, `${DECKS[k].id} to ${DECKS[k + 1].id}`, { a: "middle" });
-    s += txt(62, y + 13, 11, C.dim, `${live} of ${links.length} live`, { a: "middle", w: 600 }) + "</g>";
-  }
-  return s;
-}
-/** Where a run crosses between decks: a riser mark on the gap, its colour the run's. */
-function drawRisers() {
-  let s = "";
-  for (const id of EDGE_IDS) {
-    if (!crossDeck(id) || !ROUTE[id]) continue;
-    const pts = ROUTE[id], p = pts[1], e = edgeNow(id);
-    const col = e.state === "severed" ? C.danger : e.state === "open" ? C.spare : e.state === "dead" ? C.faint : C.power;
-    s += `<g${tipA(`${e.name}: between decks, ${e.state}`)}><circle cx="${p[0]}" cy="${p[1]}" r="5" fill="${C.bg}" stroke="${col}" stroke-width="2"/></g>`;
-  }
-  return s;
-}
-const pathD = (pts) => "M" + pts.map((p) => p[0].toFixed(1) + " " + p[1].toFixed(1)).join("L");
-/** Where on a route a label or a switch goes: the middle of its longest run, or a distance from its start. */
-function along(pts, d) {
-  for (let i = 0; i + 1 < pts.length; i++) {
-    const a = pts[i], b = pts[i + 1], l = Math.hypot(b[0] - a[0], b[1] - a[1]);
-    if (d <= l) return [a[0] + ((b[0] - a[0]) * d) / l, a[1] + ((b[1] - a[1]) * d) / l, b[0] === a[0]];
-    d -= l;
-  }
-  const p = pts[pts.length - 1]; return [p[0], p[1], false];
-}
-function longest(pts) {
-  let best = 0, bl = -1, acc = 0, ad = 0;
-  for (let i = 0; i + 1 < pts.length; i++) { const l = Math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]); if (l > bl) { bl = l; best = i; ad = acc; } acc += l; }
-  return along(pts, ad + bl / 2);
-}
-const routeLen = (pts) => pts.slice(1).reduce((a, p, i) => a + Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]), 0);
-/** Where a run's switch sits: the trunks' at their fixed share of the way; a chip's feed beside the chip. */
-const SWITCH_AT = { gen_p: 0.22, gen_s: 0.22, rf_drive: 0.3, rf_hangar_p: 0.12, rf_hangar_s: 0.12, bt_main: 0.25, bt_fwd: 0.25, eb_p: 0.3, eb_s: 0.3, battery_out: 0.3 };
-let phase = {};
-const DEFS = `<defs><pattern id="hatchR" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2.5" height="6" fill="${C.danger}" opacity="0.75"/></pattern>` +
-  `<radialGradient id="redvig" cx="50%" cy="50%" r="75%"><stop offset="60%" stop-color="${C.alert}" stop-opacity="0"/><stop offset="100%" stop-color="${C.alert}" stop-opacity="0.22"/></radialGradient></defs>`;
-const txt = (x, y, s, col, str, o = {}) => `<text x="${x}" y="${y}" font-size="${s}" fill="${col}" text-anchor="${o.a || "start"}" font-weight="${o.w || 700}" letter-spacing="${o.ls == null ? 0.6 : o.ls}" font-family="Barlow Semi Condensed, Arial Narrow, sans-serif">${esc(str)}</text>`;
+const PART = {};
+for (const [id, [x, y, w, h]] of Object.entries(BOARD.parts)) PART[id] = { cx: x, cy: y, w, h, x0: x - w / 2, x1: x + w / 2, y0: y - h / 2, y1: y + h / 2 };
+const txt = (x, y, sz, col, str, o = {}) => `<text x="${x}" y="${y}" font-size="${sz}" fill="${col}" text-anchor="${o.a || "start"}" font-weight="${o.w || 700}" letter-spacing="${o.ls == null ? 0.6 : o.ls}" font-family="Barlow Semi Condensed, Arial Narrow, sans-serif">${esc(str)}</text>`;
 const tipA = (t) => ` data-tip="${esc(t)}"`;
 const actA = (a) => ` data-act="${a}"`;
-/** A switch on a run: filled closed, hollow and slashed open (blue for a spare left open, amber for a run opened). */
-function switchSq(x, y, closed, spare, tip, act) {
-  const col = closed ? C.power : spare ? C.spare : C.emergency;
-  return `<g${tipA(tip)}${act ? actA(act) : ""} class="tap"><rect x="${x - 11}" y="${y - 11}" width="22" height="22" fill="transparent"/><rect x="${x - 7}" y="${y - 7}" width="14" height="14" rx="2" fill="${closed ? C.power : C.bg}" stroke="${col}" stroke-width="2.2"/>` +
-    (closed ? "" : `<path d="M${x - 4.5} ${y + 4.5}L${x + 4.5} ${y - 4.5}" stroke="${col}" stroke-width="2.2"/>`) + `</g>`;
+const isSpare = (id) => (PW.conduits.find((k) => k.id === id) || {}).factory_closed === false;
+/** A trace's width: power traces widest, by the run's rating (a feeder of 5 MW thin, a 40 MW tie wide). */
+const traceW = (id) => { const e = edgeNow(id); return e.state === "open" ? 1.8 : 2.4 + 4.6 * clamp(e.rated / 40, 0, 1); };
+/** The polyline with every corner cut at 45 degrees (a 90 degree corner loses `c` each way; a 45 one is kept). */
+function chamfer(pts, c) {
+  const out = [pts[0]];
+  for (let i = 1; i + 1 < pts.length; i++) {
+    const [a, b, d] = [pts[i - 1], pts[i], pts[i + 1]];
+    const u = [b[0] - a[0], b[1] - a[1]], v = [d[0] - b[0], d[1] - b[1]];
+    const lu = Math.hypot(...u), lv = Math.hypot(...v), dot = (u[0] * v[0] + u[1] * v[1]) / (lu * lv || 1);
+    if (Math.abs(dot) > 0.5) { out.push(b); continue; }
+    const k = Math.min(c, lu / 2, lv / 2);
+    out.push([b[0] - (u[0] / lu) * k, b[1] - (u[1] / lu) * k], [b[0] + (v[0] / lv) * k, b[1] + (v[1] / lv) * k]);
+  }
+  out.push(pts[pts.length - 1]);
+  return out;
 }
-/** A box's own switch: filled on, hollow off, crossed destroyed. */
-function boxSq(id, x, y) {
-  const b = boxLook(id), v = b.v;
-  const fill = b.mode === 0 ? b.col : C.bg;
-  let s = `<g${tipA(`${nodeName(id)}: ${v.on ? "on" : "switched off"}, tap to switch it ${v.on ? "off" : "on"}`)}${actA("box:" + id)} class="tap"><rect x="${x - 12}" y="${y - 12}" width="24" height="24" fill="transparent"/>`;
-  s += `<rect x="${x - 7}" y="${y - 7}" width="14" height="14" rx="2" fill="${fill}" stroke="${b.col}" stroke-width="2.2"/>`;
-  if (b.mode === 3) s += `<path d="M${x - 5} ${y - 5}l10 10M${x + 5} ${y - 5}l-10 10" stroke="${C.danger}" stroke-width="2"/>`;
-  return s + "</g>";
+const pathD = (pts) => "M" + pts.map((p) => p[0].toFixed(1) + " " + p[1].toFixed(1)).join("L");
+const PATH = {};
+for (const [id, pts] of Object.entries(BOARD.traces)) PATH[id] = chamfer(pts, BOARD.board.chamfer);
+for (const id of EDGE_IDS) if (!PATH[id]) console.warn("power-grid.html: no trace on the board for " + id);
+/** Where two segments cross (not at an end), if they do. */
+function cross(p, q, r, s2) {
+  const d = (q[0] - p[0]) * (s2[1] - r[1]) - (q[1] - p[1]) * (s2[0] - r[0]);
+  if (Math.abs(d) < 1e-9) return null;
+  const t = ((r[0] - p[0]) * (s2[1] - r[1]) - (r[1] - p[1]) * (s2[0] - r[0])) / d, u = ((r[0] - p[0]) * (q[1] - p[1]) - (r[1] - p[1]) * (q[0] - p[0])) / d;
+  return t > 0.02 && t < 0.98 && u > 0.02 && u < 0.98 ? [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, t] : null;
 }
-function drawEdge(id, dt) {
-  const pts = ROUTE[id]; if (!pts) return "";
-  const e = edgeNow(id), share = e.rated > 0 ? clamp(Math.abs(e.mw) / e.rated, 0, 1) : 0;
-  const d = pathD(pts), w = 3 + 7 * share;
-  const col = e.state === "severed" ? C.danger : e.state === "open" ? C.spare : e.state === "dead" ? C.faint : flowCol(share);
-  // A dark casing first, so a later line crossing an earlier one reads as a crossing, never a junction.
-  let s = `<g${tipA(`${e.name}: ${f1(Math.abs(e.mw))} of ${f1(e.rated)} MW, ${e.state}${e.spare ? " (spare route)" : ""}`)}${e.run ? actA("run:" + id) : ""}>`;
-  s += `<path d="${d}" stroke="${C.bg}" stroke-width="${w + 6}" fill="none" stroke-linejoin="round"/>`;
-  s += `<path d="${d}" stroke="transparent" stroke-width="14" fill="none"/>`;
-  if (e.state === "dead") s += `<path d="${d}" stroke="${col}" stroke-width="2.5" fill="none" stroke-dasharray="5 5" stroke-linejoin="round"/>`;
-  else if (e.state === "open") s += `<path d="${d}" stroke="${col}" stroke-width="2.5" fill="none" stroke-dasharray="3 7" stroke-linejoin="round" opacity="0.85"/>`;
-  else {
-    s += `<path d="${d}" stroke="${col}" stroke-opacity="${e.state === "severed" ? 1 : 0.5}" stroke-width="${w}" fill="none" stroke-linejoin="round"/>`;
-    if (e.state === "live" && Math.abs(e.mw) > 1e-3) {
-      phase[id] = ((phase[id] || 0) + dt * (14 + 70 * share) * Math.sign(e.mw)) % 2000;
-      s += `<path d="${d}" stroke="${col}" stroke-width="${w}" fill="none" stroke-dasharray="14 8" stroke-dashoffset="${(-phase[id]).toFixed(1)}" stroke-linejoin="round"/>`;
+// The hops: every crossing of two top-layer traces (spares are on the bottom layer and cross freely); the one rated
+// lower hops, as a lighter trace would be routed under the heavier one.
+const HOPS = {};   // trace id -> [{ seg, t, at }]
+{
+  const top = EDGE_IDS.filter((id) => PATH[id] && !isSpare(id));
+  for (let i = 0; i < top.length; i++) for (let j = i + 1; j < top.length; j++) {
+    const A = PATH[top[i]], B = PATH[top[j]];
+    for (let a = 0; a + 1 < A.length; a++) for (let b = 0; b + 1 < B.length; b++) {
+      const x = cross(A[a], A[a + 1], B[b], B[b + 1]);
+      if (!x) continue;
+      const hop = edgeNow(top[i]).rated <= edgeNow(top[j]).rated ? top[i] : top[j];
+      const seg = hop === top[i] ? a : b, path = PATH[hop], p = path[seg], q = path[seg + 1];
+      const t = ((x[0] - p[0]) * (q[0] - p[0]) + (x[1] - p[1]) * (q[1] - p[1])) / ((q[0] - p[0]) ** 2 + (q[1] - p[1]) ** 2);
+      (HOPS[hop] = HOPS[hop] || []).push({ seg, t, at: [x[0], x[1]] });
     }
   }
-  s += "</g>";
-  if (e.state === "severed") {
-    const [x, y] = longest(pts);
-    s += `<g${tipA(`${e.name}: severed`)}><circle cx="${x}" cy="${y}" r="11" fill="${C.bg}" stroke="${C.danger}" stroke-width="2.5"/><path d="M${x - 6} ${y - 6}l12 12M${x + 6} ${y - 6}l-12 12" stroke="#fff" stroke-width="2.5"/></g>`;
-  } else if (e.state === "live" && Math.abs(e.mw) >= 0.3) {
-    const [x, y, vert] = longest(pts), str = f1(Math.abs(e.mw));
-    s += vert ? txt(x + 9, y + 5, 13, share > 0.02 ? C.power : C.dim, str) : txt(x, y - 8, 13, share > 0.02 ? C.power : C.dim, str, { a: "middle" });
-  }
-  const len = routeLen(pts), toChip = id.startsWith("r_") && (box[PW.conduits.find((k) => k.id === id).between[1]] || {}).chip;
-  const at = SWITCH_AT[id] != null ? len * SWITCH_AT[id] : id.startsWith("r_") && !e.spare ? (toChip ? len - 20 : len / 2) : id.startsWith("r_") ? len / 2 : 16;
-  const [bx, by] = along(pts, at);
-  s += switchSq(bx, by, e.closed, e.spare, `${e.name}: ${e.closed ? "closed" : "open"}${e.run ? `, tap to ${e.closed ? "open" : "close"} it` : ""}`, e.run ? "run:" + id : null);
-  return s;
 }
-function bars(id, x0, y0, bw, gap, bh) {
-  let s = "";
-  ON[id].forEach((i, n) => {
-    const l = LOADS[i], ln = loadNow(i), ls = loadState(ln);
-    const x = x0 + n * (bw + gap), y = y0;
-    const fill = ln.off ? 0 : ls.fill;
-    const swapped = onAlt(i), other = l.alt_node ? (swapped ? l.node : l.alt_node) : null, from = sim.nodeOf(i);
-    let g = `<g${tipA(`${l.name}: ${ln.off ? "off" : `${mw(ln.got)} of ${mw(ln.want)}`}${ln.dropped ? ", dropped" : ""}, priority ${ln.prio}, fed from ${SHORT[from] || from}${other ? `; tap to swap to ${SHORT[other] || other}` : ""}`)}${other ? actA("feed:" + l.id) + ' class="tap"' : ""}>`;
-    g += `<rect x="${x - 2}" y="${y - 2}" width="${bw + 4}" height="${bh + 10}" fill="transparent"/>`;
-    g += `<rect x="${x}" y="${y}" width="${bw}" height="${bh}" rx="2" fill="#16202c" stroke="${ls.col}" stroke-width="1.3"${ln.off ? ' stroke-dasharray="3 2"' : ""}/>`;
-    if (ls.mode === 1) g += `<rect x="${x}" y="${y}" width="${bw}" height="${bh * (1 - fill)}" fill="url(#hatchR)"/>`;
-    if (fill > 0) g += `<rect x="${x}" y="${y + bh * (1 - fill)}" width="${bw}" height="${bh * fill}" rx="2" fill="${ls.col}"/>`;
-    if (ln.dropped) g += `<path d="M${x + 1} ${y + 1}L${x + bw - 1} ${y + bh - 1}" stroke="${C.danger}" stroke-width="2"/>`;
-    // Swapped to its other panel: a blue bar along its top (the spare feed's colour).
-    if (swapped) g += `<rect x="${x - 1}" y="${y - 4}" width="${bw + 2}" height="3" rx="1" fill="${C.spare}"/>`;
-    // Priority: a ring for 0 (never shed), then three, two or one pip (the more pips, the later it is shed).
-    const py = y + bh + 5, cx = x + bw / 2;
-    if (ln.prio === 0) g += `<circle cx="${cx}" cy="${py}" r="2.6" fill="none" stroke="${C.dim}" stroke-width="1.3"/>`;
-    else for (let p = 0; p < 4 - ln.prio; p++) g += `<circle cx="${cx - (3 - ln.prio) * 1.8 + p * 3.6}" cy="${py}" r="1.3" fill="${C.dim}"/>`;
-    s += g + "</g>";
+/** A trace cut into its top-layer pieces and the bottom-layer spans of its hops: [{ pts, bottom }]. */
+function pieces(id) {
+  const path = PATH[id], hops = (HOPS[id] || []).slice().sort((p, q) => p.seg - q.seg || p.t - q.t), R = 11;
+  if (!hops.length) return [{ pts: path, bottom: false }];
+  const out = [];
+  let cur = [path[0]], h = 0;
+  for (let i = 0; i + 1 < path.length; i++) {
+    const p = path[i], q = path[i + 1], len = Math.hypot(q[0] - p[0], q[1] - p[1]);
+    while (h < hops.length && hops[h].seg === i) {
+      const t = hops[h].t, d = R / len, a = [p[0] + (q[0] - p[0]) * (t - d), p[1] + (q[1] - p[1]) * (t - d)], b = [p[0] + (q[0] - p[0]) * (t + d), p[1] + (q[1] - p[1]) * (t + d)];
+      cur.push(a); out.push({ pts: cur, bottom: false }); out.push({ pts: [a, b], bottom: true, vias: [a, b] });
+      cur = [b]; h++;
+    }
+    cur.push(q);
+  }
+  out.push({ pts: cur, bottom: false });
+  return out;
+}
+/** Where a trace crosses a board's top or bottom edge: a via there. */
+function edgeVias(id) {
+  const out = [];
+  for (const L of BOARD.layers) for (const y of L.y) {
+    const path = PATH[id];
+    for (let i = 0; i + 1 < path.length; i++) {
+      const p = path[i], q = path[i + 1];
+      if ((p[1] - y) * (q[1] - y) < 0) { const t = (y - p[1]) / (q[1] - p[1]); out.push([p[0] + (q[0] - p[0]) * t, y]); }
+    }
+  }
+  return out;
+}
+const via = (x, y, col) => `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5.2" fill="${col}"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.2" fill="${PCB.hole}"/>`;
+/** A pad where a trace meets a part: a small copper square at the end, turned with the trace. */
+function pad(p, q, col) {
+  const vx = q[0] - p[0], vy = q[1] - p[1], l = Math.hypot(vx, vy) || 1, ux = vx / l, uy = vy / l;
+  const c = [p[0] + ux * 3, p[1] + uy * 3], w = 6, hgt = 4;
+  const pts = [[c[0] - ux * w + uy * hgt, c[1] - uy * w - ux * hgt], [c[0] + ux * w + uy * hgt, c[1] + uy * w - ux * hgt], [c[0] + ux * w - uy * hgt, c[1] + uy * w + ux * hgt], [c[0] - ux * w - uy * hgt, c[1] - uy * w + ux * hgt]];
+  return `<path d="${pathD(pts)}Z" fill="${col}"/>`;
+}
+let phase = {};
+function drawTrace(id, dt) {
+  const path = PATH[id];
+  if (!path) return "";
+  const e = edgeNow(id), w = traceW(id);
+  const live = e.state === "live", open = e.state === "open";
+  const col = e.state === "severed" ? C.danger : open ? PCB.bottom : e.state === "dead" ? PCB.copperOff : C.power;
+  const tip = `${e.name}: ${f1(Math.abs(e.mw))} of ${f1(e.rated)} MW, ${e.state}${e.spare ? " (a spare route)" : ""}${e.run ? `; tap to ${e.closed ? "open" : "close"} it` : ""}`;
+  let s = `<g${tipA(tip)}${e.run ? actA("run:" + id) + ' class="tap"' : ""}>`;
+  s += `<path d="${pathD(path)}" stroke="transparent" stroke-width="14" fill="none"/>`;
+  if (open) s += `<path d="${pathD(path)}" stroke="${col}" stroke-width="${w}" fill="none" stroke-dasharray="6 5" stroke-linejoin="round" opacity="0.8"/>`;
+  else for (const pc of pieces(id)) {
+    if (pc.bottom) {
+      s += `<path d="${pathD(pc.pts)}" stroke="${col}" stroke-width="1.6" fill="none" stroke-dasharray="2 3" opacity="0.7"/>`;
+      for (const v of pc.vias) s += via(v[0], v[1], col);
+      continue;
+    }
+    s += `<path d="${pathD(pc.pts)}" stroke="${col}" stroke-width="${w}" fill="none" stroke-linejoin="round" stroke-linecap="round" opacity="${live ? 0.55 : 0.9}"/>`;
+    if (live && Math.abs(e.mw) > 1e-3) {
+      const share = e.rated > 0 ? clamp(Math.abs(e.mw) / e.rated, 0, 1) : 0;
+      phase[id] = ((phase[id] || 0) + dt * (12 + 60 * share) * Math.sign(e.mw)) % 2000;
+      s += `<path d="${pathD(pc.pts)}" stroke="${col}" stroke-width="${w}" fill="none" stroke-dasharray="12 7" stroke-dashoffset="${(-phase[id]).toFixed(1)}" stroke-linejoin="round"/>`;
+    }
+  }
+  for (const v of edgeVias(id)) s += via(v[0], v[1], col);
+  if (!open) s += pad(path[0], path[1], col) + pad(path[path.length - 1], path[path.length - 2], col);
+  if (e.state === "severed") {
+    const m = path[Math.floor(path.length / 2)];
+    s += `<circle cx="${m[0]}" cy="${m[1]}" r="9" fill="${PCB.mask}" stroke="${C.danger}" stroke-width="2"/><path d="M${m[0] - 5} ${m[1] - 5}l10 10M${m[0] + 5} ${m[1] - 5}l-10 10" stroke="#fff" stroke-width="2"/>`;
+  }
+  return s + "</g>";
+}
+/** A room's lamp on its part: the light the room has (the rooms overlay tints the part too). */
+function lamp(id, x, y) {
+  const lt = roomLight(NODE[id].compartment), col = LIGHT[lt];
+  return `<g${tipA(`${L.compartments.find((c) => c.id === NODE[id].compartment).name}: ${LIGHT_WORD[lt]}`)}><circle cx="${x}" cy="${y}" r="3.6" fill="${lt === "dark" ? PCB.hole : col}" stroke="${lt === "dark" ? C.faint : col}" stroke-width="1"/></g>`;
+}
+/** A part as a chip: its body, its name in silkscreen, its switch, its room's lamp, an LED a system it feeds (tap one
+ *  to swap its feed). */
+function drawPart(id) {
+  const p = PART[id], v = nodeState(id), look = boxLook(id), box = NODE[id].kind === "box";
+  let s = `<g${tipA(`${nodeName(id)}: ${v.on ? "on" : "switched off"}${v.on ? (v.live ? ", live" : ", nothing reaches it") : ""}`)}>`;
+  s += `<rect x="${p.x0}" y="${p.y0}" width="${p.w}" height="${p.h}" rx="${box ? 3 : 4}" fill="${roomsOn ? `${LIGHT[roomLight(NODE[id].compartment)]}2e` : PCB.body}" stroke="${v.on && v.live ? PCB.silk : look.col}" stroke-width="${v.state === "sound" && v.on ? 1.1 : 2}"/>`;
+  // Pin one's notch, and the pins along the long sides as a chip has.
+  s += `<circle cx="${p.x0 + 6}" cy="${p.y0 + 6}" r="1.8" fill="${PCB.silkDim}"/>`;
+  for (let x = p.x0 + 10; x < p.x1 - 6; x += 10) s += `<rect x="${x}" y="${p.y0 - 3}" width="4" height="3" fill="${PCB.silkDim}"/><rect x="${x}" y="${p.y1}" width="4" height="3" fill="${PCB.silkDim}"/>`;
+  s += txt(p.x0 + 24, p.y0 + 15, 12, v.on && v.live ? PCB.silk : PCB.silkDim, SHORT[id] || id) + "</g>";
+  s += boxSq(id, p.x0 + 12, p.y0 + 11) + lamp(id, p.x1 - 8, p.y0 + 9);
+  ON[id].forEach((i, k) => {
+    const l = LOADS[i], ln = loadNow(i), ls = loadState(ln), x = p.x0 + 12 + k * 10, y = p.y1 - 9;
+    const other = l.alt_node ? (onAlt(i) ? l.node : l.alt_node) : null, from = sim.nodeOf(i);
+    const fill = ln.off ? PCB.hole : ls.mode === 2 ? PCB.hole : ls.col;
+    s += `<g${tipA(`${l.name}: ${ln.off ? "off" : `${mw(ln.got)} of ${mw(ln.want)}`}${ln.dropped ? ", dropped" : ""}, fed from ${SHORT[from] || from}${other ? `; tap to swap to ${SHORT[other] || other}` : ""}`)}${other ? actA("feed:" + l.id) + ' class="tap"' : ""}>`;
+    s += `<rect x="${x - 5}" y="${y - 5}" width="10" height="10" fill="transparent"/><circle cx="${x}" cy="${y}" r="3.4" fill="${fill}" stroke="${ls.col}" stroke-width="1.2"/>`;
+    if (onAlt(i)) s += `<circle cx="${x}" cy="${y}" r="5.4" fill="none" stroke="${PCB.bottom}" stroke-width="1.2"/>`;
+    s += "</g>";
   });
   return s;
 }
-/** A room's lamp beside its panel on the 2D graph: the light the room has (the rooms overlay tints the panel too). */
-function lamp(id, x, y) {
-  const lt = roomLight(NODE[id].compartment), col = LIGHT[lt];
-  let s = `<g${tipA(`${L.compartments.find((c) => c.id === NODE[id].compartment).name}: ${LIGHT_WORD[lt]}`)}>`;
-  s += `<circle cx="${x}" cy="${y}" r="5" fill="${lt === "dark" ? C.bg : col}" stroke="${lt === "dark" ? C.faint : col}" stroke-width="1.5"/>`;
-  if (lt !== "dark") s += `<path d="M${x - 8} ${y}h-2M${x + 8} ${y}h2M${x} ${y - 8}v-2" stroke="${col}" stroke-width="1.5"/>`;
+/** A box's own switch: filled on, hollow off, crossed destroyed (the part's corner). */
+function boxSq(id, x, y) {
+  const b = boxLook(id), v = b.v;
+  let s = `<g${tipA(`${nodeName(id)}: ${v.on ? "on" : "switched off"}, tap to switch it ${v.on ? "off" : "on"}`)}${actA("box:" + id)} class="tap"><rect x="${x - 10}" y="${y - 10}" width="20" height="20" fill="transparent"/>`;
+  s += `<rect x="${x - 5}" y="${y - 5}" width="10" height="10" rx="1.5" fill="${b.mode === 0 ? b.col : PCB.hole}" stroke="${b.col}" stroke-width="1.6"/>`;
+  if (b.mode === 3) s += `<path d="M${x - 4} ${y - 4}l8 8M${x + 4} ${y - 4}l-8 8" stroke="${C.danger}" stroke-width="1.6"/>`;
   return s + "</g>";
 }
-const overlayFill = (id) => (roomsOn ? `${LIGHT[roomLight(NODE[id].compartment)]}33` : C.panel);
-function drawCard(id) {
-  const b = box[id], v = nodeState(id), look = boxLook(id);
-  const dead = v.state === "destroyed" || !v.live;
-  let s = `<g${tipA(`${nodeName(id)}: ${v.on ? "on" : "switched off"}, ${v.state}, ${v.live ? "live" : "dead"}`)}>`;
-  s += `<rect x="${b.x0}" y="${b.y0}" width="${b.w}" height="${CARD_H}" rx="6" fill="${C.panel}" stroke="${v.state === "sound" && v.on ? C.line2 : look.col}" stroke-width="${v.state === "sound" && v.on ? 1.2 : 2.4}"/>`;
-  if (roomsOn) s += `<rect x="${b.x0}" y="${b.y0}" width="${b.w}" height="${CARD_H}" rx="6" fill="${overlayFill(id)}"/>`;
-  // The bus: a bar along the top, live in the power colour.
-  s += `<rect x="${b.x0 + 6}" y="${b.y0 + 5}" width="${b.w - 52}" height="5" rx="2" fill="${dead ? C.faint : look.col}"/>`;
-  s += txt(b.x0 + 8, b.y0 + 25, 14, dead ? C.dim : C.text, SHORT[id] || id);
-  if (v.state === "destroyed") s += `<rect x="${b.x0}" y="${b.y0}" width="${b.w}" height="${CARD_H}" rx="6" fill="url(#hatchR)"/><path d="M${b.x0 + 8} ${b.y0 + 8}L${b.x1 - 8} ${b.y1 - 8}M${b.x1 - 8} ${b.y0 + 8}L${b.x0 + 8} ${b.y1 - 8}" stroke="${C.danger}" stroke-width="3"/>`;
-  s += "</g>";
-  s += boxSq(id, b.x1 - 13, b.y0 + 13) + lamp(id, b.x1 - 36, b.y0 + 14);
-  return s + bars(id, b.x0 + 10, b.y0 + 31, BAR_W, BAR_GAP, BAR_H);
-}
-function drawChip(id) {
-  const b = box[id], v = nodeState(id), look = boxLook(id);
-  const on = v.on && v.live;
-  let s = `<g${tipA(`${nodeName(id)}: ${v.on ? "on" : "switched off"}${v.on ? (v.live ? ", live" : ", nothing reaches it") : ""}`)}>`;
-  s += `<rect x="${b.x0}" y="${b.y0}" width="${b.w}" height="${CHIP_H}" rx="5" fill="${overlayFill(id)}" stroke="${v.on && v.state === "sound" ? (on ? C.line2 : C.faint) : look.col}" stroke-width="${v.on && v.state === "sound" ? 1.2 : 2}"/>`;
-  s += txt(b.x0 + 28, b.y0 + 15, 13, on ? C.text : C.dim, SHORT[id] || id);
-  s += "</g>";
-  s += boxSq(id, b.x0 + 13, b.cy) + lamp(id, b.x1 - 11, b.y0 + 11);
-  return s + bars(id, b.x0 + 28, b.y0 + 20, CBAR_W, CBAR_GAP, CBAR_H);
-}
 function drawReactor() {
-  const r = st.reactor, up = r.state === "running", { x, y } = REACTOR;
+  const r = st.reactor, up = r.state === "running", p = PART.reactor, x = p.cx, y = p.cy, R = p.w / 2;
   const col = up ? C.power : r.state === "igniting" ? C.emergency : C.danger, k = clamp(r.throttle / PW.reactor.throttle_max, 0, 1);
   const a = -220 + 260 * k, rad = (deg) => (deg * Math.PI) / 180;
   const arc = (a0, a1, rr) => { const p0 = [x + rr * Math.cos(rad(a0)), y + rr * Math.sin(rad(a0))], p1 = [x + rr * Math.cos(rad(a1)), y + rr * Math.sin(rad(a1))]; return `M${p0[0].toFixed(1)} ${p0[1].toFixed(1)}A${rr} ${rr} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${p1[0].toFixed(1)} ${p1[1].toFixed(1)}`; };
   let s = `<g${tipA(`Fusion reactor: ${r.state}, ${r.mode}, ${f1(r.P_e / 1e6)} MW electric`)}>`;
-  s += `<circle cx="${x}" cy="${y}" r="${REACTOR.r}" fill="${C.panel}" stroke="${col}" stroke-width="2.5"/>`;
-  s += `<path d="${arc(-220, 40, 36)}" stroke="#1c2734" stroke-width="8" fill="none" stroke-linecap="round"/>`;
-  if (up) s += `<path d="${arc(-220, a, 36)}" stroke="${col}" stroke-width="8" fill="none" stroke-linecap="round"/>`;
-  else s += `<circle cx="${x}" cy="${y}" r="${REACTOR.r - 3}" fill="url(#hatchR)"/>`;
-  s += txt(x, y + 6, 20, up ? C.text : col, up ? pct(r.throttle) : r.state === "igniting" ? "IGNITE" : "SCRAM", { a: "middle" });
-  s += txt(x, y + 26, 12, C.dim, up ? f1(r.P_e / 1e6) + " MW" : "", { a: "middle", w: 600 });
+  s += `<circle cx="${x}" cy="${y}" r="${R}" fill="${PCB.body}" stroke="${col}" stroke-width="2.4"/>`;
+  s += `<path d="${arc(-220, 40, R - 9)}" stroke="#1c2734" stroke-width="7" fill="none" stroke-linecap="round"/>`;
+  if (up) s += `<path d="${arc(-220, a, R - 9)}" stroke="${col}" stroke-width="7" fill="none" stroke-linecap="round"/>`;
+  s += txt(x, y + 5, 15, up ? C.text : col, up ? pct(r.throttle) : r.state === "igniting" ? "IGNITE" : "SCRAM", { a: "middle" });
+  // Its name in the gauge's open bottom: every side of the part carries a trace.
+  s += txt(x, y + 26, 8.5, PCB.silk, "REACTOR", { a: "middle", ls: 1 });
   return s + "</g>";
 }
 function drawBattery() {
-  const b = st.battery, soc = b.soc_mj / PW.battery.capacity_mj, res = PW.battery.restart_reserve_mj / PW.battery.capacity_mj;
-  const { x, y, w, h } = BATT, x0 = x - w / 2, y0 = y - h / 2, out = b.out_mw > 0.05, col = out ? C.emergency : C.power;
+  const b = st.battery, p = PART.battery, soc = b.soc_mj / PW.battery.capacity_mj, out = b.out_mw > 0.05, col = out ? C.emergency : C.power;
   let s = `<g${tipA(`Battery: ${b.soc_mj.toFixed(0)} of ${PW.battery.capacity_mj} MJ, ${out ? `giving ${f1(b.out_mw)} MW` : b.in_mw > 0.05 ? `charging ${f1(b.in_mw)} MW` : "idle"}`)}>`;
-  s += `<rect x="${x0}" y="${y0}" width="${w}" height="${h}" rx="5" fill="${C.panel}" stroke="${col}" stroke-width="2.4"/><rect x="${x0 + w}" y="${y - 8}" width="5" height="16" rx="1.5" fill="${col}"/>`;
-  s += `<rect x="${x0 + 4}" y="${y0 + 4}" width="${(w - 8) * soc}" height="${h - 8}" rx="2" fill="${col}" opacity="0.85"/>`;
-  s += `<path d="M${x0 + 4 + (w - 8) * res} ${y0 + 1}V${y0 + h - 1}" stroke="${C.danger}" stroke-width="2" stroke-dasharray="3 2"/>`;
-  s += txt(x, y0 - 8, 13, C.text, pct(soc), { a: "middle" });
+  s += `<rect x="${p.x0}" y="${p.y0}" width="${p.w}" height="${p.h}" rx="4" fill="${PCB.body}" stroke="${col}" stroke-width="2"/>`;
+  for (let i = 0; i < 5; i++) { const cx = p.x0 + 8 + i * ((p.w - 16) / 5); s += `<rect x="${cx}" y="${p.y0 + 8}" width="${(p.w - 16) / 5 - 3}" height="${p.h - 16}" rx="1.5" fill="${i / 5 < soc ? col : PCB.hole}"/>`; }
+  s += txt(p.cx, p.y1 + 13, 11, PCB.silk, `BATTERY ${pct(soc)}`, { a: "middle", ls: 1.2 });
   return s + "</g>";
+}
+/** The boards, a deck each: the mask, mounting holes, the deck in silkscreen, and between two boards how many traces
+ *  join them and how many carry power. */
+function drawBoards() {
+  let s = "";
+  const [bx0, bx1] = BOARD.board.x;
+  BOARD.layers.forEach((Ly) => {
+    const [y0, y1] = Ly.y, d = DECKS.find((x) => x.id === Ly.deck);
+    s += `<rect x="${bx0}" y="${y0}" width="${bx1 - bx0}" height="${y1 - y0}" rx="14" fill="${PCB.mask}" stroke="${PCB.maskEdge}" stroke-width="2"/>`;
+    for (const [hx, hy] of [[bx0 + 14, y0 + 14], [bx1 - 14, y0 + 14], [bx0 + 14, y1 - 14], [bx1 - 14, y1 - 14]]) s += `<circle cx="${hx}" cy="${hy}" r="6" fill="${PCB.hole}" stroke="${PCB.silkDim}" stroke-width="1.5"/>`;
+    s += txt(62, (y0 + y1) / 2 + 6, 44, "#ffb84d", Ly.deck, { a: "middle" }) + txt(62, (y0 + y1) / 2 + 26, 10, "#a8946e", (d ? d.name : "").toUpperCase(), { a: "middle", w: 600, ls: 1 });
+  });
+  for (let k = 0; k + 1 < BOARD.layers.length; k++) {
+    const yA = BOARD.layers[k].y[1], yB = BOARD.layers[k + 1].y[0], mid = (yA + yB) / 2;
+    const links = EDGE_IDS.filter((id) => PATH[id] && PATH[id].some((p, i) => i + 1 < PATH[id].length && (p[1] - mid) * (PATH[id][i + 1][1] - mid) < 0));
+    const live = links.filter((id) => edgeNow(id).state === "live").length;
+    s += `<g${tipA(`Deck ${BOARD.layers[k].deck} to deck ${BOARD.layers[k + 1].deck}: ${links.length} traces, ${live} carrying power`)}>`;
+    s += txt(62, mid + 1, 13, live ? C.power : C.danger, `${BOARD.layers[k].deck} to ${BOARD.layers[k + 1].deck}`, { a: "middle" }) + txt(62, mid + 14, 10, C.dim, `${live} of ${links.length} live`, { a: "middle", w: 600 }) + "</g>";
+  }
+  return s;
 }
 /** The strip along the top: power delivered from the reactor and the battery against what the loads want. */
 function drawSupply() {
   let want = 0, got = 0;
   for (let i = 0; i < LOADS.length; i++) { want += st.want[i]; got += st.alloc[i]; }
   const rated = PW.reactor.thermal_rated_mw * PW.reactor.conversion_efficiency, max = Math.max(want, rated) * 1.05;
-  const x0 = 400, x1 = 1000, y = 6, k = (v) => x0 + ((x1 - x0) * v) / max;
+  const x0 = 520, x1 = 1120, y = 10, k = (v) => x0 + ((x1 - x0) * v) / max;
   const rx = Math.min(got, st.rxOut || 0);
   let s = `<g${tipA(`Delivered ${f1(got)} of ${f1(want)} MW wanted; the reactor gives at most ${f1(rated)} MW`)}>`;
-  s += `<rect x="${x0}" y="${y}" width="${x1 - x0}" height="18" rx="4" fill="#16202c"/>`;
-  s += `<rect x="${x0}" y="${y}" width="${k(rx) - x0}" height="18" rx="4" fill="${C.power}"/>`;
-  if (got > rx + 0.05) s += `<rect x="${k(rx)}" y="${y}" width="${k(got) - k(rx)}" height="18" fill="${C.emergency}"/>`;
-  if (want > got + 0.05) s += `<rect x="${k(got)}" y="${y}" width="${k(want) - k(got)}" height="18" fill="url(#hatchR)"/>`;
-  s += `<path d="M${k(rated)} ${y - 3}V${y + 21}" stroke="${C.text}" stroke-width="2"/>`;
-  s += txt(x0 - 10, y + 14, 15, C.text, `${f1(got)}`, { a: "end" }) + txt(x1 + 10, y + 14, 15, want > got + 0.05 ? C.danger : C.dim, `of ${f1(want)} MW`);
+  s += `<rect x="${x0}" y="${y}" width="${x1 - x0}" height="16" rx="4" fill="#16202c"/>`;
+  s += `<rect x="${x0}" y="${y}" width="${k(rx) - x0}" height="16" rx="4" fill="${C.power}"/>`;
+  if (got > rx + 0.05) s += `<rect x="${k(rx)}" y="${y}" width="${k(got) - k(rx)}" height="16" fill="${C.emergency}"/>`;
+  if (want > got + 0.05) s += `<rect x="${k(got)}" y="${y}" width="${k(want) - k(got)}" height="16" fill="url(#hatchR)"/>`;
+  s += `<path d="M${k(rated)} ${y - 3}V${y + 19}" stroke="${C.text}" stroke-width="2"/>`;
+  s += txt(x0 - 10, y + 13, 14, C.text, `${f1(got)}`, { a: "end" }) + txt(x1 + 10, y + 13, 14, want > got + 0.05 ? C.danger : C.dim, `of ${f1(want)} MW`);
   return s + "</g>";
 }
+const DEFS = `<defs><pattern id="hatchR" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2.5" height="6" fill="${C.danger}" opacity="0.75"/></pattern>` +
+  `<pattern id="pcbgrid" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r="0.9" fill="#1d3a2e"/></pattern>` +
+  `<radialGradient id="redvig" cx="50%" cy="50%" r="75%"><stop offset="60%" stop-color="${C.alert}" stop-opacity="0"/><stop offset="100%" stop-color="${C.alert}" stop-opacity="0.22"/></radialGradient></defs>`;
 function drawDiagram(dt) {
   let s = `<svg width="${DW}" height="${DH}" viewBox="0 0 ${DW} ${DH}">${DEFS}<rect width="${DW}" height="${DH}" fill="${C.bg}"/>`;
-  if (st.alert === "red_alert") s += `<rect width="${DW}" height="${DH}" fill="url(#redvig)"/><rect x="1" y="1" width="${DW - 2}" height="${DH - 2}" fill="none" stroke="${C.alert}" stroke-width="2" opacity="0.6"/>`;
-  s += drawSupply();
-  // Spares first (under), then the trunks, then the rest, so the live lines cross over the open ones.
-  s += drawBands();
-  const order = [...SPARES, ...EDGE_IDS.filter((x) => !SPARES.includes(x))];
-  for (const id of order) s += drawEdge(id, dt);
-  s += drawRisers();
-  for (const n of PW.nodes) s += n.kind === "box" ? drawChip(n.id) : drawCard(n.id);
+  if (st.alert === "red_alert") s += `<rect width="${DW}" height="${DH}" fill="url(#redvig)"/>`;
+  s += drawSupply() + drawBoards();
+  for (const Ly of BOARD.layers) s += `<rect x="${BOARD.board.x[0]}" y="${Ly.y[0]}" width="${BOARD.board.x[1] - BOARD.board.x[0]}" height="${Ly.y[1] - Ly.y[0]}" rx="14" fill="url(#pcbgrid)"/>`;
+  // The bottom layer first (the spares), then the copper on top, the heavier last so it lies over the lighter.
+  const order = EDGE_IDS.filter((id) => PATH[id]).sort((a, b) => (isSpare(b) - isSpare(a)) || (edgeNow(a).rated - edgeNow(b).rated));
+  for (const id of order) s += drawTrace(id, dt);
+  for (const n of PW.nodes) s += drawPart(n.id);
   s += drawReactor() + drawBattery();
-  s += txt(REACTOR.x, REACTOR.y + REACTOR.r + 16, 12, C.dim, "REACTOR", { a: "middle" }) + txt(BATT.x, BATT.y + BATT.h / 2 + 16, 12, C.dim, "BATTERY", { a: "middle" });
   DIAG.innerHTML = s + "</svg>";
 }
 // The diagram's view: fitted to the stage, then zoomed (wheel, pinch) and panned (drag) on top of the fit.
