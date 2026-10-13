@@ -8,6 +8,8 @@
 //! `sc-tools walk-report [ship]` measures the walk world's heap and a body's step time (see `walk_report`).
 //! `sc-tools console-model [ship]` writes the ship as the consoles draw it in 3D from its low-poly exterior model
 //! (see `console_model`).
+//! `sc-tools safety-points [ship]` places the ship's extinguisher brackets from its layout and compiled deck into
+//! `data/ships/<ship>/kit.json` (see `safety_points`).
 
 mod alloc;
 mod console_model;
@@ -15,6 +17,7 @@ mod deckc;
 mod dock;
 mod figure;
 mod glb;
+mod safety_points;
 mod walk_report;
 
 /// Every allocation is counted, for `walk-report`'s heap figures.
@@ -126,6 +129,18 @@ fn main() -> ExitCode {
                 }
             }
         }
+        Some("safety-points") => {
+            match safety_points::run(Path::new("."), args.get(1).map(String::as_str).unwrap_or("tern")) {
+                Ok(s) => {
+                    println!("safety-points: {s}");
+                    ExitCode::SUCCESS
+                }
+                Err(e) => {
+                    eprintln!("safety-points: {e}");
+                    ExitCode::FAILURE
+                }
+            }
+        }
         Some("walk-report") => {
             match walk_report::run(Path::new("."), args.get(1).map(String::as_str).unwrap_or("tern")) {
                 Ok(s) => {
@@ -140,7 +155,7 @@ fn main() -> ExitCode {
         }
         _ => {
             eprintln!(
-                "usage: sc-tools check-data [repository root] | sc-tools deckc [ship] | sc-tools names [count] [seed] | sc-tools walk-report [ship] | sc-tools console-model [ship]"
+                "usage: sc-tools check-data [repository root] | sc-tools deckc [ship] | sc-tools names [count] [seed] | sc-tools walk-report [ship] | sc-tools console-model [ship] | sc-tools safety-points [ship]"
             );
             ExitCode::from(2)
         }

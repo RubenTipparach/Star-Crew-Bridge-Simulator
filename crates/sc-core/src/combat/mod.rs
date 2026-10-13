@@ -1505,18 +1505,29 @@ impl Drill {
         Ok(())
     }
 
-    /// A player takes an extinguisher at the damage-control locker (all-hands 4), standing within a seat's reach of it.
+    /// A player takes an extinguisher (all-hands 4, safety-points 5a), standing within a seat's reach of the
+    /// damage-control locker, which never empties, or of a full bracket, which is empty for `fire.bracket_restock_s`
+    /// after. An empty bracket alone in reach gives nothing.
     pub fn take_extinguisher(&mut self, slot: u8) -> Result<(), Refusal> {
         let body = self.bodies.iter().find(|b| b.slot == slot).ok_or(Refusal::NotYourStation)?;
         if !body.free() {
             return Err(Refusal::Walking);
         }
         let (p, reach) = (body.pos, self.data.stations.seats.reach_m);
-        let near = |l: &DVec3| {
-            (l.x - f64::from(p[0])).hypot(l.z - f64::from(p[2])) <= reach && (l.y - f64::from(p[1])).abs() < 1.5
-        };
+        let dist = |l: &DVec3| (l.x - f64::from(p[0])).hypot(l.z - f64::from(p[2]));
+        let near = |l: &DVec3| dist(l) <= reach && (l.y - f64::from(p[1])).abs() < 1.5;
         if !self.data.tern_layout.lockers.iter().any(near) {
-            return Err(Refusal::TooFar);
+            let layout = &self.data.tern_layout;
+            let in_reach: Vec<usize> = (0..layout.brackets.len()).filter(|k| near(&layout.brackets[*k].wall)).collect();
+            if in_reach.is_empty() {
+                return Err(Refusal::TooFar);
+            }
+            let full = in_reach
+                .into_iter()
+                .filter(|k| self.damage[0].bracket_full(*k))
+                .min_by(|a, b| dist(&layout.brackets[*a].wall).total_cmp(&dist(&layout.brackets[*b].wall)))
+                .ok_or(Refusal::NoSuch)?;
+            self.damage[0].brackets[full] = self.data.damage.fire.bracket_restock_s;
         }
         let agent_s = self.data.damage.fire.extinguisher_s;
         match self.kits.iter_mut().find(|k| k.slot == slot) {
@@ -3938,7 +3949,7 @@ mod tests {
         walk_until(&mut d, |d| d.operator(Station::Tactical) == Operator::Player(a));
     }
 
-    /// All hands (all-hands 4): a player takes an extinguisher at the damage-control locker, from nowhere else, and
+    /// All hands (all-hands 4): a player takes an extinguisher at the damage-control locker, which never empties, and
     /// sprays a fire in its room out; alone it takes three extinguishers (40 hand-seconds at 15 s of agent each).
     #[test]
     fn a_player_takes_extinguishers_at_the_locker_and_sprays_a_fire_out() {
@@ -3968,6 +3979,39 @@ mod tests {
         assert!(!d.damage[0].fires.iter().any(|f| f.room == room), "out within two minutes ({t:.1} s)");
         assert!((t - 40.0).abs() < 0.5, "one player puts a fire out in 40 s of spraying: {t:.1} s");
         assert_eq!(taken, 3, "15 s of agent an extinguisher");
+    }
+
+    /// Safety points (safety-points 3a and 5a; the owner, 2026-10-12: "there should be an extinguisher in every room"):
+    /// a player takes an extinguisher from a full bracket they walked to; the bracket is then empty, nothing more comes
+    /// from it, and it is full again 15 s later.
+    #[test]
+    fn a_player_takes_an_extinguisher_from_a_bracket_and_it_is_back_15_s_later() {
+        let mut d = on_foot();
+        let a = d.join("Ens. Holt", false).expect("joins");
+        let l = &d.data.tern_layout;
+        assert!(l.brackets.len() >= l.rooms.len() / 2, "brackets round the ship: {}", l.brackets.len());
+        // A bracket with no other, and no locker, within 3 m.
+        let lone = |k: usize| {
+            let w = l.brackets[k].wall;
+            l.brackets.iter().enumerate().all(|(j, o)| j == k || (o.wall - w).length() > 3.0)
+                && l.lockers.iter().all(|o| (*o - w).length() > 3.0)
+        };
+        let k = (0..l.brackets.len()).find(|k| lone(*k)).expect("a lone bracket");
+        let at = l.brackets[k].wall + l.brackets[k].into * 0.6;
+        let restock = d.data.damage.fire.bracket_restock_s;
+        walk_body(&mut d, a, [at.x as f32, at.y as f32, at.z as f32]);
+        d.take_extinguisher(a).expect("at a full bracket");
+        assert!(d.kits.iter().any(|kit| kit.slot == a && kit.agent_s > 0.0), "in hand");
+        assert!(!d.damage[0].bracket_full(k), "the bracket is empty");
+        assert_eq!(d.take_extinguisher(a), Err(Refusal::NoSuch), "nothing more from an empty bracket");
+        let mut t = 0.0;
+        while !d.damage[0].bracket_full(k) {
+            d.damage_tick();
+            t += DT;
+            assert!(t < 60.0, "never filled");
+        }
+        assert!((t - restock).abs() <= 2.0 * DT, "full again {restock} s after: {t:.2} s");
+        d.take_extinguisher(a).expect("full again");
     }
 
     /// Repairs on deck (all-hands 5): a damaged machine is repaired by a player who walked to it, round by round,

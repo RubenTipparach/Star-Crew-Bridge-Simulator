@@ -56,7 +56,23 @@ pub struct BridgeView {
     pub triangles: usize,
     /// The eye's vertical field of view, degrees (Options, game-menu 3).
     pub fov_deg: f32,
+    /// The extinguishers' brackets round the ship (safety-points 5a), in groups about an origin each (the vertex
+    /// format's reach): the brackets' fixed parts, their extinguishers, and which brackets (by the layout's index) a
+    /// group holds, in its order.
+    points: Vec<PointGroup>,
 }
+
+/// A group of safety points drawn about one origin.
+struct PointGroup {
+    origin: [f64; 3],
+    fixed: Mesh,
+    hung: Mesh,
+    brackets: Vec<usize>,
+}
+
+/// Safety points within this distance along the keel of a group's origin share its meshes, metres (inside the vertex
+/// format's 32 m).
+const POINT_GROUP_M: f64 = 25.0;
 
 impl BridgeView {
     /// Load the decks' rooms, the figures and the walk's collision from the compiled deck at `path`.
@@ -106,7 +122,47 @@ impl BridgeView {
         let fov_deg = crate::options::FOV_DEG[2] as f32;
         let panel_glow = t.panel_glow[0];
         let hull = crate::hull::HullView::load(r, &d);
-        Ok(Self { rooms, world, views, figures, tex, panel_first: t.panel_first, panel_glow, hull, triangles, fov_deg })
+        Ok(Self {
+            rooms,
+            world,
+            views,
+            figures,
+            tex,
+            panel_first: t.panel_first,
+            panel_glow,
+            hull,
+            triangles,
+            fov_deg,
+            points: Vec::new(),
+        })
+    }
+
+    /// The extinguishers' brackets to draw (the layout's, `ShipLayout::brackets`): grouped along the keel, each group
+    /// two meshes. Returns the triangles they add.
+    pub fn set_brackets(&mut self, r: &Renderer, brackets: &[sc_core::combat::damage::Bracket]) -> usize {
+        self.points.clear();
+        // Aft to fore: each group takes the brackets within twice POINT_GROUP_M of its aftmost, about their middle.
+        let mut left: Vec<usize> = (0..brackets.len()).collect();
+        left.sort_by(|a, b| brackets[*a].wall.z.total_cmp(&brackets[*b].wall.z).then(a.cmp(b)));
+        let mut triangles = 0;
+        while let Some(&k0) = left.first() {
+            let z0 = brackets[k0].wall.z;
+            let (mine, rest): (Vec<usize>, Vec<usize>) =
+                left.iter().partition(|k| brackets[**k].wall.z - z0 <= POINT_GROUP_M * 2.0);
+            left = rest;
+            let zs = mine.iter().map(|k| brackets[*k].wall.z);
+            let mid = (zs.clone().fold(f64::MAX, f64::min) + zs.fold(f64::MIN, f64::max)) / 2.0;
+            let origin = [0.0, 0.0, mid];
+            let pts: Vec<([f32; 3], [f32; 3])> = mine
+                .iter()
+                .map(|k| (brackets[*k].wall.as_vec3().to_array(), brackets[*k].into.as_vec3().to_array()))
+                .collect();
+            let (fixed, hung) = crate::ships3d::safety_points(&pts, origin.map(|x| x as f32));
+            triangles += fixed.triangles() + hung.triangles();
+            let mesh = |m: &crate::ships3d::MeshBuilder| r.make_mesh(&m.vertices, Indices::U16(&m.indices));
+            self.points.push(PointGroup { origin, fixed: mesh(&fixed), hung: mesh(&hung), brackets: mine });
+        }
+        triangles
     }
 
     /// Whether a person whose feet are at `to` is in sight from the eye at `eye` (ship frame, metres): a ray at chest
@@ -190,34 +246,41 @@ impl BridgeView {
             let turn = Mat4::from_rotation_y(b.yaw);
             r.draw_deck_probe(t, mesh, proj * view * Mat4::from_translation(rel) * turn, turn, &cube, w);
         }
-        // Fires on their rooms' floors, flickering (all-hands 4).
-        for (k, f) in inside.fires.iter().enumerate() {
-            let rel = Vec3::new(
-                (f64::from(f[0]) - eye[0]) as f32,
-                (f64::from(f[1]) - eye[1]) as f32,
-                (f64::from(f[2]) - eye[2]) as f32,
-            );
-            let flick = 0.8 + 0.25 * (inside.time_s * 9.0 + k as f64 * 1.7).sin() as f32;
-            for (dx, dz, s) in [(0.0f32, 0.0f32, 1.3f32), (0.9, 0.5, 0.9), (-0.8, -0.6, 1.0)] {
-                let model =
-                    Mat4::from_translation(rel + Vec3::new(dx, 0.0, dz)) * Mat4::from_scale(Vec3::new(s, s * flick, s));
-                r.draw_deck(t, inside.flame, DeckProgram::Flat, &flat_params(proj * view * model), None);
+        // The extinguishers' brackets round the ship, and the extinguishers in the full ones (safety-points 5a): a
+        // group's fixed parts in one draw, its extinguishers in runs of full brackets.
+        let per = crate::ships3d::extinguisher().indices.len();
+        for g in &self.points {
+            let rel =
+                Vec3::new((g.origin[0] - eye[0]) as f32, (g.origin[1] - eye[1]) as f32, (g.origin[2] - eye[2]) as f32);
+            let p = flat_params(proj * view * Mat4::from_translation(rel));
+            r.draw_deck(t, &g.fixed, DeckProgram::Flat, &p, None);
+            // While a fire burns aboard the extinguishers breathe toward their yellow (their third colour set).
+            let k = inside.fx.highlight(inside.time_s);
+            let p = DeckParams { state_weights: [1.0 - k, 0.0, k], ..p };
+            let full = |i: usize| !inside.empty_brackets.contains(&g.brackets[i]);
+            let mut i = 0;
+            while i < g.brackets.len() {
+                if !full(i) {
+                    i += 1;
+                    continue;
+                }
+                let start = i;
+                while i < g.brackets.len() && full(i) {
+                    i += 1;
+                }
+                r.draw_deck_range(t, &g.hung, DeckProgram::Flat, &p, None, start * per, (i - start) * per);
             }
         }
-        // This player's extinguisher in hand, at the lower right of the eye; spraying, puffs of agent along the aim.
+        // Fires across their rooms' floors, their smoke, the agent in the air and a smoky room's haze (all-hands 4),
+        // one draw, farthest first.
+        if !inside.fx.is_empty() {
+            let quads = inside.fx.quads(eye, dir, inside.time_s);
+            r.draw_fx(t, proj * view, inside.time_s as f32, &quads);
+        }
+        // This player's extinguisher in hand, at the lower right of the eye, as the mockup holds it.
         if own_eye && inside.carrying {
-            let held = Mat4::from_translation(Vec3::new(0.34, -0.42, -0.8))
-                * Mat4::from_rotation_x(-0.75)
-                * Mat4::from_rotation_z(-0.2);
+            let held = crate::firefx::held_model();
             r.draw_deck(t, inside.held, DeckProgram::Flat, &flat_params(proj * held), None);
-            if inside.spraying {
-                for k in 0..8 {
-                    let u = ((inside.time_s * 2.2 + f64::from(k) / 8.0) % 1.0) as f32;
-                    let at = Vec3::new(0.2 - 0.15 * u, -0.2 - 0.1 * u, -0.7 - 2.6 * u);
-                    let model = Mat4::from_translation(at) * Mat4::from_scale(Vec3::splat(0.04 + 0.4 * u));
-                    r.draw_deck(t, inside.puff, DeckProgram::Flat, &flat_params(proj * model), None);
-                }
-            }
         }
         // Last, the fight outside, at the back of the depth buffer: only the windows let it through.
         let far = glam::camera::rh::proj::opengl::perspective(fov, aspect, OUTSIDE_NEAR_M, OUTSIDE_FAR_M);
@@ -261,19 +324,15 @@ fn in_view(vp: Mat4, eye: [f64; 3], b: &Bounds) -> bool {
 
 /// What the ship shows inside besides its rooms and crew: fires burning, and this player's extinguisher.
 pub struct Inside<'a> {
-    /// A burning room's floor point each, ship frame, metres.
-    pub fires: &'a [[f32; 3]],
-    /// The flames' mesh, a puff of agent, and the extinguisher in hand.
-    pub flame: &'a Mesh,
-    /// See `flame`.
-    pub puff: &'a Mesh,
-    /// See `flame`.
+    /// The fires, their smoke and the agent in the air, as drawn (`firefx`).
+    pub fx: &'a crate::firefx::FireFx,
+    /// The extinguisher in hand.
     pub held: &'a Mesh,
+    /// The brackets standing empty (the layout's indices), from the snapshot.
+    pub empty_brackets: &'a [usize],
     /// This player carries an extinguisher.
     pub carrying: bool,
-    /// And is spraying it.
-    pub spraying: bool,
-    /// The local clock, seconds: the flames flicker and the spray moves.
+    /// The local clock, seconds: the flames move with it.
     pub time_s: f64,
 }
 

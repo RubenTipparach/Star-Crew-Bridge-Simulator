@@ -11,7 +11,7 @@ use sc_core::combat::bodies::Posture;
 use sc_core::combat::{self, Command, HelmMode, Outcome, Phase, PowerCmd, Refusal, Station, TubeState, TurretMode};
 
 /// The protocol's version; a Hello with another is refused.
-pub const PROTOCOL: u16 = 12;
+pub const PROTOCOL: u16 = 13;
 /// The longest unreliable message, so it is one SCTP chunk in one datagram (netcode-and-sessions section 2).
 pub const MAX_UNRELIABLE: usize = 1200;
 /// The longest string field, in bytes.
@@ -910,6 +910,8 @@ pub struct DamageSnap {
     pub breaches: Vec<u8>,
     /// Each damage-control team: the room it is in (none: between rooms), and whether it is working there.
     pub teams: Vec<(Option<u8>, bool)>,
+    /// The extinguisher brackets standing empty, by the layout's `brackets` (safety-points 3a, 5a).
+    pub empty_brackets: Vec<u8>,
 }
 
 impl DamageSnap {
@@ -929,6 +931,7 @@ impl DamageSnap {
                 .iter()
                 .map(|t| (combat::damage::team_room(l, t).map(|r| r.min(254) as u8), t.working))
                 .collect(),
+            empty_brackets: (0..s.brackets.len().min(255)).filter(|k| !s.bracket_full(*k)).map(|k| k as u8).collect(),
         }
     }
 }
@@ -1049,6 +1052,8 @@ const MAX_TUBES: usize = 8;
 const MAX_LASERS: usize = 4;
 /// The most entries in a list of the damage snapshot (rooms and loads are indexed by a byte).
 const MAX_LIST: usize = 255;
+/// The empty brackets' bitset, bytes at most: 256 brackets.
+const MAX_BRACKET_BYTES: usize = 32;
 
 fn station_byte(s: Option<Station>) -> u8 {
     s.map(|s| s as u8).unwrap_or(255)
@@ -1532,6 +1537,17 @@ impl Snapshot {
             w.u8(room.unwrap_or(255));
             w.u8(u8::from(*working));
         }
+        // The empty brackets as a bitset (bit k of byte k / 8), as many bytes as the last empty one needs: seven for
+        // the Tern's 45 at worst, where a list would cost 46 bytes the datagram does not have.
+        let nbytes = dm.empty_brackets.iter().max().map_or(0, |m| usize::from(*m) / 8 + 1);
+        let mut bits = vec![0u8; nbytes];
+        for k in &dm.empty_brackets {
+            bits[usize::from(*k) / 8] |= 1 << (k % 8);
+        }
+        w.u8(nbytes as u8);
+        for b in bits {
+            w.u8(b);
+        }
         match &self.power {
             Some(p) => {
                 w.u8(1);
@@ -1784,7 +1800,13 @@ impl Snapshot {
             let room = r.u8()?;
             teams.push(((room != 255).then_some(room), r.bool()?));
         }
-        let damage = DamageSnap { integrity, fires, breaches, teams };
+        let nb = r.count(MAX_BRACKET_BYTES)?;
+        let mut empty_brackets = Vec::new();
+        for byte in 0..nb {
+            let b = r.u8()?;
+            empty_brackets.extend((0..8u8).filter(|k| b & (1 << k) != 0).map(|k| byte as u8 * 8 + k));
+        }
+        let damage = DamageSnap { integrity, fires, breaches, teams, empty_brackets };
         let power = if r.bool()? { Some(PowerSnap::read(&mut r)?) } else { None };
         let route = if r.bool()? { Some(RouteSnap::read(&mut r)?) } else { None };
         r.done()?;
@@ -2132,6 +2154,8 @@ mod tests {
         st.integrity.iter_mut().step_by(3).for_each(|v| *v = 37.4);
         st.fires = (0..6).map(combat::damage::Fire::new).collect();
         st.breaches = vec![combat::damage::Breach { room: 4, area_m2: 0.3 }; 3];
+        // Every extinguisher taken from its bracket at once.
+        st.brackets.iter_mut().for_each(|t| *t = 15.0);
         let s = Snapshot::of(&d);
         let b = s.encode();
         assert!(b.len() <= MAX_UNRELIABLE, "a snapshot of a hurt ship is {} bytes; it must fit one datagram", b.len());
@@ -2141,6 +2165,7 @@ mod tests {
         assert_eq!(back.damage.fires.len(), 6);
         assert_eq!(back.damage.breaches, vec![4], "three holes in one room are one room open to space");
         assert_eq!(back.damage.teams.len(), d.data.damage.teams.count as usize);
+        assert_eq!(back.damage.empty_brackets.len(), d.data.tern_layout.brackets.len(), "every bracket empty");
     }
 
     #[test]

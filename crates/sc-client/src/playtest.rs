@@ -39,7 +39,7 @@ pub enum Beat {
 
 /// What the player's hands meet this frame (all-hands 4): the locker, an extinguisher carried, a fire.
 pub struct Hands<'a> {
-    /// Within reach of the damage-control locker.
+    /// Within reach of an extinguisher to take: a full bracket, or the damage-control locker.
     pub at_locker: bool,
     /// Carrying an extinguisher with agent left.
     pub carrying: bool,
@@ -47,7 +47,7 @@ pub struct Hands<'a> {
     pub in_fire: bool,
     /// The burning rooms' floor points.
     pub fires: &'a [[f32; 3]],
-    /// The locker, to walk to.
+    /// The nearest place to take one, to walk to: a full bracket, or the locker.
     pub locker: Option<[f32; 3]>,
     /// The damaged machines with a repair job, to walk to.
     pub jobs: &'a [[f32; 3]],
@@ -101,6 +101,9 @@ pub struct Playtest {
 const FIGHT_EVERY_S: f64 = 60.0;
 /// The spray is aimed from this far off the fire, metres.
 const SPRAY_FROM_M: f32 = 2.2;
+/// How far back from a fire's middle the hands stand to spray it, metres (the cone's reach, fire.extinguisher.reach_m
+/// 3.0, less a step).
+const STAND_BACK_M: f32 = 2.4;
 
 /// Behind a seat, where a person stands to sit down, metres.
 const BEHIND_M: f32 = 0.8;
@@ -220,13 +223,23 @@ impl Playtest {
         }
         match self.beat() {
             Some(Beat::Locker) => {
+                // One in hand: on to the fire.
+                if hands.carrying {
+                    self.next();
+                    return (still, None, HandsOut::default());
+                }
                 let Some(l) = hands.locker else {
                     self.next();
                     return (still, None, HandsOut::default());
                 };
+                // At a bracket or the locker: E, again every half second until one is in hand (the server may not
+                // have the last step yet, and takes from where it has the body).
                 if hands.at_locker {
-                    self.next();
-                    return (still, None, HandsOut { take: true, ..HandsOut::default() });
+                    let take = (self.t / 0.5).floor() != ((self.t - dt) / 0.5).floor();
+                    if self.t > GIVE_UP_S {
+                        self.next();
+                    }
+                    return (still, None, HandsOut { take, ..HandsOut::default() });
                 }
                 self.goal = foot.grid.snap_joined(l, 1.5, foot.body.feet).unwrap_or(l);
                 (self.walk(foot, look, dt, |_| false), None, HandsOut::default())
@@ -251,9 +264,14 @@ impl Playtest {
                     self.next();
                     return (still, None, HandsOut::default());
                 }
-                // Where to stand: floor joined to the feet near the fire (a room's middle may be under machinery).
+                // Where to stand: back from the fire toward where the body comes from, the cone's reach off it, on floor
+                // joined to the feet (a room's middle may be under machinery), so the flames are in front, not round the
+                // feet.
                 let stand = if self.plan.is_none() {
-                    foot.grid.snap_joined(f, ROOM_REACH_M, feet).unwrap_or(f)
+                    let (dx, dz) = (feet[0] - f[0], feet[2] - f[2]);
+                    let l = dx.hypot(dz).max(1e-3);
+                    let back = [f[0] + dx / l * STAND_BACK_M, f[1], f[2] + dz / l * STAND_BACK_M];
+                    foot.grid.snap_joined(back, ROOM_REACH_M, feet).unwrap_or(f)
                 } else {
                     self.goal
                 };

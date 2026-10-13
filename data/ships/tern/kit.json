@@ -1,0 +1,816 @@
+{
+  "note": "Written by `sc-tools safety-points` from layout.json, detailing.json's frames and the compiled deck's walk world (openspec/changes/safety-points design 2, 4 and 5a); never edited by hand. A point is an extinguisher's bracket on a room's wall: wall_point_m on the wall at the room's floor, normal the way into the room. Rules: main_door (inside every room's main door), big_room (another for every 80 m^2 beyond the first 80), corridor (ceil(L / 8) along every corridor, evenly, its walls in turn), reach (floor still over 10 m from one).",
+  "points": [
+    {
+      "compartment": "bridge",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_bridge_1",
+      "normal": [
+        0.9728,
+        0.0,
+        -0.2316
+      ],
+      "rule": "main_door",
+      "wall_point_m": [
+        -8.367,
+        3.5,
+        23.112
+      ]
+    },
+    {
+      "compartment": "ready_room",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_ready_room_1",
+      "normal": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "rule": "main_door",
+      "wall_point_m": [
+        1.25,
+        3.5,
+        19.0
+      ]
+    },
+    {
+      "compartment": "computer_core",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_computer_core_1",
+      "normal": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "rule": "main_door",
+      "wall_point_m": [
+        -1.25,
+        3.5,
+        15.0
+      ]
+    },
+    {
+      "compartment": "dorsal_turret",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_dorsal_turret_1",
+      "normal": [
+        -1.0,
+        0.0,
+        0.0
+      ],
+      "rule": "main_door",
+      "wall_point_m": [
+        2.0,
+        3.5,
+        3.0
+      ]
+    },
+    {
+      "compartment": "torpedo_room",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_torpedo_room_1",
+      "normal": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "rule": "main_door",
+      "wall_point_m": [
+        -2.0,
+        0.0,
+        26.0
+      ]
+    },
+    {
+      "compartment": "medbay",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_medbay_1",
+      "normal": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "rule": "main_door",
+      "wall_point_m": [
+        1.25,
+        0.0,
+        25.0
+      ]
+    },
+    {
+      "compartment": "damage_control",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_damage_control_1",
+      "normal": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "rule": "main_door",
+      "wall_point_m": [
+        -1.25,
+        0.0,
+        19.0
+      ]
+    },
+    {
+      "compartment": "quarters",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_quarters_1",
+      "normal": [
+        -0.0,
+        0.0,
+        -1.0
+      ],
+      "rule": "main_door",
+      "wall_point_m": [
+        2.0,
+        0.0,
+        17.45
+      ]
+    },
+    {
+      "compartment": "mess",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_mess_1",
+      "normal": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "rule": "main_door",
+      "wall_point_m": [
+        -1.25,
+        0.0,
+        17.0
+      ]
+    },
+    {
+      "compartment": "port_turret",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_port_turret_1",
+      "normal": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "rule": "main_door",
+      "wall_point_m": [
+        2.1,
+        0.0,
+        7.0
+      ]
+    },
+    {
+      "compartment": "stbd_turret",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_stbd_turret_1",
+      "normal": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "rule": "main_door",
+      "wall_point_m": [
+        -2.1,
+        0.0,
+        7.0
+      ]
+    },
+    {
+      "compartment": "hangar",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_hangar_1",
+      "normal": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "rule": "main_door",
+      "wall_point_m": [
+        2.0,
+        -3.5,
+        0.0
+      ]
+    },
+    {
+      "compartment": "launch_bay_p",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_launch_bay_p_1",
+      "normal": [
+        -0.0,
+        0.0,
+        -1.0
+      ],
+      "rule": "main_door",
+      "wall_point_m": [
+        6.0,
+        -3.5,
+        -4.0
+      ]
+    },
+    {
+      "compartment": "launch_bay_s",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_launch_bay_s_1",
+      "normal": [
+        -0.0,
+        0.0,
+        -1.0
+      ],
+      "rule": "main_door",
+      "wall_point_m": [
+        -6.0,
+        -3.5,
+        -4.0
+      ]
+    },
+    {
+      "compartment": "engineering",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_engineering_1",
+      "normal": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "rule": "main_door",
+      "wall_point_m": [
+        2.0,
+        -3.5,
+        -18.0
+      ]
+    },
+    {
+      "compartment": "drive",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_drive_1",
+      "normal": [
+        0.9856,
+        0.0,
+        0.169
+      ],
+      "rule": "main_door",
+      "wall_point_m": [
+        -4.7,
+        0.0,
+        -38.852
+      ]
+    },
+    {
+      "compartment": "magazine",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_magazine_1",
+      "normal": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "rule": "main_door",
+      "wall_point_m": [
+        -2.0,
+        -3.5,
+        20.0
+      ]
+    },
+    {
+      "compartment": "life_support",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_life_support_1",
+      "normal": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "rule": "main_door",
+      "wall_point_m": [
+        1.25,
+        -3.5,
+        17.0
+      ]
+    },
+    {
+      "compartment": "cargo",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_cargo_1",
+      "normal": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "rule": "main_door",
+      "wall_point_m": [
+        -1.25,
+        -3.5,
+        13.0
+      ]
+    },
+    {
+      "compartment": "shield_room",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_shield_room_1",
+      "normal": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "rule": "main_door",
+      "wall_point_m": [
+        1.25,
+        -3.5,
+        3.0
+      ]
+    },
+    {
+      "compartment": "switchboard",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_switchboard_1",
+      "normal": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "rule": "main_door",
+      "wall_point_m": [
+        -1.25,
+        -3.5,
+        3.0
+      ]
+    },
+    {
+      "compartment": "bridge",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_bridge_2",
+      "normal": [
+        -0.9728,
+        0.0,
+        -0.2316
+      ],
+      "rule": "big_room",
+      "wall_point_m": [
+        8.718,
+        3.5,
+        21.061
+      ]
+    },
+    {
+      "compartment": "hangar",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_hangar_2",
+      "normal": [
+        0.7071,
+        0.0,
+        0.7071
+      ],
+      "rule": "big_room",
+      "wall_point_m": [
+        -9.976,
+        0.0,
+        -17.424
+      ]
+    },
+    {
+      "compartment": "hangar",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_hangar_3",
+      "normal": [
+        -1.0,
+        0.0,
+        0.0
+      ],
+      "rule": "big_room",
+      "wall_point_m": [
+        10.4,
+        0.0,
+        -13.0
+      ]
+    },
+    {
+      "compartment": "hangar",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_hangar_4",
+      "normal": [
+        -0.0,
+        0.0,
+        -1.0
+      ],
+      "rule": "big_room",
+      "wall_point_m": [
+        -8.0,
+        0.0,
+        -2.0
+      ]
+    },
+    {
+      "compartment": "engineering",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_engineering_2",
+      "normal": [
+        0.6247,
+        0.0,
+        0.7809
+      ],
+      "rule": "big_room",
+      "wall_point_m": [
+        -6.97,
+        -3.5,
+        -31.624
+      ]
+    },
+    {
+      "compartment": "engineering",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_engineering_3",
+      "normal": [
+        -0.6247,
+        0.0,
+        0.7809
+      ],
+      "rule": "big_room",
+      "wall_point_m": [
+        7.749,
+        -3.5,
+        -31.0
+      ]
+    },
+    {
+      "compartment": "magazine",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_magazine_2",
+      "normal": [
+        -0.0,
+        0.0,
+        -1.0
+      ],
+      "rule": "big_room",
+      "wall_point_m": [
+        4.0,
+        -3.5,
+        32.2
+      ]
+    },
+    {
+      "compartment": "a_corridor",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_a_corridor_1",
+      "normal": [
+        -1.0,
+        0.0,
+        0.0
+      ],
+      "rule": "corridor",
+      "wall_point_m": [
+        1.25,
+        3.5,
+        11.0
+      ]
+    },
+    {
+      "compartment": "a_corridor",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_a_corridor_2",
+      "normal": [
+        -1.0,
+        0.0,
+        0.0
+      ],
+      "rule": "corridor",
+      "wall_point_m": [
+        1.25,
+        3.5,
+        15.0
+      ]
+    },
+    {
+      "compartment": "a_aft_passage",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_a_aft_passage_1",
+      "normal": [
+        -1.0,
+        0.0,
+        0.0
+      ],
+      "rule": "corridor",
+      "wall_point_m": [
+        1.25,
+        3.5,
+        -15.0
+      ]
+    },
+    {
+      "compartment": "a_aft_passage",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_a_aft_passage_2",
+      "normal": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "rule": "corridor",
+      "wall_point_m": [
+        -1.25,
+        3.5,
+        -9.0
+      ]
+    },
+    {
+      "compartment": "a_aft_passage",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_a_aft_passage_3",
+      "normal": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "rule": "corridor",
+      "wall_point_m": [
+        -1.25,
+        3.5,
+        -3.0
+      ]
+    },
+    {
+      "compartment": "b_spine",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_b_spine_1",
+      "normal": [
+        -1.0,
+        0.0,
+        0.0
+      ],
+      "rule": "corridor",
+      "wall_point_m": [
+        1.25,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "compartment": "b_spine",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_b_spine_2",
+      "normal": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "rule": "corridor",
+      "wall_point_m": [
+        -1.25,
+        0.0,
+        11.0
+      ]
+    },
+    {
+      "compartment": "b_spine",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_b_spine_3",
+      "normal": [
+        -1.0,
+        0.0,
+        0.0
+      ],
+      "rule": "corridor",
+      "wall_point_m": [
+        1.25,
+        0.0,
+        19.0
+      ]
+    },
+    {
+      "compartment": "b_spine",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_b_spine_4",
+      "normal": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "rule": "corridor",
+      "wall_point_m": [
+        -1.25,
+        0.0,
+        25.0
+      ]
+    },
+    {
+      "compartment": "c_spine",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_c_spine_1",
+      "normal": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "rule": "corridor",
+      "wall_point_m": [
+        -1.249,
+        -3.5,
+        5.0
+      ]
+    },
+    {
+      "compartment": "c_spine",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_c_spine_2",
+      "normal": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "rule": "corridor",
+      "wall_point_m": [
+        -1.25,
+        -3.5,
+        11.0
+      ]
+    },
+    {
+      "compartment": "c_spine",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_c_spine_3",
+      "normal": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "rule": "corridor",
+      "wall_point_m": [
+        -1.25,
+        -3.5,
+        17.0
+      ]
+    },
+    {
+      "compartment": "bridge",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_bridge_3",
+      "normal": [
+        -0.6839,
+        0.0,
+        -0.7295
+      ],
+      "rule": "reach",
+      "wall_point_m": [
+        4.261,
+        3.5,
+        30.707
+      ]
+    },
+    {
+      "compartment": "drive",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_drive_2",
+      "normal": [
+        -0.995,
+        0.0,
+        0.0995
+      ],
+      "rule": "reach",
+      "wall_point_m": [
+        6.4,
+        0.0,
+        -33.004
+      ]
+    },
+    {
+      "compartment": "launch_bay_s",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_launch_bay_s_2",
+      "normal": [
+        0.7071,
+        0.0,
+        0.7071
+      ],
+      "rule": "reach",
+      "wall_point_m": [
+        -9.976,
+        -3.5,
+        -15.224
+      ]
+    },
+    {
+      "compartment": "life_support",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_life_support_2",
+      "normal": [
+        -0.0,
+        0.0,
+        1.0
+      ],
+      "rule": "reach",
+      "wall_point_m": [
+        10.0,
+        -3.5,
+        6.0
+      ]
+    },
+    {
+      "compartment": "magazine",
+      "holds": [
+        "extinguisher"
+      ],
+      "id": "sp_magazine_3",
+      "normal": [
+        0.839,
+        0.0,
+        -0.5442
+      ],
+      "rule": "reach",
+      "wall_point_m": [
+        -6.559,
+        -3.5,
+        29.18
+      ]
+    }
+  ],
+  "schema": "starcrew.kit/1"
+}

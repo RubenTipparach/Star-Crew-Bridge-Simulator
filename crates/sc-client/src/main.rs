@@ -26,6 +26,7 @@ mod console;
 mod deckrepair;
 mod drill;
 mod drill_bridge;
+mod firefx;
 mod first_light;
 mod fixture;
 mod game_menu;

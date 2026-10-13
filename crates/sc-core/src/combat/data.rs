@@ -1145,7 +1145,7 @@ pub struct DrillData {
 }
 
 /// How many files [`DRILL_FILES`] names: the size of the array [`DrillData::parse`] takes.
-pub const DRILL_FILE_COUNT: usize = 12;
+pub const DRILL_FILE_COUNT: usize = 13;
 
 /// The files a drill reads, relative to the repository's root, in the order [`DrillData::parse`] takes them.
 pub const DRILL_FILES: [&str; DRILL_FILE_COUNT] = [
@@ -1161,6 +1161,7 @@ pub const DRILL_FILES: [&str; DRILL_FILE_COUNT] = [
     crate::combat::damage::TERN_FILES[2],
     crate::combat::damage::HOUND_FILE,
     "data/ships/tern/atmosphere.json",
+    crate::combat::damage::TERN_FILES[3],
 ];
 
 /// `atmosphere.json`'s `thermal.initial_k`: a room's air temperature until life support runs, K. The rest of the
@@ -1192,8 +1193,19 @@ impl DrillData {
         let enemies: EnemiesFile = parse(DRILL_FILES[4], texts[4])?;
         let stations: StationsFile = parse(DRILL_FILES[5], texts[5])?;
         let fighter = crate::combat::fighters::FighterData::parse(DRILL_FILES[6], texts[6])?;
-        let tern_layout = crate::combat::damage::ShipLayout::tern([texts[7], texts[8], texts[9]])?;
+        let tern_layout = crate::combat::damage::ShipLayout::tern([texts[7], texts[8], texts[9], texts[12]])?;
         let damage = crate::combat::damage::DamageData::parse(texts[9])?;
+        // One number in two files (safety-points 3a): the mockups' fire reads atmosphere.json, the engine damage.json.
+        let restock = serde_json::from_str::<serde_json::Value>(texts[11])
+            .ok()
+            .and_then(|v| v.pointer("/fire/extinguisher/bracket_restock_s").and_then(serde_json::Value::as_f64));
+        if restock != Some(damage.fire.bracket_restock_s) {
+            return Err(DataError {
+                file: DRILL_FILES[9].to_owned(),
+                field: "fire.bracket_restock_s".into(),
+                message: format!("must equal {}'s fire.extinguisher.bracket_restock_s ({restock:?})", DRILL_FILES[11]),
+            });
+        }
         let hound_layout = crate::combat::damage::ShipLayout::hound(texts[10])?;
         // The air is not simulated in the drill: a room stays at the atmosphere's starting temperature.
         let room_k = room_temperature(DRILL_FILES[11], texts[11])?;
@@ -1270,6 +1282,7 @@ impl DrillData {
                 include_str!("../../../../data/ships/tern/damage.json"),
                 include_str!("../../../../data/ships/hound/layout.json"),
                 include_str!("../../../../data/ships/tern/atmosphere.json"),
+                include_str!("../../../../data/ships/tern/kit.json"),
             ],
             "data/missions/drill-hound.json",
             include_str!("../../../../data/missions/drill-hound.json"),

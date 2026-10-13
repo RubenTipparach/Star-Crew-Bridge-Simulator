@@ -9,11 +9,15 @@ friend alive on the way, and a fire caught in its first 90 s is one extinguisher
 the only extinguishers are six in the damage control locker and the only medkit is the medic's bag: from the far end
 of engineering, either is a long walk while the fire grows and a friend's vitals fall.
 
+The owner, 2026-10-12, playing the game on foot: "there should be an extinguisher in every room and spaced out evenly
+in corridors". So every room takes one, and the corridors take theirs at an even spacing along their length (design 2,
+rule 3), rather than wherever a walk distance first runs over.
+
 ## What Changes
 
 - **Safety points** (design 1-2): an extinguisher in a bracket and a first aid cabinet side by side on a wall, under a
-  glowing sign, placed by one rule from the layout: inside every room's main door, and along the passages so no
-  floor on any deck is more than 10 m's walk from one.
+  glowing sign, placed by one rule from the layout: inside every room's main door, and spaced evenly along every
+  corridor, no two more than 8 m apart.
 - **The first aid kit** (design 3): 3 kg, one hand, 3 doses, stabilizes only. The extinguisher is `crew-on-deck` 6's.
 - **Data and checks** (design 4): `data/ships/tern/kit.json` written by `tools/safety_points.py`, validated with the
   layout (clear of doors, on a wall, within the room).
