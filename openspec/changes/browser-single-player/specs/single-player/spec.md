@@ -12,9 +12,9 @@ member at every station but the player's, and the player's session, all in the p
 - **THEN** the page hosts the drill, a crew member walks to and sits at each other station, and a round can be played
   to its end with them
 
-#### Scenario: Tour is still the walk
-- **WHEN** the player presses Tour in the browser build
-- **THEN** the page shows the ship to walk, with no game hosted
+#### Scenario: Played on foot in the browser
+- **WHEN** a single-player game starts in the browser
+- **THEN** the player is a body on the ship, walks to their station, and its console opens only once they sit at it
 
 ### Requirement: A single-player game connects through a local link
 

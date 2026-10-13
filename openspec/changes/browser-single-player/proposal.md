@@ -19,8 +19,9 @@ or a round. The game is the drill; the browser should play it.
   `DrillServer` and `Session` keep their code: only where they are connected changes.
 - **Single player uses it, in the browser and on the desktop** (design 3): one way to host a local game on every
   platform. Multiplayer stays on WebRTC.
-- **Beam aboard in the browser starts the game** (design 1): the same drill, crew of NPCs, consoles and rounds as the
-  desktop. Tour stays the walk.
+- **Beam aboard in the browser starts the game** (design 1): the same drill, played on foot, with the same crew of
+  NPCs, consoles and rounds as the desktop. The browser's walk stops being a tour beside the game (CLAUDE.md, the
+  law).
 - **A paused game drops nobody** (design 4): the server counts a peer's silence in its own ticks, not on the wall
   clock, so a hidden browser tab (which stops the page's frames) pauses the game instead of emptying it.
 - **The release proves it** (design 8): the smoke test plays into a round in the browser before every push to

@@ -15,10 +15,16 @@ The owner's words are in the proposal.
 
 ## 1. What the player gets
 
-Beam aboard in the browser does what it does on the desktop: the crew of four NPCs (seven with Combat 2's stations)
-walk to their seats, the player sits at their station, READY waits for the crew, and the drill's rounds run against
-the Hound, with every console, the crew tabs and AUTO and MANUAL. Tour stays the walk. Esc comes back to the menu.
-Nothing about the game is different in a browser; only its speed is the browser's (section 7).
+Beam aboard in the browser does what it does on the desktop. The game is played on foot (CLAUDE.md, the law;
+`coop-drill` 9): the player is a body on the ship and walks to their station, and its console comes up only once they
+sit. The crew of four NPCs (seven with Combat 2's stations) walk to their seats, READY waits for them, and the
+drill's rounds run against the Hound, with every console, the crew tabs, AUTO and MANUAL, the repairs and the fires,
+each reached on foot. Esc comes back to the menu. Nothing about the game is different in a browser; only its speed is
+the browser's (section 7).
+
+Today the browser's only walk is the tour, which holds the walking while the game, which the browser cannot start,
+holds the consoles: the split the law forbids. After this change the browser's walk is the game's, as on the desktop.
+Whether Tour stays on the menu at all is `front-menu`'s, not this change's.
 
 ## 2. A local link
 
@@ -145,9 +151,10 @@ does not know it is local.
 - `tools/web/smoke.mjs` plays into a round in the browser: Beam aboard, the crew seated, READY, and the round's first
   phase line ("round 1 ..."), failing the release on "no ship (", a page error, or no round. It already runs before
   every push to itch.io (`tools/web/release.sh`, `.github/workflows/web.yml`).
-- Captures in the browser (headless Chromium, SwiftShader): the crew walking to their seats and a console with the
-  crew tabs, beside the desktop's `docs/screenshots/engine/single-player/` shots of the same moments, in
-  `docs/screenshots/web/single-player/`.
+- Captures in the browser (headless Chromium, SwiftShader), in `docs/screenshots/web/single-player/`, beside the
+  desktop's `docs/screenshots/engine/single-player/` shots of the same moments: the player's body walking to its
+  station with the crew walking to theirs, sitting, and the console come up with the crew tabs (CLAUDE.md 12: a
+  playtest shows the walking).
 - `tools/web/build.sh` and `scripts/check.sh` before the merge.
 
 ## Known limits
