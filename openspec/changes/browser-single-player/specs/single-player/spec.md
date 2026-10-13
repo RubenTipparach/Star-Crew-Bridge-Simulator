@@ -28,8 +28,8 @@ starts no thread, and that delivers each channel's messages in the order they we
 
 ### Requirement: A paused game drops no one
 
-The drill server SHALL measure a peer's silence in its own ticks, so a pause of the whole game, such as a hidden
-browser tab that runs no frames, drops no peer.
+The drill server SHALL count a peer as silent only when it is silent both in the server's own ticks and on the wall
+clock, so a pause of the whole game, such as a hidden browser tab that runs no frames, drops no peer.
 
 #### Scenario: A hidden tab
 - **WHEN** a single-player game in the browser is hidden for 30 s and shown again

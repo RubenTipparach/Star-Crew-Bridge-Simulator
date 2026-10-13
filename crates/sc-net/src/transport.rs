@@ -6,6 +6,9 @@
 //! `http-post` example does); the game thread exchanges messages with it through channels. Signalling is one HTTP
 //! POST of the client's offer, answered with the server's answer (all candidates inside, no trickle): the LAN form
 //! of the matchmaker's exchange, which a WebSocket replaces later.
+//!
+//! `ServerNet` and `ClientNet` can instead hold the local link (`crate::local`, browser-single-player design 2): a
+//! server and its clients in one process, with no socket and no thread. Callers use the same methods either way.
 
 use std::collections::VecDeque;
 use std::io::{ErrorKind, Read, Write};
@@ -16,6 +19,7 @@ use std::sync::{Arc, Mutex, Once};
 use std::thread;
 use std::time::{Duration, Instant};
 
+use crate::local::{LocalClient, LocalDoor, LocalServer};
 use sc_core::rng::Rng;
 use str0m::change::{SdpAnswer, SdpOffer};
 use str0m::channel::{ChannelConfig, ChannelId, Reliability};
@@ -259,14 +263,43 @@ struct PeerSlot {
     stats: Arc<PeerStats>,
 }
 
-/// The server's end: the signalling listener, and every peer's outbox.
+/// The server's end: the signalling listener and every peer's outbox, or a local link (`crate::local`).
 pub struct ServerNet {
-    events: Receiver<NetEvent>,
-    peers: Arc<Mutex<Vec<PeerSlot>>>,
-    status: Arc<Mutex<String>>,
-    /// The signalling address it listens on.
+    link: ServerLink,
+    /// The signalling address it listens on (`0.0.0.0:0` for a local server, which listens on nothing).
     pub addr: SocketAddr,
 }
+
+enum ServerLink {
+    Rtc { events: Receiver<NetEvent>, peers: Arc<Mutex<Vec<PeerSlot>>>, status: Arc<Mutex<String>> },
+    Local(LocalServer),
+}
+
+/// Where a client connects: a server's signalling address, or a server in this process.
+#[derive(Clone, Debug)]
+pub enum Dial {
+    /// A server over WebRTC.
+    Addr(SocketAddr),
+    /// A server in this process, over the local link.
+    Local(LocalDoor),
+}
+
+impl From<SocketAddr> for Dial {
+    fn from(a: SocketAddr) -> Self {
+        Dial::Addr(a)
+    }
+}
+
+impl std::fmt::Display for Dial {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Dial::Addr(a) => write!(f, "{a}"),
+            Dial::Local(_) => f.write_str("the local server"),
+        }
+    }
+}
+
+const NOWHERE: SocketAddr = SocketAddr::V4(std::net::SocketAddrV4::new(std::net::Ipv4Addr::UNSPECIFIED, 0));
 
 impl ServerNet {
     /// Listen for signalling on `bind` (for example `0.0.0.0:7700`); peers get UDP sockets on `host_ip`.
@@ -287,40 +320,73 @@ impl ServerNet {
                 }
             }
         })?;
-        Ok(Self { events: rx, peers, status, addr })
+        Ok(Self { link: ServerLink::Rtc { events: rx, peers, status }, addr })
+    }
+
+    /// A server in this process on the local link (browser-single-player design 2): no socket, no thread.
+    pub fn local() -> Self {
+        Self { link: ServerLink::Local(LocalServer::new()), addr: NOWHERE }
+    }
+
+    /// Where a client connects to reach this server.
+    pub fn dial(&self) -> Dial {
+        match &self.link {
+            ServerLink::Rtc { .. } => Dial::Addr(self.addr),
+            ServerLink::Local(l) => Dial::Local(l.door()),
+        }
     }
 
     /// Everything that arrived since the last call.
     pub fn poll(&mut self) -> Vec<NetEvent> {
-        let ev: Vec<NetEvent> = self.events.try_iter().collect();
-        for e in &ev {
-            if let NetEvent::Closed(id) = e {
-                self.peers.lock().expect("peers").retain(|p| p.id != *id);
+        match &mut self.link {
+            ServerLink::Rtc { events, peers, .. } => {
+                let ev: Vec<NetEvent> = events.try_iter().collect();
+                for e in &ev {
+                    if let NetEvent::Closed(id) = e {
+                        peers.lock().expect("peers").retain(|p| p.id != *id);
+                    }
+                }
+                ev
             }
+            ServerLink::Local(l) => l.poll(),
         }
-        ev
     }
 
     /// Send a message to a peer.
     pub fn send(&self, peer: PeerId, chan: Chan, data: Vec<u8>) {
-        if let Some(p) = self.peers.lock().expect("peers").iter().find(|p| p.id == peer) {
-            let _ = p.outbox.send(Outgoing { chan, data });
+        match &self.link {
+            ServerLink::Rtc { peers, .. } => {
+                if let Some(p) = peers.lock().expect("peers").iter().find(|p| p.id == peer) {
+                    let _ = p.outbox.send(Outgoing { chan, data });
+                }
+            }
+            ServerLink::Local(l) => l.send(peer, chan, data),
         }
     }
 
     /// End a peer's connection.
-    pub fn close(&self, peer: PeerId) {
-        self.peers.lock().expect("peers").retain(|p| p.id != peer);
+    pub fn close(&mut self, peer: PeerId) {
+        match &mut self.link {
+            ServerLink::Rtc { peers, .. } => peers.lock().expect("peers").retain(|p| p.id != peer),
+            ServerLink::Local(l) => l.close(peer),
+        }
     }
 
-    /// Set the JSON the status page serves.
+    /// Set the JSON the status page serves (a local server serves none).
     pub fn set_status(&self, json: String) {
-        *self.status.lock().expect("status") = json;
+        if let ServerLink::Rtc { status, .. } = &self.link {
+            *status.lock().expect("status") = json;
+        }
     }
 
-    /// Each peer's address and counters.
+    /// Each peer's address and counters (`0.0.0.0:0` for a local peer).
     pub fn peer_stats(&self) -> Vec<(PeerId, SocketAddr, Arc<PeerStats>)> {
-        self.peers.lock().expect("peers").iter().map(|p| (p.id, p.addr, p.stats.clone())).collect()
+        match &self.link {
+            ServerLink::Rtc { peers, .. } => {
+                peers.lock().expect("peers").iter().map(|p| (p.id, p.addr, p.stats.clone())).collect()
+            }
+            ServerLink::Local(l) => l.peer_stats().into_iter().map(|(id, s)| (id, NOWHERE, s)).collect(),
+        }
     }
 }
 
@@ -419,14 +485,28 @@ fn respond(s: &mut TcpStream, status: &str, kind: &str, body: &[u8]) -> Result<(
 
 /// A client's end: one connection to a server.
 pub struct ClientNet {
-    events: Receiver<NetEvent>,
-    outbox: Sender<Outgoing>,
+    link: ClientLink,
     /// Counters.
     pub stats: Arc<PeerStats>,
-    open: Arc<AtomicBool>,
+}
+
+enum ClientLink {
+    Rtc { events: Receiver<NetEvent>, outbox: Sender<Outgoing>, open: Arc<AtomicBool> },
+    Local(LocalClient),
 }
 
 impl ClientNet {
+    /// Connect to `dial`: over WebRTC to an address ([`ClientNet::connect`]), or over the local link.
+    pub fn dial(dial: &Dial, impair: Impair, seed: u64) -> Result<Self, String> {
+        match dial {
+            Dial::Addr(a) => Self::connect(*a, impair, seed),
+            Dial::Local(door) => {
+                let c = LocalClient::connect(door)?;
+                Ok(Self { stats: c.stats.clone(), link: ClientLink::Local(c) })
+            }
+        }
+    }
+
     /// Connect to a server's signalling address (`host:7700`). Returns once the answer is in; the channels open a
     /// moment later ([`NetEvent::Open`]).
     pub fn connect(server: SocketAddr, impair: Impair, seed: u64) -> Result<Self, String> {
@@ -464,30 +544,43 @@ impl ClientNet {
             .name("client-peer".into())
             .spawn(move || run_peer(rtc, socket, 0, tx, orx, s2, impair, seed))
             .map_err(|e| e.to_string())?;
-        Ok(Self { events: rx, outbox: otx, stats, open: Arc::new(AtomicBool::new(false)) })
+        Ok(Self { link: ClientLink::Rtc { events: rx, outbox: otx, open: Arc::new(AtomicBool::new(false)) }, stats })
     }
 
     /// Everything that arrived since the last call.
     pub fn poll(&mut self) -> Vec<NetEvent> {
-        let ev: Vec<NetEvent> = self.events.try_iter().collect();
-        for e in &ev {
-            match e {
-                NetEvent::Open(_) => self.open.store(true, Ordering::Relaxed),
-                NetEvent::Closed(_) => self.open.store(false, Ordering::Relaxed),
-                NetEvent::Data(..) => {}
+        match &mut self.link {
+            ClientLink::Rtc { events, open, .. } => {
+                let ev: Vec<NetEvent> = events.try_iter().collect();
+                for e in &ev {
+                    match e {
+                        NetEvent::Open(_) => open.store(true, Ordering::Relaxed),
+                        NetEvent::Closed(_) => open.store(false, Ordering::Relaxed),
+                        NetEvent::Data(..) => {}
+                    }
+                }
+                ev
             }
+            ClientLink::Local(l) => l.poll(),
         }
-        ev
     }
 
     /// Whether the channels are open.
     pub fn is_open(&self) -> bool {
-        self.open.load(Ordering::Relaxed)
+        match &self.link {
+            ClientLink::Rtc { open, .. } => open.load(Ordering::Relaxed),
+            ClientLink::Local(l) => l.is_open(),
+        }
     }
 
     /// Send a message.
     pub fn send(&self, chan: Chan, data: Vec<u8>) {
-        let _ = self.outbox.send(Outgoing { chan, data });
+        match &self.link {
+            ClientLink::Rtc { outbox, .. } => {
+                let _ = outbox.send(Outgoing { chan, data });
+            }
+            ClientLink::Local(l) => l.send(chan, data),
+        }
     }
 }
 

@@ -85,7 +85,7 @@ fn main() -> ExitCode {
             }
         }
     };
-    let cfg = ServerConfig { listen, host_ip, impair, seed, bridge };
+    let cfg = ServerConfig { listen: listen.into(), host_ip, impair, seed, bridge };
     let mut server = match DrillServer::start(data, &cfg) {
         Ok(s) => s,
         Err(e) => {

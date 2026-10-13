@@ -6,7 +6,8 @@
 #   1. export the deck from the deck plan (tools/deck/export_deck.mjs, headless Chromium)
 #   2. compile it (sc-tools deckc) into compiled/tern.deck
 #   3. build the client for the browser (tools/web/build.sh) into build/web/
-#   4. board it headless (tools/web/smoke.mjs): a build that cannot load the ship stops here
+#   4. board it headless (tools/web/smoke.mjs): a build that cannot host single player and play into a round
+#      stops here
 #   5. push build/web/ to itch.io with butler, when BUTLER_API_KEY and ITCH_TARGET are set
 #
 # Usage: tools/web/release.sh [--no-export] [--no-push]

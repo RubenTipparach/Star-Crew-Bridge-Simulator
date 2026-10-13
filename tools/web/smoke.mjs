@@ -1,20 +1,21 @@
 #!/usr/bin/env node
 /*
- * smoke.mjs: board the browser build and fail when it cannot load the ship (engine-stack design 10b).
+ * smoke.mjs: board the browser build and fail when it cannot play the game (engine-stack design 10b;
+ * browser-single-player design 8).
  *
  * It serves the built folder (build/web by default) on a local port, opens it in headless Chromium with WebGL 2
  * (SwiftShader), waits for the front menu, presses Enter (Single Player) and Enter again (Beam aboard), and reads the
- * client's console. The ship loaded when the loader's last line ("the hull from", or "the deck has no hull") comes and
- * five seconds of the ship pass with no fallback and no page error. "no ship (" means the client fell back to first
- * light's test room, and the smoke test fails with the reason the client printed. ("walk world of" is not enough:
- * the walk prints it before it reads the rest of its data.) A missing data file did exactly that on 2026-10-13, and
- * the release still went out, because nothing ran the page before pushing it.
+ * client's console. Beam aboard hosts the drill in the page on the local link: the test passes when the page says it
+ * hosts single player, the bridge for the crew on foot is loaded, and the round runs as far as Engage, with no
+ * fallback and no page error. "no ship (" means the client fell back to first light's test room (a missing data
+ * file did exactly that on 2026-10-13, and the release still went out, because nothing ran the page before pushing
+ * it); "no bridge to walk" or "no walk on foot" means the game came up without the ship to walk.
  *
  * tools/web/release.sh runs it after the build and before the push. It needs Playwright and Chromium, which the
  * deploy workflow already installs for the deck export.
  *
  * Usage: node tools/web/smoke.mjs [build dir, default build/web] [--timeout-s 240] [--shot file.png]
- * --shot saves the page once aboard.
+ * --shot saves the page once the round is engaged.
  */
 import fs from "node:fs";
 import http from "node:http";
@@ -79,15 +80,16 @@ try {
   await page.keyboard.press("Enter");
   await page.waitForTimeout(1500);
   await page.keyboard.press("Enter");
-  const loaded = () => seen("the hull from") || seen("the deck has no hull");
-  await wait(() => loaded() || seen("no ship (") || seen("pageerror:"), "the ship to load");
-  if (loaded()) await page.waitForTimeout(5000);
+  const broken = () => ["no ship (", "no bridge to walk", "no walk on foot", "pageerror:"].some(seen);
+  const hosted = () => seen("single player on the local server") && seen("the bridge for the crew on foot");
+  const engaged = () => lines.some((l) => /sc-client: round \d+ Engage/.test(l));
+  await wait(() => engaged() || broken(), "the round to reach Engage");
   if (shot) await page.screenshot({ path: shot });
-  if (!loaded() || seen("no ship (") || seen("pageerror:")) {
+  if (broken() || !hosted() || !engaged()) {
     verdict = 1;
-    console.error("smoke: FAIL, the browser build did not load the ship:");
+    console.error("smoke: FAIL, the browser build did not host the game and play into a round:");
   } else {
-    console.log(`smoke: ok, the ship loaded in the browser in ${((Date.now() - t0) / 1000).toFixed(0)} s`);
+    console.log(`smoke: ok, the browser hosted single player and the round reached Engage in ${((Date.now() - t0) / 1000).toFixed(0)} s`);
   }
 } catch (e) {
   verdict = 1;

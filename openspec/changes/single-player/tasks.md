@@ -25,8 +25,9 @@ The owner asked for it on 2026-10-11 (the proposal's words).
 
 ## 3. Later
 
-- [ ] 3.1 A loopback transport in `sc-net`, so the browser hosts single player too: the `browser-single-player`
-  change.
+- [x] 3.1 A loopback transport in `sc-net`, so the browser hosts single player too: the `browser-single-player`
+  change's local link.
 - [ ] 3.2 Seven NPCs with Combat 2's stations (no change here: the roster grows).
-- [ ] 3.3 A way to stop `sc-net`'s signalling listener, so leaving a single-player game frees its thread and port
-  (single player moves to a local link with no listener in `browser-single-player`).
+- [x] 3.3 A way to stop `sc-net`'s signalling listener, so leaving a single-player game frees its thread and port
+  (single player moved to the local link, which has no listener, in `browser-single-player`; a dedicated server's
+  listener still runs until it exits, which is its whole life).

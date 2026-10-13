@@ -22,15 +22,16 @@ or a round. The game is the drill; the browser should play it.
 - **Beam aboard in the browser starts the game** (design 1): the same drill, played on foot, with the same crew of
   NPCs, consoles and rounds as the desktop. The browser's walk stops being a tour beside the game (CLAUDE.md, the
   law).
-- **A paused game drops nobody** (design 4): the server counts a peer's silence in its own ticks, not on the wall
-  clock, so a hidden browser tab (which stops the page's frames) pauses the game instead of emptying it.
+- **A paused game drops nobody** (design 4): the server counts a peer as silent only when it is silent in its own
+  ticks as well as on the wall clock, so a hidden browser tab (which stops the page's frames) pauses the game
+  instead of emptying it.
 - **The release proves it** (design 8): the smoke test plays into a round in the browser before every push to
   itch.io, and fails the release if it cannot.
 
 ## Impact
 
 - `sc-net::transport`: the local link; `Session::connect` takes where to connect (an address, or a local server).
-- `sc-server`: starts on a local link; the silence rule in ticks.
+- `sc-server`: starts on a local link; the silence rule on both clocks.
 - `sc-client::solo`: hosts over the local link; the browser's Beam aboard no longer turns into the tour.
 - `tools/web/smoke.mjs`: plays into a round.
 - `single-player` design 7 and tasks 3.1 and 3.3, and `front-menu` design 2: point here.
