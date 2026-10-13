@@ -72,17 +72,22 @@ impl OnFoot {
     }
 
     /// Put the body's feet at `at` (where the server has it: where it joined, or behind the seat it got up from), on
-    /// the floor under it: a seat's height is its deck's, and a station's platform stands higher.
+    /// the walk grid's floor nearest it: a seat's height is its deck's, and a station's platform stands higher; and a
+    /// body put down against a chair's back or a desk would be held by it, where the grid's floor is clear of both.
     pub fn place(&mut self, at: [f32; 3]) {
         // The walk grid's floor there (never a chair's seat or a desk), else the floor under it.
-        let y = self
+        let at = self
             .grid
             .snap(at, 0.8)
-            .map(|p| p[1])
-            .or_else(|| self.world.floor_below(at[0], at[1] + 1.0, at[2]))
-            .filter(|y| (y - at[1]).abs() < 1.0)
-            .unwrap_or(at[1]);
-        let at = [at[0], y, at[2]];
+            .filter(|p| (p[1] - at[1]).abs() < 1.0)
+            .or_else(|| {
+                self.world
+                    .floor_below(at[0], at[1] + 1.0, at[2])
+                    .filter(|y| (y - at[1]).abs() < 1.0)
+                    .map(|y| [at[0], y, at[2]])
+            })
+            .unwrap_or(at);
+        let y = at[1];
         self.body = Body::new(at, &self.data);
         self.eye_y = y;
     }
@@ -221,5 +226,49 @@ mod tests {
             }
         }
         assert!(failed.is_empty(), "stations a body cannot walk to: {}", failed.join("; "));
+    }
+
+    /// A player who gets up from a seat stands where the server puts them (`Bridge::stand_point`) and walks away on
+    /// their own feet: a body put down inside a chair or a desk cannot move, and the game would hold them there. Needs
+    /// the compiled deck; skipped without one.
+    #[test]
+    fn a_player_who_stands_up_walks_away_from_every_seat() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let Ok(bytes) = std::fs::read(root.join("compiled/tern.deck")) else {
+            eprintln!("no compiled deck: skipped");
+            return;
+        };
+        let Ok(d) = sc_core::deck::read(&bytes) else {
+            eprintln!("a compiled deck of another version: skipped (rebuild it with sc-tools deckc)");
+            return;
+        };
+        std::env::set_current_dir(&root).expect("the repository");
+        let mut f = OnFoot::from_deck(&d).expect("the walk");
+        let data = DrillData::shipped();
+        let stations: Vec<Station> = data.mission.stations.iter().filter_map(|s| Station::from_id(s)).collect();
+        let (bridge, _) =
+            sc_server::bridge::load(&data, &root, Some(&root.join("compiled/tern.deck"))).expect("bridge");
+        let mut failed = Vec::new();
+        for st in stations {
+            let up = bridge.stand_point(st);
+            // The best of four ways out, each facing four ways, in a second and a half: a body free to walk gets well
+            // clear of where it stood.
+            let mut best = 0.0f32;
+            for (forward, right) in [(1.0, 0.0), (-1.0, 0.0), (0.0, 1.0), (0.0, -1.0)] {
+                for k in 0..4 {
+                    let yaw = k as f32 * std::f32::consts::FRAC_PI_2;
+                    f.place(up);
+                    let at = f.body.feet;
+                    for _ in 0..45 {
+                        f.step(Input { forward, right, yaw, ..Input::default() }, false, 1.0 / 30.0);
+                    }
+                    best = best.max((f.body.feet[0] - at[0]).hypot(f.body.feet[2] - at[2]));
+                }
+            }
+            if best < 0.5 {
+                failed.push(format!("{} (stood at {:.2?}, moved {best:.2} m at most)", st.name(), up));
+            }
+        }
+        assert!(failed.is_empty(), "seats a body cannot walk away from: {}", failed.join("; "));
     }
 }

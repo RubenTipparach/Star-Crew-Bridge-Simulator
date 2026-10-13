@@ -29,17 +29,18 @@ const OUTSIDE_FAR_M: f32 = 80_000.0;
 /// The depth the outside is squeezed into, at the back of the depth buffer (window depth 1 - this to 1): drawn after
 /// the bridge, it shows only where no part of the bridge is in front, which is through the windows.
 const OUTSIDE_DEPTH: f32 = 0.0001;
-/// A deck is drawn while its floor is no more than this far below the eye, or this far above it, metres: the eye's
-/// own deck and the one above (a ladder's well), never the decks under its floor.
-const SEE_BELOW_M: f64 = 4.5;
-const SEE_ABOVE_M: f64 = 2.5;
+/// A room's bounds, ship frame, metres: least and greatest corner.
+type Bounds = ([f64; 3], [f64; 3]);
 /// The eye above the floor it stands on, metres (a standing person's, near enough for the overview's eye too).
 const EYE_FLOOR_M: f64 = 1.6;
 
 /// The ship's decks and the crew's figures: the bridge, and the rest of the ship the crew walk up from.
 pub struct BridgeView {
-    /// Every room of the decks: its mesh, its origin and its deck's floor height (metres).
-    rooms: Vec<(Mesh, [f64; 3], f64)>,
+    /// Every room of every deck: its mesh, its origin and its bounds (ship frame, metres). All are drawn but those
+    /// wholly outside the view (the owner, 2026-10-12: "there are holes in the ship", "the lower floors or distant rooms
+    /// or DOORs are not loaded in": a floor hatch, a ladder's well or a doorway looks into the room beyond, whatever
+    /// its deck).
+    rooms: Vec<(Mesh, [f64; 3], Bounds)>,
     /// The walk's collision, for whether one person sees another (crew-nameplates 2).
     world: Option<sc_core::walk::WalkWorld>,
     /// The viewscreens on the command deck.
@@ -64,10 +65,6 @@ impl BridgeView {
         let d = sc_core::deck::read(&bytes).map_err(|e| format!("{}: {e}", path.display()))?;
         let t = &d.index.textures;
         let tex = r.make_texture_array_mips(t.size_px, t.layers, &d.texture_levels());
-        // Each deck's floor height, from its rooms' floors.
-        let deck_floor = |deck: &str| {
-            d.index.compartments.iter().filter(|c| c.deck == deck).find_map(|c| c.floor_m).map(|f| f64::from(f[1]))
-        };
         let (mut rooms, mut figures, mut triangles) = (Vec::new(), Vec::new(), 0);
         for c in &d.index.compartments {
             let idx = d.indices_of(c);
@@ -81,8 +78,8 @@ impl BridgeView {
                     if deck == "A" {
                         triangles += idx.len() / 3;
                     }
-                    let floor = deck_floor(deck).unwrap_or(c.origin_m[1]);
-                    rooms.push((r.make_mesh(d.vertices_of(c), Indices::U32(&idx)), c.origin_m, floor));
+                    let v = d.vertices_of(c);
+                    rooms.push((r.make_mesh(v, Indices::U32(&idx)), c.origin_m, bounds(v, c.origin_m)));
                 }
             }
         }
@@ -148,9 +145,9 @@ impl BridgeView {
         r.begin_3d(t, [0.004, 0.005, 0.012, 1.0]);
         r.draw_sky(t, &crate::sky_params(ext, proj, view_out, fov / 720.0));
         let w = out.lighting;
-        // The eye's deck and the one above it (a ladder's well looks up): the decks below are under its floor.
-        let near = |f: &f64| (eye[1] - SEE_BELOW_M..=eye[1] + SEE_ABOVE_M).contains(f);
-        for (mesh, o, _) in self.rooms.iter().filter(|(_, _, f)| near(f)) {
+        // Every room in view, whatever its deck: the depth buffer hides what walls and floors cover.
+        let vp = proj * view;
+        for (mesh, o, _) in self.rooms.iter().filter(|(_, _, b)| in_view(vp, eye, b)) {
             let rel = Vec3::new((o[0] - eye[0]) as f32, (o[1] - eye[1]) as f32, (o[2] - eye[2]) as f32);
             let p = DeckParams {
                 mvp: proj * view * Mat4::from_translation(rel),
@@ -228,6 +225,38 @@ impl BridgeView {
         r.end_pass();
         proj * view
     }
+}
+
+/// A room's bounds from its packed vertices (positions in 1/1024 m from its origin, `sc-core::vertex`), ship frame.
+fn bounds(v: &[u8], origin: [f64; 3]) -> Bounds {
+    let (mut lo, mut hi) = ([f64::MAX; 3], [f64::MIN; 3]);
+    for vx in v.chunks_exact(sc_core::vertex::DECK_VERTEX_BYTES) {
+        for k in 0..3 {
+            let p = f64::from(i16::from_le_bytes([vx[k * 2], vx[k * 2 + 1]])) / f64::from(sc_core::vertex::FIXED_SCALE);
+            lo[k] = lo[k].min(origin[k] + p);
+            hi[k] = hi[k].max(origin[k] + p);
+        }
+    }
+    (lo, hi)
+}
+
+/// Whether any of a box (ship frame) is in the view of `vp` from `eye` (the box taken relative to the eye, as the rooms
+/// are drawn): false only when all eight corners lie outside one clip plane.
+fn in_view(vp: Mat4, eye: [f64; 3], b: &Bounds) -> bool {
+    let (lo, hi) = b;
+    let corners: Vec<Vec4> = (0..8)
+        .map(|i| {
+            let c = |k: usize| if i & (1 << k) == 0 { lo[k] } else { hi[k] };
+            vp * Vec4::new((c(0) - eye[0]) as f32, (c(1) - eye[1]) as f32, (c(2) - eye[2]) as f32, 1.0)
+        })
+        .collect();
+    let all = |f: &dyn Fn(&Vec4) -> bool| corners.iter().all(f);
+    !(all(&|p| p.x < -p.w)
+        || all(&|p| p.x > p.w)
+        || all(&|p| p.y < -p.w)
+        || all(&|p| p.y > p.w)
+        || all(&|p| p.z < -p.w)
+        || all(&|p| p.z > p.w))
 }
 
 /// What the ship shows inside besides its rooms and crew: fires burning, and this player's extinguisher.
