@@ -90,6 +90,7 @@
 <body>
 <div id="screen">
   <div id="pad"></div>
+  <div class="tl" id="loading" style="left:50%;top:50%;transform:translate(-50%,-50%);color:var(--amber);font-size:18px;text-align:center">Loading the ship...</div>
   <div id="cross"></div>
   <div class="tl" id="where"></div>
   <div class="tl" id="prompt"></div>
@@ -117,6 +118,20 @@
     <rect x="30" y="10" width="36" height="64" rx="6" fill="none" stroke="#f0a347" stroke-width="4"/>
     <path d="M 16 56 A 34 34 0 0 0 50 88" fill="none" stroke="#f0a347" stroke-width="4"/></svg><div>Turn sideways</div></div></div>
 </div>
+<div id="err" style="display:none;position:fixed;left:12px;right:12px;bottom:12px;z-index:99;background:#2a0f12;border:1px solid #ff6a6a;color:#ffd6d6;border-radius:8px;padding:10px 12px;font:12px/1.4 ui-monospace,monospace;white-space:pre-wrap;max-height:40vh;overflow:auto"></div>
+<script>
+  // Any error the page meets is shown on it (owner, 2026-10-13: "It no renders, 3js error"), so a phone with no
+  // developer console can still say what went wrong. The loading line says how far the page got.
+  (function () {
+    const box = () => document.getElementById("err");
+    const show = (t) => { const b = box(); if (!b) return; b.style.display = "block"; b.textContent += (b.textContent ? "\n" : "") + t; };
+    window.MOCKUP_ERROR = show;
+    addEventListener("error", (e) => show("Error: " + (e.message || e.error) + (e.filename ? " (" + e.filename.split("/").pop() + ":" + e.lineno + ")" : "")));
+    addEventListener("unhandledrejection", (e) => show("Error: " + (e.reason && (e.reason.stack || e.reason.message) || e.reason)));
+    const warn = console.error.bind(console);
+    console.error = (...a) => { warn(...a); show(a.map((x) => (x && x.message) || String(x)).join(" ").slice(0, 600)); };
+  })();
+</script>
 <script type="importmap">
 { "imports": {
   "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
@@ -4195,15 +4210,20 @@ const SEATS = { reach_m: 1.5, sit_s: 0.4, stand_hold_s: 0.5, eye_m: 0.78 };
 // A station whose console the mockup does not draw takes the console it merges into when unmanned (layout notes).
 const CONSOLE_OF = { comms: "science", flight_ops: "tactical" };
 
+const say = (t) => { const l = document.getElementById("loading"); if (l) l.textContent = t; };
+const PHONE = matchMedia("(pointer: coarse)").matches;
+say("Loading the materials...");
 const mats = await K.loadMaterials(THREE);
-const pmats = await K.loadPanels(THREE, mats, { px: 256 });
+// A phone takes the 128 px panel layers (a quarter of the 256 px layers' memory); a desktop the 256 px ones.
+const pmats = await K.loadPanels(THREE, mats, { px: PHONE ? 128 : 256 });
 const PANEL_GLOW = K.panelsData().manifest.glow;
 const hud = K.budgetHud({ textureBytes: pmats.bytes, note: "deck A, and the touch layer's 2 UI draws" });
 window.MOCKUP_BUDGET = () => hud.read();
 
 const screen = document.getElementById("screen");
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(devicePixelRatio, PHONE ? 1.5 : 2));
+renderer.domElement.addEventListener("webglcontextlost", (e) => { e.preventDefault(); window.MOCKUP_ERROR("The WebGL context was lost (the GPU ran out of memory or reset). Reload the page."); });
 renderer.localClippingEnabled = true;
 screen.prepend(renderer.domElement);
 const scene = new THREE.Scene();
@@ -4211,12 +4231,15 @@ window.MOCKUP_SCENE = scene;
 scene.background = new THREE.Color(K.PALETTE.space);
 const camera = new THREE.PerspectiveCamera(72, 844 / 390, 0.05, 400);
 
+say("Loading the props...");
 const PK = await window.PropKit.create(THREE, K, GLTFLoader, pmats, { sets: ["bridge", "suite"], sizes: S.prop_brief_m });
 hud.textureBytes += PK.bytes;
 const ROOMS = ["bridge", "ready_room", "briefing_room", "captains_quarters", "computer_core", "head", "bridge_locker", "a_corridor"];
 const baked = K.surfaceMaterial(THREE, pmats, { lit: false });
 const STATES = ["normal", "red_alert", "emergency"];
 const { buildRoom } = window.CommandRooms.create(THREE, K, PK, L, S, D, pmats, { parent: scene, material: baked });
+say("Building deck A...");
+await new Promise((r) => setTimeout(r, 0));
 const BUILT = ROOMS.map(buildRoom);
 scene.add(PK.spaceViews(L, {}));
 const cutPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), FLOOR + 2.7);   // the map's cut, under the ceilings
@@ -4224,7 +4247,9 @@ const cutPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), FLOOR + 2.7);   //
 // ------------------------------------------------------------------ the body (lib/shipwalk.js, driven by the touch layer)
 const RAPIER_URL = "https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.19.3/rapier.mjs";
 let RAPIER = null;
-try { const m = await import(RAPIER_URL); RAPIER = m.default || m; await RAPIER.init({}); }
+say("Loading the walk...");
+const within = (p, s) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error(`no answer in ${s} s`)), s * 1000))]);
+try { RAPIER = await within(import(RAPIER_URL).then(async (m) => { const R = m.default || m; await R.init({}); return R; }), 8); }
 catch (e) { RAPIER = null; console.warn("walk: Rapier did not load, the walk uses its first controller", e && e.message); }
 const NO_COLLIDE = new Set(["lamp", "status", "screen", "kick_strip"]);
 const drawn = new Set(ROOMS);
@@ -4582,7 +4607,7 @@ renderer.setAnimationLoop(() => {
     renderer.render(scene, camera);
     hud.endFrame(renderer);
   }
-  if (first) { first = false; K.markReady(); }
+  if (first) { first = false; say(""); document.getElementById("loading").remove(); K.markReady(); }
 });
 </script>
 </body>
