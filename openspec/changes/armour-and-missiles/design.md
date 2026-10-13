@@ -83,7 +83,8 @@ bots at Helm and Tactical: 3 victories in 448-551 s, 1 defeat, and 4 fights run 
 at least half won, every fight 4-10 minutes, the Hound below 60 % in every one. A player at Engineering is what turns
 it (recommendation taken, ask only with screenshots: the drill stays winnable without one). With the conduit boxes
 (`power-routing` design 4, the same day) a hit in the forward switchboard room can cut the bow off: 2 victories, 3
-defeats, 3 fights to the limit; the test holds a win in six.
+defeats, 3 fights to the limit; with every panel joined to at least two others, 3 victories, 2 defeats, 3 to the limit.
+The test holds a win in six.
 
 ## 7. Cost
 

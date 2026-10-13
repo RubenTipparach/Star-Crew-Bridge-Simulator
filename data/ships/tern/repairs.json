@@ -1,12 +1,18 @@
 {
   "schema": "starcrew.ship-repairs/1",
-  "_doc": "repairs-on-deck 5: the Tern's repair jobs, each a game, a place in the layout (or 'any' for a door or a breach wherever it is, 'outside' for EVA) and the players who can work it at once. The repair points themselves come from the props' builds (repairs-on-deck 2).",
+  "_doc": "repairs-on-deck 5: the Tern's repair jobs, each a game, a place in the layout (or 'any' for a door or a breach wherever it is, 'outside' for EVA) and the players who can work it at once. The repair points themselves come from the props' builds (repairs-on-deck 2). A job's loads are the power loads (power.json) whose damage it repairs: a player stands within reach_m of a damaged one's place (reach_dy_m in height) to work it (all-hands 5).",
+  "reach_m": 2.5,
+  "reach_dy_m": 2.5,
   "jobs": [
     {
       "id": "gravity_generator",
       "game": "gravity",
       "place": "cargo",
-      "workers": 2
+      "workers": 2,
+      "loads": [
+        "gravity_generator",
+        "inertial_dampers"
+      ]
     },
     {
       "id": "galley_synthesizer",
@@ -18,43 +24,68 @@
       "id": "co2_scrubbers",
       "game": "scrubbers",
       "place": "life_support",
-      "workers": 2
+      "workers": 2,
+      "loads": [
+        "co2_scrubbers",
+        "o2_generator",
+        "air_handler"
+      ]
     },
     {
       "id": "swift_port",
       "game": "fighter",
       "place": "launch_bay_p",
-      "workers": 1
+      "workers": 1,
+      "loads": [
+        "cradle_p"
+      ]
     },
     {
       "id": "swift_starboard",
       "game": "fighter",
       "place": "launch_bay_s",
-      "workers": 1
+      "workers": 1,
+      "loads": [
+        "cradle_s"
+      ]
     },
     {
       "id": "petrel",
       "game": "shuttle",
       "place": "hangar",
-      "workers": 1
+      "workers": 1,
+      "loads": [
+        "shuttle_pad"
+      ]
     },
     {
       "id": "reactor_core",
       "game": "reactor",
       "place": "engineering",
-      "workers": 2
+      "workers": 2,
+      "loads": [
+        "reactor_aux_p",
+        "reactor_aux_s"
+      ]
     },
     {
       "id": "impulse_1",
       "game": "impulse",
       "place": "drive",
-      "workers": 1
+      "workers": 1,
+      "loads": [
+        "impulse_drive",
+        "rcs_aft"
+      ]
     },
     {
       "id": "impulse_2",
       "game": "impulse",
       "place": "drive",
-      "workers": 1
+      "workers": 1,
+      "loads": [
+        "rcs_fwd"
+      ]
     },
     {
       "id": "warp_pylon_port",
@@ -84,7 +115,10 @@
       "id": "biobed_1",
       "game": "biobed",
       "place": "medbay",
-      "workers": 1
+      "workers": 1,
+      "loads": [
+        "medbay"
+      ]
     },
     {
       "id": "biobed_2",
@@ -96,7 +130,10 @@
       "id": "turret_dorsal_fwd",
       "game": "turret",
       "place": "turret_access_dorsal_fwd",
-      "workers": 1
+      "workers": 1,
+      "loads": [
+        "turret_dorsal"
+      ]
     },
     {
       "id": "turret_dorsal_aft",
@@ -108,7 +145,10 @@
       "id": "turret_ventral_fwd",
       "game": "turret",
       "place": "turret_access_ventral_fwd",
-      "workers": 1
+      "workers": 1,
+      "loads": [
+        "turret_ventral"
+      ]
     },
     {
       "id": "turret_ventral_aft",
@@ -120,31 +160,50 @@
       "id": "tube_port",
       "game": "tubes",
       "place": "torpedo_room",
-      "workers": 1
+      "workers": 1,
+      "loads": [
+        "tube_1",
+        "missile_hoist"
+      ]
     },
     {
       "id": "tube_starboard",
       "game": "tubes",
       "place": "torpedo_room",
-      "workers": 1
+      "workers": 1,
+      "loads": [
+        "tube_2"
+      ]
     },
     {
       "id": "shield_generator",
       "game": "shields",
       "place": "shield_room",
-      "workers": 2
+      "workers": 2,
+      "loads": [
+        "shield_generator"
+      ]
     },
     {
       "id": "sensor_array",
       "game": "sensors",
       "place": "computer_core",
-      "workers": 1
+      "workers": 1,
+      "loads": [
+        "sensors",
+        "computer",
+        "comms"
+      ]
     },
     {
       "id": "conduit_run",
       "game": "conduits",
       "place": "engineering",
-      "workers": 1
+      "workers": 1,
+      "loads": [
+        "emergency_lighting",
+        "bridge_consoles"
+      ]
     },
     {
       "id": "switchboard",
@@ -174,25 +233,39 @@
       "id": "coolant_runs",
       "game": "pipes",
       "place": "engineering",
-      "workers": 1
+      "workers": 1,
+      "loads": [
+        "radiator_pump_p",
+        "radiator_pump_s"
+      ]
     },
     {
       "id": "coolant_pump_a",
       "game": "pump",
       "place": "engineering",
-      "workers": 1
+      "workers": 1,
+      "loads": [
+        "coolant_pump_a",
+        "makeup_pump"
+      ]
     },
     {
       "id": "coolant_pump_b",
       "game": "pump",
       "place": "engineering",
-      "workers": 1
+      "workers": 1,
+      "loads": [
+        "coolant_pump_b"
+      ]
     },
     {
       "id": "chiller",
       "game": "chiller",
       "place": "engineering",
-      "workers": 1
+      "workers": 1,
+      "loads": [
+        "thermal_control"
+      ]
     }
   ]
 }

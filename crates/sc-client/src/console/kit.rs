@@ -66,6 +66,17 @@ pub enum Act {
     GunPick(usize),
     /// Tactical: throw a decoy (armour-and-missiles 3).
     Decoy,
+    /// Engineering's schematic (power-routing 6.3): open it full screen (EXPAND) or close it (CONSOLE); 3D (true) or
+    /// the board; switch a node's box, open or close a conduit, a tie's breaker, swap a load's feed (by index in
+    /// `power.json`'s nodes, conduits, ties, and the power data's loads).
+    Schem(bool),
+    /// Open the schematic on the board (a tap on the SCHEMATIC panel's board in small).
+    SchemBoard,
+    SchemDim(bool),
+    SchemBox(usize),
+    SchemRun(usize),
+    SchemTie(usize),
+    SchemFeed(usize),
 }
 
 /// What a drag on a control turns (the mockup's `data-drag`).
@@ -85,6 +96,9 @@ pub enum Drag {
     ShieldCam,
     /// The gunner: a drag across the sight turns the barrel (enemy-fighters 3).
     GunAim,
+    /// Engineering's schematic: a drag turns the 3D view round the ship, or moves the board (power-routing 6.3).
+    SchemCam,
+    SchemPan,
 }
 
 /// A control: pressed, dragged or held (the mockup's `data-hold`, 0.6 s).
@@ -93,6 +107,9 @@ pub enum Hit {
     Act(Act),
     Drag(Drag),
     Hold(String),
+    /// Acts on release if the pointer barely moved, so a drag that starts on it moves the view under it instead
+    /// (the schematic's boxes, runs and systems over its orbiting or panning view).
+    Tap(Act),
 }
 
 /// A control's place on screen this frame, what it does, and its tip.
@@ -103,6 +120,22 @@ pub struct Region {
     pub tip: Option<String>,
     /// What a drag is measured against (a lever's track, a pad), screen points: the region itself unless given.
     pub track: Rect,
+    /// A line's region: the points within a distance of a segment (screen points), inside `rect`.
+    pub seg: Option<(Pos2, Pos2, f32)>,
+}
+
+impl Region {
+    /// Whether a screen point is on the control.
+    pub fn contains(&self, p: Pos2) -> bool {
+        self.rect.contains(p) && self.seg.is_none_or(|(a, b, r)| seg_dist(p, a, b) <= r)
+    }
+}
+
+/// A point's distance from the segment a-b.
+pub fn seg_dist(p: Pos2, a: Pos2, b: Pos2) -> f32 {
+    let (d, q) = (b - a, p - a);
+    let t = (q.dot(d) / d.length_sq().max(1e-6)).clamp(0.0, 1.0);
+    (q - d * t).length()
 }
 
 /// Every control drawn this frame, in drawing order: the last one under the pointer is the one on top.
@@ -117,7 +150,17 @@ impl Hits {
     pub fn add(&mut self, cv: &Canvas, x: f32, y: f32, w: f32, h: f32, hit: Option<Hit>, tip: Option<String>) {
         let rect = cv.r(x, y, w, h).intersect(cv.painter.clip_rect());
         if rect.width() > 0.0 && rect.height() > 0.0 {
-            self.regions.push(Region { rect, hit, tip, track: cv.r(x, y, w, h) });
+            self.regions.push(Region { rect, hit, tip, track: cv.r(x, y, w, h), seg: None });
+        }
+    }
+
+    /// Record a line's control: user points `a`-`b` on `cv`, `r` user units either side.
+    #[allow(clippy::too_many_arguments)]
+    pub fn add_seg(&mut self, cv: &Canvas, a: [f32; 2], b: [f32; 2], r: f32, hit: Option<Hit>, tip: Option<String>) {
+        let (pa, pb, rs) = (cv.p(a[0], a[1]), cv.p(b[0], b[1]), r * cv.s);
+        let rect = Rect::from_two_pos(pa, pb).expand(rs).intersect(cv.painter.clip_rect());
+        if rect.width() > 0.0 && rect.height() > 0.0 {
+            self.regions.push(Region { rect, hit, tip, track: rect, seg: Some((pa, pb, rs)) });
         }
     }
 
@@ -127,18 +170,19 @@ impl Hits {
         let rect = cv.r(x, y, w, h).intersect(cv.painter.clip_rect());
         if rect.width() > 0.0 && rect.height() > 0.0 {
             let [tx, ty, tw, th] = track;
-            self.regions.push(Region { rect, hit: Some(hit), tip: Some(tip.to_owned()), track: cv.r(tx, ty, tw, th) });
+            let track = cv.r(tx, ty, tw, th);
+            self.regions.push(Region { rect, hit: Some(hit), tip: Some(tip.to_owned()), track, seg: None });
         }
     }
 
     /// The topmost control under a point (screen points).
     pub fn at(&self, p: Pos2) -> Option<&Region> {
-        self.regions.iter().rev().find(|r| r.rect.contains(p) && r.hit.is_some())
+        self.regions.iter().rev().find(|r| r.contains(p) && r.hit.is_some())
     }
 
     /// The topmost tip under a point.
     pub fn tip_at(&self, p: Pos2) -> Option<&str> {
-        self.regions.iter().rev().find(|r| r.rect.contains(p) && r.tip.is_some()).and_then(|r| r.tip.as_deref())
+        self.regions.iter().rev().find(|r| r.contains(p) && r.tip.is_some()).and_then(|r| r.tip.as_deref())
     }
 }
 

@@ -268,9 +268,8 @@ bridge (`NavGrid::snap_joined`), and the drill's view draws the eye's deck and t
 4. A seat held by a player cannot be walked into: the order is refused, "taken". A seat held by a bot is relieved:
    the player walks up, the bot stands and walks on (BS 6, "Relieve").
 
-A player's walk is the same order as a bot's (recommendation taken): click the other station's chip in the title
-band, or Tab, and the body walks there on its own. Walking with W A S D on the bridge comes with the ship's walk
-in the drill client, its own step.
+A player's walk was once the same order as a bot's (click a chip and the body walks there on its own); section 9.2
+replaces it: a player walks their own body (the law in CLAUDE.md, 2026-10-12). A bot's walk is unchanged.
 
 **When a bot moves** (its `bot` profile in `data/stations.json`, recommendation taken):
 
@@ -300,6 +299,32 @@ about 100 triangles each.
 **Tests.** A lone Tactical bot walks to Helm and wins; a player who claims a bot's seat relieves it and the bot walks
 to the other; a station is automated while its walker is on the way; a claim of a player's seat is refused; a body
 reaches a seat on the bridge's walk world in under 6 s.
+
+### 9.2 Played on foot (owner, 2026-10-12: "COMBINE THE GAMEPLAY", the law in CLAUDE.md; built)
+
+The owner, on a recording that cut from console to console: "a massive error: yuo didnt combine the 3d level with
+these daashboards. the requirement is I walk to a station, sit down or interact with the console, and the dashboards
+open up". The game had two modes: the ship tour walked the decks with no consoles, and the drill showed consoles with
+bodies the server walked from a menu's claim. Now they are one:
+
+| Part | What it does |
+| --- | --- |
+| A player's body | Joins on foot at its muster place, `Spot::Free`: the player's to walk (`sc-core::combat::bodies`). Bots follow their paths as before. |
+| The walk | The ship tour's walk, shared (`sc-client::onfoot`: the walk world, lifts, the walk grid, W A S D, Shift, Space, E and Q). The client walks its own body and sends where it put it 20 times a second (`ClientMsg::Walk`, protocol 10); the drill takes a step of at most 6 m a message (`Drill::walked`, a guard on the wire). |
+| Sitting | E within `seats.reach_m` (1.5 m across the floor) and `reach_dy_m` (1.0 m) of a seat: the claim, which the drill refuses from farther (`Refusal::TooFar`, "Walk to the seat"); one rule, `bodies::seat_in_reach`, for the drill and the prompt ("E  Sit at Helm", "E  Take Helm from Lt. Sil Saren"). The 0.4 s sit, then the console. |
+| Standing | Hold E (`seats.stand_hold_s`, 0.5 s) or Backspace; at Helm, whose console rolls on E, Backspace (recommendation taken, ask only with screenshots). The body stands `stand_back_m` (0.7 m) behind the seat, on the floor there; the station goes to automation at once (`ClientMsg::Stand`). |
+| Consoles | Only the station sat at: a crew tab no longer shows another station's console from a seat; `--look-in` is gone. |
+| The walk grid | Agrees with the body: two floors join only where the floor rises in steps the body takes (`walk.json` `body.step_m`, 0.35 m), never across a platform's lip; the bridge's stairs (`command_suite.json`) are links from foot to top; every floor a ladder reaches is walked (the turret pods), and a ladder into a floor too small for the grid is a last climb; a climb is taken at the ladder itself, within Use's reach (`ladder.reach_m`). A path's ladder was marked a cell early; fixed. |
+| A recording | `sc-client --solo --station S --playtest`: a scripted player (`sc-client::playtest`) walks from its muster place to its station by the walk grid with the bot crew's own steering (`bots::steer`), presses E, works the console (at Engineering the schematic in 3D, then the board), holds Stand, walks to another station (taking it from its NPC), down the decks to engineering, damage control and the medbay, and back. |
+
+**Tests.** `a_player_walks_to_a_seat_sits_within_reach_and_stands_up_on_their_feet`,
+`a_walk_message_cannot_carry_a_body_across_the_ship` (core); `every_client_message_round_trips` (the wire);
+`every_bridge_station_is_reached_on_foot_from_the_corridor` (the client: from deck A's corridor every station's seat,
+the gunner's pod by its ladder, is brought within reach by the walk grid's path walked by the body's own controller, on
+the compiled deck); `a_ladder_joins_two_decks` (the climb at the ladder's foot, up to the deck above).
+
+**What waits** (the law's other half, `all-hands`): putting fires out with an extinguisher, repairs at the machine
+(`repairs-on-deck`), carrying the injured to the medbay and healing them.
 
 ### 9.1 The outside from the bridge (owner, 2026-10-10)
 

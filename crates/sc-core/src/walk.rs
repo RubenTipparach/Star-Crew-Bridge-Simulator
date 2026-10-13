@@ -263,6 +263,11 @@ pub struct WalkWorld {
     landings: Vec<(usize, f32, ColliderHandle)>,
     /// Triangles in the static mesh.
     pub triangles: usize,
+    /// The highest ledge the body steps up, metres (`walk.json` `body.step_m`): the walk grid joins no floors a
+    /// sheer rise higher than this apart.
+    pub step_m: f32,
+    /// How near a ladder Use takes it, metres (`walk.json` `ladder.reach_m`).
+    pub ladder_reach_m: f32,
 }
 
 /// Collision groups: a wall in force, and an open landing (in no group, so no query sees it).
@@ -327,6 +332,8 @@ impl WalkWorld {
             lifts: e.lifts.clone(),
             landings,
             triangles: idx.len(),
+            step_m: d.body.step_m as f32,
+            ladder_reach_m: d.ladder.reach_m as f32,
         };
         // One step of an empty physics pipeline fills the broad phase's tree; nothing moves in it afterwards.
         let mut pipeline = PhysicsPipeline::new();

@@ -11,7 +11,7 @@ use sc_core::combat::bodies::Posture;
 use sc_core::combat::{self, Command, HelmMode, Outcome, Phase, PowerCmd, Refusal, Station, TubeState, TurretMode};
 
 /// The protocol's version; a Hello with another is refused.
-pub const PROTOCOL: u16 = 8;
+pub const PROTOCOL: u16 = 12;
 /// The longest unreliable message, so it is one SCTP chunk in one datagram (netcode-and-sessions section 2).
 pub const MAX_UNRELIABLE: usize = 1200;
 /// The longest string field, in bytes.
@@ -63,6 +63,14 @@ impl Writer {
     fn quat(&mut self, q: DQuat) {
         for c in [q.x, q.y, q.z, q.w] {
             self.f32(c);
+        }
+    }
+    /// Flags packed eight a byte, after their count.
+    fn bits(&mut self, v: &[bool]) {
+        let v = &v[..v.len().min(MAX_LIST)];
+        self.u8(v.len() as u8);
+        for c in v.chunks(8) {
+            self.u8(c.iter().enumerate().fold(0, |b, (k, &f)| b | (u8::from(f) << k)));
         }
     }
     fn str(&mut self, s: &str) {
@@ -161,6 +169,14 @@ impl<'a> Reader<'a> {
         }
         Ok(s.to_owned())
     }
+    fn bits(&mut self) -> Result<Vec<bool>, DecodeError> {
+        let n = self.count(MAX_LIST)?;
+        let b = self.take(n.div_ceil(8))?;
+        Ok((0..n).map(|k| b[k / 8] >> (k % 8) & 1 == 1).collect())
+    }
+    fn i16(&mut self) -> Result<i16, DecodeError> {
+        Ok(i16::from_le_bytes(self.take(2)?.try_into().expect("two bytes")))
+    }
     fn count(&mut self, cap: usize) -> Result<usize, DecodeError> {
         let n = usize::from(self.u8()?);
         if n > cap {
@@ -243,6 +259,33 @@ pub enum ClientMsg {
     Command(Command),
     /// A round-trip probe; the server echoes it.
     Ping(u32),
+    /// The player walked their body here (the law: one game, played on foot): its feet, ship frame, metres, and the
+    /// way it faces, radians about +Y. The client's walk on the walk world is where it can go; the drill checks the step.
+    Walk {
+        /// Feet, ship frame, metres.
+        pos: [f32; 3],
+        /// Facing, radians.
+        yaw: f32,
+    },
+    /// Get up from the seat (hold E): the body stands behind it, the station goes to automation.
+    Stand,
+    /// Take an extinguisher at the damage-control locker (all-hands 4).
+    TakeExtinguisher,
+    /// Spray the extinguisher carried, or stop.
+    Spray(bool),
+    /// Dock at a repair job (all-hands 5): its index in the Tern's jobs.
+    Dock(u8),
+    /// A round of a repair job landed: the job, the round given, and how long it took to play, seconds.
+    RoundDone {
+        /// The job.
+        job: u8,
+        /// The round the server gave.
+        round: u8,
+        /// Seconds it took.
+        play_s: f32,
+    },
+    /// Stand up from a repair.
+    Undock,
 }
 
 /// A client's message on the input channel: the helm's stick, newest wins.
@@ -430,6 +473,9 @@ pub struct Snapshot {
     /// The Tern's power grid and cooling (power-grid 4): Engineering's console. The server sends it in some
     /// snapshots only (power-grid 14: 2 Hz, faster while a fader is dragged); a client keeps the last.
     pub power: Option<PowerSnap>,
+    /// The grid's routing (power-routing 6.1): Engineering's schematic. The server sends it at 2 Hz in the snapshots
+    /// between the grid's, so no snapshot carries both; a client keeps the last.
+    pub route: Option<RouteSnap>,
 }
 
 /// A load group's fader as a snapshot carries it.
@@ -496,6 +542,119 @@ pub struct PowerSnap {
     pub cut: u8,
     /// A fader being dragged on Engineering: group, setpoint, and the solve's MW wanted and delivered there.
     pub preview: Option<(u8, f64, f64, f64)>,
+}
+
+/// The grid's routing as Engineering's schematic draws it (power-routing 6.1): every box, run, feed and edge, packed.
+/// About 300 bytes for the Tern, in its own snapshots (the grid's would not fit beside it in one datagram).
+#[derive(Debug, Clone, PartialEq)]
+pub struct RouteSnap {
+    /// Each node's box switched on, power reaching it (the core's `reached`), and its health (a 255th).
+    pub box_on: Vec<bool>,
+    pub reached: Vec<bool>,
+    pub node_health: Vec<u8>,
+    /// Each conduit closed at its box, cut through, and damaged (carrying less than its rating, not cut).
+    pub closed: Vec<bool>,
+    pub severed: Vec<bool>,
+    pub damaged: Vec<bool>,
+    /// Each load on its second feed, and dropped.
+    pub on_alt: Vec<bool>,
+    pub dropped: Vec<bool>,
+    /// Each load's supply: a 250th of what it wants, or [`RouteSnap::WANTS_NOTHING`].
+    pub supply: Vec<u8>,
+    /// The flow on every edge (`PowerData::edge_count`'s order), MW, to a hundredth.
+    pub flows: Vec<f64>,
+    /// The runs live, the main protection's limit, and the seconds left dark after a trip (0: not tripped).
+    pub live: u8,
+    pub limit: u8,
+    pub trip_s: f64,
+}
+
+impl RouteSnap {
+    /// A load's [`RouteSnap::supply`] when it wants nothing.
+    pub const WANTS_NOTHING: u8 = 255;
+
+    /// What a client is sent of the drill's routing.
+    pub fn of(d: &combat::Drill) -> Self {
+        let (pd, p, dm) = (&d.data.power, &d.power, &d.damage[0]);
+        Self {
+            box_on: p.box_on.clone(),
+            reached: p.reached(pd, &dm.node_health, &dm.conduits),
+            node_health: (0..pd.nodes.len())
+                .map(|k| (dm.node_health.get(k).copied().unwrap_or(1.0).clamp(0.0, 1.0) * 255.0).round() as u8)
+                .collect(),
+            closed: p.conduit_breaker.clone(),
+            severed: dm.conduits.iter().map(|c| c.severed).collect(),
+            damaged: dm.conduits.iter().map(|c| !c.severed && c.health < 1.0 - 1e-9).collect(),
+            on_alt: p.on_alt.clone(),
+            dropped: p.dropped.clone(),
+            supply: (0..pd.loads.len())
+                .map(|i| {
+                    if p.demand[i] <= 1e-9 && !p.dropped[i] {
+                        Self::WANTS_NOTHING
+                    } else {
+                        (p.supply(i) * 250.0).round() as u8
+                    }
+                })
+                .collect(),
+            flows: p.flows.clone(),
+            live: p.live_runs_of(pd, &dm.conduits).min(255) as u8,
+            limit: pd.file.routing.max_live_runs.min(255) as u8,
+            trip_s: p.trip_s,
+        }
+    }
+
+    fn write(&self, w: &mut Writer) {
+        w.bits(&self.box_on);
+        w.bits(&self.reached);
+        w.u8(self.node_health.len().min(MAX_LIST) as u8);
+        for v in self.node_health.iter().take(MAX_LIST) {
+            w.u8(*v);
+        }
+        for list in [&self.closed, &self.severed, &self.damaged, &self.on_alt, &self.dropped] {
+            w.bits(list);
+        }
+        w.u8(self.supply.len().min(MAX_LIST) as u8);
+        for v in self.supply.iter().take(MAX_LIST) {
+            w.u8(*v);
+        }
+        w.u8(self.flows.len().min(MAX_LIST) as u8);
+        for v in self.flows.iter().take(MAX_LIST) {
+            w.0.extend_from_slice(&((v * 100.0).round().clamp(-32767.0, 32767.0) as i16).to_le_bytes());
+        }
+        w.u8(self.live);
+        w.u8(self.limit);
+        w.f32(self.trip_s);
+    }
+
+    fn read(r: &mut Reader) -> Result<Self, DecodeError> {
+        let (box_on, reached) = (r.bits()?, r.bits()?);
+        let n = r.count(MAX_LIST)?;
+        let node_health = (0..n).map(|_| r.u8()).collect::<Result<_, _>>()?;
+        let (closed, severed, damaged, on_alt, dropped) = (r.bits()?, r.bits()?, r.bits()?, r.bits()?, r.bits()?);
+        let n = r.count(MAX_LIST)?;
+        let supply = (0..n).map(|_| r.u8()).collect::<Result<Vec<u8>, _>>()?;
+        if supply.iter().any(|&v| v > 250 && v != Self::WANTS_NOTHING) {
+            return Err(DecodeError("no such supply"));
+        }
+        let n = r.count(MAX_LIST)?;
+        let flows = (0..n).map(|_| r.i16().map(|v| f64::from(v) / 100.0)).collect::<Result<_, _>>()?;
+        let (live, limit, trip_s) = (r.u8()?, r.u8()?, r.f32(0.0, 3600.0)?);
+        Ok(Self {
+            box_on,
+            reached,
+            node_health,
+            closed,
+            severed,
+            damaged,
+            on_alt,
+            dropped,
+            supply,
+            flows,
+            live,
+            limit,
+            trip_s,
+        })
+    }
 }
 
 impl PowerSnap {
@@ -774,7 +933,7 @@ impl DamageSnap {
     }
 }
 
-/// A crew member's body in a snapshot: 10 bytes (coop-drill design 9).
+/// A crew member's body in a snapshot: 11 bytes (coop-drill design 9; its extinguisher, all-hands 4).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BodySnap {
     /// The player's slot.
@@ -787,6 +946,10 @@ pub struct BodySnap {
     pub posture: Posture,
     /// The station it is walking to.
     pub going: Option<Station>,
+    /// The extinguisher it carries: its agent left, a share of full (0: none); sent as a 127th.
+    pub agent: f32,
+    /// Spraying it now (the byte's top bit).
+    pub spraying: bool,
 }
 
 /// The server's messages on the command channel.
@@ -869,6 +1032,14 @@ pub enum ServerMsg {
     Phase(Phase, Outcome),
     /// The echo of a Ping.
     Pong(u32),
+    /// A repair job's next round for this player (all-hands 5): the round, its level, whether it opens with the part;
+    /// or none: the job is done.
+    Repair {
+        /// The job.
+        job: u8,
+        /// The round, its level, the part.
+        next: Option<(u8, u8, bool)>,
+    },
 }
 
 const MAX_SHIPS: usize = 2;
@@ -1045,6 +1216,11 @@ fn write_power(w: &mut Writer, p: PowerCmd) {
             w.u8(k);
             w.u8(u8::from(closed));
         }
+        PowerCmd::Feed(k, alt) => {
+            w.u8(14);
+            w.u8(k);
+            w.u8(u8::from(alt));
+        }
     }
 }
 
@@ -1066,6 +1242,7 @@ fn read_power(r: &mut Reader) -> Result<PowerCmd, DecodeError> {
         11 => PowerCmd::Lever(r.u8()?, r.f32(0.0, 2.0)?),
         12 => PowerCmd::Box(r.u8()?, r.bool()?),
         13 => PowerCmd::Run(r.u8()?, r.bool()?),
+        14 => PowerCmd::Feed(r.u8()?, r.bool()?),
         _ => return Err(DecodeError("no such power command")),
     })
 }
@@ -1146,6 +1323,30 @@ impl ClientMsg {
                 w.u8(5);
                 w.u32(*t);
             }
+            Self::Walk { pos, yaw } => {
+                w.u8(6);
+                for v in pos {
+                    w.f32(f64::from(*v));
+                }
+                w.f32(f64::from(*yaw));
+            }
+            Self::Stand => w.u8(7),
+            Self::TakeExtinguisher => w.u8(8),
+            Self::Spray(on) => {
+                w.u8(9);
+                w.u8(u8::from(*on));
+            }
+            Self::Dock(j) => {
+                w.u8(10);
+                w.u8(*j);
+            }
+            Self::RoundDone { job, round, play_s } => {
+                w.u8(11);
+                w.u8(*job);
+                w.u8(*round);
+                w.f32(f64::from(*play_s));
+            }
+            Self::Undock => w.u8(12),
         }
         w.0
     }
@@ -1164,6 +1365,20 @@ impl ClientMsg {
             3 => Self::Ready(r.bool()?),
             4 => Self::Command(read_command(&mut r)?),
             5 => Self::Ping(r.u32()?),
+            6 => {
+                // The Tern is about 80 m long; the guard is the ship frame's reach, not the ship's.
+                let mut pos = [0.0f32; 3];
+                for v in &mut pos {
+                    *v = r.f32(-1000.0, 1000.0)? as f32;
+                }
+                Self::Walk { pos, yaw: r.f32(-100.0, 100.0)? as f32 }
+            }
+            7 => Self::Stand,
+            8 => Self::TakeExtinguisher,
+            9 => Self::Spray(r.bool()?),
+            10 => Self::Dock(r.u8()?),
+            11 => Self::RoundDone { job: r.u8()?, round: r.u8()?, play_s: r.f32(0.0, 1e5)? as f32 },
+            12 => Self::Undock,
             _ => return Err(DecodeError("no such client message")),
         };
         r.done()?;
@@ -1290,6 +1505,7 @@ impl Snapshot {
             w.u8((b.yaw.rem_euclid(std::f32::consts::TAU) / std::f32::consts::TAU * 256.0) as u32 as u8);
             w.u8(b.posture as u8);
             w.u8(station_byte(b.going));
+            w.u8((b.agent.clamp(0.0, 1.0) * 127.0).round() as u8 | if b.spraying { 0x80 } else { 0 });
         }
         w.u8(self.fighters.len() as u8);
         for f in &self.fighters {
@@ -1317,6 +1533,13 @@ impl Snapshot {
             w.u8(u8::from(*working));
         }
         match &self.power {
+            Some(p) => {
+                w.u8(1);
+                p.write(&mut w);
+            }
+            None => w.u8(0),
+        }
+        match &self.route {
             Some(p) => {
                 w.u8(1);
                 p.write(&mut w);
@@ -1521,7 +1744,16 @@ impl Snapshot {
             let yaw = f32::from(r.u8()?) / 256.0 * std::f32::consts::TAU;
             let posture = Posture::from_u8(r.u8()?).ok_or(DecodeError("no such posture"))?;
             let going = read_station(&mut r)?;
-            bodies.push(BodySnap { slot, pos, yaw, posture, going });
+            let kit = r.u8()?;
+            bodies.push(BodySnap {
+                slot,
+                pos,
+                yaw,
+                posture,
+                going,
+                agent: f32::from(kit & 0x7f) / 127.0,
+                spraying: kit & 0x80 != 0,
+            });
         }
         let nf = r.count(combat::FIGHTER_IDS.len())?;
         let mut fighters = Vec::with_capacity(nf);
@@ -1554,6 +1786,7 @@ impl Snapshot {
         }
         let damage = DamageSnap { integrity, fires, breaches, teams };
         let power = if r.bool()? { Some(PowerSnap::read(&mut r)?) } else { None };
+        let route = if r.bool()? { Some(RouteSnap::read(&mut r)?) } else { None };
         r.done()?;
         Ok(Self {
             header,
@@ -1570,6 +1803,7 @@ impl Snapshot {
             fighters,
             damage,
             power,
+            route,
         })
     }
 
@@ -1647,6 +1881,7 @@ impl Snapshot {
                 .collect(),
             damage: DamageSnap::of(d.layout(0), &d.damage[0]),
             power: Some(PowerSnap::of(d)),
+            route: Some(RouteSnap::of(d)),
             fighters: d
                 .fighters
                 .iter()
@@ -1663,7 +1898,19 @@ impl Snapshot {
             bodies: d
                 .bodies
                 .iter()
-                .map(|b| BodySnap { slot: b.slot, pos: b.pos, yaw: b.yaw, posture: b.posture, going: b.walking_to() })
+                .map(|b| {
+                    let kit = d.kits.iter().find(|k| k.slot == b.slot);
+                    let full = d.data.damage.fire.extinguisher_s.max(1e-9);
+                    BodySnap {
+                        slot: b.slot,
+                        pos: b.pos,
+                        yaw: b.yaw,
+                        posture: b.posture,
+                        going: b.walking_to(),
+                        agent: kit.map_or(0.0, |k| (k.agent_s / full) as f32),
+                        spraying: kit.is_some_and(|k| k.spraying),
+                    }
+                })
                 .collect(),
             stats: StatsSnap {
                 tern_shots: st.tern_shots,
@@ -1758,6 +2005,19 @@ impl ServerMsg {
                 w.u8(10);
                 w.u32(*t);
             }
+            Self::Repair { job, next } => {
+                w.u8(14);
+                w.u8(*job);
+                match next {
+                    Some((round, level, part)) => {
+                        w.u8(1);
+                        w.u8(*round);
+                        w.u8(*level);
+                        w.u8(u8::from(*part));
+                    }
+                    None => w.u8(0),
+                }
+            }
             Self::Beam { owner, from, to, hit } => {
                 w.u8(11);
                 w.u16(*owner);
@@ -1813,6 +2073,11 @@ impl ServerMsg {
             11 => Self::Beam { owner: r.u16()?, from: r.v3_64(POS_LIM)?, to: r.v3_64(POS_LIM)?, hit: r.bool()? },
             12 => Self::Decoy(r.u16()?),
             13 => Self::Burst { ship: r.u16()?, pos: r.v3_64(POS_LIM)?, size: r.f32(0.0, 1e6)? },
+            14 => {
+                let job = r.u8()?;
+                let next = if r.bool()? { Some((r.u8()?, r.u8()?, r.bool()?)) } else { None };
+                Self::Repair { job, next }
+            }
             _ => return Err(DecodeError("no such server message")),
         };
         if let Self::Hit { face, .. } = m {
@@ -1882,7 +2147,9 @@ mod tests {
     fn the_power_grid_round_trips_and_rides_in_some_snapshots_only() {
         let mut d = engaged();
         d.power_preview = Some((1, 1.25, 15.0, 12.5));
-        let s = Snapshot::of(&d);
+        let mut s = Snapshot::of(&d);
+        // The server never sends the routing beside the grid (power-routing 6.1).
+        s.route = None;
         let b = s.encode();
         assert!(b.len() <= MAX_UNRELIABLE, "a snapshot with the grid is {} bytes; it must fit one datagram", b.len());
         let back = Snapshot::decode(&b).unwrap();
@@ -1903,6 +2170,47 @@ mod tests {
         let size = bare.encode().len();
         assert!(size + 250 < b.len(), "the grid is most of the difference: {size} against {}", b.len());
         assert_eq!(Snapshot::decode(&bare.encode()).unwrap().power, None);
+    }
+
+    #[test]
+    fn the_routing_round_trips_in_its_own_snapshots_and_fits_one_datagram() {
+        let mut d = engaged();
+        // A box off, a run opened, one cut and one damaged, a system on its second feed, the grid tripped.
+        d.power.box_on[3] = false;
+        d.power.conduit_breaker[1] = false;
+        d.damage[0].conduits[5].severed = true;
+        d.damage[0].conduits[6].health = 0.5;
+        d.damage[0].node_health[2] = 0.4;
+        d.power.on_alt[4] = true;
+        d.power.trip_s = 4.5;
+        let mut s = Snapshot::of(&d);
+        s.power = None;
+        let b = s.encode();
+        assert!(
+            b.len() <= MAX_UNRELIABLE,
+            "a snapshot with the routing is {} bytes; it must fit one datagram",
+            b.len()
+        );
+        let (a, z) = (s.route.as_ref().unwrap(), Snapshot::decode(&b).unwrap().route.unwrap());
+        assert_eq!((&a.box_on, &a.closed, &a.severed, &a.damaged), (&z.box_on, &z.closed, &z.severed, &z.damaged));
+        assert_eq!(a.reached, z.reached);
+        assert!(!z.reached[3], "a box switched off is not reached");
+        assert_eq!(
+            (&a.on_alt, &a.dropped, &a.supply, &a.node_health),
+            (&z.on_alt, &z.dropped, &z.supply, &z.node_health)
+        );
+        assert_eq!((a.live, a.limit), (z.live, z.limit));
+        assert!(!z.box_on[3] && !z.closed[1] && z.severed[5] && z.damaged[6] && !z.damaged[5] && z.on_alt[4]);
+        assert_eq!(z.node_health[2], 102, "a node's health travels as a 255th");
+        assert!((z.trip_s - 4.5).abs() < 1e-6);
+        assert_eq!(z.flows.len(), d.data.power.edge_count());
+        for (f, g) in a.flows.iter().zip(&z.flows) {
+            assert!((f - g).abs() <= 0.005 + 1e-9, "flows travel to a hundredth of a MW: {f} against {g}");
+        }
+        let mut bare = s.clone();
+        bare.route = None;
+        let size = b.len() - bare.encode().len();
+        assert!(size < 360, "the routing is {size} bytes");
     }
 
     #[test]
@@ -1934,6 +2242,14 @@ mod tests {
             ClientMsg::Command(Command::Power(PowerCmd::Lever(2, 0.75))),
             ClientMsg::Command(Command::Power(PowerCmd::Box(20, false))),
             ClientMsg::Command(Command::Power(PowerCmd::Run(40, true))),
+            ClientMsg::Command(Command::Power(PowerCmd::Feed(15, true))),
+            ClientMsg::Walk { pos: [1.5, 3.5, -12.25], yaw: 0.5 },
+            ClientMsg::Stand,
+            ClientMsg::TakeExtinguisher,
+            ClientMsg::Spray(true),
+            ClientMsg::Dock(3),
+            ClientMsg::RoundDone { job: 3, round: 1, play_s: 12.5 },
+            ClientMsg::Undock,
         ];
         for m in msgs {
             assert_eq!(ClientMsg::decode(&m.encode()).unwrap(), m);
@@ -1956,6 +2272,8 @@ mod tests {
             ServerMsg::Hit { bolt: 9, target: 2, face: 4, damage_mj: 1.25 },
             ServerMsg::Phase(Phase::Debrief, Outcome::Victory),
             ServerMsg::Pong(77),
+            ServerMsg::Repair { job: 4, next: Some((2, 1, false)) },
+            ServerMsg::Repair { job: 4, next: None },
         ];
         for m in msgs {
             assert_eq!(ServerMsg::decode(&m.encode()).unwrap(), m);

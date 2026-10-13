@@ -43,12 +43,37 @@ pub enum Waypoint {
     },
 }
 
+/// Whether the floor from `a` (its centre and floor height) one cell along `dir` to a floor at `yb` rises in steps the
+/// body takes: sampled every quarter cell, no rise between two samples higher than the walk's step.
+fn rises_in_steps(world: &WalkWorld, a: [f32; 3], dir: [f32; 2], yb: f32) -> bool {
+    if (yb - a[1]).abs() <= world.step_m {
+        return true;
+    }
+    let top = a[1].max(yb) + 0.5;
+    let mut last = a[1];
+    for k in 1..=4 {
+        let t = k as f32 * CELL_M / 4.0;
+        let Some(y) = world.floor_below(a[0] + dir[0] * t, top, a[2] + dir[1] * t) else { return false };
+        if (y - last).abs() > world.step_m {
+            return false;
+        }
+        last = y;
+    }
+    true
+}
+
+/// A stair: its foot and its top, floor points, metres.
+pub type Stair = ([f32; 3], [f32; 3]);
+
 /// A ladder between its foot cell `a` and its top cell `b`.
 #[derive(Debug, Clone, Copy)]
 struct Link {
     a: usize,
     b: usize,
     cost: f32,
+    /// Where it is taken from at `a`'s end and at `b`'s: a ladder's own foot and top (its cells may stand a metre off
+    /// it, where its rails leave room), a stair's cells.
+    ends: [[f32; 3]; 2],
 }
 
 /// The walk grid.
@@ -64,6 +89,12 @@ pub struct NavGrid {
     /// Joins to the four neighbours: bit 0 +x, 1 -x, 2 +z, 3 -z.
     joins: Vec<u8>,
     ladders: Vec<Link>,
+    /// Stairs onto raised floors (a platform's ring, a dais), walked: the layout's stairs from foot to top, so a path
+    /// takes the stair and never a platform's sheer lip.
+    stairs: Vec<Link>,
+    /// Ladders up into a floor too small for the grid (a turret pod: the gunner's seat at its top): the foot's cell, the
+    /// ladder's foot and its top. A path to the top walks to the foot and climbs.
+    ups: Vec<(usize, [f32; 3], [f32; 3])>,
 }
 
 /// A cell's index from its deck and grid position.
@@ -150,6 +181,11 @@ impl NavGrid {
                         let clear = [0.5f32, 1.3]
                             .iter()
                             .all(|&k| world.cast([x, base + k, z], [dx as f32, 0.0, dz as f32], CELL_M).is_none());
+                        // The floor between rises as a ramp or stairs do, never a sheer ledge higher than the body
+                        // steps: two floors 0.45 m apart with an edge between are not joined (a platform's lip).
+                        if clear && !rises_in_steps(world, [x, ya, z], [dx as f32, dz as f32], yb) {
+                            continue;
+                        }
                         if clear {
                             joins[a] |= 1 << bit;
                             joins[b] |= 1 << (bit + 1);
@@ -158,13 +194,28 @@ impl NavGrid {
                 }
             }
         }
-        let mut g = Self { x0, z0, nx, nz, decks: decks.to_vec(), floor, joins, ladders: Vec::new() };
+        let mut g = Self {
+            x0,
+            z0,
+            nx,
+            nz,
+            decks: decks.to_vec(),
+            floor,
+            joins,
+            ladders: Vec::new(),
+            stairs: Vec::new(),
+            ups: Vec::new(),
+        };
         for l in ladders {
-            let (Some(a), Some(b)) = (g.nearest([l.x_m, l.lo_m, l.z_m], 1.2), g.nearest([l.x_m, l.hi_m, l.z_m], 1.2))
-            else {
+            let (foot, top) = ([l.x_m, l.lo_m, l.z_m], [l.x_m, l.hi_m, l.z_m]);
+            let (Some(a), Some(b)) = (g.nearest(foot, 1.2), g.nearest(top, 1.2)) else {
+                if let (Some(a), None) = (g.nearest(foot, 1.2), g.nearest(top, 1.2)) {
+                    g.ups.push((a, foot, top));
+                }
                 continue;
             };
-            g.ladders.push(Link { a, b, cost: (l.hi_m - l.lo_m).abs() * LADDER_COST });
+            let ends = [[l.x_m, l.lo_m, l.z_m], [l.x_m, l.hi_m, l.z_m]];
+            g.ladders.push(Link { a, b, cost: (l.hi_m - l.lo_m).abs() * LADDER_COST, ends });
         }
         g
     }
@@ -179,6 +230,12 @@ impl NavGrid {
         }
         decks.sort_by(f32::total_cmp);
         decks.dedup_by(|a, b| (*a - *b).abs() < 0.1);
+        // The grid walks every floor a ladder reaches as well (the turret pods above and below the decks), so a body
+        // can be sent up to a gunner's seat; the decks returned stay the ship's decks (the map stacks them).
+        let mut floors: Vec<f32> =
+            decks.iter().copied().chain(walk.ladders.iter().flat_map(|l| [l.lo_m, l.hi_m])).collect();
+        floors.sort_by(f32::total_cmp);
+        floors.dedup_by(|a, b| (*a - *b).abs() < 0.1);
         let mut bounds = [f32::MAX, f32::MAX, f32::MIN, f32::MIN];
         for t in tris {
             for k in 0..3 {
@@ -191,7 +248,7 @@ impl NavGrid {
             }
         }
         let shafts: Vec<Vec<[f32; 2]>> = walk.lifts.iter().map(|l| l.poly.clone()).collect();
-        (Self::build(world, &decks, bounds, &walk.ladders, &shafts), decks)
+        (Self::build(world, &floors, bounds, &walk.ladders, &shafts), decks)
     }
 
     /// Walkable cells, for reports.
@@ -302,6 +359,14 @@ impl NavGrid {
                 }
             }
         }
+        // A stair walks like the floor: its foot cell and its top cell are neighbours.
+        for l in &self.stairs {
+            if l.a == c {
+                out.push((l.b, l.cost, false));
+            } else if l.b == c {
+                out.push((l.a, l.cost, false));
+            }
+        }
         for l in &self.ladders {
             if l.a == c {
                 out.push((l.b, l.cost, true));
@@ -311,8 +376,47 @@ impl NavGrid {
         }
     }
 
+    /// Join each stair's foot to its top (`(foot, top)`, floor points, metres: the layout's stairs). A stair whose ends
+    /// find no floor within a metre is left out.
+    pub fn add_stairs(&mut self, stairs: &[Stair]) {
+        for (foot, top) in stairs {
+            let (Some(a), Some(b)) = (self.nearest(*foot, 1.0), self.nearest(*top, 1.0)) else { continue };
+            let (pa, pb) = (self.point(a), self.point(b));
+            let cost = (pa[0] - pb[0]).hypot(pa[2] - pb[2]) + (pa[1] - pb[1]).abs();
+            self.stairs.push(Link { a, b, cost, ends: [pa, pb] });
+        }
+    }
+
+    /// The stairs in a command suite's file (`data/ships/<id>/command_suite.json`, `bridge.stairs`: `foot_m` and
+    /// `top_m`), for [`NavGrid::add_stairs`].
+    pub fn stairs_of(command_suite_json: &str) -> Result<Vec<Stair>, String> {
+        let v: serde_json::Value = serde_json::from_str(command_suite_json).map_err(|e| e.to_string())?;
+        let list = v["bridge"]["stairs"].as_array().ok_or("bridge.stairs: missing")?;
+        let p = |x: &serde_json::Value, what: &str| -> Result<[f32; 3], String> {
+            let a =
+                x.as_array().filter(|a| a.len() == 3).ok_or(format!("bridge.stairs: {what} must be three numbers"))?;
+            let mut o = [0.0f32; 3];
+            for (o, n) in o.iter_mut().zip(a) {
+                *o = n.as_f64().filter(|f| f.is_finite()).ok_or(format!("bridge.stairs: {what} must be numbers"))?
+                    as f32;
+            }
+            Ok(o)
+        };
+        list.iter().map(|s| Ok((p(&s["foot_m"], "foot_m")?, p(&s["top_m"], "top_m")?))).collect()
+    }
+
     /// A path from `from` to `to` (floor points), or `None` when either is off the grid or no way joins them.
     pub fn path(&self, world: &WalkWorld, from: [f32; 3], to: [f32; 3]) -> Option<Vec<Waypoint>> {
+        // A point up a ladder into a floor with no grid (a turret pod): to the ladder's foot, then up it.
+        if self.nearest(to, 1.5).is_none() {
+            let (_, foot, top) = self
+                .ups
+                .iter()
+                .find(|u| (u.2[0] - to[0]).hypot(u.2[2] - to[2]) < 1.5 && (u.2[1] - to[1]).abs() < 1.0)?;
+            let mut p = self.path(world, from, *foot)?;
+            p.push(Waypoint::Climb { at: *foot, down: false, to_y: top[1] });
+            return Some(p);
+        }
         let start = self.nearest(from, 1.5)?;
         let goal = self.nearest(to, 1.5)?;
         let gp = self.point(goal);
@@ -344,14 +448,15 @@ impl NavGrid {
         if cost[goal].is_infinite() {
             return None;
         }
-        // Back from the goal: cells, with a climb where a ladder link was taken.
-        let mut cells = vec![(goal, false)];
+        // Back from the goal: each cell with whether the link into it was a ladder's.
+        let mut cells = Vec::new();
         let mut c = goal;
         while c != start {
             let (p, ladder) = came[c];
-            cells.push((p, ladder));
+            cells.push((c, ladder));
             c = p;
         }
+        cells.push((start, false));
         cells.reverse();
         // cells[i].1 says the link from cells[i - 1] to cells[i] was a ladder: shift it onto the climb's start.
         let mut out = Vec::new();
@@ -365,7 +470,18 @@ impl NavGrid {
                 run.clear();
                 if climb_next {
                     let q = self.point(cells[i + 1].0);
-                    out.push(Waypoint::Climb { at: p, down: q[1] < p[1], to_y: q[1] });
+                    // At the ladder itself: its foot going up, its top going down.
+                    let (c0, c1) = (cells[i].0, cells[i + 1].0);
+                    let at = self
+                        .ladders
+                        .iter()
+                        .find_map(|l| match (l.a == c0 && l.b == c1, l.b == c0 && l.a == c1) {
+                            (true, _) => Some(l.ends[0]),
+                            (_, true) => Some(l.ends[1]),
+                            _ => None,
+                        })
+                        .unwrap_or(p);
+                    out.push(Waypoint::Climb { at, down: q[1] < p[1], to_y: q[1] });
                     run.push(q);
                 }
             }
@@ -408,7 +524,8 @@ impl NavGrid {
             let p = [a[0] + dx * t, a[1] + (b[1] - a[1]) * t, a[2] + dz * t];
             let Some(c) = self.nearest(p, CELL_M * 0.75) else { return false };
             let y = self.floor[c];
-            if (y - last).abs() > STEP_M {
+            // A straight walk never crosses a sheer rise the body cannot step (a stair's own run is a ramp).
+            if (y - last).abs() > world.step_m.max(CELL_M * 0.5 * 1.2) {
                 return false;
             }
             last = y;
@@ -505,10 +622,11 @@ mod tests {
         let ladder = WalkLadder { x_m: 0.0, z_m: 0.0, lo_m: 0.0, hi_m: 3.5 };
         let g = NavGrid::build(&w, &[0.0, 3.5], [-6.0, -6.0, 6.0, 6.0], &[ladder], &[]);
         let p = g.path(&w, [-4.0, 0.0, -4.0], [4.0, 3.5, 4.0]).expect("up the ladder");
-        assert!(
-            p.iter().any(|w| matches!(w, Waypoint::Climb { down: false, .. })),
-            "the way up is the ladder, climbed up: {p:?}"
-        );
+        let climbs: Vec<_> = p.iter().filter(|w| matches!(w, Waypoint::Climb { .. })).collect();
+        assert_eq!(climbs.len(), 1, "one climb: {p:?}");
+        let Waypoint::Climb { at, down, to_y } = *climbs[0] else { unreachable!() };
+        assert!(!down && (to_y - 3.5).abs() < 1e-3, "up to the deck above: {p:?}");
+        assert!(at[0].hypot(at[2]) < 1e-3 && at[1].abs() < 1e-3, "taken at the ladder's own foot: {at:?}");
         assert!(!w.sees([-4.0, 0.0, -4.0], [-4.0, 3.5, -4.0]), "a person on the deck above is not named");
     }
 }

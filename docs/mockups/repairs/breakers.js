@@ -3,28 +3,67 @@
  *
  * The switchboard's cubicle with its draw-out breaker, the bus's rating plate above it, the synchroscope and the
  * close button on the right, the fuse tray below them. Rack the breaker out (drag its handle down, or hold the down
- * arrow), and its fuse cover opens on the blown cartridge. Fit the cartridge whose rating matches the bus (drag it
- * from the tray, or up and down to choose and Space to fit it), rack the breaker back in (drag up, or hold up), and
- * close it (the button, or Space) while the synchroscope's needle sits in its green wedge and the lamp shows green.
- * A step is one breaker; each next one has more cartridges, a faster needle and a narrower wedge. Closing on red is a
- * fumble: an arc flash, 10 HP. A wrong cartridge is a fumble too: it blows as it seats. A disabled board's first step
- * fits the new breaker: drag it off the trolley into the empty cubicle.
+ * arrow), and its fuse holder opens: three slots in parallel, A + B + C, whose ratings must add up to exactly the
+ * bus's, D (owner, 2026-10-12: "an addition problem, A + B + C = D and exactly D, too less nothing happens, too much
+ * it fails and you reset"). Fit cartridges from the tray (drag one onto the holder, or up and down to choose and Space
+ * to fit it; tap a fitted one to take it back out). Under D nothing happens: the breaker will not rack in. Over D the
+ * fuses blow as they seat, a fumble, and the holder empties. At exactly D rack the breaker back in (drag up, or hold
+ * up), and close it (the button, or Space) while the synchroscope's needle sits in its green wedge and the lamp shows
+ * green. Closing on red is a fumble: an arc flash, 10 HP. A step is one breaker; each next one has more cartridges, a
+ * faster needle and a narrower wedge. A disabled board's first step fits the new breaker: drag it off the trolley
+ * into the empty cubicle.
  */
+// The guide's pictures (repair-minigames 6g): this game's own parts, in the card's 100 px box about the origin.
+/** Rack out: the breaker slides down its cubicle under the finger on its handle. */
+function breakersPicRack(g, t, K) {
+  const D = K.draw, u = (t * 0.6) % 1, y = 26 * Math.min(1, u * 1.4);
+  D.round(g, -46, -48, 92, 96, 8); g.fillStyle = "#06090e"; g.fill(); g.lineWidth = 2; g.strokeStyle = "#2b3646"; g.stroke();
+  D.round(g, -36, -42 + y, 72, 50, 6); g.fillStyle = "#2b3646"; g.fill(); g.strokeStyle = "#566273"; g.stroke();
+  D.round(g, -20, -2 + y, 40, 9, 4); g.fillStyle = "#c9d3e0"; g.fill();
+  D.arrowHead(g, 0, 40, Math.PI / 2, K.C.amber, 9);
+  D.finger(g, 0, 2 + y);
+}
+/** The sum: three cartridges seat one by one, the total climbing to the bus's, green at exactly it. */
+function breakersPicSum(g, t, K) {
+  const D = K.draw, vals = [40, 25, 10], n = Math.floor((t * 0.7) % 4);
+  for (let k = 0; k < 3; k++) {
+    const y = -44 + k * 24;
+    D.round(g, -44, y, 62, 19, 4);
+    if (k < n) { g.fillStyle = "#e7e2d6"; g.fill(); D.text(g, String(vals[k]), -13, y + 10, 15, "#111821", "center", 700); }
+    else { g.fillStyle = "#0b1017"; g.fill(); g.lineWidth = 1.5; g.strokeStyle = "#566273"; g.stroke(); }
+    if (k < 2) D.text(g, "+", 30, y + 22, 18, K.C.dim, "center", 700);
+  }
+  const sum = vals.slice(0, n).reduce((a, b) => a + b, 0);
+  D.text(g, `= ${sum}`, -14, 40, 22, n === 3 ? K.C.ok : K.C.amber, "center", 700);
+  D.text(g, "/ 75", 34, 40, 15, K.C.dim, "center", 700);
+}
+/** Close on green: the synchroscope's needle comes round into its wedge and the finger presses CLOSE. */
+function breakersPicClose(g, t, K) {
+  const D = K.draw, a = (t * 1.6) % (Math.PI * 2), ok = Math.abs(Math.atan2(Math.sin(a), Math.cos(a))) < 0.4;
+  D.disc(g, -14, -12, 30, "#121a25"); D.ring(g, -14, -12, 30, "#3a4656", 2);
+  g.beginPath(); g.moveTo(-14, -12); g.arc(-14, -12, 28, -Math.PI / 2 - 0.4, -Math.PI / 2 + 0.4); g.closePath(); g.fillStyle = "rgba(61,220,132,0.55)"; g.fill();
+  const na = a - Math.PI / 2;
+  D.line(g, [[-14, -12], [-14 + Math.cos(na) * 26, -12 + Math.sin(na) * 26]], K.C.fg, 3);
+  D.disc(g, 28, 30, 18, ok ? K.C.danger : "#7a2f38");
+  D.text(g, "CLOSE", 28, 30, 9, "#fff", "center", 700);
+  if (ok) D.finger(g, 28, 30);
+}
+
 RepairKit.register({
   id: "breakers",
   title: "Switchboard and breakers",
   place: "Main switchboard",
-  group: "Engineering",
+  group: "Electrical",
   hazard: "Arc flash: 10 HP",
   // The how-to card (repair-minigames 6g), drawn by the kit: pictures and a few words, on demand.
   guide: {
     steps: [
       { icon: "screw", text: "Unscrew the cover", cover: true },
-      { icon: "drag", text: "Rack the breaker out" },
-      { icon: "swap", text: "Fit the fuse the bus rates" },
-      { icon: "band", text: "Rack in, close on green" },
+      { pic: breakersPicRack, text: "Drag the handle down" },
+      { pic: breakersPicSum, text: "Fuses add up to the bus, exactly" },
+      { pic: breakersPicClose, text: "Rack in, CLOSE on green" },
     ],
-    mistake: "Closing on red, or a wrong fuse: an arc flash, 10 HP",
+    mistake: "Over the bus: the fuses blow and empty. Closing on red: an arc flash, 10 HP",
     now: (q) => ({ out: 1, fuse: 2, in: 3, close: 3 })[q.phase] ?? -1,
   },
   down: "power-grid",
@@ -35,19 +74,24 @@ RepairKit.register({
     const CUB = { x: 200, y: 196, w: 500, h: 460 };      // the cubicle
     const UNIT = { w: 440, h: 236 };                     // the draw-out breaker
     const UX = CUB.x + (CUB.w - UNIT.w) / 2, UY0 = CUB.y + 12, TRAVEL = 196;
-    const FUSE = { dx: 140, dy: 64, w: 160, h: 70 };     // the fuse holder on the breaker's face
+    const FUSE = { dx: 110, dy: 56, w: 220, h: 120 };    // the fuse holder on the breaker's face: three slots
+    const SLOTS = 3;
     const SYN = { x: 965, y: 250, r: 112 };              // the synchroscope
     const LAMP = { x: 1168, y: 170, r: 32 };
     const BTN = { x: 1168, y: 318, r: 56 };              // the close button: the biggest control
     const TRAY = { x: 820, y: 432, w: 430, h: 268 };
-    const RATINGS = [16, 25, 40, 63, 100];
-    const BAND = { 16: C.lilac, 25: C.accent, 40: C.warn, 63: C.ok, 100: C.danger };
-    let part, unitP, phase, rack, grab, grab0, carts, sel, held, bus, fuse, theta, omega, win, closed, flash, time, busName;
+    // The cartridges a tray can hold, A, each with its colour band (colour helps; the number is the rule).
+    const RATINGS = [10, 16, 20, 25, 32, 40, 50, 63, 80, 100];
+    const BAND = { 10: C.steel, 16: C.lilac, 20: "#7fd1c7", 25: C.accent, 32: "#c9a45a", 40: C.warn, 50: "#e58fb6", 63: C.ok, 80: "#9ab0ff", 100: C.danger };
+    let part, unitP, phase, rack, grab, grab0, carts, sel, held, bus, slots, theta, omega, win, closed, flash, blowT, time, busName;
     const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
     const unitY = () => UY0 + rack * TRAVEL;
     const handle = () => ({ x: UX + UNIT.w / 2 - 70, y: unitY() + UNIT.h - 46, w: 140, h: 30 });
     const holder = () => ({ x: UX + FUSE.dx, y: unitY() + FUSE.dy, w: FUSE.w, h: FUSE.h });
-    const cartBox = (i) => ({ x: TRAY.x + 60, y: TRAY.y + 26 + i * 60, w: 310, h: 44 });
+    const slotBox = (k) => ({ x: UX + FUSE.dx + 8, y: unitY() + FUSE.dy + 8 + k * 36, w: FUSE.w - 16, h: 30 });
+    // The tray: two columns of cartridges.
+    const cartBox = (i) => ({ x: TRAY.x + 24 + (i % 2) * 200, y: TRAY.y + 22 + Math.floor(i / 2) * 58, w: 182, h: 44 });
+    const sum = () => slots.reduce((a, c) => a + (c >= 0 ? carts[c].a : 0), 0);
     const green = () => Math.abs(wrap(theta)) < win;
     const inBox = (b, x, y, m = 0) => x >= b.x - m && x <= b.x + b.w + m && y >= b.y - m && y <= b.y + b.h + m;
 
@@ -57,23 +101,28 @@ RepairKit.register({
         part = isPart;
         unitP = { x: 1035, y: 590, held: false, set: false };
         phase = isPart ? "part" : "out";
-        rack = 0; grab = false; held = -1; sel = 0; closed = false; flash = 0; time = 0;
-        const k = Math.min(4, 3 + Math.floor(index / 2));
+        rack = 0; grab = false; held = -1; sel = 0; closed = false; flash = 0; blowT = 0; time = 0;
+        // The tray: five cartridges, one more a step to eight; the bus is three of them added up.
+        const k = Math.min(8, 5 + index);
         const pool = [...RATINGS];
         for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
-        carts = pool.slice(0, k).map((a) => ({ a, gone: false }));
-        bus = carts[Math.floor(r() * k)].a;
+        const tray = pool.slice(0, k).sort((a, b) => a - b);
+        carts = tray.map((a) => ({ a }));
+        const pick = [...carts.keys()];
+        for (let i = pick.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [pick[i], pick[j]] = [pick[j], pick[i]]; }
+        bus = pick.slice(0, SLOTS).reduce((a, i) => a + carts[i].a, 0);
         busName = "ABCD"[Math.floor(r() * 4)];
-        fuse = "blown";
+        slots = Array(SLOTS).fill(-1);
         theta = r() * Math.PI * 2;
         omega = 1.5 + 0.35 * index;
         win = Math.max(0.16, 0.34 - 0.04 * index);
       },
       /** For tools (shots and tests): the round's state, read only. */
-      peek() { return { phase, rack, bus, carts: carts.map((c) => c.a), green: green(), partSet: unitP.set, handle: handle(), holder: holder(), cart: cartBox, btn: BTN, unitP: { ...unitP } }; },
+      peek() { return { phase, rack, bus, sum: sum(), slots: [...slots], carts: carts.map((c) => c.a), green: green(), partSet: unitP.set, handle: handle(), holder: holder(), slot: slotBox, cart: cartBox, btn: BTN, unitP: { ...unitP } }; },
       update(dt, input) {
         time += dt;
         flash = Math.max(0, flash - dt * 1.6);
+        blowT = Math.max(0, blowT - dt);
         theta += omega * (1 + 0.3 * Math.sin(time * 0.5)) * dt;
         if (phase === "part") {
           // The part step: wheel the new breaker into the cubicle.
@@ -98,21 +147,29 @@ RepairKit.register({
           return;
         }
         if (phase === "fuse") {
-          const live = carts.map((c, i) => i).filter((i) => !carts[i].gone);
+          const live = carts.map((c, i) => i).filter((i) => !slots.includes(i));
           if (input.hit.has("ArrowUp") || input.hit.has("KeyW")) sel = live[(live.indexOf(sel) + live.length - 1) % live.length] ?? live[0];
           if (input.hit.has("ArrowDown") || input.hit.has("KeyS")) sel = live[(live.indexOf(sel) + 1) % live.length] ?? live[0];
-          if (carts[sel] && carts[sel].gone) sel = live[0];
-          // A cartridge is 44 px tall in a 60 px pitch: its zone reaches 8 px into each gap, 30 px from its middle (KIT.TOUCH_R).
-          if (input.pressed) for (const i of live) if (inBox(cartBox(i), input.x, input.y, 8)) { held = i; sel = i; }
+          if (slots.includes(sel)) sel = live[0];
+          // A tap on a fitted cartridge takes it back out to the tray.
+          if (input.pressed) {
+            const k = slots.findIndex((c, j) => c >= 0 && inBox(slotBox(j), input.x, input.y, 4));
+            if (k >= 0) { slots[k] = -1; return; }
+            // A cartridge is 44 px tall in a 58 px pitch: its zone reaches 7 px into each gap.
+            for (const i of live) if (inBox(cartBox(i), input.x, input.y, 7)) { held = i; sel = i; }
+          }
           let fit = -1;
           if (held >= 0 && input.released) { if (inBox(holder(), input.x, input.y, 40)) fit = held; held = -1; }
-          if (input.actionPressed) fit = sel;
+          if (input.actionPressed && sel >= 0 && !slots.includes(sel)) fit = sel;
           if (fit < 0) return;
-          if (carts[fit].a === bus) { carts[fit].gone = true; fuse = "new"; phase = "in"; }
-          else {
-            carts[fit].gone = true; flash = 0.5;
-            api.fumble("Wrong rating: the fuse blows");
-          }
+          const free = slots.indexOf(-1);
+          if (free < 0) return;                      // all three full and still under: nothing happens
+          slots[free] = fit;
+          if (sum() > bus) {
+            // Over the bus: they blow as they seat, and the holder empties for a fresh start.
+            slots = Array(SLOTS).fill(-1); flash = 0.6; blowT = 0.8;
+            api.fumble("Over the bus rating: the fuses blow");
+          } else if (sum() === bus) phase = "in";
           return;
         }
         if (phase === "close") {
@@ -191,13 +248,28 @@ RepairKit.register({
           if (!unitP.set) unit(g, unitP.x - UNIT.w * 0.25, unitP.y - UNIT.h * 0.25, 0.5);
         } else {
           carts.forEach((c, i) => {
-            if (c.gone || i === held) return;
+            if (slots.includes(i) || i === held) return;
             cartridge(g, cartBox(i), c.a, phase === "fuse" && i === sel);
           });
           if (held >= 0 && input) {
             const b = cartBox(held);
-            cartridge(g, { x: input.x - b.w * 0.25, y: input.y - b.h * 0.5, w: b.w * 0.5, h: b.h }, carts[held].a, true);
+            cartridge(g, { x: input.x - b.w * 0.5, y: input.y - b.h * 0.5, w: b.w, h: b.h }, carts[held].a, true);
           }
+        }
+        // The sum, in the cubicle over the racked-out breaker: A + B + C against the bus's D.
+        if (phase === "fuse" || ((phase === "out" || phase === "in") && rack > 0.85)) {
+          const y = CUB.y + 172, bw = 76, gap = 34, x0 = CUB.x + 22;
+          const s0 = sum(), col = s0 === bus ? C.ok : C.amber;
+          slots.forEach((c, k) => {
+            const x = x0 + k * (bw + gap);
+            D.round(g, x, y - 22, bw, 44, 8); g.fillStyle = c >= 0 ? "#1d2738" : "#0c121a"; g.fill();
+            if (c < 0) { g.setLineDash([6, 5]); g.lineWidth = 2; g.strokeStyle = "#566273"; g.stroke(); g.setLineDash([]); }
+            else { g.lineWidth = 2; g.strokeStyle = BAND[carts[c].a]; g.stroke(); D.text(g, String(carts[c].a), x + bw / 2, y + 1, 24, C.fg, "center", 700); }
+            D.text(g, k < SLOTS - 1 ? "+" : "=", x + bw + gap / 2, y + 1, 26, C.dim, "center", 700);
+          });
+          const sx = x0 + SLOTS * (bw + gap);
+          D.text(g, String(s0), sx + 4, y + 1, 30, col, "left", 700);
+          D.text(g, `/ ${bus}`, sx + 70, y + 1, 22, C.dim, "left", 700);
         }
 
         // The arc flash.
@@ -230,10 +302,12 @@ RepairKit.register({
       D.round(g, fx - 6, fy - 6, FUSE.w + 12, FUSE.h + 12, 8); g.fillStyle = "#121a25"; g.fill();
       const open = phase === "fuse" || (phase === "in" && rack > 0.02) || (phase === "out" && rack >= 0.98);
       if (open || phase === "part") {
-        if (phase !== "part") {
-          if (fuse === "blown") {
-            cartridge(g, { x: fx + 8, y: fy + 13, w: FUSE.w - 16, h: FUSE.h - 26 }, 0, false, true);
-          } else cartridge(g, { x: fx + 8, y: fy + 13, w: FUSE.w - 16, h: FUSE.h - 26 }, bus, false);
+        // Three slots, A, B and C, in parallel; a slot just blown shows black for a moment.
+        if (phase !== "part") for (let k = 0; k < SLOTS; k++) {
+          const b = { x: fx + 8, y: fy + 8 + k * 36, w: FUSE.w - 16, h: 30 };
+          if (slots[k] >= 0) cartridge(g, b, carts[slots[k]].a, false);
+          else if (blowT > 0) cartridge(g, b, 0, false, true);
+          else { D.round(g, b.x, b.y, b.w, b.h, 5); g.fillStyle = "#0b1017"; g.fill(); g.lineWidth = 1.5; g.strokeStyle = "#2b3646"; g.stroke(); }
         }
       } else {
         g.save(); D.round(g, fx, fy, FUSE.w, FUSE.h, 6); g.clip();

@@ -147,27 +147,7 @@ impl Bot {
                 return still;
             }
         }
-        match self.plan[0] {
-            Waypoint::Walk(p) => {
-                let (dx, dz) = (p[0] - f[0], p[2] - f[2]);
-                if dx.hypot(dz) < REACH_M && (p[1] - f[1]).abs() < 1.0 {
-                    self.plan.remove(0);
-                    return still;
-                }
-                self.turn_to(dx.atan2(dz), dt);
-                Input { forward: 1.0, yaw: dx.atan2(dz), ..Input::default() }
-            }
-            Waypoint::Climb { at, down, .. } => {
-                let (dx, dz) = (at[0] - f[0], at[2] - f[2]);
-                if dx.hypot(dz) > REACH_M {
-                    self.turn_to(dx.atan2(dz), dt);
-                    return Input { forward: 1.0, yaw: dx.atan2(dz), ..Input::default() };
-                }
-                // At the ladder: Use, as a player presses it.
-                self.plan.remove(0);
-                Input { use_: true, down, yaw: self.yaw, ..Input::default() }
-            }
-        }
+        steer(&mut self.plan, f, &mut self.yaw, world.ladder_reach_m, dt)
     }
 
     fn go(&mut self, world: &WalkWorld, grid: &NavGrid, to: [f32; 3]) {
@@ -184,10 +164,47 @@ impl Bot {
             }
         }
     }
+}
 
-    fn turn_to(&mut self, yaw: f32, dt: f32) {
-        let d = (yaw - self.yaw + std::f32::consts::PI).rem_euclid(std::f32::consts::TAU) - std::f32::consts::PI;
-        self.yaw += d * (dt * 10.0).min(1.0);
+/// One step along a plan of waypoints, as a player walks it: forward toward the next floor point, and toward a ladder
+/// until it is well within `ladder_reach_m` (the walk's Use reach), then Use (with `down` for down); the facing `yaw`
+/// turned toward the way at a person's rate. The bot crew walk by it, and so does a scripted player (the client's
+/// playtest), so both walk as a player does.
+pub fn steer(plan: &mut Vec<Waypoint>, feet: [f32; 3], yaw: &mut f32, ladder_reach_m: f32, dt: f32) -> Input {
+    let turn_to = |yaw: &mut f32, to: f32| {
+        let d = (to - *yaw + std::f32::consts::PI).rem_euclid(std::f32::consts::TAU) - std::f32::consts::PI;
+        *yaw += d * (dt * 10.0).min(1.0);
+    };
+    let f = feet;
+    // Use takes a ladder from anywhere within its reach: once the feet are, the floor point before it is done (a
+    // ladder's rails may keep the body off the cell beside it).
+    let use_at = ladder_reach_m * 0.98;
+    if let [Waypoint::Walk(_), Waypoint::Climb { at, .. }, ..] = plan.as_slice() {
+        if (at[0] - f[0]).hypot(at[2] - f[2]) <= use_at && (at[1] - f[1]).abs() < 1.0 {
+            plan.remove(0);
+        }
+    }
+    let Some(next) = plan.first().copied() else { return Input { yaw: *yaw, ..Input::default() } };
+    match next {
+        Waypoint::Walk(p) => {
+            let (dx, dz) = (p[0] - f[0], p[2] - f[2]);
+            if dx.hypot(dz) < REACH_M && (p[1] - f[1]).abs() < 1.0 {
+                plan.remove(0);
+                return Input { yaw: *yaw, ..Input::default() };
+            }
+            turn_to(yaw, dx.atan2(dz));
+            Input { forward: 1.0, yaw: dx.atan2(dz), ..Input::default() }
+        }
+        Waypoint::Climb { at, down, .. } => {
+            let (dx, dz) = (at[0] - f[0], at[2] - f[2]);
+            if dx.hypot(dz) > use_at {
+                turn_to(yaw, dx.atan2(dz));
+                return Input { forward: 1.0, yaw: dx.atan2(dz), ..Input::default() };
+            }
+            // At the ladder: Use, as a player presses it.
+            plan.remove(0);
+            Input { use_: true, down, yaw: *yaw, ..Input::default() }
+        }
     }
 }
 

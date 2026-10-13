@@ -56,6 +56,13 @@ pub struct Distribution {
     pub ratings_mw: Vec<f64>,
     pub rating_margin: f64,
     pub spare_mw: f64,
+    /// Every box joined to at least this many others: runs through walls and decks make up the rest.
+    pub min_runs_per_box: u32,
+    /// Panels each system is wired to: its node (the nearest) and, with 2, its `alt_node` (the next nearest).
+    pub feeds_per_system: u32,
+    /// Two rooms touch where their walls run within this of each other for at least `min_shared_wall_m`, metres.
+    pub adjacent_gap_m: f64,
+    pub min_shared_wall_m: f64,
     pub note: String,
 }
 
@@ -174,6 +181,8 @@ pub struct RestartRules {
 pub struct BatteryRules {
     pub system: String,
     pub node: String,
+    /// Where its link to its node runs, along the ship's axes (power-routing 3a; written by tools/power/boxes.py).
+    pub path_m: Option<Vec<[f64; 3]>>,
     pub capacity_mj: f64,
     pub initial_soc: f64,
     pub discharge_max_mw: f64,
@@ -202,6 +211,9 @@ pub struct Generator {
     pub name: String,
     pub node: String,
     pub capacity_mw: f64,
+    /// Where it runs, from the reactor to its node along the ship's axes (power-routing 3a; written by
+    /// tools/power/boxes.py). The schematic draws it; the solve does not read it.
+    pub path_m: Option<Vec<[f64; 3]>>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -212,6 +224,8 @@ pub struct Tie {
     pub between: [String; 2],
     pub capacity_mw: f64,
     pub closed: bool,
+    /// Where it runs, end to end along the ship's axes (power-routing 3a; written by tools/power/boxes.py).
+    pub path_m: Option<Vec<[f64; 3]>>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -251,6 +265,9 @@ pub struct PowerLoad {
     pub over: String,
     /// Its feeder: the run from its node's box to it, ship frame, metres (power-routing 1).
     pub feeder_m: Option<Vec<[f64; 3]>>,
+    /// Its second feed (power-routing 1): the next nearest panel, and the feeder from it.
+    pub alt_node: Option<String>,
+    pub alt_feeder_m: Option<Vec<[f64; 3]>>,
 }
 
 /// Where a load's heat goes: the loop, a room, the duct, the lights' rooms, its own thermal node, or nowhere.
@@ -414,6 +431,8 @@ pub struct Load {
     pub heat: LoadHeat,
     /// Its index in the file's loads (none: a lighting panel, which damage does not break).
     pub file: Option<usize>,
+    /// Its second feed's node's index, if it has one.
+    pub alt: Option<usize>,
 }
 
 /// The ship's power, loaded and indexed once.
@@ -464,6 +483,7 @@ impl PowerData {
                 activity: l.activity.clone(),
                 heat: l.heat.clone(),
                 file: Some(i),
+                alt: l.alt_node.as_deref().map(|n| node_of(n, format!("loads.{i}.alt_node"))).transpose()?,
             });
         }
         // Lighting, one load a panel, from the floor area it lights (normal lighting).
@@ -494,6 +514,7 @@ impl PowerData {
                     room: None,
                 },
                 file: None,
+                alt: None,
             });
         }
         let mut group_loads = Vec::new();
@@ -550,6 +571,12 @@ impl PowerData {
     /// The index of node `id`.
     pub fn node(&self, id: &str) -> Option<usize> {
         self.nodes.iter().position(|n| n == id)
+    }
+
+    /// How many edges the schematic draws, in [`Solved::flows`]'s order: the generators, the ties, the battery's link,
+    /// the conduits.
+    pub fn edge_count(&self) -> usize {
+        self.file.generators.len() + self.file.ties.len() + 1 + self.file.conduits.len()
     }
 
     /// The sub-step, seconds.
@@ -750,6 +777,8 @@ pub struct PowerState {
     pub conduit_breaker: Vec<bool>,
     /// Each node's box switched on (power-routing 1): off, nothing passes it and nothing it feeds is supplied.
     pub box_on: Vec<bool>,
+    /// Each load swapped to its second feed (power-routing 1; the factory feeds every load from its node).
+    pub on_alt: Vec<bool>,
     /// Seconds the grid has left dark after a trip (power-routing 2); 0 when it is not tripped.
     pub trip_s: f64,
     /// Trips since the ship started.
@@ -775,6 +804,8 @@ pub struct PowerState {
     /// Each load's thermal node, K (the loads whose heat goes to a node).
     pub thermal: Vec<f64>,
     pub battery_loss_w: f64,
+    /// The flow on every edge after the last solve, MW ([`Solved::flows`]): what Engineering's schematic draws.
+    pub flows: Vec<f64>,
     /// Heat that went into rooms and the duct, W (the air is not simulated: counted, not warming).
     pub room_heat_w: f64,
     /// Seconds simulated.
@@ -791,6 +822,10 @@ pub struct Solved {
     pub rx_out: f64,
     pub bat_out: f64,
     pub charge: f64,
+    /// The flow on every edge, MW, in the schematic's order ([`PowerData::edge_count`]): each generator's (from the
+    /// reactor), each tie's and each conduit's (from its first end to its second, so signed), the battery's link (to
+    /// its node) after the ties.
+    pub flows: Vec<f64>,
 }
 
 /// The activities that are megawatts wanted, not a 0-1 share: the oxygen plant's, the heater's, the bay's and the
@@ -801,6 +836,9 @@ const S: usize = 0;
 const RX: usize = 1;
 const BAT: usize = 2;
 const NOFF: usize = 3;
+/// The grid's edge for the battery's link to its node, and its first generator's (then the ties', the conduits').
+const E_BAT_LINK: usize = 2;
+const E_FIRST: usize = 3;
 
 #[derive(Debug, Clone)]
 struct Edge {
@@ -906,6 +944,7 @@ impl PowerState {
             gen_closed: vec![true; f.generators.len()],
             conduit_breaker: f.conduits.iter().map(|k| k.factory_closed.unwrap_or(true)).collect(),
             box_on: vec![true; f.nodes.len()],
+            on_alt: vec![false; d.loads.len()],
             trip_s: 0.0,
             trips: 0,
             battery_breaker: true,
@@ -965,6 +1004,7 @@ impl PowerState {
             charge: 0.0,
             thermal,
             battery_loss_w: 0.0,
+            flows: vec![0.0; d.edge_count()],
             room_heat_w: 0.0,
             t_s: 0.0,
         };
@@ -1004,6 +1044,7 @@ impl PowerState {
         let e_rx = add(S, RX, rx_avail, true);
         let e_bat = add(S, BAT, 0.0, true);
         let bat_out = add(BAT, p(&b.node), if self.battery_breaker { 1e9 } else { 0.0 }, true);
+        debug_assert_eq!(bat_out, E_BAT_LINK, "the battery's link is the grid's third edge (edge_flows reads it)");
         for (k, g) in f.generators.iter().enumerate() {
             let ok = self.gen_closed[k] && nh(&g.node) > 0.0;
             add(RX, p(&g.node), if ok { g.capacity_mw } else { 0.0 }, true);
@@ -1075,7 +1116,7 @@ impl PowerState {
                         if want <= eps {
                             continue;
                         }
-                        let got = grid.push_to(NOFF + d.loads[i].node, want, eps);
+                        let got = grid.push_to(NOFF + self.node_of(d, i), want, eps);
                         alloc[i] += got;
                         if got < want - eps {
                             blocked[i] = true;
@@ -1105,7 +1146,8 @@ impl PowerState {
         let mut out = vec![0.0; d.loads.len()];
         for (i, l) in d.loads.iter().enumerate() {
             let sp = setpoints[i].min(l.setpoint_max);
-            let node_dead = !self.box_on[l.node] || ship.node_health.get(l.node).is_some_and(|h| *h <= 0.0);
+            let fed = self.node_of(d, i);
+            let node_dead = !self.box_on[fed] || ship.node_health.get(fed).is_some_and(|h| *h <= 0.0);
             if sp <= 0.0 || self.breaker_open[i] || node_dead {
                 continue;
             }
@@ -1160,10 +1202,25 @@ impl PowerState {
             if !any {
                 break;
             }
-            let mut grid = self.grid(d, ship, dt);
+            grid = self.grid(d, ship, dt);
             res = self.solve_grid(d, &mut grid, &demand);
         }
-        Solved { demand, want, alloc: res.0, dropped, rx_out: res.1, bat_out: res.2, charge: res.3 }
+        let flows = Self::edge_flows(d, &grid);
+        Solved { demand, want, alloc: res.0, dropped, rx_out: res.1, bat_out: res.2, charge: res.3, flows }
+    }
+
+    /// Each edge's flow out of a solved grid, in [`Solved::flows`]'s order. The grid holds the reactor's and the
+    /// battery's source edges, then the battery's link ([`E_BAT_LINK`]), then the generators, ties and conduits.
+    fn edge_flows(d: &PowerData, g: &Grid) -> Vec<f64> {
+        let f = &d.file;
+        let (ng, nt) = (f.generators.len(), f.ties.len());
+        let at = |k: usize| g.edges.get(k).map_or(0.0, |e| e.f);
+        let mut out = Vec::with_capacity(d.edge_count());
+        out.extend((0..ng).map(|k| at(E_FIRST + k)));
+        out.extend((0..nt).map(|k| at(E_FIRST + ng + k)));
+        out.push(at(E_BAT_LINK));
+        out.extend((0..f.conduits.len()).map(|k| at(E_FIRST + ng + nt + k)));
+        out
     }
 
     /// A group's fader dragged to `sp`: what its loads would want and get (the console's ghost), MW.
@@ -1223,6 +1280,7 @@ impl PowerState {
 
     /// Every box on, every run at its factory setting.
     pub fn factory_reset(&mut self, d: &PowerData) {
+        self.on_alt.iter_mut().for_each(|a| *a = false);
         self.box_on.iter_mut().for_each(|b| *b = true);
         for (k, c) in d.file.conduits.iter().enumerate() {
             self.conduit_breaker[k] = c.factory_closed.unwrap_or(true);
@@ -1234,10 +1292,15 @@ impl PowerState {
 
     /// The runs live now (power-routing 2): conduits and ties closed, whole, with both their boxes on.
     pub fn live_runs(&self, d: &PowerData, ship: &Ship) -> usize {
+        self.live_runs_of(d, ship.conduits)
+    }
+
+    /// [`Self::live_runs`] over the conduits' states alone (what a snapshot reads, with no [`Ship`] to hand).
+    pub fn live_runs_of(&self, d: &PowerData, conduits: &[ConduitState]) -> usize {
         let on = |id: &str| d.node(id).is_some_and(|k| self.box_on[k]);
         let conduits = d.file.conduits.iter().enumerate().filter(|(k, c)| {
             self.conduit_breaker[*k]
-                && !ship.conduits.get(*k).is_some_and(|s| s.severed)
+                && !conduits.get(*k).is_some_and(|s| s.severed)
                 && on(&c.between[0])
                 && on(&c.between[1])
         });
@@ -1345,7 +1408,8 @@ impl PowerState {
         }
         let wants = |k: usize| {
             island[k] != usize::MAX
-                && d.loads.iter().any(|l| l.nominal_mw > 0.0 && island.get(l.node) == Some(&island[k]))
+                && (0..d.loads.len())
+                    .any(|i| d.loads[i].nominal_mw > 0.0 && island.get(self.node_of(d, i)) == Some(&island[k]))
         };
         if !(0..n).any(wants) {
             return None;
@@ -1386,6 +1450,34 @@ impl PowerState {
         }
         self.box_on[node] = on;
         true
+    }
+
+    /// The node load `i` draws from now: its own, or its second feed's once swapped.
+    pub fn node_of(&self, d: &PowerData, i: usize) -> usize {
+        match (self.on_alt[i], d.loads[i].alt) {
+            (true, Some(a)) => a,
+            _ => d.loads[i].node,
+        }
+    }
+
+    /// Swap load `i` to its second feed (true) or back (none while dark, or for a load with one feed).
+    pub fn set_feed(&mut self, d: &PowerData, i: usize, alt: bool) -> bool {
+        if self.trip_s > 0.0 || d.loads.get(i).and_then(|l| l.alt).is_none() {
+            return false;
+        }
+        self.on_alt[i] = alt;
+        true
+    }
+
+    /// A system to swap to its other feed (power-routing 3, Engineering's automation): the first, in the data's
+    /// order, whose panel now gets no power while its other panel does.
+    pub fn transfer(&self, d: &PowerData, node_health: &[f64], conduits: &[ConduitState]) -> Option<usize> {
+        let reached = self.reached(d, node_health, conduits);
+        (0..d.loads.len()).find(|&i| {
+            let Some(alt) = d.loads[i].alt else { return false };
+            let (now, other) = if self.on_alt[i] { (alt, d.loads[i].node) } else { (d.loads[i].node, alt) };
+            !reached[now] && reached[other]
+        })
     }
 
     /// Close or open conduit `k` at its box (none while the grid is tripped dark).
@@ -1437,6 +1529,7 @@ impl PowerState {
         self.want = res.want;
         self.alloc = res.alloc;
         self.dropped = res.dropped;
+        self.flows = res.flows;
         let rx = &mut self.reactor;
         rx.fuel_kg = (rx.fuel_kg - rx.p_th_w * dt / (rc.fuel_energy_mj_per_kg * 1e6)).max(0.0);
         if rx.state == ReactorState::Running && rx.throttle > 1.0 {
@@ -2145,6 +2238,79 @@ mod tests {
     }
 
     #[test]
+    fn every_panel_connects_to_at_least_two_others() {
+        // The owner, 2026-10-11: "there should be a panel in every room, panels should connect to at least 2 other
+        // panels", so a room always has a second way for its power to come.
+        let d = data();
+        let mut joined: Vec<std::collections::BTreeSet<&str>> = vec![Default::default(); d.nodes.len()];
+        for (a, b) in d
+            .file
+            .conduits
+            .iter()
+            .map(|k| (&k.between[0], &k.between[1]))
+            .chain(d.file.ties.iter().map(|t| (&t.between[0], &t.between[1])))
+        {
+            joined[d.node(a).unwrap()].insert(b);
+            joined[d.node(b).unwrap()].insert(a);
+        }
+        for (k, j) in joined.iter().enumerate() {
+            assert!(j.len() >= 2, "{} is joined to {:?}", d.nodes[k], j);
+        }
+    }
+
+    #[test]
+    fn every_system_has_two_feeds_the_nearest_first() {
+        // The owner, 2026-10-11: "systems should be connected to 2 or more panels, so we can swap with a different
+        // route, it should generally connect to the nearest panel".
+        let d = data();
+        for l in &d.file.loads {
+            let alt = l.alt_node.as_ref().unwrap_or_else(|| panic!("{} has one feed", l.id));
+            assert_ne!(alt, &l.node, "{}'s two feeds are two panels", l.id);
+            assert!(l.alt_feeder_m.is_some(), "{} has a feeder from its second panel", l.id);
+        }
+        let shield = d.file.loads.iter().find(|l| l.id == "shield_generator").unwrap();
+        assert_eq!(shield.node, "bx_shield_room", "the shield generator is fed from its own room's panel");
+    }
+
+    #[test]
+    fn the_reactor_feeds_five_panels() {
+        // The owner, 2026-10-11: "reactor should connect to 4 -5 panels, since it is a critical resource".
+        let d = data();
+        let fed: std::collections::BTreeSet<&str> = d.file.generators.iter().map(|g| g.node.as_str()).collect();
+        assert_eq!(fed.len(), 5, "{fed:?}");
+        let mut s = PowerState::new(&d);
+        run(&d, &mut s, &cruise(), 30.0);
+        assert_eq!(s.reactor.state, ReactorState::Running);
+        let k = d.file.generators.iter().position(|g| g.id == "gen_p").unwrap();
+        s.gen_closed[k] = false;
+        let k = d.file.generators.iter().position(|g| g.id == "gen_s").unwrap();
+        s.gen_closed[k] = false;
+        run(&d, &mut s, &cruise(), 30.0);
+        let (want, got) = s.totals();
+        assert!(
+            (want - got).abs() < 0.05,
+            "both generators open, the other three feeds carry the ship: {got:.1} of {want:.1} MW"
+        );
+    }
+
+    #[test]
+    fn a_system_swapped_to_its_second_feed_draws_from_that_panel() {
+        let d = data();
+        let act = cruise();
+        let mut s = PowerState::new(&d);
+        let mut w = Whole::new(&d);
+        let shields = d.load("shield_generator").unwrap();
+        w.conduits[conduit(&d, "r_shield")] = ConduitState { health: 0.0, severed: true, open: false };
+        w.step(&d, &mut s, &act, 2.0);
+        assert!(s.alloc[shields] < 1e-9, "the shield room's feed is cut");
+        assert_eq!(s.transfer(&d, &w.nodes, &w.conduits), Some(shields), "its other panel has power: swap it");
+        assert!(s.set_feed(&d, shields, true));
+        assert_eq!(d.nodes[s.node_of(&d, shields)], "fsb_p", "fed from the forward switchboard now");
+        w.step(&d, &mut s, &act, 2.0);
+        assert!(s.supply(shields) > 0.99, "and it has its power back");
+    }
+
+    #[test]
     fn the_factory_configuration_is_under_the_protections_limit() {
         let d = data();
         let s = PowerState::new(&d);
@@ -2169,6 +2335,31 @@ mod tests {
         s.set_box(d.node("bx_shield_room").unwrap(), true);
         w.step(&d, &mut s, &act, 1.0);
         assert!(s.supply(shields) > 0.99, "and on again it has its power back");
+    }
+
+    #[test]
+    fn every_edge_carries_its_flow_for_the_schematic() {
+        // Engineering's schematic draws each edge's flow (power-routing 6.1): what the generators give is what the
+        // reactor delivers, a cut run carries nothing, and the spare closed round it carries the turret's power.
+        let d = data();
+        let act = cruise();
+        let mut s = PowerState::new(&d);
+        let mut w = Whole::new(&d);
+        w.step(&d, &mut s, &act, 5.0);
+        assert_eq!(s.flows.len(), d.edge_count());
+        let ng = d.file.generators.len();
+        let gens: f64 = s.flows[..ng].iter().sum();
+        assert!((gens - s.rx_out).abs() < 1e-6, "the generators carry the reactor's {} MW, not {gens}", s.rx_out);
+        let edge = |id: &str| d.file.generators.len() + d.file.ties.len() + 1 + conduit(&d, id);
+        w.conduits[conduit(&d, "r_dorsal_fwd")] = ConduitState { health: 0.0, severed: true, open: false };
+        s.set_conduit(conduit(&d, "r_dorsal_aft"), true);
+        w.step(&d, &mut s, &act, 2.0);
+        assert!(s.flows[edge("r_dorsal_fwd")].abs() < 1e-9, "a cut run carries nothing");
+        let turret = s.alloc[d.load("turret_dorsal").unwrap()];
+        assert!(
+            s.flows[edge("r_dorsal_aft")].abs() >= turret - 1e-6,
+            "the spare carries at least the turret's {turret} MW"
+        );
     }
 
     #[test]

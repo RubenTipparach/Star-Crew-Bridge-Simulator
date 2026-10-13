@@ -11,6 +11,18 @@ tool's default, this file wins. They were adapted from the owner's other project
 (Pale-Blue-Dot, the Undercity/Brushfire `fps-game-demo` and `star-crew-64`), and every rule
 taken from there says so. See `docs/analysis/` for what was learned from each.
 
+> **THE LAW: one game, played on foot** (owner, 2026-10-12: "this is a requuired law, imprinted
+> into claude md"). The player is a body in the 3D ship and walks it to do everything: to a station
+> to sit and open its console, to a machine or box to repair it, to a fire to put it out, to injured
+> crew to pick them up, carry them to the medbay and heal them. Nothing is reached from a menu
+> without the walk, and every playtest shows the walking. **Maximum immersion** ("we must go for
+> maximumum immersion"): first person throughout, through the body's own eyes; the camera sits down
+> with the body and the console comes up from the desk it sat at, and it rises with the body when it
+> stands; the ship around the player keeps running and is seen, never a cut to a menu or a black
+> screen between walking and working. It outranks every other rule here, every
+> design and every plan; section 1 ("One game") and section 12 ("A playtest shows the game as it is
+> played") give its detail.
+
 **This file is the only copy of these rules.** `AGENTS.md` is a pointer to it and must stay
 one. Write a rule here, never there. Two files that have to agree are two files that won't, and
 the one that is wrong is always the one nobody is reading. `openspec/config.yaml` points here
@@ -92,6 +104,23 @@ From the owner's brief, 2026-10-04. Quotes are the owner's words.
   freedom, attitude held as a quaternion and shown as heading, pitch and roll with the four numbers
   beside them (`flight-and-navigation` 6a). And: "shields should display a full 3d model of the ship
   and shield facings, and where enemies attack are from what angles" (`weapons-and-shields` 11).
+- **One game: the 3D ship and the consoles are combined. HARD REQUIREMENT** (owner, 2026-10-12: "a
+  massive error: yuo didnt combine the 3d level with these daashboards. the requirement is I walk to
+  a station, sit down or interact with the console, and the dashboards open up", "COMBINE THE
+  GAMEPLAY", "HARD REQUIREMENT"). In every game the player is a body in the 3D ship:
+  - they walk it themselves (W A S D and the mouse, the pad's sticks) on the whole ship's walk grid,
+    ladders and lifts included, the same walk as the ship tour;
+  - a console opens only when they walk up to its station and sit down or use it (E within 1.5 m of
+    the seat, `bridge-stations` 6); standing up (hold E) puts them back on their feet in the ship;
+  - a repair's game opens the same way: walk to the machine or box and use it (`repairs-on-deck`);
+  - a fire is put out by walking to it with an extinguisher and spraying it ("I MUST WALK AROUND THE
+    SHIP TO DO STUFF, TO FIX STUFF", "TO PUT OUT FIRES"; `fire-spread`, `all-hands`);
+  - injured crew are picked up where they fell, carried to the medbay and healed there, by a player
+    who walked to them ("to pickup injured crew and heal"; `crew-on-deck`, `medical-officer`).
+
+  No mode shows a console, a schematic or a repair game to a player who did not walk to it, and no
+  separate "tour" holds the walking while the game holds the consoles. Picking a station from a menu
+  or a tab may walk the body there, never teleport the view into the console.
 
 ## 2. The Raspberry Pi 5 floor
 
@@ -490,6 +519,11 @@ Before claiming anything is done, run what applies:
 - **Every major step ends in a capture the owner can check**, before the next step starts
   (Pale-Blue-Dot and Undercity). Screenshots in `docs/screenshots/` stand in for video until
   the owner asks for video; a video, when made, names what each shot shows.
+- **A playtest shows the game as it is played: walking the ship** (section 1, the hard requirement;
+  owner, 2026-10-12: "yourrv ideo is JUST the dashboards, which DOES NOT MEET MY REQUIREMENTS", "I
+  MUST WALK AROUND THE SHIP TO DO STUFF, TO FIX STUFF"). A playtest recording follows a body through
+  the 3D ship: walking to a station, sitting, the console, standing, walking to the next job. A take
+  that cuts from dashboard to dashboard is not a playtest and is not sent.
 - **Performance is measured on the Pi, the repeatable way.** A release build, real time,
   nothing else running; old build against new interleaved in the same sitting; machine,
   resolution, build, repeats, percentiles and the spread between repeats reported. A

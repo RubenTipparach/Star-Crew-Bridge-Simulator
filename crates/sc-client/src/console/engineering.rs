@@ -1,6 +1,6 @@
 //! The engineering console (the mockup's `engineering()` and `reactorLoop()`): POWER (supply against demand, a fader
 //! a load group with its priority and feed breaker, the four presets), REACTOR (the core at the top of its cooling
-//! loop, SCRAM and the reactor's mode, the two needles, the loop's four levers and its AUTO), BUSES (the one-line
+//! loop, SCRAM and the reactor's mode, the two needles, the loop's four levers and its AUTO), SCHEMATIC (the one-line
 //! diagram and the battery) and AIR (three lamps).
 //!
 //! Everything it draws is [`EngView`]: the power grid's, the reactor's and the loop's own numbers. Where nothing aboard
@@ -9,7 +9,7 @@
 
 use super::helm::{hatch_p, panel};
 use super::kit::{self, arc_path, bar, button, pol, Act, Btn, Drag, Hit};
-use super::{accent, grid, CoolView, Ctx, EngView, GroupView};
+use super::{accent, grid, schematic, CoolView, Ctx, EngView, GroupView};
 use crate::vg::{self, alpha, rgba, Canvas, Pen, Xf, T};
 use egui::Color32;
 
@@ -770,71 +770,55 @@ fn thousands(x: f64) -> String {
     }
 }
 
-// ------------------------------------------------------------------------------------------------ BUSES
+// ------------------------------------------------------------------------------------------------ SCHEMATIC
 
+/// The schematic on the side (power-routing 3a and 6.2; the mockup's SCHEMATIC panel): the board in small (a tap opens
+/// the schematic on the board), the battery, the cables cut, the live runs against the limit, and EXPAND to the
+/// full-screen schematic in 3D. The one-line diagram's breakers are on the schematic now (a generator's held on its
+/// trace, a tie tapped).
 fn buses(cv: &Canvas, cx: &mut Ctx, e: &EngView) {
     let c = &vg::style().c;
-    let (b, w, h) = panel(cv, cx, "BUSES", grid(10.0, 0.0, 2.0, 2.0));
+    let (b, w, h) = panel(cv, cx, "SCHEMATIC", grid(10.0, 0.0, 2.0, 2.0));
     let bs = &e.buses;
-    let live = |on: bool| if on { c.ok.0 } else { c.faint.0 };
-    let up = e.reactor.up;
-    b.icon("bolt", w / 2.0, 18.0, 18.0, if up { c.text.0 } else { c.emergency.0 });
-    b.path(
-        &format!("M{} 28V38M44 38H{}M44 38V60M{} 38V60", w / 2.0, w - 44.0, w - 44.0),
-        Xf::ID,
-        None,
-        Some(Pen::new(3.0, live(up))),
-    );
-    let brk = |cx: &mut Ctx, x: f32, y: f32, on: bool, id: &str, tip: &str| {
-        b.rect(
-            x - 10.0,
-            y - 10.0,
-            20.0,
-            20.0,
-            3.0,
-            if on { c.ok.0 } else { Color32::TRANSPARENT },
-            Some(Pen::new(2.5, if on { c.ok.0 } else { c.warn.0 })),
-        );
-        let key = format!("brk:{id}");
-        if let Some(hv) = cx.v.hold.as_ref().filter(|h| h.key == key) {
-            b.rect(x - 10.0, y - 10.0, 20.0 * hv.k.clamp(0.0, 1.0) as f32, 20.0, 0.0, alpha(c.warn.0, 0.6), None);
-        }
-        let t = format!("{tip}{}", if on { ": hold to open" } else { ": hold to close" });
-        cx.hits.add(&b, x - 10.0, y - 10.0, 20.0, 20.0, Some(Hit::Hold(key)), Some(t));
-    };
-    brk(cx, 44.0, 64.0, bs.gen_p, "gen_p", "Port generator breaker");
-    brk(cx, w - 44.0, 64.0, bs.gen_s, "gen_s", "Starboard generator breaker");
-    let bus = |x: f32, ok: bool, on: bool| {
-        let fill = if !ok {
-            c.danger.0
-        } else if on {
-            c.ok.0
-        } else {
-            c.faint.0
-        };
-        b.rect(x - 34.0, 84.0, 68.0, 10.0, 3.0, fill, None);
-        if !ok {
-            b.icon("bang", x, 104.0, 14.0, c.danger.0);
-        }
-    };
-    bus(44.0, bs.np, bs.gen_p);
-    bus(w - 44.0, bs.ns, bs.gen_s);
-    let tie = Pen::new(3.0, live(bs.tie));
-    b.seg(78.0, 89.0, w - 78.0, 89.0, if bs.tie { tie } else { tie.dash(4.0, 4.0, 0.0) });
-    brk(cx, w / 2.0, 89.0, bs.tie, "bt_main", "Bus tie");
-    b.path(&format!("M44 94V120H{}V94", w - 44.0), Xf::ID, None, Some(Pen::new(2.0, c.faint.0)));
-    brk(cx, 70.0, 120.0, bs.eb_p, "eb_p", "Emergency bus, port");
-    brk(cx, w - 70.0, 120.0, bs.eb_s, "eb_s", "Emergency bus, starboard");
+    // The board in small (the owner, 2026-10-12: "Thembnaul representation of the 2d schematic").
+    let area = [8.0, 36.0, w - 16.0, h - 60.0];
+    if let Some(t) = bs.thumb.as_ref() {
+        schematic::board_thumb(&b, area, t, e.reactor.up, e.bat_out_mw > 0.05);
+    }
+    let tip = "The schematic: tap to open it on the board";
+    cx.hits.add(&b, area[0], area[1], area[2], area[3], Some(Hit::Act(Act::SchemBoard)), Some(tip.into()));
     // The battery's charge: a fill beside its icon.
     let soc = bs.soc;
-    b.icon("battery", w / 2.0 - 22.0, 140.0, 18.0, if e.bat_out_mw > 0.05 { c.emergency.0 } else { c.dim.0 });
-    bar(&b, w / 2.0 - 8.0, 135.0, 46.0, 10.0, soc, if soc > 0.3 { c.ok.0 } else { c.warn.0 }, false);
-    cx.hits.add(&b, w / 2.0 - 32.0, 130.0, 74.0, 20.0, None, Some(format!("Battery {}%", kit::js_round(soc * 100.0))));
+    b.icon("battery", 22.0, 16.0, 18.0, if e.bat_out_mw > 0.05 { c.emergency.0 } else { c.dim.0 });
+    bar(&b, 36.0, 11.0, 70.0, 10.0, soc, if soc > 0.3 { c.ok.0 } else { c.warn.0 }, false);
+    cx.hits.add(&b, 10.0, 6.0, 100.0, 20.0, None, Some(format!("Battery {}%", kit::js_round(soc * 100.0))));
     if bs.cut > 0 {
         b.icon("breach", 18.0, h - 14.0, 14.0, c.danger.0);
         b.text(30.0, h - 9.0, 13.0, c.danger.0, &bs.cut.to_string(), T::default());
         cx.hits.add(&b, 10.0, h - 22.0, 34.0, 18.0, None, Some("Cables cut: damage control splices them".into()));
     }
+    // The live runs against the protection's limit (power-routing 2): the number the engineer routes by.
+    let tripped = bs.trip_s > 0.0;
+    let rc = if tripped {
+        c.danger.0
+    } else if bs.live >= bs.limit {
+        c.warn.0
+    } else {
+        c.dim.0
+    };
+    b.icon("runs", w - 66.0, h - 14.0, 14.0, rc);
+    let n = if tripped { format!("{} s", bs.trip_s.ceil()) } else { format!("{}/{}", bs.live, bs.limit) };
+    b.text(w - 12.0, h - 9.0, 13.0, rc, &n, T::end());
+    let tip = if tripped {
+        format!("Tripped: factory settings in {} s", bs.trip_s.ceil())
+    } else {
+        format!("Live runs: {} of the {} the protection allows", bs.live, bs.limit)
+    };
+    cx.hits.add(&b, w - 74.0, h - 22.0, 66.0, 18.0, None, Some(tip));
+    // EXPAND: the schematic full screen.
+    b.rect(w - 34.0, 2.0, 28.0, 28.0, 5.0, c.panel2.0, Some(Pen::new(1.0, c.line2.0)));
+    b.icon("expand", w - 20.0, 16.0, 16.0, c.text.0);
+    cx.hits.add(&b, w - 34.0, 2.0, 28.0, 28.0, Some(Hit::Act(Act::Schem(true))), Some("Expand the schematic".into()));
 }
 
 // ------------------------------------------------------------------------------------------------ AIR
@@ -890,7 +874,7 @@ fn unavailable(cv: &Canvas, cx: &mut Ctx) {
     for (title, g) in [
         ("POWER", grid(0.0, 0.0, 6.0, 4.0)),
         ("REACTOR", grid(6.0, 0.0, 4.0, 4.0)),
-        ("BUSES", grid(10.0, 0.0, 2.0, 2.0)),
+        ("SCHEMATIC", grid(10.0, 0.0, 2.0, 2.0)),
         ("AIR", grid(10.0, 2.0, 2.0, 2.0)),
     ] {
         let (b, w, h) = panel(cv, cx, title, g);
@@ -959,7 +943,7 @@ fn unavailable(cv: &Canvas, cx: &mut Ctx) {
                     },
                 );
             }
-            "BUSES" => b.icon("bolt", w / 2.0, 18.0, 18.0, c.faint.0),
+            "SCHEMATIC" => b.icon("bolt", w / 2.0, 18.0, 18.0, c.faint.0),
             _ => air_unavailable(&b, w),
         }
         cx.hits.add(&b, 0.0, 0.0, w, h, None, Some(tip.into()));

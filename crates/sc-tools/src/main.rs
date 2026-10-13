@@ -46,10 +46,15 @@ fn check_data(root: &Path) -> Result<usize, String> {
     let drill = sc_core::combat::data::DRILL_FILES.map(read);
     let drill = drill.into_iter().collect::<Result<Vec<String>, String>>()?;
     let missions = ["data/missions/drill-hound.json"];
+    let mut drill_data = None;
     for m in missions {
         let texts: [&str; sc_core::combat::data::DRILL_FILE_COUNT] = std::array::from_fn(|i| drill[i].as_str());
-        sc_core::combat::data::DrillData::parse(texts, m, &read(m)?).map_err(|e| e.to_string())?;
+        drill_data = Some(sc_core::combat::data::DrillData::parse(texts, m, &read(m)?).map_err(|e| e.to_string())?);
     }
+    // Engineering's schematic (power-routing 6.4): the board and the families, held to the power data.
+    let pd = &drill_data.expect("a mission was checked").power;
+    sc_core::schematic::PowerBoard::load(&read(sc_core::schematic::BOARD_FILE)?, pd).map_err(|e| e.to_string())?;
+    sc_core::schematic::Families::load(&read(sc_core::schematic::FAMILIES_FILE)?, pd).map_err(|e| e.to_string())?;
     // The repair files: the rules, the kit's rates, the Tern's jobs, and each game the jobs name (repair-minigames 8).
     let mut ids: Vec<String> = std::fs::read_dir(root.join("data/repairs"))
         .map_err(|e| format!("data/repairs: cannot be read: {e}"))?
@@ -58,7 +63,7 @@ fn check_data(root: &Path) -> Result<usize, String> {
         .collect();
     ids.sort();
     sc_core::repair::data::RepairData::load(&ids, read)?;
-    Ok(files.len() + drill.len() + missions.len() + 3 + ids.len())
+    Ok(files.len() + drill.len() + missions.len() + 2 + 3 + ids.len())
 }
 
 fn main() -> ExitCode {

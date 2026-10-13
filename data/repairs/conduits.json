@@ -3,7 +3,7 @@
   "id": "conduits",
   "title": "Electrical conduits",
   "place": "Anywhere a conduit runs",
-  "group": "Engineering",
+  "group": "Electrical",
   "hazard": {
     "text": "Crossed pair: spark, 5 HP, breaker tripped",
     "hp": 5,

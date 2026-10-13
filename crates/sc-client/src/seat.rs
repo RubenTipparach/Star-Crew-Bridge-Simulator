@@ -8,6 +8,7 @@
 //! mockup's action name and from there to a `Command`: the same commands a bot or automation sends.
 
 use crate::console::kit::Hit;
+use crate::console::schematic::SchemView;
 use crate::console::{
     self, Act, Cam, CapView, ComposerView, ConsoleView, ContactView, CrewAt, CrewRow, FlightView, RoomView,
 };
@@ -27,7 +28,7 @@ use sc_core::combat::data::{ObjectiveFacts, ObjectiveKind, ObjectiveState};
 use sc_core::combat::{
     self as combat, Command, HelmMode, PowerCmd, Station, TubeState, ENEMY_ID, FEEDS, FIGHTER_IDS, GUNNER_TURRET,
 };
-use sc_net::msg::{PowerSnap, ShipSnap, Snapshot};
+use sc_net::msg::{PowerSnap, RouteSnap, ShipSnap, Snapshot};
 use std::collections::HashSet;
 
 /// The scanners' range ladder, km: 5 km steps from 5 to 100 (bridge-stations 8.0).
@@ -129,7 +130,19 @@ pub struct Seat {
     lever: Option<(u8, f64)>,
     lever_sent: Option<(u8, f64)>,
     armed_scram: Option<f64>,
+    /// Engineering's schematic (power-routing 6.3): open full screen, in 3D (else the board), its camera (yaw and pitch,
+    /// degrees, and distance, metres), the board's zoom and pan (console points), and a tap waiting for its release.
+    schem_open: bool,
+    schem_3d: bool,
+    schem_cam: [f64; 3],
+    schem_zoom: f64,
+    schem_pan: [f64; 2],
+    tap: Option<(Act, Pos2)>,
 }
+
+/// The schematic's 3D camera as it opens: from the starboard quarter aft, above, the stern on the left (the mockup's
+/// home view).
+const SCHEM_CAM: [f64; 3] = [-118.0, 34.0, 78.0];
 
 /// Things the console asks the drill to do besides commands.
 pub enum SeatAsk {
@@ -191,6 +204,12 @@ impl Default for Seat {
             lever: None,
             lever_sent: None,
             armed_scram: None,
+            schem_open: false,
+            schem_3d: true,
+            schem_cam: SCHEM_CAM,
+            schem_zoom: 1.0,
+            schem_pan: [0.0; 2],
+            tap: None,
         }
     }
 }
@@ -536,6 +555,51 @@ impl Seat {
             gun_locked: gun_snap.is_some_and(|t| t.cooling),
             objectives_open: self.obj_open,
             objectives,
+            // Engineering's schematic, while open: it waits for the first snapshots with the grid and the routing.
+            schem: if self.schem_open {
+                snap.power.as_ref().zip(snap.route.as_ref()).map(|(p, r)| self.schem(p, r, snap, data))
+            } else {
+                None
+            },
+        }
+    }
+
+    /// Engineering's schematic (power-routing 6.3): the routing and the grid as the snapshot has them, with the client's
+    /// own `power.json` for which load is which, and how this seat views it.
+    fn schem(&self, p: &PowerSnap, r: &RouteSnap, snap: &Snapshot, data: &DrillData) -> SchemView {
+        let pd = &data.power;
+        let integrity = pd
+            .loads
+            .iter()
+            .map(|l| l.file.and_then(|k| snap.damage.integrity.get(k)).map_or(100.0, |v| f64::from(*v)))
+            .collect();
+        SchemView {
+            three_d: self.schem_3d,
+            cam: self.schem_cam,
+            zoom: self.schem_zoom,
+            pan: self.schem_pan,
+            box_on: r.box_on.clone(),
+            reached: r.reached.clone(),
+            node_health: r.node_health.iter().map(|v| f64::from(*v) / 255.0).collect(),
+            closed: r.closed.clone(),
+            severed: r.severed.clone(),
+            damaged: r.damaged.clone(),
+            switches: p.switches.clone(),
+            on_alt: r.on_alt.clone(),
+            dropped: r.dropped.clone(),
+            supply: r.supply.iter().map(|v| (*v != RouteSnap::WANTS_NOTHING).then(|| f64::from(*v) / 250.0)).collect(),
+            integrity,
+            flows: r.flows.clone(),
+            live: u32::from(r.live),
+            limit: u32::from(r.limit),
+            trip_s: r.trip_s,
+            rx_up: p.rx_state == 0,
+            throttle: p.throttle,
+            soc: p.soc,
+            bat_out_mw: p.bat_out_mw,
+            // What the sources give, less what charges the battery (not on the wire): never more than is wanted.
+            got_mw: (p.rx_out_mw + p.bat_out_mw).min(p.want_mw),
+            want_mw: p.want_mw,
         }
     }
 
@@ -662,6 +726,11 @@ impl Seat {
                 ns: node_up("msb_s"),
                 soc: p.soc,
                 cut: u32::from(p.cut),
+                live: snap.route.as_ref().map_or(0, |r| u32::from(r.live)),
+                limit: snap.route.as_ref().map_or(f.routing.max_live_runs, |r| u32::from(r.limit)),
+                trip_s: snap.route.as_ref().map_or(0.0, |r| r.trip_s),
+                // The board in small (power-routing 6.2), from the same state the schematic draws.
+                thumb: snap.route.as_ref().map(|r| crate::console::schematic::thumb(&self.schem(p, r, snap, data))),
             },
             // The air is not simulated in the drill: the AIR panel is drawn unavailable.
             air: None,
@@ -775,14 +844,15 @@ impl Seat {
         self.obj_open = false;
     }
 
-    /// Open or close OBJECTIVES (the drill's `--look-in`).
-    pub fn show_objectives(&mut self, open: bool) {
-        self.obj_open = open;
-    }
-
-    /// Show the captain's CMD or SHIP page.
-    pub fn set_captain_tab(&mut self, tab: &str) {
-        self.cap_tab = tab.to_owned();
+    /// Open or close Engineering's schematic, in 3D or on the board, its 3D camera turned `turn_deg` from where it
+    /// opens (the playtest's player at the console, `crate::playtest`).
+    pub fn show_schematic(&mut self, open: bool, three_d: bool, turn_deg: f64) {
+        self.schem_open = open;
+        self.schem_3d = three_d;
+        self.schem_cam[0] = SCHEM_CAM[0] + turn_deg;
+        if open {
+            self.obj_open = false;
+        }
     }
 
     /// Whether the last `input` touched a control of the console: a press, a drag, a hold or a key, not the title
@@ -994,6 +1064,55 @@ impl Seat {
             }
             // The captain's damage control is not simulated in the drill: drawn unavailable.
             Act::OrderRepair => {}
+            // Engineering's schematic (power-routing 6.3): open and close it, 3D or the board, and its switches, each
+            // the reverse of what the last snapshot showed (the server refuses while the grid is tripped).
+            // EXPAND opens it in 3D, a tap on the board in small on the board; CONSOLE closes it.
+            Act::Schem(open) => {
+                self.schem_open = open;
+                self.schem_3d |= open;
+                self.obj_open = false;
+            }
+            Act::SchemBoard => {
+                self.schem_open = true;
+                self.schem_3d = false;
+                self.obj_open = false;
+            }
+            Act::SchemDim(three) => self.schem_3d = three,
+            Act::SchemBox(n) => {
+                if let Some(on) = v.schem.as_ref().and_then(|sv| sv.box_on.get(n).copied()) {
+                    out.push(cmd(Command::Power(PowerCmd::Box(n as u8, !on))));
+                }
+            }
+            Act::SchemRun(k) => {
+                if let Some(closed) = v.schem.as_ref().and_then(|sv| sv.closed.get(k).copied()) {
+                    out.push(cmd(Command::Power(PowerCmd::Run(k as u8, !closed))));
+                }
+            }
+            Act::SchemTie(k) => {
+                out.push(cmd(Command::Power(PowerCmd::Switch((data.power.file.generators.len() + k) as u8))))
+            }
+            Act::SchemFeed(i) => {
+                if let Some(alt) = v.schem.as_ref().and_then(|sv| sv.on_alt.get(i).copied()) {
+                    out.push(cmd(Command::Power(PowerCmd::Feed(i as u8, !alt))));
+                }
+            }
+        }
+    }
+
+    /// Where a camera or a view stands as a drag on it starts.
+    fn cam0(&self, what: &console::kit::Drag) -> (f64, f64) {
+        use console::kit::Drag;
+        match what {
+            Drag::ScanCam(key) => {
+                let c = self.scan_cam.of(key);
+                (c.yaw, c.d_el)
+            }
+            Drag::FeedView => (self.feed_cam.yaw, self.feed_cam.el),
+            Drag::ShieldCam => (self.shield_cam.yaw, self.shield_cam.el),
+            Drag::GunAim => (self.gun.yaw, self.gun.pitch),
+            Drag::SchemCam => (self.schem_cam[0], self.schem_cam[1]),
+            Drag::SchemPan => (self.schem_pan[0], self.schem_pan[1]),
+            _ => (0.0, 0.0),
         }
     }
 
@@ -1055,6 +1174,13 @@ impl Seat {
                     el: (d.cam0.1 + f64::from(dy / r.height().max(1.0)) * 120.0).clamp(-85.0, 85.0),
                 };
             }
+            // The schematic: a drag across turns the ship a full turn, up and down 120 degrees (held to 5-85 above);
+            // the board follows the pointer.
+            Drag::SchemCam => {
+                self.schem_cam[0] = d.cam0.0 - f64::from(dx / r.width().max(1.0)) * 360.0;
+                self.schem_cam[1] = (d.cam0.1 + f64::from(dy / r.height().max(1.0)) * 120.0).clamp(5.0, 85.0);
+            }
+            Drag::SchemPan => self.schem_pan = [d.cam0.0 + f64::from(dx / s), d.cam0.1 + f64::from(dy / s)],
             Drag::ShieldCam => {
                 // As the mockup: a drag across turns the view a full turn, up and down 120 degrees, held to +/-80.
                 self.shield_cam = Cam {
@@ -1128,17 +1254,23 @@ impl Seat {
                     match region.hit.clone() {
                         Some(Hit::Act(a)) => self.act(a, v, tern, hound, data, &mut out),
                         Some(Hit::Hold(k)) => self.hold = Some((k, now, false)),
+                        // A tap acts on its release; the drag under it (the schematic's view) starts now, so a press
+                        // that moves turns the view instead.
+                        Some(Hit::Tap(a)) => {
+                            self.tap = Some((a, p));
+                            let under = hits
+                                .regions
+                                .iter()
+                                .rev()
+                                .find(|r| r.contains(p) && matches!(r.hit, Some(Hit::Drag(_))));
+                            if let Some((Some(Hit::Drag(what)), track)) = under.map(|r| (r.hit.clone(), r.track)) {
+                                let cam0 = self.cam0(&what);
+                                self.drag =
+                                    Some(Dragging { what, p0: p, track, cam0, v0: 0.0, side: 0.0, moved: false });
+                            }
+                        }
                         Some(Hit::Drag(what)) => {
-                            let cam0 = match &what {
-                                Drag::ScanCam(key) => {
-                                    let c = self.scan_cam.of(key);
-                                    (c.yaw, c.d_el)
-                                }
-                                Drag::FeedView => (self.feed_cam.yaw, self.feed_cam.el),
-                                Drag::ShieldCam => (self.shield_cam.yaw, self.shield_cam.el),
-                                Drag::GunAim => (self.gun.yaw, self.gun.pitch),
-                                _ => (0.0, 0.0),
-                            };
+                            let cam0 = self.cam0(&what);
                             let v0 = match &what {
                                 Drag::Wheel('h') => self.oe.h,
                                 Drag::Wheel('p') => self.oe.p,
@@ -1166,6 +1298,11 @@ impl Seat {
                 }
                 PointerEv::Move(p) => self.drag_to(p, s, data),
                 PointerEv::Release(p) => {
+                    if let Some((a, p0)) = self.tap.take() {
+                        if (p - p0).length() < 6.0 {
+                            self.act(a, v, tern, hound, data, &mut out);
+                        }
+                    }
                     if let Some(d) = self.drag.take() {
                         match d.what {
                             Drag::Joy => {
@@ -1193,10 +1330,26 @@ impl Seat {
                     }
                 }
                 PointerEv::Scroll(p, up) => {
-                    if let Some(Hit::Drag(what)) =
-                        hits.regions.iter().rev().find(|r| r.rect.contains(p)).and_then(|r| r.hit.clone())
-                    {
+                    // The topmost control under the pointer, or the view under a tap's (the schematic's lines).
+                    let top = hits.regions.iter().rev().find(|r| r.contains(p));
+                    let top = if matches!(top.and_then(|r| r.hit.as_ref()), Some(Hit::Tap(_))) {
+                        hits.regions.iter().rev().find(|r| r.contains(p) && matches!(r.hit, Some(Hit::Drag(_))))
+                    } else {
+                        top
+                    };
+                    if let Some(Hit::Drag(what)) = top.and_then(|r| r.hit.clone()) {
                         match what {
+                            Drag::SchemCam => {
+                                self.schem_cam[2] =
+                                    (self.schem_cam[2] * if up { 0.9 } else { 1.0 / 0.9 }).clamp(25.0, 220.0)
+                            }
+                            Drag::SchemPan => {
+                                self.schem_zoom =
+                                    (self.schem_zoom * if up { 1.15 } else { 1.0 / 1.15 }).clamp(1.0, 6.0);
+                                if self.schem_zoom <= 1.0 {
+                                    self.schem_pan = [0.0; 2];
+                                }
+                            }
                             Drag::Wheel(k) => self.step_wheel(k, if up { 1.0 } else { -1.0 }),
                             Drag::ScanCam(key) => {
                                 self.act(Act::Range(key, if up { -1 } else { 1 }), v, tern, hound, data, &mut out)
@@ -1456,6 +1609,26 @@ mod tests {
         hits.unwrap()
     }
 
+    /// The console's UI tessellated as the game draws it at 1920 x 1080 (1.5 pixels a point): its vertices and indices.
+    fn tessellated(v: &ConsoleView) -> (usize, usize) {
+        let ctx = egui::Context::default();
+        crate::vg::install_fonts(&ctx);
+        let mut raw = egui::RawInput {
+            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(1280.0, 720.0))),
+            ..Default::default()
+        };
+        if let Some(vp) = raw.viewports.get_mut(&raw.viewport_id) {
+            vp.native_pixels_per_point = Some(1.5);
+        }
+        let out = ctx.run(raw, |ctx| {
+            let _ = console::paint(ctx, v, false, None);
+        });
+        ctx.tessellate(out.shapes, out.pixels_per_point).iter().fold((0, 0), |a, p| match &p.primitive {
+            egui::epaint::Primitive::Mesh(m) => (a.0 + m.vertices.len(), a.1 + m.indices.len()),
+            _ => a,
+        })
+    }
+
     fn centre(hits: &Hits, want: &Hit) -> Pos2 {
         hits.regions
             .iter()
@@ -1590,6 +1763,156 @@ mod tests {
         assert!(b.press(Hit::Act(Act::Scram), 1.3).is_empty(), "the first tap on SCRAM only arms it");
         assert!(b.view(1.4).eng.unwrap().armed_scram, "armed: the button reads CONFIRM");
         assert_eq!(b.press(Hit::Act(Act::Scram), 1.5), vec![Command::Power(PowerCmd::Scram)], "the second confirms");
+    }
+
+    #[test]
+    fn expand_opens_the_schematic_and_its_taps_switch_the_grid() {
+        let mut b = Bench::new(Station::Engineering);
+        b.snap.power.as_mut().unwrap();
+        assert!(b.view(1.0).schem.is_none(), "the console's panels first");
+        b.press(Hit::Act(Act::Schem(true)), 1.0);
+        let v = b.view(1.1);
+        let sv = v.schem.as_ref().expect("EXPAND opens the schematic");
+        let pd = &b.data.power;
+        assert_eq!((sv.box_on.len(), sv.closed.len()), (pd.nodes.len(), pd.file.conduits.len()));
+        assert_eq!(sv.flows.len(), pd.edge_count());
+        assert!(sv.three_d, "it opens in 3D, as the mockup");
+        // In 3D: a tap on a run opens it, a tap on a box switches it off; a press that moves turns the view instead.
+        let hits = paint(&v);
+        let run =
+            hits.regions.iter().find(|r| matches!(r.hit, Some(Hit::Tap(Act::SchemRun(_))))).expect("a run to tap");
+        let Some((p0, p1, _)) = run.seg else { panic!("a run's region is a line") };
+        let mid = p0 + (p1 - p0) * 0.5;
+        // The run on top there (lines cross in 3D).
+        let Some(Hit::Tap(Act::SchemRun(k))) = hits.at(mid).and_then(|r| r.hit.clone()) else {
+            panic!("a run at {mid:?}")
+        };
+        assert!(b.input(vec![PointerEv::Press(mid)], 1.2).is_empty(), "a tap acts on its release");
+        let closed = sv.closed[k];
+        assert_eq!(b.input(vec![PointerEv::Release(mid)], 1.3), vec![Command::Power(PowerCmd::Run(k as u8, !closed))]);
+        let moved = mid + egui::vec2(40.0, 0.0);
+        let sent = b.input(vec![PointerEv::Press(mid), PointerEv::Move(moved), PointerEv::Release(moved)], 1.4);
+        assert!(sent.is_empty(), "a drag from a run turns the view: {sent:?}");
+        assert!((b.view(1.5).schem.unwrap().cam[0] - SCHEM_CAM[0]).abs() > 1.0, "the camera turned");
+        // On the board: a box's switch and a system's light.
+        b.press(Hit::Act(Act::SchemDim(false)), 1.6);
+        let v = b.view(1.7);
+        assert!(!v.schem.as_ref().unwrap().three_d);
+        let hits = paint(&v);
+        let bx =
+            hits.regions.iter().find(|r| matches!(r.hit, Some(Hit::Tap(Act::SchemBox(_))))).expect("a box's switch");
+        let Some(Hit::Tap(Act::SchemBox(n))) = bx.hit.clone() else { panic!() };
+        let c = bx.rect.center();
+        assert_eq!(
+            b.input(vec![PointerEv::Press(c), PointerEv::Release(c)], 1.8),
+            vec![Command::Power(PowerCmd::Box(n as u8, false))]
+        );
+        let feed =
+            hits.regions.iter().find(|r| matches!(r.hit, Some(Hit::Tap(Act::SchemFeed(_))))).expect("a light to swap");
+        let Some(Hit::Tap(Act::SchemFeed(i))) = feed.hit.clone() else { panic!() };
+        let c = feed.rect.center();
+        assert_eq!(
+            b.input(vec![PointerEv::Press(c), PointerEv::Release(c)], 1.9),
+            vec![Command::Power(PowerCmd::Feed(i as u8, true))]
+        );
+        // A generator's breaker is held on its trace (the side panel's one-line breakers moved here).
+        let gen = hits.regions.iter().find(|r| r.hit == Some(Hit::Hold("brk:gen_p".into()))).expect("gen_p's trace");
+        let Some((g0, g1, _)) = gen.seg else { panic!("a trace's region is a line") };
+        let g = g0 + (g1 - g0) * 0.5;
+        assert!(b.input(vec![PointerEv::Press(g)], 3.0).is_empty(), "held, not yet");
+        let sent = b.input(vec![], 3.0 + HOLD_S + 0.05);
+        assert_eq!(sent, vec![Command::Power(PowerCmd::Switch(0))], "held long enough, the port generator's breaker");
+        b.input(vec![PointerEv::Release(g)], 3.8);
+        b.press(Hit::Act(Act::Schem(false)), 4.0);
+        assert!(b.view(4.1).schem.is_none(), "CONSOLE goes back to the panels");
+        // The board in small on the side panel opens the schematic on the board.
+        let v = b.view(4.2);
+        assert!(v.eng.as_ref().unwrap().buses.thumb.is_some(), "the panel draws the board in small");
+        b.press(Hit::Act(Act::SchemBoard), 4.3);
+        assert!(!b.view(4.4).schem.unwrap().three_d, "a tap on the board in small opens it on the board");
+    }
+
+    /// A fight's frame of the schematic in 3D, every run live, passed the UI's first buffers and lost its status strip
+    /// and legend (power-routing 6.9; at 1920 x 1080 it took 207,882 indices of 196,608): each view stays under 60% of
+    /// them, room for the crew tabs and whatever is added.
+    #[test]
+    fn the_schematic_fits_the_uis_buffers_with_room_to_spare() {
+        let mut b = Bench::new(Station::Engineering);
+        for three_d in [true, false] {
+            b.seat.show_schematic(true, three_d, 0.0);
+            let v = b.view(1.0);
+            assert!(v.schem.as_ref().is_some_and(|s| s.live > 0), "a grid with live runs, the heaviest picture");
+            let (verts, idx) = tessellated(&v);
+            assert!(verts > 20_000, "the whole picture tessellated ({verts} vertices)");
+            let (vk, ik) =
+                (verts as f64 / sc_render::UI_MAX_VERTICES as f64, idx as f64 / sc_render::UI_MAX_INDICES as f64);
+            assert!(vk < 0.6 && ik < 0.6, "3D {three_d}: {verts} vertices ({vk:.2}), {idx} indices ({ik:.2})");
+        }
+    }
+
+    #[test]
+    fn the_playtest_opens_the_schematic_in_3d_and_on_the_board() {
+        let mut b = Bench::new(Station::Engineering);
+        b.seat.show_schematic(true, true, 12.0);
+        let sv = b.view(1.0).schem.expect("the tour opens the schematic");
+        assert!(sv.three_d);
+        assert!((sv.cam[0] - (SCHEM_CAM[0] + 12.0)).abs() < 1e-9, "turned from where it opens");
+        b.seat.show_schematic(true, false, 0.0);
+        assert!(!b.view(1.1).schem.unwrap().three_d, "then the board");
+        b.seat.show_schematic(false, false, 0.0);
+        assert!(b.view(1.2).schem.is_none(), "and back to the console's panels");
+    }
+
+    /// The schematic's states for the engine's shots: written as console fixtures (the engineering fixture with the
+    /// schematic open) when `SC_SCHEM_FIXTURES` names a folder (power-routing 6.7).
+    #[test]
+    fn the_schematic_views_its_shots_are_drawn_from() {
+        let base: serde_json::Value =
+            serde_json::from_str(include_str!("../../../docs/screenshots/parity/engineering.json")).unwrap();
+        let mut b = Bench::new(Station::Engineering);
+        b.press(Hit::Act(Act::Schem(true)), 1.0);
+        let cruise = b.view(1.1).schem.unwrap();
+        assert!(cruise.live > 0 && cruise.live <= cruise.limit, "{} of {}", cruise.live, cruise.limit);
+        assert!(cruise.reached.iter().all(|r| *r), "every box reached at the factory");
+        // A hurt ship: a panel damaged, a run cut, one damaged, a system disabled and one damaged, a box switched off.
+        let data = DrillData::shipped();
+        let mut d = Drill::new(data.clone(), 3);
+        let pd = &data.power;
+        let node = |id: &str| pd.node(id).unwrap();
+        let cond = |id: &str| pd.file.conduits.iter().position(|c| c.id == id).unwrap();
+        let file = |id: &str| pd.file.loads.iter().position(|l| l.id == id).unwrap();
+        d.damage[0].node_health[node("dp_port")] = 0.62;
+        d.damage[0].conduits[cond("k_mid_p")].severed = true;
+        d.damage[0].conduits[cond("k_mid_p")].health = 0.0;
+        d.damage[0].conduits[cond("r_shield")].health = 0.5;
+        d.damage[0].integrity[file("turret_port")] = 12.0;
+        d.damage[0].integrity[file("shield_generator")] = 55.0;
+        d.power.box_on[node("bx_medbay")] = false;
+        for _ in 0..(TICK_HZ as usize * 2) {
+            d.step();
+        }
+        b.snap = Snapshot::of(&d);
+        let hurt = b.view(2.0).schem.unwrap();
+        assert!(hurt.severed[cond("k_mid_p")] && hurt.damaged[cond("r_shield")] && !hurt.box_on[node("bx_medbay")]);
+        assert!(!hurt.reached[node("bx_medbay")], "a box switched off is not reached");
+        let Ok(dir) = std::env::var("SC_SCHEM_FIXTURES") else { return };
+        // The side panel's board in small, hurt.
+        let mut v = base.clone();
+        v["eng"]["buses"]["thumb"] = serde_json::to_value(crate::console::schematic::thumb(&hurt)).unwrap();
+        std::fs::write(std::path::Path::new(&dir).join("panel-hurt.json"), serde_json::to_string(&v).unwrap()).unwrap();
+        for (name, sv, three) in [
+            ("schem-3d", &cruise, true),
+            ("schem-2d", &cruise, false),
+            ("schem-3d-hurt", &hurt, true),
+            ("schem-2d-hurt", &hurt, false),
+        ] {
+            let mut v = base.clone();
+            let mut sv = sv.clone();
+            sv.three_d = three;
+            v["schem"] = serde_json::to_value(&sv).unwrap();
+            let path = std::path::Path::new(&dir).join(format!("{name}.json"));
+            std::fs::write(&path, serde_json::to_string(&v).unwrap()).unwrap();
+        }
     }
 
     #[test]

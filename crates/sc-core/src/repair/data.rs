@@ -417,6 +417,9 @@ pub struct ShipJob {
     pub place: String,
     /// Players who can work it at once.
     pub workers: u32,
+    /// The power loads (`power.json`) whose damage it repairs, where a player stands to work it (all-hands 5).
+    #[serde(default)]
+    pub loads: Vec<String>,
 }
 
 /// `data/ships/tern/repairs.json` (`starcrew.ship-repairs/1`).
@@ -425,6 +428,10 @@ pub struct ShipJob {
 pub struct ShipRepairs {
     /// `starcrew.ship-repairs/1`.
     pub schema: String,
+    /// How near a job's damaged load a player stands to work it, across the floor and in height, metres.
+    pub reach_m: f64,
+    /// See `reach_m`.
+    pub reach_dy_m: f64,
     /// The jobs.
     pub jobs: Vec<ShipJob>,
 }
@@ -432,6 +439,8 @@ pub struct ShipRepairs {
 impl Validate for ShipRepairs {
     fn validate(&self, c: &mut Checks) {
         c.equals("schema", &self.schema, "starcrew.ship-repairs/1");
+        c.number("reach_m", self.reach_m, 0.3, 10.0);
+        c.number("reach_dy_m", self.reach_dy_m, 0.3, 10.0);
         for (i, j) in self.jobs.iter().enumerate() {
             c.count(&format!("jobs.{i}.workers"), i64::from(j.workers), 1, 2);
             if self.jobs[..i].iter().any(|o| o.id == j.id) {
@@ -487,6 +496,16 @@ impl RepairData {
 
     /// Read every file under `root` with `read` (the caller owns the I/O: the core never reads a file), the games
     /// being every `data/repairs/<id>.json` but the rules, as `ids` lists them.
+    /// Every game the Tern's jobs name, with the rules and the jobs (the game's server and the client on deck read the
+    /// same set): `read` gives a file's text by its path from the repository's root.
+    pub fn load_for_ship(read: impl Fn(&str) -> Result<String, String>) -> Result<Self, String> {
+        let ship: ShipRepairs = crate::data::parse(SHIP_FILE, &read(SHIP_FILE)?).map_err(|e| e.to_string())?;
+        let mut ids: Vec<String> = ship.jobs.iter().map(|j| j.game.clone()).collect();
+        ids.sort();
+        ids.dedup();
+        Self::load(&ids, read)
+    }
+
     pub fn load(ids: &[String], read: impl Fn(&str) -> Result<String, String>) -> Result<Self, String> {
         let games = ids.iter().map(|id| Ok((id.clone(), read(&game_file(id))?))).collect::<Result<Vec<_>, String>>()?;
         Self::parse(&read(RULE_FILES[0])?, &read(RULE_FILES[1])?, &read(SHIP_FILE)?, &games).map_err(|e| e.to_string())

@@ -10,20 +10,52 @@
  * clamp, each map more bulkheads. A crossed pair is a fumble: a spark, 5 HP, and the breaker trips. A disabled
  * conduit's first step fits a new length: drag it from the crate into the gap.
  */
+// The guide's pictures (repair-minigames 6g): this game's own parts, in the card's 100 px box about the origin.
+/** Strip: the finger runs along the open conduit and the charred length comes away behind it. */
+function conduitsPicStrip(g, t, K) {
+  const D = K.draw, u = (t * 0.5) % 1, x = -36 + 72 * u;
+  g.fillStyle = "#3a4656"; g.fillRect(-56, -26, 14, 52); g.fillRect(42, -26, 14, 52);
+  [["#ff4757", -14], ["#3ddc84", 0], ["#4fc3f7", 14]].forEach(([c, y]) => {
+    D.line(g, [[-44, y], [44, y]], c, 5);
+    D.line(g, [[x, y], [36, y]], "#1a1410", 7);
+  });
+  D.finger(g, x, 28);
+}
+/** Join: a cut end is dragged across to the end of its own colour while the clamp's jaws close in. */
+function conduitsPicJoin(g, t, K) {
+  const D = K.draw, u = (t * 0.45) % 1, m = Math.min(1, u * 1.6), jaw = 40 - 22 * u;
+  g.fillStyle = "#566273"; g.fillRect(-6, -48, 12, 48 - jaw); g.fillRect(-6, jaw, 12, 48 - jaw);
+  D.line(g, [[-50, -14], [-12, -14]], "#ff4757", 5); D.line(g, [[12, -14], [50, -14]], "#ff4757", 5);
+  D.line(g, [[-50, 14], [-12, 14]], "#3ddc84", 5);
+  const x = 12 + (-10 - 12) * m;
+  D.line(g, [[50, 14], [x, 14]], "#3ddc84", 5);
+  D.finger(g, x, 14);
+}
+/** Reroute: a new run is drawn cell by cell from the switchboard round the burnt box to the load. */
+function conduitsPicRoute(g, t, K) {
+  const D = K.draw, path = [[-40, 30], [-40, 0], [-40, -30], [-10, -30], [20, -30], [40, -30], [40, 0], [40, 30]];
+  const n = 1 + Math.floor(((t * 0.5) % 1) * (path.length - 1));
+  D.round(g, -52, 18, 24, 24, 4); g.fillStyle = K.C.amber; g.fill();
+  D.round(g, 28, 18, 24, 24, 4); g.fillStyle = K.C.ok; g.fill();
+  D.round(g, -12, -2, 24, 24, 4); g.fillStyle = "#1a1410"; g.fill(); g.lineWidth = 2; g.strokeStyle = K.C.danger; g.stroke();
+  D.line(g, path.slice(0, n + 1), K.C.accent, 5);
+  D.finger(g, path[n][0], path[n][1]);
+}
+
 RepairKit.register({
   // A round splices; a disabled job has a burnt junction box too, rerouted every round (repair-minigames 1a).
   phases: (api) => (api.steps >= 4 ? ["splice", "reroute"] : ["splice"]),
   id: "conduits",
   title: "Electrical conduits",
   place: "Anywhere a conduit runs",
-  group: "Engineering",
+  group: "Electrical",
   hazard: "Crossed pair: spark, 5 HP, breaker tripped",
   // The how-to card (repair-minigames 6g), drawn by the kit: pictures and a few words, on demand.
   guide: {
     steps: [
-      { icon: "sweep", text: "Drag along to strip burns" },
-      { icon: "plug", text: "Join colours before the clamp" },
-      { icon: "drag", text: "Reroute: draw round the burn" },
+      { pic: conduitsPicStrip, text: "Drag along the black to strip it" },
+      { pic: conduitsPicJoin, text: "Drag each end to its colour before the clamp shuts" },
+      { pic: conduitsPicRoute, text: "Burnt box: draw a new run round it" },
     ],
     mistake: "A crossed pair: a spark, 5 HP, the breaker trips",
     now: (q) => (q.mode === "part" ? -1 : q.mode === "reroute" ? 2 : q.stripped < 1 ? 0 : 1),

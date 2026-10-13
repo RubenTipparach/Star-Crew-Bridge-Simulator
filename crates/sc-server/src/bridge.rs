@@ -13,8 +13,9 @@ use sc_core::combat::Station;
 use sc_core::nav::{NavGrid, Waypoint};
 use sc_core::walk::{WalkData, WalkEntities, WalkWorld};
 
-/// A station's seat from `data/ships/tern/layout.json`: where and which way.
-fn seats(root: &Path, data: &DrillData, stations: &[Station]) -> Result<Vec<(Station, [f32; 3], f32)>, String> {
+/// Each station's seat from `data/ships/tern/layout.json`: where and which way (the client's walk asks it too, for
+/// the seat in reach).
+pub fn seats(root: &Path, data: &DrillData, stations: &[Station]) -> Result<Vec<(Station, [f32; 3], f32)>, String> {
     let rel = "data/ships/tern/layout.json";
     let text = std::fs::read_to_string(root.join(rel)).map_err(|e| format!("{rel}: {e}"))?;
     let v: serde_json::Value = serde_json::from_str(&text).map_err(|e| format!("{rel}: {e}"))?;
@@ -39,6 +40,16 @@ fn seats(root: &Path, data: &DrillData, stations: &[Station]) -> Result<Vec<(Sta
         .collect()
 }
 
+/// Each seat on the floor under it: the layout gives a seat its deck's height, and a station on a platform (the work
+/// rings, the sub-platform, the dais) stands higher, where its body sits and its eye is.
+pub fn on_floor(seats: &mut [(Station, [f32; 3], f32)], world: &WalkWorld) {
+    for (_, p, _) in seats.iter_mut() {
+        if let Some(y) = world.floor_below(p[0], p[1] + 1.0, p[2]).filter(|y| (y - p[1]).abs() < 1.0) {
+            p[1] = y;
+        }
+    }
+}
+
 /// How far from a muster room's middle its people may stand, on floor joined to the bridge, metres.
 const MUSTER_REACH_M: f32 = 6.0;
 
@@ -57,8 +68,11 @@ pub fn load(data: &DrillData, root: &Path, deck: Option<&Path>) -> Result<(Bridg
         data.stations.seats.stand_s as f32,
         data.stations.seats.sit_s as f32,
     );
+    let s = &data.stations.seats;
+    let reach = (s.reach_m as f32, s.reach_dy_m as f32, s.stand_back_m as f32);
     let Some(deck) = deck.filter(|d| d.exists()) else {
-        return Ok((Bridge::straight(seats, musters, sp, ws, st, si), "straight paths (no compiled deck)".into()));
+        let b = Bridge::straight(seats, musters, sp, ws, st, si).with_reach(reach.0, reach.1, reach.2);
+        return Ok((b, "straight paths (no compiled deck)".into()));
     };
     let t0 = std::time::Instant::now();
     let bytes = std::fs::read(deck).map_err(|e| format!("{}: {e}", deck.display()))?;
@@ -72,9 +86,15 @@ pub fn load(data: &DrillData, root: &Path, deck: Option<&Path>) -> Result<(Bridg
     };
     let tris = d.walk_triangles();
     let world = WalkWorld::new(&tris, &ents, &walk)?;
+    let mut seats = seats;
+    on_floor(&mut seats, &world);
     // The whole ship: the crew start in rooms on every deck and walk up to the bridge by its ladders. Each muster place
     // stands on the nearest floor joined to the bridge's seats (a room's middle may be under a table, or on one).
-    let (grid, decks) = NavGrid::for_ship(&world, w, &tris);
+    let (mut grid, decks) = NavGrid::for_ship(&world, w, &tris);
+    // The bridge's stairs onto its rings and dais: walked, never a platform's lip.
+    let rel = "data/ships/tern/command_suite.json";
+    let suite = std::fs::read_to_string(root.join(rel)).map_err(|e| format!("{rel}: {e}"))?;
+    grid.add_stairs(&NavGrid::stairs_of(&suite).map_err(|e| format!("{rel}: {e}"))?);
     let musters: Vec<[f32; 3]> = match seats.first() {
         Some(seat) => musters.iter().map(|p| grid.snap_joined(*p, MUSTER_REACH_M, seat.1).unwrap_or(*p)).collect(),
         None => musters,
@@ -93,6 +113,7 @@ pub fn load(data: &DrillData, root: &Path, deck: Option<&Path>) -> Result<(Bridg
             vec![a, b]
         }
     });
+    let bridge = bridge.with_reach(reach.0, reach.1, reach.2);
     let how = format!(
         "paths on the walk grid ({} cells on {} decks, {:.0} ms){}",
         grid.walkable(),

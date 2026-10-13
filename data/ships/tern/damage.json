@@ -66,7 +66,9 @@
     "burn_hull_mj_per_s": 0.05,
     "spread_after_s": 90.0,
     "put_out_s": 20.0,
-    "note": "Per compartment a hit deposits energy in: ignition chance min(chance_max, chance_per_mj x E) times the room's oxygen factor, decided by a seeded hash of (session seed, hit id, compartment id). The fire starts at fire.seed_kw (atmosphere.json) plus seed_kw_per_mj x E."
+    "extinguisher_s": 15.0,
+    "locker": "dc_lockers",
+    "note": "put_out_s is a team's time: a fire is out once the hands at it have put in put_out_s x teams.members hand-seconds, a team counting its members and a player spraying an extinguisher one (all-hands 4). An extinguisher's agent lasts extinguisher_s held on (crew-on-deck 14: 6 kg over 15 s); a player takes one at the locker fixture. Per compartment a hit deposits energy in: ignition chance min(chance_max, chance_per_mj x E) times the room's oxygen factor, decided by a seeded hash of (session seed, hit id, compartment id). The fire starts at fire.seed_kw (atmosphere.json) plus seed_kw_per_mj x E."
   },
   "crew": {
     "hp_per_mj": 15.0,

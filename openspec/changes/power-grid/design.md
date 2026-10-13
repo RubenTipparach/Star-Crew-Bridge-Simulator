@@ -697,9 +697,14 @@ the power grid in the ship floor plan and as a electric diagram"; since the same
 | `power-grid-3d-rerouted` | The dorsal turret room's feed cut and the spare through the aft passage closed |
 | `power-grid-3d-tripped` | One run over the limit: TRIPPED, the ship dark past the switchboards, factory settings in 6 s |
 | `power-grid-3d-deck-c` | Deck C alone, the deck the owner looked at |
-| `power-grid-2d-cruise` | 2D: the simplified graph, a node a box, each box's loads as bars |
-| `power-grid-2d-rerouted` | The cut feed and the spare carrying the turret round the long way |
-| `power-grid-2d-tripped` | The trip in the graph |
+| `power-grid-2d-cruise` | 2D: the schematic as a circuit board (`power-routing` 3c), a board a deck, every part and trace placed by hand |
+| `power-grid-2d-rerouted` | The cut feed (red) and the spare, now on the top layer, carrying the turret round the long way |
+| `power-grid-2d-tripped` | The trip on the board: every run open on the bottom layer but the switchboards' own |
+| `power-grid-3d-rooms-panel-off` | The rooms overlay with the medbay's box switched off: the medbay on emergency light |
+| `power-grid-2d-rooms-panel-off` | The same on the board: every part's room lamp, the overlay's tint |
+| `power-grid-2d-feed-swapped` | The shield room's feed cut and the shield generator swapped to the forward switchboard |
+| `power-grid-3d-room-hit` | HIT ROOM (`power-routing` 3d) twice in combat, the shield room and the port turret pod: red rings where the hits came in, the cuts, the damaged boxes and systems, 3 offline |
+| `power-grid-2d-room-hit` | The same on the board: the burns, a red star at each room hit, cracked parts with their health, the runs cut and damaged |
 | `power-grid-phone-3d`, `power-grid-phone-2d` | Both views on a phone held upright |
 | `consoles-engineering`, `consoles-red-engineering` | Engineering's console: BUSES become SCHEMATIC, with EXPAND and the live runs |
 

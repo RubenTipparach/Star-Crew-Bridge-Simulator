@@ -21,8 +21,10 @@ use sc_repairs::pen::{c, hex, rgba, Align, Pen};
 
 use crate::ui::{key_of, Ui};
 
-/// The menu's columns, in order (each game's file names its group).
-const GROUPS: [&str; 6] = ["Engineering", "Life", "Hangar", "Weapons and sensors", "Hull", "Outside and doors"];
+/// The menu's columns, in order (each game's file names its group). Electrical holds the grid's games (owner,
+/// 2026-10-12: "these needs its own group too").
+const GROUPS: [&str; 7] =
+    ["Engineering", "Electrical", "Life", "Hangar", "Weapons and sensors", "Hull", "Outside and doors"];
 
 /// A scripted capture's stage for one game.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -377,5 +379,21 @@ impl MenuView<'_> {
             Align::Left,
         );
         open
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::GROUPS;
+
+    /// A game whose group is no column would never show in the menu.
+    #[test]
+    fn every_shipped_game_sits_in_a_column_of_the_menu() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let data = sc_repairs::games::load_shipped(&root).expect("the shipped repair data loads");
+        for (id, f) in &data.games {
+            assert!(GROUPS.contains(&f.group.as_str()), "{id}'s group {:?} is not a column", f.group);
+        }
+        assert!(data.games.values().any(|f| f.group == "Electrical"), "the grid's games have their own column");
     }
 }

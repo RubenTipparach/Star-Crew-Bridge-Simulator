@@ -78,8 +78,10 @@
      *   panel (optional): { x, y, w, h, screws } a cover plate over the machine, unscrewed before the work and screwed
  *     back after it (4 screws at the corners, or 6),
  *   doneWord (optional): the word when the job is done ("Treated"; default "Repaired"),
- *   guide: { steps: [{ icon, text, cover? }], mistake, now? } the how-to card (design 6g): up to four steps in the
- *     order they come, each an icon from KIT.icons and about three to six words; `cover: true` marks the step lit
+ *   guide: { steps: [{ icon, pic?, text, cover? }], mistake, now? } the how-to card (design 6g): up to five steps in
+ *     the order they come, each a picture and about three to six words; the picture is `pic(g, t, KIT)`, the game's own
+ *     parts drawn in the card's 100 px box about the origin (a finger the blue dot, a target amber), or else the shared
+ *     icon named by `icon`; `cover: true` marks the step lit
  *     while the cover's screws are worked; `mistake` is one line, cause and cost; now(q) (optional) takes the game's
  *     peek() (or its state) and returns the step it is in (0-based), or -1, so the card lights it,
  *   job (optional): { unit: "%" | "HP", start, target, rate or rateBy: { officer, rating }, steps, fumble } to
@@ -375,6 +377,8 @@
     g.fillStyle = "#1a0508"; g.fillRect(x - 2.5, y - s * 0.45, 5, s * 0.75); g.fillRect(x - 2.5, y + s * 0.45, 5, 5);
   }
   KIT.icons = ICONS;
+  /** The guide's picture language for a game's own `pic`: the finger, an arrowhead, a stroked line. */
+  Object.assign(KIT.draw, { finger: FINGER, arrowHead, line });
 
   /**
    * Words wrapped to lines no wider than `w` px in the current font. Two lines are balanced (the break that makes the
@@ -406,7 +410,7 @@
    * lit; the mistake under them on one line; a cross in the corner. Tap anywhere, ?, F1, Escape or Back closes it.
    */
   function drawGuide(g, guide, now, t) {
-    const D = KIT.draw, steps = guide.steps.slice(0, 4), n = steps.length;
+    const D = KIT.draw, steps = guide.steps.slice(0, 5), n = steps.length;
     g.fillStyle = "rgba(4,6,10,0.72)"; g.fillRect(0, BAR_H, W, H - BAR_H);
     D.panel(g, CARD.x, CARD.y, CARD.w, CARD.h, 22, "#0e151f", "#33445a");
     // The cross: the card closes on a tap anywhere, the cross only says so.
@@ -422,7 +426,9 @@
       g.lineWidth = lit ? 4 : 2; g.strokeStyle = lit ? C.amber : "#2a3446"; g.stroke();
       g.save(); g.translate(x, ty + tile / 2); g.scale(1.25, 1.25);
       g.beginPath(); g.rect(-58, -58, 116, 116); g.clip();
-      (ICONS[st.icon] || ICONS.tap)(g, t);
+      // A step's picture: the game's own parts drawn by its `pic` (owner, 2026-10-12: "a lot of these tool tips are
+      // copy paste"), else the shared icon.
+      (st.pic || ICONS[st.icon] || ICONS.tap)(g, t, KIT);
       g.restore();
       // Its number, in the order the steps come.
       D.disc(g, x - tile / 2 + 4, ty + 4, 18, lit ? C.amber : "#26324a");

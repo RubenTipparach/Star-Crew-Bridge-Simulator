@@ -26,7 +26,7 @@ use sc_net::bot::Bot;
 use sc_net::msg::{ShipSnap, Snapshot};
 use sc_net::session::{Session, Stage, Visual, INTERP_DELAY_S};
 use sc_net::transport::Impair;
-use sc_render::{DeckParams, DeckProgram, Indices, Mesh, Renderer, Target};
+use sc_render::{DeckProgram, Indices, Mesh, Renderer, Target};
 
 use crate::console;
 use crate::seat::{Input, PointerEv, Seat, SeatAsk};
@@ -71,9 +71,12 @@ pub struct DrillArgs {
     pub seed: u64,
     /// The hand-over test's folder: once the briefing shows, capture it and hand back to the menu.
     pub hand_test: Option<PathBuf>,
-    /// Single player: every this many seconds of the fight, look in on the next station's console through the crew
-    /// tabs, as a captain going round the bridge does (`--look-in S`, for recordings of a whole fight).
-    pub look_in: Option<f64>,
+    /// Single player: a scripted player walks the ship, sits at stations and works them, for a recording of the game
+    /// as it is played (`--playtest`, `crate::playtest`).
+    pub playtest: bool,
+    /// Single player: All hands, no damage-control teams aboard; the crew put the ship right (`--all-hands`,
+    /// all-hands 1).
+    pub all_hands: bool,
 }
 
 struct Meshes {
@@ -85,6 +88,10 @@ struct Meshes {
     missile: Mesh,
     burst: Mesh,
     beam: Mesh,
+    /// Fire on a room's floor, a puff of agent, the extinguisher in hand (all-hands 4).
+    flame: Mesh,
+    puff: Mesh,
+    held: Mesh,
 }
 
 struct VisBolt {
@@ -178,7 +185,43 @@ pub struct DrillApp {
     /// The game menu on Esc (game-menu), and the options it sets.
     menu: crate::game_menu::GameMenu,
     options: crate::options::Options,
+    /// The player's own body on foot (CLAUDE.md, the law: one game, played on foot): walked here, sent to the server.
+    foot: Option<crate::onfoot::OnFoot>,
+    /// The body stood free last frame: the player's to walk.
+    free: bool,
+    /// The eye's facing and tilt on foot, radians.
+    look: (f32, f32),
+    /// The mouse is captured for looking around on foot.
+    captured: bool,
+    /// When the walk was last sent, local seconds.
+    walk_sent: f64,
+    /// How long Stand has been held while seated, seconds.
+    stand_hold: f64,
+    /// Each station's seat (layout.json), for the seat in reach.
+    seat_points: Vec<(Station, [f32; 3], f32)>,
+    /// `--playtest`: the scripted player.
+    playtest: Option<crate::playtest::Playtest>,
+    /// When the body last sat down at a console, local seconds: the console rises from the desk from then.
+    seated_at: Option<f64>,
+    /// The eye the player last saw the ship from on their feet (where, facing, tilt), and the one the sit started from:
+    /// the camera sits down with the body from there.
+    last_view: Option<([f64; 3], f32, f32)>,
+    rise_from: Option<([f64; 3], f32, f32)>,
+    /// The left button is down (looking round on foot, it sprays an extinguisher), and what was last sent of spraying.
+    mouse_left: bool,
+    spray_sent: bool,
+    /// Repairs on deck (all-hands 5): the games' data, the repair being played at a machine, and a dock asked for (the
+    /// job, and when, local seconds).
+    repair_data: Option<sc_core::repair::data::RepairData>,
+    deck: Option<crate::deckrepair::DeckRun>,
+    dock_asked: Option<(u8, f64)>,
 }
+
+/// The console comes up from the desk over this long once the body sits, seconds (the law: maximum immersion).
+const CONSOLE_RISE_S: f64 = 0.6;
+
+/// The walk goes to the server this often, seconds (20 a second: other players see a body walk, not hop).
+const WALK_SEND_S: f64 = 0.05;
 
 fn load_data() -> Result<DrillData, String> {
     let read = |rel: &str| std::fs::read_to_string(rel).map_err(|e| format!("{rel}: {e}"));
@@ -206,7 +249,10 @@ impl DrillApp {
             .map_err(|e| format!("data/space/exterior.json: {e}"))?;
         let exterior: ExteriorData =
             sc_core::data::parse("data/space/exterior.json", &text).map_err(|e| e.to_string())?;
-        let data = load_data()?;
+        let mut data = load_data()?;
+        if args.all_hands && args.solo {
+            data.mission.damage_control = "crew".into();
+        }
         let hound = ships3d::hound();
         println!("sc-client: the Hound placeholder is {} triangles", hound.triangles());
         let meshes = Meshes {
@@ -218,6 +264,9 @@ impl DrillApp {
             missile: mesh(&r, &ships3d::missile()),
             burst: mesh(&r, &ships3d::burst()),
             beam: mesh(&r, &ships3d::bolt([2.0, 0.6, 1.3])),
+            flame: mesh(&r, &ships3d::flames()),
+            puff: mesh(&r, &ships3d::puff()),
+            held: mesh(&r, &ships3d::extinguisher()),
         };
         let mut args = args;
         if args.any {
@@ -276,7 +325,32 @@ impl DrillApp {
             walk_seen: (None, None),
             menu: Default::default(),
             options: crate::options::Options::load(),
+            foot: None,
+            free: false,
+            look: (0.0, 0.0),
+            captured: false,
+            walk_sent: 0.0,
+            stand_hold: 0.0,
+            seat_points: Vec::new(),
+            playtest: None,
+            seated_at: None,
+            last_view: None,
+            rise_from: None,
+            mouse_left: false,
+            spray_sent: false,
+            repair_data: None,
+            deck: None,
+            dock_asked: None,
         };
+        match sc_core::repair::data::RepairData::load_for_ship(|rel| {
+            std::fs::read_to_string(rel).map_err(|e| format!("{rel}: {e}"))
+        }) {
+            Ok(r) => app.repair_data = Some(r),
+            Err(e) => println!("sc-client: no repairs on deck ({e})"),
+        }
+        if app.args.playtest && app.solo.is_some() {
+            app.playtest = Some(crate::playtest::Playtest::new(app.args.station));
+        }
         match crate::drill_bridge::BridgeView::load(&mut app.r, std::path::Path::new("compiled/tern.deck")) {
             Ok(mut b) => {
                 println!("sc-client: the bridge for the crew on foot, {} triangles", b.triangles);
@@ -284,6 +358,22 @@ impl DrillApp {
                 app.bridge = Some(b);
             }
             Err(e) => println!("sc-client: no bridge to walk ({e}); the drill shows the consoles only"),
+        }
+        // The player's own walk, on the same deck (a watcher has no body).
+        if !app.args.watch && app.bridge.is_some() {
+            let foot = std::fs::read("compiled/tern.deck").map_err(|e| e.to_string()).and_then(|b| {
+                let d = sc_core::deck::read(&b).map_err(|e| e.to_string())?;
+                crate::onfoot::OnFoot::from_deck(&d)
+            });
+            match foot {
+                Ok(f) => app.foot = Some(f),
+                Err(e) => println!("sc-client: no walk on foot ({e})"),
+            }
+        }
+        let stations: Vec<Station> = app.data.mission.stations.iter().filter_map(|s| Station::from_id(s)).collect();
+        app.seat_points = sc_server::bridge::seats(std::path::Path::new("."), &app.data, &stations).unwrap_or_default();
+        if let Some(f) = app.foot.as_ref() {
+            sc_server::bridge::on_floor(&mut app.seat_points, &f.world);
         }
         app.try_connect();
         Ok(app)
@@ -321,6 +411,299 @@ impl DrillApp {
             self.shown.unwrap_or(own)
         } else {
             own
+        }
+    }
+
+    /// One frame on foot (the law: one game, played on foot): the body put where the server has it when it becomes
+    /// the player's, the keys' walk, E to sit at a seat in reach (else E and Q climb and work the lifts), the walk sent
+    /// to the server. Returns what E does here, for the screen.
+    fn step_foot(
+        &mut self,
+        dt: f64,
+        me: sc_net::msg::BodySnap,
+        burning: &[usize],
+        jobs: &[sc_core::combat::DeckJob],
+    ) -> Option<String> {
+        let seats = &self.data.stations.seats;
+        let (reach, reach_dy) = (seats.reach_m as f32, seats.reach_dy_m as f32);
+        // Where the server put the body as it became the player's: the newest snapshot's, not the interpolated one (which
+        // trails it, and would stand the body in the chair it just got up from).
+        let latest = self.session.as_ref().and_then(|s| {
+            let slot = s.slot?;
+            s.latest()?.bodies.iter().find(|b| b.slot == slot).copied()
+        });
+        let foot = self.foot.as_mut()?;
+        if !self.free {
+            let at = latest.unwrap_or(me);
+            foot.place(at.pos);
+            self.look = (at.yaw, -0.05);
+        }
+        let seat = sc_core::combat::bodies::seat_in_reach(&self.seat_points, foot.body.feet, reach, reach_dy);
+        let menu = self.menu.open();
+        let (held, mut pressed) =
+            if menu { (HashSet::new(), HashSet::new()) } else { (self.held.clone(), self.pressed.clone()) };
+        let mut sit = None;
+        if let (Some(st), true) = (seat, pressed.contains(&keys::E)) {
+            pressed.remove(&keys::E);
+            sit = Some(st);
+        }
+        // The damage-control locker in reach: E takes an extinguisher (all-hands 4). F, or the left button while looking
+        // round, held, sprays it.
+        let feet = foot.body.feet;
+        let at_locker = self.data.tern_layout.lockers.iter().any(|l| {
+            (l.x - f64::from(feet[0])).hypot(l.z - f64::from(feet[2])) <= f64::from(reach)
+                && (l.y - f64::from(feet[1])).abs() < 1.5
+        });
+        let mut take = false;
+        if at_locker && seat.is_none() && pressed.contains(&keys::E) {
+            pressed.remove(&keys::E);
+            take = true;
+        }
+        // A damaged machine in reach (all-hands 5): E docks at it and its repair game opens.
+        let reach_job = self.repair_data.as_ref().and_then(|rd| {
+            let (r, ry) = (rd.ship.reach_m, rd.ship.reach_dy_m);
+            jobs.iter()
+                .filter(|j| {
+                    (j.at.x - f64::from(feet[0])).hypot(j.at.z - f64::from(feet[2])) <= r
+                        && (j.at.y - f64::from(feet[1])).abs() <= ry
+                })
+                .min_by(|a, b| {
+                    let d = |j: &&sc_core::combat::DeckJob| {
+                        (j.at.x - f64::from(feet[0])).hypot(j.at.z - f64::from(feet[2]))
+                    };
+                    d(a).total_cmp(&d(b))
+                })
+                .map(|j| {
+                    (j.job, rd.games.get(&rd.ship.jobs[j.job].game).map_or("a machine".to_owned(), |g| g.title.clone()))
+                })
+        });
+        let mut dock = None;
+        if let (Some((k, _)), true, None) = (&reach_job, pressed.contains(&keys::E), seat) {
+            pressed.remove(&keys::E);
+            dock = Some(*k as u8);
+        }
+        let repairing = self.deck.is_some();
+        let mut spray = held.contains(&keys::F) || self.mouse_left;
+        let chest = glam::DVec3::new(f64::from(feet[0]), f64::from(feet[1]) + 1.2, f64::from(feet[2]));
+        let rooms = &self.data.tern_layout.rooms;
+        let in_fire = rooms.iter().position(|r| r.contains(chest)).is_some_and(|k| burning.contains(&k));
+        let (input, lift_keys) = match self.playtest.as_mut() {
+            Some(p) => {
+                let layout = &self.data.tern_layout;
+                let room = |id: &str| layout.room(id).map(|k| layout.rooms[k].floor.as_vec3().to_array());
+                let fires: Vec<[f32; 3]> =
+                    burning.iter().filter_map(|k| layout.rooms.get(*k)).map(|r| r.floor.as_vec3().to_array()).collect();
+                let locker = layout.lockers.first().map(|l| l.as_vec3().to_array());
+                let job_at: Vec<[f32; 3]> = jobs.iter().map(|j| j.at.as_vec3().to_array()).collect();
+                let hands = crate::playtest::Hands {
+                    at_locker,
+                    carrying: me.agent > 0.0,
+                    in_fire,
+                    fires: &fires,
+                    locker,
+                    jobs: &job_at,
+                    at_job: reach_job.is_some(),
+                    repairing,
+                };
+                let (input, e, h) = p.on_foot(foot, &self.seat_points, seat, room, &hands, &mut self.look, dt);
+                sit = e;
+                take = h.take;
+                spray = h.spray;
+                if h.repair {
+                    dock = reach_job.as_ref().map(|j| j.0 as u8);
+                }
+                (input, false)
+            }
+            // At a machine the body stays: the game has the hands.
+            None if repairing => (sc_core::walk::Input { yaw: self.look.0, ..Default::default() }, false),
+            None => (crate::onfoot::OnFoot::keys_input(&held, &pressed, self.look.0), true),
+        };
+        if let (Some(j), Some(s), false) = (dock, self.session.as_ref(), repairing) {
+            if self.dock_asked.is_none_or(|(k, t)| k != j || self.time_s - t > 1.0) {
+                s.dock(j);
+                self.dock_asked = Some((j, self.time_s));
+            }
+        }
+        if let (Some(st), Some(s)) = (sit, self.session.as_ref()) {
+            s.claim(st);
+        }
+        let spray = spray && me.agent > 0.0;
+        if let Some(s) = self.session.as_ref() {
+            if take {
+                s.take_extinguisher();
+            }
+            if spray != self.spray_sent {
+                s.spray(spray);
+                self.spray_sent = spray;
+            }
+        }
+        foot.step(input, lift_keys, dt);
+        if self.time_s - self.walk_sent >= WALK_SEND_S {
+            if let Some(s) = self.session.as_ref() {
+                s.walked(foot.body.feet, self.look.0);
+            }
+            self.walk_sent = self.time_s;
+        }
+        // What E and F do here: sit (taking the seat from an NPC in it), take an extinguisher, spray the fire, or the
+        // lift's and ladder's keys.
+        let crew = self.session.as_ref().map(|s| s.crew.clone()).unwrap_or_default();
+        let agent = (me.agent * 100.0).round();
+        match seat {
+            Some(st) => Some(match crew.iter().find(|c| c.station == Some(st)) {
+                Some(c) if c.bot => format!("E  Take {} from {}", st.name(), c.name),
+                Some(c) => format!("{} holds {}", c.name, st.name()),
+                None => format!("E  Sit at {}", st.name()),
+            }),
+            None if repairing => None,
+            None if reach_job.is_some() => reach_job.as_ref().map(|(_, title)| format!("E  Repair: {title}")),
+            None if at_locker && me.agent < 1.0 => Some("E  Take an extinguisher".to_owned()),
+            None if in_fire && me.agent > 0.0 => Some(format!("FIRE   F  Spray it   (agent {agent:.0}%)")),
+            None if in_fire => Some("FIRE   An extinguisher is in the damage control locker".to_owned()),
+            None => foot
+                .prompt()
+                .map(str::to_owned)
+                .or_else(|| (me.agent > 0.0).then(|| format!("Extinguisher {agent:.0}%"))),
+        }
+    }
+
+    /// Seated, hold Stand to get up: E or Backspace, held `stand_hold_s` (a tap does nothing); at Helm, whose console
+    /// rolls on E, Backspace.
+    fn stand_up(&mut self, dt: f64, station: Option<Station>, posture: Option<sc_core::combat::bodies::Posture>) {
+        let seated = posture == Some(sc_core::combat::bodies::Posture::Seated);
+        let keys_held =
+            self.held.contains(&keys::BACKSPACE) || (station != Some(Station::Helm) && self.held.contains(&keys::E));
+        if !(seated && station.is_some() && self.bot.is_none() && !self.menu.open() && keys_held) {
+            self.stand_hold = 0.0;
+            return;
+        }
+        self.stand_hold += dt;
+        if self.stand_hold >= self.data.stations.seats.stand_hold_s {
+            if let Some(s) = self.session.as_ref() {
+                s.stand();
+            }
+            self.stand_hold = f64::NEG_INFINITY;
+        }
+    }
+
+    /// `--playtest`, seated: the script works the console (Engineering's schematic), marks READY in the briefing, and
+    /// gets up when its beat says.
+    fn playtest_seated(
+        &mut self,
+        dt: f64,
+        station: Option<Station>,
+        posture: Option<sc_core::combat::bodies::Posture>,
+    ) {
+        let (Some(st), Some(sc_core::combat::bodies::Posture::Seated)) = (station, posture) else { return };
+        let fire = self.session.as_ref().and_then(|s| s.latest()).is_some_and(|s| !s.damage.fires.is_empty());
+        let Some(p) = self.playtest.as_mut() else { return };
+        let at = p.at_console(st, fire, dt);
+        if st == Station::Engineering {
+            match at.schematic {
+                Some((three_d, turn)) => self.seats[st as usize].show_schematic(true, three_d, turn),
+                None => self.seats[st as usize].show_schematic(false, false, 0.0),
+            }
+        }
+        let muster = self.session.as_ref().and_then(|s| s.latest()).is_some_and(|s| s.phase == Phase::Muster);
+        if muster && self.session.as_ref().is_some_and(|s| !s.ready()) {
+            self.ready_held = true;
+        }
+        if at.stand {
+            if st == Station::Engineering {
+                self.seats[st as usize].show_schematic(false, false, 0.0);
+            }
+            if let Some(s) = self.session.as_ref() {
+                s.stand();
+            }
+        }
+    }
+
+    /// The Tern's repair jobs that need a hand now, from the snapshot's integrity (all-hands 5: the drill's own rule).
+    fn deck_jobs(&self, snap: Option<&Snapshot>) -> Vec<sc_core::combat::DeckJob> {
+        let (Some(rd), Some(snap)) = (self.repair_data.as_ref(), snap) else { return Vec::new() };
+        let integrity: Vec<f64> = snap.damage.integrity.iter().map(|v| f64::from(*v)).collect();
+        sc_core::combat::deck_jobs(rd, &self.data.tern_layout, &integrity, self.data.damage.systems.nominal_from_pct)
+    }
+
+    /// Repairs on deck, a frame (all-hands 5): the server's orders open the game at the machine, give its next round, or
+    /// close it when the job is done; the game plays; each round landed goes to the server; the eye looks at the
+    /// machine while the hands work it.
+    fn deck_frame(&mut self, f: &Frame, dt: f64, snap: Option<&Snapshot>, free: bool) {
+        let orders = self.session.as_mut().map(|s| std::mem::take(&mut s.repairs)).unwrap_or_default();
+        let jobs = self.deck_jobs(snap);
+        for (job, next) in orders {
+            match next {
+                Some((round, _, _)) if self.deck.as_ref().is_some_and(|d| d.job == job) => {
+                    if let Some(d) = self.deck.as_mut() {
+                        d.next_round(round, self.time_s);
+                    }
+                }
+                Some((round, _, _)) => {
+                    let (Some(rd), Some(j)) =
+                        (self.repair_data.as_ref(), jobs.iter().find(|j| j.job == usize::from(job)))
+                    else {
+                        continue;
+                    };
+                    let game = rd.ship.jobs[j.job].game.clone();
+                    match crate::deckrepair::DeckRun::open(rd, job, &game, j.state, self.args.seed, round, self.time_s)
+                    {
+                        Ok(d) => {
+                            println!("sc-client: repairing {} ({:?})", d.title(), j.state);
+                            self.deck = Some(d);
+                        }
+                        Err(e) => eprintln!("sc-client: {e}"),
+                    }
+                }
+                None => {
+                    if self.deck.as_ref().is_some_and(|d| d.job == job) {
+                        println!("sc-client: repaired");
+                        self.deck = None;
+                    }
+                }
+            }
+        }
+        // Up from the machine (sat down, or walked off): the game closes.
+        if !free && self.deck.is_some() {
+            self.deck = None;
+            if let Some(s) = self.session.as_ref() {
+                s.undock();
+            }
+        }
+        let scripted = self.playtest.is_some();
+        if self.deck.is_none() {
+            return;
+        }
+        if !scripted {
+            self.release_mouse();
+        }
+        let Some(d) = self.deck.as_mut() else { return };
+        if let Some(j) = jobs.iter().find(|j| j.job == usize::from(d.job)) {
+            if let Some(foot) = self.foot.as_ref() {
+                let e = foot.body.feet;
+                let want = (j.at.x as f32 - e[0]).atan2(j.at.z as f32 - e[2]);
+                let turn = (want - self.look.0 + std::f32::consts::PI).rem_euclid(std::f32::consts::TAU)
+                    - std::f32::consts::PI;
+                self.look.0 += turn * (dt as f32 * 4.0).min(1.0);
+                self.look.1 += (-0.3 - self.look.1) * (dt as f32 * 3.0).min(1.0);
+            }
+        }
+        if let Some(play_s) = d.update(f, dt, self.time_s, scripted) {
+            if let Some(s) = self.session.as_ref() {
+                s.round_done(d.job, d.round, play_s);
+            }
+        }
+        if d.done() {
+            self.deck = None;
+            if let Some(s) = self.session.as_ref() {
+                s.undock();
+            }
+        }
+    }
+
+    /// Give the mouse back (the menu, a console). The playtest keeps it: its pointer is hidden from the recording.
+    fn release_mouse(&mut self) {
+        if self.captured && self.playtest.is_none() {
+            self.captured = false;
+            sc_client::platform::capture_mouse(false);
         }
     }
 
@@ -587,15 +970,7 @@ impl World<'_> {
         ships: Option<&(ShipSnap, ShipSnap, Snapshot)>,
     ) {
         let rel = |p: DVec3| (p - eye).as_vec3();
-        let flat = |mvp: Mat4| DeckParams {
-            mvp,
-            state_weights: [1.0, 0.0, 0.0],
-            flash_dir: Vec3::ZERO,
-            flash: 0.0,
-            panel_first: u32::MAX,
-            panel_glow: 1.0,
-            clip_y: f32::MAX,
-        };
+        let flat = crate::drill_bridge::flat_params;
         if let Some((_, hound, snap)) = ships {
             if hound.active && hound.alive {
                 let sun = Vec3::from_array(normalized(self.exterior.sun.dir));
@@ -686,33 +1061,6 @@ impl DrillApp {
                 (x, division)
             })
             .collect()
-    }
-
-    /// `--look-in`: in single player, during the fight, the console shown goes round the crewed stations every few
-    /// seconds by the crew tabs (the player's own seat between them), with the captain's ship plan, OBJECTIVES and the
-    /// bridge's overview on the way; the stations stay on AUTO, so their NPCs keep playing them.
-    fn look_in(&mut self, ships: Option<&(ShipSnap, ShipSnap, Snapshot)>) {
-        let (Some(every), Some(snap)) = (self.args.look_in, ships.map(|x| &x.2)) else { return };
-        let Some(host) = self.solo.as_ref() else { return };
-        if snap.phase != Phase::Engage || every <= 0.0 {
-            return;
-        }
-        let own = host.seat;
-        let mut stops: Vec<(Station, u8)> = vec![(own, 0), (own, 1)];
-        for n in &host.crew {
-            stops.push((n.station, 0));
-        }
-        stops.push((own, 2));
-        stops.push((own, 3));
-        let (st, what) = stops[(snap.phase_s / every) as usize % stops.len()];
-        self.show(st);
-        // The last stop is the bridge itself, from its overview: the crew at their seats, the fight through the windows.
-        self.overview = what == 3;
-        let seat = &mut self.seats[st as usize];
-        seat.show_objectives(what == 2);
-        if st == Station::Captain {
-            seat.set_captain_tab(if what == 1 { "SHIP" } else { "CMD" });
-        }
     }
 
     /// The scripted shots' overview frames: the first half second after another crew member is seen walking.
@@ -830,6 +1178,17 @@ impl DrillApp {
 impl App for DrillApp {
     fn event(&mut self, e: Event) -> Flow {
         self.ui.event(&e);
+        // At a machine the game takes the pointer and the keys; Esc steps away from it.
+        if let Some(d) = self.deck.as_mut() {
+            if e == Event::KeyDown(keys::ESCAPE) {
+                self.deck = None;
+                if let Some(s) = self.session.as_ref() {
+                    s.undock();
+                }
+                return Flow::Continue;
+            }
+            d.event(&e);
+        }
         match e {
             Event::Quit => return Flow::Done,
             // Esc first closes OBJECTIVES over a console (objectives-tab 1), then opens or steps back through the
@@ -843,6 +1202,18 @@ impl App for DrillApp {
             Event::KeyDown(keys::ESCAPE) => {
                 self.menu.escape();
                 self.held.clear();
+                self.release_mouse();
+            }
+            // On foot a click takes the mouse for looking around; its motion turns the eye.
+            Event::MouseDown if self.free && !self.captured && !self.menu.open() => {
+                self.captured = true;
+                sc_client::platform::capture_mouse(true);
+            }
+            Event::MouseButton(1, down) => self.mouse_left = down && self.captured,
+            Event::MouseMotion(dx, dy) if self.captured => {
+                let k = self.options.look_rad_px();
+                self.look.0 -= dx * k;
+                self.look.1 = (self.look.1 - dy * k).clamp(-1.5, 1.5);
             }
             // While the menu is up, its keys are its own (the game underneath runs on, design 2).
             Event::KeyDown(_) if self.menu.open() => {}
@@ -911,17 +1282,69 @@ impl App for DrillApp {
         let me = self.session.as_ref().and_then(|s| s.slot);
         let mine = bodies.iter().find(|(b, _)| Some(b.slot) == me).map(|x| x.0);
         let walking = mine.is_some_and(|b| b.posture != sc_core::combat::bodies::Posture::Seated);
+        // On foot (the law): a player's body standing free is theirs to walk, with W A S D and the mouse.
+        use sc_core::combat::bodies::Posture;
+        let free = self.bot.is_none()
+            && !self.args.watch
+            && station.is_none()
+            && self.foot.is_some()
+            && mine.is_some_and(|b| b.going.is_none() && matches!(b.posture, Posture::Standing | Posture::Walking));
+        let foot_prompt = match (free, mine) {
+            (true, Some(me)) => {
+                let burning: Vec<usize> = ships
+                    .as_ref()
+                    .map(|(_, _, snap)| snap.damage.fires.iter().map(|r| usize::from(*r)).collect())
+                    .unwrap_or_default();
+                let jobs = self.deck_jobs(ships.as_ref().map(|x| &x.2));
+                self.step_foot(dt, me, &burning, &jobs)
+            }
+            _ => None,
+        };
+        if !free {
+            self.release_mouse();
+        }
+        self.deck_frame(f, dt, ships.as_ref().map(|x| &x.2), free);
+        if self.playtest.is_some() && !self.captured {
+            self.captured = true;
+            sc_client::platform::capture_mouse(true);
+        }
+        self.free = free;
+        // Seated: hold Stand to get up (E, or Backspace; at Helm, where E rolls the ship, Backspace).
+        self.stand_up(dt, station, mine.map(|b| b.posture));
+        self.playtest_seated(dt, station, mine.map(|b| b.posture));
         let shot_overview = self.args.shots.is_some() && self.shot_overview();
         let on_bridge = self.bridge.is_some() && !bodies.is_empty() && (walking || self.overview || shot_overview);
+        // Sat down: the console rises from the desk, the bridge seen from the chair behind it until it is up.
+        let seated = !walking && station.is_some() && mine.is_some();
+        if seated && self.seated_at.is_none() {
+            self.rise_from = self.last_view;
+        }
+        self.seated_at = if seated { self.seated_at.or(Some(self.time_s)) } else { None };
+        let rise = self.seated_at.map_or(1.0, |t| ((self.time_s - t) / CONSOLE_RISE_S).min(1.0));
+        let rising = seated && rise < 1.0 && self.bridge.is_some() && !self.overview;
         let mut bridge_ui = None;
-        if on_bridge {
-            let own = walking && !self.overview && !shot_overview;
+        if on_bridge || rising {
+            let own = (walking || rising) && !self.overview && !shot_overview;
             // Its own body is not drawn from its own eye, nor a watcher's anywhere (it only watches).
             let hide_me = own || self.args.watch;
-            let (eye, yaw, pitch) = match (own, mine) {
-                (true, Some(b)) => (crate::drill_bridge::eye_of(&b), b.yaw, -0.12),
+            let (eye, yaw, pitch) = match (own, mine, self.foot.as_ref().filter(|_| free)) {
+                (true, _, Some(f)) => (f.eye(), self.look.0, self.look.1),
+                // Sitting down: from where the eye last was on foot into the chair, eased, as the console comes up.
+                (true, Some(b), None) if rising => {
+                    let to = (crate::drill_bridge::eye_of(&b), b.yaw, -0.18f32);
+                    let from = self.rise_from.unwrap_or(to);
+                    let k = (rise * rise * (3.0 - 2.0 * rise)) as f32;
+                    let turn =
+                        (to.1 - from.1 + std::f32::consts::PI).rem_euclid(std::f32::consts::TAU) - std::f32::consts::PI;
+                    let e: [f64; 3] = std::array::from_fn(|i| from.0[i] + (to.0[i] - from.0[i]) * f64::from(k));
+                    (e, from.1 + turn * k, from.2 + (to.2 - from.2) * k)
+                }
+                (true, Some(b), None) => (crate::drill_bridge::eye_of(&b), b.yaw, -0.12),
                 _ => crate::drill_bridge::overview(),
             };
+            if own && !rising {
+                self.last_view = Some((eye, yaw, pitch));
+            }
             // The bridge's viewscreens show the feed: rendered first, in its own pass.
             self.render_feed(ships.as_ref(), None);
             if let Some(bv) = &self.bridge {
@@ -949,6 +1372,28 @@ impl App for DrillApp {
                         }
                     }),
                 };
+                // The fires burning in the Tern's rooms, and this player's extinguisher (all-hands 4).
+                let rooms = &self.data.tern_layout.rooms;
+                let fires: Vec<[f32; 3]> = ships
+                    .as_ref()
+                    .map(|(_, _, snap)| {
+                        snap.damage
+                            .fires
+                            .iter()
+                            .filter_map(|r| rooms.get(usize::from(*r)))
+                            .map(|r| r.floor.as_vec3().to_array())
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                let inside = crate::drill_bridge::Inside {
+                    fires: &fires,
+                    flame: &self.meshes.flame,
+                    puff: &self.meshes.puff,
+                    held: &self.meshes.held,
+                    carrying: mine.is_some_and(|b| b.agent > 0.0),
+                    spraying: mine.is_some_and(|b| b.spraying),
+                    time_s: self.time_s,
+                };
                 let vp = bv.draw(
                     &mut self.r,
                     &self.bridge_target,
@@ -960,6 +1405,7 @@ impl App for DrillApp {
                     &bodies,
                     me,
                     hide_me,
+                    &inside,
                     out,
                 );
                 let (w, h) = (720.0 * aspect, 720.0);
@@ -989,8 +1435,9 @@ impl App for DrillApp {
                 // The farthest first, so a nearer plate is drawn over one behind it.
                 let mut labels = labels;
                 labels.sort_by(|a, b| b.dist.total_cmp(&a.dist));
-                let banner = mine.and_then(|b| b.going).map(|g| format!("Walking to {}", g.name()));
-                bridge_ui = Some(BridgeUi { labels, banner, overview: !own });
+                let banner =
+                    foot_prompt.clone().or_else(|| mine.and_then(|b| b.going).map(|g| format!("To {}", g.name())));
+                bridge_ui = (!rising).then_some(BridgeUi { labels, banner, overview: !own });
             }
         }
         let crew = self.session.as_ref().map(|s| s.crew.clone()).unwrap_or_default();
@@ -1035,6 +1482,7 @@ impl App for DrillApp {
         let place = format!("SCS Tern, {}", station.map_or("Bridge", |s| s.name()));
         let mut menu_ask = None;
         let (menu, options) = (&mut self.menu, &mut self.options);
+        let deck = self.deck.as_ref();
         let frame = self.ui.run(&mut self.r, f, self.time_s, |ctx| {
             if let Some(v) = console_view.as_ref() {
                 let hover = ctx.input(|i| i.pointer.hover_pos());
@@ -1057,6 +1505,11 @@ impl App for DrillApp {
                 });
             }
             draw_ui(ctx, &view, &mut ask, show_net);
+            if let Some(d) = deck {
+                let painter =
+                    ctx.layer_painter(egui::LayerId::new(egui::Order::Foreground, egui::Id::new("deck-repair")));
+                d.draw(&painter, ctx.content_rect().size());
+            }
             menu_ask = menu.show(ctx, &place, options);
         });
         self.pointer = pointer;
@@ -1101,7 +1554,9 @@ impl App for DrillApp {
                     },
                     SeatAsk::Claim(s) if !solo => ask.push(UiAsk::Claim(s)),
                     SeatAsk::Claim(_) => {}
-                    SeatAsk::View(s) => self.show(s),
+                    // The law: a console shows only to whoever sits at it; another station's tab says who holds it.
+                    SeatAsk::View(s) if s == st => self.show(s),
+                    SeatAsk::View(_) => {}
                     SeatAsk::Mode(auto) => {
                         if let Some(n) = self.solo.as_mut().and_then(|host| host.npc_mut(st)) {
                             n.auto = auto;
@@ -1143,6 +1598,31 @@ impl App for DrillApp {
             None if on_bridge => {
                 self.r.present_with_ui(&self.bridge_target, f.width, f.height, true, &frame.meshes(), frame.points)
             }
+            // The console coming up from the desk: the chair's view behind it, the console eased up from below.
+            Some(_) if rising => {
+                let dy = ((1.0 - rise) * (1.0 - rise)) as f32 * frame.points[1];
+                let up: Vec<(Vec<sc_render::UiVertex>, [i32; 4])> = frame
+                    .meshes()
+                    .iter()
+                    .map(|m| {
+                        let v = m.vertices.iter().map(|v| sc_render::UiVertex { pos: [v.pos[0], v.pos[1] + dy], ..*v });
+                        let c = m.clip_px;
+                        (v.collect(), [c[0], c[1] + (dy * ppp) as i32, c[2], c[3]])
+                    })
+                    .collect();
+                let meshes: Vec<sc_render::UiMesh<'_>> = frame
+                    .meshes()
+                    .iter()
+                    .zip(&up)
+                    .map(|(m, (v, clip))| sc_render::UiMesh {
+                        clip_px: *clip,
+                        texture: m.texture,
+                        vertices: v,
+                        indices: m.indices,
+                    })
+                    .collect();
+                self.r.present_with_ui(&self.bridge_target, f.width, f.height, true, &meshes, frame.points)
+            }
             Some(_) if sight => {
                 self.r.present_with_ui(&self.blank, f.width, f.height, true, &frame.meshes(), frame.points)
             }
@@ -1153,7 +1633,6 @@ impl App for DrillApp {
             None => self.r.present_with_ui(&self.blank, f.width, f.height, true, &frame.meshes(), frame.points),
         }
         self.scripted_shots(f);
-        self.look_in(ships.as_ref());
         // The hand-over test: the game up with its briefing, then back to the menu.
         let briefing = self.session.as_ref().and_then(|s| s.latest()).is_some_and(|s| s.phase_s >= 1.0);
         if let (Some(dir), true) = (self.args.hand_test.clone(), briefing) {

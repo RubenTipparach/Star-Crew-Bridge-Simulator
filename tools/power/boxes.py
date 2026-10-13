@@ -13,11 +13,22 @@ ties, loads), by the rules in power.json's `distribution` block, this writes:
   a tie already joins the two rooms' nodes; the runs that feed a room for the first time from the powered rooms
   (breadth first from the switchboards' and panels' rooms) are closed at the factory, the rest are spare routes,
   open;
-- every load's node (its room's box, or the switchboard or panel in its room) and its feeder, the run from that box
-  to the load;
-- the lighting panels: each room lit by its own box.
+- runs through walls and decks: every box with fewer than `min_runs_per_box` runs (trunks, ties, doorway runs) gets a
+  spare to the nearest box in a room that shares a wall or a deck with its own (the owner, 2026-10-11: "panels should
+  connect to at least 2 other panels"), else to the nearest box in another room;
+- every system's feeds (the owner, 2026-10-11: "systems should be connected to 2 or more panels, so we can swap with
+  a different route, it should generally connect to the nearest panel"): its `node`, the nearest panel, and its
+  `alt_node`, the next nearest, each with its feeder from that panel to the system (`feeder_m`, `alt_feeder_m`); a
+  room's lights stay on its own box;
+- the lighting panels: each room lit by its own box;
+- where the reactor's feeds, the bus ties and the battery's link run (`path_m` on each generator, tie and the battery),
+  from end to end under the ceilings.
 
-It never edits a hand-authored node, trunk or tie, and it is idempotent: generated entries are recognised by their
+Every path it writes runs along the ship's axes (the owner, 2026-10-12: "we've got lots of diagonal lines here that
+just take shortest distance", "they look messy and unorganized"): see `orthogonal`. `--check` also fails on a
+hand-authored trunk with a leg off the axes.
+
+It never edits a hand-authored node, trunk or tie (but for a generator's or tie's `path_m`), and it is idempotent: generated entries are recognised by their
 id prefixes and written again. `--check` fails when power.json is not what the rules give.
 
 Usage: python3 tools/power/boxes.py [--ship tern] [--check]
@@ -136,9 +147,96 @@ def place_box(room, portal, rules, deck_m):
     return [bx + ix * inset, b["y"][0] + rules["box_height_m"], bz + iz * inset], b
 
 
+def shared_wall(a, b, gap, min_len):
+    """Where two footprints on a deck share a wall: the middle of the longest stretch along which an edge of one runs
+    within `gap` of an edge of the other, parallel, for at least `min_len`; None when they share none."""
+    best = None
+    for pa in (a, b):
+        pb = b if pa is a else a
+        for i in range(len(pa)):
+            p0, p1 = pa[i], pa[(i + 1) % len(pa)]
+            ex, ez = p1[0] - p0[0], p1[1] - p0[1]
+            el = math.hypot(ex, ez)
+            if el < 1e-6:
+                continue
+            ux, uz = ex / el, ez / el
+            for j in range(len(pb)):
+                q0, q1 = pb[j], pb[(j + 1) % len(pb)]
+                fx, fz = q1[0] - q0[0], q1[1] - q0[1]
+                fl = math.hypot(fx, fz)
+                if fl < 1e-6 or abs(ux * fz / fl - uz * fx / fl) > 0.1:
+                    continue
+                d0 = abs((q0[0] - p0[0]) * -uz + (q0[1] - p0[1]) * ux)
+                d1 = abs((q1[0] - p0[0]) * -uz + (q1[1] - p0[1]) * ux)
+                if max(d0, d1) > gap:
+                    continue
+                t0 = (q0[0] - p0[0]) * ux + (q0[1] - p0[1]) * uz
+                t1 = (q1[0] - p0[0]) * ux + (q1[1] - p0[1]) * uz
+                lo, hi = max(0.0, min(t0, t1)), min(el, max(t0, t1))
+                if hi - lo >= min_len and (best is None or hi - lo > best[0]):
+                    t = (lo + hi) / 2
+                    best = (hi - lo, (p0[0] + ux * t, p0[1] + uz * t))
+    return best[1] if best else None
+
+
+def adjacency(room_a, room_b, rules):
+    """How two rooms touch: ("wall", the shared wall's middle [x, z], the deck's floor y) for rooms side by side on a
+    deck, ("deck", a point [x, z] in both footprints, None) for one over the other; None when they do not touch."""
+    gap, min_len = rules["adjacent_gap_m"], rules["min_shared_wall_m"]
+    for ba in room_a["brushes"]:
+        for bb in room_b["brushes"]:
+            overlap = min(ba["y"][1], bb["y"][1]) - max(ba["y"][0], bb["y"][0])
+            if overlap > 1.0:
+                at = shared_wall(ba["poly"], bb["poly"], gap, min_len)
+                if at:
+                    return ("wall", at, max(ba["y"][0], bb["y"][0]))
+            elif abs(ba["y"][1] - bb["y"][0]) < gap or abs(bb["y"][1] - ba["y"][0]) < gap:
+                inside = [p for p in ba["poly"] if inside_convex(bb["poly"], p[0], p[1])]
+                inside += [p for p in bb["poly"] if inside_convex(ba["poly"], p[0], p[1])]
+                if len(inside) >= 2:
+                    return ("deck", (sum(p[0] for p in inside) / len(inside), sum(p[1] for p in inside) / len(inside)), None)
+    return None
+
+
 def run_height(brush, rules, deck_m):
     """Where runs go in a brush: under its ceiling, or under the next deck where the room is taller than a deck."""
     return min(brush["y"][1], brush["y"][0] + deck_m) - rules["run_below_ceiling_m"]
+
+
+def orthogonal(path, tol=0.02):
+    """The path with every leg along the ship's axes, as cable trays run (power-routing 3a). A leg that changes height
+    keeps level at its higher end (runs stay under the ceilings) and rises or drops at its lower end's spot. A level leg
+    that changes both x and z runs fore and aft on whichever end is nearer the centreline (the corridors and spines)
+    and athwartships at the other. A leg that goes out and back along one line (to a wall's crossing and back) is cut
+    short, and points along a straight leg are dropped."""
+    out = [pt(path[0])]
+    for b in path[1:]:
+        a = out[-1]
+        legs = [(a, b)]
+        if abs(b[1] - a[1]) > tol and (abs(b[0] - a[0]) > tol or abs(b[2] - a[2]) > tol):
+            mid = [b[0], a[1], b[2]] if b[1] < a[1] else [a[0], b[1], a[2]]
+            legs = [(a, mid), (mid, b)]
+        for p, q in legs:
+            if abs(q[0] - p[0]) > tol and abs(q[2] - p[2]) > tol:
+                out.append(pt([p[0], p[1], q[2]] if abs(p[0]) <= abs(q[0]) else [q[0], p[1], p[2]]))
+            out.append(pt(q))
+    out = dedupe(out)
+    axis = lambda u: [abs(x) > tol for x in u]
+    i = 1
+    while i + 1 < len(out):
+        a, b, c = out[i - 1], out[i], out[i + 1]
+        u, v = [b[k] - a[k] for k in range(3)], [c[k] - b[k] for k in range(3)]
+        if axis(u) == axis(v) and sum(axis(u)) == 1:
+            del out[i]
+            i = max(1, i - 1)
+        else:
+            i += 1
+    return dedupe(out)
+
+
+def off_axis(path, tol=0.02):
+    """The legs of a path that change more than one of x, y and z."""
+    return [(a, b) for a, b in zip(path, path[1:]) if sum(abs(b[k] - a[k]) > tol for k in range(3)) > 1]
 
 
 def dedupe(path):
@@ -220,19 +318,22 @@ def generate(layout, power):
         cands = nodes_in.get(room, [])
         return min(cands, key=lambda n: math.dist(n["center_m"], near)) if cands else None
 
-    # Each load's node: the box of the room it stands in (or its panel there); a load outside every room keeps its own.
-    load_node = {}
+    # Each system's feeds: the nearest panels as wiring runs, not as the crow flies: its own room's first, then its own
+    # deck's, then the nearest deck's, nearest first (ties by id).
+    load_node, alt_node = {}, {}
     for l in power["loads"]:
         c = load_center(layout, l)
         room = room_of_point(layout, c)
-        if room is None:
-            load_node[l["id"]] = l["node"]
-            continue
-        current = node_by_id.get(l["node"])
-        if room in nodes_in and current is not None and current["compartment"] == room:
-            load_node[l["id"]] = l["node"]
-        else:
-            load_node[l["id"]] = box_for(room, c)["id"]
+        floor = floor_brush(rooms[room], c)["y"][0] if room else c[1]
+
+        def key(n, room=room, floor=floor, c=c):
+            decks_off = round(abs(node_brush(n)["y"][0] - floor) / deck_m)
+            return (n["compartment"] != room, decks_off, math.dist(n["center_m"], c), n["id"])
+
+        near = sorted(all_nodes, key=key)
+        load_node[l["id"]] = near[0]["id"]
+        if rules["feeds_per_system"] >= 2:
+            alt_node[l["id"]] = near[1]["id"]
     # Lighting: each room lit by its own node.
     area = {}
     for c in layout["compartments"]:
@@ -293,25 +394,95 @@ def generate(layout, power):
             cap = None
         ha, hb = run_height(node_brush(na), rules, deck_m), run_height(node_brush(nb), rules, deck_m)
         a, b, c = na["center_m"], nb["center_m"], p["center_m"]
-        path = dedupe([pt(a), pt([a[0], ha, a[2]]), pt([c[0], ha, c[2]]), pt([c[0], hb, c[2]]), pt([b[0], hb, b[2]]),
-                       pt(b)])
+        path = orthogonal(dedupe([pt(a), pt([a[0], ha, a[2]]), pt([c[0], ha, c[2]]), pt([c[0], hb, c[2]]),
+                                  pt([b[0], hb, b[2]]), pt(b)]))
         runs.append({"id": RUN + p["id"][2:] if p["id"].startswith("p_") else RUN + p["id"],
                      "name": "Run through " + p["id"][2:].replace("_", " "), "between": [na["id"], nb["id"]],
                      "capacity_mw": cap, "route": [ra, rb], "path_m": path, "factory_closed": tree})
+    # Runs through walls and decks: every node joined to fewer other nodes than the rule gets spares to its
+    # neighbours' boxes.
+    pairs = set()
+    for k in hand_conduits + power["ties"] + runs:
+        pairs.add(frozenset(k["between"]))
+    degree = {n["id"]: sum(1 for p in pairs if n["id"] in p) for n in all_nodes}
+    touch = {}
+    for i, ra in enumerate(room_order):
+        for rb in room_order[i + 1 :]:
+            t = adjacency(rooms[ra], rooms[rb], rules)
+            if t:
+                touch[(ra, rb)] = t
+                touch[(rb, ra)] = t
+    for n in all_nodes:
+        ra = n["compartment"]
+        while degree[n["id"]] < rules["min_runs_per_box"]:
+            def cands(adjacent_only):
+                out = []
+                for rb in room_order:
+                    if rb == ra or (adjacent_only and (ra, rb) not in touch):
+                        continue
+                    for m in [boxes[rb]] if rb in boxes else nodes_in.get(rb, []):
+                        if frozenset((n["id"], m["id"])) not in pairs:
+                            # The same deck first, then the nearest deck, then the nearest box.
+                            decks_off = round(abs(node_brush(n)["y"][0] - node_brush(m)["y"][0]) / deck_m)
+                            out.append((decks_off, math.dist(n["center_m"], m["center_m"]), m["id"], m, rb))
+                return sorted(out, key=lambda c: (c[0], c[1], c[2]))
+            found = cands(True) or cands(False)
+            if not found:
+                break
+            _, _, _, m, rb = found[0]
+            t = touch.get((ra, rb))
+            ha, hb = run_height(node_brush(n), rules, deck_m), run_height(node_brush(m), rules, deck_m)
+            a, b = n["center_m"], m["center_m"]
+            if t and t[0] == "wall":
+                (wx, wz), h = t[1], min(ha, hb)
+                path = [pt(a), pt([a[0], ha, a[2]]), pt([wx, h, wz]), pt([b[0], hb, b[2]]), pt(b)]
+                how, word = "wall", "through the wall"
+            elif t:
+                wx, wz = t[1]
+                path = [pt(a), pt([a[0], ha, a[2]]), pt([wx, ha, wz]), pt([wx, hb, wz]), pt([b[0], hb, b[2]]), pt(b)]
+                how, word = "deck", "through the deck"
+            else:
+                path = [pt(a), pt([a[0], ha, a[2]]), pt([b[0], hb, b[2]]), pt(b)]
+                how, word = "hull", "along the hull"
+            runs.append({"id": f"{RUN}{how}_{ra}_{rb}", "name": f"Run {word}, {ra.replace('_', ' ')} to {rb.replace('_', ' ')}",
+                         "between": [n["id"], m["id"]], "capacity_mw": None, "route": [ra, rb], "path_m": orthogonal(path),
+                         "factory_closed": False})
+            degree[n["id"]] += 1
+            degree[m["id"]] += 1
+            pairs.add(frozenset((n["id"], m["id"])))
     for k in runs:
         if k["capacity_mw"] is None:
             ra, rb = k["route"]
             k["capacity_mw"] = max(float(rules["spare_mw"]), feed_rating.get(ra, 0.0), feed_rating.get(rb, 0.0))
-    # Feeders: from the load's node, under its ceiling, over the load, down to it.
-    feeders = {}
-    for l in power["loads"]:
-        n = node_by_id[load_node[l["id"]]]
-        c = load_center(layout, l)
+    # Feeders: from the panel, under its ceiling, over the system, down to it.
+    def feeder(node_id, c):
+        n = node_by_id[node_id]
         h = run_height(node_brush(n), rules, deck_m)
         a = n["center_m"]
-        feeders[l["id"]] = dedupe([pt(a), pt([a[0], h, a[2]]), pt([c[0], h, c[2]]), pt(c)])
+        return orthogonal(dedupe([pt(a), pt([a[0], h, a[2]]), pt([c[0], h, c[2]]), pt(c)]))
+
+    feeders, alt_feeders = {}, {}
+    for l in power["loads"]:
+        c = load_center(layout, l)
+        feeders[l["id"]] = feeder(load_node[l["id"]], c)
+        if l["id"] in alt_node:
+            alt_feeders[l["id"]] = feeder(alt_node[l["id"]], c)
+    # The reactor's feeds, the ties and the battery's link: from end to end at each end's run height, or at the end's
+    # own height where it stands above that (the reactor in a room two decks tall: no drop to the tray and back up).
+    def between(a, b):
+        ha = max(a[1], run_height(floor_brush(rooms[room_of_point(layout, a)], a), rules, deck_m))
+        hb = max(b[1], run_height(floor_brush(rooms[room_of_point(layout, b)], b), rules, deck_m))
+        return orthogonal(dedupe([pt(a), pt([a[0], ha, a[2]]), pt([b[0], hb, b[2]]), pt(b)]))
+
+    sys_at = {s["id"]: s["center_m"] for s in layout["systems"]}
+    gen_paths = {g["id"]: between(sys_at[power["reactor"]["system"]], node_by_id[g["node"]]["center_m"])
+                 for g in power["generators"]}
+    tie_paths = {t["id"]: between(node_by_id[t["between"][0]]["center_m"], node_by_id[t["between"][1]]["center_m"])
+                 for t in power["ties"]}
+    battery_path = between(sys_at[power["battery"]["system"]], node_by_id[power["battery"]["node"]]["center_m"])
     return {"boxes": [boxes[r] for r in room_order if r in boxes], "runs": runs, "load_node": load_node,
-            "feeders": feeders, "panels": panels}
+            "alt_node": alt_node, "feeders": feeders, "alt_feeders": alt_feeders, "panels": panels,
+            "gen_paths": gen_paths, "tie_paths": tie_paths, "battery_path": battery_path}
 
 
 def fmt(v):
@@ -385,8 +556,25 @@ def rewrite(text, gen):
             assert last.endswith("}"), (lid, last[-80:])
             last = last[:-1].rstrip().rstrip(",")
         block[-1] = last + ","
-        block.append(f'      "feeder_m": {fmt(gen["feeders"][lid])} }}' + ("," if comma else ""))
+        tail = f'      "feeder_m": {fmt(gen["feeders"][lid])}'
+        if lid in gen["alt_node"]:
+            tail += f', "alt_node": {fmt(gen["alt_node"][lid])}, "alt_feeder_m": {fmt(gen["alt_feeders"][lid])}'
+        block.append(tail + " }" + ("," if comma else ""))
         lines = lines[:a] + block + lines[b + 1 :]
+    # The generators' and ties' paths, at the end of each one's line.
+    for key, paths, keys in (("generators", gen["gen_paths"], ["id", "name", "node", "capacity_mw"]),
+                             ("ties", gen["tie_paths"], ["id", "name", "between", "capacity_mw", "closed"])):
+        s, e = array_span(key)
+        src = {d["id"]: d for d in json.loads("\n".join(["["] + [l.rstrip().rstrip(",") + "," for l in lines[s + 1 : e]])[:-1] + "]")}
+        body = [entry_line({**src[i], "path_m": paths[i]}, keys + ["path_m"]) for i in paths]
+        lines = lines[: s + 1] + [l + ("," if j + 1 < len(body) else "") for j, l in enumerate(body)] + lines[e:]
+    # The battery's link: its own line in the battery block, after its node.
+    s = next(i for i, l in enumerate(lines) if l.startswith('  "battery": {'))
+    e = next(i for i in range(s + 1, len(lines)) if lines[i].startswith("  }"))
+    lines = lines[:s] + [l for l in lines[s:e] if not l.strip().startswith('"path_m"')] + lines[e:]
+    e = next(i for i in range(s + 1, len(lines)) if lines[i].startswith("  }"))
+    at = next(i for i in range(s + 1, e) if lines[i].strip().startswith('"node"'))
+    lines.insert(at + 1, f'    "path_m": {fmt(gen["battery_path"])},')
     # Lighting panels.
     s = next(i for i, l in enumerate(lines) if l.startswith('    "panels": {'))
     e = next(i for i in range(s + 1, len(lines)) if lines[i].startswith("    }"))
@@ -412,8 +600,14 @@ def main():
     live = sum(1 for k in power["conduits"] if not k["id"].startswith(RUN) and k.get("factory_closed", True))
     live += sum(1 for t in power["ties"] if t["closed"]) + sum(1 for k in gen["runs"] if k["factory_closed"])
     spare = sum(1 for k in gen["runs"] if not k["factory_closed"])
-    summary = (f"{len(gen['boxes'])} boxes, {len(gen['runs'])} doorway runs ({spare} spare), "
+    summary = (f"{len(gen['boxes'])} boxes, {len(gen['runs'])} runs through doorways, walls and decks ({spare} spare), "
                f"{live} runs live at the factory, limit {power['routing']['max_live_runs']}")
+    crooked = [k["id"] for k in power["conduits"] if not k["id"].startswith(RUN) and off_axis(k["path_m"])]
+    if crooked:
+        print(f"{pp.relative_to(ROOT)}: hand-authored paths off the ship's axes (power-routing 3a): {', '.join(crooked)}",
+              file=sys.stderr)
+        if a.check:
+            return 1
     if a.check:
         if out != text:
             print(f"{pp.relative_to(ROOT)}: stale; run tools/power/boxes.py", file=sys.stderr)

@@ -236,8 +236,12 @@ pub struct FireRules {
     pub burn_hull_mj_per_s: f64,
     /// A fire no team has reached in this long spreads to a neighbouring room, seconds.
     pub spread_after_s: f64,
-    /// A team puts a fire out in this long, seconds.
+    /// A team puts a fire out in this long, seconds: `put_out_s` x the team's members hand-seconds, whoever's hands.
     pub put_out_s: f64,
+    /// An extinguisher's agent, held on, seconds.
+    pub extinguisher_s: f64,
+    /// The layout's fixture a player takes an extinguisher from (`layout.json` `fixtures`).
+    pub locker: String,
     /// Words.
     pub note: Option<String>,
 }
@@ -331,6 +335,7 @@ impl Validate for DamageData {
         c.number("fire.burn_hull_mj_per_s", f.burn_hull_mj_per_s, 0.0, 100.0);
         c.number("fire.spread_after_s", f.spread_after_s, 0.0, 1e4);
         c.number("fire.put_out_s", f.put_out_s, 0.01, 1e4);
+        c.number("fire.extinguisher_s", f.extinguisher_s, 0.1, 600.0);
         let r = &self.repair;
         c.number("repair.kit_pct_per_s.rating", r.kit_pct_per_s.rating, 0.01, 100.0);
         c.number("repair.two_hands_factor", r.two_hands_factor, 1.0, 2.0);
@@ -478,6 +483,8 @@ pub struct ShipLayout {
     pub lo: DVec3,
     /// The hull's bounds: greatest corner.
     pub hi: DVec3,
+    /// Where a player takes an extinguisher (the fire rules' locker fixture), ship frame, metres.
+    pub lockers: Vec<DVec3>,
 }
 
 impl ShipLayout {
@@ -532,6 +539,7 @@ impl ShipLayout {
                 .collect(),
             teams: rules.teams.count,
             home: rules.teams.home.clone(),
+            lockers: lockers(&layout.fixtures, &rules.fire.locker),
         };
         build(parts)
     }
@@ -540,6 +548,7 @@ impl ShipLayout {
     pub fn hound(text: &str) -> Result<Self, DataError> {
         let f: CombatLayoutFile = parse(HOUND_FILE, text)?;
         build(Parts {
+            lockers: Vec::new(),
             ship: f.ship.clone(),
             files: [HOUND_FILE; 3],
             sections: f.hull.sections.clone(),
@@ -645,12 +654,15 @@ pub struct Fire {
     pub burning_s: f64,
     /// How long it has burned since it last spread with no team at it, seconds.
     pub unreached_s: f64,
+    /// Hand-seconds put into putting it out (all-hands 4): a team works with its members' hands, a player spraying an
+    /// extinguisher with one.
+    pub out_s: f64,
 }
 
 impl Fire {
     /// A fire starting now in `room`.
     pub fn new(room: usize) -> Self {
-        Self { room, burning_s: 0.0, unreached_s: 0.0 }
+        Self { room, burning_s: 0.0, unreached_s: 0.0, out_s: 0.0 }
     }
 }
 
@@ -1257,6 +1269,7 @@ pub fn tick(
     cfg: &DamageData,
     dt: f64,
     priority: Option<&str>,
+    sprays: &[usize],
 ) -> Vec<DamageEvent> {
     let mut ev = Vec::new();
     if !(dt.is_finite() && dt > 0.0) {
@@ -1266,11 +1279,16 @@ pub fn tick(
 
     // Fires burn every system in their room and the structural hull.
     let mut hull = 0.0;
+    // The hands at each fire (all-hands 4): a working team's members, and one for each player spraying in its room.
+    let members = f64::from(cfg.teams.members);
     for fire in &mut s.fires {
         fire.burning_s += dt;
-        if !s.teams.iter().any(|t| t.working && t.job == Some(Job::Fire(fire.room))) {
+        let teams = s.teams.iter().filter(|t| t.working && t.job == Some(Job::Fire(fire.room))).count() as f64;
+        let hands = teams * members + sprays.iter().filter(|r| **r == fire.room).count() as f64;
+        if hands == 0.0 {
             fire.unreached_s += dt;
         }
+        fire.out_s += hands * dt;
         for &li in &l.rooms[fire.room].loads {
             s.integrity[li] = (s.integrity[li] - f.burn_pct_per_s * dt).max(0.0);
         }
@@ -1304,18 +1322,10 @@ pub fn tick(
             continue;
         }
         let done = match job {
+            // The fire's own hand-seconds decide when it is out (below); the team is done once it is.
             Job::Fire(room) => {
-                if s.fires.iter().any(|x| x.room == room) {
-                    t.work_s += dt;
-                    let out = t.work_s >= f.put_out_s;
-                    if out {
-                        s.fires.retain(|x| x.room != room);
-                        ev.push(DamageEvent::FireOut { room });
-                    }
-                    out
-                } else {
-                    true
-                }
+                t.work_s += dt;
+                !s.fires.iter().any(|x| x.room == room && x.out_s < f.put_out_s * members)
             }
             Job::Repair(li) => {
                 if s.integrity[li] < nominal {
@@ -1330,6 +1340,18 @@ pub fn tick(
         };
         if done {
             *t = Team { at: t.at, job: None, eta_s: 0.0, working: false, work_s: 0.0 };
+        }
+    }
+
+    // A fire is out once the hands at it have put in a team's time (all-hands 4), whoever's hands they were.
+    let out_at = f.put_out_s * members;
+    let mut i = 0;
+    while i < s.fires.len() {
+        if s.fires[i].out_s >= out_at {
+            let room = s.fires.remove(i).room;
+            ev.push(DamageEvent::FireOut { room });
+        } else {
+            i += 1;
         }
     }
 
@@ -1451,6 +1473,7 @@ struct ConduitIn {
 
 /// A ship's insides as read, before ids become indices.
 struct Parts {
+    lockers: Vec<DVec3>,
     ship: String,
     /// Where the layout, the power and the teams came from, for messages.
     files: [&'static str; 3],
@@ -1609,7 +1632,34 @@ fn build(p: Parts) -> Result<ShipLayout, DataError> {
         conduits.push(Conduit { id, ends, route, path, factory_open });
     }
     let home = rooms[room_of(tf, "teams.home", &p.home, &rooms)?].centre;
-    Ok(ShipLayout { ship: p.ship, sections, rooms, loads, nodes, conduits, teams: p.teams as usize, home, lo, hi })
+    Ok(ShipLayout {
+        ship: p.ship,
+        sections,
+        rooms,
+        loads,
+        nodes,
+        conduits,
+        teams: p.teams as usize,
+        home,
+        lo,
+        hi,
+        lockers: p.lockers,
+    })
+}
+
+/// The fixtures named `id` (`layout.json` `fixtures`: `center_m`): where an extinguisher is taken.
+fn lockers(fixtures: &Value, id: &str) -> Vec<DVec3> {
+    fixtures
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|f| f["id"].as_str() == Some(id))
+        .filter_map(|f| {
+            let c = f["center_m"].as_array()?;
+            let v: Vec<f64> = c.iter().filter_map(serde_json::Value::as_f64).collect();
+            (v.len() == 3 && v.iter().all(|x| x.is_finite())).then(|| DVec3::new(v[0], v[1], v[2]))
+        })
+        .collect()
 }
 
 /// `layout.json`: the parts this module reads are typed; the rest belongs to other readers.
@@ -2050,6 +2100,41 @@ mod tests {
         assert!(fires > 0, "60 MJ through the drive starts fires on some hits");
     }
 
+    /// All hands (all-hands 4): a fire is out once its hands have put in a team's time, whoever's; a player spraying
+    /// is one hand, so alone 40 s, two players 20 s, as a team of two; with nobody at it, it spreads.
+    #[test]
+    fn a_fire_is_put_out_by_hands_a_team_its_members_a_player_one() {
+        let (l, cfg) = tern();
+        let room = l.room("drive").unwrap();
+        let time_to_out = |sprays: &[usize]| {
+            let mut s = DamageState::new(&l);
+            s.teams.clear();
+            s.fires.push(Fire::new(room));
+            let mut t = 0.0;
+            while t < 120.0 {
+                if tick(&l, &mut s, &cfg, 0.1, None, sprays).contains(&DamageEvent::FireOut { room }) {
+                    return Some(t + 0.1);
+                }
+                t += 0.1;
+            }
+            None
+        };
+        let one = time_to_out(&[room]).expect("one player puts it out");
+        let two = time_to_out(&[room, room]).expect("two players put it out");
+        let team = cfg.fire.put_out_s;
+        assert!((one - 2.0 * team).abs() < 0.15, "one hand takes twice a team of two's time: {one} s");
+        assert!((two - team).abs() < 0.15, "two players take a team of two's time: {two} s");
+        let mut s = DamageState::new(&l);
+        s.teams.clear();
+        s.fires.push(Fire::new(room));
+        let mut spread = false;
+        for _ in 0..((cfg.fire.spread_after_s + 1.0) / 0.1) as usize {
+            spread |=
+                tick(&l, &mut s, &cfg, 0.1, None, &[]).iter().any(|e| matches!(e, DamageEvent::FireSpread { .. }));
+        }
+        assert!(spread, "a fire nobody is at spreads after {} s", cfg.fire.spread_after_s);
+    }
+
     #[test]
     fn a_fire_burns_its_room_until_a_team_puts_it_out() {
         let (l, cfg) = tern();
@@ -2059,7 +2144,7 @@ mod tests {
         let drive = load(&l, "impulse_drive");
         let (mut out_at, mut t, mut burned) = (None, 0.0, 0.0);
         while t < 300.0 && out_at.is_none() {
-            for e in tick(&l, &mut s, &cfg, 0.1, None) {
+            for e in tick(&l, &mut s, &cfg, 0.1, None, &[]) {
                 match e {
                     DamageEvent::FireOut { room: r } if r == room => out_at = Some(t),
                     DamageEvent::HullBurned { mj } => burned += mj,
@@ -2086,7 +2171,7 @@ mod tests {
         s.fires.push(Fire::new(room));
         let mut spread = Vec::new();
         for i in 0..1000 {
-            for e in tick(&l, &mut s, &cfg, 0.1, None) {
+            for e in tick(&l, &mut s, &cfg, 0.1, None, &[]) {
                 if let DamageEvent::FireSpread { from, to } = e {
                     spread.push((i, from, to));
                 }
@@ -2108,7 +2193,7 @@ mod tests {
         assert_eq!(capability(&l, &s, &cfg, "sensor_array"), 0.0, "disabled");
         let mut repaired = None;
         for i in 0..2000 {
-            if tick(&l, &mut s, &cfg, 0.1, None).contains(&DamageEvent::Repaired { load: sensors }) {
+            if tick(&l, &mut s, &cfg, 0.1, None, &[]).contains(&DamageEvent::Repaired { load: sensors }) {
                 repaired = Some(i);
                 break;
             }
@@ -2126,7 +2211,7 @@ mod tests {
             let mut s = DamageState::new(&l);
             s.integrity[load(&l, "o2_generator")] = 60.0;
             s.integrity[load(&l, "computer")] = 30.0;
-            tick(&l, &mut s, &cfg, 0.1, priority);
+            tick(&l, &mut s, &cfg, 0.1, priority, &[]);
             s.teams[0].job
         };
         assert_eq!(first(None), Some(Job::Repair(load(&l, "computer"))), "the worst system first");
@@ -2139,7 +2224,7 @@ mod tests {
         let mut s = DamageState::new(&l);
         s.integrity[load(&l, "computer")] = 30.0;
         s.fires.push(Fire::new(l.room("mess").unwrap()));
-        tick(&l, &mut s, &cfg, 0.1, Some("computer"));
+        tick(&l, &mut s, &cfg, 0.1, Some("computer"), &[]);
         assert_eq!(s.teams[0].job, Some(Job::Fire(l.room("mess").unwrap())));
         assert_eq!(s.teams[1].job, Some(Job::Repair(load(&l, "computer"))), "the second team takes the next job");
     }

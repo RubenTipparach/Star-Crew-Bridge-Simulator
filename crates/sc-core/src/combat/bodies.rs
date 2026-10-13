@@ -1,5 +1,7 @@
 //! The crew on foot (openspec/changes/coop-drill design 9): every crew member's body on the bridge, and changing
-//! station as a walk: stand, follow a path to the seat at the walk speed, sit, and only then operate it.
+//! station as a walk: stand, follow a path to the seat at the walk speed, sit, and only then operate it. A player's
+//! body is the player's to walk (CLAUDE.md, the law: one game, played on foot): it is `Free`, wherever its player's
+//! walk put it, and sits only standing within reach of a seat (bridge-stations 6); a bot's follows the paths.
 //!
 //! It lives in the core because the server runs it and the snapshot carries it (CLAUDE.md 6.3). The geometry comes
 //! from outside: the caller builds a [`Bridge`] from the layout's seats and the deck's walk grid (`crate::nav`), so the
@@ -15,6 +17,8 @@ pub enum Spot {
     /// Where a body with no station stands: its own place among the ship's muster places, so the crew start spread
     /// through the ship (owner, 2026-10-11: "spread them throughout the ship not all in one spot").
     Muster,
+    /// Wherever its player walked it: a player's body on its feet.
+    Free,
 }
 
 /// A place a path joins: a seat, or one of the muster places.
@@ -61,6 +65,13 @@ pub struct Bridge {
     pub stand_s: f32,
     /// Sitting down, seconds.
     pub sit_s: f32,
+    /// A player sits only with its feet this near the seat point across the floor, and this near in height, metres
+    /// (`data/stations.json` `seats`; 0 until [`Bridge::with_reach`]: nobody on foot can sit).
+    pub reach_m: f32,
+    /// See `reach_m`.
+    pub reach_dy_m: f32,
+    /// A player who gets up stands this far behind the seat point, metres.
+    pub stand_back_m: f32,
     paths: Vec<(Place, Place, Vec<[f32; 3]>)>,
 }
 
@@ -78,7 +89,18 @@ impl Bridge {
         mut route: impl FnMut([f32; 3], [f32; 3]) -> Vec<[f32; 3]>,
     ) -> Self {
         let musters = if musters.is_empty() { vec![[0.0; 3]] } else { musters };
-        let mut b = Self { seats, musters, spacing_m, walk_m_s, stand_s, sit_s, paths: Vec::new() };
+        let mut b = Self {
+            seats,
+            musters,
+            spacing_m,
+            walk_m_s,
+            stand_s,
+            sit_s,
+            reach_m: 0.0,
+            reach_dy_m: 0.0,
+            stand_back_m: 0.0,
+            paths: Vec::new(),
+        };
         let places: Vec<Place> =
             b.seats.iter().map(|s| Place::Seat(s.0)).chain((0..b.musters.len()).map(Place::Muster)).collect();
         for &a in &places {
@@ -113,6 +135,23 @@ impl Bridge {
         Self::new(seats, musters, spacing_m, walk_m_s, stand_s, sit_s, |a, b| vec![a, b])
     }
 
+    /// The seat rules for a player on foot (`data/stations.json` `seats`).
+    pub fn with_reach(mut self, reach_m: f32, reach_dy_m: f32, stand_back_m: f32) -> Self {
+        (self.reach_m, self.reach_dy_m, self.stand_back_m) = (reach_m, reach_dy_m, stand_back_m);
+        self
+    }
+
+    /// The seat a body standing at `feet` can sit in: the nearest within reach, if any.
+    pub fn seat_within_reach(&self, feet: [f32; 3]) -> Option<Station> {
+        seat_in_reach(&self.seats, feet, self.reach_m, self.reach_dy_m)
+    }
+
+    /// Where a body that gets up from `s` stands: behind the seat, on its floor.
+    pub fn stand_point(&self, s: Station) -> [f32; 3] {
+        let Some((_, p, yaw)) = self.seats.iter().find(|x| x.0 == s) else { return self.musters[0] };
+        [p[0] - yaw.sin() * self.stand_back_m, p[1], p[2] - yaw.cos() * self.stand_back_m]
+    }
+
     /// Where a place is.
     fn place(&self, p: Place) -> [f32; 3] {
         match p {
@@ -125,7 +164,8 @@ impl Bridge {
     fn place_of(&self, spot: Spot, slot: Option<u8>) -> Place {
         match spot {
             Spot::Seat(s) => Place::Seat(s),
-            Spot::Muster => Place::Muster(usize::from(slot.unwrap_or(0)) % self.musters.len()),
+            // A free body has no place of its own; its muster place stands in where one is asked for.
+            Spot::Muster | Spot::Free => Place::Muster(usize::from(slot.unwrap_or(0)) % self.musters.len()),
         }
     }
 
@@ -134,7 +174,7 @@ impl Bridge {
         let p = self.place(self.place_of(spot, slot));
         match spot {
             Spot::Seat(_) => p,
-            Spot::Muster => {
+            Spot::Muster | Spot::Free => {
                 let k = usize::from(slot.unwrap_or(0)) / self.musters.len();
                 [p[0] + k as f32 * self.spacing_m, p[1], p[2]]
             }
@@ -149,7 +189,7 @@ impl Bridge {
     fn yaw(&self, spot: Spot) -> f32 {
         match spot {
             Spot::Seat(s) => self.seats.iter().find(|x| x.0 == s).map_or(0.0, |x| x.2),
-            Spot::Muster => 0.0,
+            Spot::Muster | Spot::Free => 0.0,
         }
     }
 
@@ -174,6 +214,22 @@ impl Bridge {
         let down = if matches!(to, Spot::Seat(_)) { self.sit_s } else { 0.0 };
         up + len / self.walk_m_s.max(0.1) + down
     }
+}
+
+/// The seat a body standing at `feet` can sit in (bridge-stations 6): the nearest whose seat point is within `reach_m`
+/// across the floor and `reach_dy_m` in height. The drill's rule, and the client's prompt asks the same.
+pub fn seat_in_reach(
+    seats: &[(Station, [f32; 3], f32)],
+    feet: [f32; 3],
+    reach_m: f32,
+    reach_dy_m: f32,
+) -> Option<Station> {
+    seats
+        .iter()
+        .map(|(s, p, _)| (*s, (p[0] - feet[0]).hypot(p[2] - feet[2]), (p[1] - feet[1]).abs()))
+        .filter(|(_, d, dy)| *d <= reach_m && *dy <= reach_dy_m)
+        .min_by(|a, b| a.1.total_cmp(&b.1))
+        .map(|x| x.0)
 }
 
 fn dist(a: [f32; 3], b: [f32; 3]) -> f32 {
@@ -216,6 +272,26 @@ impl CrewBody {
         }
     }
 
+    /// Its player's to walk: on its feet where the player put it, not getting up or sitting down.
+    pub fn free(&self) -> bool {
+        self.at == Spot::Free && self.going.is_none()
+    }
+
+    /// Hand the body to its player where it stands (a player joins on foot at its muster place).
+    pub fn set_free(&mut self) {
+        if self.going.is_none() && self.posture == Posture::Standing {
+            self.at = Spot::Free;
+        }
+    }
+
+    /// Its player walked it here: walking while it moves, standing once it stops.
+    pub fn walked(&mut self, pos: [f32; 3], yaw: f32) {
+        let moved = dist(self.pos, pos) > 0.01;
+        self.pos = pos;
+        self.yaw = yaw;
+        self.posture = if moved { Posture::Walking } else { Posture::Standing };
+    }
+
     /// The station it is walking to.
     pub fn walking_to(&self) -> Option<Station> {
         match self.going {
@@ -229,12 +305,17 @@ impl CrewBody {
         self.going.is_some()
     }
 
-    /// Set off for `to`: up from a seat first.
+    /// Set off for `to`: up from a seat first. From where its player walked it, the step to a seat in reach is
+    /// straight; to `Free`, it gets up and stands behind its seat.
     pub fn go(&mut self, to: Spot, b: &Bridge) {
         if self.at == to && self.going.is_none() {
             return;
         }
-        self.path = b.path(self.at, to, self.slot);
+        self.path = match (self.at, to) {
+            (Spot::Free, _) => vec![self.pos, b.at(to, Some(self.slot))],
+            (Spot::Seat(s), Spot::Free) => vec![self.pos, b.stand_point(s)],
+            _ => b.path(self.at, to, self.slot),
+        };
         self.leg = 0;
         self.going = Some(to);
         if matches!(self.at, Spot::Seat(_)) && self.posture == Posture::Seated {
@@ -249,6 +330,17 @@ impl CrewBody {
     pub fn step(&mut self, b: &Bridge, dt: f32) -> Option<Station> {
         match self.posture {
             Posture::Seated | Posture::Standing => None,
+            // Up from a seat to its player's feet: no walk, it stands behind the seat.
+            Posture::Rising if self.going == Some(Spot::Free) => {
+                self.timer -= dt;
+                if self.timer <= 0.0 {
+                    self.pos = self.path.last().copied().unwrap_or(self.pos);
+                    self.at = Spot::Free;
+                    self.going = None;
+                    self.posture = Posture::Standing;
+                }
+                None
+            }
             Posture::Rising => {
                 self.timer -= dt;
                 if self.timer <= 0.0 {
@@ -256,6 +348,8 @@ impl CrewBody {
                 }
                 None
             }
+            // Walked by its player, not along a path.
+            Posture::Walking if self.free() => None,
             Posture::Walking => {
                 let mut left = b.walk_m_s * dt;
                 while left > 0.0 {
@@ -279,7 +373,9 @@ impl CrewBody {
                 if self.leg + 1 >= self.path.len() {
                     let to = self.going.unwrap_or(Spot::Muster);
                     self.at = to;
-                    self.pos = b.at(to, Some(self.slot));
+                    if to != Spot::Free {
+                        self.pos = b.at(to, Some(self.slot));
+                    }
                     match to {
                         Spot::Seat(_) => {
                             self.posture = Posture::Sitting;
@@ -289,6 +385,10 @@ impl CrewBody {
                             self.posture = Posture::Standing;
                             self.going = None;
                             self.yaw = 0.0;
+                        }
+                        Spot::Free => {
+                            self.posture = Posture::Standing;
+                            self.going = None;
                         }
                     }
                 }
@@ -324,6 +424,7 @@ pub(crate) mod tests {
             0.4,
             0.4,
         )
+        .with_reach(1.5, 1.0, 0.7)
     }
 
     #[test]
