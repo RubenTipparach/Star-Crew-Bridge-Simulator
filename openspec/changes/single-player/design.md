@@ -94,7 +94,8 @@ No rule moves: the server decides what a command does and refuses one from a bod
 ## 7. The browser
 
 The browser has no UDP sockets and no threads, so it cannot host the drill this way; there Beam aboard tours the ship
-(`front-menu` 2). A loopback transport in `sc-net` that needs neither is the later step (task 3.1).
+(`front-menu` 2). A local link in `sc-net` that needs neither, used by single player on every platform, is the
+`browser-single-player` change (task 3.1).
 
 ## 8. Pi 5 budget
 
@@ -116,7 +117,8 @@ The browser has no UDP sockets and no threads, so it cannot host the drill this 
 ## Known limits
 
 - Each single-player game leaves the drill server's signalling listener (one idle thread and a loopback port) behind
-  until the program exits: `sc-net`'s listener has no way to stop yet (task 3.3).
+  until the program exits: `sc-net`'s listener has no way to stop yet (task 3.3; the local link of
+  `browser-single-player` has no listener).
 
 ## Open questions
 
