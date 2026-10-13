@@ -19,6 +19,8 @@ use sc_render::{DeckParams, DeckProgram, Indices, Mesh, Renderer, Target, Textur
 /// A body's eye above its feet standing, and seated (crew-on-deck), metres.
 const EYE_STAND_M: f32 = 1.65;
 const EYE_SEAT_M: f32 = 1.2;
+/// A seated eye's lean toward the desk, from the seat point, metres.
+const EYE_SEAT_FWD_M: f32 = 0.1;
 
 /// The outside's near and far planes, metres: the Hound at a few kilometres, the farthest bolt and burst well inside.
 const OUTSIDE_NEAR_M: f32 = 1.0;
@@ -134,6 +136,7 @@ impl BridgeView {
         bodies: &[(BodySnap, String)],
         me: Option<u8>,
         own_eye: bool,
+        inside: &Inside<'_>,
         out: Outside<'_>,
     ) -> Mat4 {
         let fov = self.fov_deg.to_radians();
@@ -190,11 +193,71 @@ impl BridgeView {
             let turn = Mat4::from_rotation_y(b.yaw);
             r.draw_deck_probe(t, mesh, proj * view * Mat4::from_translation(rel) * turn, turn, &cube, w);
         }
+        // Fires on their rooms' floors, flickering (all-hands 4).
+        for (k, f) in inside.fires.iter().enumerate() {
+            let rel = Vec3::new(
+                (f64::from(f[0]) - eye[0]) as f32,
+                (f64::from(f[1]) - eye[1]) as f32,
+                (f64::from(f[2]) - eye[2]) as f32,
+            );
+            let flick = 0.8 + 0.25 * (inside.time_s * 9.0 + k as f64 * 1.7).sin() as f32;
+            for (dx, dz, s) in [(0.0f32, 0.0f32, 1.3f32), (0.9, 0.5, 0.9), (-0.8, -0.6, 1.0)] {
+                let model =
+                    Mat4::from_translation(rel + Vec3::new(dx, 0.0, dz)) * Mat4::from_scale(Vec3::new(s, s * flick, s));
+                r.draw_deck(t, inside.flame, DeckProgram::Flat, &flat_params(proj * view * model), None);
+            }
+        }
+        // This player's extinguisher in hand, at the lower right of the eye; spraying, puffs of agent along the aim.
+        if own_eye && inside.carrying {
+            let held = Mat4::from_translation(Vec3::new(0.34, -0.42, -0.8))
+                * Mat4::from_rotation_x(-0.75)
+                * Mat4::from_rotation_z(-0.2);
+            r.draw_deck(t, inside.held, DeckProgram::Flat, &flat_params(proj * held), None);
+            if inside.spraying {
+                for k in 0..8 {
+                    let u = ((inside.time_s * 2.2 + f64::from(k) / 8.0) % 1.0) as f32;
+                    let at = Vec3::new(0.2 - 0.15 * u, -0.2 - 0.1 * u, -0.7 - 2.6 * u);
+                    let model = Mat4::from_translation(at) * Mat4::from_scale(Vec3::splat(0.04 + 0.4 * u));
+                    r.draw_deck(t, inside.puff, DeckProgram::Flat, &flat_params(proj * model), None);
+                }
+            }
+        }
         // Last, the fight outside, at the back of the depth buffer: only the windows let it through.
         let far = glam::camera::rh::proj::opengl::perspective(fov, aspect, OUTSIDE_NEAR_M, OUTSIDE_FAR_M);
         (out.objects)(r, t, behind_everything() * far * view_out);
         r.end_pass();
         proj * view
+    }
+}
+
+/// What the ship shows inside besides its rooms and crew: fires burning, and this player's extinguisher.
+pub struct Inside<'a> {
+    /// A burning room's floor point each, ship frame, metres.
+    pub fires: &'a [[f32; 3]],
+    /// The flames' mesh, a puff of agent, and the extinguisher in hand.
+    pub flame: &'a Mesh,
+    /// See `flame`.
+    pub puff: &'a Mesh,
+    /// See `flame`.
+    pub held: &'a Mesh,
+    /// This player carries an extinguisher.
+    pub carrying: bool,
+    /// And is spraying it.
+    pub spraying: bool,
+    /// The local clock, seconds: the flames flicker and the spray moves.
+    pub time_s: f64,
+}
+
+/// A mesh's own colours, unlit and unshaded (bolts, bursts, flames): the deck program's flat parameters.
+pub fn flat_params(mvp: Mat4) -> DeckParams {
+    DeckParams {
+        mvp,
+        state_weights: [1.0, 0.0, 0.0],
+        flash_dir: Vec3::ZERO,
+        flash: 0.0,
+        panel_first: u32::MAX,
+        panel_glow: 1.0,
+        clip_y: f32::MAX,
     }
 }
 
@@ -257,8 +320,9 @@ pub fn views_on(views: &[DeckView], floors: &[f64]) -> Vec<DeckView> {
 
 /// The eye of a body (standing or seated), ship frame.
 pub fn eye_of(b: &BodySnap) -> [f64; 3] {
-    let up = if b.posture == Posture::Seated { EYE_SEAT_M } else { EYE_STAND_M };
-    [f64::from(b.pos[0]), f64::from(b.pos[1] + up), f64::from(b.pos[2])]
+    // Seated, the head is forward of the chair's back, over the desk's edge, not in its headrest.
+    let (up, fwd) = if b.posture == Posture::Seated { (EYE_SEAT_M, EYE_SEAT_FWD_M) } else { (EYE_STAND_M, 0.0) };
+    [f64::from(b.pos[0] + b.yaw.sin() * fwd), f64::from(b.pos[1] + up), f64::from(b.pos[2] + b.yaw.cos() * fwd)]
 }
 
 /// The overview: from high at the bow end of the bridge, under the viewscreen, looking aft and down over the seats to

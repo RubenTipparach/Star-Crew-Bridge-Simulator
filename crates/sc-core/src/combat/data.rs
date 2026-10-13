@@ -1047,11 +1047,30 @@ pub struct MissionFile {
     pub muster_rooms: Vec<String>,
     /// Between bodies sharing a muster room, metres.
     pub muster_spacing_m: f64,
+    /// Who puts the ship right (all-hands 1): `teams`, the damage-control teams with the crew, or `crew`, the players
+    /// alone: no teams aboard (All hands). The code default is `teams`.
+    #[serde(default = "teams_default")]
+    pub damage_control: String,
+}
+
+/// The mission's `damage_control` when it names none.
+fn teams_default() -> String {
+    "teams".into()
+}
+
+impl MissionFile {
+    /// All hands: the players put the ship right, no teams aboard (all-hands 1).
+    pub fn all_hands(&self) -> bool {
+        self.damage_control == "crew"
+    }
 }
 
 impl Validate for MissionFile {
     fn validate(&self, c: &mut Checks) {
         c.equals("schema", &self.schema, "starcrew.mission/1");
+        if self.damage_control != "teams" {
+            c.equals("damage_control", &self.damage_control, "crew");
+        }
         c.count("muster_rooms", self.muster_rooms.len() as i64, 1, 16);
         c.number("muster_spacing_m", self.muster_spacing_m, 0.3, 3.0);
         c.count("title (characters)", self.title.chars().count() as i64, 1, 60);

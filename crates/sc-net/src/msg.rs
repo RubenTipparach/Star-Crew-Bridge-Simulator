@@ -11,7 +11,7 @@ use sc_core::combat::bodies::Posture;
 use sc_core::combat::{self, Command, HelmMode, Outcome, Phase, PowerCmd, Refusal, Station, TubeState, TurretMode};
 
 /// The protocol's version; a Hello with another is refused.
-pub const PROTOCOL: u16 = 10;
+pub const PROTOCOL: u16 = 12;
 /// The longest unreliable message, so it is one SCTP chunk in one datagram (netcode-and-sessions section 2).
 pub const MAX_UNRELIABLE: usize = 1200;
 /// The longest string field, in bytes.
@@ -269,6 +269,23 @@ pub enum ClientMsg {
     },
     /// Get up from the seat (hold E): the body stands behind it, the station goes to automation.
     Stand,
+    /// Take an extinguisher at the damage-control locker (all-hands 4).
+    TakeExtinguisher,
+    /// Spray the extinguisher carried, or stop.
+    Spray(bool),
+    /// Dock at a repair job (all-hands 5): its index in the Tern's jobs.
+    Dock(u8),
+    /// A round of a repair job landed: the job, the round given, and how long it took to play, seconds.
+    RoundDone {
+        /// The job.
+        job: u8,
+        /// The round the server gave.
+        round: u8,
+        /// Seconds it took.
+        play_s: f32,
+    },
+    /// Stand up from a repair.
+    Undock,
 }
 
 /// A client's message on the input channel: the helm's stick, newest wins.
@@ -916,7 +933,7 @@ impl DamageSnap {
     }
 }
 
-/// A crew member's body in a snapshot: 10 bytes (coop-drill design 9).
+/// A crew member's body in a snapshot: 11 bytes (coop-drill design 9; its extinguisher, all-hands 4).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BodySnap {
     /// The player's slot.
@@ -929,6 +946,10 @@ pub struct BodySnap {
     pub posture: Posture,
     /// The station it is walking to.
     pub going: Option<Station>,
+    /// The extinguisher it carries: its agent left, a share of full (0: none); sent as a 127th.
+    pub agent: f32,
+    /// Spraying it now (the byte's top bit).
+    pub spraying: bool,
 }
 
 /// The server's messages on the command channel.
@@ -1011,6 +1032,14 @@ pub enum ServerMsg {
     Phase(Phase, Outcome),
     /// The echo of a Ping.
     Pong(u32),
+    /// A repair job's next round for this player (all-hands 5): the round, its level, whether it opens with the part;
+    /// or none: the job is done.
+    Repair {
+        /// The job.
+        job: u8,
+        /// The round, its level, the part.
+        next: Option<(u8, u8, bool)>,
+    },
 }
 
 const MAX_SHIPS: usize = 2;
@@ -1302,6 +1331,22 @@ impl ClientMsg {
                 w.f32(f64::from(*yaw));
             }
             Self::Stand => w.u8(7),
+            Self::TakeExtinguisher => w.u8(8),
+            Self::Spray(on) => {
+                w.u8(9);
+                w.u8(u8::from(*on));
+            }
+            Self::Dock(j) => {
+                w.u8(10);
+                w.u8(*j);
+            }
+            Self::RoundDone { job, round, play_s } => {
+                w.u8(11);
+                w.u8(*job);
+                w.u8(*round);
+                w.f32(f64::from(*play_s));
+            }
+            Self::Undock => w.u8(12),
         }
         w.0
     }
@@ -1329,6 +1374,11 @@ impl ClientMsg {
                 Self::Walk { pos, yaw: r.f32(-100.0, 100.0)? as f32 }
             }
             7 => Self::Stand,
+            8 => Self::TakeExtinguisher,
+            9 => Self::Spray(r.bool()?),
+            10 => Self::Dock(r.u8()?),
+            11 => Self::RoundDone { job: r.u8()?, round: r.u8()?, play_s: r.f32(0.0, 1e5)? as f32 },
+            12 => Self::Undock,
             _ => return Err(DecodeError("no such client message")),
         };
         r.done()?;
@@ -1455,6 +1505,7 @@ impl Snapshot {
             w.u8((b.yaw.rem_euclid(std::f32::consts::TAU) / std::f32::consts::TAU * 256.0) as u32 as u8);
             w.u8(b.posture as u8);
             w.u8(station_byte(b.going));
+            w.u8((b.agent.clamp(0.0, 1.0) * 127.0).round() as u8 | if b.spraying { 0x80 } else { 0 });
         }
         w.u8(self.fighters.len() as u8);
         for f in &self.fighters {
@@ -1693,7 +1744,16 @@ impl Snapshot {
             let yaw = f32::from(r.u8()?) / 256.0 * std::f32::consts::TAU;
             let posture = Posture::from_u8(r.u8()?).ok_or(DecodeError("no such posture"))?;
             let going = read_station(&mut r)?;
-            bodies.push(BodySnap { slot, pos, yaw, posture, going });
+            let kit = r.u8()?;
+            bodies.push(BodySnap {
+                slot,
+                pos,
+                yaw,
+                posture,
+                going,
+                agent: f32::from(kit & 0x7f) / 127.0,
+                spraying: kit & 0x80 != 0,
+            });
         }
         let nf = r.count(combat::FIGHTER_IDS.len())?;
         let mut fighters = Vec::with_capacity(nf);
@@ -1838,7 +1898,19 @@ impl Snapshot {
             bodies: d
                 .bodies
                 .iter()
-                .map(|b| BodySnap { slot: b.slot, pos: b.pos, yaw: b.yaw, posture: b.posture, going: b.walking_to() })
+                .map(|b| {
+                    let kit = d.kits.iter().find(|k| k.slot == b.slot);
+                    let full = d.data.damage.fire.extinguisher_s.max(1e-9);
+                    BodySnap {
+                        slot: b.slot,
+                        pos: b.pos,
+                        yaw: b.yaw,
+                        posture: b.posture,
+                        going: b.walking_to(),
+                        agent: kit.map_or(0.0, |k| (k.agent_s / full) as f32),
+                        spraying: kit.is_some_and(|k| k.spraying),
+                    }
+                })
                 .collect(),
             stats: StatsSnap {
                 tern_shots: st.tern_shots,
@@ -1933,6 +2005,19 @@ impl ServerMsg {
                 w.u8(10);
                 w.u32(*t);
             }
+            Self::Repair { job, next } => {
+                w.u8(14);
+                w.u8(*job);
+                match next {
+                    Some((round, level, part)) => {
+                        w.u8(1);
+                        w.u8(*round);
+                        w.u8(*level);
+                        w.u8(u8::from(*part));
+                    }
+                    None => w.u8(0),
+                }
+            }
             Self::Beam { owner, from, to, hit } => {
                 w.u8(11);
                 w.u16(*owner);
@@ -1988,6 +2073,11 @@ impl ServerMsg {
             11 => Self::Beam { owner: r.u16()?, from: r.v3_64(POS_LIM)?, to: r.v3_64(POS_LIM)?, hit: r.bool()? },
             12 => Self::Decoy(r.u16()?),
             13 => Self::Burst { ship: r.u16()?, pos: r.v3_64(POS_LIM)?, size: r.f32(0.0, 1e6)? },
+            14 => {
+                let job = r.u8()?;
+                let next = if r.bool()? { Some((r.u8()?, r.u8()?, r.bool()?)) } else { None };
+                Self::Repair { job, next }
+            }
             _ => return Err(DecodeError("no such server message")),
         };
         if let Self::Hit { face, .. } = m {
@@ -2155,6 +2245,11 @@ mod tests {
             ClientMsg::Command(Command::Power(PowerCmd::Feed(15, true))),
             ClientMsg::Walk { pos: [1.5, 3.5, -12.25], yaw: 0.5 },
             ClientMsg::Stand,
+            ClientMsg::TakeExtinguisher,
+            ClientMsg::Spray(true),
+            ClientMsg::Dock(3),
+            ClientMsg::RoundDone { job: 3, round: 1, play_s: 12.5 },
+            ClientMsg::Undock,
         ];
         for m in msgs {
             assert_eq!(ClientMsg::decode(&m.encode()).unwrap(), m);
@@ -2177,6 +2272,8 @@ mod tests {
             ServerMsg::Hit { bolt: 9, target: 2, face: 4, damage_mj: 1.25 },
             ServerMsg::Phase(Phase::Debrief, Outcome::Victory),
             ServerMsg::Pong(77),
+            ServerMsg::Repair { job: 4, next: Some((2, 1, false)) },
+            ServerMsg::Repair { job: 4, next: None },
         ];
         for m in msgs {
             assert_eq!(ServerMsg::decode(&m.encode()).unwrap(), m);

@@ -90,6 +90,13 @@ impl DrillServer {
         if let Some(b) = &cfg.bridge {
             drill.set_bridge(b.clone());
         }
+        // Repairs on deck (all-hands 5): the Tern's jobs and their games, from the repository's root.
+        match sc_core::repair::data::RepairData::load_for_ship(|rel| {
+            std::fs::read_to_string(rel).map_err(|e| format!("{rel}: {e}"))
+        }) {
+            Ok(r) => drill.set_repairs(r),
+            Err(e) => eprintln!("sc-server: no repairs on deck ({e})"),
+        }
         Ok(Self {
             drill,
             net,
@@ -287,6 +294,35 @@ impl DrillServer {
                 let _ = self.drill.walked(s, pos, yaw);
                 None
             }
+            (Some(s), ClientMsg::TakeExtinguisher) => {
+                if let Err(r) = self.drill.take_extinguisher(s) {
+                    self.send(p, &ServerMsg::Refused(r));
+                }
+                None
+            }
+            (Some(s), ClientMsg::Spray(on)) => {
+                let _ = self.drill.spray(s, on);
+                None
+            }
+            // Repairs on deck (all-hands 5): the order back is the round to play, or none when the job is done.
+            (Some(s), ClientMsg::Dock(job)) => {
+                match self.drill.dock(s, usize::from(job)) {
+                    Ok(o) => self.send(p, &ServerMsg::Repair { job, next: Some(order_bytes(o)) }),
+                    Err(r) => self.send(p, &ServerMsg::Refused(r)),
+                }
+                None
+            }
+            (Some(s), ClientMsg::RoundDone { job, round, play_s }) => {
+                match self.drill.round_done(s, usize::from(job), u32::from(round), f64::from(play_s)) {
+                    Ok(next) => self.send(p, &ServerMsg::Repair { job, next: next.map(order_bytes) }),
+                    Err(r) => self.send(p, &ServerMsg::Refused(r)),
+                }
+                None
+            }
+            (Some(s), ClientMsg::Undock) => {
+                self.drill.undock(s);
+                None
+            }
             (Some(s), ClientMsg::Stand) => {
                 match self.drill.stand(s) {
                     Ok(()) => self.crew_dirty = true,
@@ -474,4 +510,9 @@ impl DrillServer {
         })
         .to_string()
     }
+}
+
+/// A repair order as it travels: the round, its level, whether it opens with the part (all-hands 5).
+fn order_bytes(o: sc_core::repair::Order) -> (u8, u8, bool) {
+    (o.round.min(255) as u8, o.level.min(255) as u8, o.part)
 }

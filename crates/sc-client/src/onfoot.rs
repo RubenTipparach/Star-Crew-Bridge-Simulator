@@ -74,7 +74,14 @@ impl OnFoot {
     /// Put the body's feet at `at` (where the server has it: where it joined, or behind the seat it got up from), on
     /// the floor under it: a seat's height is its deck's, and a station's platform stands higher.
     pub fn place(&mut self, at: [f32; 3]) {
-        let y = self.world.floor_below(at[0], at[1] + 1.0, at[2]).filter(|y| (y - at[1]).abs() < 1.0).unwrap_or(at[1]);
+        // The walk grid's floor there (never a chair's seat or a desk), else the floor under it.
+        let y = self
+            .grid
+            .snap(at, 0.8)
+            .map(|p| p[1])
+            .or_else(|| self.world.floor_below(at[0], at[1] + 1.0, at[2]))
+            .filter(|y| (y - at[1]).abs() < 1.0)
+            .unwrap_or(at[1]);
         let at = [at[0], y, at[2]];
         self.body = Body::new(at, &self.data);
         self.eye_y = y;

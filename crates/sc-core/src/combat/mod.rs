@@ -25,6 +25,74 @@ pub const TICK_HZ: f64 = 30.0;
 pub const DT: f64 = 1.0 / TICK_HZ;
 /// The most players a drill takes (netcode-and-sessions section 8).
 pub const MAX_PLAYERS: usize = 8;
+/// Repairs on deck (all-hands 5): the repair games' data (the rules, the Tern's jobs and each game's file) and the
+/// jobs open now with who is at them (`repair::Repairs`, the server's checks).
+#[derive(Debug, Clone)]
+pub struct DeckRepairs {
+    /// The games, the rules and the Tern's jobs.
+    pub data: crate::repair::data::RepairData,
+    /// The jobs open now.
+    pub book: crate::repair::Repairs,
+}
+
+/// A repair job on deck, open or not: its index in the Tern's jobs, its game, and the damaged load a player works it
+/// at (its place), with the state it is repaired from.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DeckJob {
+    /// Its index in `repairs.json`'s jobs.
+    pub job: usize,
+    /// The damaged load's index (`ShipLayout::loads`), where the job is worked.
+    pub load: usize,
+    /// Where to stand near, ship frame, metres.
+    pub at: DVec3,
+    /// The state it is repaired from: the worst of its loads.
+    pub state: crate::repair::State,
+}
+
+/// The Tern's repair jobs that need a hand (all-hands 5): each job with a load under `nominal` (integrity, percent),
+/// at its most damaged load. One rule for the server's jobs and the client's prompts.
+pub fn deck_jobs(
+    data: &crate::repair::data::RepairData,
+    l: &damage::ShipLayout,
+    integrity: &[f64],
+    nominal: f64,
+) -> Vec<DeckJob> {
+    use crate::repair::State;
+    data.ship
+        .jobs
+        .iter()
+        .enumerate()
+        .filter_map(|(k, j)| {
+            let (li, v) = j
+                .loads
+                .iter()
+                .filter_map(|id| l.loads.iter().position(|ld| ld.id == *id))
+                .filter_map(|li| integrity.get(li).map(|v| (li, *v)))
+                .filter(|(_, v)| *v < nominal)
+                .min_by(|a, b| a.1.total_cmp(&b.1))?;
+            let state = if v <= 0.0 {
+                State::Destroyed
+            } else if v < data.damage.disabled_to_pct {
+                State::Disabled
+            } else {
+                State::Damaged
+            };
+            Some(DeckJob { job: k, load: li, at: l.loads[li].centre, state })
+        })
+        .collect()
+}
+
+/// What a player carries on foot (all-hands 4): an extinguisher and the agent left in it.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Kit {
+    /// The player's slot.
+    pub slot: u8,
+    /// Seconds of agent left (0: empty, or none carried).
+    pub agent_s: f64,
+    /// Spraying it now.
+    pub spraying: bool,
+}
+
 /// The most one walk message may move a body, metres: a ladder's climb or a lift's run between two messages, never a
 /// jump across the ship (a guard on the wire, not a rule of the walk: the walk is `sc-core::walk`'s).
 pub const WALK_STEP_MAX_M: f32 = 6.0;
@@ -1086,6 +1154,11 @@ pub struct Drill {
     pub on_foot: Option<bodies::Bridge>,
     /// Every crew member's body, by slot order.
     pub bodies: Vec<bodies::CrewBody>,
+    /// What the players carry on foot (all-hands 4): an extinguisher and its agent.
+    pub kits: Vec<Kit>,
+    /// Repairs on deck (all-hands 5): the games' data and the jobs open on the Tern's damaged loads; none until the
+    /// server hands the data over.
+    pub repairs: Option<DeckRepairs>,
     /// The enemy's fighters (enemy-fighters 1).
     pub fighters: Vec<fighters::Fighter>,
     /// Each ship's insides, the Tern's then the Hound's: armour, systems, fires, teams (ship-damage).
@@ -1173,7 +1246,11 @@ impl Drill {
             new_ship(TERN_ID, Side::Tern, &data.tern_combat, &data.tern_shields, data.gun(&data.tern_combat.gun)),
             new_ship(ENEMY_ID, Side::Enemy, &data.enemy.combat, &data.enemy.shields, data.gun(&data.enemy.combat.gun)),
         ];
-        let damage = [damage::DamageState::new(&data.tern_layout), damage::DamageState::new(&data.hound_layout)];
+        let mut damage = [damage::DamageState::new(&data.tern_layout), damage::DamageState::new(&data.hound_layout)];
+        // All hands (all-hands 1): no damage-control teams aboard the Tern; the players put it right.
+        if data.mission.all_hands() {
+            damage[0].teams.clear();
+        }
         let power = power::PowerState::new(&data.power);
         let mut d = Self {
             data,
@@ -1198,6 +1275,8 @@ impl Drill {
             auto: automation::Memory::default(),
             on_foot: None,
             bodies: Vec::new(),
+            kits: Vec::new(),
+            repairs: None,
             fighters: Vec::new(),
             damage,
             repair_priority: None,
@@ -1241,6 +1320,9 @@ impl Drill {
         self.fighters.clear();
         self.damage =
             [damage::DamageState::new(&self.data.tern_layout), damage::DamageState::new(&self.data.hound_layout)];
+        if self.data.mission.all_hands() {
+            self.damage[0].teams.clear();
+        }
         self.repair_priority = None;
         self.power = power::PowerState::new(&self.data.power);
         self.power_preview = None;
@@ -1309,6 +1391,8 @@ impl Drill {
     pub fn leave(&mut self, slot: u8) {
         self.players.retain(|p| p.slot != slot);
         self.bodies.retain(|b| b.slot != slot);
+        self.kits.retain(|k| k.slot != slot);
+        self.undock(slot);
         self.queue.retain(|q| q.2 != Some(slot));
     }
 
@@ -1419,6 +1503,140 @@ impl Drill {
         }
         body.walked(pos, yaw);
         Ok(())
+    }
+
+    /// A player takes an extinguisher at the damage-control locker (all-hands 4), standing within a seat's reach of it.
+    pub fn take_extinguisher(&mut self, slot: u8) -> Result<(), Refusal> {
+        let body = self.bodies.iter().find(|b| b.slot == slot).ok_or(Refusal::NotYourStation)?;
+        if !body.free() {
+            return Err(Refusal::Walking);
+        }
+        let (p, reach) = (body.pos, self.data.stations.seats.reach_m);
+        let near = |l: &DVec3| {
+            (l.x - f64::from(p[0])).hypot(l.z - f64::from(p[2])) <= reach && (l.y - f64::from(p[1])).abs() < 1.5
+        };
+        if !self.data.tern_layout.lockers.iter().any(near) {
+            return Err(Refusal::TooFar);
+        }
+        let agent_s = self.data.damage.fire.extinguisher_s;
+        match self.kits.iter_mut().find(|k| k.slot == slot) {
+            Some(k) => *k = Kit { slot, agent_s, spraying: false },
+            None => self.kits.push(Kit { slot, agent_s, spraying: false }),
+        }
+        Ok(())
+    }
+
+    /// Hand the drill the repair games' data: from now jobs open on the Tern's damaged loads and players can work them.
+    pub fn set_repairs(&mut self, data: crate::repair::data::RepairData) {
+        self.repairs = Some(DeckRepairs { data, book: crate::repair::Repairs::default() });
+    }
+
+    /// Open a job on each load that needs one, and close a job whose loads are all back (all-hands 5).
+    fn open_repair_jobs(&mut self) {
+        let nominal = self.data.damage.systems.nominal_from_pct;
+        let Some(r) = self.repairs.as_mut() else { return };
+        let need = deck_jobs(&r.data, &self.data.tern_layout, &self.damage[0].integrity, nominal);
+        let ids: Vec<String> = need.iter().map(|j| r.data.ship.jobs[j.job].id.clone()).collect();
+        r.book.jobs.retain(|s| ids.contains(&s.id) && !s.job.done());
+        for (j, id) in need.iter().zip(&ids) {
+            if r.book.job(id).is_some() {
+                continue;
+            }
+            let sj = &r.data.ship.jobs[j.job];
+            let Some(file) = r.data.games.get(&sj.game) else { continue };
+            let job = crate::repair::Job::for_game(file, &r.data.rules, &r.data.damage, j.state);
+            r.book.open(id, file.clone(), sj.workers, job, j.state);
+        }
+    }
+
+    /// A player docks at a repair job (all-hands 5): on foot, within reach of its damaged load; the round to play.
+    pub fn dock(&mut self, slot: u8, job: usize) -> Result<crate::repair::Order, Refusal> {
+        self.open_repair_jobs();
+        let nominal = self.data.damage.systems.nominal_from_pct;
+        let body = self.bodies.iter().find(|b| b.slot == slot).ok_or(Refusal::NotYourStation)?;
+        if !body.free() {
+            return Err(Refusal::Walking);
+        }
+        let p = DVec3::new(f64::from(body.pos[0]), f64::from(body.pos[1]), f64::from(body.pos[2]));
+        let r = self.repairs.as_mut().ok_or(Refusal::NoSuch)?;
+        let (reach, dy) = (r.data.ship.reach_m, r.data.ship.reach_dy_m);
+        let need = deck_jobs(&r.data, &self.data.tern_layout, &self.damage[0].integrity, nominal);
+        let j = need.iter().find(|j| j.job == job).ok_or(Refusal::NoSuch)?;
+        let near = self.data.tern_layout.loads.iter().enumerate().any(|(li, ld)| {
+            r.data.ship.jobs[job].loads.contains(&ld.id)
+                && self.damage[0].integrity.get(li).is_some_and(|v| *v < nominal)
+                && (ld.centre.x - p.x).hypot(ld.centre.z - p.z) <= reach
+                && (ld.centre.y - p.y).abs() <= dy
+        });
+        if !near {
+            return Err(Refusal::TooFar);
+        }
+        let id = r.data.ship.jobs[j.job].id.clone();
+        r.book.dock(u32::from(slot), &id, true, u32::MAX, &r.data.damage).map_err(|e| match e {
+            crate::repair::Refusal::Full => Refusal::StationTaken,
+            _ => Refusal::NoSuch,
+        })
+    }
+
+    /// A player landed a round of a job they are docked at, played in `play_s` seconds: the server's checks (the round
+    /// given, no faster than any hand), then each damaged load of the job up a share; the next round, if any is left.
+    pub fn round_done(
+        &mut self,
+        slot: u8,
+        job: usize,
+        round: u32,
+        play_s: f64,
+    ) -> Result<Option<crate::repair::Order>, Refusal> {
+        let nominal = self.data.damage.systems.nominal_from_pct;
+        let r = self.repairs.as_mut().ok_or(Refusal::NoSuch)?;
+        let sj = r.data.ship.jobs.get(job).ok_or(Refusal::NoSuch)?.clone();
+        let next = r.book.round_done(u32::from(slot), &sj.id, round, play_s).map_err(|_| Refusal::BadValue)?;
+        let share = r.book.job(&sj.id).map_or(0.0, |s| s.job.share());
+        for (li, ld) in self.data.tern_layout.loads.iter().enumerate() {
+            if sj.loads.contains(&ld.id) {
+                if let Some(v) = self.damage[0].integrity.get_mut(li) {
+                    if *v < nominal {
+                        *v = (*v + share).min(nominal);
+                    }
+                }
+            }
+        }
+        self.open_repair_jobs();
+        // Its loads back to nominal, the job closes whatever rounds its game had left: the player is done.
+        let open = self.repairs.as_ref().is_some_and(|r| r.book.job(&sj.id).is_some());
+        Ok(next.filter(|_| open))
+    }
+
+    /// A player stands up from a repair; the round they held goes back to the list.
+    pub fn undock(&mut self, slot: u8) {
+        if let Some(r) = self.repairs.as_mut() {
+            r.book.undock(u32::from(slot));
+        }
+    }
+
+    /// A player starts or stops spraying their extinguisher: on foot, with agent left.
+    pub fn spray(&mut self, slot: u8, on: bool) -> Result<(), Refusal> {
+        let free = self.bodies.iter().any(|b| b.slot == slot && b.free());
+        let k = self.kits.iter_mut().find(|k| k.slot == slot && k.agent_s > 0.0).ok_or(Refusal::NoSuch)?;
+        if on && !free {
+            return Err(Refusal::Walking);
+        }
+        k.spraying = on;
+        Ok(())
+    }
+
+    /// The Tern's rooms where a player is spraying an extinguisher now, one entry a player: where the body's chest is.
+    fn sprays(&self) -> Vec<usize> {
+        let rooms = &self.data.tern_layout.rooms;
+        self.kits
+            .iter()
+            .filter(|k| k.spraying && k.agent_s > 0.0)
+            .filter_map(|k| self.bodies.iter().find(|b| b.slot == k.slot && b.free()))
+            .filter_map(|b| {
+                let chest = DVec3::new(f64::from(b.pos[0]), f64::from(b.pos[1]) + 1.2, f64::from(b.pos[2]));
+                rooms.iter().position(|r| r.contains(chest))
+            })
+            .collect()
     }
 
     fn step_bodies(&mut self) {
@@ -2139,13 +2357,23 @@ impl Drill {
 
     /// Fires burn and spread, teams travel and repair, for both ships (ship-damage 5).
     fn damage_tick(&mut self) {
+        self.open_repair_jobs();
+        let tern_sprays = self.sprays();
+        for k in &mut self.kits {
+            if k.spraying {
+                k.agent_s = (k.agent_s - DT).max(0.0);
+                k.spraying = k.agent_s > 0.0;
+            }
+        }
         for si in 0..2 {
             if !(self.ships[si].alive && self.ships[si].active) {
                 continue;
             }
             let l = if si == 0 { &self.data.tern_layout } else { &self.data.hound_layout };
             let priority = if si == 0 { self.repair_priority.as_deref() } else { None };
-            let ev = damage::tick(l, &mut self.damage[si], &self.data.damage, DT, priority);
+            // The Tern's players spraying an extinguisher in a room: a hand each at its fire (all-hands 4).
+            let sprays = if si == 0 { tern_sprays.as_slice() } else { &[] };
+            let ev = damage::tick(l, &mut self.damage[si], &self.data.damage, DT, priority, sprays);
             for e in ev {
                 if let damage::DamageEvent::HullBurned { mj } = e {
                     self.hull_loss(si, mj);
@@ -3708,6 +3936,80 @@ mod tests {
         walk_body(&mut d, a, [-1.8, 3.5, 27.4]);
         d.claim(a, Station::Tactical).expect("in reach");
         walk_until(&mut d, |d| d.operator(Station::Tactical) == Operator::Player(a));
+    }
+
+    /// All hands (all-hands 4): a player takes an extinguisher at the damage-control locker, from nowhere else, and
+    /// sprays a fire in its room out; alone it takes three extinguishers (40 hand-seconds at 15 s of agent each).
+    #[test]
+    fn a_player_takes_extinguishers_at_the_locker_and_sprays_a_fire_out() {
+        let mut d = on_foot();
+        let a = d.join("Ens. Holt", false).expect("joins");
+        assert_eq!(d.take_extinguisher(a), Err(Refusal::TooFar), "the locker is on deck B, the body on the bridge");
+        assert_eq!(d.spray(a, true), Err(Refusal::NoSuch), "nothing to spray");
+        let l = d.data.tern_layout.lockers[0];
+        walk_body(&mut d, a, [l.x as f32 + 0.8, l.y as f32, l.z as f32]);
+        d.take_extinguisher(a).expect("at the locker");
+        let room = d.data.tern_layout.room("damage_control").expect("the damage control room");
+        d.damage[0].teams.clear();
+        d.damage[0].fires.push(damage::Fire::new(room));
+        let mut taken = 1;
+        let mut t = 0.0;
+        while d.damage[0].fires.iter().any(|f| f.room == room) && t < 120.0 {
+            if d.kits[0].agent_s <= 0.0 {
+                d.take_extinguisher(a).expect("another, at the locker");
+                taken += 1;
+            }
+            if !d.kits[0].spraying {
+                d.spray(a, true).expect("sprays");
+            }
+            d.damage_tick();
+            t += DT;
+        }
+        assert!(!d.damage[0].fires.iter().any(|f| f.room == room), "out within two minutes ({t:.1} s)");
+        assert!((t - 40.0).abs() < 0.5, "one player puts a fire out in 40 s of spraying: {t:.1} s");
+        assert_eq!(taken, 3, "15 s of agent an extinguisher");
+    }
+
+    /// Repairs on deck (all-hands 5): a damaged machine is repaired by a player who walked to it, round by round,
+    /// each round checked by the server; from across the ship nothing docks, and a round faster than any hand lands
+    /// nothing.
+    #[test]
+    fn a_player_repairs_a_machine_they_walked_to_round_by_round() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let data = crate::repair::data::RepairData::load_for_ship(|rel| {
+            std::fs::read_to_string(root.join(rel)).map_err(|e| format!("{rel}: {e}"))
+        })
+        .expect("the repair data");
+        let mut d = on_foot();
+        d.set_repairs(data);
+        let a = d.join("Ens. Holt", false).expect("joins");
+        let li = d.data.tern_layout.loads.iter().position(|l| l.id == "coolant_pump_a").expect("pump A");
+        d.damage[0].integrity[li] = 50.0;
+        let rd = d.repairs.as_ref().unwrap();
+        let job =
+            rd.data.ship.jobs.iter().position(|j| j.loads.iter().any(|l| l == "coolant_pump_a")).expect("its job");
+        assert_eq!(d.dock(a, job), Err(Refusal::TooFar), "the pump is on deck C, the body on the bridge");
+        let c = d.data.tern_layout.loads[li].centre;
+        walk_body(&mut d, a, [c.x as f32 + 1.0, c.y as f32 - 0.5, c.z as f32]);
+        let first = d.dock(a, job).expect("docked at the pump");
+        assert_eq!(first.round, 0);
+        assert_eq!(d.round_done(a, job, 0, 0.01), Err(Refusal::BadValue), "faster than any hand: nothing lands");
+        let mut round = first.round;
+        let mut rounds = 0;
+        loop {
+            let before = d.damage[0].integrity[li];
+            let next = d.round_done(a, job, round, 60.0).expect("a round landed");
+            rounds += 1;
+            assert!(d.damage[0].integrity[li] > before, "a landed round raises the pump");
+            match next {
+                Some(o) => round = o.round,
+                None => break,
+            }
+            assert!(rounds < 20, "a job has a few rounds");
+        }
+        let nominal = d.data.damage.systems.nominal_from_pct;
+        assert!(d.damage[0].integrity[li] >= nominal - 1e-9, "repaired: {}", d.damage[0].integrity[li]);
+        assert!(d.repairs.as_ref().unwrap().book.jobs.is_empty(), "the job closes once the pump is back");
     }
 
     #[test]

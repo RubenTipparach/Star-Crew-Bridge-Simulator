@@ -85,6 +85,9 @@ pub enum Stage {
     Closed,
 }
 
+/// A repair job's next round as the server gave it: the round, its level, whether it opens with the part.
+pub type RepairRound = (u8, u8, bool);
+
 /// A client's session.
 pub struct Session {
     net: ClientNet,
@@ -107,6 +110,9 @@ pub struct Session {
     visuals: Vec<Visual>,
     /// The last refusal and when.
     pub refused: Option<(Refusal, f64)>,
+    /// Repair orders since the client last took them (all-hands 5): a job, and its next round (round, level, part) or
+    /// none when it is done.
+    pub repairs: Vec<(u8, Option<RepairRound>)>,
     /// The smoothed round trip, in milliseconds.
     pub rtt_ms: Option<f64>,
     epoch: Instant,
@@ -144,6 +150,7 @@ impl Session {
             stick_link: Link::default(),
             visuals: Vec::new(),
             refused: None,
+            repairs: Vec::new(),
             rtt_ms: None,
             epoch: Instant::now(),
             last_ping: -10.0,
@@ -227,6 +234,7 @@ impl Session {
             ServerMsg::Decoy(id) => self.visuals.push(Visual::Decoy(id)),
             ServerMsg::Burst { pos, size, .. } => self.visuals.push(Visual::Burst { pos, size }),
             ServerMsg::Launched { .. } | ServerMsg::Phase(..) => {}
+            ServerMsg::Repair { job, next } => self.repairs.push((job, next)),
             ServerMsg::Pong(ms) => {
                 let rtt = (now * 1000.0 - f64::from(ms)).max(0.0);
                 self.rtt_ms = Some(self.rtt_ms.map_or(rtt, |r| r * 0.8 + rtt * 0.2));
@@ -302,6 +310,31 @@ impl Session {
     /// Get up from the seat.
     pub fn stand(&self) {
         self.net.send(Chan::Command, ClientMsg::Stand.encode());
+    }
+
+    /// Take an extinguisher at the damage-control locker.
+    pub fn take_extinguisher(&self) {
+        self.net.send(Chan::Command, ClientMsg::TakeExtinguisher.encode());
+    }
+
+    /// Spray the extinguisher carried, or stop.
+    pub fn spray(&self, on: bool) {
+        self.net.send(Chan::Command, ClientMsg::Spray(on).encode());
+    }
+
+    /// Dock at a repair job.
+    pub fn dock(&self, job: u8) {
+        self.net.send(Chan::Command, ClientMsg::Dock(job).encode());
+    }
+
+    /// A round of a repair job landed, in `play_s` seconds.
+    pub fn round_done(&self, job: u8, round: u8, play_s: f32) {
+        self.net.send(Chan::Command, ClientMsg::RoundDone { job, round, play_s }.encode());
+    }
+
+    /// Stand up from a repair.
+    pub fn undock(&self) {
+        self.net.send(Chan::Command, ClientMsg::Undock.encode());
     }
 
     /// Ready, or not.

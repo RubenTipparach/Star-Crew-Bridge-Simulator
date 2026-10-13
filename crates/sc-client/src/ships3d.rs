@@ -235,6 +235,70 @@ pub fn burst() -> MeshBuilder {
     m
 }
 
+/// Flames on a burning room's floor (all-hands 4): five tongues about the middle, each two crossed blades seen from
+/// both sides, bright enough to glow (colours over 1), the tallest 1.4 m; the draw flickers their height.
+pub fn flames() -> MeshBuilder {
+    let mut m = MeshBuilder::default();
+    let tongues: [(f32, f32, f32); 5] =
+        [(0.0, 0.0, 1.0), (0.35, 0.2, 0.75), (-0.3, 0.25, 0.8), (0.2, -0.35, 0.7), (-0.25, -0.3, 0.65)];
+    for (k, (x, z, h)) in tongues.into_iter().enumerate() {
+        let w = 0.28;
+        let c = if k % 2 == 0 { [2.4, 1.0, 0.25] } else { [2.6, 1.7, 0.5] };
+        let tip = [x, h * 1.4, z];
+        for (dx, dz) in [(w, 0.0), (0.0, w)] {
+            let (a, b) = ([x - dx, 0.0, z - dz], [x + dx, 0.0, z + dz]);
+            m.tri(a, b, tip, c);
+            m.tri(b, a, tip, c);
+        }
+    }
+    m
+}
+
+/// A puff of extinguishing agent: a white ball (the burst's shape), drawn along a spray.
+pub fn puff() -> MeshBuilder {
+    let mut m = MeshBuilder::default();
+    let (rings, segs) = (4, 6);
+    let p = |i: usize, j: usize| {
+        let th = std::f32::consts::PI * i as f32 / rings as f32;
+        let ph = std::f32::consts::TAU * j as f32 / segs as f32;
+        [th.sin() * ph.cos(), th.cos(), th.sin() * ph.sin()]
+    };
+    for i in 0..rings {
+        for j in 0..segs {
+            let c = if (i + j) % 2 == 0 { [1.3, 1.35, 1.4] } else { [1.1, 1.15, 1.2] };
+            let (a, b, cc, d) = (p(i, j), p(i, j + 1), p(i + 1, j + 1), p(i + 1, j));
+            m.tri(a, b, cc, c);
+            m.tri(a, cc, d, c);
+        }
+    }
+    m
+}
+
+/// The extinguisher in a player's hand: a red cylinder (an eight-sided prism) 0.4 m long, its black hose and nozzle
+/// at the top, upright in its own frame.
+pub fn extinguisher() -> MeshBuilder {
+    let mut m = MeshBuilder::default();
+    let (r, h) = (0.07f32, 0.4f32);
+    let ring = |y: f32, r: f32| -> Vec<[f32; 3]> {
+        (0..8)
+            .map(|i| {
+                let a = std::f32::consts::TAU * i as f32 / 8.0;
+                [a.cos() * r, y, a.sin() * r]
+            })
+            .collect()
+    };
+    let (lo, hi) = (ring(0.0, r), ring(h, r));
+    for i in 0..8 {
+        let j = (i + 1) % 8;
+        m.quad(lo[i], lo[j], hi[j], hi[i], if i % 2 == 0 { [0.75, 0.08, 0.08] } else { [0.6, 0.05, 0.05] });
+        m.tri(hi[i], hi[j], [0.0, h + 0.03, 0.0], [0.5, 0.05, 0.05]);
+    }
+    let nozzle = [[-0.015, h, -0.015], [0.015, h, -0.015], [0.015, h + 0.06, -0.12], [-0.015, h + 0.06, -0.12]];
+    m.quad(nozzle[0], nozzle[1], nozzle[2], nozzle[3], [0.08, 0.08, 0.08]);
+    m.quad(nozzle[1], nozzle[0], nozzle[3], nozzle[2], [0.08, 0.08, 0.08]);
+    m
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

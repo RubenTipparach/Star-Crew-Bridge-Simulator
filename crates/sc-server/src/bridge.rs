@@ -40,6 +40,16 @@ pub fn seats(root: &Path, data: &DrillData, stations: &[Station]) -> Result<Vec<
         .collect()
 }
 
+/// Each seat on the floor under it: the layout gives a seat its deck's height, and a station on a platform (the work
+/// rings, the sub-platform, the dais) stands higher, where its body sits and its eye is.
+pub fn on_floor(seats: &mut [(Station, [f32; 3], f32)], world: &WalkWorld) {
+    for (_, p, _) in seats.iter_mut() {
+        if let Some(y) = world.floor_below(p[0], p[1] + 1.0, p[2]).filter(|y| (y - p[1]).abs() < 1.0) {
+            p[1] = y;
+        }
+    }
+}
+
 /// How far from a muster room's middle its people may stand, on floor joined to the bridge, metres.
 const MUSTER_REACH_M: f32 = 6.0;
 
@@ -76,6 +86,8 @@ pub fn load(data: &DrillData, root: &Path, deck: Option<&Path>) -> Result<(Bridg
     };
     let tris = d.walk_triangles();
     let world = WalkWorld::new(&tris, &ents, &walk)?;
+    let mut seats = seats;
+    on_floor(&mut seats, &world);
     // The whole ship: the crew start in rooms on every deck and walk up to the bridge by its ladders. Each muster place
     // stands on the nearest floor joined to the bridge's seats (a room's middle may be under a table, or on one).
     let (mut grid, decks) = NavGrid::for_ship(&world, w, &tris);

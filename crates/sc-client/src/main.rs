@@ -23,6 +23,7 @@
 //! fails if the body does not arrive where the route ends.
 
 mod console;
+mod deckrepair;
 mod drill;
 mod drill_bridge;
 mod first_light;
@@ -668,6 +669,7 @@ impl Client {
                     seed: l.seed(),
                     hand_test: hand_dir,
                     playtest: false,
+                    all_hands: false,
                 };
                 platform::hand_over(move |_| drill::DrillApp::new(args).map(|c| Box::new(c) as Box<dyn App>));
             }
@@ -1534,6 +1536,7 @@ fn main() -> ExitCode {
             seed: 0,
             hand_test: None,
             playtest: false,
+            all_hands: false,
         };
         return platform::run(cfg, move |gl| {
             println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);
@@ -1541,8 +1544,9 @@ fn main() -> ExitCode {
         });
     }
     // Single player without the menu (openspec/changes/single-player): `--solo [--station S] [--bot] [--shots DIR]
-    // [--playtest]`; `--bot` lets the player's own station play itself, for captures of a whole round; `--playtest`
-    // plays it on foot, a scripted player walking the ship to its stations (`playtest`, CLAUDE.md 12).
+    // [--playtest] [--all-hands]`; `--bot` lets the player's own station play itself, for captures of a whole round;
+    // `--playtest` plays it on foot, a scripted player walking the ship to its stations (`playtest`, CLAUDE.md 12);
+    // `--all-hands` puts no damage-control teams aboard: the crew fight the fires and fix the ship (all-hands 1).
     if args.iter().any(|a| a == "--solo") {
         let station = args.iter().position(|a| a == "--station").and_then(|i| args.get(i + 1));
         let station = station.map(String::as_str).and_then(sc_core::combat::Station::from_id);
@@ -1568,6 +1572,7 @@ fn main() -> ExitCode {
             seed: 7,
             hand_test: None,
             playtest: args.iter().any(|a| a == "--playtest"),
+            all_hands: args.iter().any(|a| a == "--all-hands"),
         };
         return platform::run(cfg, move |gl| {
             println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);
