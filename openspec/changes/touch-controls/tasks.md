@@ -5,7 +5,8 @@ The owner, 2026-10-13: "does the itch io game work with mobile? can you make it 
 ## 1. Write-up
 
 - [x] 1.1 Proposal, design and spec delta.
-- [x] 1.2 The mockup, `docs/mockups/touch-controls.html`: walking, at a station, seated, the map, held upright.
+- [x] 1.2 The mockup, `docs/mockups/touch-controls.html`, played by finger or mouse: deck A walked with the stick and
+  the look drag, USE at a seat, the embedded console with taps and long presses, STAND, the map, the menu, held upright.
 - [ ] 1.3 The owner approves the mockup (CLAUDE.md section 10), and the STAND button in `consoles.html`.
 
 ## 2. Build (after 1.3)

@@ -44,6 +44,10 @@
   #bar .sep { width: 1px; height: 24px; background: var(--line); margin: 0 6px; }
   #bar .cost { color: var(--dim); font-size: 12px; margin-left: auto; padding-left: 12px; }
   #stage { position: fixed; left: 0; right: 0; top: 44px; bottom: 0; display: flex; align-items: center; justify-content: center; }
+  body.embed #bar { display: none; }
+  body.embed #stage { top: 0; }
+  /* Embedded in a game screen (touch-controls design 4): black behind and beside the console, nothing else drawn. */
+  html:has(body.embed), body.embed, body.embed #console { background: #000; }
   #console { position: absolute; width: 1280px; height: 720px; transform-origin: 0 0; background: #070a0f; overflow: hidden;
     user-select: none; -webkit-user-select: none; touch-action: none; }
   #console svg { position: absolute; left: 0; top: 0; overflow: hidden; } /* a panel never draws outside its box (CLAUDE.md 10) */
@@ -7534,6 +7538,60 @@ fit(); render();
 requestAnimationFrame(frame);
 // A flat page: no 3D scene for tools/mockups/zfight.mjs to check.
 window.MOCKUP_FLAT = true;
+// Embedded in another mockup (touch-controls.html opens it when the body sits down): ?seat=<station> plays single
+// player from that seat, ?embed=1 drops the bar so the console fills the frame, and the parent is told of every press
+// (a "console-touched" message) so it can show the tap.
+{
+  const q = new URLSearchParams(location.search), seat = q.get("seat");
+  if (seat && STATIONS.some((o) => o.id === seat)) soloOn(seat);
+  if (q.get("embed") === "1") {
+    document.body.classList.add("embed");
+    addEventListener("pointerdown", (e) => { if (parent !== window) parent.postMessage({ kind: "console-touched", x: e.clientX, y: e.clientY }, "*"); });
+  }
+  // A finger (touch-controls design 4), for touch pointers, or for every pointer with ?finger=1 (a mouse standing in
+  // for a finger): a tap within FINGER.reach_px CSS px of a button presses it (a hit area of at least 44 px, what is
+  // drawn unchanged); held FINGER.long_s still, it shows the button's tooltip and presses nothing. A drag or a hold
+  // control (a fader, the throttle, a hold button) takes the finger at once, as it takes the mouse.
+  const FINGER = { reach_px: 22, long_s: 0.5, still_px: 10 }, allFingers = q.get("finger") === "1";
+  let press = null;
+  const live = (el) => el && el.closest && el.closest("[data-act],[data-drag],[data-hold]");
+  /** The control under (x, y), or the nearest within reach of it, measured to the edges of its box. */
+  function nearest(x, y) {
+    const hit = live(document.elementFromPoint(x, y));
+    if (hit) return hit;
+    let best = null, bd = FINGER.reach_px;
+    for (const el of CONSOLE.querySelectorAll("[data-act]")) {
+      const r = el.getBoundingClientRect(), dx = Math.max(r.left - x, 0, x - r.right), dy = Math.max(r.top - y, 0, y - r.bottom), d = Math.hypot(dx, dy);
+      if (r.width > 0 && d < bd) { bd = d; best = el; }
+    }
+    return best;
+  }
+  const replay = (el, type, x, y, id) => el.dispatchEvent(Object.assign(new PointerEvent(type, { bubbles: true, clientX: x, clientY: y, pointerId: id, pointerType: "touch", isPrimary: true }), { replayed: true }));
+  CONSOLE.addEventListener("pointerdown", (e) => {
+    if (e.replayed || !(allFingers || e.pointerType === "touch")) return;
+    const el = nearest(e.clientX, e.clientY);
+    if (!el || el.closest("[data-drag],[data-hold]")) return;   // nothing near, or a drag or a hold: as the mouse
+    e.stopImmediatePropagation(); e.preventDefault();
+    const r = el.getBoundingClientRect();
+    press = { el, x: e.clientX, y: e.clientY, id: e.pointerId, cx: (r.left + r.right) / 2, cy: (r.top + r.bottom) / 2, long: false };
+    press.timer = setTimeout(() => {
+      press.long = true;
+      const t = el.closest("[data-tip]") || el.querySelector("[data-tip]");
+      TIP.textContent = t ? t.dataset.tip : el.textContent.trim() || el.dataset.act;
+      TIP.style.display = "block"; TIP.style.left = Math.max(4, press.cx - 60) + "px"; TIP.style.top = Math.max(4, r.top - 34) + "px";
+    }, FINGER.long_s * 1000);
+  }, true);
+  addEventListener("pointermove", (e) => {
+    if (press && e.pointerId === press.id && Math.hypot(e.clientX - press.x, e.clientY - press.y) > FINGER.still_px) { clearTimeout(press.timer); if (!press.long) press = null; }
+  }, true);
+  addEventListener("pointerup", (e) => {
+    if (!press || e.pointerId !== press.id) return;
+    clearTimeout(press.timer);
+    const p = press; press = null;
+    if (p.long) { TIP.style.display = "none"; return; }   // a long press shows the value and presses nothing
+    replay(p.el, "pointerdown", p.cx, p.cy, p.id);
+  }, true);
+}
 document.fonts.ready.then(() => { render(); window.MOCKUP_READY = true; });
 </script>
 </body>

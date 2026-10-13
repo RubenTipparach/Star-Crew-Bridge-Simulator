@@ -41,3 +41,12 @@ drawn unchanged, and a long press SHALL show the tooltip a hover shows without p
 #### Scenario: Long press for the exact value
 - **WHEN** a seated player holds a finger still on a control for 0.5 s and lifts it
 - **THEN** the control's tooltip was shown and the control was not pressed
+
+### Requirement: A seated console covers the screen and the room is not drawn
+
+Once a seated player's console is up, it SHALL fill the screen on a black background and the client SHALL skip the 3D
+pass until the player stands; the room SHALL be drawn while the body sits down and stands up.
+
+#### Scenario: Sitting at Helm on a phone
+- **WHEN** the body sits at Helm and the console has risen
+- **THEN** the screen shows the console and black bars only, and no 3D draw call is made until STAND is held

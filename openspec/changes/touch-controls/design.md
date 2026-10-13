@@ -1,7 +1,14 @@
 # Design: touch-controls
 
-The proposal says why. This says how, with the numbers. The mockup is `docs/mockups/touch-controls.html`; its
-shots are in `docs/screenshots/mockups/touch-controls-*.png`. Nothing here is built yet.
+The proposal says why. This says how, with the numbers. Nothing here is built in the engine yet.
+
+The mockup is `docs/mockups/touch-controls.html`, and it is played, not looked at: deck A of the Tern (the command
+deck's rooms) walked in first person with this design's touch layer, on a phone or, on a desktop, with the mouse as a
+finger. The stick appears under the left thumb and runs at its rim, a drag on the right looks, USE names what is in
+reach and sits the body at a bridge seat, the station's console (`consoles.html`, embedded) rises from the desk and
+takes taps and long presses, and STAND held stands the body up. MAP and MENU sit in the top corners; the menu holds
+the lighting states. The body is `lib/shipwalk.js`'s, the one walk every mockup uses, driven through its `external`
+input. Its shots are `docs/screenshots/mockups/touch-controls-*.png`.
 
 ## 1. What a phone player does
 
@@ -11,7 +18,7 @@ change: thumbs on glass instead of keys and a mouse.
 
 Held sideways only. A phone held upright is about 390 x 844 CSS px: the 16:9 view would be a strip a third of the
 screen tall, and a console would be scaled to 0.3. Upright, the page shows a card asking for the phone to be turned
-(the mockup's `portrait` shot) and the game keeps running behind it.
+(the mockup's `upright` shot) and the game keeps running behind it.
 
 ## 2. Fingers in the platform layer
 
@@ -51,8 +58,15 @@ The layer's zones, left to right:
   extinguisher is USE held, as E held is.
 - **Flying the free camera (F)** is a developer key and gets no button.
 
+- **Nothing else floats over the game** (owner, 2026-10-13, on the mockup: "way too many popups to be usefule"): no
+  help panel, cost meter or title over the view. The help, the lighting states and the cost live in the game menu.
+
 ## 4. Seated: the console by finger
 
+- **The console fills the screen, on black, and the room is not drawn behind it** (owner, 2026-10-13: "when dashboard
+  is full screen, room shouldnt be rendering", "background of dashboard should be balck to save on rendering perf").
+  The room is drawn while the body sits down and stands up (sit_s and stand_s, 0.4 s each), so the move is seen; once
+  the console is up the frame draws only the console and its black bars, and the 3D pass is skipped until STAND.
 - **A tap is a click**, at the same point, through the same `Hit` test as the mouse (`seat.rs`). A drag is a mouse
   drag (faders, the shield dial, the plan view).
 - **Hit areas grow, drawings do not.** On touch, each control's hit rectangle is inflated to at least 44 CSS px on
@@ -61,8 +75,8 @@ The layer's zones, left to right:
   finger can hit changes.
 - **Long press is hover.** Held 0.5 s without moving more than 10 px, a control shows the tooltip the mouse shows on
   hover, and lifting the finger then does not press it.
-- **STAND** is a 48 px button in the top-left corner of the console, outside the 1280 x 720 frame where the screen's
-  aspect leaves room (a phone is wider than 16:9) and over the title band's left end where it does not. It is
+- **STAND** is a 48 px button in the black bar beside the console where the screen's aspect leaves room (a phone is
+  wider than 16:9), and over the title band's left end where it does not. It is
   hold-E. This is a control the console mockups lack, so it goes into `docs/mockups/consoles.html` for approval
   with this change.
 - **Repair games** (`sc-repairs`) already take a pointer with `TOUCH_R` = 30 px reach; a finger is their pointer.
@@ -109,6 +123,8 @@ mobile" notice in place of the game. This is a dashboard setting, not a file the
   vertex buffer, their labels in the text batch), under 800 triangles (the mockup counts 768 with the stick and a look drag), against the table's 300 draw calls and its
   2 ms of UI CPU (`engine-stack` design, "The Pi 5 budget"). No memory beyond a fixed 4-finger array and the layer's
   vertex buffer, under 16 KB. No network traffic: the layer makes the same intents the keyboard does.
+- Seated, the 3D pass is skipped (section 4): the frame is the console's UI draw calls alone, which gives back the
+  room's triangles and draws for as long as a player sits, on the Pi and on a phone alike.
 - A phone's frame rate says nothing about a Pi (CLAUDE.md section 2).
 
 ## 9. Not in this change
@@ -120,6 +136,6 @@ mobile" notice in place of the game. This is a dashboard setting, not a file the
 
 ## 10. Recommendations taken (ask only with screenshots)
 
-- Landscape only, upright shows a card. Recommendation taken; the mockup's `portrait` shot shows it.
+- Landscape only, upright shows a card. Recommendation taken; the mockup's `upright` shot shows it.
 - A floating stick (it appears under the thumb) over a fixed one: thumbs land in different places on different
-  phones. Recommendation taken; the owner can see it in the mockup's `walk` shot and say otherwise.
+  phones. Recommendation taken; the owner can try it in the mockup and say otherwise.
