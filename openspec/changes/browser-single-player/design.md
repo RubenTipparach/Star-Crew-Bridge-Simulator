@@ -97,10 +97,14 @@ does. Two things change because a page is not a window:
   step is held to 0.1 s (`drill.rs`), so coming back does not race the game forward.
 - **The silence rule must not drop a paused game.** The server drops a peer it has not heard from in 5 s
   (`SILENT_S`, measured on the wall clock with `Instant`). After a hidden tab, the server's first poll would find every
-  peer, the player included, silent for as long as the tab was hidden, and drop the whole crew. So the server counts
-  silence in its own ticks: a peer is dropped after `SILENT_S` worth of ticks (150 at 30 Hz) with nothing from it. A
-  dedicated server ticks without stopping, so for it the rule reads as before; a whole game that stops (a hidden tab,
-  a debugger, a laptop lid) drops nobody, because the server stopped too. The 5 s itself does not change.
+  peer, the player included, silent for as long as the tab was hidden, and drop the whole crew. So a peer is silent
+  only when it is silent on both clocks: `SILENT_S` worth of the server's own ticks (150 at 30 Hz) and `SILENT_S` of
+  the wall clock. The ticks keep a paused game whole: the server paused with it, so a hidden tab, a debugger or a
+  laptop lid drops nobody. The wall clock keeps a fast game whole: a server stepped faster than real time (the tests,
+  a headless capture, which steps a fixed 1/30 s a frame however long the frame takes) must not drop a client that
+  pings once a real second. Built first on ticks alone, the single-player test dropped the player within 0.1 s of
+  wall clock at four times real speed, which is why both clocks are in the rule. A dedicated server ticks in real
+  time, so for it the two are the same 5 s. The 5 s itself does not change.
 
 ## 5. Startup in the browser
 
@@ -122,7 +126,7 @@ embedded.
 | --- | --- |
 | The local link, `LocalDoor`, `Dial` | `sc-net/src/transport.rs` (it may grow a `local.rs` beside it) |
 | `Session::connect` taking a `Dial` | `sc-net/src/session.rs` |
-| `Listen`, `DrillServer::dial`, the silence rule in ticks | `sc-server/src/lib.rs` |
+| `Listen`, `DrillServer::dial`, the silence rule on both clocks | `sc-server/src/lib.rs` |
 | Hosting over the local link | `sc-client/src/solo.rs` |
 | Beam aboard no longer becomes the tour in the browser | `sc-client/src/main.rs` (the `web && Solo` gate goes) |
 | Playing into a round in the smoke test | `tools/web/smoke.mjs` |
@@ -144,10 +148,14 @@ does not know it is local.
 
 - `sc-net`: a server and a client on a local link open, exchange messages on all three channels in order, and close
   from either end, with no thread or socket (the WebRTC loopback test's twin).
-- `sc-server`: a peer silent for `SILENT_S` worth of ticks is dropped; a server that is not ticked for 30 s of wall
-  clock drops nobody.
-- `sc-client`: the in-process single-player test (`single-player` 9) runs over the local link, and leaving the game
-  leaves no thread behind.
+- `sc-server` (`tests/local_link.rs`): a peer silent for `SILENT_S` on both clocks is dropped; a server stepped ten
+  times past the limit in under a second keeps a quiet client; a game paused for `SILENT_S` + 1 s of wall clock drops
+  nobody. (The plan was a 30 s pause; 6 s shows the same, since any pause past the limit would drop the crew under
+  the old rule.)
+- `sc-client`: the in-process single-player test (`single-player` 9) runs over the local link (2.4 s, against about
+  30 s over loopback WebRTC). Leaving the game leaves no thread behind because the local link starts none
+  (`sc-net/src/local.rs` has no thread or socket in it); the test does not count threads, because the test harness
+  runs other tests' threads beside it.
 - `tools/web/smoke.mjs` plays into a round in the browser: Beam aboard, the crew seated, READY, and the round's first
   phase line ("round 1 ..."), failing the release on "no ship (", a page error, or no round. It already runs before
   every push to itch.io (`tools/web/release.sh`, `.github/workflows/web.yml`).
@@ -167,4 +175,4 @@ does not know it is local.
 | Id | Question | Recommendation | Status |
 | --- | --- | --- | --- |
 | B1 | The desktop's single player also moves to the local link | Yes: one way to host on every platform, no threads or ports to leak, less work on a Pi | Recommendation taken (ask only with screenshots) |
-| B2 | Silence counted in the server's ticks rather than the wall clock, for every server | Yes: a dedicated server reads the same; a paused game drops nobody | Recommendation taken (ask only with screenshots) |
+| B2 | Silence counted on the server's ticks as well as the wall clock, for every server | Yes: a dedicated server reads the same; a paused game drops nobody; a fast-stepped server drops nobody | Recommendation taken (ask only with screenshots) |

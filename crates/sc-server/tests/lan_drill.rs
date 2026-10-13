@@ -13,7 +13,13 @@ use std::time::{Duration, Instant};
 
 fn play(impair: Impair, seed: u64) -> (DrillServer, Vec<Session>) {
     let lo = "127.0.0.1".parse().unwrap();
-    let cfg = ServerConfig { listen: "127.0.0.1:0".parse().unwrap(), host_ip: lo, impair, seed, bridge: None };
+    let cfg = ServerConfig {
+        listen: "127.0.0.1:0".parse::<std::net::SocketAddr>().unwrap().into(),
+        host_ip: lo,
+        impair,
+        seed,
+        bridge: None,
+    };
     let data = DrillData::shipped();
     let mut server = DrillServer::start(data.clone(), &cfg).unwrap();
     let mut clients: Vec<(Session, Bot)> = [Station::Helm, Station::Tactical]
@@ -78,7 +84,7 @@ fn a_client_that_goes_silent_loses_its_seat_to_automation_within_six_seconds() {
     use sc_core::combat::Operator;
     let lo = "127.0.0.1".parse().unwrap();
     let cfg = ServerConfig {
-        listen: "127.0.0.1:0".parse().unwrap(),
+        listen: "127.0.0.1:0".parse::<std::net::SocketAddr>().unwrap().into(),
         host_ip: lo,
         impair: Impair::default(),
         seed: 3,
@@ -126,7 +132,7 @@ fn on_foot_a_lone_tactical_bot_walks_to_helm_and_a_second_bot_takes_tactical() {
     let lo = "127.0.0.1".parse().unwrap();
     let data = DrillData::shipped();
     let cfg = ServerConfig {
-        listen: "127.0.0.1:0".parse().unwrap(),
+        listen: "127.0.0.1:0".parse::<std::net::SocketAddr>().unwrap().into(),
         host_ip: lo,
         impair: Impair::default(),
         seed: 5,

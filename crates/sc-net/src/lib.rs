@@ -7,6 +7,7 @@
 
 pub mod bot;
 pub mod link;
+pub mod local;
 pub mod msg;
 pub mod session;
 pub mod transport;
