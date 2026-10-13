@@ -1,0 +1,96 @@
+{
+  "status": "pass",
+  "includes_merged_component_surfaces": true,
+  "views": [
+    {
+      "ship": "shrike",
+      "stage": "hull",
+      "deck": "A",
+      "triangles": 1964,
+      "surface_pairs": 0,
+      "overlap_m2": 0.0,
+      "setup": "SHIP_VIEW.show('shrike','hull','A','cutaway')"
+    },
+    {
+      "ship": "shrike",
+      "stage": "fit",
+      "deck": "A",
+      "triangles": 1750,
+      "surface_pairs": 0,
+      "overlap_m2": 0.0,
+      "setup": "SHIP_VIEW.show('shrike','fit','A','cutaway')"
+    },
+    {
+      "ship": "shrike",
+      "stage": "fit",
+      "deck": "B",
+      "triangles": 1488,
+      "surface_pairs": 0,
+      "overlap_m2": 0.0,
+      "setup": "SHIP_VIEW.show('shrike','fit','B','cutaway')"
+    },
+    {
+      "ship": "vark",
+      "stage": "hull",
+      "deck": "A",
+      "triangles": 2092,
+      "surface_pairs": 0,
+      "overlap_m2": 0.0,
+      "setup": "SHIP_VIEW.show('vark','hull','A','cutaway')"
+    },
+    {
+      "ship": "vark",
+      "stage": "fit",
+      "deck": "A",
+      "triangles": 2002,
+      "surface_pairs": 0,
+      "overlap_m2": 0.0,
+      "setup": "SHIP_VIEW.show('vark','fit','A','cutaway')"
+    },
+    {
+      "ship": "vark",
+      "stage": "fit",
+      "deck": "B",
+      "triangles": 1918,
+      "surface_pairs": 0,
+      "overlap_m2": 0.0,
+      "setup": "SHIP_VIEW.show('vark','fit','B','cutaway')"
+    },
+    {
+      "ship": "gorath",
+      "stage": "hull",
+      "deck": "A",
+      "triangles": 2080,
+      "surface_pairs": 0,
+      "overlap_m2": 0.0,
+      "setup": "SHIP_VIEW.show('gorath','hull','A','cutaway')"
+    },
+    {
+      "ship": "gorath",
+      "stage": "fit",
+      "deck": "A",
+      "triangles": 1756,
+      "surface_pairs": 0,
+      "overlap_m2": 0.0,
+      "setup": "SHIP_VIEW.show('gorath','fit','A','cutaway')"
+    },
+    {
+      "ship": "gorath",
+      "stage": "fit",
+      "deck": "B",
+      "triangles": 1964,
+      "surface_pairs": 0,
+      "overlap_m2": 0.0,
+      "setup": "SHIP_VIEW.show('gorath','fit','B','cutaway')"
+    },
+    {
+      "ship": "gorath",
+      "stage": "fit",
+      "deck": "C",
+      "triangles": 1734,
+      "surface_pairs": 0,
+      "overlap_m2": 0.0,
+      "setup": "SHIP_VIEW.show('gorath','fit','C','cutaway')"
+    }
+  ]
+}

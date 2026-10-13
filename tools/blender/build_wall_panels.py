@@ -86,6 +86,7 @@ sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(ROOT, "tools", "materials"))
 import hs_kit as kit  # noqa: E402  the hard-surface kit: prism, obox, ngon, frame, Prop, apply_modifiers
 import postprocess as mm  # noqa: E402  the materials' post-process: reduce_palette, to_u8, gpu_bytes, save_png
+from panel_catalog import load_catalog
 
 PANELS_JSON = os.path.join(ROOT, "data", "materials", "panels.json")
 MATERIALS_JSON = os.path.join(ROOT, "data", "materials", "materials.json")
@@ -251,12 +252,12 @@ def module_ok(M, where, drawn_ok=True):
 
 def load_panels():
     """Read and validate panels.json. Every key the build uses is checked; unknown keys stop it."""
-    with open(PANELS_JSON, encoding="utf-8") as f:
-        d = json.load(f)
+    d = load_catalog(PANELS_JSON)
     if d.get("schema") != SCHEMA:
         fail(f"schema must be {SCHEMA!r}")
     keys_exact(d, {"schema", "status", "layers", "bands", "bays", "rule", "glow", "render", "ui", "finishes", "source",
-                   "cells", "walkway", "trims", "platforms", "edges", "upholstery"}, "top level")
+                   "cells", "walkway", "trims", "platforms", "edges", "upholstery", "design"}, "top level")
+    if d.get('design','federation') not in ('federation','grabon'):fail('Unknown panel design')
     keys_exact(d["layers"], {"first_layer", "span_m", "margin_m", "sizes_px", "colours", "dir"}, "layers")
     with open(MATERIALS_JSON, encoding="utf-8") as f:
         n_mats = len(json.load(f)["materials"])
@@ -2451,7 +2452,10 @@ def render_target(D, fn, kind, item, samples):
                 ui_img = bpy.data.images.load(raw_path(f"{fn}_ui"), check_existing=False)
             make_materials(FK, periodic, ui_img, (-0.50, 0.94, 0.50, 1.565), streaky=streaky)
             P = Panel(name)
-            if kind == "strip":
+            if D.get('design')=='grabon' and kind!='keys':
+                from grabon_panel_designs import build_panel
+                build_panel(sys.modules[__name__],P,FK,kind,sub,D)
+            elif kind == "strip":
                 cuts = []
                 for ox in (-2.0, 0.0, 2.0):
                     cuts += STRIP_BUILDERS[sub](P, ox)
@@ -3127,6 +3131,8 @@ def parse_args():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--only", default=None)
+    ap.add_argument("--raw-dir", default=None, help="Isolated render cache for a reproducibility build")
+    ap.add_argument("--catalog", default=PANELS_JSON, help="Panel catalogue, optionally inheriting shared rules")
     ap.add_argument("--samples", type=int, default=None)
     ap.add_argument("--post-only", action="store_true")
     ap.add_argument("--no-sheet", action="store_true")
@@ -3158,8 +3164,14 @@ def targets(D):
 
 def main():
     args = parse_args()
-    global REUSE
+    global REUSE, PANELS_JSON, RAW, SHEET
     REUSE = args.reuse_built
+    PANELS_JSON=os.path.abspath(args.catalog)
+    if PANELS_JSON!=os.path.join(ROOT,'data','materials','panels.json'):
+        name=os.path.splitext(os.path.basename(PANELS_JSON))[0]
+        RAW=os.path.join(ROOT,'tools','materials','raw',name)
+        SHEET=os.path.join(ROOT,'docs','screenshots','materials',name+'-contact-sheet.png')
+    if args.raw_dir:RAW=os.path.abspath(args.raw_dir)
     D = load_panels()
     if args.report_only:
         out_dir = os.path.join(ROOT, D["layers"]["dir"])

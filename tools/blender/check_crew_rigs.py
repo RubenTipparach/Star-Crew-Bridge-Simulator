@@ -15,7 +15,73 @@ import bpy
 from mathutils import Vector
 
 sys.path.insert(0,str(Path(__file__).resolve().parent))
-from crew_rig import FINGERS, load_rig, reset_pose
+from crew_rig import FINGERS, load_rig, reset_pose, set_pose
+
+
+def load_shoulder_review():
+    """Read independent pose and silhouette acceptance data for the shoulder."""
+    path = Path(__file__).resolve().parents[2]/"data/crew/shoulder_review.json"
+    data = json.loads(path.read_text())
+    if set(data) != set("schema _doc max_contour_turn_deg contour_height_fraction contour_width_fraction poses".split()) or data["schema"] != "starcrew.crew-shoulder-review/1":
+        raise ValueError(f"{path}: invalid shoulder review fields")
+    if not 0 < data["max_contour_turn_deg"] < 180:
+        raise ValueError("Invalid shoulder contour angle limit")
+    for key in ("contour_height_fraction", "contour_width_fraction"):
+        band = data[key]
+        if len(band)!=2 or not 0 < band[0] < band[1] <= 1:
+            raise ValueError(f"Invalid {key}")
+    names = set()
+    for pose in data["poses"]:
+        if set(pose) != {"name","bones","curl_deg"} or pose["name"] in names or not 0 <= pose["curl_deg"] <= 100:
+            raise ValueError("Invalid shoulder review pose")
+        names.add(pose["name"])
+        if any(len(values)!=3 or any(not math.isfinite(v) or abs(v)>180 for v in values) for values in pose["bones"].values()):
+            raise ValueError("Shoulder rotations need three finite angles")
+    if not names:
+        raise ValueError("Shoulder review needs poses")
+    return data
+
+
+def shoulder_contour(name, positions, faces, shoulder, settings):
+    """Reject an abrupt inner-arm hook in a frontal slice of exported triangles.
+
+    The cut is through the garment's middle depth. Its inner contour is measured
+    below each shoulder joint; straight segments have zero turn. This supplements
+    the connectedness check with a bound on a visible crease in the rest shape.
+    """
+    adjacency = {}
+    for face in faces:
+        points = [positions[i] for i in face]
+        hits = []
+        for a,b in zip(points,points[1:]+points[:1]):
+            if abs(a.y)<1e-7:
+                hits.append(a)
+            if a.y*b.y<0:
+                hits.append(a.lerp(b,-a.y/(b.y-a.y)))
+        keys = sorted(set((round(p.x,6),round(p.z,6)) for p in hits))
+        if len(keys)==2:
+            a,b = keys
+            adjacency.setdefault(a,set()).add(b)
+            adjacency.setdefault(b,set()).add(a)
+    heights = [shoulder.z*t for t in settings["contour_height_fraction"]]
+    widths = [abs(shoulder.x)*t for t in settings["contour_width_fraction"]]
+    turns = {"L":[],"R":[]}
+    for point,others in adjacency.items():
+        if len(others)!=2 or not heights[0]<point[1]<heights[1] or not widths[0]<abs(point[0])<widths[1]:
+            continue
+        a,b = [Vector(v)-Vector(point) for v in sorted(others)]
+        if min(a.length,b.length)<1e-5:
+            continue
+        turns["L" if point[0]>0 else "R"].append(max(0,180-math.degrees(a.angle(b))))
+    result = {}
+    for side,values in turns.items():
+        if len(values)<3:
+            raise RuntimeError(f"[crew] {name}: underarm contour {side} has insufficient samples")
+        maximum = max(values)
+        if maximum>settings["max_contour_turn_deg"]:
+            raise RuntimeError(f"[crew] {name}: underarm contour {side} turns {maximum:.2f} degrees, limit {settings['max_contour_turn_deg']}")
+        result[side] = {"samples":len(values),"maximum_turn_deg":round(maximum,4)}
+    return result
 
 
 def activate_clip(armature, name):
@@ -101,7 +167,19 @@ def validate_exported(path, row, coverage_check):
     for track in armature.animation_data.nla_tracks:
         track.mute = True
     reset_pose(armature)
-    rest_positions,_,_ = geometry_parts(ob,row["parts"])
+    rest_positions,_,rest_faces = geometry_parts(ob,row["parts"])
+    review = load_shoulder_review()
+    shoulder = armature.matrix_world @ armature.data.bones["upper_arm_L"].head_local
+    contour = shoulder_contour(row["id"],rest_positions,rest_faces["garment_tunic"],shoulder,review)
+    shoulder_tests = []
+    for pose in review["poses"]:
+        set_pose(armature,pose)
+        positions,groups,faces = geometry_parts(ob,row["parts"])
+        name = f"{row['id']}:{pose['name']}"
+        surfaces = surface_check(name,positions,groups,faces,rest_positions,up_axis=2)
+        samples = coverage_check(name,positions,groups,faces)
+        shoulder_tests.append({"pose":pose["name"],"surface_checks":surfaces,"covered_skin_samples":samples})
+    reset_pose(armature)
     tests = []
     for clip in load_rig()["clips"]:
         start,end = activate_clip(armature,clip["name"])
@@ -121,7 +199,7 @@ def validate_exported(path, row, coverage_check):
             tests.append({"clip":clip["name"],"fraction":fraction,"covered_skin_samples":samples,"surface_checks":surfaces,"lowest_vertex_m":round(floor,6)})
         if clip["loop"] and max((a-b).length for a,b in zip(*endpoints))>1e-5:
             raise AssertionError(f"{row['id']}:{clip['name']}: exported loop does not close")
-    return {**facts,"pose_samples":tests,"imported_bones":len(armature.data.bones)}
+    return {**facts,"pose_samples":tests,"shoulder_poses":shoulder_tests,"shoulder_contour":contour,"imported_bones":len(armature.data.bones)}
 
 
 def validate_controls(path):

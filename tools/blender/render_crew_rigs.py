@@ -11,25 +11,31 @@ import math
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 from build_crew_characters import OUTPUT, ROOT
 from check_crew_rigs import activate_clip
+from crew_rig import set_pose
 from render_crew_characters import scene, material, text, capture
 from render_props import camera
 
 
-def posed_mesh(path, clip, fraction, offset, yaw):
+def posed_mesh(path, clip, fraction, offset, yaw, pose=None):
     """Freeze an imported animation sample for a stable multi-pose review sheet."""
     before = set(bpy.data.objects)
     bpy.ops.import_scene.gltf(filepath=str(path),disable_bone_shape=True)
     imported = [ob for ob in bpy.data.objects if ob not in before]
     armature = next(ob for ob in imported if ob.type == "ARMATURE")
     ob = next(ob for ob in imported if ob.type == "MESH")
-    start,end = activate_clip(armature,clip)
-    frame = start+(end-start)*fraction
-    bpy.context.scene.frame_set(int(frame),subframe=frame % 1)
+    if pose is None:
+        start,end = activate_clip(armature,clip)
+        frame = start+(end-start)*fraction
+        bpy.context.scene.frame_set(int(frame),subframe=frame % 1)
+    else:
+        for track in armature.animation_data.nla_tracks:
+            track.mute = True
+        set_pose(armature,pose)
     evaluated = ob.evaluated_get(bpy.context.evaluated_depsgraph_get())
     mesh = bpy.data.meshes.new_from_object(evaluated,preserve_all_data_layers=True,depsgraph=bpy.context.evaluated_depsgraph_get())
     transform = Quaternion((0,0,1),math.radians(yaw)).to_matrix().to_4x4() @ evaluated.matrix_world
     mesh.transform(transform)
-    frozen = bpy.data.objects.new(clip,mesh)
+    frozen = bpy.data.objects.new(pose["name"] if pose else clip,mesh)
     bpy.context.scene.collection.objects.link(frozen)
     frozen.location = offset
     for item in imported:

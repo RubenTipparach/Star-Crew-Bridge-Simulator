@@ -8,7 +8,7 @@
   "source_sha256": "ec5b9301dbadc83d99721f94f1f908811e9fcfd0491476de4d01547b8693ae57",
   "company_sha256": "da1a5d03b3580f1b2e851d27810dab1ba00e8e15cefe86fbfe736d4c130bb340",
   "rig_source_sha256": "e5c7769ae30a2e194a5a95b3e1d7c78ba91d215383dc7a95697461975368d255",
-  "anatomy_source_sha256": "ef877b0d9eedf0715a789a23fb53cd475e1b5d0c0dad91e1789d4eee0ec8ccbb",
+  "anatomy_source_sha256": "8c9e883371b5e975ffbad8b73ee5294860ac520373140d891865c288787257ec",
   "budget": {
     "triangles": 3000,
     "bones": 30,
@@ -22,13 +22,13 @@
       "sex": "male",
       "approval": "pending",
       "file": "command_01.glb",
-      "triangles": 2940,
+      "triangles": 2972,
       "bones": 30,
       "materials": 1,
       "draw_calls": 1,
-      "vertices": 1763,
-      "file_bytes": 504472,
-      "buffer_bytes": 397888,
+      "vertices": 1779,
+      "file_bytes": 505688,
+      "buffer_bytes": 399104,
       "height_m": 1.8,
       "eye_ratios": {
         "L": {
@@ -44,7 +44,7 @@
           "eye_width_m": 0.104863
         }
       },
-      "covered_skin_samples": 1972,
+      "covered_skin_samples": 1828,
       "surface_checks": {
         "garment_components": {
           "garment_tunic": 1,
@@ -156,7 +156,7 @@
           "channels": 90
         }
       ],
-      "sha256": "0d3ae4b10fbe55333a929d28f0b68b966746cabbd1a7b635bf0bd17c50e39e7c"
+      "sha256": "47d866b8884f588d46866ddb9856b2747fd5c7a909406657f7773546aa2bac87"
     },
     {
       "id": "command_02",
@@ -164,13 +164,13 @@
       "sex": "female",
       "approval": "pending",
       "file": "command_02.glb",
-      "triangles": 2940,
+      "triangles": 2972,
       "bones": 30,
       "materials": 1,
       "draw_calls": 1,
-      "vertices": 1763,
-      "file_bytes": 504284,
-      "buffer_bytes": 397888,
+      "vertices": 1779,
+      "file_bytes": 505500,
+      "buffer_bytes": 399104,
       "height_m": 1.72,
       "eye_ratios": {
         "L": {
@@ -186,7 +186,7 @@
           "eye_width_m": 0.096194
         }
       },
-      "covered_skin_samples": 1972,
+      "covered_skin_samples": 1828,
       "surface_checks": {
         "garment_components": {
           "garment_tunic": 1,
@@ -298,7 +298,7 @@
           "channels": 90
         }
       ],
-      "sha256": "234c5ed1b22de62a50e1e7f8b66f5e667f29b2fd529cc589bb3045bb49479c63"
+      "sha256": "d2e3a0a31cf2b23749a6c53c7c22c4e5e650977037111a06b59f1d3e52bb9ee2"
     },
     {
       "id": "engineering_01",
@@ -306,13 +306,13 @@
       "sex": "male",
       "approval": "pending",
       "file": "engineering_01.glb",
-      "triangles": 2940,
+      "triangles": 2972,
       "bones": 30,
       "materials": 1,
       "draw_calls": 1,
-      "vertices": 1763,
-      "file_bytes": 504732,
-      "buffer_bytes": 397888,
+      "vertices": 1779,
+      "file_bytes": 505948,
+      "buffer_bytes": 399104,
       "height_m": 1.76,
       "eye_ratios": {
         "L": {
@@ -328,7 +328,7 @@
           "eye_width_m": 0.102533
         }
       },
-      "covered_skin_samples": 1972,
+      "covered_skin_samples": 1828,
       "surface_checks": {
         "garment_components": {
           "garment_tunic": 1,
@@ -440,7 +440,7 @@
           "channels": 90
         }
       ],
-      "sha256": "7f4c4b7850e2f0458bb85d2f448c43e1c27809c92570610a79dff44fa66cc6f4"
+      "sha256": "e2270ad21d3f82caa53a74cc1a342af84039239d11953eb296fed9f610802e75"
     },
     {
       "id": "engineering_02",
@@ -448,13 +448,13 @@
       "sex": "female",
       "approval": "pending",
       "file": "engineering_02.glb",
-      "triangles": 2940,
+      "triangles": 2972,
       "bones": 30,
       "materials": 1,
       "draw_calls": 1,
-      "vertices": 1763,
-      "file_bytes": 504544,
-      "buffer_bytes": 397888,
+      "vertices": 1779,
+      "file_bytes": 505760,
+      "buffer_bytes": 399104,
       "height_m": 1.68,
       "eye_ratios": {
         "L": {
@@ -470,7 +470,7 @@
           "eye_width_m": 0.093957
         }
       },
-      "covered_skin_samples": 1972,
+      "covered_skin_samples": 1828,
       "surface_checks": {
         "garment_components": {
           "garment_tunic": 1,
@@ -582,7 +582,7 @@
           "channels": 90
         }
       ],
-      "sha256": "0b4331b95931b6090ed405c1d7a47312151f9caa0af9438b29b747d578fb963c"
+      "sha256": "edef697ca8092fb1244eade467c0c25c5dbe65c9129d2116f4ac94a90994ae3e"
     },
     {
       "id": "deckhands_01",
@@ -590,13 +590,13 @@
       "sex": "male",
       "approval": "pending",
       "file": "deckhands_01.glb",
-      "triangles": 2940,
+      "triangles": 2972,
       "bones": 30,
       "materials": 1,
       "draw_calls": 1,
-      "vertices": 1763,
-      "file_bytes": 504460,
-      "buffer_bytes": 397888,
+      "vertices": 1779,
+      "file_bytes": 505676,
+      "buffer_bytes": 399104,
       "height_m": 1.84,
       "eye_ratios": {
         "L": {
@@ -612,7 +612,7 @@
           "eye_width_m": 0.107193
         }
       },
-      "covered_skin_samples": 1972,
+      "covered_skin_samples": 1828,
       "surface_checks": {
         "garment_components": {
           "garment_tunic": 1,
@@ -724,7 +724,7 @@
           "channels": 90
         }
       ],
-      "sha256": "825af535263bd332ca84e0bde4f3bc41b2dd0b0df8679fab438eae63868b32d9"
+      "sha256": "adac248e566095b73f85215992484c7908bdbecb89dcab828b571c6a262f1006"
     },
     {
       "id": "deckhands_02",
@@ -732,13 +732,13 @@
       "sex": "female",
       "approval": "pending",
       "file": "deckhands_02.glb",
-      "triangles": 2940,
+      "triangles": 2972,
       "bones": 30,
       "materials": 1,
       "draw_calls": 1,
-      "vertices": 1763,
-      "file_bytes": 504604,
-      "buffer_bytes": 397888,
+      "vertices": 1779,
+      "file_bytes": 505820,
+      "buffer_bytes": 399104,
       "height_m": 1.76,
       "eye_ratios": {
         "L": {
@@ -754,7 +754,7 @@
           "eye_width_m": 0.098431
         }
       },
-      "covered_skin_samples": 1972,
+      "covered_skin_samples": 1828,
       "surface_checks": {
         "garment_components": {
           "garment_tunic": 1,
@@ -866,7 +866,7 @@
           "channels": 90
         }
       ],
-      "sha256": "f28833efab1b50ba959aa3688f37a119b967de9b82034d400e0fcd09cf4351ca"
+      "sha256": "c064a6b7992885c0c89abba2bf20674fad06d06824632bec77c45c46e7705a49"
     },
     {
       "id": "medical_01",
@@ -874,13 +874,13 @@
       "sex": "male",
       "approval": "pending",
       "file": "medical_01.glb",
-      "triangles": 2940,
+      "triangles": 2972,
       "bones": 30,
       "materials": 1,
       "draw_calls": 1,
-      "vertices": 1763,
-      "file_bytes": 504188,
-      "buffer_bytes": 397888,
+      "vertices": 1779,
+      "file_bytes": 505404,
+      "buffer_bytes": 399104,
       "height_m": 1.72,
       "eye_ratios": {
         "L": {
@@ -896,7 +896,7 @@
           "eye_width_m": 0.100202
         }
       },
-      "covered_skin_samples": 1972,
+      "covered_skin_samples": 1828,
       "surface_checks": {
         "garment_components": {
           "garment_tunic": 1,
@@ -1008,7 +1008,7 @@
           "channels": 90
         }
       ],
-      "sha256": "b54529e379310174cb6d7f5befcead8623cbb4fbe5a545e683a6b79ffe216a18"
+      "sha256": "693ec35bf77a3f655703f000edc8b7a8c5f43b22ae90916f813fa8ee7fe430bf"
     },
     {
       "id": "medical_02",
@@ -1016,13 +1016,13 @@
       "sex": "female",
       "approval": "pending",
       "file": "medical_02.glb",
-      "triangles": 2940,
+      "triangles": 2972,
       "bones": 30,
       "materials": 1,
       "draw_calls": 1,
-      "vertices": 1763,
-      "file_bytes": 504404,
-      "buffer_bytes": 397888,
+      "vertices": 1779,
+      "file_bytes": 505620,
+      "buffer_bytes": 399104,
       "height_m": 1.64,
       "eye_ratios": {
         "L": {
@@ -1038,7 +1038,7 @@
           "eye_width_m": 0.09172
         }
       },
-      "covered_skin_samples": 1972,
+      "covered_skin_samples": 1828,
       "surface_checks": {
         "garment_components": {
           "garment_tunic": 1,
@@ -1150,7 +1150,7 @@
           "channels": 90
         }
       ],
-      "sha256": "c7f9c0bc93395c447a10a0b30b134f2ab77853c17aa2f6f0aa57802f4c4b245f"
+      "sha256": "2f517970e90b7d4358e4da79fca9c9356d26bb7a55594f1edd674826c7f52b35"
     },
     {
       "id": "security_01",
@@ -1158,13 +1158,13 @@
       "sex": "male",
       "approval": "pending",
       "file": "security_01.glb",
-      "triangles": 2940,
+      "triangles": 2972,
       "bones": 30,
       "materials": 1,
       "draw_calls": 1,
-      "vertices": 1763,
-      "file_bytes": 504272,
-      "buffer_bytes": 397888,
+      "vertices": 1779,
+      "file_bytes": 505488,
+      "buffer_bytes": 399104,
       "height_m": 1.82,
       "eye_ratios": {
         "L": {
@@ -1180,7 +1180,7 @@
           "eye_width_m": 0.106028
         }
       },
-      "covered_skin_samples": 1972,
+      "covered_skin_samples": 1828,
       "surface_checks": {
         "garment_components": {
           "garment_tunic": 1,
@@ -1292,7 +1292,7 @@
           "channels": 90
         }
       ],
-      "sha256": "1cd8be937efb1a95922df66fa3b85b0c6951a3288fa23324f68b9f13db70e6fc"
+      "sha256": "e25d50fe810ae038fb4e063f4ecf6450a82cb376f8d172371cffac17eac338e0"
     },
     {
       "id": "security_02",
@@ -1300,13 +1300,13 @@
       "sex": "female",
       "approval": "pending",
       "file": "security_02.glb",
-      "triangles": 2940,
+      "triangles": 2972,
       "bones": 30,
       "materials": 1,
       "draw_calls": 1,
-      "vertices": 1763,
-      "file_bytes": 504136,
-      "buffer_bytes": 397888,
+      "vertices": 1779,
+      "file_bytes": 505352,
+      "buffer_bytes": 399104,
       "height_m": 1.74,
       "eye_ratios": {
         "L": {
@@ -1322,7 +1322,7 @@
           "eye_width_m": 0.097313
         }
       },
-      "covered_skin_samples": 1972,
+      "covered_skin_samples": 1828,
       "surface_checks": {
         "garment_components": {
           "garment_tunic": 1,
@@ -1434,7 +1434,7 @@
           "channels": 90
         }
       ],
-      "sha256": "f28d2b752d86eb9f9f8235a70aef7ceed1ba43e18514a5da3a7188f1f1f6e81b"
+      "sha256": "20d66c0f56134b5b5954579e30d0c56562f5f160a9cfd133976df3c1635951c7"
     },
     {
       "id": "galley_01",
@@ -1442,13 +1442,13 @@
       "sex": "male",
       "approval": "pending",
       "file": "galley_01.glb",
-      "triangles": 2940,
+      "triangles": 2972,
       "bones": 30,
       "materials": 1,
       "draw_calls": 1,
-      "vertices": 1763,
-      "file_bytes": 504588,
-      "buffer_bytes": 397888,
+      "vertices": 1779,
+      "file_bytes": 505804,
+      "buffer_bytes": 399104,
       "height_m": 1.7,
       "eye_ratios": {
         "L": {
@@ -1464,7 +1464,7 @@
           "eye_width_m": 0.099037
         }
       },
-      "covered_skin_samples": 1972,
+      "covered_skin_samples": 1828,
       "surface_checks": {
         "garment_components": {
           "garment_tunic": 1,
@@ -1576,7 +1576,7 @@
           "channels": 90
         }
       ],
-      "sha256": "3c44b4f73bb2f58378d51dcd8e22c1355ac3355ab8ee7fdb0d63210860b5285e"
+      "sha256": "d8a5c61d811bd122d29018c649832c44b0d66567deb3db4be5a039a4a6a3f8c9"
     },
     {
       "id": "galley_02",
@@ -1584,13 +1584,13 @@
       "sex": "female",
       "approval": "pending",
       "file": "galley_02.glb",
-      "triangles": 2940,
+      "triangles": 2972,
       "bones": 30,
       "materials": 1,
       "draw_calls": 1,
-      "vertices": 1763,
-      "file_bytes": 504492,
-      "buffer_bytes": 397888,
+      "vertices": 1779,
+      "file_bytes": 505708,
+      "buffer_bytes": 399104,
       "height_m": 1.62,
       "eye_ratios": {
         "L": {
@@ -1606,7 +1606,7 @@
           "eye_width_m": 0.090602
         }
       },
-      "covered_skin_samples": 1972,
+      "covered_skin_samples": 1828,
       "surface_checks": {
         "garment_components": {
           "garment_tunic": 1,
@@ -1718,7 +1718,7 @@
           "channels": 90
         }
       ],
-      "sha256": "0d72942bc15936896c3c90fd530d770e57dd03f8e335e26255a2e0261218b066"
+      "sha256": "eb0137a1bab47df9026d9fd492bb72adbb77651b7abbaa5f27553a439a953b0c"
     }
   ]
 }

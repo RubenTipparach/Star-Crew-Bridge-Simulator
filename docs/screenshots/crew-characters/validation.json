@@ -18,7 +18,7 @@
     {
       "check": "more than 3000 triangles names the character and count",
       "result": "pass",
-      "rejection": "[crew] command_01: over budget: 4920 triangles (limit 3000), read from command_01.glb"
+      "rejection": "[crew] command_01: over budget: 4952 triangles (limit 3000), read from command_01.glb"
     },
     {
       "check": "mesh iris outside the requested range is rejected",
@@ -54,6 +54,11 @@
       "check": "closed but detached garment geometry is rejected",
       "result": "pass",
       "rejection": "[crew] command_01: garment_tunic: disconnected garment: 2 components"
+    },
+    {
+      "check": "a connected but pinched underarm is rejected",
+      "result": "pass",
+      "rejection": "[crew] command_01: underarm contour L turns 81.05 degrees, limit 75"
     }
   ],
   "scope": "Exported review assets and rejection cases. Posed clothing and source IK controls are checked separately in rig-validation.json. Engine adoption, live deck probes and Pi measurements remain pending."

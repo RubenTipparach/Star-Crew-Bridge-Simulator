@@ -2,40 +2,163 @@
   "schema": "starcrew.crew-rig-review/1",
   "owner_approval": "pending",
   "characters": {
-    "command_01": "0d3ae4b10fbe55333a929d28f0b68b966746cabbd1a7b635bf0bd17c50e39e7c",
-    "command_02": "234c5ed1b22de62a50e1e7f8b66f5e667f29b2fd529cc589bb3045bb49479c63",
-    "engineering_01": "7f4c4b7850e2f0458bb85d2f448c43e1c27809c92570610a79dff44fa66cc6f4",
-    "engineering_02": "0b4331b95931b6090ed405c1d7a47312151f9caa0af9438b29b747d578fb963c",
-    "deckhands_01": "825af535263bd332ca84e0bde4f3bc41b2dd0b0df8679fab438eae63868b32d9",
-    "deckhands_02": "f28833efab1b50ba959aa3688f37a119b967de9b82034d400e0fcd09cf4351ca",
-    "medical_01": "b54529e379310174cb6d7f5befcead8623cbb4fbe5a545e683a6b79ffe216a18",
-    "medical_02": "c7f9c0bc93395c447a10a0b30b134f2ab77853c17aa2f6f0aa57802f4c4b245f",
-    "security_01": "1cd8be937efb1a95922df66fa3b85b0c6951a3288fa23324f68b9f13db70e6fc",
-    "security_02": "f28d2b752d86eb9f9f8235a70aef7ceed1ba43e18514a5da3a7188f1f1f6e81b",
-    "galley_01": "3c44b4f73bb2f58378d51dcd8e22c1355ac3355ab8ee7fdb0d63210860b5285e",
-    "galley_02": "0d72942bc15936896c3c90fd530d770e57dd03f8e335e26255a2e0261218b066"
+    "command_01": "47d866b8884f588d46866ddb9856b2747fd5c7a909406657f7773546aa2bac87",
+    "command_02": "d2e3a0a31cf2b23749a6c53c7c22c4e5e650977037111a06b59f1d3e52bb9ee2",
+    "engineering_01": "e2270ad21d3f82caa53a74cc1a342af84039239d11953eb296fed9f610802e75",
+    "engineering_02": "edef697ca8092fb1244eade467c0c25c5dbe65c9129d2116f4ac94a90994ae3e",
+    "deckhands_01": "adac248e566095b73f85215992484c7908bdbecb89dcab828b571c6a262f1006",
+    "deckhands_02": "c064a6b7992885c0c89abba2bf20674fad06d06824632bec77c45c46e7705a49",
+    "medical_01": "693ec35bf77a3f655703f000edc8b7a8c5f43b22ae90916f813fa8ee7fe430bf",
+    "medical_02": "2f517970e90b7d4358e4da79fca9c9356d26bb7a55594f1edd674826c7f52b35",
+    "security_01": "e25d50fe810ae038fb4e063f4ecf6450a82cb376f8d172371cffac17eac338e0",
+    "security_02": "20d66c0f56134b5b5954579e30d0c56562f5f160a9cfd133976df3c1635951c7",
+    "galley_01": "d8a5c61d811bd122d29018c649832c44b0d66567deb3db4be5a039a4a6a3f8c9",
+    "galley_02": "eb0137a1bab47df9026d9fd492bb72adbb77651b7abbaa5f27553a439a953b0c"
   },
   "blender_sources": {
-    "command_01": "1218d0ff6a265692fca26081c07f30da69a2f3ae8dc3b5541d1b378c5f4edea8",
-    "command_02": "33a11c963deac6c2e6328ebea0e4f77eaac1c16bbeb6a8d6ff56168ffd38b791",
-    "engineering_01": "ebd20222f995ec117a31b4387c3826ba91cf4d4a88eb0c80df242528a7b854d5",
-    "engineering_02": "98a478a66d196a834f2edfa7ca4f79bdfd3107c86f7ccac46fb1ba74683efd20",
-    "deckhands_01": "e07ffb8ba5ab138f9a00a37344af92893aa3231a81fd1c5efbd05d2edce654a7",
-    "deckhands_02": "a4c3cbcdc3a73e777904f9f500709d7b0a14d8722814312d61ca2756e587d667",
-    "medical_01": "6cfa0922aa5fd60da26e099cd3d22a539ff8c7d7aca969421a49219355391656",
-    "medical_02": "0b4ef32090561fe985987595dd59d4abb927b7d2289c8ffdd904e7ca872c9574",
-    "security_01": "22f75a6224d410ca590d45c4e55b0dcad5d08486ab458ef3964197c4c8307e3a",
-    "security_02": "3a574f834d92dc6ebf0b7f73d042beb0e843647642f33355250f89ee71838c8a",
-    "galley_01": "d91c38f3612bf38b265abbdd0bb3783e1b6e7c225da562c5908a1e18d4450b33",
-    "galley_02": "8b5e56db588f24a57f67114712504cb6ebbfb2dd3596ec7e56e7333cb3c864c5"
+    "command_01": "01690e436fed7e17ba788bc80351967f44458aa80112ebcb3c8d543f09122b85",
+    "command_02": "37aee6946976e6db0e5a4a7a839e7616c68d176f60289bded1ad908370760414",
+    "engineering_01": "e677484180ac2a658e7302082b08b8d9329c9a0795f2371638e3162d2ef5504e",
+    "engineering_02": "242646d5d937fcf8b103e11e084c29f840792ec8753684ae04011c99d847b930",
+    "deckhands_01": "6bc3e1edee02380be533c945ad149ebd34bf789b76b0ba006fd35ae19a2e0aa1",
+    "deckhands_02": "c5e1b4615363960f998790c2b9f5cfc364187f5cabd3c29a9c3e8b2a564580ed",
+    "medical_01": "412217aa2b02ce53aa178c7d3160af59205c70b59a1df457508782493d024939",
+    "medical_02": "42554286b8d8869c37b325dc63110ec58f70720c118884237bf2c85598fe8ca3",
+    "security_01": "efc0936e519c67ae6e3e6ec101981e3dfdba4ebb35cf9a8109f0e6e6b93fbe95",
+    "security_02": "8148b57fc1438cd288d63cd1dcfbcb8aedcf719b06ae1cf0b98bb8311f385cbd",
+    "galley_01": "76b063fe2291afd250164b7bba8099524c572887b1d4e38318a99364682053e8",
+    "galley_02": "a6744d63abd6c7593d33016c38484dafe90855de6fce0e188d13ba20692fa442"
+  },
+  "shoulder_review_sha256": "76f4f8351dfb8b178fa5acf461a99b69a06992e3bce6e701fc1aa316ad2e1fb8",
+  "shoulder_contours": {
+    "command_01": {
+      "L": {
+        "samples": 11,
+        "maximum_turn_deg": 61.9061
+      },
+      "R": {
+        "samples": 11,
+        "maximum_turn_deg": 60.0357
+      }
+    },
+    "command_02": {
+      "L": {
+        "samples": 11,
+        "maximum_turn_deg": 60.7555
+      },
+      "R": {
+        "samples": 11,
+        "maximum_turn_deg": 60.349
+      }
+    },
+    "engineering_01": {
+      "L": {
+        "samples": 11,
+        "maximum_turn_deg": 61.8248
+      },
+      "R": {
+        "samples": 11,
+        "maximum_turn_deg": 58.7367
+      }
+    },
+    "engineering_02": {
+      "L": {
+        "samples": 11,
+        "maximum_turn_deg": 60.7309
+      },
+      "R": {
+        "samples": 11,
+        "maximum_turn_deg": 59.237
+      }
+    },
+    "deckhands_01": {
+      "L": {
+        "samples": 11,
+        "maximum_turn_deg": 61.9098
+      },
+      "R": {
+        "samples": 11,
+        "maximum_turn_deg": 61.9543
+      }
+    },
+    "deckhands_02": {
+      "L": {
+        "samples": 11,
+        "maximum_turn_deg": 60.7287
+      },
+      "R": {
+        "samples": 11,
+        "maximum_turn_deg": 61.9832
+      }
+    },
+    "medical_01": {
+      "L": {
+        "samples": 11,
+        "maximum_turn_deg": 61.8888
+      },
+      "R": {
+        "samples": 11,
+        "maximum_turn_deg": 63.1298
+      }
+    },
+    "medical_02": {
+      "L": {
+        "samples": 11,
+        "maximum_turn_deg": 60.701
+      },
+      "R": {
+        "samples": 11,
+        "maximum_turn_deg": 63.0058
+      }
+    },
+    "security_01": {
+      "L": {
+        "samples": 11,
+        "maximum_turn_deg": 61.8269
+      },
+      "R": {
+        "samples": 11,
+        "maximum_turn_deg": 59.2613
+      }
+    },
+    "security_02": {
+      "L": {
+        "samples": 11,
+        "maximum_turn_deg": 60.7123
+      },
+      "R": {
+        "samples": 11,
+        "maximum_turn_deg": 59.6507
+      }
+    },
+    "galley_01": {
+      "L": {
+        "samples": 11,
+        "maximum_turn_deg": 61.9111
+      },
+      "R": {
+        "samples": 11,
+        "maximum_turn_deg": 60.8447
+      }
+    },
+    "galley_02": {
+      "L": {
+        "samples": 11,
+        "maximum_turn_deg": 60.7459
+      },
+      "R": {
+        "samples": 11,
+        "maximum_turn_deg": 61.0738
+      }
+    }
   },
   "rebuild": "Twelve GLBs and measured manifest match byte for byte.",
-  "artifacts": "Twelve valid files and eight deliberate invalid-artifact cases pass.",
-  "rigs": "360 exported pose samples, normalized weights, loop closure, keyed floor contact and 48 saved IK limb/pole checks pass.",
-  "surfaces": "Connected tunic and trousers, zero scalp/hair, garment self and visible waist intersections at rest and in all 360 pose samples.",
+  "artifacts": "Twelve valid files and nine deliberate invalid-artifact cases pass.",
+  "rigs": "360 exported clip samples and 72 additional shoulder stress poses, normalized weights, loop closure, keyed floor contact and 48 saved IK limb/pole checks pass.",
+  "surfaces": "Connected tunic and trousers, zero scalp/hair, garment self and visible waist intersections at rest and in all 432 pose samples.",
   "browser": "Playback, pause, reverse scrubbing, rest reset, skeleton visibility, downloads, controls and mobile layout pass.",
   "screenshots_inspected": {
-    "Blender": 22,
+    "Blender": 27,
     "browser": 19
   },
   "openspec": "42 items passed, 0 failed.",

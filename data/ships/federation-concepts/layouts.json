@@ -1,0 +1,6915 @@
+{
+  "schema": "starcrew.ship-concepts/1",
+  "base_commit": "7653f7a",
+  "source_enemy": "hound",
+  "stage": "fitted",
+  "source_note": "Concept alternatives to the existing Hound. Preserve the initial plans; these are not runtime replacements.",
+  "palette": {
+    "command": "#87b6c6",
+    "crew": "#b6b79b",
+    "power": "#af9879",
+    "weapons": "#ba8077",
+    "flight": "#829b98",
+    "route": "#68788d"
+  },
+  "ships": [
+    {
+      "id": "pursuer",
+      "name": "Pursuer",
+      "number": 1,
+      "role": "Fast raider",
+      "crew": 8,
+      "length_m": 45.1,
+      "beam_m": 29.2,
+      "brief": "A long, low corvette built around an aft twin-fighter hangar. Swept gun shoulders protect a compact command deck.",
+      "notes": [
+        "Two Jackals side by side aft.",
+        "Laser rooms sit directly behind the broadside mounts.",
+        "Bridge and bunks occupy a narrower upper pressure hull."
+      ],
+      "adjustments": [
+        "Forward stores and the torpedo room follow the tapered shoulders.",
+        "The bridge corners and aft cabins now follow the upper hull.",
+        "The hangar keeps both 8 m fighter berths and its central lane."
+      ],
+      "hull_zones": [
+        {
+          "id": "main",
+          "deck": "B",
+          "poly": [
+            [
+              -10.9,
+              -19.5
+            ],
+            [
+              10.9,
+              -19.5
+            ],
+            [
+              11.8,
+              -13
+            ],
+            [
+              11.3,
+              2
+            ],
+            [
+              9.5,
+              13
+            ],
+            [
+              6.4,
+              20.8
+            ],
+            [
+              -6.4,
+              20.8
+            ],
+            [
+              -9.5,
+              13
+            ],
+            [
+              -11.3,
+              2
+            ],
+            [
+              -11.8,
+              -13
+            ]
+          ],
+          "y_m": [
+            -1.3,
+            3.7
+          ],
+          "bevel_m": 0.45,
+          "material": "exterior_pearl"
+        },
+        {
+          "id": "command",
+          "deck": "A",
+          "poly": [
+            [
+              -5.5,
+              -11.5
+            ],
+            [
+              5.5,
+              -11.5
+            ],
+            [
+              6.6,
+              -4
+            ],
+            [
+              6.0,
+              8
+            ],
+            [
+              3.5,
+              13.5
+            ],
+            [
+              -3.5,
+              13.5
+            ],
+            [
+              -6.0,
+              8
+            ],
+            [
+              -6.6,
+              -4
+            ]
+          ],
+          "y_m": [
+            3.1,
+            7.1
+          ],
+          "bevel_m": 0.4,
+          "material": "exterior_pearl"
+        }
+      ],
+      "fittings": [
+        {
+          "id": "engine_-1",
+          "kind": "engine",
+          "center_m": [
+            -8.0,
+            0.4,
+            -20.8
+          ],
+          "size_m": [
+            4.8,
+            4.0,
+            6.4
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "laser_-1",
+          "kind": "laser",
+          "center_m": [
+            -12.4,
+            1,
+            4
+          ],
+          "size_m": [
+            2.6,
+            2.6,
+            16
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "shoulder_-1",
+          "kind": "armor",
+          "center_m": [
+            -11.9,
+            1,
+            -8
+          ],
+          "size_m": [
+            3.9,
+            3.1,
+            10
+          ],
+          "yaw_deg": -9
+        },
+        {
+          "id": "radiator_-1",
+          "kind": "radiator",
+          "center_m": [
+            -8.0,
+            3.8,
+            -8.5
+          ],
+          "size_m": [
+            2.2,
+            0.32,
+            10
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "missile_-1",
+          "kind": "muzzle",
+          "center_m": [
+            -2.5,
+            1.4,
+            20.4
+          ],
+          "size_m": [
+            1.1,
+            1.1,
+            1.2
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "engine_1",
+          "kind": "engine",
+          "center_m": [
+            8.0,
+            0.4,
+            -20.8
+          ],
+          "size_m": [
+            4.8,
+            4.0,
+            6.4
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "laser_1",
+          "kind": "laser",
+          "center_m": [
+            12.4,
+            1,
+            4
+          ],
+          "size_m": [
+            2.6,
+            2.6,
+            16
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "shoulder_1",
+          "kind": "armor",
+          "center_m": [
+            11.9,
+            1,
+            -8
+          ],
+          "size_m": [
+            3.9,
+            3.1,
+            10
+          ],
+          "yaw_deg": 9
+        },
+        {
+          "id": "radiator_1",
+          "kind": "radiator",
+          "center_m": [
+            8.0,
+            3.8,
+            -8.5
+          ],
+          "size_m": [
+            2.2,
+            0.32,
+            10
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "missile_1",
+          "kind": "muzzle",
+          "center_m": [
+            2.5,
+            1.4,
+            20.4
+          ],
+          "size_m": [
+            1.1,
+            1.1,
+            1.2
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "dorsal",
+          "kind": "turret",
+          "center_m": [
+            0,
+            7.55,
+            1.5
+          ],
+          "size_m": [
+            2.8,
+            1.1,
+            4
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "ventral",
+          "kind": "turret",
+          "center_m": [
+            0,
+            -1.9,
+            4
+          ],
+          "size_m": [
+            2.6,
+            1,
+            4
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "hangar_door",
+          "kind": "baydoor",
+          "center_m": [
+            0,
+            1.4,
+            -19.65
+          ],
+          "size_m": [
+            18.4,
+            2.9,
+            0.2
+          ],
+          "yaw_deg": 0
+        }
+      ],
+      "craft": [
+        {
+          "id": "jackal_1",
+          "room": "hangar",
+          "center_m": [
+            -5,
+            0,
+            -11.5
+          ],
+          "size_m": [
+            8,
+            2.4,
+            8
+          ],
+          "yaw_deg": 180
+        },
+        {
+          "id": "jackal_2",
+          "room": "hangar",
+          "center_m": [
+            5,
+            0,
+            -11.5
+          ],
+          "size_m": [
+            8,
+            2.4,
+            8
+          ],
+          "yaw_deg": 180
+        }
+      ],
+      "layout": {
+        "schema": "starcrew.ship-layout/2",
+        "ship": {
+          "id": "federation-pursuer",
+          "name": "Federation / Pursuer",
+          "class": "Fast raider"
+        },
+        "conventions": {
+          "wall_thickness_m": 0.25,
+          "deck_slab_m": 0.8
+        },
+        "decks": [
+          {
+            "id": "A",
+            "name": "Command",
+            "floor_y_m": 3.6,
+            "clear_height_m": 2.8
+          },
+          {
+            "id": "B",
+            "name": "Flight",
+            "floor_y_m": 0,
+            "clear_height_m": 2.8
+          }
+        ],
+        "compartments": [
+          {
+            "id": "B_route",
+            "name": "Passage",
+            "poi": 1,
+            "decks": [
+              "B"
+            ],
+            "kind": "corridor",
+            "finish": "crew",
+            "group": "route",
+            "purpose": "2.4 m clear route linking every room on this deck.",
+            "envelope": "main",
+            "brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    -1.2,
+                    -5
+                  ],
+                  [
+                    1.2,
+                    -5
+                  ],
+                  [
+                    1.2,
+                    14
+                  ],
+                  [
+                    -1.2,
+                    14
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    -1.2,
+                    -5
+                  ],
+                  [
+                    1.2,
+                    -5
+                  ],
+                  [
+                    1.2,
+                    14
+                  ],
+                  [
+                    -1.2,
+                    14
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "reactor",
+            "name": "Reactor",
+            "poi": 2,
+            "decks": [
+              "B"
+            ],
+            "kind": "room",
+            "finish": "working",
+            "group": "power",
+            "purpose": "Fusion plant and shield power.",
+            "envelope": "main",
+            "brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    -10,
+                    -5
+                  ],
+                  [
+                    -1.2,
+                    -5
+                  ],
+                  [
+                    -1.2,
+                    2
+                  ],
+                  [
+                    -10,
+                    2
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    -10,
+                    -5
+                  ],
+                  [
+                    -1.2,
+                    -5
+                  ],
+                  [
+                    -1.2,
+                    2
+                  ],
+                  [
+                    -10,
+                    2
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "drive",
+            "name": "Drive control",
+            "poi": 3,
+            "decks": [
+              "B"
+            ],
+            "kind": "room",
+            "finish": "working",
+            "group": "power",
+            "purpose": "Twin-engine service controls.",
+            "envelope": "main",
+            "brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    -5
+                  ],
+                  [
+                    10,
+                    -5
+                  ],
+                  [
+                    10,
+                    2
+                  ],
+                  [
+                    1.2,
+                    2
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    -5
+                  ],
+                  [
+                    10,
+                    -5
+                  ],
+                  [
+                    10,
+                    2
+                  ],
+                  [
+                    1.2,
+                    2
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "stbd_laser",
+            "name": "Stbd laser",
+            "poi": 4,
+            "decks": [
+              "B"
+            ],
+            "kind": "room",
+            "finish": "working",
+            "group": "weapons",
+            "purpose": "Starboard laser and capacitor access.",
+            "envelope": "main",
+            "brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    -10,
+                    2
+                  ],
+                  [
+                    -1.2,
+                    2
+                  ],
+                  [
+                    -1.2,
+                    8
+                  ],
+                  [
+                    -9.456877,
+                    8.0
+                  ],
+                  [
+                    -10.0,
+                    4.680914
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    -10,
+                    2
+                  ],
+                  [
+                    -1.2,
+                    2
+                  ],
+                  [
+                    -1.2,
+                    8
+                  ],
+                  [
+                    -10,
+                    8
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "port_laser",
+            "name": "Port laser",
+            "poi": 5,
+            "decks": [
+              "B"
+            ],
+            "kind": "room",
+            "finish": "working",
+            "group": "weapons",
+            "purpose": "Port laser and capacitor access.",
+            "envelope": "main",
+            "brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    2
+                  ],
+                  [
+                    10,
+                    2
+                  ],
+                  [
+                    10.0,
+                    4.680914
+                  ],
+                  [
+                    9.456877,
+                    8.0
+                  ],
+                  [
+                    1.2,
+                    8
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    2
+                  ],
+                  [
+                    10,
+                    2
+                  ],
+                  [
+                    10,
+                    8
+                  ],
+                  [
+                    1.2,
+                    8
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "magazine",
+            "name": "Magazine",
+            "poi": 6,
+            "decks": [
+              "B"
+            ],
+            "kind": "room",
+            "finish": "working",
+            "group": "weapons",
+            "purpose": "Protected missile storage and forward loading route.",
+            "envelope": "main",
+            "brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    -9.456877,
+                    8.0
+                  ],
+                  [
+                    -1.2,
+                    8
+                  ],
+                  [
+                    -1.2,
+                    14
+                  ],
+                  [
+                    -8.187893,
+                    14.0
+                  ],
+                  [
+                    -8.676046,
+                    12.771745
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    -10,
+                    8
+                  ],
+                  [
+                    -1.2,
+                    8
+                  ],
+                  [
+                    -1.2,
+                    14
+                  ],
+                  [
+                    -10,
+                    14
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "life_support",
+            "name": "Life support",
+            "poi": 7,
+            "decks": [
+              "B"
+            ],
+            "kind": "room",
+            "finish": "working",
+            "group": "power",
+            "purpose": "Air, water and emergency stores.",
+            "envelope": "main",
+            "brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    8
+                  ],
+                  [
+                    9.456877,
+                    8.0
+                  ],
+                  [
+                    8.676046,
+                    12.771745
+                  ],
+                  [
+                    8.187893,
+                    14.0
+                  ],
+                  [
+                    1.2,
+                    14
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    8
+                  ],
+                  [
+                    10,
+                    8
+                  ],
+                  [
+                    10,
+                    14
+                  ],
+                  [
+                    1.2,
+                    14
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "hangar",
+            "name": "Twin hangar",
+            "poi": 8,
+            "decks": [
+              "B"
+            ],
+            "kind": "bay",
+            "finish": "working",
+            "group": "flight",
+            "purpose": "Two 8 x 8 m Jackals; 2 m central service lane and an aft launch opening.",
+            "envelope": "main",
+            "brushes": [
+              {
+                "y": [
+                  0,
+                  3.2
+                ],
+                "poly": [
+                  [
+                    -10,
+                    -18
+                  ],
+                  [
+                    10,
+                    -18
+                  ],
+                  [
+                    10,
+                    -5
+                  ],
+                  [
+                    -10,
+                    -5
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  0,
+                  3.2
+                ],
+                "poly": [
+                  [
+                    -10,
+                    -18
+                  ],
+                  [
+                    10,
+                    -18
+                  ],
+                  [
+                    10,
+                    -5
+                  ],
+                  [
+                    -10,
+                    -5
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "tubes",
+            "name": "Torpedo room",
+            "poi": 9,
+            "decks": [
+              "B"
+            ],
+            "kind": "room",
+            "finish": "working",
+            "group": "weapons",
+            "purpose": "Twin forward tubes with a clear loading aisle.",
+            "envelope": "main",
+            "brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    -8,
+                    14
+                  ],
+                  [
+                    8,
+                    14
+                  ],
+                  [
+                    8.0,
+                    14.472764
+                  ],
+                  [
+                    6.200714,
+                    19.0
+                  ],
+                  [
+                    -6.200714,
+                    19.0
+                  ],
+                  [
+                    -8.0,
+                    14.472764
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    -8,
+                    14
+                  ],
+                  [
+                    8,
+                    14
+                  ],
+                  [
+                    8,
+                    19
+                  ],
+                  [
+                    -8,
+                    19
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "A_route",
+            "name": "Passage",
+            "poi": 10,
+            "decks": [
+              "A"
+            ],
+            "kind": "corridor",
+            "finish": "crew",
+            "group": "route",
+            "purpose": "2.4 m clear route linking every room on this deck.",
+            "envelope": "command",
+            "brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    -1.2,
+                    -10
+                  ],
+                  [
+                    1.2,
+                    -10
+                  ],
+                  [
+                    1.2,
+                    7
+                  ],
+                  [
+                    -1.2,
+                    7
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    -1.2,
+                    -10
+                  ],
+                  [
+                    1.2,
+                    -10
+                  ],
+                  [
+                    1.2,
+                    7
+                  ],
+                  [
+                    -1.2,
+                    7
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "bunks",
+            "name": "Bunks / head",
+            "poi": 11,
+            "decks": [
+              "A"
+            ],
+            "kind": "room",
+            "finish": "crew",
+            "group": "crew",
+            "purpose": "Eight bunks, lockers and a compact washroom.",
+            "envelope": "command",
+            "brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    -4.860906,
+                    -10.0
+                  ],
+                  [
+                    -1.2,
+                    -10
+                  ],
+                  [
+                    -1.2,
+                    -2
+                  ],
+                  [
+                    -5.648938,
+                    -2.0
+                  ],
+                  [
+                    -5.746896,
+                    -3.959161
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    -5.8,
+                    -10
+                  ],
+                  [
+                    -1.2,
+                    -10
+                  ],
+                  [
+                    -1.2,
+                    -2
+                  ],
+                  [
+                    -5.8,
+                    -2
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "mess",
+            "name": "Mess / galley",
+            "poi": 12,
+            "decks": [
+              "A"
+            ],
+            "kind": "room",
+            "finish": "crew",
+            "group": "crew",
+            "purpose": "Meals and off-watch space for eight.",
+            "envelope": "command",
+            "brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    -10
+                  ],
+                  [
+                    4.860906,
+                    -10.0
+                  ],
+                  [
+                    5.746896,
+                    -3.959161
+                  ],
+                  [
+                    5.648938,
+                    -2.0
+                  ],
+                  [
+                    1.2,
+                    -2
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    -10
+                  ],
+                  [
+                    5.8,
+                    -10
+                  ],
+                  [
+                    5.8,
+                    -2
+                  ],
+                  [
+                    1.2,
+                    -2
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "medical",
+            "name": "Medical",
+            "poi": 13,
+            "decks": [
+              "A"
+            ],
+            "kind": "room",
+            "finish": "crew",
+            "group": "crew",
+            "purpose": "One treatment berth and emergency supplies.",
+            "envelope": "command",
+            "brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    -5.648938,
+                    -2.0
+                  ],
+                  [
+                    -1.2,
+                    -2
+                  ],
+                  [
+                    -1.2,
+                    7
+                  ],
+                  [
+                    -5.198938,
+                    7.0
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    -5.8,
+                    -2
+                  ],
+                  [
+                    -1.2,
+                    -2
+                  ],
+                  [
+                    -1.2,
+                    7
+                  ],
+                  [
+                    -5.8,
+                    7
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "computers",
+            "name": "Avionics",
+            "poi": 14,
+            "decks": [
+              "A"
+            ],
+            "kind": "room",
+            "finish": "working",
+            "group": "power",
+            "purpose": "Navigation, targeting and damage-control computers.",
+            "envelope": "command",
+            "brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    -2
+                  ],
+                  [
+                    5.648938,
+                    -2.0
+                  ],
+                  [
+                    5.198938,
+                    7.0
+                  ],
+                  [
+                    1.2,
+                    7
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    -2
+                  ],
+                  [
+                    5.8,
+                    -2
+                  ],
+                  [
+                    5.8,
+                    7
+                  ],
+                  [
+                    1.2,
+                    7
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "bridge",
+            "name": "Bridge",
+            "poi": 15,
+            "decks": [
+              "A"
+            ],
+            "kind": "room",
+            "finish": "crew",
+            "group": "command",
+            "purpose": "Four stations with a protected forward command view.",
+            "envelope": "command",
+            "brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    -5.198938,
+                    7.0
+                  ],
+                  [
+                    5.198938,
+                    7.0
+                  ],
+                  [
+                    5.159151,
+                    7.795751
+                  ],
+                  [
+                    3.248128,
+                    12.0
+                  ],
+                  [
+                    -3.248128,
+                    12.0
+                  ],
+                  [
+                    -5.159151,
+                    7.795751
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    -5.8,
+                    7
+                  ],
+                  [
+                    5.8,
+                    7
+                  ],
+                  [
+                    5.8,
+                    12
+                  ],
+                  [
+                    -5.8,
+                    12
+                  ]
+                ]
+              }
+            ]
+          }
+        ],
+        "portals": [
+          {
+            "id": "B_route_reactor",
+            "between": [
+              "B_route",
+              "reactor"
+            ],
+            "kind": "door",
+            "center_m": [
+              -1.2,
+              1.05,
+              -1.5
+            ],
+            "normal": [
+              -1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "B_route_drive",
+            "between": [
+              "B_route",
+              "drive"
+            ],
+            "kind": "door",
+            "center_m": [
+              1.2,
+              1.05,
+              -1.5
+            ],
+            "normal": [
+              1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "B_route_stbd_laser",
+            "between": [
+              "B_route",
+              "stbd_laser"
+            ],
+            "kind": "door",
+            "center_m": [
+              -1.2,
+              1.05,
+              5.0
+            ],
+            "normal": [
+              -1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "B_route_port_laser",
+            "between": [
+              "B_route",
+              "port_laser"
+            ],
+            "kind": "door",
+            "center_m": [
+              1.2,
+              1.05,
+              5.0
+            ],
+            "normal": [
+              1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "B_route_magazine",
+            "between": [
+              "B_route",
+              "magazine"
+            ],
+            "kind": "door",
+            "center_m": [
+              -1.2,
+              1.05,
+              11.0
+            ],
+            "normal": [
+              -1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "B_route_life_support",
+            "between": [
+              "B_route",
+              "life_support"
+            ],
+            "kind": "door",
+            "center_m": [
+              1.2,
+              1.05,
+              11.0
+            ],
+            "normal": [
+              1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "B_route_hangar",
+            "between": [
+              "B_route",
+              "hangar"
+            ],
+            "kind": "door",
+            "center_m": [
+              0,
+              1.05,
+              -5
+            ],
+            "normal": [
+              0,
+              0,
+              -1
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "B_route_tubes",
+            "between": [
+              "B_route",
+              "tubes"
+            ],
+            "kind": "door",
+            "center_m": [
+              0,
+              1.05,
+              14
+            ],
+            "normal": [
+              0,
+              0,
+              1
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "A_route_bunks",
+            "between": [
+              "A_route",
+              "bunks"
+            ],
+            "kind": "door",
+            "center_m": [
+              -1.2,
+              4.65,
+              -6.0
+            ],
+            "normal": [
+              -1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "A_route_mess",
+            "between": [
+              "A_route",
+              "mess"
+            ],
+            "kind": "door",
+            "center_m": [
+              1.2,
+              4.65,
+              -6.0
+            ],
+            "normal": [
+              1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "A_route_medical",
+            "between": [
+              "A_route",
+              "medical"
+            ],
+            "kind": "door",
+            "center_m": [
+              -1.2,
+              4.65,
+              2.5
+            ],
+            "normal": [
+              -1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "A_route_computers",
+            "between": [
+              "A_route",
+              "computers"
+            ],
+            "kind": "door",
+            "center_m": [
+              1.2,
+              4.65,
+              2.5
+            ],
+            "normal": [
+              1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "A_route_bridge",
+            "between": [
+              "A_route",
+              "bridge"
+            ],
+            "kind": "door",
+            "center_m": [
+              0,
+              4.65,
+              7
+            ],
+            "normal": [
+              0,
+              0,
+              1
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "ladder_BA",
+            "between": [
+              "B_route",
+              "A_route"
+            ],
+            "kind": "ladder",
+            "center_m": [
+              0,
+              2.8,
+              -1
+            ],
+            "normal": [
+              0,
+              1,
+              0
+            ],
+            "size_m": [
+              1.4,
+              1.4
+            ]
+          }
+        ],
+        "fixtures": [],
+        "stations": []
+      },
+      "colors": {
+        "armor": "#7d827e",
+        "secondary": "#323e42",
+        "accent": "#a54430",
+        "edge": "#adaca0",
+        "glow": "#efa367"
+      },
+      "fit_envelopes": {
+        "main": [
+          [
+            -10.9,
+            -19.5
+          ],
+          [
+            10.9,
+            -19.5
+          ],
+          [
+            11.8,
+            -13
+          ],
+          [
+            11.3,
+            2
+          ],
+          [
+            9.5,
+            13
+          ],
+          [
+            6.4,
+            20.8
+          ],
+          [
+            -6.4,
+            20.8
+          ],
+          [
+            -9.5,
+            13
+          ],
+          [
+            -11.3,
+            2
+          ],
+          [
+            -11.8,
+            -13
+          ]
+        ],
+        "command": [
+          [
+            -5.5,
+            -11.5
+          ],
+          [
+            5.5,
+            -11.5
+          ],
+          [
+            6.6,
+            -4
+          ],
+          [
+            6.0,
+            8
+          ],
+          [
+            3.5,
+            13.5
+          ],
+          [
+            -3.5,
+            13.5
+          ],
+          [
+            -6.0,
+            8
+          ],
+          [
+            -6.6,
+            -4
+          ]
+        ]
+      },
+      "paint": {
+        "z_band_m": [
+          -0.5,
+          2.0
+        ],
+        "x_min_m": 4
+      },
+      "fit_margin_m": 0.85,
+      "furnishings": [
+        {
+          "room": "B_route",
+          "kind": "person",
+          "center_m": [
+            0,
+            0,
+            -2.8
+          ],
+          "size_m": [
+            0.5,
+            1.8,
+            0.4
+          ]
+        },
+        {
+          "room": "reactor",
+          "kind": "machine",
+          "center_m": [
+            -5.6,
+            0,
+            -1.5
+          ],
+          "size_m": [
+            1.4,
+            1.6,
+            2.2
+          ]
+        },
+        {
+          "room": "drive",
+          "kind": "machine",
+          "center_m": [
+            5.6,
+            0,
+            -1.5
+          ],
+          "size_m": [
+            1.4,
+            1.6,
+            2.2
+          ]
+        },
+        {
+          "room": "stbd_laser",
+          "kind": "machine",
+          "center_m": [
+            -6.3713754,
+            0,
+            4.9361828
+          ],
+          "size_m": [
+            1.4,
+            1.6,
+            2.2
+          ]
+        },
+        {
+          "room": "port_laser",
+          "kind": "machine",
+          "center_m": [
+            6.3713754,
+            0,
+            4.9361828
+          ],
+          "size_m": [
+            1.4,
+            1.6,
+            2.2
+          ]
+        },
+        {
+          "room": "magazine",
+          "kind": "machine",
+          "center_m": [
+            -5.7441632,
+            0,
+            11.354349
+          ],
+          "size_m": [
+            1.4,
+            1.6,
+            2.2
+          ]
+        },
+        {
+          "room": "life_support",
+          "kind": "machine",
+          "center_m": [
+            5.744163200000001,
+            0,
+            11.354349
+          ],
+          "size_m": [
+            1.4,
+            1.6,
+            2.2
+          ]
+        },
+        {
+          "room": "tubes",
+          "kind": "machine",
+          "center_m": [
+            0.0,
+            0,
+            15.824254666666667
+          ],
+          "size_m": [
+            1.4,
+            1.6,
+            2.2
+          ]
+        },
+        {
+          "room": "A_route",
+          "kind": "person",
+          "center_m": [
+            0,
+            3.6,
+            -7.8
+          ],
+          "size_m": [
+            0.5,
+            1.8,
+            0.4
+          ]
+        },
+        {
+          "room": "bunks",
+          "kind": "bunk",
+          "center_m": [
+            -4.581347999999999,
+            3.6,
+            -6.9418322
+          ],
+          "size_m": [
+            0.9,
+            1.6,
+            2.0
+          ]
+        },
+        {
+          "room": "bunks",
+          "kind": "bunk",
+          "center_m": [
+            -2.8813479999999996,
+            3.6,
+            -6.9418322
+          ],
+          "size_m": [
+            0.9,
+            1.6,
+            2.0
+          ]
+        },
+        {
+          "room": "bunks",
+          "kind": "bunk",
+          "center_m": [
+            -4.581347999999999,
+            3.6,
+            -4.241832200000001
+          ],
+          "size_m": [
+            0.9,
+            1.6,
+            2.0
+          ]
+        },
+        {
+          "room": "bunks",
+          "kind": "bunk",
+          "center_m": [
+            -2.8813479999999996,
+            3.6,
+            -4.241832200000001
+          ],
+          "size_m": [
+            0.9,
+            1.6,
+            2.0
+          ]
+        },
+        {
+          "room": "mess",
+          "kind": "table",
+          "center_m": [
+            3.7313479999999997,
+            3.6,
+            -5.591832200000001
+          ],
+          "size_m": [
+            2.8,
+            0.8,
+            1.1
+          ]
+        },
+        {
+          "room": "medical",
+          "kind": "bed",
+          "center_m": [
+            -3.311969,
+            3.6,
+            2.5
+          ],
+          "size_m": [
+            0.9,
+            0.8,
+            2.0
+          ]
+        },
+        {
+          "room": "computers",
+          "kind": "machine",
+          "center_m": [
+            3.311969,
+            3.6,
+            2.5
+          ],
+          "size_m": [
+            1.4,
+            1.6,
+            2.2
+          ]
+        },
+        {
+          "room": "bridge",
+          "kind": "console",
+          "center_m": [
+            -1.0,
+            3.6,
+            8.8
+          ],
+          "size_m": [
+            1.2,
+            1.1,
+            0.65
+          ]
+        },
+        {
+          "room": "bridge",
+          "kind": "seat",
+          "center_m": [
+            -1.0,
+            3.6,
+            7.8
+          ],
+          "size_m": [
+            0.55,
+            0.9,
+            0.6
+          ]
+        },
+        {
+          "room": "bridge",
+          "kind": "console",
+          "center_m": [
+            1.0,
+            3.6,
+            8.8
+          ],
+          "size_m": [
+            1.2,
+            1.1,
+            0.65
+          ]
+        },
+        {
+          "room": "bridge",
+          "kind": "seat",
+          "center_m": [
+            1.0,
+            3.6,
+            7.8
+          ],
+          "size_m": [
+            0.55,
+            0.9,
+            0.6
+          ]
+        },
+        {
+          "room": "bridge",
+          "kind": "console",
+          "center_m": [
+            -1.0,
+            3.6,
+            10.8
+          ],
+          "size_m": [
+            1.2,
+            1.1,
+            0.65
+          ]
+        },
+        {
+          "room": "bridge",
+          "kind": "seat",
+          "center_m": [
+            -1.0,
+            3.6,
+            9.8
+          ],
+          "size_m": [
+            0.55,
+            0.9,
+            0.6
+          ]
+        },
+        {
+          "room": "bridge",
+          "kind": "console",
+          "center_m": [
+            1.0,
+            3.6,
+            10.8
+          ],
+          "size_m": [
+            1.2,
+            1.1,
+            0.65
+          ]
+        },
+        {
+          "room": "bridge",
+          "kind": "seat",
+          "center_m": [
+            1.0,
+            3.6,
+            9.8
+          ],
+          "size_m": [
+            0.55,
+            0.9,
+            0.6
+          ]
+        }
+      ],
+      "height_m": 10.7
+    },
+    {
+      "id": "splitjaw",
+      "name": "Splitjaw",
+      "number": 2,
+      "role": "Forked carrier",
+      "crew": 10,
+      "length_m": 53.3,
+      "beam_m": 33.0,
+      "brief": "Two forward launch jaws frame a protected service pocket. The bridge stays behind the launch line, with machinery grouped aft.",
+      "notes": [
+        "One fighter bay in each forward jaw.",
+        "A cross-passage connects both bays without entering either.",
+        "Aft reactor and drive form one short service route."
+      ],
+      "adjustments": [
+        "The aft reactor and drive rooms narrow into the engine roots.",
+        "Both fighter bays acquire faceted outer corners and keep their service clearance.",
+        "The bridge recesses behind the launch jaws; the cross-passage stays connected."
+      ],
+      "hull_zones": [
+        {
+          "id": "main",
+          "deck": "B",
+          "poly": [
+            [
+              -10.8,
+              -20.5
+            ],
+            [
+              10.8,
+              -20.5
+            ],
+            [
+              14.7,
+              -8
+            ],
+            [
+              15.5,
+              22
+            ],
+            [
+              12,
+              26.5
+            ],
+            [
+              2.3,
+              26.5
+            ],
+            [
+              1.4,
+              11.1
+            ],
+            [
+              -1.4,
+              11.1
+            ],
+            [
+              -2.3,
+              26.5
+            ],
+            [
+              -12,
+              26.5
+            ],
+            [
+              -15.5,
+              22
+            ],
+            [
+              -14.7,
+              -8
+            ]
+          ],
+          "y_m": [
+            -1.4,
+            3.7
+          ],
+          "bevel_m": 0.45,
+          "material": "exterior_pearl"
+        },
+        {
+          "id": "command",
+          "deck": "A",
+          "poly": [
+            [
+              -6,
+              -14.5
+            ],
+            [
+              6,
+              -14.5
+            ],
+            [
+              8.2,
+              -5
+            ],
+            [
+              8.0,
+              3
+            ],
+            [
+              4.4,
+              10.5
+            ],
+            [
+              -4.4,
+              10.5
+            ],
+            [
+              -8,
+              3
+            ],
+            [
+              -8.2,
+              -5
+            ]
+          ],
+          "y_m": [
+            3.1,
+            7.1
+          ],
+          "bevel_m": 0.4,
+          "material": "exterior_pearl"
+        }
+      ],
+      "fittings": [
+        {
+          "id": "engine_-1",
+          "kind": "engine",
+          "center_m": [
+            -8.2,
+            0.3,
+            -22.6
+          ],
+          "size_m": [
+            5.4,
+            4.2,
+            7.8
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "laser_-1",
+          "kind": "laser",
+          "center_m": [
+            -15,
+            1.4,
+            0
+          ],
+          "size_m": [
+            2.7,
+            2.5,
+            9
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "radiator_-1",
+          "kind": "radiator",
+          "center_m": [
+            -10,
+            3.85,
+            -6
+          ],
+          "size_m": [
+            3,
+            0.3,
+            12
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "missile_-1",
+          "kind": "missile",
+          "center_m": [
+            -9,
+            4.3,
+            6
+          ],
+          "size_m": [
+            2,
+            1.4,
+            5
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "baydoor_-1",
+          "kind": "baydoor",
+          "center_m": [
+            -7.2,
+            1.4,
+            26.55
+          ],
+          "size_m": [
+            9.1,
+            2.9,
+            0.18
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "engine_1",
+          "kind": "engine",
+          "center_m": [
+            8.2,
+            0.3,
+            -22.6
+          ],
+          "size_m": [
+            5.4,
+            4.2,
+            7.8
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "laser_1",
+          "kind": "laser",
+          "center_m": [
+            15,
+            1.4,
+            0
+          ],
+          "size_m": [
+            2.7,
+            2.5,
+            9
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "radiator_1",
+          "kind": "radiator",
+          "center_m": [
+            10,
+            3.85,
+            -6
+          ],
+          "size_m": [
+            3,
+            0.3,
+            12
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "missile_1",
+          "kind": "missile",
+          "center_m": [
+            9,
+            4.3,
+            6
+          ],
+          "size_m": [
+            2,
+            1.4,
+            5
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "baydoor_1",
+          "kind": "baydoor",
+          "center_m": [
+            7.2,
+            1.4,
+            26.55
+          ],
+          "size_m": [
+            9.1,
+            2.9,
+            0.18
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "dorsal",
+          "kind": "turret",
+          "center_m": [
+            0,
+            7.55,
+            -1
+          ],
+          "size_m": [
+            2.8,
+            1.1,
+            4
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "ventral",
+          "kind": "turret",
+          "center_m": [
+            0,
+            -2,
+            4
+          ],
+          "size_m": [
+            2.6,
+            1.1,
+            4
+          ],
+          "yaw_deg": 0
+        }
+      ],
+      "craft": [
+        {
+          "id": "jackal_stbd",
+          "room": "stbd_hangar",
+          "center_m": [
+            -7.5,
+            0,
+            16
+          ],
+          "size_m": [
+            8,
+            2.4,
+            8
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "jackal_port",
+          "room": "port_hangar",
+          "center_m": [
+            7.5,
+            0,
+            16
+          ],
+          "size_m": [
+            8,
+            2.4,
+            8
+          ],
+          "yaw_deg": 0
+        }
+      ],
+      "layout": {
+        "schema": "starcrew.ship-layout/2",
+        "ship": {
+          "id": "federation-splitjaw",
+          "name": "Federation / Splitjaw",
+          "class": "Forked carrier"
+        },
+        "conventions": {
+          "wall_thickness_m": 0.25,
+          "deck_slab_m": 0.8
+        },
+        "decks": [
+          {
+            "id": "A",
+            "name": "Command",
+            "floor_y_m": 3.6,
+            "clear_height_m": 2.8
+          },
+          {
+            "id": "B",
+            "name": "Flight",
+            "floor_y_m": 0,
+            "clear_height_m": 2.8
+          }
+        ],
+        "compartments": [
+          {
+            "id": "B_route",
+            "name": "Passage",
+            "poi": 1,
+            "decks": [
+              "B"
+            ],
+            "kind": "corridor",
+            "finish": "crew",
+            "group": "route",
+            "purpose": "2.4 m clear route linking every room on this deck.",
+            "envelope": "main",
+            "brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    -1.2,
+                    -18
+                  ],
+                  [
+                    1.2,
+                    -18
+                  ],
+                  [
+                    1.2,
+                    8
+                  ],
+                  [
+                    -1.2,
+                    8
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    -1.2,
+                    -18
+                  ],
+                  [
+                    1.2,
+                    -18
+                  ],
+                  [
+                    1.2,
+                    8
+                  ],
+                  [
+                    -1.2,
+                    8
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "reactor",
+            "name": "Reactor",
+            "poi": 2,
+            "decks": [
+              "B"
+            ],
+            "kind": "room",
+            "finish": "working",
+            "group": "power",
+            "purpose": "Shield power and fusion-plant servicing.",
+            "envelope": "main",
+            "brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    -10.689589,
+                    -18.0
+                  ],
+                  [
+                    -1.2,
+                    -18
+                  ],
+                  [
+                    -1.2,
+                    -10
+                  ],
+                  [
+                    -13,
+                    -10
+                  ],
+                  [
+                    -13.0,
+                    -10.594838
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    -13,
+                    -18
+                  ],
+                  [
+                    -1.2,
+                    -18
+                  ],
+                  [
+                    -1.2,
+                    -10
+                  ],
+                  [
+                    -13,
+                    -10
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "drive",
+            "name": "Drive control",
+            "poi": 3,
+            "decks": [
+              "B"
+            ],
+            "kind": "room",
+            "finish": "working",
+            "group": "power",
+            "purpose": "Short feeds to the paired aft engines.",
+            "envelope": "main",
+            "brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    -18
+                  ],
+                  [
+                    10.689589,
+                    -18.0
+                  ],
+                  [
+                    13.0,
+                    -10.594838
+                  ],
+                  [
+                    13,
+                    -10
+                  ],
+                  [
+                    1.2,
+                    -10
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    -18
+                  ],
+                  [
+                    13,
+                    -18
+                  ],
+                  [
+                    13,
+                    -10
+                  ],
+                  [
+                    1.2,
+                    -10
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "bunks",
+            "name": "Bunks / head",
+            "poi": 4,
+            "decks": [
+              "B"
+            ],
+            "kind": "room",
+            "finish": "crew",
+            "group": "crew",
+            "purpose": "Ten bunks and washing facilities.",
+            "envelope": "main",
+            "brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    -13,
+                    -10
+                  ],
+                  [
+                    -1.2,
+                    -10
+                  ],
+                  [
+                    -1.2,
+                    -2
+                  ],
+                  [
+                    -13,
+                    -2
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    -13,
+                    -10
+                  ],
+                  [
+                    -1.2,
+                    -10
+                  ],
+                  [
+                    -1.2,
+                    -2
+                  ],
+                  [
+                    -13,
+                    -2
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "mess",
+            "name": "Mess / galley",
+            "poi": 5,
+            "decks": [
+              "B"
+            ],
+            "kind": "room",
+            "finish": "crew",
+            "group": "crew",
+            "purpose": "Crew meals and off-watch space.",
+            "envelope": "main",
+            "brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    -10
+                  ],
+                  [
+                    13,
+                    -10
+                  ],
+                  [
+                    13,
+                    -2
+                  ],
+                  [
+                    1.2,
+                    -2
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    -10
+                  ],
+                  [
+                    13,
+                    -10
+                  ],
+                  [
+                    13,
+                    -2
+                  ],
+                  [
+                    1.2,
+                    -2
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "stbd_laser",
+            "name": "Stbd laser",
+            "poi": 6,
+            "decks": [
+              "B"
+            ],
+            "kind": "room",
+            "finish": "working",
+            "group": "weapons",
+            "purpose": "Starboard bank and armored capacitor store.",
+            "envelope": "main",
+            "brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    -13,
+                    -2
+                  ],
+                  [
+                    -1.2,
+                    -2
+                  ],
+                  [
+                    -1.2,
+                    8
+                  ],
+                  [
+                    -13,
+                    8
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    -13,
+                    -2
+                  ],
+                  [
+                    -1.2,
+                    -2
+                  ],
+                  [
+                    -1.2,
+                    8
+                  ],
+                  [
+                    -13,
+                    8
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "port_laser",
+            "name": "Port laser",
+            "poi": 7,
+            "decks": [
+              "B"
+            ],
+            "kind": "room",
+            "finish": "working",
+            "group": "weapons",
+            "purpose": "Port bank and armored capacitor store.",
+            "envelope": "main",
+            "brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    -2
+                  ],
+                  [
+                    13,
+                    -2
+                  ],
+                  [
+                    13,
+                    8
+                  ],
+                  [
+                    1.2,
+                    8
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    -2
+                  ],
+                  [
+                    13,
+                    -2
+                  ],
+                  [
+                    13,
+                    8
+                  ],
+                  [
+                    1.2,
+                    8
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "flight_route",
+            "name": "Flight passage",
+            "poi": 8,
+            "decks": [
+              "B"
+            ],
+            "kind": "corridor",
+            "finish": "crew",
+            "group": "route",
+            "purpose": "A 2 m protected cross-passage behind both bay doors.",
+            "envelope": "main",
+            "brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    -13,
+                    8
+                  ],
+                  [
+                    13,
+                    8
+                  ],
+                  [
+                    13,
+                    10
+                  ],
+                  [
+                    -13,
+                    10
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    -13,
+                    8
+                  ],
+                  [
+                    13,
+                    8
+                  ],
+                  [
+                    13,
+                    10
+                  ],
+                  [
+                    -13,
+                    10
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "stbd_hangar",
+            "name": "Stbd hangar",
+            "poi": 9,
+            "decks": [
+              "B"
+            ],
+            "kind": "bay",
+            "finish": "working",
+            "group": "flight",
+            "purpose": "An 8 x 8 m Jackal berth with clear forward launch and surrounding service space.",
+            "envelope": "stbd_jaw",
+            "brushes": [
+              {
+                "y": [
+                  0,
+                  3.2
+                ],
+                "poly": [
+                  [
+                    -13,
+                    10
+                  ],
+                  [
+                    -2.348303,
+                    10.0
+                  ],
+                  [
+                    -2.980735,
+                    23.0
+                  ],
+                  [
+                    -13,
+                    23
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  0,
+                  3.2
+                ],
+                "poly": [
+                  [
+                    -13,
+                    10
+                  ],
+                  [
+                    -2,
+                    10
+                  ],
+                  [
+                    -2,
+                    23
+                  ],
+                  [
+                    -13,
+                    23
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "port_hangar",
+            "name": "Port hangar",
+            "poi": 10,
+            "decks": [
+              "B"
+            ],
+            "kind": "bay",
+            "finish": "working",
+            "group": "flight",
+            "purpose": "An 8 x 8 m Jackal berth with clear forward launch and surrounding service space.",
+            "envelope": "port_jaw",
+            "brushes": [
+              {
+                "y": [
+                  0,
+                  3.2
+                ],
+                "poly": [
+                  [
+                    2.348303,
+                    10.0
+                  ],
+                  [
+                    13,
+                    10
+                  ],
+                  [
+                    13,
+                    23
+                  ],
+                  [
+                    2.980735,
+                    23.0
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  0,
+                  3.2
+                ],
+                "poly": [
+                  [
+                    2,
+                    10
+                  ],
+                  [
+                    13,
+                    10
+                  ],
+                  [
+                    13,
+                    23
+                  ],
+                  [
+                    2,
+                    23
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "A_route",
+            "name": "Passage",
+            "poi": 11,
+            "decks": [
+              "A"
+            ],
+            "kind": "corridor",
+            "finish": "crew",
+            "group": "route",
+            "purpose": "2.4 m clear route linking every room on this deck.",
+            "envelope": "command",
+            "brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    -1.2,
+                    -13
+                  ],
+                  [
+                    1.2,
+                    -13
+                  ],
+                  [
+                    1.2,
+                    3
+                  ],
+                  [
+                    -1.2,
+                    3
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    -1.2,
+                    -13
+                  ],
+                  [
+                    1.2,
+                    -13
+                  ],
+                  [
+                    1.2,
+                    3
+                  ],
+                  [
+                    -1.2,
+                    3
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "life_support",
+            "name": "Life support",
+            "poi": 12,
+            "decks": [
+              "A"
+            ],
+            "kind": "room",
+            "finish": "working",
+            "group": "power",
+            "purpose": "Air, water and isolated backup power.",
+            "envelope": "command",
+            "brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    -5.474874,
+                    -13.0
+                  ],
+                  [
+                    -1.2,
+                    -13
+                  ],
+                  [
+                    -1.2,
+                    -5
+                  ],
+                  [
+                    -7,
+                    -5
+                  ],
+                  [
+                    -7.0,
+                    -6.414228
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    -7,
+                    -13
+                  ],
+                  [
+                    -1.2,
+                    -13
+                  ],
+                  [
+                    -1.2,
+                    -5
+                  ],
+                  [
+                    -7,
+                    -5
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "medical",
+            "name": "Medical",
+            "poi": 13,
+            "decks": [
+              "A"
+            ],
+            "kind": "room",
+            "finish": "crew",
+            "group": "crew",
+            "purpose": "Two casualty berths close to the launch crews.",
+            "envelope": "command",
+            "brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    -13
+                  ],
+                  [
+                    5.474874,
+                    -13.0
+                  ],
+                  [
+                    7.0,
+                    -6.414228
+                  ],
+                  [
+                    7,
+                    -5
+                  ],
+                  [
+                    1.2,
+                    -5
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    -13
+                  ],
+                  [
+                    7,
+                    -13
+                  ],
+                  [
+                    7,
+                    -5
+                  ],
+                  [
+                    1.2,
+                    -5
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "magazine",
+            "name": "Magazine",
+            "poi": 14,
+            "decks": [
+              "A"
+            ],
+            "kind": "room",
+            "finish": "working",
+            "group": "weapons",
+            "purpose": "Protected missile racks feeding the shoulder tubes.",
+            "envelope": "command",
+            "brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    -7,
+                    -5
+                  ],
+                  [
+                    -1.2,
+                    -5
+                  ],
+                  [
+                    -1.2,
+                    3
+                  ],
+                  [
+                    -7,
+                    3
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    -7,
+                    -5
+                  ],
+                  [
+                    -1.2,
+                    -5
+                  ],
+                  [
+                    -1.2,
+                    3
+                  ],
+                  [
+                    -7,
+                    3
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "flight_control",
+            "name": "Flight control",
+            "poi": 15,
+            "decks": [
+              "A"
+            ],
+            "kind": "room",
+            "finish": "crew",
+            "group": "command",
+            "purpose": "Control of both launch doors and bay pressure.",
+            "envelope": "command",
+            "brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    -5
+                  ],
+                  [
+                    7,
+                    -5
+                  ],
+                  [
+                    7,
+                    3
+                  ],
+                  [
+                    1.2,
+                    3
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    -5
+                  ],
+                  [
+                    7,
+                    -5
+                  ],
+                  [
+                    7,
+                    3
+                  ],
+                  [
+                    1.2,
+                    3
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "bridge",
+            "name": "Bridge",
+            "poi": 16,
+            "decks": [
+              "A"
+            ],
+            "kind": "room",
+            "finish": "crew",
+            "group": "command",
+            "purpose": "Protected central bridge, behind the forward launch line.",
+            "envelope": "command",
+            "brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    -7,
+                    3
+                  ],
+                  [
+                    7,
+                    3
+                  ],
+                  [
+                    7.0,
+                    3.119065
+                  ],
+                  [
+                    4.177151,
+                    9.0
+                  ],
+                  [
+                    -4.177151,
+                    9.0
+                  ],
+                  [
+                    -7.0,
+                    3.119065
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    -7,
+                    3
+                  ],
+                  [
+                    7,
+                    3
+                  ],
+                  [
+                    7,
+                    9
+                  ],
+                  [
+                    -7,
+                    9
+                  ]
+                ]
+              }
+            ]
+          }
+        ],
+        "portals": [
+          {
+            "id": "B_route_reactor",
+            "between": [
+              "B_route",
+              "reactor"
+            ],
+            "kind": "door",
+            "center_m": [
+              -1.2,
+              1.05,
+              -14.0
+            ],
+            "normal": [
+              -1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "B_route_drive",
+            "between": [
+              "B_route",
+              "drive"
+            ],
+            "kind": "door",
+            "center_m": [
+              1.2,
+              1.05,
+              -14.0
+            ],
+            "normal": [
+              1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "B_route_bunks",
+            "between": [
+              "B_route",
+              "bunks"
+            ],
+            "kind": "door",
+            "center_m": [
+              -1.2,
+              1.05,
+              -6.0
+            ],
+            "normal": [
+              -1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "B_route_mess",
+            "between": [
+              "B_route",
+              "mess"
+            ],
+            "kind": "door",
+            "center_m": [
+              1.2,
+              1.05,
+              -6.0
+            ],
+            "normal": [
+              1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "B_route_stbd_laser",
+            "between": [
+              "B_route",
+              "stbd_laser"
+            ],
+            "kind": "door",
+            "center_m": [
+              -1.2,
+              1.05,
+              3.0
+            ],
+            "normal": [
+              -1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "B_route_port_laser",
+            "between": [
+              "B_route",
+              "port_laser"
+            ],
+            "kind": "door",
+            "center_m": [
+              1.2,
+              1.05,
+              3.0
+            ],
+            "normal": [
+              1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "B_route_flight_route",
+            "between": [
+              "B_route",
+              "flight_route"
+            ],
+            "kind": "door",
+            "center_m": [
+              0,
+              1.05,
+              8
+            ],
+            "normal": [
+              0,
+              0,
+              1
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "flight_route_stbd_hangar",
+            "between": [
+              "flight_route",
+              "stbd_hangar"
+            ],
+            "kind": "door",
+            "center_m": [
+              -7.5,
+              1.05,
+              10
+            ],
+            "normal": [
+              0,
+              0,
+              1
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "flight_route_port_hangar",
+            "between": [
+              "flight_route",
+              "port_hangar"
+            ],
+            "kind": "door",
+            "center_m": [
+              7.5,
+              1.05,
+              10
+            ],
+            "normal": [
+              0,
+              0,
+              1
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "A_route_life_support",
+            "between": [
+              "A_route",
+              "life_support"
+            ],
+            "kind": "door",
+            "center_m": [
+              -1.2,
+              4.65,
+              -9.0
+            ],
+            "normal": [
+              -1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "A_route_medical",
+            "between": [
+              "A_route",
+              "medical"
+            ],
+            "kind": "door",
+            "center_m": [
+              1.2,
+              4.65,
+              -9.0
+            ],
+            "normal": [
+              1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "A_route_magazine",
+            "between": [
+              "A_route",
+              "magazine"
+            ],
+            "kind": "door",
+            "center_m": [
+              -1.2,
+              4.65,
+              -1.0
+            ],
+            "normal": [
+              -1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "A_route_flight_control",
+            "between": [
+              "A_route",
+              "flight_control"
+            ],
+            "kind": "door",
+            "center_m": [
+              1.2,
+              4.65,
+              -1.0
+            ],
+            "normal": [
+              1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "A_route_bridge",
+            "between": [
+              "A_route",
+              "bridge"
+            ],
+            "kind": "door",
+            "center_m": [
+              0,
+              4.65,
+              3
+            ],
+            "normal": [
+              0,
+              0,
+              1
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "ladder_BA",
+            "between": [
+              "B_route",
+              "A_route"
+            ],
+            "kind": "ladder",
+            "center_m": [
+              0,
+              2.8,
+              -4
+            ],
+            "normal": [
+              0,
+              1,
+              0
+            ],
+            "size_m": [
+              1.4,
+              1.4
+            ]
+          }
+        ],
+        "fixtures": [],
+        "stations": []
+      },
+      "colors": {
+        "armor": "#929182",
+        "secondary": "#323e42",
+        "accent": "#b98743",
+        "edge": "#adaca0",
+        "glow": "#efa367"
+      },
+      "fit_envelopes": {
+        "main": [
+          [
+            -10.8,
+            -20.5
+          ],
+          [
+            10.8,
+            -20.5
+          ],
+          [
+            14.7,
+            -8
+          ],
+          [
+            15.2,
+            11.1
+          ],
+          [
+            -15.2,
+            11.1
+          ],
+          [
+            -14.7,
+            -8
+          ]
+        ],
+        "command": [
+          [
+            -6,
+            -14.5
+          ],
+          [
+            6,
+            -14.5
+          ],
+          [
+            8.2,
+            -5
+          ],
+          [
+            8.0,
+            3
+          ],
+          [
+            4.4,
+            10.5
+          ],
+          [
+            -4.4,
+            10.5
+          ],
+          [
+            -8,
+            3
+          ],
+          [
+            -8.2,
+            -5
+          ]
+        ],
+        "port_jaw": [
+          [
+            1.4,
+            8
+          ],
+          [
+            15.1,
+            8
+          ],
+          [
+            15.5,
+            22
+          ],
+          [
+            12,
+            26.5
+          ],
+          [
+            2.3,
+            26.5
+          ]
+        ],
+        "stbd_jaw": [
+          [
+            -15.1,
+            8
+          ],
+          [
+            -1.4,
+            8
+          ],
+          [
+            -2.3,
+            26.5
+          ],
+          [
+            -12,
+            26.5
+          ],
+          [
+            -15.5,
+            22
+          ]
+        ]
+      },
+      "paint": {
+        "z_band_m": [
+          12,
+          15
+        ],
+        "x_min_m": 8
+      },
+      "fit_margin_m": 0.85,
+      "furnishings": [
+        {
+          "room": "B_route",
+          "kind": "person",
+          "center_m": [
+            0,
+            0,
+            -15.8
+          ],
+          "size_m": [
+            0.5,
+            1.8,
+            0.4
+          ]
+        },
+        {
+          "room": "reactor",
+          "kind": "machine",
+          "center_m": [
+            -7.817917799999999,
+            0,
+            -13.318967599999999
+          ],
+          "size_m": [
+            1.4,
+            1.6,
+            2.2
+          ]
+        },
+        {
+          "room": "drive",
+          "kind": "machine",
+          "center_m": [
+            7.817917800000001,
+            0,
+            -13.318967599999999
+          ],
+          "size_m": [
+            1.4,
+            1.6,
+            2.2
+          ]
+        },
+        {
+          "room": "bunks",
+          "kind": "bunk",
+          "center_m": [
+            -7.949999999999999,
+            0,
+            -8.7
+          ],
+          "size_m": [
+            0.9,
+            1.6,
+            2.0
+          ]
+        },
+        {
+          "room": "bunks",
+          "kind": "bunk",
+          "center_m": [
+            -6.25,
+            0,
+            -8.7
+          ],
+          "size_m": [
+            0.9,
+            1.6,
+            2.0
+          ]
+        },
+        {
+          "room": "bunks",
+          "kind": "bunk",
+          "center_m": [
+            -7.949999999999999,
+            0,
+            -6.0
+          ],
+          "size_m": [
+            0.9,
+            1.6,
+            2.0
+          ]
+        },
+        {
+          "room": "bunks",
+          "kind": "bunk",
+          "center_m": [
+            -6.25,
+            0,
+            -6.0
+          ],
+          "size_m": [
+            0.9,
+            1.6,
+            2.0
+          ]
+        },
+        {
+          "room": "bunks",
+          "kind": "bunk",
+          "center_m": [
+            -7.949999999999999,
+            0,
+            -3.3
+          ],
+          "size_m": [
+            0.9,
+            1.6,
+            2.0
+          ]
+        },
+        {
+          "room": "mess",
+          "kind": "table",
+          "center_m": [
+            7.1,
+            0,
+            -6.0
+          ],
+          "size_m": [
+            2.8,
+            0.8,
+            1.1
+          ]
+        },
+        {
+          "room": "stbd_laser",
+          "kind": "machine",
+          "center_m": [
+            -7.1,
+            0,
+            3.0
+          ],
+          "size_m": [
+            1.4,
+            1.6,
+            2.2
+          ]
+        },
+        {
+          "room": "port_laser",
+          "kind": "machine",
+          "center_m": [
+            7.1,
+            0,
+            3.0
+          ],
+          "size_m": [
+            1.4,
+            1.6,
+            2.2
+          ]
+        },
+        {
+          "room": "flight_route",
+          "kind": "person",
+          "center_m": [
+            0,
+            0,
+            9.0
+          ],
+          "size_m": [
+            0.5,
+            1.8,
+            0.4
+          ]
+        },
+        {
+          "room": "A_route",
+          "kind": "person",
+          "center_m": [
+            0,
+            3.6,
+            -10.8
+          ],
+          "size_m": [
+            0.5,
+            1.8,
+            0.4
+          ]
+        },
+        {
+          "room": "life_support",
+          "kind": "machine",
+          "center_m": [
+            -4.3749747999999995,
+            3.6,
+            -8.482845600000001
+          ],
+          "size_m": [
+            1.4,
+            1.6,
+            2.2
+          ]
+        },
+        {
+          "room": "medical",
+          "kind": "bed",
+          "center_m": [
+            4.3749747999999995,
+            3.6,
+            -8.482845600000001
+          ],
+          "size_m": [
+            0.9,
+            0.8,
+            2.0
+          ]
+        },
+        {
+          "room": "magazine",
+          "kind": "machine",
+          "center_m": [
+            -4.1,
+            3.6,
+            -1.0
+          ],
+          "size_m": [
+            1.4,
+            1.6,
+            2.2
+          ]
+        },
+        {
+          "room": "bridge",
+          "kind": "console",
+          "center_m": [
+            -1.0,
+            3.6,
+            5.3
+          ],
+          "size_m": [
+            1.2,
+            1.1,
+            0.65
+          ]
+        },
+        {
+          "room": "bridge",
+          "kind": "seat",
+          "center_m": [
+            -1.0,
+            3.6,
+            4.3
+          ],
+          "size_m": [
+            0.55,
+            0.9,
+            0.6
+          ]
+        },
+        {
+          "room": "bridge",
+          "kind": "console",
+          "center_m": [
+            1.0,
+            3.6,
+            5.3
+          ],
+          "size_m": [
+            1.2,
+            1.1,
+            0.65
+          ]
+        },
+        {
+          "room": "bridge",
+          "kind": "seat",
+          "center_m": [
+            1.0,
+            3.6,
+            4.3
+          ],
+          "size_m": [
+            0.55,
+            0.9,
+            0.6
+          ]
+        },
+        {
+          "room": "bridge",
+          "kind": "console",
+          "center_m": [
+            -1.0,
+            3.6,
+            7.3
+          ],
+          "size_m": [
+            1.2,
+            1.1,
+            0.65
+          ]
+        },
+        {
+          "room": "bridge",
+          "kind": "seat",
+          "center_m": [
+            -1.0,
+            3.6,
+            6.3
+          ],
+          "size_m": [
+            0.55,
+            0.9,
+            0.6
+          ]
+        },
+        {
+          "room": "bridge",
+          "kind": "console",
+          "center_m": [
+            1.0,
+            3.6,
+            7.3
+          ],
+          "size_m": [
+            1.2,
+            1.1,
+            0.65
+          ]
+        },
+        {
+          "room": "bridge",
+          "kind": "seat",
+          "center_m": [
+            1.0,
+            3.6,
+            6.3
+          ],
+          "size_m": [
+            0.55,
+            0.9,
+            0.6
+          ]
+        }
+      ],
+      "height_m": 10.8
+    },
+    {
+      "id": "bulwark",
+      "name": "Bulwark",
+      "number": 3,
+      "role": "Armored corvette",
+      "crew": 12,
+      "length_m": 45.5,
+      "beam_m": 38.1,
+      "brief": "A broad armored bow shields the weapons deck. A compact command block sits over a deep central hull and a paired aft launch bay.",
+      "notes": [
+        "A broad forward battery replaces the needle-shaped bow.",
+        "Magazines stay beside the guns and away from the hangar.",
+        "Three decks concentrate the occupied volume behind armor."
+      ],
+      "adjustments": [
+        "The wide laser battery follows the faceted bow shield.",
+        "Aft bunks and mess narrow where the battery meets the engine shoulders.",
+        "Upper command rooms shrink to the protected block while all three decks keep their ladder connection."
+      ],
+      "hull_zones": [
+        {
+          "id": "lower",
+          "deck": "C",
+          "poly": [
+            [
+              -10.9,
+              -20.5
+            ],
+            [
+              10.9,
+              -20.5
+            ],
+            [
+              12,
+              -11
+            ],
+            [
+              11.8,
+              5
+            ],
+            [
+              8.6,
+              15
+            ],
+            [
+              -8.6,
+              15
+            ],
+            [
+              -11.8,
+              5
+            ],
+            [
+              -12,
+              -11
+            ]
+          ],
+          "y_m": [
+            -1.5,
+            3.7
+          ],
+          "bevel_m": 0.45,
+          "material": "exterior_pearl"
+        },
+        {
+          "id": "battery",
+          "deck": "B",
+          "poly": [
+            [
+              -8.8,
+              -14.5
+            ],
+            [
+              8.8,
+              -14.5
+            ],
+            [
+              15.8,
+              -3
+            ],
+            [
+              17.5,
+              7
+            ],
+            [
+              17.2,
+              15.5
+            ],
+            [
+              12.8,
+              19.5
+            ],
+            [
+              -12.8,
+              19.5
+            ],
+            [
+              -17.2,
+              15.5
+            ],
+            [
+              -17.5,
+              7
+            ],
+            [
+              -15.8,
+              -3
+            ]
+          ],
+          "y_m": [
+            3.1,
+            7.2
+          ],
+          "bevel_m": 0.45,
+          "material": "exterior_pearl"
+        },
+        {
+          "id": "command",
+          "deck": "A",
+          "poly": [
+            [
+              -4.5,
+              -8.5
+            ],
+            [
+              4.5,
+              -8.5
+            ],
+            [
+              6,
+              -3
+            ],
+            [
+              5.9,
+              4
+            ],
+            [
+              3.2,
+              9.5
+            ],
+            [
+              -3.2,
+              9.5
+            ],
+            [
+              -5.9,
+              4
+            ],
+            [
+              -6,
+              -3
+            ]
+          ],
+          "y_m": [
+            6.7,
+            10.7
+          ],
+          "bevel_m": 0.4,
+          "material": "exterior_pearl"
+        }
+      ],
+      "fittings": [
+        {
+          "id": "engine_-1",
+          "kind": "engine",
+          "center_m": [
+            -8.7,
+            0.2,
+            -22
+          ],
+          "size_m": [
+            5.1,
+            4.4,
+            7
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "laser_-1",
+          "kind": "laser",
+          "center_m": [
+            -17.3,
+            5,
+            8.5
+          ],
+          "size_m": [
+            3.2,
+            3.1,
+            12
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "cheek_-1",
+          "kind": "armor",
+          "center_m": [
+            -13.8,
+            4.9,
+            15.6
+          ],
+          "size_m": [
+            5.6,
+            4.2,
+            5.4
+          ],
+          "yaw_deg": -10
+        },
+        {
+          "id": "radiator_-1",
+          "kind": "radiator",
+          "center_m": [
+            -10,
+            7.45,
+            1
+          ],
+          "size_m": [
+            3,
+            0.34,
+            8
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "missile_-1",
+          "kind": "muzzle",
+          "center_m": [
+            -3.8,
+            5.0,
+            19.1
+          ],
+          "size_m": [
+            1.3,
+            1.2,
+            1.5
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "engine_1",
+          "kind": "engine",
+          "center_m": [
+            8.7,
+            0.2,
+            -22
+          ],
+          "size_m": [
+            5.1,
+            4.4,
+            7
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "laser_1",
+          "kind": "laser",
+          "center_m": [
+            17.3,
+            5,
+            8.5
+          ],
+          "size_m": [
+            3.2,
+            3.1,
+            12
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "cheek_1",
+          "kind": "armor",
+          "center_m": [
+            13.8,
+            4.9,
+            15.6
+          ],
+          "size_m": [
+            5.6,
+            4.2,
+            5.4
+          ],
+          "yaw_deg": 10
+        },
+        {
+          "id": "radiator_1",
+          "kind": "radiator",
+          "center_m": [
+            10,
+            7.45,
+            1
+          ],
+          "size_m": [
+            3,
+            0.34,
+            8
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "missile_1",
+          "kind": "muzzle",
+          "center_m": [
+            3.8,
+            5.0,
+            19.1
+          ],
+          "size_m": [
+            1.3,
+            1.2,
+            1.5
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "dorsal",
+          "kind": "turret",
+          "center_m": [
+            0,
+            11.2,
+            -1
+          ],
+          "size_m": [
+            3.1,
+            1.2,
+            4.6
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "ventral",
+          "kind": "turret",
+          "center_m": [
+            0,
+            -2,
+            3
+          ],
+          "size_m": [
+            2.8,
+            1.1,
+            4
+          ],
+          "yaw_deg": 0
+        },
+        {
+          "id": "hangar_door",
+          "kind": "baydoor",
+          "center_m": [
+            0,
+            1.4,
+            -20.65
+          ],
+          "size_m": [
+            18.4,
+            2.9,
+            0.2
+          ],
+          "yaw_deg": 0
+        }
+      ],
+      "craft": [
+        {
+          "id": "jackal_1",
+          "room": "hangar",
+          "center_m": [
+            -5,
+            0,
+            -12
+          ],
+          "size_m": [
+            8,
+            2.4,
+            8
+          ],
+          "yaw_deg": 180
+        },
+        {
+          "id": "jackal_2",
+          "room": "hangar",
+          "center_m": [
+            5,
+            0,
+            -12
+          ],
+          "size_m": [
+            8,
+            2.4,
+            8
+          ],
+          "yaw_deg": 180
+        }
+      ],
+      "layout": {
+        "schema": "starcrew.ship-layout/2",
+        "ship": {
+          "id": "federation-bulwark",
+          "name": "Federation / Bulwark",
+          "class": "Armored corvette"
+        },
+        "conventions": {
+          "wall_thickness_m": 0.25,
+          "deck_slab_m": 0.8
+        },
+        "decks": [
+          {
+            "id": "A",
+            "name": "Command",
+            "floor_y_m": 7.2,
+            "clear_height_m": 2.8
+          },
+          {
+            "id": "B",
+            "name": "Battery",
+            "floor_y_m": 3.6,
+            "clear_height_m": 2.8
+          },
+          {
+            "id": "C",
+            "name": "Flight",
+            "floor_y_m": 0,
+            "clear_height_m": 2.8
+          }
+        ],
+        "compartments": [
+          {
+            "id": "C_route",
+            "name": "Passage",
+            "poi": 1,
+            "decks": [
+              "C"
+            ],
+            "kind": "corridor",
+            "finish": "crew",
+            "group": "route",
+            "purpose": "2.4 m clear route linking every room on this deck.",
+            "envelope": "lower",
+            "brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    -1.2,
+                    -5
+                  ],
+                  [
+                    1.2,
+                    -5
+                  ],
+                  [
+                    1.2,
+                    13
+                  ],
+                  [
+                    -1.2,
+                    13
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    -1.2,
+                    -5
+                  ],
+                  [
+                    1.2,
+                    -5
+                  ],
+                  [
+                    1.2,
+                    13
+                  ],
+                  [
+                    -1.2,
+                    13
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "reactor",
+            "name": "Reactor",
+            "poi": 2,
+            "decks": [
+              "C"
+            ],
+            "kind": "room",
+            "finish": "working",
+            "group": "power",
+            "purpose": "Central protected fusion plant.",
+            "envelope": "lower",
+            "brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    -10,
+                    -5
+                  ],
+                  [
+                    -1.2,
+                    -5
+                  ],
+                  [
+                    -1.2,
+                    4
+                  ],
+                  [
+                    -10,
+                    4
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    -10,
+                    -5
+                  ],
+                  [
+                    -1.2,
+                    -5
+                  ],
+                  [
+                    -1.2,
+                    4
+                  ],
+                  [
+                    -10,
+                    4
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "drive",
+            "name": "Drive control",
+            "poi": 3,
+            "decks": [
+              "C"
+            ],
+            "kind": "room",
+            "finish": "working",
+            "group": "power",
+            "purpose": "Short aft routing to the split engines.",
+            "envelope": "lower",
+            "brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    -5
+                  ],
+                  [
+                    10,
+                    -5
+                  ],
+                  [
+                    10,
+                    4
+                  ],
+                  [
+                    1.2,
+                    4
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    -5
+                  ],
+                  [
+                    10,
+                    -5
+                  ],
+                  [
+                    10,
+                    4
+                  ],
+                  [
+                    1.2,
+                    4
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "life_support",
+            "name": "Life support",
+            "poi": 4,
+            "decks": [
+              "C"
+            ],
+            "kind": "room",
+            "finish": "working",
+            "group": "power",
+            "purpose": "Air, water and reserve stores.",
+            "envelope": "lower",
+            "brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    -10,
+                    4
+                  ],
+                  [
+                    -1.2,
+                    4
+                  ],
+                  [
+                    -1.2,
+                    13
+                  ],
+                  [
+                    -8.34754,
+                    13.0
+                  ],
+                  [
+                    -10.0,
+                    7.836064
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    -10,
+                    4
+                  ],
+                  [
+                    -1.2,
+                    4
+                  ],
+                  [
+                    -1.2,
+                    13
+                  ],
+                  [
+                    -10,
+                    13
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "cargo",
+            "name": "Workshop",
+            "poi": 5,
+            "decks": [
+              "C"
+            ],
+            "kind": "room",
+            "finish": "working",
+            "group": "power",
+            "purpose": "Spares, repair bench and recovery gear.",
+            "envelope": "lower",
+            "brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    4
+                  ],
+                  [
+                    10,
+                    4
+                  ],
+                  [
+                    10.0,
+                    7.836064
+                  ],
+                  [
+                    8.34754,
+                    13.0
+                  ],
+                  [
+                    1.2,
+                    13
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  0,
+                  2.8
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    4
+                  ],
+                  [
+                    10,
+                    4
+                  ],
+                  [
+                    10,
+                    13
+                  ],
+                  [
+                    1.2,
+                    13
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "hangar",
+            "name": "Twin hangar",
+            "poi": 6,
+            "decks": [
+              "C"
+            ],
+            "kind": "bay",
+            "finish": "working",
+            "group": "flight",
+            "purpose": "Two 8 x 8 m Jackals, central service lane and aft launch opening.",
+            "envelope": "lower",
+            "brushes": [
+              {
+                "y": [
+                  0,
+                  3.2
+                ],
+                "poly": [
+                  [
+                    -10,
+                    -19
+                  ],
+                  [
+                    10,
+                    -19
+                  ],
+                  [
+                    10,
+                    -5
+                  ],
+                  [
+                    -10,
+                    -5
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  0,
+                  3.2
+                ],
+                "poly": [
+                  [
+                    -10,
+                    -19
+                  ],
+                  [
+                    10,
+                    -19
+                  ],
+                  [
+                    10,
+                    -5
+                  ],
+                  [
+                    -10,
+                    -5
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "B_route",
+            "name": "Passage",
+            "poi": 7,
+            "decks": [
+              "B"
+            ],
+            "kind": "corridor",
+            "finish": "crew",
+            "group": "route",
+            "purpose": "2.4 m clear route linking every room on this deck.",
+            "envelope": "battery",
+            "brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    -1.2,
+                    -13
+                  ],
+                  [
+                    1.2,
+                    -13
+                  ],
+                  [
+                    1.2,
+                    14
+                  ],
+                  [
+                    -1.2,
+                    14
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    -1.2,
+                    -13
+                  ],
+                  [
+                    1.2,
+                    -13
+                  ],
+                  [
+                    1.2,
+                    14
+                  ],
+                  [
+                    -1.2,
+                    14
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "bunks",
+            "name": "Bunks / head",
+            "poi": 8,
+            "decks": [
+              "B"
+            ],
+            "kind": "room",
+            "finish": "crew",
+            "group": "crew",
+            "purpose": "Twelve bunks and washrooms.",
+            "envelope": "battery",
+            "brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    -8.717959,
+                    -13.0
+                  ],
+                  [
+                    -1.2,
+                    -13
+                  ],
+                  [
+                    -1.2,
+                    -3
+                  ],
+                  [
+                    -14.804915,
+                    -3.0
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    -15,
+                    -13
+                  ],
+                  [
+                    -1.2,
+                    -13
+                  ],
+                  [
+                    -1.2,
+                    -3
+                  ],
+                  [
+                    -15,
+                    -3
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "mess",
+            "name": "Mess / galley",
+            "poi": 9,
+            "decks": [
+              "B"
+            ],
+            "kind": "room",
+            "finish": "crew",
+            "group": "crew",
+            "purpose": "Meals, briefing and off-watch space.",
+            "envelope": "battery",
+            "brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    -13
+                  ],
+                  [
+                    8.717959,
+                    -13.0
+                  ],
+                  [
+                    14.804915,
+                    -3.0
+                  ],
+                  [
+                    1.2,
+                    -3
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    -13
+                  ],
+                  [
+                    15,
+                    -13
+                  ],
+                  [
+                    15,
+                    -3
+                  ],
+                  [
+                    1.2,
+                    -3
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "medical",
+            "name": "Medical",
+            "poi": 10,
+            "decks": [
+              "B"
+            ],
+            "kind": "room",
+            "finish": "crew",
+            "group": "crew",
+            "purpose": "Two treatment berths.",
+            "envelope": "battery",
+            "brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    -14.804915,
+                    -3.0
+                  ],
+                  [
+                    -1.2,
+                    -3
+                  ],
+                  [
+                    -1.2,
+                    5
+                  ],
+                  [
+                    -15,
+                    5
+                  ],
+                  [
+                    -15.0,
+                    -2.634147
+                  ],
+                  [
+                    -14.989301,
+                    -2.69708
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    -15,
+                    -3
+                  ],
+                  [
+                    -1.2,
+                    -3
+                  ],
+                  [
+                    -1.2,
+                    5
+                  ],
+                  [
+                    -15,
+                    5
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "magazine",
+            "name": "Magazine",
+            "poi": 11,
+            "decks": [
+              "B"
+            ],
+            "kind": "room",
+            "finish": "working",
+            "group": "weapons",
+            "purpose": "Isolated ammunition store and tube loading route.",
+            "envelope": "battery",
+            "brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    -3
+                  ],
+                  [
+                    14.804915,
+                    -3.0
+                  ],
+                  [
+                    14.989301,
+                    -2.69708
+                  ],
+                  [
+                    15.0,
+                    -2.634147
+                  ],
+                  [
+                    15,
+                    5
+                  ],
+                  [
+                    1.2,
+                    5
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    -3
+                  ],
+                  [
+                    15,
+                    -3
+                  ],
+                  [
+                    15,
+                    5
+                  ],
+                  [
+                    1.2,
+                    5
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "stbd_laser",
+            "name": "Stbd laser",
+            "poi": 12,
+            "decks": [
+              "B"
+            ],
+            "kind": "room",
+            "finish": "working",
+            "group": "weapons",
+            "purpose": "Broadside laser, capacitors and cooling access.",
+            "envelope": "battery",
+            "brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    -15,
+                    5
+                  ],
+                  [
+                    -1.2,
+                    5
+                  ],
+                  [
+                    -1.2,
+                    14
+                  ],
+                  [
+                    -15,
+                    14
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    -15,
+                    5
+                  ],
+                  [
+                    -1.2,
+                    5
+                  ],
+                  [
+                    -1.2,
+                    14
+                  ],
+                  [
+                    -15,
+                    14
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "port_laser",
+            "name": "Port laser",
+            "poi": 13,
+            "decks": [
+              "B"
+            ],
+            "kind": "room",
+            "finish": "working",
+            "group": "weapons",
+            "purpose": "Broadside laser, capacitors and cooling access.",
+            "envelope": "battery",
+            "brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    5
+                  ],
+                  [
+                    15,
+                    5
+                  ],
+                  [
+                    15,
+                    14
+                  ],
+                  [
+                    1.2,
+                    14
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    5
+                  ],
+                  [
+                    15,
+                    5
+                  ],
+                  [
+                    15,
+                    14
+                  ],
+                  [
+                    1.2,
+                    14
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "tubes",
+            "name": "Torpedo room",
+            "poi": 14,
+            "decks": [
+              "B"
+            ],
+            "kind": "room",
+            "finish": "working",
+            "group": "weapons",
+            "purpose": "Twin tubes behind a broad, faceted forward shield.",
+            "envelope": "battery",
+            "brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    -12,
+                    14
+                  ],
+                  [
+                    12,
+                    14
+                  ],
+                  [
+                    12,
+                    18
+                  ],
+                  [
+                    -12,
+                    18
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  3.6,
+                  6.4
+                ],
+                "poly": [
+                  [
+                    -12,
+                    14
+                  ],
+                  [
+                    12,
+                    14
+                  ],
+                  [
+                    12,
+                    18
+                  ],
+                  [
+                    -12,
+                    18
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "A_route",
+            "name": "Passage",
+            "poi": 15,
+            "decks": [
+              "A"
+            ],
+            "kind": "corridor",
+            "finish": "crew",
+            "group": "route",
+            "purpose": "2.4 m clear route linking every room on this deck.",
+            "envelope": "command",
+            "brushes": [
+              {
+                "y": [
+                  7.2,
+                  10.0
+                ],
+                "poly": [
+                  [
+                    -1.2,
+                    -7
+                  ],
+                  [
+                    1.2,
+                    -7
+                  ],
+                  [
+                    1.2,
+                    3
+                  ],
+                  [
+                    -1.2,
+                    3
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  7.2,
+                  10.0
+                ],
+                "poly": [
+                  [
+                    -1.2,
+                    -7
+                  ],
+                  [
+                    1.2,
+                    -7
+                  ],
+                  [
+                    1.2,
+                    3
+                  ],
+                  [
+                    -1.2,
+                    3
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "computers",
+            "name": "Avionics",
+            "poi": 16,
+            "decks": [
+              "A"
+            ],
+            "kind": "room",
+            "finish": "working",
+            "group": "power",
+            "purpose": "Fire control and redundant command systems.",
+            "envelope": "command",
+            "brushes": [
+              {
+                "y": [
+                  7.2,
+                  10.0
+                ],
+                "poly": [
+                  [
+                    -4.028046,
+                    -7.0
+                  ],
+                  [
+                    -1.2,
+                    -7
+                  ],
+                  [
+                    -1.2,
+                    3
+                  ],
+                  [
+                    -5,
+                    3
+                  ],
+                  [
+                    -5.0,
+                    -3.43617
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  7.2,
+                  10.0
+                ],
+                "poly": [
+                  [
+                    -5,
+                    -7
+                  ],
+                  [
+                    -1.2,
+                    -7
+                  ],
+                  [
+                    -1.2,
+                    3
+                  ],
+                  [
+                    -5,
+                    3
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "ready",
+            "name": "Briefing",
+            "poi": 17,
+            "decks": [
+              "A"
+            ],
+            "kind": "room",
+            "finish": "crew",
+            "group": "command",
+            "purpose": "Captain and damage-control coordination.",
+            "envelope": "command",
+            "brushes": [
+              {
+                "y": [
+                  7.2,
+                  10.0
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    -7
+                  ],
+                  [
+                    4.028046,
+                    -7.0
+                  ],
+                  [
+                    5.0,
+                    -3.43617
+                  ],
+                  [
+                    5,
+                    3
+                  ],
+                  [
+                    1.2,
+                    3
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  7.2,
+                  10.0
+                ],
+                "poly": [
+                  [
+                    1.2,
+                    -7
+                  ],
+                  [
+                    5,
+                    -7
+                  ],
+                  [
+                    5,
+                    3
+                  ],
+                  [
+                    1.2,
+                    3
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "id": "bridge",
+            "name": "Bridge",
+            "poi": 18,
+            "decks": [
+              "A"
+            ],
+            "kind": "room",
+            "finish": "crew",
+            "group": "command",
+            "purpose": "Four command stations in a low protected bridge block.",
+            "envelope": "command",
+            "brushes": [
+              {
+                "y": [
+                  7.2,
+                  10.0
+                ],
+                "poly": [
+                  [
+                    -5,
+                    3
+                  ],
+                  [
+                    5,
+                    3
+                  ],
+                  [
+                    5.0,
+                    3.904466
+                  ],
+                  [
+                    2.989465,
+                    8.0
+                  ],
+                  [
+                    -2.989465,
+                    8.0
+                  ],
+                  [
+                    -5.0,
+                    3.904466
+                  ]
+                ]
+              }
+            ],
+            "initial_brushes": [
+              {
+                "y": [
+                  7.2,
+                  10.0
+                ],
+                "poly": [
+                  [
+                    -5,
+                    3
+                  ],
+                  [
+                    5,
+                    3
+                  ],
+                  [
+                    5,
+                    8
+                  ],
+                  [
+                    -5,
+                    8
+                  ]
+                ]
+              }
+            ]
+          }
+        ],
+        "portals": [
+          {
+            "id": "C_route_reactor",
+            "between": [
+              "C_route",
+              "reactor"
+            ],
+            "kind": "door",
+            "center_m": [
+              -1.2,
+              1.05,
+              -0.5
+            ],
+            "normal": [
+              -1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "C_route_drive",
+            "between": [
+              "C_route",
+              "drive"
+            ],
+            "kind": "door",
+            "center_m": [
+              1.2,
+              1.05,
+              -0.5
+            ],
+            "normal": [
+              1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "C_route_life_support",
+            "between": [
+              "C_route",
+              "life_support"
+            ],
+            "kind": "door",
+            "center_m": [
+              -1.2,
+              1.05,
+              8.5
+            ],
+            "normal": [
+              -1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "C_route_cargo",
+            "between": [
+              "C_route",
+              "cargo"
+            ],
+            "kind": "door",
+            "center_m": [
+              1.2,
+              1.05,
+              8.5
+            ],
+            "normal": [
+              1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "C_route_hangar",
+            "between": [
+              "C_route",
+              "hangar"
+            ],
+            "kind": "door",
+            "center_m": [
+              0,
+              1.05,
+              -5
+            ],
+            "normal": [
+              0,
+              0,
+              -1
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "B_route_bunks",
+            "between": [
+              "B_route",
+              "bunks"
+            ],
+            "kind": "door",
+            "center_m": [
+              -1.2,
+              4.65,
+              -8.0
+            ],
+            "normal": [
+              -1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "B_route_mess",
+            "between": [
+              "B_route",
+              "mess"
+            ],
+            "kind": "door",
+            "center_m": [
+              1.2,
+              4.65,
+              -8.0
+            ],
+            "normal": [
+              1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "B_route_medical",
+            "between": [
+              "B_route",
+              "medical"
+            ],
+            "kind": "door",
+            "center_m": [
+              -1.2,
+              4.65,
+              1.0
+            ],
+            "normal": [
+              -1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "B_route_magazine",
+            "between": [
+              "B_route",
+              "magazine"
+            ],
+            "kind": "door",
+            "center_m": [
+              1.2,
+              4.65,
+              1.0
+            ],
+            "normal": [
+              1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "B_route_stbd_laser",
+            "between": [
+              "B_route",
+              "stbd_laser"
+            ],
+            "kind": "door",
+            "center_m": [
+              -1.2,
+              4.65,
+              9.5
+            ],
+            "normal": [
+              -1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "B_route_port_laser",
+            "between": [
+              "B_route",
+              "port_laser"
+            ],
+            "kind": "door",
+            "center_m": [
+              1.2,
+              4.65,
+              9.5
+            ],
+            "normal": [
+              1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "B_route_tubes",
+            "between": [
+              "B_route",
+              "tubes"
+            ],
+            "kind": "door",
+            "center_m": [
+              0,
+              4.65,
+              14
+            ],
+            "normal": [
+              0,
+              0,
+              1
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "A_route_computers",
+            "between": [
+              "A_route",
+              "computers"
+            ],
+            "kind": "door",
+            "center_m": [
+              -1.2,
+              8.25,
+              -2.0
+            ],
+            "normal": [
+              -1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "A_route_ready",
+            "between": [
+              "A_route",
+              "ready"
+            ],
+            "kind": "door",
+            "center_m": [
+              1.2,
+              8.25,
+              -2.0
+            ],
+            "normal": [
+              1,
+              0,
+              0
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "A_route_bridge",
+            "between": [
+              "A_route",
+              "bridge"
+            ],
+            "kind": "door",
+            "center_m": [
+              0,
+              8.25,
+              3
+            ],
+            "normal": [
+              0,
+              0,
+              1
+            ],
+            "size_m": [
+              1.2,
+              2.1
+            ]
+          },
+          {
+            "id": "ladder_CB",
+            "between": [
+              "C_route",
+              "B_route"
+            ],
+            "kind": "ladder",
+            "center_m": [
+              0,
+              2.8,
+              1
+            ],
+            "normal": [
+              0,
+              1,
+              0
+            ],
+            "size_m": [
+              1.4,
+              1.4
+            ]
+          },
+          {
+            "id": "ladder_BA",
+            "between": [
+              "B_route",
+              "A_route"
+            ],
+            "kind": "ladder",
+            "center_m": [
+              0,
+              6.4,
+              1
+            ],
+            "normal": [
+              0,
+              1,
+              0
+            ],
+            "size_m": [
+              1.4,
+              1.4
+            ]
+          }
+        ],
+        "fixtures": [],
+        "stations": []
+      },
+      "colors": {
+        "armor": "#8c9690",
+        "secondary": "#323e42",
+        "accent": "#9b453a",
+        "edge": "#adaca0",
+        "glow": "#efa367"
+      },
+      "fit_envelopes": {
+        "lower": [
+          [
+            -10.9,
+            -20.5
+          ],
+          [
+            10.9,
+            -20.5
+          ],
+          [
+            12,
+            -11
+          ],
+          [
+            11.8,
+            5
+          ],
+          [
+            8.6,
+            15
+          ],
+          [
+            -8.6,
+            15
+          ],
+          [
+            -11.8,
+            5
+          ],
+          [
+            -12,
+            -11
+          ]
+        ],
+        "battery": [
+          [
+            -8.8,
+            -14.5
+          ],
+          [
+            8.8,
+            -14.5
+          ],
+          [
+            15.8,
+            -3
+          ],
+          [
+            17.5,
+            7
+          ],
+          [
+            17.2,
+            15.5
+          ],
+          [
+            12.8,
+            19.5
+          ],
+          [
+            -12.8,
+            19.5
+          ],
+          [
+            -17.2,
+            15.5
+          ],
+          [
+            -17.5,
+            7
+          ],
+          [
+            -15.8,
+            -3
+          ]
+        ],
+        "command": [
+          [
+            -4.5,
+            -8.5
+          ],
+          [
+            4.5,
+            -8.5
+          ],
+          [
+            6,
+            -3
+          ],
+          [
+            5.9,
+            4
+          ],
+          [
+            3.2,
+            9.5
+          ],
+          [
+            -3.2,
+            9.5
+          ],
+          [
+            -5.9,
+            4
+          ],
+          [
+            -6,
+            -3
+          ]
+        ]
+      },
+      "paint": {
+        "z_band_m": [
+          7,
+          10.2
+        ],
+        "x_min_m": 8
+      },
+      "fit_margin_m": 0.85,
+      "furnishings": [
+        {
+          "room": "C_route",
+          "kind": "person",
+          "center_m": [
+            0,
+            0,
+            -2.8
+          ],
+          "size_m": [
+            0.5,
+            1.8,
+            0.4
+          ]
+        },
+        {
+          "room": "reactor",
+          "kind": "machine",
+          "center_m": [
+            -5.6,
+            0,
+            -0.5
+          ],
+          "size_m": [
+            1.4,
+            1.6,
+            2.2
+          ]
+        },
+        {
+          "room": "drive",
+          "kind": "machine",
+          "center_m": [
+            5.6,
+            0,
+            -0.5
+          ],
+          "size_m": [
+            1.4,
+            1.6,
+            2.2
+          ]
+        },
+        {
+          "room": "life_support",
+          "kind": "machine",
+          "center_m": [
+            -6.149508,
+            0,
+            8.3672128
+          ],
+          "size_m": [
+            1.4,
+            1.6,
+            2.2
+          ]
+        },
+        {
+          "room": "cargo",
+          "kind": "machine",
+          "center_m": [
+            6.149507999999999,
+            0,
+            8.3672128
+          ],
+          "size_m": [
+            1.4,
+            1.6,
+            2.2
+          ]
+        },
+        {
+          "room": "B_route",
+          "kind": "person",
+          "center_m": [
+            0,
+            3.6,
+            -10.8
+          ],
+          "size_m": [
+            0.5,
+            1.8,
+            0.4
+          ]
+        },
+        {
+          "room": "bunks",
+          "kind": "bunk",
+          "center_m": [
+            -7.3307185,
+            3.6,
+            -10.7
+          ],
+          "size_m": [
+            0.9,
+            1.6,
+            2.0
+          ]
+        },
+        {
+          "room": "bunks",
+          "kind": "bunk",
+          "center_m": [
+            -5.6307185,
+            3.6,
+            -10.7
+          ],
+          "size_m": [
+            0.9,
+            1.6,
+            2.0
+          ]
+        },
+        {
+          "room": "bunks",
+          "kind": "bunk",
+          "center_m": [
+            -7.3307185,
+            3.6,
+            -8.0
+          ],
+          "size_m": [
+            0.9,
+            1.6,
+            2.0
+          ]
+        },
+        {
+          "room": "bunks",
+          "kind": "bunk",
+          "center_m": [
+            -5.6307185,
+            3.6,
+            -8.0
+          ],
+          "size_m": [
+            0.9,
+            1.6,
+            2.0
+          ]
+        },
+        {
+          "room": "bunks",
+          "kind": "bunk",
+          "center_m": [
+            -7.3307185,
+            3.6,
+            -5.3
+          ],
+          "size_m": [
+            0.9,
+            1.6,
+            2.0
+          ]
+        },
+        {
+          "room": "bunks",
+          "kind": "bunk",
+          "center_m": [
+            -5.6307185,
+            3.6,
+            -5.3
+          ],
+          "size_m": [
+            0.9,
+            1.6,
+            2.0
+          ]
+        },
+        {
+          "room": "mess",
+          "kind": "table",
+          "center_m": [
+            6.480718499999999,
+            3.6,
+            -8.0
+          ],
+          "size_m": [
+            2.8,
+            0.8,
+            1.1
+          ]
+        },
+        {
+          "room": "medical",
+          "kind": "bed",
+          "center_m": [
+            -10.365702666666666,
+            3.6,
+            -0.2218711666666667
+          ],
+          "size_m": [
+            0.9,
+            0.8,
+            2.0
+          ]
+        },
+        {
+          "room": "magazine",
+          "kind": "machine",
+          "center_m": [
+            10.365702666666667,
+            3.6,
+            -0.2218711666666667
+          ],
+          "size_m": [
+            1.4,
+            1.6,
+            2.2
+          ]
+        },
+        {
+          "room": "stbd_laser",
+          "kind": "machine",
+          "center_m": [
+            -8.1,
+            3.6,
+            9.5
+          ],
+          "size_m": [
+            1.4,
+            1.6,
+            2.2
+          ]
+        },
+        {
+          "room": "port_laser",
+          "kind": "machine",
+          "center_m": [
+            8.1,
+            3.6,
+            9.5
+          ],
+          "size_m": [
+            1.4,
+            1.6,
+            2.2
+          ]
+        },
+        {
+          "room": "tubes",
+          "kind": "machine",
+          "center_m": [
+            0.0,
+            3.6,
+            16.0
+          ],
+          "size_m": [
+            1.4,
+            1.6,
+            2.2
+          ]
+        },
+        {
+          "room": "A_route",
+          "kind": "person",
+          "center_m": [
+            0,
+            7.2,
+            -4.8
+          ],
+          "size_m": [
+            0.5,
+            1.8,
+            0.4
+          ]
+        },
+        {
+          "room": "computers",
+          "kind": "machine",
+          "center_m": [
+            -3.2856092000000006,
+            7.2,
+            -2.287234
+          ],
+          "size_m": [
+            1.4,
+            1.6,
+            2.2
+          ]
+        },
+        {
+          "room": "bridge",
+          "kind": "console",
+          "center_m": [
+            -1.0,
+            7.2,
+            4.8
+          ],
+          "size_m": [
+            1.2,
+            1.1,
+            0.65
+          ]
+        },
+        {
+          "room": "bridge",
+          "kind": "seat",
+          "center_m": [
+            -1.0,
+            7.2,
+            3.8
+          ],
+          "size_m": [
+            0.55,
+            0.9,
+            0.6
+          ]
+        },
+        {
+          "room": "bridge",
+          "kind": "console",
+          "center_m": [
+            1.0,
+            7.2,
+            4.8
+          ],
+          "size_m": [
+            1.2,
+            1.1,
+            0.65
+          ]
+        },
+        {
+          "room": "bridge",
+          "kind": "seat",
+          "center_m": [
+            1.0,
+            7.2,
+            3.8
+          ],
+          "size_m": [
+            0.55,
+            0.9,
+            0.6
+          ]
+        },
+        {
+          "room": "bridge",
+          "kind": "console",
+          "center_m": [
+            -1.0,
+            7.2,
+            6.8
+          ],
+          "size_m": [
+            1.2,
+            1.1,
+            0.65
+          ]
+        },
+        {
+          "room": "bridge",
+          "kind": "seat",
+          "center_m": [
+            -1.0,
+            7.2,
+            5.8
+          ],
+          "size_m": [
+            0.55,
+            0.9,
+            0.6
+          ]
+        },
+        {
+          "room": "bridge",
+          "kind": "console",
+          "center_m": [
+            1.0,
+            7.2,
+            6.8
+          ],
+          "size_m": [
+            1.2,
+            1.1,
+            0.65
+          ]
+        },
+        {
+          "room": "bridge",
+          "kind": "seat",
+          "center_m": [
+            1.0,
+            7.2,
+            5.8
+          ],
+          "size_m": [
+            0.55,
+            0.9,
+            0.6
+          ]
+        }
+      ],
+      "height_m": 14.5
+    }
+  ],
+  "faction": "Federation",
+  "collection": "Federation concepts",
+  "classification_note": "Refiled from enemy studies at the owner request, 2026-10-12. Original geometry and layout retained."
+}

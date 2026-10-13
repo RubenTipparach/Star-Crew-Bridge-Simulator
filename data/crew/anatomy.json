@@ -29,7 +29,7 @@
   "hem_above_hip_m": 0.035,
   "hem_band_m": 0.019,
   "waist_overlap_m": 0.016,
-  "armpit_below_shoulder_m": 0.145,
+  "armpit_below_shoulder_m": 0.09,
   "shoulder_rounding_m": 0.022,
   "hip_drop_m": 0.085,
   "crotch_drop_m": 0.14,
@@ -37,7 +37,7 @@
   "arm_profile": [
     [
       0.12,
-      1.0
+      0.8
     ],
     [
       0.28,
@@ -155,6 +155,14 @@
   "hair_rows": 4,
   "hair_front_span": 0.65,
   "shoulder_skin_weight": 0.5,
+  "underarm_skin_weight": 0.12,
+  "shoulder_clavicle_weight": 0.25,
+  "shoulder_socket_fractions": [0.33, 0.67],
+  "shoulder_relax_strength": 0.5,
+  "shoulder_relax_iterations": 4,
+  "inner_sleeve_support_weight": 0.8,
+  "inner_sleeve_support_end": 0.45,
+  "covered_arm_ring_fractions": [0.12, 0.45, 0.55, 0.72, 0.9, 1.0],
   "hip_skin_weight": 0.6,
   "thigh_root_weight": 0.8,
   "shoulder_root_weight": 0.7,

@@ -1,4 +1,9 @@
-# Cartoon crew, awaiting screenshot approval
+# Cartoon crew, game adoption on hold
+
+Owner decision, 2026-10-10: keep all assets for later use and leave game adoption
+on hold. All models, editable rigs, source data, generators, review viewer,
+screenshots and validation reports are retained. See [CLAUDE.md](../../../CLAUDE.md),
+section 9, for the standing direction.
 
 Twelve original characters built with headless Blender 4.4.3: male and female
 variants for every department. These are review assets.
@@ -9,6 +14,16 @@ The revised bodies have about 22% narrower upper torsos and 7% narrower waists.
 [Before and after](../../../docs/screenshots/crew-characters/body-width-comparison.png)
 shows both body variants at the same scale. The existing shared proportion data
 drives the garments and rebuilt shoulder joints.
+
+The shoulder repair adds two socket loops per arm and a rounded inner-arm
+transition. Graded chest/clavicle/upper-arm weights support the lowered and
+raised poses. [Before and after](../../../docs/screenshots/crew-characters/shoulder-comparison.png),
+[male authoring edges](../../../docs/screenshots/crew-characters/shoulder-topology-male.png),
+[female authoring edges](../../../docs/screenshots/crew-characters/shoulder-topology-female.png),
+[male shoulder poses](../../../docs/screenshots/crew-characters/shoulder-poses-male.png) and
+[female shoulder poses](../../../docs/screenshots/crew-characters/shoulder-poses-female.png)
+show the repaired area. Pose and contour acceptance data is in
+[shoulder_review.json](../../../data/crew/shoulder_review.json).
 
 [Interactive 3D viewer](../../../docs/mockups/crew-characters.html): open the HTML
 file in a browser, select Male or Female and a department or All crew, then drag to orbit, right-drag
@@ -41,7 +56,7 @@ bytes. The page cannot approve a character or change ship occupants.
 
 [Verification summary](../../../docs/screenshots/crew-characters/rig-review.json)
 
-Every variant has 2,940 triangles.
+Every variant has 2,972 triangles.
 
 | Department | Male model / rig | Female model / rig |
 | --- | --- | --- |
@@ -93,16 +108,20 @@ live in [anatomy.json](../../../data/crew/anatomy.json).
 
 [characters.json](characters.json) is the measured asset manifest, including
 file hashes, sizes and rest-pose garment coverage. The build checks closed garment
-shells and 1,972 covered-skin samples per character at rest and at six samples in
+shells and 1,828 covered-skin samples per character at rest and at six samples in
 each of five exported clips. The rig report checks 360 poses across the twelve GLBs,
 loop closure, floor contact at keyed poses, hierarchy and weights, then opens
 each saved `.blend` and measures all four IK targets and their poles. This covers
 the supplied motions; arbitrary poses still need visual review.
+Six additional shoulder poses on all twelve models test the exported geometry
+with lowered, resting, half-raised, horizontal, raised and reaching arms. A
+middle-depth inner-arm contour check rejects abrupt turns above 75 degrees.
 [validation.json](../../../docs/screenshots/crew-characters/validation.json)
 records deliberate artifact failures: excess triangles, incorrect iris or pupil
 geometry, skin pushed through a tunic, and a second material/primitive.
 It also rejects scalp/hair intersections, trousers crossing the tunic and
-closed but disconnected garments. Rest and sampled posed garments pass self
+closed but disconnected garments. A ninth regression rejects a connected but
+pinched underarm. Rest and sampled posed garments pass self
 intersection checks. The waist check excludes internal closure caps, identified
 from the bind pose; it tests the visible tunic and trouser walls.
 [captures.json](../../../docs/screenshots/crew-characters/captures.json) ties the
@@ -124,6 +143,7 @@ $crewBlender = 'C:/Program Files/Blender Foundation/Blender 4.4/blender.exe'
 & $crewBlender -b --factory-startup --python-exit-code 1 -P tools/blender/check_crew_rigs.py
 & $crewBlender -b -t 4 --factory-startup --python-exit-code 1 -P tools/blender/render_crew_characters.py -- --samples 24
 & $crewBlender -b -t 4 --factory-startup --python-exit-code 1 -P tools/blender/render_crew_rigs.py -- --samples 24
+& $crewBlender -b -t 4 --factory-startup --python-exit-code 1 -P tools/blender/render_crew_shoulders.py -- --samples 24
 python tools/mockups/inline.py docs/mockups/crew-characters.html
 # With Playwright available through NODE_PATH:
 node tools/mockups/check_crew_viewer.cjs

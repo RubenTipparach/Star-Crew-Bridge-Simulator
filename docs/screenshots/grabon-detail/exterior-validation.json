@@ -1,0 +1,39 @@
+{
+  "status": "pass",
+  "ships": [
+    {
+      "id": "shrike",
+      "triangles": 10870,
+      "materials": 4,
+      "nonmanifold_edges": 0,
+      "degenerate_faces": 0,
+      "sha256": "0c6e1b4d4e89290c01a2598c9eda9f1c7f67e164a797e2fd0fa7d243d1a199d4"
+    },
+    {
+      "id": "vark",
+      "triangles": 13566,
+      "materials": 4,
+      "nonmanifold_edges": 0,
+      "degenerate_faces": 0,
+      "sha256": "68ff029183f0fffc9007190f557226ecbf784b645c01427369d682c75ddf9bcb"
+    },
+    {
+      "id": "gorath",
+      "triangles": 16406,
+      "materials": 4,
+      "nonmanifold_edges": 0,
+      "degenerate_faces": 0,
+      "sha256": "2dfd966b1f05de4677b7a66b86d940f27932bba12b045b4a2325491423cf8960",
+      "lower_hull_bounds_xz_m": [
+        [
+          -10.08,
+          10.08
+        ],
+        [
+          -18.96,
+          9.28
+        ]
+      ]
+    }
+  ]
+}

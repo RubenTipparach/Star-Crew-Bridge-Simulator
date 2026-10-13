@@ -1,0 +1,96 @@
+{
+  "status": "pass",
+  "includes_merged_component_surfaces": true,
+  "views": [
+    {
+      "ship": "pursuer",
+      "stage": "hull",
+      "deck": "A",
+      "triangles": 1532,
+      "surface_pairs": 0,
+      "overlap_m2": 0.0,
+      "setup": "SHIP_VIEW.show('pursuer','hull','A','cutaway')"
+    },
+    {
+      "ship": "pursuer",
+      "stage": "fit",
+      "deck": "A",
+      "triangles": 1224,
+      "surface_pairs": 0,
+      "overlap_m2": 0.0,
+      "setup": "SHIP_VIEW.show('pursuer','fit','A','cutaway')"
+    },
+    {
+      "ship": "pursuer",
+      "stage": "fit",
+      "deck": "B",
+      "triangles": 1944,
+      "surface_pairs": 0,
+      "overlap_m2": 0.0,
+      "setup": "SHIP_VIEW.show('pursuer','fit','B','cutaway')"
+    },
+    {
+      "ship": "splitjaw",
+      "stage": "hull",
+      "deck": "A",
+      "triangles": 1536,
+      "surface_pairs": 0,
+      "overlap_m2": 0.0,
+      "setup": "SHIP_VIEW.show('splitjaw','hull','A','cutaway')"
+    },
+    {
+      "ship": "splitjaw",
+      "stage": "fit",
+      "deck": "A",
+      "triangles": 1104,
+      "surface_pairs": 0,
+      "overlap_m2": 0.0,
+      "setup": "SHIP_VIEW.show('splitjaw','fit','A','cutaway')"
+    },
+    {
+      "ship": "splitjaw",
+      "stage": "fit",
+      "deck": "B",
+      "triangles": 2828,
+      "surface_pairs": 0,
+      "overlap_m2": 0.0,
+      "setup": "SHIP_VIEW.show('splitjaw','fit','B','cutaway')"
+    },
+    {
+      "ship": "bulwark",
+      "stage": "hull",
+      "deck": "A",
+      "triangles": 1652,
+      "surface_pairs": 0,
+      "overlap_m2": 0.0,
+      "setup": "SHIP_VIEW.show('bulwark','hull','A','cutaway')"
+    },
+    {
+      "ship": "bulwark",
+      "stage": "fit",
+      "deck": "A",
+      "triangles": 748,
+      "surface_pairs": 0,
+      "overlap_m2": 0.0,
+      "setup": "SHIP_VIEW.show('bulwark','fit','A','cutaway')"
+    },
+    {
+      "ship": "bulwark",
+      "stage": "fit",
+      "deck": "B",
+      "triangles": 2280,
+      "surface_pairs": 0,
+      "overlap_m2": 0.0,
+      "setup": "SHIP_VIEW.show('bulwark','fit','B','cutaway')"
+    },
+    {
+      "ship": "bulwark",
+      "stage": "fit",
+      "deck": "C",
+      "triangles": 1626,
+      "surface_pairs": 0,
+      "overlap_m2": 0.0,
+      "setup": "SHIP_VIEW.show('bulwark','fit','C','cutaway')"
+    }
+  ]
+}

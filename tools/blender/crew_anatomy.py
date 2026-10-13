@@ -16,7 +16,7 @@ ANATOMY_TABLE = Path(__file__).resolve().parents[2] / "data/crew/anatomy.json"
 def load_anatomy():
     """Read and reject invalid anatomy tuning before any mesh is built."""
     data = json.loads(ANATOMY_TABLE.read_text())
-    keys = "schema _doc variants torso_sides limb_sides skin_inset_m hem_above_hip_m hem_band_m waist_overlap_m armpit_below_shoulder_m shoulder_rounding_m hip_drop_m hip_joint_drop_m crotch_drop_m arm_outward_fraction arm_profile leg_profile ankle_height_boot_fraction boot_toe_length_fraction boot_heel_length_fraction boot_toe_height_m boot_heel_height_m boot_instep_height_m boot_ankle_width_fraction boot_ankle_depth_fraction boot_footprint hair_clearance_m hair_rim_m hairline hair_rows hair_front_span shoulder_skin_weight hip_skin_weight thigh_root_weight shoulder_root_weight shoulder_outset_m covered_arm_radius_fraction".split()
+    keys = "schema _doc variants torso_sides limb_sides skin_inset_m hem_above_hip_m hem_band_m waist_overlap_m armpit_below_shoulder_m shoulder_rounding_m hip_drop_m hip_joint_drop_m crotch_drop_m arm_outward_fraction arm_profile leg_profile ankle_height_boot_fraction boot_toe_length_fraction boot_heel_length_fraction boot_toe_height_m boot_heel_height_m boot_instep_height_m boot_ankle_width_fraction boot_ankle_depth_fraction boot_footprint hair_clearance_m hair_rim_m hairline hair_rows hair_front_span shoulder_skin_weight underarm_skin_weight shoulder_clavicle_weight shoulder_socket_fractions shoulder_relax_strength shoulder_relax_iterations inner_sleeve_support_weight inner_sleeve_support_end covered_arm_ring_fractions hip_skin_weight thigh_root_weight shoulder_root_weight shoulder_outset_m covered_arm_radius_fraction".split()
     if set(data) != set(keys) or data["schema"] != "starcrew.crew-anatomy/1":
         raise ValueError(f"{ANATOMY_TABLE}: unknown or missing anatomy fields")
     for key, value in data.items():
@@ -24,6 +24,19 @@ def load_anatomy():
             raise ValueError(f"{ANATOMY_TABLE}:{key}: expected a finite positive number")
     if data["torso_sides"] != 12 or data["limb_sides"] != 8:
         raise ValueError("Connected shoulder and pelvis topology requires 12/8 sides")
+    for key in ("shoulder_skin_weight", "underarm_skin_weight", "shoulder_clavicle_weight", "shoulder_relax_strength", "inner_sleeve_support_weight", "inner_sleeve_support_end"):
+        if not 0 < data[key] < 1:
+            raise ValueError(f"{key}: expected a fraction between zero and one")
+    if data["shoulder_skin_weight"] + data["shoulder_clavicle_weight"] > 1 or data["underarm_skin_weight"] > data["shoulder_skin_weight"]:
+        raise ValueError("Invalid shoulder influence distribution")
+    if type(data["shoulder_relax_iterations"]) is not int or not 1 <= data["shoulder_relax_iterations"] <= 8:
+        raise ValueError("shoulder_relax_iterations must be an integer in 1-8")
+    fractions = data["shoulder_socket_fractions"]
+    if not fractions or fractions != sorted(set(fractions)) or any(not 0 < t < 1 for t in fractions):
+        raise ValueError("shoulder_socket_fractions must increase between zero and one")
+    inner = data["covered_arm_ring_fractions"]
+    if not inner or inner != sorted(set(inner)) or not set(inner) <= {t for t,_ in data["arm_profile"]} or inner[0] != data["arm_profile"][0][0] or inner[-1] != 1:
+        raise ValueError("covered_arm_ring_fractions must retain valid shoulder and wrist endpoints")
     if set(data["variants"]) != {"male", "female"}:
         raise ValueError("Expected male and female anatomy variants")
     for name, variant in data["variants"].items():
@@ -63,6 +76,24 @@ def ring(s, center, rx, ry, weights, sides=12):
     return [s.vertex((center[0]+rx*math.cos(math.tau*i/sides),center[1]+ry*math.sin(math.tau*i/sides),center[2]),weights) for i in range(sides)]
 
 
+def relax_socket(s, selected, tuning):
+    """Round the local socket using quad edges while preserving its outer boundary."""
+    neighbours = {vi:set() for vi in selected}
+    for face in s.faces:
+        for a,b in zip(face,face[1:]+face[:1]):
+            if a in neighbours:
+                neighbours[a].add(b)
+            if b in neighbours:
+                neighbours[b].add(a)
+    for _ in range(tuning["shoulder_relax_iterations"]):
+        updates = {}
+        for vi,adjacent in neighbours.items():
+            mean = sum((Vector(s.vertices[j]) for j in sorted(adjacent)),Vector())/len(adjacent)
+            updates[vi] = Vector(s.vertices[vi]).lerp(mean,tuning["shoulder_relax_strength"])
+        for vi,point in updates.items():
+            s.vertices[vi] = tuple(point)
+
+
 def build_clothes(s, a, p, g, c, tuning, variant, settings, width, hip, shoulder, neck_bottom, skin, tunic):
     """Build a welded tunic and trousers, returning joint and hand landmarks."""
     chest_x = a["chest_width"]*p["shoulder_width_scale"]*width*variant["shoulders"]/2
@@ -100,29 +131,47 @@ def build_clothes(s, a, p, g, c, tuning, variant, settings, width, hip, shoulder
         right = axis.cross(Vector((0,1,0))).normalized()
         back = axis.cross(right).normalized()
         for vi in boundary:
-            s.weights[vi] = blend("chest",f"upper_arm_{side}",tuning["shoulder_skin_weight"])
+            height = (s.vertices[vi][2]-arm_z)/(top_z-arm_z)
+            arm_weight = tuning["underarm_skin_weight"]*(1-height)+tuning["shoulder_skin_weight"]*height
+            clavicle_weight = tuning["shoulder_clavicle_weight"]*height
+            s.weights[vi] = {"chest":1-arm_weight-clavicle_weight,f"upper_arm_{side}":arm_weight,f"clavicle_{side}":clavicle_weight}
         previous = boundary
         sleeve_loops = []
+        socket = []
         for t,mult in tuning["arm_profile"]:
             center = start.lerp(elbow,t*2) if t<=.5 else elbow.lerp(wrist,(t-.5)*2)
             local_axis = axis
-            if t == tuning["arm_profile"][0][0]:
-                center.x += sign*tuning["shoulder_rounding_m"]
-                center.z -= tuning["shoulder_rounding_m"]
-                local_axis = Vector((sign,0,-tuning["arm_outward_fraction"])).normalized()
             right = local_axis.cross(Vector((0,1,0))).normalized()
             back = local_axis.cross(right).normalized()
             radius = (a["arm_radius"]*variant["arms"]+g["clearance"])*mult
             weights = blend(f"clavicle_{side}",f"upper_arm_{side}",tuning["shoulder_root_weight"]) if t==tuning["arm_profile"][0][0] else limb_weights(t,f"upper_arm_{side}",f"forearm_{side}",settings)
-            current = [s.vertex(center+radius*(right*math.cos(math.tau*i/8)+back*math.sin(math.tau*i/8)),weights) for i in range(8)]
+            current = []
+            for i in range(8):
+                angle = math.tau*i/8
+                support = max(0,-sign*math.cos(angle))*max(0,1-t/tuning["inner_sleeve_support_end"])*tuning["inner_sleeve_support_weight"]
+                local_weights = {name:value*(1-support) for name,value in weights.items()}
+                local_weights["chest"] = local_weights.get("chest",0)+support
+                current.append(s.vertex(center+radius*(right*math.cos(angle)+back*math.sin(angle)),local_weights))
             current = align_loop(s,previous,current)
+            if not sleeve_loops:
+                for fraction in tuning["shoulder_socket_fractions"]:
+                    support_loop = []
+                    for inner,outer in zip(boundary,current):
+                        mixed = {name:s.weights[inner].get(name,0)*(1-fraction)+s.weights[outer].get(name,0)*fraction for name in sorted(set(s.weights[inner])|set(s.weights[outer]))}
+                        support_loop.append(s.vertex(Vector(s.vertices[inner]).lerp(Vector(s.vertices[outer]),fraction),mixed))
+                    bridge(s,previous,support_loop,tunic,"garment_tunic")
+                    socket += support_loop
+                    previous = support_loop
             sleeve_loops.append(current)
             bridge(s,previous,current,c["trim"] if t==1 else tunic,"garment_tunic")
             previous = current
         s.face(tuple(previous),c["trim"],"garment_tunic")
+        relax_socket(s,set(boundary+socket+sleeve_loops[0]),tuning)
         limbs[side] = {"arm_start":start,"elbow":elbow,"wrist":wrist,"arm_axis":axis}
         inner_loops = []
         for index,loop in enumerate(sleeve_loops):
+            if tuning["arm_profile"][index][0] not in tuning["covered_arm_ring_fractions"]:
+                continue
             center = sum((Vector(s.vertices[vi]) for vi in loop),Vector())/len(loop)
             inset = -axis*tuning["skin_inset_m"] if index==len(sleeve_loops)-1 else Vector()
             inner_loops.append([s.vertex(center+(Vector(s.vertices[vi])-center)*tuning["covered_arm_radius_fraction"]+inset,s.weights[vi]) for vi in loop])

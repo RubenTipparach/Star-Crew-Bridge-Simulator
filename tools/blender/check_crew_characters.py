@@ -6,6 +6,7 @@ the generator and garment BVHs require bpy. No invalid asset reaches the review
 folder. Run with the same Blender flags as build_crew_characters.py.
 """
 import copy
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -18,7 +19,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parent))
 from build_crew_characters import build, export, inspect, load_table, OUTPUT, ROOT
 
 
-def rejection(title, expected, change_table=None, change_mesh=None):
+def rejection(title, expected, change_table=None, change_mesh=None, rig_check=False):
     """Construct an actual invalid file and require a clear artifact rejection."""
     table,departments = load_table()
     table = copy.deepcopy(table)
@@ -32,7 +33,12 @@ def rejection(title, expected, change_table=None, change_mesh=None):
         path = Path(directory)/f"{row['id']}.glb"
         export(ob,armature,path)
         try:
-            inspect(path,row,table,parts)
+            if rig_check:
+                from check_crew_rigs import validate_exported
+                from build_crew_characters import coverage_check
+                validate_exported(path,{"id":row["id"],"parts":parts,"sha256":hashlib.sha256(path.read_bytes()).hexdigest()},coverage_check)
+            else:
+                inspect(path,row,table,parts)
         except RuntimeError as error:
             message = str(error)
             if expected not in message or row["id"] not in message:
@@ -99,6 +105,16 @@ def disconnected_tunic(ob, parts):
     bm.free()
 
 
+def pinched_underarm(ob, parts):
+    """Turn the inner-arm contour into a sharp hook without disconnecting it."""
+    joint = ob.parent.data.bones["upper_arm_L"].head_local
+    target = Vector((joint.x*.85,0,joint.z*.935))
+    vertices = tagged_vertices(ob,parts,"garment_tunic")
+    vi = min(vertices,key=lambda i:(ob.data.vertices[i].co-target).length_squared)
+    ob.data.vertices[vi].co.z += .035
+    ob.data.update()
+
+
 def main():
     """Validate all shipped review files, then verify the requested failure paths."""
     table,_ = load_table()
@@ -119,6 +135,7 @@ def main():
         rejection("scalp clipping through hair is rejected","hair intersects scalp",change_mesh=hair_into_scalp),
         rejection("trousers clipping through the hem are rejected","trousers intersect tunic",change_mesh=trousers_through_hem),
         rejection("closed but detached garment geometry is rejected","disconnected garment",change_mesh=disconnected_tunic),
+        rejection("a connected but pinched underarm is rejected","underarm contour",change_mesh=pinched_underarm,rig_check=True),
     ]
     report = {"schema":"starcrew.character-checks/1","verified_artifacts":verified,
         "checks":failures,"scope":"Exported review assets and rejection cases. Posed clothing and source IK controls are checked separately in rig-validation.json. Engine adoption, live deck probes and Pi measurements remain pending."}
