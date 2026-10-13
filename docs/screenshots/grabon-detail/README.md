@@ -9,7 +9,8 @@ Choose Shrike, Vark or Gorath:
   room from the dropdown, drag to look, and use WASD, arrows or scroll to move.
   The camera stands 1.65 m above the floor and stays clear of walls and furniture.
 - **3D cutaway** exposes a whole furnished deck. Select a room, then **Room**
-  to inspect it. **Deck access** shows stairs, ladders and elevators together;
+  to inspect it. Ceiling panels remain visible when the camera moves into a
+  room, and are culled from above. **Deck access** shows stairs, ladders and elevators together;
   **CALL LIFT A/B/C** moves the car to that floor.
 - **Rear** shows impulse placement; **Armor** shows the recessed service channels.
   **Normal** and **Red alert** compare interior lighting.
@@ -38,6 +39,7 @@ two full-size fighter berths, stairs, ladders and elevator access.
 - [Stairs, ladders and elevators](access-overview.png)
 - [Eye-level interiors and windows](interiors-overview.png)
 - [Individual normal and red-alert captures](review/)
+- [Ceiling correction, normal and red-alert captures](ceiling-fix/)
 - [Grabon panel contact sheet](../materials/grabon-panels-contact-sheet.png)
 - [Exterior Blender sources and GLBs](../../../assets/models/grabon/README.md)
 - [New interior panels](../../../assets/textures/grabon-panels/README.md)
@@ -47,7 +49,8 @@ two full-size fighter berths, stairs, ladders and elevator access.
 
 The exterior hulls use 10,870 / 13,566 / 16,406 triangles in four materials each.
 With all furnished rooms visible, the largest whole ship is 68,218 triangles
-and 33 draws. The largest deck is 13,495 triangles; no deck exceeds 15 draws.
+and 33 draws. With ceilings retained, the largest deck is 17,552 triangles;
+no deck exceeds 15 draws.
 The viewer reports 55.75 MiB of texture storage including mipmaps. These are
 asset costs, not Pi performance measurements.
 
@@ -63,6 +66,10 @@ and three hull GLBs reproduce with identical hashes in repeat builds.
 Reports: [layout](layout-validation.json), [browser](browser-validation.json),
 [native export](exterior-validation.json), [GLB rebuild](rebuild-validation.json),
 [texture rebuild](texture-rebuild-validation.json), [overlap](overlap-validation.txt).
+The ceiling pass retested all seven decks with zero overlap. A native Gorath
+check timed out; the [native rerun](native-overlap-validation.txt) passed all
+three hulls. The browser check validates inward-facing ceilings in all 66 deck
+room slices, and the nine ceiling captures show the result from above and below.
 
 These are review assets. Rooms use the shared direct vertex-light preview,
 with 1 m surface subdivision; Cycles supplies panel relief shadows and emission.

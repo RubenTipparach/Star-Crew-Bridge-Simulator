@@ -298,7 +298,8 @@
     if(!detail)for(const finish of Object.values(D.finishes))if(typeof finish==='object')finish.wall='exterior_pearl';
     const built=K.buildCompartment(T,L,r,{detail:!!detail,panels:!!detail,detailing:D});
     const parts={};
-    for(const role of (detail?Object.keys(built.parts).filter(k=>!cutaway||!['ceiling','beam','cove'].includes(k)):['floor','wall','cove']))if(built.parts[role])parts[role]=built.parts[role];
+    // Ceiling panels face into the room: visible below, culled in the overhead cutaway.
+    for(const role of (detail?Object.keys(built.parts).filter(k=>!cutaway||!['beam','cove'].includes(k)):['floor','wall','cove']))if(built.parts[role])parts[role]=built.parts[role];
     if(detail&&r.kind==='trunk')delete parts.floor;
     if(detail)delete parts.baseboard;
     detail?.furnish(ctx,r,parts);

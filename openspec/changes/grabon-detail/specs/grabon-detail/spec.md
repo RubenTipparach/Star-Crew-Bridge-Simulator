@@ -38,6 +38,11 @@ angular furniture and warm fixture lighting, distinct from Federation interiors.
 - **THEN** Grabon wall, ceiling, floor and trim designs are visible at crew scale
 - **AND** normal and red-alert lighting are inspectable
 
+#### Scenario: Owner lowers the cutaway camera into a room
+- **WHEN** the detailed deck cutaway is viewed from below its ceiling
+- **THEN** textured ceiling panels close the room above its lamps
+- **AND** those panels are invisible from above so the deck remains inspectable
+
 ### Requirement: Windows connect to occupied decks
 Each detailed ship SHALL have symmetric, deck-aligned windows that open onto
 the same furnished rooms shown in the fitted interior review.

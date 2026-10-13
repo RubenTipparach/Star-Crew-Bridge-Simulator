@@ -241,6 +241,13 @@
   for(const s of v.data.ships){
    MOCKUP_SHOTS.push({name:'windows-'+s.id,setup:()=>{v.show(s.id,'hull');document.querySelector('[data-detail="windows"]').click();}});
    for(const light of ['normal','red_alert'])MOCKUP_SHOTS.push({name:'inside-'+s.id+'-'+light,setup:()=>{v.show(s.id,'fit','A','interior',light);GRABON_DETAIL.eyeCamera();}});
+   for(const light of ['normal','red_alert'])MOCKUP_SHOTS.push({name:'ceiling-'+s.id+'-'+light,setup:()=>{
+    v.show(s.id,'fit','A','interior',light);
+    const select=document.getElementById('room-select');select.value='bridge';select.dispatchEvent(new Event('change'));
+    const eye=v.camera.position.clone(),target=v.controls.target.clone();target.y+=.8;
+    v.show(s.id,'fit','A','cutaway',light);
+    v.camera.fov=65;v.camera.updateProjectionMatrix();v.camera.position.copy(eye);v.controls.target.copy(target);v.controls.update();
+   }});
    for(const room of ['mess','bunks','reactor'])MOCKUP_SHOTS.push({name:room+'-'+s.id,setup:()=>{
     const r=s.layout.compartments.find(r=>r.id===room);v.show(s.id,'fit',r.decks[0],'interior');
     const select=document.getElementById('room-select');select.value=room;select.dispatchEvent(new Event('change'));

@@ -12,6 +12,7 @@
       "nonfinite": 0,
       "stair_vertices": 228,
       "ladder_openings": [],
+      "cutaway_ceilings": [],
       "sun_range": [
         0.4399938963912413,
         0.9905241474021516
@@ -57,7 +58,7 @@
       "stage": "fit",
       "deck": "A",
       "mode": "cutaway",
-      "triangles": 9646,
+      "triangles": 12490,
       "draws": 15,
       "texture_mib": 55.74822998046875,
       "nonfinite": 0,
@@ -69,6 +70,62 @@
           "bypass": true
         }
       ],
+      "cutaway_ceilings": [
+        {
+          "room": "A_route",
+          "vertices": 1266,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "bunks",
+          "vertices": 1044,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "mess",
+          "vertices": 1044,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "stbd_laser",
+          "vertices": 702,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "port_laser",
+          "vertices": 1032,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "neck_route",
+          "vertices": 1038,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "bridge",
+          "vertices": 1872,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "stairs",
+          "vertices": 378,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "lift",
+          "vertices": 156,
+          "inward": true,
+          "front_side": true
+        }
+      ],
       "sun_range": null,
       "exterior": null,
       "interior": null
@@ -78,12 +135,68 @@
       "stage": "fit",
       "deck": "B",
       "mode": "cutaway",
-      "triangles": 11668,
+      "triangles": 14856,
       "draws": 13,
       "texture_mib": 55.74822998046875,
       "nonfinite": 0,
       "stair_vertices": 228,
       "ladder_openings": [],
+      "cutaway_ceilings": [
+        {
+          "room": "B_route",
+          "vertices": 864,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "reactor",
+          "vertices": 747,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "drive",
+          "vertices": 1059,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "magazine",
+          "vertices": 714,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "life_support",
+          "vertices": 636,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "tubes",
+          "vertices": 744,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "hangar",
+          "vertices": 4266,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "stairs",
+          "vertices": 378,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "lift",
+          "vertices": 156,
+          "inward": true,
+          "front_side": true
+        }
+      ],
       "sun_range": null,
       "exterior": null,
       "interior": null
@@ -99,6 +212,7 @@
       "nonfinite": 0,
       "stair_vertices": 0,
       "ladder_openings": [],
+      "cutaway_ceilings": [],
       "sun_range": null,
       "exterior": null,
       "interior": {
@@ -118,6 +232,7 @@
       "nonfinite": 0,
       "stair_vertices": 228,
       "ladder_openings": [],
+      "cutaway_ceilings": [],
       "sun_range": null,
       "exterior": null,
       "interior": null
@@ -133,6 +248,7 @@
       "nonfinite": 0,
       "stair_vertices": 228,
       "ladder_openings": [],
+      "cutaway_ceilings": [],
       "sun_range": [
         0.4399938963912413,
         0.9905851834897383
@@ -178,7 +294,7 @@
       "stage": "fit",
       "deck": "A",
       "mode": "cutaway",
-      "triangles": 11182,
+      "triangles": 14772,
       "draws": 15,
       "texture_mib": 55.74822998046875,
       "nonfinite": 0,
@@ -190,6 +306,62 @@
           "bypass": true
         }
       ],
+      "cutaway_ceilings": [
+        {
+          "room": "A_route",
+          "vertices": 1476,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "bunks",
+          "vertices": 1251,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "mess",
+          "vertices": 1257,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "stbd_laser",
+          "vertices": 918,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "port_laser",
+          "vertices": 1182,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "neck_route",
+          "vertices": 1938,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "bridge",
+          "vertices": 2214,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "stairs",
+          "vertices": 378,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "lift",
+          "vertices": 156,
+          "inward": true,
+          "front_side": true
+        }
+      ],
       "sun_range": null,
       "exterior": null,
       "interior": null
@@ -199,12 +371,80 @@
       "stage": "fit",
       "deck": "B",
       "mode": "cutaway",
-      "triangles": 13495,
+      "triangles": 17552,
       "draws": 15,
       "texture_mib": 55.74822998046875,
       "nonfinite": 0,
       "stair_vertices": 228,
       "ladder_openings": [],
+      "cutaway_ceilings": [
+        {
+          "room": "B_route",
+          "vertices": 894,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "reactor",
+          "vertices": 924,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "drive",
+          "vertices": 1212,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "magazine",
+          "vertices": 963,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "life_support",
+          "vertices": 825,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "tubes",
+          "vertices": 912,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "flight_route",
+          "vertices": 1095,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "stbd_hangar",
+          "vertices": 2382,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "port_hangar",
+          "vertices": 2430,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "stairs",
+          "vertices": 378,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "lift",
+          "vertices": 156,
+          "inward": true,
+          "front_side": true
+        }
+      ],
       "sun_range": null,
       "exterior": null,
       "interior": null
@@ -220,6 +460,7 @@
       "nonfinite": 0,
       "stair_vertices": 0,
       "ladder_openings": [],
+      "cutaway_ceilings": [],
       "sun_range": null,
       "exterior": null,
       "interior": {
@@ -239,6 +480,7 @@
       "nonfinite": 0,
       "stair_vertices": 228,
       "ladder_openings": [],
+      "cutaway_ceilings": [],
       "sun_range": null,
       "exterior": null,
       "interior": null
@@ -254,6 +496,7 @@
       "nonfinite": 0,
       "stair_vertices": 456,
       "ladder_openings": [],
+      "cutaway_ceilings": [],
       "sun_range": [
         0.4399938963912413,
         0.990249485008011
@@ -299,7 +542,7 @@
       "stage": "fit",
       "deck": "A",
       "mode": "cutaway",
-      "triangles": 10889,
+      "triangles": 14892,
       "draws": 15,
       "texture_mib": 55.74822998046875,
       "nonfinite": 0,
@@ -311,6 +554,62 @@
           "bypass": true
         }
       ],
+      "cutaway_ceilings": [
+        {
+          "room": "A_route",
+          "vertices": 1344,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "computers",
+          "vertices": 1149,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "medical",
+          "vertices": 1215,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "stbd_laser",
+          "vertices": 1251,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "port_laser",
+          "vertices": 1209,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "neck_route",
+          "vertices": 984,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "bridge",
+          "vertices": 4323,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "stairs",
+          "vertices": 378,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "lift",
+          "vertices": 156,
+          "inward": true,
+          "front_side": true
+        }
+      ],
       "sun_range": null,
       "exterior": null,
       "interior": null
@@ -320,7 +619,7 @@
       "stage": "fit",
       "deck": "B",
       "mode": "cutaway",
-      "triangles": 13040,
+      "triangles": 16834,
       "draws": 14,
       "texture_mib": 55.74822998046875,
       "nonfinite": 0,
@@ -332,6 +631,68 @@
           "bypass": true
         }
       ],
+      "cutaway_ceilings": [
+        {
+          "room": "B_route",
+          "vertices": 1824,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "reactor",
+          "vertices": 1593,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "drive",
+          "vertices": 1563,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "bunks",
+          "vertices": 1320,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "mess",
+          "vertices": 1572,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "magazine",
+          "vertices": 981,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "life_support",
+          "vertices": 975,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "tubes",
+          "vertices": 1020,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "stairs",
+          "vertices": 378,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "lift",
+          "vertices": 156,
+          "inward": true,
+          "front_side": true
+        }
+      ],
       "sun_range": null,
       "exterior": null,
       "interior": null
@@ -341,12 +702,68 @@
       "stage": "fit",
       "deck": "C",
       "mode": "cutaway",
-      "triangles": 9879,
+      "triangles": 12748,
       "draws": 13,
       "texture_mib": 55.74822998046875,
       "nonfinite": 0,
       "stair_vertices": 228,
       "ladder_openings": [],
+      "cutaway_ceilings": [
+        {
+          "room": "C_route",
+          "vertices": 1074,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "workshop",
+          "vertices": 702,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "cargo",
+          "vertices": 954,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "stores",
+          "vertices": 840,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "flight_control",
+          "vertices": 801,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "service",
+          "vertices": 738,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "hangar",
+          "vertices": 2964,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "stairs",
+          "vertices": 378,
+          "inward": true,
+          "front_side": true
+        },
+        {
+          "room": "lift",
+          "vertices": 156,
+          "inward": true,
+          "front_side": true
+        }
+      ],
       "sun_range": null,
       "exterior": null,
       "interior": null
@@ -362,6 +779,7 @@
       "nonfinite": 0,
       "stair_vertices": 0,
       "ladder_openings": [],
+      "cutaway_ceilings": [],
       "sun_range": null,
       "exterior": null,
       "interior": {
@@ -381,6 +799,7 @@
       "nonfinite": 0,
       "stair_vertices": 456,
       "ladder_openings": [],
+      "cutaway_ceilings": [],
       "sun_range": null,
       "exterior": null,
       "interior": null

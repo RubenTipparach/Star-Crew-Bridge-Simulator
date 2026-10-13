@@ -167,6 +167,22 @@ three access views. The final 13 states have zero coplanar overlap. The browser
 check verifies finite geometry, budgets, exported sun lighting, elevator travel
 and phone controls. Captures and reports live in docs/screenshots/grabon-detail.
 
+## Ceiling visibility correction
+
+The deck cutaway currently removes ceiling faces, leaving lamps suspended over
+open rooms when the viewer moves below the roof. Retain the existing textured,
+downward-facing ceiling panels in detailed cutaways. Their front-side material
+shows them from inside and culls them from above, preserving the deck overview.
+Keep the existing cutaway treatment of beams and coves. No new textures, draws
+or runtime lights are needed; measure the added ceiling triangles against the
+existing 60,000-triangle deck check. Verify ceilings face inward on every deck,
+then inspect interior and overhead captures in normal and red-alert lighting.
+
+The correction retains inward-facing ceiling panels in all 66 deck room slices
+across seven decks. The largest deck now submits 17,552 triangles, still at
+15 draws and 55.75 MiB of textures. Nine captures cover the three overhead
+views and all three bridges in normal and red-alert lighting.
+
 ## Window and interior review results
 
 The delivered hulls have 16 / 14 / 20 real windows and 10,870 / 13,566 / 16,406

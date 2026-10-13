@@ -17,9 +17,14 @@ const frames=(page,n=12)=>page.evaluate(n=>new Promise(resolve=>{let k=0;const f
    for(const [stage,deck,mode] of states){
     await page.evaluate(a=>SHIP_VIEW.show(...a),[ship.id,stage,deck,mode]);await frames(page);
     const facts=await page.evaluate(()=>{
-     const v=SHIP_VIEW,roles={};let bad=0;
+     const v=SHIP_VIEW,roles={},ceilings=[];let bad=0;
      v.scene.traverse(o=>{if(!o.isMesh)return;for(const a of Object.values(o.geometry.attributes))for(const n of a.array)if(!Number.isFinite(n))bad++;
       for(const [role,[start,count]] of Object.entries(o.geometry.userData.roles||{}))roles[role]=(roles[role]||0)+count;
+      if(v.state.stage==='fit'&&v.state.mode==='cutaway'&&o.userData.compartment){
+       const [start,count]=o.geometry.userData.roles.ceiling||[0,0],normal=o.geometry.attributes.normal;
+       let inward=true;for(let i=start;i<start+count;i++)if(normal.getY(i)>-.99)inward=false;
+       ceilings.push({room:o.userData.compartment,vertices:count,inward,front_side:o.material.side===0});
+      }
      });
      const holes=[];
      if(v.state.stage==='fit'&&v.state.mode==='cutaway')for(const portal of v.layout().portals.filter(p=>p.kind==='ladder')){
@@ -53,10 +58,11 @@ const frames=(page,n=12)=>page.evaluate(n=>new Promise(resolve=>{let k=0;const f
        unmatched_mirror_vertices:vertices.filter(a=>!set.has(key([-a[0],...a.slice(1)]))).length};
      }
      const interior=v.state.mode==='interior'?{ceiling_vertices:roles.ceiling||0,eye_height_m:v.camera.position.y-GRABON_DETAIL.floorAt(),clear_spawn:GRABON_DETAIL.walkable(v.camera.position.x,v.camera.position.z)}:null;
-     return {ship:v.state.ship.id,stage:v.state.stage,deck:v.state.deck,mode:v.state.mode,triangles:v.renderer.info.render.triangles,draws:v.renderer.info.render.calls,texture_mib:MOCKUP_BUDGET().textureMB,nonfinite:bad,stair_vertices:roles.stair||0,ladder_openings:holes,sun_range:lightRange,exterior,interior};
+     return {ship:v.state.ship.id,stage:v.state.stage,deck:v.state.deck,mode:v.state.mode,triangles:v.renderer.info.render.triangles,draws:v.renderer.info.render.calls,texture_mib:MOCKUP_BUDGET().textureMB,nonfinite:bad,stair_vertices:roles.stair||0,ladder_openings:holes,cutaway_ceilings:ceilings,sun_range:lightRange,exterior,interior};
     });
     assert.equal(facts.nonfinite,0,JSON.stringify(facts));assert(facts.triangles<=(stage==='hull'?200000:60000),JSON.stringify(facts));assert(facts.draws<=120);assert(facts.texture_mib<=96);
     for(const hole of facts.ladder_openings)assert(hole.open&&hole.bypass,'Actual upper floor must have a ladder hole and solid bypass: '+JSON.stringify(hole));
+    for(const ceiling of facts.cutaway_ceilings)assert(ceiling.vertices>0&&ceiling.inward&&ceiling.front_side,'Cutaway ceilings must remain visible from inside and culled from above: '+JSON.stringify(ceiling));
     if(facts.interior){assert(facts.interior.ceiling_vertices>0);assert(Math.abs(facts.interior.eye_height_m-1.65)<.001);assert(facts.interior.clear_spawn,'Interior camera must start clear of walls and furniture');}
     if(facts.sun_range)assert(facts.sun_range[0]<.6&&facts.sun_range[1]>.85,'Exported hull must carry its fixed sun lighting in COLOR_0');
     if(facts.exterior){

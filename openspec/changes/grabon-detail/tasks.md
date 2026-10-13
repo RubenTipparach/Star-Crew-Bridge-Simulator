@@ -29,3 +29,9 @@
 - [x] Show furnished rooms through the windows and add interior review views.
 - [x] Inspect textures, lighting, geometry and every ship's interior/exterior.
 - [x] Validate artifacts, update documentation and push the existing PR.
+
+## Ceiling visibility correction
+
+- [x] Retain inward-facing ceiling panels in the detailed deck cutaway.
+- [x] Check ceiling orientation on every deck and inspect normal/red-alert views.
+- [x] Validate and push the ceiling fix to the existing PR.
