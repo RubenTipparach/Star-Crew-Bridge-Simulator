@@ -853,26 +853,10 @@ fn models() -> &'static Models {
     })
 }
 
-/// The hull loft as polygons with outward normals (the mockup's `HULL_POLYS`).
+/// The ship's model as polygons with outward normals, one a triangle (the mockup's `HULL_POLYS`).
 fn hull_polys() -> Vec<Poly> {
-    let hull = &tern().hull;
     let col = [96.0, 110.0, 128.0];
-    let mut polys = Vec::new();
-    for s in 0..hull.len() - 1 {
-        for k in 0..8 {
-            let (a, b) = (hull[s][k], hull[s][(k + 1) % 8]);
-            let (c, d) = (hull[s + 1][(k + 1) % 8], hull[s + 1][k]);
-            let mut n = (b - a).cross(d - a).normalize_or_zero();
-            let mid = (a + b + c + d) * 0.25;
-            if n.dot(DVec3::new(mid.x, mid.y - (hull[s][0].y + hull[s][4].y) / 2.0, 0.0)) < 0.0 {
-                n = -n;
-            }
-            polys.push(Poly { v: vec![a, b, c, d], n, col });
-        }
-    }
-    polys.push(Poly { v: hull[0].to_vec(), n: DVec3::Z, col });
-    polys.push(Poly { v: hull[hull.len() - 1].to_vec(), n: DVec3::NEG_Z, col });
-    polys
+    tern().hull.iter().map(|t| Poly { v: t.v.to_vec(), n: t.n, col }).collect()
 }
 
 // ------------------------------------------------------------------------------------------------ the look band
@@ -1306,6 +1290,10 @@ fn clip_to_rect(a: [f32; 2], b: [f32; 2], [w, h]: [f32; 2]) -> Option<([f32; 2],
     })
 }
 
+/// One of the model's triangles as a shield view draws it: its depth along the camera, its corners on screen, its
+/// lit colour and which of its edges are creases.
+type HullDrawn = (f64, [[f32; 2]; 3], Color32, [bool; 3]);
+
 /// The ship inside its shield, in 3D (the mockup's `shieldView`): hull panels lit and depth sorted between the
 /// bubble's far and near halves, each patch filled by its face's charge, the faces' borders, hostiles' directions,
 /// inbound missiles and the last 8 s of hits, one arrow a bearing ([`HIT_MERGE_DEG`]). `big` (Science's, given the
@@ -1320,32 +1308,20 @@ pub fn shield_view(cv: &Canvas, cx: &mut Ctx, ox: f64, oy: f64, sc: f64, yaw: f6
     let pr = |p: DVec3| [(ox + p.dot(b.r) * sc) as f32, (oy - p.dot(b.u) * sc) as f32];
     let bub = if big.is_some() { big_bubble() } else { mini_bubble() };
     let light = (-b.f + DVec3::new(0.3, 0.8, 0.2)).normalize();
-    let hull = &tern().hull;
-    let mut hull_polys: Vec<(f64, Vec<[f32; 2]>, Color32, bool)> = Vec::new();
-    for s in 0..hull.len() - 1 {
-        for k in 0..8 {
-            let (a0, b0) = (hull[s][k], hull[s][(k + 1) % 8]);
-            let (c0, d0) = (hull[s + 1][(k + 1) % 8], hull[s + 1][k]);
-            let mut n = (b0 - a0).cross(d0 - a0).normalize_or_zero();
-            let mid = (a0 + b0 + c0 + d0) * 0.25;
-            if n.dot(DVec3::new(mid.x, mid.y - (hull[s][0].y + hull[s][4].y) / 2.0, 0.0)) < 0.0 {
-                n = -n;
-            }
-            if n.dot(b.f) > 0.0 {
-                continue;
-            }
-            let lum = 0.35 + 0.65 * n.dot(light).max(0.0);
-            let col = Color32::from_rgb(
-                (70.0 * lum + 20.0).round() as u8,
-                (84.0 * lum + 22.0).round() as u8,
-                (102.0 * lum + 26.0).round() as u8,
-            );
-            hull_polys.push((mid.dot(b.f), [a0, b0, c0, d0].iter().map(|q| pr(*q)).collect(), col, true));
+    // The model's triangles turned to the camera, lit, drawn far to near (each one's creases with it).
+    let mut hull_polys: Vec<HullDrawn> = Vec::new();
+    for t in &tern().hull {
+        if t.n.dot(b.f) > 0.0 {
+            continue;
         }
-    }
-    for end in [&hull[0], &hull[hull.len() - 1]] {
-        let mid = end.iter().fold(DVec3::ZERO, |a, p| a + *p) / 8.0;
-        hull_polys.push((mid.dot(b.f), end.iter().map(|q| pr(*q)).collect(), rgba(0x3a4656, 1.0), true));
+        let lum = 0.35 + 0.65 * t.n.dot(light).max(0.0);
+        let col = Color32::from_rgb(
+            (70.0 * lum + 20.0).round() as u8,
+            (84.0 * lum + 22.0).round() as u8,
+            (102.0 * lum + 26.0).round() as u8,
+        );
+        let mid = (t.v[0] + t.v[1] + t.v[2]) / 3.0;
+        hull_polys.push((mid.dot(b.f), t.v.map(pr), col, t.crease));
     }
     hull_polys.sort_by(|a, b| b.0.total_cmp(&a.0));
     let shell: Vec<(f64, Vec<[f32; 2]>, u8, bool)> = bub
@@ -1380,11 +1356,16 @@ pub fn shield_view(cv: &Canvas, cx: &mut Ctx, ox: f64, oy: f64, sc: f64, yaw: f6
             cv.seg(pa[0], pa[1], pb[0], pb[1], Pen::new(0.6, alpha(ec, 0.25)));
         }
     }
-    for (_, pts, col, _) in &hull_polys {
+    // A triangle is stroked in its own colour, so a flat panel's triangles meet without a seam, and its creases (the
+    // panel's edges, where the surface turns) are outlined as the loft's panels were.
+    let crease = Pen::new(0.6, rgba(0x0d141d, 1.0));
+    for (_, pts, col, edges) in &hull_polys {
         cv.poly(pts, *col);
-        let mut closed = pts.clone();
-        closed.push(pts[0]);
-        cv.polyline(&closed, Pen::new(0.6, rgba(0x0d141d, 1.0)));
+        cv.polyline(&[pts[0], pts[1], pts[2], pts[0]], Pen::new(0.6, *col));
+        for k in (0..3).filter(|k| edges[*k]) {
+            let (p, q) = (pts[k], pts[(k + 1) % 3]);
+            cv.seg(p[0], p[1], q[0], q[1], crease);
+        }
     }
     for p in &near {
         patch(p);

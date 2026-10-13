@@ -1850,6 +1850,20 @@ mod tests {
         }
     }
 
+    /// The consoles draw the ship as the low-poly exterior model (496 triangles, `console_model.json`) where they drew
+    /// the hull loft (74 panels): Science's and Tactical's shield views and every console's camera widget. A console
+    /// with both pictures stays under 60% of the UI's buffers, like the schematic.
+    #[test]
+    fn the_ship_models_consoles_fit_the_uis_buffers_with_room_to_spare() {
+        for station in [Station::Science, Station::Tactical, Station::Helm] {
+            let mut b = Bench::new(station);
+            let (verts, idx) = tessellated(&b.view(1.0));
+            let (vk, ik) =
+                (verts as f64 / sc_render::UI_MAX_VERTICES as f64, idx as f64 / sc_render::UI_MAX_INDICES as f64);
+            assert!(vk < 0.6 && ik < 0.6, "{station:?}: {verts} vertices ({vk:.2}), {idx} indices ({ik:.2})");
+        }
+    }
+
     #[test]
     fn the_playtest_opens_the_schematic_in_3d_and_on_the_board() {
         let mut b = Bench::new(Station::Engineering);

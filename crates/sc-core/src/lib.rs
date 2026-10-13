@@ -10,6 +10,7 @@ pub mod arena;
 pub mod bots;
 pub mod clock;
 pub mod combat;
+pub mod console_model;
 pub mod crew;
 pub mod data;
 pub mod deck;

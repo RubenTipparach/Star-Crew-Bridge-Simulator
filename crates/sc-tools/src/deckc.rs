@@ -610,23 +610,20 @@ pub fn run(root: &Path, ship: &str) -> Result<String, String> {
     ))
 }
 
-/// The ship's hull from its exterior model (tern-exterior 3), packed into the shared blobs; None when
-/// `assets/models/exteriors/props.json` has no model for `ship`. The model is the manifest's default livery's full
-/// detail level; its triangle count and bounds must be the manifest's, and its triangles within the ship's exterior
-/// budget (`data/ships/exteriors.json`, the Pi 5 table's "Ship exterior" row).
-pub(crate) fn hull(
-    root: &Path,
-    ship: &str,
-    vertices: &mut Vec<u8>,
-    indices: &mut Vec<u32>,
-    tex_blob: &mut Vec<u8>,
-) -> Result<Option<DeckHull>, String> {
-    let read_json = |rel: &str| -> Result<serde_json::Value, String> {
-        let text = std::fs::read_to_string(root.join(rel)).map_err(|e| format!("{rel}: {e}"))?;
-        serde_json::from_str(&text).map_err(|e| format!("{rel}: {e}"))
-    };
-    let props = read_json("assets/models/exteriors/props.json")?;
-    if props["props"].get(ship).is_none() {
+/// A JSON file under the repository's root, read and parsed; an error names it.
+fn read_json(root: &Path, rel: &str) -> Result<serde_json::Value, String> {
+    let text = std::fs::read_to_string(root.join(rel)).map_err(|e| format!("{rel}: {e}"))?;
+    serde_json::from_str(&text).map_err(|e| format!("{rel}: {e}"))
+}
+
+/// An exterior model of the default livery (`assets/models/exteriors/props.json`), read and checked: `prop` is the
+/// manifest's key, a ship's id for its full detail level (`tern`) or with its level (`tern_lod2`). Its path from the
+/// root and the model, or None when the manifest has no such model. Its triangle count and bounds must be its livery
+/// manifest's (rounded to the centimetre there). The hull below and `console-model` both take their model from here,
+/// so the two cannot read different liveries (CLAUDE.md 6.1).
+pub(crate) fn exterior_model(root: &Path, prop: &str) -> Result<Option<(String, crate::glb::Glb)>, String> {
+    let props = read_json(root, "assets/models/exteriors/props.json")?;
+    if props["props"].get(prop).is_none() {
         return Ok(None);
     }
     let livery = props["default_livery"].as_str().ok_or("props.json: no default_livery")?;
@@ -636,13 +633,11 @@ pub(crate) fn hull(
         .and_then(|x| x["directory"].as_str())
         .ok_or_else(|| format!("props.json: no directory for the livery {livery:?}"))?;
     let base = format!("assets/models/exteriors/{dir}");
-    let manifest = read_json(&format!("{base}/props.json"))?;
-    let entry = &manifest["props"][ship];
-    let file = entry["file"].as_str().ok_or_else(|| format!("{base}/props.json: no file for {ship}"))?;
+    let manifest = read_json(root, &format!("{base}/props.json"))?;
+    let entry = &manifest["props"][prop];
+    let file = entry["file"].as_str().ok_or_else(|| format!("{base}/props.json: no file for {prop}"))?;
     let source = format!("{base}/{file}");
     let model = crate::glb::read(&root.join(&source))?;
-
-    // The checks: the manifest's triangles and bounds (rounded to the centimetre there), and the budget.
     let want = entry["triangles"].as_u64().ok_or_else(|| format!("{base}/props.json: no triangles"))? as usize;
     if model.triangles() != want {
         return Err(format!("{source}: {} triangles, its manifest says {want}", model.triangles()));
@@ -657,7 +652,23 @@ pub(crate) fn hull(
             }
         }
     }
-    let ext = read_json("data/ships/exteriors.json")?;
+    Ok(Some((source, model)))
+}
+
+/// The ship's hull from its exterior model (tern-exterior 3), packed into the shared blobs; None when
+/// `assets/models/exteriors/props.json` has no model for `ship`. The model is the manifest's default livery's full
+/// detail level ([`exterior_model`]), its triangles within the ship's exterior budget (`data/ships/exteriors.json`,
+/// the Pi 5 table's "Ship exterior" row).
+pub(crate) fn hull(
+    root: &Path,
+    ship: &str,
+    vertices: &mut Vec<u8>,
+    indices: &mut Vec<u32>,
+    tex_blob: &mut Vec<u8>,
+) -> Result<Option<DeckHull>, String> {
+    let Some((source, model)) = exterior_model(root, ship)? else { return Ok(None) };
+    let (lo, hi) = model.bounds();
+    let ext = read_json(root, "data/ships/exteriors.json")?;
     let budget = ext["ships"]
         .as_array()
         .and_then(|s| s.iter().find(|x| x["id"] == ship))

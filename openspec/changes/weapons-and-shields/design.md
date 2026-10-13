@@ -380,8 +380,17 @@ straight seams on the diagonals. Recommendation taken (ask only with screenshots
 ship and shield facings, and where enemies attack are from what angles". Science's SHIELDS panel, and
 the middle of tactical's plot, draw the shield in 3D:
 
-- **The ship** is the hull loft from the layout (the octagonal sections of `hull.sections`), as
-  low-poly lines: 10 sections of 8 corners, about 140 triangles, the same shape the deck plan draws.
+- **The ship** is the low-poly exterior model (owner, 2026-10-12: "ship models arent using the correct
+  model, use the low poly version of the latest model, no textures, I like the shading you used
+  currently"): the distant detail level `tern_lod2.glb`'s geometry alone, 266 corners and 496
+  triangles in the layout's frame, written by `sc-tools console-model` into
+  `data/ships/tern/console_model.json`, which the engine compiles in and the console mockup inlines.
+  Each triangle is lit flat as the loft's panels were and outlined only along its creases (where the
+  surface turns by more than 1 degree), so a flat panel's triangles read as one panel. It replaced the
+  hull loft (10 octagonal sections, 74 panels) on 2026-10-12. The hull stands where the loft stood
+  (beam 12.2 m, roof 8.2 m, keel -5.8 m, stern -42 m), but the warp nacelles reach 22.5 m to either
+  side, past the ellipsoid's 17 m: the ellipsoid below was sized for the loft and wants re-deriving
+  for the pylons and nacelles (`warp-pylons`), a tuning change of its own.
 - **The bubble** is this section's ellipsoid, cut into its six faces by the rule above: each patch of
   the bubble takes the face `shield_face(o)` gives its centre, the function that resolves a hit (one
   implementation, CLAUDE.md 6.1). The bubble is cut along the faces' borders (rings at the caps'

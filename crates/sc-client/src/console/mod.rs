@@ -793,12 +793,27 @@ pub struct Ellipsoid {
     pub centre: DVec3,
 }
 
-/// The Tern's shape for the consoles' 3D pictures: the hull loft's octagonal sections, each eight corners in ship
-/// axes relative to the shield's centre, and the shield ellipsoid. Read once from the compiled-in data.
+/// One triangle of the ship as the consoles draw it: its corners in ship axes relative to the shield's centre, metres,
+/// counter-clockwise seen from outside; its outward normal; and which of its edges (corner `k` to corner `k + 1`) are
+/// creases, outlined where the surface turns (`sc_core::console_model`).
+#[derive(Clone, Copy, Debug)]
+pub struct HullTri {
+    pub v: [DVec3; 3],
+    pub n: DVec3,
+    pub crease: [bool; 3],
+}
+
+/// The Tern's shape for the consoles' 3D pictures: the low-poly exterior model's triangles
+/// (`data/ships/tern/console_model.json`, written by `sc-tools console-model` from `tern_lod2.glb`, geometry only), in
+/// the layout's frame less the shield's centre, and the shield ellipsoid. Read once from the compiled-in data.
 pub struct ShipShape {
-    pub hull: Vec<[DVec3; 8]>,
+    pub hull: Vec<HullTri>,
     pub shield: Ellipsoid,
 }
+
+/// The ship's console model as the client compiles it in.
+const CONSOLE_MODEL: (&str, &str) =
+    ("data/ships/tern/console_model.json", include_str!("../../../../data/ships/tern/console_model.json"));
 
 /// The Tern's shape.
 pub fn tern() -> &'static ShipShape {
@@ -807,26 +822,18 @@ pub fn tern() -> &'static ShipShape {
         let data = sc_core::combat::data::DrillData::shipped();
         let e = data.tern_shields.ellipsoid;
         let shield = Ellipsoid { axes: DVec3::from_array(e.axes_m), centre: DVec3::from_array(e.centre_m) };
-        let layout: serde_json::Value = serde_json::from_str(include_str!("../../../../data/ships/tern/layout.json"))
-            .expect("the layout is valid JSON (tools/layout_check.py)");
-        let hull = layout["hull"]["sections"]
-            .as_array()
-            .expect("the layout has hull sections")
+        let (file, text) = CONSOLE_MODEL;
+        let m: sc_core::console_model::ConsoleModel =
+            sc_core::data::parse(file, text).unwrap_or_else(|e| panic!("the console model is refused: {e}"));
+        let at = |i: u32| DVec3::from_array(m.vertices_m[i as usize]) - shield.centre;
+        let hull = m
+            .triangles
             .iter()
-            .map(|q| {
-                let f = |k: &str| q[k].as_f64().expect("a hull section's numbers");
-                let (hb, t, b, c, z) = (f("half_beam_m"), f("top_m"), f("bottom_m"), f("chamfer_m"), f("z_m"));
-                let pts = [
-                    [hb, t - c],
-                    [hb - c, t],
-                    [-(hb - c), t],
-                    [-hb, t - c],
-                    [-hb, b + c],
-                    [-(hb - c), b],
-                    [hb - c, b],
-                    [hb, b + c],
-                ];
-                pts.map(|[x, y]| DVec3::new(x, y, z) - shield.centre)
+            .zip(&m.creases)
+            .map(|(t, c)| {
+                let v = t.map(at);
+                let n = (v[1] - v[0]).cross(v[2] - v[0]).normalize_or_zero();
+                HullTri { v, n, crease: [c & 1 != 0, c & 2 != 0, c & 4 != 0] }
             })
             .collect();
         ShipShape { hull, shield }
@@ -1225,9 +1232,9 @@ fn look_band(cv: &Canvas, cx: &mut Ctx) {
         }
         let p = [307.0 + d.dot(b.r) / cz * foc, 97.0 - d.dot(b.u) / cz * foc];
         let sz = ((60.0 / (d.length() / 1000.0)).clamp(5.0, 70.0) * v.zoom) as f32;
-        let (px, py) = (p[0] as f32, p[1] as f32);
-        let side = sz * 1.8;
-        cv_dashed_rect(&scr, px - sz * 0.9, py - sz * 0.9, side, side, c.hostile.0, side - 12.0);
+        for corner in bracket(p[0] as f32, p[1] as f32, sz * 1.8) {
+            scr.polyline(&corner, Pen::new(1.0, c.hostile.0));
+        }
     }
     cv.text(342.0, 38.0, 11.0, c.dim.0, &format!("VIEWSCREEN · {}", v.feed), T::default().ls(2.0));
     kit::feed_widget(cv, cx, 196.0, 10.0);
@@ -1244,10 +1251,23 @@ fn lerp_col(a: Color32, b: Color32, k: f32) -> Color32 {
     Color32::from_rgb(ch(a.r(), b.r()), ch(a.g(), b.g()), ch(a.b(), b.b()))
 }
 
-/// The mockup's target bracket: a rectangle dashed `6 gap` from 3 in, so only its corners show.
-fn cv_dashed_rect(cv: &Canvas, x: f32, y: f32, w: f32, h: f32, col: Color32, gap: f32) {
-    let pts = [[x, y], [x + w, y], [x + w, y + h], [x, y + h], [x, y]];
-    cv.polyline(&pts, Pen::new(1.0, col).dash(6.0, gap.max(0.0), 3.0));
+/// The target's bracket is never smaller than this across, layout points, so a far target keeps four corners apart
+/// (the mockup's `BRACKET_MIN`).
+pub const BRACKET_MIN: f32 = 24.0;
+
+/// Each of the bracket's arms is this share of its side (the mockup's `BRACKET_ARM`): half of every side shows.
+pub const BRACKET_ARM: f32 = 0.25;
+
+/// The target's bracket on the viewscreen (the mockup's `bracket`): four corner marks round a square `side` across
+/// centred on (`x`, `y`), at least [`BRACKET_MIN`]. Each mark is an arm's end, its corner and the other arm's end,
+/// top left first and clockwise, so the four never meet and never fall apart into a dash pattern's pieces.
+pub fn bracket(x: f32, y: f32, side: f32) -> [[[f32; 2]; 3]; 4] {
+    let h = side.max(BRACKET_MIN) / 2.0;
+    let arm = 2.0 * h * BRACKET_ARM;
+    [(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)].map(|(sx, sy): (f32, f32)| {
+        let (cx, cy) = (x + sx * h, y + sy * h);
+        [[cx, cy - sy * arm], [cx, cy], [cx - sx * arm, cy]]
+    })
 }
 
 /// The status strip: the same on every console, pictures and numbers only.
@@ -1353,6 +1373,53 @@ mod tests {
         let q = quat_arr(from_euler(20.0, 0.0, 0.0));
         assert!((q[0] - 0.984_807_753).abs() < 1e-9 && (q[2] + 0.173_648_178).abs() < 1e-9);
         assert_eq!(fmt_q(q), " 0.9848   0.0000  -0.1736   0.0000");
+    }
+
+    /// The owner (2026-10-12): "targetting brackets look messed up". The bracket was a rectangle dashed `6, side - 12`
+    /// from 3, whose period (side - 6) is not the side, so its dashes wandered off the corners into scattered pieces.
+    #[test]
+    fn the_targets_bracket_is_four_clean_corners_on_its_box() {
+        let marks = bracket(100.0, 50.0, 40.0);
+        let corners: Vec<[f32; 2]> = marks.iter().map(|m| m[1]).collect();
+        assert_eq!(corners, vec![[80.0, 30.0], [120.0, 30.0], [120.0, 70.0], [80.0, 70.0]], "on the box's corners");
+        for m in &marks {
+            let (a, c, e) = (m[0], m[1], m[2]);
+            assert!(a[0] == c[0] && e[1] == c[1], "one arm upright, one level: {m:?}");
+            let (up, level) = ((a[1] - c[1]).abs(), (e[0] - c[0]).abs());
+            assert!(up == 10.0 && level == 10.0, "each arm a quarter of the side: {up}, {level}");
+            // Both arms point into the box, toward its centre.
+            assert!((a[1] - 50.0).abs() < (c[1] - 50.0).abs() && (e[0] - 100.0).abs() < (c[0] - 100.0).abs());
+        }
+        assert!(marks[0][2][0] < marks[1][2][0], "neighbouring corners' arms stay apart");
+    }
+
+    #[test]
+    fn a_far_targets_bracket_keeps_its_four_corners_apart() {
+        // A target 12 km out is drawn 5 lp across, its box 9 lp: the bracket holds its least size.
+        let marks = bracket(0.0, 0.0, 9.0);
+        assert_eq!(marks[0][1], [-BRACKET_MIN / 2.0, -BRACKET_MIN / 2.0]);
+        assert_eq!(marks[2][1], [BRACKET_MIN / 2.0, BRACKET_MIN / 2.0]);
+        let gap = marks[1][2][0] - marks[0][2][0];
+        assert!(gap >= BRACKET_MIN / 2.0 - 1e-4, "half of every side is open: {gap}");
+    }
+
+    /// The consoles' 3D pictures draw the low-poly exterior model, not the layout's loft (owner, 2026-10-12: "ship
+    /// models arent using the correct model, use the low poly version of the latest model").
+    #[test]
+    fn the_consoles_ship_is_the_low_poly_model_wound_outward_round_the_shield_centre() {
+        let s = tern();
+        assert_eq!(s.hull.len(), 496, "tern_lod2.glb's triangles");
+        // Wound outward, so the faces dropped as turned away are the far ones: a closed surface wound counter-clockwise
+        // from outside has a positive volume.
+        let vol: f64 = s.hull.iter().map(|t| t.v[0].dot(t.v[1].cross(t.v[2]))).sum::<f64>() / 6.0;
+        assert!(vol > 10_000.0, "a frigate's volume, wound outward: {vol} m3");
+        // The hull's roof and keel stand where the loft's did about the shield's centre (8.2 m and -5.8 m in the
+        // layout, the centre at 1.5 m).
+        let ys = s.hull.iter().flat_map(|t| t.v.map(|p| p.y));
+        let (lo, hi) = ys.fold((f64::MAX, f64::MIN), |(a, b), y| (a.min(y), b.max(y)));
+        assert!((hi - (8.2 - s.shield.centre.y)).abs() < 0.01 && (lo - (-5.8 - s.shield.centre.y)).abs() < 0.01);
+        assert!(s.hull.iter().any(|t| t.crease.iter().any(|c| *c)), "creases to outline");
+        assert!(s.hull.iter().any(|t| t.crease.iter().any(|c| !*c)), "and flat panels' diagonals left clean");
     }
 
     #[test]
