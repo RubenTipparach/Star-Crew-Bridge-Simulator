@@ -157,7 +157,7 @@ Copied from **fps-game-demo** (Undercity/Brushfire), revision **`f6cd25c`**, on 
 
 | Here | Source in fps-game-demo | How the graph was made | Changes here |
 | --- | --- | --- | --- |
-| `ptex/tech_panel.ptex` | `tools/material_maker/ptex/tech_panel.ptex` | Authored by its `build_ptex.py` | None (byte for byte) |
+| `ptex/tech_panel.ptex` | `tools/material_maker/ptex/tech_panel.ptex` | Authored by its `build_ptex.py` | Deleted 2026-10-14: the owner had the grey grid removed; `bulkhead`, `trim`, `hull` and `hull_dark` are now the [PLACEHOLDER] marker |
 | `ptex/floor_tiles.ptex` | `tools/material_maker/ptex/floor_tiles.ptex` | Authored by its `build_ptex.py` | None |
 | `ptex/ceiling_tiles.ptex` | `tools/material_maker/ptex/ceiling_tiles.ptex` | Authored by its `build_ptex.py` | None |
 | `ptex/hazard_stripes.ptex` | `tools/material_maker/ptex/hazard_stripes.ptex` | Authored by its `build_ptex.py` | None |

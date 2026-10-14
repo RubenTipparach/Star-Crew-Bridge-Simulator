@@ -30,13 +30,9 @@
     "bulkhead": {
       "layer": 0,
       "role": "Walls of every compartment.",
-      "source": { "graph": "tech_panel", "provenance": "fps-game-demo f6cd25c tools/material_maker/ptex/tech_panel.ptex, authored by its build_ptex.py" },
+      "source": { "graph": "placeholder", "provenance": "None: the [PLACEHOLDER] marker (tools/materials/postprocess.py placeholder_layer). Was tech_panel, the grey grid, removed by the owner 2026-10-14." },
       "tile_m": 2.0,
-      "span_m": 2.0,
-      "ramp": [[0.12, 0.15, 0.19], [0.60, 0.65, 0.70]],
-      "ramp_mix": 0.9,
-      "relief": 1.0,
-      "colours": 32
+      "span_m": 2.0
     },
     "deck_tiles": {
       "layer": 1,
@@ -74,13 +70,9 @@
     "trim": {
       "layer": 4,
       "role": "Frames, ribs, baseboards, door frames and beams.",
-      "source": { "graph": "tech_panel", "provenance": "fps-game-demo f6cd25c tools/material_maker/ptex/tech_panel.ptex, authored by its build_ptex.py" },
-      "tile_m": 4.0,
-      "span_m": 2.0,
-      "ramp": [[0.22, 0.24, 0.27], [0.80, 0.82, 0.85]],
-      "ramp_mix": 0.9,
-      "relief": 1.0,
-      "colours": 32
+      "source": { "graph": "placeholder", "provenance": "None: the [PLACEHOLDER] marker (tools/materials/postprocess.py placeholder_layer). Was tech_panel, the grey grid, removed by the owner 2026-10-14." },
+      "tile_m": 2.0,
+      "span_m": 2.0
     },
     "hazard": {
       "layer": 5,
@@ -126,13 +118,9 @@
     "hull": {
       "layer": 9,
       "role": "Exterior hull plating.",
-      "source": { "graph": "tech_panel", "provenance": "fps-game-demo f6cd25c tools/material_maker/ptex/tech_panel.ptex, authored by its build_ptex.py" },
+      "source": { "graph": "placeholder", "provenance": "None: the [PLACEHOLDER] marker (tools/materials/postprocess.py placeholder_layer). Was tech_panel, the grey grid, removed by the owner 2026-10-14." },
       "tile_m": 4.0,
-      "span_m": 4.0,
-      "ramp": [[0.30, 0.32, 0.35], [0.86, 0.87, 0.89]],
-      "ramp_mix": 0.9,
-      "relief": 1.0,
-      "colours": 32
+      "span_m": 4.0
     },
     "exterior_pearl": {
       "layer": 11,
@@ -159,13 +147,9 @@
     "hull_dark": {
       "layer": 10,
       "role": "Exterior accent plating: bands, the spine, around ports and bays.",
-      "source": { "graph": "tech_panel", "provenance": "fps-game-demo f6cd25c tools/material_maker/ptex/tech_panel.ptex, authored by its build_ptex.py" },
-      "tile_m": 2.0,
-      "span_m": 4.0,
-      "ramp": [[0.06, 0.07, 0.08], [0.36, 0.38, 0.41]],
-      "ramp_mix": 0.9,
-      "relief": 1.0,
-      "colours": 32
+      "source": { "graph": "placeholder", "provenance": "None: the [PLACEHOLDER] marker (tools/materials/postprocess.py placeholder_layer). Was tech_panel, the grey grid, removed by the owner 2026-10-14." },
+      "tile_m": 4.0,
+      "span_m": 4.0
     }
   }
 }

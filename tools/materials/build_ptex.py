@@ -169,62 +169,6 @@ BURN, DODGE, LIGHTEN, DARKEN, DIFFERENCE, ADDITIVE = range(7, 13)
 # Custom materials
 # ----------------------------------------------------------------------------
 
-def tech_panel():
-    """Painted steel wall panels with bevels, bolts, grime and chipped paint."""
-    g = Graph("Tech Panel")
-    panels = g.node("bricks", pattern=0, repeat=1, rows=2, columns=2, row_offset=0.0,
-                    mortar=0.035, bevel=0.06, round=0.02, corner=0.0)
-    # bolts: 4 small circles per panel near the corners. sdrepeat works in texture
-    # units centred on 0.5, so offsets/radii are relative to the whole texture.
-    corners = []
-    for cx, cy in ((-0.085, -0.085), (0.085, 0.085), (0.085, -0.085), (-0.085, 0.085)):
-        c = g.node("sdcircle", r=0.009, cx=cx, cy=cy)
-        corners.append(g.node("sdrepeat", c, rx=2, ry=2, r=0.0, variations=False))
-    u1 = g.node("sdboolean", corners[0], corners[1], op=0)
-    u2 = g.node("sdboolean", corners[2], corners[3], op=0)
-    bolts_sdf = g.node("sdboolean", u1, u2, op=0)
-    bolts = g.node("sdshow", bolts_sdf, bevel=0.007, base=0.0)
-    # horizontal groove strip in the middle of each panel
-    groove = g.node("pattern", mix=0, x_wave=4, x_scale=1, y_wave=2, y_scale=4)
-    groove_t = g.tone(groove, (0, 0), (1, 0.15))
-    # noise
-    fbm = g.node("fbm2", noise=2, scale_x=8, scale_y=8, folds=0, iterations=6, persistence=0.55, offset=0)
-    fine = g.node("fbm2", noise=0, scale_x=32, scale_y=32, folds=0, iterations=4, persistence=0.5, offset=0.3)
-    scratch = g.node("scratches", length=0.15, width=0.25, layers=3, waviness=0.4, angle=-15, randomness=0.6)
-
-    # height = panels - groove + bolts + fine noise
-    h1 = g.math(g.math(panels, None, op=MUL, in2=0.8), groove_t, op=SUB, clamp=True)
-    h2 = g.math(h1, g.math(bolts, None, op=MUL, in2=0.18), op=ADD)
-    fine_s = g.math(fine, None, op=MUL, in2=0.03)
-    height = g.math(h2, fine_s, op=ADD)
-
-    # paint wear mask: edges of panels + noise
-    edge = g.tone(panels, (0, 1), (0.35, 1), (0.6, 0), (1, 0))
-    wear_n = g.tone(fbm, (0, 0), (0.55, 0), (0.75, 1), (1, 1))
-    wear = g.math(edge, wear_n, op=MUL, clamp=True)
-    scr = g.math(scratch, None, op=MUL, in2=0.3)
-    wear2 = g.math(wear, scr, op=MAX)
-
-    paint_var = g.node("bricks", pattern=0, repeat=1, rows=2, columns=2, row_offset=0.0,
-                       mortar=0.035, bevel=0.06, round=0.02, corner=0.0)
-    tint = g.node("greyscale", (paint_var, 1), mode=2)
-    paint = g.colorize(tint, grad((0, "#5d6f7b"), (1, "#74868f")))
-    grime = g.colorize(fbm, grad((0, "#4a4f55"), (1, "#ffffff")))
-    paint_d = g.blend(grime, paint, None, mode=MULTIPLY, amount=0.6)
-    metal = g.colorize(fine, grad((0, "#7d7f82"), (1, "#a3a5a8")))
-    albedo_a = g.blend(metal, paint_d, wear2, mode=NORMAL_B, amount=1.0)
-    mortar_dark = g.tone(panels, (0, 0.3), (0.1, 1), (1, 1))
-    albedo = g.blend(mortar_dark, albedo_a, None, mode=MULTIPLY, amount=1.0)
-
-    metallic = g.tone(wear2, (0, 0.15), (1, 1))
-    rough = g.math(g.colorize(fbm, grad((0, 0.45), (1, 0.7))), wear2, op=SUB, clamp=True)
-    rough2 = g.math(rough, None, op=MAX, in2=0.25)
-    normal = g.normal_map(height, strength=1.2)
-    ao = g.occlusion(height, strength=1.2, radius=12)
-    g.material(albedo=albedo, metallic=metallic, roughness=rough2, normal=normal, ao=ao)
-    return g
-
-
 def ceiling_tiles():
     """Perforated acoustic ceiling tiles in a steel grid."""
     g = Graph("Ceiling Tiles")
@@ -492,7 +436,6 @@ GRAPHS = {
     "tern_hull_rescue": lambda: fitted_tern_hull("rescue"),
     "exterior_surfaces": exterior_surfaces,
     "exterior_paint": exterior_paint,
-    "tech_panel": tech_panel,
     "ceiling_tiles": ceiling_tiles,
     "floor_tiles": floor_tiles,
     "crate": crate,

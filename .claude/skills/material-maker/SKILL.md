@@ -34,7 +34,7 @@ provenance. This is how to work with them.
   every wall, floor and frame of a space has the same texel size.
 - **`tile_m` is one repeat of the graph.** Smaller than the span, the graph is tiled k x k inside
   the layer (hazard and crate: 1 m, so 2 x 2); larger, the layer takes the graph's top-left 1/k
-  (trim: one 2 m panel of `tech_panel`, mostly plain scratched surface). The ratio must be whole.
+  (a 4 m graph in a 2 m layer takes its top-left quarter). The ratio must be whole.
 - **The layer tiles.** The downsample wraps around, so the layer's edges are filtered with its far
   side; the table's seam ratios (wrap-around step over the mean step inside) sit near or below 1.
 - **No per-pixel lighting.** The baked vertex light multiplies the texel. The normal map and

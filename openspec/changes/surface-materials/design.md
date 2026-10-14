@@ -105,17 +105,27 @@ cool, slightly worn interior: steel greys and slate blues, hazard yellow kept, r
 
 | Layer | Material | Graph | Span | Role |
 | ---: | --- | --- | --- | --- |
-| 0 | bulkhead | tech_panel | 2 m | Walls |
+| 0 | bulkhead | placeholder (was tech_panel) | 2 m | Walls |
 | 1 | deck_tiles | floor_tiles | 2 m | Floors in crew spaces |
 | 2 | deck_plate | diamond_plate (Material Maker's `metal_pattern` example) | 2 m | Floors in working spaces |
 | 3 | ceiling | ceiling_tiles | 2 m | Ceilings in crew spaces |
-| 4 | trim | tech_panel, one panel | 2 m | Frames, ribs, beams, door frames, baseboards |
+| 4 | trim | placeholder (was tech_panel, one panel) | 2 m | Frames, ribs, beams, door frames, baseboards |
 | 5 | hazard | hazard_stripes | 2 m (1 m tiles) | Rims, kick plates, pressure doors, working-space baseboards |
 | 6 | light_panel | light_panel, emissive | 2 m (1 m tiles) | Lamp lenses, status strips |
 | 7 | machinery | rust_metal, muted | 2 m | Working-space ceilings and frames, pipes, housings |
 | 8 | crate | crate, olive | 2 m (1 m tiles) | Cargo |
-| 9 | hull | tech_panel | 4 m | Exterior plating |
-| 10 | hull_dark | tech_panel, 1 m panels | 4 m | Exterior accents |
+| 9 | hull | placeholder (was tech_panel) | 4 m | Exterior plating |
+| 10 | hull_dark | placeholder (was tech_panel, 1 m panels) | 4 m | Exterior accents |
+
+**The grid removed, 2026-10-14.** The owner, on a mockup that still showed the grey square grid of
+`tech_panel`: "this grid texture shouldve been deleted", then "can you remove that grid texture? to
+make sure nothing refrences it, if something does replace it with a texture that says
+[PLACEHOLDER]". The graph (`tools/materials/ptex/tech_panel.ptex` and its `build_ptex.py` function) is
+deleted. The four layers it made (`bulkhead`, `trim`, `hull`, `hull_dark`) keep their layer numbers,
+so no prop, deck or page needs renumbering, but their source graph is now `placeholder`:
+`postprocess.py` draws a magenta layer with "[PLACEHOLDER]" in black bands. Any surface still
+sampling one of them now shows the word, and is a surface still to be given real art (the wall
+panels, `wall-panels`; the panel trims, `ceilings-and-trims`; the painted hulls, `ship-exteriors`).
 
 Which material each generated deck surface takes is a ship's **finish** table
 (`data/ships/<id>/detailing.json`, `finishes`), chosen per compartment by its `finish` in the
