@@ -120,6 +120,28 @@ pub struct Viewscreen {
     pub target_px: [u32; 2],
     /// How deep the scan lines are, 0-1.
     pub scanlines: f64,
+    /// The CHASE camera: outside the ship, behind it, looking at the target (chase-camera 1).
+    pub chase: Chase,
+}
+
+/// The CHASE camera (openspec/changes/chase-camera design 1): it sits behind the Tern on the line from the target
+/// through the ship, raised so the ship sits low on the screen, swung round the ship by the player's angles, and looks
+/// at the target (forward with none). The angles are held to what keeps both the target (in the middle) and the ship
+/// (low) on the picture: the feed is about three times as wide as it is tall.
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct Chase {
+    /// How far behind the ship's centre it sits, metres.
+    pub distance_m: f64,
+    /// Its field of view across the feed at zoom 1, degrees (wider than the bow cameras' 70, so the ship fits).
+    pub fov_across_deg: f64,
+    /// Where the ship's centre sits on the screen: how far down from the middle, as a share of the half height (0 is
+    /// the middle, 1 the bottom edge).
+    pub ship_low: f64,
+    /// How far the player can swing it round the ship to either side, degrees.
+    pub yaw_max_deg: f64,
+    /// How far up or down round the ship, degrees.
+    pub elevation_max_deg: f64,
 }
 
 fn unit(c: &mut Checks, field: &str, v: [f64; 3]) {
@@ -182,6 +204,11 @@ impl Validate for ExteriorData {
         c.count("viewscreen.target_px[0]", i64::from(v.target_px[0]), 16, 2048);
         c.count("viewscreen.target_px[1]", i64::from(v.target_px[1]), 16, 2048);
         c.number("viewscreen.scanlines", v.scanlines, 0.0, 1.0);
+        c.number("viewscreen.chase.distance_m", v.chase.distance_m, 20.0, 2000.0);
+        c.number("viewscreen.chase.fov_across_deg", v.chase.fov_across_deg, 30.0, 150.0);
+        c.number("viewscreen.chase.ship_low", v.chase.ship_low, 0.0, 0.9);
+        c.number("viewscreen.chase.yaw_max_deg", v.chase.yaw_max_deg, 0.0, 80.0);
+        c.number("viewscreen.chase.elevation_max_deg", v.chase.elevation_max_deg, 0.0, 40.0);
     }
 }
 

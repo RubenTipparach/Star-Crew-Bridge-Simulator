@@ -562,6 +562,9 @@ pub enum Command {
     Brace(bool),
     /// The captain: take the viewscreen with a camera (an index in [`FEEDS`]), or give it back.
     Viewscreen(Option<u8>),
+    /// The captain: the camera on the bridge's main viewscreen (an index in [`FEEDS`]), the one his own console shows
+    /// (chase-camera 2).
+    MainView(u8),
     /// The captain: an order to a station, the verb by its index in that station's verbs (`data/stations.json`).
     Order(Station, u8),
     /// A station acknowledges the captain's newest order to it.
@@ -632,7 +635,9 @@ impl Command {
             Self::Lock(_) | Self::TurretMode(..) | Self::Load(_) | Self::Fire(_) => s == Station::Tactical,
             Self::Preset(_) => matches!(s, Station::Tactical | Station::Science),
             Self::Scan(_) | Self::Ping | Self::Freq(_) => s == Station::Science,
-            Self::Alert(_) | Self::Brace(_) | Self::Viewscreen(_) | Self::Order(..) => s == Station::Captain,
+            Self::Alert(_) | Self::Brace(_) | Self::Viewscreen(_) | Self::MainView(_) | Self::Order(..) => {
+                s == Station::Captain
+            }
             Self::Ack(to) => s == *to,
             Self::LaserFire(b) => s.laser_bank() == Some(*b),
             Self::Decoy => s == Station::Tactical,
@@ -1076,6 +1081,8 @@ pub struct Bridge {
     pub braced: bool,
     /// The captain's camera on every viewscreen, if taken (an index in [`FEEDS`]).
     pub view: Option<u8>,
+    /// The camera on the bridge's main viewscreen: the captain's console's (an index in [`FEEDS`], FWD to start).
+    pub main_view: u8,
     /// The last orders, newest first, at most [`MAX_ORDERS`].
     pub orders: Vec<Order>,
     /// How far Science's scan of the enemy has gone, 0-1.
@@ -1102,6 +1109,7 @@ impl Default for Bridge {
             red_alert: false,
             braced: false,
             view: None,
+            main_view: 1,
             orders: Vec::with_capacity(MAX_ORDERS + 1),
             scan: 0.0,
             scanning: false,
@@ -2183,6 +2191,10 @@ impl Drill {
                 b.view = v;
                 Ok(())
             }
+            Command::MainView(v) => {
+                b.main_view = v;
+                Ok(())
+            }
             Command::Order(to, verb) => {
                 if usize::from(verb) >= self.data.order_verbs(to).len() {
                     Err(Refusal::NoSuch)
@@ -3213,6 +3225,7 @@ pub fn validate(cmd: &Command) -> Result<(), Refusal> {
         Command::LaserFire(b) if b >= 4 => Err(Refusal::BadValue),
         Command::Freq(b) if b >= 4 => Err(Refusal::BadValue),
         Command::Viewscreen(Some(v)) if usize::from(v) >= FEEDS.len() => Err(Refusal::BadValue),
+        Command::MainView(v) if usize::from(v) >= FEEDS.len() => Err(Refusal::BadValue),
         Command::Order(Station::Captain, _) | Command::Ack(Station::Captain) => Err(Refusal::NoSuch),
         _ => Ok(()),
     }
@@ -4567,5 +4580,17 @@ mod tests {
         d.command(s[0], Command::Viewscreen(None)).unwrap();
         d.step();
         assert_eq!(d.bridge.view, None);
+    }
+
+    #[test]
+    fn the_bridges_main_viewscreen_shows_the_captains_camera() {
+        let (mut d, s) = engaged_at(&[Station::Captain, Station::Helm]);
+        assert_eq!(d.bridge.main_view, 1, "FWD until the captain picks a camera");
+        d.command(s[0], Command::MainView(2)).unwrap();
+        d.step();
+        assert_eq!(d.bridge.main_view, 2, "the captain's CHASE is on the main viewscreen");
+        assert_eq!(d.command(s[0], Command::MainView(9)), Err(Refusal::BadValue));
+        assert!(d.command(s[1], Command::MainView(0)).is_err(), "only the captain picks the main viewscreen's camera");
+        assert_eq!(d.bridge.main_view, 2);
     }
 }

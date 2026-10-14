@@ -942,7 +942,11 @@ pub fn feed_widget(cv: &Canvas, cx: &mut Ctx, x: f32, y: f32) {
         120.0,
         134.0,
         Some(Hit::Drag(Drag::FeedView)),
-        Some("Drag to look round the ship; the cone is where the viewscreen looks".into()),
+        Some(if v.feed == "CHASE" {
+            "Drag to swing the chase camera round the ship".into()
+        } else {
+            "Drag to look round the ship; the cone is where the viewscreen looks".into()
+        }),
     );
     const PAD: [(&str, &str); 6] = [
         ("TARGET", "target"),

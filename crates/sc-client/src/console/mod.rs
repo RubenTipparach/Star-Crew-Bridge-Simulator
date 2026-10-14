@@ -1164,11 +1164,11 @@ pub fn feed_basis(v: &ConsoleView) -> Basis {
 }
 
 /// Where a camera of the viewscreen (`combat::FEEDS`) looks, in the ship's frame; `target` is the locked contact
-/// relative to the Tern in the ship's frame, which TARGET looks at (forward without one). The consoles' feed and the
-/// bridge's viewscreens both look this way.
+/// relative to the Tern in the ship's frame, which TARGET and CHASE look at (forward without one). The consoles' feed
+/// and the bridge's viewscreens both look this way; CHASE also stands off the ship ([`chase_camera`]).
 pub fn feed_basis_for(feed: &str, target: Option<DVec3>) -> Basis {
     let f = match feed {
-        "FWD" | "CHASE" => DVec3::Z,
+        "FWD" => DVec3::Z,
         "AFT" => DVec3::NEG_Z,
         "PORT" => DVec3::X,
         "STBD" => DVec3::NEG_X,
@@ -1180,6 +1180,52 @@ pub fn feed_basis_for(feed: &str, target: Option<DVec3>) -> Basis {
     }
     let r = r.normalize();
     Basis { f, r, u: r.cross(f) }
+}
+
+/// The CHASE camera's vertical field of view, radians, at `zoom` (the feed is 614 x 194, as every camera's).
+pub fn chase_vfov(c: &sc_core::exterior::Chase, zoom: f64) -> f64 {
+    let across = (c.fov_across_deg / 2.0).to_radians().tan() / zoom.max(1.0);
+    2.0 * (across * 97.0 / 307.0).atan()
+}
+
+/// The CHASE camera (openspec/changes/chase-camera design 1): where it stands, relative to the Tern's centre, and the
+/// way it looks, both in the ship's frame. It starts `distance_m` behind the ship on the line from the target (or the
+/// bow, with none) through the ship's centre, raised square to its look until the ship's centre sits `ship_low` of
+/// the half height below the middle of a picture `half_vfov` radians high; then it swings round the ship by `angles`
+/// (the player's, -1..1 of the data's limits: yaw to either side, then up or down); and it looks at the target, so the
+/// target is in the middle and the ship low wherever it stands.
+pub fn chase_camera(
+    target: Option<DVec3>,
+    angles: [f64; 2],
+    c: &sc_core::exterior::Chase,
+    half_vfov: f64,
+) -> (DVec3, Basis) {
+    let line = target.map(|t| t.normalize_or_zero()).filter(|t| *t != DVec3::ZERO).unwrap_or(DVec3::Z);
+    let look_from = |eye: DVec3| match target {
+        Some(t) if (t - eye).length() > 1.0 => (t - eye).normalize(),
+        _ => line,
+    };
+    let frame = |f: DVec3| {
+        let mut r = f.cross(DVec3::Y);
+        if r.length() < 1e-3 {
+            r = DVec3::NEG_X;
+        }
+        let r = r.normalize();
+        Basis { f, r, u: r.cross(f) }
+    };
+    // Behind on the line, raised until the ship sits ship_low below the middle.
+    let stand = -line * c.distance_m;
+    let b0 = frame(look_from(stand));
+    let depth = (-stand).dot(b0.f).max(1.0);
+    let lift = depth * (c.ship_low * half_vfov.tan()) - stand.dot(b0.u);
+    let eye = stand + b0.u * lift;
+    // Round the ship: yaw about the picture's up, then up or down about its right, both through the ship's centre.
+    let yaw = (angles[0].clamp(-1.0, 1.0) * c.yaw_max_deg).to_radians();
+    let el = (angles[1].clamp(-1.0, 1.0) * c.elevation_max_deg).to_radians();
+    let eye = DQuat::from_axis_angle(b0.u, yaw) * eye;
+    let b1 = frame(look_from(eye));
+    let eye = DQuat::from_axis_angle(b1.r, -el) * eye;
+    (eye, frame(look_from(eye)))
 }
 
 /// The viewscreen's frame on screen (look band coordinates): where the 3D feed is drawn.
@@ -1325,6 +1371,57 @@ pub fn grid(col: f32, row: f32, w: f32, h: f32) -> [f32; 4] {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn chase_cfg() -> sc_core::exterior::Chase {
+        sc_core::exterior::Chase {
+            distance_m: 160.0,
+            fov_across_deg: 100.0,
+            ship_low: 0.45,
+            yaw_max_deg: 40.0,
+            elevation_max_deg: 8.0,
+        }
+    }
+
+    /// Where `p` (ship frame) lands on the picture of a camera at `eye` looking along `b`: right and up as a share of
+    /// the half height, and its depth.
+    fn on_screen(p: DVec3, eye: DVec3, b: &Basis, half: f64) -> (f64, f64, f64) {
+        let d = p - eye;
+        let z = d.dot(b.f);
+        (d.dot(b.r) / z / half.tan(), d.dot(b.u) / z / half.tan(), z)
+    }
+
+    #[test]
+    fn chase_keeps_the_target_in_the_middle_and_the_ship_low_from_every_angle() {
+        let half = chase_vfov(&chase_cfg(), 1.0) / 2.0;
+        let target = DVec3::new(900.0, 300.0, 2500.0);
+        for angles in [[0.0, 0.0], [0.8, 0.3], [-0.9, -0.5], [0.4, 1.0], [-1.0, 0.7]] {
+            let (eye, b) = chase_camera(Some(target), angles, &chase_cfg(), half);
+            let (tx, ty, _) = on_screen(target, eye, &b, half);
+            assert!(tx.abs() < 1e-6 && ty.abs() < 1e-6, "{angles:?}: the target is in the middle, at {tx} {ty}");
+            let (sx, sy, sz) = on_screen(DVec3::ZERO, eye, &b, half);
+            assert!(sz > 0.0, "{angles:?}: the ship is in front of the camera");
+            // Across, the picture is 307/97 of its half height either side.
+            assert!(sx.abs() < 0.85 * 307.0 / 97.0, "{angles:?}: the ship is on the picture, across {sx}");
+            assert!((-0.95..-0.02).contains(&sy), "{angles:?}: the ship is in the picture's lower half, at {sy}");
+        }
+    }
+
+    #[test]
+    fn chase_behind_puts_the_ship_ship_low_below_the_middle() {
+        let half = chase_vfov(&chase_cfg(), 1.0) / 2.0;
+        let (eye, b) = chase_camera(Some(DVec3::new(0.0, 0.0, 5000.0)), [0.0, 0.0], &chase_cfg(), half);
+        let (_, sy, sz) = on_screen(DVec3::ZERO, eye, &b, half);
+        assert!((sy + 0.45).abs() < 0.02, "the ship's centre at ship_low of the half height below, got {sy}");
+        assert!((sz - 160.0).abs() < 5.0, "about distance_m off, got {sz}");
+        assert!(eye.z < 0.0, "behind the ship, away from the target");
+    }
+
+    #[test]
+    fn chase_with_no_target_looks_along_the_bow() {
+        let (eye, b) = chase_camera(None, [0.0, 0.0], &chase_cfg(), 0.2);
+        assert!(b.f.dot(DVec3::Z) > 0.999, "forward, got {:?}", b.f);
+        assert!(eye.z < -100.0, "behind the stern");
+    }
 
     #[test]
     fn every_viewscreen_camera_looks_its_own_way() {
