@@ -26,6 +26,13 @@ const FAR_M: f64 = 10.0;
 /// A point keeps this far from a door's frame, metres (rule 5), and its own half width beyond that.
 const DOOR_CLEAR_M: f64 = 0.4;
 const HALF_WIDTH_M: f64 = 0.13;
+/// What a bracket covers over its floor, metres: from the extinguisher's foot to the top of the glowing sign
+/// (`ships3d::safety_points`), and how far clear of a window's glass it keeps along the wall.
+const COVERS_M: [f64; 2] = [0.5, 2.05];
+const WINDOW_CLEAR_M: f64 = 0.15;
+/// The layout patches that move or add windows, in the order the deck applies them (exterior_windows.json's status):
+/// a window here replaces the layout's of the same id.
+const WINDOW_PATCHES: [&str; 5] = ["command_suite", "deck_access", "engineering", "armory", "exterior_windows"];
 /// A point keeps this far from a station's seat, metres (rule 5).
 const SEAT_CLEAR_M: f64 = 1.2;
 /// A point keeps this far from a fixture's edge, metres (a fixture with no size counts as a metre across).
@@ -80,6 +87,7 @@ struct Room {
 }
 
 struct Portal {
+    id: String,
     kind: String,
     between: [String; 2],
     centre: [f64; 3],
@@ -115,17 +123,35 @@ fn read_layout(root: &Path, ship: &str) -> Result<Layout, String> {
         let id = c["id"].as_str().ok_or(format!("{rel}: compartment id"))?.to_owned();
         rooms.push(Room { id, kind: c["kind"].as_str().unwrap_or("").to_owned(), brushes });
     }
-    let mut portals = Vec::new();
-    for p in l["portals"].as_array().ok_or(format!("{rel}: portals"))? {
+    let portal = |p: &Value, rel: &str| -> Result<Portal, String> {
         let b = p["between"].as_array().filter(|b| b.len() == 2).ok_or(format!("{rel}: portal between"))?;
         let s = p["size_m"].as_array().filter(|s| s.len() == 2).ok_or(format!("{rel}: portal size_m"))?;
-        portals.push(Portal {
+        Ok(Portal {
+            id: p["id"].as_str().unwrap_or("").to_owned(),
             kind: p["kind"].as_str().unwrap_or("").to_owned(),
             between: [b[0].as_str().unwrap_or("").to_owned(), b[1].as_str().unwrap_or("").to_owned()],
-            centre: vec3(&p["center_m"], &rel)?,
-            normal: vec3(&p["normal"], &rel)?,
-            size: [num(&s[0], &rel)?, num(&s[1], &rel)?],
-        });
+            centre: vec3(&p["center_m"], rel)?,
+            normal: vec3(&p["normal"], rel)?,
+            size: [num(&s[0], rel)?, num(&s[1], rel)?],
+        })
+    };
+    let mut portals = Vec::new();
+    for p in l["portals"].as_array().ok_or(format!("{rel}: portals"))? {
+        portals.push(portal(p, &rel)?);
+    }
+    // The windows as built: the patches move the bridge's and add the rooms' (owner, 2026-10-14: a sign showed in
+    // front of the bridge's forward windows when only layout.json's were known).
+    for name in WINDOW_PATCHES {
+        let prel = format!("data/ships/{ship}/{name}.json");
+        let Ok(ptext) = std::fs::read_to_string(root.join(&prel)) else { continue };
+        let pv: Value = serde_json::from_str(&ptext).map_err(|e| format!("{prel}: {e}"))?;
+        for p in pv["portals"].as_array().into_iter().flatten().filter(|p| p["kind"] == "window") {
+            let w = portal(p, &prel)?;
+            match portals.iter_mut().find(|q| !w.id.is_empty() && q.id == w.id) {
+                Some(q) => *q = w,
+                None => portals.push(w),
+            }
+        }
     }
     let seats =
         l["stations"].as_array().into_iter().flatten().map(|s| vec3(&s["seat_m"], &rel)).collect::<Result<_, _>>()?;
@@ -192,6 +218,15 @@ impl Layout {
             let off = d[0] * p.normal[0] + d[1] * p.normal[2];
             let along = d[0] * t[0] + d[1] * t[1];
             let jamb = if p.kind == "pressure_door" { self.jamb.1 } else { self.jamb.0 };
+            if p.kind == "window" {
+                // The bracket and its sign stand clear of the glass: no window beside them at their heights.
+                let (bottom, top) = (p.centre[1] - p.size[1] / 2.0, p.centre[1] + p.size[1] / 2.0);
+                let covers = bottom < wall[1] + COVERS_M[1] && top > wall[1] + COVERS_M[0];
+                if off.abs() < 0.5 && covers && along.abs() < p.size[0] / 2.0 + WINDOW_CLEAR_M + HALF_WIDTH_M {
+                    return Some("a window");
+                }
+                continue;
+            }
             let level = (wall[1] - (p.centre[1] - p.size[1] / 2.0)).abs() < 2.0;
             if off.abs() < 0.3 && level && along.abs() < p.size[0] / 2.0 + jamb + DOOR_CLEAR_M + HALF_WIDTH_M {
                 return Some("a door's clearance");
@@ -666,6 +701,26 @@ mod tests {
                 let want = z0 + (z1 - z0) * (i as f64 + 0.5) / n as f64;
                 assert!((z - want).abs() <= SHIFT_M + 1e-6, "{}: point {i} at z {z}, its place {want}", r.id);
             }
+        }
+    }
+
+    /// No bracket or sign stands in front of a window's glass (owner's shot, 2026-10-14: a sign showed in the bridge's
+    /// forward window), the windows as the patches build them.
+    #[test]
+    fn no_extinguisher_stands_in_front_of_a_window() {
+        let l = read_layout(root(), "tern").unwrap();
+        assert!(l.portals.iter().any(|p| p.id == "p_quarters_window_1"), "the patches' windows are read");
+        let bridge = l.portals.iter().find(|p| p.id == "p_bridge_window_p").unwrap();
+        assert!((bridge.centre[0] - 4.384).abs() < 1e-6, "the command suite's bridge window replaces the layout's");
+        let text = std::fs::read_to_string(root().join(path("tern"))).unwrap();
+        let kit: Value = serde_json::from_str(&text).unwrap();
+        for p in kit["points"].as_array().unwrap() {
+            let w = &p["wall_point_m"];
+            let wall = [w[0].as_f64().unwrap(), w[1].as_f64().unwrap(), w[2].as_f64().unwrap()];
+            let n = &p["normal"];
+            let into = [n[0].as_f64().unwrap(), n[2].as_f64().unwrap()];
+            let room = p["compartment"].as_str().unwrap();
+            assert_ne!(l.refused(room, wall, into), Some("a window"), "{} stands in front of a window", p["id"]);
         }
     }
 }

@@ -37,7 +37,9 @@ every room's walls and doors and every deck's walk graph.
    point, per deck; a deck over 10 m there gets a point on the passage wall nearest it.
 5. **Never** in a doorway's swing or slide (0.4 m clear of its frame), in front of a console (1.2 m from a seat), a
    hatch, a ladder or a fixture, or on a hull window; never in an airlock, a turret pod or an escape pod (they have
-   their own kit).
+   their own kit). A window is the window as built (the layout patches move the bridge's and add the rooms'): the
+   bracket and its sign, 0.5 to 2.05 m over the floor, keep 0.15 m clear of its glass along the wall. Found 2026-10-14
+   when a sign stood in front of the bridge's forward window (`sc-tools safety-points` had read only layout.json).
 
 The tool reports the count, every point's position, and the longest walk to a point on each deck. Expected on the
 Tern: about 30 points (the tool's count is the number; this is an estimate).
