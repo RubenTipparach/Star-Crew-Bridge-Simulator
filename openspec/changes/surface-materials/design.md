@@ -56,8 +56,8 @@ material's `span_m`: 2.0 m inside (64 px per metre), 4.0 m on the hull (32 px pe
 every wall, floor and frame of a space has the same texel size, a texture runs continuously
 across the segments of one wall, and nobody unwraps UVs. `tile_m` is one repeat of the graph: a
 graph smaller than the span is tiled k x k inside the layer (hazard stripes, the light panel and
-the crate are 1 m, so 2 x 2); a larger one gives the layer its top-left 1/k (trim takes one 2 m
-panel of the 4 m `tech_panel`). The ratio must be whole, so the layer tiles. (Wall panel modules, proposed in `wall-panels` after the owner's "notice how they dont have square panels on the walls?", share the array but are placed per wall bay with bay-local coordinates; they replace `bulkhead` on interior walls if the owner approves.)
+the crate are 1 m, so 2 x 2); a larger one gives the layer its top-left 1/k (a 4 m graph in a
+2 m layer takes its top-left quarter). The ratio must be whole, so the layer tiles. (Wall panel modules, proposed in `wall-panels` after the owner's "notice how they dont have square panels on the walls?", share the array but are placed per wall bay with bay-local coordinates; they replace `bulkhead` on interior walls if the owner approves.)
 
 ### 3. Relief baked into the colour
 
@@ -105,27 +105,41 @@ cool, slightly worn interior: steel greys and slate blues, hazard yellow kept, r
 
 | Layer | Material | Graph | Span | Role |
 | ---: | --- | --- | --- | --- |
-| 0 | bulkhead | placeholder (was tech_panel) | 2 m | Walls |
+| 0 | bulkhead | plain_steel, slate blue-grey | 2 m | Walls |
 | 1 | deck_tiles | floor_tiles | 2 m | Floors in crew spaces |
 | 2 | deck_plate | diamond_plate (Material Maker's `metal_pattern` example) | 2 m | Floors in working spaces |
 | 3 | ceiling | ceiling_tiles | 2 m | Ceilings in crew spaces |
-| 4 | trim | placeholder (was tech_panel, one panel) | 2 m | Frames, ribs, beams, door frames, baseboards |
+| 4 | trim | plain_steel, lighter grey | 2 m | Frames, ribs, beams, door frames, baseboards |
 | 5 | hazard | hazard_stripes | 2 m (1 m tiles) | Rims, kick plates, pressure doors, working-space baseboards |
 | 6 | light_panel | light_panel, emissive | 2 m (1 m tiles) | Lamp lenses, status strips |
 | 7 | machinery | rust_metal, muted | 2 m | Working-space ceilings and frames, pipes, housings |
 | 8 | crate | crate, olive | 2 m (1 m tiles) | Cargo |
-| 9 | hull | placeholder (was tech_panel) | 4 m | Exterior plating |
-| 10 | hull_dark | placeholder (was tech_panel, 1 m panels) | 4 m | Exterior accents |
+| 9 | hull | tech_panel | 4 m | Exterior plating |
+| 10 | hull_dark | tech_panel, 1 m panels | 4 m | Exterior accents |
 
 **The grid removed, 2026-10-14.** The owner, on a mockup that still showed the grey square grid of
 `tech_panel`: "this grid texture shouldve been deleted", then "can you remove that grid texture? to
 make sure nothing refrences it, if something does replace it with a texture that says
-[PLACEHOLDER]". The graph (`tools/materials/ptex/tech_panel.ptex` and its `build_ptex.py` function) is
-deleted. The four layers it made (`bulkhead`, `trim`, `hull`, `hull_dark`) keep their layer numbers,
-so no prop, deck or page needs renumbering, but their source graph is now `placeholder`:
-`postprocess.py` draws a magenta layer with "[PLACEHOLDER]" in black bands. Any surface still
-sampling one of them now shows the word, and is a surface still to be given real art (the wall
-panels, `wall-panels`; the panel trims, `ceilings-and-trims`; the painted hulls, `ship-exteriors`).
+[PLACEHOLDER]". For a few hours the four layers `tech_panel` made (`bulkhead`, `trim`, `hull`,
+`hull_dark`) were a magenta "[PLACEHOLDER]" layer that `postprocess.py` draws for the source graph
+`placeholder`. The owner then clarified: "sorry some textures can use the generic base textures, I
+just wanted you to remove the grid pattern that I didnt like that you were using for ship
+interiors". So:
+
+- **The exteriors are back as they were.** `hull` and `hull_dark` take `tech_panel` again with their
+  old ramps, and the graph and its `build_ptex.py` function are restored byte for byte. The grid is
+  on the outside of the ship only.
+- **The interiors take a plain base texture with no grid.** `bulkhead` and `trim` take
+  `plain_steel`, Star Crew's own graph: painted steel with a horizontal brushed grain and a few
+  light scratches, no panels, seams or tiles; a slate blue-grey ramp for the walls and a lighter
+  grey one for the trims. It was rendered by Material Maker on the Pi 5 itself (Godot 4.7 arm64,
+  lavapipe). The wall panels (`wall-panels`) and panel trims (`ceilings-and-trims`) remain the
+  designed replacement where the owner approves them.
+- **The placeholder stays as a tool.** A material whose graph is `placeholder` still builds the
+  magenta layer, so a surface still to be given art can show itself; no material uses it today.
+
+The layer numbers did not move, so no prop, deck or page needed renumbering. The new layers cost
+nothing extra: they replace the contents of layers 0 and 4.
 
 Which material each generated deck surface takes is a ship's **finish** table
 (`data/ships/<id>/detailing.json`, `finishes`), chosen per compartment by its `finish` in the

@@ -99,6 +99,17 @@ python tools/materials/postprocess.py --only exterior_pearl exterior_graphite
 
 Lower-detail exterior atlases are separate Blender bakes of the full model, not repeated copies of the paint layer. Their source is [the exterior builder](../blender/build_ship_exteriors.py).
 
+**Plain steel, 2026-10-14.** `ptex/plain_steel.ptex` is Star Crew's own graph (`plain_steel()` in
+`build_ptex.py`): painted steel with a horizontal brushed grain and a few light scratches, with no
+panels, seams or grid. `bulkhead` and `trim` take it with two ramps (slate blue-grey walls, lighter
+grey trims). The owner had the `tech_panel` grid taken off the interiors ("I just wanted you to
+remove the grid pattern that I didnt like that you were using for ship interiors") and allowed
+generic base textures there. It was rendered by Material Maker `174f15e` on the Raspberry Pi 5 itself:
+Godot 4.7's linux.arm64 build, the `material-maker-headless` checkout and patches, Mesa's lavapipe
+(`VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.aarch64.json`) on the Pi's desktop display, about
+45 s for one 2048 px graph. Only `plain_steel` was rendered there; the two layers were built with
+`postprocess.py --only bulkhead trim`, the others are the committed layers.
+
 **Wall panels** (`openspec/changes/wall-panels`, a prototype) are not Material Maker graphs: they are
 modelled and baked in Blender by `tools/blender/build_wall_panels.py` from
 `data/materials/panels.json`, which renders into `raw/panels/` and reuses this directory's
@@ -157,7 +168,7 @@ Copied from **fps-game-demo** (Undercity/Brushfire), revision **`f6cd25c`**, on 
 
 | Here | Source in fps-game-demo | How the graph was made | Changes here |
 | --- | --- | --- | --- |
-| `ptex/tech_panel.ptex` | `tools/material_maker/ptex/tech_panel.ptex` | Authored by its `build_ptex.py` | Deleted 2026-10-14: the owner had the grey grid removed; `bulkhead`, `trim`, `hull` and `hull_dark` are now the [PLACEHOLDER] marker |
+| `ptex/tech_panel.ptex` | `tools/material_maker/ptex/tech_panel.ptex` | Authored by its `build_ptex.py` | None (byte for byte). Since 2026-10-14 it makes only the exterior `hull` and `hull_dark`; no interior surface takes its grid |
 | `ptex/floor_tiles.ptex` | `tools/material_maker/ptex/floor_tiles.ptex` | Authored by its `build_ptex.py` | None |
 | `ptex/ceiling_tiles.ptex` | `tools/material_maker/ptex/ceiling_tiles.ptex` | Authored by its `build_ptex.py` | None |
 | `ptex/hazard_stripes.ptex` | `tools/material_maker/ptex/hazard_stripes.ptex` | Authored by its `build_ptex.py` | None |
