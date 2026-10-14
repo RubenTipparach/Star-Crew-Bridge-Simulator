@@ -1,0 +1,83 @@
+{
+  "schema": "starcrew.spacedock-options/1",
+  "status": "Four design options for Tamsin Station's spacedock, for the owner to choose between (openspec/changes/spacedock). Read by docs/mockups/spacedock.html only; the engine reads the chosen option once the change is applied.",
+  "_doc": "Station frame: metres, origin at the station's centre, +y the station's north, +z the way the main doors face. Ships' frames as layout.json: +x port, +y up, +z the bow. Angles in degrees; bearings round +y from +z toward +x. Colours sRGB 0-1.",
+  "sky": {
+    "_doc": "The view at the station, in its own frame: the star high behind the approach, Tamsin below and beyond (17.5 degrees in radius at 3.33 radii, patrol-mission design 2). Orrin and Cinder are points of light from here (under 0.02 degrees).",
+    "sun_dir": [0.55, 0.42, 0.72],
+    "planet_dir": [-0.36, -0.52, -0.78],
+    "planet_radius_deg": 17.5,
+    "orrin_dir": [0.82, 0.3, -0.48],
+    "cinder_dir": [0.62, 0.52, 0.58]
+  },
+  "traffic": {
+    "_doc": "The approach and the bay's speed limits. The doors open when traffic control clears the ship and the bow is inside the approach corridor (doors_open_s); inside the doors the bay limit holds until the berth, where flight-and-navigation 10's docking corridor (2 m/s inside 100 m, 0.5 m/s inside 10 m, 0.2 m/s at contact) takes over.",
+    "arrival_from_hull_m": 5000,
+    "corridor_mps": 40,
+    "door_mps": 5,
+    "bay_mps": 5,
+    "doors_open_s": 20,
+    "doors_close_s": 20
+  },
+  "colours": {
+    "pearl": [0.92, 0.93, 0.95],
+    "graphite": [0.55, 0.6, 0.68],
+    "window": [1.0, 0.86, 0.6],
+    "accent": [0.35, 0.68, 1.0],
+    "work": [1.0, 0.9, 0.7],
+    "red": [1.0, 0.18, 0.12],
+    "green": [0.2, 1.0, 0.35],
+    "rock": [0.9, 0.82, 0.72]
+  },
+  "fleet": {
+    "_doc": "The ships at the berths: the Tern's liveries and the Osprey (assets/models/exteriors), and the Federation concepts (data/ships/federation-concepts). A docked ship is drawn at its middle level of detail in the engine.",
+    "tern": { "model": "exteriors/liveries/cobalt/tern", "name": "SCS Tern (the players)" },
+    "heron": { "model": "exteriors/liveries/cobalt/tern", "name": "A sister Heron-class frigate" },
+    "rescue": { "model": "exteriors/liveries/rescue/tern_lod1", "name": "A Heron in rescue livery" },
+    "copper": { "model": "exteriors/tern_lod2", "name": "A Heron in copper livery" },
+    "osprey": { "model": "exteriors/osprey", "name": "An Osprey-class courier" },
+    "pursuer": { "concept": "pursuer", "name": "Pursuer-class corvette" },
+    "splitjaw": { "concept": "splitjaw", "name": "Splitjaw-class carrier" },
+    "bulwark": { "concept": "bulwark", "name": "Bulwark-class corvette" }
+  },
+  "versions": {
+    "A": {
+      "name": "Bastion",
+      "kind": "mushroom",
+      "brief": "A domed cap 1.8 km across on a ringed tower 2 km tall. Four doors in the cap's rim open into one round hall 1.7 km across and 140 m high, with the berths set round a central core like the spokes of a wheel.",
+      "cap": { "radius_m": 900, "rim_y_m": [-80, 80], "crown": [[900, 80], [840, 150], [680, 228], [460, 290], [220, 322], [0, 332]], "under": [[900, -80], [780, -150], [560, -220], [300, -268], [130, -300]] },
+      "hall": { "radius_m": 860, "floor_y_m": -70, "ceiling_y_m": 70, "core_radius_m": 110 },
+      "doors": { "bearings_deg": [0, 90, 180, 270], "width_m": 150, "height_m": 90 },
+      "spine": { "core_radius_m": 120, "top_y_m": -300, "tip_y_m": -1950, "rings": [[-430, 300, 40], [-610, 260, 34], [-790, 230, 30], [-970, 205, 28], [-1150, 185, 26], [-1330, 165, 24], [-1520, 380, 70], [-1740, 150, 22]] },
+      "berths": { "_doc": "[bearing, ship, radius of the ship's middle]: an outer ring and an inner ring, bows toward the core.", "slots": [[0, "tern", 560], [330, "copper", 370], [30, "rescue", 370], [60, "osprey", 560], [120, "pursuer", 560], [150, "heron", 370], [210, "splitjaw", 370], [240, null, 560], [300, "bulwark", 560]] }
+    },
+    "B": {
+      "name": "Wheel",
+      "kind": "wheel",
+      "brief": "A habitat wheel 1.75 km across on six spokes round a hub drum 540 m across. The hub's front doors open along the axis into a cylindrical hangar where ships berth all round the curved wall, overhead too.",
+      "ring": { "radius_m": 800, "width_m": 150, "depth_m": 110, "segments": 32, "spokes": 6, "spoke_radius_m": 22 },
+      "hub": { "radius_m": 270, "z_m": [-290, 290] },
+      "hall": { "radius_m": 240, "z_m": [-260, 262] },
+      "doors": { "width_m": 190, "height_m": 130 },
+      "berths": { "radius_m": 168, "rows_z_m": [110, -120], "_slots": "[row, angle round the axis from the bottom, ship]", "slots": [[1, 0, "tern"], [0, 0, null], [0, 45, "osprey"], [0, 135, "pursuer"], [0, 225, "rescue"], [0, 315, "heron"], [1, 90, "splitjaw"], [1, 180, "copper"], [1, 270, "bulwark"]] }
+    },
+    "C": {
+      "name": "Drydock",
+      "kind": "hall",
+      "brief": "A long armoured hall 1.7 km long with a command tower and a habitat block at its stern. One pair of doors at the bow opens onto a fairway 400 m wide, with six berths down each wall where ships lie bow out, ready to leave.",
+      "hull": { "width_m": 440, "height_m": 240, "z_m": [-850, 850], "chamfer_m": 70, "rib_every_m": 120 },
+      "hall": { "width_m": 400, "height_m": 200, "z_m": [-820, 832] },
+      "doors": { "width_m": 320, "height_m": 150 },
+      "berths": { "x_m": 128, "z_m": [560, 320, 80, -160, -400, -640], "_slots": "[wall (-1 starboard, +1 port, as the ships lie bow out), z, ship]", "slots": [[-1, 560, "heron"], [-1, 320, "tern"], [-1, 80, null], [-1, -160, "bulwark"], [-1, -400, "copper"], [1, 560, "osprey"], [1, 320, "pursuer"], [1, 80, "rescue"], [1, -160, "splitjaw"], [1, -400, null], [1, -640, "osprey"]] }
+    },
+    "D": {
+      "name": "Hollow",
+      "kind": "asteroid",
+      "brief": "A captured nickel-iron asteroid 2.2 km long, hollowed into a cavern 1.3 km deep. An armoured gate in its face opens into the rock; inside, the berths stand on a built deck down both sides, lit galleries cut into the walls.",
+      "rock": { "radii_m": [900, 680, 1100], "detail": 14, "rough": 0.12, "seed": 7 },
+      "gate": { "z_m": 760, "plate_m": [780, 560, 220], "width_m": 300, "height_m": 170 },
+      "hall": { "radius_m": 300, "z_m": [-680, 650], "floor_y_m": -150, "rough_m": 34 },
+      "berths": { "x_m": 120, "z_m": [450, 230, 10, -210, -430], "_slots": "[side, z, ship]", "slots": [[-1, 450, "splitjaw"], [-1, 230, "tern"], [-1, 10, "rescue"], [-1, -210, null], [1, 450, "heron"], [1, 230, "osprey"], [1, 10, "pursuer"], [1, -210, "bulwark"], [1, -430, "copper"]] }
+    }
+  }
+}
