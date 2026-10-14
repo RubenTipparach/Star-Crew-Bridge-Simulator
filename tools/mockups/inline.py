@@ -17,7 +17,12 @@ inherited rules, and embeds that collection as the page's one panel array.
 <script id="ship-data-<name>" type="application/json"> block, for mockups that
 read a ship's other data files (power.json, atmosphere.json, detailing.json).
 "data:lighting/<name>" copies data/lighting/<name>.json (fixtures, bake) the same way, and
-"data:crew/<name>" data/crew/<name>.json (the walk's numbers, crew-on-deck).
+"data:crew/<name>" data/crew/<name>.json (the walk's numbers, crew-on-deck), "data:space/<name>"
+data/space/<name>.json (the outside: the sun, the planet, the dock; patrol-mission) and "data:missions/<name>"
+data/missions/<name>.json.
+"glb:<path>" copies one model, assets/models/<path>.glb, as base64 into a
+<script id="glb-<file name>" type="application/octet-stream"> block, for a page that shows one exterior
+model and not its whole set (patrol.html takes the Tern's model alone).
 "bakecache:<name>" copies docs/mockups/cache/<name>.bin (a page's baked light, written by
 tools/mockups/bake_ship.mjs --write-cache) as base64 into <script id="bake-cache-<name>">, empty when
 there is none; --check also fails when a cache was baked by another lightbake.js.
@@ -92,7 +97,7 @@ from panel_catalog import load_catalog
 SCREENS = os.path.join(ROOT, "assets", "textures", "screens", "screens.json")
 CACHE = os.path.join(ROOT, "docs", "mockups", "cache")
 LIGHTBAKE = os.path.join(LIB, "lightbake.js")
-MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-9_-]+/[a-z0-9_-]+|bakecache:[a-z0-9_-]+|shipkit|materials|panels(?::[a-z0-9_-]+)?|screens|repairs|decals|models:[a-z0-9_-]+|manifest:[a-z0-9_-]+|font:[a-z0-9_-]+) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
+MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-9_-]+/[a-z0-9_-]+|bakecache:[a-z0-9_-]+|shipkit|materials|panels(?::[a-z0-9_-]+)?|screens|repairs|decals|models:[a-z0-9_-]+|glb:[a-z0-9_/-]+|manifest:[a-z0-9_-]+|font:[a-z0-9_-]+) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
 
 
 def png_uri(path):
@@ -184,6 +189,11 @@ def block(kind):
         text = json.dumps({"manifest": manifest, "images": dict(sorted(images.items()))}, separators=(",", ":"),
                           ensure_ascii=False).replace("</", "<\\/")
         return f'\n<script id="ship-screens" type="application/json">\n{text}\n</script>\n'
+    if kind.startswith("glb:"):
+        rel = kind.split(":", 1)[1]
+        with open(os.path.join(ROOT, "assets", "models", rel + ".glb"), "rb") as f:
+            text = base64.b64encode(f.read()).decode("ascii")
+        return f'\n<script id="glb-{os.path.basename(rel)}" type="application/octet-stream">\n{text}\n</script>\n'
     if kind.startswith("manifest:"):
         name = kind.split(":", 1)[1]
         manifest, _ = model_manifest(name)
@@ -281,8 +291,9 @@ def block(kind):
     if kind.startswith("data:"):
         ship, name = kind.split(":", 1)[1].split("/", 1)
         # data:lighting/<name> is data/lighting/<name>.json (the fixture types and bake settings, light-baking
-        # design 15), data:crew/<name> data/crew/<name>.json (the walk); any other data:<ship>/<name> a ship's file.
-        sub = (ship,) if ship in ("lighting", "crew") else ("ships", ship)
+        # design 15), data:crew/<name> data/crew/<name>.json (the walk), data:space/<name> and data:missions/<name>
+        # their files; any other data:<ship>/<name> a ship's file.
+        sub = (ship,) if ship in ("lighting", "crew", "space", "missions") else ("ships", ship)
         with open(os.path.join(ROOT, "data", *sub, name + ".json"), encoding="utf-8") as f:
             data = json.load(f)
         text = json.dumps(data, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
