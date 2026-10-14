@@ -1550,7 +1550,7 @@ fn objectives_view(snap: &Snapshot, tern: &ShipSnap, hound: &ShipSnap, data: &Dr
 }
 
 /// A pointer event on the console, in egui points.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PointerEv {
     Press(Pos2),
     Move(Pos2),

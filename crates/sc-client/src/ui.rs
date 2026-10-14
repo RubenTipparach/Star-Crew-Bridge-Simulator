@@ -42,6 +42,8 @@ pub struct Ui {
     text_on: bool,
     /// Window coordinates to points, from the last frame (the UI is laid out on a screen 720 points high).
     win_to_pt: f32,
+    /// The first finger as the pointer: menus and buttons are tapped (touch-controls design 2).
+    touch: platform::TouchMouse,
 }
 
 /// The UI is laid out on a screen this many points high, whatever the output's size, so it reads the same at 720p and
@@ -113,7 +115,15 @@ impl Ui {
         }
         ctx.set_style(style);
         crate::vg::install_fonts(&ctx);
-        Self { ctx, events: Vec::new(), pointer: Pos2::ZERO, textures: HashMap::new(), text_on: false, win_to_pt: 1.0 }
+        Self {
+            ctx,
+            events: Vec::new(),
+            pointer: Pos2::ZERO,
+            textures: HashMap::new(),
+            text_on: false,
+            win_to_pt: 1.0,
+            touch: platform::TouchMouse::default(),
+        }
     }
 
     fn modifiers() -> egui::Modifiers {
@@ -121,8 +131,19 @@ impl Ui {
         egui::Modifiers { alt, ctrl, shift, mac_cmd: false, command: ctrl }
     }
 
-    /// Take an input event (the app calls it with every event while the UI has the input).
+    /// Points a window unit, from the last frame.
+    pub fn win_to_pt(&self) -> f32 {
+        self.win_to_pt
+    }
+
+    /// Take an input event (the app calls it with every event while the UI has the input). A finger is the pointer.
     pub fn event(&mut self, e: &Event) {
+        if matches!(e, Event::Touch { .. }) {
+            for m in self.touch.convert(e) {
+                self.event(&m);
+            }
+            return;
+        }
         let m = Self::modifiers();
         match e {
             Event::Pointer(x, y) => {
