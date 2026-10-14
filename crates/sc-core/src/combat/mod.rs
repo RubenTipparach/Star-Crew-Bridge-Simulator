@@ -562,9 +562,14 @@ pub enum Command {
     Brace(bool),
     /// The captain: take the viewscreen with a camera (an index in [`FEEDS`]), or give it back.
     Viewscreen(Option<u8>),
-    /// The captain: the camera on the bridge's main viewscreen (an index in [`FEEDS`]), the one his own console shows
-    /// (chase-camera 2).
-    MainView(u8),
+    /// The captain: the camera on the bridge's main viewscreen (an index in [`FEEDS`]) and whether it chases (seen
+    /// from behind the ship), as his own console shows it (chase-camera 2).
+    MainView {
+        /// The camera, an index in [`FEEDS`].
+        feed: u8,
+        /// Chase on: from behind the ship.
+        chase: bool,
+    },
     /// The captain: an order to a station, the verb by its index in that station's verbs (`data/stations.json`).
     Order(Station, u8),
     /// A station acknowledges the captain's newest order to it.
@@ -635,7 +640,7 @@ impl Command {
             Self::Lock(_) | Self::TurretMode(..) | Self::Load(_) | Self::Fire(_) => s == Station::Tactical,
             Self::Preset(_) => matches!(s, Station::Tactical | Station::Science),
             Self::Scan(_) | Self::Ping | Self::Freq(_) => s == Station::Science,
-            Self::Alert(_) | Self::Brace(_) | Self::Viewscreen(_) | Self::MainView(_) | Self::Order(..) => {
+            Self::Alert(_) | Self::Brace(_) | Self::Viewscreen(_) | Self::MainView { .. } | Self::Order(..) => {
                 s == Station::Captain
             }
             Self::Ack(to) => s == *to,
@@ -1083,6 +1088,8 @@ pub struct Bridge {
     pub view: Option<u8>,
     /// The camera on the bridge's main viewscreen: the captain's console's (an index in [`FEEDS`], FWD to start).
     pub main_view: u8,
+    /// Whether the main viewscreen's camera chases (from behind the ship), as the captain's console's does.
+    pub main_chase: bool,
     /// The last orders, newest first, at most [`MAX_ORDERS`].
     pub orders: Vec<Order>,
     /// How far Science's scan of the enemy has gone, 0-1.
@@ -1110,6 +1117,7 @@ impl Default for Bridge {
             braced: false,
             view: None,
             main_view: 1,
+            main_chase: false,
             orders: Vec::with_capacity(MAX_ORDERS + 1),
             scan: 0.0,
             scanning: false,
@@ -2191,8 +2199,9 @@ impl Drill {
                 b.view = v;
                 Ok(())
             }
-            Command::MainView(v) => {
-                b.main_view = v;
+            Command::MainView { feed, chase } => {
+                b.main_view = feed;
+                b.main_chase = chase;
                 Ok(())
             }
             Command::Order(to, verb) => {
@@ -3225,7 +3234,7 @@ pub fn validate(cmd: &Command) -> Result<(), Refusal> {
         Command::LaserFire(b) if b >= 4 => Err(Refusal::BadValue),
         Command::Freq(b) if b >= 4 => Err(Refusal::BadValue),
         Command::Viewscreen(Some(v)) if usize::from(v) >= FEEDS.len() => Err(Refusal::BadValue),
-        Command::MainView(v) if usize::from(v) >= FEEDS.len() => Err(Refusal::BadValue),
+        Command::MainView { feed, .. } if usize::from(feed) >= FEEDS.len() => Err(Refusal::BadValue),
         Command::Order(Station::Captain, _) | Command::Ack(Station::Captain) => Err(Refusal::NoSuch),
         _ => Ok(()),
     }
@@ -4586,11 +4595,14 @@ mod tests {
     fn the_bridges_main_viewscreen_shows_the_captains_camera() {
         let (mut d, s) = engaged_at(&[Station::Captain, Station::Helm]);
         assert_eq!(d.bridge.main_view, 1, "FWD until the captain picks a camera");
-        d.command(s[0], Command::MainView(2)).unwrap();
+        d.command(s[0], Command::MainView { feed: 0, chase: true }).unwrap();
         d.step();
-        assert_eq!(d.bridge.main_view, 2, "the captain's CHASE is on the main viewscreen");
-        assert_eq!(d.command(s[0], Command::MainView(9)), Err(Refusal::BadValue));
-        assert!(d.command(s[1], Command::MainView(0)).is_err(), "only the captain picks the main viewscreen's camera");
-        assert_eq!(d.bridge.main_view, 2);
+        assert_eq!((d.bridge.main_view, d.bridge.main_chase), (0, true), "the captain's TARGET, chasing, is on it");
+        assert_eq!(d.command(s[0], Command::MainView { feed: 9, chase: false }), Err(Refusal::BadValue));
+        assert!(
+            d.command(s[1], Command::MainView { feed: 1, chase: false }).is_err(),
+            "only the captain picks the main viewscreen's camera"
+        );
+        assert_eq!((d.bridge.main_view, d.bridge.main_chase), (0, true));
     }
 }

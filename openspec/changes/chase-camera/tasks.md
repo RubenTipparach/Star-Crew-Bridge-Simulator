@@ -8,10 +8,10 @@ The owner asked for it and for a video to approve on 2026-10-14 (the proposal).
 
 ## 2. Build
 
-- [x] 2.1 `console::chase_camera` and its tests; `viewscreen.chase` in `data/space/exterior.json`, validated.
-- [x] 2.2 The seat's chase angles, set by dragging the camera widget while CHASE is on; the feed draws the hull.
-- [x] 2.3 `Command::MainView`, `Bridge::main_view`, the snapshot field (protocol 13); the captain's camera presses
-  send it; the bridge's viewscreens show it.
+- [x] 2.1 `console::feed_view` and `console::chase_camera`, and their tests; `viewscreen.chase` in `data/space/exterior.json`, validated.
+- [x] 2.2 CHASE a toggle on the camera chosen (the owner's word on the first video's frames); the feed draws the hull.
+- [x] 2.3 `Command::MainView { feed, chase }`, `Bridge::main_view` and `main_chase`, the snapshot fields (protocol
+  13); the captain's camera and CHASE presses send it; the bridge's viewscreens show it.
 - [x] 2.4 `sc-client --film` and `tools/video/film.sh`.
 
 ## 3. Gate

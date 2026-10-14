@@ -124,10 +124,10 @@ pub struct Viewscreen {
     pub chase: Chase,
 }
 
-/// The CHASE camera (openspec/changes/chase-camera design 1): it sits behind the Tern on the line from the target
-/// through the ship, raised so the ship sits low on the screen, swung round the ship by the player's angles, and looks
-/// at the target (forward with none). The angles are held to what keeps both the target (in the middle) and the ship
-/// (low) on the picture: the feed is about three times as wide as it is tall.
+/// The chase camera (openspec/changes/chase-camera design 1): CHASE on, any viewscreen camera is seen from behind the
+/// ship. It stands behind the Tern on the line the camera looks along (TARGET: the line from the target through the
+/// ship), raised so the ship sits low on the screen, the ship in the middle across, and looks the camera's way (TARGET:
+/// at the target).
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Chase {
@@ -138,10 +138,6 @@ pub struct Chase {
     /// Where the ship's centre sits on the screen: how far down from the middle, as a share of the half height (0 is
     /// the middle, 1 the bottom edge).
     pub ship_low: f64,
-    /// How far the player can swing it round the ship to either side, degrees.
-    pub yaw_max_deg: f64,
-    /// How far up or down round the ship, degrees.
-    pub elevation_max_deg: f64,
 }
 
 fn unit(c: &mut Checks, field: &str, v: [f64; 3]) {
@@ -207,8 +203,6 @@ impl Validate for ExteriorData {
         c.number("viewscreen.chase.distance_m", v.chase.distance_m, 20.0, 2000.0);
         c.number("viewscreen.chase.fov_across_deg", v.chase.fov_across_deg, 30.0, 150.0);
         c.number("viewscreen.chase.ship_low", v.chase.ship_low, 0.0, 0.9);
-        c.number("viewscreen.chase.yaw_max_deg", v.chase.yaw_max_deg, 0.0, 80.0);
-        c.number("viewscreen.chase.elevation_max_deg", v.chase.elevation_max_deg, 0.0, 40.0);
     }
 }
 

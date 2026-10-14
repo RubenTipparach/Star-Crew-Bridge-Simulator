@@ -1015,8 +1015,8 @@ impl DrillApp {
     }
 
     /// The viewscreen's feed: from the bow, looking where the console's feed points (the mockup's feed camera:
-    /// 70 degrees across at zoom 1), into its own target, which the console draws in the viewscreen's frame; CHASE
-    /// stands off the ship behind it and draws the Tern too (chase-camera 1). With no console (on foot, the overview)
+    /// 70 degrees across at zoom 1), into its own target, which the console draws in the viewscreen's frame; with chase
+    /// on it stands behind the ship and draws the Tern too (chase-camera 1). With no console (on foot, the overview)
     /// it is the bridge's main viewscreen's picture: the captain's camera while he holds the viewscreen, his console's
     /// otherwise (chase-camera 2).
     fn render_feed(&mut self, ships: Option<&(ShipSnap, ShipSnap, Snapshot)>, view: Option<&console::ConsoleView>) {
@@ -1030,19 +1030,11 @@ impl DrillApp {
                     .and_then(|i| FEEDS.get(usize::from(i)))
                     .copied()
                     .unwrap_or("FWD");
+                let chase = ships.is_some_and(|(_, _, s)| s.bridge.main_chase);
                 let target =
                     ships.filter(|(_, h, _)| h.active && h.alive).map(|(t, h, _)| t.rot.inverse() * (h.pos - t.pos));
-                let vfov = 2.0 * (97.0f64 / (307.0 / 35f64.to_radians().tan())).atan();
-                if feed == "CHASE" {
-                    // The captain's own angles when this is his client; behind the ship otherwise.
-                    let angles = self.seats[Station::Captain as usize].chase();
-                    let vfov = console::chase_vfov(chase_cfg, 1.0);
-                    let (e, b) = console::chase_camera(target, angles, chase_cfg, vfov / 2.0);
-                    (Some(rot * e), rot * b.f, rot * b.u, vfov)
-                } else {
-                    let b = console::feed_basis_for(feed, target);
-                    (None, rot * b.f, rot * b.u, vfov)
-                }
+                let (e, b, vfov) = console::feed_view(feed, chase, target, chase_cfg, 1.0);
+                (e.map(|e| rot * e), rot * b.f, rot * b.u, vfov)
             }
         };
         let centre = ships.map_or(DVec3::ZERO, |(t, _, _)| t.pos);
@@ -1326,8 +1318,8 @@ impl DrillApp {
     /// The film of the viewscreen's cameras (chase-camera 3). It follows the body: the walk to the captain's chair (every
     /// second frame), sitting down and the countdown (every fourth), both sped up; then, once the round is engaged, every
     /// frame at the video's 30 a second (the frame's step is held to 1/30 s from 1.5 s into Engage): the
-    /// console's FWD, TARGET (from the bow, on the target), CHASE behind the ship, CHASE swung round it while it keeps
-    /// the target in the middle and the ship low, and the bridge's main viewscreen showing the captain's CHASE. Frames
+    /// console's FWD with chase off and on, TARGET, PORT, AFT and STBD with chase on, TARGET with it off, and the
+    /// bridge's main viewscreen showing the captain's TARGET with chase on. Frames
     /// go to the shots folder as `film-NNNNN.png`, and each shot's first frame and caption to `film-cues.txt`;
     /// `tools/video/film.sh` makes the video.
     fn film(&mut self, f: &Frame, snap: &Snapshot) {
@@ -1342,41 +1334,45 @@ impl DrillApp {
             ("Seated at Captain: the console comes up, the round counts down (sped up)", 4)
         } else {
             let seat = &mut self.seats[st];
-            match t {
-                t if t < 4.5 => {
-                    seat.set_feed("FWD");
-                    ("FWD: the captain's viewscreen from the bow, as before", 1)
+            // Each shot: the camera, chase on or off, and its caption.
+            let shot: Option<(&str, bool, &str)> = match t {
+                t if t < 4.0 => {
+                    Some(("FWD", false, "FWD, chase off: the captain's viewscreen from the bow, as before"))
                 }
-                t if t < 7.0 => {
-                    seat.set_feed("TARGET");
-                    ("TARGET: first person from the bow, the Hound in the middle", 1)
-                }
-                t if t < 10.0 => {
-                    seat.set_feed("CHASE");
-                    seat.set_chase([0.0, 0.0]);
-                    ("CHASE: behind the Tern, looking at the Hound, the ship low on the screen", 1)
-                }
-                t if t < 18.0 => {
-                    // Round the ship: out to port, back past the stern to starboard, rising and falling.
-                    let a = std::f64::consts::TAU * (t - 10.0) / 8.0;
-                    seat.set_chase([0.85 * a.sin(), 0.6 * (a * 0.5).sin() - 0.15 * (a * 1.5).sin()]);
-                    ("CHASE swung round the ship (drag the camera widget): still on the Hound, ship low", 1)
-                }
-                t if t < 22.0 => {
-                    seat.set_chase([0.35 * ((t - 18.0) * 0.6).sin(), 0.15]);
-                    if !self.film_screen {
-                        // The captain's camera on the main viewscreen, as pressing CHASE on his console sends it.
-                        if let Some(s) = self.session.as_mut() {
-                            s.command(sc_core::combat::Command::MainView(2));
-                        }
-                        self.film_screen = true;
-                    }
-                    ("The bridge's main viewscreen shows the captain's camera: CHASE", 1)
-                }
+                t if t < 6.5 => Some(("FWD", true, "FWD, chase on: from behind the Tern, the ship low and centred")),
+                t if t < 10.0 => Some((
+                    "TARGET",
+                    true,
+                    "TARGET, chase on: past the Tern at the Hound, the Hound in the middle, the ship low",
+                )),
+                t if t < 12.0 => Some(("PORT", true, "PORT, chase on: looking to port past the ship")),
+                t if t < 14.0 => Some(("AFT", true, "AFT, chase on: looking aft past the ship")),
+                t if t < 16.0 => Some(("STBD", true, "STBD, chase on: looking to starboard past the ship")),
+                t if t < 18.0 => Some(("TARGET", false, "TARGET, chase off: first person from the bow again")),
+                t if t < 22.0 => None,
                 _ => {
                     self.film_screen = false;
                     self.done = true;
                     return;
+                }
+            };
+            match shot {
+                Some((feed, chase, cue)) => {
+                    seat.set_feed(feed);
+                    seat.set_chase(chase);
+                    (cue, 1)
+                }
+                None => {
+                    seat.set_feed("TARGET");
+                    seat.set_chase(true);
+                    if !self.film_screen {
+                        // The captain's camera on the main viewscreen, as his console sends it when he presses.
+                        if let Some(s) = self.session.as_mut() {
+                            s.command(sc_core::combat::Command::MainView { feed: 0, chase: true });
+                        }
+                        self.film_screen = true;
+                    }
+                    ("The bridge's main viewscreen shows the captain's camera: TARGET, chase on", 1)
                 }
             }
         };

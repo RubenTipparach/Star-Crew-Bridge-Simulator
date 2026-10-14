@@ -48,12 +48,10 @@
     "target_px": [512, 256],
     "scanlines": 0.08,
     "chase": {
-      "_doc": "The CHASE camera on every console's viewscreen and the bridge's main one (openspec/changes/chase-camera design 1): behind the Tern on the line from the target through its centre, raised so the ship's centre sits ship_low of the half height below the middle of the picture, swung round the ship by the player (drag the camera widget while CHASE is on) up to yaw_max_deg either side and elevation_max_deg up or down, always looking at the target. fov_across_deg is its field of view across the feed at zoom 1. The limits keep the target (in the middle) and the ship (low) both on a feed three times as wide as it is tall.",
+      "_doc": "The chase camera (openspec/changes/chase-camera design 1): CHASE is a toggle, and with it on any viewscreen camera (TARGET, FWD, PORT, AFT, STBD) is seen from behind the Tern: distance_m back along the line the camera looks (TARGET: from the target through the ship's centre), raised so the ship's centre sits ship_low of the half height below the middle of the picture and in the middle across, looking the camera's way (TARGET: at the target). fov_across_deg is its field of view across the feed at zoom 1.",
       "distance_m": 160.0,
       "fov_across_deg": 100.0,
-      "ship_low": 0.45,
-      "yaw_max_deg": 40.0,
-      "elevation_max_deg": 8.0
+      "ship_low": 0.45
     }
   }
 }

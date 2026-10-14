@@ -429,6 +429,8 @@ pub struct BridgeSnap {
     pub view: Option<u8>,
     /// The camera on the bridge's main viewscreen, the captain's console's: an index in [`combat::FEEDS`].
     pub main_view: u8,
+    /// Whether it chases (from behind the ship), as the captain's console's does.
+    pub main_chase: bool,
     /// The last orders, newest first: to, verb index, done.
     pub orders: Vec<(Station, u8, bool)>,
     /// Science's scan of the enemy (0-1), and whether a manned scan is running.
@@ -1131,9 +1133,10 @@ fn write_command(w: &mut Writer, c: &Command) {
             w.u8(16);
             w.u8(v.unwrap_or(255));
         }
-        Command::MainView(v) => {
+        Command::MainView { feed, chase } => {
             w.u8(24);
-            w.u8(v);
+            w.u8(feed);
+            w.u8(u8::from(chase));
         }
         Command::Order(to, verb) => {
             w.u8(17);
@@ -1296,7 +1299,7 @@ fn read_command(r: &mut Reader) -> Result<Command, DecodeError> {
         21 => Command::GunnerAim { yaw_deg: r.f32(-360.0, 360.0)?, pitch_deg: r.f32(-90.0, 90.0)? },
         22 => Command::GunnerTrigger(r.bool()?),
         23 => Command::Power(read_power(r)?),
-        24 => Command::MainView(r.u8()?),
+        24 => Command::MainView { feed: r.u8()?, chase: r.bool()? },
         _ => return Err(DecodeError("no such command")),
     };
     Ok(c)
@@ -1493,6 +1496,7 @@ impl Snapshot {
         w.u8(u8::from(b.red_alert) | u8::from(b.braced) << 1 | u8::from(b.scanning) << 2);
         w.u8(b.view.unwrap_or(255));
         w.u8(b.main_view);
+        w.u8(u8::from(b.main_chase));
         w.u8(b.orders.len() as u8);
         for (to, verb, done) in &b.orders {
             w.u8(*to as u8);
@@ -1713,6 +1717,7 @@ impl Snapshot {
         if usize::from(main_view) >= combat::FEEDS.len() {
             return Err(DecodeError("no such viewscreen camera"));
         }
+        let main_chase = r.bool()?;
         let no = r.count(combat::MAX_ORDERS)?;
         let mut orders = Vec::with_capacity(no);
         for _ in 0..no {
@@ -1736,6 +1741,7 @@ impl Snapshot {
             scanning: flags & 4 != 0,
             view,
             main_view,
+            main_chase,
             orders,
             scan: f64::from(sc) / 200.0,
             ping_s,
@@ -1944,6 +1950,7 @@ impl Snapshot {
                     braced: b.braced,
                     view: b.view,
                     main_view: b.main_view,
+                    main_chase: b.main_chase,
                     orders: b.orders.iter().map(|o| (o.to, o.verb, o.done)).collect(),
                     scan: b.scan,
                     scanning: b.scanning,
@@ -2240,7 +2247,7 @@ mod tests {
             ClientMsg::Ready(true),
             ClientMsg::Command(Command::Fire(1)),
             ClientMsg::Command(Command::Lock(None)),
-            ClientMsg::Command(Command::MainView(2)),
+            ClientMsg::Command(Command::MainView { feed: 0, chase: true }),
             ClientMsg::Command(Command::Stick { speed_set_mps: 120.0, yaw: 0.5, pitch: -0.25, roll: 0.0 }),
             ClientMsg::Ping(12345),
             ClientMsg::Command(Command::Power(PowerCmd::Preset(1))),

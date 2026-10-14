@@ -98,9 +98,8 @@ pub struct Seat {
     composer: (String, Option<String>),
     scan_cam: ScanCams,
     feed_cam: Cam,
-    /// Where the CHASE camera stands round the line to the target: yaw and elevation, -1..1 of the data's limits
-    /// (chase-camera 1). Set by dragging the camera widget while CHASE is on.
-    chase: [f64; 2],
+    /// The chase toggle: the viewscreen's camera seen from behind the ship (chase-camera 1).
+    chase: bool,
     oe: Hpr,
     /// The helm's speed set point and strafe as this seat sets them (sent as commands).
     pub speed_set: f64,
@@ -176,7 +175,7 @@ impl Default for Seat {
             composer: ("helm".into(), None),
             scan_cam: ScanCams::default(),
             feed_cam: Cam { yaw: 40.0, el: 30.0 },
-            chase: [0.0; 2],
+            chase: false,
             oe: Hpr { h: 45.0, p: 10.0, r: -30.0 },
             speed_set: 0.0,
             strafe: [0.0; 2],
@@ -520,6 +519,7 @@ impl Seat {
                 .collect(),
             flash_age_s: std::array::from_fn(|f| now - self.face_hit[f]),
             feed,
+            chase: self.chase,
             zoom: self.zoom,
             nav_km: self.nav_km,
             tac_km: self.tac_km,
@@ -874,35 +874,23 @@ impl Seat {
         self.stick_drag = [0.0; 3];
     }
 
-    /// The viewscreen's camera: where it stands (CHASE: off the ship, relative to its centre, in the system frame's
-    /// axes; any other camera: None, on the bow), forward and up in the system frame, and the vertical field of view in
-    /// radians (the mockup's feed: 70 degrees across at zoom 1, centred on the screen).
+    /// The viewscreen's camera: where it stands (chase on: off the ship, relative to its centre, in the system frame's
+    /// axes; off: None, on the bow), forward and up in the system frame, and the vertical field of view in radians (the
+    /// mockup's feed: 70 degrees across at zoom 1; the chase camera's own wider lens).
     pub fn feed_camera(
         &self,
         v: &ConsoleView,
         tern_rot: DQuat,
         chase: &sc_core::exterior::Chase,
     ) -> (Option<DVec3>, DVec3, DVec3, f64) {
-        let foc = 307.0 / 35f64.to_radians().tan() * v.zoom;
-        let vfov = 2.0 * (97.0 / foc).atan();
-        if v.feed == "CHASE" {
-            let tgt = v.target.as_ref().and_then(|id| v.contacts.iter().find(|c| &c.id == id));
-            let vfov = console::chase_vfov(chase, v.zoom);
-            let (eye, b) = console::chase_camera(tgt.map(|c| console::v3(c.rel)), self.chase, chase, vfov / 2.0);
-            return (Some(tern_rot * eye), tern_rot * b.f, tern_rot * b.u, vfov);
-        }
-        let b = console::feed_basis(v);
-        (None, tern_rot * b.f, tern_rot * b.u, vfov)
+        let tgt = v.target.as_ref().and_then(|id| v.contacts.iter().find(|c| &c.id == id));
+        let (eye, b, vfov) = console::feed_view(&v.feed, self.chase, tgt.map(|c| console::v3(c.rel)), chase, v.zoom);
+        (eye.map(|e| tern_rot * e), tern_rot * b.f, tern_rot * b.u, vfov)
     }
 
-    /// Where the CHASE camera stands round the line to the target, -1..1 of the data's limits (yaw, elevation).
-    pub fn chase(&self) -> [f64; 2] {
-        self.chase
-    }
-
-    /// Put the CHASE camera at `angles` (scripted captures).
-    pub fn set_chase(&mut self, angles: [f64; 2]) {
-        self.chase = angles.map(|a| a.clamp(-1.0, 1.0));
+    /// Turn the chase camera on or off (scripted captures; a player presses CHASE).
+    pub fn set_chase(&mut self, on: bool) {
+        self.chase = on;
     }
 
     /// Show `feed` on this seat's viewscreen (scripted captures; a player presses the feed pad).
@@ -1006,17 +994,23 @@ impl Seat {
                 }
             }
             Act::Feed(k) => {
+                // CHASE is a toggle: the camera chosen, seen from behind the ship (chase-camera 1). The others choose.
+                let chose = k != "CHASE";
+                if chose {
+                    self.feed = k;
+                } else {
+                    self.chase = !self.chase;
+                }
                 if v.station == "captain" {
-                    if let Some(i) = FEEDS.iter().position(|f| *f == k) {
+                    if let Some(i) = FEEDS.iter().position(|f| *f == self.feed) {
                         // The captain's camera is the bridge's main viewscreen (chase-camera 2), and everyone's while
                         // he holds the viewscreen.
-                        out.push(cmd(Command::MainView(i as u8)));
-                        if v.captain.as_ref().is_some_and(|c| c.view_override) {
+                        out.push(cmd(Command::MainView { feed: i as u8, chase: self.chase }));
+                        if chose && v.captain.as_ref().is_some_and(|c| c.view_override) {
                             out.push(cmd(Command::Viewscreen(Some(i as u8))));
                         }
                     }
                 }
-                self.feed = k;
             }
             Act::SciSel(id) => self.sci_sel = Some(id),
             Act::Scan => {
@@ -1143,7 +1137,6 @@ impl Seat {
                 let c = self.scan_cam.of(key);
                 (c.yaw, c.d_el)
             }
-            Drag::FeedView if self.feed == "CHASE" => (self.chase[0], self.chase[1]),
             Drag::FeedView => (self.feed_cam.yaw, self.feed_cam.el),
             Drag::ShieldCam => (self.shield_cam.yaw, self.shield_cam.el),
             Drag::GunAim => (self.gun.yaw, self.gun.pitch),
@@ -1204,14 +1197,6 @@ impl Seat {
                     "tac" => self.scan_cam.tac = cam,
                     _ => self.scan_cam.sci = cam,
                 }
-            }
-            // With CHASE on, the drag swings the chase camera round the ship: across the widget is the yaw's whole
-            // range, down it the elevation's (chase-camera 1).
-            Drag::FeedView if self.feed == "CHASE" => {
-                self.chase = [
-                    (d.cam0.0 - f64::from(dx / r.width().max(1.0)) * 2.0).clamp(-1.0, 1.0),
-                    (d.cam0.1 + f64::from(dy / r.height().max(1.0)) * 2.0).clamp(-1.0, 1.0),
-                ];
             }
             Drag::FeedView => {
                 self.feed_cam = Cam {
@@ -1784,9 +1769,18 @@ mod tests {
     fn the_captains_camera_goes_on_the_main_viewscreen() {
         let mut b = Bench::new(Station::Captain);
         assert_eq!(
-            b.press(Hit::Act(Act::Feed("CHASE".into())), 1.0),
-            vec![Command::MainView(2)],
-            "CHASE on his console is CHASE on the bridge's main viewscreen (chase-camera 2)"
+            b.press(Hit::Act(Act::Feed("TARGET".into())), 1.0),
+            vec![Command::MainView { feed: 0, chase: false }],
+            "his TARGET is the bridge's main viewscreen's (chase-camera 2)"
+        );
+        assert_eq!(
+            b.press(Hit::Act(Act::Feed("CHASE".into())), 1.1),
+            vec![Command::MainView { feed: 0, chase: true }],
+            "CHASE toggles the chase camera on the camera he has, TARGET (chase-camera 1)"
+        );
+        assert_eq!(
+            b.press(Hit::Act(Act::Feed("CHASE".into())), 1.2),
+            vec![Command::MainView { feed: 0, chase: false }]
         );
         let mut h = Bench::new(Station::Helm);
         assert!(h.press(Hit::Act(Act::Feed("CHASE".into())), 1.0).is_empty(), "another station's camera is its own");
