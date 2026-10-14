@@ -745,6 +745,20 @@ pub struct CaptainProfile {
     pub normal_beyond_m: f64,
     /// ...for this long, in seconds.
     pub normal_after_s: f64,
+    /// The orders it gives (crew-chat design 3): a bot captain's; none for the drill's automation, which is
+    /// auto-condition only (bridge-stations 3).
+    #[serde(default)]
+    pub orders: Option<CaptainOrders>,
+}
+
+/// How a bot captain gives orders (crew-chat design 3): each once a round, at most one each `gap_s`.
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct CaptainOrders {
+    /// The least time between two orders, seconds.
+    pub gap_s: f64,
+    /// Engineering is ordered to REPAIR once the hull is under this share of full (0-1).
+    pub repair_below_frac: f64,
 }
 
 /// A laser station's automation (laser-banks 3).
@@ -888,6 +902,10 @@ impl Validate for StationsFile {
                 1e6,
             );
             c.number(&format!("profiles[{i}].captain.normal_after_s"), p.captain.normal_after_s, 0.0, 3600.0);
+            if let Some(o) = &p.captain.orders {
+                c.number(&format!("profiles[{i}].captain.orders.gap_s"), o.gap_s, 0.5, 600.0);
+                c.number(&format!("profiles[{i}].captain.orders.repair_below_frac"), o.repair_below_frac, 0.0, 1.0);
+            }
         }
         for (k, verbs) in &self.orders {
             if !matches!(crate::combat::Station::from_id(k), Some(s) if s != crate::combat::Station::Captain) {
@@ -1142,10 +1160,12 @@ pub struct DrillData {
     pub damage: crate::combat::damage::DamageData,
     /// The Tern's power grid and cooling (power-grid, reactor-cooling).
     pub power: crate::power::PowerData,
+    /// Crew chat's vocabulary and limits (crew-chat design 2 and 4).
+    pub chat: crate::combat::chat::ChatData,
 }
 
 /// How many files [`DRILL_FILES`] names: the size of the array [`DrillData::parse`] takes.
-pub const DRILL_FILE_COUNT: usize = 13;
+pub const DRILL_FILE_COUNT: usize = 14;
 
 /// The files a drill reads, relative to the repository's root, in the order [`DrillData::parse`] takes them.
 pub const DRILL_FILES: [&str; DRILL_FILE_COUNT] = [
@@ -1162,6 +1182,7 @@ pub const DRILL_FILES: [&str; DRILL_FILE_COUNT] = [
     crate::combat::damage::HOUND_FILE,
     "data/ships/tern/atmosphere.json",
     crate::combat::damage::TERN_FILES[3],
+    crate::combat::chat::CHAT_FILE,
 ];
 
 /// `atmosphere.json`'s `thermal.initial_k`: a room's air temperature until life support runs, K. The rest of the
@@ -1250,6 +1271,9 @@ impl DrillData {
                 }
             }
         }
+        // Crew chat's vocabulary: a line for every captain's verb, and the layout's names for its rooms and systems.
+        let mut chat: crate::combat::chat::ChatData = parse(DRILL_FILES[13], texts[13])?;
+        chat.bind(DRILL_FILES[13], &stations.orders, texts[7], &enemy.name)?;
         Ok(Self {
             tern_flight: flight.flight,
             tern_shields: shields.shields,
@@ -1263,6 +1287,7 @@ impl DrillData {
             hound_layout,
             damage,
             power,
+            chat,
         })
     }
 
@@ -1283,6 +1308,7 @@ impl DrillData {
                 include_str!("../../../../data/ships/hound/layout.json"),
                 include_str!("../../../../data/ships/tern/atmosphere.json"),
                 include_str!("../../../../data/ships/tern/kit.json"),
+                include_str!("../../../../data/crew/chat.json"),
             ],
             "data/missions/drill-hound.json",
             include_str!("../../../../data/missions/drill-hound.json"),

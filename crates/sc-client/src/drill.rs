@@ -815,6 +815,10 @@ impl DrillApp {
 
     fn take_visuals(&mut self) {
         let Some(s) = self.session.as_mut() else { return };
+        // Crew chat, printed so playtests show the crew's talk until its screens are approved (crew-chat design 5).
+        for l in s.drain_chat() {
+            println!("sc-client: chat: {}", l.plain());
+        }
         let rtt = s.rtt_ms.unwrap_or(20.0) / 1000.0;
         let now = self.time_s;
         let tern_gun = self.data.gun(&self.data.tern_combat.gun).life_s;

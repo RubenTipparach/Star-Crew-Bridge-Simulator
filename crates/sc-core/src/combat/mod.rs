@@ -9,6 +9,7 @@
 pub mod attitude;
 pub mod automation;
 pub mod bodies;
+pub mod chat;
 pub mod damage;
 pub mod data;
 pub mod fighters;
@@ -822,6 +823,9 @@ pub enum DrillEvent {
         /// The station.
         station: Station,
     },
+    /// The drill's own crew said something (crew-chat design 3): automation at an empty seat, damage control or the
+    /// computer. The server keeps it and sends it to everyone.
+    Said(chat::Line),
 }
 
 /// What a drill counts, for the debrief.
@@ -1150,6 +1154,8 @@ pub struct Drill {
     next_missile: u16,
     rng: Rng,
     auto: automation::Memory,
+    /// What the drill's own crew are saying (crew-chat design 3).
+    voices: chat::DrillVoices,
     /// The bridge the crew walk on, when the drill has one (design 9); without it a claim seats at once.
     pub on_foot: Option<bodies::Bridge>,
     /// Every crew member's body, by slot order.
@@ -1273,6 +1279,7 @@ impl Drill {
             next_missile: 1,
             rng: Rng::for_purpose(seed, 0, "drill"),
             auto: automation::Memory::default(),
+            voices: chat::DrillVoices::default(),
             on_foot: None,
             bodies: Vec::new(),
             kits: Vec::new(),
@@ -1317,6 +1324,7 @@ impl Drill {
         self.outcome = Outcome::None;
         self.rng = Rng::for_purpose(self.round_seed(), 0, "fire");
         self.auto = automation::Memory::default();
+        self.voices.new_round();
         self.fighters.clear();
         self.damage =
             [damage::DamageState::new(&self.data.tern_layout), damage::DamageState::new(&self.data.hound_layout)];
@@ -1731,6 +1739,7 @@ impl Drill {
                 self.run_automation();
                 self.bridge_tick();
                 self.engage_tick();
+                self.computer_reports();
                 self.stats.engage_s += DT;
                 let ended = if !self.ships[1].alive {
                     Some(Outcome::Victory)
@@ -1759,6 +1768,81 @@ impl Drill {
                     self.set_phase(Phase::Muster);
                 }
             }
+        }
+        self.speak();
+    }
+
+    /// The drill's clock: seconds since it began, the game time a chat line carries (crew-chat design 1).
+    pub fn clock_s(&self) -> f64 {
+        self.tick as f64 * DT
+    }
+
+    /// The computer's reports (crew-chat design 3): the hull and the shields falling past a report step, a new breach,
+    /// the enemy destroyed. Each once a round.
+    fn computer_reports(&mut self) {
+        let now = self.clock_s();
+        let d = &self.data;
+        let (chat, lim) = (&d.chat, &d.chat.limits);
+        let t = &self.ships[0];
+        let v = &mut self.voices;
+        let hull_pct = (100.0 * t.hull / d.tern_combat.hull_mj).max(0.0);
+        if let Some(i) = chat::step_reached(&chat.report_steps_pct, v.hull_step, hull_pct) {
+            v.hull_step = i + 1;
+            if let Some(x) = chat.line("hull", &[("pct", &format!("{:.0}", hull_pct.floor()))]) {
+                v.computer.offer(x, now, lim);
+            }
+        }
+        let sh = &d.tern_shields;
+        let caps: f64 = sh.presets[usize::from(t.preset).min(sh.presets.len() - 1)].faces_mj.iter().sum();
+        let shield_pct = (100.0 * t.faces.iter().sum::<f64>() / caps.max(1e-9)).max(0.0);
+        if let Some(i) = chat::step_reached(&chat.report_steps_pct, v.shield_step, shield_pct) {
+            v.shield_step = i + 1;
+            if let Some(x) = chat.line("shields_low", &[("pct", &format!("{:.0}", shield_pct.floor()))]) {
+                v.computer.offer(x, now, lim);
+            }
+        }
+        let breaches = &self.damage[0].breaches;
+        if breaches.len() > v.breaches {
+            v.breaches = breaches.len();
+            let room = breaches.last().and_then(|b| d.tern_layout.rooms.get(b.room)).map(|r| chat.room(&r.id));
+            if let Some(x) = room.and_then(|r| chat.line("breach", &[("room", &r)])) {
+                v.computer.offer(x, now, lim);
+            }
+        }
+        if !self.ships[1].alive && !v.killed {
+            v.killed = true;
+            if let Some(x) = chat.line("target_destroyed", &[]) {
+                v.computer.offer(x, now, lim);
+            }
+        }
+    }
+
+    /// Every voice of the drill's own crew whose line is due says it, as a [`DrillEvent::Said`] (crew-chat design 3
+    /// and 4). A station a crew member took over says nothing more as automation.
+    fn speak(&mut self) {
+        let now = self.clock_s();
+        for s in Station::ALL {
+            if self.operator(s) != Operator::Auto {
+                self.voices.stations[s as usize].clear();
+            }
+        }
+        let chat = &self.data.chat;
+        let v = &mut self.voices;
+        let mut said = Vec::new();
+        for s in Station::ALL {
+            if let Some(x) = v.stations[s as usize].take(now, &chat.limits) {
+                said.push((s.name().to_owned(), Some(s), x));
+            }
+        }
+        if let Some(x) = v.damage_control.take(now, &chat.limits) {
+            said.push((chat.speakers.damage_control.clone(), None, x));
+        }
+        if let Some(x) = v.computer.take(now, &chat.limits) {
+            said.push((chat.speakers.computer.clone(), None, x));
+        }
+        for (name, station, x) in said {
+            let line = chat::Line { slot: None, name, station, npc: true, kind: x.kind, text: x.text, at_s: now };
+            self.events.push(DrillEvent::Said(line));
         }
     }
 
@@ -1832,6 +1916,22 @@ impl Drill {
             };
             if self.bridge.orders.iter().any(|o| o.to == s && !o.done && t - o.at_s >= react) {
                 cmds.push(Command::Ack(s));
+            }
+            // What it does, it says (crew-chat design 3), by the mapping a bot uses.
+            let now = self.clock_s();
+            for c in &cmds {
+                let said = match c {
+                    Command::Ack(st) => self
+                        .bridge
+                        .orders
+                        .iter()
+                        .find(|o| o.to == *st && !o.done)
+                        .and_then(|o| chat::said_ack(&self.data, *st, o.verb)),
+                    _ => chat::said_for(&self.data, s, c),
+                };
+                if let Some(x) = said {
+                    self.voices.stations[s as usize].offer(x, now, &self.data.chat.limits);
+                }
             }
             for c in cmds {
                 // Automation's commands take the same path as a console's; a refusal is its own business.
@@ -2388,6 +2488,12 @@ impl Drill {
             for e in ev {
                 if let damage::DamageEvent::HullBurned { mj } = e {
                     self.hull_loss(si, mj);
+                } else if si == 0 {
+                    // Damage control says what its teams do (crew-chat design 3).
+                    if let Some(x) = chat::said_damage(&self.data, &self.data.tern_layout, &e) {
+                        let now = self.clock_s();
+                        self.voices.damage_control.offer(x, now, &self.data.chat.limits);
+                    }
                 }
             }
         }

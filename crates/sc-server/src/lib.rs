@@ -12,6 +12,7 @@ use std::net::{IpAddr, SocketAddr};
 use std::sync::atomic::Ordering;
 use std::time::Instant;
 
+use sc_core::combat::chat::{self, ChatLog};
 use sc_core::combat::{data::DrillData, Drill, DrillEvent, Refusal, DT, TICK_HZ};
 use sc_net::link::Link;
 use sc_net::msg::{ClientMsg, CrewEntry, ServerMsg, Snapshot, StickMsg, PROTOCOL};
@@ -104,6 +105,8 @@ pub struct DrillServer {
     started: Instant,
     /// Ticks run: the clock the silence rule reads.
     ticks: u64,
+    /// The crew chat's last lines, sent to a late joiner (crew-chat design 1).
+    chat: ChatLog,
 }
 
 impl DrillServer {
@@ -135,6 +138,7 @@ impl DrillServer {
             tick_ms: Vec::with_capacity(1024),
             started: Instant::now(),
             ticks: 0,
+            chat: ChatLog::default(),
         })
     }
 
@@ -289,6 +293,10 @@ impl DrillServer {
                                 Err(r) => self.send(p, &ServerMsg::Refused(r)),
                             }
                         }
+                        // A late joiner sees the last lines, oldest first (crew-chat design 1).
+                        for l in self.chat.lines() {
+                            self.send(p, &ServerMsg::Chat(l.clone()));
+                        }
                         self.crew_dirty = true;
                         let addr = self
                             .net
@@ -322,8 +330,15 @@ impl DrillServer {
                 None
             }
             (Some(s), ClientMsg::Command(c)) => {
-                if let Err(r) = self.drill.command(s, c) {
-                    self.send(p, &ServerMsg::Refused(r));
+                // A person's order or ack from a console is theirs in chat too (crew-chat design 3); a bot says its own.
+                let said = self.console_said(s, &c);
+                match self.drill.command(s, c) {
+                    Err(r) => self.send(p, &ServerMsg::Refused(r)),
+                    Ok(()) => {
+                        if let Some(x) = said {
+                            self.post(s, x.kind, x.text);
+                        }
+                    }
                 }
                 None
             }
@@ -365,12 +380,55 @@ impl DrillServer {
                 self.drill.undock(s);
                 None
             }
+            // Crew chat (crew-chat design 1): stamped with who and when, kept, and sent to everyone at a speaker's pace.
+            (Some(s), ClientMsg::Chat { kind, text }) => {
+                if let Some(text) = chat::clean_text(&text) {
+                    self.post(s, kind, text);
+                }
+                None
+            }
             (Some(s), ClientMsg::Stand) => {
                 match self.drill.stand(s) {
                     Ok(()) => self.crew_dirty = true,
                     Err(r) => self.send(p, &ServerMsg::Refused(r)),
                 }
                 None
+            }
+            _ => None,
+        }
+    }
+
+    /// Keep a line from the player in `slot`, stamped with their name, station and the drill's clock, and send it to
+    /// everyone, unless they spoke inside their gap (crew-chat design 1 and 4).
+    fn post(&mut self, slot: u8, kind: chat::Kind, text: String) {
+        let Some(who) = self.drill.players.iter().find(|x| x.slot == slot) else { return };
+        let line = chat::Line {
+            slot: Some(slot),
+            name: who.name.clone(),
+            station: who.station,
+            npc: who.bot,
+            kind,
+            text,
+            at_s: self.drill.clock_s(),
+        };
+        if self.chat.post(line.clone(), &self.drill.data.chat.limits) {
+            self.broadcast(&ServerMsg::Chat(line));
+        }
+    }
+
+    /// What a person's console command says in chat: the captain's order and a station's ack, by the core's mapping. A
+    /// bot's are none here: it says its own through the chat message (crew-chat design 3).
+    fn console_said(&self, slot: u8, c: &sc_core::combat::Command) -> Option<chat::Said> {
+        use sc_core::combat::Command;
+        let who = self.drill.players.iter().find(|x| x.slot == slot)?;
+        if who.bot {
+            return None;
+        }
+        let d = &self.drill;
+        match *c {
+            Command::Order(..) => chat::said_for(&d.data, who.station?, c),
+            Command::Ack(st) => {
+                d.bridge.orders.iter().find(|o| o.to == st && !o.done).and_then(|o| chat::said_ack(&d.data, st, o.verb))
             }
             _ => None,
         }
@@ -440,6 +498,13 @@ impl DrillServer {
                         self.send(p, &ServerMsg::Refused(reason));
                     }
                     continue;
+                }
+                // The drill's own crew (automation, damage control, the computer), paced by the drill.
+                DrillEvent::Said(line) => {
+                    if !self.chat.post(line.clone(), &self.drill.data.chat.limits) {
+                        continue;
+                    }
+                    ServerMsg::Chat(line)
                 }
             };
             self.broadcast(&m);

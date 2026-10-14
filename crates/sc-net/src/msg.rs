@@ -8,10 +8,11 @@
 
 use glam::{DQuat, DVec3};
 use sc_core::combat::bodies::Posture;
+use sc_core::combat::chat::{self as chat, Kind as ChatKind, Line as ChatLine};
 use sc_core::combat::{self, Command, HelmMode, Outcome, Phase, PowerCmd, Refusal, Station, TubeState, TurretMode};
 
-/// The protocol's version; a Hello with another is refused.
-pub const PROTOCOL: u16 = 13;
+/// The protocol's version; a Hello with another is refused. 14: crew chat (crew-chat design 1).
+pub const PROTOCOL: u16 = 14;
 /// The longest unreliable message, so it is one SCTP chunk in one datagram (netcode-and-sessions section 2).
 pub const MAX_UNRELIABLE: usize = 1200;
 /// The longest string field, in bytes.
@@ -286,6 +287,13 @@ pub enum ClientMsg {
     },
     /// Stand up from a repair.
     Undock,
+    /// A line of crew chat (crew-chat design 1): its kind and its text; the server stamps who and when.
+    Chat {
+        /// Its kind (a player's typing is SAY).
+        kind: ChatKind,
+        /// Its text, at most [`chat::MAX_CHAT_CHARS`] characters.
+        text: String,
+    },
 }
 
 /// A client's message on the input channel: the helm's stick, newest wins.
@@ -1043,6 +1051,8 @@ pub enum ServerMsg {
         /// The round, its level, the part.
         next: Option<(u8, u8, bool)>,
     },
+    /// A line of crew chat, as everyone sees it (crew-chat design 1): who said it, its kind, its text, the game time.
+    Chat(ChatLine),
 }
 
 const MAX_SHIPS: usize = 2;
@@ -1064,6 +1074,10 @@ fn read_station(r: &mut Reader) -> Result<Option<Station>, DecodeError> {
         255 => Ok(None),
         v => Station::from_u8(v).map(Some).ok_or(DecodeError("no such station")),
     }
+}
+
+fn read_chat_kind(r: &mut Reader) -> Result<ChatKind, DecodeError> {
+    ChatKind::from_u8(r.u8()?).ok_or(DecodeError("no such kind of chat line"))
 }
 
 fn write_command(w: &mut Writer, c: &Command) {
@@ -1352,6 +1366,11 @@ impl ClientMsg {
                 w.f32(f64::from(*play_s));
             }
             Self::Undock => w.u8(12),
+            Self::Chat { kind, text } => {
+                w.u8(13);
+                w.u8(*kind as u8);
+                w.str(text);
+            }
         }
         w.0
     }
@@ -1384,6 +1403,7 @@ impl ClientMsg {
             10 => Self::Dock(r.u8()?),
             11 => Self::RoundDone { job: r.u8()?, round: r.u8()?, play_s: r.f32(0.0, 1e5)? as f32 },
             12 => Self::Undock,
+            13 => Self::Chat { kind: read_chat_kind(&mut r)?, text: r.str(chat::MAX_CHAT_CHARS)? },
             _ => return Err(DecodeError("no such client message")),
         };
         r.done()?;
@@ -2057,6 +2077,16 @@ impl ServerMsg {
                 w.v3_64(*pos);
                 w.f32(*size);
             }
+            Self::Chat(l) => {
+                w.u8(15);
+                w.u8(l.slot.unwrap_or(255));
+                w.str(&l.name);
+                w.u8(station_byte(l.station));
+                w.u8(u8::from(l.npc));
+                w.u8(l.kind as u8);
+                w.str(&l.text);
+                w.f32(l.at_s);
+            }
         }
         w.0
     }
@@ -2100,6 +2130,18 @@ impl ServerMsg {
                 let next = if r.bool()? { Some((r.u8()?, r.u8()?, r.bool()?)) } else { None };
                 Self::Repair { job, next }
             }
+            15 => Self::Chat(ChatLine {
+                slot: match r.u8()? {
+                    255 => None,
+                    s => Some(s),
+                },
+                name: r.str(combat::MAX_NAME_CHARS)?,
+                station: read_station(&mut r)?,
+                npc: r.bool()?,
+                kind: read_chat_kind(&mut r)?,
+                text: r.str(chat::MAX_CHAT_CHARS)?,
+                at_s: r.f32(0.0, 1e7)?,
+            }),
             _ => return Err(DecodeError("no such server message")),
         };
         if let Self::Hit { face, .. } = m {
@@ -2275,6 +2317,7 @@ mod tests {
             ClientMsg::Dock(3),
             ClientMsg::RoundDone { job: 3, round: 1, play_s: 12.5 },
             ClientMsg::Undock,
+            ClientMsg::Chat { kind: ChatKind::Say, text: "Ready at Tactical".into() },
         ];
         for m in msgs {
             assert_eq!(ClientMsg::decode(&m.encode()).unwrap(), m);
@@ -2299,6 +2342,24 @@ mod tests {
             ServerMsg::Pong(77),
             ServerMsg::Repair { job: 4, next: Some((2, 1, false)) },
             ServerMsg::Repair { job: 4, next: None },
+            ServerMsg::Chat(ChatLine {
+                slot: Some(1),
+                name: "Ens. Dara Holt".into(),
+                station: Some(Station::Tactical),
+                npc: false,
+                kind: ChatKind::Intent,
+                text: "Torpedo away, tube 1".into(),
+                at_s: 132.5,
+            }),
+            ServerMsg::Chat(ChatLine {
+                slot: None,
+                name: "Damage control".into(),
+                station: None,
+                npc: true,
+                kind: ChatKind::Report,
+                text: "Fire out in the mess".into(),
+                at_s: 0.0,
+            }),
         ];
         for m in msgs {
             assert_eq!(ServerMsg::decode(&m.encode()).unwrap(), m);
@@ -2338,6 +2399,30 @@ mod tests {
         assert_eq!(name.chars().count(), combat::MAX_NAME_CHARS);
         let hello = ClientMsg::Hello { protocol: PROTOCOL, name, bot: true, station: Some(Station::Engineering) };
         assert_eq!(ClientMsg::decode(&hello.encode()), Ok(hello));
+    }
+
+    #[test]
+    fn a_chat_line_of_an_unknown_kind_is_dropped() {
+        let mut b = ClientMsg::Chat { kind: ChatKind::Say, text: "Hi".into() }.encode();
+        b[1] = 9;
+        assert_eq!(ClientMsg::decode(&b), Err(DecodeError("no such kind of chat line")));
+    }
+
+    #[test]
+    fn the_longest_chat_line_fits_its_budget() {
+        // crew-chat design 6: at most 115 bytes on the reliable channel, a whole line of ASCII and the longest name.
+        let m = ServerMsg::Chat(ChatLine {
+            slot: Some(7),
+            name: "x".repeat(combat::MAX_NAME_CHARS),
+            station: Some(Station::LaserStbd),
+            npc: true,
+            kind: ChatKind::Report,
+            text: "y".repeat(chat::MAX_CHAT_CHARS),
+            at_s: 9999.0,
+        });
+        let b = m.encode();
+        assert!(b.len() <= 115, "a chat line is {} bytes", b.len());
+        assert_eq!(ServerMsg::decode(&b), Ok(m));
     }
 
     #[test]
