@@ -146,6 +146,64 @@ pub enum Event {
     Text(String),
     /// A held key repeated: its SDL keycode.
     KeyRepeat(u32),
+    /// A finger on a touch screen (openspec/changes/touch-controls design 2): which finger (stable while it is down),
+    /// what it did, and where, in window coordinates from the top left as [`Event::Pointer`]. SDL's mouse events made
+    /// from a touch are turned off, so a tap is never also a click.
+    Touch {
+        /// The finger's id while it is down.
+        id: u64,
+        /// What it did.
+        phase: TouchPhase,
+        /// Window coordinates.
+        x: f32,
+        /// As `x`.
+        y: f32,
+    },
+}
+
+/// What a finger did.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum TouchPhase {
+    /// It landed.
+    Down,
+    /// It moved while down.
+    Move,
+    /// It lifted.
+    Up,
+    /// The system took it away (a gesture, the window lost focus): treated as lifted, acting on nothing.
+    Cancel,
+}
+
+/// A mouse made from the first finger down (touch-controls design 2), for the screens that take a pointer: the menus,
+/// a repair game. It follows that finger until it lifts; other fingers are ignored meanwhile. Non-touch events pass
+/// through unchanged.
+#[derive(Debug, Default)]
+pub struct TouchMouse {
+    finger: Option<u64>,
+}
+
+impl TouchMouse {
+    /// The events `e` means to a screen that takes a pointer.
+    pub fn convert(&mut self, e: &Event) -> Vec<Event> {
+        let Event::Touch { id, phase, x, y } = *e else { return vec![e.clone()] };
+        match phase {
+            TouchPhase::Down if self.finger.is_none() => {
+                self.finger = Some(id);
+                vec![Event::Pointer(x, y), Event::MouseDown, Event::MouseButton(1, true)]
+            }
+            TouchPhase::Move if self.finger == Some(id) => vec![Event::Pointer(x, y)],
+            TouchPhase::Up if self.finger == Some(id) => {
+                self.finger = None;
+                vec![Event::Pointer(x, y), Event::MouseButton(1, false)]
+            }
+            // A cancelled finger lifts off the screen's edge, so the release lands on nothing.
+            TouchPhase::Cancel if self.finger == Some(id) => {
+                self.finger = None;
+                vec![Event::Pointer(-1.0e4, -1.0e4), Event::MouseButton(1, false)]
+            }
+            _ => Vec::new(),
+        }
+    }
 }
 
 /// Which modifier keys are held: shift, ctrl, alt.
@@ -366,6 +424,9 @@ fn open(cfg: &WindowConfig) -> Result<(*mut sdl::SDL_Window, sdl::SDL_GLContext,
         }
         // The Pi 5's KMS/DRM needs SDL's atomic path (design section 4).
         sdl::SDL_SetHint(c"SDL_KMSDRM_ATOMIC".as_ptr(), c"1".as_ptr());
+        // Fingers arrive as fingers, never also as a mouse (touch-controls design 2); the apps that want a pointer
+        // from a finger make one ([`TouchMouse`]).
+        sdl::SDL_SetHint(sdl::SDL_HINT_TOUCH_MOUSE_EVENTS, c"0".as_ptr());
         if !sdl::SDL_Init(sdl::SDL_INIT_VIDEO) {
             return Err(format!("SDL_Init: {}", sdl_error()));
         }
@@ -469,6 +530,27 @@ unsafe extern "C" fn app_event(appstate: *mut c_void, event: *mut sdl::SDL_Event
         // SAFETY: a wheel event's payload is the wheel member.
         let w = unsafe { e.wheel };
         evs.push(Event::Wheel(w.x, w.y));
+    } else if kind == sdl::SDL_EVENT_FINGER_DOWN.0
+        || kind == sdl::SDL_EVENT_FINGER_MOTION.0
+        || kind == sdl::SDL_EVENT_FINGER_UP.0
+        || kind == sdl::SDL_EVENT_FINGER_CANCELED.0
+    {
+        // SAFETY: a finger event's payload is the tfinger member.
+        let t = unsafe { e.tfinger };
+        let (mut w, mut h) = (0, 0);
+        // SAFETY: the window lives until app_quit.
+        unsafe { sdl::SDL_GetWindowSize(s.window, &mut w, &mut h) };
+        let phase = match kind {
+            k if k == sdl::SDL_EVENT_FINGER_DOWN.0 => TouchPhase::Down,
+            k if k == sdl::SDL_EVENT_FINGER_MOTION.0 => TouchPhase::Move,
+            k if k == sdl::SDL_EVENT_FINGER_UP.0 => TouchPhase::Up,
+            _ => TouchPhase::Cancel,
+        };
+        // SDL gives the finger as a share of the window; the apps hit-test in window coordinates, as the mouse.
+        let (x, y) = (t.x * w as f32, t.y * h as f32);
+        if x.is_finite() && y.is_finite() {
+            evs.push(Event::Touch { id: t.fingerID.0, phase, x, y });
+        }
     } else if kind == sdl::SDL_EVENT_TEXT_INPUT.0 {
         // SAFETY: a text event's payload is the text member; its text is a nul-terminated UTF-8 string owned by SDL.
         let t = unsafe { e.text };
@@ -511,5 +593,47 @@ fn result(f: Flow) -> sdl::SDL_AppResult {
         Flow::Continue => sdl::SDL_APP_CONTINUE,
         Flow::Done => sdl::SDL_APP_SUCCESS,
         Flow::Fail => sdl::SDL_APP_FAILURE,
+    }
+}
+
+#[cfg(test)]
+mod touch_mouse_tests {
+    use super::{Event, TouchMouse, TouchPhase};
+
+    const fn touch(id: u64, phase: TouchPhase, x: f32, y: f32) -> Event {
+        Event::Touch { id, phase, x, y }
+    }
+
+    #[test]
+    fn a_tap_is_one_click_where_the_finger_landed() {
+        let mut m = TouchMouse::default();
+        let down = m.convert(&touch(7, TouchPhase::Down, 10.0, 20.0));
+        let up = m.convert(&touch(7, TouchPhase::Up, 11.0, 20.0));
+        assert_eq!(down, vec![Event::Pointer(10.0, 20.0), Event::MouseDown, Event::MouseButton(1, true)]);
+        assert_eq!(up, vec![Event::Pointer(11.0, 20.0), Event::MouseButton(1, false)]);
+    }
+
+    #[test]
+    fn a_second_finger_is_not_a_second_mouse() {
+        let mut m = TouchMouse::default();
+        m.convert(&touch(1, TouchPhase::Down, 0.0, 0.0));
+        assert!(m.convert(&touch(2, TouchPhase::Down, 50.0, 50.0)).is_empty(), "only the first finger is the mouse");
+        assert!(m.convert(&touch(2, TouchPhase::Up, 50.0, 50.0)).is_empty());
+        assert_eq!(m.convert(&touch(1, TouchPhase::Move, 3.0, 4.0)), vec![Event::Pointer(3.0, 4.0)]);
+    }
+
+    #[test]
+    fn a_cancelled_finger_releases_on_nothing() {
+        let mut m = TouchMouse::default();
+        m.convert(&touch(1, TouchPhase::Down, 5.0, 5.0));
+        let out = m.convert(&touch(1, TouchPhase::Cancel, 5.0, 5.0));
+        assert!(matches!(out[0], Event::Pointer(x, _) if x < 0.0), "the release must land off every control");
+        assert_eq!(out[1], Event::MouseButton(1, false));
+    }
+
+    #[test]
+    fn other_events_pass_through() {
+        let mut m = TouchMouse::default();
+        assert_eq!(m.convert(&Event::KeyDown(3)), vec![Event::KeyDown(3)]);
     }
 }

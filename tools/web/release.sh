@@ -30,6 +30,7 @@ if [ "$export_deck" = 1 ]; then
 fi
 tools/web/build.sh build/web
 node tools/web/smoke.mjs build/web
+node tools/web/smoke.mjs build/web --touch
 if [ "$push" = 1 ]; then
   tools/web/push_itch.sh build/web
 fi

@@ -127,6 +127,29 @@ mobile" notice in place of the game. This is a dashboard setting, not a file the
   room's triangles and draws for as long as a player sits, on the Pi and on a phone alike.
 - A phone's frame rate says nothing about a Pi (CLAUDE.md section 2).
 
+## 8a. As built (2026-10-14)
+
+- **The layer appears at the first finger.** The engine cannot ask the page whether the screen is a touch screen,
+  so the layer shows from the first touch and hides at the next key or mouse use.
+- **MAP is the drill's overview** of the bridge (its V key): the drill has no deck map yet. The map's pinch and deck
+  tabs come with one.
+- **DOWN shows in a lift's car**, where the prompt names Q. A ladder has no prompt yet, so DOWN does not show at one;
+  the keyboard's Q still works there.
+- **The console's finger** presses the nearest control within 22 px (`console.reach_px`) of where it lands, at the
+  control's centre; a press that moves more than 10 px, or is held 0.5 s, presses nothing, and the held one shows the
+  control's tip at the finger. A drag, a hold or a tap-to-drag control (the schematic's) takes the finger at once,
+  exactly as the mouse.
+- **Seated, nothing of the room is drawn** once the console is up: the console and its viewscreen's feed on black,
+  as the drill already drew it; the bridge is drawn only while the console rises.
+- **The client says what the hands did** in its log: `touch layer on`, `prompt: ...` when the on-foot prompt
+  changes, `sat at <station>` and `stood up`. The smoke test steers the walk by them.
+- **A fix the touch layer surfaced:** the on-foot prompt offered "Sit at" a seat an NPC was still walking to, which
+  the server refuses as taken; with the keyboard that was a silent E, but USE lit up with a promise it could not keep.
+  The prompt now follows the server's claim rule (`seat_prompt` in `drill.rs`, tested): a seat someone walks to says
+  who is on the way, and USE stays dark until they sit.
+- **Not on touch yet:** the front menu's TOUR (its menus tap, its walk does not) and the phone's keyboard for text
+  (task 4.3).
+
 ## 9. Not in this change
 
 - Gamepads (the desktop has none yet either; `bridge-stations` 6 names the pad's sticks).
