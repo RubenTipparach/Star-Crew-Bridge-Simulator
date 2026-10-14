@@ -807,10 +807,9 @@ pub struct Ellipsoid {
     pub centre: DVec3,
 }
 
-/// The Tern's shape for the consoles' 3D pictures: the hull loft's octagonal sections, each eight corners in ship
-/// axes relative to the shield's centre, and the shield ellipsoid. Read once from the compiled-in data.
+/// The Tern's shape for the consoles' 3D pictures: the shield ellipsoid. The hull drawn inside it is the low poly
+/// model (`kit::hull_polys`, console-ship-model). Read once from the compiled-in data.
 pub struct ShipShape {
-    pub hull: Vec<[DVec3; 8]>,
     pub shield: Ellipsoid,
 }
 
@@ -820,30 +819,7 @@ pub fn tern() -> &'static ShipShape {
     SHAPE.get_or_init(|| {
         let data = sc_core::combat::data::DrillData::shipped();
         let e = data.tern_shields.ellipsoid;
-        let shield = Ellipsoid { axes: DVec3::from_array(e.axes_m), centre: DVec3::from_array(e.centre_m) };
-        let layout: serde_json::Value = serde_json::from_str(include_str!("../../../../data/ships/tern/layout.json"))
-            .expect("the layout is valid JSON (tools/layout_check.py)");
-        let hull = layout["hull"]["sections"]
-            .as_array()
-            .expect("the layout has hull sections")
-            .iter()
-            .map(|q| {
-                let f = |k: &str| q[k].as_f64().expect("a hull section's numbers");
-                let (hb, t, b, c, z) = (f("half_beam_m"), f("top_m"), f("bottom_m"), f("chamfer_m"), f("z_m"));
-                let pts = [
-                    [hb, t - c],
-                    [hb - c, t],
-                    [-(hb - c), t],
-                    [-hb, t - c],
-                    [-hb, b + c],
-                    [-(hb - c), b],
-                    [hb - c, b],
-                    [hb, b + c],
-                ];
-                pts.map(|[x, y]| DVec3::new(x, y, z) - shield.centre)
-            })
-            .collect();
-        ShipShape { hull, shield }
+        ShipShape { shield: Ellipsoid { axes: DVec3::from_array(e.axes_m), centre: DVec3::from_array(e.centre_m) } }
     })
 }
 

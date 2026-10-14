@@ -507,6 +507,7 @@ Before claiming anything is done, run what applies:
 | Ship layouts | `python3 tools/layout_check.py` |
 | Lighting data | `python3 tools/lighting_check.py` |
 | Mockups hold the current layout | `python3 tools/mockups/inline.py --check` |
+| Consoles' Tern model is the low poly model's | `python3 tools/ships/console_model.py --check` |
 | Mockup screenshots | `node tools/mockups/shoot.mjs` |
 | No z-fighting in the mockups | `node tools/mockups/zfight.mjs docs/mockups/*.html` |
 | Console fonts and style are the mockup's | `python3 tools/ui/fonts.py --check`, `python3 tools/ui/console_style.py --check` |

@@ -1477,9 +1477,11 @@ impl App for DrillApp {
     }
 
     fn frame(&mut self, f: &Frame) -> Flow {
-        // The film plays its camera shots at the video's own 30 frames a second, whatever a frame takes to draw
-        // (chase-camera 3); everything else steps by the frame, as a player's game does.
+        // The film written to frames (`--film --shots`) plays its camera shots at the video's own 30 frames a second,
+        // whatever a frame takes to draw (chase-camera 3). Without --shots the film runs in real time, for a recorder on
+        // a machine with a GPU (obs-record); everything else steps by the frame, as a player's game does.
         let filming = self.args.film
+            && self.args.shots.is_some()
             && self
                 .session
                 .as_ref()

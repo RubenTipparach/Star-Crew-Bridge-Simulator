@@ -855,26 +855,27 @@ fn models() -> &'static Models {
     })
 }
 
-/// The hull loft as polygons with outward normals (the mockup's `HULL_POLYS`).
-fn hull_polys() -> Vec<Poly> {
-    let hull = &tern().hull;
-    let col = [96.0, 110.0, 128.0];
-    let mut polys = Vec::new();
-    for s in 0..hull.len() - 1 {
-        for k in 0..8 {
-            let (a, b) = (hull[s][k], hull[s][(k + 1) % 8]);
-            let (c, d) = (hull[s + 1][(k + 1) % 8], hull[s + 1][k]);
-            let mut n = (b - a).cross(d - a).normalize_or_zero();
-            let mid = (a + b + c + d) * 0.25;
-            if n.dot(DVec3::new(mid.x, mid.y - (hull[s][0].y + hull[s][4].y) / 2.0, 0.0)) < 0.0 {
-                n = -n;
-            }
-            polys.push(Poly { v: vec![a, b, c, d], n, col });
-        }
+/// The Tern's low poly model (tern_lod2, console-ship-model 1-2) as triangles about the shield's centre, each with its
+/// outward normal and colour (0-255): the mockup's `HULL_POLYS`. Read from `data/ships/tern/console_model.json`, which
+/// `tools/ships/console_model.py` writes from the model.
+pub fn hull_polys() -> Vec<Poly> {
+    #[derive(serde::Deserialize)]
+    struct File {
+        positions_m: Vec<[f64; 3]>,
+        triangles: Vec<(usize, usize, usize, String)>,
     }
-    polys.push(Poly { v: hull[0].to_vec(), n: DVec3::Z, col });
-    polys.push(Poly { v: hull[hull.len() - 1].to_vec(), n: DVec3::NEG_Z, col });
-    polys
+    let f: File = serde_json::from_str(include_str!("../../../../data/ships/tern/console_model.json"))
+        .expect("console_model.json is the tool's output (tools/ships/console_model.py --check)");
+    let centre = tern().shield.centre;
+    let at = |i: usize| DVec3::from_array(f.positions_m[i]) - centre;
+    f.triangles
+        .iter()
+        .map(|(i, j, k, hex)| {
+            let (a, b, c) = (at(*i), at(*j), at(*k));
+            let ch = |o: usize| f64::from(u8::from_str_radix(&hex[o..o + 2], 16).unwrap_or(128));
+            Poly { v: vec![a, b, c], n: (b - a).cross(c - a).normalize_or_zero(), col: [ch(1), ch(3), ch(5)] }
+        })
+        .collect()
 }
 
 // ------------------------------------------------------------------------------------------------ the look band
@@ -1347,32 +1348,16 @@ pub fn shield_view(cv: &Canvas, cx: &mut Ctx, ox: f64, oy: f64, sc: f64, yaw: f6
     let pr = |p: DVec3| [(ox + p.dot(b.r) * sc) as f32, (oy - p.dot(b.u) * sc) as f32];
     let bub = if big.is_some() { big_bubble() } else { mini_bubble() };
     let light = (-b.f + DVec3::new(0.3, 0.8, 0.2)).normalize();
-    let hull = &tern().hull;
     let mut hull_polys: Vec<(f64, Vec<[f32; 2]>, Color32, bool)> = Vec::new();
-    for s in 0..hull.len() - 1 {
-        for k in 0..8 {
-            let (a0, b0) = (hull[s][k], hull[s][(k + 1) % 8]);
-            let (c0, d0) = (hull[s + 1][(k + 1) % 8], hull[s + 1][k]);
-            let mut n = (b0 - a0).cross(d0 - a0).normalize_or_zero();
-            let mid = (a0 + b0 + c0 + d0) * 0.25;
-            if n.dot(DVec3::new(mid.x, mid.y - (hull[s][0].y + hull[s][4].y) / 2.0, 0.0)) < 0.0 {
-                n = -n;
-            }
-            if n.dot(b.f) > 0.0 {
-                continue;
-            }
-            let lum = 0.35 + 0.65 * n.dot(light).max(0.0);
-            let col = Color32::from_rgb(
-                (70.0 * lum + 20.0).round() as u8,
-                (84.0 * lum + 22.0).round() as u8,
-                (102.0 * lum + 26.0).round() as u8,
-            );
-            hull_polys.push((mid.dot(b.f), [a0, b0, c0, d0].iter().map(|q| pr(*q)).collect(), col, true));
+    for p in &models().hull {
+        if p.n.dot(b.f) > 0.0 {
+            continue;
         }
-    }
-    for end in [&hull[0], &hull[hull.len() - 1]] {
-        let mid = end.iter().fold(DVec3::ZERO, |a, p| a + *p) / 8.0;
-        hull_polys.push((mid.dot(b.f), end.iter().map(|q| pr(*q)).collect(), rgba(0x3a4656, 1.0), true));
+        let lum = 0.35 + 0.65 * p.n.dot(light).max(0.0);
+        let ch = |c: f64| (c * lum).round().min(255.0) as u8;
+        let col = Color32::from_rgb(ch(p.col[0]), ch(p.col[1]), ch(p.col[2]));
+        let mid = (p.v[0] + p.v[1] + p.v[2]) / 3.0;
+        hull_polys.push((mid.dot(b.f), p.v.iter().map(|q| pr(*q)).collect(), col, true));
     }
     hull_polys.sort_by(|a, b| b.0.total_cmp(&a.0));
     let shell: Vec<(f64, Vec<[f32; 2]>, u8, bool)> = bub
@@ -1409,9 +1394,10 @@ pub fn shield_view(cv: &Canvas, cx: &mut Ctx, ox: f64, oy: f64, sc: f64, yaw: f6
     }
     for (_, pts, col, _) in &hull_polys {
         cv.poly(pts, *col);
+        // Stroked in its own colour, as the mockup does, so neighbouring triangles meet without a seam.
         let mut closed = pts.clone();
         closed.push(pts[0]);
-        cv.polyline(&closed, Pen::new(0.6, rgba(0x0d141d, 1.0)));
+        cv.polyline(&closed, Pen::new(0.6, *col));
     }
     for p in &near {
         patch(p);
@@ -1686,6 +1672,28 @@ pub fn thumbwheel(cv: &Canvas, cx: &mut Ctx, x: f32, top: f32, hh: f32, value: f
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_consoles_draw_the_tern_low_poly_model() {
+        // console-ship-model 5: the data file is the model the props manifest lists, triangle for triangle and box
+        // for box (the file holds positions about the ship's origin; the polygons sit about the shield's centre).
+        let manifest: serde_json::Value =
+            serde_json::from_str(include_str!("../../../../assets/models/exteriors/props.json")).unwrap();
+        let lod = &manifest["props"]["tern_lod2"];
+        let polys = hull_polys();
+        assert_eq!(polys.len() as u64, lod["triangles"].as_u64().unwrap(), "every triangle of tern_lod2");
+        let c = tern().shield.centre;
+        for axis in 0..3 {
+            let lo = polys.iter().flat_map(|p| p.v.iter()).map(|v| (*v + c)[axis]).fold(f64::INFINITY, f64::min);
+            let hi = polys.iter().flat_map(|p| p.v.iter()).map(|v| (*v + c)[axis]).fold(f64::NEG_INFINITY, f64::max);
+            let (mlo, mhi) = (lod["bounds_m"][0][axis].as_f64().unwrap(), lod["bounds_m"][1][axis].as_f64().unwrap());
+            assert!(
+                (lo - mlo).abs() <= 0.02 && (hi - mhi).abs() <= 0.02,
+                "axis {axis}: {lo}..{hi} against {mlo}..{mhi}"
+            );
+        }
+        assert!(polys.iter().all(|p| p.n.length() > 0.5), "no degenerate triangle");
+    }
 
     fn hit(brg_deg: f64, age_s: f64) -> super::super::HitView {
         let r = brg_deg.to_radians();
