@@ -274,6 +274,7 @@ impl DrillApp {
             .map_err(|e| format!("data/space/exterior.json: {e}"))?;
         let exterior: ExteriorData =
             sc_core::data::parse("data/space/exterior.json", &text).map_err(|e| e.to_string())?;
+        console::set_chase(&exterior.viewscreen.chase);
         let mut data = load_data()?;
         if args.all_hands && args.solo {
             data.mission.damage_control = "crew".into();

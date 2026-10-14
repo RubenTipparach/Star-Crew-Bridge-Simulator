@@ -1186,6 +1186,15 @@ pub fn feed_basis_for(feed: &str, target: Option<DVec3>) -> Basis {
     Basis { f, r, u: r.cross(f) }
 }
 
+/// The chase camera's numbers, set once from `data/space/exterior.json` when the drill starts ([`set_chase`]): the
+/// console draws its target bracket through the chase camera's lens.
+static CHASE: OnceLock<sc_core::exterior::Chase> = OnceLock::new();
+
+/// Set the chase camera's numbers for the consoles (once; later calls keep the first).
+pub fn set_chase(c: &sc_core::exterior::Chase) {
+    let _ = CHASE.set(c.clone());
+}
+
 /// The chase camera's vertical field of view, radians, at `zoom` (the feed is 614 x 194, as every camera's).
 pub fn chase_vfov(c: &sc_core::exterior::Chase, zoom: f64) -> f64 {
     let across = (c.fov_across_deg / 2.0).to_radians().tan() / zoom.max(1.0);
@@ -1276,13 +1285,20 @@ fn look_band(cv: &Canvas, cx: &mut Ctx) {
     cv.rect(330.0, 18.0, 620.0, 200.0, 6.0, fill, Some(Pen::new(3.0, rgba(0x2a3442, 1.0))));
     // The target's bracket on the feed, where the feed's camera sees it.
     let scr = cv.at(sx, sy).clip(0.0, 0.0, sw, sh);
-    let b = feed_basis(v);
-    let foc = (307.0 / 35f64.to_radians().tan()) * v.zoom;
+    // With chase on, from where the chase camera stands and through its wider lens (chase-camera 1).
+    let (eye, b, foc) = match (v.chase, CHASE.get()) {
+        (true, Some(c)) => {
+            let tgt = v.target.as_ref().and_then(|id| v.contacts.iter().find(|k| &k.id == id)).map(|k| v3(k.rel));
+            let (eye, b, vfov) = feed_view(&v.feed, true, tgt, c, v.zoom);
+            (eye.unwrap_or(DVec3::ZERO), b, 97.0 / (vfov / 2.0).tan())
+        }
+        _ => (DVec3::ZERO, feed_basis(v), (307.0 / 35f64.to_radians().tan()) * v.zoom),
+    };
     for k in &v.contacts {
         if k.iff == "unknown" || Some(&k.id) != v.target.as_ref() {
             continue;
         }
-        let d = v3(k.rel);
+        let d = v3(k.rel) - eye;
         let cz = d.dot(b.f);
         if cz <= 0.01 {
             continue;
