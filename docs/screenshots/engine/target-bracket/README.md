@@ -12,5 +12,5 @@ session on lavapipe and SwiftShader, with no GPU: they show what is drawn, not h
 | `2-target-bow-1x.png` | TARGET from the bow at 1x | The target bracket frames the target |
 | `3-target-bow-4x.png` | The same at 4x: the corners close round the Hound's hull | The bracket closes round the hull; zoom |
 | `4-target-bow-20x.png` | 20x: the Hound fills the screen, the corners beyond its edges, the texts kept inside | Zoom; texts inside the screen |
-| `5-target-chase-4x.png` | TARGET, chase on, 4x: the Tern its 1x size and low, the Hound magnified in its bracket beyond it | Zoomed chase |
+| `5-target-chase-4x.png` | TARGET, chase on, 4x: the chase camera where it stands at 1x, its picture magnified: the Hound four times as big in its bracket, the Tern below the frame | Zoomed chase |
 | `sheet.png` | The engine frames on one page | |

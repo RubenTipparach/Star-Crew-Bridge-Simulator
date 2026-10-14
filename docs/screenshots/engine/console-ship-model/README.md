@@ -7,9 +7,9 @@ SwiftShader), with no GPU.
 
 | File | What it shows | Requirement |
 | --- | --- | --- |
-| `before-after.png` | Top: before, the pressure hull's capsule. Bottom: after, the low poly Tern in the camera widget and inside the shield bubble | The consoles draw the Tern's low poly model |
+| `before-after.png` | Top: before, the pressure hull's capsule in the old bubble. Bottom: after, the low poly Tern in the camera widget and wholly inside the grown shield bubble | The consoles draw the Tern's low poly model; the shield bubble envelops the ship |
 | `science-mockup-before.png` | The mockup before | |
 | `science-mockup-after.png` | The mockup after | |
 | `science-engine-after.png` | The engine after, drawing the mockup's state | |
 
-The model's sides reach past the shield bubble, which is sized to the hull loft (design 3): left for `weapons-and-shields`.
+The shield bubble grew to envelop the whole ship (design 3; owner, 2026-10-14): 27 x 10.5 x 59.5 m, the smallest that holds the exterior model with 1 m to spare.
