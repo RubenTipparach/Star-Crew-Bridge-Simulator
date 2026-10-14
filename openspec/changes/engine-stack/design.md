@@ -461,12 +461,12 @@ growing as the game. The Pi stays the floor (CLAUDE.md 2); a browser frame rate 
 
 | Part | Where | What |
 | --- | --- | --- |
-| The link | `crates/sc-client/build.rs` | For `wasm32-unknown-emscripten` only: WebGL 2 and nothing older, a growing heap from 256 MB, `data/engine/render.json` and `data/crew/walk.json` embedded, `web/pre.js` |
+| The link | `crates/sc-client/build.rs` | For `wasm32-unknown-emscripten` only: WebGL 2 and nothing older, a growing heap from 256 MB, the whole of `data/` embedded (a list of files fell behind once: the walk read a file the browser lacked and showed the test room, 2026-10-13), `web/pre.js` |
 | The deck | `web/pre.js` | Fetches `tern.deck.gz` (9.2 MB, from 62.2 MB), unpacks it with the browser's own gzip and writes `/compiled/tern.deck` before `main` runs: the client reads it with `std::fs` as on a Pi. A host that serves only text gets the same bytes as base64 (`tern.deck.gz.txt`) |
 | The window | `crates/sc-client/src/main.rs` | The page's canvas, 1280 x 720, never full screen |
 | The page | `web/index.html` | The canvas, the load status, the keys |
 | The build | `tools/web/build.sh` | `cargo build --target wasm32-unknown-emscripten --release` and the folder `build/web/` |
-| The release | `tools/web/release.sh`, `tools/web/push_itch.sh` | Export the deck, `deckc`, build, push with butler to `ruben-tipparach/star-crew-bridge-simulator:html5`, the commit as the version |
+| The release | `tools/web/release.sh`, `tools/web/smoke.mjs`, `tools/web/push_itch.sh` | Export the deck, `deckc`, build, board the built page headless and stop when it cannot load the ship (`tools/web/smoke.mjs`), push with butler to `ruben-tipparach/star-crew-bridge-simulator:html5`, the commit as the version |
 | CI | `.github/workflows/web.yml` | Installs Rust, Emscripten 6.0.11, Node and Chromium, then calls `release.sh`; without the key it only builds and keeps the folder |
 
 Nothing in `sc-core`, `sc-render` or the client's logic changed: SDL 3.4.18 built from source compiled

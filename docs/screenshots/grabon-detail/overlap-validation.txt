@@ -1,0 +1,48 @@
+shrike / hull / A / plan
+docs\mockups\grabon-ships.html: 10870 triangles, 0 fighting pairs of surfaces, 0.000 m2
+
+shrike / hull / A / rooms
+docs\mockups\grabon-ships.html: 31277 triangles, 0 fighting pairs of surfaces, 0.000 m2
+
+shrike / fit / A / cutaway
+docs\mockups\grabon-ships.html: 12490 triangles, 0 fighting pairs of surfaces, 0.000 m2
+
+shrike / fit / B / cutaway
+docs\mockups\grabon-ships.html: 14856 triangles, 0 fighting pairs of surfaces, 0.000 m2
+
+shrike / fit / B / access
+docs\mockups\grabon-ships.html: 1022 triangles, 0 fighting pairs of surfaces, 0.000 m2
+
+vark / hull / A / plan
+docs\mockups\grabon-ships.html: 13566 triangles, 0 fighting pairs of surfaces, 0.000 m2
+
+vark / hull / A / rooms
+docs\mockups\grabon-ships.html: 38387 triangles, 0 fighting pairs of surfaces, 0.000 m2
+
+vark / fit / A / cutaway
+docs\mockups\grabon-ships.html: 14772 triangles, 0 fighting pairs of surfaces, 0.000 m2
+
+vark / fit / B / cutaway
+docs\mockups\grabon-ships.html: 17552 triangles, 0 fighting pairs of surfaces, 0.000 m2
+
+vark / fit / B / access
+docs\mockups\grabon-ships.html: 1022 triangles, 0 fighting pairs of surfaces, 0.000 m2
+
+gorath / hull / A / plan
+
+spawnSync C:\Program Files\nodejs\node.exe ETIMEDOUT
+
+gorath / hull / A / rooms
+docs\mockups\grabon-ships.html: 51732 triangles, 0 fighting pairs of surfaces, 0.000 m2
+
+gorath / fit / A / cutaway
+docs\mockups\grabon-ships.html: 14892 triangles, 0 fighting pairs of surfaces, 0.000 m2
+
+gorath / fit / B / cutaway
+docs\mockups\grabon-ships.html: 16834 triangles, 0 fighting pairs of surfaces, 0.000 m2
+
+gorath / fit / C / cutaway
+docs\mockups\grabon-ships.html: 12748 triangles, 0 fighting pairs of surfaces, 0.000 m2
+
+gorath / fit / C / access
+docs\mockups\grabon-ships.html: 1796 triangles, 0 fighting pairs of surfaces, 0.000 m2

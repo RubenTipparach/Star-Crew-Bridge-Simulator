@@ -15,7 +15,7 @@ use std::time::Instant;
 use sc_core::combat::{data::DrillData, Drill, DrillEvent, Refusal, DT, TICK_HZ};
 use sc_net::link::Link;
 use sc_net::msg::{ClientMsg, CrewEntry, ServerMsg, Snapshot, StickMsg, PROTOCOL};
-use sc_net::transport::{Chan, Impair, NetEvent, PeerId, ServerNet};
+use sc_net::transport::{Chan, Dial, Impair, NetEvent, PeerId, ServerNet};
 
 /// Snapshots a second (netcode-and-sessions section 3).
 pub const SNAPSHOT_HZ: f64 = 20.0;
@@ -25,13 +25,33 @@ pub const POWER_EVERY: u64 = 10;
 pub const POWER_PREVIEW_EVERY: u64 = 2;
 /// A peer silent this long is dropped and its seat returns to automation (netcode-and-sessions section 2:
 /// "the server also drops a client silent for 5 s"). Every client pings once a second, so a live one never is.
+/// A peer is silent only when it has been silent this long on both clocks (browser-single-player design 4): the
+/// server's own ticks, so a whole game that pauses (a hidden browser tab runs no frames) drops nobody, because its
+/// server paused too; and the wall clock, so a server stepped faster than real time (the tests, a headless capture)
+/// does not drop a client that pings once a real second. A dedicated server ticks in real time, so for it the two
+/// are the same 5 s.
 pub const SILENT_S: f64 = 5.0;
+
+/// Where the server listens (browser-single-player design 2).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Listen {
+    /// Signalling and status on an address, for example `0.0.0.0:7700`; peers over WebRTC.
+    Addr(SocketAddr),
+    /// The local link: clients in this process, no socket and no thread (single player).
+    Local,
+}
+
+impl From<SocketAddr> for Listen {
+    fn from(a: SocketAddr) -> Self {
+        Listen::Addr(a)
+    }
+}
 
 /// What the server was started with.
 #[derive(Clone, Debug)]
 pub struct ServerConfig {
-    /// Signalling and status, for example `0.0.0.0:7700`.
-    pub listen: SocketAddr,
+    /// Where it listens: an address, or the local link.
+    pub listen: Listen,
     /// The address peers' UDP sockets bind and offer.
     pub host_ip: IpAddr,
     /// The test impairment.
@@ -48,6 +68,8 @@ struct Conn {
     snap: Link,
     dropped: u64,
     opened: Instant,
+    /// When anything last arrived from this peer: the server's tick count, and the wall clock.
+    heard_tick: u64,
     heard: Instant,
 }
 
@@ -80,12 +102,17 @@ pub struct DrillServer {
     pub results: Vec<RoundResult>,
     tick_ms: Vec<f64>,
     started: Instant,
+    /// Ticks run: the clock the silence rule reads.
+    ticks: u64,
 }
 
 impl DrillServer {
     /// Start listening.
     pub fn start(data: DrillData, cfg: &ServerConfig) -> std::io::Result<Self> {
-        let net = ServerNet::start(cfg.listen, cfg.host_ip, cfg.impair, cfg.seed)?;
+        let net = match cfg.listen {
+            Listen::Addr(a) => ServerNet::start(a, cfg.host_ip, cfg.impair, cfg.seed)?,
+            Listen::Local => ServerNet::local(),
+        };
         let mut drill = Drill::new(data, cfg.seed);
         if let Some(b) = &cfg.bridge {
             drill.set_bridge(b.clone());
@@ -107,12 +134,18 @@ impl DrillServer {
             results: Vec::new(),
             tick_ms: Vec::with_capacity(1024),
             started: Instant::now(),
+            ticks: 0,
         })
     }
 
-    /// The signalling address.
+    /// The signalling address (`0.0.0.0:0` on the local link).
     pub fn addr(&self) -> SocketAddr {
         self.net.addr
+    }
+
+    /// Where a client connects to reach this server: its address, or the local link's door.
+    pub fn dial(&self) -> Dial {
+        self.net.dial()
     }
 
     fn send(&self, peer: PeerId, m: &ServerMsg) {
@@ -139,12 +172,20 @@ impl DrillServer {
         for e in &events {
             if let NetEvent::Data(p, ..) = e {
                 if let Some(c) = self.conns.get_mut(p) {
+                    c.heard_tick = self.ticks;
                     c.heard = Instant::now();
                 }
             }
         }
-        let silent: Vec<PeerId> =
-            self.conns.iter().filter(|(_, c)| c.heard.elapsed().as_secs_f64() > SILENT_S).map(|(p, _)| *p).collect();
+        let limit = (SILENT_S * TICK_HZ).ceil() as u64;
+        let silent: Vec<PeerId> = self
+            .conns
+            .iter()
+            .filter(|(_, c)| {
+                self.ticks.saturating_sub(c.heard_tick) > limit && c.heard.elapsed().as_secs_f64() > SILENT_S
+            })
+            .map(|(p, _)| *p)
+            .collect();
         for p in silent {
             log.push(format!("peer {p} silent for {SILENT_S} s: dropped"));
             self.net.close(p);
@@ -161,6 +202,7 @@ impl DrillServer {
                             snap: Link::default(),
                             dropped: 0,
                             opened: Instant::now(),
+                            heard_tick: self.ticks,
                             heard: Instant::now(),
                         },
                     );
@@ -337,6 +379,7 @@ impl DrillServer {
     /// Run one tick: step the drill, send what happened, and a snapshot when one is due. Returns lines to log.
     pub fn tick(&mut self) -> Vec<String> {
         let t0 = Instant::now();
+        self.ticks += 1;
         let mut log = Vec::new();
         let before: Vec<_> = self.drill.players.iter().map(|p| (p.slot, p.station)).collect();
         self.drill.step();

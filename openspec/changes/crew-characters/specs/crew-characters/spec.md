@@ -19,7 +19,21 @@ trousers SHALL stay clear of the visible tunic wall in rest and review poses.
 - **WHEN** the build reads the exported file and samples its five review clips
 - **THEN** it rejects disconnected garments, garment self intersections, hair/scalp intersections and visible tunic/trouser intersections
 
-### Requirement: Poseable Blender crew rig
+### Requirement: Shoulder deformation topology
+The shoulder transition SHALL use supporting loops across the inner arm and
+graded chest, clavicle and upper-arm weights. Its exported rest contour SHALL
+pass the data-held turn limit, and its supplied shoulder stress poses SHALL
+pass garment self-intersection and covered-skin checks.
+
+#### Scenario: A connected but pinched armpit
+- **WHEN** the exported inner-arm contour makes a turn above the review limit
+- **THEN** the build rejects the named character even if its garment is connected
+
+#### Scenario: Moving the shoulders through review poses
+- **WHEN** the imported game rig lowers, lifts or reaches with both arms
+- **THEN** the specified review poses retain covered skin and non-intersecting garment walls
+
+### Requirement: Editable body control rig
 Each character SHALL have an editable Blender body rig with hand and foot IK
 targets, elbow and knee poles, IK/FK selection and separate finger curls. Clothes
 SHALL follow the body through the supplied review poses. Exported GLBs SHALL

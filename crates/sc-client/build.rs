@@ -1,7 +1,11 @@
 //! The browser build's link (engine-stack design 10a): only for `wasm32-unknown-emscripten`, nothing
-//! elsewhere. WebGL 2 (OpenGL ES 3.0) and nothing older, a heap that grows, the two small engine data
-//! files embedded, and `web/pre.js`, which fetches the compressed deck and unpacks it into the
-//! page's file system before `main` runs, so the client reads `compiled/tern.deck` as it does on a Pi.
+//! elsewhere. WebGL 2 (OpenGL ES 3.0) and nothing older, a heap that grows, the whole of `data/` embedded,
+//! and `web/pre.js`, which fetches the compressed deck and unpacks it into the page's file system before
+//! `main` runs, so the client reads `compiled/tern.deck` and every data file as it does on a Pi.
+//!
+//! All of `data/` (about 1.3 MB of JSON), not a list of files: a list fell behind once already, when the walk
+//! began reading `data/ships/tern/command_suite.json`, and the browser showed the test room instead of the
+//! ship (2026-10-13). `tools/web/smoke.mjs` boards the built page and fails a release that cannot load the ship.
 
 use std::path::PathBuf;
 
@@ -26,15 +30,8 @@ fn main() {
     ] {
         println!("cargo:rustc-link-arg-bins={arg}");
     }
-    for rel in [
-        "data/engine/render.json",
-        "data/crew/walk.json",
-        "data/space/exterior.json",
-        "data/crew/names.json",
-        "data/crew/company.json",
-    ] {
-        let f = root.join(rel);
-        println!("cargo:rerun-if-changed={}", f.display());
-        println!("cargo:rustc-link-arg-bins=--embed-file={}@/{rel}", f.display());
-    }
+    // Cargo scans a directory given to rerun-if-changed for any change under it.
+    let data = root.join("data");
+    println!("cargo:rerun-if-changed={}", data.display());
+    println!("cargo:rustc-link-arg-bins=--embed-file={}@/data", data.display());
 }

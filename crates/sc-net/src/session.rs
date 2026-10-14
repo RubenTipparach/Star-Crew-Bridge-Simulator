@@ -5,7 +5,6 @@
 //! client side (CLAUDE.md 6.1). It decides nothing: a bot's decisions come from `sc-core::combat::automation`.
 
 use std::collections::VecDeque;
-use std::net::SocketAddr;
 use std::time::{Duration, Instant};
 
 use sc_core::combat::automation::{Hostile, Own, Picture};
@@ -13,7 +12,7 @@ use sc_core::combat::{Command, Phase, Refusal, Station, ENEMY_ID};
 
 use crate::link::Link;
 use crate::msg::{ClientMsg, CrewEntry, ServerMsg, Snapshot, StickMsg, PROTOCOL};
-use crate::transport::{Chan, ClientNet, Impair, NetEvent};
+use crate::transport::{Chan, ClientNet, Dial, Impair, NetEvent};
 
 /// How far behind the newest snapshot remote bodies are drawn (netcode-and-sessions section 3: two intervals).
 pub const INTERP_DELAY_S: f64 = 0.1;
@@ -124,16 +123,16 @@ pub struct Session {
 }
 
 impl Session {
-    /// Connect to `server` (its signalling address) as `name`, wanting `station`.
+    /// Connect to `server` (its signalling address, or a local server's [`Dial`]) as `name`, wanting `station`.
     pub fn connect(
-        server: SocketAddr,
+        server: impl Into<Dial>,
         name: &str,
         bot: bool,
         station: Option<Station>,
         impair: Impair,
         seed: u64,
     ) -> Result<Self, String> {
-        let net = ClientNet::connect(server, impair, seed)?;
+        let net = ClientNet::dial(&server.into(), impair, seed)?;
         Ok(Self {
             net,
             stage: Stage::Connecting,

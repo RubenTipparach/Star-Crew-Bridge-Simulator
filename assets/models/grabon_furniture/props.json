@@ -1,0 +1,216 @@
+{
+  "schema": "starcrew.props/1",
+  "status": "Grabon review furniture; uses the faction Blender-baked panel collection.",
+  "_rules": [
+    "Metres, +Y up, +Z toward the operator. Shared CSG checks and deterministic GLB export."
+  ],
+  "generator": {
+    "script": "tools/blender/build_grabon_furniture.py",
+    "blender": "4.4.3",
+    "gltf_exporter": "4.4.56"
+  },
+  "props": {
+    "grabon_console": {
+      "file": "grabon_console.glb",
+      "presents": "Grabon tactical lectern",
+      "anchor": "floor at center",
+      "dimensions_m": [
+        1.2508,
+        1.11,
+        0.5995
+      ],
+      "bounds_m": {
+        "min": [
+          -0.6254,
+          0.0,
+          -0.2795
+        ],
+        "max": [
+          0.6254,
+          1.11,
+          0.32
+        ]
+      },
+      "operators_m": [
+        [
+          0,
+          0,
+          0.77
+        ]
+      ],
+      "screens": [],
+      "triangles": 100,
+      "budget_triangles": 420,
+      "materials": [
+        "trim",
+        "bulkhead",
+        "light_panel"
+      ],
+      "csg": [
+        "chamfer lectern_edges (4 edges, 25 mm)",
+        "difference inset_tactical_display (1)",
+        "union hands_on_lectern (2)"
+      ],
+      "sha256": "0190739032886557f9ba0f5d874ecdbef38eeeccc55749ac17d1a102dbc32b0e",
+      "atlas": {
+        "file": "atlas/grabon_console.png",
+        "px": 256,
+        "px_per_m": 84.83,
+        "charts": 12,
+        "cover": 0.479,
+        "glow": 0.0045,
+        "sha256": "676b3aee842968c3036ff165071c52e631be43a6a9a1d5799331618131b1f89b",
+        "bytes": 10376
+      }
+    },
+    "grabon_chair": {
+      "file": "grabon_chair.glb",
+      "presents": "Grabon armored command seat",
+      "anchor": "floor at center",
+      "dimensions_m": [
+        0.67,
+        1.19,
+        0.55
+      ],
+      "bounds_m": {
+        "min": [
+          -0.335,
+          0.0,
+          -0.27
+        ],
+        "max": [
+          0.335,
+          1.19,
+          0.28
+        ]
+      },
+      "seat_m": [
+        0,
+        0.51,
+        0.04
+      ],
+      "operators_m": [
+        [
+          0,
+          0,
+          0.04
+        ]
+      ],
+      "screens": [],
+      "triangles": 200,
+      "budget_triangles": 360,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "upholstery",
+        "upholstery_panel"
+      ],
+      "csg": [
+        "union seat_assembly (8)"
+      ],
+      "sha256": "893d91726d7da3500017e909d838279faf8bd61c46263bbaa74b878ef754c3bb",
+      "atlas": {
+        "file": "atlas/grabon_chair.png",
+        "px": 256,
+        "px_per_m": 116.75,
+        "charts": 22,
+        "cover": 0.612,
+        "glow": 0.0,
+        "sha256": "dd71f7b47410d32cafefc5ebafbb53d192856b031376662ad30f00363f43ab1a",
+        "bytes": 21647
+      }
+    },
+    "grabon_bunk": {
+      "file": "grabon_bunk.glb",
+      "presents": "Two armored sleeping alcoves",
+      "anchor": "floor at center",
+      "dimensions_m": [
+        0.95,
+        1.95,
+        2.09
+      ],
+      "bounds_m": {
+        "min": [
+          -0.475,
+          0.0,
+          -1.05
+        ],
+        "max": [
+          0.475,
+          1.95,
+          1.04
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 300,
+      "budget_triangles": 420,
+      "materials": [
+        "machinery",
+        "trim",
+        "bulkhead",
+        "upholstery",
+        "upholstery_panel"
+      ],
+      "csg": [
+        "union berth_assembly (10)"
+      ],
+      "sha256": "60bda3dc98e2d8e2b3d74d760dbd169d966f652a23a83b1b3a5a6f1159289408",
+      "atlas": {
+        "file": "atlas/grabon_bunk.png",
+        "px": 256,
+        "px_per_m": 41.52,
+        "charts": 25,
+        "cover": 0.459,
+        "glow": 0.0,
+        "sha256": "328d30f0ab8a963c30247b81c43cf4b8b5dda330b222184be1930fdce8de3960",
+        "bytes": 22058
+      }
+    },
+    "grabon_table": {
+      "file": "grabon_table.glb",
+      "presents": "Grabon communal trestle",
+      "anchor": "floor at center",
+      "dimensions_m": [
+        2.68,
+        0.79,
+        1.12
+      ],
+      "bounds_m": {
+        "min": [
+          -1.34,
+          0.0,
+          -0.56
+        ],
+        "max": [
+          1.34,
+          0.79,
+          0.56
+        ]
+      },
+      "operators_m": [],
+      "screens": [],
+      "triangles": 60,
+      "budget_triangles": 160,
+      "materials": [
+        "trim",
+        "bulkhead"
+      ],
+      "csg": [
+        "union trestle_assembly (2)"
+      ],
+      "sha256": "148ae6399af57e741b2a64d9cff28a5ea149f3c1e718a41141ff1e775758e883",
+      "atlas": {
+        "file": "atlas/grabon_table.png",
+        "px": 256,
+        "px_per_m": 72.84,
+        "charts": 10,
+        "cover": 0.696,
+        "glow": 0.0,
+        "sha256": "2f0256d6b6c1453c7cc95eb69613f489481604943854d4a7f5487726fa2a1736",
+        "bytes": 14561
+      }
+    }
+  }
+}

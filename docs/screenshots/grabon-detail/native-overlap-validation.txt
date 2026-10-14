@@ -1,0 +1,8 @@
+shrike / hull / A / plan
+docs\mockups\grabon-ships.html: 10870 triangles, 0 fighting pairs of surfaces, 0.000 m2
+
+vark / hull / A / plan
+docs\mockups\grabon-ships.html: 13566 triangles, 0 fighting pairs of surfaces, 0.000 m2
+
+gorath / hull / A / plan
+docs\mockups\grabon-ships.html: 16406 triangles, 0 fighting pairs of surfaces, 0.000 m2

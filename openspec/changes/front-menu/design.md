@@ -36,8 +36,7 @@ The lobby's officer panel (rank, name, roll, station) with BACK, and two actions
 | TOUR | Walks the ship, as Beam aboard does today (`lobby`) |
 
 The stations offered are the lobby's eight; Comms and Flight ops are off (their consoles are not built), and Any takes
-the first station of `bot_posts` (Helm). In the browser Beam aboard tours the ship until the browser can host a game
-(`single-player` 7).
+the first station of `bot_posts` (Helm). In the browser Beam aboard starts the same game (`browser-single-player`).
 
 ## 3. Multiplayer
 

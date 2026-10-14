@@ -25,7 +25,7 @@ use sc_core::exterior::{normalized, ExteriorData};
 use sc_net::bot::Bot;
 use sc_net::msg::{ShipSnap, Snapshot};
 use sc_net::session::{Session, Stage, Visual, INTERP_DELAY_S};
-use sc_net::transport::Impair;
+use sc_net::transport::{Dial, Impair};
 use sc_render::{DeckProgram, Indices, Mesh, Renderer, Target};
 
 use crate::console;
@@ -147,7 +147,7 @@ pub struct DrillApp {
     /// The fires, smoke and agent as drawn inside (all-hands 4).
     fire_fx: crate::firefx::FireFx,
     args: DrillArgs,
-    addr: Option<SocketAddr>,
+    addr: Option<Dial>,
     session: Option<Session>,
     error: Option<String>,
     retry_at: f64,
@@ -277,13 +277,19 @@ impl DrillApp {
             let (_, seat) = crate::solo::roster(&data, args.station);
             args.station = seat;
             let host = crate::solo::SoloHost::start(&data, seat, &names, args.seed, crate::solo::bridge(&data))?;
-            args.server = host.addr().to_string();
             Some(host)
         } else {
             None
         };
-        let host = if args.server.contains(':') { args.server.clone() } else { format!("{}:7700", args.server) };
-        let addr = host.to_socket_addrs().ok().and_then(|mut a| a.find(SocketAddr::is_ipv4));
+        // Single player joins its own server over the local link; a multiplayer game dials the server's address.
+        let addr = match solo.as_ref() {
+            Some(h) => Some(h.dial()),
+            None => {
+                let host =
+                    if args.server.contains(':') { args.server.clone() } else { format!("{}:7700", args.server) };
+                host.to_socket_addrs().ok().and_then(|mut a| a.find(SocketAddr::is_ipv4)).map(Dial::Addr)
+            }
+        };
         let bot = args.bot.then(|| Bot::new(&data, args.station));
         let args_watch = args.watch;
         let mut app = Self {
@@ -396,12 +402,12 @@ impl DrillApp {
     }
 
     fn try_connect(&mut self) {
-        let Some(addr) = self.addr else {
+        let Some(addr) = self.addr.clone() else {
             self.error = Some(format!("Cannot find {}", self.args.server));
             return;
         };
         match Session::connect(
-            addr,
+            addr.clone(),
             &self.args.name,
             self.args.bot,
             (!self.args.watch).then_some(self.args.station),

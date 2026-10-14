@@ -8,78 +8,78 @@
   "checks": [
     {
       "character": "command_01",
-      "triangles": 3132,
+      "triangles": 3164,
       "drawCalls": 2,
       "glbDownload": "exact bytes"
     },
     {
       "character": "command_02",
-      "triangles": 3132,
+      "triangles": 3164,
       "drawCalls": 2,
       "glbDownload": "exact bytes"
     },
     {
       "character": "engineering_01",
-      "triangles": 3132,
+      "triangles": 3164,
       "drawCalls": 2,
       "glbDownload": "exact bytes"
     },
     {
       "character": "engineering_02",
-      "triangles": 3132,
+      "triangles": 3164,
       "drawCalls": 2,
       "glbDownload": "exact bytes"
     },
     {
       "character": "deckhands_01",
-      "triangles": 3132,
+      "triangles": 3164,
       "drawCalls": 2,
       "glbDownload": "exact bytes"
     },
     {
       "character": "deckhands_02",
-      "triangles": 3132,
+      "triangles": 3164,
       "drawCalls": 2,
       "glbDownload": "exact bytes"
     },
     {
       "character": "medical_01",
-      "triangles": 3132,
+      "triangles": 3164,
       "drawCalls": 2,
       "glbDownload": "exact bytes"
     },
     {
       "character": "medical_02",
-      "triangles": 3132,
+      "triangles": 3164,
       "drawCalls": 2,
       "glbDownload": "exact bytes"
     },
     {
       "character": "security_01",
-      "triangles": 3132,
+      "triangles": 3164,
       "drawCalls": 2,
       "glbDownload": "exact bytes"
     },
     {
       "character": "security_02",
-      "triangles": 3132,
+      "triangles": 3164,
       "drawCalls": 2,
       "glbDownload": "exact bytes"
     },
     {
       "character": "galley_01",
-      "triangles": 3132,
+      "triangles": 3164,
       "drawCalls": 2,
       "glbDownload": "exact bytes"
     },
     {
       "character": "galley_02",
-      "triangles": 3132,
+      "triangles": 3164,
       "drawCalls": 2,
       "glbDownload": "exact bytes"
     },
     {
-      "lineup": 17832,
+      "lineup": 18024,
       "sex": "female",
       "drawCalls": 7
     },

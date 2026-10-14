@@ -646,13 +646,13 @@ impl Client {
                 action = l.ui(ctx);
             }
         });
-        // In the browser Beam aboard tours the ship: it cannot host a game yet (single-player design 7).
-        let web = cfg!(target_os = "emscripten");
+        // Beam aboard hosts the game here, in the browser as on the desktop: single player runs on the local link,
+        // which needs no socket and no thread (browser-single-player design 1).
         let action = if solo_now { lobby::LobbyAction::Solo } else { action };
         let hand_dir = self.hand_test.as_ref().map(|h| h.0.clone());
         match action {
             lobby::LobbyAction::Quit => return Flow::Done,
-            lobby::LobbyAction::Solo | lobby::LobbyAction::Join if !(web && action == lobby::LobbyAction::Solo) => {
+            lobby::LobbyAction::Solo | lobby::LobbyAction::Join => {
                 let l = self.lobby.as_ref().ok_or("no lobby");
                 let Ok(l) = l else { return Flow::Fail };
                 l.keep();
@@ -676,7 +676,7 @@ impl Client {
             }
             _ => {}
         }
-        if beam || action == lobby::LobbyAction::Tour || (web && action == lobby::LobbyAction::Solo) {
+        if beam || action == lobby::LobbyAction::Tour {
             self.beaming = 1;
         }
         // The beaming frame: the panel gives way to one line.

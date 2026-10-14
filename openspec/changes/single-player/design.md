@@ -93,14 +93,16 @@ No rule moves: the server decides what a command does and refuses one from a bod
 
 ## 7. The browser
 
-The browser has no UDP sockets and no threads, so it cannot host the drill this way; there Beam aboard tours the ship
-(`front-menu` 2). A loopback transport in `sc-net` that needs neither is the later step (task 3.1).
+Single player runs on `sc-net`'s local link (`browser-single-player`): the server and every session in one process,
+with no socket and no thread, so a browser page hosts the drill as a desktop does, and Beam aboard starts this game
+there too. The desktop uses the same link. Before it, the server and the sessions met over loopback WebRTC, which a
+page cannot open, and the browser's Beam aboard toured the ship instead.
 
 ## 8. Pi 5 budget
 
 | Cost | Amount |
 | --- | --- |
-| CPU | The server's 30 Hz tick and one session per NPC, each a WebRTC peer and its thread, on both ends: 2 x (crew) peers. Measured on the Pi in task 2.7 |
+| CPU | The server's 30 Hz tick and one session per NPC, on the local link since `browser-single-player` (before it, each was a WebRTC peer with a thread at both ends). Measured on the Pi in task 2.7 |
 | Memory | Measured headless (task 2.6): a single-player client with a crew of four peaked at 336.8 MB resident against 324.9 MB for a multiplayer client alone, so hosting costs about 12 MB (the server, its walk grid, five loopback peers). That was x86-64, a debug build and llvmpipe's software GL, 45 s from launch into the round; it is not a Pi measurement. A 1 GB Pi 5 measures it in task 2.7 |
 | Network | Loopback only |
 | Rendering | None added beyond the crew tabs: a few rectangles and icons in the title band, the same draw call |
@@ -115,8 +117,7 @@ The browser has no UDP sockets and no threads, so it cannot host the drill this 
 
 ## Known limits
 
-- Each single-player game leaves the drill server's signalling listener (one idle thread and a loopback port) behind
-  until the program exits: `sc-net`'s listener has no way to stop yet (task 3.3).
+- None left from hosting: since `browser-single-player` a single-player game opens no listener, socket or thread.
 
 ## Open questions
 

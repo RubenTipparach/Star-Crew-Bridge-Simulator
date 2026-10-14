@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "generator": "tools/blender/build_wall_panels.py",
+  "blender": "4.4.3",
+  "files_compared": 126,
+  "identical_png_hashes": true,
+  "independent_render_caches": true,
+  "furniture_props_checked": 4
+}

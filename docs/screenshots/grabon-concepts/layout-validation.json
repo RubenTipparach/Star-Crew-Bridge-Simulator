@@ -1,0 +1,400 @@
+{
+  "base_commit": "7653f7a",
+  "status": "pass",
+  "studies": [
+    {
+      "ship": "shrike",
+      "rooms": [
+        {
+          "id": "A_route",
+          "deck": "A",
+          "area_m2": 40.8,
+          "volume_m3": 114.24,
+          "changed": false
+        },
+        {
+          "id": "bunks",
+          "deck": "A",
+          "area_m2": 53.18,
+          "volume_m3": 148.905,
+          "changed": true
+        },
+        {
+          "id": "mess",
+          "deck": "A",
+          "area_m2": 53.18,
+          "volume_m3": 148.905,
+          "changed": true
+        },
+        {
+          "id": "stbd_laser",
+          "deck": "A",
+          "area_m2": 56.564,
+          "volume_m3": 158.38,
+          "changed": true
+        },
+        {
+          "id": "port_laser",
+          "deck": "A",
+          "area_m2": 56.564,
+          "volume_m3": 158.38,
+          "changed": true
+        },
+        {
+          "id": "neck_route",
+          "deck": "A",
+          "area_m2": 33.6,
+          "volume_m3": 94.08,
+          "changed": false
+        },
+        {
+          "id": "bridge",
+          "deck": "A",
+          "area_m2": 78.303,
+          "volume_m3": 219.248,
+          "changed": true
+        },
+        {
+          "id": "B_route",
+          "deck": "B",
+          "area_m2": 26.4,
+          "volume_m3": 73.92,
+          "changed": false
+        },
+        {
+          "id": "reactor",
+          "deck": "B",
+          "area_m2": 55.562,
+          "volume_m3": 155.574,
+          "changed": true
+        },
+        {
+          "id": "drive",
+          "deck": "B",
+          "area_m2": 55.562,
+          "volume_m3": 155.574,
+          "changed": true
+        },
+        {
+          "id": "magazine",
+          "deck": "B",
+          "area_m2": 42.418,
+          "volume_m3": 118.772,
+          "changed": true
+        },
+        {
+          "id": "life_support",
+          "deck": "B",
+          "area_m2": 42.418,
+          "volume_m3": 118.772,
+          "changed": true
+        },
+        {
+          "id": "tubes",
+          "deck": "B",
+          "area_m2": 44.0,
+          "volume_m3": 123.2,
+          "changed": false
+        },
+        {
+          "id": "hangar",
+          "deck": "B",
+          "area_m2": 252.153,
+          "volume_m3": 806.889,
+          "changed": true
+        }
+      ],
+      "changed_rooms": 10,
+      "minimum_hull_clearance_m": 0.5500000000000003,
+      "crew_routes": true,
+      "fighter_berths": 2,
+      "area_m2": 890.704
+    },
+    {
+      "ship": "vark",
+      "rooms": [
+        {
+          "id": "A_route",
+          "deck": "A",
+          "area_m2": 48.0,
+          "volume_m3": 134.4,
+          "changed": false
+        },
+        {
+          "id": "bunks",
+          "deck": "A",
+          "area_m2": 72.351,
+          "volume_m3": 202.584,
+          "changed": true
+        },
+        {
+          "id": "mess",
+          "deck": "A",
+          "area_m2": 72.351,
+          "volume_m3": 202.584,
+          "changed": true
+        },
+        {
+          "id": "stbd_laser",
+          "deck": "A",
+          "area_m2": 66.464,
+          "volume_m3": 186.099,
+          "changed": true
+        },
+        {
+          "id": "port_laser",
+          "deck": "A",
+          "area_m2": 66.464,
+          "volume_m3": 186.099,
+          "changed": true
+        },
+        {
+          "id": "neck_route",
+          "deck": "A",
+          "area_m2": 62.4,
+          "volume_m3": 174.72,
+          "changed": false
+        },
+        {
+          "id": "bridge",
+          "deck": "A",
+          "area_m2": 92.011,
+          "volume_m3": 257.631,
+          "changed": true
+        },
+        {
+          "id": "B_route",
+          "deck": "B",
+          "area_m2": 28.8,
+          "volume_m3": 80.64,
+          "changed": false
+        },
+        {
+          "id": "reactor",
+          "deck": "B",
+          "area_m2": 60.0,
+          "volume_m3": 168.0,
+          "changed": false
+        },
+        {
+          "id": "drive",
+          "deck": "B",
+          "area_m2": 60.0,
+          "volume_m3": 168.0,
+          "changed": false
+        },
+        {
+          "id": "magazine",
+          "deck": "B",
+          "area_m2": 55.089,
+          "volume_m3": 154.25,
+          "changed": true
+        },
+        {
+          "id": "life_support",
+          "deck": "B",
+          "area_m2": 55.089,
+          "volume_m3": 154.25,
+          "changed": true
+        },
+        {
+          "id": "tubes",
+          "deck": "B",
+          "area_m2": 44.0,
+          "volume_m3": 123.2,
+          "changed": false
+        },
+        {
+          "id": "flight_route",
+          "deck": "B",
+          "area_m2": 44.8,
+          "volume_m3": 125.44,
+          "changed": false
+        },
+        {
+          "id": "stbd_hangar",
+          "deck": "B",
+          "area_m2": 127.816,
+          "volume_m3": 409.012,
+          "changed": true
+        },
+        {
+          "id": "port_hangar",
+          "deck": "B",
+          "area_m2": 127.816,
+          "volume_m3": 409.012,
+          "changed": true
+        }
+      ],
+      "changed_rooms": 9,
+      "minimum_hull_clearance_m": 0.5500000000000003,
+      "crew_routes": true,
+      "fighter_berths": 2,
+      "area_m2": 1083.451
+    },
+    {
+      "ship": "gorath",
+      "rooms": [
+        {
+          "id": "A_route",
+          "deck": "A",
+          "area_m2": 43.2,
+          "volume_m3": 120.96,
+          "changed": false
+        },
+        {
+          "id": "computers",
+          "deck": "A",
+          "area_m2": 71.699,
+          "volume_m3": 200.757,
+          "changed": true
+        },
+        {
+          "id": "medical",
+          "deck": "A",
+          "area_m2": 71.699,
+          "volume_m3": 200.757,
+          "changed": true
+        },
+        {
+          "id": "stbd_laser",
+          "deck": "A",
+          "area_m2": 66.624,
+          "volume_m3": 186.547,
+          "changed": true
+        },
+        {
+          "id": "port_laser",
+          "deck": "A",
+          "area_m2": 66.624,
+          "volume_m3": 186.547,
+          "changed": true
+        },
+        {
+          "id": "neck_route",
+          "deck": "A",
+          "area_m2": 31.2,
+          "volume_m3": 87.36,
+          "changed": false
+        },
+        {
+          "id": "bridge",
+          "deck": "A",
+          "area_m2": 186.069,
+          "volume_m3": 520.993,
+          "changed": true
+        },
+        {
+          "id": "B_route",
+          "deck": "B",
+          "area_m2": 57.6,
+          "volume_m3": 161.28,
+          "changed": false
+        },
+        {
+          "id": "reactor",
+          "deck": "B",
+          "area_m2": 84.756,
+          "volume_m3": 237.317,
+          "changed": true
+        },
+        {
+          "id": "drive",
+          "deck": "B",
+          "area_m2": 84.756,
+          "volume_m3": 237.317,
+          "changed": true
+        },
+        {
+          "id": "bunks",
+          "deck": "B",
+          "area_m2": 93.6,
+          "volume_m3": 262.08,
+          "changed": false
+        },
+        {
+          "id": "mess",
+          "deck": "B",
+          "area_m2": 93.6,
+          "volume_m3": 262.08,
+          "changed": false
+        },
+        {
+          "id": "magazine",
+          "deck": "B",
+          "area_m2": 55.271,
+          "volume_m3": 154.758,
+          "changed": true
+        },
+        {
+          "id": "life_support",
+          "deck": "B",
+          "area_m2": 55.271,
+          "volume_m3": 154.758,
+          "changed": true
+        },
+        {
+          "id": "tubes",
+          "deck": "B",
+          "area_m2": 60.0,
+          "volume_m3": 168.0,
+          "changed": false
+        },
+        {
+          "id": "C_route",
+          "deck": "C",
+          "area_m2": 33.6,
+          "volume_m3": 94.08,
+          "changed": false
+        },
+        {
+          "id": "workshop",
+          "deck": "C",
+          "area_m2": 67.2,
+          "volume_m3": 188.16,
+          "changed": false
+        },
+        {
+          "id": "cargo",
+          "deck": "C",
+          "area_m2": 67.2,
+          "volume_m3": 188.16,
+          "changed": false
+        },
+        {
+          "id": "stores",
+          "deck": "C",
+          "area_m2": 62.885,
+          "volume_m3": 176.079,
+          "changed": true
+        },
+        {
+          "id": "flight_control",
+          "deck": "C",
+          "area_m2": 62.885,
+          "volume_m3": 176.079,
+          "changed": true
+        },
+        {
+          "id": "service",
+          "deck": "C",
+          "area_m2": 48.0,
+          "volume_m3": 134.4,
+          "changed": false
+        },
+        {
+          "id": "hangar",
+          "deck": "C",
+          "area_m2": 307.994,
+          "volume_m3": 985.58,
+          "changed": true
+        }
+      ],
+      "changed_rooms": 12,
+      "minimum_hull_clearance_m": 0.5499999999999998,
+      "crew_routes": true,
+      "fighter_berths": 2,
+      "area_m2": 1771.733
+    }
+  ]
+}

@@ -11,6 +11,8 @@ current files between them (CLAUDE.md section 11):
     <!-- INLINE lib:lightbake BEGIN --> ... <!-- INLINE lib:lightbake END -->
 
 "lib:<name>" copies docs/mockups/lib/<name>.js; "shipkit" is lib:shipkit.
+"panels:<faction>" loads data/materials/<faction>-panels.json, including its
+inherited rules, and embeds that collection as the page's one panel array.
 "data:<ship>/<name>" copies data/ships/<ship>/<name>.json into a
 <script id="ship-data-<name>" type="application/json"> block, for mockups that
 read a ship's other data files (power.json, atmosphere.json, detailing.json).
@@ -85,10 +87,12 @@ BUDGET_SOURCES = [
 MATERIALS = os.path.join(ROOT, "data", "materials", "materials.json")
 TEXTURES = os.path.join(ROOT, "assets", "textures")
 PANELS = os.path.join(ROOT, "data", "materials", "panels.json")
+sys.path.insert(0,os.path.join(ROOT,'tools','materials'))
+from panel_catalog import load_catalog
 SCREENS = os.path.join(ROOT, "assets", "textures", "screens", "screens.json")
 CACHE = os.path.join(ROOT, "docs", "mockups", "cache")
 LIGHTBAKE = os.path.join(LIB, "lightbake.js")
-MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-9_-]+/[a-z0-9_-]+|bakecache:[a-z0-9_-]+|shipkit|materials|panels|screens|repairs|decals|models:[a-z0-9_-]+|manifest:[a-z0-9_-]+|font:[a-z0-9_-]+) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
+MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-9_-]+/[a-z0-9_-]+|bakecache:[a-z0-9_-]+|shipkit|materials|panels(?::[a-z0-9_-]+)?|screens|repairs|decals|models:[a-z0-9_-]+|manifest:[a-z0-9_-]+|font:[a-z0-9_-]+) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
 
 
 def png_uri(path):
@@ -216,9 +220,8 @@ def block(kind):
                 block["service"] = json.load(f)
         text = json.dumps(block, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
         return f'\n<script id="ship-models-{name}" type="application/json">\n{text}\n</script>\n'
-    if kind == "panels":
-        with open(PANELS, encoding="utf-8") as f:
-            manifest = json.load(f)
+    if kind == "panels" or kind.startswith('panels:'):
+        manifest = load_catalog(PANELS if kind=='panels' else os.path.join(ROOT,'data','materials',kind.split(':')[1]+'-panels.json'))
         base = os.path.join(ROOT, manifest["layers"]["dir"])
         stems = []
         for fn, fin in manifest["finishes"].items():

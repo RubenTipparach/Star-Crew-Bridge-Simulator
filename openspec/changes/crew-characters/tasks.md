@@ -36,7 +36,16 @@
 - [x] 5.2 Validate exported clothing, poses, rig controls and budgets.
 - [x] 5.3 Inspect the before/after comparison and refreshed review captures.
 
-## 2. Adoption, after explicit screenshot approval
+## 6. Shoulder edge flow repair
+
+- [x] 6.1 Shape shoulder socket loops and grade attachment weights using the researched guidance.
+- [x] 6.2 Validate the inner-arm contour and shoulder stress poses against actual exported geometry.
+- [x] 6.3 Inspect shoulder close-ups, rebuild every variant and refresh rigs, viewer and captures.
+
+## 2. Adoption, on hold by owner request
+
+Owner decision, 2026-10-10: retain all assets and leave these tasks on hold.
+Resume only on a later owner request; explicit screenshot approval still applies.
 
 - [ ] 2.1 Record owner approval against named character screenshots.
 - [ ] 2.2 Integrate approved assets with the engine and mockups, retaining blocky fallback, department colors and LOD 1/2.

@@ -2,12 +2,12 @@
 //! other station of the mission's roster.
 //!
 //! It lives in the client because the client is where a single-player game runs; it adds no rule. The server is
-//! `sc-server`'s own `DrillServer` on loopback, ticked from the client's frame loop on the drill's fixed clock; each
-//! NPC is a bot session (`sc-net::bot`) joined over loopback like any player, so a solo game is a multiplayer game
-//! with one person in it (CLAUDE.md 6.3). The only thing kept here is the player's choice for each station, AUTO or
-//! MANUAL, and on MANUAL the player's commands for that station go to the server through its NPC's session.
+//! `sc-server`'s own `DrillServer` on the local link (browser-single-player design 2: no socket and no thread, so a
+//! browser page hosts it as a desktop does), ticked from the client's frame loop on the drill's fixed clock; each
+//! NPC is a bot session (`sc-net::bot`) joined over the same link like any player, so a solo game is a multiplayer
+//! game with one person in it (CLAUDE.md 6.3). The only thing kept here is the player's choice for each station,
+//! AUTO or MANUAL, and on MANUAL the player's commands for that station go to the server through its NPC's session.
 
-use std::net::SocketAddr;
 use std::path::Path;
 
 use sc_core::clock::FixedClock;
@@ -18,8 +18,8 @@ use sc_core::names::NameData;
 use sc_core::rng::Rng;
 use sc_net::bot::Bot;
 use sc_net::session::Session;
-use sc_net::transport::Impair;
-use sc_server::{DrillServer, ServerConfig};
+use sc_net::transport::{Dial, Impair};
+use sc_server::{DrillServer, Listen, ServerConfig};
 
 /// An NPC crew member at one station.
 pub struct Npc {
@@ -27,7 +27,7 @@ pub struct Npc {
     pub station: Station,
     /// "Lt. Dal Varen".
     pub name: String,
-    /// Their client session, over loopback.
+    /// Their client session, over the local link.
     pub session: Session,
     /// What plays the station on AUTO.
     pub bot: Bot,
@@ -76,8 +76,8 @@ pub fn bridge(data: &DrillData) -> Option<Bridge> {
 }
 
 impl SoloHost {
-    /// Host the drill on loopback with a crew for every station of the roster but `seat`, named from `names` and the
-    /// session's `seed`.
+    /// Host the drill on the local link with a crew for every station of the roster but `seat`, named from `names` and
+    /// the session's `seed`.
     pub fn start(
         data: &DrillData,
         seat: Station,
@@ -85,21 +85,20 @@ impl SoloHost {
         seed: u64,
         bridge: Option<Bridge>,
     ) -> Result<Self, String> {
-        let lo = "127.0.0.1".parse().map_err(|e| format!("{e}"))?;
-        let listen: SocketAddr = "127.0.0.1:0".parse().map_err(|e| format!("{e}"))?;
-        let cfg = ServerConfig { listen, host_ip: lo, impair: Impair::default(), seed, bridge };
+        let lo = std::net::Ipv4Addr::LOCALHOST.into();
+        let cfg = ServerConfig { listen: Listen::Local, host_ip: lo, impair: Impair::default(), seed, bridge };
         let server = DrillServer::start(data.clone(), &cfg).map_err(|e| format!("single player: {e}"))?;
         let rank = names.ranks.iter().find(|r| r.name == "Lieutenant").or(names.ranks.first()).map_or("", |r| &r.short);
         let (stations, _) = roster(data, seat);
         let mut crew = Vec::new();
         for (i, st) in stations.into_iter().filter(|s| *s != seat).enumerate() {
             let name = format!("{rank} {}", names.generate(&mut Rng::for_purpose(seed, i as u64, "npc")));
-            let session = Session::connect(server.addr(), &name, true, Some(st), Impair::default(), seed ^ i as u64)?;
+            let session = Session::connect(server.dial(), &name, true, Some(st), Impair::default(), seed ^ i as u64)?;
             crew.push(Npc { station: st, name, session, bot: Bot::new(data, st), auto: true });
         }
         println!(
             "sc-client: single player on {}: the player at {}, {} NPCs ({})",
-            server.addr(),
+            server.dial(),
             seat.name(),
             crew.len(),
             crew.iter().map(|n| format!("{} {}", n.station.name(), n.name)).collect::<Vec<_>>().join(", ")
@@ -107,9 +106,9 @@ impl SoloHost {
         Ok(Self { server, clock: FixedClock::new(TICK_HZ, 8), seat, crew })
     }
 
-    /// Where the player's session connects.
-    pub fn addr(&self) -> SocketAddr {
-        self.server.addr()
+    /// Where the player's session connects: the local link's door.
+    pub fn dial(&self) -> Dial {
+        self.server.dial()
     }
 
     /// The server, for checks.
@@ -197,7 +196,7 @@ mod tests {
             n.bot.read_s = 0.2;
         }
         assert_eq!(host.crew.len(), stations.len() - 1, "an NPC at every station of the roster but the player's");
-        let mut me = Session::connect(host.addr(), "Lt. Player", false, Some(seat), Impair::default(), 7).unwrap();
+        let mut me = Session::connect(host.dial(), "Lt. Player", false, Some(seat), Impair::default(), 7).unwrap();
         let seated = run(&mut host, &mut me, &data, 20.0, |h, me| h.all_seated() && me.station() == Some(seat));
         assert!(seated, "every NPC and the player sat down");
         for st in &stations {
