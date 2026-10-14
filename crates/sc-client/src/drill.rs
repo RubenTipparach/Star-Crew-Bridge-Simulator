@@ -1324,7 +1324,8 @@ impl DrillApp {
 
 impl DrillApp {
     /// The film of the viewscreen's cameras (chase-camera 3). It follows the body: the walk to the captain's chair (every
-    /// second frame), sitting down and the countdown (every fourth), then, once the round is engaged, every frame: the
+    /// second frame), sitting down and the countdown (every fourth), both sped up; then, once the round is engaged, every
+    /// frame at the video's 30 a second (the frame's step is held to 1/30 s from 1.5 s into Engage): the
     /// console's FWD, TARGET (from the bow, on the target), CHASE behind the ship, CHASE swung round it while it keeps
     /// the target in the middle and the ship low, and the bridge's main viewscreen showing the captain's CHASE. Frames
     /// go to the shots folder as `film-NNNNN.png`, and each shot's first frame and caption to `film-cues.txt`;
@@ -1336,9 +1337,9 @@ impl DrillApp {
         let engaged = snap.phase == Phase::Engage;
         let st = self.console_station() as usize;
         let (cue, every) = if !seated && !engaged {
-            ("Walking to the captain's chair, on foot (2x)", 2)
+            ("Walking to the captain's chair, on foot (sped up)", 2)
         } else if !engaged || t < 2.0 {
-            ("Seated at Captain: the console comes up, the round counts down (4x)", 4)
+            ("Seated at Captain: the console comes up, the round counts down (sped up)", 4)
         } else {
             let seat = &mut self.seats[st];
             match t {
@@ -1466,7 +1467,15 @@ impl App for DrillApp {
     }
 
     fn frame(&mut self, f: &Frame) -> Flow {
-        let dt = f.elapsed_s.clamp(0.0, 0.1);
+        // The film plays its camera shots at the video's own 30 frames a second, whatever a frame takes to draw
+        // (chase-camera 3); everything else steps by the frame, as a player's game does.
+        let filming = self.args.film
+            && self
+                .session
+                .as_ref()
+                .and_then(|s| s.latest())
+                .is_some_and(|s| s.phase == Phase::Engage && s.phase_s >= 1.5);
+        let dt = if filming { 1.0 / 30.0 } else { f.elapsed_s.clamp(0.0, 0.1) };
         self.time_s += dt;
         if let Some(h) = self.solo.as_mut() {
             h.step(dt, &self.data);
