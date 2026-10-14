@@ -73,6 +73,22 @@
     "target_destroyed": { "kind": "report", "text": "Target destroyed", "rank": 1 },
     "hull": { "kind": "report", "text": "Hull at {pct}%", "rank": 1 },
     "shields_low": { "kind": "report", "text": "Shields at {pct}%", "rank": 2 },
-    "breach": { "kind": "report", "text": "Hull breach in the {room}", "rank": 1 }
+    "breach": { "kind": "report", "text": "Hull breach in the {room}", "rank": 1 },
+    "shore_off": { "kind": "intent", "text": "Off shore power", "rank": 3 },
+    "shore_on": { "kind": "intent", "text": "Back on shore power", "rank": 3 },
+    "undock": { "kind": "intent", "text": "Releasing the clamps", "rank": 2 },
+    "jump_spool": { "kind": "intent", "text": "Spooling the jump drive", "rank": 2 },
+    "jump_abort": { "kind": "intent", "text": "Jump aborted", "rank": 2 },
+    "sweep": { "kind": "intent", "text": "Sweeping", "rank": 3 },
+    "order_undock": { "kind": "order", "text": "Helm, take us out", "rank": 1 },
+    "order_jump": { "kind": "order", "text": "Helm, jump when ready", "rank": 1 },
+    "drive_ready": { "kind": "report", "text": "Drive on line", "rank": 2 },
+    "clamps_released": { "kind": "report", "text": "Clamps released", "rank": 2 },
+    "clear_of_berth": { "kind": "report", "text": "Clear of the berth", "rank": 2 },
+    "mass_lock": { "kind": "report", "text": "Mass lock: {place}", "rank": 2 },
+    "arrived": { "kind": "report", "text": "Arrived at {place}", "rank": 1 },
+    "sweep_clear": { "kind": "report", "text": "Sweep clear at {place}", "rank": 2 },
+    "sweep_contact": { "kind": "report", "text": "Contact at {place}: the {target}", "rank": 1 },
+    "home": { "kind": "report", "text": "Home at {place}", "rank": 1 }
   }
 }

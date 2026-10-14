@@ -79,6 +79,34 @@ pub fn sun_cube(sun: Vec3) -> [[f32; 3]; 6] {
     })
 }
 
+/// The exterior seen from `eye` (system frame) in a patrol's system (patrol-mission design 11.2): the star's direction,
+/// size and light and the near planet's direction, size and look from the system file; the rest as `ext` has it. Every
+/// light outside reads the result (the sky, the hull, the ships), so they agree.
+pub fn exterior_at(ext: &ExteriorData, sys: &sc_core::system::SystemFile, eye: glam::DVec3) -> ExteriorData {
+    let v = sys.sky_from(eye);
+    let mut e = ext.clone();
+    let st = &sys.star;
+    e.sun.dir = v.sun_dir.to_array();
+    e.sun.disc_deg = (2.0 * v.sun_sin_r.asin().to_degrees()).max(0.05);
+    e.sun.colour_srgb = st.colour_srgb.map(|c| (c * v.light).min(1.0));
+    e.sun.glow = st.glow;
+    if let Some((i, dir, sin_r)) = v.planet {
+        let b = &sys.bodies[i];
+        let l = &b.look;
+        e.planet.dir = dir.to_array();
+        e.planet.radius_deg = sin_r.asin().to_degrees();
+        e.planet.ocean_srgb = l.ocean_srgb;
+        e.planet.land_srgb = l.land_srgb;
+        e.planet.cloud_srgb = l.cloud_srgb;
+        e.planet.atmosphere_srgb = l.atmosphere_srgb;
+        e.planet.atmosphere_frac = l.atmosphere_frac;
+        e.planet.land_frac = l.land_frac;
+        e.planet.cloud_frac = l.cloud_frac;
+        e.planet.night = l.night;
+    }
+    e
+}
+
 /// A placeholder station ready to draw (patrol-mission design 3): its structure lit by the sun, its windows and strips
 /// glowing, its beacons blinking.
 pub struct StationView {
@@ -183,6 +211,20 @@ mod tests {
         let roll = Quat::from_rotation_z(std::f32::consts::FRAC_PI_2);
         let s = sun_in_ship(&e, roll);
         assert!(s.distance(Vec3::X) < 1e-5, "the sun is at {s} in the ship's frame");
+    }
+
+    #[test]
+    fn at_the_pell_beacon_the_sky_shows_orrin_and_a_smaller_dimmer_star() {
+        let sys: sc_core::system::SystemFile = sc_core::data::parse(
+            "data/space/systems/shoals.json",
+            include_str!("../../../data/space/systems/shoals.json"),
+        )
+        .unwrap();
+        let at = |id: &str| exterior_at(&ext(), &sys, sys.place(id).unwrap().arrival);
+        let (home, pell) = (at("tamsin_station"), at("pell_beacon"));
+        assert!((pell.planet.radius_deg - 16.9).abs() < 0.3, "Orrin, 16.9 degrees in radius");
+        assert_eq!(pell.planet.ocean_srgb, sys.bodies.iter().find(|b| b.id == "orrin").unwrap().look.ocean_srgb);
+        assert!(pell.sun.disc_deg < home.sun.disc_deg && pell.sun.colour_srgb[0] < home.sun.colour_srgb[0] + 1e-9);
     }
 
     #[test]

@@ -24,29 +24,29 @@ hostiles", "the view through the window should reflect whats going on around the
 
 ## 3. The system and the mission's data (phase 2)
 
-- [ ] 3.1 `data/space/systems/shoals.json` and its loader and checks in `sc-core::patrol` (positions finite, radii
+- [x] 3.1 `data/space/systems/shoals.json` and its loader and checks in `sc-core::system` (positions finite, radii
   positive, arrival points at least 5 km from every body, the station outside its planet's 3-radius lock).
-- [ ] 3.2 The berth's attitude computed from the dock's view and checked; `exterior.json`'s sun and planet directions
-  derived from the system file.
-- [ ] 3.3 `data/missions/patrol-shoals.json` and the mission schema's patrol fields.
+- [x] 3.2 The berth's attitude checked against the dock's view; in a patrol the sun and planet come from the system
+  file (the walk's dock still reads `exterior.json`).
+- [x] 3.3 `data/missions/patrol-shoals.json` and the mission schema's patrol fields.
 
 ## 4. The mission's engine (phase 2, after `crew-chat`'s protocol work is committed)
 
-- [ ] 4.1 Mockups first: engineering's RUN, SHORE and DRIVE; helm's UNDOCK and JUMP; science's SWEEP; the captain's
-  UNDOCK, JUMP and HOME orders, in `docs/mockups/consoles.html`, for approval.
-- [ ] 4.2 `sc-core::patrol`: the phases, shore power and the drive's start, the clamps, the berth's departure limits,
+- [x] 4.1 Mockups first (`docs/mockups/patrol-consoles.html`, awaiting approval; not built): engineering's SHORE and
+  DRIVE; helm's UNDOCK and JUMP; science's SWEEP; the captain's UNDOCK and JUMP orders (HOME is the last JUMP).
+- [x] 4.2 `sc-core::patrol`: the phases, shore power and the drive's start, the clamps, the berth's departure limits,
   the jump between waypoints (FN 7's spool, alignment, mass locks, arrival scatter, cooldown), the sweep, the
   encounter placed from the arrival, the return; tests for each phase's end.
-- [ ] 4.3 Combat at a far origin: the drill's tests run again 4.5e11 m from the origin.
-- [ ] 4.4 `sc-net`: the snapshot's `patrol` block and the new commands; `sc-server`: the mission's phases.
-- [ ] 4.5 The bots and automation for every phase (design 9), their lines through `crew-chat`.
-- [ ] 4.6 The objectives `undock`, `sweep`, `return` on the OBJECTIVES tab.
+- [x] 4.3 Combat far from the origin: a floating origin moved to each arrival point, so combat's positions stay small (design 7).
+- [x] 4.4 `sc-net`: the snapshot's `patrol` block and the new commands; `sc-server`: the mission's phases.
+- [x] 4.5 The bots and automation for every phase (design 9), their lines through `crew-chat`.
+- [x] 4.6 The objectives `undock`, `sweep`, `return` on the OBJECTIVES tab.
 
 ## 5. The windows for the patrol (phase 2)
 
-- [ ] 5.1 The sky from the system file: the star's direction, size and light; the near planet's look (terran,
-  banded); three far-body slots.
-- [ ] 5.2 The starbase and its cradle in the system frame; the cradle sliding past as the Tern backs out.
+- [x] 5.1 The sky from the system file: the star's direction, size and light; the near planet's look (the banded
+  look and three far-body slots still to do).
+- [x] 5.2 The starbase and its cradle in the system frame; the cradle sliding past as the Tern backs out.
 - [ ] 5.3 Motes, the jump's streaks and flash, the belt's far rocks.
 - [ ] 5.4 `starbase.glb` replacing the placeholder when the `starbase` change lands.
 

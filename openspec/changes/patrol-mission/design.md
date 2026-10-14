@@ -120,13 +120,16 @@ cradle's starboard girders meets the docking collar (x -10.8 m, deck C); it retr
 
 ### 4.1 Docked
 
-- **Shore power.** Docked, the Tern draws from the station through the umbilical at up to 12 MW (`shore_mw`), enough
-  for life support, lighting and the consoles; the reactor is at hot standby, 10% (`reactor_standby_frac`), and the
-  impulse drive's breaker is open (the berth's rule: no drive while clamped).
-- **Engineering's job** (on foot: the engine room's console, or the bridge's engineering station): raise the reactor
-  to RUN (it ramps at PG's 0.02 of rated a second, 17 s from 10% to the 44% cruise level), close the drive's breaker
-  (the drive comes to its 0.2 MW standby), and open SHORE when the reactor carries the load. The console's DRIVE light
-  goes green when all three are done; the drive and the RCS cannot be given more than standby until then.
+- **Shore power.** Docked, the umbilical is connected and the impulse drive's feed breaker is open (the berth's rule:
+  no drive while clamped). The reactor runs on AUTO and carries the docked ship's load: a reactor at standby on a
+  shore feed would need the grid to model a shore source, which it does not yet (power-grid), and a standby reactor
+  without one browns the ship out; so the umbilical is a connection the clamps refuse to open with, not a power
+  source (as built, phase 2).
+- **Engineering's job** (on foot: the engine room's console, or the bridge's engineering station): close the drive's
+  breaker (the console's own breaker control, power-grid 5: the real grid's breaker, the drive's demand jumping and the
+  reactor ramping at its 0.02 of rated a second), and drop SHORE. DRIVE is ready when shore power is off and the
+  impulse drive's capability (its power and its integrity) is at least `drive_ready_min` 0.5; the computer says
+  "Drive on line".
 - **The captain's job**: the briefing's route on the system map (FN 9), and the order UNDOCK once DRIVE is green.
 - **Tactical**: weapons are locked inside 5 km of the station (`weapons_safe_m`, the station's rule); the console shows
   SAFE in the turret modes' place until then.
@@ -217,7 +220,7 @@ mission: MISSION COMPLETE when the Hound was destroyed, ESCAPED when it withdrew
 | Keep the Tern's hull above zero | `survive` |
 | Return to Tamsin Station | `return` (new): done on arrival home |
 
-## 7. Commands and state (phase 2)
+## 7. Commands and state (phase 2; built as below)
 
 All through the existing validation and apply path (CD 3: a person, a bot and automation differ only in what they
 decide). Each new control goes into `docs/mockups/consoles.html` for the owner's approval before it is built
@@ -225,17 +228,20 @@ decide). Each new control goes into `docs/mockups/consoles.html` for the owner's
 
 | Command | From | Does |
 | --- | --- | --- |
-| `Reactor(Run)` | Engineering | Raises the reactor from standby (PG's ramp) |
-| `Breaker(drive, closed)` | Engineering | The existing breaker command on the drive's breaker |
-| `Shore(bool)` | Engineering | Takes or drops shore power; dropping it is refused while the reactor cannot carry the load |
-| `Undock` | Helm, held 0.6 s | Opens the clamps when DRIVE is green and the order is given |
-| `Jump(poi)` / `JumpAbort` | Helm, held 0.6 s (M 3) | Spools toward the point of interest the captain ordered |
-| `Sweep` | Science | The 20 s sweep |
-| `Order(Undock)`, `Order(Jump(poi))`, `Order(Home)` | Captain | The captain's order verbs, shown on every console's title band |
+| `Power(Breaker(drive group))` | Engineering | The existing breaker command, on the drive's group |
+| `Shore(bool)` | Engineering | Connects or drops shore power, docked only |
+| `Undock` | Helm, held 0.6 s | Opens the clamps when DRIVE is ready (refused `NotReady` otherwise) |
+| `Jump(true)` / `Jump(false)` | Helm, held 0.6 s (M 3) | Spools toward the patrol's next place (refused `MassLocked` or `NotReady` in the cooldown), or aborts |
+| `Sweep` | Science | The 20 s sweep at the point the Tern is at |
+| `Patrol(Undock)`, `Patrol(Jump)` | Captain | The captain's standing order to the helm; a separate command, not a `stations.json` verb, so no console draws it before its mockup is approved |
 
-The snapshot gains a `patrol` block of 6 bytes: the phase, the waypoint's index, the clamps' state, the spool's
-fraction (0-255), the sweep's fraction and the jump's tick parity (the client times the streaks from it). The Tern's
-pose is already `f64` in the system frame. A jump is one reliable event (FN 12).
+`Phase::Patrol` (wire byte 4) is the phase of a patrol outside a fight; Engage is the drill's, entered at the
+encounter. The snapshot gains a `patrol` block of about 50 bytes: the stage, the drill's local origin in the system
+frame (three `f64`, so a client can place the sky), the place it is at and the next, seven flags (shore, the drive's
+breaker open, drive ready, spooling, sweeping, undocked, mass locked), the spool's and the sweep's fractions, the
+cooldown, each place swept, the standing order and the jumps made. `PROTOCOL` is 15. Two refusals join: `NotReady`
+and `MassLocked`. The drill's positions stay small: its frame's origin moves to the arrival point at each jump (a
+floating origin, CLAUDE.md 7), so the wire's 1,000 km position limit and the client's `f32` never see 1e11 m.
 
 ## 8. The phases on the server
 
@@ -253,7 +259,7 @@ lines.
 
 | Station | Docked and undocking | Departing and the jumps | At Pell | At the Shoals | Home |
 | --- | --- | --- | --- | --- | --- |
-| Engineering | Reactor to RUN, the drive's breaker, SHORE off. "Reactor coming up", "Drive on line", "Off shore power" | Frees 20 MW for the spool. "Twenty megawatts to the jump drive" | | As the drill. "Rerouting round the damage" | "Spool power ready" |
+| Engineering | The drive's breaker, SHORE off. "Off shore power" (the computer: "Drive on line") | The spool draws on the drive's own power (as built) | | As the drill. "Rerouting round the damage" | |
 | Helm | Waits for the order; UNDOCK; backs out on the limits. "Clamps released", "Clear of the berth" | Burns clear of the lock, aligns, holds. "Clear of the station", "Aligned", "Jumping" | "Holding at the beacon" | As the drill (`bot` profile: bow on at 1,500 m, weaving) | "Aligned for home" |
 | Tactical | Weapons SAFE. "Weapons safe" | Past 5 km: "Weapons free" | | As the drill. "Locked on the Hound", "Missile away" | |
 | Science | Traffic on the plot | | SWEEP. "Sweep clear" | "Contact: Hound class at the relay", "Two fighters launching" | |
@@ -384,6 +390,29 @@ habitat ring (the cradle drawn in the feed as in the walk's bow camera today).
 | The beacons' blink from data | `data/space/exterior.json` `beacons` | Validated with the file |
 | Windows on other decks (finding 7) | | The ready room's window in the captures; deck B's seen through the medbay's door in a run |
 
+## 12a. Built in phase 2 (2026-10-14)
+
+| Item | Where | Check |
+| --- | --- | --- |
+| The system file and its loader: bodies, stations with a berth's pose and departure path, points with arrival points, mass locks, the sky from any point | `data/space/systems/shoals.json`, `crates/sc-core/src/system.rs` | Tests: the berth shows the dock view's sun and planet within 1 degree, Tamsin 17.5 degrees, Orrin 16.9 at the beacon, every arrival clear of every lock, the star dimmer at the Shoals |
+| The jump drive's data | `data/ships/tern/jump.json` | Validated |
+| The patrol: phases, shore, the drive's breaker, the clamps, the departure flown under the berth's limits, the spool, alignment, mass locks, the cooldown, the sweep, the encounter placed from the arrival, the jump home, the outcome | `crates/sc-core/src/combat/patrol.rs`, `combat/mod.rs` | Tests: clamped in the berth, clamps refused until the drive is ready, the departure 107 m out at no more than 4 m/s in 30-45 s, the station's lock, a crew of automation from the berth to the Hound, the patrol going on after the fight and ending home |
+| The bots' and automation's patrol (one rule, `patrol::decide`) and their lines through crew chat | `patrol.rs`, `sc-net/src/bot.rs`, `data/crew/chat.json` | Tests on each decision; a server test with four bot clients that undock, jump to the Pell beacon, sweep it and say "Off shore power", "Helm, take us out", "Releasing the clamps", "Spooling the jump drive", "Sweeping" |
+| The objectives `undock`, `sweep`, `return` | `combat/data.rs`, the OBJECTIVES tab | A test on each |
+| The protocol: `Phase::Patrol`, the patrol block, the commands, `PROTOCOL` 15 | `sc-net/src/msg.rs` | Round-trip tests; a patrol's snapshot fits one datagram with the grid or the routing |
+| The client: the mission by `--mission` (a server's welcome loads its own), the sky from the system file (the star's direction, size and light, the near planet's look), the starbase and relay placeholders where the system has them, the berth's cradle (the deck's `outside` rooms) carried with the berth as the Tern leaves it | `crates/sc-client/src/drill.rs`, `drill_bridge.rs`, `outside.rs` | A test of the sky at the Pell beacon; captures |
+| The playtest's patrol script: out of the bridge's and the mess's windows as the patrol goes on, then to work | `crates/sc-client/src/playtest.rs` | A test holds its windows to the layout's patches |
+| The new console controls as a mockup for approval, not built | `docs/mockups/patrol-consoles.html` | Shots |
+
+Measured on the Pi 5 (release, single player, NPC crew on foot): the drive ready and UNDOCK at 0:33, clear of the
+berth at 1:12 (39 s with the clamps, design 4.2's 39), the spool from 1:41 and the jump at 2:21 (40 s), the sweep
+20 s, the second jump at 4:02, the Hound engaged at once. A crew of automation in a test: clear of the berth after
+40.5 s and the first jump 59.6 s after that.
+
+Not built yet: the jump's streaks and flash, motes, far bodies' discs and a banded gas giant in the sky program (Orrin
+is drawn with the terran look's fields in its own colours), the belt's far rocks, the station drawn as a point beyond
+200 km, the console controls (awaiting approval), docking again at the end, the weapons' 5 km safe rule.
+
 ## 13. The Pi 5 budget
 
 Against `engine-stack` 5.
@@ -405,8 +434,8 @@ the built change in a release build.
 
 | File | Holds |
 | --- | --- |
-| `data/space/systems/shoals.json` (phase 2) | The bodies, their looks, the stations and their berths, the points of interest and their arrival points; the star's `light_exponent` and `d_ref` |
-| `data/missions/patrol-shoals.json` (phase 2) | The drill's fields (stations, orders by phase, objectives, `enemy`, `enemy_start_m`, `waypoint_m`, countdown, limits) and the patrol's: `system`, `berth`, `route`, `encounter`, `home`, `shore_mw` 12, `reactor_standby_frac` 0.10, `clamps_s` 3, `depart_slow_m` 10, `depart_slow_mps` 1, `depart_mps` 4, `weapons_safe_m` 5,000, `sweep_s` 20, `sweep_range_m` 50,000 |
+| `data/space/systems/shoals.json` (built) | The bodies, their looks, the stations and their berths, the points of interest and their arrival points; the star's `light_exponent` and `d_ref` |
+| `data/missions/patrol-shoals.json` (built) | The drill's fields (stations, orders, objectives, `enemy`, `enemy_start_m`, `waypoint_m`, countdown, limits) and the `patrol` block: `system`, `station`, `berth`, `route`, `encounter`, `clamps_s` 3, `drive_ready_min` 0.5, `sweep_s` 20, `sweep_range_m` 50,000, and a crew's manner (`clear_mps` 150, `loiter_mps` 40, `resend_s` 2). The berth's departure limits (1 m/s for 10 m, then 4 m/s to 107 m) are its path's legs in the system file, so any station's shape keeps them |
 | `data/space/exterior.json` | Phase 1: `beacons` (`period_s` 1.0, `on_s` 0.15, `min_radius_deg` 0.15; the colours are the placeholder generator's, as the Hound's are). Phase 2: `sun.dir`, `planet.dir` and `planet.radius_deg` move into the system file and the berth's attitude; the looks stay |
 | `data/ships/exteriors.json` | Read, not changed: `sun_dir_ship` and `ambient_fraction`, the hull bake's light |
 

@@ -4,14 +4,12 @@
 
 ### Requirement: The patrol starts docked at the starbase
 
-The patrol mission SHALL start with the Tern docked in its berth at Tamsin Station on shore power, its reactor at
-standby and its drive's breaker open, and the crew SHALL walk to their stations to bring the drive up before the Tern
-can leave.
+The patrol mission SHALL start with the Tern docked in its berth at Tamsin Station on shore power with its impulse
+drive's breaker open, and the crew SHALL walk to their stations to bring the drive up before the Tern can leave.
 
 #### Scenario: The drive must be up before the clamps open
-- **WHEN** helm holds UNDOCK before engineering has raised the reactor, closed the drive's breaker and dropped shore
-  power
-- **THEN** the clamps stay closed and helm's console shows DRIVE not ready
+- **WHEN** helm holds UNDOCK before engineering has closed the drive's breaker and dropped shore power
+- **THEN** the clamps stay closed and the command is refused as not ready
 
 ### Requirement: Undocking backs the Tern out of the berth under its limits
 
@@ -63,5 +61,5 @@ bots alike, and each bot SHALL say what it does in the crew chat.
 
 #### Scenario: The engineering bot starts the drive
 - **WHEN** a bot holds engineering in the docked phase
-- **THEN** it walks to its station, raises the reactor, closes the drive's breaker and drops shore power, and says
-  "Reactor coming up", "Drive on line" and "Off shore power"
+- **THEN** it walks to its station, closes the drive's breaker and drops shore power, and says "Off shore power", and
+  the ship's computer reports "Drive on line"

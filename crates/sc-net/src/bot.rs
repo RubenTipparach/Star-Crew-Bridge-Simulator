@@ -22,6 +22,7 @@ use sc_core::combat::automation::{self, Memory};
 use sc_core::combat::bodies::Posture;
 use sc_core::combat::chat::{self, Said, Voice};
 use sc_core::combat::data::{DrillData, Profile};
+use sc_core::combat::patrol::{self, PatrolMemory};
 use sc_core::combat::{Bridge, Command, Phase, Station};
 
 /// A bot playing one station.
@@ -48,6 +49,8 @@ pub struct Bot {
     voice: Voice,
     /// A hunting helm has said it is bringing her about onto the hostile.
     hunting: bool,
+    /// Its patrol decisions' memory (patrol-mission design 9).
+    patrol_mem: PatrolMemory,
 }
 
 impl Bot {
@@ -69,6 +72,7 @@ impl Bot {
             manual: false,
             voice: Voice::default(),
             hunting: false,
+            patrol_mem: PatrolMemory::default(),
         }
     }
 
@@ -142,11 +146,25 @@ impl Bot {
         match s.phase() {
             Some(Phase::Muster) => {
                 self.mem = Memory::default();
+                self.patrol_mem = PatrolMemory::default();
                 self.next_s = 0.0;
                 self.hostile_near_s = f64::NEG_INFINITY;
                 let seen = *self.muster_seen.get_or_insert(now);
                 if !s.ready() && now - seen >= self.read_s {
                     s.set_ready(true);
+                }
+            }
+            // A patrol under way (patrol-mission design 9): the station's part by the rule the drill's automation uses.
+            Some(Phase::Patrol) => {
+                self.muster_seen = None;
+                if self.manual {
+                    self.patrol_mem = PatrolMemory::default();
+                    return;
+                }
+                let cmds = self.patrol_part(s, data, station, now, false);
+                self.say_for(data, station, &cmds, &[], now);
+                for c in cmds {
+                    s.command(c);
                 }
             }
             Some(Phase::Engage) => {
@@ -211,15 +229,7 @@ impl Bot {
                     Station::Gunner => Vec::new(),
                 };
                 // The other stations, and every station's orders, at the profile's reaction time.
-                let react = match station {
-                    Station::Helm => p.helm.reaction_s,
-                    Station::Tactical => p.tactical.reaction_s,
-                    Station::Engineering => p.engineering.reaction_s,
-                    Station::Science => p.science.reaction_s,
-                    Station::Captain => p.captain.reaction_s,
-                    Station::LaserPort | Station::LaserStbd => p.lasers.reaction_s,
-                    Station::Gunner => p.gunner.reaction_s,
-                };
+                let react = p.reaction_s(station);
                 if now >= self.next_s {
                     self.next_s = now + react;
                     if let Some(b) = s.latest().map(|x| x.bridge.clone()) {
@@ -235,6 +245,8 @@ impl Bot {
                         }
                     }
                 }
+                // In a patrol the jump drive works in a fight: the station's part of it (patrol-mission 5.3).
+                cmds.extend(self.patrol_part(s, data, station, clock, true));
                 let orders = s.latest().map(|x| x.bridge.orders.clone()).unwrap_or_default();
                 self.say_for(data, station, &cmds, &orders, clock);
                 for c in cmds {
@@ -243,6 +255,22 @@ impl Bot {
             }
             _ => self.muster_seen = None,
         }
+    }
+
+    /// The station's patrol commands now (`patrol::decide`), from the newest snapshot; in a fight without the helm's
+    /// flying, which the fight's own rule does.
+    fn patrol_part(&mut self, s: &Session, data: &DrillData, station: Station, now: f64, fight: bool) -> Vec<Command> {
+        let (Some(snap), Some(pd)) = (s.latest(), data.patrol.as_ref()) else { return Vec::new() };
+        let captain_manned = s.crew.iter().any(|c| c.station == Some(Station::Captain));
+        let Some(pic) = snap.patrol.as_ref().and_then(|p| p.picture(data, &snap.ships, captain_manned)) else {
+            return Vec::new();
+        };
+        let react = self.profile.reaction_s(station);
+        let mut cmds = patrol::decide(station, &pic, &pd.block, &mut self.patrol_mem, now, react);
+        if fight {
+            cmds.retain(|c| !matches!(c, Command::Helm(_) | Command::Stick { .. }));
+        }
+        cmds
     }
 
     /// On foot: decide where to be. Returns whether the bot is seated at a station and should play it.

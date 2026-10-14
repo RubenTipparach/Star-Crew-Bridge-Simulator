@@ -1523,7 +1523,20 @@ fn objectives_view(snap: &Snapshot, tern: &ShipSnap, hound: &ShipSnap, data: &Dr
     let m = &data.mission;
     let enemy_hull = if hound.alive { hound.hull / data.enemy.combat.hull_mj.max(1e-9) } else { 0.0 };
     let tern_hull = tern.hull / data.tern_combat.hull_mj.max(1e-9);
-    let facts = ObjectiveFacts { enemy_hull, tern_hull, fighters_down: snap.stats.fighters_down };
+    // The patrol's facts (patrol-mission design 6): the undock, the places swept by id, home.
+    let p = snap.patrol.as_ref();
+    let places = data.patrol.as_ref().map(|d| d.places.as_slice()).unwrap_or(&[]);
+    let swept: Vec<String> = p
+        .map(|p| places.iter().zip(&p.swept).filter(|(_, s)| **s).skip(1).map(|(x, _)| x.id.clone()).collect())
+        .unwrap_or_default();
+    let facts = ObjectiveFacts {
+        enemy_hull,
+        tern_hull,
+        fighters_down: snap.stats.fighters_down,
+        undocked: p.is_some_and(|p| p.undocked),
+        swept: &swept,
+        home: p.is_some_and(|p| p.stage == sc_core::combat::patrol::Stage::Home),
+    };
     let rows = m
         .objectives
         .iter()
@@ -1536,7 +1549,8 @@ fn objectives_view(snap: &Snapshot, tern: &ShipSnap, hound: &ShipSnap, data: &Dr
                     let n = o.count.unwrap_or(1);
                     Some(format!("{} / {n}", facts.fighters_down.min(n)))
                 }
-                None => None,
+                // A patrol's steps are done or not: the row's mark says it, no number (CLAUDE.md 10).
+                Some(ObjectiveKind::Undock | ObjectiveKind::Sweep | ObjectiveKind::Return) | None => None,
             };
             let state = match state {
                 ObjectiveState::Done => "done",

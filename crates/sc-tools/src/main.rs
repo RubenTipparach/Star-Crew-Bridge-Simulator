@@ -53,7 +53,7 @@ fn check_data(root: &Path) -> Result<usize, String> {
     let read = |rel: &str| std::fs::read_to_string(root.join(rel)).map_err(|e| format!("{rel}: cannot be read: {e}"));
     let drill = sc_core::combat::data::DRILL_FILES.map(read);
     let drill = drill.into_iter().collect::<Result<Vec<String>, String>>()?;
-    let missions = ["data/missions/drill-hound.json"];
+    let missions = ["data/missions/patrol-shoals.json", "data/missions/drill-hound.json"];
     let mut drill_data = None;
     for m in missions {
         let texts: [&str; sc_core::combat::data::DRILL_FILE_COUNT] = std::array::from_fn(|i| drill[i].as_str());

@@ -52,6 +52,8 @@ pub struct BridgeView {
     panel_glow: f32,
     /// The hull (tern-exterior 4): the bow's rim and the forward hull through the bridge's windows.
     hull: Option<crate::hull::HullView>,
+    /// The dock's cradle (the deck file's `outside` rooms): each mesh and its origin, the docked Tern's frame.
+    cradle: Vec<(Mesh, [f64; 3])>,
     /// Triangles drawn for the rooms.
     pub triangles: usize,
     /// The eye's vertical field of view, degrees (Options, game-menu 3).
@@ -81,7 +83,7 @@ impl BridgeView {
         let d = sc_core::deck::read(&bytes).map_err(|e| format!("{}: {e}", path.display()))?;
         let t = &d.index.textures;
         let tex = r.make_texture_array_mips(t.size_px, t.layers, &d.texture_levels());
-        let (mut rooms, mut figures, mut triangles) = (Vec::new(), Vec::new(), 0);
+        let (mut rooms, mut figures, mut triangles, mut cradle) = (Vec::new(), Vec::new(), 0, Vec::new());
         for c in &d.index.compartments {
             let idx = d.indices_of(c);
             match (c.deck.as_str(), c.id.as_str()) {
@@ -89,7 +91,7 @@ impl BridgeView {
                     id.trim_start_matches("figure_").to_owned(),
                     r.make_mesh(d.vertices_of(c), Indices::U32(&idx)),
                 )),
-                ("outside", _) => {}
+                ("outside", _) => cradle.push((r.make_mesh(d.vertices_of(c), Indices::U32(&idx)), c.origin_m)),
                 (deck, _) => {
                     if deck == "A" {
                         triangles += idx.len() / 3;
@@ -131,6 +133,7 @@ impl BridgeView {
             panel_first: t.panel_first,
             panel_glow,
             hull,
+            cradle,
             triangles,
             fov_deg,
             points: Vec::new(),
@@ -221,6 +224,27 @@ impl BridgeView {
         // Lit by the sky's sun, turned into the ship's frame by the Tern's attitude (patrol-mission design 11.3).
         if let Some(h) = &self.hull {
             h.draw(r, t, proj * view, eye, crate::outside::sun_in_ship(ext, out.attitude));
+        }
+        // The berth's cradle while the Tern is in it or near it (patrol-mission design 3): the deck's girders, in the
+        // docked frame, carried into the Tern's frame now.
+        if let Some(m) = out.cradle {
+            let eye64 = glam::DVec3::from_array(eye);
+            for (mesh, o) in &self.cradle {
+                let model = glam::DMat4::from_translation(-eye64)
+                    * m
+                    * glam::DMat4::from_translation(glam::DVec3::from_array(*o));
+                let p = DeckParams {
+                    mvp: proj * view * model.as_mat4(),
+                    state_weights: [1.0, 0.0, 0.0],
+                    flash_dir: Vec3::Z,
+                    flash: 0.0,
+                    panel_first: u32::MAX,
+                    panel_glow: 0.0,
+                    clip_y: f32::MAX,
+                    relight: sc_render::NO_RELIGHT,
+                };
+                r.draw_deck(t, mesh, DeckProgram::Textured, &p, Some(&self.tex));
+            }
         }
         // The viewscreens: the feed's picture on a quad 3 cm in front of each, as the walk draws them.
         if let Some((feed, scanlines)) = out.screen {
@@ -360,6 +384,8 @@ pub struct Outside<'a> {
     pub lighting: [f32; 3],
     /// The viewscreens' picture and its scan lines' depth, once rendered this frame.
     pub screen: Option<(&'a Target, f32)>,
+    /// The berth's cradle while it is near: the docked Tern's frame into the Tern's now (patrol-mission design 3).
+    pub cradle: Option<glam::DMat4>,
     /// Draws the Hound, missiles, bolts and bursts into the pass, given the view-projection from the bridge's eye in
     /// the system's frame (directions only: positions are taken relative to the eye).
     pub objects: DrawOutside<'a>,

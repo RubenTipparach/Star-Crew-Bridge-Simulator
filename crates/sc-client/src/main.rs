@@ -672,6 +672,7 @@ impl Client {
                     hand_test: hand_dir,
                     playtest: false,
                     all_hands: false,
+                    mission: "drill-hound".into(),
                 };
                 platform::hand_over(move |_| drill::DrillApp::new(args).map(|c| Box::new(c) as Box<dyn App>));
             }
@@ -1547,6 +1548,7 @@ fn main() -> ExitCode {
             hand_test: None,
             playtest: false,
             all_hands: false,
+            mission: "drill-hound".into(),
         };
         return platform::run(cfg, move |gl| {
             println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);
@@ -1583,6 +1585,12 @@ fn main() -> ExitCode {
             hand_test: None,
             playtest: args.iter().any(|a| a == "--playtest"),
             all_hands: args.iter().any(|a| a == "--all-hands"),
+            mission: args
+                .iter()
+                .position(|a| a == "--mission")
+                .and_then(|i| args.get(i + 1))
+                .cloned()
+                .unwrap_or_else(|| "drill-hound".into()),
         };
         return platform::run(cfg, move |gl| {
             println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);

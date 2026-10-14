@@ -803,6 +803,22 @@ pub struct Profile {
     pub gunner: GunnerProfile,
 }
 
+impl Profile {
+    /// A station's reaction time under this profile, seconds.
+    pub fn reaction_s(&self, s: crate::combat::Station) -> f64 {
+        use crate::combat::Station::*;
+        match s {
+            Helm => self.helm.reaction_s,
+            Tactical => self.tactical.reaction_s,
+            Engineering => self.engineering.reaction_s,
+            Science => self.science.reaction_s,
+            Captain => self.captain.reaction_s,
+            LaserPort | LaserStbd => self.lasers.reaction_s,
+            Gunner => self.gunner.reaction_s,
+        }
+    }
+}
+
 /// `data/stations.json`.
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -965,6 +981,12 @@ pub enum ObjectiveKind {
     Survive,
     /// `count` of the enemy's fighters shot down.
     DestroyFighters,
+    /// The Tern out of its berth (patrol-mission design 6).
+    Undock,
+    /// Science's sweep of the point `point` done.
+    Sweep,
+    /// The Tern home at its station after the patrol.
+    Return,
 }
 
 /// One of a mission's objectives: its words, as the briefing and the OBJECTIVES tab read them, and what measures it
@@ -983,6 +1005,9 @@ pub struct Objective {
     /// A destroy-fighters objective's number of fighters.
     #[serde(default)]
     pub count: Option<u32>,
+    /// A sweep objective's point of interest (the system file's id).
+    #[serde(default)]
+    pub point: Option<String>,
 }
 
 /// Where an objective stands.
@@ -993,17 +1018,22 @@ pub enum ObjectiveState {
     Failed,
 }
 
-/// What an objective is measured against: the enemy's and the Tern's hull as shares of full, and the fighters down.
+/// What an objective is measured against: the enemy's and the Tern's hull as shares of full, the fighters down, and
+/// the patrol's undock, the points swept (by id) and the return.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct ObjectiveFacts {
+pub struct ObjectiveFacts<'a> {
     pub enemy_hull: f64,
     pub tern_hull: f64,
     pub fighters_down: u32,
+    pub undocked: bool,
+    pub swept: &'a [String],
+    pub home: bool,
 }
 
 impl Objective {
     /// Where it stands and how far it has gone (0-1), the one rule the OBJECTIVES tab draws (objectives-tab 2).
-    pub fn measure(&self, f: &ObjectiveFacts) -> (ObjectiveState, f64) {
+    pub fn measure(&self, f: &ObjectiveFacts<'_>) -> (ObjectiveState, f64) {
+        let flag = |done: bool| if done { (ObjectiveState::Done, 1.0) } else { (ObjectiveState::Progress, 0.0) };
         match self.kind {
             Some(ObjectiveKind::Destroy) => {
                 let h = f.enemy_hull.clamp(0.0, 1.0);
@@ -1018,6 +1048,9 @@ impl Objective {
                 let k = (f64::from(f.fighters_down) / f64::from(n)).min(1.0);
                 (if f.fighters_down >= n { ObjectiveState::Done } else { ObjectiveState::Progress }, k)
             }
+            Some(ObjectiveKind::Undock) => flag(f.undocked),
+            Some(ObjectiveKind::Sweep) => flag(self.point.as_ref().is_some_and(|p| f.swept.contains(p))),
+            Some(ObjectiveKind::Return) => flag(f.home),
             None => (ObjectiveState::Progress, 0.0),
         }
     }
@@ -1069,6 +1102,9 @@ pub struct MissionFile {
     /// alone: no teams aboard (All hands). The code default is `teams`.
     #[serde(default = "teams_default")]
     pub damage_control: String,
+    /// The patrol (patrol-mission): a mission that starts docked and travels; none for the drill.
+    #[serde(default)]
+    pub patrol: Option<crate::combat::patrol::PatrolBlock>,
 }
 
 /// The mission's `damage_control` when it names none.
@@ -1105,6 +1141,14 @@ impl Validate for MissionFile {
                     1,
                     crate::combat::FIGHTER_IDS.len() as i64,
                 ),
+                Some(ObjectiveKind::Sweep) => {
+                    let named =
+                        self.patrol.as_ref().is_some_and(|p| o.point.as_ref().is_some_and(|x| p.route.contains(x)));
+                    c.count(&format!("objectives[{i}].point (on the patrol's route)"), i64::from(named), 1, 1);
+                }
+                Some(ObjectiveKind::Undock | ObjectiveKind::Return) => {
+                    c.count(&format!("objectives[{i}].kind (a patrol's)"), i64::from(self.patrol.is_some()), 1, 1);
+                }
                 Some(ObjectiveKind::Survive) | None => {}
             }
         }
@@ -1130,6 +1174,9 @@ impl Validate for MissionFile {
         c.number("debrief_s", self.debrief_s, 1.0, 600.0);
         c.number("debrief_max_s", self.debrief_max_s, self.debrief_s, 1800.0);
         c.number("bot_ready_s", self.bot_ready_s, 0.0, 120.0);
+        if let Some(p) = &self.patrol {
+            p.validate(c);
+        }
     }
 }
 
@@ -1162,10 +1209,12 @@ pub struct DrillData {
     pub power: crate::power::PowerData,
     /// Crew chat's vocabulary and limits (crew-chat design 2 and 4).
     pub chat: crate::combat::chat::ChatData,
+    /// The patrol, resolved against its system and the jump drive, when the mission is one.
+    pub patrol: Option<crate::combat::patrol::PatrolData>,
 }
 
 /// How many files [`DRILL_FILES`] names: the size of the array [`DrillData::parse`] takes.
-pub const DRILL_FILE_COUNT: usize = 14;
+pub const DRILL_FILE_COUNT: usize = 16;
 
 /// The files a drill reads, relative to the repository's root, in the order [`DrillData::parse`] takes them.
 pub const DRILL_FILES: [&str; DRILL_FILE_COUNT] = [
@@ -1183,6 +1232,9 @@ pub const DRILL_FILES: [&str; DRILL_FILE_COUNT] = [
     "data/ships/tern/atmosphere.json",
     crate::combat::damage::TERN_FILES[3],
     crate::combat::chat::CHAT_FILE,
+    "data/ships/tern/jump.json",
+    // The one star system so far (patrol-mission design 2); a patrol names it and must name this one.
+    "data/space/systems/shoals.json",
 ];
 
 /// `atmosphere.json`'s `thermal.initial_k`: a room's air temperature until life support runs, K. The rest of the
@@ -1274,6 +1326,22 @@ impl DrillData {
         // Crew chat's vocabulary: a line for every captain's verb, and the layout's names for its rooms and systems.
         let mut chat: crate::combat::chat::ChatData = parse(DRILL_FILES[13], texts[13])?;
         chat.bind(DRILL_FILES[13], &stations.orders, texts[7], &enemy.name)?;
+        let jump: crate::combat::patrol::JumpData = parse(DRILL_FILES[14], texts[14])?;
+        let system: crate::system::SystemFile = parse(DRILL_FILES[15], texts[15])?;
+        let patrol = match mission.patrol.clone() {
+            None => None,
+            Some(b) => {
+                if b.system != system.id {
+                    return Err(missing(mission_file, "patrol.system", &b.system));
+                }
+                let d = crate::combat::patrol::PatrolData::resolve(b, system, jump).map_err(|m| DataError {
+                    file: mission_file.to_owned(),
+                    field: "patrol".into(),
+                    message: m,
+                })?;
+                Some(d)
+            }
+        };
         Ok(Self {
             tern_flight: flight.flight,
             tern_shields: shields.shields,
@@ -1288,11 +1356,25 @@ impl DrillData {
             damage,
             power,
             chat,
+            patrol,
         })
     }
 
     /// The shipped files, compiled in: for tests and for tools that run without the repository beside them.
     pub fn shipped() -> Self {
+        Self::shipped_with("data/missions/drill-hound.json", include_str!("../../../../data/missions/drill-hound.json"))
+    }
+
+    /// The shipped files with the patrol mission (`data/missions/patrol-shoals.json`), for tests.
+    pub fn shipped_patrol() -> Self {
+        Self::shipped_with(
+            "data/missions/patrol-shoals.json",
+            include_str!("../../../../data/missions/patrol-shoals.json"),
+        )
+    }
+
+    /// The shipped files with a mission's text.
+    fn shipped_with(mission_file: &str, mission_text: &str) -> Self {
         Self::parse(
             [
                 include_str!("../../../../data/ships/tern/flight.json"),
@@ -1309,9 +1391,11 @@ impl DrillData {
                 include_str!("../../../../data/ships/tern/atmosphere.json"),
                 include_str!("../../../../data/ships/tern/kit.json"),
                 include_str!("../../../../data/crew/chat.json"),
+                include_str!("../../../../data/ships/tern/jump.json"),
+                include_str!("../../../../data/space/systems/shoals.json"),
             ],
-            "data/missions/drill-hound.json",
-            include_str!("../../../../data/missions/drill-hound.json"),
+            mission_file,
+            mission_text,
         )
         .expect("the shipped drill data is valid")
     }

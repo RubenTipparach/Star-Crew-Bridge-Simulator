@@ -13,6 +13,7 @@ pub mod chat;
 pub mod damage;
 pub mod data;
 pub mod fighters;
+pub mod patrol;
 
 use crate::power;
 use crate::replay::ReplayHash;
@@ -208,12 +209,19 @@ pub enum Phase {
     Engage = 2,
     /// The result.
     Debrief = 3,
+    /// A patrol under way with no fight on (patrol-mission): docked, departing, in transit, at a point.
+    Patrol = 4,
 }
 
 impl Phase {
     /// From its wire byte.
     pub fn from_u8(v: u8) -> Option<Self> {
-        [Self::Muster, Self::Countdown, Self::Engage, Self::Debrief].get(usize::from(v)).copied()
+        [Self::Muster, Self::Countdown, Self::Engage, Self::Debrief, Self::Patrol].get(usize::from(v)).copied()
+    }
+
+    /// The crew are at work: the consoles take commands (Engage, or a patrol under way).
+    pub fn live(self) -> bool {
+        matches!(self, Self::Engage | Self::Patrol)
     }
 }
 
@@ -582,6 +590,16 @@ pub enum Command {
     GunnerTrigger(bool),
     /// Engineering: the power grid and the reactor's loop (power-grid 2.10).
     Power(PowerCmd),
+    /// Engineering: shore power connected (true) or dropped, docked (patrol-mission 4.1).
+    Shore(bool),
+    /// Helm: open the clamps and back out of the berth (patrol-mission 4.2).
+    Undock,
+    /// Helm: spool the jump drive toward the patrol's next place (true), or abort the spool (patrol-mission 5).
+    Jump(bool),
+    /// Science: sweep the point the Tern is at (patrol-mission 5.2).
+    Sweep,
+    /// The captain: a standing order to the helm in the patrol (patrol-mission 9).
+    Patrol(patrol::PatrolOrder),
 }
 
 /// Engineering's hands on the power grid (power-grid 5, reactor-cooling 5), as the console mockup's controls.
@@ -638,7 +656,10 @@ impl Command {
             Self::LaserFire(b) => s.laser_bank() == Some(*b),
             Self::Decoy => s == Station::Tactical,
             Self::GunnerAim { .. } | Self::GunnerTrigger(_) => s == Station::Gunner,
-            Self::Power(_) => s == Station::Engineering,
+            Self::Power(_) | Self::Shore(_) => s == Station::Engineering,
+            Self::Undock | Self::Jump(_) => s == Station::Helm,
+            Self::Sweep => s == Station::Science,
+            Self::Patrol(_) => s == Station::Captain,
         }
     }
 }
@@ -674,6 +695,10 @@ pub enum Refusal {
     Damaged = 13,
     /// The body is not standing within reach of that seat: walk there (bridge-stations 6).
     TooFar = 14,
+    /// The ship is not ready for that: the drive, the umbilical or the jump's cooldown (patrol-mission).
+    NotReady = 15,
+    /// A mass lock holds the jump drive (flight-and-navigation 7).
+    MassLocked = 16,
 }
 
 impl Refusal {
@@ -695,6 +720,8 @@ impl Refusal {
             NotCharged,
             Damaged,
             TooFar,
+            NotReady,
+            MassLocked,
         ]
         .into_iter()
         .find(|r| *r as u8 == v)
@@ -716,6 +743,8 @@ impl Refusal {
             Self::TooFar => "Walk to the seat",
             Self::Damaged => "Damaged",
             Self::NotCharged => "Not charged",
+            Self::NotReady => "Not ready",
+            Self::MassLocked => "Mass lock",
         }
     }
 }
@@ -1181,6 +1210,10 @@ pub struct Drill {
     /// Seconds the bay's crew have held the reactor panel's reset (power-grid 3).
     reset_held_s: f64,
     hits: u64,
+    /// The patrol, when the mission is one (patrol-mission).
+    pub patrol: Option<patrol::PatrolState>,
+    /// Each automated station's patrol decisions' memory, by `Station as usize`.
+    patrol_mem: [patrol::PatrolMemory; Station::ALL.len()],
 }
 
 fn new_ship(id: u16, side: Side, combat: &CombatBlock, shields: &ShieldBlock, gun: &data::Gun) -> Ship {
@@ -1293,6 +1326,8 @@ impl Drill {
             power_s: 0.0,
             reset_held_s: 0.0,
             hits: 0,
+            patrol: None,
+            patrol_mem: Default::default(),
         };
         d.reset_round();
         d
@@ -1337,6 +1372,7 @@ impl Drill {
         self.power_ask = None;
         self.power_s = 0.0;
         self.reset_held_s = 0.0;
+        self.patrol_start();
     }
 
     fn set_phase(&mut self, phase: Phase) {
@@ -1711,7 +1747,7 @@ impl Drill {
         // Commands, by station, then arrival (CLAUDE.md 6.4).
         let mut queue = std::mem::take(&mut self.queue);
         queue.sort_by_key(|q| (q.0, q.1));
-        if self.phase == Phase::Engage {
+        if self.phase.live() {
             for (st, _, slot, cmd) in queue {
                 if let Err(reason) = self.apply(st, cmd) {
                     if let Some(slot) = slot {
@@ -1731,9 +1767,20 @@ impl Drill {
                 if !self.players.iter().any(|p| p.station.is_some()) {
                     self.set_phase(Phase::Muster);
                 } else if self.phase_s >= self.data.mission.countdown_s {
-                    self.ships[1].active = true;
-                    self.set_phase(Phase::Engage);
+                    if self.patrol.is_some() {
+                        // A patrol starts in the berth; the enemy waits at its point (patrol-mission 5.3).
+                        self.set_phase(Phase::Patrol);
+                    } else {
+                        self.ships[1].active = true;
+                        self.set_phase(Phase::Engage);
+                    }
                 }
+            }
+            Phase::Patrol => {
+                self.patrol_automation();
+                self.bridge_tick();
+                self.patrol_tick();
+                self.damage_tick();
             }
             Phase::Engage => {
                 self.run_automation();
@@ -1741,6 +1788,11 @@ impl Drill {
                 self.engage_tick();
                 self.computer_reports();
                 self.stats.engage_s += DT;
+                // In a patrol the jump drive works in a fight too: it is how the Tern escapes (patrol-mission 5.3).
+                if self.patrol.is_some() {
+                    self.patrol_automation();
+                    self.patrol_drive();
+                }
                 let ended = if !self.ships[1].alive {
                     Some(Outcome::Victory)
                 } else if !self.ships[0].alive {
@@ -1750,9 +1802,17 @@ impl Drill {
                 } else {
                     None
                 };
-                if let Some(o) = ended {
-                    self.outcome = o;
-                    self.set_phase(Phase::Debrief);
+                match (ended, self.patrol.is_some()) {
+                    // The patrol goes on after its fight: the outcome waits for the jump home.
+                    (Some(Outcome::Victory | Outcome::Withdrew), true) => {
+                        self.ships[1].active = false;
+                        self.set_phase(Phase::Patrol);
+                    }
+                    (Some(o), _) => {
+                        self.outcome = o;
+                        self.set_phase(Phase::Debrief);
+                    }
+                    (None, _) => {}
                 }
             }
             Phase::Debrief => {
@@ -1905,15 +1965,7 @@ impl Drill {
                 cmds.push(Command::Decoy);
             }
             // Every automation acknowledges its orders once it has had its reaction time.
-            let react = match s {
-                Station::Helm => profile.helm.reaction_s,
-                Station::Tactical => profile.tactical.reaction_s,
-                Station::Engineering => profile.engineering.reaction_s,
-                Station::Science => profile.science.reaction_s,
-                Station::Captain => profile.captain.reaction_s,
-                Station::LaserPort | Station::LaserStbd => profile.lasers.reaction_s,
-                Station::Gunner => profile.gunner.reaction_s,
-            };
+            let react = profile.reaction_s(s);
             if self.bridge.orders.iter().any(|o| o.to == s && !o.done && t - o.at_s >= react) {
                 cmds.push(Command::Ack(s));
             }
@@ -1974,6 +2026,9 @@ impl Drill {
     /// Apply a validated command from station `from` (the one path for players, bots and automation).
     fn apply(&mut self, from: Station, cmd: Command) -> Result<(), Refusal> {
         validate(&cmd)?;
+        if matches!(cmd, Command::Shore(_) | Command::Undock | Command::Jump(_) | Command::Sweep | Command::Patrol(_)) {
+            return self.apply_patrol(cmd);
+        }
         if let Some(r) = self.apply_bridge(cmd) {
             return r;
         }
@@ -2369,7 +2424,7 @@ impl Drill {
         let (enemy_pos, enemy_vel, enemy_up) =
             (self.ships[1].pos, self.ships[1].vel, self.ships[1].alive && self.ships[1].active);
         let flight = self.data.tern_flight.clone();
-        let waypoint = DVec3::from_array(self.data.mission.waypoint_m);
+        let waypoint = self.waypoint();
         let k = (self.phase_s / flight.jink_period_s).floor() as u64;
         let jink = {
             let mut rng = Rng::for_purpose(self.round_seed(), k, "jink");
@@ -3283,6 +3338,382 @@ impl Drill {
     }
 }
 
+/// The patrol (openspec/changes/patrol-mission): its start in the berth, its tick, the jump drive and the encounter.
+impl Drill {
+    /// Docked in the berth on shore power with the drive's breaker open (design 4.1); none for the drill.
+    fn patrol_start(&mut self) {
+        let Some(d) = self.data.patrol.as_ref() else {
+            self.patrol = None;
+            return;
+        };
+        let st = patrol::PatrolState::new(d);
+        let t = &mut self.ships[0];
+        t.pos = st.local(d.berth_pos);
+        t.rot = d.berth_rot;
+        t.vel = DVec3::ZERO;
+        t.rates = DVec3::ZERO;
+        t.speed_set = 0.0;
+        t.stick = [0.0; 3];
+        t.strafe = [0.0; 2];
+        self.patrol = Some(st);
+        self.patrol_mem = Default::default();
+        if let Some(g) = self.drive_group() {
+            self.power.set_group_breaker(&self.data.power, g, power::Breaker::Open);
+        }
+    }
+
+    /// The power group that feeds the impulse drive (Engineering's breaker for it).
+    pub fn drive_group(&self) -> Option<usize> {
+        patrol::drive_group(&self.data.power)
+    }
+
+    /// Where the helm's COURSE flies, local frame: in a patrol the place it fights at or goes to next, else the
+    /// mission's waypoint (the drill's relay).
+    pub fn waypoint(&self) -> DVec3 {
+        match (&self.patrol, &self.data.patrol) {
+            (Some(s), Some(d)) if self.phase == Phase::Engage => s.local(d.places[s.at].pos),
+            (Some(s), Some(d)) => s.course_point(d),
+            _ => DVec3::from_array(self.data.mission.waypoint_m),
+        }
+    }
+
+    /// The drive is ready for the berth: shore power dropped and the impulse drive working (design 4.1).
+    pub fn drive_ready(&self) -> bool {
+        match (&self.patrol, &self.data.patrol) {
+            (Some(s), Some(d)) => !s.shore && self.capability(0, "impulse_drive") >= d.block.drive_ready_min,
+            _ => false,
+        }
+    }
+
+    /// What holds the jump drive where the Tern is, by name: a hostile ship in reach, a body, a station (FN 7).
+    pub fn mass_lock(&self) -> Option<String> {
+        let (s, d) = (self.patrol.as_ref()?, self.data.patrol.as_ref()?);
+        let (t, e) = (&self.ships[0], &self.ships[1]);
+        if e.active && e.alive && (e.pos - t.pos).length() < d.jump.ship_m {
+            return Some(self.data.enemy.name.clone());
+        }
+        d.system.mass_lock(s.origin + t.pos, d.jump.planet_radii)
+    }
+
+    /// What a station sees of the patrol (design 9).
+    pub fn patrol_picture(&self) -> Option<patrol::PatrolPicture> {
+        let (s, d) = (self.patrol.as_ref()?, self.data.patrol.as_ref()?);
+        let g = self.drive_group();
+        let t = &self.ships[0];
+        Some(patrol::PatrolPicture {
+            stage: s.stage,
+            shore: s.shore,
+            drive_open: g.is_some_and(|g| self.power.group_breaker[g] != power::Breaker::Closed),
+            drive_ready: self.drive_ready(),
+            drive_group: g.unwrap_or(0) as u8,
+            spooling: s.spooling,
+            cooldown_s: s.cooldown_s,
+            locked: self.mass_lock().is_some(),
+            swept_here: s.swept[s.at],
+            sweeping: s.sweeping,
+            done: s.next.is_none() || s.stage == patrol::Stage::Home,
+            ordered: s.ordered,
+            captain_manned: self.operator(Station::Captain) != Operator::Auto,
+            hostile: self.ships[1].active && self.ships[1].alive,
+            next_dir: s.course_point(d) - t.pos,
+            rot: t.rot,
+            rates: t.rates,
+            on_course: t.helm_mode == HelmMode::Course,
+        })
+    }
+
+    /// The ship's computer says a patrol line with its place.
+    fn patrol_say(&mut self, id: &str, place: &str) {
+        if let Some(x) = self.data.chat.line(id, &[("place", place)]) {
+            let now = self.clock_s();
+            self.voices.computer.offer(x, now, &self.data.chat.limits);
+        }
+    }
+
+    /// The empty seats' patrol decisions, by the rule a bot uses (design 9), at the automation's reaction times.
+    fn patrol_automation(&mut self) {
+        let (Some(pic), Some(d)) = (self.patrol_picture(), self.data.patrol.as_ref()) else { return };
+        let block = d.block.clone();
+        let now = self.clock_s();
+        let profile = self.data.profile("automation").clone();
+        for s in Station::ALL {
+            if self.operator(s) != Operator::Auto || !self.data.mission.stations.iter().any(|id| id == s.id()) {
+                continue;
+            }
+            let mem = &mut self.patrol_mem[s as usize];
+            let mut cmds = patrol::decide(s, &pic, &block, mem, now, profile.reaction_s(s));
+            // In a fight the drill's automation flies the helm; the patrol's own decisions are the jump.
+            if self.phase == Phase::Engage {
+                cmds.retain(|c| !matches!(c, Command::Helm(_) | Command::Stick { .. }));
+            }
+            for c in &cmds {
+                if let Some(x) = chat::said_for(&self.data, s, c) {
+                    self.voices.stations[s as usize].offer(x, now, &self.data.chat.limits);
+                }
+            }
+            for c in cmds {
+                let _ = self.apply(s, c);
+            }
+        }
+    }
+
+    /// The patrol's commands (design 7); none in a mission that is not a patrol.
+    fn apply_patrol(&mut self, cmd: Command) -> Result<(), Refusal> {
+        use patrol::Stage;
+        let lock = self.mass_lock();
+        let cap = self.capability(0, "impulse_drive");
+        let (Some(s), Some(d)) = (self.patrol.as_mut(), self.data.patrol.as_ref()) else { return Err(Refusal::NoSuch) };
+        let mut locked_by = None;
+        match cmd {
+            Command::Shore(on) => {
+                if s.stage != Stage::Docked {
+                    return Err(Refusal::WrongPhase);
+                }
+                s.shore = on;
+            }
+            Command::Undock => {
+                if s.stage != Stage::Docked {
+                    return Err(Refusal::WrongPhase);
+                }
+                if s.shore || cap < d.block.drive_ready_min {
+                    return Err(Refusal::NotReady);
+                }
+                s.stage = Stage::Releasing;
+                s.clamps_s = d.block.clamps_s;
+                s.ordered = None;
+            }
+            Command::Jump(true) => {
+                if s.stage != Stage::Underway {
+                    return Err(Refusal::WrongPhase);
+                }
+                if s.next.is_none() {
+                    return Err(Refusal::NoSuch);
+                }
+                if !s.spooling {
+                    if s.cooldown_s > 0.0 {
+                        return Err(Refusal::NotReady);
+                    }
+                    if lock.is_some() {
+                        locked_by = lock;
+                    } else {
+                        s.spooling = true;
+                        s.spool_mj = 0.0;
+                        s.aligned_s = 0.0;
+                        s.ordered = None;
+                    }
+                }
+            }
+            Command::Jump(false) => {
+                s.spooling = false;
+                s.spool_mj = 0.0;
+                s.aligned_s = 0.0;
+            }
+            Command::Sweep => {
+                if s.stage != Stage::Underway {
+                    return Err(Refusal::WrongPhase);
+                }
+                if !s.swept[s.at] && !s.sweeping {
+                    s.sweeping = true;
+                    s.sweep = 0.0;
+                }
+            }
+            Command::Patrol(o) => s.ordered = Some(o),
+            _ => return Err(Refusal::NoSuch),
+        }
+        if let Some(what) = locked_by {
+            self.patrol_say("mass_lock", &what);
+            return Err(Refusal::MassLocked);
+        }
+        Ok(())
+    }
+
+    /// One tick of the patrol outside a fight (design 4): the berth holds the Tern, the clamps open, the departure is
+    /// flown, then the helm flies; the jump drive and the sweep run.
+    fn patrol_tick(&mut self) {
+        use patrol::Stage;
+        let (Some(s), Some(d)) = (self.patrol.as_ref(), self.data.patrol.as_ref()) else { return };
+        let (berth_pos, berth_rot) = (s.local(d.berth_pos), d.berth_rot);
+        let (stage, leg) = (s.stage, s.leg);
+        let legs = d.departure.clone();
+        let tf = scaled_flight(&self.data.tern_flight, self.capability(0, "impulse_drive"));
+        let ready = self.drive_ready();
+        let mut said: Vec<&str> = Vec::new();
+        match stage {
+            Stage::Docked | Stage::Releasing => {
+                // Clamped: the berth holds the Tern where it is (design 4.2).
+                let t = &mut self.ships[0];
+                t.pos = berth_pos;
+                t.rot = berth_rot;
+                t.vel = DVec3::ZERO;
+                t.rates = DVec3::ZERO;
+                let s = self.patrol.as_mut().expect("checked");
+                if stage == Stage::Docked && ready && !s.drive_said {
+                    s.drive_said = true;
+                    said.push("drive_ready");
+                }
+                if stage == Stage::Releasing {
+                    s.clamps_s -= DT;
+                    if s.clamps_s <= 0.0 {
+                        s.stage = Stage::Departing;
+                        said.push("clamps_released");
+                    }
+                }
+            }
+            Stage::Departing => {
+                let (spd, strafe, done) = {
+                    let t = &self.ships[0];
+                    patrol::departure_setpoints(t.pos, t.rot, berth_pos, berth_rot, &legs, leg)
+                };
+                let t = &mut self.ships[0];
+                t.stick = [0.0; 3];
+                t.helm_mode = HelmMode::Hold;
+                t.order = None;
+                if done {
+                    let s = self.patrol.as_mut().expect("checked");
+                    s.leg += 1;
+                    if s.leg >= legs.len() {
+                        s.stage = Stage::Underway;
+                        s.undocked = true;
+                        said.push("clear_of_berth");
+                    }
+                } else {
+                    t.speed_set = spd;
+                    t.strafe = strafe;
+                }
+                fly(&mut self.ships[0], &tf, DT);
+            }
+            Stage::Underway => {
+                self.helm_tick();
+                fly(&mut self.ships[0], &tf, DT);
+            }
+            Stage::Home => {}
+        }
+        for id in said {
+            self.patrol_say(id, "");
+        }
+        self.patrol_drive();
+    }
+
+    /// The jump drive and the sweep (design 5), in and out of a fight: the cooldown runs down, a sweep runs, the
+    /// spool fills at the drive's power while nothing locks it, and when it is full with the bow held on the jump
+    /// vector the Tern jumps.
+    fn patrol_drive(&mut self) {
+        let lock = self.mass_lock();
+        let cap = self.capability(0, "impulse_drive");
+        let (Some(s), Some(d)) = (self.patrol.as_mut(), self.data.patrol.as_ref()) else { return };
+        let j = &d.jump;
+        s.cooldown_s = (s.cooldown_s - DT).max(0.0);
+        let mut said: Vec<(&str, String)> = Vec::new();
+        if s.sweeping {
+            s.sweep = (s.sweep + DT / d.block.sweep_s).min(1.0);
+            if s.sweep >= 1.0 {
+                s.sweeping = false;
+                s.swept[s.at] = true;
+                let e = &self.ships[1];
+                let contact = e.active && e.alive && (e.pos - self.ships[0].pos).length() <= d.block.sweep_range_m;
+                said.push((if contact { "sweep_contact" } else { "sweep_clear" }, d.places[s.at].name.clone()));
+            }
+        }
+        let mut jump_now = false;
+        if s.spooling {
+            if let Some(what) = lock {
+                s.spooling = false;
+                s.spool_mj = 0.0;
+                s.aligned_s = 0.0;
+                said.push(("mass_lock", what));
+            } else {
+                s.spool_mj = (s.spool_mj + j.spool_mw * cap * DT).min(j.spool_mj);
+                let t = &self.ships[0];
+                if patrol::aligned(t.rot, t.rates, s.course_point(d) - t.pos, j) {
+                    s.aligned_s += DT;
+                } else {
+                    s.aligned_s = 0.0;
+                }
+                jump_now = s.spool_mj >= j.spool_mj && s.aligned_s >= j.align_last_s;
+            }
+        }
+        for (id, place) in said {
+            self.patrol_say(id, &place);
+        }
+        if jump_now {
+            self.patrol_jump();
+        }
+    }
+
+    /// The jump (FN 7): the Tern moves to the next place's arrival point, scattered, in one tick, moving as it was;
+    /// the drill's origin moves with it. Arriving at the encounter's point starts the drill's fight; arriving home
+    /// ends the mission.
+    fn patrol_jump(&mut self) {
+        let seed = self.round_seed();
+        let (Some(s), Some(d)) = (self.patrol.as_mut(), self.data.patrol.as_ref()) else { return };
+        let Some(to) = s.next else { return };
+        let mut rng = Rng::for_purpose(seed, u64::from(s.jumps), "arrival");
+        let scatter = loop {
+            let p = DVec3::new(rng.next_f64(), rng.next_f64(), rng.next_f64()) * 2.0 - DVec3::ONE;
+            if p.length_squared() <= 1.0 {
+                break p * d.jump.arrival_scatter_m;
+            }
+        };
+        let place = d.places[to].clone();
+        s.origin = place.arrival + scatter;
+        s.at = to;
+        s.next = if to == 0 {
+            None
+        } else if to + 1 < d.places.len() {
+            Some(to + 1)
+        } else {
+            Some(0)
+        };
+        s.spooling = false;
+        s.spool_mj = 0.0;
+        s.aligned_s = 0.0;
+        s.cooldown_s = d.jump.cooldown_s;
+        s.ordered = None;
+        s.jumps += 1;
+        s.sweep = 0.0;
+        s.sweeping = false;
+        let encounter = to == d.encounter && !s.met;
+        if encounter {
+            s.met = true;
+        }
+        let home = to == 0;
+        if home {
+            s.stage = patrol::Stage::Home;
+        }
+        let met = s.met;
+        // The Tern at the new origin; what it left behind stays behind.
+        self.ships[0].pos = DVec3::ZERO;
+        self.bolts.clear();
+        self.missiles.clear();
+        self.fighters.clear();
+        self.ships[1].active = false;
+        self.patrol_say(if home { "home" } else { "arrived" }, &place.name);
+        if home {
+            self.outcome = if met && !self.ships[1].alive { Outcome::Victory } else { Outcome::Withdrew };
+            self.set_phase(Phase::Debrief);
+        } else if encounter {
+            self.start_encounter();
+        } else if self.phase == Phase::Engage {
+            self.set_phase(Phase::Patrol);
+        }
+    }
+
+    /// The drill's fight at the encounter's point (design 5.3): the enemy placed from the Tern's arrival as the drill
+    /// places it from the Tern's start, facing it, and Engage begins.
+    fn start_encounter(&mut self) {
+        let start = DVec3::from_array(self.data.mission.enemy_start_m);
+        let approach = self.data.enemy.ai.approach_speed_mps;
+        let (pos, rot) = (self.ships[0].pos, self.ships[0].rot);
+        let e = &mut self.ships[1];
+        e.pos = pos + rot * start;
+        e.rot = DQuat::from_rotation_arc(DVec3::Z, (pos - e.pos).normalize_or_zero());
+        e.speed_set = approach;
+        e.vel = e.forward() * approach;
+        e.active = true;
+        self.set_phase(Phase::Engage);
+    }
+}
+
 /// Reject a command with a value no console can send (CLAUDE.md 6.6: non-finite numbers stop at the edge).
 pub fn validate(cmd: &Command) -> Result<(), Refusal> {
     match *cmd {
@@ -3363,6 +3794,171 @@ mod tests {
         panic!("the drill never reached Engage");
     }
 
+    /// A patrol with players at `stations`, in Phase::Patrol, docked.
+    fn patrolling(stations: &[Station]) -> (Drill, Vec<u8>) {
+        let mut d = Drill::new(DrillData::shipped_patrol(), 7);
+        let slots: Vec<u8> = stations
+            .iter()
+            .map(|s| {
+                let p = d.join(s.name(), false).unwrap();
+                d.claim(p, *s).unwrap();
+                d.set_ready(p, true).unwrap();
+                p
+            })
+            .collect();
+        for _ in 0..(TICK_HZ as usize * 10) {
+            d.step();
+            if d.phase == Phase::Patrol {
+                return (d, slots);
+            }
+        }
+        panic!("the patrol never began");
+    }
+
+    /// Run until `f` holds, at most `max_s` seconds; returns the seconds it took.
+    fn run_until(d: &mut Drill, max_s: f64, f: impl Fn(&Drill) -> bool) -> f64 {
+        for i in 0..(max_s * TICK_HZ) as usize {
+            if f(d) {
+                return i as f64 * DT;
+            }
+            d.step();
+        }
+        panic!("not within {max_s} s: phase {:?}, patrol {:?}", d.phase, d.patrol.as_ref().map(|p| (p.stage, p.at)));
+    }
+
+    #[test]
+    fn a_patrol_begins_docked_and_the_berth_holds_the_tern() {
+        let (mut d, _) = patrolling(&[Station::Tactical]);
+        let p = d.patrol.as_ref().unwrap();
+        assert_eq!((p.stage, p.shore), (patrol::Stage::Docked, true));
+        assert!(!d.ships[1].active, "the Hound waits at its point");
+        let berth = d.ships[0].rot;
+        d.ships[0].speed_set = 100.0;
+        steps(&mut d, 2.0);
+        assert!(d.ships[0].pos.length() < 1e-9 && d.ships[0].rot.angle_between(berth) < 1e-9, "clamped");
+    }
+
+    #[test]
+    fn the_clamps_stay_shut_until_the_drive_is_up_and_shore_power_is_off() {
+        let (mut d, s) = patrolling(&[Station::Helm, Station::Engineering]);
+        d.command(s[0], Command::Undock).unwrap();
+        steps(&mut d, 0.1);
+        assert_eq!(d.patrol.as_ref().unwrap().stage, patrol::Stage::Docked, "on shore power, the drive cold");
+        let g = d.drive_group().unwrap() as u8;
+        d.command(s[1], Command::Power(PowerCmd::Breaker(g))).unwrap();
+        d.command(s[1], Command::Shore(false)).unwrap();
+        run_until(&mut d, 30.0, |d| d.drive_ready());
+        d.command(s[0], Command::Undock).unwrap();
+        steps(&mut d, 0.1);
+        assert_eq!(d.patrol.as_ref().unwrap().stage, patrol::Stage::Releasing);
+    }
+
+    #[test]
+    fn undocking_backs_the_tern_out_of_the_cradle_under_the_berths_limits() {
+        let (mut d, s) = patrolling(&[Station::Helm, Station::Engineering]);
+        let g = d.drive_group().unwrap() as u8;
+        d.command(s[1], Command::Power(PowerCmd::Breaker(g))).unwrap();
+        d.command(s[1], Command::Shore(false)).unwrap();
+        run_until(&mut d, 30.0, |d| d.drive_ready());
+        d.command(s[0], Command::Undock).unwrap();
+        let (mut fastest, mut took): (f64, f64) = (0.0, 0.0);
+        while d.patrol.as_ref().is_some_and(|p| p.stage != patrol::Stage::Underway) {
+            d.step();
+            took += DT;
+            fastest = fastest.max(d.ships[0].vel.length());
+            assert!(took < 120.0, "the departure never ended");
+        }
+        // Back along the berth's -Z by the path's 107 m, never over its 4 m/s.
+        let back = d.ships[0].rot.inverse() * d.ships[0].pos;
+        assert!((back.z + 107.0).abs() < 2.0 && back.x.abs() < 1.0, "out along the berth's axis: {back}");
+        assert!(fastest <= 4.2, "the berth's 4 m/s: {fastest}");
+        assert!((30.0..=45.0).contains(&took), "about 39 s with the clamps (design 4.2): {took}");
+        assert!(d.patrol.as_ref().unwrap().undocked);
+    }
+
+    #[test]
+    fn the_station_locks_the_jump_until_the_tern_is_two_kilometres_out() {
+        let (mut d, s) = patrolling(&[Station::Helm, Station::Engineering]);
+        let g = d.drive_group().unwrap() as u8;
+        d.command(s[1], Command::Power(PowerCmd::Breaker(g))).unwrap();
+        d.command(s[1], Command::Shore(false)).unwrap();
+        run_until(&mut d, 30.0, |d| d.drive_ready());
+        d.command(s[0], Command::Undock).unwrap();
+        run_until(&mut d, 120.0, |d| d.patrol.as_ref().is_some_and(|p| p.stage == patrol::Stage::Underway));
+        assert_eq!(d.mass_lock().as_deref(), Some("Tamsin Station"));
+        d.command(s[0], Command::Jump(true)).unwrap();
+        steps(&mut d, 0.1);
+        assert!(!d.patrol.as_ref().unwrap().spooling, "refused inside the lock");
+    }
+
+    #[test]
+    fn a_crew_of_automation_undocks_jumps_sweeps_and_meets_the_hound() {
+        // One person at Tactical; every other seat is automation playing the patrol by the bots' rule (design 9).
+        let (mut d, _) = patrolling(&[Station::Tactical]);
+        let out = run_until(&mut d, 120.0, |d| d.patrol.as_ref().is_some_and(|p| p.undocked));
+        let jump = run_until(&mut d, 180.0, |d| d.patrol.as_ref().is_some_and(|p| p.jumps >= 1));
+        println!("automation: clear of the berth after {out:.1} s, the first jump {jump:.1} s later");
+        let p = d.patrol.as_ref().unwrap();
+        assert_eq!(p.at, 1, "at the Pell beacon");
+        let t = &d.ships[0];
+        assert!(t.pos.length() < 1.0, "the drill's origin moved with the Tern");
+        let beacon = &d.data.patrol.as_ref().unwrap().places[1];
+        assert!((p.origin - beacon.arrival).length() <= 1_500.0 + 1e-6, "within the arrival scatter");
+        run_until(&mut d, 120.0, |d| d.patrol.as_ref().unwrap().swept[1]);
+        run_until(&mut d, 240.0, |d| d.phase == Phase::Engage);
+        let p = d.patrol.as_ref().unwrap();
+        assert_eq!((p.at, p.met), (2, true), "the fight at the relay");
+        let ahead = d.ships[0].rot.inverse() * (d.ships[1].pos - d.ships[0].pos);
+        let want = DVec3::from_array(d.data.mission.enemy_start_m);
+        assert!((ahead - want).length() < 1.0, "the Hound placed from the arrival as the drill places it: {ahead}");
+    }
+
+    #[test]
+    fn after_the_fight_the_patrol_goes_on_and_ends_home() {
+        let (mut d, s) = patrolling(&[Station::Tactical]);
+        run_until(&mut d, 600.0, |d| d.phase == Phase::Engage);
+        let _ = s;
+        // The Hound destroyed: the patrol goes on, the outcome waits for home.
+        d.ships[1].hull = 0.0;
+        d.ships[1].alive = false;
+        run_until(&mut d, 5.0, |d| d.phase == Phase::Patrol);
+        assert_eq!(d.outcome, Outcome::None);
+        run_until(&mut d, 300.0, |d| d.phase == Phase::Debrief);
+        assert_eq!(d.outcome, Outcome::Victory, "home after a victory: MISSION COMPLETE");
+        assert_eq!(d.patrol.as_ref().unwrap().stage, patrol::Stage::Home);
+    }
+
+    #[test]
+    fn the_patrols_objectives_are_measured_by_the_undock_the_sweep_and_the_return() {
+        use data::{ObjectiveFacts, ObjectiveKind, ObjectiveState};
+        let d = DrillData::shipped_patrol();
+        let o = &d.mission.objectives;
+        let swept = vec!["pell_beacon".to_owned()];
+        let f = ObjectiveFacts {
+            enemy_hull: 1.0,
+            tern_hull: 1.0,
+            fighters_down: 0,
+            undocked: true,
+            swept: &swept,
+            home: false,
+        };
+        let state = |k: ObjectiveKind| o.iter().find(|x| x.kind == Some(k)).unwrap().measure(&f).0;
+        assert_eq!(state(ObjectiveKind::Undock), ObjectiveState::Done);
+        assert_eq!(state(ObjectiveKind::Sweep), ObjectiveState::Done);
+        assert_eq!(state(ObjectiveKind::Return), ObjectiveState::Progress);
+    }
+
+    #[test]
+    fn the_drill_without_a_patrol_refuses_the_patrols_commands() {
+        let (mut d, s) = engaged_at(&[Station::Helm]);
+        d.command(s[0], Command::Undock).unwrap();
+        let refused = {
+            d.step();
+            d.drain_events().iter().any(|e| matches!(e, DrillEvent::Refused { reason: Refusal::NoSuch, .. }))
+        };
+        assert!(refused);
+    }
+
     #[test]
     fn the_shipped_drill_data_loads() {
         let d = DrillData::shipped();
@@ -3374,12 +3970,26 @@ mod tests {
     fn each_objective_kind_is_measured_by_its_own_fact() {
         use data::{ObjectiveFacts, ObjectiveState::*};
         let obj = &DrillData::shipped().mission.objectives;
-        let f = ObjectiveFacts { enemy_hull: 0.4, tern_hull: 0.9, fighters_down: 1 };
+        let f = ObjectiveFacts {
+            enemy_hull: 0.4,
+            tern_hull: 0.9,
+            fighters_down: 1,
+            undocked: false,
+            swept: &[],
+            home: false,
+        };
         let m: Vec<_> = obj.iter().map(|o| o.measure(&f)).collect();
         assert_eq!(m[0], (Progress, 0.6), "the Hound at 40 % is 60 % of the way to destroyed");
         assert_eq!(m[1], (Progress, 0.9), "survive reads the Tern's hull");
         assert_eq!(m[2], (Progress, 0.5), "one fighter of two");
-        let end = ObjectiveFacts { enemy_hull: 0.0, tern_hull: 0.0, fighters_down: 2 };
+        let end = ObjectiveFacts {
+            enemy_hull: 0.0,
+            tern_hull: 0.0,
+            fighters_down: 2,
+            undocked: false,
+            swept: &[],
+            home: false,
+        };
         let m: Vec<_> = obj.iter().map(|o| o.measure(&end).0).collect();
         assert_eq!(m, vec![Done, Failed, Done]);
     }

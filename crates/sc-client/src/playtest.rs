@@ -35,6 +35,41 @@ pub enum Beat {
     Fight,
     /// To the nearest damaged machine, E, and its repair game played to the end (all-hands 5).
     Repair,
+    /// Walk to a window and look out of it this many seconds (patrol-mission design 11: the outside as it changes).
+    Gaze(Window, f64),
+}
+
+/// A window the patrol's script looks out of: where a person stands in front of it (ship frame, metres) and the way
+/// they face (radians about +Y, 0 the bow). Each stands 1.6 m in from its window's centre in the layout; a test holds
+/// them to `command_suite.json` and `exterior_windows.json`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Window {
+    /// The bridge's forward-port window (`p_bridge_window_p`).
+    BridgePort,
+    /// The bridge's forward-starboard window (`p_bridge_window_s`).
+    BridgeStbd,
+    /// The mess's middle window, deck B starboard (`p_mess_window_2`).
+    Mess,
+}
+
+impl Window {
+    /// The portal's id in the layout's patches.
+    pub fn id(self) -> &'static str {
+        match self {
+            Self::BridgePort => "p_bridge_window_p",
+            Self::BridgeStbd => "p_bridge_window_s",
+            Self::Mess => "p_mess_window_2",
+        }
+    }
+
+    /// Where to stand, feet on the floor (ship frame, metres), and which way to face (radians).
+    pub fn stand(self) -> ([f32; 3], f32) {
+        match self {
+            Self::BridgePort => ([3.25, 3.5, 29.45], 0.785),
+            Self::BridgeStbd => ([-3.25, 3.5, 29.45], -0.785),
+            Self::Mess => ([-9.47, 0.0, 12.81], -1.455),
+        }
+    }
 }
 
 /// What the player's hands meet this frame (all-hands 4): the locker, an extinguisher carried, a fire.
@@ -80,6 +115,8 @@ pub struct AtConsole {
 /// The script and where it is.
 pub struct Playtest {
     beats: Vec<Beat>,
+    /// The beat the script comes round to again once it has run through.
+    loop_from: usize,
     k: usize,
     /// Seconds in this beat.
     t: f64,
@@ -122,8 +159,40 @@ impl Playtest {
     /// The script for a player whose own station is `own`: to it, the console, up, across the bridge to another
     /// station (taking it from its NPC), down the decks to engineering and the medbay, back, and so on, a fight's worth.
     pub fn new(own: Station) -> Self {
+        Self::with(Self::drill_beats(own), LOOP_FROM)
+    }
+
+    /// The patrol's script (patrol-mission): out of the bridge's windows at the station and the berth, to the station,
+    /// up again to watch the cradle slide past and the station fall away, down to the mess's windows, back to work
+    /// through the jump; then the drill's tour as long as the fight lasts.
+    pub fn patrol(own: Station) -> Self {
+        let mut beats = vec![
+            Beat::Gaze(Window::BridgeStbd, 10.0),
+            Beat::Gaze(Window::BridgePort, 6.0),
+            Beat::To(own),
+            Beat::Sit,
+            Beat::Work(25.0),
+            Beat::Stand,
+            Beat::Gaze(Window::BridgeStbd, 10.0),
+            Beat::Gaze(Window::BridgePort, 6.0),
+            Beat::Room("mess"),
+            Beat::Gaze(Window::Mess, 8.0),
+            Beat::To(own),
+            Beat::Sit,
+            Beat::Work(60.0),
+            Beat::Stand,
+            Beat::Gaze(Window::BridgePort, 8.0),
+            Beat::Gaze(Window::BridgeStbd, 8.0),
+        ];
+        let loop_from = beats.len();
+        beats.extend(Self::drill_beats(own).into_iter().skip(LOOP_FROM));
+        Self::with(beats, loop_from)
+    }
+
+    /// The drill's script: to the player's own station, the console, up, across to another station, the decks, back.
+    fn drill_beats(own: Station) -> Vec<Beat> {
         let other = if own == Station::Tactical { Station::Helm } else { Station::Tactical };
-        let beats = vec![
+        vec![
             Beat::To(own),
             Beat::Sit,
             Beat::Work(45.0),
@@ -150,9 +219,13 @@ impl Playtest {
             Beat::Sit,
             Beat::Work(40.0),
             Beat::Stand,
-        ];
+        ]
+    }
+
+    fn with(beats: Vec<Beat>, loop_from: usize) -> Self {
         Self {
             beats,
+            loop_from,
             k: 0,
             t: 0.0,
             plan: None,
@@ -174,7 +247,7 @@ impl Playtest {
         self.k += 1;
         // After the first sit, the round goes on: the tour again, as long as the fight lasts.
         if self.k >= self.beats.len() {
-            self.k = LOOP_FROM;
+            self.k = self.loop_from;
         }
         self.t = 0.0;
         self.plan = None;
@@ -376,6 +449,33 @@ impl Playtest {
                 }
                 (still, sit)
             }
+            Some(Beat::Gaze(w, secs)) => {
+                let (at, yaw) = w.stand();
+                let g = foot.grid.snap_joined(at, ROOM_REACH_M, foot.body.feet).unwrap_or(at);
+                let arrived = (foot.body.feet[0] - g[0]).hypot(foot.body.feet[2] - g[2]) < 0.6;
+                if !arrived && self.goal != g {
+                    self.goal = g;
+                    self.plan = None;
+                }
+                if !arrived && self.t < GIVE_UP_S {
+                    // Walk there first; the beat's clock starts at the window.
+                    let input = self.walk(foot, look, dt, |_| false);
+                    return (input, None);
+                }
+                // At the window: turn to face out and look, a slow sweep either side.
+                if self.goal != [f32::MAX; 3] {
+                    self.goal = [f32::MAX; 3];
+                    self.t = 0.0;
+                    println!("sc-client: playtest: looking out of {}", w.id());
+                }
+                let d = (yaw - look.0 + std::f32::consts::PI).rem_euclid(std::f32::consts::TAU) - std::f32::consts::PI;
+                look.0 += d * (dt as f32 * 2.0).min(1.0) + (0.25 * (self.t * 0.5).sin() as f32) * dt as f32;
+                look.1 += (-0.02 - look.1) * (dt as f32 * 2.0).min(1.0);
+                if self.t >= secs {
+                    self.next();
+                }
+                (Input { yaw: look.0, ..Input::default() }, None)
+            }
             Some(Beat::Look(secs)) => {
                 look.0 += (0.6 * dt) as f32;
                 look.1 = -0.05 + 0.1 * (self.t * 0.8).sin() as f32;
@@ -486,5 +586,34 @@ impl Playtest {
             None => {}
         }
         out
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_patrols_windows_stand_in_front_of_the_layouts_windows() {
+        // The windows are the layout's patches' portals (command_suite.json, exterior_windows.json): a person stands
+        // 1.6 m in from each centre, on its floor, facing out along its normal.
+        let mut portals = Vec::new();
+        for text in [
+            include_str!("../../../data/ships/tern/command_suite.json"),
+            include_str!("../../../data/ships/tern/exterior_windows.json"),
+        ] {
+            let v: serde_json::Value = serde_json::from_str(text).unwrap();
+            portals.extend(v["portals"].as_array().cloned().unwrap_or_default());
+        }
+        for w in [Window::BridgePort, Window::BridgeStbd, Window::Mess] {
+            let p = portals.iter().find(|p| p["id"] == w.id()).unwrap_or_else(|| panic!("no portal {}", w.id()));
+            let c: Vec<f64> = (0..3).map(|k| p["center_m"][k].as_f64().unwrap()).collect();
+            let n: Vec<f64> = (0..3).map(|k| p["normal"][k].as_f64().unwrap()).collect();
+            let (at, yaw) = w.stand();
+            let want = [c[0] - n[0] * 1.6, c[2] - n[2] * 1.6];
+            let off = (f64::from(at[0]) - want[0]).hypot(f64::from(at[2]) - want[1]);
+            assert!(off < 0.02, "{} stands {off} m off", w.id());
+            assert!((f64::from(yaw) - n[0].atan2(n[2])).abs() < 0.01, "{} faces out", w.id());
+        }
     }
 }

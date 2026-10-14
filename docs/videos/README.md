@@ -101,3 +101,25 @@ Against the First Mission Gate (`openspec/changes/first-mission-gate` 2):
 | 13 Repaired after the fight | No: the round ends at the debrief |
 | 14 Warp out | No: not built |
 | 15 The crew survives | Yes: VICTORY |
+
+## `2026-10-14-patrol-pi5.mp4` (333 s, 1280 x 696, 30 fps; `patrol-mission` tasks 6.1)
+
+The patrol played on foot in single player on Pi 1 (Pi 5 8 GB), `sc-client --solo --mission patrol-shoals --station
+tactical --playtest --window`: the scripted player walks the ship, looks out of the windows and sits at Tactical,
+while the NPC crew walk to their seats and play the patrol by the bots' rule (`combat::patrol::decide`), saying so in
+the chat. The game window alone, recorded with `wf-recorder` and re-encoded to H.264 High, yuv420p (`ffmpeg -vf
+fps=30,scale=1280:-2,format=yuv420p -c:v libx264 -crf 30`); the capture ran at about 14 frames a second beside the
+game. Times are the video's, about 27 s ahead of the drill's clock in the log.
+
+| Time | Shows |
+| --- | --- |
+| 0:00-0:25 | Muster: the body walks up to the bridge and looks out of its starboard and port windows: the berth's cradle round the bow, the Tern's own hull below, docked at Tamsin Station; the countdown |
+| 0:25-0:50 | To Tactical and sat down; engineering's NPC drops shore power, the computer reports the drive on line, the captain orders the helm to take her out, the clamps release |
+| 0:50-1:30 | The departure flown under the berth's limits, the status strip's speed at 1 m/s, then 4 m/s; up again to watch the cradle slide past the bridge windows |
+| 1:30-2:30 | Clear of the berth; to the mess's windows on deck B; back to Tactical; the jump drive spools for 40 s and the Tern jumps to the Pell beacon; science sweeps it |
+| 2:30-4:10 | Up to the bridge windows at the beacon; the second spool and jump to the Shoals relay |
+| 4:10-5:33 | The Hound at the relay: red alert, the drill's fight, and the playtest's tour of the decks |
+
+Not in it yet: the jump's streaks and flash (the windows simply change), the starbase's model (a placeholder ring is
+far off the starboard side and dark against the star), the console controls for UNDOCK, JUMP, SHORE and SWEEP (a
+mockup awaits approval; the NPCs play them).

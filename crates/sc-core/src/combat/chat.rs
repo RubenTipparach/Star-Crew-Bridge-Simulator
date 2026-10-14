@@ -153,7 +153,7 @@ pub struct ChatData {
 }
 
 /// The line ids the engine speaks: the file holds each of them and no other.
-pub const LINE_IDS: [&str; 35] = [
+pub const LINE_IDS: [&str; 51] = [
     "seated",
     "alert_on",
     "alert_off",
@@ -189,11 +189,28 @@ pub const LINE_IDS: [&str; 35] = [
     "hull",
     "shields_low",
     "breach",
+    // The patrol (patrol-mission design 9).
+    "shore_off",
+    "shore_on",
+    "undock",
+    "jump_spool",
+    "jump_abort",
+    "sweep",
+    "order_undock",
+    "order_jump",
+    "drive_ready",
+    "clamps_released",
+    "clear_of_berth",
+    "mass_lock",
+    "arrived",
+    "sweep_clear",
+    "sweep_contact",
+    "home",
 ];
 
 /// The slots a template may name.
-pub const SLOTS: [&str; 10] =
-    ["target", "tube", "station", "preset", "band", "room", "system", "pct", "heading", "pitch"];
+pub const SLOTS: [&str; 11] =
+    ["target", "tube", "station", "preset", "band", "room", "system", "pct", "heading", "pitch", "place"];
 
 /// The slots in `text`, or the first problem with its braces.
 fn slots_of(text: &str) -> Result<Vec<&str>, String> {
@@ -452,6 +469,15 @@ pub fn said_for(data: &DrillData, from: Station, cmd: &Command) -> Option<Said> 
             chat.line("power_preset", &[("preset", &p.to_lowercase())])
         }
         Command::Power(PowerCmd::Run(_, true) | PowerCmd::Feed(..)) => chat.line("power_reroute", &[]),
+        // The patrol (patrol-mission design 9).
+        Command::Shore(false) => chat.line("shore_off", &[]),
+        Command::Shore(true) => chat.line("shore_on", &[]),
+        Command::Undock => chat.line("undock", &[]),
+        Command::Jump(true) => chat.line("jump_spool", &[]),
+        Command::Jump(false) => chat.line("jump_abort", &[]),
+        Command::Sweep => chat.line("sweep", &[]),
+        Command::Patrol(super::patrol::PatrolOrder::Undock) => chat.line("order_undock", &[]),
+        Command::Patrol(super::patrol::PatrolOrder::Jump) => chat.line("order_jump", &[]),
         _ => None,
     }
 }

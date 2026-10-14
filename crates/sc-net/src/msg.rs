@@ -9,10 +9,11 @@
 use glam::{DQuat, DVec3};
 use sc_core::combat::bodies::Posture;
 use sc_core::combat::chat::{self as chat, Kind as ChatKind, Line as ChatLine};
+use sc_core::combat::patrol::{PatrolOrder, Stage};
 use sc_core::combat::{self, Command, HelmMode, Outcome, Phase, PowerCmd, Refusal, Station, TubeState, TurretMode};
 
 /// The protocol's version; a Hello with another is refused. 14: crew chat (crew-chat design 1).
-pub const PROTOCOL: u16 = 14;
+pub const PROTOCOL: u16 = 15;
 /// The longest unreliable message, so it is one SCTP chunk in one datagram (netcode-and-sessions section 2).
 pub const MAX_UNRELIABLE: usize = 1200;
 /// The longest string field, in bytes.
@@ -484,6 +485,167 @@ pub struct Snapshot {
     /// The grid's routing (power-routing 6.1): Engineering's schematic. The server sends it at 2 Hz in the snapshots
     /// between the grid's, so no snapshot carries both; a client keeps the last.
     pub route: Option<RouteSnap>,
+    /// The patrol (patrol-mission design 7), in a patrol mission only.
+    pub patrol: Option<PatrolSnap>,
+}
+
+/// The patrol as a snapshot carries it (patrol-mission design 7): about 50 bytes.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PatrolSnap {
+    /// Where it is.
+    pub stage: Stage,
+    /// The drill's local origin in the system frame, metres: a client adds it to a local position for the sky.
+    pub origin: DVec3,
+    /// The place it last arrived at, and the next (an index in the mission's places: home first, then the route).
+    pub at: u8,
+    pub next: Option<u8>,
+    /// On shore power; the drive's breaker open; the drive ready for the berth; spooling; sweeping; out of the
+    /// berth; a mass lock holds the drive.
+    pub shore: bool,
+    pub drive_open: bool,
+    pub drive_ready: bool,
+    pub spooling: bool,
+    pub sweeping: bool,
+    pub undocked: bool,
+    pub locked: bool,
+    /// The spool's and the sweep's progress (0-1), and the cooldown left, seconds.
+    pub spool: f64,
+    pub sweep: f64,
+    pub cooldown_s: f64,
+    /// Each place swept, by index.
+    pub swept: Vec<bool>,
+    /// The captain's standing order.
+    pub ordered: Option<PatrolOrder>,
+    /// Jumps made: a change is a jump (the client's streaks and flash, design 11.5).
+    pub jumps: u8,
+}
+
+impl PatrolSnap {
+    /// The patrol of a drill, none when it is not one.
+    pub fn of(d: &combat::Drill) -> Option<Self> {
+        let (s, data) = (d.patrol.as_ref()?, d.data.patrol.as_ref()?);
+        let pic = d.patrol_picture()?;
+        Some(Self {
+            stage: s.stage,
+            origin: s.origin,
+            at: s.at as u8,
+            next: s.next.map(|n| n as u8),
+            shore: s.shore,
+            drive_open: pic.drive_open,
+            drive_ready: pic.drive_ready,
+            spooling: s.spooling,
+            sweeping: s.sweeping,
+            undocked: s.undocked,
+            locked: pic.locked,
+            spool: (s.spool_mj / data.jump.spool_mj).clamp(0.0, 1.0),
+            sweep: s.sweep,
+            cooldown_s: s.cooldown_s,
+            swept: s.swept.clone(),
+            ordered: s.ordered,
+            jumps: s.jumps.min(255) as u8,
+        })
+    }
+
+    /// What a station sees of the patrol from this snapshot (design 9): a bot decides from it by the rule the drill's
+    /// automation uses (`patrol::decide`). `ships` are the snapshot's, `captain_manned` whether anyone holds the
+    /// captain's seat.
+    pub fn picture(
+        &self,
+        data: &sc_core::combat::data::DrillData,
+        ships: &[ShipSnap],
+        captain_manned: bool,
+    ) -> Option<sc_core::combat::patrol::PatrolPicture> {
+        let places = &data.patrol.as_ref()?.places;
+        let t = ships.first()?;
+        let next = self.next.map(usize::from).and_then(|n| places.get(n));
+        Some(sc_core::combat::patrol::PatrolPicture {
+            stage: self.stage,
+            shore: self.shore,
+            drive_open: self.drive_open,
+            drive_ready: self.drive_ready,
+            drive_group: sc_core::combat::patrol::drive_group(&data.power).unwrap_or(0) as u8,
+            spooling: self.spooling,
+            cooldown_s: self.cooldown_s,
+            locked: self.locked,
+            swept_here: self.swept.get(usize::from(self.at)).copied().unwrap_or(true),
+            sweeping: self.sweeping,
+            done: self.next.is_none() || self.stage == Stage::Home,
+            ordered: self.ordered,
+            captain_manned,
+            hostile: ships.get(1).is_some_and(|e| e.active && e.alive),
+            next_dir: next.map_or(DVec3::ZERO, |p| p.pos - self.origin - t.pos),
+            rot: t.rot,
+            rates: t.rates,
+            on_course: t.helm_mode == HelmMode::Course,
+        })
+    }
+
+    fn write(&self, w: &mut Writer) {
+        w.u8(self.stage as u8);
+        for v in self.origin.to_array() {
+            w.f64(v);
+        }
+        w.u8(self.at);
+        w.u8(self.next.unwrap_or(255));
+        w.bits(&[
+            self.shore,
+            self.drive_open,
+            self.drive_ready,
+            self.spooling,
+            self.sweeping,
+            self.undocked,
+            self.locked,
+        ]);
+        w.u8((self.spool * 255.0).round() as u8);
+        w.u8((self.sweep * 255.0).round() as u8);
+        w.f32(self.cooldown_s);
+        w.bits(&self.swept);
+        w.u8(self.ordered.map_or(255, |o| o as u8));
+        w.u8(self.jumps);
+    }
+
+    fn read(r: &mut Reader) -> Result<Self, DecodeError> {
+        let stage = Stage::from_u8(r.u8()?).ok_or(DecodeError("no such patrol stage"))?;
+        // The system is 100 AU across at most (sc-core::system).
+        let origin = DVec3::new(r.f64(-1.5e13, 1.5e13)?, r.f64(-1.5e13, 1.5e13)?, r.f64(-1.5e13, 1.5e13)?);
+        let at = r.u8()?;
+        let next = match r.u8()? {
+            255 => None,
+            n => Some(n),
+        };
+        let f = r.bits()?;
+        if f.len() != 7 {
+            return Err(DecodeError("the patrol's flags"));
+        }
+        let spool = f64::from(r.u8()?) / 255.0;
+        let sweep = f64::from(r.u8()?) / 255.0;
+        let cooldown_s = r.f32(0.0, 3600.0)?;
+        let swept = r.bits()?;
+        let ordered = match r.u8()? {
+            255 => None,
+            o => Some(PatrolOrder::from_u8(o).ok_or(DecodeError("no such patrol order"))?),
+        };
+        let jumps = r.u8()?;
+        Ok(Self {
+            stage,
+            origin,
+            at,
+            next,
+            shore: f[0],
+            drive_open: f[1],
+            drive_ready: f[2],
+            spooling: f[3],
+            sweeping: f[4],
+            undocked: f[5],
+            locked: f[6],
+            spool,
+            sweep,
+            cooldown_s,
+            swept,
+            ordered,
+            jumps,
+        })
+    }
 }
 
 /// A load group's fader as a snapshot carries it.
@@ -1175,6 +1337,20 @@ fn write_command(w: &mut Writer, c: &Command) {
             w.u8(23);
             write_power(w, p);
         }
+        Command::Shore(on) => {
+            w.u8(24);
+            w.u8(u8::from(on));
+        }
+        Command::Undock => w.u8(25),
+        Command::Jump(on) => {
+            w.u8(26);
+            w.u8(u8::from(on));
+        }
+        Command::Sweep => w.u8(27),
+        Command::Patrol(o) => {
+            w.u8(28);
+            w.u8(o as u8);
+        }
     }
 }
 
@@ -1309,6 +1485,11 @@ fn read_command(r: &mut Reader) -> Result<Command, DecodeError> {
         21 => Command::GunnerAim { yaw_deg: r.f32(-360.0, 360.0)?, pitch_deg: r.f32(-90.0, 90.0)? },
         22 => Command::GunnerTrigger(r.bool()?),
         23 => Command::Power(read_power(r)?),
+        24 => Command::Shore(r.bool()?),
+        25 => Command::Undock,
+        26 => Command::Jump(r.bool()?),
+        27 => Command::Sweep,
+        28 => Command::Patrol(PatrolOrder::from_u8(r.u8()?).ok_or(DecodeError("no such patrol order"))?),
         _ => return Err(DecodeError("no such command")),
     };
     Ok(c)
@@ -1582,6 +1763,13 @@ impl Snapshot {
             }
             None => w.u8(0),
         }
+        match &self.patrol {
+            Some(p) => {
+                w.u8(1);
+                p.write(&mut w);
+            }
+            None => w.u8(0),
+        }
         w.0
     }
 
@@ -1829,6 +2017,7 @@ impl Snapshot {
         let damage = DamageSnap { integrity, fires, breaches, teams, empty_brackets };
         let power = if r.bool()? { Some(PowerSnap::read(&mut r)?) } else { None };
         let route = if r.bool()? { Some(RouteSnap::read(&mut r)?) } else { None };
+        let patrol = if r.bool()? { Some(PatrolSnap::read(&mut r)?) } else { None };
         r.done()?;
         Ok(Self {
             header,
@@ -1846,6 +2035,7 @@ impl Snapshot {
             damage,
             power,
             route,
+            patrol,
         })
     }
 
@@ -1924,6 +2114,7 @@ impl Snapshot {
             damage: DamageSnap::of(d.layout(0), &d.damage[0]),
             power: Some(PowerSnap::of(d)),
             route: Some(RouteSnap::of(d)),
+            patrol: PatrolSnap::of(d),
             fighters: d
                 .fighters
                 .iter()
@@ -2190,6 +2381,31 @@ mod tests {
     }
 
     #[test]
+    fn a_patrols_snapshot_round_trips_and_fits_with_the_grid_or_the_routing() {
+        let mut d = Drill::new(sc_core::combat::data::DrillData::shipped_patrol(), 3);
+        let p = d.join("Tac", false).unwrap();
+        d.claim(p, Station::Tactical).unwrap();
+        d.set_ready(p, true).unwrap();
+        while d.phase != Phase::Patrol {
+            d.step();
+        }
+        let full = Snapshot::of(&d);
+        let patrol = full.patrol.clone().expect("a patrol carries its block");
+        assert_eq!((patrol.stage, patrol.shore, patrol.at, patrol.next), (Stage::Docked, true, 0, Some(1)));
+        for (power, route) in [(full.power.clone(), None), (None, full.route.clone())] {
+            let s = Snapshot { power, route, ..full.clone() };
+            let b = s.encode();
+            assert!(b.len() <= MAX_UNRELIABLE, "a patrol's snapshot is {} bytes; it must fit one datagram", b.len());
+            let back = Snapshot::decode(&b).unwrap().patrol.unwrap();
+            assert_eq!(back.origin, patrol.origin, "the origin travels as f64, kilometres from the star");
+            assert_eq!(
+                (back.stage, back.swept.clone(), back.jumps),
+                (patrol.stage, patrol.swept.clone(), patrol.jumps)
+            );
+        }
+    }
+
+    #[test]
     fn a_hurt_burning_ship_with_its_teams_out_round_trips_and_still_fits() {
         let mut d = engaged();
         let st = &mut d.damage[0];
@@ -2292,6 +2508,11 @@ mod tests {
             ClientMsg::Claim(Station::Helm),
             ClientMsg::Ready(true),
             ClientMsg::Command(Command::Fire(1)),
+            ClientMsg::Command(Command::Shore(false)),
+            ClientMsg::Command(Command::Undock),
+            ClientMsg::Command(Command::Jump(true)),
+            ClientMsg::Command(Command::Sweep),
+            ClientMsg::Command(Command::Patrol(PatrolOrder::Jump)),
             ClientMsg::Command(Command::Lock(None)),
             ClientMsg::Command(Command::Stick { speed_set_mps: 120.0, yaw: 0.5, pitch: -0.25, roll: 0.0 }),
             ClientMsg::Ping(12345),
