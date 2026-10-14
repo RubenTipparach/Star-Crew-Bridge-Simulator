@@ -21,7 +21,9 @@ cameras themselves.
   the ship's centre along the line it looks (TARGET: the line from the target through the ship).
 - **The ship low and centred.** Raised, square to its look, until the ship's centre sits `ship_low` (0.45) of the half
   height below the middle of the picture, the owner's "y offset towards bottom of the screen", and in the middle
-  across.
+  across. Looking at a near target turns the camera down as it rises, which lifts the ship back up the picture (the
+  first video's main-screen shot, the Hound close abeam), so the lift is settled on the camera's final aim, a few
+  small steps, and a test holds the ship low for targets nearer than the chase distance.
 - **On the target.** TARGET with chase on looks at the target from where it stands, so the target is in the middle,
   "same as first person camera". The others look their own way. With no target, TARGET looks along the bow.
 - **A wider lens.** `fov_across_deg` (100 degrees across at zoom 1, against the bow cameras' 70), so the ship fits.

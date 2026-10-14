@@ -1226,11 +1226,19 @@ pub fn chase_camera(
         let r = r.normalize();
         Basis { f, r, u: r.cross(f) }
     };
-    let stand = -line * c.distance_m;
-    let b0 = frame(look_from(stand));
-    let depth = (-stand).dot(b0.f).max(1.0);
-    let lift = depth * (c.ship_low * half_vfov.tan()) - stand.dot(b0.u);
-    let eye = stand + b0.u * lift;
+    // Raised until the ship sits low in the picture it finally takes. Looking at a near target turns the camera as it
+    // rises, so the lift is settled on the last aim rather than the first (a few steps: each turn is small).
+    let low = c.ship_low * half_vfov.tan();
+    let mut eye = -line * c.distance_m;
+    for _ in 0..12 {
+        let b = frame(look_from(eye));
+        let depth = (-eye).dot(b.f).max(1.0);
+        let off = (-eye).dot(b.u) + depth * low;
+        if off.abs() < 1e-4 {
+            break;
+        }
+        eye += b.u * off;
+    }
     (eye, frame(look_from(eye)))
 }
 
@@ -1441,6 +1449,21 @@ mod tests {
         let (eye, b, vfov) = feed_view("TARGET", true, Some(target), &chase_cfg(), 1.0);
         let (tx, ty, _) = on_screen(target, eye.unwrap(), &b, vfov / 2.0);
         assert!(tx.abs() < 1e-6 && ty.abs() < 1e-6, "the target is in the middle, at {tx} {ty}");
+    }
+
+    #[test]
+    fn chase_on_a_near_target_still_puts_the_ship_low() {
+        // A contact closer than the chase distance turns the camera hardest as it rises: the ship must stay low.
+        for target in [DVec3::new(250.0, 0.0, 120.0), DVec3::new(-90.0, 60.0, 200.0), DVec3::new(0.0, -40.0, -300.0)] {
+            let c = chase_cfg();
+            let (eye, b, vfov) = feed_view("TARGET", true, Some(target), &c, 1.0);
+            let eye = eye.unwrap();
+            let (tx, ty, _) = on_screen(target, eye, &b, vfov / 2.0);
+            assert!(tx.abs() < 1e-6 && ty.abs() < 1e-6, "the target is in the middle, at {tx} {ty}");
+            let (sx, sy, _) = on_screen(DVec3::ZERO, eye, &b, vfov / 2.0);
+            assert!(sx.abs() < 1e-3, "the ship is in the middle across, at {sx}");
+            assert!((sy + c.ship_low).abs() < 1e-3, "the ship sits {} below the middle, at {sy}", c.ship_low);
+        }
     }
 
     #[test]
