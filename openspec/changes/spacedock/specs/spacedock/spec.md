@@ -54,3 +54,13 @@ the existing texture array.
 #### Scenario: Berthed on the Pi
 - **WHEN** the Tern lies berthed and the frame is drawn on a Pi 5
 - **THEN** the station adds at most three draws and its stated triangles to the frame
+
+### Requirement: A rotating station's dock does not rotate
+
+Where the station's habitat rotates (a wheel or a pair of O'Neill cylinders), the dock the Tern berths in SHALL NOT
+rotate, and a pair of habitats SHALL turn in opposite directions so their spin cancels.
+
+#### Scenario: Berthed beside a turning habitat
+- **WHEN** the Tern lies berthed in the dock of a station whose cylinders turn at 1 rpm
+- **THEN** the berth, its clamps and its crew tube stay still relative to the Tern while the cylinders turn behind the
+  dock, one each way

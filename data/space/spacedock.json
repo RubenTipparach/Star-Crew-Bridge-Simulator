@@ -1,6 +1,6 @@
 {
   "schema": "starcrew.spacedock-options/1",
-  "status": "Four design options for Tamsin Station's spacedock, for the owner to choose between (openspec/changes/spacedock). Read by docs/mockups/spacedock.html only; the engine reads the chosen option once the change is applied.",
+  "status": "Five design options for Tamsin Station's spacedock, for the owner to choose between (openspec/changes/spacedock). Read by docs/mockups/spacedock.html only; the engine reads the chosen option once the change is applied.",
   "_doc": "Station frame: metres, origin at the station's centre, +y the station's north, +z the way the main doors face. Ships' frames as layout.json: +x port, +y up, +z the bow. Angles in degrees; bearings round +y from +z toward +x. Colours sRGB 0-1.",
   "sky": {
     "_doc": "The view at the station, in its own frame: the star high behind the approach, Tamsin below and beyond (17.5 degrees in radius at 3.33 radii, patrol-mission design 2). Orrin and Cinder are points of light from here (under 0.02 degrees).",
@@ -78,6 +78,35 @@
       "gate": { "z_m": 760, "plate_m": [780, 560, 220], "width_m": 300, "height_m": 170 },
       "hall": { "radius_m": 300, "z_m": [-680, 650], "floor_y_m": -150, "rough_m": 34 },
       "berths": { "x_m": 120, "z_m": [450, 230, 10, -210, -430], "_slots": "[side, z, ship]", "slots": [[-1, 450, "splitjaw"], [-1, 230, "tern"], [-1, 10, "rescue"], [-1, -210, null], [1, 450, "heron"], [1, 230, "osprey"], [1, 10, "pursuer"], [1, -210, "bulwark"], [1, -430, "copper"]] }
+    },
+    "E": {
+      "name": "O'Neill Pair",
+      "kind": "oneill",
+      "brief": "Two counter-rotating O'Neill cylinders, 6.4 km long and 1.8 km across, side by side, each with three land strips and three long windows under angled mirrors and a ring of farm pods at its far end. A non-rotating dock on the axis between them at the front end, trussed to both, takes the ships into an enclosed hall.",
+      "_owner": "2026-10-14: \"what about an oneil cylinder space station? can you make some textures for that? a giant cylinder? wiht a big space station attached at one end. theres usually two of them to counter balance rotational effects\"",
+      "cylinders": { "radius_m": 900, "length_m": 6400, "spacing_m": 3000, "pair_angle_deg": 25, "gap_to_dock_m": 500, "rpm": 1.0, "segments": 96 },
+      "mirrors": { "open_deg": 28, "thickness_m": 6 },
+      "ring": { "radius_m": 1300, "pods": 18, "pod_radius_m": 70, "pod_length_m": 150, "tube_m": 14, "spokes": 6, "inset_m": 160 },
+      "truss": { "beam_m": 40, "tethers": 6 },
+      "textures": {
+        "_doc": "Two layers (owner, 2026-10-14: \"we should have 2 layers of texture, detail layer, and the big albiedo color map, and maybe normal maps on the details\"): a macro albedo wrapped once round the cylinder (its alpha the glazing) or once over a cap, multiplied by a tiled detail layer with its normal map, the detail fading out between fade_m so a far view shows the macro map and no tiling. Made in Material Maker (tools/materials/ptex/oneill_*.ptex), packaged by tools/materials/oneill_atlases.py.",
+        "macro": "oneill/oneill_macro",
+        "cap": "oneill/oneill_cap",
+        "detail": "oneill/oneill_detail",
+        "detail_normal": "oneill/oneill_detail_normal",
+        "mirror": "oneill/oneill_mirror",
+        "mirror_normal": "oneill/oneill_mirror_normal",
+        "detail_tile_m": 16,
+        "mirror_tile_m": 120,
+        "fade_m": [350, 2600],
+        "haze_m": [6000, 40000],
+        "earthshine": 0.22,
+        "glass_glow": 0.32
+      },
+      "hull": { "width_m": 440, "height_m": 240, "z_m": [-460, 460], "chamfer_m": 70, "rib_every_m": 120 },
+      "hall": { "width_m": 400, "height_m": 200, "z_m": [-430, 442] },
+      "doors": { "width_m": 320, "height_m": 150 },
+      "berths": { "x_m": 128, "z_m": [300, 80, -140, -330], "_slots": "[wall, z, ship], as C", "slots": [[-1, 300, "heron"], [-1, 80, "tern"], [-1, -140, "bulwark"], [-1, -330, null], [1, 300, "osprey"], [1, 80, "pursuer"], [1, -140, "rescue"], [1, -330, "splitjaw"]] }
     }
   }
 }

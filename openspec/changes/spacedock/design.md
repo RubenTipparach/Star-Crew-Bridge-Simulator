@@ -86,6 +86,77 @@ Our own idea: a captured nickel-iron asteroid, hollowed.
 
 **Entering.** As C: through the gate, along the deck, a turn and the slide to the berth, about 3 minutes.
 
+## 5a. Version E: O'Neill Pair (two counter-rotating cylinders and their dock)
+
+The owner, later on 2026-10-14: "what about an oneil cylinder space station? can you make some textures for that? a giant
+cylinder? wiht a big space station attached at one end. theres usually two of them to counter balance rotational
+effects", and then "I'd also like you to light it properly as well, texturing is really important to sell scale, we
+should have 2 layers of texture, detail layer, and the big albiedo color map, and maybe normal maps on the details".
+Two reference pictures (a long cylinder with a ring of pods round one end and window strips showing land inside; two
+cylinders side by side with orange and white end caps) were taken for spirit only. The O'Neill cylinder is a public
+engineering concept (Gerard K. O'Neill, 1974); the design here is our own.
+
+| Part | Size |
+| --- | --- |
+| Cylinders | Two, each 6.4 km long and 1.8 km across, 3.0 km apart centre to centre, the pair's line 25 degrees off the horizontal so one shadows the other (section 5b) |
+| Skin | Three land strips (hull outside) alternating with three window strips (glazing with mullions, the land, rivers, lakes and cloud inside seen through it), orange identity bands at both ends and the middle, graphite frames along each window |
+| Rotation | 1 rpm (60 s a turn), opposite ways, so the pair's spin cancels: 1 g at the floor (radius 900 m, w = 0.104 rad/s, w^2 r = 9.8 m/s^2) |
+| Mirrors | Three a cylinder, hinged on one edge of each window and opened 28 degrees out over it, 900 m wide and 6.1 km long, faceted |
+| Farm ring | A ring of 18 pods 2.6 km across round each cylinder's far end, on six spokes, turning with it |
+| Ends | End caps (pearl in rings and sectors, an orange rim), bearings at both ends |
+| Trusses | Non-rotating trusses across the pair at both ends, a spine from the front truss to the dock, tethers between them |
+| Dock | C's hall built shorter on the axis between the pair at the front end, not rotating, so ships can berth: 920 m long, 440 m wide, 240 m tall, doors 320 m by 150 m facing away from the pair; eight berths, six ships docked, one free |
+
+**Entering** is C's: through the doors along the fairway, a turn, the slide to the berth, about 2.5 minutes. The pair
+turns behind the dock all the while; the dock and its berths do not.
+
+### 5b. E's two layers of texture and its light
+
+Made in Material Maker through the repository's pipeline (rendered on the Pi 5 itself: Godot 4.7 arm64, Material Maker
+`174f15e` with the `material-maker-headless` patches, lavapipe), graphs written in `tools/materials/build_ptex.py`,
+packaged by `tools/materials/oneill_atlases.py` into `assets/textures/oneill/`, and shown on
+`docs/screenshots/materials/oneill-contact-sheet.png`:
+
+| Texture | Size | Covers | Bytes with mips |
+| --- | ---: | --- | ---: |
+| `oneill_macro` (albedo, alpha the glazing) | 1024 x 1024 | Once round a cylinder: strips, land, bands, frames, km-scale grime | 5,592,404 |
+| `oneill_cap` | 512 x 512 | Once over an end cap | 1,398,100 |
+| `oneill_detail` | 512 x 512 | 16 m of hull, tiled: uneven plates, bolt rows, louvred service plates, scratches | 1,398,100 |
+| `oneill_detail_normal` | 512 x 512 | Its normal map | 1,398,100 |
+| `oneill_mirror` | 256 x 256 | 120 m of mirror facets, tiled | 349,524 |
+| `oneill_mirror_normal` | 256 x 256 | Its normal map | 349,524 |
+| **Total** | | | **10,485,752 (10.0 MiB)** |
+
+- **Two layers.** The macro map, wrapped once round the cylinder, carries everything kilometres wide; the detail layer
+  multiplies it (its albedo near white, divided by its own mean so it adds structure without changing the colour) and
+  fades to that mean between 350 m and 2.6 km (`fade_m`), so a close view shows plates and a far one shows the macro map
+  with no tiling. The dock's exterior takes its paint as the macro and the same detail at 24 m, fading by 900 m.
+- **Normal maps on the detail**, from the same Material Maker graph (Material Maker renders a normal map from the
+  graph's height already). In the mockup E's cylinders, caps, mirrors, farm ring and dock exterior take a per-pixel
+  shader: the detail's normal in the surface's tangent frame (round and along the cylinder), the star's diffuse light, a
+  sheen on the paint so bevels and bolts catch the star close up.
+- **The light.** One star (`spacedock.json` `sky.sun_dir`, the same star as `exterior.json` in the station's frame):
+  a hard terminator across each cylinder; the pair shadow each other (each fragment's ray to the star tested against
+  the other cylinder, exactly); Tamsin's earthshine on the shadow side; specular glints on the window glass and the
+  mirrors (the mirrors reflect the star and Tamsin); the land glowing faintly through the glazing on both sides, with a
+  little haze scattered in the glass at grazing angles; running lights down every window edge and on the farm pods,
+  which shrink and crowd together with distance; and beyond 6 km a faint blue haze lifting the far end. Inside the dock,
+  its bay floods and work lights as in A-D.
+
+**A proposed exception to "no per-pixel lighting on the Pi 5"** (`surface-materials`, ES 5, CLAUDE.md 9), for the
+exterior of stations only, and only once measured. The cost, estimated:
+
+| Cost | E's exterior |
+| --- | --- |
+| Texture memory | 10.0 MiB (macro 5.3, cap 1.3, detail and its normal 2.7, mirror 0.7): about 10% of ES 5's 96 MB; the macro at 512 px would save 4 MiB, ETC2 a further three quarters (both measured first) |
+| Fragment work | Three texture reads (macro, detail, normal), a tangent-frame normal, a diffuse and a specular term and the shadow test against the other cylinder (a quadratic): about 60 ALU instructions a pixel, against the deck program's one texture read and a vertex-colour multiply |
+| Pixels | At most the cylinders' share of a 1280 x 720 frame, about 0.9 million pixels in the outside view; none while berthed inside (the dock's hall is the baked path) |
+| Vertex work | The pair are 3,300 triangles a cylinder; a tangent frame a vertex |
+
+The recommendation: measure the shader on the Pi (the `engine-stack` probe, the outside view at 1280 x 720) before the
+engine takes it; if it does not fit, E falls back to the rule as it stands: the detail's relief baked into its albedo by
+`postprocess.py`'s key light, no normal map, the star's light per vertex. Nothing in the engine changes in this change.
+
 ## 6. Entering and berthing, on foot
 
 The law (CLAUDE.md): the crew are bodies in the Tern throughout. Nothing here is a cut-scene.
@@ -139,6 +210,7 @@ The mockup's window view stands 1.6 m in from the bridge's port forward-quarter 
 | B | The hangar's curved wall rising to port, its ribs and light rings, and the next row's ship hanging up and ahead |
 | C | The fairway, the ship across it in its frame, the far wall's tiers of windows and the doors |
 | D | The deck, the ship across it, the rock wall and its galleries |
+| E | As C: the fairway, the ship across it, the far wall's windows |
 
 The Tern's own warp pylon shows at the bottom of the bridge's windows, as it does in space. Through the starboard
 windows: the pier, its rail lights and the crew tube a few metres off.
@@ -156,8 +228,11 @@ mockup's meshes (`docs/mockups/spacedock.html`):
 | B Wheel | 662 | 12,204 | 4,476 | 120 | 3 | 7 ships, about 10,000 triangles, 7 draws |
 | C Drydock | 910 | 16,012 | 3,576 | 120 | 3 | 8 ships, about 11,500 triangles, 8 draws |
 | D Hollow | 5,162 | 14,340 | 3,588 | 120 | 3 | 7 ships, about 10,000 triangles, 7 draws |
+| E O'Neill Pair: dock | 442 | 10,552 | 2,520 | 120 | 3 | 6 ships, about 8,700 triangles, 6 draws |
+| E O'Neill Pair: the two cylinders | 6,744 (2 x 3,372) and the trusses' 60 | | | | 12 (each cylinder's skin, two caps, mirrors, farm ring and bearings; its running lights) and the trusses' 2 | |
 
-Station totals: A 30,700, B 17,500, C 20,600, D 23,200 triangles. With the docked ships, the Tern at full detail
+Station totals: A 30,700, B 17,500, C 20,600, D 23,200, E 20,400 triangles (E's are 17 draws: the pair's per-pixel
+shader keeps the macro and the detail apart, so a cylinder is five draws, not one). With the docked ships, the Tern at full detail
 (4,440 triangles, 7 draws) and the deck the crew stand in, the worst berthed frame is under 60,000 triangles and 40
 draws for every version: under a third of the frame's triangles and an eighth of its draws. A is the dearest (its
 cap's ribs and its round hall's fine cells for the bake); B the cheapest.
@@ -205,9 +280,11 @@ the hull; `exterior.json` `dock` (the girder frame) is retired.
 
 | # | Question | Taken |
 | --- | --- | --- |
-| S1 | Which version: A Bastion, B Wheel, C Drydock or D Hollow (or a mix: say A's cap with C's hall) | **The owner's choice**, with the mockup and its shots beside it (`docs/screenshots/mockups/spacedock-*.png`) |
+| S1 | Which version: A Bastion, B Wheel, C Drydock, D Hollow or E O'Neill Pair (or a mix: say A's cap with C's hall) | **The owner's choice**, with the mockup and its shots beside it (`docs/screenshots/mockups/spacedock-*.png`) |
 | S2 | Is the bay pressurised | No: the bay is sealed and lit, in vacuum; the crew tubes are pressurised. No pump-down wait to leave, and the windows look the same. Recommendation taken (ask only with screenshots) |
 | S3 | Can the crew walk onto the station | Not in this change: the crew tube ends at the Tern's airlock door, which opens onto the tube; walking the station is a later change. Recommendation taken (ask only with screenshots) |
 | S4 | Where the jump's 2 km station mass lock is measured from | The station's hull, not its centre. Recommendation taken (ask only with screenshots) |
 | S5 | Does B's wheel turn | No: the game's gravity is the ships' own. Recommendation taken (ask only with screenshots) |
 | S6 | Who flies the Tern in | Helm by hand on the corridor's limits, or the dock autopilot (FN 10) on the captain's order. Recommendation taken (ask only with screenshots) |
+| S7 | Per-pixel lighting (normal maps) on station exteriors on the Pi 5 | Proposed as an exception (section 5b) and measured on the Pi before the engine takes it; until then the rule stands and E falls back to relief baked into the detail's albedo. Recommendation taken (ask only with screenshots) |
+| S8 | E's cylinders: their size and spin | 6.4 km by 1.8 km at 1 rpm (1 g at the floor), the pair 3 km apart; textures are atlases, not layers of the array, so no layer is renumbered. Recommendation taken (ask only with screenshots) |

@@ -522,6 +522,188 @@ def fitted_tern_hull(livery="copper"):
     return g
 
 
+# ----------------------------------------------------------------------------
+# The O'Neill pair at Tamsin Station (openspec/changes/spacedock, version E): two texture layers
+# for a surface kilometres long, as the owner asked ("we should have 2 layers of texture, detail
+# layer, and the big albiedo color map, and maybe normal maps on the details"). The macro maps are
+# fitted atlases wrapped once round the cylinder or once over its end cap; the detail layer and the
+# mirror tile many times and keep their normal maps. Star Crew's own graphs, 2026-10-14.
+# ----------------------------------------------------------------------------
+
+def _steps(*edges, lo=0.0, hi=1.0):
+    """A constant-interpolation gradient that is `hi` between each pair of edges, `lo` elsewhere.
+    Material Maker stores a constant step at t as two points either side of it, t - e with the
+    old value and t + e with the new (types/gradient.gd serialize), and reads them back so."""
+    e = 0.00001
+    def at(x):
+        return any(a <= x < b for a, b in edges)
+    cuts = sorted({c for ab in edges for c in ab if 0.0 < c < 1.0})
+    stops, cur = [(0.0, hi if at(0.0) else lo)], at(0.0)
+    for c in cuts:
+        nxt = at(c)
+        if nxt != cur:
+            stops += [(c - e, hi if cur else lo), (c + e, hi if nxt else lo)]
+            cur = nxt
+    return grad(*stops, interpolation=0)
+
+
+def oneill_macro():
+    """The cylinder's macro albedo, wrapped once round it: x runs round the circumference, y along
+    the length. Three hull strips (over the land inside) alternate with three window strips; the
+    windows show the land, rivers, lakes and cloud inside through mullioned glazing. The hull is
+    pearl plating with large panel variation, km-scale grime and weathering, orange identity
+    bands round the cylinder and graphite frames along the windows. Emission is the glazing."""
+    g = Graph("ONeill Macro")
+    # 1 in the window strips (the second half of each third of the circumference), 0 on the hull
+    win = g.node("greyscale", g.node("gradient", repeat=3, rotate=0, mirror=False, gradient=_steps((0.5, 1.0))), mode=2)
+    # a frame along both edges of every strip
+    edge = g.node("greyscale", g.node("gradient", repeat=6, rotate=0, mirror=False,
+                                      gradient=_steps((0.0, 0.035), (0.965, 1.0))), mode=2)
+    # hull: big plates with their own shade, km-scale grime, streaks along the length
+    plates = g.node("bricks", pattern=0, repeat=1, rows=40, columns=24, row_offset=0.5,
+                    mortar=0.04, bevel=0.0, round=0.0, corner=0.0)
+    shade = g.node("greyscale", (plates, 1), mode=2)
+    pearl = g.colorize(shade, grad((0, "#c3c7cb"), (0.5, "#d5d8da"), (1, "#e6e7e6")))
+    grime_n = g.node("fbm2", noise=2, scale_x=4, scale_y=4, folds=0, iterations=6, persistence=0.6, offset=0.2)
+    streak_n = g.node("fbm2", noise=1, scale_x=24, scale_y=2, folds=0, iterations=5, persistence=0.55, offset=0.6)
+    grime = g.colorize(grime_n, grad((0, "#8e8a82"), (0.55, "#e9e6df"), (1, "#ffffff")))
+    streak = g.colorize(streak_n, grad((0, "#a8a49c"), (1, "#ffffff")))
+    hull_a = g.blend(grime, pearl, None, mode=MULTIPLY, amount=0.55)
+    hull_b = g.blend(streak, hull_a, None, mode=MULTIPLY, amount=0.35)
+    # faint seams: at this scale a plate is 150 m across, and its joint is a line, not a groove
+    seam = g.tone(plates, (0, 0.88), (0.08, 1), (1, 1))
+    hull_c = g.blend(seam, hull_b, None, mode=MULTIPLY, amount=1.0)
+    # identity bands round the cylinder: orange, near both ends and at the middle
+    bands = g.node("greyscale", g.node("gradient", repeat=1, rotate=90, mirror=False,
+                                       gradient=_steps((0.035, 0.065), (0.48, 0.52), (0.935, 0.965))), mode=2)
+    orange = g.colorize(grime_n, grad((0, "#b8541e"), (1, "#dc6f2c")))
+    hull_d = g.blend(orange, hull_c, bands, mode=NORMAL_B, amount=1.0)
+    frame = g.colorize(grime_n, grad((0, "#3d464f"), (1, "#56606a")))
+    hull = g.blend(frame, hull_d, edge, mode=NORMAL_B, amount=1.0)
+    # the land seen through the glass: fields, forest, rivers and lakes, cloud
+    land_n = g.node("fbm2", noise=2, scale_x=12, scale_y=12, folds=0, iterations=7, persistence=0.6, offset=0.35)
+    field_n = g.node("bricks", pattern=0, repeat=1, rows=160, columns=96, row_offset=0.3,
+                     mortar=0.06, bevel=0.0, round=0.0, corner=0.0)
+    fields = g.node("greyscale", (field_n, 1), mode=2)
+    land = g.colorize(land_n, grad((0, "#24401f"), (0.4, "#3f5f27"), (0.58, "#66753a"), (0.72, "#8a7d55"), (1, "#a49a7c")))
+    field_c = g.colorize(fields, grad((0, "#3d5a24"), (0.5, "#6d7a36"), (1, "#a59a5e")))
+    farm = g.tone(land_n, (0, 0), (0.45, 0), (0.55, 1), (1, 1))
+    land_b = g.blend(field_c, land, farm, mode=NORMAL_B, amount=0.6)
+    river_n = g.node("fbm2", noise=1, scale_x=6, scale_y=6, folds=0, iterations=5, persistence=0.5, offset=0.15)
+    river = g.tone(river_n, (0, 0), (0.48, 0), (0.5, 1), (0.52, 0), (1, 0))
+    lake = g.tone(land_n, (0, 1), (0.22, 1), (0.27, 0), (1, 0))
+    water_m = g.math(river, lake, op=MAX)
+    water = g.color("#2b5f80")
+    land_w = g.blend(water, land_b, water_m, mode=NORMAL_B, amount=1.0)
+    cloud_n = g.node("fbm2", noise=2, scale_x=16, scale_y=16, folds=0, iterations=6, persistence=0.62, offset=0.8)
+    cloud = g.tone(cloud_n, (0, 0), (0.55, 0), (0.78, 1), (1, 1))
+    land_c = g.blend(g.color("#eef2f5"), land_w, cloud, mode=NORMAL_B, amount=0.75)
+    # the glass: a faint blue haze over the land, mullions down the strip, frames across it
+    glazed = g.blend(g.color("#a8bfd2"), land_c, None, mode=SCREEN, amount=0.22)
+    mull = g.node("greyscale", g.node("gradient", repeat=24, rotate=0, mirror=False, gradient=_steps((0.0, 0.06))), mode=2)
+    xfr = g.node("greyscale", g.node("gradient", repeat=96, rotate=90, mirror=False, gradient=_steps((0.0, 0.09))), mode=2)
+    bars = g.math(mull, xfr, op=MAX)
+    glass = g.blend(g.color("#2e353c"), glazed, bars, mode=NORMAL_B, amount=0.8)
+    win_in = g.math(win, edge, op=SUB, clamp=True)
+    albedo = g.blend(glass, hull, win_in, mode=NORMAL_B, amount=1.0)
+    lit = g.math(win_in, bars, op=SUB, clamp=True)
+    emission = g.blend(land_c, g.color("#000000"), lit, mode=NORMAL_B, amount=1.0)
+    height = g.math(g.math(plates, None, op=MUL, in2=0.3), g.math(win_in, None, op=MUL, in2=-0.2), op=ADD)
+    normal = g.normal_map(height, strength=0.5)
+    g.material(albedo=albedo, emission=emission, normal=normal, metallic_v=0.0, roughness_v=0.8)
+    return g
+
+
+def oneill_cap():
+    """An end cap's macro albedo, once over the disc: pearl plating in rings and sectors round a
+    graphite hub, an orange rim band, dark seams, km-scale grime."""
+    g = Graph("ONeill Cap")
+    rings = g.node("greyscale", g.node("radial_gradient", repeat=7, mirror=False, gradient=grad((0, 0.0), (1, 1.0))), mode=2)
+    sectors = g.node("greyscale", g.node("circular_gradient", repeat=24, mirror=False, gradient=grad((0, 0.0), (1, 1.0))), mode=2)
+    ring_seam = g.tone(rings, (0, 1), (0.03, 0), (0.97, 0), (1, 1))
+    sect_seam = g.tone(sectors, (0, 1), (0.04, 0), (0.96, 0), (1, 1))
+    seams = g.math(ring_seam, sect_seam, op=MAX)
+    panel_n = g.node("fbm2", noise=0, scale_x=24, scale_y=24, folds=0, iterations=2, persistence=0.5, offset=0.4)
+    pearl = g.colorize(panel_n, grad((0, "#c6c9cc"), (1, "#e4e5e4")))
+    grime_n = g.node("fbm2", noise=2, scale_x=5, scale_y=5, folds=0, iterations=6, persistence=0.6, offset=0.9)
+    grime = g.colorize(grime_n, grad((0, "#8f8b84"), (0.55, "#ebe8e2"), (1, "#ffffff")))
+    plate = g.blend(grime, pearl, None, mode=MULTIPLY, amount=0.55)
+    rim = g.math(g.node("sdshow", g.node("sdcircle", r=0.5, cx=0, cy=0), bevel=0.0, base=0.0),
+                 g.node("sdshow", g.node("sdcircle", r=0.43, cx=0, cy=0), bevel=0.0, base=0.0), op=SUB, clamp=True)
+    hub = g.node("sdshow", g.node("sdcircle", r=0.075, cx=0, cy=0), bevel=0.004, base=0.0)
+    orange = g.colorize(grime_n, grad((0, "#b8541e"), (1, "#dc6f2c")))
+    graphite = g.colorize(grime_n, grad((0, "#353d45"), (1, "#525c66")))
+    a1 = g.blend(orange, plate, rim, mode=NORMAL_B, amount=1.0)
+    a2 = g.blend(graphite, a1, hub, mode=NORMAL_B, amount=1.0)
+    albedo = g.blend(g.color("#59616a"), a2, seams, mode=NORMAL_B, amount=0.85)
+    height = g.math(g.math(seams, None, op=MUL, in2=-0.3), None, op=ADD, in2=0.6)
+    normal = g.normal_map(height, strength=0.5)
+    g.material(albedo=albedo, normal=normal, metallic_v=0.0, roughness_v=0.8)
+    return g
+
+
+def oneill_detail():
+    """The tiled detail layer under the macro maps: one repeat is 16 m of hull. Uneven plates
+    with chamfered seams and bolt rows, about one plate in five a recessed service plate with
+    louvres, fine scratches; a near-white albedo (it multiplies the macro colour) and a real normal
+    map for per-pixel light. Nothing sits on a regular grid, so the repeat does not show as one."""
+    g = Graph("ONeill Detail")
+    # plates of uneven sizes, split again and again, so no square grid shows (CLAUDE.md 9)
+    plates = g.node("bricks_uneven", iterations=6, min_size=0.12, randomness=0.65,
+                    mortar=0.0035, bevel=0.012, round=0.0, corner=0.0)
+    shade = g.node("greyscale", (plates, 1), mode=2)
+    bolt = g.node("sdcircle", r=0.004, cx=0, cy=0)
+    bolts = g.node("sdshow", g.node("sdrepeat", bolt, rx=48, ry=48, r=0.0, variations=False), bevel=0.003, base=0.0)
+    # bolts only in a band along each plate's edge
+    bolt_rows = g.tone(plates, (0, 0), (0.05, 0), (0.12, 1), (0.3, 1), (0.45, 0), (1, 0))
+    bolts_m = g.math(bolts, bolt_rows, op=MUL)
+    # service plates: the plates whose random shade is highest, recessed, louvred inside their rim
+    service = g.tone(shade, (0, 0), (0.76, 0), (0.78, 1), (1, 1))
+    inner = g.tone(plates, (0, 0), (0.2, 0), (0.35, 1), (1, 1))
+    serv_in = g.math(service, inner, op=MUL)
+    slats = g.node("greyscale", g.node("gradient", repeat=96, rotate=90, mirror=False, gradient=grad((0, 0.0), (1, 1.0))), mode=2)
+    vents = g.math(serv_in, g.tone(slats, (0, 0.2), (0.5, 1), (1, 0.2)), op=MUL)
+    fine = g.node("fbm2", noise=0, scale_x=48, scale_y=48, folds=0, iterations=4, persistence=0.5, offset=0.2)
+    scr = g.node("scratches", length=0.12, width=0.12, layers=2, waviness=0.2, angle=10, randomness=0.6)
+    height_a = g.math(plates, None, op=MUL, in2=0.75)
+    height_b = g.math(height_a, g.math(bolts_m, None, op=MUL, in2=0.2), op=ADD)
+    height_c = g.math(height_b, g.math(serv_in, None, op=MUL, in2=-0.12), op=ADD)
+    height_d = g.math(height_c, g.math(vents, None, op=MUL, in2=-0.12), op=ADD)
+    height = g.math(height_d, g.math(fine, None, op=MUL, in2=0.03), op=ADD)
+    base = g.colorize(shade, grad((0, "#cdcdca"), (0.5, "#e6e6e3"), (1, "#f7f7f4")))
+    grime_n = g.node("fbm2", noise=2, scale_x=6, scale_y=6, folds=0, iterations=6, persistence=0.6, offset=0.5)
+    grime = g.colorize(grime_n, grad((0, "#b9b5ad"), (1, "#ffffff")))
+    a1 = g.blend(grime, base, None, mode=MULTIPLY, amount=0.6)
+    a2 = g.blend(g.color("#8d9296"), a1, scr, mode=NORMAL_B, amount=0.25)
+    seam = g.tone(plates, (0, 0.6), (0.06, 1), (1, 1))
+    a3 = g.blend(seam, a2, None, mode=MULTIPLY, amount=1.0)
+    louvre = g.colorize(slats, grad((0, "#3e454c"), (0.5, "#7a828a"), (1, "#3e454c")))
+    albedo = g.blend(louvre, a3, serv_in, mode=NORMAL_B, amount=0.8)
+    normal = g.normal_map(height, strength=1.8)
+    ao = g.occlusion(height, strength=1.0, radius=10)
+    g.material(albedo=albedo, normal=normal, ao=ao, metallic_v=0.3, roughness_v=0.6)
+    return g
+
+
+def oneill_mirror():
+    """A mirror wing's facets: silvered panels a little apart in tone, in thin graphite frames,
+    with a soft bloom of wear; a normal map so the facets catch the sun one by one."""
+    g = Graph("ONeill Mirror")
+    facets = g.node("bricks", pattern=0, repeat=1, rows=6, columns=3, row_offset=0.0,
+                    mortar=0.025, bevel=0.012, round=0.0, corner=0.0)
+    tone_v = g.node("greyscale", (facets, 1), mode=2)
+    silver = g.colorize(tone_v, grad((0, "#8e9aa6"), (0.5, "#a9b6c2"), (1, "#c5d0d8")))
+    haze_n = g.node("fbm2", noise=2, scale_x=4, scale_y=4, folds=0, iterations=5, persistence=0.55, offset=0.1)
+    haze = g.colorize(haze_n, grad((0, "#9ea4aa"), (1, "#ffffff")))
+    a1 = g.blend(haze, silver, None, mode=MULTIPLY, amount=0.3)
+    frame = g.tone(facets, (0, 1), (0.06, 0), (1, 0))
+    albedo = g.blend(g.color("#30373e"), a1, frame, mode=NORMAL_B, amount=1.0)
+    height = g.math(facets, g.math(tone_v, None, op=MUL, in2=0.05), op=ADD)
+    normal = g.normal_map(height, strength=0.8)
+    g.material(albedo=albedo, normal=normal, metallic_v=1.0, roughness_v=0.15)
+    return g
+
+
 GRAPHS = {
     "tern_nacelle": fitted_tern_nacelle,
     "tern_hull": fitted_tern_hull,
@@ -537,6 +719,10 @@ GRAPHS = {
     "light_panel": light_panel,
     "rust_metal": rust_metal,
     "plain_steel": plain_steel,
+    "oneill_macro": oneill_macro,
+    "oneill_cap": oneill_cap,
+    "oneill_detail": oneill_detail,
+    "oneill_mirror": oneill_mirror,
 }
 
 

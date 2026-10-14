@@ -110,6 +110,29 @@ Godot 4.7's linux.arm64 build, the `material-maker-headless` checkout and patche
 45 s for one 2048 px graph. Only `plain_steel` was rendered there; the two layers were built with
 `postprocess.py --only bulkhead trim`, the others are the committed layers.
 
+**The O'Neill pair's two layers, 2026-10-14** (`openspec/changes/spacedock` design 5b, version E). The owner: "we
+should have 2 layers of texture, detail layer, and the big albiedo color map, and maybe normal maps on the details".
+These are exterior atlases and tiled detail maps, not layers of the texture array (no layer is added or renumbered):
+
+| Texture (`assets/textures/oneill/`) | Graph (`build_ptex.py`) | Size | Use |
+| --- | --- | ---: | --- |
+| `oneill_macro` | `oneill_macro()` | 1024 px | Wrapped once round a cylinder: three hull strips, three window strips showing the land inside, orange bands, frames, km-scale grime; alpha is the glazing (the graph's emission) |
+| `oneill_cap` | `oneill_cap()` | 512 px | Once over an end cap |
+| `oneill_detail`, `oneill_detail_normal` | `oneill_detail()` | 512 px | 16 m of uneven hull plating, tiled, multiplying the macro; its tangent-space normal map (OpenGL, green up) |
+| `oneill_mirror`, `oneill_mirror_normal` | `oneill_mirror()` | 256 px | Mirror facets, tiled, and their normal map |
+
+10,485,752 bytes with mips (10.0 MiB). Rendered by Material Maker `174f15e` on the Raspberry Pi 5 (as plain steel
+above), packaged by `oneill_atlases.py` (resizing and channel packing only; deterministic, prints a digest) with its own
+contact sheet, `docs/screenshots/materials/oneill-contact-sheet.png`. The detail normal map is for the per-pixel
+lighting the spacedock design proposes for station exteriors, to be measured on the Pi before the engine takes it.
+
+```sh
+python3 tools/materials/build_ptex.py      # writes ptex/oneill_*.ptex (restore tern_hull*.ptex if it rewrites them)
+MM_DIR=/tmp/material-maker GODOT=/path/to/Godot_v4.7-stable_linux.arm64 \
+  bash .claude/skills/material-maker-headless/scripts/render.sh -o tools/materials/raw/oneill --size 2048 tools/materials/ptex/oneill_*.ptex
+python3 tools/materials/oneill_atlases.py
+```
+
 **Wall panels** (`openspec/changes/wall-panels`, a prototype) are not Material Maker graphs: they are
 modelled and baked in Blender by `tools/blender/build_wall_panels.py` from
 `data/materials/panels.json`, which renders into `raw/panels/` and reuses this directory's

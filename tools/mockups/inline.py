@@ -20,6 +20,9 @@ read a ship's other data files (power.json, atmosphere.json, detailing.json).
 "data:crew/<name>" data/crew/<name>.json (the walk's numbers, crew-on-deck), "data:space/<name>"
 data/space/<name>.json (the outside: the sun, the planet, the dock; patrol-mission) and "data:missions/<name>"
 data/missions/<name>.json.
+"tex:<path>" copies one texture, assets/textures/<path>.png, as a data URI into a
+<script id="tex-<file name>" type="text/plain"> block (spacedock.html's O'Neill atlases; the page
+decodes it with ShipKit.decodePng so the alpha mask keeps its colour).
 "glb:<path>" copies one model, assets/models/<path>.glb, as base64 into a
 <script id="glb-<file name>" type="application/octet-stream"> block, for a page that shows one exterior
 model and not its whole set (patrol.html takes the Tern's model alone).
@@ -97,7 +100,7 @@ from panel_catalog import load_catalog
 SCREENS = os.path.join(ROOT, "assets", "textures", "screens", "screens.json")
 CACHE = os.path.join(ROOT, "docs", "mockups", "cache")
 LIGHTBAKE = os.path.join(LIB, "lightbake.js")
-MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-9_-]+/[a-z0-9_-]+|bakecache:[a-z0-9_-]+|shipkit|materials|panels(?::[a-z0-9_-]+)?|screens|repairs|decals|models:[a-z0-9_-]+|glb:[a-z0-9_/-]+|manifest:[a-z0-9_-]+|font:[a-z0-9_-]+) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
+MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-9_-]+/[a-z0-9_-]+|bakecache:[a-z0-9_-]+|shipkit|materials|panels(?::[a-z0-9_-]+)?|screens|repairs|decals|models:[a-z0-9_-]+|glb:[a-z0-9_/-]+|tex:[a-z0-9_/-]+|manifest:[a-z0-9_-]+|font:[a-z0-9_-]+) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
 
 
 def png_uri(path):
@@ -189,6 +192,11 @@ def block(kind):
         text = json.dumps({"manifest": manifest, "images": dict(sorted(images.items()))}, separators=(",", ":"),
                           ensure_ascii=False).replace("</", "<\\/")
         return f'\n<script id="ship-screens" type="application/json">\n{text}\n</script>\n'
+    if kind.startswith("tex:"):
+        # One committed texture, assets/textures/<path>.png, as a data URI (spacedock's O'Neill atlases).
+        rel = kind.split(":", 1)[1]
+        uri = png_uri(os.path.join(ROOT, "assets", "textures", rel + ".png"))
+        return f'\n<script id="tex-{os.path.basename(rel)}" type="text/plain">\n{uri}\n</script>\n'
     if kind.startswith("glb:"):
         rel = kind.split(":", 1)[1]
         with open(os.path.join(ROOT, "assets", "models", rel + ".glb"), "rb") as f:
