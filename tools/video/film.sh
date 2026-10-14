@@ -11,17 +11,19 @@ OUT="${2:?output mp4}"
 FONT="$(cd "$(dirname "$0")/../.." && pwd)/assets/fonts/barlow-semi-condensed/semibold-600.ttf"
 [ -f "$FONT" ] || FONT=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
 LAST=$(ls "$DIR"/film-*.png | wc -l)
+# Each caption is read from its own file (drawtext's textfile), so its commas, colons and quotes need no escaping.
+TXT="$(mktemp -d)"
+trap 'rm -rf "$TXT"' EXIT
 FILTER=""
 mapfile -t CUES < "$DIR/film-cues.txt"
 for i in "${!CUES[@]}"; do
   first="${CUES[$i]%%$'\t'*}"
-  text="${CUES[$i]#*$'\t'}"
+  printf '%s' "${CUES[$i]#*$'\t'}" > "$TXT/$i.txt"
   next="${CUES[$((i + 1))]:-}"
   if [ -n "$next" ]; then last=$(( ${next%%$'\t'*} - 1 )); else last=$LAST; fi
   # ffmpeg counts frames from 0, the film from 1.
-  text="${text//:/\\:}"
-  text="${text//\'/\\\\\'}"
-  FILTER+="${FILTER:+,}drawtext=fontfile=$FONT:text='$text':x=40:y=h-96:fontsize=36:fontcolor=white:box=1:boxcolor=0x000000AA:boxborderw=14:enable='between(n,$((first - 1)),$((last - 1)))'"
+  FILTER+="${FILTER:+,}drawtext=fontfile=$FONT:textfile=$TXT/$i.txt:x=40:y=h-96:fontsize=36:fontcolor=white"
+  FILTER+=":box=1:boxcolor=0x000000AA:boxborderw=14:enable='between(n\,$((first - 1))\,$((last - 1)))'"
 done
 ffmpeg -y -loglevel error -framerate 30 -i "$DIR/film-%05d.png" -vf "$FILTER,format=yuv420p" -c:v libx264 -crf 20 \
   -preset medium -movflags +faststart "$OUT"

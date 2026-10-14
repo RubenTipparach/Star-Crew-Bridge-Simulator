@@ -1612,8 +1612,9 @@ impl App for DrillApp {
                     (e, from.1 + turn * k, from.2 + (to.2 - from.2) * k)
                 }
                 (true, Some(b), None) => (crate::drill_bridge::eye_of(&b), b.yaw, -0.12),
-                // The film's look at the bridge's main viewscreen: from behind the helm, up at the screen.
-                _ if self.film_screen => ([0.0, 4.4, 24.5], 0.0, 0.08),
+                // The film's look at the bridge's main viewscreen: from the bridge's port side, past the captain in
+                // his chair, forward at the screen.
+                _ if self.film_screen => ([-3.2, 5.8, 25.5], 0.49, -0.08),
                 _ => crate::drill_bridge::overview(),
             };
             if own && !rising {
