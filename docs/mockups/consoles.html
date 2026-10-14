@@ -5591,10 +5591,58 @@ const STARS = Array.from({ length: 1400 }, (_, i) => {
   const z = hash("starz", i) * 2 - 1, a = hash("stara", i) * Math.PI * 2, r = Math.sqrt(1 - z * z);
   return { d: [r * Math.cos(a), z, r * Math.sin(a)], big: hash("starr", i) < 0.06, lum: 0.25 + hash("starl", i) * 0.75 };
 });
+/**
+ * The hull box of each contact class with a model, its own axes (+z the bow, +y the top), least then greatest corner,
+ * metres (target-bracket 1): measured off the engine's models (ships3d::bounds), and held to them by a test.
+ */
+/** Where the bow camera stands, ship axes, metres (the engine's console::BOW_EYE): contacts are seen from here. */
+const BOW_EYE = [0, 3, 32];
+/** The viewscreen's zooms, times magnified (viewscreen-zoom 1; the engine's combat::ZOOMS). */
+const ZOOMS = [1, 2, 4, 10, 20];
+const SHIP_BOX = {"corvette":[[-13,-2.1,-18.5],[13,4.6,19.5]],"fighter":[[-4,-0.6,-3.6],[4,1.8,4]]};
+/**
+ * The target bracket's rectangle (target-bracket 1): the contact's hull box turned as it lies (forward dir, top up,
+ * ship axes) and projected through the feed's camera, padded 4 px and at least 16 px a side about its middle; null when
+ * a corner is behind the camera. A class with no box takes the old range rule's square.
+ */
+function bracketRect(c, rel, fwd, up, project) {
+  const box = SHIP_BOX[c.cls];
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  if (box) {
+    const f = v3.norm(fwd), u = v3.norm(up), r = v3.norm(v3.cross(u, f));
+    for (let i = 0; i < 8; i++) {
+      const pick = (a) => box[(i >> a) & 1][a];
+      const p = project(v3.add(rel, v3.add(v3.mul(r, pick(0)), v3.add(v3.mul(u, pick(1)), v3.mul(f, pick(2))))));
+      if (!p) return null;
+      x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]);
+    }
+  } else {
+    const p = project(rel);
+    if (!p) return null;
+    const h = clamp(60 / (v3.len(rel) / 1000), 5, 70) * G.zoom * 0.9;
+    [x0, y0, x1, y1] = [p[0] - h, p[1] - h, p[0] + h, p[1] + h];
+  }
+  const pad = (a, z) => { const m = (a + z) / 2, h = Math.max((z - a) / 2 + 4, 8); return [m - h, m + h]; };
+  const [l, rr] = pad(x0, x1), [t, b] = pad(y0, y1);
+  return [l, t, rr, b];
+}
+/** A range as the bracket reads it: whole metres under a kilometre, kilometres to one place from there. */
+const rangeText = (m) => (m < 1000 ? `${m.toFixed(0)} m` : `${(m / 1000).toFixed(1)} km`);
+/** The target bracket (target-bracket 1-3): four L corners, the IFF word and hull bar above, the id and range below. */
+function bracket(rc, c, col, range) {
+  const [x0, y0, x1, y1] = rc, arm = clamp(Math.min(x1 - x0, y1 - y0) / 4, 5, 14);
+  const P = (pts) => `<path d="M${pts.map((q) => q[0].toFixed(1) + " " + q[1].toFixed(1)).join("L")}" fill="none" stroke="${col}" stroke-width="1.5"/>`;
+  let s = P([[x0, y0 + arm], [x0, y0], [x0 + arm, y0]]) + P([[x1 - arm, y0], [x1, y0], [x1, y0 + arm]]) + P([[x1, y1 - arm], [x1, y1], [x1 - arm, y1]]) + P([[x0 + arm, y1], [x0, y1], [x0, y1 - arm]]);
+  const tx = clamp(x0, 2, 614 - 72), top = Math.max(y0 - 8, 12);
+  s += text(tx, top - 4, 10, col, c.iff.toUpperCase(), { w: 700, ls: 1 });
+  if (c.scan >= 0.3) s += `<rect x="${x0.toFixed(1)}" y="${(y0 - 6).toFixed(1)}" width="${(x1 - x0).toFixed(1)}" height="3" fill="${C.line}"/><rect x="${x0.toFixed(1)}" y="${(y0 - 6).toFixed(1)}" width="${((x1 - x0) * clamp(c.hull / 100, 0, 1)).toFixed(1)}" height="3" fill="${col}"/>`;
+  s += text(tx, Math.min(y1 + 13, 192), 10, col, `${c.id}  ${rangeText(range)}`);
+  return s;
+}
 /** The camera of a viewscreen feed, in ship axes: forward, right (starboard for the bow feed) and up. */
 function feedBasis() {
   const tgt = contact(G.target);
-  const f = { FWD: [0, 0, 1], AFT: [0, 0, -1], PORT: [1, 0, 0], STBD: [-1, 0, 0], CHASE: [0, 0, 1] }[G.feed] || (tgt ? v3.norm(relPos(tgt.p)) : [0, 0, 1]);
+  const f = { FWD: [0, 0, 1], AFT: [0, 0, -1], PORT: [1, 0, 0], STBD: [-1, 0, 0], CHASE: [0, 0, 1] }[G.feed] || (tgt ? v3.norm(v3.sub(relPos(tgt.p), BOW_EYE)) : [0, 0, 1]);
   let r = v3.cross(f, [0, 1, 0]);
   if (v3.len(r) < 1e-3) r = [-1, 0, 0];
   r = v3.norm(r);
@@ -5619,11 +5667,12 @@ function lookBand() {
   }
   for (const c of G.contacts) {
     if (c.hull <= 0 || c.iff === "unknown") continue;
-    const rp = relPos(c.p), p = projectShip(rp);
+    const rp = v3.sub(relPos(c.p), BOW_EYE), p = projectShip(rp);
     if (!p || p[0] < -40 || p[0] > 654 || p[1] < -40 || p[1] > 234) continue;
-    const sz = clamp(60 / (v3.len(rp) / 1000), 5, 70) * G.zoom;
+    const rc = bracketRect(c, rp, quat.rot(qi, c.dir), quat.rot(qi, c.up || [0, 1, 0]), projectShip);
+    const sz = rc ? Math.max(5, Math.min(rc[2] - rc[0], rc[3] - rc[1]) / 2 - 4) : clamp(60 / (v3.len(rp) / 1000), 5, 70) * G.zoom;
     s += shipGlyph(c, p[0], p[1], sz, 0, C[c.iff]);
-    if (c.id === G.target) s += `<rect x="${p[0] - sz * 0.9}" y="${p[1] - sz * 0.9}" width="${sz * 1.8}" height="${sz * 1.8}" fill="none" stroke="${C.hostile}" stroke-dasharray="6 ${sz * 1.8 - 12}" stroke-dashoffset="3"/>`;
+    if (c.id === G.target && rc) s += bracket(rc, c, C[c.iff], v3.len(rp));
   }
   s += `</svg>`;
   s += text(342, 38, 11, C.dim, `VIEWSCREEN · ${G.feed}`, { ls: 2 });
@@ -5787,6 +5836,8 @@ function feedWidget(x, y) {
   s += `</g></svg></g>`;
   // The feed buttons: any console can choose what the viewscreen shows.
   FEED_PAD.forEach(([k, ic], i) => { s += button({ x: x + (i % 3) * 41, y: y + 140 + Math.floor(i / 3) * 28, w: 38, h: 25, icon: ic, is: 15, act: `feed:${k}`, on: G.feed === k, tip: `Viewscreen: ${k.toLowerCase()}` }); });
+  // The zooms (viewscreen-zoom 1): a column of five left of the widget, the one in use lit.
+  ZOOMS.forEach((z, i) => { s += button({ x: x - 38, y: y + i * 26, w: 34, h: 24, label: `${z}×`, fs: 11, act: `zoomto:${i}`, on: G.zoom === z, tip: "Viewscreen zoom" }); });
   return s;
 }
 
@@ -7208,7 +7259,8 @@ function act(a, ev) {
   if (k === "scan") G.scanning = !G.scanning;
   if (k === "freq") G.freq = "ABCD"[("ABCD".indexOf(G.freq) + 1) % 4];
   if (k === "feed") G.feed = v;
-  if (k === "zoom") G.zoom = clamp(G.zoom * (+v > 0 ? 2 : 0.5), 1, 8);
+  if (k === "zoom") { const i = ZOOMS.reduce((b, z, j) => (Math.abs(z - G.zoom) < Math.abs(ZOOMS[b] - G.zoom) ? j : b), 0); G.zoom = ZOOMS[clamp(i + Math.sign(+v), 0, ZOOMS.length - 1)]; }
+  if (k === "zoomto") G.zoom = ZOOMS[+v] ?? G.zoom;
   if (k === "compose") { G.composer.to = v; G.composer.verb = null; }
   if (k === "verb") G.composer.verb = v;
   if (k === "send") { sendOrder(G.composer.to, G.composer.verb); G.composer.verb = null; }
@@ -7420,7 +7472,7 @@ window.consoleState = function () {
     oe: F.oe, order_active: F.orderActive, plan: F.plan ? { time: F.plan.time, angle: F.plan.angle, held: F.plan.held } : null,
     preview: { time: preview.time, angle: preview.angle }, goal: goal ? quat.canon(goal) : null, ap: G.ap,
     flight: { rate_dps: FL.rate_dps, speed_min_mps: FL.speed_min_ms, speed_max_mps: FL.speed_max_ms, strafe_max_mps: FL.strafe_max_ms },
-    contacts: G.contacts.filter((c) => c.hull > 0).map((c) => ({ id: c.id, cls: c.cls, iff: c.iff, rel: relPos(c.p), dir: quat.rot(qi, c.dir), hull: c.hull, scan: c.scan })),
+    contacts: G.contacts.filter((c) => c.hull > 0).map((c) => ({ id: c.id, cls: c.cls, iff: c.iff, rel: relPos(c.p), dir: quat.rot(qi, c.dir), hull: c.hull, scan: c.scan, up: quat.rot(qi, c.up || [0, 1, 0]), box_m: SHIP_BOX[c.cls] || null })),
     waypoint: relPos(G.wp), target: tgt && tgt.hull > 0 ? G.target : null, tubes_bear: tubesBear(),
     missiles: G.missiles.map((m) => relPos(m.pos)),
     inbound: G.inbound.map((m) => ({ d: m.d, t: m.t })),

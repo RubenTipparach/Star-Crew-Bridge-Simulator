@@ -1010,7 +1010,7 @@ impl DrillApp {
     /// The camera on the Tern's bow: its eye in the system frame and its attitude.
     fn bow_eye(ships: Option<&(ShipSnap, ShipSnap, Snapshot)>, time_s: f64) -> (DVec3, DQuat) {
         match ships {
-            Some((t, _, _)) => (t.pos + t.rot * DVec3::new(0.0, 3.0, 32.0), t.rot),
+            Some((t, _, _)) => (t.pos + t.rot * console::BOW_EYE, t.rot),
             None => (DVec3::ZERO, DQuat::from_rotation_y(time_s * 0.02)),
         }
     }
@@ -1034,7 +1034,11 @@ impl DrillApp {
                 let chase = ships.is_some_and(|(_, _, s)| s.bridge.main_chase);
                 let target =
                     ships.filter(|(_, h, _)| h.active && h.alive).map(|(t, h, _)| t.rot.inverse() * (h.pos - t.pos));
-                let (e, b, vfov) = console::feed_view(feed, chase, target, chase_cfg, 1.0);
+                let zoom = ships
+                    .and_then(|(_, _, s)| sc_core::combat::ZOOMS.get(usize::from(s.bridge.main_zoom)))
+                    .copied()
+                    .unwrap_or(1.0);
+                let (e, b, vfov) = console::feed_view(feed, chase, target, chase_cfg, zoom);
                 (e.map(|e| rot * e), rot * b.f, rot * b.u, vfov)
             }
         };
@@ -1336,21 +1340,28 @@ impl DrillApp {
         } else {
             let seat = &mut self.seats[st];
             // Each shot: the camera, chase on or off, and its caption.
-            let shot: Option<(&str, bool, &str)> = match t {
+            // Each shot: the camera, chase on or off, the zoom, and its caption.
+            let shot: Option<(&str, bool, f64, &str)> = match t {
                 t if t < 4.0 => {
-                    Some(("FWD", false, "FWD, chase off: the captain's viewscreen from the bow, as before"))
+                    Some(("FWD", false, 1.0, "FWD, chase off: the captain's viewscreen from the bow, as before"))
                 }
-                t if t < 6.5 => Some(("FWD", true, "FWD, chase on: from behind the Tern, the ship low and centred")),
+                t if t < 6.5 => {
+                    Some(("FWD", true, 1.0, "FWD, chase on: from behind the Tern, the ship low and centred"))
+                }
                 t if t < 10.0 => Some((
                     "TARGET",
                     true,
-                    "TARGET, chase on: past the Tern at the Hound, the Hound in the middle, the ship low",
+                    1.0,
+                    "TARGET, chase on: past the Tern at the Hound, the bracket round the Hound",
                 )),
-                t if t < 12.0 => Some(("PORT", true, "PORT, chase on: looking to port past the ship")),
-                t if t < 14.0 => Some(("AFT", true, "AFT, chase on: looking aft past the ship")),
-                t if t < 16.0 => Some(("STBD", true, "STBD, chase on: looking to starboard past the ship")),
-                t if t < 18.0 => Some(("TARGET", false, "TARGET, chase off: first person from the bow again")),
-                t if t < 22.0 => None,
+                t if t < 12.0 => Some(("PORT", true, 1.0, "PORT, chase on: looking to port past the ship")),
+                t if t < 14.0 => Some(("AFT", true, 1.0, "AFT, chase on: looking aft past the ship")),
+                t if t < 16.0 => Some(("STBD", true, 1.0, "STBD, chase on: looking to starboard past the ship")),
+                t if t < 18.0 => Some(("TARGET", false, 1.0, "TARGET, chase off, 1x: the bracket round the Hound")),
+                t if t < 20.0 => Some(("TARGET", false, 4.0, "TARGET, 4x: zoomed, the bracket closes round the hull")),
+                t if t < 22.0 => Some(("TARGET", false, 20.0, "TARGET, 20x")),
+                t if t < 24.0 => Some(("TARGET", true, 4.0, "TARGET, chase on, 4x")),
+                t if t < 28.0 => None,
                 _ => {
                     self.film_screen = false;
                     self.done = true;
@@ -1358,18 +1369,20 @@ impl DrillApp {
                 }
             };
             match shot {
-                Some((feed, chase, cue)) => {
+                Some((feed, chase, zoom, cue)) => {
                     seat.set_feed(feed);
                     seat.set_chase(chase);
+                    seat.set_zoom(zoom);
                     (cue, 1)
                 }
                 None => {
                     seat.set_feed("TARGET");
                     seat.set_chase(true);
+                    seat.set_zoom(1.0);
                     if !self.film_screen {
                         // The captain's camera on the main viewscreen, as his console sends it when he presses.
                         if let Some(s) = self.session.as_mut() {
-                            s.command(sc_core::combat::Command::MainView { feed: 0, chase: true });
+                            s.command(sc_core::combat::Command::MainView { feed: 0, chase: true, zoom: 0 });
                         }
                         self.film_screen = true;
                     }

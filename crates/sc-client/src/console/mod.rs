@@ -77,6 +77,17 @@ pub struct ContactView {
     pub hull: f64,
     /// How far Science's scan has gone, 0-1 (the hull shows from 0.3).
     pub scan: f64,
+    /// Its top, a unit vector in ship axes (target-bracket 1); upright when a saved state has none.
+    #[serde(default = "up_y")]
+    pub up: [f64; 3],
+    /// Its hull box in its own axes (+z its bow, +y its top), least then greatest corner, metres; none when its class
+    /// has no model (target-bracket 1).
+    #[serde(default)]
+    pub box_m: Option<[[f64; 3]; 2]>,
+}
+
+fn up_y() -> [f64; 3] {
+    [0.0, 1.0, 0.0]
 }
 
 /// An inbound missile: from direction `d` (ship axes, toward the shooter), `t` seconds out.
@@ -1161,6 +1172,10 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
 }
 
 /// The viewscreen's camera, in ship axes: forward, right and up (the mockup's `feedBasis`).
+/// Where the bow camera stands, ship frame, metres: ahead of the hull's bow and a little up. The feed is drawn from
+/// here and the target bracket projected from here, so they agree however far the zoom goes (target-bracket 1).
+pub const BOW_EYE: DVec3 = DVec3::new(0.0, 3.0, 32.0);
+
 pub fn feed_basis(v: &ConsoleView) -> Basis {
     let tgt = v.target.as_ref().and_then(|id| v.contacts.iter().find(|c| &c.id == id));
     feed_basis_for(&v.feed, tgt.map(|c| v3(c.rel)))
@@ -1253,12 +1268,17 @@ pub fn feed_view(
     c: &sc_core::exterior::Chase,
     zoom: f64,
 ) -> (Option<DVec3>, Basis, f64) {
-    let b = feed_basis_for(feed, target);
     if chase {
+        // Zoomed, the chase camera stands back as far as the lens narrows: the ship keeps its size, low and in the
+        // middle, and what lies beyond it is magnified (viewscreen-zoom 2).
+        let b = feed_basis_for(feed, target);
         let vfov = chase_vfov(c, zoom);
-        let (eye, b) = chase_camera(b.f, target.filter(|_| feed == "TARGET"), c, vfov / 2.0);
+        let far = sc_core::exterior::Chase { distance_m: c.distance_m * zoom.max(1.0), ..c.clone() };
+        let (eye, b) = chase_camera(b.f, target.filter(|_| feed == "TARGET"), &far, vfov / 2.0);
         return (Some(eye), b, vfov);
     }
+    // From the bow camera: TARGET looks from where it stands at the target.
+    let b = feed_basis_for(feed, target.map(|t| t - BOW_EYE));
     let foc = 307.0 / 35f64.to_radians().tan() * zoom;
     (None, b, 2.0 * (97.0 / foc).atan())
 }
@@ -1300,22 +1320,22 @@ fn look_band(cv: &Canvas, cx: &mut Ctx) {
             let (eye, b, vfov) = feed_view(&v.feed, true, tgt, c, v.zoom);
             (eye.unwrap_or(DVec3::ZERO), b, 97.0 / (vfov / 2.0).tan())
         }
-        _ => (DVec3::ZERO, feed_basis(v), (307.0 / 35f64.to_radians().tan()) * v.zoom),
+        _ => {
+            let tgt = v.target.as_ref().and_then(|id| v.contacts.iter().find(|k| &k.id == id)).map(|k| v3(k.rel));
+            (BOW_EYE, feed_basis_for(&v.feed, tgt.map(|t| t - BOW_EYE)), (307.0 / 35f64.to_radians().tan()) * v.zoom)
+        }
     };
     for k in &v.contacts {
         if k.iff == "unknown" || Some(&k.id) != v.target.as_ref() {
             continue;
         }
-        let d = v3(k.rel) - eye;
-        let cz = d.dot(b.f);
-        if cz <= 0.01 {
-            continue;
-        }
-        let p = [307.0 + d.dot(b.r) / cz * foc, 97.0 - d.dot(b.u) / cz * foc];
-        let sz = ((60.0 / (d.length() / 1000.0)).clamp(5.0, 70.0) * v.zoom) as f32;
-        let (px, py) = (p[0] as f32, p[1] as f32);
-        let side = sz * 1.8;
-        cv_dashed_rect(&scr, px - sz * 0.9, py - sz * 0.9, side, side, c.hostile.0, side - 12.0);
+        let Some(r) = bracket_rect(k, eye, &b, foc, v.zoom) else { continue };
+        let col = match k.iff.as_str() {
+            "friendly" => c.friendly.0,
+            "neutral" => c.neutral.0,
+            _ => c.hostile.0,
+        };
+        draw_bracket(&scr, r, k, col, (v3(k.rel) - eye).length(), c.line.0);
     }
     cv.text(342.0, 38.0, 11.0, c.dim.0, &format!("VIEWSCREEN · {}", v.feed), T::default().ls(2.0));
     kit::feed_widget(cv, cx, 196.0, 10.0);
@@ -1332,10 +1352,75 @@ fn lerp_col(a: Color32, b: Color32, k: f32) -> Color32 {
     Color32::from_rgb(ch(a.r(), b.r()), ch(a.g(), b.g()), ch(a.b(), b.b()))
 }
 
-/// The mockup's target bracket: a rectangle dashed `6 gap` from 3 in, so only its corners show.
-fn cv_dashed_rect(cv: &Canvas, x: f32, y: f32, w: f32, h: f32, col: Color32, gap: f32) {
-    let pts = [[x, y], [x + w, y], [x + w, y + h], [x, y + h], [x, y]];
-    cv.polyline(&pts, Pen::new(1.0, col).dash(6.0, gap.max(0.0), 3.0));
+/// The viewscreen's middle, in its 614 x 194 picture.
+const SCREEN_MID: [f64; 2] = [307.0, 97.0];
+
+/// The target bracket's rectangle on the viewscreen, [left, top, right, bottom] (target-bracket 1): the contact's hull
+/// box turned as it lies and projected through the camera at `eye` with axes `b` and focal length `foc` pixels, padded
+/// 4 px and at least 16 px a side about its middle. None when a corner is behind the camera. A class with no box is
+/// framed by the old range rule's square (60 px at 1 km, 5 to 70 px), times `zoom`.
+pub fn bracket_rect(k: &ContactView, eye: DVec3, b: &Basis, foc: f64, zoom: f64) -> Option<[f64; 4]> {
+    let at = |p: DVec3| {
+        let d = p - eye;
+        let cz = d.dot(b.f);
+        (cz > 0.01).then(|| [SCREEN_MID[0] + d.dot(b.r) / cz * foc, SCREEN_MID[1] - d.dot(b.u) / cz * foc])
+    };
+    let rel = v3(k.rel);
+    let (mut x0, mut y0, mut x1, mut y1) = (f64::INFINITY, f64::INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY);
+    match k.box_m {
+        Some([lo, hi]) => {
+            let fwd = v3(k.dir).normalize_or(DVec3::Z);
+            let up = v3(k.up).normalize_or(DVec3::Y);
+            let right = up.cross(fwd).normalize_or(DVec3::X);
+            for i in 0..8 {
+                let pick = |a: usize| if i >> a & 1 == 0 { lo[a] } else { hi[a] };
+                let p = at(rel + right * pick(0) + up * pick(1) + fwd * pick(2))?;
+                (x0, y0, x1, y1) = (x0.min(p[0]), y0.min(p[1]), x1.max(p[0]), y1.max(p[1]));
+            }
+        }
+        None => {
+            let p = at(rel)?;
+            let half = (60.0 / ((rel - eye).length() / 1000.0)).clamp(5.0, 70.0) * zoom * 0.9;
+            (x0, y0, x1, y1) = (p[0] - half, p[1] - half, p[0] + half, p[1] + half);
+        }
+    }
+    let pad = |a: f64, z: f64| {
+        let (m, h) = ((a + z) / 2.0, ((z - a) / 2.0 + 4.0).max(8.0));
+        (m - h, m + h)
+    };
+    let ((x0, x1), (y0, y1)) = (pad(x0, x1), pad(y0, y1));
+    Some([x0, y0, x1, y1])
+}
+
+/// A range as the bracket reads it: whole metres under a kilometre, kilometres to one place from there.
+pub fn range_text(m: f64) -> String {
+    if m < 1000.0 {
+        format!("{:.0} m", m)
+    } else {
+        format!("{:.1} km", m / 1000.0)
+    }
+}
+
+/// The target bracket (target-bracket 1-3): four L corners round `r` in the IFF colour, the IFF word and the hull bar
+/// above it, the contact's id and range below, the texts kept inside the viewscreen.
+fn draw_bracket(cv: &Canvas, r: [f64; 4], k: &ContactView, col: Color32, range_m: f64, track: Color32) {
+    let [x0, y0, x1, y1] = r.map(|a| a as f32);
+    let arm = ((x1 - x0).min(y1 - y0) / 4.0).clamp(5.0, 14.0);
+    let pen = Pen::new(1.5, col);
+    cv.polyline(&[[x0, y0 + arm], [x0, y0], [x0 + arm, y0]], pen);
+    cv.polyline(&[[x1 - arm, y0], [x1, y0], [x1, y0 + arm]], pen);
+    cv.polyline(&[[x1, y1 - arm], [x1, y1], [x1 - arm, y1]], pen);
+    cv.polyline(&[[x0 + arm, y1], [x0, y1], [x0, y1 - arm]], pen);
+    let tx = x0.clamp(2.0, 614.0 - 72.0);
+    let top = (y0 - 8.0).max(12.0);
+    cv.text(tx, top - 4.0, 10.0, col, &k.iff.to_uppercase(), T::default().bold().ls(1.0));
+    if k.scan >= 0.3 {
+        let w = x1 - x0;
+        cv.rect(x0, y0 - 6.0, w, 3.0, 0.0, track, None);
+        cv.rect(x0, y0 - 6.0, w * (k.hull / 100.0).clamp(0.0, 1.0) as f32, 3.0, 0.0, col, None);
+    }
+    let below = (y1 + 13.0).min(192.0);
+    cv.text(tx, below, 10.0, col, &format!("{}  {}", k.id, range_text(range_m)), T::default());
 }
 
 /// The status strip: the same on every console, pictures and numbers only.
@@ -1464,6 +1549,112 @@ mod tests {
             assert!(sx.abs() < 1e-3, "the ship is in the middle across, at {sx}");
             assert!((sy + c.ship_low).abs() < 1e-3, "the ship sits {} below the middle, at {sy}", c.ship_low);
         }
+    }
+
+    fn hound_contact(rel: [f64; 3]) -> ContactView {
+        ContactView {
+            id: "T1".into(),
+            cls: "corvette".into(),
+            iff: "hostile".into(),
+            rel,
+            dir: [0.6, 0.0, 0.8],
+            hull: 80.0,
+            scan: 1.0,
+            up: [0.0, 1.0, 0.0],
+            box_m: crate::ships3d::class_box("corvette").map(|(lo, hi)| [lo.map(f64::from), hi.map(f64::from)]),
+        }
+    }
+
+    /// Every corner of the contact's box, projected as the bracket projects them.
+    fn box_on_screen(k: &ContactView, eye: DVec3, b: &Basis, foc: f64) -> Vec<[f64; 2]> {
+        let [lo, hi] = k.box_m.unwrap();
+        let (fwd, up) = (v3(k.dir).normalize(), v3(k.up).normalize());
+        let right = up.cross(fwd).normalize();
+        (0..8)
+            .map(|i| {
+                let pick = |a: usize| if i >> a & 1 == 0 { lo[a] } else { hi[a] };
+                let d = v3(k.rel) + right * pick(0) + up * pick(1) + fwd * pick(2) - eye;
+                let cz = d.dot(b.f);
+                [SCREEN_MID[0] + d.dot(b.r) / cz * foc, SCREEN_MID[1] - d.dot(b.u) / cz * foc]
+            })
+            .collect()
+    }
+
+    #[test]
+    fn the_bracket_closes_round_the_hound_near_and_far() {
+        let bow = Basis { f: DVec3::Z, r: DVec3::NEG_X, u: DVec3::Y };
+        let foc = 307.0 / 35f64.to_radians().tan();
+        for rel in [[30.0, 10.0, 300.0], [-200.0, 40.0, 3000.0]] {
+            let k = hound_contact(rel);
+            let r = bracket_rect(&k, DVec3::ZERO, &bow, foc, 1.0).expect("ahead of the camera");
+            let pts = box_on_screen(&k, DVec3::ZERO, &bow, foc);
+            let (x0, x1) = pts.iter().fold((f64::INFINITY, f64::NEG_INFINITY), |a, p| (a.0.min(p[0]), a.1.max(p[0])));
+            let (y0, y1) = pts.iter().fold((f64::INFINITY, f64::NEG_INFINITY), |a, p| (a.0.min(p[1]), a.1.max(p[1])));
+            assert!(r[0] <= x0 && r[1] <= y0 && r[2] >= x1 && r[3] >= y1, "the corners enclose the hull at {rel:?}");
+            assert!(r[2] - r[0] >= 16.0 - 1e-9 && r[3] - r[1] >= 16.0 - 1e-9, "at least 16 px a side");
+            if x1 - x0 > 8.0 {
+                assert!((r[0] - (x0 - 4.0)).abs() < 1e-6 && (r[2] - (x1 + 4.0)).abs() < 1e-6, "4 px to spare across");
+            }
+        }
+    }
+
+    #[test]
+    fn the_bracket_follows_the_chase_camera() {
+        let target = DVec3::new(250.0, 0.0, 600.0);
+        let k = hound_contact(target.to_array());
+        let (eye, b, vfov) = feed_view("TARGET", true, Some(target), &chase_cfg(), 1.0);
+        let (eye, foc) = (eye.unwrap(), 97.0 / (vfov / 2.0).tan());
+        let r = bracket_rect(&k, eye, &b, foc, 1.0).unwrap();
+        let mid = [(r[0] + r[2]) / 2.0, (r[1] + r[3]) / 2.0];
+        assert!(
+            (mid[0] - SCREEN_MID[0]).abs() < 12.0 && (mid[1] - SCREEN_MID[1]).abs() < 12.0,
+            "on the Hound in the middle: {mid:?}"
+        );
+    }
+
+    #[test]
+    fn the_bracket_stays_on_the_hound_at_20x_from_the_bow() {
+        // The feed is drawn from the bow camera: the bracket must be projected from there too, or the zoom magnifies
+        // the 32 m between the bow and the ship's centre into a bracket beside the ship.
+        let target = DVec3::new(-700.0, 120.0, 1300.0);
+        let k = hound_contact(target.to_array());
+        let (eye, b, vfov) = feed_view("TARGET", false, Some(target), &chase_cfg(), 20.0);
+        assert!(eye.is_none(), "on the bow");
+        let foc = 97.0 / (vfov / 2.0).tan();
+        let r = bracket_rect(&k, BOW_EYE, &b, foc, 20.0).unwrap();
+        let mid = [(r[0] + r[2]) / 2.0, (r[1] + r[3]) / 2.0];
+        assert!(
+            (mid[0] - SCREEN_MID[0]).abs() < 12.0 && (mid[1] - SCREEN_MID[1]).abs() < 12.0,
+            "on the Hound: {mid:?}"
+        );
+    }
+
+    #[test]
+    fn zoomed_chase_keeps_the_ship_its_size_and_low() {
+        let target = DVec3::new(250.0, 0.0, 1600.0);
+        let size = |zoom: f64| {
+            let (eye, b, vfov) = feed_view("TARGET", true, Some(target), &chase_cfg(), zoom);
+            let eye = eye.unwrap();
+            let (_, sy, _) = on_screen(DVec3::ZERO, eye, &b, vfov / 2.0);
+            let (_, ty, _) = on_screen(DVec3::new(0.0, 10.0, 0.0), eye, &b, vfov / 2.0);
+            (ty - sy, sy)
+        };
+        let (s1, low1) = size(1.0);
+        let (s4, low4) = size(4.0);
+        assert!((s4 / s1 - 1.0).abs() < 0.05, "the Tern keeps its size: {s1} at 1x, {s4} at 4x");
+        assert!((low1 + 0.45).abs() < 1e-3 && (low4 + 0.45).abs() < 1e-3, "and stays low");
+    }
+
+    #[test]
+    fn a_target_behind_the_camera_has_no_bracket() {
+        let bow = Basis { f: DVec3::Z, r: DVec3::NEG_X, u: DVec3::Y };
+        assert!(bracket_rect(&hound_contact([0.0, 0.0, -500.0]), DVec3::ZERO, &bow, 400.0, 1.0).is_none());
+    }
+
+    #[test]
+    fn the_bracket_reads_its_range_in_metres_then_kilometres() {
+        assert_eq!(range_text(640.4), "640 m");
+        assert_eq!(range_text(3240.0), "3.2 km");
     }
 
     #[test]

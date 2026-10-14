@@ -237,6 +237,24 @@ fn mode_of(w: &str) -> HelmMode {
     }
 }
 
+/// The step of `combat::ZOOMS` nearest `z` (viewscreen-zoom 1).
+fn zoom_index(z: f64) -> Option<usize> {
+    let zs = sc_core::combat::ZOOMS;
+    (0..zs.len()).min_by(|a, b| (zs[*a] - z).abs().total_cmp(&(zs[*b] - z).abs()))
+}
+
+/// Science's + and -: one step along `combat::ZOOMS` from the nearest, stopping at the ends.
+fn step_zoom(z: f64, d: i32) -> f64 {
+    let zs = sc_core::combat::ZOOMS;
+    let i = zoom_index(z).unwrap_or(0) as i32 + d.signum();
+    zs[i.clamp(0, zs.len() as i32 - 1) as usize]
+}
+
+/// A contact class's hull box for the target bracket (target-bracket 1), as the console view carries it.
+fn class_box_m(cls: &str) -> Option<[[f64; 3]; 2]> {
+    crate::ships3d::class_box(cls).map(|(lo, hi)| [lo.map(f64::from), hi.map(f64::from)])
+}
+
 fn arr(v: DVec3) -> [f64; 3] {
     v.to_array()
 }
@@ -313,6 +331,8 @@ impl Seat {
                 dir: arr(inv * (hound.rot * DVec3::Z)),
                 hull: hound.hull / data.enemy.combat.hull_mj.max(1e-9) * 100.0,
                 scan: br.scan,
+                up: arr(inv * (hound.rot * DVec3::Y)),
+                box_m: class_box_m("corvette"),
             }]
         } else {
             Vec::new()
@@ -329,6 +349,8 @@ impl Seat {
                 dir: arr(inv * (f.rot * DVec3::Z)),
                 hull: f.hull * 100.0,
                 scan: 1.0,
+                up: arr(inv * (f.rot * DVec3::Y)),
+                box_m: class_box_m("fighter"),
             });
             fighter_vel.push((format!("J{n}"), f.vel, f.shield));
         }
@@ -893,9 +915,26 @@ impl Seat {
         self.chase = on;
     }
 
+    /// Zoom this seat's viewscreen (scripted captures; a player presses the zoom column).
+    pub fn set_zoom(&mut self, zoom: f64) {
+        self.zoom = zoom;
+    }
+
     /// Show `feed` on this seat's viewscreen (scripted captures; a player presses the feed pad).
     pub fn set_feed(&mut self, feed: &str) {
         self.feed = feed.to_owned();
+    }
+
+    /// The captain's camera, chase and zoom on the bridge's main viewscreen (chase-camera 2, viewscreen-zoom 3); other
+    /// stations send nothing.
+    fn send_main_view(&self, v: &ConsoleView, out: &mut Vec<SeatAsk>) {
+        if v.station != "captain" {
+            return;
+        }
+        let (Some(feed), Some(zoom)) = (FEEDS.iter().position(|f| *f == self.feed), zoom_index(self.zoom)) else {
+            return;
+        };
+        out.push(SeatAsk::Command(Command::MainView { feed: feed as u8, chase: self.chase, zoom: zoom as u8 }));
     }
 
     fn act(
@@ -1001,14 +1040,11 @@ impl Seat {
                 } else {
                     self.chase = !self.chase;
                 }
-                if v.station == "captain" {
+                self.send_main_view(v, out);
+                if chose && v.station == "captain" && v.captain.as_ref().is_some_and(|c| c.view_override) {
                     if let Some(i) = FEEDS.iter().position(|f| *f == self.feed) {
-                        // The captain's camera is the bridge's main viewscreen (chase-camera 2), and everyone's while
-                        // he holds the viewscreen.
-                        out.push(cmd(Command::MainView { feed: i as u8, chase: self.chase }));
-                        if chose && v.captain.as_ref().is_some_and(|c| c.view_override) {
-                            out.push(cmd(Command::Viewscreen(Some(i as u8))));
-                        }
+                        // Everyone's camera while he holds the viewscreen.
+                        out.push(cmd(Command::Viewscreen(Some(i as u8))));
                     }
                 }
             }
@@ -1022,7 +1058,16 @@ impl Seat {
                 out.push(cmd(Command::Freq(((band + 1) % BANDS.len()) as u8)));
             }
             Act::ShieldView => self.shield_cam = SHIELD_CAM,
-            Act::Zoom(d) => self.zoom = (self.zoom * if d > 0 { 2.0 } else { 0.5 }).clamp(1.0, 8.0),
+            Act::Zoom(d) => {
+                self.zoom = step_zoom(self.zoom, d);
+                self.send_main_view(v, out);
+            }
+            Act::ZoomTo(i) => {
+                if let Some(z) = sc_core::combat::ZOOMS.get(usize::from(i)) {
+                    self.zoom = *z;
+                    self.send_main_view(v, out);
+                }
+            }
             Act::Compose(r) => self.composer = (r, None),
             Act::Verb(w) => self.composer.1 = Some(w),
             Act::Send => {
@@ -1770,20 +1815,46 @@ mod tests {
         let mut b = Bench::new(Station::Captain);
         assert_eq!(
             b.press(Hit::Act(Act::Feed("TARGET".into())), 1.0),
-            vec![Command::MainView { feed: 0, chase: false }],
+            vec![Command::MainView { feed: 0, chase: false, zoom: 0 }],
             "his TARGET is the bridge's main viewscreen's (chase-camera 2)"
         );
         assert_eq!(
             b.press(Hit::Act(Act::Feed("CHASE".into())), 1.1),
-            vec![Command::MainView { feed: 0, chase: true }],
+            vec![Command::MainView { feed: 0, chase: true, zoom: 0 }],
             "CHASE toggles the chase camera on the camera he has, TARGET (chase-camera 1)"
         );
         assert_eq!(
             b.press(Hit::Act(Act::Feed("CHASE".into())), 1.2),
-            vec![Command::MainView { feed: 0, chase: false }]
+            vec![Command::MainView { feed: 0, chase: false, zoom: 0 }]
+        );
+        assert_eq!(
+            b.press(Hit::Act(Act::ZoomTo(3)), 1.3),
+            vec![Command::MainView { feed: 0, chase: false, zoom: 3 }],
+            "his zoom, 10x, goes with his camera (viewscreen-zoom 3)"
         );
         let mut h = Bench::new(Station::Helm);
         assert!(h.press(Hit::Act(Act::Feed("CHASE".into())), 1.0).is_empty(), "another station's camera is its own");
+    }
+
+    #[test]
+    fn every_console_zooms_its_viewscreen_in_five_steps() {
+        let mut h = Bench::new(Station::Helm);
+        for (i, z) in sc_core::combat::ZOOMS.iter().enumerate() {
+            assert!(
+                h.press(Hit::Act(Act::ZoomTo(i as u8)), 1.0 + i as f64 * 0.1).is_empty(),
+                "the helm's zoom is its own"
+            );
+            assert_eq!(h.view(1.6).zoom, *z, "the helm's viewscreen at {z}x (viewscreen-zoom 1)");
+        }
+        let mut s = Bench::new(Station::Science);
+        let mut seen = Vec::new();
+        for k in 0..6 {
+            s.press(Hit::Act(Act::Zoom(1)), 1.0 + k as f64 * 0.1);
+            seen.push(s.view(2.0).zoom);
+        }
+        assert_eq!(seen, vec![2.0, 4.0, 10.0, 20.0, 20.0, 20.0], "Science's + steps along the five and stops at 20x");
+        s.press(Hit::Act(Act::Zoom(-1)), 3.0);
+        assert_eq!(s.view(3.1).zoom, 10.0, "and - steps back");
     }
 
     #[test]

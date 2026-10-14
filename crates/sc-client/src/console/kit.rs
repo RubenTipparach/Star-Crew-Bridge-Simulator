@@ -45,6 +45,8 @@ pub enum Act {
     Freq,
     ShieldView,
     Zoom(i32),
+    /// Any console: the viewscreen's zoom, an index in `combat::ZOOMS` (viewscreen-zoom 1).
+    ZoomTo(u8),
     /// The captain: a station to write to, a verb, send; brace; take the viewscreen; a room on the plan; a tab.
     Compose(String),
     Verb(String),
@@ -971,6 +973,26 @@ pub fn feed_widget(cv: &Canvas, cx: &mut Ctx, x: f32, y: f32) {
                 } else {
                     format!("Viewscreen: {}", k.to_lowercase())
                 }),
+                ..Default::default()
+            },
+        );
+    }
+    // The zooms (viewscreen-zoom 1): a column of five left of the widget, the one in use lit.
+    for (i, z) in sc_core::combat::ZOOMS.iter().enumerate() {
+        let label = format!("{z}\u{d7}");
+        button(
+            cv,
+            cx,
+            Btn {
+                x: x - 38.0,
+                y: y + i as f32 * 26.0,
+                w: 34.0,
+                h: 24.0,
+                label: Some(&label),
+                fs: Some(11.0),
+                act: Some(Act::ZoomTo(i as u8)),
+                on: (cx.v.zoom - z).abs() < 1e-9,
+                tip: Some("Viewscreen zoom".into()),
                 ..Default::default()
             },
         );
