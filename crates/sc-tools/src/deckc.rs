@@ -831,6 +831,47 @@ mod tests {
         }
     }
 
+    /// The share of the hull's textured corners whose colour is one of a few tints times the light `ambient +
+    /// (1 - ambient) max(0, n . sun)`: the exterior build's bake (`tools/blender/build_ship_exteriors.py`).
+    fn bake_fit(model: &crate::glb::Glb, sun: [f64; 3], ambient: f64) -> f64 {
+        let len = (sun[0] * sun[0] + sun[1] * sun[1] + sun[2] * sun[2]).sqrt();
+        let s = sun.map(|x| x / len);
+        let (mut fit, mut all) = (0usize, 0usize);
+        for p in model.primitives.iter().filter(|p| p.image.is_some()) {
+            let mut tints: HashMap<[i64; 3], usize> = HashMap::new();
+            for (c, n) in p.colours.iter().zip(&p.normals) {
+                let lambert = (0..3).map(|k| f64::from(n[k]) * s[k]).sum::<f64>().max(0.0);
+                let light = ambient + (1.0 - ambient) * lambert;
+                let tint = std::array::from_fn(|k| (f64::from(c[k]) / light * 100.0).round() as i64);
+                *tints.entry(tint).or_default() += 1;
+            }
+            let mut counts: Vec<usize> = tints.into_values().collect();
+            counts.sort_unstable_by(|a, b| b.cmp(a));
+            fit += counts.iter().take(12).sum::<usize>();
+            all += p.colours.len();
+        }
+        fit as f64 / all as f64
+    }
+
+    #[test]
+    fn the_hull_colours_are_the_bake_that_exteriors_json_names() {
+        // The client divides this bake out to light the hull from the sky's sun (patrol-mission design 11.3), so the
+        // numbers it reads must be the ones the model was baked with: checked on the model itself (CLAUDE.md 6.6).
+        let ext = read_json(root(), "data/ships/exteriors.json").unwrap();
+        let sun: [f64; 3] = std::array::from_fn(|k| ext["sun_dir_ship"][k].as_f64().unwrap());
+        let ambient = ext["ambient_fraction"].as_f64().unwrap();
+        let (source, model) = exterior_model(root(), "tern").unwrap().unwrap();
+        let with_bake = bake_fit(&model, sun, ambient);
+        let sky = read_json(root(), "data/space/exterior.json").unwrap();
+        let sky_sun: [f64; 3] = std::array::from_fn(|k| sky["sun"]["dir"][k].as_f64().unwrap());
+        let with_sky = bake_fit(&model, sky_sun, ambient);
+        assert!(with_bake > 0.95, "{source}: only {with_bake:.3} of its corners are a tint times the named bake");
+        assert!(
+            with_bake > with_sky + 0.1,
+            "the fit tells the bake's sun ({with_bake:.3}) from the sky's ({with_sky:.3})"
+        );
+    }
+
     #[test]
     fn a_ship_without_an_exterior_model_compiles_without_a_hull() {
         let (mut v, mut x, mut t) = (Vec::new(), Vec::new(), Vec::new());

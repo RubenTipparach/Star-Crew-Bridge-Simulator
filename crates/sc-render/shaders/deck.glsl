@@ -1,7 +1,8 @@
 // The deck program (engine-stack design section 7, shader 1): the 28-byte deck vertex
 // (sc-core::vertex, deck-pipeline section 5), three baked colour sets blended by the
 // compartment's state weights (normal, red alert, emergency), a texture array layer per
-// material, and a per-vertex term for a dynamic light. deck_flat skips the texture fetch
+// material, and a per-vertex term for a dynamic light, or for a baked sun moved to the frame's (the hull,
+// patrol-mission design 11.3). deck_flat skips the texture fetch
 // (the probe's fill-rate scene compares the two, design section 11, scene 3). deck_probe lights a
 // moving thing (a crew figure) from an ambient cube of light probes instead of a baked colour
 // (light-baking design sections 6 and 16): its vertex colour is its albedo.
@@ -17,6 +18,9 @@ layout(binding=0) uniform deck_vs_params {
     // x: a clip height in the mesh's own frame, metres: nothing above it is drawn (the ship map's cut,
     // ship-plan-view 5); a huge value draws everything.
     vec4 clip;
+    // A baked sun to relight (patrol-mission design 11.3): xyz the direction the colours were baked from, in the
+    // mesh's frame; w the bake's ambient share, 0 for none. With it, flash is the frame's sun, not an added light.
+    vec4 relight;
 };
 
 // Integer attributes (sokol_gfx's SHORT4 and SHORT2 are integer formats): exact, decoded here.
@@ -40,7 +44,15 @@ void main() {
     float layer = float(w >> 8);
     vec4 c = color_normal * state_weights.x + color_red_alert * state_weights.y + color_emergency * state_weights.z;
     // A baked colour byte is a display multiplier from 0 to 2 (light-baking design 5).
-    c.rgb = c.rgb * 2.0 + vec3(max(dot(normal.xyz, flash.xyz), 0.0) * flash.w);
+    c.rgb = c.rgb * 2.0;
+    float sun_now = max(dot(normal.xyz, flash.xyz), 0.0) * flash.w;
+    if (relight.w > 0.0) {
+        // The bake's light divided out and the frame's sun multiplied in: light(s) = a + (1 - a) max(0, n . s).
+        float baked = relight.w + (1.0 - relight.w) * max(dot(normal.xyz, relight.xyz), 0.0);
+        c.rgb *= (relight.w + (1.0 - relight.w) * sun_now) / baked;
+    } else {
+        c.rgb += vec3(sun_now);
+    }
     color = vec4(c.rgb, 1.0);
     uv_layer = vec3(vec2(uv) * (1.0 / 1024.0), layer);
 }

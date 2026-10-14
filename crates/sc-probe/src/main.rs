@@ -189,6 +189,7 @@ fn params() -> DeckParams {
         panel_first: u32::MAX,
         panel_glow: 0.0,
         clip_y: f32::MAX,
+        relight: sc_render::NO_RELIGHT,
     }
 }
 

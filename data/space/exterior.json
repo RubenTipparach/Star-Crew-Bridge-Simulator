@@ -40,6 +40,12 @@
     "light_srgb": [1.0, 0.86, 0.55],
     "ambient": 0.10
   },
+  "beacons": {
+    "_doc": "The navigation beacons on stations and relays outside (openspec/changes/patrol-mission design 3): each blinks once a period, lit for on_s of it, and is drawn at least min_radius_deg in angular radius however far off it is (about 3 pixels across at 70 degrees on 720 lines), so the relay's light shows from 18 km.",
+    "period_s": 1.0,
+    "on_s": 0.15,
+    "min_radius_deg": 0.15
+  },
   "viewscreen": {
     "_doc": "The bow camera: where it sits (just ahead of the hull's bow), the way it looks (ahead, turned a little to port and down so the planet's limb is in the corner), its vertical field of view and the target it renders into each frame, pixels.",
     "camera_m": [0.0, 3.0, 43.0],

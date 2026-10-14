@@ -121,7 +121,7 @@ impl BridgeView {
         let views = views_on(&d.index.views, &floors);
         let fov_deg = crate::options::FOV_DEG[2] as f32;
         let panel_glow = t.panel_glow[0];
-        let hull = crate::hull::HullView::load(r, &d);
+        let hull = crate::hull::HullView::load(r, &d)?;
         Ok(Self {
             rooms,
             world,
@@ -213,12 +213,14 @@ impl BridgeView {
                 panel_first: self.panel_first,
                 panel_glow: self.panel_glow,
                 clip_y: f32::MAX,
+                relight: sc_render::NO_RELIGHT,
             };
             r.draw_deck(t, mesh, DeckProgram::Textured, &p, Some(&self.tex));
         }
         // The hull (tern-exterior 4): after the rooms, so their walls hide most of it before it is shaded.
+        // Lit by the sky's sun, turned into the ship's frame by the Tern's attitude (patrol-mission design 11.3).
         if let Some(h) = &self.hull {
-            h.draw(r, t, proj * view, eye);
+            h.draw(r, t, proj * view, eye, crate::outside::sun_in_ship(ext, out.attitude));
         }
         // The viewscreens: the feed's picture on a quad 3 cm in front of each, as the walk draws them.
         if let Some((feed, scanlines)) = out.screen {
@@ -346,6 +348,7 @@ pub fn flat_params(mvp: Mat4) -> DeckParams {
         panel_first: u32::MAX,
         panel_glow: 1.0,
         clip_y: f32::MAX,
+        relight: sc_render::NO_RELIGHT,
     }
 }
 

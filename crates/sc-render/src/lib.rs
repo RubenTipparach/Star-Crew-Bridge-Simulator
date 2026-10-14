@@ -73,7 +73,15 @@ pub struct DeckParams {
     pub panel_glow: f32,
     /// Nothing above this height in the mesh's own frame is drawn, metres (`f32::MAX`: no cut; ship-plan-view 5).
     pub clip_y: f32,
+    /// A baked sun to move to the frame's (patrol-mission design 11.3): the direction the colours were baked from in
+    /// the mesh's frame, and the bake's ambient share; [`NO_RELIGHT`] for none. With it, `flash_dir` and `flash` are
+    /// the frame's sun and its strength, and the colour is `light(now) / light(baked)` of the bake, never an added
+    /// light: `light(s) = a + (1 - a) max(0, n . s)`.
+    pub relight: [f32; 4],
 }
+
+/// [`DeckParams::relight`] off: the colours are drawn as baked.
+pub const NO_RELIGHT: [f32; 4] = [0.0; 4];
 
 /// The sky's numbers (deck-pipeline 13b; `data/space/exterior.json` through the client): directions are ship
 /// coordinates, colours linear. See `shaders/sky.glsl` for each lane.
@@ -641,6 +649,7 @@ impl Renderer {
             state_weights: [params.state_weights[0], params.state_weights[1], params.state_weights[2], 0.0],
             flash: [params.flash_dir.x, params.flash_dir.y, params.flash_dir.z, params.flash],
             clip: [params.clip_y.min(1.0e9), 0.0, 0.0, 0.0],
+            relight: params.relight,
         };
         sg::apply_uniforms(shaders::deck::UB_DECK_VS_PARAMS, &sg::value_as_range(&u));
         if program == DeckProgram::Textured {

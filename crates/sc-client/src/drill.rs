@@ -90,6 +90,8 @@ struct Meshes {
     beam: Mesh,
     /// The extinguisher in hand (all-hands 4; the mockups' own).
     held: Mesh,
+    /// The relay at the Shoals, where the helm's COURSE flies (patrol-mission design 3): a placeholder.
+    relay: crate::outside::StationView,
 }
 
 struct VisBolt {
@@ -255,6 +257,8 @@ impl DrillApp {
         }
         let hound = ships3d::hound();
         println!("sc-client: the Hound placeholder is {} triangles", hound.triangles());
+        let relay = crate::outside::StationView::new(&r, ships3d::StationKind::Relay);
+        println!("sc-client: the relay placeholder is {} triangles", relay.triangles);
         let meshes = Meshes {
             hound: mesh(&r, &hound),
             jackal: mesh(&r, &ships3d::jackal()),
@@ -265,6 +269,7 @@ impl DrillApp {
             burst: mesh(&r, &ships3d::burst()),
             beam: mesh(&r, &ships3d::bolt([2.0, 0.6, 1.3])),
             held: mesh(&r, &ships3d::extinguisher()),
+            relay,
         };
         let mut args = args;
         if args.any {
@@ -966,6 +971,7 @@ impl DrillApp {
             booms: &self.booms,
             debris: &self.debris,
             time_s: self.time_s,
+            relay: DVec3::from_array(self.data.mission.waypoint_m),
         };
         self.r.begin_3d(&self.feed, [0.0, 0.0, 0.0, 1.0]);
         world.draw(&mut self.r, &self.feed, proj, view_m, vfov as f32 / FEED.1 as f32, eye, ships);
@@ -984,6 +990,8 @@ struct World<'a> {
     booms: &'a [Boom],
     debris: &'a [Debris],
     time_s: f64,
+    /// The relay at the mission's waypoint, system frame, metres.
+    relay: DVec3,
 }
 
 impl World<'_> {
@@ -1016,27 +1024,19 @@ impl World<'_> {
     ) {
         let rel = |p: DVec3| (p - eye).as_vec3();
         let flat = crate::drill_bridge::flat_params;
+        // One sun lights everything outside (patrol-mission design 11.3).
+        let sun = Vec3::from_array(normalized(self.exterior.sun.dir));
+        let cube = crate::outside::sun_cube(sun);
+        // The relay where the helm's COURSE flies, its beacon blinking (patrol-mission design 3).
+        self.meshes.relay.draw(r, t, vp, rel(self.relay), Quat::IDENTITY, sun, &self.exterior.beacons, self.time_s);
         if let Some((_, hound, snap)) = ships {
             if hound.active && hound.alive {
-                let sun = Vec3::from_array(normalized(self.exterior.sun.dir));
-                let axes = [Vec3::X, -Vec3::X, Vec3::Y, -Vec3::Y, Vec3::Z, -Vec3::Z];
-                let cube = axes.map(|a| {
-                    let s = a.dot(sun).max(0.0);
-                    let fill = (-a.dot(sun)).max(0.0) * 0.12;
-                    [0.2 + 1.3 * s + fill * 0.6, 0.2 + 1.25 * s + fill * 0.7, 0.22 + 1.15 * s + fill]
-                });
                 let q = Quat::from_xyzw(hound.rot.x as f32, hound.rot.y as f32, hound.rot.z as f32, hound.rot.w as f32);
                 let model = Mat4::from_rotation_translation(q, rel(hound.pos));
                 r.draw_deck_probe(t, &self.meshes.hound, vp * model, Mat4::from_quat(q), &cube, [1.0, 0.0, 0.0]);
             }
             // The enemy's fighters (enemy-fighters 4), lit like the Hound.
             for f in &snap.fighters {
-                let sun = Vec3::from_array(normalized(self.exterior.sun.dir));
-                let axes = [Vec3::X, -Vec3::X, Vec3::Y, -Vec3::Y, Vec3::Z, -Vec3::Z];
-                let cube = axes.map(|a| {
-                    let s = a.dot(sun).max(0.0);
-                    [0.2 + 1.3 * s, 0.2 + 1.25 * s, 0.22 + 1.15 * s]
-                });
                 let q = Quat::from_xyzw(f.rot.x as f32, f.rot.y as f32, f.rot.z as f32, f.rot.w as f32);
                 let model = Mat4::from_rotation_translation(q, rel(f.pos));
                 r.draw_deck_probe(t, &self.meshes.jackal, vp * model, Mat4::from_quat(q), &cube, [1.0, 0.0, 0.0]);
@@ -1409,6 +1409,7 @@ impl App for DrillApp {
                     booms: &self.booms,
                     debris: &self.debris,
                     time_s: self.time_s,
+                    relay: DVec3::from_array(self.data.mission.waypoint_m),
                 };
                 let seen = ships.as_ref();
                 let out = crate::drill_bridge::Outside {

@@ -12,14 +12,15 @@ hostiles", "the view through the window should reflect whats going on around the
 
 ## 2. The windows in the engine, the client's drawing only (phase 1)
 
-- [ ] 2.1 The deck program's `relight` (design 11.3): the hull's bake divided out and the frame's sun multiplied in,
+- [x] 2.1 The deck program's `relight` (design 11.3): the hull's bake divided out and the frame's sun multiplied in,
   per vertex; `DeckParams::relight`; the shader modules regenerated (`tools/sokol_shaders.py`).
-- [ ] 2.2 `sc-client/src/outside.rs`: the sun in the ship's frame, the hull's relight from `data/ships/exteriors.json`,
+- [x] 2.2 `sc-client/src/outside.rs`: the sun in the ship's frame, the hull's relight from `data/ships/exteriors.json`,
   and one ambient cube from the sun for everything outside; the hull drawn with it in the walk and the drill.
-- [ ] 2.3 `ships3d::station`: the relay and starbase placeholders and their beacons, within their triangle budgets.
-- [ ] 2.4 The relay drawn at the mission's `waypoint_m`, in the windows and the feed; its beacons blinking from
-  `data/space/exterior.json` `beacons`.
-- [ ] 2.5 Captures from the bridge and the deck B windows in `docs/screenshots/engine/windows/`.
+- [x] 2.3 `ships3d::station`: the relay and starbase placeholders and their beacons, within their triangle budgets.
+- [x] 2.4 The relay drawn at the mission's `waypoint_m`, in the windows and the feed; its beacons blinking from
+  `data/space/exterior.json` `beacons`, never under `min_radius_deg` across. (Not caught on screen yet: see design 12.)
+- [x] 2.5 Captures from the bridge's and the ready room's windows in `docs/screenshots/engine/windows/` (deck B's
+  windows were seen through the medbay's door in a run; a capture standing at one is still to take).
 
 ## 3. The system and the mission's data (phase 2)
 

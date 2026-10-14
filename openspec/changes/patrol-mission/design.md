@@ -102,8 +102,11 @@ committed generator), named for what it is: `ships3d::station(StationKind::Starb
 | Berth arms | 2 trusses along the axis out of the spindle's ends, each ending in a cradle: the dock frame of `exterior.json`, its length across the axis | 440 m long: a cradle's centre 570 m from the station's centre |
 | Lights | Window bands (warm white, glowing), red and green beacons at the ring's poles and the arms' tips, blinking at 1 Hz on for 0.15 s, white floodlights at the cradles | |
 
-About 1,200 triangles and two draws (the albedo lit by the sun, the glowing parts flat). The relay is the same
-generator's `StationKind::Relay`: a 120 m truss with three dishes, a solar wing and one beacon, about 300 triangles.
+520 triangles as built (a ceiling of 1,200 in its test) and two draws (the albedo lit by the sun, the glowing parts
+flat) and one a lit beacon. The relay is the same generator's `StationKind::Relay`: a 120 m truss with three dishes,
+a solar wing and two beacons, 136 triangles as built (a ceiling of 300). A beacon is drawn at least
+`beacons.min_radius_deg` (0.15 degrees) in angular radius however far off it is, so the relay's light shows from
+18.6 km, as a lamp at night is a point and not nothing.
 When `starbase.glb` lands, its full model replaces the placeholder at the berth (inside 20 km) and its far LOD beyond,
 with the berth's cradle taken from the model if it has one; the placeholder's generator stays for the relay.
 
@@ -291,7 +294,10 @@ Found by reading the client and the models (2026-10-14):
    the fight (checked in the captures, section 12).
 8. **The viewscreen is one implementation with the windows.** The feed draws `World::draw` (the sky and the same
    objects), so whatever the windows gain the viewscreen gains.
-9. **Not in this change, on purpose**: sunlight falling through a window onto the bridge's floor (the interior is
+9. **A safety sign in a window.** The extinguisher brackets' green safety signs (`safety-points`) stand in front of
+   the bridge's forward-quarter windows and the ready room's, seen against the stars in the captures: a bracket placed
+   on a window's wall. It is `safety-points`' to move, and is reported there; this change does not touch it.
+10. **Not in this change, on purpose**: sunlight falling through a window onto the bridge's floor (the interior is
    baked, CLAUDE.md 9; a moving sunbeam is a dynamic light the Pi does not draw), the planet's shadow on the Tern (the
    route never passes behind Tamsin), and the Tern's own lights on the station.
 
@@ -374,9 +380,9 @@ habitat ring (the cradle drawn in the feed as in the walk's bow camera today).
 | --- | --- | --- |
 | The hull relit by the sky's sun (11.3, finding 1): a `relight` uniform in the deck program (`s_bake`, `a`), the frame's sun in `flash`; the hull's textured parts drawn with it, in the walk and the drill | `crates/sc-render/shaders/deck.glsl`, `sc-render` `DeckParams`, `sc-client/src/hull.rs`, `outside.rs` | A test that the shipped hull's colours are the bake's formula with `exteriors.json`'s numbers (validate the real artifact); a test that the relight is 1 when the two suns agree; captures from the bridge and the deck B windows |
 | One lighting rule outside (11.3, finding 2) | `sc-client/src/outside.rs`, `drill.rs` | A test that the cube's sunward face is the brightest and the opposite face gets the fill |
-| The relay at the Shoals drawn at `waypoint_m` (finding 3), from `ships3d::station`; the starbase placeholder generated and checked, drawn from phase 2 | `sc-client/src/ships3d.rs`, `drill.rs` | Triangle budgets of both placeholders in tests; a capture with the relay |
+| The relay at the Shoals drawn at `waypoint_m` (finding 3), from `ships3d::station`; the starbase placeholder generated and checked, drawn from phase 2 | `sc-client/src/ships3d.rs`, `outside.rs`, `drill.rs` | Triangle budgets, the vertex format and the winding of both placeholders in tests; the beacons' least size in a test. Not caught on screen yet: 18.6 km off it is a few pixels and its beacon is lit 0.15 s a second |
 | The beacons' blink from data | `data/space/exterior.json` `beacons` | Validated with the file |
-| Windows on other decks (finding 7) | | Captures from the medbay and damage control |
+| Windows on other decks (finding 7) | | The ready room's window in the captures; deck B's seen through the medbay's door in a run |
 
 ## 13. The Pi 5 budget
 
@@ -384,11 +390,11 @@ Against `engine-stack` 5.
 
 | Cost | Phase 1 (built) | Phase 2 | Against |
 | --- | --- | --- | --- |
-| Triangles, worst frame | Relay 300 (in the bridge pass and the feed) | Starbase 1,200 and the cradle's girders (already compiled, about 2,600) while near; motes 400; streaks 800 for 4.3 s; rocks 3,200 at the Shoals: under 8,000 in a pass | 200,000 a frame |
-| Draw calls | Relay 2 a pass | Starbase 2, cradle about 12 (its bays, as the walk draws them), motes 1, streaks 1, rocks 1: under 20 a pass, two passes | 300 a frame |
+| Triangles, worst frame | Relay 136 (in the bridge pass and the feed) | Starbase 1,200 and the cradle's girders (already compiled, about 2,600) while near; motes 400; streaks 800 for 4.3 s; rocks 3,200 at the Shoals: under 8,000 in a pass | 200,000 a frame |
+| Draw calls | Relay 2 a pass, and 2 more while its beacons are lit | Starbase 2, cradle about 12 (its bays, as the walk draws them), motes 1, streaks 1, rocks 1: under 20 a pass, two passes | 300 a frame |
 | Vertex work | The hull's relight: two dot products and a divide a vertex, 8,730 vertices | | |
 | Fragment work | None | The sky's three far-body slots and bands: a few ALU a pixel | 3x average overdraw |
-| Memory | Relay mesh 8 KB, starbase 34 KB (28-byte vertices) | The system file, a few kB; 40 rock instances | 64 MB buffers |
+| Memory | Relay meshes 11 KB, starbase 44 KB when drawn (28-byte vertices) | The system file, a few kB; 40 rock instances | 64 MB buffers |
 | Server | None | The patrol's phase machine, under 0.01 ms a tick; no new bodies integrated (stations are fixed) | 2 ms a ship a tick |
 | Network | None | 6 bytes a snapshot; one reliable event a jump | 80 kbit/s down |
 
@@ -401,7 +407,7 @@ the built change in a release build.
 | --- | --- |
 | `data/space/systems/shoals.json` (phase 2) | The bodies, their looks, the stations and their berths, the points of interest and their arrival points; the star's `light_exponent` and `d_ref` |
 | `data/missions/patrol-shoals.json` (phase 2) | The drill's fields (stations, orders by phase, objectives, `enemy`, `enemy_start_m`, `waypoint_m`, countdown, limits) and the patrol's: `system`, `berth`, `route`, `encounter`, `home`, `shore_mw` 12, `reactor_standby_frac` 0.10, `clamps_s` 3, `depart_slow_m` 10, `depart_slow_mps` 1, `depart_mps` 4, `weapons_safe_m` 5,000, `sweep_s` 20, `sweep_range_m` 50,000 |
-| `data/space/exterior.json` | Phase 1: `beacons` (`period_s` 1.0, `on_s` 0.15, the colours). Phase 2: `sun.dir`, `planet.dir` and `planet.radius_deg` move into the system file and the berth's attitude; the looks stay |
+| `data/space/exterior.json` | Phase 1: `beacons` (`period_s` 1.0, `on_s` 0.15, `min_radius_deg` 0.15; the colours are the placeholder generator's, as the Hound's are). Phase 2: `sun.dir`, `planet.dir` and `planet.radius_deg` move into the system file and the berth's attitude; the looks stay |
 | `data/ships/exteriors.json` | Read, not changed: `sun_dir_ship` and `ambient_fraction`, the hull bake's light |
 
 ## 15. Risks and trade-offs
