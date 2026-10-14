@@ -1704,13 +1704,17 @@ mod tests {
         })
     }
 
+    /// Where a player would press for `want`: the middle of one of its regions that no later region (drawn over it)
+    /// covers with another hit. A far patch of the shield bubble can be covered by the near side's patches.
     fn centre(hits: &Hits, want: &Hit) -> Pos2 {
         hits.regions
             .iter()
-            .find(|r| r.hit.as_ref() == Some(want))
-            .unwrap_or_else(|| panic!("no {want:?} on the console"))
-            .rect
-            .center()
+            .filter(|r| r.hit.as_ref() == Some(want))
+            .map(|r| r.rect.center())
+            .find(|c| {
+                hits.regions.iter().rev().find(|r| r.rect.contains(*c)).and_then(|r| r.hit.as_ref()) == Some(want)
+            })
+            .unwrap_or_else(|| panic!("no {want:?} a player can press on the console"))
     }
 
     struct Bench {

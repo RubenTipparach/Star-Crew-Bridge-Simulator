@@ -1695,6 +1695,19 @@ mod tests {
         assert!(polys.iter().all(|p| p.n.length() > 0.5), "no degenerate triangle");
     }
 
+    #[test]
+    fn the_shield_envelops_the_whole_ship() {
+        // console-ship-model 3 (owner: "shield should envolop the ship entirely"): every vertex the consoles draw is
+        // inside the bubble with 1 m to spare. The tool holds the full model to it too.
+        let a = tern().shield.axes - DVec3::splat(1.0);
+        for p in hull_polys() {
+            for v in &p.v {
+                let k = (*v / a).length_squared();
+                assert!(k <= 1.0, "{v:?} reaches {k:.3} of the shield less 1 m");
+            }
+        }
+    }
+
     fn hit(brg_deg: f64, age_s: f64) -> super::super::HitView {
         let r = brg_deg.to_radians();
         super::super::HitView { d: [r.sin(), 0.0, r.cos()], face: 0, age_s, through: false }

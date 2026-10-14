@@ -26,9 +26,10 @@ As today, a zoom of z divides the tangent of the half field of view by z: the bo
   (`console::BOW_EYE`). TARGET aims from there, and the target bracket is projected from there: at 20x the 32 m
   between the bow and the centre would otherwise put the bracket a ship's width beside the ship (seen in the first
   capture of this change).
-- **The chase camera** stands back `zoom` times as far as at 1x as its lens narrows, so the Tern keeps its size, low
-  and in the middle, and what lies beyond it is magnified. Left where it stood at 1x, a zoom only blew the Tern up to
-  fill the screen (the same capture).
+- **The chase camera** stands and looks where it does at 1x, and the zoom magnifies its picture: the target grows,
+  and the Tern, low in the 1x picture, leaves by the bottom edge from about 2x. An earlier build stood the camera back
+  as far as the lens narrowed, so the Tern kept its size; the owner on its capture: "4x looks like 1x is what I meant
+  by weird".
 
 The target bracket, the camera widget's cone and the feed all read the same zoom, so they agree.
 

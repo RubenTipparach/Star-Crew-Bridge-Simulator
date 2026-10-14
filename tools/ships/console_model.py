@@ -6,8 +6,13 @@ Reads assets/models/exteriors/tern_lod2.glb and writes data/ships/tern/console_m
 sampled at the triangle's middle times its vertex colour. The engine includes the file (sc-client console::kit) and
 tools/mockups/inline.py copies it into docs/mockups/consoles.html, so both draw the same triangles.
 
+It also holds the shield to the ship (console-ship-model 3; owner, 2026-10-14: "shield should envolop the ship
+entirely"): every vertex of the full exterior model, assets/models/exteriors/tern.glb, lies inside the shield ellipsoid
+of data/ships/tern/shields.json shrunk by 1 m.
+
 Usage: python3 tools/ships/console_model.py [--check]
-  --check  rebuild in memory and fail when the file differs from the model (a new model without a new file).
+  --check  rebuild in memory and fail when the file differs from the model (a new model without a new file), or when
+           the shield no longer holds the ship with 1 m to spare.
 """
 import hashlib
 import io
@@ -20,6 +25,9 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[2]
 MODEL = "assets/models/exteriors/tern_lod2.glb"
+FULL_MODEL = "assets/models/exteriors/tern.glb"
+SHIELDS = ROOT / "data/ships/tern/shields.json"
+SHIELD_SPARE_M = 1.0
 OUT = ROOT / "data/ships/tern/console_model.json"
 
 COMPONENTS = {"SCALAR": 1, "VEC2": 2, "VEC3": 3, "VEC4": 4}
@@ -108,7 +116,27 @@ def build():
     return json.dumps(doc, separators=(",", ":")) + "\n"
 
 
+def shield_holds_ship():
+    """The worst vertex of the full model, as a share of the shield shrunk by SHIELD_SPARE_M (at most 1 to pass)."""
+    gltf, binary = read_glb((ROOT / FULL_MODEL).read_bytes())
+    e = json.loads(SHIELDS.read_text())["shields"]["ellipsoid"]
+    axes = [a - SHIELD_SPARE_M for a in e["axes_m"]]
+    worst = 0.0
+    for mesh in gltf["meshes"]:
+        for prim in mesh["primitives"]:
+            for p in accessor(gltf, binary, prim["attributes"]["POSITION"]):
+                k = sum(((p[i] - e["centre_m"][i]) / axes[i]) ** 2 for i in range(3))
+                worst = max(worst, k)
+    return worst
+
+
 def main():
+    worst = shield_holds_ship()
+    if worst > 1.0:
+        print(f"the shield in {SHIELDS.relative_to(ROOT)} does not hold {FULL_MODEL} with {SHIELD_SPARE_M} m to spare "
+              f"(worst vertex at {worst:.3f} of the shrunk ellipsoid)", file=sys.stderr)
+        return 1
+    print(f"the shield holds the ship with {SHIELD_SPARE_M} m to spare (worst vertex at {worst:.3f})")
     text = build()
     if "--check" in sys.argv[1:]:
         if not OUT.exists() or OUT.read_text() != text:

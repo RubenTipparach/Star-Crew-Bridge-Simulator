@@ -346,7 +346,7 @@ otherwise. A hit that bleeds into the magazine is damage-control's (cook-off is 
 
 | Quantity | Value | Notes |
 | --- | ---: | --- |
-| Shape | Ellipsoid, semi-axes 17.0 x 13.0 x 54.0 m, centred at [0.0, 1.5, -2.0] | The smallest axis-aligned ellipsoid that holds the hull loft, the mounts and the pods with 1 m to spare (computed from the layout) |
+| Shape | Ellipsoid, semi-axes 27.0 x 10.5 x 59.5 m, centred at [0.0, 1.0, -11.0] | The smallest axis-aligned ellipsoid that holds the whole exterior model (`tern.glb`) with 1 m to spare (owner, 2026-10-14: "shield should envolop the ship entirely"; `console-ship-model` 3). It was 17.0 x 13.0 x 54.0 m at [0.0, 1.5, -2.0], sized to the hull loft, which the exterior's sides reach past |
 | Faces | Bow +Z, stern -Z, port +X, starboard -X, dorsal +Y, ventral -Y | star-crew-64's order |
 | Total capacity | 240 MJ x generator health | 40 MJ per face when balanced |
 | Generator draw | 12 MW nominal, 18 MW at a 150% setpoint | `power-grid`'s shield generator load |

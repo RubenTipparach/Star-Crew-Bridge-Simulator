@@ -1245,13 +1245,12 @@ pub fn feed_view(
     zoom: f64,
 ) -> (Option<DVec3>, Basis, f64) {
     if chase {
-        // Zoomed, the chase camera stands back as far as the lens narrows: the ship keeps its size, low and in the
-        // middle, and what lies beyond it is magnified (viewscreen-zoom 2).
+        // A zoom is a lens (viewscreen-zoom 2; owner, 2026-10-14: "4x looks like 1x is what I meant by weird"): the
+        // chase camera stands and looks where it does at 1x, and its picture is magnified, so the target grows and the
+        // Tern, low in the 1x picture, leaves by the bottom edge.
         let b = feed_basis_for(feed, target);
-        let vfov = chase_vfov(c, zoom);
-        let far = sc_core::exterior::Chase { distance_m: c.distance_m * zoom.max(1.0), ..c.clone() };
-        let (eye, b) = chase_camera(b.f, target.filter(|_| feed == "TARGET"), &far, vfov / 2.0);
-        return (Some(eye), b, vfov);
+        let (eye, b) = chase_camera(b.f, target.filter(|_| feed == "TARGET"), c, chase_vfov(c, 1.0) / 2.0);
+        return (Some(eye), b, chase_vfov(c, zoom));
     }
     // From the bow camera: TARGET looks from where it stands at the target.
     let b = feed_basis_for(feed, target.map(|t| t - BOW_EYE));
@@ -1606,19 +1605,16 @@ mod tests {
     }
 
     #[test]
-    fn zoomed_chase_keeps_the_ship_its_size_and_low() {
+    fn zoomed_chase_magnifies_from_where_the_camera_stands() {
         let target = DVec3::new(250.0, 0.0, 1600.0);
-        let size = |zoom: f64| {
-            let (eye, b, vfov) = feed_view("TARGET", true, Some(target), &chase_cfg(), zoom);
-            let eye = eye.unwrap();
-            let (_, sy, _) = on_screen(DVec3::ZERO, eye, &b, vfov / 2.0);
-            let (_, ty, _) = on_screen(DVec3::new(0.0, 10.0, 0.0), eye, &b, vfov / 2.0);
-            (ty - sy, sy)
-        };
-        let (s1, low1) = size(1.0);
-        let (s4, low4) = size(4.0);
-        assert!((s4 / s1 - 1.0).abs() < 0.05, "the Tern keeps its size: {s1} at 1x, {s4} at 4x");
-        assert!((low1 + 0.45).abs() < 1e-3 && (low4 + 0.45).abs() < 1e-3, "and stays low");
+        let (e1, b1, v1) = feed_view("TARGET", true, Some(target), &chase_cfg(), 1.0);
+        let (e4, b4, v4) = feed_view("TARGET", true, Some(target), &chase_cfg(), 4.0);
+        assert_eq!(e1, e4, "the camera does not move");
+        assert!((b1.f - b4.f).length() < 1e-12, "nor turn");
+        let ratio = (v1 / 2.0).tan() / (v4 / 2.0).tan();
+        assert!((ratio - 4.0).abs() < 1e-9, "4x magnifies four times: {ratio}");
+        let (_, sy, _) = on_screen(DVec3::ZERO, e4.unwrap(), &b4, v4 / 2.0);
+        assert!(sy < -1.0, "the Tern, low at 1x, is below the 4x picture: {sy}");
     }
 
     #[test]

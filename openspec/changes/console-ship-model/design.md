@@ -32,12 +32,26 @@ Positions to the centimetre. `--check` rebuilds it in memory and fails when the 
 new file). The engine includes the file (`include_str!`); `tools/mockups/inline.py` copies it into `consoles.html`
 between `INLINE data:tern/console_model` markers, so the mockup and the engine draw the same triangles.
 
-## 3. The shield bubble
+## 3. The shield bubble envelops the ship
 
-The exterior is 45 m across at its widest; the shield ellipsoid's half-width is 17 m, sized to the hull loft. Drawn
-inside the bubble, the low poly model's sides reach past it. The ellipsoid decides which shield face a hit strikes, so
-growing it changes the fight and is not this change. Recommendation taken (ask only with screenshots): leave the bubble
-as it is here; the captures show the overlap, and `weapons-and-shields` takes it up.
+The exterior is 45 m across at its widest; the old ellipsoid's half-width was 17 m, sized to the hull loft, so the low
+poly model's sides reached past the bubble (the first captures of this change). The owner, 2026-10-14: "shield should
+envolop the ship entirely".
+
+The ellipsoid becomes the smallest axis-aligned one that holds every vertex of the full exterior model (`tern.glb`,
+8,730 vertices) with 1 m to spare: a search over its centre (y, z; x is 0 by symmetry) and its semi-axes, the third
+semi-axis the least that holds every point for the other two, keeping the least volume. Rounded up:
+
+| | Before | After |
+| --- | --- | --- |
+| Semi-axes, m | 17.0 x 13.0 x 54.0 | 27.0 x 10.5 x 59.5 |
+| Centre, m | 0.0, 1.5, -2.0 | 0.0, 1.0, -11.0 |
+
+The model's farthest vertex sits at 0.995 of the bubble shrunk by 1 m. The bubble is the shield's hit shape (a bolt
+strikes the face whose patch it meets), so hits now land on the bubble a little further out to the sides and aft and a
+little lower overhead; the faces and the rule that names them are unchanged. `tools/ships/console_model.py --check`
+fails if the model or the ellipsoid changes so that a vertex is no longer held with 1 m to spare. The mockups that copy
+the numbers (`consoles.html`'s `SH`, `exterior.html`) are updated with it.
 
 ## 4. Pi 5 budget
 

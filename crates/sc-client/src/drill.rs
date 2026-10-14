@@ -182,8 +182,7 @@ pub struct DrillApp {
     /// The film's frames written so far, and whether it is looking at the bridge's main viewscreen (chase-camera 3).
     film_frame: u32,
     film_screen: bool,
-    /// Frames the film has seen, and the cue written last for the video's captions (chase-camera 3).
-    film_tick: u64,
+    /// The cue written last, for the video's captions (chase-camera 3).
     film_cue: String,
     /// The bridge, when the compiled deck is there (design 9).
     bridge: Option<crate::drill_bridge::BridgeView>,
@@ -355,7 +354,6 @@ impl DrillApp {
             done: false,
             film_frame: 0,
             film_screen: false,
-            film_tick: 0,
             film_cue: String::new(),
             bridge: None,
             overview: args_watch,
@@ -1320,26 +1318,23 @@ impl DrillApp {
 }
 
 impl DrillApp {
-    /// The film of the viewscreen's cameras (chase-camera 3). It follows the body: the walk to the captain's chair (every
-    /// second frame), sitting down and the countdown (every fourth), both sped up; then, once the round is engaged, every
-    /// frame at the video's 30 a second (the frame's step is held to 1/30 s from 1.5 s into Engage): the
-    /// console's FWD with chase off and on, TARGET, PORT, AFT and STBD with chase on, TARGET with it off, and the
-    /// bridge's main viewscreen showing the captain's TARGET with chase on. Frames
-    /// go to the shots folder as `film-NNNNN.png`, and each shot's first frame and caption to `film-cues.txt`;
-    /// `tools/video/film.sh` makes the video.
+    /// The film of the viewscreen's cameras (chase-camera 3). It follows the body: the walk to the captain's chair,
+    /// sitting down and the countdown, then, once the round is engaged, the console's FWD with chase off and on,
+    /// TARGET, PORT, AFT and STBD with chase on, TARGET at 1x, 4x and 20x, TARGET with chase on at 4x, and the
+    /// bridge's main viewscreen showing the captain's TARGET with chase on. With --shots every frame is written, at
+    /// the video's 30 a second, so the video plays in real time; frames go to the shots folder as `film-NNNNN.png`,
+    /// and each shot's first frame and caption to `film-cues.txt`; `tools/video/film.sh` makes the video.
     fn film(&mut self, f: &Frame, snap: &Snapshot) {
-        self.film_tick += 1;
         let seated = self.seated_at.is_some();
         let t = snap.phase_s;
         let engaged = snap.phase == Phase::Engage;
         let st = self.console_station() as usize;
-        let (cue, every) = if !seated && !engaged {
-            ("Walking to the captain's chair, on foot (sped up)", 2)
+        let cue = if !seated && !engaged {
+            "Walking to the captain's chair, on foot"
         } else if !engaged || t < 2.0 {
-            ("Seated at Captain: the console comes up, the round counts down (sped up)", 4)
+            "Seated at Captain: the console comes up, the round counts down"
         } else {
             let seat = &mut self.seats[st];
-            // Each shot: the camera, chase on or off, and its caption.
             // Each shot: the camera, chase on or off, the zoom, and its caption.
             let shot: Option<(&str, bool, f64, &str)> = match t {
                 t if t < 4.0 => {
@@ -1360,7 +1355,7 @@ impl DrillApp {
                 t if t < 18.0 => Some(("TARGET", false, 1.0, "TARGET, chase off, 1x: the bracket round the Hound")),
                 t if t < 20.0 => Some(("TARGET", false, 4.0, "TARGET, 4x: zoomed, the bracket closes round the hull")),
                 t if t < 22.0 => Some(("TARGET", false, 20.0, "TARGET, 20x")),
-                t if t < 24.0 => Some(("TARGET", true, 4.0, "TARGET, chase on, 4x")),
+                t if t < 24.0 => Some(("TARGET", true, 4.0, "TARGET, chase on, 4x: magnified past the ship")),
                 t if t < 28.0 => None,
                 _ => {
                     self.film_screen = false;
@@ -1373,7 +1368,7 @@ impl DrillApp {
                     seat.set_feed(feed);
                     seat.set_chase(chase);
                     seat.set_zoom(zoom);
-                    (cue, 1)
+                    cue
                 }
                 None => {
                     seat.set_feed("TARGET");
@@ -1386,13 +1381,10 @@ impl DrillApp {
                         }
                         self.film_screen = true;
                     }
-                    ("The bridge's main viewscreen shows the captain's camera: TARGET, chase on", 1)
+                    "The bridge's main viewscreen shows the captain's camera: TARGET, chase on"
                 }
             }
         };
-        if self.film_tick % every != 0 {
-            return;
-        }
         self.film_frame += 1;
         if self.film_cue != cue {
             self.film_cue = cue.to_owned();
@@ -1477,16 +1469,12 @@ impl App for DrillApp {
     }
 
     fn frame(&mut self, f: &Frame) -> Flow {
-        // The film written to frames (`--film --shots`) plays its camera shots at the video's own 30 frames a second,
-        // whatever a frame takes to draw (chase-camera 3). Without --shots the film runs in real time, for a recorder on
-        // a machine with a GPU (obs-record); everything else steps by the frame, as a player's game does.
-        let filming = self.args.film
-            && self.args.shots.is_some()
-            && self
-                .session
-                .as_ref()
-                .and_then(|s| s.latest())
-                .is_some_and(|s| s.phase == Phase::Engage && s.phase_s >= 1.5);
+        // The film written to frames (`--film --shots`) steps the video's own 30 frames a second from its first frame,
+        // whatever a frame takes to draw, and keeps every frame: the video plays in real time, the walk and the
+        // countdown too (chase-camera 3; owner, 2026-10-14: "normal time please, I dont like the speedup"). Without
+        // --shots the film runs on the clock, for a recorder on a machine with a GPU (obs-record); everything else
+        // steps by the frame, as a player's game does.
+        let filming = self.args.film && self.args.shots.is_some();
         let dt = if filming { 1.0 / 30.0 } else { f.elapsed_s.clamp(0.0, 0.1) };
         self.time_s += dt;
         if let Some(h) = self.solo.as_mut() {

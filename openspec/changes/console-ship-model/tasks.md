@@ -13,6 +13,8 @@ The owner asked for it on 2026-10-14 (the proposal).
 - [x] 2.3 `consoles.html`: `HULL_POLYS` from the inlined file.
 - [x] 2.4 Parity states and captures in `docs/screenshots/engine/console-ship-model/`.
 
+- [x] 2.5 The shield ellipsoid grown to envelop the exterior (the owner's word), checked by the tool.
+
 ## 3. Gate
 
 - [ ] 3.1 The owner looks at the captures.

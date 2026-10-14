@@ -16,8 +16,9 @@ not the Tern anyone sees on the viewscreen. The Tern's exterior has a low poly m
 - **One data file from the model** (design 2): `tools/ships/console_model.py` reads the glb and writes
   `data/ships/tern/console_model.json`, its triangles with one colour each from the model's atlas; the engine includes
   it and the mockup inlines it, and the tool's `--check` fails when it is stale.
-- **The shield bubble is left as it is** (design 3): it is the shield's hit shape, sized to the hull loft, and the
-  exterior is wider; that is a separate question.
+- **The shield bubble envelops the whole ship** (design 3; owner, 2026-10-14: "shield should envolop the ship
+  entirely"): the ellipsoid grows from 17 x 13 x 54 m to 27 x 10.5 x 59.5 m, the smallest that holds the exterior
+  model with 1 m to spare.
 
 ## Impact
 
