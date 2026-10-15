@@ -123,15 +123,15 @@ w^2 r = 9.8 m/s^2).
 | Part | Size |
 | --- | --- |
 | Shell | A pressurised shell 40 m thick on the three land stripes, its cut edges seen along every window; the land stripes' outside is pearl plating (the macro's hull strips), never land |
-| Windows | Three real openings, each 60 degrees of the circumference and the full length, glazed with many panes in graphite frames: see-through, the inside visible through them |
-| Inside | Three concave valleys of fields, woods, rivers, lakes, roads and small towns; a patchy cloud layer 300 m off the floor (a translucent cylinder of radius 560 m); a thin light spine down the zero-g axis |
+| Windows | Three real openings, each 60 degrees of the circumference and the full length, glazed with many panes in thin graphite frames: from outside, dark faintly blue glass showing the lit land inside and letting a little of its light out; from inside, nearly clear glass onto black space, the mirror beyond it and the star's glare where the mirror throws it in |
+| Inside | Three concave valleys of fields, woods, rivers, lakes, roads and small towns; two patchy cloud layers 300 and 390 m off the floor (translucent cylinders of radius 560 and 470 m, the puffs white in their middles and grey at their edges, brighter toward the windows); a thin light spine down the zero-g axis |
 | Ends | Domed caps 500 m deep (a spherical cap; hemispherical in O'Neill's design), pearl with an orange rim outside; inside, terraced land stepping up toward the axis (a terrace's floor is a ring at one radius, as spin gravity points out from the axis) |
 | Axes | On the star: the station frame's sun is along +z for E (`spacedock.json` `versions.E.sun_dir`); A-D keep `sky.sun_dir` |
-| Mirrors | Three a cylinder, 900 m wide and 6.1 km long, faceted, hinged at the far (anti-sunward) end of each window and opened 35 degrees toward the star: a three-petal flower round each cylinder. Night: opened to 80 degrees |
+| Mirrors | Three a cylinder, 900 m wide and 6.1 km long, faceted, hinged at the far (anti-sunward) end of each window and opened 35 degrees toward the star: a three-petal flower round each cylinder. Reflective: dark at most angles, Tamsin in them, a hot spot and bloom where they turn the star to the eye, each facet tilting its reflection a little. Night: opened to 80 degrees |
 | Pair | 9.5 km apart centre to centre (the petals reach 4.4 km from each axis, so the two flowers clear each other as they turn), turning opposite ways |
 | Farm ring | 18 pods on a ring 2.6 km across round each cylinder's sunward end, on three spokes from the land stripes |
 | Joins | Non-rotating rods across the pair at both ends into bearings on the domes' axes; tethers between them |
-| Port and bay | Our own design (the sources do not describe docking), guided by fact 7's zero-g axis: a non-rotating port on cylinder 0's axis at its sunward dome, on a bearing, its mouth the hall's doors (320 m by 150 m, seven times the Tern's 45 m) with lead-in lights 2 km out along the axis. The bay behind is C's enclosed hall (920 m long, 440 m wide, 240 m tall) built into the dome's hub, reaching 200 m into the dome through a 270 m hole at its apex: eight berths, six ships docked, one free. The separate dock box between the cylinders is gone |
+| Port and bay | Our own design (the sources do not describe docking), guided by fact 7's zero-g axis: a non-rotating, round, recessed collar at cylinder 0's sunward apex, on a bearing: a lit ring mouth 540 m across set 30 m into the dome, a dark throat ringed with work lights, a graphite flange, and four rings of blue light on the dome leading in, with lead-in lights 2 km out along the axis. Behind the mouth, sunk in the dome's hub and reaching 450 m past its rim along the axis inside the cylinder, is C's enclosed hall (920 m long, 440 m wide, 240 m tall, without C's tower), its sliding doors (320 m by 150 m, seven times the Tern's 45 m) inside the ring: eight berths, six ships docked, one free. The separate dock box between the cylinders is gone |
 
 **Why the sunward end.** The petals are hinged at the anti-sunward end and open toward the star; by the time they reach
 the sunward end they stand 4.4 km out from the axis, and they end 1.9 km before the sunward dome's apex, so the axis
@@ -140,7 +140,7 @@ sunward dome is also lit, so the port reads from far off. (The anti-sunward axis
 hinges crowd the dome and the dome is in shadow.)
 
 **Entering** (`traffic` as A-D): cleared by traffic control, the Tern flies down the axis from the star's side, through
-the farm ring, the doors opening in the dome's hub, into the hall, then C's turn and slide to the berth, about 2.5
+the farm ring and the rings of light on the dome, into the round mouth, the doors sliding open inside it, into the hall, then C's turn and slide to the berth, about 2.5
 minutes from the doors. The port and its hall do not turn; the dome turns round them, once a minute.
 
 ### 5b. E's two layers of texture and its light
@@ -174,11 +174,12 @@ packaged by `tools/materials/oneill_atlases.py` into `assets/textures/oneill/`, 
   and a sheen on the paint so bevels and bolts catch the star.
 - **The light, with the axes on the star.** The sunward domes are lit full on; the cylinders' sides only at a graze (the
   normal maps catch it), the rest in shadow but for Tamsin's earthshine (the station sees Tamsin's day side, the star
-  behind it). The mirrors, turned toward the star, blaze, with the star's glint and Tamsin in them. Inside, the land is
+  behind it), and the windows let a little of the lit land's glow out, so the sides read as lived in. The mirrors are
+  mirrors: dark at most angles, Tamsin in them, the star's hot spot and bloom where they turn it to the eye. Inside, the land is
   lit by the star the mirrors throw in through the windows, from across the axis, in daylight (and dark at night, the
-  mirrors wide); air haze inside lifts the far valley and the far dome; from inside, the windows are bright stripes. From
-  outside, through the panes (see-through, a glint of the star on them), the far land shows bright and concave under its
-  clouds. Running lights down every window edge and on the farm pods shrink and crowd together with distance; beyond 6
+  mirrors wide); air haze inside lifts the far valley and the far dome; from inside, the windows look out onto black space
+  and the mirrors, with the star's glare along the beam the mirror throws in. From outside, through the dark panes (a
+  glint of the star on them), the far land shows bright and concave under its clouds. Running lights down every window edge and on the farm pods shrink and crowd together with distance; beyond 6
   km a faint blue haze lifts the far end outside. Inside the hall, its floods and work lights as in A-D.
 - **No mutual shadow.** The first draft tested each fragment's ray to the star against the other cylinder. With both
   axes on the star and the cylinders side by side, neither can shade the other, so the test is dropped.
@@ -269,13 +270,15 @@ mockup's meshes (`docs/mockups/spacedock.html`):
 | B Wheel | 662 | 12,204 | 4,476 | 120 | 3 | 7 ships, about 10,000 triangles, 7 draws |
 | C Drydock | 910 | 16,012 | 3,576 | 120 | 3 | 8 ships, about 11,500 triangles, 8 draws |
 | D Hollow | 5,162 | 14,340 | 3,588 | 120 | 3 | 7 ships, about 10,000 triangles, 7 draws |
-| E O'Neill Pair: port and hall | 442 | 10,552 | 2,520 | 120 | 3 | 6 ships, about 8,700 triangles, 6 draws |
-| E O'Neill Pair: the two cylinders | 19,072 (9,776 and 9,296: shell, land, glazing, four domes, clouds, spine, three mirrors, farm ring) and the rods' 60 | | | | 28 (13 a cylinder and its running lights) and the rods' 2 | |
+| E O'Neill Pair: hall | 418 | 10,552 | 2,436 | 120 | 3 | 6 ships, about 8,700 triangles, 6 draws |
+| E O'Neill Pair: the port collar | 1,120 (throat and flange) and 9,216 (its ten light rings) | | | | 9 (the mockup draws each ring apart; built, 2) | |
+| E O'Neill Pair: the two cylinders | 19,456 (9,968 and 9,488: shell, land, glazing, four domes, two cloud layers, spine, three mirrors, farm ring) and the rods' 60 | | | | 28 (14 a cylinder) and the rods' 1 | |
 
-Station totals: A 30,700, B 17,500, C 20,600, D 23,200, E 32,800 triangles (E's are 33 draws: a cylinder is 13, its
+Station totals: A 30,700, B 17,500, C 20,600, D 23,200, E 43,400 triangles (E's are 41 draws: a cylinder is 14, its
 outside, land, glazing, domes, clouds, spine and mirrors each their own material; a built E would merge the opaque ones
-by material, about 7 a cylinder). The mockup's busiest E view, outside with both cylinders, the planet and the docked
-ships, is about 57,000 triangles and 67 draws, against 200,000 and 300. With the docked ships, the Tern at full detail
+by material, about 7 a cylinder, and the port's light rings into one; its rings are the cheapest place to cut triangles,
+6 sides a ring and 96 round, 1,152 each). The mockup's busiest E view, outside with both cylinders, the planet and the
+docked ships, is about 67,000 triangles and 77 draws, against 200,000 and 300. With the docked ships, the Tern at full detail
 (4,440 triangles, 7 draws) and the deck the crew stand in, the worst berthed frame is under 60,000 triangles and 40
 draws for every version: under a third of the frame's triangles and an eighth of its draws. A is the dearest (its
 cap's ribs and its round hall's fine cells for the bake); B the cheapest.

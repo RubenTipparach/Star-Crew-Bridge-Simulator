@@ -583,8 +583,8 @@ def oneill_macro():
     frame = g.colorize(grime_n, grad((0, "#3d464f"), (1, "#56606a")))
     hull = g.blend(frame, hull_d, edge, mode=NORMAL_B, amount=1.0)
     # the glazing: many small panes, mullions down the strip and frames across it every 33 m
-    mull = g.node("greyscale", g.node("gradient", repeat=72, rotate=0, mirror=False, gradient=_steps((0.0, 0.08))), mode=2)
-    xfr = g.node("greyscale", g.node("gradient", repeat=192, rotate=90, mirror=False, gradient=_steps((0.0, 0.1))), mode=2)
+    mull = g.node("greyscale", g.node("gradient", repeat=72, rotate=0, mirror=False, gradient=_steps((0.0, 0.04))), mode=2)
+    xfr = g.node("greyscale", g.node("gradient", repeat=192, rotate=90, mirror=False, gradient=_steps((0.0, 0.05))), mode=2)
     bars = g.math(mull, xfr, op=MAX)
     pane_n = g.node("fbm2", noise=0, scale_x=72, scale_y=192, folds=0, iterations=1, persistence=0.5, offset=0.5)
     pane = g.colorize(pane_n, grad((0, "#1c2a38"), (1, "#2d4256")))
