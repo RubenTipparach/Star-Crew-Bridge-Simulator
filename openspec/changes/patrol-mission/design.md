@@ -6,8 +6,9 @@ describing a patrol mission where we travel to various planets in the star syste
 clear out, begining of the game starts at space dock".
 
 The 2026-10-15 words widen the route: from one empty beacon and one fight (built, phase 2) to a tour of the system's
-planets with hostiles to clear at each stop (phase 3, sections 1, 5, 6 and 12b). The start is unchanged: docked at the
-spacedock.
+planets (phase 3, sections 1, 5, 6 and 12b), with the owner's mix later the same day: "Some stops should just be scan
+the area or planet and move on, some stops will be give some fuel to a stranded civilian maybe 2-3 stops will be actual
+battle". The start is unchanged: docked at the spacedock.
 
 Numbers marked FN come from `flight-and-navigation`, WS from `weapons-and-shields`, CD from `coop-drill`, PG from
 `power-grid`, EF from `enemy-fighters`, M from `missions`. A number this change sets is in data and named in section 14.
@@ -42,21 +43,23 @@ there are hostiles the crew must clear out before the next jump.
 
 | # | Phase | What the crew do, on foot | Ends | Typical time |
 | --- | --- | --- | --- | --- |
-| 1 | Muster | Join, claim stations, read the briefing (the route on the system map, the three stops), READY | Every held station ready | |
+| 1 | Muster | Join, claim stations, read the briefing (the route on the system map, its six stops), READY | Every held station ready | |
 | 2 | Countdown | 5 s on every screen (CD 1) | Timer | 5 s |
 | 3 | Docked | Walk from the muster rooms to the stations (CD 9). Engineering brings the reactor up, closes the drive's breaker and drops shore power (section 4.1). The captain orders UNDOCK | Helm releases the clamps | 60-90 s |
 | 4 | Undocking | Helm flies the berth's departure legs out of the bay, down the axis and out of the mouth (4.2) | Clear of the pair, past its mass lock | 4-5 min |
-| 5 | Spool | The captain orders the jump to the first stop; engineering finds the 20 MW; helm aligns and holds | The spool completes (FN 7) | 40 s |
-| 6 | Stop 1: Cinder's ore lanes | Arrival near Cinder Yards; science sweeps and finds a pack of three Jackals preying on the haulers; red alert; the gunner and the cannons' work (EF 2) | Clear: all three Jackals destroyed and a sweep shows no hostile | 2-3 min |
-| 7 | Between stops | Damage control, fires, repairs (`all-hands`, `repairs-on-deck`) during the 60 s cooldown; the captain orders the next jump | The next spool completes | 2 min |
-| 8 | Stop 2: the Pell beacon, at Orrin | Orrin's banded disc fills the bow; the beacon has gone dark; the Hound is there with its two Jackals; the drill's fight (CD 1, 2) | Clear: the Hound and both Jackals destroyed | 4-6 min |
-| 9 | Between stops | As 7 | The next spool completes | 2 min |
-| 10 | Stop 3: the Shoals relay | In the belt, among far rocks; a raider is stripping the relay: the patrol's hardest fight (section 5.3) | Clear: the raider and its escort destroyed | 5-7 min |
+| 5 | Stop 1, **scan**: Cinder from orbit | Science scans the planet (5.3a); nothing hostile | The scan completes | 1 min |
+| 6 | Stop 2, **battle**: Cinder's ore lanes | A pack of three Jackals raiding the haulers out of Cinder Yards, found by the sweep; the gunner's and the cannons' fight (5.3) | Clear | 2-3 min |
+| 7 | Stop 3, **civilian**: Orrin's rings | The hauler *Marrow Lark*, out of fuel and drifting: helm comes alongside and holds; a crew member walks to the fuel coupling at the docking collar on deck C and connects the line; engineering pumps (5.3b) | The fuel is across | 3-4 min |
+| 8 | Stop 4, **battle**: the Pell beacon, at Orrin | The beacon has gone dark; the Hound and its two Jackals: the drill's fight (CD 1, 2) | Clear | 4-6 min |
+| 9 | Stop 5, **scan**: the Shoals' edge | Science sweeps the belt's edge for the raider's track (5.3a): it points to the relay | The scan completes | 1 min |
+| 10 | Stop 6, **battle**: the Shoals relay | A raider stripping the relay, with two Jackals: the patrol's hardest fight (5.3) | Clear | 5-7 min |
 | 11 | Home | The captain orders the jump home; helm aligns; the spool, with what the ship has left | Arrival at Tamsin Station's arrival point, 5 km out | 40 s |
-| 12 | Debrief | The end screen (M 4): PATROL COMPLETE (every stop cleared), PATROL INCOMPLETE (1 or 2 of 3 cleared, by name) or THE TERN IS LOST | 20 s, up to 240 s for damage control (CD) | |
+| 12 | Debrief | The end screen (M 4): PATROL COMPLETE (every stop's job done), PATROL INCOMPLETE (the stops done, by name) or THE TERN IS LOST | 20 s, up to 240 s for damage control (CD) | |
 
-About 25 to 30 minutes for a crew that knows the ship: three fights of rising strength, a breather after each to put
-the ship right, and the ship's damage, fires and missiles carried from stop to stop (CLAUDE.md 7: a ship persists).
+Between every two stops: the 60 s cooldown and the next 40 s spool, the crew's time to put the ship right (5.2).
+
+About 30 to 35 minutes for a crew that knows the ship: six stops, three of them fights of rising strength with quieter
+stops between (two scans and a rescue), a breather after each to put the ship right, and the ship's damage, fires and missiles carried from stop to stop (CLAUDE.md 7: a ship persists).
 Docking again at the end is not in this change: it is FN 10's dock autopilot, a later change; the mission ends on
 arrival home.
 
@@ -87,6 +90,9 @@ positions' time (an 11 minute mission moves Tamsin about 22,000 km along its orb
 | Pell beacon | Point of interest | 2.0e8 m from Orrin, 4.4e7 m from Pell | | A picket buoy, one blinking light |
 | The Shoals | Belt | 4.5e11 m from Shoal | | Far rocks (section 11.6) |
 | Shoals relay | Point of interest | In the belt | 120 m | Section 3, the relay placeholder |
+| Orrin's rings | Point of interest (phase 3) | 1.3e8 m from Orrin's centre, outside the rings' plane by 2,000 km, 4.0e7 m from Pell | | Where the *Marrow Lark* drifts: Orrin's banded disc (26 degrees radius) and the rings edge on |
+| The Shoals' edge | Point of interest (phase 3) | On the belt's inner edge, 6.0e7 m sunward of the relay | | Far rocks thinning toward the star |
+| Cinder orbit | Point of interest (phase 3) | 1.2e7 m from Cinder's centre on its day side, 200 km from the lanes | | The scan's point: Cinder's lit face filling the bow |
 | Cinder's ore lanes | Point of interest (phase 3) | 1.2e7 m from Cinder's centre (5 radii, outside its lock), 60 km from Cinder Yards | | The haulers' lane: Cinder Yards' lights 60 km off, Cinder a dark disc |
 
 Each point of interest has an `arrival_m`: Cinder's ore lanes' 8 km from the lane's centre on the yards' side; the Pell
@@ -185,12 +191,15 @@ cap, `data/ships/tern/flight.json`) inside a waypoint's few kilometres.
 
 | Leg | From | To | Distance | Spool | Transit |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Tamsin Station, past its lock | Cinder's ore lanes | 1.0e11 m | 40 s | Instant at one tick |
-| 2 | Cinder, after the 60 s cooldown | The Pell beacon | 2.4e11 m | 40 s | Instant |
-| 3 | The Pell beacon, after the cooldown | The Shoals relay | 7.1e11 m | 40 s | Instant |
-| 4 | The Shoals, clear of any hostile ship's 5 km lock | Tamsin Station | 3.9e11 m | 40 s | Instant |
+| 1 | Tamsin Station, past its lock | Cinder orbit | 1.0e11 m | 40 s | Instant at one tick |
+| 2 | Cinder orbit, after the 60 s cooldown | Cinder's ore lanes | 2.0e5 m | 40 s | Instant (a jump: 200 km at 400 m/s would be 8 minutes) |
+| 3 | Cinder's ore lanes | Orrin's rings | 2.4e11 m | 40 s | Instant |
+| 4 | Orrin's rings | The Pell beacon | 4.0e7 m | 40 s | Instant |
+| 5 | The Pell beacon | The Shoals' edge | 7.1e11 m | 40 s | Instant |
+| 6 | The Shoals' edge | The Shoals relay | 6.0e7 m | 40 s | Instant |
+| 7 | The Shoals relay, clear of any hostile ship's 5 km lock | Tamsin Station | 3.9e11 m | 40 s | Instant |
 
-The order is the fights' rising strength, not the distance: a jump costs the same 40 s whatever the distance (FN 7). As
+The order is the stops' rising strength with a quiet stop before each fight, not the distance: a jump costs the same 40 s whatever the distance (FN 7). As
 built (phase 2) legs 1 and 2 were one leg, Tamsin to the Pell beacon, with nothing at Cinder.
 
 ### 5.2 At a stop
@@ -212,10 +221,14 @@ built (phase 2) legs 1 and 2 were one leg, Tamsin to the Pell beacon, with nothi
   machines repaired on deck, power rerouted. The Tern's damage, fires, missiles and the Swifts' state carry over; nothing
   is reset at a jump. A damaged reactor or pylon stretches the next spool (`warp-pylons` 3).
 
-### 5.3 The stops' hostiles
+A stop is one of three kinds (`kind` in the route, phase 3): **scan** (5.3a), **battle** (5.3) or **civilian**
+(5.3b). Its objective is done when its job is: the scan complete, the battle's group cleared, the fuel across. Any stop
+may be left undone, as "moving on uncleared" above.
 
-Each stop names a hostile group (`groups` in the mission, phase 3). The fight's rules are the drill's; only who is
-there changes.
+### 5.3 The battle stops' hostiles
+
+Each battle stop names a hostile group (`groups` in the mission, phase 3). The fight's rules are the drill's; only who
+is there changes.
 
 | Stop | Group | What it is | Placed | Clear when | Strength |
 | --- | --- | --- | --- | --- | --- |
@@ -229,6 +242,39 @@ there changes.
 - **Withdrawal**: a ship of a group that reaches the drill's 600 s limit withdraws past 5 km and jumps away, and the
   stop is not cleared. The Jackals of a group whose carrier has gone stay and fight.
 - **Losing**: the Tern's hull at zero ends the patrol at any stop: THE TERN IS LOST.
+
+### 5.3a The scan stops
+
+Arrive, scan, move on: the patrol's quiet stops, a breath between fights, and the reason science has a job outside one.
+
+- **Cinder from orbit**: SCAN with a planet selected on the science console (the sweep's control, aimed at a body)
+  takes 30 s (`scan_s`) while the body is within 2.0e7 m and the Tern holds its attitude within 10 degrees of it; it
+  reports the surface (Cinder's mines, the yards' traffic) and finds nothing hostile.
+- **The Shoals' edge**: the sweep of 5.2 at the belt's edge, 20 s; it finds the raider's drive trail pointing to the
+  relay and no contact. The computer says where it leads, which is the briefing for the last fight.
+- Done when the scan completes; nothing to clear. A crew may jump on without it (the objective stays open).
+
+### 5.3b The civilian stop: fuel for a stranded hauler
+
+At Orrin's rings the hauler *Marrow Lark*, a civilian ore carrier (no weapons, 800 t; a friendly ship locks no jump), has run its
+drive dry and is drifting at 30 m/s across the rings' shadow. Its master hails on arrival ("Patrol ship, we're dry,
+can you spare us fuel?").
+
+- **Helm** comes alongside: within `fuel_range_m` 100 m of the hauler and under `fuel_rel_mps` 1.0 m/s relative to it,
+  starboard side to it (the docking collar is on the Tern's starboard hull, deck C, x -10.8 m, z 12 m). The hauler holds
+  still; the Tern does the flying. Automation can hold station; a bot helm does.
+- **A crew member walks to the fuel coupling**: a panel at the docking collar's inner door in the airlock (deck C, a
+  new interactable of `ship-interactables`), held E 2 s to connect the line the hauler passes across, so the transfer
+  is a walk to the hull, not a console button (the law).
+- **Engineering pumps**: the engineering console's FUEL control (a mockup first, CLAUDE.md 10) moves `fuel_give_kg`
+  0.25 kg of the reactor's deuterium and helium-3 at `fuel_rate_kg_s` 0.005 kg/s (50 s) from the Tern's store
+  (`power.json` reactor `fuel_load_kg`, 4.0 kg) to the hauler. The Tern's own fuel goes down by that much and stays down
+  for the patrol (a ship persists), a sixteenth of its load: hours of full power, not minutes, so it never strands the
+  Tern on this patrol.
+- **The line parts** if helm drifts past 100 m or 1 m/s relative while it is connected: the transfer stops, the coupling
+  must be connected again. A fight is not met here.
+- Done when the fuel is across: the hauler's master thanks the crew and the *Marrow Lark* lights its drive and leaves.
+  The objective "Fuel the *Marrow Lark*" is done.
 
 ### 5.4 Home
 
@@ -245,8 +291,11 @@ the Hound was destroyed, ESCAPED when it withdrew.
 | Words | Kind |
 | --- | --- |
 | Undock from Tamsin Station | `undock` (built): done when the Tern is clear of the station |
+| Scan Cinder | `scan` (phase 3), a body: done when science's scan of it completes |
 | Clear Cinder's ore lanes | `clear` (phase 3), the stop: done when its group is destroyed and a sweep there shows no hostile |
+| Fuel the *Marrow Lark* | `refuel` (phase 3): done when `fuel_give_kg` is across |
 | Clear the Pell beacon | `clear`, the stop |
+| Sweep the Shoals' edge | `sweep` (built): done when science's sweep there completes |
 | Clear the Shoals relay | `clear`, the stop |
 | Keep the Tern's hull above zero | `survive` |
 | Return to Tamsin Station | `return` (built): done on arrival home |
@@ -457,7 +506,7 @@ What turns the built two-place patrol into the three-stop route of section 1, ea
 
 | Item | Where | Check |
 | --- | --- | --- |
-| Stops in the route: each `route` entry names its place and its hostile group; the mission's `groups` hold who is there (ships by class, fighters by count, placed from the arrival, hidden until swept or not); the single `encounter` field goes | `combat/patrol.rs` (`PatrolBlock`, `PatrolData::resolve`), `data/missions/patrol-shoals.json`, `combat/data.rs` | Validation: every stop's place and group exist; a group has a ship or fighters; tests on the resolve |
+| Stops in the route: each `route` entry names its place, its kind (scan, battle or civilian) and, for a battle, its hostile group; the mission's `groups` hold who is there (ships by class, fighters by count, placed from the arrival, hidden until swept or not); the single `encounter` field goes | `combat/patrol.rs` (`PatrolBlock`, `PatrolData::resolve`), `data/missions/patrol-shoals.json`, `combat/data.rs` | Validation: every stop's place and group exist; a group has a ship or fighters; tests on the resolve |
 | Cinder's ore lanes in the system file, with its arrival point | `data/space/systems/shoals.json` | `sc-core::system`'s checks (arrival 5 km clear of every body, outside Cinder's lock and the yards') |
 | A fighter pack with no carrier: Jackals placed from the arrival and stepped by `fighters.rs`'s same AI, their launch skipped | `combat/fighters.rs` | Tests: a pack of three attacks the Tern; the cannons kill a Jackal at EF 2's numbers |
 | The fight re-armed at each stop: Engage started with the stop's group at its arrival, the Tern's damage, fires, missiles, power state and crew kept; bolts, bursts and debris cleared | `combat/mod.rs`, `patrol.rs` | Tests: a Tern damaged at stop 1 arrives at stop 2 with the same integrity and missiles; a fire burning at the jump still burns |
@@ -466,12 +515,15 @@ What turns the built two-place patrol into the three-stop route of section 1, ea
 | The raider: `missions`' Grabon raider class when it is built; until then `relay_raider` is the Hound with four Jackals | `data/enemies.json` (from `missions`) | The group validates against the classes present |
 | The bots' patrol: sweep on arrival, fight, sweep after the last kill, report clear, wait for the fires to be out before the next jump; their lines (section 9) | `patrol::decide`, `sc-net/src/bot.rs`, `data/crew/chat.json` | A server test with bot clients clearing Cinder and jumping to Pell |
 | The briefing's route on the system map and the OBJECTIVES tab's three `clear` rows | the briefing, `objectives-tab` | Captures |
+| The scan stops: SCAN of a body (`scan_s` 30, the range and attitude rule) and the sweep at the Shoals' edge with its trail (5.3a) | `patrol.rs`, the science console (SCAN aimed at a body: a mockup first) | Tests: a scan out of range or off attitude does not complete; the trail's report at the edge |
+| The civilian stop (5.3b): the *Marrow Lark* (a civilian hull, no weapons, its own placeholder mesh), its hail, the alongside rule, the fuel coupling interactable at the docking collar (hold E 2 s), engineering's FUEL, the transfer from the reactor's store, the line parting | `patrol.rs`, `ship-interactables` (the coupling), `power-grid`'s fuel store, `ships3d` (the hauler's placeholder), the mission's `civilian` block | Tests: the transfer runs only alongside and connected; the line parts past 100 m or 1 m/s; the Tern's fuel is 0.25 kg lower after; the objective |
 | The windows at Cinder (11.1): the dark disc, the yards' lights | `outside.rs`, the system file | A test of the sky at the lanes; captures |
 | The hull in the bay lit by the bay's probes, the star's light coming in over the throat (11.3, spacedock 8a) | `outside.rs`, `hull.rs` | A test: berthed, the hull's light is the probes', not the star's; at the mouth it is the star's; captures through the starboard windows while berthed |
 
 The console controls of 4.1 (SHORE, DRIVE, UNDOCK, JUMP, SWEEP) are unchanged by phase 3; they still await the owner's
-approval in `docs/mockups/patrol-consoles.html`. Phase 3 adds no control: clearing a stop is the fight, and the next
-jump is the existing JUMP.
+approval in `docs/mockups/patrol-consoles.html`. Phase 3 adds two controls, each to its mockup first: science's SCAN aimed at a body
+(the sweep's control with a body chosen on the plot) and engineering's FUEL (the transfer's rate and stop). Clearing a
+stop is the fight, and the next jump is the existing JUMP.
 
 ## 13. The Pi 5 budget
 
@@ -519,7 +571,8 @@ None for the owner yet; recommendations taken (ask only with screenshots, CLAUDE
 | P2 | How the Tern leaves the berth | Stern first out of the cradle's open end on the bow thrusters, on the berth's limits |
 | P3 | Dock again at the end | Not yet: the mission ends at the arrival home; docking is FN 10's autopilot, a later change |
 | P4 | How far the starbase sits from Tamsin | 3.33 radii, outside the jump's mass lock, which halves the planet in the dock's port windows (section 2) |
-| P5 | Which planets the patrol visits, and in what order (2026-10-15) | Cinder, then Orrin's moon Pell, then the Shoals belt, then home: the fights' rising strength (section 5.3); Tamsin is home |
+| P5 | Which planets the patrol visits, and in what order (2026-10-15) | Cinder (a scan, then a fight), Orrin (a rescue at its rings, then the Pell beacon's fight), the Shoals (a scan at its edge, then the relay's fight), then home: the owner's mix of scans, a rescue and three battles, the fights in rising strength (section 1); Tamsin is home |
+| P10 | How fuel goes to the stranded hauler | Helm holds alongside, a crew member walks to a fuel coupling at the docking collar and connects the line, engineering pumps 0.25 kg of the reactor's fuel; the line parts if helm drifts (5.3b) |
 | P6 | What "clear" means | Every hostile of the stop's group destroyed, confirmed by a sweep that shows none within 50 km |
 | P7 | Can the crew leave a stop uncleared | Yes, once no hostile ship locks the jump; the objective stays open and the debrief names the stops cleared |
 | P8 | Does the ship carry damage between stops, and can it resupply | Damage, fires and missiles carry over (a ship persists); no resupply mid-patrol: docking at Orrin Highport to rearm needs FN 10's docking, a later change |

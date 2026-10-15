@@ -52,20 +52,30 @@ at space dock"; "we do start at the oneil cylinders"; "baked lighting in the int
 - [ ] 5.3 Motes, the jump's streaks and flash, the belt's far rocks.
 - [ ] 5.4 `starbase.glb` replacing the placeholder when the `starbase` change lands.
 
-## 7. The clearing route (phase 3, design 12b)
+## 7. The tour: scan, battle and civilian stops (phase 3, design 12b)
 
-- [x] 7.1 The write-up: the three-stop route, the stops' hostiles, `clear`, moving on uncleared, the ship kept between
-  stops, the outcome, the bots' lines, the windows at Cinder (design 1, 5, 6, 9, 11.1, 12b; spec).
-- [ ] 7.2 Cinder's ore lanes in `data/space/systems/shoals.json`, with its arrival point and checks.
-- [ ] 7.3 The mission's `route` as stops with groups, and `groups`; the resolve's checks.
-- [ ] 7.4 `fighters.rs`: a pack with no carrier.
-- [ ] 7.5 The fight re-armed at each stop with the Tern's damage, fires, missiles, power and crew kept.
-- [ ] 7.6 The hidden group found by the sweep; `clear`; moving on uncleared; PATROL COMPLETE or INCOMPLETE.
-- [ ] 7.7 The raider at the Shoals: `missions`' Grabon raider class, the Hound with four Jackals until it is built.
-- [ ] 7.8 The bots and automation clear each stop and wait for the fires to be out before the next jump; their lines.
-- [ ] 7.9 The briefing's route and the OBJECTIVES tab's three `clear` rows; the end screen's outcome.
-- [ ] 7.10 The hull lit by the bay's probes while berthed, the star's over the throat (spacedock 8a and 2.5).
-- [ ] 7.11 A playtest on foot of the whole route on the Pi 5: three stops cleared, repairs between them, home.
+- [x] 7.1 The write-up: six stops of three kinds (two scans, a rescue, three battles), the battles' hostiles, `clear`,
+  `scan`, `refuel`, moving on undone, the ship kept between stops, the outcome, the bots' lines, the windows at Cinder
+  (design 1, 5, 6, 9, 11.1, 12b; spec).
+- [ ] 7.2 The four new points in `data/space/systems/shoals.json` (Cinder orbit, Cinder's ore lanes, Orrin's rings,
+  the Shoals' edge), with their arrival points and checks.
+- [ ] 7.3 The mission's `route` as stops with a kind and, for a battle, a group; `groups`; the `civilian` block; the
+  resolve's checks.
+- [ ] 7.4 Mockups first (CLAUDE.md 10): science's SCAN aimed at a body and engineering's FUEL, in
+  `docs/mockups/patrol-consoles.html`.
+- [ ] 7.5 The scan stops: SCAN of a body and the edge's sweep with the trail.
+- [ ] 7.6 `fighters.rs`: a pack with no carrier.
+- [ ] 7.7 The fight re-armed at each battle stop with the Tern's damage, fires, missiles, power and crew kept.
+- [ ] 7.8 The hidden group found by the sweep; `clear`; moving on undone; PATROL COMPLETE or INCOMPLETE.
+- [ ] 7.9 The civilian stop: the *Marrow Lark* and its placeholder mesh, the hail, the alongside rule, the fuel coupling
+  at the docking collar (`ship-interactables`), FUEL, the transfer from the reactor's store, the line parting.
+- [ ] 7.10 The raider at the Shoals: `missions`' Grabon raider class, the Hound with four Jackals until it is built.
+- [ ] 7.11 The bots and automation do every kind of stop (a bot walks to the fuel coupling) and wait for the fires to
+  be out before the next jump; their lines.
+- [ ] 7.12 The briefing's route and the OBJECTIVES tab's rows; the end screen's outcome.
+- [ ] 7.13 The hull lit by the bay's probes while berthed, the star's over the throat (spacedock 8a and 2.5).
+- [ ] 7.14 A playtest on foot of the whole tour on the Pi 5: the scans, the rescue, three battles, repairs between them,
+  home.
 
 ## 6. Verification
 

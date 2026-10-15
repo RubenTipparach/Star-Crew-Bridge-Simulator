@@ -33,15 +33,21 @@ spool at 20 MW, the bow aligned for its last 3 s, mass locks, an instant transit
 point's arrival point within 1.5 km.
 
 #### Scenario: The first jump
-- **WHEN** the spool completes with the bow within 5 degrees of the first stop, Cinder's ore lanes
-- **THEN** the Tern arrives within 1.5 km of the lanes' arrival point moving as it left
+- **WHEN** the spool completes with the bow within 5 degrees of the first stop, Cinder orbit
+- **THEN** the Tern arrives within 1.5 km of its arrival point moving as it left
 
-### Requirement: The patrol tours the system's planets and clears each stop
+### Requirement: The patrol tours the system's planets in scan, battle and civilian stops
 
-The patrol SHALL visit Cinder's ore lanes, the Pell beacon at Orrin and the Shoals relay in that order, each with its
-hostile group: three Jackals with no carrier at Cinder, found by science's sweep; the Hound and its two Jackals at the
-Pell beacon, placed from the Tern's arrival as the drill places them from its start; a raider and two Jackals at the
-relay. A stop SHALL be clear when every hostile of its group is destroyed and a sweep there shows none within 50 km.
+The patrol SHALL visit six stops in order: a scan of Cinder from orbit; a battle at Cinder's ore lanes (three Jackals
+with no carrier, found by science's sweep); a civilian stop at Orrin's rings (fuel for the stranded hauler *Marrow
+Lark*); a battle at the Pell beacon (the Hound and its two Jackals, placed from the Tern's arrival as the drill places
+them from its start); a scan of the Shoals' edge; and a battle at the Shoals relay (a raider and two Jackals). A scan
+stop SHALL be done when its scan completes; a battle stop SHALL be clear when every hostile of its group is destroyed
+and a sweep there shows none within 50 km; the civilian stop SHALL be done when the fuel is across.
+
+#### Scenario: A scan stop
+- **WHEN** the Tern arrives in Cinder's orbit and science scans Cinder for 30 s within range and on attitude
+- **THEN** the scan completes, nothing hostile is found, and the stop is done
 
 #### Scenario: The pack at Cinder
 - **WHEN** the Tern arrives at Cinder's ore lanes and science sweeps
@@ -58,6 +64,20 @@ relay. A stop SHALL be clear when every hostile of its group is destroyed and a 
   5 km
 - **THEN** the jump spools, and the stop's objective stays open
 
+### Requirement: Fuel reaches the stranded hauler only alongside and by hand
+
+At the civilian stop, fuel SHALL flow to the *Marrow Lark* only while the Tern is within 100 m of it and under 1 m/s
+relative to it, and after a crew member has walked to the fuel coupling at the docking collar and connected the line;
+0.25 kg of the reactor's fuel SHALL move at 0.005 kg/s and leave the Tern's store lower by that much.
+
+#### Scenario: Holding alongside
+- **WHEN** helm holds the Tern 60 m off the hauler at 0.3 m/s relative, the coupling is connected and engineering pumps
+- **THEN** 0.25 kg crosses in 50 s, the Tern's reactor fuel is 0.25 kg lower, and the stop is done
+
+#### Scenario: The line parts
+- **WHEN** the Tern drifts past 100 m from the hauler during the transfer
+- **THEN** the transfer stops and the coupling must be connected again
+
 ### Requirement: The ship carries its state from stop to stop
 
 Nothing aboard the Tern SHALL be reset by a jump or a new fight: its hull and systems' damage, its fires, its missiles,
@@ -71,16 +91,16 @@ its power and its crew SHALL carry from one stop to the next.
 ### Requirement: The patrol ends on arrival home
 
 The Tern SHALL be able to jump home after the last stop or between stops, and arriving at Tamsin Station's arrival
-point SHALL end the mission: PATROL COMPLETE when every stop was cleared, PATROL INCOMPLETE naming the stops cleared
+point SHALL end the mission: PATROL COMPLETE when every stop's job was done, PATROL INCOMPLETE naming the stops done
 when not. The Tern's hull at zero SHALL end it at any stop: THE TERN IS LOST.
 
-#### Scenario: Home after clearing every stop
-- **WHEN** all three stops are clear and the Tern arrives home
+#### Scenario: Home after every stop
+- **WHEN** all six stops are done and the Tern arrives home
 - **THEN** every screen shows PATROL COMPLETE with the patrol's objectives marked
 
 #### Scenario: Home early
-- **WHEN** the captain takes the Tern home after clearing Cinder only
-- **THEN** the end screen shows PATROL INCOMPLETE, one of three stops cleared, Cinder
+- **WHEN** the captain takes the Tern home after the two stops at Cinder only
+- **THEN** the end screen shows PATROL INCOMPLETE, two of six stops done, both at Cinder
 
 ### Requirement: Every step of the patrol is played on foot
 

@@ -29,12 +29,14 @@ of one rule; and nothing outside changes with where the Tern is, so a mission th
   a moon, the starbase Tamsin Station, the relay at the Shoals and the points of interest a patrol visits, with their
   positions in the system frame (metres, `f64`) and the arrival point of each. It is `flight-and-navigation` 13's
   system file, kept beside the exterior's other data.
-- **The clearing route** (phase 3, design 1, 5, 6, 12b): from the O'Neill pair to three stops, each with hostiles to
-  clear before the next jump, in rising strength: **Cinder's ore lanes** (a pack of three Jackals raiding the haulers out
-  of Cinder Yards, found by science's sweep), **the Pell beacon at Orrin** (the Hound and its two Jackals: the drill's
-  fight), and **the Shoals relay** in the belt (a raider and two Jackals, the hardest). A stop is clear when its group is
-  destroyed and a sweep shows nothing; the ship's damage, fires and missiles carry from stop to stop, so the crew put
-  the ship right between fights; the debrief says PATROL COMPLETE or names the stops cleared. About 25-30 minutes.
+- **The tour** (phase 3, design 1, 5, 6, 12b; the owner's mix: "Some stops should just be scan the area or planet and
+  move on, some stops will be give some fuel to a stranded civilian maybe 2-3 stops will be actual battle"): from the
+  O'Neill pair, six stops: **scan** Cinder from orbit; **battle** at Cinder's ore lanes (three Jackals found by the
+  sweep); **civilian** at Orrin's rings (helm holds alongside the stranded hauler *Marrow Lark*, a crew member walks to
+  the fuel coupling at the docking collar and connects the line, engineering pumps 0.25 kg of the reactor's fuel);
+  **battle** at the Pell beacon (the Hound and its fighters); **scan** of the Shoals' edge (the raider's trail); **battle**
+  at the Shoals relay (a raider and two Jackals). The ship's damage, fires and missiles carry from stop to stop; the
+  debrief says PATROL COMPLETE or names the stops done. About 30-35 minutes.
 - **The bay's light**: the Tern starts in Tamsin Station's bay lit by baked light (spacedock 8a), and its hull is lit
   by the bay there, not by the star (a fix to what phase 1 built).
 - **The patrol mission as built** (design 1, 4-8): `data/missions/patrol-shoals.json`. The crew muster aboard the Tern docked
@@ -82,10 +84,12 @@ placed at `data/space/systems/<id>.json`; `missions` 3's warp out is the same ju
   `docs/mockups/patrol.html`, `crates/sc-client` (`hull.rs`, `drill_bridge.rs`, a new `outside.rs`, `ships3d.rs`'s
   station generator, `drill.rs`'s objects), `crates/sc-render/shaders/deck.glsl` (the hull's relight), and
   `data/space/exterior.json` (the beacons' blink).
-- Phase 3 (the clearing route, design 12b): `sc-core::combat` (`patrol.rs`'s stops and groups, `fighters.rs`'s pack
+- Phase 3 (the tour, design 12b): `sc-core::combat` (`patrol.rs`'s stops, kinds and groups, the scan, the fuel
+  transfer, `fighters.rs`'s pack
   with no carrier, the fight re-armed at each stop with the Tern kept, the `clear` objective, the outcome),
   `data/missions/patrol-shoals.json`, `data/space/systems/shoals.json` (Cinder's ore lanes), the bots, the briefing's
-  route and the hull's light in the bay (`outside.rs`). The raider's class comes from `missions`.
+  route, the fuel coupling (`ship-interactables`), science's SCAN and engineering's FUEL (mockups first) and the hull's
+  light in the bay (`outside.rs`). The raider's class comes from `missions`.
 - Phase 2 (the mission's engine, after `crew-chat`'s protocol work is committed): `sc-core` (the system file's loader,
   the patrol's phases, the berth, undocking, the jump between waypoints, the encounter's start in the system frame),
   `sc-net` (the phase, the spool and the waypoint in the snapshot; the undock, shore power and jump commands),
