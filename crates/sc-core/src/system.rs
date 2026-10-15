@@ -95,7 +95,8 @@ pub struct Body {
     pub look: Look,
 }
 
-/// A station.
+/// A station: one of the spacedock versions (openspec/changes/spacedock design 11a), in orbit about a body or near a
+/// point of interest.
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Station {
@@ -103,10 +104,23 @@ pub struct Station {
     pub id: String,
     /// Its name.
     pub name: String,
-    /// What it is (`starbase`, `relay`): which model the client draws.
-    pub kind: String,
-    /// Its centre, system frame, metres.
-    pub pos_m: [f64; 3],
+    /// Which spacedock version it is (`A`-`E`, `data/space/spacedock.json`): its shape, its bay, its model.
+    pub version: String,
+    /// The body it orbits, by id; with `orbit_radius_m` and `orbit_dir`.
+    #[serde(default)]
+    pub body: Option<String>,
+    /// Its orbit's radius about the body's centre, metres.
+    #[serde(default)]
+    pub orbit_radius_m: Option<f64>,
+    /// Where on the orbit it stands at the mission's epoch: the way from the body's centre, any length.
+    #[serde(default)]
+    pub orbit_dir: Option<[f64; 3]>,
+    /// The point of interest it stands near, by id; with `offset_m`.
+    #[serde(default)]
+    pub near: Option<String>,
+    /// Its offset from that point, system axes, metres.
+    #[serde(default)]
+    pub offset_m: Option<[f64; 3]>,
     /// Its attitude [heading, pitch, roll], degrees (`attitude::from_hpr`): its frame into the system's.
     pub hpr_deg: [f64; 3],
     /// No jump spools within this of its centre, metres (flight-and-navigation 7).
@@ -200,16 +214,27 @@ impl SystemFile {
         hpr(s.hpr_deg)
     }
 
+    /// A station's centre (its frame's origin), system frame: its body's centre and its orbit, or its point and its
+    /// offset. Validated at load: the body or point exists.
+    pub fn station_pos(&self, s: &Station) -> DVec3 {
+        if let (Some(b), Some(r), Some(d)) = (&s.body, s.orbit_radius_m, s.orbit_dir) {
+            let body = self.bodies.iter().find(|x| &x.id == b).map_or(DVec3::ZERO, |x| v(x.pos_m));
+            return body + v(d).normalize_or_zero() * r;
+        }
+        let point = s.near.as_ref().and_then(|n| self.points.iter().find(|p| &p.id == n));
+        point.map_or(DVec3::ZERO, |p| v(p.pos_m)) + s.offset_m.map_or(DVec3::ZERO, v)
+    }
+
     /// A berth's pose in the system frame: where the docked Tern's origin is and its attitude.
     pub fn berth_pose(&self, s: &Station, b: &Berth) -> (DVec3, DQuat) {
         let rot = self.station_rot(s);
-        (v(s.pos_m) + rot * v(b.pos_m), (rot * hpr(b.hpr_deg)).normalize())
+        (self.station_pos(s) + rot * v(b.pos_m), (rot * hpr(b.hpr_deg)).normalize())
     }
 
     /// A station's or a point's place, by id.
     pub fn place(&self, id: &str) -> Option<Place> {
         if let Some(s) = self.station(id) {
-            let pos = v(s.pos_m);
+            let pos = self.station_pos(s);
             return Some(Place {
                 id: s.id.clone(),
                 name: s.name.clone(),
@@ -233,7 +258,7 @@ impl SystemFile {
                 return Some(b.name.clone());
             }
         }
-        self.stations.iter().find(|s| (pos - v(s.pos_m)).length() < s.mass_lock_m).map(|s| s.name.clone())
+        self.stations.iter().find(|s| (pos - self.station_pos(s)).length() < s.mass_lock_m).map(|s| s.name.clone())
     }
 
     /// The star and the near planet seen from `eye` (system frame), design 11.2.
@@ -296,15 +321,32 @@ impl Validate for SystemFile {
         }
         for (i, s) in self.stations.iter().enumerate() {
             let f = format!("stations[{i}]");
-            finite(c, &format!("{f}.pos_m"), s.pos_m, SYSTEM_LIM_M);
+            if !["A", "B", "C", "D", "E"].contains(&s.version.as_str()) {
+                c.equals(&format!("{f}.version"), &s.version, "A, B, C, D or E");
+            }
+            match (&s.body, s.orbit_radius_m, s.orbit_dir, &s.near, s.offset_m) {
+                (Some(b), Some(r), Some(_), None, None) => match self.bodies.iter().find(|x| &x.id == b) {
+                    // In orbit above its body's surface (the jump's mass lock is checked against jump.json in a test).
+                    Some(body) => c.number(&format!("{f}.orbit_radius_m"), r, body.radius_m * 1.01, SYSTEM_LIM_M),
+                    None => c.equals(&format!("{f}.body"), b, "a body of this file"),
+                },
+                (None, None, None, Some(n), Some(o)) => {
+                    if !self.points.iter().any(|p| &p.id == n) {
+                        c.equals(&format!("{f}.near"), n, "a point of this file");
+                    }
+                    finite(c, &format!("{f}.offset_m"), o, 1e9);
+                }
+                _ => c.equals(&format!("{f}.body"), "(both or neither)", "body, orbit_radius_m and orbit_dir, or near and offset_m"),
+            }
+            if let Some(d) = s.orbit_dir {
+                finite(c, &format!("{f}.orbit_dir"), d, 1e6);
+                c.number(&format!("{f}.orbit_dir (length)"), v(d).length(), 0.5, 2.0);
+            }
             finite(c, &format!("{f}.hpr_deg"), s.hpr_deg, 360.0);
             c.number(&format!("{f}.mass_lock_m"), s.mass_lock_m, 0.0, 1e6);
             finite(c, &format!("{f}.arrival_m"), s.arrival_m, 1e6);
             let a = DVec3::from_array(s.arrival_m).length();
             c.number(&format!("{f}.arrival_m (distance)"), a, ARRIVAL_CLEAR_M, 1e6);
-            if !["starbase", "relay"].contains(&s.kind.as_str()) {
-                c.equals(&format!("{f}.kind"), &s.kind, "starbase or relay");
-            }
             c.count(&format!("{f}.berths"), s.berths.len() as i64, 0, 16);
             for (j, b) in s.berths.iter().enumerate() {
                 let g = format!("{f}.berths[{j}]");
@@ -338,7 +380,6 @@ impl Validate for SystemFile {
 mod tests {
     use super::*;
     use crate::data::parse;
-    use crate::exterior::ExteriorData;
 
     const FILE: &str = include_str!("../../../data/space/systems/shoals.json");
 
@@ -353,32 +394,110 @@ mod tests {
     }
 
     #[test]
-    fn the_berth_shows_the_docks_sun_and_planet_where_the_dock_view_has_them() {
-        // The berth's attitude is the one that keeps the star and Tamsin where data/space/exterior.json's dock view has
-        // them (design 2), checked here on both files rather than typed twice.
+    fn tamsin_stations_axis_points_at_the_star_and_tamsin_lies_below_it() {
+        // Version E's axes are on the star (spacedock design 5a); its frame keeps Tamsin under the bay's floor.
         let s = shoals();
         let st = s.station("tamsin_station").unwrap();
-        let (pos, rot) = s.berth_pose(st, &st.berths[0]);
-        let e: ExteriorData =
-            parse("data/space/exterior.json", include_str!("../../../data/space/exterior.json")).unwrap();
+        let (pos, rot) = (s.station_pos(st), s.station_rot(st));
         let sky = s.sky_from(pos);
-        let sun_ship = rot.inverse() * sky.sun_dir;
-        let (_, planet_dir, _) = sky.planet.expect("Tamsin is the near planet at the berth");
-        let planet_ship = rot.inverse() * planet_dir;
-        let want = |d: [f64; 3]| DVec3::from_array(d).normalize();
-        let deg = |a: DVec3, b: DVec3| a.angle_between(b).to_degrees();
-        assert!(deg(sun_ship, want(e.sun.dir)) < 1.0, "the sun is {} degrees off", deg(sun_ship, want(e.sun.dir)));
-        assert!(
-            deg(planet_ship, want(e.planet.dir)) < 1.0,
-            "Tamsin is off by {}",
-            deg(planet_ship, want(e.planet.dir))
-        );
+        let axis = rot * DVec3::Z;
+        assert!(axis.angle_between(sky.sun_dir).to_degrees() < 0.5, "the axis is off the star");
+        let (_, planet_dir, _) = sky.planet.expect("Tamsin is the near planet at its station");
+        assert!((rot.inverse() * planet_dir).y < -0.5, "Tamsin below the station");
+    }
+
+    #[test]
+    fn every_station_stands_at_its_body_or_point_and_orbits_outside_the_jumps_lock() {
+        // spacedock design 11a: each at 3.33 of its body's radii, outside the jump's planet lock (jump.json).
+        let s = shoals();
+        let jump: serde_json::Value =
+            serde_json::from_str(include_str!("../../../data/ships/tern/jump.json")).unwrap();
+        let radii = jump["planet_radii"].as_f64().unwrap();
+        assert_eq!(s.stations.len(), 5, "the five versions are the five stations");
+        for st in &s.stations {
+            match &st.body {
+                Some(b) => {
+                    let body = s.bodies.iter().find(|x| &x.id == b).unwrap();
+                    let r = (s.station_pos(st) - DVec3::from_array(body.pos_m)).length();
+                    assert!(r > body.radius_m * radii, "{} orbits inside {}'s lock", st.id, body.name);
+                    assert_eq!(s.mass_lock(s.station_pos(st) + DVec3::Y * st.mass_lock_m * 1.5, radii), None);
+                }
+                None => assert!(s.points.iter().any(|p| Some(&p.id) == st.near.as_ref()), "{} is near a point", st.id),
+            }
+        }
+    }
+
+    #[test]
+    fn every_berth_sits_inside_its_versions_bay() {
+        let (s, dock) = (shoals(), crate::spacedock::Spacedock::shipped());
+        for st in &s.stations {
+            let bay = dock.bay(&st.version).unwrap();
+            for b in &st.berths {
+                assert!(bay.holds(DVec3::from_array(b.pos_m), 30.0), "{}'s {} is outside its bay", st.id, b.id);
+            }
+        }
+    }
+
+    #[test]
+    fn every_departure_keeps_to_the_bays_and_the_corridors_limits() {
+        let (s, dock) = (shoals(), crate::spacedock::Spacedock::shipped());
+        for st in &s.stations {
+            let bay = dock.bay(&st.version).unwrap();
+            for b in &st.berths {
+                let rot = from_hpr(b.hpr_deg[0], b.hpr_deg[1], b.hpr_deg[2]);
+                for (k, l) in b.departure.iter().enumerate() {
+                    let end = DVec3::from_array(b.pos_m) + rot * DVec3::from_array(l.to_m);
+                    let limit = if bay.holds(end, 0.0) { dock.traffic.bay_mps } else { dock.traffic.corridor_mps };
+                    assert!(l.max_mps <= limit, "{} leg {k} at {} m/s over {limit}", st.id, l.max_mps);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn the_tern_leaves_tamsin_station_down_its_axis_and_clear_of_its_lock() {
+        let (s, dock) = (shoals(), crate::spacedock::Spacedock::shipped());
+        let st = s.station("tamsin_station").unwrap();
+        let b = &st.berths[0];
+        let ends: Vec<DVec3> =
+            b.departure.iter().map(|l| DVec3::from_array(b.pos_m) + DVec3::from_array(l.to_m)).collect();
+        let mouth = dock.oneill.port.mouth_z();
+        let on_axis = ends.iter().skip(1).all(|e| e.x.hypot(e.y) < 1.0);
+        assert!(on_axis, "up off the wall to the axis, then along it: {ends:?}");
+        let last = *ends.last().unwrap();
+        assert!(last.z > mouth && last.length() > st.mass_lock_m, "out through the mouth and past the lock");
+    }
+
+    #[test]
+    fn the_spacedock_mockups_station_list_agrees_with_the_system_file() {
+        // spacedock tasks 2.1: the system file is the one source; until the mockup reads it, its own list must agree
+        // (CLAUDE.md 6.6: the real artifacts compared, not two typed copies trusted).
+        let s = shoals();
+        let dock: serde_json::Value =
+            serde_json::from_str(include_str!("../../../data/space/spacedock.json")).unwrap();
+        let list = dock["stations"]["list"].as_array().unwrap();
+        assert_eq!(list.len(), s.stations.len());
+        for m in list {
+            let st = s.station(m["id"].as_str().unwrap()).expect("every mockup station is in the system file");
+            assert_eq!(m["version"].as_str(), Some(st.version.as_str()), "{}", st.id);
+            assert_eq!(m["body"].as_str(), st.body.as_deref(), "{}", st.id);
+            assert_eq!(m["near"].as_str(), st.near.as_deref(), "{}", st.id);
+            assert_eq!(m["orbit_radius_m"].as_f64(), st.orbit_radius_m, "{}", st.id);
+        }
+    }
+
+    #[test]
+    fn a_station_with_neither_a_body_nor_a_point_is_refused() {
+        let mut v: serde_json::Value = serde_json::from_str(FILE).unwrap();
+        v["stations"][0]["body"] = serde_json::Value::Null;
+        let err = parse::<SystemFile>("x", &v.to_string()).expect_err("no body and no point");
+        assert_eq!(err.field, "stations[0].body");
     }
 
     #[test]
     fn tamsin_from_the_station_spans_seventeen_and_a_half_degrees() {
         let s = shoals();
-        let sky = s.sky_from(DVec3::from_array(s.station("tamsin_station").unwrap().pos_m));
+        let sky = s.sky_from(s.station_pos(s.station("tamsin_station").unwrap()));
         let r = sky.planet.unwrap().2.asin().to_degrees();
         assert!((r - 17.5).abs() < 0.2, "{r} degrees: the station sits 3.33 radii out (design 2)");
     }

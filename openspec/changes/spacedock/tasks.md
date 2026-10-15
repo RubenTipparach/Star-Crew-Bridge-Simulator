@@ -22,12 +22,14 @@ can actually enter rather than something flimsy. I want there to be multiple shi
 
 ## 2. The stations in the engine
 
-- [ ] 2.1 The system file names its stations: `data/space/systems/shoals.json` `stations` gains the five (design 11a),
+- [x] 2.1 The system file names its stations: `data/space/systems/shoals.json` `stations` gains the five (design 11a),
   each with its version, body or point, orbit, berths and departure legs; `sc-core::system` takes the new field
   (a schema change: the file is read with `deny_unknown_fields`) and checks every station's body or point exists, its
   orbit is outside its body's 3-radius mass lock, and its berths sit inside its bay. `spacedock.json` `stations` then
-  goes, the system file being the one source.
-- [ ] 2.2 `patrol-mission` follows: its starbase becomes E, Tamsin Station; the patrol starts with the Tern berthed in
+  goes, the system file being the one source. (Done 2026-10-14, `sc-core::system` and `sc-core::spacedock`; the
+  mockup still reads `spacedock.json` `stations`, so the list stays until the mockup reads the system file, held to it
+  by a test. Berths and legs for E only so far; A-D have none yet.)
+- [x] 2.2 `patrol-mission` follows: its starbase becomes E, Tamsin Station; the patrol starts with the Tern berthed in
   E's round bay (a berth pose on the bay's wall, keel to the wall), and leaves by a departure leg up off the wall to
   the axis, along the axis out through the iris and the throat, then clear of the dome and the mirrors to the 2 km mass
   lock (design 5a, why the sunward end). Its design 3, 4.1-4.3 and spec change with it.

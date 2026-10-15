@@ -516,30 +516,29 @@ mod tests {
     }
 
     #[test]
-    fn the_departure_backs_the_tern_out_at_the_first_legs_speed() {
+    fn the_departure_lifts_the_tern_off_the_bays_wall_at_the_first_legs_speed() {
         let d = data();
-        // Docked, local frame: the berth at the origin, the Tern in it.
+        // Docked, local frame: the berth at the origin, the Tern in it, keel to the bay's wall.
         let (speed, strafe, done) =
             departure_setpoints(DVec3::ZERO, d.berth_rot, DVec3::ZERO, d.berth_rot, &d.departure, 0);
         assert!(!done);
-        assert!((speed + 1.0).abs() < 1e-6, "astern at the first leg's 1 m/s, got {speed}");
-        assert!(strafe[0].abs() < 1e-6 && strafe[1].abs() < 1e-6, "straight back: {strafe:?}");
+        assert!(speed.abs() < 1e-6 && (strafe[1] - 1.0).abs() < 1e-6, "straight up at 1 m/s: {speed} {strafe:?}");
     }
 
     #[test]
     fn a_leg_is_done_past_its_end_and_the_next_is_faster() {
         let d = data();
-        let past = d.berth_rot * DVec3::new(0.0, 0.0, -10.2);
+        let past = d.berth_rot * DVec3::new(0.0, 10.2, 0.0);
         let (_, _, done) = departure_setpoints(past, d.berth_rot, DVec3::ZERO, d.berth_rot, &d.departure, 0);
         assert!(done);
-        let (speed, _, done) = departure_setpoints(past, d.berth_rot, DVec3::ZERO, d.berth_rot, &d.departure, 1);
-        assert!(!done && (speed + 4.0).abs() < 1e-6, "the second leg at 4 m/s: {speed}");
+        let (_, strafe, done) = departure_setpoints(past, d.berth_rot, DVec3::ZERO, d.berth_rot, &d.departure, 1);
+        assert!(!done && (strafe[1] - 5.0).abs() < 1e-6, "on up to the axis at the bay's 5 m/s: {strafe:?}");
     }
 
     #[test]
     fn a_tern_off_the_legs_line_is_steered_back_onto_it() {
         let d = data();
-        let off = d.berth_rot * DVec3::new(2.0, 0.0, -5.0);
+        let off = d.berth_rot * DVec3::new(2.0, 5.0, 0.0);
         let (_, strafe, _) = departure_setpoints(off, d.berth_rot, DVec3::ZERO, d.berth_rot, &d.departure, 0);
         assert!(strafe[0] > 0.0, "2 m to port is steered to starboard: {strafe:?}");
     }

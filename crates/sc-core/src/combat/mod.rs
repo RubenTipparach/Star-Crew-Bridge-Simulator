@@ -3854,7 +3854,7 @@ mod tests {
     }
 
     #[test]
-    fn undocking_backs_the_tern_out_of_the_cradle_under_the_berths_limits() {
+    fn undocking_flies_the_tern_out_of_the_bay_and_down_the_throat_under_the_limits() {
         let (mut d, s) = patrolling(&[Station::Helm, Station::Engineering]);
         let g = d.drive_group().unwrap() as u8;
         d.command(s[1], Command::Power(PowerCmd::Breaker(g))).unwrap();
@@ -3866,36 +3866,37 @@ mod tests {
             d.step();
             took += DT;
             fastest = fastest.max(d.ships[0].vel.length());
-            assert!(took < 120.0, "the departure never ended");
+            assert!(took < 400.0, "the departure never ended");
         }
-        // Back along the berth's -Z by the path's 107 m, never over its 4 m/s.
-        let back = d.ships[0].rot.inverse() * d.ships[0].pos;
-        assert!((back.z + 107.0).abs() < 2.0 && back.x.abs() < 1.0, "out along the berth's axis: {back}");
-        assert!(fastest <= 4.2, "the berth's 4 m/s: {fastest}");
-        assert!((30.0..=45.0).contains(&took), "about 39 s with the clamps (design 4.2): {took}");
+        // Up off the bay's wall to the axis, down the axis out through the throat, and on clear of the pair: the
+        // berth's legs (Tamsin Station's in the system file), never faster than the corridor's 40 m/s.
+        let out = d.ships[0].rot.inverse() * d.ships[0].pos;
+        assert!((out - DVec3::new(0.0, 200.0, 3000.0)).length() < 5.0, "at the departure's end: {out}");
+        assert!(fastest <= 40.5, "the corridor's 40 m/s: {fastest}");
+        assert!((240.0..=300.0).contains(&took), "about 4.4 minutes from the clamps (patrol-mission 4.2): {took}");
         assert!(d.patrol.as_ref().unwrap().undocked);
     }
 
     #[test]
-    fn the_station_locks_the_jump_until_the_tern_is_two_kilometres_out() {
+    fn the_station_locks_the_jump_until_the_tern_is_clear_of_it() {
         let (mut d, s) = patrolling(&[Station::Helm, Station::Engineering]);
         let g = d.drive_group().unwrap() as u8;
         d.command(s[1], Command::Power(PowerCmd::Breaker(g))).unwrap();
         d.command(s[1], Command::Shore(false)).unwrap();
         run_until(&mut d, 30.0, |d| d.drive_ready());
         d.command(s[0], Command::Undock).unwrap();
-        run_until(&mut d, 120.0, |d| d.patrol.as_ref().is_some_and(|p| p.stage == patrol::Stage::Underway));
+        // In the throat on the axis: still inside the station's lock.
+        run_until(&mut d, 300.0, |d| d.patrol.as_ref().is_some_and(|p| p.leg == 3));
         assert_eq!(d.mass_lock().as_deref(), Some("Tamsin Station"));
-        d.command(s[0], Command::Jump(true)).unwrap();
-        steps(&mut d, 0.1);
-        assert!(!d.patrol.as_ref().unwrap().spooling, "refused inside the lock");
+        run_until(&mut d, 120.0, |d| d.patrol.as_ref().is_some_and(|p| p.stage == patrol::Stage::Underway));
+        assert_eq!(d.mass_lock(), None, "the departure ends clear of the lock");
     }
 
     #[test]
     fn a_crew_of_automation_undocks_jumps_sweeps_and_meets_the_hound() {
         // One person at Tactical; every other seat is automation playing the patrol by the bots' rule (design 9).
         let (mut d, _) = patrolling(&[Station::Tactical]);
-        let out = run_until(&mut d, 120.0, |d| d.patrol.as_ref().is_some_and(|p| p.undocked));
+        let out = run_until(&mut d, 360.0, |d| d.patrol.as_ref().is_some_and(|p| p.undocked));
         let jump = run_until(&mut d, 180.0, |d| d.patrol.as_ref().is_some_and(|p| p.jumps >= 1));
         println!("automation: clear of the berth after {out:.1} s, the first jump {jump:.1} s later");
         let p = d.patrol.as_ref().unwrap();

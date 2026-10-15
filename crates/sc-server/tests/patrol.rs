@@ -42,7 +42,7 @@ fn a_crew_of_bots_undocks_jumps_and_sweeps_and_says_so() {
     // The bots decide on the clients' real clocks: the server runs at 6x real time, as the LAN drill's test does.
     let mut tick = 0usize;
     let mut next_tick = Instant::now();
-    while tick < (400.0 * TICK_HZ) as usize {
+    while tick < (600.0 * TICK_HZ) as usize {
         server.poll();
         if Instant::now() >= next_tick {
             server.tick();
@@ -64,7 +64,7 @@ fn a_crew_of_bots_undocks_jumps_and_sweeps_and_says_so() {
     let t = jumped_at.unwrap_or_else(|| {
         let x = sessions[0].latest();
         panic!(
-            "the bots did not reach and sweep the Pell beacon within 400 s: phase {:?}, patrol {:?}, heard {:?}",
+            "the bots did not reach and sweep the Pell beacon within 600 s: phase {:?}, patrol {:?}, heard {:?}",
             x.map(|x| x.phase),
             x.and_then(|x| x.patrol.clone()),
             heard.iter().map(|l| &l.text).collect::<Vec<_>>()

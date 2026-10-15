@@ -25,6 +25,7 @@ use sc_core::deck::{
 };
 use sc_core::vertex::{pack_deck_vertex, DeckVertexIn};
 use serde::Deserialize;
+use sc_core::mips::{mip_chain, shrink};
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -160,44 +161,6 @@ fn color_byte(c: f32) -> u8 {
     ((c.max(0.0).powf(1.0 / 2.2) / 2.0).clamp(0.0, 1.0) * 255.0).round() as u8
 }
 
-/// Box-filter `src` (square RGBA8 layers of `from` px) to `to` px, `to` dividing `from`.
-fn shrink(src: &[u8], from: u32, to: u32) -> Vec<u8> {
-    let k = (from / to) as usize;
-    let (f, t) = (from as usize, to as usize);
-    let mut out = vec![0u8; t * t * 4];
-    for y in 0..t {
-        for x in 0..t {
-            let mut acc = [0u32; 4];
-            for dy in 0..k {
-                for dx in 0..k {
-                    let i = ((y * k + dy) * f + x * k + dx) * 4;
-                    for (c, a) in acc.iter_mut().enumerate() {
-                        *a += u32::from(src[i + c]);
-                    }
-                }
-            }
-            for c in 0..4 {
-                out[(y * t + x) * 4 + c] = (acc[c] / (k * k) as u32) as u8;
-            }
-        }
-    }
-    out
-}
-
-/// A texture array's mip chain: level 0 is `level0` (`layers` square RGBA8 layers of `size` px), each next level every
-/// layer box-filtered to half the size, down to 1 px.
-fn mip_chain(level0: Vec<u8>, size: u32, layers: u32) -> Vec<Vec<u8>> {
-    let mut levels = vec![level0];
-    let mut px = size;
-    while px > 1 {
-        let lb = (px * px * 4) as usize;
-        let last = levels.last().unwrap();
-        let next = (0..layers as usize).flat_map(|i| shrink(&last[i * lb..(i + 1) * lb], px, px / 2)).collect();
-        levels.push(next);
-        px /= 2;
-    }
-    levels
-}
 
 /// The middle of compartment `id`'s floor on its lowest deck: the centroid of the largest of its lowest brushes (each is
 /// a convex prism, so the centroid is inside it).

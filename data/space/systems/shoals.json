@@ -1,6 +1,6 @@
 {
   "schema": "starcrew.system/1",
-  "_doc": "A star system (openspec/changes/patrol-mission design 2; flight-and-navigation 13's system file): the system frame has its origin at the star's centre, x and z in the plane of the planets, +y north; positions are metres. The bodies stand where they are at the mission's epoch (rails, flight-and-navigation 8, come later). A station's attitude turns its own frame (its axis +x) into the system's; a berth is a pose in the station's frame (where the docked Tern's origin sits, and its attitude there) and a departure path in the berth's own frame (the docked Tern's), each leg ending at a point with the most it may be flown at, so a berth works whatever shape its station has. A point of interest's arrival point is an offset from it, where a jump to it ends. A body's look is the sky program's planet (data/space/exterior.json's fields). Read by sc-core::system.",
+  "_doc": "A star system (openspec/changes/patrol-mission design 2; flight-and-navigation 13's system file): the system frame has its origin at the star's centre, x and z in the plane of the planets, +y north; positions are metres. The bodies stand where they are at the mission's epoch (rails, flight-and-navigation 8, come later). A station is one of the spacedock versions (openspec/changes/spacedock design 11a: `version` A-E, `data/space/spacedock.json` its sizes), set at orbit_radius_m from its body's centre along orbit_dir, or at offset_m from a point (near); its attitude turns its own frame into the system's (the spacedock frame: origin at its centre, +z the way its doors face, E's +z on the star); its mass lock is measured from its frame's origin; its arrival point is in its own frame; a berth is a pose in the station's frame (where the docked Tern's origin sits, and its attitude there) and a departure path in the berth's own frame (the docked Tern's), each leg ending at a point with the most it may be flown at, so a berth works whatever shape its station has. A point of interest's arrival point is an offset from it, where a jump to it ends. A body's look is the sky program's planet (data/space/exterior.json's fields). Read by sc-core::system.",
   "id": "shoals",
   "name": "the Shoals",
   "star": {
@@ -130,9 +130,9 @@
       "id": "pell",
       "name": "Pell",
       "pos_m": [
-        209994661000.0,
-        1027272000.0,
-        213842432000.0
+        209993660000.0,
+        1032386000.0,
+        213812888000.0
       ],
       "radius_m": 1200000.0,
       "look": {
@@ -167,30 +167,32 @@
     {
       "id": "tamsin_station",
       "name": "Tamsin Station",
-      "kind": "starbase",
-      "pos_m": [
-        -72004360600.0,
-        10125552.0,
-        95983312900.0
+      "version": "E",
+      "body": "tamsin",
+      "orbit_radius_m": 20000000.0,
+      "orbit_dir": [
+        -0.2180297,
+        0.506277,
+        -0.834354
       ],
       "hpr_deg": [
-        261.04,
-        -11.99,
-        -117.22
+        216.876,
+        -0.005,
+        -53.13
       ],
-      "mass_lock_m": 2000.0,
+      "mass_lock_m": 2780.0,
       "arrival_m": [
-        570.0,
-        -1.0,
-        -5000.0
+        0.0,
+        0.0,
+        5780.0
       ],
       "berths": [
         {
           "id": "berth_a",
           "pos_m": [
-            570.0,
-            -1.0,
-            0.0
+            0.0,
+            -200.0,
+            60.0
           ],
           "hpr_deg": [
             0.0,
@@ -201,22 +203,133 @@
             {
               "to_m": [
                 0.0,
-                0.0,
-                -10.0
+                10.0,
+                0.0
               ],
               "max_mps": 1.0
             },
             {
               "to_m": [
                 0.0,
-                0.0,
-                -107.0
+                200.0,
+                0.0
               ],
-              "max_mps": 4.0
+              "max_mps": 5.0
+            },
+            {
+              "to_m": [
+                0.0,
+                200.0,
+                780.0
+              ],
+              "max_mps": 5.0
+            },
+            {
+              "to_m": [
+                0.0,
+                200.0,
+                3000.0
+              ],
+              "max_mps": 40.0
             }
           ]
         }
       ]
+    },
+    {
+      "id": "cinder_yards",
+      "name": "Cinder Yards",
+      "version": "C",
+      "body": "cinder",
+      "orbit_radius_m": 8000000.0,
+      "orbit_dir": [
+        -0.3987261,
+        -0.0,
+        -0.9170701
+      ],
+      "hpr_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "mass_lock_m": 3000.0,
+      "arrival_m": [
+        0.0,
+        0.0,
+        6000.0
+      ],
+      "berths": []
+    },
+    {
+      "id": "orrin_highport",
+      "name": "Orrin Highport",
+      "version": "A",
+      "body": "orrin",
+      "orbit_radius_m": 193000000.0,
+      "orbit_dir": [
+        -0.6945537,
+        0.1289885,
+        -0.7077833
+      ],
+      "hpr_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "mass_lock_m": 3000.0,
+      "arrival_m": [
+        0.0,
+        0.0,
+        6000.0
+      ],
+      "berths": []
+    },
+    {
+      "id": "pell_wheel",
+      "name": "Pell Wheel",
+      "version": "B",
+      "body": "pell",
+      "orbit_radius_m": 4000000.0,
+      "orbit_dir": [
+        -0.0333688,
+        0.1704502,
+        -0.9848011
+      ],
+      "hpr_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "mass_lock_m": 3000.0,
+      "arrival_m": [
+        0.0,
+        0.0,
+        6000.0
+      ],
+      "berths": []
+    },
+    {
+      "id": "shoals_hollow",
+      "name": "Shoals Hollow",
+      "version": "D",
+      "near": "shoals_relay",
+      "offset_m": [
+        40000.0,
+        3000.0,
+        -25000.0
+      ],
+      "hpr_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "mass_lock_m": 3000.0,
+      "arrival_m": [
+        0.0,
+        0.0,
+        6000.0
+      ],
+      "berths": []
     }
   ],
   "points": [

@@ -11,18 +11,18 @@ drive's breaker open, and the crew SHALL walk to their stations to bring the dri
 - **WHEN** helm holds UNDOCK before engineering has closed the drive's breaker and dropped shore power
 - **THEN** the clamps stay closed and the command is refused as not ready
 
-### Requirement: Undocking backs the Tern out of the berth under its limits
+### Requirement: Undocking flies the Tern out of the bay under its limits
 
-Once the clamps open, the Tern SHALL leave the cradle stern first along the berth's axis on its thrusters, no faster
-than 1 m/s for the first 10 m and 4 m/s to the cradle's end, and the jump SHALL be refused until the Tern is 2 km
-from the station.
+Once the clamps open, the Tern SHALL leave Tamsin Station's bay by its berth's departure legs, up off the wall to the
+axis and down the axis out through the throat, no faster than the bay's 5 m/s inside the station and the corridor's
+40 m/s beyond it, and the jump SHALL be refused while the Tern is inside the station's mass lock.
 
 #### Scenario: Leaving the berth
-- **WHEN** helm releases the clamps and backs out on the limits
-- **THEN** the bow clears the cradle in about 36 s and the undock objective is done
+- **WHEN** helm releases the clamps
+- **THEN** the Tern is clear of the pair about 4.4 minutes later and the undock objective is done
 
 #### Scenario: Too close to jump
-- **WHEN** the captain orders a jump 1.5 km from the station
+- **WHEN** the captain orders a jump from inside the station's throat
 - **THEN** the spool does not start and helm's console shows the mass lock
 
 ### Requirement: The patrol travels between waypoints by the jump drive

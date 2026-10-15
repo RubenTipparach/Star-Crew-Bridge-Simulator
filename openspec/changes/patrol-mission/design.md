@@ -88,33 +88,22 @@ radii. The berth's attitude is the one that keeps the star and Tamsin where the 
 starboard and ahead, Tamsin low to port), computed by a tool from the two directions and checked, never typed in
 (CLAUDE.md 6.6).
 
-## 3. The starbase and the relay, placeholders
+## 3. Tamsin Station, the other stations, and the relay
 
-The starbase model is being made on another machine (`starbase` change, `assets/models/exteriors/starbase.glb`). Until
-it arrives the client generates a placeholder, as it does the Hound (`sc-client/src/ships3d.rs`, CLAUDE.md 9: a
-committed generator), named for what it is: `ships3d::station(StationKind::Starbase)`.
+**Tamsin Station is spacedock's version E, the O'Neill pair** (the owner, 2026-10-14, spacedock S1: "I want to keep all
+of them as various stations you can visit across the system, starting at oniel pairs"). The system file lists the five
+stations of spacedock design 11a, each with its version, its body and orbit (or a point and an offset), its attitude,
+its mass lock, its arrival point and its berths; `sc-core::system` checks every body or point exists, every orbit is
+outside the jump's planet lock (`jump.json`), every berth is inside its version's bay (`sc-core::spacedock`, which
+reads the bays and the traffic limits from `data/space/spacedock.json`) and every departure leg keeps to the bay's and
+the corridor's limits. Tamsin Station's axes point at the star, Tamsin below it (a test). The patrol starts in its round
+bay; the placeholder starbase and its girder cradle are gone from the drill (the walk's dock in `exterior.json` stays
+for the tour). The client draws E from the same sizes (`ships3d::oneill`, design 12b) and the other four as flagged
+placeholders.
 
-| Part | Shape | Size |
-| --- | --- | --- |
-| Spindle | An octagonal prism along the station's axis, with a cap at each end | 60 m across, 260 m long |
-| Habitat ring | 16 box segments round the spindle at its middle, lit window bands on the outer face | 600 m radius to the ring's middle, a 40 x 24 m section |
-| Spokes | 4 square tubes from the spindle to the ring | 8 m |
-| Berth arms | 2 trusses along the axis out of the spindle's ends, each ending in a cradle: the dock frame of `exterior.json`, its length across the axis | 440 m long: a cradle's centre 570 m from the station's centre |
-| Lights | Window bands (warm white, glowing), red and green beacons at the ring's poles and the arms' tips, blinking at 1 Hz on for 0.15 s, white floodlights at the cradles | |
-
-520 triangles as built (a ceiling of 1,200 in its test) and two draws (the albedo lit by the sun, the glowing parts
-flat) and one a lit beacon. The relay is the same generator's `StationKind::Relay`: a 120 m truss with three dishes,
-a solar wing and two beacons, 136 triangles as built (a ceiling of 300). A beacon is drawn at least
-`beacons.min_radius_deg` (0.15 degrees) in angular radius however far off it is, so the relay's light shows from
-18.6 km, as a lamp at night is a point and not nothing.
-When `starbase.glb` lands, its full model replaces the placeholder at the berth (inside 20 km) and its far LOD beyond,
-with the berth's cradle taken from the model if it has one; the placeholder's generator stays for the relay.
-
-The Tern's berth is the cradle at one arm's end, the station's axis along the Tern's x, so the spindle and the ring stand off the Tern's starboard side. The Tern lies in it as it lies in the walk's
-dock today: the cradle is `exterior.json`'s `dock` frame (120 m long, ring frames every 20 m, the work lights), now
-belonging to the station: while docked it is drawn in the Tern's frame as today; once the clamps release it stays
-with the station, drawn in the system frame at the berth's pose, and the Tern moves out of it. A gangway from the
-cradle's starboard girders meets the docking collar (x -10.8 m, deck C); it retracts when the clamps release.
+The relay at the Shoals stays the placeholder generator's `StationKind::Relay`: a 120 m truss with three dishes, a
+solar wing and two beacons, 136 triangles. A beacon is drawn at least `beacons.min_radius_deg` (0.15 degrees) in
+angular radius however far off it is.
 
 ## 4. Undocking
 
@@ -135,34 +124,36 @@ cradle's starboard girders meets the docking collar (x -10.8 m, deck C); it retr
   SAFE in the turret modes' place until then.
 - **Science**: the station's traffic on the local plot; nothing to do yet.
 
-### 4.2 The clamps and backing out
+### 4.2 The clamps and the bay
 
 - **UNDOCK** is Helm's, a guarded control held 0.6 s (BS 8.5, as M 3's JUMP), live only when DRIVE is green and the
-  captain has ordered it (or, with no captain aboard, at once). The clamps open in 3 s (`clamps_s`); the gangway
-  retracts with them.
-- **Backing out**: the cradle is open at its aft end; the Tern backs out stern first along the berth's axis (the
-  ship's -Z) on its bow thrusters (FN 2: 15 MN, 5 m/s^2), under the berth's departure limits: at most 1 m/s for the
-  first 10 m (`depart_slow_mps`, `depart_slow_m`) and 4 m/s to the cradle's end (`depart_mps`). The bow must clear the
-  cradle's aft ring: the cradle reaches 60 m aft of its centre and the Tern's bow 37.3 m ahead of it (the bow camera
-  sits 5.7 m beyond the bow at z 43 m), so 97.3 m and a 10 m margin, 107 m. Time: 10 s for the first 10 m, then 97 m
-  at 4 m/s with the speed changes, about 26 s: **36 s**.
-- **Lateral and attitude**: the assist holds the berth's axis (lateral set points zero, attitude held), so the hull
-  clears the cradle's girders by their 2.9 m (`tern-exterior` 4). A contact (helm off the axis by more than 2.9 m, or
-  rolling) is FN 11's collision with the cradle, a kinetic hit to both.
-- **Automation** (no helm aboard): backs out at half the limits (72 s).
+  captain has ordered it (or, with no captain aboard, at once). The clamps open in 3 s (`clamps_s`).
+- **The berth** is on the round bay's wall, keel to the wall, bow toward the mouth (spacedock 5a: `berths` slot
+  [1, 0], 200 m from the axis, 60 m up the bay). The departure is the berth's legs in the system file, flown by the
+  assist with the attitude held, never faster than each leg allows (spacedock design 6's `bay_mps` 5 and
+  `corridor_mps` 40, a test holds the legs to them):
 
-### 4.3 Departing
+| Leg | To (the berth's frame) | Most | Time |
+| --- | --- | ---: | ---: |
+| Up off the clamps | 10 m up | 1 m/s | 10 s |
+| To the axis | 200 m up | 5 m/s | 38 s |
+| Down the axis, through the iris and the throat, out of the mouth | 780 m ahead | 5 m/s | 156 s |
+| Clear of the dome and the pair, past the lock | 3,000 m ahead | 40 m/s | 60 s |
 
-Clear of the cradle, the Tern is 580 m from the station's centre (the cradle's 570 m and the 107 m backed out across
-it). The jump needs 2 km (FN 7's station mass lock). Helm turns away from the station (at most 180 degrees: 11.5 s at
-the drill's 18 deg/s and 12 deg/s^2), and burns: 1,420 m at 15 m/s^2 takes 13.8 s and leaves the Tern at 206 m/s.
-About **25 s**. The turn toward the jump vector can be made during the spool: the alignment is asked
-only for the spool's last 3 s.
+  About **4.4 minutes** from the clamps (a test: 240-300 s). The iris stands open (its doors are spacedock 2.6).
+- **Automation** (no helm aboard) flies the same legs.
+
+### 4.3 Clear of the station
+
+The departure ends on Tamsin Station's axis 2.2 km beyond its mouth, on the star's side, clear of the dome, the
+petals and the farm ring, and outside the station's mass lock (2,780 m from its frame's origin: the mouth's 780 m and
+FN 7's 2 km, spacedock S4's "from the hull" on the axis). The helm takes her from there: the next jump's spool, the
+turn toward its vector during it.
 
 ### 4.4 Clamps to the first jump
 
-3 s + 36 s + 25 s + 40 s spool: **about 104 s** from the clamps to the first jump, after the minute or so of walking
-and starting the drive.
+3 s + 264 s + 40 s spool: **about 5 minutes** from the clamps to the first jump (a crew of automation in a test: clear
+after 268 s, the jump 40 s later), after the minute or so of walking and starting the drive.
 
 ## 5. The route and the jumps
 
