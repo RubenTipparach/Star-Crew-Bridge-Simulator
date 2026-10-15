@@ -21,6 +21,7 @@ mod sokol_log;
 pub mod shaders {
     pub mod blit;
     pub mod deck;
+    pub mod fx;
     pub mod sky;
     pub mod ui;
 }
@@ -72,7 +73,15 @@ pub struct DeckParams {
     pub panel_glow: f32,
     /// Nothing above this height in the mesh's own frame is drawn, metres (`f32::MAX`: no cut; ship-plan-view 5).
     pub clip_y: f32,
+    /// A baked sun to move to the frame's (patrol-mission design 11.3): the direction the colours were baked from in
+    /// the mesh's frame, and the bake's ambient share; [`NO_RELIGHT`] for none. With it, `flash_dir` and `flash` are
+    /// the frame's sun and its strength, and the colour is `light(now) / light(baked)` of the bake, never an added
+    /// light: `light(s) = a + (1 - a) max(0, n . s)`.
+    pub relight: [f32; 4],
 }
+
+/// [`DeckParams::relight`] off: the colours are drawn as baked.
+pub const NO_RELIGHT: [f32; 4] = [0.0; 4];
 
 /// The sky's numbers (deck-pipeline 13b; `data/space/exterior.json` through the client): directions are ship
 /// coordinates, colours linear. See `shaders/sky.glsl` for each lane.
@@ -130,6 +139,35 @@ pub struct UiMesh<'a> {
 pub const UI_MAX_VERTICES: usize = 131_072;
 /// The UI's index buffer, in 32-bit indices (see `UI_MAX_VERTICES`).
 pub const UI_MAX_INDICES: usize = 393_216;
+
+/// An effects vertex (`shaders/fx.glsl`): a camera-facing quad's corner, built on the CPU each frame.
+#[repr(C)]
+#[derive(Copy, Clone, Debug, Default)]
+pub struct FxVertex {
+    /// Where, relative to the eye, ship frame, metres.
+    pub pos: [f32; 3],
+    /// The quad's coordinate, 0-1, y up.
+    pub uv: [f32; 2],
+    /// Its phase (0-1), heat (0-1), what it is (`shaders/fx.glsl`: 0 flame, 1 embers, 2 smoke, 3 agent, 4 haze) and
+    /// strength (0-1).
+    pub p: [f32; 4],
+}
+
+/// The effects one draw takes at most, vertices (six a quad, no indices): 512 quads, the flames, embers and smoke of a
+/// few burning rooms and an extinguisher's 220 puffs of agent (all-hands 4). 110 KB a buffer.
+pub const FX_MAX_VERTICES: usize = 6 * 512;
+/// Effects draws a frame, each into its own streamed buffer (a streamed buffer is written once a frame, before it is
+/// bound): the eye's view of the decks, and room for a second view. 221 KB in all.
+const FX_BUFFERS: usize = 2;
+
+struct FxPainter {
+    shader: sg::Shader,
+    pipes: HashMap<i32, sg::Pipeline>,
+    bufs: Vec<sg::Buffer>,
+    /// The next buffer free this frame.
+    next: usize,
+    overflow_said: bool,
+}
 
 struct UiPainter {
     pipeline: sg::Pipeline,
@@ -215,6 +253,7 @@ pub struct Renderer {
     screen_shader: sg::Shader,
     outside_pipes: HashMap<(bool, i32), sg::Pipeline>,
     ui: UiPainter,
+    fx: FxPainter,
     blit: sg::Pipeline,
     nearest: sg::Sampler,
     linear: sg::Sampler,
@@ -331,6 +370,22 @@ impl Renderer {
         };
         let sky_shader = sg::make_shader(&shaders::sky::sky_shader_desc(backend));
         let screen_shader = sg::make_shader(&shaders::sky::screen_shader_desc(backend));
+        let fx = FxPainter {
+            shader: sg::make_shader(&shaders::fx::fx_shader_desc(backend)),
+            pipes: HashMap::new(),
+            bufs: (0..FX_BUFFERS)
+                .map(|_| {
+                    sg::make_buffer(&sg::BufferDesc {
+                        size: FX_MAX_VERTICES * std::mem::size_of::<FxVertex>(),
+                        usage: sg::BufferUsage { vertex_buffer: true, write_transient: true, ..Default::default() },
+                        label: c"fx".as_ptr(),
+                        ..Default::default()
+                    })
+                })
+                .collect(),
+            next: 0,
+            overflow_said: false,
+        };
         Self {
             pipes: HashMap::new(),
             shaders,
@@ -338,6 +393,7 @@ impl Renderer {
             screen_shader,
             outside_pipes: HashMap::new(),
             ui,
+            fx,
             blit,
             nearest,
             linear,
@@ -593,6 +649,7 @@ impl Renderer {
             state_weights: [params.state_weights[0], params.state_weights[1], params.state_weights[2], 0.0],
             flash: [params.flash_dir.x, params.flash_dir.y, params.flash_dir.z, params.flash],
             clip: [params.clip_y.min(1.0e9), 0.0, 0.0, 0.0],
+            relight: params.relight,
         };
         sg::apply_uniforms(shaders::deck::UB_DECK_VS_PARAMS, &sg::value_as_range(&u));
         if program == DeckProgram::Textured {
@@ -630,6 +687,74 @@ impl Renderer {
         };
         sg::apply_uniforms(shaders::deck::UB_DECK_PROBE_VS_PARAMS, &sg::value_as_range(&u));
         sg::draw(0, mesh.index_count, 1);
+    }
+
+    /// Draw effects (`FxVertex`, six to a quad) in the current 3D pass of `t`: `vp` the projection and view for
+    /// positions relative to the eye, `time_s` the clock their noise moves with. Depth tested, not written; blended
+    /// premultiplied (a flame adds its light, smoke covers). More than `FX_MAX_VERTICES` are cut, and more than two such
+    /// draws in a frame are skipped, each said once.
+    pub fn draw_fx(&mut self, t: &Target, vp: glam::Mat4, time_s: f32, vertices: &[FxVertex]) {
+        if vertices.is_empty() {
+            return;
+        }
+        let fx = &mut self.fx;
+        if fx.next >= fx.bufs.len() || vertices.len() > FX_MAX_VERTICES {
+            if !fx.overflow_said {
+                eprintln!("sc-render: more effects than their buffers hold; the rest are cut");
+                fx.overflow_said = true;
+            }
+            if fx.next >= fx.bufs.len() {
+                return;
+            }
+        }
+        let n = vertices.len().min(FX_MAX_VERTICES) / 6 * 6;
+        let buf = fx.bufs[fx.next];
+        fx.next += 1;
+        sg::write_buffer_transient(&sg::WriteBufferDesc {
+            src: sg::WriteBufferSource { data: sg::slice_as_range(&vertices[..n]), offset: 0 },
+            dst: sg::BufferLocation { buffer: buf, offset: 0 },
+            size: 0,
+        });
+        let shader = fx.shader;
+        let pip = *fx.pipes.entry(t.samples).or_insert_with(|| {
+            let mut d = sg::PipelineDesc {
+                shader,
+                cull_mode: sg::CullMode::None,
+                sample_count: t.samples,
+                label: c"fx".as_ptr(),
+                ..Default::default()
+            };
+            d.layout.buffers[0].stride = std::mem::size_of::<FxVertex>() as i32;
+            d.layout.attrs[shaders::fx::ATTR_FX_FX_POS].format = sg::VertexFormat::Float3;
+            d.layout.attrs[shaders::fx::ATTR_FX_FX_POS].offset = 0;
+            d.layout.attrs[shaders::fx::ATTR_FX_FX_UV].format = sg::VertexFormat::Float2;
+            d.layout.attrs[shaders::fx::ATTR_FX_FX_UV].offset = 12;
+            d.layout.attrs[shaders::fx::ATTR_FX_FX_P].format = sg::VertexFormat::Float4;
+            d.layout.attrs[shaders::fx::ATTR_FX_FX_P].offset = 20;
+            d.depth.compare = sg::CompareFunc::LessEqual;
+            d.depth.write_enabled = false;
+            d.depth.pixel_format = DEPTH_FORMAT;
+            d.colors[0].pixel_format = COLOR_FORMAT;
+            d.colors[0].blend = sg::BlendState {
+                enabled: true,
+                src_factor_rgb: sg::BlendFactor::One,
+                dst_factor_rgb: sg::BlendFactor::OneMinusSrcAlpha,
+                op_rgb: sg::BlendOp::Add,
+                src_factor_alpha: sg::BlendFactor::Zero,
+                dst_factor_alpha: sg::BlendFactor::One,
+                op_alpha: sg::BlendOp::Add,
+            };
+            sg::make_pipeline(&d)
+        });
+        sg::apply_pipeline(pip);
+        let mut b = sg::Bindings::new();
+        b.vertex_buffers[0] = buf;
+        sg::apply_bindings(&b);
+        let vs = shaders::fx::FxVsParams { vp: vp.to_cols_array() };
+        sg::apply_uniforms(shaders::fx::UB_FX_VS_PARAMS, &sg::value_as_range(&vs));
+        let fs = shaders::fx::FxFsParams { time: [time_s, 0.0, 0.0, 0.0] };
+        sg::apply_uniforms(shaders::fx::UB_FX_FS_PARAMS, &sg::value_as_range(&fs));
+        sg::draw(0, n, 1);
     }
 
     /// End the current pass.
@@ -796,6 +921,7 @@ impl Renderer {
     /// Finish the frame.
     pub fn commit(&mut self) {
         sg::commit();
+        self.fx.next = 0;
     }
 
     /// Counts from the frame committed last.

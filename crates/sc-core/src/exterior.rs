@@ -1,6 +1,6 @@
 //! `data/space/exterior.json`: the outside of the ship while it lies in the space dock (openspec/changes/deck-pipeline,
-//! design section 13b): the sun, the planet below to port, the stars, the dock's frame and the bow camera that feeds the
-//! viewscreens.
+//! design section 13b): the sun, the planet below to port, the stars, the dock's frame, the bow camera that feeds the
+//! viewscreens, and the beacons' blink (patrol-mission design 3).
 //!
 //! It lives in the core because two programs read it: `deckc` builds the dock's girders from it into the deck file, and
 //! the client draws the sky and the viewscreens from it. One schema, one loader (CLAUDE.md 6.5).
@@ -22,8 +22,29 @@ pub struct ExteriorData {
     pub stars: Stars,
     /// The dock's frame round the hull.
     pub dock: Dock,
+    /// How the beacons on stations and relays blink.
+    pub beacons: Beacons,
     /// The bow camera the viewscreens show.
     pub viewscreen: Viewscreen,
+}
+
+/// The navigation beacons' blink.
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct Beacons {
+    /// One blink each this many seconds.
+    pub period_s: f64,
+    /// Lit for this long of each period, seconds.
+    pub on_s: f64,
+    /// The least angular radius a beacon is drawn at, however far off, degrees: a lamp seen far away is a point.
+    pub min_radius_deg: f64,
+}
+
+impl Beacons {
+    /// Whether a beacon is lit at `time_s` (any clock, seconds).
+    pub fn lit(&self, time_s: f64) -> bool {
+        time_s.rem_euclid(self.period_s) < self.on_s
+    }
 }
 
 /// The sun: a disc and a glow round it.
@@ -191,6 +212,9 @@ impl Validate for ExteriorData {
         colour(c, "dock.steel_srgb", d.steel_srgb);
         colour(c, "dock.light_srgb", d.light_srgb);
         c.number("dock.ambient", d.ambient, 0.0, 1.0);
+        c.number("beacons.period_s", self.beacons.period_s, 0.1, 60.0);
+        c.number("beacons.on_s", self.beacons.on_s, 0.01, self.beacons.period_s);
+        c.number("beacons.min_radius_deg", self.beacons.min_radius_deg, 0.0, 2.0);
         let v = &self.viewscreen;
         for (k, x) in v.camera_m.iter().enumerate() {
             c.number(&format!("viewscreen.camera_m[{k}]"), *x, -1000.0, 1000.0);
@@ -228,6 +252,14 @@ mod tests {
     fn the_shipped_exterior_is_valid() {
         let e: ExteriorData = parse("data/space/exterior.json", FILE).expect("the shipped file loads");
         assert!(e.dock.width_m > 24.4 && e.dock.height_m > 13.8, "the dock clears the Tern's hull");
+    }
+
+    #[test]
+    fn a_beacon_is_lit_for_its_on_time_once_a_period() {
+        let e: ExteriorData = parse("data/space/exterior.json", FILE).expect("the shipped file loads");
+        let b = &e.beacons;
+        assert!(b.lit(0.0) && b.lit(b.period_s * 3.0 + b.on_s * 0.5), "lit at the start of every period");
+        assert!(!b.lit(b.on_s * 1.01) && !b.lit(b.period_s * 2.0 - 0.001), "dark for the rest of it");
     }
 
     #[test]

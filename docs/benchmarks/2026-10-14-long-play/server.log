@@ -1,0 +1,34 @@
+[     0.0 s] sc-server: the crew on foot: paths on the walk grid (8222 cells on 3 decks, 282 ms)
+[     0.0 s] sc-server: Drill 1: Hound at the Shoals on 0.0.0.0:7700 (peers on 192.168.0.210), seed 1014, impairment 0 % loss and 0 ms delay; status at http://192.168.0.210:7700/status
+[    40.6 s] Helm officer (bot) joined from 192.168.0.210:39910 as slot 0, wanting Helm
+[    40.7 s] Engineering officer (bot) joined from 192.168.0.210:39894 as slot 1, wanting Engineering
+[    53.9 s] round 0 phase Countdown
+[    58.9 s] round 0 phase Engage
+[   213.1 s] round 0 phase Debrief
+[   213.1 s] round 0 result: Victory in 154 s; crew Helm Helm officer (bot), Tactical Engineering officer (bot), Engineering automation, Science automation, Captain automation, Laser port automation, Laser stbd automation, Gunner automation; Tern bolts 111/856 hit, Hound bolts 267/583 hit, missiles 2/4 hit, dealt 1593 MJ, taken 900 MJ, Tern hull 400 MJ
+[   233.1 s] round 1 phase Muster
+[   236.2 s] round 1 phase Countdown
+[   241.2 s] round 1 phase Engage
+[   804.4 s] round 1 phase Debrief
+[   804.4 s] round 1 result: Victory in 563 s; crew Helm Helm officer (bot), Tactical Engineering officer (bot), Engineering automation, Science automation, Captain automation, Laser port automation, Laser stbd automation, Gunner automation; Tern bolts 896/2912 hit, Hound bolts 699/1856 hit, missiles 9/12 hit, dealt 4896 MJ, taken 3787 MJ, Tern hull 14 MJ
+[   824.4 s] round 2 phase Muster
+[   827.4 s] round 2 phase Countdown
+[   832.5 s] round 2 phase Engage
+[  1327.9 s] round 2 phase Debrief
+[  1327.9 s] round 2 result: Victory in 495 s; crew Helm Helm officer (bot), Tactical Engineering officer (bot), Engineering automation, Science automation, Captain automation, Laser port automation, Laser stbd automation, Gunner automation; Tern bolts 763/2516 hit, Hound bolts 653/1655 hit, missiles 9/12 hit, dealt 4703 MJ, taken 3478 MJ, Tern hull 273 MJ
+[  1495.0 s] round 3 phase Muster
+[  1498.1 s] round 3 phase Countdown
+[  1503.1 s] round 3 phase Engage
+[  2007.5 s] round 3 phase Debrief
+[  2007.5 s] round 3 result: Victory in 504 s; crew Helm Helm officer (bot), Tactical Engineering officer (bot), Engineering automation, Science automation, Captain automation, Laser port automation, Laser stbd automation, Gunner automation; Tern bolts 723/2488 hit, Hound bolts 639/1653 hit, missiles 7/12 hit, dealt 4143 MJ, taken 3767 MJ, Tern hull 17 MJ
+[  2185.4 s] round 4 phase Muster
+[  2188.5 s] round 4 phase Countdown
+[  2193.5 s] round 4 phase Engage
+[  2793.5 s] round 4 phase Debrief
+[  2793.5 s] round 4 result: Withdrew in 600 s; crew Helm Helm officer (bot), Tactical Engineering officer (bot), Engineering automation, Science automation, Captain automation, Laser port automation, Laser stbd automation, Gunner automation; Tern bolts 975/3029 hit, Hound bolts 783/1936 hit, missiles 7/12 hit, dealt 5573 MJ, taken 4291 MJ, Tern hull 181 MJ
+[  2813.5 s] round 5 phase Muster
+[  2816.6 s] round 5 phase Countdown
+[  2821.6 s] round 5 phase Engage
+[  3355.4 s] round 5 phase Debrief
+[  3355.4 s] round 5 result: Victory in 534 s; crew Helm Helm officer (bot), Tactical Engineering officer (bot), Engineering automation, Science automation, Captain automation, Laser port automation, Laser stbd automation, Gunner automation; Tern bolts 932/2849 hit, Hound bolts 668/1753 hit, missiles 8/14 hit, dealt 5171 MJ, taken 2566 MJ, Tern hull 150 MJ
+[  3355.4 s] sc-server: done; {"connections":[{"addr":"192.168.0.210:39894","dropped_messages":0,"impaired":0,"peer":1,"refused_writes":0,"seconds":3315.0,"slot":1,"stick_loss":0.0,"stick_stale":0,"wire_in_kbit_s":7.131472396243119,"wire_out_kbit_s":122.60950333129664},{"addr":"192.168.0.210:39910","dropped_messages":0,"impaired":0,"peer":2,"refused_writes":0,"seconds":3315.0,"slot":0,"stick_loss":0.0,"stick_stale":0,"wire_in_kbit_s":8.982430914813277,"wire_out_kbit_s":123.49221896483034}],"mission":"drill-hound","outcome":"Victory","phase":"Debrief","phase_s":0.0,"players":[{"bot":true,"name":"Helm officer","ready":true,"slot":0,"station":"helm"},{"bot":true,"name":"Engineering officer","ready":true,"slot":1,"station":"tactical"}],"round":5,"rounds":[{"crew":"Helm Helm officer (bot), Tactical Engineering officer (bot), Engineering automation, Science automation, Captain automation, Laser port automation, Laser stbd automation, Gunner automation","engage_s":154.0,"outcome":"Victory","round":0,"stats":"Tern bolts 111/856 hit, Hound bolts 267/583 hit, missiles 2/4 hit, dealt 1593 MJ, taken 900 MJ, Tern hull 400 MJ"},{"crew":"Helm Helm officer (bot), Tactical Engineering officer (bot), Engineering automation, Science automation, Captain automation, Laser port automation, Laser stbd automation, Gunner automation","engage_s":563.0,"outcome":"Victory","round":1,"stats":"Tern bolts 896/2912 hit, Hound bolts 699/1856 hit, missiles 9/12 hit, dealt 4896 MJ, taken 3787 MJ, Tern hull 14 MJ"},{"crew":"Helm Helm officer (bot), Tactical Engineering officer (bot), Engineering automation, Science automation, Captain automation, Laser port automation, Laser stbd automation, Gunner automation","engage_s":495.0,"outcome":"Victory","round":2,"stats":"Tern bolts 763/2516 hit, Hound bolts 653/1655 hit, missiles 9/12 hit, dealt 4703 MJ, taken 3478 MJ, Tern hull 273 MJ"},{"crew":"Helm Helm officer (bot), Tactical Engineering officer (bot), Engineering automation, Science automation, Captain automation, Laser port automation, Laser stbd automation, Gunner automation","engage_s":504.0,"outcome":"Victory","round":3,"stats":"Tern bolts 723/2488 hit, Hound bolts 639/1653 hit, missiles 7/12 hit, dealt 4143 MJ, taken 3767 MJ, Tern hull 17 MJ"},{"crew":"Helm Helm officer (bot), Tactical Engineering officer (bot), Engineering automation, Science automation, Captain automation, Laser port automation, Laser stbd automation, Gunner automation","engage_s":600.0,"outcome":"Withdrew","round":4,"stats":"Tern bolts 975/3029 hit, Hound bolts 783/1936 hit, missiles 7/12 hit, dealt 5573 MJ, taken 4291 MJ, Tern hull 181 MJ"},{"crew":"Helm Helm officer (bot), Tactical Engineering officer (bot), Engineering automation, Science automation, Captain automation, Laser port automation, Laser stbd automation, Gunner automation","engage_s":534.0,"outcome":"Victory","round":5,"stats":"Tern bolts 932/2849 hit, Hound bolts 668/1753 hit, missiles 8/14 hit, dealt 5171 MJ, taken 2566 MJ, Tern hull 150 MJ"}],"tick_ms":{"max":4.883946,"p50":0.27798500000000004,"p99":1.066517},"uptime_s":3355}

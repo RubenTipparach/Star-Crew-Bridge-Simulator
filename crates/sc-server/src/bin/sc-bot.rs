@@ -6,6 +6,7 @@
 //! server restart or the Wi-Fi dropping (coop-drill log, 2026-10-10: Pi 1's Wi-Fi went for two minutes mid-drill).
 //!
 //! Usage: sc-bot --connect HOST[:7700] --station helm|tactical|engineering|science|captain [--name N] [--root .] [--seconds S]
+//! [--mission ID] (the server's mission, `data/missions/<id>.json`; drill-hound by default)
 
 use sc_core::combat::data::{DrillData, DRILL_FILES};
 use sc_core::combat::Station;
@@ -44,8 +45,8 @@ fn main() -> ExitCode {
     let data = (|| {
         let t: Vec<String> = DRILL_FILES.iter().map(|f| read(f)).collect::<Result<_, _>>()?;
         let arr: [&str; sc_core::combat::data::DRILL_FILE_COUNT] = std::array::from_fn(|i| t[i].as_str());
-        let m = "data/missions/drill-hound.json";
-        DrillData::parse(arr, m, &read(m)?).map_err(|e| e.to_string())
+        let m = format!("data/missions/{}.json", value("--mission").unwrap_or_else(|| "drill-hound".into()));
+        DrillData::parse(arr, &m, &read(&m)?).map_err(|e| e.to_string())
     })();
     let data = match data {
         Ok(d) => d,

@@ -1,11 +1,13 @@
 //! Placeholder 3D models for the co-op drill (openspec/changes/coop-drill design 5; owner, 2026-10-10: "make enemy
 //! ship 3d we'll just use that as placeholder for now"): the Hound corvette, a pulse bolt, a Gannet missile and a
-//! burst, as flat-shaded low-poly meshes in the 28-byte deck vertex.
+//! burst, as flat-shaded low-poly meshes in the 28-byte deck vertex; and the extinguisher in a player's hand, the
+//! mockups' own (docs/mockups/lib/firefight.js).
 //!
 //! They are generated here, deterministically, until the Hound is a modelled asset with its own triangle budget
 //! (CLAUDE.md 9: meshes are files built by committed generators; this is the generator, and a placeholder). The
 //! Hound's colours are albedo for the probe program (lit by an ambient cube from the sun); the bolt, missile and
-//! burst are emissive colours for the flat program.
+//! burst are emissive colours for the flat program. The placeholder stations of the patrol (openspec/changes/patrol-mission
+//! design 3: the relay at the Shoals, and Tamsin Station until its model arrives) are generated here the same way.
 
 use sc_core::vertex::{pack_deck_vertex, DeckVertexIn};
 
@@ -39,16 +41,22 @@ fn byte(c: f32) -> u8 {
 impl MeshBuilder {
     /// One triangle, counter-clockwise seen from outside, in colour `rgb` (display multipliers, 1 = as is).
     pub fn tri(&mut self, a: [f32; 3], b: [f32; 3], c: [f32; 3], rgb: [f32; 3]) {
+        self.tri_sets(a, b, c, [rgb; 3]);
+    }
+
+    /// One triangle with its three colour sets (the deck vertex's normal, red alert and emergency; an unlit mesh
+    /// blends them by its draw's state weights as it likes).
+    pub fn tri_sets(&mut self, a: [f32; 3], b: [f32; 3], c: [f32; 3], sets: [[f32; 3]; 3]) {
         let raw = cross(sub(b, a), sub(c, a));
         // A triangle with no area (a sphere's pole, a ring's collapsed corner) draws nothing: skip it.
         if raw.iter().map(|x| x * x).sum::<f32>() < 1e-12 {
             return;
         }
         let n = norm(raw);
-        let col = [byte(rgb[0]), byte(rgb[1]), byte(rgb[2]), 255];
+        let colors = sets.map(|rgb| [byte(rgb[0]), byte(rgb[1]), byte(rgb[2]), 255]);
         let base = (self.vertices.len() / 28) as u16;
         for p in [a, b, c] {
-            let v = DeckVertexIn { position_m: p, mover: 0, layer: 0, normal: n, colors: [col; 3], uv: [0.0, 0.0] };
+            let v = DeckVertexIn { position_m: p, mover: 0, layer: 0, normal: n, colors, uv: [0.0, 0.0] };
             self.vertices.extend_from_slice(&pack_deck_vertex(&v).expect("a placeholder model fits the format"));
         }
         self.indices.extend_from_slice(&[base, base + 1, base + 2]);
@@ -261,73 +269,397 @@ pub fn burst() -> MeshBuilder {
     m
 }
 
-/// Flames on a burning room's floor (all-hands 4): five tongues about the middle, each two crossed blades seen from
-/// both sides, bright enough to glow (colours over 1), the tallest 1.4 m; the draw flickers their height.
-pub fn flames() -> MeshBuilder {
-    let mut m = MeshBuilder::default();
-    let tongues: [(f32, f32, f32); 5] =
-        [(0.0, 0.0, 1.0), (0.35, 0.2, 0.75), (-0.3, 0.25, 0.8), (0.2, -0.35, 0.7), (-0.25, -0.3, 0.65)];
-    for (k, (x, z, h)) in tongues.into_iter().enumerate() {
-        let w = 0.28;
-        let c = if k % 2 == 0 { [2.4, 1.0, 0.25] } else { [2.6, 1.7, 0.5] };
-        let tip = [x, h * 1.4, z];
-        for (dx, dz) in [(w, 0.0), (0.0, w)] {
-            let (a, b) = ([x - dx, 0.0, z - dz], [x + dx, 0.0, z + dz]);
-            m.tri(a, b, tip, c);
-            m.tri(b, a, tip, c);
-        }
-    }
-    m
+/// A colour of the mockups' `paint` (docs/mockups/lib/firefight.js): `hex` (sRGB) darker on a face that looks away from
+/// a light above and in front, `k = 0.62 + 0.3 max(0, n.y) + 0.12 max(0, n.z)`, applied in linear light as three.js
+/// does, back to a display colour.
+fn paint(hex: u32, n: [f32; 3]) -> [f32; 3] {
+    let k = 0.62 + 0.3 * n[1].max(0.0) + 0.12 * n[2].max(0.0);
+    let lin = |c: f32| if c <= 0.04045 { c / 12.92 } else { ((c + 0.055) / 1.055).powf(2.4) };
+    let srgb = |c: f32| if c <= 0.003_130_8 { c * 12.92 } else { 1.055 * c.powf(1.0 / 2.4) - 0.055 };
+    let ch = |shift: u32| srgb(lin(((hex >> shift) & 0xff) as f32 / 255.0) * k);
+    [ch(16), ch(8), ch(0)]
 }
 
-/// A puff of extinguishing agent: a white ball (the burst's shape), drawn along a spray.
-pub fn puff() -> MeshBuilder {
-    let mut m = MeshBuilder::default();
-    let (rings, segs) = (4, 6);
-    let p = |i: usize, j: usize| {
-        let th = std::f32::consts::PI * i as f32 / rings as f32;
-        let ph = std::f32::consts::TAU * j as f32 / segs as f32;
-        [th.sin() * ph.cos(), th.cos(), th.sin() * ph.sin()]
+/// Painted parts gathered in their own frame (the mockups' `paint` shades by a part's own facing, before it is turned
+/// onto its wall), then laid into a mesh at a place: each triangle, its colour and whether it glows (unshaded).
+#[derive(Default)]
+struct Parts(Vec<([[f32; 3]; 3], u32, bool)>);
+
+impl Parts {
+    fn tri(&mut self, a: [f32; 3], b: [f32; 3], c: [f32; 3], hex: u32) {
+        self.0.push(([a, b, c], hex, false));
+    }
+
+    /// A box as three.js's `BoxGeometry(size)` moved to `c`, painted `hex`, or glowing in it.
+    fn cuboid(&mut self, c: [f32; 3], size: [f32; 3], hex: u32, glow: bool) {
+        let e = size.map(|x| x / 2.0);
+        let v = |s: [f32; 3]| [c[0] + s[0] * e[0], c[1] + s[1] * e[1], c[2] + s[2] * e[2]];
+        let faces: [[[f32; 3]; 4]; 6] = [
+            [[1., -1., -1.], [1., 1., -1.], [1., 1., 1.], [1., -1., 1.]],
+            [[-1., -1., 1.], [-1., 1., 1.], [-1., 1., -1.], [-1., -1., -1.]],
+            [[-1., 1., -1.], [-1., 1., 1.], [1., 1., 1.], [1., 1., -1.]],
+            [[-1., -1., 1.], [-1., -1., -1.], [1., -1., -1.], [1., -1., 1.]],
+            [[-1., -1., 1.], [1., -1., 1.], [1., 1., 1.], [-1., 1., 1.]],
+            [[1., -1., -1.], [-1., -1., -1.], [-1., 1., -1.], [1., 1., -1.]],
+        ];
+        for f in faces {
+            let q = f.map(v);
+            self.0.push(([q[0], q[1], q[2]], hex, glow));
+            self.0.push(([q[0], q[2], q[3]], hex, glow));
+        }
+    }
+
+    /// Lay the parts into `m`, turned about the vertical so their +Z is `into` (horizontal, unit) and moved to `at`;
+    /// `highlight`, a colour their third colour set takes instead of their own, painted alike.
+    fn lay(&self, m: &mut MeshBuilder, at: [f32; 3], into: [f32; 3], highlight: Option<u32>) {
+        // three.js's rotateY(atan2(into.x, into.z)): +Z to `into`, +X to (into.z, 0, -into.x).
+        let place = |p: [f32; 3]| {
+            [at[0] + into[2] * p[0] + into[0] * p[2], at[1] + p[1], at[2] - into[0] * p[0] + into[2] * p[2]]
+        };
+        for ([a, b, c], hex, glow) in &self.0 {
+            let n = norm(cross(sub(*b, *a), sub(*c, *a)));
+            // A glowing part is its colour whatever its facing (the mockups' `paint(g, hex, true)`).
+            let colour =
+                |hex: u32| if *glow { [16, 8, 0].map(|s| ((hex >> s) & 0xff) as f32 / 255.0) } else { paint(hex, n) };
+            let rgb = colour(*hex);
+            m.tri_sets(place(*a), place(*b), place(*c), [rgb, rgb, highlight.map_or(rgb, colour)]);
+        }
+    }
+}
+
+/// The extinguisher's red and its valve's near black (the mockup's `RED` and `DARK`), and the safety sign's glow
+/// (`SIGN`).
+const EXT_RED: u32 = 0xb8231b;
+const EXT_DARK: u32 = 0x1b1f24;
+const SIGN_GLOW: u32 = 0xa8ffd0;
+
+/// The extinguisher's parts, upright in its own frame (`extinguisher`).
+fn extinguisher_parts() -> Parts {
+    let mut m = Parts::default();
+    let tau = std::f32::consts::TAU;
+    let (r, h, segs) = (0.075f32, 0.42f32, 10);
+    let at = |a: f32, y: f32, r: f32| [a.sin() * r, y, a.cos() * r];
+    // The body, and its foot (three.js's cylinder, capped; the top cap is under the dome).
+    for i in 0..segs {
+        let (a0, a1) = (tau * i as f32 / segs as f32, tau * (i + 1) as f32 / segs as f32);
+        let (b0, b1, t0, t1) = (at(a0, 0.0, r), at(a1, 0.0, r), at(a0, h, r), at(a1, h, r));
+        m.tri(b0, b1, t1, EXT_RED);
+        m.tri(b0, t1, t0, EXT_RED);
+        m.tri([0.0, 0.0, 0.0], b1, b0, EXT_RED);
+    }
+    // The dome: a half sphere of four rows from the body's top to its crown.
+    let rows = 4;
+    let ring = |k: usize, a: f32| {
+        let th = std::f32::consts::FRAC_PI_2 * k as f32 / rows as f32;
+        at(a, h + r * th.cos(), r * th.sin())
     };
-    for i in 0..rings {
-        for j in 0..segs {
-            let c = if (i + j) % 2 == 0 { [1.3, 1.35, 1.4] } else { [1.1, 1.15, 1.2] };
-            let (a, b, cc, d) = (p(i, j), p(i, j + 1), p(i + 1, j + 1), p(i + 1, j));
-            m.tri(a, b, cc, c);
-            m.tri(a, cc, d, c);
+    for k in 0..rows {
+        for i in 0..segs {
+            let (a0, a1) = (tau * i as f32 / segs as f32, tau * (i + 1) as f32 / segs as f32);
+            // Row k is nearer the crown than row k + 1.
+            let (u0, u1, d0, d1) = (ring(k, a0), ring(k, a1), ring(k + 1, a0), ring(k + 1, a1));
+            m.tri(d0, d1, u1, EXT_RED);
+            m.tri(d0, u1, u0, EXT_RED);
         }
+    }
+    // The valve block, 0.04 x 0.07 x 0.1 m about (0, 0.5, 0.02).
+    m.cuboid([0.0, 0.5, 0.02], [0.04, 0.07, 0.1], EXT_DARK, false);
+    // The nozzle: a cone 0.16 m long, 0.035 m in radius at its base, on eight sides, its tip at (0, 0.48, 0.22).
+    let (tip, base_z, nr) = (EXTINGUISHER_NOZZLE_M, 0.06f32, 0.035f32);
+    let base = |a: f32| [a.sin() * nr, tip[1] + a.cos() * nr, base_z];
+    for i in 0..8 {
+        let (a0, a1) = (tau * i as f32 / 8.0, tau * (i + 1) as f32 / 8.0);
+        m.tri(base(a1), base(a0), tip, EXT_DARK);
+        m.tri([0.0, tip[1], base_z], base(a0), base(a1), EXT_DARK);
     }
     m
 }
 
-/// The extinguisher in a player's hand: a red cylinder (an eight-sided prism) 0.4 m long, its black hose and nozzle
-/// at the top, upright in its own frame.
+/// The extinguisher (all-hands 4; the owner, 2026-10-12: "we had a fire extinguisher model, please use it from the JS
+/// mockups"): docs/mockups/lib/firefight.js's `extinguisherGeo`, part for part. A red cylinder 0.42 m tall and 0.075 m
+/// in radius on ten sides, a dome on top, a dark valve block and a dark cone nozzle pointing along +Z, painted by the
+/// mockup's `paint`; upright in its own frame, its foot at the origin. 128 triangles.
 pub fn extinguisher() -> MeshBuilder {
     let mut m = MeshBuilder::default();
-    let (r, h) = (0.07f32, 0.4f32);
-    let ring = |y: f32, r: f32| -> Vec<[f32; 3]> {
-        (0..8)
-            .map(|i| {
-                let a = std::f32::consts::TAU * i as f32 / 8.0;
-                [a.cos() * r, y, a.sin() * r]
-            })
-            .collect()
-    };
-    let (lo, hi) = (ring(0.0, r), ring(h, r));
-    for i in 0..8 {
-        let j = (i + 1) % 8;
-        m.quad(lo[i], lo[j], hi[j], hi[i], if i % 2 == 0 { [0.75, 0.08, 0.08] } else { [0.6, 0.05, 0.05] });
-        m.tri(hi[i], hi[j], [0.0, h + 0.03, 0.0], [0.5, 0.05, 0.05]);
-    }
-    let nozzle = [[-0.015, h, -0.015], [0.015, h, -0.015], [0.015, h + 0.06, -0.12], [-0.015, h + 0.06, -0.12]];
-    m.quad(nozzle[0], nozzle[1], nozzle[2], nozzle[3], [0.08, 0.08, 0.08]);
-    m.quad(nozzle[1], nozzle[0], nozzle[3], nozzle[2], [0.08, 0.08, 0.08]);
+    extinguisher_parts().lay(&mut m, [0.0; 3], [0.0, 0.0, 1.0], None);
     m
+}
+
+/// The yellow a wall's extinguisher breathes toward while a fire burns aboard (the owner, 2026-10-12: "fire extenguisher
+/// should flash yellow (a soft transition to highlight them)", "when there is a fire"): its third colour set, painted
+/// as the rest of it is.
+const HIGHLIGHT: u32 = 0xffd23f;
+
+/// Where a bracket holds its extinguisher in the safety point's frame (the wall point at the origin, +Z into the
+/// room): the mockup's 0.58 m up and 0.1 m off the wall.
+const HUNG_M: [f32; 3] = [0.0, 0.58, 0.1];
+
+/// The safety points round the ship (safety-points 1, 5a; the owner, 2026-10-12: "there should be an extinguisher in
+/// every room and spaced out evenly in corridors"), as the mockups draw them (`firefight.js`): each bracket's back
+/// plate and strap and the glowing sign above, in one mesh; their extinguishers, in another, one after another in
+/// `points`' order (`extinguisher().indices.len()` indices each), their third colour set the `HIGHLIGHT` yellow. `points` are each one's wall point and the way into
+/// its room, ship frame; the meshes are about `origin`, and every point must be within 30 m of it (the vertex
+/// format's reach).
+pub fn safety_points(points: &[([f32; 3], [f32; 3])], origin: [f32; 3]) -> (MeshBuilder, MeshBuilder) {
+    let mut fixed = Parts::default();
+    fixed.cuboid([0.0, 0.8, 0.01], [0.2, 0.5, 0.02], EXT_DARK, false);
+    fixed.cuboid([0.0, 0.78, 0.105], [0.19, 0.04, 0.17], EXT_DARK, false);
+    fixed.cuboid([0.0, 1.9, 0.006], [0.30, 0.15, 0.012], SIGN_GLOW, true);
+    let ext = extinguisher_parts();
+    let (mut a, mut b) = (MeshBuilder::default(), MeshBuilder::default());
+    for (wall, into) in points {
+        let at = [wall[0] - origin[0], wall[1] - origin[1], wall[2] - origin[2]];
+        fixed.lay(&mut a, at, *into, None);
+        let hung = [at[0] + into[0] * HUNG_M[2], at[1] + HUNG_M[1], at[2] + into[2] * HUNG_M[2]];
+        ext.lay(&mut b, hung, *into, Some(HIGHLIGHT));
+    }
+    (a, b)
+}
+
+/// Where the extinguisher's nozzle ends, in its own frame (`extinguisher`), metres: the spray leaves from here.
+pub const EXTINGUISHER_NOZZLE_M: [f32; 3] = [0.0, 0.48, 0.22];
+
+/// Which placeholder station (openspec/changes/patrol-mission design 3).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StationKind {
+    /// The relay at the Shoals: a 120 m truss with three dishes, a solar wing and a beacon.
+    Relay,
+    /// Tamsin Station until `assets/models/exteriors/starbase.glb` arrives: a spindle, a habitat ring of 600 m radius
+    /// on four spokes, two berth arms, lit window bands and beacons. Generated and checked now; drawn once the patrol
+    /// puts the Tern at the station (patrol-mission tasks 5.2).
+    #[allow(dead_code)]
+    Starbase,
+}
+
+/// A placeholder station: its albedo parts (lit by the sun's ambient cube), its glowing parts (flat) and its beacons
+/// (drawn only while they blink on, each kept at least a few pixels across however far it is, as a lamp seen at night). Positions are stored at `1 / scale` of their size so a kilometre fits the
+/// vertex's +/-32 m; draw them scaled by `scale`. Axes: the station's axis along +X, +Y up.
+pub struct StationMesh {
+    /// What a stored position is multiplied by to give metres.
+    pub scale: f32,
+    /// The structure, albedo.
+    pub body: MeshBuilder,
+    /// Lit windows and strips, their own light.
+    pub lights: MeshBuilder,
+    /// The navigation beacons, their own light.
+    pub beacons: Vec<Beacon>,
+}
+
+/// A navigation beacon on a station: a glowing octahedron.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Beacon {
+    /// Where it is in the station's frame, metres.
+    pub at_m: [f32; 3],
+    /// Its radius up close, metres.
+    pub radius_m: f32,
+    /// Its colour, a display multiplier (its own light).
+    pub rgb: [f32; 3],
+}
+
+/// A beacon's lamp: an octahedron of radius 1 about the origin in `rgb`, scaled and placed when drawn.
+pub fn beacon_lamp(rgb: [f32; 3]) -> MeshBuilder {
+    let mut m = MeshBuilder::default();
+    Shaper { k: 1.0 }.beacon(&mut m, glam::Vec3::ZERO, 1.0, rgb);
+    m
+}
+
+impl StationMesh {
+    /// The triangles of all three parts.
+    pub fn triangles(&self) -> usize {
+        self.body.triangles() + self.lights.triangles() + self.beacons.len() * beacon_lamp([1.0; 3]).triangles()
+    }
+}
+
+/// Lays parts into a mesh at `1 / scale`, each face wound outward from the part's own centre.
+struct Shaper {
+    k: f32,
+}
+
+impl Shaper {
+    fn at(&self, p: glam::Vec3) -> [f32; 3] {
+        (p * self.k).to_array()
+    }
+
+    /// A quad whose outside is away from `inside`.
+    fn face(&self, m: &mut MeshBuilder, q: [glam::Vec3; 4], inside: glam::Vec3, rgb: [f32; 3]) {
+        let n = (q[1] - q[0]).cross(q[2] - q[0]);
+        let mid = (q[0] + q[1] + q[2] + q[3]) / 4.0;
+        let q = if n.dot(mid - inside) >= 0.0 { q } else { [q[3], q[2], q[1], q[0]] };
+        m.quad(self.at(q[0]), self.at(q[1]), self.at(q[2]), self.at(q[3]), rgb);
+    }
+
+    /// A box of half extents `half` turned by `rot` about its centre `c`, metres.
+    fn block(&self, m: &mut MeshBuilder, c: glam::Vec3, half: glam::Vec3, rot: glam::Quat, rgb: [f32; 3]) {
+        let v = |x: f32, y: f32, z: f32| c + rot * (half * glam::Vec3::new(x, y, z));
+        for (a, b) in [(0usize, 1usize), (1, 2), (0, 2)] {
+            for s in [-1.0f32, 1.0] {
+                let corner = |u: f32, w: f32| {
+                    let mut e = [0.0f32; 3];
+                    e[3 - a - b] = s;
+                    e[a] = u;
+                    e[b] = w;
+                    v(e[0], e[1], e[2])
+                };
+                self.face(m, [corner(-1.0, -1.0), corner(1.0, -1.0), corner(1.0, 1.0), corner(-1.0, 1.0)], c, rgb);
+            }
+        }
+    }
+
+    /// A frustum of `sides` sides along +X from `x0` (radius `r0`) to `x1` (radius `r1`), capped, about the axis.
+    #[allow(clippy::too_many_arguments)]
+    fn frustum(&self, m: &mut MeshBuilder, x0: f32, r0: f32, x1: f32, r1: f32, sides: usize, rgb: [f32; 3]) {
+        let p = |x: f32, r: f32, i: usize| {
+            let a = std::f32::consts::TAU * i as f32 / sides as f32;
+            glam::Vec3::new(x, r * a.cos(), r * a.sin())
+        };
+        let mid = glam::Vec3::new((x0 + x1) / 2.0, 0.0, 0.0);
+        for i in 0..sides {
+            let j = (i + 1) % sides;
+            self.face(m, [p(x0, r0, i), p(x0, r0, j), p(x1, r1, j), p(x1, r1, i)], mid, rgb);
+            for (x, r) in [(x0, r0), (x1, r1)] {
+                let tri = [glam::Vec3::new(x, 0.0, 0.0), p(x, r, i), p(x, r, j)];
+                let n = (tri[1] - tri[0]).cross(tri[2] - tri[0]);
+                let [a, b, c] = if n.dot(tri[0] - mid) >= 0.0 { tri } else { [tri[0], tri[2], tri[1]] };
+                m.tri(self.at(a), self.at(b), self.at(c), rgb);
+            }
+        }
+    }
+
+    /// An octahedron of radius `r` at `c`: a beacon.
+    fn beacon(&self, m: &mut MeshBuilder, c: glam::Vec3, r: f32, rgb: [f32; 3]) {
+        let d = [glam::Vec3::X, glam::Vec3::Z, -glam::Vec3::X, -glam::Vec3::Z];
+        for i in 0..4 {
+            let (a, b) = (c + d[i] * r, c + d[(i + 1) % 4] * r);
+            m.tri(self.at(c + glam::Vec3::Y * r), self.at(b), self.at(a), rgb);
+            m.tri(self.at(c - glam::Vec3::Y * r), self.at(a), self.at(b), rgb);
+        }
+    }
+
+    /// A dish: a shallow cone opening upward, its rim of radius `r` at `c`, `depth` deep.
+    fn dish(&self, m: &mut MeshBuilder, c: glam::Vec3, r: f32, depth: f32, rgb: [f32; 3]) {
+        let rim = |i: usize| {
+            let a = std::f32::consts::TAU * i as f32 / 8.0;
+            c + glam::Vec3::new(r * a.cos(), 0.0, r * a.sin())
+        };
+        let low = c - glam::Vec3::Y * depth;
+        for i in 0..8 {
+            let (a, b) = (rim(i), rim((i + 1) % 8));
+            // Both sides, so the dish reads from above and below.
+            m.tri(self.at(low), self.at(b), self.at(a), rgb);
+            m.tri(self.at(low), self.at(a), self.at(b), rgb);
+        }
+    }
+}
+
+/// The placeholder station of `kind` (patrol-mission design 3), generated as the Hound is until its model exists.
+pub fn station(kind: StationKind) -> StationMesh {
+    use glam::{Quat, Vec3};
+    let (hull, dark, pale) = ([0.62, 0.64, 0.68], [0.30, 0.32, 0.36], [0.78, 0.80, 0.83]);
+    let (window, red, green) = ([1.9, 1.6, 1.15], [2.0, 0.35, 0.25], [0.4, 2.0, 0.7]);
+    let mut out =
+        StationMesh { scale: 1.0, body: MeshBuilder::default(), lights: MeshBuilder::default(), beacons: Vec::new() };
+    match kind {
+        StationKind::Relay => {
+            out.scale = 4.0;
+            let sh = Shaper { k: 1.0 / out.scale };
+            sh.block(&mut out.body, Vec3::ZERO, Vec3::new(60.0, 3.0, 3.0), Quat::IDENTITY, hull);
+            for x in [-40.0, 0.0, 40.0] {
+                sh.block(&mut out.body, Vec3::new(x, 6.0, 0.0), Vec3::new(1.0, 3.0, 1.0), Quat::IDENTITY, dark);
+                sh.dish(&mut out.body, Vec3::new(x, 16.0, 0.0), 14.0, 6.0, pale);
+            }
+            sh.block(
+                &mut out.body,
+                Vec3::new(0.0, -10.0, 0.0),
+                Vec3::new(30.0, 0.25, 13.0),
+                Quat::IDENTITY,
+                [0.16, 0.22, 0.42],
+            );
+            sh.block(
+                &mut out.lights,
+                Vec3::new(0.0, 0.0, 3.1),
+                Vec3::new(40.0, 0.4, 0.1),
+                Quat::IDENTITY,
+                [0.5, 1.8, 1.0],
+            );
+            out.beacons.push(Beacon { at_m: [0.0, 24.0, 0.0], radius_m: 3.0, rgb: red });
+            out.beacons.push(Beacon { at_m: [62.0, 0.0, 0.0], radius_m: 2.0, rgb: green });
+        }
+        StationKind::Starbase => {
+            out.scale = 32.0;
+            let sh = Shaper { k: 1.0 / out.scale };
+            let (r, n) = (600.0f32, 16usize);
+            // The spindle along the axis, its end caps.
+            sh.frustum(&mut out.body, -130.0, 30.0, 130.0, 30.0, 8, hull);
+            sh.frustum(&mut out.body, 130.0, 34.0, 152.0, 22.0, 8, dark);
+            sh.frustum(&mut out.body, -152.0, 22.0, -130.0, 34.0, 8, dark);
+            // The habitat ring: box segments about the axis, lit window bands on the faces toward the berths.
+            let seg = 2.0 * r * (std::f32::consts::PI / n as f32).sin() + 2.0;
+            for i in 0..n {
+                let a = (i as f32 + 0.5) * std::f32::consts::TAU / n as f32;
+                let rot = Quat::from_rotation_x(a);
+                let at = |rad: f32| Vec3::new(0.0, rad * a.cos(), rad * a.sin());
+                sh.block(&mut out.body, at(r), Vec3::new(12.0, 20.0, seg / 2.0), rot, hull);
+                for sx in [-1.0f32, 1.0] {
+                    for k in [-8.0f32, 8.0] {
+                        let c = at(r + k) + Vec3::X * sx * 12.05;
+                        let t = rot * Vec3::Z * (seg / 2.0 - 10.0);
+                        let u = rot * Vec3::Y * 1.2;
+                        sh.face(
+                            &mut out.lights,
+                            [c - t - u, c + t - u, c + t + u, c - t + u],
+                            c - Vec3::X * sx,
+                            window,
+                        );
+                    }
+                }
+            }
+            // Four spokes.
+            for i in 0..4 {
+                let a = (i as f32 + 0.5) * std::f32::consts::FRAC_PI_2;
+                let c = Vec3::new(0.0, 305.0 * a.cos(), 305.0 * a.sin());
+                sh.block(&mut out.body, c, Vec3::new(4.0, 275.0, 4.0), Quat::from_rotation_x(a), dark);
+            }
+            // Two berth arms along the axis to the cradles, 570 m from the centre (the cradle is the dock's frame).
+            for sx in [-1.0f32, 1.0] {
+                sh.block(
+                    &mut out.body,
+                    Vec3::new(sx * 337.0, 0.0, 0.0),
+                    Vec3::new(207.0, 5.0, 5.0),
+                    Quat::IDENTITY,
+                    dark,
+                );
+                let rgb = if sx > 0.0 { green } else { red };
+                out.beacons.push(Beacon { at_m: [sx * 548.0, 9.0, 0.0], radius_m: 4.0, rgb });
+            }
+            out.beacons.push(Beacon { at_m: [0.0, r + 24.0, 0.0], radius_m: 6.0, rgb: red });
+            out.beacons.push(Beacon { at_m: [0.0, -r - 24.0, 0.0], radius_m: 6.0, rgb: green });
+        }
+    }
+    out
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_placeholder_stations_fit_their_budgets_and_the_vertex_format() {
+        // patrol-mission design 3 and 13: the relay about 300 triangles, the starbase about 1,200; generating them packs
+        // every position, so a part outside the vertex's +/-32 m at its scale would panic here.
+        let relay = station(StationKind::Relay);
+        let base = station(StationKind::Starbase);
+        assert!(relay.triangles() <= 300, "the relay: {} triangles", relay.triangles());
+        assert!(base.triangles() <= 1_200, "the starbase: {} triangles", base.triangles());
+        assert!(!relay.beacons.is_empty() && !base.lights.indices.is_empty() && !base.beacons.is_empty());
+    }
+
+    #[test]
+    fn the_starbase_winds_outward() {
+        let b = station(StationKind::Starbase);
+        // The ring's inner faces and the spokes look at the centre, so the floor is the share a ring allows.
+        let share = outward_share(&b.body);
+        assert!(share >= 0.6, "{share:.2} of the starbase's faces wind outward");
+    }
 
     #[test]
     fn the_hound_is_low_poly_and_inside_the_vertex_format() {
@@ -367,10 +699,55 @@ mod tests {
             ("missile", missile(), 0.95),
             ("burst", burst(), 0.95),
             ("bolt", bolt([1.0; 3]), 0.95),
+            // Its origin is its foot: the foot's cap, the valve's underside and the nozzle's back face it.
+            ("extinguisher", extinguisher(), 0.7),
         ] {
             let share = outward_share(&m);
             assert!(share >= floor, "{name}: {share:.2} of its faces wind outward");
         }
+    }
+
+    /// A wall's extinguisher carries its paint in its first colour set and the highlight's yellow in its third (what its
+    /// draw breathes toward while a fire burns); its bracket and sign have no yellow.
+    #[test]
+    fn the_wall_extinguishers_carry_their_yellow() {
+        let (fixed, hung) = safety_points(&[([0.0, 0.0, 0.0], [0.0, 0.0, 1.0])], [0.0; 3]);
+        let set = |v: &[u8], k: usize| [v[12 + k * 4], v[13 + k * 4], v[14 + k * 4]];
+        for v in hung.vertices.chunks(28) {
+            let (paint, yellow) = (set(v, 0), set(v, 2));
+            assert!(yellow[0] > 60 && yellow[1] > yellow[0] / 2 && yellow[2] < yellow[1] / 2, "yellow: {yellow:?}");
+            assert!(paint[1] < paint[0] || paint[0] < 30, "the paint is red or near black: {paint:?}");
+        }
+        assert!(fixed.vertices.chunks(28).all(|v| set(v, 0) == set(v, 2)), "the bracket and sign do not change");
+    }
+
+    /// The extinguisher is the mockup's (docs/mockups/lib/firefight.js `extinguisherGeo`): 0.075 m in radius and from its
+    /// foot to its valve's top 0.535 m, the nozzle reaching 0.22 m forward, in its red and near black.
+    #[test]
+    fn the_extinguisher_is_the_mockups() {
+        let m = extinguisher();
+        let mut lo = [f32::MAX; 3];
+        let mut hi = [f32::MIN; 3];
+        let mut radius = 0.0f32;
+        let mut colours = std::collections::BTreeSet::new();
+        for v in m.vertices.chunks(28) {
+            let p: Vec<f32> =
+                (0..3).map(|k| f32::from(i16::from_le_bytes([v[k * 2], v[k * 2 + 1]])) / 1024.0).collect();
+            for k in 0..3 {
+                lo[k] = lo[k].min(p[k]);
+                hi[k] = hi[k].max(p[k]);
+            }
+            if p[1] < 0.42 {
+                radius = radius.max(p[0].hypot(p[2]));
+            }
+            colours.insert(v[12] > v[13] * 2);
+        }
+        let near = |a: f32, b: f32| (a - b).abs() < 0.003;
+        assert!(near(radius, 0.075), "radius: {radius}");
+        assert!(near(lo[1], 0.0) && near(hi[1], 0.535), "height: {lo:?} {hi:?}");
+        assert!(near(hi[2], 0.22), "the nozzle's reach: {hi:?}");
+        assert_eq!(colours.len(), 2, "red and near black");
+        assert!(m.triangles() < 140, "{} triangles", m.triangles());
     }
 }
 

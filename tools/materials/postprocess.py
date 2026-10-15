@@ -21,6 +21,9 @@ layer is; this file does what they say, in this order:
   5. palette-reduce (optional "colours") with Pillow's median cut, no dithering;
   6. write RGB albedo with alpha as the emission mask (255 fully emissive, 0 not).
 
+A material whose graph is "placeholder" skips all of that: its layer is the [PLACEHOLDER] marker
+(placeholder_layer), so a surface that still samples it shows itself.
+
 Output is byte-for-byte deterministic for a given Pillow and numpy: no randomness, no
 timestamps, stable order. Run it twice and compare hashes; the last line prints a digest.
 
@@ -90,6 +93,31 @@ WRAP_PAD_PX = 4
 SEAM_WARN = 2.0
 SHEET_SCALE = 3
 SHEET_COLUMNS = 6
+
+# A material whose source graph is "placeholder" has no art: its layer is a magenta field with
+# "[PLACEHOLDER]" in black bands, so a surface still sampling it shows itself. The owner,
+# 2026-10-14, on the grey grid (tech_panel) the walls, trims and hull used to take: "can you remove
+# that grid texture? to make sure nothing refrences it, if something does replace it with a texture
+# that says [PLACEHOLDER]".
+PLACEHOLDER_GRAPH = "placeholder"
+PLACEHOLDER_TEXT = "[PLACEHOLDER]"
+PLACEHOLDER_FIELD = (255, 0, 255)
+PLACEHOLDER_BAND = (16, 16, 16)
+PLACEHOLDER_INK = (255, 255, 255)
+# 5 x 7 glyphs, one string of five 0/1 columns per row, for the letters the text uses.
+GLYPHS = {
+    "[": ["01110", "01000", "01000", "01000", "01000", "01000", "01110"],
+    "]": ["01110", "00010", "00010", "00010", "00010", "00010", "01110"],
+    "P": ["11110", "10001", "10001", "11110", "10000", "10000", "10000"],
+    "L": ["10000", "10000", "10000", "10000", "10000", "10000", "11111"],
+    "A": ["01110", "10001", "10001", "11111", "10001", "10001", "10001"],
+    "C": ["01110", "10001", "10000", "10000", "10000", "10001", "01110"],
+    "E": ["11111", "10000", "10000", "11110", "10000", "10000", "11111"],
+    "H": ["10001", "10001", "10001", "11111", "10001", "10001", "10001"],
+    "O": ["01110", "10001", "10001", "10001", "10001", "10001", "01110"],
+    "D": ["11110", "10001", "10001", "10001", "10001", "10001", "11110"],
+    "R": ["11110", "10001", "10001", "11110", "10100", "10010", "10001"],
+}
 
 
 class MaterialError(SystemExit):
@@ -318,7 +346,31 @@ def reduce_palette(rgb8, colours, method="median_cut"):
     return np.asarray(img.convert("RGB"))
 
 
+def placeholder_layer(px):
+    """The placeholder layer: four black bands of the text on magenta, every other band shifted
+    by half the layer and wrapping round, so the layer tiles without a seam."""
+    rgb = np.empty((px, px, 3), np.uint8)
+    rgb[:] = PLACEHOLDER_FIELD
+    width = len(PLACEHOLDER_TEXT) * 6 - 1
+    if width + 4 > px:
+        fail(f"a {px} px layer is too small for {PLACEHOLDER_TEXT!r}")
+    rows = 4
+    pitch = px // rows
+    for r in range(rows):
+        y0 = r * pitch + (pitch - 11) // 2
+        rgb[y0:y0 + 11, :] = PLACEHOLDER_BAND
+        x0 = (px - width) // 2 + (px // 2 if r % 2 else 0)
+        for i, ch in enumerate(PLACEHOLDER_TEXT):
+            for gy, row in enumerate(GLYPHS[ch]):
+                for gx, bit in enumerate(row):
+                    if bit == "1":
+                        rgb[y0 + 2 + gy, (x0 + i * 6 + gx) % px] = PLACEHOLDER_INK
+    return np.dstack([rgb, np.zeros((px, px), np.uint8)])
+
+
 def build_layer(m, raw, cfg, bake):
+    if m["source"]["graph"] == PLACEHOLDER_GRAPH:
+        return placeholder_layer(cfg["px"]), "placeholder (no graph)"
     maps = load_maps(raw, m["source"]["graph"])
     if m["emissive"] and maps["emission"] is None:
         raise MaterialError(f"materials.{m['name']} is emissive but graph {m['source']['graph']!r} has no emission map in {raw}")
@@ -402,11 +454,12 @@ def main():
     cfg, bake, mats = load_manifest()
     if args.only and set(args.only) - {m["name"] for m in mats}:
         fail("--only names an unknown material")
+    graphs = sorted({m["source"]["graph"] for m in mats} - {PLACEHOLDER_GRAPH})
     if args.list_graphs:
-        for g in sorted({m["source"]["graph"] for m in mats}):
+        for g in graphs:
             print(g)
         return
-    for g in sorted({m["source"]["graph"] for m in mats}):
+    for g in graphs:
         if not os.path.exists(os.path.join(PTEX_DIR, g + ".ptex")):
             print(f"note: graph {g} has no tools/materials/ptex/{g}.ptex; it exists only as an export")
 

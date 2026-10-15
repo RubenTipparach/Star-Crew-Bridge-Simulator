@@ -1,0 +1,55 @@
+sc-client: OpenGL ES 3.1 Mesa 24.2.8-1~bpo12+rpt5 on V3D 7.1.10.2 (offscreen)
+sc-client: the Hound placeholder is 140 triangles
+sc-client: the rooms' open floor for fires, 65 ms
+sc-client: the bridge for the crew on foot, 44568 triangles
+sc-client: 45 extinguisher brackets round the ship, 7380 triangles
+sc-client: walk world of 94394 triangles built in 62 ms; 6 ladders, 3 hatches, 58 doors
+sc-client: walk grid of 8222 walkable cells on 3 decks built in 124 ms
+sc-client: connecting to 192.168.0.210:7700 as Helm officer for Helm
+sc-client: round 0 Muster
+[sg][warning][id:9] /home/pi/Desktop/repos/Star-Crew-Bridge-Simulator/crates/sc-render/../../third_party/sokol/sokol_gfx.h:12261:0: 
+	GL_VERTEX_ATTRIBUTE_NOT_FOUND_IN_SHADER: vertex attribute not found in shader; NOTE: may be caused by GL driver's GLSL compiler removing unused globals
+
+[sg][info][id:9] /home/pi/Desktop/repos/Star-Crew-Bridge-Simulator/crates/sc-render/../../third_party/sokol/sokol_gfx.h:12262:0: 
+	uv
+
+[sg][warning][id:9] /home/pi/Desktop/repos/Star-Crew-Bridge-Simulator/crates/sc-render/../../third_party/sokol/sokol_gfx.h:12261:0: 
+	GL_VERTEX_ATTRIBUTE_NOT_FOUND_IN_SHADER: vertex attribute not found in shader; NOTE: may be caused by GL driver's GLSL compiler removing unused globals
+
+[sg][info][id:9] /home/pi/Desktop/repos/Star-Crew-Bridge-Simulator/crates/sc-render/../../third_party/sokol/sokol_gfx.h:12262:0: 
+	uv
+
+[sg][warning][id:9] /home/pi/Desktop/repos/Star-Crew-Bridge-Simulator/crates/sc-render/../../third_party/sokol/sokol_gfx.h:12261:0: 
+	GL_VERTEX_ATTRIBUTE_NOT_FOUND_IN_SHADER: vertex attribute not found in shader; NOTE: may be caused by GL driver's GLSL compiler removing unused globals
+
+[sg][info][id:9] /home/pi/Desktop/repos/Star-Crew-Bridge-Simulator/crates/sc-render/../../third_party/sokol/sokol_gfx.h:12262:0: 
+	uv
+
+sc-client: round 0 Countdown
+sc-client: round 0 Engage
+[sg][warning][id:9] /home/pi/Desktop/repos/Star-Crew-Bridge-Simulator/crates/sc-render/../../third_party/sokol/sokol_gfx.h:12261:0: 
+	GL_VERTEX_ATTRIBUTE_NOT_FOUND_IN_SHADER: vertex attribute not found in shader; NOTE: may be caused by GL driver's GLSL compiler removing unused globals
+
+[sg][info][id:9] /home/pi/Desktop/repos/Star-Crew-Bridge-Simulator/crates/sc-render/../../third_party/sokol/sokol_gfx.h:12262:0: 
+	uv
+
+sc-client: round 0 Debrief
+sc-client: round 1 Muster
+sc-client: round 1 Countdown
+sc-client: round 1 Engage
+sc-client: round 1 Debrief
+sc-client: round 2 Muster
+sc-client: round 2 Countdown
+sc-client: round 2 Engage
+sc-client: round 2 Debrief
+sc-client: round 3 Muster
+sc-client: round 3 Countdown
+sc-client: round 3 Engage
+sc-client: round 3 Debrief
+sc-client: round 4 Muster
+sc-client: round 4 Countdown
+sc-client: round 4 Engage
+sc-client: round 4 Debrief
+sc-client: round 5 Muster
+sc-client: round 5 Countdown
+sc-client: round 5 Engage

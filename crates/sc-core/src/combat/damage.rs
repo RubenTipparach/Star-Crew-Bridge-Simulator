@@ -21,8 +21,12 @@ use serde_json::Value;
 use std::collections::VecDeque;
 
 /// The Tern's files, relative to the repository's root, in the order [`ShipLayout::tern`] takes their texts.
-pub const TERN_FILES: [&str; 3] =
-    ["data/ships/tern/layout.json", "data/ships/tern/power.json", "data/ships/tern/damage.json"];
+pub const TERN_FILES: [&str; 4] = [
+    "data/ships/tern/layout.json",
+    "data/ships/tern/power.json",
+    "data/ships/tern/damage.json",
+    "data/ships/tern/kit.json",
+];
 
 /// The Hound's insides (`ship-damage` 7), which [`ShipLayout::hound`] takes.
 pub const HOUND_FILE: &str = "data/ships/hound/layout.json";
@@ -240,8 +244,11 @@ pub struct FireRules {
     pub put_out_s: f64,
     /// An extinguisher's agent, held on, seconds.
     pub extinguisher_s: f64,
-    /// The layout's fixture a player takes an extinguisher from (`layout.json` `fixtures`).
+    /// The layout's fixture a player takes an extinguisher from (`layout.json` `fixtures`); it never empties.
     pub locker: String,
+    /// A bracket's extinguisher, taken, is back this long after (`safety-points` 3a), seconds: `atmosphere.json`'s
+    /// `fire.extinguisher.bracket_restock_s`, which the drill's load holds equal.
+    pub bracket_restock_s: f64,
     /// Words.
     pub note: Option<String>,
 }
@@ -336,6 +343,7 @@ impl Validate for DamageData {
         c.number("fire.spread_after_s", f.spread_after_s, 0.0, 1e4);
         c.number("fire.put_out_s", f.put_out_s, 0.01, 1e4);
         c.number("fire.extinguisher_s", f.extinguisher_s, 0.1, 600.0);
+        c.number("fire.bracket_restock_s", f.bracket_restock_s, 0.0, 3600.0);
         let r = &self.repair;
         c.number("repair.kit_pct_per_s.rating", r.kit_pct_per_s.rating, 0.01, 100.0);
         c.number("repair.two_hands_factor", r.two_hands_factor, 1.0, 2.0);
@@ -485,15 +493,82 @@ pub struct ShipLayout {
     pub hi: DVec3,
     /// Where a player takes an extinguisher (the fire rules' locker fixture), ship frame, metres.
     pub lockers: Vec<DVec3>,
+    /// The extinguishers' brackets round the ship (`kit.json`, `safety-points`).
+    pub brackets: Vec<Bracket>,
+}
+
+/// An extinguisher's bracket on a wall (`safety-points` 1, 5a).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Bracket {
+    /// Its id in `kit.json`.
+    pub id: String,
+    /// Its room.
+    pub room: usize,
+    /// On the wall at the room's floor, ship frame, metres.
+    pub wall: DVec3,
+    /// The way into the room, a horizontal unit vector.
+    pub into: DVec3,
+}
+
+/// `data/ships/<id>/kit.json` (`safety-points` design 4 and 5a): where a ship's extinguishers hang, written by
+/// `sc-tools safety-points`.
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct KitFile {
+    /// `starcrew.kit/1`.
+    pub schema: String,
+    /// Words.
+    pub note: Option<String>,
+    /// The safety points.
+    pub points: Vec<KitPoint>,
+}
+
+/// One safety point of [`KitFile`].
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct KitPoint {
+    /// Its id.
+    pub id: String,
+    /// Its room (a compartment id).
+    pub compartment: String,
+    /// The placing rule that put it there: `main_door`, `big_room`, `corridor` or `reach`.
+    pub rule: String,
+    /// On the wall at the room's floor, ship frame, metres.
+    pub wall_point_m: [f64; 3],
+    /// The way into the room: horizontal, unit.
+    pub normal: [f64; 3],
+    /// What it holds (`extinguisher`).
+    pub holds: Vec<String>,
+}
+
+impl Validate for KitFile {
+    fn validate(&self, c: &mut Checks) {
+        c.equals("schema", &self.schema, "starcrew.kit/1");
+        for (i, p) in self.points.iter().enumerate() {
+            for (k, x) in p.wall_point_m.iter().enumerate() {
+                c.number(&format!("points.{i}.wall_point_m.{k}"), *x, -1000.0, 1000.0);
+            }
+            let n = p.normal;
+            c.number(&format!("points.{i}.normal.1"), n[1], 0.0, 0.0);
+            c.number(&format!("points.{i}.normal (length)"), n[0].hypot(n[2]), 0.999, 1.001);
+            if !matches!(p.rule.as_str(), "main_door" | "big_room" | "corridor" | "reach") {
+                c.equals(&format!("points.{i}.rule"), &p.rule, "main_door, big_room, corridor or reach");
+            }
+            for (k, h) in p.holds.iter().enumerate() {
+                c.equals(&format!("points.{i}.holds.{k}"), h, "extinguisher");
+            }
+        }
+    }
 }
 
 impl ShipLayout {
     /// The Tern, from the texts of [`TERN_FILES`] in order: its layout (hull, compartments, portals, systems,
-    /// mounts), its power (loads, nodes, conduits) and its damage rules (the teams).
-    pub fn tern(texts: [&str; 3]) -> Result<Self, DataError> {
+    /// mounts), its power (loads, nodes, conduits), its damage rules (the teams) and its kit (the brackets).
+    pub fn tern(texts: [&str; 4]) -> Result<Self, DataError> {
         let layout: TernLayoutFile = parse(TERN_FILES[0], texts[0])?;
         let power: PowerFile = parse(TERN_FILES[1], texts[1])?;
         let rules = DamageData::parse(texts[2])?;
+        let kit: KitFile = parse(TERN_FILES[3], texts[3])?;
         let sys = |id: &str| layout.systems.iter().find(|s| s.id == id).map(|s| s.center_m);
         let mount = |id: &str| layout.mounts.iter().find(|m| m.id == id).map(|m| m.center_m);
         let mut loads = Vec::with_capacity(power.loads.len());
@@ -540,6 +615,18 @@ impl ShipLayout {
             teams: rules.teams.count,
             home: rules.teams.home.clone(),
             lockers: lockers(&layout.fixtures, &rules.fire.locker),
+            brackets: kit
+                .points
+                .iter()
+                .map(|p| {
+                    (
+                        p.id.clone(),
+                        p.compartment.clone(),
+                        DVec3::from_array(p.wall_point_m),
+                        DVec3::from_array(p.normal),
+                    )
+                })
+                .collect(),
         };
         build(parts)
     }
@@ -549,6 +636,7 @@ impl ShipLayout {
         let f: CombatLayoutFile = parse(HOUND_FILE, text)?;
         build(Parts {
             lockers: Vec::new(),
+            brackets: Vec::new(),
             ship: f.ship.clone(),
             files: [HOUND_FILE; 3],
             sections: f.hull.sections.clone(),
@@ -719,6 +807,9 @@ pub struct DamageState {
     pub breaches: Vec<Breach>,
     /// The damage-control teams.
     pub teams: Vec<Team>,
+    /// Each extinguisher bracket's time until it is full again, seconds (0: full; `safety-points` 3a), by the layout's
+    /// `brackets`.
+    pub brackets: Vec<f64>,
 }
 
 impl DamageState {
@@ -736,7 +827,13 @@ impl DamageState {
             fires: Vec::new(),
             breaches: Vec::new(),
             teams: vec![Team { at: l.home, job: None, eta_s: 0.0, working: false, work_s: 0.0 }; l.teams],
+            brackets: vec![0.0; l.brackets.len()],
         }
+    }
+
+    /// Whether bracket `k` holds an extinguisher.
+    pub fn bracket_full(&self, k: usize) -> bool {
+        self.brackets.get(k).is_some_and(|t| *t <= 0.0)
     }
 
     /// Whether `room` is burning.
@@ -1275,6 +1372,10 @@ pub fn tick(
     if !(dt.is_finite() && dt > 0.0) {
         return ev;
     }
+    // An emptied bracket fills again (safety-points 3a).
+    for t in &mut s.brackets {
+        *t = (*t - dt).max(0.0);
+    }
     let f = &cfg.fire;
 
     // Fires burn every system in their room and the structural hull.
@@ -1474,6 +1575,8 @@ struct ConduitIn {
 /// A ship's insides as read, before ids become indices.
 struct Parts {
     lockers: Vec<DVec3>,
+    /// The kit's brackets: id, room id, wall point, into the room.
+    brackets: Vec<(String, String, DVec3, DVec3)>,
     ship: String,
     /// Where the layout, the power and the teams came from, for messages.
     files: [&'static str; 3],
@@ -1632,6 +1735,11 @@ fn build(p: Parts) -> Result<ShipLayout, DataError> {
         conduits.push(Conduit { id, ends, route, path, factory_open });
     }
     let home = rooms[room_of(tf, "teams.home", &p.home, &rooms)?].centre;
+    let mut brackets = Vec::with_capacity(p.brackets.len());
+    for (i, (id, room, wall, into)) in p.brackets.into_iter().enumerate() {
+        let room = room_of(TERN_FILES[3], &format!("points.{i}.compartment"), &room, &rooms)?;
+        brackets.push(Bracket { id, room, wall, into });
+    }
     Ok(ShipLayout {
         ship: p.ship,
         sections,
@@ -1644,6 +1752,7 @@ fn build(p: Parts) -> Result<ShipLayout, DataError> {
         lo,
         hi,
         lockers: p.lockers,
+        brackets,
     })
 }
 
@@ -1839,10 +1948,11 @@ struct CombatTeamsFile {
 mod tests {
     use super::*;
 
-    const TERN: [&str; 3] = [
+    const TERN: [&str; 4] = [
         include_str!("../../../../data/ships/tern/layout.json"),
         include_str!("../../../../data/ships/tern/power.json"),
         include_str!("../../../../data/ships/tern/damage.json"),
+        include_str!("../../../../data/ships/tern/kit.json"),
     ];
 
     fn tern() -> (ShipLayout, DamageData) {

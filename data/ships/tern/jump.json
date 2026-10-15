@@ -1,0 +1,13 @@
+{
+  "schema": "starcrew.jump/1",
+  "_doc": "The Tern's jump drive (openspec/changes/flight-and-navigation section 7; built by openspec/changes/patrol-mission design 5). The spool takes spool_mj at spool_mw times the impulse drive's capability (its power and its integrity), so 40 s on a whole, powered drive; the bow must be within align_deg of the jump vector and turning slower than align_rate_dps for the spool's last align_last_s. Mass lock: no spool or jump within planet_radii of a body's centre, ship_m of a hostile ship, or a station's own mass_lock_m (the system file). The Tern arrives within arrival_scatter_m of the point's arrival point, moving as it left, and may not spool again for cooldown_s. Read by sc-core::combat::patrol.",
+  "spool_mj": 800.0,
+  "spool_mw": 20.0,
+  "align_deg": 5.0,
+  "align_rate_dps": 2.0,
+  "align_last_s": 3.0,
+  "planet_radii": 3.0,
+  "ship_m": 5000.0,
+  "arrival_scatter_m": 1500.0,
+  "cooldown_s": 60.0
+}

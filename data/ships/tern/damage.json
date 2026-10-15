@@ -68,7 +68,8 @@
     "put_out_s": 20.0,
     "extinguisher_s": 15.0,
     "locker": "dc_lockers",
-    "note": "put_out_s is a team's time: a fire is out once the hands at it have put in put_out_s x teams.members hand-seconds, a team counting its members and a player spraying an extinguisher one (all-hands 4). An extinguisher's agent lasts extinguisher_s held on (crew-on-deck 14: 6 kg over 15 s); a player takes one at the locker fixture. Per compartment a hit deposits energy in: ignition chance min(chance_max, chance_per_mj x E) times the room's oxygen factor, decided by a seeded hash of (session seed, hit id, compartment id). The fire starts at fire.seed_kw (atmosphere.json) plus seed_kw_per_mj x E."
+    "bracket_restock_s": 15.0,
+    "note": "put_out_s is a team's time: a fire is out once the hands at it have put in put_out_s x teams.members hand-seconds, a team counting its members and a player spraying an extinguisher one (all-hands 4). An extinguisher's agent lasts extinguisher_s held on (crew-on-deck 14: 6 kg over 15 s); a player takes one at the locker fixture (which never empties) or at any full bracket of kit.json (safety-points: one inside every room's main door and evenly along the corridors), and a bracket emptied so is full again bracket_restock_s later (safety-points 3a; the same number as atmosphere.json's fire.extinguisher.bracket_restock_s, and the load refuses them unequal). Per compartment a hit deposits energy in: ignition chance min(chance_max, chance_per_mj x E) times the room's oxygen factor, decided by a seeded hash of (session seed, hit id, compartment id). The fire starts at fire.seed_kw (atmosphere.json) plus seed_kw_per_mj x E."
   },
   "crew": {
     "hp_per_mj": 15.0,

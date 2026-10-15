@@ -79,6 +79,29 @@
   .note { padding: 10px 16px 18px; color: var(--dim); max-width: 1100px; }
   .note b { color: var(--fg); font-weight: 600; }
   .cost { padding: 0 16px 24px; color: var(--dim); font-size: 13px; }
+  /* Crew chat's kinds (data/crew/chat.json): one colour and one shape each, the same on every screen. */
+  .k { width: 0.9em; height: 0.9em; flex: none; margin-right: 0.35em; vertical-align: -0.08em; }
+  .k.say { visibility: hidden; }
+  .order .k { color: var(--cyan); } .ack .k { color: var(--green); } .intent .k { color: var(--amber); } .report .k { color: var(--lilac); }
+  .line { display: flex; align-items: baseline; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .line .who { margin-right: 0.3em; }
+  .line .tx { overflow: hidden; text-overflow: ellipsis; }
+  .strip .line { border-left: 4px solid transparent; }
+  .strip .line.order { border-left-color: var(--cyan); } .strip .line.ack { border-left-color: var(--green); }
+  .strip .line.intent { border-left-color: var(--amber); } .strip .line.report { border-left-color: var(--lilac); }
+  .keycap { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 30px; padding: 0 6px; border: 1.5px solid var(--udim); border-radius: 6px; font: 600 18px/1 system-ui, sans-serif; color: var(--text); margin-right: 8px; box-sizing: border-box; }
+  .log { position: absolute; display: flex; flex-direction: column; }
+  .log .head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .log .head .cap { margin: 0 auto 0 0; }
+  .log .chipk { display: inline-flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 7px; border: 1.5px solid var(--edge); font: 600 17px/1 system-ui, sans-serif; letter-spacing: 0.08em; color: var(--udim); }
+  .log .chipk.on { color: var(--text); border-color: var(--udim); background: rgba(34,44,58,0.8); }
+  .log .chipk .k { margin-right: 6px; }
+  .log .body { flex: 1; position: relative; overflow: hidden; padding-right: 22px; display: flex; flex-direction: column; justify-content: flex-end; }
+  .log .body .line { font-size: 21px; line-height: 1.25; margin: 0 0 8px; }
+  .log .tm { color: var(--udim); width: 70px; flex: none; font-variant-numeric: tabular-nums; }
+  .log .bar { position: absolute; right: 4px; top: 0; bottom: 0; width: 8px; border-radius: 4px; background: rgba(44,62,82,0.6); }
+  .log .bar i { position: absolute; left: 0; right: 0; bottom: 0; height: 62%; border-radius: 4px; background: var(--udim); }
+  .tbline .k { margin-right: 8px; } .tbline .who { margin-right: 0.3em; }
   .state { display: none; }
   .state.on { display: block; }
 </style>
@@ -93,6 +116,13 @@
 </header>
 <div class="tabs" id="tabs"></div>
 <div class="frame"><div class="fit" id="fit"><div class="stage" id="stage">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="k-order" viewBox="0 0 20 20"><polyline points="5,3 13,10 5,17" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="k-ack" viewBox="0 0 20 20"><polyline points="3,10.5 8,15.5 17,4.5" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="k-intent" viewBox="0 0 20 20"><path d="M3 4 L17 10 L3 16 L6 10 Z" fill="currentColor"/></symbol>
+    <symbol id="k-report" viewBox="0 0 20 20"><rect x="4" y="4" width="12" height="12" rx="1.5" fill="currentColor"/></symbol>
+    <symbol id="k-say" viewBox="0 0 20 20"></symbol>
+  </svg>
 
   <div class="state" data-name="1 The room" data-note="&lt;b&gt;The room before the fight.&lt;/b&gt; Muster's briefing, as today, with a MISSION row under the title and a CHAT column at the right: the crew's lines and the NPCs' (NPC), a field to type in, Enter sends. Who has each station and who is READY stay where they are. Two machines: Lt. Player on Pi 1, Ens. Dara Holt on Pi 2.">
     <img class="bg" src="__CAPTAIN__" alt="">
@@ -122,13 +152,13 @@
       <div class="chat" style="left:1190px;top:15px;width:590px;height:885px">
         <div class="cap">CHAT</div>
         <div class="lines">
-          <div class="line"><span class="who" style="color:var(--helm)">Lt. Sil Saren <span class="npc">(NPC)</span>:</span> At Helm</div>
-          <div class="line"><span class="who" style="color:var(--engineering)">Lt. Elaya Corregan <span class="npc">(NPC)</span>:</span> At Engineering</div>
-          <div class="line"><span class="who" style="color:var(--command)">Lt. Player:</span> Evening all. Dara, you're on Tactical from Pi 2?</div>
-          <div class="line"><span class="who" style="color:var(--tactical)">Ens. Dara Holt:</span> Yes, reading the briefing now</div>
-          <div class="line"><span class="who" style="color:var(--science)">Lt. Xa'lensha <span class="npc">(NPC)</span>:</span> At Science</div>
-          <div class="line"><span class="who" style="color:var(--gunner)">Lt. Haro Lundivan <span class="npc">(NPC)</span>:</span> At Gunner</div>
-          <div class="line"><span class="who" style="color:var(--command)">Lt. Player:</span> Fighters first, then the Hound. Ready when you are</div>
+          <div class="line report"><svg class="k report"><use href="#k-report"/></svg><span class="who" style="color:var(--helm)">Lt. Sil Saren <span class="npc">(NPC)</span>:</span> <span class="tx">At Helm</span></div>
+          <div class="line report"><svg class="k report"><use href="#k-report"/></svg><span class="who" style="color:var(--engineering)">Lt. Elaya Corregan <span class="npc">(NPC)</span>:</span> <span class="tx">At Engineering</span></div>
+          <div class="line say"><svg class="k say"><use href="#k-say"/></svg><span class="who" style="color:var(--command)">Lt. Player:</span> <span class="tx">Evening all. Dara, you're on Tactical from Pi 2?</span></div>
+          <div class="line say"><svg class="k say"><use href="#k-say"/></svg><span class="who" style="color:var(--tactical)">Ens. Dara Holt:</span> <span class="tx">Yes, reading the briefing now</span></div>
+          <div class="line report"><svg class="k report"><use href="#k-report"/></svg><span class="who" style="color:var(--science)">Lt. Xa'lensha <span class="npc">(NPC)</span>:</span> <span class="tx">At Science</span></div>
+          <div class="line report"><svg class="k report"><use href="#k-report"/></svg><span class="who" style="color:var(--gunner)">Lt. Haro Lundivan <span class="npc">(NPC)</span>:</span> <span class="tx">At Gunner</span></div>
+          <div class="line say"><svg class="k say"><use href="#k-say"/></svg><span class="who" style="color:var(--command)">Lt. Player:</span> <span class="tx">Fighters first, then the Hound. Ready when you are</span></div>
         </div>
         <div class="field"><b>Ens. Dara Holt:</b>&nbsp;Locking the Hound as soon as we engage|</div>
       </div>
@@ -149,28 +179,18 @@
     </div>
   </div>
 
-  <div class="state" data-name="3 Chat on foot" data-note="&lt;b&gt;On foot&lt;/b&gt;, the last three lines at the bottom left, each fading 8 s after it came; T opens the field. The NPCs speak as a player types: one line for each thing they do that changes the ship, at most one each 3 s.">
+  <div class="state" data-name="3 Chat on foot" data-note="&lt;b&gt;On foot&lt;/b&gt;, the last three lines at the bottom left, each with its kind's shape and colour (a square: a REPORT; none: a player's typing), fading 6 s after it came; T opens the log (state 8). The NPCs speak as a player types: what they do as they do it, at most one line each 2.5 s.">
     <img class="bg" src="__WALKING__" alt="">
     <div class="strip">
-      <div class="line"><span class="who" style="color:var(--helm)">Lt. Sil Saren <span class="npc">(NPC)</span>:</span> At Helm</div>
-      <div class="line"><span class="who" style="color:var(--command)">Lt. Player:</span> On my way to the chair</div>
-      <div class="line"><span class="who" style="color:var(--laser)">Lt. Kiya Ashberg <span class="npc">(NPC)</span>:</span> At Laser port</div>
+      <div class="line report"><svg class="k report"><use href="#k-report"/></svg><span class="who" style="color:var(--helm)">Lt. Sil Saren <span class="npc">(NPC)</span>:</span> <span class="tx">At Helm</span></div>
+      <div class="line say"><svg class="k say"><use href="#k-say"/></svg><span class="who" style="color:var(--command)">Lt. Player:</span> <span class="tx">On my way to the chair</span></div>
+      <div class="line report"><svg class="k report"><use href="#k-report"/></svg><span class="who" style="color:var(--laser)">Lt. Kiya Ashberg <span class="npc">(NPC)</span>:</span> <span class="tx">At Laser port</span></div>
     </div>
   </div>
 
-  <div class="state" data-name="4 Chat at a console" data-note="&lt;b&gt;At a console&lt;/b&gt;, the newest line sits for 8 s in the title band's free space, never over a panel (CLAUDE.md 10). T opens the chat over the look band's left side, twelve lines and the field; Enter sends, Esc closes it. Damage control's teams speak as Damage control.">
+  <div class="state" data-name="4 Chat at a console" data-note="&lt;b&gt;At a console&lt;/b&gt;, the newest line sits for 6 s in the title band's free space with its kind's shape, never over a panel (CLAUDE.md 10). T opens the log (state 8). Damage control's teams and the ship's computer speak under their own names.">
     <img class="bg" src="__CAPTAIN__" alt="">
-    <div class="tbline" style="left:1110px;width:520px"><span style="color:var(--amber)">Damage control:</span>&nbsp;Fire out in the medbay</div>
-    <div class="panel" style="left:16px;top:60px;width:465px;height:340px;padding:12px 14px">
-      <div class="lines" style="display:flex;flex-direction:column;gap:5px">
-        <div class="line" style="font-size:19px"><span style="color:var(--tactical)">Ens. Dara Holt:</span> Locked. Missile away</div>
-        <div class="line" style="font-size:19px"><span style="color:var(--science)">Lt. Xa'lensha <span class="npc">(NPC)</span>:</span> Shields to band C</div>
-        <div class="line" style="font-size:19px"><span style="color:var(--amber)">Damage control:</span> Team to the medbay</div>
-        <div class="line" style="font-size:19px"><span style="color:var(--gunner)">Lt. Haro Lundivan <span class="npc">(NPC)</span>:</span> Fighter down</div>
-        <div class="line" style="font-size:19px"><span style="color:var(--amber)">Damage control:</span> Fire out in the medbay</div>
-      </div>
-      <div class="field" style="height:42px;font-size:19px;margin-top:10px"><b>Lt. Player:</b>&nbsp;Good shooting|</div>
-    </div>
+    <div class="tbline report" style="left:1110px;width:520px"><svg class="k report"><use href="#k-report"/></svg><span class="who" style="color:var(--pale)">Damage control:</span> <span class="tx">Fire out in the medbay</span></div>
   </div>
 
   <div class="state" data-name="5 Helm: JUMP" data-note="&lt;b&gt;Warp out.&lt;/b&gt; The captain orders JUMP; Helm holds JUMP (0.6 s, a guarded control) beside STOP on its THRUST panel. The drive spins up for 10 s: the ring fills, and every console's title band says JUMP and the seconds left. STOP, or a hostile closing inside 2 km, cancels it. It needs the drive above a quarter. At the end the Tern jumps and the mission ends.">
@@ -203,10 +223,46 @@
     </div>
   </div>
 
+  <div class="state" data-name="7 A fight: the strip" data-note="&lt;b&gt;In a fight, on foot&lt;/b&gt; (red alert): the last three lines, the newest at the bottom, each with its kind's shape and a bar in its colour, the older ones fading out 6 s after they came. Here the Hound is gone and the captain orders the jump home; Helm's NPC answers. JUMP is the order of &lt;code&gt;missions&lt;/code&gt; 3 and comes with it; until then COURSE and an attitude order are Helm's way to coordinates (&quot;Coming to 090 mark 10&quot;). T opens the log.">
+    <img class="bg" src="__BRIDGE__" alt="">
+    <div class="strip">
+      <div class="line report" style="opacity:0.45"><svg class="k report"><use href="#k-report"/></svg><span class="who" style="color:var(--pale)">Computer:</span> <span class="tx">Target destroyed</span></div>
+      <div class="line order" style="opacity:0.8"><svg class="k order"><use href="#k-order"/></svg><span class="who" style="color:var(--command)">Lt. Player:</span> <span class="tx">Helm, jump us out</span></div>
+      <div class="line ack"><svg class="k ack"><use href="#k-ack"/></svg><span class="who" style="color:var(--helm)">Lt. Sil Saren <span class="npc">(NPC)</span>:</span> <span class="tx">Aye, spinning up the jump drive</span></div>
+    </div>
+    <div style="position:absolute;left:24px;bottom:92px;display:flex;align-items:center;color:var(--text);font-size:20px;letter-spacing:0.06em;background:rgba(6,10,16,0.6);border-radius:6px;padding:4px 10px 4px 4px"><span class="keycap">T</span>LOG</div>
+  </div>
+
+  <div class="state" data-name="8 The chat log (T)" data-note="&lt;b&gt;The log&lt;/b&gt;: T opens it over the left of the view, at a console or on foot; Esc closes it. The game time, the kind's shape, who said it in their station's colour, the line; the newest at the bottom, fourteen at once, and the wheel or the pad's right stick scrolls back through the forty the server keeps (a late joiner gets them too). The chips along the top show one kind or all. Under it the field: Enter sends, as SAY. A fight as the crew hear it: the captain's orders and each station's aye, Tactical's lock and torpedo, the computer's reports, damage control's teams, Helm turning to a heading. The NPCs only ever say what they did.">
+    <img class="bg" src="__CAPTAIN__" alt="">
+    <div class="panel log" style="left:16px;top:60px;width:860px;height:690px;padding:14px 16px">
+      <div class="head"><span class="cap">CHAT</span><span class="chipk on all">ALL</span><span class="chipk order"><svg class="k"><use href="#k-order"/></svg>ORDER</span><span class="chipk ack"><svg class="k"><use href="#k-ack"/></svg>ACK</span><span class="chipk intent"><svg class="k"><use href="#k-intent"/></svg>INTENT</span><span class="chipk report"><svg class="k"><use href="#k-report"/></svg>REPORT</span><span class="keycap" style="margin:0 0 0 6px">Esc</span></div>
+      <div class="body">
+        <div class="line order"><span class="tm">04:12</span><svg class="k order"><use href="#k-order"/></svg><span class="who" style="color:var(--command)">Lt. Player:</span> <span class="tx">Tactical, engage the Hound corvette</span></div>
+        <div class="line ack"><span class="tm">04:13</span><svg class="k ack"><use href="#k-ack"/></svg><span class="who" style="color:var(--tactical)">Ens. Dara Holt:</span> <span class="tx">Aye, engaging the Hound corvette</span></div>
+        <div class="line intent"><span class="tm">04:13</span><svg class="k intent"><use href="#k-intent"/></svg><span class="who" style="color:var(--tactical)">Ens. Dara Holt:</span> <span class="tx">Locking the Hound corvette</span></div>
+        <div class="line order"><span class="tm">04:17</span><svg class="k order"><use href="#k-order"/></svg><span class="who" style="color:var(--command)">Lt. Player:</span> <span class="tx">Helm, close on the Hound corvette</span></div>
+        <div class="line ack"><span class="tm">04:18</span><svg class="k ack"><use href="#k-ack"/></svg><span class="who" style="color:var(--helm)">Lt. Sil Saren <span class="npc">(NPC)</span>:</span> <span class="tx">Aye, closing on the Hound corvette</span></div>
+        <div class="line intent"><span class="tm">04:24</span><svg class="k intent"><use href="#k-intent"/></svg><span class="who" style="color:var(--tactical)">Ens. Dara Holt:</span> <span class="tx">Torpedo away, tube 1</span></div>
+        <div class="line report"><span class="tm">04:27</span><svg class="k report"><use href="#k-report"/></svg><span class="who" style="color:var(--pale)">Computer:</span> <span class="tx">Shields at 50%</span></div>
+        <div class="line report"><span class="tm">04:31</span><svg class="k report"><use href="#k-report"/></svg><span class="who" style="color:var(--pale)">Computer:</span> <span class="tx">Hull breach in the mess</span></div>
+        <div class="line intent"><span class="tm">04:32</span><svg class="k intent"><use href="#k-intent"/></svg><span class="who" style="color:var(--pale)">Damage control:</span> <span class="tx">Fire in the mess, on my way</span></div>
+        <div class="line order"><span class="tm">04:35</span><svg class="k order"><use href="#k-order"/></svg><span class="who" style="color:var(--command)">Lt. Player:</span> <span class="tx">Engineering, repairs first</span></div>
+        <div class="line ack"><span class="tm">04:36</span><svg class="k ack"><use href="#k-ack"/></svg><span class="who" style="color:var(--engineering)">Lt. Elaya Corregan <span class="npc">(NPC)</span>:</span> <span class="tx">Aye, repairs first</span></div>
+        <div class="line intent"><span class="tm">04:37</span><svg class="k intent"><use href="#k-intent"/></svg><span class="who" style="color:var(--pale)">Damage control:</span> <span class="tx">Repair team to the shield generator</span></div>
+        <div class="line say"><span class="tm">04:44</span><svg class="k say"><use href="#k-say"/></svg><span class="who" style="color:var(--tactical)">Ens. Dara Holt:</span> <span class="tx">Tube 2 loading, he's turning to port</span></div>
+        <div class="line intent"><span class="tm">04:52</span><svg class="k intent"><use href="#k-intent"/></svg><span class="who" style="color:var(--helm)">Lt. Sil Saren <span class="npc">(NPC)</span>:</span> <span class="tx">Coming to 090 mark 10</span></div>
+        <div class="bar"><i></i></div>
+      </div>
+      <div class="field" style="height:46px;font-size:21px;margin-top:6px"><b>Lt. Player:</b>&nbsp;Good shooting, Dara|</div>
+    </div>
+  </div>
+
 </div></div></div>
 <div class="note" id="note"></div>
 <div class="cost">UI cost on the Pi 5 (designs, not measurements): the room's chat and list are part of its one egui panel; at a
-console the chat line is one more text in the title band and the open chat one panel (1-2 draw calls); the end screen
+console the chat line is one more text in the title band, on foot the strip three lines, and the log one panel (1-2 draw
+calls); a line is at most 115 bytes on the reliable channel, never in the snapshot; the end screen
 is one panel. The jump's streak is one full-screen quad for a second. A desktop frame rate is not a Pi measurement.</div>
 <script>
   const states = [...document.querySelectorAll('.state')];

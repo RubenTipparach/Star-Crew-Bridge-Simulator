@@ -150,8 +150,9 @@ distributed by science's face weights; below 15% of nominal supply every face SH
 - **THEN** every face loses 2 MJ per second until it is empty or power returns
 
 ### Requirement: The shield view shows the ship, its faces and where attacks come from
-Science's shield panel and tactical's plot SHALL draw the shield as the hull loft from the layout
-inside the ellipsoid, each patch of the ellipsoid coloured by the charge of the face the hit-resolving
+Science's shield panel and tactical's plot SHALL draw the ship as its low-poly exterior model (the
+distant detail level's geometry, untextured, `data/ships/<ship>/console_model.json`) inside the
+ellipsoid, each patch of the ellipsoid coloured by the charge of the face the hit-resolving
 function assigns to its centre. Every hostile in sensor range SHALL draw a line from its direction, and
 every hit in the last 8 s SHALL draw an arrow from its direction onto the face it struck, labelled with
 its bearing (to starboard from the bow) and elevation in degrees.

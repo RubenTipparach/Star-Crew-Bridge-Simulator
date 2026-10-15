@@ -30,10 +30,10 @@
     "bulkhead": {
       "layer": 0,
       "role": "Walls of every compartment.",
-      "source": { "graph": "tech_panel", "provenance": "fps-game-demo f6cd25c tools/material_maker/ptex/tech_panel.ptex, authored by its build_ptex.py" },
+      "source": { "graph": "plain_steel", "provenance": "Star Crew tools/materials/ptex/plain_steel.ptex, authored by its build_ptex.py (2026-10-14): plain painted steel, no grid. Rendered by Material Maker 174f15e on the Pi 5 (lavapipe)." },
       "tile_m": 2.0,
       "span_m": 2.0,
-      "ramp": [[0.12, 0.15, 0.19], [0.60, 0.65, 0.70]],
+      "ramp": [[0.30, 0.35, 0.41], [0.54, 0.59, 0.65]],
       "ramp_mix": 0.9,
       "relief": 1.0,
       "colours": 32
@@ -74,10 +74,10 @@
     "trim": {
       "layer": 4,
       "role": "Frames, ribs, baseboards, door frames and beams.",
-      "source": { "graph": "tech_panel", "provenance": "fps-game-demo f6cd25c tools/material_maker/ptex/tech_panel.ptex, authored by its build_ptex.py" },
-      "tile_m": 4.0,
+      "source": { "graph": "plain_steel", "provenance": "Star Crew tools/materials/ptex/plain_steel.ptex, authored by its build_ptex.py (2026-10-14): plain painted steel, no grid. Rendered by Material Maker 174f15e on the Pi 5 (lavapipe)." },
+      "tile_m": 2.0,
       "span_m": 2.0,
-      "ramp": [[0.22, 0.24, 0.27], [0.80, 0.82, 0.85]],
+      "ramp": [[0.46, 0.48, 0.51], [0.76, 0.78, 0.81]],
       "ramp_mix": 0.9,
       "relief": 1.0,
       "colours": 32

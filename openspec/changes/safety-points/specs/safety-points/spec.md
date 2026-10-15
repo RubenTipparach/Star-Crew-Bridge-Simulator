@@ -11,13 +11,23 @@ aid cabinet) on the wall beside its main door, inside, clear of the door's openi
 - **WHEN** a crew member enters the quarters through its main door
 - **THEN** an extinguisher and a first aid kit are on the wall within 1.5 m of the door
 
-### Requirement: No floor more than 10 m's walk from a safety point
+### Requirement: Extinguishers spaced evenly along every corridor
 
-On every deck, every walkable floor point SHALL be within 10 m's walk, by the deck's walk graph, of a safety point.
+Every corridor SHALL have safety points spaced evenly along its length: a corridor `L` metres long SHALL have
+`ceil(L / 8)` of them, at most 8 m apart and none more than 4 m from an end, taking its two walls in turn.
+
+#### Scenario: Deck B's spine
+- **WHEN** the placement tool runs on the Tern, whose deck B spine is 26 m long
+- **THEN** the spine has four extinguishers, 6.5 m apart, the first 3.25 m from its aft end, on alternate walls
+
+### Requirement: No floor far from a safety point
+
+The placement tool SHALL report, for every deck, the longest straight-line distance from a room or corridor floor
+point to a safety point, and SHALL place another where it is over 10 m.
 
 #### Scenario: The far end of engineering
 - **WHEN** the placement tool runs on the Tern
-- **THEN** it reports the longest walk to a safety point on each deck, and none is over 10 m
+- **THEN** it reports the longest distance to a safety point on each deck, and none is over 10 m
 
 ### Requirement: A first aid kit stabilizes and holds three doses
 

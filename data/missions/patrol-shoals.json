@@ -1,0 +1,101 @@
+{
+  "schema": "starcrew.mission/1",
+  "_doc": "The patrol (openspec/changes/patrol-mission design 1): the drill's fields, and a patrol block. The Tern starts docked at the system file's berth on shore power with the impulse drive's breaker open; engineering closes it and drops shore power, helm undocks and the berth's departure path is flown under its limits; the Tern jumps along the route, science sweeps each point, and at the encounter's point the drill's fight runs, the enemy placed at enemy_start_m from the Tern's arrival in its frame and the relay at waypoint_m; then home. A jump needs to be clear of every mass lock (data/ships/tern/jump.json). sweep_s is science's sweep, sweep_range_m how far it sees; drive_ready_min the impulse drive's capability the berth asks for before it opens the clamps; clamps_s how long they take. Read by sc-core::combat::data and sc-core::combat::patrol. clear_mps and loiter_mps are a crew helm's speeds clearing a mass lock and at a point; resend_s how long a crew's patrol command is given to land.",
+  "id": "patrol-shoals",
+  "title": "Patrol: the Shoals",
+  "situation": "Undock from Tamsin Station and patrol the Shoals: sweep the Pell beacon, then the relay at the Shoals, where a Hound corvette has been raiding. Drive it off or destroy it, then jump home.",
+  "objectives": [
+    {
+      "words": "Undock from Tamsin Station",
+      "kind": "undock"
+    },
+    {
+      "words": "Sweep the Pell beacon",
+      "kind": "sweep",
+      "point": "pell_beacon"
+    },
+    {
+      "words": "Destroy the Hound",
+      "kind": "destroy",
+      "ship": "hound"
+    },
+    {
+      "words": "Shoot down both fighters",
+      "kind": "destroy_fighters",
+      "count": 2
+    },
+    {
+      "words": "Keep the Tern's hull above zero",
+      "kind": "survive"
+    },
+    {
+      "words": "Return to Tamsin Station",
+      "kind": "return"
+    }
+  ],
+  "orders": {
+    "helm": "Close to turret range. Keep the Hound level with the ship so all four turrets bear, put the bow on it for missiles, and keep moving so it cannot aim.",
+    "tactical": "Lock the Hound, free the turrets, turn the strongest shield toward it, and fire Gannets when the bow is on it.",
+    "engineering": "Keep power on the weapons and shields in the fight. When a hit cuts a run, open the schematic and route around it; keep the reactor out of the red.",
+    "science": "Scan the Hound so Tactical sees its hull, find its weapons' band and tune the shields to it, and keep the shields facing its fire.",
+    "captain": "Call red alert, keep the crew on task with orders, and take the viewscreen when everyone needs to see the same thing.",
+    "laser_port": "Keep the port bank charged and fire it when the Hound is on the port side. A shot breaks its shield; where its armour is gone, it breaks the ship.",
+    "laser_stbd": "Keep the starboard bank charged and fire it when the Hound is on the starboard side. A shot breaks its shield; where its armour is gone, it breaks the ship.",
+    "gunner": "Take the dorsal turret and shoot down the Hound's fighters before they reach our turrets and banks."
+  },
+  "stations": [
+    "helm",
+    "tactical",
+    "engineering",
+    "science",
+    "captain",
+    "laser_port",
+    "laser_stbd",
+    "gunner"
+  ],
+  "enemy": "hound",
+  "enemy_start_m": [
+    400,
+    300,
+    6000
+  ],
+  "waypoint_m": [
+    9000,
+    1500,
+    16000
+  ],
+  "tern_start_speed_mps": 0,
+  "countdown_s": 5,
+  "engage_limit_s": 600,
+  "debrief_s": 20,
+  "debrief_max_s": 240,
+  "bot_ready_s": 3,
+  "muster_rooms": [
+    "quarters",
+    "mess",
+    "engineering",
+    "medbay",
+    "damage_control",
+    "ready_room",
+    "life_support",
+    "a_corridor"
+  ],
+  "muster_spacing_m": 0.9,
+  "patrol": {
+    "system": "shoals",
+    "station": "tamsin_station",
+    "berth": "berth_a",
+    "route": [
+      "pell_beacon",
+      "shoals_relay"
+    ],
+    "encounter": "shoals_relay",
+    "clamps_s": 3.0,
+    "drive_ready_min": 0.5,
+    "sweep_s": 20.0,
+    "sweep_range_m": 50000.0,
+    "clear_mps": 150.0,
+    "loiter_mps": 40.0,
+    "resend_s": 2.0
+  }
+}

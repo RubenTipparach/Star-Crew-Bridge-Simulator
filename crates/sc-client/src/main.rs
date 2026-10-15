@@ -26,6 +26,7 @@ mod console;
 mod deckrepair;
 mod drill;
 mod drill_bridge;
+mod firefx;
 mod first_light;
 mod fixture;
 mod game_menu;
@@ -34,6 +35,7 @@ mod lobby;
 mod nameplate;
 mod onfoot;
 mod options;
+mod outside;
 mod playtest;
 mod repairs;
 mod seat;
@@ -465,7 +467,7 @@ fn load_ship(
         probes.len(),
         d.probes.len() as f64 / 1e6
     );
-    let hull = hull::HullView::load(r, &d).map(Box::new);
+    let hull = hull::HullView::load(r, &d)?.map(Box::new);
     match &hull {
         Some(h) => {
             println!("sc-client: the hull from {}, {} triangles", d.index.hull.as_ref().unwrap().source, h.triangles)
@@ -672,6 +674,7 @@ impl Client {
                     playtest: false,
                     film: false,
                     all_hands: false,
+                    mission: "drill-hound".into(),
                 };
                 platform::hand_over(move |_| drill::DrillApp::new(args).map(|c| Box::new(c) as Box<dyn App>));
             }
@@ -768,6 +771,7 @@ impl Client {
                 panel_first: *panel_first,
                 panel_glow: glow,
                 clip_y: wk.decks[k] + MAP_CUT_M - room.origin[1] as f32,
+                relight: sc_render::NO_RELIGHT,
             };
             self.r.draw_deck(&self.target, &room.mesh, DeckProgram::Textured, &p, Some(tex));
         }
@@ -1181,6 +1185,7 @@ impl App for Client {
                     panel_first: *panel_first,
                     panel_glow: glow,
                     clip_y: f32::MAX,
+                    relight: sc_render::NO_RELIGHT,
                 };
                 self.r.draw_deck(&o.bow, &room.mesh, DeckProgram::Textured, &p, Some(tex));
             }
@@ -1234,6 +1239,7 @@ impl App for Client {
                         panel_first: *panel_first,
                         panel_glow: glow,
                         clip_y: f32::MAX,
+                        relight: sc_render::NO_RELIGHT,
                     };
                     self.r.draw_deck(&self.target, mesh, DeckProgram::Textured, &p, Some(tex));
                 }
@@ -1264,7 +1270,11 @@ impl App for Client {
                 }
                 // The hull (tern-exterior 4): after the rooms, so their walls hide most of it before it is shaded.
                 if let Some(h) = hull {
-                    h.draw(&mut self.r, &self.target, proj * view, self.cam.pos);
+                    // In the dock the system's axes are the ship's: the sky's sun as the data has it.
+                    let sun = outside
+                        .as_ref()
+                        .map_or(Vec3::Y, |o| crate::outside::sun_in_ship(&o.data, glam::Quat::IDENTITY));
+                    h.draw(&mut self.r, &self.target, proj * view, self.cam.pos, sun);
                 }
                 // The viewscreens: the bow camera's picture on a quad 3 cm in front of each.
                 if let Some(o) = outside {
@@ -1298,6 +1308,7 @@ impl App for Client {
                     panel_first: u32::MAX,
                     panel_glow: 0.0,
                     clip_y: f32::MAX,
+                    relight: sc_render::NO_RELIGHT,
                 };
                 self.r.draw_deck(&self.target, room, DeckProgram::Textured, &p, Some(tex));
             }
@@ -1541,6 +1552,7 @@ fn main() -> ExitCode {
             playtest: false,
             film: false,
             all_hands: false,
+            mission: "drill-hound".into(),
         };
         return platform::run(cfg, move |gl| {
             println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);
@@ -1579,6 +1591,12 @@ fn main() -> ExitCode {
             playtest: args.iter().any(|a| a == "--playtest"),
             film: args.iter().any(|a| a == "--film"),
             all_hands: args.iter().any(|a| a == "--all-hands"),
+            mission: args
+                .iter()
+                .position(|a| a == "--mission")
+                .and_then(|i| args.get(i + 1))
+                .cloned()
+                .unwrap_or_else(|| "drill-hound".into()),
         };
         return platform::run(cfg, move |gl| {
             println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);

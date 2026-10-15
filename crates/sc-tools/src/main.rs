@@ -6,12 +6,15 @@
 //! `sc-tools deckc [ship]` compiles a ship's decks into `compiled/<ship>.deck` (see `deckc`).
 //! `sc-tools names [count] [seed]` prints generated crew names (lobby design 2), to judge the table.
 //! `sc-tools walk-report [ship]` measures the walk world's heap and a body's step time (see `walk_report`).
+//! `sc-tools safety-points [ship]` places the ship's extinguisher brackets from its layout and compiled deck into
+//! `data/ships/<ship>/kit.json` (see `safety_points`).
 
 mod alloc;
 mod deckc;
 mod dock;
 mod figure;
 mod glb;
+mod safety_points;
 mod walk_report;
 
 /// Every allocation is counted, for `walk-report`'s heap figures.
@@ -45,7 +48,7 @@ fn check_data(root: &Path) -> Result<usize, String> {
     let read = |rel: &str| std::fs::read_to_string(root.join(rel)).map_err(|e| format!("{rel}: cannot be read: {e}"));
     let drill = sc_core::combat::data::DRILL_FILES.map(read);
     let drill = drill.into_iter().collect::<Result<Vec<String>, String>>()?;
-    let missions = ["data/missions/drill-hound.json"];
+    let missions = ["data/missions/patrol-shoals.json", "data/missions/drill-hound.json"];
     let mut drill_data = None;
     for m in missions {
         let texts: [&str; sc_core::combat::data::DRILL_FILE_COUNT] = std::array::from_fn(|i| drill[i].as_str());
@@ -109,6 +112,18 @@ fn main() -> ExitCode {
                 }
             }
         }
+        Some("safety-points") => {
+            match safety_points::run(Path::new("."), args.get(1).map(String::as_str).unwrap_or("tern")) {
+                Ok(s) => {
+                    println!("safety-points: {s}");
+                    ExitCode::SUCCESS
+                }
+                Err(e) => {
+                    eprintln!("safety-points: {e}");
+                    ExitCode::FAILURE
+                }
+            }
+        }
         Some("walk-report") => {
             match walk_report::run(Path::new("."), args.get(1).map(String::as_str).unwrap_or("tern")) {
                 Ok(s) => {
@@ -123,7 +138,7 @@ fn main() -> ExitCode {
         }
         _ => {
             eprintln!(
-                "usage: sc-tools check-data [repository root] | sc-tools deckc [ship] | sc-tools names [count] [seed] | sc-tools walk-report [ship]"
+                "usage: sc-tools check-data [repository root] | sc-tools deckc [ship] | sc-tools names [count] [seed] | sc-tools walk-report [ship] | sc-tools safety-points [ship]"
             );
             ExitCode::from(2)
         }

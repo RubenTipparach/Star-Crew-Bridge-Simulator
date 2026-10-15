@@ -80,6 +80,8 @@ pub struct DrillArgs {
     /// Single player: All hands, no damage-control teams aboard; the crew put the ship right (`--all-hands`,
     /// all-hands 1).
     pub all_hands: bool,
+    /// The mission to load, `data/missions/<id>.json` (`--mission`; a server's welcome names its own).
+    pub mission: String,
 }
 
 struct Meshes {
@@ -91,10 +93,12 @@ struct Meshes {
     missile: Mesh,
     burst: Mesh,
     beam: Mesh,
-    /// Fire on a room's floor, a puff of agent, the extinguisher in hand (all-hands 4).
-    flame: Mesh,
-    puff: Mesh,
+    /// The extinguisher in hand (all-hands 4; the mockups' own).
     held: Mesh,
+    /// The relay at the Shoals, where the helm's COURSE flies (patrol-mission design 3): a placeholder.
+    relay: crate::outside::StationView,
+    /// Tamsin Station until its model arrives (patrol-mission design 3): a placeholder.
+    starbase: crate::outside::StationView,
 }
 
 struct VisBolt {
@@ -149,6 +153,8 @@ pub struct DrillApp {
     exterior: ExteriorData,
     data: DrillData,
     meshes: Meshes,
+    /// The fires, smoke and agent as drawn inside (all-hands 4).
+    fire_fx: crate::firefx::FireFx,
     args: DrillArgs,
     addr: Option<Dial>,
     session: Option<Session>,
@@ -247,12 +253,13 @@ const CONSOLE_RISE_S: f64 = 0.6;
 /// The walk goes to the server this often, seconds (20 a second: other players see a body walk, not hop).
 const WALK_SEND_S: f64 = 0.05;
 
-fn load_data() -> Result<DrillData, String> {
+/// The drill's data for mission `id` (`data/missions/<id>.json`).
+fn load_data(id: &str) -> Result<DrillData, String> {
     let read = |rel: &str| std::fs::read_to_string(rel).map_err(|e| format!("{rel}: {e}"));
     let t: Vec<String> = DRILL_FILES.iter().map(|f| read(f)).collect::<Result<_, _>>()?;
     let arr: [&str; sc_core::combat::data::DRILL_FILE_COUNT] = std::array::from_fn(|i| t[i].as_str());
-    let m = "data/missions/drill-hound.json";
-    DrillData::parse(arr, m, &read(m)?).map_err(|e| e.to_string())
+    let m = format!("data/missions/{id}.json");
+    DrillData::parse(arr, &m, &read(&m)?).map_err(|e| e.to_string())
 }
 
 fn mesh(r: &Renderer, m: &ships3d::MeshBuilder) -> Mesh {
@@ -274,12 +281,14 @@ impl DrillApp {
         let exterior: ExteriorData =
             sc_core::data::parse("data/space/exterior.json", &text).map_err(|e| e.to_string())?;
         console::set_chase(&exterior.viewscreen.chase);
-        let mut data = load_data()?;
+        let mut data = load_data(&args.mission)?;
         if args.all_hands && args.solo {
             data.mission.damage_control = "crew".into();
         }
         let hound = ships3d::hound();
         println!("sc-client: the Hound placeholder is {} triangles", hound.triangles());
+        let relay = crate::outside::StationView::new(&r, ships3d::StationKind::Relay);
+        println!("sc-client: the relay placeholder is {} triangles", relay.triangles);
         let meshes = Meshes {
             hound: mesh(&r, &hound),
             jackal: mesh(&r, &ships3d::jackal()),
@@ -289,9 +298,9 @@ impl DrillApp {
             missile: mesh(&r, &ships3d::missile()),
             burst: mesh(&r, &ships3d::burst()),
             beam: mesh(&r, &ships3d::bolt([2.0, 0.6, 1.3])),
-            flame: mesh(&r, &ships3d::flames()),
-            puff: mesh(&r, &ships3d::puff()),
             held: mesh(&r, &ships3d::extinguisher()),
+            relay,
+            starbase: crate::outside::StationView::new(&r, ships3d::StationKind::Starbase),
         };
         let mut args = args;
         if args.any {
@@ -329,6 +338,7 @@ impl DrillApp {
             exterior,
             data,
             meshes,
+            fire_fx: crate::firefx::FireFx::default(),
             args,
             addr,
             session: None,
@@ -396,11 +406,29 @@ impl DrillApp {
         if app.args.film && app.solo.is_some() {
             app.playtest = Some(crate::playtest::Playtest::film(app.args.station));
         } else if app.args.playtest && app.solo.is_some() {
-            app.playtest = Some(crate::playtest::Playtest::new(app.args.station));
+            // A patrol's script looks out of the windows as the patrol goes on (patrol-mission design 11).
+            app.playtest = Some(if app.data.patrol.is_some() {
+                crate::playtest::Playtest::patrol(app.args.station)
+            } else {
+                crate::playtest::Playtest::new(app.args.station)
+            });
+        }
+        // Where a fire's flames stand in each room: its open floor, from the deck's own geometry.
+        if let Ok(bytes) = std::fs::read("compiled/tern.deck") {
+            if let Ok(d) = sc_core::deck::read(&bytes) {
+                let t0 = std::time::Instant::now();
+                app.fire_fx.set_floors(crate::firefx::open_floors(&d, &app.data.tern_layout.rooms));
+                println!("sc-client: the rooms' open floor for fires, {:.0} ms", t0.elapsed().as_secs_f64() * 1000.0);
+            }
         }
         match crate::drill_bridge::BridgeView::load(&mut app.r, std::path::Path::new("compiled/tern.deck")) {
             Ok(mut b) => {
                 println!("sc-client: the bridge for the crew on foot, {} triangles", b.triangles);
+                let n = b.set_brackets(&app.r, &app.data.tern_layout.brackets);
+                println!(
+                    "sc-client: {} extinguisher brackets round the ship, {n} triangles",
+                    app.data.tern_layout.brackets.len()
+                );
                 b.fov_deg = app.options.fov_deg as f32;
                 app.bridge = Some(b);
             }
@@ -410,10 +438,14 @@ impl DrillApp {
         if !app.args.watch && app.bridge.is_some() {
             let foot = std::fs::read("compiled/tern.deck").map_err(|e| e.to_string()).and_then(|b| {
                 let d = sc_core::deck::read(&b).map_err(|e| e.to_string())?;
-                crate::onfoot::OnFoot::from_deck(&d)
+                crate::onfoot::OnFoot::from_deck(&d).map(|f| (f, d.index.walk.start.at_m))
             });
             match foot {
-                Ok(f) => app.foot = Some(f),
+                Ok((f, start)) => {
+                    // A fire's flames stand where a person can come to them: the walk's joined floor in each room.
+                    app.fire_fx.join_floors(&f.grid, start, &app.data.tern_layout.rooms);
+                    app.foot = Some(f)
+                }
                 Err(e) => println!("sc-client: no walk on foot ({e})"),
             }
         }
@@ -463,13 +495,14 @@ impl DrillApp {
 
     /// One frame on foot (the law: one game, played on foot): the body put where the server has it when it becomes
     /// the player's, the keys' walk, E to sit at a seat in reach (else E and Q climb and work the lifts), the walk sent
-    /// to the server. Returns what E does here, for the screen.
+    /// to the server. `empty` are the brackets standing empty. Returns what E does here, for the screen.
     fn step_foot(
         &mut self,
         dt: f64,
         me: sc_net::msg::BodySnap,
         burning: &[usize],
         jobs: &[sc_core::combat::DeckJob],
+        empty: &[usize],
     ) -> Option<String> {
         let seats = &self.data.stations.seats;
         let (reach, reach_dy) = (seats.reach_m as f32, seats.reach_dy_m as f32);
@@ -494,13 +527,19 @@ impl DrillApp {
             pressed.remove(&keys::E);
             sit = Some(st);
         }
-        // The damage-control locker in reach: E takes an extinguisher (all-hands 4). F, or the left button while looking
-        // round, held, sprays it.
+        // The damage-control locker or a full bracket in reach: E takes an extinguisher (all-hands 4, safety-points
+        // 5a; the server's rule, `Drill::take_extinguisher`). F, or the left button while looking round, held, sprays it.
         let feet = foot.body.feet;
-        let at_locker = self.data.tern_layout.lockers.iter().any(|l| {
+        let layout = &self.data.tern_layout;
+        let near = |l: &glam::DVec3| {
             (l.x - f64::from(feet[0])).hypot(l.z - f64::from(feet[2])) <= f64::from(reach)
                 && (l.y - f64::from(feet[1])).abs() < 1.5
-        });
+        };
+        let bracket_near = |full: bool| {
+            (0..layout.brackets.len()).any(|k| near(&layout.brackets[k].wall) && empty.contains(&k) != full)
+        };
+        let at_locker = layout.lockers.iter().any(near) || bracket_near(true);
+        let emptied = !at_locker && bracket_near(false);
         let mut take = false;
         if at_locker && seat.is_none() && pressed.contains(&keys::E) {
             pressed.remove(&keys::E);
@@ -540,7 +579,18 @@ impl DrillApp {
                 let room = |id: &str| layout.room(id).map(|k| layout.rooms[k].floor.as_vec3().to_array());
                 let fires: Vec<[f32; 3]> =
                     burning.iter().filter_map(|k| layout.rooms.get(*k)).map(|r| r.floor.as_vec3().to_array()).collect();
-                let locker = layout.lockers.first().map(|l| l.as_vec3().to_array());
+                // The nearest place to take one: a full bracket (before it, on the floor) or the locker.
+                let feet_d = glam::DVec3::from_array(feet.map(f64::from));
+                let far = |p: &glam::DVec3| (p.x - feet_d.x).hypot(p.z - feet_d.z) + (p.y - feet_d.y).abs() * 4.0;
+                let locker = layout
+                    .brackets
+                    .iter()
+                    .enumerate()
+                    .filter(|(k, _)| !empty.contains(k))
+                    .map(|(_, b)| b.wall + b.into * 0.6)
+                    .chain(layout.lockers.iter().copied())
+                    .min_by(|a, b| far(a).total_cmp(&far(b)))
+                    .map(|l| l.as_vec3().to_array());
                 let job_at: Vec<[f32; 3]> = jobs.iter().map(|j| j.at.as_vec3().to_array()).collect();
                 let hands = crate::playtest::Hands {
                     at_locker,
@@ -610,8 +660,9 @@ impl DrillApp {
             None if repairing => None,
             None if reach_job.is_some() => reach_job.as_ref().map(|(_, title)| format!("E  Repair: {title}")),
             None if at_locker && me.agent < 1.0 => Some("E  Take an extinguisher".to_owned()),
+            None if emptied && me.agent < 1.0 => Some("Bracket empty".to_owned()),
             None if in_fire && me.agent > 0.0 => Some(format!("FIRE   F  Spray it   (agent {agent:.0}%)")),
-            None if in_fire => Some("FIRE   An extinguisher is in the damage control locker".to_owned()),
+            None if in_fire => Some("FIRE   An extinguisher hangs by the door".to_owned()),
             None => foot
                 .prompt()
                 .map(str::to_owned)
@@ -897,6 +948,10 @@ impl DrillApp {
 
     fn take_visuals(&mut self) {
         let Some(s) = self.session.as_mut() else { return };
+        // Crew chat, printed so playtests show the crew's talk until its screens are approved (crew-chat design 5).
+        for l in s.drain_chat() {
+            println!("sc-client: chat: {}", l.plain());
+        }
         let rtt = s.rtt_ms.unwrap_or(20.0) / 1000.0;
         let now = self.time_s;
         let tern_gun = self.data.gun(&self.data.tern_combat.gun).life_s;
@@ -1045,14 +1100,16 @@ impl DrillApp {
         let proj =
             glam::camera::rh::proj::opengl::perspective(vfov as f32, FEED.0 as f32 / FEED.1 as f32, 1.0, 80_000.0);
         let view_m = glam::camera::rh::view::look_to_mat4(Vec3::ZERO, fwd.as_vec3(), up.as_vec3());
+        let (ext_now, stations) = self.outside_now(ships.map(|x| &x.2));
         let world = World {
             meshes: &self.meshes,
-            exterior: &self.exterior,
+            exterior: &ext_now,
             bolts: &self.bolts,
             beams: &self.beams,
             booms: &self.booms,
             debris: &self.debris,
             time_s: self.time_s,
+            stations,
         };
         self.r.begin_3d(&self.feed, [0.0, 0.0, 0.0, 1.0]);
         world.draw(&mut self.r, &self.feed, proj, view_m, vfov as f32 / FEED.1 as f32, eye, ships);
@@ -1060,13 +1117,59 @@ impl DrillApp {
         if let (Some(s), Some(h)) = (stand, self.bridge.as_ref().and_then(|b| b.hull())) {
             let q = rot.as_quat();
             let in_ship = rot.inverse() * s;
-            h.draw(&mut self.r, &self.feed, proj * view_m * Mat4::from_quat(q), in_ship.to_array());
+            let sun = crate::outside::sun_in_ship(&self.exterior, q);
+            h.draw(&mut self.r, &self.feed, proj * view_m * Mat4::from_quat(q), in_ship.to_array(), sun);
         }
         self.r.end_pass();
         self.r.begin_3d(&self.blank, [0.0, 0.0, 0.0, 1.0]);
         self.r.end_pass();
     }
 }
+
+impl DrillApp {
+    /// The outside of this frame (patrol-mission design 11): in a patrol the sky from the system file as seen from
+    /// the Tern, and the stations within reach (`STATION_DRAW_M`); in the drill the exterior's sky and the relay at
+    /// the mission's waypoint.
+    fn outside_now(&self, snap: Option<&Snapshot>) -> (ExteriorData, Vec<(ships3d::StationKind, DVec3, Quat)>) {
+        let (Some(p), Some(d)) = (snap.and_then(|s| s.patrol.as_ref()), self.data.patrol.as_ref()) else {
+            let relay = (ships3d::StationKind::Relay, DVec3::from_array(self.data.mission.waypoint_m), Quat::IDENTITY);
+            return (self.exterior.clone(), vec![relay]);
+        };
+        let tern = snap.and_then(|s| s.ships.first()).map_or(DVec3::ZERO, |t| t.pos);
+        let ext = crate::outside::exterior_at(&self.exterior, &d.system, p.origin + tern);
+        let mut stations = Vec::new();
+        for st in &d.system.stations {
+            let at = d.system.station_pos(st) - p.origin;
+            if (at - tern).length() <= STATION_DRAW_M {
+                let rot = d.system.station_rot(st).as_quat();
+                stations.push((ships3d::StationKind::Starbase, at, rot));
+            }
+        }
+        let relay = d.places[d.encounter].pos - p.origin;
+        if (relay - tern).length() <= STATION_DRAW_M {
+            stations.push((ships3d::StationKind::Relay, relay, Quat::IDENTITY));
+        }
+        (ext, stations)
+    }
+
+    /// The berth's cradle in the Tern's frame (patrol-mission design 3), while it is near: the transform from the
+    /// docked Tern's frame (where the deck file's `outside` rooms are) to the Tern's frame now.
+    fn cradle_now(&self, ships: Option<&(ShipSnap, ShipSnap, Snapshot)>) -> Option<glam::DMat4> {
+        let (t, _, snap) = ships?;
+        let (p, d) = (snap.patrol.as_ref()?, self.data.patrol.as_ref()?);
+        let berth = d.berth_pos - p.origin;
+        if (berth - t.pos).length() > CRADLE_DRAW_M {
+            return None;
+        }
+        let tern = glam::DMat4::from_rotation_translation(t.rot, t.pos);
+        Some(tern.inverse() * glam::DMat4::from_rotation_translation(d.berth_rot, berth))
+    }
+}
+
+/// Stations are drawn within this of the Tern, metres (patrol-mission design 11.2: beyond, a point; later).
+const STATION_DRAW_M: f64 = 200_000.0;
+/// The berth's cradle is drawn within this of the Tern, metres: inside the bridge's pass's far plane.
+const CRADLE_DRAW_M: f64 = 300.0;
 
 /// What the 3D views draw, borrowed from the app so the renderer can be borrowed beside it.
 struct World<'a> {
@@ -1077,6 +1180,8 @@ struct World<'a> {
     booms: &'a [Boom],
     debris: &'a [Debris],
     time_s: f64,
+    /// The stations outside: which placeholder, where in the drill's frame, and their attitude.
+    stations: Vec<(ships3d::StationKind, DVec3, Quat)>,
 }
 
 impl World<'_> {
@@ -1109,27 +1214,25 @@ impl World<'_> {
     ) {
         let rel = |p: DVec3| (p - eye).as_vec3();
         let flat = crate::drill_bridge::flat_params;
+        // One sun lights everything outside (patrol-mission design 11.3).
+        let sun = Vec3::from_array(normalized(self.exterior.sun.dir));
+        let cube = crate::outside::sun_cube(sun);
+        // The stations: the relay where the helm's COURSE flies, a starbase, their beacons blinking (patrol-mission 3).
+        for (kind, at, rot) in &self.stations {
+            let v = match kind {
+                ships3d::StationKind::Relay => &self.meshes.relay,
+                ships3d::StationKind::Starbase => &self.meshes.starbase,
+            };
+            v.draw(r, t, vp, rel(*at), *rot, sun, &self.exterior.beacons, self.time_s);
+        }
         if let Some((_, hound, snap)) = ships {
             if hound.active && hound.alive {
-                let sun = Vec3::from_array(normalized(self.exterior.sun.dir));
-                let axes = [Vec3::X, -Vec3::X, Vec3::Y, -Vec3::Y, Vec3::Z, -Vec3::Z];
-                let cube = axes.map(|a| {
-                    let s = a.dot(sun).max(0.0);
-                    let fill = (-a.dot(sun)).max(0.0) * 0.12;
-                    [0.2 + 1.3 * s + fill * 0.6, 0.2 + 1.25 * s + fill * 0.7, 0.22 + 1.15 * s + fill]
-                });
                 let q = Quat::from_xyzw(hound.rot.x as f32, hound.rot.y as f32, hound.rot.z as f32, hound.rot.w as f32);
                 let model = Mat4::from_rotation_translation(q, rel(hound.pos));
                 r.draw_deck_probe(t, &self.meshes.hound, vp * model, Mat4::from_quat(q), &cube, [1.0, 0.0, 0.0]);
             }
             // The enemy's fighters (enemy-fighters 4), lit like the Hound.
             for f in &snap.fighters {
-                let sun = Vec3::from_array(normalized(self.exterior.sun.dir));
-                let axes = [Vec3::X, -Vec3::X, Vec3::Y, -Vec3::Y, Vec3::Z, -Vec3::Z];
-                let cube = axes.map(|a| {
-                    let s = a.dot(sun).max(0.0);
-                    [0.2 + 1.3 * s, 0.2 + 1.25 * s, 0.22 + 1.15 * s]
-                });
                 let q = Quat::from_xyzw(f.rot.x as f32, f.rot.y as f32, f.rot.z as f32, f.rot.w as f32);
                 let model = Mat4::from_rotation_translation(q, rel(f.pos));
                 r.draw_deck_probe(t, &self.meshes.jackal, vp * model, Mat4::from_quat(q), &cube, [1.0, 0.0, 0.0]);
@@ -1492,6 +1595,13 @@ impl App for DrillApp {
         }
         if let Some(s) = self.session.as_mut() {
             s.update();
+            // The server's mission is the one played: a client started with another loads it (patrol-mission).
+            if !s.mission.is_empty() && s.mission != self.data.mission.id {
+                match load_data(&s.mission) {
+                    Ok(d) => self.data = d,
+                    Err(e) => self.error = Some(e),
+                }
+            }
             if s.stage == Stage::Closed {
                 self.error = Some("Connection lost; reconnecting".into());
                 self.session = None;
@@ -1539,7 +1649,11 @@ impl App for DrillApp {
                     .map(|(_, _, snap)| snap.damage.fires.iter().map(|r| usize::from(*r)).collect())
                     .unwrap_or_default();
                 let jobs = self.deck_jobs(ships.as_ref().map(|x| &x.2));
-                self.step_foot(dt, me, &burning, &jobs)
+                let empty: Vec<usize> = ships
+                    .as_ref()
+                    .map(|(_, _, snap)| snap.damage.empty_brackets.iter().map(|k| usize::from(*k)).collect())
+                    .unwrap_or_default();
+                self.step_foot(dt, me, &burning, &jobs, &empty)
             }
             _ => None,
         };
@@ -1627,52 +1741,62 @@ impl App for DrillApp {
                 let red = ships.as_ref().is_some_and(|(_, _, s)| s.bridge.red_alert);
                 // The bridge's eye in the system's frame, where the Hound, bolts and bursts are.
                 let eye_out = ships.as_ref().map(|(t, _, _)| t.pos + t.rot * DVec3::from_array(eye));
+                let (ext_now, stations) = self.outside_now(ships.as_ref().map(|x| &x.2));
+                let cradle = self.cradle_now(ships.as_ref());
                 let world = World {
                     meshes: &self.meshes,
-                    exterior: &self.exterior,
+                    exterior: &ext_now,
                     bolts: &self.bolts,
                     beams: &self.beams,
                     booms: &self.booms,
                     debris: &self.debris,
                     time_s: self.time_s,
+                    stations,
                 };
                 let seen = ships.as_ref();
                 let out = crate::drill_bridge::Outside {
                     attitude,
                     lighting: if red { [0.0, 1.0, 0.0] } else { [1.0, 0.0, 0.0] },
                     screen: Some((&self.feed, self.exterior.viewscreen.scanlines as f32)),
+                    cradle,
                     objects: Box::new(move |r, t, vp| {
                         if let Some(e) = eye_out {
                             world.draw_objects(r, t, vp, e, seen);
                         }
                     }),
                 };
-                // The fires burning in the Tern's rooms, and this player's extinguisher (all-hands 4).
-                let rooms = &self.data.tern_layout.rooms;
-                let fires: Vec<[f32; 3]> = ships
+                // The fires burning in the Tern's rooms, and the extinguishers spraying (all-hands 4): this player's from
+                // the one in hand, a crewmate's from their hands.
+                let burning: Vec<usize> = ships
                     .as_ref()
-                    .map(|(_, _, snap)| {
-                        snap.damage
-                            .fires
-                            .iter()
-                            .filter_map(|r| rooms.get(usize::from(*r)))
-                            .map(|r| r.floor.as_vec3().to_array())
-                            .collect()
-                    })
+                    .map(|(_, _, snap)| snap.damage.fires.iter().map(|r| usize::from(*r)).collect())
+                    .unwrap_or_default();
+                let mut nozzles = Vec::new();
+                for (b, _) in bodies.iter().filter(|(b, _)| b.spraying && b.agent > 0.0) {
+                    if hide_me && Some(b.slot) == me {
+                        let feet = self.foot.as_ref().map_or(b.pos[1], |f| f.body.feet[1]);
+                        nozzles.push(crate::firefx::held_nozzle(eye, yaw, pitch, feet));
+                    } else {
+                        nozzles.push(crate::firefx::body_nozzle(b.pos, b.yaw));
+                    }
+                }
+                let rooms = &self.data.tern_layout.rooms;
+                self.fire_fx.step(&burning, rooms, self.time_s, eye, &nozzles, dt as f32);
+                let empty_brackets: Vec<usize> = ships
+                    .as_ref()
+                    .map(|(_, _, snap)| snap.damage.empty_brackets.iter().map(|k| usize::from(*k)).collect())
                     .unwrap_or_default();
                 let inside = crate::drill_bridge::Inside {
-                    fires: &fires,
-                    flame: &self.meshes.flame,
-                    puff: &self.meshes.puff,
+                    fx: &self.fire_fx,
                     held: &self.meshes.held,
+                    empty_brackets: &empty_brackets,
                     carrying: mine.is_some_and(|b| b.agent > 0.0),
-                    spraying: mine.is_some_and(|b| b.spraying),
                     time_s: self.time_s,
                 };
                 let vp = bv.draw(
                     &mut self.r,
                     &self.bridge_target,
-                    &self.exterior,
+                    &ext_now,
                     eye,
                     yaw,
                     pitch,
@@ -1817,7 +1941,7 @@ impl App for DrillApp {
             _ => {}
         }
         // The seated player's hands on the console, in Engage only (the briefing and debrief sit over it otherwise).
-        let engage = ships.as_ref().is_some_and(|x| x.2.phase == Phase::Engage);
+        let engage = ships.as_ref().is_some_and(|x| x.2.phase.live());
         let pressed = std::mem::take(&mut self.pressed);
         let engage = engage && !self.menu.open();
         if let (true, Some(_), None, Some((hits, scale)), Some(v), Some((t, h, _))) =
@@ -2100,7 +2224,7 @@ fn draw_ui(ctx: &egui::Context, v: &UiView, ask: &mut Vec<UiAsk>, show_net: bool
     }
     match snap.phase {
         Phase::Muster | Phase::Countdown => briefing(ctx, v, snap, ask),
-        Phase::Engage => {
+        Phase::Engage | Phase::Patrol => {
             // A refused command says why, over the status strip, for a few seconds.
             if let Some((why, age)) = v.refused.as_ref().filter(|r| r.1 < 3.0) {
                 let _ = age;

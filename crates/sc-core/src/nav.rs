@@ -295,14 +295,8 @@ impl NavGrid {
         best.map(|(_, c)| c)
     }
 
-    /// The walkable point nearest `p` within `reach_m`, if any.
-    pub fn snap(&self, p: [f32; 3], reach_m: f32) -> Option<[f32; 3]> {
-        self.nearest(p, reach_m).map(|c| self.point(c))
-    }
-
-    /// The walkable point on `p`'s deck nearest `p` within `reach_m` that a walk from `from` reaches: a room's floor,
-    /// never a pocket the grid cannot leave (a table top, a corner boxed in by furniture), if any.
-    pub fn snap_joined(&self, p: [f32; 3], reach_m: f32, from: [f32; 3]) -> Option<[f32; 3]> {
+    /// Which cells a walk from `from` reaches (by cell index), if `from` is on the grid.
+    fn joined_mask(&self, from: [f32; 3]) -> Option<Vec<bool>> {
         let start = self.nearest(from, 1.5)?;
         let mut joined = vec![false; self.floor.len()];
         joined[start] = true;
@@ -316,6 +310,25 @@ impl NavGrid {
                 }
             }
         }
+        Some(joined)
+    }
+
+    /// Every floor point a walk from `from` reaches, in the grid's order: the ship's floor as a person can stand on it,
+    /// never a pocket walled off from it (the inside of the reactor's ring, a corner boxed in by machinery).
+    pub fn joined(&self, from: [f32; 3]) -> Vec<[f32; 3]> {
+        let Some(mask) = self.joined_mask(from) else { return Vec::new() };
+        mask.iter().enumerate().filter(|(_, j)| **j).map(|(c, _)| self.point(c)).collect()
+    }
+
+    /// The walkable point nearest `p` within `reach_m`, if any.
+    pub fn snap(&self, p: [f32; 3], reach_m: f32) -> Option<[f32; 3]> {
+        self.nearest(p, reach_m).map(|c| self.point(c))
+    }
+
+    /// The walkable point on `p`'s deck nearest `p` within `reach_m` that a walk from `from` reaches: a room's floor,
+    /// never a pocket the grid cannot leave (a table top, a corner boxed in by furniture), if any.
+    pub fn snap_joined(&self, p: [f32; 3], reach_m: f32, from: [f32; 3]) -> Option<[f32; 3]> {
+        let joined = self.joined_mask(from)?;
         let d = self.deck_of(p[1]);
         let r = (reach_m / CELL_M).ceil() as i64;
         let (cx, cz) = (((p[0] - self.x0) / CELL_M).round() as i64, ((p[2] - self.z0) / CELL_M).round() as i64);
@@ -610,6 +623,20 @@ mod tests {
         let q = g.snap_joined([1.0, 0.0, 5.0], 2.0, [-5.0, 0.0, 5.0]).expect("floor the walk reaches, across the wall");
         assert!(q[0] < 0.0, "the joined snap is on the start's side: {q:?}");
         assert_eq!(g.snap_joined([8.0, 0.0, 5.0], 2.0, [-5.0, 0.0, 5.0]), None, "nothing joined within reach");
+    }
+
+    #[test]
+    fn the_joined_floor_is_what_a_walk_reaches_and_not_a_walled_off_room() {
+        let d = data();
+        let mut t = Vec::new();
+        quad(&mut t, [-10.0, 0.0, 0.0], [-10.0, 0.0, 10.0], [10.0, 0.0, 10.0], [10.0, 0.0, 0.0]);
+        quad(&mut t, [0.0, 0.0, 0.0], [0.0, 3.0, 0.0], [0.0, 3.0, 10.0], [0.0, 0.0, 10.0]);
+        let w = WalkWorld::new(&t, &WalkEntities::default(), &d).expect("world");
+        let g = NavGrid::build(&w, &[0.0], [-10.0, 0.0, 10.0, 10.0], &[], &[]);
+        let joined = g.joined([-5.0, 0.0, 5.0]);
+        assert!(joined.len() > 200, "the start's room: {}", joined.len());
+        assert!(joined.iter().all(|p| p[0] < 0.0), "never across the wall");
+        assert!(g.joined([30.0, 0.0, 5.0]).is_empty(), "off the grid, nothing");
     }
 
     #[test]

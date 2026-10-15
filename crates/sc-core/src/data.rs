@@ -36,6 +36,14 @@ pub struct Checks {
 }
 
 impl Checks {
+    /// The first problem as a load error of `file`, or none.
+    pub fn result(self, file: &str) -> Result<(), DataError> {
+        match self.first {
+            Some((field, message)) => Err(DataError { file: file.to_owned(), field, message }),
+            None => Ok(()),
+        }
+    }
+
     fn fail(&mut self, field: &str, message: String) {
         if self.first.is_none() {
             self.first = Some((field.to_owned(), message));

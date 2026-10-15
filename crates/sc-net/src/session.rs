@@ -8,6 +8,7 @@ use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 
 use sc_core::combat::automation::{Hostile, Own, Picture};
+use sc_core::combat::chat::{Kind as ChatKind, Line as ChatLine};
 use sc_core::combat::{Command, Phase, Refusal, Station, ENEMY_ID};
 
 use crate::link::Link;
@@ -87,6 +88,9 @@ pub enum Stage {
 /// A repair job's next round as the server gave it: the round, its level, whether it opens with the part.
 pub type RepairRound = (u8, u8, bool);
 
+/// The most chat lines a session holds until they are drained (a session nobody drains, a bot's, keeps its newest).
+pub const CHAT_HELD: usize = 64;
+
 /// A client's session.
 pub struct Session {
     net: ClientNet,
@@ -114,6 +118,8 @@ pub struct Session {
     pub repairs: Vec<(u8, Option<RepairRound>)>,
     /// The smoothed round trip, in milliseconds.
     pub rtt_ms: Option<f64>,
+    /// Chat lines since the client last took them, oldest first, at most [`CHAT_HELD`] (crew-chat design 1).
+    chat: VecDeque<ChatLine>,
     epoch: Instant,
     last_ping: f64,
     /// Messages that failed to decode.
@@ -151,6 +157,7 @@ impl Session {
             refused: None,
             repairs: Vec::new(),
             rtt_ms: None,
+            chat: VecDeque::new(),
             epoch: Instant::now(),
             last_ping: -10.0,
             dropped: 0,
@@ -234,6 +241,12 @@ impl Session {
             ServerMsg::Burst { pos, size, .. } => self.visuals.push(Visual::Burst { pos, size }),
             ServerMsg::Launched { .. } | ServerMsg::Phase(..) => {}
             ServerMsg::Repair { job, next } => self.repairs.push((job, next)),
+            ServerMsg::Chat(line) => {
+                if self.chat.len() >= CHAT_HELD {
+                    self.chat.pop_front();
+                }
+                self.chat.push_back(line);
+            }
             ServerMsg::Pong(ms) => {
                 let rtt = (now * 1000.0 - f64::from(ms)).max(0.0);
                 self.rtt_ms = Some(self.rtt_ms.map_or(rtt, |r| r * 0.8 + rtt * 0.2));
@@ -245,6 +258,19 @@ impl Session {
     /// server's own 5 s has lost it, however long the transport takes to say so.
     pub fn silent_s(&self) -> f64 {
         self.now_s() - self.heard_s
+    }
+
+    /// Chat lines since the last call, oldest first.
+    pub fn drain_chat(&mut self) -> Vec<ChatLine> {
+        self.chat.drain(..).collect()
+    }
+
+    /// Say a line of chat (a player's typing is [`ChatKind::Say`]), cleaned as the server keeps it; an empty line is
+    /// not sent. The server stamps who and when.
+    pub fn say(&self, kind: ChatKind, text: &str) {
+        if let Some(text) = sc_core::combat::chat::clean_text(text) {
+            self.net.send(Chan::Command, ClientMsg::Chat { kind, text }.encode());
+        }
     }
 
     /// Visual events since the last call.
@@ -376,6 +402,7 @@ impl Session {
                 turret_modes: t.turrets.iter().map(|x| x.mode).collect(),
                 tubes: t.tubes.iter().map(|x| x.0).collect(),
                 magazine: u32::from(t.magazine),
+                hull_mj: t.hull,
             },
             hostile: e.filter(|e| e.active && e.alive).map(|e| Hostile { id: ENEMY_ID, pos: e.pos, vel: e.vel }),
         })

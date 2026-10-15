@@ -99,6 +99,44 @@ python tools/materials/postprocess.py --only exterior_pearl exterior_graphite
 
 Lower-detail exterior atlases are separate Blender bakes of the full model, not repeated copies of the paint layer. Their source is [the exterior builder](../blender/build_ship_exteriors.py).
 
+**Plain steel, 2026-10-14.** `ptex/plain_steel.ptex` is Star Crew's own graph (`plain_steel()` in
+`build_ptex.py`): painted steel with a horizontal brushed grain and a few light scratches, with no
+panels, seams or grid. `bulkhead` and `trim` take it with two ramps (slate blue-grey walls, lighter
+grey trims). The owner had the `tech_panel` grid taken off the interiors ("I just wanted you to
+remove the grid pattern that I didnt like that you were using for ship interiors") and allowed
+generic base textures there. It was rendered by Material Maker `174f15e` on the Raspberry Pi 5 itself:
+Godot 4.7's linux.arm64 build, the `material-maker-headless` checkout and patches, Mesa's lavapipe
+(`VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.aarch64.json`) on the Pi's desktop display, about
+45 s for one 2048 px graph. Only `plain_steel` was rendered there; the two layers were built with
+`postprocess.py --only bulkhead trim`, the others are the committed layers.
+
+**The O'Neill pair's two layers, 2026-10-14** (`openspec/changes/spacedock` design 5b, version E). The owner: "we
+should have 2 layers of texture, detail layer, and the big albiedo color map, and maybe normal maps on the details".
+These are exterior atlases and tiled detail maps, not layers of the texture array (no layer is added or renumbered):
+
+| Texture (`assets/textures/oneill/`) | Graph (`build_ptex.py`) | Size | Use |
+| --- | --- | ---: | --- |
+| `oneill_macro` | `oneill_macro()` | 1024 px | Wrapped once round a cylinder's outside: three hull strips, three window strips of glazing (frames and panes; the land is inside, not painted here), orange bands, km-scale grime; alpha is the panes (the graph's emission) |
+| `oneill_land` | `oneill_land()` | 512 x 2048 px | The land inside, once over a stripe: hedged fields, woods, rivers and lakes with their shores, a road and lanes, towns of grey and terracotta roofs among trees; alpha the water (no detail layer on it) |
+| `oneill_land_detail` | `oneill_land_detail()` | 256 px | 64 m of land, tiled: a soft mottle and faint crop rows |
+| `oneill_clouds` | `oneill_clouds()` | 512 px | The cloud cover inside, once round it; alpha where the cumulus stand |
+| `oneill_dome` | `oneill_dome()` | 512 px | A dome's inside: greeble structure (ribs, rings, plated sectors, vents, hatches), alpha its lit windows; never land, as nothing can stand on a dome |
+| `oneill_cap` | `oneill_cap()` | 512 px | Once over an end dome |
+| `oneill_detail`, `oneill_detail_normal` | `oneill_detail()` | 512 px | 16 m of uneven hull plating, tiled, multiplying the macro; its tangent-space normal map (OpenGL, green up) |
+| `oneill_mirror`, `oneill_mirror_normal` | `oneill_mirror()` | 256 px | Mirror facets, tiled, and their normal map |
+
+19,223,888 bytes with mips (18.3 MiB). Rendered by Material Maker `174f15e` on the Raspberry Pi 5 (as plain steel
+above), packaged by `oneill_atlases.py` (resizing and channel packing only; deterministic, prints a digest) with its own
+contact sheet, `docs/screenshots/materials/oneill-contact-sheet.png`. The detail normal map is for the per-pixel
+lighting the spacedock design proposes for station exteriors, to be measured on the Pi before the engine takes it.
+
+```sh
+python3 tools/materials/build_ptex.py      # writes ptex/oneill_*.ptex (restore tern_hull*.ptex if it rewrites them)
+MM_DIR=/tmp/material-maker GODOT=/path/to/Godot_v4.7-stable_linux.arm64 \
+  bash .claude/skills/material-maker-headless/scripts/render.sh -o tools/materials/raw/oneill --size 2048 tools/materials/ptex/oneill_*.ptex
+python3 tools/materials/oneill_atlases.py
+```
+
 **Wall panels** (`openspec/changes/wall-panels`, a prototype) are not Material Maker graphs: they are
 modelled and baked in Blender by `tools/blender/build_wall_panels.py` from
 `data/materials/panels.json`, which renders into `raw/panels/` and reuses this directory's
@@ -157,7 +195,7 @@ Copied from **fps-game-demo** (Undercity/Brushfire), revision **`f6cd25c`**, on 
 
 | Here | Source in fps-game-demo | How the graph was made | Changes here |
 | --- | --- | --- | --- |
-| `ptex/tech_panel.ptex` | `tools/material_maker/ptex/tech_panel.ptex` | Authored by its `build_ptex.py` | None (byte for byte) |
+| `ptex/tech_panel.ptex` | `tools/material_maker/ptex/tech_panel.ptex` | Authored by its `build_ptex.py` | None (byte for byte). Since 2026-10-14 it makes only the exterior `hull` and `hull_dark`; no interior surface takes its grid |
 | `ptex/floor_tiles.ptex` | `tools/material_maker/ptex/floor_tiles.ptex` | Authored by its `build_ptex.py` | None |
 | `ptex/ceiling_tiles.ptex` | `tools/material_maker/ptex/ceiling_tiles.ptex` | Authored by its `build_ptex.py` | None |
 | `ptex/hazard_stripes.ptex` | `tools/material_maker/ptex/hazard_stripes.ptex` | Authored by its `build_ptex.py` | None |

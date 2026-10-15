@@ -27,10 +27,19 @@ every room's walls and doors and every deck's walk graph.
    whose main door wall has no clear bay takes the nearest clear bay within 2 m.
 2. **Big rooms** take another for every 80 m^2 of floor beyond the first 80 (engineering, the hangar, cargo), on the
    wall bay farthest by walk from the points already placed.
-3. **Passages and the rest**: while any walkable floor point on a deck is more than **10 m's walk** from a safety
-   point (by the deck's walk graph, `deck_access`), place one on the passage wall nearest that point.
-4. **Never** in a doorway's swing or slide, in front of a console, a hatch, a ladder or a fixture, or on a hull
-   window; never in an airlock, a turret pod or an escape pod (they have their own kit).
+3. **Corridors, evenly** (the owner, 2026-10-12: "there should be an extinguisher in every room and spaced out evenly
+   in corridors"): a corridor `L` metres long takes `n = ceil(L / 8)` points, at `L (i + 1/2) / n` along it, so no two
+   are more than **8 m** apart and none is more than 4 m from an end. They take the two walls in turn (port, then
+   starboard), each in the bay between two frames nearest its place (`detailing.json` `frames`: ribs every 2.0 m, so
+   a bay's middle is at an odd metre); a place on a door's wall that the door's clearance (rule 4) refuses moves to the
+   other wall, then along to the next bay.
+4. **The rest**: the tool still reports the longest straight-line distance from any room or corridor floor point to a
+   point, per deck; a deck over 10 m there gets a point on the passage wall nearest it.
+5. **Never** in a doorway's swing or slide (0.4 m clear of its frame), in front of a console (1.2 m from a seat), a
+   hatch, a ladder or a fixture, or on a hull window; never in an airlock, a turret pod or an escape pod (they have
+   their own kit). A window is the window as built (the layout patches move the bridge's and add the rooms'): the
+   bracket and its sign, 0.5 to 2.05 m over the floor, keep 0.15 m clear of its glass along the wall. Found 2026-10-14
+   when a sign stood in front of the bridge's forward window (`sc-tools safety-points` had read only layout.json).
 
 The tool reports the count, every point's position, and the longest walk to a point on each deck. Expected on the
 Tern: about 30 points (the tool's count is the number; this is an estimate).
@@ -107,6 +116,42 @@ bracket restocks whether or not anyone is near it.
   `fire.html` uses them (take the extinguisher from the quarters' point).
 - **Engine**: `deckc` writes the points into the deck as static props (the bracket, cabinet and sign), and the
   extinguisher and kit as item entities that can be taken (`crew-on-deck` 6). An empty bracket is the bracket alone.
+
+## 5a. The first build in the engine (2026-10-12)
+
+The owner's word on the corridors came while the game was being played on foot, so the extinguishers go in first, and
+the first aid cabinets follow with the injured crew (`medical-officer`, `crew-on-deck` 7), where a kit has a use.
+
+- **Placement.** `sc-tools safety-points` writes `kit.json` (design 4) with each point's wall point, the way into the
+  room, its room and its rule. It is the engine's tool rather than `tools/safety_points.py` because each place is
+  checked against the compiled deck as built: a probe from inside the room finds the deck's wall (deck A is the
+  command suite's, which `layout.json` does not draw), the bracket goes on it, and the place is refused where anything
+  stands proud of the wall or there is no floor before it. `holds` is `["extinguisher"]` until the cabinets come.
+  `sc-core` reads the file with the layout (`ShipLayout.brackets`), so the server and every client agree where they
+  are.
+- **Taking one.** A player within a seat's reach (1.5 m, `stations.json`) of a full bracket, or of the damage control
+  locker, takes an extinguisher with E (`all-hands` 4's `TakeExtinguisher`, unchanged). The bracket is empty for
+  `fire.bracket_restock_s` (15 s, `damage.json`; the same number as `atmosphere.json`'s
+  `fire.extinguisher.bracket_restock_s`, and the drill's load refuses them unequal), then full again (3a). The locker
+  never empties.
+- **Seen.** The snapshot carries the empty brackets (protocol 13: a bitset, a byte for every eight up to the last
+  empty one, after a byte that counts them; seven bytes at worst on the Tern, where a list of 45 would not fit the
+  datagram). Each point is drawn as the mockups draw it, painted and unlit (`firefight.js` `paint`): the back plate
+  and strap, the sign at 1.9 m, and the extinguisher in a full bracket, the mockup's model (`ships3d::extinguisher`).
+  The ghost filling an empty bracket (3a) waits for a translucent deck program; until then an empty bracket is the
+  bracket alone (design 5).
+- **Found in a fire** (the owner, 2026-10-12: "fire extenguisher should flash yellow (a soft transition to highlight
+  them)", "when there is a fire"). While any fire burns aboard, every extinguisher on a wall breathes from its red to a
+  yellow (#ffd23f, shaded as its red is) and back, a 1.6 s breath reaching 85% of the yellow, starting and stopping
+  over a second, so it is never a blink; with no fire it is its red. It is drawn by the extinguishers' own mesh: its
+  third colour set is the yellow, and its draw's state weights blend toward it (the mesh is unlit, so the deck's
+  emergency set is free); nothing is added to the draw. Recommendation taken (ask only with screenshots): the yellow,
+  the breath's 1.6 s and its 85%, the brackets and signs unchanged. `the_extinguishers_breathe_yellow_while_a_fire_burns_and_softly`.
+- **The playtest** goes to the nearest full bracket, not the locker.
+- **Its cost, measured (2026-10-12):** 45 brackets, 7,380 triangles (each the plate, strap and sign, 36, and the
+  extinguisher, 128, the mockups' own), in two groups along the keel (the vertex format reaches 32 m from a mesh's
+  origin): a draw for each group's fixed parts and one for each run of full brackets, four while all are full. The
+  snapshot grows by a byte, and by up to six more while brackets stand empty.
 
 ## 6. The Pi 5 budget
 

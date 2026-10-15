@@ -6,7 +6,9 @@
 //! [`Picture`], which the server builds from the drill and a client builds from a snapshot, so it never needs more
 //! than a console shows.
 
-use super::data::{CaptainProfile, DrillData, EngineeringProfile, FlightBlock, HelmProfile, TacticalProfile};
+use super::data::{
+    CaptainOrders, CaptainProfile, DrillData, EngineeringProfile, FlightBlock, HelmProfile, TacticalProfile,
+};
 use super::{
     off_bow_deg, steer_toward, Bridge, Command, Drill, HelmMode, PowerCmd, Station, TubeState, TurretMode, ENEMY_ID,
 };
@@ -39,6 +41,8 @@ pub struct Own {
     pub tubes: Vec<TubeState>,
     /// Missiles aboard, not counting the tubes.
     pub magazine: u32,
+    /// Hull left, MJ.
+    pub hull_mj: f64,
 }
 
 /// A hostile as a console sees it.
@@ -80,6 +84,7 @@ impl Picture {
                 turret_modes: t.turrets.iter().map(|x| x.mode).collect(),
                 tubes: t.tubes.iter().map(|x| x.state).collect(),
                 magazine: t.magazine,
+                hull_mj: t.hull,
             },
             hostile: (e.active && e.alive).then_some(Hostile { id: ENEMY_ID, pos: e.pos, vel: e.vel }),
         }
@@ -159,11 +164,15 @@ pub fn engineering(
     out
 }
 
-/// When the captain's automation next decides.
+/// When the captain's automation next decides, and the orders a bot captain has given this round.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct CaptainMemory {
     /// Seconds into Engage.
     pub next_s: f64,
+    /// The orders given this round, a bit each in [`captain_orders`]'s list.
+    pub given: u8,
+    /// When the last order went, seconds into Engage.
+    pub ordered_s: Option<f64>,
 }
 
 /// The captain's automation (bridge-stations 3): auto-condition, nothing else. Red alert when a hostile comes within
@@ -187,6 +196,41 @@ pub fn captain(
     let clear = range.is_none_or(|r| r > p.normal_beyond_m);
     if bridge.red_alert && clear && now_s - bridge.hostile_near_s >= p.normal_after_s {
         return vec![Command::Alert(false)];
+    }
+    Vec::new()
+}
+
+/// A bot captain's orders (crew-chat design 3): at most one each `gap_s`, each once a round, the first that applies
+/// of: Tactical ENGAGE, then Helm CHASE, at red alert with a hostile in the fight; Science SCAN while the hostile is not
+/// scanned; Engineering REPAIR with the hull under `repair_below_frac` of full; Engineering CRUISE when red alert ends
+/// after the fight. A verb the station does not have (`data/stations.json`) is skipped.
+pub fn captain_orders(
+    pic: &Picture,
+    bridge: &Bridge,
+    data: &DrillData,
+    p: &CaptainOrders,
+    mem: &mut CaptainMemory,
+    now_s: f64,
+) -> Vec<Command> {
+    if mem.ordered_s.is_some_and(|t| now_s - t < p.gap_s) {
+        return Vec::new();
+    }
+    let fight = bridge.red_alert && pic.hostile.is_some();
+    let wants = [
+        (Station::Tactical, "ENGAGE", fight),
+        (Station::Helm, "CHASE", fight),
+        (Station::Science, "SCAN", pic.hostile.is_some() && bridge.scan < 1.0),
+        (Station::Engineering, "REPAIR", pic.own.hull_mj < data.tern_combat.hull_mj * p.repair_below_frac),
+        (Station::Engineering, "CRUISE", !bridge.red_alert && mem.given & 1 != 0),
+    ];
+    for (bit, (to, verb, applies)) in wants.into_iter().enumerate() {
+        if !applies || mem.given & (1 << bit) != 0 {
+            continue;
+        }
+        let Some(i) = data.order_verbs(to).iter().position(|v| v[0] == verb) else { continue };
+        mem.given |= 1 << bit;
+        mem.ordered_s = Some(now_s);
+        return vec![Command::Order(to, i as u8)];
     }
     Vec::new()
 }

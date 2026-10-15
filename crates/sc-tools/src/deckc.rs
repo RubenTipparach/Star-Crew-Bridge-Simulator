@@ -23,6 +23,7 @@ use sc_core::deck::{
     self, DeckCompartment, DeckHull, DeckIndex, DeckProbes, DeckTextures, DeckView, DeckWalk, HullArray, HullPart,
     WalkDoor, WalkHatch, WalkLadder, WalkLift, WalkStart,
 };
+use sc_core::mips::{mip_chain, shrink};
 use sc_core::vertex::{pack_deck_vertex, DeckVertexIn};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -158,45 +159,6 @@ fn floats(dir: &Path, name: &str, want: usize) -> Result<Vec<f32>, String> {
 /// A colour multiplier as the byte the deck stores (a display multiplier, 0-2x).
 fn color_byte(c: f32) -> u8 {
     ((c.max(0.0).powf(1.0 / 2.2) / 2.0).clamp(0.0, 1.0) * 255.0).round() as u8
-}
-
-/// Box-filter `src` (square RGBA8 layers of `from` px) to `to` px, `to` dividing `from`.
-fn shrink(src: &[u8], from: u32, to: u32) -> Vec<u8> {
-    let k = (from / to) as usize;
-    let (f, t) = (from as usize, to as usize);
-    let mut out = vec![0u8; t * t * 4];
-    for y in 0..t {
-        for x in 0..t {
-            let mut acc = [0u32; 4];
-            for dy in 0..k {
-                for dx in 0..k {
-                    let i = ((y * k + dy) * f + x * k + dx) * 4;
-                    for (c, a) in acc.iter_mut().enumerate() {
-                        *a += u32::from(src[i + c]);
-                    }
-                }
-            }
-            for c in 0..4 {
-                out[(y * t + x) * 4 + c] = (acc[c] / (k * k) as u32) as u8;
-            }
-        }
-    }
-    out
-}
-
-/// A texture array's mip chain: level 0 is `level0` (`layers` square RGBA8 layers of `size` px), each next level every
-/// layer box-filtered to half the size, down to 1 px.
-fn mip_chain(level0: Vec<u8>, size: u32, layers: u32) -> Vec<Vec<u8>> {
-    let mut levels = vec![level0];
-    let mut px = size;
-    while px > 1 {
-        let lb = (px * px * 4) as usize;
-        let last = levels.last().unwrap();
-        let next = (0..layers as usize).flat_map(|i| shrink(&last[i * lb..(i + 1) * lb], px, px / 2)).collect();
-        levels.push(next);
-        px /= 2;
-    }
-    levels
 }
 
 /// The middle of compartment `id`'s floor on its lowest deck: the centroid of the largest of its lowest brushes (each is
@@ -610,23 +572,19 @@ pub fn run(root: &Path, ship: &str) -> Result<String, String> {
     ))
 }
 
-/// The ship's hull from its exterior model (tern-exterior 3), packed into the shared blobs; None when
-/// `assets/models/exteriors/props.json` has no model for `ship`. The model is the manifest's default livery's full
-/// detail level; its triangle count and bounds must be the manifest's, and its triangles within the ship's exterior
-/// budget (`data/ships/exteriors.json`, the Pi 5 table's "Ship exterior" row).
-pub(crate) fn hull(
-    root: &Path,
-    ship: &str,
-    vertices: &mut Vec<u8>,
-    indices: &mut Vec<u32>,
-    tex_blob: &mut Vec<u8>,
-) -> Result<Option<DeckHull>, String> {
-    let read_json = |rel: &str| -> Result<serde_json::Value, String> {
-        let text = std::fs::read_to_string(root.join(rel)).map_err(|e| format!("{rel}: {e}"))?;
-        serde_json::from_str(&text).map_err(|e| format!("{rel}: {e}"))
-    };
-    let props = read_json("assets/models/exteriors/props.json")?;
-    if props["props"].get(ship).is_none() {
+/// A JSON file under the repository's root, read and parsed; an error names it.
+fn read_json(root: &Path, rel: &str) -> Result<serde_json::Value, String> {
+    let text = std::fs::read_to_string(root.join(rel)).map_err(|e| format!("{rel}: {e}"))?;
+    serde_json::from_str(&text).map_err(|e| format!("{rel}: {e}"))
+}
+
+/// An exterior model of the default livery (`assets/models/exteriors/props.json`), read and checked: `prop` is the
+/// manifest's key, a ship's id for its full detail level (`tern`) or with its level (`tern_lod2`). Its path from the
+/// root and the model, or None when the manifest has no such model. Its triangle count and bounds must be its livery
+/// manifest's (rounded to the centimetre there).
+pub(crate) fn exterior_model(root: &Path, prop: &str) -> Result<Option<(String, crate::glb::Glb)>, String> {
+    let props = read_json(root, "assets/models/exteriors/props.json")?;
+    if props["props"].get(prop).is_none() {
         return Ok(None);
     }
     let livery = props["default_livery"].as_str().ok_or("props.json: no default_livery")?;
@@ -636,13 +594,11 @@ pub(crate) fn hull(
         .and_then(|x| x["directory"].as_str())
         .ok_or_else(|| format!("props.json: no directory for the livery {livery:?}"))?;
     let base = format!("assets/models/exteriors/{dir}");
-    let manifest = read_json(&format!("{base}/props.json"))?;
-    let entry = &manifest["props"][ship];
-    let file = entry["file"].as_str().ok_or_else(|| format!("{base}/props.json: no file for {ship}"))?;
+    let manifest = read_json(root, &format!("{base}/props.json"))?;
+    let entry = &manifest["props"][prop];
+    let file = entry["file"].as_str().ok_or_else(|| format!("{base}/props.json: no file for {prop}"))?;
     let source = format!("{base}/{file}");
     let model = crate::glb::read(&root.join(&source))?;
-
-    // The checks: the manifest's triangles and bounds (rounded to the centimetre there), and the budget.
     let want = entry["triangles"].as_u64().ok_or_else(|| format!("{base}/props.json: no triangles"))? as usize;
     if model.triangles() != want {
         return Err(format!("{source}: {} triangles, its manifest says {want}", model.triangles()));
@@ -657,7 +613,23 @@ pub(crate) fn hull(
             }
         }
     }
-    let ext = read_json("data/ships/exteriors.json")?;
+    Ok(Some((source, model)))
+}
+
+/// The ship's hull from its exterior model (tern-exterior 3), packed into the shared blobs; None when
+/// `assets/models/exteriors/props.json` has no model for `ship`. The model is the manifest's default livery's full
+/// detail level ([`exterior_model`]), its triangles within the ship's exterior budget (`data/ships/exteriors.json`,
+/// the Pi 5 table's "Ship exterior" row).
+pub(crate) fn hull(
+    root: &Path,
+    ship: &str,
+    vertices: &mut Vec<u8>,
+    indices: &mut Vec<u32>,
+    tex_blob: &mut Vec<u8>,
+) -> Result<Option<DeckHull>, String> {
+    let Some((source, model)) = exterior_model(root, ship)? else { return Ok(None) };
+    let (lo, hi) = model.bounds();
+    let ext = read_json(root, "data/ships/exteriors.json")?;
     let budget = ext["ships"]
         .as_array()
         .and_then(|s| s.iter().find(|x| x["id"] == ship))
@@ -818,6 +790,47 @@ mod tests {
                 k += 1;
             }
         }
+    }
+
+    /// The share of the hull's textured corners whose colour is one of a few tints times the light `ambient +
+    /// (1 - ambient) max(0, n . sun)`: the exterior build's bake (`tools/blender/build_ship_exteriors.py`).
+    fn bake_fit(model: &crate::glb::Glb, sun: [f64; 3], ambient: f64) -> f64 {
+        let len = (sun[0] * sun[0] + sun[1] * sun[1] + sun[2] * sun[2]).sqrt();
+        let s = sun.map(|x| x / len);
+        let (mut fit, mut all) = (0usize, 0usize);
+        for p in model.primitives.iter().filter(|p| p.image.is_some()) {
+            let mut tints: HashMap<[i64; 3], usize> = HashMap::new();
+            for (c, n) in p.colours.iter().zip(&p.normals) {
+                let lambert = (0..3).map(|k| f64::from(n[k]) * s[k]).sum::<f64>().max(0.0);
+                let light = ambient + (1.0 - ambient) * lambert;
+                let tint = std::array::from_fn(|k| (f64::from(c[k]) / light * 100.0).round() as i64);
+                *tints.entry(tint).or_default() += 1;
+            }
+            let mut counts: Vec<usize> = tints.into_values().collect();
+            counts.sort_unstable_by(|a, b| b.cmp(a));
+            fit += counts.iter().take(12).sum::<usize>();
+            all += p.colours.len();
+        }
+        fit as f64 / all as f64
+    }
+
+    #[test]
+    fn the_hull_colours_are_the_bake_that_exteriors_json_names() {
+        // The client divides this bake out to light the hull from the sky's sun (patrol-mission design 11.3), so the
+        // numbers it reads must be the ones the model was baked with: checked on the model itself (CLAUDE.md 6.6).
+        let ext = read_json(root(), "data/ships/exteriors.json").unwrap();
+        let sun: [f64; 3] = std::array::from_fn(|k| ext["sun_dir_ship"][k].as_f64().unwrap());
+        let ambient = ext["ambient_fraction"].as_f64().unwrap();
+        let (source, model) = exterior_model(root(), "tern").unwrap().unwrap();
+        let with_bake = bake_fit(&model, sun, ambient);
+        let sky = read_json(root(), "data/space/exterior.json").unwrap();
+        let sky_sun: [f64; 3] = std::array::from_fn(|k| sky["sun"]["dir"][k].as_f64().unwrap());
+        let with_sky = bake_fit(&model, sky_sun, ambient);
+        assert!(with_bake > 0.95, "{source}: only {with_bake:.3} of its corners are a tint times the named bake");
+        assert!(
+            with_bake > with_sky + 0.1,
+            "the fit tells the bake's sun ({with_bake:.3}) from the sky's ({with_sky:.3})"
+        );
     }
 
     #[test]
