@@ -116,12 +116,15 @@ These are exterior atlases and tiled detail maps, not layers of the texture arra
 
 | Texture (`assets/textures/oneill/`) | Graph (`build_ptex.py`) | Size | Use |
 | --- | --- | ---: | --- |
-| `oneill_macro` | `oneill_macro()` | 1024 px | Wrapped once round a cylinder: three hull strips, three window strips showing the land inside, orange bands, frames, km-scale grime; alpha is the glazing (the graph's emission) |
-| `oneill_cap` | `oneill_cap()` | 512 px | Once over an end cap |
+| `oneill_macro` | `oneill_macro()` | 1024 px | Wrapped once round a cylinder's outside: three hull strips, three window strips of glazing (frames and panes; the land is inside, not painted here), orange bands, km-scale grime; alpha is the panes (the graph's emission) |
+| `oneill_land` | `oneill_land()` | 512 x 2048 px | The land inside, once over a stripe: fields, woods, rivers, lakes, a road and lanes, small towns |
+| `oneill_land_detail` | `oneill_land_detail()` | 256 px | 64 m of land, tiled: crop rows, tree crowns |
+| `oneill_clouds` | `oneill_clouds()` | 512 px | The cloud layer inside, once round it; alpha the cover |
+| `oneill_cap` | `oneill_cap()` | 512 px | Once over an end dome |
 | `oneill_detail`, `oneill_detail_normal` | `oneill_detail()` | 512 px | 16 m of uneven hull plating, tiled, multiplying the macro; its tangent-space normal map (OpenGL, green up) |
 | `oneill_mirror`, `oneill_mirror_normal` | `oneill_mirror()` | 256 px | Mirror facets, tiled, and their normal map |
 
-10,485,752 bytes with mips (10.0 MiB). Rendered by Material Maker `174f15e` on the Raspberry Pi 5 (as plain steel
+17,825,788 bytes with mips (17.0 MiB). Rendered by Material Maker `174f15e` on the Raspberry Pi 5 (as plain steel
 above), packaged by `oneill_atlases.py` (resizing and channel packing only; deterministic, prints a digest) with its own
 contact sheet, `docs/screenshots/materials/oneill-contact-sheet.png`. The detail normal map is for the per-pixel
 lighting the spacedock design proposes for station exteriors, to be measured on the Pi before the engine takes it.

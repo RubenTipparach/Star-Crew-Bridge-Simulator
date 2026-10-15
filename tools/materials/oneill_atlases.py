@@ -12,10 +12,12 @@ atlases"). It resizes and packs channels; it never draws a pixel of its own (CLA
 Two layers of texture, as the owner asked (2026-10-14: "we should have 2 layers of texture, detail
 layer, and the big albiedo color map, and maybe normal maps on the details"):
 
-- oneill_macro: wrapped once round a cylinder (x round it, y along it), 1024 x 1024 px. Alpha is
-  the glazing mask (Material Maker's emission output): the window strips that glow faintly and
-  glint in the sun.
-- oneill_cap: once over an end cap's disc, 512 x 512 px.
+- oneill_macro: the outside, wrapped once round a cylinder (x round it, y along it), 1024 x 1024 px.
+  Alpha is the glazing's panes (Material Maker's emission output), drawn see-through.
+- oneill_cap: once over an end dome, 512 x 512 px.
+- oneill_land: the land inside, once over one land stripe (x across, y along), 512 x 2048 px.
+- oneill_land_detail: the land's tiled detail (64 m a repeat), 256 x 256 px.
+- oneill_clouds: the cloud layer inside, once round its cylinder, 512 x 512 px, alpha the cover.
 - oneill_detail, oneill_detail_normal: the tiled detail layer (16 m a repeat), 512 x 512 px, its
   albedo near white (it multiplies the macro colour) and its tangent-space normal map
   (OpenGL convention, green up), for the per-pixel lighting proposed in the spacedock design.
@@ -38,6 +40,9 @@ SHEET = os.path.join(ROOT, "docs", "screenshots", "materials", "oneill-contact-s
 # name: (graph, map, size px, what one repeat covers, alpha source)
 TEXTURES = [
     ("oneill_macro", "oneill_macro", "albedo", 1024, "once round the cylinder", "emission"),
+    ("oneill_land", "oneill_land", "albedo", (512, 2048), "once over a land stripe", None),
+    ("oneill_land_detail", "oneill_land_detail", "albedo", 256, "64 m of land, tiled", None),
+    ("oneill_clouds", "oneill_clouds", "albedo", 512, "once round the cloud layer", "emission"),
     ("oneill_cap", "oneill_cap", "albedo", 512, "once over an end cap", None),
     ("oneill_detail", "oneill_detail", "albedo", 512, "16 m of hull, tiled", None),
     ("oneill_detail_normal", "oneill_detail", "normal", 512, "16 m of hull, tiled", "opaque"),
@@ -47,26 +52,31 @@ TEXTURES = [
 
 
 def mip_bytes(px):
-    """RGBA8 bytes of a square texture with its full mip chain."""
-    total, s = 0, px
-    while s >= 1:
-        total += s * s * 4
-        s //= 2
-    return total
+    """RGBA8 bytes of a texture (px, or (w, h)) with its full mip chain."""
+    w, h = px if isinstance(px, tuple) else (px, px)
+    total = 0
+    while True:
+        total += w * h * 4
+        if w == 1 and h == 1:
+            return total
+        w, h = max(1, w // 2), max(1, h // 2)
 
 
 def build(name, graph, kind, px, alpha):
     src = os.path.join(RAW, f"{graph}_{kind}.png")
     if not os.path.exists(src):
         sys.exit(f"oneill_atlases: no render {os.path.relpath(src, ROOT)} (render the graphs first, tools/materials/README.md)")
-    rgb = Image.open(src).convert("RGB").resize((px, px), Image.Resampling.LANCZOS)
-    a = np.zeros((px, px), np.uint8)
+    size = px if isinstance(px, tuple) else (px, px)
+    rgb = Image.open(src).convert("RGB").resize(size, Image.Resampling.LANCZOS)
+    a = np.zeros((size[1], size[0]), np.uint8)
     if alpha == "opaque":
         a[:] = 255
     elif alpha == "emission":
         em = np.asarray(Image.open(os.path.join(RAW, f"{graph}_emission.png")).convert("RGB"), np.float32)
         mask = (em.max(axis=2) > 6.0).astype(np.float32) * 255.0
-        a = np.asarray(Image.fromarray(mask.astype(np.uint8)).resize((px, px), Image.Resampling.BOX))
+        if graph == "oneill_clouds":
+            mask = em.max(axis=2)   # the cover itself, soft-edged
+        a = np.asarray(Image.fromarray(mask.astype(np.uint8)).resize(size, Image.Resampling.BOX))
     img = np.dstack([np.asarray(rgb), a]).astype(np.uint8)
     os.makedirs(OUT, exist_ok=True)
     path = os.path.join(OUT, name + ".png")
@@ -83,7 +93,7 @@ def main():
         tiles.append((name, px, covers, img))
     # The contact sheet: each texture at 384 px with its name and size, the tiled ones 2 x 2 beside.
     cell = 384
-    sheet = Image.new("RGB", (cell * 4 + 50, (cell + 40) * 3 + 10), (18, 22, 28))
+    sheet = Image.new("RGB", (cell * 4 + 50, (cell + 40) * ((len(tiles) + 1) // 2) + 10), (18, 22, 28))
     d = ImageDraw.Draw(sheet)
     for i, (name, px, covers, img) in enumerate(tiles):
         col, row = (i % 2) * 2, i // 2
@@ -97,13 +107,15 @@ def main():
         elif img[:, :, 3].any():
             a = Image.fromarray(img[:, :, 3]).convert("RGB").resize((cell, cell), Image.Resampling.BOX)
             sheet.paste(a, (x + cell + 10, y))
-        d.text((x, y + cell + 6), f"{name}  {px} px  {covers}", fill=(220, 228, 236))
+        dims = f"{px[0]} x {px[1]}" if isinstance(px, tuple) else f"{px}"
+        d.text((x, y + cell + 6), f"{name}  {dims} px  {covers}", fill=(220, 228, 236))   # a tall one is shown squeezed
     os.makedirs(os.path.dirname(SHEET), exist_ok=True)
     sheet.save(SHEET)
     total = 0
     for name, px, covers, b in rows:
         total += b
-        print(f"{name:24s} {px:5d} px  {covers:32s} {b:10,d} bytes with mips")
+        dims = f"{px[0]} x {px[1]}" if isinstance(px, tuple) else f"{px}"
+        print(f"{name:24s} {dims:>11s} px  {covers:32s} {b:10,d} bytes with mips")
     print(f"{'total':24s} {'':8s}  {'':32s} {total:10,d} bytes ({total / 1048576:.2f} MiB)")
     print("sheet:", os.path.relpath(SHEET, ROOT))
     print("digest:", digest.hexdigest())

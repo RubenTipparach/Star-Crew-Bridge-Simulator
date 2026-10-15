@@ -11,9 +11,10 @@ can actually enter rather than something flimsy. I want there to be multiple shi
 - [x] 1.3 `docs/mockups/spacedock.html`: the versions, each from outside with the Tern on approach, the doors open
   and the Tern entering, inside the bay with the Tern at its gangway, and the view out of a bridge window while
   berthed; its Pi 5 cost; shot into `docs/screenshots/mockups/spacedock-*.png` and looked at.
-- [x] 1.4 Version E, the O'Neill pair: its data, its Material Maker graphs (`oneill_macro`, `oneill_cap`,
-  `oneill_detail`, `oneill_mirror`) rendered on the Pi and packaged by `tools/materials/oneill_atlases.py`, its
-  contact sheet, the per-pixel shader and its light in the mockup, its seven shots looked at.
+- [x] 1.4 Version E, the O'Neill pair, rebuilt hollow from the cited sources: its data, its Material Maker graphs
+  (`oneill_macro`, `oneill_cap`, `oneill_detail`, `oneill_mirror`, `oneill_land`, `oneill_land_detail`,
+  `oneill_clouds`) rendered on the Pi and packaged by `tools/materials/oneill_atlases.py`, its contact sheet, the
+  per-pixel shaders and their light, the axial port and hall, its nine shots looked at.
 - [ ] 1.5 The owner chooses a version (S1), with the shots beside the question in the survey.
 
 ## 2. After the choice

@@ -12,7 +12,9 @@ Later the same day: "what about an oneil cylinder space station? can you make so
 wiht a big space station attached at one end. theres usually two of them to counter balance rotational effects", with two
 reference pictures of O'Neill cylinders; and then "I'd also like you to light it properly as well, texturing is really
 important to sell scale, we should have 2 layers of texture, detail layer, and the big albiedo color map, and maybe
-normal maps on the details".
+normal maps on the details". On the first draft of it: "What oneil cylinders are hollowed cylinders. Didn't you research
+what they looked like and how they work?", "Also notice how the solar panels open up on one side they are blooming
+slightly like aflower", and "The ends are round and should have an opening for ships to enter".
 
 Today the Tern lies in an open girder cradle (`data/space/exterior.json` `dock`), and `patrol-mission` design 3 hangs
 that cradle off a placeholder starbase's berth arm. Seen from the bridge it is a few thin beams against black space:
@@ -31,13 +33,14 @@ disc (17.5 degrees in radius); Orrin and Cinder are bright points of light, and 
   **B. Wheel** (a habitat wheel 1.75 km across round a hub hangar entered along the axis, ships berthed all round its
   curved wall), **C. Drydock** (a long armoured hall 1.7 km long, berths down both walls, ships lying bow out) and
   **D. Hollow** (a captured asteroid 2.2 km long, an armoured gate into a cavern with built berths) and **E. O'Neill
-  Pair** (two counter-rotating O'Neill cylinders 6.4 km long and 1.8 km across, land and window strips, angled mirrors,
-  farm rings, and a non-rotating dock between them at the front end). The choice is the owner's (design, open question
-  S1).
-- **E's textures and light** (design 5b): two layers of texture made in Material Maker, a macro albedo wrapped once
-  round each cylinder and a tiled detail layer with its normal map, blended by distance; one star with a hard
-  terminator, the pair shadowing each other, earthshine, glints on glass and mirrors, the land glowing through the
-  windows, running lights, haze at the far end. Per-pixel lighting for station exteriors is proposed as an exception
+  Pair** (two hollow, counter-rotating O'Neill cylinders 6.4 km long and 1.8 km across, as the cited sources describe
+  them: axes on the star, three land valleys inside under clouds between three glazed windows, three mirrors blooming
+  from the far end like petals, domed ends; ships enter on the axis through a non-rotating port at one sunward dome,
+  into an enclosed hall). The choice is the owner's (design, open question S1).
+- **E's textures and light** (design 5b): two layers of texture made in Material Maker, macro maps (the outside, the land
+  inside, the clouds, the domes) over tiled detail layers with normal maps, blended by distance; the star on the axes,
+  so the sunward domes lit, the sides at a graze and earthshine, the mirrors blazing, the land inside lit through the
+  windows and seen through them, haze inside and far off. Per-pixel lighting for station exteriors is proposed as an exception
   to the Pi 5 rule, with its cost, to be measured on the Pi before the engine takes it.
 - **Entering and berthing on foot** (design 6, the law): helm flies the Tern in by hand or hands it to the dock
   autopilot (`flight-and-navigation` 10); the doors open on traffic control's clearance; inside, the bay's speed limit
@@ -76,6 +79,6 @@ undocking (design 4.2) follow the chosen version (design 11 here says how); that
   `starbase` model when it lands), the deck compiler's dock (`sc-tools/src/dock.rs`, today's girder cradle), the dock
   autopilot (`flight-and-navigation` 10) and `patrol-mission`'s start and undock phases.
 - Versions A-D take no new texture: the exterior paints, deck plate, hazard and light panel layers already in the
-  texture array. E adds six textures (10.0 MiB with mips): `tools/materials/ptex/oneill_*.ptex`,
+  texture array. E adds nine textures (17.0 MiB with mips): `tools/materials/ptex/oneill_*.ptex`,
   `tools/materials/oneill_atlases.py`, `assets/textures/oneill/`, `docs/screenshots/materials/oneill-contact-sheet.png`,
   and a `tex:` block in `tools/mockups/inline.py` to put them in the page.

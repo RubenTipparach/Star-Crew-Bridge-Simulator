@@ -548,11 +548,13 @@ def _steps(*edges, lo=0.0, hi=1.0):
 
 
 def oneill_macro():
-    """The cylinder's macro albedo, wrapped once round it: x runs round the circumference, y along
-    the length. Three hull strips (over the land inside) alternate with three window strips; the
-    windows show the land, rivers, lakes and cloud inside through mullioned glazing. The hull is
-    pearl plating with large panel variation, km-scale grime and weathering, orange identity
-    bands round the cylinder and graphite frames along the windows. Emission is the glazing."""
+    """The cylinder's outer macro albedo, wrapped once round it: x runs round the circumference, y
+    along the length. Three hull strips (the outside of the shell under the land) alternate with
+    three window strips of glazing: many small panes in a frame that carries the pressure (Wikipedia,
+    "O'Neill cylinder"). The land is inside, not painted here: the panes are dark glass, and the
+    emission output marks them (the packer's alpha), so the mockup draws them see-through. The hull is
+    pearl plating with large panel variation, km-scale grime, orange identity bands round the cylinder
+    and graphite frames along the windows."""
     g = Graph("ONeill Macro")
     # 1 in the window strips (the second half of each third of the circumference), 0 on the hull
     win = g.node("greyscale", g.node("gradient", repeat=3, rotate=0, mirror=False, gradient=_steps((0.5, 1.0))), mode=2)
@@ -580,37 +582,101 @@ def oneill_macro():
     hull_d = g.blend(orange, hull_c, bands, mode=NORMAL_B, amount=1.0)
     frame = g.colorize(grime_n, grad((0, "#3d464f"), (1, "#56606a")))
     hull = g.blend(frame, hull_d, edge, mode=NORMAL_B, amount=1.0)
-    # the land seen through the glass: fields, forest, rivers and lakes, cloud
-    land_n = g.node("fbm2", noise=2, scale_x=12, scale_y=12, folds=0, iterations=7, persistence=0.6, offset=0.35)
-    field_n = g.node("bricks", pattern=0, repeat=1, rows=160, columns=96, row_offset=0.3,
-                     mortar=0.06, bevel=0.0, round=0.0, corner=0.0)
-    fields = g.node("greyscale", (field_n, 1), mode=2)
-    land = g.colorize(land_n, grad((0, "#24401f"), (0.4, "#3f5f27"), (0.58, "#66753a"), (0.72, "#8a7d55"), (1, "#a49a7c")))
-    field_c = g.colorize(fields, grad((0, "#3d5a24"), (0.5, "#6d7a36"), (1, "#a59a5e")))
-    farm = g.tone(land_n, (0, 0), (0.45, 0), (0.55, 1), (1, 1))
-    land_b = g.blend(field_c, land, farm, mode=NORMAL_B, amount=0.6)
-    river_n = g.node("fbm2", noise=1, scale_x=6, scale_y=6, folds=0, iterations=5, persistence=0.5, offset=0.15)
-    river = g.tone(river_n, (0, 0), (0.48, 0), (0.5, 1), (0.52, 0), (1, 0))
-    lake = g.tone(land_n, (0, 1), (0.22, 1), (0.27, 0), (1, 0))
-    water_m = g.math(river, lake, op=MAX)
-    water = g.color("#2b5f80")
-    land_w = g.blend(water, land_b, water_m, mode=NORMAL_B, amount=1.0)
-    cloud_n = g.node("fbm2", noise=2, scale_x=16, scale_y=16, folds=0, iterations=6, persistence=0.62, offset=0.8)
-    cloud = g.tone(cloud_n, (0, 0), (0.55, 0), (0.78, 1), (1, 1))
-    land_c = g.blend(g.color("#eef2f5"), land_w, cloud, mode=NORMAL_B, amount=0.75)
-    # the glass: a faint blue haze over the land, mullions down the strip, frames across it
-    glazed = g.blend(g.color("#a8bfd2"), land_c, None, mode=SCREEN, amount=0.22)
-    mull = g.node("greyscale", g.node("gradient", repeat=24, rotate=0, mirror=False, gradient=_steps((0.0, 0.06))), mode=2)
-    xfr = g.node("greyscale", g.node("gradient", repeat=96, rotate=90, mirror=False, gradient=_steps((0.0, 0.09))), mode=2)
+    # the glazing: many small panes, mullions down the strip and frames across it every 33 m
+    mull = g.node("greyscale", g.node("gradient", repeat=72, rotate=0, mirror=False, gradient=_steps((0.0, 0.08))), mode=2)
+    xfr = g.node("greyscale", g.node("gradient", repeat=192, rotate=90, mirror=False, gradient=_steps((0.0, 0.1))), mode=2)
     bars = g.math(mull, xfr, op=MAX)
-    glass = g.blend(g.color("#2e353c"), glazed, bars, mode=NORMAL_B, amount=0.8)
+    pane_n = g.node("fbm2", noise=0, scale_x=72, scale_y=192, folds=0, iterations=1, persistence=0.5, offset=0.5)
+    pane = g.colorize(pane_n, grad((0, "#1c2a38"), (1, "#2d4256")))
+    glass = g.blend(frame, pane, bars, mode=NORMAL_B, amount=1.0)
     win_in = g.math(win, edge, op=SUB, clamp=True)
     albedo = g.blend(glass, hull, win_in, mode=NORMAL_B, amount=1.0)
-    lit = g.math(win_in, bars, op=SUB, clamp=True)
-    emission = g.blend(land_c, g.color("#000000"), lit, mode=NORMAL_B, amount=1.0)
+    panes = g.math(win_in, bars, op=SUB, clamp=True)
+    emission = g.blend(g.color("#ffffff"), g.color("#000000"), panes, mode=NORMAL_B, amount=1.0)
     height = g.math(g.math(plates, None, op=MUL, in2=0.3), g.math(win_in, None, op=MUL, in2=-0.2), op=ADD)
     normal = g.normal_map(height, strength=0.5)
     g.material(albedo=albedo, emission=emission, normal=normal, metallic_v=0.0, roughness_v=0.8)
+    return g
+
+
+def oneill_land():
+    """The land inside, one stripe (x across its 940 m, y along its 6.4 km; the packer makes it
+    512 x 2048 px, so the noises are 6.8 times finer along y than across x to come out round).
+    Fields of many crops, woods, a river meandering the length with lakes, a road down the stripe
+    and lanes across it, small towns of white roofs. Lit by the mirrors' light through the windows."""
+    g = Graph("ONeill Land")
+    base_n = g.node("fbm2", noise=2, scale_x=2, scale_y=14, folds=0, iterations=6, persistence=0.6, offset=0.35)
+    land = g.colorize(base_n, grad((0, "#2c4a22"), (0.45, "#46672b"), (0.62, "#6e7b3b"), (0.8, "#8d8458"), (1, "#a39a77")))
+    field_n = g.node("bricks", pattern=0, repeat=1, rows=80, columns=8, row_offset=0.37,
+                     mortar=0.03, bevel=0.0, round=0.0, corner=0.0)
+    crop = g.node("greyscale", (field_n, 1), mode=2)
+    fields = g.colorize(crop, grad((0, "#3f6324"), (0.3, "#5d7a2e"), (0.55, "#9a9548"), (0.75, "#b9a35e"), (1, "#7a6a45")))
+    hedge = g.tone(field_n, (0, 1), (0.1, 0), (1, 0))
+    fields_h = g.blend(g.color("#2a3f1c"), fields, hedge, mode=NORMAL_B, amount=0.8)
+    farm = g.tone(base_n, (0, 0), (0.4, 0), (0.5, 1), (1, 1))
+    land_b = g.blend(fields_h, land, farm, mode=NORMAL_B, amount=1.0)
+    wood_n = g.node("fbm2", noise=2, scale_x=4, scale_y=27, folds=0, iterations=6, persistence=0.65, offset=0.7)
+    wood = g.tone(wood_n, (0, 0), (0.6, 0), (0.68, 1), (1, 1))
+    land_w = g.blend(g.colorize(wood_n, grad((0, "#1b3518"), (1, "#2c4d22"))), land_b, wood, mode=NORMAL_B, amount=1.0)
+    river_n = g.node("fbm2", noise=1, scale_x=1, scale_y=7, folds=0, iterations=5, persistence=0.5, offset=0.15)
+    river = g.tone(river_n, (0, 0), (0.485, 0), (0.5, 1), (0.515, 0), (1, 0))
+    lake = g.tone(base_n, (0, 1), (0.2, 1), (0.24, 0), (1, 0))
+    water = g.math(river, lake, op=MAX)
+    land_r = g.blend(g.color("#2a5874"), land_w, water, mode=NORMAL_B, amount=1.0)
+    # towns: clusters of small blocks where a coarse noise is high, white and grey roofs and streets
+    town_n = g.node("fbm2", noise=0, scale_x=3, scale_y=20, folds=0, iterations=3, persistence=0.5, offset=0.9)
+    town = g.tone(town_n, (0, 0), (0.8, 0), (0.83, 1), (1, 1))
+    blocks = g.node("bricks", pattern=0, repeat=1, rows=640, columns=48, row_offset=0.5,
+                    mortar=0.25, bevel=0.0, round=0.0, corner=0.0)
+    roof = g.colorize(g.node("greyscale", (blocks, 1), mode=2), grad((0, "#9a9a96"), (0.6, "#d6d4cc"), (1, "#b05a3c")))
+    street = g.tone(blocks, (0, 1), (0.05, 0), (1, 0))
+    town_c = g.blend(g.color("#6d6c68"), roof, street, mode=NORMAL_B, amount=1.0)
+    land_t = g.blend(town_c, land_r, town, mode=NORMAL_B, amount=1.0)
+    # a road down the stripe and lanes across it every 530 m
+    road = g.node("greyscale", g.node("gradient", repeat=1, rotate=0, mirror=False, gradient=_steps((0.31, 0.318))), mode=2)
+    lanes = g.node("greyscale", g.node("gradient", repeat=12, rotate=90, mirror=False, gradient=_steps((0.0, 0.004))), mode=2)
+    roads = g.math(road, lanes, op=MAX)
+    albedo = g.blend(g.color("#8a8780"), land_t, roads, mode=NORMAL_B, amount=0.9)
+    height = g.math(g.math(wood, None, op=MUL, in2=0.3), g.math(water, None, op=MUL, in2=-0.2), op=ADD)
+    normal = g.normal_map(height, strength=0.3)
+    g.material(albedo=albedo, normal=normal, metallic_v=0.0, roughness_v=0.9)
+    return g
+
+
+def oneill_land_detail():
+    """The land's tiled detail layer, 64 m a repeat: crop rows, tree crowns and tracks, near white
+    (it multiplies the land macro) so close views of the valley floor are not smooth paint."""
+    g = Graph("ONeill Land Detail")
+    rows = g.node("greyscale", g.node("gradient", repeat=24, rotate=0, mirror=False, gradient=grad((0, 0.0), (0.5, 1.0), (1, 0.0))), mode=2)
+    rows_t = g.tone(rows, (0, 0.8), (1, 1))
+    crowns_c = g.node("sdcircle", r=0.018, cx=0, cy=0)
+    crowns = g.node("sdshow", g.node("sdrepeat", crowns_c, rx=16, ry=16, r=0.35, variations=True), bevel=0.012, base=0.0)
+    patch_n = g.node("fbm2", noise=2, scale_x=3, scale_y=3, folds=0, iterations=5, persistence=0.6, offset=0.3)
+    patch = g.tone(patch_n, (0, 0), (0.55, 0), (0.65, 1), (1, 1))
+    trees = g.math(crowns, patch, op=MUL)
+    fine = g.node("fbm2", noise=0, scale_x=32, scale_y=32, folds=0, iterations=4, persistence=0.5, offset=0.1)
+    base = g.colorize(fine, grad((0, "#d6d6d0"), (1, "#f6f6f0")))
+    a1 = g.blend(rows_t, base, None, mode=MULTIPLY, amount=0.6)
+    albedo = g.blend(g.color("#6a7a5e"), a1, trees, mode=MULTIPLY, amount=0.9)
+    height = g.math(trees, g.math(rows, None, op=MUL, in2=0.15), op=ADD)
+    normal = g.normal_map(height, strength=0.8)
+    g.material(albedo=albedo, normal=normal, metallic_v=0.0, roughness_v=0.9)
+    return g
+
+
+def oneill_clouds():
+    """The cloud layer inside, wrapped once round its cylinder a few hundred metres off the floor
+    (x round it, y along it; noise 1.8 times finer along y to come out round). White and grey
+    tops; the packer takes the alpha from the cloud cover, patchy, with clear sky between."""
+    g = Graph("ONeill Clouds")
+    n1 = g.node("fbm2", noise=2, scale_x=6, scale_y=11, folds=0, iterations=7, persistence=0.62, offset=0.4)
+    n2 = g.node("fbm2", noise=1, scale_x=18, scale_y=33, folds=0, iterations=5, persistence=0.55, offset=0.8)
+    mix_n = g.blend(n2, n1, None, mode=OVERLAY, amount=0.5)
+    cover = g.tone(mix_n, (0, 0), (0.54, 0), (0.7, 1), (1, 1))
+    tops = g.colorize(n2, grad((0, "#b8c0c8"), (1, "#ffffff")))
+    albedo = g.blend(tops, g.color("#000000"), cover, mode=NORMAL_B, amount=1.0)
+    emission = g.blend(g.color("#ffffff"), g.color("#000000"), cover, mode=NORMAL_B, amount=1.0)
+    g.material(albedo=albedo, emission=emission, metallic_v=0.0, roughness_v=1.0)
     return g
 
 
@@ -723,6 +789,9 @@ GRAPHS = {
     "oneill_cap": oneill_cap,
     "oneill_detail": oneill_detail,
     "oneill_mirror": oneill_mirror,
+    "oneill_land": oneill_land,
+    "oneill_land_detail": oneill_land_detail,
+    "oneill_clouds": oneill_clouds,
 }
 
 

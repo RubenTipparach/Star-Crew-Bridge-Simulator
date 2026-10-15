@@ -86,29 +86,62 @@ Our own idea: a captured nickel-iron asteroid, hollowed.
 
 **Entering.** As C: through the gate, along the deck, a turn and the slide to the berth, about 3 minutes.
 
-## 5a. Version E: O'Neill Pair (two counter-rotating cylinders and their dock)
+## 5a. Version E: O'Neill Pair (two hollow, counter-rotating cylinders, a port on the axis)
 
 The owner, later on 2026-10-14: "what about an oneil cylinder space station? can you make some textures for that? a giant
 cylinder? wiht a big space station attached at one end. theres usually two of them to counter balance rotational
-effects", and then "I'd also like you to light it properly as well, texturing is really important to sell scale, we
-should have 2 layers of texture, detail layer, and the big albiedo color map, and maybe normal maps on the details".
-Two reference pictures (a long cylinder with a ring of pods round one end and window strips showing land inside; two
-cylinders side by side with orange and white end caps) were taken for spirit only. The O'Neill cylinder is a public
-engineering concept (Gerard K. O'Neill, 1974); the design here is our own.
+effects"; "I'd also like you to light it properly as well, texturing is really important to sell scale, we should have 2
+layers of texture, detail layer, and the big albiedo color map, and maybe normal maps on the details"; and, on the first
+draft (solid tubes with the land painted on the outside, mirrors hinged along the windows): "What oneil cylinders are
+hollowed cylinders. Didn't you research what they looked like and how they work?", "Also notice how the solar panels
+open up on one side they are blooming slightly like aflower", "The ends are round and should have an opening for ships
+to enter". Two reference pictures (a long cylinder with a ring of pods round one end; two cylinders side by side with
+orange and white end caps) were taken for spirit only.
+
+**How an O'Neill cylinder works.** Source: Wikipedia, "O'Neill cylinder"
+(https://en.wikipedia.org/wiki/O%27Neill_cylinder), which cites Gerard K. O'Neill's *The High Frontier* (1976) and the
+NASA Ames summer studies of 1975 and 1977 (CLAUDE.md 15: cited, not recalled).
+
+1. Each cylinder is a hollow pressurised shell; people live on its inside surface, held there by the spin. O'Neill's
+   Island Three is 8 km across and 32 km long, turning about 28 times an hour.
+2. Six stripes of equal area run its length: three of land (the shell's inside) and three windows, each window many
+   small glazed sections in an aluminium or steel frame that carries the pressure.
+3. Each cylinder's axis points at the sun. Three large mirrors, one a window, are hinged at the window's far end (away
+   from the sun), their free edges toward the sun, so the three splay open like the petals of a flower opening toward
+   it; they throw sunlight in through the windows, and moving them moves the sun in the inside sky. Night is the mirrors
+   opened wide, so the windows face empty space (which also sheds heat).
+4. The two cylinders of a pair turn opposite ways, so their gyroscopic effects cancel and they stay aimed at the sun;
+   they are joined at each end by a rod through a bearing system.
+5. An agricultural ring round one end turns at its own rate.
+6. Inside is enough air for small local weather (clouds); the air and the shell shield against radiation.
+7. The ends are hemispherical caps. The sources do not describe docking.
+
+**At our scale.** Island Three is much larger; ours keeps a game scale where the Tern is a speck but a crossing takes
+minutes: 6.4 km long and 1.8 km across at 1 rpm (60 s a turn), 1 g at the floor (radius 900 m, w = 0.104 rad/s,
+w^2 r = 9.8 m/s^2).
 
 | Part | Size |
 | --- | --- |
-| Cylinders | Two, each 6.4 km long and 1.8 km across, 3.0 km apart centre to centre, the pair's line 25 degrees off the horizontal so one shadows the other (section 5b) |
-| Skin | Three land strips (hull outside) alternating with three window strips (glazing with mullions, the land, rivers, lakes and cloud inside seen through it), orange identity bands at both ends and the middle, graphite frames along each window |
-| Rotation | 1 rpm (60 s a turn), opposite ways, so the pair's spin cancels: 1 g at the floor (radius 900 m, w = 0.104 rad/s, w^2 r = 9.8 m/s^2) |
-| Mirrors | Three a cylinder, hinged on one edge of each window and opened 28 degrees out over it, 900 m wide and 6.1 km long, faceted |
-| Farm ring | A ring of 18 pods 2.6 km across round each cylinder's far end, on six spokes, turning with it |
-| Ends | End caps (pearl in rings and sectors, an orange rim), bearings at both ends |
-| Trusses | Non-rotating trusses across the pair at both ends, a spine from the front truss to the dock, tethers between them |
-| Dock | C's hall built shorter on the axis between the pair at the front end, not rotating, so ships can berth: 920 m long, 440 m wide, 240 m tall, doors 320 m by 150 m facing away from the pair; eight berths, six ships docked, one free |
+| Shell | A pressurised shell 40 m thick on the three land stripes, its cut edges seen along every window; the land stripes' outside is pearl plating (the macro's hull strips), never land |
+| Windows | Three real openings, each 60 degrees of the circumference and the full length, glazed with many panes in graphite frames: see-through, the inside visible through them |
+| Inside | Three concave valleys of fields, woods, rivers, lakes, roads and small towns; a patchy cloud layer 300 m off the floor (a translucent cylinder of radius 560 m); a thin light spine down the zero-g axis |
+| Ends | Domed caps 500 m deep (a spherical cap; hemispherical in O'Neill's design), pearl with an orange rim outside; inside, terraced land stepping up toward the axis (a terrace's floor is a ring at one radius, as spin gravity points out from the axis) |
+| Axes | On the star: the station frame's sun is along +z for E (`spacedock.json` `versions.E.sun_dir`); A-D keep `sky.sun_dir` |
+| Mirrors | Three a cylinder, 900 m wide and 6.1 km long, faceted, hinged at the far (anti-sunward) end of each window and opened 35 degrees toward the star: a three-petal flower round each cylinder. Night: opened to 80 degrees |
+| Pair | 9.5 km apart centre to centre (the petals reach 4.4 km from each axis, so the two flowers clear each other as they turn), turning opposite ways |
+| Farm ring | 18 pods on a ring 2.6 km across round each cylinder's sunward end, on three spokes from the land stripes |
+| Joins | Non-rotating rods across the pair at both ends into bearings on the domes' axes; tethers between them |
+| Port and bay | Our own design (the sources do not describe docking), guided by fact 7's zero-g axis: a non-rotating port on cylinder 0's axis at its sunward dome, on a bearing, its mouth the hall's doors (320 m by 150 m, seven times the Tern's 45 m) with lead-in lights 2 km out along the axis. The bay behind is C's enclosed hall (920 m long, 440 m wide, 240 m tall) built into the dome's hub, reaching 200 m into the dome through a 270 m hole at its apex: eight berths, six ships docked, one free. The separate dock box between the cylinders is gone |
 
-**Entering** is C's: through the doors along the fairway, a turn, the slide to the berth, about 2.5 minutes. The pair
-turns behind the dock all the while; the dock and its berths do not.
+**Why the sunward end.** The petals are hinged at the anti-sunward end and open toward the star; by the time they reach
+the sunward end they stand 4.4 km out from the axis, and they end 1.9 km before the sunward dome's apex, so the axis
+on the sunward side is clear: an approach down the axis passes through the farm ring's middle and meets no mirror. The
+sunward dome is also lit, so the port reads from far off. (The anti-sunward axis is clear too, but there the mirrors'
+hinges crowd the dome and the dome is in shadow.)
+
+**Entering** (`traffic` as A-D): cleared by traffic control, the Tern flies down the axis from the star's side, through
+the farm ring, the doors opening in the dome's hub, into the hall, then C's turn and slide to the berth, about 2.5
+minutes from the doors. The port and its hall do not turn; the dome turns round them, once a minute.
 
 ### 5b. E's two layers of texture and its light
 
@@ -119,43 +152,51 @@ packaged by `tools/materials/oneill_atlases.py` into `assets/textures/oneill/`, 
 
 | Texture | Size | Covers | Bytes with mips |
 | --- | ---: | --- | ---: |
-| `oneill_macro` (albedo, alpha the glazing) | 1024 x 1024 | Once round a cylinder: strips, land, bands, frames, km-scale grime | 5,592,404 |
-| `oneill_cap` | 512 x 512 | Once over an end cap | 1,398,100 |
+| `oneill_macro` (albedo, alpha the panes) | 1024 x 1024 | Once round a cylinder's outside: hull strips, glazing frames and panes, bands, km-scale grime | 5,592,404 |
+| `oneill_land` | 512 x 2048 | Once over a land stripe inside (and the domes' terraces): fields, woods, rivers, lakes, roads, towns | 5,592,412 |
+| `oneill_land_detail` | 256 x 256 | 64 m of land, tiled: crop rows, tree crowns | 349,524 |
+| `oneill_clouds` (alpha the cover) | 512 x 512 | Once round the cloud layer | 1,398,100 |
+| `oneill_cap` | 512 x 512 | Once over a dome | 1,398,100 |
 | `oneill_detail` | 512 x 512 | 16 m of hull, tiled: uneven plates, bolt rows, louvred service plates, scratches | 1,398,100 |
 | `oneill_detail_normal` | 512 x 512 | Its normal map | 1,398,100 |
 | `oneill_mirror` | 256 x 256 | 120 m of mirror facets, tiled | 349,524 |
 | `oneill_mirror_normal` | 256 x 256 | Its normal map | 349,524 |
-| **Total** | | | **10,485,752 (10.0 MiB)** |
+| **Total** | | | **17,825,788 (17.0 MiB)** |
 
-- **Two layers.** The macro map, wrapped once round the cylinder, carries everything kilometres wide; the detail layer
-  multiplies it (its albedo near white, divided by its own mean so it adds structure without changing the colour) and
-  fades to that mean between 350 m and 2.6 km (`fade_m`), so a close view shows plates and a far one shows the macro map
-  with no tiling. The dock's exterior takes its paint as the macro and the same detail at 24 m, fading by 900 m.
-- **Normal maps on the detail**, from the same Material Maker graph (Material Maker renders a normal map from the
-  graph's height already). In the mockup E's cylinders, caps, mirrors, farm ring and dock exterior take a per-pixel
-  shader: the detail's normal in the surface's tangent frame (round and along the cylinder), the star's diffuse light, a
-  sheen on the paint so bevels and bolts catch the star close up.
-- **The light.** One star (`spacedock.json` `sky.sun_dir`, the same star as `exterior.json` in the station's frame):
-  a hard terminator across each cylinder; the pair shadow each other (each fragment's ray to the star tested against
-  the other cylinder, exactly); Tamsin's earthshine on the shadow side; specular glints on the window glass and the
-  mirrors (the mirrors reflect the star and Tamsin); the land glowing faintly through the glazing on both sides, with a
-  little haze scattered in the glass at grazing angles; running lights down every window edge and on the farm pods,
-  which shrink and crowd together with distance; and beyond 6 km a faint blue haze lifting the far end. Inside the dock,
-  its bay floods and work lights as in A-D.
+- **Two layers, outside and in.** Every macro map (the outside wrapped once round the cylinder, the land once over a
+  stripe, the clouds once round their layer, a dome once over it) carries what is kilometres wide; a tiled detail layer
+  multiplies it (near white, divided by its own mean so it adds structure without changing the colour) and fades to that
+  mean with distance (350 m to 2.6 km outside, 250 m to 1.8 km on the land), so a close view shows plates or crop rows
+  and a far one the macro map with no tiling. The hall's exterior takes its paint as the macro and the hull detail at 24
+  m.
+- **Normal maps on the detail**, from the same Material Maker graphs. In the mockup E's hull, domes, mirrors, farm ring
+  and hall exterior take a per-pixel shader: the detail's normal in the surface's tangent frame, the star's diffuse light
+  and a sheen on the paint so bevels and bolts catch the star.
+- **The light, with the axes on the star.** The sunward domes are lit full on; the cylinders' sides only at a graze (the
+  normal maps catch it), the rest in shadow but for Tamsin's earthshine (the station sees Tamsin's day side, the star
+  behind it). The mirrors, turned toward the star, blaze, with the star's glint and Tamsin in them. Inside, the land is
+  lit by the star the mirrors throw in through the windows, from across the axis, in daylight (and dark at night, the
+  mirrors wide); air haze inside lifts the far valley and the far dome; from inside, the windows are bright stripes. From
+  outside, through the panes (see-through, a glint of the star on them), the far land shows bright and concave under its
+  clouds. Running lights down every window edge and on the farm pods shrink and crowd together with distance; beyond 6
+  km a faint blue haze lifts the far end outside. Inside the hall, its floods and work lights as in A-D.
+- **No mutual shadow.** The first draft tested each fragment's ray to the star against the other cylinder. With both
+  axes on the star and the cylinders side by side, neither can shade the other, so the test is dropped.
 
 **A proposed exception to "no per-pixel lighting on the Pi 5"** (`surface-materials`, ES 5, CLAUDE.md 9), for the
 exterior of stations only, and only once measured. The cost, estimated:
 
-| Cost | E's exterior |
+| Cost | E |
 | --- | --- |
-| Texture memory | 10.0 MiB (macro 5.3, cap 1.3, detail and its normal 2.7, mirror 0.7): about 10% of ES 5's 96 MB; the macro at 512 px would save 4 MiB, ETC2 a further three quarters (both measured first) |
-| Fragment work | Three texture reads (macro, detail, normal), a tangent-frame normal, a diffuse and a specular term and the shadow test against the other cylinder (a quadratic): about 60 ALU instructions a pixel, against the deck program's one texture read and a vertex-colour multiply |
-| Pixels | At most the cylinders' share of a 1280 x 720 frame, about 0.9 million pixels in the outside view; none while berthed inside (the dock's hall is the baked path) |
-| Vertex work | The pair are 3,300 triangles a cylinder; a tangent frame a vertex |
+| Texture memory | 17.0 MiB (outside 9.0, land and clouds 7.3, mirror 0.7): about 18% of ES 5's 96 MB; the macro and the land at half size would save 8 MiB, ETC2 a further three quarters (both measured first) |
+| Fragment work | Outside: three texture reads (macro, detail, normal), a tangent-frame normal, a diffuse and a specular term, about 50 ALU instructions a pixel. Inside: two reads and a few terms. Glazing and clouds: one read each, blended. The deck program is one texture read and a vertex-colour multiply |
+| Overdraw | Through a window: the glazing and the clouds blended over the land behind, three layers where a window covers the screen |
+| Pixels | At most a cylinder's share of a 1280 x 720 frame, about 0.9 million pixels; none while berthed (the hall is the baked path) |
 
-The recommendation: measure the shader on the Pi (the `engine-stack` probe, the outside view at 1280 x 720) before the
-engine takes it; if it does not fit, E falls back to the rule as it stands: the detail's relief baked into its albedo by
-`postprocess.py`'s key light, no normal map, the star's light per vertex. Nothing in the engine changes in this change.
+The recommendation: measure the shaders on the Pi (the `engine-stack` probe, the outside and the inside views at 1280 x
+720) before the engine takes them; if they do not fit, E falls back to the rule as it stands: each detail's relief baked
+into its albedo by `postprocess.py`'s key light, no normal map, the star's light per vertex. Nothing in the engine
+changes in this change.
 
 ## 6. Entering and berthing, on foot
 
@@ -210,7 +251,7 @@ The mockup's window view stands 1.6 m in from the bridge's port forward-quarter 
 | B | The hangar's curved wall rising to port, its ribs and light rings, and the next row's ship hanging up and ahead |
 | C | The fairway, the ship across it in its frame, the far wall's tiers of windows and the doors |
 | D | The deck, the ship across it, the rock wall and its galleries |
-| E | As C: the fairway, the ship across it, the far wall's windows |
+| E | As C (the bay is C's hall in the port): the fairway, the ship across it, the far wall's windows |
 
 The Tern's own warp pylon shows at the bottom of the bridge's windows, as it does in space. Through the starboard
 windows: the pier, its rail lights and the crew tube a few metres off.
@@ -228,11 +269,13 @@ mockup's meshes (`docs/mockups/spacedock.html`):
 | B Wheel | 662 | 12,204 | 4,476 | 120 | 3 | 7 ships, about 10,000 triangles, 7 draws |
 | C Drydock | 910 | 16,012 | 3,576 | 120 | 3 | 8 ships, about 11,500 triangles, 8 draws |
 | D Hollow | 5,162 | 14,340 | 3,588 | 120 | 3 | 7 ships, about 10,000 triangles, 7 draws |
-| E O'Neill Pair: dock | 442 | 10,552 | 2,520 | 120 | 3 | 6 ships, about 8,700 triangles, 6 draws |
-| E O'Neill Pair: the two cylinders | 6,744 (2 x 3,372) and the trusses' 60 | | | | 12 (each cylinder's skin, two caps, mirrors, farm ring and bearings; its running lights) and the trusses' 2 | |
+| E O'Neill Pair: port and hall | 442 | 10,552 | 2,520 | 120 | 3 | 6 ships, about 8,700 triangles, 6 draws |
+| E O'Neill Pair: the two cylinders | 19,072 (9,776 and 9,296: shell, land, glazing, four domes, clouds, spine, three mirrors, farm ring) and the rods' 60 | | | | 28 (13 a cylinder and its running lights) and the rods' 2 | |
 
-Station totals: A 30,700, B 17,500, C 20,600, D 23,200, E 20,400 triangles (E's are 17 draws: the pair's per-pixel
-shader keeps the macro and the detail apart, so a cylinder is five draws, not one). With the docked ships, the Tern at full detail
+Station totals: A 30,700, B 17,500, C 20,600, D 23,200, E 32,800 triangles (E's are 33 draws: a cylinder is 13, its
+outside, land, glazing, domes, clouds, spine and mirrors each their own material; a built E would merge the opaque ones
+by material, about 7 a cylinder). The mockup's busiest E view, outside with both cylinders, the planet and the docked
+ships, is about 57,000 triangles and 67 draws, against 200,000 and 300. With the docked ships, the Tern at full detail
 (4,440 triangles, 7 draws) and the deck the crew stand in, the worst berthed frame is under 60,000 triangles and 40
 draws for every version: under a third of the frame's triangles and an eighth of its draws. A is the dearest (its
 cap's ribs and its round hall's fine cells for the bake); B the cheapest.
@@ -287,4 +330,5 @@ the hull; `exterior.json` `dock` (the girder frame) is retired.
 | S5 | Does B's wheel turn | No: the game's gravity is the ships' own. Recommendation taken (ask only with screenshots) |
 | S6 | Who flies the Tern in | Helm by hand on the corridor's limits, or the dock autopilot (FN 10) on the captain's order. Recommendation taken (ask only with screenshots) |
 | S7 | Per-pixel lighting (normal maps) on station exteriors on the Pi 5 | Proposed as an exception (section 5b) and measured on the Pi before the engine takes it; until then the rule stands and E falls back to relief baked into the detail's albedo. Recommendation taken (ask only with screenshots) |
-| S8 | E's cylinders: their size and spin | 6.4 km by 1.8 km at 1 rpm (1 g at the floor), the pair 3 km apart; textures are atlases, not layers of the array, so no layer is renumbered. Recommendation taken (ask only with screenshots) |
+| S8 | E's cylinders: their size and spin | 6.4 km by 1.8 km at 1 rpm (1 g at the floor), smaller than Island Three, the pair 9.5 km apart so the petals clear; textures are atlases, not layers of the array, so no layer is renumbered. Recommendation taken (ask only with screenshots) |
+| S9 | E's port: which end, and does every cylinder have one | Cylinder 0's sunward dome only (section 5a, why the sunward end); the other cylinder's axis keeps its bearing. Recommendation taken (ask only with screenshots) |
