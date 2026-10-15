@@ -123,3 +123,29 @@ game. Times are the video's, about 27 s ahead of the drill's clock in the log.
 Not in it yet: the jump's streaks and flash (the windows simply change), the starbase's model (a placeholder ring is
 far off the starboard side and dark against the star), the console controls for UNDOCK, JUMP, SHORE and SWEEP (a
 mockup awaits approval; the NPCs play them).
+
+## `2026-10-15-tamsin-undock-pi5.mp4` (344 s, 1280 x 678, 30 fps; `patrol-mission` design 12b, spacedock tasks 2.9)
+
+Undocking from Tamsin Station on foot at the helm, in single player on Pi 1 (Pi 5 8 GB), `sc-client --solo --mission
+patrol-shoals --station helm --playtest --window`: the scripted player walks onto the bridge, sits at the helm and
+presses UNDOCK from the seat once the drive is green and the captain gives the order (the console's UNDOCK control
+awaits its mockup's approval, so the script sends the command it will send, by `combat::patrol::decide`); then it gets
+up and walks the ship while the Tern leaves the round bay, goes down the throat and clears the station. The NPC crew
+play their stations. The game window's content alone, recorded with `wf-recorder` and re-encoded to H.264 High, yuv420p
+(`ffmpeg -vf fps=30,scale=1280:-2,format=yuv420p -c:v libx264 -crf 30`). Times are the video's, about 4 s ahead of the
+drill's clock.
+
+| Time | Shows |
+| --- | --- |
+| 0:00-0:04 | Loading (black) |
+| 0:04-0:12 | Muster: the body walks out of the corridor onto the bridge, past the captain's chair to the helm; through the forward windows the round bay's wall, its flood rings and ribs, and the throat at its end with the star in it |
+| 0:12-0:36 | Sat at the helm, the console up from the desk: the briefing, then the helm console, its viewscreen on the bay and the throat |
+| 0:36-0:41 | Engineering's NPC drops shore power, the drive comes on line, the captain orders "Helm, take us out", the script presses UNDOCK at the helm, the clamps release |
+| 0:41-1:00 | The helm console while the Tern rises off its berth toward the axis at the bay's 5 m/s |
+| 1:00-1:30 | Up and across the bridge: the bay's wall and its rings sliding past the windows |
+| 1:30-2:30 | Down to the mess on deck B and back to the helm; the viewscreen ahead down the axis to the throat and the star |
+| 2:30-4:00 | Up to the bridge windows in the throat, then across to Tactical (the drill's tour) |
+| 4:00-5:44 | The tour of the decks (the hangar, the corridors); the computer reports "Clear of the berth" at about 5:04 |
+
+Not in it yet: the iris's leaves (it stands open), the habitats' land and see-through windows, docked ships other
+than the two Herons, the console controls for UNDOCK, JUMP, SHORE and SWEEP (awaiting approval).

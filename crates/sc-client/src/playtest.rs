@@ -162,13 +162,11 @@ impl Playtest {
         Self::with(Self::drill_beats(own), LOOP_FROM)
     }
 
-    /// The patrol's script (patrol-mission): out of the bridge's windows at the station and the berth, to the station,
-    /// up again to watch the bay's wall slide past and the throat and the station fall away, down to the mess's windows, back to work
-    /// through the jump; then the drill's tour as long as the fight lasts.
+    /// The patrol's script (patrol-mission): straight to the station before the drive is up (at the helm, to UNDOCK from
+    /// the seat), up again to watch the bay's wall slide past from the bridge's windows, down to the mess's windows,
+    /// back to work, up to watch the throat and the station fall away, then the drill's tour as long as the fight lasts.
     pub fn patrol(own: Station) -> Self {
         let mut beats = vec![
-            Beat::Gaze(Window::BridgeStbd, 10.0),
-            Beat::Gaze(Window::BridgePort, 6.0),
             Beat::To(own),
             Beat::Sit,
             // Long enough for the drive to come up and, at the helm, UNDOCK to be pressed from the seat.
