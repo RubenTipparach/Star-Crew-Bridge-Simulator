@@ -124,14 +124,22 @@ w^2 r = 9.8 m/s^2).
 | --- | --- |
 | Shell | A pressurised shell 40 m thick on the three land stripes, its cut edges seen along every window; the land stripes' outside is pearl plating (the macro's hull strips), never land |
 | Windows | Three real openings, each 60 degrees of the circumference and the full length, glazed with many panes in thin graphite frames: from outside, dark faintly blue glass showing the lit land inside and letting a little of its light out; from inside, nearly clear glass onto black space, the mirror beyond it and the star's glare where the mirror throws it in |
-| Inside | Three concave valleys of fields, woods, rivers, lakes, roads and small towns; two patchy cloud layers 300 and 390 m off the floor (translucent cylinders of radius 560 and 470 m, the puffs white in their middles and grey at their edges, brighter toward the windows); a thin light spine down the zero-g axis |
-| Ends | Domed caps 500 m deep (a spherical cap; hemispherical in O'Neill's design), pearl with an orange rim outside; inside, terraced land stepping up toward the axis (a terrace's floor is a ring at one radius, as spin gravity points out from the axis) |
+| Inside | Three concave valleys of hedged fields, woods, rivers and lakes (smooth deep blue-green water with a darker shore, a soft sheen of the windows' light, no detail layer on it), roads and small towns (blocks of grey and terracotta roofs on a street grid, gardens and trees between), stopping at a lit retaining wall at the foot of each dome; 70 cumulus a cylinder, 90-180 m across and 150-260 m off the floor, over the land stripes only, standing where the Material Maker cloud map is dense (three blobs each with a flat base, white tops toward the axis where the windows' light comes from, grey bellies, hazed with distance); a thin light spine down the zero-g axis, stopping short of the hall |
+| Ends | Domed caps 500 m deep (a spherical cap; hemispherical in O'Neill's design), pearl with an orange rim outside. Inside, engineered structure, never land (see "Why the domes carry no land" below) (owner, 2026-10-14: "the end cap should be like greebles here, cant plant stuff on the cap"): a greeble macro map (`oneill_dome`: plated sectors, radial ribs and rings, vent banks, hatches, rows of lit windows) over the hull detail layer, and on it 24 radial ribs, pipes down every other meridian, five rings, 70 platforms and boxes, about 900 work lights that twinkle (so the dome reads from the far end, 6 km off), one plated mesh and one point set a dome |
 | Axes | On the star: the station frame's sun is along +z for E (`spacedock.json` `versions.E.sun_dir`); A-D keep `sky.sun_dir` |
-| Mirrors | Three a cylinder, 900 m wide and 6.1 km long, faceted, hinged at the far (anti-sunward) end of each window and opened 35 degrees toward the star: a three-petal flower round each cylinder. Reflective: dark at most angles, Tamsin in them, a hot spot and bloom where they turn the star to the eye, each facet tilting its reflection a little. Night: opened to 80 degrees |
+| Mirrors | Three a cylinder, 900 m wide and 6.1 km long, faceted, hinged at the far (anti-sunward) end of each window and opened 35 degrees toward the star: a three-petal flower round each cylinder. Reflective: dark at most angles, Tamsin in them, a hot spot and bloom where they turn the star to the eye, each facet tilting its reflection a little. A flat mirror at 35 degrees throws the star back into its own window, so from outside its blaze is only seen from inside the beam; late in the day, opened to 68 degrees, a petal throws the star clear past its own dome, and the mockup's outside view stands in that beam, 23 km off (`late_deg`). Night: opened to 80 degrees |
 | Pair | 9.5 km apart centre to centre (the petals reach 4.4 km from each axis, so the two flowers clear each other as they turn), turning opposite ways |
 | Farm ring | 18 pods on a ring 2.6 km across round each cylinder's sunward end, on three spokes from the land stripes |
 | Joins | Non-rotating rods across the pair at both ends into bearings on the domes' axes; tethers between them |
-| Port and bay | Our own design (the sources do not describe docking), guided by fact 7's zero-g axis: a non-rotating, round, recessed collar at cylinder 0's sunward apex, on a bearing: a lit ring mouth 540 m across set 30 m into the dome, a dark throat ringed with work lights, a graphite flange, and four rings of blue light on the dome leading in, with lead-in lights 2 km out along the axis. Behind the mouth, sunk in the dome's hub and reaching 450 m past its rim along the axis inside the cylinder, is C's enclosed hall (920 m long, 440 m wide, 240 m tall, without C's tower), its sliding doors (320 m by 150 m, seven times the Tern's 45 m) inside the ring: eight berths, six ships docked, one free. The separate dock box between the cylinders is gone |
+| Port and bay | Our own design (the sources do not describe docking), guided by fact 7's zero-g axis: a non-rotating, round, recessed collar at cylinder 0's sunward apex, on a bearing: a lit ring mouth 540 m across, a round throat 320 m deep lit by rings every 40 m and eight light strips along it, ending at a round bulkhead with an iris 300 m across (lit ring round it) that the ships pass; a graphite flange and four rings of blue light on the dome lead in, with lead-in lights 2 km out along the axis. Behind the bulkhead, sunk in the dome's hub and reaching on along the axis inside the cylinder, is C's enclosed hall (920 m long, 440 m wide, 240 m tall, without C's tower), its sliding doors (320 m by 150 m, seven times the Tern's 45 m) behind the iris: eight berths, six ships docked, one free. The separate dock box between the cylinders is gone |
+
+**Why the domes carry no land.** The owner, 2026-10-14: "caps are still wrong, you need to fix that, gravity doesnt
+WORK on the caps!". Spin gravity points straight out from the axis, perpendicular to it. On a land stripe that is
+straight down into the floor; on an end dome it runs along the dome's surface, out toward its rim: "down" slides down
+the dome to the valley floor. Nothing can be planted on a dome or stand on it, and water would run off it, so a dome is a
+wall: structure only (ribs, rings, plated sectors, pipes, hatches, docking and service galleries, lights), its texture
+the `oneill_dome` greeble map, never the land map. The valleys end at its foot against a lit retaining wall. (The first
+rebuild terraced the domes into steps of land; that was wrong for the same reason, and is gone.)
 
 **Why the sunward end.** The petals are hinged at the anti-sunward end and open toward the star; by the time they reach
 the sunward end they stand 4.4 km out from the axis, and they end 1.9 km before the sunward dome's apex, so the axis
@@ -140,7 +148,7 @@ sunward dome is also lit, so the port reads from far off. (The anti-sunward axis
 hinges crowd the dome and the dome is in shadow.)
 
 **Entering** (`traffic` as A-D): cleared by traffic control, the Tern flies down the axis from the star's side, through
-the farm ring and the rings of light on the dome, into the round mouth, the doors sliding open inside it, into the hall, then C's turn and slide to the berth, about 2.5
+the farm ring and the rings of light on the dome, into the round mouth, down the lit throat and through the iris, the hall's doors sliding open behind it, into the hall, then C's turn and slide to the berth, about 2.5
 minutes from the doors. The port and its hall do not turn; the dome turns round them, once a minute.
 
 ### 5b. E's two layers of texture and its light
@@ -153,15 +161,16 @@ packaged by `tools/materials/oneill_atlases.py` into `assets/textures/oneill/`, 
 | Texture | Size | Covers | Bytes with mips |
 | --- | ---: | --- | ---: |
 | `oneill_macro` (albedo, alpha the panes) | 1024 x 1024 | Once round a cylinder's outside: hull strips, glazing frames and panes, bands, km-scale grime | 5,592,404 |
-| `oneill_land` | 512 x 2048 | Once over a land stripe inside (and the domes' terraces): fields, woods, rivers, lakes, roads, towns | 5,592,412 |
-| `oneill_land_detail` | 256 x 256 | 64 m of land, tiled: crop rows, tree crowns | 349,524 |
-| `oneill_clouds` (alpha the cover) | 512 x 512 | Once round the cloud layer | 1,398,100 |
+| `oneill_land` (alpha its water) | 512 x 2048 | Once over a land stripe inside: hedged fields, woods, rivers, lakes with their shores, roads, towns of roofs and trees | 5,592,412 |
+| `oneill_land_detail` | 256 x 256 | 64 m of land, tiled: a soft mottle and faint crop rows, kept off the water | 349,524 |
+| `oneill_clouds` (alpha the cover) | 512 x 512 | The cloud cover round a cylinder: where the cumulus stand | 1,398,100 |
+| `oneill_dome` (alpha its lit windows) | 512 x 512 | Once over a dome's inside: greeble structure | 1,398,100 |
 | `oneill_cap` | 512 x 512 | Once over a dome | 1,398,100 |
 | `oneill_detail` | 512 x 512 | 16 m of hull, tiled: uneven plates, bolt rows, louvred service plates, scratches | 1,398,100 |
 | `oneill_detail_normal` | 512 x 512 | Its normal map | 1,398,100 |
 | `oneill_mirror` | 256 x 256 | 120 m of mirror facets, tiled | 349,524 |
 | `oneill_mirror_normal` | 256 x 256 | Its normal map | 349,524 |
-| **Total** | | | **17,825,788 (17.0 MiB)** |
+| **Total** | | | **19,223,888 (18.3 MiB)** |
 
 - **Two layers, outside and in.** Every macro map (the outside wrapped once round the cylinder, the land once over a
   stripe, the clouds once round their layer, a dome once over it) carries what is kilometres wide; a tiled detail layer
@@ -189,9 +198,9 @@ exterior of stations only, and only once measured. The cost, estimated:
 
 | Cost | E |
 | --- | --- |
-| Texture memory | 17.0 MiB (outside 9.0, land and clouds 7.3, mirror 0.7): about 18% of ES 5's 96 MB; the macro and the land at half size would save 8 MiB, ETC2 a further three quarters (both measured first) |
+| Texture memory | 18.3 MiB (outside 9.0, land, clouds and domes 8.6, mirror 0.7): about 19% of ES 5's 96 MB; the macro and the land at half size would save 8 MiB, ETC2 a further three quarters (both measured first) |
 | Fragment work | Outside: three texture reads (macro, detail, normal), a tangent-frame normal, a diffuse and a specular term, about 50 ALU instructions a pixel. Inside: two reads and a few terms. Glazing and clouds: one read each, blended. The deck program is one texture read and a vertex-colour multiply |
-| Overdraw | Through a window: the glazing and the clouds blended over the land behind, three layers where a window covers the screen |
+| Overdraw | Through a window: the glazing blended over the land and the cumulus behind, two layers where a window covers the screen |
 | Pixels | At most a cylinder's share of a 1280 x 720 frame, about 0.9 million pixels; none while berthed (the hall is the baked path) |
 
 The recommendation: measure the shaders on the Pi (the `engine-stack` probe, the outside and the inside views at 1280 x
@@ -271,14 +280,15 @@ mockup's meshes (`docs/mockups/spacedock.html`):
 | C Drydock | 910 | 16,012 | 3,576 | 120 | 3 | 8 ships, about 11,500 triangles, 8 draws |
 | D Hollow | 5,162 | 14,340 | 3,588 | 120 | 3 | 7 ships, about 10,000 triangles, 7 draws |
 | E O'Neill Pair: hall | 418 | 10,552 | 2,436 | 120 | 3 | 6 ships, about 8,700 triangles, 6 draws |
-| E O'Neill Pair: the port collar | 1,120 (throat and flange) and 9,216 (its ten light rings) | | | | 9 (the mockup draws each ring apart; built, 2) | |
-| E O'Neill Pair: the two cylinders | 19,456 (9,968 and 9,488: shell, land, glazing, four domes, two cloud layers, spine, three mirrors, farm ring) and the rods' 60 | | | | 28 (14 a cylinder) and the rods' 1 | |
+| E O'Neill Pair: the port collar | 1,232 (throat, flange, bulkhead) and 9,952 (its light rings and strips) | | | | 21 (the mockup draws each ring and strip apart; built, 2) | |
+| E O'Neill Pair: the two cylinders | about 90,500 (45,500 a cylinder: shell, land, glazing, two domes outside and in, the inner domes' greebles, about 3,500 a dome, 70 cumulus of 320 triangles, 22,400, spine, three mirrors, farm ring) and the rods' 60 | | | | 30 (15 a cylinder) and the rods' 1 | |
 
-Station totals: A 30,700, B 17,500, C 20,600, D 23,200, E 43,400 triangles (E's are 41 draws: a cylinder is 14, its
-outside, land, glazing, domes, clouds, spine and mirrors each their own material; a built E would merge the opaque ones
-by material, about 7 a cylinder, and the port's light rings into one; its rings are the cheapest place to cut triangles,
-6 sides a ring and 96 round, 1,152 each). The mockup's busiest E view, outside with both cylinders, the planet and the
-docked ships, is about 67,000 triangles and 77 draws, against 200,000 and 300. With the docked ships, the Tern at full detail
+Station totals: A 30,700, B 17,500, C 20,600, D 23,200, E about 115,000 triangles (E's are 56 draws: a cylinder is 15,
+its outside, land, glazing, domes, greebles, cumulus, spine and mirrors each their own material; a built E would merge
+the opaque ones by material, about 7 a cylinder, and the port's rings into one). The cumulus are the biggest share
+(44,800 for the pair): fewer or simpler puffs, or puffs drawn only in the cylinder the camera is in or looking into, are
+the first cut. The mockup's busiest E view, outside with both cylinders, the planet and the docked ships, is about
+131,000 triangles and 92 draws, against 200,000 and 300; inside a cylinder about 86,000 and 76. With the docked ships, the Tern at full detail
 (4,440 triangles, 7 draws) and the deck the crew stand in, the worst berthed frame is under 60,000 triangles and 40
 draws for every version: under a third of the frame's triangles and an eighth of its draws. A is the dearest (its
 cap's ribs and its round hall's fine cells for the bake); B the cheapest.

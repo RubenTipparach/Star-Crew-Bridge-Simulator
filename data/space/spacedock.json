@@ -86,9 +86,10 @@
       "_owner": "2026-10-14: \"what about an oneil cylinder space station? can you make some textures for that? a giant cylinder? wiht a big space station attached at one end. theres usually two of them to counter balance rotational effects\"; \"What oneil cylinders are hollowed cylinders. Didn't you research what they looked like and how they work?\"; \"Also notice how the solar panels open up on one side they are blooming slightly like aflower\"; \"The ends are round and should have an opening for ships to enter\"",
       "sun_dir": [0.0, 0.0, 1.0],
       "_sun": "The star on the cylinders' axes (Wikipedia, O'Neill cylinder: each cylinder's axis points at the sun), in the station's frame; A-D keep sky.sun_dir.",
-      "cylinders": { "radius_m": 900, "length_m": 6400, "shell_m": 40, "dome_m": 500, "spacing_m": 9500, "pair_angle_deg": 25, "rpm": 1.0, "segments": 96, "cloud_radius_m": [560, 470], "spine_m": 10 },
-      "port": { "_doc": "Our own design: a non-rotating, round, recessed collar on the axis at the sunward dome of cylinder 0 (the axis is the only place nearly still, with no spin gravity): a lit ring mouth of radius hole_radius_m, its throat recess_m deep, rings of light on the dome leading in, the hall sunk behind it in the dome's hub.", "hole_radius_m": 270, "recess_m": 30, "light_rings_m": [360, 460, 580, 720] },
-      "mirrors": { "open_deg": 35, "night_deg": 80, "thickness_m": 8, "length_frac": 0.96 },
+      "cylinders": { "radius_m": 900, "length_m": 6400, "shell_m": 40, "dome_m": 500, "spacing_m": 9500, "pair_angle_deg": 25, "rpm": 1.0, "segments": 96, "spine_m": 10 },
+      "clouds": { "_doc": "Cumulus over the land stripes, placed where the Material Maker cloud map (oneill_clouds) is dense: their count a cylinder, their bases above the floor, their widths and heights.", "count": 70, "base_m": [150, 260], "width_m": [90, 180], "height_m": [45, 80] },
+      "port": { "_doc": "Our own design: a non-rotating, round, recessed collar on the axis at the sunward dome of cylinder 0 (the axis is the only place nearly still, with no spin gravity): a lit ring mouth of radius hole_radius_m, its throat recess_m deep, rings of light on the dome leading in, the hall sunk behind it in the dome's hub at the end of a lit round throat, behind a round bulkhead whose iris (iris_radius_m) the ships pass.", "hole_radius_m": 270, "recess_m": 320, "iris_radius_m": 150, "light_rings_m": [360, 460, 580, 720] },
+      "mirrors": { "open_deg": 35, "night_deg": 80, "late_deg": 68, "_late": "Late in the day the mirrors stand wider; at about 68 degrees a petal throws the star clear past its own dome, so the outside view sees one blaze.", "thickness_m": 8, "length_frac": 0.96 },
       "ring": { "radius_m": 1300, "pods": 18, "pod_radius_m": 70, "pod_length_m": 150, "tube_m": 14, "spokes": 3, "inset_m": 300 },
       "truss": { "beam_m": 40 },
       "textures": {
@@ -102,6 +103,7 @@
         "land": "oneill/oneill_land",
         "land_detail": "oneill/oneill_land_detail",
         "clouds": "oneill/oneill_clouds",
+        "dome": "oneill/oneill_dome",
         "detail_tile_m": 16,
         "land_tile_m": 64,
         "mirror_tile_m": 120,
@@ -109,7 +111,7 @@
         "haze_m": [6000, 40000],
         "inside_haze_m": [700, 7000],
         "earthshine": 0.32,
-        "bytes": 17825788
+        "bytes": 19223888
       },
       "hull": { "width_m": 440, "height_m": 240, "z_m": [-460, 460], "chamfer_m": 70, "rib_every_m": 120 },
       "hall": { "width_m": 400, "height_m": 200, "z_m": [-430, 442] },

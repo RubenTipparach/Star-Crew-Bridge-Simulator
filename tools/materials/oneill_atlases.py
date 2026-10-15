@@ -15,9 +15,10 @@ layer, and the big albiedo color map, and maybe normal maps on the details"):
 - oneill_macro: the outside, wrapped once round a cylinder (x round it, y along it), 1024 x 1024 px.
   Alpha is the glazing's panes (Material Maker's emission output), drawn see-through.
 - oneill_cap: once over an end dome, 512 x 512 px.
-- oneill_land: the land inside, once over one land stripe (x across, y along), 512 x 2048 px.
+- oneill_land: the land inside, once over one land stripe (x across, y along), 512 x 2048 px, alpha its water.
 - oneill_land_detail: the land's tiled detail (64 m a repeat), 256 x 256 px.
-- oneill_clouds: the cloud layer inside, once round its cylinder, 512 x 512 px, alpha the cover.
+- oneill_clouds: the cloud cover inside, once round the cylinder, 512 x 512 px, alpha the cover (where the cumulus stand).
+- oneill_dome: a dome's inside, engineered structure, once over the disc, 512 x 512 px, alpha its lit windows.
 - oneill_detail, oneill_detail_normal: the tiled detail layer (16 m a repeat), 512 x 512 px, its
   albedo near white (it multiplies the macro colour) and its tangent-space normal map
   (OpenGL convention, green up), for the per-pixel lighting proposed in the spacedock design.
@@ -40,9 +41,10 @@ SHEET = os.path.join(ROOT, "docs", "screenshots", "materials", "oneill-contact-s
 # name: (graph, map, size px, what one repeat covers, alpha source)
 TEXTURES = [
     ("oneill_macro", "oneill_macro", "albedo", 1024, "once round the cylinder", "emission"),
-    ("oneill_land", "oneill_land", "albedo", (512, 2048), "once over a land stripe", None),
+    ("oneill_land", "oneill_land", "albedo", (512, 2048), "once over a land stripe", "emission"),
     ("oneill_land_detail", "oneill_land_detail", "albedo", 256, "64 m of land, tiled", None),
-    ("oneill_clouds", "oneill_clouds", "albedo", 512, "once round the cloud layer", "emission"),
+    ("oneill_clouds", "oneill_clouds", "albedo", 512, "the cloud cover map", "emission"),
+    ("oneill_dome", "oneill_dome", "albedo", 512, "once over a dome's inside", "emission"),
     ("oneill_cap", "oneill_cap", "albedo", 512, "once over an end cap", None),
     ("oneill_detail", "oneill_detail", "albedo", 512, "16 m of hull, tiled", None),
     ("oneill_detail_normal", "oneill_detail", "normal", 512, "16 m of hull, tiled", "opaque"),
@@ -74,8 +76,8 @@ def build(name, graph, kind, px, alpha):
     elif alpha == "emission":
         em = np.asarray(Image.open(os.path.join(RAW, f"{graph}_emission.png")).convert("RGB"), np.float32)
         mask = (em.max(axis=2) > 6.0).astype(np.float32) * 255.0
-        if graph == "oneill_clouds":
-            mask = em.max(axis=2)   # the cover itself, soft-edged
+        if graph in ("oneill_clouds", "oneill_land"):
+            mask = em.max(axis=2)   # soft-edged: the cloud cover, the land's water
         a = np.asarray(Image.fromarray(mask.astype(np.uint8)).resize(size, Image.Resampling.BOX))
     img = np.dstack([np.asarray(rgb), a]).astype(np.uint8)
     os.makedirs(OUT, exist_ok=True)
