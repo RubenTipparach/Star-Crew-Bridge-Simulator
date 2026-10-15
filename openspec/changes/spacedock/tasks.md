@@ -35,8 +35,13 @@ can actually enter rather than something flimsy. I want there to be multiple shi
   lock (design 5a, why the sunward end). Its design 3, 4.1-4.3 and spec change with it.
 - [ ] 2.3 The station generators (committed generators, CLAUDE.md 9), one per version, E first: outside, inside and
   doors in three draws within design 9's budget, and a far model each; the data checks of design 10.
-- [ ] 2.4 The bays' bakes: their floods and window tiers as fixtures in data, baked into the insides' vertex colours.
-- [ ] 2.5 The docked ships placed from the berths at their middle level of detail; the berth probes lighting them.
+- [ ] 2.4 The bays' bakes (design 8a), E first: the rings, floods, berth work lights and window tiers as fixtures in
+  `data/lighting/fixtures.json`'s format, placed by rule from `spacedock.json`; baked into the insides' vertex colours in
+  the three states; first in `docs/mockups/spacedock.html` with `lightbake.js` and its shots, then in the station
+  generator's build.
+- [ ] 2.5 The docked ships placed from the berths at their middle level of detail; the bay's probes lighting them and
+  the Tern's hull while it is in the bay, giving way to the star over the throat (design 8a; `patrol-mission` 11.3's
+  relight follows).
 - [ ] 2.6 The doors and iris (traffic control's clearance, 20 s to open and close) and the bay's speed limit on the
   server; FN 10's dock autopilot with a berth as its port.
 - [ ] 2.7 Measure E's per-pixel shaders on the Pi (S7) and write the result into `engine-stack`'s budget table before

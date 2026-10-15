@@ -1,7 +1,9 @@
 # Tasks: patrol-mission
 
 The owner asked for it on 2026-10-14 ("have the ship undock from star base, go patrol a star system and encounter
-hostiles", "the view through the window should reflect whats going on around the ship").
+hostiles", "the view through the window should reflect whats going on around the ship"), and widened it on 2026-10-15
+("travel to various planets in the star system and encounter enemies we have to clear out, begining of the game starts
+at space dock"; "we do start at the oneil cylinders"; "baked lighting in the interior hanger bay").
 
 ## 1. Write-up and mockup (phase 1)
 
@@ -49,6 +51,21 @@ hostiles", "the view through the window should reflect whats going on around the
 - [x] 5.2 The starbase and its cradle in the system frame; the cradle sliding past as the Tern backs out.
 - [ ] 5.3 Motes, the jump's streaks and flash, the belt's far rocks.
 - [ ] 5.4 `starbase.glb` replacing the placeholder when the `starbase` change lands.
+
+## 7. The clearing route (phase 3, design 12b)
+
+- [x] 7.1 The write-up: the three-stop route, the stops' hostiles, `clear`, moving on uncleared, the ship kept between
+  stops, the outcome, the bots' lines, the windows at Cinder (design 1, 5, 6, 9, 11.1, 12b; spec).
+- [ ] 7.2 Cinder's ore lanes in `data/space/systems/shoals.json`, with its arrival point and checks.
+- [ ] 7.3 The mission's `route` as stops with groups, and `groups`; the resolve's checks.
+- [ ] 7.4 `fighters.rs`: a pack with no carrier.
+- [ ] 7.5 The fight re-armed at each stop with the Tern's damage, fires, missiles, power and crew kept.
+- [ ] 7.6 The hidden group found by the sweep; `clear`; moving on uncleared; PATROL COMPLETE or INCOMPLETE.
+- [ ] 7.7 The raider at the Shoals: `missions`' Grabon raider class, the Hound with four Jackals until it is built.
+- [ ] 7.8 The bots and automation clear each stop and wait for the fires to be out before the next jump; their lines.
+- [ ] 7.9 The briefing's route and the OBJECTIVES tab's three `clear` rows; the end screen's outcome.
+- [ ] 7.10 The hull lit by the bay's probes while berthed, the star's over the throat (spacedock 8a and 2.5).
+- [ ] 7.11 A playtest on foot of the whole route on the Pi 5: three stops cleared, repairs between them, home.
 
 ## 6. Verification
 
