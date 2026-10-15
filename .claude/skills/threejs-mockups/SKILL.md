@@ -75,7 +75,10 @@ of their own, so a page may rewrite a panel's contents freely.
   as one artifact file. The publisher adds its own document wrapper, so publish the copy that
   `python3 tools/mockups/artifact_copy.py docs/mockups/<page>.html <scratchpad dir>` writes
   (wrapper removed, title first, dark colour scheme kept), from the same scratchpad path every
-  time so the URL stays the same. Load the `artifact-design` skill before the first publish, give it an
+  time so the URL stays the same. A page over the 16 MB artifact limit (one carrying models and
+  textures, such as `spacedock.html`) takes `--split 256`: its big data blocks go gzipped into
+  `blk/*.txt` beside the page and are passed as the publish's `files`; test that copy over a local
+  web server (`python3 -m http.server`), since fetch() cannot read file:// pages. Load the `artifact-design` skill before the first publish, give it an
   icon, and keep republishing to the same URL.
 - Record each mockup's artifact URL in `docs/design/README.md` beside the change it presents,
   and end the reply with the links (CLAUDE.md section 13).
