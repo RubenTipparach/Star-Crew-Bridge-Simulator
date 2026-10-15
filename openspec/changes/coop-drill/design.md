@@ -179,7 +179,12 @@ unreliable messages (`--loss 0.1 --delay-ms 50`), to harden without a second mac
 takes the address.
 
 - **Briefing** (Muster and Countdown): the drill's title, the situation, the objectives, this station's orders, the
-  crew with their stations and ready marks, READY (a bot presses it after 3 s).
+  crew with their stations and ready marks, READY (a bot presses it after 3 s). With all eight stations crewed (fixed
+  2026-10-15, the Tamsin undock video drew the last three crew rows over one another and pushed the claim buttons off
+  the canvas): a 1200 x 648 point panel, the mission on the left (it scrolls in its column if the data outgrows it),
+  the crew on the right, one row a station with the name cut by an ellipsis, READY under them, and the eight claim
+  buttons in one row along the bottom. A test lays it out with the game's fonts at 1920 x 1080, 1280 x 720 and
+  1280 x 678 for every station's orders in both missions and fails on any two texts drawn over one another.
 - **Station console** (Engage). Superseded for the consoles' look by `console-parity` (owner, 2026-10-10: the drill's
   consoles did not match the approved mockups); what follows is what the drill built: the `bridge-stations` 8.0 layout for the station over a 3D bow view: the sky, the
   Hound as a placeholder low-poly model (generated, about 200 triangles, flat-coloured by the deck program's baked
@@ -289,7 +294,10 @@ as the ships are. A `Claim` far from the seat is the walk order; no new message.
 **In the client.** While its own body is seated, the console as now. While it walks, the look band shows the
 bridge from the body's eye (the deck's renderer, as the ship walk draws it) with the other bodies as the crew's
 blocky figures (`crew-npcs` 7), and the console dims with "Walking to Helm". `V` toggles an overview of the bridge
-from its back wall, with every body and its name, for the demo video.
+from its back wall, with every body and its name, for the demo video. The band along the top is two rows, 48 points
+high: the drill, its phase and clock at the left, and who holds each station in a grid of four columns to its right,
+cut with an ellipsis if it does not fit (fixed 2026-10-15: the crew list, one line right-aligned, ran back over the
+clock with eight stations crewed; a test measures the texts' rectangles at 1080p, 720p and the video's 1280 x 678).
 
 **The Pi 5 budget.** Server: the walk world and the walk grid at load (the ship walk's figures: about 1 s and
 tens of MB on the Pi 5; logged), and a body step, 0.26 ms each on a cloud CPU (`crew-npcs` 6) for at most 2 walking

@@ -50,6 +50,12 @@ pub struct Ui {
 /// 1080p (and on the Pi's 1280 x 720).
 const UI_HEIGHT_PT: f32 = 720.0;
 
+/// An output `width_px` x `height_px` pixels as the UI lays it out: its pixels a point and its size in points.
+pub fn points_of(width_px: u32, height_px: u32) -> (f32, Vec2) {
+    let ppp = (height_px as f32 / UI_HEIGHT_PT).max(0.5);
+    (ppp, Vec2::new(width_px as f32 / ppp, height_px as f32 / ppp))
+}
+
 fn texture_key(id: egui::TextureId) -> u64 {
     match id {
         egui::TextureId::Managed(n) => n,
@@ -184,9 +190,8 @@ impl Ui {
     /// Run the app's UI for `frame` (`time_s` the session's clock) and tessellate it; textures that changed are
     /// uploaded to `r`.
     pub fn run(&mut self, r: &mut Renderer, frame: &Frame, time_s: f64, ui: impl FnMut(&egui::Context)) -> UiFrame {
-        let ppp = (frame.height as f32 / UI_HEIGHT_PT).max(0.5);
+        let (ppp, points) = points_of(frame.width, frame.height);
         self.win_to_pt = frame.width as f32 / frame.window_w / ppp;
-        let points = Vec2::new(frame.width as f32 / ppp, frame.height as f32 / ppp);
         let mut raw = egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(Pos2::ZERO, points)),
             time: Some(time_s),

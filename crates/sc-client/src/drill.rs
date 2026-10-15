@@ -2287,7 +2287,11 @@ impl UiView {
 }
 
 fn canvas_origin(ctx: &egui::Context) -> Pos2 {
-    let w = ctx.content_rect().width();
+    canvas_origin_for(ctx.content_rect().width())
+}
+
+/// Where the console canvas starts on a screen `w` points wide: centred, or at the left edge when it is narrower.
+fn canvas_origin_for(w: f32) -> Pos2 {
     Pos2::new(((w - CANVAS.0) / 2.0).max(0.0), 0.0)
 }
 
@@ -2295,8 +2299,8 @@ fn label(ui: &mut egui::Ui, text: &str, size: f32, colour: Color32) {
     ui.label(RichText::new(text).size(size).color(colour));
 }
 
-fn big_button(text: &str, size: Vec2, fill: Color32) -> egui::Button<'static> {
-    egui::Button::new(RichText::new(text.to_owned()).size(20.0).strong().color(Color32::WHITE))
+fn big_button(text: &str, size: Vec2, text_pt: f32, fill: Color32) -> egui::Button<'static> {
+    egui::Button::new(RichText::new(text.to_owned()).size(text_pt).strong().color(Color32::WHITE))
         .min_size(size)
         .corner_radius(CornerRadius::same(6))
         .fill(fill)
@@ -2342,11 +2346,11 @@ fn draw_ui(ctx: &egui::Context, v: &UiView, ask: &mut Vec<UiAsk>, show_net: bool
         return;
     };
     if let Some(b) = &v.bridge {
-        bridge_overlay(ctx, v, snap, b, ask);
+        bridge_overlay(ctx, v, snap.phase, snap.phase_s, b);
         return;
     }
     match snap.phase {
-        Phase::Muster | Phase::Countdown => briefing(ctx, v, snap, ask),
+        Phase::Muster | Phase::Countdown => briefing(ctx, v, snap.phase, snap.phase_s, ask),
         Phase::Engage | Phase::Patrol => {
             // A refused command says why, over the status strip, for a few seconds.
             if let Some((why, age)) = v.refused.as_ref().filter(|r| r.1 < 3.0) {
@@ -2369,16 +2373,22 @@ fn draw_ui(ctx: &egui::Context, v: &UiView, ask: &mut Vec<UiAsk>, show_net: bool
     }
 }
 
+/// The bridge's top band, points: two rows, the drill and its clock at the left and who holds each station in a grid
+/// to its right, so neither is ever drawn over the other (CLAUDE.md 10: a band for each text, verified apart).
+const BAND_H: f32 = 48.0;
+/// The crew grid's rows in the band.
+const BAND_ROWS: usize = 2;
+/// The band's margin at each side and the gap between the head and the grid and between the grid's columns, points.
+const BAND_PAD: f32 = 16.0;
+const BAND_GAP: f32 = 22.0;
+
 /// The bridge on screen (design 9): a band along the top with the drill, its phase and clock and who holds each
 /// station, a name over every body with where it is walking, and this player's own walk said once in the middle.
-fn bridge_overlay(ctx: &egui::Context, v: &UiView, snap: &Snapshot, b: &BridgeUi, _ask: &mut Vec<UiAsk>) {
+fn bridge_overlay(ctx: &egui::Context, v: &UiView, phase: Phase, phase_s: f64, b: &BridgeUi) {
     use egui::FontId;
     let w = ctx.content_rect().width();
     let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Middle, egui::Id::new("bridge-names")));
-    painter.rect_filled(Rect::from_min_size(Pos2::ZERO, Vec2::new(w, 34.0)), CornerRadius::ZERO, PANEL);
-    let phase = format!("{:?}", snap.phase).to_uppercase();
-    let head = format!("{}   {}   {}", v.mission.title, phase, mmss(snap.phase_s));
-    painter.text(Pos2::new(16.0, 17.0), Align2::LEFT_CENTER, head, FontId::proportional(17.0), TEXT);
+    let head = format!("{}   {}   {}", v.mission.title, format!("{phase:?}").to_uppercase(), mmss(phase_s));
     let held: Vec<String> = Station::ALL
         .iter()
         .map(|s| {
@@ -2386,7 +2396,7 @@ fn bridge_overlay(ctx: &egui::Context, v: &UiView, snap: &Snapshot, b: &BridgeUi
             format!("{} {}", s.name(), who)
         })
         .collect();
-    painter.text(Pos2::new(w - 16.0, 17.0), Align2::RIGHT_CENTER, held.join("   "), FontId::proportional(14.0), DIM);
+    top_band(&painter, w, head, &held);
     for l in &b.labels {
         crate::nameplate::draw(&painter, l.at, &l.name, l.npc, l.going.as_deref(), l.k);
     }
@@ -2398,73 +2408,157 @@ fn bridge_overlay(ctx: &egui::Context, v: &UiView, snap: &Snapshot, b: &BridgeUi
     }
 }
 
-fn briefing(ctx: &egui::Context, v: &UiView, snap: &Snapshot, ask: &mut Vec<UiAsk>) {
-    let rect = Rect::from_min_size(Pos2::new(190.0, 70.0), Vec2::new(900.0, 580.0));
-    panel(ctx, "briefing", rect, "BRIEFING", |ui| {
-        label(ui, &v.mission.title, 30.0, AMBER);
-        ui.add_space(6.0);
-        ui.label(RichText::new(&v.mission.situation).size(17.0).color(TEXT));
-        ui.add_space(8.0);
-        for o in &v.mission.objectives {
-            label(ui, &format!("- {}", o.words), 17.0, TEXT);
+/// The top band `w` points wide: `head` (the drill, its phase and clock) at the left, and `held` (who holds each
+/// station) in a grid of [`BAND_ROWS`] rows to its right, ending at the right margin. A column takes its widest entry;
+/// when the grid does not fit beside the head every column gives up the same share and its entries are cut with an
+/// ellipsis, so the grid never reaches back over the head.
+fn top_band(painter: &egui::Painter, w: f32, head: String, held: &[String]) {
+    use egui::text::{LayoutJob, TextWrapping};
+    use egui::FontId;
+    painter.rect_filled(Rect::from_min_size(Pos2::ZERO, Vec2::new(w, BAND_H)), CornerRadius::ZERO, PANEL);
+    let head = painter.layout_no_wrap(head, FontId::proportional(17.0), TEXT);
+    let head_w = head.size().x;
+    painter.galley(Pos2::new(BAND_PAD, (BAND_H - head.size().y) / 2.0), head, TEXT);
+    let font = FontId::proportional(14.0);
+    let cols = held.len().div_ceil(BAND_ROWS);
+    if cols == 0 {
+        return;
+    }
+    let natural: Vec<f32> =
+        held.iter().map(|t| painter.layout_no_wrap(t.clone(), font.clone(), DIM).size().x.ceil()).collect();
+    let widest: Vec<f32> = (0..cols)
+        .map(|c| (0..BAND_ROWS).filter_map(|r| natural.get(r * cols + c)).copied().fold(0.0, f32::max))
+        .collect();
+    let room = (w - BAND_PAD - (BAND_PAD + head_w + BAND_GAP) - BAND_GAP * (cols - 1) as f32).max(0.0);
+    let sum: f32 = widest.iter().sum();
+    let widths: Vec<f32> = if sum <= room { widest } else { widest.iter().map(|c| (c * room / sum).floor()).collect() };
+    let mut x = w - BAND_PAD - widths.iter().sum::<f32>() - BAND_GAP * (cols - 1) as f32;
+    let row_h = BAND_H / BAND_ROWS as f32;
+    for (c, cw) in widths.iter().enumerate() {
+        for r in 0..BAND_ROWS {
+            let Some(t) = held.get(r * cols + c) else { continue };
+            let mut job = LayoutJob::simple_singleline(t.clone(), font.clone(), DIM);
+            job.wrap = TextWrapping::truncate_at_width(*cw);
+            let g = painter.layout_job(job);
+            let y = row_h * (r as f32 + 0.5) - g.size().y / 2.0;
+            painter.galley(Pos2::new(x, y), g, DIM);
         }
-        ui.add_space(10.0);
-        let mine = v.station.unwrap_or(v.want);
-        let orders = v.mission.orders.of(mine);
-        label(ui, &format!("{} ORDERS", mine.name().to_uppercase()), 13.0, DIM);
-        ui.label(RichText::new(orders).size(18.0).color(CYAN));
-        ui.add_space(12.0);
-        label(ui, "CREW", 13.0, DIM);
-        for s in Station::ALL {
-            let who = v.crew.iter().find(|c| c.station == Some(s));
-            let (name, ready) = who.map_or(("automation".to_owned(), true), |c| {
-                (format!("{}{}", c.name, if c.bot { " (bot)" } else { "" }), c.ready)
-            });
-            ui.horizontal(|ui| {
-                label(ui, &format!("{:<9}", s.name()), 18.0, DIM);
-                label(ui, &name, 18.0, TEXT);
-                if who.is_some() {
-                    label(ui, if ready { "READY" } else { "reading" }, 16.0, if ready { GREEN } else { AMBER });
+        x += cw + BAND_GAP;
+    }
+}
+
+/// The briefing's panel on the canvas, points: wide enough for all eight stations' claim buttons in one row, the
+/// mission on the left and the crew on the right, so the crew list never runs into the buttons below it.
+const BRIEF_MIN: (f32, f32) = (40.0, 36.0);
+const BRIEF_SIZE: (f32, f32) = (1200.0, 648.0);
+/// The mission's column, points; the crew take the rest of the panel's width.
+const BRIEF_LEFT_W: f32 = 660.0;
+/// The crew rows' cells, points: the station, then the name (cut with an ellipsis), then READY or reading.
+const CREW_STATION_W: f32 = 112.0;
+const CREW_MARK_W: f32 = 76.0;
+
+/// One cell `width` points wide holding `text`, cut with an ellipsis when it does not fit.
+fn cell(ui: &mut egui::Ui, width: f32, text: &str, size: f32, colour: Color32) {
+    let layout = egui::Layout::left_to_right(egui::Align::Center);
+    ui.allocate_ui_with_layout(Vec2::new(width, size + 8.0), layout, |ui| {
+        ui.set_min_width(width);
+        ui.add(egui::Label::new(RichText::new(text).size(size).color(colour)).truncate());
+    });
+}
+
+fn briefing(ctx: &egui::Context, v: &UiView, phase: Phase, phase_s: f64, ask: &mut Vec<UiAsk>) {
+    let rect = Rect::from_min_size(Pos2::new(BRIEF_MIN.0, BRIEF_MIN.1), Vec2::new(BRIEF_SIZE.0, BRIEF_SIZE.1));
+    panel(ctx, "briefing", rect, "BRIEFING", |ui| {
+        let inner = ui.available_size();
+        let gap = 24.0;
+        let right_w = inner.x - BRIEF_LEFT_W - gap;
+        let claim_h = 44.0;
+        // What the two columns may take: the panel less its title and the row of claim buttons.
+        let column_h = inner.y - claim_h - 2.0 * ui.spacing().item_spacing.y;
+        ui.horizontal_top(|ui| {
+            ui.allocate_ui_with_layout(
+                Vec2::new(BRIEF_LEFT_W, column_h),
+                egui::Layout::top_down(egui::Align::Min),
+                |ui| {
+                    ui.set_width(BRIEF_LEFT_W);
+                    // The mission's words are the data's: a longer one scrolls in its column, never under the crew.
+                    egui::ScrollArea::vertical().id_salt("briefing-mission").max_height(column_h).show(ui, |ui| {
+                        ui.spacing_mut().item_spacing.y = 6.0;
+                        label(ui, &v.mission.title, 30.0, AMBER);
+                        ui.label(RichText::new(&v.mission.situation).size(17.0).color(TEXT));
+                        ui.add_space(4.0);
+                        for o in &v.mission.objectives {
+                            label(ui, &format!("- {}", o.words), 17.0, TEXT);
+                        }
+                        ui.add_space(8.0);
+                        let mine = v.station.unwrap_or(v.want);
+                        label(ui, &format!("{} ORDERS", mine.name().to_uppercase()), 13.0, DIM);
+                        ui.label(RichText::new(v.mission.orders.of(mine)).size(18.0).color(CYAN));
+                    });
+                },
+            );
+            ui.add_space(gap - ui.spacing().item_spacing.x);
+            ui.allocate_ui_with_layout(Vec2::new(right_w, column_h), egui::Layout::top_down(egui::Align::Min), |ui| {
+                ui.set_width(right_w);
+                ui.spacing_mut().item_spacing.y = 4.0;
+                label(ui, "CREW", 13.0, DIM);
+                let name_w = right_w - CREW_STATION_W - CREW_MARK_W - 2.0 * ui.spacing().item_spacing.x;
+                for s in Station::ALL {
+                    let who = v.crew.iter().find(|c| c.station == Some(s));
+                    let (name, ready) = who.map_or(("automation".to_owned(), true), |c| {
+                        (format!("{}{}", c.name, if c.bot { " (bot)" } else { "" }), c.ready)
+                    });
+                    ui.horizontal(|ui| {
+                        cell(ui, CREW_STATION_W, s.name(), 17.0, DIM);
+                        cell(ui, name_w, &name, 17.0, TEXT);
+                        if who.is_some() {
+                            let (mark, colour) = if ready { ("READY", GREEN) } else { ("reading", AMBER) };
+                            cell(ui, CREW_MARK_W, mark, 15.0, colour);
+                        }
+                    });
+                }
+                ui.add_space(14.0);
+                if phase == Phase::Countdown {
+                    let left = (v.mission.countdown_s - phase_s).ceil().max(0.0);
+                    label(ui, &format!("ENGAGING IN {left:.0}"), 30.0, AMBER);
+                } else {
+                    let text = if v.ready {
+                        "READY"
+                    } else if v.ready_held {
+                        "CREW SITTING"
+                    } else {
+                        "MARK READY"
+                    };
+                    let fill = if v.ready { Color32::from_rgb(40, 120, 60) } else { Color32::from_rgb(170, 100, 30) };
+                    if ui
+                        .add_enabled(
+                            v.station.is_some() && !v.bot,
+                            big_button(text, Vec2::new(220.0, 52.0), 20.0, fill),
+                        )
+                        .clicked()
+                    {
+                        ask.push(UiAsk::Ready(!v.ready));
+                    }
+                }
+                if v.bot {
+                    label(ui, "A bot plays this station", 14.0, DIM);
                 }
             });
-        }
-        ui.add_space(14.0);
+        });
+        // Every station's claim button in one row along the bottom, each an eighth of the panel.
+        let n = Station::ALL.len() as f32;
+        let claim_w = ((inner.x - (n - 1.0) * ui.spacing().item_spacing.x) / n).floor();
         ui.horizontal(|ui| {
             for s in Station::ALL {
                 let held_by_other = v.crew.iter().any(|c| c.station == Some(s)) && v.station != Some(s);
                 let fill =
                     if v.station == Some(s) { Color32::from_rgb(30, 90, 120) } else { Color32::from_rgb(34, 44, 58) };
-                if ui
-                    .add_enabled(!held_by_other && !v.bot, big_button(s.name(), Vec2::new(150.0, 44.0), fill))
-                    .clicked()
-                {
+                let button = big_button(s.name(), Vec2::new(claim_w, claim_h), 17.0, fill);
+                if ui.add_enabled(!held_by_other && !v.bot, button).clicked() {
                     ask.push(UiAsk::Claim(s));
                 }
             }
-            ui.add_space(40.0);
-            if snap.phase == Phase::Countdown {
-                let left = (v.mission.countdown_s - snap.phase_s).ceil().max(0.0);
-                label(ui, &format!("ENGAGING IN {left:.0}"), 30.0, AMBER);
-            } else {
-                let text = if v.ready {
-                    "READY"
-                } else if v.ready_held {
-                    "CREW SITTING"
-                } else {
-                    "MARK READY"
-                };
-                let fill = if v.ready { Color32::from_rgb(40, 120, 60) } else { Color32::from_rgb(170, 100, 30) };
-                if ui
-                    .add_enabled(v.station.is_some() && !v.bot, big_button(text, Vec2::new(220.0, 52.0), fill))
-                    .clicked()
-                {
-                    ask.push(UiAsk::Ready(!v.ready));
-                }
-            }
         });
-        if v.bot {
-            label(ui, "A bot plays this station", 14.0, DIM);
-        }
     });
 }
 
@@ -2537,9 +2631,11 @@ fn debrief(ctx: &egui::Context, v: &UiView, snap: &Snapshot) {
 
 #[cfg(test)]
 mod tests {
-    use super::seat_prompt;
+    use super::{bridge_overlay, briefing, seat_prompt, BridgeUi, UiView, BAND_H, BRIEF_MIN, BRIEF_SIZE};
+    use egui::{Pos2, Rect};
     use sc_core::combat::bodies::Posture;
-    use sc_core::combat::Station;
+    use sc_core::combat::data::{DrillData, DRILL_FILES, DRILL_FILE_COUNT};
+    use sc_core::combat::{Phase, Station};
     use sc_net::msg::{BodySnap, CrewEntry};
 
     fn crew(slot: u8, name: &str, station: Option<Station>, bot: bool) -> CrewEntry {
@@ -2574,5 +2670,174 @@ mod tests {
         let bodies = [body(1, Some(Station::Captain))];
         assert_eq!(seat_prompt(Station::Tactical, 1, &crew, &bodies), "Ana holds Tactical");
         assert_eq!(seat_prompt(Station::Captain, 1, &crew, &bodies), "E  Sit at Captain");
+    }
+
+    /// The mission `id` as the client loads it, from the repository's data.
+    fn mission(id: &str) -> sc_core::combat::data::MissionFile {
+        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let read = |rel: &str| std::fs::read_to_string(root.join(rel)).expect("the repository's data reads");
+        let t: Vec<String> = DRILL_FILES.iter().map(|f| read(f)).collect();
+        let arr: [&str; DRILL_FILE_COUNT] = std::array::from_fn(|i| t[i].as_str());
+        let m = format!("data/missions/{id}.json");
+        DrillData::parse(arr, &m, &read(&m)).expect("the mission parses").mission
+    }
+
+    /// All eight stations crewed, by the names in the Tamsin undock captures: the player at Helm, NPCs elsewhere.
+    fn eight_crew() -> Vec<CrewEntry> {
+        let names = [
+            "Lt. Player",
+            "Lt. Sil Saren",
+            "Lt. Jaya Strandraari",
+            "Lt. Elaya Corregan",
+            "Lt. Xa'lensha",
+            "Lt. Kiya Ashberg",
+            "Lt. Ni'lenru",
+            "Lt. Haro Lundivan",
+        ];
+        Station::ALL
+            .iter()
+            .zip(names)
+            .enumerate()
+            .map(|(i, (s, n))| CrewEntry {
+                slot: i as u8 + 1,
+                name: n.into(),
+                station: Some(*s),
+                ready: i % 2 == 1,
+                bot: i > 0,
+            })
+            .collect()
+    }
+
+    fn view(id: &str, me: Station) -> UiView {
+        UiView {
+            error: None,
+            stage: None,
+            server: String::new(),
+            station: Some(me),
+            want: me,
+            bot: false,
+            ready: false,
+            crew: eight_crew(),
+            snap: None,
+            tern: None,
+            rtt_ms: None,
+            loss: 0.0,
+            refused: None,
+            mission: mission(id),
+            tern_hull: 0.0,
+            nominal_pct: 0.0,
+            bridge: None,
+            ready_held: false,
+        }
+    }
+
+    /// One drawn text: its words, where it is drawn and the clip it is drawn in, points.
+    struct Drawn {
+        text: String,
+        rect: Rect,
+        clip: Rect,
+    }
+
+    /// Every text `draw` puts on an output of `px` pixels, with the game's fonts and style, after the frames egui
+    /// takes to size its areas; and the output's size in points.
+    fn texts_drawn(px: (u32, u32), mut draw: impl FnMut(&egui::Context)) -> (Vec<Drawn>, egui::Vec2) {
+        fn collect(shape: &egui::Shape, clip: Rect, out: &mut Vec<Drawn>) {
+            match shape {
+                egui::Shape::Text(t) if !t.galley.is_empty() => out.push(Drawn {
+                    text: t.galley.text().to_owned(),
+                    rect: t.galley.rect.translate(t.pos.to_vec2()),
+                    clip,
+                }),
+                egui::Shape::Vec(v) => v.iter().for_each(|s| collect(s, clip, out)),
+                _ => {}
+            }
+        }
+        let ui = crate::ui::Ui::new();
+        let (ppp, points) = crate::ui::points_of(px.0, px.1);
+        let mut out = Vec::new();
+        for _ in 0..4 {
+            let mut raw =
+                egui::RawInput { screen_rect: Some(Rect::from_min_size(Pos2::ZERO, points)), ..Default::default() };
+            if let Some(vp) = raw.viewports.get_mut(&raw.viewport_id) {
+                vp.native_pixels_per_point = Some(ppp);
+            }
+            out = ui.ctx.run(raw, &mut draw).shapes;
+        }
+        let mut drawn = Vec::new();
+        for c in &out {
+            collect(&c.shape, c.clip_rect, &mut drawn);
+        }
+        (drawn, points)
+    }
+
+    /// Each pair of texts drawn over one another (by more than a point each way), named.
+    fn overlapping(drawn: &[Drawn]) -> Vec<String> {
+        let mut bad = Vec::new();
+        for (i, a) in drawn.iter().enumerate() {
+            for b in &drawn[i + 1..] {
+                let o = a.rect.intersect(b.rect);
+                if o.width() > 1.0 && o.height() > 1.0 {
+                    bad.push(format!("{:?} over {:?}", a.text, b.text));
+                }
+            }
+        }
+        bad
+    }
+
+    /// The output sizes the captures and the Pi play at: 1080p, 720p, and the undock video's 1280 x 678 window.
+    const OUTPUTS: [(u32, u32); 3] = [(1920, 1080), (1280, 720), (1280, 678)];
+
+    #[test]
+    fn the_bridge_band_keeps_the_clock_clear_of_eight_crew() {
+        // The Tamsin undock captures drew "Patrol: the Shoals   PATROL   00:03" over the start of the crew list.
+        let v = view("patrol-shoals", Station::Helm);
+        let b = BridgeUi { labels: Vec::new(), banner: None, overview: false };
+        for px in OUTPUTS {
+            let (drawn, points) = texts_drawn(px, |ctx| bridge_overlay(ctx, &v, Phase::Patrol, 3.0, &b));
+            let bad = overlapping(&drawn);
+            assert!(bad.is_empty(), "texts in the band overlap at {px:?}: {bad:?}");
+            assert_eq!(drawn.len(), 9, "the head and eight stations at {px:?}");
+            assert!(drawn.iter().any(|d| d.text.starts_with("Patrol: the Shoals")), "the head is drawn at {px:?}");
+            for d in &drawn {
+                assert!(
+                    d.rect.min.x >= 0.0 && d.rect.max.x <= points.x && d.rect.min.y >= 0.0 && d.rect.max.y <= BAND_H,
+                    "{:?} at {:?} leaves the band (0-{} x 0-{BAND_H}) at {px:?}",
+                    d.text,
+                    d.rect,
+                    points.x
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn the_briefing_fits_eight_crew_and_every_stations_orders() {
+        // The undock video's briefing drew Laser port, Laser stbd and Gunner over one another, the claim buttons below.
+        for id in ["patrol-shoals", "drill-hound"] {
+            for me in Station::ALL {
+                let v = view(id, me);
+                for px in OUTPUTS {
+                    let (drawn, points) = texts_drawn(px, |ctx| briefing(ctx, &v, Phase::Muster, 1.0, &mut Vec::new()));
+                    let origin = super::canvas_origin_for(points.x);
+                    let panel = Rect::from_min_size(
+                        Pos2::new(BRIEF_MIN.0 + origin.x, BRIEF_MIN.1),
+                        egui::vec2(BRIEF_SIZE.0, BRIEF_SIZE.1),
+                    );
+                    let bad = overlapping(&drawn);
+                    assert!(bad.is_empty(), "briefing texts overlap ({id}, {me:?}, {px:?}): {bad:?}");
+                    for d in &drawn {
+                        assert!(
+                            panel.contains_rect(d.rect) && d.clip.contains_rect(d.rect),
+                            "{:?} at {:?} is not whole inside the panel {panel:?} ({id}, {me:?}, {px:?})",
+                            d.text,
+                            d.rect
+                        );
+                    }
+                    for name in ["Lt. Kiya Ashberg (bot)", "Lt. Haro Lundivan (bot)", "Gunner", "MARK READY"] {
+                        assert!(drawn.iter().any(|d| d.text == name), "{name:?} is drawn ({id}, {me:?}, {px:?})");
+                    }
+                }
+            }
+        }
     }
 }
