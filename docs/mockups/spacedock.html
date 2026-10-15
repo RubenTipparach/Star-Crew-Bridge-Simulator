@@ -56,7 +56,7 @@
 <!-- INLINE data:space/exterior END -->
 <!-- INLINE data:space/spacedock BEGIN -->
 <script id="ship-data-spacedock" type="application/json">
-{"schema":"starcrew.spacedock-options/1","status":"Five design options for Tamsin Station's spacedock, for the owner to choose between (openspec/changes/spacedock). Read by docs/mockups/spacedock.html only; the engine reads the chosen option once the change is applied.","_doc":"Station frame: metres, origin at the station's centre, +y the station's north, +z the way the main doors face. Ships' frames as layout.json: +x port, +y up, +z the bow. Angles in degrees; bearings round +y from +z toward +x. Colours sRGB 0-1.","sky":{"_doc":"The view at the station, in its own frame: the star high behind the approach, Tamsin below and beyond (17.5 degrees in radius at 3.33 radii, patrol-mission design 2). Orrin and Cinder are points of light from here (under 0.02 degrees).","sun_dir":[0.55,0.42,0.72],"planet_dir":[-0.36,-0.52,-0.78],"planet_radius_deg":17.5,"orrin_dir":[0.82,0.3,-0.48],"cinder_dir":[0.62,0.52,0.58]},"traffic":{"_doc":"The approach and the bay's speed limits. The doors open when traffic control clears the ship and the bow is inside the approach corridor (doors_open_s); inside the doors the bay limit holds until the berth, where flight-and-navigation 10's docking corridor (2 m/s inside 100 m, 0.5 m/s inside 10 m, 0.2 m/s at contact) takes over.","arrival_from_hull_m":5000,"corridor_mps":40,"door_mps":5,"bay_mps":5,"doors_open_s":20,"doors_close_s":20},"colours":{"pearl":[0.92,0.93,0.95],"graphite":[0.55,0.6,0.68],"window":[1.0,0.86,0.6],"accent":[0.35,0.68,1.0],"work":[1.0,0.9,0.7],"red":[1.0,0.18,0.12],"green":[0.2,1.0,0.35],"rock":[0.9,0.82,0.72]},"fleet":{"_doc":"The ships at the berths: the Tern's liveries and the Osprey (assets/models/exteriors), and the Federation concepts (data/ships/federation-concepts). A docked ship is drawn at its middle level of detail in the engine.","tern":{"model":"exteriors/liveries/cobalt/tern","name":"SCS Tern (the players)"},"heron":{"model":"exteriors/liveries/cobalt/tern","name":"A sister Heron-class frigate"},"rescue":{"model":"exteriors/liveries/rescue/tern_lod1","name":"A Heron in rescue livery"},"copper":{"model":"exteriors/tern_lod2","name":"A Heron in copper livery"},"osprey":{"model":"exteriors/osprey","name":"An Osprey-class courier"},"pursuer":{"concept":"pursuer","name":"Pursuer-class corvette"},"splitjaw":{"concept":"splitjaw","name":"Splitjaw-class carrier"},"bulwark":{"concept":"bulwark","name":"Bulwark-class corvette"}},"versions":{"A":{"name":"Bastion","kind":"mushroom","brief":"A domed cap 1.8 km across on a ringed tower 2 km tall. Four doors in the cap's rim open into one round hall 1.7 km across and 140 m high, with the berths set round a central core like the spokes of a wheel.","cap":{"radius_m":900,"rim_y_m":[-80,80],"crown":[[900,80],[840,150],[680,228],[460,290],[220,322],[0,332]],"under":[[900,-80],[780,-150],[560,-220],[300,-268],[130,-300]]},"hall":{"radius_m":860,"floor_y_m":-70,"ceiling_y_m":70,"core_radius_m":110},"doors":{"bearings_deg":[0,90,180,270],"width_m":150,"height_m":90},"spine":{"core_radius_m":120,"top_y_m":-300,"tip_y_m":-1950,"rings":[[-430,300,40],[-610,260,34],[-790,230,30],[-970,205,28],[-1150,185,26],[-1330,165,24],[-1520,380,70],[-1740,150,22]]},"berths":{"_doc":"[bearing, ship, radius of the ship's middle]: an outer ring and an inner ring, bows toward the core.","slots":[[0,"tern",560],[330,"copper",370],[30,"rescue",370],[60,"osprey",560],[120,"pursuer",560],[150,"heron",370],[210,"splitjaw",370],[240,null,560],[300,"bulwark",560]]}},"B":{"name":"Wheel","kind":"wheel","brief":"A habitat wheel 1.75 km across on six spokes round a hub drum 540 m across. The hub's front doors open along the axis into a cylindrical hangar where ships berth all round the curved wall, overhead too.","ring":{"radius_m":800,"width_m":150,"depth_m":110,"segments":32,"spokes":6,"spoke_radius_m":22},"hub":{"radius_m":270,"z_m":[-290,290]},"hall":{"radius_m":240,"z_m":[-260,262]},"doors":{"width_m":190,"height_m":130},"berths":{"radius_m":168,"rows_z_m":[110,-120],"_slots":"[row, angle round the axis from the bottom, ship]","slots":[[1,0,"tern"],[0,0,null],[0,45,"osprey"],[0,135,"pursuer"],[0,225,"rescue"],[0,315,"heron"],[1,90,"splitjaw"],[1,180,"copper"],[1,270,"bulwark"]]}},"C":{"name":"Drydock","kind":"hall","brief":"A long armoured hall 1.7 km long with a command tower and a habitat block at its stern. One pair of doors at the bow opens onto a fairway 400 m wide, with six berths down each wall where ships lie bow out, ready to leave.","hull":{"width_m":440,"height_m":240,"z_m":[-850,850],"chamfer_m":70,"rib_every_m":120},"hall":{"width_m":400,"height_m":200,"z_m":[-820,832]},"doors":{"width_m":320,"height_m":150},"berths":{"x_m":128,"z_m":[560,320,80,-160,-400,-640],"_slots":"[wall (-1 starboard, +1 port, as the ships lie bow out), z, ship]","slots":[[-1,560,"heron"],[-1,320,"tern"],[-1,80,null],[-1,-160,"bulwark"],[-1,-400,"copper"],[1,560,"osprey"],[1,320,"pursuer"],[1,80,"rescue"],[1,-160,"splitjaw"],[1,-400,null],[1,-640,"osprey"]]}},"D":{"name":"Hollow","kind":"asteroid","brief":"A captured nickel-iron asteroid 2.2 km long, hollowed into a cavern 1.3 km deep. An armoured gate in its face opens into the rock; inside, the berths stand on a built deck down both sides, lit galleries cut into the walls.","rock":{"radii_m":[900,680,1100],"detail":14,"rough":0.12,"seed":7},"gate":{"z_m":760,"plate_m":[780,560,220],"width_m":300,"height_m":170},"hall":{"radius_m":300,"z_m":[-680,650],"floor_y_m":-150,"rough_m":34},"berths":{"x_m":120,"z_m":[450,230,10,-210,-430],"_slots":"[side, z, ship]","slots":[[-1,450,"splitjaw"],[-1,230,"tern"],[-1,10,"rescue"],[-1,-210,null],[1,450,"heron"],[1,230,"osprey"],[1,10,"pursuer"],[1,-210,"bulwark"],[1,-430,"copper"]]}},"E":{"name":"O'Neill Pair","kind":"oneill","brief":"Two hollow O'Neill cylinders 6.4 km long and 1.8 km across, side by side and turning opposite ways, their axes on the star. Inside each, three valleys of farmland, rivers and towns curve up overhead between three long windows, under a patchy cloud layer; three mirrors bloom open from the far end like petals and throw the star in through the windows. Ships enter on the axis, through a non-rotating port at the sunward dome of one cylinder, into an enclosed hall.","_owner":"2026-10-14: \"what about an oneil cylinder space station? can you make some textures for that? a giant cylinder? wiht a big space station attached at one end. theres usually two of them to counter balance rotational effects\"; \"What oneil cylinders are hollowed cylinders. Didn't you research what they looked like and how they work?\"; \"Also notice how the solar panels open up on one side they are blooming slightly like aflower\"; \"The ends are round and should have an opening for ships to enter\"","sun_dir":[0.0,0.0,1.0],"_sun":"The star on the cylinders' axes (Wikipedia, O'Neill cylinder: each cylinder's axis points at the sun), in the station's frame; A-D keep sky.sun_dir.","cylinders":{"radius_m":900,"length_m":6400,"shell_m":40,"dome_m":500,"spacing_m":9500,"pair_angle_deg":25,"rpm":1.0,"segments":96,"spine_m":10},"clouds":{"_doc":"Cumulus over the land stripes, placed where the Material Maker cloud map (oneill_clouds) is dense: their count a cylinder, their bases above the floor, their widths and heights.","count":70,"base_m":[150,260],"width_m":[90,180],"height_m":[45,80]},"port":{"_doc":"Our own design: a non-rotating, round, recessed collar on the axis at the sunward dome of cylinder 0 (the axis is the only place nearly still, with no spin gravity): a lit ring mouth of radius hole_radius_m, its throat recess_m deep, rings of light on the dome leading in, the hall sunk behind it in the dome's hub at the end of a lit round throat, behind a round bulkhead whose iris (iris_radius_m) the ships pass.","hole_radius_m":270,"recess_m":320,"iris_radius_m":150,"light_rings_m":[360,460,580,720]},"mirrors":{"open_deg":35,"night_deg":80,"late_deg":68,"_late":"Late in the day the mirrors stand wider; at about 68 degrees a petal throws the star clear past its own dome, so the outside view sees one blaze.","thickness_m":8,"length_frac":0.96},"ring":{"radius_m":1300,"pods":18,"pod_radius_m":70,"pod_length_m":150,"tube_m":14,"spokes":3,"inset_m":300},"truss":{"beam_m":40},"textures":{"_doc":"Two layers (owner, 2026-10-14: \"we should have 2 layers of texture, detail layer, and the big albiedo color map, and maybe normal maps on the details\"): macro maps wrapped once (the outside round a cylinder, the land over a stripe, the clouds round their layer, a dome) multiplied by tiled detail layers, the hull's with its normal map, the detail fading out between fade_m. Made in Material Maker (tools/materials/ptex/oneill_*.ptex), packaged by tools/materials/oneill_atlases.py.","macro":"oneill/oneill_macro","cap":"oneill/oneill_cap","detail":"oneill/oneill_detail","detail_normal":"oneill/oneill_detail_normal","mirror":"oneill/oneill_mirror","mirror_normal":"oneill/oneill_mirror_normal","land":"oneill/oneill_land","land_detail":"oneill/oneill_land_detail","clouds":"oneill/oneill_clouds","dome":"oneill/oneill_dome","detail_tile_m":16,"land_tile_m":64,"mirror_tile_m":120,"fade_m":[350,2600],"haze_m":[6000,40000],"inside_haze_m":[700,7000],"earthshine":0.32,"bytes":19223888},"hull":{"width_m":440,"height_m":240,"z_m":[-460,460],"chamfer_m":70,"rib_every_m":120},"hall":{"width_m":400,"height_m":200,"z_m":[-430,442]},"doors":{"width_m":320,"height_m":150},"berths":{"x_m":128,"z_m":[300,80,-140,-330],"_slots":"[wall, z, ship], as C","slots":[[-1,300,"heron"],[-1,80,"tern"],[-1,-140,"bulwark"],[-1,-330,null],[1,300,"osprey"],[1,80,"pursuer"],[1,-140,"rescue"],[1,-330,"splitjaw"]]}}}}
+{"schema":"starcrew.spacedock-options/1","status":"Five design options for Tamsin Station's spacedock, for the owner to choose between (openspec/changes/spacedock). Read by docs/mockups/spacedock.html only; the engine reads the chosen option once the change is applied.","_doc":"Station frame: metres, origin at the station's centre, +y the station's north, +z the way the main doors face. Ships' frames as layout.json: +x port, +y up, +z the bow. Angles in degrees; bearings round +y from +z toward +x. Colours sRGB 0-1.","sky":{"_doc":"The view at the station, in its own frame: the star high behind the approach, Tamsin below and beyond (17.5 degrees in radius at 3.33 radii, patrol-mission design 2). Orrin and Cinder are points of light from here (under 0.02 degrees).","sun_dir":[0.55,0.42,0.72],"planet_dir":[-0.36,-0.52,-0.78],"planet_radius_deg":17.5,"orrin_dir":[0.82,0.3,-0.48],"cinder_dir":[0.62,0.52,0.58]},"traffic":{"_doc":"The approach and the bay's speed limits. The doors open when traffic control clears the ship and the bow is inside the approach corridor (doors_open_s); inside the doors the bay limit holds until the berth, where flight-and-navigation 10's docking corridor (2 m/s inside 100 m, 0.5 m/s inside 10 m, 0.2 m/s at contact) takes over.","arrival_from_hull_m":5000,"corridor_mps":40,"door_mps":5,"bay_mps":5,"doors_open_s":20,"doors_close_s":20},"colours":{"pearl":[0.92,0.93,0.95],"graphite":[0.55,0.6,0.68],"window":[1.0,0.86,0.6],"accent":[0.35,0.68,1.0],"work":[1.0,0.9,0.7],"red":[1.0,0.18,0.12],"green":[0.2,1.0,0.35],"rock":[0.9,0.82,0.72]},"fleet":{"_doc":"The ships at the berths: the Tern's liveries and the Osprey (assets/models/exteriors), and the Federation concepts (data/ships/federation-concepts). A docked ship is drawn at its middle level of detail in the engine.","tern":{"model":"exteriors/liveries/cobalt/tern","name":"SCS Tern (the players)"},"heron":{"model":"exteriors/liveries/cobalt/tern","name":"A sister Heron-class frigate"},"rescue":{"model":"exteriors/liveries/rescue/tern_lod1","name":"A Heron in rescue livery"},"copper":{"model":"exteriors/tern_lod2","name":"A Heron in copper livery"},"osprey":{"model":"exteriors/osprey","name":"An Osprey-class courier"},"pursuer":{"concept":"pursuer","name":"Pursuer-class corvette"},"splitjaw":{"concept":"splitjaw","name":"Splitjaw-class carrier"},"bulwark":{"concept":"bulwark","name":"Bulwark-class corvette"}},"stations":{"_doc":"The owner, 2026-10-14 (S1): \"I want to keep all of them as various stations you can visit across the system, starting at oniel pairs\". Every version is a station of the Shoals system (data/space/systems/shoals.json): its body there (a body's id, or a point's id with near), the radius of its orbit about that body in metres, which version of this file draws it, its name and its role. The patrol starts docked at the one marked start. Placements and names: recommendation taken (ask only with screenshots). Read by the mockup only today; the engine reads it once the stations are in the system file (openspec/changes/spacedock tasks 2).","list":[{"id":"tamsin_station","name":"Tamsin Station","version":"E","body":"tamsin","orbit_radius_m":20000000.0,"start":true,"role":"The home port: the O'Neill pair over Tamsin, the system's people, farms and government; where the game starts"},{"id":"cinder_yards","name":"Cinder Yards","version":"C","body":"cinder","orbit_radius_m":8000000.0,"role":"The shipyard: builds and refits the fleet in its long drydock, fed by the metal mines on Cinder"},{"id":"orrin_highport","name":"Orrin Highport","version":"A","body":"orrin","orbit_radius_m":193000000.0,"role":"The refinery and fleet command: skims Orrin's gas for fuel, the patrols' forward base"},{"id":"pell_wheel","name":"Pell Wheel","version":"B","body":"pell","orbit_radius_m":4000000.0,"role":"The water and ice depot: mines Pell's ice for water and air, and rests crews in its spinning wheel"},{"id":"shoals_hollow","name":"Shoals Hollow","version":"D","near":"shoals_relay","offset_m":[40000.0,3000.0,-25000.0],"role":"The frontier post: a hollowed rock in the belt near the relay, prospectors' market and the patrol's last port before the deep belt"}]},"versions":{"A":{"name":"Bastion","kind":"mushroom","brief":"A domed cap 1.8 km across on a ringed tower 2 km tall. Four doors in the cap's rim open into one round hall 1.7 km across and 140 m high, with the berths set round a central core like the spokes of a wheel.","cap":{"radius_m":900,"rim_y_m":[-80,80],"crown":[[900,80],[840,150],[680,228],[460,290],[220,322],[0,332]],"under":[[900,-80],[780,-150],[560,-220],[300,-268],[130,-300]]},"hall":{"radius_m":860,"floor_y_m":-70,"ceiling_y_m":70,"core_radius_m":110},"doors":{"bearings_deg":[0,90,180,270],"width_m":150,"height_m":90},"spine":{"core_radius_m":120,"top_y_m":-300,"tip_y_m":-1950,"rings":[[-430,300,40],[-610,260,34],[-790,230,30],[-970,205,28],[-1150,185,26],[-1330,165,24],[-1520,380,70],[-1740,150,22]]},"berths":{"_doc":"[bearing, ship, radius of the ship's middle]: an outer ring and an inner ring, bows toward the core.","slots":[[0,"tern",560],[330,"copper",370],[30,"rescue",370],[60,"osprey",560],[120,"pursuer",560],[150,"heron",370],[210,"splitjaw",370],[240,null,560],[300,"bulwark",560]]}},"B":{"name":"Wheel","kind":"wheel","brief":"A habitat wheel 1.75 km across on six spokes round a hub drum 540 m across. The hub's front doors open along the axis into a cylindrical hangar where ships berth all round the curved wall, overhead too.","ring":{"radius_m":800,"width_m":150,"depth_m":110,"segments":32,"spokes":6,"spoke_radius_m":22},"hub":{"radius_m":270,"z_m":[-290,290]},"hall":{"radius_m":240,"z_m":[-260,262]},"doors":{"width_m":190,"height_m":130},"berths":{"radius_m":168,"rows_z_m":[110,-120],"_slots":"[row, angle round the axis from the bottom, ship]","slots":[[1,0,"tern"],[0,0,null],[0,45,"osprey"],[0,135,"pursuer"],[0,225,"rescue"],[0,315,"heron"],[1,90,"splitjaw"],[1,180,"copper"],[1,270,"bulwark"]]}},"C":{"name":"Drydock","kind":"hall","brief":"A long armoured hall 1.7 km long with a command tower and a habitat block at its stern. One pair of doors at the bow opens onto a fairway 400 m wide, with six berths down each wall where ships lie bow out, ready to leave.","hull":{"width_m":440,"height_m":240,"z_m":[-850,850],"chamfer_m":70,"rib_every_m":120},"hall":{"width_m":400,"height_m":200,"z_m":[-820,832]},"doors":{"width_m":320,"height_m":150},"berths":{"x_m":128,"z_m":[560,320,80,-160,-400,-640],"_slots":"[wall (-1 starboard, +1 port, as the ships lie bow out), z, ship]","slots":[[-1,560,"heron"],[-1,320,"tern"],[-1,80,null],[-1,-160,"bulwark"],[-1,-400,"copper"],[1,560,"osprey"],[1,320,"pursuer"],[1,80,"rescue"],[1,-160,"splitjaw"],[1,-400,null],[1,-640,"osprey"]]}},"D":{"name":"Hollow","kind":"asteroid","brief":"A captured nickel-iron asteroid 2.2 km long, hollowed into a cavern 1.3 km deep. An armoured gate in its face opens into the rock; inside, the berths stand on a built deck down both sides, lit galleries cut into the walls.","rock":{"radii_m":[900,680,1100],"detail":14,"rough":0.12,"seed":7},"gate":{"z_m":760,"plate_m":[780,560,220],"width_m":300,"height_m":170},"hall":{"radius_m":300,"z_m":[-680,650],"floor_y_m":-150,"rough_m":34},"berths":{"x_m":120,"z_m":[450,230,10,-210,-430],"_slots":"[side, z, ship]","slots":[[-1,450,"splitjaw"],[-1,230,"tern"],[-1,10,"rescue"],[-1,-210,null],[1,450,"heron"],[1,230,"osprey"],[1,10,"pursuer"],[1,-210,"bulwark"],[1,-430,"copper"]]}},"E":{"name":"O'Neill Pair","kind":"oneill","brief":"Two hollow O'Neill cylinders 6.4 km long and 1.8 km across, side by side and turning opposite ways, their axes on the star. Inside each, three valleys of farmland, rivers and towns curve up overhead between three long windows, under a patchy cloud layer; three mirrors bloom open from the far end like petals and throw the star in through the windows. Ships enter on the axis, through a non-rotating hub sealed into the sunward dome of one cylinder: a lit round throat, an iris, and a round bay walled off from the habitat.","_owner":"2026-10-14: \"what about an oneil cylinder space station? can you make some textures for that? a giant cylinder? wiht a big space station attached at one end. theres usually two of them to counter balance rotational effects\"; \"What oneil cylinders are hollowed cylinders. Didn't you research what they looked like and how they work?\"; \"Also notice how the solar panels open up on one side they are blooming slightly like aflower\"; \"The ends are round and should have an opening for ships to enter\"; \"cant have space leaking out, that opening on the cylinder MUST CONFORM TO STATION OPENING\"","sun_dir":[0.0,0.0,1.0],"_sun":"The star on the cylinders' axes (Wikipedia, O'Neill cylinder: each cylinder's axis points at the sun), in the station's frame; A-D keep sky.sun_dir.","cylinders":{"radius_m":900,"length_m":6400,"shell_m":40,"dome_m":500,"spacing_m":9500,"pair_angle_deg":25,"rpm":1.0,"segments":96,"spine_m":10},"clouds":{"_doc":"Cumulus over the land stripes, placed where the Material Maker cloud map (oneill_clouds) is dense: their count a cylinder, their bases above the floor, their widths and heights.","count":70,"base_m":[150,260],"width_m":[90,180],"height_m":[45,80]},"port":{"_doc":"Our own design, guided by the zero-g axis: a non-rotating hub on cylinder 0's axis at its sunward dome, a pressure boundary. The dome's hole takes the hub's outer radius exactly, the hub passes through both shells of the dome, and a rotating seal collar on a bearing closes the turning dome to the still hub at each shell. Inside the hub, one round cross-section: a throat recess_m deep from the mouth to a round iris at iris_z_m, then the round, sealed bay behind it, bay_length_m long, walled off from the habitat.","hub_radius_m":300,"throat_radius_m":270,"iris_z_m":460,"recess_m":320,"bay_length_m":620,"light_rings_m":[380,470,580,720]},"mirrors":{"open_deg":35,"night_deg":80,"late_deg":68,"_late":"Late in the day the mirrors stand wider; at about 68 degrees a petal throws the star clear past its own dome, so the outside view sees one blaze.","thickness_m":8,"length_frac":0.96},"ring":{"radius_m":1300,"pods":18,"pod_radius_m":70,"pod_length_m":150,"tube_m":14,"spokes":3,"inset_m":300},"truss":{"beam_m":40},"textures":{"_doc":"Two layers (owner, 2026-10-14: \"we should have 2 layers of texture, detail layer, and the big albiedo color map, and maybe normal maps on the details\"): macro maps wrapped once (the outside round a cylinder, the land over a stripe, the clouds round their layer, a dome) multiplied by tiled detail layers, the hull's with its normal map, the detail fading out between fade_m. Made in Material Maker (tools/materials/ptex/oneill_*.ptex), packaged by tools/materials/oneill_atlases.py.","macro":"oneill/oneill_macro","cap":"oneill/oneill_cap","detail":"oneill/oneill_detail","detail_normal":"oneill/oneill_detail_normal","mirror":"oneill/oneill_mirror","mirror_normal":"oneill/oneill_mirror_normal","land":"oneill/oneill_land","land_detail":"oneill/oneill_land_detail","clouds":"oneill/oneill_clouds","dome":"oneill/oneill_dome","detail_tile_m":16,"land_tile_m":64,"mirror_tile_m":120,"fade_m":[350,2600],"haze_m":[6000,40000],"inside_haze_m":[700,7000],"earthshine":0.32,"bytes":19223888},"berths":{"_doc":"Round the bay's wall, keel to the wall, each ship's up toward the axis: [row, angle round the axis from the bottom in degrees, ship]; rows_z_m the rows' stations along the axis.","radius_m":200,"rows_z_m":[320,60],"slots":[[1,0,"tern"],[1,90,"bulwark"],[1,180,"rescue"],[1,270,null],[0,45,"osprey"],[0,135,"heron"],[0,225,"pursuer"],[0,315,"splitjaw"]]}}}}
 </script>
 <!-- INLINE data:space/spacedock END -->
 <!-- INLINE data:federation-concepts/layouts BEGIN -->
@@ -3376,7 +3376,7 @@ const SD = json("ship-data-spacedock");
 const FED = json("ship-data-layouts");
 const DET = K.shipData("detailing");
 K.titleBlock({
-  title: "Spacedock: five versions of Tamsin Station",
+  title: "Spacedock: five stations of the Shoals",
   subtitle: "A big enclosed bay the " + L.ship.name + " flies into through doors, with other ships at their berths",
   change: "spacedock",
 });
@@ -4270,7 +4270,63 @@ buildHall("C", SD.versions.C, true);
 // shell, people on its inside, three land stripes and three windows, the axis on the sun, three mirrors hinged at the
 // windows' far ends opening toward the sun like petals. The port on the axis is our own design (spacedock design 5a).
 const VE = SD.versions.E, CY = VE.cylinders, TX = VE.textures, E_SUN = v3(VE.sun_dir).normalize();
-buildHall("E", VE, false);
+// E's bay: a sealed, round hangar on the axis inside the non-rotating hub, one round cross-section with the throat in
+// front of it, walled off from the habitat (owner: "cant have space leaking out, that opening on the cylinder MUST
+// CONFORM TO STATION OPENING"). Ships berth round its wall, keel to the wall, up toward the axis.
+{
+  const P = VE.port, ir = P.throat_radius_m, RH = P.hub_radius_m, zI = P.iris_z_m, zB = zI - P.bay_length_m, zM = zI + P.recess_m;
+  const S = { ext: Soup(), int: Soup() }, G = Soup(), lamps = [], ships = [], beacons = [];
+  const axis = RX(Math.PI / 2);
+  // The hub's outer drum (its radius the dome's hole), the mouth's annulus closing it to the throat, its back.
+  S.ext.add(ringWall(RH, zB - 30, zM, 64, []).applyMatrix4(axis), { ...GRAPH, tile: 8 });
+  S.ext.add(lathe([[RH, zM], [ir, zM]], 64).applyMatrix4(axis), { ...GRAPH, tile: 8 });
+  S.ext.add(lathe([[RH, 0], [0, 0]], 64).applyMatrix4(mul(T(0, 0, zB - 30), RX(Math.PI / 2))), { ...GRAPH, tile: 8 });
+  // The bay: the round wall (the throat's own radius), its back wall, steel ribs, light rings, galleries, floods.
+  S.int.add(ringWall(ir, zB, zI, 64, [], 40).applyMatrix4(axis), IFLOOR);
+  S.int.add(lathe([[ir, 0], [0, 0]], 64, 40).applyMatrix4(mul(T(0, 0, zB), RX(Math.PI / 2))), IWALL);
+  for (let z = zB + 20; z < zI; z += 40) S.int.add(lathe([[ir, z - 3], [ir - 6, z - 3], [ir - 6, z + 3], [ir, z + 3]], 64, 0).applyMatrix4(axis), ISTEEL);
+  for (let z = zB + 60; z < zI - 20; z += 80) {
+    G.add(ringWall(ir - 1.5, z, z + 3, 64, []).applyMatrix4(axis), WORK);
+    for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; lamps.push(lamp([Math.sin(a) * (ir - 4), Math.cos(a) * (ir - 4), z], 0.7, 90)); }
+  }
+  for (let y = -220; y <= 220; y += 32) {
+    const half = Math.sqrt(Math.max(0, ir * ir - y * y)) - 24;
+    if (half > 30) G.add(box(-half, y, zB + 0.6, half, y + 7, zB + 1.4), WIN);
+  }
+  S.int.add(box(-4, -4, zB, 4, 4, zB + 120, null, 30), ISTEEL);
+  G.add(box(-9, -9, zB + 120, 9, 9, zB + 124), WORK);
+  lamps.push(lamp([0, 0, zB + 130], 3.0, 260), lamp([0, 0, (zB + zI) / 2], 1.6, 260), lamp([0, 0, zI - 60], 1.6, 260));
+  const BR = VE.berths;
+  for (const [row, ang, key] of BR.slots) {
+    const m = mul(RZ(ang * DEG), T(0, -BR.radius_m, BR.rows_z_m[row]));
+    berth(S.int, G, lamps, m, -1, -(ir - BR.radius_m) + 0.5, 20, key === "tern", { ver: "E", top: 24 });
+    dock(ships, key, m);
+  }
+  // The iris: eight leaves, hinged at the rim, folding back into the bay as it opens; dark graphite, so the star
+  // shining down the throat does not blow it out.
+  const doorGroup = new THREE.Group(), leaves = [];
+  for (let k = 0; k < 8; k++) {
+    const a0 = k * Math.PI / 4, a1 = a0 + Math.PI / 4, A = new THREE.Vector3(ir * Math.cos(a0), ir * Math.sin(a0), 0), B = new THREE.Vector3(ir * Math.cos(a1), ir * Math.sin(a1), 0);
+    const mid = A.clone().add(B).multiplyScalar(0.5), D = Soup();
+    const leaf = new THREE.BufferGeometry();
+    leaf.setAttribute("position", new THREE.Float32BufferAttribute([...mid.clone().negate().toArray(), ...A.clone().sub(mid).toArray(), ...B.clone().sub(mid).toArray()], 3));
+    D.add(leaf, { ...GRAPH, tint: [0.3, 0.32, 0.36], tile: 6 });
+    const mesh = D.mesh(extMat);
+    const pivot = new THREE.Group();
+    pivot.position.set(mid.x, mid.y, zI);
+    pivot.add(mesh);
+    doorGroup.add(pivot);
+    leaves.push({ pivot, axisDir: B.clone().sub(A).normalize() });
+  }
+  const set = (f) => { for (const l of leaves) l.pivot.quaternion.setFromAxisAngle(l.axisDir, -f * Math.PI / 2); };
+  const tb = BR.slots.find((x) => x[2] === "tern");
+  finish("E", S, G, lamps, [0.12, 0.13, 0.15], { group: doorGroup, set }, {
+    ships, beacons,
+    berthPose: mul(RZ(tb[1] * DEG), T(0, -BR.radius_m, BR.rows_z_m[tb[0]])),
+    approachPose: mul(T(40, -20, zM + 1500), RY(Math.PI)),
+    doorPose: mul(T(0, 0, zM + 60), RY(Math.PI)),
+  });
+}
 /** A committed texture (inlined by tex: markers) decoded straight, rows flipped so v runs up the image like a layer. */
 async function eTexture(rel, srgb, clampT) {
   const img = await K.decodePng(document.getElementById("tex-" + rel.split("/").pop()).textContent.trim());
@@ -4553,7 +4609,7 @@ const E_PEARL = [0.86, 0.87, 0.88], E_GRAPH = [0.36, 0.41, 0.47], E_ORANGE = [0.
   const VV = VERSIONS.E, R = CY.radius_m, Lc = CY.length_m, t = CY.shell_m, Hd = CY.dome_m, S = CY.spacing_m, pa = CY.pair_angle_deg * DEG;
   // Cylinder 0 on the hall's axis, its sunward dome's apex recess_m ahead of the hall's doors, so the hall sits sunk in
   // the dome's hub behind a round mouth; cylinder 1 beside it.
-  const apex = VE.hull.z_m[1] + VE.port.recess_m, zc = apex - Hd - Lc / 2;
+  const apex = VE.port.iris_z_m + VE.port.recess_m, zc = apex - Hd - Lc / 2;
   const centres = [new THREE.Vector3(0, 0, zc), new THREE.Vector3(S * Math.cos(pa), S * Math.sin(pa), zc)];
   // The hall's exterior takes the same two layers: its paint as the macro, the detail and normals over it.
   VV.group.children[0].material = eMaterial(2, { macro: null, colors: true, tile: 24, fade: [150, 900], side: THREE.DoubleSide });
@@ -4699,18 +4755,23 @@ void main() {
     // The round ends: domes outside (the cap map), terraced land inside, a hole on the axis (the port on cylinder 0's
     // sunward end, a bearing elsewhere).
     for (const d of [-1, 1]) {
-      const hole = i === 0 && d > 0 ? VE.port.hole_radius_m : 140;
+      // Each dome's hole takes exactly the radius of what passes through it: the hub at the port, a bearing elsewhere.
+      const port = i === 0 && d > 0, hole = port ? VE.port.hub_radius_m : 150;
       g.add(new THREE.Mesh(eDome(R, d * Lc / 2, d, Hd, hole, CY.segments / 2, 8, 0, false), eMaterial(1, { macro: ET.cap, side: THREE.DoubleSide })));
-      g.add(new THREE.Mesh(eDome(R - t, d * Lc / 2, d, Hd - t, hole + 10, CY.segments / 2, 11, 0, true), domeInMat));
-      for (const m of domeGreebles(d * Lc / 2, d, hole + 10, 77 + i * 10 + d)) g.add(m);
-      if (!(i === 0 && d > 0)) { const h = new THREE.CylinderGeometry(150, 150, 160, 24); h.rotateX(Math.PI / 2); h.translate(0, 0, d * (Lc / 2 + Hd + 20)); parts.push([h, E_GRAPH]); }
-      else { const h = new THREE.TorusGeometry(hole + 6, 14, 6, 48); h.translate(0, 0, d * (Lc / 2 + Hd - 2)); parts.push([h, E_GRAPH]); }
+      g.add(new THREE.Mesh(eDome(R - t, d * Lc / 2, d, Hd - t, hole, CY.segments / 2, 11, 0, true), domeInMat));
+      for (const m of domeGreebles(d * Lc / 2, d, hole, 77 + i * 10 + d)) g.add(m);
+      // The rotating seal collars: where each shell of the turning dome meets the still hub or bearing, flush round it.
+      const rO = (R * R + Hd * Hd) / (2 * Hd), rI = ((R - t) * (R - t) + (Hd - t) * (Hd - t)) / (2 * (Hd - t));
+      const zO = d * (Lc / 2 + Hd - (rO - Math.sqrt(rO * rO - hole * hole))), zIn = d * (Lc / 2 + Hd - t - (rI - Math.sqrt(rI * rI - hole * hole)));
+      for (const zz of [zO, zIn]) { const sr = new THREE.TorusGeometry(hole + 4, 12, 6, 64); sr.translate(0, 0, zz); parts.push([sr, E_ORANGE]); }
+      // A bearing: a closed drum of the hole's radius through both shells (the port's hub is built with the bay).
+      if (!port) { const h = new THREE.CylinderGeometry(150, 150, 200, 24); h.rotateX(Math.PI / 2); h.translate(0, 0, d * (Lc / 2 + Hd + 20)); parts.push([h, E_GRAPH]); }
     }
     // Cumulus a few hundred metres off the floor, and a thin light spine on the axis.
     const clouds = cumulus();
     g.add(clouds); VV.clouds.push(clouds);
     // (it stops short of the hall sunk in cylinder 0's sunward hub)
-    const sz0 = -Lc / 2 - Hd + 200, sz1 = i === 0 ? VE.hull.z_m[0] - 40 - c.z : Lc / 2 + Hd - 200;
+    const sz0 = -Lc / 2 - Hd + 200, sz1 = i === 0 ? VE.port.iris_z_m - VE.port.bay_length_m - 80 - c.z : Lc / 2 + Hd - 200;
     const spine = new THREE.CylinderGeometry(CY.spine_m, CY.spine_m, sz1 - sz0, 8); spine.rotateX(Math.PI / 2); spine.translate(0, 0, (sz0 + sz1) / 2);
     g.add(new THREE.Mesh(spine, new THREE.MeshBasicMaterial({ color: 0xfff1d6 })));
     // Three mirrors, each hinged at the far (anti-sunward) end of its window and opened toward the star: a flower.
@@ -4749,35 +4810,24 @@ void main() {
     VV.group.add(g);
     VV.spinners.push({ g, dir: i === 0 ? 1 : -1 });
   });
-  // The port: a round, recessed collar at cylinder 0's sunward apex (not turning; the dome turns round it on a bearing).
-  // A lit ring at the mouth, a round throat recess_m deep with rings and strips of light, a round bulkhead at its end with
-  // an iris the ships pass (the hall's doors behind it), a graphite flange, and rings of light on the dome leading in.
+  // The port's throat: one closed round surface of the bay's radius from the mouth to the iris, lit by rings and strips;
+  // a lit ring at the mouth and rings of light on the dome leading in. (The hub, the bay and the iris are built above.)
   const P = VE.port, rho = (R * R + Hd * Hd) / (2 * Hd), sc = zc + Lc / 2 - (rho - Hd);
   const domeZ = (r) => sc + Math.sqrt(rho * rho - r * r);
-  const collar = [], glowRings = new THREE.Group();
-  const throat = new THREE.CylinderGeometry(P.hole_radius_m, P.hole_radius_m, P.recess_m + 60, 48, 1, true);
-  throat.rotateX(Math.PI / 2); throat.translate(0, 0, apex - (P.recess_m + 60) / 2 + 4);
+  const collar = [], glowRings = new THREE.Group(), zIris = P.iris_z_m, rT = P.throat_radius_m;
+  const throat = new THREE.CylinderGeometry(rT, rT, apex - zIris, 64, 1, true);
+  throat.rotateX(Math.PI / 2); throat.translate(0, 0, (apex + zIris) / 2);
   collar.push([throat, [0.42, 0.45, 0.5]]);
-  const hallFront = VE.hull.z_m[1], doorY = -VE.hall.height_m / 2 + 4 + VE.doors.height_m / 2;
-  const bulk = new THREE.ShapeGeometry((() => {
-    const sh = new THREE.Shape(circle(P.hole_radius_m + 2, 64).map(([x, y]) => new THREE.Vector2(x, y)));
-    sh.holes.push(new THREE.Path(circle(P.iris_radius_m, 48).map(([x, y]) => new THREE.Vector2(x, y + doorY))));
-    return sh;
-  })());
-  bulk.translate(0, 0, hallFront + 8);
-  collar.push([bulk, E_PEARL]);
-  const flange = new THREE.TorusGeometry(P.hole_radius_m + 22, 22, 8, 64); flange.translate(0, 0, domeZ(P.hole_radius_m + 22) + 6);
-  collar.push([flange, E_GRAPH]);
   VV.group.add(ePlate(collar, plateMat));
   const ring = (r, z, tube, c) => { const g = new THREE.TorusGeometry(r, tube, 6, 96); g.translate(0, 0, z); glowRings.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: new THREE.Color().setRGB(...c, THREE.SRGBColorSpace) }))); };
-  ring(P.hole_radius_m - 4, apex + 2, 7, [1.0, 0.92, 0.75]);
+  ring(rT + 8, apex + 3, 7, [1.0, 0.92, 0.75]);
   for (const r of P.light_rings_m) ring(r, domeZ(r) + 5, 4, C.accent);
-  const tring = (r, z, tube, c, y) => { const g = new THREE.TorusGeometry(r, tube, 4, 64); g.translate(0, y || 0, z); glowRings.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: new THREE.Color().setRGB(...c, THREE.SRGBColorSpace) }))); };
-  for (let z = apex - 30; z > hallFront + 20; z -= 40) tring(P.hole_radius_m - 2, z, 3, C.work);
-  tring(P.iris_radius_m + 4, hallFront + 10, 5, C.accent, doorY);
+  const tring = (r, z, tube, c) => { const g = new THREE.TorusGeometry(r, tube, 4, 64); g.translate(0, 0, z); glowRings.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: new THREE.Color().setRGB(...c, THREE.SRGBColorSpace) }))); };
+  for (let z = apex - 30; z > zIris + 20; z -= 40) tring(rT - 2, z, 3, C.work);
+  tring(rT - 3, zIris + 6, 4, C.accent);
   for (let k = 0; k < 8; k++) {
     const a = (k + 0.5) * Math.PI / 4, st = new THREE.BoxGeometry(5, 5, P.recess_m - 20);
-    st.translate((P.hole_radius_m - 4) * Math.cos(a), (P.hole_radius_m - 4) * Math.sin(a), (apex + hallFront) / 2);
+    st.translate((rT - 4) * Math.cos(a), (rT - 4) * Math.sin(a), (apex + zIris) / 2);
     glowRings.add(new THREE.Mesh(st, new THREE.MeshBasicMaterial({ color: new THREE.Color().setRGB(...C.work, THREE.SRGBColorSpace) })));
   }
   VV.group.add(glowRings);
@@ -4811,6 +4861,35 @@ void main() {
   VV.setBloom(VE.mirrors.open_deg);
 }
 
+/**
+ * The pressure check (owner: "cant have space leaking out"): rays from inside each habitat toward its domes' axes (the
+ * port's hub, the bearings), and toward random points on the domes, must all hit a surface before they leave. Every
+ * mesh is tested from both sides. Returns { rays, leaks, examples } and keeps it in window.SPACEDOCK_SEAL.
+ */
+window.SPACEDOCK_SEAL_CHECK = () => {
+  const VV = VERSIONS.E, meshes = [];
+  VV.group.updateMatrixWorld(true);
+  VV.group.traverse((o) => { if (o.isMesh) meshes.push(o); });
+  const saved = meshes.map((m) => m.material.side);
+  meshes.forEach((m) => { m.material.side = THREE.DoubleSide; });
+  const rc = new THREE.Raycaster();
+  rc.far = 20000;
+  let sd = 4321, rays = 0, leaks = 0;
+  const rr = () => ((sd = (sd * 1664525 + 1013904223) >>> 0) / 4294967296);
+  const examples = [];
+  for (const sp of VV.spinners) for (const d of [-1, 1]) for (let k = 0; k < 400; k++) {
+    const R = CY.radius_m - CY.shell_m - 20, a = rr() * Math.PI * 2, r = Math.sqrt(rr()) * R, z = (rr() - 0.5) * (CY.length_m - 1200);
+    const o = sp.g.localToWorld(new THREE.Vector3(r * Math.cos(a), r * Math.sin(a), z));
+    const ta = rr() * Math.PI * 2, tr = k < 300 ? Math.sqrt(rr()) * 380 : Math.sqrt(rr()) * 820;
+    const tgt = sp.g.localToWorld(new THREE.Vector3(tr * Math.cos(ta), tr * Math.sin(ta), d * (CY.length_m / 2 + CY.dome_m)));
+    rc.set(o, tgt.clone().sub(o).normalize());
+    rays++;
+    if (!rc.intersectObjects(meshes, false).length) { leaks++; if (examples.length < 5) examples.push([o.toArray().map(Math.round), tgt.toArray().map(Math.round)]); }
+  }
+  meshes.forEach((m, i) => { m.material.side = saved[i]; });
+  return (window.SPACEDOCK_SEAL = { rays, leaks, examples });
+};
+
 // ------------------------------------------------------------ the Tern (the players' ship, its full model)
 const tern = MODELS.tern;
 const ternHolder = new THREE.Group();
@@ -4840,7 +4919,7 @@ const CAMS = {
   D: { outside: [[1700, 650, 3300], [0, 0, 0]], entering: [[300, 0, 1330], [0, -60, 840]], bay: [[-205, -50, 70], [-60, -105, 340]], window: "port" },
   // E's extra views ride cylinder 0 ([position, target] in its own turning frame, its spin held for the shot).
   // (E's outside camera is placed by aimAtBlaze.)
-  E: { outside: [[600, 7000, 12500], [4300, 2000, -3300]], entering: [[330, 170, 1700], [0, -20, 700]], night: [[600, 7000, 12500], [4300, 2000, -3300]], bay: [[-185, 30, -90], [-60, -55, 200]], window: "port",
+  E: { outside: [[600, 7000, 12500], [4300, 2000, -3300]], entering: [[330, 170, 1700], [0, -20, 700]], night: [[600, 7000, 12500], [4300, 2000, -3300]], bay: [[150, -20, 300], [-20, -175, 40]], window: "port", seal: [[700, 520, 1250], [-180, -40, 700]],
        strip: { ride: 0, at: [Math.cos(80 * DEG) * 1060, Math.sin(80 * DEG) * 1060, 1900], to: [-150, -500, 500], spin: 0.3 },
        inside: { ride: 0, at: [Math.cos(30 * DEG) * 740, Math.sin(30 * DEG) * 740, -2950], to: [Math.cos(30 * DEG) * 420, Math.sin(30 * DEG) * 420, 1500], spin: 0.3, inUp: true },
        low: { ride: 0, at: [Math.cos(32 * DEG) * 790, Math.sin(32 * DEG) * 790, 520], to: [Math.cos(35.5 * DEG) * 858, Math.sin(35.5 * DEG) * 858, 1250], spin: 0.3, inUp: true },
@@ -4854,6 +4933,7 @@ const VIEWS = {
   window: { label: "Bridge window", t: "Berthed: the view out of the bridge's port window, as the crew see it walking the bridge." },
   strip: { label: "In through a window", only: "E", t: "Riding a cylinder 160 m over a window: through the glazing, the far land inside, lit by the mirrors, under its clouds." },
   inside: { label: "Inside the cylinder", only: "E", t: "120 m above the land near the far dome, looking down the length under the cumulus: the valleys curve up both sides and overhead between the three windows, the sunward dome 6 km off." },
+  seal: { label: "The port's seal", only: "E", t: "Close to the sunward dome: the hub passes through the dome's hole, which takes its radius exactly; orange seal collars close each shell of the turning dome to the still hub, flush all round. The only ways in are the iris and crew tubes." },
   low: { label: "Over a lake", only: "E", t: "70 m above the valley floor: a lake and a river, a small town of grey and terracotta roofs among trees, fields beyond, the land rising up both sides." },
   night: { label: "Night (mirrors open)", only: "E", t: "Night: the mirrors open wide so the windows face empty space; the land inside goes dark and the hull sheds its heat." },
   detail: { label: "Hull close-up", only: "E", t: "On the sunward dome, 35 m up: the detail layer and its normal map catching the star over the cap's macro map (the sides of a cylinder only see the star at a graze)." },
@@ -4890,7 +4970,8 @@ function apply() {
   const sides = { A: "port", B: "port", C: "port", D: "port", E: "port" };
   const others = Vv.ships.length;
   const legend = document.getElementById("legend");
-  legend.innerHTML = `<h3>${ver}. ${Vd.name}</h3><div class="t">${Vd.brief}</div>` +
+  const stn = SD.stations.list.find((x) => x.version === ver);
+  legend.innerHTML = `<h3>${ver}. ${Vd.name}: ${stn.name}</h3><div class="t"><b>${stn.role}.</b></div><div class="t">${Vd.brief}</div>` +
     `<div class="t"><b>${VIEWS[view].label}.</b> ${VIEWS[view].t}</div>` +
     `<ul><li>${others} other ships docked; ${Vd.berths.slots.filter((s) => s.includes(null)).length} berths free</li>` +
     `<li>The Tern: 84 m long, 24.4 m across, 13.8 m high (45 m over its nacelles)</li>` +

@@ -131,7 +131,7 @@ w^2 r = 9.8 m/s^2).
 | Pair | 9.5 km apart centre to centre (the petals reach 4.4 km from each axis, so the two flowers clear each other as they turn), turning opposite ways |
 | Farm ring | 18 pods on a ring 2.6 km across round each cylinder's sunward end, on three spokes from the land stripes |
 | Joins | Non-rotating rods across the pair at both ends into bearings on the domes' axes; tethers between them |
-| Port and bay | Our own design (the sources do not describe docking), guided by fact 7's zero-g axis: a non-rotating, round, recessed collar at cylinder 0's sunward apex, on a bearing: a lit ring mouth 540 m across, a round throat 320 m deep lit by rings every 40 m and eight light strips along it, ending at a round bulkhead with an iris 300 m across (lit ring round it) that the ships pass; a graphite flange and four rings of blue light on the dome lead in, with lead-in lights 2 km out along the axis. Behind the bulkhead, sunk in the dome's hub and reaching on along the axis inside the cylinder, is C's enclosed hall (920 m long, 440 m wide, 240 m tall, without C's tower), its sliding doors (320 m by 150 m, seven times the Tern's 45 m) behind the iris: eight berths, six ships docked, one free. The separate dock box between the cylinders is gone |
+| Port and bay | Our own design (the sources do not describe docking), guided by fact 7's zero-g axis. A non-rotating hub on cylinder 0's axis at its sunward dome, 600 m across, **a pressure boundary**: the dome's hole takes exactly the hub's outer radius, the hub passes through both shells of the dome, and a rotating seal collar on a bearing closes each shell to the hub, flush all the way round (owner, 2026-10-14: "cant have space leaking out, that opening on the cylinder MUST CONFORM TO STATION OPENING"). Inside the hub, one round cross-section 540 m across: a lit throat 320 m deep (rings every 40 m, eight light strips) from the mouth to an iris of eight leaves hinged at the rim, folding back into the bay as it opens, then the round bay, 620 m long, sealed from the habitat (its back wall and the hub's back close it). Six ships and the Tern berth round the bay's wall, keel to the wall and up toward the axis, in two rows of four, one berth free. The only ways in from space are the iris and airlocked crew tubes. The other three domes' holes take their bearings' radius the same way |
 
 **Why the domes carry no land.** The owner, 2026-10-14: "caps are still wrong, you need to fix that, gravity doesnt
 WORK on the caps!". Spin gravity points straight out from the axis, perpendicular to it. On a land stripe that is
@@ -148,8 +148,14 @@ sunward dome is also lit, so the port reads from far off. (The anti-sunward axis
 hinges crowd the dome and the dome is in shadow.)
 
 **Entering** (`traffic` as A-D): cleared by traffic control, the Tern flies down the axis from the star's side, through
-the farm ring and the rings of light on the dome, into the round mouth, down the lit throat and through the iris, the hall's doors sliding open behind it, into the hall, then C's turn and slide to the berth, about 2.5
-minutes from the doors. The port and its hall do not turn; the dome turns round them, once a minute.
+the farm ring and the rings of light on the dome, into the round mouth, down the lit throat and through the iris, into
+the round bay, then out from the axis to its berth on the wall, about 2 minutes from the mouth. The hub and its bay do
+not turn; the dome turns round them, once a minute, on the seals.
+
+**The seal, checked in geometry.** The mockup's `SPACEDOCK_SEAL_CHECK()` casts 1,600 rays from points inside both
+habitats toward their domes (300 of every 400 aimed at the hub or bearing, the rest anywhere on the dome), every surface
+tested from both sides. Result at the commit that added it: 0 of 1,600 reach space. As a control, with the hub and the
+bay taken away, 96 of 1,600 do, so the check sees a leak when there is one.
 
 ### 5b. E's two layers of texture and its light
 
@@ -261,7 +267,7 @@ The mockup's window view stands 1.6 m in from the bridge's port forward-quarter 
 | B | The hangar's curved wall rising to port, its ribs and light rings, and the next row's ship hanging up and ahead |
 | C | The fairway, the ship across it in its frame, the far wall's tiers of windows and the doors |
 | D | The deck, the ship across it, the rock wall and its galleries |
-| E | As C (the bay is C's hall in the port): the fairway, the ship across it, the far wall's windows |
+| E | The round bay's wall curving overhead, its ribs and light rings, a ship berthed on the wall a quarter turn round, the back wall's tiers of windows |
 
 The Tern's own warp pylon shows at the bottom of the bridge's windows, as it does in space. Through the starboard
 windows: the pier, its rail lights and the crew tube a few metres off.
@@ -279,11 +285,11 @@ mockup's meshes (`docs/mockups/spacedock.html`):
 | B Wheel | 662 | 12,204 | 4,476 | 120 | 3 | 7 ships, about 10,000 triangles, 7 draws |
 | C Drydock | 910 | 16,012 | 3,576 | 120 | 3 | 8 ships, about 11,500 triangles, 8 draws |
 | D Hollow | 5,162 | 14,340 | 3,588 | 120 | 3 | 7 ships, about 10,000 triangles, 7 draws |
-| E O'Neill Pair: hall | 418 | 10,552 | 2,436 | 120 | 3 | 6 ships, about 8,700 triangles, 6 draws |
-| E O'Neill Pair: the port collar | 1,232 (throat, flange, bulkhead) and 9,952 (its light rings and strips) | | | | 21 (the mockup draws each ring and strip apart; built, 2) | |
-| E O'Neill Pair: the two cylinders | about 90,500 (45,500 a cylinder: shell, land, glazing, two domes outside and in, the inner domes' greebles, about 3,500 a dome, 70 cumulus of 320 triangles, 22,400, spine, three mirrors, farm ring) and the rods' 60 | | | | 30 (15 a cylinder) and the rods' 1 | |
+| E O'Neill Pair: hub and round bay | 384 (the hub's drum, mouth and back) | 13,924 | 2,708 | 8 (eight iris leaves) | 3 (the mockup draws the leaves apart) | 6 ships, about 8,700 triangles, 6 draws |
+| E O'Neill Pair: the throat | 128 (its wall) and 9,952 (its light rings and strips, the dome's rings) | | | | 21 (the mockup draws each ring and strip apart; built, 2) | |
+| E O'Neill Pair: the two cylinders | about 96,000 (48,000 a cylinder: shell, land, glazing, two domes outside and in, the inner domes' greebles, about 3,500 a dome, the seal collars, 70 cumulus of 320 triangles, 22,400, spine, three mirrors, farm ring) and the rods' 60 | | | | 30 (15 a cylinder) and the rods' 1 | |
 
-Station totals: A 30,700, B 17,500, C 20,600, D 23,200, E about 115,000 triangles (E's are 56 draws: a cylinder is 15,
+Station totals: A 30,700, B 17,500, C 20,600, D 23,200, E about 123,000 triangles (E's are 64 draws: a cylinder is 15,
 its outside, land, glazing, domes, greebles, cumulus, spine and mirrors each their own material; a built E would merge
 the opaque ones by material, about 7 a cylinder, and the port's rings into one). The cumulus are the biggest share
 (44,800 for the pair): fewer or simpler puffs, or puffs drawn only in the cylinder the camera is in or looking into, are
@@ -321,6 +327,28 @@ spacedock; PM 4.1 starts the Tern berthed inside the bay with its doors shut; PM
 becomes leaving the berth and the bay (section 6); PM 4.3's departure starts at the doors and the 2 km lock is from
 the hull; `exterior.json` `dock` (the girder frame) is retired.
 
+## 11a. The stations of the Shoals
+
+The owner, 2026-10-14 (S1): "I want to keep all of them as various stations you can visit across the system, starting at
+oniel pairs". All five versions are stations of the Shoals system (`data/space/systems/shoals.json`: the star Shoal;
+Cinder, rock; Tamsin, terran; Orrin, a gas giant, with its moon Pell; the Shoals belt with the relay). Each orbits at
+3.33 of its body's radii, outside the jump's 3-radius mass lock, as Tamsin Station does (patrol-mission design 2). The
+list is `spacedock.json` `stations`. Recommendation taken (ask only with screenshots):
+
+| Station | Version | Where | Role |
+| --- | --- | --- | --- |
+| Tamsin Station | E O'Neill Pair | Tamsin, 2.0e7 m | The home port: the system's people, farms and government; the patrol starts docked here |
+| Cinder Yards | C Drydock | Cinder, 8.0e6 m | The shipyard: builds and refits the fleet in its long drydock, fed by Cinder's metal mines |
+| Orrin Highport | A Bastion | Orrin, 1.93e8 m | The refinery and fleet command: skims Orrin's gas for fuel, the patrols' forward base |
+| Pell Wheel | B Wheel | Pell, 4.0e6 m | The water and ice depot: mines Pell's ice for water and air, rests crews in its spinning wheel |
+| Shoals Hollow | D Hollow | In the belt, 47 km from the Shoals relay | The frontier post: prospectors' market, the patrol's last port before the deep belt |
+
+`data/space/systems/shoals.json` is read strictly (`sc-core::system`, `deny_unknown_fields`) and today holds one
+station, `tamsin_station`, of kind `starbase` with its berth and departure legs. Naming each station's version there is
+an engine schema change (a new `kind` per version, or a `spacedock` field), so the list lives in `spacedock.json` for now
+and moving it into the system file is the engine step (tasks 2.1). The patrol-mission change follows: its starbase
+becomes E.
+
 ## 12. Risks and trade-offs
 
 - **A big hall's light.** A 1.7 km hall lit only by vertex light needs its floors and walls cut finer than the rest of
@@ -336,7 +364,8 @@ the hull; `exterior.json` `dock` (the girder frame) is retired.
 
 | # | Question | Taken |
 | --- | --- | --- |
-| S1 | Which version: A Bastion, B Wheel, C Drydock, D Hollow or E O'Neill Pair (or a mix: say A's cap with C's hall) | **The owner's choice**, with the mockup and its shots beside it (`docs/screenshots/mockups/spacedock-*.png`) |
+| S1 | Which version: A Bastion, B Wheel, C Drydock, D Hollow or E O'Neill Pair | **Decided by the owner**, 2026-10-14: "I want to keep all of them as various stations you can visit across the system, starting at oniel pairs". All five are stations of the Shoals (section 11a); the patrol starts at E, Tamsin Station |
+| S10 | Where each station sits, its name and its role | Section 11a. Recommendation taken (ask only with screenshots) |
 | S2 | Is the bay pressurised | No: the bay is sealed and lit, in vacuum; the crew tubes are pressurised. No pump-down wait to leave, and the windows look the same. Recommendation taken (ask only with screenshots) |
 | S3 | Can the crew walk onto the station | Not in this change: the crew tube ends at the Tern's airlock door, which opens onto the tube; walking the station is a later change. Recommendation taken (ask only with screenshots) |
 | S4 | Where the jump's 2 km station mass lock is measured from | The station's hull, not its centre. Recommendation taken (ask only with screenshots) |

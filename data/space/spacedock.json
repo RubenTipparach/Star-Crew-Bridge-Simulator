@@ -40,6 +40,16 @@
     "splitjaw": { "concept": "splitjaw", "name": "Splitjaw-class carrier" },
     "bulwark": { "concept": "bulwark", "name": "Bulwark-class corvette" }
   },
+  "stations": {
+    "_doc": "The owner, 2026-10-14 (S1): \"I want to keep all of them as various stations you can visit across the system, starting at oniel pairs\". Every version is a station of the Shoals system (data/space/systems/shoals.json): its body there (a body's id, or a point's id with near), the radius of its orbit about that body in metres, which version of this file draws it, its name and its role. The patrol starts docked at the one marked start. Placements and names: recommendation taken (ask only with screenshots). Read by the mockup only today; the engine reads it once the stations are in the system file (openspec/changes/spacedock tasks 2).",
+    "list": [
+      { "id": "tamsin_station", "name": "Tamsin Station", "version": "E", "body": "tamsin", "orbit_radius_m": 2.0e7, "start": true, "role": "The home port: the O'Neill pair over Tamsin, the system's people, farms and government; where the game starts" },
+      { "id": "cinder_yards", "name": "Cinder Yards", "version": "C", "body": "cinder", "orbit_radius_m": 8.0e6, "role": "The shipyard: builds and refits the fleet in its long drydock, fed by the metal mines on Cinder" },
+      { "id": "orrin_highport", "name": "Orrin Highport", "version": "A", "body": "orrin", "orbit_radius_m": 1.93e8, "role": "The refinery and fleet command: skims Orrin's gas for fuel, the patrols' forward base" },
+      { "id": "pell_wheel", "name": "Pell Wheel", "version": "B", "body": "pell", "orbit_radius_m": 4.0e6, "role": "The water and ice depot: mines Pell's ice for water and air, and rests crews in its spinning wheel" },
+      { "id": "shoals_hollow", "name": "Shoals Hollow", "version": "D", "near": "shoals_relay", "offset_m": [40000.0, 3000.0, -25000.0], "role": "The frontier post: a hollowed rock in the belt near the relay, prospectors' market and the patrol's last port before the deep belt" }
+    ]
+  },
   "versions": {
     "A": {
       "name": "Bastion",
@@ -82,13 +92,13 @@
     "E": {
       "name": "O'Neill Pair",
       "kind": "oneill",
-      "brief": "Two hollow O'Neill cylinders 6.4 km long and 1.8 km across, side by side and turning opposite ways, their axes on the star. Inside each, three valleys of farmland, rivers and towns curve up overhead between three long windows, under a patchy cloud layer; three mirrors bloom open from the far end like petals and throw the star in through the windows. Ships enter on the axis, through a non-rotating port at the sunward dome of one cylinder, into an enclosed hall.",
-      "_owner": "2026-10-14: \"what about an oneil cylinder space station? can you make some textures for that? a giant cylinder? wiht a big space station attached at one end. theres usually two of them to counter balance rotational effects\"; \"What oneil cylinders are hollowed cylinders. Didn't you research what they looked like and how they work?\"; \"Also notice how the solar panels open up on one side they are blooming slightly like aflower\"; \"The ends are round and should have an opening for ships to enter\"",
+      "brief": "Two hollow O'Neill cylinders 6.4 km long and 1.8 km across, side by side and turning opposite ways, their axes on the star. Inside each, three valleys of farmland, rivers and towns curve up overhead between three long windows, under a patchy cloud layer; three mirrors bloom open from the far end like petals and throw the star in through the windows. Ships enter on the axis, through a non-rotating hub sealed into the sunward dome of one cylinder: a lit round throat, an iris, and a round bay walled off from the habitat.",
+      "_owner": "2026-10-14: \"what about an oneil cylinder space station? can you make some textures for that? a giant cylinder? wiht a big space station attached at one end. theres usually two of them to counter balance rotational effects\"; \"What oneil cylinders are hollowed cylinders. Didn't you research what they looked like and how they work?\"; \"Also notice how the solar panels open up on one side they are blooming slightly like aflower\"; \"The ends are round and should have an opening for ships to enter\"; \"cant have space leaking out, that opening on the cylinder MUST CONFORM TO STATION OPENING\"",
       "sun_dir": [0.0, 0.0, 1.0],
       "_sun": "The star on the cylinders' axes (Wikipedia, O'Neill cylinder: each cylinder's axis points at the sun), in the station's frame; A-D keep sky.sun_dir.",
       "cylinders": { "radius_m": 900, "length_m": 6400, "shell_m": 40, "dome_m": 500, "spacing_m": 9500, "pair_angle_deg": 25, "rpm": 1.0, "segments": 96, "spine_m": 10 },
       "clouds": { "_doc": "Cumulus over the land stripes, placed where the Material Maker cloud map (oneill_clouds) is dense: their count a cylinder, their bases above the floor, their widths and heights.", "count": 70, "base_m": [150, 260], "width_m": [90, 180], "height_m": [45, 80] },
-      "port": { "_doc": "Our own design: a non-rotating, round, recessed collar on the axis at the sunward dome of cylinder 0 (the axis is the only place nearly still, with no spin gravity): a lit ring mouth of radius hole_radius_m, its throat recess_m deep, rings of light on the dome leading in, the hall sunk behind it in the dome's hub at the end of a lit round throat, behind a round bulkhead whose iris (iris_radius_m) the ships pass.", "hole_radius_m": 270, "recess_m": 320, "iris_radius_m": 150, "light_rings_m": [360, 460, 580, 720] },
+      "port": { "_doc": "Our own design, guided by the zero-g axis: a non-rotating hub on cylinder 0's axis at its sunward dome, a pressure boundary. The dome's hole takes the hub's outer radius exactly, the hub passes through both shells of the dome, and a rotating seal collar on a bearing closes the turning dome to the still hub at each shell. Inside the hub, one round cross-section: a throat recess_m deep from the mouth to a round iris at iris_z_m, then the round, sealed bay behind it, bay_length_m long, walled off from the habitat.", "hub_radius_m": 300, "throat_radius_m": 270, "iris_z_m": 460, "recess_m": 320, "bay_length_m": 620, "light_rings_m": [380, 470, 580, 720] },
       "mirrors": { "open_deg": 35, "night_deg": 80, "late_deg": 68, "_late": "Late in the day the mirrors stand wider; at about 68 degrees a petal throws the star clear past its own dome, so the outside view sees one blaze.", "thickness_m": 8, "length_frac": 0.96 },
       "ring": { "radius_m": 1300, "pods": 18, "pod_radius_m": 70, "pod_length_m": 150, "tube_m": 14, "spokes": 3, "inset_m": 300 },
       "truss": { "beam_m": 40 },
@@ -113,10 +123,7 @@
         "earthshine": 0.32,
         "bytes": 19223888
       },
-      "hull": { "width_m": 440, "height_m": 240, "z_m": [-460, 460], "chamfer_m": 70, "rib_every_m": 120 },
-      "hall": { "width_m": 400, "height_m": 200, "z_m": [-430, 442] },
-      "doors": { "width_m": 320, "height_m": 150 },
-      "berths": { "x_m": 128, "z_m": [300, 80, -140, -330], "_slots": "[wall, z, ship], as C", "slots": [[-1, 300, "heron"], [-1, 80, "tern"], [-1, -140, "bulwark"], [-1, -330, null], [1, 300, "osprey"], [1, 80, "pursuer"], [1, -140, "rescue"], [1, -330, "splitjaw"]] }
+      "berths": { "_doc": "Round the bay's wall, keel to the wall, each ship's up toward the axis: [row, angle round the axis from the bottom in degrees, ship]; rows_z_m the rows' stations along the axis.", "radius_m": 200, "rows_z_m": [320, 60], "slots": [[1, 0, "tern"], [1, 90, "bulwark"], [1, 180, "rescue"], [1, 270, null], [0, 45, "osprey"], [0, 135, "heron"], [0, 225, "pursuer"], [0, 315, "splitjaw"]] }
     }
   }
 }

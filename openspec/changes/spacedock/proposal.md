@@ -14,7 +14,8 @@ reference pictures of O'Neill cylinders; and then "I'd also like you to light it
 important to sell scale, we should have 2 layers of texture, detail layer, and the big albiedo color map, and maybe
 normal maps on the details". On the first draft of it: "What oneil cylinders are hollowed cylinders. Didn't you research
 what they looked like and how they work?", "Also notice how the solar panels open up on one side they are blooming
-slightly like aflower", and "The ends are round and should have an opening for ships to enter".
+slightly like aflower", "The ends are round and should have an opening for ships to enter", and "cant have space
+leaking out, that opening on the cylinder MUST CONFORM TO STATION OPENING".
 
 Today the Tern lies in an open girder cradle (`data/space/exterior.json` `dock`), and `patrol-mission` design 3 hangs
 that cradle off a placeholder starbase's berth arm. Seen from the bridge it is a few thin beams against black space:
@@ -36,7 +37,9 @@ disc (17.5 degrees in radius); Orrin and Cinder are bright points of light, and 
   Pair** (two hollow, counter-rotating O'Neill cylinders 6.4 km long and 1.8 km across, as the cited sources describe
   them: axes on the star, three land valleys inside under clouds between three glazed windows, three mirrors blooming
   from the far end like petals, domed ends; ships enter on the axis through a non-rotating port at one sunward dome,
-  into an enclosed hall). The choice is the owner's (design, open question S1).
+  into a round bay sealed into the dome). The owner chose all five (S1, 2026-10-14: "I want to keep all of them as
+  various stations you can visit across the system, starting at oniel pairs"): each is a station of the Shoals, and the
+  patrol starts at E, Tamsin Station (design 11a).
 - **E's textures and light** (design 5b): two layers of texture made in Material Maker, macro maps (the outside, the land
   inside, the clouds, the domes) over tiled detail layers with normal maps, blended by distance; the star on the axes,
   so the sunward domes lit, the sides at a graze and earthshine, the mirrors blazing, the land inside lit through the
