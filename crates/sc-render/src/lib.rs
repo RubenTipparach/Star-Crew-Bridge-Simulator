@@ -205,6 +205,30 @@ impl Mesh {
 /// A texture array: one layer per material (surface-materials), RGBA8, square.
 pub struct TextureArray {
     view: sg::View,
+    magnify: Magnify,
+}
+
+/// How a texture array is sampled where a texel covers more than a pixel. Minification is trilinear either way.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Magnify {
+    /// The texel look of the 128 px material layers (surface-materials): each texel a hard-edged square.
+    Nearest,
+    /// Bilinear: for a painted UV atlas whose texels come out many pixels wide up close (the hull seen from the
+    /// bridge's windows, tern-exterior design 2), where nearest shows each texel as a block.
+    Linear,
+}
+
+impl TextureArray {
+    /// The same array, sampled with `m` on magnification. Only the sampler bound with it changes: no memory.
+    #[must_use]
+    pub fn magnified(self, m: Magnify) -> Self {
+        Self { magnify: m, ..self }
+    }
+
+    /// How it is sampled on magnification.
+    pub fn magnify(&self) -> Magnify {
+        self.magnify
+    }
 }
 
 /// The 3D target: colour (multisampled when asked) and depth, resolved to a texture the blit reads.
@@ -258,6 +282,8 @@ pub struct Renderer {
     nearest: sg::Sampler,
     linear: sg::Sampler,
     deck_sampler: sg::Sampler,
+    /// The deck sampler with bilinear magnification ([`Magnify::Linear`]).
+    deck_smooth_sampler: sg::Sampler,
     white: TextureArray,
 }
 
@@ -309,14 +335,19 @@ impl Renderer {
         let linear = sampler(sg::Filter::Linear);
         // Deck textures repeat (world-projected coordinates run across many spans, deck-pipeline 5a),
         // are sampled nearest up close and from their mipmaps at a distance (surface-materials).
-        let deck_sampler = sg::make_sampler(&sg::SamplerDesc {
-            min_filter: sg::Filter::Linear,
-            mag_filter: sg::Filter::Nearest,
-            mipmap_filter: sg::Filter::Linear,
-            wrap_u: sg::Wrap::Repeat,
-            wrap_v: sg::Wrap::Repeat,
-            ..Default::default()
-        });
+        // A painted atlas takes the same sampler with bilinear magnification (`Magnify::Linear`).
+        let deck_sampler_with = |mag| {
+            sg::make_sampler(&sg::SamplerDesc {
+                min_filter: sg::Filter::Linear,
+                mag_filter: mag,
+                mipmap_filter: sg::Filter::Linear,
+                wrap_u: sg::Wrap::Repeat,
+                wrap_v: sg::Wrap::Repeat,
+                ..Default::default()
+            })
+        };
+        let deck_sampler = deck_sampler_with(sg::Filter::Nearest);
+        let deck_smooth_sampler = deck_sampler_with(sg::Filter::Linear);
         let white = make_texture_array(1, &[255u8; 4]);
         let ui = {
             let shader = sg::make_shader(&shaders::ui::ui_shader_desc(backend));
@@ -398,6 +429,7 @@ impl Renderer {
             nearest,
             linear,
             deck_sampler,
+            deck_smooth_sampler,
             white,
         }
     }
@@ -591,6 +623,7 @@ impl Renderer {
                 texture: sg::TextureViewDesc { image: img, ..Default::default() },
                 ..Default::default()
             }),
+            magnify: Magnify::Nearest,
         }
     }
 
@@ -640,8 +673,12 @@ impl Renderer {
         b.vertex_buffers[0] = mesh.vbuf;
         b.index_buffer = mesh.ibuf;
         if program == DeckProgram::Textured {
-            b.views[shaders::deck::VIEW_TEX] = texture.unwrap_or(&self.white).view;
-            b.samplers[shaders::deck::SMP_SMP] = self.deck_sampler;
+            let tex = texture.unwrap_or(&self.white);
+            b.views[shaders::deck::VIEW_TEX] = tex.view;
+            b.samplers[shaders::deck::SMP_SMP] = match tex.magnify {
+                Magnify::Nearest => self.deck_sampler,
+                Magnify::Linear => self.deck_smooth_sampler,
+            };
         }
         sg::apply_bindings(&b);
         let u = shaders::deck::DeckVsParams {
@@ -979,6 +1016,7 @@ fn make_texture_array(size_px: u32, rgba: &[u8]) -> TextureArray {
             texture: sg::TextureViewDesc { image: img, ..Default::default() },
             ..Default::default()
         }),
+        magnify: Magnify::Nearest,
     }
 }
 

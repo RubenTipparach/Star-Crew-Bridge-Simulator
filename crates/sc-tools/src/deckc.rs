@@ -792,6 +792,28 @@ mod tests {
         }
     }
 
+    #[test]
+    fn the_terns_painted_atlases_are_magnified_bilinear_and_its_tiles_are_not() {
+        // From the bridge's windows the bow's paint (about 12 px a metre on the 1024 px atlas) is a metre or two off:
+        // nearest drew each texel as a block. The atlas arrays take bilinear magnification, the 128 px tiles keep
+        // their texel look (tern-exterior design 2).
+        let (mut v, mut x, mut t) = (Vec::new(), Vec::new(), Vec::new());
+        let h = hull(root(), "tern", &mut v, &mut x, &mut t).unwrap().expect("the Tern has an exterior model");
+        let ext = read_json(root(), "data/ships/exteriors.json").unwrap();
+        let tern = ext["ships"].as_array().unwrap().iter().find(|s| s["id"] == "tern").unwrap();
+        let smooth: Vec<String> = tern["smooth_magnify_materials"]
+            .as_array()
+            .expect("the Tern lists its painted atlases")
+            .iter()
+            .map(|m| m.as_str().unwrap().to_owned())
+            .collect();
+        let arrays = h.smooth_arrays(&smooth).expect("each array is painted or tiled, never both");
+        for (a, s) in h.arrays.iter().zip(&arrays) {
+            assert_eq!(*s, a.size_px > 128, "the {} px array: atlases smooth, 128 px tiles nearest", a.size_px);
+        }
+        assert!(h.smooth_arrays(&["no_such_material".to_owned()]).is_err(), "a misspelt material is an error");
+    }
+
     /// The share of the hull's textured corners whose colour is one of a few tints times the light `ambient +
     /// (1 - ambient) max(0, n . sun)`: the exterior build's bake (`tools/blender/build_ship_exteriors.py`).
     fn bake_fit(model: &crate::glb::Glb, sun: [f64; 3], ambient: f64) -> f64 {

@@ -219,6 +219,33 @@ pub struct DeckHull {
     pub arrays: Vec<HullArray>,
 }
 
+impl DeckHull {
+    /// Which of its arrays are magnified bilinear rather than nearest: those sampled by the `smooth` materials, the
+    /// ones painted on a UV atlas (`data/ships/exteriors.json`, a ship's `smooth_magnify_materials`; tern-exterior
+    /// design 2). A tiling material layer keeps the texel look. An error names a listed material the hull does not
+    /// have, or an array that a listed and an unlisted material both sample, since one array takes one sampler.
+    pub fn smooth_arrays(&self, smooth: &[String]) -> Result<Vec<bool>, String> {
+        if let Some(m) = smooth.iter().find(|m| !self.parts.iter().any(|p| &p.material == *m)) {
+            return Err(format!("smooth_magnify_materials: the hull has no material {m}"));
+        }
+        let mut kind: Vec<Option<bool>> = vec![None; self.arrays.len()];
+        for p in &self.parts {
+            let Some(a) = p.array else { continue };
+            let slot =
+                kind.get_mut(a as usize).ok_or_else(|| format!("hull part {} samples no array {a}", p.material))?;
+            let s = smooth.contains(&p.material);
+            if slot.is_some_and(|k| k != s) {
+                return Err(format!(
+                    "hull array {a} is sampled by painted and tiling materials alike ({})",
+                    p.material
+                ));
+            }
+            *slot = Some(s);
+        }
+        Ok(kind.into_iter().map(|k| k.unwrap_or(false)).collect())
+    }
+}
+
 /// One material's triangles of the hull.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]

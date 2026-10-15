@@ -13,7 +13,7 @@
 use glam::Vec3;
 use sc_client::platform::{self, App, Flow, Frame, WindowConfig};
 use sc_core::vertex::{pack_deck_vertex, DeckVertexIn};
-use sc_render::{DeckParams, DeckProgram, Indices, Renderer, Target, TextureArray};
+use sc_render::{DeckParams, DeckProgram, Indices, Magnify, Renderer, Target, TextureArray};
 use std::path::PathBuf;
 use std::process::ExitCode;
 
@@ -56,12 +56,17 @@ const CHECKS: &[Check] = &[
     Check { name: "texture u in the second texel", at: (-2.0, 4.0), want: [2, 0, 255] },
     Check { name: "the normal lit by the dynamic light term", at: (4.0, 4.0), want: [128, 128, 128] },
     Check { name: "nothing drawn outside the quads", at: (12.0, -12.0), want: [0, 0, 0] },
+    // A quarter of the way from the first texel's centre to the second's: nearest would give the first texel whole.
+    Check { name: "a smooth array magnified bilinear", at: (-10.0, -12.0), want: [4, 188, 69] },
 ];
 
 struct Test {
     target: Target,
     tex: TextureArray,
-    draws: Vec<(sc_render::Mesh, DeckProgram, [f32; 3], f32)>,
+    /// The same layers, magnified bilinear (a painted atlas's sampling, tern-exterior design 2).
+    smooth: TextureArray,
+    /// Each quad: its mesh, program, colour set weights, dynamic light, and whether it samples `smooth`.
+    draws: Vec<(sc_render::Mesh, DeckProgram, [f32; 3], f32, bool)>,
     failures: Vec<String>,
     r: Renderer,
 }
@@ -74,19 +79,22 @@ impl Test {
         let mut r = Renderer::new(&cfg);
         let target = r.make_target(SIZE, SIZE, 1);
         let tex = r.make_texture_array(2, &layers());
+        let smooth = r.make_texture_array(2, &layers()).magnified(Magnify::Linear);
         let grey = [[128, 128, 128, 255]; 3];
         let sets = [[32, 32, 32, 255], [100, 0, 0, 255], [0, 0, 100, 255]];
         let still = [[0.25, 0.25]; 4];
         let across = [[0.0, 0.25], [1.0, 0.25], [1.0, 0.25], [0.0, 0.25]];
         let mut draws = Vec::new();
-        let mut add = |m: (Vec<u8>, Vec<u16>), p, w, f| draws.push((r.make_mesh(&m.0, Indices::U16(&m.1)), p, w, f));
-        add(quad(-16.0, 8.0, -8.0, 16.0, 200, grey, still), DeckProgram::Textured, [1.0, 0.0, 0.0], 0.0);
-        add(quad(-8.0, 8.0, 0.0, 16.0, 0, sets, still), DeckProgram::Flat, [0.0, 1.0, 0.0], 0.0);
-        add(quad(0.0, 8.0, 8.0, 16.0, 0, sets, still), DeckProgram::Flat, [0.0, 0.0, 1.0], 0.0);
-        add(quad(8.0, 8.0, 16.0, 16.0, 0, sets, still), DeckProgram::Flat, [0.5, 0.5, 0.0], 0.0);
-        add(quad(-16.0, 0.0, 0.0, 8.0, 5, grey, across), DeckProgram::Textured, [1.0, 0.0, 0.0], 0.0);
-        add(quad(0.0, 0.0, 8.0, 8.0, 0, sets, still), DeckProgram::Flat, [1.0, 0.0, 0.0], 0.25);
-        Ok(Self { target, tex, draws, failures: Vec::new(), r })
+        let mut add =
+            |m: (Vec<u8>, Vec<u16>), p, w, f, s| draws.push((r.make_mesh(&m.0, Indices::U16(&m.1)), p, w, f, s));
+        add(quad(-16.0, 8.0, -8.0, 16.0, 200, grey, still), DeckProgram::Textured, [1.0, 0.0, 0.0], 0.0, false);
+        add(quad(-8.0, 8.0, 0.0, 16.0, 0, sets, still), DeckProgram::Flat, [0.0, 1.0, 0.0], 0.0, false);
+        add(quad(0.0, 8.0, 8.0, 16.0, 0, sets, still), DeckProgram::Flat, [0.0, 0.0, 1.0], 0.0, false);
+        add(quad(8.0, 8.0, 16.0, 16.0, 0, sets, still), DeckProgram::Flat, [0.5, 0.5, 0.0], 0.0, false);
+        add(quad(-16.0, 0.0, 0.0, 8.0, 5, grey, across), DeckProgram::Textured, [1.0, 0.0, 0.0], 0.0, false);
+        add(quad(0.0, 0.0, 8.0, 8.0, 0, sets, still), DeckProgram::Flat, [1.0, 0.0, 0.0], 0.25, false);
+        add(quad(-16.0, -16.0, 0.0, -8.0, 5, grey, across), DeckProgram::Textured, [1.0, 0.0, 0.0], 0.0, true);
+        Ok(Self { target, tex, smooth, draws, failures: Vec::new(), r })
     }
 }
 
@@ -94,7 +102,7 @@ impl App for Test {
     fn frame(&mut self, f: &Frame) -> Flow {
         let mvp = glam::camera::rh::proj::opengl::orthographic(-HALF_M, HALF_M, -HALF_M, HALF_M, -1.0, 1.0);
         self.r.begin_3d(&self.target, [0.0, 0.0, 0.0, 1.0]);
-        for (mesh, prog, w, flash) in &self.draws {
+        for (mesh, prog, w, flash, smooth) in &self.draws {
             let p = DeckParams {
                 mvp,
                 state_weights: *w,
@@ -105,7 +113,8 @@ impl App for Test {
                 clip_y: f32::MAX,
                 relight: sc_render::NO_RELIGHT,
             };
-            self.r.draw_deck(&self.target, mesh, *prog, &p, Some(&self.tex));
+            let tex = if *smooth { &self.smooth } else { &self.tex };
+            self.r.draw_deck(&self.target, mesh, *prog, &p, Some(tex));
         }
         self.r.end_pass();
         self.r.present(&self.target, f.width, f.height, false);
