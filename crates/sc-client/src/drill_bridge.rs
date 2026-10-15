@@ -58,6 +58,11 @@ pub struct BridgeView {
 }
 
 impl BridgeView {
+    /// The hull, when the deck has one: the CHASE camera draws it from outside (chase-camera 1).
+    pub fn hull(&self) -> Option<&crate::hull::HullView> {
+        self.hull.as_ref()
+    }
+
     /// Load the decks' rooms, the figures and the walk's collision from the compiled deck at `path`.
     pub fn load(r: &mut Renderer, path: &Path) -> Result<Self, String> {
         let bytes = std::fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;

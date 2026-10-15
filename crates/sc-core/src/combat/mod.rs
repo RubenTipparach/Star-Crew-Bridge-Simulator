@@ -562,6 +562,16 @@ pub enum Command {
     Brace(bool),
     /// The captain: take the viewscreen with a camera (an index in [`FEEDS`]), or give it back.
     Viewscreen(Option<u8>),
+    /// The captain: the camera on the bridge's main viewscreen (an index in [`FEEDS`]) and whether it chases (seen
+    /// from behind the ship), as his own console shows it (chase-camera 2).
+    MainView {
+        /// The camera, an index in [`FEEDS`].
+        feed: u8,
+        /// Chase on: from behind the ship.
+        chase: bool,
+        /// The zoom, an index in [`ZOOMS`] (viewscreen-zoom 3).
+        zoom: u8,
+    },
     /// The captain: an order to a station, the verb by its index in that station's verbs (`data/stations.json`).
     Order(Station, u8),
     /// A station acknowledges the captain's newest order to it.
@@ -622,6 +632,9 @@ pub const LEVERS: [&str; 4] = ["pumps", "radiators", "chiller", "makeup"];
 /// The viewscreen's cameras, by index (the consoles' camera pad).
 pub const FEEDS: [&str; 6] = ["TARGET", "FWD", "CHASE", "PORT", "AFT", "STBD"];
 
+/// The viewscreen's zooms, times magnified (viewscreen-zoom 1; owner, 2026-10-14: "1x,2x,4x, 10x, 20x").
+pub const ZOOMS: [f64; 5] = [1.0, 2.0, 4.0, 10.0, 20.0];
+
 impl Command {
     /// Whether station `s` may issue it. The shield presets are Tactical's and Science's (weapons-and-shields 11).
     pub fn may(&self, s: Station) -> bool {
@@ -632,7 +645,9 @@ impl Command {
             Self::Lock(_) | Self::TurretMode(..) | Self::Load(_) | Self::Fire(_) => s == Station::Tactical,
             Self::Preset(_) => matches!(s, Station::Tactical | Station::Science),
             Self::Scan(_) | Self::Ping | Self::Freq(_) => s == Station::Science,
-            Self::Alert(_) | Self::Brace(_) | Self::Viewscreen(_) | Self::Order(..) => s == Station::Captain,
+            Self::Alert(_) | Self::Brace(_) | Self::Viewscreen(_) | Self::MainView { .. } | Self::Order(..) => {
+                s == Station::Captain
+            }
             Self::Ack(to) => s == *to,
             Self::LaserFire(b) => s.laser_bank() == Some(*b),
             Self::Decoy => s == Station::Tactical,
@@ -1076,6 +1091,12 @@ pub struct Bridge {
     pub braced: bool,
     /// The captain's camera on every viewscreen, if taken (an index in [`FEEDS`]).
     pub view: Option<u8>,
+    /// The camera on the bridge's main viewscreen: the captain's console's (an index in [`FEEDS`], FWD to start).
+    pub main_view: u8,
+    /// Whether the main viewscreen's camera chases (from behind the ship), as the captain's console's does.
+    pub main_chase: bool,
+    /// The main viewscreen's zoom, the captain's console's: an index in [`ZOOMS`] (1x to start).
+    pub main_zoom: u8,
     /// The last orders, newest first, at most [`MAX_ORDERS`].
     pub orders: Vec<Order>,
     /// How far Science's scan of the enemy has gone, 0-1.
@@ -1102,6 +1123,9 @@ impl Default for Bridge {
             red_alert: false,
             braced: false,
             view: None,
+            main_view: 1,
+            main_chase: false,
+            main_zoom: 0,
             orders: Vec::with_capacity(MAX_ORDERS + 1),
             scan: 0.0,
             scanning: false,
@@ -2183,6 +2207,12 @@ impl Drill {
                 b.view = v;
                 Ok(())
             }
+            Command::MainView { feed, chase, zoom } => {
+                b.main_view = feed;
+                b.main_chase = chase;
+                b.main_zoom = zoom;
+                Ok(())
+            }
             Command::Order(to, verb) => {
                 if usize::from(verb) >= self.data.order_verbs(to).len() {
                     Err(Refusal::NoSuch)
@@ -3213,6 +3243,11 @@ pub fn validate(cmd: &Command) -> Result<(), Refusal> {
         Command::LaserFire(b) if b >= 4 => Err(Refusal::BadValue),
         Command::Freq(b) if b >= 4 => Err(Refusal::BadValue),
         Command::Viewscreen(Some(v)) if usize::from(v) >= FEEDS.len() => Err(Refusal::BadValue),
+        Command::MainView { feed, zoom, .. }
+            if usize::from(feed) >= FEEDS.len() || usize::from(zoom) >= ZOOMS.len() =>
+        {
+            Err(Refusal::BadValue)
+        }
         Command::Order(Station::Captain, _) | Command::Ack(Station::Captain) => Err(Refusal::NoSuch),
         _ => Ok(()),
     }
@@ -4567,5 +4602,29 @@ mod tests {
         d.command(s[0], Command::Viewscreen(None)).unwrap();
         d.step();
         assert_eq!(d.bridge.view, None);
+    }
+
+    #[test]
+    fn the_bridges_main_viewscreen_shows_the_captains_camera() {
+        let (mut d, s) = engaged_at(&[Station::Captain, Station::Helm]);
+        assert_eq!(d.bridge.main_view, 1, "FWD until the captain picks a camera");
+        d.command(s[0], Command::MainView { feed: 0, chase: true, zoom: 3 }).unwrap();
+        d.step();
+        assert_eq!(
+            (d.bridge.main_view, d.bridge.main_chase, d.bridge.main_zoom),
+            (0, true, 3),
+            "the captain's TARGET, chasing, at 10x, is on it"
+        );
+        assert_eq!(d.command(s[0], Command::MainView { feed: 9, chase: false, zoom: 0 }), Err(Refusal::BadValue));
+        assert_eq!(
+            d.command(s[0], Command::MainView { feed: 0, chase: false, zoom: 5 }),
+            Err(Refusal::BadValue),
+            "no zoom past 20x"
+        );
+        assert!(
+            d.command(s[1], Command::MainView { feed: 1, chase: false, zoom: 0 }).is_err(),
+            "only the captain picks the main viewscreen's camera"
+        );
+        assert_eq!((d.bridge.main_view, d.bridge.main_chase, d.bridge.main_zoom), (0, true, 3));
     }
 }

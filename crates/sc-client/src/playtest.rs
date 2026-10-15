@@ -162,6 +162,15 @@ impl Playtest {
         }
     }
 
+    /// The film's script (`--film`, chase-camera 3): to the player's own station, sit, and stay there; no fire gets
+    /// it up.
+    pub fn film(own: Station) -> Self {
+        let mut p = Self::new(own);
+        p.beats = vec![Beat::To(own), Beat::Sit, Beat::Work(f64::INFINITY)];
+        p.fought_at = f64::INFINITY;
+        p
+    }
+
     fn beat(&self) -> Option<Beat> {
         self.beats.get(self.k).copied()
     }
