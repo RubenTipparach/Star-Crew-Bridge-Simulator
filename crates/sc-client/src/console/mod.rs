@@ -77,6 +77,17 @@ pub struct ContactView {
     pub hull: f64,
     /// How far Science's scan has gone, 0-1 (the hull shows from 0.3).
     pub scan: f64,
+    /// Its top, a unit vector in ship axes (target-bracket 1); upright when a saved state has none.
+    #[serde(default = "up_y")]
+    pub up: [f64; 3],
+    /// Its hull box in its own axes (+z its bow, +y its top), least then greatest corner, metres; none when its class
+    /// has no model (target-bracket 1).
+    #[serde(default)]
+    pub box_m: Option<[[f64; 3]; 2]>,
+}
+
+fn up_y() -> [f64; 3] {
+    [0.0, 1.0, 0.0]
 }
 
 /// An inbound missile: from direction `d` (ship axes, toward the shooter), `t` seconds out.
@@ -623,8 +634,11 @@ pub struct ConsoleView {
     pub hits: Vec<HitView>,
     /// Seconds since each face last flashed.
     pub flash_age_s: [f64; 6],
-    /// What the viewscreen shows: FWD, AFT, PORT, STBD, CHASE or TARGET.
+    /// What the viewscreen shows: FWD, AFT, PORT, STBD or TARGET.
     pub feed: String,
+    /// The chase toggle: the camera seen from behind the ship (chase-camera 1). The engine's own; the mockup has none.
+    #[serde(default)]
+    pub chase: bool,
     pub zoom: f64,
     pub nav_km: f64,
     pub tac_km: f64,
@@ -793,27 +807,11 @@ pub struct Ellipsoid {
     pub centre: DVec3,
 }
 
-/// One triangle of the ship as the consoles draw it: its corners in ship axes relative to the shield's centre, metres,
-/// counter-clockwise seen from outside; its outward normal; and which of its edges (corner `k` to corner `k + 1`) are
-/// creases, outlined where the surface turns (`sc_core::console_model`).
-#[derive(Clone, Copy, Debug)]
-pub struct HullTri {
-    pub v: [DVec3; 3],
-    pub n: DVec3,
-    pub crease: [bool; 3],
-}
-
-/// The Tern's shape for the consoles' 3D pictures: the low-poly exterior model's triangles
-/// (`data/ships/tern/console_model.json`, written by `sc-tools console-model` from `tern_lod2.glb`, geometry only), in
-/// the layout's frame less the shield's centre, and the shield ellipsoid. Read once from the compiled-in data.
+/// The Tern's shape for the consoles' 3D pictures: the shield ellipsoid. The hull drawn inside it is the low poly
+/// model (`kit::hull_polys`, console-ship-model). Read once from the compiled-in data.
 pub struct ShipShape {
-    pub hull: Vec<HullTri>,
     pub shield: Ellipsoid,
 }
-
-/// The ship's console model as the client compiles it in.
-const CONSOLE_MODEL: (&str, &str) =
-    ("data/ships/tern/console_model.json", include_str!("../../../../data/ships/tern/console_model.json"));
 
 /// The Tern's shape.
 pub fn tern() -> &'static ShipShape {
@@ -821,22 +819,7 @@ pub fn tern() -> &'static ShipShape {
     SHAPE.get_or_init(|| {
         let data = sc_core::combat::data::DrillData::shipped();
         let e = data.tern_shields.ellipsoid;
-        let shield = Ellipsoid { axes: DVec3::from_array(e.axes_m), centre: DVec3::from_array(e.centre_m) };
-        let (file, text) = CONSOLE_MODEL;
-        let m: sc_core::console_model::ConsoleModel =
-            sc_core::data::parse(file, text).unwrap_or_else(|e| panic!("the console model is refused: {e}"));
-        let at = |i: u32| DVec3::from_array(m.vertices_m[i as usize]) - shield.centre;
-        let hull = m
-            .triangles
-            .iter()
-            .zip(&m.creases)
-            .map(|(t, c)| {
-                let v = t.map(at);
-                let n = (v[1] - v[0]).cross(v[2] - v[0]).normalize_or_zero();
-                HullTri { v, n, crease: [c & 1 != 0, c & 2 != 0, c & 4 != 0] }
-            })
-            .collect();
-        ShipShape { hull, shield }
+        ShipShape { shield: Ellipsoid { axes: DVec3::from_array(e.axes_m), centre: DVec3::from_array(e.centre_m) } }
     })
 }
 
@@ -1165,16 +1148,21 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
 }
 
 /// The viewscreen's camera, in ship axes: forward, right and up (the mockup's `feedBasis`).
+/// Where the bow camera stands, ship frame, metres: ahead of the hull's bow and a little up. The feed is drawn from
+/// here and the target bracket projected from here, so they agree however far the zoom goes (target-bracket 1).
+pub const BOW_EYE: DVec3 = DVec3::new(0.0, 3.0, 32.0);
+
 pub fn feed_basis(v: &ConsoleView) -> Basis {
     let tgt = v.target.as_ref().and_then(|id| v.contacts.iter().find(|c| &c.id == id));
     feed_basis_for(&v.feed, tgt.map(|c| v3(c.rel)))
 }
 
 /// Where a camera of the viewscreen (`combat::FEEDS`) looks, in the ship's frame; `target` is the locked contact
-/// relative to the Tern in the ship's frame, which TARGET looks at (forward without one). The consoles' feed and the
-/// bridge's viewscreens both look this way.
+/// relative to the Tern in the ship's frame, which TARGET looks at (forward without one). The consoles' feed
+/// and the bridge's viewscreens both look this way; with CHASE on, from behind the ship ([`feed_view`]).
 pub fn feed_basis_for(feed: &str, target: Option<DVec3>) -> Basis {
     let f = match feed {
+        // CHASE is a toggle now (chase-camera 1); a held CHASE from an older client is FWD.
         "FWD" | "CHASE" => DVec3::Z,
         "AFT" => DVec3::NEG_Z,
         "PORT" => DVec3::X,
@@ -1187,6 +1175,87 @@ pub fn feed_basis_for(feed: &str, target: Option<DVec3>) -> Basis {
     }
     let r = r.normalize();
     Basis { f, r, u: r.cross(f) }
+}
+
+/// The chase camera's numbers, set once from `data/space/exterior.json` when the drill starts ([`set_chase`]): the
+/// console draws its target bracket through the chase camera's lens.
+static CHASE: OnceLock<sc_core::exterior::Chase> = OnceLock::new();
+
+/// Set the chase camera's numbers for the consoles (once; later calls keep the first).
+pub fn set_chase(c: &sc_core::exterior::Chase) {
+    let _ = CHASE.set(c.clone());
+}
+
+/// The chase camera's vertical field of view, radians, at `zoom` (the feed is 614 x 194, as every camera's).
+pub fn chase_vfov(c: &sc_core::exterior::Chase, zoom: f64) -> f64 {
+    let across = (c.fov_across_deg / 2.0).to_radians().tan() / zoom.max(1.0);
+    2.0 * (across * 97.0 / 307.0).atan()
+}
+
+/// The chase camera (openspec/changes/chase-camera design 1): a viewscreen camera looking along `look` (ship frame),
+/// seen from behind the ship. It stands `distance_m` back from the ship's centre along that line, raised square to its
+/// look until the ship's centre sits `ship_low` of the half height below the middle of a picture `half_vfov` radians
+/// high, the ship in the middle across; it looks along `look`, or at `target` (TARGET), so the target is in the middle.
+/// Returns where it stands relative to the ship's centre and the way it looks, both in the ship's frame.
+pub fn chase_camera(
+    look: DVec3,
+    target: Option<DVec3>,
+    c: &sc_core::exterior::Chase,
+    half_vfov: f64,
+) -> (DVec3, Basis) {
+    let line = look.normalize_or_zero();
+    let line = if line == DVec3::ZERO { DVec3::Z } else { line };
+    let look_from = |eye: DVec3| match target {
+        Some(t) if (t - eye).length() > 1.0 => (t - eye).normalize(),
+        _ => line,
+    };
+    let frame = |f: DVec3| {
+        let mut r = f.cross(DVec3::Y);
+        if r.length() < 1e-3 {
+            r = DVec3::NEG_X;
+        }
+        let r = r.normalize();
+        Basis { f, r, u: r.cross(f) }
+    };
+    // Raised until the ship sits low in the picture it finally takes. Looking at a near target turns the camera as it
+    // rises, so the lift is settled on the last aim rather than the first (a few steps: each turn is small).
+    let low = c.ship_low * half_vfov.tan();
+    let mut eye = -line * c.distance_m;
+    for _ in 0..12 {
+        let b = frame(look_from(eye));
+        let depth = (-eye).dot(b.f).max(1.0);
+        let off = (-eye).dot(b.u) + depth * low;
+        if off.abs() < 1e-4 {
+            break;
+        }
+        eye += b.u * off;
+    }
+    (eye, frame(look_from(eye)))
+}
+
+/// A viewscreen's camera, the one sum the consoles and the bridge's main viewscreen share: camera `feed`
+/// (`combat::FEEDS`), chasing or not, with `target` the locked contact relative to the Tern (ship frame), at `zoom`.
+/// Returns where it stands relative to the ship's centre (None: on the bow), the way it looks (ship frame) and its
+/// vertical field of view, radians.
+pub fn feed_view(
+    feed: &str,
+    chase: bool,
+    target: Option<DVec3>,
+    c: &sc_core::exterior::Chase,
+    zoom: f64,
+) -> (Option<DVec3>, Basis, f64) {
+    if chase {
+        // A zoom is a lens (viewscreen-zoom 2; owner, 2026-10-14: "4x looks like 1x is what I meant by weird"): the
+        // chase camera stands and looks where it does at 1x, and its picture is magnified, so the target grows and the
+        // Tern, low in the 1x picture, leaves by the bottom edge.
+        let b = feed_basis_for(feed, target);
+        let (eye, b) = chase_camera(b.f, target.filter(|_| feed == "TARGET"), c, chase_vfov(c, 1.0) / 2.0);
+        return (Some(eye), b, chase_vfov(c, zoom));
+    }
+    // From the bow camera: TARGET looks from where it stands at the target.
+    let b = feed_basis_for(feed, target.map(|t| t - BOW_EYE));
+    let foc = 307.0 / 35f64.to_radians().tan() * zoom;
+    (None, b, 2.0 * (97.0 / foc).atan())
 }
 
 /// The viewscreen's frame on screen (look band coordinates): where the 3D feed is drawn.
@@ -1219,22 +1288,29 @@ fn look_band(cv: &Canvas, cx: &mut Ctx) {
     cv.rect(330.0, 18.0, 620.0, 200.0, 6.0, fill, Some(Pen::new(3.0, rgba(0x2a3442, 1.0))));
     // The target's bracket on the feed, where the feed's camera sees it.
     let scr = cv.at(sx, sy).clip(0.0, 0.0, sw, sh);
-    let b = feed_basis(v);
-    let foc = (307.0 / 35f64.to_radians().tan()) * v.zoom;
+    // With chase on, from where the chase camera stands and through its wider lens (chase-camera 1).
+    let (eye, b, foc) = match (v.chase, CHASE.get()) {
+        (true, Some(c)) => {
+            let tgt = v.target.as_ref().and_then(|id| v.contacts.iter().find(|k| &k.id == id)).map(|k| v3(k.rel));
+            let (eye, b, vfov) = feed_view(&v.feed, true, tgt, c, v.zoom);
+            (eye.unwrap_or(DVec3::ZERO), b, 97.0 / (vfov / 2.0).tan())
+        }
+        _ => {
+            let tgt = v.target.as_ref().and_then(|id| v.contacts.iter().find(|k| &k.id == id)).map(|k| v3(k.rel));
+            (BOW_EYE, feed_basis_for(&v.feed, tgt.map(|t| t - BOW_EYE)), (307.0 / 35f64.to_radians().tan()) * v.zoom)
+        }
+    };
     for k in &v.contacts {
         if k.iff == "unknown" || Some(&k.id) != v.target.as_ref() {
             continue;
         }
-        let d = v3(k.rel);
-        let cz = d.dot(b.f);
-        if cz <= 0.01 {
-            continue;
-        }
-        let p = [307.0 + d.dot(b.r) / cz * foc, 97.0 - d.dot(b.u) / cz * foc];
-        let sz = ((60.0 / (d.length() / 1000.0)).clamp(5.0, 70.0) * v.zoom) as f32;
-        for corner in bracket(p[0] as f32, p[1] as f32, sz * 1.8) {
-            scr.polyline(&corner, Pen::new(1.0, c.hostile.0));
-        }
+        let Some(r) = bracket_rect(k, eye, &b, foc, v.zoom) else { continue };
+        let col = match k.iff.as_str() {
+            "friendly" => c.friendly.0,
+            "neutral" => c.neutral.0,
+            _ => c.hostile.0,
+        };
+        draw_bracket(&scr, r, k, col, (v3(k.rel) - eye).length(), c.line.0);
     }
     cv.text(342.0, 38.0, 11.0, c.dim.0, &format!("VIEWSCREEN · {}", v.feed), T::default().ls(2.0));
     kit::feed_widget(cv, cx, 196.0, 10.0);
@@ -1251,23 +1327,75 @@ fn lerp_col(a: Color32, b: Color32, k: f32) -> Color32 {
     Color32::from_rgb(ch(a.r(), b.r()), ch(a.g(), b.g()), ch(a.b(), b.b()))
 }
 
-/// The target's bracket is never smaller than this across, layout points, so a far target keeps four corners apart
-/// (the mockup's `BRACKET_MIN`).
-pub const BRACKET_MIN: f32 = 24.0;
+/// The viewscreen's middle, in its 614 x 194 picture.
+const SCREEN_MID: [f64; 2] = [307.0, 97.0];
 
-/// Each of the bracket's arms is this share of its side (the mockup's `BRACKET_ARM`): half of every side shows.
-pub const BRACKET_ARM: f32 = 0.25;
+/// The target bracket's rectangle on the viewscreen, [left, top, right, bottom] (target-bracket 1): the contact's hull
+/// box turned as it lies and projected through the camera at `eye` with axes `b` and focal length `foc` pixels, padded
+/// 4 px and at least 16 px a side about its middle. None when a corner is behind the camera. A class with no box is
+/// framed by the old range rule's square (60 px at 1 km, 5 to 70 px), times `zoom`.
+pub fn bracket_rect(k: &ContactView, eye: DVec3, b: &Basis, foc: f64, zoom: f64) -> Option<[f64; 4]> {
+    let at = |p: DVec3| {
+        let d = p - eye;
+        let cz = d.dot(b.f);
+        (cz > 0.01).then(|| [SCREEN_MID[0] + d.dot(b.r) / cz * foc, SCREEN_MID[1] - d.dot(b.u) / cz * foc])
+    };
+    let rel = v3(k.rel);
+    let (mut x0, mut y0, mut x1, mut y1) = (f64::INFINITY, f64::INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY);
+    match k.box_m {
+        Some([lo, hi]) => {
+            let fwd = v3(k.dir).normalize_or(DVec3::Z);
+            let up = v3(k.up).normalize_or(DVec3::Y);
+            let right = up.cross(fwd).normalize_or(DVec3::X);
+            for i in 0..8 {
+                let pick = |a: usize| if i >> a & 1 == 0 { lo[a] } else { hi[a] };
+                let p = at(rel + right * pick(0) + up * pick(1) + fwd * pick(2))?;
+                (x0, y0, x1, y1) = (x0.min(p[0]), y0.min(p[1]), x1.max(p[0]), y1.max(p[1]));
+            }
+        }
+        None => {
+            let p = at(rel)?;
+            let half = (60.0 / ((rel - eye).length() / 1000.0)).clamp(5.0, 70.0) * zoom * 0.9;
+            (x0, y0, x1, y1) = (p[0] - half, p[1] - half, p[0] + half, p[1] + half);
+        }
+    }
+    let pad = |a: f64, z: f64| {
+        let (m, h) = ((a + z) / 2.0, ((z - a) / 2.0 + 4.0).max(8.0));
+        (m - h, m + h)
+    };
+    let ((x0, x1), (y0, y1)) = (pad(x0, x1), pad(y0, y1));
+    Some([x0, y0, x1, y1])
+}
 
-/// The target's bracket on the viewscreen (the mockup's `bracket`): four corner marks round a square `side` across
-/// centred on (`x`, `y`), at least [`BRACKET_MIN`]. Each mark is an arm's end, its corner and the other arm's end,
-/// top left first and clockwise, so the four never meet and never fall apart into a dash pattern's pieces.
-pub fn bracket(x: f32, y: f32, side: f32) -> [[[f32; 2]; 3]; 4] {
-    let h = side.max(BRACKET_MIN) / 2.0;
-    let arm = 2.0 * h * BRACKET_ARM;
-    [(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)].map(|(sx, sy): (f32, f32)| {
-        let (cx, cy) = (x + sx * h, y + sy * h);
-        [[cx, cy - sy * arm], [cx, cy], [cx - sx * arm, cy]]
-    })
+/// A range as the bracket reads it: whole metres under a kilometre, kilometres to one place from there.
+pub fn range_text(m: f64) -> String {
+    if m < 1000.0 {
+        format!("{:.0} m", m)
+    } else {
+        format!("{:.1} km", m / 1000.0)
+    }
+}
+
+/// The target bracket (target-bracket 1-3): four L corners round `r` in the IFF colour, the IFF word and the hull bar
+/// above it, the contact's id and range below, the texts kept inside the viewscreen.
+fn draw_bracket(cv: &Canvas, r: [f64; 4], k: &ContactView, col: Color32, range_m: f64, track: Color32) {
+    let [x0, y0, x1, y1] = r.map(|a| a as f32);
+    let arm = ((x1 - x0).min(y1 - y0) / 4.0).clamp(5.0, 14.0);
+    let pen = Pen::new(1.5, col);
+    cv.polyline(&[[x0, y0 + arm], [x0, y0], [x0 + arm, y0]], pen);
+    cv.polyline(&[[x1 - arm, y0], [x1, y0], [x1, y0 + arm]], pen);
+    cv.polyline(&[[x1, y1 - arm], [x1, y1], [x1 - arm, y1]], pen);
+    cv.polyline(&[[x0 + arm, y1], [x0, y1], [x0, y1 - arm]], pen);
+    let tx = x0.clamp(2.0, 614.0 - 72.0);
+    let top = (y0 - 8.0).max(12.0);
+    cv.text(tx, top - 4.0, 10.0, col, &k.iff.to_uppercase(), T::default().bold().ls(1.0));
+    if k.scan >= 0.3 {
+        let w = x1 - x0;
+        cv.rect(x0, y0 - 6.0, w, 3.0, 0.0, track, None);
+        cv.rect(x0, y0 - 6.0, w * (k.hull / 100.0).clamp(0.0, 1.0) as f32, 3.0, 0.0, col, None);
+    }
+    let below = (y1 + 13.0).min(192.0);
+    cv.text(tx, below, 10.0, col, &format!("{}  {}", k.id, range_text(range_m)), T::default());
 }
 
 /// The status strip: the same on every console, pictures and numbers only.
@@ -1346,6 +1474,168 @@ pub fn grid(col: f32, row: f32, w: f32, h: f32) -> [f32; 4] {
 mod tests {
     use super::*;
 
+    fn chase_cfg() -> sc_core::exterior::Chase {
+        sc_core::exterior::Chase { distance_m: 160.0, fov_across_deg: 100.0, ship_low: 0.45 }
+    }
+
+    /// Where `p` (ship frame) lands on the picture of a camera at `eye` looking along `b`: right and up as a share of
+    /// the half height, and its depth.
+    fn on_screen(p: DVec3, eye: DVec3, b: &Basis, half: f64) -> (f64, f64, f64) {
+        let d = p - eye;
+        let z = d.dot(b.f);
+        (d.dot(b.r) / z / half.tan(), d.dot(b.u) / z / half.tan(), z)
+    }
+
+    #[test]
+    fn chase_puts_the_ship_low_and_in_the_middle_across_on_every_camera() {
+        let target = DVec3::new(900.0, 300.0, 2500.0);
+        for feed in ["TARGET", "FWD", "PORT", "AFT", "STBD"] {
+            let (eye, b, vfov) = feed_view(feed, true, Some(target), &chase_cfg(), 1.0);
+            let eye = eye.expect("chase stands off the ship");
+            let (sx, sy, sz) = on_screen(DVec3::ZERO, eye, &b, vfov / 2.0);
+            assert!(sz > 100.0, "{feed}: the ship is ahead of the camera, {sz} m");
+            assert!(sx.abs() < 0.05, "{feed}: the ship is in the middle across, at {sx}");
+            assert!((sy + 0.45).abs() < 0.03, "{feed}: the ship's centre sits low, at {sy}");
+            let plain = feed_basis_for(feed, Some(target)).f;
+            if feed != "TARGET" {
+                assert!(b.f.dot(plain) > 0.999, "{feed}: it looks the camera's way");
+            }
+        }
+    }
+
+    #[test]
+    fn chase_on_target_keeps_the_target_in_the_middle() {
+        let target = DVec3::new(900.0, 300.0, 2500.0);
+        let (eye, b, vfov) = feed_view("TARGET", true, Some(target), &chase_cfg(), 1.0);
+        let (tx, ty, _) = on_screen(target, eye.unwrap(), &b, vfov / 2.0);
+        assert!(tx.abs() < 1e-6 && ty.abs() < 1e-6, "the target is in the middle, at {tx} {ty}");
+    }
+
+    #[test]
+    fn chase_on_a_near_target_still_puts_the_ship_low() {
+        // A contact closer than the chase distance turns the camera hardest as it rises: the ship must stay low.
+        for target in [DVec3::new(250.0, 0.0, 120.0), DVec3::new(-90.0, 60.0, 200.0), DVec3::new(0.0, -40.0, -300.0)] {
+            let c = chase_cfg();
+            let (eye, b, vfov) = feed_view("TARGET", true, Some(target), &c, 1.0);
+            let eye = eye.unwrap();
+            let (tx, ty, _) = on_screen(target, eye, &b, vfov / 2.0);
+            assert!(tx.abs() < 1e-6 && ty.abs() < 1e-6, "the target is in the middle, at {tx} {ty}");
+            let (sx, sy, _) = on_screen(DVec3::ZERO, eye, &b, vfov / 2.0);
+            assert!(sx.abs() < 1e-3, "the ship is in the middle across, at {sx}");
+            assert!((sy + c.ship_low).abs() < 1e-3, "the ship sits {} below the middle, at {sy}", c.ship_low);
+        }
+    }
+
+    fn hound_contact(rel: [f64; 3]) -> ContactView {
+        ContactView {
+            id: "T1".into(),
+            cls: "corvette".into(),
+            iff: "hostile".into(),
+            rel,
+            dir: [0.6, 0.0, 0.8],
+            hull: 80.0,
+            scan: 1.0,
+            up: [0.0, 1.0, 0.0],
+            box_m: crate::ships3d::class_box("corvette").map(|(lo, hi)| [lo.map(f64::from), hi.map(f64::from)]),
+        }
+    }
+
+    /// Every corner of the contact's box, projected as the bracket projects them.
+    fn box_on_screen(k: &ContactView, eye: DVec3, b: &Basis, foc: f64) -> Vec<[f64; 2]> {
+        let [lo, hi] = k.box_m.unwrap();
+        let (fwd, up) = (v3(k.dir).normalize(), v3(k.up).normalize());
+        let right = up.cross(fwd).normalize();
+        (0..8)
+            .map(|i| {
+                let pick = |a: usize| if i >> a & 1 == 0 { lo[a] } else { hi[a] };
+                let d = v3(k.rel) + right * pick(0) + up * pick(1) + fwd * pick(2) - eye;
+                let cz = d.dot(b.f);
+                [SCREEN_MID[0] + d.dot(b.r) / cz * foc, SCREEN_MID[1] - d.dot(b.u) / cz * foc]
+            })
+            .collect()
+    }
+
+    #[test]
+    fn the_bracket_closes_round_the_hound_near_and_far() {
+        let bow = Basis { f: DVec3::Z, r: DVec3::NEG_X, u: DVec3::Y };
+        let foc = 307.0 / 35f64.to_radians().tan();
+        for rel in [[30.0, 10.0, 300.0], [-200.0, 40.0, 3000.0]] {
+            let k = hound_contact(rel);
+            let r = bracket_rect(&k, DVec3::ZERO, &bow, foc, 1.0).expect("ahead of the camera");
+            let pts = box_on_screen(&k, DVec3::ZERO, &bow, foc);
+            let (x0, x1) = pts.iter().fold((f64::INFINITY, f64::NEG_INFINITY), |a, p| (a.0.min(p[0]), a.1.max(p[0])));
+            let (y0, y1) = pts.iter().fold((f64::INFINITY, f64::NEG_INFINITY), |a, p| (a.0.min(p[1]), a.1.max(p[1])));
+            assert!(r[0] <= x0 && r[1] <= y0 && r[2] >= x1 && r[3] >= y1, "the corners enclose the hull at {rel:?}");
+            assert!(r[2] - r[0] >= 16.0 - 1e-9 && r[3] - r[1] >= 16.0 - 1e-9, "at least 16 px a side");
+            if x1 - x0 > 8.0 {
+                assert!((r[0] - (x0 - 4.0)).abs() < 1e-6 && (r[2] - (x1 + 4.0)).abs() < 1e-6, "4 px to spare across");
+            }
+        }
+    }
+
+    #[test]
+    fn the_bracket_follows_the_chase_camera() {
+        let target = DVec3::new(250.0, 0.0, 600.0);
+        let k = hound_contact(target.to_array());
+        let (eye, b, vfov) = feed_view("TARGET", true, Some(target), &chase_cfg(), 1.0);
+        let (eye, foc) = (eye.unwrap(), 97.0 / (vfov / 2.0).tan());
+        let r = bracket_rect(&k, eye, &b, foc, 1.0).unwrap();
+        let mid = [(r[0] + r[2]) / 2.0, (r[1] + r[3]) / 2.0];
+        assert!(
+            (mid[0] - SCREEN_MID[0]).abs() < 12.0 && (mid[1] - SCREEN_MID[1]).abs() < 12.0,
+            "on the Hound in the middle: {mid:?}"
+        );
+    }
+
+    #[test]
+    fn the_bracket_stays_on_the_hound_at_20x_from_the_bow() {
+        // The feed is drawn from the bow camera: the bracket must be projected from there too, or the zoom magnifies
+        // the 32 m between the bow and the ship's centre into a bracket beside the ship.
+        let target = DVec3::new(-700.0, 120.0, 1300.0);
+        let k = hound_contact(target.to_array());
+        let (eye, b, vfov) = feed_view("TARGET", false, Some(target), &chase_cfg(), 20.0);
+        assert!(eye.is_none(), "on the bow");
+        let foc = 97.0 / (vfov / 2.0).tan();
+        let r = bracket_rect(&k, BOW_EYE, &b, foc, 20.0).unwrap();
+        let mid = [(r[0] + r[2]) / 2.0, (r[1] + r[3]) / 2.0];
+        assert!(
+            (mid[0] - SCREEN_MID[0]).abs() < 12.0 && (mid[1] - SCREEN_MID[1]).abs() < 12.0,
+            "on the Hound: {mid:?}"
+        );
+    }
+
+    #[test]
+    fn zoomed_chase_magnifies_from_where_the_camera_stands() {
+        let target = DVec3::new(250.0, 0.0, 1600.0);
+        let (e1, b1, v1) = feed_view("TARGET", true, Some(target), &chase_cfg(), 1.0);
+        let (e4, b4, v4) = feed_view("TARGET", true, Some(target), &chase_cfg(), 4.0);
+        assert_eq!(e1, e4, "the camera does not move");
+        assert!((b1.f - b4.f).length() < 1e-12, "nor turn");
+        let ratio = (v1 / 2.0).tan() / (v4 / 2.0).tan();
+        assert!((ratio - 4.0).abs() < 1e-9, "4x magnifies four times: {ratio}");
+        let (_, sy, _) = on_screen(DVec3::ZERO, e4.unwrap(), &b4, v4 / 2.0);
+        assert!(sy < -1.0, "the Tern, low at 1x, is below the 4x picture: {sy}");
+    }
+
+    #[test]
+    fn a_target_behind_the_camera_has_no_bracket() {
+        let bow = Basis { f: DVec3::Z, r: DVec3::NEG_X, u: DVec3::Y };
+        assert!(bracket_rect(&hound_contact([0.0, 0.0, -500.0]), DVec3::ZERO, &bow, 400.0, 1.0).is_none());
+    }
+
+    #[test]
+    fn the_bracket_reads_its_range_in_metres_then_kilometres() {
+        assert_eq!(range_text(640.4), "640 m");
+        assert_eq!(range_text(3240.0), "3.2 km");
+    }
+
+    #[test]
+    fn chase_off_is_the_bow_camera() {
+        let (eye, b, _) = feed_view("PORT", false, None, &chase_cfg(), 1.0);
+        assert!(eye.is_none(), "on the bow");
+        assert_eq!(b.f, DVec3::X);
+    }
+
     #[test]
     fn every_viewscreen_camera_looks_its_own_way() {
         let t = DVec3::new(300.0, 0.0, 400.0);
@@ -1373,53 +1663,6 @@ mod tests {
         let q = quat_arr(from_euler(20.0, 0.0, 0.0));
         assert!((q[0] - 0.984_807_753).abs() < 1e-9 && (q[2] + 0.173_648_178).abs() < 1e-9);
         assert_eq!(fmt_q(q), " 0.9848   0.0000  -0.1736   0.0000");
-    }
-
-    /// The owner (2026-10-12): "targetting brackets look messed up". The bracket was a rectangle dashed `6, side - 12`
-    /// from 3, whose period (side - 6) is not the side, so its dashes wandered off the corners into scattered pieces.
-    #[test]
-    fn the_targets_bracket_is_four_clean_corners_on_its_box() {
-        let marks = bracket(100.0, 50.0, 40.0);
-        let corners: Vec<[f32; 2]> = marks.iter().map(|m| m[1]).collect();
-        assert_eq!(corners, vec![[80.0, 30.0], [120.0, 30.0], [120.0, 70.0], [80.0, 70.0]], "on the box's corners");
-        for m in &marks {
-            let (a, c, e) = (m[0], m[1], m[2]);
-            assert!(a[0] == c[0] && e[1] == c[1], "one arm upright, one level: {m:?}");
-            let (up, level) = ((a[1] - c[1]).abs(), (e[0] - c[0]).abs());
-            assert!(up == 10.0 && level == 10.0, "each arm a quarter of the side: {up}, {level}");
-            // Both arms point into the box, toward its centre.
-            assert!((a[1] - 50.0).abs() < (c[1] - 50.0).abs() && (e[0] - 100.0).abs() < (c[0] - 100.0).abs());
-        }
-        assert!(marks[0][2][0] < marks[1][2][0], "neighbouring corners' arms stay apart");
-    }
-
-    #[test]
-    fn a_far_targets_bracket_keeps_its_four_corners_apart() {
-        // A target 12 km out is drawn 5 lp across, its box 9 lp: the bracket holds its least size.
-        let marks = bracket(0.0, 0.0, 9.0);
-        assert_eq!(marks[0][1], [-BRACKET_MIN / 2.0, -BRACKET_MIN / 2.0]);
-        assert_eq!(marks[2][1], [BRACKET_MIN / 2.0, BRACKET_MIN / 2.0]);
-        let gap = marks[1][2][0] - marks[0][2][0];
-        assert!(gap >= BRACKET_MIN / 2.0 - 1e-4, "half of every side is open: {gap}");
-    }
-
-    /// The consoles' 3D pictures draw the low-poly exterior model, not the layout's loft (owner, 2026-10-12: "ship
-    /// models arent using the correct model, use the low poly version of the latest model").
-    #[test]
-    fn the_consoles_ship_is_the_low_poly_model_wound_outward_round_the_shield_centre() {
-        let s = tern();
-        assert_eq!(s.hull.len(), 496, "tern_lod2.glb's triangles");
-        // Wound outward, so the faces dropped as turned away are the far ones: a closed surface wound counter-clockwise
-        // from outside has a positive volume.
-        let vol: f64 = s.hull.iter().map(|t| t.v[0].dot(t.v[1].cross(t.v[2]))).sum::<f64>() / 6.0;
-        assert!(vol > 10_000.0, "a frigate's volume, wound outward: {vol} m3");
-        // The hull's roof and keel stand where the loft's did about the shield's centre (8.2 m and -5.8 m in the
-        // layout, the centre at 1.5 m).
-        let ys = s.hull.iter().flat_map(|t| t.v.map(|p| p.y));
-        let (lo, hi) = ys.fold((f64::MAX, f64::MIN), |(a, b), y| (a.min(y), b.max(y)));
-        assert!((hi - (8.2 - s.shield.centre.y)).abs() < 0.01 && (lo - (-5.8 - s.shield.centre.y)).abs() < 0.01);
-        assert!(s.hull.iter().any(|t| t.crease.iter().any(|c| *c)), "creases to outline");
-        assert!(s.hull.iter().any(|t| t.crease.iter().any(|c| !*c)), "and flat panels' diagonals left clean");
     }
 
     #[test]

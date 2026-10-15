@@ -23,9 +23,9 @@ use sc_core::deck::{
     self, DeckCompartment, DeckHull, DeckIndex, DeckProbes, DeckTextures, DeckView, DeckWalk, HullArray, HullPart,
     WalkDoor, WalkHatch, WalkLadder, WalkLift, WalkStart,
 };
+use sc_core::mips::{mip_chain, shrink};
 use sc_core::vertex::{pack_deck_vertex, DeckVertexIn};
 use serde::Deserialize;
-use sc_core::mips::{mip_chain, shrink};
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -160,7 +160,6 @@ fn floats(dir: &Path, name: &str, want: usize) -> Result<Vec<f32>, String> {
 fn color_byte(c: f32) -> u8 {
     ((c.max(0.0).powf(1.0 / 2.2) / 2.0).clamp(0.0, 1.0) * 255.0).round() as u8
 }
-
 
 /// The middle of compartment `id`'s floor on its lowest deck: the centroid of the largest of its lowest brushes (each is
 /// a convex prism, so the centroid is inside it).
@@ -582,8 +581,7 @@ fn read_json(root: &Path, rel: &str) -> Result<serde_json::Value, String> {
 /// An exterior model of the default livery (`assets/models/exteriors/props.json`), read and checked: `prop` is the
 /// manifest's key, a ship's id for its full detail level (`tern`) or with its level (`tern_lod2`). Its path from the
 /// root and the model, or None when the manifest has no such model. Its triangle count and bounds must be its livery
-/// manifest's (rounded to the centimetre there). The hull below and `console-model` both take their model from here,
-/// so the two cannot read different liveries (CLAUDE.md 6.1).
+/// manifest's (rounded to the centimetre there).
 pub(crate) fn exterior_model(root: &Path, prop: &str) -> Result<Option<(String, crate::glb::Glb)>, String> {
     let props = read_json(root, "assets/models/exteriors/props.json")?;
     if props["props"].get(prop).is_none() {

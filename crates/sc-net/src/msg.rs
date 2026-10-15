@@ -12,8 +12,10 @@ use sc_core::combat::chat::{self as chat, Kind as ChatKind, Line as ChatLine};
 use sc_core::combat::patrol::{PatrolOrder, Stage};
 use sc_core::combat::{self, Command, HelmMode, Outcome, Phase, PowerCmd, Refusal, Station, TubeState, TurretMode};
 
-/// The protocol's version; a Hello with another is refused. 14: crew chat (crew-chat design 1).
-pub const PROTOCOL: u16 = 15;
+/// The protocol's version; a Hello with another is refused. 13: the main viewscreen's feed, chase and zoom
+/// (chase-camera); 14: crew chat (crew-chat design 1); 15: the patrol (patrol-mission); 16: both lines merged, the
+/// main view's command moved to tag 29.
+pub const PROTOCOL: u16 = 16;
 /// The longest unreliable message, so it is one SCTP chunk in one datagram (netcode-and-sessions section 2).
 pub const MAX_UNRELIABLE: usize = 1200;
 /// The longest string field, in bytes.
@@ -436,6 +438,12 @@ pub struct BridgeSnap {
     pub braced: bool,
     /// The captain's camera on every viewscreen, an index in [`combat::FEEDS`].
     pub view: Option<u8>,
+    /// The camera on the bridge's main viewscreen, the captain's console's: an index in [`combat::FEEDS`].
+    pub main_view: u8,
+    /// Whether it chases (from behind the ship), as the captain's console's does.
+    pub main_chase: bool,
+    /// Its zoom, the captain's console's: an index in [`combat::ZOOMS`].
+    pub main_zoom: u8,
     /// The last orders, newest first: to, verb index, done.
     pub orders: Vec<(Station, u8, bool)>,
     /// Science's scan of the enemy (0-1), and whether a manned scan is running.
@@ -1310,6 +1318,12 @@ fn write_command(w: &mut Writer, c: &Command) {
             w.u8(16);
             w.u8(v.unwrap_or(255));
         }
+        Command::MainView { feed, chase, zoom } => {
+            w.u8(29);
+            w.u8(feed);
+            w.u8(u8::from(chase));
+            w.u8(zoom);
+        }
         Command::Order(to, verb) => {
             w.u8(17);
             w.u8(to as u8);
@@ -1490,6 +1504,7 @@ fn read_command(r: &mut Reader) -> Result<Command, DecodeError> {
         26 => Command::Jump(r.bool()?),
         27 => Command::Sweep,
         28 => Command::Patrol(PatrolOrder::from_u8(r.u8()?).ok_or(DecodeError("no such patrol order"))?),
+        29 => Command::MainView { feed: r.u8()?, chase: r.bool()?, zoom: r.u8()? },
         _ => return Err(DecodeError("no such command")),
     };
     Ok(c)
@@ -1691,6 +1706,9 @@ impl Snapshot {
         let b = &self.bridge;
         w.u8(u8::from(b.red_alert) | u8::from(b.braced) << 1 | u8::from(b.scanning) << 2);
         w.u8(b.view.unwrap_or(255));
+        w.u8(b.main_view);
+        w.u8(u8::from(b.main_chase));
+        w.u8(b.main_zoom);
         w.u8(b.orders.len() as u8);
         for (to, verb, done) in &b.orders {
             w.u8(*to as u8);
@@ -1925,6 +1943,15 @@ impl Snapshot {
             v if usize::from(v) < combat::FEEDS.len() => Some(v),
             _ => return Err(DecodeError("no such viewscreen camera")),
         };
+        let main_view = r.u8()?;
+        if usize::from(main_view) >= combat::FEEDS.len() {
+            return Err(DecodeError("no such viewscreen camera"));
+        }
+        let main_chase = r.bool()?;
+        let main_zoom = r.u8()?;
+        if usize::from(main_zoom) >= combat::ZOOMS.len() {
+            return Err(DecodeError("no such viewscreen zoom"));
+        }
         let no = r.count(combat::MAX_ORDERS)?;
         let mut orders = Vec::with_capacity(no);
         for _ in 0..no {
@@ -1947,6 +1974,9 @@ impl Snapshot {
             braced: flags & 2 != 0,
             scanning: flags & 4 != 0,
             view,
+            main_view,
+            main_chase,
+            main_zoom,
             orders,
             scan: f64::from(sc) / 200.0,
             ping_s,
@@ -2163,6 +2193,9 @@ impl Snapshot {
                     red_alert: b.red_alert,
                     braced: b.braced,
                     view: b.view,
+                    main_view: b.main_view,
+                    main_chase: b.main_chase,
+                    main_zoom: b.main_zoom,
                     orders: b.orders.iter().map(|o| (o.to, o.verb, o.done)).collect(),
                     scan: b.scan,
                     scanning: b.scanning,
@@ -2514,6 +2547,7 @@ mod tests {
             ClientMsg::Command(Command::Sweep),
             ClientMsg::Command(Command::Patrol(PatrolOrder::Jump)),
             ClientMsg::Command(Command::Lock(None)),
+            ClientMsg::Command(Command::MainView { feed: 0, chase: true, zoom: 4 }),
             ClientMsg::Command(Command::Stick { speed_set_mps: 120.0, yaw: 0.5, pitch: -0.25, roll: 0.0 }),
             ClientMsg::Ping(12345),
             ClientMsg::Command(Command::Power(PowerCmd::Preset(1))),

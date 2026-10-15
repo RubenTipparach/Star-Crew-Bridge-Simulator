@@ -32,6 +32,7 @@ python3 tools/layout_check.py
 python3 tools/exterior_windows.py --check
 step "7. mockups hold the current layout"
 python3 tools/mockups/inline.py --check
+python3 tools/ships/console_model.py --check
 step "8. shader modules match their sources"
 python3 tools/sokol_shaders.py --check
 step "9. engine data"

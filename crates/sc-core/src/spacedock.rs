@@ -167,7 +167,12 @@ impl Validate for OneillPair {
         c.count("versions.E.ring.pods", i64::from(self.ring.pods), 1, 64);
         c.number("versions.E.berths.radius_m", self.berths.radius_m, 0.0, p.throat_radius_m);
         for (i, s) in self.berths.slots.iter().enumerate() {
-            c.count(&format!("versions.E.berths.slots[{i}] (row)"), s.0 as i64, 0, self.berths.rows_z_m.len() as i64 - 1);
+            c.count(
+                &format!("versions.E.berths.slots[{i}] (row)"),
+                s.0 as i64,
+                0,
+                self.berths.rows_z_m.len() as i64 - 1,
+            );
         }
     }
 }
@@ -184,14 +189,18 @@ fn num(v: &serde_json::Value, ptr: &str) -> Result<f64, DataError> {
 impl Spacedock {
     /// Read the file's text: the traffic limits, each version's bay and version E, checked.
     pub fn parse(text: &str) -> Result<Self, DataError> {
-        let err = |field: &str, message: String| DataError { file: SPACEDOCK_FILE.into(), field: field.into(), message };
+        let err =
+            |field: &str, message: String| DataError { file: SPACEDOCK_FILE.into(), field: field.into(), message };
         let v: serde_json::Value = serde_json::from_str(text).map_err(|e| err(".", e.to_string()))?;
-        let traffic: Traffic = serde_json::from_value(v["traffic"].clone()).map_err(|e| err("traffic", e.to_string()))?;
+        let traffic: Traffic =
+            serde_json::from_value(v["traffic"].clone()).map_err(|e| err("traffic", e.to_string()))?;
         let oneill: OneillPair =
             serde_json::from_value(v["versions"]["E"].clone()).map_err(|e| err("versions.E", e.to_string()))?;
         let mut c = Checks::default();
         oneill.validate(&mut c);
-        for (k, x) in [("corridor_mps", traffic.corridor_mps), ("door_mps", traffic.door_mps), ("bay_mps", traffic.bay_mps)] {
+        for (k, x) in
+            [("corridor_mps", traffic.corridor_mps), ("door_mps", traffic.door_mps), ("bay_mps", traffic.bay_mps)]
+        {
             c.number(&format!("traffic.{k}"), x, 0.1, 400.0);
         }
         c.result(SPACEDOCK_FILE)?;

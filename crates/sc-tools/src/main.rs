@@ -6,13 +6,10 @@
 //! `sc-tools deckc [ship]` compiles a ship's decks into `compiled/<ship>.deck` (see `deckc`).
 //! `sc-tools names [count] [seed]` prints generated crew names (lobby design 2), to judge the table.
 //! `sc-tools walk-report [ship]` measures the walk world's heap and a body's step time (see `walk_report`).
-//! `sc-tools console-model [ship]` writes the ship as the consoles draw it in 3D from its low-poly exterior model
-//! (see `console_model`).
 //! `sc-tools safety-points [ship]` places the ship's extinguisher brackets from its layout and compiled deck into
 //! `data/ships/<ship>/kit.json` (see `safety_points`).
 
 mod alloc;
-mod console_model;
 mod deckc;
 mod dock;
 mod figure;
@@ -34,7 +31,6 @@ fn check_data(root: &Path) -> Result<usize, String> {
         ("data/space/exterior.json", "exterior"),
         ("data/crew/names.json", "names"),
         ("data/crew/company.json", "company"),
-        ("data/ships/tern/console_model.json", "console_model"),
     ];
     for (rel, kind) in files {
         let text = std::fs::read_to_string(root.join(rel)).map_err(|e| format!("{rel}: cannot be read: {e}"))?;
@@ -44,7 +40,6 @@ fn check_data(root: &Path) -> Result<usize, String> {
             "company" => sc_core::data::parse::<sc_core::crew::CompanyData>(rel, &text).map(|_| ()),
             "names" => sc_core::data::parse::<sc_core::names::NameData>(rel, &text).map(|_| ()),
             "exterior" => sc_core::data::parse::<sc_core::exterior::ExteriorData>(rel, &text).map(|_| ()),
-            "console_model" => sc_core::data::parse::<sc_core::console_model::ConsoleModel>(rel, &text).map(|_| ()),
             _ => unreachable!("every listed file has a schema"),
         }
         .map_err(|e| e.to_string())?;
@@ -117,18 +112,6 @@ fn main() -> ExitCode {
                 }
             }
         }
-        Some("console-model") => {
-            match console_model::run(Path::new("."), args.get(1).map(String::as_str).unwrap_or("tern")) {
-                Ok(s) => {
-                    println!("console-model: {s}");
-                    ExitCode::SUCCESS
-                }
-                Err(e) => {
-                    eprintln!("console-model: {e}");
-                    ExitCode::FAILURE
-                }
-            }
-        }
         Some("safety-points") => {
             match safety_points::run(Path::new("."), args.get(1).map(String::as_str).unwrap_or("tern")) {
                 Ok(s) => {
@@ -155,7 +138,7 @@ fn main() -> ExitCode {
         }
         _ => {
             eprintln!(
-                "usage: sc-tools check-data [repository root] | sc-tools deckc [ship] | sc-tools names [count] [seed] | sc-tools walk-report [ship] | sc-tools console-model [ship] | sc-tools safety-points [ship]"
+                "usage: sc-tools check-data [repository root] | sc-tools deckc [ship] | sc-tools names [count] [seed] | sc-tools walk-report [ship] | sc-tools safety-points [ship]"
             );
             ExitCode::from(2)
         }

@@ -107,6 +107,32 @@ fn ring(z: f32, w: f32, h: f32, y: f32) -> Vec<[f32; 3]> {
 
 /// The Hound corvette, about 38 m long: a hexagonal hull tapering to a beak, swept fins, a dorsal tower, twin
 /// engines. Albedo colours; ship-local axes +X port, +Y dorsal, +Z bow.
+/// A mesh's box in its own axes: the least and greatest of its vertices' positions, metres (target-bracket 1). Read
+/// back from the packed vertices, so it is the box of the model the engine draws.
+pub fn bounds(m: &MeshBuilder) -> ([f32; 3], [f32; 3]) {
+    let (mut lo, mut hi) = ([f32::INFINITY; 3], [f32::NEG_INFINITY; 3]);
+    for v in m.vertices.chunks_exact(sc_core::vertex::DECK_VERTEX_BYTES) {
+        for (i, (l, h)) in lo.iter_mut().zip(hi.iter_mut()).enumerate() {
+            let p = f32::from(i16::from_le_bytes([v[i * 2], v[i * 2 + 1]])) / sc_core::vertex::FIXED_SCALE;
+            *l = l.min(p);
+            *h = h.max(p);
+        }
+    }
+    (lo, hi)
+}
+
+/// The hull box of a contact class (`corvette` the Hound, `fighter` the Jackal), measured once off its model.
+pub fn class_box(cls: &str) -> Option<([f32; 3], [f32; 3])> {
+    use std::sync::OnceLock;
+    static HOUND: OnceLock<([f32; 3], [f32; 3])> = OnceLock::new();
+    static JACKAL: OnceLock<([f32; 3], [f32; 3])> = OnceLock::new();
+    match cls {
+        "corvette" => Some(*HOUND.get_or_init(|| bounds(&hound()))),
+        "fighter" => Some(*JACKAL.get_or_init(|| bounds(&jackal()))),
+        _ => None,
+    }
+}
+
 /// The Jackal raider (enemy-fighters 1): a delta wing 8 m long, its albedo lit like the Hound's.
 pub fn jackal() -> MeshBuilder {
     let mut m = MeshBuilder::default();
@@ -722,5 +748,34 @@ mod tests {
         assert!(near(hi[2], 0.22), "the nozzle's reach: {hi:?}");
         assert_eq!(colours.len(), 2, "red and near black");
         assert!(m.triangles() < 140, "{} triangles", m.triangles());
+    }
+}
+
+#[cfg(test)]
+mod mockup_tests {
+    use super::*;
+
+    /// The mockup's `SHIP_BOX` (docs/mockups/consoles.html), read out of the page, as `{class: [[lo], [hi]]}`.
+    fn mockup_boxes() -> serde_json::Value {
+        let page = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../../docs/mockups/consoles.html"))
+            .expect("the console mockup");
+        let at = page.find("const SHIP_BOX = ").expect("the mockup's SHIP_BOX") + "const SHIP_BOX = ".len();
+        let end = at + page[at..].find(';').expect("the end of SHIP_BOX");
+        serde_json::from_str(&page[at..end]).expect("SHIP_BOX is JSON")
+    }
+
+    #[test]
+    fn the_mockups_ship_boxes_are_the_models_boxes() {
+        let table = mockup_boxes();
+        for cls in ["corvette", "fighter"] {
+            let (lo, hi) = class_box(cls).unwrap();
+            let want =
+                serde_json::json!([lo.map(|v| (v * 100.0).round() / 100.0), hi.map(|v| (v * 100.0).round() / 100.0)]);
+            let got = &table[cls];
+            let close = (0..2).all(|c| {
+                (0..3).all(|a| (got[c][a].as_f64().unwrap_or(f64::NAN) - want[c][a].as_f64().unwrap()).abs() <= 0.01)
+            });
+            assert!(close, "consoles.html SHIP_BOX.{cls} should be {want} (target-bracket 4), is {got}");
+        }
     }
 }

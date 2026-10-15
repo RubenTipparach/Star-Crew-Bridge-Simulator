@@ -336,7 +336,11 @@ impl Validate for SystemFile {
                     }
                     finite(c, &format!("{f}.offset_m"), o, 1e9);
                 }
-                _ => c.equals(&format!("{f}.body"), "(both or neither)", "body, orbit_radius_m and orbit_dir, or near and offset_m"),
+                _ => c.equals(
+                    &format!("{f}.body"),
+                    "(both or neither)",
+                    "body, orbit_radius_m and orbit_dir, or near and offset_m",
+                ),
             }
             if let Some(d) = s.orbit_dir {
                 finite(c, &format!("{f}.orbit_dir"), d, 1e6);
@@ -410,8 +414,7 @@ mod tests {
     fn every_station_stands_at_its_body_or_point_and_orbits_outside_the_jumps_lock() {
         // spacedock design 11a: each at 3.33 of its body's radii, outside the jump's planet lock (jump.json).
         let s = shoals();
-        let jump: serde_json::Value =
-            serde_json::from_str(include_str!("../../../data/ships/tern/jump.json")).unwrap();
+        let jump: serde_json::Value = serde_json::from_str(include_str!("../../../data/ships/tern/jump.json")).unwrap();
         let radii = jump["planet_radii"].as_f64().unwrap();
         assert_eq!(s.stations.len(), 5, "the five versions are the five stations");
         for st in &s.stations {
@@ -473,8 +476,7 @@ mod tests {
         // spacedock tasks 2.1: the system file is the one source; until the mockup reads it, its own list must agree
         // (CLAUDE.md 6.6: the real artifacts compared, not two typed copies trusted).
         let s = shoals();
-        let dock: serde_json::Value =
-            serde_json::from_str(include_str!("../../../data/space/spacedock.json")).unwrap();
+        let dock: serde_json::Value = serde_json::from_str(include_str!("../../../data/space/spacedock.json")).unwrap();
         let list = dock["stations"]["list"].as_array().unwrap();
         assert_eq!(list.len(), s.stations.len());
         for m in list {

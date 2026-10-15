@@ -672,6 +672,7 @@ impl Client {
                     seed: l.seed(),
                     hand_test: hand_dir,
                     playtest: false,
+                    film: false,
                     all_hands: false,
                     mission: "drill-hound".into(),
                 };
@@ -1549,6 +1550,7 @@ fn main() -> ExitCode {
             seed: 0,
             hand_test: None,
             playtest: false,
+            film: false,
             all_hands: false,
             mission: "drill-hound".into(),
         };
@@ -1558,7 +1560,8 @@ fn main() -> ExitCode {
         });
     }
     // Single player without the menu (openspec/changes/single-player): `--solo [--station S] [--bot] [--shots DIR]
-    // [--playtest] [--all-hands]`; `--bot` lets the player's own station play itself, for captures of a whole round;
+    // [--playtest] [--all-hands] [--film]`; `--film` (with `--shots DIR`) writes every frame of a scripted run of the
+    // viewscreen's cameras for a video (chase-camera 3); `--bot` lets the player's own station play itself, for captures of a whole round;
     // `--playtest` plays it on foot, a scripted player walking the ship to its stations (`playtest`, CLAUDE.md 12);
     // `--all-hands` puts no damage-control teams aboard: the crew fight the fires and fix the ship (all-hands 1).
     if args.iter().any(|a| a == "--solo") {
@@ -1586,6 +1589,7 @@ fn main() -> ExitCode {
             seed: 7,
             hand_test: None,
             playtest: args.iter().any(|a| a == "--playtest"),
+            film: args.iter().any(|a| a == "--film"),
             all_hands: args.iter().any(|a| a == "--all-hands"),
             mission: args
                 .iter()

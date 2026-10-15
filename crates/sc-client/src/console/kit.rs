@@ -45,6 +45,8 @@ pub enum Act {
     Freq,
     ShieldView,
     Zoom(i32),
+    /// Any console: the viewscreen's zoom, an index in `combat::ZOOMS` (viewscreen-zoom 1).
+    ZoomTo(u8),
     /// The captain: a station to write to, a verb, send; brace; take the viewscreen; a room on the plan; a tab.
     Compose(String),
     Verb(String),
@@ -853,10 +855,27 @@ fn models() -> &'static Models {
     })
 }
 
-/// The ship's model as polygons with outward normals, one a triangle (the mockup's `HULL_POLYS`).
-fn hull_polys() -> Vec<Poly> {
-    let col = [96.0, 110.0, 128.0];
-    tern().hull.iter().map(|t| Poly { v: t.v.to_vec(), n: t.n, col }).collect()
+/// The Tern's low poly model (tern_lod2, console-ship-model 1-2) as triangles about the shield's centre, each with its
+/// outward normal and colour (0-255): the mockup's `HULL_POLYS`. Read from `data/ships/tern/console_model.json`, which
+/// `tools/ships/console_model.py` writes from the model.
+pub fn hull_polys() -> Vec<Poly> {
+    #[derive(serde::Deserialize)]
+    struct File {
+        positions_m: Vec<[f64; 3]>,
+        triangles: Vec<(usize, usize, usize, String)>,
+    }
+    let f: File = serde_json::from_str(include_str!("../../../../data/ships/tern/console_model.json"))
+        .expect("console_model.json is the tool's output (tools/ships/console_model.py --check)");
+    let centre = tern().shield.centre;
+    let at = |i: usize| DVec3::from_array(f.positions_m[i]) - centre;
+    f.triangles
+        .iter()
+        .map(|(i, j, k, hex)| {
+            let (a, b, c) = (at(*i), at(*j), at(*k));
+            let ch = |o: usize| f64::from(u8::from_str_radix(&hex[o..o + 2], 16).unwrap_or(128));
+            Poly { v: vec![a, b, c], n: (b - a).cross(c - a).normalize_or_zero(), col: [ch(1), ch(3), ch(5)] }
+        })
+        .collect()
 }
 
 // ------------------------------------------------------------------------------------------------ the look band
@@ -948,8 +967,33 @@ pub fn feed_widget(cv: &Canvas, cx: &mut Ctx, x: f32, y: f32) {
                 icon: Some(ic),
                 is: Some(15.0),
                 act: Some(Act::Feed((*k).to_owned())),
-                on: v.feed == *k,
-                tip: Some(format!("Viewscreen: {}", k.to_lowercase())),
+                // CHASE is a toggle on the camera chosen (chase-camera 1): lit while it is on.
+                on: if *k == "CHASE" { v.chase } else { v.feed == *k },
+                tip: Some(if *k == "CHASE" {
+                    "Chase camera: on or off".to_owned()
+                } else {
+                    format!("Viewscreen: {}", k.to_lowercase())
+                }),
+                ..Default::default()
+            },
+        );
+    }
+    // The zooms (viewscreen-zoom 1): a column of five left of the widget, the one in use lit.
+    for (i, z) in sc_core::combat::ZOOMS.iter().enumerate() {
+        let label = format!("{z}\u{d7}");
+        button(
+            cv,
+            cx,
+            Btn {
+                x: x - 38.0,
+                y: y + i as f32 * 26.0,
+                w: 34.0,
+                h: 24.0,
+                label: Some(&label),
+                fs: Some(11.0),
+                act: Some(Act::ZoomTo(i as u8)),
+                on: (cx.v.zoom - z).abs() < 1e-9,
+                tip: Some("Viewscreen zoom".into()),
                 ..Default::default()
             },
         );
@@ -1290,10 +1334,6 @@ fn clip_to_rect(a: [f32; 2], b: [f32; 2], [w, h]: [f32; 2]) -> Option<([f32; 2],
     })
 }
 
-/// One of the model's triangles as a shield view draws it: its depth along the camera, its corners on screen, its
-/// lit colour and which of its edges are creases.
-type HullDrawn = (f64, [[f32; 2]; 3], Color32, [bool; 3]);
-
 /// The ship inside its shield, in 3D (the mockup's `shieldView`): hull panels lit and depth sorted between the
 /// bubble's far and near halves, each patch filled by its face's charge, the faces' borders, hostiles' directions,
 /// inbound missiles and the last 8 s of hits, one arrow a bearing ([`HIT_MERGE_DEG`]). `big` (Science's, given the
@@ -1308,20 +1348,16 @@ pub fn shield_view(cv: &Canvas, cx: &mut Ctx, ox: f64, oy: f64, sc: f64, yaw: f6
     let pr = |p: DVec3| [(ox + p.dot(b.r) * sc) as f32, (oy - p.dot(b.u) * sc) as f32];
     let bub = if big.is_some() { big_bubble() } else { mini_bubble() };
     let light = (-b.f + DVec3::new(0.3, 0.8, 0.2)).normalize();
-    // The model's triangles turned to the camera, lit, drawn far to near (each one's creases with it).
-    let mut hull_polys: Vec<HullDrawn> = Vec::new();
-    for t in &tern().hull {
-        if t.n.dot(b.f) > 0.0 {
+    let mut hull_polys: Vec<(f64, Vec<[f32; 2]>, Color32, bool)> = Vec::new();
+    for p in &models().hull {
+        if p.n.dot(b.f) > 0.0 {
             continue;
         }
-        let lum = 0.35 + 0.65 * t.n.dot(light).max(0.0);
-        let col = Color32::from_rgb(
-            (70.0 * lum + 20.0).round() as u8,
-            (84.0 * lum + 22.0).round() as u8,
-            (102.0 * lum + 26.0).round() as u8,
-        );
-        let mid = (t.v[0] + t.v[1] + t.v[2]) / 3.0;
-        hull_polys.push((mid.dot(b.f), t.v.map(pr), col, t.crease));
+        let lum = 0.35 + 0.65 * p.n.dot(light).max(0.0);
+        let ch = |c: f64| (c * lum).round().min(255.0) as u8;
+        let col = Color32::from_rgb(ch(p.col[0]), ch(p.col[1]), ch(p.col[2]));
+        let mid = (p.v[0] + p.v[1] + p.v[2]) / 3.0;
+        hull_polys.push((mid.dot(b.f), p.v.iter().map(|q| pr(*q)).collect(), col, true));
     }
     hull_polys.sort_by(|a, b| b.0.total_cmp(&a.0));
     let shell: Vec<(f64, Vec<[f32; 2]>, u8, bool)> = bub
@@ -1356,16 +1392,12 @@ pub fn shield_view(cv: &Canvas, cx: &mut Ctx, ox: f64, oy: f64, sc: f64, yaw: f6
             cv.seg(pa[0], pa[1], pb[0], pb[1], Pen::new(0.6, alpha(ec, 0.25)));
         }
     }
-    // A triangle is stroked in its own colour, so a flat panel's triangles meet without a seam, and its creases (the
-    // panel's edges, where the surface turns) are outlined as the loft's panels were.
-    let crease = Pen::new(0.6, rgba(0x0d141d, 1.0));
-    for (_, pts, col, edges) in &hull_polys {
+    for (_, pts, col, _) in &hull_polys {
         cv.poly(pts, *col);
-        cv.polyline(&[pts[0], pts[1], pts[2], pts[0]], Pen::new(0.6, *col));
-        for k in (0..3).filter(|k| edges[*k]) {
-            let (p, q) = (pts[k], pts[(k + 1) % 3]);
-            cv.seg(p[0], p[1], q[0], q[1], crease);
-        }
+        // Stroked in its own colour, as the mockup does, so neighbouring triangles meet without a seam.
+        let mut closed = pts.clone();
+        closed.push(pts[0]);
+        cv.polyline(&closed, Pen::new(0.6, *col));
     }
     for p in &near {
         patch(p);
@@ -1640,6 +1672,41 @@ pub fn thumbwheel(cv: &Canvas, cx: &mut Ctx, x: f32, top: f32, hh: f32, value: f
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_consoles_draw_the_tern_low_poly_model() {
+        // console-ship-model 5: the data file is the model the props manifest lists, triangle for triangle and box
+        // for box (the file holds positions about the ship's origin; the polygons sit about the shield's centre).
+        let manifest: serde_json::Value =
+            serde_json::from_str(include_str!("../../../../assets/models/exteriors/props.json")).unwrap();
+        let lod = &manifest["props"]["tern_lod2"];
+        let polys = hull_polys();
+        assert_eq!(polys.len() as u64, lod["triangles"].as_u64().unwrap(), "every triangle of tern_lod2");
+        let c = tern().shield.centre;
+        for axis in 0..3 {
+            let lo = polys.iter().flat_map(|p| p.v.iter()).map(|v| (*v + c)[axis]).fold(f64::INFINITY, f64::min);
+            let hi = polys.iter().flat_map(|p| p.v.iter()).map(|v| (*v + c)[axis]).fold(f64::NEG_INFINITY, f64::max);
+            let (mlo, mhi) = (lod["bounds_m"][0][axis].as_f64().unwrap(), lod["bounds_m"][1][axis].as_f64().unwrap());
+            assert!(
+                (lo - mlo).abs() <= 0.02 && (hi - mhi).abs() <= 0.02,
+                "axis {axis}: {lo}..{hi} against {mlo}..{mhi}"
+            );
+        }
+        assert!(polys.iter().all(|p| p.n.length() > 0.5), "no degenerate triangle");
+    }
+
+    #[test]
+    fn the_shield_envelops_the_whole_ship() {
+        // console-ship-model 3 (owner: "shield should envolop the ship entirely"): every vertex the consoles draw is
+        // inside the bubble with 1 m to spare. The tool holds the full model to it too.
+        let a = tern().shield.axes - DVec3::splat(1.0);
+        for p in hull_polys() {
+            for v in &p.v {
+                let k = (*v / a).length_squared();
+                assert!(k <= 1.0, "{v:?} reaches {k:.3} of the shield less 1 m");
+            }
+        }
+    }
 
     fn hit(brg_deg: f64, age_s: f64) -> super::super::HitView {
         let r = brg_deg.to_radians();

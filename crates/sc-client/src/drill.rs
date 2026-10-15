@@ -74,6 +74,9 @@ pub struct DrillArgs {
     /// Single player: a scripted player walks the ship, sits at stations and works them, for a recording of the game
     /// as it is played (`--playtest`, `crate::playtest`).
     pub playtest: bool,
+    /// Single player with `--shots`: write every frame of a scripted run through the viewscreen's cameras, FWD,
+    /// TARGET, CHASE round the ship and the bridge's main viewscreen, for a video (`--film`, chase-camera 3).
+    pub film: bool,
     /// Single player: All hands, no damage-control teams aboard; the crew put the ship right (`--all-hands`,
     /// all-hands 1).
     pub all_hands: bool,
@@ -182,6 +185,11 @@ pub struct DrillApp {
     phase_seen: Option<(u32, Phase, f64)>,
     shot_round: Option<u32>,
     done: bool,
+    /// The film's frames written so far, and whether it is looking at the bridge's main viewscreen (chase-camera 3).
+    film_frame: u32,
+    film_screen: bool,
+    /// The cue written last, for the video's captions (chase-camera 3).
+    film_cue: String,
     /// The bridge, when the compiled deck is there (design 9).
     bridge: Option<crate::drill_bridge::BridgeView>,
     /// The overview of the bridge is up (V).
@@ -272,6 +280,7 @@ impl DrillApp {
             .map_err(|e| format!("data/space/exterior.json: {e}"))?;
         let exterior: ExteriorData =
             sc_core::data::parse("data/space/exterior.json", &text).map_err(|e| e.to_string())?;
+        console::set_chase(&exterior.viewscreen.chase);
         let mut data = load_data(&args.mission)?;
         if args.all_hands && args.solo {
             data.mission.damage_control = "crew".into();
@@ -353,6 +362,9 @@ impl DrillApp {
             phase_seen: None,
             shot_round: None,
             done: false,
+            film_frame: 0,
+            film_screen: false,
+            film_cue: String::new(),
             bridge: None,
             overview: args_watch,
             walk_seen: (None, None),
@@ -391,7 +403,9 @@ impl DrillApp {
             Ok(r) => app.repair_data = Some(r),
             Err(e) => println!("sc-client: no repairs on deck ({e})"),
         }
-        if app.args.playtest && app.solo.is_some() {
+        if app.args.film && app.solo.is_some() {
+            app.playtest = Some(crate::playtest::Playtest::film(app.args.station));
+        } else if app.args.playtest && app.solo.is_some() {
             // A patrol's script looks out of the windows as the patrol goes on (patrol-mission design 11).
             app.playtest = Some(if app.data.patrol.is_some() {
                 crate::playtest::Playtest::patrol(app.args.station)
@@ -1049,31 +1063,40 @@ impl DrillApp {
     /// The camera on the Tern's bow: its eye in the system frame and its attitude.
     fn bow_eye(ships: Option<&(ShipSnap, ShipSnap, Snapshot)>, time_s: f64) -> (DVec3, DQuat) {
         match ships {
-            Some((t, _, _)) => (t.pos + t.rot * DVec3::new(0.0, 3.0, 32.0), t.rot),
+            Some((t, _, _)) => (t.pos + t.rot * console::BOW_EYE, t.rot),
             None => (DVec3::ZERO, DQuat::from_rotation_y(time_s * 0.02)),
         }
     }
 
     /// The viewscreen's feed: from the bow, looking where the console's feed points (the mockup's feed camera:
-    /// 70 degrees across at zoom 1), into its own target, which the console draws in the viewscreen's frame. With no
-    /// console (on foot, the overview) it is the bridge's viewscreens' picture: the captain's camera while he holds
-    /// the viewscreen, forward otherwise.
+    /// 70 degrees across at zoom 1), into its own target, which the console draws in the viewscreen's frame; with chase
+    /// on it stands behind the ship and draws the Tern too (chase-camera 1). With no console (on foot, the overview)
+    /// it is the bridge's main viewscreen's picture: the captain's camera while he holds the viewscreen, his console's
+    /// otherwise (chase-camera 2).
     fn render_feed(&mut self, ships: Option<&(ShipSnap, ShipSnap, Snapshot)>, view: Option<&console::ConsoleView>) {
-        let (eye, rot) = Self::bow_eye(ships, self.time_s);
-        let (fwd, up, vfov) = match view {
-            Some(v) => self.seats[self.console_station() as usize].feed_camera(v, rot),
+        let (bow, rot) = Self::bow_eye(ships, self.time_s);
+        let chase_cfg = &self.exterior.viewscreen.chase;
+        let (stand, fwd, up, vfov) = match view {
+            Some(v) => self.seats[self.console_station() as usize].feed_camera(v, rot, chase_cfg),
             None => {
                 let feed = ships
-                    .and_then(|(_, _, s)| s.bridge.view)
+                    .and_then(|(_, _, s)| s.bridge.view.or(Some(s.bridge.main_view)))
                     .and_then(|i| FEEDS.get(usize::from(i)))
                     .copied()
                     .unwrap_or("FWD");
+                let chase = ships.is_some_and(|(_, _, s)| s.bridge.main_chase);
                 let target =
                     ships.filter(|(_, h, _)| h.active && h.alive).map(|(t, h, _)| t.rot.inverse() * (h.pos - t.pos));
-                let b = console::feed_basis_for(feed, target);
-                (rot * b.f, rot * b.u, 2.0 * (97.0f64 / (307.0 / 35f64.to_radians().tan())).atan())
+                let zoom = ships
+                    .and_then(|(_, _, s)| sc_core::combat::ZOOMS.get(usize::from(s.bridge.main_zoom)))
+                    .copied()
+                    .unwrap_or(1.0);
+                let (e, b, vfov) = console::feed_view(feed, chase, target, chase_cfg, zoom);
+                (e.map(|e| rot * e), rot * b.f, rot * b.u, vfov)
             }
         };
+        let centre = ships.map_or(DVec3::ZERO, |(t, _, _)| t.pos);
+        let eye = stand.map_or(bow, |s| centre + s);
         let proj =
             glam::camera::rh::proj::opengl::perspective(vfov as f32, FEED.0 as f32 / FEED.1 as f32, 1.0, 80_000.0);
         let view_m = glam::camera::rh::view::look_to_mat4(Vec3::ZERO, fwd.as_vec3(), up.as_vec3());
@@ -1090,6 +1113,13 @@ impl DrillApp {
         };
         self.r.begin_3d(&self.feed, [0.0, 0.0, 0.0, 1.0]);
         world.draw(&mut self.r, &self.feed, proj, view_m, vfov as f32 / FEED.1 as f32, eye, ships);
+        // CHASE sees the Tern from outside: its hull, drawn in the ship's frame from where the camera stands in it.
+        if let (Some(s), Some(h)) = (stand, self.bridge.as_ref().and_then(|b| b.hull())) {
+            let q = rot.as_quat();
+            let in_ship = rot.inverse() * s;
+            let sun = crate::outside::sun_in_ship(&self.exterior, q);
+            h.draw(&mut self.r, &self.feed, proj * view_m * Mat4::from_quat(q), in_ship.to_array(), sun);
+        }
         self.r.end_pass();
         self.r.begin_3d(&self.blank, [0.0, 0.0, 0.0, 1.0]);
         self.r.end_pass();
@@ -1323,6 +1353,10 @@ impl DrillApp {
         if self.solo.is_some() && snap.phase == Phase::Muster && t >= 2.0 {
             self.ready_held = true;
         }
+        if self.args.film {
+            self.film(f, &snap);
+            return;
+        }
         let plan: &[(Phase, f64, &str)] = &[
             (Phase::Muster, 1.5, "1-briefing"),
             (Phase::Countdown, 2.0, "2-countdown"),
@@ -1383,6 +1417,91 @@ impl DrillApp {
             self.capture(f, &format!("6-debrief-{st}.png"));
             self.done = true;
         }
+    }
+}
+
+impl DrillApp {
+    /// The film of the viewscreen's cameras (chase-camera 3). It follows the body: the walk to the captain's chair,
+    /// sitting down and the countdown, then, once the round is engaged, the console's FWD with chase off and on,
+    /// TARGET, PORT, AFT and STBD with chase on, TARGET at 1x, 4x and 20x, TARGET with chase on at 4x, and the
+    /// bridge's main viewscreen showing the captain's TARGET with chase on. With --shots every frame is written, at
+    /// the video's 30 a second, so the video plays in real time; frames go to the shots folder as `film-NNNNN.png`,
+    /// and each shot's first frame and caption to `film-cues.txt`; `tools/video/film.sh` makes the video.
+    fn film(&mut self, f: &Frame, snap: &Snapshot) {
+        let seated = self.seated_at.is_some();
+        let t = snap.phase_s;
+        let engaged = snap.phase == Phase::Engage;
+        let st = self.console_station() as usize;
+        let cue = if !seated && !engaged {
+            "Walking to the captain's chair, on foot"
+        } else if !engaged || t < 2.0 {
+            "Seated at Captain: the console comes up, the round counts down"
+        } else {
+            let seat = &mut self.seats[st];
+            // Each shot: the camera, chase on or off, the zoom, and its caption.
+            let shot: Option<(&str, bool, f64, &str)> = match t {
+                t if t < 4.0 => {
+                    Some(("FWD", false, 1.0, "FWD, chase off: the captain's viewscreen from the bow, as before"))
+                }
+                t if t < 6.5 => {
+                    Some(("FWD", true, 1.0, "FWD, chase on: from behind the Tern, the ship low and centred"))
+                }
+                t if t < 10.0 => Some((
+                    "TARGET",
+                    true,
+                    1.0,
+                    "TARGET, chase on: past the Tern at the Hound, the bracket round the Hound",
+                )),
+                t if t < 12.0 => Some(("PORT", true, 1.0, "PORT, chase on: looking to port past the ship")),
+                t if t < 14.0 => Some(("AFT", true, 1.0, "AFT, chase on: looking aft past the ship")),
+                t if t < 16.0 => Some(("STBD", true, 1.0, "STBD, chase on: looking to starboard past the ship")),
+                t if t < 18.0 => Some(("TARGET", false, 1.0, "TARGET, chase off, 1x: the bracket round the Hound")),
+                t if t < 20.0 => Some(("TARGET", false, 4.0, "TARGET, 4x: zoomed, the bracket closes round the hull")),
+                t if t < 22.0 => Some(("TARGET", false, 20.0, "TARGET, 20x")),
+                t if t < 24.0 => Some(("TARGET", true, 4.0, "TARGET, chase on, 4x: magnified past the ship")),
+                t if t < 28.0 => None,
+                _ => {
+                    self.film_screen = false;
+                    self.done = true;
+                    return;
+                }
+            };
+            match shot {
+                Some((feed, chase, zoom, cue)) => {
+                    seat.set_feed(feed);
+                    seat.set_chase(chase);
+                    seat.set_zoom(zoom);
+                    cue
+                }
+                None => {
+                    seat.set_feed("TARGET");
+                    seat.set_chase(true);
+                    seat.set_zoom(1.0);
+                    if !self.film_screen {
+                        // The captain's camera on the main viewscreen, as his console sends it when he presses.
+                        if let Some(s) = self.session.as_mut() {
+                            s.command(sc_core::combat::Command::MainView { feed: 0, chase: true, zoom: 0 });
+                        }
+                        self.film_screen = true;
+                    }
+                    "The bridge's main viewscreen shows the captain's camera: TARGET, chase on"
+                }
+            }
+        };
+        self.film_frame += 1;
+        if self.film_cue != cue {
+            self.film_cue = cue.to_owned();
+            if let Some(dir) = self.args.shots.as_ref() {
+                use std::io::Write;
+                let line = format!("{}\t{cue}\n", self.film_frame);
+                let file = std::fs::OpenOptions::new().create(true).append(true).open(dir.join("film-cues.txt"));
+                if let Err(e) = file.and_then(|mut w| w.write_all(line.as_bytes())) {
+                    eprintln!("sc-client: film cues: {e}");
+                }
+            }
+        }
+        let name = format!("film-{:05}.png", self.film_frame);
+        self.capture(f, &name);
     }
 }
 
@@ -1453,7 +1572,13 @@ impl App for DrillApp {
     }
 
     fn frame(&mut self, f: &Frame) -> Flow {
-        let dt = f.elapsed_s.clamp(0.0, 0.1);
+        // The film written to frames (`--film --shots`) steps the video's own 30 frames a second from its first frame,
+        // whatever a frame takes to draw, and keeps every frame: the video plays in real time, the walk and the
+        // countdown too (chase-camera 3; owner, 2026-10-14: "normal time please, I dont like the speedup"). Without
+        // --shots the film runs on the clock, for a recorder on a machine with a GPU (obs-record); everything else
+        // steps by the frame, as a player's game does.
+        let filming = self.args.film && self.args.shots.is_some();
+        let dt = if filming { 1.0 / 30.0 } else { f.elapsed_s.clamp(0.0, 0.1) };
         self.time_s += dt;
         if let Some(h) = self.solo.as_mut() {
             h.step(dt, &self.data);
@@ -1569,7 +1694,7 @@ impl App for DrillApp {
         // Seated: hold Stand to get up (E, or Backspace; at Helm, where E rolls the ship, Backspace).
         self.stand_up(dt, station, mine.map(|b| b.posture));
         self.playtest_seated(dt, station, mine.map(|b| b.posture));
-        let shot_overview = self.args.shots.is_some() && self.shot_overview();
+        let shot_overview = self.args.shots.is_some() && (self.shot_overview() || self.film_screen);
         let on_bridge = self.bridge.is_some() && !bodies.is_empty() && (walking || self.overview || shot_overview);
         // Sat down: the console rises from the desk, the bridge seen from the chair behind it until it is up.
         let seated = !walking && station.is_some() && mine.is_some();
@@ -1601,6 +1726,9 @@ impl App for DrillApp {
                     (e, from.1 + turn * k, from.2 + (to.2 - from.2) * k)
                 }
                 (true, Some(b), None) => (crate::drill_bridge::eye_of(&b), b.yaw, -0.12),
+                // The film's look at the bridge's main viewscreen: from behind the captain's chair, over his head,
+                // square to the screen so its picture reads as the console's does.
+                _ if self.film_screen => ([0.0, 6.0, 23.4], 0.0, -0.06),
                 _ => crate::drill_bridge::overview(),
             };
             if own && !rising {
