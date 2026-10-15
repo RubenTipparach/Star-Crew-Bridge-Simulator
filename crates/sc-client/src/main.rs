@@ -41,6 +41,7 @@ mod repairs;
 mod seat;
 mod ships3d;
 mod solo;
+mod touch;
 mod ui;
 mod vg;
 
@@ -1435,6 +1436,7 @@ impl App for Client {
             | Event::MouseButton(..)
             | Event::Wheel(..)
             | Event::Text(_)
+            | Event::Touch { .. }
             | Event::KeyRepeat(_) => {}
         }
         Flow::Continue

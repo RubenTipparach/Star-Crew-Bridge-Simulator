@@ -18,7 +18,7 @@ use std::path::PathBuf;
 
 use egui::{Align2, Color32, CornerRadius, Pos2, Rect, RichText, Stroke, Vec2};
 use glam::{DQuat, DVec3, Mat4, Quat, Vec3};
-use sc_client::platform::{keys, App, Event, Flow, Frame};
+use sc_client::platform::{keys, App, Event, Flow, Frame, TouchPhase};
 use sc_core::combat::data::{DrillData, DRILL_FILES};
 use sc_core::combat::{Command, Outcome, Phase, Station, ENEMY_ID, FEEDS, TERN_ID};
 use sc_core::exterior::{normalized, ExteriorData};
@@ -221,6 +221,22 @@ pub struct DrillApp {
     repair_data: Option<sc_core::repair::data::RepairData>,
     deck: Option<crate::deckrepair::DeckRun>,
     dock_asked: Option<(u8, f64)>,
+    /// Playing by thumb (touch-controls): the layer on foot and seated, and what it is doing this frame.
+    touch: crate::touch::Layer,
+    touch_mode: crate::touch::Mode,
+    /// A finger on the console in Engage (the console takes fingers this frame), and the first finger as a repair
+    /// game's pointer.
+    console_finger: crate::touch::ConsoleFinger,
+    console_touch: bool,
+    touch_mouse: sc_client::platform::TouchMouse,
+    /// The keys the layer held last frame (let go of before this frame's), and the stick's walk this frame.
+    touch_keys: Vec<u32>,
+    touch_stick: Option<(f32, f32, bool)>,
+    /// The last on-foot prompt had something below to go down to: DOWN shows.
+    touch_down: bool,
+    /// The on-foot prompt last said (logged when it changes), and when the last refusal logged was made.
+    prompt_said: Option<String>,
+    refused_said: Option<f64>,
 }
 
 /// The console comes up from the desk over this long once the body sits, seconds (the law: maximum immersion).
@@ -303,6 +319,7 @@ impl DrillApp {
         };
         let bot = args.bot.then(|| Bot::new(&data, args.station));
         let args_watch = args.watch;
+        let touch = crate::touch::load()?;
         let mut app = Self {
             r,
             blank,
@@ -357,6 +374,16 @@ impl DrillApp {
             repair_data: None,
             deck: None,
             dock_asked: None,
+            console_finger: crate::touch::ConsoleFinger::new(touch.console.clone()),
+            touch: crate::touch::Layer::new(touch),
+            touch_mode: crate::touch::Mode::Off,
+            console_touch: false,
+            touch_mouse: Default::default(),
+            touch_keys: Vec::new(),
+            touch_stick: None,
+            touch_down: false,
+            prompt_said: None,
+            refused_said: None,
         };
         match sc_core::repair::data::RepairData::load_for_ship(|rel| {
             std::fs::read_to_string(rel).map_err(|e| format!("{rel}: {e}"))
@@ -572,7 +599,16 @@ impl DrillApp {
             }
             // At a machine the body stays: the game has the hands.
             None if repairing => (sc_core::walk::Input { yaw: self.look.0, ..Default::default() }, false),
-            None => (crate::onfoot::OnFoot::keys_input(&held, &pressed, self.look.0), true),
+            None => {
+                let mut i = crate::onfoot::OnFoot::keys_input(&held, &pressed, self.look.0);
+                // The touch layer's stick walks the body as the keys do, by how far it is pushed (touch-controls 3).
+                if let Some((forward, right, run)) = self.touch_stick.filter(|s| s.0 != 0.0 || s.1 != 0.0) {
+                    i.forward = forward;
+                    i.right = right;
+                    i.run |= run;
+                }
+                (i, true)
+            }
         };
         if let (Some(j), Some(s), false) = (dock, self.session.as_ref(), repairing) {
             if self.dock_asked.is_none_or(|(k, t)| k != j || self.time_s - t > 1.0) {
@@ -603,13 +639,10 @@ impl DrillApp {
         // What E and F do here: sit (taking the seat from an NPC in it), take an extinguisher, spray the fire, or the
         // lift's and ladder's keys.
         let crew = self.session.as_ref().map(|s| s.crew.clone()).unwrap_or_default();
+        let others = self.session.as_ref().and_then(|s| s.latest()).map(|s| s.bodies.clone()).unwrap_or_default();
         let agent = (me.agent * 100.0).round();
         match seat {
-            Some(st) => Some(match crew.iter().find(|c| c.station == Some(st)) {
-                Some(c) if c.bot => format!("E  Take {} from {}", st.name(), c.name),
-                Some(c) => format!("{} holds {}", c.name, st.name()),
-                None => format!("E  Sit at {}", st.name()),
-            }),
+            Some(st) => Some(seat_prompt(st, me.slot, &crew, &others)),
             None if repairing => None,
             None if reach_job.is_some() => reach_job.as_ref().map(|(_, title)| format!("E  Repair: {title}")),
             None if at_locker && me.agent < 1.0 => Some("E  Take an extinguisher".to_owned()),
@@ -752,6 +785,76 @@ impl DrillApp {
             self.deck = None;
             if let Some(s) = self.session.as_ref() {
                 s.undock();
+            }
+        }
+    }
+
+    /// A finger (touch-controls design 3 and 4): the layer's when it takes it (a button, the stick, the look); else at a
+    /// machine the repair game's pointer, seated in Engage the console's, and otherwise the UI's (the menus, the
+    /// briefing, the debrief).
+    fn touch_event(&mut self, id: u64, phase: TouchPhase, x: f32, y: f32, e: &Event) {
+        if self.touch.touch(id, phase, x, y) {
+            return;
+        }
+        match self.touch_mode {
+            crate::touch::Mode::Repair => {
+                if let Some(d) = self.deck.as_mut() {
+                    for m in self.touch_mouse.convert(e) {
+                        d.event(&m);
+                    }
+                }
+            }
+            crate::touch::Mode::Seated if self.console_touch => {
+                let pt = self.ui.win_to_pt();
+                self.console_finger.take(id, phase, Pos2::new(x * pt, y * pt), self.time_s);
+            }
+            _ => self.ui.event(e),
+        }
+    }
+
+    /// This frame's touch layer: what it is doing, and its hands as the keyboard's keys, the stick's walk and the
+    /// look's turn (touch-controls design 3: the same intents, one walk and one seat).
+    fn touch_frame(&mut self, f: &Frame, dt: f64, free: bool, seated: bool) {
+        use crate::touch::{Btn, Mode};
+        let off = self.menu.open() || self.bot.is_some() || self.args.watch || self.playtest.is_some();
+        let mode = match () {
+            _ if off => Mode::Off,
+            _ if self.deck.is_some() => Mode::Repair,
+            _ if free => Mode::Foot { down: self.touch_down },
+            _ if seated => Mode::Seated,
+            _ => Mode::Off,
+        };
+        self.touch.set([f.window_w, f.window_h], mode);
+        self.touch_mode = mode;
+        let hands = self.touch.frame(dt);
+        for k in self.touch_keys.drain(..) {
+            self.held.remove(&k);
+        }
+        let (pressed, held) = hands.keys();
+        for k in pressed {
+            if !self.held.contains(&k) {
+                self.pressed.insert(k);
+            }
+        }
+        for k in held {
+            if self.held.insert(k) {
+                self.touch_keys.push(k);
+            }
+        }
+        self.touch_stick = Some((hands.forward, hands.right, hands.run));
+        let k = self.options.look_rad_px() / crate::options::LOOK_RAD_PX;
+        self.look.0 -= hands.look.0 * k;
+        self.look.1 = (self.look.1 - hands.look.1 * k).clamp(-1.5, 1.5);
+        for b in hands.taps {
+            match b {
+                Btn::Map => self.overview = !self.overview,
+                Btn::Menu => {
+                    self.menu.escape();
+                    self.held.clear();
+                    self.touch_keys.clear();
+                    self.release_mouse();
+                }
+                _ => {}
             }
         }
     }
@@ -1006,8 +1109,8 @@ impl DrillApp {
         let ext = crate::outside::exterior_at(&self.exterior, &d.system, p.origin + tern);
         let mut stations = Vec::new();
         for st in &d.system.stations {
-            let at = DVec3::from_array(st.pos_m) - p.origin;
-            if (at - tern).length() <= STATION_DRAW_M && st.kind == "starbase" {
+            let at = d.system.station_pos(st) - p.origin;
+            if (at - tern).length() <= STATION_DRAW_M {
                 let rot = d.system.station_rot(st).as_quat();
                 stations.push((ships3d::StationKind::Starbase, at, rot));
             }
@@ -1285,6 +1388,14 @@ impl DrillApp {
 
 impl App for DrillApp {
     fn event(&mut self, e: Event) -> Flow {
+        if let Event::Touch { id, phase, x, y } = e {
+            self.touch_event(id, phase, x, y, &e);
+            return Flow::Continue;
+        }
+        // A key or the mouse: the touch layer hides until the next finger.
+        if matches!(e, Event::KeyDown(_) | Event::MouseButton(..) | Event::MouseMotion(..)) {
+            self.touch.other_input();
+        }
         self.ui.event(&e);
         // At a machine the game takes the pointer and the keys; Esc steps away from it.
         if let Some(d) = self.deck.as_mut() {
@@ -1404,6 +1515,8 @@ impl App for DrillApp {
             && station.is_none()
             && self.foot.is_some()
             && mine.is_some_and(|b| b.going.is_none() && matches!(b.posture, Posture::Standing | Posture::Walking));
+        let seated_body = station.is_some() && mine.is_some_and(|b| b.posture == Posture::Seated);
+        self.touch_frame(f, dt, free, seated_body);
         let foot_prompt = match (free, mine) {
             (true, Some(me)) => {
                 let burning: Vec<usize> = ships
@@ -1418,6 +1531,31 @@ impl App for DrillApp {
                 self.step_foot(dt, me, &burning, &jobs, &empty)
             }
             _ => None,
+        };
+        // A refusal from the server, said once (the screen shows it over a console only).
+        let refused = self.session.as_ref().and_then(|s| s.refused);
+        if refused.map(|r| r.1) != self.refused_said {
+            if let Some((r, _)) = refused {
+                println!("sc-client: refused: {}", r.text());
+            }
+            self.refused_said = refused.map(|r| r.1);
+        }
+        // What E does here, said once when it changes: a playtest's and the browser smoke test's view of the walk.
+        if foot_prompt != self.prompt_said {
+            if let Some(p) = foot_prompt.as_deref() {
+                println!("sc-client: prompt: {}", p.split_whitespace().collect::<Vec<_>>().join(" "));
+            }
+            self.prompt_said = foot_prompt.clone();
+        }
+        // By thumb the prompt loses its key letters and USE carries its verb (touch-controls 3).
+        let touching = self.touch.active();
+        self.touch_down = foot_prompt.as_deref().is_some_and(|p| p.contains("Q  Down"));
+        let (use_word, foot_prompt) = match foot_prompt {
+            Some(p) if touching => {
+                let (w, clean) = crate::touch::touch_prompt(&p);
+                (w, Some(clean))
+            }
+            p => (None, p),
         };
         if !free {
             self.release_mouse();
@@ -1437,6 +1575,10 @@ impl App for DrillApp {
         let seated = !walking && station.is_some() && mine.is_some();
         if seated && self.seated_at.is_none() {
             self.rise_from = self.last_view;
+            println!("sc-client: sat at {}", station.map_or("a seat", |s| s.name()));
+        }
+        if !seated && self.seated_at.is_some() {
+            println!("sc-client: stood up");
         }
         self.seated_at = if seated { self.seated_at.or(Some(self.time_s)) } else { None };
         let rise = self.seated_at.map_or(1.0, |t| ((self.time_s - t) / CONSOLE_RISE_S).min(1.0));
@@ -1612,9 +1754,13 @@ impl App for DrillApp {
         let mut menu_ask = None;
         let (menu, options) = (&mut self.menu, &mut self.options);
         let deck = self.deck.as_ref();
+        let (touch, pt) = (&self.touch, self.ui.win_to_pt());
+        let finger_hover = self.console_finger.hover();
+        let stand_share = (self.stand_hold / self.data.stations.seats.stand_hold_s).clamp(0.0, 1.0);
         let frame = self.ui.run(&mut self.r, f, self.time_s, |ctx| {
             if let Some(v) = console_view.as_ref() {
-                let hover = ctx.input(|i| i.pointer.hover_pos());
+                // A long press's finger is the hover on a touch screen (touch-controls 4): the tip shows there.
+                let hover = finger_hover.or_else(|| ctx.input(|i| i.pointer.hover_pos()));
                 painted = Some(console::paint(ctx, v, true, hover));
                 ctx.input(|i| {
                     for e in &i.events {
@@ -1639,9 +1785,23 @@ impl App for DrillApp {
                     ctx.layer_painter(egui::LayerId::new(egui::Order::Foreground, egui::Id::new("deck-repair")));
                 d.draw(&painter, ctx.content_rect().size());
             }
+            let layer = ctx.layer_painter(egui::LayerId::new(egui::Order::Foreground, egui::Id::new("touch")));
+            touch.paint(&layer, pt, use_word.as_deref());
+            touch.paint_stand(&layer, pt, stand_share);
             menu_ask = menu.show(ctx, &place, options);
         });
         self.pointer = pointer;
+        // A finger on the console in Engage, against this frame's controls (touch-controls 4).
+        let engage_now = ships.as_ref().is_some_and(|x| x.2.phase == Phase::Engage);
+        self.console_touch =
+            self.touch_mode == crate::touch::Mode::Seated && engage_now && !self.menu.open() && painted.is_some();
+        match painted.as_ref().filter(|_| self.console_touch) {
+            Some((hits, _)) => {
+                let evs = self.console_finger.resolve(hits, self.ui.win_to_pt(), self.time_s);
+                self.pointer.extend(evs);
+            }
+            None => self.console_finger.clear(),
+        }
         if let Some(b) = self.bridge.as_mut() {
             b.fov_deg = self.options.fov_deg as f32;
         }
@@ -1777,6 +1937,21 @@ impl App for DrillApp {
         } else {
             Flow::Continue
         }
+    }
+}
+
+/// What E offers at seat `st` for the body in `slot`, by the server's claim rule (sc-core's `claim_on_foot`): a seat
+/// another body walks to is theirs, so it is not offered; an NPC's is taken from it; a player's is held; a free one is
+/// sat in. The prompt never promises a seat the server would refuse (CLAUDE.md 6.1: the preview is the outcome).
+fn seat_prompt(st: Station, slot: u8, crew: &[sc_net::msg::CrewEntry], bodies: &[sc_net::msg::BodySnap]) -> String {
+    if let Some(b) = bodies.iter().find(|b| b.slot != slot && b.going == Some(st)) {
+        let name = crew.iter().find(|c| c.slot == b.slot).map_or("Someone", |c| c.name.as_str());
+        return format!("{name} is on the way to {}", st.name());
+    }
+    match crew.iter().find(|c| c.station == Some(st)) {
+        Some(c) if c.bot => format!("E  Take {} from {}", st.name(), c.name),
+        Some(c) => format!("{} holds {}", c.name, st.name()),
+        None => format!("E  Sit at {}", st.name()),
     }
 }
 
@@ -2107,4 +2282,46 @@ fn debrief(ctx: &egui::Context, v: &UiView, snap: &Snapshot) {
         let when = if hurt + fires == 0 { "Next drill in" } else { "Next drill at the latest in" };
         label(ui, &format!("{when} {next:.0} s"), 18.0, AMBER);
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::seat_prompt;
+    use sc_core::combat::bodies::Posture;
+    use sc_core::combat::Station;
+    use sc_net::msg::{BodySnap, CrewEntry};
+
+    fn crew(slot: u8, name: &str, station: Option<Station>, bot: bool) -> CrewEntry {
+        CrewEntry { slot, name: name.into(), station, ready: false, bot }
+    }
+
+    fn body(slot: u8, going: Option<Station>) -> BodySnap {
+        BodySnap { slot, pos: [0.0; 3], yaw: 0.0, posture: Posture::Walking, going, agent: 0.0, spraying: false }
+    }
+
+    #[test]
+    fn a_seat_someone_walks_to_is_not_offered() {
+        // The server refuses a claim on a seat another body walks to (Station taken): the prompt must not promise it.
+        let crew = [crew(1, "Me", None, false), crew(2, "Lt. Vor", None, true)];
+        let bodies = [body(1, None), body(2, Some(Station::Captain))];
+        let p = seat_prompt(Station::Captain, 1, &crew, &bodies);
+        assert_eq!(p, "Lt. Vor is on the way to Captain");
+        assert!(!p.starts_with("E  "), "nothing for E to do, so USE stays dark");
+    }
+
+    #[test]
+    fn a_free_seat_is_sat_in_and_an_npcs_is_taken_from_it() {
+        let crew = [crew(1, "Me", None, false), crew(2, "Lt. Vor", Some(Station::Helm), true)];
+        let bodies = [body(1, None), body(2, None)];
+        assert_eq!(seat_prompt(Station::Captain, 1, &crew, &bodies), "E  Sit at Captain");
+        assert_eq!(seat_prompt(Station::Helm, 1, &crew, &bodies), "E  Take Helm from Lt. Vor");
+    }
+
+    #[test]
+    fn a_players_seat_is_held_and_my_own_walk_does_not_block_me() {
+        let crew = [crew(1, "Me", None, false), crew(3, "Ana", Some(Station::Tactical), false)];
+        let bodies = [body(1, Some(Station::Captain))];
+        assert_eq!(seat_prompt(Station::Tactical, 1, &crew, &bodies), "Ana holds Tactical");
+        assert_eq!(seat_prompt(Station::Captain, 1, &crew, &bodies), "E  Sit at Captain");
+    }
 }

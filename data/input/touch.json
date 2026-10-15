@@ -1,0 +1,31 @@
+{
+  "schema": "starcrew.touch/1",
+  "status": "PROPOSED by openspec/changes/touch-controls (design 3 and 4), approved on the owner's sight of docs/mockups/touch-controls.html (2026-10-13: 'Looks good'). Sizes are CSS px of a screen 390 px on its shorter side and scale with that side; times in seconds.",
+  "screen_ref_px": 390.0,
+  "stick": {
+    "_note": "The move stick appears where the left thumb lands, inside the zone: the left zone_w of the screen, below its top zone_top.",
+    "ring_px": 60.0,
+    "knob_px": 24.0,
+    "dead_px": 8.0,
+    "run_rim_px": 54.0,
+    "run_hold_s": 0.3,
+    "zone_w": 0.4,
+    "zone_top": 0.15
+  },
+  "look_rad_px": 0.006,
+  "buttons": {
+    "use_px": 88.0,
+    "small_px": 60.0,
+    "corner_px": 48.0,
+    "edge_px": 24.0,
+    "corner_edge_px": 12.0,
+    "gap_px": 32.0,
+    "stand_bar_min_px": 62.0
+  },
+  "console": {
+    "_note": "Seated: a tap presses the nearest control within reach_px of the finger (hit areas of at least 44 px); held long_press_s within still_px, it shows the control's tip and presses nothing.",
+    "reach_px": 22.0,
+    "long_press_s": 0.5,
+    "still_px": 10.0
+  }
+}

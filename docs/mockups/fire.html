@@ -3147,8 +3147,10 @@
    *     footprint, its stop heights, the car's floor now, and its doors (y their floor);
    *   where(x, feet, z) -> text: where the body is, for the HUD;
    *   buttons: [{ label() -> text, onClick() }]: the page's own buttons beside Stop;
-   *   onExit(): the body was put away (Stop or Esc).
-   * Returns { enter(pose), exit(), update(dt_s), active(), pose(), keys, use(dir), lifts }.
+   *   onExit(): the body was put away (Stop or Esc);
+   *   input: "external": the page owns the pointer and draws its own HUD (touch-controls.html's touch layer): the walk
+   *     adds no pointer listeners and no HUD of its own, keeps the keyboard, and is driven by drive(), turn() and jump().
+   * Returns { enter(pose), exit(), update(dt_s), active(), pose(), keys, use(dir), lifts, drive, turn, jump, prompt }.
    */
   function create(THREE, lib, o) {
     const { Capsule } = lib;
@@ -3160,7 +3162,7 @@
     const doors = (o.doors || []).map((d) => Object.assign({ open: 0, target: 0, emptyT: Infinity, shown: -1 }, d));
     const pos = new THREE.Vector3(), cap = new Capsule(new THREE.Vector3(), new THREE.Vector3(), BODY.radius_m);
     const ray = new THREE.Ray(new THREE.Vector3(), new THREE.Vector3(0, -1, 0));
-    const keys = {}, stick = { x: 0, y: 0 };
+    const keys = {}, stick = { x: 0, y: 0 }, external = o.input === "external";
     let speedK = 1;
     let yaw = 0, pitch = 0, vx = 0, vz = 0, vy = 0, grounded = true, jumpT = 0, stairT = 0, action = null, on = false, runToggle = false, eyeY = 0;
     // Rapier: the body is a kinematic capsule its character controller moves. A lift's car floor is no collider: inside
@@ -3590,11 +3592,13 @@
       syncBody();
       yaw = p.face ? Math.atan2(-p.face[0], -p.face[1]) : p.yaw || 0;
       pitch = ((p.pitch_deg || 0) * Math.PI) / 180;
-      if (!hud) hud = buildHud();
+      if (!hud && !external) hud = buildHud();
       addEventListener("keydown", kd); addEventListener("keyup", ku); addEventListener("blur", blur);
       document.addEventListener("mousemove", mm);
-      dom.addEventListener("pointerdown", pd); dom.addEventListener("pointermove", pm);
-      dom.addEventListener("pointerup", pu); dom.addEventListener("pointercancel", pu);
+      if (!external) {
+        dom.addEventListener("pointerdown", pd); dom.addEventListener("pointermove", pm);
+        dom.addEventListener("pointerup", pu); dom.addEventListener("pointercancel", pu);
+      }
       dom.style.touchAction = "none";
       place();
     }
@@ -3616,8 +3620,10 @@
       } else {
         addEventListener("keydown", kd); addEventListener("keyup", ku);
         document.addEventListener("mousemove", mm);
-        dom.addEventListener("pointerdown", pd); dom.addEventListener("pointermove", pm);
-        dom.addEventListener("pointerup", pu); dom.addEventListener("pointercancel", pu);
+        if (!external) {
+          dom.addEventListener("pointerdown", pd); dom.addEventListener("pointermove", pm);
+          dom.addEventListener("pointerup", pu); dom.addEventListener("pointercancel", pu);
+        }
         if (hud) hud.root.style.display = "";
         place();
       }
@@ -3657,6 +3663,13 @@
     }
     return {
       enter, exit, update, use, keys, lifts, doors, hold,
+      /** Set the stick (x right, y back, each -1..1; the page's stick, input "external") and whether it runs. */
+      drive: (x, y, r) => { stick.x = x; stick.y = y; runToggle = !!r; },
+      /** Turn the view by a drag of (dx, dy) radians (input "external"). */
+      turn: (dx, dy) => look(dx, dy, 1),
+      jump,
+      /** What E would do here, for the page's USE button: its label, or null (a lift's car: "Lift"). */
+      prompt: () => (on && !held ? (choice() ? choice().label : liftIn(pos.x, pos.z) ? "Lift" : null) : null),
       active: () => on,
       /** True while hold(true) has the body still. */
       held: () => held,
