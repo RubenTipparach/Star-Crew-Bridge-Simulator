@@ -38,7 +38,8 @@ can actually enter rather than something flimsy. I want there to be multiple shi
 - [ ] 2.4 The bays' bakes (design 8a), E first: the rings, floods, berth work lights and window tiers as fixtures in
   `data/lighting/fixtures.json`'s format, placed by rule from `spacedock.json`; baked into the insides' vertex colours in
   the three states; first in `docs/mockups/spacedock.html` with `lightbake.js` and its shots, then in the station
-  generator's build.
+  generator's build. Mockup done for E's bay (2026-10-15, design 8a): fixtures, `bake.json` `station`, three states,
+  probes on the ships, shots. Left: the throat, A-D, and the station generator's bake.
 - [ ] 2.5 The docked ships placed from the berths at their middle level of detail; the bay's probes lighting them and
   the Tern's hull while it is in the bay, giving way to the star over the throat (design 8a; `patrol-mission` 11.3's
   relight follows).

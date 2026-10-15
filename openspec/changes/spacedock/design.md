@@ -313,13 +313,25 @@ decks are and nothing new is invented for it.
 - **What the crew see** (section 8, E): the bay's wall overhead in the rings' light, the ships across the bay in their
   floods' pools, the pier and the clamps bright under the work lights through the starboard windows, the back wall's
   lit window tiers; in the alert state the red strips; through the throat on the way out, the rings sliding past.
-- **The mockup first.** `docs/mockups/spacedock.html` bakes E's bay with the mockup baker (`docs/mockups/lib/
-  lightbake.js`, the one the deck plan uses, by the `light-baking` skill), in all three states, with the probes lighting
-  the Tern and the docked ships, and shows its cost; its shots go into `docs/screenshots/mockups/` for the owner to see
-  before the station generator bakes it.
-- **Cost** (section 9): no draw and no texture added; three colour sets on the inside's vertices (4 bytes a set a
-  vertex, the bay's cells adding about 20,000 vertices, about 0.25 MB with the sets) and the probes (54 bytes each, LB
-  6: a few thousand, under 0.3 MB), client only; at run time one blend a vertex and a probe lookup a ship.
+- **The mockup first** (built 2026-10-15). `docs/mockups/spacedock.html` bakes E's bay on load with the mockup baker
+  (`docs/mockups/lib/lightbake.js`, the one the deck plan uses, by the `light-baking` skill) and the `station` preset
+  of `data/lighting/bake.json`: 80 point fixtures (a `bay_flood` for each of the eight berths, on a spine down the
+  axis; nine `berth_work` a berth: the four corner masts, two on each portal frame, one under the gantry) and 98 area
+  fixtures (seven `bay_ring`s, each as twelve 30 degree strips, and fourteen `window_tier`s), with shadows from the
+  ribs, the spine, the piers, the frames and the gantries, occlusion over 20 m and one bounce read across the bay. The
+  wall is cut to 16 m cells, the ribs to 30 m and the berths to 8 m (`bake.json` `station`; 4 m and 10 m made 93,000
+  vertices). The state buttons (Normal, Alert, Emergency) swap the three sets and the fixtures' faces (the rings red
+  on alert; every fixture off its supply dark on emergency). The ships take probes: three down each berth (bow, middle,
+  stern), blended along the hull, the Tern's included, standing in for the 20 m grid the station build bakes; the
+  concept hulls, which have no texture to relight, take the bay's mean probe. Not baked yet: the throat's rings and
+  strips, and the hull's change from the probes to the star down the throat (the "entering" view keeps the star).
+  The shots are `docs/screenshots/mockups/spacedock-E-bay*.png` and `spacedock-E-window*.png`; `?bake=0` keeps the
+  stand-in light.
+- **Cost** (section 9), measured from the mockup's bake: no draw and no texture added; the baked inside is 54,265
+  vertices and 38,997 triangles (the stand-in was about 15,500), its three colour sets 0.62 MB (4 bytes a set a
+  vertex); the probes 54 bytes each (the mockup's 21 are 1.1 kB; the design's grid, a few thousand, under 0.3 MB),
+  client only; at run time one blend a vertex and a probe lookup a ship. The bake took about 52 s and 12 million rays
+  on this cloud machine's CPU in one browser thread: not a Pi 5 and not the station build's baker.
 
 ## 9. The Pi 5 budget
 
@@ -334,7 +346,7 @@ mockup's meshes (`docs/mockups/spacedock.html`):
 | B Wheel | 662 | 12,204 | 4,476 | 120 | 3 | 7 ships, about 10,000 triangles, 7 draws |
 | C Drydock | 910 | 16,012 | 3,576 | 120 | 3 | 8 ships, about 11,500 triangles, 8 draws |
 | D Hollow | 5,162 | 14,340 | 3,588 | 120 | 3 | 7 ships, about 10,000 triangles, 7 draws |
-| E O'Neill Pair: hub and round bay | about 600 (the hub's drum, mouth, back and seal collar) | about 15,500 (with eight gantries) | about 3,300 (flood rings, the hub's lights, the ships' running lights) | 8 (eight iris leaves) | 3 (the mockup draws the leaves apart) | 6 ships, about 8,700 triangles, 6 draws |
+| E O'Neill Pair: hub and round bay | about 600 (the hub's drum, mouth, back and seal collar) | 38,997 baked (with eight gantries and the spine; 8a) | about 3,300 (the rings, the floods, the hub's lights, the ships' running lights) | 8 (eight iris leaves) | 3 (the mockup draws the leaves apart) | 6 ships, about 8,700 triangles, 6 draws |
 | E O'Neill Pair: the throat | 128 (its wall) and 9,952 (its light rings and strips, the dome's rings) | | | | 21 (the mockup draws each ring and strip apart; built, 2) | |
 | E O'Neill Pair: the two cylinders | about 96,000 (48,000 a cylinder: shell, land, glazing, two domes outside and in, the inner domes' greebles, about 3,500 a dome, the seal collars, 70 cumulus of 320 triangles, 22,400, spine, three mirrors, farm ring) and the rods' 60 | | | | 30 (15 a cylinder) and the rods' 1 | |
 

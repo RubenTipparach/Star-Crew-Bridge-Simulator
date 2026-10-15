@@ -67,6 +67,7 @@
     shadow_samples: 12,      // per lamp per receiver; adaptive: 4 first, the rest only in penumbra
     emitter_sample_area_m2: 0.06, // one sample per this much emissive area, 4 to 16 per emitter
     gather_rays: 48,         // cosine-weighted rays per sample, where bounce is gathered per sample (probes)
+    gather_range_m: 80,      // how far a bounce ray looks for the surface it reads (a ship's room; a station bay is wider)
     cache_gather_rays: 128,  // cosine-weighted rays per irradiance-cache vertex; outputs interpolate the cache
     bounce_from_cache: true, // false: gather bounce at every output sample (noisier, slower; for comparison)
     cache_filter: 1,         // passes of a 3 x 3 tent filter over each patch's cached bounce (0: none); bounce is smooth
@@ -857,7 +858,7 @@
         const rr = Math.sqrt(a), ph = 6.283185307179586 * bb, lz = Math.sqrt(1 - a);
         const lx = rr * Math.cos(ph), ly = rr * Math.sin(ph);
         S.rays.gather++;
-        if (!closest(B, ox, oy, oz, lx * _b[0] + ly * _b[3] + lz * nx, lx * _b[1] + ly * _b[4] + lz * ny, lx * _b[2] + ly * _b[5] + lz * nz, 80, _hit)) continue;
+        if (!closest(B, ox, oy, oz, lx * _b[0] + ly * _b[3] + lz * nx, lx * _b[1] + ly * _b[4] + lz * ny, lx * _b[2] + ly * _b[5] + lz * nz, set.gather_range_m, _hit)) continue;
         if (_hit.back) continue; // the back of a surface is inside a wall or a prop: no light there
         const t = _hit.tri, w0 = 1 - _hit.u - _hit.v, w1 = _hit.u, w2 = _hit.v;
         const i0 = I[t * 3] * 9, i1 = I[t * 3 + 1] * 9, i2 = I[t * 3 + 2] * 9;
