@@ -1,0 +1,70 @@
+{
+  "schema": "starcrew.station-models/1",
+  "_doc": "How the client draws the Shoals' stations (openspec/changes/patrol-mission design 12b; spacedock design 5a, 5b and 9, tasks 2.3-2.5). The shapes' sizes are data/space/spacedock.json's; this file holds what only the drawing needs: the texture layers and their size, the light outside (spacedock 5b's fallback: the relief baked into the albedo, the star's light per vertex, Tamsin's earthshine baked per vertex), the round bay's fixtures (a stand-in bake at load, until tasks 2.4's offline bake), the paints, the tessellation and the draw distance. Colours are display multipliers (1 is the texel as it is, up to 2). Read by crates/sc-client/src/stations.rs.",
+  "layer_px": 512,
+  "textures": {
+    "_doc": "The O'Neill pair's Material Maker textures (tools/materials/oneill_atlases.py), resized to layer_px as layers of one array in this order; the last, the macro map, glows where its alpha marks the panes.",
+    "detail": "assets/textures/oneill/oneill_detail.png",
+    "cap": "assets/textures/oneill/oneill_cap.png",
+    "mirror": "assets/textures/oneill/oneill_mirror.png",
+    "macro": "assets/textures/oneill/oneill_macro.png"
+  },
+  "outside": {
+    "_doc": "A face away from the star takes ambient plus Tamsin's earthshine by how it faces the planet; a face to the star adds star times its cosine. panes_glow: how brightly the macro map's panes show the lit land behind them. detail_tile_m: the detail layer's repeat on the hub, the rods and the placeholders; mirror_tile_m the mirror's.",
+    "ambient": [0.07, 0.075, 0.085],
+    "earthshine": [0.22, 0.27, 0.34],
+    "star": 1.25,
+    "panes_glow": 0.55,
+    "detail_tile_m": 16.0,
+    "mirror_tile_m": 120.0
+  },
+  "bay": {
+    "_doc": "The round bay's and the throat's lamps, baked into the insides' vertex colours: floods in rings round the wall (the first flood_first_m from the back wall, then every flood_every_m, per_ring of them, inset from the wall), lamps on the axis (z in the station's frame), a lamp under each gantry, lamps in the throat's rings; each adds intensity times the cosine at the surface, fading to nothing at its reach. ship_light: how the docked ships and the Tern's own hull are lit in the bay, from their own up (the floods and gantries above them), and its strength.",
+    "ambient": [0.16, 0.17, 0.2],
+    "flood": [1.0, 0.9, 0.72],
+    "flood_first_m": 50.0,
+    "flood_every_m": 60.0,
+    "flood_per_ring": 12,
+    "flood_inset_m": 6.0,
+    "flood_intensity": 1.1,
+    "flood_reach_m": 110.0,
+    "axis_lamps": [[-30.0, 2.4, 260.0], [150.0, 1.4, 260.0], [400.0, 1.4, 260.0]],
+    "gantry_up_m": 26.0,
+    "gantry_intensity": 1.2,
+    "gantry_reach_m": 70.0,
+    "throat_every_m": 40.0,
+    "throat_per_ring": 8,
+    "throat_intensity": 0.8,
+    "throat_reach_m": 60.0,
+    "rib_every_m": 40.0,
+    "window_every_m": 32.0,
+    "ship_light": 0.9
+  },
+  "paint": {
+    "_doc": "The parts' paints (the macro and cap maps carry their own; these tint the detail layer). spacedock.json colours' pearl and graphite, darkened for the steel inside.",
+    "pearl": [0.86, 0.87, 0.88],
+    "graphite": [0.36, 0.41, 0.47],
+    "orange": [0.85, 0.42, 0.17],
+    "steel": [0.52, 0.55, 0.6],
+    "wall": [0.62, 0.64, 0.68],
+    "throat": [0.42, 0.45, 0.5],
+    "hazard": [0.95, 0.72, 0.18],
+    "rock": [0.55, 0.5, 0.45]
+  },
+  "glow": {
+    "_doc": "The glowing parts, their own light.",
+    "work": [1.6, 1.44, 1.12],
+    "accent": [0.56, 1.1, 1.6],
+    "window": [1.6, 1.38, 0.96],
+    "red": [2.0, 0.36, 0.24],
+    "green": [0.4, 2.0, 0.7]
+  },
+  "segments": {
+    "_doc": "Round parts' sides: the cylinders, domes and hub (round), the bay's wall and throat (bay); a dome's rings; the placeholders (placeholder).",
+    "round": 48,
+    "dome_rings": 6,
+    "bay": 48,
+    "placeholder": 32
+  },
+  "draw_m": 80000.0
+}

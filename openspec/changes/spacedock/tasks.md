@@ -34,9 +34,14 @@ can actually enter rather than something flimsy. I want there to be multiple shi
   the axis, along the axis out through the iris and the throat, then clear of the dome and the mirrors to the 2 km mass
   lock (design 5a, why the sunward end). Its design 3, 4.1-4.3 and spec change with it.
 - [ ] 2.3 The station generators (committed generators, CLAUDE.md 9), one per version, E first: outside, inside and
-  doors in three draws within design 9's budget, and a far model each; the data checks of design 10.
+  doors in three draws within design 9's budget, and a far model each; the data checks of design 10. (2026-10-15: E's
+  generator, `crates/sc-client/src/stations.rs`, outside, inside and glow in three draws, 18,264 triangles; its iris's
+  leaves, the habitats' land and clouds and a far model still to come. A-D are placeholders: their outsides only.)
 - [ ] 2.4 The bays' bakes: their floods and window tiers as fixtures in data, baked into the insides' vertex colours.
+  (2026-10-15: a stand-in for E, the fixtures in `data/space/station_models.json` baked at load without shadows.)
 - [ ] 2.5 The docked ships placed from the berths at their middle level of detail; the berth probes lighting them.
+  (2026-10-15: E's two Herons, drawn with the Tern's full model lit from their own up; the Osprey and the Federation
+  concepts have no engine model, so their berths stand empty.)
 - [ ] 2.6 The doors and iris (traffic control's clearance, 20 s to open and close) and the bay's speed limit on the
   server; FN 10's dock autopilot with a berth as its port.
 - [ ] 2.7 Measure E's per-pixel shaders on the Pi (S7) and write the result into `engine-stack`'s budget table before
@@ -44,4 +49,5 @@ can actually enter rather than something flimsy. I want there to be multiple shi
 - [ ] 2.8 E's seal in the engine: the hub, seal collars and bay as closed geometry, and the seal check as a test on the
   generated mesh.
 - [ ] 2.9 Captures from the bridge's windows and the viewscreen while entering and while berthed at Tamsin Station,
-  walking the ship (CLAUDE.md 12), in `docs/screenshots/engine/`.
+  walking the ship (CLAUDE.md 12), in `docs/screenshots/engine/`. (2026-10-15: berthed, leaving through the throat
+  and the pair from outside, in `docs/screenshots/engine/stations/`; entering waits for docking, patrol-mission.)

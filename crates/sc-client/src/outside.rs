@@ -11,7 +11,7 @@ use sc_core::exterior::{normalized, Beacons, ExteriorData};
 use sc_render::{DeckProgram, Indices, Mesh, Renderer, Target};
 use serde::Deserialize;
 
-use crate::ships3d::{beacon_lamp, station, MeshBuilder, StationKind};
+use crate::ships3d::{beacon_lamp, station, Beacon, MeshBuilder, StationKind};
 
 /// The light baked into the hull's vertex colours by the exterior build (`tools/blender/build_ship_exteriors.py`):
 /// `ambient_fraction + (1 - ambient_fraction) max(0, n . sun_dir_ship)`.
@@ -107,14 +107,40 @@ pub fn exterior_at(ext: &ExteriorData, sys: &sc_core::system::SystemFile, eye: g
     e
 }
 
+/// A station's beacons on the GPU: each one's lamp (radius 1), where it is in the station's frame and its radius up
+/// close, metres. The relay and every spacedock blink theirs by this one rule (CLAUDE.md 6.1).
+pub struct BeaconLamps(Vec<(Mesh, Vec3, f32)>);
+
+impl BeaconLamps {
+    /// The lamps of `beacons`, on the GPU.
+    pub fn new(r: &Renderer, beacons: &[Beacon]) -> Self {
+        let mesh = |m: &MeshBuilder| r.make_mesh(&m.vertices, Indices::U16(&m.indices));
+        Self(beacons.iter().map(|b| (mesh(&beacon_lamp(b.rgb)), Vec3::from(b.at_m), b.radius_m)).collect())
+    }
+
+    /// Draw them into the current pass of `t` through `vp` (a view at the eye), the station's frame at `rel` from the
+    /// eye and turned by `rot`, only while `b.lit` at `time_s`, each at least `b.min_radius_deg` across from the eye.
+    #[allow(clippy::too_many_arguments)]
+    pub fn draw(&self, r: &mut Renderer, t: &Target, vp: Mat4, rel: Vec3, rot: Quat, b: &Beacons, time_s: f64) {
+        if !b.lit(time_s) {
+            return;
+        }
+        for (lamp, at, radius) in &self.0 {
+            let p = rel + rot * *at;
+            let size = beacon_radius_m(*radius, p.length(), b.min_radius_deg);
+            let m = Mat4::from_translation(p) * Mat4::from_scale(Vec3::splat(size));
+            r.draw_deck(t, lamp, DeckProgram::Flat, &crate::drill_bridge::flat_params(vp * m), None);
+        }
+    }
+}
+
 /// A placeholder station ready to draw (patrol-mission design 3): its structure lit by the sun, its windows and strips
 /// glowing, its beacons blinking.
 pub struct StationView {
     scale: f32,
     body: Mesh,
     lights: Mesh,
-    /// Each beacon's lamp (radius 1), where it is in the station's frame and its radius up close, metres.
-    beacons: Vec<(Mesh, Vec3, f32)>,
+    beacons: BeaconLamps,
     /// Its triangles.
     pub triangles: usize,
 }
@@ -124,8 +150,7 @@ impl StationView {
     pub fn new(r: &Renderer, kind: StationKind) -> Self {
         let s = station(kind);
         let mesh = |m: &MeshBuilder| r.make_mesh(&m.vertices, Indices::U16(&m.indices));
-        let beacons =
-            s.beacons.iter().map(|b| (mesh(&beacon_lamp(b.rgb)), Vec3::from(b.at_m), b.radius_m)).collect::<Vec<_>>();
+        let beacons = BeaconLamps::new(r, &s.beacons);
         Self { scale: s.scale, body: mesh(&s.body), lights: mesh(&s.lights), beacons, triangles: s.triangles() }
     }
 
@@ -147,15 +172,7 @@ impl StationView {
         let model = Mat4::from_rotation_translation(rot, rel) * Mat4::from_scale(Vec3::splat(self.scale));
         r.draw_deck_probe(t, &self.body, vp * model, Mat4::from_quat(rot), &sun_cube(sun), [1.0, 0.0, 0.0]);
         r.draw_deck(t, &self.lights, DeckProgram::Flat, &crate::drill_bridge::flat_params(vp * model), None);
-        if !b.lit(time_s) {
-            return;
-        }
-        for (lamp, at, radius) in &self.beacons {
-            let p = rel + rot * *at;
-            let size = beacon_radius_m(*radius, p.length(), b.min_radius_deg);
-            let m = Mat4::from_translation(p) * Mat4::from_scale(Vec3::splat(size));
-            r.draw_deck(t, lamp, DeckProgram::Flat, &crate::drill_bridge::flat_params(vp * m), None);
-        }
+        self.beacons.draw(r, t, vp, rel, rot, b, time_s);
     }
 }
 

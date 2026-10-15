@@ -97,8 +97,27 @@ struct Meshes {
     held: Mesh,
     /// The relay at the Shoals, where the helm's COURSE flies (patrol-mission design 3): a placeholder.
     relay: crate::outside::StationView,
-    /// Tamsin Station until its model arrives (patrol-mission design 3): a placeholder.
-    starbase: crate::outside::StationView,
+    /// The system's stations in a patrol (patrol-mission design 12b): Tamsin Station and the four placeholders.
+    stations: Option<crate::stations::StationsView>,
+}
+
+/// A scripted shot's eye: where it stands in the ship's frame (metres), its yaw and its pitch (radians).
+type ShotEye = ([f64; 3], f32, f32);
+
+/// A thing outside drawn as a station: the relay, or a system file's station by its index there.
+#[derive(Clone, Copy, Debug)]
+enum Shown {
+    Relay,
+    Station(usize),
+}
+
+/// The stations of `data`'s patrol on the GPU, or none for a drill.
+fn station_views(r: &Renderer, data: &DrillData) -> Result<Option<crate::stations::StationsView>, String> {
+    let Some(p) = data.patrol.as_ref() else { return Ok(None) };
+    let look = crate::stations::StationLook::load()?;
+    let v = crate::stations::StationsView::new(r, &p.system, look, std::path::Path::new("."))?;
+    println!("sc-client: the system's stations are {} triangles", v.triangles);
+    Ok(Some(v))
 }
 
 struct VisBolt {
@@ -188,6 +207,12 @@ pub struct DrillApp {
     /// The film's frames written so far, and whether it is looking at the bridge's main viewscreen (chase-camera 3).
     film_frame: u32,
     film_screen: bool,
+    /// The patrol's scripted shots (patrol-mission design 12b): the eye they stand at (ship frame, yaw, pitch), and the
+    /// shot it is for, taken the frame after the eye is set.
+    shot_eye: Option<ShotEye>,
+    shot_pending: Option<String>,
+    /// `--playtest` in a patrol: the scripted player's memory of what it last sent at its console (`patrol::decide`).
+    playtest_patrol: sc_core::combat::patrol::PatrolMemory,
     /// The cue written last, for the video's captions (chase-camera 3).
     film_cue: String,
     /// The bridge, when the compiled deck is there (design 9).
@@ -300,7 +325,7 @@ impl DrillApp {
             beam: mesh(&r, &ships3d::bolt([2.0, 0.6, 1.3])),
             held: mesh(&r, &ships3d::extinguisher()),
             relay,
-            starbase: crate::outside::StationView::new(&r, ships3d::StationKind::Starbase),
+            stations: station_views(&r, &data)?,
         };
         let mut args = args;
         if args.any {
@@ -364,6 +389,9 @@ impl DrillApp {
             done: false,
             film_frame: 0,
             film_screen: false,
+            shot_eye: None,
+            shot_pending: None,
+            playtest_patrol: Default::default(),
             film_cue: String::new(),
             bridge: None,
             overview: args_watch,
@@ -705,6 +733,25 @@ impl DrillApp {
             match at.schematic {
                 Some((three_d, turn)) => self.seats[st as usize].show_schematic(true, three_d, turn),
                 None => self.seats[st as usize].show_schematic(false, false, 0.0),
+            }
+        }
+        // In a patrol the script works its console's patrol controls as a bot reads them (`patrol::decide`, at the bot
+        // profile's reaction): at the helm, UNDOCK once the drive is green, then the jumps. The controls' mockup awaits
+        // approval (patrol-consoles.html), so the script sends the commands those controls will send.
+        if let (Some(sess), Some(pd)) = (self.session.as_mut(), self.data.patrol.as_ref()) {
+            let captain_manned = sess.crew.iter().any(|c| c.station == Some(Station::Captain));
+            let fight = sess.latest().is_some_and(|snap| snap.phase == Phase::Engage);
+            let picture =
+                sess.latest().and_then(|snap| snap.patrol.as_ref()?.picture(&self.data, &snap.ships, captain_manned));
+            if let Some(pic) = picture {
+                let react = self.data.profile("bot").reaction_s(st);
+                let mem = &mut self.playtest_patrol;
+                for c in sc_core::combat::patrol::decide(st, &pic, &pd.block, mem, self.time_s, react) {
+                    // In a fight the helm flies the fight (as a bot does); the patrol's decisions are the jump's.
+                    if !(fight && matches!(c, Command::Helm(_) | Command::Stick { .. })) {
+                        sess.command(c);
+                    }
+                }
             }
         }
         let muster = self.session.as_ref().and_then(|s| s.latest()).is_some_and(|s| s.phase == Phase::Muster);
@@ -1100,7 +1147,8 @@ impl DrillApp {
         let proj =
             glam::camera::rh::proj::opengl::perspective(vfov as f32, FEED.0 as f32 / FEED.1 as f32, 1.0, 80_000.0);
         let view_m = glam::camera::rh::view::look_to_mat4(Vec3::ZERO, fwd.as_vec3(), up.as_vec3());
-        let (ext_now, stations) = self.outside_now(ships.map(|x| &x.2));
+        let (ext_now, stations, roof) = self.outside_now(ships.map(|x| &x.2));
+        let hull_light = self.hull_light(roof);
         let world = World {
             meshes: &self.meshes,
             exterior: &ext_now,
@@ -1110,6 +1158,7 @@ impl DrillApp {
             debris: &self.debris,
             time_s: self.time_s,
             stations,
+            hull: self.bridge.as_ref().and_then(|b| b.hull()),
         };
         self.r.begin_3d(&self.feed, [0.0, 0.0, 0.0, 1.0]);
         world.draw(&mut self.r, &self.feed, proj, view_m, vfov as f32 / FEED.1 as f32, eye, ships);
@@ -1117,8 +1166,9 @@ impl DrillApp {
         if let (Some(s), Some(h)) = (stand, self.bridge.as_ref().and_then(|b| b.hull())) {
             let q = rot.as_quat();
             let in_ship = rot.inverse() * s;
-            let sun = crate::outside::sun_in_ship(&self.exterior, q);
-            h.draw(&mut self.r, &self.feed, proj * view_m * Mat4::from_quat(q), in_ship.to_array(), sun);
+            // The sky's sun from where the Tern is (one sun outside, design 11.3), or the bay's floods under a roof.
+            let (light, k) = hull_light.unwrap_or((crate::outside::sun_in_ship(&ext_now, q), 1.0));
+            h.draw_lit(&mut self.r, &self.feed, proj * view_m * Mat4::from_quat(q), in_ship.to_array(), light, k);
         }
         self.r.end_pass();
         self.r.begin_3d(&self.blank, [0.0, 0.0, 0.0, 1.0]);
@@ -1128,48 +1178,45 @@ impl DrillApp {
 
 impl DrillApp {
     /// The outside of this frame (patrol-mission design 11): in a patrol the sky from the system file as seen from
-    /// the Tern, and the stations within reach (`STATION_DRAW_M`); in the drill the exterior's sky and the relay at
-    /// the mission's waypoint.
-    fn outside_now(&self, snap: Option<&Snapshot>) -> (ExteriorData, Vec<(ships3d::StationKind, DVec3, Quat)>) {
+    /// the Tern, and the stations within reach (`StationsView::draw_m`); in the drill the exterior's sky and the relay
+    /// at the mission's waypoint. Also whether the Tern is under a station's roof (in Tamsin Station's bay or throat),
+    /// where its hull is lit by the floods instead of the star (design 12b).
+    fn outside_now(&self, snap: Option<&Snapshot>) -> (ExteriorData, Vec<(Shown, DVec3, Quat)>, bool) {
         let (Some(p), Some(d)) = (snap.and_then(|s| s.patrol.as_ref()), self.data.patrol.as_ref()) else {
-            let relay = (ships3d::StationKind::Relay, DVec3::from_array(self.data.mission.waypoint_m), Quat::IDENTITY);
-            return (self.exterior.clone(), vec![relay]);
+            let relay = (Shown::Relay, DVec3::from_array(self.data.mission.waypoint_m), Quat::IDENTITY);
+            return (self.exterior.clone(), vec![relay], false);
         };
         let tern = snap.and_then(|s| s.ships.first()).map_or(DVec3::ZERO, |t| t.pos);
         let ext = crate::outside::exterior_at(&self.exterior, &d.system, p.origin + tern);
         let mut stations = Vec::new();
-        for st in &d.system.stations {
-            let at = d.system.station_pos(st) - p.origin;
-            if (at - tern).length() <= STATION_DRAW_M {
-                let rot = d.system.station_rot(st).as_quat();
-                stations.push((ships3d::StationKind::Starbase, at, rot));
+        let mut roof = false;
+        if let Some(v) = self.meshes.stations.as_ref() {
+            for (i, st) in d.system.stations.iter().enumerate() {
+                let at = d.system.station_pos(st) - p.origin;
+                if (at - tern).length() <= v.draw_m() {
+                    let rot = d.system.station_rot(st);
+                    roof |= v.under_roof(i, rot.inverse() * (tern - at));
+                    stations.push((Shown::Station(i), at, rot.as_quat()));
+                }
             }
         }
         let relay = d.places[d.encounter].pos - p.origin;
-        if (relay - tern).length() <= STATION_DRAW_M {
-            stations.push((ships3d::StationKind::Relay, relay, Quat::IDENTITY));
+        if (relay - tern).length() <= RELAY_DRAW_M {
+            stations.push((Shown::Relay, relay, Quat::IDENTITY));
         }
-        (ext, stations)
+        (ext, stations, roof)
     }
 
-    /// The berth's cradle in the Tern's frame (patrol-mission design 3), while it is near: the transform from the
-    /// docked Tern's frame (where the deck file's `outside` rooms are) to the Tern's frame now.
-    fn cradle_now(&self, ships: Option<&(ShipSnap, ShipSnap, Snapshot)>) -> Option<glam::DMat4> {
-        let (t, _, snap) = ships?;
-        let (p, d) = (snap.patrol.as_ref()?, self.data.patrol.as_ref()?);
-        let berth = d.berth_pos - p.origin;
-        if (berth - t.pos).length() > CRADLE_DRAW_M {
-            return None;
-        }
-        let tern = glam::DMat4::from_rotation_translation(t.rot, t.pos);
-        Some(tern.inverse() * glam::DMat4::from_rotation_translation(d.berth_rot, berth))
+    /// The light on the Tern's hull from outside: under a station's roof the floods from its own up (design 12b),
+    /// otherwise none (the sky's sun).
+    fn hull_light(&self, roof: bool) -> Option<(Vec3, f32)> {
+        roof.then(|| self.meshes.stations.as_ref().map(crate::stations::StationsView::ship_light)).flatten()
     }
 }
 
-/// Stations are drawn within this of the Tern, metres (patrol-mission design 11.2: beyond, a point; later).
-const STATION_DRAW_M: f64 = 200_000.0;
-/// The berth's cradle is drawn within this of the Tern, metres: inside the bridge's pass's far plane.
-const CRADLE_DRAW_M: f64 = 300.0;
+/// The relay is drawn within this of the Tern, metres: the outside pass's far plane (design 11.2: beyond, a point;
+/// later).
+const RELAY_DRAW_M: f64 = 80_000.0;
 
 /// What the 3D views draw, borrowed from the app so the renderer can be borrowed beside it.
 struct World<'a> {
@@ -1180,8 +1227,10 @@ struct World<'a> {
     booms: &'a [Boom],
     debris: &'a [Debris],
     time_s: f64,
-    /// The stations outside: which placeholder, where in the drill's frame, and their attitude.
-    stations: Vec<(ships3d::StationKind, DVec3, Quat)>,
+    /// The stations outside: which, where in the drill's frame, and their attitude.
+    stations: Vec<(Shown, DVec3, Quat)>,
+    /// The Tern's hull model, for the ships docked at a station.
+    hull: Option<&'a crate::hull::HullView>,
 }
 
 impl World<'_> {
@@ -1217,13 +1266,15 @@ impl World<'_> {
         // One sun lights everything outside (patrol-mission design 11.3).
         let sun = Vec3::from_array(normalized(self.exterior.sun.dir));
         let cube = crate::outside::sun_cube(sun);
-        // The stations: the relay where the helm's COURSE flies, a starbase, their beacons blinking (patrol-mission 3).
-        for (kind, at, rot) in &self.stations {
-            let v = match kind {
-                ships3d::StationKind::Relay => &self.meshes.relay,
-                ships3d::StationKind::Starbase => &self.meshes.starbase,
-            };
-            v.draw(r, t, vp, rel(*at), *rot, sun, &self.exterior.beacons, self.time_s);
+        // The stations: the relay where the helm's COURSE flies, the system's spacedocks (design 12b), their beacons
+        // blinking.
+        for (shown, at, rot) in &self.stations {
+            let b = &self.exterior.beacons;
+            match (shown, self.meshes.stations.as_ref()) {
+                (Shown::Relay, _) => self.meshes.relay.draw(r, t, vp, rel(*at), *rot, sun, b, self.time_s),
+                (Shown::Station(i), Some(v)) => v.draw(r, t, vp, *i, rel(*at), *rot, b, self.time_s, self.hull),
+                (Shown::Station(_), None) => {}
+            }
         }
         if let Some((_, hound, snap)) = ships {
             if hound.active && hound.alive {
@@ -1357,6 +1408,10 @@ impl DrillApp {
             self.film(f, &snap);
             return;
         }
+        if snap.patrol.is_some() {
+            self.patrol_shots(f, &snap);
+            return;
+        }
         let plan: &[(Phase, f64, &str)] = &[
             (Phase::Muster, 1.5, "1-briefing"),
             (Phase::Countdown, 2.0, "2-countdown"),
@@ -1421,6 +1476,67 @@ impl DrillApp {
 }
 
 impl DrillApp {
+    /// The patrol's scripted shots (patrol-mission design 12b, spacedock tasks 2.9): berthed in Tamsin Station's bay,
+    /// out of the bridge's port and starboard windows and ahead to the throat; in the throat on the way out; then
+    /// Tamsin Station seen from 20 km off once the Tern is clear. Each stands its eye one frame, then is taken.
+    fn patrol_shots(&mut self, f: &Frame, snap: &Snapshot) {
+        if let Some(name) = self.shot_pending.take() {
+            self.capture(f, &name);
+            self.shot_eye = None;
+            if name.starts_with("p5-") {
+                self.done = true;
+            }
+            return;
+        }
+        let (Some(p), Some(d), Some(t)) = (snap.patrol.as_ref(), self.data.patrol.as_ref(), snap.ships.first()) else {
+            return;
+        };
+        let Some(st) = d.system.stations.iter().find(|s| s.berths.iter().any(|b| b.departure.len() > 1)) else {
+            return;
+        };
+        let (at, rot) = (d.system.station_pos(st), d.system.station_rot(st));
+        let here = rot.inverse() * (p.origin + t.pos - at);
+        let window = |w: crate::playtest::Window, pitch: f32| {
+            let (feet, yaw) = w.stand();
+            ([f64::from(feet[0]), f64::from(feet[1]) + 1.6, f64::from(feet[2])], yaw, pitch)
+        };
+        use crate::playtest::Window;
+        let berthed = snap.phase == Phase::Patrol && snap.phase_s >= 4.0 && here.z < 100.0;
+        let ahead = |mut e: ShotEye| {
+            e.1 = 0.25;
+            e
+        };
+        let want: Option<(&str, ShotEye)> = if berthed {
+            [
+                ("p1-berth-port", window(Window::BridgePort, 0.12)),
+                ("p2-berth-starboard", window(Window::BridgeStbd, 0.12)),
+                ("p3-berth-ahead", ahead(window(Window::BridgePort, 0.12))),
+            ]
+            .into_iter()
+            .find(|(n, _)| !self.shots_taken.contains(&format!("{n}.png")))
+        } else if here.z > 480.0 && here.z < 600.0 && here.x.hypot(here.y) < 60.0 {
+            Some(("p4-throat", window(Window::BridgePort, 0.3)))
+        } else if here.z > 2_900.0 {
+            // From the star's side, below and to port of the pair, about 14 km out, looking at its middle.
+            let eye_st = DVec3::new(-5_000.0, -4_500.0, 6_000.0);
+            let look_st = DVec3::new(4_300.0, 1_500.0, -2_000.0);
+            let to_ship = |v: DVec3| t.rot.inverse() * (rot * v);
+            let eye = to_ship(eye_st - here);
+            let dir = to_ship(look_st - eye_st).normalize();
+            let (yaw, pitch) = (dir.x.atan2(dir.z) as f32, dir.y.asin() as f32);
+            Some(("p5-pair", (eye.to_array(), yaw, pitch)))
+        } else {
+            None
+        };
+        if let Some((name, eye)) = want {
+            let name = format!("{name}.png");
+            if !self.shots_taken.contains(&name) {
+                self.shot_eye = Some(eye);
+                self.shot_pending = Some(name);
+            }
+        }
+    }
+
     /// The film of the viewscreen's cameras (chase-camera 3). It follows the body: the walk to the captain's chair,
     /// sitting down and the countdown, then, once the round is engaged, the console's FWD with chase off and on,
     /// TARGET, PORT, AFT and STBD with chase on, TARGET at 1x, 4x and 20x, TARGET with chase on at 4x, and the
@@ -1597,8 +1713,11 @@ impl App for DrillApp {
             s.update();
             // The server's mission is the one played: a client started with another loads it (patrol-mission).
             if !s.mission.is_empty() && s.mission != self.data.mission.id {
-                match load_data(&s.mission) {
-                    Ok(d) => self.data = d,
+                match load_data(&s.mission).and_then(|d| Ok((station_views(&self.r, &d)?, d))) {
+                    Ok((v, d)) => {
+                        self.data = d;
+                        self.meshes.stations = v;
+                    }
                     Err(e) => self.error = Some(e),
                 }
             }
@@ -1694,7 +1813,8 @@ impl App for DrillApp {
         // Seated: hold Stand to get up (E, or Backspace; at Helm, where E rolls the ship, Backspace).
         self.stand_up(dt, station, mine.map(|b| b.posture));
         self.playtest_seated(dt, station, mine.map(|b| b.posture));
-        let shot_overview = self.args.shots.is_some() && (self.shot_overview() || self.film_screen);
+        let shot_overview =
+            self.args.shots.is_some() && (self.shot_overview() || self.film_screen || self.shot_eye.is_some());
         let on_bridge = self.bridge.is_some() && !bodies.is_empty() && (walking || self.overview || shot_overview);
         // Sat down: the console rises from the desk, the bridge seen from the chair behind it until it is up.
         let seated = !walking && station.is_some() && mine.is_some();
@@ -1729,6 +1849,8 @@ impl App for DrillApp {
                 // The film's look at the bridge's main viewscreen: from behind the captain's chair, over his head,
                 // square to the screen so its picture reads as the console's does.
                 _ if self.film_screen => ([0.0, 6.0, 23.4], 0.0, -0.06),
+                // The patrol's shots: out of a window, or the station seen from afar (design 12b).
+                _ if self.shot_eye.is_some() => self.shot_eye.unwrap_or_else(crate::drill_bridge::overview),
                 _ => crate::drill_bridge::overview(),
             };
             if own && !rising {
@@ -1741,8 +1863,8 @@ impl App for DrillApp {
                 let red = ships.as_ref().is_some_and(|(_, _, s)| s.bridge.red_alert);
                 // The bridge's eye in the system's frame, where the Hound, bolts and bursts are.
                 let eye_out = ships.as_ref().map(|(t, _, _)| t.pos + t.rot * DVec3::from_array(eye));
-                let (ext_now, stations) = self.outside_now(ships.as_ref().map(|x| &x.2));
-                let cradle = self.cradle_now(ships.as_ref());
+                let (ext_now, stations, roof) = self.outside_now(ships.as_ref().map(|x| &x.2));
+                let hull_light = self.hull_light(roof);
                 let world = World {
                     meshes: &self.meshes,
                     exterior: &ext_now,
@@ -1752,13 +1874,14 @@ impl App for DrillApp {
                     debris: &self.debris,
                     time_s: self.time_s,
                     stations,
+                    hull: bv.hull(),
                 };
                 let seen = ships.as_ref();
                 let out = crate::drill_bridge::Outside {
                     attitude,
                     lighting: if red { [0.0, 1.0, 0.0] } else { [1.0, 0.0, 0.0] },
                     screen: Some((&self.feed, self.exterior.viewscreen.scanlines as f32)),
-                    cradle,
+                    hull_light,
                     objects: Box::new(move |r, t, vp| {
                         if let Some(e) = eye_out {
                             world.draw_objects(r, t, vp, e, seen);

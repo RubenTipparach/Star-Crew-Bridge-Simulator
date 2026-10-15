@@ -46,9 +46,14 @@ hostiles", "the view through the window should reflect whats going on around the
 
 - [x] 5.1 The sky from the system file: the star's direction, size and light; the near planet's look (the banded
   look and three far-body slots still to do).
-- [x] 5.2 The starbase and its cradle in the system frame; the cradle sliding past as the Tern backs out.
+- [x] 5.2 The starbase and its cradle in the system frame; the cradle sliding past as the Tern backs out. (Replaced
+  2026-10-15 by 5.5.)
 - [ ] 5.3 Motes, the jump's streaks and flash, the belt's far rocks.
-- [ ] 5.4 `starbase.glb` replacing the placeholder when the `starbase` change lands.
+- [ ] 5.4 `starbase.glb` replacing the placeholder when the `starbase` change lands. (Superseded by 5.5: Tamsin Station is
+  spacedock's version E, generated.)
+- [x] 5.5 The stations' models (design 12b): Tamsin Station generated from the spacedock sizes, lit per vertex (spacedock
+  5b's fallback), its bay's floods baked at load, two sister ships at their berths; the other four stations as flagged
+  placeholders; the outside's depth slice widened; the girder cradle gone from the drill.
 
 ## 6. Verification
 

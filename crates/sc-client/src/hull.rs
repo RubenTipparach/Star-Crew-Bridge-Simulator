@@ -45,23 +45,42 @@ impl HullView {
     /// coordinates, lit by the sun at `sun` (the ship's frame, unit length: `outside::sun_in_ship`). The outside keeps its
     /// own light: the interior's alert states and the panels' glow do not reach it.
     pub fn draw(&self, r: &mut Renderer, t: &Target, proj_view: Mat4, eye: [f64; 3], sun: Vec3) {
+        self.draw_lit(r, t, proj_view, eye, sun, 1.0);
+    }
+
+    /// As `draw`, lit from `light` (the ship's frame, unit length) at `strength` (1 the sun's): a hull under a
+    /// station's roof is lit by its floods from above, not the star (patrol-mission design 12b).
+    pub fn draw_lit(&self, r: &mut Renderer, t: &Target, proj_view: Mat4, eye: [f64; 3], light: Vec3, strength: f32) {
         // The frames rule: subtract the eye in f64, then narrow to f32.
         let rel = Vec3::new(
             (self.origin[0] - eye[0]) as f32,
             (self.origin[1] - eye[1]) as f32,
             (self.origin[2] - eye[2]) as f32,
         );
+        self.draw_at(r, t, proj_view * Mat4::from_translation(rel), light, strength);
+    }
+
+    /// Another ship of the Tern's model (a sister ship at a berth, patrol-mission design 12b): its frame placed by `model`
+    /// (from the ship's frame to the frame `vp` is in, relative to the eye), lit from `light` in its own frame at
+    /// `strength`.
+    pub fn draw_posed(&self, r: &mut Renderer, t: &Target, vp: Mat4, model: Mat4, light: Vec3, strength: f32) {
+        let o = Vec3::new(self.origin[0] as f32, self.origin[1] as f32, self.origin[2] as f32);
+        self.draw_at(r, t, vp * model * Mat4::from_translation(o), light, strength);
+    }
+
+    /// The parts, the mesh's origin placed by `at` (projection, view and placement).
+    fn draw_at(&self, r: &mut Renderer, t: &Target, at: Mat4, light: Vec3, strength: f32) {
         let p = DeckParams {
-            mvp: proj_view * Mat4::from_translation(rel) * Mat4::from_scale(Vec3::splat(self.scale)),
+            mvp: at * Mat4::from_scale(Vec3::splat(self.scale)),
             state_weights: [1.0, 0.0, 0.0],
-            flash_dir: sun,
-            flash: 1.0,
+            flash_dir: light,
+            flash: strength,
             panel_first: u32::MAX,
             panel_glow: 0.0,
             clip_y: f32::MAX,
             relight: self.bake.relight(),
         };
-        // The glowing parts (lights, screens) are their own light: not relit, no sun added.
+        // The glowing parts (lights, screens) are their own light: not relit, no light added.
         let glowing = DeckParams { flash: 0.0, relight: NO_RELIGHT, ..p };
         for &(first, count, array) in &self.parts {
             match array {

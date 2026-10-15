@@ -41,6 +41,7 @@ mod repairs;
 mod seat;
 mod ships3d;
 mod solo;
+mod stations;
 mod touch;
 mod ui;
 mod vg;

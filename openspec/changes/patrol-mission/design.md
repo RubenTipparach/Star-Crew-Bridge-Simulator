@@ -98,7 +98,7 @@ outside the jump's planet lock (`jump.json`), every berth is inside its version'
 reads the bays and the traffic limits from `data/space/spacedock.json`) and every departure leg keeps to the bay's and
 the corridor's limits. Tamsin Station's axes point at the star, Tamsin below it (a test). The patrol starts in its round
 bay; the placeholder starbase and its girder cradle are gone from the drill (the walk's dock in `exterior.json` stays
-for the tour). The client draws E from the same sizes (`ships3d::oneill`, design 12b) and the other four as flagged
+for the tour). The client draws E from the same sizes (`stations::oneill`, design 12b) and the other four as flagged
 placeholders.
 
 The relay at the Shoals stays the placeholder generator's `StationKind::Relay`: a 120 m truss with three dishes, a
@@ -377,7 +377,7 @@ habitat ring (the cradle drawn in the feed as in the walk's bow camera today).
 | --- | --- | --- |
 | The hull relit by the sky's sun (11.3, finding 1): a `relight` uniform in the deck program (`s_bake`, `a`), the frame's sun in `flash`; the hull's textured parts drawn with it, in the walk and the drill | `crates/sc-render/shaders/deck.glsl`, `sc-render` `DeckParams`, `sc-client/src/hull.rs`, `outside.rs` | A test that the shipped hull's colours are the bake's formula with `exteriors.json`'s numbers (validate the real artifact); a test that the relight is 1 when the two suns agree; captures from the bridge and the deck B windows |
 | One lighting rule outside (11.3, finding 2) | `sc-client/src/outside.rs`, `drill.rs` | A test that the cube's sunward face is the brightest and the opposite face gets the fill |
-| The relay at the Shoals drawn at `waypoint_m` (finding 3), from `ships3d::station`; the starbase placeholder generated and checked, drawn from phase 2 | `sc-client/src/ships3d.rs`, `outside.rs`, `drill.rs` | Triangle budgets, the vertex format and the winding of both placeholders in tests; the beacons' least size in a test. Not caught on screen yet: 18.6 km off it is a few pixels and its beacon is lit 0.15 s a second |
+| The relay at the Shoals drawn at `waypoint_m` (finding 3), from `ships3d::station`; the starbase placeholder generated and checked (replaced by Tamsin Station's model, 12b) | `sc-client/src/ships3d.rs`, `outside.rs`, `drill.rs` | Triangle budgets, the vertex format and the winding of both placeholders in tests; the beacons' least size in a test. Not caught on screen yet: 18.6 km off it is a few pixels and its beacon is lit 0.15 s a second |
 | The beacons' blink from data | `data/space/exterior.json` `beacons` | Validated with the file |
 | Windows on other decks (finding 7) | | The ready room's window in the captures; deck B's seen through the medbay's door in a run |
 
@@ -391,7 +391,7 @@ habitat ring (the cradle drawn in the feed as in the walk's bow camera today).
 | The bots' and automation's patrol (one rule, `patrol::decide`) and their lines through crew chat | `patrol.rs`, `sc-net/src/bot.rs`, `data/crew/chat.json` | Tests on each decision; a server test with four bot clients that undock, jump to the Pell beacon, sweep it and say "Off shore power", "Helm, take us out", "Releasing the clamps", "Spooling the jump drive", "Sweeping" |
 | The objectives `undock`, `sweep`, `return` | `combat/data.rs`, the OBJECTIVES tab | A test on each |
 | The protocol: `Phase::Patrol`, the patrol block, the commands, `PROTOCOL` 15 | `sc-net/src/msg.rs` | Round-trip tests; a patrol's snapshot fits one datagram with the grid or the routing |
-| The client: the mission by `--mission` (a server's welcome loads its own), the sky from the system file (the star's direction, size and light, the near planet's look), the starbase and relay placeholders where the system has them, the berth's cradle (the deck's `outside` rooms) carried with the berth as the Tern leaves it | `crates/sc-client/src/drill.rs`, `drill_bridge.rs`, `outside.rs` | A test of the sky at the Pell beacon; captures |
+| The client: the mission by `--mission` (a server's welcome loads its own), the sky from the system file (the star's direction, size and light, the near planet's look), the starbase and relay placeholders where the system has them, the berth's cradle (the deck's `outside` rooms) carried with the berth as the Tern leaves it (both replaced by 12b) | `crates/sc-client/src/drill.rs`, `drill_bridge.rs`, `outside.rs` | A test of the sky at the Pell beacon; captures |
 | The playtest's patrol script: out of the bridge's and the mess's windows as the patrol goes on, then to work | `crates/sc-client/src/playtest.rs` | A test holds its windows to the layout's patches |
 | The new console controls as a mockup for approval, not built | `docs/mockups/patrol-consoles.html` | Shots |
 
@@ -404,17 +404,67 @@ Not built yet: the jump's streaks and flash, motes, far bodies' discs and a band
 is drawn with the terran look's fields in its own colours), the belt's far rocks, the station drawn as a point beyond
 200 km, the console controls (awaiting approval), docking again at the end, the weapons' 5 km safe rule.
 
+## 12b. The stations' models in the engine (2026-10-15)
+
+Written before the code (CLAUDE.md 4); spacedock tasks 2.3 (E first), 2.5 (the docked ships, in part) and, as a
+stand-in, 2.4.
+
+**What is drawn.** `crates/sc-client/src/stations.rs` generates every station of the system file at load, from
+`data/space/spacedock.json`'s sizes (read through `sc_core::spacedock`, the same reading the berths and departure legs
+are checked against), with what only the drawing needs in `data/space/station_models.json` (the texture layers, the
+light, the bay's lamps, the paints, the tessellation, the draw distance):
+
+| Station | Drawn as |
+| --- | --- |
+| Tamsin Station (E) | The pair: both cylinders' shells with the macro map once round them (its panes glowing, standing in for the see-through windows), both domes with the cap map, the seal collars and bearings, three mirrors a cylinder opened 35 degrees toward the star (the mirror layer on their faces), the farm rings with their pods and spokes, the rods across the pair. The port: the hub standing out of the sunward dome, the mouth's face, the lit throat (its rings and eight strips), the iris's rim (the iris stands open: its leaves are tasks 2.6), the round bay with its ribs, flood rings, back wall and its window tiers, the axial post, and a pier, pad and gantry at every berth; the guide rings on the dome. The Tern's own gantry stands swung back to its upright so the way up off the wall is clear (the first two legs) |
+| The docked ships | At E's slots whose fleet entry is a Tern livery (the sister Heron, the rescue Heron), drawn with the Tern's own hull model (one livery: the deck file carries one); the Osprey and the Federation concepts have no engine model yet, so their berths stand empty (tasks 2.5) |
+| Cinder Yards (C), Orrin Highport (A), Pell Wheel (B), Shoals Hollow (D) | **Placeholders**, flagged in code and printed at load: each outside's silhouette from its sizes (A's cap and ringed spine, B's wheel, hub and spokes, C's ribbed octagonal hall, D's rough rock and gate plate), doors shut and drawn as dark panels, no bay, no berths |
+
+**The light: spacedock 5b's fallback.** The engine keeps CLAUDE.md 9 (no per-pixel lighting) until tasks 2.7 measures
+the per-pixel shaders on the Pi. A station does not turn against its star, so its light is baked per vertex when it is
+generated: outside, `ambient + earthshine max(0, n . planet) + star max(0, n . sun)` with the star's and Tamsin's ways in
+the station's frame from the system file; inside the bay and the throat, the bay's ambient and its lamps (flood rings,
+axis lamps, a lamp under each gantry, the throat's rings), each `strength (1 - d / reach)^2 max(0, n . l)` with no
+shadow, a stand-in for tasks 2.4's offline bake with the fixtures in data. The Material Maker textures carry their
+relief in their albedo; the detail layer tiles on the hub, the bay and the gear (its paint in the vertex colour). One
+texture array of four 512 px layers: the hull detail, the cap, the mirror, and the macro map last, whose alpha (the
+panes) glows (the deck program's emission mask). A ship under the roof (E's bay or throat) is lit from its own up (the
+floods and gantries over it), the players' Tern's hull included; outside, by the star as before.
+
+**Depth.** The outside is drawn behind the bridge in a slice of the depth buffer. With 1 m to 80 km in the last 0.0001
+of it, a surface 2 km off resolved to about 2 km, so a station's own parts would fight. The bridge's own pass moves to
+the front half of the buffer and the outside takes the back half (`drill_bridge`'s `in_front_half` and
+`behind_everything`, held by a test): the bridge's 40 m resolves to under a centimetre, the outside's 200 m to 5 mm and
+2 km to under half a metre. Glowing rings stand at least 1.5 m off the wall they light.
+
+**The girder cradle is gone from the drill**, with its `outside` rooms; the walk's dock in `exterior.json` stays for
+the tour. Stations are drawn within `draw_m` (80 km, the outside pass's far plane); beyond, nothing yet (a point, later).
+
+**The Pi 5 budget** (against `engine-stack` 5; counted by the tests):
+
+| Cost | Tamsin Station | A placeholder | Against |
+| --- | --- | --- | --- |
+| Triangles | 18,264 (outside 6,756, inside 8,868, glow 2,640; a test holds it under 25,000), and the two docked Herons at the Tern's model each | 268 (C) to 2,288 (A); the five together 22,303 | 200,000 a frame |
+| Draw calls | 3 (outside, inside, glow), the Herons' 7 each, its 8 beacons while lit (0.15 s a second) | 1, and 2 beacons while lit | 300 a frame |
+| Vertex memory | About 1.6 MB (28-byte vertices, not indexed) | under 0.2 MB | 64 MB buffers |
+| Texture memory | 5.6 MB: four 512 px layers with mips, shared by all five | | 96 MB |
+| Load | The generation, the bay's bake (about 200 lamps over 27,000 vertices) and four PNGs decoded and resized, once at startup | | |
+| Server, network | None: the stations are fixed scenery | | |
+
+Inside the bay the outside's mesh is drawn too (there is no portal cull of the station yet): its 6,756 triangles are
+the cost of not having one. The first two sister ships are the Tern's full model (its middle level of detail is not in the deck file yet).
+
 ## 13. The Pi 5 budget
 
 Against `engine-stack` 5.
 
 | Cost | Phase 1 (built) | Phase 2 | Against |
 | --- | --- | --- | --- |
-| Triangles, worst frame | Relay 136 (in the bridge pass and the feed) | Starbase 1,200 and the cradle's girders (already compiled, about 2,600) while near; motes 400; streaks 800 for 4.3 s; rocks 3,200 at the Shoals: under 8,000 in a pass | 200,000 a frame |
-| Draw calls | Relay 2 a pass, and 2 more while its beacons are lit | Starbase 2, cradle about 12 (its bays, as the walk draws them), motes 1, streaks 1, rocks 1: under 20 a pass, two passes | 300 a frame |
+| Triangles, worst frame | Relay 136 (in the bridge pass and the feed) | Tamsin Station 18,264 and two sister ships while near (design 12b); motes 400; streaks 800 for 4.3 s; rocks 3,200 at the Shoals: under 33,000 in a pass | 200,000 a frame |
+| Draw calls | Relay 2 a pass, and 2 more while its beacons are lit | Tamsin Station 3, its ships about 14, its beacons 8 while lit, motes 1, streaks 1, rocks 1: under 30 a pass, two passes | 300 a frame |
 | Vertex work | The hull's relight: two dot products and a divide a vertex, 8,730 vertices | | |
 | Fragment work | None | The sky's three far-body slots and bands: a few ALU a pixel | 3x average overdraw |
-| Memory | Relay meshes 11 KB, starbase 44 KB when drawn (28-byte vertices) | The system file, a few kB; 40 rock instances | 64 MB buffers |
+| Memory | Relay meshes 11 KB (28-byte vertices) | The system file, a few kB; the stations' meshes about 1.9 MB and their texture array 5.6 MB (design 12b); 40 rock instances | 64 MB buffers |
 | Server | None | The patrol's phase machine, under 0.01 ms a tick; no new bodies integrated (stations are fixed) | 2 ms a ship a tick |
 | Network | None | 6 bytes a snapshot; one reliable event a jump | 80 kbit/s down |
 
@@ -434,8 +484,8 @@ the built change in a release build.
 
 - **The jump makes the system small** (FN's own risk). Mitigation: the departure and the waypoints are flown on
   impulse with something to see, and the spool is everyone's job.
-- **The placeholder starbase sets an expectation.** It is named a placeholder in code, in the mockup and in the
-  captures, and replaced by the model.
+- **The placeholder stations set an expectation.** Versions A-D are named placeholders in code, in the log at load and
+  in this design (12b), and replaced by their generators (spacedock tasks 2.3).
 - **A softened inverse square is not physics.** It keeps a far waypoint lit on a Pi's screen; the data names it.
 - **Phase 2 touches combat's frame.** The encounter keeps the drill's numbers by placing the Hound from the arrival as
   the drill does from the start; the drill's tests stay and gain one at a far origin.

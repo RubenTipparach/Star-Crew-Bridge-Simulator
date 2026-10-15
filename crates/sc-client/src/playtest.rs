@@ -163,7 +163,7 @@ impl Playtest {
     }
 
     /// The patrol's script (patrol-mission): out of the bridge's windows at the station and the berth, to the station,
-    /// up again to watch the cradle slide past and the station fall away, down to the mess's windows, back to work
+    /// up again to watch the bay's wall slide past and the throat and the station fall away, down to the mess's windows, back to work
     /// through the jump; then the drill's tour as long as the fight lasts.
     pub fn patrol(own: Station) -> Self {
         let mut beats = vec![
@@ -171,7 +171,8 @@ impl Playtest {
             Beat::Gaze(Window::BridgePort, 6.0),
             Beat::To(own),
             Beat::Sit,
-            Beat::Work(25.0),
+            // Long enough for the drive to come up and, at the helm, UNDOCK to be pressed from the seat.
+            Beat::Work(40.0),
             Beat::Stand,
             Beat::Gaze(Window::BridgeStbd, 10.0),
             Beat::Gaze(Window::BridgePort, 6.0),
