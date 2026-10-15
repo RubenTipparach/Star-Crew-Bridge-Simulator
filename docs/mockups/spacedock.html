@@ -4281,13 +4281,19 @@ const VE = SD.versions.E, CY = VE.cylinders, TX = VE.textures, E_SUN = v3(VE.sun
   S.ext.add(ringWall(RH, zB - 30, zM, 64, []).applyMatrix4(axis), { ...GRAPH, tile: 8 });
   S.ext.add(lathe([[RH, zM], [ir, zM]], 64).applyMatrix4(axis), { ...GRAPH, tile: 8 });
   S.ext.add(lathe([[RH, 0], [0, 0]], 64).applyMatrix4(mul(T(0, 0, zB - 30), RX(Math.PI / 2))), { ...GRAPH, tile: 8 });
+  // Seen from inside the habitat the hub is a lit drum on the axis: an orange collar round its back, rings of light on
+  // its back face, window bands down its drum.
+  { const col = new THREE.TorusGeometry(RH + 4, 14, 6, 64); col.translate(0, 0, zB - 30); S.ext.add(col, { ...PEARL, tint: [0.85, 0.42, 0.17] }); }
+  for (const r of [90, 170, 250]) G.add(lathe([[r + 6, 0], [r, 0]], 64).applyMatrix4(mul(T(0, 0, zB - 31), RX(Math.PI / 2))), WORK);
+  for (let z = zB + 20; z < zM - 140; z += 110) G.add(ringWall(RH + 0.8, z, z + 9, 64, []).applyMatrix4(axis), WIN);
   // The bay: the round wall (the throat's own radius), its back wall, steel ribs, light rings, galleries, floods.
   S.int.add(ringWall(ir, zB, zI, 64, [], 40).applyMatrix4(axis), IFLOOR);
   S.int.add(lathe([[ir, 0], [0, 0]], 64, 40).applyMatrix4(mul(T(0, 0, zB), RX(Math.PI / 2))), IWALL);
   for (let z = zB + 20; z < zI; z += 40) S.int.add(lathe([[ir, z - 3], [ir - 6, z - 3], [ir - 6, z + 3], [ir, z + 3]], 64, 0).applyMatrix4(axis), ISTEEL);
-  for (let z = zB + 60; z < zI - 20; z += 80) {
-    G.add(ringWall(ir - 1.5, z, z + 3, 64, []).applyMatrix4(axis), WORK);
-    for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; lamps.push(lamp([Math.sin(a) * (ir - 4), Math.cos(a) * (ir - 4), z], 0.7, 90)); }
+  // Floodlight rings every 60 m round the bay, each with twelve floods.
+  for (let z = zB + 40; z < zI - 10; z += 60) {
+    G.add(ringWall(ir - 1.5, z, z + 4, 64, []).applyMatrix4(axis), WORK);
+    for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; lamps.push(lamp([Math.sin(a) * (ir - 6), Math.cos(a) * (ir - 6), z], 1.2, 110)); }
   }
   for (let y = -220; y <= 220; y += 32) {
     const half = Math.sqrt(Math.max(0, ir * ir - y * y)) - 24;
@@ -4301,6 +4307,16 @@ const VE = SD.versions.E, CY = VE.cylinders, TX = VE.textures, E_SUN = v3(VE.sun
     const m = mul(RZ(ang * DEG), T(0, -BR.radius_m, BR.rows_z_m[row]));
     berth(S.int, G, lamps, m, -1, -(ir - BR.radius_m) + 0.5, 20, key === "tern", { ver: "E", top: 24 });
     dock(ships, key, m);
+    // A gantry from the wall over the berth, its crane trolley and hoist, hazard-striped; floods under it.
+    const wy = -(ir - BR.radius_m) + 0.5;
+    S.int.add(box(30, wy, -6, 40, 34, 6, m, 20), ISTEEL);
+    S.int.add(box(-40, 30, -6, 40, 36, 6, m, 20), { mat: "hazard", tile: 4, bake: true });
+    S.int.add(box(-8, 22, -4, 8, 30, 4, m), { mat: "hazard", tile: 4, bake: true });
+    G.add(box(-36, 29, -2, 36, 30, 2, m), WORK);
+    lamps.push(lamp(new THREE.Vector3(0, 26, 0).applyMatrix4(m), 1.4, 70));
+    // The docked ship's running lights: red to port, green to starboard, white aft.
+    if (key) for (const [p, c] of [[[22.6, 1.2, -2], C.red], [[-22.6, 1.2, -2], C.green], [[0, 6, -42], [1, 1, 1]]])
+      G.add(box(p[0] - 0.9, p[1] - 0.9, p[2] - 0.9, p[0] + 0.9, p[1] + 0.9, p[2] + 0.9, m), { ...ACC, tint: c });
   }
   // The iris: eight leaves, hinged at the rim, folding back into the bay as it opens; dark graphite, so the star
   // shining down the throat does not blow it out.
@@ -4312,15 +4328,22 @@ const VE = SD.versions.E, CY = VE.cylinders, TX = VE.textures, E_SUN = v3(VE.sun
     leaf.setAttribute("position", new THREE.Float32BufferAttribute([...mid.clone().negate().toArray(), ...A.clone().sub(mid).toArray(), ...B.clone().sub(mid).toArray()], 3));
     D.add(leaf, { ...GRAPH, tint: [0.3, 0.32, 0.36], tile: 6 });
     const mesh = D.mesh(extMat);
+    // A lit edge down each leaf's two inner edges.
+    for (const E of [A, B]) {
+      const e0 = mid.clone().negate(), e1 = E.clone().sub(mid), L = e1.distanceTo(e0), st = new THREE.BoxGeometry(3, 3, L);
+      st.lookAt(e1.clone().sub(e0)); st.translate(...e0.clone().add(e1).multiplyScalar(0.5).toArray());
+      mesh.add(new THREE.Mesh(st, new THREE.MeshBasicMaterial({ color: new THREE.Color().setRGB(...C.accent, THREE.SRGBColorSpace) })));
+    }
     const pivot = new THREE.Group();
     pivot.position.set(mid.x, mid.y, zI);
     pivot.add(mesh);
     doorGroup.add(pivot);
     leaves.push({ pivot, axisDir: B.clone().sub(A).normalize() });
   }
-  const set = (f) => { for (const l of leaves) l.pivot.quaternion.setFromAxisAngle(l.axisDir, -f * Math.PI / 2); };
+  // Opening, each leaf draws back into a pocket in the rim (it shrinks toward its rim edge), leaving the opening clean.
+  const set = (f) => { for (const l of leaves) { const k = 1 - 0.97 * f; l.pivot.scale.set(k, k, 1); l.pivot.visible = k > 0.035; } };
   const tb = BR.slots.find((x) => x[2] === "tern");
-  finish("E", S, G, lamps, [0.12, 0.13, 0.15], { group: doorGroup, set }, {
+  finish("E", S, G, lamps, [0.22, 0.23, 0.26], { group: doorGroup, set }, {
     ships, beacons,
     berthPose: mul(RZ(tb[1] * DEG), T(0, -BR.radius_m, BR.rows_z_m[tb[0]])),
     approachPose: mul(T(40, -20, zM + 1500), RY(Math.PI)),
@@ -4919,7 +4942,7 @@ const CAMS = {
   D: { outside: [[1700, 650, 3300], [0, 0, 0]], entering: [[300, 0, 1330], [0, -60, 840]], bay: [[-205, -50, 70], [-60, -105, 340]], window: "port" },
   // E's extra views ride cylinder 0 ([position, target] in its own turning frame, its spin held for the shot).
   // (E's outside camera is placed by aimAtBlaze.)
-  E: { outside: [[600, 7000, 12500], [4300, 2000, -3300]], entering: [[330, 170, 1700], [0, -20, 700]], night: [[600, 7000, 12500], [4300, 2000, -3300]], bay: [[150, -20, 300], [-20, -175, 40]], window: "port", seal: [[700, 520, 1250], [-180, -40, 700]],
+  E: { outside: [[600, 7000, 12500], [4300, 2000, -3300]], entering: [[330, 170, 1700], [0, -20, 700]], night: [[600, 7000, 12500], [4300, 2000, -3300]], bay: [[175, -45, 245], [-60, -150, 60]], window: "port", seal: [[700, 520, 1250], [-180, -40, 700]],
        strip: { ride: 0, at: [Math.cos(80 * DEG) * 1060, Math.sin(80 * DEG) * 1060, 1900], to: [-150, -500, 500], spin: 0.3 },
        inside: { ride: 0, at: [Math.cos(30 * DEG) * 740, Math.sin(30 * DEG) * 740, -2950], to: [Math.cos(30 * DEG) * 420, Math.sin(30 * DEG) * 420, 1500], spin: 0.3, inUp: true },
        low: { ride: 0, at: [Math.cos(32 * DEG) * 790, Math.sin(32 * DEG) * 790, 520], to: [Math.cos(35.5 * DEG) * 858, Math.sin(35.5 * DEG) * 858, 1250], spin: 0.3, inUp: true },
@@ -4928,8 +4951,10 @@ const CAMS = {
 };
 const VIEWS = {
   outside: { label: "Outside", t: "The station from outside, Tamsin below; the Tern 1.5 km out on the approach corridor, doors shut until traffic control clears it." },
-  entering: { label: "Doors open, entering", t: "The doors slide open (20 s); the Tern crosses the threshold at 5 m/s, its crew at the windows." },
-  bay: { label: "Inside the bay", t: "Doors shut behind, the bay lit by its own floods; the Tern at its berth, the pier on its starboard side, the gangway to the collar on deck C." },
+  entering: { label: "Doors open, entering", t: "The doors slide open (20 s); the Tern crosses the threshold at 5 m/s, its crew at the windows.",
+    tE: "The iris drawn back into its rim (20 s); down the lit throat into the round bay at 5 m/s, its crew at the windows." },
+  bay: { label: "Inside the bay", t: "Doors shut behind, the bay lit by its own floods; the Tern at its berth, the pier on its starboard side, the gangway to the collar on deck C.",
+    tE: "The iris shut behind, the round bay lit by its flood rings; the Tern in its berth frame on the wall under a gantry, keel to the wall, the crew tube from its collar across the frame to the hub." },
   window: { label: "Bridge window", t: "Berthed: the view out of the bridge's port window, as the crew see it walking the bridge." },
   strip: { label: "In through a window", only: "E", t: "Riding a cylinder 160 m over a window: through the glazing, the far land inside, lit by the mirrors, under its clouds." },
   inside: { label: "Inside the cylinder", only: "E", t: "120 m above the land near the far dome, looking down the length under the cumulus: the valleys curve up both sides and overhead between the three windows, the sunward dome 6 km off." },
@@ -4953,7 +4978,7 @@ function apply() {
   }
   const pose = view === "outside" || view === "far" || view === "night" ? Vv.approachPose : view === "entering" ? Vv.doorPose : Vv.berthPose;
   placeTern(pose);
-  Vv.setDoors(view === "entering" ? 0.75 : 0);
+  Vv.setDoors(view === "entering" ? (ver === "E" ? 1 : 0.75) : 0);
   lightFor(view === "bay" || view === "window");
   const pools = BERTH_LIGHTS.filter((b) => b.ver === ver);
   poolLights.forEach((l, i) => { const b = pools[i]; l.intensity = b && (view === "bay" || view === "window") ? 2600 : 0; if (b) l.position.copy(b.p); });
@@ -4971,8 +4996,9 @@ function apply() {
   const others = Vv.ships.length;
   const legend = document.getElementById("legend");
   const stn = SD.stations.list.find((x) => x.version === ver);
+  const vt = (ver === "E" && VIEWS[view].tE) || VIEWS[view].t;
   legend.innerHTML = `<h3>${ver}. ${Vd.name}: ${stn.name}</h3><div class="t"><b>${stn.role}.</b></div><div class="t">${Vd.brief}</div>` +
-    `<div class="t"><b>${VIEWS[view].label}.</b> ${VIEWS[view].t}</div>` +
+    `<div class="t"><b>${VIEWS[view].label}.</b> ${vt}</div>` +
     `<ul><li>${others} other ships docked; ${Vd.berths.slots.filter((s) => s.includes(null)).length} berths free</li>` +
     `<li>The Tern: 84 m long, 24.4 m across, 13.8 m high (45 m over its nacelles)</li>` +
     `<li>Window: the ${sides[ver]} forward quarter</li></ul>`;

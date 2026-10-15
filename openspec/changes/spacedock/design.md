@@ -154,7 +154,7 @@ not turn; the dome turns round them, once a minute, on the seals.
 
 **The seal, checked in geometry.** The mockup's `SPACEDOCK_SEAL_CHECK()` casts 1,600 rays from points inside both
 habitats toward their domes (300 of every 400 aimed at the hub or bearing, the rest anywhere on the dome), every surface
-tested from both sides. Result at the commit that added it: 0 of 1,600 reach space. As a control, with the hub and the
+tested from both sides. Result at the commit that added it, and again after the bay polish: 0 of 1,600 reach space. As a control, with the hub and the
 bay taken away, 96 of 1,600 do, so the check sees a leak when there is one.
 
 ### 5b. E's two layers of texture and its light
@@ -285,7 +285,7 @@ mockup's meshes (`docs/mockups/spacedock.html`):
 | B Wheel | 662 | 12,204 | 4,476 | 120 | 3 | 7 ships, about 10,000 triangles, 7 draws |
 | C Drydock | 910 | 16,012 | 3,576 | 120 | 3 | 8 ships, about 11,500 triangles, 8 draws |
 | D Hollow | 5,162 | 14,340 | 3,588 | 120 | 3 | 7 ships, about 10,000 triangles, 7 draws |
-| E O'Neill Pair: hub and round bay | 384 (the hub's drum, mouth and back) | 13,924 | 2,708 | 8 (eight iris leaves) | 3 (the mockup draws the leaves apart) | 6 ships, about 8,700 triangles, 6 draws |
+| E O'Neill Pair: hub and round bay | about 600 (the hub's drum, mouth, back and seal collar) | about 15,500 (with eight gantries) | about 3,300 (flood rings, the hub's lights, the ships' running lights) | 8 (eight iris leaves) | 3 (the mockup draws the leaves apart) | 6 ships, about 8,700 triangles, 6 draws |
 | E O'Neill Pair: the throat | 128 (its wall) and 9,952 (its light rings and strips, the dome's rings) | | | | 21 (the mockup draws each ring and strip apart; built, 2) | |
 | E O'Neill Pair: the two cylinders | about 96,000 (48,000 a cylinder: shell, land, glazing, two domes outside and in, the inner domes' greebles, about 3,500 a dome, the seal collars, 70 cumulus of 320 triangles, 22,400, spine, three mirrors, farm ring) and the rods' 60 | | | | 30 (15 a cylinder) and the rods' 1 | |
 
