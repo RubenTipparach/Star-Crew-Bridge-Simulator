@@ -309,6 +309,8 @@
     if(detail)delete parts.baseboard;
     detail?.furnish(ctx,r,parts);
     detail?.dressRoom?.(ctx,r,built,parts);
+    // A baked plain room is split to the deck plan's cells (bake.json mockup.cell_m), so its floor shows the lamps' pools.
+    if(!detail&&window.ShipConcepts.bakePage)K.subdivideParts(parts,K.lightingData().bake.mockup.cell_m,['floor','wall','ceiling','cove'].filter(k=>parts[k]));
     const geo=K.geometryOf(T,parts,mats,K.finishOf(r,D));
     const light=()=>{if(detail?.lightRoom)detail.lightRoom(ctx,r,built,geo);else K.bakeDirect(T,geo,built.lamps,state.lighting);};
     light();
