@@ -321,17 +321,30 @@ decks are and nothing new is invented for it.
   ribs, the spine, the piers, the frames and the gantries, occlusion over 20 m and one bounce read across the bay. The
   wall is cut to 16 m cells, the ribs to 30 m and the berths to 8 m (`bake.json` `station`; 4 m and 10 m made 93,000
   vertices). The state buttons (Normal, Alert, Emergency) swap the three sets and the fixtures' faces (the rings red
-  on alert; every fixture off its supply dark on emergency). The ships take probes: three down each berth (bow, middle,
-  stern), blended along the hull, the Tern's included, standing in for the 20 m grid the station build bakes; the
-  concept hulls, which have no texture to relight, take the bay's mean probe. Not baked yet: the throat's rings and
-  strips, and the hull's change from the probes to the star down the throat (the "entering" view keeps the star).
-  The shots are `docs/screenshots/mockups/spacedock-E-bay*.png` and `spacedock-E-window*.png`; `?bake=0` keeps the
-  stand-in light.
+  on alert; every fixture off its supply dark on emergency). **The probes** (2026-10-16, the owner: "do it, so ships
+  get proper lighting inside stations"): a 20 m grid through the bay's air (27 x 27 x 31 points) and a 5 m grid round
+  each of the eight berths (the box 32 m to each side of the berth's axis, 16 m toward the wall and 30 m toward the
+  axis from the ship's middle, 50 m fore and aft; `bake.json` `station`), 55,023 probes, 48,486 of them in the air (a
+  probe outside the bay's wall or inside a pier, a frame or the spine is invalid and its neighbours fill in). Every
+  hull in the bay, the Tern's, the docked ships' and the concept hulls', is lit at each vertex from the probes round
+  it by the engine's own rule (`sc-core` `probes.rs` `sample_ship`: trilinear over the eight round a point, invalid
+  ones skipped, the grid with the most valid weight winning, the berths' listed first; and `deck_probe_vs`'s cube,
+  each axis weighted by the normal squared), recomputed when the hull moves a metre or the state changes. The
+  "Crossing the bay" view flies the Tern from the iris to its berth at 5 m/s through that light. The sampler and the
+  grid baker are `lightbake.js`'s (`bakeProbeGrid`, `sampleProbes`, `cubeLight`), which the deck plan's rooms use
+  too. Not baked yet: the throat's rings and strips, and the hull's change from the probes to the star down the
+  throat (the "entering" view keeps the star). The page opens lit from `docs/mockups/cache/spacedock-bake.bin`
+  (`node tools/mockups/bake_spacedock.mjs` rewrites it; `?bake=fresh` bakes live). The shots are
+  `docs/screenshots/mockups/spacedock-E-bay*.png`, `spacedock-E-window*.png` and `spacedock-E-crossing*.png`;
+  `?bake=0` keeps the stand-in light.
 - **Cost** (section 9), measured from the mockup's bake: no draw and no texture added; the baked inside is 54,265
   vertices and 38,997 triangles (the stand-in was about 15,500), its three colour sets 0.62 MB (4 bytes a set a
-  vertex); the probes 54 bytes each (the mockup's 21 are 1.1 kB; the design's grid, a few thousand, under 0.3 MB),
-  client only; at run time one blend a vertex and a probe lookup a ship. The bake took about 52 s and 12 million rays
-  on this cloud machine's CPU in one browser thread: not a Pi 5 and not the station build's baker.
+  vertex); the probes 55 bytes each (`probes.rs`), 55,023 of them 3.0 MB uncompressed, client only, held while the
+  Tern is at that station (the 5 m berth grids are 32,424 of them: 10 m round the berths would cut the probes to about
+  27,000 and 1.5 MB, to be judged on the shots). At run time one blend a vertex for the inside and, for a hull, a
+  probe lookup a vertex when it moves (the engine may light a hull per object instead, from one cube at its middle,
+  if the per-vertex cost shows on the Pi). The whole bake, inside and probes, took about 130 s and 49 million rays on
+  this cloud machine's CPU in one browser thread: not a Pi 5 and not the station build's baker.
 
 ## 9. The Pi 5 budget
 

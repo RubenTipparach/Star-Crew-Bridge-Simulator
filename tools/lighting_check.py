@@ -52,7 +52,9 @@ BAKE_OBJECTS = {
     "adaptive": {"base_m": (float, 0.1, 10), "min_m": (float, 0.01, 10), "max_error_levels": (float, 0.1, 255)},
     "mockup": {"cell_m": (float, 0.1, 10), "uncapped_triangles": (int, 0, None)},
     "station": {"wall_cell_m": (float, 0.5, 100), "rib_cell_m": (float, 0.5, 100), "berth_cell_m": (float, 0.5, 100),
-                "cheap_area_m2": (float, 0, 1000), "albedo_scale": (float, 0, 1)},
+                "cheap_area_m2": (float, 0, 1000), "albedo_scale": (float, 0, 1), "probe_coarse_m": (float, 1, 200),
+                "probe_fine_m": (float, 0.5, 50), "berth_probe_x_m": (float, 1, 500), "berth_probe_down_m": (float, 0, 500),
+                "berth_probe_up_m": (float, 0, 500), "berth_probe_z_m": (float, 1, 500)},
     "probes": {"spacing_m": (float, 0.1, 10), "wall_offset_m": (float, 0, 10), "invalid_backface_fraction": (float, 0, 1)},
     "power_loss": {"flicker_s": (float, 0, 60), "fade_s": (float, 0, 60)},
 }

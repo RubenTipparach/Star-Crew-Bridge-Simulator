@@ -28,6 +28,7 @@ import { execSync, execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { writeBakeCache } from "./bakecache.mjs";
 
 const require = createRequire(import.meta.url);
 function loadPlaywright() {
@@ -89,9 +90,7 @@ const wall = (Date.now() - t0) / 1000;
 
 // ------------------------------------------------------------------ the cache
 if (writeCache) {
-  const zlib = await import("node:zlib"), crypto = await import("node:crypto");
-  const index = { baker_sha256: crypto.createHash("sha256").update(fs.readFileSync(path.join(ROOT, "docs", "mockups", "lib", "lightbake.js"))).digest("hex"),
-    date, rooms: {} };
+  const index = { date, rooms: {} };
   const chunks = [];
   let offset = 0;
   for (const id of Object.keys(bake.rooms).sort()) {
@@ -101,11 +100,7 @@ if (writeCache) {
     index.rooms[id] = { key: e.key, offset, count: e.count, stats: e.stats };
     chunks.push(b); offset += b.length;
   }
-  const json = Buffer.from(JSON.stringify(index)), head = Buffer.alloc(12);
-  head.write("SCBK", 0, "ascii"); head.writeUInt32LE(1, 4); head.writeUInt32LE(json.length, 8);
-  const out = path.join(ROOT, "docs", "mockups", "cache", "deck-plan-bake.bin");
-  fs.mkdirSync(path.dirname(out), { recursive: true });
-  fs.writeFileSync(out, zlib.gzipSync(Buffer.concat([head, json, ...chunks]), { level: 9, mtime: 0 }));
+  const out = writeBakeCache(ROOT, "deck-plan-bake", index, chunks);
   execFileSync("python3", [path.join(ROOT, "tools", "mockups", "inline.py"), PAGE], { stdio: "inherit" });
   console.log(`cache: ${path.relative(ROOT, out)} (${(fs.statSync(out).size / 1e6).toFixed(2)} MB, ${Object.keys(index.rooms).length} rooms)`);
 }

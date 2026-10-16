@@ -42,7 +42,8 @@ can actually enter rather than something flimsy. I want there to be multiple shi
   probes on the ships, shots. Left: the throat, A-D, and the station generator's bake.
 - [ ] 2.5 The docked ships placed from the berths at their middle level of detail; the bay's probes lighting them and
   the Tern's hull while it is in the bay, giving way to the star over the throat (design 8a; `patrol-mission` 11.3's
-  relight follows).
+  relight follows). Mockup done for E's bay's probes (2026-10-16): the 20 m and 5 m grids, every hull lit at each vertex
+  by `probes.rs`'s rule, the crossing view. Left: the throat's change to the star, and the engine's relight.
 - [ ] 2.6 The doors and iris (traffic control's clearance, 20 s to open and close) and the bay's speed limit on the
   server; FN 10's dock autopilot with a berth as its port.
 - [ ] 2.7 Measure E's per-pixel shaders on the Pi (S7) and write the result into `engine-stack`'s budget table before

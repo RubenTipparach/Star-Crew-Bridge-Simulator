@@ -68,7 +68,7 @@
 <!-- INLINE data:lighting/fixtures END -->
 <!-- INLINE data:lighting/bake BEGIN -->
 <script id="ship-data-bake" type="application/json">
-{"schema":"starcrew.bake/1","status":"Proposed (2026-10-07) by openspec/changes/light-baking, design sections 11, 12 and 15: the mockup baker's final settings. Read by docs/mockups/lighting.html and docs/mockups/deck-plan.html today, by sc-tools bake once it is built.","_rules":["Every key has a unit or is a count; a present zero means zero. An unknown key is an error. tools/lighting_check.py validates this file.","reference_lux: the irradiance that shows a surface at exactly its texture colour. ambient_scale_lux: ShipKit.LIGHTING's ambient colour times its weight times this is each state's ambient fill in lux, times the baked occlusion.","shadow_samples per lamp per receiver; emitter samples one per emitter_sample_area_m2 and at least one per emitter_sample_spacing_m of its longest edge; ao_rays and ao_radius_m the occlusion; bounces 0, 1 or 2, read from an irradiance cache of cache_spacing_m with cache_gather_rays per point and cache_filter_passes of a tent filter; gather_rays where bounce is gathered per sample (probes); ray_bias_m along the normal; sample_inset_m inside a face's edge; dither on the 8-bit output.","adaptive and max_added_triangles: the engine's subdivision (design section 3), and the lighting page's. mockup: the deck plan's stand-in for it (design section 15), cells no wider than cell_m on floors, walls and ceilings; uncapped_triangles the lighting page's no-cap comparison.","gather_range_m: how far a bounce ray looks for the surface whose light it reads (80 m holds any compartment of a ship; a station's bay is 540 m across).","station: a spacedock bay's bake (openspec/changes/spacedock design 8a): the bay's wall, its ribs and its berths cut to cells no wider than wall_cell_m, rib_cell_m and berth_cell_m; a face under cheap_area_m2 casts shadows but neither sends nor gathers bounce; a part's reflectance is its tint times albedo_scale (the bake does not read the texture's mean).","presets override these: preview for a quicker bake, station for a bay hundreds of metres across (wide emitter samples, a 20 m occlusion radius, a 16 m cache, bounce read across the bay)."],"seed":1,"reference_lux":100,"ambient_scale_lux":260,"shadow_samples":12,"emitter_sample_area_m2":0.06,"emitter_sample_spacing_m":0.25,"ao_rays":24,"ao_radius_m":0.8,"exterior_ao_radius_m":2.0,"bounces":1,"cache_spacing_m":0.5,"cache_gather_rays":128,"cache_filter_passes":1,"gather_rays":48,"gather_range_m":80.0,"ray_bias_m":0.004,"sample_inset_m":0.01,"dither":true,"adaptive":{"base_m":2.0,"min_m":0.25,"max_error_levels":5},"max_added_triangles":{"default":2000,"bridge":7500},"mockup":{"cell_m":1.0,"uncapped_triangles":60000},"station":{"wall_cell_m":16.0,"rib_cell_m":30.0,"berth_cell_m":8.0,"cheap_area_m2":12.0,"albedo_scale":0.55},"probes":{"spacing_m":1.0,"wall_offset_m":0.5,"invalid_backface_fraction":0.5},"lightmap_texel_m":0.25,"power_loss":{"flicker_s":0.6,"fade_s":0.5},"presets":{"preview":{"shadow_samples":4,"cache_gather_rays":32,"bounces":0,"adaptive":{"max_error_levels":8}},"station":{"shadow_samples":1,"emitter_sample_area_m2":150.0,"emitter_sample_spacing_m":40.0,"ao_rays":12,"ao_radius_m":20.0,"cache_spacing_m":16.0,"cache_gather_rays":64,"gather_rays":32,"gather_range_m":1200.0,"ray_bias_m":0.05,"sample_inset_m":0.05}}}
+{"schema":"starcrew.bake/1","status":"Proposed (2026-10-07) by openspec/changes/light-baking, design sections 11, 12 and 15: the mockup baker's final settings. Read by docs/mockups/lighting.html and docs/mockups/deck-plan.html today, by sc-tools bake once it is built.","_rules":["Every key has a unit or is a count; a present zero means zero. An unknown key is an error. tools/lighting_check.py validates this file.","reference_lux: the irradiance that shows a surface at exactly its texture colour. ambient_scale_lux: ShipKit.LIGHTING's ambient colour times its weight times this is each state's ambient fill in lux, times the baked occlusion.","shadow_samples per lamp per receiver; emitter samples one per emitter_sample_area_m2 and at least one per emitter_sample_spacing_m of its longest edge; ao_rays and ao_radius_m the occlusion; bounces 0, 1 or 2, read from an irradiance cache of cache_spacing_m with cache_gather_rays per point and cache_filter_passes of a tent filter; gather_rays where bounce is gathered per sample (probes); ray_bias_m along the normal; sample_inset_m inside a face's edge; dither on the 8-bit output.","adaptive and max_added_triangles: the engine's subdivision (design section 3), and the lighting page's. mockup: the deck plan's stand-in for it (design section 15), cells no wider than cell_m on floors, walls and ceilings; uncapped_triangles the lighting page's no-cap comparison.","gather_range_m: how far a bounce ray looks for the surface whose light it reads (80 m holds any compartment of a ship; a station's bay is 540 m across).","station: a spacedock bay's bake (openspec/changes/spacedock design 8a): the bay's wall, its ribs and its berths cut to cells no wider than wall_cell_m, rib_cell_m and berth_cell_m; a face under cheap_area_m2 casts shadows but neither sends nor gathers bounce; a part's reflectance is its tint times albedo_scale (the bake does not read the texture's mean). Its probes: a grid probe_coarse_m apart through the bay's air, and round each berth a finer one, probe_fine_m apart, over the box berth_probe_x_m to each side of the berth's axis, berth_probe_down_m toward the wall and berth_probe_up_m toward the bay's axis from the ship's middle, and berth_probe_z_m fore and aft.","presets override these: preview for a quicker bake, station for a bay hundreds of metres across (wide emitter samples, a 20 m occlusion radius, a 16 m cache, bounce read across the bay)."],"seed":1,"reference_lux":100,"ambient_scale_lux":260,"shadow_samples":12,"emitter_sample_area_m2":0.06,"emitter_sample_spacing_m":0.25,"ao_rays":24,"ao_radius_m":0.8,"exterior_ao_radius_m":2.0,"bounces":1,"cache_spacing_m":0.5,"cache_gather_rays":128,"cache_filter_passes":1,"gather_rays":48,"gather_range_m":80.0,"ray_bias_m":0.004,"sample_inset_m":0.01,"dither":true,"adaptive":{"base_m":2.0,"min_m":0.25,"max_error_levels":5},"max_added_triangles":{"default":2000,"bridge":7500},"mockup":{"cell_m":1.0,"uncapped_triangles":60000},"station":{"wall_cell_m":16.0,"rib_cell_m":30.0,"berth_cell_m":8.0,"cheap_area_m2":12.0,"albedo_scale":0.55,"probe_coarse_m":20.0,"probe_fine_m":5.0,"berth_probe_x_m":32.0,"berth_probe_down_m":16.0,"berth_probe_up_m":30.0,"berth_probe_z_m":50.0},"probes":{"spacing_m":1.0,"wall_offset_m":0.5,"invalid_backface_fraction":0.5},"lightmap_texel_m":0.25,"power_loss":{"flicker_s":0.6,"fade_s":0.5},"presets":{"preview":{"shadow_samples":4,"cache_gather_rays":32,"bounces":0,"adaptive":{"max_error_levels":8}},"station":{"shadow_samples":1,"emitter_sample_area_m2":150.0,"emitter_sample_spacing_m":40.0,"ao_rays":12,"ao_radius_m":20.0,"cache_spacing_m":16.0,"cache_gather_rays":64,"gather_rays":32,"gather_range_m":1200.0,"ray_bias_m":0.05,"sample_inset_m":0.05}}}
 </script>
 <!-- INLINE data:lighting/bake END -->
 <!-- INLINE materials BEGIN -->
@@ -4264,6 +4264,120 @@
     return out;
   }
 
+  // ------------------------------------------------------------ probe grids (light-baking design 16)
+
+  /** Bytes a probe takes as sc-core's probes.rs holds it: 54 of colour (axis, state, RGB) and a valid flag. */
+  const PROBE_BYTES = 55;
+
+  /** n directions spread evenly over the sphere (a Fibonacci spiral): the inside-a-solid test's rays. */
+  function sphereDirs(n) {
+    const out = [], ga = Math.PI * (3 - Math.sqrt(5));
+    for (let i = 0; i < n; i++) {
+      const y = 1 - (2 * (i + 0.5)) / n, rr = Math.sqrt(1 - y * y), a = ga * i;
+      out.push([Math.cos(a) * rr, y, Math.sin(a) * rr]);
+    }
+    return out;
+  }
+
+  /**
+   * Bake a grid of probes for things that move. grid: { origin_m, spacing_m, dims } (points x fastest, then y,
+   * then z). opts: inAir(p) (false: the point is outside the air, invalid), key(i) (probe i's seed key), rays (how
+   * many directions test for being inside a solid: more than invalid_fraction of them meeting back faces makes the
+   * probe invalid, and its neighbours fill in), invalid_fraction, onProgress(f). Returns { cubes (54 bytes a probe:
+   * axis +X -X +Y -Y +Z -Z, then state, then RGB, each the display multiplier 0-2 in a byte, as the deck's vertex
+   * colours), valid (a byte a probe), invalid (how many are) }.
+   */
+  async function bakeProbeGrid(S, grid, opts) {
+    const g = grid, n = g.dims[0] * g.dims[1] * g.dims[2], cubes = new Uint8Array(n * 54), valid = new Uint8Array(n);
+    const dirs = sphereDirs(opts.rays), hit = {}, byte = (d) => Math.max(0, Math.min(255, Math.round((d / 2) * 255)));
+    let i = 0, invalid = 0;
+    for (let iz = 0; iz < g.dims[2]; iz++) for (let iy = 0; iy < g.dims[1]; iy++) for (let ix = 0; ix < g.dims[0]; ix++, i++) {
+      const p = [g.origin_m[0] + ix * g.spacing_m, g.origin_m[1] + iy * g.spacing_m, g.origin_m[2] + iz * g.spacing_m];
+      let ok = !!opts.inAir(p);
+      if (ok) {
+        let back = 0;
+        for (const d of dirs) if (closest(S.bvh, p[0], p[1], p[2], d[0], d[1], d[2], 1e3, hit) && hit.back) back++;
+        ok = back <= opts.invalid_fraction * dirs.length;
+      }
+      if (!ok) { invalid++; continue; }
+      valid[i] = 1;
+      const cube = probeCube(S, p, opts.key(i));
+      STATES.forEach((st, si) => cubeDisplay(S, cube, st).forEach((rgb, ax) => {
+        for (let k = 0; k < 3; k++) cubes[ax * 9 + si * 3 + k + i * 54] = byte(rgb[k]);
+      }));
+      if ((i & 31) === 0) { if (opts.onProgress) opts.onProgress(i / n); await new Promise((res) => setTimeout(res, 0)); }
+    }
+    return { cubes, valid, invalid };
+  }
+
+  /**
+   * The cube at p from one grid ({ origin_m, spacing_m, dims, cubes, valid }), as sc-core's ProbeGrid::sample: the
+   * eight probes round p with trilinear weights, invalid ones skipped and the weights renormalised, the three states
+   * blended by w ([normal, red alert, emergency]). Returns { cube: six [r, g, b] display multipliers, weight (the
+   * valid share, 0-1) } or null outside the grid (its box grown by half a spacing) or with no valid probe round p.
+   */
+  function sampleProbeGrid(g, p, w) {
+    const sp = g.spacing_m, half = sp / 2, i0 = [0, 0, 0], f = [0, 0, 0];
+    for (let k = 0; k < 3; k++) {
+      const hi = g.origin_m[k] + (g.dims[k] - 1) * sp;
+      if (!(p[k] >= g.origin_m[k] - half && p[k] <= hi + half)) return null;
+      const t = Math.min(g.dims[k] - 1, Math.max(0, (p[k] - g.origin_m[k]) / sp));
+      i0[k] = Math.min(g.dims[k] - 1, Math.floor(t)); f[k] = t - i0[k];
+    }
+    const dx = g.dims[0], dy = g.dims[1], cube = [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    let total = 0;
+    for (let c = 0; c < 8; c++) {
+      let wt = 1;
+      const idx = [0, 0, 0];
+      for (let k = 0; k < 3; k++) { const o = (c >> k) & 1; idx[k] = Math.min(i0[k] + o, g.dims[k] - 1); wt *= o ? f[k] : 1 - f[k]; }
+      if (wt <= 0) continue;
+      const at = idx[0] + dx * (idx[1] + dy * idx[2]);
+      if (g.valid[at] !== 1) continue;
+      for (let ax = 0; ax < 6; ax++) for (let ch = 0; ch < 3; ch++) {
+        const b = at * 54 + ax * 9 + ch;
+        cube[ax][ch] += wt * (g.cubes[b] * w[0] + g.cubes[b + 3] * w[1] + g.cubes[b + 6] * w[2]) * (2 / 255);
+      }
+      total += wt;
+    }
+    if (total <= 1e-6) return null;
+    for (const a of cube) for (let ch = 0; ch < 3; ch++) a[ch] /= total;
+    return { cube, weight: total };
+  }
+  /** The cube at p from whichever grid holds the most valid weight round it, the first on a tie (sc-core's
+   *  sample_ship: list the finer grids first), or null. */
+  function sampleProbes(grids, p, w) {
+    let best = null;
+    for (const g of grids) { const s = sampleProbeGrid(g, p, w); if (s && (!best || s.weight > best.weight)) best = s; }
+    return best ? best.cube : null;
+  }
+  /** The display multiplier a surface facing n takes from a cube: each axis weighted by n squared (deck_probe_vs). */
+  function cubeLight(cube, n, out) {
+    const x = n[0] >= 0 ? cube[0] : cube[1], y = n[1] >= 0 ? cube[2] : cube[3], z = n[2] >= 0 ? cube[4] : cube[5];
+    const a = n[0] * n[0], b = n[1] * n[1], c = n[2] * n[2];
+    for (let k = 0; k < 3; k++) out[k] = a * x[k] + b * y[k] + c * z[k];
+    return out;
+  }
+
+  // ------------------------------------------------------------ bake caches
+
+  /**
+   * A page's inlined bake cache (<script id="bake-cache-NAME">, written by a tool and inlined by tools/mockups/
+   * inline.py): base64 of gzip of "SCBK", version 1, the index's length, the index as JSON, then the data. Returns
+   * { index, data } or null when there is none, it is unreadable, or the browser cannot unzip.
+   */
+  async function readBakeCache(name) {
+    const el = document.getElementById("bake-cache-" + name), b64 = el ? el.textContent.trim() : "";
+    if (!b64 || typeof DecompressionStream === "undefined") return null;
+    try {
+      const bin = Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0));
+      const raw = new Uint8Array(await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer());
+      const dv = new DataView(raw.buffer);
+      if (String.fromCharCode(...raw.slice(0, 4)) !== "SCBK" || dv.getUint32(4, true) !== 1) return null;
+      const n = dv.getUint32(8, true), index = JSON.parse(new TextDecoder().decode(raw.subarray(12, 12 + n)));
+      return { index, data: raw.subarray(12 + n) };
+    } catch (e) { console.warn("bake cache " + name + " unreadable, baking live", e); return null; }
+  }
+
   /** Encode an ambient cube for one state into six display colours (0..OVERBRIGHT). */
   function cubeDisplay(S, cube, state) {
     const s = STATES.indexOf(state), ref = S.settings.reference_lux, out = [];
@@ -4434,6 +4548,7 @@
     patch, boxPatches, orientedBoxPatches, polygonPatch, patchCorners, patchesFromGeometry, patchesFromTriangles,
     tessellate, buildBVH, occluded, closest,
     scene, prepare, irradiance, bounceAt, bakeVertices, bakeAdaptive, bakeLightmap, probeCube, cubeDisplay,
+    PROBE_BYTES, sphereDirs, bakeProbeGrid, sampleProbeGrid, sampleProbes, cubeLight, readBakeCache,
     encodeLevel, srgbToLinear, hexToSrgb, hexToLinear, hash3, digest,
     toGeometry, vertexMaterial, lightmapTextures, lightmapMaterial, bakedSurfaceMaterial, atlasCanvas,
     DIRECT, AMBIENT, BOUNCE, ALL,
