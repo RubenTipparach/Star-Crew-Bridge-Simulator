@@ -4987,6 +4987,7 @@ const ICONS = {
   port: '<path d="M3 12l9-7v4h9v6h-9v4z"/>',
   stbd: '<path d="M21 12l-9-7v4H3v6h9v4z"/>',
   chasecam: '<path d="M3 7h12v10H3zM15 10l6-3v10l-6-3z"/>',
+  orbit: '<circle cx="12" cy="12" r="2"/><path d="M8.2 7.9A9 4.5 0 1 0 15.8 7.9"/><path d="M19.2 6.5L15.8 7.9L18.2 10.8"/>',
   balance: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/>',
   air_o2: '<circle cx="9" cy="12" r="5"/><path d="M17 13h3l-3 4h3"/>',
   air_co2: '<path d="M10 8a4 4 0 1 0 0 8"/><circle cx="15" cy="12" r="3.5"/><path d="M20 14h2l-2 3h2"/>',
@@ -5178,7 +5179,7 @@ const G = {
   tubes: [{ state: "READY", t: 0 }, { state: "LOADING", t: 31 }], magazine: 18, missiles: [], inbound: [],
   // Shield faces in weapons-and-shields' order: bow, stern, port, starboard, dorsal, ventral.
   weight: [1, 1, 1, 1, 1, 1], charge: [36, 36, 36, 36, 36, 36], flash: [-9, -9, -9, -9, -9, -9], hitLog: [],
-  freq: "A", shieldBy: "Science", preset: -1, shieldCam: { yaw: 62, el: 24 }, feedViewCam: { yaw: 40, el: 30 },
+  freq: "A", shieldBy: "Science", preset: -1, shieldCam: { yaw: 62, el: 24 }, feedViewCam: { yaw: 40, el: 30 }, orbit: false,
   scanning: false, ping: 0, feed: "FWD", zoom: 1,
   navRange: 20, tacRange: 5, sciRange: 20,
   // Each scanner's view, turned by dragging: yaw about the ship's dorsal axis and tilt from the panel's own, degrees.
@@ -5833,6 +5834,8 @@ function feedCone(S) {
  */
 const FEED_PAD = [["TARGET", "target"], ["FWD", "fwd"], ["CHASE", "chasecam"], ["PORT", "port"], ["AFT", "aft"], ["STBD", "stbd"]];
 let FEEDVIEW_MEMO = { key: null, svg: "" };
+/** ORBIT is on, and the chase camera with it (chase-orbit design 5). */
+function orbitOn() { return G.orbit && G.feed === "CHASE"; }
 function feedWidget(x, y) {
   const cam = G.feedViewCam, cx = x + 60, cy = y + 66, sc = 1.05, B = camBasis(cam);
   const P = (v) => [cx + v3.dot(v, B.r) * sc, cy - v3.dot(v, B.u) * sc, v3.dot(v, B.f)];
@@ -5860,6 +5863,10 @@ function feedWidget(x, y) {
   s += `</g></svg></g>`;
   // The feed buttons: any console can choose what the viewscreen shows.
   FEED_PAD.forEach(([k, ic], i) => { s += button({ x: x + (i % 3) * 41, y: y + 140 + Math.floor(i / 3) * 28, w: 38, h: 25, icon: ic, is: 15, act: `feed:${k}`, on: G.feed === k, tip: `Viewscreen: ${k.toLowerCase()}` }); });
+  // ORBIT (chase-orbit design 5): under CHASE, a third row of the pad; lit while on, unavailable without the chase
+  // camera. With it on, a drag on the viewscreen turns the camera round the ship, the wheel or a pinch moves it in or
+  // out, and O turns it on and off.
+  s += button({ x: x + 82, y: y + 196, w: 38, h: 25, icon: "orbit", is: 15, act: "orbit", on: orbitOn(), off: G.feed !== "CHASE", tip: "Orbit the ship" });
   // The zooms (viewscreen-zoom 1): a column of five left of the widget, the one in use lit.
   ZOOMS.forEach((z, i) => { s += button({ x: x - 38, y: y + i * 26, w: 34, h: 24, label: `${z}×`, fs: 11, act: `zoomto:${i}`, on: G.zoom === z, tip: "Viewscreen zoom" }); });
   return s;
@@ -7273,7 +7280,8 @@ function act(a, ev) {
   if (k === "sci") G.sciSel = v;
   if (k === "scan") G.scanning = !G.scanning;
   if (k === "freq") G.freq = "ABCD"[("ABCD".indexOf(G.freq) + 1) % 4];
-  if (k === "feed") G.feed = v;
+  if (k === "feed") { G.feed = v; G.orbit = false; }
+  if (k === "orbit" && G.feed === "CHASE") G.orbit = !G.orbit;
   if (k === "zoom") { const i = ZOOMS.reduce((b, z, j) => (Math.abs(z - G.zoom) < Math.abs(ZOOMS[b] - G.zoom) ? j : b), 0); G.zoom = ZOOMS[clamp(i + Math.sign(+v), 0, ZOOMS.length - 1)]; }
   if (k === "zoomto") G.zoom = ZOOMS[+v] ?? G.zoom;
   if (k === "compose") { G.composer.to = v; G.composer.verb = null; }
@@ -7412,6 +7420,8 @@ window.addEventListener("keydown", (e) => {
   }
   if (k === "escape") act("objclose");
   if (k === "y") act("ack");
+  // O: ORBIT on or off at any console with a viewscreen (data/input/bindings.json viewscreen.orbit).
+  if (k === "o" && station !== "gunner") act("orbit");
   render();
 });
 window.addEventListener("keyup", (e) => { const k = e.key.toLowerCase(); F.keys.delete(k); if (k === " ") G.gun.trigger = false; if (k === LEAVE_KEY.toLowerCase()) leaveDown = null; });
@@ -7496,7 +7506,7 @@ window.consoleState = function () {
     inbound: G.inbound.map((m) => ({ d: m.d, t: m.t })),
     hits: G.hitLog.map((h) => ({ d: h.d, face: h.face, age_s: G.t - h.t, through: h.through })),
     flash_age_s: G.flash.map((t) => G.t - t),
-    feed: G.feed, zoom: G.zoom, nav_km: G.navRange, tac_km: G.tacRange, sci_km: G.sciRange,
+    feed: G.feed, zoom: G.zoom, orbit_on: orbitOn(), nav_km: G.navRange, tac_km: G.tacRange, sci_km: G.sciRange,
     scan_cam: { nav: G.scanCam.nav, tac: G.scanCam.tac, sci: G.scanCam.sci }, feed_cam: G.feedViewCam,
     turrets: G.turrets.map((t) => ({ short: t.short, mode: t.mode, op: t.op, heat: t.heat, aim_deg: t.aim, firing: t.firing, cooling: !!t.cooling, ok: works(t.load) })),
     tubes: G.tubes.map((t) => ({ state: t.state, t: t.t })), tube_load_s: TUBE_LOAD_S, magazine: G.magazine, magazine_slots: MAGAZINE,

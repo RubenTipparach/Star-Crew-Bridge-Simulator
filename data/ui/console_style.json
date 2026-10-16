@@ -76,6 +76,7 @@
   "port": "<path d=\"M3 12l9-7v4h9v6h-9v4z\"/>",
   "stbd": "<path d=\"M21 12l-9-7v4H3v6h9v4z\"/>",
   "chasecam": "<path d=\"M3 7h12v10H3zM15 10l6-3v10l-6-3z\"/>",
+  "orbit": "<circle cx=\"12\" cy=\"12\" r=\"2\"/><path d=\"M8.2 7.9A9 4.5 0 1 0 15.8 7.9\"/><path d=\"M19.2 6.5L15.8 7.9L18.2 10.8\"/>",
   "balance": "<circle cx=\"12\" cy=\"12\" r=\"8\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>",
   "air_o2": "<circle cx=\"9\" cy=\"12\" r=\"5\"/><path d=\"M17 13h3l-3 4h3\"/>",
   "air_co2": "<path d=\"M10 8a4 4 0 1 0 0 8\"/><circle cx=\"15\" cy=\"12\" r=\"3.5\"/><path d=\"M20 14h2l-2 3h2\"/>",
