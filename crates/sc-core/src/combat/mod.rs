@@ -172,7 +172,7 @@ impl Station {
             Self::Gunner => "gunner",
         }
     }
-    /// What a screen calls it.
+    /// What a screen calls it, in full (ui-art-direction design 12: "Starboard laser", never an abbreviation).
     pub fn name(self) -> &'static str {
         match self {
             Self::Helm => "Helm",
@@ -180,8 +180,8 @@ impl Station {
             Self::Engineering => "Engineering",
             Self::Science => "Science",
             Self::Captain => "Captain",
-            Self::LaserPort => "Laser port",
-            Self::LaserStbd => "Laser stbd",
+            Self::LaserPort => "Port laser",
+            Self::LaserStbd => "Starboard laser",
             Self::Gunner => "Gunner",
         }
     }
@@ -755,14 +755,14 @@ impl Refusal {
         match self {
             Self::NotYourStation => "Not your station",
             Self::StationTaken => "Station taken",
-            Self::BadValue => "Bad value",
-            Self::NoSuch => "No such control",
+            Self::BadValue => "Out of range",
+            Self::NoSuch => "Not on this ship",
             Self::TubeNotReady => "Tube not ready",
             Self::NotLocked => "No lock",
             Self::OutOfCone => "Target off the bow",
             Self::MagazineEmpty => "Magazine empty",
             Self::Full => "Crew is full",
-            Self::WrongPhase => "Not now",
+            Self::WrongPhase => "Not at this stage",
             Self::Walking => "On the way",
             Self::TooFar => "Walk to the seat",
             Self::Damaged => "Damaged",

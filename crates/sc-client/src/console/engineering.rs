@@ -828,7 +828,7 @@ fn air(cv: &Canvas, cx: &mut Ctx, e: &EngView) {
     let (b, w, h) = panel(cv, cx, "AIR", grid(10.0, 2.0, 2.0, 2.0));
     let Some(air) = &e.air else {
         air_unavailable(&b, w);
-        cx.hits.add(&b, 0.0, 0.0, w, h, None, Some("Not simulated in this drill: the air is not built yet".into()));
+        cx.hits.add(&b, 0.0, 0.0, w, h, None, Some("Air".into()));
         return;
     };
     let rows = [("air_o2", "O₂"), ("air_co2", "CO₂"), ("temp", "Temperature")];
@@ -870,7 +870,7 @@ fn air_unavailable(b: &Canvas, w: f32) {
 /// that cannot act now (faint, no action), and the reason in each tip.
 fn unavailable(cv: &Canvas, cx: &mut Ctx) {
     let c = &vg::style().c;
-    let tip = "Not simulated in this drill: the power grid is not built yet";
+    let tip = "Power grid";
     for (title, g) in [
         ("POWER", grid(0.0, 0.0, 6.0, 4.0)),
         ("REACTOR", grid(6.0, 0.0, 4.0, 4.0)),

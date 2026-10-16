@@ -1,6 +1,7 @@
-//! A name over everyone aboard (openspec/changes/crew-nameplates 1-2): the name, `(NPC)` after it in the dim colour
-//! for a bot or a single player's crew, where they walk to under it, on a dark band. The walk and the drill both draw
-//! their names with this one routine; each decides who is seen (on screen, near, in line of sight).
+//! A name over everyone aboard (openspec/changes/crew-nameplates 1-2): the name, the faint crew-AI icon after it for a
+//! bot or a single player's crew (ui-art-direction Q3: never "(NPC)"), where they walk to under it, on a square plate
+//! in the screens' colours. The walk and the drill both draw their names with this one routine; each decides who is
+//! seen (on screen, near, in line of sight).
 
 use egui::{Align2, Color32, FontId, Painter, Pos2, Rect, Vec2};
 
@@ -13,10 +14,6 @@ const MAX_CHARS: usize = 28;
 /// Names show in full to this distance and fade out by the next, metres (design 2).
 const FULL_M: f32 = 20.0;
 const GONE_M: f32 = 25.0;
-
-const TEXT: Color32 = Color32::from_rgb(225, 232, 245);
-const DIM: Color32 = Color32::from_rgb(150, 160, 178);
-const AMBER: Color32 = Color32::from_rgb(242, 160, 70);
 
 /// How much of a plate shows at `dist_m` from the eye: all of it near, fading from 20 m, none past 25 m.
 pub fn fade(dist_m: f32) -> Option<f32> {
@@ -37,24 +34,27 @@ pub fn draw(painter: &Painter, at: Pos2, name: &str, npc: bool, going: Option<&s
     if k <= 0.0 {
         return;
     }
-    let fade = |c: Color32| c.gamma_multiply(k);
-    let mut job = egui::text::LayoutJob::default();
-    let font = |pt: f32| egui::TextFormat { font_id: FontId::proportional(pt), ..Default::default() };
-    job.append(&clipped(name), 0.0, egui::TextFormat { color: fade(TEXT), ..font(NAME_PT) });
-    if npc {
-        job.append(" (NPC)", 0.0, egui::TextFormat { color: fade(DIM), ..font(NAME_PT) });
-    }
-    let galley = painter.layout_job(job);
-    let going = going.map(|g| painter.layout_no_wrap(g.to_owned(), FontId::proportional(GOING_PT), fade(AMBER)));
-    let w = galley.size().x.max(going.as_ref().map_or(0.0, |g| g.size().x));
+    let c = crate::look::look().c();
+    let fade = |col: Color32| col.gamma_multiply(k);
+    let galley = painter.layout_no_wrap(clipped(name), FontId::proportional(NAME_PT), fade(c.text.0));
+    let icon = if npc { NAME_PT * 0.9 + 6.0 } else { 0.0 };
+    let going = going.map(|g| painter.layout_no_wrap(g.to_owned(), FontId::proportional(GOING_PT), fade(c.dim.0)));
+    let w = (galley.size().x + icon).max(going.as_ref().map_or(0.0, |g| g.size().x));
     let h = galley.size().y + going.as_ref().map_or(0.0, |g| g.size().y);
     let top = at.y - galley.size().y;
     let band = Rect::from_min_size(Pos2::new(at.x - w / 2.0 - 8.0, top - 3.0), Vec2::new(w + 16.0, h + 6.0));
-    painter.rect_filled(band, 5.0, Color32::from_rgba_unmultiplied(6, 9, 14, (153.0 * k) as u8));
-    painter.galley(Pos2::new(at.x - galley.size().x / 2.0, top), galley, TEXT);
+    painter.rect_filled(band, 0.0, crate::look::alpha(c.panel.0, 0.82 * k));
+    let x0 = at.x - (galley.size().x + icon) / 2.0;
+    let name_w = galley.size().x;
+    let name_h = galley.size().y;
+    painter.galley(Pos2::new(x0, top), galley, c.text.0);
+    if npc {
+        let cv = crate::vg::Canvas::new(painter.clone(), egui::Vec2::ZERO, 1.0);
+        cv.icon("auto", x0 + name_w + 6.0 + NAME_PT * 0.45, top + name_h / 2.0, NAME_PT * 0.9, fade(c.faint.0));
+    }
     if let Some(g) = going {
         let p = Align2::CENTER_TOP.anchor_size(Pos2::new(at.x, at.y), g.size()).min;
-        painter.galley(p, g, AMBER);
+        painter.galley(p, g, c.dim.0);
     }
 }
 

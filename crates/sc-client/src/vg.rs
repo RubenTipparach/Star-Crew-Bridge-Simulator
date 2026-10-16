@@ -25,8 +25,16 @@ pub const BOLD: &str = "barlow-700";
 
 /// Give egui the consoles' typeface, Barlow Semi Condensed 600 and 700, with egui's own fonts behind it for any
 /// glyph Barlow lacks (as the mockup's font stack falls back to the system's).
+///
+/// The UI's one family is Barlow (ui-art-direction design 4): egui's own Ubuntu Light leaves the game, and egui's
+/// proportional text (a name field, a list) is set in Barlow 600. Only the emoji faces stay behind it, for glyphs
+/// Barlow lacks (arrows).
 pub fn install_fonts(ctx: &egui::Context) {
     let mut defs = egui::FontDefinitions::default();
+    defs.font_data.remove("Ubuntu-Light");
+    for chain in defs.families.values_mut() {
+        chain.retain(|f| f != "Ubuntu-Light");
+    }
     for (name, bytes) in [
         (SEMIBOLD, include_bytes!("../../../assets/fonts/barlow-semi-condensed/semibold-600.ttf").as_slice()),
         (BOLD, include_bytes!("../../../assets/fonts/barlow-semi-condensed/bold-700.ttf").as_slice()),
@@ -35,6 +43,9 @@ pub fn install_fonts(ctx: &egui::Context) {
         let mut chain = vec![name.to_owned()];
         chain.extend(defs.families.get(&FontFamily::Proportional).cloned().unwrap_or_default());
         defs.families.insert(FontFamily::Name(name.into()), chain);
+    }
+    if let Some(p) = defs.families.get_mut(&FontFamily::Proportional) {
+        p.insert(0, SEMIBOLD.to_owned());
     }
     ctx.set_fonts(defs);
 }
@@ -150,12 +161,25 @@ pub struct RoomTint {
     pub dark: Hex,
 }
 
-/// One stroked piece of an icon, flattened in its 24-unit grid.
+/// One piece of an icon, flattened in its 24-unit grid: stroked, and filled where its fragment says so.
 #[derive(Clone, Debug)]
-struct IconPart {
+pub struct IconPart {
     subpaths: Vec<SubPath>,
     dash: Option<[f32; 2]>,
     width: Option<f32>,
+    /// `fill="currentColor"` (the icon's colour) or `fill="var(--accent)"` (the accent): filled as well.
+    fill: Option<Paint>,
+    /// `stroke="none"`: filled only.
+    stroked: bool,
+}
+
+/// What a filled piece of a glyph is filled with.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Paint {
+    /// The glyph's own colour.
+    Current,
+    /// The UI's accent (a mouse keycap's lit button).
+    Accent,
 }
 
 /// The consoles' look: colours, role colours and the flattened icons.
@@ -555,8 +579,8 @@ fn rrect_path(x: f32, y: f32, w: f32, h: f32, rx: f32, seg: f32) -> SubPath {
     SubPath { pts, closed: true }
 }
 
-/// An icon's SVG fragment (paths, circles and rects with their dash and width overrides), flattened.
-fn parse_icon(frag: &str) -> Vec<IconPart> {
+/// An icon's SVG fragment (paths, circles and rects with their dash, width and fill overrides), flattened.
+pub fn parse_icon(frag: &str) -> Vec<IconPart> {
     const SEG: f32 = 0.35;
     let mut parts = Vec::new();
     for el in frag.split('<').filter(|e| !e.trim().is_empty()) {
@@ -584,7 +608,13 @@ fn parse_icon(frag: &str) -> Vec<IconPart> {
             let n: Vec<f32> = v.split_whitespace().filter_map(|x| x.parse().ok()).collect();
             (n.len() == 2).then(|| [n[0], n[1]])
         });
-        parts.push(IconPart { subpaths, dash, width: attr_f(&el, "stroke-width") });
+        let fill = match attr(&el, "fill").as_deref() {
+            Some("currentColor") => Some(Paint::Current),
+            Some(f) if f.contains("accent") => Some(Paint::Accent),
+            _ => None,
+        };
+        let stroked = attr(&el, "stroke").as_deref() != Some("none");
+        parts.push(IconPart { subpaths, dash, width: attr_f(&el, "stroke-width"), fill, stroked });
     }
     parts
 }
@@ -986,9 +1016,23 @@ impl Canvas {
     /// An icon with its stroke width in icon units.
     pub fn icon_w(&self, name: &str, x: f32, y: f32, size: f32, col: Color32, sw: f32) {
         let Some(parts) = style().icons.get(name) else { return };
+        self.glyph(parts, x, y, size, col, col, sw);
+    }
+
+    /// Flattened icon parts ([`parse_icon`]) centred on (x, y), `size` across, stroked `sw` icon units in `col`; a
+    /// filled part takes `col` or `accent` as its fragment says.
+    #[allow(clippy::too_many_arguments)]
+    pub fn glyph(&self, parts: &[IconPart], x: f32, y: f32, size: f32, col: Color32, accent: Color32, sw: f32) {
         let xf = Xf::tr(x - size / 2.0, y - size / 2.0).sc(size / 24.0);
         for part in parts {
-            let mut pen = Pen::new(part.width.unwrap_or(sw), col).round();
+            if let Some(p) = part.fill {
+                self.fill(&part.subpaths, &xf, if p == Paint::Accent { accent } else { col });
+            }
+            if !part.stroked {
+                continue;
+            }
+            let c = if part.fill == Some(Paint::Accent) { accent } else { col };
+            let mut pen = Pen::new(part.width.unwrap_or(sw), c).round();
             if let Some([on, off]) = part.dash {
                 pen = pen.dash(on, off, 0.0);
             }

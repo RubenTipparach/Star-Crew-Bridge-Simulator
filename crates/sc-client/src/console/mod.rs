@@ -590,6 +590,9 @@ pub struct ConsoleView {
     pub red_alert: bool,
     /// The clock in the title band, seconds.
     pub clock_s: f64,
+    /// The mission has a time limit: the band shows its clock (ui-art-direction Q6: only then).
+    #[serde(default = "timed")]
+    pub timed: bool,
     pub hull_pct: f64,
     /// Each shield face's charge over its capacity.
     pub shield_ratio: [f64; 6],
@@ -1162,7 +1165,7 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
         cv.path(&format!("M{ax} 12h8l-3 -3M{bx} 20h-8l3 3"), Xf::ID, None, Some(Pen::new(1.5, ac)));
         let tip = match &id {
             Some(_) => format!("{} is open: swap to it", w.to_lowercase()),
-            None => format!("{} is open (its console is not in this drill yet)", w.to_lowercase()),
+            None => format!("{} is open", w.to_lowercase()),
         };
         let hit = id.map(Act::Swap);
         cx.hits.add(cv, x, 4.0, tw, 24.0, hit.map(kit::Hit::Act), Some(tip));
@@ -1223,8 +1226,15 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
     let cw = cond.len() as f32 * 9.4;
     cv.rect(1180.0 - cw - 22.0, 4.0, cw + 22.0, 24.0, 5.0, alpha(cc, 0x22 as f32 / 255.0), Some(Pen::new(1.0, cc)));
     cv.text(1170.0, 21.0, 13.0, cc, cond, T::end().ls(1.5).bold());
-    let t = v.clock_s.max(0.0).floor() as i64;
-    cv.text(1268.0, 21.0, 14.0, c.dim.0, &format!("{:02}:{:02}", t / 60, t % 60), T::end());
+    if v.timed {
+        let t = v.clock_s.max(0.0).floor() as i64;
+        cv.text(1268.0, 21.0, 14.0, c.dim.0, &format!("{:02}:{:02}", t / 60, t % 60), T::end());
+    }
+}
+
+/// A view without the field (the parity fixtures, saved from the mockup): its mission is timed, as both are.
+fn timed() -> bool {
+    true
 }
 
 /// The viewscreen's camera, in ship axes: forward, right and up (the mockup's `feedBasis`).
@@ -1580,7 +1590,7 @@ fn status_strip(cv: &Canvas, cx: &mut Ctx) {
             // Unavailable: the drill simulates no power grid yet (CLAUDE.md 10, a control's unavailable state).
             cv.icon("bolt", 330.0, 16.0, 16.0, c.faint.0);
             cv.text(344.0, 21.0, 14.0, c.faint.0, "-- MW", T::default());
-            cx.hits.add(cv, 322.0, 4.0, 90.0, 24.0, None, Some("Power: not simulated in this drill".into()));
+            cx.hits.add(cv, 322.0, 4.0, 90.0, 24.0, None, Some("Power".into()));
         }
     }
     cv.icon("speed", 432.0, 16.0, 16.0, c.text.0);
@@ -1596,7 +1606,22 @@ fn status_strip(cv: &Canvas, cx: &mut Ctx) {
     cv.text(604.0, 21.0, 14.0, bc, &nb.to_string(), T::default());
     cx.hits.add(cv, 582.0, 4.0, 40.0, 24.0, None, Some("Compartments open to space".into()));
     cv.icon("person", 1090.0, 16.0, 16.0, accent(v));
-    cv.text(1106.0, 21.0, 14.0, c.text.0, &format!("{} · {}", v.op.as_deref().unwrap_or("You"), v.word), T::default());
+    // A long name is cut with an ellipsis so the line ends inside the canvas (ui-art-direction design 13: no text off
+    // the screen); the mockup's names fit as they are.
+    let room = 1272.0 - 1106.0;
+    let wide = |t: &str| {
+        let font = egui::FontId::new(14.0 * cv.s, egui::FontFamily::Name(vg::SEMIBOLD.into()));
+        (cv.painter.layout_no_wrap(t.to_owned(), font, c.text.0).size().x + 0.5 * cv.s * t.chars().count() as f32)
+            / cv.s
+    };
+    let op = v.op.as_deref().unwrap_or("You");
+    let mut line = format!("{op} · {}", v.word);
+    let mut keep: Vec<char> = op.chars().collect();
+    while wide(&line) > room && !keep.is_empty() {
+        keep.pop();
+        line = format!("{}\u{2026} · {}", keep.iter().collect::<String>().trim_end(), v.word);
+    }
+    cv.text(1106.0, 21.0, 14.0, c.text.0, &line, T::default());
 }
 
 /// The grid cell of a panel: column, row, width and height in cells (the mockup's `grid`).

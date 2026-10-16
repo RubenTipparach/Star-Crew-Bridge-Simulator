@@ -109,6 +109,42 @@ pub fn frame_in(screen: egui::Rect) -> (Pos2, f32) {
     (screen.min + (screen.size() - f * s) / 2.0, s)
 }
 
+/// Where a group of the UI hangs from (ui-art-direction design 3): a corner, the middle of an edge, or the centre.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Anchor {
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
+    MidLeft,
+    MidRight,
+    Centre,
+}
+
+/// The one rule of the anchors (ui-art-direction design 3), beside the scale: a group `size_ref` reference pixels big,
+/// laid out in reference pixels and scaled by the frame's scale about the point of `screen` it hangs from. Returns its
+/// top left corner on `screen` and `screen`'s units a reference pixel. A corner group hangs from the screen's real
+/// corner (on an ultrawide screen the objective card sits in the corner, not the centred frame's); a centred one stays
+/// centred. Every screen around the consoles is placed by it.
+pub fn anchored(screen: egui::Rect, a: Anchor, size_ref: Vec2) -> (Pos2, f32) {
+    let r = reference();
+    let (_, k) = frame_in(screen);
+    let s = k * (r.layout_pt[0] / r.reference_px[0]) as f32;
+    let size = size_ref * s;
+    let (min, max) = (screen.min, screen.max - size);
+    let mid = screen.center() - size / 2.0;
+    let p = match a {
+        Anchor::TopLeft => min,
+        Anchor::TopRight => Pos2::new(max.x, min.y),
+        Anchor::BottomLeft => Pos2::new(min.x, max.y),
+        Anchor::BottomRight => max,
+        Anchor::MidLeft => Pos2::new(min.x, mid.y),
+        Anchor::MidRight => Pos2::new(max.x, mid.y),
+        Anchor::Centre => mid,
+    };
+    (p, s)
+}
+
 /// The output laid out on the reference frame (design 5), made by [`frame_in`] from the output's pixels and the
 /// window's size. The UI draws in layout points; this is the only place that knows the pixels, the pixel ratio or the
 /// window's real size.
@@ -205,17 +241,64 @@ pub fn texts(shapes: &[egui::epaint::ClippedShape]) -> Vec<String> {
     out
 }
 
-/// A fixed-size panel's top left corner (its outer size `outer`, points) to sit centred on `screen`, moved by
-/// `offset`. egui's anchoring places a window by its size of the frame before, so a window shown anew, or one that
-/// changed size, was drawn a frame off centre and a click then missed (browser-page-fit design 6); a panel whose size
-/// is fixed is placed by that size.
-pub fn centred(screen: egui::Rect, outer: Vec2, offset: Vec2) -> Pos2 {
-    screen.center() - outer / 2.0 + offset
-}
-
 /// The controls [`mark`]ed since the last call, layout points.
 pub fn take_marks(ctx: &egui::Context) -> Vec<(String, egui::Rect)> {
     ctx.data_mut(|d| d.remove_temp::<Vec<(String, egui::Rect)>>(egui::Id::new(MARKS))).unwrap_or_default()
+}
+
+/// egui's own widgets (the name field, a slider, a list) in the style's colours, square, in the body size: the few
+/// stock widgets the screens keep look like the rest (design 6). Sizes are the style's reference pixels as points.
+pub fn apply_look(ctx: &egui::Context) {
+    let l = crate::look::look();
+    let c = l.c();
+    let pt = 1.0 / crate::look::Look::ref_per_pt();
+    let mut style = (*ctx.style()).clone();
+    let v = &mut style.visuals;
+    *v = egui::Visuals::dark();
+    v.panel_fill = c.panel.0;
+    v.window_fill = c.panel.0;
+    v.window_stroke = egui::Stroke::new(1.0_f32, c.line.0);
+    v.window_corner_radius = egui::CornerRadius::ZERO;
+    v.window_shadow = egui::Shadow::NONE;
+    v.popup_shadow = egui::Shadow::NONE;
+    v.menu_corner_radius = egui::CornerRadius::ZERO;
+    v.extreme_bg_color = c.panel.0;
+    v.faint_bg_color = c.raised.0;
+    // Glyph coverage as alpha, unbrightened: the consoles' text then weighs what the mockup's does in a browser.
+    v.text_alpha_from_coverage = egui::epaint::AlphaFromCoverage::Linear;
+    v.selection.bg_fill = Color32::from_rgba_unmultiplied(c.accent.0.r(), c.accent.0.g(), c.accent.0.b(), 90);
+    v.selection.stroke = egui::Stroke::new(1.0_f32, c.accent.0);
+    v.text_cursor.stroke = egui::Stroke::new(2.0_f32, c.accent.0);
+    for (w, fill, edge, text) in [
+        (&mut v.widgets.noninteractive, c.panel.0, c.line.0, c.dim.0),
+        (&mut v.widgets.inactive, c.panel.0, c.line2.0, c.text.0),
+        (&mut v.widgets.hovered, c.raised.0, c.line2.0, c.text.0),
+        (&mut v.widgets.active, c.raised.0, c.accent.0, c.text.0),
+        (&mut v.widgets.open, c.raised.0, c.line2.0, c.text.0),
+    ] {
+        w.bg_fill = fill;
+        w.weak_bg_fill = fill;
+        w.bg_stroke = egui::Stroke::new(1.0_f32, edge);
+        w.fg_stroke.color = text;
+        w.corner_radius = egui::CornerRadius::ZERO;
+        w.expansion = 0.0;
+    }
+    let grid = l.f.grid_px * pt;
+    style.spacing.item_spacing = Vec2::splat(grid);
+    style.spacing.button_padding = Vec2::new(2.0 * grid, grid);
+    let body = l.f.type_.body.px * pt;
+    for (ts, size) in [
+        (egui::TextStyle::Body, body),
+        (egui::TextStyle::Button, body),
+        (egui::TextStyle::Heading, l.f.type_.title.px * pt),
+        (egui::TextStyle::Small, l.f.type_.label.px * pt),
+        (egui::TextStyle::Monospace, body),
+    ] {
+        if let Some(f) = style.text_styles.get_mut(&ts) {
+            f.size = size;
+        }
+    }
+    ctx.set_style(style);
 }
 
 fn texture_key(id: egui::TextureId) -> u64 {
@@ -251,37 +334,11 @@ pub fn key_of(code: u32) -> Option<egui::Key> {
 }
 
 impl Ui {
-    /// A context with the game's look: dark panels, rounded, the bridge's amber and lilac (consoles' palette).
+    /// A context with the game's look (ui-art-direction design 4 to 6), from `data/ui/ui_style.json`: the consoles'
+    /// typeface, opaque square panels with one hairline, the one accent for focus and selection.
     pub fn new() -> Self {
         let ctx = egui::Context::default();
-        let mut style = (*ctx.style()).clone();
-        let v = &mut style.visuals;
-        *v = egui::Visuals::dark();
-        v.panel_fill = Color32::from_rgba_premultiplied(10, 14, 22, 235);
-        v.window_fill = v.panel_fill;
-        v.extreme_bg_color = Color32::from_rgb(4, 6, 10);
-        // Glyph coverage as alpha, unbrightened: the consoles' text then weighs what the mockup's does in a browser.
-        v.text_alpha_from_coverage = egui::epaint::AlphaFromCoverage::Linear;
-        v.selection.bg_fill = Color32::from_rgb(204, 120, 40);
-        v.widgets.inactive.weak_bg_fill = Color32::from_rgb(38, 46, 66);
-        v.widgets.hovered.weak_bg_fill = Color32::from_rgb(70, 82, 120);
-        v.widgets.active.weak_bg_fill = Color32::from_rgb(230, 150, 70);
-        v.widgets.noninteractive.fg_stroke.color = Color32::from_rgb(200, 210, 225);
-        v.widgets.inactive.fg_stroke.color = Color32::from_rgb(225, 232, 245);
-        style.spacing.item_spacing = Vec2::new(10.0, 10.0);
-        style.spacing.button_padding = Vec2::new(14.0, 8.0);
-        for (ts, size) in [
-            (egui::TextStyle::Body, 18.0),
-            (egui::TextStyle::Button, 18.0),
-            (egui::TextStyle::Heading, 30.0),
-            (egui::TextStyle::Small, 13.0),
-            (egui::TextStyle::Monospace, 17.0),
-        ] {
-            if let Some(f) = style.text_styles.get_mut(&ts) {
-                f.size = size;
-            }
-        }
-        ctx.set_style(style);
+        apply_look(&ctx);
         crate::vg::install_fonts(&ctx);
         Self {
             ctx,
@@ -304,6 +361,11 @@ impl Ui {
     /// points.
     pub fn fit(&self) -> Fit {
         self.fit
+    }
+
+    /// The UI's textures as uploaded, bytes (the font atlas, the key art): ui-art-direction task 4.1's measure.
+    pub fn texture_bytes(&self) -> usize {
+        self.textures.values().map(|(_, _, px)| px.len()).sum()
     }
 
     /// Take an input event (the app calls it with every event while the UI has the input). A finger is the pointer.

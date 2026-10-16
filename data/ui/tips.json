@@ -1,0 +1,11 @@
+{
+  "schema": "starcrew.ui-tips/1",
+  "_doc": "The loading screen's tips (openspec/changes/ui-art-direction design 11): one each load, its keys as Options > Controls names them (data/input/bindings.json: @use is the use key) and its words, at most 60 characters. The first is the mockup's.",
+  "tips": [
+    { "keys": ["M"], "text": "Ship map. Drag to turn it, scroll to zoom." },
+    { "keys": ["@use"], "text": "Walk to your station and sit down to open its console." },
+    { "keys": ["hold", "@use"], "text": "Hold it at a console to stand up again." },
+    { "keys": ["Escape"], "text": "The menu lists the objectives and your crew." },
+    { "keys": ["hold", "@spray"], "text": "Spray a fire with an extinguisher from the wall." }
+  ]
+}

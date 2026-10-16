@@ -267,8 +267,11 @@ fn orient(cv: &Canvas, cx: &mut Ctx) {
         b.text(x, 125.0, 22.0, c.text.0, txt, T::mid().bold());
     }
     b.rect(8.0, 136.0, 232.0, 26.0, 5.0, rgba(0x0a1017, 1.0), Some(Pen::new(1.0, c.line.0)));
-    // The mockup names a monospace face here, but its page's CSS sets every text's family, so it reads in Barlow.
-    b.text(124.0, 154.0, 13.0, acc, &fmt_q(q), T::mid().ls(0.0));
+    // The four numbers on hover or focus only, the heading, pitch and roll above at rest (ui-art-direction Q2). The
+    // mockup names a monospace face here, but its page's CSS sets every text's family, so it reads in Barlow.
+    if cx.pointer.is_some_and(|p| b.r(8.0, 136.0, 232.0, 26.0).contains(p)) {
+        b.text(124.0, 154.0, 13.0, acc, &fmt_q(q), T::mid().ls(0.0));
+    }
     cx.hits.add(
         &b,
         8.0,

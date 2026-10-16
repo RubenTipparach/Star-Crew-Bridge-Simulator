@@ -524,6 +524,7 @@ impl Seat {
             alert: if br.red_alert { "red_alert" } else { "normal" }.into(),
             red_alert: br.red_alert,
             clock_s: snap.phase_s,
+            timed: data.mission.engage_limit_s > 0.0,
             hull_pct: tern.hull / data.tern_combat.hull_mj.max(1e-9) * 100.0,
             shield_ratio: std::array::from_fn(|f| tern.faces[f] / caps[f].max(1e-9)),
             power_mw: snap.power.as_ref().map(|p| p.rx_out_mw + p.bat_out_mw),
@@ -1687,7 +1688,18 @@ impl Seat {
                     self.act(Act::Scan, v, tern, hound, data, &mut out);
                 }
             }
-            Station::Engineering | Station::Captain => {}
+            // The captain's lighting keys, at the captain's seat only (owner, 2026-10-15: "lighting can only be changed
+            // by the captain"): the ALERT panel's command, which the server allows the Captain's station alone.
+            Station::Captain => {
+                let (normal, red) = ctx_input.keys.lights;
+                if pressed.contains(&red) && !v.red_alert {
+                    out.push(SeatAsk::Command(Command::Alert(true)));
+                }
+                if pressed.contains(&normal) && v.red_alert {
+                    out.push(SeatAsk::Command(Command::Alert(false)));
+                }
+            }
+            Station::Engineering => {}
         }
         // Y acknowledges the captain's order, on any console.
         if pressed.contains(&keys::Y) {
@@ -1698,7 +1710,12 @@ impl Seat {
 }
 
 /// The OBJECTIVES panel's rows (objectives-tab 2), each measured by the mission's rule from the snapshot.
-fn objectives_view(snap: &Snapshot, tern: &ShipSnap, hound: &ShipSnap, data: &DrillData) -> Option<ObjectivesView> {
+pub(crate) fn objectives_view(
+    snap: &Snapshot,
+    tern: &ShipSnap,
+    hound: &ShipSnap,
+    data: &DrillData,
+) -> Option<ObjectivesView> {
     let m = &data.mission;
     let enemy_hull = if hound.alive { hound.hull / data.enemy.combat.hull_mj.max(1e-9) } else { 0.0 };
     let tern_hull = tern.hull / data.tern_combat.hull_mj.max(1e-9);
@@ -2169,6 +2186,24 @@ mod tests {
             assert!(!sent, "{st:?}: the console sends nothing for it; the drill stands the player up");
             let elsewhere = vec![PointerEv::Press(Pos2::new(640.0, 400.0))];
             assert!(!leave_pressed(&hits, &elsewhere), "{st:?}: a press on the panels is not LEAVE STATION");
+        }
+    }
+
+    #[test]
+    fn the_lighting_keys_call_red_alert_at_the_captains_seat_only() {
+        // ui-art-direction design 10: 1 and 2 are the ALERT panel's command, listed under Captain alone.
+        let keys = crate::bindings::Bindings::shipped();
+        for st in [Station::Captain, Station::Helm] {
+            let mut b = Bench::new(st);
+            let v = b.view(1.0);
+            let hits = paint(&v);
+            let (t, h) = (b.snap.ships[0].clone(), b.snap.ships[1].clone());
+            // The key that changes the state it is in: 1 at red alert, 2 at normal.
+            let key = if v.red_alert { keys.lights.0 } else { keys.lights.1 };
+            let input = Input { pressed: HashSet::from([key]), keys: keys.clone(), ..Default::default() };
+            let asks = b.seat.input(&input, &hits, 1.0, &v, &t, &h, &b.data, st, 1.0);
+            let alert = asks.iter().any(|a| matches!(a, SeatAsk::Command(Command::Alert(r)) if *r != v.red_alert));
+            assert_eq!(alert, st == Station::Captain, "{st:?}: the lighting keys act only from the captain's seat");
         }
     }
 

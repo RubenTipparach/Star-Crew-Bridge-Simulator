@@ -1,24 +1,33 @@
 //! The front menu (openspec/changes/front-menu) and the lobby inside it (openspec/changes/lobby, design 1): the game
-//! opens on four buttons, Single Player, Multiplayer, Options and Quit. Single Player and Multiplayer hold the officer
+//! opens on four items, Single Player, Multiplayer, Options and Quit. Single Player and Multiplayer hold the officer
 //! panel, where the player names their officer and picks the station they would like. Its names come from
 //! `sc-core::names`; the officer is kept in `settings/officer.json` between sessions (lobby design 4).
 //!
+//! Drawn as the approved UI art direction mockup draws them (openspec/changes/ui-art-direction design 11, shots
+//! menu-after and lobby-after): a left-hung column on the Tern's key art, one primary action, stations as cards with
+//! the consoles' role icons, laid out in reference pixels and hung from the screen's middle left (`ui::anchored`).
 //! Menus name things, they don't explain them (CLAUDE.md 10): every row is a label and a control, and each panel is a
 //! fixed size whatever is typed into it.
 
-use egui::{Align2, Color32, RichText, Vec2};
+use crate::look::{self, hit, kit, look, Align, Art, KeyTok, Kit, Role};
+use crate::options::Options;
+use crate::ui::Anchor;
+use egui::Vec2;
 use sc_core::combat::Station;
 use sc_core::names::{NameData, NAME_MAX_CHARS};
 use sc_core::rng::Rng;
 use serde::{Deserialize, Serialize};
 
-use crate::options::Options;
-
-/// The stations a player can ask for, in the order the lobby shows them (`bridge-stations`).
+/// The stations a player can ask for, by their index kept in `settings/officer.json` (`bridge-stations`).
 pub const STATIONS: [&str; 8] = ["Captain", "Helm", "Tactical", "Engineering", "Science", "Comms", "Flight ops", "Any"];
 
+/// The station cards shown, as indices into [`STATIONS`], with their role icons: the stations built and Any. Comms
+/// and Flight ops are not built, so they are not shown (Q4: a shipped game does not show what it does not have).
+const CARDS: [(usize, &str); 6] =
+    [(0, "command"), (1, "helm"), (2, "tactical"), (3, "engineering"), (4, "science"), (7, "any")];
+
 /// The station a lobby choice stands for in a game: none for Any (the game picks), and none for Comms and Flight ops,
-/// whose consoles are not built (their buttons are off in a game's page).
+/// whose consoles are not built.
 pub fn station_of(i: usize) -> Option<Station> {
     match STATIONS.get(i).copied() {
         Some("Captain") => Some(Station::Captain),
@@ -55,7 +64,7 @@ pub enum LobbyAction {
     None,
     /// Start a single-player game with the officer (Beam aboard).
     Solo,
-    /// Walk the ship (Tour).
+    /// Walk the ship (Explore the ship).
     Tour,
     /// Join the drill server on the Multiplayer page.
     Join,
@@ -66,24 +75,19 @@ pub enum LobbyAction {
 /// Which page is up.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Page {
-    /// The four buttons.
+    /// The four items.
     Main,
-    /// The officer, Beam aboard and Tour.
+    /// The officer, Beam aboard and Explore the ship.
     Single,
     /// The officer, a server and Join.
     Multi,
-    /// Display.
+    /// Options' pages.
     Options,
 }
 
-/// The four buttons, in order.
+/// The four items, in order.
 const MAIN: [(&str, Page); 3] =
     [("SINGLE PLAYER", Page::Single), ("MULTIPLAYER", Page::Multi), ("OPTIONS", Page::Options)];
-
-const AMBER: Color32 = Color32::from_rgb(242, 160, 70);
-const LILAC: Color32 = Color32::from_rgb(190, 160, 230);
-const PALE: Color32 = Color32::from_rgb(200, 212, 230);
-const SLATE: Color32 = Color32::from_rgb(38, 46, 66);
 
 /// The menu's state.
 pub struct Lobby {
@@ -93,19 +97,28 @@ pub struct Lobby {
     pub page: Page,
     /// The kept options.
     pub options: Options,
+    /// The Options screen's page and tab.
+    pub screen: crate::options::Screen,
     names: NameData,
     /// The rank was chosen by hand: a station change no longer sets it.
     rank_chosen: bool,
+    /// The rank's list is open.
+    rank_open: bool,
     rolls: u64,
     seed: u64,
-    code: String,
-    /// The focused row of the four buttons (Up, Down, Enter).
+    /// The focused item of the four (Up, Down, Enter; the mouse over one).
     focus: usize,
+    /// The key art behind the menus, loaded on the first frame and freed with the lobby (design 15).
+    art: Option<Option<egui::TextureHandle>>,
+    /// What Options > Controls lists (`data/input/bindings.json`).
+    controls: crate::bindings::Controls,
+    /// The page on screen and when it came up, egui's clock: a new page fades in from the ground (design 8).
+    shown: Option<(Page, f64)>,
 }
 
 impl Lobby {
     /// A menu with the kept officer, or a freshly rolled one from `seed` (the client's clock: a new crew each start).
-    pub fn new(names: NameData, seed: u64) -> Self {
+    pub fn new(names: NameData, seed: u64, controls: crate::bindings::Controls) -> Self {
         let kept = std::fs::read_to_string(OFFICER_FILE)
             .ok()
             .and_then(|t| serde_json::from_str::<Officer>(&t).ok())
@@ -114,15 +127,25 @@ impl Lobby {
             officer: Officer { rank: 0, name: String::new(), station: 1, server: String::new() },
             page: Page::Main,
             options: Options::load(),
+            screen: crate::options::Screen::default(),
             rank_chosen: kept.is_some(),
+            rank_open: false,
             names,
             rolls: 0,
             seed,
-            code: String::new(),
             focus: 0,
+            art: None,
+            controls,
+            shown: None,
         };
         match kept {
-            Some(o) => l.officer = o,
+            // A station that is not built any more is Any.
+            Some(o) => {
+                l.officer = o;
+                if !CARDS.iter().any(|(i, _)| *i == l.officer.station) {
+                    l.officer.station = 7;
+                }
+            }
             None => {
                 l.roll();
                 l.officer.rank = l.default_rank();
@@ -134,6 +157,11 @@ impl Lobby {
     /// The session's seed (the bot crew's names and choices are drawn from it).
     pub fn seed(&self) -> u64 {
         self.seed
+    }
+
+    /// The focus one item down the four (a scripted run's Down key).
+    pub fn focus_down(&mut self) {
+        self.focus = (self.focus + 1).min(MAIN.len());
     }
 
     /// Roll a new name: a fresh stream each press.
@@ -165,228 +193,286 @@ impl Lobby {
 
     /// Draw the menu; returns what the player asked for.
     pub fn ui(&mut self, ctx: &egui::Context) -> LobbyAction {
-        egui::Area::new(egui::Id::new("title")).anchor(Align2::CENTER_TOP, Vec2::new(0.0, 48.0)).show(ctx, |ui| {
-            ui.vertical_centered(|ui| {
-                ui.label(RichText::new("STAR CREW").size(64.0).strong().color(AMBER));
-                ui.label(RichText::new("SCS TERN").size(22.0).color(LILAC));
-            });
-        });
-        // Esc on a page goes back to the four buttons.
+        if self.art.is_none() {
+            self.art = Some(look::load_art(ctx, Art::Menu));
+        }
+        // Esc on a page goes back to the four items (an open list closes first).
         if self.page != Page::Main && ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
-            self.page = Page::Main;
+            if self.rank_open {
+                self.rank_open = false;
+            } else {
+                self.page = Page::Main;
+            }
             return LobbyAction::None;
         }
-        match self.page {
-            Page::Main => self.main_page(ctx),
-            Page::Single | Page::Multi => self.game_page(ctx),
-            Page::Options => {
-                self.options_page(ctx);
-                LobbyAction::None
-            }
+        let page = self.page;
+        let now = ctx.input(|i| i.time);
+        if self.shown.is_none_or(|(p, _)| p != page) {
+            self.shown = Some((page, now));
         }
+        let since = self.shown.map_or(now, |s| s.1);
+        let fade = ((now - since) * 1000.0 / f64::from(look().f.motion_ms.screen_fade)).clamp(0.0, 1.0) as f32;
+        let veil = egui::LayerId::new(egui::Order::Foreground, egui::Id::new("lobby-fade"));
+        if fade < 1.0 {
+            look::cover(&ctx.layer_painter(veil), look::ground(1.0 - fade));
+        }
+        look::screen_area(ctx, "lobby", egui::Order::Background, |ui, screen| {
+            let art = self.art.as_ref().and_then(Option::as_ref);
+            look::cover_art(ui.painter(), screen, art, 0.5, 1.0);
+            let flat = Kit::new(ui.painter().clone(), screen.min, 1.0);
+            let (w, h) = (screen.width(), screen.height());
+            match page {
+                Page::Main => {
+                    flat.hgrad(
+                        0.0,
+                        0.0,
+                        w,
+                        h,
+                        &[
+                            (0.0, look::ground(0.96)),
+                            (0.3, look::ground(0.82)),
+                            (0.62, look::ground(0.0)),
+                            (1.0, look::ground(0.0)),
+                        ],
+                    );
+                    self.main_page(ui, screen)
+                }
+                Page::Single | Page::Multi => {
+                    flat.hgrad(
+                        0.0,
+                        0.0,
+                        w,
+                        h,
+                        &[
+                            (0.0, look::ground(0.97)),
+                            (0.36, look::ground(0.9)),
+                            (0.7, look::ground(0.15)),
+                            (1.0, look::ground(0.15)),
+                        ],
+                    );
+                    self.game_page(ui, screen)
+                }
+                Page::Options => {
+                    look::cover(ui.painter(), look::ground(0.9));
+                    let web = cfg!(target_os = "emscripten");
+                    if self.screen.show(ui, screen, &mut self.options, &self.controls, "BACK", web) {
+                        self.page = Page::Main;
+                    }
+                    LobbyAction::None
+                }
+            }
+        })
     }
 
-    /// A panel of fixed `size` in the middle, a little below the title (CLAUDE.md 10: content never changes its size).
-    fn panel(ctx: &egui::Context, id: &str, size: Vec2, add: impl FnOnce(&mut egui::Ui)) {
-        egui::Window::new(id)
-            .title_bar(false)
-            .resizable(false)
-            .fixed_size(size)
-            // Placed by its fixed size: anchored, a panel shown anew sat a frame off centre (browser-page-fit 6).
-            .fixed_pos(crate::ui::centred(ctx.content_rect(), size + Vec2::splat(2.0 * 22.0), Vec2::new(0.0, 60.0)))
-            .frame(egui::Frame::window(&ctx.style()).inner_margin(22.0).corner_radius(18.0))
-            .show(ctx, |ui| {
-                ui.set_width(size.x);
-                add(ui);
-            });
-    }
-
-    /// The four buttons (front-menu design 1): Single Player first, focused and filled, the main action.
-    fn main_page(&mut self, ctx: &egui::Context) -> LobbyAction {
+    /// The four items (front-menu design 1; ui-art-direction shot menu-after): the wordmark, the subtitle and a column
+    /// of Title items hung from the middle left, the focused one raised with the accent bar; the version bottom right.
+    fn main_page(&mut self, ui: &mut egui::Ui, screen: egui::Rect) -> LobbyAction {
+        let c = look().c();
         let web = cfg!(target_os = "emscripten");
-        // The browser cannot close its own page: there is no QUIT there (browser-page-fit design 6), rather than a
-        // button that does nothing.
+        // The browser cannot close its own page: there is no QUIT there (browser-page-fit design 6), rather than an
+        // item that does nothing.
         let rows = if web { MAIN.len() } else { MAIN.len() + 1 };
-        let (up, down, enter) = ctx.input(|i| {
+        let (up, down, enter) = ui.input(|i| {
             (i.key_pressed(egui::Key::ArrowUp), i.key_pressed(egui::Key::ArrowDown), i.key_pressed(egui::Key::Enter))
         });
-        let last = rows - 1;
         if up {
             self.focus = self.focus.saturating_sub(1);
         }
         if down {
-            self.focus = (self.focus + 1).min(last);
+            self.focus = (self.focus + 1).min(rows - 1);
         }
-        let mut action = LobbyAction::None;
+        let k = kit(ui.painter(), screen, Anchor::MidLeft, Vec2::new(760.0, 1080.0));
+        // The wordmark is art, not type (design 4): 128 px, two lines 0.9 apart, one picture.
+        k.wordmark(96.0, 150.0, 128.0, "STAR\nCREW");
+        k.track_em(0.42).text(Role::Label, 96.0, 402.4, c.dim.0, "Bridge simulator", Align::Start);
+        let item_h = look().f.sizes_px.item_h;
         let mut go = None;
-        Self::panel(ctx, "menu", Vec2::new(380.0, 316.0), |ui| {
-            ui.spacing_mut().item_spacing.y = 16.0;
-            // Each word centred in its button.
-            ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
-                for i in 0..rows {
-                    let (word, page) = MAIN.get(i).map_or(("QUIT", None), |(w, p)| (*w, Some(*p)));
-                    let main = i == 0;
-                    let focused = i == self.focus;
-                    let colour = if main { Color32::BLACK } else { PALE };
-                    let b = egui::Button::new(RichText::new(word).size(24.0).strong().color(colour))
-                        .min_size(Vec2::new(380.0, 64.0))
-                        .corner_radius(32.0)
-                        .fill(if main { AMBER } else { SLATE })
-                        .stroke(egui::Stroke::new(if focused { 3.0_f32 } else { 0.0 }, LILAC));
-                    let clicked = crate::ui::mark(word, ui.add(b)).clicked() || (enter && focused);
-                    if clicked {
-                        self.focus = i;
-                        match page {
-                            Some(p) => go = Some(p),
-                            None => action = LobbyAction::Quit,
-                        }
-                    }
+        let mut action = LobbyAction::None;
+        for i in 0..rows {
+            let (word, page) = MAIN.get(i).map_or(("QUIT", None), |(w, p)| (*w, Some(*p)));
+            let y = 546.4 + i as f32 * item_h;
+            let r = hit(ui, k.r(96.0, y, 520.0, item_h), word);
+            if r.hovered() {
+                self.focus = i;
+            }
+            k.item(96.0, y, 520.0, word, i == self.focus, Role::Title);
+            if r.clicked() || (enter && i == self.focus) {
+                self.focus = i;
+                match page {
+                    Some(p) => go = Some(p),
+                    None => action = LobbyAction::Quit,
                 }
-            });
-        });
+            }
+        }
+        let br = kit(ui.painter(), screen, Anchor::BottomRight, Vec2::new(640.0, 80.0));
+        let version = env!("CARGO_PKG_VERSION").rsplit_once('.').map_or(env!("CARGO_PKG_VERSION"), |v| v.0);
+        br.text(
+            Role::Label,
+            640.0 - 96.0,
+            80.0 - 54.0 - br.line(Role::Label),
+            c.faint.0,
+            &format!("Early access {version}"),
+            Align::End,
+        );
         if let Some(p) = go {
             self.page = p;
         }
         action
     }
 
-    /// Single Player and Multiplayer (front-menu design 2 and 3): the officer panel with Back, then the page's actions.
-    fn game_page(&mut self, ctx: &egui::Context) -> LobbyAction {
-        let mut action = LobbyAction::None;
+    /// Single Player and Multiplayer (front-menu design 2 and 3; ui-art-direction shot lobby-after): Esc Back, your
+    /// officer (rank, name, the dice), the station cards, then the page's actions.
+    fn game_page(&mut self, ui: &mut egui::Ui, screen: egui::Rect) -> LobbyAction {
+        let (c, sz) = (look().c(), &look().f.sizes_px);
         let single = self.page == Page::Single;
-        let size = Vec2::new(620.0, 470.0);
-        let mut back = false;
-        Self::panel(ctx, "lobby", size, |ui| {
-            ui.horizontal(|ui| {
-                let b = egui::Button::new(RichText::new("BACK").color(PALE)).corner_radius(14.0);
-                if crate::ui::mark("BACK", ui.add(b)).clicked() {
-                    back = true;
-                }
-                ui.add_space(8.0);
-                let head = if single { "SINGLE PLAYER" } else { "MULTIPLAYER" };
-                ui.label(RichText::new(head).size(20.0).color(LILAC).strong());
-            });
-            ui.add_space(6.0);
-            ui.label(RichText::new("OFFICER").size(14.0).color(AMBER).strong());
-            ui.horizontal(|ui| {
-                let ranks: Vec<String> = self.names.ranks.iter().map(|r| r.name.clone()).collect();
-                egui::ComboBox::from_id_salt("rank").width(230.0).selected_text(&ranks[self.officer.rank]).show_ui(
-                    ui,
-                    |ui| {
-                        for (i, r) in ranks.iter().enumerate() {
-                            if ui.selectable_value(&mut self.officer.rank, i, r).clicked() {
-                                self.rank_chosen = true;
-                            }
-                        }
-                    },
-                );
-                let name = egui::TextEdit::singleline(&mut self.officer.name)
-                    .char_limit(NAME_MAX_CHARS)
-                    .desired_width(250.0)
-                    .font(egui::TextStyle::Body);
-                ui.add(name);
-                if ui.add(egui::Button::new(RichText::new("Roll").color(PALE)).corner_radius(14.0)).clicked() {
-                    self.roll();
-                }
-            });
-            ui.add_space(8.0);
-            ui.label(RichText::new("STATION").size(14.0).color(AMBER).strong());
-            egui::Grid::new("stations").num_columns(4).spacing(Vec2::new(10.0, 10.0)).show(ui, |ui| {
-                for (i, s) in STATIONS.iter().enumerate() {
-                    let on = self.officer.station == i;
-                    // A game seats the player only where a console is built (Any: the game picks).
-                    let built = station_of(i).is_some() || *s == "Any";
-                    let b = egui::Button::new(RichText::new(*s).color(if on { Color32::BLACK } else { PALE }))
-                        .min_size(Vec2::new(140.0, 36.0))
-                        .corner_radius(18.0)
-                        .fill(if on { LILAC } else { SLATE });
-                    if ui.add_enabled(built, b).clicked() {
-                        self.officer.station = i;
-                        if !self.rank_chosen {
-                            self.officer.rank = self.default_rank();
-                        }
-                    }
-                    if i % 4 == 3 {
-                        ui.end_row();
-                    }
-                }
-            });
-            ui.add_space(14.0);
-            let ready = self.ready();
-            if single {
-                // The main action is the biggest control (CLAUDE.md 10).
-                let beam = egui::Button::new(RichText::new("BEAM ABOARD").size(28.0).strong().color(Color32::BLACK))
-                    .min_size(Vec2::new(size.x, 64.0))
-                    .corner_radius(32.0)
-                    .fill(AMBER);
-                if crate::ui::mark("BEAM ABOARD", ui.add_enabled(ready, beam)).clicked() {
-                    action = LobbyAction::Solo;
-                }
-                ui.add_space(8.0);
-                let tour = egui::Button::new(RichText::new("TOUR").size(18.0).strong().color(PALE))
-                    .min_size(Vec2::new(size.x, 40.0))
-                    .corner_radius(20.0)
-                    .fill(SLATE);
-                if crate::ui::mark("TOUR", ui.add_enabled(ready, tour)).clicked() {
-                    action = LobbyAction::Tour;
-                }
-            } else {
-                ui.horizontal(|ui| {
-                    ui.label(RichText::new("SERVER").size(14.0).color(AMBER).strong());
-                    let field = egui::TextEdit::singleline(&mut self.officer.server)
-                        .char_limit(64)
-                        .desired_width(360.0)
-                        .hint_text("192.168.1.20");
-                    ui.add(field);
-                });
-                ui.add_space(8.0);
-                let join = egui::Button::new(RichText::new("JOIN").size(28.0).strong().color(Color32::BLACK))
-                    .min_size(Vec2::new(size.x, 64.0))
-                    .corner_radius(32.0)
-                    .fill(AMBER);
-                if ui.add_enabled(ready && !self.officer.server.trim().is_empty(), join).clicked() {
-                    action = LobbyAction::Join;
-                }
-                ui.add_space(8.0);
-                ui.horizontal(|ui| {
-                    ui.label(RichText::new("CODE").size(14.0).color(AMBER).strong());
-                    ui.add_enabled(
-                        false,
-                        egui::TextEdit::singleline(&mut self.code).char_limit(6).desired_width(110.0),
-                    );
-                    ui.add_enabled(false, egui::Button::new("Join").corner_radius(14.0));
-                });
-            }
-        });
-        if back {
+        let k = kit(ui.painter(), screen, Anchor::MidLeft, Vec2::new(840.0, 1080.0));
+        let mut action = LobbyAction::None;
+        // Esc Back.
+        let w = k.keys(96.0, 84.0, &[KeyTok::Key("Esc".into())]);
+        let bw = k.text_mid(Role::Label, 96.0 + w + 12.0, 84.0, c.dim.0, "Back", Align::Start);
+        if hit(ui, k.r(96.0, 62.0, w + 12.0 + bw, 44.0), "BACK").clicked() {
             self.page = Page::Main;
+            return action;
         }
-        let enter = ctx.input(|i| i.key_pressed(egui::Key::Enter)) && !ctx.wants_keyboard_input();
+        k.text(
+            Role::Label,
+            96.0,
+            178.0,
+            c.accent.0,
+            if single { "Single player" } else { "Multiplayer" },
+            Align::Start,
+        );
+        k.text(Role::Title, 96.0, 210.0, c.text.0, "Your officer", Align::Start);
+        // Rank, name and the dice.
+        let y = 278.0;
+        k.panel(96.0, y, 220.0, 64.0);
+        let rank = self.names.ranks[self.officer.rank].name.clone();
+        k.text_mid(Role::Body, 116.0, y + 32.0, c.text.0, &rank, Align::Start);
+        k.glyph("chevron", 96.0 + 220.0 - 31.0, y + 32.0, 22.0, c.dim.0);
+        let rank_hit = hit(ui, k.r(96.0, y, 220.0, 64.0), "rank");
+        k.cv.rect(324.0, y, 360.0, 64.0, 0.0, c.panel.0, Some(crate::vg::Pen::new(1.0, c.line2.0)));
+        let field = k.r(344.0, y + 8.0, 320.0, 48.0);
+        let font = egui::FontId::new(k.size(Role::Body) * k.cv.s, egui::FontFamily::Name(crate::vg::SEMIBOLD.into()));
+        let name = egui::TextEdit::singleline(&mut self.officer.name)
+            .char_limit(NAME_MAX_CHARS)
+            .frame(false)
+            .font(font)
+            .text_color(c.text.0)
+            .vertical_align(egui::Align::Center);
+        ui.put(field, name);
+        k.panel(692.0, y, 64.0, 64.0);
+        k.glyph("dice", 724.0, y + 32.0, 30.0, c.text.0);
+        if hit(ui, k.r(692.0, y, 64.0, 64.0), "New name").clicked() {
+            self.roll();
+        }
+        k.text(Role::Label, 96.0, 390.0, c.dim.0, "Station", Align::Start);
+        let cards_top = 430.0;
+        for (n, (i, role)) in CARDS.iter().enumerate() {
+            let (cx, cy) = (96.0 + (n % 4) as f32 * 160.0, cards_top + (n / 4) as f32 * 120.0);
+            let on = self.officer.station == *i;
+            if on {
+                k.cv.rect(cx, cy, 152.0, 112.0, 0.0, c.raised.0, Some(crate::vg::Pen::new(1.0, c.accent.0)));
+                k.fill(cx, cy + 108.0, 152.0, 4.0, c.accent.0);
+            } else {
+                k.panel(cx, cy, 152.0, 112.0);
+            }
+            let col = if *role == "any" { c.dim.0 } else { look().role(role) };
+            k.role_icon(role, cx + 76.0, cy + 38.0, 36.0, col);
+            let word = STATIONS[*i];
+            k.track_em(0.1).text(
+                Role::Label,
+                cx + 76.0 + 1.0,
+                cy + 68.0,
+                if on { c.text.0 } else { c.dim.0 },
+                word,
+                Align::Middle,
+            );
+            if !self.rank_open && hit(ui, k.r(cx, cy, 152.0, 112.0), &format!("station {word}")).clicked() {
+                self.officer.station = *i;
+                if !self.rank_chosen {
+                    self.officer.rank = self.default_rank();
+                }
+            }
+        }
+        let ready = self.ready();
+        let primary = |k: &Kit, ui: &mut egui::Ui, y: f32, word: &str| -> bool {
+            let k = if ready { k.clone() } else { k.faded(0.45) };
+            k.fill(96.0, y, 632.0, sz.primary_h, c.accent.0);
+            k.text_mid(Role::Title, 96.0 + 316.0, y + sz.primary_h / 2.0, c.ink.0, word, Align::Middle);
+            hit(ui, k.r(96.0, y, 632.0, sz.primary_h), &word.to_uppercase()).clicked() && ready
+        };
+        if single {
+            // The main action is the biggest control (CLAUDE.md 10).
+            let beam_y = cards_top + 232.0 + 56.0;
+            if primary(&k, ui, beam_y, "Beam aboard") {
+                action = LobbyAction::Solo;
+            }
+            let ey = beam_y + sz.primary_h + 12.0;
+            k.edge(96.0, ey, 632.0, sz.secondary_h, c.line2.0);
+            k.text_mid(
+                Role::Label,
+                96.0 + 316.0,
+                ey + sz.secondary_h / 2.0,
+                c.text.0,
+                "Explore the ship",
+                Align::Middle,
+            );
+            if hit(ui, k.r(96.0, ey, 632.0, sz.secondary_h), "EXPLORE THE SHIP").clicked() && ready {
+                action = LobbyAction::Tour;
+            }
+        } else {
+            let sy = cards_top + 232.0 + 40.0;
+            k.text(Role::Label, 96.0, sy, c.dim.0, "Server", Align::Start);
+            let fy = sy + 40.0;
+            k.cv.rect(96.0, fy, 632.0, 64.0, 0.0, c.panel.0, Some(crate::vg::Pen::new(1.0, c.line2.0)));
+            let font =
+                egui::FontId::new(k.size(Role::Body) * k.cv.s, egui::FontFamily::Name(crate::vg::SEMIBOLD.into()));
+            let server = egui::TextEdit::singleline(&mut self.officer.server)
+                .char_limit(64)
+                .frame(false)
+                .font(font)
+                .text_color(c.text.0)
+                .vertical_align(egui::Align::Center);
+            ui.put(k.r(116.0, fy + 8.0, 592.0, 48.0), server);
+            let jy = fy + 64.0 + 24.0;
+            let can = ready && !self.officer.server.trim().is_empty();
+            let jk = if can { k.clone() } else { k.faded(0.45) };
+            jk.fill(96.0, jy, 632.0, sz.primary_h, c.accent.0);
+            jk.text_mid(Role::Title, 96.0 + 316.0, jy + sz.primary_h / 2.0, c.ink.0, "Join", Align::Middle);
+            if hit(ui, k.r(96.0, jy, 632.0, sz.primary_h), "JOIN").clicked() && can {
+                action = LobbyAction::Join;
+            }
+        }
+        // The rank's list, over the cards, last so it takes the clicks.
+        if rank_hit.clicked() {
+            self.rank_open = !self.rank_open;
+        }
+        if self.rank_open {
+            let ranks: Vec<String> = self.names.ranks.iter().map(|r| r.name.clone()).collect();
+            let ly = y + 64.0;
+            k.panel(96.0, ly, 220.0, 56.0 * ranks.len() as f32);
+            for (i, r) in ranks.iter().enumerate() {
+                let ry = ly + 56.0 * i as f32;
+                let h = hit(ui, k.r(96.0, ry, 220.0, 56.0), &format!("rank {r}"));
+                if h.hovered() || i == self.officer.rank {
+                    k.fill(97.0, ry, 218.0, 56.0, c.raised.0);
+                }
+                if i == self.officer.rank {
+                    k.bar(96.0, ry, 56.0);
+                }
+                k.text_mid(Role::Body, 116.0, ry + 28.0, c.text.0, r, Align::Start);
+                if h.clicked() {
+                    self.officer.rank = i;
+                    self.rank_chosen = true;
+                    self.rank_open = false;
+                }
+            }
+        }
+        let enter = ui.input(|i| i.key_pressed(egui::Key::Enter)) && !ui.ctx().wants_keyboard_input();
         if enter && self.ready() && single {
             action = LobbyAction::Solo;
         }
         action
-    }
-
-    /// Options (front-menu design 4, game-menu 3): its rows, applied at once and kept.
-    fn options_page(&mut self, ctx: &egui::Context) {
-        let mut back = false;
-        let options = &mut self.options;
-        Self::panel(ctx, "options", Vec2::new(560.0, 300.0), |ui| {
-            ui.horizontal(|ui| {
-                let b = egui::Button::new(RichText::new("BACK").color(PALE)).corner_radius(14.0);
-                if crate::ui::mark("BACK", ui.add(b)).clicked() {
-                    back = true;
-                }
-                ui.add_space(8.0);
-                ui.label(RichText::new("OPTIONS").size(20.0).color(LILAC).strong());
-            });
-            ui.add_space(18.0);
-            options.rows(ui);
-        });
-        if back {
-            self.page = Page::Main;
-        }
     }
 
     fn ready(&self) -> bool {

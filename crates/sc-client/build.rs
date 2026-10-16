@@ -1,6 +1,6 @@
 //! The browser build's link (engine-stack design 10a): only for `wasm32-unknown-emscripten`, nothing
 //! elsewhere. WebGL 2 (OpenGL ES 3.0) and nothing older, a heap that grows, the whole of `data/` embedded,
-//! and `web/pre.js`, which fetches the compressed deck and unpacks it into the page's file system before
+//! the menus' key art (`assets/ui`), and `web/pre.js`, which fetches the compressed deck and unpacks it into the page's file system before
 //! `main` runs, so the client reads `compiled/tern.deck` and every data file as it does on a Pi.
 //!
 //! All of `data/` (about 1.3 MB of JSON), not a list of files: a list fell behind once already, when the walk
@@ -34,4 +34,8 @@ fn main() {
     let data = root.join("data");
     println!("cargo:rerun-if-changed={}", data.display());
     println!("cargo:rustc-link-arg-bins=--embed-file={}@/data", data.display());
+    // The menus' and the loading screen's key art (openspec/changes/ui-art-direction design 15), read as on a Pi.
+    let art = root.join("assets/ui");
+    println!("cargo:rerun-if-changed={}", art.display());
+    println!("cargo:rustc-link-arg-bins=--embed-file={}@/assets/ui", art.display());
 }

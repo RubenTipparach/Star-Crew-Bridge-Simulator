@@ -27,6 +27,9 @@
 </style>
 <!-- INLINE font:barlow-semi-condensed END -->
 <style>
+  /* The helm's quaternion shows on hover or focus only (ui-art-direction Q2). */
+  .qbox .qnum { visibility: hidden; }
+  .qbox:hover .qnum, .qbox:focus-within .qnum { visibility: visible; }
   :root {
     --bg: #04060a; --chrome: #0b1017; --fg: #e8eef6; --dim: #6f7f94; --line: #1f2a37;
     --panel: #0c121a; --panel2: #121a25; --ok: #3ddc84; --warn: #ffc542; --danger: #ff4757;
@@ -6330,8 +6333,9 @@ function helm() {
       b += thumbwheel(cx, 16, 84, F.oe[k], k, word);
       b += text(cx, 125, 22, C.text, val, { a: "middle", w: 700 });
     });
-    b += `<g${tipAttr("The order as a quaternion: w, x, y, z (ship axes to reference axes)")}><rect x="8" y="136" width="232" height="26" rx="5" fill="#0a1017" stroke="${C.line}"/>`;
-    b += `<text x="124" y="154" font-size="13" fill="${accent()}" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace" xml:space="preserve">${esc(fmtQ(q))}</text></g>`;
+    // The four numbers on hover or focus only, the heading, pitch and roll above at rest (ui-art-direction Q2, owner 2026-10-16).
+    b += `<g class="qbox"${tipAttr("The order as a quaternion: w, x, y, z (ship axes to reference axes)")}><rect x="8" y="136" width="232" height="26" rx="5" fill="#0a1017" stroke="${C.line}"/>`;
+    b += `<text class="qnum" x="124" y="154" font-size="13" fill="${accent()}" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace" xml:space="preserve">${esc(fmtQ(q))}</text></g>`;
     const active = F.orderActive, held = active && F.plan && F.plan.held;
     const go = active ? (held ? "HELD" : `${Math.ceil(F.plan ? F.plan.time : plan.time)} s`) : "GO";
     b += button({ x: 250, y: 2, w: w - 260, h: 68, label: go, act: "ogo", on: active, fs: 24, tip: active ? "Holding this attitude; the stick cancels it" : `Turn there: ${plan.angle.toFixed(0)}° in ${plan.time.toFixed(0)} s` });
