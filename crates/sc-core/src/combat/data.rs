@@ -1234,7 +1234,7 @@ pub const DRILL_FILES: [&str; DRILL_FILE_COUNT] = [
     crate::combat::chat::CHAT_FILE,
     "data/ships/tern/jump.json",
     // The one star system so far (patrol-mission design 2); a patrol names it and must name this one.
-    "data/space/systems/shoals.json",
+    crate::system::HOME_FILE,
 ];
 
 /// `atmosphere.json`'s `thermal.initial_k`: a room's air temperature until life support runs, K. The rest of the
