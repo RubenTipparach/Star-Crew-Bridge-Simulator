@@ -265,11 +265,11 @@ of the same strength instead. Interiors are untouched (baked, CLAUDE.md 9).
 
 ## 7. Drawn first, never over a ship
 
-The owner's rule (stars must never draw in front of ships) holds by order: each pass clears, draws the sky mesh, the
-faint stars, the sun and the planet in one program with the depth test and depth writes off, then the vector stars'
-lines and heads, also with no depth, then clears depth (or draws everything else with the depth test on over a depth
-cleared to far) and draws every ship, station, prop and room. Nothing in the sky writes depth, and nothing in the world
-is drawn before it. The motes and jump streaks that live in the world are drawn after the ships with the depth test on.
+The owner's rule (stars must never draw in front of ships) holds by depth, whatever the order (`sky-behind-solids`, as
+built): every draw of the sky (the mesh, the faint stars, the vector stars' lines and heads) puts its vertices on the
+far plane (clip z = w) and takes `sc_render::sky_layer_depth`, tested less-or-equal and never written, so it shows
+only where nothing solid has written a nearer depth. Each pass draws the sky first, then every ship, station, prop and
+room. The motes and jump streaks that live in the world are drawn after the ships with the depth test on.
 The windows and the viewscreen feed are the same draw (`patrol-mission` 8 of 11.1). The other agent's fix in hand to
 `draw_sky` and the drill's order is kept as it is; this change only adds to the sky pass.
 
@@ -327,10 +327,82 @@ Questions (to the survey, with these shots):
 - **Q5. The mesh budget: 8,000 vertices a sky, or 4,000 for the 1 GB Pi?** Shot `A-mesh`. Recommendation: 8,000 until
   the probe says otherwise (the buffers are 330 KB either way within a factor of two).
 
-## 11. Proven, and not
+### Open questions
+
+The survey's questions NS1 to NS5 are Q1 to Q5 above. The survey closed on 2026-10-16 with all five blank; by its
+rule a blank is the recommendation accepted, so each stands as its recommendation (the owner, the same day: "love the
+mockup of the nebula", then "Implement new space changes").
+
+| Id | Question | Answer | Status |
+| --- | --- | --- | --- |
+| NS1 (Q1) | Which sky for the Shoals | A, Bloom: the default sky, named by `data/space/systems/shoals.json`'s `sky`; the four skies stay in `data/space/skies/`, any system names any of them | (recommendation accepted), 2026-10-16 |
+| NS2 (Q2) | Which turns streak the stars | Any turn of the view, the ship's or the player's head (FreeSpace 2's `StarField.cpp`: the streak is the camera's rotation); a cut never streaks | (recommendation accepted), 2026-10-16 |
+| NS3 (Q3) | How strong the streaks | FreeSpace 2's: the 1.7 degree cap, dimmed to half and whitened, as `data/space/starfield.json` has it | (recommendation accepted), 2026-10-16 |
+| NS4 (Q4) | The sky's colour on the hulls | On: the sky's ambient cube tints the outside ambient (design 6) | (recommendation accepted), 2026-10-16 |
+| NS5 (Q5) | The mesh budget | About 8,000 vertices, one draw call (`sc_core::sky::MAX_SKY_VERTICES`) | (recommendation accepted), 2026-10-16 |
+
+## 11. As built (2026-10-16)
+
+The engine build of this design, after the owner's "Implement new space changes". Where it differs from the sections
+above, this section is what the game does.
+
+- **The data.** `sc-core::sky` loads `data/space/starfield.json` (`Starfield`) and a sky (`NebulaSky::load`): the base64
+  rows decoded, the octahedral directions unpacked (the generator's `oct_decode`), the counts held to the rows, every
+  index a vertex, every star unit length with a class and a colour the starfield has, at most 8,000 vertices
+  (`MAX_SKY_VERTICES`); the first problem stops startup naming the file and the field. `sc-tools check-data` loads the
+  starfield and every sky in `data/space/skies/`, and refuses a home system whose sky is not one of them.
+  `starfield.json` gains `streak.faint_floor` (0.3: the faint stars' 30 % at the cap, 5.5), which the mockup now reads
+  too.
+- **Which sky.** A system file names its sky (`sky`, required); the Shoals names `bloom` (NS1).
+  `sc_core::system::HOME_FILE` is the home system, whose sky the walk, the lobby and the drill draw; a patrol sets its
+  own system's (`outside::set_system_sky`). Only one system exists, so no jump changes the sky yet (task 3.2's settle).
+- **The sky program**, `shaders/sky.glsl`: the mesh (`sky`, 16 bytes a vertex: direction and the four bytes) draws the
+  vertex colour, the sun, the planet (with the nebula's 6 % on its night side, as the mockup) and the dither, and
+  writes in alpha the share of faint stars that may show there: `(1 - hide) x` the turn's fade, 0 on the planet. The
+  faint stars are a second draw (`faint`), one triangle over the target, added as `source x destination alpha`. They
+  were first drawn in the mesh's own program, and that cost twice as much: on a mesh of small triangles a pixel on an
+  edge is shaded once for each triangle touching it, and the faint stars are the sky's dearest per-pixel work (the
+  benchmark below). The full-screen sky triangle is retired: with no sky set the mesh is an octahedron of black, which
+  draws the old sky's look through the same program.
+- **The streak in the vertex shader** (`star_lines`, `star_heads`), the mockup's line for line: two vertices a star for
+  `GL_LINES`, one a 2 px or 3 px star for `GL_POINTS`, alpha-blended. Each view's last rotation and clock are kept by
+  the renderer, keyed by the view's target (`Renderer::draw_sky`), so the bridge's windows, the viewscreen's feed and
+  the chase camera each streak by their own turn. `sc_render::sky::streak_frame` sets the frame's numbers: `tail_s`
+  over the frame's seconds, and a cut (no tail) on a view's first frame, when no time passed, or on a turn faster than
+  `cut_deg_s`; sitting down and a feed's switch are cuts by that rate (a jump of 12 degrees or more in a 60th of a
+  second), not by a separate call. Any turn of the view streaks (NS2), at FreeSpace 2's strength (NS3).
+- **The hull tint** (NS4). `outside::sky_tint` turns the sky's ambient cube into each object's frame and divides it by
+  the sky's strength, both as display values: the sky gives the ambient its colour and its lean, the bake keeps how
+  strong it is. It multiplies the ambient share of the Tern's hull relight (a new `Relight::tint` beside the bake's
+  sun, Half-Life 2's ambient cube on the normal) and the flat ambient of `outside::sun_cube` (the Hound, the Jackals,
+  the relay). A hull under a station's roof, and a sister ship at a berth, take no tint. The spacedocks keep their own
+  lighting model (`stations.rs`) for now.
+- **Not built**: the motes (5.3) and the jump's streaks (5.4), because `patrol-mission` 11.4 and 11.5 are not in the
+  engine yet; they take the star program when they are.
+
+### Measured on the Pi 5
+
+`docs/benchmarks/2026-10-16-nebula-skies-pi5/` (Pi 1, 8 GB, release builds, interleaved, no throttling):
+
+| | Before | After | Spread |
+| --- | ---: | ---: | ---: |
+| One view's sky at 1280 x 720, MSAA 4x (`sc-probe --scenes 10`), frame p50 | 20.45 ms (the old sky) | 21.45 ms (Bloom and its stars) | 0.6-1.1 ms |
+| The game, the captain's film in real time at 2560 x 1080, frame p50 | 14.25 ms | 14.83 ms | 0.05 ms |
+| The game, frame p95 / p99 | 23.89 / 34.34 ms | 24.47 / 34.38 ms | |
+
+The sky's cost a view: one mesh of 7,993 vertices and 15,982 triangles, the faint stars' triangle, 1,600 lines and 226
+heads: four draws (three more than the old sky's one), about 305 KB of buffers, no texture, about 1 ms of GPU.
+
+## 12. Proven, and not
 
 - Proven by the mockup: the look, the data format round trip (the page decodes the generator's files), the streak rule
-  in a vertex shader, the draw order. Not proven: anything about the Pi's speed, `GL_LINES` quality on the VideoCore
-  VII, the engine's integration.
+  in a vertex shader, the draw order.
+- Proven by the engine (2026-10-16): the files load and are refused when bad (`sc-core::sky`'s tests, `check-data`);
+  every shipped sky is one closed sphere wound toward its centre; the program's colour at a vertex is the file's byte
+  for byte; no part of the sky, streaking or not, changes a pixel a solid covers through a feed or a bridge window; a
+  star at rest is a point, a tail grows with the turn and stops at the cap, a cut draws a point and the planet hides a
+  star (the render tests, measured in pixels on the GPU); the cost on the Pi (above). `GL_LINES` on the VideoCore VII
+  draw clean 1 px lines (`docs/screenshots/engine/nebula-skies/`). Not proven: a 1 GB Pi; 4,000 against 8,000
+  vertices.
 - Unconfirmed from sources: FreeSpace 1's own code (1.3), Homeworld 2's vertex counts and who painted Homeworld's skies
   (1.1, 1.2), how Wing Commander streaked its stars.

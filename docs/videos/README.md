@@ -217,3 +217,21 @@ and the wheel would; the rig smooths it as it does a player's. Shots in `docs/sc
 | 0:24-0:34 | ORBIT on (lit): once round the ship, below and above it, in and out | 3, 4, 5 |
 | 0:34-0:37 | ORBIT off: the camera eases back to the chase position | 6 |
 | 0:37-0:45 | On foot behind the chair: the bridge's main viewscreen shows the captain's orbit | 7 |
+
+## `2026-10-16-nebula-skies-pi5.mp4` (45 s, 1280 x 720, 30 fps; `nebula-skies`)
+
+The nebula sky in the engine: the Shoals' sky A, Bloom, and its vector stars, filmed with `sc-client --headless --solo
+--station captain --film-orbit --shots DIR` on Pi 1 (Pi 5 8 GB) and `tools/video/film.sh`, then scaled and encoded
+H.264 High, yuv420p. The film steps the game 1/30 s a frame, so it shows what is drawn, not the Pi's frame rate (that
+is `docs/benchmarks/2026-10-16-nebula-skies-pi5/`). Shots in `docs/screenshots/engine/nebula-skies/`.
+
+| Time | Shows | Shot |
+| --- | --- | --- |
+| 0:00-0:06 | The walk to the captain's chair on the bridge, the nebula in the viewscreens | |
+| 0:06-0:13 | Seated: the console comes up, the countdown | |
+| 0:13-0:20 | FWD, then CHASE on: the Tern in front of the cloud and the sun; the stars streak as the camera turns with the ship | 4 |
+| 0:20-0:24 | TARGET: the camera eases round, the stars streak, then settle to points | |
+| 0:24-0:34 | ORBIT: the camera turned round the Tern, every star a short line toward where it was | 5, 6 |
+| 0:34-0:37 | ORBIT off: the camera eases back | |
+| 0:37-0:45 | On foot behind the chair: the nebula through the bridge's windows and on the main viewscreen | 3 |
+
