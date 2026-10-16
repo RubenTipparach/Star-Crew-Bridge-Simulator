@@ -36,8 +36,6 @@ use crate::ui::Ui;
 
 /// The viewscreen's feed, pixels: twice its 614 x 194 layout points, so it stays sharp up to 1440p.
 const FEED: (u32, u32) = (1228, 388);
-/// The console canvas, logical points (bridge-stations 8.0).
-const CANVAS: (f32, f32) = (1280.0, 720.0);
 
 const PANEL: Color32 = Color32::from_rgba_premultiplied(10, 16, 26, 232);
 const EDGE: Color32 = Color32::from_rgb(44, 62, 82);
@@ -879,7 +877,9 @@ impl DrillApp {
     /// machine the repair game's pointer, seated in Engage the console's, and otherwise the UI's (the menus, the
     /// briefing, the debrief).
     fn touch_event(&mut self, id: u64, phase: TouchPhase, x: f32, y: f32, e: &Event) {
-        if self.touch.touch(id, phase, x, y) {
+        // The finger in layout points, by the one mapping the drawing used (browser-page-fit design 5).
+        let at = self.ui.fit().to_points(x, y);
+        if self.touch.touch(id, phase, at.x, at.y) {
             return;
         }
         match self.touch_mode {
@@ -891,8 +891,7 @@ impl DrillApp {
                 }
             }
             crate::touch::Mode::Seated if self.console_touch => {
-                let pt = self.ui.win_to_pt();
-                self.console_finger.take(id, phase, Pos2::new(x * pt, y * pt), self.time_s);
+                self.console_finger.take(id, phase, at, self.time_s);
             }
             _ => self.ui.event(e),
         }
@@ -910,7 +909,7 @@ impl DrillApp {
             _ if seated => Mode::Seated,
             _ => Mode::Off,
         };
-        self.touch.set([f.window_w, f.window_h], mode);
+        self.touch.set(&crate::ui::Fit::of(f), mode);
         self.touch_mode = mode;
         let hands = self.touch.frame(dt);
         for k in self.touch_keys.drain(..) {
@@ -2053,7 +2052,7 @@ impl App for DrillApp {
         let mut menu_ask = None;
         let (menu, options) = (&mut self.menu, &mut self.options);
         let deck = self.deck.as_ref();
-        let (touch, pt) = (&self.touch, self.ui.win_to_pt());
+        let touch = &self.touch;
         let finger_hover = self.console_finger.hover();
         let stand_share = self.stand.share(self.data.stations.seats.stand_hold_s);
         let frame = self.ui.run(&mut self.r, f, self.time_s, |ctx| {
@@ -2085,8 +2084,8 @@ impl App for DrillApp {
                 d.draw(&painter, ctx.content_rect().size());
             }
             let layer = ctx.layer_painter(egui::LayerId::new(egui::Order::Foreground, egui::Id::new("touch")));
-            touch.paint(&layer, pt, use_word.as_deref());
-            touch.paint_stand(&layer, pt, stand_share);
+            touch.paint(&layer, use_word.as_deref());
+            touch.paint_stand(&layer, stand_share);
             menu_ask = menu.show(ctx, &place, options);
         });
         self.pointer = pointer;
@@ -2096,7 +2095,7 @@ impl App for DrillApp {
             self.touch_mode == crate::touch::Mode::Seated && engage_now && !self.menu.open() && painted.is_some();
         match painted.as_ref().filter(|_| self.console_touch) {
             Some((hits, _)) => {
-                let evs = self.console_finger.resolve(hits, self.ui.win_to_pt(), self.time_s);
+                let evs = self.console_finger.resolve(hits, self.touch.k(), self.time_s);
                 self.pointer.extend(evs);
             }
             None => self.console_finger.clear(),
@@ -2214,7 +2213,7 @@ impl App for DrillApp {
             }
         }
         // The viewscreen's feed in its window under the console, or black when there is no console yet.
-        let ppp = f.height as f32 / frame.points[1].max(1.0);
+        let ppp = frame.ppp;
         match console_view {
             None if on_bridge => {
                 self.r.present_with_ui(&self.bridge_target, f.width, f.height, true, &frame.meshes(), frame.points)
@@ -2386,13 +2385,10 @@ impl UiView {
     }
 }
 
+/// Where the reference frame (the 1280 x 720 canvas of bridge-stations 8.0) starts on the screen: the one mapping,
+/// `ui::frame_in` (browser-page-fit design 5). On a screen laid out by `ui::Fit` its scale is 1.
 fn canvas_origin(ctx: &egui::Context) -> Pos2 {
-    canvas_origin_for(ctx.content_rect().width())
-}
-
-/// Where the console canvas starts on a screen `w` points wide: centred, or at the left edge when it is narrower.
-fn canvas_origin_for(w: f32) -> Pos2 {
-    Pos2::new(((w - CANVAS.0) / 2.0).max(0.0), 0.0)
+    crate::ui::frame_in(ctx.content_rect()).0
 }
 
 fn label(ui: &mut egui::Ui, text: &str, size: f32, colour: Color32) {
@@ -2487,6 +2483,8 @@ const BAND_GAP: f32 = 22.0;
 fn bridge_overlay(ctx: &egui::Context, v: &UiView, phase: Phase, phase_s: f64, b: &BridgeUi) {
     use egui::FontId;
     let w = ctx.content_rect().width();
+    // The band spans the screen's top edge; what is placed on the picture is placed on the reference frame.
+    let o = canvas_origin(ctx);
     let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Middle, egui::Id::new("bridge-names")));
     let head = format!("{}   {}   {}", v.mission.title, format!("{phase:?}").to_uppercase(), mmss(phase_s));
     let held: Vec<String> = Station::ALL
@@ -2501,10 +2499,16 @@ fn bridge_overlay(ctx: &egui::Context, v: &UiView, phase: Phase, phase_s: f64, b
         crate::nameplate::draw(&painter, l.at, &l.name, l.npc, l.going.as_deref(), l.k);
     }
     if let Some(t) = &b.banner {
-        painter.text(Pos2::new(w / 2.0, 560.0), Align2::CENTER_CENTER, t, FontId::proportional(30.0), AMBER);
+        painter.text(Pos2::new(w / 2.0, o.y + 560.0), Align2::CENTER_CENTER, t, FontId::proportional(30.0), AMBER);
     }
     if b.overview {
-        painter.text(Pos2::new(w / 2.0, 700.0), Align2::CENTER_CENTER, "BRIDGE (V)", FontId::proportional(14.0), DIM);
+        painter.text(
+            Pos2::new(w / 2.0, o.y + 700.0),
+            Align2::CENTER_CENTER,
+            "BRIDGE (V)",
+            FontId::proportional(14.0),
+            DIM,
+        );
     }
 }
 
@@ -2657,7 +2661,8 @@ fn briefing(ctx: &egui::Context, v: &UiView, phase: Phase, phase_s: f64, ask: &m
                 let fill =
                     if v.station == Some(s) { Color32::from_rgb(30, 90, 120) } else { Color32::from_rgb(34, 44, 58) };
                 let button = big_button(s.name(), Vec2::new(claim_w, claim_h), 17.0, fill);
-                if ui.add_enabled(!held_by_other && !v.bot, button).clicked() {
+                let r = ui.add_enabled(!held_by_other && !v.bot, button);
+                if crate::ui::mark(&format!("claim {}", s.name()), r).clicked() {
                     ask.push(UiAsk::Claim(s));
                 }
             }
@@ -2859,7 +2864,8 @@ mod tests {
             }
         }
         let ui = crate::ui::Ui::new();
-        let (ppp, points) = crate::ui::points_of(px.0, px.1);
+        let fit = crate::ui::Fit::new(px.0, px.1, px.0 as f32);
+        let (ppp, points) = (fit.ppp, fit.points);
         let mut out = Vec::new();
         for _ in 0..4 {
             let mut raw =
@@ -2890,8 +2896,19 @@ mod tests {
         bad
     }
 
-    /// The output sizes the captures and the Pi play at: 1080p, 720p, and the undock video's 1280 x 678 window.
-    const OUTPUTS: [(u32, u32); 3] = [(1920, 1080), (1280, 720), (1280, 678)];
+    /// The output sizes the screens must fit (browser-page-fit design 5): 1080p, the Pi's 720p, a laptop, 1440p, 4:3,
+    /// an ultrawide, itch's embed, a phone held sideways, and the undock video's 1280 x 678 window.
+    const OUTPUTS: [(u32, u32); 9] = [
+        (1920, 1080),
+        (1280, 720),
+        (1366, 768),
+        (2560, 1440),
+        (1024, 768),
+        (2560, 1080),
+        (985, 455),
+        (844, 390),
+        (1280, 678),
+    ];
 
     #[test]
     fn the_bridge_band_keeps_the_clock_clear_of_eight_crew() {
@@ -2924,10 +2941,16 @@ mod tests {
                 let v = view(id, me);
                 for px in OUTPUTS {
                     let (drawn, points) = texts_drawn(px, |ctx| briefing(ctx, &v, Phase::Muster, 1.0, &mut Vec::new()));
-                    let origin = super::canvas_origin_for(points.x);
+                    let (origin, scale) = crate::ui::frame_in(Rect::from_min_size(Pos2::ZERO, points));
+                    assert!((scale - 1.0).abs() < 1e-4, "a fitted screen holds the frame at one point a point");
                     let panel = Rect::from_min_size(
-                        Pos2::new(BRIEF_MIN.0 + origin.x, BRIEF_MIN.1),
+                        Pos2::new(BRIEF_MIN.0 + origin.x, BRIEF_MIN.1 + origin.y),
                         egui::vec2(BRIEF_SIZE.0, BRIEF_SIZE.1),
+                    );
+                    let screen = Rect::from_min_size(Pos2::ZERO, points);
+                    assert!(
+                        screen.contains_rect(panel),
+                        "the briefing {panel:?} leaves the screen {screen:?} at {px:?}"
                     );
                     let bad = overlapping(&drawn);
                     assert!(bad.is_empty(), "briefing texts overlap ({id}, {me:?}, {px:?}): {bad:?}");

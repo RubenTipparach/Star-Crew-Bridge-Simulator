@@ -199,8 +199,10 @@ pub fn tooltip(cv: &Canvas, cx: &mut Ctx) {
     let (x, y) = ((p.x - cv.o.x) / cv.s + 14.0, (p.y - cv.o.y) / cv.s + 18.0);
     let probe = Canvas::new(cv.painter.with_clip_rect(Rect::NOTHING), cv.o, cv.s);
     let w = probe.text(0.0, 0.0, 13.0, c.text.0, &tip, T::default().ls(0.39)) + 16.0;
-    let x = x.min(1280.0 - w - 4.0);
-    let y = if y + 26.0 > 720.0 { y - 46.0 } else { y };
+    // Kept on the canvas (the reference frame, `ui::layout_size`).
+    let size = crate::ui::layout_size();
+    let x = x.min(size.x - w - 4.0);
+    let y = if y + 26.0 > size.y { y - 46.0 } else { y };
     cv.rect(x, y, w, 24.0, 5.0, rgba(0x182231, 1.0), Some(Pen::new(1.0, rgba(0x2c3a4d, 1.0))));
     cv.text(x + 8.0, y + 17.0, 13.0, c.text.0, &tip, T::default().ls(0.39));
 }

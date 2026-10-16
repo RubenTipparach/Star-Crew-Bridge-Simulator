@@ -872,11 +872,12 @@ pub fn ratio_col(k: f64) -> Color32 {
     }
 }
 
-/// Draw a console on egui's background, the 1280 x 720 canvas fitted and centred in the screen; returns where its
+/// Draw a console on egui's background, the 1280 x 720 canvas on the reference frame (`ui::frame_in`); returns where its
 /// controls are and its scale (egui points a layout point). `feed` is the viewscreen's camera, `pointer` the pointer in
 /// egui points (for the hover tip).
 pub fn paint(ctx: &egui::Context, v: &ConsoleView, feed: bool, pointer: Option<Pos2>) -> (kit::Hits, f32) {
-    let (o, s) = fit(ctx.content_rect());
+    let (o, s) = crate::ui::frame_in(ctx.content_rect());
+    let o = o.to_vec2();
     let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Background, egui::Id::new("console")));
     let cv = Canvas::new(painter, o, s);
     let mut hits = kit::Hits::default();
@@ -884,16 +885,10 @@ pub fn paint(ctx: &egui::Context, v: &ConsoleView, feed: bool, pointer: Option<P
     (hits, s)
 }
 
-/// Where the 1280 x 720 canvas sits on a screen of `screen` points: its origin and its scale, fitted and centred.
-pub fn fit(screen: Rect) -> (egui::Vec2, f32) {
-    let s = (screen.width() / 1280.0).min(screen.height() / 720.0);
-    (egui::Vec2::new((screen.width() - 1280.0 * s) / 2.0, (screen.height() - 720.0 * s) / 2.0), s)
-}
-
 /// The viewscreen's window in output pixels (x, y from the top left, width, height), for a screen `points` big drawn
 /// at `ppp` pixels a point: where the renderer draws the feed under the console.
 pub fn viewscreen_px(points: [f32; 2], ppp: f32) -> [i32; 4] {
-    let (o, s) = fit(Rect::from_min_size(Pos2::ZERO, egui::vec2(points[0], points[1])));
+    let (o, s) = crate::ui::frame_in(Rect::from_min_size(Pos2::ZERO, egui::vec2(points[0], points[1])));
     let [x, y, w, h] = VIEWSCREEN;
     let px = |v: f32| (v * ppp).round() as i32;
     [px(o.x + x * s), px(o.y + (32.0 + y) * s), px(w * s), px(h * s)]

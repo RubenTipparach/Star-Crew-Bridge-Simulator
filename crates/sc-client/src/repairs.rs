@@ -45,8 +45,9 @@ pub struct RepairsApp {
     run: Option<Runner>,
     seen: HashSet<String>,
     input: Input,
-    /// Window coordinates to canvas pixels, from the last frame.
-    to_canvas: (f32, f32, f32),
+    /// The output on the reference frame and where the canvas is drawn on it, from the last frame: the pointer's way
+    /// from window coordinates to canvas units (`ui::Fit::to_canvas`).
+    to_canvas: (crate::ui::Fit, Rect),
     time_s: f64,
     shots: Option<PathBuf>,
     /// The scripted captures: the ported games left, and where the current one is.
@@ -90,7 +91,7 @@ impl RepairsApp {
             run: None,
             seen: HashSet::new(),
             input: Input::default(),
-            to_canvas: (0.0, 0.0, 1.0),
+            to_canvas: (crate::ui::Fit::default(), crate::ui::Fit::default().frame()),
             time_s: 0.0,
             shots,
             queue,
@@ -110,16 +111,15 @@ impl RepairsApp {
         Ok(())
     }
 
-    /// The canvas's rectangle in points for an output `points` big: 16:9, centred.
+    /// The canvas's rectangle in points for an output `points` big: the reference frame (`ui::frame_in`).
     fn canvas(points: Vec2) -> Rect {
-        let s = (points.x / W).min(points.y / H);
-        let size = Vec2::new(W * s, H * s);
-        Rect::from_min_size(Pos2::new((points.x - size.x) / 2.0, (points.y - size.y) / 2.0), size)
+        let (o, s) = crate::ui::frame_in(Rect::from_min_size(Pos2::ZERO, points));
+        Rect::from_min_size(o, Vec2::new(W, H) * s)
     }
 
     fn pointer(&mut self, x: f32, y: f32) {
-        let (ox, oy, s) = self.to_canvas;
-        let (cx, cy) = ((x - ox) / s, (y - oy) / s);
+        let (fit, rect) = self.to_canvas;
+        let [cx, cy] = fit.to_canvas(x, y, rect, Vec2::new(W, H));
         if self.input.down {
             self.input.path.push([cx, cy]);
         }
@@ -252,12 +252,10 @@ impl App for RepairsApp {
         if self.shots.is_some() && shot.is_none() && self.run.is_none() && self.queue.is_empty() {
             return Flow::Done;
         }
-        // Window coordinates to canvas pixels: the UI's points are a screen 720 high; the canvas is letterboxed in it.
-        let ppp = (f.height as f32 / 720.0).max(0.5);
-        let points = Vec2::new(f.width as f32 / ppp, f.height as f32 / ppp);
-        let rect = Self::canvas(points);
-        let win_to_pt = f.width as f32 / f.window_w.max(1.0) / ppp;
-        self.to_canvas = (rect.min.x / win_to_pt, rect.min.y / win_to_pt, rect.width() / W / win_to_pt);
+        // Window coordinates to canvas units, by the one mapping (browser-page-fit design 5).
+        let fit = crate::ui::Fit::of(f);
+        let rect = Self::canvas(fit.points);
+        self.to_canvas = (fit, rect);
         let mut input = self.input.clone();
         input.derive();
         if let Some(r) = self.run.as_mut() {

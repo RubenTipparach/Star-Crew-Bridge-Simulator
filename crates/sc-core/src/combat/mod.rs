@@ -1771,9 +1771,15 @@ impl Drill {
                 sat.push((b.slot, s));
             }
         }
+        // On foot a person musters by sitting at their station: the briefing's READY is not on screen there, so a
+        // person who sat in Muster waited for a READY they could not press (browser-page-fit design 6).
+        let muster = self.phase == Phase::Muster;
         for (slot, s) in sat {
             if let Some(p) = self.players.iter_mut().find(|p| p.slot == slot) {
                 p.station = Some(s);
+                if muster && !p.bot {
+                    p.ready = true;
+                }
             }
         }
     }
@@ -1828,7 +1834,11 @@ impl Drill {
         match self.phase {
             Phase::Muster => {
                 let seated: Vec<&Player> = self.players.iter().filter(|p| p.station.is_some()).collect();
-                if !seated.is_empty() && seated.iter().all(|p| p.ready) {
+                // On foot the round waits for every person aboard to reach a seat: it once began while the player
+                // was still walking up from their muster place (browser-page-fit design 6).
+                let people_seated =
+                    self.on_foot.is_none() || self.players.iter().filter(|p| !p.bot).all(|p| p.station.is_some());
+                if !seated.is_empty() && seated.iter().all(|p| p.ready) && people_seated {
                     self.set_phase(Phase::Countdown);
                 }
             }
@@ -4898,6 +4908,28 @@ mod tests {
             0.4,
         )
         .with_reach(1.5, 1.0, 0.7)
+    }
+
+    #[test]
+    fn on_foot_the_round_waits_for_the_person_to_sit_and_sitting_is_their_ready() {
+        // Regression (browser-page-fit design 6): in the browser's single player the round began while the player was
+        // still walking to the bridge, and a player who sat first waited on a READY that is not on screen on foot.
+        let mut d = drill();
+        d.set_bridge(command_bridge());
+        let bot = d.join("Lt. Xa'lensha", true).expect("joins");
+        let me = d.join("Lt. Holt", false).expect("joins");
+        d.claim(bot, Station::Captain).expect("the bot walks to the chair");
+        walk_until(&mut d, |d| d.operator(Station::Captain) == Operator::Player(bot));
+        d.set_ready(bot, true).unwrap();
+        for _ in 0..60 {
+            d.step();
+        }
+        assert_eq!(d.phase, Phase::Muster, "the bot is seated and ready, but the person is still on their feet");
+        walk_body(&mut d, me, [1.8, 3.5, 27.4]);
+        d.claim(me, Station::Helm).expect("sits at the helm");
+        walk_until(&mut d, |d| d.operator(Station::Helm) == Operator::Player(me));
+        assert!(d.player(me).is_some_and(|p| p.ready), "sitting in Muster is the person's READY");
+        walk_until(&mut d, |d| d.phase == Phase::Countdown);
     }
 
     #[test]

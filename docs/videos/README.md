@@ -175,3 +175,18 @@ High, yuv420p (`ffmpeg -vf crop,fps=30,scale=1280:-2,format=yuv420p -c:v libx264
 
 Not in it: the CHASE press of the script did not take (the picture stays on TARGET), and bodies pass through each other
 (Saren stands up through the player's eye at 1:45).
+
+## 2026-10-16-browser-single-player-walk.mp4
+
+The browser build (`openspec/changes/browser-page-fit`), played by mouse and keys in headless Chromium on the Pi 5's
+GPU at 1280 x 720 (`tools/web/smoke.mjs` style, recorded by Playwright, re-encoded to yuv420p). A browser frame rate
+says nothing about a Pi client; the game ran at about 6 frames a second here.
+
+| Time | Shows |
+| --- | --- |
+| 0:00-0:15 | Loading, the front menu with no Quit, SINGLE PLAYER and BEAM ABOARD clicked where they are drawn |
+| 0:15-0:31 | Muster: the body walks up the corridor onto the bridge to the captain's chair; the round waits for it |
+| 0:31-0:40 | "E  Take Captain from ..."; sitting is the player's READY, and the countdown starts once the crew are seated |
+| 0:40-0:44 | Engage: the captain's console |
+| 0:44-0:52 | E held: up from the chair, on foot on the bridge in red alert, walking back |
+| 0:52-0:56 | Esc: the game menu, Resume, Options and Return to menu, with no Exit in the browser |

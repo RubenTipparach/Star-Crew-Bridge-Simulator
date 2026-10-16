@@ -10,7 +10,7 @@ and is replaced when its owning change is built. Progress and findings are in `l
 
 | Phase | What happens | Ends |
 | --- | --- | --- |
-| Muster | Players join and claim stations; every client shows the briefing; the server holds the ship still | Every station held by a player is ready, and at least one player is aboard |
+| Muster | Players join and claim stations; every client shows the briefing; the server holds the ship still | Every station held by a player is ready, and at least one player is aboard; on foot, every person aboard is also seated, and a person who sits in Muster is ready (`browser-page-fit` 6) |
 | Countdown | 5 s, shown on every screen | Timer |
 | Engage | The Hound appears 6 km ahead and attacks | The Hound's hull reaches 0 (victory), the Tern's does (defeat), or 600 s pass (the Hound withdraws: defeat) |
 | Debrief | Result, time, shots and hits by station; 20 s | Timer, then a new Muster with the next seed |

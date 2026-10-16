@@ -1,6 +1,6 @@
 {
   "schema": "starcrew.touch/1",
-  "status": "PROPOSED by openspec/changes/touch-controls (design 3 and 4), approved on the owner's sight of docs/mockups/touch-controls.html (2026-10-13: 'Looks good'). Sizes are CSS px of a screen 390 px on its shorter side and scale with that side; times in seconds.",
+  "status": "PROPOSED by openspec/changes/touch-controls (design 3 and 4), approved on the owner's sight of docs/mockups/touch-controls.html (2026-10-13: 'Looks good'). Sizes are px of a reference frame screen_ref_px high (the 1080 reference pixels of data/ui/reference.json, which a phone held sideways shows 390 CSS px high) and scale with that frame, as every screen does (openspec/changes/browser-page-fit design 5); times in seconds.",
   "screen_ref_px": 390.0,
   "stick": {
     "_note": "The move stick appears where the left thumb lands, inside the zone: the left zone_w of the screen, below its top zone_top.",

@@ -25,8 +25,9 @@ pub struct DeckRun {
     landed: u32,
     runner: Runner,
     input: Input,
-    /// Window pixels to canvas units: the canvas's corner and scale.
-    to_canvas: (f32, f32, f32),
+    /// The output on the reference frame and where the canvas is drawn on it, from the last frame: the pointer's way
+    /// from window coordinates to canvas units (`ui::Fit::to_canvas`).
+    to_canvas: (crate::ui::Fit, Rect),
 }
 
 impl DeckRun {
@@ -43,7 +44,15 @@ impl DeckRun {
         let g = sc_repairs::games::make(game).ok_or_else(|| format!("no repair game {game:?}"))?;
         let opts = Options { who: Who::Officer, state, combat: true, seed };
         let runner = Runner::new(g, data, opts, true)?;
-        Ok(Self { job, round, round_t0: now, landed: 0, runner, input: Input::default(), to_canvas: (0.0, 0.0, 1.0) })
+        Ok(Self {
+            job,
+            round,
+            round_t0: now,
+            landed: 0,
+            runner,
+            input: Input::default(),
+            to_canvas: (crate::ui::Fit::default(), crate::ui::Fit::default().frame()),
+        })
     }
 
     /// The game's title.
@@ -51,11 +60,12 @@ impl DeckRun {
         &self.runner.data.title
     }
 
-    /// The canvas on a screen of `points`: the game's 1280 x 720, centred, a little inside the edges.
+    /// The canvas on a screen of `points`: the game's 1280 x 720 on the reference frame (`ui::frame_in`), a little
+    /// inside it.
     pub fn canvas(points: Vec2) -> Rect {
-        let s = (points.x / W).min(points.y / H) * CANVAS_SHARE;
-        let size = Vec2::new(W * s, H * s);
-        Rect::from_min_size(Pos2::new((points.x - size.x) / 2.0, (points.y - size.y) / 2.0), size)
+        let (o, s) = crate::ui::frame_in(Rect::from_min_size(Pos2::ZERO, points));
+        let frame = Rect::from_min_size(o, Vec2::new(W, H) * s);
+        Rect::from_center_size(frame.center(), frame.size() * CANVAS_SHARE)
     }
 
     /// The pointer, the buttons and the keys, as the repairs menu takes them.
@@ -63,8 +73,8 @@ impl DeckRun {
         let i = &mut self.input;
         match e {
             Event::Pointer(x, y) => {
-                let (ox, oy, s) = self.to_canvas;
-                let (cx, cy) = ((x - ox) / s, (y - oy) / s);
+                let (fit, rect) = self.to_canvas;
+                let [cx, cy] = fit.to_canvas(*x, *y, rect, Vec2::new(W, H));
                 if i.down {
                     i.path.push([cx, cy]);
                 }
@@ -101,11 +111,8 @@ impl DeckRun {
     /// One frame of `dt` seconds on a frame `f`: the game plays (by the player's hands, or the steady hand's for a
     /// scripted player). Returns how long the round took when one landed this frame.
     pub fn update(&mut self, f: &Frame, dt: f64, now: f64, scripted: bool) -> Option<f32> {
-        let ppp = (f.height as f32 / 720.0).max(0.5);
-        let points = Vec2::new(f.width as f32 / ppp, f.height as f32 / ppp);
-        let rect = Self::canvas(points);
-        let win_to_pt = f.width as f32 / f.window_w.max(1.0) / ppp;
-        self.to_canvas = (rect.min.x / win_to_pt, rect.min.y / win_to_pt, rect.width() / W / win_to_pt);
+        let fit = crate::ui::Fit::of(f);
+        self.to_canvas = (fit, Self::canvas(fit.points));
         if scripted {
             self.runner.close_guide();
             self.input = self.runner.hand();

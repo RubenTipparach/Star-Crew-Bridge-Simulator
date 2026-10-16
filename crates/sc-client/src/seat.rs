@@ -1709,13 +1709,13 @@ mod tests {
         (Snapshot::of(&d), data)
     }
 
-    /// The console painted headless at 1280 x 720 points: its controls.
+    /// The console painted headless on the reference frame (1280 x 720 points): its controls.
     fn paint(v: &ConsoleView) -> Hits {
         let ctx = egui::Context::default();
         crate::vg::install_fonts(&ctx);
         let mut hits = None;
         let raw = egui::RawInput {
-            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(1280.0, 720.0))),
+            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, crate::ui::layout_size())),
             ..Default::default()
         };
         let _ = ctx.run(raw, |ctx| hits = Some(console::paint(ctx, v, false, None).0));
@@ -1727,7 +1727,7 @@ mod tests {
         let ctx = egui::Context::default();
         crate::vg::install_fonts(&ctx);
         let mut raw = egui::RawInput {
-            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(1280.0, 720.0))),
+            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, crate::ui::layout_size())),
             ..Default::default()
         };
         if let Some(vp) = raw.viewports.get_mut(&raw.viewport_id) {
