@@ -149,3 +149,29 @@ drill's clock.
 
 Not in it yet: the iris's leaves (it stands open), the habitats' land and see-through windows, docked ships other
 than the two Herons, the console controls for UNDOCK, JUMP, SHORE and SWEEP (awaiting approval).
+
+## `2026-10-16-captains-viewscreen-on-foot-pi5.mp4` (160 s, 1280 x 678, 30 fps; `leave-station`, `captains-viewscreen`, `relieve-bots`)
+
+The owner's three asks from the browser build ("why cant I get up during combat? and walk around? and see the captains
+screen on the main view screen"), played on foot in single player on Pi 1 (Pi 5 8 GB), `sc-client --solo --station
+captain --playtest --window`, commit 207fa21. The scripted player works the console through the same pointer and keys a
+person uses: it clicks SCREEN where a pointer would, and gets up by holding E, the stand key, through the same hold
+that fills LEAVE STATION's ring. The game window's content alone, recorded with `wf-recorder` and re-encoded to H.264
+High, yuv420p (`ffmpeg -vf crop,fps=30,scale=1280:-2,format=yuv420p -c:v libx264 -crf 30`). Shots of each step are in
+`docs/screenshots/engine/leave-station/`.
+
+| Time | Shows | Shot |
+| --- | --- | --- |
+| 0:00-0:09 | Muster: the body walks onto the bridge to the captain's chair and sits; the console rises from the desk | 1 |
+| 0:09-0:44 | The briefing over the captain's console, LEAVE STATION in its title band; the crew sit, READY, the countdown | 2 |
+| 0:44-0:52 | Engage: the captain's console in the fight | 3 |
+| 0:52-0:58 | TARGET on his viewscreen, then SCREEN (lit): his picture goes on every screen | 4 |
+| 1:04-1:06 | E held: LEAVE STATION's keycap ring fills, and he stands; the captain's chair passes to automation, and a bot takes it | 5, 6 |
+| 1:06-1:32 | On foot mid-fight, he walks to the bridge's main viewscreen and watches his picture on it: the Hound on TARGET | 7 |
+| 1:32-1:44 | On to the starboard window | 8 |
+| 1:44-1:49 | To the helm: "E  Take Helm from Lt. Sil Saren"; Saren stands and walks to the nearest unmanned station, Laser port (the captain's chair he would swap into was taken already) | 9 |
+| 1:49-2:16 | Seated at the helm, the captain's TARGET picture on the helm's own VIEWSCREEN panel | 10 |
+| 2:16-2:40 | Up again with E and back to the main viewscreen; the helm's NPC returns to the helm | |
+
+Not in it: the CHASE press of the script did not take (the picture stays on TARGET), and bodies pass through each other
+(Saren stands up through the player's eye at 1:45).

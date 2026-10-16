@@ -8,9 +8,9 @@ The owner asked on 2026-10-15 (the proposal).
 
 ## 2. Build
 
-- [ ] 2.1 `console::on_screen`, used by `Seat::view` and the bridge's feed; tests.
-- [ ] 2.2 SCREEN sends `MainView` and `Viewscreen`; test.
+- [x] 2.1 `console::on_screen`, used by `Seat::view` and the bridge's feed; tests.
+- [x] 2.2 SCREEN sends `MainView` and `Viewscreen`; test.
 
 ## 3. Gate
 
-- [ ] 3.1 The walking playtest: the captain takes the viewscreen, stands, and sees his picture on the main viewscreen.
+- [x] 3.1 The walking playtest: the captain takes the viewscreen, stands, and sees his picture on the main viewscreen.
