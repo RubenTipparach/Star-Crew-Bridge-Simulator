@@ -7,7 +7,7 @@ three system rules the same day (the proposal).
 
 - [x] 1.1 Proposal, design (with the research of section 2) and spec deltas.
 - [x] 1.2 `docs/mockups/helm-nav-map.html`: the NAV tab's states, the captain's view, the kinds; shots looked at.
-- [ ] 1.3 The owner's survey: NM1, NM2, NM4, NM5, NM6, NM10 with the shots (CLAUDE.md 13).
+- [x] 1.3 The owner's survey: NM1, NM2, NM4, NM5, NM6, NM10 with the shots (CLAUDE.md 13). In Star Crew Owner Survey 2, section "Helm NAV map", 2026-10-16.
 
 ## 2. Build (after approval)
 
