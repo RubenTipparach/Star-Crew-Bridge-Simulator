@@ -7,7 +7,7 @@
     "shadow_samples per lamp per receiver; emitter samples one per emitter_sample_area_m2 and at least one per emitter_sample_spacing_m of its longest edge; ao_rays and ao_radius_m the occlusion; bounces 0, 1 or 2, read from an irradiance cache of cache_spacing_m with cache_gather_rays per point and cache_filter_passes of a tent filter; gather_rays where bounce is gathered per sample (probes); ray_bias_m along the normal; sample_inset_m inside a face's edge; dither on the 8-bit output.",
     "adaptive and max_added_triangles: the engine's subdivision (design section 3), and the lighting page's. mockup: the deck plan's stand-in for it (design section 15), cells no wider than cell_m on floors, walls and ceilings; uncapped_triangles the lighting page's no-cap comparison.",
     "gather_range_m: how far a bounce ray looks for the surface whose light it reads (80 m holds any compartment of a ship; a station's bay is 540 m across).",
-    "station: a spacedock bay's bake (openspec/changes/spacedock design 8a): the bay's wall, its ribs and its berths cut to cells no wider than wall_cell_m, rib_cell_m and berth_cell_m; a face under cheap_area_m2 casts shadows but neither sends nor gathers bounce; a part's reflectance is its tint times albedo_scale (the bake does not read the texture's mean). Its probes: a grid probe_coarse_m apart through the bay's air, and round each berth a finer one, probe_fine_m apart, over the box berth_probe_x_m to each side of the berth's axis, berth_probe_down_m toward the wall and berth_probe_up_m toward the bay's axis from the ship's middle, and berth_probe_z_m fore and aft.",
+    "station: a spacedock bay's bake (openspec/changes/spacedock design 8a): the bay's wall, its ribs and its berths cut to cells no wider than wall_cell_m, rib_cell_m and berth_cell_m (a bay over a kilometre long or across, A's hall and D's cavern, its shell to hall_cell_m); a face under cheap_area_m2 casts shadows but neither sends nor gathers bounce; a part's reflectance is its tint times albedo_scale (the bake does not read the texture's mean). Its probes: a grid probe_coarse_m apart through the bay's air, and round each berth a finer one, probe_fine_m apart, over the box berth_probe_x_m to each side of the berth's axis, berth_probe_down_m toward the wall and berth_probe_up_m toward the bay's axis from the ship's middle, and berth_probe_z_m fore and aft.",
     "presets override these: preview for a quicker bake, station for a bay hundreds of metres across (wide emitter samples, a 20 m occlusion radius, a 16 m cache, bounce read across the bay)."
   ],
   "seed": 1,
@@ -31,7 +31,7 @@
   "adaptive": { "base_m": 2.0, "min_m": 0.25, "max_error_levels": 5 },
   "max_added_triangles": { "default": 2000, "bridge": 7500 },
   "mockup": { "cell_m": 1.0, "uncapped_triangles": 60000 },
-  "station": { "wall_cell_m": 10.0, "rib_cell_m": 30.0, "berth_cell_m": 8.0, "cheap_area_m2": 12.0, "albedo_scale": 0.55,
+  "station": { "wall_cell_m": 10.0, "hall_cell_m": 20.0, "rib_cell_m": 30.0, "berth_cell_m": 8.0, "cheap_area_m2": 12.0, "albedo_scale": 0.55,
     "probe_coarse_m": 20.0, "probe_fine_m": 5.0, "berth_probe_x_m": 32.0, "berth_probe_down_m": 16.0, "berth_probe_up_m": 30.0, "berth_probe_z_m": 50.0 },
   "probes": { "spacing_m": 1.0, "wall_offset_m": 0.5, "invalid_backface_fraction": 0.5 },
   "lightmap_texel_m": 0.25,

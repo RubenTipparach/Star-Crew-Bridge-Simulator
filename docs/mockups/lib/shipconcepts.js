@@ -12,6 +12,9 @@
   async function start(THREE, OrbitControls, detail=null) {
     const K=window.ShipKit, data=K.shipData('layouts');
     const mats=detail?.mats||await K.loadMaterials(THREE);
+    // Rooms bake for real (lib/roombake.js) when the page carries the baker; its cache is the page's bake-cache block.
+    const cacheEl=document.querySelector('script[id^="bake-cache-"]');
+    if(window.RoomBake&&window.LightBake&&cacheEl)window.ShipConcepts.bakePage=RoomBake.page({name:cacheEl.id.replace(/^bake-cache-/,'').replace(/-bake$/,''),THREE,K,LBK:window.LightBake,pmats:mats});
     const hud=K.budgetHud({textureBytes:mats.bytes+(detail?.textureBytes||0),note:'Design review; no game or Pi timing claim.'});
     const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
     renderer.setPixelRatio(Math.min(devicePixelRatio,2));
@@ -307,7 +310,11 @@
     detail?.furnish(ctx,r,parts);
     detail?.dressRoom?.(ctx,r,built,parts);
     const geo=K.geometryOf(T,parts,mats,K.finishOf(r,D));
-    if(detail?.lightRoom)detail.lightRoom(ctx,r,built,geo);else K.bakeDirect(T,geo,built.lamps,state.lighting);
+    const light=()=>{if(detail?.lightRoom)detail.lightRoom(ctx,r,built,geo);else K.bakeDirect(T,geo,built.lamps,state.lighting);};
+    light();
+    // The room's baked light (lib/roombake.js), when the page bakes (ShipConcepts.bakePage): from its cache or live, then lit again.
+    const RB=window.ShipConcepts.bakePage;
+    if(RB)RB.relight(geo,built.lamps,{id:`${L.ship.id||L.ship.name}:${r.id}${cutaway?':cut':''}`,comp:r,openings:built.openings,L,DET:D,pmats:mats,onBaked:light});
     const material=mats._roomsMaterial||(mats._roomsMaterial=K.surfaceMaterial(T,mats,{lit:false}));
     const mesh=new T.Mesh(geo,material);mesh.userData.compartment=r.id;mesh.name=r.name;model.add(mesh);
     return {mesh,built};

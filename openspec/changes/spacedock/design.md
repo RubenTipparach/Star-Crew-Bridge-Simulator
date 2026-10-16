@@ -339,6 +339,24 @@ decks are and nothing new is invented for it.
   (`node tools/mockups/bake_spacedock.mjs` rewrites it; `?bake=fresh` bakes live). The shots are
   `docs/screenshots/mockups/spacedock-E-bay*.png`, `spacedock-E-window*.png` and `spacedock-E-crossing*.png`;
   `?bake=0` keeps the stand-in light.
+- **All five bays** (2026-10-16, the owner: "bake all of them"). A, B, C and D are baked the same way as E: each
+  version's lamps are fixtures (A's gantry and ceiling floods, C's gantry lamps and D's masts as `hall_flood`, high-bay
+  lamps aimed down that pool on the floor; B's wall rings as `ring_flood`s aimed across the hangar and its spine's
+  `axis_lamp`s; every berth's `berth_work`), each shell faces into its bay (a flat box drawn both ways, C's walls,
+  keeps only the face toward the hall), each bay has its probe grids (20 m through its air, 5 m round each berth) and
+  its air test, and A's 1.7 km hall and D's cavern take 20 m cells (`bake.json` `station` `hall_cell_m`). The floors
+  and walls the ships lie over are plated in the pale pearl, as E's, so the light shows. The state buttons and Light
+  only work in every version. One cache holds all five (8.6 MB); `bake_spacedock.mjs` bakes them in about 10 minutes
+  here. Measured:
+
+  | Bay | Lamps | Baked triangles | Vertices | Probes (in the air) |
+  | --- | ---: | ---: | ---: | ---: |
+  | A Bastion | 152 | 70,389 | 91,966 | 96,742 (83,089) |
+  | B Wheel | 123 | 47,739 | 54,789 | 50,130 (45,706) |
+  | C Drydock | 118 | 73,440 | 53,928 | 46,430 (45,085) |
+  | D Hollow | 82 | 57,401 | 58,539 | 78,426 (53,733) |
+  | E O'Neill Pair | 164 and 98 strips | 55,677 | 64,585 | 55,023 (48,486) |
+
 - **Cost** (section 9), measured from the mockup's bake: no draw and no texture added; the baked inside is 64,585
   vertices and 55,677 triangles (the stand-in was about 15,500), its three colour sets 0.74 MB (4 bytes a set a
   vertex); the probes 55 bytes each (`probes.rs`), 55,023 of them 3.0 MB uncompressed, client only, held while the
@@ -357,23 +375,25 @@ mockup's meshes (`docs/mockups/spacedock.html`):
 
 | Version | Outside | Inside (baked) | Glow | Doors | Station draws | Docked ships at LOD 1 |
 | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| A Bastion | 4,308 | 19,504 | 6,444 | 480 | 3 (the mockup draws 8 leaves apart) | 7 ships, about 10,000 triangles, 7 draws |
-| B Wheel | 662 | 12,204 | 4,476 | 120 | 3 | 7 ships, about 10,000 triangles, 7 draws |
-| C Drydock | 910 | 16,012 | 3,576 | 120 | 3 | 8 ships, about 11,500 triangles, 8 draws |
-| D Hollow | 5,162 | 14,340 | 3,588 | 120 | 3 | 7 ships, about 10,000 triangles, 7 draws |
+| A Bastion | 4,308 | 70,389 baked | 6,444 | 480 | 3 (the mockup draws 8 leaves apart) | 7 ships, about 10,000 triangles, 7 draws |
+| B Wheel | 662 | 47,739 baked | 4,476 | 120 | 3 | 7 ships, about 10,000 triangles, 7 draws |
+| C Drydock | 910 | 73,440 baked | 3,576 | 120 | 3 | 8 ships, about 11,500 triangles, 8 draws |
+| D Hollow | 5,162 | 57,401 baked | 3,588 | 120 | 3 | 7 ships, about 10,000 triangles, 7 draws |
 | E O'Neill Pair: hub and round bay | about 600 (the hub's drum, mouth, back and seal collar) | 55,677 baked (with eight gantries and the spine; 8a) | about 3,300 (the rings, the floods, the hub's lights, the ships' running lights) | 8 (eight iris leaves) | 3 (the mockup draws the leaves apart) | 6 ships, about 8,700 triangles, 6 draws |
 | E O'Neill Pair: the throat | 128 (its wall) and 9,952 (its light rings and strips, the dome's rings) | | | | 21 (the mockup draws each ring and strip apart; built, 2) | |
 | E O'Neill Pair: the two cylinders | about 96,000 (48,000 a cylinder: shell, land, glazing, two domes outside and in, the inner domes' greebles, about 3,500 a dome, the seal collars, 70 cumulus of 320 triangles, 22,400, spine, three mirrors, farm ring) and the rods' 60 | | | | 30 (15 a cylinder) and the rods' 1 | |
 
-Station totals: A 30,700, B 17,500, C 20,600, D 23,200, E about 123,000 triangles (E's are 64 draws: a cylinder is 15,
+Station totals before the bake: A 30,700, B 17,500, C 20,600, D 23,200, E about 123,000 triangles (E's are 64 draws: a cylinder is 15,
 its outside, land, glazing, domes, greebles, cumulus, spine and mirrors each their own material; a built E would merge
 the opaque ones by material, about 7 a cylinder, and the port's rings into one). The cumulus are the biggest share
 (44,800 for the pair): fewer or simpler puffs, or puffs drawn only in the cylinder the camera is in or looking into, are
 the first cut. The mockup's busiest E view, outside with both cylinders, the planet and the docked ships, is about
 131,000 triangles and 92 draws, against 200,000 and 300; inside a cylinder about 86,000 and 76. With the docked ships, the Tern at full detail
-(4,440 triangles, 7 draws) and the deck the crew stand in, the worst berthed frame is under 60,000 triangles and 40
-draws for every version: under a third of the frame's triangles and an eighth of its draws. A is the dearest (its
-cap's ribs and its round hall's fine cells for the bake); B the cheapest.
+(4,440 triangles, 7 draws) and the deck the crew stand in, the worst berthed frame was under 60,000 triangles and 40
+draws for every version before the bake. Baked (section 8a, its cells), the inside alone is 48,000-73,000 triangles,
+and the mockup's bay views read 63,000-104,000 triangles and under 35 draws (A's the dearest, B's the cheapest),
+against 200,000 and 300: still about half the frame. Coarser cells on the bays' plain walls are the first cut if a
+measured Pi frame needs it.
 
 - **Inside the bay** the outside's mesh is behind the walls: a portal cull (deck-pipeline's) leaves the inside, the
   glow and the docked ships, so a berthed frame draws about half the station.

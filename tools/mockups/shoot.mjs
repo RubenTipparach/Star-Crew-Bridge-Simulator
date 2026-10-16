@@ -80,6 +80,9 @@ for (const file of pages) {
   try { await page.waitForFunction(() => window.MOCKUP_READY === true, null, { timeout: readyS * 1000 }); }
   catch (_) { errors.push("MOCKUP_READY was never set"); }
   await frames(page, 20);
+  // A page whose rooms bake (lib/roombake.js) is shot once their light is in: from its cache at once, else live.
+  await page.evaluate(() => (window.MOCKUP_BAKING ? window.MOCKUP_BAKING() : null));
+  await frames(page, 10);
   const shots = await page.evaluate(() => (window.MOCKUP_SHOTS || []).map((s) => s.name));
   // A shot may name its own viewport (a phone held upright, say): { name, viewport: { width, height }, setup }.
   const views = await page.evaluate(() => (window.MOCKUP_SHOTS || []).map((s) => s.viewport || null));

@@ -62,6 +62,21 @@
       "kind": "point", "intensity_cd": 9000000, "radius_m": 0.0, "beam_exponent": 200, "range_m": 600.0, "drop_m": 0.0,
       "light": "lamp", "emergency": "bus"
     },
+    "hall_flood": {
+      "_doc": "A spacedock hall's high-bay lamp (spacedock design 8a): under the ceiling's gantries in A's round hall and C's drydock, and on the masts down D's cavern, aimed straight down, throwing a pool about 65 m across on the floor from 120-200 m up. Off the emergency bus; red on alert.",
+      "kind": "point", "intensity_cd": 2500000, "radius_m": 0.0, "beam_exponent": 40, "range_m": 450.0, "drop_m": 0.0,
+      "light": "lamp", "emergency": "bus"
+    },
+    "ring_flood": {
+      "_doc": "A flood on one of B's light rings round its hangar's wall (spacedock design 8a): eight a ring, each aimed across the hangar at its axis, a broad beam that lights the far wall. Off the emergency bus; red on alert.",
+      "kind": "point", "intensity_cd": 4000000, "radius_m": 0.0, "beam_exponent": 3, "range_m": 600.0, "drop_m": 0.0,
+      "light": "strip", "emergency": "bus"
+    },
+    "axis_lamp": {
+      "_doc": "A lamp on a hangar's axis (B's spine, spacedock design 8a), lighting every way round it. Off the emergency bus.",
+      "kind": "point", "intensity_cd": 3000000, "radius_m": 0.0, "beam_exponent": 0, "range_m": 500.0, "drop_m": 0.0,
+      "light": "lamp", "emergency": "bus"
+    },
     "bay_flood": {
       "_doc": "A spacedock bay's flood (spacedock design 8a): one a berth, on the spine down the bay's axis, aimed at its berth. Warm and steady for the work on alert; out on emergency power. Radius 0: from 190 m a lens's penumbra is narrower than a 4 m cell.",
       "kind": "point", "intensity_cd": 4000000, "radius_m": 0.0, "beam_exponent": 6, "range_m": 600.0, "drop_m": 0.0,

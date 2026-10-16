@@ -673,6 +673,30 @@ page (1.31 MB; the page is 13.2 MB, under the 16 MB an artifact allows).
 runtime lights over the bake, and portal spill light (sections 6, 7 and 9); power loss stays the
 lighting page's.
 
+### 15a. Every mockup's rooms baked (2026-10-16)
+
+The owner, 2026-10-16, after section 15 had baked the deck plan alone: "so youre still not adding the baked stuff to
+mockups?", then "bake all of them". Until then every other page that draws the Tern's rooms (the bridge, its
+variants, the command deck, the patrol's bridge, the spacedock's window view, the touch controls, the fire and repair
+pages, the systems cutaway, the wall panels, the exterior's bridge and bays, the concept and Grabon ships' rooms) lit
+them with `ShipKit.bakeDirect`'s quick light.
+
+- **One room bake, shared** (CLAUDE.md 6.1). The deck plan's bake (its scene: surfaces at their layers' mean colours
+  and tints, a leaf in every door, the kit's lamps, a strip down every cove, the kick strips; its per-vertex bake with
+  the cache's bounce) moved, unchanged, into `docs/mockups/lib/roombake.js`, and the deck plan calls it: every one of
+  its 38 cached rooms still matches its key, so the move changed no byte of its light.
+- **Any page, one call.** `RoomBake.page({ name, ... }).relight(geo, lamps, { id, comp, openings })` bakes a page's
+  room mesh, from the page's cache (`docs/mockups/cache/<name>-bake.bin`) when its key matches, else live, one room
+  at a time, and puts the light on the geometry; `ShipKit.bakeDirect` then writes that light (times the tint) in
+  place of its quick light, and the page re-runs its own lighting step. Lenses, status strips, screens and a page's
+  own glows are painted over it as before. A mesh that is not a room (the exterior's bridge furniture, the console
+  faces) keeps the quick light, since it cannot be baked without the room round it.
+- **The caches.** `node tools/mockups/bake_pages.mjs <pages>` bakes each page's rooms fresh (`?bake=rooms`), runs
+  every shot so the rooms a shot builds are baked too, writes the page's cache and inlines it; `shoot.mjs` waits for
+  a page's bakes (`window.MOCKUP_BAKING`) before its shots. `?bake=0` keeps the quick light, `?bake=rooms` bakes the
+  rooms fresh. The tools share one cache writer, `tools/mockups/bakecache.mjs`.
+- **Not in this step:** a page's furniture meshes and console faces, and lighting.html (it bakes its own comparison).
+
 ### 16. Probes in the engine, first step (2026-10-10)
 
 The owner, 2026-10-10, after the MakeHuman crew were deleted: "for now use blocky people. implement

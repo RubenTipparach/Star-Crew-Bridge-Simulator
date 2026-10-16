@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /*
- * bake_spacedock.mjs: bake the spacedock mockup's round bay (E) fresh and keep it, so the page opens lit
+ * bake_spacedock.mjs: bake the spacedock mockup's bays (all five versions) fresh and keep them, so the page opens lit
  * (openspec/changes/spacedock design 8a; light-baking design 16). It opens docs/mockups/spacedock.html headless with
- * ?bake=fresh, waits for the bay's bake (the inside's three colour sets and its light probes), writes them to
+ * ?bake=fresh, waits for every bay's bake (each inside's three colour sets and its light probes), writes them to
  * docs/mockups/cache/spacedock-bake.bin (tools/mockups/bakecache.mjs) and inlines it into the page. Run it after
  * changing anything the bay's bake reads (its geometry or fixtures, data/lighting, lightbake.js); a stale cache only
  * makes the page bake live. Documentation tooling (CLAUDE.md 4): the time it prints is this machine's, not a Pi 5's.
  *
- * Usage: node tools/mockups/bake_spacedock.mjs [--timeout-min 30]
+ * Usage: node tools/mockups/bake_spacedock.mjs [--timeout-min 90]
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -24,7 +24,7 @@ function loadPlaywright() {
 const { chromium } = loadPlaywright();
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", ".."), CACHE = path.join(ROOT, "tools", "mockups", ".cache");
 const PAGE = path.join(ROOT, "docs", "mockups", "spacedock.html");
-const args = process.argv.slice(2), ti = args.indexOf("--timeout-min"), timeoutMin = ti >= 0 ? Number(args[ti + 1]) : 30;
+const args = process.argv.slice(2), ti = args.indexOf("--timeout-min"), timeoutMin = ti >= 0 ? Number(args[ti + 1]) : 90;
 
 const launch = { args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] };
 const browser = await chromium.launch({ ...launch, executablePath: "/opt/pw-browsers/chromium" }).catch(() => chromium.launch(launch));
@@ -44,14 +44,14 @@ const t0 = Date.now();
 await page.goto("file://" + PAGE + "?bake=fresh");
 for (;;) {
   if (errors.length) throw new Error("spacedock.html: " + errors[0]);
-  const s = await page.evaluate(() => window.SPACEDOCK_BAKE || null);
-  if (s) { console.log(`baked in ${((Date.now() - t0) / 1000).toFixed(0)} s: ${JSON.stringify(s)}`); break; }
-  if (Date.now() - t0 > timeoutMin * 60000) throw new Error(`the bay's bake not done after ${timeoutMin} min`);
+  const s = await page.evaluate(() => (window.SPACEDOCK_BAKES_DONE && window.SPACEDOCK_BAKES_DONE() ? window.SPACEDOCK_BAKE : null));
+  if (s) { console.log(`baked in ${((Date.now() - t0) / 1000).toFixed(0)} s:`); for (const [k, b] of Object.entries(s)) console.log(`  ${k}: ${JSON.stringify(b)}`); break; }
+  if (Date.now() - t0 > timeoutMin * 60000) throw new Error(`the bays' bake not done after ${timeoutMin} min`);
   await page.waitForTimeout(5000);
 }
 const e = await page.evaluate(() => window.SPACEDOCK_BAKE_EXPORT());
 if (!e) throw new Error("the page has no live bake to export");
-const out = writeBakeCache(ROOT, "spacedock-bake", { date: new Date().toISOString().slice(0, 10), bays: { E: e.entry } }, [Buffer.from(e.b64, "base64")]);
+const out = writeBakeCache(ROOT, "spacedock-bake", { date: new Date().toISOString().slice(0, 10), bays: e.bays }, [Buffer.from(e.b64, "base64")]);
 await browser.close();
 execFileSync("python3", [path.join(ROOT, "tools", "mockups", "inline.py"), PAGE], { stdio: "inherit" });
 console.log(`cache: ${path.relative(ROOT, out)} (${(fs.statSync(out).size / 1e6).toFixed(2)} MB)`);

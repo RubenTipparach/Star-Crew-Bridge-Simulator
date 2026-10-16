@@ -77,16 +77,29 @@ change; `python3 tools/mockups/inline.py --check` fails when the cache was baked
 `lightbake.js`. A room the cache does not match bakes live, so a forgotten rewrite costs time, not
 correctness. `?bake=fresh` ignores the cache; `--rooms bridge` bakes one room for a quick look.
 
+## Every page's rooms (roombake.js)
+
+Every mockup that draws the Tern's rooms (or a concept ship's) bakes them with the deck plan's own room bake, moved
+into `docs/mockups/lib/roombake.js` (design section 15a). A page makes `RoomBake.page({ name, THREE, K, LBK, L, DET,
+pmats })` and calls `relight(geo, lamps, { id, comp, openings, onBaked })` for each room mesh; `ShipKit.bakeDirect`
+then writes the baked light instead of its quick light, and `onBaked` re-runs the page's own lighting step. A page
+carries `lib:lightbake`, `lib:roombake`, `data:lighting/*` and `bakecache:<name>-bake` markers. After changing anything
+a page's rooms bake from, run `node tools/mockups/bake_pages.mjs docs/mockups/<page>.html` (it bakes the rooms
+fresh, runs every shot so the rooms they build are baked too, writes `docs/mockups/cache/<name>-bake.bin` and inlines
+it). `?bake=0` keeps the quick light, `?bake=rooms` bakes the rooms fresh; `shoot.mjs` waits for the bakes. A mesh
+that is not a room (furniture of its own, console faces) keeps the quick light.
+
 ## A station's bay (spacedock)
 
-`docs/mockups/spacedock.html` bakes E's round bay (540 m across) on load with the same baker and the `station`
-preset of `bake.json` (spacedock design 8a): fixture types `bay_ring`, `bay_flood`, `berth_work`, `window_tier`; cells
-from `bake.json` `station` (wall 16 m, ribs 30 m, berths 8 m); `gather_range_m` 1,200 so bounce reads across the bay.
+`docs/mockups/spacedock.html` bakes all five versions' bays (E's round bay 540 m across, A's hall 1.7 km) with the
+same baker and the `station` preset of `bake.json` (spacedock design 8a): fixture types `bay_ring`, `spine_flood`,
+`bay_flood`, `hall_flood`, `ring_flood`, `axis_lamp`, `berth_work`, `window_tier`; cells from `bake.json` `station`
+(wall 10 m, A's and D's 20 m, ribs 30 m, berths 8 m); `gather_range_m` 1,200 so bounce reads across the bay.
 The ships are not in the scene: the bay's probe grids light them (20 m through the air, 5 m round each berth, `bake.json`
 `station`), every hull at each vertex by `sc-core`'s `probes.rs` rule, mirrored in `lightbake.js` as `sampleProbes` and
 `cubeLight`; `bakeProbeGrid` bakes a grid, for the deck plan's rooms too. The page opens lit from
 `docs/mockups/cache/spacedock-bake.bin`: after changing anything the bay's bake reads, run
-`node tools/mockups/bake_spacedock.mjs` (about 2.5 minutes here) and commit the cache. `?bake=fresh` bakes live,
+`node tools/mockups/bake_spacedock.mjs` (about 10 minutes here for the five) and commit the cache. `?bake=fresh` bakes live,
 `?bake=0` keeps the stand-in. Its shots wait for the bake (`spacedock-E-bay*`, `-E-window*`, `-E-crossing*`).
 
 ## Bake and compare today (the mockup baker)
