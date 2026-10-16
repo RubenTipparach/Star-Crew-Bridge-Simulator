@@ -272,6 +272,80 @@ The mockup's window view stands 1.6 m in from the bridge's port forward-quarter 
 The Tern's own warp pylon shows at the bottom of the bridge's windows, as it does in space. Through the starboard
 windows: the pier, its rail lights and the crew tube a few metres off.
 
+## 8a. The bay's baked light
+
+The owner, 2026-10-15: "we should have some baked lighting in the interior hanger bay". The patrol begins here, in
+Tamsin Station's round bay (E), so the bay is the first place the crew look out at. Section 9 already puts the
+inside on the baked path ("the inside and every glowing part unlit with the bay's light baked into vertex colours");
+this section says what is baked and how, by `light-baking`'s rules (LB below), so the bay is lit the way the Tern's
+decks are and nothing new is invented for it.
+
+- **Fixtures, as data** (LB 11). The bay's lights are fixtures in `data/lighting/fixtures.json`'s format, placed by
+  rule from the version's sizes in `data/space/spacedock.json` (the layout holds no lights). E's round bay:
+
+  | Fixture | Kind (LB 11) | Where | Light |
+  | --- | --- | --- | --- |
+  | `bay_ring` | area, a strip round the bay's wall | Every 80 m down the bay's 620 m, on the wall's ribs | Cool white, the bay's general light |
+  | `bay_flood` | point, beam down to the wall | On the eight gantries under the axis, aimed at the berth rows | Warm white floods: the pools the ships lie in |
+  | `berth_work` | point, wide beam | Four at each berth's pad corners (the flood masts) and two on each portal frame | Bright, short range: the pier, the clamps and the hull under them |
+  | `window_tier` | area, emissive | The back wall's tiers of control-room windows and the hub's | Soft, warm: lit offices; it lights the back wall a little |
+  | `throat_ring`, `throat_strip` | area | The throat's rings every 40 m and its eight strips (5a) | The run of light the Tern leaves down |
+
+  The approach and door beacons blink and turn: they are runtime lights (LB 7) and emissive faces, never baked.
+
+- **The bake** (LB 1-3): the same irradiance function as the decks (direct light with soft shadows from the gantries,
+  the piers, the ships' berths and the iris leaves, occlusion, one bounce), into the inside's vertex colours with
+  adaptive subdivision: the bay's walls and back wall cut to about 40 m cells (the risk in section 12), finer, about
+  4 m, on each berth's pad and pier so a work light's pool lands where the clamps are. Offline, in the station's build;
+  nothing is computed at run time but the blend.
+- **Three states from one set of rays** (LB 5): **normal**; **alert** (the station's own red alert, raised by traffic
+  control when hostiles are reported in the system: the rings dim, red strips come up, the floods stay for work);
+  **emergency** (the station on its emergency supply: floods and rings out, the berths' work lights and the windows'
+  emergency share only). One weight per station, sent with the doors' state (a byte on change), as a deck's
+  compartments are blended.
+- **The ships in the bay are lit by the bay, not by the star** (LB 6). The bay is sealed: no sunlight reaches in.
+  Ambient-cube probes are baked through the bay's air every 20 m (finer, 5 m, round each berth), and every ship in it
+  is lit from them: the docked ships, and the **Tern's own hull**. This corrects what `patrol-mission` built: its hull
+  relight (PM 11.3) takes the star's direction while the Tern is berthed, so the hull outside the windows is lit as if
+  in open space. Inside the bay the hull takes the probes at the Tern's place; from the iris to the mouth the probes'
+  light gives way to the star's over the throat's 320 m, so leaving the station, the light changes as the Tern comes
+  out into the sun.
+- **What the crew see** (section 8, E): the bay's wall overhead in the rings' light, the ships across the bay in their
+  floods' pools, the pier and the clamps bright under the work lights through the starboard windows, the back wall's
+  lit window tiers; in the alert state the red strips; through the throat on the way out, the rings sliding past.
+- **The mockup first** (built 2026-10-15). `docs/mockups/spacedock.html` bakes E's bay on load with the mockup baker
+  (`docs/mockups/lib/lightbake.js`, the one the deck plan uses, by the `light-baking` skill) and the `station` preset
+  of `data/lighting/bake.json`: 80 point fixtures (a `bay_flood` for each of the eight berths, on a spine down the
+  axis; nine `berth_work` a berth: the four corner masts, two on each portal frame, one under the gantry) and 98 area
+  fixtures (seven `bay_ring`s, each as twelve 30 degree strips, and fourteen `window_tier`s), with shadows from the
+  ribs, the spine, the piers, the frames and the gantries, occlusion over 20 m and one bounce read across the bay. The
+  wall is cut to 16 m cells, the ribs to 30 m and the berths to 8 m (`bake.json` `station`; 4 m and 10 m made 93,000
+  vertices). The state buttons (Normal, Alert, Emergency) swap the three sets and the fixtures' faces (the rings red
+  on alert; every fixture off its supply dark on emergency). **The probes** (2026-10-16, the owner: "do it, so ships
+  get proper lighting inside stations"): a 20 m grid through the bay's air (27 x 27 x 31 points) and a 5 m grid round
+  each of the eight berths (the box 32 m to each side of the berth's axis, 16 m toward the wall and 30 m toward the
+  axis from the ship's middle, 50 m fore and aft; `bake.json` `station`), 55,023 probes, 48,486 of them in the air (a
+  probe outside the bay's wall or inside a pier, a frame or the spine is invalid and its neighbours fill in). Every
+  hull in the bay, the Tern's, the docked ships' and the concept hulls', is lit at each vertex from the probes round
+  it by the engine's own rule (`sc-core` `probes.rs` `sample_ship`: trilinear over the eight round a point, invalid
+  ones skipped, the grid with the most valid weight winning, the berths' listed first; and `deck_probe_vs`'s cube,
+  each axis weighted by the normal squared), recomputed when the hull moves a metre or the state changes. The
+  "Crossing the bay" view flies the Tern from the iris to its berth at 5 m/s through that light. The sampler and the
+  grid baker are `lightbake.js`'s (`bakeProbeGrid`, `sampleProbes`, `cubeLight`), which the deck plan's rooms use
+  too. Not baked yet: the throat's rings and strips, and the hull's change from the probes to the star down the
+  throat (the "entering" view keeps the star). The page opens lit from `docs/mockups/cache/spacedock-bake.bin`
+  (`node tools/mockups/bake_spacedock.mjs` rewrites it; `?bake=fresh` bakes live). The shots are
+  `docs/screenshots/mockups/spacedock-E-bay*.png`, `spacedock-E-window*.png` and `spacedock-E-crossing*.png`;
+  `?bake=0` keeps the stand-in light.
+- **Cost** (section 9), measured from the mockup's bake: no draw and no texture added; the baked inside is 54,265
+  vertices and 38,997 triangles (the stand-in was about 15,500), its three colour sets 0.62 MB (4 bytes a set a
+  vertex); the probes 55 bytes each (`probes.rs`), 55,023 of them 3.0 MB uncompressed, client only, held while the
+  Tern is at that station (the 5 m berth grids are 32,424 of them: 10 m round the berths would cut the probes to about
+  27,000 and 1.5 MB, to be judged on the shots). At run time one blend a vertex for the inside and, for a hull, a
+  probe lookup a vertex when it moves (the engine may light a hull per object instead, from one cube at its middle,
+  if the per-vertex cost shows on the Pi). The whole bake, inside and probes, took about 130 s and 49 million rays on
+  this cloud machine's CPU in one browser thread: not a Pi 5 and not the station build's baker.
+
 ## 9. The Pi 5 budget
 
 Against ES 5's table (200,000 triangles and 300 draws a frame, all passes; 96 MB of textures). The station's near
@@ -285,7 +359,7 @@ mockup's meshes (`docs/mockups/spacedock.html`):
 | B Wheel | 662 | 12,204 | 4,476 | 120 | 3 | 7 ships, about 10,000 triangles, 7 draws |
 | C Drydock | 910 | 16,012 | 3,576 | 120 | 3 | 8 ships, about 11,500 triangles, 8 draws |
 | D Hollow | 5,162 | 14,340 | 3,588 | 120 | 3 | 7 ships, about 10,000 triangles, 7 draws |
-| E O'Neill Pair: hub and round bay | about 600 (the hub's drum, mouth, back and seal collar) | about 15,500 (with eight gantries) | about 3,300 (flood rings, the hub's lights, the ships' running lights) | 8 (eight iris leaves) | 3 (the mockup draws the leaves apart) | 6 ships, about 8,700 triangles, 6 draws |
+| E O'Neill Pair: hub and round bay | about 600 (the hub's drum, mouth, back and seal collar) | 38,997 baked (with eight gantries and the spine; 8a) | about 3,300 (the rings, the floods, the hub's lights, the ships' running lights) | 8 (eight iris leaves) | 3 (the mockup draws the leaves apart) | 6 ships, about 8,700 triangles, 6 draws |
 | E O'Neill Pair: the throat | 128 (its wall) and 9,952 (its light rings and strips, the dome's rings) | | | | 21 (the mockup draws each ring and strip apart; built, 2) | |
 | E O'Neill Pair: the two cylinders | about 96,000 (48,000 a cylinder: shell, land, glazing, two domes outside and in, the inner domes' greebles, about 3,500 a dome, the seal collars, 70 cumulus of 320 triangles, 22,400, spine, three mirrors, farm ring) and the rods' 60 | | | | 30 (15 a cylinder) and the rods' 1 | |
 
@@ -374,3 +448,4 @@ becomes E.
 | S7 | Per-pixel lighting (normal maps) on station exteriors on the Pi 5 | Proposed as an exception (section 5b) and measured on the Pi before the engine takes it; until then the rule stands and E falls back to relief baked into the detail's albedo. Recommendation taken (ask only with screenshots) |
 | S8 | E's cylinders: their size and spin | 6.4 km by 1.8 km at 1 rpm (1 g at the floor), smaller than Island Three, the pair 9.5 km apart so the petals clear; textures are atlases, not layers of the array, so no layer is renumbered. Recommendation taken (ask only with screenshots) |
 | S9 | E's port: which end, and does every cylinder have one | Cylinder 0's sunward dome only (section 5a, why the sunward end); the other cylinder's axis keeps its bearing. Recommendation taken (ask only with screenshots) |
+| S11 | How the bay is lit (owner, 2026-10-15: "we should have some baked lighting in the interior hanger bay") | Baked, by `light-baking`'s rules: the bay's rings, floods, berth work lights and window tiers as fixtures, three states, probes lighting every ship in the bay including the Tern's hull (section 8a). Recommendation taken (ask only with screenshots) |

@@ -42,15 +42,19 @@ AREA_OPTIONAL = {"width_m", "end_clear_m"}
 
 BAKE_KEYS = {
     "seed": (int, 0, None), "reference_lux": (float, 1e-6, None), "ambient_scale_lux": (float, 0, None),
-    "shadow_samples": (int, 1, 256), "emitter_sample_area_m2": (float, 1e-4, 10), "emitter_sample_spacing_m": (float, 0.01, 10),
+    "shadow_samples": (int, 1, 256), "emitter_sample_area_m2": (float, 1e-4, 1000), "emitter_sample_spacing_m": (float, 0.01, 100),
     "ao_rays": (int, 0, 1024), "ao_radius_m": (float, 0, 100), "exterior_ao_radius_m": (float, 0, 100), "bounces": (int, 0, 2),
-    "cache_spacing_m": (float, 0.05, 10), "cache_gather_rays": (int, 1, 4096), "cache_filter_passes": (int, 0, 8),
-    "gather_rays": (int, 1, 4096), "ray_bias_m": (float, 0, 0.1), "sample_inset_m": (float, 0, 0.5), "dither": (bool, None, None),
+    "cache_spacing_m": (float, 0.05, 50), "cache_gather_rays": (int, 1, 4096), "cache_filter_passes": (int, 0, 8),
+    "gather_rays": (int, 1, 4096), "gather_range_m": (float, 1, 5000), "ray_bias_m": (float, 0, 0.1), "sample_inset_m": (float, 0, 0.5), "dither": (bool, None, None),
     "lightmap_texel_m": (float, 0.01, 4),
 }
 BAKE_OBJECTS = {
     "adaptive": {"base_m": (float, 0.1, 10), "min_m": (float, 0.01, 10), "max_error_levels": (float, 0.1, 255)},
     "mockup": {"cell_m": (float, 0.1, 10), "uncapped_triangles": (int, 0, None)},
+    "station": {"wall_cell_m": (float, 0.5, 100), "rib_cell_m": (float, 0.5, 100), "berth_cell_m": (float, 0.5, 100),
+                "cheap_area_m2": (float, 0, 1000), "albedo_scale": (float, 0, 1), "probe_coarse_m": (float, 1, 200),
+                "probe_fine_m": (float, 0.5, 50), "berth_probe_x_m": (float, 1, 500), "berth_probe_down_m": (float, 0, 500),
+                "berth_probe_up_m": (float, 0, 500), "berth_probe_z_m": (float, 1, 500)},
     "probes": {"spacing_m": (float, 0.1, 10), "wall_offset_m": (float, 0, 10), "invalid_backface_fraction": (float, 0, 1)},
     "power_loss": {"flicker_s": (float, 0, 60), "fade_s": (float, 0, 60)},
 }
@@ -117,17 +121,17 @@ def check_fixtures(d):
             fail(w, f"color_srgb must be #rrggbb in lower case, got {t['color_srgb']!r}")
         if t["emergency"] not in EMERGENCY:
             fail(w, f"emergency must be bus or always, got {t['emergency']!r}")
-        number(t["range_m"], w + ".range_m", float, 0.1, 100)
+        number(t["range_m"], w + ".range_m", float, 0.1, 2000)
         number(t.get("emergency_scale", 1), w + ".emergency_scale", float, 0, 10)
         if kind == "point":
-            number(t["intensity_cd"], w + ".intensity_cd", float, 0, 1e6)
+            number(t["intensity_cd"], w + ".intensity_cd", float, 0, 1e8)
             number(t["radius_m"], w + ".radius_m", float, 0, 5)
             number(t["beam_exponent"], w + ".beam_exponent", float, 0, 200)
             number(t["drop_m"], w + ".drop_m", float, 0, 1)
         else:
             number(t["luminance_cd_m2"], w + ".luminance_cd_m2", float, 0, 1e6)
             for k in AREA_OPTIONAL & set(t):
-                number(t[k], f"{w}.{k}", float, 0, 10)
+                number(t[k], f"{w}.{k}", float, 0, 20)
 
 
 def check_bake(d):

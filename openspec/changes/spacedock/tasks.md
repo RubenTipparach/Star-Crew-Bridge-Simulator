@@ -37,11 +37,18 @@ can actually enter rather than something flimsy. I want there to be multiple shi
   doors in three draws within design 9's budget, and a far model each; the data checks of design 10. (2026-10-15: E's
   generator, `crates/sc-client/src/stations.rs`, outside, inside and glow in three draws, 18,264 triangles; its iris's
   leaves, the habitats' land and clouds and a far model still to come. A-D are placeholders: their outsides only.)
-- [ ] 2.4 The bays' bakes: their floods and window tiers as fixtures in data, baked into the insides' vertex colours.
-  (2026-10-15: a stand-in for E, the fixtures in `data/space/station_models.json` baked at load without shadows.)
-- [ ] 2.5 The docked ships placed from the berths at their middle level of detail; the berth probes lighting them.
-  (2026-10-15: E's two Herons, drawn with the Tern's full model lit from their own up; the Osprey and the Federation
-  concepts have no engine model, so their berths stand empty.)
+- [ ] 2.4 The bays' bakes (design 8a), E first: the rings, floods, berth work lights and window tiers as fixtures in
+  `data/lighting/fixtures.json`'s format, placed by rule from `spacedock.json`; baked into the insides' vertex colours in
+  the three states; first in `docs/mockups/spacedock.html` with `lightbake.js` and its shots, then in the station
+  generator's build. Mockup done for E's bay (2026-10-15, design 8a): fixtures, `bake.json` `station`, three states,
+  probes on the ships, shots. In the engine (2026-10-15): a stand-in, the fixtures in `data/space/station_models.json`
+  baked at load without shadows. Left: the throat, A-D, and the station generator's bake from the mockup's fixtures.
+- [ ] 2.5 The docked ships placed from the berths at their middle level of detail; the bay's probes lighting them and
+  the Tern's hull while it is in the bay, giving way to the star over the throat (design 8a; `patrol-mission` 11.3's
+  relight follows). Mockup done for E's bay's probes (2026-10-16): the 20 m and 5 m grids, every hull lit at each vertex
+  by `probes.rs`'s rule, the crossing view. In the engine (2026-10-15): E's two Herons, drawn with the Tern's full model
+  lit from their own up; the Osprey and the Federation concepts have no engine model, so their berths stand empty.
+  Left: the throat's change to the star, and the engine's relight from the probes.
 - [ ] 2.6 The doors and iris (traffic control's clearance, 20 s to open and close) and the bay's speed limit on the
   server; FN 10's dock autopilot with a berth as its port.
 - [ ] 2.7 Measure E's per-pixel shaders on the Pi (S7) and write the result into `engine-stack`'s budget table before
