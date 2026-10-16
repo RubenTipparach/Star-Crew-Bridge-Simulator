@@ -17,6 +17,7 @@ pub mod gfx;
 mod sokol_log;
 
 pub mod depth;
+pub mod sky;
 
 /// The generated shader modules (tools/sokol_shaders.py; never edited by hand).
 #[allow(clippy::all, missing_docs, dead_code)]
@@ -87,19 +88,37 @@ pub struct DeckParams {
     /// A baked sun to move to the frame's (patrol-mission design 11.3): the direction the colours were baked from in
     /// the mesh's frame, and the bake's ambient share; [`NO_RELIGHT`] for none. With it, `flash_dir` and `flash` are
     /// the frame's sun and its strength, and the colour is `light(now) / light(baked)` of the bake, never an added
-    /// light: `light(s) = a + (1 - a) max(0, n . s)`.
-    pub relight: [f32; 4],
+    /// light: `light(s) = a + (1 - a) max(0, n . s)`, its ambient share `a` tinted by the sky (nebula-skies 6).
+    pub relight: Relight,
 }
 
-/// [`DeckParams::relight`] off: the colours are drawn as baked.
-pub const NO_RELIGHT: [f32; 4] = [0.0; 4];
+/// A baked sun moved to the frame's ([`DeckParams::relight`]).
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct Relight {
+    /// The direction the colours were baked from in the mesh's frame, and the bake's ambient share (0: no relight).
+    pub baked: [f32; 4],
+    /// The sky's tint on the ambient share (openspec/changes/nebula-skies design 6): display multipliers for a surface
+    /// facing +X, -X, +Y, -Y, +Z and -Z of the mesh's frame; [`NO_TINT`] for none.
+    pub tint: [[f32; 3]; 6],
+}
 
-/// The sky's numbers (deck-pipeline 13b; `data/space/exterior.json` through the client): directions are ship
-/// coordinates, colours linear. See `shaders/sky.glsl` for each lane.
+/// [`Relight::tint`] for no sky: the ambient share as baked.
+pub const NO_TINT: [[f32; 3]; 6] = [[1.0; 3]; 6];
+
+/// [`DeckParams::relight`] off: the colours are drawn as baked.
+pub const NO_RELIGHT: Relight = Relight { baked: [0.0; 4], tint: NO_TINT };
+
+/// The sky's numbers (deck-pipeline 13b; `data/space/exterior.json` through the client): directions are in the frame
+/// `view` turns into the eye's (the system's in a patrol), colours linear. See `shaders/sky.glsl` for each lane. The
+/// nebula and its stars are the sky set with [`Renderer::set_sky`].
 #[derive(Copy, Clone, Debug)]
 pub struct SkyParams {
-    /// The inverse of the projection times the view's rotation (no translation).
-    pub inv_vp: glam::Mat4,
+    /// The projection.
+    pub proj: glam::Mat4,
+    /// The view's rotation (no translation): directions into the eye's frame.
+    pub view: glam::Mat4,
+    /// The clock this frame is drawn at, seconds: how fast the view turns, for the stars' streaks (nebula-skies 5.2).
+    pub time_s: f64,
     /// The way to the sun, and the cosine of the disc's angular radius.
     pub sun: [f32; 4],
     /// The sun's colour, and the glow's strength.
@@ -114,8 +133,79 @@ pub struct SkyParams {
     pub cloud: [f32; 4],
     /// The atmosphere's rim, and its thickness as a share of the radius.
     pub atmosphere: [f32; 4],
-    /// Star density, brightness, and a pixel's size in radians.
+    /// Star density, brightness, and a pixel's size in radians. A sky set with [`Renderer::set_sky`] brings its own
+    /// density and brightness (its `dust_stars`), which take the place of these two.
     pub stars: [f32; 4],
+}
+
+/// What a sky pipeline draws.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+enum OutsideKind {
+    /// The sky mesh.
+    Sky,
+    /// The faint stars, over the whole target, in proportion to the sky's alpha.
+    Faint,
+    /// A viewscreen's quad.
+    Screen,
+    /// The vector stars' lines.
+    StarLines,
+    /// The bright stars' round heads.
+    StarHeads,
+}
+
+/// A sky's ambient light (nebula-skies design 6): the linear RGB a white surface takes facing +x, -x, +y, -y, +z and
+/// -z in the sky's frame, and the brightest face's luminance.
+pub type SkyAmbient = ([[f32; 3]; 6], f32);
+
+/// The sky on the GPU (nebula-skies design 8): the mesh, the vector stars, and what the program needs of the file.
+struct SkyGpu {
+    vbuf: sg::Buffer,
+    ibuf: sg::Buffer,
+    index_count: usize,
+    /// The stars' lines (two vertices a star) and heads (one a bright star), and their counts; none for no stars.
+    lines: Option<(sg::Buffer, usize)>,
+    heads: Option<(sg::Buffer, usize)>,
+    /// The faint stars' density and brightness, when the sky brings them.
+    dust_stars: Option<[f32; 2]>,
+    /// The streak rule.
+    streak: Option<sc_core::sky::Streak>,
+    /// The ambient's linear cube (system frame) and its strength (design 6).
+    ambient: Option<SkyAmbient>,
+    /// Its id ("none" for the octahedron).
+    id: String,
+}
+
+impl SkyGpu {
+    fn destroy(&self) {
+        sg::destroy_buffer(self.vbuf);
+        sg::destroy_buffer(self.ibuf);
+        for (b, _) in [self.lines, self.heads].into_iter().flatten() {
+            sg::destroy_buffer(b);
+        }
+    }
+}
+
+fn immutable<T>(data: &[T], index: bool) -> sg::Buffer {
+    sg::make_buffer(&sg::BufferDesc {
+        usage: sg::BufferUsage { vertex_buffer: !index, index_buffer: index, ..Default::default() },
+        data: sg::slice_as_range(data),
+        label: c"sky".as_ptr(),
+        ..Default::default()
+    })
+}
+
+fn sky_gpu(vertices: &[sky::SkyVertex], indices: &[u16]) -> SkyGpu {
+    SkyGpu {
+        vbuf: immutable(vertices, false),
+        ibuf: immutable(indices, true),
+        index_count: indices.len(),
+        lines: None,
+        heads: None,
+        dust_stars: None,
+        streak: None,
+        ambient: None,
+        id: "none".into(),
+    }
 }
 
 /// A UI vertex: a position in points from the output's top left, a texture coordinate and a premultiplied sRGB
@@ -283,10 +373,17 @@ pub struct FrameCounts {
 pub struct Renderer {
     pipes: HashMap<(DeckProgram, IndexWidth, i32), sg::Pipeline>,
     shaders: HashMap<DeckProgram, sg::Shader>,
-    /// The sky and screen programs, and their pipelines by sample count (false: sky, true: screen).
+    /// The sky, star and screen programs, and their pipelines by kind and sample count.
     sky_shader: sg::Shader,
+    faint_shader: sg::Shader,
+    star_line_shader: sg::Shader,
+    star_head_shader: sg::Shader,
     screen_shader: sg::Shader,
-    outside_pipes: HashMap<(bool, i32), sg::Pipeline>,
+    outside_pipes: HashMap<(OutsideKind, i32), sg::Pipeline>,
+    /// The sky drawn now: the system's nebula, or the octahedron of black until one is set.
+    sky: SkyGpu,
+    /// Each view's rotation and clock when its sky was last drawn, by its target: the stars' streaks (nebula-skies 4.2).
+    sky_last: HashMap<u32, (glam::Mat3, f64)>,
     ui: UiPainter,
     fx: FxPainter,
     blit: sg::Pipeline,
@@ -411,6 +508,11 @@ impl Renderer {
             }
         };
         let sky_shader = sg::make_shader(&shaders::sky::sky_shader_desc(backend));
+        let faint_shader = sg::make_shader(&shaders::sky::faint_shader_desc(backend));
+        let star_line_shader = sg::make_shader(&shaders::sky::star_lines_shader_desc(backend));
+        let star_head_shader = sg::make_shader(&shaders::sky::star_heads_shader_desc(backend));
+        let (ov, oi) = sky::octahedron();
+        let sky = sky_gpu(&ov, &oi);
         let screen_shader = sg::make_shader(&shaders::sky::screen_shader_desc(backend));
         let fx = FxPainter {
             shader: sg::make_shader(&shaders::fx::fx_shader_desc(backend)),
@@ -432,8 +534,13 @@ impl Renderer {
             pipes: HashMap::new(),
             shaders,
             sky_shader,
+            faint_shader,
+            star_line_shader,
+            star_head_shader,
             screen_shader,
             outside_pipes: HashMap::new(),
+            sky,
+            sky_last: HashMap::new(),
             ui,
             fx,
             blit,
@@ -445,22 +552,76 @@ impl Renderer {
         }
     }
 
-    /// The sky's pipeline (the sky layer's depth, [`sky_layer_depth`]) or a screen's (depth tested, both faces).
-    fn outside_pipeline(&mut self, screen: bool, samples: i32) -> sg::Pipeline {
-        let shader = if screen { self.screen_shader } else { self.sky_shader };
-        *self.outside_pipes.entry((screen, samples)).or_insert_with(|| {
+    /// A sky layer pipeline (the sky layer's depth, [`sky_layer_depth`]) or a screen's (depth tested, both faces).
+    fn outside_pipeline(&mut self, kind: OutsideKind, samples: i32) -> sg::Pipeline {
+        let shader = match kind {
+            OutsideKind::Sky => self.sky_shader,
+            OutsideKind::Faint => self.faint_shader,
+            OutsideKind::Screen => self.screen_shader,
+            OutsideKind::StarLines => self.star_line_shader,
+            OutsideKind::StarHeads => self.star_head_shader,
+        };
+        *self.outside_pipes.entry((kind, samples)).or_insert_with(|| {
             let mut d = sg::PipelineDesc {
                 shader,
                 cull_mode: sg::CullMode::None,
                 sample_count: samples,
-                label: if screen { c"screen".as_ptr() } else { c"sky".as_ptr() },
+                label: c"outside".as_ptr(),
                 ..Default::default()
             };
-            if screen {
-                d.depth.compare = sg::CompareFunc::LessEqual;
-                d.depth.write_enabled = true;
-            } else {
-                sky_layer_depth(&mut d.depth);
+            match kind {
+                OutsideKind::Screen => {
+                    d.depth.compare = sg::CompareFunc::LessEqual;
+                    d.depth.write_enabled = true;
+                }
+                OutsideKind::Faint => {
+                    sky_layer_depth(&mut d.depth);
+                    // Added where the sky's alpha lets them through: source times destination alpha, plus what is there.
+                    d.colors[0].blend = sg::BlendState {
+                        enabled: true,
+                        src_factor_rgb: sg::BlendFactor::DstAlpha,
+                        dst_factor_rgb: sg::BlendFactor::One,
+                        op_rgb: sg::BlendOp::Add,
+                        src_factor_alpha: sg::BlendFactor::Zero,
+                        dst_factor_alpha: sg::BlendFactor::One,
+                        op_alpha: sg::BlendOp::Add,
+                    };
+                }
+                OutsideKind::Sky => {
+                    sky_layer_depth(&mut d.depth);
+                    d.index_type = sg::IndexType::Uint16;
+                    d.layout.buffers[0].stride = std::mem::size_of::<sky::SkyVertex>() as i32;
+                    d.layout.attrs[shaders::sky::ATTR_SKY_SKY_DIR].format = sg::VertexFormat::Float3;
+                    d.layout.attrs[shaders::sky::ATTR_SKY_SKY_DIR].offset = 0;
+                    d.layout.attrs[shaders::sky::ATTR_SKY_SKY_COL].format = sg::VertexFormat::Ubyte4n;
+                    d.layout.attrs[shaders::sky::ATTR_SKY_SKY_COL].offset = 12;
+                }
+                OutsideKind::StarLines | OutsideKind::StarHeads => {
+                    sky_layer_depth(&mut d.depth);
+                    d.primitive_type = if kind == OutsideKind::StarLines {
+                        sg::PrimitiveType::Lines
+                    } else {
+                        sg::PrimitiveType::Points
+                    };
+                    d.layout.buffers[0].stride = std::mem::size_of::<sky::StarVertex>() as i32;
+                    // The lines' and the heads' attributes are the one vertex shader's, at the same slots.
+                    d.layout.attrs[shaders::sky::ATTR_STAR_LINES_STAR_DIR].format = sg::VertexFormat::Float3;
+                    d.layout.attrs[shaders::sky::ATTR_STAR_LINES_STAR_DIR].offset = 0;
+                    d.layout.attrs[shaders::sky::ATTR_STAR_LINES_STAR_COL].format = sg::VertexFormat::Ubyte4n;
+                    d.layout.attrs[shaders::sky::ATTR_STAR_LINES_STAR_COL].offset = 12;
+                    d.layout.attrs[shaders::sky::ATTR_STAR_LINES_STAR_END].format = sg::VertexFormat::Float2;
+                    d.layout.attrs[shaders::sky::ATTR_STAR_LINES_STAR_END].offset = 16;
+                    // Alpha-blended over the sky, not added (FreeSpace's alpha-blended lines, design 5.2).
+                    d.colors[0].blend = sg::BlendState {
+                        enabled: true,
+                        src_factor_rgb: sg::BlendFactor::SrcAlpha,
+                        dst_factor_rgb: sg::BlendFactor::OneMinusSrcAlpha,
+                        op_rgb: sg::BlendOp::Add,
+                        src_factor_alpha: sg::BlendFactor::Zero,
+                        dst_factor_alpha: sg::BlendFactor::One,
+                        op_alpha: sg::BlendOp::Add,
+                    };
+                }
             }
             d.depth.pixel_format = DEPTH_FORMAT;
             d.colors[0].pixel_format = COLOR_FORMAT;
@@ -468,14 +629,63 @@ impl Renderer {
         })
     }
 
-    /// Draw the sky over the whole of `t`'s current pass. It is drawn first, and it is also depth tested at the far
-    /// plane, so it shows only where nothing solid has been drawn, whatever the order (sky-behind-solids 1).
+    /// Set the sky every view draws from now on: `sky`'s mesh and vector stars, the stars' classes, colours and streak
+    /// from `starfield` (nebula-skies design 3 and 5). It replaces the sky drawn before; until it is called the sky is
+    /// black with the faint stars, the sun and the planet.
+    pub fn set_sky(&mut self, sky: &sc_core::sky::NebulaSky, starfield: &sc_core::sky::Starfield) {
+        self.sky.destroy();
+        let mut g = sky_gpu(&sky::mesh_vertices(sky), &sky.indices);
+        let (lines, heads) = sky::star_vertices(sky, starfield);
+        g.lines = (!lines.is_empty()).then(|| (immutable(&lines, false), lines.len()));
+        g.heads = (!heads.is_empty()).then(|| (immutable(&heads, false), heads.len()));
+        g.dust_stars = Some(sky.dust_stars);
+        g.streak = Some(starfield.streak);
+        g.ambient = Some((sky.ambient_cube, sky.ambient_strength));
+        g.id = sky.id.clone();
+        self.sky = g;
+        self.sky_last.clear();
+    }
+
+    /// Go back to the sky with no nebula (the black octahedron): the probe's old sky, and a test's.
+    pub fn clear_sky(&mut self) {
+        self.sky.destroy();
+        let (ov, oi) = sky::octahedron();
+        self.sky = sky_gpu(&ov, &oi);
+        self.sky_last.clear();
+    }
+
+    /// The sky set now: its id ("none" before one is set), and its ambient cube (linear RGB facing +x, -x, +y, -y, +z
+    /// and -z in the sky's frame) and strength, for the light outside (nebula-skies design 6).
+    pub fn sky(&self) -> (&str, Option<SkyAmbient>) {
+        (&self.sky.id, self.sky.ambient)
+    }
+
+    /// The sky mesh's vertices and triangles, and the vector stars' line and head counts: the sky's cost a view.
+    pub fn sky_counts(&self) -> [usize; 3] {
+        [self.sky.index_count / 3, self.sky.lines.map_or(0, |l| l.1 / 2), self.sky.heads.map_or(0, |h| h.1)]
+    }
+
+    /// Draw the sky over the whole of `t`'s current pass: the mesh with the sun and the planet, the faint stars over it
+    /// where the nebula lets them show, then the vector stars' lines and heads, all on the far plane and depth tested
+    /// there, so the sky shows only where nothing solid has been drawn, whatever the order (sky-behind-solids 1,
+    /// nebula-skies 7). Up to four draws.
     pub fn draw_sky(&mut self, t: &Target, p: &SkyParams) {
-        let pip = self.outside_pipeline(false, t.samples);
-        // The sky reads no buffer or texture, and sokol_gfx refuses empty bindings: none are applied.
+        let vp = p.proj * p.view;
+        let rot = sky::rotation_of(p.view);
+        let last = self.sky_last.insert(t.color.id, (rot, p.time_s));
+        let frame = match &self.sky.streak {
+            Some(s) => sky::streak_frame(rot, last, p.time_s, s),
+            None => sky::StreakFrame { tail_scale: 0.0, tail_rad: 0.0, faint: 1.0, cut: true },
+        };
+        let pip = self.outside_pipeline(OutsideKind::Sky, t.samples);
         sg::apply_pipeline(pip);
-        let vs = shaders::sky::SkyVsParams { inv_vp: p.inv_vp.to_cols_array() };
+        let mut b = sg::Bindings::new();
+        b.vertex_buffers[0] = self.sky.vbuf;
+        b.index_buffer = self.sky.ibuf;
+        sg::apply_bindings(&b);
+        let vs = shaders::sky::SkyVsParams { vp: vp.to_cols_array() };
         sg::apply_uniforms(shaders::sky::UB_SKY_VS_PARAMS, &sg::value_as_range(&vs));
+        let [density, brightness] = self.sky.dust_stars.unwrap_or([p.stars[0], p.stars[1]]);
         let fs = shaders::sky::SkyFsParams {
             sun: p.sun,
             sun_colour: p.sun_colour,
@@ -484,17 +694,53 @@ impl Renderer {
             land: p.land,
             cloud: p.cloud,
             atmosphere: p.atmosphere,
-            stars: p.stars,
+            stars: [frame.faint, 0.0, 0.0, 0.0],
         };
         sg::apply_uniforms(shaders::sky::UB_SKY_FS_PARAMS, &sg::value_as_range(&fs));
+        sg::draw(0, self.sky.index_count, 1);
+        // The faint stars: one triangle over the target, no buffer (sokol_gfx refuses empty bindings: none applied).
+        let pip = self.outside_pipeline(OutsideKind::Faint, t.samples);
+        sg::apply_pipeline(pip);
+        let vs = shaders::sky::FaintVsParams { inv_vp: vp.inverse().to_cols_array() };
+        sg::apply_uniforms(shaders::sky::UB_FAINT_VS_PARAMS, &sg::value_as_range(&vs));
+        let fs = shaders::sky::FaintFsParams { stars: [density, brightness, p.stars[2], 0.0] };
+        sg::apply_uniforms(shaders::sky::UB_FAINT_FS_PARAMS, &sg::value_as_range(&fs));
         sg::draw(0, 3, 1);
+        let Some(s) = self.sky.streak else { return };
+        let prev = match (frame.cut, last) {
+            (false, Some((r, _))) => r,
+            _ => rot,
+        };
+        let (w, h) = t.size();
+        let sin_r = p.planet[3].clamp(0.0, 1.0);
+        let u = shaders::sky::StarVsParams {
+            vp: vp.to_cols_array(),
+            prev_vp: (p.proj * glam::Mat4::from_mat3(prev)).to_cols_array(),
+            rot: glam::Mat4::from_mat3(rot).to_cols_array(),
+            prev_rot: glam::Mat4::from_mat3(prev).to_cols_array(),
+            view: [w as f32, h as f32, p.stars[2].max(1e-6), 0.0],
+            tail: [frame.tail_scale, s.max_deg.to_radians() as f32, s.min_px as f32, s.dim_per_deg.to_degrees() as f32],
+            look: [s.dim_floor as f32, s.tail_fade as f32, s.alpha_min as f32, s.whiten as f32],
+            planet: [p.planet[0], p.planet[1], p.planet[2], (1.0 - sin_r * sin_r).sqrt()],
+            sun: p.sun,
+        };
+        for (kind, buf) in [(OutsideKind::StarLines, self.sky.lines), (OutsideKind::StarHeads, self.sky.heads)] {
+            let Some((buf, n)) = buf else { continue };
+            let pip = self.outside_pipeline(kind, t.samples);
+            sg::apply_pipeline(pip);
+            let mut b = sg::Bindings::new();
+            b.vertex_buffers[0] = buf;
+            sg::apply_bindings(&b);
+            sg::apply_uniforms(shaders::sky::UB_STAR_VS_PARAMS, &sg::value_as_range(&u));
+            sg::draw(0, n, 1);
+        }
     }
 
     /// Draw a screen in `t`'s current pass: a quad whose corners (-1..1, z 0) `mvp` places, showing `source`'s
     /// picture (rendered earlier this frame, in its own pass). `look`: scan lines' depth, the source's height in
     /// pixels, brightness.
     pub fn draw_screen(&mut self, t: &Target, mvp: glam::Mat4, source: &Target, look: [f32; 4]) {
-        let pip = self.outside_pipeline(true, t.samples);
+        let pip = self.outside_pipeline(OutsideKind::Screen, t.samples);
         sg::apply_pipeline(pip);
         let mut b = sg::Bindings::new();
         b.views[shaders::sky::VIEW_TEX] = source.texture;
@@ -702,7 +948,8 @@ impl Renderer {
             state_weights: [params.state_weights[0], params.state_weights[1], params.state_weights[2], 0.0],
             flash: [params.flash_dir.x, params.flash_dir.y, params.flash_dir.z, params.flash],
             clip: [params.clip_y.min(1.0e9), 0.0, 0.0, 0.0],
-            relight: params.relight,
+            relight: params.relight.baked,
+            tint: params.relight.tint.map(|c| [c[0], c[1], c[2], 0.0]),
         };
         sg::apply_uniforms(shaders::deck::UB_DECK_VS_PARAMS, &sg::value_as_range(&u));
         if program == DeckProgram::Textured {

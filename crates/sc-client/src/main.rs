@@ -256,19 +256,22 @@ struct Outside {
 
 impl Outside {
     /// The sky's parameters seen through `proj * view` (a view with no translation), `px_rad` a pixel's angle.
-    fn sky(&self, proj: Mat4, view: Mat4, px_rad: f32) -> SkyParams {
-        sky_params(&self.data, proj, view, px_rad)
+    fn sky(&self, proj: Mat4, view: Mat4, px_rad: f32, time_s: f64) -> SkyParams {
+        sky_params(&self.data, proj, view, px_rad, time_s)
     }
 }
 
-/// The sky's parameters from the exterior's data, seen through `proj * view`, `px_rad` a pixel's angle.
-fn sky_params(e: &ExteriorData, proj: Mat4, view: Mat4, px_rad: f32) -> SkyParams {
+/// The sky's parameters from the exterior's data, seen through `proj * view`, `px_rad` a pixel's angle, at the clock
+/// `time_s` (the stars' streaks, openspec/changes/nebula-skies 5.2).
+fn sky_params(e: &ExteriorData, proj: Mat4, view: Mat4, px_rad: f32, time_s: f64) -> SkyParams {
     {
         let sun = normalized(e.sun.dir);
         let pl = normalized(e.planet.dir);
         let v4 = |c: [f32; 3], w: f64| [c[0], c[1], c[2], w as f32];
         SkyParams {
-            inv_vp: (proj * view).inverse(),
+            proj,
+            view,
+            time_s,
             sun: v4(sun, (e.sun.disc_deg / 2.0).to_radians().cos()),
             sun_colour: v4(linear(e.sun.colour_srgb), e.sun.glow),
             planet: v4(pl, e.planet.radius_deg.to_radians().sin()),
@@ -509,6 +512,8 @@ impl Client {
             std::fs::read_to_string("data/engine/render.json").map_err(|e| format!("data/engine/render.json: {e}"))?;
         let cfg = sc_core::data::parse("data/engine/render.json", &text).map_err(|e| e.to_string())?;
         let mut r = Renderer::new(&cfg);
+        // The home system's nebula behind every view (openspec/changes/nebula-skies).
+        outside::set_home_sky(&mut r)?;
         let target = r.make_target(RENDER_3D.0, RENDER_3D.1, 4);
         let text = std::fs::read_to_string("data/space/exterior.json")
             .map_err(|e| format!("data/space/exterior.json: {e}"))?;
@@ -642,7 +647,7 @@ impl Client {
         let proj = glam::camera::rh::proj::opengl::perspective(60f32.to_radians(), aspect, 0.05, 300.0);
         self.r.begin_3d(&self.target, [0.0, 0.0, 0.0, 1.0]);
         let px = 60f32.to_radians() / RENDER_3D.1 as f32;
-        self.r.draw_sky(&self.target, &sky_params(&self.exterior, proj, view, px));
+        self.r.draw_sky(&self.target, &sky_params(&self.exterior, proj, view, px, self.time_s));
         self.r.end_pass();
         let Some(l) = self.lobby.as_mut() else { return Flow::Fail };
         let mut action = lobby::LobbyAction::None;
@@ -1174,7 +1179,7 @@ impl App for Client {
             let look = normalized(v.look);
             let bview = glam::camera::rh::view::look_to_mat4(Vec3::ZERO, Vec3::from(look), Vec3::Y);
             self.r.begin_3d(&o.bow, [0.0, 0.0, 0.0, 1.0]);
-            self.r.draw_sky(&o.bow, &o.sky(bproj, bview, (v.fov_deg as f32).to_radians() / th as f32));
+            self.r.draw_sky(&o.bow, &o.sky(bproj, bview, (v.fov_deg as f32).to_radians() / th as f32, self.time_s));
             let glow = w[0] * panel_glow[0] + w[1] * panel_glow[1] + w[2] * panel_glow[2];
             for room in rooms.iter().filter(|r| r.outside) {
                 let rel = Vec3::new(
@@ -1221,7 +1226,7 @@ impl App for Client {
             Scene::Ship { rooms, figures, probes, outside, hull, tex, panel_first, panel_glow, .. } => {
                 if let Some(o) = outside {
                     let px = 70f32.to_radians() / RENDER_3D.1 as f32;
-                    self.r.draw_sky(&self.target, &o.sky(proj, view, px));
+                    self.r.draw_sky(&self.target, &o.sky(proj, view, px, self.time_s));
                 }
                 let glow = w[0] * panel_glow[0] + w[1] * panel_glow[1] + w[2] * panel_glow[2];
                 for Room { mesh, origin, car, .. } in rooms {

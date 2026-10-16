@@ -318,6 +318,11 @@ impl DrillApp {
             sc_core::data::parse("data/space/exterior.json", &text).map_err(|e| e.to_string())?;
         console::set_chase(&exterior.viewscreen.chase);
         let mut data = load_data(&args.mission)?;
+        // The nebula behind every view: the patrol's system's, or the home system's (openspec/changes/nebula-skies).
+        match data.patrol.as_ref() {
+            Some(p) => crate::outside::set_system_sky(&mut r, &p.system)?,
+            None => crate::outside::set_home_sky(&mut r)?,
+        }
         if args.all_hands && args.solo {
             data.mission.damage_control = "crew".into();
         }
@@ -1195,7 +1200,8 @@ impl DrillApp {
             let in_ship = shot.eye;
             // The sky's sun from where the Tern is (one sun outside, design 11.3), or the bay's floods under a roof.
             let (light, k) = hull_light.unwrap_or((crate::outside::sun_in_ship(&ext_now, q), 1.0));
-            h.draw_lit(&mut self.r, &self.feed, proj * view_m * Mat4::from_quat(q), in_ship.to_array(), light, k);
+            let sky = hull_light.is_none().then_some(q);
+            h.draw_lit(&mut self.r, &self.feed, proj * view_m * Mat4::from_quat(q), in_ship.to_array(), light, k, sky);
         }
         self.r.end_pass();
         self.r.begin_3d(&self.blank, [0.0, 0.0, 0.0, 1.0]);
@@ -1273,7 +1279,7 @@ impl World<'_> {
         eye: DVec3,
         ships: Option<&(ShipSnap, ShipSnap, Snapshot)>,
     ) {
-        let sky = crate::sky_params(self.exterior, proj, view, px_rad);
+        let sky = crate::sky_params(self.exterior, proj, view, px_rad, self.time_s);
         r.draw_sky(t, &sky);
         self.draw_objects(r, t, proj * view, eye, ships);
     }
@@ -1292,7 +1298,7 @@ impl World<'_> {
         let flat = crate::drill_bridge::flat_params;
         // One sun lights everything outside (patrol-mission design 11.3).
         let sun = Vec3::from_array(normalized(self.exterior.sun.dir));
-        let cube = crate::outside::sun_cube(sun);
+        let cube = crate::outside::sun_cube(sun, &crate::outside::sky_tint(r, Quat::IDENTITY));
         // The stations: the relay where the helm's COURSE flies, the system's spacedocks (design 12b), their beacons
         // blinking.
         for (shown, at, rot) in &self.stations {

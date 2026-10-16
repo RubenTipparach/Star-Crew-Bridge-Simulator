@@ -6,9 +6,11 @@
 //! baked sun; the draw moves that light to the frame's sun (patrol-mission design 11.3), so the hull seen from a window
 //! is lit from where the sky's sun is, however the Tern has turned.
 
-use glam::{Mat4, Vec3};
+use glam::{Mat4, Quat, Vec3};
 use sc_core::deck::Deck;
-use sc_render::{DeckParams, DeckProgram, Indices, Magnify, Mesh, Renderer, Target, TextureArray, NO_RELIGHT};
+use sc_render::{
+    DeckParams, DeckProgram, Indices, Magnify, Mesh, Relight, Renderer, Target, TextureArray, NO_RELIGHT, NO_TINT,
+};
 use serde::Deserialize;
 
 use crate::outside::HullBake;
@@ -58,33 +60,47 @@ impl HullView {
 
     /// Draw the hull into the current 3D pass of `t`, seen through `proj_view` (a view at the origin) from `eye`, ship
     /// coordinates, lit by the sun at `sun` (the ship's frame, unit length: `outside::sun_in_ship`). The outside keeps its
-    /// own light: the interior's alert states and the panels' glow do not reach it.
+    /// own light: the interior's alert states and the panels' glow do not reach it. The ship's axes are the sky's here
+    /// (the walk's dock), so the sky's tint reaches it unturned.
     pub fn draw(&self, r: &mut Renderer, t: &Target, proj_view: Mat4, eye: [f64; 3], sun: Vec3) {
-        self.draw_lit(r, t, proj_view, eye, sun, 1.0);
+        self.draw_lit(r, t, proj_view, eye, sun, 1.0, Some(Quat::IDENTITY));
     }
 
     /// As `draw`, lit from `light` (the ship's frame, unit length) at `strength` (1 the sun's): a hull under a
-    /// station's roof is lit by its floods from above, not the star (patrol-mission design 12b).
-    pub fn draw_lit(&self, r: &mut Renderer, t: &Target, proj_view: Mat4, eye: [f64; 3], light: Vec3, strength: f32) {
+    /// station's roof is lit by its floods from above, not the star (patrol-mission design 12b). `sky`: the ship's
+    /// attitude (ship frame to the sky's) when the sky's colour tints its shade (nebula-skies design 6), none under a
+    /// roof.
+    #[allow(clippy::too_many_arguments)]
+    pub fn draw_lit(
+        &self,
+        r: &mut Renderer,
+        t: &Target,
+        proj_view: Mat4,
+        eye: [f64; 3],
+        light: Vec3,
+        strength: f32,
+        sky: Option<Quat>,
+    ) {
         // The frames rule: subtract the eye in f64, then narrow to f32.
         let rel = Vec3::new(
             (self.origin[0] - eye[0]) as f32,
             (self.origin[1] - eye[1]) as f32,
             (self.origin[2] - eye[2]) as f32,
         );
-        self.draw_at(r, t, proj_view * Mat4::from_translation(rel), light, strength);
+        let tint = sky.map_or(NO_TINT, |q| crate::outside::sky_tint(r, q));
+        self.draw_at(r, t, proj_view * Mat4::from_translation(rel), light, strength, &tint);
     }
 
     /// Another ship of the Tern's model (a sister ship at a berth, patrol-mission design 12b): its frame placed by `model`
     /// (from the ship's frame to the frame `vp` is in, relative to the eye), lit from `light` in its own frame at
-    /// `strength`.
+    /// `strength`. A berth is under the station's roof: no sky's tint.
     pub fn draw_posed(&self, r: &mut Renderer, t: &Target, vp: Mat4, model: Mat4, light: Vec3, strength: f32) {
         let o = Vec3::new(self.origin[0] as f32, self.origin[1] as f32, self.origin[2] as f32);
-        self.draw_at(r, t, vp * model * Mat4::from_translation(o), light, strength);
+        self.draw_at(r, t, vp * model * Mat4::from_translation(o), light, strength, &NO_TINT);
     }
 
-    /// The parts, the mesh's origin placed by `at` (projection, view and placement).
-    fn draw_at(&self, r: &mut Renderer, t: &Target, at: Mat4, light: Vec3, strength: f32) {
+    /// The parts, the mesh's origin placed by `at` (projection, view and placement), the bake's ambient tinted by `tint`.
+    fn draw_at(&self, r: &mut Renderer, t: &Target, at: Mat4, light: Vec3, strength: f32, tint: &[[f32; 3]; 6]) {
         let p = DeckParams {
             mvp: at * Mat4::from_scale(Vec3::splat(self.scale)),
             state_weights: [1.0, 0.0, 0.0],
@@ -93,7 +109,7 @@ impl HullView {
             panel_first: u32::MAX,
             panel_glow: 0.0,
             clip_y: f32::MAX,
-            relight: self.bake.relight(),
+            relight: Relight { baked: self.bake.relight(), tint: *tint },
         };
         // The glowing parts (lights, screens) are their own light: not relit, no light added.
         let glowing = DeckParams { flash: 0.0, relight: NO_RELIGHT, ..p };

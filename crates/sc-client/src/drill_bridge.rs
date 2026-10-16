@@ -203,7 +203,7 @@ impl BridgeView {
         // The outside is in the system's frame: a direction there reaches the eye turned into the ship's.
         let view_out = view * Mat4::from_quat(out.attitude.inverse());
         r.begin_3d(t, [0.004, 0.005, 0.012, 1.0]);
-        r.draw_sky(t, &crate::sky_params(ext, lens, view_out, fov / 720.0));
+        r.draw_sky(t, &crate::sky_params(ext, lens, view_out, fov / 720.0, inside.time_s));
         let w = out.lighting;
         // Every room in view, whatever its deck: the depth buffer hides what walls and floors cover.
         let vp = proj * view;
@@ -225,7 +225,7 @@ impl BridgeView {
         // Lit by the sky's sun, turned into the ship's frame by the Tern's attitude (patrol-mission design 11.3).
         if let Some(h) = &self.hull {
             let (light, k) = out.hull_light.unwrap_or((crate::outside::sun_in_ship(ext, out.attitude), 1.0));
-            h.draw_lit(r, t, proj * view, eye, light, k);
+            h.draw_lit(r, t, proj * view, eye, light, k, out.hull_light.is_none().then_some(out.attitude));
         }
         // The viewscreens: the feed's picture on a quad 3 cm in front of each, as the walk draws them.
         if let Some((feed, scanlines)) = out.screen {
