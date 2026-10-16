@@ -56,6 +56,9 @@ on is engine work, taken on a separate request once the owner has answered G1 to
   `probeCube` and the back-face test, cached in `tools/deck/cache/deck-plan-probes.bin`; the deck file's
   probes (version 5); `sc_core::probes` sampling with tests; the `deck_probe` program; the bot figures lit by
   it, with captures of a bot in a lit and a dark room in three states.
+- [ ] 5.3b Craft in a station's bay (spacedock design 8b, 2026-10-16): the bay's probes from the mockup's bake
+  in `compiled/stations.bays`, a hull lit from the cube at its middle through the hull's relight (no new shader);
+  a light per vertex on a hull still to come.
 - [ ] 5.4 Power-loss flicker from `bake.json`, seeded from the session seed, compartment and tick.
 - [ ] 5.5 Debug views (design.md section 12).
 

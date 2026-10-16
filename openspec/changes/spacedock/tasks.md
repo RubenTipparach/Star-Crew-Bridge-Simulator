@@ -42,13 +42,18 @@ can actually enter rather than something flimsy. I want there to be multiple shi
   the three states; first in `docs/mockups/spacedock.html` with `lightbake.js` and its shots, then in the station
   generator's build. Mockup done for E's bay (2026-10-15, design 8a): fixtures, `bake.json` `station`, three states,
   probes on the ships, shots. In the engine (2026-10-15): a stand-in, the fixtures in `data/space/station_models.json`
-  baked at load without shadows. Left: the throat, A-D, and the station generator's bake from the mockup's fixtures.
+  baked at load without shadows. In the engine (2026-10-16, design 8b): E's bay is the mockup's bake, carried across
+  by `tools/stations/export_bays.mjs` and `sc-tools bayc` into `compiled/stations.bays` (`sc-core::bay`) and drawn
+  in place of the stand-in's bay, its fixtures' faces with it. Left: the throat, A-D in the engine (their generators,
+  2.3), and the station generator's own bake.
 - [ ] 2.5 The docked ships placed from the berths at their middle level of detail; the bay's probes lighting them and
   the Tern's hull while it is in the bay, giving way to the star over the throat (design 8a; `patrol-mission` 11.3's
   relight follows). Mockup done for E's bay's probes (2026-10-16): the 20 m and 5 m grids, every hull lit at each vertex
   by `probes.rs`'s rule, the crossing view. In the engine (2026-10-15): E's two Herons, drawn with the Tern's full model
   lit from their own up; the Osprey and the Federation concepts have no engine model, so their berths stand empty.
-  Left: the throat's change to the star, and the engine's relight from the probes.
+  In the engine (2026-10-16, design 8b): the Tern's hull and the Herons are lit from the bay's probes, one cube a
+  hull at its middle, and down the throat the Tern's light runs from the iris's cube to the star's. Left: a light per
+  vertex on the hulls (8b), and the bay's probes in the mockup's throat.
 - [ ] 2.6 The doors and iris (traffic control's clearance, 20 s to open and close) and the bay's speed limit on the
   server; FN 10's dock autopilot with a berth as its port.
 - [ ] 2.7 Measure E's per-pixel shaders on the Pi (S7) and write the result into `engine-stack`'s budget table before
@@ -57,4 +62,7 @@ can actually enter rather than something flimsy. I want there to be multiple shi
   generated mesh.
 - [ ] 2.9 Captures from the bridge's windows and the viewscreen while entering and while berthed at Tamsin Station,
   walking the ship (CLAUDE.md 12), in `docs/screenshots/engine/`. (2026-10-15: berthed, leaving through the throat
-  and the pair from outside, in `docs/screenshots/engine/stations/`; entering waits for docking, patrol-mission.)
+  and the pair from outside, in `docs/screenshots/engine/stations/`; entering waits for docking, patrol-mission.
+  2026-10-16, with the mockup's bake (design 8b), on a cloud machine with no GPU: 7-11, the bay out of the port window
+  and ahead, a docked Heron and the Tern in its berth from out in the bay (each beside the stand-in's, `9-stand-in-*`,
+  `10-stand-in-*`), and leaving through the throat.)

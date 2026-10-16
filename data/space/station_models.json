@@ -1,6 +1,6 @@
 {
   "schema": "starcrew.station-models/1",
-  "_doc": "How the client draws the Shoals' stations (openspec/changes/patrol-mission design 12b; spacedock design 5a, 5b and 9, tasks 2.3-2.5). The shapes' sizes are data/space/spacedock.json's; this file holds what only the drawing needs: the texture layers and their size, the light outside (spacedock 5b's fallback: the relief baked into the albedo, the star's light per vertex, Tamsin's earthshine baked per vertex), the round bay's fixtures (a stand-in bake at load, until tasks 2.4's offline bake), the paints, the tessellation and the draw distance. Colours are display multipliers (1 is the texel as it is, up to 2). Read by crates/sc-client/src/stations.rs.",
+  "_doc": "How the client draws the Shoals' stations (openspec/changes/patrol-mission design 12b; spacedock design 5a, 5b and 9, tasks 2.3-2.5). The shapes' sizes are data/space/spacedock.json's; this file holds what only the drawing needs: the texture layers and their size, the light outside (spacedock 5b's fallback: the relief baked into the albedo, the star's light per vertex, Tamsin's earthshine baked per vertex), the round bay's fixtures (a stand-in bake at load, shown when compiled/stations.bays, the mockup's bake, is not there: spacedock design 8b), the paints, the tessellation and the draw distance. Colours are display multipliers (1 is the texel as it is, up to 2). Read by crates/sc-client/src/stations.rs.",
   "layer_px": 512,
   "textures": {
     "_doc": "The O'Neill pair's Material Maker textures (tools/materials/oneill_atlases.py), resized to layer_px as layers of one array in this order; the last, the macro map, glows where its alpha marks the panes.",
@@ -19,7 +19,7 @@
     "mirror_tile_m": 120.0
   },
   "bay": {
-    "_doc": "The round bay's and the throat's lamps, baked into the insides' vertex colours: floods in rings round the wall (the first flood_first_m from the back wall, then every flood_every_m, per_ring of them, inset from the wall), lamps on the axis (z in the station's frame), a lamp under each gantry, lamps in the throat's rings; each adds intensity times the cosine at the surface, fading to nothing at its reach. ship_light: how the docked ships and the Tern's own hull are lit in the bay, from their own up (the floods and gantries above them), and its strength.",
+    "_doc": "The round bay's and the throat's lamps, baked into the insides' vertex colours: floods in rings round the wall (the first flood_first_m from the back wall, then every flood_every_m, per_ring of them, inset from the wall), lamps on the axis (z in the station's frame), a lamp under each gantry, lamps in the throat's rings; each adds intensity times the cosine at the surface, fading to nothing at its reach. ship_light: how the docked ships and the Tern's own hull are lit in the bay, from their own up (the floods and gantries above them), and its strength, when compiled/stations.bays is not there (spacedock design 8b). hull_probe_max: with it, a hull is lit by the bay's probes, each axis of their cube held under this display multiplier (the mockup's 1.6 in linear light), since a hull's texture carries its own shading.",
     "ambient": [0.16, 0.17, 0.2],
     "flood": [1.0, 0.9, 0.72],
     "flood_first_m": 50.0,
@@ -38,7 +38,8 @@
     "throat_reach_m": 60.0,
     "rib_every_m": 40.0,
     "window_every_m": 32.0,
-    "ship_light": 0.9
+    "ship_light": 0.9,
+    "hull_probe_max": 1.24
   },
   "paint": {
     "_doc": "The parts' paints (the macro and cap maps carry their own; these tint the detail layer). spacedock.json colours' pearl and graphite, darkened for the steel inside.",

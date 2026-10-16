@@ -144,7 +144,7 @@ struct RoomFiles {
     c2: String,
 }
 
-fn floats(dir: &Path, name: &str, want: usize) -> Result<Vec<f32>, String> {
+pub(crate) fn floats(dir: &Path, name: &str, want: usize) -> Result<Vec<f32>, String> {
     let b = std::fs::read(dir.join(name)).map_err(|e| format!("{name}: {e}"))?;
     if b.len() != want * 4 {
         return Err(format!("{name}: {} bytes, expected {}", b.len(), want * 4));
@@ -157,7 +157,7 @@ fn floats(dir: &Path, name: &str, want: usize) -> Result<Vec<f32>, String> {
 }
 
 /// A colour multiplier as the byte the deck stores (a display multiplier, 0-2x).
-fn color_byte(c: f32) -> u8 {
+pub(crate) fn color_byte(c: f32) -> u8 {
     ((c.max(0.0).powf(1.0 / 2.2) / 2.0).clamp(0.0, 1.0) * 255.0).round() as u8
 }
 
@@ -193,7 +193,7 @@ fn floor_middle(layout: &serde_json::Value, id: &str) -> Option<[f32; 3]> {
 
 /// Pack a compartment's vertices: identical ones merged in first-seen order (stable), its indices local to it. Returns
 /// its vertex offset (bytes), vertex count, index offset and index count.
-fn pack(
+pub(crate) fn pack(
     vertices: &mut Vec<u8>,
     indices: &mut Vec<u32>,
     ins: &[DeckVertexIn],
