@@ -5429,6 +5429,24 @@ mod tests {
     }
 
     #[test]
+    fn only_the_captains_station_may_change_the_condition() {
+        // The owner, 2026-10-15: "also lighting can only be changed by the captain" (bridge-stations design 7). The
+        // condition is the lighting, so a red alert from any other seat is refused and changes nothing.
+        let others: Vec<Station> = Station::ALL.iter().copied().filter(|s| *s != Station::Captain).collect();
+        let (mut d, s) = engaged_at(&others);
+        let (red, queued) = (d.bridge.red_alert, d.queue.len());
+        for (slot, st) in s.iter().zip(&others) {
+            assert_eq!(
+                d.command(*slot, Command::Alert(!red)),
+                Err(Refusal::NotYourStation),
+                "{st:?} set the condition"
+            );
+        }
+        assert_eq!(d.queue.len(), queued, "a refused condition command was queued, so it would change the lighting");
+        assert!(Command::Alert(true).may(Station::Captain), "the captain's chair sets the condition");
+    }
+
+    #[test]
     fn the_captains_automation_calls_red_alert_when_a_hostile_closes() {
         let (mut d, _) = engaged_at(&[Station::Helm]);
         let p = d.data.profile("automation").captain.clone();

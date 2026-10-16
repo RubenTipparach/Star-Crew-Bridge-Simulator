@@ -45,12 +45,6 @@ pub mod keys {
     use sdl3_sys::everything as sdl;
     /// Escape.
     pub const ESCAPE: u32 = sdl::SDLK_ESCAPE.0;
-    /// The 1 key.
-    pub const N1: u32 = sdl::SDLK_1.0;
-    /// The 2 key.
-    pub const N2: u32 = sdl::SDLK_2.0;
-    /// The 3 key.
-    pub const N3: u32 = sdl::SDLK_3.0;
     /// F1: a repair game's guide card.
     pub const F1: u32 = sdl::SDLK_F1.0;
     /// F3.

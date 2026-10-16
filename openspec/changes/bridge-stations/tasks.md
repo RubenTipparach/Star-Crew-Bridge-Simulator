@@ -42,6 +42,7 @@ separate request once the owner approves the mockup (CLAUDE.md 10).
 - [ ] 3.2 Automation: per-station behaviour, competence from data, the refusal list, the computer core dependency; tests per refusal.
 - [ ] 3.3 Merge resolution from merge lists; tests for one to eight players.
 - [ ] 3.4 Condition, auto-condition with hysteresis, brace, orders and their lifecycle, `automation::can_execute`.
+- [x] 3.4.1 Only the captain changes the lighting (owner, 2026-10-15: "also lighting can only be changed by the captain"; design 7): the server refuses a condition command from every other station (test `only_the_captains_station_may_change_the_condition`), and the tour's 1, 2 and 3 lighting keys are removed.
 - [ ] 3.5 Threat score; test against a table of contacts.
 
 ## 4. Client (`sc-client`, `sc-render`)

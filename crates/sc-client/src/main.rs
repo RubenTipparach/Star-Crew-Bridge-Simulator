@@ -1,8 +1,9 @@
 //! `sc-client`: the game client (engine-stack design sections 3 and 6).
 //!
 //! Today it loads the ship's compiled decks (`compiled/tern.deck`, from `sc-tools deckc`), every compartment lit
-//! by the bake in the three lighting states, blended by the state weights as the decks will be (keys 1, 2 and 3:
-//! normal, red alert, emergency power), and puts you on your feet on the bridge (deck-pipeline 13a): a body
+//! by the bake in the three lighting states, blended by the state weights as the decks will be (the headless shots
+//! take each state; in play only the captain changes the lighting, bridge-stations 7), and puts you on your feet on
+//! the bridge (deck-pipeline 13a): a body
 //! walking the deck plan's walk world with `sc-core::walk` and the numbers of `data/crew/walk.json`. Click to look
 //! around with the mouse; W A S D walk, Shift runs, Space jumps, E climbs a ladder (up where a trunk goes both ways; Q down) or goes through a hatch; F flies
 //! instead (Space and C rise and sink) and lands you where you are; Tab lets the mouse go; F12 writes a capture;
@@ -1407,9 +1408,6 @@ impl App for Client {
                 self.cam.yaw -= dx * k;
                 self.cam.pitch = (self.cam.pitch - dy * k).clamp(-1.5, 1.5);
             }
-            Event::KeyDown(keys::N1) => self.want = 0,
-            Event::KeyDown(keys::N2) => self.want = 1,
-            Event::KeyDown(keys::N3) => self.want = 2,
             Event::KeyDown(keys::F12) => self.capture_next = true,
             Event::KeyDown(keys::F) if self.walker.is_some() => {
                 // Flying, then landing where the camera is: the body stands on the floor under the eye.

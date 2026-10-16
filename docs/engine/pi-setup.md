@@ -90,7 +90,7 @@ SDL_VIDEODRIVER=kmsdrm ./target/release/sc-client
 
 You stand on the bridge, by its door. Click to look around, W A S D to walk, Shift to run, Space to
 jump, E to climb a ladder (Q to climb down where a ladder goes both ways), F to fly instead (Space and C
-up and down) and F again to land where you are, 1, 2 and 3 for the lighting states, F12 a capture (into
+up and down) and F again to land where you are, F12 a capture (into
 `captures/`), Escape to let the mouse go and again to quit.
 Keyboard and mouse plug into the Pi's USB ports.
 
