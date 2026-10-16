@@ -19,4 +19,4 @@ The owner asked on 2026-10-16 (the proposal).
 
 ## 3. Gate
 
-- [ ] 3.1 The owner watches the video and approves it.
+- [x] 3.1 The owner watches the video and approves it (the owner, 2026-10-16: "approve").
