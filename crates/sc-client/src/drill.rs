@@ -1172,8 +1172,7 @@ impl DrillApp {
         };
         let centre = ships.map_or(DVec3::ZERO, |(t, _, _)| t.pos);
         let eye = stand.map_or(bow, |s| centre + s);
-        let proj =
-            glam::camera::rh::proj::opengl::perspective(vfov as f32, FEED.0 as f32 / FEED.1 as f32, 1.0, 80_000.0);
+        let proj = sc_render::depth::outside_lens(vfov as f32, FEED.0 as f32 / FEED.1 as f32);
         let view_m = glam::camera::rh::view::look_to_mat4(Vec3::ZERO, fwd.as_vec3(), up.as_vec3());
         let (ext_now, stations, roof) = self.outside_now(ships.map(|x| &x.2));
         let hull_light = self.hull_light(roof);
@@ -1242,8 +1241,8 @@ impl DrillApp {
     }
 }
 
-/// The relay is drawn within this of the Tern, metres: the outside pass's far plane (design 11.2: beyond, a point;
-/// later).
+/// The relay is drawn within this of the Tern, metres (design 11.2: beyond, a point; later): well inside
+/// `sc_render::depth::SOLID_REACH_M`, so it never meets the far plane.
 const RELAY_DRAW_M: f64 = 80_000.0;
 
 /// What the 3D views draw, borrowed from the app so the renderer can be borrowed beside it.
@@ -1506,12 +1505,14 @@ impl DrillApp {
 impl DrillApp {
     /// The patrol's scripted shots (patrol-mission design 12b, spacedock tasks 2.9): berthed in Tamsin Station's bay,
     /// out of the bridge's port and starboard windows and ahead to the throat; in the throat on the way out; then
-    /// Tamsin Station seen from 20 km off once the Tern is clear. Each stands its eye one frame, then is taken.
+    /// Tamsin Station seen from 14 km off once the Tern is clear, and along the same line from 76 km, near the edge of
+    /// its draw distance, where the whole station must still stand in front of the sky (sky-behind-solids 2). Each
+    /// stands its eye one frame, then is taken.
     fn patrol_shots(&mut self, f: &Frame, snap: &Snapshot) {
         if let Some(name) = self.shot_pending.take() {
             self.capture(f, &name);
             self.shot_eye = None;
-            if name.starts_with("p5-") {
+            if name.starts_with("p6-") {
                 self.done = true;
             }
             return;
@@ -1546,13 +1547,18 @@ impl DrillApp {
             Some(("p4-throat", window(Window::BridgePort, 0.3)))
         } else if here.z > 2_900.0 {
             // From the star's side, below and to port of the pair, about 14 km out, looking at its middle.
-            let eye_st = DVec3::new(-5_000.0, -4_500.0, 6_000.0);
+            let near_st = DVec3::new(-5_000.0, -4_500.0, 6_000.0);
             let look_st = DVec3::new(4_300.0, 1_500.0, -2_000.0);
+            let (name, eye_st) = if self.shots_taken.contains("p5-pair.png") {
+                ("p6-pair-far", look_st + (near_st - look_st).normalize() * 76_000.0)
+            } else {
+                ("p5-pair", near_st)
+            };
             let to_ship = |v: DVec3| t.rot.inverse() * (rot * v);
             let eye = to_ship(eye_st - here);
             let dir = to_ship(look_st - eye_st).normalize();
             let (yaw, pitch) = (dir.x.atan2(dir.z) as f32, dir.y.asin() as f32);
-            Some(("p5-pair", (eye.to_array(), yaw, pitch)))
+            Some((name, (eye.to_array(), yaw, pitch)))
         } else {
             None
         };

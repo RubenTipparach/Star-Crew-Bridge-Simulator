@@ -9,11 +9,18 @@
 //!
 //! The mover byte is checked by `sc-core`'s unit tests; the shader does not read it until movers
 //! are drawn.
+//!
+//! Then the sky layer against solids (openspec/changes/sky-behind-solids, design 3): a ship in front
+//! of a sky packed with bright stars, through a viewscreen feed's lens and through a bridge window,
+//! the sky drawn first and drawn last. Each case is drawn once without the sky and once with it;
+//! every pixel a solid covers must come out the same both times, so no star (nor any later pass of
+//! the sky layer, such as star streaks, which joins `sky_layer` below) ever shows on a ship.
 
-use glam::Vec3;
+use glam::{Mat4, Quat, Vec3};
 use sc_client::platform::{self, App, Flow, Frame, WindowConfig};
 use sc_core::vertex::{pack_deck_vertex, DeckVertexIn};
-use sc_render::{DeckParams, DeckProgram, Indices, Magnify, Renderer, Target, TextureArray};
+use sc_render::depth::{behind_everything, in_front_half, outside_lens, SOLID_REACH_M};
+use sc_render::{DeckParams, DeckProgram, Indices, Magnify, Renderer, SkyParams, Target, TextureArray};
 use std::path::PathBuf;
 use std::process::ExitCode;
 
@@ -68,6 +75,11 @@ struct Test {
     /// Each quad: its mesh, program, colour set weights, dynamic light, and whether it samples `smooth`.
     draws: Vec<(sc_render::Mesh, DeckProgram, [f32; 3], f32, bool)>,
     failures: Vec<String>,
+    /// A dark box, 2 m a side about its origin: the ship (and the bridge's wall) in the sky cases.
+    hull: sc_render::Mesh,
+    /// The sky case drawn next, and its frame without the sky, waiting for the frame with it.
+    next_case: usize,
+    without_sky: Option<Vec<u8>>,
     r: Renderer,
 }
 
@@ -94,12 +106,17 @@ impl Test {
         add(quad(-16.0, 0.0, 0.0, 8.0, 5, grey, across), DeckProgram::Textured, [1.0, 0.0, 0.0], 0.0, false);
         add(quad(0.0, 0.0, 8.0, 8.0, 0, sets, still), DeckProgram::Flat, [1.0, 0.0, 0.0], 0.25, false);
         add(quad(-16.0, -16.0, 0.0, -8.0, 5, grey, across), DeckProgram::Textured, [1.0, 0.0, 0.0], 0.0, true);
-        Ok(Self { target, tex, smooth, draws, failures: Vec::new(), r })
+        let (v, i) = dark_box();
+        let hull = r.make_mesh(&v, Indices::U16(&i));
+        Ok(Self { target, tex, smooth, draws, failures: Vec::new(), hull, next_case: 0, without_sky: None, r })
     }
 }
 
 impl App for Test {
     fn frame(&mut self, f: &Frame) -> Flow {
+        if f.index > 1 {
+            return self.sky_frame(f);
+        }
         let mvp = glam::camera::rh::proj::opengl::orthographic(-HALF_M, HALF_M, -HALF_M, HALF_M, -1.0, 1.0);
         self.r.begin_3d(&self.target, [0.0, 0.0, 0.0, 1.0]);
         for (mesh, prog, w, flash, smooth) in &self.draws {
@@ -137,12 +154,192 @@ impl App for Test {
             println!("FAIL reference image: {e}");
             self.failures.push("reference image".into());
         }
-        if self.failures.is_empty() {
-            Flow::Done
-        } else {
-            Flow::Fail
+        Flow::Continue
+    }
+}
+
+/// A sky case: what is drawn, in order, through which lenses.
+#[derive(Copy, Clone)]
+struct SkyCase {
+    name: &'static str,
+    /// Through the bridge's windows (a wall in the front half, the outside behind it), or a feed.
+    bridge: bool,
+    /// The sky layer drawn after the solids instead of before.
+    sky_last: bool,
+    /// The ship's distance and half size, metres.
+    at_m: f32,
+    half_m: [f32; 3],
+}
+
+const SKY_CASES: &[SkyCase] = &[
+    SkyCase { name: "a feed, the sky first", bridge: false, sky_last: false, at_m: 3_000.0, half_m: [400.0; 3] },
+    SkyCase { name: "a feed, the sky last", bridge: false, sky_last: true, at_m: 3_000.0, half_m: [400.0; 3] },
+    SkyCase {
+        name: "a feed, a solid at the farthest reach, the sky last",
+        bridge: false,
+        sky_last: true,
+        at_m: SOLID_REACH_M - 1.0,
+        half_m: [16_000.0, 16_000.0, 1.0],
+    },
+    SkyCase {
+        name: "a bridge window, the sky first",
+        bridge: true,
+        sky_last: false,
+        at_m: 3_000.0,
+        half_m: [400.0; 3],
+    },
+    SkyCase { name: "a bridge window, the sky last", bridge: true, sky_last: true, at_m: 3_000.0, half_m: [400.0; 3] },
+    SkyCase {
+        name: "a bridge window, a solid at the farthest reach, the sky last",
+        bridge: true,
+        sky_last: true,
+        at_m: SOLID_REACH_M - 1.0,
+        half_m: [16_000.0, 16_000.0, 1.0],
+    },
+];
+
+/// The view's vertical field of view: 40 degrees across the square target.
+const SKY_FOV: f32 = 0.698_131_7;
+
+impl Test {
+    /// One sky case a frame, twice: without the sky, then with it, comparing the pixels the solids cover.
+    fn sky_frame(&mut self, f: &Frame) -> Flow {
+        let Some(case) = SKY_CASES.get(self.next_case).copied() else {
+            return if self.failures.is_empty() { Flow::Done } else { Flow::Fail };
+        };
+        let with_sky = self.without_sky.is_some();
+        self.draw_sky_case(case, with_sky);
+        self.r.present(&self.target, f.width, f.height, false);
+        let px = sc_render::read_output(f.width, f.height);
+        self.r.commit();
+        let Some(bare) = self.without_sky.take() else {
+            self.without_sky = Some(px);
+            return Flow::Continue;
+        };
+        self.next_case += 1;
+        let covered = |i: usize| bare[i * 4..i * 4 + 3].iter().any(|c| *c > 2);
+        let n = bare.len() / 4;
+        let solid = (0..n).filter(|i| covered(*i)).count();
+        // On a solid, the frame with the sky is the frame without it, channel by channel.
+        let starred =
+            (0..n).filter(|i| covered(*i) && (0..3).any(|k| bare[i * 4 + k].abs_diff(px[i * 4 + k]) > 3)).count();
+        // The sky is really there round the ship: many star-bright pixels where nothing solid stands.
+        let stars = (0..n).filter(|i| !covered(*i) && px[i * 4..i * 4 + 3].iter().any(|c| *c > 128)).count();
+        let ok = starred == 0 && solid > 500 && stars > 200;
+        println!(
+            "{} stars never on a solid, {}: {starred} of {solid} solid pixels changed by the sky, {stars} star pixels round them",
+            if ok { "ok  " } else { "FAIL" },
+            case.name
+        );
+        // SC_RENDER_SHOTS=DIR keeps every case's frame with the sky, for the captures the owner looks at.
+        if let Some(dir) = std::env::var_os("SC_RENDER_SHOTS") {
+            let path = PathBuf::from(dir).join(format!("sky-case-{}.png", self.next_case));
+            let _ = sc_client::capture::write_png(&path, f.width, f.height, &px);
+        }
+        if !ok {
+            let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../target");
+            let path = dir.join(format!("sky-case-{}.png", self.next_case));
+            let _ = sc_client::capture::write_png(&path, f.width, f.height, &px);
+            println!("     the frame with the sky is in {}", path.display());
+            self.failures.push(case.name.into());
+        }
+        Flow::Continue
+    }
+
+    /// Draw a sky case into the target: the ship (and, through a bridge window, the wall beside it) and, when `sky`,
+    /// the sky layer, before or after them.
+    fn draw_sky_case(&mut self, case: SkyCase, sky: bool) {
+        let lens = outside_lens(SKY_FOV, 1.0);
+        // The outside's lens: a feed's own, or squeezed behind the bridge.
+        let outside = if case.bridge { behind_everything() * lens } else { lens };
+        // The bridge's own lens, as drill_bridge draws its rooms, in the front half of the buffer.
+        let inside = in_front_half() * glam::camera::rh::proj::opengl::perspective(SKY_FOV, 1.0, 0.05, 400.0);
+        self.r.begin_3d(&self.target, [0.0, 0.0, 0.0, 1.0]);
+        if sky && !case.sky_last {
+            self.sky_layer(lens);
+        }
+        // The ship straddles the view's middle and the wall's edge, slightly turned so three faces show.
+        let turn = Quat::from_euler(glam::EulerRot::YXZ, 0.5, 0.3, 0.0);
+        let ship =
+            Mat4::from_scale_rotation_translation(Vec3::from(case.half_m), turn, Vec3::new(0.0, 0.0, -case.at_m));
+        self.draw_solid(outside * ship);
+        if case.bridge {
+            // The wall left of the window, 5 m off, covering the left third of the view and part of the ship.
+            let wall = Mat4::from_scale_rotation_translation(
+                Vec3::new(2.0, 4.0, 0.1),
+                Quat::IDENTITY,
+                Vec3::new(-2.6, 0.0, -5.0),
+            );
+            self.draw_solid(inside * wall);
+        }
+        if sky && case.sky_last {
+            self.sky_layer(lens);
+        }
+        self.r.end_pass();
+    }
+
+    /// Every pass of the sky layer: today the sky's stars, sun and planet. A later pass (star streaks, a nebula) is drawn
+    /// here too, so these cases hold it to the same rule.
+    fn sky_layer(&mut self, lens: Mat4) {
+        let p = SkyParams {
+            inv_vp: lens.inverse(),
+            // The sun and the planet behind the eye: the view ahead is stars alone, all of them bright.
+            sun: [0.0, 0.0, 1.0, 0.9999],
+            sun_colour: [0.0; 4],
+            planet: [0.0, 0.0, 1.0, 0.01],
+            ocean: [0.0; 4],
+            land: [0.0; 4],
+            cloud: [0.0; 4],
+            atmosphere: [0.0; 4],
+            stars: [1.0, 40.0, SKY_FOV / SIZE as f32, 0.0],
+        };
+        self.r.draw_sky(&self.target, &p);
+    }
+
+    fn draw_solid(&mut self, mvp: Mat4) {
+        let p = DeckParams {
+            mvp,
+            state_weights: [1.0, 0.0, 0.0],
+            flash_dir: Vec3::Z,
+            flash: 0.0,
+            panel_first: u32::MAX,
+            panel_glow: 0.0,
+            clip_y: f32::MAX,
+            relight: sc_render::NO_RELIGHT,
+        };
+        self.r.draw_deck(&self.target, &self.hull, DeckProgram::Flat, &p, None);
+    }
+}
+
+/// A box 2 m a side about the origin, dark grey, each face wound outward (the deck pipeline culls back faces).
+fn dark_box() -> (Vec<u8>, Vec<u16>) {
+    let (mut v, mut idx) = (Vec::new(), Vec::new());
+    let grey = [[40, 42, 48, 255]; 3];
+    for axis in 0..3 {
+        for s in [-1.0f32, 1.0] {
+            let (a, b) = ((axis + 1) % 3, (axis + 2) % 3);
+            let corner = |u: f32, w: f32| {
+                let mut p = [0.0f32; 3];
+                p[axis] = s;
+                p[a] = u;
+                p[b] = w;
+                p
+            };
+            let mut q = [corner(-1.0, -1.0), corner(1.0, -1.0), corner(1.0, 1.0), corner(-1.0, 1.0)];
+            if s < 0.0 {
+                q.reverse();
+            }
+            let mut normal = [0.0f32; 3];
+            normal[axis] = s;
+            let base = (v.len() / sc_core::vertex::DECK_VERTEX_BYTES) as u16;
+            for p in q {
+                let d = DeckVertexIn { position_m: p, mover: 0, layer: 0, normal, colors: grey, uv: [0.0, 0.0] };
+                v.extend_from_slice(&pack_deck_vertex(&d).expect("the box fits the format"));
+            }
+            idx.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
         }
     }
+    (v, idx)
 }
 
 /// The frame against the committed reference: every channel of every pixel within 3 of it.

@@ -484,6 +484,16 @@ impl StationModel {
     pub fn triangles(&self) -> usize {
         self.outside.iter().chain(&self.inside).chain(&self.glow).map(MeshBuilder::triangles).sum()
     }
+
+    /// How far its farthest drawn vertex lies from its frame's origin, metres (sky-behind-solids 2): every part at the
+    /// scale it is drawn at. Its docked ships and beacons lie well inside.
+    pub fn reach_m(&self) -> f32 {
+        let parts = [(&self.outside, OUTSIDE_SCALE), (&self.inside, INSIDE_SCALE), (&self.glow, INSIDE_SCALE)];
+        parts
+            .iter()
+            .flat_map(|(ms, scale)| ms.iter().map(move |m| crate::ships3d::reach(m) * scale))
+            .fold(0.0, f32::max)
+    }
 }
 
 /// A berth's pose in E's bay: `angle_deg` round the axis from the bottom, `z_m` along it, `radius_m` out from it; the
@@ -996,6 +1006,22 @@ pub struct StationsView {
     pub triangles: usize,
 }
 
+/// Where the eye may stand off the Tern, metres: the chase camera's stand and the scripted shots' eyes are within it.
+const EYE_OFF_TERN_M: f64 = 2_000.0;
+
+/// Whether a station whose farthest vertex is `reach_m` from its origin, drawn while that origin is within `draw_m` of
+/// the Tern, always lies inside `sc_render::depth::SOLID_REACH_M` of the eye, where it stands in front of the sky layer
+/// (sky-behind-solids 2). Checked at load, so a bigger station or a longer draw distance fails loudly.
+fn fits_the_far_plane(draw_m: f64, reach_m: f32) -> Result<(), String> {
+    let farthest = draw_m + f64::from(reach_m) + EYE_OFF_TERN_M;
+    let limit = f64::from(sc_render::depth::SOLID_REACH_M);
+    if farthest <= limit {
+        Ok(())
+    } else {
+        Err(format!("{LOOK_FILE}: draw_m {draw_m} m and a station's reach of {reach_m} m put it {farthest} m from the eye, past {limit} m, where the sky would show through it"))
+    }
+}
+
 impl StationsView {
     /// Generate and upload every station of `sys` (their sizes from `sd` and `sd_json`, the spacedock file; the look
     /// from `look`, the textures under `root`), each lit by the star and the planet from where it stands.
@@ -1029,6 +1055,7 @@ impl StationsView {
             if m.placeholder {
                 println!("sc-client: {} (version {version}) is drawn as a placeholder", st.name);
             }
+            fits_the_far_plane(look.draw_m, m.reach_m()).map_err(|e| format!("{}: {e}", st.name))?;
             triangles += m.triangles();
             let up =
                 |ms: &[MeshBuilder]| ms.iter().map(|b| r.make_mesh(&b.vertices, Indices::U16(&b.indices))).collect();
@@ -1136,6 +1163,19 @@ mod tests {
         assert!(m.triangles() <= 25_000, "Tamsin Station: {} triangles", m.triangles());
         assert_eq!((m.outside.len(), m.inside.len(), m.glow.len()), (1, 1, 1), "one draw a part");
         assert_eq!(m.docked.len(), 2, "the sister Heron and the rescue Heron (the other classes have no model yet)");
+    }
+
+    #[test]
+    fn every_station_stands_in_front_of_the_sky_to_the_edge_of_its_draw_distance() {
+        // Regression (sky-behind-solids 2): the outside's far plane was the draw distance, 80 km, and Tamsin Station
+        // reaches 12.9 km from its origin, so from 67 km out the far plane cut it open and the stars showed through it.
+        let l = look();
+        let mut models = vec![('E', tamsin())];
+        models.extend(['A', 'B', 'C', 'D'].map(|v| (v, placeholder(v, &json(), &l, Vec3::Z, -Vec3::Y))));
+        for (v, m) in models {
+            assert!(fits_the_far_plane(l.draw_m, m.reach_m()).is_ok(), "{v} reaches {} m", m.reach_m());
+        }
+        assert!(fits_the_far_plane(l.draw_m, 50_000.0).is_err(), "a station too big for its draw distance is refused");
     }
 
     #[test]

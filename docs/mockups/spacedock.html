@@ -3522,6 +3522,20 @@ function planetTexture() {
   g.position.copy(v3(SD.sky.planet_dir).normalize().multiplyScalar(d));
   sky.add(g);
 }
+/**
+ * The sky layer (openspec/changes/sky-behind-solids 4, the engine's rule): everything in `group` (stars, glows, planets,
+ * star streaks) is drawn before every solid, in the order it was added, and writes no depth, so a star never lands on
+ * a ship or a station however far the camera stands from them. `first` orders one sky group after another.
+ */
+function skyLayer(group, first) {
+  let i = first;
+  group.traverse((o) => {
+    if (o.isGroup) o.renderOrder = -1;
+    if (o.material) { Object.assign(o.material, { depthWrite: false, transparent: false }); o.renderOrder = i++; }
+  });
+}
+skyLayer(sky, 0);
+window.MOCKUP_SKY = [sky];
 
 // ------------------------------------------------------------ the station kit
 // Every station is three meshes, as the engine would draw it: the outside lit by the star (the exterior paints), the

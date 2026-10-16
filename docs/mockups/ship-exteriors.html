@@ -3796,7 +3796,12 @@ function random(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294
 for(let i=0;i<600;i++) {const a=random()*Math.PI*2,b=Math.acos(2*random()-1),r=1000;sky.push(r*Math.sin(b)*Math.cos(a),r*Math.cos(b),r*Math.sin(b)*Math.sin(a));}
 const starGeometry=new THREE.BufferGeometry();
 starGeometry.setAttribute("position",new THREE.Float32BufferAttribute(sky,3));
-scene.add(new THREE.Points(starGeometry,new THREE.PointsMaterial({color:0x446078,size:1.2,sizeAttenuation:false,depthWrite:false})));
+// The sky layer is drawn before every solid and writes no depth, so no star lands on a ship however far the free
+// camera flies (openspec/changes/sky-behind-solids 4).
+const stars=new THREE.Points(starGeometry,new THREE.PointsMaterial({color:0x446078,size:1.2,sizeAttenuation:false,depthWrite:false}));
+stars.renderOrder=-1;
+scene.add(stars);
+window.MOCKUP_SKY=[stars];
 let textureBytes=0;
 for(const texture of sharedTextures.values()){
   let width=texture.image.width,height=texture.image.height;

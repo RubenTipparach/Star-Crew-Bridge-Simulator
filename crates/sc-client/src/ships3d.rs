@@ -133,6 +133,18 @@ pub fn bounds(m: &MeshBuilder) -> ([f32; 3], [f32; 3]) {
     (lo, hi)
 }
 
+/// How far a mesh's farthest vertex lies from its origin, in its stored units (metres at scale 1): read back from the
+/// packed vertices, as `bounds` is, so it is the reach of the model the engine draws (sky-behind-solids 2).
+pub fn reach(m: &MeshBuilder) -> f32 {
+    m.vertices
+        .chunks_exact(sc_core::vertex::DECK_VERTEX_BYTES)
+        .map(|v| {
+            let p = |i: usize| f32::from(i16::from_le_bytes([v[i * 2], v[i * 2 + 1]])) / sc_core::vertex::FIXED_SCALE;
+            (p(0) * p(0) + p(1) * p(1) + p(2) * p(2)).sqrt()
+        })
+        .fold(0.0, f32::max)
+}
+
 /// The hull box of a contact class (`corvette` the Hound, `fighter` the Jackal), measured once off its model.
 pub fn class_box(cls: &str) -> Option<([f32; 3], [f32; 3])> {
     use std::sync::OnceLock;

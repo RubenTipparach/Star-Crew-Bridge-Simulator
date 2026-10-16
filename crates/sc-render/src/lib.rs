@@ -16,6 +16,8 @@ pub mod gfx;
 #[path = "../../../third_party/sokol/log.rs"]
 mod sokol_log;
 
+pub mod depth;
+
 /// The generated shader modules (tools/sokol_shaders.py; never edited by hand).
 #[allow(clippy::all, missing_docs, dead_code)]
 pub mod shaders {
@@ -30,6 +32,15 @@ use gfx as sg;
 use sc_core::data::RenderConfig;
 use sc_core::vertex::{AttrFormat, DECK_ATTRIBUTES, DECK_VERTEX_BYTES};
 use std::collections::HashMap;
+
+/// The sky layer's depth state (openspec/changes/sky-behind-solids, design 1): every pipeline that draws the sky's
+/// stars, sun, planet, nebula or star streaks takes it. Its vertices lie on the far plane (clip z = w, window depth 1,
+/// the cleared value); tested less-or-equal and never written, it passes only where no solid has written a nearer
+/// depth, so a star can never cover a ship, a station or a missile, whether the sky is drawn before them or after.
+pub fn sky_layer_depth(d: &mut sg::DepthState) {
+    d.compare = sg::CompareFunc::LessEqual;
+    d.write_enabled = false;
+}
 
 /// The colour and depth formats of every target and of the output (engine-stack design 7: 8-bit
 /// colour, no float targets assumed).
@@ -434,7 +445,7 @@ impl Renderer {
         }
     }
 
-    /// The sky's pipeline (no depth test or write: it is drawn first) or a screen's (depth tested, both faces).
+    /// The sky's pipeline (the sky layer's depth, [`sky_layer_depth`]) or a screen's (depth tested, both faces).
     fn outside_pipeline(&mut self, screen: bool, samples: i32) -> sg::Pipeline {
         let shader = if screen { self.screen_shader } else { self.sky_shader };
         *self.outside_pipes.entry((screen, samples)).or_insert_with(|| {
@@ -445,15 +456,20 @@ impl Renderer {
                 label: if screen { c"screen".as_ptr() } else { c"sky".as_ptr() },
                 ..Default::default()
             };
-            d.depth.compare = if screen { sg::CompareFunc::LessEqual } else { sg::CompareFunc::Always };
-            d.depth.write_enabled = screen;
+            if screen {
+                d.depth.compare = sg::CompareFunc::LessEqual;
+                d.depth.write_enabled = true;
+            } else {
+                sky_layer_depth(&mut d.depth);
+            }
             d.depth.pixel_format = DEPTH_FORMAT;
             d.colors[0].pixel_format = COLOR_FORMAT;
             sg::make_pipeline(&d)
         })
     }
 
-    /// Draw the sky over the whole of `t`'s current pass (first, before anything else).
+    /// Draw the sky over the whole of `t`'s current pass. It is drawn first, and it is also depth tested at the far
+    /// plane, so it shows only where nothing solid has been drawn, whatever the order (sky-behind-solids 1).
     pub fn draw_sky(&mut self, t: &Target, p: &SkyParams) {
         let pip = self.outside_pipeline(false, t.samples);
         // The sky reads no buffer or texture, and sokol_gfx refuses empty bindings: none are applied.

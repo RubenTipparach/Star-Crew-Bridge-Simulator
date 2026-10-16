@@ -15,6 +15,9 @@ use sc_core::deck::DeckView;
 use sc_core::exterior::ExteriorData;
 use sc_net::msg::BodySnap;
 use sc_render::{DeckParams, DeckProgram, Indices, Mesh, Renderer, Target, TextureArray};
+// The outside is drawn after the bridge at the back of the depth buffer (the bridge in the front half, the outside
+// behind it, the sky layer at the far plane: sky-behind-solids), so it shows only through the windows.
+use sc_render::depth::{behind_everything, in_front_half, outside_lens};
 
 /// A body's eye above its feet standing, and seated (crew-on-deck), metres.
 const EYE_STAND_M: f32 = 1.65;
@@ -22,15 +25,6 @@ const EYE_SEAT_M: f32 = 1.2;
 /// A seated eye's lean toward the desk, from the seat point, metres.
 const EYE_SEAT_FWD_M: f32 = 0.1;
 
-/// The outside's near and far planes, metres: the Hound at a few kilometres, the farthest bolt and burst well inside.
-const OUTSIDE_NEAR_M: f32 = 1.0;
-const OUTSIDE_FAR_M: f32 = 80_000.0;
-
-/// The depth the outside is squeezed into, at the back of the depth buffer (window depth 1 - this to 1): drawn after
-/// the bridge, which takes the front half (`in_front_half`), it shows only where no part of the bridge is in front,
-/// which is through the windows. Half the buffer, so a station 2 km off resolves to under a metre (patrol-mission
-/// design 12b; it was 0.0001, about 2 km at 2 km).
-const OUTSIDE_DEPTH: f32 = 0.5;
 /// A room's bounds, ship frame, metres: least and greatest corner.
 type Bounds = ([f64; 3], [f64; 3]);
 /// The eye above the floor it stands on, metres (a standing person's, near enough for the overview's eye too).
@@ -296,8 +290,7 @@ impl BridgeView {
             r.draw_deck(t, inside.held, DeckProgram::Flat, &flat_params(proj * held), None);
         }
         // Last, the fight outside, at the back of the depth buffer: only the windows let it through.
-        let far = glam::camera::rh::proj::opengl::perspective(fov, aspect, OUTSIDE_NEAR_M, OUTSIDE_FAR_M);
-        (out.objects)(r, t, behind_everything() * far * view_out);
+        (out.objects)(r, t, behind_everything() * outside_lens(fov, aspect) * view_out);
         r.end_pass();
         proj * view
     }
@@ -381,20 +374,6 @@ pub struct Outside<'a> {
 
 /// Draws the fight outside into a pass, given the view-projection from the bridge's eye in the system's frame.
 pub type DrawOutside<'a> = Box<dyn FnOnce(&mut Renderer, &Target, Mat4) + 'a>;
-
-/// The clip-space map that puts a projection's depth into the front `1 - OUTSIDE_DEPTH` of the buffer (OpenGL's -1..1
-/// to -1..1 - 2 * OUTSIDE_DEPTH), keeping x, y and w: the bridge's own, ahead of everything outside.
-pub fn in_front_half() -> Mat4 {
-    let k = 1.0 - OUTSIDE_DEPTH;
-    Mat4::from_cols(Vec4::X, Vec4::Y, Vec4::new(0.0, 0.0, k, 0.0), Vec4::new(0.0, 0.0, k - 1.0, 1.0))
-}
-
-/// The clip-space map that puts a projection's depth into the last `OUTSIDE_DEPTH` of the buffer (OpenGL's -1..1 to
-/// 1 - 2 * OUTSIDE_DEPTH..1), keeping x, y and w.
-pub fn behind_everything() -> Mat4 {
-    let k = 2.0 * OUTSIDE_DEPTH;
-    Mat4::from_cols(Vec4::X, Vec4::Y, Vec4::new(0.0, 0.0, k / 2.0, 0.0), Vec4::new(0.0, 0.0, 1.0 - k / 2.0, 1.0))
-}
 
 /// A viewscreen's quad seen from `eye` (ship frame): its corners (-1..1) on the screen's face, 3 cm out from the wall.
 pub fn screen_model(vw: &DeckView, eye: [f64; 3]) -> Mat4 {
@@ -506,26 +485,20 @@ mod tests {
 
     #[test]
     fn the_outside_lands_behind_every_part_of_the_bridge() {
-        let aspect = 16.0 / 9.0;
-        let fov = 70f32.to_radians();
-        let far = behind_everything()
-            * glam::camera::rh::proj::opengl::perspective(fov, aspect, OUTSIDE_NEAR_M, OUTSIDE_FAR_M);
+        use sc_render::depth::{window_depth, OUTSIDE_DEPTH, OUTSIDE_NEAR_M, SOLID_REACH_M};
+        let (aspect, fov) = (16.0 / 9.0, 70f32.to_radians());
+        let far = behind_everything() * outside_lens(fov, aspect);
         let near = in_front_half() * glam::camera::rh::proj::opengl::perspective(fov, aspect, 0.05, 400.0);
-        let depth = |m: Mat4, d: f32| {
-            let c = m * Vec4::new(0.0, 0.0, -d, 1.0);
-            (c.z / c.w) * 0.5 + 0.5
-        };
         // The farthest wall of the bridge, 40 m away, against the nearest thing outside, the near plane.
-        assert!(depth(near, 40.0) < depth(far, OUTSIDE_NEAR_M), "the bridge's back wall must hide the outside");
-        for d in [OUTSIDE_NEAR_M, 2_000.0, OUTSIDE_FAR_M * 0.99] {
-            let z = depth(far, d);
-            assert!((1.0 - OUTSIDE_DEPTH - 1e-6..=1.0).contains(&z), "{d} m lands at depth {z}");
+        assert!(
+            window_depth(near, 40.0) < window_depth(far, OUTSIDE_NEAR_M),
+            "the bridge's back wall hides the outside"
+        );
+        for d in [OUTSIDE_NEAR_M, 2_000.0, SOLID_REACH_M] {
+            let z = window_depth(far, d);
+            assert!((f64::from(1.0 - OUTSIDE_DEPTH) - 1e-6..1.0).contains(&z), "{d} m lands at depth {z}");
         }
-        assert!(depth(far, 1_500.0) < depth(far, 3_000.0), "the outside keeps its own order");
-        assert!(depth(near, 399.0) <= 1.0 - OUTSIDE_DEPTH, "the whole bridge pass is in front of the outside");
-        // A 24-bit buffer: a metre 2 km off and 5 cm 200 m off are a step or more apart (a station's own parts).
-        let step = 1.0 / 16_777_216.0;
-        assert!(f64::from(depth(far, 2_001.0) - depth(far, 2_000.0)) > step, "a metre at 2 km");
-        assert!(f64::from(depth(far, 200.05) - depth(far, 200.0)) > step, "5 cm at 200 m");
+        assert!(window_depth(far, 1_500.0) < window_depth(far, 3_000.0), "the outside keeps its own order");
+        assert!(window_depth(near, 399.0) <= f64::from(1.0 - OUTSIDE_DEPTH), "the whole bridge is in front of it");
     }
 }

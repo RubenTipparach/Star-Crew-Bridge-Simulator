@@ -3048,10 +3048,23 @@ function planet(kind, dir, radiusDeg, atmo) {
 }
 // Tamsin from the station, 17.5 degrees in radius (design 2), where the dock's view puts it: low to port.
 const tamsin = planet("terran", EXT.planet.dir, 17.5, true);
+/**
+ * The sky layer (openspec/changes/sky-behind-solids 4, the engine's rule): everything in `group` (stars, glows, planets,
+ * star streaks) is drawn before every solid, in the order it was added, and writes no depth, so a star never lands on
+ * a ship or a station however far the camera stands from them. `first` orders one sky group after another.
+ */
+function skyLayer(group, first) {
+  let i = first;
+  group.traverse((o) => {
+    if (o.isGroup) o.renderOrder = -1;
+    if (o.material) { Object.assign(o.material, { depthWrite: false, transparent: false }); o.renderOrder = i++; }
+  });
+}
 // Orrin from the Pell beacon, 16.9 degrees; Pell, 1.6.
 const orrin = planet("banded", [0.62, 0.12, 0.78], 16.9, false);
 const pell = planet("terran", [0.25, 0.3, 0.92], 1.6, false);
 pell.children[0].material = new THREE.MeshLambertMaterial({ color: 0xd8dde4 });
+skyLayer(sky, 0);
 
 // ------------------------------------------------------------ the placeholder starbase (design 3)
 const lambert = (c) => new THREE.MeshLambertMaterial({ color: c, flatShading: true });
@@ -3236,6 +3249,7 @@ function buildMotes(vel) {
 }
 const streaks = new THREE.Group();
 out.add(streaks);
+window.MOCKUP_SKY = [sky, streaks];
 function buildStreaks(k) {
   streaks.clear();
   if (k <= 0) return;
@@ -3251,8 +3265,10 @@ function buildStreaks(k) {
   g.setAttribute("position", new THREE.BufferAttribute(p, 3));
   g.setAttribute("color", new THREE.BufferAttribute(c, 3));
   streaks.add(new THREE.LineSegments(g, new THREE.LineBasicMaterial({ vertexColors: true })));
-  const flash = new THREE.Mesh(new THREE.SphereGeometry(1200, 16, 8), new THREE.MeshBasicMaterial({ color: 0xdfeaff, transparent: true, opacity: 0.07 * k, side: THREE.BackSide, depthWrite: false }));
+  const flash = new THREE.Mesh(new THREE.SphereGeometry(1200, 16, 8), new THREE.MeshBasicMaterial({ color: 0xdfeaff, opacity: 0.07 * k, side: THREE.BackSide, blending: THREE.AdditiveBlending }));
   streaks.add(flash);
+  // The streaks are the sky's, drawn after its stars and before every solid (sky-behind-solids 4).
+  skyLayer(streaks, 1000);
 }
 
 // ------------------------------------------------------------ the bridge, lit by its own lamps
